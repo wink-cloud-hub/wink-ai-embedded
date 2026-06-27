@@ -118,9 +118,14 @@ void wink_soft_timer_dispatch(void) {
             continue;
         }
 
-        /* 剩余 Tick 递减 */
+        /* 剩余 Tick 递减 + 到期判定（同一 dispatch 周期）。
+         * 修复 off-by-one：原实现先 `--` 再 `continue`，须等 remaining_ticks 归 0 后的
+         * 下一次 dispatch 才触发回调 → 周期 P 实际运行 P+1 ticks。
+         * 现改为递减后同周期判定：P 从 start 到首次触发恰好 P 次 dispatch。 */
         if (timer->remaining_ticks > 0) {
             timer->remaining_ticks--;
+        }
+        if (timer->remaining_ticks != 0) {
             continue;
         }
 

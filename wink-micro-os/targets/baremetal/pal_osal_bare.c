@@ -170,7 +170,9 @@ wink_status_t pal_ringbuf_push(
 
     key = pal_critical_enter();
 
-    if (pal_ringbuf_used(rb) + size > rb->size) {
+    /* 内联已用量计算（rb->head - rb->tail），避免在临界区内再次调用 pal_ringbuf_used
+     * ——后者会重复 enter/exit 临界区，依赖 BSP irq_save/restore 的可重入性。 */
+    if ((rb->head - rb->tail) + size > rb->size) {
         pal_critical_exit(key);
         return WINK_ERR_FULL;
     }
@@ -199,7 +201,8 @@ wink_status_t pal_ringbuf_pop(
 
     key = pal_critical_enter();
 
-    if (pal_ringbuf_used(rb) < size) {
+    /* 内联已用量计算，避免临界区内重复加锁（见 pal_ringbuf_push 注释）。 */
+    if ((rb->head - rb->tail) < size) {
         pal_critical_exit(key);
         return WINK_ERR_EMPTY;
     }

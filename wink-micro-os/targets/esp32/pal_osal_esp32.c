@@ -224,14 +224,14 @@ wink_status_t pal_task_create(
     /* Map PAL core ID to FreeRTOS xCoreID */
     switch (core_id) {
         case PAL_CORE_0:
-            core = tskNO_AFFINITY;  /* Legacy mapping - Core 0 handled by scheduler */
+            core = 0;                /* 钉到 Core 0：tskNO_AFFINITY 允许调度到任意核，破坏 CPU 隔离语义 */
             break;
         case PAL_CORE_1:
             core = 1;                /* Pin to Core 1 for control loop isolation */
             break;
         case PAL_CORE_ANY:
         default:
-            core = tskNO_AFFINITY;
+            core = tskNO_AFFINITY;   /* 显式 ANY 才用无亲和性，交由调度器选择 */
             break;
     }
 
