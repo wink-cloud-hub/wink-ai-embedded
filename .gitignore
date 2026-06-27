@@ -78,3 +78,7 @@ Thumbs.db
 
 # ===== 日志 =====
 *.log
+
+# ===== Python（构建期静态分析工具 check_pt_variables.py 产物）=====
+__pycache__/
+*.pyc
