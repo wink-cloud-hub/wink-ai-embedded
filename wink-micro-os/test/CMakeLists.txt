@@ -48,6 +48,7 @@ function(add_wink_host_test name src)
         ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../trace/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/include)
+    target_link_libraries(${name} PRIVATE pal)
     if(MSVC)
         target_compile_options(${name} PRIVATE /W4)
     else()
@@ -63,6 +64,7 @@ add_wink_host_test(test_trace test_trace.c
 add_wink_host_test(test_runtime test_runtime.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_runtime.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_actuator_registry.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_soft_timer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../trace/src/wink_trace.c)
 
 add_wink_host_test(test_host_pal test_host_pal.c)
@@ -117,6 +119,7 @@ function(add_wink_test_sim name src)
         ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm     # wasm_bridge.h（dal SIMULATION 分支引用）
         ${CMAKE_CURRENT_SOURCE_DIR}/../trace/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/include)
+    target_link_libraries(${name} PRIVATE pal)
     target_compile_definitions(${name} PRIVATE SIMULATION=1)
     if(MSVC)
         target_compile_options(${name} PRIVATE /W4)

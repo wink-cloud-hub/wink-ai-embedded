@@ -4,19 +4,18 @@
  *
  * 各 target 的 *_entry.c 实例化 wink_app_callbacks_t 后调用 wink_runtime_run。
  * 调度器仅用 PAL OSAL 做 tick，挂起语义由 target 实现（ADR-0002 双 target 对齐落点）。
+ *
+ * Tick 周期 SSOT：优先从 wink_config.h 获取（由 wink_app.json codegen 生成），
+ * 若未定义则退化为 10ms 兼容默认值。
  */
 #ifndef WINK_RUNTIME_H
 #define WINK_RUNTIME_H
 
 #include "wink_app.h"
+#include "wink_config.h"
 
 #ifdef __cplusplus
 extern "C" {
-#endif
-
-/** @brief 单 tick 默认延时（ms），可被 target/app 覆盖（编译期 -D） */
-#ifndef WINK_RUNTIME_TICK_MS
-#define WINK_RUNTIME_TICK_MS 10
 #endif
 
 /**
@@ -31,8 +30,10 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t *callbacks, uint32_t m
 
 /** @brief runtime 内部故障码：boot 时检测到 WDT/PANIC 复位（Phase 5 Task 5-5） */
 #define WINK_FAULT_BOOT_AFTER_RESET 8001u
-/** @brief runtime 内部故障码：单次 loop 执行时间超过限制 (WCET 超限警告) */
+/** @brief runtime 内部故障码：单个 callback 执行时间超过限制 (细粒度 WCET 警告) */
 #define WINK_WARN_WCET_EXCEEDED     8002u
+/** @brief runtime 内部故障码：全局 tick 总时间超过限制 (全局 WCET 警告) */
+#define WINK_WARN_TICK_OVERRUN      8003u
 
 /**
  * @brief 显式故障路径（Phase 5 Task 5-3）。

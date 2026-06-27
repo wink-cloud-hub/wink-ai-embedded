@@ -15,13 +15,18 @@
 #include "pal_resource.h"
 
 /* ---- 编译期：契约符号必须存在且取值正确（核心门禁）---- */
-_Static_assert(WINK_OK == 0,                       "WINK_OK must be 0");
-_Static_assert(WINK_ERR_HARDWARE == -12,           "P0-1: WINK_ERR_HARDWARE must be -12");
-_Static_assert(WINK_MUTEX_WAIT_FOREVER == 0xFFFFFFFFu, "P0-1: mutex 永久等待哨兵");
-_Static_assert(PAL_RESET_REASON_WATCHDOG == 2,     "runtime boot safe-lock 依赖");
-_Static_assert(PAL_RESET_REASON_PANIC    == 3,     "runtime boot safe-lock 依赖（ESP_RST_PANIC→PANIC）");
-_Static_assert(PAL_RESET_REASON_SOFTWARE == 4,     "ESP_RST_SW 映射");
-_Static_assert(PAL_RESET_REASON_BROWNOUT == 5,     "ESP_RST_BROWNOUT 映射");
+/* C99 compatible static assert to prevent MSVC compilation failures and encoding quirks */
+#define STATIC_ASSERT_CONCAT(a, b) a##b
+#define STATIC_ASSERT_CONCAT2(a, b) STATIC_ASSERT_CONCAT(a, b)
+#define STATIC_ASSERT(cond) typedef char STATIC_ASSERT_CONCAT2(static_assertion_at_line_, __LINE__)[(cond) ? 1 : -1]
+
+STATIC_ASSERT(WINK_OK == 0);
+STATIC_ASSERT(WINK_ERR_HARDWARE == -12);
+STATIC_ASSERT(WINK_MUTEX_WAIT_FOREVER == 0xFFFFFFFFu);
+STATIC_ASSERT(PAL_RESET_REASON_WATCHDOG == 2);
+STATIC_ASSERT(PAL_RESET_REASON_PANIC    == 3);
+STATIC_ASSERT(PAL_RESET_REASON_SOFTWARE == 4);
+STATIC_ASSERT(PAL_RESET_REASON_BROWNOUT == 5);
 
 void setUp(void) { pal_resource_reset(); }
 void tearDown(void) {}

@@ -15,6 +15,27 @@ if(TARGET_PLATFORM STREQUAL "wasm")
     add_compile_definitions(SIMULATION=1)
 endif()
 
+# ── 配置生成层 (Task 0: codegen_config.py) ──────────────────────────
+# Generate wink_config.h from wink_app.json - SSOT for runtime parameters
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+set(WINK_CONFIG_DIR ${CMAKE_BINARY_DIR}/generated)
+set(WINK_CONFIG_H ${WINK_CONFIG_DIR}/wink_config.h)
+
+add_custom_command(
+    OUTPUT ${WINK_CONFIG_H}
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/codegen_config.py
+            --input ${CMAKE_CURRENT_SOURCE_DIR}/../wink-app.json
+            --output ${WINK_CONFIG_H}
+            --target ${TARGET_PLATFORM}
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../wink-app.json
+            ${CMAKE_CURRENT_SOURCE_DIR}/tools/codegen_config.py
+    COMMENT "Generating wink_config.h from wink_app.json"
+    VERBATIM
+)
+
+add_custom_target(generate_config DEPENDS ${WINK_CONFIG_H})
+message(STATUS "Configuration will be generated at: ${WINK_CONFIG_H}")
+
 # ── 栈深度静态门禁（P-stack：AI Codegen 栈安全）──────────────────
 # AI Codegen 可能生成深调用链。使用 -Wstack-usage 在编译期硬性拦截。
 # 阈值说明：
@@ -24,16 +45,36 @@ endif()
 #   - 配合 .clang-tidy misc-no-recursion 禁止递归，可有效约束总栈消耗
 set(WINK_STACK_USAGE_LIMIT 1536 CACHE STRING
     "Per-function stack usage hard limit in bytes (-Wstack-usage)")
-add_compile_options(-Wstack-usage=${WINK_STACK_USAGE_LIMIT})
+# Only apply to GCC/Clang (MSVC does not support -Wstack-usage)
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options(-Wstack-usage=${WINK_STACK_USAGE_LIMIT})
+elseif(MSVC)
+    # Enable UTF-8 source/execution character set for MSVC to prevent C4819 encoding warnings/errors
+    add_compile_options(/utf-8)
+endif()
 # 注：GCC 参数化警告 -Wstack-usage= 不支持 -Werror=stack-usage= 精确升级。
 # 云端构建服务（Docker worker）在 BAL App 编译阶段使用全局 -Werror 将其升级为硬错误。
 # 本地开发环境仅产出 warning，不阻塞迭代（生产部署由 build service 门禁拦截）。
+
+# ── Protothread Footgun Detector (ADR-0007) ─────────────────────────
+# Catch the #1 protothread bug AT BUILD TIME, not runtime!
+# Detects non-static auto variables inside functions that yield.
+add_custom_target(
+    check_pt_footguns ALL
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_pt_variables.py
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "🔍 Scanning for protothread auto variable footguns..."
+    VERBATIM
+)
 
 # 收集子组件构建
 add_subdirectory(pal)
 add_subdirectory(dal)
 add_subdirectory(trace)
 add_subdirectory(runtime)
+
+# Ensure checker runs before wink_runtime compiles (must come AFTER runtime subdir)
+add_dependencies(wink_runtime check_pt_footguns)
 
 # 根据目标平台配置可执行程序或测试用例 (主要针对 WebAssembly / Wasm 仿真)
 if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)

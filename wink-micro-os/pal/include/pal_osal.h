@@ -123,6 +123,125 @@ uint32_t pal_critical_enter(void);
 void pal_critical_exit(uint32_t key);
 
 
+/* ========================================================================== */
+/*                          4. 任务创建与多核亲和性                            */
+/* ========================================================================== */
+
+/**
+ * @brief Task handle (opaque pointer - implementation varies by target)
+ */
+typedef void* pal_task_handle_t;
+
+/**
+ * @brief Core ID for task affinity scheduling
+ */
+typedef enum {
+    PAL_CORE_0   = 0,  /**< Pin to Core 0 (typically networking/communication) */
+    PAL_CORE_1   = 1,  /**< Pin to Core 1 (typically control loop / real-time) */
+    PAL_CORE_ANY = -1, /**< No affinity - scheduler decides */
+} pal_core_id_t;
+
+/**
+ * @brief Create a new task with optional core affinity
+ *
+ * @param func Task entry function (takes void* arg, returns void)
+ * @param name Task name (for debugging, max 16 chars recommended)
+ * @param stack_depth Stack depth in bytes (FreeRTOS converts to words internally)
+ * @param arg Argument passed to task entry function
+ * @param priority Task priority (higher = more important, target-specific range)
+ * @param core_id Core affinity: PAL_CORE_0, PAL_CORE_1, or PAL_CORE_ANY
+ * @param[out] task_handle Output task handle pointer (may be NULL if not needed)
+ * @return wink_status_t WINK_OK on success, WINK_ERR_NO_MEM if insufficient memory,
+ *         WINK_ERR_UNSUPPORTED if target doesn't support multi-tasking
+ *
+ * @note WASM/bare-metal targets may call func synchronously or return UNSUPPORTED.
+ *       App code must handle UNSUPPORTED gracefully as graceful degradation.
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t pal_task_create(
+    void (*func)(void* arg),
+    const char* name,
+    uint32_t stack_depth,
+    void* arg,
+    int32_t priority,
+    pal_core_id_t core_id,
+    pal_task_handle_t* task_handle
+);
+
+
+/* ========================================================================== */
+/*                        5. 跨核通信环形缓冲区 (Ringbuf)                      */
+/* ========================================================================== */
+
+/**
+ * @brief Ring buffer handle (opaque pointer - implementation varies)
+ *
+ * Thread-safe, non-blocking ring buffer for cross-core communication.
+ * Push is non-blocking and may fail if full. Pop is non-blocking and may fail
+ * if empty. Designed for zero-copy or fixed-size element patterns.
+ */
+typedef struct pal_ringbuf* pal_ringbuf_handle_t;
+
+/**
+ * @brief Create a new ring buffer
+ *
+ * @param size Buffer capacity in bytes. Must be power of 2 for efficient wrapping.
+ * @return pal_ringbuf_handle_t Buffer handle or NULL on failure
+ *
+ * @note On ESP32, wraps FreeRTOS xRingbufferCreate with RINGBUF_TYPE_BYTEBUF.
+ *       On WASM/host, uses a simple volatile-head-tail implementation.
+ *       On bare-metal, uses interrupt-disable critical sections for atomicity.
+ */
+pal_ringbuf_handle_t pal_ringbuf_create(uint32_t size);
+
+/**
+ * @brief Push data to ring buffer (non-blocking)
+ *
+ * @param rb Ring buffer handle
+ * @param data Pointer to data to push
+ * @param size Size of data in bytes
+ * @return wink_status_t WINK_OK on success, WINK_ERR_FULL if buffer full,
+ *         WINK_ERR_INVALID_ARG if NULL handle/data
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t pal_ringbuf_push(
+    pal_ringbuf_handle_t rb,
+    const void* data,
+    uint32_t size
+);
+
+/**
+ * @brief Pop data from ring buffer (non-blocking)
+ *
+ * @param rb Ring buffer handle
+ * @param data Output buffer to receive data
+ * @param size Exact number of bytes to pop
+ * @return wink_status_t WINK_OK on success, WINK_ERR_EMPTY if buffer empty,
+ *         WINK_ERR_INVALID_ARG if NULL handle/data or size mismatch
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t pal_ringbuf_pop(
+    pal_ringbuf_handle_t rb,
+    void* data,
+    uint32_t size
+);
+
+/**
+ * @brief Get current used bytes in ring buffer
+ *
+ * @param rb Ring buffer handle
+ * @return uint32_t Number of bytes currently available to pop
+ */
+uint32_t pal_ringbuf_used(pal_ringbuf_handle_t rb);
+
+/**
+ * @brief Destroy a ring buffer and free all resources
+ *
+ * @param rb Ring buffer handle (NULL-safe)
+ */
+void pal_ringbuf_destroy(pal_ringbuf_handle_t rb);
+
+
 #ifdef __cplusplus
 }
 #endif

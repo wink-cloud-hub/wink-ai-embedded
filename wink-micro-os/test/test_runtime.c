@@ -77,9 +77,9 @@ void test_boot_safe_lock_on_watchdog_reset(void) {
     sim_set_reset_reason(PAL_RESET_REASON_WATCHDOG);
     wink_app_callbacks_t cb = { mock_init, mock_loop, mock_on_fault };
     wink_status_t s = wink_runtime_run(&cb, 1);
-    TEST_ASSERT_EQUAL_INT(WINK_OK, s);
-    TEST_ASSERT_EQUAL_INT(1, s_safe_off_calls);   /* boot 时先关断执行器（init 前） */
-    TEST_ASSERT_EQUAL_INT(1, s_init_calls);        /* init 仍执行 */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_LOCKED, s);
+    TEST_ASSERT_EQUAL_INT(2, s_safe_off_calls);   /* boot 时先关断执行器，进入 fault 时再关断一次 */
+    TEST_ASSERT_EQUAL_INT(0, s_init_calls);        /* ADR-0007: init 不执行 */
     TEST_ASSERT_EQUAL_UINT32(WINK_FAULT_BOOT_AFTER_RESET, wink_trace_last());
 }
 

@@ -5,6 +5,7 @@
  */
 #include "pal_osal.h"
 #include "host_test_ctrl.h"
+#include <stdlib.h>
 #include <string.h>
 
 static uint64_t s_time_us = 0;
@@ -96,4 +97,126 @@ uint32_t pal_critical_enter(void) {
 
 void pal_critical_exit(uint32_t key) {
     (void)key;
+}
+
+/* ─────────────────────────────────────────────────────────
+ * Task 创建（host target 降级实现，同步调用）
+ * ───────────────────────────────────────────────────────── */
+
+wink_status_t pal_task_create(
+    void (*func)(void* arg),
+    const char* name,
+    uint32_t stack_depth,
+    void* arg,
+    int32_t priority,
+    pal_core_id_t core_id,
+    pal_task_handle_t* task_handle
+) {
+    /* Host target: single-threaded, synchronous execution for tests */
+    (void)name; (void)stack_depth; (void)priority;
+    (void)core_id; (void)task_handle;
+
+    func(arg);
+    return WINK_OK;
+}
+
+/* ─────────────────────────────────────────────────────────
+ * 环形缓冲区 (host 纯内存实现，单线程无并发)
+ * ───────────────────────────────────────────────────────── */
+
+struct pal_ringbuf {
+    uint8_t* buffer;
+    uint32_t size;
+    volatile uint32_t head;
+    volatile uint32_t tail;
+};
+
+pal_ringbuf_handle_t pal_ringbuf_create(uint32_t size) {
+    struct pal_ringbuf* rb;
+
+    /* Size must be power of 2 (API contract) */
+    if ((size & (size - 1)) != 0) {
+        return NULL;
+    }
+
+    rb = malloc(sizeof(struct pal_ringbuf));
+    if (rb == NULL) {
+        return NULL;
+    }
+
+    rb->buffer = malloc(size);
+    if (rb->buffer == NULL) {
+        free(rb);
+        return NULL;
+    }
+
+    rb->size = size;
+    rb->head = 0;
+    rb->tail = 0;
+
+    return rb;
+}
+
+wink_status_t pal_ringbuf_push(
+    pal_ringbuf_handle_t rb,
+    const void* data,
+    uint32_t size
+) {
+    uint32_t i;
+    const uint8_t* src = (const uint8_t*)data;
+
+    if (rb == NULL || data == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    if (pal_ringbuf_used(rb) + size > rb->size) {
+        return WINK_ERR_FULL;
+    }
+
+    for (i = 0; i < size; i++) {
+        rb->buffer[rb->head & (rb->size - 1)] = src[i];
+        rb->head++;
+    }
+
+    return WINK_OK;
+}
+
+wink_status_t pal_ringbuf_pop(
+    pal_ringbuf_handle_t rb,
+    void* data,
+    uint32_t size
+) {
+    uint32_t i;
+    uint8_t* dst = (uint8_t*)data;
+
+    if (rb == NULL || data == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    if (pal_ringbuf_used(rb) < size) {
+        return WINK_ERR_EMPTY;
+    }
+
+    for (i = 0; i < size; i++) {
+        dst[i] = rb->buffer[rb->tail & (rb->size - 1)];
+        rb->tail++;
+    }
+
+    return WINK_OK;
+}
+
+uint32_t pal_ringbuf_used(pal_ringbuf_handle_t rb) {
+    if (rb == NULL) {
+        return 0;
+    }
+    return rb->head - rb->tail;
+}
+
+void pal_ringbuf_destroy(pal_ringbuf_handle_t rb) {
+    if (rb == NULL) {
+        return;
+    }
+
+    free(rb->buffer);
+    free(rb);
 }

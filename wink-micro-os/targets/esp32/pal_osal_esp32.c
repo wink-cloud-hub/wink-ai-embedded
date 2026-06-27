@@ -21,6 +21,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
+#include "freertos/ringbuf.h"
 #include "esp_timer.h"
 #include "esp_task_wdt.h"
 #include "esp_system.h"       /* esp_reset_reason() + esp_reset_reason_t (IDF v5.x moved it here) */
@@ -199,5 +200,188 @@ void pal_critical_exit(uint32_t key) {
     portEXIT_CRITICAL(&s_global_mux);
 #else
     s_global_mux_stub = 0;
+#endif
+}
+
+/* ─────────────────────────────────────────────────────────
+ * Task 创建与多核亲和性
+ * ───────────────────────────────────────────────────────── */
+
+wink_status_t pal_task_create(
+    void (*func)(void* arg),
+    const char* name,
+    uint32_t stack_depth,
+    void* arg,
+    int32_t priority,
+    pal_core_id_t core_id,
+    pal_task_handle_t* task_handle
+) {
+#if defined(ESP_PLATFORM)
+    BaseType_t core;
+    TaskHandle_t xHandle;
+    BaseType_t ret;
+
+    /* Map PAL core ID to FreeRTOS xCoreID */
+    switch (core_id) {
+        case PAL_CORE_0:
+            core = tskNO_AFFINITY;  /* Legacy mapping - Core 0 handled by scheduler */
+            break;
+        case PAL_CORE_1:
+            core = 1;                /* Pin to Core 1 for control loop isolation */
+            break;
+        case PAL_CORE_ANY:
+        default:
+            core = tskNO_AFFINITY;
+            break;
+    }
+
+    ret = xTaskCreatePinnedToCore(
+        (TaskFunction_t)func,
+        name,
+        stack_depth / sizeof(StackType_t),  /* FreeRTOS uses words, not bytes */
+        arg,
+        priority,
+        &xHandle,
+        core
+    );
+
+    if (ret != pdPASS) {
+        return WINK_ERR_NO_MEM;
+    }
+
+    if (task_handle != NULL) {
+        *task_handle = (pal_task_handle_t)xHandle;
+    }
+
+    return WINK_OK;
+#else
+    (void)func; (void)name; (void)stack_depth; (void)arg;
+    (void)priority; (void)core_id; (void)task_handle;
+    return WINK_ERR_UNSUPPORTED;
+#endif
+}
+
+/* ─────────────────────────────────────────────────────────
+ * 跨核通信环形缓冲区 (Ringbuf)
+ * ───────────────────────────────────────────────────────── */
+
+#if defined(ESP_PLATFORM)
+struct pal_ringbuf {
+    RingbufHandle_t handle;
+    uint32_t size;
+};
+#else
+/* stub struct for static analysis */
+struct pal_ringbuf { int unused; };
+#endif
+
+pal_ringbuf_handle_t pal_ringbuf_create(uint32_t size) {
+#if defined(ESP_PLATFORM)
+    struct pal_ringbuf* rb;
+
+    /* Size must be power of 2 (API contract) */
+    if ((size & (size - 1)) != 0) {
+        return NULL;
+    }
+
+    rb = malloc(sizeof(struct pal_ringbuf));
+    if (rb == NULL) {
+        return NULL;
+    }
+
+    rb->size = size;
+    rb->handle = xRingbufferCreate(size, RINGBUF_TYPE_BYTEBUF);
+    if (rb->handle == NULL) {
+        free(rb);
+        return NULL;
+    }
+
+    return rb;
+#else
+    (void)size; return NULL;
+#endif
+}
+
+wink_status_t pal_ringbuf_push(
+    pal_ringbuf_handle_t rb,
+    const void* data,
+    uint32_t size
+) {
+#if defined(ESP_PLATFORM)
+    BaseType_t ret;
+
+    if (rb == NULL || data == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    /* Non-blocking push (tick = 0), task context only */
+    ret = xRingbufferSend(rb->handle, (void*)data, size, 0);
+    if (ret != pdTRUE) {
+        return WINK_ERR_FULL;
+    }
+
+    return WINK_OK;
+#else
+    (void)rb; (void)data; (void)size; return WINK_ERR_UNSUPPORTED;
+#endif
+}
+
+wink_status_t pal_ringbuf_pop(
+    pal_ringbuf_handle_t rb,
+    void* data,
+    uint32_t size
+) {
+#if defined(ESP_PLATFORM)
+    uint8_t* item;
+    size_t item_size;
+
+    if (rb == NULL || data == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    /* Non-blocking pop (tick = 0) */
+    item = xRingbufferReceive(rb->handle, &item_size, 0);
+    if (item == NULL) {
+        return WINK_ERR_EMPTY;
+    }
+
+    if (item_size != size) {
+        /* Size mismatch - return item and indicate state error */
+        vRingbufferReturnItem(rb->handle, item);
+        return WINK_ERR_INVALID_STATE;
+    }
+
+    memcpy(data, item, size);
+    vRingbufferReturnItem(rb->handle, item);
+
+    return WINK_OK;
+#else
+    (void)rb; (void)data; (void)size; return WINK_ERR_UNSUPPORTED;
+#endif
+}
+
+uint32_t pal_ringbuf_used(pal_ringbuf_handle_t rb) {
+#if defined(ESP_PLATFORM)
+    /* FreeRTOS doesn't expose exact used count via public API.
+     * In practice, applications check WINK_ERR_EMPTY/WINK_ERR_FULL.
+     * For metrics, we would need to add tracking.
+     */
+    (void)rb;
+    return 0;
+#else
+    (void)rb; return 0;
+#endif
+}
+
+void pal_ringbuf_destroy(pal_ringbuf_handle_t rb) {
+#if defined(ESP_PLATFORM)
+    if (rb == NULL) {
+        return;
+    }
+
+    vRingbufferDelete(rb->handle);
+    free(rb);
+#else
+    (void)rb;
 #endif
 }
