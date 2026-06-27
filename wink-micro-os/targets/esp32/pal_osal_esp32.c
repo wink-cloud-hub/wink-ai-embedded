@@ -16,6 +16,8 @@
  * - 临界区（portENTER_CRITICAL）
  */
 #include "pal_osal.h"
+#include <stdlib.h>     /* malloc/free（pal_ringbuf_create/destroy） */
+#include <string.h>     /* memcpy（pal_ringbuf_pop）；勿依赖 ESP-IDF 头的传递包含 */
 
 #if defined(ESP_PLATFORM)
 #include "freertos/FreeRTOS.h"
