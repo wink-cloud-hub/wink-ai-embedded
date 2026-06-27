@@ -17,15 +17,23 @@ typedef enum {
     DAL_ULTRASONIC_ERROR     = 3,
 } dal_ultrasonic_state_t;
 
+/**
+ * 成员按对齐需求降序排列（c-code.md §4）：4B(float/uint32/enum) → 2B(uint16) → 1B(bool)，
+ * 消除内部 padding（28B → 24B）。仅重排顺序、未改字段名，designated initializer 与
+ * 所有 `dev->xxx` 访问均不受影响（非破坏性）。
+ */
 typedef struct {
-    uint16_t trig_pin;
-    uint16_t echo_pin;
-    float last_distance;              ///< 最近一次测量距离 (cm)
-    bool initialized;                 ///< Phase 2：dal_ultrasonic_init 成功后置 true
-    dal_ultrasonic_state_t state;     ///< Phase 4：非阻塞测量状态机
-    wink_status_t last_status;        ///< Phase 4：上次测量结果状态（ERROR 时为具体错误码）
-    uint32_t last_pulse_us;           ///< Phase 4：上次 echo 脉宽 μs
-    bool use_rmt;                     ///< ESP32：true=RMT 硬件捕获，false=busy-wait 降级
+    /* —— 4B —— */
+    float                   last_distance;   ///< 最近一次测量距离 (cm)
+    uint32_t                last_pulse_us;   ///< Phase 4：上次 echo 脉宽 μs
+    wink_status_t           last_status;     ///< Phase 4：上次测量结果状态（ERROR 时为具体错误码）
+    dal_ultrasonic_state_t  state;           ///< Phase 4：非阻塞测量状态机
+    /* —— 2B —— */
+    uint16_t                trig_pin;
+    uint16_t                echo_pin;
+    /* —— 1B —— */
+    bool                    initialized;     ///< Phase 2：dal_ultrasonic_init 成功后置 true
+    bool                    use_rmt;         ///< ESP32：true=RMT 硬件捕获，false=busy-wait 降级
 } dal_ultrasonic_t;
 
 /**

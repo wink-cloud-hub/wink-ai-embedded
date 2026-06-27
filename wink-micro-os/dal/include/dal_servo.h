@@ -16,13 +16,19 @@ typedef struct {
     float max_pulse_ms;
 } dal_servo_config_t;
 
-/** @brief 舵机实例（运行期状态；POD，ADR-0004 静态分发） */
+/**
+ * @brief 舵机实例（运行期状态；POD，ADR-0004 静态分发）
+ *
+ * 成员按对齐需求降序排列（c-code.md §4）：float(4B) → uint8_t/bool(1B)，
+ * 消除内部 padding（20B → 16B）。仅重排顺序、未改字段名，故 designated
+ * initializer 与所有 `dev->xxx` 访问均不受影响（非破坏性）。
+ */
 typedef struct {
-    uint8_t pwm_channel;
-    float current_angle;
-    float min_pulse_ms;
-    float max_pulse_ms;
-    bool initialized;
+    float    min_pulse_ms;   /* Config: 最小脉宽 ms */
+    float    max_pulse_ms;   /* Config: 最大脉宽 ms */
+    float    current_angle;  /* State:  当前角度（度，钳位后） */
+    uint8_t  pwm_channel;    /* Config: PWM 通道 */
+    bool     initialized;    /* State:  init 成功后置 true */
 } dal_servo_t;
 
 /**
