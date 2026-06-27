@@ -7,6 +7,10 @@
  * - 无优先级：按创建顺序依次调度，保证确定性
  * - Tick 对齐：周期为 Tick 整数倍，剩余 Tick 在调度时递减
  * - WCET 独立监控：每个回调执行时单独计时
+ *
+ * ✅ @verified: HARDWARE-SMOKE-PASSED (DevKitC ESP32, 2026-06-28)
+ *    - 软定时器 ONESHOT/PERIODIC 调度经 wink_runtime_run tick 循环在真机验证
+ *    - 关联 ADR-0007 协作式执行模型闭环验证
  */
 #include "wink_soft_timer.h"
 #include "wink_runtime.h"

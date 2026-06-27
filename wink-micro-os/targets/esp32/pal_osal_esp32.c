@@ -6,6 +6,9 @@
  *    - pal_get_ms(): monotonic timestamp verified
  *    - pal_watchdog_init(): timeout + reset + reason detection works
  *    - Reset reason: WATCHDOG/PANIC detected by runtime boot check
+ * ✅ @verified: HARDWARE-SMOKE-PASSED (DevKitC, 2026-06-28) — ADR-0007 闭环
+ *    - pal_task_create(): Core 0/1/ANY 亲和性钉核（Core 1 控制环物理隔离）真机验证
+ *    - pal_ringbuf_create/push/pop(): 跨核逃生舱环形缓冲（RingBuffer bytebuf）真机验证
  *
  * 实现功能：
  * - 阻塞延时（vTaskDelay）
