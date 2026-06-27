@@ -6,6 +6,7 @@
 set(WINK_RUNTIME_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/runtime/src/wink_runtime.c
     ${CMAKE_CURRENT_LIST_DIR}/runtime/src/wink_actuator_registry.c
+    ${CMAKE_CURRENT_LIST_DIR}/runtime/src/wink_soft_timer.c
 )
 
 # ── Trace 源文件 ──────────────────────────────────────────────────────────
