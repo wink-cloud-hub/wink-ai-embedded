@@ -84,6 +84,12 @@ add_wink_host_test(test_pal_contract test_pal_contract.c)
 # target 无关 PWM 定时器分配状态机单测（router 经 pal_host OBJECT lib 链接）
 add_wink_host_test(test_pal_pwm_router test_pal_pwm_router.c)
 
+# ADR-0008 设备树覆写 blob 解析器 + CRC32 单测（wink_dev_config.c 经 pal_host OBJECT 链接）
+add_wink_host_test(test_dev_config test_dev_config.c)
+
+# ADR-0008 PAL 存储抽象 host 单测（pal_storage_host.c 经 pal_host OBJECT 链接）
+add_wink_host_test(test_pal_storage test_pal_storage.c)
+
 set(DAL_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/dal_ultrasonic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/dal_servo.c

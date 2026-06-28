@@ -27,7 +27,9 @@ if(ESP_PLATFORM)
             pal_osal_esp32.c
             pal_resource_esp32.c
             pal_hal_esp32_rmt.c
+            pal_storage_esp32.c
             ${WINK_MICRO_OS_ROOT}/pal/src/pal_pwm_router.c
+            ${WINK_MICRO_OS_ROOT}/pal/src/wink_dev_config.c
             # 核心共享源文件（来自 core_sources.cmake）
             ${WINK_CORE_SOURCES}
         INCLUDE_DIRS
@@ -46,6 +48,8 @@ if(ESP_PLATFORM)
             # freertos/ringbuf.h + xRingbuffer* API 属于 esp_ringbuf 组件（不在 freertos 组件内），
             # pal_osal_esp32.c 的 pal_ringbuf 跨核通信需要。host/wasm 构建不含本目录，仅 ESP-IDF 需要。
             esp_ringbuf
+            # ADR-0008：pal_storage_esp32.c 的 NVS 存取需要 nvs_flash 组件
+            nvs_flash
     )
     # 输出组件库目标
     set(ESP32_PAL_LIB ${COMPONENT_LIB} CACHE INTERNAL "")
@@ -84,7 +88,9 @@ elseif(TARGET_PLATFORM STREQUAL "esp32")
         pal_osal_esp32.c
         pal_resource_esp32.c
         pal_hal_esp32_rmt.c
+        pal_storage_esp32.c
         ${WINK_MICRO_OS_ROOT}/pal/src/pal_pwm_router.c
+        ${WINK_MICRO_OS_ROOT}/pal/src/wink_dev_config.c
         ${WINK_CORE_SOURCES}
     )
     message(STATUS "wink esp32 target configured (static analysis)")

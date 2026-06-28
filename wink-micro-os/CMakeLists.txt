@@ -82,8 +82,10 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
         targets/wasm/pal_hal_wasm.c
         targets/wasm/pal_osal_wasm.c
         targets/wasm/pal_resource_wasm.c
+        targets/wasm/pal_storage_wasm.c
         targets/wasm/wasm_entry.c
-        pal/src/pal_pwm_router.c)
+        pal/src/pal_pwm_router.c
+        pal/src/wink_dev_config.c)
     target_link_libraries(wink_simulator PRIVATE pal dal)
     target_link_options(wink_simulator PRIVATE
         "-s" "ASYNCIFY=1"
