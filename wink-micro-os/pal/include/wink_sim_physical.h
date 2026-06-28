@@ -34,6 +34,24 @@ extern const wink_sim_faults_t WINK_SIM_FAULTS_IDEAL;
 /** @brief 确定性 PRNG（LCG）。推进 *seed 并返回 [0,1)。caller 持有 seed。 */
 float wink_phys_prng_next(uint32_t *seed);
 
+/** @brief 抖动状态机上下文（caller 每 pin 持有一个）。
+ *
+ * 语义契约（与 host 注入层 sim_set_gpio_ideal 双语义对齐，§2.3 红线 6）：
+ *   - 上电态：stable_level = 初始理想电平（无跃变、不抖）。
+ *   - 跃变：caller 改变 target_level 使之 ≠ stable_level → 进入抖动窗。
+ * 抖动窗内每次采样强制翻转 bounce_flip（采样周期无关、100% 确定，§3 约束 6）。
+ */
+typedef struct {
+    bool     stable_level;      /* 上次已稳定的电平 */
+    bool     in_bounce;         /* 是否正处于抖动期 */
+    uint64_t bounce_start_us;   /* 当前抖动期起点 */
+    bool     bounce_flip;       /* 抖动期电平翻转位（每次采样取反，强制交替） */
+} wink_phys_debounce_ctx_t;
+
+/** @brief 按键抖动状态机（§3.1，强制交替模型）。返回当前物理（抖动后）电平。 */
+bool wink_phys_debounce_step(wink_phys_debounce_ctx_t *ctx,
+                             bool target_level, uint64_t now_us, uint32_t bounce_us);
+
 /* 其余 4 接口在 Task 3-5 追加 */
 wink_status_t wink_phys_warmup_check(uint64_t now_us, uint64_t power_on_us,
                                      uint32_t warmup_us, uint32_t sample_interval_us,
