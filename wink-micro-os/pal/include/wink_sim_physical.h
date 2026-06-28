@@ -52,7 +52,18 @@ typedef struct {
 bool wink_phys_debounce_step(wink_phys_debounce_ctx_t *ctx,
                              bool target_level, uint64_t now_us, uint32_t bounce_us);
 
-/* 其余 4 接口在 Task 3-5 追加 */
+/** @brief RC 低通上下文（caller 每通道持有一个）。 */
+typedef struct {
+    float    current;   /* 当前滤波输出 */
+    uint64_t last_us;   /* 上次更新时间 */
+    bool     is_initialized; /* 是否已初始化 */
+} wink_phys_rc_ctx_t;
+
+/** @brief RC 一阶低通 + 噪声（§3.3，离散近似，无 expf）。返回当前含噪输出。 */
+float wink_phys_rc_lowpass(wink_phys_rc_ctx_t *ctx, float target, uint64_t now_us,
+                           float tau_s, float noise_v, uint32_t *prng_seed);
+
+/* 其余 3 接口在 Task 5 追加 */
 wink_status_t wink_phys_warmup_check(uint64_t now_us, uint64_t power_on_us,
                                      uint32_t warmup_us, uint32_t sample_interval_us,
                                      uint64_t *last_sample_us);

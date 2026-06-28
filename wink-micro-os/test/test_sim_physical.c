@@ -72,6 +72,49 @@ void test_debounce_time_regression_resets_gracefully(void) {
     TEST_ASSERT_TRUE(ctx.in_bounce);
 }
 
+void test_rc_lowpass_first_step_golden(void) {
+    wink_phys_rc_ctx_t rc = { 0.0f, 0, true };
+    /* current=0, target=1.0, last=0, now=1000us, tau=0.05s → dt=0.001s, alpha=0.02 → 0.02 */
+    float v = wink_phys_rc_lowpass(&rc, 1.0f, 1000, 0.05f, 0.0f, NULL);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.02f, v);
+}
+
+void test_rc_lowpass_converges_to_target(void) {
+    wink_phys_rc_ctx_t rc = { 0.0f, 0, true };
+    uint64_t now = 0;
+    for (int i = 0; i < 500; i++) { now += 10000; wink_phys_rc_lowpass(&rc, 1.0f, now, 0.05f, 0.0f, NULL); }
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 1.0f, rc.current);  /* 收敛到 target */
+}
+
+void test_rc_noise_bounded(void) {
+    wink_phys_rc_ctx_t rc = { 0.5f, 0, true };
+    uint32_t seed = 7;
+    for (int i = 0; i < 100; i++) {
+        float v = wink_phys_rc_lowpass(&rc, 0.5f, (uint64_t)i * 1000, 0.05f, 0.02f, &seed);
+        TEST_ASSERT_TRUE(v >= 0.5f - 0.05f && v <= 0.5f + 0.05f);  /* ±0.02 噪声余量 */
+    }
+}
+
+void test_rc_null_ctx_returns_target(void) {
+    TEST_ASSERT_EQUAL_FLOAT(0.7f, wink_phys_rc_lowpass(NULL, 0.7f, 0, 0.05f, 0.0f, NULL));
+}
+
+void test_rc_lowpass_uninitialized_auto_sets_target(void) {
+    wink_phys_rc_ctx_t rc = { 0 }; // is_initialized = false
+    float v = wink_phys_rc_lowpass(&rc, 1.5f, 1000, 0.05f, 0.0f, NULL);
+    TEST_ASSERT_EQUAL_FLOAT(1.5f, v); // 首次运行直接设置为 target
+    TEST_ASSERT_TRUE(rc.is_initialized);
+    TEST_ASSERT_EQUAL_UINT64(1000, rc.last_us);
+}
+
+void test_rc_lowpass_time_regression_resets_gracefully(void) {
+    wink_phys_rc_ctx_t rc = { 0.5f, 2000, true };
+    // 时钟回拨
+    float v = wink_phys_rc_lowpass(&rc, 1.0f, 0, 0.05f, 0.0f, NULL);
+    TEST_ASSERT_EQUAL_FLOAT(1.0f, v); // 回拨时直接复位为 target
+    TEST_ASSERT_EQUAL_UINT64(0, rc.last_us);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_prng_is_deterministic_and_matches_golden);
@@ -81,5 +124,11 @@ int main(void) {
     RUN_TEST(test_debounce_disabled_when_bounce_zero);
     RUN_TEST(test_debounce_null_ctx_returns_target);
     RUN_TEST(test_debounce_time_regression_resets_gracefully);
+    RUN_TEST(test_rc_lowpass_first_step_golden);
+    RUN_TEST(test_rc_lowpass_converges_to_target);
+    RUN_TEST(test_rc_noise_bounded);
+    RUN_TEST(test_rc_null_ctx_returns_target);
+    RUN_TEST(test_rc_lowpass_uninitialized_auto_sets_target);
+    RUN_TEST(test_rc_lowpass_time_regression_resets_gracefully);
     return UNITY_END();
 }

@@ -36,6 +36,29 @@ bool wink_phys_debounce_step(wink_phys_debounce_ctx_t *ctx,
     return ctx->stable_level;
 }
 
+float wink_phys_rc_lowpass(wink_phys_rc_ctx_t *ctx, float target, uint64_t now_us,
+                           float tau_s, float noise_v, uint32_t *prng_seed) {
+    if (ctx == NULL) { return target; }                    /* 降级 */
+    if (!ctx->is_initialized || now_us < ctx->last_us) {
+        ctx->current = target;
+        ctx->last_us = now_us;
+        ctx->is_initialized = true;
+        return target;
+    }
+    float dt = (float)(now_us - ctx->last_us) / 1000000.0f; /* 字面量统一 f 后缀，避免中间 double 提升，保确定性 */
+    ctx->last_us = now_us;
+    if (tau_s > 0.0f && dt > 0.0f) {
+        float alpha = dt / tau_s;
+        if (alpha > 1.0f) { alpha = 1.0f; }
+        ctx->current += (target - ctx->current) * alpha;
+    }
+    if (noise_v > 0.0f && prng_seed != NULL) {
+        float n = (wink_phys_prng_next(prng_seed) - 0.5f) * 2.0f * noise_v;
+        return ctx->current + n;
+    }
+    return ctx->current;
+}
+
 /* warmup_check 占位实现在 Task 5；此处先加 stub 让 Task 2 编译通过 */
 wink_status_t wink_phys_warmup_check(uint64_t now_us, uint64_t power_on_us,
                                      uint32_t warmup_us, uint32_t sample_interval_us,
