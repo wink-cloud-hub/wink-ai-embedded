@@ -115,6 +115,36 @@ void test_rc_lowpass_time_regression_resets_gracefully(void) {
     TEST_ASSERT_EQUAL_UINT64(0, rc.last_us);
 }
 
+void test_warmup_busy_then_timeout_then_ok(void) {
+    uint64_t last = 0;
+    TEST_ASSERT_EQUAL(WINK_ERR_BUSY, wink_phys_warmup_check(500000, 0, 1000000, 2000000, &last));  /* 预热内 */
+    TEST_ASSERT_EQUAL(WINK_ERR_TIMEOUT, wink_phys_warmup_check(1500000, 0, 1000000, 2000000, &last)); /* 间隔不足，last 不变 */
+    TEST_ASSERT_EQUAL_UINT64(0, last);
+    TEST_ASSERT_EQUAL(WINK_OK, wink_phys_warmup_check(2500000, 0, 1000000, 2000000, &last));  /* OK，last 更新 */
+    TEST_ASSERT_EQUAL_UINT64(2500000, last);
+}
+
+void test_warmup_time_regression_resets_gracefully(void) {
+    uint64_t last = 50000;
+    // 时钟回拨，强制复位并允许读取
+    TEST_ASSERT_EQUAL(WINK_OK, wink_phys_warmup_check(1000, 0, 0, 2000, &last));
+    TEST_ASSERT_EQUAL_UINT64(1000, last);
+}
+
+void test_bus_drop_boundary_and_deterministic(void) {
+    uint32_t s0 = 0, s1000 = 0, s500a = 1, s500b = 1;
+    TEST_ASSERT_FALSE(wink_phys_bus_drop(0, &s0));      /* 0‰ 永不丢 */
+    TEST_ASSERT_TRUE(wink_phys_bus_drop(1000, &s1000)); /* 1000‰ 总丢 */
+    /* 500‰ 确定性可复现 */
+    bool a = wink_phys_bus_drop(500, &s500a);
+    bool b = wink_phys_bus_drop(500, &s500b);
+    TEST_ASSERT_EQUAL(a, b);
+}
+
+void test_bus_drop_null_seed_never_drops(void) {
+    TEST_ASSERT_FALSE(wink_phys_bus_drop(500, NULL));  /* NULL seed → 永不丢，即使 drop_permil > 0 */
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_prng_is_deterministic_and_matches_golden);
@@ -130,5 +160,9 @@ int main(void) {
     RUN_TEST(test_rc_null_ctx_returns_target);
     RUN_TEST(test_rc_lowpass_uninitialized_auto_sets_target);
     RUN_TEST(test_rc_lowpass_time_regression_resets_gracefully);
+    RUN_TEST(test_warmup_busy_then_timeout_then_ok);
+    RUN_TEST(test_warmup_time_regression_resets_gracefully);
+    RUN_TEST(test_bus_drop_boundary_and_deterministic);
+    RUN_TEST(test_bus_drop_null_seed_never_drops);
     return UNITY_END();
 }

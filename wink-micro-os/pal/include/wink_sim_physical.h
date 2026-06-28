@@ -63,10 +63,14 @@ typedef struct {
 float wink_phys_rc_lowpass(wink_phys_rc_ctx_t *ctx, float target, uint64_t now_us,
                            float tau_s, float noise_v, uint32_t *prng_seed);
 
-/* 其余 3 接口在 Task 5 追加 */
+/* warmup/采样间隔检查（§3.2）：预热内返回 WINK_ERR_BUSY；采样过近返回 WINK_ERR_TIMEOUT；否则 OK。
+ * last_sample_us=NULL → 仅检查预热；时钟回拨→强制 OK+reset last_sample。 */
 wink_status_t wink_phys_warmup_check(uint64_t now_us, uint64_t power_on_us,
                                      uint32_t warmup_us, uint32_t sample_interval_us,
                                      uint64_t *last_sample_us);
+
+/** @brief 总线丢包判定（§4）。drop_permil 千分比；PRNG 驱动确定性。true=丢弃。 */
+bool wink_phys_bus_drop(uint16_t drop_permil, uint32_t *prng_seed);
 
 #ifdef __cplusplus
 }

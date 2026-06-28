@@ -59,11 +59,25 @@ float wink_phys_rc_lowpass(wink_phys_rc_ctx_t *ctx, float target, uint64_t now_u
     return ctx->current;
 }
 
-/* warmup_check 占位实现在 Task 5；此处先加 stub 让 Task 2 编译通过 */
+/* warmup/采样间隔检查（§3.2）：预热内返回 WINK_ERR_BUSY；采样过近返回 WINK_ERR_TIMEOUT；否则 OK。
+ * last_sample_us=NULL → 仅检查预热；时钟回拨→强制 OK+reset last_sample。 */
 wink_status_t wink_phys_warmup_check(uint64_t now_us, uint64_t power_on_us,
                                      uint32_t warmup_us, uint32_t sample_interval_us,
                                      uint64_t *last_sample_us) {
-    (void)now_us; (void)power_on_us; (void)warmup_us;
-    (void)sample_interval_us; (void)last_sample_us;
-    return WINK_OK;  /* Task 5 替换 */
+    if (now_us < power_on_us || now_us - power_on_us < warmup_us) { return WINK_ERR_BUSY; }
+    if (last_sample_us != NULL && sample_interval_us > 0u) {
+        if (now_us < *last_sample_us) {
+            *last_sample_us = now_us; /* 时钟回拨：强制复位 */
+            return WINK_OK;
+        }
+        if (now_us - *last_sample_us < sample_interval_us) { return WINK_ERR_TIMEOUT; }
+        *last_sample_us = now_us;
+    }
+    return WINK_OK;
+}
+
+bool wink_phys_bus_drop(uint16_t drop_permil, uint32_t *prng_seed) {
+    if (drop_permil == 0u || prng_seed == NULL) { return false; }
+    if (drop_permil >= 1000u) { return true; }
+    return wink_phys_prng_next(prng_seed) < ((float)drop_permil / 1000.0f);
 }
