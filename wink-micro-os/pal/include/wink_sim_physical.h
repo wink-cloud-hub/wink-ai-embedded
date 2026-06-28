@@ -1,0 +1,45 @@
+/**
+ * @file wink_sim_physical.h
+ * @brief ADR-0009 物理特性退化算法库（target 无关，host 试点 Wave 1）。
+ *
+ * 确定性守卫（ADR-0009 §4.1）：所有时间基准由 caller 传入 pal_get_us() 虚拟时钟值；
+ *   PRNG 种子驱动，严禁 rand()/Math.random()/clock()/time()/墙钟。
+ * 零编译污染（§4.3）：本单元仅进 pal_host OBJECT；esp32/baremetal/wasm 不链接。
+ * 无 libm：RC 低通用离散一阶近似，不用 expf。
+ */
+#ifndef WINK_SIM_PHYSICAL_H
+#define WINK_SIM_PHYSICAL_H
+
+#include <stdint.h>
+#include <stdbool.h>
+#include "wink_status.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/** @brief 故障注入配置（§4.2；host 直接填，wasm 将来从 JS JSON 解析）。全 0 = 理想（无退化）。 */
+typedef struct {
+    uint32_t bounce_us;          /* 按键抖动时长（§3.1），0=禁用 */
+    uint32_t warmup_us;          /* 传感器上电预热（§3.2） */
+    uint32_t sample_interval_us; /* 最小采样间隔（§3.2） */
+    float    adc_noise_v;        /* ADC 噪声幅度 ±V（§3.3），0=禁用 */
+    float    rc_tau_s;           /* RC 低通时间常数（§3.3），<=0=禁用 */
+    uint16_t i2c_drop_permil;    /* 总线丢包率千分比（§4），0=禁用 */
+    uint32_t prng_seed;          /* 确定性 PRNG 种子（§4.1） */
+} wink_sim_faults_t;
+
+extern const wink_sim_faults_t WINK_SIM_FAULTS_IDEAL;
+
+/** @brief 确定性 PRNG（LCG）。推进 *seed 并返回 [0,1)。caller 持有 seed。 */
+float wink_phys_prng_next(uint32_t *seed);
+
+/* 其余 4 接口在 Task 3-5 追加 */
+wink_status_t wink_phys_warmup_check(uint64_t now_us, uint64_t power_on_us,
+                                     uint32_t warmup_us, uint32_t sample_interval_us,
+                                     uint64_t *last_sample_us);
+
+#ifdef __cplusplus
+}
+#endif
+#endif /* WINK_SIM_PHYSICAL_H */

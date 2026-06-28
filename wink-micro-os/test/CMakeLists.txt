@@ -96,6 +96,10 @@ add_wink_host_test(test_dev_config test_dev_config.c)
 # ADR-0008 PAL 存储抽象 host 单测（pal_storage_host.c 经 pal_host OBJECT 链接）
 add_wink_host_test(test_pal_storage test_pal_storage.c)
 
+# ADR-0009 Wave1 物理退化算法库单测（临时直接链源；Task 8 起改由 pal_host OBJECT 链接）
+add_wink_host_test(test_sim_physical test_sim_physical.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../pal/src/wink_sim_physical.c)
+
 set(DAL_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/dal_ultrasonic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/dal_servo.c
