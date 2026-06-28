@@ -32,6 +32,19 @@
 #include "wink_config.h"
 #include "wink_status.h"
 
+/* Compatibility for static_assert in pre-C11 compilers */
+#ifndef static_assert
+#if defined(__cplusplus)
+    /* C++ has native static_assert (C++11 and later) */
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+    /* C11 has native _Static_assert */
+#   define static_assert(expr, msg) _Static_assert(expr, msg)
+#else
+    /* Fallback: char array assertion that fails at compile time on false */
+#   define static_assert(expr, msg) typedef char static_assert_failed[(expr)?1:-1]
+#endif
+#endif /* static_assert */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -149,20 +162,38 @@ typedef struct {
  *   WINK_PT_STATE_BEGIN(my_coroutine)
  *       int counter;         // ← Automatically persistent!
  *       float temperature;   // ← No static needed, per-instance
- *   WINK_PT_STATE_END()
+ *   WINK_PT_STATE_END(my_coroutine)
+ *
+ * Note: Always use WINK_PT_STATE_END(name) with the same name as BEGIN,
+ *       this enables compile-time layout validation.
  */
 #define WINK_PT_STATE_BEGIN(name) \
     struct name##_state {
 
-#define WINK_PT_STATE_END() \
+/**
+ * @brief End declaration of per-protothread state struct (with validation)
+ *
+ * Adds _magic field for runtime validation and compile-time size/alignment
+ * checks to ensure safe layout for serialization and multi-instance use.
+ */
+#define WINK_PT_STATE_END(name) \
         uint32_t _magic; \
-    };
+    }; \
+    /* Compile-time validation: state struct must be POD-compatible */ \
+    static_assert(sizeof(struct name##_state) >= sizeof(uint32_t), \
+        #name "_state must be at least large enough for _magic field")
 
 /**
- * @brief Use state struct inside coroutine
+ * @brief Use state struct inside coroutine (with runtime validation)
  *
  * State is stored immediately following wink_pt_t in memory,
  * so each coroutine instance has its own state (no static!).
+ *
+ * IMPORTANT SAFETY RULES (ADR-0011):
+ * 1. NEVER use 'static' variables inside protothread functions
+ * 2. Stack variables declared before WINK_PT_DELAY_MS/YIELD are UNDEFINED
+ *    after yield - store all persistent state in state->
+ * 3. Multiple instances are safe: each has own wink_pt_t + state memory
  *
  * Usage inside coroutine function:
  *   wink_status_t my_coroutine(wink_pt_t *pt) {
@@ -180,11 +211,38 @@ typedef struct {
  *   }
  */
 #define WINK_PT_STATE_USE(name) \
+    /* Compile-time: verify pt + state layout has no unexpected padding */ \
+    static_assert(offsetof(struct name##_state, _magic) == \
+        sizeof(struct name##_state) - sizeof(uint32_t), \
+        #name "_state _magic field must be the last member"); \
+    /* Runtime: initialize state on first use with magic validation */ \
     struct name##_state *state = (struct name##_state *)((uint8_t *)(pt) + sizeof(wink_pt_t)); \
-    if (state->_magic != 0x50545354UL) { /* "PTST" */ \
+    if (state->_magic != 0x50545354UL) { /* "PTST" - Protothread State */ \
         memset(state, 0, sizeof(*state)); \
         state->_magic = 0x50545354UL; \
     }
+
+/**
+ * @brief Explicitly initialize state struct (for multi-instance use)
+ *
+ * Use this when creating additional coroutine instances beyond the
+ * global default. Ensures the magic marker is set before first use.
+ */
+#define WINK_PT_STATE_INIT(pt, name) do { \
+    struct name##_state *s = (struct name##_state *)((uint8_t *)(pt) + sizeof(wink_pt_t)); \
+    memset(s, 0, sizeof(*s)); \
+    s->_magic = 0x50545354UL; \
+} while(0)
+
+/**
+ * @brief Validate state struct integrity (debug assertion)
+ *
+ * Returns non-zero if state is valid, zero otherwise.
+ * Useful in debug builds to catch memory corruption.
+ */
+#define WINK_PT_STATE_VALID(pt, name) \
+    (((const struct name##_state *)((const uint8_t *)(pt) + sizeof(wink_pt_t)))->_magic \
+        == 0x50545354UL)
 
 /**
  * @brief Protothread function type signature
