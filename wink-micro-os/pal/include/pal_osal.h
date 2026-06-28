@@ -90,9 +90,23 @@ typedef enum {
 /**
  * @brief 读取上次复位原因（boot safe-lock 判定用，Phase 5 Task 5-5）。
  * @note host 返回可配置值（供测试）；wasm 返回 UNKNOWN；esp32 映射 esp_reset_reason()（随 P2-6）。
- *       WATCHDOG/PANIC 触发 wink_runtime 的 boot safe-lock（先关断执行器再 init）；其余仅信息性。
+ *       WATCHDOG/PANIC 进入 wink_runtime 的 boot safe-lock 计数判定（ADR-0010：连续 N 次才锁死，
+ *       单次/偶发放行恢复）；其余仅信息性。
  */
 pal_reset_reason_t pal_get_reset_reason(void);
+
+/**
+ * @brief 读取连续异常复位计数（boot safe-lock 恢复策略，ADR-0010）。
+ * @note esp32 读 RTC_NOINIT（+ magic 守卫），跨 WDT/panic 复位保留、断电或无效返回 0；
+ *       host 读可注入静态（供单测）；wasm/baremetal 恒 0。
+ */
+uint32_t pal_get_abnormal_boot_count(void);
+
+/**
+ * @brief 写连续异常复位计数（boot safe-lock 恢复策略，ADR-0010）。
+ * @note esp32 写 RTC_NOIT（持久化）；host 写静态；wasm/baremetal no-op。
+ */
+void pal_set_abnormal_boot_count(uint32_t count);
 
 /**
  * @brief 初始化硬件看门狗

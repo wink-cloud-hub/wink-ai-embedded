@@ -31,6 +31,7 @@
 #include "esp_task_wdt.h"
 #include "esp_system.h"       /* esp_reset_reason() + esp_reset_reason_t (IDF v5.x moved it here) */
 #include "esp_idf_version.h"
+#include "esp_attr.h"         /* RTC_NOINIT_ATTR（boot-count 持久化，ADR-0010）*/
 #else
 /* 非 ESP32 编译环境：stub 声明供静态分析 */
 typedef void* SemaphoreHandle_t;
@@ -139,6 +140,33 @@ pal_reset_reason_t pal_get_reset_reason(void) {
     }
 #else
     return PAL_RESET_REASON_UNKNOWN;
+#endif
+}
+
+/* ─────────────────────────────────────────────────────────
+ * 连续异常复位计数（ADR-0010 boot safe-lock 恢复策略）
+ * ESP32 持久化在 RTC_NOINIT（跨 WDT/panic 复位保留、断电丢失），magic 守卫防 RTC 残留值。
+ * ───────────────────────────────────────────────────────── */
+#define WINK_BOOT_COUNT_MAGIC 0xB007C0DEu
+#if defined(ESP_PLATFORM)
+static RTC_NOINIT_ATTR uint32_t s_abnormal_count;
+static RTC_NOINIT_ATTR uint32_t s_abnormal_count_magic;
+#endif
+
+uint32_t pal_get_abnormal_boot_count(void) {
+#if defined(ESP_PLATFORM)
+    return (s_abnormal_count_magic == WINK_BOOT_COUNT_MAGIC) ? s_abnormal_count : 0u;
+#else
+    return 0u;
+#endif
+}
+
+void pal_set_abnormal_boot_count(uint32_t count) {
+#if defined(ESP_PLATFORM)
+    s_abnormal_count = count;
+    s_abnormal_count_magic = WINK_BOOT_COUNT_MAGIC;
+#else
+    (void)count;
 #endif
 }
 

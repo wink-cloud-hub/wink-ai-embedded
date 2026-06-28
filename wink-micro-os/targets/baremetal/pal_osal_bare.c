@@ -73,6 +73,10 @@ pal_reset_reason_t pal_get_reset_reason(void) {
     return PAL_RESET_REASON_UNKNOWN;
 }
 
+/* ADR-0010：裸机无持久化复位计数语义（BSP 可覆写），默认恒 0 / no-op */
+uint32_t pal_get_abnormal_boot_count(void) { return 0; }
+void pal_set_abnormal_boot_count(uint32_t count) { (void)count; }
+
 WINK_WARN_UNUSED_RESULT wink_status_t pal_watchdog_init(uint32_t timeout_ms) {
     (void)timeout_ms;
     /* BSP 可提供硬件 WDT 实现 */

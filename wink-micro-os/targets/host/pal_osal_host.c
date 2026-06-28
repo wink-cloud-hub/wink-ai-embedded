@@ -14,6 +14,7 @@ static uint64_t s_echo_high_us = 0;
 static uint16_t s_echo_pin = 0xFFFF;
 static float s_pwm_duty[8];
 static pal_reset_reason_t s_reset_reason = PAL_RESET_REASON_POWER_ON;   /* Phase 5：可配置复位原因（测试注入） */
+static uint32_t s_abnormal_boot_count = 0;   /* ADR-0010：连续异常复位计数（host 可注入，供单测）*/
 
 /* Phase 2：host I2C 事务捕获状态 */
 static uint8_t  s_last_i2c_port = 0;
@@ -55,6 +56,7 @@ void sim_reset_time(void) {
     s_time_us = 0; s_echo_rise_us = 0; s_echo_high_us = 0; s_echo_pin = 0xFFFF;
     memset(s_pwm_duty, 0, sizeof(s_pwm_duty));
     s_reset_reason = PAL_RESET_REASON_POWER_ON;
+    s_abnormal_boot_count = 0;
     s_last_i2c_port = 0; s_last_i2c_addr = 0;
     s_last_i2c_write_len = 0; s_i2c_transfer_count = 0;
 }
@@ -90,6 +92,10 @@ void pal_mutex_destroy(pal_mutex_t m) { (void)m; }
 pal_reset_reason_t pal_get_reset_reason(void) { return s_reset_reason; }
 WINK_WARN_UNUSED_RESULT wink_status_t pal_watchdog_init(uint32_t timeout_ms) { (void)timeout_ms; return WINK_OK; }
 WINK_WARN_UNUSED_RESULT wink_status_t pal_watchdog_feed(void) { return WINK_OK; }
+
+/* ADR-0010：连续异常复位计数（host 可注入静态，供单测模拟 N 次异常复位）*/
+uint32_t pal_get_abnormal_boot_count(void) { return s_abnormal_boot_count; }
+void pal_set_abnormal_boot_count(uint32_t count) { s_abnormal_boot_count = count; }
 
 uint32_t pal_critical_enter(void) {
     return 0;
