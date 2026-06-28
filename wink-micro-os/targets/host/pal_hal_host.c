@@ -47,6 +47,11 @@ wink_status_t pal_gpio_init(uint16_t pin, pal_gpio_mode_t mode) {
 void pal_gpio_write(uint16_t pin, bool level) { (void)pin; (void)level; }
 
 bool pal_gpio_read(uint16_t pin) {
+    /* ADR-0009 Wave1：注入了理想电平的 pin → 走抖动退化（§3.1）；否则走原 echo 协作推进逻辑 */
+    bool debounced;
+    extern bool host_gpio_read_debounced(uint16_t pin, bool *out_level);
+    if (host_gpio_read_debounced(pin, &debounced)) { return debounced; }
+
     if (pin != host_echo_pin()) return false;
     uint64_t t = host_sim_time_us();
     uint64_t rise = host_echo_rise_us();
