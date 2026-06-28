@@ -27,7 +27,10 @@ target_include_directories(app_avoidance_car_e2e PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../test/stubs)
 
 if(MSVC)
-    target_compile_options(app_avoidance_car_e2e PRIVATE /W4)
+    # /W4: strict warnings; /WX: warnings as errors
+    # /wd4100: unused parameters (matches GCC -Wno-unused-parameter)
+    # /wd4210: MSVC extension warning about file-scope function-static (harmless)
+    target_compile_options(app_avoidance_car_e2e PRIVATE /W4 /WX /wd4100 /wd4210)
 else()
     target_compile_options(app_avoidance_car_e2e PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
 endif()
@@ -51,7 +54,7 @@ target_include_directories(test_avoidance_override PRIVATE
 
 target_link_libraries(test_avoidance_override PRIVATE pal)
 if(MSVC)
-    target_compile_options(test_avoidance_override PRIVATE /W4)
+    target_compile_options(test_avoidance_override PRIVATE /W4 /WX /wd4100 /wd4210)
 else()
     target_compile_options(test_avoidance_override PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
 endif()

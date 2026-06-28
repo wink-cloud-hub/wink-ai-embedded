@@ -10,3 +10,8 @@ add_dependencies(wink_runtime generate_config)
 
 target_include_directories(wink_runtime PUBLIC include)
 target_link_libraries(wink_runtime PUBLIC pal wink_trace)   # pal: OSAL; wink_trace: fault 上报
+
+# MSVC: disable C4100 (unused parameters) — intentional in HAL contract; matches GCC -Wno-unused-parameter
+if(MSVC)
+    target_compile_options(wink_runtime PRIVATE /wd4100)
+endif()

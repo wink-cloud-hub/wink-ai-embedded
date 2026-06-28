@@ -27,7 +27,7 @@ target_include_directories(app_devkitc_smoke_e2e PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../test/stubs)
 
 if(MSVC)
-    target_compile_options(app_devkitc_smoke_e2e PRIVATE /W4)
+    target_compile_options(app_devkitc_smoke_e2e PRIVATE /W4 /WX /wd4100 /wd4210)
 else()
     target_compile_options(app_devkitc_smoke_e2e PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
 endif()

@@ -23,7 +23,10 @@ function(add_wink_test name src)
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/include)
     target_link_libraries(${name} PRIVATE pal)
     if(MSVC)
-        target_compile_options(${name} PRIVATE /W4)
+        # /W4: strict warnings; /WX: warnings as errors (0 warning = build fails if any warning
+        # /wd4100: match GCC -Wno-unused-parameter (unused function parameters are intentional in HAL contracts)
+        # /wd4210: MSVC-specific extension warning about file-scope function-static variables (harmless in C)
+        target_compile_options(${name} PRIVATE /W4 /WX /wd4100 /wd4210)
     else()
         target_compile_options(${name} PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter
             -Wno-error=stack-usage=)  # P-stack：host 测试栈充裕，只警告不阻塞
@@ -50,7 +53,10 @@ function(add_wink_host_test name src)
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/include)
     target_link_libraries(${name} PRIVATE pal)
     if(MSVC)
-        target_compile_options(${name} PRIVATE /W4)
+        # /W4: strict warnings; /WX: warnings as errors (0 warning = build fails if any warning
+        # /wd4100: match GCC -Wno-unused-parameter (unused function parameters are intentional in HAL contracts)
+        # /wd4210: MSVC-specific extension warning about file-scope function-static variables (harmless in C)
+        target_compile_options(${name} PRIVATE /W4 /WX /wd4100 /wd4210)
     else()
         target_compile_options(${name} PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter
             -Wno-error=stack-usage=)  # P-stack：host 测试栈充裕，只警告不阻塞
@@ -128,7 +134,10 @@ function(add_wink_test_sim name src)
     target_link_libraries(${name} PRIVATE pal)
     target_compile_definitions(${name} PRIVATE SIMULATION=1)
     if(MSVC)
-        target_compile_options(${name} PRIVATE /W4)
+        # /W4: strict warnings; /WX: warnings as errors (0 warning = build fails if any warning
+        # /wd4100: match GCC -Wno-unused-parameter (unused function parameters are intentional in HAL contracts)
+        # /wd4210: MSVC-specific extension warning about file-scope function-static variables (harmless in C)
+        target_compile_options(${name} PRIVATE /W4 /WX /wd4100 /wd4210)
     else()
         target_compile_options(${name} PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter
             -Wno-error=stack-usage=)  # P-stack：host 测试栈充裕，只警告不阻塞
