@@ -35,6 +35,12 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t *callbacks, uint32_t m
 /** @brief runtime 内部故障码：全局 tick 总时间超过限制 (全局 WCET 警告) */
 #define WINK_WARN_TICK_OVERRUN      8003u
 
+/* ---- Boot safe-lock 恢复策略常量（ADR-0010，修订 ADR-0007）---- */
+/** @brief 连续异常复位锁死阈值：达此值才锁死；单次/偶发复位自动恢复 */
+#define WINK_BOOT_LOCK_THRESHOLD    3u
+/** @brief 健康里程碑 tick 数（≈2s @默认 10ms tick）：init 成功且跑满则清零异常复位计数 */
+#define WINK_BOOT_HEALTHY_TICKS     200u
+
 /**
  * @brief 显式故障路径（Phase 5 Task 5-3）。
  * @note 顺序：wink_trace_fault → wink_actuator_safe_off_all → callbacks->on_fault。

@@ -85,19 +85,30 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
     }
 
     /* ============================================================
-     *  BOOT SAFE-LOCK (Hard enforcement, no user code bypass)
-     *  If last reset was WDT/PANIC:
-     *    1. Trace fault condition
-     *    2. Disable all actuators immediately
-     *    3. Return locked error - NO USER INIT/LOOP IS EXECUTED
+     *  BOOT SAFE-LOCK with recovery (ADR-0010, revises ADR-0007)
+     *  Counts consecutive abnormal (WDT/PANIC) resets in persistent storage:
+     *    - POWERON              → clear counter (fresh boot)
+     *    - WDT/PANIC            → increment counter
+     *        * >= WINK_BOOT_LOCK_THRESHOLD → LOCK: trace 8001 once + safe-off +
+     *          on_fault, return WINK_ERR_LOCKED (NO user init/loop). Real death-loop guard.
+     *        * < threshold              → RECOVER: fall through to normal init/loop
+     *          (single/transient reset auto-recovers; not traced — recovery is not a fault)
+     *    - SW/BROWNOUT/UNKNOWN  → leave counter unchanged, fall through
+     *  Counter also clears at the healthy milestone (init done + HEALTHY_TICKS stable
+     *  ticks) so a later isolated glitch doesn't accumulate toward a false lock.
      * ============================================================ */
     rr = pal_get_reset_reason();
-    if (rr == PAL_RESET_REASON_WATCHDOG || rr == PAL_RESET_REASON_PANIC) {
-        wink_trace_fault(WINK_FAULT_BOOT_AFTER_RESET);
-        wink_actuator_safe_off_all();
-        /* Enter fault handler but DO NOT call user init */
-        wink_runtime_fault(callbacks, WINK_FAULT_BOOT_AFTER_RESET);
-        return WINK_ERR_LOCKED;
+    if (rr == PAL_RESET_REASON_POWER_ON) {
+        pal_set_abnormal_boot_count(0);
+    } else if (rr == PAL_RESET_REASON_WATCHDOG || rr == PAL_RESET_REASON_PANIC) {
+        uint32_t abnormal = pal_get_abnormal_boot_count() + 1u;
+        pal_set_abnormal_boot_count(abnormal);
+        if (abnormal >= WINK_BOOT_LOCK_THRESHOLD) {
+            /* Death loop: lock out user code. wink_runtime_fault traces 8001 once + safe-off + on_fault. */
+            wink_runtime_fault(callbacks, WINK_FAULT_BOOT_AFTER_RESET);
+            return WINK_ERR_LOCKED;
+        }
+        /* abnormal < threshold: recover — fall through to normal init/loop */
     }
 
     /* Initialize soft timer subsystem before user code */
@@ -136,6 +147,13 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
 #ifdef SIMULATION
         pal_wasm_dispatch_pending_interrupts();
 #endif
+
+        /* ADR-0010: healthy milestone — init succeeded + stable for HEALTHY_TICKS ticks
+         * proves the prior crash path is past; clear the abnormal-reset counter so a
+         * later isolated glitch doesn't accumulate toward a false lock. */
+        if (tick == WINK_BOOT_HEALTHY_TICKS) {
+            pal_set_abnormal_boot_count(0);
+        }
 
         wink_app_delay_ms(WINK_RUNTIME_TICK_MS);
         tick++;
