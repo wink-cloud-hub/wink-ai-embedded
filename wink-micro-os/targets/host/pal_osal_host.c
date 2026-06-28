@@ -8,6 +8,8 @@
 #include "wink_sim_physical.h"   /* wink_phys_debounce_ctx_t + WINK_SIM_FAULTS_IDEAL */
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
+
 
 static uint64_t s_time_us = 0;
 static uint64_t s_echo_rise_us = 0;
@@ -107,6 +109,7 @@ void sim_set_gpio_ideal(uint16_t pin, bool level) {
             return;
         }
     }
+    assert(false && "GPIO ideal slots exceeded SIM_GPIO_IDEAL_SLOTS!");
 }
 void sim_clear_gpio_ideal(void) {
     for (int i = 0; i < SIM_GPIO_IDEAL_SLOTS; i++) { s_gpio_ideal[i].set = false; }

@@ -6,7 +6,7 @@ const wink_sim_faults_t WINK_SIM_FAULTS_IDEAL = {0};  /* 全 0 = 理想，无退
 float wink_phys_prng_next(uint32_t *seed) {
     if (seed == NULL) { return 0.0f; }
     *seed = (*seed * 1103515245u + 12345u) & 0x7fffffffu;
-    return (float)*seed / 2147483647.0f; /* 字面量统一 f 后缀，避免中间运算提升为 double，保 host/wasm/esp32 确定性一致 */
+    return (float)(*seed >> 8) / 8388608.0f; /* Use top 23 bits to ensure exact FPU representation and strictly [0, 1) range */
 }
 
 bool wink_phys_debounce_step(wink_phys_debounce_ctx_t *ctx,
@@ -21,6 +21,7 @@ bool wink_phys_debounce_step(wink_phys_debounce_ctx_t *ctx,
         if (!ctx->in_bounce) {
             ctx->bounce_start_us = now_us;
             ctx->in_bounce = true;
+            ctx->bounce_flip = false;                      /* 每次启动抖动重置翻转状态，保证测试确定性 */
         }
         /* 防御时钟回拨/重置 */
         if (now_us < ctx->bounce_start_us) {
@@ -32,6 +33,8 @@ bool wink_phys_debounce_step(wink_phys_debounce_ctx_t *ctx,
         }
         ctx->stable_level = target_level;
         ctx->in_bounce = false;
+    } else {
+        ctx->in_bounce = false;                            /* 理想电平提前回弹，重置抖动标志防止后续丢失去抖保护 */
     }
     return ctx->stable_level;
 }

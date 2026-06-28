@@ -177,6 +177,43 @@ void test_host_gpio_ideal_transition_triggers_bounce(void) {
     sim_clear_gpio_ideal();
 }
 
+void test_debounce_early_release_resets_in_bounce(void) {
+    wink_phys_debounce_ctx_t ctx = { false, false, 0, false };
+    uint32_t bounce = 30000;
+    
+    // 1. Transition false -> true (starts bounce)
+    TEST_ASSERT_TRUE(wink_phys_debounce_step(&ctx, true, 1000, bounce));
+    TEST_ASSERT_TRUE(ctx.in_bounce);
+    
+    // 2. Early transition back to false (the stable level) within the window
+    TEST_ASSERT_FALSE(wink_phys_debounce_step(&ctx, false, 2000, bounce));
+    TEST_ASSERT_FALSE(ctx.in_bounce); // Should be reset!
+    
+    // 3. Transition to true again (should start a new bounce window from 3000)
+    TEST_ASSERT_TRUE(wink_phys_debounce_step(&ctx, true, 3000, bounce));
+    TEST_ASSERT_TRUE(ctx.in_bounce);
+    TEST_ASSERT_EQUAL_UINT64(3000, ctx.bounce_start_us);
+}
+
+void test_debounce_flip_determinism_across_multiple_bounces(void) {
+    wink_phys_debounce_ctx_t ctx = { false, false, 0, false };
+    uint32_t bounce = 30000;
+    
+    // First bounce (takes an odd number of samples, say 3 samples)
+    TEST_ASSERT_TRUE (wink_phys_debounce_step(&ctx, true, 1000, bounce)); // flip -> true, returns true
+    TEST_ASSERT_FALSE(wink_phys_debounce_step(&ctx, true, 2000, bounce)); // flip -> false, returns false
+    TEST_ASSERT_TRUE (wink_phys_debounce_step(&ctx, true, 3000, bounce)); // flip -> true, returns true
+    
+    // Force stabilization after window
+    TEST_ASSERT_TRUE (wink_phys_debounce_step(&ctx, true, 35000, bounce)); // stable_level = true, in_bounce = false
+    
+    // Second bounce: transition true -> false
+    // Since in_bounce starts fresh, bounce_flip should be reset to false and flip to true.
+    // Returns: flip ? target (false) : !target (true) -> false.
+    // If bounce_flip was NOT reset, it would have been true, flipped to false, returning !target (true).
+    TEST_ASSERT_FALSE(wink_phys_debounce_step(&ctx, false, 40000, bounce));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_prng_is_deterministic_and_matches_golden);
@@ -186,6 +223,8 @@ int main(void) {
     RUN_TEST(test_debounce_disabled_when_bounce_zero);
     RUN_TEST(test_debounce_null_ctx_returns_target);
     RUN_TEST(test_debounce_time_regression_resets_gracefully);
+    RUN_TEST(test_debounce_early_release_resets_in_bounce);
+    RUN_TEST(test_debounce_flip_determinism_across_multiple_bounces);
     RUN_TEST(test_rc_lowpass_first_step_golden);
     RUN_TEST(test_rc_lowpass_converges_to_target);
     RUN_TEST(test_rc_noise_bounded);
