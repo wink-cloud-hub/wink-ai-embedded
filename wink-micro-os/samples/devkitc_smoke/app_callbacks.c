@@ -197,15 +197,14 @@ static void telemetry_task(void *arg)
  * ───────────────────────────────────────────────────────── */
 static void app_init(void)
 {
-    /* S8: 检测上一次 WDT/PANIC 复位（runtime 已先 trace_fault(8001)）
-     * wink_runtime.c:31-35：pal_get_reset_reason()==WATCHDOG/PANIC → trace 8001
-     * 此处检测并标记 WDT 验证通过后重置 trace */
-    if (wink_trace_last() == WINK_FAULT_BOOT_AFTER_RESET) {
+    /* S8: 检测「本次启动是异常复位后恢复」（ADR-0010：恢复路径不 trace，改查连续异常复位计数）。
+     * pal_get_abnormal_boot_count() > 0 表示本次 boot 前发生 WDT/PANIC 复位且未达锁死阈值（已放行恢复）。 */
+    if (pal_get_abnormal_boot_count() > 0) {
         s_wdt_verified = true;
 #if defined(ESP_PLATFORM)
-        printf("[SMOKE] watchdog: PASS (prior WDT/PANIC reset detected, fault 8001)\n");
+        printf("[SMOKE] watchdog: PASS (recovered after abnormal reset, count=%lu)\n",
+               (unsigned long)pal_get_abnormal_boot_count());
 #endif
-        wink_trace_reset();
     }
 
     /* S2/S3: DAL LED + 按钮初始化 */
@@ -305,7 +304,8 @@ static void app_loop(void)
  * Fault 回调：故障时 LED 灭（安全态） */
 static void app_on_fault(uint32_t fault_code)
 {
-    wink_trace_fault(fault_code);
+    /* ADR-0010：on_fault 为通知回调，fault 已由 wink_runtime_fault 先 trace；此处不重复 trace。*/
+    (void)fault_code;
     /* gcc16 不因 (void) 抑制 warn_unused_result：先赋值再丢弃 */
     wink_status_t _off = dal_led_off(&board_led);
     (void)_off;
