@@ -1,6 +1,8 @@
 #include "dal_ultrasonic.h"
 #include "pal_hal.h"
 #include "pal_osal.h"
+
+#include <string.h>   /* memcpy（ADR-0008 apply_override 反序列化） */
 #ifdef SIMULATION
 #include "wasm_bridge.h"   /* js_sim_* 旁路（sim 分支 request_measurement / read 引用） */
 #endif
@@ -15,6 +17,23 @@
  * 非 static 以便单元测试 extern 访问（例外：无副作用纯函数，风险可控）。 */
 float dal_pulse_us_to_cm(uint32_t pulse_us) {
     return (float)pulse_us * ULTRASONIC_CM_PER_US;
+}
+
+wink_status_t dal_ultrasonic_apply_override(void *dev, const uint8_t *params, uint16_t len) {
+    dal_ultrasonic_t *u = (dal_ultrasonic_t *)dev;
+    if (u == NULL || params == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (len < 4u) { return WINK_ERR_INVALID_ARG; }   /* u16@0 + u16@2 → ≥4B */
+
+    uint16_t trig_pin;
+    uint16_t echo_pin;
+    memcpy(&trig_pin, params + 0, 2);
+    memcpy(&echo_pin, params + 2, 2);
+
+    if (trig_pin == echo_pin) { return WINK_ERR_INVALID_ARG; }   /* 非法不写 */
+
+    u->trig_pin = trig_pin;
+    u->echo_pin = echo_pin;
+    return WINK_OK;
 }
 
 wink_status_t dal_ultrasonic_init(dal_ultrasonic_t *dev, uint16_t trig_pin, uint16_t echo_pin) {

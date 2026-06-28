@@ -3,6 +3,7 @@
 #include "dal_ultrasonic.h"
 #include "host_test_ctrl.h"
 #include <time.h>
+#include <string.h>   /* ADR-0008 apply_override params 构造 */
 
 void setUp(void) { sim_reset_time(); }
 void tearDown(void) {}
@@ -113,6 +114,40 @@ void test_nonblocking_single_tick_wallclock_is_small(void) {
     TEST_ASSERT(dt < (clock_t)(CLOCKS_PER_SEC / 10));
 }
 
+/* ---- ADR-0008 Flash 覆写 apply_override（init 前引脚改写 + 轻校验）---- */
+/* params 布局（小端）：trig_pin:u16@0, echo_pin:u16@2 (buf=16B) */
+static void build_radar_params(uint8_t *p, uint16_t trig, uint16_t echo) {
+    memset(p, 0, 16);
+    memcpy(p + 0, &trig, 2);
+    memcpy(p + 2, &echo, 2);
+}
+
+void test_apply_override_writes_pins(void) {
+    dal_ultrasonic_t u = { .trig_pin = 4, .echo_pin = 5 };
+    uint8_t p[16];
+    build_radar_params(p, 6, 7);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_apply_override(&u, p, sizeof p));
+    TEST_ASSERT_EQUAL_UINT16(6, u.trig_pin);
+    TEST_ASSERT_EQUAL_UINT16(7, u.echo_pin);
+}
+
+void test_apply_override_rejects_same_pin(void) {
+    dal_ultrasonic_t u = { .trig_pin = 4, .echo_pin = 5 };
+    uint8_t p[16];
+    build_radar_params(p, 8, 8);
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_ultrasonic_apply_override(&u, p, sizeof p));
+    /* 非法 → 字段保持不变 */
+    TEST_ASSERT_EQUAL_UINT16(4, u.trig_pin);
+    TEST_ASSERT_EQUAL_UINT16(5, u.echo_pin);
+}
+
+void test_apply_override_null_returns_invalid_arg(void) {
+    uint8_t p[16] = {0};
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_ultrasonic_apply_override(NULL, p, sizeof p));
+    dal_ultrasonic_t u = {0};
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_ultrasonic_apply_override(&u, NULL, sizeof p));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_ultrasonic_init_null_returns_invalid_arg);
@@ -127,5 +162,8 @@ int main(void) {
     RUN_TEST(test_nonblocking_request_then_get_cached_returns_distance);
     RUN_TEST(test_nonblocking_request_timeout_returns_error_status);
     RUN_TEST(test_nonblocking_single_tick_wallclock_is_small);
+    RUN_TEST(test_apply_override_writes_pins);
+    RUN_TEST(test_apply_override_rejects_same_pin);
+    RUN_TEST(test_apply_override_null_returns_invalid_arg);
     return UNITY_END();
 }

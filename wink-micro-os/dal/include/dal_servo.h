@@ -80,6 +80,18 @@ wink_status_t dal_servo_set_angle(dal_servo_t *dev, float angle);
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_servo_safe_off(dal_servo_t *dev);
 
+/**
+ * @brief ADR-0008 Flash 覆写：从 16B params 反序列化并改写舵机配置字段。
+ * @note params 布局（小端，memcpy 处理非对齐 f32）：pwm_channel:u8@0,
+ *       min_pulse_ms:f32@1, max_pulse_ms:f32@5（≥9B）。
+ *       轻校验(min>0 / max>min / channel<PAL_PWM_CHANNELS) 与 dal_servo_init 权威校验纵深配合。
+ *       非法 → 不写任何字段，返 WINK_ERR_INVALID_ARG。
+ *       void* 签名适配 wink_dev_override_fn 注册表（见 wink_dev_config.h），
+ *       dev 在 dal_servo_init 之前被覆写。
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t dal_servo_apply_override(void *dev, const uint8_t *params, uint16_t len);
+
 #ifdef __cplusplus
 }
 #endif

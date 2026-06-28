@@ -1,6 +1,8 @@
 #include "dal_servo.h"
 #include "pal_hal.h"
 
+#include <string.h>   /* memcpy（ADR-0008 apply_override 反序列化） */
+
 #define SERVO_PWM_FREQ_HZ    50                             /* 50Hz -> 周期 20ms */
 #define SERVO_PERIOD_MS      (1000.0f / SERVO_PWM_FREQ_HZ)  /* 派生：单一真相源，禁再写 20.0f */
 #define SERVO_MIN_ANGLE_DEG  0.0f
@@ -46,4 +48,26 @@ wink_status_t dal_servo_safe_off(dal_servo_t *dev) {
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
     /* duty=0 → 舵机失保持力（limp）= 安全；不 sleep。仅适用舵机（见头文件语义边界注）。 */
     return pal_pwm_set_duty(dev->pwm_channel, 0.0f);
+}
+
+wink_status_t dal_servo_apply_override(void *dev, const uint8_t *params, uint16_t len) {
+    dal_servo_t *s = (dal_servo_t *)dev;
+    if (s == NULL || params == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (len < 9u) { return WINK_ERR_INVALID_ARG; }   /* u8@0 + f32@1 + f32@5 → ≥9B */
+
+    uint8_t pwm_channel;
+    float   min_pulse_ms;
+    float   max_pulse_ms;
+    memcpy(&pwm_channel, params + 0, 1);
+    memcpy(&min_pulse_ms, params + 1, 4);
+    memcpy(&max_pulse_ms, params + 5, 4);
+
+    /* 轻校验：非法不写（与 dal_servo_init 权威校验纵深一致） */
+    if (pwm_channel >= PAL_PWM_CHANNELS) { return WINK_ERR_INVALID_ARG; }
+    if (min_pulse_ms <= 0.0f || max_pulse_ms <= min_pulse_ms) { return WINK_ERR_INVALID_ARG; }
+
+    s->pwm_channel  = pwm_channel;
+    s->min_pulse_ms = min_pulse_ms;
+    s->max_pulse_ms = max_pulse_ms;
+    return WINK_OK;
 }

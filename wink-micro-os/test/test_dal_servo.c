@@ -4,6 +4,8 @@
 #include "pal_pwm_router.h"
 #include "host_test_ctrl.h"
 
+#include <string.h>   /* ADR-0008 apply_override params 构造 */
+
 void setUp(void) {
     sim_reset_time();
     pal_pwm_router_reset();
@@ -79,6 +81,51 @@ void test_safe_off_after_init_sets_zero_duty(void) {
     TEST_ASSERT_EQUAL_FLOAT(0.0f, sim_last_pwm_duty(2));   /* duty 归零 = 舵机 limp = 安全 */
 }
 
+/* ---- ADR-0008 Flash 覆写 apply_override（init 前字段改写 + 轻校验）---- */
+/* params 布局（小端）：pwm_channel:u8@0, min_pulse_ms:f32@1, max_pulse_ms:f32@5 (buf=16B) */
+static void build_servo_params(uint8_t *p, uint8_t ch, float min_ms, float max_ms) {
+    memset(p, 0, 16);
+    p[0] = ch;
+    memcpy(p + 1, &min_ms, 4);
+    memcpy(p + 5, &max_ms, 4);
+}
+
+void test_apply_override_writes_fields(void) {
+    dal_servo_t s = { .pwm_channel = 0, .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f };
+    uint8_t p[16];
+    build_servo_params(p, 3, 0.6f, 2.4f);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_servo_apply_override(&s, p, sizeof p));
+    TEST_ASSERT_EQUAL_UINT8(3u, s.pwm_channel);
+    TEST_ASSERT_EQUAL_FLOAT(0.6f, s.min_pulse_ms);
+    TEST_ASSERT_EQUAL_FLOAT(2.4f, s.max_pulse_ms);
+}
+
+void test_apply_override_rejects_invalid_pulse(void) {
+    dal_servo_t s = { .pwm_channel = 0, .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f };
+    uint8_t p[16];
+    build_servo_params(p, 0, 0.0f, 2.5f);            /* min == 0 */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_servo_apply_override(&s, p, sizeof p));
+    build_servo_params(p, 0, 2.5f, 0.5f);            /* max <= min */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_servo_apply_override(&s, p, sizeof p));
+    /* 非法 → 字段保持不变（绝不写半状态） */
+    TEST_ASSERT_EQUAL_FLOAT(0.5f, s.min_pulse_ms);
+    TEST_ASSERT_EQUAL_FLOAT(2.5f, s.max_pulse_ms);
+}
+
+void test_apply_override_rejects_bad_channel(void) {
+    dal_servo_t s = { .pwm_channel = 0, .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f };
+    uint8_t p[16];
+    build_servo_params(p, PAL_PWM_CHANNELS, 0.5f, 2.5f);   /* channel 越界 */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_servo_apply_override(&s, p, sizeof p));
+}
+
+void test_apply_override_null_returns_invalid_arg(void) {
+    uint8_t p[16] = {0};
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_servo_apply_override(NULL, p, sizeof p));
+    dal_servo_t s = {0};
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_servo_apply_override(&s, NULL, sizeof p));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_init_null_returns_invalid_arg);
@@ -90,5 +137,9 @@ int main(void) {
     RUN_TEST(test_safe_off_null_returns_invalid_arg);
     RUN_TEST(test_safe_off_before_init_returns_not_initialized);
     RUN_TEST(test_safe_off_after_init_sets_zero_duty);
+    RUN_TEST(test_apply_override_writes_fields);
+    RUN_TEST(test_apply_override_rejects_invalid_pulse);
+    RUN_TEST(test_apply_override_rejects_bad_channel);
+    RUN_TEST(test_apply_override_null_returns_invalid_arg);
     return UNITY_END();
 }

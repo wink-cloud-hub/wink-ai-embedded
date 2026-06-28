@@ -94,6 +94,17 @@ wink_status_t dal_ultrasonic_get_cached_distance(const dal_ultrasonic_t *dev, fl
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *distance_cm);
 
+/**
+ * @brief ADR-0008 Flash 覆写：从 16B params 反序列化并改写超声波 trig/echo 引脚。
+ * @note params 布局（小端）：trig_pin:u16@0, echo_pin:u16@2（≥4B）。
+ *       轻校验(trig≠echo) 与 dal_ultrasonic_init 权威校验纵深配合。
+ *       非法 → 不写任何字段，返 WINK_ERR_INVALID_ARG。
+ *       void* 签名适配 wink_dev_override_fn 注册表（见 wink_dev_config.h），
+ *       dev 在 dal_ultrasonic_init 之前被覆写。
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t dal_ultrasonic_apply_override(void *dev, const uint8_t *params, uint16_t len);
+
 #ifdef __cplusplus
 }
 #endif
