@@ -116,7 +116,7 @@ c-code.md §1       —— "0 = Success, Negative = Errors"
 | 检查写法 | 对 `WINK_WARN_*`（假设为正数）的行为 | 问题 |
 |---------|--------------------------------------|------|
 | `if (status < 0)`（skill 头号推荐） | 把 warning 当成 **WINK_OK 成功** | 配置损坏这种安全相关事件被静默吞掉 |
-| `if (status != WINK_OK)` | 把 warning 当成 **错误** | BAL 无法走「带警告正常降级」路径，只能走错误恢复 |
+| `if (status != WINK_OK)` | 把 warning 当成 **错误** | App 无法走「带警告正常降级」路径，只能走错误恢复 |
 
 两种被推荐的写法对这个值**语义都不对**。而 `error-codes.md` 通篇没有告诉 AI「warning 段存在、该如何检查」。
 
@@ -129,7 +129,7 @@ c-code.md §1       —— "0 = Success, Negative = Errors"
 **方案 A（推荐，保持根假设不变）：可降级状态也归入负数段**
 - 新增 `-5xx` 或 `-6xx` 段为「可恢复降级警告」，如 `WINK_ERR_CONFIG_CORRUPT_DEGRADED = -50`。
 - 优势：`if (status < 0)` 语义保持绝对统一，不破坏 CI 正则 / AI 禁令 / 迁移指南对这个根假设的全面依赖。
-- BAL 用「`status == -50` → 降级但继续」做特判，其余 `<0` 走错误恢复。
+- App 用「`status == -50` → 降级但继续」做特判，其余 `<0` 走错误恢复。
 
 **方案 B（扩展体系）：正式定义 `>0` = 成功带警告段**
 - 在 `error-codes.md` 新增「`WINK_OK = 0`，`>0` = 成功但带警告（degraded success）」段。
@@ -230,7 +230,7 @@ tooling.md 的正则与白名单：
 
 ### 现状证据
 
-architecture.md 描述了降级机制：DAL init 失败 → 标记 `WINK_ERR_FAILED_INIT` → BAL 读到后启动防跌落/停机降级。但**没有定义 BAL 如何统一查询「这个器件现在是 OK / DEGRADED / FAULTED」**。
+architecture.md 描述了降级机制：DAL init 失败 → 标记 `WINK_ERR_FAILED_INIT` → App 读到后启动防跌落/停机降级。但**没有定义 App 如何统一查询「这个器件现在是 OK / DEGRADED / FAULTED」**。
 
 lifecycle.md 只有零散的 `last_status`、`bool initialized` 字段，每个器件各自为政。静态分发下做统一巡检的标准做法（一个 `dev->state.health` 枚举 + X-macro 遍历表）在 skill 里是缺的。
 
@@ -238,7 +238,7 @@ lifecycle.md 只有零散的 `last_status`、`bool initialized` 字段，每个�
 
 ### 影响
 
-中。当器件数量上来（grilling.md 问题 1 就假设 8 个超声波），BAL 无法用统一代码做「扫描所有器件、跳过故障的、对降级的走保守逻辑」——只能为每个器件写特判，违背 skill 自己宣讲的「表驱动 / DRY」。
+中。当器件数量上来（grilling.md 问题 1 就假设 8 个超声波），App 无法用统一代码做「扫描所有器件、跳过故障的、对降级的走保守逻辑」——只能为每个器件写特判，违背 skill 自己宣讲的「表驱动 / DRY」。
 
 ### 建议修复
 
@@ -248,18 +248,18 @@ lifecycle.md 只有零散的 `last_status`、`bool initialized` 字段，每个�
 typedef enum {
     DAL_HEALTH_OK        = 0,   /* 初始化成功、运行正常 */
     DAL_HEALTH_DEGRADED  = 1,   /* 部分功能受限（如 NVS 损坏用默认值、单通道失效） */
-    DAL_HEALTH_FAULTED   = 2,   /* init 失败或运行期故障，BAL 必须降级/停用 */
+    DAL_HEALTH_FAULTED   = 2,   /* init 失败或运行期故障，App 必须降级/停用 */
 } dal_health_t;
 
 /* 每个器件 state 区统一含： */
 dal_health_t health;
 ```
 
-并给出 BAL 统一巡检入口（复用 X-macro 形态 5）：
+并给出 App 统一巡检入口（复用 X-macro 形态 5）：
 
 ```c
 #define X_CHECK_HEALTH(name) \
-    if (name.state.health >= DAL_HEALTH_FAULTED) { bal_quarantine(&name); }
+    if (name.state.health >= DAL_HEALTH_FAULTED) { app_quarantine(&name); }
 ULTRASONIC_DEVICES(X_CHECK_HEALTH)
 #undef X_CHECK_HEALTH
 ```
@@ -273,15 +273,15 @@ ULTRASONIC_DEVICES(X_CHECK_HEALTH)
 
 ### 现状证据
 
-安全关键嵌入式系统的标配是 POST（Power-On Self-Test）：上电后按序对关键器件做自检、隔离故障件、向 BAL 暴露自检报告。但 skill 里：
+安全关键嵌入式系统的标配是 POST（Power-On Self-Test）：上电后按序对关键器件做自检、隔离故障件、向 App 暴露自检报告。但 skill 里：
 
 - `safety-checklist.md` 阶段 8 讲的是「验证到寄存器级 / 引脚配置匹配」这种**单次硬件操作验证**，不是 POST 序列设计。
 - `grilling.md` 问题 6 沾了 NVS 配置损坏的边，但没有成体系的 POST。
-- 没有文档说明：哪些器件 init 时**必须**自检（如电机驱动必须检过流回路、超声波必须检 echo 通路）、自检失败如何隔离、自检报告如何向 BAL 暴露、自检在 `device_tree_init_all()` 三阶段（architecture.md:116-119）的哪一阶段插入。
+- 没有文档说明：哪些器件 init 时**必须**自检（如电机驱动必须检过流回路、超声波必须检 echo 通路）、自检失败如何隔离、自检报告如何向 App 暴露、自检在 `device_tree_init_all()` 三阶段（architecture.md:116-119）的哪一阶段插入。
 
 ### 影响
 
-中偏高。对「**AI 生成固件**」尤其致命——AI 不会主动加自检，除非 skill 明确要求。漏掉 POST 的固件，器件半失效时仍被 BAL 当正常器件用，是功能安全漏洞。
+中偏高。对「**AI 生成固件**」尤其致命——AI 不会主动加自检，除非 skill 明确要求。漏掉 POST 的固件，器件半失效时仍被 App 当正常器件用，是功能安全漏洞。
 
 ### 建议修复
 
@@ -290,7 +290,7 @@ ULTRASONIC_DEVICES(X_CHECK_HEALTH)
 1. 定义哪些器件类属 POST 必检（执行类：电机 / 舵机有反馈回路；感知类：超声波 / IMU 有回波 / WHO_AM_I）。
 2. POST 失败 → 置 `health = DAL_HEALTH_FAULTED`（接问题 5），不中断整体启动。
 3. `device_tree_init_all()` 的 `PHASE_DAL_INIT` 内，每个 init 成功后调用 `dal_xxx_self_test()`。
-4. 向 BAL 暴露 `device_tree_get_post_report()`。
+4. 向 App 暴露 `device_tree_get_post_report()`。
 
 ---
 
@@ -320,7 +320,7 @@ realtime-hardware.md 明确列出已知风险：
 在 tooling.md 栈门禁一节补 Wasm 专项：
 
 1. **栈预算声明**：在 wasm target 构建脚本里把 `ASYNCIFY_STACK_SIZE` 显式声明为项目常量，文档化其与最深调用链的关系。
-2. **编译期断言**：对已知深嵌套路径（如 `BAL → DAL → pal_delay_ms → Asyncify 栈帧`）用 `static_assert` 或构建期脚本校验调用链深度。
+2. **编译期断言**：对已知深嵌套路径（如 `App → DAL → pal_delay_ms → Asyncify 栈帧`）用 `static_assert` 或构建期脚本校验调用链深度。
 3. **CI 跑 wasm target 时**，对最深的同步阻塞路径做栈用量回归。
 
 ---
