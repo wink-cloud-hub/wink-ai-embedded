@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file app_main.c
  * @brief avoidance_car 业务逻辑 + 回调工厂。
  *        简化版（无 dal_led，仅 radar+servo）：雷达探测近障则扫舵机。
@@ -52,7 +52,7 @@ static void app_init(void) {
 
 /* 非阻塞测量调度（Phase 4 Task 4-4）：NEED_TRIGGER → request → WAITING；get_cached OK 后 re-arm。
  * host 单 tick 即 ready（pal_gpio_pulse_in 同步）；真机未来异步时 WAITING 期 get_cached 返回 BUSY，
- * 保持上一安全输出——BAL 10ms tick 不再调用 60ms+ 的 blocking dal_ultrasonic_read（P0-2）。 */
+ * 保持上一安全输出——App 10ms tick 不再调用 60ms+ 的 blocking dal_ultrasonic_read（P0-2）。 */
 typedef enum { RADAR_NEED_TRIGGER, RADAR_WAITING } radar_phase_t;
 static radar_phase_t s_radar_phase = RADAR_NEED_TRIGGER;
 

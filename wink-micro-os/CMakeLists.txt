@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+﻿cmake_minimum_required(VERSION 3.15)
 project(wink-micro-os C)
 
 # 设置 C 标准为 C99
@@ -53,7 +53,7 @@ elseif(MSVC)
     add_compile_options(/utf-8)
 endif()
 # 注：GCC 参数化警告 -Wstack-usage= 不支持 -Werror=stack-usage= 精确升级。
-# 云端构建服务（Docker worker）在 BAL App 编译阶段使用全局 -Werror 将其升级为硬错误。
+# 云端构建服务（Docker worker）在 App 编译阶段使用全局 -Werror 将其升级为硬错误。
 # 本地开发环境仅产出 warning，不阻塞迭代（生产部署由 build service 门禁拦截）。
 
 # ── Protothread Footgun Detector (ADR-0007) ─────────────────────────

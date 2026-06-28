@@ -1,4 +1,4 @@
-#include "dal_ultrasonic.h"
+﻿#include "dal_ultrasonic.h"
 #include "pal_hal.h"
 #include "pal_osal.h"
 
@@ -138,7 +138,7 @@ wink_status_t dal_ultrasonic_get_cached_distance(const dal_ultrasonic_t *dev, fl
        extern 签名抄 wasm_bridge.h（SSOT 闭合）。 --- */
 #include "wasm_bridge.h"
 
-/* @deprecated @blocking —— 见头文件契约；BAL 10ms tick 禁用，迁移至 request_measurement + get_cached_distance。 */
+/* @deprecated @blocking —— 见头文件契约；App 10ms tick 禁用，迁移至 request_measurement + get_cached_distance。 */
 wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *distance_cm) {
     if (dev == NULL || distance_cm == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
@@ -158,8 +158,8 @@ wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *distance_cm) {
 
 #else
 /* --- 真实芯片模式 --- */
-/* @deprecated @blocking —— 真机最坏 ≈60ms busy-wait，破坏 10ms tick/WCET；禁从 BAL 调用。
- * 保留仅供过渡/单测；BAL 应使用 request_measurement + get_cached_distance（Phase 4）。 */
+/* @deprecated @blocking —— 真机最坏 ≈60ms busy-wait，破坏 10ms tick/WCET；禁从 App 调用。
+ * 保留仅供过渡/单测；App 应使用 request_measurement + get_cached_distance（Phase 4）。 */
 wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *distance_cm) {
     if (dev == NULL || distance_cm == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }

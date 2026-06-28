@@ -1,4 +1,4 @@
-#ifndef DAL_ULTRASONIC_H
+﻿#ifndef DAL_ULTRASONIC_H
 #define DAL_ULTRASONIC_H
 
 #include <stdint.h>
@@ -81,7 +81,7 @@ wink_status_t dal_ultrasonic_get_cached_distance(const dal_ultrasonic_t *dev, fl
 
 /**
  * @brief 获取障碍物距离 (cm) —— 阻塞 busy-wait，**@deprecated**。
- * @deprecated Runtime/BAL 10ms tick 不得调用本 API；保留仅供过渡/单测，BAL 完全迁移到非阻塞
+ * @deprecated Runtime/App 10ms tick 不得调用本 API；保留仅供过渡/单测，App 完全迁移到非阻塞
  *             且 host 协作推进重构后移除（Phase 4 follow-up）。
  * @note Blocking: Yes. Worst-case ≈ 2 * ULTRASONIC_TIMEOUT_US + trigger pulse (≈ 60ms+)。
  *       Not allowed in cooperative runtime loop.

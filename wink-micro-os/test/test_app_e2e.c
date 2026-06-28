@@ -1,5 +1,5 @@
-/* PAL→DAL→runtime→App 端到端：注册样本回调 → 跑 N tick → 注入近障 → 验证舵机偏转 + trace。
- * 等价 ADR-0003 计划附录 B Task T1（BAL 三层联动）。
+﻿/* PAL→DAL→runtime→App 端到端：注册样本回调 → 跑 N tick → 注入近障 → 验证舵机偏转 + trace。
+ * 等价 ADR-0003 计划附录 B Task T1（App 三层联动）。
  * 注意：本测试不 link Unity（用断言宏自实现），作为 app_avoidance_car_e2e 的 main。 */
 #include "wink_runtime.h"
 #include "wink_trace.h"

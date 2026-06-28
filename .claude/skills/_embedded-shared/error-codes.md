@@ -1,4 +1,4 @@
-# 错误码约定（范式无关）
+﻿# 错误码约定（范式无关）
 
 > 适用范围：两种架构风格共用。核心决策见 **ADR-0001**。
 
@@ -46,7 +46,7 @@ if (status != WINK_OK)  { /* 失败处理 */ }   /* WINK_OK == 0 */
 > 写 wink-micro-os 代码用 `wink_status_t` + 分段码；写 chigo-micro 代码用 `int` + `ERR_BIT_*`。
 > 两者共享「0=成功 / 负数=错误 / 禁 `if(status)`」这条铁律。
 >
-> **无正数 warning 段**（ADR-0005）：「降级但继续运行」也归负数（`-50s`），故 `if(status<0)` 对降级状态依然正确捕获——BAL 用 `status == WINK_ERR_CONFIG_CORRUPT_DEGRADED` / `== WINK_ERR_FAILED_INIT` 特判走保守降级，其余 `<0` 走常规错误恢复。统一 `ERR_*` 前缀，**禁用 `WARN_*` 前缀**。
+> **无正数 warning 段**（ADR-0005）：「降级但继续运行」也归负数（`-50s`），故 `if(status<0)` 对降级状态依然正确捕获——App/BAL 用 `status == WINK_ERR_CONFIG_CORRUPT_DEGRADED` / `== WINK_ERR_FAILED_INIT` 特判走保守降级，其余 `<0` 走常规错误恢复。统一 `ERR_*` 前缀，**禁用 `WARN_*` 前缀**。
 
 ---
 

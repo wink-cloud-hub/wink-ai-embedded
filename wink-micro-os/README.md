@@ -8,9 +8,13 @@
 
 内核采用 **Ports & Adapters（A\*）** 架构：`pal`（纯契约 INTERFACE）← `dal` ← `runtime` + `trace`（两横切一等 peer 层），`targets/`（wasm/host/esp32）为适配器端口，App/BAL 仅 link 公共 include 面。
 
+> **术语澄清**：
+> - ✅ **App 层**：用户代码/AI 生成的一次性业务逻辑（`app_init/app_loop/app_on_fault`）
+> - ✅ **BAL 层**：Business Algorithm Layer（业务算法工具库），可复用的算法组件（如 PID、卡尔曼滤波），**独立仓库维护**，由 App 层调用
+
 ```
 ┌────────────────────────────────────────────────────────┐
-│      App（AI 生成）/ BAL（独立仓）                      │
+│  App（AI 生成，一次性业务） / BAL（独立仓，可复用算法）  │
 ├────────────────────────────────────────────────────────┤
 │  runtime（回调注入主循环） + trace（Golden Trace） ◄ peer 一等层
 ├────────────────────────────────────────────────────────┤
@@ -22,12 +26,13 @@
 └────────────────────────────────────────────────────────┘
 ```
 
-1. **BAL / App (应用逻辑层)**：由低代码编排生成的业务逻辑。它经 `wink_app_callbacks_t` 回调注入 runtime，并调用 DAL 暴露的只读/只写业务 API，不对接任何底层的 I2C/GPIO 硬件。
-2. **runtime + trace**：一等 peer 层。`runtime` 用回调注入跑协作式主循环（无 `extern app_*` 强依赖，二进制解耦）；`trace` 用静态环形缓冲记录故障（零动态分配）。DAL/PAL 驱动**禁**直接调 `wink_trace_*`，故障捕获收敛在 App 回调。
-3. **DAL (器件抽象层)**：管理具体的传感器和执行器（如超声波测距仪、舵机、温湿度计）。
+1. **App (应用逻辑层)**：由低代码编排生成的业务逻辑。它经 `wink_app_callbacks_t` 回调注入 runtime，并调用 BAL 算法库或 DAL 暴露的只读/只写业务 API，不对接任何底层的 I2C/GPIO 硬件。
+2. **BAL (业务算法层)**：可复用的算法组件库（如 PID、卡尔曼滤波、传感器融合等），独立仓库维护，由 App 层调用。
+3. **runtime + trace**：一等 peer 层。`runtime` 用回调注入跑协作式主循环（无 `extern app_*` 强依赖，二进制解耦）；`trace` 用静态环形缓冲记录故障（零动态分配）。DAL/PAL 驱动**禁**直接调 `wink_trace_*`，故障捕获收敛在 App 回调。
+4. **DAL (器件抽象层)**：管理具体的传感器和执行器（如超声波测距仪、舵机、温湿度计）。
    * **双模运行能力**：在仿真模式下，DAL 驱动仅旁路最底层物理信号来源（trigger 时序、echo 脉宽），换算与超时判定两端同源；在真机模式下，它调用 PAL 接口操作物理引脚。
-4. **PAL (平台抽象层)**：纯契约 INTERFACE 库（仅头、无符号）。统一包装跨平台的操作系统服务（OSAL，任务与微秒定时器）与硬件总线控制（HAL，如 GPIO, PWM, I2C）。所有实现下沉到 `targets/`。
-5. **Targets (平台适配器)**：具体平台的 PAL 实现端口（wasm/host/esp32）。host 为一等 target，供 PC 上跑完整 PAL→DAL→runtime→App 测试。
+5. **PAL (平台抽象层)**：纯契约 INTERFACE 库（仅头、无符号）。统一包装跨平台的操作系统服务（OSAL，任务与微秒定时器）与硬件总线控制（HAL，如 GPIO, PWM, I2C）。所有实现下沉到 `targets/`。
+6. **Targets (平台适配器)**：具体平台的 PAL 实现端口（wasm/host/esp32）。host 为一等 target，供 PC 上跑完整 PAL→DAL→runtime→App 测试。
 
 ---
 

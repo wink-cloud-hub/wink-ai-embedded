@@ -1,4 +1,4 @@
-#ifndef DAL_BUTTON_H
+﻿#ifndef DAL_BUTTON_H
 #define DAL_BUTTON_H
 
 #include <stdint.h>
@@ -44,7 +44,7 @@ wink_status_t dal_button_init(dal_button_t *dev, uint16_t pin, bool active_low);
 
 /**
  * @brief 每 tick 采样并跑计数式去抖状态机（非阻塞）。
- * @note 由 BAL app_loop 每周期调用一次；驱动内部维护计数器，不对外暴露 poll 接口。
+ * @note 由 App app_loop 每周期调用一次；驱动内部维护计数器，不对外暴露 poll 接口。
  *       去抖阈值 DAL_BUTTON_DEBOUNCE_THRESHOLD（≈30ms @ 10ms tick）。
  * @note API Contract:
  *   - Preconditions: dev 非 NULL；dal_button_init() 已成功。
