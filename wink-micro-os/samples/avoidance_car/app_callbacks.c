@@ -23,13 +23,23 @@ static wink_status_t servo_safe_off_thunk(void *ctx) {
 static void app_init(void) {
     /* Phase 2 Task 2-4：显式 init 生命周期（一次性硬件配置 + initialized）。
      * 任一 init 失败须 trace，禁止 (void) 吞错（review P2-2）。 */
+
+    /* ADR-0008：物理初始化前，从 Flash 覆写静态实例字段（失败静默降级到编译期默认）。
+     * 覆写后须从结构体读配置喂 init，override 才生效。降级即默认行为，结果仅供诊断。 */
+    wink_status_t cfg = device_tree_apply_flash_config();
+    (void)cfg;
+
+    /* servo config↔dev 字段重复（dal_servo.h 已注明）：override 写 dev 字段后，
+     * 从 dev 字段重建 config 喂 init（多一跳，避免改 DAL API）。 */
     const dal_servo_config_t servo_cfg = {
-        .pwm_channel = 0, .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f
+        .pwm_channel  = neck_servo.pwm_channel,
+        .min_pulse_ms = neck_servo.min_pulse_ms,
+        .max_pulse_ms = neck_servo.max_pulse_ms
     };
     wink_status_t s = dal_servo_init(&neck_servo, &servo_cfg);
     if (wink_status_is_error(s)) { wink_trace_fault(FAULT_SERVO_INIT); }
 
-    wink_status_t u = dal_ultrasonic_init(&front_radar, 4, 5);
+    wink_status_t u = dal_ultrasonic_init(&front_radar, front_radar.trig_pin, front_radar.echo_pin);
     if (wink_status_is_error(u)) { wink_trace_fault(FAULT_RADAR_INIT); }
 
     /* Phase 5：注册舵机 safe-off，使 fault / boot-lock 路径可统一关断执行器（P0-4）。 */

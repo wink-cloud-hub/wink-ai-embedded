@@ -32,3 +32,27 @@ else()
     target_compile_options(app_avoidance_car_e2e PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
 endif()
 add_test(NAME app_avoidance_car_e2e COMMAND app_avoidance_car_e2e)
+
+# ADR-0008 设备树覆写端到端（host 内存存储）：device_tree_apply_flash_config 经
+# pal_storage → 注册表 → 真实 DAL apply_override 改写全局字段；空/损坏静默降级。
+add_executable(test_avoidance_override
+    ${CMAKE_CURRENT_SOURCE_DIR}/device_tree.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/dal_ultrasonic.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/dal_servo.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../test/test_avoidance_override.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../test/unity/unity.c
+    $<TARGET_OBJECTS:pal_host>)
+
+target_include_directories(test_avoidance_override PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../pal/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../test/unity)
+
+target_link_libraries(test_avoidance_override PRIVATE pal)
+if(MSVC)
+    target_compile_options(test_avoidance_override PRIVATE /W4)
+else()
+    target_compile_options(test_avoidance_override PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
+endif()
+add_test(NAME test_avoidance_override COMMAND test_avoidance_override)
