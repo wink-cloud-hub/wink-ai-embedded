@@ -96,6 +96,9 @@ add_wink_host_test(test_dev_config test_dev_config.c)
 # ADR-0008 PAL 存储抽象 host 单测（pal_storage_host.c 经 pal_host OBJECT 链接）
 add_wink_host_test(test_pal_storage test_pal_storage.c)
 
+# ADR-0009 Wave1 物理退化算法库单测（wink_sim_physical.c 现已并入 pal_host OBJECT）
+add_wink_host_test(test_sim_physical test_sim_physical.c)
+
 set(DAL_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/dal_ultrasonic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/dal_servo.c
@@ -146,6 +149,9 @@ function(add_wink_test_sim name src)
 endfunction()
 
 add_wink_test_sim(test_dal_ultrasonic_sim test_dal_ultrasonic_sim.c)
+
+# ADR-0009 Wave1 按键抖动端到端（dal_button × 物理退化；链 pal_host 含算法库 + 注入）
+add_wink_test_sim(test_button_debounce_e2e test_button_debounce_e2e.c)
 
 add_custom_target(check
     COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure

@@ -5,8 +5,11 @@
  */
 #include "pal_osal.h"
 #include "host_test_ctrl.h"
+#include "wink_sim_physical.h"   /* wink_phys_debounce_ctx_t + WINK_SIM_FAULTS_IDEAL */
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
+
 
 static uint64_t s_time_us = 0;
 static uint64_t s_echo_rise_us = 0;
@@ -21,6 +24,19 @@ static uint8_t  s_last_i2c_port = 0;
 static uint16_t s_last_i2c_addr = 0;
 static uint32_t s_last_i2c_write_len = 0;
 static uint32_t s_i2c_transfer_count = 0;
+
+/* ADR-0009 Wave1：GPIO 理想电平注入 + per-pin 抖动 ctx + 全局 faults。
+ * 语义契约（§2.3 红线 6/7）：
+ *   - sim_set_gpio_ideal 双语义：首次注册 pin = 上电态（stable=level，不抖）；
+ *     更新已注册 pin 电平 = 用户操作跃变（仅改 ideal，不碰 ctx → 下次采样 target≠stable 触发抖动）。
+ *   - 注入 pin 须 ≠ host_echo_pin()（默认 0xFFFF），否则短路 echo 协作推进（§2.3 红线 7）。 */
+static struct {
+    bool     set;
+    uint16_t pin;
+    bool     ideal;
+    wink_phys_debounce_ctx_t ctx;
+} s_gpio_ideal[SIM_GPIO_IDEAL_SLOTS];
+static wink_sim_faults_t s_faults = { 0 };
 
 /* ---- HAL 侧 extern 的访问器 ---- */
 uint64_t host_sim_time_us(void) { return s_time_us; }
@@ -59,6 +75,7 @@ void sim_reset_time(void) {
     s_abnormal_boot_count = 0;
     s_last_i2c_port = 0; s_last_i2c_addr = 0;
     s_last_i2c_write_len = 0; s_i2c_transfer_count = 0;
+    sim_clear_gpio_ideal();   /* ADR-0009 Wave1：重置时清空 GPIO 注入表，保证测试隔离 */
 }
 void sim_set_echo_pin(uint16_t pin) { s_echo_pin = pin; }
 void sim_set_echo_timing(uint64_t rise_us, uint64_t high_duration_us) {
@@ -69,6 +86,48 @@ float sim_last_pwm_duty(uint8_t channel) {
     return s_pwm_duty[channel];
 }
 void sim_set_reset_reason(pal_reset_reason_t reason) { s_reset_reason = reason; }
+
+/* ---- ADR-0009 Wave1：GPIO 理想注入 API */
+void sim_set_gpio_ideal(uint16_t pin, bool level) {
+    /* 跃变分支：pin 已注册 → 仅更新理想电平，不碰 ctx（保留旧 stable → 下次采样 target≠stable 触发抖动 */
+    for (int i = 0; i < SIM_GPIO_IDEAL_SLOTS; i++) {
+        if (s_gpio_ideal[i].set && s_gpio_ideal[i].pin == pin) {
+            s_gpio_ideal[i].ideal = level;
+            return;
+        }
+    }
+    /* 注册分支：首次占用空槽 = 上电态（stable=level，无跃变不抖；flip=false） */
+    for (int i = 0; i < SIM_GPIO_IDEAL_SLOTS; i++) {
+        if (!s_gpio_ideal[i].set) {
+            s_gpio_ideal[i].set = true;
+            s_gpio_ideal[i].pin = pin;
+            s_gpio_ideal[i].ideal = level;
+            s_gpio_ideal[i].ctx.stable_level    = level;   /* 上电态 */
+            s_gpio_ideal[i].ctx.in_bounce       = false;
+            s_gpio_ideal[i].ctx.bounce_start_us = 0;
+            s_gpio_ideal[i].ctx.bounce_flip     = false;
+            return;
+        }
+    }
+    assert(false && "GPIO ideal slots exceeded SIM_GPIO_IDEAL_SLOTS!");
+}
+void sim_clear_gpio_ideal(void) {
+    for (int i = 0; i < SIM_GPIO_IDEAL_SLOTS; i++) { s_gpio_ideal[i].set = false; }
+}
+void sim_set_faults(const wink_sim_faults_t *faults) {
+    s_faults = (faults != NULL) ? *faults : WINK_SIM_FAULTS_IDEAL;
+}
+/* HAL 侧访问器：命中注入 pin → 走抖动退化；返回 true 表示命中 */
+bool host_gpio_read_debounced(uint16_t pin, bool *out_level) {
+    for (int i = 0; i < SIM_GPIO_IDEAL_SLOTS; i++) {
+        if (s_gpio_ideal[i].set && s_gpio_ideal[i].pin == pin) {
+            *out_level = wink_phys_debounce_step(&s_gpio_ideal[i].ctx, s_gpio_ideal[i].ideal,
+                                                 s_time_us, s_faults.bounce_us);
+            return true;
+        }
+    }
+    return false;
+}
 
 /* ---- PAL OSAL ---- */
 void pal_delay_ms(uint32_t ms) { s_time_us += (uint64_t)ms * 1000u; }

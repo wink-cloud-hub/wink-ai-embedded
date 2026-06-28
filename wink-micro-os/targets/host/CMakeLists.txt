@@ -5,7 +5,8 @@ add_library(pal_host OBJECT
     pal_resource_host.c
     pal_storage_host.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../pal/src/pal_pwm_router.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../pal/src/wink_dev_config.c)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../pal/src/wink_dev_config.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../pal/src/wink_sim_physical.c)
 
 target_link_libraries(pal_host PUBLIC pal)
 

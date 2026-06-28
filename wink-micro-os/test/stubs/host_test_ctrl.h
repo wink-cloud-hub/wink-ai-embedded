@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 #include "pal_osal.h"   /* pal_reset_reason_t（sim_set_reset_reason 测试注入，Phase 5 Task 5-4） */
+#include "wink_sim_physical.h"   /* wink_sim_faults_t（ADR-0009 Wave1 物理退化注入） */
 
 void sim_reset_time(void);
 void sim_set_echo_pin(uint16_t pin);
@@ -20,5 +21,13 @@ uint8_t  sim_last_i2c_port(void);
 uint16_t sim_last_i2c_addr(void);
 uint32_t sim_last_i2c_write_len(void);
 uint32_t sim_i2c_transfer_count(void);
+
+/* ADR-0009 Wave1：host GPIO 理想电平注入 + 故障配置（仅测试用）。
+ * sim_set_gpio_ideal 双语义（§2.3 红线 6）：首次注册=上电态(不抖)；更新电平=跃变(触发抖动)。
+ * 注入 pin 须 ≠ echo pin（§2.3 红线 7）。 */
+#define SIM_GPIO_IDEAL_SLOTS 4
+void sim_set_gpio_ideal(uint16_t pin, bool level);   /* 注册(上电态)/更新(跃变) pin 理想电平 */
+void sim_clear_gpio_ideal(void);                      /* 清空所有注入（sim_reset_time 也会调） */
+void sim_set_faults(const wink_sim_faults_t *faults); /* 设全局故障配置（退化强度） */
 
 #endif /* HOST_TEST_CTRL_H */
