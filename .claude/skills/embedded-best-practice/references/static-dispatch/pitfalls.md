@@ -98,5 +98,5 @@ Wasm 单线程，`pal_mutex_create` 返回常量、lock/unlock 是空操作—�
 ## 何时应回退到运行期多态（ADR-0004 退出条件）
 
 仅当一个**具体器件抽象**确实需要「**多种硬件实现在运行期并存且切换**」（如距离传感器抽象
-要同时支持 HC-SR04 与 VL53L0X 并按配置切换）时，才考虑回退。且**不破坏 BAL 静态 API 契约**，
+要同时支持 HC-SR04 与 VL53L0X 并按配置切换）时，才考虑回退。且**不破坏 App/BAL 静态 API 契约**，
 多态封装在 DAL 该器件内部（微型 ops 表或 `switch-case`）。详见 [evolution.md](./evolution.md)。

@@ -7,13 +7,14 @@
 ## 分层（wink-micro-os）
 
 ```
-BAL  →  DAL  →  PAL  →  Targets (wasm / esp32 / stm32)
-（业务应用）（器件语义抽象）（平台抽象：HAL + OSAL）（平台实现）
+App/BAL  →  DAL  →  PAL  →  Targets (wasm / esp32 / stm32)
+（应用+算法）（器件语义抽象）（平台抽象：HAL + OSAL）（平台实现）
 ```
 
 依赖**严格向下**，无向上调用：
 
-- **BAL**（Business App Layer）：codegen 生成的业务逻辑，只调 DAL 语义 API，不碰 GPIO/I2C。
+- **App**（应用层）：codegen 生成的业务逻辑（`app_init`/`app_loop`），只调 DAL 语义 API 或 BAL 算法，不碰 GPIO/I2C。
+- **BAL**（Business Algorithm Layer）：可复用算法库（PID、卡尔曼、滤波…），独立仓库维护，由 App 调用，亦可直调 DAL 语义 API。
 - **DAL**（Device Abstraction Layer）：器件语义驱动（舵机、超声波…）+ 逻辑句柄结构。
   「时序翻译器」——硬依赖 PAL 总线/OS API，**不含芯片寄存器代码**。
 - **PAL**（Platform Abstraction Layer）：分 **HAL**（`pal_hal.h`：GPIO/PWM/I2C）与
@@ -95,7 +96,7 @@ typedef struct {
 } control_algo_t;
 ```
 
-> 这正是 ADR-0004「局部多态化退出路径」的合法用法：**不破坏 BAL 静态 API 契约**，
+> 这正是 ADR-0004「局部多态化退出路径」的合法用法：**不破坏 App/BAL 静态 API 契约**，
 > 多态**封装在单个器件/模块内部**。详见 [evolution.md](./evolution.md)。
 
 ---
@@ -132,13 +133,13 @@ DAL 层设备实例的初始化顺序不是固定的，而是由 Codegen 在编�
   * **策略**：系统应立即停止后续初始化，进入安全死循环（如触发 LED 警示闪烁），或触发看门狗复位。
 * **DAL / 器件级初始化失败**（如 `front_radar` 未能拉高 Trig 引脚，返回 `WINK_ERR_TIMEOUT`）：
   * **行为**：定义为**局部非致命错误 (Degraded Failure)**。
-  * **策略**：不中断系统整体启动。该器件的状态字段应标记为 `WINK_ERR_FAILED_INIT`（-51，ADR-0005）。BAL（业务逻辑）读取时能捕获该状态，并启动防跌落、停机等降级控制策略，其余正常外设（如控制状态 LED）仍可继续工作。
+  * **策略**：不中断系统整体启动。该器件的状态字段应标记为 `WINK_ERR_FAILED_INIT`（-51，ADR-0005）。App（业务逻辑）读取时能捕获该状态，并启动防跌落、停机等降级控制策略，其余正常外设（如控制状态 LED）仍可继续工作。
 
 ---
 
 ## 4. 上电自检序列（POST, Power-On Self-Test）
 
-安全关键固件上电后应按序对关键器件自检、隔离故障件、向 BAL 暴露自检报告。**AI 不会主动加自检**，必须由本规范明确要求——漏掉 POST 的固件，器件半失效时仍被 BAL 当正常器件用，是功能安全漏洞。
+安全关键固件上电后应按序对关键器件自检、隔离故障件、向 App/BAL 暴露自检报告。**AI 不会主动加自检**，必须由本规范明确要求——漏掉 POST 的固件，器件半失效时仍被 App/BAL 当正常器件用，是功能安全漏洞。
 
 ### 必检器件类
 
@@ -149,10 +150,10 @@ DAL 层设备实例的初始化顺序不是固定的，而是由 Codegen 在编�
 
 ### 自检失败处理
 
-- POST 失败**不中断整体启动**：置该器件 `health = DAL_HEALTH_FAULTED`（见 lifecycle.md §6），BAL 隔离该器件、其余继续。
+- POST 失败**不中断整体启动**：置该器件 `health = DAL_HEALTH_FAULTED`（见 lifecycle.md §6），App/BAL 隔离该器件、其余继续。
 - 仅 `PHASE_CPU_INIT` / `PHASE_PAL_INIT` 失败才是致命（见上 §3）。
 
 ### 插入点与接口
 
 - 自检在 `device_tree_init_all()` 的 `PHASE_DAL_INIT` 内：每个 `dal_xxx_init` 成功后调用 `dal_xxx_self_test(dev)`；其返回码映射到 `health`（`-50/-51` → DEGRADED / FAULTED，ADR-0005）。
-- 向 BAL 暴露 `device_tree_get_post_report()`，返回各器件 init / self_test 结果，供降级决策与可观测性（[02-error-fault-model.md](../../../../../docs/design/07-platform-governance/02-error-fault-model.md) §8 错误可观测性）。
+- 向 App/BAL 暴露 `device_tree_get_post_report()`，返回各器件 init / self_test 结果，供降级决策与可观测性（[02-error-fault-model.md](../../../../../docs/design/07-platform-governance/02-error-fault-model.md) §8 错误可观测性）。

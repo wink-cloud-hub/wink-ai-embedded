@@ -90,7 +90,7 @@ dal_servo_t      neck_servo  = { .pwm_channel = 0, .current_angle = 90.0f,
                                  .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f };
 ```
 
-应用层（BAL）只拿逻辑实例名，调命名 API：
+应用层（App）只拿逻辑实例名，调命名 API：
 
 ```c
 #include "device_tree.h"
@@ -177,7 +177,7 @@ static inline bool control_handle_update(control_handle_t *h,
 #endif
 ```
 
-具体策略（如 `algo_pid.c`）填这张表；BAL 看到的是静态命名接口，多态被封装在控制层内部。
+具体策略（如 `algo_pid.c`）填这张表；App 看到的是静态命名接口，多态被封装在控制层内部。
 
 ---
 
@@ -238,7 +238,7 @@ wink_status_t device_tree_init_ultrasonics(void) {
 
 ## 形态 6：静态 Observer 模式（解耦事件通知）
 
-静态分发下**禁止**使用动态分配链表来注册观察者（Observer）。对于外设事件发生时通知上层业务（BAL），推荐使用编译期绑定的**静态回调**：
+静态分发下**禁止**使用动态分配链表来注册观察者（Observer）。对于外设事件发生时通知上层业务（App），推荐使用编译期绑定的**静态回调**：
 
 ### 驱动头文件 (例如 `dal_button.h`)
 
@@ -263,7 +263,7 @@ extern void dal_button_on_press(dal_button_t *dev);
 
 ```c
 #include "dal_button.h"
-#include "bal_control.h"
+#include "app_control.h"
 
 extern dal_button_t emergency_stop_btn;
 extern dal_button_t mode_switch_btn;
@@ -271,9 +271,9 @@ extern dal_button_t mode_switch_btn;
 /* 静态分发的回调接口：用 if-else / switch 代替动态回调指针 */
 void dal_button_on_press(dal_button_t *dev) {
     if (dev == &emergency_stop_btn) {
-        bal_emergency_halt(); // 静态直调
+        app_emergency_halt(); // 静态直调
     } else if (dev == &mode_switch_btn) {
-        bal_toggle_work_mode();
+        app_toggle_work_mode();
     }
 }
 ```

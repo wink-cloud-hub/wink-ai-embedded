@@ -83,7 +83,7 @@
 | 文档 | 内容 |
 |------|------|
 | [README.md](./static-dispatch/README.md) | 治理声明 + SSOT + 代码现状 vs 目标偏差框 |
-| [architecture.md](./static-dispatch/architecture.md) | BAL→DAL→PAL→Targets 分层 + 4 种静态分发形态 |
+| [architecture.md](./static-dispatch/architecture.md) | App/BAL→DAL→PAL→Targets 分层 + 4 种静态分发形态 |
 | [templates.md](./static-dispatch/templates.md) | POD 器件 / device_tree codegen / 平台文件切换 / control_algo 局部 vtable 模板 |
 | [pitfalls.md](./static-dispatch/pitfalls.md) | 命名漂移 / 签名冲突 / SIMULATION 过宽 / wasm 假锁 |
 | [evolution.md](./static-dispatch/evolution.md) | bool/float→wink_status_t 迁移 + 局部多态化退出路径 |

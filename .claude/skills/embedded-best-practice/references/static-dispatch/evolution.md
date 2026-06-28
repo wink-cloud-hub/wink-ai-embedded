@@ -168,14 +168,14 @@ typedef struct {
 
 **回退时的约束（不可破坏）：**
 
-1. **BAL 层静态 API 契约不变**——上层/AI 生成看到的仍是 `dal_ultrasonic_read(&dev, &d)`。
+1. **App/BAL 静态 API 契约不变**——上层/AI 生成看到的仍是 `dal_ultrasonic_read(&dev, &d)`。
 2. **多态封装在 DAL 该器件内部**，两种合法手法：
    - **微型 ops 虚表**：在 `dal_ultrasonic.c` 内部定义一张 `static const struct { ... } ops`，
      按实例配置字段（如 `sensor_type`）选择；**仅此一处**间接调用。
    - **静态 `switch-case`**：按 `dev->sensor_type` 在 API 实现内分发到具体硬件路径。
 
 ```c
-/* 受控的局部多态：封装在 dal_ultrasonic.c 内部，BAL 无感知 */
+/* 受控的局部多态：封装在 dal_ultrasonic.c 内部，App/BAL 无感知 */
 wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *out)
 {
     switch (dev->sensor_type) {
@@ -186,7 +186,7 @@ wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *out)
 }
 ```
 
-> 关键：上层（BAL / AI 生成 / 仿真）**完全不知道**内部多态。这既保留了静态命名的生成
+> 关键：上层（App / BAL / 仿真）**完全不知道**内部多态。这既保留了静态命名的生成
 > 友好性，又在局部获得了运行时灵活性。器件抽象**整体**仍是 POD + 命名 API。
 
 ---
@@ -211,4 +211,4 @@ wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *out)
 - [ ] 无 `if (status)` 残留？
 - [ ] `js_sim_*` 签名统一到 Registry？
 - [ ] `#ifdef SIMULATION` 已收窄到最低物理信号层？
-- [ ] 任何引入的 vtable 都封装在模块内部、BAL 无感知？
+- [ ] 任何引入的 vtable 都封装在模块内部、App/BAL 无感知？

@@ -47,7 +47,7 @@ wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *distance_cm);
     *   `Yes (参数说明)`：说明最大阻塞时间、是否带有超时参数。对于硬实时任务，AI 只能选用 `Blocking: No` 的 API。
 *   **Thread-safe (线程安全性)**：
     *   `Yes`：内部具有互斥保护，可在多个 RTOS 任务间无锁调用。
-    *   `No`：无内部锁保护，并发调用必须由上层（BAL）通过外部互斥锁进行同步。
+    *   `No`：无内部锁保护，并发调用必须由上层（App/BAL）通过外部互斥锁进行同步。
 *   **ISR-safe (中断安全)**：
     *   `Yes`：可以在硬件中断服务函数（ISR）中直接调用。这意味着函数内部绝对不能调用任何会引起 RTOS 上下文切换或睡眠的锁（如 `pal_mutex_lock`）或 `pal_delay`。
     *   `No`：绝对禁止在 ISR 中调用，否则会导致内核奔溃或死锁。

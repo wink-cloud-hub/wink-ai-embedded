@@ -79,7 +79,7 @@ wink-micro-os 的**实际代码尚处于 ADR-0001 / ADR-0004 落地前**的形�
 
 | 文档 | 内容 |
 |------|------|
-| [architecture.md](./architecture.md) | BAL→DAL→PAL→Targets 分层 + 4 种静态分发形态及 Codegen 拓扑排序规则 |
+| [architecture.md](./architecture.md) | App/BAL→DAL→PAL→Targets 分层 + 4 种静态分发形态及 Codegen 拓扑排序规则 |
 | [templates.md](./templates.md) | DAL POD 器件 / device_tree codegen / X-Macros 批量生成 / 静态 Observer |
 | [patterns.md](./patterns.md) | **[NEW]** 静态分发范式下的设计模式（状态机、表驱动、策略、观察者、单例、适配器）+ 反模式黑名单 |
 | [contracts.md](./contracts.md) | [NEW] DAL / PAL 接口契约规范模板 (Blocking/ISR-safe/线程安全) |
