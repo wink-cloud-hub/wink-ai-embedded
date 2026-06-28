@@ -12,6 +12,7 @@
 #include "freertos/task.h"
 #include "esp_system.h"
 #include "esp_heap_caps.h"
+#include "nvs_flash.h"      /* ADR-0008：device tree 覆写 blob 的 NVS 存储依赖 */
 #include "wink_runtime.h"
 #include "wink_status.h"
 #include "wink_trace.h"
@@ -60,6 +61,16 @@ static void wink_runtime_task(void *arg) {
  */
 void app_main(void) {
     printf("=== Wink-Micro-OS ESP32 Firmware ===\n");
+
+    /* ADR-0008：NVS 初始化（device tree 覆写 blob 的持久存储依赖）。
+     * 标准 erase-on-corrupt：NVS 无空闲页/版本不符时擦除重建。
+     * 须在创建 runtime task（含 app_init → device_tree_apply_flash_config → pal_storage_read）之前。 */
+    esp_err_t nvs_err = nvs_flash_init();
+    if (nvs_err == ESP_ERR_NVS_NO_FREE_PAGES || nvs_err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        nvs_err = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(nvs_err);
 
     /* 启动 Wink Runtime 任务 */
     BaseType_t ret = xTaskCreate(
