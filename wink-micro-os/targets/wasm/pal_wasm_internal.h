@@ -17,6 +17,7 @@
 #define PAL_WASM_INTERNAL_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "wink_sim_physical.h"
 
 #ifndef PAL_WASM_INTERRUPT_QUEUE_SIZE
@@ -45,6 +46,31 @@ void pal_wasm_dispatch_pending_interrupts(void);
  * @param us 步进微秒数
  */
 void pal_wasm_advance_virtual_clock(uint64_t us);
+
+/**
+ * @brief 检查时钟溢出早期警告是否已触发（Wave2 P1 Task 6）。
+ *
+ * SSOT：内部状态 s_clock_warning_fired，跨越 CLOCK_WARNING_THRESHOLD
+ * （UINT64 中点，约 292 年微秒）后置位并保持。JS Worker 每个 tick 边界
+ * 轮询本函数，首次返回 true 时输出 console.warn 提示用户重置仿真环境。
+ *
+ * 幂等：触发后重复读不会产生副作用，也不会自动清除——清除唯一方式是
+ * 重启 wasm 实例（BSS 重新零初始化）。
+ *
+ * @return true 时钟已超过 50% 量程；false 未触发。
+ */
+bool pal_wasm_is_clock_warning_fired(void);
+
+/**
+ * @brief 获取当前虚拟时钟值（Wave2 P1 Task 6，调试/告警用途）。
+ *
+ * 与 pal_get_us() 返回同一 SSOT 状态；语义上是 Task 6 警告链路上专用
+ * 的导出符号（与 pal_get_us 同源但命名更明确，便于 JS 侧 cwrap 时区分
+ * 用途）。生产业务代码请使用 pal_get_us()。
+ *
+ * @return 当前虚拟时钟微秒数
+ */
+uint64_t pal_wasm_get_virtual_clock_us(void);
 
 /* ─────────────────────────────────────────────────────────
  * 物理退化引擎内部 API（ADR-0009 Wave 2）。pal_hal_wasm.c 的 GPIO/I2C
