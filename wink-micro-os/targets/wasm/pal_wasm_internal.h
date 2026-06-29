@@ -16,6 +16,9 @@
 #ifndef PAL_WASM_INTERNAL_H
 #define PAL_WASM_INTERNAL_H
 
+#include <stdint.h>
+#include "wink_sim_physical.h"
+
 #ifndef PAL_WASM_INTERRUPT_QUEUE_SIZE
 #define PAL_WASM_INTERRUPT_QUEUE_SIZE 16
 #endif
@@ -42,5 +45,22 @@ void pal_wasm_dispatch_pending_interrupts(void);
  * @param us 步进微秒数
  */
 void pal_wasm_advance_virtual_clock(uint64_t us);
+
+/* ─────────────────────────────────────────────────────────
+ * 物理退化引擎内部 API（ADR-0009 Wave 2）。pal_hal_wasm.c 的 GPIO/I2C
+ * 中间件层（Task 3）通过这些 helpers 读取静态故障配置 + per-pin ctx。
+ *
+ * 边界保证：pin >= WASM_SIM_MAX_PINS (=128) 时 get_debounce_ctx 返回
+ * NULL，HAL 层须把 NULL 当作"该 pin 无退化"处理。
+ *
+ * PRNG 推进协议：HAL 层调用 pal_wasm_get_prng_state() 取当前种子，
+ * 传给算法库 (wink_phys_bus_drop 等)，算法返回时种子已被推进，HAL
+ * 层用 pal_wasm_advance_prng_state() 写回。
+ * ───────────────────────────────────────────────────────── */
+uint32_t pal_wasm_get_bounce_us(void);
+uint16_t pal_wasm_get_i2c_drop_permil(void);
+uint32_t pal_wasm_get_prng_state(void);
+void     pal_wasm_advance_prng_state(uint32_t new_state);
+wink_phys_debounce_ctx_t *pal_wasm_get_debounce_ctx(uint16_t pin);
 
 #endif /* PAL_WASM_INTERNAL_H */

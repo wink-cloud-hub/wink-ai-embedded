@@ -64,6 +64,29 @@ extern uint64_t js_pal_get_us(void);
 extern void     js_sim_trigger_ultrasonic(uint16_t trig_pin);
 extern uint32_t js_sim_measure_echo_pulse_us(uint16_t trig_pin);
 
+/* ---- WASM 退化引擎导出（ADR-0009 Wave 2，C → JS Worker）----
+ *
+ * 这些符号由 pal_wasm_physical.c / pal_osal_wasm.c 定义并以
+ * EMSCRIPTEN_KEEPALIVE 标注，链接器会把它们暴露到 Module exports，
+ * JS Worker 通过 cwrap/ccall 调用。
+ *
+ * 类型契约（CMake `-s WASM_BIGINT=1`）：
+ *   - uint64_t   ↔ JS bigint（pal_wasm_advance_virtual_clock 的 us 参数）
+ *   - uint32_t / uint16_t ↔ JS number（≤53 位安全）
+ *   - float      ↔ JS number（IEEE754 双精度兼容）
+ *
+ * 这里仅做声明用于跨翻译单元一致性；真实可见性来自 KEEPALIVE。 */
+extern void     pal_wasm_advance_virtual_clock(uint64_t us);
+extern void     pal_wasm_set_bounce_us(uint32_t us);
+extern void     pal_wasm_set_warmup_us(uint32_t us);
+extern void     pal_wasm_set_sample_interval_us(uint32_t us);
+extern void     pal_wasm_set_adc_noise_v(float v);
+extern void     pal_wasm_set_rc_tau_s(float s);
+extern void     pal_wasm_set_i2c_drop_permil(uint16_t permil);
+extern void     pal_wasm_set_prng_seed(uint32_t seed);
+extern uint32_t pal_wasm_get_prng_state(void);
+extern void     pal_wasm_reset_physical(void);
+
 #ifdef __cplusplus
 }
 #endif
