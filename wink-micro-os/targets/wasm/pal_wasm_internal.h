@@ -140,4 +140,40 @@ uint32_t pal_wasm_get_fault_log_count(void);
  *  index >= count 时返回 false 且 *out_event 不被写入。 */
 bool pal_wasm_get_fault_event(uint32_t index, wasm_fault_event_t *out_event);
 
+/* ─────────────────────────────────────────────────────────
+ * 功耗模型接口（Wave3 预埋；ADR-0009 Wave 2 Task 9）
+ * ─────────────────────────────────────────────────────────
+ * 接口已定义，但当前实现为 stub（无真实计算）。
+ *
+ * 目的：避免未来 Wave3 做功耗-时序联合仿真时需要大规模重构现有故障注入
+ *      管线。提前锁定 ABI（类型 + 符号）后，Wave3 只需在 pal_wasm_physical.c
+ *      内点亮真实积分逻辑，JS Worker / device-tree / Workbench 上层调用
+ *      无需任何 churn。
+ *
+ * 字段语义（载体型字段名，Wave3 实施时直接读取）：
+ *   active_current_ua    pin 处于驱动有源态时的电流（uA）
+ *   leakage_current_ua   pin 静态时的漏电流（uA）
+ *   transition_energy_nj 单次电平跳变消耗的等效能量（nJ）
+ *
+ * 边界约定：pin >= WASM_SIM_MAX_PINS 时 set_pin_power_model 返回
+ *          WINK_ERR_INVALID_ARG，与 debounce ctx 越界处理对称（§3.3 plan）。
+ * model == NULL 时同样返回 WINK_ERR_INVALID_ARG。
+ *
+ * 当前 stub 行为：set 不存储任何状态；get_total_energy_mj 始终返回 0。
+ */
+
+/** Pin 级功耗模型参数 */
+typedef struct wasm_pin_power_model_t {
+    uint32_t active_current_ua;     /* 有源时电流 (uA) */
+    uint32_t leakage_current_ua;    /* 漏电流 (uA) */
+    uint32_t transition_energy_nj;  /* 单次跳变能量 (nJ) */
+} wasm_pin_power_model_t;
+
+/** 设置指定 pin 的功耗模型（stub：返回 OK 但不存储参数） */
+wink_status_t pal_wasm_set_pin_power_model(uint8_t pin,
+                                           const wasm_pin_power_model_t *model);
+
+/** 获取仿真启动以来的总能耗（stub：始终返回 0） */
+uint64_t pal_wasm_get_total_energy_mj(void);
+
 #endif /* PAL_WASM_INTERNAL_H */

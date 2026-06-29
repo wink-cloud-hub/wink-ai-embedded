@@ -185,6 +185,27 @@ extern uint8_t  pal_wasm_fault_event_get_type(uint32_t index);
 extern uint16_t pal_wasm_fault_event_get_pin_or_bus(uint32_t index);
 extern uint32_t pal_wasm_fault_event_get_sequence(uint32_t index);
 
+/* ---- 功耗模型接口（Wave3 stub；ADR-0009 Wave 2 Task 9）----
+ *
+ * 当前为预埋占位：set_pin_power_model 校验参数后返回 WINK_OK 但不存储；
+ * get_total_energy_mj 始终返回 0。语义详见 pal_wasm_internal.h。
+ *
+ * 类型契约：
+ *   - wink_status_t 是 int 枚举 → JS number。
+ *   - uint64_t 总能耗（mJ） ↔ JS bigint（WASM_BIGINT=1）。
+ *   - wasm_pin_power_model_t 是仅含 3 个 uint32 的 POD struct，跨语言传递
+ *     由 JS 在 wasm 堆 malloc 后逐字段写入再传指针偏移（标准 wasm/JS
+ *     struct passing 模式）。这里前向声明即可，JS 永远不直接看到完整定义。
+ *
+ * 加在此处而非 #include pal_wasm_internal.h 是为了保持 wasm_bridge.h 作为
+ * "JS 看到的所有 C 符号 SSOT" 的边界：内部头只被 wasm target *.c 引用，
+ * 桥头独立地把对外契约暴露给非 wasm-internal 的代码（测试、文档生成）。 */
+typedef struct wasm_pin_power_model_t wasm_pin_power_model_t;  /* 见 pal_wasm_internal.h */
+#include "wink_status.h"   /* wink_status_t */
+extern wink_status_t pal_wasm_set_pin_power_model(uint8_t pin,
+                                                  const wasm_pin_power_model_t *model);
+extern uint64_t      pal_wasm_get_total_energy_mj(void);
+
 #ifdef __cplusplus
 }
 #endif
