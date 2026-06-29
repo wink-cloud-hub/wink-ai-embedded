@@ -166,6 +166,25 @@ extern void     pal_wasm_reset_physical(void);
 extern bool     pal_wasm_is_clock_warning_fired(void);
 extern uint64_t pal_wasm_get_virtual_clock_us(void);
 
+/* ---- 故障审计日志导出（Wave2 Task 8）----
+ *
+ * pal_wasm_physical.c 维护一个 256 条环形缓冲区，记录所有物理退化事件
+ * （GPIO 抖动、I2C 丢包等）。CI 测试失败后由 JS Worker 通过 cwrap 这些
+ * 导出符号读回日志，重建 "哪个故障在哪个时间点触发" 的因果链。
+ *
+ * 字段级访问器避免 struct 跨语言传递的 alignment/padding 风险：JS 先调
+ * pal_wasm_get_fault_log_count() 取总数，再对每个 index ∈ [0, count) 逐
+ * 字段读出（timestamp 用 BigInt，其余 number）。
+ *
+ * 越界 index 时所有字段 getter 返回 0；调用方必须先用 count 做边界判断。
+ * 详细语义见 pal_wasm_internal.h。 */
+extern uint32_t pal_wasm_get_fault_log_count(void);
+extern void     pal_wasm_reset_fault_log(void);
+extern uint64_t pal_wasm_fault_event_get_timestamp(uint32_t index);
+extern uint8_t  pal_wasm_fault_event_get_type(uint32_t index);
+extern uint16_t pal_wasm_fault_event_get_pin_or_bus(uint32_t index);
+extern uint32_t pal_wasm_fault_event_get_sequence(uint32_t index);
+
 #ifdef __cplusplus
 }
 #endif
