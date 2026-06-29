@@ -13,8 +13,9 @@
  * - GPIO/PWM/I2C hardware drivers implemented
  * - Ultrasonic pulse capture: pal_gpio_pulse_in still uses busy-wait fallback;
  *   RMT hardware capture in pal_hal_esp32_rmt.c
- * - PWM pin routing via board_config.c (pal_pwm_pin_map strong definition;
- *   this TU provides weak default); I2C SDA/SCL still fixed defaults (FIXME)
+ * - PWM/I2C pin routing via board_config.c (pal_pwm_pin_map / pal_i2c_pin_map
+ *   strong definitions; this TU provides weak defaults so MVP samples without
+ *   a board_config.c still link and run with sensible default pins).
  */
 #include "pal_hal.h"
 #include "pal_osal.h"       /* pal_get_us() (used in pal_gpio_pulse_in busy-wait) */
@@ -205,6 +206,13 @@ wink_status_t pal_gpio_disable_interrupt(uint16_t pin) {
 /* 板级路由弱默认：无 board_config.c 覆盖时使用，避免链接缺符号。
  * 强定义由 samples/<app>/board_config.c 提供。*/
 __attribute__((weak)) const uint16_t pal_pwm_pin_map[PAL_PWM_CHANNELS] = {2, 4, 5, 18, 19, 21, 22, 23};
+
+/* I2C 引脚弱默认：无 board_config.c 强覆盖时使用。
+ * I2C0: SDA=21, SCL=22; I2C1: SDA=33, SCL=32 */
+__attribute__((weak)) const uint16_t pal_i2c_pin_map[PAL_I2C_PORTS][2] = {
+    {21, 22},
+    {33, 32}
+};
 #endif
 
 /* owner 字符串常量：claim/release 必须逐字一致，否则 release 静默 no-op。*/
@@ -296,11 +304,10 @@ void pal_pwm_deinit(uint8_t channel) {
  * I2C 实现（v5.x / v6.x 双版本兼容）
  * ───────────────────────────────────────────────────────── */
 
-#define I2C_PORTS            2
 #define I2C_MAX_DEVICES      4    /* MVP：每总线最多 4 个设备 */
 #define I2C_TRANSFER_TIMEOUT_MS  1000
 
-static bool s_i2c_initialized[I2C_PORTS] = {false};
+static bool s_i2c_initialized[PAL_I2C_PORTS] = {false};
 
 #if defined(ESP_PLATFORM)
 #include "freertos/FreeRTOS.h"
@@ -312,14 +319,14 @@ static StaticSemaphore_t s_i2c_mutex_buf;
 
 #if WINK_I2C_USE_V6_API
 /* v6.x：总线-设备二级模型 */
-static i2c_master_bus_handle_t s_i2c_bus[I2C_PORTS] = {NULL};
+static i2c_master_bus_handle_t s_i2c_bus[PAL_I2C_PORTS] = {NULL};
 
 typedef struct {
     i2c_master_dev_handle_t handle;
     uint16_t                dev_addr;    /* 0 = slot 空闲 */
 } i2c_dev_cache_entry_t;
 
-static i2c_dev_cache_entry_t s_i2c_dev_cache[I2C_PORTS][I2C_MAX_DEVICES] = {
+static i2c_dev_cache_entry_t s_i2c_dev_cache[PAL_I2C_PORTS][I2C_MAX_DEVICES] = {
     {{NULL, 0}, {NULL, 0}, {NULL, 0}, {NULL, 0}},
     {{NULL, 0}, {NULL, 0}, {NULL, 0}, {NULL, 0}}
 };
@@ -437,7 +444,7 @@ static inline wink_status_t pal_i2c_map_esp_err(esp_err_t esp_err)
 wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
                       const uint8_t *write_buf, uint32_t write_len,
                       uint8_t *read_buf, uint32_t read_len) {
-    if (port >= I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
+    if (port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
 
 #if defined(ESP_PLATFORM)
     /* 懒创建互斥锁 */
@@ -452,17 +459,14 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
     }
 
     if (!s_i2c_initialized[port]) {
-        /* FIXME: MVP 阶段固定 SDA/SCL 映射
-         * I2C0: SDA=21, SCL=22; I2C1: SDA=33, SCL=32 */
-        static const int i2c_sda_map[I2C_PORTS] = {21, 33};
-        static const int i2c_scl_map[I2C_PORTS] = {22, 32};
-
+        /* SDA/SCL 物理路由来自 pal_i2c_pin_map（board_config.c 强定义，
+         * 缺省时回落至本 TU 的弱默认值）。*/
 #if WINK_I2C_USE_V6_API
         /* v6.x：总线初始化 */
         i2c_master_bus_config_t bus_cfg = {
             .i2c_port = (i2c_port_t)port,
-            .sda_io_num = i2c_sda_map[port],
-            .scl_io_num = i2c_scl_map[port],
+            .sda_io_num = pal_i2c_pin_map[port][0],
+            .scl_io_num = pal_i2c_pin_map[port][1],
             .clk_source = I2C_CLK_SRC_DEFAULT,
             .glitch_ignore_cnt = 7,
             .flags.enable_internal_pullup = true,
@@ -478,8 +482,8 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
         /* v5.x：旧 API 初始化 */
         i2c_config_t cfg = {
             .mode = I2C_MODE_MASTER,
-            .sda_io_num = i2c_sda_map[port],
-            .scl_io_num = i2c_scl_map[port],
+            .sda_io_num = pal_i2c_pin_map[port][0],
+            .scl_io_num = pal_i2c_pin_map[port][1],
             .sda_pullup_en = GPIO_PULLUP_ENABLE,
             .scl_pullup_en = GPIO_PULLUP_ENABLE,
             .master.clk_speed = 400000,
