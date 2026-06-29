@@ -196,8 +196,10 @@ uint64_t pal_wasm_get_total_energy_mj(void);
  *   - get_domain_config(domain_id) 对所有合法域都返回同一份全局 s_faults，
  *     这是设计意图——保证当前行为零变化，Wave3 替换为 per-domain 数组时
  *     现有调用点无需改动。
- *   - 所有域默认 armed=true（GLOBAL 域永远 armed，下游中间件可忽略该字段
- *     直到 Wave3 真正用上）。
+ *   - 首次调用 pal_wasm_reset_physical() 之后，所有域 armed=true（GLOBAL 域
+ *     永远 armed，下游中间件可忽略该字段直到 Wave3 真正用上）。
+ *   - 注意：BSS 零初始化状态下 armed=false；JS Worker 必须在 INIT 阶段
+ *     调用 pal_wasm_reset_physical() 后再读取域状态。
  *   - trigger_count 永远是 0，Wave3 在故障注入分支累加。
  *
  * 边界约定（与 power_model_stub / debounce_ctx 对称）：
