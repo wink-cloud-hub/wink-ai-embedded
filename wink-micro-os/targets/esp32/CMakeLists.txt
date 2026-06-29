@@ -24,9 +24,10 @@ if(ESP_PLATFORM)
         SRCS
             # ESP32 PAL 实现
             pal_hal_esp32.c
+            pal_hal_esp32_rmt.c
+            pal_hal_ultrasonic.c
             pal_osal_esp32.c
             pal_resource_esp32.c
-            pal_hal_esp32_rmt.c
             pal_storage_esp32.c
             ${WINK_MICRO_OS_ROOT}/pal/src/pal_pwm_router.c
             ${WINK_MICRO_OS_ROOT}/pal/src/wink_dev_config.c
@@ -85,9 +86,10 @@ elseif(TARGET_PLATFORM STREQUAL "esp32")
     # 非 ESP-IDF 环境：仅声明源文件（供静态分析）
     set(ESP32_PAL_SOURCES
         pal_hal_esp32.c
+        pal_hal_esp32_rmt.c
+        pal_hal_ultrasonic.c
         pal_osal_esp32.c
         pal_resource_esp32.c
-        pal_hal_esp32_rmt.c
         pal_storage_esp32.c
         ${WINK_MICRO_OS_ROOT}/pal/src/pal_pwm_router.c
         ${WINK_MICRO_OS_ROOT}/pal/src/wink_dev_config.c
