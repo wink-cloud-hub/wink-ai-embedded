@@ -123,6 +123,12 @@ bool host_gpio_read_debounced(uint16_t pin, bool *out_level) {
         if (s_gpio_ideal[i].set && s_gpio_ideal[i].pin == pin) {
             *out_level = wink_phys_debounce_step(&s_gpio_ideal[i].ctx, s_gpio_ideal[i].ideal,
                                                  s_time_us, s_faults.bounce_us);
+            /* SIM_TRACE：host 层补充 pin 信息（算法层 pin=-1） */
+#if defined(SIM_TRACE_DEBOUNCE) && SIM_TRACE_DEBOUNCE
+            printf("[SIM_HOST] pin=%d: ideal=%d debounced=%d stable=%d in_bounce=%d\n",
+                   pin, s_gpio_ideal[i].ideal, *out_level,
+                   s_gpio_ideal[i].ctx.stable_level, s_gpio_ideal[i].ctx.in_bounce);
+#endif
             return true;
         }
     }
