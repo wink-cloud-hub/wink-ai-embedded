@@ -95,4 +95,49 @@ uint32_t pal_wasm_get_prng_state(void);
 void     pal_wasm_advance_prng_state(uint32_t new_state);
 wink_phys_debounce_ctx_t *pal_wasm_get_debounce_ctx(uint16_t pin);
 
+/* ─────────────────────────────────────────────────────────
+ * 故障审计日志系统（ADR-0009 Wave 2 Task 8）
+ * ─────────────────────────────────────────────────────────
+ * 记录所有物理退化事件（GPIO 抖动、I2C 丢包等）到固定容量环形缓冲区，
+ * 用于 CI 测试失败时的因果链追溯（"哪个故障在哪个时间点触发"）。
+ *
+ * 容量：WASM_FAULT_LOG_SIZE 条，超出后最早条目被覆盖（FIFO 环形语义）。
+ * 序号：每条事件携带全局单调递增 sequence，CI 侧用作 "since last check"
+ *      增量游标，不会被覆盖事件而回退（即使条目被环回覆盖）。
+ * 时钟：timestamp_us 来自 pal_wasm_get_virtual_clock_us()，与同源算法
+ *      golden vector 时基一致。
+ *
+ * 零退化默认路径：未启用故障注入时 pal_wasm_log_fault 不会被调用，热路径
+ * 零开销。HAL 中间件仅在退化分支触发后埋点（见 pal_hal_wasm.c）。
+ */
+#define WASM_FAULT_LOG_SIZE 256
+
+typedef enum {
+    FAULT_TYPE_GPIO_BOUNCE = 1,    /* 一次抖动窗口被触发 */
+    FAULT_TYPE_I2C_DROP    = 2,    /* 一次 I2C 传输被丢弃 */
+    FAULT_TYPE_I2C_NOISE   = 3,    /* 预留：未来 I2C 噪声注入 */
+    FAULT_TYPE_CLOCK_DRIFT = 4,    /* 预留：未来时钟漂移注入 */
+} wasm_fault_type_t;
+
+/* 故障事件记录。字段紧凑排列以减小 256 条总占用（~16B × 256 = 4KB）。 */
+typedef struct {
+    uint64_t timestamp_us;    /* 故障发生时的虚拟时钟（与 pal_get_us 同源） */
+    uint8_t  fault_type;      /* wasm_fault_type_t 枚举值 */
+    uint16_t pin_or_bus;      /* GPIO pin 或 I2C 总线号 */
+    uint32_t sequence;        /* 全局单调递增序号（首条 = 1） */
+} wasm_fault_event_t;
+
+/** 重置故障日志（测试间隔离用）。 */
+void pal_wasm_reset_fault_log(void);
+
+/** 追加一条故障事件到环形缓冲区。HAL 中间件在退化分支调用。 */
+void pal_wasm_log_fault(uint8_t fault_type, uint16_t pin_or_bus);
+
+/** 返回当前已记录的事件数（环回后保持在 WASM_FAULT_LOG_SIZE）。 */
+uint32_t pal_wasm_get_fault_log_count(void);
+
+/** 按"从最旧到最新"的顺序读取索引 index 的事件。
+ *  index >= count 时返回 false 且 *out_event 不被写入。 */
+bool pal_wasm_get_fault_event(uint32_t index, wasm_fault_event_t *out_event);
+
 #endif /* PAL_WASM_INTERNAL_H */

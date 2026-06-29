@@ -84,6 +84,22 @@ static wink_phys_debounce_ctx_t s_debounce_ctx[WASM_SIM_MAX_PINS];
 static uint32_t s_prng_state = 1u;
 
 /* ─────────────────────────────────────────────────────────
+ * Fault audit log (ADR-0009 Wave 2 Task 8)
+ * ─────────────────────────────────────────────────────────
+ * Ring buffer of degradation events for CI causal-chain replay. All state
+ * is BSS-zero on startup → no constructor. See pal_wasm_internal.h for
+ * field semantics. The 4 KB cost (256 × 16B) is amortised at startup; the
+ * design alternative (dynamic alloc) was rejected per §3.2 zero-dynamic-mem.
+ *
+ * Concurrency: wasm is single-threaded under Asyncify so no lock is needed.
+ * If this ever migrates to wasm-threads, gate writes on a guard mutex.
+ */
+static wasm_fault_event_t s_fault_log[WASM_FAULT_LOG_SIZE];
+static uint32_t s_fault_log_head;    /* next write slot (mod WASM_FAULT_LOG_SIZE) */
+static uint32_t s_fault_log_count;   /* total recorded, clamped at WASM_FAULT_LOG_SIZE */
+static uint32_t s_fault_sequence;    /* global monotonically increasing seq, never wraps in practice */
+
+/* ─────────────────────────────────────────────────────────
  * Fault config setters — exported to JS Worker
  * ─────────────────────────────────────────────────────────
  * One setter per field. JSON deserialisation lives in WasmPhysicalBridge.ts;
@@ -163,10 +179,105 @@ wink_phys_debounce_ctx_t *pal_wasm_get_debounce_ctx(uint16_t pin) {
  *   - faults to all-zero (== ideal == no degradation)
  *   - every per-pin debounce ctx to fresh state
  *   - PRNG seed to the default of 1 (matches BSS init)
+ *   - fault audit log to empty (delegates to pal_wasm_reset_fault_log)
  */
 EMSCRIPTEN_KEEPALIVE
 void pal_wasm_reset_physical(void) {
     memset(&s_faults, 0, sizeof(s_faults));
     memset(s_debounce_ctx, 0, sizeof(s_debounce_ctx));
     s_prng_state = 1u;
+    pal_wasm_reset_fault_log();
+}
+
+/* ─────────────────────────────────────────────────────────
+ * Fault audit log implementation (ADR-0009 Wave 2 Task 8)
+ * ─────────────────────────────────────────────────────────
+ * The "from-oldest-to-newest" iteration order in pal_wasm_get_fault_event
+ * matters: CI replay reads the log forward in causal order, even after the
+ * ring has wrapped. The index math below maps a logical index ∈ [0, count)
+ * to the physical slot, accounting for both pre-wrap (count < SIZE, head ==
+ * count) and post-wrap (count == SIZE, head points to the oldest = next
+ * eviction slot) states.
+ *
+ * Sequence numbers are independent of ring eviction: an event evicted from
+ * the ring still leaves its sequence baseline visible in surviving entries,
+ * so CI can detect "the ring overflowed since I last looked" by comparing
+ * the lowest visible sequence to its previous high-water mark.
+ */
+EMSCRIPTEN_KEEPALIVE
+void pal_wasm_reset_fault_log(void) {
+    memset(s_fault_log, 0, sizeof(s_fault_log));
+    s_fault_log_head = 0;
+    s_fault_log_count = 0;
+    s_fault_sequence = 0;
+}
+
+void pal_wasm_log_fault(uint8_t fault_type, uint16_t pin_or_bus) {
+    wasm_fault_event_t *evt = &s_fault_log[s_fault_log_head];
+
+    evt->timestamp_us = pal_wasm_get_virtual_clock_us();
+    evt->fault_type   = fault_type;
+    evt->pin_or_bus   = pin_or_bus;
+    evt->sequence     = ++s_fault_sequence;
+
+    s_fault_log_head = (s_fault_log_head + 1u) % WASM_FAULT_LOG_SIZE;
+    if (s_fault_log_count < WASM_FAULT_LOG_SIZE) {
+        s_fault_log_count++;
+    }
+}
+
+EMSCRIPTEN_KEEPALIVE
+uint32_t pal_wasm_get_fault_log_count(void) {
+    return s_fault_log_count;
+}
+
+EMSCRIPTEN_KEEPALIVE
+bool pal_wasm_get_fault_event(uint32_t index, wasm_fault_event_t *out_event) {
+    if (out_event == NULL || index >= s_fault_log_count) {
+        return false;
+    }
+    /* Map logical (oldest-first) index → physical slot.
+     * Pre-wrap: head == count, oldest is at slot 0.
+     * Post-wrap: head points to the about-to-be-evicted (= oldest) slot. */
+    uint32_t oldest = (s_fault_log_head + WASM_FAULT_LOG_SIZE - s_fault_log_count)
+                       % WASM_FAULT_LOG_SIZE;
+    uint32_t actual_idx = (oldest + index) % WASM_FAULT_LOG_SIZE;
+    *out_event = s_fault_log[actual_idx];
+    return true;
+}
+
+/* Field-level accessors for the JS Worker.
+ *
+ * Rationale: cwrap'ing struct returns across the wasm/JS boundary is
+ * Emscripten-specific and brittle (alignment, padding, BigInt-vs-number
+ * for the 64-bit timestamp). Exposing one accessor per field is a small,
+ * stable ABI that the worker calls per cell. Performance is fine: CI
+ * post-mortem reads are not on the hot path.
+ *
+ * On out-of-range index every getter returns a sentinel zero — never reads
+ * uninitialised memory. The "is this slot valid" question is answered by
+ * pal_wasm_get_fault_log_count(), which the worker calls once up front.
+ */
+EMSCRIPTEN_KEEPALIVE
+uint64_t pal_wasm_fault_event_get_timestamp(uint32_t index) {
+    wasm_fault_event_t evt;
+    return pal_wasm_get_fault_event(index, &evt) ? evt.timestamp_us : 0u;
+}
+
+EMSCRIPTEN_KEEPALIVE
+uint8_t pal_wasm_fault_event_get_type(uint32_t index) {
+    wasm_fault_event_t evt;
+    return pal_wasm_get_fault_event(index, &evt) ? evt.fault_type : 0u;
+}
+
+EMSCRIPTEN_KEEPALIVE
+uint16_t pal_wasm_fault_event_get_pin_or_bus(uint32_t index) {
+    wasm_fault_event_t evt;
+    return pal_wasm_get_fault_event(index, &evt) ? evt.pin_or_bus : 0u;
+}
+
+EMSCRIPTEN_KEEPALIVE
+uint32_t pal_wasm_fault_event_get_sequence(uint32_t index) {
+    wasm_fault_event_t evt;
+    return pal_wasm_get_fault_event(index, &evt) ? evt.sequence : 0u;
 }

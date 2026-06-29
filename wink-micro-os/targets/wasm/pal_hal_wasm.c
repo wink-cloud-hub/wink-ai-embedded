@@ -50,7 +50,16 @@ bool pal_gpio_read(uint16_t pin) {
         /* ctx 不可能为 NULL（pin 已过边界检查），但仍做防御式判断——
          * 假设 WASM_SIM_MAX_PINS 未来在两处不同步，至少不会崩。 */
         if (ctx != NULL) {
-            return wink_phys_debounce_step(ctx, ideal, pal_get_us(), bounce_us);
+            /* Task 8 故障审计：在进入抖动窗口的瞬间（in_bounce false→true）
+             * 记录一条审计事件。每次抖动 episode 只记录一次，避免把环形日
+             * 志被采样周期内的多次同 pin 调用刷爆。CI 侧由 sequence 与
+             * timestamp 区分独立的 bounce 触发。 */
+            bool was_in_bounce = ctx->in_bounce;
+            bool result = wink_phys_debounce_step(ctx, ideal, pal_get_us(), bounce_us);
+            if (!was_in_bounce && ctx->in_bounce) {
+                pal_wasm_log_fault(FAULT_TYPE_GPIO_BOUNCE, pin);
+            }
+            return result;
         }
     }
 
@@ -128,6 +137,9 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
         bool should_drop = wink_phys_bus_drop(drop_permil, &prng_state);
         pal_wasm_advance_prng_state(prng_state);  /* 回写推进后的状态 */
         if (should_drop) {
+            /* Task 8 故障审计：丢包瞬间记录审计事件，pin_or_bus 字段
+             * 复用为 I2C port，便于 CI 区分多总线场景。 */
+            pal_wasm_log_fault(FAULT_TYPE_I2C_DROP, port);
             return WINK_ERR_IO;  /* 模拟总线故障，驱动超时退回机制触发 */
         }
     }
