@@ -13,6 +13,10 @@ extern "C" {
 #define PAL_PWM_CHANNELS 8
 #endif
 
+#ifndef PAL_I2C_PORTS
+#define PAL_I2C_PORTS 2
+#endif
+
 typedef enum {
     PAL_GPIO_INPUT               = 0,
     PAL_GPIO_INPUT_PULLUP        = 1,
@@ -29,6 +33,9 @@ typedef enum {
 } pal_gpio_intr_t;
 
 extern const uint16_t pal_pwm_pin_map[PAL_PWM_CHANNELS];
+
+/* I2C 物理引脚路由：[port][0] = SDA, [port][1] = SCL */
+extern const uint16_t pal_i2c_pin_map[PAL_I2C_PORTS][2];
 
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_pwm_init(uint8_t channel, uint32_t frequency_hz);
