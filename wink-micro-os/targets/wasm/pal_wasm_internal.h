@@ -130,6 +130,11 @@ typedef struct {
 /** 重置故障日志（测试间隔离用）。 */
 void pal_wasm_reset_fault_log(void);
 
+/** 重置所有物理退化状态（faults / debounce ctx / PRNG / fault log / 故障域）。
+ *  测试间隔离与 JS 端 scenario reset 共用此入口。等价于把 BSS 拉回初始状态
+ *  但允许在中途调用，不依赖加载器重新零初始化。 */
+void pal_wasm_reset_physical(void);
+
 /** 追加一条故障事件到环形缓冲区。HAL 中间件在退化分支调用。 */
 void pal_wasm_log_fault(uint8_t fault_type, uint16_t pin_or_bus);
 
@@ -175,5 +180,64 @@ wink_status_t pal_wasm_set_pin_power_model(uint8_t pin,
 
 /** 获取仿真启动以来的总能耗（stub：始终返回 0） */
 uint64_t pal_wasm_get_total_energy_mj(void);
+
+/* ─────────────────────────────────────────────────────────
+ * 故障域隔离框架（Wave3 预埋；ADR-0009 Wave 2 Task 10）
+ * ─────────────────────────────────────────────────────────
+ * 当前所有故障注入共享单一全局配置（s_faults），爆炸半径不可控：调高
+ * I2C drop 率会立刻波及到 GPIO bounce/ADC noise 等不相关通路。Wave3
+ * 将把每条故障注入逻辑切换为按域查找独立配置，本任务先把 ABI 落地：
+ *
+ *   - 枚举锁定可寻址的域 ID 集合（GLOBAL + 几个常见外设/总线）。
+ *   - get_domain_config / arm_fault_domain / get_domain_trigger_count
+ *     三件套，足够 Wave3 中间件按域读配置 + 检查激活态 + 累计触发计数。
+ *
+ * 当前实现行为：
+ *   - get_domain_config(domain_id) 对所有合法域都返回同一份全局 s_faults，
+ *     这是设计意图——保证当前行为零变化，Wave3 替换为 per-domain 数组时
+ *     现有调用点无需改动。
+ *   - 所有域默认 armed=true（GLOBAL 域永远 armed，下游中间件可忽略该字段
+ *     直到 Wave3 真正用上）。
+ *   - trigger_count 永远是 0，Wave3 在故障注入分支累加。
+ *
+ * 边界约定（与 power_model_stub / debounce_ctx 对称）：
+ *   - domain_id >= WASM_FAULT_DOMAIN_COUNT → get_config 返回 NULL；
+ *     arm_fault_domain 返回 WINK_ERR_INVALID_ARG；trigger_count 返回 0。
+ *
+ * 故障审计日志（Task 8）与本框架的关系：审计日志记录"已发生的退化事件"，
+ * 域框架决定"哪些路径会触发退化"。两者正交：未来 Wave3 多域时，单条
+ * 审计事件仍只关联一个 (domain_id, pin_or_bus) 元组，日志格式无需扩展。
+ */
+
+typedef enum {
+    WASM_FAULT_DOMAIN_GLOBAL = 0,    /* 全局域（当前唯一实际生效的域） */
+    WASM_FAULT_DOMAIN_GPIO   = 1,    /* GPIO 域（Wave3 预留） */
+    WASM_FAULT_DOMAIN_I2C0   = 2,    /* I2C 总线 0（Wave3 预留） */
+    WASM_FAULT_DOMAIN_I2C1   = 3,    /* I2C 总线 1（Wave3 预留） */
+    WASM_FAULT_DOMAIN_SPI0   = 4,    /* SPI 总线 0（Wave3 预留） */
+    WASM_FAULT_DOMAIN_CLOCK  = 5,    /* 时钟域（Wave3 预留） */
+    WASM_FAULT_DOMAIN_COUNT          /* 数组容量哨兵；也是首个非法 ID */
+} wasm_fault_domain_id_t;
+
+/** 故障域运行时状态（每域一份；BSS 零初始化后由 reset_physical 设为默认值）。
+ *  config 字段当前为指针别名，Wave3 升级为每域独立的 wink_sim_faults_t 实例。 */
+typedef struct {
+    uint32_t domain_id;         /* 域 ID 自识别（== wasm_fault_domain_id_t） */
+    bool     armed;             /* 该域是否参与故障注入；当前所有域始终 true */
+    uint32_t trigger_count;     /* 已触发的退化事件累计计数（Wave3 累加） */
+} wasm_fault_domain_t;
+
+/** 获取指定故障域的配置指针（Wave3 预埋）。
+ *  当前所有合法域返回同一份全局 s_faults；越界返回 NULL。 */
+wink_sim_faults_t *pal_wasm_get_domain_config(uint32_t domain_id);
+
+/** 武装/解除指定故障域（Wave3 预埋）。
+ *  当前 GLOBAL 域始终 armed；其它域的 armed 标志只是占位，下游不读取。
+ *  domain_id 越界返回 WINK_ERR_INVALID_ARG。 */
+wink_status_t pal_wasm_arm_fault_domain(uint32_t domain_id, bool armed);
+
+/** 获取指定故障域的累计触发计数（Wave3 预埋）。
+ *  当前永远返回 0；越界亦返回 0（sentinel，不会读未初始化内存）。 */
+uint32_t pal_wasm_get_domain_trigger_count(uint32_t domain_id);
 
 #endif /* PAL_WASM_INTERNAL_H */
