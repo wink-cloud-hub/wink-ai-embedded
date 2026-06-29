@@ -53,10 +53,16 @@ void pal_wasm_advance_virtual_clock(uint64_t us);
  * 边界保证：pin >= WASM_SIM_MAX_PINS (=128) 时 get_debounce_ctx 返回
  * NULL，HAL 层须把 NULL 当作"该 pin 无退化"处理。
  *
+ * WASM_SIM_MAX_PINS 在此头公开（而非藏于 pal_wasm_physical.c），便于 HAL
+ * 中间件做前置边界检查 → 越界 pin 直接返回低电平/错误，避免给 JS 桥
+ * 传越界值（防御深度，§3.3 plan 注释）。
+ *
  * PRNG 推进协议：HAL 层调用 pal_wasm_get_prng_state() 取当前种子，
  * 传给算法库 (wink_phys_bus_drop 等)，算法返回时种子已被推进，HAL
  * 层用 pal_wasm_advance_prng_state() 写回。
  * ───────────────────────────────────────────────────────── */
+#define WASM_SIM_MAX_PINS 128
+
 uint32_t pal_wasm_get_bounce_us(void);
 uint16_t pal_wasm_get_i2c_drop_permil(void);
 uint32_t pal_wasm_get_prng_state(void);

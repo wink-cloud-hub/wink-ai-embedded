@@ -7,11 +7,19 @@
  *   pal_gpio_enable_interrupt → js_pal_register_interrupt（仅写 JS 侧 pending 表映射）
  *   pal_wasm_dispatch_pending_interrupts → 由 wink_runtime.c tick 边界调用，drain JS pending 队列
  *   旧 _trigger_wasm_interrupt 导出已移除（wasm_entry.c），彻底消除 Asyncify sleeping 窗口重入面。
+ *
+ * 物理退化中间件（ADR-0009 Wave 2 Task 3）：
+ *   pal_gpio_read  → 边界检查 + 抖动状态机（per-pin ctx，bounce_us=0 时旁路）
+ *   pal_i2c_transfer → PRNG 驱动确定性丢包（drop_permil=0 时旁路）
+ *   故障配置全部位于 pal_wasm_physical.c，通过 pal_wasm_get_* 内部 helper 读取；
+ *   零退化时只多一次内存读，热路径开销可忽略。
  */
 #include "pal_hal.h"
 #include "pal_pwm_router.h"
+#include "pal_osal.h"
 #include "wasm_bridge.h"
 #include "pal_wasm_internal.h"
+#include "wink_sim_physical.h"
 
 wink_status_t pal_gpio_init(uint16_t pin, pal_gpio_mode_t mode) {
     (void)pin; (void)mode;            /* 仿真下无需硬件配置 */
@@ -23,7 +31,31 @@ void pal_gpio_write(uint16_t pin, bool level) {
 }
 
 bool pal_gpio_read(uint16_t pin) {
-    return js_pal_gpio_read(pin);
+    /* Step 0: 边界检查（防止 JS 传入越界 pin 导致 BSS OOB 访问）。
+     * pal_wasm_get_debounce_ctx 内部也会返回 NULL，但前置检查能在
+     * 越界时立刻短路，连理想电平的 JS 桥调用都省掉，更便于 fuzz。
+     * 越界 pin 默认为低电平，不崩溃。 */
+    if (pin >= WASM_SIM_MAX_PINS) {
+        return false;
+    }
+
+    /* Step 1: 从 JS 侧获取理想电平（UniSim 宏观物理状态）。 */
+    bool ideal = js_pal_gpio_read(pin);
+
+    /* Step 2: 退化中间件（仅当 bounce_us > 0 时生效）。
+     * bounce_us=0 是默认零退化路径，热路径只多一次内存读 + 一次比较。 */
+    uint32_t bounce_us = pal_wasm_get_bounce_us();
+    if (bounce_us > 0u) {
+        wink_phys_debounce_ctx_t *ctx = pal_wasm_get_debounce_ctx(pin);
+        /* ctx 不可能为 NULL（pin 已过边界检查），但仍做防御式判断——
+         * 假设 WASM_SIM_MAX_PINS 未来在两处不同步，至少不会崩。 */
+        if (ctx != NULL) {
+            return wink_phys_debounce_step(ctx, ideal, pal_get_us(), bounce_us);
+        }
+    }
+
+    /* 无退化 → 原样返回（兼容路径）。 */
+    return ideal;
 }
 
 wink_status_t pal_gpio_enable_interrupt(uint16_t pin, pal_gpio_intr_t intr_type,
@@ -82,7 +114,25 @@ void pal_pwm_deinit(uint8_t channel) {
 wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
                       const uint8_t *write_buf, uint32_t write_len,
                       uint8_t *read_buf, uint32_t read_len) {
-    /* JS 侧同步零拷贝 transfer：false → WINK_ERR_IO */
+    /* Step 1: 丢包判定（PRNG 确定性，§4.1 合规）。
+     *
+     * 设计说明：全局 PRNG 是有意的设计选择，保证"单种子复现全系统行为"。
+     * 如果 I2C 丢包和 ADC 噪声独立 PRNG，那么改变 ADC 采样率不会影响
+     * I2C 序列，但这也失去了"一个 seed = 整个系统的完整快照"的能力。
+     * 当前选择：全局 PRNG，简化确定性复现（详见 pal_wasm_physical.c）。
+     *
+     * drop_permil=0 是零退化默认路径，热路径只多一次内存读 + 一次比较。 */
+    uint16_t drop_permil = pal_wasm_get_i2c_drop_permil();
+    if (drop_permil > 0u) {
+        uint32_t prng_state = pal_wasm_get_prng_state();
+        bool should_drop = wink_phys_bus_drop(drop_permil, &prng_state);
+        pal_wasm_advance_prng_state(prng_state);  /* 回写推进后的状态 */
+        if (should_drop) {
+            return WINK_ERR_IO;  /* 模拟总线故障，驱动超时退回机制触发 */
+        }
+    }
+
+    /* Step 2: 正常传输（无退化路径）。 */
     return js_pal_i2c_transfer(port, dev_addr, write_buf, write_len, read_buf, read_len)
            ? WINK_OK : WINK_ERR_IO;
 }

@@ -43,8 +43,10 @@
  * ─────────────────────────────────────────────────────────
  * 128 pins covers every embedded-class chip we ship to (ESP32-S3 has 49,
  * Cortex-M class boards <100). Each ctx is ~24B → ~3KB total: cheap.
+ *
+ * WASM_SIM_MAX_PINS is now defined in pal_wasm_internal.h so that
+ * pal_hal_wasm.c can use it for its own pre-check (Task 3 §3.3 plan).
  */
-#define WASM_SIM_MAX_PINS  128
 
 /* ─────────────────────────────────────────────────────────
  * Global state (BSS — zero-initialised by the C runtime)
