@@ -78,15 +78,18 @@ add_dependencies(wink_runtime check_pt_footguns)
 
 # 根据目标平台配置可执行程序或测试用例 (主要针对 WebAssembly / Wasm 仿真)
 if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
+    # 让 targets/wasm/CMakeLists.txt 作为 wasm PAL 源列表的 SSOT。
+    # 该子目录通过 PARENT_SCOPE 导出 PAL_WASM_SOURCES / WASM_ENTRY_SOURCE / WASM_EXTRA_INCLUDE_DIRS。
+    # ADR-0009 Wave 2：算法库 wink_sim_physical.c 在子目录里追加，本顶层无需关心具体源文件。
+    add_subdirectory(targets/wasm)
+
     add_executable(wink_simulator
-        targets/wasm/pal_hal_wasm.c
-        targets/wasm/pal_osal_wasm.c
-        targets/wasm/pal_resource_wasm.c
-        targets/wasm/pal_storage_wasm.c
-        targets/wasm/wasm_entry.c
+        ${PAL_WASM_SOURCES}
+        ${WASM_ENTRY_SOURCE}
         pal/src/pal_pwm_router.c
         pal/src/wink_dev_config.c)
     target_link_libraries(wink_simulator PRIVATE pal dal)
+    target_include_directories(wink_simulator PRIVATE ${WASM_EXTRA_INCLUDE_DIRS})
     target_link_options(wink_simulator PRIVATE
         "-s" "ASYNCIFY=1"
         "-s" "ASYNCIFY_IMPORTS=['js_pal_delay_ms','js_pal_delay_us']"
@@ -94,6 +97,7 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
         "-s" "EXPORTED_RUNTIME_METHODS=['ccall','cwrap']"
         "-s" "MODULARIZE=1"
         "-s" "EXPORT_NAME='WasmSandbox'"
+        "-s" "WASM_BIGINT=1"               # ADR-0009 Wave 2：64 位整型 ↔ JS BigInt 原生映射，杜绝 number 隐式失精
         "-s" "STACK_OVERFLOW_CHECK=2"      # dev/debug：栈溢出 abort，避免静默线性内存越界（亦为中断重入早期报警，见 plan Phase 1 Task 1-5）
         "-s" "ASSERTIONS=1"                # dev/debug：带运行时开销/体积代价，生产 profile 调优留作后续
         "-s" "ASYNCIFY_STACK_SIZE=65536")  # 起步值；最终须实测最深 AI 生成调用链（plan Task 1-4 清单第 6 项）
