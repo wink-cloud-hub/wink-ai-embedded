@@ -33,4 +33,14 @@
  */
 void pal_wasm_dispatch_pending_interrupts(void);
 
+/**
+ * @brief 虚拟时钟步进接口（导出给 JS Worker）。
+ *
+ * SSOT 架构唯一入口：wasm 侧不主动步进时钟，时钟完全由 JS Worker 驱动。
+ * 参见 pal_osal_wasm.c 注释。
+ *
+ * @param us 步进微秒数
+ */
+void pal_wasm_advance_virtual_clock(uint64_t us);
+
 #endif /* PAL_WASM_INTERNAL_H */

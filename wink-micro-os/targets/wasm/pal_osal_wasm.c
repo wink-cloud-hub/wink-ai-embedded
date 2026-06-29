@@ -1,21 +1,55 @@
 /**
  * @file pal_osal_wasm.c
  * @brief Wasm 仿真端 PAL OSAL 适配（delay/tick/mutex）。
- *        Asyncify 挂起在 js_pal_delay_ms；虚拟时钟为 ADR-0003 决策3 路标（暂用 JS 墙钟）。
+ *
+ * 虚拟时钟 SSOT 架构（ADR-0003 决策 3 + ADR-0009 §4.1）：
+ *   - `s_virtual_us` 是 wasm 侧的唯一时钟源，启动时为 0；
+ *   - 唯一写入入口：`pal_wasm_advance_virtual_clock()`（导出给 JS Worker）；
+ *   - 读出入口：`pal_get_us()` / `pal_get_ms()`，纯内存访问、零 JS 调用；
+ *   - **架构红线**：`pal_delay_ms/us()` 函数体内禁止调用 `pal_wasm_advance_virtual_clock()`，
+ *     时钟推进完全由 JS Worker 在恢复 wasm 协程前驱动（避免双重步进 / 因果倒置）。
+ *
+ *   Asyncify 仍负责挂起 `pal_delay_ms/us` 等待 JS 端定时器；恢复时 JS 端先调
+ *   `pal_wasm_advance_virtual_clock(elapsed_us)`，再返回控制权给 wasm。
  */
 #include "pal_osal.h"
 #include "wasm_bridge.h"
+#include "pal_wasm_internal.h"
+#include <emscripten.h>
+#include <stdint.h>
+
+/* ─────────────────────────────────────────────────────────
+ * 虚拟时钟（ADR-0003 决策 3 / ADR-0009 §4.1）
+ * ───────────────────────────────────────────────────────── */
+
+/* wasm 侧虚拟时钟唯一状态。BSS 初始化为 0。
+ * 64 位无符号自然回绕 > 580 年，仿真不可能溢出。 */
+static uint64_t s_virtual_us = 0;
+
+/* 导出给 JS Worker 的步进接口。
+ * EMSCRIPTEN_KEEPALIVE 保证符号不被 -O 级优化裁掉 + 自动加入 export 表。
+ * 调用者：SimWorker.ts（Wave 2 Task 5）在恢复 wasm 协程前推进时钟。 */
+EMSCRIPTEN_KEEPALIVE
+void pal_wasm_advance_virtual_clock(uint64_t us) {
+    s_virtual_us += us;
+}
+
+uint64_t pal_get_us(void) { return s_virtual_us; }
+uint64_t pal_get_ms(void) { return s_virtual_us / 1000u; }
+
+/* ─────────────────────────────────────────────────────────
+ * Delay：仅做 Asyncify 异步挂起。SSOT 红线——不主动步进时钟。
+ * 时钟推进的唯一来源是 JS Worker 在恢复执行前调用
+ * pal_wasm_advance_virtual_clock()。
+ * ───────────────────────────────────────────────────────── */
 
 void pal_delay_ms(uint32_t ms) {
-    js_pal_delay_ms(ms);            /* Asyncify 挂起，由 JS 唤醒 */
+    js_pal_delay_ms(ms);            /* Asyncify 挂起，由 JS 唤醒；JS 侧负责步进时钟 */
 }
 
 void pal_delay_us(uint32_t us) {
     js_pal_delay_us(us);
 }
-
-uint64_t pal_get_ms(void) { return js_pal_get_ms(); }
-uint64_t pal_get_us(void) { return js_pal_get_us(); }
 
 /* 单线程 Wasm Worker 沙箱通常无锁竞争，互斥锁退化为无竞争实现 */
 pal_mutex_t pal_mutex_create(void) { return (pal_mutex_t)1; }
