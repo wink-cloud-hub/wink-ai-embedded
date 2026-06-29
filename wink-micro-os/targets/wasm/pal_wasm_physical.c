@@ -281,3 +281,43 @@ uint32_t pal_wasm_fault_event_get_sequence(uint32_t index) {
     wasm_fault_event_t evt;
     return pal_wasm_get_fault_event(index, &evt) ? evt.sequence : 0u;
 }
+
+/* ─────────────────────────────────────────────────────────
+ * 功耗模型 Stub 实现（Wave3 预埋；ADR-0009 Wave 2 Task 9）
+ * ─────────────────────────────────────────────────────────
+ * 当前实现为空占位，不做真实计算。提前锁定 ABI 是核心目的——Wave3 实施
+ * 时无需碰任何调用点 / JS 桥即可在此函数体内点亮真实逻辑：
+ *
+ *   1. 在 BSS 增加 per-pin 模型存储（uint32 × 3 字段 × WASM_SIM_MAX_PINS
+ *      ≈ 1.5 KB，与现有 s_debounce_ctx 同量级，符合 §3.2 零动态分配）。
+ *   2. 在 GPIO/PWM 中间件（pal_hal_wasm.c）的电平翻转点累加跳变能量。
+ *   3. 在 tick 边界按 P = I·V 公式对静态/有源电流积分。
+ *   4. 把累计值（毫焦耳）通过 pal_wasm_get_total_energy_mj() 暴露给 JS。
+ *
+ * 与故障日志（Task 8）的关系：功耗事件不会被 pal_wasm_log_fault 记录——
+ * 那个日志是"异常退化事件"通道，功耗是"持续物理量"通道，二者独立。
+ *
+ * 边界检查与其它 wasm 边界对称（pin >= WASM_SIM_MAX_PINS → 拒绝；
+ * NULL 模型指针 → 拒绝）。stub 不解引用 model（仅校验非空），所以即便
+ * 上层把垃圾指针传过来，本函数也不会越界读 wasm 堆。
+ */
+EMSCRIPTEN_KEEPALIVE
+wink_status_t pal_wasm_set_pin_power_model(uint8_t pin,
+                                           const wasm_pin_power_model_t *model) {
+    if (pin >= WASM_SIM_MAX_PINS) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    if (model == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    /* Stub: 不存储参数，仅验证接口可调用。Wave3 会在此处写入 BSS 数组。 */
+    (void)pin;
+    (void)model;
+    return WINK_OK;
+}
+
+EMSCRIPTEN_KEEPALIVE
+uint64_t pal_wasm_get_total_energy_mj(void) {
+    /* Stub: 始终返回 0。Wave3 会在此处返回积分累计值。 */
+    return 0;
+}
