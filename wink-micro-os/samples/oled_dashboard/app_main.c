@@ -27,10 +27,12 @@ static wink_status_t led_safe_off_thunk(void *ctx) {
 }
 
 static void app_init(void) {
-    wink_status_t s = dal_button_init(&user_button, 10, true); /* active_low，上拉 */
+    const dal_button_config_t btn_cfg = { .pin = 10, .active_low = true };
+    wink_status_t s = dal_button_init(&user_button, &btn_cfg);
     if (wink_status_is_error(s)) { wink_trace_fault(FAULT_BUTTON_INIT); }
 
-    s = dal_led_init(&status_led, 2, true); /* active_high，推挽输出 */
+    const dal_led_config_t led_cfg = { .pin = 2, .active_high = true };
+    s = dal_led_init(&status_led, &led_cfg);
     if (wink_status_is_error(s)) { wink_trace_fault(FAULT_LED_INIT); }
 
     const dal_ssd1306_config_t oled_cfg = {

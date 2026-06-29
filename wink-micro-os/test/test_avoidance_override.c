@@ -21,7 +21,7 @@ void setUp(void) {
         .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f
     };
     front_radar = (dal_ultrasonic_t){
-        .trig_pin = 4, .echo_pin = 5, .last_distance = 0.0f
+        .config.trig_pin = 4, .config.echo_pin = 5, .last_distance = 0.0f
     };
 }
 void tearDown(void) {}
@@ -72,8 +72,8 @@ void test_apply_flash_config_overrides_globals(void) {
     TEST_ASSERT_EQUAL_UINT8(3u, neck_servo.pwm_channel);
     TEST_ASSERT_EQUAL_FLOAT(0.6f, neck_servo.min_pulse_ms);
     TEST_ASSERT_EQUAL_FLOAT(2.4f, neck_servo.max_pulse_ms);
-    TEST_ASSERT_EQUAL_UINT16(6, front_radar.trig_pin);
-    TEST_ASSERT_EQUAL_UINT16(7, front_radar.echo_pin);
+    TEST_ASSERT_EQUAL_UINT16(6, front_radar.config.trig_pin);
+    TEST_ASSERT_EQUAL_UINT16(7, front_radar.config.echo_pin);
 }
 
 void test_apply_flash_config_empty_degrades(void) {
@@ -82,8 +82,8 @@ void test_apply_flash_config_empty_degrades(void) {
     TEST_ASSERT_TRUE(wink_status_is_error(s));
     TEST_ASSERT_EQUAL_UINT8(0u, neck_servo.pwm_channel);
     TEST_ASSERT_EQUAL_FLOAT(0.5f, neck_servo.min_pulse_ms);
-    TEST_ASSERT_EQUAL_UINT16(4, front_radar.trig_pin);
-    TEST_ASSERT_EQUAL_UINT16(5, front_radar.echo_pin);
+    TEST_ASSERT_EQUAL_UINT16(4, front_radar.config.trig_pin);
+    TEST_ASSERT_EQUAL_UINT16(5, front_radar.config.echo_pin);
 }
 
 void test_apply_flash_config_corrupt_degrades(void) {
@@ -96,7 +96,7 @@ void test_apply_flash_config_corrupt_degrades(void) {
     wink_status_t s = device_tree_apply_flash_config();
     TEST_ASSERT_EQUAL_INT(WINK_ERR_CHECKSUM, s);
     TEST_ASSERT_EQUAL_UINT8(0u, neck_servo.pwm_channel);   /* 字段保持默认 */
-    TEST_ASSERT_EQUAL_UINT16(4, front_radar.trig_pin);
+    TEST_ASSERT_EQUAL_UINT16(4, front_radar.config.trig_pin);
 }
 
 int main(void) {

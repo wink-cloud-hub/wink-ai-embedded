@@ -7,7 +7,9 @@ void tearDown(void) {}
 
 /* ---- init 契约 ---- */
 void test_init_null_returns_invalid_arg(void) {
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_button_init(NULL, 10, true));
+    const dal_button_config_t cfg = { .pin = 10, .active_low = true };
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_button_init(NULL, &cfg));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_button_init(NULL, NULL));
 }
 
 void test_read_before_init_returns_not_initialized(void) {
@@ -27,7 +29,8 @@ void test_read_null_returns_invalid_arg(void) {
 
 void test_is_pressed_null_out_returns_invalid_arg(void) {
     dal_button_t dev = {0};
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, 10, true));
+    const dal_button_config_t cfg = { .pin = 10, .active_low = true };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, &cfg));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_button_is_pressed(&dev, NULL));
 }
 
@@ -35,7 +38,8 @@ void test_is_pressed_null_out_returns_invalid_arg(void) {
  * active_low=true → raw=false 视为按下；经 3 次 poll 后稳定态翻转为 true */
 void test_active_low_debounce_to_pressed(void) {
     dal_button_t dev = {0};
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, 10, true));
+    const dal_button_config_t cfg = { .pin = 10, .active_low = true };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, &cfg));
 
     for (int i = 0; i < DAL_BUTTON_DEBOUNCE_THRESHOLD; i++) {
         TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_poll(&dev));
@@ -49,7 +53,8 @@ void test_active_low_debounce_to_pressed(void) {
 /* active_low=false → raw=false 视为未按下；稳定态保持 false */
 void test_active_high_stays_unpressed(void) {
     dal_button_t dev = {0};
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, 11, false));
+    const dal_button_config_t cfg = { .pin = 11, .active_low = false };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, &cfg));
 
     for (int i = 0; i < DAL_BUTTON_DEBOUNCE_THRESHOLD * 2; i++) {
         TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_poll(&dev));
@@ -63,7 +68,8 @@ void test_active_high_stays_unpressed(void) {
 /* ---- was_pressed 边沿检测 ---- */
 void test_was_pressed_edge_once(void) {
     dal_button_t dev = {0};
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, 12, true));
+    const dal_button_config_t cfg = { .pin = 12, .active_low = true };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, &cfg));
 
     for (int i = 0; i < DAL_BUTTON_DEBOUNCE_THRESHOLD; i++) {
         wink_status_t s = dal_button_poll(&dev);
@@ -81,7 +87,8 @@ void test_was_pressed_edge_once(void) {
 /* 释放后再次按下应重新触发（手动翻转 stable_pressed 模拟释放+再按下） */
 void test_was_pressed_rearm_after_release(void) {
     dal_button_t dev = {0};
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, 13, true));
+    const dal_button_config_t cfg = { .pin = 13, .active_low = true };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, &cfg));
     dev.stable_pressed = true;
     dev.last_reported = true;
 

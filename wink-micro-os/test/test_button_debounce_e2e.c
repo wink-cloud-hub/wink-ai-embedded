@@ -37,7 +37,8 @@ void test_dal_button_absorbs_bounce_and_settles(void) {
     sim_set_faults(&f);
 
     dal_button_t btn;
-    TEST_ASSERT_EQUAL(WINK_OK, dal_button_init(&btn, 7, true));   /* active_low */
+    const dal_button_config_t cfg = { .pin = 7, .active_low = true };
+    TEST_ASSERT_EQUAL(WINK_OK, dal_button_init(&btn, &cfg));   /* active_low */
     sim_set_gpio_ideal(7, true);                                   /* ① 上电态=释放(raw=true)，不抖 */
     run_ticks(&btn, 2);                                            /* now=20000，稳定到「未按下」 */
     bool released = true;
@@ -78,7 +79,8 @@ void test_raw_read_without_debounce_bounces(void) {
 void test_no_bounce_config_settles_fast(void) {
     sim_set_faults(&WINK_SIM_FAULTS_IDEAL);                        /* bounce_us=0 */
     dal_button_t btn;
-    TEST_ASSERT_EQUAL(WINK_OK, dal_button_init(&btn, 8, false));   /* active_high */
+    const dal_button_config_t cfg = { .pin = 8, .active_low = false };
+    TEST_ASSERT_EQUAL(WINK_OK, dal_button_init(&btn, &cfg));   /* active_high */
     sim_set_gpio_ideal(8, true);                                   /* 按下 raw=true */
     run_ticks(&btn, 5);
     bool pressed = false;

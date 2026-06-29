@@ -11,16 +11,26 @@ add_executable(app_devkitc_smoke_e2e
     ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/src/wink_actuator_registry.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/src/wink_soft_timer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../trace/src/wink_trace.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/dal_led.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/dal_button.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/output/dal_led.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/input/dal_button.c
     ${CMAKE_CURRENT_SOURCE_DIR}/test_devkitc_smoke_e2e.c
     $<TARGET_OBJECTS:pal_host>)
 
 target_include_directories(app_devkitc_smoke_e2e PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${WINK_CONFIG_DIR}
+    # Phase 1 目录重组：pal/include/ 根目录 + osal/ + hal/ 子目录均在搜索路径中
     ${CMAKE_CURRENT_SOURCE_DIR}/../../pal/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../pal/include/osal
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../pal/include/hal
+    # Phase 2：targets/common/include（wink_sim_physical.h）
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../targets/common/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/input
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/output
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/actuator
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/display
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/sensor
     ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../../trace/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../../test

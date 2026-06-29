@@ -11,8 +11,9 @@
 #include "pal_storage.h"
 
 dal_ultrasonic_t front_radar = {
-    .trig_pin = 4,
-    .echo_pin = 5,
+    .config.trig_pin = 4,
+    .config.echo_pin = 5,
+    .config.use_rmt = false,
     .last_distance = 0.0f,
 };
 

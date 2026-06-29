@@ -11,16 +11,26 @@ add_executable(app_avoidance_car_e2e
     ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/src/wink_actuator_registry.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/src/wink_soft_timer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../trace/src/wink_trace.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/dal_ultrasonic.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/dal_servo.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/sensor/dal_ultrasonic.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/actuator/dal_servo.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../test/test_app_e2e.c
     $<TARGET_OBJECTS:pal_host>)
 
 target_include_directories(app_avoidance_car_e2e PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${WINK_CONFIG_DIR}
+    # Phase 1 目录重组：pal/include/ 根目录 + osal/ + hal/ 子目录均在搜索路径中
     ${CMAKE_CURRENT_SOURCE_DIR}/../../pal/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../pal/include/osal
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../pal/include/hal
+    # Phase 2：targets/common/include（wink_sim_physical.h）
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../targets/common/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/input
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/output
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/actuator
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/display
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/sensor
     ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../../trace/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../../test
@@ -40,16 +50,26 @@ add_test(NAME app_avoidance_car_e2e COMMAND app_avoidance_car_e2e)
 # pal_storage → 注册表 → 真实 DAL apply_override 改写全局字段；空/损坏静默降级。
 add_executable(test_avoidance_override
     ${CMAKE_CURRENT_SOURCE_DIR}/device_tree.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/dal_ultrasonic.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/dal_servo.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/sensor/dal_ultrasonic.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/actuator/dal_servo.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../test/test_avoidance_override.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../test/unity/unity.c
     $<TARGET_OBJECTS:pal_host>)
 
 target_include_directories(test_avoidance_override PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
+    # Phase 1 目录重组：pal/include/ 根目录 + osal/ + hal/ 子目录均在搜索路径中
     ${CMAKE_CURRENT_SOURCE_DIR}/../../pal/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../pal/include/osal
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../pal/include/hal
+    # Phase 2：targets/common/include（wink_sim_physical.h）
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../targets/common/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/input
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/output
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/actuator
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/display
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/sensor
     ${CMAKE_CURRENT_SOURCE_DIR}/../../test/unity)
 
 target_link_libraries(test_avoidance_override PRIVATE pal)

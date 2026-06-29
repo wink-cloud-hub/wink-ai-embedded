@@ -207,13 +207,15 @@ static void app_init(void)
 #endif
     }
 
-    /* S2/S3: DAL LED + 按钮初始化 */
-    wink_status_t st = dal_led_init(&board_led, BOARD_LED_PIN, true);
+    /* S2/S3: DAL LED + 按钮初始化（Phase 2 config_t 标准化） */
+    const dal_led_config_t led_cfg = { .pin = BOARD_LED_PIN, .active_high = true };
+    wink_status_t st = dal_led_init(&board_led, &led_cfg);
     if (wink_status_is_error(st)) {
         wink_trace_fault(FAULT_LED_INIT);
     }
 
-    st = dal_button_init(&boot_button, BOOT_BUTTON_PIN, true);
+    const dal_button_config_t btn_cfg = { .pin = BOOT_BUTTON_PIN, .active_low = true };
+    st = dal_button_init(&boot_button, &btn_cfg);
     if (wink_status_is_error(st)) {
         wink_trace_fault(FAULT_BUTTON_INIT);
     }

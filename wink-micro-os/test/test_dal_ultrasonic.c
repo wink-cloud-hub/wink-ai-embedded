@@ -10,17 +10,20 @@ void tearDown(void) {}
 
 /* ---- init 契约（Phase 2 Task 2-2）---- */
 void test_ultrasonic_init_null_returns_invalid_arg(void) {
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_ultrasonic_init(NULL, 4, 5));
+    const dal_ultrasonic_config_t cfg = { .trig_pin = 4, .echo_pin = 5, .use_rmt = false };
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_ultrasonic_init(NULL, &cfg));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_ultrasonic_init(NULL, NULL));
 }
 
 void test_ultrasonic_init_rejects_same_pin(void) {
     dal_ultrasonic_t dev = {0};
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_ultrasonic_init(&dev, 5, 5));
+    const dal_ultrasonic_config_t cfg = { .trig_pin = 5, .echo_pin = 5, .use_rmt = false };
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_ultrasonic_init(&dev, &cfg));
 }
 
 void test_ultrasonic_read_before_init_returns_not_initialized(void) {
     /* initialized 默认 false（未 init） */
-    dal_ultrasonic_t dev = { .trig_pin = 4, .echo_pin = 5, .last_distance = 0.0f };
+    dal_ultrasonic_t dev = { .config.trig_pin = 4, .config.echo_pin = 5, .last_distance = 0.0f };
     float dist = 0.0f;
     TEST_ASSERT_EQUAL_INT(WINK_ERR_NOT_INITIALIZED, dal_ultrasonic_read(&dev, &dist));
 }
@@ -45,7 +48,8 @@ void test_pulse_to_cm_100cm(void) {
 /* ---- 真机分支脉宽测量集成（init 后；host 协作式时间）---- */
 void test_ultrasonic_init_then_read_real_measure_pulse(void) {
     dal_ultrasonic_t dev = {0};
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&dev, 4, 5));
+    const dal_ultrasonic_config_t cfg = { .trig_pin = 4, .echo_pin = 5, .use_rmt = false };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&dev, &cfg));
     sim_set_echo_pin(5);
     sim_set_echo_timing(100, 5882);   /* rise@100us, high 5882us ≈100cm */
     float dist = 0.0f;
@@ -56,7 +60,8 @@ void test_ultrasonic_init_then_read_real_measure_pulse(void) {
 
 void test_ultrasonic_init_then_read_real_timeout(void) {
     dal_ultrasonic_t dev = {0};
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&dev, 4, 5));
+    const dal_ultrasonic_config_t cfg = { .trig_pin = 4, .echo_pin = 5, .use_rmt = false };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&dev, &cfg));
     sim_set_echo_pin(5);
     sim_set_echo_timing(100000, 1000);  /* rise > 30ms 上限 */
     float dist = 0.0f;
@@ -67,7 +72,8 @@ void test_ultrasonic_init_then_read_real_timeout(void) {
 /* ---- 非阻塞状态机（Phase 4 Task 4-3；host 单 tick 同步 ready）---- */
 void test_nonblocking_get_cached_before_request_returns_busy(void) {
     dal_ultrasonic_t dev = {0};
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&dev, 4, 5));
+    const dal_ultrasonic_config_t cfg = { .trig_pin = 4, .echo_pin = 5, .use_rmt = false };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&dev, &cfg));
     float dist = 0.0f;
     /* state == IDLE（未 request）→ BUSY（无数据） */
     TEST_ASSERT_EQUAL_INT(WINK_ERR_BUSY, dal_ultrasonic_get_cached_distance(&dev, &dist));
@@ -75,7 +81,8 @@ void test_nonblocking_get_cached_before_request_returns_busy(void) {
 
 void test_nonblocking_request_then_get_cached_returns_distance(void) {
     dal_ultrasonic_t dev = {0};
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&dev, 4, 5));
+    const dal_ultrasonic_config_t cfg = { .trig_pin = 4, .echo_pin = 5, .use_rmt = false };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&dev, &cfg));
     sim_set_echo_pin(5);
     sim_set_echo_timing(100, 5882);   /* rise@100us, high 5882us ≈100cm */
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_request_measurement(&dev));
@@ -87,7 +94,8 @@ void test_nonblocking_request_then_get_cached_returns_distance(void) {
 
 void test_nonblocking_request_timeout_returns_error_status(void) {
     dal_ultrasonic_t dev = {0};
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&dev, 4, 5));
+    const dal_ultrasonic_config_t cfg = { .trig_pin = 4, .echo_pin = 5, .use_rmt = false };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&dev, &cfg));
     sim_set_echo_pin(5);
     sim_set_echo_timing(100000, 1000);   /* rise > 30ms → pulse_in TIMEOUT */
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_request_measurement(&dev));
@@ -100,7 +108,8 @@ void test_nonblocking_request_timeout_returns_error_status(void) {
  * 阈值取 100ms（>> clock 粒度，且远小于旧 blocking worst-case ≈60ms 的真实阻塞风险面）。 */
 void test_nonblocking_single_tick_wallclock_is_small(void) {
     dal_ultrasonic_t dev = {0};
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&dev, 4, 5));
+    const dal_ultrasonic_config_t cfg = { .trig_pin = 4, .echo_pin = 5, .use_rmt = false };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&dev, &cfg));
     sim_set_echo_pin(5);
     sim_set_echo_timing(100, 5882);
     clock_t t0 = clock();
@@ -123,22 +132,22 @@ static void build_radar_params(uint8_t *p, uint16_t trig, uint16_t echo) {
 }
 
 void test_apply_override_writes_pins(void) {
-    dal_ultrasonic_t u = { .trig_pin = 4, .echo_pin = 5 };
+    dal_ultrasonic_t u = { .config.trig_pin = 4, .config.echo_pin = 5 };
     uint8_t p[16];
     build_radar_params(p, 6, 7);
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_apply_override(&u, p, sizeof p));
-    TEST_ASSERT_EQUAL_UINT16(6, u.trig_pin);
-    TEST_ASSERT_EQUAL_UINT16(7, u.echo_pin);
+    TEST_ASSERT_EQUAL_UINT16(6, u.config.trig_pin);
+    TEST_ASSERT_EQUAL_UINT16(7, u.config.echo_pin);
 }
 
 void test_apply_override_rejects_same_pin(void) {
-    dal_ultrasonic_t u = { .trig_pin = 4, .echo_pin = 5 };
+    dal_ultrasonic_t u = { .config.trig_pin = 4, .config.echo_pin = 5 };
     uint8_t p[16];
     build_radar_params(p, 8, 8);
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_ultrasonic_apply_override(&u, p, sizeof p));
     /* 非法 → 字段保持不变 */
-    TEST_ASSERT_EQUAL_UINT16(4, u.trig_pin);
-    TEST_ASSERT_EQUAL_UINT16(5, u.echo_pin);
+    TEST_ASSERT_EQUAL_UINT16(4, u.config.trig_pin);
+    TEST_ASSERT_EQUAL_UINT16(5, u.config.echo_pin);
 }
 
 void test_apply_override_null_returns_invalid_arg(void) {

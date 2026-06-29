@@ -23,7 +23,7 @@ int main(void) {
      * 注意：sim_reset_time() 会清零 echo_pin，故必须先 reset 再 set_echo_pin，
      * 否则 pal_gpio_read 因 pin 不匹配恒返回 false 导致协作式轮询死循环。 */
     sim_reset_time();
-    sim_set_echo_pin(front_radar.echo_pin);
+    sim_set_echo_pin(front_radar.config.echo_pin);
     sim_set_echo_timing(100, 5882);   /* ≈100cm，无近障 */
     {
         wink_status_t s = wink_runtime_run(cb, 1);
@@ -34,7 +34,7 @@ int main(void) {
     /* tick 2：近障（echo ≈10cm = 588us）→ 舵机应扫到 180°
      * 每个 tick 先 reset（重置虚拟时钟，使 echo 边沿可达）再重新注入 pin/timing。 */
     sim_reset_time();
-    sim_set_echo_pin(front_radar.echo_pin);
+    sim_set_echo_pin(front_radar.config.echo_pin);
     sim_set_echo_timing(100, 588);    /* ≈10cm < 20cm 阈值 */
     {
         wink_status_t s = wink_runtime_run(cb, 1);

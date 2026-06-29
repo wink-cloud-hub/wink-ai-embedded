@@ -39,7 +39,8 @@ static void app_init(void) {
     wink_status_t s = dal_servo_init(&neck_servo, &servo_cfg);
     if (wink_status_is_error(s)) { wink_trace_fault(FAULT_SERVO_INIT); }
 
-    wink_status_t u = dal_ultrasonic_init(&front_radar, front_radar.trig_pin, front_radar.echo_pin);
+    /* Phase 2 config_t 标准化：配置已在 device_tree.c 静态分配或经 Flash 覆写 */
+    wink_status_t u = dal_ultrasonic_init(&front_radar, &front_radar.config);
     if (wink_status_is_error(u)) { wink_trace_fault(FAULT_RADAR_INIT); }
 
     /* Phase 5：注册舵机 safe-off，使 fault / boot-lock 路径可统一关断执行器（P0-4）。 */
