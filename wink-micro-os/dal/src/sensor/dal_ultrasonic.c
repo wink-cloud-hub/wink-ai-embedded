@@ -31,38 +31,41 @@ wink_status_t dal_ultrasonic_apply_override(void *dev, const uint8_t *params, ui
 
     if (trig_pin == echo_pin) { return WINK_ERR_INVALID_ARG; }   /* 非法不写 */
 
-    u->trig_pin = trig_pin;
-    u->echo_pin = echo_pin;
+    u->config.trig_pin = trig_pin;
+    u->config.echo_pin = echo_pin;
     return WINK_OK;
 }
 
-wink_status_t dal_ultrasonic_init(dal_ultrasonic_t *dev, uint16_t trig_pin, uint16_t echo_pin) {
-    if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
-    if (trig_pin == echo_pin) { return WINK_ERR_INVALID_ARG; }
-    dev->trig_pin = trig_pin;
-    dev->echo_pin = echo_pin;
+wink_status_t dal_ultrasonic_init(dal_ultrasonic_t *dev, const dal_ultrasonic_config_t *cfg) {
+    if (dev == NULL || cfg == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (cfg->trig_pin == cfg->echo_pin) { return WINK_ERR_INVALID_ARG; }
+
+    /* 深拷贝配置到实例（支持 ADR-0008 Flash 动态覆写） */
+    memcpy(&dev->config, cfg, sizeof(dal_ultrasonic_config_t));
     dev->last_distance = 0.0f;
     dev->state = DAL_ULTRASONIC_IDLE;
     dev->last_status = WINK_OK;
     dev->last_pulse_us = 0u;
+
 #ifdef SIMULATION
     /* 仿真：跳过物理 GPIO 配置（旁路最低物理信号层，ADR-0003 决策2），仅置结构状态 */
     dev->initialized = true;
     return WINK_OK;
 #else
     /* 真机：配置 GPIO 方向（Phase 3 status 透传；失败含 BUSY/EXHAUSTED）。 */
-    wink_status_t status = pal_gpio_init(trig_pin, PAL_GPIO_OUTPUT_PUSH_PULL);
+    wink_status_t status = pal_gpio_init(cfg->trig_pin, PAL_GPIO_OUTPUT_PUSH_PULL);
     if (wink_status_is_error(status)) { return status; }
-    status = pal_gpio_init(echo_pin, PAL_GPIO_INPUT);
+    status = pal_gpio_init(cfg->echo_pin, PAL_GPIO_INPUT);
     if (wink_status_is_error(status)) { return status; }
 
 #if defined(ESP_PLATFORM)
     /* ESP32：初始化 RMT 硬件脉冲捕获（替代 busy-wait） */
-    status = pal_rmt_ultrasonic_init(echo_pin);
-    if (wink_status_is_error(status)) {
-        /* RMT 失败：降级到 pal_gpio_pulse_in busy-wait */
-    } else {
-        dev->use_rmt = true;
+    if (dev->config.use_rmt) {
+        status = pal_rmt_ultrasonic_init(cfg->echo_pin);
+        if (wink_status_is_error(status)) {
+            /* RMT 失败：降级到 pal_gpio_pulse_in busy-wait */
+            dev->config.use_rmt = false;
+        }
     }
 #endif
 
@@ -77,11 +80,11 @@ wink_status_t dal_ultrasonic_request_measurement(dal_ultrasonic_t *dev) {
 
     /* 1. 触发（物理信号层；sim 旁路） */
 #ifdef SIMULATION
-    js_sim_trigger_ultrasonic(dev->trig_pin);
+    js_sim_trigger_ultrasonic(dev->config.trig_pin);
 #else
-    pal_gpio_write(dev->trig_pin, true);
+    pal_gpio_write(dev->config.trig_pin, true);
     pal_delay_us(10);
-    pal_gpio_write(dev->trig_pin, false);
+    pal_gpio_write(dev->config.trig_pin, false);
 #endif
     dev->state = DAL_ULTRASONIC_MEASURING;
 
@@ -91,15 +94,15 @@ wink_status_t dal_ultrasonic_request_measurement(dal_ultrasonic_t *dev) {
 
 #if defined(ESP_PLATFORM)
     /* ESP32：优先 RMT 硬件捕获（非阻塞，不消耗 CPU） */
-    if (dev->use_rmt) {
+    if (dev->config.use_rmt) {
         cap = pal_rmt_ultrasonic_measure(ULTRASONIC_TIMEOUT_US, &pulse_us);
     } else {
         /* 降级：pal_gpio_pulse_in busy-wait */
-        cap = pal_gpio_pulse_in(dev->echo_pin, true, ULTRASONIC_TIMEOUT_US, &pulse_us);
+        cap = pal_gpio_pulse_in(dev->config.echo_pin, true, ULTRASONIC_TIMEOUT_US, &pulse_us);
     }
 #else
     /* host / 其它平台：pal_gpio_pulse_in */
-    cap = pal_gpio_pulse_in(dev->echo_pin, true, ULTRASONIC_TIMEOUT_US, &pulse_us);
+    cap = pal_gpio_pulse_in(dev->config.echo_pin, true, ULTRASONIC_TIMEOUT_US, &pulse_us);
 #endif
 
     if (wink_status_is_error(cap)) {
@@ -144,10 +147,10 @@ wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *distance_cm) {
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
 
     /* 1. trigger 时序旁路（真机侧为 GPIO 10us 脉冲） */
-    js_sim_trigger_ultrasonic(dev->trig_pin);
+    js_sim_trigger_ultrasonic(dev->config.trig_pin);
 
     /* 2. echo 脉宽测量旁路（真机侧为 while 循环测高电平） */
-    uint32_t pulse_us = js_sim_measure_echo_pulse_us(dev->trig_pin);
+    uint32_t pulse_us = js_sim_measure_echo_pulse_us(dev->config.trig_pin);
     if (pulse_us >= ULTRASONIC_TIMEOUT_US) { return WINK_ERR_TIMEOUT; }
 
     /* 3. 换算：两端同源 */
@@ -164,17 +167,17 @@ wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *distance_cm) {
     if (dev == NULL || distance_cm == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
 
-    pal_gpio_write(dev->trig_pin, true);
+    pal_gpio_write(dev->config.trig_pin, true);
     pal_delay_us(10);
-    pal_gpio_write(dev->trig_pin, false);
+    pal_gpio_write(dev->config.trig_pin, false);
 
     uint64_t wait_start = pal_get_us();
-    while (!pal_gpio_read(dev->echo_pin)) {
+    while (!pal_gpio_read(dev->config.echo_pin)) {
         if (pal_get_us() - wait_start > ULTRASONIC_TIMEOUT_US) { return WINK_ERR_TIMEOUT; }
     }
 
     uint64_t echo_start = pal_get_us();
-    while (pal_gpio_read(dev->echo_pin)) {
+    while (pal_gpio_read(dev->config.echo_pin)) {
         if (pal_get_us() - echo_start > ULTRASONIC_TIMEOUT_US) { return WINK_ERR_TIMEOUT; }
     }
     uint32_t pulse_us = (uint32_t)(pal_get_us() - echo_start);

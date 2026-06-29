@@ -13,13 +13,29 @@ extern "C" {
 #define DAL_BUTTON_DEBOUNCE_THRESHOLD 3
 
 /**
- * @brief 按钮逻辑句柄（POD，ADR-0004 静态分发）
+ * @brief 按钮配置结构体（标准化 config_t 模式，便于 Codegen 设备树生成）
  *
- * 成员按对齐需求降序排列：uint16_t → bool ×4 → uint8_t。
+ * Phase 2 标准化：所有 DAL 外设统一采用 dal_xxx_config_t + dal_xxx_init(dev, cfg) 模式。
+ * 便于代码生成器（app_codegen.py）输出结构化的初始化数据。
+ *
+ * 成员按对齐降序排列（uint16_t → bool）：自然对齐，无填充。
  */
 typedef struct {
     uint16_t pin;            /* 逻辑 GPIO 引脚 */
     bool active_low;         /* true: 按下为低电平（常见上拉按钮）；false: 按下为高电平 */
+} dal_button_config_t;
+
+/**
+ * @brief 按钮逻辑句柄（POD，ADR-0004 静态分发）
+ *
+ * 内嵌 config 副本，便于：
+ *   1. Flash 动态覆写（ADR-0008）：从 Flash blob 读取 → 写入 config → dal_xxx_apply_override
+ *   2. 运行时诊断：可直接打印当前生效的配置
+ *
+ * 成员按对齐降序排列（config_t → bool ×3 → uint8_t）：自然对齐，无填充。
+ */
+typedef struct {
+    dal_button_config_t config; /* 配置副本（pin, active_low），由 init 从 cfg 拷贝 */
     bool stable_pressed;     /* 去抖后的稳定按下状态 */
     bool last_reported;      /* 上次 was_pressed 报告过的状态（边沿消抖） */
     bool initialized;        /* init 成功后置 true */
@@ -28,19 +44,23 @@ typedef struct {
 
 /**
  * @brief 初始化按钮：校验引脚、按 active_low 配置上拉/下拉输入、置 initialized。
+ *
+ * Phase 2 标准化：统一采用 config_t 模式，简化 Codegen 设备树生成。
+ * 旧 API（pin + active_low 分离参数）已迁移至此。
+ *
  * @param dev 按钮实例句柄
- * @param pin 逻辑 GPIO 引脚
- * @param active_low true=按下为低电平（常见接法，内部上拉）；false=按下为高电平（内部下拉）
+ * @param cfg 配置结构体指针（内部深拷贝到 dev->config）
  * @return wink_status_t
  * @note API Contract:
- *   - Preconditions: dev 非 NULL。
+ *   - Preconditions: dev 非 NULL；cfg 非 NULL。
  *   - Blocking: No。
  *   - Thread-safe: No; ISR-safe: No.
  *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG(NULL) / 透传 PAL 错误。
- *   - Postconditions: WINK_OK 时 dev->initialized=true；GPIO 方向已配置（真机）。
+ *   - Postconditions: WINK_OK 时 dev->initialized=true；GPIO 方向已配置（真机）；
+ *                     cfg 的内容已深拷贝到 dev->config。
  */
 WINK_WARN_UNUSED_RESULT
-wink_status_t dal_button_init(dal_button_t *dev, uint16_t pin, bool active_low);
+wink_status_t dal_button_init(dal_button_t *dev, const dal_button_config_t *cfg);
 
 /**
  * @brief 每 tick 采样并跑计数式去抖状态机（非阻塞）。

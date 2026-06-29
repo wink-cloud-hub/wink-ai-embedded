@@ -18,9 +18,27 @@ typedef enum {
 } dal_ultrasonic_state_t;
 
 /**
- * 成员按对齐需求降序排列（c-code.md §4）：4B(float/uint32/enum) → 2B(uint16) → 1B(bool)，
- * 消除内部 padding（28B → 24B）。仅重排顺序、未改字段名，designated initializer 与
+ * @brief 超声波配置结构体（标准化 config_t 模式，便于 Codegen 设备树生成）
+ *
+ * Phase 2 标准化：所有 DAL 外设统一采用 dal_xxx_config_t + dal_xxx_init(dev, cfg) 模式。
+ * 便于代码生成器（app_codegen.py）输出结构化的初始化数据。
+ *
+ * 成员按对齐降序排列（uint16_t → bool）：自然对齐，无填充。
+ */
+typedef struct {
+    uint16_t trig_pin;
+    uint16_t echo_pin;
+    bool use_rmt;         ///< ESP32：true=RMT 硬件捕获，false=busy-wait 降级
+} dal_ultrasonic_config_t;
+
+/**
+ * 成员按对齐需求降序排列（c-code.md §4）：4B(float/uint32/enum) → 2B(config) → 1B(bool)，
+ * 消除内部 padding。仅重排顺序、未改字段名，designated initializer 与
  * 所有 `dev->xxx` 访问均不受影响（非破坏性）。
+ *
+ * Phase 2 改进：内嵌 config 副本，便于：
+ *   1. Flash 动态覆写（ADR-0008）：从 Flash blob 读取 → 写入 config → dal_xxx_apply_override
+ *   2. 运行时诊断：可直接打印当前生效的配置
  */
 typedef struct {
     /* —— 4B —— */
@@ -29,27 +47,30 @@ typedef struct {
     wink_status_t           last_status;     ///< Phase 4：上次测量结果状态（ERROR 时为具体错误码）
     dal_ultrasonic_state_t  state;           ///< Phase 4：非阻塞测量状态机
     /* —— 2B —— */
-    uint16_t                trig_pin;
-    uint16_t                echo_pin;
+    dal_ultrasonic_config_t config;          ///< 配置副本（trig_pin, echo_pin, use_rmt），由 init 从 cfg 拷贝
     /* —— 1B —— */
     bool                    initialized;     ///< Phase 2：dal_ultrasonic_init 成功后置 true
-    bool                    use_rmt;         ///< ESP32：true=RMT 硬件捕获，false=busy-wait 降级
 } dal_ultrasonic_t;
 
 /**
  * @brief 初始化超声波：校验引脚、配置 GPIO 方向（真机）、置 initialized。
+ *
+ * Phase 2 标准化：统一采用 config_t 模式，简化 Codegen 设备树生成。
+ * 旧 API（trig_pin + echo_pin 分离参数）已迁移至此。
+ *
  * @note API Contract:
- *   - Preconditions: dev 非 NULL；trig_pin != echo_pin。
+ *   - Preconditions: dev 非 NULL；cfg 非 NULL；cfg->trig_pin != cfg->echo_pin。
  *   - Blocking: No.
  *   - Thread-safe: No; ISR-safe: No.
  *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG(NULL/同 pin) / 透传 PAL 错误
  *     （真机：WINK_ERR_IO / WINK_ERR_BUSY / WINK_ERR_RESOURCE_EXHAUSTED）。
- *   - Postconditions: WINK_OK 时 dev->initialized=true；trig/echo 方向已配置（真机）。
+ *   - Postconditions: WINK_OK 时 dev->initialized=true；trig/echo 方向已配置（真机）；
+ *                     cfg 的内容已深拷贝到 dev->config。
  *   - Sim 分支：跳过物理 GPIO 配置（旁路最低物理信号层，ADR-0003 决策2），仅置结构状态。
- *   - ESP32：自动初始化 RMT 硬件脉冲捕获；RMT 失败自动降级到 busy-wait。
+ *   - ESP32：自动初始化 RMT 硬件脉冲捕获；RMT 失败自动降级到 busy-wait（cfg->use_rmt 变为 false）。
  */
 WINK_WARN_UNUSED_RESULT
-wink_status_t dal_ultrasonic_init(dal_ultrasonic_t *dev, uint16_t trig_pin, uint16_t echo_pin);
+wink_status_t dal_ultrasonic_init(dal_ultrasonic_t *dev, const dal_ultrasonic_config_t *cfg);
 
 /**
  * @brief 请求一次测量（触发后立即返回；非阻塞）。
