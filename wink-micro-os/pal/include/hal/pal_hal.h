@@ -32,10 +32,17 @@ typedef enum {
     PAL_GPIO_INTR_ANY_EDGE        = 3,
 } pal_gpio_intr_t;
 
-extern const uint16_t pal_pwm_pin_map[PAL_PWM_CHANNELS];
+/**
+ * @brief 统一引脚编号类型
+ * @note 使用 int16_t 确保 GPIO_NUM_NC (-1) 不被截断为 65535
+ *       兼容 ESP-IDF gpio_num_t 的符号语义
+ */
+typedef int16_t wink_pin_t;
+
+extern const wink_pin_t pal_pwm_pin_map[PAL_PWM_CHANNELS];
 
 /* I2C 物理引脚路由：[port][0] = SDA, [port][1] = SCL */
-extern const uint16_t pal_i2c_pin_map[PAL_I2C_PORTS][2];
+extern const wink_pin_t pal_i2c_pin_map[PAL_I2C_PORTS][2];
 
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_pwm_init(uint8_t channel, uint32_t frequency_hz);
@@ -46,23 +53,23 @@ wink_status_t pal_pwm_set_duty(uint8_t channel, float duty);
 void pal_pwm_deinit(uint8_t channel);
 
 WINK_WARN_UNUSED_RESULT
-wink_status_t pal_gpio_init(uint16_t pin, pal_gpio_mode_t mode);
+wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode);
 
-void pal_gpio_write(uint16_t pin, bool level);
+void pal_gpio_write(wink_pin_t pin, bool level);
 
-bool pal_gpio_read(uint16_t pin);
+bool pal_gpio_read(wink_pin_t pin);
 
 typedef void (*pal_gpio_isr_t)(void *arg);
 
 WINK_WARN_UNUSED_RESULT
-wink_status_t pal_gpio_enable_interrupt(uint16_t pin, pal_gpio_intr_t intr_type,
+wink_status_t pal_gpio_enable_interrupt(wink_pin_t pin, pal_gpio_intr_t intr_type,
                                          pal_gpio_isr_t callback, void *arg);
 
 WINK_WARN_UNUSED_RESULT
-wink_status_t pal_gpio_disable_interrupt(uint16_t pin);
+wink_status_t pal_gpio_disable_interrupt(wink_pin_t pin);
 
 WINK_WARN_UNUSED_RESULT
-wink_status_t pal_gpio_pulse_in(uint16_t pin, bool level, uint32_t timeout_us,
+wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us,
                                  uint32_t *pulse_us);
 
 WINK_WARN_UNUSED_RESULT
