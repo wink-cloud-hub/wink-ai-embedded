@@ -18,7 +18,10 @@ function(add_wink_test name src)
     target_include_directories(${name} PRIVATE
         ${UNITY_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}
+        # Phase 1 目录重组：pal/include/ 根目录 + osal/ + hal/ 子目录均在搜索路径中
         ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/osal
+        ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/hal
         ${CMAKE_CURRENT_SOURCE_DIR}/../trace/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/include)
     target_link_libraries(${name} PRIVATE pal)
@@ -47,8 +50,18 @@ function(add_wink_host_test name src)
         ${UNITY_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/stubs
+        # Phase 1 目录重组：pal/include/ 根目录 + osal/ + hal/ 子目录均在搜索路径中
         ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/osal
+        ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/hal
+        # Phase 2：targets/common/include（wink_sim_physical.h）
+        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/input
+        ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/output
+        ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/actuator
+        ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/display
+        ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/sensor
         ${CMAKE_CURRENT_SOURCE_DIR}/../trace/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/include)
     target_link_libraries(${name} PRIVATE pal)
@@ -99,12 +112,13 @@ add_wink_host_test(test_pal_storage test_pal_storage.c)
 # ADR-0009 Wave1 物理退化算法库单测（wink_sim_physical.c 现已并入 pal_host OBJECT）
 add_wink_host_test(test_sim_physical test_sim_physical.c)
 
+# Phase 3：DAL 分类组织后的源文件路径
 set(DAL_SRCS
-    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/dal_ultrasonic.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/dal_servo.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/dal_led.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/dal_button.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/dal_ssd1306.c)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/sensor/dal_ultrasonic.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/actuator/dal_servo.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/output/dal_led.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/input/dal_button.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/display/dal_ssd1306.c)
 
 add_wink_host_test(test_dal_servo test_dal_servo.c ${DAL_SRCS})
 
@@ -129,8 +143,18 @@ function(add_wink_test_sim name src)
         ${UNITY_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/stubs
+        # Phase 1 目录重组：pal/include/ 根目录 + osal/ + hal/ 子目录均在搜索路径中
         ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/osal
+        ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/hal
+        # Phase 2：targets/common/include（wink_sim_physical.h）
+        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/input
+        ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/output
+        ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/actuator
+        ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/display
+        ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/sensor
         ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm     # wasm_bridge.h（dal SIMULATION 分支引用）
         ${CMAKE_CURRENT_SOURCE_DIR}/../trace/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/include)
