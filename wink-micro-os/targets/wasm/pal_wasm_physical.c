@@ -111,9 +111,13 @@ static uint32_t s_fault_sequence;    /* global monotonically increasing seq, nev
  * = 6 × 12B = 72B in BSS. Trivial; the bigger ABI commitment is the enum
  * stability (see wasm_fault_domain_id_t — never reorder, only append).
  *
- * Default state after pal_wasm_reset_physical():
+ * Default state after first call to pal_wasm_reset_physical():
  *   - All domains armed=true so existing tests / golden vectors keep firing.
  *   - All trigger_count=0.
+ *
+ * Note: On fresh wasm instance load (BSS-zero), armed=false for all slots.
+ * JS Worker MUST call pal_wasm_reset_physical() during INIT phase before
+ * reading domain state.
  *
  * Concurrency: same single-threaded Asyncify assumption as the fault log;
  * no lock needed today.
