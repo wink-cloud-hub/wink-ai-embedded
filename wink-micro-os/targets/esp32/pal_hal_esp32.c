@@ -69,8 +69,11 @@ typedef int esp_err_t;
  * GPIO 实现
  * ───────────────────────────────────────────────────────── */
 
-wink_status_t pal_gpio_init(uint16_t pin, pal_gpio_mode_t mode) {
-    if (pin >= GPIO_NUM_MAX) { return WINK_ERR_INVALID_ARG; }
+_Static_assert((gpio_num_t)GPIO_NUM_NC == -1,
+    "GPIO_NUM_NC must be -1 for wink_pin_t sign-compatibility");
+
+wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
+    if (pin < 0 || pin >= GPIO_NUM_MAX) { return WINK_ERR_INVALID_ARG; }
 
     wink_status_t rs = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, pin, "pal_hal_esp32");
     if (wink_status_is_error(rs)) { return rs; }
@@ -111,9 +114,9 @@ wink_status_t pal_gpio_init(uint16_t pin, pal_gpio_mode_t mode) {
     return WINK_OK;
 }
 
-void pal_gpio_write(uint16_t pin, bool level) {
+void pal_gpio_write(wink_pin_t pin, bool level) {
 #if defined(ESP_PLATFORM)
-    if (pin < GPIO_NUM_MAX) {
+    if (pin >= 0 && pin < GPIO_NUM_MAX) {
         gpio_set_level((gpio_num_t)pin, level ? 1 : 0);
     }
 #else
@@ -121,9 +124,9 @@ void pal_gpio_write(uint16_t pin, bool level) {
 #endif
 }
 
-bool pal_gpio_read(uint16_t pin) {
+bool pal_gpio_read(wink_pin_t pin) {
 #if defined(ESP_PLATFORM)
-    if (pin >= GPIO_NUM_MAX) { return false; }
+    if (pin < 0 || pin >= GPIO_NUM_MAX) { return false; }
     return gpio_get_level((gpio_num_t)pin) != 0;
 #else
     (void)pin; return false;
@@ -142,9 +145,9 @@ static void IRAM_ATTR gpio_isr_wrapper(void *arg) {
 }
 #endif
 
-wink_status_t pal_gpio_enable_interrupt(uint16_t pin, pal_gpio_intr_t intr_type,
+wink_status_t pal_gpio_enable_interrupt(wink_pin_t pin, pal_gpio_intr_t intr_type,
                                          pal_gpio_isr_t cb, void *arg) {
-    if (pin >= GPIO_NUM_MAX || cb == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (pin < 0 || pin >= GPIO_NUM_MAX || cb == NULL) { return WINK_ERR_INVALID_ARG; }
 
 #if defined(ESP_PLATFORM)
     gpio_int_type_t esp_intr_type;
@@ -186,8 +189,8 @@ wink_status_t pal_gpio_enable_interrupt(uint16_t pin, pal_gpio_intr_t intr_type,
     return WINK_OK;
 }
 
-wink_status_t pal_gpio_disable_interrupt(uint16_t pin) {
-    if (pin >= GPIO_NUM_MAX) { return WINK_ERR_INVALID_ARG; }
+wink_status_t pal_gpio_disable_interrupt(wink_pin_t pin) {
+    if (pin < 0 || pin >= GPIO_NUM_MAX) { return WINK_ERR_INVALID_ARG; }
 
 #if defined(ESP_PLATFORM)
     esp_err_t err = gpio_set_intr_type((gpio_num_t)pin, GPIO_INTR_DISABLE);
@@ -205,11 +208,11 @@ wink_status_t pal_gpio_disable_interrupt(uint16_t pin) {
 #if defined(ESP_PLATFORM)
 /* 板级路由弱默认：无 board_config.c 覆盖时使用，避免链接缺符号。
  * 强定义由 samples/<app>/board_config.c 提供。*/
-__attribute__((weak)) const uint16_t pal_pwm_pin_map[PAL_PWM_CHANNELS] = {2, 4, 5, 18, 19, 21, 22, 23};
+__attribute__((weak)) const wink_pin_t pal_pwm_pin_map[PAL_PWM_CHANNELS] = {2, 4, 5, 18, 19, 21, 22, 23};
 
 /* I2C 引脚弱默认：无 board_config.c 强覆盖时使用。
  * I2C0: SDA=21, SCL=22; I2C1: SDA=33, SCL=32 */
-__attribute__((weak)) const uint16_t pal_i2c_pin_map[PAL_I2C_PORTS][2] = {
+__attribute__((weak)) const wink_pin_t pal_i2c_pin_map[PAL_I2C_PORTS][2] = {
     {21, 22},
     {33, 32}
 };
@@ -313,9 +316,18 @@ static bool s_i2c_initialized[PAL_I2C_PORTS] = {false};
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 
-/* 并发安全：静态互斥锁，保护初始化与设备缓存操作 */
+/* 并发安全：静态互斥锁，保护初始化与设备缓存操作
+ * ✅ SMP-safe: FreeRTOS 调度器启动前静态初始化，无双核竞态
+ * 参见: https://www.freertos.org/xSemaphoreCreateMutexStatic.html */
 static SemaphoreHandle_t s_i2c_mutex = NULL;
 static StaticSemaphore_t s_i2c_mutex_buf;
+
+/* 在启动时初始化互斥锁，避免双核懒初始化竞态
+ * constructor(101) 确保在应用层代码之前执行 */
+__attribute__((constructor(101)))
+static void pal_i2c_static_init_mutex(void) {
+    s_i2c_mutex = xSemaphoreCreateMutexStatic(&s_i2c_mutex_buf);
+}
 
 #if WINK_I2C_USE_V6_API
 /* v6.x：总线-设备二级模型 */
@@ -359,8 +371,29 @@ static inline wink_status_t pal_i2c_map_esp_err(esp_err_t esp_err)
 }
 
 /**
- * @brief 获取或创建 I2C 设备句柄（懒加载 + FIFO 替换）
+ * @brief 将缓存条目移动到队尾（LRU 热更新）
+ * @note 每次命中后调用，确保访问频率高的设备不被淘汰
+ */
+static inline void pal_i2c_lru_touch(uint8_t port, int hit_idx)
+{
+    i2c_dev_cache_entry_t hit = s_i2c_dev_cache[port][hit_idx];
+    for (int i = hit_idx; i < I2C_MAX_DEVICES - 1; i++) {
+        if (s_i2c_dev_cache[port][i + 1].dev_addr == 0) {
+            s_i2c_dev_cache[port][i] = hit;
+            return;
+        }
+        s_i2c_dev_cache[port][i] = s_i2c_dev_cache[port][i + 1];
+    }
+    s_i2c_dev_cache[port][I2C_MAX_DEVICES - 1] = hit;
+}
+
+/**
+ * @brief 获取或创建 I2C 设备句柄（懒加载 + LRU 替换 + 事务安全）
  * @note 必须在持有 s_i2c_mutex 的情况下调用
+ * @design
+ *   - ✅ LRU: 命中时将条目移到队尾，淘汰时总是淘汰 index 0（最久未用）
+ *   - ✅ 事务安全: 先分配临时句柄，仅在完全成功后才修改缓存
+ *   - ✅ 无中间状态: 即使创建设备失败，缓存也不会被破坏
  */
 static wink_status_t pal_i2c_get_or_create_device(uint8_t port, uint16_t dev_addr,
                                                    i2c_master_dev_handle_t *out_handle)
@@ -369,7 +402,9 @@ static wink_status_t pal_i2c_get_or_create_device(uint8_t port, uint16_t dev_add
     int free_slot = -1;
     for (int i = 0; i < I2C_MAX_DEVICES; i++) {
         if (s_i2c_dev_cache[port][i].dev_addr == dev_addr) {
-            *out_handle = s_i2c_dev_cache[port][i].handle;
+            /* ✅ LRU: 命中时将该条目移到队尾（提高后续访问局部性） */
+            pal_i2c_lru_touch(port, i);
+            *out_handle = s_i2c_dev_cache[port][I2C_MAX_DEVICES - 1].handle;
             return WINK_OK;
         }
         if (s_i2c_dev_cache[port][i].dev_addr == 0 && free_slot == -1) {
@@ -377,15 +412,30 @@ static wink_status_t pal_i2c_get_or_create_device(uint8_t port, uint16_t dev_add
         }
     }
 
-    /* Step 2：未命中，需要创建新设备 */
+    /* Step 2：先在栈上分配临时句柄，不修改任何缓存状态 */
+    i2c_device_config_t dev_cfg = {
+        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+        .device_address = dev_addr,
+        .scl_speed_hz = 400000,
+    };
+
+    i2c_master_dev_handle_t temp_handle = NULL;
+    esp_err_t err = i2c_master_bus_add_device(s_i2c_bus[port], &dev_cfg, &temp_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "failed to add I2C device addr 0x%02X: %s",
+                 dev_addr, esp_err_to_name(err));
+        return pal_i2c_map_esp_err(err);
+    }
+
+    /* Step 3: 需要淘汰缓存（仅在设备创建成功后执行） */
     if (free_slot == -1) {
-        /* 缓存已满：FIFO 替换策略，淘汰 index 0，整体前移 */
-        ESP_LOGW(TAG, "port %d device cache full, evicting addr 0x%02X",
+        ESP_LOGW(TAG, "port %d device cache full, LRU evicting addr 0x%02X",
                  port, s_i2c_dev_cache[port][0].dev_addr);
 
-        esp_err_t err = i2c_master_bus_rm_device(s_i2c_dev_cache[port][0].handle);
-        if (err != ESP_OK) {
-            ESP_LOGE(TAG, "failed to remove I2C device: %s", esp_err_to_name(err));
+        esp_err_t rm_err = i2c_master_bus_rm_device(s_i2c_dev_cache[port][0].handle);
+        if (rm_err != ESP_OK) {
+            ESP_LOGW(TAG, "evict device 0x%02X failed: %s (ignoring)",
+                     s_i2c_dev_cache[port][0].dev_addr, esp_err_to_name(rm_err));
         }
 
         for (int i = 0; i < I2C_MAX_DEVICES - 1; i++) {
@@ -394,23 +444,10 @@ static wink_status_t pal_i2c_get_or_create_device(uint8_t port, uint16_t dev_add
         free_slot = I2C_MAX_DEVICES - 1;
     }
 
-    /* Step 3：创建设备 */
-    i2c_device_config_t dev_cfg = {
-        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
-        .device_address = dev_addr,
-        .scl_speed_hz = 400000,
-    };
-
-    esp_err_t err = i2c_master_bus_add_device(s_i2c_bus[port], &dev_cfg,
-                                               &s_i2c_dev_cache[port][free_slot].handle);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "failed to add I2C device addr 0x%02X: %s",
-                 dev_addr, esp_err_to_name(err));
-        return WINK_ERR_HARDWARE;
-    }
-
+    /* Step 4：唯一的缓存写入点 - 原子性提交 */
+    s_i2c_dev_cache[port][free_slot].handle = temp_handle;
     s_i2c_dev_cache[port][free_slot].dev_addr = dev_addr;
-    *out_handle = s_i2c_dev_cache[port][free_slot].handle;
+    *out_handle = temp_handle;
     return WINK_OK;
 }
 #else  /* WINK_I2C_USE_V6_API == 0：v5.x 旧 API */
@@ -447,12 +484,8 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
     if (port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
 
 #if defined(ESP_PLATFORM)
-    /* 懒创建互斥锁 */
-    if (s_i2c_mutex == NULL) {
-        s_i2c_mutex = xSemaphoreCreateMutexStatic(&s_i2c_mutex_buf);
-    }
-
-    /* 临界区：初始化 + 设备缓存操作 */
+    /* 临界区：初始化 + 设备缓存操作
+     * ✅ 互斥锁已在 constructor 中静态初始化，SMP 安全 */
     if (xSemaphoreTake(s_i2c_mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
         ESP_LOGE(TAG, "I2C mutex timeout");
         return WINK_ERR_BUSY;
@@ -560,12 +593,12 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
  * GPIO Pulse In（超声波硬件捕获）
  * ───────────────────────────────────────────────────────── */
 
-wink_status_t pal_gpio_pulse_in(uint16_t pin, bool level,
+wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level,
                                   uint32_t timeout_us, uint32_t *pulse_us) {
     /* FIXME: MVP 阶段暂用 busy-wait（会阻塞 tick）。
      * Phase 4 目标：迁移至 RMT + GPIO 双沿 ISR + 硬件定时器实现非阻塞捕获。
      * 当前实现仅供 avoidance_car 示例跑通，实时性不达标。 */
-    if (pulse_us == NULL || pin >= GPIO_NUM_MAX) {
+    if (pulse_us == NULL || pin < 0 || pin >= GPIO_NUM_MAX) {
         return WINK_ERR_INVALID_ARG;
     }
 
