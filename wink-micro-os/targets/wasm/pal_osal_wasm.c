@@ -17,25 +17,65 @@
 #include "pal_wasm_internal.h"
 #include <emscripten.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 /* ─────────────────────────────────────────────────────────
- * 虚拟时钟（ADR-0003 决策 3 / ADR-0009 §4.1）
+ * 虚拟时钟（ADR-0003 决策 3 / ADR-0009 §4.1 / Wave2 P1 Task 6）
  * ───────────────────────────────────────────────────────── */
 
 /* wasm 侧虚拟时钟唯一状态。BSS 初始化为 0。
- * 64 位无符号自然回绕 > 580 年，仿真不可能溢出。 */
+ * 64 位无符号自然回绕 > 580 年，物理上仿真不可能在单次会话内溢出，但
+ * 1000x 加速仿真 + CI 长跑（~200 天连续运行）有理论触顶风险。Task 6
+ * 在 50% 量程处插入一次性早期警告（见 CLOCK_WARNING_THRESHOLD），让
+ * JS 侧在真正回绕前提示用户重置仿真环境。 */
 static uint64_t s_virtual_us = 0;
+
+/* 一次性溢出预警标志。BSS 初始化为 false。
+ * 跨过阈值后置 true 并保持，幂等：JS 侧只关心 false→true 边沿。 */
+static bool s_clock_warning_fired = false;
+
+/* 编译期保证时钟是 64 位（即便未来误改类型，编译即拒）。 */
+_Static_assert(sizeof(s_virtual_us) == 8, "Virtual clock must be 64-bit");
+
+/* 溢出预警阈值：UINT64 中点（约 292 年微秒），用 UINT64_C 宏避免被
+ * 当成 32 位常量截断。50% 量程预留充足修复窗口。 */
+#define CLOCK_WARNING_THRESHOLD (UINT64_C(0x8000000000000000))
 
 /* 导出给 JS Worker 的步进接口。
  * EMSCRIPTEN_KEEPALIVE 保证符号不被 -O 级优化裁掉 + 自动加入 export 表。
- * 调用者：SimWorker.ts（Wave 2 Task 5）在恢复 wasm 协程前推进时钟。 */
+ * 调用者：SimWorker.ts（Wave 2 Task 5）在恢复 wasm 协程前推进时钟。
+ *
+ * 预警逻辑：跨越 CLOCK_WARNING_THRESHOLD 时一次性置位 s_clock_warning_fired。
+ * 故意不直接调用 JS 侧日志函数——避免在 Asyncify 恢复路径上引入重入风险；
+ * 由 JS 侧每个 tick 边界轮询 pal_wasm_is_clock_warning_fired()。 */
 EMSCRIPTEN_KEEPALIVE
 void pal_wasm_advance_virtual_clock(uint64_t us) {
     s_virtual_us += us;
+
+    if (s_virtual_us > CLOCK_WARNING_THRESHOLD && !s_clock_warning_fired) {
+        s_clock_warning_fired = true;
+    }
 }
 
 uint64_t pal_get_us(void) { return s_virtual_us; }
 uint64_t pal_get_ms(void) { return s_virtual_us / 1000u; }
+
+/* ─────────────────────────────────────────────────────────
+ * 溢出预警 accessor（Wave2 P1 Task 6）。
+ * 导出给 JS Worker：每个 tick 边界轮询，触发后 console.warn 一次。
+ * KEEPALIVE 保证符号进入 Module exports；C 侧通过 pal_wasm_internal.h
+ * 声明以便 wasm 单测引用。
+ * ───────────────────────────────────────────────────────── */
+
+EMSCRIPTEN_KEEPALIVE
+bool pal_wasm_is_clock_warning_fired(void) {
+    return s_clock_warning_fired;
+}
+
+EMSCRIPTEN_KEEPALIVE
+uint64_t pal_wasm_get_virtual_clock_us(void) {
+    return s_virtual_us;
+}
 
 /* ─────────────────────────────────────────────────────────
  * Delay：仅做 Asyncify 异步挂起。SSOT 红线——不主动步进时钟。

@@ -87,6 +87,14 @@ extern void     pal_wasm_set_prng_seed(uint32_t seed);
 extern uint32_t pal_wasm_get_prng_state(void);
 extern void     pal_wasm_reset_physical(void);
 
+/* ---- 虚拟时钟溢出预警导出（Wave2 P1 Task 6）----
+ *
+ * JS Worker 每个 tick 边界轮询 pal_wasm_is_clock_warning_fired()，首次
+ * 返回 true 时 console.warn 输出剩余量程提示。语义详见
+ * pal_wasm_internal.h 注释。 */
+extern bool     pal_wasm_is_clock_warning_fired(void);
+extern uint64_t pal_wasm_get_virtual_clock_us(void);
+
 #ifdef __cplusplus
 }
 #endif
