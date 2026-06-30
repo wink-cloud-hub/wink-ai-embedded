@@ -11,20 +11,12 @@
  */
 
 #include "smp_uaf_test.h"
+#include "device_tree.h"  /* 引入设备树配置的中断号 */
 #include "pal.h"       /* PAL 聚合头：包含所有 HAL + OSAL API */
 #include "pal_irq.h"   /* 共享中断 API */
 #include "pal_debug.h"
 #include <stdlib.h>
 #include <string.h>
-
-/* 中断号选择：ESP32 上 7、8、9、11、12、13 通常是可用的
- * 避免使用 5、6（可能被 ESP-IDF 内部占用）
- * 10 是 GPIO 专用中断，需要硬件状态寄存器配合
- *
- * pal_irq_set_pending() 能直接设置 CPU 中断 pending 位触发 ISR
- */
-#define TEST_IRQ_UAF          7    /* UAF 主测试使用中断号 7 */
-#define TEST_IRQ_SLOW         8    /* 阻塞测试使用中断号 8 */
 
 /* ─────────────────────────────────────────────────────────
  * 内部类型与全局状态
