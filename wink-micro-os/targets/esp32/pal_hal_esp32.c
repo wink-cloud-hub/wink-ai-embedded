@@ -1067,21 +1067,10 @@ wink_status_t pal_irq_shared_register(uint32_t irq_num, pal_irq_prio_t prio,
 void pal_irq_set_pending(uint32_t irq_num)
 {
 #if defined(ESP_PLATFORM)
-    static int print_count = 0;
-    if (irq_num < 32) {
-        if (print_count < 2) {
-            printf("  [PENDING DIAG] irq_num=%u, handle=%p\n", (unsigned int)irq_num, s_irq_handles[irq_num]);
-            print_count++;
-        }
-        if (s_irq_handles[irq_num] != NULL) {
-            int cpu_intr = esp_intr_get_intno(s_irq_handles[irq_num]);
-            if (print_count < 3) {
-                printf("  [PENDING DIAG] cpu_intr=%d\n", cpu_intr);
-                print_count++;
-            }
-            if (cpu_intr >= 0 && cpu_intr < 32) {
-                xthal_set_intset(1 << cpu_intr);
-            }
+    if (irq_num < 32 && s_irq_handles[irq_num] != NULL) {
+        int cpu_intr = esp_intr_get_intno(s_irq_handles[irq_num]);
+        if (cpu_intr >= 0 && cpu_intr < 32) {
+            xthal_set_intset(1 << cpu_intr);
         }
     }
 #else

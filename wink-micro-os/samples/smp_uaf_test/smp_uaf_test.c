@@ -58,14 +58,8 @@ static volatile test_resource_t *s_slow_isr_resource = NULL;
  * @note 非共享中断 ISR 返回 void
  */
 static void test_uaf_isr(void *arg) {
-    (void)arg;  /* 不使用注册时传入的 arg，改用全局指针 */
+    (void)arg;  /* 不使用注册时传入 of arg，改用全局指针 */
     test_resource_t *res = (test_resource_t *)s_current_resource;
-
-    static bool printed = false;
-    if (!printed) {
-        pal_debug_printf("  [ISR DIAG] test_uaf_isr entered on core!\n");
-        printed = true;
-    }
 
     /* ✅ 放大 race window：故意放慢 ISR 执行
      *
@@ -79,9 +73,6 @@ static void test_uaf_isr(void *arg) {
     if (res != NULL && res->magic != TEST_SMP_UAF_MAGIC) {
         s_uaf_detected = true;
         s_uaf_magic_value = res->magic;
-        pal_debug_printf("!!! UAF DETECTED at round %lu !!! magic=0x%08lX\n",
-                         (unsigned long)res->round_id,
-                         (unsigned long)s_uaf_magic_value);
         return;
     }
 
@@ -102,16 +93,9 @@ static TaskHandle_t s_trigger_task_handle = NULL;
 
 static void trigger_task_func(void *arg) {
     (void)arg;
-    pal_debug_printf("  [TRIG DIAG] smp_trig_task started on CPU!\n");
     while (1) {
         // 等待 CPU 0 任务的通知
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        
-        static bool notified_printed = false;
-        if (!notified_printed) {
-            pal_debug_printf("  [TRIG DIAG] smp_trig_task received notification!\n");
-            notified_printed = true;
-        }
 
         // 收到通知后，在 CPU 1 上并发触发 50 次软件中断
         for (int i = 0; i < 50; i++) {
@@ -129,7 +113,6 @@ struct enable_args {
 static void enable_task(void *arg) {
     struct enable_args *args = (struct enable_args *)arg;
     args->status = pal_irq_enable(TEST_IRQ_UAF, PAL_IRQ_PRIO_NORMAL, test_uaf_isr, NULL);
-    pal_debug_printf("  [ENABLE DIAG] enable_task on CPU, pal_irq_enable status = %d\n", (int)args->status);
     args->done = true;
     vTaskDelete(NULL);
 }
