@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <stdlib.h>
 
 /* 虚拟时间状态（OSAL 侧推进，HAL 侧消费）—— 跨文件共享，故 extern */
 extern uint64_t host_sim_time_us(void);
@@ -176,12 +177,6 @@ uint32_t pal_host_get_isr_call_count(wink_pin_t pin)
     return s_isr_call_count[pin];
 }
 
-void pal_host_reset_isr_stats(void)
-{
-    memset(s_isr_call_count, 0, sizeof(s_isr_call_count));
-    s_pending_count = 0;
-}
-
 /**
  * @brief 获取当前 pending 中断数量（用于单测断言）
  */
@@ -199,6 +194,46 @@ int pal_host_get_irq_lock_depth(void)
 }
 
 /* ─────────────────────────────────────────────────────────
+ * 共享中断机制（Host 单元测试支持）
+ * ───────────────────────────────────────────────────────── */
+
+#define HOST_MAX_SHARED_HANDLERS  4
+#define HOST_MAX_SHARED_IRQS      16
+
+typedef struct {
+    pal_irq_shared_handler_t handler;
+    void                     *arg;
+} host_shared_entry_t;
+
+typedef struct {
+    host_shared_entry_t entries[HOST_MAX_SHARED_HANDLERS];
+    uint8_t count;
+} host_shared_chain_t;
+
+static host_shared_chain_t *s_host_shared_chain[HOST_MAX_SHARED_IRQS] = {NULL};
+
+/* 共享中断 wrapper（Host 仿真版） */
+static void PAL_ISR host_shared_irq_wrapper(void *arg)
+{
+    uint32_t irq_num = (uint32_t)(uintptr_t)arg;
+    if (irq_num >= HOST_MAX_SHARED_IRQS) {
+        return;
+    }
+
+    host_shared_chain_t *chain = s_host_shared_chain[irq_num];
+    if (chain == NULL) {
+        return;
+    }
+
+    /* ✅ v2.0 语义：始终遍历调用所有 handler，不提前终止 */
+    for (uint8_t i = 0; i < chain->count; i++) {
+        if (chain->entries[i].handler != NULL) {
+            (void)chain->entries[i].handler(chain->entries[i].arg);
+        }
+    }
+}
+
+/* ─────────────────────────────────────────────────────────
  * 逻辑中断核心接口（Host 单元测试支持）
  * ───────────────────────────────────────────────────────── */
 #define HOST_MAX_IRQ  32
@@ -209,8 +244,7 @@ static uint32_t s_host_irq_call_count[HOST_MAX_IRQ] = {0};
 wink_status_t pal_irq_enable(uint32_t irq_num, pal_irq_prio_t prio,
                               pal_isr_t handler, void *arg)
 {
-    (void)prio;
-    if (irq_num >= HOST_MAX_IRQ || handler == NULL) {
+    if (irq_num >= HOST_MAX_IRQ || handler == NULL || prio >= PAL_IRQ_PRIO_COUNT) {
         return WINK_ERR_INVALID_ARG;
     }
     s_host_irq_table[irq_num] = handler;
@@ -232,6 +266,54 @@ wink_status_t pal_irq_disable(uint32_t irq_num)
 wink_status_t pal_irq_direct_connect(uint32_t irq_num, pal_direct_isr_t handler)
 {
     return pal_irq_enable(irq_num, PAL_IRQ_PRIO_NORMAL, (pal_isr_t)handler, NULL);
+}
+
+wink_status_t pal_irq_shared_register(uint32_t irq_num, pal_irq_prio_t prio,
+                                       pal_irq_shared_handler_t handler, void *arg)
+{
+    if (irq_num >= HOST_MAX_SHARED_IRQS || handler == NULL || prio >= PAL_IRQ_PRIO_COUNT) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    host_shared_chain_t *old_chain = s_host_shared_chain[irq_num];
+    host_shared_chain_t *new_chain = NULL;
+
+    if (old_chain == NULL) {
+        /* 第一个 handler：创建新链 */
+        new_chain = malloc(sizeof(host_shared_chain_t));
+        if (new_chain == NULL) {
+            return WINK_ERR_NO_MEM;
+        }
+        memset(new_chain, 0, sizeof(host_shared_chain_t));
+    } else {
+        /* 已有 handler：复制旧链，添加新 handler */
+        if (old_chain->count >= HOST_MAX_SHARED_HANDLERS) {
+            return WINK_ERR_NO_MEM;
+        }
+        new_chain = malloc(sizeof(host_shared_chain_t));
+        if (new_chain == NULL) {
+            return WINK_ERR_NO_MEM;
+        }
+        memcpy(new_chain, old_chain, sizeof(host_shared_chain_t));
+    }
+
+    /* 追加新 handler */
+    uint8_t idx = new_chain->count;
+    new_chain->entries[idx].handler = handler;
+    new_chain->entries[idx].arg = arg;
+    new_chain->count++;
+
+    /* 原子替换指针 */
+    s_host_shared_chain[irq_num] = new_chain;
+    free(old_chain);
+
+    /* 如果是第一个 handler，注册共享 wrapper */
+    if (new_chain->count == 1) {
+        return pal_irq_enable(irq_num, prio, host_shared_irq_wrapper,
+                              (void *)(uintptr_t)irq_num);
+    }
+
+    return WINK_OK;
 }
 
 void pal_irq_set_pending(uint32_t irq_num)
@@ -268,6 +350,14 @@ uint32_t pal_host_get_logical_isr_call_count(uint32_t irq_num)
     return s_host_irq_call_count[irq_num];
 }
 
+void pal_host_reset_isr_stats(void)
+{
+    memset(s_isr_call_count, 0, sizeof(s_isr_call_count));
+    memset(s_host_irq_call_count, 0, sizeof(s_host_irq_call_count));
+    s_pending_count = 0;
+    s_irq_lock_depth = 0;
+}
+
 /* ─────────────────────────────────────────────────────────
  * 中断锁实现（双等级语义，Host 平台支持精确检测）
  * ───────────────────────────────────────────────────────── */
@@ -297,9 +387,9 @@ void pal_irq_restore(uint32_t mask)
 
     s_irq_lock_depth--;
 
-    /* 如果是最外层 restore（mask == 0 表示 save 之前锁深度为 0），
-     * 则刷新所有 pending 中断 */
-    if (s_irq_lock_depth == mask) {
+    /* 只有当锁深度变为 0（真正释放），且 save 之前也是未锁状态（mask == 0），
+     * 才刷新 pending 中断。这样嵌套锁内层不会误触发 flush。 */
+    if (s_irq_lock_depth == 0 && mask == 0) {
         flush_pending_interrupts();
     }
 }
