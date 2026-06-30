@@ -62,7 +62,14 @@ typedef enum {
     PAL_IRQ_PRIO_HIGHEST  = 4,  /**< 最高 RTOS 安全优先级 */
     PAL_IRQ_PRIO_REALTIME = 5,  /**< ⚠️ 非 RTOS 安全！极端硬实时场景专用
                                          严禁调用任何 RTOS API（包括 FromISR 系列）
-                                         仅用于电机换向、激光同步等零延迟需求 */
+                                         仅用于电机换向、激光同步等零延迟需求。
+                                         ⚠️ v2.1（ADR-0012 / ADR-IRQ-008）：
+                                         ESP32 target 显式拒接此优先级，返回
+                                         WINK_ERR_UNSUPPORTED（NMI 级 C-ISR 不可注册）。
+                                         host / wasm 在单线程模型下仍可注册成功，
+                                         但仅供静态校验类测试使用；要在真机上跑硬实时，
+                                         需等待 pal_irq_direct_connect_unsafe() 接口或
+                                         接入支持 NMI 直挂的裸机/STM32 target。 */
     PAL_IRQ_PRIO_COUNT          /* 优先级数量，用于边界检查 */
 } pal_irq_prio_t;
 
