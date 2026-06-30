@@ -96,6 +96,9 @@ add_wink_host_test(test_actuator_registry test_actuator_registry.c
 # Phase 2 Task 2-3：host 资源占用治理直接单测（链 pal_host，含 pal_resource_host.c）
 add_wink_host_test(test_pal_resource test_pal_resource.c)
 
+# PAL 统一中断抽象单元测试（v2.0 含中断锁、共享中断、RAII 临界区）
+add_wink_host_test(test_pal_irq test_pal_irq.c)
+
 # PAL 契约完整性编译探针（防 ESP32 跨 target 符号漂移门禁；评审 P0-1 对策）。
 # 任何被 ESP32/wasm/host 引用却未在 PAL 头定义的符号 → 此处编译失败。
 add_wink_host_test(test_pal_contract test_pal_contract.c)
