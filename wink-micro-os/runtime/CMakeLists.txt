@@ -11,6 +11,13 @@ add_dependencies(wink_runtime generate_config)
 target_include_directories(wink_runtime PUBLIC include)
 target_link_libraries(wink_runtime PUBLIC pal wink_trace)   # pal: OSAL; wink_trace: fault 上报
 
+# pal_wasm_internal.h is referenced by wink_runtime.c under SIMULATION for poll-based interrupt dispatch
+# Header has proper SIMULATION guards, so always add to path to allow compilation on all platforms
+# pal_wasm_internal.h also includes wink_sim_physical.h from targets/common/include
+target_include_directories(wink_runtime PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm
+    ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include)
+
 # MSVC: disable C4100 (unused parameters) — intentional in HAL contract; matches GCC -Wno-unused-parameter
 if(MSVC)
     target_compile_options(wink_runtime PRIVATE /wd4100)
