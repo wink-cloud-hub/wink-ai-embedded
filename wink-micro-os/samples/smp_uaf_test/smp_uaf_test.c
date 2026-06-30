@@ -1,16 +1,11 @@
-/**
- * @file test_smp_uaf.c
+﻿/**
+ * @file smp_uaf_test.c
  * @brief SMP 多核 UAF (Use-After-Free) 验证测试 — 核心实现。
  *
  * 本文件 100% 使用 PAL API，跨平台通用，不包含任何平台相关代码。
  *
- * 关键架构决策：
- *   1. 使用 pal_irq_set_pending() 软件触发中断，而非硬件 GPIO 电平跳变
- *      → 真正跨平台，不需要外部硬件连线
- *   2. 魔数检测 UAF，不需要 MMU 或内存保护单元
- *      → 在资源受限的 MCU 上也能工作
- *   3. ISR 中加入故意延时放大 race window
- *      → 让测试在几秒钟内就能测出问题，而不是几小时
+ * 测试原理：使用 PAL 逻辑中断（不是 GPIO 中断）+ 软件触发方式，
+ * 验证 pal_irq_synchronize() 正确防止 SMP 系统中的 UAF。
  *
  * 参考：Linux 内核 synchronize_irq() 的设计原理
  */
@@ -23,19 +18,19 @@
 
 /* 中断触发接口（平台适配层）
  * - Host: 使用 pal_host_trigger_gpio_interrupt() 软件模拟
- * - ESP32: 通过 PAL GPIO API 触发电平跳变
+ * - ESP32: 使用 pal_irq_set_pending() 软件触发逻辑中断
  */
 #ifdef ESP_PLATFORM
-static inline void trigger_gpio_interrupt(wink_pin_t pin) {
-    /* ESP32 上通过 PAL GPIO API 触发电平跳变产生中断 */
-    pal_gpio_set_level(pin, 1);
-    pal_delay_us(1);
-    pal_gpio_set_level(pin, 0);
+static inline void trigger_test_interrupt(uint32_t irq_num) {
+    /* ESP32 上直接用 PAL API 软件触发逻辑中断 */
+    pal_irq_set_pending(irq_num);
 }
 #else
 extern void pal_host_trigger_gpio_interrupt(wink_pin_t pin);
-static inline void trigger_gpio_interrupt(wink_pin_t pin) {
-    pal_host_trigger_gpio_interrupt(pin);
+static inline void trigger_test_interrupt(uint32_t irq_num) {
+    /* Host 下单线程模拟，参数 irq_num 未使用 */
+    (void)irq_num;
+    pal_host_trigger_gpio_interrupt(10);  /* 任意 pin */
 }
 #endif
 
@@ -57,7 +52,6 @@ static volatile bool s_slow_isr_done = false;
 /* 全局 UAF 检测状态（ISR 写，主线程读） */
 static volatile bool s_uaf_detected = false;
 static volatile uint32_t s_uaf_magic_value = 0;
-static const test_resource_t *s_current_resource = NULL;
 
 /* ─────────────────────────────────────────────────────────
  * 通用 ISR（UAF 检测用）
@@ -69,13 +63,13 @@ static const test_resource_t *s_current_resource = NULL;
  * @note 这是测试的核心：如果 synchronize() 没工作，ISR 会访问
  *       已经被 free 的内存，magic 值会变成垃圾值（堆头或其他值）。
  */
-static void test_uaf_isr(void *arg) {
+static bool test_uaf_isr(void *arg) {
     test_resource_t *res = (test_resource_t *)arg;
 
     /* ✅ 放大 race window：故意放慢 ISR 执行
      *
      * 这是关键 — 真实 ISR 可能很快，race window 很小很难触发。
-     * 我们加入 50us 延时，让 "disable 之后 ISR 还在跑" 的时间窗口
+     * 我们加入 50us 延时，让 "disable 之后 ISR 还在另一个核心跑" 的时间窗口
      * 从几十纳秒变成几十微秒，大幅提高触发概率。
      */
     pal_delay_us(50);
@@ -87,10 +81,11 @@ static void test_uaf_isr(void *arg) {
         pal_debug_printf("!!! UAF DETECTED at round %lu !!! magic=0x%08lX\n",
                          (unsigned long)res->round_id,
                          (unsigned long)s_uaf_magic_value);
-        return;
+        return false;
     }
 
     res->isr_counter++;
+    return true;
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -100,7 +95,7 @@ static void test_uaf_isr(void *arg) {
 /**
  * @brief 慢速 ISR — 故意执行 100ms，用于验证 synchronize() 真的在等。
  */
-static void slow_isr(void *arg) {
+static bool slow_isr(void *arg) {
     (void)arg;
     s_slow_isr_running = true;
 
@@ -109,6 +104,7 @@ static void slow_isr(void *arg) {
 
     s_slow_isr_running = false;
     s_slow_isr_done = true;
+    return true;
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -150,41 +146,34 @@ void test_smp_uaf_run(uint32_t rounds,
         res->magic = TEST_SMP_UAF_MAGIC;
         res->isr_counter = 0;
         res->round_id = round;
-        s_current_resource = res;
 
-        /* ── Step 2: 注册 GPIO 中断 ─────────────────
-         * 使用测试 pin 10（host 下无硬件限制，任意数字即可）
-         * ESP32 上需要先设置 GPIO 为输出模式才能用软件方式触发
+        /* ── Step 2: 注册逻辑中断 ─────────────────
+         * 使用逻辑中断号 5（未被系统使用的保留中断号）
+         * 无需 GPIO 配置，纯软件触发
          */
-        const wink_pin_t TEST_PIN = 10;
-#ifdef ESP_PLATFORM
-        /* ESP32: 先设置为输出，才能通过电平跳变触发自身的中断 */
-        pal_gpio_set_direction(TEST_PIN, PAL_GPIO_MODE_OUTPUT);
-        pal_gpio_set_level(TEST_PIN, 0);
-#endif
-        wink_status_t status = pal_gpio_enable_interrupt(
-            TEST_PIN,
-            PAL_GPIO_INTR_RISING_EDGE,
+        const uint32_t TEST_IRQ_NUM = 5;
+        wink_status_t status = pal_irq_shared_register(
+            TEST_IRQ_NUM,
+            PAL_IRQ_PRIO_NORMAL,
             test_uaf_isr,
             res
         );
 
         if (wink_status_is_error(status)) {
-            pal_debug_printf("ERROR: pal_gpio_enable_interrupt failed: %d\n", (int)status);
+            pal_debug_printf("ERROR: pal_irq_shared_register failed: %d\n", (int)status);
             free(res);
-            s_current_resource = NULL;
             continue;
         }
 
         /* ── Step 3: 持续触发中断（让 ISR 一直在飞） ── */
         for (uint32_t i = 0; i < triggers_per_round; i++) {
-            /* 使用 host 专用 API 触发 GPIO 中断
+            /* 使用 PAL 通用软件触发中断
              *
              * 注意：host 是单线程环境，ISR 同步执行，永远不会出现
              * "disable 返回了 ISR 还在另一个核心跑" 的情况。
              * SMP 并发 bug 只有在真实双核硬件（如 ESP32）上才能测出来。
              */
-            trigger_gpio_interrupt(TEST_PIN);
+            trigger_test_interrupt(TEST_IRQ_NUM);
             pal_delay_us(10);
         }
 
@@ -192,8 +181,7 @@ void test_smp_uaf_run(uint32_t rounds,
         pal_delay_us(20);
 
         /* ── Step 4: 关键路径 — disable + [synchronize] + free ── */
-        wink_status_t st = pal_gpio_disable_interrupt(TEST_PIN);
-        (void)st;
+        pal_irq_disable(TEST_IRQ_NUM);
 
         if (enable_synchronize) {
             /* ✅ 等待所有核心退出 ISR 后再释放
@@ -204,13 +192,12 @@ void test_smp_uaf_run(uint32_t rounds,
              * - Core 1 可能还在执行该 ISR
              * - synchronize() 忙等待直到所有核心都退出 ISR
              */
-            pal_irq_synchronize(0);  /* irq_num = 0 对 host 无意义，仅占位 */
+            pal_irq_synchronize(TEST_IRQ_NUM);
         }
         /* ❌ 缺少 synchronize：直接 free，UAF 风险（仅 SMP 系统） */
 
         /* ── Step 5: 释放资源 ────────────────────── */
         free(res);
-        s_current_resource = NULL;
 
         passed++;
 
@@ -243,7 +230,7 @@ bool test_smp_synchronize_blocks(uint32_t *blocked_us) {
      * Host 下单线程执行，ISR 同步完成，synchronize() 永远是空操作。
      */
 
-    const wink_pin_t TEST_PIN = 11;
+    const uint32_t TEST_IRQ_NUM = 6;  /* 另一个保留中断号 */
     test_resource_t dummy_res;
     dummy_res.magic = TEST_SMP_UAF_MAGIC;
     dummy_res.isr_counter = 0;
@@ -252,50 +239,51 @@ bool test_smp_synchronize_blocks(uint32_t *blocked_us) {
     s_slow_isr_running = false;
     s_slow_isr_done = false;
 
-#ifdef ESP_PLATFORM
-    /* ESP32: 先设置 GPIO 为输出，才能自触发 */
-    pal_gpio_set_direction(TEST_PIN, PAL_GPIO_MODE_OUTPUT);
-    pal_gpio_set_level(TEST_PIN, 0);
-#endif
-
     /* 注册慢速 ISR */
-    wink_status_t status = pal_gpio_enable_interrupt(
-        TEST_PIN,
-        PAL_GPIO_INTR_RISING_EDGE,
+    wink_status_t status = pal_irq_shared_register(
+        TEST_IRQ_NUM,
+        PAL_IRQ_PRIO_NORMAL,
         slow_isr,
         &dummy_res
     );
 
     if (wink_status_is_error(status)) {
-        pal_debug_printf("ERROR: pal_gpio_enable_interrupt failed: %d\n", (int)status);
+        pal_debug_printf("ERROR: pal_irq_shared_register failed: %d\n", (int)status);
         *blocked_us = 0;
         return false;
     }
 
-    /* 触发中断（host 下单线程，ISR 同步执行完成） */
-    trigger_gpio_interrupt(TEST_PIN);
+    /* 触发中断（host 下单线程，ISR 同步执行完成；ESP32 SMP 下可能跑到另一个核心） */
+    trigger_test_interrupt(TEST_IRQ_NUM);
 
-    /* 调用 synchronize 并计时（host 下应该立刻返回） */
+    /* 立刻调用 synchronize 并计时 */
     uint64_t start = pal_get_us();
-    pal_irq_synchronize(0);  /* irq_num 参数在 host 下无意义 */
+    pal_irq_synchronize(TEST_IRQ_NUM);
     uint64_t elapsed = pal_get_us() - start;
 
     *blocked_us = (uint32_t)elapsed;
 
-    pal_debug_printf("  synchronize() returned in %lu us\n", (unsigned long)elapsed);
-    pal_debug_printf("  (Host is single-threaded, this should be near-zero)\n");
+    pal_debug_printf("  synchronize() returned after %lu us\n", (unsigned long)elapsed);
 
     /* 清理 */
-    wink_status_t st = pal_gpio_disable_interrupt(TEST_PIN);
-    (void)st;
+    pal_irq_disable(TEST_IRQ_NUM);
 
-    /* Host 下单线程环境下，synchronize() 应该立刻返回
-     * 这是预期行为，不是 bug。真正的阻塞验证需要 ESP32 硬件。
-     */
+#ifdef ESP_PLATFORM
+    /* ESP32 SMP 环境下：应该阻塞接近 100ms（慢 ISR 执行时间） */
+    bool ok = (elapsed >= 80000);  /* > 80ms 说明真的在等 */
+    if (ok) {
+        pal_debug_printf("  ✅ synchronize() IS blocking correctly (SMP detected)\n");
+    } else {
+        pal_debug_printf("  ❌ synchronize() is NOT blocking! Bug detected.\n");
+    }
+#else
+    /* Host 环境下：立刻返回是正常的（单线程无并发） */
     pal_debug_printf("  ℹ️ Host environment: blocking test is N/A (requires SMP hardware)\n");
-    pal_debug_printf("=========================================================\n");
+    bool ok = true;
+#endif
 
-    return true;  /* host 下总是通过，不视为失败 */
+    pal_debug_printf("=========================================================\n");
+    return ok;
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -311,7 +299,7 @@ void test_smp_uaf_print_result(const test_smp_uaf_result_t *result) {
         pal_debug_printf("  UAF detected:  YES (magic=0x%08lX)\n",
                          (unsigned long)result->uaf_magic_value);
         pal_debug_printf("\n  ❌ TEST FAILED\n");
-        pal_debug_printf("     pal_irq_synchronize() is REQUIRED to prevent UAF on SMP systems!\n");
+        pal_debug_printf("     pal_irq_synchronize() IS REQUIRED to prevent UAF on SMP systems!\n");
     } else {
         pal_debug_printf("  UAF detected:  NO\n");
         if (result->total_rounds == result->passed_rounds) {
@@ -328,3 +316,4 @@ void test_smp_uaf_print_result(const test_smp_uaf_result_t *result) {
     }
     pal_debug_printf("==================================\n");
 }
+
