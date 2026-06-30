@@ -69,7 +69,7 @@ static const test_resource_t *s_current_resource = NULL;
  * @note 这是测试的核心：如果 synchronize() 没工作，ISR 会访问
  *       已经被 free 的内存，magic 值会变成垃圾值（堆头或其他值）。
  */
-static bool test_uaf_isr(void *arg) {
+static void test_uaf_isr(void *arg) {
     test_resource_t *res = (test_resource_t *)arg;
 
     /* ✅ 放大 race window：故意放慢 ISR 执行
@@ -87,11 +87,10 @@ static bool test_uaf_isr(void *arg) {
         pal_debug_printf("!!! UAF DETECTED at round %lu !!! magic=0x%08lX\n",
                          (unsigned long)res->round_id,
                          (unsigned long)s_uaf_magic_value);
-        return false;
+        return;
     }
 
     res->isr_counter++;
-    return true;
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -101,7 +100,7 @@ static bool test_uaf_isr(void *arg) {
 /**
  * @brief 慢速 ISR — 故意执行 100ms，用于验证 synchronize() 真的在等。
  */
-static bool slow_isr(void *arg) {
+static void slow_isr(void *arg) {
     (void)arg;
     s_slow_isr_running = true;
 
@@ -110,7 +109,6 @@ static bool slow_isr(void *arg) {
 
     s_slow_isr_running = false;
     s_slow_isr_done = true;
-    return true;
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -188,7 +186,8 @@ void test_smp_uaf_run(uint32_t rounds,
         pal_delay_us(20);
 
         /* ── Step 4: 关键路径 — disable + [synchronize] + free ── */
-        pal_gpio_disable_interrupt(TEST_PIN);
+        wink_status_t st = pal_gpio_disable_interrupt(TEST_PIN);
+        (void)st;
 
         if (enable_synchronize) {
             /* ✅ 等待所有核心退出 ISR 后再释放
@@ -275,7 +274,8 @@ bool test_smp_synchronize_blocks(uint32_t *blocked_us) {
     pal_debug_printf("  (Host is single-threaded, this should be near-zero)\n");
 
     /* 清理 */
-    pal_gpio_disable_interrupt(TEST_PIN);
+    wink_status_t st = pal_gpio_disable_interrupt(TEST_PIN);
+    (void)st;
 
     /* Host 下单线程环境下，synchronize() 应该立刻返回
      * 这是预期行为，不是 bug。真正的阻塞验证需要 ESP32 硬件。
