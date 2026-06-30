@@ -73,8 +73,9 @@ static volatile test_resource_t *s_slow_isr_resource = NULL;
  * @note 这是测试的核心：如果 synchronize() 没工作，ISR 会访问
  *       已经被 free 的内存，magic 值会变成垃圾值（堆头或其他值）。
  *       通过全局指针 s_current_resource 访问，避免频繁注册中断。
+ * @note GPIO ISR 返回 void（区别于共享中断的 bool 返回）
  */
-static bool test_uaf_isr(void *arg) {
+static void test_uaf_isr(void *arg) {
     (void)arg;  /* 不使用注册时传入的 arg，改用全局指针 */
     test_resource_t *res = (test_resource_t *)s_current_resource;
 
@@ -93,11 +94,10 @@ static bool test_uaf_isr(void *arg) {
         pal_debug_printf("!!! UAF DETECTED at round %lu !!! magic=0x%08lX\n",
                          (unsigned long)res->round_id,
                          (unsigned long)s_uaf_magic_value);
-        return false;
+        return;
     }
 
     res->isr_counter++;
-    return true;
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -129,7 +129,17 @@ void test_smp_uaf_run(uint32_t rounds,
      * ISR 通过全局指针 s_current_resource 访问当前测试资源
      */
     const wink_pin_t TEST_PIN = 2;
-    wink_status_t status = pal_gpio_enable_interrupt(
+
+    /* 先初始化 GPIO 为输入模式（启用中断的前置条件）
+     * 注意：我们用软件触发中断，不需要真正的硬件输入信号
+     */
+    wink_status_t status = pal_gpio_init(TEST_PIN, PAL_GPIO_INPUT);
+    if (wink_status_is_error(status)) {
+        pal_debug_printf("ERROR: pal_gpio_init failed: %d\n", (int)status);
+        return;
+    }
+
+    status = pal_gpio_enable_interrupt(
         TEST_PIN,
         PAL_GPIO_INTR_RISING_EDGE,
         test_uaf_isr,
@@ -217,8 +227,9 @@ void test_smp_uaf_run(uint32_t rounds,
 
 /**
  * @brief 慢速 ISR — 故意执行 100ms，用于验证 synchronize() 真的在等。
+ * @note GPIO ISR 返回 void（区别于共享中断的 bool 返回）
  */
-static bool slow_isr(void *arg) {
+static void slow_isr(void *arg) {
     (void)arg;
     test_resource_t *res = (test_resource_t *)s_slow_isr_resource;
     (void)res;
@@ -230,7 +241,6 @@ static bool slow_isr(void *arg) {
 
     s_slow_isr_running = false;
     s_slow_isr_done = true;
-    return true;
 }
 
 bool test_smp_synchronize_blocks(uint32_t *blocked_us) {
@@ -256,8 +266,16 @@ bool test_smp_synchronize_blocks(uint32_t *blocked_us) {
     s_slow_isr_running = false;
     s_slow_isr_done = false;
 
+    /* 先初始化 GPIO 为输入模式 */
+    wink_status_t status = pal_gpio_init(TEST_PIN_BLOCK, PAL_GPIO_INPUT);
+    if (wink_status_is_error(status)) {
+        pal_debug_printf("ERROR: pal_gpio_init failed: %d\n", (int)status);
+        *blocked_us = 0;
+        return false;
+    }
+
     /* 注册慢速 ISR */
-    wink_status_t status = pal_gpio_enable_interrupt(
+    status = pal_gpio_enable_interrupt(
         TEST_PIN_BLOCK,
         PAL_GPIO_INTR_RISING_EDGE,
         slow_isr,
