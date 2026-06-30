@@ -150,10 +150,52 @@ bool pal_gpio_read(wink_pin_t pin) {
  */
 #include "freertos/FreeRTOS.h"
 #include "freertos/portmacro.h"
+#include "soc/gpio_struct.h"
+
+static inline void esp_memory_barrier(void) {
+#if defined(__XTENSA__)
+    __asm__ __volatile__("memw" ::: "memory");
+#elif defined(__riscv)
+    __asm__ __volatile__("fence rw, rw" ::: "memory");
+#else
+    __asm__ __volatile__("" ::: "memory");
+#endif
+}
+
+#ifndef Atomic_Load_u32
+static inline uint32_t Atomic_Load_u32(volatile uint32_t *pulSource) {
+    return *pulSource;
+}
+#endif
+
+#ifndef Atomic_Increment_u32
+static inline uint32_t Atomic_Increment_u32(volatile uint32_t *pulAddend) {
+    return __atomic_add_fetch(pulAddend, 1, __ATOMIC_SEQ_CST);
+}
+#endif
+
+#ifndef Atomic_Decrement_u32
+static inline uint32_t Atomic_Decrement_u32(volatile uint32_t *pulAddend) {
+    return __atomic_sub_fetch(pulAddend, 1, __ATOMIC_SEQ_CST);
+}
+#endif
+
+static inline void gpio_clear_intr_status(gpio_num_t gpio_num) {
+    if (gpio_num < 32) {
+        GPIO.status_w1tc = (1UL << gpio_num);
+    } else {
+        GPIO.status1_w1tc.val = (1UL << (gpio_num - 32));
+    }
+}
+
 static portMUX_TYPE s_gpio_table_mux = portMUX_INITIALIZER_UNLOCKED;
 
 static pal_gpio_isr_t s_gpio_isr[GPIO_NUM_MAX] = {NULL};
 static void *s_gpio_isr_arg[GPIO_NUM_MAX] = {NULL};
+
+/* SMP ISR 同步 count */
+static volatile uint32_t s_irq_in_flight[32] = {0};
+static volatile uint32_t s_gpio_irq_in_flight[GPIO_NUM_MAX] = {0};
 
 /**
  * @brief ESP32 GPIO 公用 ISR 包装（IRAM 中执行，ADR-IRQ-002 清标顺序）
@@ -755,6 +797,7 @@ void pal_debug_printf(const char *fmt, ...)
     va_end(args);
 }
 
+#if defined(ESP_PLATFORM)
 /* ─────────────────────────────────────────────────────────
  * 共享中断机制（RCU 模式 + SMP 安全，ADR-IRQ-005）
  * ───────────────────────────────────────────────────────── */
@@ -788,9 +831,7 @@ static portMUX_TYPE s_shared_chain_mux = portMUX_INITIALIZER_UNLOCKED;
  * 3. pal_irq_synchronize() 忙等待计数器归 0
  * 4. 增加超时保护，避免死锁
  */
-#include "freertos/atomic.h"
-static volatile AtomicUInt s_irq_in_flight[32] = {ATOMIC_VAR_INIT(0)};  /* 对应 32 个逻辑中断号 */
-static volatile AtomicUInt s_gpio_irq_in_flight[GPIO_NUM_MAX] = {ATOMIC_VAR_INIT(0)};  /* GPIO 独立计数 */
+// s_irq_in_flight and s_gpio_irq_in_flight are defined at the top of the file.
 
 #define SYNCHRONIZE_TIMEOUT_US  100000  /* 100ms 超时（远大于 ISR 最大执行时间） */
 
@@ -896,7 +937,7 @@ wink_status_t pal_irq_enable(uint32_t irq_num, pal_irq_prio_t prio,
         [PAL_IRQ_PRIO_NORMAL]   = ESP_INTR_FLAG_LEVEL4,
         [PAL_IRQ_PRIO_HIGH]     = ESP_INTR_FLAG_LEVEL5,  /* = configMAX_SYSCALL_INTERRUPT_PRIORITY */
         [PAL_IRQ_PRIO_HIGHEST]  = ESP_INTR_FLAG_LEVEL5,  /* RTOS 安全边界 */
-        [PAL_IRQ_PRIO_REALTIME] = ESP_INTR_FLAG_LEVEL7,  /* ⚠️ 非 RTOS 安全！硬件最高优先级 */
+        [PAL_IRQ_PRIO_REALTIME] = ESP_INTR_FLAG_NMI,  /* ⚠️ 非 RTOS 安全！硬件最高优先级 */
     };
 
     /* ✅ SMP 同步：保存用户 handler 和 arg，通过 wrapper 调用
@@ -1102,9 +1143,9 @@ uint32_t pal_irq_save_rtos_safe(void)
      * 设置 INTLEVEL = 5 将屏蔽所有优先级 ≤5 的中断
      * 优先级 6-7 的中断（如 Wi-Fi 基带、REALTIME 级）仍可触发
      *
-     * 这是推荐的默认选择，不会影响底层硬件协议时序。
+     * 这是推荐 of 默认选择，不会影响底层硬件协议时序。
      */
-    return XTOS_SET_INTLEVEL(configMAX_SYSCALL_INTERRUPT_PRIORITY);
+    return XTOS_SET_INTLEVEL(XCHAL_EXCM_LEVEL);
 }
 
 void pal_irq_restore(uint32_t mask)

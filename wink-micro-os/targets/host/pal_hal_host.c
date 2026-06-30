@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file pal_hal_host.c
  * @brief host 一等 target 的 PAL HAL 实现。
  *
@@ -22,6 +22,7 @@
 #include "pal_resource.h"
 #include "pal_pwm_router.h"
 #include "pal_debug.h"
+#include "hal/pal_ultrasonic.h"
 #include "host_test_ctrl.h"
 #include <stdio.h>
 #include <stdarg.h>
@@ -451,5 +452,51 @@ void pal_debug_printf(const char *fmt, ...)
     va_start(args, fmt);
     vprintf(fmt, args);
     va_end(args);
+}
+
+/* ─────────────────────────────────────────────────────────
+ * 超声波传感器 PAL 实现 (Host 平台)
+ * ───────────────────────────────────────────────────────── */
+
+static void (*s_sim_trigger_fn)(uint16_t) = NULL;
+static uint32_t (*s_sim_measure_fn)(uint16_t) = NULL;
+
+void host_register_sim_ultrasonic(void (*trigger_fn)(uint16_t), uint32_t (*measure_fn)(uint16_t)) {
+    s_sim_trigger_fn = trigger_fn;
+    s_sim_measure_fn = measure_fn;
+}
+
+wink_status_t pal_hal_ultrasonic_init(uint16_t echo_pin) {
+    (void)echo_pin;
+    return WINK_OK;
+}
+
+wink_status_t pal_hal_ultrasonic_trigger(uint16_t trigger_pin) {
+    if (s_sim_trigger_fn) {
+        s_sim_trigger_fn(trigger_pin);
+    }
+    return WINK_OK;
+}
+
+wink_status_t pal_hal_ultrasonic_measure_pulse_us(
+    uint16_t echo_pin,
+    uint32_t timeout_us,
+    uint32_t *pulse_us
+) {
+    if (pulse_us == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    if (s_sim_measure_fn) {
+        uint32_t p = s_sim_measure_fn(echo_pin);
+        if (p >= timeout_us) {
+            return WINK_ERR_TIMEOUT;
+        }
+        *pulse_us = p;
+        return WINK_OK;
+    }
+    return pal_gpio_pulse_in((wink_pin_t)echo_pin, true, timeout_us, pulse_us);
+}
+
+void pal_hal_ultrasonic_deinit(void) {
 }
 
