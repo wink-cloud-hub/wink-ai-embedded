@@ -21,6 +21,9 @@
 #include "pal_osal.h"       /* pal_get_us() (used in pal_gpio_pulse_in busy-wait) */
 #include "pal_resource.h"
 #include "pal_pwm_router.h"
+#include "pal_debug.h"
+#include <stdarg.h>
+#include <stdio.h>
 
 #if defined(ESP_PLATFORM)
 #include "driver/gpio.h"
@@ -619,3 +622,18 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level,
     *pulse_us = (uint32_t)(pal_get_us() - pulse_start);
     return WINK_OK;
 }
+
+/* ─────────────────────────────────────────────────────────
+ * Debug Output（PAL 统一接口）
+ * ───────────────────────────────────────────────────────── */
+
+void pal_debug_printf(const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    vprintf(fmt, args);
+    va_end(args);
+}
+
+#endif /* ESP_PLATFORM - closes the outer guard at line 25 */
+

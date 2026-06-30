@@ -25,18 +25,12 @@
 #include "pal_osal.h"      /* pal_watchdog_init/feed, pal_get_ms, pal_get_reset_reason */
 #include "pal_resource.h"  /* pal_resource_claim/release */
 #include "pal_pwm_router.h"/* pal_pwm_router_channel_timer */
+#include "pal_debug.h"     /* pal_debug_printf: 跨平台统一调试输出 */
 
 /* PAL OSAL 统一接口：任务创建、延迟、时间戳
  * xTaskCreate / vTaskDelay 等 FreeRTOS 原生 API 不应出现在 APP 层。
  * 平台差异由 targets 下各平台的 pal_osal_*.c 内部处理。 */
 #include "pal_osal.h"
-
-/* <stdio.h> 是标准 C 库，所有平台都支持。
- * - ESP32: 输出到 UART
- * - WASM: printf 映射到 JS console.log 或 Emscripten 缓冲区
- * - host: 输出到 stdout
- * 无需 #ifdef，printf 的行为由各平台 libc 实现决定。 */
-#include <stdio.h>
 
 /* ─────────────────────────────────────────────────────────
  * 故障码定义（S8 使用 runtime 定义 8001；其余 9000+ 区间）
@@ -108,18 +102,18 @@ static void smoke_check_pwm_router(void)
     wink_status_t _duty = pal_pwm_set_duty(SMOKE_PWM_CH_LO, 50.0f);
     (void)_duty;
 
-#if defined(ESP_PLATFORM)
-    printf("[SMOKE] pwm: ch1=50Hz->timer%u, ch2=1kHz->timer%u %s\n",
-           (unsigned)timer_lo, (unsigned)timer_hi,
-           (timer_lo != timer_hi && timer_lo < 4 && timer_hi < 4) ? "PASS" : "FAIL");
-#else
-    /* host 侧：不同 timer 且均 <4 则 trace 正常，否则 trace 故障 */
+    /* PAL 统一调试输出：所有平台（ESP32/WASM/host）都有此接口
+     * host/WASM 同样输出到控制台，便于 CI 测试和调试 */
+    pal_debug_printf("[SMOKE] pwm: ch1=50Hz->timer%u, ch2=1kHz->timer%u %s\n",
+                     (unsigned)timer_lo, (unsigned)timer_hi,
+                     (timer_lo != timer_hi && timer_lo < 4 && timer_hi < 4) ? "PASS" : "FAIL");
+
+    /* 所有平台都做故障追踪，不依赖平台分支 */
     if (!(timer_lo != timer_hi && timer_lo < 4 && timer_hi < 4)) {
         wink_trace_fault(FAULT_PWM_INIT);
     }
     (void)timer_lo;
     (void)timer_hi;
-#endif
 }
 
 #if defined(ESP_PLATFORM)
@@ -135,10 +129,10 @@ static void smoke_check_i2c_bus(void)
     for (size_t i = 0; i < sizeof(test_addrs); i++) {
         /* 空总线扫描：写 0 字节，读 1 字节 → NACK（裸板无外设） */
         wink_status_t st = pal_i2c_transfer(0, test_addrs[i], NULL, 0, &dummy, 1);
-        printf("[SMOKE] i2c scan 0x%02X: status=%d (NACK expected)\n",
-               test_addrs[i], (int)st);
+        pal_debug_printf("[SMOKE] i2c scan 0x%02X: status=%d (NACK expected)\n",
+                         test_addrs[i], (int)st);
     }
-    printf("[SMOKE] i2c: PASS (v6 driver init+transfer ran without panic)\n");
+    pal_debug_printf("[SMOKE] i2c: PASS (v6 driver init+transfer ran without panic)\n");
 }
 #endif /* ESP_PLATFORM */
 
@@ -164,10 +158,10 @@ static void resource_stress_task(void *arg)
         iterations++;
     }
 
-#if defined(ESP_PLATFORM)
-    printf("[SMOKE] resource_stress core%u: %lu iterations, no panic\n",
-           (unsigned)core_id, (unsigned long)iterations);
-#endif
+    /* PAL 统一调试输出：所有平台都输出压测结果，便于 CI 验证 */
+    pal_debug_printf("[SMOKE] resource_stress core%u: %lu iterations, no panic\n",
+                     (unsigned)core_id, (unsigned long)iterations);
+
     /* PAL 统一接口删除当前任务（单线程平台为 no-op） */
     pal_task_delete(NULL);
 }
@@ -186,9 +180,8 @@ static wink_status_t smoke_check_resource_smp(void)
     );
 
     if (!wink_status_is_error(st0) && !wink_status_is_error(st1)) {
-#if defined(ESP_PLATFORM)
-        printf("[SMOKE] resource_stress: 60s dual-core claim/release started (Task1 spinlock)\n");
-#endif
+        /* PAL 统一调试输出：所有平台都报告压测启动状态 */
+        pal_debug_printf("[SMOKE] resource_stress: 60s dual-core claim/release started (Task1 spinlock)\n");
         return WINK_OK;
     }
     /* 不支持多任务：静默降级，不影响其它测试项 */
@@ -212,11 +205,10 @@ static void telemetry_task(void *arg)
         uint32_t now = (uint32_t)pal_get_ms();
 
         if (now - last_report >= 2000u) {
-#if defined(ESP_PLATFORM)
-            printf("[SMOKE] uptime=%lums isr_count=%lu faults=%lu wdt_verified=%d\n",
-                   (unsigned long)now, (unsigned long)s_isr_count, (unsigned long)wink_trace_count(),
-                   (int)s_wdt_verified);
-#endif
+            /* PAL 统一调试输出：所有平台都定期输出 telemetry 数据 */
+            pal_debug_printf("[SMOKE] uptime=%lums isr_count=%lu faults=%lu wdt_verified=%d\n",
+                             (unsigned long)now, (unsigned long)s_isr_count, (unsigned long)wink_trace_count(),
+                             (int)s_wdt_verified);
             last_report = now;
         }
     }
@@ -234,11 +226,9 @@ static void app_init(void)
      * 所有平台都有此接口（ESP32: RTC存储, WASM/host: 静态变量模拟）。 */
     if (pal_get_abnormal_boot_count() > 0) {
         s_wdt_verified = true;
-#if defined(ESP_PLATFORM)
-        /* printf 是 ESP32 特有输出方式，保留在平台分支 */
-        printf("[SMOKE] watchdog: PASS (recovered after abnormal reset, count=%lu)\n",
-               (unsigned long)pal_get_abnormal_boot_count());
-#endif
+        /* PAL 统一调试输出：所有平台都报告 WDT 复位恢复状态 */
+        pal_debug_printf("[SMOKE] watchdog: PASS (recovered after abnormal reset, count=%lu)\n",
+                         (unsigned long)pal_get_abnormal_boot_count());
     }
 
     /* S2/S3: DAL LED + 按钮初始化（Phase 2 config_t 标准化） */
@@ -293,9 +283,8 @@ static void app_init(void)
         (void)_st;
     } while(0);
 
-#if defined(ESP_PLATFORM)
-    printf("[SMOKE] init done. Long-press BOOT (>3s) to trigger WDT reset test.\n");
-#endif
+    /* PAL 统一调试输出：所有平台都报告初始化完成 */
+    pal_debug_printf("[SMOKE] init done. Long-press BOOT (>3s) to trigger WDT reset test.\n");
 #endif /* ESP_PLATFORM - closes app_init platform-specific section */
 }
 
