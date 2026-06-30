@@ -242,14 +242,57 @@ void test_logical_irq_invalid_number(void)
 
 void test_direct_connect_irq(void)
 {
+    /* 复用专门的无参 direct ISR，详见 test_direct_connect_calls_handler */
+    extern void test_direct_isr_void(void);
     const uint32_t TEST_IRQ = 7;
 
-    /* 直连中断无参数，但应可正常注册 */
     TEST_ASSERT_EQUAL_INT(WINK_OK,
-        pal_irq_direct_connect(TEST_IRQ, (pal_direct_isr_t)test_logical_isr));
+        pal_irq_direct_connect(TEST_IRQ, test_direct_isr_void));
 
     pal_host_trigger_logical_interrupt(TEST_IRQ);
+    /* test_direct_isr_void 共享 s_test_isr_count（在文件顶部声明） */
     TEST_ASSERT_EQUAL_UINT32(1, s_test_isr_count);
+}
+
+/* ─────────────────────────────────────────────────────────
+ * v2.1 G1 验收：direct_connect 的无参签名 trampoline
+ * 旧版 `(pal_direct_isr_t)test_logical_isr` 是 void(void*) → void(void) 的非法 cast，
+ * 经 trampoline 后会真的以无参方式调用 handler，那种 cast 现在会段错误/UB。
+ * 此 test 用真正的 void(void) handler 验证 v2.1 trampoline 正确桥接。
+ * ───────────────────────────────────────────────────────── */
+
+/* 文件级 ISR，给 test_direct_connect_irq 与 test_direct_connect_calls_handler 共用 */
+void test_direct_isr_void(void)
+{
+    s_test_isr_count++;
+}
+
+void test_direct_connect_calls_handler(void)
+{
+    const uint32_t TEST_IRQ = 9;
+
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+        pal_irq_direct_connect(TEST_IRQ, test_direct_isr_void));
+
+    /* 触发逻辑中断 → trampoline → test_direct_isr_void */
+    pal_host_trigger_logical_interrupt(TEST_IRQ);
+    TEST_ASSERT_EQUAL_UINT32(1, s_test_isr_count);
+
+    /* disable 应同步清除 direct 槽位 */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_irq_disable(TEST_IRQ));
+    s_test_isr_count = 0;
+    pal_host_trigger_logical_interrupt(TEST_IRQ);
+    TEST_ASSERT_EQUAL_UINT32(0, s_test_isr_count);
+}
+
+void test_direct_connect_invalid_args(void)
+{
+    /* NULL handler */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG,
+        pal_irq_direct_connect(5, NULL));
+    /* irq 越界（host 上限 32） */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG,
+        pal_irq_direct_connect(999, test_direct_isr_void));
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -269,13 +312,54 @@ void test_irq_priority_enum_bounds(void)
         pal_irq_enable(TEST_IRQ, PAL_IRQ_PRIO_HIGHEST, test_logical_isr, NULL));
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_irq_disable(TEST_IRQ));
 
+    /* v2.1 G2：REALTIME 在 host 单线程模型下仍接受（详见 test_realtime_accepted_on_host）；
+     * ESP32 target 上则会拒接（详见 test_realtime_priority_rejected_on_esp32）。 */
+#if !defined(ESP_PLATFORM)
     TEST_ASSERT_EQUAL_INT(WINK_OK,
         pal_irq_enable(TEST_IRQ, PAL_IRQ_PRIO_REALTIME, test_logical_isr, NULL));
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_irq_disable(TEST_IRQ));
+#else
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED,
+        pal_irq_enable(TEST_IRQ, PAL_IRQ_PRIO_REALTIME, test_logical_isr, NULL));
+#endif
 
     /* 越界优先级应返回错误 */
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG,
         pal_irq_enable(TEST_IRQ, (pal_irq_prio_t)999, test_logical_isr, NULL));
+}
+
+/* v2.1 G2 验收：REALTIME 拒接的跨 target 契约 */
+
+void test_realtime_accepted_on_host(void)
+{
+    /* host 单线程模型下 REALTIME 仍可注册成功（详见 pal_irq.h 注释）。
+     * 此 test 是契约的 host-side 锚点，配对 test_realtime_priority_rejected_on_esp32。 */
+#if defined(ESP_PLATFORM)
+    TEST_IGNORE_MESSAGE("REALTIME 在 ESP32 上拒接，此 test 仅在非真机 target 上有意义");
+#else
+    const uint32_t TEST_IRQ = 6;
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+        pal_irq_enable(TEST_IRQ, PAL_IRQ_PRIO_REALTIME, test_logical_isr, NULL));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_irq_disable(TEST_IRQ));
+#endif
+}
+
+void test_realtime_priority_rejected_on_esp32(void)
+{
+    /* ESP32 上 pal_irq_enable / pal_gpio_enable_interrupt_ex 都必须拒接 REALTIME，
+     * 避免静默降级到 LEVEL3（与 HIGHEST 物理等价、契约相反）。 */
+#if !defined(ESP_PLATFORM)
+    TEST_IGNORE_MESSAGE("仅在 ESP32 target 上有意义；host build 跳过");
+#else
+    const uint32_t TEST_IRQ = 6;
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED,
+        pal_irq_enable(TEST_IRQ, PAL_IRQ_PRIO_REALTIME, test_logical_isr, NULL));
+
+    /* GPIO 路径同样拒接 */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED,
+        pal_gpio_enable_interrupt_ex(/*pin*/ 4, PAL_GPIO_INTR_FALLING_EDGE,
+                                      PAL_IRQ_PRIO_REALTIME, test_gpio_isr, NULL));
+#endif
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -430,9 +514,15 @@ int main(void)
     RUN_TEST(test_logical_irq_enable_disable);
     RUN_TEST(test_logical_irq_invalid_number);
     RUN_TEST(test_direct_connect_irq);
+    /* v2.1 G1 新增：trampoline 验证 */
+    RUN_TEST(test_direct_connect_calls_handler);
+    RUN_TEST(test_direct_connect_invalid_args);
 
     /* Group 5: 优先级边界 */
     RUN_TEST(test_irq_priority_enum_bounds);
+    /* v2.1 G2 新增：REALTIME 跨 target 契约 */
+    RUN_TEST(test_realtime_accepted_on_host);
+    RUN_TEST(test_realtime_priority_rejected_on_esp32);
 
     /* Group 6: 共享中断（v2.0 核心特性） */
     RUN_TEST(test_shared_irq_both_handlers_called);
