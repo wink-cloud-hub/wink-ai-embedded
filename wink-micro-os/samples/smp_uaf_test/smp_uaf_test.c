@@ -53,6 +53,11 @@ static volatile bool s_slow_isr_done = false;
 static volatile bool s_uaf_detected = false;
 static volatile uint32_t s_uaf_magic_value = 0;
 
+/* 全局资源指针（SMP 测试关键：ISR 通过这个指针访问资源）
+ * 每轮测试更新这个指针，避免频繁注册/注销中断导致资源耗尽
+ */
+static volatile test_resource_t *s_current_resource = NULL;
+
 /* ─────────────────────────────────────────────────────────
  * 通用 ISR（UAF 检测用）
  * ───────────────────────────────────────────────────────── */
@@ -62,9 +67,11 @@ static volatile uint32_t s_uaf_magic_value = 0;
  *
  * @note 这是测试的核心：如果 synchronize() 没工作，ISR 会访问
  *       已经被 free 的内存，magic 值会变成垃圾值（堆头或其他值）。
+ *       通过全局指针 s_current_resource 访问，避免频繁注册中断。
  */
 static bool test_uaf_isr(void *arg) {
-    test_resource_t *res = (test_resource_t *)arg;
+    (void)arg;  /* 不使用注册时传入的 arg，改用全局指针 */
+    test_resource_t *res = (test_resource_t *)s_current_resource;
 
     /* ✅ 放大 race window：故意放慢 ISR 执行
      *
@@ -131,6 +138,20 @@ void test_smp_uaf_run(uint32_t rounds,
 
     uint32_t passed = 0;
 
+    /* ── Step 0: 只注册一次中断（关键！避免资源耗尽） ── */
+    const uint32_t TEST_IRQ_NUM = 5;
+    wink_status_t status = pal_irq_shared_register(
+        TEST_IRQ_NUM,
+        PAL_IRQ_PRIO_NORMAL,
+        test_uaf_isr,
+        NULL  /* arg 为 NULL，ISR 通过 s_current_resource 全局指针访问 */
+    );
+
+    if (wink_status_is_error(status)) {
+        pal_debug_printf("ERROR: pal_irq_shared_register failed: %d\n", (int)status);
+        return;
+    }
+
     for (uint32_t round = 0; round < rounds; round++) {
         /* 提前终止：UAF 已检测到 */
         if (s_uaf_detected) {
@@ -147,23 +168,8 @@ void test_smp_uaf_run(uint32_t rounds,
         res->isr_counter = 0;
         res->round_id = round;
 
-        /* ── Step 2: 注册逻辑中断 ─────────────────
-         * 使用逻辑中断号 5（未被系统使用的保留中断号）
-         * 无需 GPIO 配置，纯软件触发
-         */
-        const uint32_t TEST_IRQ_NUM = 5;
-        wink_status_t status = pal_irq_shared_register(
-            TEST_IRQ_NUM,
-            PAL_IRQ_PRIO_NORMAL,
-            test_uaf_isr,
-            res
-        );
-
-        if (wink_status_is_error(status)) {
-            pal_debug_printf("ERROR: pal_irq_shared_register failed: %d\n", (int)status);
-            free(res);
-            continue;
-        }
+        /* ── Step 2: 更新全局指针（ISR 通过这个指针访问资源） ── */
+        s_current_resource = res;
 
         /* ── Step 3: 持续触发中断（让 ISR 一直在飞） ── */
         for (uint32_t i = 0; i < triggers_per_round; i++) {
@@ -180,25 +186,24 @@ void test_smp_uaf_run(uint32_t rounds,
         /* 给正在飞的 ISR 一点时间进入临界区 */
         pal_delay_us(20);
 
-        /* ── Step 4: 关键路径 — disable + [synchronize] + free ── */
-        wink_status_t st = pal_irq_disable(TEST_IRQ_NUM);
-        (void)st;  /* 忽略返回值，测试场景下禁用失败不影响结果 */
-
+        /* ── Step 4: 关键路径 — synchronize + free ──
+         *
+         * 注意：中断始终保持启用状态！这实际上让测试更严格，
+         * 因为 ISR 随时可能在另一个核心触发。
+         *
+         * synchronize() 在这里确保：
+         * - Core 0 调用 synchronize()
+         * - 等待所有正在其他核心执行的 ISR 退出
+         * - 然后才能安全地 free 资源
+         */
         if (enable_synchronize) {
-            /* ✅ 等待所有核心退出 ISR 后再释放
-             *
-             * 注意：host 是单线程环境，synchronize() 在这里是空操作。
-             * 只有在 SMP 双核系统（如 ESP32）上，这个函数才真正起作用：
-             * - Core 0 执行 disable_interrupt() 后返回
-             * - Core 1 可能还在执行该 ISR
-             * - synchronize() 忙等待直到所有核心都退出 ISR
-             */
             pal_irq_synchronize(TEST_IRQ_NUM);
         }
         /* ❌ 缺少 synchronize：直接 free，UAF 风险（仅 SMP 系统） */
 
         /* ── Step 5: 释放资源 ────────────────────── */
         free(res);
+        s_current_resource = NULL;
 
         passed++;
 
@@ -207,6 +212,10 @@ void test_smp_uaf_run(uint32_t rounds,
             pal_debug_printf("  round %lu OK\n", (unsigned long)round);
         }
     }
+
+    /* 测试结束后禁用中断 */
+    wink_status_t final_st = pal_irq_disable(TEST_IRQ_NUM);
+    (void)final_st;
 
     /* 填充结果 */
     result->passed_rounds = passed;
