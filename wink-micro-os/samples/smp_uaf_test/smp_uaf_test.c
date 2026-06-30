@@ -102,10 +102,12 @@ static void trigger_task_func(void *arg) {
 
         // 收到通知后，在 CPU 1 上并发触发 50 次软件中断
         for (int i = 0; i < 50; i++) {
+            if (i == 49) {
+                s_trigger_done = true;
+            }
             pal_irq_set_pending(TEST_IRQ_UAF);
             pal_delay_us(20);
         }
-        s_trigger_done = true;
     }
 }
 
