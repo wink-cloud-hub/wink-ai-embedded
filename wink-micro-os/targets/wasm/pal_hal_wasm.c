@@ -17,9 +17,12 @@
 #include "pal_hal.h"
 #include "pal_pwm_router.h"
 #include "pal_osal.h"
+#include "pal_debug.h"
 #include "wasm_bridge.h"
 #include "pal_wasm_internal.h"
 #include "wink_sim_physical.h"
+#include <stdarg.h>
+#include <stdio.h>
 
 wink_status_t pal_gpio_init(uint16_t pin, pal_gpio_mode_t mode) {
     (void)pin; (void)mode;            /* 仿真下无需硬件配置 */
@@ -157,3 +160,16 @@ wink_status_t pal_gpio_pulse_in(uint16_t pin, bool level, uint32_t timeout_us, u
     *pulse_us = js_sim_measure_echo_pulse_us(pin);
     return WINK_OK;
 }
+
+/* ─────────────────────────────────────────────────────────
+ * Debug Output（PAL 统一接口）
+ * ───────────────────────────────────────────────────────── */
+
+void pal_debug_printf(const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    vprintf(fmt, args);
+    va_end(args);
+}
+
