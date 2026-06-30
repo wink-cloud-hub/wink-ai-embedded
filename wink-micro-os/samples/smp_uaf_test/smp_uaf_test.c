@@ -17,11 +17,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* 中断号选择：ESP32 上使用 5、6、7、8、9 等可用的外设中断源
- * 这些中断号支持共享注册，pal_irq_set_pending() 能真正触发 ISR 执行
+/* 中断号选择：ESP32 上 7、8、9、11、12、13 通常是可用的
+ * 避免使用 5、6（可能被 ESP-IDF 内部占用）
+ * 10 是 GPIO 专用中断，需要硬件状态寄存器配合
+ *
+ * pal_irq_set_pending() 能直接设置 CPU 中断 pending 位触发 ISR
  */
-#define TEST_IRQ_UAF          5    /* UAF 主测试使用中断号 5 */
-#define TEST_IRQ_SLOW         6    /* 阻塞测试使用中断号 6 */
+#define TEST_IRQ_UAF          7    /* UAF 主测试使用中断号 7 */
+#define TEST_IRQ_SLOW         8    /* 阻塞测试使用中断号 8 */
 
 /* ─────────────────────────────────────────────────────────
  * 内部类型与全局状态
@@ -60,9 +63,9 @@ static volatile test_resource_t *s_slow_isr_resource = NULL;
  * @note 这是测试的核心：如果 synchronize() 没工作，ISR 会访问
  *       已经被 free 的内存，magic 值会变成垃圾值（堆头或其他值）。
  *       通过全局指针 s_current_resource 访问，避免频繁注册中断。
- * @note 共享中断 ISR 返回 bool：true = 已处理，false = 未处理
+ * @note 非共享中断 ISR 返回 void
  */
-static bool test_uaf_isr(void *arg) {
+static void test_uaf_isr(void *arg) {
     (void)arg;  /* 不使用注册时传入的 arg，改用全局指针 */
     test_resource_t *res = (test_resource_t *)s_current_resource;
 
@@ -81,11 +84,10 @@ static bool test_uaf_isr(void *arg) {
         pal_debug_printf("!!! UAF DETECTED at round %lu !!! magic=0x%08lX\n",
                          (unsigned long)res->round_id,
                          (unsigned long)s_uaf_magic_value);
-        return true;
+        return;
     }
 
     res->isr_counter++;
-    return true;
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -112,13 +114,11 @@ void test_smp_uaf_run(uint32_t rounds,
 
     uint32_t passed = 0;
 
-    /* ── Step 0: 只注册一次共享中断（关键！避免资源耗尽） ──
-     * 使用逻辑中断号 5，这是 ESP32 上支持共享注册的中断源
+    /* ── Step 0: 注册中断（使用非共享中断，避免冲突）
+     * 使用逻辑中断号 7，这是 ESP32 上通常可用的中断源
      * ISR 通过全局指针 s_current_resource 访问当前测试资源
-     *
-     * 注意：pal_irq_shared_register 内部已经启用中断，不需要额外调用 pal_irq_enable
      */
-    wink_status_t status = pal_irq_shared_register(
+    wink_status_t status = pal_irq_enable(
         TEST_IRQ_UAF,
         PAL_IRQ_PRIO_NORMAL,
         test_uaf_isr,
@@ -126,7 +126,7 @@ void test_smp_uaf_run(uint32_t rounds,
     );
 
     if (wink_status_is_error(status)) {
-        pal_debug_printf("ERROR: pal_irq_shared_register failed: %d\n", (int)status);
+        pal_debug_printf("ERROR: pal_irq_enable failed: %d\n", (int)status);
         return;
     }
 
@@ -205,9 +205,9 @@ void test_smp_uaf_run(uint32_t rounds,
 
 /**
  * @brief 慢速 ISR — 故意执行 100ms，用于验证 synchronize() 真的在等。
- * @note 共享中断 ISR 返回 bool
+ * @note 非共享中断 ISR 返回 void
  */
-static bool slow_isr(void *arg) {
+static void slow_isr(void *arg) {
     (void)arg;
     test_resource_t *res = (test_resource_t *)s_slow_isr_resource;
     (void)res;
@@ -219,7 +219,6 @@ static bool slow_isr(void *arg) {
 
     s_slow_isr_running = false;
     s_slow_isr_done = true;
-    return true;
 }
 
 bool test_smp_synchronize_blocks(uint32_t *blocked_us) {
@@ -244,10 +243,8 @@ bool test_smp_synchronize_blocks(uint32_t *blocked_us) {
     s_slow_isr_running = false;
     s_slow_isr_done = false;
 
-    /* 注册慢速 ISR 到另一个中断号
-     * 注意：pal_irq_shared_register 内部已经启用中断，不需要额外调用 pal_irq_enable
-     */
-    wink_status_t status = pal_irq_shared_register(
+    /* 注册慢速 ISR 到另一个中断号 */
+    wink_status_t status = pal_irq_enable(
         TEST_IRQ_SLOW,
         PAL_IRQ_PRIO_NORMAL,
         slow_isr,
@@ -255,7 +252,7 @@ bool test_smp_synchronize_blocks(uint32_t *blocked_us) {
     );
 
     if (wink_status_is_error(status)) {
-        pal_debug_printf("ERROR: pal_irq_shared_register failed: %d\n", (int)status);
+        pal_debug_printf("ERROR: pal_irq_enable failed: %d\n", (int)status);
         *blocked_us = 0;
         return false;
     }
