@@ -18,12 +18,14 @@
  * 注：虚拟时间状态机在 pal_osal_host.c 维护（sim_* API 经 extern 访问）。
  */
 #include "pal_hal.h"
+#include "pal_irq.h"
 #include "pal_resource.h"
 #include "pal_pwm_router.h"
 #include "pal_debug.h"
 #include "host_test_ctrl.h"
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
 
 /* 虚拟时间状态（OSAL 侧推进，HAL 侧消费）—— 跨文件共享，故 extern */
 extern uint64_t host_sim_time_us(void);
@@ -39,17 +41,17 @@ extern void host_record_pwm(uint8_t channel, float duty);
  * 30ms 超时判定自然触发（模拟「echo 久不响应」）。窗口值对齐器件超时 (30000us)。 */
 #define ECHO_POLL_WINDOW_US 30000u
 
-wink_status_t pal_gpio_init(uint16_t pin, pal_gpio_mode_t mode) {
+wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
     /* Phase 2 Task 2-3：host 资源占用治理。owner 为 PAL 层固定标识
      * （同 owner 重复 claim 幂等；不同 owner 冲突 → BUSY 由调用方透传）。 */
-    wink_status_t rs = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, pin, "pal_hal_host");
+    wink_status_t rs = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, "pal_hal_host");
     if (wink_status_is_error(rs)) { return rs; }
     (void)mode;
     return WINK_OK;
 }
-void pal_gpio_write(uint16_t pin, bool level) { (void)pin; (void)level; }
+void pal_gpio_write(wink_pin_t pin, bool level) { (void)pin; (void)level; }
 
-bool pal_gpio_read(uint16_t pin) {
+bool pal_gpio_read(wink_pin_t pin) {
     /* ADR-0009 Wave1：注入了理想电平的 pin → 走抖动退化（§3.1）；否则走原 echo 协作推进逻辑 */
     bool debounced;
     extern bool host_gpio_read_debounced(uint16_t pin, bool *out_level);
@@ -74,10 +76,233 @@ bool pal_gpio_read(uint16_t pin) {
     return false;
 }
 
-wink_status_t pal_gpio_enable_interrupt(uint16_t pin, pal_gpio_intr_t t, pal_gpio_isr_t cb, void *a) {
-    (void)pin; (void)t; (void)cb; (void)a; return WINK_OK;
+/* ─────────────────────────────────────────────────────────
+ * Host GPIO 中断实现（支持中断锁语义 + pending 队列，用于单元测试）
+ * ───────────────────────────────────────────────────────── */
+#define HOST_MAX_GPIO_PIN  50
+#define HOST_MAX_PENDING   64
+
+static pal_gpio_isr_t  s_gpio_isr[HOST_MAX_GPIO_PIN] = {NULL};
+static void            *s_gpio_isr_arg[HOST_MAX_GPIO_PIN] = {NULL};
+static uint32_t         s_isr_call_count[HOST_MAX_GPIO_PIN] = {0};
+
+/* Pending 中断队列（中断锁语义仿真） */
+static uint32_t s_pending_gpio[HOST_MAX_PENDING];
+static uint32_t s_pending_count = 0;
+
+/* 中断锁状态（嵌套计数，用于单测断言） */
+static int s_irq_lock_depth = 0;
+
+/* 刷新所有 pending 的中断（当中断锁释放时调用） */
+static void flush_pending_interrupts(void)
+{
+    while (s_pending_count > 0) {
+        s_pending_count--;
+        uint32_t pin = s_pending_gpio[s_pending_count];
+
+        if (pin < HOST_MAX_GPIO_PIN && s_gpio_isr[pin] != NULL) {
+            s_isr_call_count[pin]++;
+            s_gpio_isr[pin](s_gpio_isr_arg[pin]);
+        }
+    }
 }
-wink_status_t pal_gpio_disable_interrupt(uint16_t pin) { (void)pin; return WINK_OK; }
+
+wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin, pal_gpio_intr_t intr_type,
+                                         pal_irq_prio_t prio, pal_gpio_isr_t callback, void *arg)
+{
+    (void)intr_type;
+    (void)prio;  /* Host 单元测试暂不支持优先级抢占 */
+
+    if (pin < 0 || pin >= HOST_MAX_GPIO_PIN) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    if (callback == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    s_gpio_isr[pin] = callback;
+    s_gpio_isr_arg[pin] = arg;
+    s_isr_call_count[pin] = 0;
+
+    return WINK_OK;
+}
+
+wink_status_t pal_gpio_disable_interrupt(wink_pin_t pin)
+{
+    if (pin < 0 || pin >= HOST_MAX_GPIO_PIN) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    s_gpio_isr[pin] = NULL;
+    return WINK_OK;
+}
+
+/**
+ * @brief 手动触发 GPIO 中断（仅 Host 平台可用，用于单测）
+ *
+ * ⚠️ 中断锁语义实现（v2.0 核心特性）：
+ * 如果当前持有中断锁，则只记录到 pending 队列，不实际调用 ISR。
+ * ISR 将在中断锁释放（最外层 restore）时统一执行。
+ *
+ * 单测用法：
+ *   pal_gpio_enable_interrupt(TEST_PIN, PAL_GPIO_INTR_FALLING_EDGE, my_isr, NULL);
+ *
+ *   uint32_t mask = pal_irq_save();
+ *   pal_host_trigger_gpio_interrupt(TEST_PIN);
+ *   TEST_ASSERT_EQUAL(0, pal_host_get_isr_call_count(TEST_PIN));  // ✅ 未执行
+ *   pal_irq_restore(mask);
+ *   TEST_ASSERT_EQUAL(1, pal_host_get_isr_call_count(TEST_PIN));  // ✅ 已执行
+ */
+void pal_host_trigger_gpio_interrupt(wink_pin_t pin)
+{
+    if (pin < 0 || pin >= HOST_MAX_GPIO_PIN) return;
+    if (s_gpio_isr[pin] == NULL) return;
+
+    if (s_irq_lock_depth > 0) {
+        /* 持有中断锁 → 加入 pending 队列，延迟执行 */
+        if (s_pending_count < HOST_MAX_PENDING) {
+            s_pending_gpio[s_pending_count++] = (uint32_t)pin;
+        }
+    } else {
+        /* 无锁 → 立即执行 */
+        s_isr_call_count[pin]++;
+        s_gpio_isr[pin](s_gpio_isr_arg[pin]);
+    }
+}
+
+uint32_t pal_host_get_isr_call_count(wink_pin_t pin)
+{
+    if (pin < 0 || pin >= HOST_MAX_GPIO_PIN) return 0;
+    return s_isr_call_count[pin];
+}
+
+void pal_host_reset_isr_stats(void)
+{
+    memset(s_isr_call_count, 0, sizeof(s_isr_call_count));
+    s_pending_count = 0;
+}
+
+/**
+ * @brief 获取当前 pending 中断数量（用于单测断言）
+ */
+uint32_t pal_host_get_pending_count(void)
+{
+    return s_pending_count;
+}
+
+/**
+ * @brief 获取中断锁嵌套深度（用于单测断言，检测锁泄漏）
+ */
+int pal_host_get_irq_lock_depth(void)
+{
+    return s_irq_lock_depth;
+}
+
+/* ─────────────────────────────────────────────────────────
+ * 逻辑中断核心接口（Host 单元测试支持）
+ * ───────────────────────────────────────────────────────── */
+#define HOST_MAX_IRQ  32
+static pal_isr_t s_host_irq_table[HOST_MAX_IRQ] = {NULL};
+static void *s_host_irq_arg[HOST_MAX_IRQ] = {NULL};
+static uint32_t s_host_irq_call_count[HOST_MAX_IRQ] = {0};
+
+wink_status_t pal_irq_enable(uint32_t irq_num, pal_irq_prio_t prio,
+                              pal_isr_t handler, void *arg)
+{
+    (void)prio;
+    if (irq_num >= HOST_MAX_IRQ || handler == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    s_host_irq_table[irq_num] = handler;
+    s_host_irq_arg[irq_num] = arg;
+    s_host_irq_call_count[irq_num] = 0;
+    return WINK_OK;
+}
+
+wink_status_t pal_irq_disable(uint32_t irq_num)
+{
+    if (irq_num >= HOST_MAX_IRQ) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    s_host_irq_table[irq_num] = NULL;
+    s_host_irq_arg[irq_num] = NULL;
+    return WINK_OK;
+}
+
+wink_status_t pal_irq_direct_connect(uint32_t irq_num, pal_direct_isr_t handler)
+{
+    return pal_irq_enable(irq_num, PAL_IRQ_PRIO_NORMAL, (pal_isr_t)handler, NULL);
+}
+
+void pal_irq_set_pending(uint32_t irq_num)
+{
+    if (irq_num < HOST_MAX_IRQ && s_host_irq_table[irq_num] != NULL) {
+        if (s_irq_lock_depth > 0) {
+            /* 持有锁时不立即执行（单测可检查 pending 状态） */
+        } else {
+            s_host_irq_call_count[irq_num]++;
+            s_host_irq_table[irq_num](s_host_irq_arg[irq_num]);
+        }
+    }
+}
+
+void pal_irq_clear_pending(uint32_t irq_num)
+{
+    (void)irq_num;
+}
+
+void pal_irq_synchronize(uint32_t irq_num)
+{
+    (void)irq_num;
+    /* Host 单线程模型，无需同步 */
+}
+
+void pal_host_trigger_logical_interrupt(uint32_t irq_num)
+{
+    pal_irq_set_pending(irq_num);
+}
+
+uint32_t pal_host_get_logical_isr_call_count(uint32_t irq_num)
+{
+    if (irq_num >= HOST_MAX_IRQ) return 0;
+    return s_host_irq_call_count[irq_num];
+}
+
+/* ─────────────────────────────────────────────────────────
+ * 中断锁实现（双等级语义，Host 平台支持精确检测）
+ * ───────────────────────────────────────────────────────── */
+
+uint32_t pal_irq_save(void)
+{
+    /* 返回旧的锁深度（用于 restore 时判断是否是最外层） */
+    uint32_t old_depth = s_irq_lock_depth;
+    s_irq_lock_depth++;
+    return old_depth;
+}
+
+uint32_t pal_irq_save_rtos_safe(void)
+{
+    /* Host 单线程模型下，rtos_safe 与全屏蔽行为一致 */
+    return pal_irq_save();
+}
+
+void pal_irq_restore(uint32_t mask)
+{
+    if (s_irq_lock_depth <= 0) {
+        /* 不匹配的 restore（没有对应 save），单测可检测到
+         * 打印警告但不崩溃，便于测试定位 */
+        fprintf(stderr, "WARNING: pal_irq_restore() called without matching save()!\n");
+        return;
+    }
+
+    s_irq_lock_depth--;
+
+    /* 如果是最外层 restore（mask == 0 表示 save 之前锁深度为 0），
+     * 则刷新所有 pending 中断 */
+    if (s_irq_lock_depth == mask) {
+        flush_pending_interrupts();
+    }
+}
 
 wink_status_t pal_pwm_init(uint8_t channel, uint32_t freq) {
     uint8_t timer_num = 0;
@@ -114,11 +339,11 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t addr,
     return WINK_OK;
 }
 
-wink_status_t pal_gpio_pulse_in(uint16_t pin, bool level, uint32_t timeout_us, uint32_t *pulse_us) {
+wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us, uint32_t *pulse_us) {
     /* Phase 4 Task 4-2：host 直接读 echo 脉宽（虚拟时间下同步），不经 pal_gpio_read 协作推进。
      * 这是非阻塞 DAL 的 echo 时序 SSOT（Phase 4 Task 4-6 决策：保留协作推进仅供过渡 blocking read）。 */
     if (pulse_us == NULL) { return WINK_ERR_INVALID_ARG; }
-    if (pin != host_echo_pin()) { return WINK_ERR_UNSUPPORTED; }   /* 无 pin 映射（直至 virtual registry 接入） */
+    if (pin != (wink_pin_t)host_echo_pin()) { return WINK_ERR_UNSUPPORTED; }   /* 无 pin 映射（直至 virtual registry 接入） */
     uint64_t rise = host_echo_rise_us();
     if (rise > timeout_us) { return WINK_ERR_TIMEOUT; }            /* echo 起始晚于超时 */
     *pulse_us = (uint32_t)host_echo_high_us();
