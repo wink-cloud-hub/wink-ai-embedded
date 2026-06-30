@@ -104,6 +104,30 @@ static void trigger_task_func(void *arg) {
         }
     }
 }
+
+struct enable_args {
+    wink_status_t status;
+    bool done;
+};
+
+static void enable_task(void *arg) {
+    struct enable_args *args = (struct enable_args *)arg;
+    args->status = pal_irq_enable(TEST_IRQ_UAF, PAL_IRQ_PRIO_NORMAL, test_uaf_isr, NULL);
+    args->done = true;
+    vTaskDelete(NULL);
+}
+
+struct disable_args {
+    wink_status_t status;
+    bool done;
+};
+
+static void disable_task(void *arg) {
+    struct disable_args *args = (struct disable_args *)arg;
+    args->status = pal_irq_disable(TEST_IRQ_UAF);
+    args->done = true;
+    vTaskDelete(NULL);
+}
 #endif
 
 void test_smp_uaf_run(uint32_t rounds,
@@ -130,12 +154,22 @@ void test_smp_uaf_run(uint32_t rounds,
      * 使用逻辑中断号 7，这是 ESP32 上通常可用的中断源
      * ISR 通过全局指针 s_current_resource 访问当前测试资源
      */
+#ifdef ESP_PLATFORM
+    struct enable_args e_args = { .status = WINK_OK, .done = false };
+    // 在 Core 1 上注册中断，使其能够在 Core 1 上响应软件中断
+    xTaskCreatePinnedToCore(enable_task, "enable_task", 2048, &e_args, 5, NULL, 1);
+    while (!e_args.done) {
+        pal_delay_us(10);
+    }
+    wink_status_t status = e_args.status;
+#else
     wink_status_t status = pal_irq_enable(
         TEST_IRQ_UAF,
         PAL_IRQ_PRIO_NORMAL,
         test_uaf_isr,
         NULL  /* arg 为 NULL，ISR 通过 s_current_resource 全局指针访问 */
     );
+#endif
 
     if (wink_status_is_error(status)) {
         pal_debug_printf("ERROR: pal_irq_enable failed: %d\n", (int)status);
@@ -225,7 +259,16 @@ void test_smp_uaf_run(uint32_t rounds,
 #endif
 
     /* 测试结束后禁用中断 */
+#ifdef ESP_PLATFORM
+    struct disable_args d_args = { .status = WINK_OK, .done = false };
+    xTaskCreatePinnedToCore(disable_task, "disable_task", 2048, &d_args, 5, NULL, 1);
+    while (!d_args.done) {
+        pal_delay_us(10);
+    }
+    wink_status_t final_st = d_args.status;
+#else
     wink_status_t final_st = pal_irq_disable(TEST_IRQ_UAF);
+#endif
     (void)final_st;
 
     /* 填充结果 */
