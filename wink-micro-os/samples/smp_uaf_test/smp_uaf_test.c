@@ -62,7 +62,7 @@ static volatile test_resource_t *s_slow_isr_resource = NULL;
  */
 static void test_uaf_isr(void *arg) {
     (void)arg;  /* 不使用注册时传入 of arg，改用全局指针 */
-    test_resource_t *res = (test_resource_t *)s_current_resource;
+    volatile test_resource_t *res = s_current_resource;
 
     /* ✅ 放大 race window：故意放慢 ISR 执行
      *
