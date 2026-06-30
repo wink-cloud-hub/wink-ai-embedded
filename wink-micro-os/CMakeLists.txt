@@ -123,5 +123,9 @@ if(NOT TARGET_PLATFORM STREQUAL "wasm")
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/devkitc_smoke
                      ${CMAKE_BINARY_DIR}/devkitc_smoke_build)
 
+    # SMP UAF 验证测试：验证 pal_irq_synchronize() 在双核系统上的有效性
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/smp_uaf_test
+                     ${CMAKE_BINARY_DIR}/smp_uaf_test_build)
+
     add_subdirectory(test)
 endif()
