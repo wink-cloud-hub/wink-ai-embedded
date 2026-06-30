@@ -23,14 +23,14 @@
 
 /* 中断触发接口（平台适配层）
  * - Host: 使用 pal_host_trigger_gpio_interrupt() 软件模拟
- * - ESP32: 直接操作 GPIO 电平触发硬件中断
+ * - ESP32: 通过 PAL GPIO API 触发电平跳变
  */
 #ifdef ESP_PLATFORM
-#include "driver/gpio.h"
 static inline void trigger_gpio_interrupt(wink_pin_t pin) {
-    /* ESP32 上通过电平跳变触发硬件中断 */
-    gpio_set_level(pin, 1);
-    gpio_set_level(pin, 0);
+    /* ESP32 上通过 PAL GPIO API 触发电平跳变产生中断 */
+    pal_gpio_set_level(pin, 1);
+    pal_delay_us(1);
+    pal_gpio_set_level(pin, 0);
 }
 #else
 extern void pal_host_trigger_gpio_interrupt(wink_pin_t pin);
@@ -154,8 +154,14 @@ void test_smp_uaf_run(uint32_t rounds,
 
         /* ── Step 2: 注册 GPIO 中断 ─────────────────
          * 使用测试 pin 10（host 下无硬件限制，任意数字即可）
+         * ESP32 上需要先设置 GPIO 为输出模式才能用软件方式触发
          */
         const wink_pin_t TEST_PIN = 10;
+#ifdef ESP_PLATFORM
+        /* ESP32: 先设置为输出，才能通过电平跳变触发自身的中断 */
+        pal_gpio_set_direction(TEST_PIN, PAL_GPIO_MODE_OUTPUT);
+        pal_gpio_set_level(TEST_PIN, 0);
+#endif
         wink_status_t status = pal_gpio_enable_interrupt(
             TEST_PIN,
             PAL_GPIO_INTR_RISING_EDGE,
@@ -245,6 +251,12 @@ bool test_smp_synchronize_blocks(uint32_t *blocked_us) {
 
     s_slow_isr_running = false;
     s_slow_isr_done = false;
+
+#ifdef ESP_PLATFORM
+    /* ESP32: 先设置 GPIO 为输出，才能自触发 */
+    pal_gpio_set_direction(TEST_PIN, PAL_GPIO_MODE_OUTPUT);
+    pal_gpio_set_level(TEST_PIN, 0);
+#endif
 
     /* 注册慢速 ISR */
     wink_status_t status = pal_gpio_enable_interrupt(
