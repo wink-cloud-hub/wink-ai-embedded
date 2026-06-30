@@ -86,6 +86,26 @@ static void test_uaf_isr(void *arg) {
  * 核心测试逻辑
  * ───────────────────────────────────────────────────────── */
 
+#ifdef ESP_PLATFORM
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+static volatile bool s_trigger_active = false;
+static TaskHandle_t s_trigger_task_handle = NULL;
+
+static void trigger_task_func(void *arg) {
+    (void)arg;
+    while (1) {
+        if (s_trigger_active) {
+            pal_irq_set_pending(TEST_IRQ_UAF);
+            pal_delay_us(20);
+        } else {
+            vTaskDelay(pdMS_TO_TICKS(1));
+        }
+    }
+}
+#endif
+
 void test_smp_uaf_run(uint32_t rounds,
                       uint32_t triggers_per_round,
                       bool enable_synchronize,
@@ -122,6 +142,14 @@ void test_smp_uaf_run(uint32_t rounds,
         return;
     }
 
+#ifdef ESP_PLATFORM
+    s_trigger_active = false;
+    if (s_trigger_task_handle == NULL) {
+        // 创建触发任务绑定在 Core 1，将软件中断信号源源不断地发送到 CPU 1 执行
+        xTaskCreatePinnedToCore(trigger_task_func, "smp_trig_task", 2048, NULL, 5, &s_trigger_task_handle, 1);
+    }
+#endif
+
     for (uint32_t round = 0; round < rounds; round++) {
         /* 提前终止：UAF 已检测到 */
         if (s_uaf_detected) {
@@ -142,6 +170,12 @@ void test_smp_uaf_run(uint32_t rounds,
         s_current_resource = res;
 
         /* ── Step 3: 持续触发中断（让 ISR 一直在飞） ── */
+#ifdef ESP_PLATFORM
+        s_trigger_active = true;
+        pal_delay_ms(1); // 睡眠 1ms 让 CPU 1 并发触发中断
+        s_trigger_active = false;
+        pal_delay_us(50); // 留出 50us 确保最后一个在飞的中断已经进入 CPU 1 的 ISR
+#else
         for (uint32_t i = 0; i < triggers_per_round; i++) {
             /* 软件触发共享中断
              *
@@ -151,6 +185,7 @@ void test_smp_uaf_run(uint32_t rounds,
             pal_irq_set_pending(TEST_IRQ_UAF);
             pal_delay_us(10);
         }
+#endif
 
         /* 给正在飞的 ISR 一点时间进入临界区 */
         pal_delay_us(20);
@@ -180,6 +215,14 @@ void test_smp_uaf_run(uint32_t rounds,
             pal_debug_printf("  round %lu OK\n", (unsigned long)round);
         }
     }
+
+#ifdef ESP_PLATFORM
+    s_trigger_active = false;
+    if (s_trigger_task_handle != NULL) {
+        vTaskDelete(s_trigger_task_handle);
+        s_trigger_task_handle = NULL;
+    }
+#endif
 
     /* 测试结束后禁用中断 */
     wink_status_t final_st = pal_irq_disable(TEST_IRQ_UAF);
