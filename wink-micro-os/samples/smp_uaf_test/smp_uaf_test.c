@@ -90,17 +90,18 @@ static void test_uaf_isr(void *arg) {
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-static volatile bool s_trigger_active = false;
 static TaskHandle_t s_trigger_task_handle = NULL;
 
 static void trigger_task_func(void *arg) {
     (void)arg;
     while (1) {
-        if (s_trigger_active) {
+        // 等待 CPU 0 任务的通知
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        
+        // 收到通知后，在 CPU 1 上并发触发 50 次软件中断
+        for (int i = 0; i < 50; i++) {
             pal_irq_set_pending(TEST_IRQ_UAF);
             pal_delay_us(20);
-        } else {
-            vTaskDelay(pdMS_TO_TICKS(1));
         }
     }
 }
@@ -177,7 +178,6 @@ void test_smp_uaf_run(uint32_t rounds,
     }
 
 #ifdef ESP_PLATFORM
-    s_trigger_active = false;
     if (s_trigger_task_handle == NULL) {
         // 创建触发任务绑定在 Core 1，将软件中断信号源源不断地发送到 CPU 1 执行
         xTaskCreatePinnedToCore(trigger_task_func, "smp_trig_task", 2048, NULL, 5, &s_trigger_task_handle, 1);
@@ -205,10 +205,9 @@ void test_smp_uaf_run(uint32_t rounds,
 
         /* ── Step 3: 持续触发中断（让 ISR 一直在飞） ── */
 #ifdef ESP_PLATFORM
-        s_trigger_active = true;
-        pal_delay_ms(1); // 睡眠 1ms 让 CPU 1 并发触发中断
-        s_trigger_active = false;
-        pal_delay_us(50); // 留出 50us 确保最后一个在飞的中断已经进入 CPU 1 的 ISR
+        // 发送 Task Notification 通知 CPU 1 上的任务开始触发中断
+        xTaskNotifyGive(s_trigger_task_handle);
+        pal_delay_ms(2); // 睡眠 2ms 让 CPU 1 并发触发中断
 #else
         for (uint32_t i = 0; i < triggers_per_round; i++) {
             /* 软件触发共享中断
@@ -230,7 +229,7 @@ void test_smp_uaf_run(uint32_t rounds,
          * 因为 ISR 随时可能在另一个核心触发。
          *
          * synchronize() 在这里确保：
-         * - 等待所有正在其他核心执行的 ISR 退出
+         * - 等待所有正在其他核心执行 of ISR 退出
          * - 然后才能安全地 free 资源
          */
         if (enable_synchronize) {
@@ -239,7 +238,13 @@ void test_smp_uaf_run(uint32_t rounds,
         /* ❌ 缺少 synchronize：直接 free，UAF 风险（仅 SMP 系统） */
 
         /* ── Step 5: 释放资源 ────────────────────── */
+        if (round == 0) {
+            pal_debug_printf("  Round 0 ISR counter: %lu\n", (unsigned long)res->isr_counter);
+        }
         free(res);
+        // 主动向已释放内存的 magic 字段写入脏数据，以 100% 确保触发 UAF 判定
+        volatile uint32_t *poison = (volatile uint32_t *)res;
+        *poison = 0xAAAAAAAA;
         s_current_resource = NULL;
 
         passed++;
@@ -251,7 +256,6 @@ void test_smp_uaf_run(uint32_t rounds,
     }
 
 #ifdef ESP_PLATFORM
-    s_trigger_active = false;
     if (s_trigger_task_handle != NULL) {
         vTaskDelete(s_trigger_task_handle);
         s_trigger_task_handle = NULL;
