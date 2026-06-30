@@ -10,7 +10,7 @@
 #include "wink_trace.h"
 #include "pal.h"       /* PAL 聚合头 */
 #include "pal_debug.h"
-#include "test_smp_uaf.h"
+#include "smp_uaf_test.h"
 
 /* ─────────────────────────────────────────────────────────
  * 测试配置

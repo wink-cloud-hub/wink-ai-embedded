@@ -13,7 +13,7 @@
  */
 
 #include <stdio.h>
-#include "test_smp_uaf.h"
+#include "smp_uaf_test.h"
 #include "pal.h"       /* PAL 聚合头 */
 #include "pal_debug.h"
 

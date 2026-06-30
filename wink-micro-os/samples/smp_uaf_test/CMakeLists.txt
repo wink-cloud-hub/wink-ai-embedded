@@ -15,7 +15,7 @@
 set(APP_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/device_tree.c
     ${CMAKE_CURRENT_SOURCE_DIR}/app_callbacks.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/test_smp_uaf.c)
+    ${CMAKE_CURRENT_SOURCE_DIR}/smp_uaf_test.c)
 
 # host 端到端测试（注意：host 是单线程，永远测不出 UAF！）
 # 本测试的价值在 ESP32 真机 SMP 双核环境，host 测试仅验证代码结构正确。

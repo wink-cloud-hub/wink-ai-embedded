@@ -15,7 +15,7 @@
  * 参考：Linux 内核 synchronize_irq() 的设计原理
  */
 
-#include "test_smp_uaf.h"
+#include "smp_uaf_test.h"
 #include "pal.h"       /* PAL 聚合头：包含所有 HAL + OSAL API */
 #include "pal_debug.h"
 #include <stdlib.h>
