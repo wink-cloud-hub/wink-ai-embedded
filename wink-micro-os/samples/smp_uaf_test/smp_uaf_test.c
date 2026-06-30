@@ -181,7 +181,8 @@ void test_smp_uaf_run(uint32_t rounds,
         pal_delay_us(20);
 
         /* ── Step 4: 关键路径 — disable + [synchronize] + free ── */
-        pal_irq_disable(TEST_IRQ_NUM);
+        wink_status_t st = pal_irq_disable(TEST_IRQ_NUM);
+        (void)st;  /* 忽略返回值，测试场景下禁用失败不影响结果 */
 
         if (enable_synchronize) {
             /* ✅ 等待所有核心退出 ISR 后再释放
@@ -266,7 +267,8 @@ bool test_smp_synchronize_blocks(uint32_t *blocked_us) {
     pal_debug_printf("  synchronize() returned after %lu us\n", (unsigned long)elapsed);
 
     /* 清理 */
-    pal_irq_disable(TEST_IRQ_NUM);
+    wink_status_t disable_st = pal_irq_disable(TEST_IRQ_NUM);
+    (void)disable_st;
 
 #ifdef ESP_PLATFORM
     /* ESP32 SMP 环境下：应该阻塞接近 100ms（慢 ISR 执行时间） */
