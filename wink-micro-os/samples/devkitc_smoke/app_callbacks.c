@@ -197,11 +197,14 @@ static void telemetry_task(void *arg)
  * ───────────────────────────────────────────────────────── */
 static void app_init(void)
 {
-    /* S8: 检测「本次启动是异常复位后恢复」（ADR-0010：恢复路径不 trace，改查连续异常复位计数）。
-     * pal_get_abnormal_boot_count() > 0 表示本次 boot 前发生 WDT/PANIC 复位且未达锁死阈值（已放行恢复）。 */
+    /* S8: 检测「本次启动是异常复位后恢复」（ADR-0010）。
+     * pal_get_abnormal_boot_count() 是 PAL 统一接口：
+     *   >0 = WDT/PANIC 复位后恢复；0 = 正常启动
+     * 所有平台都有此接口（ESP32: RTC存储, WASM/host: 静态变量模拟）。 */
     if (pal_get_abnormal_boot_count() > 0) {
         s_wdt_verified = true;
 #if defined(ESP_PLATFORM)
+        /* printf 是 ESP32 特有输出方式，保留在平台分支 */
         printf("[SMOKE] watchdog: PASS (recovered after abnormal reset, count=%lu)\n",
                (unsigned long)pal_get_abnormal_boot_count());
 #endif
@@ -275,19 +278,21 @@ static void app_loop(void)
     uint32_t now = (uint32_t)pal_get_ms();
 
     if (pressed) {
-        /* S8: 长按 >3s → 触发 WDT 复位测试（仅 ESP32） */
+        /* S8: 长按 >3s → 触发 WDT 复位测试（PAL 统一接口）
+         * 支持 WDT 的平台（ESP32）会真复位；不支持的平台（WASM/host）返回 WINK_ERR_UNSUPPORTED。
+         * 运行时检测替代编译时 #ifdef，真正实现跨平台同源代码。 */
         if (s_press_start_ms == 0) {
             s_press_start_ms = now;
         }
-#if defined(ESP_PLATFORM)
         if (!s_wdt_verified && (now - s_press_start_ms) > 3000u) {
-            /* 长按触发：初始化 WDT（2s 超时）后死循环不喂狗 → WDT 复位 */
             wink_status_t _wdt = pal_watchdog_init(2000u);
+            if (!wink_status_is_error(_wdt)) {
+                /* WDT 初始化成功：死循环不喂狗 → 2s 后超时复位 */
+                for (;;) { }
+            }
+            /* WDT 不支持（WASM/host）：静默失败，不影响其它功能 */
             (void)_wdt;
-            /* 死循环 → 2s 后 WDT 超时复位 */
-            for (;;) { }
         }
-#endif
         /* S2/S3: 按住时常亮
          * gcc16 不因 (void) 抑制 warn_unused_result：先赋值再丢弃 */
         wink_status_t _on = dal_led_on(&board_led);
