@@ -276,6 +276,12 @@ wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin,
     if (callback == NULL) { return WINK_ERR_INVALID_ARG; }
     if (prio >= PAL_IRQ_PRIO_COUNT) { return WINK_ERR_INVALID_ARG; }
 
+    /* v2.1 G2：ESP32 GPIO ISR 路径同样拒接 REALTIME，避免与 pal_irq_enable 出现
+     * "同一 prio 在两条路径上行为不一致"的语义陷阱（参考 ADR-0012 / ADR-IRQ-008）。 */
+    if (prio == PAL_IRQ_PRIO_REALTIME) {
+        return WINK_ERR_UNSUPPORTED;
+    }
+
     /* GPIO 中断优先级由 ESP-IDF 全局控制，暂不支持 per-pin 设置
      * prio 参数预留用于未来扩展（如分配到不同的 CPU 中断源） */
     (void)prio;
@@ -935,6 +941,15 @@ wink_status_t pal_irq_enable(uint32_t irq_num, pal_irq_prio_t prio,
         return WINK_ERR_INVALID_ARG;
     }
 
+    /* v2.1 G2 (ADR-0012 / ADR-IRQ-008)：ESP32 不支持 REALTIME 级 C-ISR。
+     * NMI 等 Level 4+ 无法通过 esp_intr_alloc 注册 C 处理函数；旧实现把
+     * REALTIME 静默映射到 LEVEL3，与 HIGHEST 物理等价但契约相反，会掩盖
+     * 跨平台 bug（用户在 ESP32 上写 REALTIME + xQueueSendFromISR 不崩，
+     * 换 STM32 NMI 后翻车）。此处显式拒接，不再静默降级。 */
+    if (prio == PAL_IRQ_PRIO_REALTIME) {
+        return WINK_ERR_UNSUPPORTED;
+    }
+
     /* 先释放旧的句柄（如果有） */
     if (s_irq_handles[irq_num] != NULL) {
         esp_intr_free(s_irq_handles[irq_num]);
@@ -943,7 +958,7 @@ wink_status_t pal_irq_enable(uint32_t irq_num, pal_irq_prio_t prio,
 
     /* 优先级映射表（ADR-IRQ-003 预留安全边界）
      * LOWEST ~ HIGHEST 都是 RTOS 安全的，可以调用 FromISR API
-     * REALTIME 是硬件最高级，严禁调用任何 RTOS API
+     * REALTIME 在 ESP32 上已在入口处被拒接，不出现在映射表中。
      *
      * 注意：ESP_INTR_FLAG_LEVELn 是标志位，不是数值，不能直接用数值做 | 运算
      * 映射关系：LEVEL1 = 最低优先级，LEVEL7 = 最高优先级
@@ -954,7 +969,7 @@ wink_status_t pal_irq_enable(uint32_t irq_num, pal_irq_prio_t prio,
         [PAL_IRQ_PRIO_NORMAL]   = ESP_INTR_FLAG_LEVEL2,
         [PAL_IRQ_PRIO_HIGH]     = ESP_INTR_FLAG_LEVEL3,  /* configMAX_SYSCALL_INTERRUPT_PRIORITY is Level 3 */
         [PAL_IRQ_PRIO_HIGHEST]  = ESP_INTR_FLAG_LEVEL3,  /* RTOS 安全边界 */
-        [PAL_IRQ_PRIO_REALTIME] = ESP_INTR_FLAG_LEVEL3,  /* C 语言 ISR 仅支持到 Level 3，NMI 无法使用 C 注册 */
+        /* PAL_IRQ_PRIO_REALTIME 在入口处已拒接（WINK_ERR_UNSUPPORTED），此处不映射 */
     };
 
     /* ✅ SMP 同步：保存用户 handler 和 arg，通过 wrapper 调用
