@@ -144,7 +144,10 @@ static void sort_pending_by_priority(void)
 wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin, pal_gpio_intr_t intr_type,
                                          pal_irq_prio_t prio, pal_gpio_isr_t callback, void *arg)
 {
-    (void)prio;  /* WASM 仿真暂不支持优先级抢占（Phase 2 实现） */
+    /* v2.1 G3：prio 当前被所有 target 静默忽略（header 已显式契约化）。
+     * WASM 单线程下本无 per-pin 抢占语义；如需要 per-pin 优先级，未来会新增
+     * pal_gpio_enable_interrupt_dedicated() 走独立中断源路径。 */
+    (void)prio;
 
     if (pin < 0 || pin >= WASM_MAX_GPIO_PIN) {
         return WINK_ERR_INVALID_ARG;

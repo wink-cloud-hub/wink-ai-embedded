@@ -282,8 +282,10 @@ wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin,
         return WINK_ERR_UNSUPPORTED;
     }
 
-    /* GPIO 中断优先级由 ESP-IDF 全局控制，暂不支持 per-pin 设置
-     * prio 参数预留用于未来扩展（如分配到不同的 CPU 中断源） */
+    /* v2.1 G3：GPIO 中断优先级当前仍由 ESP-IDF 全局 ISR service 控制
+     * （gpio_install_isr_service 仅在首次安装时决定整个 GPIO 中断源的硬件优先级）。
+     * prio 参数在所有 target 上当前都被忽略；未来若需要 per-pin 抢占，将新增
+     * pal_gpio_enable_interrupt_dedicated() 独立中断源接口，本接口签名保持不变。 */
     (void)prio;
 
 #if defined(ESP_PLATFORM)

@@ -113,7 +113,9 @@ wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin, pal_gpio_intr_t intr_
                                          pal_irq_prio_t prio, pal_gpio_isr_t callback, void *arg)
 {
     (void)intr_type;
-    (void)prio;  /* Host 单元测试暂不支持优先级抢占 */
+    /* v2.1 G3：prio 当前被所有 target 静默忽略（header 已显式契约化）。
+     * Host 单线程下本无 per-pin 抢占语义，未来按需新增 pal_gpio_enable_interrupt_dedicated()。 */
+    (void)prio;
 
     if (pin < 0 || pin >= HOST_MAX_GPIO_PIN) {
         return WINK_ERR_INVALID_ARG;
