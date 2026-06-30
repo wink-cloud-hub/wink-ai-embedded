@@ -85,7 +85,19 @@ typedef void (*pal_isr_t)(void *arg);
 
 /**
  * @brief 硬件直连中断（Direct-Connect）处理程序原型
- * @note 因硬件限制，直连中断不能传递任何上下文参数，函数签名必须为 void(*)(void)
+ * @note 因硬件限制，直连中断不能传递任何上下文参数，函数签名必须为 void(*)(void)。
+ *
+ * ⚠️ v2.1 契约修订（2026-06-30，参考 ADR-0012 / ADR-IRQ-008）：
+ * 当前实现并未真正绕过 PAL 软件分发 —— 各 target 内部用一个无参 trampoline
+ * 桥接到 generic_isr_wrapper / 等价分发器，签名上仍是 void(void)（保证类型安全），
+ * 但运行时仍然支付软件分发的 in-flight 计数与 wrapper 调用开销。
+ *
+ * 未来真正的"硬件矢量直派"会以新接口
+ * `pal_irq_direct_connect_unsafe()`（或类似命名）单独提供，届时此接口签名与
+ * 调用方式保持不变。
+ *
+ * 因此当前以此原型注册的 ISR 仍受 pal_isr_t 契约约束（< 10µs / 不阻塞 / < 128B 栈），
+ * 直到上述"真直派"接口落地之前，"零软件分发延迟"承诺不成立。
  */
 typedef void (*pal_direct_isr_t)(void);
 
@@ -177,14 +189,19 @@ wink_status_t pal_irq_enable(uint32_t irq_num, pal_irq_prio_t prio,
                               pal_isr_t handler, void *arg);
 
 /**
- * @brief 注册并启用硬件直连中断（零软件分发延迟）
+ * @brief 注册并启用硬件直连中断
  *
  * @param irq_num 逻辑中断号
  * @param handler 直连中断处理函数（必须使用 PAL_DIRECT_ISR 注解，不能接收参数）
  * @return WINK_OK 成功，WINK_ERR_INVALID_ARG 参数非法，WINK_ERR_BUSY 中断已被占用
  *
- * @note 契约保证：直连中断在真机上完全绕过 PAL 软件分发逻辑，由硬件矢量控制器直接跳转，
- *       但不可传递参数，且必须确保不调用任何可能导致线程阻塞/调度的 RTOS 阻塞 API。
+ * @note v2.1 契约修订（2026-06-30，参考 ADR-0012 / ADR-IRQ-008）：
+ *       当前实现并不绕过 PAL 软件分发 —— 内部以无参 trampoline 转接到与
+ *       pal_irq_enable() 共用的 generic dispatch wrapper。本接口当前的价值在于：
+ *       1. 提供一个无 arg 的简化签名，避免回调里到处写 `(void)arg;`；
+ *       2. 通过 trampoline 消除 (pal_isr_t)direct_handler 的 CFI/UBSan 违例 cast。
+ *       未来"真硬件矢量直派"将以独立接口（如 pal_irq_direct_connect_unsafe()）提供，
+ *       届时本接口签名保持不变。
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_irq_direct_connect(uint32_t irq_num, pal_direct_isr_t handler);
