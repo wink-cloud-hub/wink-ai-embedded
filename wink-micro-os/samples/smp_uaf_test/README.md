@@ -34,14 +34,34 @@ Step 4: ISR 中检查 magic 值
 
 ## 真机运行步骤
 
-### 第一步：切换到测试 App
+### 第一步：进入固件目录并激活 ESP-IDF 环境（PowerShell）
 
 ```powershell
+# 进入 esp32_firmware 目录
 cd esp32_firmware
-.\switch_to_smp_uaf_test.ps1
+
+# 激活 EIM profile
+. 'C:\Espressif\tools\Microsoft.v6.0.1.PowerShell_profile.ps1' *> $null
+
+# 解决中文编码问题（必须）
+$env:PYTHONUTF8 = '1'
+$env:PYTHONIOENCODING = 'utf-8'
+
+# 验证激活成功
+idf.py --version
 ```
 
-### 第二步：编译烧录（有 synchronize）
+### 第二步：编译固件
+
+```powershell
+# （可选）彻底清空 build 目录，从零重编
+idf.py fullclean
+
+# 编译指定 App（零改源码）
+idf.py build -DWINK_APP=smp_uaf_test
+```
+
+### 第三步：烧录（有 synchronize）
 
 ```powershell
 idf.py build flash monitor
@@ -53,7 +73,7 @@ idf.py build flash monitor
 ✅ TEST PASSED! All 1000 rounds completed without UAF
 ```
 
-### 第三步：注释掉 synchronize，验证必要性
+### 第四步：注释掉 synchronize，验证必要性
 
 编辑 `app_callbacks.c`：
 ```c
@@ -76,7 +96,7 @@ idf.py build flash monitor
 ## 为什么 ISR 中要加 50us 延时？
 
 ```c
-pal_delay_us(50);  // test_smp_uaf.c:66
+pal_delay_us(50);  // smp_uaf_test.c:66
 ```
 
 真实的 ISR 执行很快，race window 只有几十纳秒，很难触发。
@@ -90,8 +110,8 @@ pal_delay_us(50);  // test_smp_uaf.c:66
 
 | 文件 | 说明 | 平台相关？ |
 |------|------|-----------|
-| `test_smp_uaf.h` | 测试 API 头文件 | ❌ 100% 通用 |
-| `test_smp_uaf.c` | 核心测试逻辑 | ❌ 100% PAL API |
+| `smp_uaf_test.h` | 测试 API 头文件 | ❌ 100% 通用 |
+| `smp_uaf_test.c` | 核心测试逻辑 | ❌ 100% PAL API |
 | `app_callbacks.c` | Wink App 回调接口 | ❌ 通用 |
 | `device_tree.c` | 最小化设备树 | ❌ 通用 |
 | `test_smp_uaf_e2e.c` | host 端验证 | ❌ 通用 |
