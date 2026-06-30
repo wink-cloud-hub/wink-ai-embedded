@@ -140,6 +140,7 @@ static void smoke_check_i2c_bus(void)
     }
     printf("[SMOKE] i2c: PASS (v6 driver init+transfer ran without panic)\n");
 }
+#endif /* ESP_PLATFORM */
 
 /* ─────────────────────────────────────────────────────────
  * S7: 多核临界区并发压测（PAL 统一任务接口）
@@ -295,6 +296,7 @@ static void app_init(void)
 #if defined(ESP_PLATFORM)
     printf("[SMOKE] init done. Long-press BOOT (>3s) to trigger WDT reset test.\n");
 #endif
+#endif /* ESP_PLATFORM - closes app_init platform-specific section */
 }
 
 /* ─────────────────────────────────────────────────────────
