@@ -27,11 +27,19 @@ set(WINK_DAL_SOURCES
 # ── 核心包含目录 ──────────────────────────────────────────────────────────
 # Phase 1 目录重组：pal/include/ 根目录 + osal/ + hal/ 子目录均在搜索路径中。
 # 这样保持向后兼容：现有代码的 #include "pal_hal.h" / #include "pal_osal.h" 无需修改。
+# DAL 头文件按分类组织在子目录中，源文件用 #include "dal_xxx.h" 直接引用（无需前缀）。
 set(WINK_CORE_INCLUDE_DIRS
     ${CMAKE_CURRENT_LIST_DIR}/pal/include
     ${CMAKE_CURRENT_LIST_DIR}/pal/include/osal
     ${CMAKE_CURRENT_LIST_DIR}/pal/include/hal
     ${CMAKE_CURRENT_LIST_DIR}/dal/include
+    ${CMAKE_CURRENT_LIST_DIR}/dal/include/input
+    ${CMAKE_CURRENT_LIST_DIR}/dal/include/output
+    ${CMAKE_CURRENT_LIST_DIR}/dal/include/actuator
+    ${CMAKE_CURRENT_LIST_DIR}/dal/include/display
+    ${CMAKE_CURRENT_LIST_DIR}/dal/include/sensor
+    ${CMAKE_CURRENT_LIST_DIR}/dal/include/communication
+    ${CMAKE_CURRENT_LIST_DIR}/dal/include/storage
     ${CMAKE_CURRENT_LIST_DIR}/runtime/include
     ${CMAKE_CURRENT_LIST_DIR}/trace/include
 )
