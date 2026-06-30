@@ -13,6 +13,7 @@
 
 #include "hal/pal_ultrasonic.h"
 #include "hal/pal_hal_rmt.h"  /* 复用现有的 RMT 实现 */
+#include "pal_hal.h"           /* pal_delay_us, pal_gpio_*, wink_status_is_ok */
 
 /* 全局状态：RMT 是否已初始化（单实例超声波） */
 static bool s_rmt_initialized = false;
@@ -23,7 +24,7 @@ wink_status_t pal_hal_ultrasonic_init(uint16_t echo_pin) {
     }
     /* 复用 pal_hal_esp32_rmt.c 的 RMT 硬件初始化 */
     wink_status_t status = pal_rmt_ultrasonic_init(echo_pin);
-    if (wink_status_is_ok(status)) {
+    if (!wink_status_is_error(status)) {
         s_rmt_initialized = true;
     }
     return status;
