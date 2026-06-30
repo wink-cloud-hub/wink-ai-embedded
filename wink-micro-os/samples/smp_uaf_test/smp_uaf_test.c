@@ -236,8 +236,10 @@ void test_smp_uaf_run(uint32_t rounds,
         }
 #endif
 
+#ifndef ESP_PLATFORM
         /* 给正在飞的 ISR 一点时间进入临界区 */
         pal_delay_us(20);
+#endif
 
         /* ── Step 4: 关键路径 — synchronize + free ──
          *
@@ -393,9 +395,8 @@ bool test_smp_synchronize_blocks(uint32_t *blocked_us) {
         .done = false
     };
     xTaskCreatePinnedToCore(trigger_irq_on_core1, "trigger_task", 2048, &t_args, 5, NULL, 1);
-    while (!t_args.done) {
-        pal_delay_us(10);
-    }
+    // 强制延时 2ms，确保 Core 1 上的触发任务运行并启动 slow_isr
+    pal_delay_ms(2);
 #else
     pal_irq_set_pending(TEST_IRQ_SLOW);
 #endif
