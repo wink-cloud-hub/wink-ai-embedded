@@ -28,7 +28,7 @@
 
 /* PAL OSAL 统一接口：任务创建、延迟、时间戳
  * xTaskCreate / vTaskDelay 等 FreeRTOS 原生 API 不应出现在 APP 层。
- * 平台差异由 targets/*/pal_osal_*.c 内部处理。 */
+ * 平台差异由 targets 下各平台的 pal_osal_*.c 内部处理。 */
 #include "pal_osal.h"
 
 /* <stdio.h> 是标准 C 库，所有平台都支持。
@@ -264,7 +264,7 @@ static void app_init(void)
     (void)_off;
 
     /* S5: PWM router 异频分配（跨平台同源） */
-    smoke_check_pwm_router();
+    (void)smoke_check_pwm_router();
 
 #if defined(ESP_PLATFORM)
     /* S4: GPIO 中断使能（Boot 按钮下降沿 → ISR 计数）
@@ -279,11 +279,18 @@ static void app_init(void)
     smoke_check_i2c_bus();
 
     /* S7: 多核临界区压测启动（PAL 统一接口，自动检测平台支持） */
-    (void)smoke_check_resource_smp();
+    do {
+        wink_status_t _st = smoke_check_resource_smp();
+        (void)_st;
+    } while(0);
 
     /* S1: Telemetry task 启动（承担所有周期输出）
-     * PAL 统一接口：ESP32 真任务，WASM/host 同步执行或 UNSUPPORTED */
-    (void)pal_task_create(telemetry_task, "smoke_telem", 4096, NULL, 1, PAL_CORE_ANY, NULL);
+     * PAL 统一接口：ESP32 真任务，WASM/host 同步执行或 UNSUPPORTED
+     * 使用 do-while(0) 模式抑制 GCC warn_unused_result 警告 */
+    do {
+        wink_status_t _st = pal_task_create(telemetry_task, "smoke_telem", 4096, NULL, 1, PAL_CORE_ANY, NULL);
+        (void)_st;
+    } while(0);
 
 #if defined(ESP_PLATFORM)
     printf("[SMOKE] init done. Long-press BOOT (>3s) to trigger WDT reset test.\n");
