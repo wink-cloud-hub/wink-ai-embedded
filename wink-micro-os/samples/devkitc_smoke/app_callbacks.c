@@ -31,9 +31,12 @@
  * 平台差异由 targets/*/pal_osal_*.c 内部处理。 */
 #include "pal_osal.h"
 
-#if defined(ESP_PLATFORM)
-#include <stdio.h>  /* ESP32 用 UART printf，host/WASM 有各自输出方式 */
-#endif
+/* <stdio.h> 是标准 C 库，所有平台都支持。
+ * - ESP32: 输出到 UART
+ * - WASM: printf 映射到 JS console.log 或 Emscripten 缓冲区
+ * - host: 输出到 stdout
+ * 无需 #ifdef，printf 的行为由各平台 libc 实现决定。 */
+#include <stdio.h>
 
 /* ─────────────────────────────────────────────────────────
  * 故障码定义（S8 使用 runtime 定义 8001；其余 9000+ 区间）
