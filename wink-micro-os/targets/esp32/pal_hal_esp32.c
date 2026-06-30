@@ -32,6 +32,7 @@
 #include "esp_err.h"
 #include "esp_idf_version.h"
 #include "esp_intr_alloc.h"
+#include "xtensa/xtruntime.h"
 
 /* ─────────────────────────────────────────────────────────
  * I2C 版本门控：ESP-IDF v6.x 使用新的 driver/i2c_master.h
@@ -1065,7 +1066,7 @@ wink_status_t pal_irq_shared_register(uint32_t irq_num, pal_irq_prio_t prio,
 
 void pal_irq_set_pending(uint32_t irq_num)
 {
-#if defined(ESP_PLATFORM) && defined(XTENSA_HAVE_INTERRUPTS)
+#if defined(ESP_PLATFORM)
     static int print_count = 0;
     if (irq_num < 32) {
         if (print_count < 2) {
@@ -1090,7 +1091,7 @@ void pal_irq_set_pending(uint32_t irq_num)
 
 void pal_irq_clear_pending(uint32_t irq_num)
 {
-#if defined(ESP_PLATFORM) && defined(XTENSA_HAVE_INTERRUPTS)
+#if defined(ESP_PLATFORM)
     if (irq_num < 32 && s_irq_handles[irq_num] != NULL) {
         int cpu_intr = esp_intr_get_intno(s_irq_handles[irq_num]);
         if (cpu_intr >= 0 && cpu_intr < 32) {
