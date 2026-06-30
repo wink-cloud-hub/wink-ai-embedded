@@ -241,10 +241,10 @@ void test_smp_uaf_run(uint32_t rounds,
         if (round == 0) {
             pal_debug_printf("  Round 0 ISR counter: %lu\n", (unsigned long)res->isr_counter);
         }
-        free(res);
-        // 主动向已释放内存的 magic 字段写入脏数据，以 100% 确保触发 UAF 判定
-        volatile uint32_t *poison = (volatile uint32_t *)res;
+        // 在 free 之前主动向即将释放内存的 magic 字段写入脏数据，以 100% 确保触发 UAF 判定（避免 use-after-free 编译器报错）
+        volatile uint32_t *poison = (volatile uint32_t *)&res->magic;
         *poison = 0xAAAAAAAA;
+        free(res);
         s_current_resource = NULL;
 
         passed++;
