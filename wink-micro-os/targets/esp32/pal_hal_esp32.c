@@ -31,6 +31,7 @@
 #include "driver/ledc.h"
 #include "esp_err.h"
 #include "esp_idf_version.h"
+#include "esp_intr_alloc.h"
 
 /* ─────────────────────────────────────────────────────────
  * I2C 版本门控：ESP-IDF v6.x 使用新的 driver/i2c_master.h
@@ -899,6 +900,9 @@ static void PAL_ISR generic_isr_wrapper(void *arg)
         return;
     }
 
+    /* ✅ 第一时间清除 Pending 标志，防止重入与中断风暴 */
+    pal_irq_clear_pending(irq_num);
+
     /* ✅ SMP 同步：标记 ISR 正在执行 */
     Atomic_Increment_u32(&s_irq_in_flight[irq_num]);
 
@@ -932,12 +936,12 @@ wink_status_t pal_irq_enable(uint32_t irq_num, pal_irq_prio_t prio,
      * 映射关系：LEVEL1 = 最低优先级，LEVEL7 = 最高优先级
      */
     static const int s_prio_flag_map[PAL_IRQ_PRIO_COUNT] = {
-        [PAL_IRQ_PRIO_LOWEST]   = ESP_INTR_FLAG_LEVEL2,
-        [PAL_IRQ_PRIO_LOW]      = ESP_INTR_FLAG_LEVEL3,
-        [PAL_IRQ_PRIO_NORMAL]   = ESP_INTR_FLAG_LEVEL4,
-        [PAL_IRQ_PRIO_HIGH]     = ESP_INTR_FLAG_LEVEL5,  /* = configMAX_SYSCALL_INTERRUPT_PRIORITY */
-        [PAL_IRQ_PRIO_HIGHEST]  = ESP_INTR_FLAG_LEVEL5,  /* RTOS 安全边界 */
-        [PAL_IRQ_PRIO_REALTIME] = ESP_INTR_FLAG_NMI,  /* ⚠️ 非 RTOS 安全！硬件最高优先级 */
+        [PAL_IRQ_PRIO_LOWEST]   = ESP_INTR_FLAG_LEVEL1,
+        [PAL_IRQ_PRIO_LOW]      = ESP_INTR_FLAG_LEVEL1,
+        [PAL_IRQ_PRIO_NORMAL]   = ESP_INTR_FLAG_LEVEL2,
+        [PAL_IRQ_PRIO_HIGH]     = ESP_INTR_FLAG_LEVEL3,  /* configMAX_SYSCALL_INTERRUPT_PRIORITY is Level 3 */
+        [PAL_IRQ_PRIO_HIGHEST]  = ESP_INTR_FLAG_LEVEL3,  /* RTOS 安全边界 */
+        [PAL_IRQ_PRIO_REALTIME] = ESP_INTR_FLAG_LEVEL3,  /* C 语言 ISR 仅支持到 Level 3，NMI 无法使用 C 注册 */
     };
 
     /* ✅ SMP 同步：保存用户 handler 和 arg，通过 wrapper 调用
@@ -945,8 +949,20 @@ wink_status_t pal_irq_enable(uint32_t irq_num, pal_irq_prio_t prio,
     s_isr_ctx[irq_num].user_handler = handler;
     s_isr_ctx[irq_num].user_arg = arg;
 
-    int flags = ESP_INTR_FLAG_IRAM | s_prio_flag_map[prio];
-    esp_err_t err = esp_intr_alloc(irq_num, flags,
+    // 针对测试所用的逻辑中断号，映射到合法的 CPU 内部软件中断源
+    int source = irq_num;
+    if (irq_num == 7) {
+        source = ETS_INTERNAL_SW0_INTR_SOURCE;
+    } else if (irq_num == 8) {
+        source = ETS_INTERNAL_SW1_INTR_SOURCE;
+    }
+
+    int flags = ESP_INTR_FLAG_IRAM;
+    if (source >= 0) {
+        flags |= s_prio_flag_map[prio];
+    }
+    
+    esp_err_t err = esp_intr_alloc(source, flags,
                                     (intr_handler_t)generic_isr_wrapper,
                                     (void *)(uintptr_t)irq_num,
                                     &s_irq_handles[irq_num]);
@@ -1050,8 +1066,11 @@ wink_status_t pal_irq_shared_register(uint32_t irq_num, pal_irq_prio_t prio,
 void pal_irq_set_pending(uint32_t irq_num)
 {
 #if defined(ESP_PLATFORM) && defined(XTENSA_HAVE_INTERRUPTS)
-    if (irq_num < 32) {
-        XT_SET_INTSET(1 << irq_num);
+    if (irq_num < 32 && s_irq_handles[irq_num] != NULL) {
+        int cpu_intr = esp_intr_get_intno(s_irq_handles[irq_num]);
+        if (cpu_intr >= 0 && cpu_intr < 32) {
+            XT_SET_INTSET(1 << cpu_intr);
+        }
     }
 #else
     (void)irq_num;
@@ -1061,8 +1080,11 @@ void pal_irq_set_pending(uint32_t irq_num)
 void pal_irq_clear_pending(uint32_t irq_num)
 {
 #if defined(ESP_PLATFORM) && defined(XTENSA_HAVE_INTERRUPTS)
-    if (irq_num < 32) {
-        XT_SET_INTCLEAR(1 << irq_num);
+    if (irq_num < 32 && s_irq_handles[irq_num] != NULL) {
+        int cpu_intr = esp_intr_get_intno(s_irq_handles[irq_num]);
+        if (cpu_intr >= 0 && cpu_intr < 32) {
+            XT_SET_INTCLEAR(1 << cpu_intr);
+        }
     }
 #else
     (void)irq_num;
