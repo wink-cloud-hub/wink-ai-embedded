@@ -32,7 +32,7 @@
 #include "esp_err.h"
 #include "esp_idf_version.h"
 #include "esp_intr_alloc.h"
-#include "xtensa/xtruntime.h"
+#include "xtensa/hal.h"
 
 /* ─────────────────────────────────────────────────────────
  * I2C 版本门控：ESP-IDF v6.x 使用新的 driver/i2c_master.h
@@ -1080,7 +1080,7 @@ void pal_irq_set_pending(uint32_t irq_num)
                 print_count++;
             }
             if (cpu_intr >= 0 && cpu_intr < 32) {
-                XT_SET_INTSET(1 << cpu_intr);
+                xthal_set_intset(1 << cpu_intr);
             }
         }
     }
@@ -1095,7 +1095,7 @@ void pal_irq_clear_pending(uint32_t irq_num)
     if (irq_num < 32 && s_irq_handles[irq_num] != NULL) {
         int cpu_intr = esp_intr_get_intno(s_irq_handles[irq_num]);
         if (cpu_intr >= 0 && cpu_intr < 32) {
-            XT_SET_INTCLEAR(1 << cpu_intr);
+            xthal_set_intclear(1 << cpu_intr);
         }
     }
 #else
