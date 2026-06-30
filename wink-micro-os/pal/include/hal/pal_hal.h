@@ -65,16 +65,30 @@ bool pal_gpio_read(wink_pin_t pin);
 typedef void (*pal_gpio_isr_t)(void *arg);
 
 /**
- * @brief 启用 GPIO 引脚中断（扩展版，支持指定优先级）
+ * @brief 启用 GPIO 引脚中断（扩展版，签名预留优先级参数）
  *
  * @param pin 引脚号
  * @param intr_type 中断触发类型
- * @param prio 中断优先级（统一抽象）
+ * @param prio 中断优先级 —— ⚠️ v2.1（ADR-0012 / ADR-IRQ-008）：**当前所有 target 均忽略此参数**
  * @param callback ISR 回调（遵守 ISR 契约）
  * @param arg 回调参数
  *
  * @note ✅ 此接口在所有平台都存在，不再需要 #ifdef 包裹
  * @note 不支持的平台（如 Host）返回 WINK_ERR_UNSUPPORTED，由调用方处理
+ *
+ * ⚠️ v2.1 契约修订（2026-06-30，G3 doc-only honesty）：
+ * GPIO ISR 在所有 target 上共享一个 dispatch service：
+ * - ESP32: 共用 `gpio_install_isr_service` 安装的全局 ISR（首次安装时锁定硬件优先级）
+ * - Host / WASM: 共用单一 dispatch 路径，单线程模型本身就无 per-pin 抢占语义
+ * 因此 prio 参数当前在所有 target 上被静默忽略，即使传入不同值也不会改变行为。
+ * 此前的 (void)prio 没有外化为头文件契约，使调用方误以为"按钮中断 HIGH + 传感器
+ * NORMAL"可生效；v2.1 起将此事实明示。
+ *
+ * ⚠️ 例外：ESP32 target 上 prio == PAL_IRQ_PRIO_REALTIME 仍会返回
+ * WINK_ERR_UNSUPPORTED（与 pal_irq_enable 保持一致，避免静默降级）。
+ *
+ * 若未来需要 per-pin 独立优先级（如按钮抢占传感器），会新增独立中断源接口
+ * `pal_gpio_enable_interrupt_dedicated()`，本接口签名保持不变。
  *
  * ⚠️ 实现契约（GPIO ISR Wrapper 必须遵守）：
  * 1. 第一时间清除中断标志 —— 防止重入和中断风暴
