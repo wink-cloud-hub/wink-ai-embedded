@@ -21,6 +21,7 @@
 #include "wink_trace.h"
 #include "wink_actuator_registry.h"
 #include "wink_status.h"
+#include "pal_irq.h"       /* PAL_ISR 宏 + 统一中断抽象 */
 #include "pal_hal.h"       /* pal_pwm_init/set_duty, pal_gpio_enable_interrupt */
 #include "pal_osal.h"      /* pal_watchdog_init/feed, pal_get_ms, pal_get_reset_reason */
 #include "pal_resource.h"  /* pal_resource_claim/release */
@@ -59,17 +60,16 @@ static wink_status_t led_safe_off_thunk(void *ctx)
     return dal_led_off((dal_led_t *)ctx);
 }
 
-#if defined(ESP_PLATFORM)
 /* ─────────────────────────────────────────────────────────
  * S4: GPIO 中断 ISR（Boot 按钮下降沿 → 计数递增）
- *     ESP32 专用，host 侧不使用（避免 unused-function 警告）
+ *     跨平台同源代码，无需 #ifdef ESP_PLATFORM 包裹
+ *     不支持中断的平台（Host）会在 enable_interrupt 时返回 UNSUPPORTED
  * ───────────────────────────────────────────────────────── */
-static void boot_button_isr(void *arg)
+static PAL_ISR void boot_button_isr(void *arg)
 {
     (void)arg;
     s_isr_count++;
 }
-#endif
 
 /* ─────────────────────────────────────────────────────────
  * S5: PWM router 异频分配验证（host + esp32 同源）
@@ -141,6 +141,7 @@ static void smoke_check_i2c_bus(void)
  *     支持 SMP 的平台：两核并行 claim/release，验证 spinlock 安全
  *     单线程平台：pal_task_create 同步执行或返回 UNSUPPORTED
  * ───────────────────────────────────────────────────────── */
+#if defined(ESP_PLATFORM)
 static void resource_stress_task(void *arg)
 {
     uint32_t core_id = (uint32_t)(uintptr_t)arg;
@@ -214,6 +215,7 @@ static void telemetry_task(void *arg)
     }
     pal_task_delete(NULL);
 }
+#endif /* ESP_PLATFORM */
 
 /* ─────────────────────────────────────────────────────────
  * App Init（S1 启动初始化 + S4 ISR + S5 PWM + S6 I2C + S7 双核 + S8 WDT 检测）
@@ -257,8 +259,9 @@ static void app_init(void)
     /* S5: PWM router 异频分配（跨平台同源） */
     (void)smoke_check_pwm_router();
 
-#if defined(ESP_PLATFORM)
     /* S4: GPIO 中断使能（Boot 按钮下降沿 → ISR 计数）
+     * ✅ 跨平台同源代码，零 #ifdef ESP_PLATFORM
+     * 不支持中断的平台（Host）返回 WINK_ERR_UNSUPPORTED，静默降级
      * 验证 Task 3 uintptr_t 对称化：arg 经 void* 往返无损 */
     st = pal_gpio_enable_interrupt(BOOT_BUTTON_PIN, PAL_GPIO_INTR_FALLING_EDGE,
                                     boot_button_isr, NULL);
@@ -266,6 +269,7 @@ static void app_init(void)
         wink_trace_fault(FAULT_ISR_INIT);
     }
 
+#if defined(ESP_PLATFORM)
     /* S6: I2C v6 总线扫描 */
     smoke_check_i2c_bus();
 
