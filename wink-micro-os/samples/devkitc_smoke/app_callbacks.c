@@ -26,10 +26,13 @@
 #include "pal_resource.h"  /* pal_resource_claim/release */
 #include "pal_pwm_router.h"/* pal_pwm_router_channel_timer */
 
+/* PAL OSAL 统一接口：任务创建、延迟、时间戳
+ * xTaskCreate / vTaskDelay 等 FreeRTOS 原生 API 不应出现在 APP 层。
+ * 平台差异由 targets/*/pal_osal_*.c 内部处理。 */
+#include "pal_osal.h"
+
 #if defined(ESP_PLATFORM)
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include <stdio.h>
+#include <stdio.h>  /* ESP32 用 UART printf，host/WASM 有各自输出方式 */
 #endif
 
 /* ─────────────────────────────────────────────────────────
@@ -136,8 +139,9 @@ static void smoke_check_i2c_bus(void)
 }
 
 /* ─────────────────────────────────────────────────────────
- * S7: 双核临界区并发压测 60s（验证 Task 1 spinlock SMP 安全）
- *     两核同时 claim/release 同一资源，无死锁/数据损坏。
+ * S7: 多核临界区并发压测（PAL 统一任务接口）
+ *     支持 SMP 的平台：两核并行 claim/release，验证 spinlock 安全
+ *     单线程平台：pal_task_create 同步执行或返回 UNSUPPORTED
  * ───────────────────────────────────────────────────────── */
 static void resource_stress_task(void *arg)
 {
@@ -156,21 +160,39 @@ static void resource_stress_task(void *arg)
         iterations++;
     }
 
+#if defined(ESP_PLATFORM)
     printf("[SMOKE] resource_stress core%u: %lu iterations, no panic\n",
            (unsigned)core_id, (unsigned long)iterations);
-    vTaskDelete(NULL);
+#endif
+    /* PAL 统一接口删除当前任务（单线程平台为 no-op） */
+    pal_task_delete(NULL);
 }
 
-static void smoke_check_resource_smp(void)
+static wink_status_t smoke_check_resource_smp(void)
 {
-    /* pin 到两个核（SMP 并行启动） */
-    xTaskCreatePinnedToCore(resource_stress_task, "stress0", 4096, (void *)0, 5, NULL, 0);
-    xTaskCreatePinnedToCore(resource_stress_task, "stress1", 4096, (void *)1, 5, NULL, 1);
-    printf("[SMOKE] resource_stress: 60s dual-core claim/release started (Task1 spinlock)\n");
+    /* PAL 统一任务创建接口：
+     * - ESP32: 真 xTaskCreatePinnedToCore 钉核
+     * - WASM/host/baremetal: 同步执行或 UNSUPPORTED
+     * 用返回值检测平台是否支持多任务，不用 #ifdef */
+    wink_status_t st0 = pal_task_create(
+        resource_stress_task, "stress0", 4096, (void *)0, 5, PAL_CORE_0, NULL
+    );
+    wink_status_t st1 = pal_task_create(
+        resource_stress_task, "stress1", 4096, (void *)1, 5, PAL_CORE_1, NULL
+    );
+
+    if (!wink_status_is_error(st0) && !wink_status_is_error(st1)) {
+#if defined(ESP_PLATFORM)
+        printf("[SMOKE] resource_stress: 60s dual-core claim/release started (Task1 spinlock)\n");
+#endif
+        return WINK_OK;
+    }
+    /* 不支持多任务：静默降级，不影响其它测试项 */
+    return WINK_ERR_UNSUPPORTED;
 }
 
 /* ─────────────────────────────────────────────────────────
- * Telemetry task：承担所有周期性 UART 输出。
+ * Telemetry task：承担所有周期性输出。
  *     app_loop 零 printf，避免触发 WCET(8002) 误报（S1 验收标准）。
  * ───────────────────────────────────────────────────────── */
 static void telemetry_task(void *arg)
@@ -179,18 +201,23 @@ static void telemetry_task(void *arg)
     uint32_t last_report = 0;
 
     for (;;) {
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        /* PAL 统一延迟接口：
+         * - ESP32: FreeRTOS vTaskDelay
+         * - WASM/host: 忙等或模拟时间推进 */
+        pal_delay_ms(1000);
         uint32_t now = (uint32_t)pal_get_ms();
 
         if (now - last_report >= 2000u) {
+#if defined(ESP_PLATFORM)
             printf("[SMOKE] uptime=%lums isr_count=%lu faults=%lu wdt_verified=%d\n",
                    (unsigned long)now, (unsigned long)s_isr_count, (unsigned long)wink_trace_count(),
                    (int)s_wdt_verified);
+#endif
             last_report = now;
         }
     }
+    pal_task_delete(NULL);
 }
-#endif /* ESP_PLATFORM */
 
 /* ─────────────────────────────────────────────────────────
  * App Init（S1 启动初始化 + S4 ISR + S5 PWM + S6 I2C + S7 双核 + S8 WDT 检测）
@@ -248,12 +275,14 @@ static void app_init(void)
     /* S6: I2C v6 总线扫描 */
     smoke_check_i2c_bus();
 
-    /* S7: 双核临界区压测启动 */
-    smoke_check_resource_smp();
+    /* S7: 多核临界区压测启动（PAL 统一接口，自动检测平台支持） */
+    (void)smoke_check_resource_smp();
 
-    /* S1: Telemetry task 启动（承担所有周期 UART 输出） */
-    xTaskCreate(telemetry_task, "smoke_telem", 4096, NULL, 1, NULL);
+    /* S1: Telemetry task 启动（承担所有周期输出）
+     * PAL 统一接口：ESP32 真任务，WASM/host 同步执行或 UNSUPPORTED */
+    (void)pal_task_create(telemetry_task, "smoke_telem", 4096, NULL, 1, PAL_CORE_ANY, NULL);
 
+#if defined(ESP_PLATFORM)
     printf("[SMOKE] init done. Long-press BOOT (>3s) to trigger WDT reset test.\n");
 #endif
 }
