@@ -174,6 +174,9 @@ static void PAL_ISR gpio_isr_wrapper(void *arg)
         return;
     }
 
+    /* ✅ SMP 同步：标记此 GPIO ISR 正在执行 */
+    Atomic_Increment_u32(&s_gpio_irq_in_flight[pin]);
+
     /* ✅ 第一步：第一时间禁用并清除中断标志，防止重入 */
     gpio_intr_disable((gpio_num_t)pin);
     gpio_clear_intr_status((gpio_num_t)pin);
@@ -182,10 +185,12 @@ static void PAL_ISR gpio_isr_wrapper(void *arg)
      * 确保 isr 和 arg 读取的原子性，避免双核竞态导致 NULL deref */
     pal_gpio_isr_t isr = NULL;
     void *isr_arg = NULL;
+    bool need_reenable = false;
 
     portENTER_CRITICAL_ISR(&s_gpio_table_mux);
     isr = s_gpio_isr[pin];
     isr_arg = s_gpio_isr_arg[pin];
+    need_reenable = (s_gpio_isr[pin] != NULL);  /* 预读取是否需要重新启用 */
     portEXIT_CRITICAL_ISR(&s_gpio_table_mux);
 
     /* ✅ 第三步：调用用户 ISR（此时中断已禁用并清除，不会重入） */
@@ -194,12 +199,22 @@ static void PAL_ISR gpio_isr_wrapper(void *arg)
     }
 
     /* ✅ 第四步：重新启用中断（用户 callback 完成后）
-     * 注意：如果用户在 callback 中调用了 disable，则此处不会重新启用 */
-    portENTER_CRITICAL_ISR(&s_gpio_table_mux);
-    if (s_gpio_isr[pin] != NULL) {
-        gpio_intr_enable((gpio_num_t)pin);
+     * 优化：不持有自旋锁调用 gpio_intr_enable，减少中断延迟
+     * 如果用户在 callback 中调用了 disable，isr 会被设为 NULL，need_reenable 也为 false */
+    if (need_reenable) {
+        /* 二次检查：在启用前确认 isr 仍然有效
+         * （在临界区外执行硬件操作，降低 ISR 延迟） */
+        portENTER_CRITICAL_ISR(&s_gpio_table_mux);
+        need_reenable = (s_gpio_isr[pin] != NULL);
+        portEXIT_CRITICAL_ISR(&s_gpio_table_mux);
+
+        if (need_reenable) {
+            gpio_intr_enable((gpio_num_t)pin);
+        }
     }
-    portEXIT_CRITICAL_ISR(&s_gpio_table_mux);
+
+    /* ✅ SMP 同步：ISR 执行完成 */
+    Atomic_Decrement_u32(&s_gpio_irq_in_flight[pin]);
 }
 #endif /* ESP_PLATFORM */
 
@@ -762,6 +777,23 @@ typedef struct {
 static shared_chain_t *s_shared_chain[MAX_SHARED_IRQS] = {NULL};
 static portMUX_TYPE s_shared_chain_mux = portMUX_INITIALIZER_UNLOCKED;
 
+/* ⚠️ SMP ISR 同步机制（ADR-IRQ-007 完整实现）
+ *
+ * 问题：pal_irq_disable() 返回后，另一个核心可能仍在执行该 ISR。
+ *       如果此时释放 ISR 使用的内存，会导致 UAF (Use-After-Free)。
+ *
+ * 解决方案：
+ * 1. 每个中断号维护一个原子 in_flight 计数器
+ * 2. ISR wrapper 在入口处 +1，出口处 -1
+ * 3. pal_irq_synchronize() 忙等待计数器归 0
+ * 4. 增加超时保护，避免死锁
+ */
+#include "freertos/atomic.h"
+static volatile AtomicUInt s_irq_in_flight[32] = {ATOMIC_VAR_INIT(0)};  /* 对应 32 个逻辑中断号 */
+static volatile AtomicUInt s_gpio_irq_in_flight[GPIO_NUM_MAX] = {ATOMIC_VAR_INIT(0)};  /* GPIO 独立计数 */
+
+#define SYNCHRONIZE_TIMEOUT_US  100000  /* 100ms 超时（远大于 ISR 最大执行时间） */
+
 /* 共享中断 wrapper（由 esp_intr_alloc 注册，按注册顺序调用所有 handler） */
 static void PAL_ISR shared_irq_wrapper(void *arg)
 {
@@ -770,10 +802,14 @@ static void PAL_ISR shared_irq_wrapper(void *arg)
         return;
     }
 
+    /* ✅ SMP 同步：标记此 ISR 正在执行 */
+    Atomic_Increment_u32(&s_irq_in_flight[irq_num]);
+
     /* ✅ RCU 读路径：原子性读取当前链指针
      * 写路径会创建新链并原子替换，因此读取到的指针在 ISR 执行期间始终有效 */
     shared_chain_t *chain = s_shared_chain[irq_num];
     if (chain == NULL) {
+        Atomic_Decrement_u32(&s_irq_in_flight[irq_num]);
         return;
     }
 
@@ -795,6 +831,9 @@ static void PAL_ISR shared_irq_wrapper(void *arg)
         ESP_LOGW("pal_irq", "spurious interrupt on irq=%lu, no handler claimed",
                  (unsigned long)irq_num);
     }
+
+    /* ✅ SMP 同步：ISR 执行完成，减少计数 */
+    Atomic_Decrement_u32(&s_irq_in_flight[irq_num]);
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -803,6 +842,33 @@ static void PAL_ISR shared_irq_wrapper(void *arg)
 
 /* 逻辑中断句柄表（32 个逻辑中断源，未来扩展至 Device Tree） */
 static intr_handle_t s_irq_handles[32] = {NULL};
+
+/* 通用 ISR wrapper：跟踪 in-flight 计数并调用用户 handler */
+typedef struct {
+    pal_isr_t user_handler;
+    void     *user_arg;
+} isr_wrapper_ctx_t;
+
+static isr_wrapper_ctx_t s_isr_ctx[32] = {{NULL, NULL}};
+
+static void PAL_ISR generic_isr_wrapper(void *arg)
+{
+    uint32_t irq_num = (uint32_t)(uintptr_t)arg;
+    if (irq_num >= 32) {
+        return;
+    }
+
+    /* ✅ SMP 同步：标记 ISR 正在执行 */
+    Atomic_Increment_u32(&s_irq_in_flight[irq_num]);
+
+    isr_wrapper_ctx_t *ctx = &s_isr_ctx[irq_num];
+    if (ctx->user_handler != NULL) {
+        ctx->user_handler(ctx->user_arg);
+    }
+
+    /* ✅ SMP 同步：ISR 执行完成 */
+    Atomic_Decrement_u32(&s_irq_in_flight[irq_num]);
+}
 
 wink_status_t pal_irq_enable(uint32_t irq_num, pal_irq_prio_t prio,
                               pal_isr_t handler, void *arg)
@@ -820,20 +886,32 @@ wink_status_t pal_irq_enable(uint32_t irq_num, pal_irq_prio_t prio,
     /* 优先级映射表（ADR-IRQ-003 预留安全边界）
      * LOWEST ~ HIGHEST 都是 RTOS 安全的，可以调用 FromISR API
      * REALTIME 是硬件最高级，严禁调用任何 RTOS API
+     *
+     * 注意：ESP_INTR_FLAG_LEVELn 是标志位，不是数值，不能直接用数值做 | 运算
+     * 映射关系：LEVEL1 = 最低优先级，LEVEL7 = 最高优先级
      */
-    static const int s_prio_map[PAL_IRQ_PRIO_COUNT] = {
-        [PAL_IRQ_PRIO_LOWEST]   = 2,
-        [PAL_IRQ_PRIO_LOW]      = 3,
-        [PAL_IRQ_PRIO_NORMAL]   = 4,
-        [PAL_IRQ_PRIO_HIGH]     = 5,    /* = configMAX_SYSCALL_INTERRUPT_PRIORITY */
-        [PAL_IRQ_PRIO_HIGHEST]  = 5,    /* RTOS 安全边界 */
-        [PAL_IRQ_PRIO_REALTIME] = 7,    /* ⚠️ 非 RTOS 安全！硬件最高优先级 */
+    static const int s_prio_flag_map[PAL_IRQ_PRIO_COUNT] = {
+        [PAL_IRQ_PRIO_LOWEST]   = ESP_INTR_FLAG_LEVEL2,
+        [PAL_IRQ_PRIO_LOW]      = ESP_INTR_FLAG_LEVEL3,
+        [PAL_IRQ_PRIO_NORMAL]   = ESP_INTR_FLAG_LEVEL4,
+        [PAL_IRQ_PRIO_HIGH]     = ESP_INTR_FLAG_LEVEL5,  /* = configMAX_SYSCALL_INTERRUPT_PRIORITY */
+        [PAL_IRQ_PRIO_HIGHEST]  = ESP_INTR_FLAG_LEVEL5,  /* RTOS 安全边界 */
+        [PAL_IRQ_PRIO_REALTIME] = ESP_INTR_FLAG_LEVEL7,  /* ⚠️ 非 RTOS 安全！硬件最高优先级 */
     };
 
-    int flags = ESP_INTR_FLAG_IRAM | s_prio_map[prio];
-    esp_err_t err = esp_intr_alloc(irq_num, flags, (intr_handler_t)handler, arg,
+    /* ✅ SMP 同步：保存用户 handler 和 arg，通过 wrapper 调用
+     * 这样 wrapper 可以追踪 in-flight 计数 */
+    s_isr_ctx[irq_num].user_handler = handler;
+    s_isr_ctx[irq_num].user_arg = arg;
+
+    int flags = ESP_INTR_FLAG_IRAM | s_prio_flag_map[prio];
+    esp_err_t err = esp_intr_alloc(irq_num, flags,
+                                    (intr_handler_t)generic_isr_wrapper,
+                                    (void *)(uintptr_t)irq_num,
                                     &s_irq_handles[irq_num]);
     if (err != ESP_OK) {
+        s_isr_ctx[irq_num].user_handler = NULL;
+        s_isr_ctx[irq_num].user_arg = NULL;
         return WINK_ERR_HARDWARE;
     }
 
@@ -952,15 +1030,51 @@ void pal_irq_clear_pending(uint32_t irq_num)
 
 void pal_irq_synchronize(uint32_t irq_num)
 {
-    /* ✅ SMP 安全：等待所有 core 退出该 IRQ 的 ISR
+    /* ✅ SMP 同步完整实现（ADR-IRQ-007）：
      *
-     * ESP32 简化实现（适用于 GPIO 中断）：
-     * gpio_isr_handler_remove() 后 ESP-IDF 内部已保证不会有新的 ISR 进入。
-     * 但正在执行的 ISR 可能仍在运行。此处通过内存屏障 + 短延迟保证可见性。
+     * 机制：每个 ISR wrapper 在进入时 +1，退出时 -1。
+     * synchronize() 忙等待计数归 0，确保所有核心都已退出 ISR。
      *
-     * TODO：完整实现需要 IPI（处理器间中断）同步机制。
+     * 这是 Linux 内核 synchronize_irq() 在 ESP32 上的简化实现。
+     * 无需 IPI，因为原子操作在 SMP 下是全局可见的。
      */
-    (void)irq_num;
+
+    if (irq_num == ~0U) {
+        /* 等待所有中断：逐个检查 32 个逻辑中断 + GPIO 中断 */
+        for (uint32_t i = 0; i < 32; i++) {
+            uint64_t start = pal_get_us();
+            while (Atomic_Load_u32(&s_irq_in_flight[i]) > 0) {
+                if (pal_get_us() - start > SYNCHRONIZE_TIMEOUT_US) {
+                    ESP_LOGE("pal_irq", "synchronize timeout on irq=%lu",
+                             (unsigned long)i);
+                    break;
+                }
+            }
+        }
+        /* GPIO 中断只需要等待禁用的那个，但全量检查也没问题 */
+        for (uint32_t i = 0; i < GPIO_NUM_MAX; i++) {
+            uint64_t start = pal_get_us();
+            while (Atomic_Load_u32(&s_gpio_irq_in_flight[i]) > 0) {
+                if (pal_get_us() - start > SYNCHRONIZE_TIMEOUT_US) {
+                    ESP_LOGE("pal_irq", "synchronize timeout on gpio=%lu",
+                             (unsigned long)i);
+                    break;
+                }
+            }
+        }
+    } else {
+        /* 等待单个中断 */
+        uint64_t start = pal_get_us();
+        while (Atomic_Load_u32(&s_irq_in_flight[irq_num]) > 0) {
+            if (pal_get_us() - start > SYNCHRONIZE_TIMEOUT_US) {
+                ESP_LOGE("pal_irq", "synchronize timeout on irq=%lu",
+                         (unsigned long)irq_num);
+                break;
+            }
+        }
+    }
+
+    /* 确保后续的内存释放操作（如 free）不会被编译器重排到等待之前 */
     esp_memory_barrier();
 }
 

@@ -56,6 +56,8 @@ function(add_wink_host_test name src)
         ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/hal
         # Phase 2：targets/common/include（wink_sim_physical.h）
         ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
+        # Fix: pal_wasm_internal.h is referenced by wink_runtime.c under SIMULATION
+        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm
         ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/input
         ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/output

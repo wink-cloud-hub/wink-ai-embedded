@@ -3,11 +3,20 @@
  * @brief PAL 统一中断控制器抽象层（v2.0 专家评审版）
  *
  * 契约保证：
- * 1. 所有接口都是线程安全的（可在 ISR 上下文调用）
- * 2. 优先级数值语义统一（所有平台一致）
- * 3. 中断锁可嵌套（save/restore 支持嵌套调用）
- * 4. pal_irq_save() 禁用所有可屏蔽中断，提供最强临界区保护
- * 5. 所有优先级均可安全调用 FreeRTOS FromISR API（REALTIME 除外）
+ * 1. ✅ ISR 安全接口（可在中断上下文调用）：
+ *    - pal_irq_save() / pal_irq_save_rtos_safe() / pal_irq_restore()
+ *    - pal_irq_set_pending() / pal_irq_clear_pending()
+ *    - pal_irq_synchronize()
+ * 2. ⚠️ 非 ISR 安全接口（仅线程上下文调用）：
+ *    - pal_irq_enable() / pal_irq_disable()
+ *    - pal_irq_direct_connect()
+ *    - pal_irq_shared_register()
+ *    - pal_gpio_enable_interrupt() / pal_gpio_disable_interrupt()
+ *    （内部使用 Flash 函数和动态内存，Cache 禁用时会 Panic）
+ * 3. 优先级数值语义统一（所有平台一致）
+ * 4. 中断锁可嵌套（save/restore 支持嵌套调用）
+ * 5. pal_irq_save() 禁用所有可屏蔽中断，提供最强临界区保护
+ * 6. 所有优先级均可安全调用 FreeRTOS FromISR API（REALTIME 除外）
  *
  * 架构设计决策：
  * - ADR-IRQ-001: 中断锁语义选择 - pal_irq_save() 提供全屏蔽最强语义
