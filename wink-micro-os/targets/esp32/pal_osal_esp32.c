@@ -294,6 +294,14 @@ wink_status_t pal_task_create(
 #endif
 }
 
+void pal_task_delete(pal_task_handle_t task_handle) {
+#if defined(ESP_PLATFORM)
+    vTaskDelete((TaskHandle_t)task_handle);
+#else
+    (void)task_handle;  /* single-threaded: no-op */
+#endif
+}
+
 /* ─────────────────────────────────────────────────────────
  * 跨核通信环形缓冲区 (Ringbuf)
  * ───────────────────────────────────────────────────────── */

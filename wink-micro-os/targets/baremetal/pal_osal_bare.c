@@ -122,6 +122,10 @@ wink_status_t pal_task_create(
     return WINK_ERR_UNSUPPORTED;
 }
 
+void pal_task_delete(pal_task_handle_t task_handle) {
+    (void)task_handle;  /* bare-metal: no-op */
+}
+
 /* ─────────────────────────────────────────────────────────
  * 环形缓冲区 (裸机关中断保护)
  * ───────────────────────────────────────────────────────── */

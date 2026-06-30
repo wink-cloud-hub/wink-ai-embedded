@@ -191,6 +191,10 @@ wink_status_t pal_task_create(
     return WINK_OK;
 }
 
+void pal_task_delete(pal_task_handle_t task_handle) {
+    (void)task_handle;  /* single-threaded: no-op */
+}
+
 /* ─────────────────────────────────────────────────────────
  * 环形缓冲区 (host 纯内存实现，单线程无并发)
  * ───────────────────────────────────────────────────────── */

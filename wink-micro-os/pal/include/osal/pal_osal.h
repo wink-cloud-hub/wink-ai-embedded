@@ -182,6 +182,16 @@ wink_status_t pal_task_create(
     pal_task_handle_t* task_handle
 );
 
+/**
+ * @brief Delete a task (PAL 统一接口，替代 FreeRTOS vTaskDelete)
+ *
+ * @param task_handle Task handle to delete, or NULL to delete current task
+ *
+ * @note WASM/bare-metal targets may do nothing (single-threaded environment).
+ *       App code should not assume task deletion is always available.
+ */
+void pal_task_delete(pal_task_handle_t task_handle);
+
 
 /* ========================================================================== */
 /*                        5. 跨核通信环形缓冲区 (Ringbuf)                      */
