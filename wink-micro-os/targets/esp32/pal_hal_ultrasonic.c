@@ -13,7 +13,8 @@
 
 #include "hal/pal_ultrasonic.h"
 #include "hal/pal_hal_rmt.h"  /* 复用现有的 RMT 实现 */
-#include "pal_hal.h"           /* pal_delay_us, pal_gpio_*, wink_status_is_ok */
+#include "pal_hal.h"           /* pal_gpio_* 等 HAL 接口 */
+#include "pal_osal.h"          /* pal_delay_us 等 OSAL 接口 */
 
 /* 全局状态：RMT 是否已初始化（单实例超声波） */
 static bool s_rmt_initialized = false;
