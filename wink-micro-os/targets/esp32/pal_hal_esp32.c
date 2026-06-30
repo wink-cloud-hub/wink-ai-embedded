@@ -886,6 +886,18 @@ static void PAL_ISR shared_irq_wrapper(void *arg)
 /* 逻辑中断句柄表（32 个逻辑中断源，未来扩展至 Device Tree） */
 static intr_handle_t s_irq_handles[32] = {NULL};
 
+/* v2.1 G1：硬件直连中断（pal_irq_direct_connect）的无参 handler 表。
+ *
+ * 旧实现 `(pal_isr_t)handler` 把 void(*)(void) 强转为 void(*)(void*)，ABI 容忍但
+ * CFI/UBSan-function 直接判违例。新实现以本文件 static 数组保存裸 direct handler，
+ * 由 trampoline 桥接 (void*) → ()，签名清洁。
+ *
+ * ⚠️ TLS 禁忌：严禁将 s_direct_handlers 换成 thread_local/__thread。ISR 在 IDF
+ * dispatch 上下文里被调用，访问 TLS 可能踩到不存在的线程槽位。文件级 static 数组
+ * （或全局 atomic 指针表）才是 ISR 安全的。 */
+#define PAL_DIRECT_HANDLER_SLOTS  32
+static pal_direct_isr_t s_direct_handlers[PAL_DIRECT_HANDLER_SLOTS] = {NULL};
+
 /* 通用 ISR wrapper：跟踪 in-flight 计数并调用用户 handler */
 typedef struct {
     pal_isr_t user_handler;
@@ -990,13 +1002,44 @@ wink_status_t pal_irq_disable(uint32_t irq_num)
         }
     }
 
+    /* v2.1：清理 direct-connect 槽位，配合后续 pal_irq_synchronize() 保护 UAF。
+     * esp_intr_free 已经卸下 ISR 派发，置 NULL 即使与 trampoline 读取并发也安全
+     * （trampoline 端 NULL 检查会让在飞中断退化为 no-op）。 */
+    s_direct_handlers[irq_num] = NULL;
+
     return WINK_OK;
+}
+
+/* v2.1 G1：硬件直连中断（pal_irq_direct_connect）trampoline 实现。
+ * 数据表 s_direct_handlers 在文件顶部与 s_irq_handles 一起声明，避免前向引用。 */
+
+static void PAL_ISR direct_trampoline(void *arg)
+{
+    uint32_t irq_num = (uint32_t)(uintptr_t)arg;
+    if (irq_num >= PAL_DIRECT_HANDLER_SLOTS) {
+        return;
+    }
+    pal_direct_isr_t h = s_direct_handlers[irq_num];
+    if (h != NULL) {
+        h();
+    }
 }
 
 wink_status_t pal_irq_direct_connect(uint32_t irq_num, pal_direct_isr_t handler)
 {
-    /* 直连中断不传递参数，在 ESP32 上仍利用 esp_intr_alloc 动态注册 */
-    return pal_irq_enable(irq_num, PAL_IRQ_PRIO_NORMAL, (pal_isr_t)handler, NULL);
+    if (irq_num >= PAL_DIRECT_HANDLER_SLOTS || handler == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    /* 先注册到 direct 表，再调 pal_irq_enable 注册 wrapper。顺序确保 wrapper
+     * 一旦被 esp_intr_alloc 链接上来，trampoline 即可读到合法的 handler。 */
+    s_direct_handlers[irq_num] = handler;
+    wink_status_t st = pal_irq_enable(irq_num, PAL_IRQ_PRIO_NORMAL,
+                                       direct_trampoline,
+                                       (void *)(uintptr_t)irq_num);
+    if (wink_status_is_error(st)) {
+        s_direct_handlers[irq_num] = NULL;
+    }
+    return st;
 }
 
 wink_status_t pal_irq_shared_register(uint32_t irq_num, pal_irq_prio_t prio,

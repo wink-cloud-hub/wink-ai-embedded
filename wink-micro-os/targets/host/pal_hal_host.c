@@ -242,6 +242,11 @@ static pal_isr_t s_host_irq_table[HOST_MAX_IRQ] = {NULL};
 static void *s_host_irq_arg[HOST_MAX_IRQ] = {NULL};
 static uint32_t s_host_irq_call_count[HOST_MAX_IRQ] = {0};
 
+/* v2.1 G1：硬件直连中断的无参 trampoline（host 镜像 ESP32 实现）。
+ * 旧实现 `(pal_isr_t)handler` 是 void(*)(void) → void(*)(void*) 的非法 cast；
+ * 改为 trampoline 后签名清洁，host 单线程下 NULL 检查即足够。 */
+static pal_direct_isr_t s_host_direct_handlers[HOST_MAX_IRQ] = {NULL};
+
 wink_status_t pal_irq_enable(uint32_t irq_num, pal_irq_prio_t prio,
                               pal_isr_t handler, void *arg)
 {
@@ -261,12 +266,36 @@ wink_status_t pal_irq_disable(uint32_t irq_num)
     }
     s_host_irq_table[irq_num] = NULL;
     s_host_irq_arg[irq_num] = NULL;
+    /* v2.1：清理 direct-connect 槽位，对齐 ESP32 实现 */
+    s_host_direct_handlers[irq_num] = NULL;
     return WINK_OK;
+}
+
+static void host_direct_trampoline(void *arg)
+{
+    uint32_t irq_num = (uint32_t)(uintptr_t)arg;
+    if (irq_num >= HOST_MAX_IRQ) {
+        return;
+    }
+    pal_direct_isr_t h = s_host_direct_handlers[irq_num];
+    if (h != NULL) {
+        h();
+    }
 }
 
 wink_status_t pal_irq_direct_connect(uint32_t irq_num, pal_direct_isr_t handler)
 {
-    return pal_irq_enable(irq_num, PAL_IRQ_PRIO_NORMAL, (pal_isr_t)handler, NULL);
+    if (irq_num >= HOST_MAX_IRQ || handler == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    s_host_direct_handlers[irq_num] = handler;
+    wink_status_t st = pal_irq_enable(irq_num, PAL_IRQ_PRIO_NORMAL,
+                                       host_direct_trampoline,
+                                       (void *)(uintptr_t)irq_num);
+    if (wink_status_is_error(st)) {
+        s_host_direct_handlers[irq_num] = NULL;
+    }
+    return st;
 }
 
 wink_status_t pal_irq_shared_register(uint32_t irq_num, pal_irq_prio_t prio,
