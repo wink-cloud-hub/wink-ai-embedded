@@ -37,6 +37,9 @@ static volatile bool s_slow_isr_done = false;
 static volatile bool s_uaf_detected = false;
 static volatile uint32_t s_uaf_magic_value = 0;
 
+/* 全局触发完成标记（用于多核触发任务同步） */
+static volatile bool s_trigger_done = false;
+
 /* 全局资源指针（SMP 测试关键：ISR 通过这个指针访问资源）
  * 每轮测试更新这个指针，避免频繁注册/注销中断导致资源耗尽
  */
@@ -102,29 +105,34 @@ static void trigger_task_func(void *arg) {
             pal_irq_set_pending(TEST_IRQ_UAF);
             pal_delay_us(20);
         }
+        s_trigger_done = true;
     }
 }
 
-struct enable_args {
+struct irq_op_args {
+    uint32_t irq;
+    pal_isr_t handler;
     wink_status_t status;
     bool done;
 };
 
-static void enable_task(void *arg) {
-    struct enable_args *args = (struct enable_args *)arg;
-    args->status = pal_irq_enable(TEST_IRQ_UAF, PAL_IRQ_PRIO_NORMAL, test_uaf_isr, NULL);
+static void enable_irq_on_core1(void *arg) {
+    struct irq_op_args *args = (struct irq_op_args *)arg;
+    args->status = pal_irq_enable(args->irq, PAL_IRQ_PRIO_NORMAL, args->handler, NULL);
     args->done = true;
     vTaskDelete(NULL);
 }
 
-struct disable_args {
-    wink_status_t status;
-    bool done;
-};
+static void disable_irq_on_core1(void *arg) {
+    struct irq_op_args *args = (struct irq_op_args *)arg;
+    args->status = pal_irq_disable(args->irq);
+    args->done = true;
+    vTaskDelete(NULL);
+}
 
-static void disable_task(void *arg) {
-    struct disable_args *args = (struct disable_args *)arg;
-    args->status = pal_irq_disable(TEST_IRQ_UAF);
+static void trigger_irq_on_core1(void *arg) {
+    struct irq_op_args *args = (struct irq_op_args *)arg;
+    pal_irq_set_pending(args->irq);
     args->done = true;
     vTaskDelete(NULL);
 }
@@ -155,9 +163,14 @@ void test_smp_uaf_run(uint32_t rounds,
      * ISR 通过全局指针 s_current_resource 访问当前测试资源
      */
 #ifdef ESP_PLATFORM
-    struct enable_args e_args = { .status = WINK_OK, .done = false };
+    struct irq_op_args e_args = {
+        .irq = TEST_IRQ_UAF,
+        .handler = test_uaf_isr,
+        .status = WINK_OK,
+        .done = false
+    };
     // 在 Core 1 上注册中断，使其能够在 Core 1 上响应软件中断
-    xTaskCreatePinnedToCore(enable_task, "enable_task", 2048, &e_args, 5, NULL, 1);
+    xTaskCreatePinnedToCore(enable_irq_on_core1, "enable_task", 2048, &e_args, 5, NULL, 1);
     while (!e_args.done) {
         pal_delay_us(10);
     }
@@ -204,9 +217,13 @@ void test_smp_uaf_run(uint32_t rounds,
 
         /* ── Step 3: 持续触发中断（让 ISR 一直在飞） ── */
 #ifdef ESP_PLATFORM
+        s_trigger_done = false;
         // 发送 Task Notification 通知 CPU 1 上的任务开始触发中断
         xTaskNotifyGive(s_trigger_task_handle);
-        pal_delay_ms(2); // 睡眠 2ms 让 CPU 1 并发触发中断
+        // 等待 CPU 1 上的触发任务完全结束（取代不靠谱的 pal_delay_ms(2) 盲等）
+        while (!s_trigger_done) {
+            pal_delay_us(10);
+        }
 #else
         for (uint32_t i = 0; i < triggers_per_round; i++) {
             /* 软件触发共享中断
@@ -263,8 +280,13 @@ void test_smp_uaf_run(uint32_t rounds,
 
     /* 测试结束后禁用中断 */
 #ifdef ESP_PLATFORM
-    struct disable_args d_args = { .status = WINK_OK, .done = false };
-    xTaskCreatePinnedToCore(disable_task, "disable_task", 2048, &d_args, 5, NULL, 1);
+    struct irq_op_args d_args = {
+        .irq = TEST_IRQ_UAF,
+        .handler = NULL,
+        .status = WINK_OK,
+        .done = false
+    };
+    xTaskCreatePinnedToCore(disable_irq_on_core1, "disable_task", 2048, &d_args, 5, NULL, 1);
     while (!d_args.done) {
         pal_delay_us(10);
     }
@@ -296,7 +318,13 @@ static void slow_isr(void *arg) {
     s_slow_isr_running = true;
 
     /* 100ms 长延时，足以观测到阻塞效应 */
+#ifdef ESP_PLATFORM
+    /* ⚠️ 中断服务程序（ISR）中严禁调用会引起阻塞/调度的 pal_delay_ms（vTaskDelay），
+     * 必须使用 pal_delay_us（esp_rom_delay_us 忙等）。 */
+    pal_delay_us(100000);  /* 100ms */
+#else
     pal_delay_ms(100);
+#endif
 
     s_slow_isr_running = false;
     s_slow_isr_done = true;
@@ -325,12 +353,27 @@ bool test_smp_synchronize_blocks(uint32_t *blocked_us) {
     s_slow_isr_done = false;
 
     /* 注册慢速 ISR 到另一个中断号 */
+#ifdef ESP_PLATFORM
+    struct irq_op_args e_args = {
+        .irq = TEST_IRQ_SLOW,
+        .handler = slow_isr,
+        .status = WINK_OK,
+        .done = false
+    };
+    // 在 Core 1 上注册中断，使其在 Core 1 上响应
+    xTaskCreatePinnedToCore(enable_irq_on_core1, "enable_slow_task", 2048, &e_args, 5, NULL, 1);
+    while (!e_args.done) {
+        pal_delay_us(10);
+    }
+    wink_status_t status = e_args.status;
+#else
     wink_status_t status = pal_irq_enable(
         TEST_IRQ_SLOW,
         PAL_IRQ_PRIO_NORMAL,
         slow_isr,
         NULL  /* 通过全局指针传递 */
     );
+#endif
 
     if (wink_status_is_error(status)) {
         pal_debug_printf("ERROR: pal_irq_enable failed: %d\n", (int)status);
@@ -339,10 +382,23 @@ bool test_smp_synchronize_blocks(uint32_t *blocked_us) {
     }
 
     /* 触发中断
-     * ESP32 SMP：ISR 可能跑到另一个核心
+     * ESP32 SMP：在 Core 1 上触发，实现真正跨核并发
      * Host：同步执行
      */
+#ifdef ESP_PLATFORM
+    struct irq_op_args t_args = {
+        .irq = TEST_IRQ_SLOW,
+        .handler = NULL,
+        .status = WINK_OK,
+        .done = false
+    };
+    xTaskCreatePinnedToCore(trigger_irq_on_core1, "trigger_task", 2048, &t_args, 5, NULL, 1);
+    while (!t_args.done) {
+        pal_delay_us(10);
+    }
+#else
     pal_irq_set_pending(TEST_IRQ_SLOW);
+#endif
 
     /* 立刻调用 synchronize 并计时 */
     uint64_t start = pal_get_us();
@@ -354,7 +410,21 @@ bool test_smp_synchronize_blocks(uint32_t *blocked_us) {
     pal_debug_printf("  synchronize() returned after %lu us\n", (unsigned long)elapsed);
 
     /* 清理 */
+#ifdef ESP_PLATFORM
+    struct irq_op_args d_args = {
+        .irq = TEST_IRQ_SLOW,
+        .handler = NULL,
+        .status = WINK_OK,
+        .done = false
+    };
+    xTaskCreatePinnedToCore(disable_irq_on_core1, "disable_slow_task", 2048, &d_args, 5, NULL, 1);
+    while (!d_args.done) {
+        pal_delay_us(10);
+    }
+    wink_status_t disable_st = d_args.status;
+#else
     wink_status_t disable_st = pal_irq_disable(TEST_IRQ_SLOW);
+#endif
     (void)disable_st;
 
 #ifdef ESP_PLATFORM
