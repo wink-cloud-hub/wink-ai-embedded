@@ -40,7 +40,22 @@ const path = require('path');
 const { Worker, isMainThread, parentPort } = require('worker_threads');
 
 const HERE = __dirname;
-const BUILD_DIR = path.resolve(HERE, '..', '..', 'build-wasm');
+/*
+ * 构建目录可通过 --build-dir=<path> / WINK_BUILD_DIR 环境变量 / 位置参数覆盖，
+ * 默认 wink-micro-os/build-wasm/（即 avoidance_car 默认变体）。这样切换
+ * WINK_APP_DIR 出的另一 build 目录（例如 build-wasm-oled）不需要改 stub。
+ */
+function resolveBuildDir() {
+    const argv = process.argv.slice(2);
+    const flag = argv.find((a) => a.startsWith('--build-dir='));
+    if (flag) return path.resolve(flag.slice('--build-dir='.length));
+    const positional = argv.find((a) => !a.startsWith('-'));
+    if (positional) return path.resolve(positional);
+    if (process.env.WINK_BUILD_DIR) return path.resolve(process.env.WINK_BUILD_DIR);
+    return path.resolve(HERE, '..', '..', 'build-wasm');
+}
+
+const BUILD_DIR = resolveBuildDir();
 const GLUE_PATH = path.join(BUILD_DIR, 'wink_simulator.js');
 const WASM_PATH = path.join(BUILD_DIR, 'wink_simulator.wasm');
 
@@ -62,23 +77,35 @@ if (isMainThread) {
     console.log(`[stub] wasm imports env.js_* (${imports.length}):`);
     for (const name of imports) console.log(`  - ${name}`);
 
-    /* 期望集合：与 wasm_bridge.h 里 avoidance_car 实际链接进来的 5 个 imports 对齐 */
-    const expected = [
-        'js_pal_os_sleep_ms',
-        'js_pal_poll_interrupt',
+    /* 期望集合：wasm_bridge.h 声明的完整 js_* 全集。任何实际 import 若不在
+     * 此集合内，说明有人在别的 header/源文件里偷偷加了新 extern —— 违反
+     * "wasm_bridge.h 是 JS 看到的 C 符号 SSOT" 契约。反之 DCE 掉某些没被
+     * App 引用的符号是正常的（avoidance_car → 5 个；oled_dashboard → 5 个
+     * 但组合不同）—— 只 warn 不 fail。 */
+    const knownBridgeSymbols = [
+        'js_pal_gpio_write',
+        'js_pal_gpio_read',
         'js_pal_pwm_set_duty',
-        'js_sim_measure_echo_pulse_us',
+        'js_pal_i2c_transfer',
+        'js_pal_register_interrupt',
+        'js_pal_deregister_interrupt',
+        'js_pal_poll_interrupt',
+        'js_pal_os_sleep_ms',
+        'js_pal_os_busy_wait_us',
+        'js_pal_os_get_ms',
+        'js_pal_os_get_us',
         'js_sim_trigger_ultrasonic',
+        'js_sim_measure_echo_pulse_us',
     ];
-    const missing = expected.filter((n) => !imports.includes(n));
-    const extra = imports.filter((n) => !expected.includes(n));
-    if (missing.length > 0) {
-        console.error(`[stub] FAIL: wasm missing expected imports: ${missing.join(', ')}`);
+    const stray = imports.filter((n) => !knownBridgeSymbols.includes(n));
+    if (stray.length > 0) {
+        console.error(`[stub] FAIL: wasm imports symbols not declared in wasm_bridge.h: ${stray.join(', ')}`);
+        console.error('       Add them there (SSOT) or remove the extern from wherever it leaked in.');
         process.exit(1);
     }
-    if (extra.length > 0) {
-        /* 非致命：可能是 CMakeLists 引入了新 DAL，须同步 expected 列表 */
-        console.warn(`[stub] WARN: wasm has unexpected extra imports: ${extra.join(', ')}`);
+    const treeShaken = knownBridgeSymbols.filter((n) => !imports.includes(n));
+    if (treeShaken.length > 0) {
+        console.log(`[stub] tree-shaken (unused by current App variant): ${treeShaken.length} symbols`);
     }
 
     /* 启动 worker */
