@@ -145,4 +145,27 @@ if ($overallRc -eq 0) {
 } else {
     Write-Host "[FAIL] One or more test passes failed (see output above)" -ForegroundColor Red
 }
+
+# ---- 6. L0 static lint: targets/esp32/*.c ESP_PLATFORM guard density ---------
+# Task 3 (PLAN-20260701-PAL-TARGET-P1-MAINT): TUs under targets/esp32/ are
+# compiled only when TARGET_PLATFORM=esp32; internal ESP_PLATFORM guards are
+# dead code. R-4 red line: the OUTERMOST guard wrapping IDF-private headers
+# (e.g. driver/gpio.h) MUST remain so IDE non-IDF opens don't fail parsing.
+# Threshold: at most 1 #if defined(ESP_PLATFORM) per file.
+# Runs AFTER host tests so a lint regression does not gate the test signal.
+# ---- P1 保护：targets/esp32/*.c 内 ESP_PLATFORM 出现次数 ≤ 1 -----------------
+# NOTE: cwd is $PSScriptRoot (wink-micro-os/), so path is relative to that.
+$violations = @()
+Get-ChildItem targets/esp32/*.c | ForEach-Object {
+    $count = (Select-String -Path $_.FullName -Pattern '#if defined\(ESP_PLATFORM\)' -SimpleMatch:$false).Count
+    if ($count -gt 1) {
+        $violations += "$($_.Name): $count occurrences (limit: 1)"
+    }
+}
+if ($violations.Count -gt 0) {
+    Write-Error "ESP_PLATFORM guard limit exceeded:`n$($violations -join `"`n`")"
+    exit 1
+}
+Write-Host "[lint] ESP_PLATFORM guard density OK"
+
 exit $overallRc
