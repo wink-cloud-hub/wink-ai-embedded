@@ -74,13 +74,13 @@ void app_main(void) {
     }
 
     /* 初始化看门狗 (Phase 5 Fail-Safe) */
-    rs = pal_watchdog_init(5000);  /* 5s timeout */
+    rs = pal_os_wdt_init(5000);  /* 5s timeout */
     if (wink_status_is_error(rs)) {
-        ESP_LOGW(TAG, "pal_watchdog_init not supported (skipping): %d", rs);
+        ESP_LOGW(TAG, "pal_os_wdt_init not supported (skipping): %d", rs);
     }
 
     /* 打印复位原因 */
-    pal_reset_reason_t rr = pal_get_reset_reason();
+    pal_os_reset_reason_t rr = pal_os_get_reset_reason();
     ESP_LOGI(TAG, "Reset reason: %d", rr);
 
     ESP_LOGI(TAG, "Starting application runtime ...");

@@ -92,32 +92,32 @@ void pal_os_busy_wait_us(uint32_t us) {
 }
 
 /* 单线程 Wasm Worker 沙箱通常无锁竞争，互斥锁退化为无竞争实现 */
-pal_mutex_t pal_mutex_create(void) { return (pal_mutex_t)1; }
-wink_status_t pal_mutex_lock(pal_mutex_t mutex, uint32_t timeout_ms) {
+pal_os_mutex_t pal_os_mutex_create(void) { return (pal_os_mutex_t)1; }
+wink_status_t pal_os_mutex_lock(pal_os_mutex_t mutex, uint32_t timeout_ms) {
     if (mutex == NULL) return WINK_ERR_INVALID_ARG;
     (void)timeout_ms;
     return WINK_OK;
 }
-wink_status_t pal_mutex_unlock(pal_mutex_t mutex) {
+wink_status_t pal_os_mutex_unlock(pal_os_mutex_t mutex) {
     if (mutex == NULL) return WINK_ERR_INVALID_ARG;
     return WINK_OK;
 }
-void pal_mutex_destroy(pal_mutex_t mutex) { (void)mutex; }
+void pal_os_mutex_destroy(pal_os_mutex_t mutex) { (void)mutex; }
 
 /* Phase 5 Task 5-4：wasm 无硬件复位/WDT 语义。reset reason 恒 UNKNOWN；WDT UNSUPPORTED
  *（直至确立浏览器侧 watchdog 策略）。真挂死/CPU 卡死靠宿主（浏览器/容器）兜底，不由本层保证。 */
-pal_reset_reason_t pal_get_reset_reason(void) { return PAL_RESET_REASON_UNKNOWN; }
+pal_os_reset_reason_t pal_os_get_reset_reason(void) { return PAL_OS_RESET_REASON_UNKNOWN; }
 /* ADR-0010：wasm 无持久化复位计数语义，恒 0 / no-op */
-uint32_t pal_get_abnormal_boot_count(void) { return 0; }
-void pal_set_abnormal_boot_count(uint32_t count) { (void)count; }
-WINK_WARN_UNUSED_RESULT wink_status_t pal_watchdog_init(uint32_t timeout_ms) { (void)timeout_ms; return WINK_ERR_UNSUPPORTED; }
-WINK_WARN_UNUSED_RESULT wink_status_t pal_watchdog_feed(void) { return WINK_ERR_UNSUPPORTED; }
+uint32_t pal_os_get_abnormal_boot_count(void) { return 0; }
+void pal_os_set_abnormal_boot_count(uint32_t count) { (void)count; }
+WINK_WARN_UNUSED_RESULT wink_status_t pal_os_wdt_init(uint32_t timeout_ms) { (void)timeout_ms; return WINK_ERR_UNSUPPORTED; }
+WINK_WARN_UNUSED_RESULT wink_status_t pal_os_wdt_feed(void) { return WINK_ERR_UNSUPPORTED; }
 
-uint32_t pal_critical_enter(void) {
+uint32_t pal_os_critical_enter(void) {
     return 0;
 }
 
-void pal_critical_exit(uint32_t key) {
+void pal_os_critical_exit(uint32_t key) {
     (void)key;
 }
 
@@ -125,14 +125,14 @@ void pal_critical_exit(uint32_t key) {
  * Task 创建（WASM 单线程仿真降级实现）
  * ───────────────────────────────────────────────────────── */
 
-wink_status_t pal_task_create(
+wink_status_t pal_os_task_create(
     void (*func)(void* arg),
     const char* name,
     uint32_t stack_depth,
     void* arg,
     int32_t priority,
-    pal_core_id_t core_id,
-    pal_task_handle_t* task_handle
+    pal_os_core_id_t core_id,
+    pal_os_task_handle_t* task_handle
 ) {
     /* Single-threaded WASM sandbox: no true concurrency.
      * We call the function immediately as a degenerate case.
@@ -145,7 +145,7 @@ wink_status_t pal_task_create(
     return WINK_OK;
 }
 
-void pal_task_delete(pal_task_handle_t task_handle) {
+void pal_os_task_delete(pal_os_task_handle_t task_handle) {
     (void)task_handle;  /* single-threaded WASM: no-op */
 }
 
@@ -153,22 +153,22 @@ void pal_task_delete(pal_task_handle_t task_handle) {
  * 环形缓冲区 (WASM 纯内存实现，单线程无并发)
  * ───────────────────────────────────────────────────────── */
 
-struct pal_ringbuf {
+struct pal_os_ringbuf {
     uint8_t* buffer;
     uint32_t size;
     volatile uint32_t head;
     volatile uint32_t tail;
 };
 
-pal_ringbuf_handle_t pal_ringbuf_create(uint32_t size) {
-    struct pal_ringbuf* rb;
+pal_os_ringbuf_handle_t pal_os_ringbuf_create(uint32_t size) {
+    struct pal_os_ringbuf* rb;
 
     /* Size must be power of 2 (API contract) */
     if ((size & (size - 1)) != 0) {
         return NULL;
     }
 
-    rb = malloc(sizeof(struct pal_ringbuf));
+    rb = malloc(sizeof(struct pal_os_ringbuf));
     if (rb == NULL) {
         return NULL;
     }
@@ -186,8 +186,8 @@ pal_ringbuf_handle_t pal_ringbuf_create(uint32_t size) {
     return rb;
 }
 
-wink_status_t pal_ringbuf_push(
-    pal_ringbuf_handle_t rb,
+wink_status_t pal_os_ringbuf_push(
+    pal_os_ringbuf_handle_t rb,
     const void* data,
     uint32_t size
 ) {
@@ -198,7 +198,7 @@ wink_status_t pal_ringbuf_push(
         return WINK_ERR_INVALID_ARG;
     }
 
-    if (pal_ringbuf_used(rb) + size > rb->size) {
+    if (pal_os_ringbuf_used(rb) + size > rb->size) {
         return WINK_ERR_FULL;
     }
 
@@ -210,8 +210,8 @@ wink_status_t pal_ringbuf_push(
     return WINK_OK;
 }
 
-wink_status_t pal_ringbuf_pop(
-    pal_ringbuf_handle_t rb,
+wink_status_t pal_os_ringbuf_pop(
+    pal_os_ringbuf_handle_t rb,
     void* data,
     uint32_t size
 ) {
@@ -222,7 +222,7 @@ wink_status_t pal_ringbuf_pop(
         return WINK_ERR_INVALID_ARG;
     }
 
-    if (pal_ringbuf_used(rb) < size) {
+    if (pal_os_ringbuf_used(rb) < size) {
         return WINK_ERR_EMPTY;
     }
 
@@ -234,14 +234,14 @@ wink_status_t pal_ringbuf_pop(
     return WINK_OK;
 }
 
-uint32_t pal_ringbuf_used(pal_ringbuf_handle_t rb) {
+uint32_t pal_os_ringbuf_used(pal_os_ringbuf_handle_t rb) {
     if (rb == NULL) {
         return 0;
     }
     return rb->head - rb->tail;
 }
 
-void pal_ringbuf_destroy(pal_ringbuf_handle_t rb) {
+void pal_os_ringbuf_destroy(pal_os_ringbuf_handle_t rb) {
     if (rb == NULL) {
         return;
     }

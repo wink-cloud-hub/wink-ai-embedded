@@ -10,14 +10,14 @@
 #include <stdbool.h>
 #include "pal_irq.h"    /* pal_irq_prio_t, pal_isr_t（中断测试注入） */
 #include "pal_hal.h"    /* pal_gpio_intr_t, wink_pin_t */
-#include "pal_osal.h"   /* pal_reset_reason_t（sim_set_reset_reason 测试注入，Phase 5 Task 5-4） */
+#include "pal_osal.h"   /* pal_os_reset_reason_t（sim_set_reset_reason 测试注入，Phase 5 Task 5-4） */
 #include "wink_sim_physical.h"   /* wink_sim_faults_t（ADR-0009 Wave1 物理退化注入） */
 
 void sim_reset_time(void);
 void sim_set_echo_pin(uint16_t pin);
 void sim_set_echo_timing(uint64_t rise_us, uint64_t high_duration_us);
 float sim_last_pwm_duty(uint8_t channel);
-void sim_set_reset_reason(pal_reset_reason_t reason);   /* Phase 5：注入复位原因供 boot safe-lock 测试 */
+void sim_set_reset_reason(pal_os_reset_reason_t reason);   /* Phase 5：注入复位原因供 boot safe-lock 测试 */
 
 /* Phase 2：host I2C 事务捕获注入/读取 */
 uint8_t  sim_last_i2c_port(void);

@@ -23,7 +23,7 @@
 #include "wink_status.h"
 #include "pal_irq.h"       /* PAL_ISR 宏 + 统一中断抽象 */
 #include "pal_hal.h"       /* pal_pwm_init/set_duty, pal_gpio_enable_interrupt */
-#include "pal_osal.h"      /* pal_watchdog_init/feed, pal_os_get_ms, pal_get_reset_reason */
+#include "pal_osal.h"      /* pal_os_wdt_init/feed, pal_os_get_ms, pal_os_get_reset_reason */
 #include "pal_resource.h"  /* pal_resource_claim/release */
 #include "pal_pwm_router.h"/* pal_pwm_router_channel_timer */
 #include "pal_debug.h"     /* pal_debug_printf: 跨平台统一调试输出 */
@@ -139,7 +139,7 @@ static void smoke_check_i2c_bus(void)
 /* ─────────────────────────────────────────────────────────
  * S7: 多核临界区并发压测（PAL 统一任务接口）
  *     支持 SMP 的平台：两核并行 claim/release，验证 spinlock 安全
- *     单线程平台：pal_task_create 同步执行或返回 UNSUPPORTED
+ *     单线程平台：pal_os_task_create 同步执行或返回 UNSUPPORTED
  * ───────────────────────────────────────────────────────── */
 #if defined(ESP_PLATFORM)
 static void resource_stress_task(void *arg)
@@ -164,7 +164,7 @@ static void resource_stress_task(void *arg)
                      (unsigned)core_id, (unsigned long)iterations);
 
     /* PAL 统一接口删除当前任务（单线程平台为 no-op） */
-    pal_task_delete(NULL);
+    pal_os_task_delete(NULL);
 }
 
 static wink_status_t smoke_check_resource_smp(void)
@@ -173,11 +173,11 @@ static wink_status_t smoke_check_resource_smp(void)
      * - ESP32: 真 xTaskCreatePinnedToCore 钉核
      * - WASM/host/baremetal: 同步执行或 UNSUPPORTED
      * 用返回值检测平台是否支持多任务，不用 #ifdef */
-    wink_status_t st0 = pal_task_create(
-        resource_stress_task, "stress0", 4096, (void *)0, 5, PAL_CORE_0, NULL
+    wink_status_t st0 = pal_os_task_create(
+        resource_stress_task, "stress0", 4096, (void *)0, 5, PAL_OS_CORE_0, NULL
     );
-    wink_status_t st1 = pal_task_create(
-        resource_stress_task, "stress1", 4096, (void *)1, 5, PAL_CORE_1, NULL
+    wink_status_t st1 = pal_os_task_create(
+        resource_stress_task, "stress1", 4096, (void *)1, 5, PAL_OS_CORE_1, NULL
     );
 
     if (!wink_status_is_error(st0) && !wink_status_is_error(st1)) {
@@ -213,7 +213,7 @@ static void telemetry_task(void *arg)
             last_report = now;
         }
     }
-    pal_task_delete(NULL);
+    pal_os_task_delete(NULL);
 }
 #endif /* ESP_PLATFORM */
 
@@ -223,14 +223,14 @@ static void telemetry_task(void *arg)
 static void app_init(void)
 {
     /* S8: 检测「本次启动是异常复位后恢复」（ADR-0010）。
-     * pal_get_abnormal_boot_count() 是 PAL 统一接口：
+     * pal_os_get_abnormal_boot_count() 是 PAL 统一接口：
      *   >0 = WDT/PANIC 复位后恢复；0 = 正常启动
      * 所有平台都有此接口（ESP32: RTC存储, WASM/host: 静态变量模拟）。 */
-    if (pal_get_abnormal_boot_count() > 0) {
+    if (pal_os_get_abnormal_boot_count() > 0) {
         s_wdt_verified = true;
         /* PAL 统一调试输出：所有平台都报告 WDT 复位恢复状态 */
         pal_debug_printf("[SMOKE] watchdog: PASS (recovered after abnormal reset, count=%lu)\n",
-                         (unsigned long)pal_get_abnormal_boot_count());
+                         (unsigned long)pal_os_get_abnormal_boot_count());
     }
 
     /* S2/S3: DAL LED + 按钮初始化（Phase 2 config_t 标准化） */
@@ -283,7 +283,7 @@ static void app_init(void)
      * PAL 统一接口：ESP32 真任务，WASM/host 同步执行或 UNSUPPORTED
      * 使用 do-while(0) 模式抑制 GCC warn_unused_result 警告 */
     do {
-        wink_status_t _st = pal_task_create(telemetry_task, "smoke_telem", 4096, NULL, 1, PAL_CORE_ANY, NULL);
+        wink_status_t _st = pal_os_task_create(telemetry_task, "smoke_telem", 4096, NULL, 1, PAL_OS_CORE_ANY, NULL);
         (void)_st;
     } while(0);
 
@@ -319,7 +319,7 @@ static void app_loop(void)
             s_press_start_ms = now;
         }
         if (!s_wdt_verified && (now - s_press_start_ms) > 3000u) {
-            wink_status_t _wdt = pal_watchdog_init(2000u);
+            wink_status_t _wdt = pal_os_wdt_init(2000u);
             if (!wink_status_is_error(_wdt)) {
                 /* WDT 初始化成功：死循环不喂狗 → 2s 后超时复位 */
                 for (;;) { }
