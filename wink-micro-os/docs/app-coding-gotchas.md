@@ -45,13 +45,13 @@
 
 ---
 
-## 5. ISR 中断上下文中严禁调用任务级阻塞/调度 API (如 pal_delay_ms)
+## 5. ISR 中断上下文中严禁调用任务级阻塞/调度 API (如 pal_os_sleep_ms)
 
-*   **问题现象**：在中断服务程序（ISR）中调用 `pal_delay_ms` 模拟耗时操作，系统没有报 Panic（在禁用 Assert 的情况下），但实测该延时完全没有生效（耗时仅为几微秒），导致依赖该延时的测试逻辑（如 synchronize 阻塞性测试）直接失效。
-*   **深层原因**：在 FreeRTOS 等 RTOS 环境下，`pal_delay_ms` 底层依赖于 `vTaskDelay`。该 API 的核心作用是挂起当前执行任务并触发调度器进行上下文切换。然而，硬件中断上下文（ISR）的优先级高于任何任务且不属于任务上下文，此时**绝对不允许引起任务挂起或调度切换**。在使能 RTOS 调试时该调用会触发 `configASSERT` 导致 Panic 崩溃，而在生产/发布模式（禁用 Assert）下则会被静默忽略并立刻返回。
+*   **问题现象**：在中断服务程序（ISR）中调用 `pal_os_sleep_ms` 模拟耗时操作，系统没有报 Panic（在禁用 Assert 的情况下），但实测该延时完全没有生效（耗时仅为几微秒），导致依赖该延时的测试逻辑（如 synchronize 阻塞性测试）直接失效。
+*   **深层原因**：在 FreeRTOS 等 RTOS 环境下，`pal_os_sleep_ms` 底层依赖于 `vTaskDelay`。该 API 的核心作用是挂起当前执行任务并触发调度器进行上下文切换。然而，硬件中断上下文（ISR）的优先级高于任何任务且不属于任务上下文，此时**绝对不允许引起任务挂起或调度切换**。在使能 RTOS 调试时该调用会触发 `configASSERT` 导致 Panic 崩溃，而在生产/发布模式（禁用 Assert）下则会被静默忽略并立刻返回。
 *   **正确实践**：
-    *   在 ISR 中**严禁**使用 `pal_delay_ms` 或任何可能触发任务调度的阻塞 API。
-    *   若必须在中断中进行延迟（如某些特殊硬件驱动的微秒级初始化时序），必须使用**忙等延时（Busy-wait delay）**，例如调用 `pal_delay_us`（在 ESP32 上对应 `esp_rom_delay_us`，纯靠读取硬件 CPU 计数器循环等待）。
+    *   在 ISR 中**严禁**使用 `pal_os_sleep_ms` 或任何可能触发任务调度的阻塞 API。
+    *   若必须在中断中进行延迟（如某些特殊硬件驱动的微秒级初始化时序），必须使用**忙等延时（Busy-wait delay）**，例如调用 `pal_os_busy_wait_us`（在 ESP32 上对应 `esp_rom_delay_us`，纯靠读取硬件 CPU 计数器循环等待）。
 
 ---
 
@@ -62,9 +62,9 @@
     1.  **Volatile 类型限定符被剥离（编译器寄存器缓存优化）**：
         全局共享资源指针声明为 `volatile T *ptr`，但在 ISR 入口中，被强制转换并赋值给了没有 `volatile` 修饰的局部变量：
         `T *res = (T *)ptr; // ⚠️ 丢掉了 volatile 属性`
-        此时，编译器为了优化性能，会在 ISR 内的忙等延时（如 `pal_delay_us(50)`）**之前**，就将 `res->magic` 预先读入 CPU 寄存器。即使另一个核在此期间覆写了物理内存，ISR 醒来后校验的依然是寄存器中的旧值，导致检测不到内存损坏。
+        此时，编译器为了优化性能，会在 ISR 内的忙等延时（如 `pal_os_busy_wait_us(50)`）**之前**，就将 `res->magic` 预先读入 CPU 寄存器。即使另一个核在此期间覆写了物理内存，ISR 醒来后校验的依然是寄存器中的旧值，导致检测不到内存损坏。
     2.  **硬编排时序（Microsecond-level timing）在多核调度下不可靠**：
-        如果依赖在 Core 1 的触发任务中以 `pal_delay_us` 与 Core 0 的 `pal_delay_ms` 盲等来对齐释放时间，会遇到两种死胡同：
+        如果依赖在 Core 1 的触发任务中以 `pal_os_busy_wait_us` 与 Core 0 的 `pal_os_sleep_ms` 盲等来对齐释放时间，会遇到两种死胡同：
         *   若 Done 标记设在第 50 次触发的 loop 结束后：由于 ISR 在 Core 1 上同步抢占触发任务，在 Done 变为 true 时第 50 次 ISR 必定已经执行完毕，Core 0 此时 free 无法与任何 ISR 碰撞。
         *   若 Done 标记设在第 50 次触发之前：Core 0 在 Core 1 还没来得及执行 `pal_irq_set_pending` 之前就完成了 `synchronize` 并 `free` 内存，导致启用同步时依然会假性失败。
 *   **正确实践**：
@@ -76,7 +76,7 @@
 
 ---
 
-## 7. 延时选择黄金法则：忙等 (pal_delay_us) vs 挂起 (pal_delay_ms)
+## 7. 延时选择黄金法则：忙等 (pal_os_busy_wait_us) vs 挂起 (pal_os_sleep_ms)
 
 在嵌入式开发中，合理选择延时机制对于保证系统并发性能、降低功耗以及维持系统稳定性至关重要。
 
@@ -85,26 +85,26 @@
 ```mermaid
 graph TD
     A["需要延时/等待吗?"] --> B{"延时时间有多长?"}
-    B -->|"< 50 us"| C["必须使用 忙等 pal_delay_us"]
+    B -->|"< 50 us"| C["必须使用 忙等 pal_os_busy_wait_us"]
     B -->|"50 us ~ 1 ms"| D{"在中断 ISR 内吗?"}
-    D -->|Yes| E["只能使用 忙等 pal_delay_us"]
-    D -->|No| F["建议使用 挂起 pal_delay_ms (让出CPU)"]
+    D -->|Yes| E["只能使用 忙等 pal_os_busy_wait_us"]
+    D -->|No| F["建议使用 挂起 pal_os_sleep_ms (让出CPU)"]
     B -->|"> 1 ms"| G{"在中断 ISR 内吗?"}
     G -->|Yes| H["⚠️ 架构设计错误! 中断内绝对不应有毫秒级操作"]
-    G -->|No| I["必须使用 挂起 pal_delay_ms (让出CPU)"]
+    G -->|No| I["必须使用 挂起 pal_os_sleep_ms (让出CPU)"]
 ```
 
 ### 详细对比与选型指南
 
 1.  **超短时延时（小于 50 微秒）**
-    *   **推荐方案**：使用 `pal_delay_us` 进行**忙等（Busy-waiting / Spinning）**。
+    *   **推荐方案**：使用 `pal_os_busy_wait_us` 进行**忙等（Busy-waiting / Spinning）**。
     *   **理由**：此时延时时间极短，远小于 RTOS 任务上下文切换的本身开销（切换开销通常为 `2us ~ 10us`，且系统滴答精度一般仅为 `1ms`）。采用忙等可提供纳米至微秒级的最高精度，且无系统调度开销。
 2.  **长时延时（大于 1 毫秒）**
-    *   **推荐方案**：使用 `pal_delay_ms` 进行**任务挂起（Yielding / Blocking）**。
-    *   **理由**：调用 `pal_delay_ms` 会将当前任务放入 RTOS 延时等待队列并释放 CPU。CPU 可以去运行其他就绪的低优先级任务，或者在无任务可跑时进入 `Idle` 低功耗休眠（利用 `WFI` 指令关断核心时钟），可节省 90% 以上功耗。
+    *   **推荐方案**：使用 `pal_os_sleep_ms` 进行**任务挂起（Yielding / Blocking）**。
+    *   **理由**：调用 `pal_os_sleep_ms` 会将当前任务放入 RTOS 延时等待队列并释放 CPU。CPU 可以去运行其他就绪的低优先级任务，或者在无任务可跑时进入 `Idle` 低功耗休眠（利用 `WFI` 指令关断核心时钟），可节省 90% 以上功耗。
     *   **避坑警告**：若长延时错误使用忙等，会导致低优先级任务彻底“饥饿”卡死，并极易触发看门狗（WDT）复位，或因霸占 CPU 引起优先级反转导致死锁。
 3.  **中断服务程序（ISR）中的延时**
-    *   **推荐方案**：在 ISR 中**严禁调用任何触发任务挂起的 API**（如 `pal_delay_ms`），若必须延时只能使用超短时 `pal_delay_us` 忙等。
+    *   **推荐方案**：在 ISR 中**严禁调用任何触发任务挂起的 API**（如 `pal_os_sleep_ms`），若必须延时只能使用超短时 `pal_os_busy_wait_us` 忙等。
     *   **基本原则**：ISR 必须保持快速与纯净，执行时间应控制在微秒级。如果在 ISR 内需要等待毫秒级操作，说明系统架构设计存在严重问题，应改为“在 ISR 中仅设置状态标志或发送任务通知，由前台的 worker 任务线程去执行毫秒级操作”。
 
 
