@@ -82,6 +82,12 @@ static void           *s_gpio_isr_arg[WASM_MAX_GPIO_PIN] = {NULL};
 static pal_gpio_intr_t s_gpio_intr_type[WASM_MAX_GPIO_PIN] = {PAL_GPIO_INTR_DISABLE};
 static bool            s_gpio_last_level[WASM_MAX_GPIO_PIN] = {false};
 
+/* v2.2 G3（Phase 1.5，2026-07-01）：GPIO service 首次锁定的 prio。
+ * WASM 是单线程执行环境（无 SharedArrayBuffer / pthread），无需 mutex；
+ * 保留与 ESP32/host 对齐的双字段结构，语义一致。 */
+static bool             s_gpio_service_initialized = false;
+static pal_irq_prio_t   s_gpio_service_prio        = PAL_IRQ_PRIO_NORMAL;
+
 /* 中断锁状态（支持嵌套计数） */
 static uint32_t s_irq_lock_nest_count = 0;
 
@@ -144,16 +150,32 @@ static void sort_pending_by_priority(void)
 wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin, pal_gpio_intr_t intr_type,
                                          pal_irq_prio_t prio, pal_gpio_isr_t callback, void *arg)
 {
-    /* v2.1 G3：prio 当前被所有 target 静默忽略（header 已显式契约化）。
-     * WASM 单线程下本无 per-pin 抢占语义；如需要 per-pin 优先级，未来会新增
-     * pal_gpio_enable_interrupt_dedicated() 走独立中断源路径。 */
-    (void)prio;
-
     if (pin < 0 || pin >= WASM_MAX_GPIO_PIN) {
         return WINK_ERR_INVALID_ARG;
     }
     if (callback == NULL) {
         return WINK_ERR_INVALID_ARG;
+    }
+    if (prio >= PAL_IRQ_PRIO_COUNT) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    /* v2.2 G2（Phase 1.5，2026-07-01）：与 ESP32 对齐，GPIO 路径拒接 REALTIME。
+     * WASM 单线程模型无 per-pin 抢占；显式拒接以让"仿真通过 → 真机通过"关系
+     * 严格成立（ADR-0012）。 */
+    if (prio == PAL_IRQ_PRIO_REALTIME) {
+        return WINK_ERR_UNSUPPORTED;
+    }
+
+    /* v2.2 G3：GPIO service 首次锁定 prio。WASM 单线程无 mutex 需求，
+     * 直接检查即可。一旦锁定，进程生命周期内不再释放（见 pal_hal.h 契约）。 */
+    if (s_gpio_service_initialized) {
+        if (prio != s_gpio_service_prio) {
+            return WINK_ERR_INVALID_ARG;   /* G3: prio 冲突，本次拒接 */
+        }
+    } else {
+        s_gpio_service_prio        = prio;
+        s_gpio_service_initialized = true;
     }
 
     s_gpio_isr[pin] = callback;
@@ -332,10 +354,29 @@ static pal_direct_isr_t s_wasm_direct_handlers[WASM_MAX_IRQ] = {NULL};
 wink_status_t pal_irq_enable(uint32_t irq_num, pal_irq_prio_t prio,
                               pal_isr_t handler, void *arg)
 {
-    (void)prio;
-    if (irq_num >= WASM_MAX_IRQ || handler == NULL) {
+    if (irq_num >= WASM_MAX_IRQ || handler == NULL || prio >= PAL_IRQ_PRIO_COUNT) {
         return WINK_ERR_INVALID_ARG;
     }
+
+    /* v2.2 G2（Phase 1.5，2026-07-01）：与 ESP32 对齐，默认拒接 REALTIME。
+     * 让"仿真通过 → 真机通过"关系严格成立（ADR-0012 契约诚实）。
+     * 静态校验类测试可编译期显式 opt-in，走**受控**放行。 */
+    if (prio == PAL_IRQ_PRIO_REALTIME) {
+#if defined(WINK_HOST_ALLOW_REALTIME_FOR_TESTING)
+        /* opt-in：接受但一次性告警。WASM 侧走 pal_debug_printf 保持日志同源。 */
+        static bool s_realtime_warn_emitted = false;
+        if (!s_realtime_warn_emitted) {
+            pal_debug_printf("[pal_irq WARN] wasm: REALTIME priority accepted "
+                             "for testing only; ESP32 target returns "
+                             "WINK_ERR_UNSUPPORTED.\n");
+            s_realtime_warn_emitted = true;
+        }
+        /* fallthrough：落到 dispatch 路径，与 HIGHEST 等价 */
+#else
+        return WINK_ERR_UNSUPPORTED;
+#endif
+    }
+
     s_wasm_irq_table[irq_num] = handler;
     s_wasm_irq_arg[irq_num] = arg;
     return WINK_OK;
