@@ -1,7 +1,7 @@
 #include "unity.h"
 #include "dal_button.h"
 #include "pal_hal.h"           /* pal_gpio_read for raw reads */
-#include "pal_osal.h"          /* pal_delay_ms 推进虚拟时钟 */
+#include "pal_osal.h"          /* pal_os_sleep_ms 推进虚拟时钟 */
 #include "host_test_ctrl.h"
 #include "wink_sim_physical.h"
 
@@ -16,7 +16,7 @@ void tearDown(void) {}
 
 static void run_ticks(dal_button_t *btn, int n) {
     for (int i = 0; i < n; i++) {
-        pal_delay_ms(TICK_MS);
+        pal_os_sleep_ms(TICK_MS);
         TEST_ASSERT_EQUAL(WINK_OK, dal_button_poll(btn));
     }
 }
@@ -62,14 +62,14 @@ void test_raw_read_without_debounce_bounces(void) {
     sim_set_faults(&f);
 
     sim_set_gpio_ideal(9, true);                                   /* 上电=释放（pin9，避耦合） */
-    pal_delay_ms(TICK_MS);                                         /* now=10000 */
+    pal_os_sleep_ms(TICK_MS);                                         /* now=10000 */
     sim_set_gpio_ideal(9, false);                                  /* 跃变=按下 → 窗 [10000,40000) */
 
     bool saw_pressed = false, saw_released = false;
     for (int i = 0; i < 3; i++) {                                  /* 窗内 3 次裸采样（强制交替必跳变） */
         if (raw_pressed(9, true)) { saw_pressed = true; }
         else { saw_released = true; }
-        pal_delay_ms(TICK_MS);                                     /* +10ms，仍在窗内（10000→20000→30000） */
+        pal_os_sleep_ms(TICK_MS);                                     /* +10ms，仍在窗内（10000→20000→30000） */
     }
     TEST_ASSERT_TRUE(saw_pressed && saw_released);                 /* 无去抖 → 既「按下」又「释放」=误触发 */
     sim_clear_gpio_ideal();

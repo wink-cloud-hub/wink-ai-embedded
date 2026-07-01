@@ -92,7 +92,7 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
     target_include_directories(wink_simulator PRIVATE ${WASM_EXTRA_INCLUDE_DIRS})
     target_link_options(wink_simulator PRIVATE
         "-s" "ASYNCIFY=1"
-        "-s" "ASYNCIFY_IMPORTS=['js_pal_delay_ms','js_pal_delay_us']"
+        "-s" "ASYNCIFY_IMPORTS=['js_pal_os_sleep_ms','js_pal_os_busy_wait_us']"
         "-s" "EXPORTED_FUNCTIONS=['_main']"                  # _trigger_wasm_interrupt 已移除（方案 C：Poll 模型消除 Push 导出，见 wasm_entry.c）
         "-s" "EXPORTED_RUNTIME_METHODS=['ccall','cwrap']"
         "-s" "MODULARIZE=1"

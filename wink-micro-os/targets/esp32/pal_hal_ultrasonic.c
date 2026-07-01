@@ -14,7 +14,7 @@
 #include "hal/pal_ultrasonic.h"
 #include "hal/pal_hal_rmt.h"  /* 复用现有的 RMT 实现 */
 #include "pal_hal.h"           /* pal_gpio_* 等 HAL 接口 */
-#include "pal_osal.h"          /* pal_delay_us 等 OSAL 接口 */
+#include "pal_osal.h"          /* pal_os_busy_wait_us 等 OSAL 接口 */
 
 /* 全局状态：RMT 是否已初始化（单实例超声波） */
 static bool s_rmt_initialized = false;
@@ -35,7 +35,7 @@ wink_status_t pal_hal_ultrasonic_trigger(uint16_t trigger_pin) {
     /* TRIG 时序：输出 10us 高电平脉冲
      * 使用标准 PAL GPIO 接口，与平台无关 */
     pal_gpio_write(trigger_pin, true);
-    pal_delay_us(10);
+    pal_os_busy_wait_us(10);
     pal_gpio_write(trigger_pin, false);
     return WINK_OK;
 }

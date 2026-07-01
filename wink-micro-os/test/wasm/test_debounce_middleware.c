@@ -112,7 +112,7 @@ void test_gpio_read_zero_bounce_leaves_ctx_clean(void) {
  * (3) 退化路径直接验证：通过暴露的 ctx 显式驱动 wink_phys_debounce_step
  * ─────────────────────────────────────────────────────────
  * pal_gpio_read 内部把这三个参数传给 wink_phys_debounce_step：
- *   (ctx, ideal_from_js, pal_get_us(), pal_wasm_get_bounce_us())
+ *   (ctx, ideal_from_js, pal_os_get_us(), pal_wasm_get_bounce_us())
  * 算法本身的正确性在 test_wasm_physical.c 已经覆盖（golden）。
  * 这里只验证"ctx + 时钟"的桥接确实进入了同一条算法路径——
  * 通过手工构造场景，对 pal_wasm_get_debounce_ctx() 拿到的 ctx

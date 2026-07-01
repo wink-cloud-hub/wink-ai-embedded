@@ -5,7 +5,7 @@
  * 验证 SSOT 架构核心约束：
  *   1. 时钟启动为 0；
  *   2. pal_wasm_advance_virtual_clock() 单调步进；
- *   3. pal_delay_ms/us() 内部不主动步进时钟（本文件断言 + 静态 grep 双重保证）；
+ *   3. pal_os_sleep_ms/us() 内部不主动步进时钟（本文件断言 + 静态 grep 双重保证）；
  *   4. 64 位无回绕语义正确（自然截断）。
  */
 #include "unity.h"
@@ -29,8 +29,8 @@ void tearDown(void) {}
 
 void test_virtual_clock_starts_at_zero(void) {
     /* WASM 实例刚启动，BSS 零初始化保证 s_virtual_us = 0 */
-    TEST_ASSERT_EQUAL_UINT64(0, pal_get_us());
-    TEST_ASSERT_EQUAL_UINT64(0, pal_get_ms());
+    TEST_ASSERT_EQUAL_UINT64(0, pal_os_get_us());
+    TEST_ASSERT_EQUAL_UINT64(0, pal_os_get_ms());
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -39,28 +39,28 @@ void test_virtual_clock_starts_at_zero(void) {
 
 void test_virtual_clock_monotonic_advance(void) {
     pal_wasm_advance_virtual_clock(1000);
-    TEST_ASSERT_EQUAL_UINT64(1000, pal_get_us());
-    TEST_ASSERT_EQUAL_UINT64(1, pal_get_ms());
+    TEST_ASSERT_EQUAL_UINT64(1000, pal_os_get_us());
+    TEST_ASSERT_EQUAL_UINT64(1, pal_os_get_ms());
 
     pal_wasm_advance_virtual_clock(500);
-    TEST_ASSERT_EQUAL_UINT64(1500, pal_get_us());
-    TEST_ASSERT_EQUAL_UINT64(1, pal_get_ms());  /* 截断向下取整（整数除法） */
+    TEST_ASSERT_EQUAL_UINT64(1500, pal_os_get_us());
+    TEST_ASSERT_EQUAL_UINT64(1, pal_os_get_ms());  /* 截断向下取整（整数除法） */
 
     pal_wasm_advance_virtual_clock(500);
-    TEST_ASSERT_EQUAL_UINT64(2000, pal_get_us());
-    TEST_ASSERT_EQUAL_UINT64(2, pal_get_ms());
+    TEST_ASSERT_EQUAL_UINT64(2000, pal_os_get_us());
+    TEST_ASSERT_EQUAL_UINT64(2, pal_os_get_ms());
 }
 
 void test_virtual_clock_accepts_zero_advance(void) {
-    uint64_t before = pal_get_us();
+    uint64_t before = pal_os_get_us();
     pal_wasm_advance_virtual_clock(0);  /* 合法空操作 */
-    TEST_ASSERT_EQUAL_UINT64(before, pal_get_us());
+    TEST_ASSERT_EQUAL_UINT64(before, pal_os_get_us());
 }
 
 /* ─────────────────────────────────────────────────────────
- * SSOT 架构核心断言：pal_delay_ms/us() 不主动步进时钟
+ * SSOT 架构核心断言：pal_os_sleep_ms/us() 不主动步进时钟
  *
- * 注意：Node 单测环境中 js_pal_delay_ms 是同步 mock 立即返回，
+ * 注意：Node 单测环境中 js_pal_os_sleep_ms 是同步 mock 立即返回，
  * 不涉及真实 Asyncify 挂起。调用后时钟值不变 → delay 函数
  * 体内没有调用 pal_wasm_advance_virtual_clock()。
  *
@@ -70,17 +70,17 @@ void test_virtual_clock_accepts_zero_advance(void) {
  * ───────────────────────────────────────────────────────── */
 
 void test_delay_ms_does_NOT_advance_clock(void) {
-    uint64_t before = pal_get_us();
-    pal_delay_ms(10);  /* mock 立即返回，无真实等待 */
-    uint64_t after = pal_get_us();
+    uint64_t before = pal_os_get_us();
+    pal_os_sleep_ms(10);  /* mock 立即返回，无真实等待 */
+    uint64_t after = pal_os_get_us();
     /* SSOT 红线：调用前后时钟完全相同 */
     TEST_ASSERT_EQUAL_UINT64(before, after);
 }
 
 void test_delay_us_does_NOT_advance_clock(void) {
-    uint64_t before = pal_get_us();
-    pal_delay_us(500);  /* mock 立即返回 */
-    uint64_t after = pal_get_us();
+    uint64_t before = pal_os_get_us();
+    pal_os_busy_wait_us(500);  /* mock 立即返回 */
+    uint64_t after = pal_os_get_us();
     TEST_ASSERT_EQUAL_UINT64(before, after);
 }
 

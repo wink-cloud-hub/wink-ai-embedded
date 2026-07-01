@@ -61,7 +61,7 @@ bool pal_gpio_read(wink_pin_t pin) {
              * 志被采样周期内的多次同 pin 调用刷爆。CI 侧由 sequence 与
              * timestamp 区分独立的 bounce 触发。 */
             bool was_in_bounce = ctx->in_bounce;
-            bool result = wink_phys_debounce_step(ctx, ideal, pal_get_us(), bounce_us);
+            bool result = wink_phys_debounce_step(ctx, ideal, pal_os_get_us(), bounce_us);
             if (!was_in_bounce && ctx->in_bounce) {
                 pal_wasm_log_fault(FAULT_TYPE_GPIO_BOUNCE, pin);
             }

@@ -18,7 +18,7 @@
 
 #define TEST_ROUNDS              1000u    /* 测试轮数 */
 #define TEST_TRIGGERS_PER_ROUND  200u     /* 每轮中断触发次数 */
-#define TEST_ENABLE_SYNCHRONIZE  true     /* 是否启用 synchronize()
+#define TEST_ENABLE_SYNCHRONIZE  false    /* 是否启用 synchronize()
                                             * 注释掉再编译，验证 UAF 会发生 */
 
 /* ─────────────────────────────────────────────────────────

@@ -5,11 +5,11 @@
  * 虚拟时钟 SSOT 架构（ADR-0003 决策 3 + ADR-0009 §4.1）：
  *   - `s_virtual_us` 是 wasm 侧的唯一时钟源，启动时为 0；
  *   - 唯一写入入口：`pal_wasm_advance_virtual_clock()`（导出给 JS Worker）；
- *   - 读出入口：`pal_get_us()` / `pal_get_ms()`，纯内存访问、零 JS 调用；
- *   - **架构红线**：`pal_delay_ms/us()` 函数体内禁止调用 `pal_wasm_advance_virtual_clock()`，
+ *   - 读出入口：`pal_os_get_us()` / `pal_os_get_ms()`，纯内存访问、零 JS 调用；
+ *   - **架构红线**：`pal_os_sleep_ms/us()` 函数体内禁止调用 `pal_wasm_advance_virtual_clock()`，
  *     时钟推进完全由 JS Worker 在恢复 wasm 协程前驱动（避免双重步进 / 因果倒置）。
  *
- *   Asyncify 仍负责挂起 `pal_delay_ms/us` 等待 JS 端定时器；恢复时 JS 端先调
+ *   Asyncify 仍负责挂起 `pal_os_sleep_ms/us` 等待 JS 端定时器；恢复时 JS 端先调
  *   `pal_wasm_advance_virtual_clock(elapsed_us)`，再返回控制权给 wasm。
  */
 #include "pal_osal.h"
@@ -57,8 +57,8 @@ void pal_wasm_advance_virtual_clock(uint64_t us) {
     }
 }
 
-uint64_t pal_get_us(void) { return s_virtual_us; }
-uint64_t pal_get_ms(void) { return s_virtual_us / 1000u; }
+uint64_t pal_os_get_us(void) { return s_virtual_us; }
+uint64_t pal_os_get_ms(void) { return s_virtual_us / 1000u; }
 
 /* ─────────────────────────────────────────────────────────
  * 溢出预警 accessor（Wave2 P1 Task 6）。
@@ -83,12 +83,12 @@ uint64_t pal_wasm_get_virtual_clock_us(void) {
  * pal_wasm_advance_virtual_clock()。
  * ───────────────────────────────────────────────────────── */
 
-void pal_delay_ms(uint32_t ms) {
-    js_pal_delay_ms(ms);            /* Asyncify 挂起，由 JS 唤醒；JS 侧负责步进时钟 */
+void pal_os_sleep_ms(uint32_t ms) {
+    js_pal_os_sleep_ms(ms);            /* Asyncify 挂起，由 JS 唤醒；JS 侧负责步进时钟 */
 }
 
-void pal_delay_us(uint32_t us) {
-    js_pal_delay_us(us);
+void pal_os_busy_wait_us(uint32_t us) {
+    js_pal_os_busy_wait_us(us);
 }
 
 /* 单线程 Wasm Worker 沙箱通常无锁竞争，互斥锁退化为无竞争实现 */

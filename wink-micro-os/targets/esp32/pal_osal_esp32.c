@@ -3,7 +3,7 @@
  * @brief ESP32 真机 PAL OSAL 实现（FreeRTOS + ESP-IDF）。
  *
  * ✅ @verified: HARDWARE-SMOKE-PASSED (DevKitC, 2026-06-27)
- *    - pal_get_ms(): monotonic timestamp verified
+ *    - pal_os_get_ms(): monotonic timestamp verified
  *    - pal_watchdog_init(): timeout + reset + reason detection works
  *    - Reset reason: WATCHDOG/PANIC detected by runtime boot check
  * ✅ @verified: HARDWARE-SMOKE-PASSED (DevKitC, 2026-06-28) — ADR-0007 闭环
@@ -45,11 +45,11 @@ typedef struct { int reserved; } portMUX_TYPE;
  * 系统时间与高精度延时
  * ───────────────────────────────────────────────────────── */
 
-void pal_delay_ms(uint32_t ms) {
+void pal_os_sleep_ms(uint32_t ms) {
 #if defined(ESP_PLATFORM)
     extern int esp_rom_printf(const char *fmt, ...);
     if (xPortInIsrContext() == pdTRUE) {
-        esp_rom_printf("WARNING: pal_delay_ms(%lu) called in ISR context! Falling back to busy-wait.\n", (unsigned long)ms);
+        esp_rom_printf("WARNING: pal_os_sleep_ms(%lu) called in ISR context! Falling back to busy-wait.\n", (unsigned long)ms);
         esp_rom_delay_us(ms * 1000ULL);
         return;
     }
@@ -59,7 +59,7 @@ void pal_delay_ms(uint32_t ms) {
 #endif
 }
 
-void pal_delay_us(uint32_t us) {
+void pal_os_busy_wait_us(uint32_t us) {
 #if defined(ESP_PLATFORM)
     esp_rom_delay_us(us);
 #else
@@ -67,7 +67,7 @@ void pal_delay_us(uint32_t us) {
 #endif
 }
 
-uint64_t pal_get_ms(void) {
+uint64_t pal_os_get_ms(void) {
 #if defined(ESP_PLATFORM)
     return esp_timer_get_time() / 1000ULL;
 #else
@@ -75,7 +75,7 @@ uint64_t pal_get_ms(void) {
 #endif
 }
 
-uint64_t pal_get_us(void) {
+uint64_t pal_os_get_us(void) {
 #if defined(ESP_PLATFORM)
     return esp_timer_get_time();
 #else

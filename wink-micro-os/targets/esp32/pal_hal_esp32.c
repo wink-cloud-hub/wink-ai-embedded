@@ -19,7 +19,7 @@
  */
 #include "pal_hal.h"
 #include "pal_irq.h"        /* 统一中断抽象 */
-#include "pal_osal.h"       /* pal_get_us() (used in pal_gpio_pulse_in busy-wait) */
+#include "pal_osal.h"       /* pal_os_get_us() (used in pal_gpio_pulse_in busy-wait) */
 #include "pal_resource.h"
 #include "pal_pwm_router.h"
 #include "pal_debug.h"
@@ -777,21 +777,21 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level,
         return WINK_ERR_INVALID_ARG;
     }
 
-    uint64_t start = pal_get_us();
+    uint64_t start = pal_os_get_us();
     while (pal_gpio_read(pin) != level) {
-        if (pal_get_us() - start > timeout_us) {
+        if (pal_os_get_us() - start > timeout_us) {
             return WINK_ERR_TIMEOUT;
         }
     }
 
-    uint64_t pulse_start = pal_get_us();
+    uint64_t pulse_start = pal_os_get_us();
     while (pal_gpio_read(pin) == level) {
-        if (pal_get_us() - start > timeout_us) {
+        if (pal_os_get_us() - start > timeout_us) {
             return WINK_ERR_TIMEOUT;
         }
     }
 
-    *pulse_us = (uint32_t)(pal_get_us() - pulse_start);
+    *pulse_us = (uint32_t)(pal_os_get_us() - pulse_start);
     return WINK_OK;
 }
 
@@ -1166,9 +1166,9 @@ void pal_irq_synchronize(uint32_t irq_num)
     if (irq_num == ~0U) {
         /* 等待所有中断：逐个检查 32 个逻辑中断 + GPIO 中断 */
         for (uint32_t i = 0; i < 32; i++) {
-            uint64_t start = pal_get_us();
+            uint64_t start = pal_os_get_us();
             while (Atomic_Load_u32(&s_irq_in_flight[i]) > 0) {
-                if (pal_get_us() - start > SYNCHRONIZE_TIMEOUT_US) {
+                if (pal_os_get_us() - start > SYNCHRONIZE_TIMEOUT_US) {
                     ESP_LOGE("pal_irq", "synchronize timeout on irq=%lu",
                              (unsigned long)i);
                     break;
@@ -1177,9 +1177,9 @@ void pal_irq_synchronize(uint32_t irq_num)
         }
         /* GPIO 中断只需要等待禁用的那个，但全量检查也没问题 */
         for (uint32_t i = 0; i < GPIO_NUM_MAX; i++) {
-            uint64_t start = pal_get_us();
+            uint64_t start = pal_os_get_us();
             while (Atomic_Load_u32(&s_gpio_irq_in_flight[i]) > 0) {
-                if (pal_get_us() - start > SYNCHRONIZE_TIMEOUT_US) {
+                if (pal_os_get_us() - start > SYNCHRONIZE_TIMEOUT_US) {
                     ESP_LOGE("pal_irq", "synchronize timeout on gpio=%lu",
                              (unsigned long)i);
                     break;
@@ -1188,9 +1188,9 @@ void pal_irq_synchronize(uint32_t irq_num)
         }
     } else {
         /* 等待单个中断 */
-        uint64_t start = pal_get_us();
+        uint64_t start = pal_os_get_us();
         while (Atomic_Load_u32(&s_irq_in_flight[irq_num]) > 0) {
-            if (pal_get_us() - start > SYNCHRONIZE_TIMEOUT_US) {
+            if (pal_os_get_us() - start > SYNCHRONIZE_TIMEOUT_US) {
                 ESP_LOGE("pal_irq", "synchronize timeout on irq=%lu",
                          (unsigned long)irq_num);
                 break;

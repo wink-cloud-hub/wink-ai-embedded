@@ -21,22 +21,22 @@ extern "C" {
 /**
  * @brief 系统毫秒延时 (主动阻塞让出 CPU 调度)
  */
-void pal_delay_ms(uint32_t ms);
+void pal_os_sleep_ms(uint32_t ms);
 
 /**
  * @brief 系统微秒延时 (高精度短等待)
  */
-void pal_delay_us(uint32_t us);
+void pal_os_busy_wait_us(uint32_t us);
 
 /**
  * @brief 获取系统从启动至今的毫秒数
  */
-uint64_t pal_get_ms(void);
+uint64_t pal_os_get_ms(void);
 
 /**
  * @brief 获取系统从启动至今的微秒数 (用于高精度时序测算)
  */
-uint64_t pal_get_us(void);
+uint64_t pal_os_get_us(void);
 
 
 /* ========================================================================== */

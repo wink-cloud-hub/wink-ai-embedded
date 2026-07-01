@@ -119,7 +119,7 @@ void test_boot_no_safe_lock_on_power_on_reset(void) {
 }
 
 static void mock_loop_wcet_exceeded(void) {
-    pal_delay_us(6000);   /* 6000us = 6ms, 超过了 10ms tick 的一半 (5ms) */
+    pal_os_busy_wait_us(6000);   /* 6000us = 6ms, 超过了 10ms tick 的一半 (5ms) */
 }
 
 void test_wcet_exceeded_logs_warning_in_trace(void) {
@@ -130,7 +130,7 @@ void test_wcet_exceeded_logs_warning_in_trace(void) {
 }
 
 static void mock_loop_wcet_normal(void) {
-    pal_delay_us(2000);   /* 2000us = 2ms, 低于限额 */
+    pal_os_busy_wait_us(2000);   /* 2000us = 2ms, 低于限额 */
 }
 
 void test_wcet_normal_does_not_log_warning_in_trace(void) {

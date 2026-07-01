@@ -19,22 +19,22 @@
 extern uint64_t pal_bsp_get_us(void);
 extern void pal_bsp_delay_us(uint32_t us);
 
-void pal_delay_ms(uint32_t ms) {
+void pal_os_sleep_ms(uint32_t ms) {
     while (ms > 0) {
         pal_bsp_delay_us(1000);
         ms--;
     }
 }
 
-void pal_delay_us(uint32_t us) {
+void pal_os_busy_wait_us(uint32_t us) {
     pal_bsp_delay_us(us);
 }
 
-uint64_t pal_get_ms(void) {
+uint64_t pal_os_get_ms(void) {
     return pal_bsp_get_us() / 1000U;
 }
 
-uint64_t pal_get_us(void) {
+uint64_t pal_os_get_us(void) {
     return pal_bsp_get_us();
 }
 

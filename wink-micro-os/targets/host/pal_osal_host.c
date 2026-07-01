@@ -136,10 +136,10 @@ bool host_gpio_read_debounced(uint16_t pin, bool *out_level) {
 }
 
 /* ---- PAL OSAL ---- */
-void pal_delay_ms(uint32_t ms) { s_time_us += (uint64_t)ms * 1000u; }
-void pal_delay_us(uint32_t us) { s_time_us += us; }
-uint64_t pal_get_ms(void) { return s_time_us / 1000u; }
-uint64_t pal_get_us(void) { return s_time_us; }
+void pal_os_sleep_ms(uint32_t ms) { s_time_us += (uint64_t)ms * 1000u; }
+void pal_os_busy_wait_us(uint32_t us) { s_time_us += us; }
+uint64_t pal_os_get_ms(void) { return s_time_us / 1000u; }
+uint64_t pal_os_get_us(void) { return s_time_us; }
 
 pal_mutex_t pal_mutex_create(void) { return (pal_mutex_t)1; }
 wink_status_t pal_mutex_lock(pal_mutex_t m, uint32_t to) {
