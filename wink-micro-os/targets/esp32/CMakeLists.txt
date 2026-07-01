@@ -24,6 +24,7 @@ if(ESP_PLATFORM)
         SRCS
             # ESP32 PAL 实现
             pal_hal_esp32.c
+            pal_hal_esp32_gpio.c
             pal_irq_esp32.c
             pal_hal_esp32_rmt.c
             pal_hal_ultrasonic.c
@@ -92,6 +93,7 @@ elseif(TARGET_PLATFORM STREQUAL "esp32")
     # 非 ESP-IDF 环境：仅声明源文件（供静态分析）
     set(ESP32_PAL_SOURCES
         pal_hal_esp32.c
+        pal_hal_esp32_gpio.c
         pal_irq_esp32.c
         pal_hal_esp32_rmt.c
         pal_hal_ultrasonic.c
