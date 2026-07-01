@@ -1,5 +1,16 @@
 # DevKitC 冒烟测试示例（S1-S8 真机全链路，host e2e 验证代码结构）
 
+# ── wasm target 硬拦截（2026-07-01 wasm simulator repair plan Task 1.3）──
+# 本 sample 面向 ESP32 裸板真机验证：test_devkitc_smoke_e2e.c 引 host_test_ctrl.h
+# （host-only），业务逻辑本身依赖 ESP32 GPIO 的中断行为。wasm target 无意义，
+# 直接硬报错拒绝 configure，比 return() 静默跳过更能让调用方明确知道选错了 App。
+if(EMSCRIPTEN)
+    message(FATAL_ERROR
+        "Sample 'devkitc_smoke' is a physical hardware smoke test and is not "
+        "supported on the WebAssembly simulator target. Use "
+        "-DWINK_APP_DIR=<...>/samples/avoidance_car (or oled_dashboard) for wasm.")
+endif()
+
 set(APP_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/device_tree.c
     ${CMAKE_CURRENT_SOURCE_DIR}/app_callbacks.c)
