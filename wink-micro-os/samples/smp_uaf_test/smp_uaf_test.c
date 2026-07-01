@@ -40,6 +40,9 @@ static volatile uint32_t s_uaf_magic_value = 0;
 /* 全局触发完成标记（用于多核触发任务同步） */
 static volatile bool s_trigger_done = false;
 
+/* 测试中断在飞计数（测试内部跟踪，供 UAF 碰撞同步使用） */
+static volatile uint32_t s_test_irq_in_flight = 0;
+
 /* 全局资源指针（SMP 测试关键：ISR 通过这个指针访问资源）
  * 每轮测试更新这个指针，避免频繁注册/注销中断导致资源耗尽
  */
@@ -62,6 +65,7 @@ static volatile test_resource_t *s_slow_isr_resource = NULL;
  */
 static void test_uaf_isr(void *arg) {
     (void)arg;  /* 不使用注册时传入 of arg，改用全局指针 */
+    __atomic_add_fetch(&s_test_irq_in_flight, 1, __ATOMIC_SEQ_CST);
     volatile test_resource_t *res = s_current_resource;
 
     /* ✅ 放大 race window：故意放慢 ISR 执行
@@ -76,12 +80,14 @@ static void test_uaf_isr(void *arg) {
     if (res != NULL && res->magic != TEST_SMP_UAF_MAGIC) {
         s_uaf_detected = true;
         s_uaf_magic_value = res->magic;
+        __atomic_sub_fetch(&s_test_irq_in_flight, 1, __ATOMIC_SEQ_CST);
         return;
     }
 
     if (res != NULL) {
         res->isr_counter++;
     }
+    __atomic_sub_fetch(&s_test_irq_in_flight, 1, __ATOMIC_SEQ_CST);
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -102,12 +108,10 @@ static void trigger_task_func(void *arg) {
 
         // 收到通知后，在 CPU 1 上并发触发 50 次软件中断
         for (int i = 0; i < 50; i++) {
-            if (i == 49) {
-                s_trigger_done = true;
-            }
             pal_irq_set_pending(TEST_IRQ_UAF);
             pal_delay_us(20);
         }
+        s_trigger_done = true;
     }
 }
 
@@ -220,11 +224,24 @@ void test_smp_uaf_run(uint32_t rounds,
         /* ── Step 3: 持续触发中断（让 ISR 一直在飞） ── */
 #ifdef ESP_PLATFORM
         s_trigger_done = false;
+        __atomic_store_n(&s_test_irq_in_flight, 0, __ATOMIC_SEQ_CST);
         // 发送 Task Notification 通知 CPU 1 上的任务开始触发中断
         xTaskNotifyGive(s_trigger_task_handle);
-        // 等待 CPU 1 上的触发任务完全结束（取代不靠谱的 pal_delay_ms(2) 盲等）
-        while (!s_trigger_done) {
-            pal_delay_us(10);
+        
+        if (enable_synchronize) {
+            // 启用同步：安全等待触发任务完全结束
+            while (!s_trigger_done) {
+                pal_delay_us(10);
+            }
+        } else {
+            // 禁用同步：故意等待检测到有在飞的中断开始运行，然后立即释放，制造最强的跨核碰撞！
+            uint64_t wait_start = pal_get_us();
+            while (__atomic_load_n(&s_test_irq_in_flight, __ATOMIC_SEQ_CST) == 0) {
+                if (pal_get_us() - wait_start > 10000) { /* 10ms 超时 */
+                    break;
+                }
+                pal_delay_us(5);
+            }
         }
 #else
         for (uint32_t i = 0; i < triggers_per_round; i++) {
