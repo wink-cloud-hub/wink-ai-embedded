@@ -44,7 +44,7 @@ static void wink_runtime_task(void *arg) {
     const wink_app_callbacks_t *app = wink_app_get_callbacks();
 
     printf("Wink-Micro-OS ESP32 Runtime started\n");
-    printf("  Reset reason: %d\n", (int)pal_get_reset_reason());
+    printf("  Reset reason: %d\n", (int)pal_os_get_reset_reason());
 
     /* 标准入口 wdk_runtime_run(callbacks, max_ticks):
      * - 内部先执行 callbacks->init()

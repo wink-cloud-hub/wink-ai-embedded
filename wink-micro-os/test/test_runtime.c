@@ -76,8 +76,8 @@ void test_fault_path_safe_off_before_on_fault(void) {
 /* 连续异常复位达阈值(3)才锁死；锁死路径 trace 8001 仅一次、safe-off 一次（去重）*/
 void test_boot_safe_lock_after_threshold_consecutive_abnormal(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_actuator_register(mock_actuator_off, NULL));
-    pal_set_abnormal_boot_count(WINK_BOOT_LOCK_THRESHOLD - 1);  /* 已累计 2 次异常复位 */
-    sim_set_reset_reason(PAL_RESET_REASON_WATCHDOG);            /* 第 3 次 → 锁死 */
+    pal_os_set_abnormal_boot_count(WINK_BOOT_LOCK_THRESHOLD - 1);  /* 已累计 2 次异常复位 */
+    sim_set_reset_reason(PAL_OS_RESET_REASON_WATCHDOG);            /* 第 3 次 → 锁死 */
     wink_app_callbacks_t cb = { mock_init, mock_loop, mock_on_fault };
     wink_status_t s = wink_runtime_run(&cb, 1);
     TEST_ASSERT_EQUAL_INT(WINK_ERR_LOCKED, s);
@@ -89,29 +89,29 @@ void test_boot_safe_lock_after_threshold_consecutive_abnormal(void) {
 
 /* 单次异常复位（计数 0→1 < 阈值）放行恢复，init/loop 照跑 */
 void test_boot_single_watchdog_recovers(void) {
-    pal_set_abnormal_boot_count(0);
-    sim_set_reset_reason(PAL_RESET_REASON_WATCHDOG);
+    pal_os_set_abnormal_boot_count(0);
+    sim_set_reset_reason(PAL_OS_RESET_REASON_WATCHDOG);
     wink_app_callbacks_t cb = { mock_init, mock_loop, mock_on_fault };
     wink_status_t s = wink_runtime_run(&cb, 5);   /* 5 tick < 健康里程碑，不清零 */
     TEST_ASSERT_EQUAL_INT(WINK_OK, s);
     TEST_ASSERT_EQUAL_INT(1, s_init_calls);              /* 恢复：init 执行 */
     TEST_ASSERT_EQUAL_INT(0, s_safe_off_calls);          /* 未锁死，不 safe-off */
-    TEST_ASSERT_EQUAL_UINT32(1, pal_get_abnormal_boot_count());  /* 计数累加到 1 */
+    TEST_ASSERT_EQUAL_UINT32(1, pal_os_get_abnormal_boot_count());  /* 计数累加到 1 */
 }
 
 /* 恢复后跑满健康里程碑(200 tick) → 异常复位计数清零（证明已越过崩溃点）*/
 void test_boot_count_clears_after_healthy_milestone(void) {
-    pal_set_abnormal_boot_count(1);
-    sim_set_reset_reason(PAL_RESET_REASON_WATCHDOG);
+    pal_os_set_abnormal_boot_count(1);
+    sim_set_reset_reason(PAL_OS_RESET_REASON_WATCHDOG);
     wink_app_callbacks_t cb = { mock_init, mock_loop, mock_on_fault };
     wink_status_t s = wink_runtime_run(&cb, WINK_BOOT_HEALTHY_TICKS + 5);
     TEST_ASSERT_EQUAL_INT(WINK_OK, s);
-    TEST_ASSERT_EQUAL_UINT32(0, pal_get_abnormal_boot_count());  /* 跑过里程碑 → 清零 */
+    TEST_ASSERT_EQUAL_UINT32(0, pal_os_get_abnormal_boot_count());  /* 跑过里程碑 → 清零 */
 }
 
 void test_boot_no_safe_lock_on_power_on_reset(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_actuator_register(mock_actuator_off, NULL));
-    sim_set_reset_reason(PAL_RESET_REASON_POWER_ON);
+    sim_set_reset_reason(PAL_OS_RESET_REASON_POWER_ON);
     wink_app_callbacks_t cb = { mock_init, mock_loop, mock_on_fault };
     wink_status_t s = wink_runtime_run(&cb, 1);
     TEST_ASSERT_EQUAL_INT(WINK_OK, s);

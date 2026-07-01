@@ -77,7 +77,7 @@ void wink_app_delay_ms(uint32_t ms) {
 }
 
 wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t max_ticks) {
-    pal_reset_reason_t rr;
+    pal_os_reset_reason_t rr;
     uint32_t tick;
 
     if (callbacks == NULL) {
@@ -97,12 +97,12 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
      *  Counter also clears at the healthy milestone (init done + HEALTHY_TICKS stable
      *  ticks) so a later isolated glitch doesn't accumulate toward a false lock.
      * ============================================================ */
-    rr = pal_get_reset_reason();
-    if (rr == PAL_RESET_REASON_POWER_ON) {
-        pal_set_abnormal_boot_count(0);
-    } else if (rr == PAL_RESET_REASON_WATCHDOG || rr == PAL_RESET_REASON_PANIC) {
-        uint32_t abnormal = pal_get_abnormal_boot_count() + 1u;
-        pal_set_abnormal_boot_count(abnormal);
+    rr = pal_os_get_reset_reason();
+    if (rr == PAL_OS_RESET_REASON_POWER_ON) {
+        pal_os_set_abnormal_boot_count(0);
+    } else if (rr == PAL_OS_RESET_REASON_WATCHDOG || rr == PAL_OS_RESET_REASON_PANIC) {
+        uint32_t abnormal = pal_os_get_abnormal_boot_count() + 1u;
+        pal_os_set_abnormal_boot_count(abnormal);
         if (abnormal >= WINK_BOOT_LOCK_THRESHOLD) {
             /* Death loop: lock out user code. wink_runtime_fault traces 8001 once + safe-off + on_fault. */
             wink_runtime_fault(callbacks, WINK_FAULT_BOOT_AFTER_RESET);
@@ -152,7 +152,7 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
          * proves the prior crash path is past; clear the abnormal-reset counter so a
          * later isolated glitch doesn't accumulate toward a false lock. */
         if (tick == WINK_BOOT_HEALTHY_TICKS) {
-            pal_set_abnormal_boot_count(0);
+            pal_os_set_abnormal_boot_count(0);
         }
 
         wink_app_delay_ms(WINK_RUNTIME_TICK_MS);

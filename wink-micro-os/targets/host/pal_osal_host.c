@@ -16,7 +16,7 @@ static uint64_t s_echo_rise_us = 0;
 static uint64_t s_echo_high_us = 0;
 static uint16_t s_echo_pin = 0xFFFF;
 static float s_pwm_duty[8];
-static pal_reset_reason_t s_reset_reason = PAL_RESET_REASON_POWER_ON;   /* Phase 5：可配置复位原因（测试注入） */
+static pal_os_reset_reason_t s_reset_reason = PAL_OS_RESET_REASON_POWER_ON;   /* Phase 5：可配置复位原因（测试注入） */
 static uint32_t s_abnormal_boot_count = 0;   /* ADR-0010：连续异常复位计数（host 可注入，供单测）*/
 
 /* Phase 2：host I2C 事务捕获状态 */
@@ -71,7 +71,7 @@ uint32_t sim_i2c_transfer_count(void) { return host_i2c_transfer_count(); }
 void sim_reset_time(void) {
     s_time_us = 0; s_echo_rise_us = 0; s_echo_high_us = 0; s_echo_pin = 0xFFFF;
     memset(s_pwm_duty, 0, sizeof(s_pwm_duty));
-    s_reset_reason = PAL_RESET_REASON_POWER_ON;
+    s_reset_reason = PAL_OS_RESET_REASON_POWER_ON;
     s_abnormal_boot_count = 0;
     s_last_i2c_port = 0; s_last_i2c_addr = 0;
     s_last_i2c_write_len = 0; s_i2c_transfer_count = 0;
@@ -85,7 +85,7 @@ float sim_last_pwm_duty(uint8_t channel) {
     if (channel >= 8) return -1.0f;
     return s_pwm_duty[channel];
 }
-void sim_set_reset_reason(pal_reset_reason_t reason) { s_reset_reason = reason; }
+void sim_set_reset_reason(pal_os_reset_reason_t reason) { s_reset_reason = reason; }
 
 /* ---- ADR-0009 Wave1：GPIO 理想注入 API */
 void sim_set_gpio_ideal(uint16_t pin, bool level) {
@@ -141,32 +141,32 @@ void pal_os_busy_wait_us(uint32_t us) { s_time_us += us; }
 uint64_t pal_os_get_ms(void) { return s_time_us / 1000u; }
 uint64_t pal_os_get_us(void) { return s_time_us; }
 
-pal_mutex_t pal_mutex_create(void) { return (pal_mutex_t)1; }
-wink_status_t pal_mutex_lock(pal_mutex_t m, uint32_t to) {
+pal_os_mutex_t pal_os_mutex_create(void) { return (pal_os_mutex_t)1; }
+wink_status_t pal_os_mutex_lock(pal_os_mutex_t m, uint32_t to) {
     if (m == NULL) return WINK_ERR_INVALID_ARG;
     (void)to;
     return WINK_OK;
 }
-wink_status_t pal_mutex_unlock(pal_mutex_t m) {
+wink_status_t pal_os_mutex_unlock(pal_os_mutex_t m) {
     if (m == NULL) return WINK_ERR_INVALID_ARG;
     return WINK_OK;
 }
-void pal_mutex_destroy(pal_mutex_t m) { (void)m; }
+void pal_os_mutex_destroy(pal_os_mutex_t m) { (void)m; }
 
 /* ---- Phase 5 Task 5-4: WDT / reset reason（host：WDT 为无操作 stub；reset reason 可配置供测试） ---- */
-pal_reset_reason_t pal_get_reset_reason(void) { return s_reset_reason; }
-WINK_WARN_UNUSED_RESULT wink_status_t pal_watchdog_init(uint32_t timeout_ms) { (void)timeout_ms; return WINK_OK; }
-WINK_WARN_UNUSED_RESULT wink_status_t pal_watchdog_feed(void) { return WINK_OK; }
+pal_os_reset_reason_t pal_os_get_reset_reason(void) { return s_reset_reason; }
+WINK_WARN_UNUSED_RESULT wink_status_t pal_os_wdt_init(uint32_t timeout_ms) { (void)timeout_ms; return WINK_OK; }
+WINK_WARN_UNUSED_RESULT wink_status_t pal_os_wdt_feed(void) { return WINK_OK; }
 
 /* ADR-0010：连续异常复位计数（host 可注入静态，供单测模拟 N 次异常复位）*/
-uint32_t pal_get_abnormal_boot_count(void) { return s_abnormal_boot_count; }
-void pal_set_abnormal_boot_count(uint32_t count) { s_abnormal_boot_count = count; }
+uint32_t pal_os_get_abnormal_boot_count(void) { return s_abnormal_boot_count; }
+void pal_os_set_abnormal_boot_count(uint32_t count) { s_abnormal_boot_count = count; }
 
-uint32_t pal_critical_enter(void) {
+uint32_t pal_os_critical_enter(void) {
     return 0;
 }
 
-void pal_critical_exit(uint32_t key) {
+void pal_os_critical_exit(uint32_t key) {
     (void)key;
 }
 
@@ -174,14 +174,14 @@ void pal_critical_exit(uint32_t key) {
  * Task 创建（host target 降级实现，同步调用）
  * ───────────────────────────────────────────────────────── */
 
-wink_status_t pal_task_create(
+wink_status_t pal_os_task_create(
     void (*func)(void* arg),
     const char* name,
     uint32_t stack_depth,
     void* arg,
     int32_t priority,
-    pal_core_id_t core_id,
-    pal_task_handle_t* task_handle
+    pal_os_core_id_t core_id,
+    pal_os_task_handle_t* task_handle
 ) {
     /* Host target: single-threaded, synchronous execution for tests */
     (void)name; (void)stack_depth; (void)priority;
@@ -191,7 +191,7 @@ wink_status_t pal_task_create(
     return WINK_OK;
 }
 
-void pal_task_delete(pal_task_handle_t task_handle) {
+void pal_os_task_delete(pal_os_task_handle_t task_handle) {
     (void)task_handle;  /* single-threaded: no-op */
 }
 
@@ -199,22 +199,22 @@ void pal_task_delete(pal_task_handle_t task_handle) {
  * 环形缓冲区 (host 纯内存实现，单线程无并发)
  * ───────────────────────────────────────────────────────── */
 
-struct pal_ringbuf {
+struct pal_os_ringbuf {
     uint8_t* buffer;
     uint32_t size;
     volatile uint32_t head;
     volatile uint32_t tail;
 };
 
-pal_ringbuf_handle_t pal_ringbuf_create(uint32_t size) {
-    struct pal_ringbuf* rb;
+pal_os_ringbuf_handle_t pal_os_ringbuf_create(uint32_t size) {
+    struct pal_os_ringbuf* rb;
 
     /* Size must be power of 2 (API contract) */
     if ((size & (size - 1)) != 0) {
         return NULL;
     }
 
-    rb = malloc(sizeof(struct pal_ringbuf));
+    rb = malloc(sizeof(struct pal_os_ringbuf));
     if (rb == NULL) {
         return NULL;
     }
@@ -232,8 +232,8 @@ pal_ringbuf_handle_t pal_ringbuf_create(uint32_t size) {
     return rb;
 }
 
-wink_status_t pal_ringbuf_push(
-    pal_ringbuf_handle_t rb,
+wink_status_t pal_os_ringbuf_push(
+    pal_os_ringbuf_handle_t rb,
     const void* data,
     uint32_t size
 ) {
@@ -244,7 +244,7 @@ wink_status_t pal_ringbuf_push(
         return WINK_ERR_INVALID_ARG;
     }
 
-    if (pal_ringbuf_used(rb) + size > rb->size) {
+    if (pal_os_ringbuf_used(rb) + size > rb->size) {
         return WINK_ERR_FULL;
     }
 
@@ -256,8 +256,8 @@ wink_status_t pal_ringbuf_push(
     return WINK_OK;
 }
 
-wink_status_t pal_ringbuf_pop(
-    pal_ringbuf_handle_t rb,
+wink_status_t pal_os_ringbuf_pop(
+    pal_os_ringbuf_handle_t rb,
     void* data,
     uint32_t size
 ) {
@@ -268,7 +268,7 @@ wink_status_t pal_ringbuf_pop(
         return WINK_ERR_INVALID_ARG;
     }
 
-    if (pal_ringbuf_used(rb) < size) {
+    if (pal_os_ringbuf_used(rb) < size) {
         return WINK_ERR_EMPTY;
     }
 
@@ -280,14 +280,14 @@ wink_status_t pal_ringbuf_pop(
     return WINK_OK;
 }
 
-uint32_t pal_ringbuf_used(pal_ringbuf_handle_t rb) {
+uint32_t pal_os_ringbuf_used(pal_os_ringbuf_handle_t rb) {
     if (rb == NULL) {
         return 0;
     }
     return rb->head - rb->tail;
 }
 
-void pal_ringbuf_destroy(pal_ringbuf_handle_t rb) {
+void pal_os_ringbuf_destroy(pal_os_ringbuf_handle_t rb) {
     if (rb == NULL) {
         return;
     }
