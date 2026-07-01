@@ -5,7 +5,9 @@
 #include "wink_status.h"
 #include "pal_irq.h"
 #include "pal_hal.h"
+#include "pal_shared_chain.h"  /* PLAN-20260701-PAL-TARGET-P1-MAINT Task 1: 算法层单测 */
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 /* Host 平台专用测试接口（仅在 Host 构建可用） */
@@ -644,6 +646,58 @@ void test_irq_synchronize_no_crash(void)
 }
 
 /* ─────────────────────────────────────────────────────────
+ * Test Group 9: pal_shared_chain 算法层单测（PLAN-20260701-PAL-TARGET-P1-MAINT Task 1）
+ * ─────────────────────────────────────────────────────────
+ * 直接对 pal_shared_chain_append/dispatch 做算法级测试，不依赖
+ * pal_host_trigger_logical_interrupt 路径，也不依赖 pal_irq_enable/register。
+ * 单线程简化路径（ops == NULL）即可覆盖 host / wasm 语义。 */
+
+void test_shared_chain_append_full(void)
+{
+    pal_shared_chain_t *slot = NULL;
+    bool first = false;
+    for (int i = 0; i < PAL_SHARED_CHAIN_MAX_HANDLERS; i++) {
+        TEST_ASSERT_EQUAL_INT(WINK_OK,
+            pal_shared_chain_append(&slot, NULL, /*irq*/ 99,
+                                    test_shared_handler1, NULL, &first));
+        /* 首次追加应返回 became_first=true，之后应为 false */
+        TEST_ASSERT_EQUAL_INT((i == 0) ? 1 : 0, first ? 1 : 0);
+    }
+    /* 第 5 次应满 */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_NO_MEM,
+        pal_shared_chain_append(&slot, NULL, 99,
+                                test_shared_handler1, NULL, &first));
+    free(slot);
+}
+
+void test_shared_chain_dispatch_order(void)
+{
+    pal_shared_chain_t *slot = NULL;
+    bool first = false;
+    s_shared_handler1_count = 0;
+    s_shared_handler2_count = 0;
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+        pal_shared_chain_append(&slot, NULL, 100,
+                                test_shared_handler1, NULL, &first));
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+        pal_shared_chain_append(&slot, NULL, 100,
+                                test_shared_handler2, NULL, &first));
+    uint32_t claimed = pal_shared_chain_dispatch(slot);
+    /* v2.0 语义：两个 handler 都被调用，不因第一个返回 true 而提前终止 */
+    TEST_ASSERT_EQUAL_UINT32(1, s_shared_handler1_count);
+    TEST_ASSERT_EQUAL_UINT32(1, s_shared_handler2_count);
+    /* 两个 handler 都 return true → claimed == 2 */
+    TEST_ASSERT_EQUAL_UINT32(2, claimed);
+    free(slot);
+}
+
+void test_shared_chain_free_null_safe(void)
+{
+    /* free(NULL) 已由 stdlib 保证；本用例只是把 dispatch(NULL) 语义固化 */
+    TEST_ASSERT_EQUAL_UINT32(0, pal_shared_chain_dispatch(NULL));
+}
+
+/* ─────────────────────────────────────────────────────────
  * Main: 运行所有测试
  * ───────────────────────────────────────────────────────── */
 
@@ -699,6 +753,11 @@ int main(void)
 
     /* Group 8: synchronize API */
     RUN_TEST(test_irq_synchronize_no_crash);
+
+    /* Group 9: pal_shared_chain 算法层单测（PLAN-20260701-PAL-TARGET-P1-MAINT Task 1） */
+    RUN_TEST(test_shared_chain_append_full);
+    RUN_TEST(test_shared_chain_dispatch_order);
+    RUN_TEST(test_shared_chain_free_null_safe);
 
     return UNITY_END();
 }

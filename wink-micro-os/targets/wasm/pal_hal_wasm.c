@@ -22,6 +22,7 @@
 #include "wasm_bridge.h"
 #include "pal_wasm_internal.h"
 #include "wink_sim_physical.h"
+#include "pal_shared_chain.h"  /* target-private RCU chain algorithm (PLAN-20260701-PAL-TARGET-P1-MAINT Task 1) */
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -300,22 +301,17 @@ void pal_wasm_dispatch_pending_irqs(void)
 
 /* ─────────────────────────────────────────────────────────
  * 共享中断机制（WASM 仿真实现）
- * ───────────────────────────────────────────────────────── */
+ * ─────────────────────────────────────────────────────────
+ * PLAN-20260701-PAL-TARGET-P1-MAINT Task 1：责任链数据结构与算法层已下沉
+ * 到 `targets/common/src/pal_shared_chain.c`。wasm 单线程仿真使用简化路径
+ * （同步 ops 全 NULL），语义与 host 一致（且与 ESP32 SMP 版本 R-1 兼容）。 */
 
-#define WASM_MAX_SHARED_HANDLERS  4
 #define WASM_MAX_SHARED_IRQS      16
 
-typedef struct {
-    pal_irq_shared_handler_t handler;
-    void                     *arg;
-} wasm_shared_entry_t;
+static pal_shared_chain_t *s_wasm_shared_chain[WASM_MAX_SHARED_IRQS] = {NULL};
 
-typedef struct {
-    wasm_shared_entry_t entries[WASM_MAX_SHARED_HANDLERS];
-    uint8_t count;
-} wasm_shared_chain_t;
-
-static wasm_shared_chain_t *s_wasm_shared_chain[WASM_MAX_SHARED_IRQS] = {NULL};
+/* 单线程：无 mux、无 synchronize；ops 传 NULL 即走算法层简化路径。 */
+#define S_WASM_SHARED_SYNC_OPS  NULL
 
 /* 共享中断 wrapper（WASM 仿真版，按注册顺序调用所有 handler） */
 static void PAL_ISR wasm_shared_irq_wrapper(void *arg)
@@ -325,17 +321,8 @@ static void PAL_ISR wasm_shared_irq_wrapper(void *arg)
         return;
     }
 
-    wasm_shared_chain_t *chain = s_wasm_shared_chain[irq_num];
-    if (chain == NULL) {
-        return;
-    }
-
     /* ✅ v2.0 语义：始终遍历调用所有 handler，不提前终止 */
-    for (uint8_t i = 0; i < chain->count; i++) {
-        if (chain->entries[i].handler != NULL) {
-            (void)chain->entries[i].handler(chain->entries[i].arg);
-        }
-    }
+    (void)pal_shared_chain_dispatch(s_wasm_shared_chain[irq_num]);
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -428,44 +415,24 @@ wink_status_t pal_irq_shared_register(uint32_t irq_num, pal_irq_prio_t prio,
         return WINK_ERR_INVALID_ARG;
     }
 
-    wasm_shared_chain_t *old_chain = s_wasm_shared_chain[irq_num];
-    wasm_shared_chain_t *new_chain = NULL;
-
-    if (old_chain == NULL) {
-        /* 第一个 handler：创建新链 */
-        new_chain = malloc(sizeof(wasm_shared_chain_t));
-        if (new_chain == NULL) {
-            return WINK_ERR_NO_MEM;
-        }
-        memset(new_chain, 0, sizeof(wasm_shared_chain_t));
-    } else {
-        /* 已有 handler：复制旧链，添加新 handler */
-        if (old_chain->count >= WASM_MAX_SHARED_HANDLERS) {
-            return WINK_ERR_NO_MEM;
-        }
-        new_chain = malloc(sizeof(wasm_shared_chain_t));
-        if (new_chain == NULL) {
-            return WINK_ERR_NO_MEM;
-        }
-        memcpy(new_chain, old_chain, sizeof(wasm_shared_chain_t));
+    /* ✅ 复用 targets/common 算法层；wasm 单线程 ops=NULL 走简化路径 */
+    bool became_first = false;
+    wink_status_t st = pal_shared_chain_append(
+        &s_wasm_shared_chain[irq_num],
+        S_WASM_SHARED_SYNC_OPS,
+        irq_num,
+        handler,
+        arg,
+        &became_first);
+    if (wink_status_is_error(st)) {
+        return st;
     }
 
-    /* 追加新 handler */
-    uint8_t idx = new_chain->count;
-    new_chain->entries[idx].handler = handler;
-    new_chain->entries[idx].arg = arg;
-    new_chain->count++;
-
-    /* 原子替换指针 */
-    s_wasm_shared_chain[irq_num] = new_chain;
-    free(old_chain);
-
-    /* 如果是第一个 handler，注册共享 wrapper */
-    if (new_chain->count == 1) {
+    /* 首个 handler：注册共享 wrapper */
+    if (became_first) {
         return pal_irq_enable(irq_num, prio, wasm_shared_irq_wrapper,
                               (void *)(uintptr_t)irq_num);
     }
-
     return WINK_OK;
 }
 
