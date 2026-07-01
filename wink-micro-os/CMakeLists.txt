@@ -90,24 +90,65 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
     # ADR-0009 Wave 2：算法库 wink_sim_physical.c 在子目录里追加，本顶层无需关心具体源文件。
     add_subdirectory(targets/wasm)
 
+    # §6.1 约束3：标准 App 注入接口。未指定则默认 samples/avoidance_car。
+    # App CMakeLists 在 EMSCRIPTEN 分支下只 set(WINK_APP_SOURCES ... PARENT_SCOPE)
+    # 即 return()，不定义 host e2e target（那些依赖 pal_host / test_*_e2e.c）。
+    if(NOT DEFINED WINK_APP_DIR)
+        set(WINK_APP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/samples/avoidance_car)
+    endif()
+    message(STATUS "WINK_APP_DIR = ${WINK_APP_DIR}")
+    add_subdirectory(${WINK_APP_DIR} ${CMAKE_BINARY_DIR}/app_build)
+
+    # 兜底契约：hw-only sample 已用 FATAL_ERROR 硬拦截；此处覆盖第三方 App
+    # 忘记 set(WINK_APP_SOURCES ... PARENT_SCOPE) 的场景，给出可诊断的错误。
+    if(NOT DEFINED WINK_APP_SOURCES OR "${WINK_APP_SOURCES}" STREQUAL "")
+        message(FATAL_ERROR
+            "WINK_APP_SOURCES not exported from ${WINK_APP_DIR}. "
+            "Its CMakeLists.txt must call set(WINK_APP_SOURCES ... PARENT_SCOPE) "
+            "before any EMSCRIPTEN return(). See samples/avoidance_car/CMakeLists.txt.")
+    endif()
+
     add_executable(wink_simulator
         ${PAL_WASM_SOURCES}
         ${WASM_ENTRY_SOURCE}
+        ${WINK_APP_SOURCES}                # ← App 注入（Task 1.2）
         pal/src/pal_pwm_router.c
         pal/src/wink_dev_config.c)
-    target_link_libraries(wink_simulator PRIVATE pal dal)
-    target_include_directories(wink_simulator PRIVATE ${WASM_EXTRA_INCLUDE_DIRS})
+    # 契约断言：wink_simulator 必须 link wink_runtime（否则 wasm_entry.c 里的
+    # wink_app.h 找不到、wink_runtime_run 也 undef）。link 顺序无关紧要，这里
+    # 显式列出便于人肉 grep 时定位。
+    target_link_libraries(wink_simulator PRIVATE pal dal wink_runtime)
+    target_include_directories(wink_simulator PRIVATE
+        ${WASM_EXTRA_INCLUDE_DIRS}
+        # App 本身的 header（如 device_tree.h）
+        ${WINK_APP_DIR}
+        # DAL 子分类头（供 App 直接 #include "dal_servo.h" 等）
+        ${CMAKE_CURRENT_SOURCE_DIR}/dal/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/dal/include/input
+        ${CMAKE_CURRENT_SOURCE_DIR}/dal/include/output
+        ${CMAKE_CURRENT_SOURCE_DIR}/dal/include/actuator
+        ${CMAKE_CURRENT_SOURCE_DIR}/dal/include/display
+        ${CMAKE_CURRENT_SOURCE_DIR}/dal/include/sensor
+        # 生成的 wink_config.h（App device_tree.c 可能 #include）
+        ${WINK_CONFIG_DIR})
     target_link_options(wink_simulator PRIVATE
-        "-s" "ASYNCIFY=1"
-        "-s" "ASYNCIFY_IMPORTS=['js_pal_os_sleep_ms','js_pal_os_busy_wait_us']"
-        "-s" "EXPORTED_FUNCTIONS=['_main']"                  # _trigger_wasm_interrupt 已移除（方案 C：Poll 模型消除 Push 导出，见 wasm_entry.c）
-        "-s" "EXPORTED_RUNTIME_METHODS=['ccall','cwrap']"
-        "-s" "MODULARIZE=1"
-        "-s" "EXPORT_NAME='WasmSandbox'"
-        "-s" "WASM_BIGINT=1"               # ADR-0009 Wave 2：64 位整型 ↔ JS BigInt 原生映射，杜绝 number 隐式失精
-        "-s" "STACK_OVERFLOW_CHECK=2"      # dev/debug：栈溢出 abort，避免静默线性内存越界（亦为中断重入早期报警，见 plan Phase 1 Task 1-5）
-        "-s" "ASSERTIONS=1"                # dev/debug：带运行时开销/体积代价，生产 profile 调优留作后续
-        "-s" "ASYNCIFY_STACK_SIZE=65536")  # 起步值；最终须实测最深 AI 生成调用链（plan Task 1-4 清单第 6 项）
+        # 一元 -sKEY=VALUE 形式：Emscripten 6.x + MinGW Makefiles / Ninja 通用；
+        # 若拆成两个 token（"-s" "KEY=VALUE"），MinGW make 会把第二个 token
+        # 当成输入文件传给 emcc，报 "No such file or directory"。
+        #
+        # 允许 C 侧的 extern js_pal_* / js_sim_* 作为 WebAssembly imports 保留在
+        # 二进制里、留给 JS 侧提供实现；否则 emcc 会因 undefined symbol 报错。
+        "-sERROR_ON_UNDEFINED_SYMBOLS=0"
+        "-sASYNCIFY=1"
+        "-sASYNCIFY_IMPORTS=['js_pal_os_sleep_ms','js_pal_os_busy_wait_us']"
+        "-sEXPORTED_FUNCTIONS=['_main']"              # _trigger_wasm_interrupt 已移除（方案 C：Poll 模型消除 Push 导出，见 wasm_entry.c）
+        "-sEXPORTED_RUNTIME_METHODS=['ccall','cwrap']"
+        "-sMODULARIZE=1"
+        "-sEXPORT_NAME=WasmSandbox"
+        "-sWASM_BIGINT=1"               # ADR-0009 Wave 2：64 位整型 ↔ JS BigInt 原生映射，杜绝 number 隐式失精
+        "-sSTACK_OVERFLOW_CHECK=2"      # dev/debug：栈溢出 abort，避免静默线性内存越界（亦为中断重入早期报警，见 plan Phase 1 Task 1-5）
+        "-sASSERTIONS=1"                # dev/debug：带运行时开销/体积代价，生产 profile 调优留作后续
+        "-sASYNCIFY_STACK_SIZE=65536")  # 起步值；最终须实测最深 AI 生成调用链（plan Task 1-4 清单第 6 项）
 endif()
 
 # ---- host 单元测试（非 wasm target 时启用）----
