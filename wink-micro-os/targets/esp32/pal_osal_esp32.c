@@ -46,7 +46,6 @@ typedef struct { int reserved; } portMUX_TYPE;
  * ───────────────────────────────────────────────────────── */
 
 void pal_os_sleep_ms(uint32_t ms) {
-#if defined(ESP_PLATFORM)
     extern int esp_rom_printf(const char *fmt, ...);
     if (xPortInIsrContext() == pdTRUE) {
         esp_rom_printf("WARNING: pal_os_sleep_ms(%lu) called in ISR context! Falling back to busy-wait.\n", (unsigned long)ms);
@@ -54,33 +53,18 @@ void pal_os_sleep_ms(uint32_t ms) {
         return;
     }
     vTaskDelay(pdMS_TO_TICKS(ms));
-#else
-    (void)ms;
-#endif
 }
 
 void pal_os_busy_wait_us(uint32_t us) {
-#if defined(ESP_PLATFORM)
     esp_rom_delay_us(us);
-#else
-    (void)us;
-#endif
 }
 
 uint64_t pal_os_get_ms(void) {
-#if defined(ESP_PLATFORM)
     return esp_timer_get_time() / 1000ULL;
-#else
-    return 0;
-#endif
 }
 
 uint64_t pal_os_get_us(void) {
-#if defined(ESP_PLATFORM)
     return esp_timer_get_time();
-#else
-    return 0;
-#endif
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -88,43 +72,27 @@ uint64_t pal_os_get_us(void) {
  * ───────────────────────────────────────────────────────── */
 
 pal_os_mutex_t pal_os_mutex_create(void) {
-#if defined(ESP_PLATFORM)
     SemaphoreHandle_t mux = xSemaphoreCreateMutex();
     return (pal_os_mutex_t)mux;
-#else
-    return (pal_os_mutex_t)1;  /* stub 非 NULL */
-#endif
 }
 
 wink_status_t pal_os_mutex_lock(pal_os_mutex_t mutex, uint32_t timeout_ms) {
     if (mutex == NULL) { return WINK_ERR_INVALID_ARG; }
-#if defined(ESP_PLATFORM)
     BaseType_t ok = xSemaphoreTake((SemaphoreHandle_t)mutex,
         timeout_ms == WINK_MUTEX_WAIT_FOREVER ? portMAX_DELAY : pdMS_TO_TICKS(timeout_ms));
     return ok == pdPASS ? WINK_OK : WINK_ERR_TIMEOUT;
-#else
-    (void)timeout_ms; return WINK_OK;
-#endif
 }
 
 wink_status_t pal_os_mutex_unlock(pal_os_mutex_t mutex) {
     if (mutex == NULL) { return WINK_ERR_INVALID_ARG; }
-#if defined(ESP_PLATFORM)
     BaseType_t ok = xSemaphoreGive((SemaphoreHandle_t)mutex);
     return ok == pdPASS ? WINK_OK : WINK_ERR_HARDWARE;
-#else
-    return WINK_OK;
-#endif
 }
 
 void pal_os_mutex_destroy(pal_os_mutex_t mutex) {
-#if defined(ESP_PLATFORM)
     if (mutex != NULL) {
         vSemaphoreDelete((SemaphoreHandle_t)mutex);
     }
-#else
-    (void)mutex;
-#endif
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -132,7 +100,6 @@ void pal_os_mutex_destroy(pal_os_mutex_t mutex) {
  * ───────────────────────────────────────────────────────── */
 
 pal_os_reset_reason_t pal_os_get_reset_reason(void) {
-#if defined(ESP_PLATFORM)
     esp_reset_reason_t rr = esp_reset_reason();
     switch (rr) {
         case ESP_RST_POWERON:     return PAL_OS_RESET_REASON_POWER_ON;
@@ -144,9 +111,6 @@ pal_os_reset_reason_t pal_os_get_reset_reason(void) {
         case ESP_RST_PANIC:       return PAL_OS_RESET_REASON_PANIC;   /* 触发 boot safe-lock */
         default:                  return PAL_OS_RESET_REASON_UNKNOWN;
     }
-#else
-    return PAL_OS_RESET_REASON_UNKNOWN;
-#endif
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -154,30 +118,19 @@ pal_os_reset_reason_t pal_os_get_reset_reason(void) {
  * ESP32 持久化在 RTC_NOINIT（跨 WDT/panic 复位保留、断电丢失），magic 守卫防 RTC 残留值。
  * ───────────────────────────────────────────────────────── */
 #define WINK_BOOT_COUNT_MAGIC 0xB007C0DEu
-#if defined(ESP_PLATFORM)
 static RTC_NOINIT_ATTR uint32_t s_abnormal_count;
 static RTC_NOINIT_ATTR uint32_t s_abnormal_count_magic;
-#endif
 
 uint32_t pal_os_get_abnormal_boot_count(void) {
-#if defined(ESP_PLATFORM)
     return (s_abnormal_count_magic == WINK_BOOT_COUNT_MAGIC) ? s_abnormal_count : 0u;
-#else
-    return 0u;
-#endif
 }
 
 void pal_os_set_abnormal_boot_count(uint32_t count) {
-#if defined(ESP_PLATFORM)
     s_abnormal_count = count;
     s_abnormal_count_magic = WINK_BOOT_COUNT_MAGIC;
-#else
-    (void)count;
-#endif
 }
 
 WINK_WARN_UNUSED_RESULT wink_status_t pal_os_wdt_init(uint32_t timeout_ms) {
-#if defined(ESP_PLATFORM)
     /* ESP-IDF v5.x Task Watchdog API */
     esp_task_wdt_config_t cfg = {
         .timeout_ms = timeout_ms,
@@ -199,47 +152,28 @@ WINK_WARN_UNUSED_RESULT wink_status_t pal_os_wdt_init(uint32_t timeout_ms) {
         return WINK_ERR_HARDWARE;
     }
     return WINK_OK;
-#else
-    (void)timeout_ms; return WINK_ERR_UNSUPPORTED;
-#endif
 }
 
 WINK_WARN_UNUSED_RESULT wink_status_t pal_os_wdt_feed(void) {
-#if defined(ESP_PLATFORM)
     esp_err_t err = esp_task_wdt_reset();
     if (err != ESP_OK) { return WINK_ERR_HARDWARE; }
     return WINK_OK;
-#else
-    return WINK_ERR_UNSUPPORTED;
-#endif
 }
 
 /* ─────────────────────────────────────────────────────────
  * 临界区（ISR 安全）
  * ───────────────────────────────────────────────────────── */
 
-#if defined(ESP_PLATFORM)
 static portMUX_TYPE s_global_mux = portMUX_INITIALIZER_UNLOCKED;
-#else
-static int s_global_mux_stub = 0;
-#endif
 
 uint32_t pal_os_critical_enter(void) {
-#if defined(ESP_PLATFORM)
     portENTER_CRITICAL(&s_global_mux);
-#else
-    s_global_mux_stub = 1;
-#endif
     return 0;
 }
 
 void pal_os_critical_exit(uint32_t key) {
     (void)key;
-#if defined(ESP_PLATFORM)
     portEXIT_CRITICAL(&s_global_mux);
-#else
-    s_global_mux_stub = 0;
-#endif
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -255,7 +189,6 @@ wink_status_t pal_os_task_create(
     pal_os_core_id_t core_id,
     pal_os_task_handle_t* task_handle
 ) {
-#if defined(ESP_PLATFORM)
     BaseType_t core;
     TaskHandle_t xHandle;
     BaseType_t ret;
@@ -293,37 +226,22 @@ wink_status_t pal_os_task_create(
     }
 
     return WINK_OK;
-#else
-    (void)func; (void)name; (void)stack_depth; (void)arg;
-    (void)priority; (void)core_id; (void)task_handle;
-    return WINK_ERR_UNSUPPORTED;
-#endif
 }
 
 void pal_os_task_delete(pal_os_task_handle_t task_handle) {
-#if defined(ESP_PLATFORM)
     vTaskDelete((TaskHandle_t)task_handle);
-#else
-    (void)task_handle;  /* single-threaded: no-op */
-#endif
 }
 
 /* ─────────────────────────────────────────────────────────
  * 跨核通信环形缓冲区 (Ringbuf)
  * ───────────────────────────────────────────────────────── */
 
-#if defined(ESP_PLATFORM)
 struct pal_os_ringbuf {
     RingbufHandle_t handle;
     uint32_t size;
 };
-#else
-/* stub struct for static analysis */
-struct pal_os_ringbuf { int unused; };
-#endif
 
 pal_os_ringbuf_handle_t pal_os_ringbuf_create(uint32_t size) {
-#if defined(ESP_PLATFORM)
     struct pal_os_ringbuf* rb;
 
     /* Size must be power of 2 (API contract) */
@@ -344,9 +262,6 @@ pal_os_ringbuf_handle_t pal_os_ringbuf_create(uint32_t size) {
     }
 
     return rb;
-#else
-    (void)size; return NULL;
-#endif
 }
 
 wink_status_t pal_os_ringbuf_push(
@@ -354,7 +269,6 @@ wink_status_t pal_os_ringbuf_push(
     const void* data,
     uint32_t size
 ) {
-#if defined(ESP_PLATFORM)
     BaseType_t ret;
 
     if (rb == NULL || data == NULL) {
@@ -368,9 +282,6 @@ wink_status_t pal_os_ringbuf_push(
     }
 
     return WINK_OK;
-#else
-    (void)rb; (void)data; (void)size; return WINK_ERR_UNSUPPORTED;
-#endif
 }
 
 wink_status_t pal_os_ringbuf_pop(
@@ -378,7 +289,6 @@ wink_status_t pal_os_ringbuf_pop(
     void* data,
     uint32_t size
 ) {
-#if defined(ESP_PLATFORM)
     uint8_t* item;
     size_t item_size;
 
@@ -402,33 +312,22 @@ wink_status_t pal_os_ringbuf_pop(
     vRingbufferReturnItem(rb->handle, item);
 
     return WINK_OK;
-#else
-    (void)rb; (void)data; (void)size; return WINK_ERR_UNSUPPORTED;
-#endif
 }
 
 uint32_t pal_os_ringbuf_used(pal_os_ringbuf_handle_t rb) {
-#if defined(ESP_PLATFORM)
     /* FreeRTOS doesn't expose exact used count via public API.
      * In practice, applications check WINK_ERR_EMPTY/WINK_ERR_FULL.
      * For metrics, we would need to add tracking.
      */
     (void)rb;
     return 0;
-#else
-    (void)rb; return 0;
-#endif
 }
 
 void pal_os_ringbuf_destroy(pal_os_ringbuf_handle_t rb) {
-#if defined(ESP_PLATFORM)
     if (rb == NULL) {
         return;
     }
 
     vRingbufferDelete(rb->handle);
     free(rb);
-#else
-    (void)rb;
-#endif
 }
