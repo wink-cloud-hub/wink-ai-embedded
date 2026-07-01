@@ -66,9 +66,15 @@ typedef enum {
                                          ⚠️ v2.1（ADR-0012 / ADR-IRQ-008）：
                                          ESP32 target 显式拒接此优先级，返回
                                          WINK_ERR_UNSUPPORTED（NMI 级 C-ISR 不可注册）。
-                                         host / wasm 在单线程模型下仍可注册成功，
-                                         但仅供静态校验类测试使用；要在真机上跑硬实时，
-                                         需等待 pal_irq_direct_connect_unsafe() 接口或
+                                         ⚠️ v2.2（Phase 1.5，2026-07-01）：
+                                         host / wasm 默认也拒接 REALTIME（`pal_irq_enable`
+                                         与 `pal_gpio_enable_interrupt_ex` 均返回
+                                         WINK_ERR_UNSUPPORTED），与 ESP32 对齐。
+                                         静态校验类测试可编译期定义
+                                         WINK_HOST_ALLOW_REALTIME_FOR_TESTING 放行，
+                                         首次注册会打印一次性 warn。
+                                         要在真机上跑硬实时，需等待
+                                         pal_irq_direct_connect_unsafe() 接口或
                                          接入支持 NMI 直挂的裸机/STM32 target。 */
     PAL_IRQ_PRIO_COUNT          /* 优先级数量，用于边界检查 */
 } pal_irq_prio_t;

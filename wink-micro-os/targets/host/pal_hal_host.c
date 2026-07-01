@@ -28,6 +28,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
+#include <pthread.h>   /* v2.2 G3：并发首次注册竞态保护 */
 
 /* 虚拟时间状态（OSAL 侧推进，HAL 侧消费）—— 跨文件共享，故 extern */
 extern uint64_t host_sim_time_us(void);
@@ -88,6 +89,12 @@ static pal_gpio_isr_t  s_gpio_isr[HOST_MAX_GPIO_PIN] = {NULL};
 static void            *s_gpio_isr_arg[HOST_MAX_GPIO_PIN] = {NULL};
 static uint32_t         s_isr_call_count[HOST_MAX_GPIO_PIN] = {0};
 
+/* v2.2 G3（Phase 1.5，2026-07-01）：GPIO service 首次锁定的 prio。
+ * 由 s_gpio_service_mux 同步。host 支持多线程，需真实 mutex。 */
+static bool             s_gpio_service_initialized = false;
+static pal_irq_prio_t   s_gpio_service_prio        = PAL_IRQ_PRIO_NORMAL;
+static pthread_mutex_t  s_gpio_service_mux         = PTHREAD_MUTEX_INITIALIZER;
+
 /* Pending 中断队列（中断锁语义仿真） */
 static uint32_t s_pending_gpio[HOST_MAX_PENDING];
 static uint32_t s_pending_count = 0;
@@ -113,9 +120,6 @@ wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin, pal_gpio_intr_t intr_
                                          pal_irq_prio_t prio, pal_gpio_isr_t callback, void *arg)
 {
     (void)intr_type;
-    /* v2.1 G3：prio 当前被所有 target 静默忽略（header 已显式契约化）。
-     * Host 单线程下本无 per-pin 抢占语义，未来按需新增 pal_gpio_enable_interrupt_dedicated()。 */
-    (void)prio;
 
     if (pin < 0 || pin >= HOST_MAX_GPIO_PIN) {
         return WINK_ERR_INVALID_ARG;
@@ -123,6 +127,30 @@ wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin, pal_gpio_intr_t intr_
     if (callback == NULL) {
         return WINK_ERR_INVALID_ARG;
     }
+    if (prio >= PAL_IRQ_PRIO_COUNT) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    /* v2.2 G2（Phase 1.5，2026-07-01）：与 ESP32 对齐，GPIO 路径拒接 REALTIME。
+     * host 单线程模型下无 per-pin 抢占，REALTIME 本无处映射；显式拒接以让
+     * "仿真通过 → 真机通过"关系严格成立（ADR-0012）。 */
+    if (prio == PAL_IRQ_PRIO_REALTIME) {
+        return WINK_ERR_UNSUPPORTED;
+    }
+
+    /* v2.2 G3：GPIO service 首次锁定 prio。host 支持并发，需 mutex 保护。
+     * 一旦锁定，进程生命周期内不再释放（见 pal_hal.h 契约）。 */
+    pthread_mutex_lock(&s_gpio_service_mux);
+    if (s_gpio_service_initialized) {
+        if (prio != s_gpio_service_prio) {
+            pthread_mutex_unlock(&s_gpio_service_mux);
+            return WINK_ERR_INVALID_ARG;   /* G3: prio 冲突，本次拒接 */
+        }
+    } else {
+        s_gpio_service_prio        = prio;
+        s_gpio_service_initialized = true;
+    }
+    pthread_mutex_unlock(&s_gpio_service_mux);
 
     s_gpio_isr[pin] = callback;
     s_gpio_isr_arg[pin] = arg;
@@ -255,6 +283,26 @@ wink_status_t pal_irq_enable(uint32_t irq_num, pal_irq_prio_t prio,
     if (irq_num >= HOST_MAX_IRQ || handler == NULL || prio >= PAL_IRQ_PRIO_COUNT) {
         return WINK_ERR_INVALID_ARG;
     }
+
+    /* v2.2 G2（Phase 1.5，2026-07-01）：与 ESP32 对齐，默认拒接 REALTIME。
+     * 让"仿真通过 → 真机通过"关系严格成立（ADR-0012 契约诚实）。
+     * 静态校验类测试可编译期显式 opt-in，走**受控**放行。 */
+    if (prio == PAL_IRQ_PRIO_REALTIME) {
+#if defined(WINK_HOST_ALLOW_REALTIME_FOR_TESTING)
+        /* opt-in：接受但一次性告警，避免循环中刷屏 */
+        static bool s_realtime_warn_emitted = false;
+        if (!s_realtime_warn_emitted) {
+            fprintf(stderr,
+                    "[pal_irq WARN] host: REALTIME priority accepted for "
+                    "testing only; ESP32 target returns WINK_ERR_UNSUPPORTED.\n");
+            s_realtime_warn_emitted = true;
+        }
+        /* fallthrough：落到 dispatch 路径，与 HIGHEST 等价 */
+#else
+        return WINK_ERR_UNSUPPORTED;
+#endif
+    }
+
     s_host_irq_table[irq_num] = handler;
     s_host_irq_arg[irq_num] = arg;
     s_host_irq_call_count[irq_num] = 0;
@@ -388,6 +436,18 @@ void pal_host_reset_isr_stats(void)
     memset(s_host_irq_call_count, 0, sizeof(s_host_irq_call_count));
     s_pending_count = 0;
     s_irq_lock_depth = 0;
+
+    /* v2.2 G3：单测隔离——重置 GPIO service 锁定状态。
+     * 生产 API 不提供解锁（见 pal_hal.h 契约）；这里只在 host 测试钩子里放行，
+     * 以便每个用例从干净的 uninitialized 状态开始。 */
+    pthread_mutex_lock(&s_gpio_service_mux);
+    s_gpio_service_initialized = false;
+    s_gpio_service_prio        = PAL_IRQ_PRIO_NORMAL;
+    pthread_mutex_unlock(&s_gpio_service_mux);
+
+    /* 一并清 GPIO handler 表 —— 单测每个 case 应从零状态开始 */
+    memset(s_gpio_isr, 0, sizeof(s_gpio_isr));
+    memset(s_gpio_isr_arg, 0, sizeof(s_gpio_isr_arg));
 }
 
 /* ─────────────────────────────────────────────────────────

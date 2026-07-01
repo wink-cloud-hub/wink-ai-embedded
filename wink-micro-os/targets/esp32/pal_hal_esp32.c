@@ -195,6 +195,12 @@ static portMUX_TYPE s_gpio_table_mux = portMUX_INITIALIZER_UNLOCKED;
 static pal_gpio_isr_t s_gpio_isr[GPIO_NUM_MAX] = {NULL};
 static void *s_gpio_isr_arg[GPIO_NUM_MAX] = {NULL};
 
+/* v2.2 G3（Phase 1.5，2026-07-01）：GPIO ISR service 的首次锁定状态。
+ * 由 s_gpio_table_mux 同步。一旦 initialized=true，进程生命周期内不再释放
+ * （见 Phase 1.5 §1.2：拒绝 disable→uninstall 方案以规避 TOCTOU / SMP UAF）。 */
+static bool           s_gpio_service_initialized = false;
+static pal_irq_prio_t s_gpio_service_prio        = PAL_IRQ_PRIO_NORMAL;
+
 /* SMP ISR 同步 count */
 static volatile uint32_t s_irq_in_flight[32] = {0};
 static volatile uint32_t s_gpio_irq_in_flight[GPIO_NUM_MAX] = {0};
@@ -282,11 +288,18 @@ wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin,
         return WINK_ERR_UNSUPPORTED;
     }
 
-    /* v2.1 G3：GPIO 中断优先级当前仍由 ESP-IDF 全局 ISR service 控制
-     * （gpio_install_isr_service 仅在首次安装时决定整个 GPIO 中断源的硬件优先级）。
-     * prio 参数在所有 target 上当前都被忽略；未来若需要 per-pin 抢占，将新增
-     * pal_gpio_enable_interrupt_dedicated() 独立中断源接口，本接口签名保持不变。 */
-    (void)prio;
+    /* v2.2 G3（Phase 1.5，2026-07-01）：GPIO service 首次锁定 prio。
+     * 若已锁定，后续 prio 必须一致；不一致返回 WINK_ERR_INVALID_ARG。
+     * gpio_install_isr_service 仅在首次安装时决定硬件优先级，无法为每个 pin
+     * 单独指定，因此 prio 只能在首次注册时锁定一次。 */
+    portENTER_CRITICAL(&s_gpio_table_mux);
+    if (s_gpio_service_initialized) {
+        if (prio != s_gpio_service_prio) {
+            portEXIT_CRITICAL(&s_gpio_table_mux);
+            return WINK_ERR_INVALID_ARG;   /* G3: prio 冲突，本次拒接 */
+        }
+    }
+    portEXIT_CRITICAL(&s_gpio_table_mux);
 
 #if defined(ESP_PLATFORM)
     gpio_int_type_t esp_intr_type;
@@ -310,13 +323,40 @@ wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin,
             return WINK_ERR_INVALID_ARG;
     }
 
-    static bool s_isr_service_installed = false;
-    if (!s_isr_service_installed) {
-        esp_err_t err = gpio_install_isr_service(0);
-        if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+    /* v2.2 G3 prio → ESP_INTR_FLAG_LEVELn 映射
+     * REALTIME 已在入口拒接，映射表不包含它。 */
+    static const int s_gpio_prio_flag_map[PAL_IRQ_PRIO_COUNT] = {
+        [PAL_IRQ_PRIO_LOWEST]  = ESP_INTR_FLAG_LEVEL1,
+        [PAL_IRQ_PRIO_LOW]     = ESP_INTR_FLAG_LEVEL1,
+        [PAL_IRQ_PRIO_NORMAL]  = ESP_INTR_FLAG_LEVEL2,
+        [PAL_IRQ_PRIO_HIGH]    = ESP_INTR_FLAG_LEVEL3,
+        [PAL_IRQ_PRIO_HIGHEST] = ESP_INTR_FLAG_LEVEL3,   /* RTOS 安全边界，见 ADR-IRQ-003 */
+        /* PAL_IRQ_PRIO_REALTIME 在入口已拒接，此处不映射 */
+    };
+
+    /* 首次安装 ISR service：加上 IRAM 属性使 wrapper 在 Flash cache 禁用时仍可运行
+     * （项目的 gpio_isr_wrapper 已 IRAM_ATTR，配合此 flag 满足 IDF 要求）。 */
+    if (!s_gpio_service_initialized) {
+        int intr_flags = s_gpio_prio_flag_map[prio] | ESP_INTR_FLAG_IRAM;
+        esp_err_t err = gpio_install_isr_service(intr_flags);
+        if (err == ESP_OK) {
+            portENTER_CRITICAL(&s_gpio_table_mux);
+            s_gpio_service_prio        = prio;
+            s_gpio_service_initialized = true;
+            portEXIT_CRITICAL(&s_gpio_table_mux);
+        } else if (err == ESP_ERR_INVALID_STATE) {
+            /* Service 已被其它路径（如 IDF 内部或第三方库）安装过。
+             * 我们无从得知对方 flag，硬件优先级不由我们控制；但为了保证
+             * API 层契约一致（后续 mismatched prio 仍应拒接），仍锁定跟踪状态。 */
+            ESP_LOGI("pal_hal", "GPIO ISR service already installed externally; "
+                                "locking pal tracker to prio=%d", (int)prio);
+            portENTER_CRITICAL(&s_gpio_table_mux);
+            s_gpio_service_prio        = prio;
+            s_gpio_service_initialized = true;
+            portEXIT_CRITICAL(&s_gpio_table_mux);
+        } else {
             return WINK_ERR_HARDWARE;
         }
-        s_isr_service_installed = true;
     }
 
     /* ✅ SMP 安全：持有自旋锁写入分发表 */
@@ -346,7 +386,7 @@ wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin,
         return WINK_ERR_HARDWARE;
     }
 #else
-    (void)intr_type; (void)prio; (void)callback; (void)arg;
+    (void)intr_type; (void)callback; (void)arg;
     /* 非 ESP32 平台（编译时存根）返回 UNSUPPORTED，由调用方静默降级 */
     return WINK_ERR_UNSUPPORTED;
 #endif
