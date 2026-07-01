@@ -139,6 +139,10 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
         # 允许 C 侧的 extern js_pal_* / js_sim_* 作为 WebAssembly imports 保留在
         # 二进制里、留给 JS 侧提供实现；否则 emcc 会因 undefined symbol 报错。
         "-sERROR_ON_UNDEFINED_SYMBOLS=0"
+        # JS-library 桩：编译期把 wasm_bridge.h 里所有 extern js_* 的默认实现
+        # 注入到 wink_simulator.js 胶水。宿主（Workbench / node stub）可通过
+        # Module.js_* 覆盖，无需重编 wasm。
+        "--js-library=${CMAKE_CURRENT_SOURCE_DIR}/targets/wasm/wink_sim_js.js"
         "-sASYNCIFY=1"
         "-sASYNCIFY_IMPORTS=['js_pal_os_sleep_ms','js_pal_os_busy_wait_us']"
         "-sEXPORTED_FUNCTIONS=['_main']"              # _trigger_wasm_interrupt 已移除（方案 C：Poll 模型消除 Push 导出，见 wasm_entry.c）
@@ -149,6 +153,11 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
         "-sSTACK_OVERFLOW_CHECK=2"      # dev/debug：栈溢出 abort，避免静默线性内存越界（亦为中断重入早期报警，见 plan Phase 1 Task 1-5）
         "-sASSERTIONS=1"                # dev/debug：带运行时开销/体积代价，生产 profile 调优留作后续
         "-sASYNCIFY_STACK_SIZE=65536")  # 起步值；最终须实测最深 AI 生成调用链（plan Task 1-4 清单第 6 项）
+
+    # 触发 wink_sim_js.js 变化后重 link；否则 CMake 不知道 --js-library=<path>
+    # 是构建输入，改 stub 后 make 会认为无事发生。
+    set_property(TARGET wink_simulator APPEND PROPERTY LINK_DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/targets/wasm/wink_sim_js.js)
 endif()
 
 # ---- host 单元测试（非 wasm target 时启用）----
