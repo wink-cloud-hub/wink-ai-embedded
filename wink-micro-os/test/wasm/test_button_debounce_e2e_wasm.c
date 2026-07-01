@@ -11,14 +11,14 @@
  *   ┌─────────────────────────┬──────────────────────┬─────────────────────────────────┐
  *   │ 维度                    │ host                 │ wasm                            │
  *   ├─────────────────────────┼──────────────────────┼─────────────────────────────────┤
- *   │ 时钟推进                │ pal_delay_ms() 步进  │ pal_wasm_advance_virtual_clock  │
+ *   │ 时钟推进                │ pal_os_sleep_ms() 步进  │ pal_wasm_advance_virtual_clock  │
  *   │ 理想电平注入            │ sim_set_gpio_ideal() │ EM_JS mock + test_set_ideal()   │
  *   │ 故障配置                │ sim_set_faults(&f)   │ pal_wasm_set_bounce_us(us)      │
  *   │ 测试重置                │ sim_reset_time()     │ pal_wasm_reset_physical()       │
- *   │ pal_delay_ms 副作用     │ 推进时钟（host 仿真）│ 立即返回（SSOT，Task 1 已验）   │
+ *   │ pal_os_sleep_ms 副作用     │ 推进时钟（host 仿真）│ 立即返回（SSOT，Task 1 已验）   │
  *   └─────────────────────────┴──────────────────────┴─────────────────────────────────┘
  *
- * 故 wasm 端 run_ticks 不依赖 pal_delay_ms 副作用，直接 advance 虚拟时钟。
+ * 故 wasm 端 run_ticks 不依赖 pal_os_sleep_ms 副作用，直接 advance 虚拟时钟。
  * 这恰是 ADR-0003 决策 3 / ADR-0009 §4.1 SSOT 架构落地：JS Worker（此处为
  * 测试 harness）独占时钟控制。
  *
@@ -31,14 +31,14 @@
  * 构建依赖（Task 5/6 add_wink_wasm_test CMake helper 落地后注册）：
  *   - dal_button.c（含 dal_button_poll / dal_button_is_pressed）
  *   - pal_hal_wasm.c（pal_gpio_read 退化中间件，Task 3）
- *   - pal_osal_wasm.c（pal_get_us / pal_delay_ms / 虚拟时钟，Task 1）
+ *   - pal_osal_wasm.c（pal_os_get_us / pal_os_sleep_ms / 虚拟时钟，Task 1）
  *   - pal_wasm_physical.c（faults 配置 setter + ctx 池，Task 2）
  *   - JS harness：必须 import 由 EM_JS 注入的 js_pal_gpio_read（见下）。
  */
 #include "unity.h"
 #include "dal_button.h"
 #include "pal_hal.h"           /* pal_gpio_read for raw reads */
-#include "pal_osal.h"          /* pal_delay_ms（SSOT 下 no-op） */
+#include "pal_osal.h"          /* pal_os_sleep_ms（SSOT 下 no-op） */
 #include "pal_wasm_internal.h" /* pal_wasm_advance_virtual_clock + setters + ctx 访问 */
 #include "wink_sim_physical.h" /* wink_phys_debounce_ctx_t 字段 */
 
@@ -135,7 +135,7 @@ void setUp(void) {
 void tearDown(void) {}
 
 /* 每个 tick：推进虚拟时钟 TICK_MS 毫秒，然后调用 dal_button_poll。
- * pal_delay_ms 在 wasm SSOT 下不主动推时钟（test_virtual_clock.c 已验证），
+ * pal_os_sleep_ms 在 wasm SSOT 下不主动推时钟（test_virtual_clock.c 已验证），
  * 故必须显式 advance。 */
 static void run_ticks(dal_button_t *btn, int n) {
     for (int i = 0; i < n; i++) {

@@ -23,7 +23,7 @@
 #include "wink_status.h"
 #include "pal_irq.h"       /* PAL_ISR 宏 + 统一中断抽象 */
 #include "pal_hal.h"       /* pal_pwm_init/set_duty, pal_gpio_enable_interrupt */
-#include "pal_osal.h"      /* pal_watchdog_init/feed, pal_get_ms, pal_get_reset_reason */
+#include "pal_osal.h"      /* pal_watchdog_init/feed, pal_os_get_ms, pal_get_reset_reason */
 #include "pal_resource.h"  /* pal_resource_claim/release */
 #include "pal_pwm_router.h"/* pal_pwm_router_channel_timer */
 #include "pal_debug.h"     /* pal_debug_printf: 跨平台统一调试输出 */
@@ -145,10 +145,10 @@ static void smoke_check_i2c_bus(void)
 static void resource_stress_task(void *arg)
 {
     uint32_t core_id = (uint32_t)(uintptr_t)arg;
-    uint64_t end_time = pal_get_ms() + 60000;
+    uint64_t end_time = pal_os_get_ms() + 60000;
     uint32_t iterations = 0;
 
-    while (pal_get_ms() < end_time) {
+    while (pal_os_get_ms() < end_time) {
         /* 同一资源（GPIO pin 100+core）的并发 claim/release
          * 暴露 spinlock 争用：两核同时进出临界区
          * gcc16 不因 (void) 抑制 warn_unused_result：先赋值再丢弃 */
@@ -202,8 +202,8 @@ static void telemetry_task(void *arg)
         /* PAL 统一延迟接口：
          * - ESP32: FreeRTOS vTaskDelay
          * - WASM/host: 忙等或模拟时间推进 */
-        pal_delay_ms(1000);
-        uint32_t now = (uint32_t)pal_get_ms();
+        pal_os_sleep_ms(1000);
+        uint32_t now = (uint32_t)pal_os_get_ms();
 
         if (now - last_report >= 2000u) {
             /* PAL 统一调试输出：所有平台都定期输出 telemetry 数据 */
@@ -309,7 +309,7 @@ static void app_loop(void)
     wink_status_t _pressed = dal_button_is_pressed(&boot_button, &pressed);
     (void)_pressed;
 
-    uint32_t now = (uint32_t)pal_get_ms();
+    uint32_t now = (uint32_t)pal_os_get_ms();
 
     if (pressed) {
         /* S8: 长按 >3s → 触发 WDT 复位测试（PAL 统一接口）

@@ -64,9 +64,9 @@ bool pal_wasm_is_clock_warning_fired(void);
 /**
  * @brief 获取当前虚拟时钟值（Wave2 P1 Task 6，调试/告警用途）。
  *
- * 与 pal_get_us() 返回同一 SSOT 状态；语义上是 Task 6 警告链路上专用
- * 的导出符号（与 pal_get_us 同源但命名更明确，便于 JS 侧 cwrap 时区分
- * 用途）。生产业务代码请使用 pal_get_us()。
+ * 与 pal_os_get_us() 返回同一 SSOT 状态；语义上是 Task 6 警告链路上专用
+ * 的导出符号（与 pal_os_get_us 同源但命名更明确，便于 JS 侧 cwrap 时区分
+ * 用途）。生产业务代码请使用 pal_os_get_us()。
  *
  * @return 当前虚拟时钟微秒数
  */
@@ -121,7 +121,7 @@ typedef enum {
 
 /* 故障事件记录。字段紧凑排列以减小 256 条总占用（~16B × 256 = 4KB）。 */
 typedef struct {
-    uint64_t timestamp_us;    /* 故障发生时的虚拟时钟（与 pal_get_us 同源） */
+    uint64_t timestamp_us;    /* 故障发生时的虚拟时钟（与 pal_os_get_us 同源） */
     uint8_t  fault_type;      /* wasm_fault_type_t 枚举值 */
     uint16_t pin_or_bus;      /* GPIO pin 或 I2C 总线号 */
     uint32_t sequence;        /* 全局单调递增序号（首条 = 1） */

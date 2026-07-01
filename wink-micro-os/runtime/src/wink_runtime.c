@@ -37,9 +37,9 @@ static void wink_runtime_monitor_wcet_init(void (*callback)(void), const char* n
         return;
     }
 
-    start_us = pal_get_us();
+    start_us = pal_os_get_us();
     callback();
-    elapsed_us = pal_get_us() - start_us;
+    elapsed_us = pal_os_get_us() - start_us;
 
     /* Individual callback WCET threshold: 50% of tick period */
     if (elapsed_us > (WINK_RUNTIME_TICK_MS * 1000U / 2U)) {
@@ -58,9 +58,9 @@ static void wink_runtime_monitor_wcet_loop(void (*callback)(void), const char* n
         return;
     }
 
-    start_us = pal_get_us();
+    start_us = pal_os_get_us();
     callback();
-    elapsed_us = pal_get_us() - start_us;
+    elapsed_us = pal_os_get_us() - start_us;
 
     /* Individual callback WCET threshold: 50% of tick period */
     if (elapsed_us > (WINK_RUNTIME_TICK_MS * 1000U / 2U)) {
@@ -73,7 +73,7 @@ static void wink_runtime_monitor_wcet_loop(void (*callback)(void), const char* n
  * ============================================================ */
 
 void wink_app_delay_ms(uint32_t ms) {
-    pal_delay_ms(ms);
+    pal_os_sleep_ms(ms);
 }
 
 wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t max_ticks) {
@@ -125,7 +125,7 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
     tick = 0;
     /* max_ticks == 0 => infinite loop (embedded/wasm); host tests pass a finite value. */
     while ((max_ticks == 0U) || (tick < max_ticks)) {
-        uint64_t tick_start_us = pal_get_us();
+        uint64_t tick_start_us = pal_os_get_us();
         uint64_t tick_elapsed_us;
 
         /* --- Soft timer callbacks first --- */
@@ -135,7 +135,7 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
         wink_runtime_monitor_wcet_loop(callbacks->loop, "app_loop");
 
         /* --- Global tick WCET check (backup safety net) --- */
-        tick_elapsed_us = pal_get_us() - tick_start_us;
+        tick_elapsed_us = pal_os_get_us() - tick_start_us;
         if (tick_elapsed_us > WINK_RUNTIME_TICK_MS * 1000U) {
             wink_trace_fault(WINK_WARN_TICK_OVERRUN);
         }

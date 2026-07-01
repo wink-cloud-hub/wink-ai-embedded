@@ -124,10 +124,10 @@ extern bool js_pal_poll_interrupt(uint32_t *out_callback_index, uint32_t *out_ar
 
 
 /* ---- PAL OSAL 侧 JS 导入 ---- */
-extern void js_pal_delay_ms(uint32_t ms);
-extern void js_pal_delay_us(uint32_t us);
-extern uint64_t js_pal_get_ms(void);
-extern uint64_t js_pal_get_us(void);
+extern void js_pal_os_sleep_ms(uint32_t ms);
+extern void js_pal_os_busy_wait_us(uint32_t us);
+extern uint64_t js_pal_os_get_ms(void);
+extern uint64_t js_pal_os_get_us(void);
 
 /* ---- DAL bypass 侧 JS 导入（js_sim_*）—— 签名抄 Device Registry (01-device-model-registry.md) ----
  * 仅在 #ifdef SIMULATION 下被 DAL 引用；真机分支不编译本段。

@@ -136,9 +136,9 @@ void wink_soft_timer_dispatch(void) {
         /* ============================================================
          *  定时器到期：执行回调 + 独立 WCET 监控
          * ============================================================ */
-        start_us   = pal_get_us();
+        start_us   = pal_os_get_us();
         status     = timer->callback(timer->arg);
-        elapsed_us = pal_get_us() - start_us;
+        elapsed_us = pal_os_get_us() - start_us;
 
         /* 单个回调 WCET 超限警告（50% Tick 阈值） */
         if (elapsed_us > (WINK_RUNTIME_TICK_MS * 1000U / 2U)) {

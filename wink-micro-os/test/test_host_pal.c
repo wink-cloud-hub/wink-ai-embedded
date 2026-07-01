@@ -12,10 +12,10 @@ void setUp(void) {
 void tearDown(void) {}
 
 void test_delay_advances_virtual_time(void) {
-    pal_delay_ms(5);
-    TEST_ASSERT_EQUAL_UINT64(5000u, pal_get_us());
-    pal_delay_us(300);
-    TEST_ASSERT_EQUAL_UINT64(5300u, pal_get_us());
+    pal_os_sleep_ms(5);
+    TEST_ASSERT_EQUAL_UINT64(5000u, pal_os_get_us());
+    pal_os_busy_wait_us(300);
+    TEST_ASSERT_EQUAL_UINT64(5300u, pal_os_get_us());
 }
 
 void test_pwm_duty_recorded(void) {

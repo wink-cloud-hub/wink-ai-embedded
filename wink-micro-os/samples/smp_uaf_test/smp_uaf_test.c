@@ -74,7 +74,7 @@ static void test_uaf_isr(void *arg) {
      * 我们加入 50us 延时，让 "disable 之后 ISR 还在另一个核心跑" 的时间窗口
      * 从几十纳秒变成几十微秒，大幅提高触发概率。
      */
-    pal_delay_us(50);
+    pal_os_busy_wait_us(50);
 
     /* 检查魔数 — 如果被破坏说明 UAF 发生了！ */
     if (res != NULL && res->magic != TEST_SMP_UAF_MAGIC) {
@@ -109,7 +109,7 @@ static void trigger_task_func(void *arg) {
         // 收到通知后，在 CPU 1 上并发触发 50 次软件中断
         for (int i = 0; i < 50; i++) {
             pal_irq_set_pending(TEST_IRQ_UAF);
-            pal_delay_us(20);
+            pal_os_busy_wait_us(20);
         }
         s_trigger_done = true;
     }
@@ -178,7 +178,7 @@ void test_smp_uaf_run(uint32_t rounds,
     // 在 Core 1 上注册中断，使其能够在 Core 1 上响应软件中断
     xTaskCreatePinnedToCore(enable_irq_on_core1, "enable_task", 2048, &e_args, 5, NULL, 1);
     while (!e_args.done) {
-        pal_delay_us(10);
+        pal_os_busy_wait_us(10);
     }
     wink_status_t status = e_args.status;
 #else
@@ -231,16 +231,16 @@ void test_smp_uaf_run(uint32_t rounds,
         if (enable_synchronize) {
             // 启用同步：安全等待触发任务完全结束
             while (!s_trigger_done) {
-                pal_delay_us(10);
+                pal_os_busy_wait_us(10);
             }
         } else {
             // 禁用同步：故意等待检测到有在飞的中断开始运行，然后立即释放，制造最强的跨核碰撞！
-            uint64_t wait_start = pal_get_us();
+            uint64_t wait_start = pal_os_get_us();
             while (__atomic_load_n(&s_test_irq_in_flight, __ATOMIC_SEQ_CST) == 0) {
-                if (pal_get_us() - wait_start > 10000) { /* 10ms 超时 */
+                if (pal_os_get_us() - wait_start > 10000) { /* 10ms 超时 */
                     break;
                 }
-                pal_delay_us(5);
+                pal_os_busy_wait_us(5);
             }
         }
 #else
@@ -251,13 +251,13 @@ void test_smp_uaf_run(uint32_t rounds,
              * Host 单线程：ISR 同步执行
              */
             pal_irq_set_pending(TEST_IRQ_UAF);
-            pal_delay_us(10);
+            pal_os_busy_wait_us(10);
         }
 #endif
 
 #ifndef ESP_PLATFORM
         /* 给正在飞的 ISR 一点时间进入临界区 */
-        pal_delay_us(20);
+        pal_os_busy_wait_us(20);
 #endif
 
         /* ── Step 4: 关键路径 — synchronize + free ──
@@ -309,7 +309,7 @@ void test_smp_uaf_run(uint32_t rounds,
     };
     xTaskCreatePinnedToCore(disable_irq_on_core1, "disable_task", 2048, &d_args, 5, NULL, 1);
     while (!d_args.done) {
-        pal_delay_us(10);
+        pal_os_busy_wait_us(10);
     }
     wink_status_t final_st = d_args.status;
 #else
@@ -340,11 +340,11 @@ static void slow_isr(void *arg) {
 
     /* 100ms 长延时，足以观测到阻塞效应 */
 #ifdef ESP_PLATFORM
-    /* ⚠️ 中断服务程序（ISR）中严禁调用会引起阻塞/调度的 pal_delay_ms（vTaskDelay），
-     * 必须使用 pal_delay_us（esp_rom_delay_us 忙等）。 */
-    pal_delay_us(100000);  /* 100ms */
+    /* ⚠️ 中断服务程序（ISR）中严禁调用会引起阻塞/调度的 pal_os_sleep_ms（vTaskDelay），
+     * 必须使用 pal_os_busy_wait_us（esp_rom_delay_us 忙等）。 */
+    pal_os_busy_wait_us(100000);  /* 100ms */
 #else
-    pal_delay_ms(100);
+    pal_os_sleep_ms(100);
 #endif
 
     s_slow_isr_running = false;
@@ -384,7 +384,7 @@ bool test_smp_synchronize_blocks(uint32_t *blocked_us) {
     // 在 Core 1 上注册中断，使其在 Core 1 上响应
     xTaskCreatePinnedToCore(enable_irq_on_core1, "enable_slow_task", 2048, &e_args, 5, NULL, 1);
     while (!e_args.done) {
-        pal_delay_us(10);
+        pal_os_busy_wait_us(10);
     }
     wink_status_t status = e_args.status;
 #else
@@ -415,15 +415,15 @@ bool test_smp_synchronize_blocks(uint32_t *blocked_us) {
     };
     xTaskCreatePinnedToCore(trigger_irq_on_core1, "trigger_task", 2048, &t_args, 5, NULL, 1);
     // 强制延时 2ms，确保 Core 1 上的触发任务运行并启动 slow_isr
-    pal_delay_ms(2);
+    pal_os_sleep_ms(2);
 #else
     pal_irq_set_pending(TEST_IRQ_SLOW);
 #endif
 
     /* 立刻调用 synchronize 并计时 */
-    uint64_t start = pal_get_us();
+    uint64_t start = pal_os_get_us();
     pal_irq_synchronize(TEST_IRQ_SLOW);
-    uint64_t elapsed = pal_get_us() - start;
+    uint64_t elapsed = pal_os_get_us() - start;
 
     *blocked_us = (uint32_t)elapsed;
 
@@ -439,7 +439,7 @@ bool test_smp_synchronize_blocks(uint32_t *blocked_us) {
     };
     xTaskCreatePinnedToCore(disable_irq_on_core1, "disable_slow_task", 2048, &d_args, 5, NULL, 1);
     while (!d_args.done) {
-        pal_delay_us(10);
+        pal_os_busy_wait_us(10);
     }
     wink_status_t disable_st = d_args.status;
 #else

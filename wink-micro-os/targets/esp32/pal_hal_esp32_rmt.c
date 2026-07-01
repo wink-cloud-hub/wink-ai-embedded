@@ -14,7 +14,7 @@
  *
  * 使用方法（替代 pal_gpio_pulse_in）：
  *   pal_rmt_ultrasonic_init(echo_pin);
- *   pal_gpio_write(trig_pin, true); pal_delay_us(10); pal_gpio_write(trig_pin, false);
+ *   pal_gpio_write(trig_pin, true); pal_os_busy_wait_us(10); pal_gpio_write(trig_pin, false);
  *   uint32_t pulse_us;
  *   if (pal_rmt_ultrasonic_measure(30000, &pulse_us) == WINK_OK) { ... }
  *

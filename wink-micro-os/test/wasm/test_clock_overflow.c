@@ -13,7 +13,7 @@
  *   2. 启动状态：警告标志为 false（BSS 零初始化）；
  *   3. 阈值以下推进：不触发警告，accessor 仍返回 false；
  *   4. 跨越阈值推进：accessor 返回 true，且仅触发一次（幂等性）；
- *   5. get_virtual_clock_us 与 pal_get_us 读出一致（同一 SSOT 状态）。
+ *   5. get_virtual_clock_us 与 pal_os_get_us 读出一致（同一 SSOT 状态）。
  *
  * 构建接线（与 test_virtual_clock.c / test_wasm_physical.c 同样源码先行）：
  *   现阶段 add_wink_wasm_test CMake helper 未落地，本文件以源码形式交付，
@@ -50,7 +50,7 @@ void test_clock_64bit_static_assert(void) {
 void test_clock_warning_not_fired_initially(void) {
     TEST_ASSERT_FALSE(pal_wasm_is_clock_warning_fired());
     /* 同时验证 accessor 与 SSOT 读出一致 */
-    TEST_ASSERT_EQUAL_UINT64(pal_get_us(), pal_wasm_get_virtual_clock_us());
+    TEST_ASSERT_EQUAL_UINT64(pal_os_get_us(), pal_wasm_get_virtual_clock_us());
 }
 
 /* ─────────────────────────────────────────────────────────

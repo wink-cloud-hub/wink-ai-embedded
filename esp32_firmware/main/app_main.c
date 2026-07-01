@@ -49,7 +49,7 @@ static void wink_runtime_task(void *arg) {
     /* 标准入口 wdk_runtime_run(callbacks, max_ticks):
      * - 内部先执行 callbacks->init()
      * - 再无限循环 callbacks->loop() + 10ms 延时 (max_ticks==0 表示永久)
-     * - ESP32 下 pal_delay_ms() 调用 vTaskDelay，满足 FreeRTOS 调度要求
+     * - ESP32 下 pal_os_sleep_ms() 调用 vTaskDelay，满足 FreeRTOS 调度要求
      */
     wink_status_t rs = wink_runtime_run(app, 0);  /* runs forever */
     printf("Runtime exited (status=%d) — this should not happen\n", (int)rs);
