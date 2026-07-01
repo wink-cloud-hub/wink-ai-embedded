@@ -26,6 +26,7 @@ if(ESP_PLATFORM)
             pal_hal_esp32.c
             pal_hal_esp32_gpio.c
             pal_hal_esp32_pwm.c
+            pal_hal_esp32_i2c.c
             pal_irq_esp32.c
             pal_hal_esp32_rmt.c
             pal_hal_ultrasonic.c
@@ -96,6 +97,7 @@ elseif(TARGET_PLATFORM STREQUAL "esp32")
         pal_hal_esp32.c
         pal_hal_esp32_gpio.c
         pal_hal_esp32_pwm.c
+        pal_hal_esp32_i2c.c
         pal_irq_esp32.c
         pal_hal_esp32_rmt.c
         pal_hal_ultrasonic.c
