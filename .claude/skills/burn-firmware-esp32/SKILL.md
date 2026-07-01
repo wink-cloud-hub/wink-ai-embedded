@@ -1,5 +1,5 @@
 ---
-name: esp32-firmware-build
+name: burn-firmware-esp32
 description: 用于 Wink-Micro-OS ESP32 固件的自动扫描、构建、编译、烧录与清理。当用户输入有关 ESP32 固件构建、编译、烧写、清理等命令（或直接提供 App 名称如 devkitc_smoke, avoidance_car, oled_dashboard, smp_uaf_test 作为参数）时触发。本 Skill 会将紧跟后面的第一个参数解析为 DWINK_APP 名字，并指导进行正确的环境激活和 CMake/idf.py 构建流程。
 ---
 
