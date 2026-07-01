@@ -24,6 +24,7 @@
 #include "pal_pwm_router.h"
 #include "pal_debug.h"
 #include "pal_shared_chain.h" /* target-private RCU chain algorithm (PLAN-20260701-PAL-TARGET-P1-MAINT Task 1) */
+#include "pal_atomic_esp32.h" /* target-private atomic helpers (PLAN-20260701-PAL-TARGET-P1-MAINT Task 2) */
 #include <stdarg.h>
 #include <stdio.h>
 
@@ -154,34 +155,6 @@ bool pal_gpio_read(wink_pin_t pin) {
 #include "freertos/FreeRTOS.h"
 #include "freertos/portmacro.h"
 #include "soc/gpio_struct.h"
-
-static inline void esp_memory_barrier(void) {
-#if defined(__XTENSA__)
-    __asm__ __volatile__("memw" ::: "memory");
-#elif defined(__riscv)
-    __asm__ __volatile__("fence rw, rw" ::: "memory");
-#else
-    __asm__ __volatile__("" ::: "memory");
-#endif
-}
-
-#ifndef Atomic_Load_u32
-static inline uint32_t Atomic_Load_u32(volatile uint32_t *pulSource) {
-    return *pulSource;
-}
-#endif
-
-#ifndef Atomic_Increment_u32
-static inline uint32_t Atomic_Increment_u32(volatile uint32_t *pulAddend) {
-    return __atomic_add_fetch(pulAddend, 1, __ATOMIC_SEQ_CST);
-}
-#endif
-
-#ifndef Atomic_Decrement_u32
-static inline uint32_t Atomic_Decrement_u32(volatile uint32_t *pulAddend) {
-    return __atomic_sub_fetch(pulAddend, 1, __ATOMIC_SEQ_CST);
-}
-#endif
 
 static inline void gpio_clear_intr_status(gpio_num_t gpio_num) {
     if (gpio_num < 32) {
