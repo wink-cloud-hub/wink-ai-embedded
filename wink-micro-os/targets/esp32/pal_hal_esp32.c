@@ -23,6 +23,7 @@
 #include "pal_resource.h"
 #include "pal_pwm_router.h"
 #include "pal_debug.h"
+#include "pal_shared_chain.h" /* target-private RCU chain algorithm (PLAN-20260701-PAL-TARGET-P1-MAINT Task 1) */
 #include <stdarg.h>
 #include <stdio.h>
 
@@ -850,24 +851,18 @@ void pal_debug_printf(const char *fmt, ...)
 #if defined(ESP_PLATFORM)
 /* ─────────────────────────────────────────────────────────
  * 共享中断机制（RCU 模式 + SMP 安全，ADR-IRQ-005）
- * ───────────────────────────────────────────────────────── */
+ * ─────────────────────────────────────────────────────────
+ * PLAN-20260701-PAL-TARGET-P1-MAINT Task 1：
+ * 责任链数据结构与算法层已下沉到 `targets/common/src/pal_shared_chain.c`
+ * （见 `targets/common/include/pal_shared_chain.h`），本 TU 仅提供 SMP 同步策略与
+ * per-irq chain slot 阵列。R-1/R-5 红线：`pal_irq_shared_register` 返回码集合、
+ * handler 调用顺序、"不提前终止"语义与旧实现完全等价。
+ */
 
-#define MAX_SHARED_HANDLERS  4      /* 单中断最多 4 个共享 handler */
 #define MAX_SHARED_IRQS      16     /* 最多 16 个支持共享的中断号 */
 
-/* 共享 handler 链（RCU 模式：写时复制，原子替换指针） */
-typedef struct {
-    pal_irq_shared_handler_t  handler;
-    void                     *arg;
-} shared_handler_entry_t;
-
-typedef struct {
-    shared_handler_entry_t entries[MAX_SHARED_HANDLERS];
-    uint8_t count;
-} shared_chain_t;
-
-/* 每个中断号的共享链指针（RCU 原子替换） */
-static shared_chain_t *s_shared_chain[MAX_SHARED_IRQS] = {NULL};
+/* 每个中断号的共享链指针（RCU 原子替换；由 pal_shared_chain_append 管理） */
+static pal_shared_chain_t *s_shared_chain[MAX_SHARED_IRQS] = {NULL};
 static portMUX_TYPE s_shared_chain_mux = portMUX_INITIALIZER_UNLOCKED;
 
 /* ⚠️ SMP ISR 同步机制（ADR-IRQ-007 完整实现）
@@ -885,6 +880,24 @@ static portMUX_TYPE s_shared_chain_mux = portMUX_INITIALIZER_UNLOCKED;
 
 #define SYNCHRONIZE_TIMEOUT_US  100000  /* 100ms 超时（远大于 ISR 最大执行时间） */
 
+/* 同步策略 vtable（R-3：同步原语抽象，非外设 device_ops 虚表；见 pal_shared_chain.h 头注释） */
+static void esp32_shared_enter(void *ctx)
+{
+    portENTER_CRITICAL((portMUX_TYPE *)ctx);
+}
+
+static void esp32_shared_exit(void *ctx)
+{
+    portEXIT_CRITICAL((portMUX_TYPE *)ctx);
+}
+
+static const pal_shared_chain_sync_ops_t s_esp32_shared_sync_ops = {
+    .enter_critical = esp32_shared_enter,
+    .exit_critical  = esp32_shared_exit,
+    .synchronize    = pal_irq_synchronize,
+    .critical_ctx   = &s_shared_chain_mux,
+};
+
 /* 共享中断 wrapper（由 esp_intr_alloc 注册，按注册顺序调用所有 handler） */
 static void PAL_ISR shared_irq_wrapper(void *arg)
 {
@@ -898,27 +911,13 @@ static void PAL_ISR shared_irq_wrapper(void *arg)
 
     /* ✅ RCU 读路径：原子性读取当前链指针
      * 写路径会创建新链并原子替换，因此读取到的指针在 ISR 执行期间始终有效 */
-    shared_chain_t *chain = s_shared_chain[irq_num];
-    if (chain == NULL) {
-        Atomic_Decrement_u32(&s_irq_in_flight[irq_num]);
-        return;
-    }
+    pal_shared_chain_t *chain = s_shared_chain[irq_num];
 
-    uint32_t claimed_count = 0;
-
-    /* ✅ v2.0 语义修正：始终遍历调用所有 handler，不提前终止
-     * 这与 Linux 内核 Shared IRQ 行为一致，避免共享外设同时触发时的中断丢失 */
-    for (uint8_t i = 0; i < chain->count; i++) {
-        if (chain->entries[i].handler != NULL) {
-            bool claimed = chain->entries[i].handler(chain->entries[i].arg);
-            if (claimed) {
-                claimed_count++;
-            }
-        }
-    }
+    /* ✅ v2.0 语义：始终遍历调用所有 handler，不提前终止（Linux 内核 Shared IRQ 行为） */
+    uint32_t claimed_count = pal_shared_chain_dispatch(chain);
 
     /* 零认领 → 可能是杂散中断或硬件问题，记录警告 */
-    if (claimed_count == 0 && chain->count > 0) {
+    if (claimed_count == 0 && chain != NULL && chain->count > 0) {
         ESP_LOGW("pal_irq", "spurious interrupt on irq=%lu, no handler claimed",
                  (unsigned long)irq_num);
     }
@@ -1106,57 +1105,25 @@ wink_status_t pal_irq_shared_register(uint32_t irq_num, pal_irq_prio_t prio,
         return WINK_ERR_INVALID_ARG;
     }
 
-    /* ✅ RCU 写路径：持有自旋锁保护 */
-    portENTER_CRITICAL(&s_shared_chain_mux);
-
-    shared_chain_t *old_chain = s_shared_chain[irq_num];
-    shared_chain_t *new_chain = NULL;
-
-    if (old_chain == NULL) {
-        /* 第一个 handler：创建新链 */
-        new_chain = malloc(sizeof(shared_chain_t));
-        if (new_chain == NULL) {
-            portEXIT_CRITICAL(&s_shared_chain_mux);
-            return WINK_ERR_NO_MEM;
-        }
-        memset(new_chain, 0, sizeof(shared_chain_t));
-    } else {
-        /* 已有 handler：复制旧链，添加新 handler */
-        if (old_chain->count >= MAX_SHARED_HANDLERS) {
-            portEXIT_CRITICAL(&s_shared_chain_mux);
-            return WINK_ERR_NO_MEM;
-        }
-        new_chain = malloc(sizeof(shared_chain_t));
-        if (new_chain == NULL) {
-            portEXIT_CRITICAL(&s_shared_chain_mux);
-            return WINK_ERR_NO_MEM;
-        }
-        memcpy(new_chain, old_chain, sizeof(shared_chain_t));
+    /* ✅ 责任链下沉到 targets/common/src/pal_shared_chain.c
+     * 该算法层实现 RCU 写路径的完整语义（enter → malloc/memcpy → 原子替换
+     * → exit → synchronize → free old），R-5 红线由算法层强制。 */
+    bool became_first = false;
+    wink_status_t st = pal_shared_chain_append(
+        &s_shared_chain[irq_num],
+        &s_esp32_shared_sync_ops,
+        irq_num,
+        handler,
+        arg,
+        &became_first);
+    if (wink_status_is_error(st)) {
+        return st;
     }
 
-    /* 追加新 handler */
-    uint8_t idx = new_chain->count;
-    new_chain->entries[idx].handler = handler;
-    new_chain->entries[idx].arg = arg;
-    new_chain->count++;
-
-    /* ✅ 原子替换指针（RCU 关键点）
-     * 正在 ISR 中执行的旧链指针不会被修改，安全执行 */
-    s_shared_chain[irq_num] = new_chain;
-
-    portEXIT_CRITICAL(&s_shared_chain_mux);
-
-    /* ✅ SMP 安全：等待所有核心退出旧 ISR 后再释放
-     * 这是 RCU 模式的 synchronize_rcu() 简化实现 */
-    pal_irq_synchronize(irq_num);
-
-    /* 现在可以安全释放旧链 */
-    free(old_chain);
-
-    /* 如果是第一个 handler，注册共享 wrapper */
-    if (new_chain->count == 1) {
-        /* 注意：首次注册时的优先级生效，后续注册忽略优先级
-         * 这是因为硬件中断优先级是全局的，不能动态修改 */
+    /* 如果是第一个 handler，注册共享 wrapper
+     * 注意：首次注册时的优先级生效，后续注册忽略优先级
+     * 这是因为硬件中断优先级是全局的，不能动态修改 */
+    if (became_first) {
         return pal_irq_enable(irq_num, prio, shared_irq_wrapper,
                               (void *)(uintptr_t)irq_num);
     }
