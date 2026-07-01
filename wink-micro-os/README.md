@@ -95,10 +95,11 @@ cmake --build build-wasm
 **Node 侧烟测（编译期契约门禁）**：
 
 ```bash
-node targets/wasm/wink_sim_stub.js
+node targets/wasm/wink_sim_stub.js                            # 默认 build-wasm/
+node targets/wasm/wink_sim_stub.js --build-dir=build-wasm-oled  # 换其它变体
 ```
 
-Stub 静态解析 wasm 二进制 imports 集合，与预期比对；在 `worker_threads.Worker` 里加载 `wink_simulator.js` 验证 `onRuntimeInitialized` 到达。**必须走 worker**——Asyncify 循环与 Node 主线程 event loop 同居会 starve timer 并 OOM。同理 Workbench 前端仓也必须把 wasm 关进 Web Worker，不能直接在 UI 主线程加载。
+Stub 静态解析 wasm 二进制 imports 集合，与 `wasm_bridge.h` SSOT 交叉核验（多出未声明符号 → fail；DCE 掉的报 warn 不 fail）；在 `worker_threads.Worker` 里加载 `wink_simulator.js` 验证 `onRuntimeInitialized` 到达。**必须走 worker**——Asyncify 循环与 Node 主线程 event loop 同居会 starve timer 并 OOM。同理 Workbench 前端仓也必须把 wasm 关进 Web Worker，不能直接在 UI 主线程加载。
 
 **JS 桥接契约**：所有 `extern js_*` 符号声明在 `targets/wasm/wasm_bridge.h`（SSOT），默认实现在 `targets/wasm/wink_sim_js.js`（编译期 `--js-library` 注入）。宿主（Workbench）通过 `Module.js_* = customImpl` 覆盖默认桩，**无需重编 wasm**。详见 [04-wasm-simulation §2.2.2](../docs/design/04-wasm-simulation/01-wasm-sandbox-lifecycle.md)。
 
