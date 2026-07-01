@@ -42,3 +42,35 @@
 *   **正确实践**：
     *   如果需要手动污染内存，可以在 **`free()` 执行的前一瞬间**，优先修改需要测试的变量（例如将 `res->magic = 0xAAAAAAAA`），紧接着再调用 `free(res)`。
     *   这种写法逻辑上完全等效（因为此时多核的另一个 ISR 仍在并行运行，随时可能读到污染后的值），同时又能完美通过编译器的安全检查。
+
+---
+
+## 5. ISR 中断上下文中严禁调用任务级阻塞/调度 API (如 pal_delay_ms)
+
+*   **问题现象**：在中断服务程序（ISR）中调用 `pal_delay_ms` 模拟耗时操作，系统没有报 Panic（在禁用 Assert 的情况下），但实测该延时完全没有生效（耗时仅为几微秒），导致依赖该延时的测试逻辑（如 synchronize 阻塞性测试）直接失效。
+*   **深层原因**：在 FreeRTOS 等 RTOS 环境下，`pal_delay_ms` 底层依赖于 `vTaskDelay`。该 API 的核心作用是挂起当前执行任务并触发调度器进行上下文切换。然而，硬件中断上下文（ISR）的优先级高于任何任务且不属于任务上下文，此时**绝对不允许引起任务挂起或调度切换**。在使能 RTOS 调试时该调用会触发 `configASSERT` 导致 Panic 崩溃，而在生产/发布模式（禁用 Assert）下则会被静默忽略并立刻返回。
+*   **正确实践**：
+    *   在 ISR 中**严禁**使用 `pal_delay_ms` 或任何可能触发任务调度的阻塞 API。
+    *   若必须在中断中进行延迟（如某些特殊硬件驱动的微秒级初始化时序），必须使用**忙等延时（Busy-wait delay）**，例如调用 `pal_delay_us`（在 ESP32 上对应 `esp_rom_delay_us`，纯靠读取硬件 CPU 计数器循环等待）。
+
+---
+
+## 6. SMP 跨核碰撞测试中的“类型限定符丢失”与“时序伪碰撞”
+
+*   **问题现象**：在多核 SMP 场景下设计并发碰撞测试，明明关闭了同步屏障（`TEST_ENABLE_SYNCHRONIZE = false`），但无论跑多少轮，ISR 都完全无法捕获到 UAF 崩溃，显示 `UAF detected: NO`；而开启同步时反而可能假性失败。
+*   **深层原因**：
+    1.  **Volatile 类型限定符被剥离（编译器寄存器缓存优化）**：
+        全局共享资源指针声明为 `volatile T *ptr`，但在 ISR 入口中，被强制转换并赋值给了没有 `volatile` 修饰的局部变量：
+        `T *res = (T *)ptr; // ⚠️ 丢掉了 volatile 属性`
+        此时，编译器为了优化性能，会在 ISR 内的忙等延时（如 `pal_delay_us(50)`）**之前**，就将 `res->magic` 预先读入 CPU 寄存器。即使另一个核在此期间覆写了物理内存，ISR 醒来后校验的依然是寄存器中的旧值，导致检测不到内存损坏。
+    2.  **硬编排时序（Microsecond-level timing）在多核调度下不可靠**：
+        如果依赖在 Core 1 的触发任务中以 `pal_delay_us` 与 Core 0 的 `pal_delay_ms` 盲等来对齐释放时间，会遇到两种死胡同：
+        *   若 Done 标记设在第 50 次触发的 loop 结束后：由于 ISR 在 Core 1 上同步抢占触发任务，在 Done 变为 true 时第 50 次 ISR 必定已经执行完毕，Core 0 此时 free 无法与任何 ISR 碰撞。
+        *   若 Done 标记设在第 50 次触发之前：Core 0 在 Core 1 还没来得及执行 `pal_irq_set_pending` 之前就完成了 `synchronize` 并 `free` 内存，导致启用同步时依然会假性失败。
+*   **正确实践**：
+    *   **保持 volatile 连续性**：跨核共享指针在赋值及使用时必须严格保持 `volatile` 类型修饰，如使用 `volatile T *res = ptr;`，阻止编译器在执行路径中把成员变量优化进 CPU 寄存器。
+    *   **基于状态机（State-based）的精准碰撞协调**：
+        放弃脆弱且不确定性的时间盲等。在测试逻辑内部引入轻量级的共享原子计数器（如 `s_test_irq_in_flight`）。
+        *   当 `enable_synchronize` 为 `false` 时：Core 0 启动触发器后，主动轮询 `while (s_test_irq_in_flight == 0)`，直到确认 Core 1 的 ISR 已经开始执行且正处于忙等延时中，Core 0 才立刻执行内存毒化与 `free`，确保 100% 发生碰撞。
+        *   当 `enable_synchronize` 为 `true` 时：先安全等待触发循环完全退出，再调用 `pal_irq_synchronize` 确认在飞中断全部归零，即可 100% 保证无 UAF。
+
