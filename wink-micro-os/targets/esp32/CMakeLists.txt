@@ -25,6 +25,7 @@ if(ESP_PLATFORM)
             # ESP32 PAL 实现
             pal_hal_esp32.c
             pal_hal_esp32_gpio.c
+            pal_hal_esp32_pwm.c
             pal_irq_esp32.c
             pal_hal_esp32_rmt.c
             pal_hal_ultrasonic.c
@@ -94,6 +95,7 @@ elseif(TARGET_PLATFORM STREQUAL "esp32")
     set(ESP32_PAL_SOURCES
         pal_hal_esp32.c
         pal_hal_esp32_gpio.c
+        pal_hal_esp32_pwm.c
         pal_irq_esp32.c
         pal_hal_esp32_rmt.c
         pal_hal_ultrasonic.c

@@ -1,40 +1,27 @@
 /**
  * @file pal_hal_esp32.c
- * @brief ESP32 PAL HAL implementation (ESP-IDF v5.x / v6.x compatible).
+ * @brief ESP32 PAL HAL 剩余实现（ESP-IDF v5.x / v6.x 兼容）——
+ *        I2C 主控 + pal_debug_printf。GPIO/IRQ/PWM 分别位于 pal_hal_esp32_gpio.c /
+ *        pal_irq_esp32.c / pal_hal_esp32_pwm.c（Task 2 Step 3~5 拆出）。
+ *
+ * ⚠️ 本 TU 计划在 Task 2 Step 5 进一步拆分：I2C 逻辑将迁至 pal_hal_esp32_i2c.c，
+ *   届时本 TU 仅保留 pal_debug_printf。
  *
  * ✅ @verified: HARDWARE-SMOKE-PASSED (DevKitC, 2026-06-27)
- *    - GPIO init/read/write: board LED + Boot button verified
- *    - GPIO ISR: uintptr_t callback arg round-trip verified
- *    - PWM: ch1/ch2 different timer allocation (LEDC router)
  *    - I2C: v6 master bus scan (3 addresses NACK, no panic)
- *    - RMT: still pending ultrasonic hardware (Wave B follow-up)
  *
  * MVP status:
- * - GPIO/PWM/I2C hardware drivers implemented
- * - Ultrasonic pulse capture: pal_gpio_pulse_in still uses busy-wait fallback;
- *   RMT hardware capture in pal_hal_esp32_rmt.c
- * - PWM/I2C pin routing via board_config.c (pal_pwm_pin_map / pal_i2c_pin_map
- *   strong definitions; this TU provides weak defaults so MVP samples without
- *   a board_config.c still link and run with sensible default pins).
+ * - I2C v5/v6 dual API（WINK_I2C_USE_V6_API 门控 + Kconfig 强制回退开关）
+ * - I2C pin routing via board_config.c (pal_i2c_pin_map strong def / weak default here)
  */
 #include "pal_hal.h"
-#include "pal_irq.h"        /* 统一中断抽象 */
-#include "pal_osal.h"       /* pal_os_get_us() (used in pal_gpio_pulse_in busy-wait) */
-#include "pal_resource.h"
-#include "pal_pwm_router.h"
 #include "pal_debug.h"
-#include "pal_shared_chain.h" /* target-private RCU chain algorithm (PLAN-20260701-PAL-TARGET-P1-MAINT Task 1) */
-#include "pal_atomic_esp32.h" /* target-private atomic helpers (PLAN-20260701-PAL-TARGET-P1-MAINT Task 2) */
 #include <stdarg.h>
 #include <stdio.h>
 
 #if defined(ESP_PLATFORM)
-#include "driver/gpio.h"
-#include "driver/ledc.h"
 #include "esp_err.h"
 #include "esp_idf_version.h"
-#include "esp_intr_alloc.h"
-#include "xtensa/hal.h"
 
 /* ─────────────────────────────────────────────────────────
  * I2C 版本门控：ESP-IDF v6.x 使用新的 driver/i2c_master.h
@@ -69,19 +56,15 @@ static const char *TAG = "wink_pal_i2c";
 /* 非 ESP32 编译环境：函数体保持 stub（供静态分析/代码扫描），
  * 真机链接时由 ESP-IDF 构建系统替换为真实实现。 */
 typedef int esp_err_t;
-#define GPIO_NUM_MAX 50
 #define ESP_OK 0
 #endif
 
 /* ─────────────────────────────────────────────────────────
- * PWM (LEDC) 实现
+ * I2C 引脚弱默认（PWM 引脚定义移至 pal_hal_esp32_pwm.c；I2C 引脚将在
+ * Task 2 Step 5 迁至 pal_hal_esp32_i2c.c）
  * ───────────────────────────────────────────────────────── */
 
 #if defined(ESP_PLATFORM)
-/* 板级路由弱默认：无 board_config.c 覆盖时使用，避免链接缺符号。
- * 强定义由 samples/<app>/board_config.c 提供。*/
-__attribute__((weak)) const wink_pin_t pal_pwm_pin_map[PAL_PWM_CHANNELS] = {2, 4, 5, 18, 19, 21, 22, 23};
-
 /* I2C 引脚弱默认：无 board_config.c 强覆盖时使用。
  * I2C0: SDA=21, SCL=22; I2C1: SDA=33, SCL=32 */
 __attribute__((weak)) const wink_pin_t pal_i2c_pin_map[PAL_I2C_PORTS][2] = {
@@ -89,91 +72,6 @@ __attribute__((weak)) const wink_pin_t pal_i2c_pin_map[PAL_I2C_PORTS][2] = {
     {33, 32}
 };
 #endif
-
-/* owner 字符串常量：claim/release 必须逐字一致，否则 release 静默 no-op。*/
-static const char *const PWM_OWNER = "pal_hal_esp32";
-
-wink_status_t pal_pwm_init(uint8_t channel, uint32_t freq_hz) {
-    uint8_t timer_num = 0;
-    wink_status_t rs = pal_pwm_router_acquire(channel, freq_hz, &timer_num);
-    if (wink_status_is_error(rs)) { return rs; }
-
-    rs = pal_resource_claim(PAL_RESOURCE_PWM_CHANNEL, channel, PWM_OWNER);
-    if (wink_status_is_error(rs)) {
-        pal_pwm_router_release(channel);
-        return rs;
-    }
-
-#if defined(ESP_PLATFORM)
-    /* router 分配 timer，不再写死 LEDC_TIMER_0：同频复用、异频隔离。*/
-    ledc_timer_config_t timer_cfg = {
-        .speed_mode = LEDC_LOW_SPEED_MODE,
-        .duty_resolution = LEDC_TIMER_13_BIT,
-        .timer_num = (ledc_timer_t)timer_num,
-        .freq_hz = freq_hz,
-        .clk_cfg = LEDC_AUTO_CLK,
-    };
-    esp_err_t err = ledc_timer_config(&timer_cfg);
-    if (err != ESP_OK) {
-        pal_pwm_router_release(channel);
-        /* gcc16/xtensa-gcc 不因 (void) 抑制 warn_unused_result：先赋值再丢弃，best-effort 释放。*/
-        wink_status_t _rel = pal_resource_release(PAL_RESOURCE_PWM_CHANNEL, channel, PWM_OWNER);
-        (void)_rel;
-        return WINK_ERR_HARDWARE;
-    }
-
-    /* 物理路由来自 board_config.c 的强定义（无覆盖时回落至本 TU 弱默认 pal_pwm_pin_map）。*/
-    ledc_channel_config_t ch_cfg = {
-        .gpio_num = pal_pwm_pin_map[channel],
-        .speed_mode = LEDC_LOW_SPEED_MODE,
-        .channel = (ledc_channel_t)channel,
-        .intr_type = LEDC_INTR_DISABLE,
-        .timer_sel = (ledc_timer_t)timer_num,
-        .duty = 0,
-        .hpoint = 0,
-    };
-    err = ledc_channel_config(&ch_cfg);
-    if (err != ESP_OK) {
-        pal_pwm_router_release(channel);
-        /* gcc16/xtensa-gcc 不因 (void) 抑制 warn_unused_result：先赋值再丢弃，best-effort 释放。*/
-        wink_status_t _rel = pal_resource_release(PAL_RESOURCE_PWM_CHANNEL, channel, PWM_OWNER);
-        (void)_rel;
-        return WINK_ERR_HARDWARE;
-    }
-#else
-    (void)freq_hz;
-#endif
-    return WINK_OK;
-}
-
-wink_status_t pal_pwm_set_duty(uint8_t channel, float duty_percent) {
-    if (!pal_pwm_router_channel_ready(channel)) { return WINK_ERR_INVALID_ARG; }
-    if (duty_percent < 0.0f) { duty_percent = 0.0f; }
-    if (duty_percent > 100.0f) { duty_percent = 100.0f; }
-
-#if defined(ESP_PLATFORM)
-    uint32_t duty = (uint32_t)(duty_percent / 100.0f * 8191.0f); /* 13-bit = 8192 */
-    esp_err_t err = ledc_set_duty(LEDC_LOW_SPEED_MODE, (ledc_channel_t)channel, duty);
-    if (err != ESP_OK) { return WINK_ERR_HARDWARE; }
-    err = ledc_update_duty(LEDC_LOW_SPEED_MODE, (ledc_channel_t)channel);
-    if (err != ESP_OK) { return WINK_ERR_HARDWARE; }
-#else
-    (void)duty_percent;
-#endif
-    return WINK_OK;
-}
-
-void pal_pwm_deinit(uint8_t channel) {
-    if (!pal_pwm_router_channel_ready(channel)) { return; }   /* no-op if uninitialized */
-#if defined(ESP_PLATFORM)
-    (void)ledc_set_duty(LEDC_LOW_SPEED_MODE, (ledc_channel_t)channel, 0);
-    (void)ledc_update_duty(LEDC_LOW_SPEED_MODE, (ledc_channel_t)channel);
-#endif
-    /* gcc16/xtensa-gcc 不因 (void) 抑制 warn_unused_result：先赋值再丢弃，best-effort 释放/deinit 不失败。*/
-    wink_status_t _rel = pal_resource_release(PAL_RESOURCE_PWM_CHANNEL, channel, PWM_OWNER);
-    (void)_rel;
-    pal_pwm_router_release(channel);
-}
 
 /* ─────────────────────────────────────────────────────────
  * I2C 实现（v5.x / v6.x 双版本兼容）
