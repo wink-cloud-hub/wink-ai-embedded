@@ -47,6 +47,12 @@ typedef struct { int reserved; } portMUX_TYPE;
 
 void pal_delay_ms(uint32_t ms) {
 #if defined(ESP_PLATFORM)
+    extern int esp_rom_printf(const char *fmt, ...);
+    if (xPortInIsrContext() == pdTRUE) {
+        esp_rom_printf("WARNING: pal_delay_ms(%lu) called in ISR context! Falling back to busy-wait.\n", (unsigned long)ms);
+        esp_rom_delay_us(ms * 1000ULL);
+        return;
+    }
     vTaskDelay(pdMS_TO_TICKS(ms));
 #else
     (void)ms;
