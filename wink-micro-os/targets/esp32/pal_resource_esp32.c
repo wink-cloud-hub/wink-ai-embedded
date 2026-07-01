@@ -28,21 +28,15 @@ typedef struct {
 static pal_resource_claim_t s_claims[PAL_RESOURCE_MAX_CLAIMS];
 static uint32_t s_count = 0;
 
-#if defined(ESP_PLATFORM)
 /* SMP 临界区自旋锁：v5.x 下 taskENTER_CRITICAL(NULL) 会触发 spinlock_acquire(NULL)
  * 断言/解引用 → panic 复位。portMUX_INITIALIZER_UNLOCKED 为编译期初始化，
  * 保证在任何 taskENTER_CRITICAL 调用前已就绪。*/
 static portMUX_TYPE s_resource_mux = portMUX_INITIALIZER_UNLOCKED;
-#endif
 
 void pal_resource_reset(void) {
-#if defined(ESP_PLATFORM)
     taskENTER_CRITICAL(&s_resource_mux);
-#endif
     s_count = 0;
-#if defined(ESP_PLATFORM)
     taskEXIT_CRITICAL(&s_resource_mux);
-#endif
 }
 
 WINK_WARN_UNUSED_RESULT
@@ -52,30 +46,22 @@ wink_status_t pal_resource_claim(pal_resource_type_t type, uint32_t id, const ch
         return WINK_ERR_INVALID_ARG;
     }
 
-#if defined(ESP_PLATFORM)
     taskENTER_CRITICAL(&s_resource_mux);
-#endif
 
     /* 幂等 / 冲突判定：同 (type,id) 同 owner → OK；不同 owner → BUSY */
     for (uint32_t i = 0; i < s_count; i++) {
         if (s_claims[i].type == type && s_claims[i].id == id) {
             if (strcmp(s_claims[i].owner, owner) == 0) {
-#if defined(ESP_PLATFORM)
                 taskEXIT_CRITICAL(&s_resource_mux);
-#endif
                 return WINK_OK;        /* 同 owner：幂等 */
             }
-#if defined(ESP_PLATFORM)
             taskEXIT_CRITICAL(&s_resource_mux);
-#endif
             return WINK_ERR_BUSY;      /* 不同 owner：冲突 */
         }
     }
 
     if (s_count >= PAL_RESOURCE_MAX_CLAIMS) {
-#if defined(ESP_PLATFORM)
         taskEXIT_CRITICAL(&s_resource_mux);
-#endif
         return WINK_ERR_RESOURCE_EXHAUSTED;
     }
 
@@ -84,9 +70,7 @@ wink_status_t pal_resource_claim(pal_resource_type_t type, uint32_t id, const ch
     s_claims[s_count].owner = owner;
     s_count++;
 
-#if defined(ESP_PLATFORM)
     taskEXIT_CRITICAL(&s_resource_mux);
-#endif
     return WINK_OK;
 }
 
@@ -94,9 +78,7 @@ WINK_WARN_UNUSED_RESULT
 wink_status_t pal_resource_release(pal_resource_type_t type, uint32_t id, const char *owner) {
     if (owner == NULL) { return WINK_ERR_INVALID_ARG; }
 
-#if defined(ESP_PLATFORM)
     taskENTER_CRITICAL(&s_resource_mux);
-#endif
 
     wink_status_t result = WINK_ERR_INVALID_ARG;   /* 默认：未占用 */
     for (uint32_t i = 0; i < s_count; i++) {
@@ -112,8 +94,6 @@ wink_status_t pal_resource_release(pal_resource_type_t type, uint32_t id, const 
         }
     }
 
-#if defined(ESP_PLATFORM)
     taskEXIT_CRITICAL(&s_resource_mux);
-#endif
     return result;
 }
