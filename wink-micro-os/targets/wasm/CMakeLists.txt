@@ -15,6 +15,8 @@ set(PAL_WASM_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_storage_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_physical.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/wink_sim_physical.c
+    # PLAN-20260701-PAL-TARGET-P1-MAINT Task 1：共享中断责任链算法层
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/pal_shared_chain.c
     PARENT_SCOPE)
 
 set(WASM_ENTRY_SOURCE

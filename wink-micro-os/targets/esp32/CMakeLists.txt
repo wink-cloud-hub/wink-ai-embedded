@@ -31,10 +31,15 @@ if(ESP_PLATFORM)
             pal_storage_esp32.c
             ${WINK_MICRO_OS_ROOT}/pal/src/pal_pwm_router.c
             ${WINK_MICRO_OS_ROOT}/pal/src/wink_dev_config.c
+            # PLAN-20260701-PAL-TARGET-P1-MAINT Task 1：共享中断责任链算法层（target-private）
+            ${WINK_MICRO_OS_ROOT}/targets/common/src/pal_shared_chain.c
             # 核心共享源文件（来自 core_sources.cmake）
             ${WINK_CORE_SOURCES}
         INCLUDE_DIRS
             ${WINK_CORE_INCLUDE_DIRS}
+            # target-private：pal_shared_chain.h **不进入** WINK_CORE_INCLUDE_DIRS，
+            # 只对 targets/esp32/ 下的实现 TU 可见，避免泄漏到 DAL / runtime。
+            ${WINK_MICRO_OS_ROOT}/targets/common/include
             ${WINK_CONFIG_DIR}    # codegen 生成的 wink_config.h 所在目录
         REQUIRES
             # ESP-IDF v6.x: driver was split into fine-grained components
@@ -93,6 +98,7 @@ elseif(TARGET_PLATFORM STREQUAL "esp32")
         pal_storage_esp32.c
         ${WINK_MICRO_OS_ROOT}/pal/src/pal_pwm_router.c
         ${WINK_MICRO_OS_ROOT}/pal/src/wink_dev_config.c
+        ${WINK_MICRO_OS_ROOT}/targets/common/src/pal_shared_chain.c
         ${WINK_CORE_SOURCES}
     )
     message(STATUS "wink esp32 target configured (static analysis)")
