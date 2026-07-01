@@ -4,6 +4,17 @@ set(APP_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/device_tree.c
     ${CMAKE_CURRENT_SOURCE_DIR}/app_callbacks.c)
 
+# 导出给顶层 wink_simulator (wasm) 消费。host 分支用 add_subdirectory
+# 时也会导出，但顶层 host 分支不读取此变量，无副作用。
+# 契约见 §6.1 App 注入接口 / 2026-07-01 wasm simulator repair plan Task 1.2。
+set(WINK_APP_SOURCES ${APP_SOURCES} PARENT_SCOPE)
+
+# host e2e target 依赖 pal_host / test_app_e2e.c 等 host-only 组件，
+# 在 wasm build（EMSCRIPTEN）下跳过定义，仅保留上面的 WINK_APP_SOURCES 导出。
+if(EMSCRIPTEN)
+    return()
+endif()
+
 # host 端到端测试可执行：runtime + trace + dal + targets/host + app
 add_executable(app_avoidance_car_e2e
     ${APP_SOURCES}

@@ -12,6 +12,16 @@
 #   2. 注释掉 app_callbacks.c 中的 TEST_ENABLE_SYNCHRONIZE=true
 #      → 几十轮内就会触发 UAF，证明 synchronize 是必要的
 
+# ── wasm target 硬拦截（2026-07-01 wasm simulator repair plan Task 1.3）──
+# 本 sample 是 ESP32 双核 SMP 竞态压测：host 是单线程永远测不出 UAF，
+# wasm 也无 SMP 并发能力，直接硬报错拒绝 configure。
+if(EMSCRIPTEN)
+    message(FATAL_ERROR
+        "Sample 'smp_uaf_test' is a physical SMP UAF stress test and is not "
+        "supported on the WebAssembly simulator target. Use "
+        "-DWINK_APP_DIR=<...>/samples/avoidance_car (or oled_dashboard) for wasm.")
+endif()
+
 set(APP_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/device_tree.c
     ${CMAKE_CURRENT_SOURCE_DIR}/app_callbacks.c
