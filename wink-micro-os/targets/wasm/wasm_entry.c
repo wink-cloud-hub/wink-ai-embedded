@@ -23,6 +23,7 @@ extern const wink_app_callbacks_t *wink_app_get_callbacks(void);
 
 int main(void) {
     const wink_app_callbacks_t *cb = wink_app_get_callbacks();
-    wink_runtime_run(cb, 0);   /* 0 = 无限循环（wasm 下由 Asyncify 让出） */
-    return 0;
+    /* 返回值遵循 wink_status_t 约定：Wasm 下 Asyncify 会持续让出 → 正常场景走不到此处；
+     * 若 runtime 因契约错误提前退出，把它变成进程退出码方便 JS 侧诊断（负=错误）。 */
+    return (int)wink_runtime_run(cb, 0);   /* 0 = 无限循环（wasm 下由 Asyncify 让出） */
 }
