@@ -78,6 +78,15 @@
 | [testing.md](../../_embedded-shared/testing.md) | host 单测共享层、帧解析 fuzzing、HIL、静态分发可测性红利 |
 | [safety-checklist.md](../../_embedded-shared/safety-checklist.md) | 12 阶段安全清单、风险分级、严重性分级 |
 
+### 项目原则性 ADR（写代码前须知）
+
+| ADR | 主题 |
+|-----|------|
+| [ADR-0001](../../../../docs/design/decisions/0001-error-code-sign-convention.md) | 错误码符号约定（0 = 成功 / 负数 = 错误） |
+| [ADR-0002](../../../../docs/design/decisions/0002-dual-target-compilation.md) | 双 target 同源编译（Emscripten + ESP-IDF） |
+| [ADR-0004](../../../../docs/design/decisions/0004-static-dispatch-vs-runtime-ops.md) | 编译期静态分发 vs 运行期 ops 表 |
+| [ADR-0012](../../../../docs/design/decisions/0012-contract-honesty-over-silent-degradation.md) | 契约诚实 > 静默降级（PAL 跨平台能力缺失时返回 `WINK_ERR_UNSUPPORTED`，禁止静默降级）—— 见 [concurrency.md ISR 优先级上限](../../_embedded-shared/concurrency.md) |
+
 ### `static-dispatch/`（本项目标准）
 
 | 文档 | 内容 |

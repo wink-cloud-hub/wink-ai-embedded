@@ -116,6 +116,20 @@ void mutex_lock_debug(mutex_t *mutex)
 
 高于门槛的 ISR：**只**读写寄存器 + 释放信号量（ISR 安全变体），**绝不**调任何 RTOS API。
 
+### 契约诚实 > 静默降级（ADR-0012）
+
+PAL 抽象跨平台中断优先级时，如果目标平台**不满足**某个优先级的语义（例如 ESP32 无真正的 NMI C-ISR，
+不支持"非 RTOS 安全"级），**必须显式返回 `WINK_ERR_UNSUPPORTED`，禁止静默降级到其它级别**。
+静默降级会让"仿真通过 → 真机通过"关系失效，掩盖跨平台契约违反。
+
+- 头文件写什么，实现就必须兑现；实现兑现不了的能力，头文件必须诚实标注。
+- 仿真侧（host/wasm）默认与真机拒接方案一致；仅在编译期宏（如 `WINK_HOST_ALLOW_REALTIME_FOR_TESTING`）
+  显式 opt-in 时才放行，且首次注册需打印一次性 warning。
+- 具体案例：`pal_irq_enable(PAL_IRQ_PRIO_REALTIME, ...)` 在三 target 上均返回 `WINK_ERR_UNSUPPORTED`。
+
+详见 [ADR-0012 契约诚实优于静默降级](../../../docs/design/decisions/0012-contract-honesty-over-silent-degradation.md)
+及其子系统级映射 ADR-IRQ-008 / ADR-IRQ-009。
+
 ---
 
 ## volatile ≠ 原子 ≠ 内存序
