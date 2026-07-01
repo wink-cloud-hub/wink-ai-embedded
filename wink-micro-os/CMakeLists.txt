@@ -46,8 +46,15 @@ message(STATUS "Configuration will be generated at: ${WINK_CONFIG_H}")
 set(WINK_STACK_USAGE_LIMIT 1536 CACHE STRING
     "Per-function stack usage hard limit in bytes (-Wstack-usage)")
 # Only apply to GCC/Clang (MSVC does not support -Wstack-usage)
-if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+# GCC 与 Clang 的等价选项不同：
+#   - GCC:   -Wstack-usage=<N>       （支持精确到函数级、可关联到 .su 报告）
+#   - Clang: -Wframe-larger-than=<N> （emcc 底层为 clang，只识别此形式）
+# 之前统一用 -Wstack-usage 会让 emcc（Clang）报 "unknown warning option"，
+# 从而阻断 wasm build。这里按编译器 ID 分派，双 target 皆有等价栈门禁。
+if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
     add_compile_options(-Wstack-usage=${WINK_STACK_USAGE_LIMIT})
+elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+    add_compile_options(-Wframe-larger-than=${WINK_STACK_USAGE_LIMIT})
 elseif(MSVC)
     # Enable UTF-8 source/execution character set for MSVC to prevent C4819 encoding warnings/errors
     add_compile_options(/utf-8)

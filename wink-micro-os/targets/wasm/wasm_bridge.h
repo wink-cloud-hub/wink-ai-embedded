@@ -199,11 +199,15 @@ extern uint32_t pal_wasm_fault_event_get_sequence(uint32_t index);
  *
  * 加在此处而非 #include pal_wasm_internal.h 是为了保持 wasm_bridge.h 作为
  * "JS 看到的所有 C 符号 SSOT" 的边界：内部头只被 wasm target *.c 引用，
- * 桥头独立地把对外契约暴露给非 wasm-internal 的代码（测试、文档生成）。 */
-typedef struct wasm_pin_power_model_t wasm_pin_power_model_t;  /* 见 pal_wasm_internal.h */
+ * 桥头独立地把对外契约暴露给非 wasm-internal 的代码（测试、文档生成）。
+ *
+ * 声明形式：仅用纯 struct 前向声明（不带 typedef）。C99 下同名 typedef
+ * 出现两次是硬错（本头 + pal_wasm_internal.h 的完整定义会冲突），C11 才允许；
+ * 前向 struct 声明多次共存则从 C89 起就合法，跨标准更稳。 */
+struct wasm_pin_power_model_t;   /* 完整定义见 pal_wasm_internal.h */
 #include "wink_status.h"   /* wink_status_t */
 extern wink_status_t pal_wasm_set_pin_power_model(uint8_t pin,
-                                                  const wasm_pin_power_model_t *model);
+                                                  const struct wasm_pin_power_model_t *model);
 extern uint64_t      pal_wasm_get_total_energy_mj(void);
 
 #ifdef __cplusplus
