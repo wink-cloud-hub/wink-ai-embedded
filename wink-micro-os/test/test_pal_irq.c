@@ -84,6 +84,72 @@ void test_gpio_interrupt_null_callback(void)
 }
 
 /* ─────────────────────────────────────────────────────────
+ * Test Group 1.5: G3 GPIO prio 首次锁定契约（Phase 1.5，2026-07-01）
+ * ─────────────────────────────────────────────────────────
+ * 契约：GPIO ISR service 首次注册时锁定 prio，后续 mismatch 返回
+ * WINK_ERR_INVALID_ARG；disable 不释放锁定；进程生命周期内单向锁定。
+ * 参考 pal_hal.h::pal_gpio_enable_interrupt_ex v2.2 doxygen。 */
+
+void test_gpio_prio_locked_on_first_register(void)
+{
+    /* 首次 HIGH 注册 → 锁定为 HIGH；再次 HIGH 注册其它 pin → OK（一致） */
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+        pal_gpio_enable_interrupt_ex(/*pin*/ 12, PAL_GPIO_INTR_FALLING_EDGE,
+                                      PAL_IRQ_PRIO_HIGH, test_gpio_isr, NULL));
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+        pal_gpio_enable_interrupt_ex(/*pin*/ 13, PAL_GPIO_INTR_FALLING_EDGE,
+                                      PAL_IRQ_PRIO_HIGH, test_gpio_isr, NULL));
+}
+
+void test_gpio_prio_mismatch_returns_invalid_arg(void)
+{
+    /* 首次 NORMAL 注册 → 锁定为 NORMAL；再 HIGH 注册应返回 INVALID_ARG（不是 BUSY/UNSUPPORTED） */
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+        pal_gpio_enable_interrupt_ex(/*pin*/ 14, PAL_GPIO_INTR_FALLING_EDGE,
+                                      PAL_IRQ_PRIO_NORMAL, test_gpio_isr, NULL));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG,
+        pal_gpio_enable_interrupt_ex(/*pin*/ 15, PAL_GPIO_INTR_FALLING_EDGE,
+                                      PAL_IRQ_PRIO_HIGH, test_gpio_isr, NULL));
+}
+
+void test_gpio_non_ex_locks_to_normal(void)
+{
+    /* 非 ex 版内联到 _ex(..., NORMAL, ...)；先注册非 ex → 锁定 NORMAL；
+     * 再 _ex(HIGH) 应被拒。反过来同样成立，见 test_gpio_prio_mismatch_returns_invalid_arg。 */
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+        pal_gpio_enable_interrupt(/*pin*/ 16, PAL_GPIO_INTR_FALLING_EDGE,
+                                   test_gpio_isr, NULL));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG,
+        pal_gpio_enable_interrupt_ex(/*pin*/ 17, PAL_GPIO_INTR_FALLING_EDGE,
+                                      PAL_IRQ_PRIO_HIGH, test_gpio_isr, NULL));
+}
+
+void test_gpio_disable_does_not_unlock(void)
+{
+    /* 契约：disable 不释放 prio 锁定（拒绝 disable→uninstall 方案，见 pal_hal.h §1.2）。
+     * 步骤：
+     *   1. 注册 Pin A (NORMAL) → OK
+     *   2. 注册 Pin B (HIGH)   → INVALID_ARG（锁定 mismatch）
+     *   3. disable(Pin A)      → OK
+     *   4. 再次注册 Pin B (HIGH) → 仍为 INVALID_ARG（disable 未解锁） */
+    const wink_pin_t PIN_A = 18;
+    const wink_pin_t PIN_B = 19;
+
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+        pal_gpio_enable_interrupt_ex(PIN_A, PAL_GPIO_INTR_FALLING_EDGE,
+                                      PAL_IRQ_PRIO_NORMAL, test_gpio_isr, NULL));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG,
+        pal_gpio_enable_interrupt_ex(PIN_B, PAL_GPIO_INTR_FALLING_EDGE,
+                                      PAL_IRQ_PRIO_HIGH, test_gpio_isr, NULL));
+
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_gpio_disable_interrupt(PIN_A));
+
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG,
+        pal_gpio_enable_interrupt_ex(PIN_B, PAL_GPIO_INTR_FALLING_EDGE,
+                                      PAL_IRQ_PRIO_HIGH, test_gpio_isr, NULL));
+}
+
+/* ─────────────────────────────────────────────────────────
  * Test Group 2: 中断锁语义（核心验收项）
  * ───────────────────────────────────────────────────────── */
 
@@ -312,9 +378,11 @@ void test_irq_priority_enum_bounds(void)
         pal_irq_enable(TEST_IRQ, PAL_IRQ_PRIO_HIGHEST, test_logical_isr, NULL));
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_irq_disable(TEST_IRQ));
 
-    /* v2.1 G2：REALTIME 在 host 单线程模型下仍接受（详见 test_realtime_accepted_on_host）；
-     * ESP32 target 上则会拒接（详见 test_realtime_priority_rejected_on_esp32）。 */
-#if !defined(ESP_PLATFORM)
+    /* v2.2（Phase 1.5，2026-07-01）：REALTIME 在所有 target 上默认拒接，
+     * 与 ESP32 对齐（ADR-0012 契约诚实）。opt-in 通过
+     * WINK_HOST_ALLOW_REALTIME_FOR_TESTING 编译宏放行 —— 见
+     * test_irq_realtime_accepted_when_opt_in。 */
+#if defined(WINK_HOST_ALLOW_REALTIME_FOR_TESTING)
     TEST_ASSERT_EQUAL_INT(WINK_OK,
         pal_irq_enable(TEST_IRQ, PAL_IRQ_PRIO_REALTIME, test_logical_isr, NULL));
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_irq_disable(TEST_IRQ));
@@ -328,26 +396,50 @@ void test_irq_priority_enum_bounds(void)
         pal_irq_enable(TEST_IRQ, (pal_irq_prio_t)999, test_logical_isr, NULL));
 }
 
-/* v2.1 G2 验收：REALTIME 拒接的跨 target 契约 */
+/* v2.2 G2（Phase 1.5，2026-07-01）：REALTIME 全 target 默认拒接的契约锚点 */
 
-void test_realtime_accepted_on_host(void)
+void test_irq_realtime_rejected_on_all_targets(void)
 {
-    /* host 单线程模型下 REALTIME 仍可注册成功（详见 pal_irq.h 注释）。
-     * 此 test 是契约的 host-side 锚点，配对 test_realtime_priority_rejected_on_esp32。 */
-#if defined(ESP_PLATFORM)
-    TEST_IGNORE_MESSAGE("REALTIME 在 ESP32 上拒接，此 test 仅在非真机 target 上有意义");
+    /* v2.2：默认编译（无 WINK_HOST_ALLOW_REALTIME_FOR_TESTING）时，
+     * pal_irq_enable(..., REALTIME, ...) 在所有 target 上一致返回
+     * WINK_ERR_UNSUPPORTED，让"仿真通过 → 真机通过"关系严格成立。 */
+#if defined(WINK_HOST_ALLOW_REALTIME_FOR_TESTING)
+    TEST_IGNORE_MESSAGE("opt-in 编译，REALTIME 放行；见 test_irq_realtime_accepted_when_opt_in");
 #else
+    const uint32_t TEST_IRQ = 6;
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED,
+        pal_irq_enable(TEST_IRQ, PAL_IRQ_PRIO_REALTIME, test_logical_isr, NULL));
+#endif
+}
+
+void test_gpio_realtime_rejected_on_all_targets(void)
+{
+    /* v2.2：GPIO 路径同样在所有 target 上拒接 REALTIME（不受 opt-in 宏影响 —— GPIO
+     * 无 per-pin 抢占，REALTIME 无处映射，无论何种编译都返回 UNSUPPORTED）。 */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED,
+        pal_gpio_enable_interrupt_ex(/*pin*/ 4, PAL_GPIO_INTR_FALLING_EDGE,
+                                      PAL_IRQ_PRIO_REALTIME, test_gpio_isr, NULL));
+}
+
+void test_irq_realtime_accepted_when_opt_in(void)
+{
+    /* v2.2 opt-in：定义 WINK_HOST_ALLOW_REALTIME_FOR_TESTING 后，host/wasm 上
+     * pal_irq_enable REALTIME 被受控放行；首次调用会打 warn（未在 unit test 内 capture，
+     * 覆盖 warn 输出留给 stderr 目视/CI 日志）。 */
+#if defined(WINK_HOST_ALLOW_REALTIME_FOR_TESTING)
     const uint32_t TEST_IRQ = 6;
     TEST_ASSERT_EQUAL_INT(WINK_OK,
         pal_irq_enable(TEST_IRQ, PAL_IRQ_PRIO_REALTIME, test_logical_isr, NULL));
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_irq_disable(TEST_IRQ));
+#else
+    TEST_IGNORE_MESSAGE("需要 -DWINK_HOST_ALLOW_REALTIME_FOR_TESTING 编译；默认 build 跳过");
 #endif
 }
 
 void test_realtime_priority_rejected_on_esp32(void)
 {
-    /* ESP32 上 pal_irq_enable / pal_gpio_enable_interrupt_ex 都必须拒接 REALTIME，
-     * 避免静默降级到 LEVEL3（与 HIGHEST 物理等价、契约相反）。 */
+    /* 保留 ESP32 侧的历史锚点（v2.1 引入）。v2.2 起 host/wasm 也拒接，
+     * 见 test_irq_realtime_rejected_on_all_targets / test_gpio_realtime_rejected_on_all_targets。 */
 #if !defined(ESP_PLATFORM)
     TEST_IGNORE_MESSAGE("仅在 ESP32 target 上有意义；host build 跳过");
 #else
@@ -361,6 +453,68 @@ void test_realtime_priority_rejected_on_esp32(void)
                                       PAL_IRQ_PRIO_REALTIME, test_gpio_isr, NULL));
 #endif
 }
+
+/* ─────────────────────────────────────────────────────────
+ * Test Group 5.5: G3 并发首次注册竞态（Phase 1.5，host only，需 pthread）
+ * ─────────────────────────────────────────────────────────
+ * 契约：两条线程同时首次注册不同 prio，实现必须以 mutex 保护 double-checked
+ * initialization —— 一条获得锁定为其 prio，另一条应返回 WINK_ERR_INVALID_ARG，
+ * 且不出现 UB / crash / 双重初始化。 */
+
+#if !defined(ESP_PLATFORM) && !defined(__EMSCRIPTEN__)
+#include <pthread.h>
+
+typedef struct {
+    pal_irq_prio_t prio;
+    wink_pin_t     pin;
+    wink_status_t  result;
+} race_ctx_t;
+
+static void race_isr(void *arg) { (void)arg; }
+
+static void *race_worker(void *arg)
+{
+    race_ctx_t *ctx = (race_ctx_t *)arg;
+    ctx->result = pal_gpio_enable_interrupt_ex(
+        ctx->pin, PAL_GPIO_INTR_FALLING_EDGE, ctx->prio, race_isr, NULL);
+    return NULL;
+}
+
+void test_gpio_concurrent_first_register_race(void)
+{
+    /* 两条线程同时首次注册不同 prio；重复 100 次以增加碰撞概率。 */
+    for (int iter = 0; iter < 100; ++iter) {
+        pal_host_reset_isr_stats();   /* 重置 GPIO service 锁定状态 */
+
+        race_ctx_t a = { .prio = PAL_IRQ_PRIO_NORMAL, .pin = 22, .result = WINK_OK };
+        race_ctx_t b = { .prio = PAL_IRQ_PRIO_HIGH,   .pin = 23, .result = WINK_OK };
+
+        pthread_t ta, tb;
+        pthread_create(&ta, NULL, race_worker, &a);
+        pthread_create(&tb, NULL, race_worker, &b);
+        pthread_join(ta, NULL);
+        pthread_join(tb, NULL);
+
+        /* 恰好一条成功、一条被拒（不允许双成功——那意味着 mutex 失效或
+         * lock 提交/检查在临界区外；也不允许双失败——那意味着首次注册被误判）。 */
+        int ok_count = 0, invalid_count = 0;
+        if (a.result == WINK_OK)              ok_count++;
+        if (b.result == WINK_OK)              ok_count++;
+        if (a.result == WINK_ERR_INVALID_ARG) invalid_count++;
+        if (b.result == WINK_ERR_INVALID_ARG) invalid_count++;
+
+        TEST_ASSERT_EQUAL_INT_MESSAGE(1, ok_count,
+            "expected exactly one thread to win the first-register race");
+        TEST_ASSERT_EQUAL_INT_MESSAGE(1, invalid_count,
+            "the losing thread must return WINK_ERR_INVALID_ARG (not BUSY/UNSUPPORTED)");
+    }
+}
+#else
+void test_gpio_concurrent_first_register_race(void)
+{
+    TEST_IGNORE_MESSAGE("需要 pthread（host build）；ESP32/WASM 跳过");
+}
+#endif
 
 /* ─────────────────────────────────────────────────────────
  * Test Group 6: 共享中断机制（v2.0 核心特性）
@@ -502,6 +656,12 @@ int main(void)
     RUN_TEST(test_gpio_interrupt_invalid_pin);
     RUN_TEST(test_gpio_interrupt_null_callback);
 
+    /* Group 1.5: G3 GPIO prio 首次锁定契约（Phase 1.5，2026-07-01） */
+    RUN_TEST(test_gpio_prio_locked_on_first_register);
+    RUN_TEST(test_gpio_prio_mismatch_returns_invalid_arg);
+    RUN_TEST(test_gpio_non_ex_locks_to_normal);
+    RUN_TEST(test_gpio_disable_does_not_unlock);
+
     /* Group 2: 中断锁语义（核心验收） */
     RUN_TEST(test_irq_lock_pending_semantics);
     RUN_TEST(test_irq_lock_nesting);
@@ -520,9 +680,14 @@ int main(void)
 
     /* Group 5: 优先级边界 */
     RUN_TEST(test_irq_priority_enum_bounds);
-    /* v2.1 G2 新增：REALTIME 跨 target 契约 */
-    RUN_TEST(test_realtime_accepted_on_host);
+    /* v2.2 G2 新增（Phase 1.5，2026-07-01）：REALTIME 全 target 一致契约 */
+    RUN_TEST(test_irq_realtime_rejected_on_all_targets);
+    RUN_TEST(test_gpio_realtime_rejected_on_all_targets);
+    RUN_TEST(test_irq_realtime_accepted_when_opt_in);
     RUN_TEST(test_realtime_priority_rejected_on_esp32);
+
+    /* Group 5.5: G3 并发首次注册竞态（host only） */
+    RUN_TEST(test_gpio_concurrent_first_register_race);
 
     /* Group 6: 共享中断（v2.0 核心特性） */
     RUN_TEST(test_shared_irq_both_handlers_called);
