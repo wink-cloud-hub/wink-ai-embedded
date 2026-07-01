@@ -73,12 +73,34 @@ wink-micro-os/
 项目使用 CMake 构建，通过传入 `-DTARGET_PLATFORM` 参数静态绑定编译目标。
 
 ### 3.1 编译为 WebAssembly 仿真组件
-使用 Emscripten 工具链进行编译，生成 Wasm 字节码供 Web 端 Worker 线程载入：
+
+使用 Emscripten 工具链编译，生成 Wasm 字节码供 Web 端 Worker 线程载入。默认构建 `samples/avoidance_car`：
+
 ```bash
-mkdir build_wasm && cd build_wasm
-emcmake cmake -DTARGET_PLATFORM=wasm ..
-emmake make
+# 从 wink-micro-os/ 目录执行
+emcmake cmake -S . -B build-wasm -DTARGET_PLATFORM=wasm
+cmake --build build-wasm
 ```
+
+**产出**：`build-wasm/wink_simulator.wasm` + `build-wasm/wink_simulator.js`（MODULARIZE 胶水，UMD 导出 `WasmSandbox`）。
+
+**换 App 变体**：AI 生成的 App 或其它 sample 通过 `WINK_APP_DIR` 注入：
+
+```bash
+emcmake cmake -S . -B build-wasm -DTARGET_PLATFORM=wasm \
+    -DWINK_APP_DIR=$(pwd)/samples/oled_dashboard
+cmake --build build-wasm
+```
+
+**Node 侧烟测（编译期契约门禁）**：
+
+```bash
+node targets/wasm/wink_sim_stub.js
+```
+
+Stub 静态解析 wasm 二进制 imports 集合，与预期比对；在 `worker_threads.Worker` 里加载 `wink_simulator.js` 验证 `onRuntimeInitialized` 到达。**必须走 worker**——Asyncify 循环与 Node 主线程 event loop 同居会 starve timer 并 OOM。同理 Workbench 前端仓也必须把 wasm 关进 Web Worker，不能直接在 UI 主线程加载。
+
+**JS 桥接契约**：所有 `extern js_*` 符号声明在 `targets/wasm/wasm_bridge.h`（SSOT），默认实现在 `targets/wasm/wink_sim_js.js`（编译期 `--js-library` 注入）。宿主（Workbench）通过 `Module.js_* = customImpl` 覆盖默认桩，**无需重编 wasm**。详见 [04-wasm-simulation §2.2.2](../docs/design/04-wasm-simulation/01-wasm-sandbox-lifecycle.md)。
 
 ### 3.2 编译为 ESP32 真机固件
 作为 ESP-IDF 工程的组件 (Component) 引入：
