@@ -158,6 +158,18 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
     # 是构建输入，改 stub 后 make 会认为无事发生。
     set_property(TARGET wink_simulator APPEND PROPERTY LINK_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/targets/wasm/wink_sim_js.js)
+
+    # 契约断言：wink_simulator 必须 link wink_runtime。历史上 baca3cf
+    # (2026-06-24) 把 wasm_entry.c 改为依赖 wink_runtime_run() 但漏改此处 link
+    # 列表，wasm build 因此 broken 7 天没被踩。这条断言让未来的删链回归在
+    # configure 阶段就爆掉，而不是留给某个下游踩到"wink_app.h not found"。
+    get_target_property(_wink_simulator_link_libs wink_simulator LINK_LIBRARIES)
+    if(NOT "wink_runtime" IN_LIST _wink_simulator_link_libs)
+        message(FATAL_ERROR
+            "wink_simulator must link wink_runtime; wasm_entry.c depends on "
+            "wink_runtime_run(). See docs/design/implementation-plans/"
+            "2026-07-01-wasm-simulator-target-repair-plan.md §4.2.")
+    endif()
 endif()
 
 # ---- host 单元测试（非 wasm target 时启用）----
