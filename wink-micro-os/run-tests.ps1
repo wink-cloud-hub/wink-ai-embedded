@@ -155,9 +155,17 @@ if ($overallRc -eq 0) {
 # Runs AFTER host tests so a lint regression does not gate the test signal.
 # ---- P1 保护：targets/esp32/*.c 内 ESP_PLATFORM 出现次数 ≤ 1 -----------------
 # NOTE: cwd is $PSScriptRoot (wink-micro-os/), so path is relative to that.
+# Regex anchor rationale: only count REAL preprocessor directives — lines that
+# START with optional whitespace + `#` + optional space + `if`. This mirrors
+# how the C preprocessor sees directives, so R-4 documentation comments like
+# `* ✅ R-4：全文件仅 1 处最外层 `#if defined(ESP_PLATFORM)` ...` (leading `*`
+# from a block comment) or `// #if defined(ESP_PLATFORM)` are correctly
+# ignored. `#\s*if` tolerates the rare `# if defined(...)` spelling.
+# Scope is intentionally narrow: `#ifdef ESP_PLATFORM` / `#if ESP_PLATFORM`
+# are not currently used in-tree (per Task 3 audit) and are out of scope.
 $violations = @()
 Get-ChildItem targets/esp32/*.c | ForEach-Object {
-    $count = (Select-String -Path $_.FullName -Pattern '#if defined\(ESP_PLATFORM\)' -SimpleMatch:$false).Count
+    $count = (Select-String -Path $_.FullName -Pattern '^\s*#\s*if\s+defined\(ESP_PLATFORM\)').Count
     if ($count -gt 1) {
         $violations += "$($_.Name): $count occurrences (limit: 1)"
     }
