@@ -24,7 +24,9 @@ static void run_ticks(dal_button_t *btn, int n) {
 
 /* 负对照 helper：无去抖的裸采样（模拟「开发者没写去抖」），与 dal_button.c:6 button_raw_pressed 同语义。 */
 static bool raw_pressed(uint16_t pin, bool active_low) {
-    return pal_gpio_read(pin) != active_low;
+    bool lvl = false;
+    WINK_IGNORE_UNUSED(pal_gpio_read((wink_pin_t)pin, &lvl));
+    return lvl != active_low;
 }
 
 /* 【主线·正】电平跃变 → dal_button 计数去抖吸收抖动 → 稳定 pressed。
@@ -62,6 +64,7 @@ void test_raw_read_without_debounce_bounces(void) {
     f.bounce_us = BOUNCE_US; f.prng_seed = 1;
     sim_set_faults(&f);
 
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_resource_claim(PAL_RESOURCE_GPIO_PIN, 9, "test"));
     sim_set_gpio_ideal(9, true);                                   /* 上电=释放（pin9，避耦合） */
     pal_os_sleep_ms(TICK_MS);                                         /* now=10000 */
     sim_set_gpio_ideal(9, false);                                  /* 跃变=按下 → 窗 [10000,40000) */

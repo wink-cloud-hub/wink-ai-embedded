@@ -44,6 +44,7 @@ extern void host_record_pwm(uint8_t channel, float duty);
  * 但每次最多推进本窗口——若 echo 在窗口外（远超 30ms 才变高），驱动循环自身的
  * 30ms 超时判定自然触发（模拟「echo 久不响应」）。窗口值对齐器件超时 (30000us)。 */
 #define ECHO_POLL_WINDOW_US 30000u
+#define HOST_MAX_GPIO_PIN  50
 
 wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
     /* Track A（M1）：DAL 是资源占用 SSOT，PAL 层不再自 claim（否则与 DAL 语义 owner
@@ -52,15 +53,45 @@ wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
     (void)mode;
     return WINK_OK;
 }
-void pal_gpio_write(wink_pin_t pin, bool level) { (void)pin; (void)level; }
 
-bool pal_gpio_read(wink_pin_t pin) {
+wink_status_t pal_gpio_write(wink_pin_t pin, bool level) {
+    if (pin < 0 || pin >= HOST_MAX_GPIO_PIN) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    if (!pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin)) {
+        return WINK_ERR_INVALID_STATE;
+    }
+    (void)level;
+    return WINK_OK;
+}
+
+wink_status_t pal_gpio_read(wink_pin_t pin, bool *out_level) {
+    if (out_level == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    *out_level = false; /* Defense-in-depth initialization */
+
+    if (pin < 0 || pin >= HOST_MAX_GPIO_PIN) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    if (!pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin)) {
+        return WINK_ERR_INVALID_STATE;
+    }
+
     /* ADR-0009 Wave1：注入了理想电平的 pin → 走抖动退化（§3.1）；否则走原 echo 协作推进逻辑 */
     bool debounced;
     extern bool host_gpio_read_debounced(uint16_t pin, bool *out_level);
-    if (host_gpio_read_debounced(pin, &debounced)) { return debounced; }
+    if (host_gpio_read_debounced(pin, &debounced)) {
+        *out_level = debounced;
+        return WINK_OK;
+    }
 
-    if (pin != host_echo_pin()) return false;
+    if (pin != host_echo_pin()) {
+        *out_level = false;
+        return WINK_OK;
+    }
+
     uint64_t t = host_sim_time_us();
     uint64_t rise = host_echo_rise_us();
     uint64_t high = host_echo_high_us();
@@ -70,19 +101,21 @@ bool pal_gpio_read(wink_pin_t pin) {
         uint64_t target = rise;
         if (rise - t > ECHO_POLL_WINDOW_US) target = t + ECHO_POLL_WINDOW_US;
         host_sim_advance_to(target);
-        return target >= rise;                /* 推进到变高时刻返回高；窗口内未达返回低 */
+        *out_level = (target >= rise);
+        return WINK_OK;
     }
     if (t < rise + high) {
         host_sim_advance_to(rise + high);
-        return false;                         /* 推进到变低时刻，echo 为低 */
+        *out_level = false;
+        return WINK_OK;
     }
-    return false;
+    *out_level = false;
+    return WINK_OK;
 }
 
 /* ─────────────────────────────────────────────────────────
  * Host GPIO 中断实现（支持中断锁语义 + pending 队列，用于单元测试）
  * ───────────────────────────────────────────────────────── */
-#define HOST_MAX_GPIO_PIN  50
 #define HOST_MAX_PENDING   64
 
 static pal_gpio_isr_t  s_gpio_isr[HOST_MAX_GPIO_PIN] = {NULL};
@@ -481,10 +514,10 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t addr,
 }
 
 wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us, uint32_t *pulse_us) {
-    /* Phase 4 Task 4-2：host 直接读 echo 脉宽（虚拟时间下同步），不经 pal_gpio_read 协作推进。
-     * 这是非阻塞 DAL 的 echo 时序 SSOT（Phase 4 Task 4-6 决策：保留协作推进仅供过渡 blocking read）。 */
     if (pulse_us == NULL) { return WINK_ERR_INVALID_ARG; }
-    if (pin != (wink_pin_t)host_echo_pin()) { return WINK_ERR_UNSUPPORTED; }   /* 无 pin 映射（直至 virtual registry 接入） */
+    if (pin < 0 || pin >= HOST_MAX_GPIO_PIN) { return WINK_ERR_INVALID_ARG; }
+    if (!pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin)) { return WINK_ERR_INVALID_STATE; }
+    if (pin != (wink_pin_t)host_echo_pin()) { return WINK_ERR_UNSUPPORTED; }   /* 无 pin 映射 */
     uint64_t rise = host_echo_rise_us();
     if (rise > timeout_us) { return WINK_ERR_TIMEOUT; }            /* echo 起始晚于超时 */
     *pulse_us = (uint32_t)host_echo_high_us();

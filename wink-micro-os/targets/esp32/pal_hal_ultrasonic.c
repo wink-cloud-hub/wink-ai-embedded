@@ -34,10 +34,10 @@ wink_status_t pal_hal_ultrasonic_init(uint16_t echo_pin) {
 wink_status_t pal_hal_ultrasonic_trigger(uint16_t trigger_pin) {
     /* TRIG 时序：输出 10us 高电平脉冲
      * 使用标准 PAL GPIO 接口，与平台无关 */
-    pal_gpio_write(trigger_pin, true);
+    wink_status_t status = pal_gpio_write(trigger_pin, true);
+    if (wink_status_is_error(status)) { return status; }
     pal_os_busy_wait_us(10);
-    pal_gpio_write(trigger_pin, false);
-    return WINK_OK;
+    return pal_gpio_write(trigger_pin, false);
 }
 
 wink_status_t pal_hal_ultrasonic_measure_pulse_us(

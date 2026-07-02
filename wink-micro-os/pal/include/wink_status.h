@@ -49,10 +49,34 @@ extern "C" {
 #define WINK_BLOCKING \
     WINK_DEPRECATED_MSG("Blocking API forbidden in cooperative runtime; use non-blocking variant")
 
-/* Runtime PT-context 检测占位宏；协作式调度器 T5 阶段替换为真实实现。
- * 保留可调用性以便 blocking API 现在就能写 `WINK_ASSERT_NONBLOCKING();`
- * 作为函数体首行，T5 落地时无需再逐个 API 加行——只需替换宏体。 */
+#define WINK_IGNORE_UNUSED(expr) do { \
+    wink_status_t _ignored_status = (expr); \
+    (void)_ignored_status; \
+} while (0)
+
+#include <stdbool.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+bool wink_pt_in_context(void);
+#ifdef __cplusplus
+}
+#endif
+
+#ifdef WINK_PT_DEBUG
+#include <assert.h>
+extern void wink_trace_fault(uint32_t fault_code);
+#define WINK_ASSERT_NONBLOCKING() do { \
+    if (wink_pt_in_context()) { \
+        wink_trace_fault((uint32_t)WINK_ERR_PANIC); \
+        assert(!wink_pt_in_context() && "Fatal: Blocking API called within Protothread context!"); \
+    } \
+} while (0)
+#else
 #define WINK_ASSERT_NONBLOCKING() ((void)0)
+#endif
+
 
 typedef enum {
     WINK_OK = 0,

@@ -177,6 +177,16 @@ void pal_os_set_sim_isr_context(bool in_isr);
  */
 bool pal_os_in_sim_isr_context(void);
 
+/**
+ * @brief 切换模拟 PT 协程上下文标志（仅 host/wasm 生效, ADR-0017 §4.2）。
+ */
+void pal_os_set_sim_pt_context(bool in_pt);
+
+/**
+ * @brief 读取当前模拟 PT 协程上下文标志（仅 host/wasm 生效）。
+ */
+bool pal_os_in_sim_pt_context(void);
+
 
 /* ========================================================================== */
 /*                          4. 任务创建与多核亲和性                            */

@@ -13,9 +13,7 @@ wink_status_t dal_led_init(dal_led_t *dev, const dal_led_config_t *cfg) {
 
     wink_status_t status = pal_gpio_init(cfg->pin, PAL_GPIO_OUTPUT_PUSH_PULL);
     if (wink_status_is_error(status)) {
-        /* gcc16 不因 (void) 抑制 warn_unused_result：先赋值再丢弃，best-effort 回滚。 */
-        wink_status_t _rb = pal_resource_release(PAL_RESOURCE_GPIO_PIN, cfg->pin, cfg->owner);
-        (void)_rb;
+        WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN, cfg->pin, cfg->owner));
         return status;
     }
     /* 深拷贝配置到实例（支持 ADR-0008 Flash 动态覆写） */
@@ -37,7 +35,8 @@ wink_status_t dal_led_set(dal_led_t *dev, bool on) {
     if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
     bool level = on ? dev->config.active_high : (!dev->config.active_high);
-    pal_gpio_write(dev->config.pin, level);
+    wink_status_t s = pal_gpio_write(dev->config.pin, level);
+    if (wink_status_is_error(s)) { return s; }
     dev->is_on = on;
     return WINK_OK;
 }

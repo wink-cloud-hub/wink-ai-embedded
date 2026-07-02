@@ -122,9 +122,14 @@ WINK_WARN_UNUSED_RESULT wink_status_t pal_os_wdt_feed(void) { return WINK_ERR_UN
 #include <assert.h>
 
 static bool s_sim_in_isr = false;
+static bool s_sim_in_pt = false;
 
 void pal_os_set_sim_isr_context(bool in_isr) { s_sim_in_isr = in_isr; }
 bool pal_os_in_sim_isr_context(void) { return s_sim_in_isr; }
+
+void pal_os_set_sim_pt_context(bool in_pt) { s_sim_in_pt = in_pt; }
+bool pal_os_in_sim_pt_context(void) { return s_sim_in_pt; }
+bool wink_pt_in_context(void) { return s_sim_in_pt; }
 
 uint32_t pal_os_critical_enter(void) {
     assert(!s_sim_in_isr && "pal_os_critical_enter called from ISR context; use pal_os_critical_enter_isr (ADR-0016)");

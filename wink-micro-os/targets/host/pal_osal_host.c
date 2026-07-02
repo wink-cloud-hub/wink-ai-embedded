@@ -169,9 +169,14 @@ void pal_os_set_abnormal_boot_count(uint32_t count) { s_abnormal_boot_count = co
  * ───────────────────────────────────────────────────────── */
 
 static bool s_sim_in_isr = false;
+static bool s_sim_in_pt = false;
 
 void pal_os_set_sim_isr_context(bool in_isr) { s_sim_in_isr = in_isr; }
 bool pal_os_in_sim_isr_context(void) { return s_sim_in_isr; }
+
+void pal_os_set_sim_pt_context(bool in_pt) { s_sim_in_pt = in_pt; }
+bool pal_os_in_sim_pt_context(void) { return s_sim_in_pt; }
+bool wink_pt_in_context(void) { return s_sim_in_pt; }
 
 uint32_t pal_os_critical_enter(void) {
     /* task 版被 ISR 上下文调用 → 契约违反（在真机 ESP32 上会触发 portENTER_CRITICAL assert） */

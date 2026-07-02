@@ -187,15 +187,26 @@ wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
     return WINK_OK;
 }
 
-void pal_gpio_write(wink_pin_t pin, bool level) {
-    if (pin >= 0 && pin < GPIO_NUM_MAX) {
-        gpio_set_level((gpio_num_t)pin, level ? 1 : 0);
+wink_status_t pal_gpio_write(wink_pin_t pin, bool level) {
+    if (pin < 0 || pin >= GPIO_NUM_MAX || !GPIO_IS_VALID_GPIO(pin)) {
+        return WINK_ERR_INVALID_ARG;
     }
+    esp_err_t err = gpio_set_level((gpio_num_t)pin, level ? 1 : 0);
+    if (err == ESP_ERR_INVALID_ARG) { return WINK_ERR_INVALID_ARG; }
+    if (err != ESP_OK) { return WINK_ERR_IO; }
+    return WINK_OK;
 }
 
-bool pal_gpio_read(wink_pin_t pin) {
-    if (pin < 0 || pin >= GPIO_NUM_MAX) { return false; }
-    return gpio_get_level((gpio_num_t)pin) != 0;
+wink_status_t pal_gpio_read(wink_pin_t pin, bool *out_level) {
+    if (out_level == NULL) { return WINK_ERR_INVALID_ARG; }
+    *out_level = false;
+    if (pin < 0 || pin >= GPIO_NUM_MAX || !GPIO_IS_VALID_GPIO(pin)) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    int val = gpio_get_level((gpio_num_t)pin);
+    if (val < 0) { return WINK_ERR_IO; }
+    *out_level = (val != 0);
+    return WINK_OK;
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -348,14 +359,30 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level,
     }
 
     uint64_t start = pal_os_get_us();
-    while (pal_gpio_read(pin) != level) {
+    bool current_val = false;
+
+    while (1) {
+        wink_status_t st = pal_gpio_read(pin, &current_val);
+        if (wink_status_is_error(st)) {
+            return WINK_ERR_IO;
+        }
+        if (current_val == level) {
+            break;
+        }
         if (pal_os_get_us() - start > timeout_us) {
             return WINK_ERR_TIMEOUT;
         }
     }
 
     uint64_t pulse_start = pal_os_get_us();
-    while (pal_gpio_read(pin) == level) {
+    while (1) {
+        wink_status_t st = pal_gpio_read(pin, &current_val);
+        if (wink_status_is_error(st)) {
+            return WINK_ERR_IO;
+        }
+        if (current_val != level) {
+            break;
+        }
         if (pal_os_get_us() - start > timeout_us) {
             return WINK_ERR_TIMEOUT;
         }
@@ -370,8 +397,12 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level,
 wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode)
 { (void)pin; (void)mode; return WINK_ERR_UNSUPPORTED; }
 
-void pal_gpio_write(wink_pin_t pin, bool level) { (void)pin; (void)level; }
-bool pal_gpio_read(wink_pin_t pin) { (void)pin; return false; }
+wink_status_t pal_gpio_write(wink_pin_t pin, bool level) { (void)pin; (void)level; return WINK_ERR_UNSUPPORTED; }
+wink_status_t pal_gpio_read(wink_pin_t pin, bool *out_level) {
+    if (out_level != NULL) { *out_level = false; }
+    (void)pin;
+    return WINK_ERR_UNSUPPORTED;
+}
 
 wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin,
                                             pal_gpio_intr_t intr_type,

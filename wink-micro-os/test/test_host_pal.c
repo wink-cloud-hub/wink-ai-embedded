@@ -39,6 +39,7 @@ void test_pwm_set_duty_rejects_invalid_channel(void) {
 void test_pulse_in_reads_echo_width(void) {
     /* Phase 4 Task 4-2：pal_gpio_pulse_in 直接读 echo 脉宽（不经 pal_gpio_read 协作推进） */
     extern wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us, uint32_t *pulse_us);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_resource_claim(PAL_RESOURCE_GPIO_PIN, 5, "test"));
     sim_set_echo_pin(5);
     sim_set_echo_timing(100, 5882);   /* rise@100us, high 5882us */
     uint32_t pulse = 0;
@@ -49,6 +50,7 @@ void test_pulse_in_reads_echo_width(void) {
 
 void test_pulse_in_timeout_when_echo_late(void) {
     extern wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us, uint32_t *pulse_us);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_resource_claim(PAL_RESOURCE_GPIO_PIN, 5, "test"));
     sim_set_echo_pin(5);
     sim_set_echo_timing(100000, 1000);   /* rise 100000us > timeout 30000us */
     uint32_t pulse = 0;
@@ -57,11 +59,14 @@ void test_pulse_in_timeout_when_echo_late(void) {
 }
 
 void test_echo_timing_stored(void) {
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_resource_claim(PAL_RESOURCE_GPIO_PIN, 5, "test"));
     sim_set_echo_pin(5);
     sim_set_echo_timing(100, 5882);
     /* 验证 host_echo_pin/rise/high 经 pal_gpio_read 协作推进（见 dal 测试，此处只验注入生效） */
-    extern bool pal_gpio_read(wink_pin_t pin);
-    TEST_ASSERT_TRUE(pal_gpio_read(5));   /* 首次读推进到 rise，返回高 */
+    extern wink_status_t pal_gpio_read(wink_pin_t pin, bool *out_level);
+    bool lvl = false;
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_gpio_read(5, &lvl));
+    TEST_ASSERT_TRUE(lvl);   /* 首次读推进到 rise，返回高 */
 }
 
 void test_pwm_deinit_then_reinit(void) {

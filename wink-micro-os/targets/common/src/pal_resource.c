@@ -1,11 +1,12 @@
 /**
- * @file pal_resource_host.c
- * @brief host/debug 资源占用治理实现（静态表，零动态分配）。
- *        review P0-3 / Phase 2 Task 2-3。esp32 等真机暂不接入；wasm 单线程沙箱无需。
+ * @file pal_resource.c
+ * @brief Host与Wasm仿真端共用的资源占用治理实现（静态表，零动态分配）。
+ *        遵循 ADR-0003 双端同源仿真与 ADR-0012 契约诚实原则。
  */
 #include "pal_resource.h"
 #include <stddef.h>
 #include <string.h>
+#include <stdbool.h>
 
 typedef struct {
     pal_resource_type_t type;
@@ -22,6 +23,10 @@ void pal_resource_reset(void) {
 
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_resource_claim(pal_resource_type_t type, uint32_t id, const char *owner) {
+    if (owner == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
     /* 幂等 / 冲突判定：同 (type,id) 同 owner → OK；不同 owner → BUSY */
     for (uint32_t i = 0; i < s_count; i++) {
         if (s_claims[i].type == type && s_claims[i].id == id) {
@@ -50,11 +55,20 @@ wink_status_t pal_resource_release(pal_resource_type_t type, uint32_t id, const 
             if (strcmp(s_claims[i].owner, owner) != 0) {
                 return WINK_ERR_INVALID_ARG;   /* 不同 owner：拒绝误释放 */
             }
-            /* 命中：用末尾元素覆盖并缩表（保持紧凑无空洞；顺序变化对集合语义无影响） */
+            /* 命中：用末尾元素覆盖并缩表（保持紧凑无空洞） */
             s_count--;
             s_claims[i] = s_claims[s_count];
             return WINK_OK;
         }
     }
     return WINK_ERR_INVALID_ARG;   /* 未占用 */
+}
+
+bool pal_resource_is_claimed(pal_resource_type_t type, uint32_t id) {
+    for (uint32_t i = 0; i < s_count; i++) {
+        if (s_claims[i].type == type && s_claims[i].id == id) {
+            return true;
+        }
+    }
+    return false;
 }

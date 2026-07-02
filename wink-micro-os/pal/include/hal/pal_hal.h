@@ -58,9 +58,11 @@ void pal_pwm_deinit(uint8_t channel);
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode);
 
-void pal_gpio_write(wink_pin_t pin, bool level);
+WINK_WARN_UNUSED_RESULT
+wink_status_t pal_gpio_write(wink_pin_t pin, bool level);
 
-bool pal_gpio_read(wink_pin_t pin);
+WINK_WARN_UNUSED_RESULT
+wink_status_t pal_gpio_read(wink_pin_t pin, bool *out_level);
 
 typedef void (*pal_gpio_isr_t)(void *arg);
 
