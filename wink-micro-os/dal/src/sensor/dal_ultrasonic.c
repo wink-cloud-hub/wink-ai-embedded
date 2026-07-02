@@ -151,8 +151,13 @@ wink_status_t dal_ultrasonic_get_cached_distance(const dal_ultrasonic_t *dev, fl
  * 所有平台共用同一份代码：统一使用 PAL 接口，无平台条件编译。
  * - WASM 仿真：PAL 内部委托 js_sim_* 物理量旁路
  * - ESP32 真机：PAL 内部用 RMT 或 GPIO busy-wait
- * 单位换算、超时判定与业务逻辑全平台同源（ADR-0003 决策2）。 */
+ * 单位换算、超时判定与业务逻辑全平台同源（ADR-0003 决策2）。
+ *
+ * ADR-0017 §落地规则 #2：与 dal_ultrasonic.h 中 #ifndef 包围匹配，严格模式下整段消失。
+ * 函数体首行 WINK_ASSERT_NONBLOCKING() 为 T5 阶段 PT-context 检测预留占位（当前 no-op）。 */
+#ifndef WINK_STRICT_NONBLOCKING
 wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *distance_cm) {
+    WINK_ASSERT_NONBLOCKING();
     if (dev == NULL || distance_cm == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
 
@@ -175,3 +180,4 @@ wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *distance_cm) {
     *distance_cm = dev->last_distance;
     return WINK_OK;
 }
+#endif  /* WINK_STRICT_NONBLOCKING */

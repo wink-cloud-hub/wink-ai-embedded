@@ -6,6 +6,18 @@
 #include <time.h>
 #include <string.h>   /* ADR-0008 apply_override params 构造 */
 
+/* ADR-0017：dal_ultrasonic_read 挂上 WINK_BLOCKING（=deprecated 属性）后，
+ * 本文件对该 API 的契约守卫调用（5 处）会在 -Wall -Wextra -Werror 下变为
+ * -Werror=deprecated-declarations 硬错。这是 blocking-API 深度防御的**过渡期例外**
+ * （见 ADR-0017 §Consequences「保留过渡期能力：host 单测继续可用」）——
+ * 单测本就是契约守卫，deprecation 告警对它无意义；协作式调度器构建路径经
+ * -DWINK_STRICT_NONBLOCKING=1 从符号表剔除后，此单测自动不参与那条链，无 gap。
+ * MSVC/其它编译器无 -Wdeprecated-declarations，编译期告警本就退化为空，pragma 无副作用。 */
+#if defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 static const char *const OWNER = "test_dal_ultrasonic";
 
 void setUp(void) { sim_reset_time(); pal_resource_reset(); }
@@ -179,3 +191,7 @@ int main(void) {
     RUN_TEST(test_apply_override_null_returns_invalid_arg);
     return UNITY_END();
 }
+
+#if defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic pop
+#endif

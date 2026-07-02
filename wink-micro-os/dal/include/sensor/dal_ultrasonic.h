@@ -101,10 +101,23 @@ wink_status_t dal_ultrasonic_request_measurement(dal_ultrasonic_t *dev);
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_ultrasonic_get_cached_distance(const dal_ultrasonic_t *dev, float *distance_cm);
 
+/* ADR-0017：blocking API 三层硬隔离首个应用点。
+ * 层 1（编译期）：WINK_BLOCKING → __attribute__((deprecated(msg)))，所有调用点告警。
+ * 层 2（链接期）：-DWINK_STRICT_NONBLOCKING=1 时下面的声明整段消失 → 调用点 undefined reference。
+ *                 host 默认构建**不**开该宏，过渡期单测（test_dal_ultrasonic{,_sim}.c）可继续调用，
+ *                 靠 #pragma push 局部禁用 -Wdeprecated-declarations 保 -Werror 通过。
+ *                 协作式调度器 T5 阶段在 runtime_cooperative_* sample 的 CMakeLists 追加
+ *                 target_compile_definitions(<t> PRIVATE WINK_STRICT_NONBLOCKING=1) 开启剔除。
+ * 层 3（运行期）：函数体首行 WINK_ASSERT_NONBLOCKING()，当前为 no-op 占位，T5 阶段替换为
+ *                 PT context 检测 → wink_trace_fault + assert。
+ */
+#ifndef WINK_STRICT_NONBLOCKING
 /**
  * @brief 获取障碍物距离 (cm) —— 阻塞 busy-wait，**@deprecated**。
  * @deprecated Runtime/App 10ms tick 不得调用本 API；保留仅供过渡/单测，App 完全迁移到非阻塞
  *             且 host 协作推进重构后移除（Phase 4 follow-up）。
+ *             严格模式（-DWINK_STRICT_NONBLOCKING=1）下声明从头文件剔除 → 链接失败。
+ * @see dal_ultrasonic_request_measurement + dal_ultrasonic_get_cached_distance（非阻塞替代路径）。
  * @note Blocking: Yes. Worst-case ≈ 2 * ULTRASONIC_TIMEOUT_US + trigger pulse (≈ 60ms+)。
  *       Not allowed in cooperative runtime loop.
  * @note API Contract:
@@ -113,8 +126,9 @@ wink_status_t dal_ultrasonic_get_cached_distance(const dal_ultrasonic_t *dev, fl
  *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED / WINK_ERR_TIMEOUT
  *   - Postconditions: dev->last_distance 在 WINK_OK 时更新
  */
-WINK_WARN_UNUSED_RESULT
+WINK_BLOCKING WINK_WARN_UNUSED_RESULT
 wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *distance_cm);
+#endif  /* WINK_STRICT_NONBLOCKING */
 
 /**
  * @brief ADR-0008 Flash 覆写：从 16B params 反序列化并改写超声波 trig/echo 引脚。
