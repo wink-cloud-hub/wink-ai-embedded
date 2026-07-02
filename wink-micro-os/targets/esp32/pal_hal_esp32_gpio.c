@@ -221,13 +221,9 @@ wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin,
 {
     if (pin < 0 || pin >= GPIO_NUM_MAX) { return WINK_ERR_INVALID_ARG; }
     if (callback == NULL) { return WINK_ERR_INVALID_ARG; }
-    if (prio >= PAL_IRQ_PRIO_COUNT) { return WINK_ERR_INVALID_ARG; }
-
-    /* v2.1 G2：ESP32 GPIO ISR 路径同样拒接 REALTIME，避免与 pal_irq_enable 出现
-     * "同一 prio 在两条路径上行为不一致"的语义陷阱（参考 ADR-0012 / ADR-IRQ-008）。 */
-    if (prio == PAL_IRQ_PRIO_REALTIME) {
-        return WINK_ERR_UNSUPPORTED;
-    }
+    /* ADR-0018：优先级枚举收窄到 LOW/NORMAL/HIGH（1..3），0 与 >= COUNT 均非法。
+     * 与 pal_irq_esp32.c / pal_hal_host.c 的 prio 入参校验保持字节一致。 */
+    if (prio <= 0 || prio >= PAL_IRQ_PRIO_COUNT) { return WINK_ERR_INVALID_ARG; }
 
     /* v2.2 G3（Phase 1.5，2026-07-01）：GPIO service 首次锁定 prio。
      * 若已锁定，后续 prio 必须一致；不一致返回 WINK_ERR_INVALID_ARG。
@@ -263,15 +259,13 @@ wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin,
             return WINK_ERR_INVALID_ARG;
     }
 
-    /* v2.2 G3 prio → ESP_INTR_FLAG_LEVELn 映射
-     * REALTIME 已在入口拒接，映射表不包含它。 */
+    /* ADR-0018 prio → ESP_INTR_FLAG_LEVELn 映射（3 级收窄版）。
+     * LOW/NORMAL/HIGH 均位于 configMAX_SYSCALL_INTERRUPT_PRIORITY 内，
+     * 全部 RTOS 安全，可调 xxxFromISR API。 */
     static const int s_gpio_prio_flag_map[PAL_IRQ_PRIO_COUNT] = {
-        [PAL_IRQ_PRIO_LOWEST]  = ESP_INTR_FLAG_LEVEL1,
         [PAL_IRQ_PRIO_LOW]     = ESP_INTR_FLAG_LEVEL1,
         [PAL_IRQ_PRIO_NORMAL]  = ESP_INTR_FLAG_LEVEL2,
         [PAL_IRQ_PRIO_HIGH]    = ESP_INTR_FLAG_LEVEL3,
-        [PAL_IRQ_PRIO_HIGHEST] = ESP_INTR_FLAG_LEVEL3,   /* RTOS 安全边界，见 ADR-IRQ-003 */
-        /* PAL_IRQ_PRIO_REALTIME 在入口已拒接，此处不映射 */
     };
 
     /* 首次安装 ISR service：加上 IRAM 属性使 wrapper 在 Flash cache 禁用时仍可运行

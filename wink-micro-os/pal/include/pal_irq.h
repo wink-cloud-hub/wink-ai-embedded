@@ -31,19 +31,23 @@ extern "C" {
 #endif
 
 /* ─────────────────────────────────────────────────────────
- * 中断优先级统一抽象（v2.0 6 级含 REALTIME）
+ * 中断优先级统一抽象（ADR-0018：3 级 LOW/NORMAL/HIGH）
  * ───────────────────────────────────────────────────────── */
 
 /**
- * @brief 统一中断优先级枚举
+ * @brief 统一中断优先级枚举（3 级）
  *
- * 语义保证：所有平台下，HIGHEST 优先级的中断会抢占 LOWEST 优先级的中断。
+ * 语义保证：所有平台下，HIGH 优先级的中断会抢占 LOW 优先级的中断。
  * 各平台内部映射到硬件优先级数值（注意：不同芯片优先级数值方向可能相反）。
  *
- * ⚠️ FreeRTOS 安全约束（v2.0）：
- * LOWEST ~ HIGHEST 级别的中断均可安全调用 xQueueSendFromISR 等 FreeRTOS API。
- * REALTIME 级别例外 —— 该级别高于 RTOS 临界区保护边界，严禁调用任何 RTOS API。
- * 仅用于电机换向、激光同步等零延迟、零 OS 依赖的硬实时场景。
+ * ✅ FreeRTOS 安全约束：
+ * LOW / NORMAL / HIGH 三级均位于 configMAX_SYSCALL_INTERRUPT_PRIORITY 之内，
+ * 都可安全调用 xQueueSendFromISR 等 FreeRTOS FromISR API。
+ *
+ * ⚠️ ADR-0018 已删除的旧枚举：LOWEST / HIGHEST（物理别名，AI 陷阱）、
+ * REALTIME（全 target 虚标，返 WINK_ERR_UNSUPPORTED）。真硬件矢量直派
+ * 的未来接口将通过独立 API（`pal_irq_direct_connect_unsafe()`）提供，
+ * 不再作为本枚举的成员。
  */
 typedef enum {
     PAL_IRQ_PRIO_LOW      = 1,  /**< 低优先级，用于一般通信 */
@@ -65,7 +69,7 @@ typedef enum {
  * 2. 不调用任何可能阻塞的函数
  * 3. 栈使用 < 128 字节（含嵌套调用）
  * 4. 不触发任何可能导致 Flash 访问的操作
- * 5. 仅调用后缀为 FromISR 的 RTOS API（REALTIME 级除外，不可调用）
+ * 5. 仅调用后缀为 FromISR 的 RTOS API（LOW/NORMAL/HIGH 3 级均安全）
  */
 typedef void (*pal_isr_t)(void *arg);
 
@@ -137,9 +141,11 @@ wink_status_t pal_irq_enable(uint32_t irq_num, pal_irq_prio_t prio,
  * @param irq_num 逻辑中断号
  * @return WINK_OK 成功，WINK_ERR_INVALID_ARG 参数非法
  *
- * @note SMP 安全注意：调用 pal_irq_disable() 后，另一个核心可能仍在执行该 ISR。
- *       若需要释放 ISR 使用的资源，**必须**在其后调用 pal_irq_synchronize() 等待。
- *       典型用法：pal_irq_disable() → pal_irq_synchronize() → free(irq_resource)
+ * @note SMP 资源热释放场景：SMP 系统中 disable 返回后，另一核心可能仍在执行该 ISR；
+ *       若需要释放 ISR 使用的资源，请使用高级 API `pal_irq_synchronize()`
+ *       （见 `pal_irq_advanced.h`，仅供系统级驱动，需显式定义
+ *       `WINK_ALLOW_ADVANCED_IRQ_APIS` 才可 include）。普通 App/DAL 代码
+ *       通常不需要此模式——AI Codegen 应生成"启动即 init、运行到停止"的静态注册。
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_irq_disable(uint32_t irq_num);
@@ -181,7 +187,8 @@ uint32_t pal_irq_save_rtos_safe(void);
 
 /**
  * @brief 恢复中断状态
- * @param mask 由 pal_irq_save() 或 pal_irq_save_rtos_safe() 返回的掩码
+ * @param mask 由 pal_irq_save_rtos_safe() 返回的掩码（或 `pal_irq_advanced.h` 中
+ *             `pal_irq_save()` 返回的掩码——仅系统级驱动路径）
  *
  * 注意：必须严格按照 save 的逆序调用 restore。
  */
