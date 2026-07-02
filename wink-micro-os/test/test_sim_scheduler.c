@@ -61,19 +61,21 @@ static void dummy_task_func(void* arg) {
 /* 1. 注册与选择测试（多任务调度交错） */
 void test_register_and_pick_round_robin(void) {
     sim_scheduler_reset(42);
-    
+
     uint32_t id0, id1, id2;
     TEST_ASSERT_EQUAL(WINK_OK, sim_scheduler_register(dummy_task_func, NULL, "task0", 5, 0, 32*1024, &id0));
     TEST_ASSERT_EQUAL(WINK_OK, sim_scheduler_register(dummy_task_func, NULL, "task1", 5, 0, 32*1024, &id1));
     TEST_ASSERT_EQUAL(WINK_OK, sim_scheduler_register(dummy_task_func, NULL, "task2", 5, 0, 32*1024, &id2));
-    
+
     TEST_ASSERT_EQUAL_UINT32(3, sim_scheduler_task_count());
-    
-    /* 5 次选择序列应该在就绪的任务中轮转 */
-    for (int i = 0; i < 5; ++i) {
-        uint32_t pick = sim_scheduler_pick_next();
-        TEST_ASSERT_TRUE(pick == id0 || pick == id1 || pick == id2);
-    }
+
+    /* fixup 计划 F4 M6：pick_next 改为 round-robin。相较于原 PRNG 断言
+     * "pick ∈ {id0,id1,id2}"，此处收紧为精确轮转序列（从 slot 0 起扫）。 */
+    TEST_ASSERT_EQUAL_UINT32(id0, sim_scheduler_pick_next());
+    TEST_ASSERT_EQUAL_UINT32(id1, sim_scheduler_pick_next());
+    TEST_ASSERT_EQUAL_UINT32(id2, sim_scheduler_pick_next());
+    TEST_ASSERT_EQUAL_UINT32(id0, sim_scheduler_pick_next());  /* 回卷 */
+    TEST_ASSERT_EQUAL_UINT32(id1, sim_scheduler_pick_next());
 }
 
 /* 2. 时间唤醒 WAITING 状态任务 */
