@@ -20,6 +20,13 @@ void test_init_null_returns_invalid_arg(void) {
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_ssd1306_init(&dev, NULL));
 }
 
+void test_init_null_owner_returns_invalid_arg(void) {
+    static dal_ssd1306_t dev = {0};
+    dal_ssd1306_config_t cfg = { .i2c_port = 0, .i2c_addr = 0x3C,
+                                  .width = 128, .height = 64, .owner = NULL };
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_ssd1306_init(&dev, &cfg));
+}
+
 void test_init_valid_claims_addr_and_sends_init(void) {
     static dal_ssd1306_t dev = {0};   /* static：1024B 帧缓冲移出栈，满足 -Wstack-usage 纪律；
                                        * 各测试函数的 static 局部为独立对象且只跑一次，语义不变 */
@@ -95,6 +102,7 @@ void test_ops_before_init_returns_not_initialized(void) {
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_init_null_returns_invalid_arg);
+    RUN_TEST(test_init_null_owner_returns_invalid_arg);
     RUN_TEST(test_init_valid_claims_addr_and_sends_init);
     RUN_TEST(test_init_addr_conflict_returns_busy);
     RUN_TEST(test_clear_zeros_framebuffer);
