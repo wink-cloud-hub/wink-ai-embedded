@@ -147,6 +147,7 @@ static void resource_stress_task(void *arg)
     uint32_t core_id = (uint32_t)(uintptr_t)arg;
     uint64_t end_time = pal_os_get_ms() + 60000;
     uint32_t iterations = 0;
+    uint64_t last_yield = pal_os_get_ms();
 
     while (pal_os_get_ms() < end_time) {
         /* 同一资源（GPIO pin 100+core）的并发 claim/release
@@ -157,6 +158,13 @@ static void resource_stress_task(void *arg)
         wink_status_t _rel = pal_resource_release(PAL_RESOURCE_GPIO_PIN, 100u + core_id, "stress");
         (void)_rel;
         iterations++;
+
+        /* 解决 Task Watchdog 饥饿问题：每 1 秒让出 1ms CPU，允许 IDLE 任务被调度喂狗 */
+        uint64_t now = pal_os_get_ms();
+        if (now - last_yield >= 1000) {
+            pal_os_sleep_ms(1);
+            last_yield = now;
+        }
     }
 
     /* PAL 统一调试输出：所有平台都输出压测结果，便于 CI 验证 */
