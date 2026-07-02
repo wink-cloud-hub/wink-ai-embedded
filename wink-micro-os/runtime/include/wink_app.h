@@ -282,7 +282,7 @@ typedef wink_status_t (*wink_pt_func_t)(wink_pt_t *pt);
  *  - loop:    每个 tick 调用
  *  - on_fault: 故障时调用（fault_code 由 runtime 或 App 上报）
  */
-typedef struct {
+typedef struct wink_app_callbacks {
     void (*init)(void);
     void (*loop)(void);
     void (*on_fault)(uint32_t fault_code);

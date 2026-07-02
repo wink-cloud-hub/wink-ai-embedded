@@ -1,7 +1,9 @@
 #include "sim_ctx.h"
 #include "pal_osal.h" // 引入 pal_os_task_delete 支持自删
 #include <windows.h>
+#include <stdbool.h>   /* R1：显式 include，避免依赖 windows.h 传递（切换 MinGW 版本可能失败） */
 #include <stdlib.h>
+#include <assert.h>
 
 struct sim_ctx {
     void*  fiber;         /* CreateFiber 返回；主 fiber 时为 ConvertThreadToFiber 返回 */
@@ -45,7 +47,12 @@ sim_ctx_t* sim_ctx_create(void (*entry)(void*), void* arg, size_t stack_bytes) {
 }
 
 void sim_ctx_switch(sim_ctx_t* from, sim_ctx_t* to) {
-    (void)from;   /* Win32 SwitchToFiber 从"当前"切换，无需 from */
+    /* 契约 v2（fixup 计划红线 12）：from 必须非空，且应为当前正在运行的 ctx。
+     * host Win32 SwitchToFiber 从"当前"切换，不使用 from 数据，但保留严格 assert
+     * 与 wasm 侧接口语义完全对称。 */
+    assert(from != NULL && "sim_ctx_switch: from must be non-null (contract v2)");
+    assert(to != NULL && "sim_ctx_switch: to must be non-null");
+    (void)from;
     SwitchToFiber(to->fiber);
 }
 
