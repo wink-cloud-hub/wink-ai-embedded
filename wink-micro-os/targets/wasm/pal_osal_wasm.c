@@ -113,12 +113,37 @@ void pal_os_set_abnormal_boot_count(uint32_t count) { (void)count; }
 WINK_WARN_UNUSED_RESULT wink_status_t pal_os_wdt_init(uint32_t timeout_ms) { (void)timeout_ms; return WINK_ERR_UNSUPPORTED; }
 WINK_WARN_UNUSED_RESULT wink_status_t pal_os_wdt_feed(void) { return WINK_ERR_UNSUPPORTED; }
 
+/* ─────────────────────────────────────────────────────────
+ * 临界区（task/ISR 双入口显式分流, ADR-0016）
+ * Wasm 单线程沙箱：语义等价（都是 no-op），但通过 s_sim_in_isr 强校验
+ * 调用方使用了正确入口——Debug 构建下入口误用立即命中 assert。
+ * ───────────────────────────────────────────────────────── */
+
+#include <assert.h>
+
+static bool s_sim_in_isr = false;
+
+void pal_os_set_sim_isr_context(bool in_isr) { s_sim_in_isr = in_isr; }
+bool pal_os_in_sim_isr_context(void) { return s_sim_in_isr; }
+
 uint32_t pal_os_critical_enter(void) {
+    assert(!s_sim_in_isr && "pal_os_critical_enter called from ISR context; use pal_os_critical_enter_isr (ADR-0016)");
     return 0;
 }
 
 void pal_os_critical_exit(uint32_t key) {
     (void)key;
+    assert(!s_sim_in_isr && "pal_os_critical_exit called from ISR context (ADR-0016)");
+}
+
+uint32_t pal_os_critical_enter_isr(void) {
+    assert(s_sim_in_isr && "pal_os_critical_enter_isr called from task context; use pal_os_critical_enter (ADR-0016)");
+    return 0;
+}
+
+void pal_os_critical_exit_isr(uint32_t key) {
+    (void)key;
+    assert(s_sim_in_isr && "pal_os_critical_exit_isr called from task context (ADR-0016)");
 }
 
 /* ─────────────────────────────────────────────────────────

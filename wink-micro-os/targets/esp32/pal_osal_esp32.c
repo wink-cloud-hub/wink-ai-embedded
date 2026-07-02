@@ -161,7 +161,10 @@ WINK_WARN_UNUSED_RESULT wink_status_t pal_os_wdt_feed(void) {
 }
 
 /* ─────────────────────────────────────────────────────────
- * 临界区（ISR 安全）
+ * 临界区（task/ISR 双入口显式分流, ADR-0016）
+ * task 版使用 portENTER_CRITICAL，ISR 版使用 portENTER_CRITICAL_ISR，
+ * 二者共享 s_global_mux 保证 task/ISR 互斥。
+ * 真机上模拟上下文标志为 no-op（真正的上下文由 xPortInIsrContext() 提供）。
  * ───────────────────────────────────────────────────────── */
 
 static portMUX_TYPE s_global_mux = portMUX_INITIALIZER_UNLOCKED;
@@ -175,6 +178,20 @@ void pal_os_critical_exit(uint32_t key) {
     (void)key;
     portEXIT_CRITICAL(&s_global_mux);
 }
+
+uint32_t pal_os_critical_enter_isr(void) {
+    portENTER_CRITICAL_ISR(&s_global_mux);
+    return 0;
+}
+
+void pal_os_critical_exit_isr(uint32_t key) {
+    (void)key;
+    portEXIT_CRITICAL_ISR(&s_global_mux);
+}
+
+/* 真机上下文由 FreeRTOS 直接提供，仿真上下文标志为 no-op */
+void pal_os_set_sim_isr_context(bool in_isr) { (void)in_isr; }
+bool pal_os_in_sim_isr_context(void) { return false; }
 
 /* ─────────────────────────────────────────────────────────
  * Task 创建与多核亲和性
