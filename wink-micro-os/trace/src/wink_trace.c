@@ -1,15 +1,28 @@
 /**
  * @file wink_trace.c
  * @brief Golden Trace 实现：静态环形缓冲（零动态分配）。
+ *
+ * INVARIANT（ADR-0016 双入口显式分流后）：
+ *   - `wink_trace_fault`         —— TASK 上下文；pal_os_critical_enter/exit 保护；
+ *   - `wink_trace_fault_from_isr`—— ISR 上下文；pal_os_critical_enter_isr/exit_isr 保护；
+ *     两者共享 `s_record_fault_locked`（相同环形写入逻辑），task/ISR 互斥由 PAL 全局 mux 保证；
+ *   - `wink_trace_reset/count/last` —— TASK 上下文（诊断/查询接口，无 ISR 变体）。
  */
 #include "wink_trace.h"
 #include "pal_osal.h"
 
-/* INVARIANT: Thread-safe / ISR-safe.
-   各函数操作共享静态变量，内部均通过 PAL OSAL 临界区保护，支持多任务与中断并发调用。 */
 static uint32_t s_buffer[WINK_TRACE_CAPACITY];
 static uint32_t s_count = 0;     /* 已写入总数（含覆盖） */
 static uint32_t s_head = 0;      /* 下一个写入位置 */
+
+/* 环形写入的公共逻辑。调用方须已持有 PAL 全局临界区（task 或 ISR 版本任一）。
+ * 提炼独立函数为的是保证 task/ISR 两条路径记录同一 fault code 后 buffer/head/count
+ * 状态**bit-for-bit 等价**（Task D-2 单测的验收硬门槛）。 */
+static inline void s_record_fault_locked(uint32_t fault_code) {
+    s_buffer[s_head] = fault_code;
+    s_head = (s_head + 1u) % WINK_TRACE_CAPACITY;
+    s_count++;                   /* 溢出回绕由 count() 截断 */
+}
 
 void wink_trace_reset(void) {
     uint32_t key = pal_os_critical_enter();
@@ -20,10 +33,14 @@ void wink_trace_reset(void) {
 
 void wink_trace_fault(uint32_t fault_code) {
     uint32_t key = pal_os_critical_enter();
-    s_buffer[s_head] = fault_code;
-    s_head = (s_head + 1u) % WINK_TRACE_CAPACITY;
-    s_count++;                   /* 溢出回绕由 count() 截断 */
+    s_record_fault_locked(fault_code);
     pal_os_critical_exit(key);
+}
+
+void wink_trace_fault_from_isr(uint32_t fault_code) {
+    uint32_t key = pal_os_critical_enter_isr();
+    s_record_fault_locked(fault_code);
+    pal_os_critical_exit_isr(key);
 }
 
 uint32_t wink_trace_count(void) {

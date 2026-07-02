@@ -82,6 +82,12 @@ endfunction()
 add_wink_host_test(test_trace test_trace.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../trace/src/wink_trace.c)
 
+# ADR-0016 / Task D-2：wink_trace_fault (task) 与 wink_trace_fault_from_isr (ISR)
+# 双入口在同一 code 序列下的等价性硬门槛。用 pal_os_set_sim_isr_context() sim-hook
+# 模拟 ISR 边界。
+add_wink_host_test(test_wink_trace_isr_equivalence test_wink_trace_isr_equivalence.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../trace/src/wink_trace.c)
+
 add_wink_host_test(test_runtime test_runtime.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_runtime.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_actuator_registry.c
