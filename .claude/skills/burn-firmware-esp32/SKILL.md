@@ -1,6 +1,6 @@
 ---
 name: burn-firmware-esp32
-description: 用于 Wink-Micro-OS ESP32 固件的自动扫描、构建、编译、烧录与清理。当用户输入有关 ESP32 固件构建、编译、烧写、清理等命令（或直接提供 App 名称如 devkitc_smoke, avoidance_car, oled_dashboard, smp_uaf_test 作为参数）时触发。本 Skill 会将紧跟后面的第一个参数解析为 DWINK_APP 名字，并指导进行正确的环境激活和 CMake/idf.py 构建流程。
+description: 用于 Wink-Micro-OS ESP32 固件的自动扫描、构建、编译、烧录与清理。当用户输入有关 ESP32 固件构建、编译、烧写、清理等命令（或直接提供 App 名称如 devkitc_smoke, avoidance_car, oled_dashboard, resource_conflict 作为参数）时触发。本 Skill 会将紧跟后面的第一个参数解析为 DWINK_APP 名字，并指导进行正确的环境激活和 CMake/idf.py 构建流程。
 ---
 
 # ESP32 固件构建与烧录 Skill
@@ -55,7 +55,7 @@ description: 用于 Wink-Micro-OS ESP32 固件的自动扫描、构建、编译�
 | `devkitc_smoke` | DevKitC 冒烟测试（GPIO / PWM / I2C / 双核 / 看门狗） - **默认值** |
 | `avoidance_car` | 避障小车（超声波 + 舵机） |
 | `oled_dashboard` | OLED 仪表盘（按键 + LED + SSD1306） |
-| `smp_uaf_test` | SMP UAF 验证测试（多核并发/中断同步安全性测试） |
+| `resource_conflict` | Track A 资源占用冲突负例样本（用于验证 DAL init 的 claim 拒接） |
 
 ---
 
