@@ -15,6 +15,7 @@
  * Included only under SIMULATION macro; host/esp32 targets skip this header at compile time. */
 #ifdef SIMULATION
 #include "pal_wasm_internal.h"
+#include "wink_sim_scheduler.h"
 #endif
 
 /* Soft timer scheduler (ADR-0007) */
@@ -76,13 +77,52 @@ void wink_app_delay_ms(uint32_t ms) {
     pal_os_sleep_ms(ms);
 }
 
+#ifdef SIMULATION
+static void sim_app_main_task(void* arg) {
+    const wink_app_callbacks_t* callbacks = (const wink_app_callbacks_t*)arg;
+    uint32_t tick = 0;
+    while (1) {
+        uint64_t tick_start_us = pal_os_get_us();
+        uint64_t tick_elapsed_us;
+
+        /* --- Soft timer callbacks first --- */
+        wink_soft_timer_dispatch();
+
+        /* --- Run user loop callback with individual WCET monitoring --- */
+        wink_runtime_monitor_wcet_loop(callbacks->loop, "app_loop");
+
+        /* --- Global tick WCET check (backup safety net) --- */
+        tick_elapsed_us = pal_os_get_us() - tick_start_us;
+        if (tick_elapsed_us > WINK_RUNTIME_TICK_MS * 1000U) {
+            wink_trace_fault(WINK_WARN_TICK_OVERRUN);
+        }
+
+        /* Method C: Wasm interrupt dispatch at tick boundary */
+        pal_wasm_dispatch_pending_interrupts();
+
+        /* ADR-0010: healthy milestone */
+        if (tick == WINK_BOOT_HEALTHY_TICKS) {
+            pal_os_set_abnormal_boot_count(0);
+        }
+
+        wink_app_delay_ms(WINK_RUNTIME_TICK_MS);
+        tick++;
+    }
+}
+#endif
+
 wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t max_ticks) {
     pal_os_reset_reason_t rr;
-    uint32_t tick;
 
     if (callbacks == NULL) {
         return WINK_ERR_INVALID_ARG;
     }
+
+#ifdef SIMULATION
+    /* 在运行任何用户初始化(app_init)之前，必须先重置调度器，
+     * 否则 app_init 中注册的所有用户协程都会被随后的重置给抹除 */
+    sim_scheduler_reset(42);
+#endif
 
     /* ============================================================
      *  BOOT SAFE-LOCK with recovery (ADR-0010, revises ADR-0007)
@@ -122,7 +162,16 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
         wink_runtime_monitor_wcet_init(callbacks->init, "app_init");
     }
 
-    tick = 0;
+#ifdef SIMULATION
+    uint32_t main_task_id;
+    wink_status_t st = sim_scheduler_register(
+        sim_app_main_task, (void*)callbacks, "app_main",
+        5, PAL_OS_CORE_ANY, 32*1024, &main_task_id);
+    if (st != WINK_OK) return st;
+
+    return pal_sim_scheduler_run(main_task_id, max_ticks);
+#else
+    uint32_t tick = 0;
     /* max_ticks == 0 => infinite loop (embedded/wasm); host tests pass a finite value. */
     while ((max_ticks == 0U) || (tick < max_ticks)) {
         uint64_t tick_start_us = pal_os_get_us();
@@ -140,14 +189,6 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
             wink_trace_fault(WINK_WARN_TICK_OVERRUN);
         }
 
-        /* Method C: Wasm interrupt dispatch at tick boundary (before delay/Asyncify suspend).
-         * Wasm is in normal running state here (not Asyncify sleeping), so ISR dispatch is safe.
-         * Equivalent to ESP32/FreeRTOS bottom-half queue consumption (ADR-0002).
-         * Non-SIMULATION targets (host/esp32) have this removed at compile time -- zero overhead. */
-#ifdef SIMULATION
-        pal_wasm_dispatch_pending_interrupts();
-#endif
-
         /* ADR-0010: healthy milestone — init succeeded + stable for HEALTHY_TICKS ticks
          * proves the prior crash path is past; clear the abnormal-reset counter so a
          * later isolated glitch doesn't accumulate toward a false lock. */
@@ -159,6 +200,7 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
         tick++;
     }
     return WINK_OK;
+#endif
 }
 
 void wink_runtime_fault(const wink_app_callbacks_t* callbacks, uint32_t fault_code) {

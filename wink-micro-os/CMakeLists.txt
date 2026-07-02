@@ -198,5 +198,9 @@ if(NOT TARGET_PLATFORM STREQUAL "wasm")
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/resource_conflict
                      ${CMAKE_BINARY_DIR}/resource_conflict_build)
 
+    # Cooperative multi-task scheduler demo App
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/dual_task_demo
+                     ${CMAKE_BINARY_DIR}/dual_task_demo_build)
+
     add_subdirectory(test)
 endif()

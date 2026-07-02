@@ -96,6 +96,12 @@ add_wink_host_test(test_runtime test_runtime.c
 
 add_wink_host_test(test_host_pal test_host_pal.c)
 
+# Target-independent cooperative scheduler algorithm test
+add_wink_test(test_sim_scheduler test_sim_scheduler.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/src/wink_sim_scheduler.c)
+target_include_directories(test_sim_scheduler PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include)
+
 # Phase 5 Task 5-1：执行器关断注册表直接单测（链 registry + wink_trace）
 add_wink_host_test(test_actuator_registry test_actuator_registry.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_actuator_registry.c
@@ -103,6 +109,8 @@ add_wink_host_test(test_actuator_registry test_actuator_registry.c
 
 # Phase 2 Task 2-3：host 资源占用治理直接单测（链 pal_host，含 pal_resource_host.c）
 add_wink_host_test(test_pal_resource test_pal_resource.c)
+add_wink_host_test(test_sim_scheduler_e2e test_sim_scheduler_e2e.c)
+add_wink_host_test(test_sim_scheduler_zombie_gc test_sim_scheduler_zombie_gc.c)
 
 # PAL 统一中断抽象单元测试（v2.0 含中断锁、共享中断、RAII 临界区）
 add_wink_host_test(test_pal_irq test_pal_irq.c)
