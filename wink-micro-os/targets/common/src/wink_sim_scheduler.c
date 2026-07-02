@@ -18,8 +18,15 @@ static sim_task_t s_tasks[WINK_SIM_MAX_TASKS];
 static uint32_t s_task_id_counter = 0;
 static uint32_t s_current_task_id = SIM_SCHED_NO_READY;
 static uint32_t s_prng_state = 42;
+/* fixup 计划 M6：round-robin 上次调度的 slot ID —— pick_next 从 (last+1) % N 开始扫描。
+ * SIM_SCHED_NO_READY 表示首次调度或 reset 后（从 slot 0 起扫）。 */
+static uint32_t s_last_scheduled_task_id = SIM_SCHED_NO_READY;
 
-/* target-independent xorshift32 PRNG */
+/* target-independent xorshift32 PRNG（Task 7 Chaos Scheduling 时启用；
+ * 本 wave 内 pick_next 走 round-robin，PRNG 状态仍随 seed 初始化以固定序列）。 */
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((unused))
+#endif
 static uint32_t sim_prng_next(void) {
     uint32_t x = s_prng_state;
     x ^= x << 13;
@@ -31,10 +38,17 @@ static uint32_t sim_prng_next(void) {
 
 void sim_scheduler_reset(uint32_t prng_seed) {
     SCHED_TRACE("Resetting scheduler with seed %u", prng_seed);
-    
+
+    /* fixup 计划红线 13 / H3：禁止在 fiber 任务上下文调用——否则清理时会
+     * DeleteFiber(当前正在运行的 fiber)，Win32 UB / emscripten fiber_swap 无处返回。
+     * 允许在完全空闲状态（首次启动、legacy 测试）或主调度 loop 退出后调用。 */
+    assert(s_current_task_id == SIM_SCHED_NO_READY &&
+           "sim_scheduler_reset called while task fiber is running; "
+           "return to main scheduler ctx before resetting");
+
     /* 强制清理旧的活跃上下文，避免单元测试顺序跑（同进程）时产生的协程/内存泄漏 */
     for (uint32_t i = 0; i < WINK_SIM_MAX_TASKS; ++i) {
-        if (s_tasks[i].state != SIM_TASK_STATE_INVALID && 
+        if (s_tasks[i].state != SIM_TASK_STATE_INVALID &&
             s_tasks[i].state != SIM_TASK_STATE_TERMINATED) {
             if (s_tasks[i].ctx) {
                 sim_ctx_destroy(s_tasks[i].ctx);
@@ -42,10 +56,11 @@ void sim_scheduler_reset(uint32_t prng_seed) {
             }
         }
     }
-    
+
     memset(s_tasks, 0, sizeof(s_tasks));
     s_task_id_counter = 0;
     s_current_task_id = SIM_SCHED_NO_READY;
+    s_last_scheduled_task_id = SIM_SCHED_NO_READY;   /* fixup M6：reset round-robin 状态 */
     s_prng_state = prng_seed ? prng_seed : 42;
 }
 
@@ -150,30 +165,35 @@ uint32_t sim_scheduler_wakeup_by_time(uint64_t now_us) {
 }
 
 uint32_t sim_scheduler_pick_next(void) {
-    uint32_t ready_indices[WINK_SIM_MAX_TASKS];
-    uint32_t ready_count = 0;
-    
+    /* fixup 计划 M6：改回经典 round-robin。
+     *
+     * 语义：从 (s_last_scheduled_task_id + 1) mod N 开始扫描 slot 数组，第一个 READY
+     * 的即为下一个被调度的任务。相较于原 PRNG 方案（sim_prng_next() % ready_count）
+     * 的优点：
+     *   1. 公平性天然保证：无饥饿——每个 READY 任务在一轮扫描内必被选中一次；
+     *   2. 确定性天然保证：无 PRNG 依赖，seed 值无关 pick 序列；
+     *   3. 简单：无需构造 ready_indices 数组。
+     *
+     * R7 注意事项：若上一次调度的 slot 已被 gc_zombies 释放并被新 task 复用，新 task
+     * 首次调度会延迟一轮（从 last+1 开始扫，不会立刻选到刚被复用的那个 slot）。这
+     * 是可接受的一次性延迟，且不引入特殊 case，保持代码线性简单。 */
+    uint32_t start_id = (s_last_scheduled_task_id == SIM_SCHED_NO_READY)
+                        ? 0u
+                        : (s_last_scheduled_task_id + 1u) % WINK_SIM_MAX_TASKS;
+
     for (uint32_t i = 0; i < WINK_SIM_MAX_TASKS; ++i) {
-        if (s_tasks[i].state == SIM_TASK_STATE_READY) {
-            ready_indices[ready_count++] = i;
+        uint32_t id = (start_id + i) % WINK_SIM_MAX_TASKS;
+        if (s_tasks[id].state == SIM_TASK_STATE_READY) {
+            s_last_scheduled_task_id = id;
+            SCHED_TRACE("Picked next slot=%u (round-robin from %u)", id, start_id);
+            return id;
         }
     }
-    
-    if (ready_count == 0) {
-        return SIM_SCHED_NO_READY;
-    }
-    
-    if (ready_count == 1) {
-        /* 单任务直通：保证单任务 App 零业务行为差异 */
-        return ready_indices[0];
-    }
-    
-    /* 大于 1 个就绪任务时，通过 PRNG 产生确定性伪随机轮转 */
-    uint32_t pick = sim_prng_next() % ready_count;
-    uint32_t selected = ready_indices[pick];
-    SCHED_TRACE("Picked next slot=%u out of %u ready tasks", selected, ready_count);
-    return selected;
+    return SIM_SCHED_NO_READY;
 }
+
+/* 保留 sim_prng_next 未使用引用避免 gcc -Wunused-function 报错。
+ * 未来 Task 7（Chaos Scheduling）会通过 PRNG 生成 tick 边界抖动，届时重新启用。 */
 
 void sim_scheduler_yield_timed(uint32_t task_id, uint64_t now_us, uint64_t duration_us) {
     if (task_id < WINK_SIM_MAX_TASKS) {
@@ -247,4 +267,9 @@ uint32_t sim_scheduler_current_id(void) {
 
 void sim_scheduler_set_current(uint32_t task_id) {
     s_current_task_id = task_id;
+}
+
+sim_ctx_t* sim_scheduler_current_ctx(void) {
+    if (s_current_task_id >= WINK_SIM_MAX_TASKS) return NULL;
+    return s_tasks[s_current_task_id].ctx;
 }

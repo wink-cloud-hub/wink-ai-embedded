@@ -52,7 +52,17 @@ wink_status_t sim_scheduler_register(void (*func)(void*), void* arg,
                                      uint32_t* out_id);
 void          sim_scheduler_mark_zombie(uint32_t task_id);   /* 自删标记 */
 void          sim_scheduler_gc_zombies(void);                /* 主 loop 调用：ZOMBIE → TERMINATED，释放 fiber */
-wink_status_t pal_sim_scheduler_run(uint32_t main_task_id, uint32_t max_ticks);
+
+/* pal_sim_scheduler_run 主调度入口。
+ *
+ * `callbacks` —— App 回调集合（用于 WCET 触发时透传给 wink_runtime_fault，落实
+ * ADR-0012 契约诚实 + fixup 计划红线 16）。允许为 NULL（测试用无 App 场景）。
+ *
+ * 头依赖处理（fixup 计划 RF-007 纪律）：pal 头只做前向声明，禁止 include
+ * `wink_app.h` / `wink_runtime.h`，严守 pal < runtime < app 分层。 */
+struct wink_app_callbacks;
+wink_status_t pal_sim_scheduler_run(const struct wink_app_callbacks* callbacks,
+                                    uint32_t main_task_id, uint32_t max_ticks);
 
 /* 调度决策（Step 3 拆两步，副作用透明） */
 uint32_t      sim_scheduler_wakeup_by_time(uint64_t now_us); /* WAITING/BLOCKED 到期 → READY，返回唤醒数量 */
@@ -73,5 +83,10 @@ uint32_t      sim_scheduler_task_count(void);
 const sim_task_t* sim_scheduler_get(uint32_t task_id);
 uint32_t      sim_scheduler_current_id(void);
 void          sim_scheduler_set_current(uint32_t task_id);
+
+/* 当前运行 fiber 的 ctx（供 pal_os_sleep_ms / pal_os_task_delete 内让出前定位自身 ctx）。
+ * 契约：只有在 task fiber 上下文（`s_current_task_id != SIM_SCHED_NO_READY`）返回非 NULL。
+ * 见 fixup 计划红线 12（sim_ctx_switch 契约 v2：from 必须非空）。 */
+sim_ctx_t*    sim_scheduler_current_ctx(void);
 
 #endif

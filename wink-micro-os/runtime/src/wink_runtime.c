@@ -16,6 +16,7 @@
 #ifdef SIMULATION
 #include "pal_wasm_internal.h"
 #include "wink_sim_scheduler.h"
+#include <stdlib.h>   /* getenv / strtoul for H5 seed injection */
 #endif
 
 /* Soft timer scheduler (ADR-0007) */
@@ -97,8 +98,9 @@ static void sim_app_main_task(void* arg) {
             wink_trace_fault(WINK_WARN_TICK_OVERRUN);
         }
 
-        /* Method C: Wasm interrupt dispatch at tick boundary */
-        pal_wasm_dispatch_pending_interrupts();
+        /* fixup 计划 M3：wasm 中断 dispatch 已移到 pal_sim_scheduler_run 主 loop
+         * 顶部（targets/wasm/pal_osal_wasm.c），恢复 ADR-0013 §边界 3 "O(scheduler
+         * tick) 唤醒延迟" 承诺。此处不再重复 dispatch，避免 double-dispatch。 */
 
         /* ADR-0010: healthy milestone */
         if (tick == WINK_BOOT_HEALTHY_TICKS) {
@@ -120,8 +122,14 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
 
 #ifdef SIMULATION
     /* 在运行任何用户初始化(app_init)之前，必须先重置调度器，
-     * 否则 app_init 中注册的所有用户协程都会被随后的重置给抹除 */
-    sim_scheduler_reset(42);
+     * 否则 app_init 中注册的所有用户协程都会被随后的重置给抹除。
+     * fixup 计划 H5：seed 可通过 env WINK_SIM_SEED 注入以支撑 seed sweep 测试；
+     * 缺省 42，与旧硬编码行为兼容。 */
+    {
+        const char* seed_env = getenv("WINK_SIM_SEED");
+        uint32_t seed = seed_env ? (uint32_t)strtoul(seed_env, NULL, 10) : 42u;
+        sim_scheduler_reset(seed);
+    }
 #endif
 
     /* ============================================================
@@ -169,7 +177,7 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
         5, PAL_OS_CORE_ANY, 32*1024, &main_task_id);
     if (st != WINK_OK) return st;
 
-    return pal_sim_scheduler_run(main_task_id, max_ticks);
+    return pal_sim_scheduler_run(callbacks, main_task_id, max_ticks);
 #else
     uint32_t tick = 0;
     /* max_ticks == 0 => infinite loop (embedded/wasm); host tests pass a finite value. */

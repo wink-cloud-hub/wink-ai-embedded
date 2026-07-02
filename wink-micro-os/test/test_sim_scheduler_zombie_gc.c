@@ -28,8 +28,8 @@ void test_self_delete_reaches_zombie_gc(void) {
     pal_os_task_handle_t t_h;
     TEST_ASSERT_EQUAL(WINK_OK, pal_os_task_create(self_deleter_task, "sd", 32*1024, NULL, 5, PAL_OS_CORE_ANY, &t_h));
     
-    /* 运行调度循环，主任务 id 设为 0（即注册的唯一任务） */
-    wink_status_t st = pal_sim_scheduler_run(0, 50);
+    /* 运行调度循环，主任务 id 设为 0（即注册的唯一任务）；测试无 App，传 NULL。 */
+    wink_status_t st = pal_sim_scheduler_run(NULL, 0, 50);
     TEST_ASSERT_EQUAL(WINK_OK, st);
     
     TEST_ASSERT_EQUAL_UINT32(1, s_self_delete_count);
