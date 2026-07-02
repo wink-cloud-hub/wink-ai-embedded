@@ -7,6 +7,13 @@
 #include "pal_resource.h"
 #include "js_sim_host_stub.h"
 
+/* ADR-0017：dal_ultrasonic_read 挂 WINK_BLOCKING 后，本文件对其调用属过渡期例外，
+ * 见 test_dal_ultrasonic.c 顶部同款说明。 */
+#if defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 static const char *const OWNER = "test_dal_ultrasonic_sim";
 
 extern float dal_pulse_us_to_cm(uint32_t pulse_us);
@@ -43,3 +50,7 @@ int main(void) {
     RUN_TEST(test_sim_read_timeout_when_pulse_exceeds_limit);
     return UNITY_END();
 }
+
+#if defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic pop
+#endif
