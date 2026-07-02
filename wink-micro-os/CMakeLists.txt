@@ -196,5 +196,9 @@ if(NOT TARGET_PLATFORM STREQUAL "wasm")
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/smp_uaf_test
                      ${CMAKE_BINARY_DIR}/smp_uaf_test_build)
 
+    # Track A M1 / Task A-3：资源占用冲突反例样本（host-only 断言样本）
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/resource_conflict
+                     ${CMAKE_BINARY_DIR}/resource_conflict_build)
+
     add_subdirectory(test)
 endif()
