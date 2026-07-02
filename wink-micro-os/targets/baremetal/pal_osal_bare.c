@@ -88,7 +88,11 @@ WINK_WARN_UNUSED_RESULT wink_status_t pal_os_wdt_feed(void) {
 }
 
 /* ─────────────────────────────────────────────────────────
- * 临界区（BSP 需提供关中断实现）
+ * 临界区（task/ISR 双入口显式分流, ADR-0016）
+ * 裸机上 task/ISR 版共用 BSP 关中断原语（`pal_bsp_irq_save/restore`）——
+ * 关中断本身既保护 task 上下文又保护 ISR 上下文；显式分流的价值在于契约诚实
+ * （调用方从头文件即知调用位置），符合 ADR-0016 §4.2 baremetal 分支约定。
+ * 真机上下文由硬件寄存器判定，仿真上下文标志为 no-op。
  * ───────────────────────────────────────────────────────── */
 
 /* BSP 必须提供的中断控制函数 */
@@ -102,6 +106,17 @@ uint32_t pal_os_critical_enter(void) {
 void pal_os_critical_exit(uint32_t key) {
     pal_bsp_irq_restore(key);
 }
+
+uint32_t pal_os_critical_enter_isr(void) {
+    return pal_bsp_irq_save();
+}
+
+void pal_os_critical_exit_isr(uint32_t key) {
+    pal_bsp_irq_restore(key);
+}
+
+void pal_os_set_sim_isr_context(bool in_isr) { (void)in_isr; }
+bool pal_os_in_sim_isr_context(void) { return false; }
 
 /* ─────────────────────────────────────────────────────────
  * Task 创建（裸机不支持多任务）

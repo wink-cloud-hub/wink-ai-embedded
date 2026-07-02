@@ -124,17 +124,58 @@ WINK_WARN_UNUSED_RESULT wink_status_t pal_os_wdt_feed(void);
 /* ========================================================================== */
 
 /**
- * @brief 进入全局临界区 (屏蔽中断/多核自旋锁)
+ * @brief 进入全局临界区 (TASK 上下文, 屏蔽中断/多核自旋锁)
  * @return 恢复临界区所需的原始状态键值
  * @note 仅用于极短时间的原子操作保护（如环形队列读写、状态标记更新），严禁在临界区内调用阻塞/延时 API。
+ * @warning **仅限 TASK 上下文调用**（ADR-0016 双入口显式分流）：
+ *          - ESP32 使用 `portENTER_CRITICAL`（task-only 原语），ISR 调用会触发 assert / SMP 死锁；
+ *          - host/wasm 单线程语义上安全，但契约不匹配（Debug 构建下会因 `s_sim_in_isr` 而 assert 命中）。
+ *          从 ISR 上下文改用 pal_os_critical_enter_isr()。
  */
 uint32_t pal_os_critical_enter(void);
 
 /**
- * @brief 退出全局临界区并恢复之前的状态
+ * @brief 退出全局临界区并恢复之前的状态（TASK 上下文）
  * @param key 进入临界区时返回的状态键值
+ * @warning 与 pal_os_critical_enter 配对，同样禁止 ISR 上下文调用（ADR-0016）。
  */
 void pal_os_critical_exit(uint32_t key);
+
+/**
+ * @brief 进入全局临界区 (ISR 上下文, ESP-IDF `xxxFromISR` 惯例, ADR-0016)。
+ * @return 恢复临界区所需的原始状态键值
+ * @note - ESP32：使用 `portENTER_CRITICAL_ISR(&s_global_mux)`，与 task 版共享同一 mux，
+ *         task/ISR 互斥仍然成立；
+ *       - host/wasm：单线程退化为与 task 版语义等价（Debug 构建下 assert `s_sim_in_isr`）；
+ *       - baremetal：与 task 版共用关中断原语实现（`pal_bsp_irq_save/restore`）。
+ *
+ * 与 `pal_os_critical_enter` 的对称契约由 ADR-0016 定义（选项 B：双入口显式分流）。
+ */
+uint32_t pal_os_critical_enter_isr(void);
+
+/**
+ * @brief 退出全局临界区（ISR 上下文）
+ * @param key 进入临界区时返回的状态键值
+ */
+void pal_os_critical_exit_isr(uint32_t key);
+
+/**
+ * @brief 切换模拟 ISR 上下文标志（仅 host/wasm 生效, ADR-0016 §4.2）。
+ *
+ * 仿真器/单测在向模拟中断回调分发前调 `pal_os_set_sim_isr_context(true)`、
+ * 返回后调 `pal_os_set_sim_isr_context(false)`；这样 `pal_os_critical_enter`
+ * 与 `pal_os_critical_enter_isr` 在 Debug 构建下可通过 assert 立即捕获入口误用。
+ *
+ * ESP32 / baremetal 上此函数为 no-op（真机使用 `xPortInIsrContext()` / BSP 硬件寄存器判定）。
+ */
+void pal_os_set_sim_isr_context(bool in_isr);
+
+/**
+ * @brief 读取当前模拟 ISR 上下文标志（仅 host/wasm 有意义, ADR-0016 §4.2）。
+ * @return host/wasm 返回内部 `s_sim_in_isr`；esp32 / baremetal 恒返回 false。
+ * @note 供单测断言与 wink_trace ISR 分流实现使用；生产代码通常不需读取此标志。
+ */
+bool pal_os_in_sim_isr_context(void);
 
 
 /* ========================================================================== */
