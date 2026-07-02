@@ -7,13 +7,11 @@
 
   Default: single build in build-test/ (fast, daily iteration).
 
-  With -Full (or -Sanitize + -Optin combined), runs the full test matrix that
-  Phase 1.5 DoD requires as a regression net for PAL IRQ contracts:
+  With -Full (or -Sanitize), runs the extended test matrix that Phase 1.5 DoD
+  requires as a regression net for PAL IRQ contracts:
 
-    Pass 1  build-test/         default host build (no sanitizers, no opt-in)
-    Pass 2  build-test-optin/   -DWINK_HOST_ALLOW_REALTIME_FOR_TESTING=1
-                                (exercises test_irq_realtime_accepted_when_opt_in)
-    Pass 3  build-test-san/     -fsanitize=undefined + -Wcast-function-type
+    Pass 1  build-test/         default host build (no sanitizers)
+    Pass 2  build-test-san/     -fsanitize=undefined + -Wcast-function-type
                                 (UBSan trap-on-error, plus GCC's static approximation
                                  of clang -fsanitize=cfi-icall)
 
@@ -21,16 +19,18 @@
     pwsh ./run-tests.ps1                # fast daily iteration (default build only)
     pwsh ./run-tests.ps1 -Clean         # wipe & rebuild default build only
     pwsh ./run-tests.ps1 -Detailed      # print each test exe's full output
-    pwsh ./run-tests.ps1 -Optin         # add opt-in matrix (adds Pass 2)
-    pwsh ./run-tests.ps1 -Sanitize      # add sanitize matrix (adds Pass 3)
-    pwsh ./run-tests.ps1 -Full          # all three passes (CI / pre-PR gate)
+    pwsh ./run-tests.ps1 -Sanitize      # add sanitize matrix (adds Pass 2)
+    pwsh ./run-tests.ps1 -Full          # sanitize matrix (CI / pre-PR gate)
     pwsh ./run-tests.ps1 -WithWasm      # run optional WASM build compilation check
+
+  NOTE: The historical -Optin pass (WINK_HOST_ALLOW_REALTIME_FOR_TESTING) was
+        removed by ADR-0018 (2026-07-02). The PAL_IRQ_PRIO_REALTIME enum no
+        longer exists, so no code path consumes that macro.
 #>
 [CmdletBinding()]
 param(
     [switch]$Clean,
     [switch]$Detailed,
-    [switch]$Optin,
     [switch]$Sanitize,
     [switch]$Full,
     [switch]$WithWasm
@@ -38,7 +38,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-if ($Full) { $Optin = $true; $Sanitize = $true }
+if ($Full) { $Sanitize = $true }
 
 # ---- 1. Locate toolchain (WinLibs MinGW: gcc 16.1.0 + cmake 4.3.2) ----
 $toolchain = "C:\Users\77174\AppData\Local\Microsoft\WinGet\Packages\BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe\mingw64\bin"
@@ -112,7 +112,9 @@ function Invoke-TestPass {
 # ---- 5. Execute matrix ----
 $passes = @()
 $passes += @{ Label='default'; Dir='build-test';       Flags=''; Enabled=$true }
-$passes += @{ Label='opt-in';  Dir='build-test-optin'; Flags='-DWINK_HOST_ALLOW_REALTIME_FOR_TESTING=1'; Enabled=$Optin }
+# NOTE: ADR-0018 (2026-07-02) removed PAL_IRQ_PRIO_REALTIME. The historical
+#       -Optin pass with -DWINK_HOST_ALLOW_REALTIME_FOR_TESTING=1 is retired;
+#       no code path consumes that macro anymore.
 # Sanitize pass:
 #   -fsanitize=undefined              : UBSan checks (invalid casts, int overflow,
 #                                        misaligned access, etc.)
