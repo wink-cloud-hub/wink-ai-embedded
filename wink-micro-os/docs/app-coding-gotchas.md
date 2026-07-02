@@ -52,7 +52,27 @@ graph TD
     *   **避坑警告**：若长延时错误使用忙等，会导致低优先级任务彻底“饥饿”卡死，并极易触发看门狗（WDT）复位，或因霸占 CPU 引起优先级反转导致死锁。
 3.  **中断服务程序（ISR）中的延时**
     *   **推荐方案**：在 ISR 中**严禁调用任何触发任务挂起的 API**（如 `pal_os_sleep_ms`），若必须延时只能使用超短时 `pal_os_busy_wait_us` 忙等。
-    *   **基本原则**：ISR 必须保持快速与纯净，执行时间应控制在微秒级。如果在 ISR 内需要等待毫秒级操作，说明系统架构设计存在严重问题，应改为“在 ISR 中仅设置状态标志或发送任务通知，由前台的 worker 任务线程去执行毫秒级操作”。
+### 1.4 高优先级任务长时间忙等导致 IDLE 任务饥饿，触发系统看门狗 (Task WDT) 超时
+
+*   **问题现象**：在多核压力测试或密集型长计算任务中，串口日志输出 `E (xxxx) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time: - IDLE0 (CPU 0)`，或者在开启 Panic 时设备发生异常复位。
+*   **深层原因**：ESP-IDF 默认启用了 Task Watchdog Timer (TWDT) 监控机制（由 `CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0/1` 配置），监控 CPU 0 和 CPU 1 的空闲任务（`IDLE0`/`IDLE1`），默认超时时间为 5 秒。如果用户创建的任务优先级大于 0（例如压测任务为 5），并且该任务执行了长时间（如 60s）不退出的紧凑忙等循环（Busy-loop），那么 `IDLE` 任务将无法被调度器分配到任何 CPU 时间片。这导致 `IDLE` 无法执行喂狗操作，最终引起系统报看门狗超时。
+*   **正确实践**：
+    *   **严禁在优先级大于 0 的任务中无休止霸占 CPU 超过 5 秒**。
+    *   在长时间循环或重型压测任务中，应采用**周期性微量让出 CPU** 的策略。例如，每经过 1 秒，主动调用一次 `pal_os_sleep_ms(1)`：
+        ```c
+        uint64_t last_yield = pal_os_get_ms();
+        while (pal_os_get_ms() < end_time) {
+            // 执行压测/密集计算 ...
+            
+            // 解决看门狗饥饿：每隔 1s 主动睡眠 1ms 让出 CPU，允许 IDLE 运行喂狗
+            uint64_t now = pal_os_get_ms();
+            if (now - last_yield >= 1000) {
+                pal_os_sleep_ms(1);
+                last_yield = now;
+            }
+        }
+        ```
+    *   在不牺牲高负荷压测强度的前提下（仍有 99.9% 以上的时间在全速压测），此方法可以确保 `IDLE` 任务有喘息之机，完美消除看门狗报警。
 
 ---
 
