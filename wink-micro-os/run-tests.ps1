@@ -24,6 +24,7 @@
     pwsh ./run-tests.ps1 -Optin         # add opt-in matrix (adds Pass 2)
     pwsh ./run-tests.ps1 -Sanitize      # add sanitize matrix (adds Pass 3)
     pwsh ./run-tests.ps1 -Full          # all three passes (CI / pre-PR gate)
+    pwsh ./run-tests.ps1 -WithWasm      # run optional WASM build compilation check
 #>
 [CmdletBinding()]
 param(
@@ -31,7 +32,8 @@ param(
     [switch]$Detailed,
     [switch]$Optin,
     [switch]$Sanitize,
-    [switch]$Full
+    [switch]$Full,
+    [switch]$WithWasm
 )
 
 $ErrorActionPreference = 'Stop'
@@ -138,6 +140,65 @@ foreach ($p in $passes) {
     $ok = Invoke-TestPass -Label $p.Label -BuildDir $p.Dir -ExtraCFlags $p.Flags
     if (-not $ok) { $overallRc = 1 }
 }
+
+# ---- 5.5 WASM build check (optional compilation verification) ----
+if ($WithWasm) {
+    Write-Host "`n===== [wasm build check] =====" -ForegroundColor Cyan
+    $emsdkPath = $env:EMSDK
+    if (-not $emsdkPath) {
+        $defaultEmsdk = "D:\software\embedded\emsdk"
+        if (Test-Path $defaultEmsdk) {
+            $emsdkPath = $defaultEmsdk
+        }
+    }
+    
+    if (-not $emsdkPath -or -not (Test-Path $emsdkPath)) {
+        Write-Host "[FAIL] EMSDK not found. Set EMSDK env var or install at D:\software\embedded\emsdk" -ForegroundColor Red
+        $overallRc = 1
+    } else {
+        $envScript = Join-Path $emsdkPath "emsdk_env.ps1"
+        if (Test-Path $envScript) {
+            Write-Host "-> Activating EMSDK environment from $emsdkPath..." -ForegroundColor Cyan
+            $env:EMSDK_QUIET = 1
+            . $envScript
+        }
+        
+        if (-not (Get-Command emcc -ErrorAction SilentlyContinue)) {
+            Write-Host "[FAIL] emcc command not found after EMSDK activation" -ForegroundColor Red
+            $overallRc = 1
+        } else {
+            $oldPreference = $ErrorActionPreference
+            $ErrorActionPreference = 'Continue'
+            try {
+                $wasmBuildDir = "build-wasm"
+                if ($Clean -and (Test-Path $wasmBuildDir)) {
+                    Write-Host "-> Cleaning $wasmBuildDir ..." -ForegroundColor Yellow
+                    Remove-Item -Recurse -Force $wasmBuildDir
+                }
+
+                Write-Host "-> Configuring WASM build..." -ForegroundColor Cyan
+                $LASTEXITCODE = 0
+                emcmake cmake -B $wasmBuildDir -DTARGET_PLATFORM=wasm
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Host "[FAIL] WASM configure failed" -ForegroundColor Red
+                    $overallRc = 1
+                } else {
+                    Write-Host "-> Building WASM target..." -ForegroundColor Cyan
+                    cmake --build $wasmBuildDir
+                    if ($LASTEXITCODE -ne 0) {
+                        Write-Host "[FAIL] WASM build failed" -ForegroundColor Red
+                        $overallRc = 1
+                    } else {
+                        Write-Host "[PASS] WASM build check succeeded" -ForegroundColor Green
+                    }
+                }
+            } finally {
+                $ErrorActionPreference = $oldPreference
+            }
+        }
+    }
+}
+
 
 Write-Host ""
 if ($overallRc -eq 0) {
