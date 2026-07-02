@@ -264,7 +264,7 @@ Example JSON input:
         {"name": "last_distance", "type": "float", "comment": "Last radar reading"}
     ],
     "init_steps": ["dal_led_set_state(&status_led, LED_STATE_OFF);"],
-    "loop_body": "float distance = 0.0f;\\n        dal_ultrasonic_read(&front_radar, &distance);",
+    "loop_body": "float distance = 0.0f;\\n        wink_status_t status = dal_ultrasonic_get_cached_distance(&front_radar, &distance);\\n        if (status == WINK_ERR_BUSY) {\\n            // Measurement in progress, wait for next tick\\n        } else {\\n            // Start new measurement for next cycle\\n            dal_ultrasonic_request_measurement(&front_radar);\\n            // Process distance...\\n        }",
     "tick_rate_ms": 10,
     "fault_actions": ["(void)dal_servo_set_angle(&neck_servo, 90.0f);"]
 }
@@ -290,12 +290,17 @@ Example JSON input:
                 "dal_servo_set_angle(&neck_servo, 90.0f);"
             ],
             "loop_body": """float distance = 0.0f;
-        wink_status_t status = dal_ultrasonic_read(&front_radar, &distance);
+        wink_status_t status = dal_ultrasonic_get_cached_distance(&front_radar, &distance);
         if (status == WINK_OK) {
             state->task_001_last_distance = distance;
             if (distance < 20.0f) {
                 state->task_001_current_state = SYSTEM_STATE_AVOIDING;
             }
+        } else if (status == WINK_ERR_BUSY) {
+            // Measurement still in progress, wait a tick
+        } else {
+            // Try to trigger new measurement for next cycle
+            dal_ultrasonic_request_measurement(&front_radar);
         }""",
             "tick_rate_ms": 10,
             "fault_actions": [
