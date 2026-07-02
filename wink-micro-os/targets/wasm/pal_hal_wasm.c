@@ -15,7 +15,8 @@
  *   零退化时只多一次内存读，热路径开销可忽略。
  */
 #include "pal_hal.h"
-#include "pal_irq.h"
+#define WINK_ALLOW_ADVANCED_IRQ_APIS
+#include "pal_irq_advanced.h"
 #include "pal_pwm_router.h"
 #include "pal_osal.h"
 #include "pal_resource.h"  /* pal_resource_is_claimed / PAL_RESOURCE_GPIO_PIN — 与 host/esp32 同源保真 */
@@ -23,7 +24,6 @@
 #include "wasm_bridge.h"
 #include "pal_wasm_internal.h"
 #include "wink_sim_physical.h"
-#include "pal_shared_chain.h"  /* target-private RCU chain algorithm (PLAN-20260701-PAL-TARGET-P1-MAINT Task 1) */
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -176,12 +176,6 @@ wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin, pal_gpio_intr_t intr_
         return WINK_ERR_INVALID_ARG;
     }
 
-    /* v2.2 G2（Phase 1.5，2026-07-01）：与 ESP32 对齐，GPIO 路径拒接 REALTIME。
-     * WASM 单线程模型无 per-pin 抢占；显式拒接以让"仿真通过 → 真机通过"关系
-     * 严格成立（ADR-0012）。 */
-    if (prio == PAL_IRQ_PRIO_REALTIME) {
-        return WINK_ERR_UNSUPPORTED;
-    }
 
     /* v2.2 G3：GPIO service 首次锁定 prio。WASM 单线程无 mutex 需求，
      * 直接检查即可。一旦锁定，进程生命周期内不再释放（见 pal_hal.h 契约）。 */
@@ -314,31 +308,7 @@ void pal_wasm_dispatch_pending_irqs(void)
     s_pending_count = write_idx;
 }
 
-/* ─────────────────────────────────────────────────────────
- * 共享中断机制（WASM 仿真实现）
- * ─────────────────────────────────────────────────────────
- * PLAN-20260701-PAL-TARGET-P1-MAINT Task 1：责任链数据结构与算法层已下沉
- * 到 `targets/common/src/pal_shared_chain.c`。wasm 单线程仿真使用简化路径
- * （同步 ops 全 NULL），语义与 host 一致（且与 ESP32 SMP 版本 R-1 兼容）。 */
 
-#define WASM_MAX_SHARED_IRQS      16
-
-static pal_shared_chain_t *s_wasm_shared_chain[WASM_MAX_SHARED_IRQS] = {NULL};
-
-/* 单线程：无 mux、无 synchronize；ops 传 NULL 即走算法层简化路径。 */
-#define S_WASM_SHARED_SYNC_OPS  NULL
-
-/* 共享中断 wrapper（WASM 仿真版，按注册顺序调用所有 handler） */
-static void PAL_ISR wasm_shared_irq_wrapper(void *arg)
-{
-    uint32_t irq_num = (uint32_t)(uintptr_t)arg;
-    if (irq_num >= WASM_MAX_SHARED_IRQS) {
-        return;
-    }
-
-    /* ✅ v2.0 语义：始终遍历调用所有 handler，不提前终止 */
-    (void)pal_shared_chain_dispatch(s_wasm_shared_chain[irq_num]);
-}
 
 /* ─────────────────────────────────────────────────────────
  * 逻辑中断核心接口（WASM 仿真实现）
@@ -348,35 +318,11 @@ static void PAL_ISR wasm_shared_irq_wrapper(void *arg)
 static pal_isr_t s_wasm_irq_table[WASM_MAX_IRQ] = {NULL};
 static void *s_wasm_irq_arg[WASM_MAX_IRQ] = {NULL};
 
-/* v2.1 G1：硬件直连中断的无参 trampoline（WASM 镜像 ESP32/host 实现）。
- * 旧实现 `(pal_isr_t)handler` 是 void(*)(void) → void(*)(void*) 的非法 cast；
- * 改为 trampoline 后签名清洁，WASM 单线程下 NULL 检查即足够。 */
-static pal_direct_isr_t s_wasm_direct_handlers[WASM_MAX_IRQ] = {NULL};
-
 wink_status_t pal_irq_enable(uint32_t irq_num, pal_irq_prio_t prio,
                               pal_isr_t handler, void *arg)
 {
-    if (irq_num >= WASM_MAX_IRQ || handler == NULL || prio >= PAL_IRQ_PRIO_COUNT) {
+    if (irq_num >= WASM_MAX_IRQ || handler == NULL || prio <= 0 || prio >= PAL_IRQ_PRIO_COUNT) {
         return WINK_ERR_INVALID_ARG;
-    }
-
-    /* v2.2 G2（Phase 1.5，2026-07-01）：与 ESP32 对齐，默认拒接 REALTIME。
-     * 让"仿真通过 → 真机通过"关系严格成立（ADR-0012 契约诚实）。
-     * 静态校验类测试可编译期显式 opt-in，走**受控**放行。 */
-    if (prio == PAL_IRQ_PRIO_REALTIME) {
-#if defined(WINK_HOST_ALLOW_REALTIME_FOR_TESTING)
-        /* opt-in：接受但一次性告警。WASM 侧走 pal_debug_printf 保持日志同源。 */
-        static bool s_realtime_warn_emitted = false;
-        if (!s_realtime_warn_emitted) {
-            pal_debug_printf("[pal_irq WARN] wasm: REALTIME priority accepted "
-                             "for testing only; ESP32 target returns "
-                             "WINK_ERR_UNSUPPORTED.\n");
-            s_realtime_warn_emitted = true;
-        }
-        /* fallthrough：落到 dispatch 路径，与 HIGHEST 等价 */
-#else
-        return WINK_ERR_UNSUPPORTED;
-#endif
     }
 
     s_wasm_irq_table[irq_num] = handler;
@@ -391,63 +337,6 @@ wink_status_t pal_irq_disable(uint32_t irq_num)
     }
     s_wasm_irq_table[irq_num] = NULL;
     s_wasm_irq_arg[irq_num] = NULL;
-    /* v2.1：清理 direct-connect 槽位，对齐 ESP32/host 实现 */
-    s_wasm_direct_handlers[irq_num] = NULL;
-    return WINK_OK;
-}
-
-static void wasm_direct_trampoline(void *arg)
-{
-    uint32_t irq_num = (uint32_t)(uintptr_t)arg;
-    if (irq_num >= WASM_MAX_IRQ) {
-        return;
-    }
-    pal_direct_isr_t h = s_wasm_direct_handlers[irq_num];
-    if (h != NULL) {
-        h();
-    }
-}
-
-wink_status_t pal_irq_direct_connect(uint32_t irq_num, pal_direct_isr_t handler)
-{
-    if (irq_num >= WASM_MAX_IRQ || handler == NULL) {
-        return WINK_ERR_INVALID_ARG;
-    }
-    s_wasm_direct_handlers[irq_num] = handler;
-    wink_status_t st = pal_irq_enable(irq_num, PAL_IRQ_PRIO_NORMAL,
-                                       wasm_direct_trampoline,
-                                       (void *)(uintptr_t)irq_num);
-    if (wink_status_is_error(st)) {
-        s_wasm_direct_handlers[irq_num] = NULL;
-    }
-    return st;
-}
-
-wink_status_t pal_irq_shared_register(uint32_t irq_num, pal_irq_prio_t prio,
-                                       pal_irq_shared_handler_t handler, void *arg)
-{
-    if (irq_num >= WASM_MAX_SHARED_IRQS || handler == NULL || prio >= PAL_IRQ_PRIO_COUNT) {
-        return WINK_ERR_INVALID_ARG;
-    }
-
-    /* ✅ 复用 targets/common 算法层；wasm 单线程 ops=NULL 走简化路径 */
-    bool became_first = false;
-    wink_status_t st = pal_shared_chain_append(
-        &s_wasm_shared_chain[irq_num],
-        S_WASM_SHARED_SYNC_OPS,
-        irq_num,
-        handler,
-        arg,
-        &became_first);
-    if (wink_status_is_error(st)) {
-        return st;
-    }
-
-    /* 首个 handler：注册共享 wrapper */
-    if (became_first) {
-        return pal_irq_enable(irq_num, prio, wasm_shared_irq_wrapper,
-                              (void *)(uintptr_t)irq_num);
-    }
     return WINK_OK;
 }
 

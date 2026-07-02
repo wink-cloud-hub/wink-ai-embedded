@@ -97,10 +97,6 @@ typedef void (*pal_gpio_isr_t)(void *arg);
  * 若未来真需要 per-pin 独立优先级（按钮抢占传感器等场景），会新增
  * `pal_gpio_enable_interrupt_dedicated()` 独立中断源接口。
  *
- * ⚠️ REALTIME 全 target 拒接：所有 target 上 prio == PAL_IRQ_PRIO_REALTIME 均返回
- * WINK_ERR_UNSUPPORTED（v2.2 起 host/wasm 也拒接，与 ESP32 对齐；host/wasm 可通过
- * 编译期宏 WINK_HOST_ALLOW_REALTIME_FOR_TESTING opt-in 放行，仅供静态校验测试）。
- *
  * ⚠️ 错误码选择说明：
  * - INVALID_ARG：语义准确（参数与当前系统状态不合法），符合"本次调用参数不对"的直觉。
  * - BUSY：暗示可重试，误导性（重试永远不会成功）。
@@ -115,7 +111,7 @@ typedef void (*pal_gpio_isr_t)(void *arg);
  *   WINK_OK              首次或与首次锁定值一致的后续注册成功
  *   WINK_ERR_INVALID_ARG pin 越界 / callback NULL / prio 越界 /
  *                         prio 与首次锁定值不一致（本次拒接）
- *   WINK_ERR_UNSUPPORTED prio == PAL_IRQ_PRIO_REALTIME（或平台不支持 GPIO ISR）
+ *   WINK_ERR_UNSUPPORTED 平台不支持 GPIO ISR
  *   WINK_ERR_HARDWARE    底层 install / register 失败（ESP-IDF 返回错）
  */
 WINK_WARN_UNUSED_RESULT

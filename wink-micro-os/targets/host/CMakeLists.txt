@@ -8,8 +8,6 @@ add_library(pal_host OBJECT
     ${CMAKE_CURRENT_SOURCE_DIR}/../../pal/src/wink_dev_config.c
     # Phase 2：targets/common 的仿真基础设施（物理退化算法库）
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/wink_sim_physical.c
-    # PLAN-20260701-PAL-TARGET-P1-MAINT Task 1：共享中断责任链算法层
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/pal_shared_chain.c
 )
 
 target_link_libraries(pal_host PUBLIC pal)

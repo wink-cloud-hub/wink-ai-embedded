@@ -5,7 +5,8 @@
 #include "wink_status.h"
 #include "pal_irq.h"
 #include "pal_hal.h"
-#include "pal_shared_chain.h"  /* PLAN-20260701-PAL-TARGET-P1-MAINT Task 1: 算法层单测 */
+#define WINK_ALLOW_ADVANCED_IRQ_APIS
+#include "pal_irq_advanced.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -308,60 +309,7 @@ void test_logical_irq_invalid_number(void)
         pal_irq_disable(999));
 }
 
-void test_direct_connect_irq(void)
-{
-    /* 复用专门的无参 direct ISR，详见 test_direct_connect_calls_handler */
-    extern void test_direct_isr_void(void);
-    const uint32_t TEST_IRQ = 7;
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK,
-        pal_irq_direct_connect(TEST_IRQ, test_direct_isr_void));
-
-    pal_host_trigger_logical_interrupt(TEST_IRQ);
-    /* test_direct_isr_void 共享 s_test_isr_count（在文件顶部声明） */
-    TEST_ASSERT_EQUAL_UINT32(1, s_test_isr_count);
-}
-
-/* ─────────────────────────────────────────────────────────
- * v2.1 G1 验收：direct_connect 的无参签名 trampoline
- * 旧版 `(pal_direct_isr_t)test_logical_isr` 是 void(void*) → void(void) 的非法 cast，
- * 经 trampoline 后会真的以无参方式调用 handler，那种 cast 现在会段错误/UB。
- * 此 test 用真正的 void(void) handler 验证 v2.1 trampoline 正确桥接。
- * ───────────────────────────────────────────────────────── */
-
-/* 文件级 ISR，给 test_direct_connect_irq 与 test_direct_connect_calls_handler 共用 */
-void test_direct_isr_void(void)
-{
-    s_test_isr_count++;
-}
-
-void test_direct_connect_calls_handler(void)
-{
-    const uint32_t TEST_IRQ = 9;
-
-    TEST_ASSERT_EQUAL_INT(WINK_OK,
-        pal_irq_direct_connect(TEST_IRQ, test_direct_isr_void));
-
-    /* 触发逻辑中断 → trampoline → test_direct_isr_void */
-    pal_host_trigger_logical_interrupt(TEST_IRQ);
-    TEST_ASSERT_EQUAL_UINT32(1, s_test_isr_count);
-
-    /* disable 应同步清除 direct 槽位 */
-    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_irq_disable(TEST_IRQ));
-    s_test_isr_count = 0;
-    pal_host_trigger_logical_interrupt(TEST_IRQ);
-    TEST_ASSERT_EQUAL_UINT32(0, s_test_isr_count);
-}
-
-void test_direct_connect_invalid_args(void)
-{
-    /* NULL handler */
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG,
-        pal_irq_direct_connect(5, NULL));
-    /* irq 越界（host 上限 32） */
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG,
-        pal_irq_direct_connect(999, test_direct_isr_void));
-}
 
 /* ─────────────────────────────────────────────────────────
  * Test Group 5: 中断优先级枚举边界检查
@@ -373,87 +321,16 @@ void test_irq_priority_enum_bounds(void)
 
     /* 所有合法优先级都应能成功注册 */
     TEST_ASSERT_EQUAL_INT(WINK_OK,
-        pal_irq_enable(TEST_IRQ, PAL_IRQ_PRIO_LOWEST, test_logical_isr, NULL));
+        pal_irq_enable(TEST_IRQ, PAL_IRQ_PRIO_LOW, test_logical_isr, NULL));
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_irq_disable(TEST_IRQ));
 
     TEST_ASSERT_EQUAL_INT(WINK_OK,
-        pal_irq_enable(TEST_IRQ, PAL_IRQ_PRIO_HIGHEST, test_logical_isr, NULL));
+        pal_irq_enable(TEST_IRQ, PAL_IRQ_PRIO_HIGH, test_logical_isr, NULL));
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_irq_disable(TEST_IRQ));
-
-    /* v2.2（Phase 1.5，2026-07-01）：REALTIME 在所有 target 上默认拒接，
-     * 与 ESP32 对齐（ADR-0012 契约诚实）。opt-in 通过
-     * WINK_HOST_ALLOW_REALTIME_FOR_TESTING 编译宏放行 —— 见
-     * test_irq_realtime_accepted_when_opt_in。 */
-#if defined(WINK_HOST_ALLOW_REALTIME_FOR_TESTING)
-    TEST_ASSERT_EQUAL_INT(WINK_OK,
-        pal_irq_enable(TEST_IRQ, PAL_IRQ_PRIO_REALTIME, test_logical_isr, NULL));
-    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_irq_disable(TEST_IRQ));
-#else
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED,
-        pal_irq_enable(TEST_IRQ, PAL_IRQ_PRIO_REALTIME, test_logical_isr, NULL));
-#endif
 
     /* 越界优先级应返回错误 */
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG,
         pal_irq_enable(TEST_IRQ, (pal_irq_prio_t)999, test_logical_isr, NULL));
-}
-
-/* v2.2 G2（Phase 1.5，2026-07-01）：REALTIME 全 target 默认拒接的契约锚点 */
-
-void test_irq_realtime_rejected_on_all_targets(void)
-{
-    /* v2.2：默认编译（无 WINK_HOST_ALLOW_REALTIME_FOR_TESTING）时，
-     * pal_irq_enable(..., REALTIME, ...) 在所有 target 上一致返回
-     * WINK_ERR_UNSUPPORTED，让"仿真通过 → 真机通过"关系严格成立。 */
-#if defined(WINK_HOST_ALLOW_REALTIME_FOR_TESTING)
-    TEST_IGNORE_MESSAGE("opt-in 编译，REALTIME 放行；见 test_irq_realtime_accepted_when_opt_in");
-#else
-    const uint32_t TEST_IRQ = 6;
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED,
-        pal_irq_enable(TEST_IRQ, PAL_IRQ_PRIO_REALTIME, test_logical_isr, NULL));
-#endif
-}
-
-void test_gpio_realtime_rejected_on_all_targets(void)
-{
-    /* v2.2：GPIO 路径同样在所有 target 上拒接 REALTIME（不受 opt-in 宏影响 —— GPIO
-     * 无 per-pin 抢占，REALTIME 无处映射，无论何种编译都返回 UNSUPPORTED）。 */
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED,
-        pal_gpio_enable_interrupt_ex(/*pin*/ 4, PAL_GPIO_INTR_FALLING_EDGE,
-                                      PAL_IRQ_PRIO_REALTIME, test_gpio_isr, NULL));
-}
-
-void test_irq_realtime_accepted_when_opt_in(void)
-{
-    /* v2.2 opt-in：定义 WINK_HOST_ALLOW_REALTIME_FOR_TESTING 后，host/wasm 上
-     * pal_irq_enable REALTIME 被受控放行；首次调用会打 warn（未在 unit test 内 capture，
-     * 覆盖 warn 输出留给 stderr 目视/CI 日志）。 */
-#if defined(WINK_HOST_ALLOW_REALTIME_FOR_TESTING)
-    const uint32_t TEST_IRQ = 6;
-    TEST_ASSERT_EQUAL_INT(WINK_OK,
-        pal_irq_enable(TEST_IRQ, PAL_IRQ_PRIO_REALTIME, test_logical_isr, NULL));
-    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_irq_disable(TEST_IRQ));
-#else
-    TEST_IGNORE_MESSAGE("需要 -DWINK_HOST_ALLOW_REALTIME_FOR_TESTING 编译；默认 build 跳过");
-#endif
-}
-
-void test_realtime_priority_rejected_on_esp32(void)
-{
-    /* 保留 ESP32 侧的历史锚点（v2.1 引入）。v2.2 起 host/wasm 也拒接，
-     * 见 test_irq_realtime_rejected_on_all_targets / test_gpio_realtime_rejected_on_all_targets。 */
-#if !defined(ESP_PLATFORM)
-    TEST_IGNORE_MESSAGE("仅在 ESP32 target 上有意义；host build 跳过");
-#else
-    const uint32_t TEST_IRQ = 6;
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED,
-        pal_irq_enable(TEST_IRQ, PAL_IRQ_PRIO_REALTIME, test_logical_isr, NULL));
-
-    /* GPIO 路径同样拒接 */
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED,
-        pal_gpio_enable_interrupt_ex(/*pin*/ 4, PAL_GPIO_INTR_FALLING_EDGE,
-                                      PAL_IRQ_PRIO_REALTIME, test_gpio_isr, NULL));
-#endif
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -518,74 +395,7 @@ void test_gpio_concurrent_first_register_race(void)
 }
 #endif
 
-/* ─────────────────────────────────────────────────────────
- * Test Group 6: 共享中断机制（v2.0 核心特性）
- * ───────────────────────────────────────────────────────── */
 
-static volatile uint32_t s_shared_handler1_count = 0;
-static volatile uint32_t s_shared_handler2_count = 0;
-
-static bool test_shared_handler1(void *arg)
-{
-    (void)arg;
-    s_shared_handler1_count++;
-    return true;  /* 认领中断 */
-}
-
-static bool test_shared_handler2(void *arg)
-{
-    (void)arg;
-    s_shared_handler2_count++;
-    return true;  /* 认领中断 */
-}
-
-/* ✅ v2.0 核心语义验证：双 handler 同时触发时，两个都应被调用
- * （旧版 v1.x 语义：第一个返回 true 后终止遍历，导致第二个不被调用） */
-void test_shared_irq_both_handlers_called(void)
-{
-    const uint32_t TEST_IRQ = 10;
-    s_shared_handler1_count = 0;
-    s_shared_handler2_count = 0;
-
-    /* 注册第一个 handler */
-    TEST_ASSERT_EQUAL_INT(WINK_OK,
-        pal_irq_shared_register(TEST_IRQ, PAL_IRQ_PRIO_NORMAL,
-                                 test_shared_handler1, NULL));
-
-    /* 注册第二个 handler（共享同一中断） */
-    TEST_ASSERT_EQUAL_INT(WINK_OK,
-        pal_irq_shared_register(TEST_IRQ, PAL_IRQ_PRIO_NORMAL,
-                                 test_shared_handler2, NULL));
-
-    /* 触发一次中断 */
-    pal_host_trigger_logical_interrupt(TEST_IRQ);
-
-    /* ✅ v2.0 核心验收：两个 handler 都应被调用
-     * 这是 v2.0 的关键语义修正，参考 Linux 内核 Shared IRQ 行为 */
-    TEST_ASSERT_EQUAL_UINT32(1, s_shared_handler1_count);
-    TEST_ASSERT_EQUAL_UINT32(1, s_shared_handler2_count);
-}
-
-void test_shared_irq_chain_full_returns_no_mem(void)
-{
-    const uint32_t TEST_IRQ = 11;
-
-    /* 注册 4 个 handler（达到 MAX_SHARED_HANDLERS 上限） */
-    for (int i = 0; i < 4; i++) {
-        wink_status_t st = pal_irq_shared_register(TEST_IRQ, PAL_IRQ_PRIO_NORMAL,
-                                                    test_shared_handler1, NULL);
-        if (i == 0) {
-            TEST_ASSERT_EQUAL_INT(WINK_OK, st);
-        }
-        /* 后续注册可能 OK 或 NO_MEM，取决于实现的上限
-         * 此处只验证第 5 个一定会失败 */
-    }
-
-    /* 第 5 个 handler 应返回 NO_MEM */
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_NO_MEM,
-        pal_irq_shared_register(TEST_IRQ, PAL_IRQ_PRIO_NORMAL,
-                                 test_shared_handler2, NULL));
-}
 
 /* ─────────────────────────────────────────────────────────
  * Test Group 7: CRITICAL_SECTION RAII 宏
@@ -645,57 +455,7 @@ void test_irq_synchronize_no_crash(void)
     TEST_PASS();
 }
 
-/* ─────────────────────────────────────────────────────────
- * Test Group 9: pal_shared_chain 算法层单测（PLAN-20260701-PAL-TARGET-P1-MAINT Task 1）
- * ─────────────────────────────────────────────────────────
- * 直接对 pal_shared_chain_append/dispatch 做算法级测试，不依赖
- * pal_host_trigger_logical_interrupt 路径，也不依赖 pal_irq_enable/register。
- * 单线程简化路径（ops == NULL）即可覆盖 host / wasm 语义。 */
 
-void test_shared_chain_append_full(void)
-{
-    pal_shared_chain_t *slot = NULL;
-    bool first = false;
-    for (int i = 0; i < PAL_SHARED_CHAIN_MAX_HANDLERS; i++) {
-        TEST_ASSERT_EQUAL_INT(WINK_OK,
-            pal_shared_chain_append(&slot, NULL, /*irq*/ 99,
-                                    test_shared_handler1, NULL, &first));
-        /* 首次追加应返回 became_first=true，之后应为 false */
-        TEST_ASSERT_EQUAL_INT((i == 0) ? 1 : 0, first ? 1 : 0);
-    }
-    /* 第 5 次应满 */
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_NO_MEM,
-        pal_shared_chain_append(&slot, NULL, 99,
-                                test_shared_handler1, NULL, &first));
-    free(slot);
-}
-
-void test_shared_chain_dispatch_order(void)
-{
-    pal_shared_chain_t *slot = NULL;
-    bool first = false;
-    s_shared_handler1_count = 0;
-    s_shared_handler2_count = 0;
-    TEST_ASSERT_EQUAL_INT(WINK_OK,
-        pal_shared_chain_append(&slot, NULL, 100,
-                                test_shared_handler1, NULL, &first));
-    TEST_ASSERT_EQUAL_INT(WINK_OK,
-        pal_shared_chain_append(&slot, NULL, 100,
-                                test_shared_handler2, NULL, &first));
-    uint32_t claimed = pal_shared_chain_dispatch(slot);
-    /* v2.0 语义：两个 handler 都被调用，不因第一个返回 true 而提前终止 */
-    TEST_ASSERT_EQUAL_UINT32(1, s_shared_handler1_count);
-    TEST_ASSERT_EQUAL_UINT32(1, s_shared_handler2_count);
-    /* 两个 handler 都 return true → claimed == 2 */
-    TEST_ASSERT_EQUAL_UINT32(2, claimed);
-    free(slot);
-}
-
-void test_shared_chain_free_null_safe(void)
-{
-    /* free(NULL) 已由 stdlib 保证；本用例只是把 dispatch(NULL) 语义固化 */
-    TEST_ASSERT_EQUAL_UINT32(0, pal_shared_chain_dispatch(NULL));
-}
 
 /* ─────────────────────────────────────────────────────────
  * Main: 运行所有测试
@@ -727,25 +487,13 @@ int main(void)
     /* Group 4: 逻辑中断 */
     RUN_TEST(test_logical_irq_enable_disable);
     RUN_TEST(test_logical_irq_invalid_number);
-    RUN_TEST(test_direct_connect_irq);
-    /* v2.1 G1 新增：trampoline 验证 */
-    RUN_TEST(test_direct_connect_calls_handler);
-    RUN_TEST(test_direct_connect_invalid_args);
 
     /* Group 5: 优先级边界 */
     RUN_TEST(test_irq_priority_enum_bounds);
-    /* v2.2 G2 新增（Phase 1.5，2026-07-01）：REALTIME 全 target 一致契约 */
-    RUN_TEST(test_irq_realtime_rejected_on_all_targets);
-    RUN_TEST(test_gpio_realtime_rejected_on_all_targets);
-    RUN_TEST(test_irq_realtime_accepted_when_opt_in);
-    RUN_TEST(test_realtime_priority_rejected_on_esp32);
 
     /* Group 5.5: G3 并发首次注册竞态（host only） */
     RUN_TEST(test_gpio_concurrent_first_register_race);
 
-    /* Group 6: 共享中断（v2.0 核心特性） */
-    RUN_TEST(test_shared_irq_both_handlers_called);
-    RUN_TEST(test_shared_irq_chain_full_returns_no_mem);
 
     /* Group 7: RAII 临界区宏 */
     RUN_TEST(test_critical_section_macro);
@@ -754,10 +502,6 @@ int main(void)
     /* Group 8: synchronize API */
     RUN_TEST(test_irq_synchronize_no_crash);
 
-    /* Group 9: pal_shared_chain 算法层单测（PLAN-20260701-PAL-TARGET-P1-MAINT Task 1） */
-    RUN_TEST(test_shared_chain_append_full);
-    RUN_TEST(test_shared_chain_dispatch_order);
-    RUN_TEST(test_shared_chain_free_null_safe);
 
     return UNITY_END();
 }

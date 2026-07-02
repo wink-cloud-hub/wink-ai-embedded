@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.15)
 project(wink-micro-os C)
 
 # 设置 C 标准为 C99
@@ -192,9 +192,7 @@ if(NOT TARGET_PLATFORM STREQUAL "wasm")
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/devkitc_smoke
                      ${CMAKE_BINARY_DIR}/devkitc_smoke_build)
 
-    # SMP UAF 验证测试：验证 pal_irq_synchronize() 在双核系统上的有效性
-    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/smp_uaf_test
-                     ${CMAKE_BINARY_DIR}/smp_uaf_test_build)
+
 
     # Track A M1 / Task A-3：资源占用冲突反例样本（host-only 断言样本）
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/resource_conflict
