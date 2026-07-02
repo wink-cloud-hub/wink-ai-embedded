@@ -135,6 +135,17 @@ add_wink_host_test(test_dal_ssd1306 test_dal_ssd1306.c ${DAL_SRCS})
 
 add_wink_host_test(test_dal_ultrasonic test_dal_ultrasonic.c ${DAL_SRCS})
 
+# Track A M1 / Task A-4：DAL↔PAL 资源接线 e2e 单测（验证 6 个 DAL init 正确 wire pal_resource_claim）
+# 需要链全部 7 个 DAL（含 communication/gps 与 storage/eeprom），以及 include 全部 DAL 子目录。
+set(DAL_SRCS_WIRE
+    ${DAL_SRCS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/communication/dal_gps.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/storage/dal_eeprom.c)
+add_wink_host_test(test_pal_resource_wire test_pal_resource_wire.c ${DAL_SRCS_WIRE})
+target_include_directories(test_pal_resource_wire PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/communication
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/storage)
+
 # 仿真分支（-DSIMULATION）测试：验证 ADR-0003 决策2 两端同源在仿真侧确被走到。
 function(add_wink_test_sim name src)
     add_executable(${name}
