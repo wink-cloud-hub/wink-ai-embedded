@@ -15,6 +15,8 @@ set(PAL_WASM_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_storage_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_physical.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/wink_sim_physical.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/wink_sim_scheduler.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/sim_ctx_emscripten_fiber.c
     PARENT_SCOPE)
 
 set(WASM_ENTRY_SOURCE

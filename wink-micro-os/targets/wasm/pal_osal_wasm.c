@@ -15,9 +15,16 @@
 #include "pal_osal.h"
 #include "wasm_bridge.h"
 #include "pal_wasm_internal.h"
+#include "wink_sim_scheduler.h"
 #include <emscripten.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <assert.h>
+
+struct wink_app_callbacks;
+extern void wink_runtime_fault(const struct wink_app_callbacks* callbacks, uint32_t fault_code);
 
 /* ─────────────────────────────────────────────────────────
  * 虚拟时钟（ADR-0003 决策 3 / ADR-0009 §4.1 / Wave2 P1 Task 6）
@@ -83,8 +90,20 @@ uint64_t pal_wasm_get_virtual_clock_us(void) {
  * pal_wasm_advance_virtual_clock()。
  * ───────────────────────────────────────────────────────── */
 
+static sim_ctx_t* s_main_ctx = NULL;
+
 void pal_os_sleep_ms(uint32_t ms) {
-    js_pal_os_sleep_ms(ms);            /* Asyncify 挂起，由 JS 唤醒；JS 侧负责步进时钟 */
+    if (s_main_ctx == NULL) {
+        /* Wasm legacy fallback (e.g. before scheduler starts or in legacy tests) */
+        js_pal_os_sleep_ms(ms);
+        return;
+    }
+    uint32_t cur = sim_scheduler_current_id();
+    assert(cur != SIM_SCHED_NO_READY &&
+           "pal_os_sleep_ms called from main thread while scheduler is active; "
+           "tasks must sleep inside their fiber context.");
+    sim_scheduler_yield_timed(cur, pal_os_get_us(), (uint64_t)ms * 1000);
+    sim_ctx_switch(NULL, s_main_ctx);
 }
 
 void pal_os_busy_wait_us(uint32_t us) {
@@ -119,7 +138,7 @@ WINK_WARN_UNUSED_RESULT wink_status_t pal_os_wdt_feed(void) { return WINK_ERR_UN
  * 调用方使用了正确入口——Debug 构建下入口误用立即命中 assert。
  * ───────────────────────────────────────────────────────── */
 
-#include <assert.h>
+// assert.h included at top
 
 static bool s_sim_in_isr = false;
 static bool s_sim_in_pt = false;
@@ -156,27 +175,87 @@ void pal_os_critical_exit_isr(uint32_t key) {
  * ───────────────────────────────────────────────────────── */
 
 wink_status_t pal_os_task_create(
-    void (*func)(void* arg),
-    const char* name,
-    uint32_t stack_depth,
-    void* arg,
-    int32_t priority,
-    pal_os_core_id_t core_id,
-    pal_os_task_handle_t* task_handle
-) {
-    /* Single-threaded WASM sandbox: no true concurrency.
-     * We call the function immediately as a degenerate case.
-     * For Asyncify micro-task scheduling, integration would happen here.
-     */
-    (void)name; (void)stack_depth; (void)priority;
-    (void)core_id; (void)task_handle;
-
-    func(arg);
+    void (*func)(void*), const char* name, uint32_t stack_depth,
+    void* arg, int32_t priority, pal_os_core_id_t core_id,
+    pal_os_task_handle_t* task_handle)
+{
+    uint32_t id;
+    wink_status_t st = sim_scheduler_register(
+        func, arg, name, priority, (int32_t)core_id, stack_depth, &id);
+    if (st != WINK_OK) return st;
+    if (task_handle) *task_handle = (pal_os_task_handle_t)(uintptr_t)(id + 1);
     return WINK_OK;
 }
 
-void pal_os_task_delete(pal_os_task_handle_t task_handle) {
-    (void)task_handle;  /* single-threaded WASM: no-op */
+void pal_os_task_delete(pal_os_task_handle_t handle) {
+    if (handle == NULL) {
+        uint32_t cur = sim_scheduler_current_id();
+        sim_scheduler_mark_zombie(cur);
+        sim_ctx_switch(NULL, s_main_ctx);
+        /* Unreachable */
+    } else {
+        uint32_t id = (uint32_t)(uintptr_t)handle - 1;
+        sim_scheduler_mark_zombie(id);
+    }
+}
+
+wink_status_t pal_sim_scheduler_run(uint32_t main_task_id, uint32_t max_ticks) {
+    s_main_ctx = sim_ctx_from_current();
+    uint32_t ticks_run = 0;
+
+    while (1) {
+        /* Phase 1: GC —— 释放已 ZOMBIE 的 fiber（此时它们都不在运行） */
+        sim_scheduler_gc_zombies();
+
+        /* 终结机制检查：若 app_main 任务已被删除 (TERMINATED) 或 max_ticks 达到，跳出调度 loop */
+        if (main_task_id != SIM_SCHED_NO_READY) {
+            const sim_task_t* main_task = sim_scheduler_get(main_task_id);
+            if (main_task->state == SIM_TASK_STATE_TERMINATED) {
+                break;
+            }
+        }
+        if (max_ticks > 0 && ticks_run >= max_ticks) {
+            break;
+        }
+
+        /* Phase 2: 唤醒到期的 WAITING/BLOCKED */
+        uint64_t now = pal_os_get_us();
+        sim_scheduler_wakeup_by_time(now);
+
+        /* Phase 3: 选下一个 READY */
+        uint32_t next = sim_scheduler_pick_next();
+        if (next == SIM_SCHED_NO_READY) {
+            uint64_t wake = sim_scheduler_next_wakeup_us();
+            if (wake == UINT64_MAX) break;   /* 全部 TERMINATED */
+            
+            now = pal_os_get_us();
+            if (wake > now) {
+                uint32_t sleep_ms = (uint32_t)((wake - now + 999) / 1000);
+                js_pal_os_sleep_ms(sleep_ms);  /* Asyncify 挂起，由 JS 唤醒并步进时钟 */
+            }
+            continue;
+        }
+
+        /* Phase 4: 切到 task (带 WCET 运行监控) */
+        sim_scheduler_set_current(next);
+        const sim_task_t* t = sim_scheduler_get(next);
+        uint64_t start_us = pal_os_get_us();
+        sim_ctx_switch(s_main_ctx, t->ctx);
+        uint64_t duration_us = pal_os_get_us() - start_us;
+        
+        bool bypass_wcet = (getenv("WINK_SIM_BYPASS_WCET") != NULL);
+        if (!bypass_wcet && duration_us > WINK_SIM_TASK_WCET_THRESHOLD_US) {
+            wink_runtime_fault(NULL, 8002);
+        }
+        
+        if (next == main_task_id) {
+            ticks_run++;
+        }
+    }
+
+    /* 清理残余 fiber */
+    sim_scheduler_gc_zombies();
+    return WINK_OK;
 }
 
 /* ─────────────────────────────────────────────────────────

@@ -6,9 +6,28 @@
 #include "pal_osal.h"
 #include "host_test_ctrl.h"
 #include "wink_sim_physical.h"   /* wink_phys_debounce_ctx_t + WINK_SIM_FAULTS_IDEAL */
+#include "wink_sim_scheduler.h"
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <stdio.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+static inline bool IsDebuggerPresent(void) { return false; }
+#endif
+
+struct wink_app_callbacks;
+__attribute__((weak)) void wink_runtime_fault(const struct wink_app_callbacks* callbacks, uint32_t fault_code) {
+    (void)callbacks;
+    (void)fault_code;
+    fprintf(stderr, "[STUB] wink_runtime_fault called with code %u\n", (unsigned int)fault_code);
+}
+
+void pal_wasm_dispatch_pending_interrupts(void) {
+    /* No-op on host simulation target */
+}
 
 
 static uint64_t s_time_us = 0;
@@ -136,7 +155,23 @@ bool host_gpio_read_debounced(uint16_t pin, bool *out_level) {
 }
 
 /* ---- PAL OSAL ---- */
-void pal_os_sleep_ms(uint32_t ms) { s_time_us += (uint64_t)ms * 1000u; }
+static sim_ctx_t* s_main_ctx = NULL;
+
+void pal_os_sleep_ms(uint32_t ms) {
+    if (s_main_ctx == NULL) {
+        /* 运行在非调度器环境下的 legacy 单元测试中的时间推进退化路径 */
+        s_time_us += (uint64_t)ms * 1000u;
+        return;
+    }
+    uint32_t cur = sim_scheduler_current_id();
+    /* T5 契约：在调度器运行期间，sleep 必须在任务协程上下文中调用 */
+    assert(cur != SIM_SCHED_NO_READY &&
+           "pal_os_sleep_ms called from main thread while scheduler is active; "
+           "did you call sleep outside task fiber context?");
+    sim_scheduler_yield_timed(cur, host_sim_time_us(), (uint64_t)ms * 1000);
+    sim_ctx_switch(NULL, s_main_ctx);
+    /* 主 loop 会推进虚拟时钟并 wakeup_by_time 把我们转 READY，再切回来 */
+}
 void pal_os_busy_wait_us(uint32_t us) { s_time_us += us; }
 uint64_t pal_os_get_ms(void) { return s_time_us / 1000u; }
 uint64_t pal_os_get_us(void) { return s_time_us; }
@@ -205,24 +240,91 @@ void pal_os_critical_exit_isr(uint32_t key) {
  * ───────────────────────────────────────────────────────── */
 
 wink_status_t pal_os_task_create(
-    void (*func)(void* arg),
-    const char* name,
-    uint32_t stack_depth,
-    void* arg,
-    int32_t priority,
-    pal_os_core_id_t core_id,
-    pal_os_task_handle_t* task_handle
-) {
-    /* Host target: single-threaded, synchronous execution for tests */
-    (void)name; (void)stack_depth; (void)priority;
-    (void)core_id; (void)task_handle;
-
-    func(arg);
+    void (*func)(void*), const char* name, uint32_t stack_depth,
+    void* arg, int32_t priority, pal_os_core_id_t core_id,
+    pal_os_task_handle_t* task_handle)
+{
+    uint32_t id;
+    wink_status_t st = sim_scheduler_register(
+        func, arg, name, priority, (int32_t)core_id, stack_depth, &id);
+    if (st != WINK_OK) return st;
+    if (task_handle) *task_handle = (pal_os_task_handle_t)(uintptr_t)(id + 1);
     return WINK_OK;
 }
 
-void pal_os_task_delete(pal_os_task_handle_t task_handle) {
-    (void)task_handle;  /* single-threaded: no-op */
+void pal_os_task_delete(pal_os_task_handle_t handle) {
+    if (handle == NULL) {
+        /* 自删三段式（对齐 R-009）：
+         *   ① mark_zombie —— 只改状态，不删 fiber
+         *   ② SwitchToFiber(main) —— 让出；当前 fiber 挂起
+         *   ③ 主 loop 下轮 gc_zombies → sim_ctx_destroy → DeleteFiber
+         *     （此时 fiber 不再是自己，安全） */
+        uint32_t cur = sim_scheduler_current_id();
+        sim_scheduler_mark_zombie(cur);
+        sim_ctx_switch(NULL, s_main_ctx);
+        /* Unreachable */
+    } else {
+        uint32_t id = (uint32_t)(uintptr_t)handle - 1;
+        sim_scheduler_mark_zombie(id);
+    }
+}
+
+wink_status_t pal_sim_scheduler_run(uint32_t main_task_id, uint32_t max_ticks) {
+    s_main_ctx = sim_ctx_from_current();
+    uint32_t ticks_run = 0;
+
+    while (1) {
+        /* Phase 1: GC —— 释放已 ZOMBIE 的 fiber（此时它们都不在运行） */
+        sim_scheduler_gc_zombies();
+
+        /* 终结机制检查：若 app_main 任务已被删除 (TERMINATED) 或 max_ticks 达到，跳出调度 loop */
+        if (main_task_id != SIM_SCHED_NO_READY) {
+            const sim_task_t* main_task = sim_scheduler_get(main_task_id);
+            if (main_task->state == SIM_TASK_STATE_TERMINATED) {
+                break;
+            }
+        }
+        if (max_ticks > 0 && ticks_run >= max_ticks) {
+            break;
+        }
+
+        /* Phase 2: 唤醒到期的 WAITING/BLOCKED */
+        uint64_t now = host_sim_time_us();
+        sim_scheduler_wakeup_by_time(now);
+
+        /* Phase 3: 选下一个 READY */
+        uint32_t next = sim_scheduler_pick_next();
+        if (next == SIM_SCHED_NO_READY) {
+            uint64_t wake = sim_scheduler_next_wakeup_us();
+            if (wake == UINT64_MAX) break;   /* 全部 TERMINATED */
+            host_sim_advance_to(wake);
+            continue;
+        }
+
+        /* Phase 4: 切到 task (带 WCET 运行监控) */
+        sim_scheduler_set_current(next);
+        const sim_task_t* t = sim_scheduler_get(next);
+        uint64_t start_us = pal_os_get_us();
+        sim_ctx_switch(s_main_ctx, t->ctx);
+        uint64_t duration_us = pal_os_get_us() - start_us;
+        
+        /* WCET 安全监控判定：若挂载了 Windows 调试器或显式设置了 WINK_SIM_BYPASS_WCET 环境变量，
+         * 则强制跳过 WCET 违规断言，防止单步断点调试或 CI 容器性能颠簸时触发 8002 误杀 */
+        bool bypass_wcet = (getenv("WINK_SIM_BYPASS_WCET") != NULL) || IsDebuggerPresent();
+        if (!bypass_wcet && duration_us > WINK_SIM_TASK_WCET_THRESHOLD_US) {
+            fprintf(stderr, "[ERROR] Task [%s] WCET violated: executed for %llu us, threshold is %d us. Triggering 8002!\n",
+                    t->name, (unsigned long long)duration_us, WINK_SIM_TASK_WCET_THRESHOLD_US);
+            wink_runtime_fault(NULL, 8002);
+        }
+        
+        if (next == main_task_id) {
+            ticks_run++;
+        }
+    }
+
+    /* 清理残余 fiber */
+    sim_scheduler_gc_zombies();
+    return WINK_OK;
 }
 
 /* ─────────────────────────────────────────────────────────
