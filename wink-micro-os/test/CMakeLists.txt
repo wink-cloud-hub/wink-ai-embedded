@@ -112,6 +112,48 @@ add_wink_host_test(test_pal_resource test_pal_resource.c)
 add_wink_host_test(test_sim_scheduler_e2e test_sim_scheduler_e2e.c)
 add_wink_host_test(test_sim_scheduler_zombie_gc test_sim_scheduler_zombie_gc.c)
 
+# fixup 计划 F2：WCET 8002 fault 门禁（C2 修复的门禁测试）。
+# 用物理墙钟（host_wall_clock.h）精准忙等 15ms 触发 5ms 阈值；
+# 同时验证 pal_os_busy_wait_us 不误报 + App on_fault 被调（红线 16 / R2）。
+add_wink_host_test(test_sim_scheduler_wcet_fault test_sim_scheduler_wcet_fault.c)
+
+# fixup 计划 F5 Step 1：本 wave RR 语义边界锁定（R4）。
+# Task 7 引入 PRNG 交错时此测试的 Case 2 需改为 NOT_EQUAL 反测。
+add_wink_test(test_sim_scheduler_determinism test_sim_scheduler_determinism.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/src/wink_sim_scheduler.c)
+target_include_directories(test_sim_scheduler_determinism PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include)
+
+# fixup 计划 F5 Step 2：真 host fiber 层栈下限 clamp 验证。
+add_wink_host_test(test_sim_scheduler_stack_clamp test_sim_scheduler_stack_clamp.c)
+
+# fixup 计划 F5 Step 3：avoidance_car 单任务业务字段 baseline 回归（R-002 缓解措施）。
+# R5：baseline .h 缺失即编译失败（HAS_BASELINE_HEADER 由 CMake file(EXISTS) 门控）。
+set(_BASELINE_H
+    ${CMAKE_CURRENT_SOURCE_DIR}/baseline/avoidance_car_semantic_baseline.h)
+if(EXISTS ${_BASELINE_H})
+    add_wink_host_test(test_single_task_semantic_regression
+        test_single_task_semantic_regression.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../samples/avoidance_car/device_tree.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../samples/avoidance_car/app_callbacks.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_runtime.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_actuator_registry.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_soft_timer.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../trace/src/wink_trace.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/sensor/dal_ultrasonic.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/actuator/dal_servo.c)
+    target_include_directories(test_single_task_semantic_regression PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../samples/avoidance_car
+        ${WINK_CONFIG_DIR})
+    target_compile_definitions(test_single_task_semantic_regression PRIVATE
+        HAS_BASELINE_HEADER=1)
+else()
+    message(WARNING
+        "F5 R5: avoidance_car_semantic_baseline.h missing at ${_BASELINE_H} — "
+        "test_single_task_semantic_regression will not be built. Run once with "
+        "human-review then git add the baseline .h before it re-enters CI.")
+endif()
+
 # PAL 统一中断抽象单元测试（v2.0 含中断锁、共享中断、RAII 临界区）
 add_wink_host_test(test_pal_irq test_pal_irq.c)
 
