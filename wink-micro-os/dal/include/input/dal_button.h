@@ -21,6 +21,7 @@ extern "C" {
  * 成员按对齐降序排列（uint16_t → bool）：自然对齐，无填充。
  */
 typedef struct {
+    const char *owner;       /* 资源占用 owner 静态字符串（device_tree 实例名，静态存储） */
     uint16_t pin;            /* 逻辑 GPIO 引脚 */
     bool active_low;         /* true: 按下为低电平（常见上拉按钮）；false: 按下为高电平 */
 } dal_button_config_t;

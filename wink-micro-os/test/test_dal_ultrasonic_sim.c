@@ -4,17 +4,20 @@
 #include "unity.h"
 #include "wink_status.h"
 #include "dal_ultrasonic.h"
+#include "pal_resource.h"
 #include "js_sim_host_stub.h"
+
+static const char *const OWNER = "test_dal_ultrasonic_sim";
 
 extern float dal_pulse_us_to_cm(uint32_t pulse_us);
 
-void setUp(void) { sim_set_echo_pulse_us(0); }
+void setUp(void) { sim_set_echo_pulse_us(0); pal_resource_reset(); }
 void tearDown(void) {}
 
 void test_sim_read_uses_shared_conversion(void) {
     sim_set_echo_pulse_us(5882);
     dal_ultrasonic_t dev = {0};
-    const dal_ultrasonic_config_t cfg = { .trig_pin = 4, .echo_pin = 5, .use_rmt = false };
+    const dal_ultrasonic_config_t cfg = { .owner = OWNER, .trig_pin = 4, .echo_pin = 5, .use_rmt = false };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&dev, &cfg));
     float dist = 0.0f;
     wink_status_t s = dal_ultrasonic_read(&dev, &dist);
@@ -27,7 +30,7 @@ void test_sim_read_uses_shared_conversion(void) {
 void test_sim_read_timeout_when_pulse_exceeds_limit(void) {
     sim_set_echo_pulse_us(31000);   /* ≥ ULTRASONIC_TIMEOUT_US */
     dal_ultrasonic_t dev = {0};
-    const dal_ultrasonic_config_t cfg = { .trig_pin = 4, .echo_pin = 5, .use_rmt = false };
+    const dal_ultrasonic_config_t cfg = { .owner = OWNER, .trig_pin = 4, .echo_pin = 5, .use_rmt = false };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&dev, &cfg));
     float dist = 0.0f;
     wink_status_t s = dal_ultrasonic_read(&dev, &dist);

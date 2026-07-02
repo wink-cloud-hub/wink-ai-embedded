@@ -32,6 +32,7 @@ static void app_init(void) {
     /* servo config↔dev 字段重复（dal_servo.h 已注明）：override 写 dev 字段后，
      * 从 dev 字段重建 config 喂 init（多一跳，避免改 DAL API）。 */
     const dal_servo_config_t servo_cfg = {
+        .owner        = "neck_servo",
         .pwm_channel  = neck_servo.pwm_channel,
         .min_pulse_ms = neck_servo.min_pulse_ms,
         .max_pulse_ms = neck_servo.max_pulse_ms

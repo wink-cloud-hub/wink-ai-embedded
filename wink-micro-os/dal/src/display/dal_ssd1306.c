@@ -83,7 +83,13 @@ wink_status_t dal_ssd1306_init(dal_ssd1306_t *dev, const dal_ssd1306_config_t *c
     memcpy(&cmd_buf[1], s_init_cmds, sizeof(s_init_cmds));
     wink_status_t status = pal_i2c_transfer(cfg->i2c_port, cfg->i2c_addr,
                                              cmd_buf, sizeof(cmd_buf), NULL, 0);
-    if (wink_status_is_error(status)) { return status; }
+    if (wink_status_is_error(status)) {
+        /* Track A（M1）：I2C init 命令序列失败须回滚 claim，与其他 DAL 保持行为一致。
+         * gcc16 不因 (void) 抑制 warn_unused_result：先赋值再丢弃，best-effort 回滚。 */
+        wink_status_t _rb = pal_resource_release(PAL_RESOURCE_I2C_ADDR, res_id, cfg->owner);
+        (void)_rb;
+        return status;
+    }
 
     memset(dev->framebuffer, 0, SSD1306_FB_SIZE);
     dev->i2c_port    = cfg->i2c_port;

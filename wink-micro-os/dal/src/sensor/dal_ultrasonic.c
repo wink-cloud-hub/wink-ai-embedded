@@ -2,6 +2,7 @@
 #include "hal/pal_ultrasonic.h"  /* PAL 超声波接口契约（全平台统一） */
 #include "pal_hal.h"
 #include "pal_osal.h"
+#include "pal_resource.h"
 
 #include <string.h>   /* memcpy（ADR-0008 apply_override 反序列化） */
 
@@ -33,7 +34,21 @@ wink_status_t dal_ultrasonic_apply_override(void *dev, const uint8_t *params, ui
 
 wink_status_t dal_ultrasonic_init(dal_ultrasonic_t *dev, const dal_ultrasonic_config_t *cfg) {
     if (dev == NULL || cfg == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (cfg->owner == NULL) { return WINK_ERR_INVALID_ARG; }
     if (cfg->trig_pin == cfg->echo_pin) { return WINK_ERR_INVALID_ARG; }
+
+    /* Track A（M1）：GPIO 双引脚冲突治理。trig 成功后 echo 失败必须回滚 trig。 */
+    wink_status_t rs = pal_resource_claim(PAL_RESOURCE_GPIO_PIN,
+                                          (uint32_t)cfg->trig_pin, cfg->owner);
+    if (wink_status_is_error(rs)) { return rs; }
+    rs = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->echo_pin, cfg->owner);
+    if (wink_status_is_error(rs)) {
+        /* gcc16 不因 (void) 抑制 warn_unused_result：先赋值再丢弃，best-effort 回滚。 */
+        wink_status_t _rb = pal_resource_release(PAL_RESOURCE_GPIO_PIN,
+                                                 (uint32_t)cfg->trig_pin, cfg->owner);
+        (void)_rb;
+        return rs;
+    }
 
     /* 深拷贝配置到实例（支持 ADR-0008 Flash 动态覆写） */
     memcpy(&dev->config, cfg, sizeof(dal_ultrasonic_config_t));
@@ -56,9 +71,25 @@ wink_status_t dal_ultrasonic_init(dal_ultrasonic_t *dev, const dal_ultrasonic_co
     /* GPIO 配置（TRIG 输出，ECHO 输入）
      * WASM 仿真下这两个函数也是空操作（pal_hal_wasm.c 实现） */
     status = pal_gpio_init(cfg->trig_pin, PAL_GPIO_OUTPUT_PUSH_PULL);
-    if (wink_status_is_error(status)) { return status; }
+    if (wink_status_is_error(status)) {
+        /* gcc16 不因 (void) 抑制 warn_unused_result：先赋值再丢弃，best-effort 回滚。 */
+        wink_status_t _rb1 = pal_resource_release(PAL_RESOURCE_GPIO_PIN,
+                                                  (uint32_t)cfg->echo_pin, cfg->owner);
+        wink_status_t _rb2 = pal_resource_release(PAL_RESOURCE_GPIO_PIN,
+                                                  (uint32_t)cfg->trig_pin, cfg->owner);
+        (void)_rb1; (void)_rb2;
+        return status;
+    }
     status = pal_gpio_init(cfg->echo_pin, PAL_GPIO_INPUT);
-    if (wink_status_is_error(status)) { return status; }
+    if (wink_status_is_error(status)) {
+        /* gcc16 不因 (void) 抑制 warn_unused_result：先赋值再丢弃，best-effort 回滚。 */
+        wink_status_t _rb1 = pal_resource_release(PAL_RESOURCE_GPIO_PIN,
+                                                  (uint32_t)cfg->echo_pin, cfg->owner);
+        wink_status_t _rb2 = pal_resource_release(PAL_RESOURCE_GPIO_PIN,
+                                                  (uint32_t)cfg->trig_pin, cfg->owner);
+        (void)_rb1; (void)_rb2;
+        return status;
+    }
 
     dev->initialized = true;
     return WINK_OK;

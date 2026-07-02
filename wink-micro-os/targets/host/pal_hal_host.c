@@ -46,10 +46,9 @@ extern void host_record_pwm(uint8_t channel, float duty);
 #define ECHO_POLL_WINDOW_US 30000u
 
 wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
-    /* Phase 2 Task 2-3：host 资源占用治理。owner 为 PAL 层固定标识
-     * （同 owner 重复 claim 幂等；不同 owner 冲突 → BUSY 由调用方透传）。 */
-    wink_status_t rs = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, "pal_hal_host");
-    if (wink_status_is_error(rs)) { return rs; }
+    /* Track A（M1）：DAL 是资源占用 SSOT，PAL 层不再自 claim（否则与 DAL 语义 owner
+     * 二次抢占同 pin，恒返 BUSY）。DAL init 已保证 claim 在此之前完成。 */
+    (void)pin;
     (void)mode;
     return WINK_OK;
 }
@@ -456,11 +455,7 @@ wink_status_t pal_pwm_init(uint8_t channel, uint32_t freq) {
     uint8_t timer_num = 0;
     wink_status_t rs = pal_pwm_router_acquire(channel, freq, &timer_num);
     if (wink_status_is_error(rs)) { return rs; }
-    rs = pal_resource_claim(PAL_RESOURCE_PWM_CHANNEL, channel, "pal_hal_host");
-    if (wink_status_is_error(rs)) {
-        pal_pwm_router_release(channel);   /* roll back router reservation */
-        return rs;
-    }
+    /* Track A（M1）：DAL 是资源占用 SSOT，PAL 层不再自 claim PWM 通道。 */
     return WINK_OK;
 }
 wink_status_t pal_pwm_set_duty(uint8_t channel, float duty) {
@@ -471,9 +466,7 @@ wink_status_t pal_pwm_set_duty(uint8_t channel, float duty) {
 
 void pal_pwm_deinit(uint8_t channel) {
     if (!pal_pwm_router_channel_ready(channel)) { return; }   /* no-op if uninitialized */
-    /* gcc16 不因 (void) 抑制 warn_unused_result：先赋值再丢弃，释放/deinit best-effort 不失败。*/
-    wink_status_t _rel = pal_resource_release(PAL_RESOURCE_PWM_CHANNEL, channel, "pal_hal_host");
-    (void)_rel;
+    /* Track A（M1）：PAL 层不再持 claim；release 由 DAL layer 拥有（未来 dal_xxx_deinit）。 */
     pal_pwm_router_release(channel);
 }
 

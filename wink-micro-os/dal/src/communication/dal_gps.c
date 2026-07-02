@@ -1,10 +1,17 @@
 #include "dal_gps.h"
 #include "pal_hal.h"
+#include "pal_resource.h"
 #include <string.h>
 
 wink_status_t dal_gps_init(dal_gps_t *dev, const dal_gps_config_t *cfg) {
     if (dev == NULL || cfg == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (cfg->owner == NULL) { return WINK_ERR_INVALID_ARG; }
     if (cfg->baudrate == 0) { return WINK_ERR_INVALID_ARG; }
+
+    /* Track A（M1）：UART 端口冲突治理。两 GPS 若配同 uart_port 不同 owner 则 BUSY。 */
+    wink_status_t rs = pal_resource_claim(PAL_RESOURCE_UART_PORT,
+                                          (uint32_t)cfg->uart_port, cfg->owner);
+    if (wink_status_is_error(rs)) { return rs; }
 
     /* TODO: 真实 UART 初始化 + NMEA 解析器初始化 */
     memcpy(&dev->config, cfg, sizeof(dal_gps_config_t));

@@ -1,5 +1,6 @@
 #include "dal_servo.h"
 #include "pal_hal.h"
+#include "pal_resource.h"
 
 #include <string.h>   /* memcpy（ADR-0008 apply_override 反序列化） */
 
@@ -11,12 +12,25 @@
 
 wink_status_t dal_servo_init(dal_servo_t *dev, const dal_servo_config_t *cfg) {
     if (dev == NULL || cfg == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (cfg->owner == NULL) { return WINK_ERR_INVALID_ARG; }
     if (cfg->min_pulse_ms <= 0.0f || cfg->max_pulse_ms <= cfg->min_pulse_ms) {
         return WINK_ERR_INVALID_ARG;
     }
+
+    /* Track A（M1）：PWM 通道冲突治理——两舵机若配同 channel 不同 owner，此处 BUSY。 */
+    wink_status_t rs = pal_resource_claim(PAL_RESOURCE_PWM_CHANNEL,
+                                          (uint32_t)cfg->pwm_channel, cfg->owner);
+    if (wink_status_is_error(rs)) { return rs; }
+
     /* 一次性 PWM init（占用通道）；失败透传精确 PAL 错误（含 BUSY/EXHAUSTED）。 */
     wink_status_t status = pal_pwm_init(cfg->pwm_channel, SERVO_PWM_FREQ_HZ);
-    if (wink_status_is_error(status)) { return status; }
+    if (wink_status_is_error(status)) {
+        /* gcc16 不因 (void) 抑制 warn_unused_result：先赋值再丢弃，best-effort 回滚。 */
+        wink_status_t _rb = pal_resource_release(PAL_RESOURCE_PWM_CHANNEL,
+                                                 (uint32_t)cfg->pwm_channel, cfg->owner);
+        (void)_rb;
+        return status;
+    }
     dev->pwm_channel   = cfg->pwm_channel;
     dev->min_pulse_ms  = cfg->min_pulse_ms;
     dev->max_pulse_ms  = cfg->max_pulse_ms;

@@ -151,8 +151,7 @@ static void PAL_ISR gpio_isr_wrapper(void *arg)
 wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
     if (pin < 0 || pin >= GPIO_NUM_MAX) { return WINK_ERR_INVALID_ARG; }
 
-    wink_status_t rs = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, pin, "pal_hal_esp32");
-    if (wink_status_is_error(rs)) { return rs; }
+    /* Track A（M1）：DAL 是资源占用 SSOT，PAL 层不再自 claim GPIO 引脚。 */
 
     gpio_config_t cfg = {
         .pin_bit_mask = 1ULL << pin,
