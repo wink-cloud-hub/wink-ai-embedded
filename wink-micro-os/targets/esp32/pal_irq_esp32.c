@@ -232,12 +232,12 @@ uint32_t pal_irq_save(void)
 
 uint32_t pal_irq_save_rtos_safe(void)
 {
-    /* ✅ 仅禁用到 RTOS 安全边界（ADR-IRQ-006，推荐默认使用）
+    /* ✅ 仅禁用到 RTOS 安全边界（ADR-0018，业务默认推荐）
      * configMAX_SYSCALL_INTERRUPT_PRIORITY = 5
      * 设置 INTLEVEL = 5 将屏蔽所有优先级 ≤5 的中断
-     * 优先级 6-7 的中断（如 Wi-Fi 基带、REALTIME 级）仍可触发
+     * 优先级 6-7 的中断（如 Wi-Fi 基带）仍可触发，不影响底层硬件协议时序。
      *
-     * 这是推荐 of 默认选择，不会影响底层硬件协议时序。
+     * PAL_IRQ_PRIO_LOW / NORMAL / HIGH（LEVEL1/2/3）均在此屏蔽范围内。
      */
     return XTOS_SET_INTLEVEL(XCHAL_EXCM_LEVEL);
 }
