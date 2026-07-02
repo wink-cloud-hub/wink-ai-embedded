@@ -176,4 +176,51 @@ if ($violations.Count -gt 0) {
 }
 Write-Host "[lint] ESP_PLATFORM guard density OK"
 
+# ---- 7. L1 static lint: ADR-0017 WINK_STRICT_NONBLOCKING symbol elision -----
+# Compile dal_ultrasonic.c standalone under -DWINK_STRICT_NONBLOCKING=1 and
+# assert `nm` reports NO T-defined `dal_ultrasonic_read` symbol. This is the
+# link-time layer of the three-layer hard isolation defined in ADR-0017:
+# the header wraps the declaration in `#ifndef WINK_STRICT_NONBLOCKING` and
+# the implementation follows suit, so under the strict flag the symbol MUST
+# disappear from the translation unit. Cooperative-scheduler builds (T5)
+# will link against libraries built with this flag; if the symbol survives
+# here it would silently reappear there.
+# Runs standalone (no full CMake re-configure) so E-3 stays cheap.
+$dalC   = Join-Path $PSScriptRoot 'dal/src/sensor/dal_ultrasonic.c'
+$strictObj = Join-Path $env:TEMP  'wink_strict_nonblocking_check.o'
+$includes = @(
+    '-I', (Join-Path $PSScriptRoot 'pal/include'),
+    '-I', (Join-Path $PSScriptRoot 'pal/include/hal'),
+    '-I', (Join-Path $PSScriptRoot 'pal/include/osal'),
+    '-I', (Join-Path $PSScriptRoot 'dal/include'),
+    '-I', (Join-Path $PSScriptRoot 'dal/include/sensor'),
+    '-I', (Join-Path $PSScriptRoot 'trace/include'),
+    '-I', (Join-Path $PSScriptRoot 'targets/host/include')
+)
+# -c: compile only (no link). -DWINK_STRICT_NONBLOCKING=1: the flag whose
+# semantics we are verifying. Any include-path miss here means the assertion
+# is meaningless — surface it loudly instead of silently passing.
+$gccArgs = @('-c', '-DWINK_STRICT_NONBLOCKING=1') + $includes + @($dalC, '-o', $strictObj)
+& gcc @gccArgs 2>&1 | Out-Host
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "[lint] ADR-0017 L1: strict-mode compile of dal_ultrasonic.c failed (expected to succeed with the symbol elided)"
+    exit 1
+}
+# `nm -g --defined-only` lists only externally-visible defined symbols.
+# Match the exact symbol name at word boundary so a hypothetical
+# `dal_ultrasonic_read_something` wouldn't false-positive.
+$nmOut = & nm -g --defined-only $strictObj 2>&1
+if ($nmOut -match '\bdal_ultrasonic_read\b') {
+    Remove-Item -Force $strictObj -ErrorAction SilentlyContinue
+    Write-Error @"
+[lint] ADR-0017 L1 FAILED: dal_ultrasonic_read is still defined under
+-DWINK_STRICT_NONBLOCKING=1. The #ifndef guard in dal_ultrasonic.c must
+wrap the FULL function body. Offending symbol table:
+$nmOut
+"@
+    exit 1
+}
+Remove-Item -Force $strictObj -ErrorAction SilentlyContinue
+Write-Host "[lint] ADR-0017 L1: dal_ultrasonic_read absent under strict mode OK"
+
 exit $overallRc
