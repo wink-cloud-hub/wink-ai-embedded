@@ -7,6 +7,7 @@
 #include "host_test_ctrl.h"
 #include "wink_sim_physical.h"   /* wink_phys_debounce_ctx_t + WINK_SIM_FAULTS_IDEAL */
 #include "wink_sim_scheduler.h"
+#include "host_wall_clock.h"     /* F2 R6：WCET 物理墙钟量测共享 helper */
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -158,8 +159,19 @@ bool host_gpio_read_debounced(uint16_t pin, bool *out_level) {
 static sim_ctx_t* s_main_ctx = NULL;
 
 void pal_os_sleep_ms(uint32_t ms) {
+    /* fixup 计划 H2 修订：
+     * host target 的 pal_os_sleep_ms 编译时不看 SIMULATION 宏（pal_host OBJECT 库
+     * 由 top-level 编译，未定义 SIMULATION）——只依据"调度器是否已启动"分流。
+     *
+     *   - s_main_ctx == NULL：调度器未启动。合法用途包括：
+     *       (a) non-SIM 单任务 e2e（avoidance_car / oled_dashboard / devkitc_smoke /
+     *           test_runtime）：wink_runtime_run 走 non-SIMULATION 主 loop 分支，
+     *           每 tick 通过 pal_os_sleep_ms 推进虚拟时钟；
+     *       (b) legacy 单测直接调 pal_os_sleep_ms 推进时钟（现推荐改用 host_sim_advance_to）。
+     *
+     *   - s_main_ctx != NULL：SIM 调度器运行中，sleep 必须在任务协程上下文中调用，
+     *     并通过 sim_ctx_switch 让出到主调度 loop。 */
     if (s_main_ctx == NULL) {
-        /* 运行在非调度器环境下的 legacy 单元测试中的时间推进退化路径 */
         s_time_us += (uint64_t)ms * 1000u;
         return;
     }
@@ -168,8 +180,12 @@ void pal_os_sleep_ms(uint32_t ms) {
     assert(cur != SIM_SCHED_NO_READY &&
            "pal_os_sleep_ms called from main thread while scheduler is active; "
            "did you call sleep outside task fiber context?");
+    sim_ctx_t* cur_ctx = sim_scheduler_current_ctx();
+    assert(cur_ctx != NULL && "sim_scheduler_current_ctx returned NULL in task context");
     sim_scheduler_yield_timed(cur, host_sim_time_us(), (uint64_t)ms * 1000);
-    sim_ctx_switch(NULL, s_main_ctx);
+    /* 红线 15 反面契约：task 让出时不动 s_current_task_id —— 恢复后 sleep 后续
+     * 逻辑（若有）仍需 sim_scheduler_current_ctx() 定位自己的 ctx。 */
+    sim_ctx_switch(cur_ctx, s_main_ctx);
     /* 主 loop 会推进虚拟时钟并 wakeup_by_time 把我们转 READY，再切回来 */
 }
 void pal_os_busy_wait_us(uint32_t us) { s_time_us += us; }
@@ -260,8 +276,12 @@ void pal_os_task_delete(pal_os_task_handle_t handle) {
          *   ③ 主 loop 下轮 gc_zombies → sim_ctx_destroy → DeleteFiber
          *     （此时 fiber 不再是自己，安全） */
         uint32_t cur = sim_scheduler_current_id();
+        sim_ctx_t* cur_ctx = sim_scheduler_current_ctx();
+        assert(cur_ctx != NULL && "self-delete outside task fiber context");
         sim_scheduler_mark_zombie(cur);
-        sim_ctx_switch(NULL, s_main_ctx);
+        /* 红线 15 反面契约：task 让出前不动 s_current_task_id —— 主 loop 切回后
+         * 会立即调用 sim_scheduler_set_current(SIM_SCHED_NO_READY)。 */
+        sim_ctx_switch(cur_ctx, s_main_ctx);
         /* Unreachable */
     } else {
         uint32_t id = (uint32_t)(uintptr_t)handle - 1;
@@ -269,9 +289,27 @@ void pal_os_task_delete(pal_os_task_handle_t handle) {
     }
 }
 
-wink_status_t pal_sim_scheduler_run(uint32_t main_task_id, uint32_t max_ticks) {
+wink_status_t pal_sim_scheduler_run(const struct wink_app_callbacks* callbacks,
+                                    uint32_t main_task_id, uint32_t max_ticks) {
     s_main_ctx = sim_ctx_from_current();
     uint32_t ticks_run = 0;
+
+    /* --- WCET config cache（fixup 计划 R9）---
+     * env var 在入口读一次，主 loop 每 tick 只读 static，避免 getenv 系统调用开销。
+     * 阈值优先级：$WINK_SIM_WCET_THRESHOLD_US > $CI 放宽 10x > 默认 WINK_SIM_TASK_WCET_THRESHOLD_US。
+     * bypass 优先级：$WINK_SIM_BYPASS_WCET 或 IsDebuggerPresent()。 */
+    uint64_t wcet_threshold_us = WINK_SIM_TASK_WCET_THRESHOLD_US;
+    const char* env_thr = getenv("WINK_SIM_WCET_THRESHOLD_US");
+    if (env_thr) {
+        wcet_threshold_us = strtoull(env_thr, NULL, 10);
+    } else if (getenv("CI") != NULL) {
+        /* CI 环境放宽 10 倍以吸收虚拟化 CPU 抖动（fixup 计划 R9 / RF-002）。 */
+        wcet_threshold_us *= 10ULL;
+    }
+    bool bypass_wcet = (getenv("WINK_SIM_BYPASS_WCET") != NULL) || IsDebuggerPresent();
+
+    /* 红线 15：进入主调度 loop 前显式清空 current_id */
+    sim_scheduler_set_current(SIM_SCHED_NO_READY);
 
     while (1) {
         /* Phase 1: GC —— 释放已 ZOMBIE 的 fiber（此时它们都不在运行） */
@@ -301,22 +339,26 @@ wink_status_t pal_sim_scheduler_run(uint32_t main_task_id, uint32_t max_ticks) {
             continue;
         }
 
-        /* Phase 4: 切到 task (带 WCET 运行监控) */
+        /* Phase 4: 切到 task (带 WCET 运行监控) —— 用物理墙钟量测 slice 耗时（fixup 红线 11），
+         * 虚拟时钟 pal_os_get_us() 只服务业务语义，不用于 WCET 判定。 */
         sim_scheduler_set_current(next);
         const sim_task_t* t = sim_scheduler_get(next);
-        uint64_t start_us = pal_os_get_us();
+        uint64_t wall_start_us = host_wall_clock_us();
         sim_ctx_switch(s_main_ctx, t->ctx);
-        uint64_t duration_us = pal_os_get_us() - start_us;
-        
-        /* WCET 安全监控判定：若挂载了 Windows 调试器或显式设置了 WINK_SIM_BYPASS_WCET 环境变量，
-         * 则强制跳过 WCET 违规断言，防止单步断点调试或 CI 容器性能颠簸时触发 8002 误杀 */
-        bool bypass_wcet = (getenv("WINK_SIM_BYPASS_WCET") != NULL) || IsDebuggerPresent();
-        if (!bypass_wcet && duration_us > WINK_SIM_TASK_WCET_THRESHOLD_US) {
-            fprintf(stderr, "[ERROR] Task [%s] WCET violated: executed for %llu us, threshold is %d us. Triggering 8002!\n",
-                    t->name, (unsigned long long)duration_us, WINK_SIM_TASK_WCET_THRESHOLD_US);
-            wink_runtime_fault(NULL, 8002);
+        /* 红线 15：task 让出后，主 loop 立即清空 current_id */
+        sim_scheduler_set_current(SIM_SCHED_NO_READY);
+        uint64_t duration_us = host_wall_clock_us() - wall_start_us;
+
+        if (!bypass_wcet && duration_us > wcet_threshold_us) {
+            fprintf(stderr,
+                "[ERROR] Task [%s] WCET violated: executed for %llu us, "
+                "threshold is %llu us. Triggering 8002!\n",
+                t->name, (unsigned long long)duration_us,
+                (unsigned long long)wcet_threshold_us);
+            /* 红线 16：透传 callbacks，让 App on_fault(8002) 被调，与真机 fault 路径一致。 */
+            wink_runtime_fault(callbacks, 8002);
         }
-        
+
         if (next == main_task_id) {
             ticks_run++;
         }
@@ -324,6 +366,8 @@ wink_status_t pal_sim_scheduler_run(uint32_t main_task_id, uint32_t max_ticks) {
 
     /* 清理残余 fiber */
     sim_scheduler_gc_zombies();
+    /* 退出前对齐红线 15：清空 current_id */
+    sim_scheduler_set_current(SIM_SCHED_NO_READY);
     return WINK_OK;
 }
 

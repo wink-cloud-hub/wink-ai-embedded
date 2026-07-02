@@ -12,7 +12,11 @@ void setUp(void) {
 void tearDown(void) {}
 
 void test_delay_advances_virtual_time(void) {
-    pal_os_sleep_ms(5);
+    /* fixup 计划 F3 H2：pal_os_sleep_ms 在 SIMULATION 分支已强制走调度器；
+     * 非 SIM host 分支保持"直接推进虚拟时钟" 的合法路径。此测试用 host_sim_advance_to
+     * 更直接、更可读地表达"legacy 虚拟时钟推进" 意图。 */
+    extern void host_sim_advance_to(uint64_t us);
+    host_sim_advance_to(5000u);
     TEST_ASSERT_EQUAL_UINT64(5000u, pal_os_get_us());
     pal_os_busy_wait_us(300);
     TEST_ASSERT_EQUAL_UINT64(5300u, pal_os_get_us());

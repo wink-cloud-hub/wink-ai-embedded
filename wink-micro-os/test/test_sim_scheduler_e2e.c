@@ -47,8 +47,8 @@ void test_dual_task_ringbuf_e2e(void) {
     TEST_ASSERT_EQUAL(WINK_OK, pal_os_task_create(producer_task, "prod", 32*1024, NULL, 5, PAL_OS_CORE_ANY, &prod_h));
     TEST_ASSERT_EQUAL(WINK_OK, pal_os_task_create(consumer_task, "cons", 32*1024, NULL, 5, PAL_OS_CORE_ANY, &cons_h));
     
-    /* 运行仿真调度主循环，限制 max_ticks=500 */
-    wink_status_t st = pal_sim_scheduler_run(SIM_SCHED_NO_READY, 500);
+    /* 运行仿真调度主循环，限制 max_ticks=500；测试无 App callbacks，传 NULL。 */
+    wink_status_t st = pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 500);
     TEST_ASSERT_EQUAL(WINK_OK, st);
     
     TEST_ASSERT_EQUAL_UINT32(10, produced);
