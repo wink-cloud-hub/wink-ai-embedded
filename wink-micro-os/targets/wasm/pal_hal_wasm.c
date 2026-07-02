@@ -18,6 +18,7 @@
 #include "pal_irq.h"
 #include "pal_pwm_router.h"
 #include "pal_osal.h"
+#include "pal_resource.h"  /* pal_resource_is_claimed / PAL_RESOURCE_GPIO_PIN — 与 host/esp32 同源保真 */
 #include "pal_debug.h"
 #include "wasm_bridge.h"
 #include "pal_wasm_internal.h"
