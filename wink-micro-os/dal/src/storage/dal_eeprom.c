@@ -7,6 +7,7 @@
 wink_status_t dal_eeprom_init(dal_eeprom_t *dev, const dal_eeprom_config_t *cfg) {
     if (dev == NULL || cfg == NULL) { return WINK_ERR_INVALID_ARG; }
     if (cfg->owner == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (cfg->i2c_port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
     if (cfg->i2c_addr == 0 || cfg->i2c_addr > 0x7Fu) { return WINK_ERR_INVALID_ARG; }
 
     /* Track A（M1）：I2C (port,addr) 粒度冲突治理。与 dal_ssd1306 同 SSOT 模式：

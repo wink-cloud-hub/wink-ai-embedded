@@ -148,32 +148,44 @@ void test_bus_drop_null_seed_never_drops(void) {
 /* ADR-0009 Wave1 Task 6：GPIO 理想注入 + pal_gpio_read 抖动退化端到端测试 */
 #include "host_test_ctrl.h"
 #include "pal_hal.h"
+#include "pal_resource.h"
 
 void test_host_gpio_ideal_transition_triggers_bounce(void) {
     sim_reset_time();
+    pal_resource_reset();
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_resource_claim(PAL_RESOURCE_GPIO_PIN, 7, "test"));
+
     wink_sim_faults_t f = WINK_SIM_FAULTS_IDEAL; f.bounce_us = 30000; f.prng_seed = 1;
     sim_set_faults(&f);
     extern void host_sim_advance_to(uint64_t us);
 
+    bool lvl = false;
     /* ① 上电态：pin7=高(释放) → 注册即上电 → stable=high，无跃变、不抖 */
     sim_set_gpio_ideal(7, true);
-    TEST_ASSERT_TRUE(pal_gpio_read(7));       /* target==stable → 直接返 true */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_gpio_read(7, &lvl));
+    TEST_ASSERT_TRUE(lvl);       /* target==stable → 直接返 true */
 
     /* ② 跃变：改为低(按下) → ideal=false，ctx.stable 仍=true → target≠stable → 进入抖动窗（强制交替） */
     host_sim_advance_to(1000);
     sim_set_gpio_ideal(7, false);
-    TEST_ASSERT_FALSE(pal_gpio_read(7));      /* flip false→true → target=false */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_gpio_read(7, &lvl));
+    TEST_ASSERT_FALSE(lvl);      /* flip false→true → target=false */
     host_sim_advance_to(2000);
-    TEST_ASSERT_TRUE (pal_gpio_read(7));      /* flip true→false → !target=true */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_gpio_read(7, &lvl));
+    TEST_ASSERT_TRUE(lvl);      /* flip true→false → !target=true */
     host_sim_advance_to(3000);
-    TEST_ASSERT_FALSE(pal_gpio_read(7));      /* flip→true → target=false */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_gpio_read(7, &lvl));
+    TEST_ASSERT_FALSE(lvl);      /* flip→true → target=false */
 
     /* ③ 出窗（31000-1000=30000 >= bounce_us）→ 稳定到 target=false */
     host_sim_advance_to(31000);
-    TEST_ASSERT_FALSE(pal_gpio_read(7));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_gpio_read(7, &lvl));
+    TEST_ASSERT_FALSE(lvl);
 
-    /* ④ 未注入、非 echo pin 仍返 false（现状不变） */
-    TEST_ASSERT_FALSE(pal_gpio_read(99));
+    /* ④ 未注入、非 echo pin 且未 registration，返 INVALID_STATE */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_STATE, pal_gpio_read(10, &lvl));
+    /* ⑤ 越界 pin 返 INVALID_ARG */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, pal_gpio_read(99, &lvl));
     sim_clear_gpio_ideal();
 }
 

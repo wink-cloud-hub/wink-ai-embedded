@@ -13,6 +13,7 @@
 wink_status_t dal_servo_init(dal_servo_t *dev, const dal_servo_config_t *cfg) {
     if (dev == NULL || cfg == NULL) { return WINK_ERR_INVALID_ARG; }
     if (cfg->owner == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (cfg->pwm_channel >= PAL_PWM_CHANNELS) { return WINK_ERR_INVALID_ARG; }
     if (cfg->min_pulse_ms <= 0.0f || cfg->max_pulse_ms <= cfg->min_pulse_ms) {
         return WINK_ERR_INVALID_ARG;
     }
@@ -25,10 +26,8 @@ wink_status_t dal_servo_init(dal_servo_t *dev, const dal_servo_config_t *cfg) {
     /* 一次性 PWM init（占用通道）；失败透传精确 PAL 错误（含 BUSY/EXHAUSTED）。 */
     wink_status_t status = pal_pwm_init(cfg->pwm_channel, SERVO_PWM_FREQ_HZ);
     if (wink_status_is_error(status)) {
-        /* gcc16 不因 (void) 抑制 warn_unused_result：先赋值再丢弃，best-effort 回滚。 */
-        wink_status_t _rb = pal_resource_release(PAL_RESOURCE_PWM_CHANNEL,
-                                                 (uint32_t)cfg->pwm_channel, cfg->owner);
-        (void)_rb;
+        WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_PWM_CHANNEL,
+                                                 (uint32_t)cfg->pwm_channel, cfg->owner));
         return status;
     }
     dev->pwm_channel   = cfg->pwm_channel;

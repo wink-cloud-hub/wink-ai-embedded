@@ -68,6 +68,14 @@ wink_status_t pal_resource_claim(pal_resource_type_t type, uint32_t id, const ch
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_resource_release(pal_resource_type_t type, uint32_t id, const char *owner);
 
+/**
+ * @brief 检查一个资源是否已被独占
+ * @param type 资源类型
+ * @param id 资源标识
+ * @return true 表示已被独占，false 表示未被独占
+ */
+bool pal_resource_is_claimed(pal_resource_type_t type, uint32_t id);
+
 /** @brief 清空资源占用表（测试隔离 / 启动重置用） */
 void pal_resource_reset(void);
 

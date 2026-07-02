@@ -97,3 +97,17 @@ wink_status_t pal_resource_release(pal_resource_type_t type, uint32_t id, const 
     taskEXIT_CRITICAL(&s_resource_mux);
     return result;
 }
+
+bool pal_resource_is_claimed(pal_resource_type_t type, uint32_t id) {
+    taskENTER_CRITICAL(&s_resource_mux);
+    bool claimed = false;
+    for (uint32_t i = 0; i < s_count; i++) {
+        if (s_claims[i].type == type && s_claims[i].id == id) {
+            claimed = true;
+            break;
+        }
+    }
+    taskEXIT_CRITICAL(&s_resource_mux);
+    return claimed;
+}
+

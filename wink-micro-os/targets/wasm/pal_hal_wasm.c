@@ -33,17 +33,29 @@ wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
     return WINK_OK;
 }
 
-void pal_gpio_write(wink_pin_t pin, bool level) {
+wink_status_t pal_gpio_write(wink_pin_t pin, bool level) {
+    if (pin < 0 || pin >= WASM_SIM_MAX_PINS) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    if (!pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin)) {
+        return WINK_ERR_INVALID_STATE;
+    }
     js_pal_gpio_write((uint32_t)pin, level);
+    return WINK_OK;
 }
 
-bool pal_gpio_read(wink_pin_t pin) {
-    /* Step 0: 边界检查（防止 JS 传入越界 pin 导致 BSS OOB 访问）。
-     * pal_wasm_get_debounce_ctx 内部也会返回 NULL，但前置检查能在
-     * 越界时立刻短路，连理想电平的 JS 桥调用都省掉，更便于 fuzz。
-     * 越界 pin 默认为低电平，不崩溃。 */
-    if (pin >= WASM_SIM_MAX_PINS) {
-        return false;
+wink_status_t pal_gpio_read(wink_pin_t pin, bool *out_level) {
+    if (out_level == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    *out_level = false; /* Defense-in-depth initialization */
+
+    if (pin < 0 || pin >= WASM_SIM_MAX_PINS) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    if (!pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin)) {
+        return WINK_ERR_INVALID_STATE;
     }
 
     /* Step 1: 从 JS 侧获取理想电平（UniSim 宏观物理状态）。 */
@@ -66,12 +78,14 @@ bool pal_gpio_read(wink_pin_t pin) {
             if (!was_in_bounce && ctx->in_bounce) {
                 pal_wasm_log_fault(FAULT_TYPE_GPIO_BOUNCE, pin);
             }
-            return result;
+            *out_level = result;
+            return WINK_OK;
         }
     }
 
     /* 无退化 → 原样返回（兼容路径）。 */
-    return ideal;
+    *out_level = ideal;
+    return WINK_OK;
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -561,9 +575,9 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
 }
 
 wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us, uint32_t *pulse_us) {
-    /* Phase 4：经 bridge 同步测 echo 脉宽（非 Asyncify 挂起点，不入 IMPORTS）。
-     * pin 映射 / UNSUPPORTED 随 virtual registry routing 接入（Phase 6）。 */
     if (pulse_us == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (pin < 0 || pin >= WASM_SIM_MAX_PINS) { return WINK_ERR_INVALID_ARG; }
+    if (!pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin)) { return WINK_ERR_INVALID_STATE; }
     (void)level; (void)timeout_us;
     *pulse_us = js_sim_measure_echo_pulse_us((uint32_t)pin);
     return WINK_OK;

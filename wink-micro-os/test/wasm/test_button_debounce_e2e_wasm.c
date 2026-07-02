@@ -39,6 +39,7 @@
 #include "dal_button.h"
 #include "pal_hal.h"           /* pal_gpio_read for raw reads */
 #include "pal_osal.h"          /* pal_os_sleep_ms（SSOT 下 no-op） */
+#include "pal_resource.h"
 #include "pal_wasm_internal.h" /* pal_wasm_advance_virtual_clock + setters + ctx 访问 */
 #include "wink_sim_physical.h" /* wink_phys_debounce_ctx_t 字段 */
 
@@ -129,6 +130,7 @@ void setUp(void) {
      * 每个 main 重新实例化，所以同一可执行文件内多用例时钟会累加。
      * 本测试中每个用例换 pin 编号，per-pin ctx 独立，时钟单调不影响判定。 */
     pal_wasm_reset_physical();
+    pal_resource_reset();
     wasm_clear_gpio_ideal();
 }
 
@@ -146,7 +148,9 @@ static void run_ticks(dal_button_t *btn, int n) {
 
 /* 负对照 helper：无去抖的裸采样（与 dal_button.c::button_raw_pressed 同语义）。 */
 static bool raw_pressed(uint16_t pin, bool active_low) {
-    return pal_gpio_read(pin) != active_low;
+    bool lvl = false;
+    WINK_IGNORE_UNUSED(pal_gpio_read((wink_pin_t)pin, &lvl));
+    return lvl != active_low;
 }
 
 /* 【主线·正】电平跃变 → dal_button 计数去抖吸收抖动 → 稳定 pressed。

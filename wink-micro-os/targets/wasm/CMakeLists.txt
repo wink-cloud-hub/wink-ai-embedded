@@ -11,7 +11,7 @@ set(PAL_WASM_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_hal_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_hal_ultrasonic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_osal_wasm.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/pal_resource_wasm.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/pal_resource.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_storage_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_physical.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/wink_sim_physical.c

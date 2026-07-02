@@ -71,6 +71,7 @@ static const uint8_t s_init_cmds[] = {
 wink_status_t dal_ssd1306_init(dal_ssd1306_t *dev, const dal_ssd1306_config_t *cfg) {
     if (dev == NULL || cfg == NULL) { return WINK_ERR_INVALID_ARG; }
     if (cfg->owner == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (cfg->i2c_port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
 
     /* Phase 2：(port,addr) 粒度地址冲突治理 */
     uint32_t res_id = pal_resource_i2c_id(cfg->i2c_port, cfg->i2c_addr);
@@ -84,10 +85,8 @@ wink_status_t dal_ssd1306_init(dal_ssd1306_t *dev, const dal_ssd1306_config_t *c
     wink_status_t status = pal_i2c_transfer(cfg->i2c_port, cfg->i2c_addr,
                                              cmd_buf, sizeof(cmd_buf), NULL, 0);
     if (wink_status_is_error(status)) {
-        /* Track A（M1）：I2C init 命令序列失败须回滚 claim，与其他 DAL 保持行为一致。
-         * gcc16 不因 (void) 抑制 warn_unused_result：先赋值再丢弃，best-effort 回滚。 */
-        wink_status_t _rb = pal_resource_release(PAL_RESOURCE_I2C_ADDR, res_id, cfg->owner);
-        (void)_rb;
+        /* Track A（M1）：I2C init 命令序列失败须回滚 claim，与其他 DAL 保持行为一致。 */
+        WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_I2C_ADDR, res_id, cfg->owner));
         return status;
     }
 

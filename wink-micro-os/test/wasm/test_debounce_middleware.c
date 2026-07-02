@@ -56,6 +56,7 @@ void test_set_mock_gpio_ideal(uint16_t pin, bool level) {
 
 void setUp(void) {
     pal_wasm_reset_physical();           /* faults=0, ctx 清零, PRNG=1 */
+    pal_resource_reset();
     s_mock_ideal_level = false;
     s_mock_last_pin = 0xFFFFu;
 }
@@ -63,26 +64,28 @@ void setUp(void) {
 void tearDown(void) {}
 
 /* ─────────────────────────────────────────────────────────
- * (1) 边界检查：越界 pin 返回 false 不崩
+ * (1) 边界检查：越界 pin 返回 INVALID_ARG 不崩
  * ─────────────────────────────────────────────────────────
  * 这是本任务最关键的安全保证：JS 侧若传入 pin=65535 或任何
- * >= WASM_SIM_MAX_PINS 的值，pal_gpio_read 必须立即返回 false，
+ * >= WASM_SIM_MAX_PINS 的值，pal_gpio_read 必须立即返回 INVALID_ARG，
  * 不能继续走 js_pal_gpio_read（避免 JS 侧再次越界）或 ctx 访问
  * （避免 BSS OOB）。
  */
 void test_gpio_read_oob_pin_returns_false(void) {
-    /* 即使开启了退化，越界 pin 也应该立刻返回 false。 */
+    /* 即使开启了退化，越界 pin 也应该立刻返回 INVALID_ARG。 */
     pal_wasm_set_bounce_us(30000u);
-    TEST_ASSERT_FALSE(pal_gpio_read(WASM_SIM_MAX_PINS));        /* boundary == 128 */
-    TEST_ASSERT_FALSE(pal_gpio_read(WASM_SIM_MAX_PINS + 1u));   /* 129 */
-    TEST_ASSERT_FALSE(pal_gpio_read(65535u));                   /* UINT16_MAX */
+    bool lvl = false;
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, pal_gpio_read(WASM_SIM_MAX_PINS, &lvl));        /* boundary == 128 */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, pal_gpio_read(WASM_SIM_MAX_PINS + 1u, &lvl));   /* 129 */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, pal_gpio_read(65535u, &lvl));                   /* UINT16_MAX */
 }
 
 void test_gpio_read_oob_pin_no_ctx_mutation(void) {
     /* 越界访问不能污染 ctx 数组（边界保证）：访问越界 pin 后，
      * ctx[0] 应仍是 fresh state。 */
     pal_wasm_set_bounce_us(30000u);
-    (void)pal_gpio_read(65535u);
+    bool lvl = false;
+    (void)pal_gpio_read(65535u, &lvl);
     wink_phys_debounce_ctx_t *ctx0 = pal_wasm_get_debounce_ctx(0);
     TEST_ASSERT_NOT_NULL(ctx0);
     TEST_ASSERT_FALSE(ctx0->in_bounce);
@@ -99,9 +102,11 @@ void test_gpio_read_oob_pin_no_ctx_mutation(void) {
  */
 void test_gpio_read_zero_bounce_leaves_ctx_clean(void) {
     pal_wasm_set_bounce_us(0u);          /* 显式禁用 */
-    (void)pal_gpio_read(5u);
-    (void)pal_gpio_read(5u);
-    (void)pal_gpio_read(5u);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_resource_claim(PAL_RESOURCE_GPIO_PIN, 5u, "test"));
+    bool lvl = false;
+    (void)pal_gpio_read(5u, &lvl);
+    (void)pal_gpio_read(5u, &lvl);
+    (void)pal_gpio_read(5u, &lvl);
     wink_phys_debounce_ctx_t *ctx = pal_wasm_get_debounce_ctx(5u);
     TEST_ASSERT_NOT_NULL(ctx);
     TEST_ASSERT_FALSE(ctx->in_bounce);

@@ -193,6 +193,10 @@ void pal_os_critical_exit_isr(uint32_t key) {
 void pal_os_set_sim_isr_context(bool in_isr) { (void)in_isr; }
 bool pal_os_in_sim_isr_context(void) { return false; }
 
+void pal_os_set_sim_pt_context(bool in_pt) { (void)in_pt; }
+bool pal_os_in_sim_pt_context(void) { return false; }
+bool wink_pt_in_context(void) { return false; }
+
 /* ─────────────────────────────────────────────────────────
  * Task 创建与多核亲和性
  * ───────────────────────────────────────────────────────── */

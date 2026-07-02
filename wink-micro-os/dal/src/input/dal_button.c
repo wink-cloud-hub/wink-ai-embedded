@@ -19,9 +19,7 @@ wink_status_t dal_button_init(dal_button_t *dev, const dal_button_config_t *cfg)
     pal_gpio_mode_t mode = cfg->active_low ? PAL_GPIO_INPUT_PULLUP : PAL_GPIO_INPUT_PULLDOWN;
     wink_status_t status = pal_gpio_init(cfg->pin, mode);
     if (wink_status_is_error(status)) {
-        /* gcc16 不因 (void) 抑制 warn_unused_result：先赋值再丢弃，best-effort 回滚。 */
-        wink_status_t _rb = pal_resource_release(PAL_RESOURCE_GPIO_PIN, cfg->pin, cfg->owner);
-        (void)_rb;
+        WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN, cfg->pin, cfg->owner));
         return status;
     }
     /* 深拷贝配置到实例（支持 ADR-0008 Flash 动态覆写） */
@@ -37,7 +35,10 @@ wink_status_t dal_button_poll(dal_button_t *dev) {
     if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
 
-    bool raw = pal_gpio_read(dev->config.pin);
+    bool raw = false;
+    wink_status_t s = pal_gpio_read(dev->config.pin, &raw);
+    if (wink_status_is_error(s)) { return s; }
+
     bool now_pressed = button_raw_pressed(raw, dev->config.active_low);
 
     if (now_pressed == dev->stable_pressed) {
