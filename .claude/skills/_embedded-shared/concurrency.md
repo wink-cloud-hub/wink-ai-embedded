@@ -54,6 +54,104 @@ void motor_update_pid(...) {
 
 ---
 
+## ⭐ Task / ISR 双入口显式分流（ADR-0016）
+
+**问题：** 一个模块的共享静态状态既可能被 task 上下文调用（正常主流程），也可能被 ISR 上下文调用（中断回调、fault handler）。二者在 ESP32 上必须走**不同**的临界区原语：
+
+- Task 上下文：`portENTER_CRITICAL(&mux)` —— task-only 原语；ISR 调用会触发 assert / SMP 死锁。
+- ISR 上下文：`portENTER_CRITICAL_ISR(&mux)` —— ISR-only；从 task 调则保护范围不匹配。
+
+### 选项对比与推荐
+
+| 方案 | 优点 | 缺点 | 结论 |
+|-----|------|------|------|
+| **A · 单一入口 + 内部 detect** | 调用方无感 | ❌ 违反契约诚实；`xPortInIsrContext()` 在 host/wasm 无对等 API；掩盖误用 | ❌ 拒绝 |
+| **B · 双入口显式分流**（推荐） | 契约明确；与 ESP-IDF `xxxFromISR` 惯例对齐；AI Codegen 训练数据一致 | 调用方需选对入口（code review 覆盖） | ✅ 采纳 |
+| **C · 单一入口 + doxygen 禁止 ISR** | diff 最小 | ❌ 丢失 ISR fault 记录能力；无演进路径 | ❌ 拒绝 |
+
+### 落地范式
+
+```c
+/* 头文件：显式命名，让调用方一眼看出上下文 */
+uint32_t pal_os_critical_enter(void);          /* TASK 上下文 */
+void     pal_os_critical_exit(uint32_t key);
+uint32_t pal_os_critical_enter_isr(void);      /* ISR 上下文 */
+void     pal_os_critical_exit_isr(uint32_t key);
+
+/* 上层被 task 和 ISR 都调用的服务同步拆双入口 —— 命名后缀 `_from_isr` */
+void wink_trace_fault(uint32_t code);          /* TASK-only */
+void wink_trace_fault_from_isr(uint32_t code); /* ISR-only */
+
+/* 实现：抽公共写入到 static inline，两条路径 bit-for-bit 等价 */
+static inline void s_record_fault_locked(uint32_t code) {
+    s_buffer[s_head] = code;
+    s_head = (s_head + 1u) % CAPACITY;
+    s_count++;
+}
+void wink_trace_fault(uint32_t code) {
+    uint32_t key = pal_os_critical_enter();
+    s_record_fault_locked(code);
+    pal_os_critical_exit(key);
+}
+void wink_trace_fault_from_isr(uint32_t code) {
+    uint32_t key = pal_os_critical_enter_isr();
+    s_record_fault_locked(code);
+    pal_os_critical_exit_isr(key);
+}
+```
+
+### ISR 内的强约束
+
+- 🚨 **ISR 内绝对禁止**同步调用可能阻塞 / I/O 的用户回调（`wink_runtime_fault`、`on_fault` 等）；只做**静态日志记录**（`wink_trace_fault_from_isr`），真正的 Safe-off 关断链**延迟到 TASK 层**（主 Loop tick 回收期）。
+- 🚨 ISR 内不得调用 task 版临界区（`portENTER_CRITICAL` 在 ESP32 assert / SMP deadlock）。
+- 🚨 task 内不得调用 ISR 版（保护范围不匹配，task/task 竞态无保护）。
+
+### 跨 Target 行为矩阵
+
+| Target | task 版 | ISR 版 | 契约执行 |
+|-------|--------|--------|---------|
+| ESP32 (SMP) | `portENTER_CRITICAL(&mux)` | `portENTER_CRITICAL_ISR(&mux)`（共享 mux） | 真机原生 |
+| Cortex-M / baremetal | 关中断 | 关中断 | 关中断即已同时保护 task/ISR |
+| host / wasm (单线程) | no-op + `assert(!in_isr)` | no-op + `assert(in_isr)` | 靠 sim-hook 强校验 |
+
+### Host / Wasm sim-hook（可选但强推）
+
+单线程 host / wasm 语义上两条路径都 no-op 就够，但那样一来入口误用**在 host 单测里根本不会失败**——真机 assert 直到刷板才暴露。**推荐**在 host/wasm 的 OSAL 里加一对 sim-hook：
+
+```c
+static bool s_sim_in_isr = false;
+void pal_os_set_sim_isr_context(bool in_isr) { s_sim_in_isr = in_isr; }
+bool pal_os_in_sim_isr_context(void)         { return s_sim_in_isr; }
+
+uint32_t pal_os_critical_enter(void) {
+    assert(!s_sim_in_isr && "task-only entry called from ISR context");
+    return 0;
+}
+uint32_t pal_os_critical_enter_isr(void) {
+    assert(s_sim_in_isr && "ISR-only entry called from task context");
+    return 0;
+}
+```
+
+仿真器 / 单测在向模拟中断回调分发前后夹紧 `set_sim_isr_context(true) → callback → set_sim_isr_context(false)`。这样入口误用在 Debug 构建下**立即命中 assert**，属"编译期契约 + 运行期强校验"双保险。
+
+### 验收硬门槛：等价性测试
+
+拆双入口后**必须**加一条等价性单测：同一 fault code 序列，纯 task 路径 vs 交替 task/ISR 路径，`buffer/head/count` 状态**bit-for-bit 相同**。范式代码见 `wink-micro-os/test/test_wink_trace_isr_equivalence.c`。
+
+### 演进路径
+
+- 引入多虚拟核 / 多核（若单核决策被推翻）：`s_global_mux` 需按核区分，API 签名不变。
+- Host 单测多线程化：`s_sim_in_isr` 升 `_Thread_local`（防跨线程竞态）。
+- 嵌套模拟中断（高优先级抢占低优先级）：`s_sim_in_isr` bool 改嵌套计数器（`s_sim_isr_nesting_level`），防内层退出时提早清标志。
+
+参考：
+- ADR-0016 `pal_os_critical_enter` 任务/ISR 双入口决策：`docs/design/decisions/0016-pal-critical-section-task-isr-dual-entry.md`
+- ADR-0012 契约诚实优于静默降级：`docs/design/decisions/0012-contract-honesty-over-silent-degradation.md`
+- 实施记录：PLAN-20260701-WMOS-CODE-OPTIMIZATION-Q3 §Track D
+
+---
+
 ## 单核 vs 多核差异对照表
 
 | 场景 | 单核（Cortex-M） | 多核（ESP32 Xtensa） |
