@@ -11,6 +11,7 @@
 #include "pal_storage.h"
 
 dal_ultrasonic_t front_radar = {
+    .config.owner    = "front_radar",
     .config.trig_pin = 4,
     .config.echo_pin = 5,
     .config.use_rmt = false,

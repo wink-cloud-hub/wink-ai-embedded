@@ -1,5 +1,6 @@
 #include "dal_button.h"
 #include "pal_hal.h"
+#include "pal_resource.h"
 #include <string.h> /* memcpy */
 
 static bool button_raw_pressed(bool raw_level, bool active_low) {
@@ -9,9 +10,20 @@ static bool button_raw_pressed(bool raw_level, bool active_low) {
 
 wink_status_t dal_button_init(dal_button_t *dev, const dal_button_config_t *cfg) {
     if (dev == NULL || cfg == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (cfg->owner == NULL) { return WINK_ERR_INVALID_ARG; }
+
+    /* Track A（M1）：GPIO 引脚冲突治理。 */
+    wink_status_t rs = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, cfg->pin, cfg->owner);
+    if (wink_status_is_error(rs)) { return rs; }
+
     pal_gpio_mode_t mode = cfg->active_low ? PAL_GPIO_INPUT_PULLUP : PAL_GPIO_INPUT_PULLDOWN;
     wink_status_t status = pal_gpio_init(cfg->pin, mode);
-    if (wink_status_is_error(status)) { return status; }
+    if (wink_status_is_error(status)) {
+        /* gcc16 不因 (void) 抑制 warn_unused_result：先赋值再丢弃，best-effort 回滚。 */
+        wink_status_t _rb = pal_resource_release(PAL_RESOURCE_GPIO_PIN, cfg->pin, cfg->owner);
+        (void)_rb;
+        return status;
+    }
     /* 深拷贝配置到实例（支持 ADR-0008 Flash 动态覆写） */
     memcpy(&dev->config, cfg, sizeof(dal_button_config_t));
     dev->stable_pressed   = false;

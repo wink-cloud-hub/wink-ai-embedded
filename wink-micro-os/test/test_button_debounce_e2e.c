@@ -2,10 +2,11 @@
 #include "dal_button.h"
 #include "pal_hal.h"           /* pal_gpio_read for raw reads */
 #include "pal_osal.h"          /* pal_os_sleep_ms 推进虚拟时钟 */
+#include "pal_resource.h"
 #include "host_test_ctrl.h"
 #include "wink_sim_physical.h"
 
-void setUp(void) { sim_reset_time(); }
+void setUp(void) { sim_reset_time(); pal_resource_reset(); }
 void tearDown(void) {}
 
 /* 场景参数（强制交替模型，采样周期无关）：
@@ -37,7 +38,7 @@ void test_dal_button_absorbs_bounce_and_settles(void) {
     sim_set_faults(&f);
 
     dal_button_t btn;
-    const dal_button_config_t cfg = { .pin = 7, .active_low = true };
+    const dal_button_config_t cfg = { .owner = "e2e_debounce_bounce", .pin = 7, .active_low = true };
     TEST_ASSERT_EQUAL(WINK_OK, dal_button_init(&btn, &cfg));   /* active_low */
     sim_set_gpio_ideal(7, true);                                   /* ① 上电态=释放(raw=true)，不抖 */
     run_ticks(&btn, 2);                                            /* now=20000，稳定到「未按下」 */
@@ -79,7 +80,7 @@ void test_raw_read_without_debounce_bounces(void) {
 void test_no_bounce_config_settles_fast(void) {
     sim_set_faults(&WINK_SIM_FAULTS_IDEAL);                        /* bounce_us=0 */
     dal_button_t btn;
-    const dal_button_config_t cfg = { .pin = 8, .active_low = false };
+    const dal_button_config_t cfg = { .owner = "e2e_debounce_baseline", .pin = 8, .active_low = false };
     TEST_ASSERT_EQUAL(WINK_OK, dal_button_init(&btn, &cfg));   /* active_high */
     sim_set_gpio_ideal(8, true);                                   /* 按下 raw=true */
     run_ticks(&btn, 5);

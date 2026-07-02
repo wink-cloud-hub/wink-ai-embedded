@@ -26,6 +26,7 @@ typedef enum {
  * 成员按对齐降序排列（uint16_t → bool）：自然对齐，无填充。
  */
 typedef struct {
+    const char *owner;    /* 资源占用 owner 静态字符串（device_tree 实例名，静态存储） */
     uint16_t trig_pin;
     uint16_t echo_pin;
     bool use_rmt;         ///< ESP32：true=RMT 硬件捕获，false=busy-wait 降级

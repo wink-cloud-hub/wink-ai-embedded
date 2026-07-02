@@ -1,13 +1,16 @@
 #include "unity.h"
 #include "wink_status.h"
 #include "dal_led.h"
+#include "pal_resource.h"
 
-void setUp(void) {}
+static const char *const OWNER = "test_dal_led";
+
+void setUp(void) { pal_resource_reset(); }
 void tearDown(void) {}
 
 /* ---- init 契约 ---- */
 void test_init_null_returns_invalid_arg(void) {
-    const dal_led_config_t cfg = { .pin = 2, .active_high = true };
+    const dal_led_config_t cfg = { .owner = OWNER, .pin = 2, .active_high = true };
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_led_init(NULL, &cfg));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_led_init(NULL, NULL));
 }
@@ -30,7 +33,7 @@ void test_set_null_returns_invalid_arg(void) {
 /* ---- init 后 on/off/set/toggle（host pal_gpio_write 无真实电平可校验，校验状态位）---- */
 void test_active_high_on_off(void) {
     dal_led_t dev = {0};
-    const dal_led_config_t cfg = { .pin = 2, .active_high = true };
+    const dal_led_config_t cfg = { .owner = OWNER, .pin = 2, .active_high = true };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_init(&dev, &cfg));
     TEST_ASSERT_TRUE(dev.initialized);
 
@@ -46,7 +49,7 @@ void test_active_high_on_off(void) {
 
 void test_active_low_on_off(void) {
     dal_led_t dev = {0};
-    const dal_led_config_t cfg = { .pin = 3, .active_high = false };
+    const dal_led_config_t cfg = { .owner = OWNER, .pin = 3, .active_high = false };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_init(&dev, &cfg));
 
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_on(&dev));
@@ -58,7 +61,7 @@ void test_active_low_on_off(void) {
 
 void test_toggle_flips_state(void) {
     dal_led_t dev = {0};
-    const dal_led_config_t cfg = { .pin = 4, .active_high = true };
+    const dal_led_config_t cfg = { .owner = OWNER, .pin = 4, .active_high = true };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_init(&dev, &cfg));
 
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_toggle(&dev));

@@ -30,6 +30,7 @@ typedef struct {
  * 便于代码生成器（app_codegen.py）输出结构化的初始化数据。
  */
 typedef struct {
+    const char *owner;       /**< 资源占用 owner 静态字符串（device_tree 实例名，静态存储） */
     uint8_t  uart_port;      /**< UART 总线端口号 */
     uint32_t baudrate;       /**< 波特率（典型值: 9600, 115200） */
     uint16_t rx_buffer_size; /**< NMEA 接收缓冲区大小（字节，默认 256） */

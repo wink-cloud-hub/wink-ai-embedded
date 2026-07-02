@@ -27,11 +27,11 @@ static wink_status_t led_safe_off_thunk(void *ctx) {
 }
 
 static void app_init(void) {
-    const dal_button_config_t btn_cfg = { .pin = 10, .active_low = true };
+    const dal_button_config_t btn_cfg = { .owner = "user_button", .pin = 10, .active_low = true };
     wink_status_t s = dal_button_init(&user_button, &btn_cfg);
     if (wink_status_is_error(s)) { wink_trace_fault(FAULT_BUTTON_INIT); }
 
-    const dal_led_config_t led_cfg = { .pin = 2, .active_high = true };
+    const dal_led_config_t led_cfg = { .owner = "status_led", .pin = 2, .active_high = true };
     s = dal_led_init(&status_led, &led_cfg);
     if (wink_status_is_error(s)) { wink_trace_fault(FAULT_LED_INIT); }
 

@@ -11,6 +11,7 @@ extern "C" {
 
 /** @brief 舵机构造期配置（dal_servo_init 输入） */
 typedef struct {
+    const char *owner;       /* 资源占用 owner 静态字符串（device_tree 实例名，静态存储） */
     uint8_t pwm_channel;
     float min_pulse_ms;
     float max_pulse_ms;

@@ -162,7 +162,7 @@ void test_dal_button_absorbs_bounce_and_settles(void) {
     pal_wasm_set_prng_seed(1u);
 
     dal_button_t btn;
-    const dal_button_config_t cfg = { .pin = 7, .active_low = true };
+    const dal_button_config_t cfg = { .owner = "wasm_e2e_debounce_bounce", .pin = 7, .active_low = true };
     TEST_ASSERT_EQUAL(WINK_OK, dal_button_init(&btn, &cfg));   /* active_low */
 
     wasm_set_gpio_ideal(7, true);                              /* ① 上电=释放(raw=true)，不抖（ctx 初值与 ideal 一致） */
@@ -203,7 +203,7 @@ void test_raw_read_without_debounce_bounces(void) {
 void test_no_bounce_config_settles_fast(void) {
     /* pal_wasm_reset_physical() 已把 bounce_us 清 0，显式不再设。 */
     dal_button_t btn;
-    const dal_button_config_t cfg = { .pin = 8, .active_low = false };
+    const dal_button_config_t cfg = { .owner = "wasm_e2e_debounce_baseline", .pin = 8, .active_low = false };
     TEST_ASSERT_EQUAL(WINK_OK, dal_button_init(&btn, &cfg));   /* active_high */
     wasm_set_gpio_ideal(8, true);                              /* 按下 raw=true */
     run_ticks(&btn, 5);

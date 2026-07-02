@@ -16,6 +16,7 @@ extern "C" {
  * 便于代码生成器（app_codegen.py）输出结构化的初始化数据。
  */
 typedef struct {
+    const char *owner;         /**< 资源占用 owner 静态字符串（device_tree 实例名，静态存储） */
     uint8_t  i2c_port;         /**< I2C 总线端口号 */
     uint16_t i2c_addr;         /**< I2C 设备地址 (7-bit) */
     uint32_t capacity_bytes;   /**< EEPROM 总容量（字节） */
