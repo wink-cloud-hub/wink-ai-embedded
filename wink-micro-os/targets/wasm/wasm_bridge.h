@@ -166,6 +166,20 @@ extern void     pal_wasm_reset_physical(void);
 extern bool     pal_wasm_is_clock_warning_fired(void);
 extern uint64_t pal_wasm_get_virtual_clock_us(void);
 
+/* ---- OSAL 时钟读取（EMSCRIPTEN_KEEPALIVE 导出供 JS 直接读取虚拟时钟）---- */
+extern uint64_t pal_os_get_us(void);
+extern uint64_t pal_os_get_ms(void);
+
+/* ---- JS 简化 HAL 读取导出（bool 返回避免 out-pointer 编组）----
+ *
+ * 内部 PAL API pal_gpio_read / pal_i2c_transfer 返回 wink_status_t 并用 out-pointer。
+ * 以下 EMSCRIPTEN_KEEPALIVE 包装提供 JS 友好签名（直接 bool 返回），
+ * 供 WasmPhysicalBridge.readGpioDegraded / i2cTransfer 使用。 */
+extern bool     pal_wasm_gpio_read(uint16_t pin);
+extern bool     pal_wasm_i2c_transfer(uint8_t port, uint16_t dev_addr,
+                                      const uint8_t *write_buf, uint32_t write_len,
+                                      uint8_t *read_buf, uint32_t read_len);
+
 /* ---- 故障审计日志导出（Wave2 Task 8）----
  *
  * pal_wasm_physical.c 维护一个 256 条环形缓冲区，记录所有物理退化事件

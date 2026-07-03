@@ -31,6 +31,8 @@
 #include "wink_sim_physical.h"
 #include "pal_wasm_internal.h"
 #include "wasm_bridge.h"
+#include "pal_hal.h"
+#include "wink_status.h"
 
 #include <emscripten.h>
 #include <stdint.h>
@@ -402,4 +404,28 @@ uint32_t pal_wasm_get_domain_trigger_count(uint32_t domain_id) {
         return 0u;
     }
     return s_fault_domains[domain_id].trigger_count;
+}
+
+/* ─────────────────────────────────────────────────────────
+ * JS-facing simplified exports (bool return, no out-pointer)
+ * ─────────────────────────────────────────────────────────
+ * These wrap the PAL functions that use wink_status_t + out-pointer
+ * so WasmPhysicalBridge can call them with a simple bool-returning
+ * signature matching what TS expects. Internal C callers continue to
+ * use the full wink_status_t API from pal_hal.h. */
+
+EMSCRIPTEN_KEEPALIVE
+bool pal_wasm_gpio_read(uint16_t pin) {
+    bool level = false;
+    wink_status_t st = pal_gpio_read((wink_pin_t)pin, &level);
+    return wink_status_is_error(st) ? false : level;
+}
+
+EMSCRIPTEN_KEEPALIVE
+bool pal_wasm_i2c_transfer(uint8_t port, uint16_t dev_addr,
+                           const uint8_t *write_buf, uint32_t write_len,
+                           uint8_t *read_buf, uint32_t read_len) {
+    wink_status_t st = pal_i2c_transfer(port, dev_addr, write_buf, write_len,
+                                        read_buf, read_len);
+    return !wink_status_is_error(st);
 }
