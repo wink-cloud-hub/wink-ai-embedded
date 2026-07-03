@@ -146,7 +146,7 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
         "-sASYNCIFY=1"
         "-sASYNCIFY_IMPORTS=['js_pal_os_sleep_ms','js_pal_os_busy_wait_us']"
         "-sEXPORTED_FUNCTIONS=['_main']"              # _trigger_wasm_interrupt 已移除（方案 C：Poll 模型消除 Push 导出，见 wasm_entry.c）
-        "-sEXPORTED_RUNTIME_METHODS=['ccall','cwrap']"
+        "-sEXPORTED_RUNTIME_METHODS=['ccall','cwrap','HEAPU8']"
         "-sMODULARIZE=1"
         "-sEXPORT_NAME=WasmSandbox"
         "-sWASM_BIGINT=1"               # ADR-0009 Wave 2：64 位整型 ↔ JS BigInt 原生映射，杜绝 number 隐式失精
