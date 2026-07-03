@@ -64,7 +64,9 @@ void pal_wasm_advance_virtual_clock(uint64_t us) {
     }
 }
 
+EMSCRIPTEN_KEEPALIVE
 uint64_t pal_os_get_us(void) { return s_virtual_us; }
+EMSCRIPTEN_KEEPALIVE
 uint64_t pal_os_get_ms(void) { return s_virtual_us / 1000u; }
 
 /* ─────────────────────────────────────────────────────────
