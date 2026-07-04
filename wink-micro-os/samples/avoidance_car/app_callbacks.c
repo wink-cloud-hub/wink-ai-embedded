@@ -33,9 +33,9 @@ static void app_init(void) {
      * 从 dev 字段重建 config 喂 init（多一跳，避免改 DAL API）。 */
     const dal_servo_config_t servo_cfg = {
         .owner        = "neck_servo",
-        .pwm_channel  = neck_servo.pwm_channel,
-        .min_pulse_ms = neck_servo.min_pulse_ms,
-        .max_pulse_ms = neck_servo.max_pulse_ms
+        .pwm_channel  = neck_servo.config.pwm_channel,
+        .min_pulse_ms = neck_servo.config.min_pulse_ms,
+        .max_pulse_ms = neck_servo.config.max_pulse_ms
     };
     wink_status_t s = dal_servo_init(&neck_servo, &servo_cfg);
     if (wink_status_is_error(s)) { wink_trace_fault(FAULT_SERVO_INIT); }

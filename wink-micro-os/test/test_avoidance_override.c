@@ -17,8 +17,8 @@ void setUp(void) {
     pal_storage_reset();
     /* 重置全局到编译期默认，保证每条用例起点确定 */
     neck_servo = (dal_servo_t){
-        .pwm_channel = 0, .current_angle = 90.0f,
-        .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f
+        .config.pwm_channel = 0, .current_angle = 90.0f,
+        .config.min_pulse_ms = 0.5f, .config.max_pulse_ms = 2.5f
     };
     front_radar = (dal_ultrasonic_t){
         .config.trig_pin = 4, .config.echo_pin = 5, .last_distance = 0.0f
@@ -69,9 +69,9 @@ void test_apply_flash_config_overrides_globals(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, w);
 
     TEST_ASSERT_EQUAL_INT(WINK_OK, device_tree_apply_flash_config());
-    TEST_ASSERT_EQUAL_UINT8(3u, neck_servo.pwm_channel);
-    TEST_ASSERT_EQUAL_FLOAT(0.6f, neck_servo.min_pulse_ms);
-    TEST_ASSERT_EQUAL_FLOAT(2.4f, neck_servo.max_pulse_ms);
+    TEST_ASSERT_EQUAL_UINT8(3u, neck_servo.config.pwm_channel);
+    TEST_ASSERT_EQUAL_FLOAT(0.6f, neck_servo.config.min_pulse_ms);
+    TEST_ASSERT_EQUAL_FLOAT(2.4f, neck_servo.config.max_pulse_ms);
     TEST_ASSERT_EQUAL_UINT16(6, front_radar.config.trig_pin);
     TEST_ASSERT_EQUAL_UINT16(7, front_radar.config.echo_pin);
 }
@@ -80,8 +80,8 @@ void test_apply_flash_config_empty_degrades(void) {
     /* 未写入 → apply 返错（EMPTY），字段保持编译期默认 */
     wink_status_t s = device_tree_apply_flash_config();
     TEST_ASSERT_TRUE(wink_status_is_error(s));
-    TEST_ASSERT_EQUAL_UINT8(0u, neck_servo.pwm_channel);
-    TEST_ASSERT_EQUAL_FLOAT(0.5f, neck_servo.min_pulse_ms);
+    TEST_ASSERT_EQUAL_UINT8(0u, neck_servo.config.pwm_channel);
+    TEST_ASSERT_EQUAL_FLOAT(0.5f, neck_servo.config.min_pulse_ms);
     TEST_ASSERT_EQUAL_UINT16(4, front_radar.config.trig_pin);
     TEST_ASSERT_EQUAL_UINT16(5, front_radar.config.echo_pin);
 }
@@ -95,7 +95,7 @@ void test_apply_flash_config_corrupt_degrades(void) {
 
     wink_status_t s = device_tree_apply_flash_config();
     TEST_ASSERT_EQUAL_INT(WINK_ERR_CHECKSUM, s);
-    TEST_ASSERT_EQUAL_UINT8(0u, neck_servo.pwm_channel);   /* 字段保持默认 */
+    TEST_ASSERT_EQUAL_UINT8(0u, neck_servo.config.pwm_channel);   /* 字段保持默认 */
     TEST_ASSERT_EQUAL_UINT16(4, front_radar.config.trig_pin);
 }
 

@@ -89,8 +89,8 @@ void test_init_128x32_ok_and_flush_transfers_4_pages(void) {
                                   .width = 128, .height = 32, .owner = "oled32" };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ssd1306_init(&dev, &cfg));
     TEST_ASSERT_TRUE(dev.initialized);
-    TEST_ASSERT_EQUAL_UINT16(128, dev.width);
-    TEST_ASSERT_EQUAL_UINT16(32, dev.height);
+    TEST_ASSERT_EQUAL_UINT16(128, dev.config.width);
+    TEST_ASSERT_EQUAL_UINT16(32, dev.config.height);
     TEST_ASSERT_EQUAL_UINT8(4, dev.pages);     /* 32/8 = 4 pages */
 
     uint32_t before = sim_i2c_transfer_count();
