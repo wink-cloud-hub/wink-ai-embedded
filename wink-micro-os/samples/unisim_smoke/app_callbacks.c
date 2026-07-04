@@ -63,12 +63,13 @@ static void app_init(void)
      * the poll pump deliver it. */
     (void)pal_gpio_enable_interrupt(SMOKE_ISR_PIN, PAL_GPIO_INTR_RISING_EDGE, smoke_isr, NULL);
 
-    /* --- js_sim_trigger_ultrasonic / js_sim_measure_echo_pulse_us
-     *     ADR-0017: pal_ultrasonic_* has been removed. HC-SR04 timing is now
-     *     driven directly by the DAL layer (dal_ultrasonic) using generic PAL
-     *     primitives: pal_gpio_write for the TRIG pulse + pal_gpio_pulse_in
-     *     for ECHO capture. The wasm bridge routes those to js_sim_* hooks.
-     * Both TRIG and ECHO pins must be claimed for pulse_in to not short-circuit. */
+    /* --- HC-SR04 ultrasonic timing via generic PAL primitives ---
+     *     ADR-0017: no dedicated js_sim_*_ultrasonic bridge hooks exist. The
+     *     ultrasonic simulation is driven end-to-end through generic PAL APIs:
+     *     pal_gpio_write for the TRIG pulse and pal_gpio_pulse_in for ECHO
+     *     capture — both routed to the standard js_pal_gpio_* / js_pal_rmt_*
+     *     bridge imports. Both TRIG and ECHO pins must be claimed for
+     *     pal_gpio_pulse_in to not short-circuit on the resource check. */
     (void)pal_gpio_init(SMOKE_ULTRASONIC_TRIG, PAL_GPIO_OUTPUT_PUSH_PULL);
     (void)pal_gpio_init(SMOKE_ULTRASONIC_ECHO, PAL_GPIO_INPUT);
     (void)pal_resource_claim(PAL_RESOURCE_GPIO_PIN, SMOKE_ULTRASONIC_TRIG, "smoke_us_trig");
