@@ -1,64 +1,36 @@
-# avoidance_car 示例 App（注入点演示）。
-# 默认 App（WINK_APP_DIR 未指定时）。
+# avoidance_car sample App (default App when WINK_APP_DIR is unset).
+# Shared include-dir + compile-option boilerplate lives in ../sample_common.cmake.
+include(${CMAKE_CURRENT_LIST_DIR}/../sample_common.cmake)
+
 set(APP_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/device_tree.c
     ${CMAKE_CURRENT_SOURCE_DIR}/app_callbacks.c)
 
-# 导出给顶层 wink_simulator (wasm) 消费。host 分支用 add_subdirectory
-# 时也会导出，但顶层 host 分支不读取此变量，无副作用。
-# 契约见 §6.1 App 注入接口 / 2026-07-01 wasm simulator repair plan Task 1.2。
+# Export to top-level wink_simulator (wasm). Host branch also picks this up
+# via add_subdirectory but the top-level host branch doesn't read it — no-op.
+# Contract: §6.1 App injection / 2026-07-01 wasm simulator repair plan Task 1.2.
 set(WINK_APP_SOURCES ${APP_SOURCES} PARENT_SCOPE)
 
-# host e2e target 依赖 pal_host / test_app_e2e.c 等 host-only 组件，
-# 在 wasm build（EMSCRIPTEN）下跳过定义，仅保留上面的 WINK_APP_SOURCES 导出。
+# host e2e target pulls in pal_host / test_app_e2e.c (host-only); on wasm we
+# only export WINK_APP_SOURCES above and skip target definitions.
 if(EMSCRIPTEN)
     return()
 endif()
 
-# host 端到端测试可执行：runtime + trace + dal + targets/host + app
+# ── host e2e binary: runtime + trace + dal + pal_host + app ─────────────
 add_executable(app_avoidance_car_e2e
     ${APP_SOURCES}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/src/wink_runtime.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/src/wink_actuator_registry.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/src/wink_soft_timer.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../trace/src/wink_trace.c
+    ${WINK_SAMPLE_RUNTIME_SOURCES}
     ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/sensor/dal_ultrasonic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/actuator/dal_servo.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../test/test_app_e2e.c
     $<TARGET_OBJECTS:pal_host>)
-
-target_include_directories(app_avoidance_car_e2e PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${WINK_CONFIG_DIR}
-    # Phase 1 目录重组：pal/include/ 根目录 + osal/ + hal/ 子目录均在搜索路径中
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../pal/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../pal/include/osal
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../pal/include/hal
-    # Phase 2：targets/common/include（wink_sim_physical.h）
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../targets/common/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/input
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/output
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/actuator
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/display
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/sensor
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../trace/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../test
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../test/stubs)
-
-if(MSVC)
-    # /W4: strict warnings; /WX: warnings as errors
-    # /wd4100: unused parameters (matches GCC -Wno-unused-parameter)
-    # /wd4210: MSVC extension warning about file-scope function-static (harmless)
-    target_compile_options(app_avoidance_car_e2e PRIVATE /W4 /WX /wd4100 /wd4210)
-else()
-    target_compile_options(app_avoidance_car_e2e PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
-endif()
+wink_sample_apply_common(app_avoidance_car_e2e)
 add_test(NAME app_avoidance_car_e2e COMMAND app_avoidance_car_e2e)
 
-# ADR-0008 设备树覆写端到端（host 内存存储）：device_tree_apply_flash_config 经
-# pal_storage → 注册表 → 真实 DAL apply_override 改写全局字段；空/损坏静默降级。
+# ── ADR-0008 device-tree override e2e (host in-memory storage) ─────────
+# device_tree_apply_flash_config → pal_storage → registry → real DAL
+# apply_override rewrites global fields; empty/corrupt silently degrades.
 add_executable(test_avoidance_override
     ${CMAKE_CURRENT_SOURCE_DIR}/device_tree.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/sensor/dal_ultrasonic.c
@@ -66,27 +38,6 @@ add_executable(test_avoidance_override
     ${CMAKE_CURRENT_SOURCE_DIR}/../../test/test_avoidance_override.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../test/unity/unity.c
     $<TARGET_OBJECTS:pal_host>)
-
-target_include_directories(test_avoidance_override PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    # Phase 1 目录重组：pal/include/ 根目录 + osal/ + hal/ 子目录均在搜索路径中
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../pal/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../pal/include/osal
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../pal/include/hal
-    # Phase 2：targets/common/include（wink_sim_physical.h）
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../targets/common/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/input
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/output
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/actuator
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/display
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/sensor
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../test/unity)
-
+wink_sample_apply_common(test_avoidance_override ${CMAKE_CURRENT_SOURCE_DIR}/../../test/unity)
 target_link_libraries(test_avoidance_override PRIVATE pal)
-if(MSVC)
-    target_compile_options(test_avoidance_override PRIVATE /W4 /WX /wd4100 /wd4210)
-else()
-    target_compile_options(test_avoidance_override PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
-endif()
 add_test(NAME test_avoidance_override COMMAND test_avoidance_override)
