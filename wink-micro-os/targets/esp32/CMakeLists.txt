@@ -20,6 +20,24 @@ if(ESP_PLATFORM)
     file(MAKE_DIRECTORY ${WINK_CONFIG_DIR})
 
     # ESP-IDF 环境：注册为 IDF 组件
+    #
+    # ESP-IDF 5.4 起把 driver 单体拆分为 esp_driver_gpio/i2c/rmt/ledc 等细粒度组件；
+    # 5.3 及更早只有 driver 单体，esp_driver_* 组件不存在。故按版本门控 REQUIRES：
+    #   >= 5.4：显式列出 esp_driver_* 精确依赖（仍保留 driver 以兼容尚未迁移的 header）。
+    #   <  5.4：仅要求 driver 单体。
+    # 版本变量 ESP_IDF_VERSION 由 idf.cmake 自动注入（形如 "5.3.1"）。
+    if(ESP_IDF_VERSION VERSION_GREATER_EQUAL "5.4")
+        set(WINK_ESP_DRIVER_COMPONENTS
+            driver
+            esp_driver_gpio
+            esp_driver_rmt
+            esp_driver_ledc
+            esp_driver_i2c
+        )
+    else()
+        set(WINK_ESP_DRIVER_COMPONENTS driver)
+    endif()
+
     idf_component_register(
         SRCS
             # ESP32 PAL 实现
@@ -41,13 +59,7 @@ if(ESP_PLATFORM)
             ${WINK_CORE_INCLUDE_DIRS}
             ${WINK_CONFIG_DIR}    # codegen 生成的 wink_config.h 所在目录
         REQUIRES
-            # ESP-IDF v6.x: driver was split into fine-grained components
-            # v5.x uses 'driver' monolith; v6.x requires esp_driver_*
-            driver
-            esp_driver_gpio
-            esp_driver_rmt
-            esp_driver_ledc
-            esp_driver_i2c
+            ${WINK_ESP_DRIVER_COMPONENTS}
             esp_timer
             esp_system
             # freertos/ringbuf.h + xRingbuffer* API 属于 esp_ringbuf 组件（不在 freertos 组件内），
