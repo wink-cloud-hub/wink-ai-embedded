@@ -16,15 +16,21 @@
  *   └──────────────────┴──────────────────────┴───────────────────────┘
  *
  * 两条分发路径都尊重 s_irq_lock_nest_count（pal_irq_save/restore 临界区）：
- *   - pal_sim_scheduler_run Phase 0 在 main 上下文无条件调用两个分发函数，
- *     此时不持有任何 IRQ 锁（s_irq_lock_nest_count == 0），所有 pending 正常兑现；
- *   - pal_irq_restore() 最外层 unlock（nest_count 从 1→0）时**补发**两个分发
- *     函数，保证临界区内累积的 pending 在锁释放瞬间被立刻兑现，而不是拖延到
- *     下一次调度 tick，匹配 ESP32/host 目标 "中断在开中断瞬间立刻派发" 的语义。
+ *   - pal_sim_scheduler_run Phase 0 在 main 上下文调用 pal_wasm_dispatch_pending_
+ *     interrupts()，该函数内部 drain 完 JS 队列后级联调用 pal_wasm_dispatch_pending_
+ *     irqs() drain C 软中断 FIFO。此时不持有任何 IRQ 锁，所有 pending 正常兑现；
+ *   - pal_irq_restore() 最外层 unlock（nest_count 从 1→0）时**补发**同一个入口
+ *     pal_wasm_dispatch_pending_interrupts()，保证临界区内累积的 pending 在锁释
+ *     放瞬间被立刻兑现，而不是拖延到下一次调度 tick，匹配 ESP32/host 目标
+ *     "中断在开中断瞬间立刻派发" 的语义。
  *
- * ISR 执行流（所有路径同一位置 drain）：
- *   scheduler Phase 0 / restore 最外层 → dispatch_pending_interrupts() [JS FIFO]
- *                                       → dispatch_pending_irqs()        [C 软中断 FIFO]
+ * ISR 执行流（所有路径同一入口、同一顺序 drain）：
+ *   scheduler Phase 0 / restore 最外层 → pal_wasm_dispatch_pending_interrupts()
+ *       ├─ drain JS InterruptQueue (GPIO 边沿等外部事件)
+ *       └─ pal_wasm_dispatch_pending_irqs() → drain C 软中断 FIFO
+ *
+ * 派发顺序固定为 "外部 IRQ → 软中断"，与 ESP32 中断优先级语义对齐，所有调
+ * 用路径统一经过同一入口保证可预测性。
  *
  * 删除的 Mechanism A legacy：
  *   - pal_wasm_gpio_level_changed()   （无任何 caller，GPIO 边沿全走 JS Poll）
@@ -149,6 +155,12 @@ static uint32_t s_irq_lock_nest_count = 0;
  * Phase C P0-1：移除旧 Pareto 延迟模型和 sort。软中断被 set_pending 后立刻
  * 进入 FIFO，在下次 dispatch 点（Phase 0 / restore 最外层）按入队顺序派发。
  * GPIO 边沿中断统一走 JS Poll 队列，不再进入此 C 侧队列。
+ *
+ * 溢出策略：环形队列满时丢最老（head 推进一格）——软中断是 level-like 语义，
+ * 最新 pending 值代表"当前需要服务"的状态，覆盖过期条目是正确的（对比：
+ * JS InterruptQueue 对 GPIO 边沿 event-like 中断默认 drop-newest，因为
+ * 边沿事件是离散脉冲，丢新不丢老保留因果序列）。s_pending_overflow_count
+ * 单调累计溢出次数，供 CI/调试诊断 "WASM_MAX_PENDING 是否需要调大"。
  * ───────────────────────────────────────────────────────── */
 #define WASM_MAX_PENDING  64
 
@@ -157,15 +169,16 @@ typedef struct {
 } wasm_pending_irq_t;
 
 static wasm_pending_irq_t s_pending_queue[WASM_MAX_PENDING];
-static uint32_t s_pending_head = 0;   /* 下一个待派发索引 */
-static uint32_t s_pending_count = 0;  /* 队列中元素数 */
+static uint32_t s_pending_head = 0;          /* 下一个待派发索引 */
+static uint32_t s_pending_count = 0;         /* 队列中元素数 */
+static uint32_t s_pending_overflow_count = 0;/* 溢出事件累计（诊断用，单调递增）*/
 
 static inline void sw_enqueue(uint32_t irq_num) {
     if (s_pending_count >= WASM_MAX_PENDING) {
-        /* 队列溢出：丢最老（环形队列覆盖 head），与 JS InterruptQueue 默认
-         * drop-newest 不同——软中断是 level-like 语义，最新值优先。 */
+        /* 队列满：推进 head 丢弃最老条目，腾出尾部空间 */
         s_pending_head = (s_pending_head + 1) % WASM_MAX_PENDING;
         s_pending_count--;
+        s_pending_overflow_count++;
     }
     uint32_t tail = (s_pending_head + s_pending_count) % WASM_MAX_PENDING;
     s_pending_queue[tail].irq_num = irq_num;
@@ -312,12 +325,11 @@ void pal_irq_restore(uint32_t mask)
         /* 只有最外层的 restore 才真正恢复中断并补发所有 pending（P0-1 修复点）。
          * mask == 1 表示 save 之前是未加锁状态。
          *
-         * 补发顺序：先 C 侧软中断队列（pal_irq_set_pending 路径，通常是 ISR
-         * 自己 set_pending 的下一个软中断——更紧急），再 JS 侧 Poll 队列（GPIO
-         * 边沿等外部事件）。两者都在同一调用栈 drain，保持与调度器 Phase 0
-         * 相同的派发顺序。 */
+         * 统一入口：与调度器 Phase 0 使用完全相同的 pal_wasm_dispatch_pending_
+         * interrupts()，该入口内部级联 drain JS FIFO → C 软中断 FIFO，保证两条
+         * 路径派发顺序完全一致（外部 IRQ 先于软中断），避免顺序差异导致的时序
+         * heisenbug。*/
         if (s_irq_lock_nest_count == 0 && mask) {
-            pal_wasm_dispatch_pending_irqs();
             pal_wasm_dispatch_pending_interrupts();
         }
     }
@@ -326,13 +338,12 @@ void pal_irq_restore(uint32_t mask)
 /**
  * @brief 分发 C 侧软中断 FIFO（pal_irq_set_pending 入队）。
  *
- * 调用方：
- *   1. pal_irq_restore() 最外层 unlock（锁恢复瞬间补发）；
- *   2. pal_wasm_dispatch_pending_interrupts() 完成 JS 队列 drain 之后（见下），
- *      保证调度器 Phase 0 的 drain 顺序是 JS 外部 IRQ → C 软中断。
+ * 调用方：仅由 pal_wasm_dispatch_pending_interrupts() 在 JS 队列 drain 完后级联
+ * 调用——所有 dispatch 路径（Phase 0 / pal_irq_restore 最外层 unlock）都经过
+ * pal_wasm_dispatch_pending_interrupts() 单一入口，保证派发顺序 JS→C 全局一致。
  *
  * 中断锁语义：如果当前持有 IRQ 锁（s_irq_lock_nest_count > 0），直接返回——
- * 派发推迟到 pal_irq_restore() 最外层 unlock 时执行。
+ * 派发推迟到 pal_irq_restore() 最外层 unlock 时执行（入口函数同样检查锁）。
  *
  * 分发时若发现 irq_num 对应的 handler 已被 pal_irq_disable 置 NULL（clear_pending
  * 的实际语义），该条目被静默丢弃——避免 disable 后还触发 stale ISR。

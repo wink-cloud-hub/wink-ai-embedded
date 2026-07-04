@@ -145,17 +145,23 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
         "--js-library=${CMAKE_CURRENT_SOURCE_DIR}/targets/wasm/wink_sim_js.js"
         "-sASYNCIFY=1"
         "-sASYNCIFY_IMPORTS=['js_pal_os_sleep_ms','js_pal_os_busy_wait_us']"
-        # P1-1: expose Asyncify runtime object so JS can call Asyncify.getStackMax()
-        # after e2e runs to assert Asyncify backup-stack usage stays under 80%
-        # of ASYNCIFY_STACK_SIZE (CI safety-margin gate).
+        # Asyncify 备份栈配置（P1-1 CI 安全水位门控）：
+        #   - ASYNCIFY_STACK_SIZE=65536 (64 KiB)：每个 fiber Asyncify 挂起/恢复时
+        #     的 unwind/rewind 备份栈容量。过小会静默破坏线性内存；过大浪费。
+        #   - EXPORTED_RUNTIME_METHODS 包含 'Asyncify' 让 JS 可调用
+        #     Asyncify.getStackMax()，e2e 跑完后断言高水位 < 80% (≈51.2 KiB)。
+        #   - CI 阈值与此处 STACK_SIZE 强耦合：修改此值须同步更新 CI 脚本中的
+        #     80% 计算常量，否则门控会误报/漏报。
+        #   - 64 KiB 是当前 AI 生成调用链深度的起步值；若未来 getStackMax()
+        #     持续贴近 80%，应同步放大此值而非放宽 CI 阈值。
+        "-sASYNCIFY_STACK_SIZE=65536"
         "-sEXPORTED_FUNCTIONS=['_main']"
         "-sEXPORTED_RUNTIME_METHODS=['ccall','cwrap','HEAPU8','Asyncify']"
         "-sMODULARIZE=1"
         "-sEXPORT_NAME=WasmSandbox"
         "-sWASM_BIGINT=1"               # ADR-0009 Wave 2：64 位整型 ↔ JS BigInt 原生映射，杜绝 number 隐式失精
         "-sSTACK_OVERFLOW_CHECK=2"      # dev/debug：栈溢出 abort，避免静默线性内存越界（亦为中断重入早期报警，见 plan Phase 1 Task 1-5）
-        "-sASSERTIONS=1"                # dev/debug：带运行时开销/体积代价，生产 profile 调优留作后续
-        "-sASYNCIFY_STACK_SIZE=65536")  # 起步值；最终须实测最深 AI 生成调用链（plan Task 1-4 清单第 6 项）
+        "-sASSERTIONS=1")               # dev/debug：带运行时开销/体积代价，生产 profile 调优留作后续
 
     # 触发 wink_sim_js.js 变化后重 link；否则 CMake 不知道 --js-library=<path>
     # 是构建输入，改 stub 后 make 会认为无事发生。

@@ -143,19 +143,46 @@ void pal_wasm_reset_fault_log(void);
 bool pal_wasm_is_faulted(void);
 
 /**
- * Fast-fail guard for pal_wasm_* EMSCRIPTEN_KEEPALIVE exports after a fault
+ * Fast-fail guards for pal_wasm_* EMSCRIPTEN_KEEPALIVE exports after a fault
  * has latched (P0-3/P1-4 Phase C).
  *
- * Place at the top of every state-mutating export (set_*, advance_*, log_fault,
- * reset_* from JS, scheduler entry points). Read-only getters may opt out since
- * they cannot corrupt state. After s_wasm_faulted is set:
+ * Place at the top of every state-mutating export (set_*, advance_*, reset_*,
+ * scheduler entry points). Read-only getters may opt out since they cannot
+ * corrupt state. After s_wasm_faulted is set:
  *   - Void-returning mutators become silent no-ops (safe-off already executed).
+ *   - wink_status_t-returning mutators return WINK_ERR_INVALID_STATE so callers
+ *     can detect the faulted state rather than getting a silent false-success.
  *   - Value-returning getters on the latch itself (pal_wasm_is_faulted) still work.
- * This prevents JS hosts from accidentally advancing clocks, mutating fault
- * config, or driving I/O after safe-off — which is the primary failure mode
- * P0-3's latch is designed to close.
+ *
+ * Rationale: returning WINK_ERR_INVALID_STATE (not WINK_OK) prevents JS hosts
+ * from interpreting a silent void return as success and continuing to drive
+ * state. This is the primary failure mode P0-3's latch is designed to close:
+ * accidental clock advancement, fault config mutation, or I/O after safe-off.
+ *
+ * Usage:
+ *   WASM_FAULT_GUARD_VOID();     // for void funcs  (silent no-op)
+ *   WASM_FAULT_GUARD_WINKERR();  // for wink_status_t funcs (returns INVALID_STATE)
+ *   WASM_FAULT_GUARD_BOOL();     // for bool-returning funcs (returns false = failure)
+ *
+ * Return-value rationale:
+ *   - VOID: caller (JS Worker post-message) doesn't await a result; silent no-op
+ *     is safe because safe-off has already executed.
+ *   - WINKERR: propagates a distinguishable error to C callers so they don't
+ *     misinterpret a silent return as WINK_OK.
+ *   - BOOL: returns false (the conventional "operation failed" sentinel for
+ *     pal_wasm_gpio_read / pal_wasm_i2c_transfer JS-facing wrappers).
+ *
+ * NOTE: Do NOT place these guards on pal_wasm_reset_physical() itself — it is
+ * the only mutating export permitted in faulted state (it calls
+ * pal_wasm_clear_fault_latch() to release the latch as part of reset).
+ *
+ * NOTE: Read-only getters (pal_os_get_us, pal_wasm_is_faulted,
+ * pal_wasm_get_*, pal_wasm_fault_event_get_*) are intentionally EXEMPT —
+ * they cannot corrupt post-fault state and are needed for diagnostics.
  */
 #define WASM_FAULT_GUARD_VOID() do { if (pal_wasm_is_faulted()) return; } while (0)
+#define WASM_FAULT_GUARD_WINKERR() do { if (pal_wasm_is_faulted()) return WINK_ERR_INVALID_STATE; } while (0)
+#define WASM_FAULT_GUARD_BOOL() do { if (pal_wasm_is_faulted()) return false; } while (0)
 
 /** 清除 fault 锁存（供 pal_sim_scheduler_run 新周期启动时内部调用，非对外导出）。 */
 void pal_wasm_clear_fault_latch(void);
