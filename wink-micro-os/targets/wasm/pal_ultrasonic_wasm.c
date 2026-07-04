@@ -1,10 +1,10 @@
 /**
- * @file pal_hal_ultrasonic_wasm.c
+ * @file pal_ultrasonic_wasm.c
  * @brief WASM 仿真平台的超声波传感器 PAL 实现。
  *
  * 命名遵循 targets/ 文件命名规范 pal_<domain>[_<detail>]_<plat>.c
  * （详见 docs/design/02-wink-micro-os/03-directory-architecture.md §4.2）：
- * domain=hal, detail=ultrasonic, plat=wasm。与 pal_hal_ultrasonic_esp32.c
+ * domain=hal, detail=ultrasonic, plat=wasm。与 pal_ultrasonic_esp32.c
  * 是同一 PAL 契约（pal/include/hal/pal_ultrasonic.h）的两个 target 实现。
  *
  * 通过 wasm_bridge.h 调用 JS 侧的物理模拟函数。此文件仅在 WASM
@@ -21,19 +21,19 @@
 
 #if defined(__EMSCRIPTEN__)
 
-wink_status_t pal_hal_ultrasonic_init(uint16_t echo_pin) {
+wink_status_t pal_ultrasonic_init(uint16_t echo_pin) {
     /* WASM 仿真无硬件初始化需求 */
     (void)echo_pin;
     return WINK_OK;
 }
 
-wink_status_t pal_hal_ultrasonic_trigger(uint16_t trigger_pin) {
+wink_status_t pal_ultrasonic_trigger(uint16_t trigger_pin) {
     /* 委托 JS 侧触发超声波时序模拟 */
     js_sim_trigger_ultrasonic(trigger_pin);
     return WINK_OK;
 }
 
-wink_status_t pal_hal_ultrasonic_measure_pulse_us(
+wink_status_t pal_ultrasonic_measure_pulse_us(
     uint16_t echo_pin,
     uint32_t timeout_us,
     uint32_t *pulse_us
@@ -48,7 +48,7 @@ wink_status_t pal_hal_ultrasonic_measure_pulse_us(
     return WINK_OK;
 }
 
-void pal_hal_ultrasonic_deinit(void) {
+void pal_ultrasonic_deinit(void) {
     /* WASM 仿真无硬件资源需要释放 */
 }
 

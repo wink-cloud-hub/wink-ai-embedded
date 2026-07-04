@@ -1,5 +1,5 @@
 /**
- * @file pal_hal_rmt.h
+ * @file pal_rmt.h
  * @brief PAL RMT 硬件脉冲捕获扩展（ESP32 专用）。
  *
  * 这是 PAL 层的扩展 API，仅在 ESP32 target 下可用。
@@ -9,8 +9,8 @@
  * TODO Phase 4: 将此接口标准化为 PAL 通用非阻塞脉冲捕获 API。
  */
 
-#ifndef PAL_HAL_RMT_H
-#define PAL_HAL_RMT_H
+#ifndef PAL_RMT_H
+#define PAL_RMT_H
 
 #include <stdint.h>
 #include "wink_status.h"
@@ -46,4 +46,4 @@ wink_status_t pal_rmt_ultrasonic_measure(uint32_t timeout_us, uint32_t *pulse_us
  */
 void pal_rmt_ultrasonic_deinit(void);
 
-#endif /* PAL_HAL_RMT_H */
+#endif /* PAL_RMT_H */

@@ -30,7 +30,7 @@
  * @param echo_pin 回波引脚号
  * @return wink_status_t WINK_OK 表示成功
  */
-wink_status_t pal_hal_ultrasonic_init(uint16_t echo_pin);
+wink_status_t pal_ultrasonic_init(uint16_t echo_pin);
 
 /**
  * @brief 触发超声波测量（TRIG 时序）
@@ -41,7 +41,7 @@ wink_status_t pal_hal_ultrasonic_init(uint16_t echo_pin);
  * @param trigger_pin 触发引脚号
  * @return wink_status_t WINK_OK 表示成功
  */
-wink_status_t pal_hal_ultrasonic_trigger(uint16_t trigger_pin);
+wink_status_t pal_ultrasonic_trigger(uint16_t trigger_pin);
 
 /**
  * @brief 测量 ECHO 回波脉宽（同步阻塞）
@@ -57,7 +57,7 @@ wink_status_t pal_hal_ultrasonic_trigger(uint16_t trigger_pin);
  * @param pulse_us 输出参数，返回测量到的脉宽（微秒）
  * @return wink_status_t WINK_OK 表示测量成功，WINK_ERR_TIMEOUT 表示超时
  */
-wink_status_t pal_hal_ultrasonic_measure_pulse_us(
+wink_status_t pal_ultrasonic_measure_pulse_us(
     uint16_t echo_pin,
     uint32_t timeout_us,
     uint32_t *pulse_us
@@ -69,4 +69,4 @@ wink_status_t pal_hal_ultrasonic_measure_pulse_us(
  * 释放硬件资源（如 RMT 通道）。不需要硬件反初始化的平台
  * 此函数可留空。
  */
-void pal_hal_ultrasonic_deinit(void);
+void pal_ultrasonic_deinit(void);

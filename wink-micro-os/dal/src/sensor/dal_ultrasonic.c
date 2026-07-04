@@ -58,13 +58,13 @@ wink_status_t dal_ultrasonic_init(dal_ultrasonic_t *dev, const dal_ultrasonic_co
     dev->last_pulse_us = 0u;
 
     /* 统一使用 PAL 接口初始化超声波硬件。
-     * - WASM 仿真：pal_hal_ultrasonic_init 是空操作，仅返回 WINK_OK
+     * - WASM 仿真：pal_ultrasonic_init 是空操作，仅返回 WINK_OK
      * - ESP32 真机：内部初始化 RMT（如果 enable）或降级到 GPIO busy-wait
      * - 无需任何平台条件编译，编译期静态分发 */
-    wink_status_t status = pal_hal_ultrasonic_init(cfg->echo_pin);
+    wink_status_t status = pal_ultrasonic_init(cfg->echo_pin);
     if (wink_status_is_error(status)) {
         /* PAL 初始化失败，降级到仅 GPIO 模式
-         * （pal_hal_ultrasonic_measure_pulse_us 会自动选择可用实现） */
+         * （pal_ultrasonic_measure_pulse_us 会自动选择可用实现） */
         dev->config.use_rmt = false;
     }
 
@@ -99,7 +99,7 @@ wink_status_t dal_ultrasonic_request_measurement(dal_ultrasonic_t *dev) {
      * - WASM 仿真：内部委托 js_sim_trigger_ultrasonic 旁路
      * - ESP32 真机：输出 10us GPIO 脉冲
      * 统一 PAL 接口，无平台条件编译 */
-    pal_hal_ultrasonic_trigger(dev->config.trig_pin);
+    pal_ultrasonic_trigger(dev->config.trig_pin);
     dev->state = DAL_ULTRASONIC_MEASURING;
 
     /* 2. 捕获 echo 脉宽
@@ -107,7 +107,7 @@ wink_status_t dal_ultrasonic_request_measurement(dal_ultrasonic_t *dev) {
      * - ESP32 真机：RMT 硬件捕获（优先）或 GPIO busy-wait
      * PAL 内部处理平台差异，DAL 层透明 */
     uint32_t pulse_us = 0;
-    wink_status_t cap = pal_hal_ultrasonic_measure_pulse_us(
+    wink_status_t cap = pal_ultrasonic_measure_pulse_us(
         dev->config.echo_pin,
         ULTRASONIC_TIMEOUT_US,
         &pulse_us
@@ -158,11 +158,11 @@ wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *distance_cm) {
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
 
     /* 1. 触发超声波（TRIG 时序） */
-    pal_hal_ultrasonic_trigger(dev->config.trig_pin);
+    pal_ultrasonic_trigger(dev->config.trig_pin);
 
     /* 2. 测量 ECHO 脉宽（平台差异由 PAL 内部处理） */
     uint32_t pulse_us = 0;
-    wink_status_t status = pal_hal_ultrasonic_measure_pulse_us(
+    wink_status_t status = pal_ultrasonic_measure_pulse_us(
         dev->config.echo_pin,
         ULTRASONIC_TIMEOUT_US,
         &pulse_us
