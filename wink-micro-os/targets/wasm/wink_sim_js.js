@@ -110,6 +110,24 @@ addToLibrary({
         });
     },
 
+    /* ---- 分级日志桥接（P1-L1）----
+     * UTF8ToString 由 emscripten 内置；level 对应 pal_log_level_t
+     * (ERROR=1, WARN=2, INFO=3, DEBUG=4)。宿主可覆盖 Module.js_pal_log
+     * 把日志转发到 UI 面板。*/
+    js_pal_log: function (level, msgPtr) {
+        if (typeof Module !== 'undefined' && typeof Module.js_pal_log === 'function') {
+            return Module.js_pal_log(level, msgPtr);
+        }
+        var msg = UTF8ToString(msgPtr);
+        switch (level) {
+            case 1: (console.error || console.log).call(console, '[wink E] ' + msg); break;
+            case 2: (console.warn  || console.log).call(console, '[wink W] ' + msg); break;
+            case 3: (console.info  || console.log).call(console, '[wink I] ' + msg); break;
+            case 4: /* debug: 默认桩不输出以保持 smoke 输出干净；宿主打开 verbose 时覆盖即可 */ break;
+            default: console.log('[wink ?] ' + msg); break;
+        }
+    },
+
     /* ---- PAL HAL 默认 no-op（Workbench 侧要接入真实 UI 反馈）---- */
     js_pal_gpio_write: function (pin, level) {
         if (typeof Module !== 'undefined' && typeof Module.js_pal_gpio_write === 'function') {

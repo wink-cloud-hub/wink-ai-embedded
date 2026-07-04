@@ -149,6 +149,13 @@ extern bool js_pal_poll_interrupt(uint32_t *out_callback_index, uint32_t *out_ar
 extern void js_pal_os_sleep_ms(uint32_t ms);
 extern void js_pal_os_busy_wait_us(uint32_t us);
 
+/* ---- 分级日志桥接（P1-L1，2026-07-04）----
+ * level: pal_log_level_t 数值 (ERROR=1, WARN=2, INFO=3, DEBUG=4)。
+ * msg:   已在 C 侧格式化好的 NUL-terminated UTF-8 字符串（wasm 线性内存偏移）。
+ * JS 默认实现分派到 console.error/warn/log/debug；宿主可覆盖转发到 UI 日志面板。
+ * 契约：msg 指向的内存在 js_pal_log 返回前一直有效（同步调用，JS 侧不得持有指针）。 */
+extern void js_pal_log(uint8_t level, const char *msg);
+
 /* ---- DAL bypass 侧 JS 导入（js_sim_*）—— 签名抄 Device Registry (01-device-model-registry.md) ----
  * 仅在 #ifdef SIMULATION 下被 DAL 引用；真机分支不编译本段。
  * ADR-0003 决策2：只旁路最底层物理量来源（trigger 时序 + echo 脉宽），换算/超时两端同源。 */
