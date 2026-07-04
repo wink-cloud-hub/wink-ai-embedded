@@ -1,6 +1,11 @@
 # unisim_smoke: fixture App for Phase B Node smoke test.
 # Reaches all 13 js_* imports from a single app_init() so the JS-side test
 # only needs to instantiate + advance the clock once.
+#
+# Shared boilerplate in ../sample_common.cmake (host-target helpers aren't
+# used here — this sample only exists for wasm smoke — but including keeps
+# the file discoverable via the same convention as its siblings).
+include(${CMAKE_CURRENT_LIST_DIR}/../sample_common.cmake)
 
 set(APP_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/device_tree.c
