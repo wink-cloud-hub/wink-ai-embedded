@@ -43,8 +43,10 @@ extern void wink_runtime_fault(const struct wink_app_callbacks* callbacks, uint3
  *                pal_wasm_reset_physical()（经由 pal_wasm_clear_fault_latch）清零。
  * s_app_callbacks：pal_sim_scheduler_run 入口通过 pal_wasm_fault_set_callbacks 注册，
  *                供 pal_wasm_host_fault / pal_wasm_invoke_fault 走标准 wink_runtime_fault
- *                路径（trace + safe_off_all + on_fault）。调度器启动前为 NULL，
- *                此时 host_fault 只能 trace 无法调 on_fault。
+ *                路径（trace + safe_off_all + on_fault）。调度器窗口外
+ *                （bootstrap 期以及 scheduler_run 返回之后——clear_fault_latch
+ *                会同时清空 callbacks 引用）为 NULL，此时 host_fault 仍 trace
+ *                并触发 safe-off，但无法派发 on_fault 回调。
  * ───────────────────────────────────────────────────────── */
 static bool s_wasm_faulted = false;
 static const struct wink_app_callbacks* s_app_callbacks = NULL;
@@ -85,8 +87,9 @@ void pal_wasm_invoke_fault(uint32_t code) {
  *      stringToUTF8OnStack / _malloc + stringToUTF8 写入）；调用方负责 _free。
  *   2. 本函数是幂等的——首次调用置位 s_wasm_faulted，后续调用仅 trace 不重复
  *      触发 safe-off（避免二次关断导致 actuator 状态异常）。
- *   3. 调度器启动前（s_app_callbacks == NULL）safe-off 仍执行，但 on_fault
- *      回调无法派发——这是 bootstrap 期 fault，理论上仅 init 期 JS 配置错误触发。
+ *   3. 调度器窗口外（bootstrap 期或 scheduler_run 返回后 s_app_callbacks == NULL）
+ *      safe-off 仍执行，但 on_fault 回调无法派发——理论上仅 init 期 JS 配置错误
+ *      或 scheduler 生命周期外的 JS 主动 fault 注入会触发该路径。
  *
  * 错误码约定（review P0-3）：
  *   8003 — JS host plugin fault（用户 override 抛异常 / reject）

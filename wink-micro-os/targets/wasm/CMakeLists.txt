@@ -8,18 +8,23 @@
 # 零编译污染（ADR-0009 §4.3）：esp32/baremetal target 不引用此 CMakeLists.txt，
 # 因此 wink_sim_physical.c 不会进入它们的编译产物。
 set(PAL_WASM_SOURCES
+    # HAL 层（含中断桥）
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_hal_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_irq_wasm.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/pal_hal_ultrasonic.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/pal_hal_ultrasonic_wasm.c
+    # OSAL 层（虚拟时钟 / scheduler / storage）
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_osal_wasm.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/pal_osal_ringbuf.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/pal_resource.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_storage_wasm.c
+    # Wasm 特有扩展：物理退化 + fault 子系统 + Wave3 stub
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_physical.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_fault.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_fault_domain.c
+    # Target 无关共享源（同源复用，见 targets/common/src/）
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/pal_osal_ringbuf.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/pal_resource.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/wink_sim_physical.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/wink_sim_scheduler.c
+    # Emscripten Asyncify fiber 上下文
     ${CMAKE_CURRENT_SOURCE_DIR}/sim_ctx_emscripten_fiber.c
     PARENT_SCOPE)
 
