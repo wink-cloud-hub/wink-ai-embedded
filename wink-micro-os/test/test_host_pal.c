@@ -98,6 +98,38 @@ void test_pwm_deinit_uninit_is_noop(void) {
     TEST_PASS();
 }
 
+/* ---- P1-P5-5：pal_os_ringbuf_used 语义门禁（host/wasm 共享实现） ---- */
+
+void test_ringbuf_used_reports_zero_when_empty(void) {
+    pal_os_ringbuf_handle_t rb = pal_os_ringbuf_create(64);
+    TEST_ASSERT_NOT_NULL(rb);
+    TEST_ASSERT_EQUAL_UINT32(0, pal_os_ringbuf_used(rb));
+    pal_os_ringbuf_destroy(rb);
+}
+
+void test_ringbuf_used_tracks_push_pop(void) {
+    pal_os_ringbuf_handle_t rb = pal_os_ringbuf_create(64);
+    TEST_ASSERT_NOT_NULL(rb);
+
+    const uint8_t payload[16] = {0xA5};
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_os_ringbuf_push(rb, payload, sizeof(payload)));
+    TEST_ASSERT_EQUAL_UINT32(16, pal_os_ringbuf_used(rb));
+
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_os_ringbuf_push(rb, payload, 8));
+    TEST_ASSERT_EQUAL_UINT32(24, pal_os_ringbuf_used(rb));
+
+    uint8_t out[10] = {0};
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_os_ringbuf_pop(rb, out, 10));
+    TEST_ASSERT_EQUAL_UINT32(14, pal_os_ringbuf_used(rb));
+
+    pal_os_ringbuf_destroy(rb);
+}
+
+void test_ringbuf_used_null_handle_returns_zero(void) {
+    /* NULL-safe contract: used(NULL) must not crash and must not lie about capacity. */
+    TEST_ASSERT_EQUAL_UINT32(0, pal_os_ringbuf_used(NULL));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_delay_advances_virtual_time);
@@ -109,5 +141,8 @@ int main(void) {
     RUN_TEST(test_pwm_deinit_then_reinit);
     RUN_TEST(test_pwm_reinit_different_freq_returns_busy);
     RUN_TEST(test_pwm_deinit_uninit_is_noop);
+    RUN_TEST(test_ringbuf_used_reports_zero_when_empty);
+    RUN_TEST(test_ringbuf_used_tracks_push_pop);
+    RUN_TEST(test_ringbuf_used_null_handle_returns_zero);
     return UNITY_END();
 }

@@ -222,9 +222,10 @@ wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin,
 {
     if (pin < 0 || pin >= GPIO_NUM_MAX) { return WINK_ERR_INVALID_ARG; }
     if (callback == NULL) { return WINK_ERR_INVALID_ARG; }
-    /* ADR-0018：优先级枚举收窄到 LOW/NORMAL/HIGH（1..3），0 与 >= COUNT 均非法。
-     * 与 pal_irq_esp32.c / pal_hal_host.c 的 prio 入参校验保持字节一致。 */
-    if (prio <= 0 || prio >= PAL_IRQ_PRIO_COUNT) { return WINK_ERR_INVALID_ARG; }
+    /* ADR-0018：优先级枚举收窄到 LOW/NORMAL/HIGH（1..3）。
+     * P1-P5-9: 使用命名常量边界，与 pal_irq_esp32.c / pal_hal_host.c / pal_irq_wasm.c
+     * 的 prio 入参校验保持字节一致。 */
+    if (prio < PAL_IRQ_PRIO_LOW || prio > PAL_IRQ_PRIO_HIGH) { return WINK_ERR_INVALID_ARG; }
 
     /* v2.2 G3（Phase 1.5，2026-07-01）：GPIO service 首次锁定 prio。
      * 若已锁定，后续 prio 必须一致；不一致返回 WINK_ERR_INVALID_ARG。
@@ -340,6 +341,27 @@ wink_status_t pal_gpio_disable_interrupt(wink_pin_t pin) {
     return WINK_OK;
 }
 
+/* P1-P5-10: 对外暴露的 GPIO ISR 同步原语——忙等待指定 pin 的 in-flight
+ * ISR 计数归零，供调用方在 disable 后安全释放 ISR 使用的资源。
+ * 内部复用 pal_esp32_gpio_synchronize_all() 的等待循环（超时相同）。 */
+#define PAL_GPIO_SYNC_TIMEOUT_US 100000ULL  /* 100ms，与 pal_irq_esp32.c 保持一致 */
+
+wink_status_t pal_gpio_synchronize_interrupt(wink_pin_t pin) {
+    if (pin < 0 || pin >= GPIO_NUM_MAX) { return WINK_ERR_INVALID_ARG; }
+
+    uint64_t start = pal_os_get_us();
+    while (Atomic_Load_u32(&s_gpio_irq_in_flight[pin]) > 0) {
+        if (pal_os_get_us() - start > PAL_GPIO_SYNC_TIMEOUT_US) {
+            ESP_LOGE("pal_hal", "synchronize_interrupt timeout on gpio=%d",
+                     (int)pin);
+            break;
+        }
+    }
+    /* 确保后续内存释放不会被编译器重排到等待之前 */
+    esp_memory_barrier();
+    return WINK_OK;
+}
+
 /* ─────────────────────────────────────────────────────────
  * GPIO Pulse In（超声波硬件捕获 - 当前 busy-wait 回退）
  * ───────────────────────────────────────────────────────── */
@@ -438,6 +460,9 @@ wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin,
   return WINK_ERR_UNSUPPORTED; }
 
 wink_status_t pal_gpio_disable_interrupt(wink_pin_t pin)
+{ (void)pin; return WINK_ERR_UNSUPPORTED; }
+
+wink_status_t pal_gpio_synchronize_interrupt(wink_pin_t pin)
 { (void)pin; return WINK_ERR_UNSUPPORTED; }
 
 wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level,

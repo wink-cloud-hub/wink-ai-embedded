@@ -134,6 +134,32 @@ pal_gpio_enable_interrupt(wink_pin_t pin, pal_gpio_intr_t intr_type,
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_gpio_disable_interrupt(wink_pin_t pin);
 
+/**
+ * @brief 等待指定 GPIO pin 的 in-flight ISR 完成后返回（SMP 安全同步原语）
+ *
+ * ⚠️ SMP 关键同步原语（P1-P5-10，配合 pal_gpio_disable_interrupt 使用）：
+ * SMP 系统中 `pal_gpio_disable_interrupt(pin)` 返回后，另一个 core 可能仍在
+ * 执行该 pin 的 ISR。若立刻释放 ISR 使用的资源（例如 arg 指向的堆结构），
+ * 会导致 UAF (Use-After-Free)。此接口忙等待该 pin 的 in-flight ISR 计数
+ * 归 0（含超时保护），返回后即可安全释放资源。
+ *
+ * 典型用法（必须严格遵守此顺序）：
+ *   pal_gpio_disable_interrupt(pin);
+ *   pal_gpio_synchronize_interrupt(pin);  // ✅ 等待所有 core 退出 ISR
+ *   free(isr_arg);                        // 现在可以安全释放
+ *
+ * @note 单核 target（host / wasm 仿真）为 no-op；ESP32 上映射到
+ *       target-private 的 GPIO in-flight 计数忙等待（带超时）。
+ * @note 普通 App/DAL 代码一般不需要——静态注册 + 运行到停止的模式无需此调用；
+ *       仅当需要动态注销并释放 ISR 使用的资源时才使用。
+ *
+ * @param pin 引脚号（越界返回 WINK_ERR_INVALID_ARG）
+ * @return WINK_OK 成功（含目标 target 上等价于 no-op 的情形）；
+ *         WINK_ERR_INVALID_ARG pin 非法
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t pal_gpio_synchronize_interrupt(wink_pin_t pin);
+
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us,
                                  uint32_t *pulse_us);
