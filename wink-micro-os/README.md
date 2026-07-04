@@ -63,7 +63,13 @@ wink-micro-os/
 │   ├── unity/    unity.{c,h} + unity_internals.h
 │   ├── stubs/    host_test_ctrl.h · js_sim_host_stub.{c,h}
 │   └── test_*.c
-└── samples/avoidance_car/      # 示例 App（device_tree + app_main）
+└── samples/                    # 应用样例（每个含 device_tree + app_callbacks）
+    ├── avoidance_car/          # 避障小车：ultrasonic + servo 端到端
+    ├── oled_dashboard/         # OLED 仪表盘：button + LED + SSD1306
+    ├── devkitc_smoke/          # ESP32 DevKitC 真机冒烟（S1-S8）
+    ├── dual_task_demo/         # 协作式双任务 demo（ADR-0013/0014）
+    ├── resource_conflict/      # 反例：pal_resource 冲突检测（期望 init 失败）
+    └── unisim_smoke/           # wasm 桥接冒烟（Node/浏览器 wasm 端跑，非 host）
 ```
 
 ---
@@ -84,7 +90,7 @@ cmake --build build-wasm
 
 **产出**：`build-wasm/wink_simulator.wasm` + `build-wasm/wink_simulator.js`（MODULARIZE 胶水，UMD 导出 `WasmSandbox`）。
 
-**换 App 变体**：AI 生成的 App 或其它 sample 通过 `WINK_APP_DIR` 注入：
+**换 App 变体**：AI 生成的 App 或其它 sample 通过 `WINK_APP_DIR` 注入（当前仓内可选 6 个：`avoidance_car` / `oled_dashboard` / `devkitc_smoke` / `dual_task_demo` / `resource_conflict` / `unisim_smoke`）：
 
 ```bash
 emcmake cmake -S . -B build-wasm -DTARGET_PLATFORM=wasm \
@@ -148,18 +154,16 @@ cd build-test; ctest --output-on-failure
 
 看到 `100% tests passed` 即通过。只跑某项：`ctest -R servo --output-on-failure`；直接看单个 exe 输出：`.\test\test_dal_servo.exe`。
 
-**测试矩阵（8 个可执行，约 30 个测试点）：**
+**测试矩阵（35 个可执行，2026-07-04 快照，全部 host 端 GCC 通过）：**
 
-| 测试 | 验证 |
-|---|---|
-| `test_smoke` | `wink_status_t` 错误码语义（负数=错误） |
-| `test_trace` | Golden Trace 环形缓冲（满则覆盖） |
-| `test_runtime` | 主循环：注册回调 → 跑 N tick → fault 上报 |
-| `test_host_pal` | host 虚拟时间推进 + PWM 记录 |
-| `test_dal_servo` | 舵机角度→占空比换算、钳位 |
-| `test_dal_ultrasonic` | 超声波真机分支：脉宽→距离、超时 |
-| `test_dal_ultrasonic_sim` | 仿真分支与真机同源换算（ADR-0003 守卫） |
-| `app_avoidance_car_e2e` | 端到端 PAL→DAL→runtime→App（注入障碍→舵机偏转） |
+按梯队组织（完整清单与运行策略见 [TESTING.md](./TESTING.md)）：
+
+| 梯队 | 测试数 | 覆盖 |
+|---|---:|---|
+| **Tier 1 · Core / 门禁** | 12 | PAL 契约（`test_pal_contract`）、pal_irq/resource/pwm_router/storage、runtime、trace、actuator_registry、host_pal |
+| **Tier 2 · DAL 外设** | 9 | servo/ultrasonic/ultrasonic_sim/led/button/ssd1306、dev_config、avoidance_override、button_debounce_e2e |
+| **Tier 3 · 协作式调度器（ADR-0013/0014）** | 9 | sim_scheduler / _e2e / _determinism / _stack_clamp / _wcet_fault / _zombie_gc、sim_mutex_e2e、single_task_semantic_regression、sim_physical |
+| **Tier 4 · Sample e2e** | 5 | app_avoidance_car / oled_dashboard / devkitc_smoke / dual_task_demo、sample_resource_conflict |
 
 > `build-test/` 为构建产物，**不提交 git**。
 

@@ -64,8 +64,10 @@ static void app_init(void)
     (void)pal_gpio_enable_interrupt(SMOKE_ISR_PIN, PAL_GPIO_INTR_RISING_EDGE, smoke_isr, NULL);
 
     /* --- js_sim_trigger_ultrasonic / js_sim_measure_echo_pulse_us
-     *     pal_ultrasonic_trigger -> js_sim_trigger_ultrasonic
-     *     pal_gpio_pulse_in -> js_sim_measure_echo_pulse_us
+     *     ADR-0017: pal_ultrasonic_* has been removed. HC-SR04 timing is now
+     *     driven directly by the DAL layer (dal_ultrasonic) using generic PAL
+     *     primitives: pal_gpio_write for the TRIG pulse + pal_gpio_pulse_in
+     *     for ECHO capture. The wasm bridge routes those to js_sim_* hooks.
      * Both TRIG and ECHO pins must be claimed for pulse_in to not short-circuit. */
     (void)pal_gpio_init(SMOKE_ULTRASONIC_TRIG, PAL_GPIO_OUTPUT_PUSH_PULL);
     (void)pal_gpio_init(SMOKE_ULTRASONIC_ECHO, PAL_GPIO_INPUT);
