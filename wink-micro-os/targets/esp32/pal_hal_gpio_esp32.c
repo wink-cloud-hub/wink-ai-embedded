@@ -366,7 +366,7 @@ wink_status_t pal_gpio_synchronize_interrupt(wink_pin_t pin) {
  * GPIO Pulse In（超声波硬件捕获 - 当前 busy-wait 回退）
  * ───────────────────────────────────────────────────────── */
 
-static uint16_t s_rmt_echo_pin_cache = 0xFFFF;   /* 缓存当前 RMT 绑定 pin（真源在 pal_rmt_esp32.c 的 s_echo_pin，此缓存仅作同-pin 快速判断） */
+static wink_pin_t s_rmt_echo_pin_cache = -1;   /* 缓存当前 RMT 绑定 pin（真源在 pal_rmt_esp32.c 的 s_capture_pin，此缓存仅作同-pin 快速判断） */
 
 static wink_status_t pal_gpio_pulse_in_busy_wait(wink_pin_t pin, bool level,
                                                  uint32_t timeout_us, uint32_t *pulse_us) {
@@ -416,24 +416,24 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level,
     }
     *pulse_us = 0;
 
-    /* SSOT：RMT 初始化状态由 pal_rmt_ultrasonic_is_active 报告。
-     * pal_rmt_ultrasonic_init 内部已处理：同 pin 幂等返 OK / 不同 pin 先 deinit 再重建。
+    /* SSOT：RMT 初始化状态由 pal_rmt_pulse_capture_is_active 报告。
+     * pal_rmt_pulse_capture_init 内部已处理：同 pin 幂等返 OK / 不同 pin 先 deinit 再重建。
      * 失败路径（init 返错误）：is_active 返回 false，自动降级到 busy-wait。*/
-    uint16_t active_pin = 0xFFFF;
-    bool rmt_ready = pal_rmt_ultrasonic_is_active(&active_pin);
-    if (!rmt_ready || active_pin != (uint16_t)pin) {
-        if (pal_rmt_ultrasonic_init((uint16_t)pin) == WINK_OK) {
+    bool rmt_ready = pal_rmt_pulse_capture_is_active();
+    if (!rmt_ready || s_rmt_echo_pin_cache != pin) {
+        /* HC-SR04 语义：ECHO 高电平脉宽 → RISING 起。 */
+        if (pal_rmt_pulse_capture_init(pin, PAL_RMT_EDGE_RISING) == WINK_OK) {
             rmt_ready = true;
-            s_rmt_echo_pin_cache = (uint16_t)pin;
+            s_rmt_echo_pin_cache = pin;
         } else {
             rmt_ready = false;
-            s_rmt_echo_pin_cache = 0xFFFF;
+            s_rmt_echo_pin_cache = -1;
         }
     }
 
     /* 3. RMT 可用就走 RMT 测量；否则降级为 busy-wait */
-    if (rmt_ready && s_rmt_echo_pin_cache == (uint16_t)pin) {
-        return pal_rmt_ultrasonic_measure(timeout_us, pulse_us);
+    if (rmt_ready && s_rmt_echo_pin_cache == pin) {
+        return pal_rmt_pulse_capture_wait(timeout_us, pulse_us);
     }
 
     return pal_gpio_pulse_in_busy_wait(pin, level, timeout_us, pulse_us);
