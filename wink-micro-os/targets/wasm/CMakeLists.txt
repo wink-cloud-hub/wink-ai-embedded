@@ -16,6 +16,8 @@ set(PAL_WASM_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/pal_resource.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_storage_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_physical.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_fault.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_fault_domain.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/wink_sim_physical.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/wink_sim_scheduler.c
     ${CMAKE_CURRENT_SOURCE_DIR}/sim_ctx_emscripten_fiber.c

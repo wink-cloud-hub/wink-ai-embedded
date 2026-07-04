@@ -24,26 +24,9 @@
 #include <stdio.h>
 #include <assert.h>
 
-struct wink_app_callbacks;
-extern void wink_runtime_fault(const struct wink_app_callbacks* callbacks, uint32_t fault_code);
-
-/* ─────────────────────────────────────────────────────────
- * Fault 锁存（P0-3 Phase C）+ App callbacks 引用
- *
- * g_wasm_faulted：一旦宿主（JS 侧 plugin 抛错）或 WASM 内部（WCET、时钟溢出等）
- *                触发 fault，置 true 并保持；所有 pal_wasm_* 导出入口 fast-fail。
- *                由 pal_wasm_host_fault() 置位；pal_wasm_reset_physical() 清零。
- * s_app_callbacks：pal_sim_scheduler_run 入口记录，供 pal_wasm_host_fault 走标准
- *                wink_runtime_fault 路径（trace + safe_off_all + on_fault）。
- *                调度器启动前为 NULL，此时 host_fault 只能 trace 无法调 on_fault。
- * ───────────────────────────────────────────────────────── */
-static bool s_wasm_faulted = false;
-static const struct wink_app_callbacks* s_app_callbacks = NULL;
-
-EMSCRIPTEN_KEEPALIVE
-bool pal_wasm_is_faulted(void) { return s_wasm_faulted; }
-
-void pal_wasm_clear_fault_latch(void) { s_wasm_faulted = false; s_app_callbacks = NULL; }
+/* Fault 锁存 / host_fault / 审计日志 已迁至 pal_wasm_fault.c（2026-07 wasm target 拆分）。
+ * scheduler_run 通过 pal_wasm_fault_set_callbacks / pal_wasm_invoke_fault 走内部接口，
+ * 不再直接 touch fault.c 的静态状态。 */
 
 /* ─────────────────────────────────────────────────────────
  * 虚拟时钟（ADR-0003 决策 3 / ADR-0009 §4.1 / Wave2 P1 Task 6）
@@ -104,37 +87,6 @@ bool pal_wasm_is_clock_warning_fired(void) {
 EMSCRIPTEN_KEEPALIVE
 uint64_t pal_wasm_get_virtual_clock_us(void) {
     return s_virtual_us;
-}
-
-/* ─────────────────────────────────────────────────────────
- * Host→C fault 注入（P0-3 Phase C）
- *
- * JS 侧宿主 plugin（用户自定义 js_* override）抛同步异常或返回 rejected Promise
- * 时，由 createUnisimImports 的 safeWrap/safeWrapAsync HOF 统一捕获，通过
- * _malloc + stringToUTF8 把错误消息写入线性内存，然后调用本函数走标准 fault
- * 路径（wink_trace_fault + wink_actuator_safe_off_all + on_fault 回调）。
- *
- * 调用约束：
- *   1. msg_cstr 必须是 wasm 线性内存内以 NUL 结尾的 UTF-8 C 字符串（由 JS 侧
- *      stringToUTF8OnStack / _malloc + stringToUTF8 写入）；调用方负责 _free。
- *   2. 本函数是幂等的——首次调用置位 s_wasm_faulted，后续调用仅 trace 不重复
- *      触发 safe-off（避免二次关断导致 actuator 状态异常）。
- *   3. 调度器启动前（s_app_callbacks == NULL）safe-off 仍执行，但 on_fault
- *      回调无法派发——这是 bootstrap 期 fault，理论上仅 init 期 JS 配置错误触发。
- *
- * 错误码约定（review P0-3）：
- *   8003 — JS host plugin fault（用户 override 抛异常 / reject）
- * ───────────────────────────────────────────────────────── */
-EMSCRIPTEN_KEEPALIVE
-void pal_wasm_host_fault(uint32_t code, const char* msg_cstr) {
-    (void)msg_cstr;  /* TODO: Phase C — 把 msg 写入 fault ring buffer 供 UI 读取 */
-    if (s_wasm_faulted) {
-        /* 幂等：fault 锁存后只 trace 不再重复 safe-off */
-        wink_trace_fault(code);
-        return;
-    }
-    s_wasm_faulted = true;
-    wink_runtime_fault(s_app_callbacks, code);
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -289,8 +241,11 @@ wink_status_t pal_sim_scheduler_run(const struct wink_app_callbacks* callbacks,
     }
 
     s_main_ctx = sim_ctx_from_current();
-    s_app_callbacks = callbacks;
-    pal_wasm_clear_fault_latch();  /* 新 run 周期重置 fault 锁存 */
+    /* 新 run 周期先清 fault 锁存（同时清空 fault.c 内 App callbacks 缓存），
+     * 再把本次 run 的 callbacks 注册进去，供 pal_wasm_host_fault / WCET 兜底
+     * 走 wink_runtime_fault 路径时定位 on_fault 回调。 */
+    pal_wasm_clear_fault_latch();
+    pal_wasm_fault_set_callbacks(callbacks);
     uint32_t ticks_run = 0;
 
     /* --- WCET config cache（fixup 计划 R9 / P1-5 契约诚实）---
@@ -365,9 +320,10 @@ wink_status_t pal_sim_scheduler_run(const struct wink_app_callbacks* callbacks,
         uint64_t duration_us = wasm_wall_clock_us() - wall_start_us;
 
         if (!bypass_wcet && duration_us > wcet_threshold_us) {
-            /* 红线 16：透传 callbacks，让 App on_fault(8002) 被调。 */
-            s_wasm_faulted = true;
-            wink_runtime_fault(callbacks, 8002);
+            /* 红线 16：走 fault.c 内联合入口，置锁存 + 调 wink_runtime_fault。
+             * fault.c 内缓存的 s_app_callbacks 由本函数入口的
+             * pal_wasm_fault_set_callbacks(callbacks) 注册。 */
+            pal_wasm_invoke_fault(8002);
         }
 
         if (next == main_task_id) {
