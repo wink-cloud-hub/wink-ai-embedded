@@ -1,27 +1,26 @@
 /**
  * @file pal_rmt_esp32.c
- * @brief ESP32 RMT 硬件脉冲捕获（超声波专用）。
+ * @brief ESP32 后端：pal_rmt.h 通用脉冲捕获 API 的实现（基于 RMT RX 外设）。
  *
  * ⚠️ @verified: SOURCE-EDITED -- RMT timeout disable/enable reset applied; idf.py compile verification
  *    DEFERRED (no ESP-IDF in this session). Hardware validation still required: oscilloscope ISR latency < 10us and HC-SR04 accuracy.
  *
- * 使用 RMT (Remote Control) 外设实现超声波脉冲测量，替换 pal_hal_esp32.c 中的 busy-wait。
+ * 使用 RMT (Remote Control) 外设作为硬件 pulse capture 通道，替换
+ * pal_hal_gpio_esp32.c 中的 busy-wait 实现（后者作为降级回退保留）。
  *
  * 设计要点：
- * - RMT 时钟 80MHz，分频因子 80 → 1MHz 分辨率 (1us/ tick)
- * - 双沿捕获：上升沿开始计数，下降沿停止
- * - 与 HC-SR04 工作流程完美匹配：TRIG 输出 → RMT 接收 ECHO 脉宽
+ * - RMT 时钟 80MHz，分频因子 80 → 1MHz 分辨率 (1us/tick)
+ * - 双沿捕获：上升沿开始计数，下降沿停止（TODO：真正支持 start_edge 选择）
+ * - 单实例：当前仅一路 pulse-capture 通道，符合 pal_rmt.h 单实例语义
  *
- * 使用方法（替代 pal_gpio_pulse_in）：
- *   pal_rmt_ultrasonic_init(echo_pin);
- *   pal_gpio_write(trig_pin, true); pal_os_busy_wait_us(10); pal_gpio_write(trig_pin, false);
- *   uint32_t pulse_us;
- *   if (pal_rmt_ultrasonic_measure(30000, &pulse_us) == WINK_OK) { ... }
- *
- * TODO: Phase 4 将此接口标准化为 PAL 层非阻塞捕获 API。
+ * ⚠️ start_edge 参数当前未真正生效——ESP-IDF v5.x/v6.x 的
+ * rmt_rx_channel_config_t 不直接暴露"从哪条边沿起测"的开关；起始沿由
+ * pulse 波形本身决定，解析层再选择最长高电平段作为脉宽。因此当前实现
+ * 始终按 RISING 起（高电平段最长）处理，FALLING 语义仍是 TODO。
  */
 
 #include "pal_hal.h"
+#include "hal/pal_rmt.h"
 
 #if defined(ESP_PLATFORM)
 #include "driver/rmt_rx.h"
@@ -41,7 +40,7 @@
 #define MIN_VALID_PULSE_US      100     /* 略小于理论最小值，留余量 */
 #define MAX_VALID_PULSE_US      25000   /* 略大于理论最大值，留余量 */
 
-/* 全局状态（单实例超声波，MVP 阶段暂不支持多路）。
+/* 全局状态（单实例 pulse-capture，MVP 阶段暂不支持多路）。
  * s_rx_buf 是【用户拥有】的接收缓冲：rmt_receive 把捕获的符号直接写入其中，完成回调经
  * s_rx_num_symbols 报告数量（回调入参 edata->received_symbols 即指向 s_rx_buf，ESP-IDF v5.x 契约）。
  * 评审 P0-2：不再用 rmt_rx_done_event_data_t 的 const 指针字段当可写缓冲。 */
@@ -50,7 +49,7 @@ static rmt_channel_handle_t   s_rmt_rx_chan = NULL;
 static rmt_symbol_word_t      s_rx_buf[RMT_RX_SYMBOLS];
 static volatile size_t        s_rx_num_symbols = 0;
 static SemaphoreHandle_t      s_rx_done_sem = NULL;
-static uint16_t               s_echo_pin = 0xFFFF;
+static wink_pin_t             s_capture_pin = -1;
 
 /* ─────────────────────────────────────────────────────────
  * RMT RX 完成回调 (ISR context)
@@ -59,6 +58,8 @@ static uint16_t               s_echo_pin = 0xFFFF;
 static bool IRAM_ATTR rmt_rx_done_callback(rmt_channel_handle_t channel,
                                             const rmt_rx_done_event_data_t *edata,
                                             void *user_data) {
+    (void)channel;
+    (void)user_data;
     BaseType_t high_task_wakeup = pdFALSE;
     /* 符号已由 rmt_receive 写入 s_rx_buf（edata->received_symbols 指向它）；仅记录数量即可 */
     s_rx_num_symbols = edata->num_symbols;
@@ -67,16 +68,26 @@ static bool IRAM_ATTR rmt_rx_done_callback(rmt_channel_handle_t channel,
 }
 
 /* ─────────────────────────────────────────────────────────
- * 初始化 RMT 超声波捕获通道
+ * 初始化 pulse-capture 通道
  * ───────────────────────────────────────────────────────── */
 
-wink_status_t pal_rmt_ultrasonic_init(uint16_t echo_pin) {
+wink_status_t pal_rmt_pulse_capture_init(wink_pin_t pin, pal_rmt_edge_t start_edge) {
+    /* TODO(pal_rmt): 未真正应用 start_edge。ESP-IDF v5.x/v6.x 的 rmt_rx_channel_config_t
+     * 不直接暴露"边沿选择"配置项，实现层暂按 RISING 语义（找高电平最长段）处理。
+     * 当前接受参数但仅做形参校验，避免破坏调用契约；未来 ADR 化后再修正。 */
+    if (start_edge != PAL_RMT_EDGE_RISING && start_edge != PAL_RMT_EDGE_FALLING) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    if (pin < 0) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
     if (s_rmt_rx_chan != NULL) {
-        /* 已初始化：若 echo_pin 相同则幂等返 OK；否则先 deinit 再重建 */
-        if (s_echo_pin == echo_pin) {
+        /* 已初始化：若 pin 相同则幂等返 OK；否则先 deinit 再重建 */
+        if (s_capture_pin == pin) {
             return WINK_OK;
         }
-        pal_rmt_ultrasonic_deinit();
+        pal_rmt_pulse_capture_deinit();
     }
 
     /* 创建 RMT RX channel */
@@ -84,7 +95,7 @@ wink_status_t pal_rmt_ultrasonic_init(uint16_t echo_pin) {
         .clk_src = RMT_CLK_SRC_DEFAULT,
         .resolution_hz = 1000000,  /* 1MHz = 1us/tick */
         .mem_block_symbols = RMT_MEM_BLOCK_SYMB,
-        .gpio_num = echo_pin,
+        .gpio_num = pin,
         .flags.invert_in = false,
         .flags.with_dma = false,
         /* .flags.io_loop_back - REMOVED IN ESP-IDF v6.x */
@@ -127,20 +138,20 @@ wink_status_t pal_rmt_ultrasonic_init(uint16_t echo_pin) {
         return WINK_ERR_HARDWARE;
     }
 
-    s_echo_pin = echo_pin;
+    s_capture_pin = pin;
     s_rx_num_symbols = 0;
     return WINK_OK;
 }
 
 /* ─────────────────────────────────────────────────────────
- * 执行一次超声波脉宽测量（非阻塞，由 RMT 硬件完成）
+ * 等待一次 pulse-capture 完成（非阻塞硬件采样，由 RMT 完成事件驱动）
  * ───────────────────────────────────────────────────────── */
 
-wink_status_t pal_rmt_ultrasonic_measure(uint32_t timeout_us, uint32_t *pulse_us) {
-    if (pulse_us == NULL || s_rmt_rx_chan == NULL) {
+wink_status_t pal_rmt_pulse_capture_wait(uint32_t timeout_us, uint32_t *pulse_us_out) {
+    if (pulse_us_out == NULL || s_rmt_rx_chan == NULL) {
         return WINK_ERR_INVALID_ARG;
     }
-    *pulse_us = 0;
+    *pulse_us_out = 0;
 
     /* 清空信号量 */
     xSemaphoreTake(s_rx_done_sem, 0);
@@ -160,7 +171,7 @@ wink_status_t pal_rmt_ultrasonic_measure(uint32_t timeout_us, uint32_t *pulse_us
     BaseType_t ok = xSemaphoreTake(s_rx_done_sem, pdMS_TO_TICKS((timeout_us + 999) / 1000 + 1));
     if (ok != pdPASS) {
         /* 超时恢复：disable → enable 复位 RMT RX 状态机。
-         * 信号量残留：超时后 s_rx_done_sem 可能有残留 Give，但下一次 measure 入口的
+         * 信号量残留：超时后 s_rx_done_sem 可能有残留 Give，但下一次 wait 入口的
          * xSemaphoreTake(s_rx_done_sem, 0) 会清空，故此处不必额外 Take。
          * 旧实现误用 rmt_receive(NULL,...) 取消——违反 v5.x RX 契约，改为状态机复位。*/
         rmt_disable(s_rmt_rx_chan);
@@ -171,9 +182,9 @@ wink_status_t pal_rmt_ultrasonic_measure(uint32_t timeout_us, uint32_t *pulse_us
         return WINK_ERR_TIMEOUT;
     }
 
-    /* 解析 RMT symbols → 超声波脉宽
+    /* 解析 RMT symbols → 脉宽
      *
-     * 鲁棒解析策略：
+     * 鲁棒解析策略（当前按 RISING 语义——高电平段最长）：
      *   1. 遍历所有捕获的符号
      *   2. 找最长的高电平脉冲（抗串扰噪声、边沿抖动）
      *   3. 校验脉冲在有效范围内（过滤无效信号）
@@ -181,8 +192,8 @@ wink_status_t pal_rmt_ultrasonic_measure(uint32_t timeout_us, uint32_t *pulse_us
      * HC-SR04 典型波形：
      *   symbol[N].level0=0, duration0=低电平等待时间
      *   symbol[N].level1=1, duration1=ECHO 脉冲宽度（有效值）
-     */
-    /* 解析 s_rx_buf 中的符号 → 超声波脉宽（捕获数量先读入局部，避免反复读 volatile + 限定上界） */
+     *
+     * TODO(pal_rmt): FALLING 语义时应改为搜索"最长低电平段"。 */
     size_t num = s_rx_num_symbols;
     if (num >= 1 && num <= RMT_RX_SYMBOLS) {
         uint32_t max_high_duration = 0;
@@ -203,7 +214,7 @@ wink_status_t pal_rmt_ultrasonic_measure(uint32_t timeout_us, uint32_t *pulse_us
         /* 校验脉冲在有效范围内（过滤噪声和超时信号） */
         if (max_high_duration >= MIN_VALID_PULSE_US &&
             max_high_duration <= MAX_VALID_PULSE_US) {
-            *pulse_us = max_high_duration;
+            *pulse_us_out = max_high_duration;
             return WINK_OK;
         }
     }
@@ -215,7 +226,7 @@ wink_status_t pal_rmt_ultrasonic_measure(uint32_t timeout_us, uint32_t *pulse_us
  * 反初始化 RMT 通道
  * ───────────────────────────────────────────────────────── */
 
-void pal_rmt_ultrasonic_deinit(void) {
+void pal_rmt_pulse_capture_deinit(void) {
     if (s_rmt_rx_chan != NULL) {
         rmt_disable(s_rmt_rx_chan);
         rmt_del_channel(s_rmt_rx_chan);
@@ -226,34 +237,32 @@ void pal_rmt_ultrasonic_deinit(void) {
         s_rx_done_sem = NULL;
     }
     /* 清零静态状态，确保再次 init 前无残留（SSOT：pal_hal_gpio 通过 pal_rmt 查询状态）*/
-    s_echo_pin = 0xFFFF;
+    s_capture_pin = -1;
     s_rx_num_symbols = 0;
 }
 
 /* ─────────────────────────────────────────────────────────
- * RMT 状态查询（供 pal_hal_gpio 单一数据源访问）
- * 返回 true 表示当前 RMT 已初始化且绑定到 *out_echo_pin
+ * pulse-capture 状态查询（供 pal_hal_gpio 单一数据源访问）
  * ───────────────────────────────────────────────────────── */
-bool pal_rmt_ultrasonic_is_active(uint16_t *out_echo_pin) {
-    if (s_rmt_rx_chan == NULL) return false;
-    if (out_echo_pin != NULL) *out_echo_pin = s_echo_pin;
-    return true;
+bool pal_rmt_pulse_capture_is_active(void) {
+    return s_rmt_rx_chan != NULL;
 }
 
 #else  /* !ESP_PLATFORM - stub implementations for static analysis */
 
-wink_status_t pal_rmt_ultrasonic_init(uint16_t echo_pin) {
-    (void)echo_pin; return WINK_ERR_UNSUPPORTED;
+wink_status_t pal_rmt_pulse_capture_init(wink_pin_t pin, pal_rmt_edge_t start_edge) {
+    (void)pin; (void)start_edge; return WINK_ERR_UNSUPPORTED;
 }
 
-wink_status_t pal_rmt_ultrasonic_measure(uint32_t timeout_us, uint32_t *pulse_us) {
-    (void)timeout_us; (void)pulse_us; return WINK_ERR_UNSUPPORTED;
+wink_status_t pal_rmt_pulse_capture_wait(uint32_t timeout_us, uint32_t *pulse_us_out) {
+    if (pulse_us_out != NULL) { *pulse_us_out = 0; }
+    (void)timeout_us; return WINK_ERR_UNSUPPORTED;
 }
 
-void pal_rmt_ultrasonic_deinit(void) {}
+void pal_rmt_pulse_capture_deinit(void) {}
 
-bool pal_rmt_ultrasonic_is_active(uint16_t *out_echo_pin) {
-    (void)out_echo_pin; return false;
+bool pal_rmt_pulse_capture_is_active(void) {
+    return false;
 }
 
 #endif  /* ESP_PLATFORM */
