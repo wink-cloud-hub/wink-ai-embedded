@@ -13,7 +13,11 @@ add_library(pal_host OBJECT
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/pal_osal_ringbuf.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/pal_resource.c
     pal_storage_host.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../pal/src/pal_pwm_router.c
+    # target 无关 PAL 源（P1-P3 整改，2026-07-04）：SSOT 位于 pal/CMakeLists.txt
+    # 的 ${PAL_COMMON_SOURCES}，替代过去硬编码 pal/src/pal_pwm_router.c。
+    # 直接展开源文件而非 $<TARGET_OBJECTS:pal_common>，因为 OBJECT 库嵌入到另一
+    # OBJECT 库的 sources 不会向下游传播 .o（MinGW/GCC 行为）。
+    ${PAL_COMMON_SOURCES}
     # ADR-0008 设备树覆写解析器：已迁至 runtime/src/（层级修正），
     # host OBJECT 仍打包供 test_dev_config 等直接链 pal_host 的单测使用。
     ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/src/wink_dev_config.c
