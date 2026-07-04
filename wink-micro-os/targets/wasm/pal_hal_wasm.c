@@ -1,12 +1,37 @@
 /**
  * @file pal_hal_wasm.c
- * @brief Wasm 仿真端 PAL HAL 适配（GPIO/PWM/I2C/中断，v2.0 SMP 安全版）。
+ * @brief Wasm 仿真端 PAL HAL 适配（GPIO/PWM/I2C/中断，Phase C 统一分发版）。
  *        仅 HAL；OSAL 见 pal_osal_wasm.c；entry 见 wasm_entry.c；JS 契约见 wasm_bridge.h。
  *
- * 中断桥（方案 C：Poll 模型）：
- *   pal_gpio_enable_interrupt → js_pal_register_interrupt（仅写 JS 侧 pending 表映射）
- *   pal_wasm_dispatch_pending_interrupts → 由 wink_runtime.c tick 边界调用，drain JS pending 队列
- *   旧 _trigger_wasm_interrupt 导出已移除（wasm_entry.c），彻底消除 Asyncify sleeping 窗口重入面。
+ * 中断桥（方案 C：Poll 模型，Phase C P0-1 统一后）：
+ *
+ *   ┌──────────────────┬──────────────────────┬───────────────────────┐
+ *   │ IRQ 源           │ 入队                 │ 分发点                │
+ *   ├──────────────────┼──────────────────────┼───────────────────────┤
+ *   │ GPIO 边沿        │ JS 侧 InterruptQueue │ pal_wasm_dispatch_    │
+ *   │ (PinArbiter 检测)│ (FIFO, poll 模型)    │ pending_interrupts()  │
+ *   ├──────────────────┼──────────────────────┼───────────────────────┤
+ *   │ pal_irq_set_     │ C 侧 s_pending_queue │ pal_wasm_dispatch_    │
+ *   │ pending() 软中断 │ (FIFO，无人工延迟)   │ pending_irqs()        │
+ *   └──────────────────┴──────────────────────┴───────────────────────┘
+ *
+ * 两条分发路径都尊重 s_irq_lock_nest_count（pal_irq_save/restore 临界区）：
+ *   - pal_sim_scheduler_run Phase 0 在 main 上下文无条件调用两个分发函数，
+ *     此时不持有任何 IRQ 锁（s_irq_lock_nest_count == 0），所有 pending 正常兑现；
+ *   - pal_irq_restore() 最外层 unlock（nest_count 从 1→0）时**补发**两个分发
+ *     函数，保证临界区内累积的 pending 在锁释放瞬间被立刻兑现，而不是拖延到
+ *     下一次调度 tick，匹配 ESP32/host 目标 "中断在开中断瞬间立刻派发" 的语义。
+ *
+ * ISR 执行流（所有路径同一位置 drain）：
+ *   scheduler Phase 0 / restore 最外层 → dispatch_pending_interrupts() [JS FIFO]
+ *                                       → dispatch_pending_irqs()        [C 软中断 FIFO]
+ *
+ * 删除的 Mechanism A legacy：
+ *   - pal_wasm_gpio_level_changed()   （无任何 caller，GPIO 边沿全走 JS Poll）
+ *   - s_gpio_last_level[]             （仅上述函数使用）
+ *   - Pareto 延迟模型（pseudo_rand / calc_target_tick / sort_pending_by_priority）
+ *     （原用于模拟"硬件 flash cache miss 长尾延迟"，与 ADR-0013 Poll 模型冲突
+ *      —— Poll 模型本身在 tick 边界 drain，延迟已经是确定性的 O(1 tick)）
  *
  * 物理退化中间件（ADR-0009 Wave 2 Task 3）：
  *   pal_gpio_read  → 边界检查 + 抖动状态机（per-pin ctx，bounce_us=0 时旁路）
@@ -28,6 +53,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+/* P2-4: wasm64 迁移门控 —— 本文件 js_pal_poll_interrupt 的 outCbPtr/outArgPtr
+ * 以 u32 写入线性内存，pal_wasm_i2c_transfer 对 wbufPtr/rbufPtr 做 (uint32_t)(uintptr_t)
+ * 截断；开启 wasm64 编译时此 _Static_assert 会立刻红。
+ * 迁移时需同步：(1) wasm_bridge.h ABI 契约 #5 更新为 64-bit 指针 ABI；
+ *              (2) JS 侧 writeU32LE → writeU64LE，BigInt 化；
+ *              (3) 所有 (uint32_t)(uintptr_t) 截断改为全宽度。 */
+_Static_assert(sizeof(void*) == 4,
+    "wasm64 migration required: see wasm_bridge.h ABI 契约 #5 "
+    "and review every (uint32_t)(uintptr_t) cast in pal_hal_wasm.c / createUnisimImports.ts");
 
 wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
     (void)pin; (void)mode;            /* 仿真下无需硬件配置 */
@@ -90,13 +125,12 @@ wink_status_t pal_gpio_read(wink_pin_t pin, bool *out_level) {
 }
 
 /* ─────────────────────────────────────────────────────────
- * WASM GPIO 中断状态表（支持中断锁语义仿真）
+ * WASM GPIO 中断注册表
  * ───────────────────────────────────────────────────────── */
 #define WASM_MAX_GPIO_PIN  50
 static pal_gpio_isr_t s_gpio_isr[WASM_MAX_GPIO_PIN] = {NULL};
 static void           *s_gpio_isr_arg[WASM_MAX_GPIO_PIN] = {NULL};
 static pal_gpio_intr_t s_gpio_intr_type[WASM_MAX_GPIO_PIN] = {PAL_GPIO_INTR_DISABLE};
-static bool            s_gpio_last_level[WASM_MAX_GPIO_PIN] = {false};
 
 /* v2.2 G3（Phase 1.5，2026-07-01）：GPIO service 首次锁定的 prio。
  * WASM 是单线程执行环境（无 SharedArrayBuffer / pthread），无需 mutex；
@@ -104,63 +138,50 @@ static bool            s_gpio_last_level[WASM_MAX_GPIO_PIN] = {false};
 static bool             s_gpio_service_initialized = false;
 static pal_irq_prio_t   s_gpio_service_prio        = PAL_IRQ_PRIO_NORMAL;
 
-/* 中断锁状态（支持嵌套计数） */
+/* ─────────────────────────────────────────────────────────
+ * 统一 IRQ 锁（嵌套计数，GPIO/软中断共用）
+ * ───────────────────────────────────────────────────────── */
 static uint32_t s_irq_lock_nest_count = 0;
 
-/* Pending 中断队列（支持延迟分发 + 优先级排序） */
+/* ─────────────────────────────────────────────────────────
+ * C 侧软中断 pending FIFO（pal_irq_set_pending 专用）
+ *
+ * Phase C P0-1：移除旧 Pareto 延迟模型和 sort。软中断被 set_pending 后立刻
+ * 进入 FIFO，在下次 dispatch 点（Phase 0 / restore 最外层）按入队顺序派发。
+ * GPIO 边沿中断统一走 JS Poll 队列，不再进入此 C 侧队列。
+ * ───────────────────────────────────────────────────────── */
 #define WASM_MAX_PENDING  64
 
 typedef struct {
-    uint32_t          irq_num;       /* GPIO 引脚号 */
-    pal_irq_prio_t     prio;           /* 中断优先级 */
-    uint32_t          target_tick;     /* 延迟到目标 tick 后分发 */
-    bool              is_gpio;         /* true = GPIO 中断 */
+    uint32_t irq_num;
 } wasm_pending_irq_t;
 
 static wasm_pending_irq_t s_pending_queue[WASM_MAX_PENDING];
-static uint32_t s_pending_count = 0;
-static uint32_t s_current_tick = 0;
+static uint32_t s_pending_head = 0;   /* 下一个待派发索引 */
+static uint32_t s_pending_count = 0;  /* 队列中元素数 */
 
-/* 伪随机数生成（用于抖动模拟，Pareto 长尾分布） */
-static uint32_t pseudo_rand(void)
-{
-    static uint32_t seed = 0x12345678;
-    seed = seed * 1103515245 + 12345;
-    return seed;
+static inline void sw_enqueue(uint32_t irq_num) {
+    if (s_pending_count >= WASM_MAX_PENDING) {
+        /* 队列溢出：丢最老（环形队列覆盖 head），与 JS InterruptQueue 默认
+         * drop-newest 不同——软中断是 level-like 语义，最新值优先。 */
+        s_pending_head = (s_pending_head + 1) % WASM_MAX_PENDING;
+        s_pending_count--;
+    }
+    uint32_t tail = (s_pending_head + s_pending_count) % WASM_MAX_PENDING;
+    s_pending_queue[tail].irq_num = irq_num;
+    s_pending_count++;
 }
 
-/* 计算中断分发的目标 tick（Pareto 长尾分布，v2.0 改进）
- * 80% 中断：1-2 tick 短延迟
- * 20% 中断：3-5 tick 长尾延迟（模拟真实硬件 Flash Cache Miss）
- */
-static uint32_t calc_target_tick(void)
-{
-    uint32_t r = pseudo_rand() % 100;
-    if (r < 80) {
-        /* 80% 短延迟：1-2 tick */
-        return s_current_tick + 1 + (pseudo_rand() % 2);
-    } else {
-        /* 20% 长尾延迟：3-5 tick */
-        return s_current_tick + 3 + (pseudo_rand() % 3);
-    }
-}
-
-/* 按优先级对 pending 队列排序（高优先级在前） */
-static void sort_pending_by_priority(void)
-{
-    for (uint32_t i = 0; i < s_pending_count; i++) {
-        for (uint32_t j = i + 1; j < s_pending_count; j++) {
-            if (s_pending_queue[j].prio > s_pending_queue[i].prio) {
-                wasm_pending_irq_t tmp = s_pending_queue[i];
-                s_pending_queue[i] = s_pending_queue[j];
-                s_pending_queue[j] = tmp;
-            }
-        }
-    }
+static inline bool sw_dequeue(uint32_t *out_irq) {
+    if (s_pending_count == 0) return false;
+    *out_irq = s_pending_queue[s_pending_head].irq_num;
+    s_pending_head = (s_pending_head + 1) % WASM_MAX_PENDING;
+    s_pending_count--;
+    return true;
 }
 
 /* ─────────────────────────────────────────────────────────
- * GPIO 中断接口实现（WASM 平台，v2.0 支持中断锁语义）
+ * GPIO 中断接口实现（WASM 平台）
  * ───────────────────────────────────────────────────────── */
 
 wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin, pal_gpio_intr_t intr_type,
@@ -192,7 +213,8 @@ wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin, pal_gpio_intr_t intr_
     s_gpio_isr_arg[pin] = arg;
     s_gpio_intr_type[pin] = intr_type;
 
-    /* 注册到 JS 侧（仅写映射关系，实际中断由 JS 检测后写入 pending 队列） */
+    /* 注册到 JS 侧（仅写映射关系，实际中断由 PinArbiter 边沿检测 push 到
+     * InterruptQueue，wakeup 时由 pal_wasm_dispatch_pending_interrupts drain）。 */
     uint32_t callback_index = (uint32_t)(uintptr_t)callback;
     uint32_t arg_ptr        = (uint32_t)(uintptr_t)arg;
     js_pal_register_interrupt((uint32_t)pin, callback_index, arg_ptr);
@@ -212,103 +234,6 @@ wink_status_t pal_gpio_disable_interrupt(wink_pin_t pin)
 
     return WINK_OK;
 }
-
-/**
- * @brief GPIO 电平变化时检测中断条件（由仿真器内部调用）
- *
- * ⚠️ 关键仿真特性（v2.0）：
- * 此函数只标记 pending，不立即调用 ISR（模拟真实硬件的中断延迟）。
- * 中断将在 tick 边界统一分发，且遵守中断锁语义。
- */
-void pal_wasm_gpio_level_changed(wink_pin_t pin, bool new_level)
-{
-    if (pin < 0 || pin >= WASM_MAX_GPIO_PIN) return;
-    if (s_gpio_isr[pin] == NULL) return;
-
-    bool trigger = false;
-    bool old_level = s_gpio_last_level[pin];
-
-    switch (s_gpio_intr_type[pin]) {
-        case PAL_GPIO_INTR_RISING_EDGE:
-            trigger = !old_level && new_level;
-            break;
-        case PAL_GPIO_INTR_FALLING_EDGE:
-            trigger = old_level && !new_level;
-            break;
-        case PAL_GPIO_INTR_ANY_EDGE:
-            trigger = old_level != new_level;
-            break;
-        case PAL_GPIO_INTR_LOW_LEVEL:
-            trigger = !new_level;
-            break;
-        case PAL_GPIO_INTR_HIGH_LEVEL:
-            trigger = new_level;
-            break;
-        default:
-            break;
-    }
-
-    if (trigger && s_pending_count < WASM_MAX_PENDING) {
-        s_pending_queue[s_pending_count].irq_num = (uint32_t)pin;
-        s_pending_queue[s_pending_count].prio = PAL_IRQ_PRIO_NORMAL;
-        s_pending_queue[s_pending_count].target_tick = calc_target_tick();
-        s_pending_queue[s_pending_count].is_gpio = true;
-        s_pending_count++;
-    }
-
-    s_gpio_last_level[pin] = new_level;
-}
-
-/**
- * @brief Tick 边界统一分发 pending 中断（由仿真主循环调用）
- *
- * 模拟真实硬件：中断只在 CPU 指令边界触发，不会在指令执行中间插入。
- *
- * ⚠️ 中断锁语义实现（v2.0 核心特性）：
- * 如果当前持有中断锁，则不分发任何中断，所有中断继续 pending。
- * 这与 ESP32 禁用中断后 ISR 延迟到中断恢复后执行的行为一致。
- */
-void pal_wasm_dispatch_pending_irqs(void)
-{
-    s_current_tick++;
-
-    /* ✅ 中断锁语义：持有锁时不分发任何中断 */
-    if (s_irq_lock_nest_count > 0) {
-        return;
-    }
-
-    /* 先按优先级排序 */
-    sort_pending_by_priority();
-
-    /* 分发所有已到期的 pending 中断 */
-    uint32_t write_idx = 0;
-    for (uint32_t read_idx = 0; read_idx < s_pending_count; read_idx++) {
-        wasm_pending_irq_t *item = &s_pending_queue[read_idx];
-
-        if (item->target_tick <= s_current_tick) {
-            /* 已到期，执行 ISR */
-            if (item->is_gpio) {
-                uint32_t pin = item->irq_num;
-                if (pin < WASM_MAX_GPIO_PIN && s_gpio_isr[pin] != NULL) {
-                    s_gpio_isr[pin](s_gpio_isr_arg[pin]);
-                }
-            } else {
-                /* 逻辑中断执行（Phase 2 扩展） */
-            }
-            /* 不写回，相当于移除 */
-        } else {
-            /* 未到期，保留到下一轮 */
-            if (write_idx != read_idx) {
-                s_pending_queue[write_idx] = s_pending_queue[read_idx];
-            }
-            write_idx++;
-        }
-    }
-
-    s_pending_count = write_idx;
-}
-
-
 
 /* ─────────────────────────────────────────────────────────
  * 逻辑中断核心接口（WASM 仿真实现）
@@ -343,21 +268,16 @@ wink_status_t pal_irq_disable(uint32_t irq_num)
 void pal_irq_set_pending(uint32_t irq_num)
 {
     if (irq_num < WASM_MAX_IRQ && s_wasm_irq_table[irq_num] != NULL) {
-        if (s_pending_count < WASM_MAX_PENDING) {
-            s_pending_queue[s_pending_count].irq_num = irq_num;
-            s_pending_queue[s_pending_count].prio = PAL_IRQ_PRIO_NORMAL;
-            s_pending_queue[s_pending_count].target_tick = calc_target_tick();
-            s_pending_queue[s_pending_count].is_gpio = false;
-            s_pending_count++;
-        }
+        sw_enqueue(irq_num);
     }
 }
 
 void pal_irq_clear_pending(uint32_t irq_num)
 {
     (void)irq_num;
-    /* WASM 简化实现：不移除队列中已存在的 pending 项，
-     * 分发时会检查表头指针为 NULL 则跳过 */
+    /* WASM 简化实现：FIFO 语义下没有"从中间移除"的高效操作；
+     * 分发时若发现 handler 已被 pal_irq_disable 置 NULL，跳过该条目。
+     * （旧注释声称"表头为 NULL 则跳过"但未实现——现已在 dispatch 中落实。） */
 }
 
 void pal_irq_synchronize(uint32_t irq_num)
@@ -389,25 +309,71 @@ void pal_irq_restore(uint32_t mask)
 {
     if (s_irq_lock_nest_count > 0) {
         s_irq_lock_nest_count--;
-        /* 只有最外层的 restore 才真正恢复中断并分发 pending
-         * mask == 1 表示 save 之前是未加锁状态 */
+        /* 只有最外层的 restore 才真正恢复中断并补发所有 pending（P0-1 修复点）。
+         * mask == 1 表示 save 之前是未加锁状态。
+         *
+         * 补发顺序：先 C 侧软中断队列（pal_irq_set_pending 路径，通常是 ISR
+         * 自己 set_pending 的下一个软中断——更紧急），再 JS 侧 Poll 队列（GPIO
+         * 边沿等外部事件）。两者都在同一调用栈 drain，保持与调度器 Phase 0
+         * 相同的派发顺序。 */
         if (s_irq_lock_nest_count == 0 && mask) {
-            /* 中断已恢复，立即分发所有 pending 的 ISR */
             pal_wasm_dispatch_pending_irqs();
+            pal_wasm_dispatch_pending_interrupts();
         }
     }
 }
 
 /**
- * @brief 分发 JS pending 中断（方案 C：tick 边界主动拉取）。
+ * @brief 分发 C 侧软中断 FIFO（pal_irq_set_pending 入队）。
+ *
+ * 调用方：
+ *   1. pal_irq_restore() 最外层 unlock（锁恢复瞬间补发）；
+ *   2. pal_wasm_dispatch_pending_interrupts() 完成 JS 队列 drain 之后（见下），
+ *      保证调度器 Phase 0 的 drain 顺序是 JS 外部 IRQ → C 软中断。
+ *
+ * 中断锁语义：如果当前持有 IRQ 锁（s_irq_lock_nest_count > 0），直接返回——
+ * 派发推迟到 pal_irq_restore() 最外层 unlock 时执行。
+ *
+ * 分发时若发现 irq_num 对应的 handler 已被 pal_irq_disable 置 NULL（clear_pending
+ * 的实际语义），该条目被静默丢弃——避免 disable 后还触发 stale ISR。
+ */
+void pal_wasm_dispatch_pending_irqs(void)
+{
+    if (s_irq_lock_nest_count > 0) {
+        return;
+    }
+
+    uint32_t irq_num;
+    while (sw_dequeue(&irq_num)) {
+        if (irq_num < WASM_MAX_IRQ && s_wasm_irq_table[irq_num] != NULL) {
+            s_wasm_irq_table[irq_num](s_wasm_irq_arg[irq_num]);
+        }
+        /* 如果 handler 被 disable 置 NULL：静默丢（pal_irq_clear_pending 语义）*/
+    }
+}
+
+/**
+ * @brief 分发 JS 侧 Poll 队列（GPIO 边沿等外部中断，方案 C）。
  *
  * 循环调用 js_pal_poll_interrupt 直到队列为空（FIFO 顺序），对每个 pending 条目
  * 将 callback_index 还原为函数指针并调用 ISR。
  *
- * 调用方：wink_runtime.c 在 #ifdef SIMULATION 下、wink_app_delay_ms() 之前调用本函数。
- * 此时 Wasm 处于正常运行态（非 Asyncify sleeping），ISR 执行安全，无重入风险。
+ * Phase C P0-1 关键修复：开头检查 s_irq_lock_nest_count，持有 IRQ 锁期间直接
+ * 返回（JS 队列里的条目保留在 JS 侧，下次 drain 自然拿到）。pal_irq_restore()
+ * 最外层 unlock 会重新调用本函数补发，保证临界区内到达的外部中断在锁释放瞬间
+ * 被立刻兑现，而不是被拖延到下一次调度器 tick——匹配 ESP32 "开中断瞬间 pending
+ * IRQ 立刻派发" 的语义。
+ *
+ * 调用方：
+ *   1. pal_sim_scheduler_run Phase 0（每个 tick 开头，main 调度器上下文，
+ *      此时无任何 IRQ 锁持有，正常 drain）；
+ *   2. pal_irq_restore() 最外层 unlock（补发）。
  */
 void pal_wasm_dispatch_pending_interrupts(void) {
+    if (s_irq_lock_nest_count > 0) {
+        return;
+    }
+
     uint32_t callback_index;
     uint32_t arg_ptr;
     /* drain 所有 pending 中断（FIFO）直到队列空 */
@@ -417,6 +383,11 @@ void pal_wasm_dispatch_pending_interrupts(void) {
             isr((void *)(uintptr_t)arg_ptr);
         }
     }
+
+    /* JS 外部 IRQ drain 完成后，顺带 drain C 侧软中断 FIFO——保证
+     * pal_irq_set_pending 在 ISR 内 self-retrigger 的路径能在同一个
+     * dispatch 回合被派发，而不是拖到下一 tick。*/
+    pal_wasm_dispatch_pending_irqs();
 }
 
 wink_status_t pal_pwm_init(uint8_t channel, uint32_t frequency_hz) {
@@ -484,4 +455,3 @@ void pal_debug_printf(const char *fmt, ...)
     vprintf(fmt, args);
     va_end(args);
 }
-
