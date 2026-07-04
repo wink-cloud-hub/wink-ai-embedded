@@ -28,11 +28,12 @@ extern "C" {
  *              协作式调度器构建路径**必须**默认开启（PLAN R-8）。
  *   3. 运行期：`WINK_PT_DEBUG` 下 `WINK_ASSERT_NONBLOCKING()` 检测 PT 上下文
  *              误调 → `wink_trace_fault(WINK_ERR_PANIC) + assert`。
- *              **第三层由协作式调度器 T5 阶段落地**（ADR-0017 §阶段二），
- *              M3 内仅交付一 + 二层；PT context 检测钩子 `wink_pt_in_context()`
- *              暂未定义，故本文件先给出**无操作占位宏**以稳定 API 面：
- *                #define WINK_ASSERT_NONBLOCKING() ((void)0)
- *              T5 阶段直接把宏体替换为 §阶段二 §5 中的 assert 版本。
+ *              **第三层已迁至 runtime 层**：包含 wink_pt_in_context() 前向声明
+ *              与 WINK_ASSERT_NONBLOCKING() 宏的头文件是
+ *              `runtime/include/wink_pt_debug.h`（2026-07-04 P1-P2 层级修正）。
+ *              PAL 契约层不得引用 runtime 符号（消除层级反转）。
+ *              需要 PT-context 断言的 DAL/App 源文件请 `#include "wink_pt_debug.h"`；
+ *              大多数场景可通过 `#include "wink_runtime.h"` 传递获得。
  *
  * 谁负责挂载：新增 DAL/PAL API 时若满足上述条件，**必须**由该 API 的 owner
  * 在头文件挂 `WINK_BLOCKING` 并加 `#ifndef WINK_STRICT_NONBLOCKING` 包围
@@ -53,29 +54,6 @@ extern "C" {
     wink_status_t _ignored_status = (expr); \
     (void)_ignored_status; \
 } while (0)
-
-#include <stdbool.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-bool wink_pt_in_context(void);
-#ifdef __cplusplus
-}
-#endif
-
-#ifdef WINK_PT_DEBUG
-#include <assert.h>
-extern void wink_trace_fault(uint32_t fault_code);
-#define WINK_ASSERT_NONBLOCKING() do { \
-    if (wink_pt_in_context()) { \
-        wink_trace_fault((uint32_t)WINK_ERR_PANIC); \
-        assert(!wink_pt_in_context() && "Fatal: Blocking API called within Protothread context!"); \
-    } \
-} while (0)
-#else
-#define WINK_ASSERT_NONBLOCKING() ((void)0)
-#endif
 
 
 /*

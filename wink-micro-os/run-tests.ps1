@@ -258,7 +258,10 @@ $includes = @(
     '-I', (Join-Path $PSScriptRoot 'dal/include'),
     '-I', (Join-Path $PSScriptRoot 'dal/include/sensor'),
     '-I', (Join-Path $PSScriptRoot 'trace/include'),
-    '-I', (Join-Path $PSScriptRoot 'targets/host/include')
+    '-I', (Join-Path $PSScriptRoot 'targets/host/include'),
+    # 2026-07-04 P1-P2: wink_pt_debug.h(WINK_ASSERT_NONBLOCKING) 已迁至 runtime/include/。
+    # dal_ultrasonic.c 现在 #include "wink_pt_debug.h"，独立 lint 编译需要能找到它。
+    '-I', (Join-Path $PSScriptRoot 'runtime/include')
 )
 # -c: compile only (no link). -DWINK_STRICT_NONBLOCKING=1: the flag whose
 # semantics we are verifying. Any include-path miss here means the assertion

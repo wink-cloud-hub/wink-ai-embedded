@@ -33,7 +33,8 @@ if(ESP_PLATFORM)
             pal_resource_esp32.c
             pal_storage_esp32.c
             ${WINK_MICRO_OS_ROOT}/pal/src/pal_pwm_router.c
-            ${WINK_MICRO_OS_ROOT}/pal/src/wink_dev_config.c
+            # wink_dev_config.c 已迁至 runtime/src/（已包含在 WINK_CORE_SOURCES 里，
+            # 见 core_sources.cmake WINK_RUNTIME_SOURCES），此处不再显式列出。
             # 核心共享源文件（来自 core_sources.cmake）
             ${WINK_CORE_SOURCES}
         INCLUDE_DIRS
@@ -98,7 +99,7 @@ elseif(TARGET_PLATFORM STREQUAL "esp32")
         pal_resource_esp32.c
         pal_storage_esp32.c
         ${WINK_MICRO_OS_ROOT}/pal/src/pal_pwm_router.c
-        ${WINK_MICRO_OS_ROOT}/pal/src/wink_dev_config.c
+        # wink_dev_config.c 已迁至 runtime/src/，已在 WINK_CORE_SOURCES 中包含。
         ${WINK_CORE_SOURCES}
     )
     message(STATUS "wink esp32 target configured (static analysis)")
