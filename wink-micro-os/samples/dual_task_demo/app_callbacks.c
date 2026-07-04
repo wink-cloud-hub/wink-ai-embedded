@@ -3,7 +3,7 @@
 #include "wink_trace.h"
 #include "wink_actuator_registry.h"
 #include "pal_osal.h"
-#include <stdio.h>
+#include "pal_debug.h"
 
 static pal_os_ringbuf_handle_t s_rb = NULL;
 static pal_os_task_handle_t s_sensor_h = NULL;
@@ -29,7 +29,7 @@ static void sensor_task(void* arg) {
 
         /* Push mock distance to ringbuf */
         wink_status_t st = pal_os_ringbuf_push(s_rb, &mock_dist, sizeof(mock_dist));
-        printf("SENSOR: dist=%f, push status=%d\n", mock_dist, st);
+        pal_debug_printf("SENSOR: dist=%f, push status=%d\n", mock_dist, st);
         (void)st;
         
         pal_os_sleep_ms(20);
@@ -52,11 +52,11 @@ static void motor_task(void* arg) {
             if (angle == 180.0f) {
                 g_servo_was_180 = true;
             }
-            printf("MOTOR: latest_dist=%f, setting angle=%f\n", latest_dist, angle);
+            pal_debug_printf("MOTOR: latest_dist=%f, setting angle=%f\n", latest_dist, angle);
             wink_status_t st = dal_servo_set_angle(&neck_servo, angle);
             (void)st;
         } else {
-            printf("MOTOR: ringbuf pop empty\n");
+            pal_debug_printf("MOTOR: ringbuf pop empty\n");
         }
         pal_os_sleep_ms(30);
     }
@@ -74,9 +74,9 @@ static void app_init(void) {
     /* Initialize devices */
     const dal_servo_config_t servo_cfg = {
         .owner        = "neck_servo",
-        .pwm_channel  = neck_servo.pwm_channel,
-        .min_pulse_ms = neck_servo.min_pulse_ms,
-        .max_pulse_ms = neck_servo.max_pulse_ms
+        .pwm_channel  = neck_servo.config.pwm_channel,
+        .min_pulse_ms = neck_servo.config.min_pulse_ms,
+        .max_pulse_ms = neck_servo.config.max_pulse_ms
     };
     wink_status_t s = dal_servo_init(&neck_servo, &servo_cfg);
     if (wink_status_is_error(s)) { wink_trace_fault(7002u); }

@@ -19,10 +19,11 @@ dal_ultrasonic_t front_radar = {
 };
 
 dal_servo_t neck_servo = {
-    .pwm_channel = 0,
+    .config.owner = "neck_servo",
+    .config.pwm_channel = 0,
+    .config.min_pulse_ms = 0.5f,
+    .config.max_pulse_ms = 2.5f,
     .current_angle = 90.0f,
-    .min_pulse_ms = 0.5f,
-    .max_pulse_ms = 2.5f,
 };
 
 /* ADR-0008 覆写注册表：(device_id → 类型化 dev → apply_fn) 类型正确三元组。

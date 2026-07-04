@@ -31,16 +31,22 @@ typedef struct {
  * @brief SSD1306 实例（运行期状态；POD，零动态分配）
  *
  * 帧缓冲内嵌在结构体内（128×64/8 = 1024 B），避免堆分配。
- * 成员按对齐需求降序排列（c-code.md §4）。
+ *
+ * Phase 2 标准化：内嵌 `.config` 副本（与 led/button/ultrasonic/servo 一致），
+ * 便于 codegen 统一遍历、Flash 覆写（ADR-0008）和运行时诊断。
+ *
+ * `pages` 是从 config.height 派生的运行期值（height/8），init 时计算一次并缓存于
+ * 顶层字段，避免每次 draw/flush 重复右移；不进 config 副本，避免"输入 vs 派生态"
+ * 语义混淆。
+ *
+ * 成员按对齐需求降序排列（c-code.md §4）：uint8_t[]（1B 数组，任意对齐）→
+ * config_t（含 u16→u8） → uint8_t → bool，无内部 padding。
  */
 typedef struct {
-    uint8_t  framebuffer[SSD1306_FB_SIZE]; /* 帧缓冲（页式：每页 8 行 × 128 列） */
-    uint16_t i2c_addr;
-    uint16_t width;
-    uint16_t height;
-    uint8_t  i2c_port;
-    uint8_t  pages;        /* height / 8 */
-    bool     initialized;
+    uint8_t              framebuffer[SSD1306_FB_SIZE]; /* 帧缓冲（页式：每页 8 行 × 128 列） */
+    dal_ssd1306_config_t config;    /* 配置副本，由 init 从 cfg 深拷贝 */
+    uint8_t              pages;     /* 派生：config.height / 8 */
+    bool                 initialized;
 } dal_ssd1306_t;
 
 /**

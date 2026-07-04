@@ -34,8 +34,8 @@ void test_init_rejects_invalid_pulse_range(void) {
 
 void test_set_angle_before_init_returns_not_initialized(void) {
     /* initialized 默认 false（未 init） */
-    dal_servo_t dev = { .pwm_channel = 0, .current_angle = 0.0f,
-                        .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f };
+    dal_servo_t dev = { .config.pwm_channel = 0, .current_angle = 0.0f,
+                        .config.min_pulse_ms = 0.5f, .config.max_pulse_ms = 2.5f };
     TEST_ASSERT_EQUAL_INT(WINK_ERR_NOT_INITIALIZED, dal_servo_set_angle(&dev, 90.0f));
 }
 
@@ -71,7 +71,7 @@ void test_safe_off_null_returns_invalid_arg(void) {
 }
 
 void test_safe_off_before_init_returns_not_initialized(void) {
-    dal_servo_t dev = { .pwm_channel = 0, .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f };  /* !initialized */
+    dal_servo_t dev = { .config.pwm_channel = 0, .config.min_pulse_ms = 0.5f, .config.max_pulse_ms = 2.5f };  /* !initialized */
     TEST_ASSERT_EQUAL_INT(WINK_ERR_NOT_INITIALIZED, dal_servo_safe_off(&dev));
 }
 
@@ -95,29 +95,29 @@ static void build_servo_params(uint8_t *p, uint8_t ch, float min_ms, float max_m
 }
 
 void test_apply_override_writes_fields(void) {
-    dal_servo_t s = { .pwm_channel = 0, .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f };
+    dal_servo_t s = { .config.pwm_channel = 0, .config.min_pulse_ms = 0.5f, .config.max_pulse_ms = 2.5f };
     uint8_t p[16];
     build_servo_params(p, 3, 0.6f, 2.4f);
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_servo_apply_override(&s, p, sizeof p));
-    TEST_ASSERT_EQUAL_UINT8(3u, s.pwm_channel);
-    TEST_ASSERT_EQUAL_FLOAT(0.6f, s.min_pulse_ms);
-    TEST_ASSERT_EQUAL_FLOAT(2.4f, s.max_pulse_ms);
+    TEST_ASSERT_EQUAL_UINT8(3u, s.config.pwm_channel);
+    TEST_ASSERT_EQUAL_FLOAT(0.6f, s.config.min_pulse_ms);
+    TEST_ASSERT_EQUAL_FLOAT(2.4f, s.config.max_pulse_ms);
 }
 
 void test_apply_override_rejects_invalid_pulse(void) {
-    dal_servo_t s = { .pwm_channel = 0, .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f };
+    dal_servo_t s = { .config.pwm_channel = 0, .config.min_pulse_ms = 0.5f, .config.max_pulse_ms = 2.5f };
     uint8_t p[16];
     build_servo_params(p, 0, 0.0f, 2.5f);            /* min == 0 */
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_servo_apply_override(&s, p, sizeof p));
     build_servo_params(p, 0, 2.5f, 0.5f);            /* max <= min */
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_servo_apply_override(&s, p, sizeof p));
     /* 非法 → 字段保持不变（绝不写半状态） */
-    TEST_ASSERT_EQUAL_FLOAT(0.5f, s.min_pulse_ms);
-    TEST_ASSERT_EQUAL_FLOAT(2.5f, s.max_pulse_ms);
+    TEST_ASSERT_EQUAL_FLOAT(0.5f, s.config.min_pulse_ms);
+    TEST_ASSERT_EQUAL_FLOAT(2.5f, s.config.max_pulse_ms);
 }
 
 void test_apply_override_rejects_bad_channel(void) {
-    dal_servo_t s = { .pwm_channel = 0, .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f };
+    dal_servo_t s = { .config.pwm_channel = 0, .config.min_pulse_ms = 0.5f, .config.max_pulse_ms = 2.5f };
     uint8_t p[16];
     build_servo_params(p, PAL_PWM_CHANNELS, 0.5f, 2.5f);   /* channel 越界 */
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_servo_apply_override(&s, p, sizeof p));

@@ -21,15 +21,15 @@ typedef struct {
  * @brief 舵机实例（运行期状态；POD，ADR-0004 静态分发）
  *
  * 成员按对齐需求降序排列（c-code.md §4）：float(4B) → uint8_t/bool(1B)，
- * 消除内部 padding（20B → 16B）。仅重排顺序、未改字段名，故 designated
- * initializer 与所有 `dev->xxx` 访问均不受影响（非破坏性）。
+ * 消除内部 padding。
+ *
+ * Phase 2 标准化：所有 DAL 设备统一嵌入 `.config` 副本（与 led/button/ultrasonic
+ * 一致），便于 codegen 统一遍历、Flash 覆写（ADR-0008）和运行时诊断。
  */
 typedef struct {
-    float    min_pulse_ms;   /* Config: 最小脉宽 ms */
-    float    max_pulse_ms;   /* Config: 最大脉宽 ms */
-    float    current_angle;  /* State:  当前角度（度，钳位后） */
-    uint8_t  pwm_channel;    /* Config: PWM 通道 */
-    bool     initialized;    /* State:  init 成功后置 true */
+    dal_servo_config_t config;       /**< 配置副本（owner/pwm_channel/min_pulse_ms/max_pulse_ms），init 从 cfg 深拷贝 */
+    float    current_angle;          /**< State: 当前角度（度，钳位后） */
+    bool     initialized;            /**< State: init 成功后置 true */
 } dal_servo_t;
 
 /**
