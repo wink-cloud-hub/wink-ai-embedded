@@ -109,7 +109,7 @@ wink_sim_faults_t *pal_wasm_get_domain_config(uint32_t domain_id) {
     if (domain_id >= WASM_FAULT_DOMAIN_COUNT) {
         return NULL;
     }
-    /* Wave3 interim: all domains alias the global s_faults instance held in
+    /* TODO(Wave3): all domains alias the global s_faults instance held in
      * pal_wasm_physical.c. When Wave3 introduces per-domain config storage,
      * both this line and pal_wasm_get_faults_ref() go away together. */
     return pal_wasm_get_faults_ref();

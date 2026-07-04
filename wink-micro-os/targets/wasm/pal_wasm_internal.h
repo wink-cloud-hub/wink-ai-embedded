@@ -48,7 +48,7 @@ uint32_t pal_wasm_get_prng_state(void);
 void     pal_wasm_advance_prng_state(uint32_t new_state);
 wink_phys_debounce_ctx_t *pal_wasm_get_debounce_ctx(uint16_t pin);
 
-/* Wave3 interim: pal_wasm_fault_domain.c 用它把所有域别名回落到全局 s_faults；
+/* TODO(Wave3): pal_wasm_fault_domain.c 用它把所有域别名回落到全局 s_faults；
  * Wave3 引入 per-domain 配置存储后与该 helper 一起删除。 */
 wink_sim_faults_t *pal_wasm_get_faults_ref(void);
 

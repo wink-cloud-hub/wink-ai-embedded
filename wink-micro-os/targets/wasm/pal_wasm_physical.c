@@ -142,9 +142,9 @@ uint32_t pal_wasm_get_prng_state(void)       { return s_prng_state; }
  * reseed. */
 void pal_wasm_advance_prng_state(uint32_t new_state) { s_prng_state = new_state; }
 
-/* Wave3 interim accessor: exposes &s_faults so pal_wasm_fault_domain.c can
- * serve all domains from the single global config while the Wave3 per-domain
- * refactor is pending. Delete this helper (and its declaration in
+/* TODO(Wave3): interim accessor — exposes &s_faults so pal_wasm_fault_domain.c
+ * can serve all domains from the single global config while the Wave3
+ * per-domain refactor is pending. Delete this helper (and its declaration in
  * pal_wasm_internal.h) once per-domain instances land — the only caller is
  * pal_wasm_get_domain_config(). */
 wink_sim_faults_t *pal_wasm_get_faults_ref(void) { return &s_faults; }
@@ -174,24 +174,28 @@ wink_phys_debounce_ctx_t *pal_wasm_get_debounce_ctx(uint16_t pin) {
  * resetting from an arbitrary mid-test state, not initialising. JS test
  * harnesses call this between scenarios.
  *
- * Resets:
+ * Resets (order matters — clear_latch MUST come before reset_fault_log
+ * because the latter is gated by WASM_FAULT_GUARD_VOID and would no-op
+ * while the latch is still set):
+ *   - fault latch cleared (delegates to pal_wasm_clear_fault_latch,
+ *     defined in pal_wasm_fault.c — also drops the cached app_callbacks)
  *   - faults to all-zero (== ideal == no degradation)
  *   - every per-pin debounce ctx to fresh state
  *   - PRNG seed to the default of 1 (matches BSS init)
  *   - fault audit log to empty (delegates to pal_wasm_reset_fault_log,
  *     defined in pal_wasm_fault.c)
- *   - fault latch cleared (delegates to pal_wasm_clear_fault_latch,
- *     defined in pal_wasm_fault.c — also drops the cached app_callbacks)
  *   - fault domain table to defaults (delegates to
  *     pal_wasm_reset_fault_domains, defined in pal_wasm_fault_domain.c)
  */
 EMSCRIPTEN_KEEPALIVE
 void pal_wasm_reset_physical(void) {
+    /* Latch first — reset_fault_log() is guard-gated and would skip if
+     * s_wasm_faulted were still true. */
+    pal_wasm_clear_fault_latch();
     memset(&s_faults, 0, sizeof(s_faults));
     memset(s_debounce_ctx, 0, sizeof(s_debounce_ctx));
     s_prng_state = 1u;
     pal_wasm_reset_fault_log();
-    pal_wasm_clear_fault_latch();
     pal_wasm_reset_fault_domains();
 }
 
