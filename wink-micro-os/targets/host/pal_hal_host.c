@@ -413,6 +413,21 @@ void pal_pwm_deinit(uint8_t channel) {
     pal_pwm_router_release(channel);
 }
 
+/* P1-P4 (2026-07-04)：pin_map getter。host 是虚拟 target，无物理引脚路由；
+ * 返回 WINK_ERR_UNSUPPORTED 让调用方（DAL/samples）明确感知语义。参数越界仍返
+ * INVALID_ARG（先做参数校验再看能力可用性）。*/
+wink_status_t pal_pwm_channel_pin(uint8_t channel, wink_pin_t *out_pin) {
+    if (out_pin == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (channel >= PAL_PWM_CHANNELS) { return WINK_ERR_INVALID_ARG; }
+    return WINK_ERR_UNSUPPORTED;
+}
+
+wink_status_t pal_i2c_port_pins(uint8_t port, wink_pin_t *out_sda, wink_pin_t *out_scl) {
+    if (out_sda == NULL && out_scl == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
+    return WINK_ERR_UNSUPPORTED;
+}
+
 /* Phase 2：host I2C 事务捕获（供 ssd1306 单测验证 flush 发出正确事务） */
 extern void host_record_i2c(uint8_t port, uint16_t addr, uint32_t write_len);
 

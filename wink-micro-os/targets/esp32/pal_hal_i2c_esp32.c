@@ -378,6 +378,17 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
     return WINK_OK;
 }
 
+/* P1-P4 (2026-07-04)：pin_map 数组不再暴露到公共头，改经 getter。
+ * board_config.c 仍以强定义覆盖弱默认 pal_i2c_pin_map（linker 层选中强符号）。
+ * out_sda / out_scl 至少一个非 NULL 即可（部分调用方只关心一路）。*/
+wink_status_t pal_i2c_port_pins(uint8_t port, wink_pin_t *out_sda, wink_pin_t *out_scl) {
+    if (out_sda == NULL && out_scl == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
+    if (out_sda) { *out_sda = pal_i2c_pin_map[port][0]; }
+    if (out_scl) { *out_scl = pal_i2c_pin_map[port][1]; }
+    return WINK_OK;
+}
+
 #else /* !ESP_PLATFORM: non-IDF stub for static analysis. */
 
 wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
@@ -388,5 +399,8 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
     (void)read_buf; (void)read_len;
     return WINK_ERR_UNSUPPORTED;
 }
+
+wink_status_t pal_i2c_port_pins(uint8_t port, wink_pin_t *out_sda, wink_pin_t *out_scl)
+{ (void)port; (void)out_sda; (void)out_scl; return WINK_ERR_UNSUPPORTED; }
 
 #endif /* ESP_PLATFORM */

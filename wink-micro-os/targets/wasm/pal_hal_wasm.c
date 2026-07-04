@@ -107,6 +107,21 @@ void pal_pwm_deinit(uint8_t channel) {
     pal_pwm_router_release(channel);   /* no-op if uninitialized */
 }
 
+/* P1-P4 (2026-07-04)：pin_map getter。wasm 是纯虚拟外设 target（走 JS 桥，不映射
+ * 物理 GPIO），无 pin_map 概念；返回 WINK_ERR_UNSUPPORTED。参数越界仍先返
+ * INVALID_ARG（参数校验优先于能力可用性）。*/
+wink_status_t pal_pwm_channel_pin(uint8_t channel, wink_pin_t *out_pin) {
+    if (out_pin == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (channel >= PAL_PWM_CHANNELS) { return WINK_ERR_INVALID_ARG; }
+    return WINK_ERR_UNSUPPORTED;
+}
+
+wink_status_t pal_i2c_port_pins(uint8_t port, wink_pin_t *out_sda, wink_pin_t *out_scl) {
+    if (out_sda == NULL && out_scl == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
+    return WINK_ERR_UNSUPPORTED;
+}
+
 wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
                       const uint8_t *write_buf, uint32_t write_len,
                       uint8_t *read_buf, uint32_t read_len) {

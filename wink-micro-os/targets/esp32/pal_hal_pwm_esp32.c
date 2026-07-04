@@ -80,6 +80,15 @@ void pal_pwm_deinit(uint8_t channel) {
     pal_pwm_router_release(channel);
 }
 
+/* P1-P4 (2026-07-04)：pin_map 数组不再暴露到公共头，改经 getter。
+ * board_config.c 仍以强定义覆盖弱默认 pal_pwm_pin_map（linker 层，无 forward decl 必要）。*/
+wink_status_t pal_pwm_channel_pin(uint8_t channel, wink_pin_t *out_pin) {
+    if (out_pin == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (channel >= PAL_PWM_CHANNELS) { return WINK_ERR_INVALID_ARG; }
+    *out_pin = pal_pwm_pin_map[channel];
+    return WINK_OK;
+}
+
 #else /* !ESP_PLATFORM: non-IDF stub for static analysis. */
 
 wink_status_t pal_pwm_init(uint8_t channel, uint32_t freq_hz)
@@ -89,5 +98,8 @@ wink_status_t pal_pwm_set_duty(uint8_t channel, float duty_percent)
 { (void)channel; (void)duty_percent; return WINK_ERR_UNSUPPORTED; }
 
 void pal_pwm_deinit(uint8_t channel) { (void)channel; }
+
+wink_status_t pal_pwm_channel_pin(uint8_t channel, wink_pin_t *out_pin)
+{ (void)channel; (void)out_pin; return WINK_ERR_UNSUPPORTED; }
 
 #endif /* ESP_PLATFORM */
