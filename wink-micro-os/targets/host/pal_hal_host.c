@@ -439,19 +439,19 @@ void host_register_sim_ultrasonic(void (*trigger_fn)(uint16_t), uint32_t (*measu
     s_sim_measure_fn = measure_fn;
 }
 
-wink_status_t pal_hal_ultrasonic_init(uint16_t echo_pin) {
+wink_status_t pal_ultrasonic_init(uint16_t echo_pin) {
     (void)echo_pin;
     return WINK_OK;
 }
 
-wink_status_t pal_hal_ultrasonic_trigger(uint16_t trigger_pin) {
+wink_status_t pal_ultrasonic_trigger(uint16_t trigger_pin) {
     if (s_sim_trigger_fn) {
         s_sim_trigger_fn(trigger_pin);
     }
     return WINK_OK;
 }
 
-wink_status_t pal_hal_ultrasonic_measure_pulse_us(
+wink_status_t pal_ultrasonic_measure_pulse_us(
     uint16_t echo_pin,
     uint32_t timeout_us,
     uint32_t *pulse_us
@@ -470,6 +470,6 @@ wink_status_t pal_hal_ultrasonic_measure_pulse_us(
     return pal_gpio_pulse_in((wink_pin_t)echo_pin, true, timeout_us, pulse_us);
 }
 
-void pal_hal_ultrasonic_deinit(void) {
+void pal_ultrasonic_deinit(void) {
 }
 
