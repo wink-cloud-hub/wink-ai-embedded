@@ -1,5 +1,5 @@
 /**
- * @file app_main.c
+ * @file app_callbacks.c
  * @brief OLED Dashboard 业务逻辑：按钮输入 → OLED 文本 + LED 指示。
  *
  * 真机行为：
