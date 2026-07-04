@@ -103,6 +103,11 @@ uint32_t pal_wasm_get_prng_state(void);
 void     pal_wasm_advance_prng_state(uint32_t new_state);
 wink_phys_debounce_ctx_t *pal_wasm_get_debounce_ctx(uint16_t pin);
 
+/* Wave3 interim accessor: pal_wasm_fault_domain.c uses this to serve all
+ * domains from the single global s_faults instance in pal_wasm_physical.c.
+ * Delete together with the per-domain fault refactor. */
+wink_sim_faults_t *pal_wasm_get_faults_ref(void);
+
 /* ─────────────────────────────────────────────────────────
  * 故障审计日志系统（ADR-0009 Wave 2 Task 8）
  * ─────────────────────────────────────────────────────────
@@ -186,6 +191,23 @@ bool pal_wasm_is_faulted(void);
 
 /** 清除 fault 锁存（供 pal_sim_scheduler_run 新周期启动时内部调用，非对外导出）。 */
 void pal_wasm_clear_fault_latch(void);
+
+/* ─────────────────────────────────────────────────────────
+ * Fault 快速失败子系统的内部支持接口（在 pal_wasm_fault.c 内实现）
+ * ─────────────────────────────────────────────────────────
+ * 仅供 pal_osal_wasm.c 的 pal_sim_scheduler_run 调用——把 scheduler 与 fault
+ * 锁存 / App callbacks 缓存的耦合收缩到两条 helper，避免直接暴露文件级 static。
+ */
+
+/** 注册 App callbacks 引用（scheduler_run 入口调用；pal_wasm_clear_fault_latch
+ *  会同时清空该引用，新一轮 run 需要显式再注册一次）。 */
+struct wink_app_callbacks;
+void pal_wasm_fault_set_callbacks(const struct wink_app_callbacks* cb);
+
+/** 内部 fault 注入入口：置锁存 + 派发 wink_runtime_fault(cached_callbacks, code)。
+ *  幂等语义与 pal_wasm_host_fault 一致——已 latch 后仅 trace 不再重复 safe-off。
+ *  当前唯一调用者是 pal_sim_scheduler_run 的 WCET 兜底分支（code=8002）。 */
+void pal_wasm_invoke_fault(uint32_t code);
 
 /** Host→C fault 注入（P0-3 Phase C；JS 侧 wrapper 调用此 EMSCRIPTEN_KEEPALIVE 导出）。
  *  code = 8003 是 JS host plugin fault（用户 js_* override 抛异常 / reject）。
@@ -303,5 +325,9 @@ wink_status_t pal_wasm_arm_fault_domain(uint32_t domain_id, bool armed);
 /** 获取指定故障域的累计触发计数（Wave3 预埋）。
  *  当前永远返回 0；越界亦返回 0（sentinel，不会读未初始化内存）。 */
 uint32_t pal_wasm_get_domain_trigger_count(uint32_t domain_id);
+
+/** 重置全部故障域到 armed=true / trigger_count=0（由 pal_wasm_reset_physical
+ *  内部调用，实现位于 pal_wasm_fault_domain.c）。 */
+void pal_wasm_reset_fault_domains(void);
 
 #endif /* PAL_WASM_INTERNAL_H */
