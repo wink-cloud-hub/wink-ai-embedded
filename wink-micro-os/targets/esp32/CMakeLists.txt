@@ -19,6 +19,18 @@ if(ESP_PLATFORM)
     # 而 generated/ 要等构建期 codegen 才创建。此处预创建空目录以满足校验，头文件稍后由 codegen 填入。
     file(MAKE_DIRECTORY ${WINK_CONFIG_DIR})
 
+    # ESP-IDF v5.x/v6.x 可能未在 CMake 变量中直接暴露 ESP_IDF_VERSION。
+    # 我们根据 IDF_VERSION_MAJOR/MINOR/PATCH 或环境中的 IDF_VERSION 构建它。
+    if(NOT DEFINED ESP_IDF_VERSION)
+        if(DEFINED IDF_VERSION_MAJOR)
+            set(ESP_IDF_VERSION "${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}.${IDF_VERSION_PATCH}")
+        elseif(DEFINED ENV{IDF_VERSION})
+            set(ESP_IDF_VERSION $ENV{IDF_VERSION})
+        else()
+            set(ESP_IDF_VERSION "0.0.0")
+        endif()
+    endif()
+
     # ESP-IDF 环境：注册为 IDF 组件
     #
     # ESP-IDF 5.4 起把 driver 单体拆分为 esp_driver_gpio/i2c/rmt/ledc 等细粒度组件；
