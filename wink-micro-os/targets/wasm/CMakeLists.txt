@@ -11,7 +11,6 @@ set(PAL_WASM_SOURCES
     # HAL 层（含中断桥）
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_hal_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_irq_wasm.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/pal_ultrasonic_wasm.c
     # OSAL 层（虚拟时钟 / scheduler / storage）
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_osal_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_storage_wasm.c

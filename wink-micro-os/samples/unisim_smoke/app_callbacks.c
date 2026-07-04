@@ -17,7 +17,6 @@
 #include "pal_hal.h"      /* pal_gpio_write/read, pal_pwm_init/set_duty, pal_i2c_transfer,
                              pal_gpio_enable_interrupt/disable_interrupt, pal_gpio_pulse_in */
 #include "pal_resource.h" /* pal_resource_claim */
-#include "pal_ultrasonic.h" /* pal_ultrasonic_trigger */
 #include "pal_osal.h"     /* pal_os_sleep_ms, pal_os_busy_wait_us, pal_os_get_ms/us */
 #include "pal_irq.h"      /* PAL_ISR macro */
 #include "pal_debug.h"    /* pal_debug_printf */
@@ -72,7 +71,9 @@ static void app_init(void)
     (void)pal_gpio_init(SMOKE_ULTRASONIC_ECHO, PAL_GPIO_INPUT);
     (void)pal_resource_claim(PAL_RESOURCE_GPIO_PIN, SMOKE_ULTRASONIC_TRIG, "smoke_us_trig");
     (void)pal_resource_claim(PAL_RESOURCE_GPIO_PIN, SMOKE_ULTRASONIC_ECHO, "smoke_us_echo");
-    (void)pal_ultrasonic_trigger(SMOKE_ULTRASONIC_TRIG);
+    (void)pal_gpio_write(SMOKE_ULTRASONIC_TRIG, true);
+    pal_os_busy_wait_us(10);
+    (void)pal_gpio_write(SMOKE_ULTRASONIC_TRIG, false);
     uint32_t pulse_us = 0;
     (void)pal_gpio_pulse_in(SMOKE_ULTRASONIC_ECHO, true, 0, &pulse_us);
 

@@ -19,6 +19,7 @@
 #include "pal_resource.h"
 #include "pal_atomic_esp32.h"       /* target-private atomic + memory barrier helpers */
 #include "pal_hal_internal_esp32.h" /* pal_esp32_gpio_synchronize_all() declaration */
+#include "hal/pal_rmt.h"
 
 #if defined(ESP_PLATFORM)
 #include "driver/gpio.h"
@@ -343,11 +344,11 @@ wink_status_t pal_gpio_disable_interrupt(wink_pin_t pin) {
  * GPIO Pulse In（超声波硬件捕获 - 当前 busy-wait 回退）
  * ───────────────────────────────────────────────────────── */
 
-wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level,
-                                  uint32_t timeout_us, uint32_t *pulse_us) {
-    /* FIXME: MVP 阶段暂用 busy-wait（会阻塞 tick）。
-     * Phase 4 目标：迁移至 RMT + GPIO 双沿 ISR + 硬件定时器实现非阻塞捕获。
-     * 当前实现仅供 avoidance_car 示例跑通，实时性不达标。 */
+static uint16_t s_rmt_echo_pin = 0xFFFF;
+static bool s_rmt_initialized = false;
+
+static wink_status_t pal_gpio_pulse_in_busy_wait(wink_pin_t pin, bool level,
+                                                 uint32_t timeout_us, uint32_t *pulse_us) {
     if (pulse_us == NULL || pin < 0 || pin >= GPIO_NUM_MAX) {
         return WINK_ERR_INVALID_ARG;
     }
@@ -384,6 +385,33 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level,
 
     *pulse_us = (uint32_t)(pal_os_get_us() - pulse_start);
     return WINK_OK;
+}
+
+wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level,
+                                uint32_t timeout_us, uint32_t *pulse_us) {
+    if (pulse_us == NULL || pin < 0 || pin >= GPIO_NUM_MAX) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    /* 2. 判断是否需要初始化 RMT */
+    if (!s_rmt_initialized || s_rmt_echo_pin != (uint16_t)pin) {
+        if (s_rmt_initialized) {
+            pal_rmt_ultrasonic_deinit();
+            s_rmt_initialized = false;
+        }
+        if (pal_rmt_ultrasonic_init((uint16_t)pin) == WINK_OK) {
+            s_rmt_echo_pin = (uint16_t)pin;
+            s_rmt_initialized = true;
+        }
+    }
+
+    /* 3. 执行测量 */
+    if (s_rmt_initialized && s_rmt_echo_pin == (uint16_t)pin) {
+        return pal_rmt_ultrasonic_measure(timeout_us, pulse_us);
+    }
+
+    /* 4. RMT 不可用或失败时，降级为 busy-wait */
+    return pal_gpio_pulse_in_busy_wait(pin, level, timeout_us, pulse_us);
 }
 
 #else /* !ESP_PLATFORM: non-IDF stub for static analysis. */
