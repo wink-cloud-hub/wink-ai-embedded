@@ -15,6 +15,8 @@
 #define PAL_RESOURCE_H
 
 #include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
 #include "wink_status.h"
 
 #ifdef __cplusplus
