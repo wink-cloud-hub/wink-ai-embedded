@@ -1,5 +1,5 @@
 /**
- * @file pal_hal_rmt_esp32.c
+ * @file pal_rmt_esp32.c
  * @brief ESP32 RMT 硬件脉冲捕获（超声波专用）。
  *
  * ⚠️ @verified: SOURCE-EDITED -- RMT timeout disable/enable reset applied; idf.py compile verification
