@@ -27,8 +27,8 @@ if(ESP_PLATFORM)
             pal_hal_gpio_esp32.c
             pal_hal_i2c_esp32.c
             pal_hal_pwm_esp32.c
-            pal_hal_rmt_esp32.c
-            pal_hal_ultrasonic_esp32.c
+            pal_rmt_esp32.c
+            pal_ultrasonic_esp32.c
             pal_irq_esp32.c
             pal_osal_esp32.c
             pal_resource_esp32.c
