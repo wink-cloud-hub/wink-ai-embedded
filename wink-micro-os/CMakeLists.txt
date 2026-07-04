@@ -112,7 +112,8 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
         ${PAL_WASM_SOURCES}
         ${WASM_ENTRY_SOURCE}
         ${WINK_APP_SOURCES}                # ← App 注入（Task 1.2）
-        pal/src/pal_pwm_router.c)
+        # pal_pwm_router.c 现由 pal_common OBJECT 库贡献（P1-P3，2026-07-04）
+        $<TARGET_OBJECTS:pal_common>)
     # 注：wink_dev_config.c 已迁至 runtime/src/，随 wink_runtime STATIC 库链入，
     # 无需在此显式列出（旧位置 pal/src/wink_dev_config.c 已删除）。
     # 契约断言：wink_simulator 必须 link wink_runtime（否则 wasm_entry.c 里的

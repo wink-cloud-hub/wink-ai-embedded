@@ -50,6 +50,10 @@ if(ESP_PLATFORM)
             pal_osal_esp32.c
             pal_resource_esp32.c
             pal_storage_esp32.c
+            # pal_pwm_router.c: target-independent PWM timer allocator.
+            # P1-P3 (2026-07-04): host/wasm 通过 pal_common OBJECT 库拉入，
+            # ESP32 是 IDF 组件（独立 CMake 作用域，无法跨作用域引用 pal_common
+            # OBJECT target），故此处继续直接列源文件。改动限于 host/wasm。
             ${WINK_MICRO_OS_ROOT}/pal/src/pal_pwm_router.c
             # wink_dev_config.c 已迁至 runtime/src/（已包含在 WINK_CORE_SOURCES 里，
             # 见 core_sources.cmake WINK_RUNTIME_SOURCES），此处不再显式列出。
