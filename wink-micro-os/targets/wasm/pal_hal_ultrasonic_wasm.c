@@ -2,8 +2,10 @@
  * @file pal_hal_ultrasonic_wasm.c
  * @brief WASM 仿真平台的超声波传感器 PAL 实现。
  *
- * 由 pal_hal_ultrasonic.c 重命名（契约不变：仅加 _wasm 后缀，
- * 与 pal_hal_wasm.c / pal_irq_wasm.c 等 target-private 文件命名一致）。
+ * 命名遵循 targets/ 文件命名规范 pal_<domain>[_<detail>]_<plat>.c
+ * （详见 docs/design/02-wink-micro-os/03-directory-architecture.md §4.2）：
+ * domain=hal, detail=ultrasonic, plat=wasm。与 pal_hal_ultrasonic_esp32.c
+ * 是同一 PAL 契约（pal/include/hal/pal_ultrasonic.h）的两个 target 实现。
  *
  * 通过 wasm_bridge.h 调用 JS 侧的物理模拟函数。此文件仅在 WASM
  * target 编译，ESP32/host 构建完全不可见（同 R-4 discipline，
