@@ -1,6 +1,6 @@
 /**
  * @file pal_atomic_esp32.h
- * @brief ESP32 target-private atomic helpers shared between pal_hal_esp32_gpio.c
+ * @brief ESP32 target-private atomic helpers shared between pal_hal_gpio_esp32.c
  *        and pal_irq_esp32.c (SMP-safe wrapper for GCC __atomic_* builtins).
  *
  * ⚠️ Target-private: this header lives under wink-micro-os/targets/esp32/ and

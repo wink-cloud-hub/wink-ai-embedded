@@ -1,5 +1,5 @@
 /**
- * @file pal_hal_esp32_i2c.c
+ * @file pal_hal_i2c_esp32.c
  * @brief ESP32 target 的 I2C 主控实现（ESP-IDF v5.x / v6.x 双 API 兼容）：
  *        pal_i2c_transfer + weak pal_i2c_pin_map 默认 + 设备缓存 LRU + SMP 安全互斥锁。
  *

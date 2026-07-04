@@ -1,12 +1,12 @@
 /**
- * @file pal_hal_esp32_ultrasonic.c
+ * @file pal_hal_ultrasonic_esp32.c
  * @brief ESP32 平台的超声波传感器 PAL 实现
  *
  * 使用 ESP-IDF RMT 外设进行高精度脉冲捕获。
  * 此文件仅在 ESP32 target 编译，WASM/host 构建完全不可见。
  *
  * 代码复用策略：
- * - 内部复用 pal_hal_esp32_rmt.c 中已实现的 pal_rmt_ultrasonic_* 函数
+ * - 内部复用 pal_hal_rmt_esp32.c 中已实现的 pal_rmt_ultrasonic_* 函数
  * - 降级路径：pal_gpio_pulse_in（来自 pal_hal_esp32.c）
  * - 仅做接口适配，不重复实现算法逻辑
  */
@@ -23,7 +23,7 @@ wink_status_t pal_hal_ultrasonic_init(uint16_t echo_pin) {
     if (s_rmt_initialized) {
         return WINK_OK;
     }
-    /* 复用 pal_hal_esp32_rmt.c 的 RMT 硬件初始化 */
+    /* 复用 pal_hal_rmt_esp32.c 的 RMT 硬件初始化 */
     wink_status_t status = pal_rmt_ultrasonic_init(echo_pin);
     if (!wink_status_is_error(status)) {
         s_rmt_initialized = true;

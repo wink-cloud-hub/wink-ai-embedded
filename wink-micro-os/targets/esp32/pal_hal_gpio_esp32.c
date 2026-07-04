@@ -1,5 +1,5 @@
 /**
- * @file pal_hal_esp32_gpio.c
+ * @file pal_hal_gpio_esp32.c
  * @brief ESP32 target 的 pal_hal.h GPIO 子集实现：init/read/write/
  *        enable_interrupt_ex/disable_interrupt/pulse_in + GPIO ISR wrapper.
  *
@@ -11,14 +11,14 @@
  *
  * ⚠️ 跨 TU：pal_esp32_gpio_synchronize_all() 是本 TU 唯一暴露的 target-private
  *   跨 TU 函数（供 pal_irq_esp32.c 的 pal_irq_synchronize(~0U) 调用），
- *   声明在 pal_hal_esp32_internal.h；s_gpio_irq_in_flight[] 保持 file-scope。
+ *   声明在 pal_hal_internal_esp32.h；s_gpio_irq_in_flight[] 保持 file-scope。
  */
 #include "pal_hal.h"
 #include "pal_irq.h"        /* pal_irq_prio_t used by pal_gpio_enable_interrupt_ex */
 #include "pal_osal.h"       /* pal_os_get_us() for pulse_in busy-wait + synchronize_all */
 #include "pal_resource.h"
 #include "pal_atomic_esp32.h"       /* target-private atomic + memory barrier helpers */
-#include "pal_hal_esp32_internal.h" /* pal_esp32_gpio_synchronize_all() declaration */
+#include "pal_hal_internal_esp32.h" /* pal_esp32_gpio_synchronize_all() declaration */
 
 #if defined(ESP_PLATFORM)
 #include "driver/gpio.h"

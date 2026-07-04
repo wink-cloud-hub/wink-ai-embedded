@@ -8,7 +8,7 @@
  *
  * ✅ R-5：`s_esp32_shared_sync_ops` 与 shared_chain synchronize→free 时序按字节保留。
  * ✅ R-1：pal_irq_* 公共 API 签名、返回码、handler 调用顺序均与旧实现等价。
- * ⚠️ 跨 TU：pal_irq_synchronize(~0U) 通过 pal_hal_esp32_internal.h 调 GPIO TU 的
+ * ⚠️ 跨 TU：pal_irq_synchronize(~0U) 通过 pal_hal_internal_esp32.h 调 GPIO TU 的
  *   pal_esp32_gpio_synchronize_all() 完成 GPIO ISR 全量等待，避免暴露
  *   s_gpio_irq_in_flight[]。
  */
@@ -17,7 +17,7 @@
 #include "pal_irq_advanced.h"
 #include "pal_osal.h"        /* pal_os_get_us() for synchronize timeout */
 #include "pal_atomic_esp32.h" /* target-private atomic helpers */
-#include "pal_hal_esp32_internal.h" /* pal_esp32_gpio_synchronize_all() */
+#include "pal_hal_internal_esp32.h" /* pal_esp32_gpio_synchronize_all() */
 
 #if defined(ESP_PLATFORM)
 #include "esp_err.h"
@@ -194,7 +194,7 @@ void pal_irq_synchronize(uint32_t irq_num)
                 }
             }
         }
-        /* GPIO 中断由 pal_hal_esp32_gpio.c 拥有 s_gpio_irq_in_flight[]；
+        /* GPIO 中断由 pal_hal_gpio_esp32.c 拥有 s_gpio_irq_in_flight[]；
          * 通过 target-private 内部函数完成全量等待，避免跨 TU 暴露数组。 */
         pal_esp32_gpio_synchronize_all(SYNCHRONIZE_TIMEOUT_US);
     } else {
