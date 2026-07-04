@@ -36,6 +36,14 @@
  * pal_debug_printf() to match the project-standard debug channel. */
 #include <stdlib.h>
 
+
+/* ADR-0017 层 1 例外：本 TU 合法调用 WINK_BLOCKING API。抑制
+ * -Wdeprecated-declarations 使 -Werror 下仍能编译；严格模式
+ * (-DWINK_STRICT_NONBLOCKING=1) 下相关 API 声明直接消失，本 TU 会链接失败——那是设计意图。 */
+#if defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 #define ASSERT_EQ(expected, actual, msg) do {                                                  \
     wink_status_t _e = (expected);                                                             \
     wink_status_t _a = (actual);                                                               \

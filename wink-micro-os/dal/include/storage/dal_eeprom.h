@@ -36,6 +36,7 @@ typedef struct {
     bool initialized;            /**< init 成功后置 true */
 } dal_eeprom_t;
 
+#ifndef WINK_STRICT_NONBLOCKING
 /**
  * @brief 初始化 EEPROM：校验配置参数、配置 I2C 总线、置 initialized。
  *
@@ -50,9 +51,11 @@ typedef struct {
  * @note API Contract:
  *   - Preconditions: dev 非 NULL；cfg 非 NULL；cfg->i2c_addr 为有效 7-bit 地址。
  *   - Blocking: Yes（I2C 总线初始化 + EEPROM 存在性探测）。
+ *     Not available under WINK_STRICT_NONBLOCKING (ADR-0017 层 2).
  *   - Error-codes: WINK_ERR_UNSUPPORTED (stub) / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_FOUND / WINK_ERR_IO
  *   - Postconditions: 当前 stub 实现下 *dev 被清零，dev->initialized=false，不 claim I2C 资源。
  */
+WINK_BLOCKING
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_eeprom_init(dal_eeprom_t *dev, const dal_eeprom_config_t *cfg);
 
@@ -67,9 +70,11 @@ wink_status_t dal_eeprom_init(dal_eeprom_t *dev, const dal_eeprom_config_t *cfg)
  * @note API Contract:
  *   - Preconditions: dev 非 NULL；dal_eeprom_init() 已成功；buf 非 NULL；addr+len 不越界。
  *   - Blocking: Yes（I2C 总线传输）。
+ *     Not available under WINK_STRICT_NONBLOCKING (ADR-0017 层 2).
  *   - Error-codes: WINK_ERR_UNSUPPORTED (stub) / WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED /
  *                  WINK_ERR_OUT_OF_RANGE / WINK_ERR_IO / WINK_ERR_BUSY
  */
+WINK_BLOCKING
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_eeprom_read(dal_eeprom_t *dev, uint16_t addr, uint8_t *buf, uint16_t len);
 
@@ -84,12 +89,15 @@ wink_status_t dal_eeprom_read(dal_eeprom_t *dev, uint16_t addr, uint8_t *buf, ui
  * @note API Contract:
  *   - Preconditions: dev 非 NULL；dal_eeprom_init() 已成功；buf 非 NULL；addr+len 不越界。
  *   - Blocking: Yes（I2C 总线传输 + 页写入等待）。
+ *     Not available under WINK_STRICT_NONBLOCKING (ADR-0017 层 2).
  *   - Error-codes: WINK_ERR_UNSUPPORTED (stub) / WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED /
  *                  WINK_ERR_OUT_OF_RANGE / WINK_ERR_IO / WINK_ERR_BUSY
  *   - Implementation Note: 跨页边界时自动拆分写入，并在每页写入后等待 write_time_ms。
  */
+WINK_BLOCKING
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_eeprom_write(dal_eeprom_t *dev, uint16_t addr, const uint8_t *buf, uint16_t len);
+#endif /* WINK_STRICT_NONBLOCKING */
 
 #ifdef __cplusplus
 }

@@ -50,6 +50,7 @@ typedef struct {
     bool initialized;               /**< init 成功后置 true */
 } dal_gps_t;
 
+#ifndef WINK_STRICT_NONBLOCKING
 /**
  * @brief 初始化 GPS：校验配置参数、配置 UART 波特率、初始化 NMEA 解析器
  *
@@ -65,11 +66,14 @@ typedef struct {
  * @note API Contract:
  *   - Preconditions: dev 非 NULL；cfg 非 NULL。
  *   - Blocking: Yes（UART 初始化 + 等待首个 NMEA 语句，超时约 1 秒）。
+ *     Not available under WINK_STRICT_NONBLOCKING (ADR-0017 层 2).
  *   - Error-codes: WINK_ERR_UNSUPPORTED (stub) / WINK_ERR_INVALID_ARG / WINK_ERR_IO / WINK_ERR_TIMEOUT
  *   - Postconditions: 当前 stub 实现下 *dev 被清零，dev->initialized=false，不 claim UART 资源。
  */
+WINK_BLOCKING
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_gps_init(dal_gps_t *dev, const dal_gps_config_t *cfg);
+#endif /* WINK_STRICT_NONBLOCKING */
 
 /**
  * @brief 非阻塞轮询：接收 UART 数据并解析 NMEA 语句（需在 app_loop 中每 tick 调用）

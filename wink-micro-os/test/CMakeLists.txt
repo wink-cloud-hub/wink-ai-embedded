@@ -39,6 +39,22 @@ endfunction()
 
 add_wink_test(test_smoke test_smoke.c)
 
+# ADR-0017 P1-D2：编译期契约测试 —— 在 -DWINK_STRICT_NONBLOCKING=1 下编译 +
+# 链接一个只引用非阻塞 API 的 TU。目标：
+#   (a) 证明所有 WINK_BLOCKING 声明在严格模式下确实从头文件消失
+#       （否则源码里"注释掉的负例"若被复活会以 undeclared identifier 报错）；
+#   (b) 证明非阻塞对偶 API 仍然可见（否则某个 #ifndef 包围过宽会被本 TU 抓到）。
+# 与 dal_ultrasonic 的 L1 nm 探针互补：nm 层看符号表，本测试看编译期头文件门控。
+add_wink_test(test_pal_nonblocking_strict test_pal_nonblocking_strict.c)
+target_compile_definitions(test_pal_nonblocking_strict PRIVATE WINK_STRICT_NONBLOCKING=1)
+# 需要 dal_ 头文件的搜索路径。add_wink_test 默认没把 dal include 加进来（那是给
+# pal-only 契约测试用的）。这里手工补齐：sensor/ storage/ communication/ 都要。
+target_include_directories(test_pal_nonblocking_strict PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/sensor
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/storage
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/communication)
+
 # 链接 targets/host（完整 PAL）的测试
 function(add_wink_host_test name src)
     add_executable(${name}

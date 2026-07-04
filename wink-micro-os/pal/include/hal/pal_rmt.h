@@ -62,6 +62,7 @@ typedef enum {
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_rmt_pulse_capture_init(wink_pin_t pin, pal_rmt_edge_t start_edge);
 
+#ifndef WINK_STRICT_NONBLOCKING
 /**
  * @brief 等待一次脉冲捕获完成并返回脉宽（微秒）。
  *
@@ -73,7 +74,8 @@ wink_status_t pal_rmt_pulse_capture_init(wink_pin_t pin, pal_rmt_edge_t start_ed
  * @return WINK_OK 测量成功；WINK_ERR_TIMEOUT 超时；WINK_ERR_INVALID_ARG
  *   通道未初始化或参数非法；其它错误码硬件失败
  *
- * @note 阻塞语义：本函数会阻塞调用线程直至捕获完成或超时；在真机上依赖
+ * @note Blocking: Yes. Not available under WINK_STRICT_NONBLOCKING (ADR-0017 层 2).
+ *       本函数会阻塞调用线程直至捕获完成或超时；在真机上依赖
  *   FreeRTOS 信号量，不消耗 CPU。10ms tick 上下文应避免长 timeout_us。
  *
  * 使用方法（以 HC-SR04 为例）：
@@ -85,8 +87,10 @@ wink_status_t pal_rmt_pulse_capture_init(wink_pin_t pin, pal_rmt_edge_t start_ed
  *       float distance_mm = (float)pulse_us * 0.343f / 2.0f;
  *   }
  */
+WINK_BLOCKING
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_rmt_pulse_capture_wait(uint32_t timeout_us, uint32_t *pulse_us_out);
+#endif /* WINK_STRICT_NONBLOCKING */
 
 /**
  * @brief 反初始化 pulse-capture 通道并释放其占用的外设资源。

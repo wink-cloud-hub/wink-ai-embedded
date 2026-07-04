@@ -15,6 +15,14 @@
 #include "wink_runtime.h"
 #include "wink_status.h"
 #include "pal_hal.h"      /* pal_gpio_write/read, pal_pwm_init/set_duty, pal_i2c_transfer,
+
+
+/* ADR-0017 层 1 例外：本 TU 合法调用 WINK_BLOCKING API。抑制
+ * -Wdeprecated-declarations 使 -Werror 下仍能编译；严格模式
+ * (-DWINK_STRICT_NONBLOCKING=1) 下相关 API 声明直接消失，本 TU 会链接失败——那是设计意图。 */
+#if defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
                              pal_gpio_enable_interrupt/disable_interrupt, pal_gpio_pulse_in */
 #include "pal_resource.h" /* pal_resource_claim */
 #include "pal_osal.h"     /* pal_os_sleep_ms, pal_os_busy_wait_us, pal_os_get_ms/us */

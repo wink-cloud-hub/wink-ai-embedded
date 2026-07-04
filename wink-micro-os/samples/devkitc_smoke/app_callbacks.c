@@ -33,6 +33,14 @@
  * 平台差异由 targets 下各平台的 pal_osal_*.c 内部处理。 */
 #include "pal_osal.h"
 
+
+/* ADR-0017 层 1 例外：本 TU 合法调用 WINK_BLOCKING API。抑制
+ * -Wdeprecated-declarations 使 -Werror 下仍能编译；严格模式
+ * (-DWINK_STRICT_NONBLOCKING=1) 下相关 API 声明直接消失，本 TU 会链接失败——那是设计意图。 */
+#if defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 /* ─────────────────────────────────────────────────────────
  * 故障码定义（S8 使用 runtime 定义 8001；其余 9000+ 区间）
  * ───────────────────────────────────────────────────────── */

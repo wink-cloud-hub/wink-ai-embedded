@@ -9,6 +9,14 @@
 #include "wink_actuator_registry.h"
 #include "wink_status.h"
 
+
+/* ADR-0017 层 1 例外：本 TU 合法调用 WINK_BLOCKING API。抑制
+ * -Wdeprecated-declarations 使 -Werror 下仍能编译；严格模式
+ * (-DWINK_STRICT_NONBLOCKING=1) 下相关 API 声明直接消失，本 TU 会链接失败——那是设计意图。 */
+#if defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 #define OBSTACLE_THRESHOLD_CM 20.0f
 #define FAULT_FRONT_RADAR     7001u
 #define FAULT_SERVO_INIT      7002u

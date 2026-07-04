@@ -18,13 +18,22 @@ extern "C" {
 /*                                1. 系统时间与时延                            */
 /* ========================================================================== */
 
+#ifndef WINK_STRICT_NONBLOCKING
 /**
  * @brief 系统毫秒延时 (主动阻塞让出 CPU 调度)
+ * @note Blocking: Yes. Not available under WINK_STRICT_NONBLOCKING (ADR-0017 层 2 硬隔离).
+ *       协作式运行时 (10ms tick) 不得调用；使用 wink_soft_timer 或 PT_WAIT_DEADLINE。
  */
+WINK_BLOCKING
 void pal_os_sleep_ms(uint32_t ms);
+#endif /* WINK_STRICT_NONBLOCKING */
 
 /**
- * @brief 系统微秒延时 (高精度短等待)
+ * @brief 系统微秒延时 (高精度短等待，忙等 —— 阻塞 CPU)
+ * @note 未标 WINK_BLOCKING：ADR-0017 §决策 定义 blocking 门槛为「单次 > 一个
+ *       runtime tick (10ms)」；本 API 的典型用途为 GPIO strobe / SPI half-cycle 等
+ *       <100μs 硬件时序，位于允许范围。调用方应将 us 上限视为 ~1000（>1ms 视 anti-pattern，
+ *       用 pal_os_sleep_ms 替代）。
  */
 void pal_os_busy_wait_us(uint32_t us);
 
@@ -53,14 +62,19 @@ typedef void* pal_os_mutex_t;
  */
 pal_os_mutex_t pal_os_mutex_create(void);
 
+#ifndef WINK_STRICT_NONBLOCKING
 /**
  * @brief 获取互斥锁 (锁定)
  * @param mutex 锁句柄
  * @param timeout_ms 阻塞超时时间，传入 WINK_MUTEX_WAIT_FOREVER 代表无限等待
  * @note 失败型：NULL mutex → WINK_ERR_INVALID_ARG；timeout → WINK_ERR_TIMEOUT；
  *       不支持 target → WINK_ERR_UNSUPPORTED。
+ * @note Blocking: Yes（协作式调度器下可能让出）。Not available under WINK_STRICT_NONBLOCKING.
+ *       PT 上下文与 ISR 上下文禁用；使用非阻塞资源交换（ringbuf / atomic flag）。
  */
+WINK_BLOCKING
 WINK_WARN_UNUSED_RESULT wink_status_t pal_os_mutex_lock(pal_os_mutex_t mutex, uint32_t timeout_ms);
+#endif /* WINK_STRICT_NONBLOCKING */
 
 /**
  * @brief 释放互斥锁 (解锁)
@@ -206,6 +220,7 @@ typedef enum {
     PAL_OS_CORE_ANY = -1, /**< No affinity - scheduler decides */
 } pal_os_core_id_t;
 
+#ifndef WINK_STRICT_NONBLOCKING
 /**
  * @brief Create a new task with optional core affinity
  *
@@ -221,7 +236,11 @@ typedef enum {
  *
  * @note WASM/bare-metal targets may call func synchronously or return UNSUPPORTED.
  *       App code must handle UNSUPPORTED gracefully as graceful degradation.
+ * @note Blocking: Yes（FreeRTOS 堆分配 + 调度器 bookkeeping 可能等待）。
+ *       Not available under WINK_STRICT_NONBLOCKING.
+ *       协作式调度器下的任务应静态创建（编译期决定），运行时创建违反 ADR-0017。
  */
+WINK_BLOCKING
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_os_task_create(
     void (*func)(void* arg),
@@ -232,6 +251,7 @@ wink_status_t pal_os_task_create(
     pal_os_core_id_t core_id,
     pal_os_task_handle_t* task_handle
 );
+#endif /* WINK_STRICT_NONBLOCKING */
 
 /**
  * @brief Delete a task (PAL 统一接口，替代 FreeRTOS vTaskDelete)
