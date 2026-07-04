@@ -3,10 +3,10 @@
  * @brief ESP32 PAL HAL 最小残留：仅承载 pal_debug_printf。
  *
  * Task 2（PLAN-20260701-PAL-TARGET-P1-MAINT）完成后的最终形态：
- *   - GPIO 实现 → pal_hal_esp32_gpio.c
+ *   - GPIO 实现 → pal_hal_gpio_esp32.c
  *   - IRQ 实现  → pal_irq_esp32.c
- *   - PWM 实现  → pal_hal_esp32_pwm.c
- *   - I2C 实现  → pal_hal_esp32_i2c.c
+ *   - PWM 实现  → pal_hal_pwm_esp32.c
+ *   - I2C 实现  → pal_hal_i2c_esp32.c
  *
  * 保留本 TU 而非合并到其它 TU：pal_debug_printf 是跨 target 的通用调试接口，
  * 位置中立、无 IDF 私有头依赖，作为文件名 SSOT 的锚点也便于未来扩展

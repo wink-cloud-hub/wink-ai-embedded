@@ -1,5 +1,5 @@
 /**
- * @file pal_osal_bare.c
+ * @file pal_osal_baremetal.c
  * @brief 裸机 (no RTOS) PAL OSAL 实现。
  *
  * 针对无 FreeRTOS 的低端 MCU：

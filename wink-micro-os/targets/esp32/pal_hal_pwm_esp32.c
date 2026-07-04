@@ -1,5 +1,5 @@
 /**
- * @file pal_hal_esp32_pwm.c
+ * @file pal_hal_pwm_esp32.c
  * @brief ESP32 target 的 PWM (LEDC) 实现：pal_pwm_init/set_duty/deinit +
  *        pal_pwm_router 集成 + weak pal_pwm_pin_map 默认值。
  *
