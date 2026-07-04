@@ -145,8 +145,11 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
         "--js-library=${CMAKE_CURRENT_SOURCE_DIR}/targets/wasm/wink_sim_js.js"
         "-sASYNCIFY=1"
         "-sASYNCIFY_IMPORTS=['js_pal_os_sleep_ms','js_pal_os_busy_wait_us']"
-        "-sEXPORTED_FUNCTIONS=['_main']"              # _trigger_wasm_interrupt 已移除（方案 C：Poll 模型消除 Push 导出，见 wasm_entry.c）
-        "-sEXPORTED_RUNTIME_METHODS=['ccall','cwrap','HEAPU8']"
+        # P1-1: expose Asyncify runtime object so JS can call Asyncify.getStackMax()
+        # after e2e runs to assert Asyncify backup-stack usage stays under 80%
+        # of ASYNCIFY_STACK_SIZE (CI safety-margin gate).
+        "-sEXPORTED_FUNCTIONS=['_main']"
+        "-sEXPORTED_RUNTIME_METHODS=['ccall','cwrap','HEAPU8','Asyncify']"
         "-sMODULARIZE=1"
         "-sEXPORT_NAME=WasmSandbox"
         "-sWASM_BIGINT=1"               # ADR-0009 Wave 2：64 位整型 ↔ JS BigInt 原生映射，杜绝 number 隐式失精
