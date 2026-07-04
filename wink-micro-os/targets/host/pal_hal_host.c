@@ -23,7 +23,7 @@
 #include "pal_resource.h"
 #include "pal_pwm_router.h"
 #include "pal_debug.h"
-#include "hal/pal_ultrasonic.h"
+
 #include "host_test_ctrl.h"
 #include <stdio.h>
 #include <stdarg.h>
@@ -403,10 +403,30 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t addr,
     return WINK_OK;
 }
 
+static uint32_t (*s_sim_measure_fn)(uint16_t) = NULL;
+
+void host_register_sim_ultrasonic(void (*trigger_fn)(uint16_t), uint32_t (*measure_fn)(uint16_t)) {
+    (void)trigger_fn;
+    s_sim_measure_fn = measure_fn;
+}
+
 wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us, uint32_t *pulse_us) {
     if (pulse_us == NULL) { return WINK_ERR_INVALID_ARG; }
     if (pin < 0 || pin >= HOST_MAX_GPIO_PIN) { return WINK_ERR_INVALID_ARG; }
     if (!pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin)) { return WINK_ERR_INVALID_STATE; }
+
+    if (s_sim_measure_fn) {
+        uint32_t p = s_sim_measure_fn((uint16_t)pin);
+        if (p > 0) {
+            if (p >= timeout_us) {
+                return WINK_ERR_TIMEOUT;
+            }
+            *pulse_us = p;
+            (void)level;
+            return WINK_OK;
+        }
+    }
+
     if (pin != (wink_pin_t)host_echo_pin()) { return WINK_ERR_UNSUPPORTED; }   /* 无 pin 映射 */
     uint64_t rise = host_echo_rise_us();
     if (rise > timeout_us) { return WINK_ERR_TIMEOUT; }            /* echo 起始晚于超时 */
@@ -427,49 +447,5 @@ void pal_debug_printf(const char *fmt, ...)
     va_end(args);
 }
 
-/* ─────────────────────────────────────────────────────────
- * 超声波传感器 PAL 实现 (Host 平台)
- * ───────────────────────────────────────────────────────── */
 
-static void (*s_sim_trigger_fn)(uint16_t) = NULL;
-static uint32_t (*s_sim_measure_fn)(uint16_t) = NULL;
-
-void host_register_sim_ultrasonic(void (*trigger_fn)(uint16_t), uint32_t (*measure_fn)(uint16_t)) {
-    s_sim_trigger_fn = trigger_fn;
-    s_sim_measure_fn = measure_fn;
-}
-
-wink_status_t pal_ultrasonic_init(uint16_t echo_pin) {
-    (void)echo_pin;
-    return WINK_OK;
-}
-
-wink_status_t pal_ultrasonic_trigger(uint16_t trigger_pin) {
-    if (s_sim_trigger_fn) {
-        s_sim_trigger_fn(trigger_pin);
-    }
-    return WINK_OK;
-}
-
-wink_status_t pal_ultrasonic_measure_pulse_us(
-    uint16_t echo_pin,
-    uint32_t timeout_us,
-    uint32_t *pulse_us
-) {
-    if (pulse_us == NULL) {
-        return WINK_ERR_INVALID_ARG;
-    }
-    if (s_sim_measure_fn) {
-        uint32_t p = s_sim_measure_fn(echo_pin);
-        if (p >= timeout_us) {
-            return WINK_ERR_TIMEOUT;
-        }
-        *pulse_us = p;
-        return WINK_OK;
-    }
-    return pal_gpio_pulse_in((wink_pin_t)echo_pin, true, timeout_us, pulse_us);
-}
-
-void pal_ultrasonic_deinit(void) {
-}
 
