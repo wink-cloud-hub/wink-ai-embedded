@@ -38,6 +38,14 @@
 void pal_wasm_dispatch_pending_interrupts(void);
 
 /**
+ * @brief 分发 C 侧软中断 FIFO（pal_irq_set_pending 入队项）。
+ *
+ * Phase C P0-1 统一分发：由 pal_wasm_dispatch_pending_interrupts() 在 JS 队列
+ * drain 完后级联调用；pal_irq_restore() 最外层 unlock 也显式补发。
+ */
+void pal_wasm_dispatch_pending_irqs(void);
+
+/**
  * @brief 虚拟时钟步进接口（导出给 JS Worker）。
  *
  * SSOT 架构唯一入口：wasm 侧不主动步进时钟，时钟完全由 JS Worker 驱动。
@@ -130,7 +138,34 @@ typedef struct {
 /** 重置故障日志（测试间隔离用）。 */
 void pal_wasm_reset_fault_log(void);
 
-/** 重置所有物理退化状态（faults / debounce ctx / PRNG / fault log / 故障域）。
+/** 返回 wasm 实例是否已进入 fault 锁存状态（P0-3 Phase C）。
+ *  JS 宿主可在每次跨边界调用后轮询此函数快速失败，避免 fault 后再入 C 逻辑。 */
+bool pal_wasm_is_faulted(void);
+
+/**
+ * Fast-fail guard for pal_wasm_* EMSCRIPTEN_KEEPALIVE exports after a fault
+ * has latched (P0-3/P1-4 Phase C).
+ *
+ * Place at the top of every state-mutating export (set_*, advance_*, log_fault,
+ * reset_* from JS, scheduler entry points). Read-only getters may opt out since
+ * they cannot corrupt state. After s_wasm_faulted is set:
+ *   - Void-returning mutators become silent no-ops (safe-off already executed).
+ *   - Value-returning getters on the latch itself (pal_wasm_is_faulted) still work.
+ * This prevents JS hosts from accidentally advancing clocks, mutating fault
+ * config, or driving I/O after safe-off — which is the primary failure mode
+ * P0-3's latch is designed to close.
+ */
+#define WASM_FAULT_GUARD_VOID() do { if (pal_wasm_is_faulted()) return; } while (0)
+
+/** 清除 fault 锁存（供 pal_sim_scheduler_run 新周期启动时内部调用，非对外导出）。 */
+void pal_wasm_clear_fault_latch(void);
+
+/** Host→C fault 注入（P0-3 Phase C；JS 侧 wrapper 调用此 EMSCRIPTEN_KEEPALIVE 导出）。
+ *  code = 8003 是 JS host plugin fault（用户 js_* override 抛异常 / reject）。
+ *  msg_cstr 必须是 wasm 线性内存内的 NUL-terminated UTF-8 字符串（JS 侧 _malloc 后 stringToUTF8 写入，调用后 _free）。 */
+void pal_wasm_host_fault(uint32_t code, const char* msg_cstr);
+
+/** 重置所有物理退化状态（faults / debounce ctx / PRNG / fault log / 故障域 / fault 锁存）。
  *  测试间隔离与 JS 端 scenario reset 共用此入口。等价于把 BSS 拉回初始状态
  *  但允许在中途调用，不依赖加载器重新零初始化。 */
 void pal_wasm_reset_physical(void);
