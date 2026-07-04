@@ -245,6 +245,7 @@ void pal_wasm_reset_physical(void) {
  */
 EMSCRIPTEN_KEEPALIVE
 void pal_wasm_reset_fault_log(void) {
+    WASM_FAULT_GUARD_VOID();
     memset(s_fault_log, 0, sizeof(s_fault_log));
     s_fault_log_head = 0;
     s_fault_log_count = 0;
@@ -343,6 +344,7 @@ uint32_t pal_wasm_fault_event_get_sequence(uint32_t index) {
 EMSCRIPTEN_KEEPALIVE
 wink_status_t pal_wasm_set_pin_power_model(uint8_t pin,
                                            const wasm_pin_power_model_t *model) {
+    WASM_FAULT_GUARD_WINKERR();
     if (pin >= WASM_SIM_MAX_PINS) {
         return WINK_ERR_INVALID_ARG;
     }
@@ -417,6 +419,7 @@ uint32_t pal_wasm_get_domain_trigger_count(uint32_t domain_id) {
 
 EMSCRIPTEN_KEEPALIVE
 bool pal_wasm_gpio_read(uint16_t pin) {
+    WASM_FAULT_GUARD_BOOL();
     bool level = false;
     wink_status_t st = pal_gpio_read((wink_pin_t)pin, &level);
     return wink_status_is_error(st) ? false : level;
@@ -426,6 +429,7 @@ EMSCRIPTEN_KEEPALIVE
 bool pal_wasm_i2c_transfer(uint8_t port, uint16_t dev_addr,
                            const uint8_t *write_buf, uint32_t write_len,
                            uint8_t *read_buf, uint32_t read_len) {
+    WASM_FAULT_GUARD_BOOL();
     wink_status_t st = pal_i2c_transfer(port, dev_addr, write_buf, write_len,
                                         read_buf, read_len);
     return !wink_status_is_error(st);

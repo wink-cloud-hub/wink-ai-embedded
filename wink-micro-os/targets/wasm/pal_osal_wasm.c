@@ -268,6 +268,26 @@ static inline uint64_t wasm_wall_clock_us(void) {
 
 wink_status_t pal_sim_scheduler_run(const struct wink_app_callbacks* callbacks,
                                     uint32_t main_task_id, uint32_t max_ticks) {
+    /* Re-entrancy guard: the cooperative scheduler is not re-entrant. Under the
+     * wasm single-threaded + Asyncify model, re-entry could theoretically occur
+     * if a JS callback invoked during promise resolution (e.g., sleep completion)
+     * somehow called back into pal_sim_scheduler_run. This assert catches that
+     * class of bug loudly at development time rather than silently corrupting
+     * s_app_callbacks / s_main_ctx. In release builds (NDEBUG) we still guard
+     * with a runtime fault rather than corrupting state. */
+    static bool s_scheduler_running = false;
+    assert(!s_scheduler_running && "pal_sim_scheduler_run is not re-entrant");
+    if (s_scheduler_running) {
+        wink_trace_fault(WINK_ERR_PANIC);
+        return WINK_ERR_INVALID_STATE;
+    }
+    s_scheduler_running = true;
+
+    if (callbacks == NULL) {
+        s_scheduler_running = false;
+        return WINK_ERR_INVALID_ARG;
+    }
+
     s_main_ctx = sim_ctx_from_current();
     s_app_callbacks = callbacks;
     pal_wasm_clear_fault_latch();  /* 新 run 周期重置 fault 锁存 */
@@ -358,6 +378,7 @@ wink_status_t pal_sim_scheduler_run(const struct wink_app_callbacks* callbacks,
     /* 清理残余 fiber */
     sim_scheduler_gc_zombies();
     sim_scheduler_set_current(SIM_SCHED_NO_READY);
+    s_scheduler_running = false;
     return WINK_OK;
 }
 
