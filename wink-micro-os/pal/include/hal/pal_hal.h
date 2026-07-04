@@ -42,10 +42,45 @@ typedef enum {
  */
 typedef int16_t wink_pin_t;
 
-extern const wink_pin_t pal_pwm_pin_map[PAL_PWM_CHANNELS];
+/**
+ * @brief 查询 PWM 通道映射到的物理 GPIO。
+ *
+ * P1-P4 (2026-07-04): 取代过去公开 `extern const wink_pin_t pal_pwm_pin_map[]` 的
+ * 做法。数组现在各 target 私有（static const 或 weak），只能通过 getter 访问。
+ * 好处：
+ *  1. 消费者不再看到"数组"，禁用了直接读越界索引导致的 UB；
+ *  2. target-side 可选择走非数组的路由（例如 wasm 走 JS 桥）而不改 API；
+ *  3. 上层代码统一走 wink_status_t 错误传播，符合 ADR-0001。
+ *
+ * @param channel 通道号 [0, PAL_PWM_CHANNELS)。
+ * @param out_pin 输出：该通道当前路由到的 GPIO 引脚（成功时写入）。
+ * @return
+ *   WINK_OK              查询成功；*out_pin 有效。
+ *   WINK_ERR_INVALID_ARG channel >= PAL_PWM_CHANNELS 或 out_pin == NULL。
+ *   WINK_ERR_UNSUPPORTED target 无 PWM 引脚路由（如 wasm 纯虚拟外设）。
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t pal_pwm_channel_pin(uint8_t channel, wink_pin_t *out_pin);
 
-/* I2C 物理引脚路由：[port][0] = SDA, [port][1] = SCL */
-extern const wink_pin_t pal_i2c_pin_map[PAL_I2C_PORTS][2];
+/**
+ * @brief 查询 I2C 端口映射到的 SDA/SCL 物理 GPIO。
+ *
+ * P1-P4 (2026-07-04): 取代过去公开 `extern const wink_pin_t pal_i2c_pin_map[][2]` 的
+ * 做法，理由同 pal_pwm_channel_pin。
+ *
+ * ⚠️ 顺序约定：out_sda 对应 [port][0]，out_scl 对应 [port][1]
+ *   （沿用 esp32 target 的历史布局；board_config.c 强定义时按此顺序）。
+ *
+ * @param port    I2C 端口号 [0, PAL_I2C_PORTS)。
+ * @param out_sda 输出：SDA 引脚（成功时写入）。可传 NULL 表示不关心。
+ * @param out_scl 输出：SCL 引脚（成功时写入）。可传 NULL 表示不关心。
+ * @return
+ *   WINK_OK              查询成功。
+ *   WINK_ERR_INVALID_ARG port >= PAL_I2C_PORTS 或 out_sda/out_scl 皆为 NULL。
+ *   WINK_ERR_UNSUPPORTED target 无 I2C 引脚路由（如 wasm 纯虚拟外设）。
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t pal_i2c_port_pins(uint8_t port, wink_pin_t *out_sda, wink_pin_t *out_scl);
 
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_pwm_init(uint8_t channel, uint32_t frequency_hz);
