@@ -74,12 +74,29 @@
 /*
  * ABI 契约 #6: Asyncify 重入限制
  * ------------------------------
- * 在 Asyncify sleeping 状态下：
- * - 不能调用任何 WASM 导出函数
- * - 不能访问 WASM 堆内存（堆内容在重绕前是不一致的）
- * - 只能调用纯 JS 侧逻辑
- * 防护：所有 JS → WASM 调用必须在 WASM 处于 running 状态
- *       使用状态机跟踪 WASM 执行状态
+ * 在 Asyncify sleeping 状态下（wasm 已 unwind、等待一个 Promise-returning
+ * js_* import resolve）：
+ *   - Host 不得调用任何 pal_wasm_* 导出；此时线性内存/栈状态部分位于 Asyncify
+ *     备份缓冲区，重入 C 会读到不一致状态，并可能导致备份栈损坏。
+ *   - Host 不得直接读写 Wasm 堆内存（HEAPU8 等视图可能因 Asyncify 临时移动而
+ *     指向陈旧内容；恢复 rewind 后内容才一致）。
+ *   - 允许调用纯 JS 侧逻辑（VirtualClock 推进、PinArbiter.setDriver、InterruptQueue.push
+ *     等 framework-owned 组件）；这些只修改 JS 侧 state，等下一次 wasm 进入时
+ *     由 Phase 0 / js_pal_poll_interrupt / js_pal_gpio_read 等 pull 路径兑现。
+ *
+ * P0-3 / P1-4 收窄方案（Phase C，2026-07-04）：
+ *   - 不实现 isWasmYielded 状态机追踪（避免与 Asyncify 内部状态耦合）。
+ *   - 由两层防线兜底：
+ *     (a) safeWrap / safeWrapAsync HOF 对所有用户-overridable js_* import 做
+ *         try/catch + Promise.catch，宿主抛错/reject 永远返回 resolved Promise
+ *         → Emscripten 永远不会看到 throw/reject，不会 abort；错误被 marshal 到
+ *         pal_wasm_host_fault(8003, msg) 走标准 fault 路径。
+ *     (b) pal_wasm_host_fault 置位 s_wasm_faulted 锁存后，所有 state-mutating
+ *         pal_wasm_* 导出（set_bounce_us / advance_virtual_clock / set_prng_seed
+ *         等）通过 WASM_FAULT_GUARD_VOID() 宏 fast-fail 为 no-op，避免 fault 后
+ *         宿主继续驱动 state 变更。pal_wasm_is_faulted() 仍可读，供宿主轮询。
+ *   - pal_wasm_reset_physical() 是唯一允许在 faulted 态调用的 mutating 导出——
+ *     它是测试/复位入口，内部会调用 pal_wasm_clear_fault_latch() 重置锁存。
  */
 
 // ============================================================================
@@ -123,11 +140,14 @@ extern void js_pal_deregister_interrupt(uint16_t pin);
 extern bool js_pal_poll_interrupt(uint32_t *out_callback_index, uint32_t *out_arg_ptr);
 
 
-/* ---- PAL OSAL 侧 JS 导入 ---- */
+/* ---- PAL OSAL 侧 JS 导入 ----
+ *
+ * 时间 SSOT：C 侧 pal_os_get_us/ms() 直接读 s_virtual_us 内存（零 JS 调用），
+ * 虚拟时钟的唯一推进入口是 pal_wasm_advance_virtual_clock(bigint)（C→JS 导出，
+ * 见下方 §WASM 退化引擎导出），不再有 JS→C 反向 get_ms/get_us 导入。
+ * （P2-1：js_pal_os_get_ms/us 已删除，之前是死桩，从未被 wasm 实际调用。） */
 extern void js_pal_os_sleep_ms(uint32_t ms);
 extern void js_pal_os_busy_wait_us(uint32_t us);
-extern uint64_t js_pal_os_get_ms(void);
-extern uint64_t js_pal_os_get_us(void);
 
 /* ---- DAL bypass 侧 JS 导入（js_sim_*）—— 签名抄 Device Registry (01-device-model-registry.md) ----
  * 仅在 #ifdef SIMULATION 下被 DAL 引用；真机分支不编译本段。
@@ -198,6 +218,27 @@ extern uint64_t pal_wasm_fault_event_get_timestamp(uint32_t index);
 extern uint8_t  pal_wasm_fault_event_get_type(uint32_t index);
 extern uint16_t pal_wasm_fault_event_get_pin_or_bus(uint32_t index);
 extern uint32_t pal_wasm_fault_event_get_sequence(uint32_t index);
+
+/* ---- Host→C fault 注入（P0-3 Phase C）----
+ *
+ * JS 侧宿主 plugin（用户自定义 js_* override）抛同步异常或返回 rejected Promise
+ * 时，由 createUnisimImports 的 safeWrap/safeWrapAsync HOF 统一捕获后调用
+ * pal_wasm_host_fault(code=8003, msg_cstr) 走标准 fault 路径：
+ *   1. 置位 s_wasm_faulted 锁存（pal_wasm_is_faulted() 返回 true）；
+ *   2. wink_trace_fault(code) 写入审计环；
+ *   3. wink_actuator_safe_off_all() 安全关断所有执行器；
+ *   4. 若调度器已启动（s_app_callbacks != NULL），调 on_fault(code) 回调。
+ *
+ * ABI 契约：
+ *   - msg_cstr 是 wasm 线性内存内 NUL-terminated UTF-8 字符串指针（JS 侧
+ *     通过 _malloc + stringToUTF8 写入，调用后 _free）。允许 NULL（不传递消息）。
+ *   - code 建议使用 8003 表示 JS host plugin fault；与 WCET 8002、boot-reset 8001
+ *     同属 8xxx 宿主/仿真专用 code 段。
+ *   - 幂等：首次 fault 走完整 safe-off 路径；后续调用仅 trace，不重复 safe-off。
+ *   - 调用时机：可在任意 wasm→JS import 内部调用（包括 Asyncify sleeping 窗口），
+ *     但 on_fault 回调可能延迟到下一个调度 tick。 */
+extern bool   pal_wasm_is_faulted(void);
+extern void   pal_wasm_host_fault(uint32_t code, const char* msg_cstr);
 
 /* ---- 功耗模型接口（Wave3 stub；ADR-0009 Wave 2 Task 9）----
  *
