@@ -29,6 +29,14 @@
  * 不再直接 touch fault.c 的静态状态。 */
 
 /* ─────────────────────────────────────────────────────────
+ * 临界区/ISR/PT 上下文标志（ADR-0016 分流）
+ * 前向声明在文件顶部，使 mutex_lock 等早期函数也能 assert。
+ * 定义与 setter/getter 位于文件下方临界区段落。
+ * ───────────────────────────────────────────────────────── */
+static bool s_sim_in_isr = false;
+static bool s_sim_in_pt = false;
+
+/* ─────────────────────────────────────────────────────────
  * 虚拟时钟（ADR-0003 决策 3 / ADR-0009 §4.1 / Wave2 P1 Task 6）
  * ───────────────────────────────────────────────────────── */
 
@@ -315,8 +323,7 @@ WINK_WARN_UNUSED_RESULT wink_status_t pal_os_wdt_feed(void) { return WINK_ERR_UN
 
 // assert.h included at top
 
-static bool s_sim_in_isr = false;
-static bool s_sim_in_pt = false;
+/* s_sim_in_isr / s_sim_in_pt 已在文件顶部定义；setter/getter 在此实现。 */
 
 void pal_os_set_sim_isr_context(bool in_isr) { s_sim_in_isr = in_isr; }
 bool pal_os_in_sim_isr_context(void) { return s_sim_in_isr; }
