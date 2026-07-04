@@ -33,6 +33,9 @@ extern "C" {
  * 注意：此接口仅用于调试输出，不应用于生产逻辑。
  *       生产代码应使用 wink_trace 故障追踪系统。
  */
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((format(printf, 1, 2)))
+#endif
 void pal_debug_printf(const char *fmt, ...);
 
 #ifdef __cplusplus
