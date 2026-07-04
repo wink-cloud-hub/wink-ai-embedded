@@ -344,14 +344,14 @@ wink_status_t pal_gpio_disable_interrupt(wink_pin_t pin) {
  * GPIO Pulse In（超声波硬件捕获 - 当前 busy-wait 回退）
  * ───────────────────────────────────────────────────────── */
 
-static uint16_t s_rmt_echo_pin = 0xFFFF;
-static bool s_rmt_initialized = false;
+static uint16_t s_rmt_echo_pin_cache = 0xFFFF;   /* 缓存当前 RMT 绑定 pin（真源在 pal_rmt_esp32.c 的 s_echo_pin，此缓存仅作同-pin 快速判断） */
 
 static wink_status_t pal_gpio_pulse_in_busy_wait(wink_pin_t pin, bool level,
                                                  uint32_t timeout_us, uint32_t *pulse_us) {
     if (pulse_us == NULL || pin < 0 || pin >= GPIO_NUM_MAX) {
         return WINK_ERR_INVALID_ARG;
     }
+    *pulse_us = 0;
 
     uint64_t start = pal_os_get_us();
     bool current_val = false;
@@ -392,25 +392,28 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level,
     if (pulse_us == NULL || pin < 0 || pin >= GPIO_NUM_MAX) {
         return WINK_ERR_INVALID_ARG;
     }
+    *pulse_us = 0;
 
-    /* 2. 判断是否需要初始化 RMT */
-    if (!s_rmt_initialized || s_rmt_echo_pin != (uint16_t)pin) {
-        if (s_rmt_initialized) {
-            pal_rmt_ultrasonic_deinit();
-            s_rmt_initialized = false;
-        }
+    /* SSOT：RMT 初始化状态由 pal_rmt_ultrasonic_is_active 报告。
+     * pal_rmt_ultrasonic_init 内部已处理：同 pin 幂等返 OK / 不同 pin 先 deinit 再重建。
+     * 失败路径（init 返错误）：is_active 返回 false，自动降级到 busy-wait。*/
+    uint16_t active_pin = 0xFFFF;
+    bool rmt_ready = pal_rmt_ultrasonic_is_active(&active_pin);
+    if (!rmt_ready || active_pin != (uint16_t)pin) {
         if (pal_rmt_ultrasonic_init((uint16_t)pin) == WINK_OK) {
-            s_rmt_echo_pin = (uint16_t)pin;
-            s_rmt_initialized = true;
+            rmt_ready = true;
+            s_rmt_echo_pin_cache = (uint16_t)pin;
+        } else {
+            rmt_ready = false;
+            s_rmt_echo_pin_cache = 0xFFFF;
         }
     }
 
-    /* 3. 执行测量 */
-    if (s_rmt_initialized && s_rmt_echo_pin == (uint16_t)pin) {
+    /* 3. RMT 可用就走 RMT 测量；否则降级为 busy-wait */
+    if (rmt_ready && s_rmt_echo_pin_cache == (uint16_t)pin) {
         return pal_rmt_ultrasonic_measure(timeout_us, pulse_us);
     }
 
-    /* 4. RMT 不可用或失败时，降级为 busy-wait */
     return pal_gpio_pulse_in_busy_wait(pin, level, timeout_us, pulse_us);
 }
 

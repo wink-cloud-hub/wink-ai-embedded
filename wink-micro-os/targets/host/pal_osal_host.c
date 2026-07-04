@@ -192,18 +192,6 @@ void pal_os_busy_wait_us(uint32_t us) { s_time_us += us; }
 uint64_t pal_os_get_ms(void) { return s_time_us / 1000u; }
 uint64_t pal_os_get_us(void) { return s_time_us; }
 
-pal_os_mutex_t pal_os_mutex_create(void) { return (pal_os_mutex_t)1; }
-wink_status_t pal_os_mutex_lock(pal_os_mutex_t m, uint32_t to) {
-    if (m == NULL) return WINK_ERR_INVALID_ARG;
-    (void)to;
-    return WINK_OK;
-}
-wink_status_t pal_os_mutex_unlock(pal_os_mutex_t m) {
-    if (m == NULL) return WINK_ERR_INVALID_ARG;
-    return WINK_OK;
-}
-void pal_os_mutex_destroy(pal_os_mutex_t m) { (void)m; }
-
 /* ---- Phase 5 Task 5-4: WDT / reset reason（host：WDT 为无操作 stub；reset reason 可配置供测试） ---- */
 pal_os_reset_reason_t pal_os_get_reset_reason(void) { return s_reset_reason; }
 WINK_WARN_UNUSED_RESULT wink_status_t pal_os_wdt_init(uint32_t timeout_ms) { (void)timeout_ms; return WINK_OK; }
@@ -249,6 +237,146 @@ uint32_t pal_os_critical_enter_isr(void) {
 void pal_os_critical_exit_isr(uint32_t key) {
     (void)key;
     assert(s_sim_in_isr && "pal_os_critical_exit_isr called from task context (ADR-0016)");
+}
+
+/* ─────────────────────────────────────────────────────────
+ * Mutex：协作调度下真正的 BLOCKED 路径实现（P0 E5-part2）
+ *
+ * 与 wasm 端同构（共享 wink_sim_scheduler 协作调度模型）：
+ *   - 静态 POD 池（WINK_SIM_MAX_TASKS 槽）避免 malloc 失败
+ *   - owner=HOST_MUTEX_NO_OWNER 表未持；waiter FIFO 队列
+ *   - lock 争用时 sim_scheduler_block + ctx_switch，resume 后检查 timeout_fired
+ *   - unlock FIFO 取一个 waiter 转交 owner 并 resume；支持超时自摘除
+ *   - destroy 断言未持锁且无 waiter（契约诚实，避免 UB）
+ * ───────────────────────────────────────────────────────── */
+
+#define HOST_MUTEX_POOL_SIZE  WINK_SIM_MAX_TASKS
+#define HOST_MUTEX_NO_OWNER   (WINK_SIM_MAX_TASKS + 1)  /* task id 0..WINK_SIM_MAX_TASKS-1 */
+
+typedef struct {
+    bool     used;
+    uint32_t owner;
+    uint32_t waiters[WINK_SIM_MAX_TASKS];
+    uint8_t  w_head;
+    uint8_t  w_tail;
+    uint8_t  w_count;
+} host_mutex_t;
+
+static host_mutex_t s_mtx_pool[HOST_MUTEX_POOL_SIZE];
+
+static host_mutex_t* host_mtx_from_handle(pal_os_mutex_t h) {
+    if (h == NULL) return NULL;
+    uintptr_t idx = (uintptr_t)h - 1;
+    if (idx >= HOST_MUTEX_POOL_SIZE) return NULL;
+    host_mutex_t* m = &s_mtx_pool[idx];
+    if (!m->used) return NULL;
+    return m;
+}
+
+static void hwq_push(host_mutex_t* m, uint32_t tid) {
+    if (m->w_count >= WINK_SIM_MAX_TASKS) return;
+    m->waiters[m->w_tail] = tid;
+    m->w_tail = (uint8_t)((m->w_tail + 1u) % WINK_SIM_MAX_TASKS);
+    m->w_count++;
+}
+
+static bool hwq_pop(host_mutex_t* m, uint32_t* out) {
+    if (m->w_count == 0) return false;
+    *out = m->waiters[m->w_head];
+    m->w_head = (uint8_t)((m->w_head + 1u) % WINK_SIM_MAX_TASKS);
+    m->w_count--;
+    return true;
+}
+
+static void hwq_remove(host_mutex_t* m, uint32_t tid) {
+    if (m->w_count == 0) return;
+    uint8_t w = 0, r = 0;
+    uint8_t cnt = m->w_count;
+    for (uint8_t i = 0; i < cnt; ++i) {
+        uint32_t t = m->waiters[(m->w_head + i) % WINK_SIM_MAX_TASKS];
+        if (t != tid) {
+            m->waiters[(m->w_head + w) % WINK_SIM_MAX_TASKS] = t;
+            w++;
+        } else { r++; }
+    }
+    m->w_tail = (uint8_t)((m->w_head + w) % WINK_SIM_MAX_TASKS);
+    m->w_count = (uint8_t)(m->w_count - r);
+}
+
+pal_os_mutex_t pal_os_mutex_create(void) {
+    for (uint32_t i = 0; i < HOST_MUTEX_POOL_SIZE; ++i) {
+        if (!s_mtx_pool[i].used) {
+            host_mutex_t* m = &s_mtx_pool[i];
+            m->used = true;
+            m->owner = HOST_MUTEX_NO_OWNER;
+            m->w_head = 0; m->w_tail = 0; m->w_count = 0;
+            return (pal_os_mutex_t)(uintptr_t)(i + 1);
+        }
+    }
+    return NULL;
+}
+
+wink_status_t pal_os_mutex_lock(pal_os_mutex_t mutex, uint32_t timeout_ms) {
+    host_mutex_t* m = host_mtx_from_handle(mutex);
+    if (m == NULL) return WINK_ERR_INVALID_ARG;
+    assert(!s_sim_in_isr && "pal_os_mutex_lock called from ISR context");
+
+    uint32_t self = sim_scheduler_current_id();
+    uint64_t now = host_sim_time_us();
+
+    if (m->owner == HOST_MUTEX_NO_OWNER) {
+        m->owner = self;
+        return WINK_OK;
+    }
+    if (self == SIM_SCHED_NO_READY) {
+        /* 主上下文（scheduler 外）争用已持锁——不能 block 否则死锁调度器 */
+        return WINK_ERR_TIMEOUT;
+    }
+    if (m->owner == self) {
+        return WINK_ERR_BUSY; /* 非递归锁，同 task 重入是 bug */
+    }
+
+    uint64_t timeout_us = (timeout_ms == WINK_MUTEX_WAIT_FOREVER)
+                           ? 0ULL : (uint64_t)timeout_ms * 1000ULL;
+    uint32_t resource_id = (uint32_t)((uintptr_t)mutex);
+    hwq_push(m, self);
+    sim_scheduler_block(self, resource_id, now, timeout_us);
+    sim_ctx_t* cur_ctx = sim_scheduler_current_ctx();
+    assert(cur_ctx != NULL);
+    sim_ctx_switch(cur_ctx, s_main_ctx);
+
+    const sim_task_t* t = sim_scheduler_get(self);
+    if (t->timeout_fired) {
+        hwq_remove(m, self);
+        return WINK_ERR_TIMEOUT;
+    }
+    if (m->owner != self) return WINK_ERR_IO;
+    return WINK_OK;
+}
+
+wink_status_t pal_os_mutex_unlock(pal_os_mutex_t mutex) {
+    host_mutex_t* m = host_mtx_from_handle(mutex);
+    if (m == NULL) return WINK_ERR_INVALID_ARG;
+    uint32_t self = sim_scheduler_current_id();
+    if (m->owner == HOST_MUTEX_NO_OWNER) return WINK_ERR_INVALID_STATE;
+    if (m->owner != self) return WINK_ERR_PERMISSION;
+
+    uint32_t waiter;
+    if (hwq_pop(m, &waiter)) {
+        m->owner = waiter;
+        sim_scheduler_resume(waiter);
+    } else {
+        m->owner = HOST_MUTEX_NO_OWNER;
+    }
+    return WINK_OK;
+}
+
+void pal_os_mutex_destroy(pal_os_mutex_t mutex) {
+    host_mutex_t* m = host_mtx_from_handle(mutex);
+    if (m == NULL) return;
+    assert(m->owner == HOST_MUTEX_NO_OWNER && m->w_count == 0 &&
+           "pal_os_mutex_destroy: mutex still held or has waiters");
+    m->used = false;
 }
 
 /* ─────────────────────────────────────────────────────────

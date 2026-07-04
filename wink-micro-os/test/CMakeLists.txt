@@ -127,6 +127,9 @@ target_include_directories(test_sim_scheduler_determinism PRIVATE
 # fixup 计划 F5 Step 2：真 host fiber 层栈下限 clamp 验证。
 add_wink_host_test(test_sim_scheduler_stack_clamp test_sim_scheduler_stack_clamp.c)
 
+# P0 E5-part2：wasm/host 协作调度下 mutex BLOCKED 路径 e2e 验证。
+add_wink_host_test(test_sim_mutex_e2e test_sim_mutex_e2e.c)
+
 # fixup 计划 F5 Step 3：avoidance_car 单任务业务字段 baseline 回归（R-002 缓解措施）。
 # R5：baseline .h 缺失即编译失败（HAS_BASELINE_HEADER 由 CMake file(EXISTS) 门控）。
 set(_BASELINE_H

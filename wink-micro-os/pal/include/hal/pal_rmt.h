@@ -13,6 +13,7 @@
 #define PAL_RMT_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "wink_status.h"
 
 /**
@@ -45,5 +46,12 @@ wink_status_t pal_rmt_ultrasonic_measure(uint32_t timeout_us, uint32_t *pulse_us
  * @brief 反初始化 RMT 超声波捕获通道
  */
 void pal_rmt_ultrasonic_deinit(void);
+
+/**
+ * @brief 查询 RMT 当前是否已初始化并绑定到某 echo_pin（SSOT 查询接口）
+ * @param out_echo_pin 非 NULL 时输出当前绑定的 echo_pin；未初始化时不写入
+ * @return true 已初始化；false 未初始化
+ */
+bool pal_rmt_ultrasonic_is_active(uint16_t *out_echo_pin);
 
 #endif /* PAL_RMT_H */

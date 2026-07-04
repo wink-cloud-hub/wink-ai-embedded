@@ -140,8 +140,11 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us,
     if (pulse_us == NULL) { return WINK_ERR_INVALID_ARG; }
     if (pin < 0 || pin >= WASM_SIM_MAX_PINS) { return WINK_ERR_INVALID_ARG; }
     if (!pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin)) { return WINK_ERR_INVALID_STATE; }
+    *pulse_us = 0;
     (void)level; (void)timeout_us;
-    *pulse_us = js_sim_measure_echo_pulse_us((uint32_t)pin);
+    uint32_t v = js_sim_measure_echo_pulse_us((uint32_t)pin);
+    if (v == 0) { return WINK_ERR_TIMEOUT; }
+    *pulse_us = v;
     return WINK_OK;
 }
 

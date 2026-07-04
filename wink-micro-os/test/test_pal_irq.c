@@ -5,6 +5,7 @@
 #include "wink_status.h"
 #include "pal_irq.h"
 #include "pal_hal.h"
+#include "pal_osal.h"
 #define WINK_ALLOW_ADVANCED_IRQ_APIS
 #include "pal_irq_advanced.h"
 #include <stdint.h>
@@ -458,6 +459,44 @@ void test_irq_synchronize_no_crash(void)
 
 
 /* ─────────────────────────────────────────────────────────
+ * Test Group 9: ISR 上下文标记（E4：派发时设置 in_isr，
+ * 使 ISR 内调 pal_os_critical_enter_isr 不 assert-fail）
+ * ───────────────────────────────────────────────────────── */
+
+static volatile uint32_t s_isr_critical_ok = 0;
+
+static void test_isr_with_critical_section(void *arg)
+{
+    (void)arg;
+    /* ISR 内必须用 _isr 变体；若派发器未正确设置 in_isr，此处会在
+     * wasm/host 端 assert（见 pal_osal_wasm.c::pal_os_critical_enter_isr）。 */
+    uint32_t key = pal_os_critical_enter_isr();
+    s_isr_critical_ok = 1;
+    pal_os_critical_exit_isr(key);
+}
+
+void test_isr_context_set_during_dispatch(void)
+{
+    const wink_pin_t TEST_PIN = 24;
+    s_isr_critical_ok = 0;
+
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+        pal_gpio_enable_interrupt(TEST_PIN, PAL_GPIO_INTR_FALLING_EDGE,
+                                   test_isr_with_critical_section, NULL));
+
+    /* 触发前，在 task 上下文调 _isr 变体应被检测到（isr 上下文为 false）。
+     * 注意：host/wasm 是 assert 实现，release build 下不触发；此处仅验证
+     * "派发期间 in_isr=true"，不直接反调 _isr 变体以免 release build 行为漂移。 */
+
+    pal_host_trigger_gpio_interrupt(TEST_PIN);
+
+    /* 若派发器没设置 in_isr，上面的 ISR 内部 assert 会直接 abort，到不了这里。 */
+    TEST_ASSERT_EQUAL_UINT32(1, s_isr_critical_ok);
+
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_gpio_disable_interrupt(TEST_PIN));
+}
+
+/* ─────────────────────────────────────────────────────────
  * Main: 运行所有测试
  * ───────────────────────────────────────────────────────── */
 
@@ -502,6 +541,8 @@ int main(void)
     /* Group 8: synchronize API */
     RUN_TEST(test_irq_synchronize_no_crash);
 
+    /* Group 9: ISR 上下文标记（E4） */
+    RUN_TEST(test_isr_context_set_during_dispatch);
 
     return UNITY_END();
 }
