@@ -1,5 +1,5 @@
 /**
- * @file pal_hal_ultrasonic.c
+ * @file pal_hal_esp32_ultrasonic.c
  * @brief ESP32 平台的超声波传感器 PAL 实现
  *
  * 使用 ESP-IDF RMT 外设进行高精度脉冲捕获。
