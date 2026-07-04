@@ -118,18 +118,185 @@ void pal_os_busy_wait_us(uint32_t us) {
     js_pal_os_busy_wait_us(us);
 }
 
-/* 单线程 Wasm Worker 沙箱通常无锁竞争，互斥锁退化为无竞争实现 */
-pal_os_mutex_t pal_os_mutex_create(void) { return (pal_os_mutex_t)1; }
+/* ─────────────────────────────────────────────────────────
+ * Mutex：协作调度下真正的 BLOCKED 路径实现（P0 E5-part2）
+ *
+ * 设计（ADR-0017 契约诚实 + 协作式确定性调度）：
+ *   - 用静态 POD 池（与 WINK_SIM_MAX_TASKS 一致 8 槽）避免 malloc 失败路径
+ *   - owner = WINK_SIM_MAX_TASKS 表示未持有；否则持锁 task 的 scheduler id
+ *   - waiter 用内嵌环形 FIFO（WINK_SIM_MAX_TASKS 槽足够：task 总数上限）
+ *   - lock：未持 → 拿锁；已持 → sim_scheduler_block + ctx_switch 回 main，
+ *     被 resume 回来后查 timeout_fired（返 TIMEOUT）或 owner==self（返 OK）
+ *   - unlock：FIFO 弹出一个 waiter resume；否则清 owner
+ *   - destroy：必须未被持有（否则 INVALID_STATE，避免删除有等者的锁 UB）
+ *
+ * 注：wasm 单线程协作 + ADR-0014 单 vcore，无需 ISR 安全、递归锁、优先级反转
+ * 处理。所有 mutx 操作均在 task 上下文，不会被异步打断。
+ * ───────────────────────────────────────────────────────── */
+
+#define WASM_MUTEX_POOL_SIZE  WINK_SIM_MAX_TASKS
+#define WASM_MUTEX_NO_OWNER   (WINK_SIM_MAX_TASKS + 1)  /* task id 0..WINK_SIM_MAX_TASKS-1；SIM_SCHED_NO_READY=UINT32_MAX 为 main */
+
+typedef struct {
+    bool     used;                                /* 槽位分配标志 */
+    uint32_t owner;                               /* WINK_SIM_MAX_TASKS (>=) 表未持 */
+    uint32_t waiters[WINK_SIM_MAX_TASKS];         /* FIFO：等待队列 */
+    uint8_t  w_head;
+    uint8_t  w_tail;
+    uint8_t  w_count;
+} wasm_mutex_t;
+
+static wasm_mutex_t s_mtx_pool[WASM_MUTEX_POOL_SIZE];
+
+static wasm_mutex_t* wasm_mtx_from_handle(pal_os_mutex_t h) {
+    if (h == NULL) return NULL;
+    uintptr_t idx = (uintptr_t)h - 1;
+    if (idx >= WASM_MUTEX_POOL_SIZE) return NULL;
+    wasm_mutex_t* m = &s_mtx_pool[idx];
+    if (!m->used) return NULL;
+    return m;
+}
+
+static void wq_push(wasm_mutex_t* m, uint32_t tid) {
+    if (m->w_count >= WINK_SIM_MAX_TASKS) return; /* 满——防御，不会发生因为 task 上限 */
+    m->waiters[m->w_tail] = tid;
+    m->w_tail = (uint8_t)((m->w_tail + 1u) % WINK_SIM_MAX_TASKS);
+    m->w_count++;
+}
+
+static bool wq_pop(wasm_mutex_t* m, uint32_t* out) {
+    if (m->w_count == 0) return false;
+    *out = m->waiters[m->w_head];
+    m->w_head = (uint8_t)((m->w_head + 1u) % WINK_SIM_MAX_TASKS);
+    m->w_count--;
+    return true;
+}
+
+static void wq_remove(wasm_mutex_t* m, uint32_t tid) {
+    /* 从 FIFO 中线性查找并移除 tid（队列最多 WINK_SIM_MAX_TASKS=8，线性扫描可接受）。
+     * 用于 BLOCKED 因超时唤醒时把自己从等待队列摘除，避免后续 unlock 错误 resume。 */
+    if (m->w_count == 0) return;
+    uint8_t r = 0, w = 0;
+    uint8_t cnt = m->w_count;
+    for (uint8_t i = 0; i < cnt; ++i) {
+        uint32_t t = m->waiters[(m->w_head + i) % WINK_SIM_MAX_TASKS];
+        if (t != tid) {
+            m->waiters[(m->w_head + w) % WINK_SIM_MAX_TASKS] = t;
+            w++;
+        } else {
+            r++;
+        }
+    }
+    m->w_tail = (uint8_t)((m->w_head + w) % WINK_SIM_MAX_TASKS);
+    m->w_count = (uint8_t)(m->w_count - r);
+}
+
+pal_os_mutex_t pal_os_mutex_create(void) {
+    for (uint32_t i = 0; i < WASM_MUTEX_POOL_SIZE; ++i) {
+        if (!s_mtx_pool[i].used) {
+            wasm_mutex_t* m = &s_mtx_pool[i];
+            m->used = true;
+            m->owner = WASM_MUTEX_NO_OWNER;
+            m->w_head = 0;
+            m->w_tail = 0;
+            m->w_count = 0;
+            return (pal_os_mutex_t)(uintptr_t)(i + 1);
+        }
+    }
+    return NULL; /* 池耗尽 */
+}
+
 wink_status_t pal_os_mutex_lock(pal_os_mutex_t mutex, uint32_t timeout_ms) {
-    if (mutex == NULL) return WINK_ERR_INVALID_ARG;
-    (void)timeout_ms;
+    wasm_mutex_t* m = wasm_mtx_from_handle(mutex);
+    if (m == NULL) return WINK_ERR_INVALID_ARG;
+
+    /* ISR/pt 上下文调 mutex_lock 是编程错误——wasm 下 assert 拦截
+     * （host 下 fiber 也不会在 ISR 里调锁，保持契约）。*/
+    assert(!s_sim_in_isr && "pal_os_mutex_lock called from ISR context");
+
+    uint32_t self = sim_scheduler_current_id();
+    if (self == SIM_SCHED_NO_READY) {
+        /* 在 main 上下文（scheduler 未启动或 main fiber）：直接尝试非阻塞拿锁，
+         * 失败返 TIMEOUT（main 上下文不能 block——否则会阻塞调度器本身）。*/
+        if (m->owner == WASM_MUTEX_NO_OWNER) {
+            m->owner = self; /* 主上下文用 SIM_SCHED_NO_READY 作为 owner id——unlock 需识别 */
+            return WINK_OK;
+        }
+        return WINK_ERR_TIMEOUT;
+    }
+
+    if (m->owner == WASM_MUTEX_NO_OWNER) {
+        m->owner = self;
+        return WINK_OK;
+    }
+
+    /* 递归锁（同 task 重入）：wasm 协作下可检测到，但 POSIX 递归锁需要
+     * RECURSIVE 属性才允许。这里选择拒绝——返 BUSY 帮助发现 bug。*/
+    if (m->owner == self) {
+        return WINK_ERR_BUSY;
+    }
+
+    /* 不可用 → block 并让出 */
+    uint64_t timeout_us = (timeout_ms == WINK_MUTEX_WAIT_FOREVER)
+                           ? 0ULL
+                           : (uint64_t)timeout_ms * 1000ULL;
+    /* resource_id 用池索引 +1（≥1，避免 blocked_on=0 表"未阻塞"） */
+    uint32_t resource_id = (uint32_t)((uintptr_t)mutex);
+    wq_push(m, self);
+    sim_scheduler_block(self, resource_id, pal_os_get_us(), timeout_us);
+    sim_ctx_t* cur_ctx = sim_scheduler_current_ctx();
+    assert(cur_ctx != NULL);
+    sim_ctx_switch(cur_ctx, s_main_ctx);
+
+    /* 恢复路径：被 unlock 唤醒 → owner 已转交给我；或超时 → timeout_fired=true */
+    sim_task_t const* t = sim_scheduler_get(self);
+    if (t->timeout_fired) {
+        /* 超时：把自己从 waiter 队列摘出来，避免 unlock 误 resume 已超时的 task */
+        wq_remove(m, self);
+        return WINK_ERR_TIMEOUT;
+    }
+    /* resume 路径：unlock 把 owner 设为被唤醒 task（见下），这里直接验证 */
+    if (m->owner != self) {
+        /* 理论上不应发生——防御：返 IO 错误 */
+        return WINK_ERR_IO;
+    }
     return WINK_OK;
 }
+
 wink_status_t pal_os_mutex_unlock(pal_os_mutex_t mutex) {
-    if (mutex == NULL) return WINK_ERR_INVALID_ARG;
+    wasm_mutex_t* m = wasm_mtx_from_handle(mutex);
+    if (m == NULL) return WINK_ERR_INVALID_ARG;
+
+    uint32_t self = sim_scheduler_current_id();
+    if (m->owner == WASM_MUTEX_NO_OWNER) {
+        return WINK_ERR_INVALID_STATE; /* 未持有 */
+    }
+    /* 允许主上下文（SIM_SCHED_NO_READY）释放自己持的锁——对称性 */
+    if (m->owner != self && !(m->owner == SIM_SCHED_NO_READY && self == SIM_SCHED_NO_READY)) {
+        return WINK_ERR_PERMISSION; /* 非 owner 释放 */
+    }
+
+    /* FIFO 取第一个 waiter 转交 owner 并 resume */
+    uint32_t waiter;
+    if (wq_pop(m, &waiter)) {
+        m->owner = waiter;
+        sim_scheduler_resume(waiter);
+    } else {
+        m->owner = WASM_MUTEX_NO_OWNER;
+    }
     return WINK_OK;
 }
-void pal_os_mutex_destroy(pal_os_mutex_t mutex) { (void)mutex; }
+
+void pal_os_mutex_destroy(pal_os_mutex_t mutex) {
+    wasm_mutex_t* m = wasm_mtx_from_handle(mutex);
+    if (m == NULL) return;
+    /* 有持锁者或有等待者时不允许 destroy——契约诚实，返回前未释放的指针将变成 wild */
+    /* 注意：此接口无返回值（与 ESP32/host vSemaphoreDelete 对齐），非法调用直接
+     * assert，避免静默 UB。*/
+    assert(m->owner == WASM_MUTEX_NO_OWNER && m->w_count == 0 &&
+           "pal_os_mutex_destroy: mutex still held or has waiters");
+    m->used = false;
+}
 
 /* Phase 5 Task 5-4：wasm 无硬件复位/WDT 语义。reset reason 恒 UNKNOWN；WDT UNSUPPORTED
  *（直至确立浏览器侧 watchdog 策略）。真挂死/CPU 卡死靠宿主（浏览器/容器）兜底，不由本层保证。 */

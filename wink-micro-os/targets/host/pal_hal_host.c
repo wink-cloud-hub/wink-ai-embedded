@@ -18,6 +18,7 @@
  * 注：虚拟时间状态机在 pal_osal_host.c 维护（sim_* API 经 extern 访问）。
  */
 #include "pal_hal.h"
+#include "pal_osal.h"
 #define WINK_ALLOW_ADVANCED_IRQ_APIS
 #include "pal_irq_advanced.h"
 #include "pal_resource.h"
@@ -144,7 +145,9 @@ static void flush_pending_interrupts(void)
 
         if (pin < HOST_MAX_GPIO_PIN && s_gpio_isr[pin] != NULL) {
             s_isr_call_count[pin]++;
+            pal_os_set_sim_isr_context(true);
             s_gpio_isr[pin](s_gpio_isr_arg[pin]);
+            pal_os_set_sim_isr_context(false);
         }
     }
 }
@@ -225,7 +228,9 @@ void pal_host_trigger_gpio_interrupt(wink_pin_t pin)
     } else {
         /* 无锁 → 立即执行 */
         s_isr_call_count[pin]++;
+        pal_os_set_sim_isr_context(true);
         s_gpio_isr[pin](s_gpio_isr_arg[pin]);
+        pal_os_set_sim_isr_context(false);
     }
 }
 
@@ -291,7 +296,9 @@ void pal_irq_set_pending(uint32_t irq_num)
             /* 持有锁时不立即执行（单测可检查 pending 状态） */
         } else {
             s_host_irq_call_count[irq_num]++;
+            pal_os_set_sim_isr_context(true);
             s_host_irq_table[irq_num](s_host_irq_arg[irq_num]);
+            pal_os_set_sim_isr_context(false);
         }
     }
 }
@@ -414,6 +421,7 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us,
     if (pulse_us == NULL) { return WINK_ERR_INVALID_ARG; }
     if (pin < 0 || pin >= HOST_MAX_GPIO_PIN) { return WINK_ERR_INVALID_ARG; }
     if (!pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin)) { return WINK_ERR_INVALID_STATE; }
+    *pulse_us = 0;
 
     if (s_sim_measure_fn) {
         uint32_t p = s_sim_measure_fn((uint16_t)pin);

@@ -4,36 +4,28 @@
 #include <string.h>
 
 wink_status_t dal_gps_init(dal_gps_t *dev, const dal_gps_config_t *cfg) {
+    /* 参数合法性校验（必须保留：契约诚实，避免 NULL 解引用） */
     if (dev == NULL || cfg == NULL) { return WINK_ERR_INVALID_ARG; }
     if (cfg->owner == NULL) { return WINK_ERR_INVALID_ARG; }
-    if (cfg->baudrate == 0 || cfg->uart_port >= 3u) { return WINK_ERR_INVALID_ARG; }
 
-    /* Track A（M1）：UART 端口冲突治理。两 GPS 若配同 uart_port 不同 owner 则 BUSY。 */
-    wink_status_t rs = pal_resource_claim(PAL_RESOURCE_UART_PORT,
-                                          (uint32_t)cfg->uart_port, cfg->owner);
-    if (wink_status_is_error(rs)) { return rs; }
-
-    /* TODO: 真实 UART 初始化 + NMEA 解析器初始化 */
-    memcpy(&dev->config, cfg, sizeof(dal_gps_config_t));
-    memset(&dev->last_position, 0, sizeof(dal_gps_position_t));
-    dev->last_fix_time_ms = 0;
-    dev->initialized = true;
-    return WINK_OK;
+    /* @experimental Stub: UART backend + NMEA parser not yet implemented (see P2-P6 PAL_UART).
+     * 不 claim UART 资源、不置 initialized=true、不做任何硬件副作用——避免"假成功"反模式
+     * （ADR-0012 契约诚实：宁可返 NOT_SUPPORTED，也不要让 caller 误以为硬件已启动）。
+     * 未来真实实现到达时：这里会 pal_resource_claim(PAL_RESOURCE_UART_PORT,...) + 配置
+     * UART + 启动 NMEA DMA 接收，并置 dev->initialized = true。 */
+    memset(dev, 0, sizeof(dal_gps_t));
+    return WINK_ERR_UNSUPPORTED;
 }
 
 wink_status_t dal_gps_poll(dal_gps_t *dev) {
     if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
-    if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
-
-    /* TODO: UART 非阻塞读取 + NMEA 解析（GGA/RMC 语句） */
-    return WINK_OK;
+    /* @experimental Stub: UART RX + NMEA parse not implemented. */
+    return WINK_ERR_UNSUPPORTED;
 }
 
 wink_status_t dal_gps_get_position(const dal_gps_t *dev, dal_gps_position_t *pos) {
     if (dev == NULL || pos == NULL) { return WINK_ERR_INVALID_ARG; }
-    if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
-    if (!dev->last_position.fix_valid) { return WINK_ERR_EMPTY; }
-
-    memcpy(pos, &dev->last_position, sizeof(dal_gps_position_t));
-    return WINK_OK;
+    /* @experimental Stub: 清零输出以避免 caller 使用未初始化栈值。 */
+    memset(pos, 0, sizeof(dal_gps_position_t));
+    return WINK_ERR_UNSUPPORTED;
 }

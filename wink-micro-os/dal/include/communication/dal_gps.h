@@ -55,40 +55,45 @@ typedef struct {
  *
  * Phase 2 标准化：统一采用 config_t 模式，简化 Codegen 设备树生成。
  *
+ * @experimental Stub: returns WINK_ERR_UNSUPPORTED until UART backend
+ * (pal_uart, PAL_RESOURCE_UART_PORT backend, see P2-P6) and NMEA parser land.
+ * 不要依赖返回 WINK_OK 做业务逻辑；不要假设 dev->initialized 会被置 true。
+ *
  * @param dev GPS 实例句柄
  * @param cfg 配置结构体指针（内部深拷贝到 dev->config）
  * @return wink_status_t
  * @note API Contract:
  *   - Preconditions: dev 非 NULL；cfg 非 NULL。
  *   - Blocking: Yes（UART 初始化 + 等待首个 NMEA 语句，超时约 1 秒）。
- *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_IO / WINK_ERR_TIMEOUT
- *   - Postconditions: WINK_OK 时 dev->initialized=true；cfg 的内容已深拷贝到 dev->config。
+ *   - Error-codes: WINK_ERR_UNSUPPORTED (stub) / WINK_ERR_INVALID_ARG / WINK_ERR_IO / WINK_ERR_TIMEOUT
+ *   - Postconditions: 当前 stub 实现下 *dev 被清零，dev->initialized=false，不 claim UART 资源。
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_gps_init(dal_gps_t *dev, const dal_gps_config_t *cfg);
 
 /**
  * @brief 非阻塞轮询：接收 UART 数据并解析 NMEA 语句（需在 app_loop 中每 tick 调用）
+ * @experimental Stub: returns WINK_ERR_UNSUPPORTED until backend lands.
  * @param dev GPS 实例句柄
  * @return wink_status_t
  * @note API Contract:
  *   - Preconditions: dev 非 NULL；dal_gps_init() 已成功。
  *   - Blocking: No（仅读取 UART 接收缓冲区，不等待数据）。
- *   - Error-codes: WINK_OK / WINK_ERR_NOT_INITIALIZED / WINK_ERR_INVALID_ARG。
- *   - Postconditions: 若解析到有效 GGA/RMC 语句，则 dev->last_position 被更新。
+ *   - Error-codes: WINK_ERR_UNSUPPORTED (stub) / WINK_OK / WINK_ERR_NOT_INITIALIZED / WINK_ERR_INVALID_ARG。
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_gps_poll(dal_gps_t *dev);
 
 /**
  * @brief 获取最近一次定位结果
+ * @experimental Stub: returns WINK_ERR_UNSUPPORTED until backend lands; *pos is zeroed on entry.
  * @param dev GPS 实例句柄
  * @param pos 输出定位结果（拷贝）
  * @return wink_status_t
  * @note API Contract:
  *   - Preconditions: dev 非 NULL；dal_gps_init() 已成功；pos 非 NULL。
  *   - Blocking: No。
- *   - Error-codes: WINK_OK / WINK_ERR_NOT_INITIALIZED / WINK_ERR_INVALID_ARG /
+ *   - Error-codes: WINK_ERR_UNSUPPORTED (stub) / WINK_OK / WINK_ERR_NOT_INITIALIZED / WINK_ERR_INVALID_ARG /
  *                  WINK_ERR_EMPTY（从未获得有效定位）。
  */
 WINK_WARN_UNUSED_RESULT

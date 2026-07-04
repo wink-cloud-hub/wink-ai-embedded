@@ -72,10 +72,12 @@ static bool IRAM_ATTR rmt_rx_done_callback(rmt_channel_handle_t channel,
 
 wink_status_t pal_rmt_ultrasonic_init(uint16_t echo_pin) {
     if (s_rmt_rx_chan != NULL) {
-        return WINK_OK;  /* 已初始化 */
+        /* 已初始化：若 echo_pin 相同则幂等返 OK；否则先 deinit 再重建 */
+        if (s_echo_pin == echo_pin) {
+            return WINK_OK;
+        }
+        pal_rmt_ultrasonic_deinit();
     }
-
-    s_echo_pin = echo_pin;
 
     /* 创建 RMT RX channel */
     rmt_rx_channel_config_t rx_cfg = {
@@ -89,12 +91,15 @@ wink_status_t pal_rmt_ultrasonic_init(uint16_t echo_pin) {
     };
     esp_err_t err = rmt_new_rx_channel(&rx_cfg, &s_rmt_rx_chan);
     if (err != ESP_OK) {
+        s_rmt_rx_chan = NULL;
         return WINK_ERR_HARDWARE;
     }
 
     /* 创建完成信号量 */
     s_rx_done_sem = xSemaphoreCreateBinary();
     if (s_rx_done_sem == NULL) {
+        rmt_del_channel(s_rmt_rx_chan);
+        s_rmt_rx_chan = NULL;
         return WINK_ERR_RESOURCE_EXHAUSTED;
     }
 
@@ -104,29 +109,26 @@ wink_status_t pal_rmt_ultrasonic_init(uint16_t echo_pin) {
     };
     err = rmt_rx_register_event_callbacks(s_rmt_rx_chan, &cbs, NULL);
     if (err != ESP_OK) {
+        vSemaphoreDelete(s_rx_done_sem);
+        s_rx_done_sem = NULL;
+        rmt_del_channel(s_rmt_rx_chan);
+        s_rmt_rx_chan = NULL;
         return WINK_ERR_HARDWARE;
     }
 
     /* 启用 RMT */
     err = rmt_enable(s_rmt_rx_chan);
     if (err != ESP_OK) {
+        /* 注意：ESP-IDF 没有 rmt_rx_unregister_event_callbacks，回调随 channel 删除而清理 */
+        vSemaphoreDelete(s_rx_done_sem);
+        s_rx_done_sem = NULL;
+        rmt_del_channel(s_rmt_rx_chan);
+        s_rmt_rx_chan = NULL;
         return WINK_ERR_HARDWARE;
     }
 
-    /* 架构评审修复 #6：RMT 中断优先级说明
-     *
-     * ESP32 中断优先级：数值越大优先级越高（0=最低，7=NMI最高）
-     * WiFi/BT 中断优先级通常为 3~4。
-     *
-     * 验证方法（验收标准：中断响应延迟 < 10us）：
-     *   1. 在 TRIG 引脚输出时同时翻转另一 GPIO（打勾）
-     *   2. RMT ISR 中立即翻转另一 GPIO
-     *   3. 示波器测量两 GPIO 的上升沿间隔
-     *
-     * 注：ESP-IDF 5.x RMT new_channel 会自动分配合理优先级，
-     *     如需手动调整，需通过 CONFIG_RMT_INTERRUPT_PRIORITY kconfig。
-     */
-
+    s_echo_pin = echo_pin;
+    s_rx_num_symbols = 0;
     return WINK_OK;
 }
 
@@ -138,6 +140,7 @@ wink_status_t pal_rmt_ultrasonic_measure(uint32_t timeout_us, uint32_t *pulse_us
     if (pulse_us == NULL || s_rmt_rx_chan == NULL) {
         return WINK_ERR_INVALID_ARG;
     }
+    *pulse_us = 0;
 
     /* 清空信号量 */
     xSemaphoreTake(s_rx_done_sem, 0);
@@ -222,6 +225,19 @@ void pal_rmt_ultrasonic_deinit(void) {
         vSemaphoreDelete(s_rx_done_sem);
         s_rx_done_sem = NULL;
     }
+    /* 清零静态状态，确保再次 init 前无残留（SSOT：pal_hal_gpio 通过 pal_rmt 查询状态）*/
+    s_echo_pin = 0xFFFF;
+    s_rx_num_symbols = 0;
+}
+
+/* ─────────────────────────────────────────────────────────
+ * RMT 状态查询（供 pal_hal_gpio 单一数据源访问）
+ * 返回 true 表示当前 RMT 已初始化且绑定到 *out_echo_pin
+ * ───────────────────────────────────────────────────────── */
+bool pal_rmt_ultrasonic_is_active(uint16_t *out_echo_pin) {
+    if (s_rmt_rx_chan == NULL) return false;
+    if (out_echo_pin != NULL) *out_echo_pin = s_echo_pin;
+    return true;
 }
 
 #else  /* !ESP_PLATFORM - stub implementations for static analysis */
@@ -235,5 +251,9 @@ wink_status_t pal_rmt_ultrasonic_measure(uint32_t timeout_us, uint32_t *pulse_us
 }
 
 void pal_rmt_ultrasonic_deinit(void) {}
+
+bool pal_rmt_ultrasonic_is_active(uint16_t *out_echo_pin) {
+    (void)out_echo_pin; return false;
+}
 
 #endif  /* ESP_PLATFORM */

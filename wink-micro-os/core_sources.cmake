@@ -15,13 +15,15 @@ set(WINK_TRACE_SOURCES
 )
 
 # ── DAL 源文件 ──────────────────────────────────────────────────────────
-# Phase 3 分类组织：sensor / actuator / output / input / display
+# Phase 3 分类组织：sensor / actuator / output / input / display / communication / storage
 set(WINK_DAL_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/dal/src/sensor/dal_ultrasonic.c
     ${CMAKE_CURRENT_LIST_DIR}/dal/src/actuator/dal_servo.c
     ${CMAKE_CURRENT_LIST_DIR}/dal/src/output/dal_led.c
     ${CMAKE_CURRENT_LIST_DIR}/dal/src/input/dal_button.c
     ${CMAKE_CURRENT_LIST_DIR}/dal/src/display/dal_ssd1306.c
+    ${CMAKE_CURRENT_LIST_DIR}/dal/src/communication/dal_gps.c
+    ${CMAKE_CURRENT_LIST_DIR}/dal/src/storage/dal_eeprom.c
 )
 
 # ── 核心包含目录 ──────────────────────────────────────────────────────────

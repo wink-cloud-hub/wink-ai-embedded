@@ -141,62 +141,116 @@ void test_wire_dal_ultrasonic_echo_conflict_rolls_back_trig(void) {
 }
 
 /* =====================================================================
- * 7. dal_gps：同 uart_port 冲突
+ * 7. UART port 资源冲突语义（通过 pal_resource 原语验证）
+ *
+ *    背景（P0 E5-part1）：dal_gps 当前是 @experimental Stub，init 返
+ *    WINK_ERR_UNSUPPORTED，不 claim 资源（避免"假成功"反模式）。因此
+ *    此处不再通过 dal_gps_init 路径验证 UART 冲突——改为直接验证
+ *    pal_resource_claim(PAL_RESOURCE_UART_PORT, ...) 的冲突语义，作为
+ *    未来 dal_gps 真实实现 wire pal_resource 时必须遵守的契约红线。
+ *    对应真实实现一旦到位，可在本测试末尾追加 dal_gps_init 的 BUSY 路径覆盖。
  * ===================================================================== */
-void test_wire_dal_gps_same_uart_port_conflict(void) {
-    dal_gps_t a = {0};
-    dal_gps_t b = {0};
-    const dal_gps_config_t cfg_a = {
-        .owner = "gps_a", .uart_port = 1, .baudrate = 9600, .rx_buffer_size = 256
-    };
-    const dal_gps_config_t cfg_b = {
-        .owner = "gps_b", .uart_port = 1, .baudrate = 9600, .rx_buffer_size = 256
-    };
+void test_wire_uart_port_resource_conflict_via_pal(void) {
+    /* 同 port 异 owner → BUSY */
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+        pal_resource_claim(PAL_RESOURCE_UART_PORT, 1, "gps_a"));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_BUSY,
+        pal_resource_claim(PAL_RESOURCE_UART_PORT, 1, "gps_b"));
+    /* 同 owner 重入 → OK（幂等） */
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+        pal_resource_claim(PAL_RESOURCE_UART_PORT, 1, "gps_a"));
+    /* 不同 port → OK */
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+        pal_resource_claim(PAL_RESOURCE_UART_PORT, 2, "gps_b"));
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_gps_init(&a, &cfg_a));
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_BUSY, dal_gps_init(&b, &cfg_b));
-    TEST_ASSERT_FALSE(b.initialized);
+    /* 清理：release 后可再 claim */
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+        pal_resource_release(PAL_RESOURCE_UART_PORT, 1, "gps_a"));
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+        pal_resource_release(PAL_RESOURCE_UART_PORT, 2, "gps_b"));
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+        pal_resource_claim(PAL_RESOURCE_UART_PORT, 1, "gps_c"));
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+        pal_resource_release(PAL_RESOURCE_UART_PORT, 1, "gps_c"));
 }
 
 /* =====================================================================
- * 8. dal_eeprom：同 (port, addr) 冲突（异 owner）
+ * 8. I2C (port, addr) 资源冲突语义（通过 pal_resource 原语验证）
+ *
+ *    同 uart 逻辑：dal_eeprom 是 stub 返 NOT_SUPPORTED，不 claim 资源；
+ *    此处直接验证 pal_resource_i2c_id + PAL_RESOURCE_I2C_ADDR 的契约。
  * ===================================================================== */
-void test_wire_dal_eeprom_same_port_addr_conflict(void) {
-    dal_eeprom_t a = {0};
-    dal_eeprom_t b = {0};
-    const dal_eeprom_config_t cfg_a = {
-        .owner = "eeprom_a", .i2c_port = 0, .i2c_addr = 0x50,
-        .capacity_bytes = 32768, .page_size = 32, .write_time_ms = 5
-    };
-    const dal_eeprom_config_t cfg_b = {
-        .owner = "eeprom_b", .i2c_port = 0, .i2c_addr = 0x50,
-        .capacity_bytes = 32768, .page_size = 32, .write_time_ms = 5
-    };
+void test_wire_i2c_addr_resource_conflict_via_pal(void) {
+    uint32_t id_0_50 = pal_resource_i2c_id(0, 0x50);
+    uint32_t id_0_51 = pal_resource_i2c_id(0, 0x51);
+    uint32_t id_1_50 = pal_resource_i2c_id(1, 0x50);
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_eeprom_init(&a, &cfg_a));
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_BUSY, dal_eeprom_init(&b, &cfg_b));
-    TEST_ASSERT_FALSE(b.initialized);
+    /* 同 (port, addr) 异 owner → BUSY */
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+        pal_resource_claim(PAL_RESOURCE_I2C_ADDR, id_0_50, "eeprom_a"));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_BUSY,
+        pal_resource_claim(PAL_RESOURCE_I2C_ADDR, id_0_50, "eeprom_b"));
+
+    /* 同 port 不同 addr → OK（共享总线） */
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+        pal_resource_claim(PAL_RESOURCE_I2C_ADDR, id_0_51, "oled"));
+
+    /* 不同 port 同 addr → OK（地址空间按 port 独立） */
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+        pal_resource_claim(PAL_RESOURCE_I2C_ADDR, id_1_50, "eeprom_c"));
+
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+        pal_resource_release(PAL_RESOURCE_I2C_ADDR, id_0_50, "eeprom_a"));
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+        pal_resource_release(PAL_RESOURCE_I2C_ADDR, id_0_51, "oled"));
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+        pal_resource_release(PAL_RESOURCE_I2C_ADDR, id_1_50, "eeprom_c"));
 }
 
 /* =====================================================================
- * 9. dal_eeprom：同 port 不同 addr 应共享总线（不冲突，与 pal_resource.h §pal_resource_i2c_id 契约一致）
+ * 9. dal_gps/dal_eeprom stub 契约诚实性：
+ *    合法参数下 init 必须返 WINK_ERR_UNSUPPORTED（非 WINK_OK 假成功），
+ *    且 dev->initialized 必须保持 false，read/write/poll/get_position 也返 NOT_SUPPORTED。
  * ===================================================================== */
-void test_wire_dal_eeprom_same_port_different_addr_ok(void) {
-    dal_eeprom_t a = {0};
-    dal_eeprom_t b = {0};
-    const dal_eeprom_config_t cfg_a = {
-        .owner = "eeprom_a", .i2c_port = 0, .i2c_addr = 0x50,
-        .capacity_bytes = 32768, .page_size = 32, .write_time_ms = 5
+void test_wire_gps_stub_returns_not_supported(void) {
+    dal_gps_t dev = {0};
+    const dal_gps_config_t cfg = {
+        .owner = "test_gps", .uart_port = 1, .baudrate = 9600, .rx_buffer_size = 256
     };
-    const dal_eeprom_config_t cfg_b = {
-        .owner = "eeprom_b", .i2c_port = 0, .i2c_addr = 0x51,
-        .capacity_bytes = 32768, .page_size = 32, .write_time_ms = 5
-    };
+    /* 前态污染：确保 init 会清零 dev */
+    dev.initialized = true;
+    dev.last_fix_time_ms = 0xDEADBEEFu;
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_eeprom_init(&a, &cfg_a));
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_eeprom_init(&b, &cfg_b));
-    TEST_ASSERT_TRUE(a.initialized);
-    TEST_ASSERT_TRUE(b.initialized);
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_gps_init(&dev, &cfg));
+    TEST_ASSERT_FALSE(dev.initialized);
+
+    /* poll/get_position 在未 init 的 dev 上也返 NOT_SUPPORTED（而非 NOT_INITIALIZED，
+     * 因为 stub 根本不支持该功能，比"未初始化"更准确） */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_gps_poll(&dev));
+    dal_gps_position_t pos;
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_gps_get_position(&dev, &pos));
+}
+
+void test_wire_eeprom_stub_returns_not_supported(void) {
+    dal_eeprom_t dev = {0};
+    const dal_eeprom_config_t cfg = {
+        .owner = "test_eeprom", .i2c_port = 0, .i2c_addr = 0x50,
+        .capacity_bytes = 32768, .page_size = 32, .write_time_ms = 5
+    };
+    dev.initialized = true;
+
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_eeprom_init(&dev, &cfg));
+    TEST_ASSERT_FALSE(dev.initialized);
+
+    uint8_t buf[4] = {0x00, 0x00, 0x00, 0x00};
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_eeprom_read(&dev, 0, buf, sizeof(buf)));
+    /* read 虽返 NOT_SUPPORTED，但 buf 必须被安全填充为 0xFF（未编程 EEPROM 默认值），
+     * 避免 caller 看到未初始化内存 */
+    TEST_ASSERT_EQUAL_UINT8(0xFF, buf[0]);
+    TEST_ASSERT_EQUAL_UINT8(0xFF, buf[3]);
+
+    const uint8_t wbuf[4] = {1,2,3,4};
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_eeprom_write(&dev, 0, wbuf, sizeof(wbuf)));
 }
 
 /* =====================================================================
@@ -265,9 +319,10 @@ int main(void) {
     RUN_TEST(test_wire_dal_servo_same_channel_conflict);
     RUN_TEST(test_wire_dal_ultrasonic_trig_pin_conflict);
     RUN_TEST(test_wire_dal_ultrasonic_echo_conflict_rolls_back_trig);
-    RUN_TEST(test_wire_dal_gps_same_uart_port_conflict);
-    RUN_TEST(test_wire_dal_eeprom_same_port_addr_conflict);
-    RUN_TEST(test_wire_dal_eeprom_same_port_different_addr_ok);
+    RUN_TEST(test_wire_uart_port_resource_conflict_via_pal);
+    RUN_TEST(test_wire_i2c_addr_resource_conflict_via_pal);
+    RUN_TEST(test_wire_gps_stub_returns_not_supported);
+    RUN_TEST(test_wire_eeprom_stub_returns_not_supported);
     RUN_TEST(test_wire_all_dal_reject_null_owner);
     RUN_TEST(test_wire_release_then_reclaim_across_dal);
     return UNITY_END();

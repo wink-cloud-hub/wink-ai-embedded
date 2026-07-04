@@ -41,6 +41,7 @@
  *      —— Poll 模型本身在 tick 边界 drain，延迟已经是确定性的 O(1 tick)）
  */
 #include "pal_hal.h"
+#include "pal_osal.h"
 #define WINK_ALLOW_ADVANCED_IRQ_APIS
 #include "pal_irq_advanced.h"
 #include "wasm_bridge.h"
@@ -285,7 +286,9 @@ void pal_wasm_dispatch_pending_irqs(void)
     uint32_t irq_num;
     while (sw_dequeue(&irq_num)) {
         if (irq_num < WASM_MAX_IRQ && s_wasm_irq_table[irq_num] != NULL) {
+            pal_os_set_sim_isr_context(true);
             s_wasm_irq_table[irq_num](s_wasm_irq_arg[irq_num]);
+            pal_os_set_sim_isr_context(false);
         }
         /* 如果 handler 被 disable 置 NULL：静默丢（pal_irq_clear_pending 语义）*/
     }
@@ -319,7 +322,9 @@ void pal_wasm_dispatch_pending_interrupts(void) {
     while (js_pal_poll_interrupt(&callback_index, &arg_ptr)) {
         pal_gpio_isr_t isr = (pal_gpio_isr_t)(uintptr_t)callback_index;
         if (isr != NULL) {
+            pal_os_set_sim_isr_context(true);
             isr((void *)(uintptr_t)arg_ptr);
+            pal_os_set_sim_isr_context(false);
         }
     }
 
