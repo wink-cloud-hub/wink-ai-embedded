@@ -85,6 +85,9 @@ if (isMainThread) {
      * "wasm_bridge.h 是 JS 看到的 C 符号 SSOT" 契约。反之 DCE 掉某些没被
      * App 引用的符号是正常的（avoidance_car → 5 个；oled_dashboard → 5 个
      * 但组合不同）—— 只 warn 不 fail。 */
+    // P2-1 (Phase C): js_pal_os_get_ms / js_pal_os_get_us removed — C-side
+    // pal_os_get_us/ms() reads s_virtual_us directly (zero JS call); JS host
+    // drives virtual time forward via the C→JS export pal_wasm_advance_virtual_clock.
     const knownBridgeSymbols = [
         'js_pal_gpio_write',
         'js_pal_gpio_read',
@@ -95,8 +98,6 @@ if (isMainThread) {
         'js_pal_poll_interrupt',
         'js_pal_os_sleep_ms',
         'js_pal_os_busy_wait_us',
-        'js_pal_os_get_ms',
-        'js_pal_os_get_us',
         'js_sim_trigger_ultrasonic',
         'js_sim_measure_echo_pulse_us',
     ];

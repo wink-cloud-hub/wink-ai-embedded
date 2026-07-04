@@ -72,6 +72,14 @@
  * 主 UI 线程只做消息驱动。
  *
  * ========================================================================
+ * 时间 SSOT（P2-1 清理后）
+ * ========================================================================
+ * C 侧 pal_os_get_us/ms() 直接读 s_virtual_us 内存（零 JS 调用），虚拟时钟
+ * 唯一推进入口是 pal_wasm_advance_virtual_clock(bigint)（C→JS 导出）。
+ * js_pal_os_get_ms / js_pal_os_get_us 已在 Phase C P2-1 清理中删除（死桩，
+ * 从未被 wasm 实际导入）。需要读时钟的宿主代码请自行持有 VirtualClock 实例。
+ *
+ * ========================================================================
  * 契约与 SSOT
  * ========================================================================
  * 符号集合与签名以 targets/wasm/wasm_bridge.h 为 SSOT；漂移即 node stub smoke
@@ -102,21 +110,7 @@ addToLibrary({
         });
     },
 
-    /* ---- 同步 getters（Asyncify 不介入）---- */
-    js_pal_os_get_ms: function () {
-        if (typeof Module !== 'undefined' && typeof Module.js_pal_os_get_ms === 'function') {
-            return Module.js_pal_os_get_ms();
-        }
-        return BigInt(Date.now());
-    },
-    js_pal_os_get_us: function () {
-        if (typeof Module !== 'undefined' && typeof Module.js_pal_os_get_us === 'function') {
-            return Module.js_pal_os_get_us();
-        }
-        return BigInt(Date.now()) * 1000n;
-    },
-
-    /* ---- PAL HAL 默认 no-op（Workbench 侧要接入真实 UI 反馈） ---- */
+    /* ---- PAL HAL 默认 no-op（Workbench 侧要接入真实 UI 反馈）---- */
     js_pal_gpio_write: function (pin, level) {
         if (typeof Module !== 'undefined' && typeof Module.js_pal_gpio_write === 'function') {
             return Module.js_pal_gpio_write(pin, level);
