@@ -289,4 +289,23 @@ $nmOut
 Remove-Item -Force $strictObj -ErrorAction SilentlyContinue
 Write-Host "[lint] ADR-0017 L1: dal_ultrasonic_read absent under strict mode OK"
 
+# ---- 8. L2 static lint: P1-B2 header self-containment ------------------------
+# Every public header under pal/include/ and dal/include/ must compile as the
+# first-and-only #include in an empty TU (both C and C++). Catches missing
+# prerequisite includes (<stdint.h>, <stdbool.h>, "wink_status.h", ...) that
+# would otherwise silently rely on transitive inclusion at downstream callers.
+# Runs after other lints so a header regression does not gate the test signal.
+# Soft-skips when python is unavailable (dev machine without Python installed).
+Write-Host "[lint] Header self-containment (P1-B2)..." -ForegroundColor Cyan
+$pythonCmd = Get-Command python -ErrorAction SilentlyContinue
+if ($pythonCmd) {
+    & python (Join-Path $PSScriptRoot 'tools/check_headers_self_contained.py')
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "[lint] P1-B2 header self-containment check failed (see output above)"
+        exit 1
+    }
+} else {
+    Write-Host "[SKIP] python not found on PATH — header self-containment check skipped" -ForegroundColor Yellow
+}
+
 exit $overallRc
