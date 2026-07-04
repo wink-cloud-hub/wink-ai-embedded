@@ -195,14 +195,30 @@ wink_status_t pal_gpio_disable_interrupt(wink_pin_t pin);
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_gpio_synchronize_interrupt(wink_pin_t pin);
 
+#ifndef WINK_STRICT_NONBLOCKING
+/**
+ * @brief GPIO 脉冲宽度测量（阻塞 busy-wait / RMT 等待）。
+ * @note Blocking: Yes（最坏 timeout_us 微秒忙等或 FreeRTOS 信号量等待）。
+ *       Not available under WINK_STRICT_NONBLOCKING (ADR-0017).
+ *       非阻塞替代路径：pal_rmt_pulse_capture_init + 异步 poll。
+ */
+WINK_BLOCKING
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us,
                                  uint32_t *pulse_us);
 
+/**
+ * @brief I2C 总线同步传输 (write + optional read)。
+ * @note Blocking: Yes（总线 ACK/NACK 等待 + 传输时间；ESP32 走 driver 事件循环，
+ *       host/wasm 通常是即时返回，但语义仍为"直到完成"）。
+ *       Not available under WINK_STRICT_NONBLOCKING (ADR-0017).
+ */
+WINK_BLOCKING
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
                                const uint8_t *write_buf, uint32_t write_len,
                                uint8_t *read_buf, uint32_t read_len);
+#endif /* WINK_STRICT_NONBLOCKING */
 
 #ifdef __cplusplus
 }

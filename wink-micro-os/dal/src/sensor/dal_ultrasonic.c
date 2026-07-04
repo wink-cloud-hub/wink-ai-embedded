@@ -7,6 +7,14 @@
 
 #include <string.h>   /* memcpy（ADR-0008 apply_override 反序列化） */
 
+/* ADR-0017 层 1 例外：本 TU 合法调用多个 WINK_BLOCKING API
+ * (pal_os_busy_wait_us, pal_gpio_pulse_in) 以及 blocking 的 dal_ultrasonic_read 自身。
+ * 超声波驱动本质需要精确时序 + 脉宽等待。严格模式下 dal_ultrasonic_read 与 pal 阻塞 API
+ * 声明全部消失，本文件受同一 #ifndef WINK_STRICT_NONBLOCKING 包围的部分随之消失。 */
+#if defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 #define ULTRASONIC_TIMEOUT_US 30000u   /* 30ms 超时保护 */
 #define ULTRASONIC_CM_PER_US  0.017f   /* 声速换算系数 (340m/s, 往返折半) */
 
@@ -81,6 +89,11 @@ wink_status_t dal_ultrasonic_init(dal_ultrasonic_t *dev, const dal_ultrasonic_co
     return WINK_OK;
 }
 
+/* ADR-0017 层 2 附属：request_measurement 语义上是"非阻塞请求"，但当前实现内部
+ * 调用 pal_gpio_pulse_in（WINK_BLOCKING）——严格模式下该 PAL 声明消失，本实现将
+ * 无法编译。所以整个函数体也纳入 #ifndef 段一并剔除。未来非阻塞 RMT 后端落地后
+ * (dal_ultrasonic_start + dal_ultrasonic_poll) 才可在严格模式保留。 */
+#ifndef WINK_STRICT_NONBLOCKING
 wink_status_t dal_ultrasonic_request_measurement(dal_ultrasonic_t *dev) {
     if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
@@ -127,6 +140,7 @@ wink_status_t dal_ultrasonic_request_measurement(dal_ultrasonic_t *dev) {
     }
     return WINK_OK;   /* request 成功（已触发）；结果经 get_cached 读 */
 }
+#endif /* WINK_STRICT_NONBLOCKING (request_measurement) */
 
 wink_status_t dal_ultrasonic_get_cached_distance(const dal_ultrasonic_t *dev, float *distance_cm) {
     if (dev == NULL || distance_cm == NULL) { return WINK_ERR_INVALID_ARG; }

@@ -3,6 +3,15 @@
 #include "pal_resource.h"
 #include <string.h>
 
+/* ADR-0017 层 1 例外：本 TU 合法调用 WINK_BLOCKING API (pal_i2c_transfer)。
+ * SSD1306 显示驱动本质要走 I2C 传输，是"消费端"角色；WINK_BLOCKING 的告警
+ * 作用于新代码抑制误用，对 DAL 内部有意为之的调用退化为 no-op。
+ * 严格模式（-DWINK_STRICT_NONBLOCKING=1）下 pal_i2c_transfer 声明消失，本文件将链接失败——
+ * 这正是设计意图（严格 nonblocking 构建路径需要非阻塞 I2C 后端）。 */
+#if defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 /* ---- 极简 5×7 字体（MVP 范围：空格、数字 0-9、大写字母 A,H,I,O,P,S,T,W、感叹号） ----
  * 每个字形 5 字节（5 列 × 7 行），LSB=顶行像素。不支持的字符渲染为空格。
  * 字体数据可后续由 codegen / 外部工具扩展，不影响 API 契约。 */

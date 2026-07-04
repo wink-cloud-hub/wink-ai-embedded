@@ -21,6 +21,14 @@
 #include "pal_hal_internal_esp32.h" /* pal_esp32_gpio_synchronize_all() declaration */
 #include "hal/pal_rmt.h"
 
+/* ADR-0017 层 1 例外：本 TU 是 pal_gpio_pulse_in 的 target 实现，其内部合法调用
+ * WINK_BLOCKING 的 pal_rmt_pulse_capture_wait（RMT 后端）与 pal_os_busy_wait_us
+ * （busy-wait 回退）。抑制 -Wdeprecated-declarations 使 -Werror 下仍能编译；
+ * 严格模式（-DWINK_STRICT_NONBLOCKING=1）下相关 API 声明消失，本 TU 会链接失败——那是设计意图。 */
+#if defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 #if defined(ESP_PLATFORM)
 #include "driver/gpio.h"
 #include "esp_err.h"

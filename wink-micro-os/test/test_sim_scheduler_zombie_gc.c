@@ -3,6 +3,14 @@
 #include "wink_sim_scheduler.h"
 #include <stdint.h>
 
+
+/* ADR-0017 层 1 例外：本 TU 合法调用 WINK_BLOCKING API。抑制
+ * -Wdeprecated-declarations 使 -Werror 下仍能编译；严格模式
+ * (-DWINK_STRICT_NONBLOCKING=1) 下相关 API 声明直接消失，本 TU 会链接失败——那是设计意图。 */
+#if defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 static uint32_t s_self_delete_count = 0;
 
 void self_deleter_task(void* arg) {
