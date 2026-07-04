@@ -14,6 +14,14 @@ target_include_directories(dal PUBLIC
     include/storage
 )
 
+# DAL 源码通过 `wink_pt_debug.h` 拿到 WINK_ASSERT_NONBLOCKING()（ADR-0017 层 3）。
+# 该头存放在 runtime/include/（2026-07-04 层级修正：从 pal/include/wink_status.h 迁出）。
+# 仅需 include 路径，不引入 link 依赖（extern wink_pt_in_context/wink_trace_fault 由
+# 各 target 的 OSAL + wink_trace 提供，可执行链接期解析）。
+target_include_directories(dal PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/include
+)
+
 # DAL 依赖 PAL
 target_link_libraries(dal PUBLIC pal)
 

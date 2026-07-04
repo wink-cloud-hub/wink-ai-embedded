@@ -112,8 +112,9 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
         ${PAL_WASM_SOURCES}
         ${WASM_ENTRY_SOURCE}
         ${WINK_APP_SOURCES}                # ← App 注入（Task 1.2）
-        pal/src/pal_pwm_router.c
-        pal/src/wink_dev_config.c)
+        pal/src/pal_pwm_router.c)
+    # 注：wink_dev_config.c 已迁至 runtime/src/，随 wink_runtime STATIC 库链入，
+    # 无需在此显式列出（旧位置 pal/src/wink_dev_config.c 已删除）。
     # 契约断言：wink_simulator 必须 link wink_runtime（否则 wasm_entry.c 里的
     # wink_app.h 找不到、wink_runtime_run 也 undef）。link 顺序无关紧要，这里
     # 显式列出便于人肉 grep 时定位。

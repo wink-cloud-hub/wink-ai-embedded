@@ -3,6 +3,7 @@
 #include "pal_hal.h"
 #include "pal_osal.h"
 #include "pal_resource.h"
+#include "wink_pt_debug.h"   /* WINK_ASSERT_NONBLOCKING() (ADR-0017 层 3 runtime hook) */
 
 #include <string.h>   /* memcpy（ADR-0008 apply_override 反序列化） */
 
