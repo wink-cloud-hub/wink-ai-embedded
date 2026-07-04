@@ -336,12 +336,19 @@ wink_status_t pal_os_ringbuf_pop(
 }
 
 uint32_t pal_os_ringbuf_used(pal_os_ringbuf_handle_t rb) {
-    /* FreeRTOS doesn't expose exact used count via public API.
-     * In practice, applications check WINK_ERR_EMPTY/WINK_ERR_FULL.
-     * For metrics, we would need to add tracking.
-     */
-    (void)rb;
-    return 0;
+    /* P1-P5-5: 用 xRingbufferGetCurFreeSize 反推 used。
+     * RINGBUF_TYPE_BYTEBUF 无 per-item 头部开销（不同于 NO_SPLIT/ALLOW_SPLIT
+     * 的 8-byte header），因此 used = capacity - free 精确。
+     * 参见 ESP-IDF FreeRTOS Additions: ringbuf.h `xRingbufferGetCurFreeSize`. */
+    if (rb == NULL) {
+        return 0;
+    }
+    size_t free_size = xRingbufferGetCurFreeSize(rb->handle);
+    if (free_size >= rb->size) {
+        /* 防御：理论上不会发生，但如果 IDF 版本行为异常，视作空 */
+        return 0;
+    }
+    return (uint32_t)(rb->size - free_size);
 }
 
 void pal_os_ringbuf_destroy(pal_os_ringbuf_handle_t rb) {

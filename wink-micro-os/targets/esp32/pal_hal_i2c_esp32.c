@@ -74,16 +74,35 @@ __attribute__((weak)) const wink_pin_t pal_i2c_pin_map[PAL_I2C_PORTS][2] = {
 static bool s_i2c_initialized[PAL_I2C_PORTS] = {false};
 
 /* 并发安全：静态互斥锁，保护初始化与设备缓存操作
- * ✅ SMP-safe: FreeRTOS 调度器启动前静态初始化，无双核竞态
+ * ✅ SMP-safe: 使用静态分配 + portMUX 保护的懒惰首次初始化，
+ *    避免依赖 constructor(101) 的执行顺序（P1-P5-2）。
  * 参见: https://www.freertos.org/xSemaphoreCreateMutexStatic.html */
 static SemaphoreHandle_t s_i2c_mutex = NULL;
 static StaticSemaphore_t s_i2c_mutex_buf;
+static portMUX_TYPE      s_i2c_mutex_init_lock = portMUX_INITIALIZER_UNLOCKED;
 
-/* 在启动时初始化互斥锁，避免双核懒初始化竞态
- * constructor(101) 确保在应用层代码之前执行 */
-__attribute__((constructor(101)))
-static void pal_i2c_static_init_mutex(void) {
-    s_i2c_mutex = xSemaphoreCreateMutexStatic(&s_i2c_mutex_buf);
+/**
+ * @brief 懒惰首次初始化 I2C 互斥锁（SMP 安全，P1-P5-2）
+ *
+ * 使用 portMUX spinlock 保护双检模式：
+ *   1. 无锁快速路径：s_i2c_mutex != NULL → 立即返回
+ *   2. 首次调用：进入 spinlock 临界区，再次检查后创建 mutex
+ *
+ * 相比 constructor(101)：
+ *   - 不依赖 GCC/link 段初始化顺序
+ *   - portMUX_TYPE 静态初始化即可用，不需要额外的 init
+ *   - 与 FreeRTOS 调度器启动状态解耦
+ */
+static inline SemaphoreHandle_t pal_i2c_get_mutex(void) {
+    if (s_i2c_mutex != NULL) {
+        return s_i2c_mutex;
+    }
+    portENTER_CRITICAL(&s_i2c_mutex_init_lock);
+    if (s_i2c_mutex == NULL) {
+        s_i2c_mutex = xSemaphoreCreateMutexStatic(&s_i2c_mutex_buf);
+    }
+    portEXIT_CRITICAL(&s_i2c_mutex_init_lock);
+    return s_i2c_mutex;
 }
 
 #if WINK_I2C_USE_V6_API
@@ -170,10 +189,13 @@ static wink_status_t pal_i2c_get_or_create_device(uint8_t port, uint16_t dev_add
     }
 
     /* Step 2：先在栈上分配临时句柄，不修改任何缓存状态 */
+    /* TODO P1-P5-6: scl_speed_hz hardcoded to 100 kHz standard-mode as safer default.
+     * Full solution requires cross-target public API `pal_i2c_set_speed(port, hz)`
+     * (deferred to P2 work — needs contract in pal_hal.h + host/wasm impls). */
     i2c_device_config_t dev_cfg = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
         .device_address = dev_addr,
-        .scl_speed_hz = 400000,
+        .scl_speed_hz = 100000,
     };
 
     i2c_master_dev_handle_t temp_handle = NULL;
@@ -239,9 +261,21 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
                       uint8_t *read_buf, uint32_t read_len) {
     if (port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
 
+    /* P1-P5-1: 空操作快速拒绝（both-zero 是调用方 bug，不再静默返回 OK）。
+     * 契约上正常 I2C 传输至少一个方向 non-zero；同时非零(write+read) 是合法的
+     * write-then-read 组合。若某方向 len>0 但 buf==NULL 也拒绝。 */
+    if (write_len == 0 && read_len == 0) { return WINK_ERR_INVALID_ARG; }
+    if (write_len > 0 && write_buf == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (read_len  > 0 && read_buf  == NULL) { return WINK_ERR_INVALID_ARG; }
+
     /* 临界区：初始化 + 设备缓存操作
-     * ✅ 互斥锁已在 constructor 中静态初始化，SMP 安全 */
-    if (xSemaphoreTake(s_i2c_mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
+     * ✅ 互斥锁按需懒惰首次初始化，SMP 安全（P1-P5-2） */
+    SemaphoreHandle_t mutex = pal_i2c_get_mutex();
+    if (mutex == NULL) {
+        ESP_LOGE(TAG, "I2C mutex allocation failed");
+        return WINK_ERR_RESOURCE_EXHAUSTED;
+    }
+    if (xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
         ESP_LOGE(TAG, "I2C mutex timeout");
         return WINK_ERR_BUSY;
     }
@@ -268,13 +302,16 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
         }
 #else
         /* v5.x：旧 API 初始化 */
+        /* TODO P1-P5-6: master.clk_speed hardcoded to 100 kHz standard-mode as safer
+         * default. Full solution requires cross-target public API `pal_i2c_set_speed`
+         * (deferred to P2 work — needs contract in pal_hal.h + host/wasm impls). */
         i2c_config_t cfg = {
             .mode = I2C_MODE_MASTER,
             .sda_io_num = pal_i2c_pin_map[port][0],
             .scl_io_num = pal_i2c_pin_map[port][1],
             .sda_pullup_en = GPIO_PULLUP_ENABLE,
             .scl_pullup_en = GPIO_PULLUP_ENABLE,
-            .master.clk_speed = 400000,
+            .master.clk_speed = 100000,
         };
         esp_err_t err = i2c_param_config((i2c_port_t)port, &cfg);
         if (err != ESP_OK) {
@@ -322,7 +359,7 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
         err = i2c_master_receive(dev_handle, read_buf, (size_t)read_len,
                                  I2C_TRANSFER_TIMEOUT_MS);
     }
-    /* else: 空操作，直接返回 OK */
+    /* else: 空操作已被入口 both-zero 校验拒绝（P1-P5-1），此分支不可达。 */
 #else
     /* v5.x：旧 API 传输 */
     err = i2c_master_write_read_device(

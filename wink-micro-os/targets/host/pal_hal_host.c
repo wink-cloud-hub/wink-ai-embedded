@@ -163,7 +163,7 @@ wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin, pal_gpio_intr_t intr_
     if (callback == NULL) {
         return WINK_ERR_INVALID_ARG;
     }
-    if (prio >= PAL_IRQ_PRIO_COUNT) {
+    if (prio < PAL_IRQ_PRIO_LOW || prio > PAL_IRQ_PRIO_HIGH) {
         return WINK_ERR_INVALID_ARG;
     }
 
@@ -196,6 +196,16 @@ wink_status_t pal_gpio_disable_interrupt(wink_pin_t pin)
     }
 
     s_gpio_isr[pin] = NULL;
+    return WINK_OK;
+}
+
+/* P1-P5-10: host 单线程模型，disable 返回时保证无 ISR 正在执行，
+ * synchronize_interrupt 语义等价于 no-op（仅做参数合法性校验）。 */
+wink_status_t pal_gpio_synchronize_interrupt(wink_pin_t pin)
+{
+    if (pin < 0 || pin >= HOST_MAX_GPIO_PIN) {
+        return WINK_ERR_INVALID_ARG;
+    }
     return WINK_OK;
 }
 
@@ -269,7 +279,10 @@ static uint32_t s_host_irq_call_count[HOST_MAX_IRQ] = {0};
 wink_status_t pal_irq_enable(uint32_t irq_num, pal_irq_prio_t prio,
                               pal_isr_t handler, void *arg)
 {
-    if (irq_num >= HOST_MAX_IRQ || handler == NULL || prio <= 0 || prio >= PAL_IRQ_PRIO_COUNT) {
+    /* P1-P5-9: prio 使用命名常量边界（PAL_IRQ_PRIO_LOW..HIGH）而非 magic 0，
+     * 与 ESP32 / wasm target 保持一致。 */
+    if (irq_num >= HOST_MAX_IRQ || handler == NULL ||
+        prio < PAL_IRQ_PRIO_LOW || prio > PAL_IRQ_PRIO_HIGH) {
         return WINK_ERR_INVALID_ARG;
     }
 

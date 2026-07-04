@@ -84,14 +84,20 @@ static void PAL_ISR generic_isr_wrapper(void *arg)
 wink_status_t pal_irq_enable(uint32_t irq_num, pal_irq_prio_t prio,
                               pal_isr_t handler, void *arg)
 {
-    if (irq_num >= 32 || handler == NULL || prio <= 0 || prio >= PAL_IRQ_PRIO_COUNT) {
+    /* P1-P5-9: prio 边界检查——使用命名常量而非 magic 0，语义清晰。
+     * PAL_IRQ_PRIO_LOW = 1, PAL_IRQ_PRIO_HIGH = 3 (见 pal_irq.h)。 */
+    if (irq_num >= 32 || handler == NULL ||
+        prio < PAL_IRQ_PRIO_LOW || prio > PAL_IRQ_PRIO_HIGH) {
         return WINK_ERR_INVALID_ARG;
     }
 
-    /* 先释放旧的句柄（如果有） */
-    if (s_irq_handles[irq_num] != NULL) {
-        esp_intr_free(s_irq_handles[irq_num]);
-        s_irq_handles[irq_num] = NULL;
+    /* P1-P5-4: irq_num 强校验（ADR-0018）。
+     * pal_irq_enable 仅支持 CPU 内部软件中断（ETS_INTERNAL_SW0/SW1，逻辑号 7/8）。
+     * GPIO 中断请通过 pal_gpio_enable_interrupt_ex()。其它 irq_num 无正确
+     * source 映射，历史行为是把 irq_num 直接当 IDF source id 传入 esp_intr_alloc
+     * ——语义不定义且易误用，此处显式拒绝。 */
+    if (irq_num != 7 && irq_num != 8) {
+        return WINK_ERR_INVALID_ARG;
     }
 
     /* 优先级映射表（3 级）
@@ -103,33 +109,31 @@ wink_status_t pal_irq_enable(uint32_t irq_num, pal_irq_prio_t prio,
         [PAL_IRQ_PRIO_HIGH]     = ESP_INTR_FLAG_LEVEL3,  /* configMAX_SYSCALL_INTERRUPT_PRIORITY is Level 3 */
     };
 
-    /* ✅ SMP 同步：保存用户 handler 和 arg，通过 wrapper 调用
-     * 这样 wrapper 可以追踪 in-flight 计数 */
-    s_isr_ctx[irq_num].user_handler = handler;
-    s_isr_ctx[irq_num].user_arg = arg;
+    int source = (irq_num == 7) ? ETS_INTERNAL_SW0_INTR_SOURCE
+                                 : ETS_INTERNAL_SW1_INTR_SOURCE;
+    int flags = ESP_INTR_FLAG_IRAM | s_prio_flag_map[prio];
 
-    // 针对测试所用的逻辑中断号，映射到合法的 CPU 内部软件中断源
-    int source = irq_num;
-    if (irq_num == 7) {
-        source = ETS_INTERNAL_SW0_INTR_SOURCE;
-    } else if (irq_num == 8) {
-        source = ETS_INTERNAL_SW1_INTR_SOURCE;
-    }
-
-    int flags = ESP_INTR_FLAG_IRAM;
-    if (source >= 0) {
-        flags |= s_prio_flag_map[prio];
-    }
-
+    /* P1-P5-3: install-first-then-swap 语义。
+     * 先在栈局部变量上分配新句柄；若成功，再释放旧句柄并原子性替换。
+     * 若 esp_intr_alloc 失败，旧的 s_irq_handles[irq_num] / s_isr_ctx[irq_num]
+     * 保持不变，调用方回到干净的"就绪"状态而非孤儿态。 */
+    intr_handle_t new_handle = NULL;
     esp_err_t err = esp_intr_alloc(source, flags,
                                     (intr_handler_t)generic_isr_wrapper,
                                     (void *)(uintptr_t)irq_num,
-                                    &s_irq_handles[irq_num]);
+                                    &new_handle);
     if (err != ESP_OK) {
-        s_isr_ctx[irq_num].user_handler = NULL;
-        s_isr_ctx[irq_num].user_arg = NULL;
-        return WINK_ERR_HARDWARE;
+        return WINK_ERR_HARDWARE;   /* 旧状态原样保留，未破坏现有 handler */
     }
+
+    /* 新句柄安装成功后，再释放旧句柄并覆盖 ctx / handle */
+    if (s_irq_handles[irq_num] != NULL) {
+        (void)esp_intr_free(s_irq_handles[irq_num]);
+        s_irq_handles[irq_num] = NULL;
+    }
+    s_isr_ctx[irq_num].user_handler = handler;
+    s_isr_ctx[irq_num].user_arg     = arg;
+    s_irq_handles[irq_num]          = new_handle;
 
     return WINK_OK;
 }
