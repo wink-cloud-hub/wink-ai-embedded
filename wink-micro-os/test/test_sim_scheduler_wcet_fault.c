@@ -5,7 +5,8 @@
  * 门禁契约（与 ADR-0013 §"已知保真度边界" 第 1 条对齐）：
  *   1. 纯 CPU 忙循环（无 yield 点）应触发 WCET fault (code=8002)；
  *   2. `pal_os_busy_wait_us(N)` 只推进虚拟时钟，物理耗时微秒级，绝不能误报；
- *   3. WCET fault 路径必须携带 callbacks，App on_fault(8002) 必须被调（红线 16）。
+ *   3. WCET fault 路径必须携带非 NULL callbacks（指向调用方传入的 s_test_callbacks），
+ *      App on_fault(8002) 必须被调（红线 16 / P1-6 回归门禁）。
  *
  * 依赖：物理墙钟 helper `host_wall_clock_us`（fixup R6）。
  */
@@ -17,24 +18,31 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-/* ---- test-local hook：让 App on_fault 被 wink_runtime_fault weak stub 转发 ----
+#include "wink_app.h"
+
+/* ---- test-local hook：强符号覆盖 weak wink_runtime_fault ----
  *
  * pal_osal_host.c 已提供 __attribute__((weak)) wink_runtime_fault 的 stub 用于
- * scheduler 触发 WCET。为了在测试里同时验证 (a) fault 被触发 (b) App on_fault 被调，
- * 本文件用强符号覆盖 weak stub，将 code + cb->on_fault(code) 记录到全局。 */
+ * scheduler 触发 WCET。本文件用强符号覆盖，真实透传 cb->on_fault(code) ——
+ * 这样可以同时验证：
+ *   (a) fault 被触发；
+ *   (b) cb 指针非 NULL 且指向传入的 s_test_callbacks（P1-6 回归门禁）；
+ *   (c) App on_fault(code) 被真实路径调用（而非测试手动 invoke）。 */
 static bool s_fault_fired = false;
 static uint32_t s_fault_code = 0;
 static bool s_app_on_fault_called = false;
+static const wink_app_callbacks_t* s_captured_cb = NULL;
 
 void wink_runtime_fault(const struct wink_app_callbacks* cb, uint32_t code) {
     s_fault_fired = true;
     s_fault_code = code;
-    /* App on_fault 需要 wink_app.h 的完整定义；测试直接 include */
+    s_captured_cb = cb;
+    if (cb && cb->on_fault) {
+        cb->on_fault(code);
+    }
 }
 
 /* 测试用 App callbacks —— on_fault 走本地 hook 记录。 */
-#include "wink_app.h"
-
 static void test_app_on_fault(uint32_t code) {
     (void)code;
     s_app_on_fault_called = true;
@@ -45,14 +53,6 @@ static const wink_app_callbacks_t s_test_callbacks = {
     .loop = NULL,
     .on_fault = test_app_on_fault,
 };
-
-/* 强符号版 wink_runtime_fault：透传给 App on_fault，与 runtime/src/wink_runtime.c 的
- * 真实实现语义一致（safe_off_all 在测试里跳过，因为没链 actuator_registry）。 */
-static void invoke_app_on_fault(const wink_app_callbacks_t* cb, uint32_t code) {
-    if (cb && cb->on_fault) {
-        cb->on_fault(code);
-    }
-}
 
 /* ---- tasks ---- */
 
@@ -81,6 +81,7 @@ void setUp(void) {
     s_fault_fired = false;
     s_fault_code = 0;
     s_app_on_fault_called = false;
+    s_captured_cb = NULL;
     /* 显式清除 CI env，让测试用固定 5ms 默认阈值（不被 10x 放宽干扰） */
     _putenv("CI=");
     _putenv("WINK_SIM_BYPASS_WCET=");
@@ -106,8 +107,15 @@ void test_cpu_hog_triggers_8002(void) {
         "WCET fault must fire when task busy-loops > threshold (C2 门禁)");
     TEST_ASSERT_EQUAL_UINT32(8002, s_fault_code);
 
-    /* R2 契约：weak stub 已被本文件强符号覆盖；显式调 on_fault 验证透传路径。 */
-    invoke_app_on_fault(&s_test_callbacks, s_fault_code);
+    /* P1-6：scheduler 必须把调用方提供的 cb 指针透传给 wink_runtime_fault，
+     * 不得传 NULL、不得传野指针。 */
+    TEST_ASSERT_NOT_NULL_MESSAGE(s_captured_cb,
+        "wink_runtime_fault must receive a non-NULL cb pointer (P1-6)");
+    TEST_ASSERT_EQUAL_PTR_MESSAGE(&s_test_callbacks, s_captured_cb,
+        "wink_runtime_fault cb must match the callbacks passed to pal_sim_scheduler_run (P1-6)");
+
+    /* R2 契约：强符号 wink_runtime_fault 内部直接透传 on_fault，
+     * 所以 s_app_on_fault_called 被真实路径置位，而非测试手动 invoke。 */
     TEST_ASSERT_TRUE_MESSAGE(s_app_on_fault_called,
         "App on_fault must be invoked with WCET fault code (red-line 16 / R2)");
 }
