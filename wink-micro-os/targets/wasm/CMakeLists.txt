@@ -9,6 +9,7 @@
 # 因此 wink_sim_physical.c 不会进入它们的编译产物。
 set(PAL_WASM_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_hal_wasm.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/pal_irq_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_hal_ultrasonic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_osal_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/pal_osal_ringbuf.c
