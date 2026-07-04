@@ -136,25 +136,25 @@ static wasm_fault_domain_t s_fault_domains[WASM_FAULT_DOMAIN_COUNT];
  */
 
 EMSCRIPTEN_KEEPALIVE
-void pal_wasm_set_bounce_us(uint32_t us) { s_faults.bounce_us = us; }
+void pal_wasm_set_bounce_us(uint32_t us) { WASM_FAULT_GUARD_VOID(); s_faults.bounce_us = us; }
 
 EMSCRIPTEN_KEEPALIVE
-void pal_wasm_set_warmup_us(uint32_t us) { s_faults.warmup_us = us; }
+void pal_wasm_set_warmup_us(uint32_t us) { WASM_FAULT_GUARD_VOID(); s_faults.warmup_us = us; }
 
 EMSCRIPTEN_KEEPALIVE
-void pal_wasm_set_sample_interval_us(uint32_t us) { s_faults.sample_interval_us = us; }
+void pal_wasm_set_sample_interval_us(uint32_t us) { WASM_FAULT_GUARD_VOID(); s_faults.sample_interval_us = us; }
 
 EMSCRIPTEN_KEEPALIVE
-void pal_wasm_set_adc_noise_v(float v) { s_faults.adc_noise_v = v; }
+void pal_wasm_set_adc_noise_v(float v) { WASM_FAULT_GUARD_VOID(); s_faults.adc_noise_v = v; }
 
 EMSCRIPTEN_KEEPALIVE
-void pal_wasm_set_rc_tau_s(float s) { s_faults.rc_tau_s = s; }
+void pal_wasm_set_rc_tau_s(float s) { WASM_FAULT_GUARD_VOID(); s_faults.rc_tau_s = s; }
 
 EMSCRIPTEN_KEEPALIVE
-void pal_wasm_set_i2c_drop_permil(uint16_t permil) { s_faults.i2c_drop_permil = permil; }
+void pal_wasm_set_i2c_drop_permil(uint16_t permil) { WASM_FAULT_GUARD_VOID(); s_faults.i2c_drop_permil = permil; }
 
 EMSCRIPTEN_KEEPALIVE
-void pal_wasm_set_prng_seed(uint32_t seed) { s_prng_state = seed; }
+void pal_wasm_set_prng_seed(uint32_t seed) { WASM_FAULT_GUARD_VOID(); s_prng_state = seed; }
 
 /* ─────────────────────────────────────────────────────────
  * Internal getters
@@ -216,6 +216,7 @@ void pal_wasm_reset_physical(void) {
     memset(s_debounce_ctx, 0, sizeof(s_debounce_ctx));
     s_prng_state = 1u;
     pal_wasm_reset_fault_log();
+    pal_wasm_clear_fault_latch();
 
     /* Initialise per-domain state: id tag + default armed=true. We don't
      * rely on BSS zero here because "armed" must be true by default and
