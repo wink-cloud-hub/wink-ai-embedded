@@ -30,6 +30,16 @@ set(WINK_DAL_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/dal/src/storage/dal_eeprom.c
 )
 
+# ── Selftest 源文件（可选：通过链接或配置排除；此处默认并入核心，由 app 决定是否调用） ──
+set(WINK_SELFTEST_SOURCES
+    ${CMAKE_CURRENT_LIST_DIR}/runtime/selftest/src/selftest_core.c
+    ${CMAKE_CURRENT_LIST_DIR}/runtime/selftest/src/selftest_pwm_router.c
+    ${CMAKE_CURRENT_LIST_DIR}/runtime/selftest/src/selftest_i2c_scan.c
+    ${CMAKE_CURRENT_LIST_DIR}/runtime/selftest/src/selftest_smp_stress.c
+    ${CMAKE_CURRENT_LIST_DIR}/runtime/selftest/src/selftest_gpio_isr.c
+    ${CMAKE_CURRENT_LIST_DIR}/runtime/selftest/src/selftest_rmt_loopback.c
+)
+
 # ── 核心包含目录 ──────────────────────────────────────────────────────────
 # Phase 1 目录重组：pal/include/ 根目录 + osal/ + hal/ 子目录均在搜索路径中。
 # 这样保持向后兼容：现有代码的 #include "pal_hal.h" / #include "pal_osal.h" 无需修改。
@@ -47,6 +57,7 @@ set(WINK_CORE_INCLUDE_DIRS
     ${CMAKE_CURRENT_LIST_DIR}/dal/include/communication
     ${CMAKE_CURRENT_LIST_DIR}/dal/include/storage
     ${CMAKE_CURRENT_LIST_DIR}/runtime/include
+    ${CMAKE_CURRENT_LIST_DIR}/runtime/selftest/src  /* wink_selftest_internal.h + registry.def */
     ${CMAKE_CURRENT_LIST_DIR}/trace/include
 )
 
@@ -55,4 +66,5 @@ set(WINK_CORE_SOURCES
     ${WINK_RUNTIME_SOURCES}
     ${WINK_TRACE_SOURCES}
     ${WINK_DAL_SOURCES}
+    ${WINK_SELFTEST_SOURCES}
 )
