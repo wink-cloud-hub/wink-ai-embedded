@@ -3,6 +3,7 @@
 #include "pal_hal.h"
 #include "pal_osal.h"
 #include "pal_resource.h"
+#include "hal/pal_rmt.h"     /* pal_rmt_pulse_capture_init eager warm-up (see init below) */
 #include "wink_pt_debug.h"   /* WINK_ASSERT_NONBLOCKING() (ADR-0017 层 3 runtime hook) */
 
 #include <string.h>   /* memcpy（ADR-0008 apply_override 反序列化） */
@@ -88,6 +89,40 @@ wink_status_t dal_ultrasonic_init(dal_ultrasonic_t *dev, const dal_ultrasonic_co
         WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN,
                                                  (uint32_t)cfg->trig_pin, cfg->owner));
         return status;
+    }
+
+    /* Eager RMT pulse-capture warm-up on ESP32.
+     *
+     * Motivation (cold-start bug):
+     *   pal_gpio_pulse_in() on ESP32 lazily initializes the RMT RX channel on
+     *   its first invocation (heap alloc + ISR install + GPIO mux reconfig).
+     *   That cold path takes far longer than the ~100us dead-time between a
+     *   TRIG rising edge and the start of the ECHO pulse. Result: on the very
+     *   first measurement, RMT arms AFTER the echo pulse has already ended,
+     *   the receiver sees only idle silence, and the idle_thres timer (25ms)
+     *   fires done with a single all-zero "end marker" symbol — visible as
+     *   an alarming "1 symbols captured but high pulse=0us" log line before
+     *   steady-state measurements succeed.
+     *
+     *   Doing the init here — eagerly, at DAL init time — moves the cold path
+     *   out of the measurement critical section. The first measurement now
+     *   finds the channel already active and arm() is fast enough (~few us)
+     *   to complete before the mock/real echo pulse arrives.
+     *
+     * Contract:
+     *   - Only attempted when cfg->use_rmt is true; header (dal_ultrasonic.h
+     *     line 71) documents this behavior.
+     *   - Failure is non-fatal: pal_gpio_pulse_in falls back to busy-wait when
+     *     pal_rmt_pulse_capture_is_active() reports false. Host/wasm stubs
+     *     return WINK_ERR_UNSUPPORTED here — that is the expected path and
+     *     is silently ignored.
+     *   - Return value discarded via WINK_IGNORE_UNUSED to satisfy
+     *     WINK_WARN_UNUSED_RESULT under -Werror; the DAL init itself must
+     *     still succeed to preserve the "GPIO pins claimed" post-condition.
+     */
+    if (cfg->use_rmt) {
+        WINK_IGNORE_UNUSED(pal_rmt_pulse_capture_init(cfg->echo_pin,
+                                                       PAL_RMT_EDGE_RISING));
     }
 
     dev->initialized = true;
