@@ -180,6 +180,12 @@ add_wink_host_test(test_pal_irq test_pal_irq.c)
 # 任何被 ESP32/wasm/host 引用却未在 PAL 头定义的符号 → 此处编译失败。
 add_wink_host_test(test_pal_contract test_pal_contract.c)
 
+# P1-L1 分级日志加固：LOG_E/W/I/D + LOG_TAG 自动注入 + ISR 安全分流 + SYS 回退
+# test_pal_log_sys_fallback.c 是伙伴 TU，故意不定义 LOG_TAG，验证默认 SYS 标签。
+add_wink_host_test(test_pal_log_hardening
+    test_pal_log_hardening.c
+    test_pal_log_sys_fallback.c)
+
 # target 无关 PWM 定时器分配状态机单测（router 经 pal_host OBJECT lib 链接）
 add_wink_host_test(test_pal_pwm_router test_pal_pwm_router.c)
 
