@@ -35,7 +35,10 @@ void test_sim_read_uses_shared_conversion(void) {
 }
 
 void test_sim_read_timeout_when_pulse_exceeds_limit(void) {
-    sim_set_echo_pulse_us(31000);   /* ≥ ULTRASONIC_TIMEOUT_US */
+    /* RMT backend idle_thres=25ms + max-valid pulse=25ms forced ULTRASONIC_TIMEOUT_US
+     * to 60ms (see dal_ultrasonic.c). Set the simulated pulse to 61ms so it still
+     * exceeds the timeout and exercises the TIMEOUT return path. */
+    sim_set_echo_pulse_us(61000);   /* ≥ ULTRASONIC_TIMEOUT_US (60ms) */
     dal_ultrasonic_t dev = {0};
     const dal_ultrasonic_config_t cfg = { .owner = OWNER, .trig_pin = 4, .echo_pin = 5, .use_rmt = false };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&dev, &cfg));
