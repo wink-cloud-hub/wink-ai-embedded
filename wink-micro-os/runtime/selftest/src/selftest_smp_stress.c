@@ -28,7 +28,7 @@
 #define STRESS_DURATION_MS   10u   /* host/wasm: 虚拟时间短窗口 */
 #define SINGLE_THREAD_ITERS  2000u /* 单线程迭代次数 */
 #else
-#define STRESS_DURATION_MS   60000u
+#define STRESS_DURATION_MS   2000u  /* ESP32: 2s 压测时间，避免持续抢占和 WDT 复位 */
 #define SINGLE_THREAD_ITERS  10000u
 #endif
 
@@ -44,11 +44,11 @@ static void stress_task_fn(void *arg)
         WINK_IGNORE_RESULT(pal_resource_claim(PAL_RESOURCE_GPIO_PIN, pin, "selftest_smp"));
         WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, pin, "selftest_smp"));
 
-        /* 每 ~1s 让出 1ms：
-         *   - ESP32: 让 IDLE 喂 Task WDT；
+        /* 每 ~100ms 让出 1ms：
+         *   - ESP32: 让 IDLE 喂 Task WDT 并防止低优先级任务（如 sonar/telemetry）饥饿；
          *   - host/wasm: 协程环境下切回主循环推进虚拟时钟（否则 end_time 不前进）。*/
         uint64_t now = pal_os_get_ms();
-        if ((uint32_t)(now - last_yield) >= 1000u) {
+        if ((uint32_t)(now - last_yield) >= 100u) {
             pal_os_sleep_ms(1);
             last_yield = pal_os_get_ms();
         }
