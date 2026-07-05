@@ -82,6 +82,8 @@ static void sim_echo_task(void *arg)
          * and stretching the echo pulse.  Interrupts stay enabled so no
          * IDLE/WDT starvation — IDLE WDT timeout is seconds, pulse is ms-scale
          * worst case. */
+        /* Re-assert direction to INPUT_OUTPUT in case RMT driver init reset it to INPUT */
+        WINK_IGNORE_RESULT(pal_gpio_set_direction(st->echo_pin, PAL_GPIO_INPUT_OUTPUT));
         WINK_IGNORE_RESULT(pal_gpio_write(st->echo_pin, true));
         pal_os_busy_wait_us(st->pulse_us);
         WINK_IGNORE_RESULT(pal_gpio_write(st->echo_pin, false));
