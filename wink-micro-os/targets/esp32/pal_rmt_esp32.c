@@ -252,7 +252,13 @@ wink_status_t pal_rmt_pulse_capture_wait(uint32_t timeout_us, uint32_t *pulse_us
     if (wink_status_is_error(s)) {
         return s;
     }
+    /* Backward-compat wrapper: arm then wait. The wait_armed() call is marked
+     * WINK_BLOCKING (deprecated in cooperative strict mode); this wrapper is
+     * itself the legacy blocking API so calling it here is intentional. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     return pal_rmt_pulse_capture_wait_armed(timeout_us, pulse_us_out);
+#pragma GCC diagnostic pop
 }
 
 /* ─────────────────────────────────────────────────────────

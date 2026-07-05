@@ -86,6 +86,16 @@ static pal_irq_prio_t s_gpio_service_prio        = PAL_IRQ_PRIO_NORMAL;
  * pal_irq_synchronize(~0U) 全量等待。 */
 static volatile uint32_t s_gpio_irq_in_flight[GPIO_NUM_MAX] = {0};
 
+/* Track the last mode configured via pal_gpio_init for each pin. We use this
+ * (instead of an IDF API) to decide whether pal_gpio_enable_interrupt_ex needs
+ * to promote a pure OUTPUT pin to INPUT_OUTPUT — IDF has no public gpio_get_direction
+ * on all supported versions, and pins configured by other peripherals (LEDC/RMT)
+ * before our PAL are treated conservatively (we do NOT auto-promote those).
+ * s_gpio_mode_known[pin] is true iff pal_gpio_init has configured this pin.
+ * When false we cannot infer the electrical direction and leave the pin alone. */
+static pal_gpio_mode_t s_gpio_mode[GPIO_NUM_MAX];
+static bool            s_gpio_mode_known[GPIO_NUM_MAX];
+
 void pal_esp32_gpio_synchronize_all(uint64_t timeout_us)
 {
     for (uint32_t i = 0; i < GPIO_NUM_MAX; i++) {
@@ -209,6 +219,11 @@ wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
 
     esp_err_t err = gpio_config(&cfg);
     if (err != ESP_OK) { return WINK_ERR_HARDWARE; }
+    /* Record mode so pal_gpio_enable_interrupt_ex can decide whether to
+     * promote OUTPUT pins to INPUT_OUTPUT (see critical pin-driver caution
+     * in that function). */
+    s_gpio_mode[pin] = mode;
+    s_gpio_mode_known[pin] = true;
     return WINK_OK;
 }
 
@@ -339,24 +354,29 @@ wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin,
     /* Ensure interrupts can fire on pins configured as pure OUTPUT (where
      * the input buffer is disabled at reset and edge detection cannot
      * observe the pin's own drive or any external signal). Only promote
-     * pins whose current direction is OUTPUT or OUTPUT_OD; leave pure
-     * INPUT-family pins alone so that pull-up/strap pins (e.g. the BOOT
-     * button on GPIO0) are NOT forced into actively driving the pad —
-     * unconditionally setting INPUT_OUTPUT on an input pin would connect
-     * the output driver (driving whatever the OUT register holds, typically
-     * 0) and fight external pull-ups, causing spurious edges and
-     * stuck-low behavior.
+     * pins we ourselves configured as OUTPUT or OUTPUT_OD via pal_gpio_init;
+     * leave pins we never configured (or configured as INPUT-family) alone.
      *
-     * Callers who need self-edge visibility on an output pin can also
-     * pre-configure the pin as PAL_GPIO_INPUT_OUTPUT via pal_gpio_init()
+     * Unconditionally setting INPUT_OUTPUT on an INPUT pull-up pin (e.g.
+     * the BOOT button on GPIO0) would connect the output driver with OUT
+     * register = 0, fighting the external pull-up and causing a stuck-low
+     * pad, spurious falling edges, and an WDT reset loop.
+     *
+     * Pins owned by other peripherals (LEDC/RMT) will show as "unknown"
+     * because they don't go through pal_gpio_init; we leave them alone —
+     * those peripherals manage their own GPIO routing.
+     *
+     * Callers needing self-edge visibility on a software-driven pin can
+     * pal_gpio_init(pin, PAL_GPIO_INPUT_OUTPUT) before enabling interrupts
      * (as S10 does for TRIG/ECHO); this promotion is a safety net for
-     * callers that only pal_gpio_init(OUTPUT) before enabling interrupts. */
-    gpio_mode_t cur_dir = GPIO_MODE_DISABLE;
-    if (gpio_get_direction((gpio_num_t)pin, &cur_dir) == ESP_OK) {
-        if (cur_dir == GPIO_MODE_OUTPUT) {
+     * plain-OUTPUT callers. */
+    if (s_gpio_mode_known[pin]) {
+        if (s_gpio_mode[pin] == PAL_GPIO_OUTPUT_PUSH_PULL) {
             (void)gpio_set_direction((gpio_num_t)pin, GPIO_MODE_INPUT_OUTPUT);
-        } else if (cur_dir == GPIO_MODE_OUTPUT_OD) {
+            s_gpio_mode[pin] = PAL_GPIO_INPUT_OUTPUT;
+        } else if (s_gpio_mode[pin] == PAL_GPIO_OUTPUT_OPEN_DRAIN) {
             (void)gpio_set_direction((gpio_num_t)pin, GPIO_MODE_INPUT_OUTPUT_OD);
+            s_gpio_mode[pin] = PAL_GPIO_INPUT_OUTPUT;  /* conservative; no OD variant in pal_gpio_mode_t */
         }
     }
 
