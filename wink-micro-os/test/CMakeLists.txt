@@ -287,6 +287,18 @@ add_wink_host_test(test_wasm_devices_sim test_wasm_devices_sim.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm/devices/wasm_dev_servo.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm/devices/wasm_dev_ultrasonic.c)
 
+# Wave 4 selftest 框架 + 内建 selftest 用例
+add_wink_host_test(test_wink_selftest test_wink_selftest.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/selftest/src/selftest_core.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/selftest/src/selftest_pwm_router.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/selftest/src/selftest_i2c_scan.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/selftest/src/selftest_smp_stress.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/selftest/src/selftest_gpio_isr.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/selftest/src/selftest_rmt_loopback.c)
+# selftest 源需要访问 wink_selftest_internal.h 和 registry.def
+target_include_directories(test_wink_selftest PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/selftest/src)
+
 add_custom_target(check
     COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
