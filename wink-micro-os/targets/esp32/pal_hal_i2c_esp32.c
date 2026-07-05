@@ -21,6 +21,8 @@
  */
 #include "pal_hal.h"
 
+#include <string.h>
+
 #if defined(ESP_PLATFORM)
 #include "esp_err.h"
 #include "esp_idf_version.h"
@@ -389,6 +391,34 @@ wink_status_t pal_i2c_port_pins(uint8_t port, wink_pin_t *out_sda, wink_pin_t *o
     return WINK_OK;
 }
 
+wink_status_t pal_i2c_scan(uint8_t port, uint8_t *out_found_bitmap, size_t bitmap_bytes) {
+    if (out_found_bitmap == NULL || bitmap_bytes < 16) { return WINK_ERR_INVALID_ARG; }
+    if (port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
+    memset(out_found_bitmap, 0, 16);
+
+    /* Lazy-init bus through a zero-length probe — reuses pal_i2c_transfer's
+     * mutex + init path.  We don't hold the mutex across the scan loop;
+     * instead each probe acquires/releases it via pal_i2c_transfer. */
+    uint8_t dummy;
+    wink_status_t probe_st = pal_i2c_transfer(port, 0x03, NULL, 0, &dummy, 1);
+    /* 0x03 is reserved and will NACK on any real bus — we just care that the
+     * bus is now initialized so subsequent probes don't race construction. */
+    (void)probe_st;
+
+    /* Scan 0x03..0x77 (valid 7-bit addresses).  Per transfer contract,
+     * zero-byte write + 1-byte read returns WINK_OK on ACK,
+     * WINK_ERR_DISCONNECTED on NACK, other codes on bus errors. */
+    for (uint16_t addr = 0x03; addr <= 0x77; addr++) {
+        wink_status_t st = pal_i2c_transfer(port, addr, NULL, 0, &dummy, 1);
+        if (st == WINK_OK) {
+            uint8_t byte_idx = (uint8_t)(addr >> 3);
+            uint8_t bit_idx  = (uint8_t)(addr & 0x7);
+            out_found_bitmap[byte_idx] |= (uint8_t)(1u << bit_idx);
+        }
+    }
+    return WINK_OK;
+}
+
 #else /* !ESP_PLATFORM: non-IDF stub for static analysis. */
 
 wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
@@ -402,5 +432,8 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
 
 wink_status_t pal_i2c_port_pins(uint8_t port, wink_pin_t *out_sda, wink_pin_t *out_scl)
 { (void)port; (void)out_sda; (void)out_scl; return WINK_ERR_UNSUPPORTED; }
+
+wink_status_t pal_i2c_scan(uint8_t port, uint8_t *out_found_bitmap, size_t bitmap_bytes)
+{ (void)port; (void)out_found_bitmap; (void)bitmap_bytes; return WINK_ERR_UNSUPPORTED; }
 
 #endif /* ESP_PLATFORM */

@@ -1,5 +1,6 @@
 #include "unity.h"
 #include "pal_hal.h"
+#include "internal/pal_test_loopback.h"
 #include "pal_osal.h"
 #include "pal_pwm_router.h"
 #include "pal_resource.h"

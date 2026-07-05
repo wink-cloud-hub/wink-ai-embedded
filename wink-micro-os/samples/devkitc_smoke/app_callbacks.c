@@ -32,6 +32,7 @@
 #include "pal_resource.h"  /* pal_resource_claim/release */
 #include "pal_pwm_router.h"/* pal_pwm_router_channel_timer */
 #include "hal/pal_rmt.h"
+#include "internal/pal_test_loopback.h" /* TODO: Wave 4 — remove after S9 RMT loopback moves to selftest */
 #include "dal_ultrasonic.h"
 
 

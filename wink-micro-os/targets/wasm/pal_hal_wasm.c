@@ -20,6 +20,7 @@
 #include "devices/wasm_sim_registry.h"
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 /* P2-4: wasm64 迁移门控 —— pal_wasm_i2c_transfer 对 wbufPtr/rbufPtr 做
  * (uint32_t)(uintptr_t) 截断，js_pal_gpio_write/read、js_pal_pwm_set_duty 等
@@ -33,6 +34,12 @@ _Static_assert(sizeof(void*) == 4,
 
 wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
     (void)pin; (void)mode;            /* 仿真下无需硬件配置 */
+    return WINK_OK;
+}
+
+wink_status_t pal_gpio_set_direction(wink_pin_t pin, pal_gpio_mode_t mode) {
+    /* Wasm simulation: pins are always read-write; direction change is a no-op. */
+    (void)pin; (void)mode;
     return WINK_OK;
 }
 
@@ -161,6 +168,31 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
     /* Step 2: 正常传输（无退化路径，Fallback 走 JS 侧）。 */
     return js_pal_i2c_transfer(port, dev_addr, write_buf, write_len, read_buf, read_len)
            ? WINK_OK : WINK_ERR_IO;
+}
+
+wink_status_t pal_i2c_scan(uint8_t port, uint8_t *out_found_bitmap, size_t bitmap_bytes) {
+    if (out_found_bitmap == NULL || bitmap_bytes < 16) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    if (port >= PAL_I2C_PORTS) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    /* Zero bitmap then set bits for addresses the C-side registry reports present.
+     * JS-side virtual devices would require a js_pal_i2c_probe() bridge; for
+     * v1 we report only C-side simulated devices (matches current usage by
+     * selftest in SIMULATION runs). */
+    memset(out_found_bitmap, 0, 16);
+    /* Addresses 0x03..0x77 are valid 7-bit I2C addresses; 0x00-0x02 and
+     * 0x78-0x7F are reserved. */
+    for (uint16_t addr = 0x03; addr <= 0x77; addr++) {
+        if (wasm_sim_i2c_dev_exists(addr)) {
+            uint8_t byte_idx = (uint8_t)(addr >> 3);
+            uint8_t bit_idx  = (uint8_t)(addr & 0x7);
+            out_found_bitmap[byte_idx] |= (uint8_t)(1u << bit_idx);
+        }
+    }
+    (void)port;
+    return WINK_OK;
 }
 
 wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us, uint32_t *pulse_us) {

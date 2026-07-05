@@ -227,6 +227,46 @@ wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
     return WINK_OK;
 }
 
+wink_status_t pal_gpio_set_direction(wink_pin_t pin, pal_gpio_mode_t mode) {
+    if (pin < 0 || pin >= GPIO_NUM_MAX || !GPIO_IS_VALID_GPIO(pin)) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    if (!s_gpio_mode_known[pin]) {
+        /* Pin was never pal_gpio_init'd; refuse to set direction on an
+         * unconfigured pin to avoid silently changing a pin owned by
+         * another peripheral (LEDC/RMT/etc.). */
+        return WINK_ERR_INVALID_STATE;
+    }
+
+    gpio_mode_t idf_mode;
+    switch (mode) {
+        case PAL_GPIO_INPUT:             idf_mode = GPIO_MODE_INPUT;    break;
+        case PAL_GPIO_INPUT_PULLUP:      idf_mode = GPIO_MODE_INPUT;    break;
+        case PAL_GPIO_INPUT_PULLDOWN:    idf_mode = GPIO_MODE_INPUT;    break;
+        case PAL_GPIO_OUTPUT_PUSH_PULL:  idf_mode = GPIO_MODE_OUTPUT;   break;
+        case PAL_GPIO_OUTPUT_OPEN_DRAIN: idf_mode = GPIO_MODE_OUTPUT_OD;break;
+        case PAL_GPIO_INPUT_OUTPUT:      idf_mode = GPIO_MODE_INPUT_OUTPUT; break;
+        default: return WINK_ERR_INVALID_ARG;
+    }
+
+    esp_err_t err = gpio_set_direction((gpio_num_t)pin, idf_mode);
+    if (err == ESP_ERR_INVALID_ARG) { return WINK_ERR_INVALID_ARG; }
+    if (err != ESP_OK) { return WINK_ERR_HARDWARE; }
+
+    /* Update pull-up/down only if caller explicitly requested a pull mode,
+     * since set_direction alone does not touch pull config. */
+    if (mode == PAL_GPIO_INPUT_PULLUP) {
+        (void)gpio_pullup_en((gpio_num_t)pin);
+        (void)gpio_pulldown_dis((gpio_num_t)pin);
+    } else if (mode == PAL_GPIO_INPUT_PULLDOWN) {
+        (void)gpio_pullup_dis((gpio_num_t)pin);
+        (void)gpio_pulldown_en((gpio_num_t)pin);
+    }
+
+    s_gpio_mode[pin] = mode;
+    return WINK_OK;
+}
+
 wink_status_t pal_gpio_write(wink_pin_t pin, bool level) {
     if (pin < 0 || pin >= GPIO_NUM_MAX || !GPIO_IS_VALID_GPIO(pin)) {
         return WINK_ERR_INVALID_ARG;
@@ -609,6 +649,9 @@ wink_status_t pal_test_disable_hardware_loopback(wink_pin_t pin_out, wink_pin_t 
 #else /* !ESP_PLATFORM: non-IDF stub for static analysis. */
 
 wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode)
+{ (void)pin; (void)mode; return WINK_ERR_UNSUPPORTED; }
+
+wink_status_t pal_gpio_set_direction(wink_pin_t pin, pal_gpio_mode_t mode)
 { (void)pin; (void)mode; return WINK_ERR_UNSUPPORTED; }
 
 wink_status_t pal_gpio_write(wink_pin_t pin, bool level) { (void)pin; (void)level; return WINK_ERR_UNSUPPORTED; }

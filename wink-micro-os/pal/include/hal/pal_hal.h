@@ -98,6 +98,23 @@ void pal_pwm_deinit(uint8_t channel);
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode);
 
+/**
+ * @brief Change GPIO direction/mode after init, without re-claiming or
+ *        re-configuring pull-resistors/drive-strength that were set at init.
+ *
+ * Used for bidirectional pins (e.g. ultrasonic mock-echo: DAL initializes
+ * ECHO as INPUT, selftest promotes it to INPUT_OUTPUT so it can also drive).
+ * Avoids the "pal_gpio_init a second time" re-init hack.
+ *
+ * @param pin   Logical GPIO pin (must have been pal_gpio_init'd already)
+ * @param mode  New mode (can be any pal_gpio_mode_t, including INPUT_OUTPUT)
+ * @return WINK_OK / WINK_ERR_INVALID_ARG (pin out of range / not init'd) /
+ *         WINK_ERR_UNSUPPORTED (baremetal target without direction swap)
+ * @note Blocking: No (simple register/RAM state update).
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t pal_gpio_set_direction(wink_pin_t pin, pal_gpio_mode_t mode);
+
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_gpio_write(wink_pin_t pin, bool level);
 
@@ -200,41 +217,7 @@ wink_status_t pal_gpio_disable_interrupt(wink_pin_t pin);
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_gpio_synchronize_interrupt(wink_pin_t pin);
 
-/**
- * @brief 启用硬件信号自环/回环测试接口。
- *
- * 用于测试环境（特别是裸开发板）。它在底层实现将输出引脚 pin_out 产生的信号
- * （如 GPIO 软件翻转电平或 PWM 信号）回环到输入引脚 pin_in 上（如 GPIO 输入或 RMT 输入）。
- *
- * @note 各 target 平台下的工作机制：
- *   - ESP32:  利用芯片内部的 GPIO Matrix (信号交换矩阵) 将输出信号路由到输入，无需物理导线。
- *   - Host:   在软件层面建立虚拟连接，使得对 pin_out 的写入（如 pal_gpio_write 或 pal_pwm_set_duty）
- *             可以被 pin_in 正常读出（如 pal_gpio_read 或 pal_gpio_pulse_in 仿真数据获取）。
- *   - Wasm:   与 Host 类似，进行仿真数据回环。
- *   - STM32/其他: 若硬件不支持内部自环，直接返回 WINK_ERR_UNSUPPORTED，此时测试必须通过物理接线短接。
- *
- * @param pin_out 输出信号引脚
- * @param pin_in  输入信号引脚
- * @return
- *   WINK_OK              回环连接成功
- *   WINK_ERR_INVALID_ARG 引脚越界或非法
- *   WINK_ERR_UNSUPPORTED 当前硬件平台不支持内部信号矩阵自环
- */
-WINK_WARN_UNUSED_RESULT
-wink_status_t pal_test_enable_hardware_loopback(wink_pin_t pin_out, wink_pin_t pin_in);
-
-/**
- * @brief 关闭硬件信号自环/回关测试接口。
- *
- * 清除之前通过 pal_test_enable_hardware_loopback 建立的内部信号回环。
- *
- * @param pin_out 输出信号引脚
- * @param pin_in  输入信号引脚
- * @return
- *   WINK_OK              清理成功
- *   WINK_ERR_INVALID_ARG 引脚越界或非法
- */
-wink_status_t pal_test_disable_hardware_loopback(wink_pin_t pin_out, wink_pin_t pin_in);
+/* Loopback test API moved to <internal/pal_test_loopback.h>; not public. */
 
 #ifndef WINK_STRICT_NONBLOCKING
 /**
@@ -259,6 +242,30 @@ WINK_WARN_UNUSED_RESULT
 wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
                                const uint8_t *write_buf, uint32_t write_len,
                                uint8_t *read_buf, uint32_t read_len);
+
+/**
+ * @brief Scan an I2C bus for devices (7-bit addressing: 0x03..0x77).
+ *
+ * Iterates addresses, issues a zero-byte write, and records which addresses
+ * ACK. Results are returned as a 128-bit bitmap where bit n is set when
+ * address n ACK'd.  Addresses 0x00..0x02 and 0x78..0x7F are reserved and
+ * always reported as absent.
+ *
+ * @param port              I2C port [0, PAL_I2C_PORTS)
+ * @param out_found_bitmap  16-byte buffer (128 bits), little-endian bit
+ *                          order — bit 0 = address 0x00, bit 3 = address 0x03,
+ *                          bit 119 = address 0x77, etc.
+ * @param bitmap_bytes      Must be 16.
+ * @return WINK_OK on completion; WINK_ERR_INVALID_ARG / WINK_ERR_UNSUPPORTED.
+ * @note Blocking: Yes (worst-case ~120 × per-transfer timeout; typically
+ *       <200 ms on real hardware). Not available under WINK_STRICT_NONBLOCKING.
+ *       Called by selftest from its own task context; apps should prefer
+ *       wink_selftest_run_all() instead of calling this directly.
+ */
+WINK_BLOCKING
+WINK_WARN_UNUSED_RESULT
+wink_status_t pal_i2c_scan(uint8_t port,
+                            uint8_t *out_found_bitmap, size_t bitmap_bytes);
 #endif /* WINK_STRICT_NONBLOCKING */
 
 #ifdef __cplusplus
