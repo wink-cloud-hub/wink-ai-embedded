@@ -221,6 +221,17 @@ add_wink_host_test(test_dal_ssd1306 test_dal_ssd1306.c ${DAL_SRCS})
 
 add_wink_host_test(test_dal_ultrasonic test_dal_ultrasonic.c ${DAL_SRCS})
 
+# P1-3: samples/common wink_button_helper BAL 组件 host 单测
+# 需要链 dal_button.c、wink_soft_timer.c、wink_trace.c 与 samples/common/src/wink_button_helper.c，
+# 并把 samples/common/include 加入头文件搜索路径。
+add_wink_host_test(test_button_helper test_button_helper.c
+    ${DAL_SRCS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../samples/common/src/wink_button_helper.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_soft_timer.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../trace/src/wink_trace.c)
+target_include_directories(test_button_helper PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../samples/common/include)
+
 # Track A M1 / Task A-4：DAL↔PAL 资源接线 e2e 单测（验证 6 个 DAL init 正确 wire pal_resource_claim）
 # 需要链全部 7 个 DAL（含 communication/gps 与 storage/eeprom），以及 include 全部 DAL 子目录。
 set(DAL_SRCS_WIRE

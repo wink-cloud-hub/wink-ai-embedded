@@ -12,6 +12,7 @@ include_guard(GLOBAL)
 
 set(WINK_SAMPLE_COMMON_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/wink_blink_helper.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/wink_button_helper.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/wink_default_telemetry.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/wink_sim_ultrasonic_echo.c
     CACHE INTERNAL "wink-micro-os samples/common source list")
