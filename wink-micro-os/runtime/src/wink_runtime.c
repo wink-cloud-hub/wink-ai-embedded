@@ -53,7 +53,7 @@ static void wink_runtime_monitor_wcet_init(void (*callback)(void), const char* n
 
     /* Individual callback WCET threshold: 50% of tick period */
     if (elapsed_us > (WINK_RUNTIME_TICK_MS * 1000U / 2U)) {
-        wink_trace_fault(WINK_WARN_WCET_EXCEEDED);
+        wink_trace_warn(WINK_WARN_WCET_EXCEEDED);
     }
 }
 
@@ -74,7 +74,7 @@ static void wink_runtime_monitor_wcet_loop(void (*callback)(void), const char* n
 
     /* Individual callback WCET threshold: 50% of tick period */
     if (elapsed_us > (WINK_RUNTIME_TICK_MS * 1000U / 2U)) {
-        wink_trace_fault(WINK_WARN_WCET_EXCEEDED);
+        wink_trace_warn(WINK_WARN_WCET_EXCEEDED);
     }
 }
 
@@ -103,7 +103,7 @@ static void sim_app_main_task(void* arg) {
         /* --- Global tick WCET check (backup safety net) --- */
         tick_elapsed_us = pal_os_get_us() - tick_start_us;
         if (tick_elapsed_us > WINK_RUNTIME_TICK_MS * 1000U) {
-            wink_trace_fault(WINK_WARN_TICK_OVERRUN);
+            wink_trace_warn(WINK_WARN_TICK_OVERRUN);
         }
 
         /* fixup 计划 M3：wasm 中断 dispatch 已移到 pal_sim_scheduler_run 主 loop
@@ -202,7 +202,7 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
         /* --- Global tick WCET check (backup safety net) --- */
         tick_elapsed_us = pal_os_get_us() - tick_start_us;
         if (tick_elapsed_us > WINK_RUNTIME_TICK_MS * 1000U) {
-            wink_trace_fault(WINK_WARN_TICK_OVERRUN);
+            wink_trace_warn(WINK_WARN_TICK_OVERRUN);
         }
 
         /* ADR-0010: healthy milestone — init succeeded + stable for HEALTHY_TICKS ticks

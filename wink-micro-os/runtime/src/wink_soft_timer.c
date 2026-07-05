@@ -142,7 +142,7 @@ void wink_soft_timer_dispatch(void) {
 
         /* 单个回调 WCET 超限警告（50% Tick 阈值） */
         if (elapsed_us > (WINK_RUNTIME_TICK_MS * 1000U / 2U)) {
-            wink_trace_fault(WINK_WARN_WCET_EXCEEDED);
+            wink_trace_warn(WINK_WARN_WCET_EXCEEDED);
         }
 
         /* 回调返回非 OK 或 ONESHOT 模式 → 停止定时器 */

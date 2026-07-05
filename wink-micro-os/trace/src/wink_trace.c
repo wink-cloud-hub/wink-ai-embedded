@@ -14,6 +14,7 @@
 static uint32_t s_buffer[WINK_TRACE_CAPACITY];
 static uint32_t s_count = 0;     /* 已写入总数（含覆盖） */
 static uint32_t s_head = 0;      /* 下一个写入位置 */
+static uint32_t s_warn_count = 0; /* 警告计数器（预算/性能类，非致命） */
 
 /* 环形写入的公共逻辑。调用方须已持有 PAL 全局临界区（task 或 ISR 版本任一）。
  * 提炼独立函数为的是保证 task/ISR 两条路径记录同一 fault code 后 buffer/head/count
@@ -28,6 +29,7 @@ void wink_trace_reset(void) {
     uint32_t key = pal_os_critical_enter();
     s_count = 0;
     s_head = 0;
+    s_warn_count = 0;
     pal_os_critical_exit(key);
 }
 
@@ -46,6 +48,20 @@ void wink_trace_fault_from_isr(uint32_t fault_code) {
 uint32_t wink_trace_count(void) {
     uint32_t key = pal_os_critical_enter();
     uint32_t count = (s_count < WINK_TRACE_CAPACITY) ? s_count : WINK_TRACE_CAPACITY;
+    pal_os_critical_exit(key);
+    return count;
+}
+
+void wink_trace_warn(uint32_t warn_code) {
+    (void)warn_code; /* 当前只计数，不入环形缓冲 —— 环形缓冲仅供 fault 诊断用 */
+    uint32_t key = pal_os_critical_enter();
+    s_warn_count++;
+    pal_os_critical_exit(key);
+}
+
+uint32_t wink_warn_count(void) {
+    uint32_t key = pal_os_critical_enter();
+    uint32_t count = s_warn_count;
     pal_os_critical_exit(key);
     return count;
 }

@@ -134,7 +134,10 @@ void test_wcet_exceeded_logs_warning_in_trace(void) {
     wink_app_callbacks_t cb = { NULL, mock_loop_wcet_exceeded, NULL };
     wink_status_t s = wink_runtime_run(&cb, 1);
     TEST_ASSERT_EQUAL_INT(WINK_OK, s);
-    TEST_ASSERT_EQUAL_UINT32(WINK_WARN_WCET_EXCEEDED, wink_trace_last());
+    /* WCET 超限走 wink_trace_warn（非致命） —— 不入 fault 环，只增 warn 计数。 */
+    TEST_ASSERT_EQUAL_UINT32(0u, wink_trace_last());
+    TEST_ASSERT_EQUAL_UINT32(0u, wink_trace_count());
+    TEST_ASSERT_TRUE(wink_warn_count() >= 1u);
 }
 
 static void mock_loop_wcet_normal(void) {
@@ -146,6 +149,7 @@ void test_wcet_normal_does_not_log_warning_in_trace(void) {
     wink_status_t s = wink_runtime_run(&cb, 1);
     TEST_ASSERT_EQUAL_INT(WINK_OK, s);
     TEST_ASSERT_EQUAL_UINT32(0u, wink_trace_last());
+    TEST_ASSERT_EQUAL_UINT32(0u, wink_warn_count());
 }
 
 int main(void) {

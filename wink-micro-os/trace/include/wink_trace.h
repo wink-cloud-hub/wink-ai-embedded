@@ -64,6 +64,25 @@ void wink_trace_fault_from_isr(uint32_t fault_code);
 uint32_t wink_trace_count(void);
 
 /**
+ * @brief 记录一个"警告"码（性能/预算类，非致命），例如 WCET 超限、tick overrun。
+ *
+ * 与 `wink_trace_fault` 的区别：
+ *   - 独立计数器 `wink_warn_count()`，不进入 fault 环形缓冲；
+ *   - **不**触发 `wink_runtime_fault` 或 `on_fault` 回调 —— 那些是致命故障专用；
+ *   - 用于遥测/可观测性，被 App 用来监控预算而不是被视为运行时错误。
+ * @param warn_code 业务自定义警告码（如 WINK_WARN_WCET_EXCEEDED = 8002）
+ * @note Thread-safety: TASK 上下文。使用 pal_os_critical_enter/exit 保护。
+ * @warning **不可 ISR 调用**：警告事件均来自 TASK 侧的预算检查器。
+ */
+void wink_trace_warn(uint32_t warn_code);
+
+/**
+ * @brief 自上次 reset（或 boot）以来记录的警告条数。
+ * @note 与 `wink_trace_count()` 互相独立：faults 不影响 warns，反之亦然。
+ */
+uint32_t wink_warn_count(void);
+
+/**
  * @brief 最近一条故障码；无记录返回 0
  * @note Thread-safety: TASK 上下文。使用 pal_os_critical_enter/exit 保护。
  * @warning **不可 ISR 调用**（ADR-0016）：诊断/查询接口，ISR 不需要读它。
