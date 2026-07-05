@@ -24,6 +24,11 @@ typedef enum {
     PAL_GPIO_INPUT_PULLDOWN      = 2,
     PAL_GPIO_OUTPUT_PUSH_PULL    = 3,
     PAL_GPIO_OUTPUT_OPEN_DRAIN   = 4,
+    /* Bidirectional: driver + input buffer both enabled. Needed when a pin
+     * must be written (software drive) AND read/sensed (RMT input / GPIO ISR
+     * on own edge). Maps to GPIO_MODE_INPUT_OUTPUT on ESP32; host/wasm stubs
+     * treat it identically to other modes (read/write always allowed). */
+    PAL_GPIO_INPUT_OUTPUT        = 5,
 } pal_gpio_mode_t;
 
 typedef enum {
