@@ -336,16 +336,29 @@ wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin,
         return WINK_ERR_HARDWARE;
     }
 
-    /* Ensure input buffer is enabled so interrupts can detect edges even on
-     * output-configured pins. Without this, enabling interrupts on a pin
-     * previously configured via GPIO_MODE_OUTPUT never fires because the
-     * pad's input buffer is disabled (pin cannot see its own drive or
-     * external edges). Promoting to INPUT_OUTPUT is safe: it keeps the
-     * output driver and adds input sensing; harmless on pins already in
-     * INPUT / INPUT_OUTPUT / open-drain modes (they retain their behavior,
-     * only the driver capability is (re)asserted). Pullup/pulldown state is
-     * unaffected. */
-    (void)gpio_set_direction((gpio_num_t)pin, GPIO_MODE_INPUT_OUTPUT);
+    /* Ensure interrupts can fire on pins configured as pure OUTPUT (where
+     * the input buffer is disabled at reset and edge detection cannot
+     * observe the pin's own drive or any external signal). Only promote
+     * pins whose current direction is OUTPUT or OUTPUT_OD; leave pure
+     * INPUT-family pins alone so that pull-up/strap pins (e.g. the BOOT
+     * button on GPIO0) are NOT forced into actively driving the pad —
+     * unconditionally setting INPUT_OUTPUT on an input pin would connect
+     * the output driver (driving whatever the OUT register holds, typically
+     * 0) and fight external pull-ups, causing spurious edges and
+     * stuck-low behavior.
+     *
+     * Callers who need self-edge visibility on an output pin can also
+     * pre-configure the pin as PAL_GPIO_INPUT_OUTPUT via pal_gpio_init()
+     * (as S10 does for TRIG/ECHO); this promotion is a safety net for
+     * callers that only pal_gpio_init(OUTPUT) before enabling interrupts. */
+    gpio_mode_t cur_dir = GPIO_MODE_DISABLE;
+    if (gpio_get_direction((gpio_num_t)pin, &cur_dir) == ESP_OK) {
+        if (cur_dir == GPIO_MODE_OUTPUT) {
+            (void)gpio_set_direction((gpio_num_t)pin, GPIO_MODE_INPUT_OUTPUT);
+        } else if (cur_dir == GPIO_MODE_OUTPUT_OD) {
+            (void)gpio_set_direction((gpio_num_t)pin, GPIO_MODE_INPUT_OUTPUT_OD);
+        }
+    }
 
     /* 设置中断类型 */
     err = gpio_set_intr_type((gpio_num_t)pin, esp_intr_type);
