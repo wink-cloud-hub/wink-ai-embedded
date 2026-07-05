@@ -108,8 +108,12 @@ typedef void (*pal_isr_t)(void *arg);
  *
  *   pal_gpio_enable_interrupt(pin, edge, my_button_isr, &my_button_state);
  */
+/* Fwd-decl of name##_typed does NOT carry PAL_ISR: on xtensa gcc 15,
+ * applying IRAM_ATTR on both fwd-decl and definition triggers a
+ * -Wattributes error ("section '.iram1.N' conflicts with previous").
+ * Placement is determined solely by the definition's attribute. */
 #define PAL_DEFINE_ISR(name, arg_type, arg_name)  \
-    static PAL_ISR void name##_typed(arg_type *arg_name);  \
+    static void name##_typed(arg_type *arg_name);  \
     static PAL_ISR void name(void *arg) {  \
         name##_typed((arg_type *)arg);  \
     }  \
