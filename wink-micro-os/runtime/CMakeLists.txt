@@ -1,6 +1,7 @@
 # runtime (OS 运行时) —— STATIC 库，回调注入主循环 + 执行器关断注册表（Phase 5）。
 add_library(wink_runtime STATIC
     src/wink_runtime.c
+    src/wink_runtime_tasks.c
     src/wink_actuator_registry.c
     src/wink_soft_timer.c
     # ADR-0008 设备树覆写 blob 解析器 + CRC32：runtime 层通用工具（无硬件依赖），

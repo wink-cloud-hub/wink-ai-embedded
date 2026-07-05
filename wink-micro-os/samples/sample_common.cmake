@@ -36,6 +36,7 @@ include_guard(GLOBAL)
 # Use with: ${WINK_SAMPLE_RUNTIME_SOURCES}
 set(WINK_SAMPLE_RUNTIME_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/../runtime/src/wink_runtime.c
+    ${CMAKE_CURRENT_LIST_DIR}/../runtime/src/wink_runtime_tasks.c
     ${CMAKE_CURRENT_LIST_DIR}/../runtime/src/wink_actuator_registry.c
     ${CMAKE_CURRENT_LIST_DIR}/../runtime/src/wink_soft_timer.c
     ${CMAKE_CURRENT_LIST_DIR}/../trace/src/wink_trace.c
@@ -90,7 +91,11 @@ function(wink_sample_apply_compile_options target)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /WX /wd4100 /wd4210)
     else()
-        target_compile_options(${target} PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
+        # Missing-field-initializers fires on partial designated initializers
+        # (.init/.loop/.on_fault without the newer .on_boot/.init_status/.on_fault_status).
+        # C standard zero-initializes unspecified fields -- this is intentional.
+        target_compile_options(${target} PRIVATE -Wall -Wextra -Werror
+            -Wno-unused-parameter -Wno-missing-field-initializers)
     endif()
 endfunction()
 

@@ -1,5 +1,6 @@
 #include "unity.h"
 #include "wink_runtime.h"
+#include "wink_tasks.h"
 #include "wink_trace.h"
 #include "wink_actuator_registry.h"
 #include "pal_osal.h"
@@ -152,6 +153,137 @@ void test_wcet_normal_does_not_log_warning_in_trace(void) {
     TEST_ASSERT_EQUAL_UINT32(0u, wink_warn_count());
 }
 
+/* ============================================================
+ *  wink_periodic_start / wink_periodic_stop (Wave 2)
+ * ============================================================
+ * Covers the LIGHT (soft-timer-backed) execution path.
+ *
+ * The MAY_BLOCK path is NOT covered on host: under non-SIMULATION host
+ * builds the runtime's main loop does not drive the cooperative fiber
+ * scheduler, so a MAY_BLOCK task registered via pal_os_task_create is
+ * never scheduled and its callback body would never run.  A MAY_BLOCK
+ * test would therefore either hang (on pal_os_sem_take inside stop) or
+ * silently record zero firings.  On the real target (ESP-IDF FreeRTOS)
+ * the task path executes independently of the main loop and can be
+ * exercised end-to-end; that coverage belongs in target-side smoke
+ * tests / on-hardware S<N> checks, not here. */
+
+/* File-scope counter incremented by the LIGHT periodic callback. */
+static volatile uint32_t s_periodic_light_calls = 0;
+static wink_periodic_handle_t s_periodic_light_h = 0;
+
+static void periodic_light_cb_test(void *ctx) {
+    (void)ctx;
+    s_periodic_light_calls++;
+}
+
+/* Registered as init_status so the periodic starts BEFORE the runtime
+ * enters its tick loop — otherwise the soft-timer dispatcher has
+ * nothing to walk. */
+static wink_status_t init_start_periodic_light(void) {
+    /* period 5ms will be rounded up to one WINK_RUNTIME_TICK_MS tick
+     * (default 10ms) inside wink_periodic_start's LIGHT branch. */
+    wink_periodic_handle_t h = wink_periodic_start(
+        "unit_light", 0u, 5u, periodic_light_cb_test, NULL, WINK_PERIODIC_LIGHT);
+    s_periodic_light_h = h;
+    if (h <= 0) {
+        /* Bubble the negative status back as an init failure so the
+         * test can pinpoint the failure without racing the loop. */
+        return (wink_status_t)h;
+    }
+    return WINK_OK;
+}
+
+void test_periodic_start_stop_light(void) {
+    s_periodic_light_calls = 0;
+    s_periodic_light_h = 0;
+
+    /* Minimal no-op callbacks; use init_status so we can return an
+     * error from wink_periodic_start without needing extra plumbing. */
+    wink_app_callbacks_t cb;
+    memset(&cb, 0, sizeof(cb));
+    cb.init_status = init_start_periodic_light;
+
+    /* Enough ticks to see several firings of a 1-tick-period timer.
+     * host_pal advances the virtual clock inside pal_os_sleep_ms
+     * called by wink_app_delay_ms between ticks, so no separate
+     * pal_sim_simulate step is needed here. */
+    wink_status_t s = wink_runtime_run(&cb, 20u);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, s);
+
+    /* Handle returned by wink_periodic_start must be a positive
+     * handle (>=1); 0 is reserved for INVALID. */
+    TEST_ASSERT_TRUE(s_periodic_light_h > 0);
+
+    /* Core assertion: the periodic callback actually fired at least
+     * once during the tick loop. */
+    TEST_ASSERT_TRUE_MESSAGE(s_periodic_light_calls > 0u,
+        "LIGHT periodic callback never fired during runtime tick loop");
+
+    /* Stop the periodic, then confirm it no longer fires.  Use a fresh
+     * callbacks struct with NO init callback so the second runtime_run
+     * doesn't start a *new* periodic on top of the stopped one. */
+    uint32_t before_stop = s_periodic_light_calls;
+    wink_periodic_stop(s_periodic_light_h);
+
+    wink_app_callbacks_t cb_noinit;
+    memset(&cb_noinit, 0, sizeof(cb_noinit));
+    wink_status_t s2 = wink_runtime_run(&cb_noinit, 10u);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, s2);
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(before_stop, s_periodic_light_calls,
+        "LIGHT periodic callback still firing after wink_periodic_stop");
+}
+
+/* MAY_BLOCK path is only meaningful when a real preemptive scheduler
+ * drives the task body.  On host non-SIM builds pal_os_task_create
+ * merely registers with the cooperative fiber scheduler that
+ * wink_runtime_run does not drive, so the task body never executes.
+ * Guard the test so it compiles only where the semantics hold. */
+#if defined(ESP_PLATFORM)
+static volatile uint32_t s_periodic_blk_calls = 0;
+static wink_periodic_handle_t s_periodic_blk_h = 0;
+
+static void periodic_blk_cb_test(void *ctx) {
+    (void)ctx;
+    s_periodic_blk_calls++;
+}
+
+static wink_status_t init_start_periodic_blk(void) {
+    wink_periodic_handle_t h = wink_periodic_start(
+        "unit_blk", 2048u, 5u, periodic_blk_cb_test, NULL, WINK_PERIODIC_MAY_BLOCK);
+    s_periodic_blk_h = h;
+    if (h <= 0) {
+        return (wink_status_t)h;
+    }
+    return WINK_OK;
+}
+
+void test_periodic_start_stop_may_block(void) {
+    s_periodic_blk_calls = 0;
+    s_periodic_blk_h = 0;
+
+    wink_app_callbacks_t cb;
+    memset(&cb, 0, sizeof(cb));
+    cb.init_status = init_start_periodic_blk;
+
+    wink_status_t s = wink_runtime_run(&cb, 20u);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, s);
+    TEST_ASSERT_TRUE(s_periodic_blk_h > 0);
+    TEST_ASSERT_TRUE_MESSAGE(s_periodic_blk_calls > 0u,
+        "MAY_BLOCK periodic callback never fired");
+
+    wink_periodic_stop(s_periodic_blk_h);
+    uint32_t after_stop = s_periodic_blk_calls;
+
+    wink_app_callbacks_t cb_noinit;
+    memset(&cb_noinit, 0, sizeof(cb_noinit));
+    wink_status_t s3 = wink_runtime_run(&cb_noinit, 10u);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, s3);
+    TEST_ASSERT_EQUAL_UINT32_MESSAGE(after_stop, s_periodic_blk_calls,
+        "MAY_BLOCK periodic callback still firing after wink_periodic_stop");
+}
+#endif /* ESP_PLATFORM */
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_run_calls_init_once_then_loops_n_times);
@@ -164,5 +296,9 @@ int main(void) {
     RUN_TEST(test_boot_no_safe_lock_on_power_on_reset);
     RUN_TEST(test_wcet_exceeded_logs_warning_in_trace);
     RUN_TEST(test_wcet_normal_does_not_log_warning_in_trace);
+    RUN_TEST(test_periodic_start_stop_light);
+#if defined(ESP_PLATFORM)
+    RUN_TEST(test_periodic_start_stop_may_block);
+#endif
     return UNITY_END();
 }

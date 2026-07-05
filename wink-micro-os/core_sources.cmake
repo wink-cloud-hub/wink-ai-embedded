@@ -5,6 +5,7 @@
 # ── Runtime 源文件 ──────────────────────────────────────────────────────────
 set(WINK_RUNTIME_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/runtime/src/wink_runtime.c
+    ${CMAKE_CURRENT_LIST_DIR}/runtime/src/wink_runtime_tasks.c
     ${CMAKE_CURRENT_LIST_DIR}/runtime/src/wink_actuator_registry.c
     ${CMAKE_CURRENT_LIST_DIR}/runtime/src/wink_soft_timer.c
     # ADR-0008 设备树覆写 blob 解析器 + CRC32：runtime 层通用工具（无硬件依赖），

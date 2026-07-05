@@ -22,6 +22,7 @@ function(add_wink_test name src)
         ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/osal
         ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/hal
+        ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/internal
         ${CMAKE_CURRENT_SOURCE_DIR}/../trace/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/include)
     target_link_libraries(${name} PRIVATE pal)
@@ -32,6 +33,7 @@ function(add_wink_test name src)
         target_compile_options(${name} PRIVATE /W4 /WX /wd4100 /wd4210)
     else()
         target_compile_options(${name} PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter
+            -Wno-missing-field-initializers
             -Wno-error=stack-usage=)  # P-stack：host 测试栈充裕，只警告不阻塞
     endif()
     add_test(NAME ${name} COMMAND ${name})
@@ -90,6 +92,7 @@ function(add_wink_host_test name src)
         target_compile_options(${name} PRIVATE /W4 /WX /wd4100 /wd4210)
     else()
         target_compile_options(${name} PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter
+            -Wno-missing-field-initializers
             -Wno-error=stack-usage=)  # P-stack：host 测试栈充裕，只警告不阻塞
     endif()
     add_test(NAME ${name} COMMAND ${name})
@@ -106,6 +109,7 @@ add_wink_host_test(test_wink_trace_isr_equivalence test_wink_trace_isr_equivalen
 
 add_wink_host_test(test_runtime test_runtime.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_runtime.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_runtime_tasks.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_actuator_registry.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_soft_timer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../trace/src/wink_trace.c)
@@ -156,6 +160,7 @@ if(EXISTS ${_BASELINE_H})
         ${CMAKE_CURRENT_SOURCE_DIR}/../samples/avoidance_car/device_tree.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../samples/avoidance_car/app_callbacks.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_runtime.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_runtime_tasks.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_actuator_registry.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_soft_timer.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../trace/src/wink_trace.c
@@ -264,6 +269,7 @@ function(add_wink_test_sim name src)
         target_compile_options(${name} PRIVATE /W4 /WX /wd4100 /wd4210)
     else()
         target_compile_options(${name} PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter
+            -Wno-missing-field-initializers
             -Wno-error=stack-usage=)  # P-stack：host 测试栈充裕，只警告不阻塞
     endif()
     add_test(NAME ${name} COMMAND ${name})
