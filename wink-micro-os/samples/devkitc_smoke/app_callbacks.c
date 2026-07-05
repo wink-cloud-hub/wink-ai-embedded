@@ -435,8 +435,17 @@ static void app_init(void)
     /* S9: RMT hardware loopback test */
     smoke_check_rmt_loopback();
 
-    /* S10: Ultrasonic shadow sensor test */
+    /* S10: Ultrasonic shadow sensor test.
+     * Unlike S9 (one-shot self-loop), S10 is an ongoing background test: a
+     * core-1 mock-sensor task listens for TRIG GPIO rising edges via ISR+sem
+     * and drives ECHO with a 2940us pulse (~50cm). App_loop fires a TRIG every
+     * 500ms and telemetry reports sonar_st/dist continuously. To give the
+     * bring-up log a clear PASS/FAIL verdict mirroring S9, we do one synchronous
+     * verification measurement at init time (after ISR+mock task are armed)
+     * and print the result. */
 #if defined(WINK_TEST_HAS_RMT)
+    LOG_I("S10: ultrasonic shadow-sensor test starting (TRIG=%u,ECHO=%u, expected ~50cm)...",
+          (unsigned)SMOKE_TRIG_PIN, (unsigned)SMOKE_ECHO_PIN);
     s_trig_sem = pal_os_sem_create();
     if (s_trig_sem != NULL) {
         const dal_ultrasonic_config_t sonar_cfg = {
@@ -478,6 +487,41 @@ static void app_init(void)
             } else {
                 LOG_D("S10: interrupt setup on Trig returned: %d (expected on Host/stub)", (int)st);
             }
+
+#if defined(ESP_PLATFORM)
+            /* One-shot init-time verification measurement (ESP32 only):
+             * synchronously fire a TRIG and check that the first reading is
+             * within ±2cm of 50cm. This mirrors S9's init-time PASS log and
+             * catches wiring/timing regressions at boot instead of waiting
+             * for the 2s telemetry. The mock task is pinned to core1 and is
+             * already blocked on sem_take at this point.
+             *
+             * Not run on host/wasm: those targets have no real GPIO ISR and
+             * the e2e harness only verifies LED/PWM/faults=0 across 5 ticks;
+             * S10 correctness on host is covered by test_dal_ultrasonic* unit
+             * tests that inject echo timing via sim_set_echo_timing(). */
+            if (!wink_status_is_error(st)) {
+                static float s10_probe_dist = 0.0f;
+                wink_status_t _probe_req = dal_ultrasonic_request_measurement(&s_smoke_sonar);
+                (void)_probe_req;
+                wink_status_t probe_st = dal_ultrasonic_get_cached_distance(&s_smoke_sonar, &s10_probe_dist);
+                if (probe_st == WINK_OK && s10_probe_dist >= 48.0f && s10_probe_dist <= 52.0f) {
+                    LOG_I("S10: PASS (probe %.2fcm, TRIG ISR + mock ECHO + RMT capture verified)",
+                          s10_probe_dist);
+                } else {
+                    LOG_E("S10: FAIL (probe status=%d dist=%.2fcm, expected ~50cm)",
+                          (int)probe_st, s10_probe_dist);
+                    wink_trace_fault(FAULT_ISR_INIT);
+                }
+            }
+#else
+            /* Host/wasm: mark as armed; correctness is covered by DAL unit tests
+             * (test_dal_ultrasonic*) that inject echo timing via sim_set_echo_timing().
+             * The telemetry sonar_st/dist will show UNSUPPORTED/TIMEOUT on host,
+             * which is expected and does not fault the e2e run (e2e only checks
+             * wink_trace_count() == 0, not telemetry fields). */
+            LOG_I("S10: armed (host/wasm: echo timing injected by test harness)");
+#endif
         } else {
             LOG_E("S10: dal_ultrasonic_init failed: %d", (int)st);
         }
