@@ -12,6 +12,27 @@ extern "C" {
 /** @brief 连续一致采样阈值：达此计数后稳定态翻转（3 × tick 间隔 ≈ 30ms @ 10ms tick） */
 #define DAL_BUTTON_DEBOUNCE_THRESHOLD 3
 
+/** @brief 默认长按判定时间（毫秒） */
+#define DAL_BUTTON_DEFAULT_LONG_PRESS_MS 3000u
+
+/**
+ * @brief 按钮事件类型（语义级事件，由 dal_button_poll() 在去抖/长按状态机中派发）
+ */
+typedef enum {
+    DAL_BUTTON_EVT_PRESS       = 0,  /**< 稳定按下（去抖完成，从释放→按下的瞬间） */
+    DAL_BUTTON_EVT_RELEASE     = 1,  /**< 稳定释放（从按下→释放的瞬间） */
+    DAL_BUTTON_EVT_LONG_PRESS  = 2,  /**< 长按触发（按住持续达 long_press_ms 后触发一次，不重复） */
+} dal_button_event_t;
+
+/**
+ * @brief 按钮事件回调类型（在 dal_button_poll() 的 task 上下文同步调用，非 ISR）
+ * @param evt  事件类型
+ * @param ctx  用户在 dal_button_on_event() 注册时提供的 opaque 指针
+ * @note  回调运行在调用 poll 的上下文（通常是 app_loop / 主任务），非 ISR；
+ *        允许调用 WINK_BLOCKING API（如 printf）但建议保持短小。
+ */
+typedef void (*dal_button_event_cb)(dal_button_event_t evt, void *ctx);
+
 /**
  * @brief 按钮配置结构体（标准化 config_t 模式，便于 Codegen 设备树生成）
  *
@@ -33,7 +54,8 @@ typedef struct {
  *   1. Flash 动态覆写（ADR-0008）：从 Flash blob 读取 → 写入 config → dal_xxx_apply_override
  *   2. 运行时诊断：可直接打印当前生效的配置
  *
- * 成员按对齐降序排列（config_t → bool ×3 → uint8_t）：自然对齐，无填充。
+ * Wave 3 扩展字段（events + ISR counter）加在末尾，保留原有字段顺序和偏移
+ * 以兼容直接访问 stable_pressed 的现有测试/代码。
  */
 typedef struct {
     dal_button_config_t config; /* 配置副本（pin, active_low），由 init 从 cfg 拷贝 */
@@ -41,6 +63,18 @@ typedef struct {
     bool last_reported;      /* 上次 was_pressed 报告过的状态（边沿消抖） */
     bool initialized;        /* init 成功后置 true */
     uint8_t debounce_counter;/* 连续一致采样计数器 */
+
+    /* ── Wave 3: event callback state ── */
+    dal_button_event_cb event_cb;     /* 事件回调（NULL=不派发） */
+    void *event_cb_ctx;               /* 回调 ctx */
+    bool long_press_fired;            /* 本次按下周期内是否已触发过 LONG_PRESS（防止重复） */
+    bool prev_pressed_for_event;      /* 上一次 poll 时的稳定态（边沿检测，与 last_reported 独立） */
+    uint32_t long_press_ms;           /* 长按判定阈值（毫秒），默认 DAL_BUTTON_DEFAULT_LONG_PRESS_MS */
+    uint64_t press_start_ms;          /* 当前按下周期的起始时间（pal_os_get_ms() 时间戳） */
+
+    /* ── Wave 3: ISR edge counter ── */
+    bool isr_counter_enabled;          /* dal_button_enable_isr_counter() 置 true */
+    volatile uint32_t edge_count;      /* ISR 累计触发次数（volatile: ISR 写/poll 上下文读） */
 } dal_button_t;
 
 /**
@@ -98,6 +132,71 @@ wink_status_t dal_button_is_pressed(const dal_button_t *dev, bool *out_pressed);
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_button_was_pressed(dal_button_t *dev, bool *out_was_pressed);
+
+/* ── Wave 3: Event callback (poll-driven, non-ISR) ──────── */
+
+/**
+ * @brief 注册按钮事件回调（PRESS / RELEASE / LONG_PRESS）。
+ *
+ * 回调在 dal_button_poll() 上下文中**同步**调用（不是 ISR！），驱动方可安全
+ * 调用 printf / WINK_BLOCKING API。事件由 poll 内部的去抖和长按状态机
+ * 检测：PRESS 在稳定按下边沿触发一次，RELEASE 在稳定释放边沿触发一次，
+ * LONG_PRESS 在按住达到 long_press_ms 后触发一次（按住期间不重复）。
+ *
+ * @param dev 按钮实例
+ * @param cb  事件回调（传入 NULL 注销）
+ * @param ctx Opaque 指针，调用 cb 时原样转发
+ * @return WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED
+ * @note   线程安全：只在 poll 上下文调用；enable/disable 必须在 poll 启动
+ *         之前完成（或在同一 task 中串行调用）。
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t dal_button_on_event(dal_button_t *dev, dal_button_event_cb cb, void *ctx);
+
+/**
+ * @brief 配置长按判定时间。
+ * @param ms 长按毫秒阈值（必须 > 0；默认 DAL_BUTTON_DEFAULT_LONG_PRESS_MS = 3000ms）
+ * @return WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED
+ * @note   只影响 LONG_PRESS 事件派发；不改变去抖行为。
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t dal_button_set_long_press_ms(dal_button_t *dev, uint32_t ms);
+
+/* ── Wave 3: ISR edge counter (hardware-interrupt driven) ─ */
+
+/**
+ * @brief 启用 GPIO 边沿中断计数器。
+ *
+ * 注册 ANY_EDGE GPIO ISR，每次触发时递增 dev->edge_count（volatile）。
+ * 在 host/wasm 上可通过 pal_host_trigger_gpio_interrupt(pin) 模拟触发；
+ * 在无 GPIO 中断支持的 target 上返回 WINK_ERR_UNSUPPORTED（不崩，仅降级）。
+ *
+ * 第二次调用（重复启用）是幂等的：直接返回 WINK_OK，不重复注册。
+ *
+ * @return WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED / WINK_ERR_UNSUPPORTED
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t dal_button_enable_isr_counter(dal_button_t *dev);
+
+/**
+ * @brief 读取 ISR 边沿累计计数。
+ * @param out_count 输出：自 enable/上次 reset 以来的 ISR 触发次数
+ * @return WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED
+ * @note   未 enable 时 out_count = 0（返回 WINK_OK）；volatile 读安全，无需临界区。
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t dal_button_get_edge_count(const dal_button_t *dev, uint32_t *out_count);
+
+/**
+ * @brief 原子清零 ISR 边沿计数（在临界区内完成，避免丢脉冲）。
+ *
+ * 使用 PAL_CRITICAL_SECTION 关中断做读-改-写，保证清零瞬间的 ISR 触发
+ * 不会被丢失（ISR 在临界区内被 PENDING，恢复后写入新的计数 1）。
+ *
+ * @return WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t dal_button_reset_edge_count(dal_button_t *dev);
 
 #ifdef __cplusplus
 }
