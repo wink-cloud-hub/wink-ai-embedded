@@ -46,3 +46,20 @@ wink_status_t dal_led_toggle(dal_led_t *dev) {
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
     return dal_led_set(dev, !dev->is_on);
 }
+
+wink_status_t dal_led_deinit(dal_led_t *dev) {
+    if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (!dev->initialized) { return WINK_OK; }  /* no-op on un-init dev */
+
+    /* Best-effort turn LED off before releasing the pin (safe-off semantic). */
+    WINK_IGNORE_UNUSED(dal_led_off(dev));
+
+    /* Release resource claim so a subsequent init（可能不同 owner）不 BUSY。 */
+    WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN,
+                                             dev->config.pin,
+                                             dev->config.owner));
+
+    dev->initialized = false;
+    dev->is_on       = false;
+    return WINK_OK;
+}

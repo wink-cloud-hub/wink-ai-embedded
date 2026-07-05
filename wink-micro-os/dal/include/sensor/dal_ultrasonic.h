@@ -141,6 +141,13 @@ wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *distance_cm);
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_ultrasonic_apply_override(void *dev, const uint8_t *params, uint16_t len);
 
+/**
+ * @brief 反初始化超声波：停止 RMT（若已启用）、释放 trig/echo GPIO 资源、置 initialized=false。
+ * @note 可在未 init 的 dev 上安全调用（直接返回 WINK_OK，no-op）。
+ * @return WINK_OK
+ */
+wink_status_t dal_ultrasonic_deinit(dal_ultrasonic_t *dev);
+
 #ifdef __cplusplus
 }
 #endif

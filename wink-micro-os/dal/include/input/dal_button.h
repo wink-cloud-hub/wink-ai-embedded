@@ -198,6 +198,13 @@ wink_status_t dal_button_get_edge_count(const dal_button_t *dev, uint32_t *out_c
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_button_reset_edge_count(dal_button_t *dev);
 
+/**
+ * @brief 反初始化按钮：禁用 ISR 计数器（若已启用）、释放 GPIO 资源、置 initialized=false。
+ * @note 可在未 init 的 dev 上安全调用（直接返回 WINK_OK，no-op）。
+ * @return WINK_OK
+ */
+wink_status_t dal_button_deinit(dal_button_t *dev);
+
 #ifdef __cplusplus
 }
 #endif
