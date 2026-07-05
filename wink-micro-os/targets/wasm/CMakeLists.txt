@@ -15,10 +15,14 @@ set(PAL_WASM_SOURCES
     # OSAL 层（虚拟时钟 / scheduler / storage）
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_osal_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_storage_wasm.c
-    # Wasm 特有扩展：物理退化 + fault 子系统 + Wave3 stub
+    # Wasm 特有扩展：物理退化 + fault 子系统 + Wave3 stub + 虚拟器件仿真
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_physical.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_fault.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_fault_domain.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/devices/wasm_sim_registry.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/devices/wasm_dev_ssd1306.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/devices/wasm_dev_servo.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/devices/wasm_dev_ultrasonic.c
     # Target 无关共享源（同源复用，见 targets/common/src/）
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/pal_osal_ringbuf.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/pal_resource.c
