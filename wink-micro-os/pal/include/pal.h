@@ -11,7 +11,7 @@
 #include "wink_status.h"
 #include "pal_hal.h"
 #include "pal_osal.h"
-#include "pal_debug.h"
+#include "pal_log.h"
 #include "pal_resource.h"
 #include "pal_storage.h"
 
