@@ -298,6 +298,47 @@ wink_status_t pal_os_task_create(
 void pal_os_task_delete(pal_os_task_handle_t task_handle);
 
 
+/**
+ * @brief Return current free heap size in bytes.
+ *
+ * ESP32: wraps `xPortGetFreeHeapSize()` ( FreeRTOS-maintained counter;
+ *        O(1), ISR-safe, no allocation).
+ * Host/wasm: returns 0 (no portable cross-platform introspection; 0 is a
+ *        valid "not available" sentinel, not an error).
+ *
+ * @return Free bytes, or 0 when unsupported on the current target.
+ */
+uint32_t pal_os_get_free_heap_size(void);
+
+/**
+ * @brief Return the minimum free heap size seen since boot (high-water mark).
+ *
+ * ESP32: wraps `xPortGetMinimumEverFreeHeapSize()`. Monotonically
+ *        non-increasing; useful for fleet-safety telemetry ("did we ever
+ *        get close to OOM?").
+ * Host/wasm: returns 0.
+ *
+ * @return Historical minimum free bytes, or 0 when unsupported.
+ */
+uint32_t pal_os_get_min_free_heap_size(void);
+
+/**
+ * @brief Return unused stack bytes for the **calling** task (high-water mark).
+ *
+ * ESP32: wraps `uxTaskGetStackHighWaterMark(NULL) * sizeof(StackType_t)` —
+ *        bytes of stack that have NEVER been touched since task start.
+ *        `wink_runtime_get_stats()` calls this from the main-loop task
+ *        context, so it reports the runtime/init task's watermark.
+ * Host/wasm: returns 0.
+ *
+ * @return Unused stack bytes for current task, or 0 when unsupported.
+ * @note Not a system-wide minimum (would require task enumeration via
+ *       `uxTaskGetSystemState`, v2 work). Honest v1: reports the task that
+ *       asks.
+ */
+uint32_t pal_os_get_current_task_stack_free(void);
+
+
 /* ========================================================================== */
 /*                        5. 跨核通信环形缓冲区 (Ringbuf)                      */
 /* ========================================================================== */

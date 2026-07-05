@@ -510,6 +510,11 @@ void pal_os_task_delete(pal_os_task_handle_t handle) {
     }
 }
 
+/* ── Runtime introspection (wasm: unsupported → 0) ─────── */
+uint32_t pal_os_get_free_heap_size(void) { return 0u; }
+uint32_t pal_os_get_min_free_heap_size(void) { return 0u; }
+uint32_t pal_os_get_current_task_stack_free(void) { return 0u; }
+
 /* 物理墙钟（微秒），用于 pal_sim_scheduler_run WCET 兜底判定（红线 11）。
  * 走 emscripten_get_now()（浏览器 performance.now()，毫秒精度） × 1000。
  * 严格与虚拟时钟 pal_os_get_us()/s_virtual_us 分离：虚拟时钟服务业务语义；
