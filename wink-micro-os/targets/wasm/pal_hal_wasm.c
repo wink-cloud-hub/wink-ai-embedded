@@ -17,6 +17,7 @@
 #include "wasm_bridge.h"
 #include "pal_wasm_internal.h"
 #include "wink_sim_physical.h"
+#include "devices/wasm_sim_registry.h"
 #include <stdarg.h>
 #include <stdio.h>
 
@@ -42,6 +43,7 @@ wink_status_t pal_gpio_write(wink_pin_t pin, bool level) {
     if (!pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin)) {
         return WINK_ERR_INVALID_STATE;
     }
+    wasm_sim_gpio_write((uint8_t)pin, level);
     js_pal_gpio_write((uint32_t)pin, level);
     return WINK_OK;
 }
@@ -60,8 +62,11 @@ wink_status_t pal_gpio_read(wink_pin_t pin, bool *out_level) {
         return WINK_ERR_INVALID_STATE;
     }
 
-    /* Step 1: 从 JS 侧获取理想电平（UniSim 宏观物理状态）。 */
-    bool ideal = js_pal_gpio_read(pin);
+    /* Step 1: 优先读取 Wasm 侧本地注入的电平，若未注入则从 JS 侧获取理想电平。 */
+    bool ideal = wasm_sim_gpio_get_input((uint8_t)pin);
+    if (!ideal) {
+        ideal = js_pal_gpio_read(pin);
+    }
 
     /* Step 2: 退化中间件（仅当 bounce_us > 0 时生效）。
      * bounce_us=0 是默认零退化路径，热路径只多一次内存读 + 一次比较。 */
@@ -98,6 +103,9 @@ wink_status_t pal_pwm_init(uint8_t channel, uint32_t frequency_hz) {
 
 wink_status_t pal_pwm_set_duty(uint8_t channel, float duty_cycle_percent) {
     if (!pal_pwm_router_channel_ready(channel)) { return WINK_ERR_INVALID_ARG; }
+    if (wasm_sim_pwm_channel_exists(channel)) {
+        wasm_sim_pwm_set_duty(channel, duty_cycle_percent);
+    }
     js_pal_pwm_set_duty(channel, duty_cycle_percent);
     return WINK_OK;
 }
@@ -145,7 +153,12 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
         }
     }
 
-    /* Step 2: 正常传输（无退化路径）。 */
+    // Scheme A: 优先使用 C 侧虚拟 I2C 设备模拟
+    if (wasm_sim_i2c_dev_exists(dev_addr)) {
+        return wasm_sim_i2c_dev_transfer(port, dev_addr, write_buf, write_len, read_buf, read_len);
+    }
+
+    /* Step 2: 正常传输（无退化路径，Fallback 走 JS 侧）。 */
     return js_pal_i2c_transfer(port, dev_addr, write_buf, write_len, read_buf, read_len)
            ? WINK_OK : WINK_ERR_IO;
 }
@@ -156,7 +169,13 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us,
     if (!pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin)) { return WINK_ERR_INVALID_STATE; }
     *pulse_us = 0;
     (void)level; (void)timeout_us;
-    uint32_t v = js_sim_measure_echo_pulse_us((uint32_t)pin);
+
+    // 优先调用 C 侧虚拟超声波模拟获取脉宽，若无则走 JS 侧 fallback
+    uint32_t v = wasm_dev_ultrasonic_get_pulse_us((uint8_t)pin);
+    if (v == 0) {
+        v = js_sim_measure_echo_pulse_us((uint32_t)pin);
+    }
+
     if (v == 0) { return WINK_ERR_TIMEOUT; }
     *pulse_us = v;
     return WINK_OK;
