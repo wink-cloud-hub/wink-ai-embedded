@@ -170,28 +170,32 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
            ? WINK_OK : WINK_ERR_IO;
 }
 
-wink_status_t pal_i2c_scan(uint8_t port, uint8_t *out_found_bitmap, size_t bitmap_bytes) {
+wink_status_t pal_i2c_scan(uint8_t port, uint8_t start_addr, uint8_t end_addr,
+                            uint8_t *out_found_bitmap, size_t bitmap_bytes) {
     if (out_found_bitmap == NULL || bitmap_bytes < 16) {
         return WINK_ERR_INVALID_ARG;
     }
     if (port >= PAL_I2C_PORTS) {
         return WINK_ERR_INVALID_ARG;
     }
+    if (start_addr > end_addr || end_addr > 0x7F) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    /* Clamp to valid 7-bit range (0x03..0x77 per I2C spec). */
+    uint8_t lo = start_addr < 0x03 ? 0x03 : start_addr;
+    uint8_t hi = end_addr   > 0x77 ? 0x77 : end_addr;
     /* Zero bitmap then set bits for addresses the C-side registry reports present.
      * JS-side virtual devices would require a js_pal_i2c_probe() bridge; for
      * v1 we report only C-side simulated devices (matches current usage by
      * selftest in SIMULATION runs). */
     memset(out_found_bitmap, 0, 16);
-    /* Addresses 0x03..0x77 are valid 7-bit I2C addresses; 0x00-0x02 and
-     * 0x78-0x7F are reserved. */
-    for (uint16_t addr = 0x03; addr <= 0x77; addr++) {
-        if (wasm_sim_i2c_dev_exists(addr)) {
+    for (uint16_t addr = lo; addr <= hi; addr++) {
+        if (wasm_sim_i2c_dev_exists((uint8_t)addr)) {
             uint8_t byte_idx = (uint8_t)(addr >> 3);
             uint8_t bit_idx  = (uint8_t)(addr & 0x7);
             out_found_bitmap[byte_idx] |= (uint8_t)(1u << bit_idx);
         }
     }
-    (void)port;
     return WINK_OK;
 }
 

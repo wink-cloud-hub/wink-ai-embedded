@@ -50,10 +50,20 @@ extern "C" {
 #define WINK_BLOCKING \
     WINK_DEPRECATED_MSG("Blocking API forbidden in cooperative runtime; use non-blocking variant")
 
-#define WINK_IGNORE_UNUSED(expr) do { \
-    wink_status_t _ignored_status = (expr); \
-    (void)_ignored_status; \
+/*
+ * Suppress -Wunused-result on WINK_WARN_UNUSED_RESULT APIs when the error
+ * is intentionally discarded (e.g. best-effort cleanup, fire-and-forget
+ * telemetry).  A bare `(void)expr;` is NOT sufficient on gcc ≥ 16 — the
+ * result must be consumed by assignment.  This macro wraps the canonical
+ * "assign to local + cast to void" idiom so call sites stay on one line.
+ */
+#define WINK_IGNORE_RESULT(expr) do { \
+    wink_status_t _wink_ignored_result = (expr); \
+    (void)_wink_ignored_result; \
 } while (0)
+
+/* Backward-compatible alias (older code / 2026-07-04 PAL log hardening). */
+#define WINK_IGNORE_UNUSED(expr) WINK_IGNORE_RESULT(expr)
 
 
 /*
