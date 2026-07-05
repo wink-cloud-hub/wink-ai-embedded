@@ -180,3 +180,13 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us,
     *pulse_us = v;
     return WINK_OK;
 }
+
+wink_status_t pal_test_enable_hardware_loopback(wink_pin_t pin_out, wink_pin_t pin_in) {
+    (void)pin_out; (void)pin_in;
+    return WINK_OK;
+}
+
+wink_status_t pal_test_disable_hardware_loopback(wink_pin_t pin_out, wink_pin_t pin_in) {
+    (void)pin_out; (void)pin_in;
+    return WINK_OK;
+}

@@ -19,6 +19,14 @@
 
 ## 🧩 测试体系概述
 
+### 真实性防御与真机裸板测试
+
+本测试体系还涵盖了：
+1. **防止假成功的“真实性防御”机制**：如何在 Host 仿真时验证真实的物理副作用（总线写入长度、占空比、非阻塞耗时等）。
+2. **真机裸板测试规范**：如何在只有一块 ESP32 裸开发板（无外设）时，通过 **GPIO 内部自环（不接线）** 或 **软件影子模拟任务（1根跳线）** 来闭环测试底层驱动和上层避障应用。
+
+关于这一部分的详细设计与测试配置指南，请参见独立的规范文档：[WinkMicroOS 硬件级仿真与真机测试真实性防御指南](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/docs/design/02-wink-micro-os/05-hardware-and-fidelity-testing-guide.md)。
+
 ### 双链的意义
 
 wink-micro-os 采用 **GCC + MSVC 双链验证**：

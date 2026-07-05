@@ -24,6 +24,7 @@ add_executable(app_devkitc_smoke_e2e
     ${WINK_SAMPLE_RUNTIME_SOURCES}
     ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/output/dal_led.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/input/dal_button.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/sensor/dal_ultrasonic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/test_devkitc_smoke_e2e.c
     $<TARGET_OBJECTS:pal_host>)
 wink_sample_apply_common(app_devkitc_smoke_e2e)

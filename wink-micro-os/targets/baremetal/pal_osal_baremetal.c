@@ -65,6 +65,34 @@ void pal_os_mutex_destroy(pal_os_mutex_t mutex) {
 }
 
 /* ─────────────────────────────────────────────────────────
+ * 信号量（裸机：no-op 退避实现）
+ * ───────────────────────────────────────────────────────── */
+
+pal_os_sem_t pal_os_sem_create(void) {
+    return (pal_os_sem_t)1;
+}
+
+wink_status_t pal_os_sem_take(pal_os_sem_t sem, uint32_t timeout_ms) {
+    if (sem == NULL) return WINK_ERR_INVALID_ARG;
+    (void)timeout_ms;
+    return WINK_OK;
+}
+
+wink_status_t pal_os_sem_give(pal_os_sem_t sem) {
+    if (sem == NULL) return WINK_ERR_INVALID_ARG;
+    return WINK_OK;
+}
+
+wink_status_t pal_os_sem_give_isr(pal_os_sem_t sem) {
+    if (sem == NULL) return WINK_ERR_INVALID_ARG;
+    return WINK_OK;
+}
+
+void pal_os_sem_destroy(pal_os_sem_t sem) {
+    (void)sem;
+}
+
+/* ─────────────────────────────────────────────────────────
  * 复位原因与看门狗
  * ───────────────────────────────────────────────────────── */
 

@@ -195,6 +195,42 @@ wink_status_t pal_gpio_disable_interrupt(wink_pin_t pin);
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_gpio_synchronize_interrupt(wink_pin_t pin);
 
+/**
+ * @brief 启用硬件信号自环/回环测试接口。
+ *
+ * 用于测试环境（特别是裸开发板）。它在底层实现将输出引脚 pin_out 产生的信号
+ * （如 GPIO 软件翻转电平或 PWM 信号）回环到输入引脚 pin_in 上（如 GPIO 输入或 RMT 输入）。
+ *
+ * @note 各 target 平台下的工作机制：
+ *   - ESP32:  利用芯片内部的 GPIO Matrix (信号交换矩阵) 将输出信号路由到输入，无需物理导线。
+ *   - Host:   在软件层面建立虚拟连接，使得对 pin_out 的写入（如 pal_gpio_write 或 pal_pwm_set_duty）
+ *             可以被 pin_in 正常读出（如 pal_gpio_read 或 pal_gpio_pulse_in 仿真数据获取）。
+ *   - Wasm:   与 Host 类似，进行仿真数据回环。
+ *   - STM32/其他: 若硬件不支持内部自环，直接返回 WINK_ERR_UNSUPPORTED，此时测试必须通过物理接线短接。
+ *
+ * @param pin_out 输出信号引脚
+ * @param pin_in  输入信号引脚
+ * @return
+ *   WINK_OK              回环连接成功
+ *   WINK_ERR_INVALID_ARG 引脚越界或非法
+ *   WINK_ERR_UNSUPPORTED 当前硬件平台不支持内部信号矩阵自环
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t pal_test_enable_hardware_loopback(wink_pin_t pin_out, wink_pin_t pin_in);
+
+/**
+ * @brief 关闭硬件信号自环/回关测试接口。
+ *
+ * 清除之前通过 pal_test_enable_hardware_loopback 建立的内部信号回环。
+ *
+ * @param pin_out 输出信号引脚
+ * @param pin_in  输入信号引脚
+ * @return
+ *   WINK_OK              清理成功
+ *   WINK_ERR_INVALID_ARG 引脚越界或非法
+ */
+wink_status_t pal_test_disable_hardware_loopback(wink_pin_t pin_out, wink_pin_t pin_in);
+
 #ifndef WINK_STRICT_NONBLOCKING
 /**
  * @brief GPIO 脉冲宽度测量（阻塞 busy-wait / RMT 等待）。
