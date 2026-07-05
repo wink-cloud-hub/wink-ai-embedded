@@ -463,10 +463,40 @@ wink_status_t pal_test_enable_hardware_loopback(wink_pin_t pin_out, wink_pin_t p
     }
 
     if (pin_out == pin_in) {
+        /* Same pin: route pin to INPUT_OUTPUT + GPIO-out so input buffer sees
+         * own drive (software self-loop). The previous PIN_INPUT_ENABLE-only
+         * one-liner enabled the pad input buffer but did NOT feed the
+         * internally-driven output back to the input channel, so RMT /
+         * gpio_get_level on the same pin could not observe the chip's own
+         * transitions (breaks S9 self-loop test). We now:
+         *   (1) reconfigure the pin as INPUT_OUTPUT via gpio_config — this
+         *       enables both output driver and input buffer at once, and in
+         *       this mode gpio_get_level(pin) reads back the value the chip
+         *       itself is driving.
+         *   (2) force the output mux back to the GPIO peripheral signal
+         *       (SIG_GPIO_OUT_IDX). Idempotent if pin is already in GPIO-out
+         *       mode; forces it back if held by LEDC/UART/etc. — which is
+         *       what the caller wants for a loopback test.
+         *   (3) keep PIN_INPUT_ENABLE as belt-and-suspenders (redundant with
+         *       INPUT_OUTPUT mode but harmless).
+         * Pullup/pulldown left disabled: caller manages pull state. */
+        gpio_config_t cfg_self = {
+            .pin_bit_mask = (1ULL << pin_out),
+            .mode = GPIO_MODE_INPUT_OUTPUT,
+            .pull_up_en = GPIO_PULLUP_DISABLE,
+            .pull_down_en = GPIO_PULLDOWN_DISABLE,
+            .intr_type = GPIO_INTR_DISABLE
+        };
+        esp_err_t err = gpio_config(&cfg_self);
+        if (err != ESP_OK) { return WINK_ERR_HARDWARE; }
+        esp_rom_gpio_connect_out_signal((gpio_num_t)pin_out, SIG_GPIO_OUT_IDX, false, false);
         PIN_INPUT_ENABLE(GPIO_PIN_MUX_REG[pin_out]);
         return WINK_OK;
     }
 
+    /* Different-pin cross-route: caller must ensure pin_out is in GPIO mode
+     * (not LEDC/UART/etc.) so the signal we sample from func_out_sel_cfg is
+     * a usable GPIO-out signal for pin_in to pick up. */
     gpio_config_t config_in = {
         .pin_bit_mask = (1ULL << pin_in),
         .mode = GPIO_MODE_INPUT_OUTPUT,
@@ -493,7 +523,23 @@ wink_status_t pal_test_disable_hardware_loopback(wink_pin_t pin_out, wink_pin_t 
     }
 
     if (pin_out == pin_in) {
+        /* Restore pin to plain INPUT; callers must reconfigure direction
+         * after disable if a different mode is required. We do NOT restore
+         * to GPIO_MODE_OUTPUT because we cannot know whether the pin was
+         * output or input before enable — INPUT is the safer default
+         * (avoids accidentally driving a line that something else now owns).
+         * Re-routing the output mux back to SIG_GPIO_OUT_IDX is idempotent
+         * and provides a safe known state. */
         PIN_INPUT_DISABLE(GPIO_PIN_MUX_REG[pin_out]);
+        gpio_config_t cfg_self = {
+            .pin_bit_mask = (1ULL << pin_out),
+            .mode = GPIO_MODE_INPUT,
+            .pull_up_en = GPIO_PULLUP_DISABLE,
+            .pull_down_en = GPIO_PULLDOWN_DISABLE,
+            .intr_type = GPIO_INTR_DISABLE
+        };
+        (void)gpio_config(&cfg_self);
+        esp_rom_gpio_connect_out_signal((gpio_num_t)pin_out, SIG_GPIO_OUT_IDX, false, false);
         return WINK_OK;
     }
 
@@ -505,7 +551,7 @@ wink_status_t pal_test_disable_hardware_loopback(wink_pin_t pin_out, wink_pin_t 
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type = GPIO_INTR_DISABLE
     };
-    gpio_config(&config_in);
+    (void)gpio_config(&config_in);
     return WINK_OK;
 }
 
