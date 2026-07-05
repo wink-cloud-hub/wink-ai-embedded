@@ -274,6 +274,13 @@ add_wink_test_sim(test_dal_ultrasonic_sim test_dal_ultrasonic_sim.c)
 # ADR-0009 Wave1 按键抖动端到端（dal_button × 物理退化；链 pal_host 含算法库 + 注入）
 add_wink_test_sim(test_button_debounce_e2e test_button_debounce_e2e.c)
 
+# WASM 虚拟外设仿真状态机与拦截逻辑测试
+add_wink_host_test(test_wasm_devices_sim test_wasm_devices_sim.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm/devices/wasm_sim_registry.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm/devices/wasm_dev_ssd1306.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm/devices/wasm_dev_servo.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm/devices/wasm_dev_ultrasonic.c)
+
 add_custom_target(check
     COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
