@@ -14,7 +14,6 @@
 #include "pal_pwm_router.h"
 #include "pal_osal.h"
 #include "pal_resource.h"  /* pal_resource_is_claimed / PAL_RESOURCE_GPIO_PIN — 与 host/esp32 同源保真 */
-#include "pal_debug.h"
 #include "wasm_bridge.h"
 #include "pal_wasm_internal.h"
 #include "wink_sim_physical.h"
@@ -161,16 +160,4 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us,
     if (v == 0) { return WINK_ERR_TIMEOUT; }
     *pulse_us = v;
     return WINK_OK;
-}
-
-/* ─────────────────────────────────────────────────────────
- * Debug Output（PAL 统一接口）
- * ───────────────────────────────────────────────────────── */
-
-void pal_debug_printf(const char *fmt, ...)
-{
-    va_list args;
-    va_start(args, fmt);
-    vprintf(fmt, args);
-    va_end(args);
 }

@@ -23,7 +23,6 @@
 #include "pal_irq_advanced.h"
 #include "pal_resource.h"
 #include "pal_pwm_router.h"
-#include "pal_debug.h"
 
 #include "host_test_ctrl.h"
 #include <stdio.h>
@@ -470,18 +469,4 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us,
     (void)level;   /* host echo 即高电平脉宽 */
     return WINK_OK;
 }
-
-/* ─────────────────────────────────────────────────────────
- * Debug Output（PAL 统一接口）
- * ───────────────────────────────────────────────────────── */
-
-void pal_debug_printf(const char *fmt, ...)
-{
-    va_list args;
-    va_start(args, fmt);
-    vprintf(fmt, args);
-    va_end(args);
-}
-
-
 
