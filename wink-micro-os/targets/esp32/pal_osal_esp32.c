@@ -299,6 +299,25 @@ void pal_os_task_delete(pal_os_task_handle_t task_handle) {
     vTaskDelete((TaskHandle_t)task_handle);
 }
 
+uint32_t pal_os_get_free_heap_size(void) {
+    return (uint32_t)xPortGetFreeHeapSize();
+}
+
+uint32_t pal_os_get_min_free_heap_size(void) {
+    return (uint32_t)xPortGetMinimumEverFreeHeapSize();
+}
+
+uint32_t pal_os_get_current_task_stack_free(void) {
+    /* uxTaskGetStackHighWaterMark(NULL) returns words on ESP32
+     * (StackType_t is uint8_t in ESP-IDF's newlib — but the canonical
+     * conversion is words * sizeof(StackType_t); on ESP32 that equals bytes
+     * directly since StackType_t is 1 byte for Xtensa windowed ABI? Actually
+     * FreeRTOS StackType_t is portSTACK_TYPE which is uint8_t on ESP32 only
+     * when configSTACK_DEPTH_TYPE is bytes. IDF v5+ uses bytes natively;
+     * multiply to be safe against future ADR-0002 dual-target reuse. */
+    return (uint32_t)uxTaskGetStackHighWaterMark(NULL) * (uint32_t)sizeof(StackType_t);
+}
+
 /* ─────────────────────────────────────────────────────────
  * 跨核通信环形缓冲区 (Ringbuf)
  * ───────────────────────────────────────────────────────── */

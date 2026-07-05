@@ -292,10 +292,14 @@ void wink_runtime_get_stats(wink_runtime_stats_t *out) {
     out->warn_count          = wink_warn_count();
     out->abnormal_boot_count = pal_os_get_abnormal_boot_count();
     out->last_reset_reason   = map_reset_reason(pal_os_get_reset_reason());
-    /* free_heap / min_free_stack are platform-specific and not yet
-     * universally plumbed — leave as 0 until PAL exposes them. */
-    out->free_heap      = 0;
-    out->min_free_stack = 0;
+    /* Heap stats: current free heap bytes + historical min-ever-free
+     * (0 on host/wasm where the PAL stubs return 0 as "unsupported"). */
+    out->free_heap = pal_os_get_free_heap_size();
+    /* min_free_stack: unused stack bytes for the calling task (i.e. the
+     * runtime main-loop task, since this is normally called from app_loop
+     * or the telemetry task on real hardware).  Not a system-wide minimum
+     * (that would need uxTaskGetSystemState in v2). */
+    out->min_free_stack = pal_os_get_current_task_stack_free();
 }
 
 void wink_runtime_trigger_wdt_test(uint32_t timeout_ms) {

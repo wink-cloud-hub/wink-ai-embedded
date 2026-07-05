@@ -543,6 +543,11 @@ void pal_os_task_delete(pal_os_task_handle_t handle) {
     }
 }
 
+/* ── Runtime introspection (host/posix: unsupported → 0) ── */
+uint32_t pal_os_get_free_heap_size(void) { return 0u; }
+uint32_t pal_os_get_min_free_heap_size(void) { return 0u; }
+uint32_t pal_os_get_current_task_stack_free(void) { return 0u; }
+
 wink_status_t pal_sim_scheduler_run(const struct wink_app_callbacks* callbacks,
                                     uint32_t main_task_id, uint32_t max_ticks) {
     s_main_ctx = sim_ctx_from_current();
