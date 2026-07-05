@@ -30,11 +30,35 @@ void test_last_when_empty_is_zero(void) {
     TEST_ASSERT_EQUAL_UINT32(0, wink_trace_last());
 }
 
+void test_warn_counter_independent_of_fault(void) {
+    /* faults 和 warns 是两个独立计数器：互不影响。 */
+    wink_trace_fault(1001);
+    wink_trace_fault(1002);
+    wink_trace_warn(8002);
+    wink_trace_warn(8003);
+    wink_trace_warn(8002);
+    TEST_ASSERT_EQUAL_UINT32(2, wink_trace_count());
+    TEST_ASSERT_EQUAL_UINT32(3, wink_warn_count());
+    /* warns 不进 fault 环形缓冲，last 仍指向最新 fault。 */
+    TEST_ASSERT_EQUAL_UINT32(1002, wink_trace_last());
+}
+
+void test_reset_clears_warns_too(void) {
+    wink_trace_warn(8002);
+    wink_trace_warn(8003);
+    TEST_ASSERT_EQUAL_UINT32(2, wink_warn_count());
+    wink_trace_reset();
+    TEST_ASSERT_EQUAL_UINT32(0, wink_warn_count());
+    TEST_ASSERT_EQUAL_UINT32(0, wink_trace_count());
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_reset_clears_buffer);
     RUN_TEST(test_fault_recorded_in_order);
     RUN_TEST(test_ring_buffer_overwrites_oldest);
     RUN_TEST(test_last_when_empty_is_zero);
+    RUN_TEST(test_warn_counter_independent_of_fault);
+    RUN_TEST(test_reset_clears_warns_too);
     return UNITY_END();
 }

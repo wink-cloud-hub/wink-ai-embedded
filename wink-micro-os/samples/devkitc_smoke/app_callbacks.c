@@ -238,8 +238,9 @@ static void telemetry_task(void *arg)
             }
 #endif
             /* PAL 统一日志：所有平台都定期输出 telemetry 数据 */
-            LOG_I("uptime=%lums isr_count=%lu faults=%lu wdt_verified=%d sonar_st=%d dist=%.2fcm",
+            LOG_I("uptime=%lums isr_count=%lu faults=%lu warns=%lu wdt_verified=%d sonar_st=%d dist=%.2fcm",
                   (unsigned long)now, (unsigned long)s_isr_count, (unsigned long)wink_trace_count(),
+                  (unsigned long)wink_warn_count(),
                   (int)s_wdt_verified, (int)sonar_st, distance_cm);
             last_report = now;
         }

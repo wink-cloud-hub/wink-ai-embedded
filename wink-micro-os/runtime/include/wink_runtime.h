@@ -30,9 +30,9 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t *callbacks, uint32_t m
 
 /** @brief runtime 内部故障码：boot 时检测到 WDT/PANIC 复位（Phase 5 Task 5-5） */
 #define WINK_FAULT_BOOT_AFTER_RESET 8001u
-/** @brief runtime 内部故障码：单个 callback 执行时间超过限制 (细粒度 WCET 警告) */
+/** @brief runtime 内部警告码：单个 callback 执行时间超过限制（细粒度 WCET 警告，非致命，走 wink_trace_warn） */
 #define WINK_WARN_WCET_EXCEEDED     8002u
-/** @brief runtime 内部故障码：全局 tick 总时间超过限制 (全局 WCET 警告) */
+/** @brief runtime 内部警告码：全局 tick 总时间超过限制（全局 WCET 警告，非致命，走 wink_trace_warn） */
 #define WINK_WARN_TICK_OVERRUN      8003u
 
 /* ---- Boot safe-lock 恢复策略常量（ADR-0010，修订 ADR-0007）---- */

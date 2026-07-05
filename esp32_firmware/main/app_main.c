@@ -116,13 +116,14 @@ void app_main(void) {
         uint32_t heap_free_now = heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
         int32_t heap_delta = (int32_t)heap_free_now - (int32_t)heap_free_base;
 
-        printf("Uptime: %" PRIu32 "s  Stack: used=%" PRIu32 "B free=%" PRIu32 "B  Heap: %" PRIu32 "B (delta%+" PRId32 ")  Faults: %" PRIu32 "\n",
+        printf("Uptime: %" PRIu32 "s  Stack: used=%" PRIu32 "B free=%" PRIu32 "B  Heap: %" PRIu32 "B (delta%+" PRId32 ")  Faults: %" PRIu32 "  Warns: %" PRIu32 "\n",
                (uint32_t)(xTaskGetTickCount() / configTICK_RATE_HZ),
                stack_used_bytes,
                stack_free_bytes,
                heap_free_now,
                heap_delta,
-               wink_trace_count());
+               wink_trace_count(),
+               wink_warn_count());
 
         /* 栈安全门禁：剩余 < 1024 字节时报警 */
         if (stack_free_bytes < 1024) {
