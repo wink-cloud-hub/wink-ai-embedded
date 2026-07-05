@@ -94,13 +94,15 @@ static void periodic_task_fn(void *arg) {
 
 /* ── Public API ──────────────────────────────────────────── */
 
-wink_periodic_handle_t wink_periodic_start(
+wink_periodic_handle_t wink_periodic_start_ex(
     const char *name,
     uint32_t stack_hint,
     uint32_t period_ms,
     void (*fn)(void *ctx),
     void *ctx,
-    uint32_t flags)
+    uint32_t flags,
+    int32_t priority,
+    pal_os_core_id_t core)
 {
     if (name == NULL || fn == NULL || period_ms == 0) {
         return (wink_periodic_handle_t)WINK_ERR_INVALID_ARG;
@@ -140,8 +142,8 @@ wink_periodic_handle_t wink_periodic_start(
     if (use_task) {
         e->kind = PERIODIC_ENTRY_TASK;
         e->u.task.stack_bytes  = stack_hint ? stack_hint : WINK_PERIODIC_STACK_DEFAULT;
-        e->u.task.priority     = 2;        /* low-priority background */
-        e->u.task.core         = PAL_OS_CORE_ANY;
+        e->u.task.priority     = priority;
+        e->u.task.core         = core;
         e->u.task.stop_requested = false;
         e->u.task.done_sem = pal_os_sem_create();
         if (e->u.task.done_sem == NULL) {

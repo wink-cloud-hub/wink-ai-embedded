@@ -52,22 +52,30 @@ extern "C" {
 #define WINK_FAULT_APP(n)              (10000u + (n))
 
 /**
- * @brief Convenience: raise a fault if @p st is an error.
+ * @brief Raise a fault if @p st is an error; continue execution either way.
  *
- * Usage inside init/setup code:
+ * Semantics: "check and complain, but keep going".
+ *
+ * - On success (st == WINK_OK):  no-op, execution falls through.
+ * - On error:                    calls wink_runtime_raise_fault(code) to
+ *                                trigger actuator safe-off + on_fault
+ *                                callback, then execution CONTINUES past
+ *                                the macro (no return, no longjmp).
+ *
+ * Use in init/setup code where a failed device init should be reported but
+ * the caller intentionally continues (e.g. subsequent unrelated inits or
+ * degraded-mode operation).
+ *
  * @code
+ *     // LED init failure is non-fatal for smoke telemetry
  *     WINK_CHECK(dal_led_init(&led, &cfg), WINK_FAULT_DAL_LED);
  * @endcode
  *
- * On error this calls wink_runtime_raise_fault(code), which triggers
- * actuator safe-off and dispatches to on_fault callback.  This macro does
- * NOT return — it lets control fall through so the caller keeps going
- * only when st == WINK_OK.
+ * Compare with WINK_TRY() which RETURNS the error code to the caller.
  *
- * Note: because wink_runtime_raise_fault() does not longjmp/abort on host
- * (it invokes on_fault and returns in the default fault path), execution
- * continues after the fault.  In init code this is usually fine because
- * subsequent calls fail fast on NOT_INITIALIZED.
+ * Note: on host builds wink_runtime_raise_fault() invokes on_fault and
+ * returns (no abort), so subsequent calls typically fail fast with
+ * NOT_INITIALIZED — that is the expected degraded path.
  */
 #define WINK_CHECK(st, code) do { \
     wink_status_t _st = (st); \
@@ -75,16 +83,26 @@ extern "C" {
 } while (0)
 
 /**
- * @brief Convenience for init functions that return wink_status_t:
- * return immediately on error.
+ * @brief Return immediately from the enclosing function if @p st is an error.
+ *
+ * Semantics: "try, bail out on failure".
+ *
+ * - On success (st == WINK_OK):  no-op, execution falls through.
+ * - On error:                    executes `return st;` so the enclosing
+ *                                function propagates the error to its caller.
+ *
+ * Use in functions whose signature returns wink_status_t and where an error
+ * should abort the remaining work (common for chained init sequences).
  *
  * @code
- *     static wink_status_t app_init(void) {
+ *     static wink_status_t my_init(void) {
  *         WINK_TRY(dal_led_init(&led, &cfg));
  *         WINK_TRY(dal_button_init(&btn, &btn_cfg));
  *         return WINK_OK;
  *     }
  * @endcode
+ *
+ * Compare with WINK_CHECK() which reports the fault but does NOT return.
  */
 #define WINK_TRY(st) do { \
     wink_status_t _s = (st); \

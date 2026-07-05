@@ -13,6 +13,7 @@
 
 #include "wink_app.h"
 #include "wink_fault.h"
+#include "wink_tasks.h"
 #include "wink_config.h"
 #include <stdint.h>
 
@@ -71,16 +72,29 @@ void wink_runtime_fault(const wink_app_callbacks_t *callbacks, uint32_t fault_co
 
 /* ── Runtime statistics ─────────────────────────────────── */
 typedef struct {
-    uint32_t uptime_ms;
-    uint32_t free_heap;
-    uint32_t min_free_stack;
-    uint32_t fault_count;
-    uint32_t warn_count;
-    uint32_t abnormal_boot_count;
-    wink_reset_reason_t last_reset_reason;
+    uint32_t uptime_ms;            /**< Milliseconds since runtime start. */
+    uint32_t free_heap;            /**< Current free heap bytes (0 on host/wasm
+                                      where PAL returns 0 as "unsupported").
+                                      ESP32: xPortGetFreeHeapSize(). */
+    uint32_t min_free_stack;       /**< Unused stack bytes for the *calling*
+                                      task (high-water mark).  When called from
+                                      the main loop this reflects the runtime
+                                      task's stack margin.  0 on host/wasm.
+                                      ESP32: uxTaskGetStackHighWaterMark(NULL). */
+    uint32_t fault_count;          /**< Total wink_trace_fault() calls since boot. */
+    uint32_t warn_count;           /**< Total wink_trace_warn() calls since boot. */
+    uint32_t abnormal_boot_count;  /**< Consecutive abnormal-boot count (ADR-0010). */
+    wink_reset_reason_t last_reset_reason; /**< Reason for the last reset. */
 } wink_runtime_stats_t;
 
-/** @brief Snap uptime/heap/faults/warns/stack/abnormal to *out. */
+/**
+ * @brief Snap uptime/heap/faults/warns/stack/abnormal to *out.
+ *
+ * Fields that cannot be queried on a given target (host/wasm heap & stack)
+ * are set to 0 rather than returning an error — 0 means "reporting not
+ * available on this build", same as how pal_os_get_reset_reason() reports
+ * UNKNOWN on wasm.
+ */
 void wink_runtime_get_stats(wink_runtime_stats_t *out);
 
 /**
@@ -104,6 +118,41 @@ WINK_NORETURN void wink_runtime_trigger_wdt_test(uint32_t timeout_ms);
  * @return WINK_OK on registration; WINK_ERR_RESOURCE_EXHAUSTED if table full.
  */
 wink_status_t wink_runtime_register_poll(void (*fn)(void *ctx), void *ctx);
+
+/* ── Plan-compatible spawn helper (fire-and-forget) ─────── */
+/**
+ * @brief Spawn a periodic task with explicit priority and core affinity.
+ *
+ * This is the plan-specified fire-and-forget helper; wraps
+ * wink_periodic_start_ex() for app code that doesn't need a stop handle.
+ * Uses WINK_PERIODIC_MAY_BLOCK (dedicated preemptive task) because the
+ * caller is explicitly providing stack size and priority.
+ *
+ * @param name         Task label (human-readable, used in telemetry/task list).
+ * @param stack_bytes  Stack size in bytes (0 → runtime default 2048).
+ * @param period_ms    Period in milliseconds.
+ * @param fn           Callback invoked every period.
+ * @param ctx          Opaque pointer forwarded to fn.
+ * @param priority     FreeRTOS-style priority (higher = more urgent; use 1-3
+ *                     for background telemetry/polling, 5-10 for latency-
+ *                     sensitive capture per ADR-0016).
+ * @param core         PAL_OS_CORE_ANY / PAL_OS_CORE_0 / PAL_OS_CORE_1.
+ * @return WINK_OK on spawn; WINK_ERR_* on failure.
+ *
+ * @note Uses absolute-time scheduling (no cumulative drift).  For
+ *       lightweight non-blocking tick callbacks prefer soft_timer or
+ *       wink_periodic_start() with WINK_PERIODIC_LIGHT.
+ */
+static inline wink_status_t wink_runtime_spawn_periodic(
+    const char *name, uint32_t stack_bytes, uint32_t period_ms,
+    void (*fn)(void *ctx), void *ctx,
+    int32_t priority, pal_os_core_id_t core)
+{
+    wink_periodic_handle_t h = wink_periodic_start_ex(
+        name, stack_bytes, period_ms, fn, ctx,
+        WINK_PERIODIC_MAY_BLOCK, priority, core);
+    return (h >= 0) ? WINK_OK : (wink_status_t)h;
+}
 
 #ifdef __cplusplus
 }

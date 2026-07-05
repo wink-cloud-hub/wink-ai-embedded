@@ -244,27 +244,36 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
                                uint8_t *read_buf, uint32_t read_len);
 
 /**
- * @brief Scan an I2C bus for devices (7-bit addressing: 0x03..0x77).
+ * @brief Scan a range of I2C 7-bit addresses for responding devices.
  *
- * Iterates addresses, issues a zero-byte write, and records which addresses
- * ACK. Results are returned as a 128-bit bitmap where bit n is set when
- * address n ACK'd.  Addresses 0x00..0x02 and 0x78..0x7F are reserved and
- * always reported as absent.
+ * Iterates addresses in [start_addr, end_addr], issues a zero-byte write,
+ * and records which addresses ACK.  Results are returned as a 128-bit bitmap
+ * where bit n is set when address n ACK'd.  Addresses outside the requested
+ * range are reported as 0 (not scanned); the caller may OR across multiple
+ * segment scans or re-scan a narrowed range.
  *
  * @param port              I2C port [0, PAL_I2C_PORTS)
+ * @param start_addr        First 7-bit address to probe (inclusive); must be
+ *                          <= end_addr and <= 0x7F.  Use 0x03 for standard
+ *                          start (0x00..0x02 are reserved per I2C spec).
+ * @param end_addr          Last 7-bit address to probe (inclusive); must be
+ *                          <= 0x77 (0x78..0x7F are 10-bit extended / reserved).
  * @param out_found_bitmap  16-byte buffer (128 bits), little-endian bit
  *                          order — bit 0 = address 0x00, bit 3 = address 0x03,
  *                          bit 119 = address 0x77, etc.
  * @param bitmap_bytes      Must be 16.
- * @return WINK_OK on completion; WINK_ERR_INVALID_ARG / WINK_ERR_UNSUPPORTED.
+ * @return WINK_OK on completion; WINK_ERR_INVALID_ARG if start>end or
+ *         end>0x7F or bitmap_bytes!=16 or out_found_bitmap==NULL;
+ *         WINK_ERR_UNSUPPORTED if port not configured / not on this target.
  * @note Blocking: Yes (worst-case ~120 × per-transfer timeout; typically
- *       <200 ms on real hardware). Not available under WINK_STRICT_NONBLOCKING.
- *       Called by selftest from its own task context; apps should prefer
- *       wink_selftest_run_all() instead of calling this directly.
+ *       <200 ms on real hardware for a full 0x03..0x77 sweep).  Not available
+ *       under WINK_STRICT_NONBLOCKING.  Called by selftest from its own task
+ *       context; apps should prefer wink_selftest_run_all() instead of
+ *       calling this directly.
  */
 WINK_BLOCKING
 WINK_WARN_UNUSED_RESULT
-wink_status_t pal_i2c_scan(uint8_t port,
+wink_status_t pal_i2c_scan(uint8_t port, uint8_t start_addr, uint8_t end_addr,
                             uint8_t *out_found_bitmap, size_t bitmap_bytes);
 #endif /* WINK_STRICT_NONBLOCKING */
 

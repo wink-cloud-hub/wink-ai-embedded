@@ -400,25 +400,33 @@ wink_status_t pal_i2c_port_pins(uint8_t port, wink_pin_t *out_sda, wink_pin_t *o
 #  pragma GCC diagnostic push
 #  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
-wink_status_t pal_i2c_scan(uint8_t port, uint8_t *out_found_bitmap, size_t bitmap_bytes) {
+wink_status_t pal_i2c_scan(uint8_t port, uint8_t start_addr, uint8_t end_addr,
+                            uint8_t *out_found_bitmap, size_t bitmap_bytes) {
     if (out_found_bitmap == NULL || bitmap_bytes < 16) { return WINK_ERR_INVALID_ARG; }
     if (port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
+    if (start_addr > end_addr || end_addr > 0x7F) { return WINK_ERR_INVALID_ARG; }
     memset(out_found_bitmap, 0, 16);
 
-    /* Lazy-init bus through a zero-length probe — reuses pal_i2c_transfer's
-     * mutex + init path.  We don't hold the mutex across the scan loop;
-     * instead each probe acquires/releases it via pal_i2c_transfer. */
+    /* Clamp to valid 7-bit range (0x03..0x77 per I2C spec — 0x00..0x02 are
+     * reserved, 0x78..0x7F are 10-bit addressing / reserved). */
+    uint8_t lo = start_addr < 0x03 ? 0x03 : start_addr;
+    uint8_t hi = end_addr   > 0x77 ? 0x77 : end_addr;
+
+    /* Lazy-init bus through a zero-length probe at lo — reuses
+     * pal_i2c_transfer's mutex + init path.  We don't hold the mutex across
+     * the scan loop; instead each probe acquires/releases it via
+     * pal_i2c_transfer. */
     uint8_t dummy;
-    wink_status_t probe_st = pal_i2c_transfer(port, 0x03, NULL, 0, &dummy, 1);
-    /* 0x03 is reserved and will NACK on any real bus — we just care that the
-     * bus is now initialized so subsequent probes don't race construction. */
+    wink_status_t probe_st = pal_i2c_transfer(port, lo, NULL, 0, &dummy, 1);
+    /* lo may be a real device; we don't care about this probe's result
+     * beyond initializing the bus — the loop below re-probes every addr. */
     (void)probe_st;
 
-    /* Scan 0x03..0x77 (valid 7-bit addresses).  Per transfer contract,
-     * zero-byte write + 1-byte read returns WINK_OK on ACK,
-     * WINK_ERR_DISCONNECTED on NACK, other codes on bus errors. */
-    for (uint16_t addr = 0x03; addr <= 0x77; addr++) {
-        wink_status_t st = pal_i2c_transfer(port, addr, NULL, 0, &dummy, 1);
+    /* Scan [lo, hi].  Per transfer contract, zero-byte write + 1-byte read
+     * returns WINK_OK on ACK, WINK_ERR_DISCONNECTED on NACK, other codes
+     * on bus errors. */
+    for (uint16_t addr = lo; addr <= hi; addr++) {
+        wink_status_t st = pal_i2c_transfer(port, (uint8_t)addr, NULL, 0, &dummy, 1);
         if (st == WINK_OK) {
             uint8_t byte_idx = (uint8_t)(addr >> 3);
             uint8_t bit_idx  = (uint8_t)(addr & 0x7);
@@ -445,7 +453,8 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
 wink_status_t pal_i2c_port_pins(uint8_t port, wink_pin_t *out_sda, wink_pin_t *out_scl)
 { (void)port; (void)out_sda; (void)out_scl; return WINK_ERR_UNSUPPORTED; }
 
-wink_status_t pal_i2c_scan(uint8_t port, uint8_t *out_found_bitmap, size_t bitmap_bytes)
-{ (void)port; (void)out_found_bitmap; (void)bitmap_bytes; return WINK_ERR_UNSUPPORTED; }
+wink_status_t pal_i2c_scan(uint8_t port, uint8_t start_addr, uint8_t end_addr,
+                            uint8_t *out_found_bitmap, size_t bitmap_bytes)
+{ (void)port; (void)start_addr; (void)end_addr; (void)out_found_bitmap; (void)bitmap_bytes; return WINK_ERR_UNSUPPORTED; }
 
 #endif /* ESP_PLATFORM */

@@ -546,11 +546,15 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t addr,
     return WINK_OK;
 }
 
-wink_status_t pal_i2c_scan(uint8_t port, uint8_t *out_found_bitmap, size_t bitmap_bytes) {
+wink_status_t pal_i2c_scan(uint8_t port, uint8_t start_addr, uint8_t end_addr,
+                            uint8_t *out_found_bitmap, size_t bitmap_bytes) {
     if (out_found_bitmap == NULL || bitmap_bytes < 16) {
         return WINK_ERR_INVALID_ARG;
     }
     if (port >= PAL_I2C_PORTS) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    if (start_addr > end_addr || end_addr > 0x7F) {
         return WINK_ERR_INVALID_ARG;
     }
     /* Host simulation has no physical I2C bus; report no devices present
