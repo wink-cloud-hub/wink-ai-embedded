@@ -40,14 +40,33 @@ if (-not $RepoRootPath.EndsWith("\")) {
 
 # 扫描 App 下所有 .c 源文件，排除 host 端到端测试文件（test_*.c）
 # 使用相对于 repo root 的路径，并在 CMake 中通过 ${CMAKE_CURRENT_LIST_DIR} 定位，保证跨机器通用且不会遇到 CMake 工作目录变化的坑
-$SourceFiles = @(Get-ChildItem -Path $AppDir -Filter "*.c" -Recurse |
+# 1) App's own .c files (exclude host e2e test_*.c)
+$AppSourceFiles = @(Get-ChildItem -Path $AppDir -Filter "*.c" -Recurse |
     Where-Object { $_.Name -notlike "test_*.c" } |
     ForEach-Object {
         $RelPath = $_.FullName.Substring($RepoRootPath.Length).Replace('\', '/')
         "`${CMAKE_CURRENT_LIST_DIR}/../../$RelPath"
     })
 
+# 2) samples/common helpers — auto-included so any sample can #include the
+#    wink_* helper headers without touching CMake.  Unreferenced functions
+#    are gc-sections'd at link time (ESP-IDF default builds with
+#    -ffunction-sections -fdata-sections -Wl,--gc-sections), so zero cost
+#    for samples that don't call them.
+$CommonDir = Join-Path $RepoRoot "wink-micro-os\samples\common\src"
+$CommonSourceFiles = @()
+if (Test-Path $CommonDir) {
+    $CommonSourceFiles = @(Get-ChildItem -Path $CommonDir -Filter "*.c" |
+        ForEach-Object {
+            $RelPath = $_.FullName.Substring($RepoRootPath.Length).Replace('\', '/')
+            "`${CMAKE_CURRENT_LIST_DIR}/../../$RelPath"
+        })
+}
+
+$SourceFiles = @($AppSourceFiles + $CommonSourceFiles)
+
 $AppDirRel = "`${CMAKE_CURRENT_LIST_DIR}/../../wink-micro-os/samples/$AppName"
+$CommonIncludeDir = "`${CMAKE_CURRENT_LIST_DIR}/../../wink-micro-os/samples/common/include"
 
 # 生成 CMake 片段（UTF8 无 BOM，CMake 兼容性最好）
 $OutputPath = Join-Path $ScriptDir "main\app_sources.cmake"
@@ -61,13 +80,14 @@ $Content = @"
 
 set(WINK_APP_NAME "$AppName" CACHE STRING "Current samples app name" FORCE)
 set(WINK_APP_DIR "$AppDirRel" CACHE PATH "Current samples app directory" FORCE)
+set(WINK_APP_COMMON_INCLUDE_DIR "$CommonIncludeDir" CACHE PATH "samples/common include dir" FORCE)
 
 set(WINK_APP_SOURCES
     $($SourceFiles -join "`n    ")
-    CACHE INTERNAL "Auto-scanned source files from samples/$AppName"
+    CACHE INTERNAL "Auto-scanned source files from samples/$AppName + samples/common"
 )
 
-message(STATUS "[WINK App Auto-Scan] App = $AppName, source files = $($SourceFiles.Count)")
+message(STATUS "[WINK App Auto-Scan] App = $AppName, source files = $($SourceFiles.Count) (app=$($AppSourceFiles.Count), common=$($CommonSourceFiles.Count))")
 "@
 
 # 写文件：UTF8（CMake 对 BOM 完全兼容，PowerShell 5.1 原生默认带 BOM，省心）

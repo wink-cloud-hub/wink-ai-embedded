@@ -188,6 +188,11 @@ if(NOT TARGET_PLATFORM STREQUAL "wasm")
     enable_testing()
     add_subdirectory(targets/host)      # host 一等 target，供 test 链接
 
+    # samples/common: shared helpers (default telemetry, blink, sim echo) —
+    # built as an OBJECT library so each sample pulls only what it refs.
+    # Must be added before the samples that $<TARGET_OBJECTS:wink_sample_common>.
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/common)
+
     # §6.1 约束3：标准 App 注入接口。未指定则默认 samples/avoidance_car。
     if(NOT DEFINED WINK_APP_DIR)
         set(WINK_APP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/samples/avoidance_car)

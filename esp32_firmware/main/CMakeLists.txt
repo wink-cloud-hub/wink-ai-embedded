@@ -27,10 +27,11 @@ include(${COMPONENT_DIR}/app_sources.cmake)
 idf_component_register(
     SRCS
         "app_main.c"
-        ${WINK_APP_SOURCES}  # ← 自动扫描得到
+        ${WINK_APP_SOURCES}  # ← 自动扫描得到（app + samples/common）
     INCLUDE_DIRS
         "."
         ${WINK_APP_DIR}      # ← 自动得到 App 头文件目录
+        ${WINK_APP_COMMON_INCLUDE_DIR}  # ← samples/common/include (default_telemetry / blink / sim_echo)
     REQUIRES driver esp32
 )
 
