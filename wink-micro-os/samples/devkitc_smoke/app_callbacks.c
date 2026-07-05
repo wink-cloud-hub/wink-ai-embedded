@@ -1,648 +1,149 @@
 /**
  * @file app_callbacks.c
- * @brief DevKitC 冒烟测试固件：S1-S8 全链路验证。
+ * @brief DevKitC smoke-test firmware (rewrite Wave 6): init → helper → selftest
+ *        in ~120 lines.  All ISR/task/sem/12-step-RMT/telemetry boilerplate
+ *        that used to live here has moved into Runtime selftest or
+ *        samples/common helpers.
  *
- * 验证矩阵（裸板零外设即可跑通）：
- *   S1: 启动 + UART telemetry（uptime/stack/heap）
- *   S2: GPIO 输出（LED 慢闪）
- *   S3: GPIO 输入去抖（Boot 按钮）
- *   S4: GPIO 中断 ISR 计数（Task 3 uintptr_t 对称化验证）
- *   S5: PWM router 异频分配（同频复用、异频隔离）
- *   S6: I2C v6 总线扫描（空总线 → 驱动初始化+传输不崩）
- *   S7: 双核临界区并发压测 60s（Task 1 spinlock）
- *   S8: 看门狗复位链路（长按 3s → WDT 复位 → 重启检测）
- *   S9: RMT 硬件自环测试（同一 GPIO4 内部自环，PWM 产生 100µs 脉冲由 RMT 捕获并核验）
- *   S10: 影子任务测距测试（Trig/Echo 内部仿真路由，双核影子任务高频响应 2940µs 脉冲模拟 50.00cm 距离）
- *
- * 双目标同源（ADR-0002）：WINK_TEST_HAS_RMT 宏隔离特有时序逻辑。
- * host 侧跑 S2/S3/S5 及 S9/S10 的仿真自环核验与任务并发调度（无故障 = 代码结构与逻辑验证）。
+ * Verifies on bare metal (no wiring required):
+ *   S1  2s telemetry                (common: wink_default_telemetry_start)
+ *   S2  LED blink                    (common: wink_led_blink_start)
+ *   S3  Boot-button debounce         (DAL: dal_button_poll)
+ *   S4  GPIO ISR edge count          (DAL: dal_button_enable_isr_counter)
+ *   S5  PWM router freq isolation    (selftest: pwm_router.freq_isolation)
+ *   S6  I2C bus scan (no-panic)      (selftest: i2c.bus_scan)
+ *   S7  Dual-core resource stress    (selftest: smp.resource_stress)
+ *   S8  WDT reset via long-press     (Runtime: wink_runtime_trigger_wdt_test)
+ *   S9  RMT hardware loopback        (selftest: rmt.self_loopback)
+ *   S10 Ultrasonic echo simulation   (common: wink_sim_ultrasonic_echo_start)
  */
 #define LOG_TAG "devkitc_smoke"
 
 #include "device_tree.h"
 #include "wink_app.h"
-#include "wink_runtime.h"  /* WINK_FAULT_BOOT_AFTER_RESET, wink_runtime_fault */
-#include "wink_trace.h"
+#include "wink_runtime.h"
+#include "wink_selftest.h"
+#include "wink_fault.h"
 #include "wink_actuator_registry.h"
-#include "wink_status.h"
+#include "wink_blink_helper.h"
+#include "wink_default_telemetry.h"
+#include "wink_sim_ultrasonic_echo.h"
 #include "pal_log.h"
-#include "pal_irq.h"       /* PAL_ISR 宏 + 统一中断抽象 */
-#include "pal_hal.h"       /* pal_pwm_init/set_duty, pal_gpio_enable_interrupt */
-#include "pal_osal.h"      /* pal_os_wdt_init/feed, pal_os_get_ms, pal_os_get_reset_reason */
-#include "pal_resource.h"  /* pal_resource_claim/release */
-#include "pal_pwm_router.h"/* pal_pwm_router_channel_timer */
-#include "hal/pal_rmt.h"
-#include "internal/pal_test_loopback.h" /* TODO: Wave 4 — remove after S9 RMT loopback moves to selftest */
-#include "dal_ultrasonic.h"
 
-
-/* ADR-0017 层 1 例外：本 TU 合法调用 WINK_BLOCKING API。抑制
- * -Wdeprecated-declarations 使 -Werror 下仍能编译；严格模式
- * (-DWINK_STRICT_NONBLOCKING=1) 下相关 API 声明直接消失，本 TU 会链接失败——那是设计意图。 */
+/* ADR-0017 layer-1 exception: app init legitimately calls WINK_BLOCKING APIs
+ * (selftest i2c_scan/rmt_wait sleep, ultrasonic request_measurement). */
 #if defined(__GNUC__) || defined(__clang__)
 #  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
-/* ─────────────────────────────────────────────────────────
- * 故障码定义（S8 使用 runtime 定义 8001；其余 9000+ 区间）
- * ───────────────────────────────────────────────────────── */
-#define FAULT_LED_INIT      9001u
-#define FAULT_BUTTON_INIT   9002u
-#define FAULT_PWM_INIT      9003u
-#define FAULT_ISR_INIT      9004u
+/* ── Pin definitions for S10 ultrasonic sim (consumed by common helper) ──── */
+#define SMOKE_TRIG_PIN  18u
+#define SMOKE_ECHO_PIN  19u
 
-/* S5 PWM 通道配置（验证异频隔离 → 不同 timer） */
-#define SMOKE_PWM_CH_LO     1u       /* GPIO4，50Hz  */
-#define SMOKE_PWM_CH_HI     2u       /* GPIO5，1kHz */
+/* ── Per-app state ──────────────────────────────────────────────────────── */
+static dal_ultrasonic_t s_sonar;
 
-/* ─────────────────────────────────────────────────────────
- * 全局状态（零堆分配，§6.1 约束1）
- * ───────────────────────────────────────────────────────── */
-static volatile uint32_t s_isr_count = 0;        /* S4: ISR 事件计数 */
-static uint32_t s_press_start_ms = 0;              /* S8: 长按计时起始 */
-static bool     s_wdt_verified = false;            /* S8: 本次启动已确认 WDT 复位 */
-
-#if defined(ESP_PLATFORM) || defined(PLATFORM_host)
-#define WINK_TEST_HAS_RMT 1
-#endif
-
-#if defined(WINK_TEST_HAS_RMT)
-#define SMOKE_TRIG_PIN 18u
-#define SMOKE_ECHO_PIN 19u
-
-static dal_ultrasonic_t s_smoke_sonar;
-static pal_os_sem_t s_trig_sem = NULL;
-static volatile uint32_t s_trig_count = 0;
-#endif
-
-/* ─────────────────────────────────────────────────────────
- * LED 安全关断适配（Actuator Registry，§5 P0-4）
- * ───────────────────────────────────────────────────────── */
-static wink_status_t led_safe_off_thunk(void *ctx)
+/* ── S8: Boot-button event callback (long-press → WDT test, noreturn) ───── */
+static void on_boot_button(dal_button_event_t evt, void *ctx)
 {
-    return dal_led_off((dal_led_t *)ctx);
-}
-
-/* ─────────────────────────────────────────────────────────
- * S4: GPIO 中断 ISR（Boot 按钮下降沿 → 计数递增）
- *     跨平台同源代码，无需 #ifdef ESP_PLATFORM 包裹
- *     不支持中断的平台（Host）会在 enable_interrupt 时返回 UNSUPPORTED
- * ───────────────────────────────────────────────────────── */
-static PAL_ISR void boot_button_isr(void *arg)
-{
-    (void)arg;
-    s_isr_count++;
-}
-
-/* ─────────────────────────────────────────────────────────
- * S5: PWM router 异频分配验证（host + esp32 同源）
- *     ch1=50Hz, ch2=1kHz → 应分配到不同 timer
- * ───────────────────────────────────────────────────────── */
-static void smoke_check_pwm_router(void)
-{
-    uint8_t timer_lo = 0xFF;
-    uint8_t timer_hi = 0xFF;
-
-    /* 初始化两个不同频率通道（router 内部处理同频复用/异频隔离） */
-    wink_status_t st = pal_pwm_init(SMOKE_PWM_CH_LO, 50u);
-    if (wink_status_is_error(st)) {
-        wink_trace_fault(FAULT_PWM_INIT);
-        return;
-    }
-
-    st = pal_pwm_init(SMOKE_PWM_CH_HI, 1000u);
-    if (wink_status_is_error(st)) {
-        wink_trace_fault(FAULT_PWM_INIT);
-        return;
-    }
-
-    /* 查询 router 分配结果（验证异频 → 不同 timer） */
-    timer_lo = pal_pwm_router_channel_timer(SMOKE_PWM_CH_LO);
-    timer_hi = pal_pwm_router_channel_timer(SMOKE_PWM_CH_HI);
-
-    /* 50% 占空比输出（真机可测）
-     * gcc16 不因 (void) 抑制 warn_unused_result：先赋值再丢弃 */
-    wink_status_t _duty = pal_pwm_set_duty(SMOKE_PWM_CH_LO, 50.0f);
-    (void)_duty;
-
-    bool pass = (timer_lo != timer_hi && timer_lo < 4 && timer_hi < 4);
-    LOG_I("pwm: ch1=50Hz->timer%u, ch2=1kHz->timer%u %s",
-          (unsigned)timer_lo, (unsigned)timer_hi, pass ? "PASS" : "FAIL");
-
-    /* 所有平台都做故障追踪，不依赖平台分支 */
-    if (!pass) {
-        wink_trace_fault(FAULT_PWM_INIT);
-    }
-    (void)timer_lo;
-    (void)timer_hi;
-}
-
-/* ─────────────────────────────────────────────────────────
- * S6: I2C v6 总线扫描（空总线 → 全 NACK，验证驱动初始化+传输不崩）
- *     扫描 3 个典型 OLED/传感器地址，验证 v6 API 正常工作。
- * ───────────────────────────────────────────────────────── */
-static void smoke_check_i2c_bus(void)
-{
-    static const uint8_t test_addrs[] = {0x3C, 0x68, 0x76};
-    uint8_t dummy = 0;
-
-    for (size_t i = 0; i < sizeof(test_addrs); i++) {
-        /* 空总线扫描：写 0 字节，读 1 字节 → NACK（裸板无外设） */
-        wink_status_t st = pal_i2c_transfer(0, test_addrs[i], NULL, 0, &dummy, 1);
-        LOG_I("i2c scan 0x%02X: status=%d (NACK expected)", test_addrs[i], (int)st);
-    }
-    LOG_I("i2c: PASS (v6 driver init+transfer ran without panic)");
-}
-
-/* ─────────────────────────────────────────────────────────
- * S7: 多核临界区并发压测（PAL 统一任务接口）
- *     支持 SMP 的平台：两核并行 claim/release，验证 spinlock 安全
- *     单线程平台：pal_os_task_create 同步执行或返回 UNSUPPORTED
- * ───────────────────────────────────────────────────────── */
-#if defined(PLATFORM_host) || defined(PLATFORM_wasm)
-#define STRESS_DURATION_MS 10u
-#else
-#define STRESS_DURATION_MS 60000u
-#endif
-
-static void resource_stress_task(void *arg)
-{
-    uint32_t core_id = (uint32_t)(uintptr_t)arg;
-    uint64_t end_time = pal_os_get_ms() + STRESS_DURATION_MS;
-    uint32_t iterations = 0;
-    uint64_t last_yield = pal_os_get_ms();
-
-    while (pal_os_get_ms() < end_time) {
-        /* 同一资源（GPIO pin 100+core）的并发 claim/release
-         * 暴露 spinlock 争用：两核同时进出临界区
-         * gcc16 不因 (void) 抑制 warn_unused_result：先赋值再丢弃 */
-        wink_status_t _claim = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, 100u + core_id, "stress");
-        (void)_claim;
-        wink_status_t _rel = pal_resource_release(PAL_RESOURCE_GPIO_PIN, 100u + core_id, "stress");
-        (void)_rel;
-        iterations++;
-
-        /* 解决 Task Watchdog 饥饿问题：每 1 秒让出 1ms CPU，允许 IDLE 任务被调度喂狗 */
-        uint64_t now = pal_os_get_ms();
-        if (now - last_yield >= 1000) {
-            pal_os_sleep_ms(1);
-            last_yield = now;
-        }
-    }
-
-    /* PAL 统一日志：所有平台都输出压测结果，便于 CI 验证 */
-    LOG_I("resource_stress core%u: %lu iterations, no panic",
-          (unsigned)core_id, (unsigned long)iterations);
-
-    /* PAL 统一接口删除当前任务（单线程平台为 no-op） */
-    pal_os_task_delete(NULL);
-}
-
-static wink_status_t smoke_check_resource_smp(void)
-{
-    /* PAL 统一任务创建接口：
-     * - ESP32: 真 xTaskCreatePinnedToCore 钉核
-     * - WASM/host/baremetal: 同步执行或 UNSUPPORTED
-     * 用返回值检测平台是否支持多任务，不用 #ifdef */
-    wink_status_t st1 = pal_os_task_create(resource_stress_task, "stress_0", 2048, (void*)(uintptr_t)0, 2, PAL_OS_CORE_0, NULL);
-    wink_status_t st2 = pal_os_task_create(resource_stress_task, "stress_1", 2048, (void*)(uintptr_t)1, 2, PAL_OS_CORE_1, NULL);
-
-    if (wink_status_is_error(st1) || wink_status_is_error(st2)) {
-        LOG_I("smp stress: unsupported on this platform (degraded)");
-        return WINK_ERR_UNSUPPORTED;
-    }
-    return WINK_OK;
-}
-
-/* ─────────────────────────────────────────────────────────
- * Telemetry task：承担所有周期性输出。
- *     app_loop 零 printf，避免触发 WCET(8002) 误报（S1 验收标准）。
- * ───────────────────────────────────────────────────────── */
-static void telemetry_task(void *arg)
-{
-    (void)arg;
-    uint32_t last_report = 0;
-
-    for (;;) {
-        /* PAL 统一延迟接口：
-         * - ESP32: FreeRTOS vTaskDelay
-         * - WASM/host: 忙等或模拟时间推进 */
-        pal_os_sleep_ms(1000);
-        uint32_t now = (uint32_t)pal_os_get_ms();
-
-        if (now - last_report >= 2000u) {
-            float distance_cm = -1.0f;
-            wink_status_t sonar_st = WINK_ERR_UNSUPPORTED;
-#if defined(WINK_TEST_HAS_RMT)
-            if (s_trig_sem != NULL) {
-                sonar_st = dal_ultrasonic_get_cached_distance(&s_smoke_sonar, &distance_cm);
-            }
-#endif
-            /* PAL 统一日志：所有平台都定期输出 telemetry 数据。
-             * s_trig_count (S10 debug): TRIG GPIO ISR 触发次数；若恒为 0 说明
-             * TRIG 上升沿中断从未交付（ISR 未使能 / 引脚方向错误 / 信号被吞）。*/
-            LOG_I("uptime=%lums isr_count=%lu trig_irqs=%lu faults=%lu warns=%lu wdt_verified=%d sonar_st=%d dist=%.2fcm",
-                  (unsigned long)now, (unsigned long)s_isr_count, (unsigned long)s_trig_count,
-                  (unsigned long)wink_trace_count(),
-                  (unsigned long)wink_warn_count(),
-                  (int)s_wdt_verified, (int)sonar_st, distance_cm);
-            last_report = now;
-        }
-    }
-    pal_os_task_delete(NULL);
-}
-
-/* ─────────────────────────────────────────────────────────
- * App Init（S1 启动初始化 + S4 ISR + S5 PWM + S6 I2C + S7 双核 + S8 WDT 检测）
- * ───────────────────────────────────────────────────────── */
-#if defined(WINK_TEST_HAS_RMT)
-static PAL_ISR void trig_gpio_isr(void *arg)
-{
-    (void)arg;
-    s_trig_count++;
-    if (s_trig_sem != NULL) {
-        wink_status_t _give = pal_os_sem_give_isr(s_trig_sem);
-        (void)_give;
+    (void)ctx;
+    if (evt == DAL_BUTTON_EVT_LONG_PRESS) {
+        LOG_I("S8: long-press detected, arming WDT test");
+        wink_runtime_trigger_wdt_test(2000); /* does not return */
     }
 }
 
-static void mock_sensor_task(void *arg)
+/* ── S8: Boot notification (Runtime fires this once before init()) ──────── */
+static void app_on_boot(const wink_boot_info_t *info)
 {
-    (void)arg;
-    for (;;) {
-        if (pal_os_sem_take(s_trig_sem, WINK_MUTEX_WAIT_FOREVER) == WINK_OK) {
-            /* Simulate sensor round-trip delay before the echo pulse starts.
-             * Keep this short — it just models the HC-SR04 acoustic dead time. */
-            pal_os_busy_wait_us(100);
-            wink_status_t _w1 = pal_gpio_write(SMOKE_ECHO_PIN, true);
-            (void)_w1;
-            /* Drive the simulated echo high for ~2940µs (~50cm @ 0.017cm/µs).
-             * Single busy-wait (no chunked yields): S7's resource_stress_task
-             * shares core 1 at the same priority (2) on older builds; a yield
-             * inside the pulse would round-robin to the stress spin-loop and
-             * stretch the echo pulse by multiple tick slices (1ms each),
-             * producing ~2× distance readings. A single 3ms busy-wait keeps
-             * interrupts enabled (no WDT risk — IDLE watchdog timeout is in
-             * seconds) and produces an accurate pulse width. The task runs at
-             * priority 3 — above the stress tasks at 2, below the runtime task
-             * at 5 — so it is not preempted by the stress spin-loop during
-             * pulse generation. */
-            pal_os_busy_wait_us(2940);
-            wink_status_t _w2 = pal_gpio_write(SMOKE_ECHO_PIN, false);
-            (void)_w2;
-        }
-    }
-    pal_os_task_delete(NULL);
-}
-#endif
-
-static void smoke_check_rmt_loopback(void)
-{
-    const wink_pin_t TEST_PIN = 4;   /* GPIO4：与 S5 PWM ch1 复用；本用例通过 deinit→claim→
-                                        loopback→arm→驱动脉冲→wait_armed 完成"零外设"自环校验 */
-
-    LOG_I("S9: RMT hardware loopback test starting (unwired)...");
-
-    /* 1. 释放 PWM ch1（Task 1 让 pal_pwm_deinit 真正卸下 LEDC 对 GPIO4 的驱动）*/
-    pal_pwm_deinit(SMOKE_PWM_CH_LO);
-
-    /* 2. Claim pin 供 rmt_test 独占 */
-    wink_status_t st = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)TEST_PIN, "rmt_test");
-    if (wink_status_is_error(st) && st != WINK_ERR_BUSY) {
-        LOG_E("S9: failed to claim RMT pin %d: %d", (int)TEST_PIN, (int)st);
-        wink_trace_fault(FAULT_ISR_INIT);
-        goto cleanup_restore_pwm;
-    }
-
-    /* 3. GPIO 配置为 push-pull 输出，初始低 */
-    st = pal_gpio_init(TEST_PIN, PAL_GPIO_OUTPUT_PUSH_PULL);
-    if (wink_status_is_error(st)) {
-        LOG_E("S9: GPIO init failed: %d", (int)st);
-        wink_trace_fault(FAULT_ISR_INIT);
-        goto cleanup_release;
-    }
-    wink_status_t _w0 = pal_gpio_write(TEST_PIN, false);
-    (void)_w0;
-
-    /* 4. Init RMT 在 TEST_PIN 上做 RISING 沿捕获 */
-    st = pal_rmt_pulse_capture_init(TEST_PIN, PAL_RMT_EDGE_RISING);
-    if (wink_status_is_error(st)) {
-        LOG_E("S9: RMT init failed: %d", (int)st);
-        wink_trace_fault(FAULT_ISR_INIT);
-        goto cleanup_release;
-    }
-
-    /* 5. 使能同 pin GPIO 矩阵自环（Task 2 修复：pin_out==pin_in 走 IN 侧同源信号）*/
-    st = pal_test_enable_hardware_loopback(TEST_PIN, TEST_PIN);
-    if (wink_status_is_error(st)) {
-        LOG_E("S9: failed to enable loopback: %d", (int)st);
-        pal_rmt_pulse_capture_deinit();
-        wink_trace_fault(FAULT_ISR_INIT);
-        goto cleanup_release;
-    }
-
-    /* 6. Arm RMT（开始监听下一次上升沿）*/
-    st = pal_rmt_pulse_capture_arm();
-    if (wink_status_is_error(st)) {
-        LOG_E("S9: RMT arm failed: %d", (int)st);
-        pal_test_disable_hardware_loopback(TEST_PIN, TEST_PIN);
-        pal_rmt_pulse_capture_deinit();
-        wink_trace_fault(FAULT_ISR_INIT);
-        goto cleanup_release;
-    }
-
-    /* 7. 软件驱动 100µs 脉冲（arm 与 wait 之间）
-     *    50µs 前置沉降给 RMT 硬件启动余地；两次 busy_wait_us 定义脉宽 */
-    pal_os_busy_wait_us(50);
-    wink_status_t _w1 = pal_gpio_write(TEST_PIN, true);
-    (void)_w1;
-    pal_os_busy_wait_us(100);
-    wink_status_t _w2 = pal_gpio_write(TEST_PIN, false);
-    (void)_w2;
-
-    /* 8. 等待捕获完成（30ms 上限，覆盖 HC-SR04 极值）*/
-    uint32_t pulse_us = 0;
-    st = pal_rmt_pulse_capture_wait_armed(30000u, &pulse_us);
-    if (wink_status_is_error(st)) {
-        LOG_E("S9: RMT capture failed: %d", (int)st);
-        wink_trace_fault(FAULT_ISR_INIT);
-    } else {
-        if (pulse_us >= 90u && pulse_us <= 110u) {
-            LOG_I("S9: PASS (pulse captured: %lu us)", (unsigned long)pulse_us);
-        } else {
-            LOG_E("S9: FAIL (captured pulse out of range: %lu us)", (unsigned long)pulse_us);
-            wink_trace_fault(FAULT_ISR_INIT);
-        }
-    }
-
-    /* 9. 关闭 loopback */
-    pal_test_disable_hardware_loopback(TEST_PIN, TEST_PIN);
-
-    /* 10. Deinit RMT */
-    pal_rmt_pulse_capture_deinit();
-
-cleanup_release:
-    /* 11. 释放 GPIO4 claim */
-    wink_status_is_error(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)TEST_PIN, "rmt_test"));
-
-cleanup_restore_pwm:
-    /* 12. 恢复 S5 状态：重新以 50Hz / 50% 占空比初始化 PWM ch1 */
-    st = pal_pwm_init(SMOKE_PWM_CH_LO, 50u);
-    if (!wink_status_is_error(st)) {
-        wink_status_t _d = pal_pwm_set_duty(SMOKE_PWM_CH_LO, 50.0f);
-        (void)_d;
+    if (info->abnormal_boot_count > 0 ||
+        info->reset_reason == WINK_RESET_REASON_WATCHDOG) {
+        LOG_I("watchdog: PASS (recovered after abnormal reset, count=%lu, reason=%d)",
+              (unsigned long)info->abnormal_boot_count, (int)info->reset_reason);
     }
 }
 
+/* ── S10: periodic ultrasonic measurement (runs in its own task) ────────── */
+static void sonar_poll_task(void *ctx)
+{
+    WINK_IGNORE_RESULT(dal_ultrasonic_request_measurement((dal_ultrasonic_t *)ctx));
+}
+
+/* ── Actuator safe-off thunks (ISO C: no nested functions) ──────────────── */
+WINK_DEFINE_ACTUATOR_THUNK(board_led_safe_off, dal_led_off, dal_led_t)
+
+/* ── init: declare devices, wire helpers, run selftest ──────────────────── */
 static void app_init(void)
 {
-    /* S8: 检测「本次启动是异常复位后恢复」（ADR-0010）。
-     * pal_os_get_abnormal_boot_count() 是 PAL 统一接口：
-     *   >0 = WDT/PANIC 复位后恢复；0 = 正常启动
-     * 所有平台都有此接口（ESP32: RTC存储, WASM/host: 静态变量模拟）。 */
-    if (pal_os_get_abnormal_boot_count() > 0) {
-        s_wdt_verified = true;
-        /* PAL 统一日志：所有平台都报告 WDT 复位恢复状态 */
-        LOG_I("watchdog: PASS (recovered after abnormal reset, count=%lu)",
-              (unsigned long)pal_os_get_abnormal_boot_count());
-    }
+    /* ── S2/S3: LED + boot button ─────────────────────────────────────── */
+    static const dal_led_config_t led_cfg = {
+        .owner = "board_led", .pin = BOARD_LED_PIN, .active_high = true
+    };
+    WINK_CHECK(dal_led_init(&board_led, &led_cfg), WINK_FAULT_DAL_LED);
+    WINK_IGNORE_RESULT(wink_actuator_register(board_led_safe_off, &board_led));
 
-    /* S2/S3: DAL LED + 按钮初始化（Phase 2 config_t 标准化） */
-    const dal_led_config_t led_cfg = { .owner = "board_led", .pin = BOARD_LED_PIN, .active_high = true };
-    wink_status_t st = dal_led_init(&board_led, &led_cfg);
-    if (wink_status_is_error(st)) {
-        wink_trace_fault(FAULT_LED_INIT);
-    }
+    static const dal_button_config_t btn_cfg = {
+        .owner = "boot_button", .pin = BOOT_BUTTON_PIN, .active_low = true
+    };
+    WINK_CHECK(dal_button_init(&boot_button, &btn_cfg), WINK_FAULT_DAL_BUTTON);
+    WINK_IGNORE_RESULT(dal_button_on_event(&boot_button, on_boot_button, NULL));
+    WINK_IGNORE_RESULT(dal_button_set_long_press_ms(&boot_button, 3000));
+    WINK_IGNORE_RESULT(dal_button_enable_isr_counter(&boot_button));          /* S4 */
 
-    const dal_button_config_t btn_cfg = { .owner = "boot_button", .pin = BOOT_BUTTON_PIN, .active_low = true };
-    st = dal_button_init(&boot_button, &btn_cfg);
-    if (wink_status_is_error(st)) {
-        wink_trace_fault(FAULT_BUTTON_INIT);
-    }
+    WINK_IGNORE_RESULT(wink_led_blink_start(&board_led, 1000));                /* S2 */
 
-    /* 注册执行器安全关断（fault/WDT 路径）
-     * gcc16 不因 (void) 抑制 warn_unused_result：先赋值再丢弃 */
-    wink_status_t _reg = wink_actuator_register(led_safe_off_thunk, &board_led);
-    (void)_reg;
+    /* ── S10: Ultrasonic + ECHO-loopback sim (samples/common helper) ──── */
+    static const dal_ultrasonic_config_t sonar_cfg = {
+        .owner = "smoke_sonar",
+        .trig_pin = SMOKE_TRIG_PIN, .echo_pin = SMOKE_ECHO_PIN, .use_rmt = true,
+    };
+    WINK_CHECK(dal_ultrasonic_init(&s_sonar, &sonar_cfg), WINK_FAULT_DAL_ULTRASONIC);
+    WINK_IGNORE_RESULT(wink_sim_ultrasonic_echo_start(
+        &s_sonar, 50.0f, SMOKE_TRIG_PIN, SMOKE_ECHO_PIN));
+    WINK_IGNORE_RESULT(wink_runtime_spawn_periodic(
+        "sonar_poll", 2048, 500, sonar_poll_task, &s_sonar, 1, PAL_OS_CORE_ANY));
 
-    /* 初始安全态：LED 熄灭
-     * gcc16 不因 (void) 抑制 warn_unused_result：先赋值再丢弃 */
-    wink_status_t _off = dal_led_off(&board_led);
-    (void)_off;
+    /* ── S1: Default telemetry (samples/common helper) ────────────────── */
+    WINK_IGNORE_RESULT(wink_default_telemetry_start(&s_sonar, &boot_button));
 
-    /* S5: PWM router 异频分配（跨平台同源） */
-    (void)smoke_check_pwm_router();
-
-    /* S9: RMT hardware loopback test */
-    smoke_check_rmt_loopback();
-
-    /* S10: Ultrasonic shadow sensor test.
-     * Unlike S9 (one-shot self-loop), S10 is an ongoing background test: a
-     * core-1 mock-sensor task listens for TRIG GPIO rising edges via ISR+sem
-     * and drives ECHO with a 2940us pulse (~50cm). App_loop fires a TRIG every
-     * 500ms and telemetry reports sonar_st/dist continuously. To give the
-     * bring-up log a clear PASS/FAIL verdict mirroring S9, we do one synchronous
-     * verification measurement at init time (after ISR+mock task are armed)
-     * and print the result. */
-#if defined(WINK_TEST_HAS_RMT)
-    LOG_I("S10: ultrasonic shadow-sensor test starting (TRIG=%u,ECHO=%u, expected ~50cm)...",
-          (unsigned)SMOKE_TRIG_PIN, (unsigned)SMOKE_ECHO_PIN);
-    s_trig_sem = pal_os_sem_create();
-    if (s_trig_sem != NULL) {
-        const dal_ultrasonic_config_t sonar_cfg = {
-            .owner = "smoke_sonar",
-            .trig_pin = SMOKE_TRIG_PIN,
-            .echo_pin = SMOKE_ECHO_PIN,
-            .use_rmt = true
-        };
-        st = dal_ultrasonic_init(&s_smoke_sonar, &sonar_cfg);
-        if (!wink_status_is_error(st)) {
-            /* Promote ECHO to INPUT_OUTPUT: mock_sensor_task drives the
-             * simulated echo pulse (pal_gpio_write on ECHO), while RMT
-             * captures the same edge via the input buffer. dal_ultrasonic_init
-             * initially configured ECHO as INPUT; re-init as INPUT_OUTPUT so
-             * the pin is bidirectional. No PAL "set direction" API is
-             * exposed by design, hence the re-init pattern. Return ignored:
-             * host/wasm return WINK_OK unconditionally; on ESP32 a failure
-             * here is not fatal to the smoke path — S10 will degrade to a
-             * TIMEOUT visible in telemetry. gcc16 warn_unused_result does
-             * not accept plain (void) casts — assign then discard. */
-            wink_status_t _echo_io = pal_gpio_init(SMOKE_ECHO_PIN, PAL_GPIO_INPUT_OUTPUT);
-            (void)_echo_io;
-
-            st = pal_gpio_enable_interrupt(SMOKE_TRIG_PIN, PAL_GPIO_INTR_RISING_EDGE, trig_gpio_isr, NULL);
-            if (!wink_status_is_error(st)) {
-                /* Priority 3: above the S7 stress tasks (prio 2, pinned to both
-                 * cores) so that after sem give the mock task is scheduled
-                 * immediately and its 3ms echo-pulse busy-wait is not preempted
-                 * by the stress spin-loop (which would stretch the pulse by
-                 * tick-slice round-robining and corrupt the measured distance).
-                 * Still below the runtime task at prio 5 so app_loop keeps
-                 * running on core 0. Interrupts remain enabled across the
-                 * busy-wait — no IDLE/WDT starvation risk (WDT timeout is
-                 * seconds, pulse is 3ms). */
-                st = pal_os_task_create(mock_sensor_task, "mock_sensor", 4096, NULL, 3, PAL_OS_CORE_1, NULL);
-                if (wink_status_is_error(st)) {
-                    LOG_E("S10: failed to create mock sensor task: %d", (int)st);
-                }
-            } else {
-                LOG_D("S10: interrupt setup on Trig returned: %d (expected on Host/stub)", (int)st);
-            }
-
-#if defined(ESP_PLATFORM)
-            /* One-shot init-time verification measurement (ESP32 only):
-             * synchronously fire a TRIG and check that the first reading is
-             * within ±2cm of 50cm. This mirrors S9's init-time PASS log and
-             * catches wiring/timing regressions at boot instead of waiting
-             * for the 2s telemetry. The mock task is pinned to core1 and is
-             * already blocked on sem_take at this point.
-             *
-             * Not run on host/wasm: those targets have no real GPIO ISR and
-             * the e2e harness only verifies LED/PWM/faults=0 across 5 ticks;
-             * S10 correctness on host is covered by test_dal_ultrasonic* unit
-             * tests that inject echo timing via sim_set_echo_timing(). */
-            if (!wink_status_is_error(st)) {
-                static float s10_probe_dist = 0.0f;
-                wink_status_t _probe_req = dal_ultrasonic_request_measurement(&s_smoke_sonar);
-                (void)_probe_req;
-                wink_status_t probe_st = dal_ultrasonic_get_cached_distance(&s_smoke_sonar, &s10_probe_dist);
-                if (probe_st == WINK_OK && s10_probe_dist >= 48.0f && s10_probe_dist <= 52.0f) {
-                    LOG_I("S10: PASS (probe %.2fcm, TRIG ISR + mock ECHO + RMT capture verified)",
-                          s10_probe_dist);
-                } else {
-                    LOG_E("S10: FAIL (probe status=%d dist=%.2fcm, expected ~50cm)",
-                          (int)probe_st, s10_probe_dist);
-                    wink_trace_fault(FAULT_ISR_INIT);
-                }
-            }
-#else
-            /* Host/wasm: mark as armed; correctness is covered by DAL unit tests
-             * (test_dal_ultrasonic*) that inject echo timing via sim_set_echo_timing().
-             * The telemetry sonar_st/dist will show UNSUPPORTED/TIMEOUT on host,
-             * which is expected and does not fault the e2e run (e2e only checks
-             * wink_trace_count() == 0, not telemetry fields). */
-            LOG_I("S10: armed (host/wasm: echo timing injected by test harness)");
-#endif
-        } else {
-            LOG_E("S10: dal_ultrasonic_init failed: %d", (int)st);
+    /* ── S5/S6/S7/S9/S4-isr: OS built-in selftest (one call).
+     *    selftest_core already logs PASS/SKIP/FAIL per entry; we only need to
+     *    raise a fault if anything hard-failed (UNSUPPORTED = skip ≠ fail). */
+    wink_selftest_result_t results[8];
+    size_t n = 0;
+    WINK_IGNORE_RESULT(wink_selftest_run("*", results, 8, &n));
+    for (size_t i = 0; i < n; i++) {
+        if (results[i].status != WINK_OK &&
+            results[i].status != WINK_ERR_UNSUPPORTED) {
+            LOG_E("%s: FAIL (metric=%lu)", results[i].name,
+                  (unsigned long)results[i].metric);
+            wink_trace_fault(WINK_FAULT_APP(1));
         }
-    } else {
-        LOG_E("S10: failed to create semaphore");
-    }
-#endif
-
-    /* S4: GPIO 中断使能（Boot 按钮下降沿 → ISR 计数）
-     * ✅ 跨平台同源代码，零 #ifdef ESP_PLATFORM
-     * 不支持中断的平台（Host）返回 WINK_ERR_UNSUPPORTED，静默降级
-     * 验证 Task 3 uintptr_t 对称化：arg 经 void* 往返无损 */
-    st = pal_gpio_enable_interrupt(BOOT_BUTTON_PIN, PAL_GPIO_INTR_FALLING_EDGE,
-                                    boot_button_isr, NULL);
-    if (wink_status_is_error(st)) {
-        wink_trace_fault(FAULT_ISR_INIT);
     }
 
-    /* S6: I2C v6 总线扫描 */
-    smoke_check_i2c_bus();
-
-    /* S7: 多核临界区压测启动（PAL 统一接口，自动检测平台支持） */
-    do {
-        wink_status_t _st = smoke_check_resource_smp();
-        (void)_st;
-    } while(0);
-
-    /* S1: Telemetry task 启动（承担所有周期输出）
-     * PAL 统一接口：ESP32 真任务，WASM/host 同步执行或 UNSUPPORTED
-     * 使用 do-while(0) 模式抑制 GCC warn_unused_result 警告 */
-    do {
-        wink_status_t _st = pal_os_task_create(telemetry_task, "smoke_telem", 4096, NULL, 1, PAL_OS_CORE_ANY, NULL);
-        (void)_st;
-    } while(0);
-
-    /* PAL 统一日志：所有平台都报告初始化完成 */
     LOG_I("init done. Long-press BOOT (>3s) to trigger WDT reset test.");
 }
 
-/* ─────────────────────────────────────────────────────────
- * App Loop（S2 LED 慢闪 / S3 按钮输入 / S8 WDT 触发）
- *     零 printf！所有周期输出由独立 telemetry task 承担（避免 WCET 误报）。
- *     WCET <5ms：纯 GPIO 读写 + 简单计时比较，无阻塞。
- * ───────────────────────────────────────────────────────── */
+/* ── loop (10ms tick): button poll; everything else is background tasks ── */
 static void app_loop(void)
 {
-    /* S3: 按钮去抖采样（每 tick 一次）
-     * gcc16 不因 (void) 抑制 warn_unused_result：先赋值再丢弃 */
-    wink_status_t _poll = dal_button_poll(&boot_button);
-    (void)_poll;
-
-    bool pressed = false;
-    /* gcc16 不因 (void) 抑制 warn_unused_result：先赋值再丢弃 */
-    wink_status_t _pressed = dal_button_is_pressed(&boot_button, &pressed);
-    (void)_pressed;
-
-    uint32_t now = (uint32_t)pal_os_get_ms();
-
-    if (pressed) {
-        /* S8: 长按 >3s → 触发 WDT 复位测试（PAL 统一接口）
-         * 支持 WDT 的平台（ESP32）会真复位；不支持的平台（WASM/host）返回 WINK_ERR_UNSUPPORTED。
-         * 运行时检测替代编译时 #ifdef，真正实现跨平台同源代码。 */
-        if (s_press_start_ms == 0) {
-            s_press_start_ms = now;
-        }
-        if (!s_wdt_verified && (now - s_press_start_ms) > 3000u) {
-            wink_status_t _wdt = pal_os_wdt_init(2000u);
-            if (!wink_status_is_error(_wdt)) {
-                /* WDT 初始化成功：死循环不喂狗 → 2s 后超时复位 */
-                for (;;) { }
-            }
-            /* WDT 不支持（WASM/host）：静默失败，不影响其它功能 */
-            (void)_wdt;
-        }
-        /* S2/S3: 按住时常亮
-         * gcc16 不因 (void) 抑制 warn_unused_result：先赋值再丢弃 */
-        wink_status_t _on = dal_led_on(&board_led);
-        (void)_on;
-    } else {
-        s_press_start_ms = 0;
-        /* S2/S3: 释放时 500ms 周期慢闪
-         * gcc16 不因 (void) 抑制 warn_unused_result：先赋值再丢弃 */
-        bool on = ((now / 500u) % 2u) == 0u;
-        wink_status_t _led = on ? dal_led_on(&board_led) : dal_led_off(&board_led);
-        (void)_led;
-    }
-
-    // Periodic measurement request (every 500ms)
-    static uint32_t last_sonar_ms = 0;
-    if (now - last_sonar_ms >= 500u) {
-        last_sonar_ms = now;
-#if defined(WINK_TEST_HAS_RMT)
-        if (s_trig_sem != NULL) {
-            wink_status_t _req = dal_ultrasonic_request_measurement(&s_smoke_sonar);
-            (void)_req;
-        }
-#endif
-    }
+    WINK_IGNORE_RESULT(dal_button_poll(&boot_button));
 }
 
-/* ─────────────────────────────────────────────────────────
- * Fault 回调：故障时 LED 灭（安全态） */
-static void app_on_fault(uint32_t fault_code)
+/* ── Fault callback (Runtime already ran safe-off-all before this) ─────── */
+static void app_on_fault(uint32_t code)
 {
-    /* ADR-0010：on_fault 为通知回调，fault 已由 wink_runtime_fault 先 trace；此处不重复 trace。*/
-    (void)fault_code;
-    /* gcc16 不因 (void) 抑制 warn_unused_result：先赋值再丢弃 */
-    wink_status_t _off = dal_led_off(&board_led);
-    (void)_off;
+    (void)code;
 }
 
-/* ─────────────────────────────────────────────────────────
- * 回调工厂（二进制解耦，§7 目录架构）
- * ───────────────────────────────────────────────────────── */
+/* ── Callback factory (binary decoupling) ──────────────────────────────── */
 const wink_app_callbacks_t *wink_app_get_callbacks(void)
 {
     static const wink_app_callbacks_t cb = {
         .init     = app_init,
         .loop     = app_loop,
-        .on_fault = app_on_fault
+        .on_fault = app_on_fault,
+        .on_boot  = app_on_boot,
     };
     return &cb;
 }
