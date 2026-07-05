@@ -147,31 +147,48 @@ wink_status_t pal_rmt_pulse_capture_init(wink_pin_t pin, pal_rmt_edge_t start_ed
  * 等待一次 pulse-capture 完成（非阻塞硬件采样，由 RMT 完成事件驱动）
  * ───────────────────────────────────────────────────────── */
 
-wink_status_t pal_rmt_pulse_capture_wait(uint32_t timeout_us, uint32_t *pulse_us_out) {
-    if (pulse_us_out == NULL || s_rmt_rx_chan == NULL) {
+/* ─────────────────────────────────────────────────────────
+ * 武装 (arm) pulse-capture 接收机：清残留 sem + rmt_receive
+ * ───────────────────────────────────────────────────────── */
+
+wink_status_t pal_rmt_pulse_capture_arm(void) {
+    if (s_rmt_rx_chan == NULL) {
         return WINK_ERR_INVALID_ARG;
     }
-    *pulse_us_out = 0;
 
-    /* 清空信号量 */
+    /* 清空信号量（若上次 wait 超时后有残留 Give） */
     xSemaphoreTake(s_rx_done_sem, 0);
 
     /* 启动 RMT 接收：符号写入【用户拥有的】s_rx_buf（ESP-IDF v5.x rmt_receive 契约——
-     * 第二参数须为调用方持有的可写缓冲，第三参数为其字节数，缓冲须保持有效至 done 事件）。 */
+     * 第二参数须为调用方持有的可写缓冲，第三参数为其字节数，缓冲须保持有效至 done 事件）。
+     * signal_range_max_ns 用 MAX_VALID_PULSE_US（25ms）作保守上限，覆盖 HC-SR04 全量程；
+     * 实际阻塞超时由 wait_armed(timeout_us) 决定，二者独立。 */
     rmt_receive_config_t recv_cfg = {
         .signal_range_min_ns = 1000,     /* 1us, 过滤毛刺 */
-        .signal_range_max_ns = (uint32_t)((uint64_t)timeout_us * 1000),  /* 超时对应最大脉宽 */
+        .signal_range_max_ns = (uint32_t)((uint64_t)MAX_VALID_PULSE_US * 1000),
     };
     esp_err_t err = rmt_receive(s_rmt_rx_chan, s_rx_buf, sizeof(s_rx_buf), &recv_cfg);
     if (err != ESP_OK) {
         return WINK_ERR_HARDWARE;
     }
+    return WINK_OK;
+}
+
+/* ─────────────────────────────────────────────────────────
+ * 等待已 arm 的 pulse-capture 完成（sem take + 符号解析）
+ * ───────────────────────────────────────────────────────── */
+
+wink_status_t pal_rmt_pulse_capture_wait_armed(uint32_t timeout_us, uint32_t *pulse_us_out) {
+    if (pulse_us_out == NULL || s_rmt_rx_chan == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    *pulse_us_out = 0;
 
     /* 等待 RMT 捕获完成（阻塞但不消耗 CPU，由 FreeRTOS 调度） */
     BaseType_t ok = xSemaphoreTake(s_rx_done_sem, pdMS_TO_TICKS((timeout_us + 999) / 1000 + 1));
     if (ok != pdPASS) {
         /* 超时恢复：disable → enable 复位 RMT RX 状态机。
-         * 信号量残留：超时后 s_rx_done_sem 可能有残留 Give，但下一次 wait 入口的
+         * 信号量残留：超时后 s_rx_done_sem 可能有残留 Give，但下一次 arm 入口的
          * xSemaphoreTake(s_rx_done_sem, 0) 会清空，故此处不必额外 Take。
          * 旧实现误用 rmt_receive(NULL,...) 取消——违反 v5.x RX 契约，改为状态机复位。*/
         rmt_disable(s_rmt_rx_chan);
@@ -223,6 +240,22 @@ wink_status_t pal_rmt_pulse_capture_wait(uint32_t timeout_us, uint32_t *pulse_us
 }
 
 /* ─────────────────────────────────────────────────────────
+ * 兼容 wrapper：arm() + wait_armed()
+ * ───────────────────────────────────────────────────────── */
+
+wink_status_t pal_rmt_pulse_capture_wait(uint32_t timeout_us, uint32_t *pulse_us_out) {
+    if (pulse_us_out == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    *pulse_us_out = 0;
+    wink_status_t s = pal_rmt_pulse_capture_arm();
+    if (wink_status_is_error(s)) {
+        return s;
+    }
+    return pal_rmt_pulse_capture_wait_armed(timeout_us, pulse_us_out);
+}
+
+/* ─────────────────────────────────────────────────────────
  * 反初始化 RMT 通道
  * ───────────────────────────────────────────────────────── */
 
@@ -252,6 +285,15 @@ bool pal_rmt_pulse_capture_is_active(void) {
 
 wink_status_t pal_rmt_pulse_capture_init(wink_pin_t pin, pal_rmt_edge_t start_edge) {
     (void)pin; (void)start_edge; return WINK_ERR_UNSUPPORTED;
+}
+
+wink_status_t pal_rmt_pulse_capture_arm(void) {
+    return WINK_ERR_UNSUPPORTED;
+}
+
+wink_status_t pal_rmt_pulse_capture_wait_armed(uint32_t timeout_us, uint32_t *pulse_us_out) {
+    if (pulse_us_out != NULL) { *pulse_us_out = 0; }
+    (void)timeout_us; return WINK_ERR_UNSUPPORTED;
 }
 
 wink_status_t pal_rmt_pulse_capture_wait(uint32_t timeout_us, uint32_t *pulse_us_out) {
