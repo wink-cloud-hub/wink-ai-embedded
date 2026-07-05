@@ -106,3 +106,14 @@ function(wink_sample_apply_common target)
     wink_sample_apply_include_dirs(${target} ${ARGN})
     wink_sample_apply_compile_options(${target})
 endfunction()
+
+# ── Link samples/common OBJECT library ────────────────────────────────────
+# Pulls in $<TARGET_OBJECTS:wink_sample_common> and the common include dir.
+# Safe to call even when no common helper is referenced (--gc-sections drops
+# unreferenced objects at link time on both host and ESP32).
+function(wink_sample_link_common target)
+    if(TARGET wink_sample_common)
+        target_sources(${target} PRIVATE $<TARGET_OBJECTS:wink_sample_common>)
+        target_include_directories(${target} PRIVATE ${WINK_SAMPLE_COMMON_INCLUDE_DIR})
+    endif()
+endfunction()
