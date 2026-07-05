@@ -308,4 +308,20 @@ if ($pythonCmd) {
     Write-Host "[SKIP] python not found on PATH — header self-containment check skipped" -ForegroundColor Yellow
 }
 
+# ---- 9. L3 static lint: log format-string literal gate (P1-L1) ----------------
+# PLAN-20260705-LOGGING-HARDENING: all LOG_E/W/I/D and pal_log_e/w/i/d call sites
+# must pass a compile-time string literal as their fmt argument. This is a
+# prerequisite for future Tokenized/Dictionary logging (Pigweed-style hash
+# compression) and catches format-string-injection footguns.
+Write-Host "[lint] Log format-string literal gate (P1-L1)..." -ForegroundColor Cyan
+if ($pythonCmd) {
+    & python (Join-Path $PSScriptRoot 'tools/check_log_format_literals.py') --root $PSScriptRoot
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "[lint] P1-L1 log format-literal check failed (see output above)"
+        exit 1
+    }
+} else {
+    Write-Host "[SKIP] python not found on PATH — log format-literal check skipped" -ForegroundColor Yellow
+}
+
 exit $overallRc
