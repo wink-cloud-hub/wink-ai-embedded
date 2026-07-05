@@ -391,6 +391,15 @@ wink_status_t pal_i2c_port_pins(uint8_t port, wink_pin_t *out_sda, wink_pin_t *o
     return WINK_OK;
 }
 
+/* pal_i2c_scan() is an ADR-0017 Layer-1 exception: a blocking bus-scan
+ * primitive intended for selftest/init contexts where blocking (worst-case
+ * ~120 × per-transfer timeout) is acceptable. Suppress the
+ * -Wdeprecated-declarations warning that WINK_BLOCKING on pal_i2c_transfer
+ * emits under strict non-blocking auditing, only around this function. */
+#if defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 wink_status_t pal_i2c_scan(uint8_t port, uint8_t *out_found_bitmap, size_t bitmap_bytes) {
     if (out_found_bitmap == NULL || bitmap_bytes < 16) { return WINK_ERR_INVALID_ARG; }
     if (port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
@@ -418,6 +427,9 @@ wink_status_t pal_i2c_scan(uint8_t port, uint8_t *out_found_bitmap, size_t bitma
     }
     return WINK_OK;
 }
+#if defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic pop
+#endif
 
 #else /* !ESP_PLATFORM: non-IDF stub for static analysis. */
 
