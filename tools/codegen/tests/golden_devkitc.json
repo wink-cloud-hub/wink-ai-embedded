@@ -1,0 +1,11 @@
+{
+  "app_name": "devkitc_smoke",
+  "board": "esp32-devkitc-v4",
+  "devices": {
+    "board_led": {
+      "type": "led",
+      "pin": 2,
+      "active_high": true
+    }
+  }
+}
