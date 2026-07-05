@@ -13,7 +13,14 @@
 
 #if defined(ESP_PLATFORM)
 #include "driver/ledc.h"
+#include "driver/gpio.h"
 #include "esp_err.h"
+#include "esp_rom_gpio.h"
+#include "soc/gpio_sig_map.h"
+
+#ifndef SIG_GPIO_OUT_IDX
+#define SIG_GPIO_OUT_IDX 256
+#endif
 
 /* 板级路由弱默认：无 board_config.c 覆盖时使用，避免链接缺符号。
  * 强定义由 samples/<app>/board_config.c 提供。*/
@@ -78,6 +85,17 @@ void pal_pwm_deinit(uint8_t channel) {
     (void)ledc_update_duty(LEDC_LOW_SPEED_MODE, (ledc_channel_t)channel);
     /* Track A（M1）：PAL 不再持 PWM claim；release 归 DAL 层未来 deinit。 */
     pal_pwm_router_release(channel);
+
+    /* Disconnect LEDC from pin; pin returns to plain GPIO control so other
+     * peripherals (e.g. RMT, gpio_config) can claim it. Without this, the GPIO
+     * matrix still routes LEDC's output signal to the pad and ESP-IDF prints
+     * "GPIO N is not usable, maybe conflict with others" on subsequent bind.
+     * Pull/pad state is NOT reset here—that is owned by DAL (Track A/M1). */
+    (void)ledc_stop(LEDC_LOW_SPEED_MODE, (ledc_channel_t)channel, 0);
+    wink_pin_t pin = pal_pwm_pin_map[channel];
+    if (pin >= 0 && pin < GPIO_NUM_MAX) {
+        esp_rom_gpio_connect_out_signal((gpio_num_t)pin, SIG_GPIO_OUT_IDX, false, false);
+    }
 }
 
 /* P1-P4 (2026-07-04)：pin_map 数组不再暴露到公共头，改经 getter。
