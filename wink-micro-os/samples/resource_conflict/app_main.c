@@ -20,20 +20,22 @@
  *      而不是 WINK_OK 假成功）
  *
  * 运行结果：
- *   全部 case 通过 → SAMPLE PASS。任一组断言失败 → pal_debug_printf("SAMPLE FAIL") + exit 1。
+ *   全部 case 通过 → SAMPLE PASS。任一组断言失败 → LOG_E("SAMPLE FAIL") + exit 1。
  */
+#define LOG_TAG "resource_conflict"
+
 #include "dal_led.h"
 #include "dal_servo.h"
 #include "dal_gps.h"
 #include "dal_eeprom.h"
 #include "pal_resource.h"
-#include "pal_debug.h"
+#include "pal_log.h"
 #include "wink_status.h"
 
 /* stdlib.h: exit(). This sample is host-only by design (skipped on wasm and
  * ESP32 in CMakeLists.txt), so a direct stdlib dep is acceptable — no
  * cross-target portability concern. All formatted output routes through
- * pal_debug_printf() to match the project-standard debug channel. */
+ * LOG_*() to match the project-standard log channel. */
 #include <stdlib.h>
 
 
@@ -48,7 +50,7 @@
     wink_status_t _e = (expected);                                                             \
     wink_status_t _a = (actual);                                                               \
     if (_e != _a) {                                                                            \
-        pal_debug_printf("SAMPLE FAIL: " msg " (expected=%d, got=%d)\n", (int)_e, (int)_a);    \
+        LOG_E("SAMPLE FAIL: " msg " (expected=%d, got=%d)", (int)_e, (int)_a);                 \
         exit(1);                                                                               \
     }                                                                                          \
 } while (0)
@@ -62,7 +64,7 @@ static void case_gpio_pin_conflict(void)
 
     ASSERT_EQ(WINK_OK,        dal_led_init(&led_a, &cfg_a), "GPIO: first LED init");
     ASSERT_EQ(WINK_ERR_BUSY,  dal_led_init(&led_b, &cfg_b), "GPIO: second LED same pin should BUSY");
-    pal_debug_printf("[resource_conflict] GPIO pin 2 conflict correctly rejected\n");
+    LOG_I("GPIO pin 2 conflict correctly rejected");
 }
 
 static void case_pwm_channel_conflict(void)
@@ -80,7 +82,7 @@ static void case_pwm_channel_conflict(void)
 
     ASSERT_EQ(WINK_OK,        dal_servo_init(&servo_a, &cfg_a), "PWM: first servo init");
     ASSERT_EQ(WINK_ERR_BUSY,  dal_servo_init(&servo_b, &cfg_b), "PWM: second servo same channel should BUSY");
-    pal_debug_printf("[resource_conflict] PWM channel 0 conflict correctly rejected\n");
+    LOG_I("PWM channel 0 conflict correctly rejected");
 }
 
 /* UART/I2C 冲突通过 pal_resource 原语直接验证（dal_gps/dal_eeprom 当前是 stub
@@ -96,7 +98,7 @@ static void case_uart_port_conflict(void)
     ASSERT_EQ(WINK_OK,
         pal_resource_release(PAL_RESOURCE_UART_PORT, 1, "primary_gps"),
         "UART: release port 1");
-    pal_debug_printf("[resource_conflict] UART port 1 conflict correctly rejected via pal_resource\n");
+    LOG_I("UART port 1 conflict correctly rejected via pal_resource");
 }
 
 static void case_i2c_addr_conflict(void)
@@ -119,7 +121,7 @@ static void case_i2c_addr_conflict(void)
     ASSERT_EQ(WINK_OK,
         pal_resource_release(PAL_RESOURCE_I2C_ADDR, id2, "oled_display"),
         "I2C: release oled");
-    pal_debug_printf("[resource_conflict] I2C (port=0, addr=0x50) conflict correctly rejected via pal_resource\n");
+    LOG_I("I2C (port=0, addr=0x50) conflict correctly rejected via pal_resource");
 }
 
 /* 契约诚实验证：未实现的 DAL 在合法参数下必须返 NOT_SUPPORTED，不得 WINK_OK 假成功。
@@ -140,12 +142,12 @@ static void case_stub_honesty(void)
     };
     ASSERT_EQ(WINK_ERR_UNSUPPORTED, dal_eeprom_init(&ee, &ee_cfg),
               "Stub honesty: dal_eeprom_init must return NOT_SUPPORTED (no fake success)");
-    pal_debug_printf("[resource_conflict] stub honesty (ADR-0012): unimplemented DALs return NOT_SUPPORTED, not fake WINK_OK\n");
+    LOG_I("stub honesty (ADR-0012): unimplemented DALs return NOT_SUPPORTED, not fake WINK_OK");
 }
 
 int main(void)
 {
-    pal_debug_printf("=== resource_conflict sample: verifying pal_resource conflict wiring + stub honesty ===\n");
+    LOG_I("=== resource_conflict sample: verifying pal_resource conflict wiring + stub honesty ===");
 
     case_gpio_pin_conflict();
     case_pwm_channel_conflict();
@@ -153,6 +155,6 @@ int main(void)
     case_i2c_addr_conflict();
     case_stub_honesty();
 
-    pal_debug_printf("SAMPLE PASS: all resource conflict checks and stub-honesty checks passed\n");
+    LOG_I("SAMPLE PASS: all resource conflict checks and stub-honesty checks passed");
     return 0;
 }
