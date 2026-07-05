@@ -75,7 +75,7 @@ static void app_init(void)
     WINK_IGNORE_RESULT(dal_button_on_event(&boot_button, on_boot_button, NULL));
 
     /* S2: LED blink helper（fire-and-forget） */
-    WINK_IGNORE_RESULT(wink_led_blink_start(&board_led, 1000));
+    wink_led_blink_start(&board_led, 1000);
 
     /* S10: 超声波 echo 仿真 + 周期测量任务 */
     WINK_IGNORE_RESULT(wink_sim_ultrasonic_echo_start(
