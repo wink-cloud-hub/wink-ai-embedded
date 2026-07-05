@@ -28,6 +28,8 @@ static wink_status_t blink_tick(void *arg)
 int32_t wink_led_blink_start(dal_led_t *led, uint32_t period_ms)
 {
     if (led == NULL || period_ms == 0u) {
+        LOG_D("blink_start: invalid arg (led=%p period_ms=%u)",
+              (void *)led, (unsigned)period_ms);
         return (int32_t)WINK_ERR_INVALID_ARG;
     }
 
@@ -37,7 +39,8 @@ int32_t wink_led_blink_start(dal_led_t *led, uint32_t period_ms)
     static blink_ctx_t s_ctxs[4];
     static size_t      s_next = 0;
     if (s_next >= sizeof(s_ctxs) / sizeof(s_ctxs[0])) {
-        LOG_E("blink: out of blink slots (%u)", (unsigned)(sizeof(s_ctxs)/sizeof(s_ctxs[0])));
+        LOG_D("blink_start: out of blink slots (%u)",
+              (unsigned)(sizeof(s_ctxs)/sizeof(s_ctxs[0])));
         return (int32_t)WINK_ERR_RESOURCE_EXHAUSTED;
     }
     blink_ctx_t *ctx = &s_ctxs[s_next++];
@@ -50,11 +53,13 @@ int32_t wink_led_blink_start(dal_led_t *led, uint32_t period_ms)
 
     int32_t h = wink_soft_timer_create(blink_tick, ctx, WINK_TIMER_PERIODIC, half);
     if (h < 0) {
+        LOG_D("blink_start: soft_timer_create failed: %d", (int)h);
         s_next--; /* recycle slot */
         return h;
     }
     wink_status_t st = wink_soft_timer_start(h);
     if (wink_status_is_error(st)) {
+        LOG_D("blink_start: soft_timer_start failed: %d", (int)st);
         WINK_IGNORE_RESULT(wink_soft_timer_stop(h));
         s_next--;
         return (int32_t)st;
