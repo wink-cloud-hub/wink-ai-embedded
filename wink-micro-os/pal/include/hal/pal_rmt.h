@@ -62,12 +62,58 @@ typedef enum {
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_rmt_pulse_capture_init(wink_pin_t pin, pal_rmt_edge_t start_edge);
 
+/**
+ * @brief 武装（arm）pulse-capture 接收机：开始监听下一次起始沿。非阻塞。
+ *
+ * 用于"软件触发脉冲捕获"模式：先 arm 让硬件进入监听态，再由调用方软件
+ * 驱动一次脉冲，最后 wait_armed 阻塞取结果。此拆分使得 arm 与实际驱动
+ * 脉冲之间有明确窗口，避免 wait() 一体化时 rmt_receive 与 pulse 生成
+ * 竞态（同一线程无法边阻塞边驱动）。
+ *
+ * 必须在 pal_rmt_pulse_capture_init() 之后、pal_rmt_pulse_capture_wait_armed()
+ * 之前调用。ESP32 后端此处会调用 rmt_receive() 用一个保守的最大脉宽上限
+ * （25ms，对齐 HC-SR04 有效范围），实际阻塞超时由 wait_armed 参数决定。
+ *
+ * @return WINK_OK              接收机已武装成功。
+ * @return WINK_ERR_INVALID_ARG 未 init 或状态非法。
+ * @return WINK_ERR_HARDWARE    底层 rmt_receive 失败。
+ * @return WINK_ERR_UNSUPPORTED 平台无 RMT 支持（仅本 header 有 stub）。
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t pal_rmt_pulse_capture_arm(void);
+
 #ifndef WINK_STRICT_NONBLOCKING
+/**
+ * @brief 等待一次先前 arm() 的 pulse-capture 完成并返回脉宽（微秒）。
+ *
+ * 与 pal_rmt_pulse_capture_wait() 不同：本函数假设 arm() 已经把接收机放入
+ * 监听态，只做「等信号量 + 解析符号」。调用方通常在 arm() 与
+ * wait_armed() 之间以软件驱动出脉冲（例如自环 GPIO 模式）。
+ *
+ * @param timeout_us    超时时间（微秒）；超时或脉宽不在 [MIN,MAX] 有效范围
+ *                      内返回 WINK_ERR_TIMEOUT。
+ * @param pulse_us_out  输出脉宽（微秒），入口置 0，失败时保持 0。
+ * @return WINK_OK             捕获成功且脉宽合法。
+ * @return WINK_ERR_TIMEOUT    超时或捕获脉宽越界。
+ * @return WINK_ERR_INVALID_ARG 未 init 或参数非法。
+ * @return WINK_ERR_HARDWARE   超时恢复时 rmt re-enable 失败。
+ *
+ * @note Blocking: Yes. Not available under WINK_STRICT_NONBLOCKING (ADR-0017 层 2).
+ */
+WINK_BLOCKING
+WINK_WARN_UNUSED_RESULT
+wink_status_t pal_rmt_pulse_capture_wait_armed(uint32_t timeout_us, uint32_t *pulse_us_out);
+
 /**
  * @brief 等待一次脉冲捕获完成并返回脉宽（微秒）。
  *
  * 该函数不驱动信号源，仅被动等待起始沿→反向沿事件完成；发送方（如
  * HC-SR04 的 TRIG 或 IR 发射端）需由调用方另行触发。
+ *
+ * 本函数是 pal_rmt_pulse_capture_arm() + pal_rmt_pulse_capture_wait_armed()
+ * 的便捷 wrapper：适合发送方独立驱动、接收方单纯等结果的场景（如
+ * HC-SR04 由外部器件驱动 ECHO 脉冲）。软件自触发场景请拆开用
+ * arm + 驱动 + wait_armed。
  *
  * @param timeout_us    超时时间（微秒）；超时未捕获返回 WINK_ERR_TIMEOUT
  * @param pulse_us_out  输出脉宽（微秒），入口置 0，失败时保持 0

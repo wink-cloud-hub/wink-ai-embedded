@@ -280,64 +280,71 @@ static void mock_sensor_task(void *arg)
 
 static void smoke_check_rmt_loopback(void)
 {
-    wink_pin_t pwm_pin = 4;
-    wink_pin_t rmt_pin = 4;
+    const wink_pin_t TEST_PIN = 4;   /* GPIO4：与 S5 PWM ch1 复用；本用例通过 deinit→claim→
+                                        loopback→arm→驱动脉冲→wait_armed 完成"零外设"自环校验 */
 
     LOG_I("S9: RMT hardware loopback test starting (unwired)...");
 
-    // 1. Claim pin
-    wink_status_t st = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)rmt_pin, "rmt_test");
+    /* 1. 释放 PWM ch1（Task 1 让 pal_pwm_deinit 真正卸下 LEDC 对 GPIO4 的驱动）*/
+    pal_pwm_deinit(SMOKE_PWM_CH_LO);
+
+    /* 2. Claim pin 供 rmt_test 独占 */
+    wink_status_t st = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)TEST_PIN, "rmt_test");
     if (wink_status_is_error(st) && st != WINK_ERR_BUSY) {
-        LOG_E("S9: failed to claim RMT pin %d: %d", rmt_pin, (int)st);
+        LOG_E("S9: failed to claim RMT pin %d: %d", (int)TEST_PIN, (int)st);
         wink_trace_fault(FAULT_ISR_INIT);
-        return;
+        goto cleanup_restore_pwm;
     }
 
-    // 2. Init RMT capture
-    st = pal_rmt_pulse_capture_init(rmt_pin, PAL_RMT_EDGE_RISING);
+    /* 3. GPIO 配置为 push-pull 输出，初始低 */
+    st = pal_gpio_init(TEST_PIN, PAL_GPIO_OUTPUT_PUSH_PULL);
+    if (wink_status_is_error(st)) {
+        LOG_E("S9: GPIO init failed: %d", (int)st);
+        wink_trace_fault(FAULT_ISR_INIT);
+        goto cleanup_release;
+    }
+    wink_status_t _w0 = pal_gpio_write(TEST_PIN, false);
+    (void)_w0;
+
+    /* 4. Init RMT 在 TEST_PIN 上做 RISING 沿捕获 */
+    st = pal_rmt_pulse_capture_init(TEST_PIN, PAL_RMT_EDGE_RISING);
     if (wink_status_is_error(st)) {
         LOG_E("S9: RMT init failed: %d", (int)st);
-        wink_status_is_error(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)rmt_pin, "rmt_test"));
         wink_trace_fault(FAULT_ISR_INIT);
-        return;
+        goto cleanup_release;
     }
 
-    // 3. Init PWM Channel 1 (GPIO4) at 50Hz
-    pal_pwm_deinit(SMOKE_PWM_CH_LO);
-    st = pal_pwm_init(SMOKE_PWM_CH_LO, 50u);
-    if (wink_status_is_error(st)) {
-        LOG_E("S9: PWM init failed: %d", (int)st);
-        pal_rmt_pulse_capture_deinit();
-        wink_status_is_error(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)rmt_pin, "rmt_test"));
-        wink_trace_fault(FAULT_ISR_INIT);
-        return;
-    }
-
-    // 4. Set duty cycle to 0.5% (100us)
-    st = pal_pwm_set_duty(SMOKE_PWM_CH_LO, 0.5f);
-    if (wink_status_is_error(st)) {
-        LOG_E("S9: PWM set duty failed: %d", (int)st);
-        pal_pwm_deinit(SMOKE_PWM_CH_LO);
-        pal_rmt_pulse_capture_deinit();
-        wink_status_is_error(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)rmt_pin, "rmt_test"));
-        wink_trace_fault(FAULT_ISR_INIT);
-        return;
-    }
-
-    // 5. Enable loopback AFTER RMT and PWM configuration to overlay the input buffer IE bit
-    st = pal_test_enable_hardware_loopback(pwm_pin, rmt_pin);
+    /* 5. 使能同 pin GPIO 矩阵自环（Task 2 修复：pin_out==pin_in 走 IN 侧同源信号）*/
+    st = pal_test_enable_hardware_loopback(TEST_PIN, TEST_PIN);
     if (wink_status_is_error(st)) {
         LOG_E("S9: failed to enable loopback: %d", (int)st);
-        pal_pwm_deinit(SMOKE_PWM_CH_LO);
         pal_rmt_pulse_capture_deinit();
-        wink_status_is_error(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)rmt_pin, "rmt_test"));
         wink_trace_fault(FAULT_ISR_INIT);
-        return;
+        goto cleanup_release;
     }
 
-    // 6. Wait for capture
+    /* 6. Arm RMT（开始监听下一次上升沿）*/
+    st = pal_rmt_pulse_capture_arm();
+    if (wink_status_is_error(st)) {
+        LOG_E("S9: RMT arm failed: %d", (int)st);
+        pal_test_disable_hardware_loopback(TEST_PIN, TEST_PIN);
+        pal_rmt_pulse_capture_deinit();
+        wink_trace_fault(FAULT_ISR_INIT);
+        goto cleanup_release;
+    }
+
+    /* 7. 软件驱动 100µs 脉冲（arm 与 wait 之间）
+     *    50µs 前置沉降给 RMT 硬件启动余地；两次 busy_wait_us 定义脉宽 */
+    pal_os_busy_wait_us(50);
+    wink_status_t _w1 = pal_gpio_write(TEST_PIN, true);
+    (void)_w1;
+    pal_os_busy_wait_us(100);
+    wink_status_t _w2 = pal_gpio_write(TEST_PIN, false);
+    (void)_w2;
+
+    /* 8. 等待捕获完成（30ms 上限，覆盖 HC-SR04 极值）*/
     uint32_t pulse_us = 0;
-    st = pal_rmt_pulse_capture_wait(30000u, &pulse_us);
+    st = pal_rmt_pulse_capture_wait_armed(30000u, &pulse_us);
     if (wink_status_is_error(st)) {
         LOG_E("S9: RMT capture failed: %d", (int)st);
         wink_trace_fault(FAULT_ISR_INIT);
@@ -350,16 +357,23 @@ static void smoke_check_rmt_loopback(void)
         }
     }
 
-    // 7. Cleanup & Restore S5 PWM state
-    pal_pwm_deinit(SMOKE_PWM_CH_LO);
+    /* 9. 关闭 loopback */
+    pal_test_disable_hardware_loopback(TEST_PIN, TEST_PIN);
+
+    /* 10. Deinit RMT */
+    pal_rmt_pulse_capture_deinit();
+
+cleanup_release:
+    /* 11. 释放 GPIO4 claim */
+    wink_status_is_error(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)TEST_PIN, "rmt_test"));
+
+cleanup_restore_pwm:
+    /* 12. 恢复 S5 状态：重新以 50Hz / 50% 占空比初始化 PWM ch1 */
     st = pal_pwm_init(SMOKE_PWM_CH_LO, 50u);
     if (!wink_status_is_error(st)) {
-        st = pal_pwm_set_duty(SMOKE_PWM_CH_LO, 50.0f);
-        (void)st;
+        wink_status_t _d = pal_pwm_set_duty(SMOKE_PWM_CH_LO, 50.0f);
+        (void)_d;
     }
-    pal_rmt_pulse_capture_deinit();
-    pal_test_disable_hardware_loopback(pwm_pin, rmt_pin);
-    wink_status_is_error(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)rmt_pin, "rmt_test"));
 }
 
 static void app_init(void)

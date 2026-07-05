@@ -32,6 +32,13 @@
 #include <stdlib.h>
 #include <pthread.h>   /* v2.2 G3：并发首次注册竞态保护 */
 
+/* PAL 实现自身合法调用 WINK_BLOCKING API（pal_gpio_pulse_in / pal_rmt_pulse_capture_wait_armed）：
+ * 抑制 -Wdeprecated-declarations 使 -Werror 下仍能编译。ADR-0017 层 2 严格模式生效时，
+ * 相关阻塞声明会从 header 中消失，本 TU 也无法命中——那是预期。 */
+#if defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 /* 虚拟时间状态（OSAL 侧推进，HAL 侧消费）—— 跨文件共享，故 extern */
 extern uint64_t host_sim_time_us(void);
 extern void host_sim_advance_to(uint64_t us);
@@ -68,6 +75,36 @@ wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
 
 extern void sim_set_gpio_ideal(uint16_t pin, bool level);
 
+/* Host RMT arm/wait_armed 状态机（软件触发脉冲捕获路径）:
+ *   arm() 记录 arm 时刻并清空 last_rise/last_pulse；
+ *   pal_gpio_write() 在 armed 且写目标经 loopback 到 s_host_rmt_pin 时，
+ *     rise 时记 s_host_rmt_last_rise_us；fall 时记 pulse_us = now - rise。
+ *   wait_armed() 优先返回记到的 pulse_us；未记到则按 timeout 语义返回。
+ * 逻辑与真机 RMT 语义等价（"起始沿到反向沿"高电平段），且完全依赖 host sim
+ * 时间推进（pal_os_busy_wait_us / 显式 advance），无需真实并发。
+ *
+ * 定义放在 pal_gpio_write 之前以便其查询 armed/pin 状态；实体 API 位于文件下方。 */
+static wink_pin_t s_host_rmt_pin         = -1;
+static bool       s_host_rmt_armed       = false;
+static uint64_t   s_host_rmt_last_rise_us  = 0;
+static uint32_t   s_host_rmt_last_pulse_us = 0;
+
+static void host_rmt_note_edge(bool level) {
+    if (!s_host_rmt_armed) { return; }
+    uint64_t now = host_sim_time_us();
+    if (level) {
+        /* rising edge：记录起始时刻 */
+        s_host_rmt_last_rise_us = now;
+    } else {
+        /* falling edge：仅在此前 rising 已被记录时计算脉宽 */
+        if (s_host_rmt_last_rise_us > 0 && now > s_host_rmt_last_rise_us) {
+            uint64_t diff = now - s_host_rmt_last_rise_us;
+            /* 兼容 wait_armed 后端的 uint32_t 输出，clamp 到该范围 */
+            s_host_rmt_last_pulse_us = (diff > 0xFFFFFFFFu) ? 0xFFFFFFFFu : (uint32_t)diff;
+        }
+    }
+}
+
 wink_status_t pal_gpio_write(wink_pin_t pin, bool level) {
     if (pin < 0 || pin >= HOST_MAX_GPIO_PIN) {
         return WINK_ERR_INVALID_ARG;
@@ -78,6 +115,11 @@ wink_status_t pal_gpio_write(wink_pin_t pin, bool level) {
     for (int i = 0; i < HOST_MAX_LOOPBACKS; i++) {
         if (s_host_loopbacks[i].active && s_host_loopbacks[i].pin_out == pin) {
             sim_set_gpio_ideal((uint16_t)s_host_loopbacks[i].pin_in, level);
+            /* RMT arm/wait_armed 路径：pin_out 经 loopback 输出到 pin_in，
+             * 若 pin_in 即当前 RMT 绑定引脚且已 arm，则通知捕获状态机记录时刻。 */
+            if (s_host_rmt_armed && s_host_loopbacks[i].pin_in == s_host_rmt_pin) {
+                host_rmt_note_edge(level);
+            }
         }
     }
     (void)level;
@@ -548,22 +590,74 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us,
     return WINK_OK;
 }
 
-static wink_pin_t s_host_rmt_pin = -1;
 
 wink_status_t pal_rmt_pulse_capture_init(wink_pin_t pin, pal_rmt_edge_t start_edge) {
     if (pin < 0 || pin >= HOST_MAX_GPIO_PIN) { return WINK_ERR_INVALID_ARG; }
     s_host_rmt_pin = pin;
+    s_host_rmt_armed = false;
+    s_host_rmt_last_rise_us = 0;
+    s_host_rmt_last_pulse_us = 0;
     (void)start_edge;
     return WINK_OK;
+}
+
+wink_status_t pal_rmt_pulse_capture_arm(void) {
+    if (s_host_rmt_pin < 0) { return WINK_ERR_INVALID_ARG; }
+    /* 清空上一轮采样，进入监听态。任何后续 pal_gpio_write(s_host_rmt_pin, level)
+     * 若同时有 loopback(pin,pin) 生效，会经 host_rmt_note_edge 记录时刻。 */
+    s_host_rmt_last_rise_us = 0;
+    s_host_rmt_last_pulse_us = 0;
+    s_host_rmt_armed = true;
+    return WINK_OK;
+}
+
+wink_status_t pal_rmt_pulse_capture_wait_armed(uint32_t timeout_us, uint32_t *pulse_us_out) {
+    if (pulse_us_out == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (s_host_rmt_pin < 0) { return WINK_ERR_INVALID_STATE; }
+    *pulse_us_out = 0;
+
+    /* arm→drive→wait 路径：软件驱动的自环脉冲已在 arm 与本调用之间通过
+     * pal_gpio_write 记录到 s_host_rmt_last_pulse_us。返回并清理 armed 态。 */
+    if (s_host_rmt_armed && s_host_rmt_last_pulse_us > 0) {
+        uint32_t p = s_host_rmt_last_pulse_us;
+        s_host_rmt_armed = false;
+        s_host_rmt_last_pulse_us = 0;
+        s_host_rmt_last_rise_us = 0;
+        if (p >= timeout_us) {
+            return WINK_ERR_TIMEOUT;
+        }
+        *pulse_us_out = p;
+        return WINK_OK;
+    }
+
+    /* 未记到 pulse：走原有 pulse_in 兜底（HC-SR04 sim / echo pin 逻辑）。
+     * 若都无匹配，返 TIMEOUT 保持与 ESP32 语义一致。 */
+    s_host_rmt_armed = false;
+    wink_status_t st = pal_gpio_pulse_in(s_host_rmt_pin, true, timeout_us, pulse_us_out);
+    if (st == WINK_ERR_UNSUPPORTED) {
+        /* 无 pin 映射时按 timeout 处理，与 ESP32 wait_armed 超时语义一致 */
+        return WINK_ERR_TIMEOUT;
+    }
+    return st;
 }
 
 wink_status_t pal_rmt_pulse_capture_wait(uint32_t timeout_us, uint32_t *pulse_us_out) {
     if (pulse_us_out == NULL) { return WINK_ERR_INVALID_ARG; }
     if (s_host_rmt_pin < 0) { return WINK_ERR_INVALID_STATE; }
-    return pal_gpio_pulse_in(s_host_rmt_pin, true, timeout_us, pulse_us_out);
+    *pulse_us_out = 0;
+    wink_status_t s = pal_rmt_pulse_capture_arm();
+    if (wink_status_is_error(s)) { return s; }
+    return pal_rmt_pulse_capture_wait_armed(timeout_us, pulse_us_out);
 }
 
 void pal_rmt_pulse_capture_deinit(void) {
     s_host_rmt_pin = -1;
+    s_host_rmt_armed = false;
+    s_host_rmt_last_rise_us = 0;
+    s_host_rmt_last_pulse_us = 0;
+}
+
+bool pal_rmt_pulse_capture_is_active(void) {
+    return s_host_rmt_pin >= 0;
 }
 
