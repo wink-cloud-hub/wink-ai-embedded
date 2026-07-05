@@ -1,9 +1,11 @@
+#define LOG_TAG "dual_task"
+
 #include "device_tree.h"
 #include "wink_app.h"
 #include "wink_trace.h"
 #include "wink_actuator_registry.h"
 #include "pal_osal.h"
-#include "pal_debug.h"
+#include "pal_log.h"
 
 
 /* ADR-0017 层 1 例外：本 TU 合法调用 WINK_BLOCKING API。抑制
@@ -23,7 +25,7 @@ static void sensor_task(void* arg) {
     (void)arg;
     float mock_dist = 50.0f;
     float dir = -2.0f;
-    
+
     while (1) {
         /* Mock distance variation */
         mock_dist += dir;
@@ -37,9 +39,9 @@ static void sensor_task(void* arg) {
 
         /* Push mock distance to ringbuf */
         wink_status_t st = pal_os_ringbuf_push(s_rb, &mock_dist, sizeof(mock_dist));
-        pal_debug_printf("SENSOR: dist=%f, push status=%d\n", mock_dist, st);
+        LOG_D("SENSOR: dist=%.1f, push status=%d", (double)mock_dist, (int)st);
         (void)st;
-        
+
         pal_os_sleep_ms(20);
     }
 }
@@ -47,24 +49,24 @@ static void sensor_task(void* arg) {
 static void motor_task(void* arg) {
     (void)arg;
     float dist = 0.0f;
-    
+
     while (1) {
         float latest_dist = -1.0f;
         /* Drain the ring buffer to get the latest measurement */
         while (pal_os_ringbuf_pop(s_rb, &dist, sizeof(dist)) == WINK_OK) {
             latest_dist = dist;
         }
-        
+
         if (latest_dist >= 0.0f) {
             float angle = (latest_dist < 20.0f) ? 180.0f : 90.0f;
             if (angle == 180.0f) {
                 g_servo_was_180 = true;
             }
-            pal_debug_printf("MOTOR: latest_dist=%f, setting angle=%f\n", latest_dist, angle);
+            LOG_D("MOTOR: latest_dist=%.1f, setting angle=%.1f", (double)latest_dist, (double)angle);
             wink_status_t st = dal_servo_set_angle(&neck_servo, angle);
             (void)st;
         } else {
-            pal_debug_printf("MOTOR: ringbuf pop empty\n");
+            LOG_D("MOTOR: ringbuf pop empty");
         }
         pal_os_sleep_ms(30);
     }
@@ -101,12 +103,14 @@ static void app_init(void) {
 
     /* Create ring buffer */
     s_rb = pal_os_ringbuf_create(64);
-    
+
     /* Create tasks */
     wink_status_t t1 = pal_os_task_create(sensor_task, "sensor", 32*1024, NULL, 5, PAL_OS_CORE_ANY, &s_sensor_h);
     (void)t1;
     wink_status_t t2 = pal_os_task_create(motor_task, "motor", 32*1024, NULL, 5, PAL_OS_CORE_ANY, &s_motor_h);
     (void)t2;
+
+    LOG_I("dual_task_demo initialized: ringbuf+2 tasks created");
 }
 
 static void app_loop(void) {
