@@ -23,6 +23,7 @@
 #include "pal_irq_advanced.h"
 #include "pal_resource.h"
 #include "pal_pwm_router.h"
+#include "hal/pal_rmt.h"
 
 #include "host_test_ctrl.h"
 #include <stdio.h>
@@ -46,6 +47,17 @@ extern void host_record_pwm(uint8_t channel, float duty);
 #define ECHO_POLL_WINDOW_US 30000u
 #define HOST_MAX_GPIO_PIN  50
 
+#define HOST_MAX_LOOPBACKS 8
+static struct {
+    wink_pin_t pin_out;
+    wink_pin_t pin_in;
+    bool active;
+} s_host_loopbacks[HOST_MAX_LOOPBACKS] = {0};
+
+static wink_pin_t s_host_pwm_pins[PAL_PWM_CHANNELS] = {
+    -1, 4, 5, -1, -1, -1, -1, -1  // Channel 1 -> GPIO4, Channel 2 -> GPIO5
+};
+
 wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
     /* Track A（M1）：DAL 是资源占用 SSOT，PAL 层不再自 claim（否则与 DAL 语义 owner
      * 二次抢占同 pin，恒返 BUSY）。DAL init 已保证 claim 在此之前完成。 */
@@ -54,12 +66,19 @@ wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
     return WINK_OK;
 }
 
+extern void sim_set_gpio_ideal(uint16_t pin, bool level);
+
 wink_status_t pal_gpio_write(wink_pin_t pin, bool level) {
     if (pin < 0 || pin >= HOST_MAX_GPIO_PIN) {
         return WINK_ERR_INVALID_ARG;
     }
     if (!pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin)) {
         return WINK_ERR_INVALID_STATE;
+    }
+    for (int i = 0; i < HOST_MAX_LOOPBACKS; i++) {
+        if (s_host_loopbacks[i].active && s_host_loopbacks[i].pin_out == pin) {
+            sim_set_gpio_ideal((uint16_t)s_host_loopbacks[i].pin_in, level);
+        }
     }
     (void)level;
     return WINK_OK;
@@ -412,13 +431,53 @@ void pal_pwm_deinit(uint8_t channel) {
     pal_pwm_router_release(channel);
 }
 
-/* P1-P4 (2026-07-04)：pin_map getter。host 是虚拟 target，无物理引脚路由；
- * 返回 WINK_ERR_UNSUPPORTED 让调用方（DAL/samples）明确感知语义。参数越界仍返
- * INVALID_ARG（先做参数校验再看能力可用性）。*/
+wink_status_t pal_test_enable_hardware_loopback(wink_pin_t pin_out, wink_pin_t pin_in) {
+    if (pin_out < 0 || pin_out >= HOST_MAX_GPIO_PIN || pin_in < 0 || pin_in >= HOST_MAX_GPIO_PIN) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    // Update existing slot or find empty slot
+    int first_empty = -1;
+    for (int i = 0; i < HOST_MAX_LOOPBACKS; i++) {
+        if (s_host_loopbacks[i].active && s_host_loopbacks[i].pin_out == pin_out && s_host_loopbacks[i].pin_in == pin_in) {
+            return WINK_OK; // Already exists
+        }
+        if (!s_host_loopbacks[i].active && first_empty < 0) {
+            first_empty = i;
+        }
+    }
+    if (first_empty < 0) {
+        return WINK_ERR_RESOURCE_EXHAUSTED;
+    }
+    s_host_loopbacks[first_empty].pin_out = pin_out;
+    s_host_loopbacks[first_empty].pin_in = pin_in;
+    s_host_loopbacks[first_empty].active = true;
+    return WINK_OK;
+}
+
+wink_status_t pal_test_disable_hardware_loopback(wink_pin_t pin_out, wink_pin_t pin_in) {
+    if (pin_out < 0 || pin_out >= HOST_MAX_GPIO_PIN || pin_in < 0 || pin_in >= HOST_MAX_GPIO_PIN) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    for (int i = 0; i < HOST_MAX_LOOPBACKS; i++) {
+        if (s_host_loopbacks[i].active && s_host_loopbacks[i].pin_out == pin_out && s_host_loopbacks[i].pin_in == pin_in) {
+            s_host_loopbacks[i].active = false;
+            return WINK_OK;
+        }
+    }
+    return WINK_OK;
+}
+
+/* P1-P4 (2026-07-04)：pin_map getter。host 是虚拟 target，部分引脚有默认路由以支持自环；
+ * 未映射引脚返回 WINK_ERR_UNSUPPORTED 让调用方明确感知语义。参数越界仍返
+ * INVALID_ARG。*/
 wink_status_t pal_pwm_channel_pin(uint8_t channel, wink_pin_t *out_pin) {
     if (out_pin == NULL) { return WINK_ERR_INVALID_ARG; }
     if (channel >= PAL_PWM_CHANNELS) { return WINK_ERR_INVALID_ARG; }
-    return WINK_ERR_UNSUPPORTED;
+    if (s_host_pwm_pins[channel] < 0) {
+        return WINK_ERR_UNSUPPORTED;
+    }
+    *out_pin = s_host_pwm_pins[channel];
+    return WINK_OK;
 }
 
 wink_status_t pal_i2c_port_pins(uint8_t port, wink_pin_t *out_sda, wink_pin_t *out_scl) {
@@ -450,6 +509,25 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us,
     if (!pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin)) { return WINK_ERR_INVALID_STATE; }
     *pulse_us = 0;
 
+    // Check active loopbacks first
+    for (int i = 0; i < HOST_MAX_LOOPBACKS; i++) {
+        if (s_host_loopbacks[i].active && s_host_loopbacks[i].pin_in == pin) {
+            wink_pin_t pin_out = s_host_loopbacks[i].pin_out;
+            for (int ch = 0; ch < PAL_PWM_CHANNELS; ch++) {
+                if (s_host_pwm_pins[ch] == pin_out) {
+                    float duty = sim_last_pwm_duty(ch);
+                    uint32_t p = (uint32_t)((duty / 100.0f) * (1000000.0f / 50.0f));
+                    if (p >= timeout_us) {
+                        return WINK_ERR_TIMEOUT;
+                    }
+                    *pulse_us = p;
+                    (void)level;
+                    return WINK_OK;
+                }
+            }
+        }
+    }
+
     if (s_sim_measure_fn) {
         uint32_t p = s_sim_measure_fn((uint16_t)pin);
         if (p > 0) {
@@ -468,5 +546,24 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us,
     *pulse_us = (uint32_t)host_echo_high_us();
     (void)level;   /* host echo 即高电平脉宽 */
     return WINK_OK;
+}
+
+static wink_pin_t s_host_rmt_pin = -1;
+
+wink_status_t pal_rmt_pulse_capture_init(wink_pin_t pin, pal_rmt_edge_t start_edge) {
+    if (pin < 0 || pin >= HOST_MAX_GPIO_PIN) { return WINK_ERR_INVALID_ARG; }
+    s_host_rmt_pin = pin;
+    (void)start_edge;
+    return WINK_OK;
+}
+
+wink_status_t pal_rmt_pulse_capture_wait(uint32_t timeout_us, uint32_t *pulse_us_out) {
+    if (pulse_us_out == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (s_host_rmt_pin < 0) { return WINK_ERR_INVALID_STATE; }
+    return pal_gpio_pulse_in(s_host_rmt_pin, true, timeout_us, pulse_us_out);
+}
+
+void pal_rmt_pulse_capture_deinit(void) {
+    s_host_rmt_pin = -1;
 }
 

@@ -37,6 +37,15 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/portmacro.h"
 #include "soc/gpio_struct.h"
+#include "esp_rom_gpio.h"
+#include "esp_idf_version.h"
+#include "soc/gpio_sig_map.h"
+#include "soc/io_mux_reg.h"
+#include "soc/gpio_periph.h"
+
+#ifndef SIG_GPIO_OUT_IDX
+#define SIG_GPIO_OUT_IDX 256
+#endif
 
 _Static_assert((gpio_num_t)GPIO_NUM_NC == -1,
     "GPIO_NUM_NC must be -1 for wink_pin_t sign-compatibility");
@@ -447,6 +456,59 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level,
     return pal_gpio_pulse_in_busy_wait(pin, level, timeout_us, pulse_us);
 }
 
+wink_status_t pal_test_enable_hardware_loopback(wink_pin_t pin_out, wink_pin_t pin_in) {
+    if (pin_out < 0 || pin_out >= GPIO_NUM_MAX || !GPIO_IS_VALID_GPIO(pin_out) ||
+        pin_in < 0 || pin_in >= GPIO_NUM_MAX || !GPIO_IS_VALID_GPIO(pin_in)) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    if (pin_out == pin_in) {
+        PIN_INPUT_ENABLE(GPIO_PIN_MUX_REG[pin_out]);
+        return WINK_OK;
+    }
+
+    gpio_config_t config_in = {
+        .pin_bit_mask = (1ULL << pin_in),
+        .mode = GPIO_MODE_INPUT_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE
+    };
+    esp_err_t err = gpio_config(&config_in);
+    if (err != ESP_OK) { return WINK_ERR_HARDWARE; }
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+    uint32_t sig = GPIO.func_out_sel_cfg[pin_out].func_sel;
+#else
+    uint32_t sig = GPIO.func_out[pin_out].func;
+#endif
+    esp_rom_gpio_connect_out_signal((gpio_num_t)pin_in, sig, false, false);
+    return WINK_OK;
+}
+
+wink_status_t pal_test_disable_hardware_loopback(wink_pin_t pin_out, wink_pin_t pin_in) {
+    if (pin_out < 0 || pin_out >= GPIO_NUM_MAX || !GPIO_IS_VALID_GPIO(pin_out) ||
+        pin_in < 0 || pin_in >= GPIO_NUM_MAX || !GPIO_IS_VALID_GPIO(pin_in)) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    if (pin_out == pin_in) {
+        PIN_INPUT_DISABLE(GPIO_PIN_MUX_REG[pin_out]);
+        return WINK_OK;
+    }
+
+    esp_rom_gpio_connect_out_signal((gpio_num_t)pin_in, SIG_GPIO_OUT_IDX, false, false);
+    gpio_config_t config_in = {
+        .pin_bit_mask = (1ULL << pin_in),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE
+    };
+    gpio_config(&config_in);
+    return WINK_OK;
+}
+
 #else /* !ESP_PLATFORM: non-IDF stub for static analysis. */
 
 wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode)
@@ -477,5 +539,11 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level,
                                   uint32_t timeout_us, uint32_t *pulse_us)
 { (void)pin; (void)level; (void)timeout_us; (void)pulse_us;
   return WINK_ERR_UNSUPPORTED; }
+
+wink_status_t pal_test_enable_hardware_loopback(wink_pin_t pin_out, wink_pin_t pin_in)
+{ (void)pin_out; (void)pin_in; return WINK_ERR_UNSUPPORTED; }
+
+wink_status_t pal_test_disable_hardware_loopback(wink_pin_t pin_out, wink_pin_t pin_in)
+{ (void)pin_out; (void)pin_in; return WINK_ERR_UNSUPPORTED; }
 
 #endif /* ESP_PLATFORM */

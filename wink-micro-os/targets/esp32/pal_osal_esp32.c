@@ -52,7 +52,15 @@ void pal_os_sleep_ms(uint32_t ms) {
         esp_rom_delay_us(ms * 1000ULL);
         return;
     }
-    vTaskDelay(pdMS_TO_TICKS(ms));
+    if (ms == 0) {
+        taskYIELD();
+        return;
+    }
+    uint32_t ticks = pdMS_TO_TICKS(ms);
+    if (ticks == 0) {
+        ticks = 1;
+    }
+    vTaskDelay(ticks);
 }
 
 void pal_os_busy_wait_us(uint32_t us) {
@@ -92,6 +100,44 @@ wink_status_t pal_os_mutex_unlock(pal_os_mutex_t mutex) {
 void pal_os_mutex_destroy(pal_os_mutex_t mutex) {
     if (mutex != NULL) {
         vSemaphoreDelete((SemaphoreHandle_t)mutex);
+    }
+}
+
+/* ─────────────────────────────────────────────────────────
+ * 线程同步二值信号量（Semaphore）
+ * ───────────────────────────────────────────────────────── */
+
+pal_os_sem_t pal_os_sem_create(void) {
+    SemaphoreHandle_t sem = xSemaphoreCreateBinary();
+    return (pal_os_sem_t)sem;
+}
+
+wink_status_t pal_os_sem_take(pal_os_sem_t sem, uint32_t timeout_ms) {
+    if (sem == NULL) { return WINK_ERR_INVALID_ARG; }
+    BaseType_t ok = xSemaphoreTake((SemaphoreHandle_t)sem,
+        timeout_ms == WINK_MUTEX_WAIT_FOREVER ? portMAX_DELAY : pdMS_TO_TICKS(timeout_ms));
+    return ok == pdPASS ? WINK_OK : WINK_ERR_TIMEOUT;
+}
+
+wink_status_t pal_os_sem_give(pal_os_sem_t sem) {
+    if (sem == NULL) { return WINK_ERR_INVALID_ARG; }
+    BaseType_t ok = xSemaphoreGive((SemaphoreHandle_t)sem);
+    return ok == pdPASS ? WINK_OK : WINK_ERR_HARDWARE;
+}
+
+wink_status_t pal_os_sem_give_isr(pal_os_sem_t sem) {
+    if (sem == NULL) { return WINK_ERR_INVALID_ARG; }
+    BaseType_t higher_priority_task_woken = pdFALSE;
+    BaseType_t ok = xSemaphoreGiveFromISR((SemaphoreHandle_t)sem, &higher_priority_task_woken);
+    if (higher_priority_task_woken == pdTRUE) {
+        portYIELD_FROM_ISR();
+    }
+    return ok == pdPASS ? WINK_OK : WINK_ERR_HARDWARE;
+}
+
+void pal_os_sem_destroy(pal_os_sem_t sem) {
+    if (sem != NULL) {
+        vSemaphoreDelete((SemaphoreHandle_t)sem);
     }
 }
 

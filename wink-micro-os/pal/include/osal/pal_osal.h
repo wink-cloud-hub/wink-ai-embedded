@@ -81,10 +81,44 @@ WINK_WARN_UNUSED_RESULT wink_status_t pal_os_mutex_lock(pal_os_mutex_t mutex, ui
  */
 WINK_WARN_UNUSED_RESULT wink_status_t pal_os_mutex_unlock(pal_os_mutex_t mutex);
 
-/**
- * @brief 销毁互斥锁并释放内存
- */
 void pal_os_mutex_destroy(pal_os_mutex_t mutex);
+
+
+/* ─────────────────────────────────────────────────────────
+ * 2b. 二值信号量支撑 (Semaphore)
+ * ───────────────────────────────────────────────────────── */
+
+typedef void* pal_os_sem_t;
+
+/**
+ * @brief 创建一个二值信号量句柄
+ */
+WINK_WARN_UNUSED_RESULT pal_os_sem_t pal_os_sem_create(void);
+
+#ifndef WINK_STRICT_NONBLOCKING
+/**
+ * @brief 获取信号量 (锁定/等待)
+ * @param sem 信号量句柄
+ * @param timeout_ms 阻塞超时时间，传入 WINK_MUTEX_WAIT_FOREVER 代表无限等待
+ */
+WINK_BLOCKING
+WINK_WARN_UNUSED_RESULT wink_status_t pal_os_sem_take(pal_os_sem_t sem, uint32_t timeout_ms);
+#endif /* WINK_STRICT_NONBLOCKING */
+
+/**
+ * @brief 释放信号量 (给/发送) - TASK 上下文
+ */
+WINK_WARN_UNUSED_RESULT wink_status_t pal_os_sem_give(pal_os_sem_t sem);
+
+/**
+ * @brief 释放信号量 (给/发送) - ISR 上下文 (ADR-0016)
+ */
+WINK_WARN_UNUSED_RESULT wink_status_t pal_os_sem_give_isr(pal_os_sem_t sem);
+
+/**
+ * @brief 销毁信号量并释放内存
+ */
+void pal_os_sem_destroy(pal_os_sem_t sem);
 
 
 /* ========================================================================== */

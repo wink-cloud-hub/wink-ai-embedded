@@ -11,9 +11,11 @@
  *   S6: I2C v6 总线扫描（空总线 → 驱动初始化+传输不崩）
  *   S7: 双核临界区并发压测 60s（Task 1 spinlock）
  *   S8: 看门狗复位链路（长按 3s → WDT 复位 → 重启检测）
+ *   S9: RMT 硬件自环测试（同一 GPIO4 内部自环，PWM 产生 100µs 脉冲由 RMT 捕获并核验）
+ *   S10: 影子任务测距测试（Trig/Echo 内部仿真路由，双核影子任务高频响应 2940µs 脉冲模拟 50.00cm 距离）
  *
- * 双目标同源（ADR-0002）：ESP_PLATFORM 宏隔离 ESP32 特有逻辑（ISR/I2C/双核/看门狗）。
- * host 侧仅跑 S2/S3/S5（剩余均为 stub，无故障 = 代码结构验证）。
+ * 双目标同源（ADR-0002）：WINK_TEST_HAS_RMT 宏隔离特有时序逻辑。
+ * host 侧跑 S2/S3/S5 及 S9/S10 的仿真自环核验与任务并发调度（无故障 = 代码结构与逻辑验证）。
  */
 #define LOG_TAG "devkitc_smoke"
 
@@ -29,6 +31,8 @@
 #include "pal_osal.h"      /* pal_os_wdt_init/feed, pal_os_get_ms, pal_os_get_reset_reason */
 #include "pal_resource.h"  /* pal_resource_claim/release */
 #include "pal_pwm_router.h"/* pal_pwm_router_channel_timer */
+#include "hal/pal_rmt.h"
+#include "dal_ultrasonic.h"
 
 
 /* ADR-0017 层 1 例外：本 TU 合法调用 WINK_BLOCKING API。抑制
@@ -56,6 +60,19 @@
 static volatile uint32_t s_isr_count = 0;        /* S4: ISR 事件计数 */
 static uint32_t s_press_start_ms = 0;              /* S8: 长按计时起始 */
 static bool     s_wdt_verified = false;            /* S8: 本次启动已确认 WDT 复位 */
+
+#if defined(ESP_PLATFORM) || defined(PLATFORM_host)
+#define WINK_TEST_HAS_RMT 1
+#endif
+
+#if defined(WINK_TEST_HAS_RMT)
+#define SMOKE_TRIG_PIN 18u
+#define SMOKE_ECHO_PIN 19u
+
+static dal_ultrasonic_t s_smoke_sonar;
+static pal_os_sem_t s_trig_sem = NULL;
+static volatile uint32_t s_trig_count = 0;
+#endif
 
 /* ─────────────────────────────────────────────────────────
  * LED 安全关断适配（Actuator Registry，§5 P0-4）
@@ -119,7 +136,6 @@ static void smoke_check_pwm_router(void)
     (void)timer_hi;
 }
 
-#if defined(ESP_PLATFORM)
 /* ─────────────────────────────────────────────────────────
  * S6: I2C v6 总线扫描（空总线 → 全 NACK，验证驱动初始化+传输不崩）
  *     扫描 3 个典型 OLED/传感器地址，验证 v6 API 正常工作。
@@ -136,18 +152,22 @@ static void smoke_check_i2c_bus(void)
     }
     LOG_I("i2c: PASS (v6 driver init+transfer ran without panic)");
 }
-#endif /* ESP_PLATFORM */
 
 /* ─────────────────────────────────────────────────────────
  * S7: 多核临界区并发压测（PAL 统一任务接口）
  *     支持 SMP 的平台：两核并行 claim/release，验证 spinlock 安全
  *     单线程平台：pal_os_task_create 同步执行或返回 UNSUPPORTED
  * ───────────────────────────────────────────────────────── */
-#if defined(ESP_PLATFORM)
+#if defined(PLATFORM_host) || defined(PLATFORM_wasm)
+#define STRESS_DURATION_MS 10u
+#else
+#define STRESS_DURATION_MS 60000u
+#endif
+
 static void resource_stress_task(void *arg)
 {
     uint32_t core_id = (uint32_t)(uintptr_t)arg;
-    uint64_t end_time = pal_os_get_ms() + 60000;
+    uint64_t end_time = pal_os_get_ms() + STRESS_DURATION_MS;
     uint32_t iterations = 0;
     uint64_t last_yield = pal_os_get_ms();
 
@@ -183,20 +203,14 @@ static wink_status_t smoke_check_resource_smp(void)
      * - ESP32: 真 xTaskCreatePinnedToCore 钉核
      * - WASM/host/baremetal: 同步执行或 UNSUPPORTED
      * 用返回值检测平台是否支持多任务，不用 #ifdef */
-    wink_status_t st0 = pal_os_task_create(
-        resource_stress_task, "stress0", 4096, (void *)0, 5, PAL_OS_CORE_0, NULL
-    );
-    wink_status_t st1 = pal_os_task_create(
-        resource_stress_task, "stress1", 4096, (void *)1, 5, PAL_OS_CORE_1, NULL
-    );
+    wink_status_t st1 = pal_os_task_create(resource_stress_task, "stress_0", 2048, (void*)(uintptr_t)0, 2, PAL_OS_CORE_0, NULL);
+    wink_status_t st2 = pal_os_task_create(resource_stress_task, "stress_1", 2048, (void*)(uintptr_t)1, 2, PAL_OS_CORE_1, NULL);
 
-    if (!wink_status_is_error(st0) && !wink_status_is_error(st1)) {
-        /* PAL 统一日志：所有平台都报告压测启动状态 */
-        LOG_I("resource_stress: 60s dual-core claim/release started (Task1 spinlock)");
-        return WINK_OK;
+    if (wink_status_is_error(st1) || wink_status_is_error(st2)) {
+        LOG_I("smp stress: unsupported on this platform (degraded)");
+        return WINK_ERR_UNSUPPORTED;
     }
-    /* 不支持多任务：静默降级，不影响其它测试项 */
-    return WINK_ERR_UNSUPPORTED;
+    return WINK_OK;
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -216,20 +230,138 @@ static void telemetry_task(void *arg)
         uint32_t now = (uint32_t)pal_os_get_ms();
 
         if (now - last_report >= 2000u) {
+            float distance_cm = -1.0f;
+            wink_status_t sonar_st = WINK_ERR_UNSUPPORTED;
+#if defined(WINK_TEST_HAS_RMT)
+            if (s_trig_sem != NULL) {
+                sonar_st = dal_ultrasonic_get_cached_distance(&s_smoke_sonar, &distance_cm);
+            }
+#endif
             /* PAL 统一日志：所有平台都定期输出 telemetry 数据 */
-            LOG_I("uptime=%lums isr_count=%lu faults=%lu wdt_verified=%d",
+            LOG_I("uptime=%lums isr_count=%lu faults=%lu wdt_verified=%d sonar_st=%d dist=%.2fcm",
                   (unsigned long)now, (unsigned long)s_isr_count, (unsigned long)wink_trace_count(),
-                  (int)s_wdt_verified);
+                  (int)s_wdt_verified, (int)sonar_st, distance_cm);
             last_report = now;
         }
     }
     pal_os_task_delete(NULL);
 }
-#endif /* ESP_PLATFORM */
 
 /* ─────────────────────────────────────────────────────────
  * App Init（S1 启动初始化 + S4 ISR + S5 PWM + S6 I2C + S7 双核 + S8 WDT 检测）
  * ───────────────────────────────────────────────────────── */
+#if defined(WINK_TEST_HAS_RMT)
+static PAL_ISR void trig_gpio_isr(void *arg)
+{
+    (void)arg;
+    s_trig_count++;
+    if (s_trig_sem != NULL) {
+        wink_status_t _give = pal_os_sem_give_isr(s_trig_sem);
+        (void)_give;
+    }
+}
+
+static void mock_sensor_task(void *arg)
+{
+    (void)arg;
+    for (;;) {
+        if (pal_os_sem_take(s_trig_sem, WINK_MUTEX_WAIT_FOREVER) == WINK_OK) {
+            pal_os_busy_wait_us(100);
+            wink_status_t _w1 = pal_gpio_write(SMOKE_ECHO_PIN, true);
+            (void)_w1;
+            pal_os_busy_wait_us(2940);
+            wink_status_t _w2 = pal_gpio_write(SMOKE_ECHO_PIN, false);
+            (void)_w2;
+        }
+    }
+    pal_os_task_delete(NULL);
+}
+#endif
+
+static void smoke_check_rmt_loopback(void)
+{
+    wink_pin_t pwm_pin = 4;
+    wink_pin_t rmt_pin = 4;
+
+    LOG_I("S9: RMT hardware loopback test starting (unwired)...");
+
+    // 1. Claim pin
+    wink_status_t st = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)rmt_pin, "rmt_test");
+    if (wink_status_is_error(st) && st != WINK_ERR_BUSY) {
+        LOG_E("S9: failed to claim RMT pin %d: %d", rmt_pin, (int)st);
+        wink_trace_fault(FAULT_ISR_INIT);
+        return;
+    }
+
+    // 2. Init RMT capture
+    st = pal_rmt_pulse_capture_init(rmt_pin, PAL_RMT_EDGE_RISING);
+    if (wink_status_is_error(st)) {
+        LOG_E("S9: RMT init failed: %d", (int)st);
+        wink_status_is_error(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)rmt_pin, "rmt_test"));
+        wink_trace_fault(FAULT_ISR_INIT);
+        return;
+    }
+
+    // 3. Init PWM Channel 1 (GPIO4) at 50Hz
+    pal_pwm_deinit(SMOKE_PWM_CH_LO);
+    st = pal_pwm_init(SMOKE_PWM_CH_LO, 50u);
+    if (wink_status_is_error(st)) {
+        LOG_E("S9: PWM init failed: %d", (int)st);
+        pal_rmt_pulse_capture_deinit();
+        wink_status_is_error(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)rmt_pin, "rmt_test"));
+        wink_trace_fault(FAULT_ISR_INIT);
+        return;
+    }
+
+    // 4. Set duty cycle to 0.5% (100us)
+    st = pal_pwm_set_duty(SMOKE_PWM_CH_LO, 0.5f);
+    if (wink_status_is_error(st)) {
+        LOG_E("S9: PWM set duty failed: %d", (int)st);
+        pal_pwm_deinit(SMOKE_PWM_CH_LO);
+        pal_rmt_pulse_capture_deinit();
+        wink_status_is_error(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)rmt_pin, "rmt_test"));
+        wink_trace_fault(FAULT_ISR_INIT);
+        return;
+    }
+
+    // 5. Enable loopback AFTER RMT and PWM configuration to overlay the input buffer IE bit
+    st = pal_test_enable_hardware_loopback(pwm_pin, rmt_pin);
+    if (wink_status_is_error(st)) {
+        LOG_E("S9: failed to enable loopback: %d", (int)st);
+        pal_pwm_deinit(SMOKE_PWM_CH_LO);
+        pal_rmt_pulse_capture_deinit();
+        wink_status_is_error(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)rmt_pin, "rmt_test"));
+        wink_trace_fault(FAULT_ISR_INIT);
+        return;
+    }
+
+    // 6. Wait for capture
+    uint32_t pulse_us = 0;
+    st = pal_rmt_pulse_capture_wait(30000u, &pulse_us);
+    if (wink_status_is_error(st)) {
+        LOG_E("S9: RMT capture failed: %d", (int)st);
+        wink_trace_fault(FAULT_ISR_INIT);
+    } else {
+        if (pulse_us >= 90u && pulse_us <= 110u) {
+            LOG_I("S9: PASS (pulse captured: %lu us)", (unsigned long)pulse_us);
+        } else {
+            LOG_E("S9: FAIL (captured pulse out of range: %lu us)", (unsigned long)pulse_us);
+            wink_trace_fault(FAULT_ISR_INIT);
+        }
+    }
+
+    // 7. Cleanup & Restore S5 PWM state
+    pal_pwm_deinit(SMOKE_PWM_CH_LO);
+    st = pal_pwm_init(SMOKE_PWM_CH_LO, 50u);
+    if (!wink_status_is_error(st)) {
+        st = pal_pwm_set_duty(SMOKE_PWM_CH_LO, 50.0f);
+        (void)st;
+    }
+    pal_rmt_pulse_capture_deinit();
+    pal_test_disable_hardware_loopback(pwm_pin, rmt_pin);
+    wink_status_is_error(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)rmt_pin, "rmt_test"));
+}
+
 static void app_init(void)
 {
     /* S8: 检测「本次启动是异常复位后恢复」（ADR-0010）。
@@ -269,6 +401,43 @@ static void app_init(void)
     /* S5: PWM router 异频分配（跨平台同源） */
     (void)smoke_check_pwm_router();
 
+    /* S9: RMT hardware loopback test */
+    smoke_check_rmt_loopback();
+
+    /* S10: Ultrasonic shadow sensor test */
+#if defined(WINK_TEST_HAS_RMT)
+    s_trig_sem = pal_os_sem_create();
+    if (s_trig_sem != NULL) {
+        const dal_ultrasonic_config_t sonar_cfg = {
+            .owner = "smoke_sonar",
+            .trig_pin = SMOKE_TRIG_PIN,
+            .echo_pin = SMOKE_ECHO_PIN,
+            .use_rmt = true
+        };
+        st = dal_ultrasonic_init(&s_smoke_sonar, &sonar_cfg);
+        if (!wink_status_is_error(st)) {
+            wink_status_t _l1 = pal_test_enable_hardware_loopback(SMOKE_TRIG_PIN, SMOKE_TRIG_PIN);
+            (void)_l1;
+            wink_status_t _l2 = pal_test_enable_hardware_loopback(SMOKE_TRIG_PIN, SMOKE_ECHO_PIN);
+            (void)_l2;
+
+            st = pal_gpio_enable_interrupt(SMOKE_TRIG_PIN, PAL_GPIO_INTR_RISING_EDGE, trig_gpio_isr, NULL);
+            if (!wink_status_is_error(st)) {
+                st = pal_os_task_create(mock_sensor_task, "mock_sensor", 4096, NULL, 6, PAL_OS_CORE_1, NULL);
+                if (wink_status_is_error(st)) {
+                    LOG_E("S10: failed to create mock sensor task: %d", (int)st);
+                }
+            } else {
+                LOG_D("S10: interrupt setup on Trig returned: %d (expected on Host/stub)", (int)st);
+            }
+        } else {
+            LOG_E("S10: dal_ultrasonic_init failed: %d", (int)st);
+        }
+    } else {
+        LOG_E("S10: failed to create semaphore");
+    }
+#endif
+
     /* S4: GPIO 中断使能（Boot 按钮下降沿 → ISR 计数）
      * ✅ 跨平台同源代码，零 #ifdef ESP_PLATFORM
      * 不支持中断的平台（Host）返回 WINK_ERR_UNSUPPORTED，静默降级
@@ -279,7 +448,6 @@ static void app_init(void)
         wink_trace_fault(FAULT_ISR_INIT);
     }
 
-#if defined(ESP_PLATFORM)
     /* S6: I2C v6 总线扫描 */
     smoke_check_i2c_bus();
 
@@ -299,7 +467,6 @@ static void app_init(void)
 
     /* PAL 统一日志：所有平台都报告初始化完成 */
     LOG_I("init done. Long-press BOOT (>3s) to trigger WDT reset test.");
-#endif /* ESP_PLATFORM - closes app_init platform-specific section */
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -348,6 +515,18 @@ static void app_loop(void)
         bool on = ((now / 500u) % 2u) == 0u;
         wink_status_t _led = on ? dal_led_on(&board_led) : dal_led_off(&board_led);
         (void)_led;
+    }
+
+    // Periodic measurement request (every 500ms)
+    static uint32_t last_sonar_ms = 0;
+    if (now - last_sonar_ms >= 500u) {
+        last_sonar_ms = now;
+#if defined(WINK_TEST_HAS_RMT)
+        if (s_trig_sem != NULL) {
+            wink_status_t _req = dal_ultrasonic_request_measurement(&s_smoke_sonar);
+            (void)_req;
+        }
+#endif
     }
 }
 

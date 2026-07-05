@@ -1,4 +1,5 @@
 #include "unity.h"
+#include "pal_hal.h"
 #include "pal_osal.h"
 #include "pal_pwm_router.h"
 #include "pal_resource.h"
@@ -138,6 +139,50 @@ void test_ringbuf_used_null_handle_returns_zero(void) {
     TEST_ASSERT_EQUAL_UINT32(0, pal_os_ringbuf_used(NULL));
 }
 
+void test_pal_gpio_loopback_level(void) {
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_resource_claim(PAL_RESOURCE_GPIO_PIN, 4, "test"));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_resource_claim(PAL_RESOURCE_GPIO_PIN, 5, "test"));
+
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_test_enable_hardware_loopback(4, 5));
+
+    bool level = false;
+    // Write HIGH and read
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_gpio_write(4, true));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_gpio_read(5, &level));
+    TEST_ASSERT_TRUE(level);
+
+    // Write LOW and read
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_gpio_write(4, false));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_gpio_read(5, &level));
+    TEST_ASSERT_FALSE(level);
+
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_test_disable_hardware_loopback(4, 5));
+}
+
+void test_pal_gpio_loopback_pulse(void) {
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_resource_claim(PAL_RESOURCE_GPIO_PIN, 4, "test"));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_resource_claim(PAL_RESOURCE_GPIO_PIN, 5, "test"));
+
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_test_enable_hardware_loopback(4, 5));
+
+    // Channel 1 corresponds to pin 4
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_pwm_init(1, 50));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_pwm_set_duty(1, 7.5f)); // 1.5ms pulse
+
+    uint32_t pulse_us = 0;
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_gpio_pulse_in(5, true, 30000u, &pulse_us));
+    TEST_ASSERT_UINT32_WITHIN(10, 1500, pulse_us);
+
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_test_disable_hardware_loopback(4, 5));
+    pal_pwm_deinit(1);
+}
+
+void test_pal_gpio_loopback_invalid_args(void) {
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, pal_test_enable_hardware_loopback(-1, 5));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, pal_test_enable_hardware_loopback(4, 100));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, pal_test_disable_hardware_loopback(-1, 5));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_delay_advances_virtual_time);
@@ -152,5 +197,8 @@ int main(void) {
     RUN_TEST(test_ringbuf_used_reports_zero_when_empty);
     RUN_TEST(test_ringbuf_used_tracks_push_pop);
     RUN_TEST(test_ringbuf_used_null_handle_returns_zero);
+    RUN_TEST(test_pal_gpio_loopback_level);
+    RUN_TEST(test_pal_gpio_loopback_pulse);
+    RUN_TEST(test_pal_gpio_loopback_invalid_args);
     return UNITY_END();
 }

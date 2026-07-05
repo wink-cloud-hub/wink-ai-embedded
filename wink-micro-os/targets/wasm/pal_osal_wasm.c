@@ -156,6 +156,58 @@ typedef struct {
 
 static wasm_mutex_t s_mtx_pool[WASM_MUTEX_POOL_SIZE];
 
+#define WASM_SEM_POOL_SIZE  WINK_SIM_MAX_TASKS
+
+typedef struct {
+    bool     used;
+    uint32_t count;
+    uint32_t waiters[WINK_SIM_MAX_TASKS];
+    uint8_t  w_head;
+    uint8_t  w_tail;
+    uint8_t  w_count;
+} wasm_sem_t;
+
+static wasm_sem_t s_sem_pool[WASM_SEM_POOL_SIZE];
+
+static wasm_sem_t* wasm_sem_from_handle(pal_os_sem_t h) {
+    if (h == NULL) return NULL;
+    uintptr_t idx = (uintptr_t)h - 1;
+    if (idx >= WASM_SEM_POOL_SIZE) return NULL;
+    wasm_sem_t* s = &s_sem_pool[idx];
+    if (!s->used) return NULL;
+    return s;
+}
+
+static void sq_push(wasm_sem_t* s, uint32_t tid) {
+    if (s->w_count >= WINK_SIM_MAX_TASKS) return;
+    s->waiters[s->w_tail] = tid;
+    s->w_tail = (uint8_t)((s->w_tail + 1u) % WINK_SIM_MAX_TASKS);
+    s->w_count++;
+}
+
+static bool sq_pop(wasm_sem_t* s, uint32_t* out) {
+    if (s->w_count == 0) return false;
+    *out = s->waiters[s->w_head];
+    s->w_head = (uint8_t)((s->w_head + 1u) % WINK_SIM_MAX_TASKS);
+    s->w_count--;
+    return true;
+}
+
+static void sq_remove(wasm_sem_t* s, uint32_t tid) {
+    if (s->w_count == 0) return;
+    uint8_t w = 0, r = 0;
+    uint8_t cnt = s->w_count;
+    for (uint8_t i = 0; i < cnt; ++i) {
+        uint32_t t = s->waiters[(s->w_head + i) % WINK_SIM_MAX_TASKS];
+        if (t != tid) {
+            s->waiters[(s->w_head + w) % WINK_SIM_MAX_TASKS] = t;
+            w++;
+        } else { r++; }
+    }
+    s->w_tail = (uint8_t)((s->w_head + w) % WINK_SIM_MAX_TASKS);
+    s->w_count = (uint8_t)(s->w_count - r);
+}
+
 static wasm_mutex_t* wasm_mtx_from_handle(pal_os_mutex_t h) {
     if (h == NULL) return NULL;
     uintptr_t idx = (uintptr_t)h - 1;
@@ -304,6 +356,80 @@ void pal_os_mutex_destroy(pal_os_mutex_t mutex) {
     assert(m->owner == WASM_MUTEX_NO_OWNER && m->w_count == 0 &&
            "pal_os_mutex_destroy: mutex still held or has waiters");
     m->used = false;
+}
+
+/* ─────────────────────────────────────────────────────────
+ * 线程同步二值信号量（Semaphore）
+ * ───────────────────────────────────────────────────────── */
+
+pal_os_sem_t pal_os_sem_create(void) {
+    for (uint32_t i = 0; i < WASM_SEM_POOL_SIZE; ++i) {
+        if (!s_sem_pool[i].used) {
+            wasm_sem_t* s = &s_sem_pool[i];
+            s->used = true;
+            s->count = 0;
+            s->w_head = 0; s->w_tail = 0; s->w_count = 0;
+            return (pal_os_sem_t)(uintptr_t)(i + 1);
+        }
+    }
+    return NULL;
+}
+
+wink_status_t pal_os_sem_take(pal_os_sem_t sem, uint32_t timeout_ms) {
+    wasm_sem_t* s = wasm_sem_from_handle(sem);
+    if (s == NULL) return WINK_ERR_INVALID_ARG;
+    assert(!pal_os_in_sim_isr_context() && "pal_os_sem_take called from ISR context");
+
+    uint32_t self = sim_scheduler_current_id();
+    uint64_t now = sim_scheduler_get_time();
+
+    if (s->count > 0) {
+        s->count = 0;
+        return WINK_OK;
+    }
+    if (self == SIM_SCHED_NO_READY) {
+        return WINK_ERR_TIMEOUT;
+    }
+
+    uint64_t timeout_us = (timeout_ms == WINK_MUTEX_WAIT_FOREVER)
+                           ? 0ULL : (uint64_t)timeout_ms * 1000ULL;
+    uint32_t resource_id = (uint32_t)((uintptr_t)sem + 0x10000);
+    sq_push(s, self);
+    sim_scheduler_block(self, resource_id, now, timeout_us);
+    sim_ctx_t* cur_ctx = sim_scheduler_current_ctx();
+    assert(cur_ctx != NULL);
+    sim_ctx_switch(cur_ctx, s_main_ctx);
+
+    const sim_task_t* t = sim_scheduler_get(self);
+    if (t->timeout_fired) {
+        sq_remove(s, self);
+        return WINK_ERR_TIMEOUT;
+    }
+    return WINK_OK;
+}
+
+wink_status_t pal_os_sem_give(pal_os_sem_t sem) {
+    wasm_sem_t* s = wasm_sem_from_handle(sem);
+    if (s == NULL) return WINK_ERR_INVALID_ARG;
+
+    uint32_t next_task = 0;
+    if (sq_pop(s, &next_task)) {
+        sim_scheduler_resume(next_task);
+        return WINK_OK;
+    }
+    s->count = 1;
+    return WINK_OK;
+}
+
+wink_status_t pal_os_sem_give_isr(pal_os_sem_t sem) {
+    return pal_os_sem_give(sem);
+}
+
+void pal_os_sem_destroy(pal_os_sem_t sem) {
+    wasm_sem_t* s = wasm_sem_from_handle(sem);
+    if (s != NULL) {
+        s->used = false;
+    }
 }
 
 /* Phase 5 Task 5-4：wasm 无硬件复位/WDT 语义。reset reason 恒 UNKNOWN；WDT UNSUPPORTED
