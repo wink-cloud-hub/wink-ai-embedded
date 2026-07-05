@@ -83,18 +83,25 @@ void pal_pwm_deinit(uint8_t channel) {
     if (!pal_pwm_router_channel_ready(channel)) { return; }   /* no-op if uninitialized */
     (void)ledc_set_duty(LEDC_LOW_SPEED_MODE, (ledc_channel_t)channel, 0);
     (void)ledc_update_duty(LEDC_LOW_SPEED_MODE, (ledc_channel_t)channel);
+    (void)ledc_stop(LEDC_LOW_SPEED_MODE, (ledc_channel_t)channel, 0);
     /* Track A（M1）：PAL 不再持 PWM claim；release 归 DAL 层未来 deinit。 */
     pal_pwm_router_release(channel);
 
-    /* Disconnect LEDC from pin; pin returns to plain GPIO control so other
-     * peripherals (e.g. RMT, gpio_config) can claim it. Without this, the GPIO
-     * matrix still routes LEDC's output signal to the pad and ESP-IDF prints
-     * "GPIO N is not usable, maybe conflict with others" on subsequent bind.
-     * Pull/pad state is NOT reset here—that is owned by DAL (Track A/M1). */
-    (void)ledc_stop(LEDC_LOW_SPEED_MODE, (ledc_channel_t)channel, 0);
+    /* Fully release the pin back to GPIO + clear the LEDC driver's software
+     * reservation (esp_gpio_reserve bit). IDF v6 LEDC only revokes its bit via
+     * ledc_channel_config({.deconfigure=true}) or gpio_reset_pin(); ledc_stop()
+     * alone leaves the bit set, which makes any subsequent driver bind on the
+     * same pin emit "GPIO N is not usable, maybe conflict with others".
+     * gpio_reset_pin() also:
+     *   - disconnects the LEDC output signal from the pin's func_out mux,
+     *   - disables input/output drivers,
+     *   - disconnects any RTC/IOMUX alternate function,
+     *   - revokes the reservation bit.
+     * After this, the pin is in its reset (GPIO, input-only, no-pull) state
+     * and the next pal_gpio_init() / driver bind starts from a clean slate. */
     wink_pin_t pin = pal_pwm_pin_map[channel];
     if (pin >= 0 && pin < GPIO_NUM_MAX) {
-        esp_rom_gpio_connect_out_signal((gpio_num_t)pin, SIG_GPIO_OUT_IDX, false, false);
+        (void)gpio_reset_pin((gpio_num_t)pin);
     }
 }
 
