@@ -8,12 +8,13 @@
 
 ### 1.1 ISR 内部严禁调用任何可能阻塞或带锁的 API (如标准 printf)
 
-*   **问题现象**：在中断服务函数（ISR）中调用 `pal_debug_printf` 导致系统抛出 `lock_acquire_generic` 崩溃并立即触发 Core 1 重置。
+*   **问题现象**：在中断服务函数（ISR）中调用阻塞日志 API（如早期的 `pal_debug_printf` 或误用 `printf`）导致系统抛出 `lock_acquire_generic` 崩溃并立即触发 Core 1 重置。
 *   **深层原因**：标准的 `printf`/`vprintf` 在底层 C 库（如 picolibc/newlib）中实现了线程安全的标准输出流互斥锁。在硬件中断上下文（ISR）中，CPU 不允许执行任何会阻塞当前执行流、挂起线程或试图获取互斥锁（Mutex）的操作。
 *   **正确实践**：
     *   ISR 内部应当保持纯净、快速。
-    *   **严禁**在 ISR 内使用标准 `printf` 或 `pal_debug_printf`。
-    *   如果必须在中断内调试打印，应使用平台无锁接口（如 ESP32 的 `esp_rom_printf`），或者最好仅在 ISR 中修改全局标志/计数器，由前台的普通任务线程进行异步打印。
+    *   **严禁**在 ISR 内使用标准 `printf`、`fprintf` 或任何未标记 ISR-safe 的 I/O。
+    *   使用 PAL 分级日志接口 `LOG_E`/`LOG_W`（见 `pal_log.h`）：它们在 ISR 上下文下**自动分流**到无锁 ROM 通路（ERROR/WARN 走 `esp_rom_printf`，INFO/DEBUG 静默丢弃），不会获取互斥锁。
+    *   业务上最佳实践：仅在 ISR 中修改全局标志/计数器，由前台的普通任务线程进行异步打印；ISR 内的 LOG_E/LOG_W 只用于硬件致命错误诊断。
 
 ### 1.2 ISR 中断上下文中严禁调用任务级阻塞/调度 API (如 pal_os_sleep_ms)
 
