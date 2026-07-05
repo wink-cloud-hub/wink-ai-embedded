@@ -269,7 +269,17 @@ static void mock_sensor_task(void *arg)
             pal_os_busy_wait_us(100);
             wink_status_t _w1 = pal_gpio_write(SMOKE_ECHO_PIN, true);
             (void)_w1;
-            pal_os_busy_wait_us(2940);
+            /* Simulate ~50cm echo (2940µs high) in 6×490µs chunks with a
+             * yield between chunks. Prevents ~3ms of uninterrupted busy-wait
+             * on core 1 from starving IDLE1 (which feeds interrupt/task WDT).
+             * pal_os_sleep_ms(0) is the portable "yield now" idiom:
+             *   - ESP32: maps to taskYIELD()
+             *   - host: cooperative scheduler yields to next ready task
+             *   - wasm: idem (single-vcore cooperative sim) */
+            for (int i = 0; i < 6; i++) {
+                pal_os_busy_wait_us(490);
+                pal_os_sleep_ms(0);
+            }
             wink_status_t _w2 = pal_gpio_write(SMOKE_ECHO_PIN, false);
             (void)_w2;
         }
@@ -430,14 +440,26 @@ static void app_init(void)
         };
         st = dal_ultrasonic_init(&s_smoke_sonar, &sonar_cfg);
         if (!wink_status_is_error(st)) {
-            wink_status_t _l1 = pal_test_enable_hardware_loopback(SMOKE_TRIG_PIN, SMOKE_TRIG_PIN);
-            (void)_l1;
-            wink_status_t _l2 = pal_test_enable_hardware_loopback(SMOKE_TRIG_PIN, SMOKE_ECHO_PIN);
-            (void)_l2;
+            /* Promote ECHO to INPUT_OUTPUT: mock_sensor_task drives the
+             * simulated echo pulse (pal_gpio_write on ECHO), while RMT
+             * captures the same edge via the input buffer. dal_ultrasonic_init
+             * initially configured ECHO as INPUT; re-init as INPUT_OUTPUT so
+             * the pin is bidirectional. No PAL "set direction" API is
+             * exposed by design, hence the re-init pattern. Return ignored:
+             * host/wasm return WINK_OK unconditionally; on ESP32 a failure
+             * here is not fatal to the smoke path — S10 will degrade to a
+             * TIMEOUT visible in telemetry. gcc16 warn_unused_result does
+             * not accept plain (void) casts — assign then discard. */
+            wink_status_t _echo_io = pal_gpio_init(SMOKE_ECHO_PIN, PAL_GPIO_INPUT_OUTPUT);
+            (void)_echo_io;
 
             st = pal_gpio_enable_interrupt(SMOKE_TRIG_PIN, PAL_GPIO_INTR_RISING_EDGE, trig_gpio_isr, NULL);
             if (!wink_status_is_error(st)) {
-                st = pal_os_task_create(mock_sensor_task, "mock_sensor", 4096, NULL, 6, PAL_OS_CORE_1, NULL);
+                /* Priority 2 (below the runtime task at 5): mock_sensor_task
+                 * pins to core 1 and must not starve the runtime or IDLE1
+                 * (watchdog feed). Was 6 (above runtime) — caused core-1
+                 * IDLE starvation during the 2940µs echo pulse busy-wait. */
+                st = pal_os_task_create(mock_sensor_task, "mock_sensor", 4096, NULL, 2, PAL_OS_CORE_1, NULL);
                 if (wink_status_is_error(st)) {
                     LOG_E("S10: failed to create mock sensor task: %d", (int)st);
                 }

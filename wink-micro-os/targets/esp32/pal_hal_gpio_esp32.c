@@ -196,6 +196,13 @@ wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
         case PAL_GPIO_OUTPUT_OPEN_DRAIN:
             cfg.mode = GPIO_MODE_OUTPUT_OD;
             break;
+        case PAL_GPIO_INPUT_OUTPUT:
+            /* Bidirectional: driver + input buffer both enabled.
+             * Callers use this when the same pin must be both driven by
+             * software and observed (e.g. mock echo pulse feeds RMT capture
+             * on the same GPIO). */
+            cfg.mode = GPIO_MODE_INPUT_OUTPUT;
+            break;
         default:
             return WINK_ERR_INVALID_ARG;
     }
@@ -328,6 +335,17 @@ wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin,
         portEXIT_CRITICAL(&s_gpio_table_mux);
         return WINK_ERR_HARDWARE;
     }
+
+    /* Ensure input buffer is enabled so interrupts can detect edges even on
+     * output-configured pins. Without this, enabling interrupts on a pin
+     * previously configured via GPIO_MODE_OUTPUT never fires because the
+     * pad's input buffer is disabled (pin cannot see its own drive or
+     * external edges). Promoting to INPUT_OUTPUT is safe: it keeps the
+     * output driver and adds input sensing; harmless on pins already in
+     * INPUT / INPUT_OUTPUT / open-drain modes (they retain their behavior,
+     * only the driver capability is (re)asserted). Pullup/pulldown state is
+     * unaffected. */
+    (void)gpio_set_direction((gpio_num_t)pin, GPIO_MODE_INPUT_OUTPUT);
 
     /* 设置中断类型 */
     err = gpio_set_intr_type((gpio_num_t)pin, esp_intr_type);
