@@ -181,8 +181,9 @@ static wink_status_t pal_i2c_get_or_create_device(uint8_t port, uint16_t dev_add
     for (int i = 0; i < I2C_MAX_DEVICES; i++) {
         if (s_i2c_dev_cache[port][i].dev_addr == dev_addr) {
             /* ✅ LRU: 命中时将该条目移到队尾（提高后续访问局部性） */
+            i2c_master_dev_handle_t handle = s_i2c_dev_cache[port][i].handle;
             pal_i2c_lru_touch(port, i);
-            *out_handle = s_i2c_dev_cache[port][I2C_MAX_DEVICES - 1].handle;
+            *out_handle = handle;
             return WINK_OK;
         }
         if (s_i2c_dev_cache[port][i].dev_addr == 0 && free_slot == -1) {
@@ -426,12 +427,29 @@ wink_status_t pal_i2c_scan(uint8_t port, uint8_t start_addr, uint8_t end_addr,
      * returns WINK_OK on ACK, WINK_ERR_DISCONNECTED on NACK, other codes
      * on bus errors. */
     for (uint16_t addr = lo; addr <= hi; addr++) {
+#if WINK_I2C_USE_V6_API
+        SemaphoreHandle_t mutex = pal_i2c_get_mutex();
+        if (mutex == NULL || xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
+            continue;
+        }
+        esp_err_t err = ESP_FAIL;
+        if (s_i2c_initialized[port]) {
+            err = i2c_master_probe(s_i2c_bus[port], addr, 50);
+        }
+        xSemaphoreGive(mutex);
+        if (err == ESP_OK) {
+            uint8_t byte_idx = (uint8_t)(addr >> 3);
+            uint8_t bit_idx  = (uint8_t)(addr & 0x7);
+            out_found_bitmap[byte_idx] |= (uint8_t)(1u << bit_idx);
+        }
+#else
         wink_status_t st = pal_i2c_transfer(port, (uint8_t)addr, NULL, 0, &dummy, 1);
         if (st == WINK_OK) {
             uint8_t byte_idx = (uint8_t)(addr >> 3);
             uint8_t bit_idx  = (uint8_t)(addr & 0x7);
             out_found_bitmap[byte_idx] |= (uint8_t)(1u << bit_idx);
         }
+#endif
     }
     return WINK_OK;
 }
