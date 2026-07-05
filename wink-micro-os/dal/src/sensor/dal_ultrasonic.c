@@ -15,7 +15,12 @@
 #  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
-#define ULTRASONIC_TIMEOUT_US 30000u   /* 30ms 超时保护 */
+/* RMT RX backend requires pulse + idle_thres(25ms) headroom before the done
+ * interrupt fires; HC-SR04 max pulse ≈25ms (400cm) → total wait ≤ ~51ms.
+ * Use 60ms to leave margin for ISR/RTOS scheduling latency on first-measure
+ * cold paths (channel init/malloc). The legacy busy-wait backend returned as
+ * soon as ECHO fell, but its 30ms bound was too tight once RMT was introduced. */
+#define ULTRASONIC_TIMEOUT_US 60000u
 #define ULTRASONIC_CM_PER_US  0.017f   /* 声速换算系数 (340m/s, 往返折半) */
 
 /* ---- 两端共享：脉宽(us) -> 距离(cm) ----

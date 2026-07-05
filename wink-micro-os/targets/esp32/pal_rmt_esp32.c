@@ -21,6 +21,7 @@
 
 #include "pal_hal.h"
 #include "hal/pal_rmt.h"
+#include "pal_log.h"
 
 #if defined(ESP_PLATFORM)
 #include "driver/rmt_rx.h"
@@ -184,13 +185,20 @@ wink_status_t pal_rmt_pulse_capture_wait_armed(uint32_t timeout_us, uint32_t *pu
     }
     *pulse_us_out = 0;
 
-    /* 等待 RMT 捕获完成（阻塞但不消耗 CPU，由 FreeRTOS 调度） */
-    BaseType_t ok = xSemaphoreTake(s_rx_done_sem, pdMS_TO_TICKS((timeout_us + 999) / 1000 + 1));
+    /* 等待 RMT 捕获完成（阻塞但不消耗 CPU，由 FreeRTOS 调度）。
+     * 注意：RMT RX 在录完一个 pulse 后要等 signal_range_max_ns 的 IDLE 才触发
+     * done 中断；对 HC-SR04 全量程 (pulse≤25ms)，idle_thres=25ms，所以总等
+     * 待 ≈ pulse + 25ms，调用方必须给出 ≥ pulse_max + idle_thres + 裕量的超时。 */
+    TickType_t wait_ticks = pdMS_TO_TICKS((timeout_us + 999) / 1000 + 1);
+    BaseType_t ok = xSemaphoreTake(s_rx_done_sem, wait_ticks);
     if (ok != pdPASS) {
         /* 超时恢复：disable → enable 复位 RMT RX 状态机。
          * 信号量残留：超时后 s_rx_done_sem 可能有残留 Give，但下一次 arm 入口的
          * xSemaphoreTake(s_rx_done_sem, 0) 会清空，故此处不必额外 Take。
          * 旧实现误用 rmt_receive(NULL,...) 取消——违反 v5.x RX 契约，改为状态机复位。*/
+        LOG_E("rmt: wait_armed timeout (%lu us, wait_ticks=%lu), s_rx_num_symbols=%lu, pin=%d",
+              (unsigned long)timeout_us, (unsigned long)wait_ticks,
+              (unsigned long)s_rx_num_symbols, (int)s_capture_pin);
         rmt_disable(s_rmt_rx_chan);
         esp_err_t start_err = rmt_enable(s_rmt_rx_chan);
         if (start_err != ESP_OK) {
@@ -234,6 +242,19 @@ wink_status_t pal_rmt_pulse_capture_wait_armed(uint32_t timeout_us, uint32_t *pu
             *pulse_us_out = max_high_duration;
             return WINK_OK;
         }
+
+        /* 解析到 symbols 但高脉冲不在有效范围——诊断输出首几个符号 */
+        LOG_E("rmt: %lu symbols captured but high pulse=%luus out of [%u,%u]; first 4 syms:",
+              (unsigned long)num, (unsigned long)max_high_duration,
+              (unsigned)MIN_VALID_PULSE_US, (unsigned)MAX_VALID_PULSE_US);
+        for (size_t i = 0; i < num && i < 4; i++) {
+            LOG_E("  sym[%lu]: L0=%u D0=%u  L1=%u D1=%u",
+                  (unsigned long)i,
+                  (unsigned)s_rx_buf[i].level0, (unsigned)s_rx_buf[i].duration0,
+                  (unsigned)s_rx_buf[i].level1, (unsigned)s_rx_buf[i].duration1);
+        }
+    } else {
+        LOG_E("rmt: done ISR fired but num_symbols=%lu (invalid or zero)", (unsigned long)num);
     }
 
     return WINK_ERR_TIMEOUT;
