@@ -73,6 +73,14 @@ wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
     return WINK_OK;
 }
 
+wink_status_t pal_gpio_set_direction(wink_pin_t pin, pal_gpio_mode_t mode) {
+    /* Host simulation: all pins are always readable + writable regardless
+     * of mode; direction change is a no-op that always succeeds. */
+    (void)pin;
+    (void)mode;
+    return WINK_OK;
+}
+
 extern void sim_set_gpio_ideal(uint16_t pin, bool level);
 
 /* Host RMT arm/wait_armed 状态机（软件触发脉冲捕获路径）:
@@ -535,6 +543,19 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t addr,
                       const uint8_t *w, uint32_t wl, uint8_t *r, uint32_t rl) {
     (void)w; (void)r; (void)rl;
     host_record_i2c(port, addr, wl);
+    return WINK_OK;
+}
+
+wink_status_t pal_i2c_scan(uint8_t port, uint8_t *out_found_bitmap, size_t bitmap_bytes) {
+    if (out_found_bitmap == NULL || bitmap_bytes < 16) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    if (port >= PAL_I2C_PORTS) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    /* Host simulation has no physical I2C bus; report no devices present
+     * rather than UNSUPPORTED, so selftest can report "empty bus" cleanly. */
+    memset(out_found_bitmap, 0, 16);
     return WINK_OK;
 }
 
