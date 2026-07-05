@@ -237,9 +237,12 @@ static void telemetry_task(void *arg)
                 sonar_st = dal_ultrasonic_get_cached_distance(&s_smoke_sonar, &distance_cm);
             }
 #endif
-            /* PAL 统一日志：所有平台都定期输出 telemetry 数据 */
-            LOG_I("uptime=%lums isr_count=%lu faults=%lu warns=%lu wdt_verified=%d sonar_st=%d dist=%.2fcm",
-                  (unsigned long)now, (unsigned long)s_isr_count, (unsigned long)wink_trace_count(),
+            /* PAL 统一日志：所有平台都定期输出 telemetry 数据。
+             * s_trig_count (S10 debug): TRIG GPIO ISR 触发次数；若恒为 0 说明
+             * TRIG 上升沿中断从未交付（ISR 未使能 / 引脚方向错误 / 信号被吞）。*/
+            LOG_I("uptime=%lums isr_count=%lu trig_irqs=%lu faults=%lu warns=%lu wdt_verified=%d sonar_st=%d dist=%.2fcm",
+                  (unsigned long)now, (unsigned long)s_isr_count, (unsigned long)s_trig_count,
+                  (unsigned long)wink_trace_count(),
                   (unsigned long)wink_warn_count(),
                   (int)s_wdt_verified, (int)sonar_st, distance_cm);
             last_report = now;
@@ -267,20 +270,23 @@ static void mock_sensor_task(void *arg)
     (void)arg;
     for (;;) {
         if (pal_os_sem_take(s_trig_sem, WINK_MUTEX_WAIT_FOREVER) == WINK_OK) {
+            /* Simulate sensor round-trip delay before the echo pulse starts.
+             * Keep this short — it just models the HC-SR04 acoustic dead time. */
             pal_os_busy_wait_us(100);
             wink_status_t _w1 = pal_gpio_write(SMOKE_ECHO_PIN, true);
             (void)_w1;
-            /* Simulate ~50cm echo (2940µs high) in 6×490µs chunks with a
-             * yield between chunks. Prevents ~3ms of uninterrupted busy-wait
-             * on core 1 from starving IDLE1 (which feeds interrupt/task WDT).
-             * pal_os_sleep_ms(0) is the portable "yield now" idiom:
-             *   - ESP32: maps to taskYIELD()
-             *   - host: cooperative scheduler yields to next ready task
-             *   - wasm: idem (single-vcore cooperative sim) */
-            for (int i = 0; i < 6; i++) {
-                pal_os_busy_wait_us(490);
-                pal_os_sleep_ms(0);
-            }
+            /* Drive the simulated echo high for ~2940µs (~50cm @ 0.017cm/µs).
+             * Single busy-wait (no chunked yields): S7's resource_stress_task
+             * shares core 1 at the same priority (2) on older builds; a yield
+             * inside the pulse would round-robin to the stress spin-loop and
+             * stretch the echo pulse by multiple tick slices (1ms each),
+             * producing ~2× distance readings. A single 3ms busy-wait keeps
+             * interrupts enabled (no WDT risk — IDLE watchdog timeout is in
+             * seconds) and produces an accurate pulse width. The task runs at
+             * priority 3 — above the stress tasks at 2, below the runtime task
+             * at 5 — so it is not preempted by the stress spin-loop during
+             * pulse generation. */
+            pal_os_busy_wait_us(2940);
             wink_status_t _w2 = pal_gpio_write(SMOKE_ECHO_PIN, false);
             (void)_w2;
         }
@@ -456,11 +462,16 @@ static void app_init(void)
 
             st = pal_gpio_enable_interrupt(SMOKE_TRIG_PIN, PAL_GPIO_INTR_RISING_EDGE, trig_gpio_isr, NULL);
             if (!wink_status_is_error(st)) {
-                /* Priority 2 (below the runtime task at 5): mock_sensor_task
-                 * pins to core 1 and must not starve the runtime or IDLE1
-                 * (watchdog feed). Was 6 (above runtime) — caused core-1
-                 * IDLE starvation during the 2940µs echo pulse busy-wait. */
-                st = pal_os_task_create(mock_sensor_task, "mock_sensor", 4096, NULL, 2, PAL_OS_CORE_1, NULL);
+                /* Priority 3: above the S7 stress tasks (prio 2, pinned to both
+                 * cores) so that after sem give the mock task is scheduled
+                 * immediately and its 3ms echo-pulse busy-wait is not preempted
+                 * by the stress spin-loop (which would stretch the pulse by
+                 * tick-slice round-robining and corrupt the measured distance).
+                 * Still below the runtime task at prio 5 so app_loop keeps
+                 * running on core 0. Interrupts remain enabled across the
+                 * busy-wait — no IDLE/WDT starvation risk (WDT timeout is
+                 * seconds, pulse is 3ms). */
+                st = pal_os_task_create(mock_sensor_task, "mock_sensor", 4096, NULL, 3, PAL_OS_CORE_1, NULL);
                 if (wink_status_is_error(st)) {
                     LOG_E("S10: failed to create mock sensor task: %d", (int)st);
                 }
