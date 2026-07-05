@@ -53,7 +53,6 @@ if(ESP_PLATFORM)
     idf_component_register(
         SRCS
             # ESP32 PAL 实现
-            pal_hal_esp32.c
             pal_log_esp32.c
             pal_hal_gpio_esp32.c
             pal_hal_i2c_esp32.c
@@ -118,7 +117,6 @@ if(ESP_PLATFORM)
 elseif(TARGET_PLATFORM STREQUAL "esp32")
     # 非 ESP-IDF 环境：仅声明源文件（供静态分析）
     set(ESP32_PAL_SOURCES
-        pal_hal_esp32.c
         pal_log_esp32.c
         pal_hal_gpio_esp32.c
         pal_hal_i2c_esp32.c
