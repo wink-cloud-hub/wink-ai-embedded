@@ -1,11 +1,25 @@
 {
   "app_name": "devkitc_smoke",
-  "board": "esp32-devkitc-v4",
+  "board": "esp32_devkitc",
   "devices": {
     "board_led": {
       "type": "led",
       "pin": 2,
       "active_high": true
+    },
+    "boot_button": {
+      "type": "button",
+      "pin": 0,
+      "active_low": true,
+      "long_press_ms": 3000,
+      "isr_counter": true,
+      "auto_poll_ms": 10
+    },
+    "smoke_sonar": {
+      "type": "ultrasonic",
+      "trig_pin": 18,
+      "echo_pin": 19,
+      "use_rmt": true
     }
   }
 }

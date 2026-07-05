@@ -249,16 +249,22 @@ def main(argv: List[str] | None = None) -> int:
     args = p.parse_args(argv)
 
     try:
-        source = str(args.config)
+        source_path = args.config.resolve()
+        # Render POSIX-style relative path in banner comments to keep
+        # generated files deterministic across machines (golden-test-safe).
         try:
-            with args.config.open("r", encoding="utf-8") as fp:
+            source_display = source_path.relative_to(Path.cwd().resolve()).as_posix()
+        except ValueError:
+            source_display = source_path.as_posix()
+        try:
+            with source_path.open("r", encoding="utf-8") as fp:
                 cfg = json.load(fp)
         except FileNotFoundError:
-            _die(f"config not found: {source}", code=1)
+            _die(f"config not found: {source_path}", code=1)
         except json.JSONDecodeError as e:
-            _die(f"{source}: invalid JSON: {e}")
+            _die(f"{source_path}: invalid JSON: {e}")
 
-        ctx = build_context(cfg, source)
+        ctx = build_context(cfg, source_display)
         render_all(ctx, args.out_dir)
     except SystemExit:
         raise
