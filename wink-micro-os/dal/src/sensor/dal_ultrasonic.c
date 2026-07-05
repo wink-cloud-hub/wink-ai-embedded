@@ -47,6 +47,32 @@ wink_status_t dal_ultrasonic_apply_override(void *dev, const uint8_t *params, ui
     return WINK_OK;
 }
 
+wink_status_t dal_ultrasonic_deinit(dal_ultrasonic_t *dev) {
+    if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (!dev->initialized) { return WINK_OK; }  /* no-op on un-init dev */
+
+    /* 停 RMT 硬件捕获（singleton per pal_rmt.h；P-stage 现状可接受）。 */
+    if (dev->config.use_rmt) {
+        pal_rmt_pulse_capture_deinit();
+    }
+
+    /* 释放两侧 GPIO claim（init 中双 claim + 双 gpio_init 的对偶）。 */
+    WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN,
+                                             (uint32_t)dev->config.trig_pin,
+                                             dev->config.owner));
+    WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN,
+                                             (uint32_t)dev->config.echo_pin,
+                                             dev->config.owner));
+
+    /* 重置运行期字段（保 config 副本不动，便于诊断）。 */
+    dev->state         = DAL_ULTRASONIC_IDLE;
+    dev->last_distance = 0.0f;
+    dev->last_pulse_us = 0u;
+    dev->last_status   = WINK_OK;
+    dev->initialized   = false;
+    return WINK_OK;
+}
+
 wink_status_t dal_ultrasonic_init(dal_ultrasonic_t *dev, const dal_ultrasonic_config_t *cfg) {
     if (dev == NULL || cfg == NULL) { return WINK_ERR_INVALID_ARG; }
     if (cfg->owner == NULL) { return WINK_ERR_INVALID_ARG; }

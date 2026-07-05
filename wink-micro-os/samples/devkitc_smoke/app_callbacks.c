@@ -1,9 +1,13 @@
 /**
  * @file app_callbacks.c
- * @brief DevKitC smoke-test firmware (rewrite Wave 6): init → helper → selftest
- *        in ~120 lines.  All ISR/task/sem/12-step-RMT/telemetry boilerplate
- *        that used to live here has moved into Runtime selftest or
- *        samples/common helpers.
+ * @brief DevKitC smoke-test firmware (P0-1 slim): device tree centralized,
+ *        app only wires helpers + selftest.
+ *
+ * Init / deinit boilerplate for LED / button / ultrasonic lives in
+ * device_tree.c. This TU only:
+ *   - defines business event callbacks (long-press → WDT test)
+ *   - kicks off helper services (blink, sim echo, telemetry, sonar polling)
+ *   - invokes the OS built-in selftest suite
  *
  * Verifies on bare metal (no wiring required):
  *   S1  2s telemetry                (common: wink_default_telemetry_start)
@@ -24,7 +28,6 @@
 #include "wink_runtime.h"
 #include "wink_selftest.h"
 #include "wink_fault.h"
-#include "wink_actuator_registry.h"
 #include "wink_blink_helper.h"
 #include "wink_default_telemetry.h"
 #include "wink_sim_ultrasonic_echo.h"
@@ -35,13 +38,6 @@
 #if defined(__GNUC__) || defined(__clang__)
 #  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
-
-/* ── Pin definitions for S10 ultrasonic sim (consumed by common helper) ──── */
-#define SMOKE_TRIG_PIN  18u
-#define SMOKE_ECHO_PIN  19u
-
-/* ── Per-app state ──────────────────────────────────────────────────────── */
-static dal_ultrasonic_t s_sonar;
 
 /* ── S8: Boot-button event callback (long-press → WDT test, noreturn) ───── */
 static void on_boot_button(dal_button_event_t evt, void *ctx)
@@ -69,42 +65,26 @@ static void sonar_poll_task(void *ctx)
     WINK_IGNORE_RESULT(dal_ultrasonic_request_measurement((dal_ultrasonic_t *)ctx));
 }
 
-/* ── Actuator safe-off thunks (ISO C: no nested functions) ──────────────── */
-WINK_DEFINE_ACTUATOR_THUNK(board_led_safe_off, dal_led_off, dal_led_t)
-
-/* ── init: declare devices, wire helpers, run selftest ──────────────────── */
+/* ── init: hand off device init to device_tree, then wire helpers + selftest ─ */
 static void app_init(void)
 {
-    /* ── S2/S3: LED + boot button ─────────────────────────────────────── */
-    static const dal_led_config_t led_cfg = {
-        .owner = "board_led", .pin = BOARD_LED_PIN, .active_high = true
-    };
-    WINK_CHECK(dal_led_init(&board_led, &led_cfg), WINK_FAULT_DAL_LED);
-    WINK_IGNORE_RESULT(wink_actuator_register(board_led_safe_off, &board_led));
+    /* 设备树初始化（集中 init/register，返回首个错误即 fault） */
+    WINK_CHECK(wink_device_tree_init(), WINK_FAULT_APP(0));
 
-    static const dal_button_config_t btn_cfg = {
-        .owner = "boot_button", .pin = BOOT_BUTTON_PIN, .active_low = true
-    };
-    WINK_CHECK(dal_button_init(&boot_button, &btn_cfg), WINK_FAULT_DAL_BUTTON);
+    /* 绑定业务回调（传感器事件回调是业务层关注点） */
     WINK_IGNORE_RESULT(dal_button_on_event(&boot_button, on_boot_button, NULL));
-    WINK_IGNORE_RESULT(dal_button_set_long_press_ms(&boot_button, 3000));
-    WINK_IGNORE_RESULT(dal_button_enable_isr_counter(&boot_button));          /* S4 */
 
-    WINK_IGNORE_RESULT(wink_led_blink_start(&board_led, 1000));                /* S2 */
+    /* S2: LED blink helper（fire-and-forget） */
+    WINK_IGNORE_RESULT(wink_led_blink_start(&board_led, 1000));
 
-    /* ── S10: Ultrasonic + ECHO-loopback sim (samples/common helper) ──── */
-    static const dal_ultrasonic_config_t sonar_cfg = {
-        .owner = "smoke_sonar",
-        .trig_pin = SMOKE_TRIG_PIN, .echo_pin = SMOKE_ECHO_PIN, .use_rmt = true,
-    };
-    WINK_CHECK(dal_ultrasonic_init(&s_sonar, &sonar_cfg), WINK_FAULT_DAL_ULTRASONIC);
+    /* S10: 超声波 echo 仿真 + 周期测量任务 */
     WINK_IGNORE_RESULT(wink_sim_ultrasonic_echo_start(
-        &s_sonar, 50.0f, SMOKE_TRIG_PIN, SMOKE_ECHO_PIN));
+        &smoke_sonar, 50.0f, SMOKE_TRIG_PIN, SMOKE_ECHO_PIN));
     WINK_IGNORE_RESULT(wink_runtime_spawn_periodic(
-        "sonar_poll", 2048, 500, sonar_poll_task, &s_sonar, 1, PAL_OS_CORE_ANY));
+        "sonar_poll", 2048, 500, sonar_poll_task, &smoke_sonar, 1, PAL_OS_CORE_ANY));
 
-    /* ── S1: Default telemetry (samples/common helper) ────────────────── */
-    WINK_IGNORE_RESULT(wink_default_telemetry_start(&s_sonar, &boot_button));
+    /* S1: 默认遥测 */
+    WINK_IGNORE_RESULT(wink_default_telemetry_start(&smoke_sonar, &boot_button));
 
     /* ── S5/S6/S7/S9/S4-isr: OS built-in selftest (one call).
      *    selftest_core already logs PASS/SKIP/FAIL per entry; we only need to

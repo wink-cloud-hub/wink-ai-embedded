@@ -91,6 +91,13 @@ wink_status_t dal_led_set(dal_led_t *dev, bool on);
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_led_toggle(dal_led_t *dev);
 
+/**
+ * @brief 反初始化 LED：关闭输出、释放 GPIO 资源、置 initialized=false。
+ * @note 可在未 init 的 dev 上安全调用（直接返回 WINK_OK，no-op）。
+ * @return WINK_OK
+ */
+wink_status_t dal_led_deinit(dal_led_t *dev);
+
 #ifdef __cplusplus
 }
 #endif

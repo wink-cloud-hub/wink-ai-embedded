@@ -35,6 +35,22 @@ wink_status_t wink_actuator_register(wink_actuator_safe_off_fn fn, void *ctx) {
     return WINK_OK;
 }
 
+WINK_WARN_UNUSED_RESULT
+wink_status_t wink_actuator_unregister(wink_actuator_safe_off_fn fn, void *ctx) {
+    /* 线性扫描匹配 (fn, ctx)；找到则左移压缩，找不到返回 NOT_FOUND（幂等约定）。 */
+    for (uint32_t i = 0; i < s_count; i++) {
+        if (s_entries[i].fn == fn && s_entries[i].ctx == ctx) {
+            /* 左移剩余条目（无需清零末尾——s_count 递减后越界即失效）。 */
+            for (uint32_t j = i + 1; j < s_count; j++) {
+                s_entries[j - 1] = s_entries[j];
+            }
+            s_count--;
+            return WINK_OK;
+        }
+    }
+    return WINK_ERR_NOT_FOUND;
+}
+
 void wink_actuator_safe_off_all(void) {
     /* 即使单个失败也继续遍历全部；失败项 trace 记录（fault code 7000 段：actuator safe-off 失败） */
     for (uint32_t i = 0; i < s_count; i++) {

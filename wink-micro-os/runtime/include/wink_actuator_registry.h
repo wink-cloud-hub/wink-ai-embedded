@@ -39,6 +39,16 @@ typedef wink_status_t (*wink_actuator_safe_off_fn)(void *ctx);
 WINK_WARN_UNUSED_RESULT
 wink_status_t wink_actuator_register(wink_actuator_safe_off_fn fn, void *ctx);
 
+/**
+ * @brief 反注册一个执行器关断回调（从注册表中移除，safe_off_all 不再触发）。
+ * @param fn 之前注册时的回调指针
+ * @param ctx 之前注册时的上下文指针
+ * @return WINK_OK / WINK_ERR_NOT_FOUND(未找到匹配项)
+ * @note 幂等：未注册过的 (fn, ctx) 对返回 WINK_ERR_NOT_FOUND。
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t wink_actuator_unregister(wink_actuator_safe_off_fn fn, void *ctx);
+
 /** @brief 清空注册表（测试隔离 / 启动重置用） */
 void wink_actuator_registry_reset(void);
 
