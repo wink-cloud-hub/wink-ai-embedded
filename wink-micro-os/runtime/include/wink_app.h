@@ -29,8 +29,22 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
+#include <stdbool.h>
 #include "wink_config.h"
 #include "wink_status.h"
+
+/* Forward-declare PAL reset-reason enum to avoid pulling pal_osal.h into
+ * the app-facing header (keeps app code zero-PAL-header).  The actual
+ * enum definition lives in pal_osal.h; we mirror the underlying integer
+ * type via a dedicated runtime enum so the runtime header is self-contained. */
+typedef enum {
+    WINK_RESET_REASON_UNKNOWN    = 0,
+    WINK_RESET_REASON_POWER_ON   = 1,
+    WINK_RESET_REASON_WATCHDOG   = 2,
+    WINK_RESET_REASON_PANIC      = 3,
+    WINK_RESET_REASON_SOFTWARE   = 4,
+    WINK_RESET_REASON_BROWNOUT   = 5,
+} wink_reset_reason_t;
 
 /* Compatibility for static_assert in pre-C11 compilers */
 #ifndef static_assert
@@ -277,15 +291,50 @@ typedef wink_status_t (*wink_pt_func_t)(wink_pt_t *pt);
     }
 
 /**
+ * @brief Boot information delivered to on_boot() before init().
+ *
+ * Lets the app react to reset recovery (WDT/panic) without directly
+ * calling PAL OSAL functions.  All fields are read-only snapshots taken
+ * before any user code runs.
+ */
+typedef struct {
+    wink_reset_reason_t reset_reason;      /**< Why we booted */
+    uint32_t abnormal_boot_count;          /**< Consecutive WDT/panic resets so far (0 = clean boot) */
+    bool     is_healthy_recovery;          /**< true = POWER_ON / SOFTWARE / BROWNOUT with abn==0 */
+    uint32_t uptime_ms;                    /**< Always 0 on cold boot; non-zero after WDT resume (reserved) */
+} wink_boot_info_t;
+
+/**
  * @brief App 生命周期回调集合（各字段允许为 NULL，runtime 跳过）
- *  - init:    启动时调用一次
- *  - loop:    每个 tick 调用
- *  - on_fault: 故障时调用（fault_code 由 runtime 或 App 上报）
+ *
+ * Versioning: fields are appended at the tail.  Designated initializers
+ * in app source code (`{ .init = my_init, ... }`) remain forward-compatible
+ * when new fields are added.
+ *
+ *  - on_boot:  called once before init() with boot metadata (can be NULL)
+ *  - init:     called once at startup (return non-OK → auto-fault + safe-off)
+ *              [legacy void(*)(void) init is also supported — runtime detects
+ *              which variant is present via init_status field below]
+ *  - loop:     called every tick (must be non-blocking, ≤5ms)
+ *  - on_fault: called after safe-off when a fault is raised (return WINK_OK
+ *              if recovered / WINK_ERR_LOCKED to halt for watchdog reset)
+ *  - init_status / on_fault_status: new status-returning variants that take
+ *              precedence over the legacy void-return pointers below.
+ *
+ * Design note: legacy void-returning init / on_fault pointers are preserved
+ * so existing samples keep compiling.  New code should supply init_status /
+ * on_fault_status instead (see Wave 2 spec).
  */
 typedef struct wink_app_callbacks {
+    /* Legacy void-returning callbacks (kept for ABI compat). */
     void (*init)(void);
     void (*loop)(void);
     void (*on_fault)(uint32_t fault_code);
+
+    /* Extended lifecycle hooks (added Wave 2, 2026-07). */
+    void          (*on_boot)(const wink_boot_info_t *info);
+    wink_status_t (*init_status)(void);            /* return non-OK → auto raise_fault */
+    wink_status_t (*on_fault_status)(uint32_t fault_code); /* OK=recovered, LOCKED=halt */
 } wink_app_callbacks_t;
 
 /** @brief App 侧周期延时（内部转 PAL pal_delay_ms，语义由 target 实现） */

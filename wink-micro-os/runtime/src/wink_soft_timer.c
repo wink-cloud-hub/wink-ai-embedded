@@ -14,6 +14,7 @@
  */
 #include "wink_soft_timer.h"
 #include "wink_runtime.h"
+#include "wink_fault.h"
 #include "pal_osal.h"
 #include "wink_trace.h"
 #include <string.h>
