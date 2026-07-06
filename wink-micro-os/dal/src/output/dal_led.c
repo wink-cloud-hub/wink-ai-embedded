@@ -49,17 +49,23 @@ wink_status_t dal_led_toggle(dal_led_t *dev) {
 
 wink_status_t dal_led_deinit(dal_led_t *dev) {
     if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
-    if (!dev->initialized) { return WINK_OK; }  /* no-op on un-init dev */
+    if (!dev->initialized) { return WINK_OK; }  /* idempotent no-op on un-init dev */
 
-    /* Best-effort turn LED off before releasing the pin (safe-off semantic). */
+    /* 1. Best-effort turn LED off before releasing the pin (safe-off semantic). */
     WINK_IGNORE_UNUSED(dal_led_off(dev));
 
-    /* Release resource claim so a subsequent init（可能不同 owner）不 BUSY。 */
-    WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN,
-                                             dev->config.pin,
-                                             dev->config.owner));
+    /* Keep pin for resource release and GPIO reset */
+    uint16_t pin = dev->config.pin;
+    const char *owner = dev->config.owner;
 
-    dev->initialized = false;
-    dev->is_on       = false;
+    /* 2. Reset GPIO to high-impedance INPUT mode */
+    WINK_IGNORE_UNUSED(pal_gpio_init(pin, PAL_GPIO_INPUT));
+
+    /* 3. Release resource claim so a subsequent init does not fail with BUSY. */
+    WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN, pin, owner));
+
+    /* 4. Clear the instance data completely to guarantee no residual state */
+    memset(dev, 0, sizeof(dal_led_t));
+
     return WINK_OK;
 }

@@ -172,6 +172,31 @@ void test_apply_override_null_returns_invalid_arg(void) {
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_ultrasonic_apply_override(&u, NULL, sizeof p));
 }
 
+void test_deinit_hardening(void) {
+    dal_ultrasonic_t dev = {0};
+    const dal_ultrasonic_config_t cfg = { .owner = "radar0", .trig_pin = 4, .echo_pin = 5, .use_rmt = false };
+
+    /* 1. NULL safety */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_ultrasonic_deinit(NULL));
+
+    /* 2. Idempotency on uninitialized dev */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_deinit(&dev));
+
+    /* 3. Successful deinit and resource release */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&dev, &cfg));
+    TEST_ASSERT_TRUE(dev.initialized);
+    TEST_ASSERT_TRUE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 4));
+    TEST_ASSERT_TRUE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 5));
+
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_deinit(&dev));
+    TEST_ASSERT_FALSE(dev.initialized);
+    TEST_ASSERT_FALSE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 4));
+    TEST_ASSERT_FALSE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 5));
+
+    /* 4. Idempotency after deinit */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_deinit(&dev));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_ultrasonic_init_null_returns_invalid_arg);
@@ -189,6 +214,7 @@ int main(void) {
     RUN_TEST(test_apply_override_writes_pins);
     RUN_TEST(test_apply_override_rejects_same_pin);
     RUN_TEST(test_apply_override_null_returns_invalid_arg);
+    RUN_TEST(test_deinit_hardening);
     return UNITY_END();
 }
 

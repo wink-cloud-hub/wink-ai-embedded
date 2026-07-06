@@ -58,16 +58,20 @@ int main(void) {
     USE_FN(dal_servo_set_angle);
     USE_FN(dal_servo_safe_off);
     USE_FN(dal_servo_apply_override);
+    USE_FN(dal_servo_deinit);
     /* SSD1306 */
     USE_FN(dal_ssd1306_init);
     USE_FN(dal_ssd1306_clear);
     USE_FN(dal_ssd1306_draw_text);
     USE_FN(dal_ssd1306_flush);
+    USE_FN(dal_ssd1306_deinit);
     /* GPS */
     USE_FN(dal_gps_poll);
     USE_FN(dal_gps_get_position);
+    USE_FN(dal_gps_deinit);
     /* EEPROM */
-    /* (all three eeprom APIs are WINK_BLOCKING + WINK_STRICT_NONBLOCKING-gated;
+    USE_FN(dal_eeprom_deinit);
+    /* (all three other eeprom APIs are WINK_BLOCKING + WINK_STRICT_NONBLOCKING-gated;
      *  we don't reference them here to avoid polluting the all-ON sanity check
      *  with WINK_BLOCKING deprecation warnings.) */
 

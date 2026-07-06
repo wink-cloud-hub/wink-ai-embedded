@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file pal.h
  * @brief PAL 聚合头 —— 一次 include 拉全 PAL 契约面（HAL + OSAL + 系统服务 + 状态码）。
  *        内核内部组件（dal/runtime/trace/targets）可 #include "pal.h"；
@@ -10,6 +10,7 @@
 
 #include "wink_status.h"
 #include "pal_hal.h"
+#include "hal/pal_i2c.h"
 #include "pal_osal.h"
 #include "pal_log.h"
 #include "pal_resource.h"

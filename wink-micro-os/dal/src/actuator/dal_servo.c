@@ -89,3 +89,33 @@ wink_status_t dal_servo_apply_override(void *dev, const uint8_t *params, uint16_
     s->config.max_pulse_ms = max_pulse_ms;
     return WINK_OK;
 }
+
+wink_status_t dal_servo_deinit(dal_servo_t *dev) {
+    if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (!dev->initialized) { return WINK_OK; }  /* idempotent no-op on un-init dev */
+
+    /* 1. Best-effort turn servo off (set duty to 0 -> limp state) */
+    WINK_IGNORE_UNUSED(dal_servo_safe_off(dev));
+
+    /* 2. Deinitialize PWM channel */
+    pal_pwm_deinit(dev->config.pwm_channel);
+
+    /* Keep channel and owner for resource release and GPIO lookup */
+    uint8_t channel = dev->config.pwm_channel;
+    const char *owner = dev->config.owner;
+
+    /* 3. Query GPIO pin associated with this channel, and reset it to INPUT */
+    wink_pin_t pin = -1;
+    wink_status_t pin_st = pal_pwm_channel_pin(channel, &pin);
+    if (pin_st == WINK_OK && pin >= 0) {
+        WINK_IGNORE_UNUSED(pal_gpio_init(pin, PAL_GPIO_INPUT));
+    }
+
+    /* 4. Release PWM channel resource claim */
+    WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_PWM_CHANNEL, (uint32_t)channel, owner));
+
+    /* 5. Clear the instance data completely to guarantee no residual state */
+    memset(dev, 0, sizeof(dal_servo_t));
+
+    return WINK_OK;
+}

@@ -11,6 +11,7 @@
  *   零退化时只多一次内存读，热路径开销可忽略。
  */
 #include "pal_hal.h"
+#include "hal/pal_i2c.h"
 #include "pal_pwm_router.h"
 #include "pal_osal.h"
 #include "pal_resource.h"  /* pal_resource_is_claimed / PAL_RESOURCE_GPIO_PIN — 与 host/esp32 同源保真 */
@@ -136,9 +137,29 @@ wink_status_t pal_i2c_port_pins(uint8_t port, wink_pin_t *out_sda, wink_pin_t *o
     return WINK_ERR_UNSUPPORTED;
 }
 
+static bool s_i2c_bus_inited[PAL_I2C_PORTS] = {false};
+
+wink_status_t pal_i2c_bus_init(uint8_t port, uint8_t sda, uint8_t scl, uint32_t hz) {
+    (void)sda; (void)scl; (void)hz;
+    if (port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
+    s_i2c_bus_inited[port] = true;
+    return WINK_OK;
+}
+
+void pal_i2c_bus_deinit(uint8_t port) {
+    if (port < PAL_I2C_PORTS) {
+        s_i2c_bus_inited[port] = false;
+    }
+}
+
 wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
                       const uint8_t *write_buf, uint32_t write_len,
                       uint8_t *read_buf, uint32_t read_len) {
+    if (port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
+    if (!s_i2c_bus_inited[port]) {
+        printf("WINK_WARN: I2C port %d transfer called before bus init, lazy initializing (deprecated path)\n", port);
+        s_i2c_bus_inited[port] = true;
+    }
     /* Step 1: 丢包判定（PRNG 确定性，§4.1 合规）。
      *
      * 设计说明：全局 PRNG 是有意的设计选择，保证"单种子复现全系统行为"。
@@ -177,6 +198,10 @@ wink_status_t pal_i2c_scan(uint8_t port, uint8_t start_addr, uint8_t end_addr,
     }
     if (port >= PAL_I2C_PORTS) {
         return WINK_ERR_INVALID_ARG;
+    }
+    if (!s_i2c_bus_inited[port]) {
+        printf("WINK_WARN: I2C port %d scan called before bus init, lazy initializing (deprecated path)\n", port);
+        s_i2c_bus_inited[port] = true;
     }
     if (start_addr > end_addr || end_addr > 0x7F) {
         return WINK_ERR_INVALID_ARG;

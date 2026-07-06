@@ -39,3 +39,16 @@ wink_status_t dal_gps_get_position(const dal_gps_t *dev, dal_gps_position_t *pos
     memset(pos, 0, sizeof(dal_gps_position_t));
     return WINK_ERR_UNSUPPORTED;
 }
+
+wink_status_t dal_gps_deinit(dal_gps_t *dev) {
+    if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (!dev->initialized) { return WINK_OK; }  /* idempotent no-op on un-init dev */
+
+    /* Release UART port resource claim */
+    WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_UART_PORT, dev->config.uart_port, dev->config.owner));
+
+    /* Clear the instance data completely to guarantee no residual state */
+    memset(dev, 0, sizeof(dal_gps_t));
+
+    return WINK_OK;
+}
