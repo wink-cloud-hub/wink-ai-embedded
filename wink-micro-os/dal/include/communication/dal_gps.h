@@ -107,4 +107,20 @@ wink_status_t dal_gps_get_position(const dal_gps_t *dev, dal_gps_position_t *pos
 }
 #endif
 
+/* ── Compile-time pruning stubs (P2-1 2026-07-06) ──────────────────────
+ * dal_gps_init() is itself WINK_STRICT_NONBLOCKING-guarded above; the
+ * stub is unconditionally declared here for the driver-off case.
+ */
+#if !defined(WINK_USE_GPS) || !WINK_USE_GPS
+#define WINK_GPS_DISABLED_MSG \
+    "GPS driver not enabled; add a \"gps\" device to wink-app.json " \
+    "(or set -DWINK_USE_GPS=ON)."
+WINK_UNAVAILABLE_MSG(WINK_GPS_DISABLED_MSG) WINK_BLOCKING WINK_WARN_UNUSED_RESULT
+wink_status_t dal_gps_init(dal_gps_t *dev, const dal_gps_config_t *cfg);
+WINK_UNAVAILABLE_MSG(WINK_GPS_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_gps_poll(dal_gps_t *dev);
+WINK_UNAVAILABLE_MSG(WINK_GPS_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_gps_get_position(const dal_gps_t *dev, dal_gps_position_t *pos);
+#endif /* !WINK_USE_GPS */
+
 #endif /* DAL_GPS_H */

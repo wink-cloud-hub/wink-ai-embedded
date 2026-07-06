@@ -1,8 +1,45 @@
 # DAL (Device Abstraction Layer) Component CMake
+#
+# P2-1 (2026-07-06): per-driver compile-time pruning via WINK_USE_XXX options.
+# Each driver can be compiled out independently; when disabled its public
+# header emits WINK_UNAVAILABLE_MSG stubs so callers get a friendly
+# compile error pointing them to add the device to wink-app.json (instead
+# of an opaque "undefined reference" at link time).
+#
+# How it works:
+#   * WINK_USE_<XXX> options default to ON (backward compat).
+#   * For each enabled driver, we:
+#       (a) compile its .c file into the dal static library;
+#       (b) PUBLIC-ly define WINK_USE_<XXX>=1 so that consumers of `dal`
+#           see the real declarations in the header instead of the
+#           unavailable stubs (headers use `#if !defined(WINK_USE_X)
+#           || !WINK_USE_X` to switch between real decls and stubs).
+#   * When a driver is OFF, its .c is omitted from the library and no
+#     WINK_USE_X=1 is defined, so consumers see the stubs.
+#
+# Defaults: all drivers ON (backward compatible). App-specific builds
+# include() the codegen-produced app_options.cmake before add_subdirectory(dal)
+# to force ON only the drivers declared in wink-app.json. Drivers that are
+# neither forced ON nor explicitly defaulted-OFF here fall through to ON
+# via the option() defaults below — so adding a new driver requires three
+# edits:
+#   1) Add an `option(WINK_USE_<XXX> ...)` line in the options block.
+#   2) Add its source/header + compile_definitions in the enable block.
+#   3) Add the WINK_UNAVAILABLE_MSG stub block at the bottom of its header.
 add_library(dal STATIC)
 
-# 暴露包含路径给其他组件使用
-# Phase 3：所有分类子目录均在搜索路径中，保持向后兼容
+# ── Per-driver compile options (default ON for backward compat) ────────
+option(WINK_USE_LED        "Enable DAL LED driver"        ON)
+option(WINK_USE_BUTTON     "Enable DAL Button driver"     ON)
+option(WINK_USE_SERVO      "Enable DAL Servo driver"      ON)
+option(WINK_USE_SSD1306    "Enable DAL SSD1306 OLED"      ON)
+option(WINK_USE_ULTRASONIC "Enable DAL Ultrasonic sensor" ON)
+option(WINK_USE_GPS        "Enable DAL GPS driver"        ON)
+option(WINK_USE_EEPROM     "Enable DAL EEPROM driver"     ON)
+
+# ── Public include paths (always exposed — headers are still needed to
+#    provide the WINK_UNAVAILABLE_MSG stubs that give friendly errors
+#    when the driver is compiled out). ──────────────────────────────────
 target_include_directories(dal PUBLIC
     include
     include/input
@@ -25,27 +62,36 @@ target_include_directories(dal PRIVATE
 # DAL 依赖 PAL
 target_link_libraries(dal PUBLIC pal)
 
-# 声明 DAL 层的源文件（Phase 3 分类组织）
-target_sources(dal PRIVATE
-    # input: 输入器件
-    include/input/dal_button.h
-    src/input/dal_button.c
-    # output: 输出器件
-    include/output/dal_led.h
-    src/output/dal_led.c
-    # actuator: 执行器
-    include/actuator/dal_servo.h
-    src/actuator/dal_servo.c
-    # display: 显示器驱动
-    include/display/dal_ssd1306.h
-    src/display/dal_ssd1306.c
-    # sensor: 传感器
-    include/sensor/dal_ultrasonic.h
-    src/sensor/dal_ultrasonic.c
-    # communication: 通信外设（Phase 3 新增）
-    include/communication/dal_gps.h
-    src/communication/dal_gps.c
-    # storage: 存储外设（Phase 3 新增）
-    include/storage/dal_eeprom.h
-    src/storage/dal_eeprom.c
-)
+# Helper: enable one driver — add its sources + PUBLIC -DWINK_USE_<OPT>=1 so
+# both the library's own .c files and downstream consumers see the real
+# declarations instead of the unavailable stubs.
+function(_wink_dal_enable opt opt_def cat stem)
+    if(${opt})
+        target_sources(dal PRIVATE
+            include/${cat}/dal_${stem}.h
+            src/${cat}/dal_${stem}.c
+        )
+        target_compile_definitions(dal PUBLIC ${opt_def}=1)
+    endif()
+endfunction()
+
+# ── Per-driver enablement (conditional on WINK_USE_XXX) ────────────────
+# NOTE: headers are listed alongside sources so IDEs index them; they are
+# not compiled directly. Keep this block in sync with the option() block
+# above AND add a WINK_UNAVAILABLE_MSG stub to the header when adding a
+# new driver.
+
+# input
+_wink_dal_enable(WINK_USE_BUTTON     WINK_USE_BUTTON     input     button)
+# output
+_wink_dal_enable(WINK_USE_LED        WINK_USE_LED        output    led)
+# actuator
+_wink_dal_enable(WINK_USE_SERVO      WINK_USE_SERVO      actuator  servo)
+# display
+_wink_dal_enable(WINK_USE_SSD1306    WINK_USE_SSD1306    display   ssd1306)
+# sensor
+_wink_dal_enable(WINK_USE_ULTRASONIC WINK_USE_ULTRASONIC sensor    ultrasonic)
+# communication
+_wink_dal_enable(WINK_USE_GPS        WINK_USE_GPS        communication gps)
+# storage
+_wink_dal_enable(WINK_USE_EEPROM     WINK_USE_EEPROM     storage   eeprom)

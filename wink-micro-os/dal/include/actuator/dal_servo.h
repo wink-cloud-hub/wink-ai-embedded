@@ -97,4 +97,19 @@ wink_status_t dal_servo_apply_override(void *dev, const uint8_t *params, uint16_
 }
 #endif
 
+/* ── Compile-time pruning stubs (P2-1 2026-07-06) ────────────────────── */
+#if !defined(WINK_USE_SERVO) || !WINK_USE_SERVO
+#define WINK_SERVO_DISABLED_MSG \
+    "Servo driver not enabled; add a \"servo\" device to wink-app.json " \
+    "(or set -DWINK_USE_SERVO=ON)."
+WINK_UNAVAILABLE_MSG(WINK_SERVO_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_servo_init(dal_servo_t *dev, const dal_servo_config_t *cfg);
+WINK_UNAVAILABLE_MSG(WINK_SERVO_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_servo_set_angle(dal_servo_t *dev, float angle);
+WINK_UNAVAILABLE_MSG(WINK_SERVO_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_servo_safe_off(dal_servo_t *dev);
+WINK_UNAVAILABLE_MSG(WINK_SERVO_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_servo_apply_override(void *dev, const uint8_t *params, uint16_t len);
+#endif /* !WINK_USE_SERVO */
+
 #endif /* DAL_SERVO_H */

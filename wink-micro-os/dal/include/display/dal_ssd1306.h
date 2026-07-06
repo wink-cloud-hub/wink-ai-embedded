@@ -100,4 +100,20 @@ wink_status_t dal_ssd1306_flush(dal_ssd1306_t *dev);
 }
 #endif
 
+/* ── Compile-time pruning stubs (P2-1 2026-07-06) ────────────────────── */
+#if !defined(WINK_USE_SSD1306) || !WINK_USE_SSD1306
+#define WINK_SSD1306_DISABLED_MSG \
+    "SSD1306 OLED driver not enabled; add an \"ssd1306\" device to " \
+    "wink-app.json (or set -DWINK_USE_SSD1306=ON)."
+WINK_UNAVAILABLE_MSG(WINK_SSD1306_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_ssd1306_init(dal_ssd1306_t *dev, const dal_ssd1306_config_t *cfg);
+WINK_UNAVAILABLE_MSG(WINK_SSD1306_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_ssd1306_clear(dal_ssd1306_t *dev);
+WINK_UNAVAILABLE_MSG(WINK_SSD1306_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_ssd1306_draw_text(dal_ssd1306_t *dev, uint16_t col, uint8_t page,
+                                    const char *str);
+WINK_UNAVAILABLE_MSG(WINK_SSD1306_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_ssd1306_flush(dal_ssd1306_t *dev);
+#endif /* !WINK_USE_SSD1306 */
+
 #endif /* DAL_SSD1306_H */
