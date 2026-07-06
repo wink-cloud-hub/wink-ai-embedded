@@ -114,6 +114,27 @@ if(ESP_PLATFORM)
         -finput-charset=UTF-8
         -fexec-charset=UTF-8
     )
+
+    # P2 (2026-07-06): DAL drivers are compiled directly into this IDF component
+    # via ${WINK_DAL_SOURCES} (core_sources.cmake), NOT via the standalone
+    # dal/CMakeLists.txt `add_library(dal)` path — so the PUBLIC
+    # target_compile_definitions from that CMakeLists are NOT picked up here.
+    # Without these explicit defines, each dal_<drv>.c TU would see the
+    # WINK_UNAVAILABLE_MSG stubs in its own public header and fail to compile
+    # (e.g. dal_led_on() calling dal_led_set() would hit "LED driver not enabled").
+    # PUBLIC scope propagates these defines to consumers (main component etc.)
+    # so App code linking against this component sees the real declarations.
+    # When per-app pruning is added to the IDF build (driven by codegen's
+    # app_options.cmake), replace these blanket ONs with codegen-emitted defines.
+    target_compile_definitions(${COMPONENT_LIB} PUBLIC
+        WINK_USE_LED=1
+        WINK_USE_BUTTON=1
+        WINK_USE_SERVO=1
+        WINK_USE_SSD1306=1
+        WINK_USE_ULTRASONIC=1
+        WINK_USE_GPS=1
+        WINK_USE_EEPROM=1
+    )
 elseif(TARGET_PLATFORM STREQUAL "esp32")
     # 非 ESP-IDF 环境：仅声明源文件（供静态分析）
     set(ESP32_PAL_SOURCES
