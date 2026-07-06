@@ -101,6 +101,27 @@ void test_deinit_hardening(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_deinit(&dev2));
 }
 
+/* ADR-0024 §4 #8 idempotency / Task 0.7 Step 4: 10-round init→deinit loop must
+ * not leak SW resource reservations (S11-class regression guard). Host cannot
+ * observe the ESP32-specific esp_gpio_reserve bitmap leak directly, but pal_resource
+ * leak (mismatched claim/release) would cause init to return BUSY on round ≥2. */
+void test_deinit_loop_no_resource_leak(void) {
+    dal_led_t dev = {0};
+    const dal_led_config_t cfg = { .owner = OWNER, .pin = 5, .active_high = true };
+
+    for (int round = 0; round < 10; round++) {
+        TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_init(&dev, &cfg));
+        TEST_ASSERT_TRUE(dev.initialized);
+        TEST_ASSERT_TRUE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 5));
+        /* Toggle a few times to exercise the driver while initialized. */
+        TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_on(&dev));
+        TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_off(&dev));
+        TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_deinit(&dev));
+        TEST_ASSERT_FALSE(dev.initialized);
+        TEST_ASSERT_FALSE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 5));
+    }
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_init_null_returns_invalid_arg);
@@ -110,5 +131,6 @@ int main(void) {
     RUN_TEST(test_active_low_on_off);
     RUN_TEST(test_toggle_flips_state);
     RUN_TEST(test_deinit_hardening);
+    RUN_TEST(test_deinit_loop_no_resource_leak);
     return UNITY_END();
 }

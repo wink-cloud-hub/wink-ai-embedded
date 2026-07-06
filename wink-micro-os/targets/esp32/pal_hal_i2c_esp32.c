@@ -543,8 +543,11 @@ void pal_i2c_bus_deinit(uint8_t port) {
         }
     }
 
-    /* Step 2: SCL 9-pulse bus recovery */
-    esp_err_t clear_err = i2c_master_bus_clear_bus(s_i2c_bus[port]);
+    /* Step 2: SCL 9-pulse bus recovery.
+     * ESP-IDF v6.0.x names the API i2c_master_bus_reset() (not _clear_bus which
+     * arrived in later IDF releases). It performs 9 SCL pulses to release any
+     * slave stuck driving SDA low (ADR-0024 §7 WDT-dirty-reset recovery). */
+    esp_err_t clear_err = i2c_master_bus_reset(s_i2c_bus[port]);
     if (clear_err != ESP_OK) {
         ESP_LOGW(TAG, "clear bus port %d in bus_deinit failed: %s", port, esp_err_to_name(clear_err));
     }

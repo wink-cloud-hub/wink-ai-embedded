@@ -45,14 +45,25 @@ wink_status_t dal_eeprom_write(dal_eeprom_t *dev, uint16_t addr, const uint8_t *
 #endif /* WINK_STRICT_NONBLOCKING */
 
 wink_status_t dal_eeprom_deinit(dal_eeprom_t *dev) {
+    /* ADR-0024 §4 deinit — checked: 1(N/A: no actuator safe-off needed for EEPROM)/
+     *   2(N/A: I2C client, SDA/SCL owned by bus-owner)/3(N/A: no GPIO ISR)/
+     *   4(N/A)/5(N/A)/6(client-level: does NOT call pal_i2c_bus_deinit; releases only
+     *   own I2C_ADDR claim so ssd1306 or other clients on the same bus stay alive)/
+     *   7(memset clears buffer/config)/8(NULL+uninit idempotent)/
+     *   9(no waits, SW-only)/10(signature unified) */
     if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_OK; }  /* idempotent no-op on un-init dev */
 
-    /* Release I2C address resource claim */
-    uint32_t res_id = pal_resource_i2c_id(dev->config.i2c_port, dev->config.i2c_addr);
-    WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_I2C_ADDR, res_id, dev->config.owner));
+    /* Read fields before memset. */
+    uint8_t port = dev->config.i2c_port;
+    uint16_t addr = dev->config.i2c_addr;
+    const char *owner = dev->config.owner;
 
-    /* Clear the instance data completely to guarantee no residual state */
+    /* 6. Release only this client's I2C address claim (bus-owner managed). */
+    uint32_t res_id = pal_resource_i2c_id(port, addr);
+    WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_I2C_ADDR, res_id, owner));
+
+    /* 7. Clear the instance data completely */
     memset(dev, 0, sizeof(dal_eeprom_t));
 
     return WINK_OK;

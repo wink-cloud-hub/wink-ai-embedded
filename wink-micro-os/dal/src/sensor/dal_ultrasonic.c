@@ -48,31 +48,43 @@ wink_status_t dal_ultrasonic_apply_override(void *dev, const uint8_t *params, ui
 }
 
 wink_status_t dal_ultrasonic_deinit(dal_ultrasonic_t *dev) {
+    /* ADR-0024 §4 deinit — checked: 1(trig LOW safe-off)/2(both pins reset via
+     *   pal_gpio_reset_pin)/3(N/A: trig is output-only, echo has no PAL-registered
+     *   ISR — RMT owns the echo signal internally and is stopped in step 4)/
+     *   4(RMT deinit force-stops DMA, no burst wait)/5(N/A)/6(N/A)/7(memset clears
+     *   distance_cm/capture state/last_ts)/8(NULL+uninit idempotent)/9(RMT force-stop
+     *   ≤5ms, well under 50ms budget)/10(signature unified) */
     if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_OK; }  /* idempotent no-op on un-init dev */
 
-    /* 1. Best-effort pull trig_pin LOW (safe-off semantic) */
-    WINK_IGNORE_UNUSED(pal_gpio_write(dev->config.trig_pin, false));
-
-    /* 2. Deinitialize RMT hardware capture if RMT was enabled */
-    if (dev->config.use_rmt) {
-        pal_rmt_pulse_capture_deinit();
-    }
-
-    /* Keep pins and owner for resource release and GPIO reset */
+    /* Read fields before any memset. */
     uint16_t trig_pin = dev->config.trig_pin;
     uint16_t echo_pin = dev->config.echo_pin;
     const char *owner = dev->config.owner;
+    bool use_rmt = dev->config.use_rmt;
 
-    /* 3. Reset both GPIO pins to high-impedance INPUT mode */
-    WINK_IGNORE_UNUSED(pal_gpio_init(trig_pin, PAL_GPIO_INPUT));
-    WINK_IGNORE_UNUSED(pal_gpio_init(echo_pin, PAL_GPIO_INPUT));
+    /* 1. Best-effort pull trig_pin LOW (safe-off semantic, ≤1µs). */
+    WINK_IGNORE_UNUSED(pal_gpio_write(trig_pin, false));
 
-    /* 4. Release resource claims for both pins */
+    /* 4. Deinitialize RMT hardware capture if RMT was enabled —
+     *    this force-stops any in-flight burst without waiting for idle_thres
+     *    (ADR-0024 §4 #4 DMA/descriptor cleanup; pal_rmt_pulse_capture_deinit
+     *    calls rmt_rx_stop + rmt_del_channel internally). */
+    if (use_rmt) {
+        pal_rmt_pulse_capture_deinit();
+    }
+
+    /* 2. Reset both GPIO pins: disables leftover routing, reverts to Hi-Z,
+     *    releases esp_gpio_reserve bitmap (ADR-0024 §4 #2). Both pins must be
+     *    reset — trig is an output, echo is the RMT input. */
+    pal_gpio_reset_pin(trig_pin);
+    pal_gpio_reset_pin(echo_pin);
+
+    /* Release SW resource claims for both pins */
     WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN, trig_pin, owner));
     WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN, echo_pin, owner));
 
-    /* 5. Clear the instance data completely to guarantee no residual state */
+    /* 7. Clear the instance data completely to guarantee no residual state */
     memset(dev, 0, sizeof(dal_ultrasonic_t));
 
     return WINK_OK;

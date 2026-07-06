@@ -38,6 +38,12 @@ wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
     return WINK_OK;
 }
 
+void pal_gpio_reset_pin(wink_pin_t pin) {
+    /* Wasm simulation: no hardware reservation bitmap — symmetric with host
+     * no-op; SW resource claim is released by pal_resource_release(). */
+    (void)pin;
+}
+
 wink_status_t pal_gpio_set_direction(wink_pin_t pin, pal_gpio_mode_t mode) {
     /* Wasm simulation: pins are always read-write; direction change is a no-op. */
     (void)pin; (void)mode;

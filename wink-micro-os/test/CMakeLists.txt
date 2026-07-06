@@ -221,6 +221,18 @@ add_wink_host_test(test_dal_ssd1306 test_dal_ssd1306.c)
 
 add_wink_host_test(test_dal_ultrasonic test_dal_ultrasonic.c)
 
+# Stage 0 Task 0.7: DAL deinit contract tests for the two stubbed drivers
+add_wink_host_test(test_dal_eeprom test_dal_eeprom.c)
+target_include_directories(test_dal_eeprom PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/storage)
+
+add_wink_host_test(test_dal_gps test_dal_gps.c)
+target_include_directories(test_dal_gps PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/communication)
+
+# Stage 0 Task 0.1: PAL I2C bus lifecycle API host test
+add_wink_host_test(test_pal_i2c_bus test_pal_i2c_bus.c)
+
 # P1-3: samples/common wink_button_helper BAL 组件 host 单测
 # P2: dal is linked via add_wink_host_test -> target_link_libraries(dal);
 # still need to compile wink_button_helper.c and wink_soft_timer.c (not in

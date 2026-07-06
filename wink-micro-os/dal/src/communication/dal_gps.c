@@ -41,13 +41,26 @@ wink_status_t dal_gps_get_position(const dal_gps_t *dev, dal_gps_position_t *pos
 }
 
 wink_status_t dal_gps_deinit(dal_gps_t *dev) {
+    /* ADR-0024 §4 deinit — checked: 1(N/A: GPS is a sensor, no actuator safe-off)/
+     *   2(N/A: UART RX/TX pins are owned by the UART driver, released by pal_uart_deinit
+     *   when that lands; current stub has no GPIO routed)/3(N/A: no GPIO ISR in stub;
+     *   future UART RX ISR must be disabled+torn down before UART driver deinit)/
+     *   4(N/A: no DMA active in stub; future UART RX DMA must be force-aborted)/
+     *   5(N/A)/6(N/A: UART not shared)/7(memset clears nmea buffer+state)/
+     *   8(NULL+uninit idempotent)/9(no waits in stub; future UART deinit must be ≤50ms)/
+     *   10(signature unified) */
     if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_OK; }  /* idempotent no-op on un-init dev */
 
-    /* Release UART port resource claim */
-    WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_UART_PORT, dev->config.uart_port, dev->config.owner));
+    /* Read fields before memset. */
+    uint8_t uart_port = dev->config.uart_port;
+    const char *owner = dev->config.owner;
 
-    /* Clear the instance data completely to guarantee no residual state */
+    /* Release UART port SW resource claim (future real impl will also
+     * pal_uart_deinit(uart_port) to tear down DMA/ISR and release UART pins). */
+    WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_UART_PORT, uart_port, owner));
+
+    /* 7. Clear the instance data completely */
     memset(dev, 0, sizeof(dal_gps_t));
 
     return WINK_OK;

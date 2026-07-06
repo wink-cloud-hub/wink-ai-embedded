@@ -99,6 +99,33 @@ WINK_WARN_UNUSED_RESULT
 wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode);
 
 /**
+ * @brief Reset a GPIO pin to its default high-impedance state and release any
+ *        per-pin hardware reservation so a subsequent init can claim the pin.
+ *
+ * Required by ADR-0024 §4 checkitem 2 ("GPIO reservation 撤销") for DAL
+ * deinit paths. On ESP-IDF v6 this maps to `gpio_reset_pin()`, which:
+ *   1. Disables any registered GPIO interrupt on the pin,
+ *   2. Reverts the pin to INPUT + pull-disabled (Hi-Z) via gpio_config(),
+ *   3. Releases the pin from the `esp_gpio_reserve` reservation bitmap so
+ *      a later gpio_config / pal_gpio_init on the same pin does not fail
+ *      with "gpio is already reserved".
+ * On host / wasm the function is a no-op (those targets have no hardware
+ * reservation bitmap; `pal_resource_release` already clears the SW claim).
+ *
+ * @param pin  Logical GPIO pin. Out-of-range or negative pins are silently
+ *             ignored (so deinit can safely pass NC/invalid pins from a
+ *             zeroed config without extra guarding).
+ * @note  Blocking: No (simple register/RAM state update, <1µs on hardware).
+ * @note  Caller MUST still call `pal_resource_release(PAL_RESOURCE_GPIO_PIN,
+ *        pin, owner)` AFTER this function to clear the SW resource table.
+ * @note  For pins with active interrupts, caller MUST first call
+ *        `pal_gpio_disable_interrupt(pin)` + `pal_gpio_synchronize_interrupt(pin)`
+ *        before invoking this function — otherwise an in-flight ISR on
+ *        another core could touch the pin after it has been reset.
+ */
+void pal_gpio_reset_pin(wink_pin_t pin);
+
+/**
  * @brief Change GPIO direction/mode after init, without re-claiming or
  *        re-configuring pull-resistors/drive-strength that were set at init.
  *

@@ -214,23 +214,34 @@ wink_status_t dal_ssd1306_flush(dal_ssd1306_t *dev) {
 }
 
 wink_status_t dal_ssd1306_deinit(dal_ssd1306_t *dev) {
+    /* ADR-0024 §4 deinit — checked: 1(best-effort display-off command 0xAE)/
+     *   2(N/A: I2C client, SDA/SCL owned by bus-owner; no GPIO to reset)/
+     *   3(N/A: no GPIO ISR)/4(N/A: no DMA, single I2C transfer is force-stopped
+     *   by bus-owner if needed)/5(N/A: bus-owner deinit does SCL 9-pulse)/
+     *   6(client-level deinit: does NOT call pal_i2c_bus_deinit, only releases
+     *   its own I2C_ADDR claim; other clients on same bus remain usable)/
+     *   7(memset clears framebuffer+config)/8(NULL+uninit idempotent)/
+     *   9(single best-effort transfer ≤5ms)/10(signature unified) */
     if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_OK; }  /* idempotent no-op on un-init dev */
 
-    /* 1. Best-effort turn screen off (command 0xAE) */
-    uint8_t cmd[2] = {0x00, 0xAE};
-    WINK_IGNORE_UNUSED(pal_i2c_transfer(dev->config.i2c_port, dev->config.i2c_addr, cmd, sizeof(cmd), NULL, 0));
-
-    /* Keep port, addr and owner for resource release */
+    /* Read fields before mutation/memset. */
     uint8_t port = dev->config.i2c_port;
     uint16_t addr = dev->config.i2c_addr;
     const char *owner = dev->config.owner;
 
-    /* 2. Release I2C address resource claim */
+    /* 1. Best-effort turn screen off (command 0xAE); ignore error (bus may
+     *    already be wedged, we are tearing down anyway). */
+    uint8_t cmd[2] = {0x00, 0xAE};
+    WINK_IGNORE_UNUSED(pal_i2c_transfer(port, addr, cmd, sizeof(cmd), NULL, 0));
+
+    /* 6. Release only this client's I2C address claim — do NOT touch the bus
+     *    (other clients like EEPROM may still be active on the same port;
+     *    bus lifecycle is the bus-owner's responsibility per ADR-0024 §4 #6). */
     uint32_t res_id = pal_resource_i2c_id(port, addr);
     WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_I2C_ADDR, res_id, owner));
 
-    /* 3. Clear the instance data completely to guarantee no residual state */
+    /* 7. Clear the instance data completely */
     memset(dev, 0, sizeof(dal_ssd1306_t));
 
     return WINK_OK;
