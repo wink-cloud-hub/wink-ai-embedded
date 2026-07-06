@@ -130,6 +130,29 @@ void test_apply_override_null_returns_invalid_arg(void) {
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_servo_apply_override(&s, NULL, sizeof p));
 }
 
+void test_deinit_hardening(void) {
+    dal_servo_t dev = {0};
+    const dal_servo_config_t cfg = { .owner = OWNER, .pwm_channel = 0, .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f };
+
+    /* 1. NULL safety */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_servo_deinit(NULL));
+
+    /* 2. Idempotency on uninitialized dev */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_servo_deinit(&dev));
+
+    /* 3. Successful deinit and resource release */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_servo_init(&dev, &cfg));
+    TEST_ASSERT_TRUE(dev.initialized);
+    TEST_ASSERT_TRUE(pal_resource_is_claimed(PAL_RESOURCE_PWM_CHANNEL, 0));
+
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_servo_deinit(&dev));
+    TEST_ASSERT_FALSE(dev.initialized);
+    TEST_ASSERT_FALSE(pal_resource_is_claimed(PAL_RESOURCE_PWM_CHANNEL, 0));
+
+    /* 4. Idempotency after deinit */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_servo_deinit(&dev));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_init_null_returns_invalid_arg);
@@ -145,5 +168,6 @@ int main(void) {
     RUN_TEST(test_apply_override_rejects_invalid_pulse);
     RUN_TEST(test_apply_override_rejects_bad_channel);
     RUN_TEST(test_apply_override_null_returns_invalid_arg);
+    RUN_TEST(test_deinit_hardening);
     return UNITY_END();
 }

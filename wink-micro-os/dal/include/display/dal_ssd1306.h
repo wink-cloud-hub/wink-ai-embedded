@@ -96,6 +96,13 @@ wink_status_t dal_ssd1306_draw_text(dal_ssd1306_t *dev, uint16_t col, uint8_t pa
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_ssd1306_flush(dal_ssd1306_t *dev);
 
+/**
+ * @brief 反初始化 SSD1306：熄灭屏幕、释放 I2C 地址资源。
+ * @param dev SSD1306 实例句柄
+ * @return wink_status_t
+ */
+wink_status_t dal_ssd1306_deinit(dal_ssd1306_t *dev);
+
 #ifdef __cplusplus
 }
 #endif
@@ -103,7 +110,7 @@ wink_status_t dal_ssd1306_flush(dal_ssd1306_t *dev);
 /* ── Compile-time pruning stubs (P2-1 2026-07-06) ────────────────────── */
 #if !defined(WINK_USE_SSD1306) || !WINK_USE_SSD1306
 #define WINK_SSD1306_DISABLED_MSG \
-    "SSD1306 OLED driver not enabled; add an \"ssd1306\" device to " \
+    "SSD1306 display driver not enabled; add a \"ssd1306\" device to " \
     "wink-app.json (or set -DWINK_USE_SSD1306=ON)."
 WINK_UNAVAILABLE_MSG(WINK_SSD1306_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_ssd1306_init(dal_ssd1306_t *dev, const dal_ssd1306_config_t *cfg);
@@ -114,6 +121,8 @@ wink_status_t dal_ssd1306_draw_text(dal_ssd1306_t *dev, uint16_t col, uint8_t pa
                                     const char *str);
 WINK_UNAVAILABLE_MSG(WINK_SSD1306_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_ssd1306_flush(dal_ssd1306_t *dev);
+WINK_UNAVAILABLE_MSG(WINK_SSD1306_DISABLED_MSG)
+wink_status_t dal_ssd1306_deinit(dal_ssd1306_t *dev);
 #endif /* !WINK_USE_SSD1306 */
 
 #endif /* DAL_SSD1306_H */

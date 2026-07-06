@@ -402,6 +402,33 @@ void test_isr_counter_no_lost_edges_during_reset(void) {
     TEST_ASSERT_EQUAL_UINT32(1, c);
 }
 
+void test_deinit_hardening(void) {
+    dal_button_t dev = {0};
+    const dal_button_config_t cfg = { .owner = OWNER, .pin = 2, .active_low = true };
+
+    /* 1. NULL safety */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_button_deinit(NULL));
+
+    /* 2. Idempotency on uninitialized dev */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_deinit(&dev));
+
+    /* 3. Successful deinit with ISR disabled and resource release */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, &cfg));
+    TEST_ASSERT_TRUE(dev.initialized);
+    TEST_ASSERT_TRUE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 2));
+
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_enable_isr_counter(&dev));
+    TEST_ASSERT_TRUE(dev.isr_counter_enabled);
+
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_deinit(&dev));
+    TEST_ASSERT_FALSE(dev.initialized);
+    TEST_ASSERT_FALSE(dev.isr_counter_enabled);
+    TEST_ASSERT_FALSE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 2));
+
+    /* 4. Idempotency after deinit */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_deinit(&dev));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_init_null_returns_invalid_arg);
@@ -425,5 +452,6 @@ int main(void) {
     RUN_TEST(test_isr_counter_increments_on_interrupt);
     RUN_TEST(test_isr_counter_reset_is_atomic);
     RUN_TEST(test_isr_counter_no_lost_edges_during_reset);
+    RUN_TEST(test_deinit_hardening);
     return UNITY_END();
 }

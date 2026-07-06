@@ -103,6 +103,13 @@ wink_status_t dal_gps_poll(dal_gps_t *dev);
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_gps_get_position(const dal_gps_t *dev, dal_gps_position_t *pos);
 
+/**
+ * @brief 反初始化 GPS：释放 UART 资源、清空句柄。
+ * @param dev GPS 实例句柄
+ * @return wink_status_t
+ */
+wink_status_t dal_gps_deinit(dal_gps_t *dev);
+
 #ifdef __cplusplus
 }
 #endif
@@ -121,6 +128,8 @@ WINK_UNAVAILABLE_MSG(WINK_GPS_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_gps_poll(dal_gps_t *dev);
 WINK_UNAVAILABLE_MSG(WINK_GPS_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_gps_get_position(const dal_gps_t *dev, dal_gps_position_t *pos);
+WINK_UNAVAILABLE_MSG(WINK_GPS_DISABLED_MSG)
+wink_status_t dal_gps_deinit(dal_gps_t *dev);
 #endif /* !WINK_USE_GPS */
 
 #endif /* DAL_GPS_H */

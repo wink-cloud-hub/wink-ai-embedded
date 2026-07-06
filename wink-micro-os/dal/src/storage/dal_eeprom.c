@@ -43,3 +43,17 @@ wink_status_t dal_eeprom_write(dal_eeprom_t *dev, uint16_t addr, const uint8_t *
 }
 
 #endif /* WINK_STRICT_NONBLOCKING */
+
+wink_status_t dal_eeprom_deinit(dal_eeprom_t *dev) {
+    if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (!dev->initialized) { return WINK_OK; }  /* idempotent no-op on un-init dev */
+
+    /* Release I2C address resource claim */
+    uint32_t res_id = pal_resource_i2c_id(dev->config.i2c_port, dev->config.i2c_addr);
+    WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_I2C_ADDR, res_id, dev->config.owner));
+
+    /* Clear the instance data completely to guarantee no residual state */
+    memset(dev, 0, sizeof(dal_eeprom_t));
+
+    return WINK_OK;
+}

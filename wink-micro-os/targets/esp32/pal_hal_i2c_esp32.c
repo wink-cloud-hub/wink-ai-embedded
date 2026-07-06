@@ -20,6 +20,7 @@
  * - constructor(101) 静态初始化互斥锁，避免双核懒初始化竞态
  */
 #include "pal_hal.h"
+#include "hal/pal_i2c.h"
 
 #include <string.h>
 
@@ -284,6 +285,7 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
     }
 
     if (!s_i2c_initialized[port]) {
+        ESP_LOGW(TAG, "I2C port %d transfer called before bus init, lazy initializing (deprecated path)", port);
         /* SDA/SCL 物理路由来自 pal_i2c_pin_map（board_config.c 强定义，
          * 缺省时回落至本 TU 的弱默认值）。*/
 #if WINK_I2C_USE_V6_API
@@ -453,11 +455,131 @@ wink_status_t pal_i2c_scan(uint8_t port, uint8_t start_addr, uint8_t end_addr,
     }
     return WINK_OK;
 }
+wink_status_t pal_i2c_bus_init(uint8_t port, uint8_t sda, uint8_t scl, uint32_t hz) {
+    if (port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
+
+    SemaphoreHandle_t mutex = pal_i2c_get_mutex();
+    if (mutex == NULL) {
+        ESP_LOGE(TAG, "I2C mutex allocation failed");
+        return WINK_ERR_RESOURCE_EXHAUSTED;
+    }
+    if (xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
+        ESP_LOGE(TAG, "I2C mutex timeout");
+        return WINK_ERR_BUSY;
+    }
+
+    if (s_i2c_initialized[port]) {
+        xSemaphoreGive(mutex);
+        return WINK_OK;
+    }
+
+#if WINK_I2C_USE_V6_API
+    i2c_master_bus_config_t bus_cfg = {
+        .i2c_port = (i2c_port_t)port,
+        .sda_io_num = (gpio_num_t)sda,
+        .scl_io_num = (gpio_num_t)scl,
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+        .glitch_ignore_cnt = 7,
+        .flags.enable_internal_pullup = true,
+    };
+    esp_err_t err = i2c_new_master_bus(&bus_cfg, &s_i2c_bus[port]);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "failed to create I2C master bus port %d: %s",
+                 port, esp_err_to_name(err));
+        xSemaphoreGive(mutex);
+        return pal_i2c_map_esp_err(err);
+    }
+#else
+    i2c_config_t cfg = {
+        .mode = I2C_MODE_MASTER,
+        .sda_io_num = (gpio_num_t)sda,
+        .scl_io_num = (gpio_num_t)scl,
+        .sda_pullup_en = GPIO_PULLUP_ENABLE,
+        .scl_pullup_en = GPIO_PULLUP_ENABLE,
+        .master.clk_speed = hz,
+    };
+    esp_err_t err = i2c_param_config((i2c_port_t)port, &cfg);
+    if (err != ESP_OK) {
+        xSemaphoreGive(mutex);
+        return pal_i2c_map_esp_err(err);
+    }
+    err = i2c_driver_install((i2c_port_t)port, cfg.mode, 0, 0, 0);
+    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+        xSemaphoreGive(mutex);
+        return pal_i2c_map_esp_err(err);
+    }
+#endif
+
+    s_i2c_initialized[port] = true;
+    xSemaphoreGive(mutex);
+    return WINK_OK;
+}
+
+void pal_i2c_bus_deinit(uint8_t port) {
+    if (port >= PAL_I2C_PORTS) { return; }
+
+    SemaphoreHandle_t mutex = pal_i2c_get_mutex();
+    if (mutex == NULL || xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
+        ESP_LOGE(TAG, "I2C mutex timeout in bus_deinit");
+        return;
+    }
+
+    if (!s_i2c_initialized[port]) {
+        xSemaphoreGive(mutex);
+        return;
+    }
+
+#if WINK_I2C_USE_V6_API
+    /* Step 1: Remove all cached devices to prevent memory leaks or dangling handles */
+    for (int i = 0; i < I2C_MAX_DEVICES; i++) {
+        if (s_i2c_dev_cache[port][i].dev_addr != 0) {
+            esp_err_t rm_err = i2c_master_bus_rm_device(s_i2c_dev_cache[port][i].handle);
+            if (rm_err != ESP_OK) {
+                ESP_LOGW(TAG, "remove device 0x%02X in bus_deinit failed: %s",
+                         s_i2c_dev_cache[port][i].dev_addr, esp_err_to_name(rm_err));
+            }
+            s_i2c_dev_cache[port][i].handle = NULL;
+            s_i2c_dev_cache[port][i].dev_addr = 0;
+        }
+    }
+
+    /* Step 2: SCL 9-pulse bus recovery */
+    esp_err_t clear_err = i2c_master_bus_clear_bus(s_i2c_bus[port]);
+    if (clear_err != ESP_OK) {
+        ESP_LOGW(TAG, "clear bus port %d in bus_deinit failed: %s", port, esp_err_to_name(clear_err));
+    }
+
+    /* Step 3: Delete master bus */
+    esp_err_t err = i2c_del_master_bus(s_i2c_bus[port]);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "failed to delete I2C master bus port %d: %s", port, esp_err_to_name(err));
+    }
+    s_i2c_bus[port] = NULL;
+#else
+    /* v5.x: Delete driver */
+    esp_err_t err = i2c_driver_delete((i2c_port_t)port);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "failed to delete I2C driver port %d: %s", port, esp_err_to_name(err));
+    }
+#endif
+
+    s_i2c_initialized[port] = false;
+    xSemaphoreGive(mutex);
+}
 #if defined(__GNUC__) || defined(__clang__)
 #  pragma GCC diagnostic pop
 #endif
 
 #else /* !ESP_PLATFORM: non-IDF stub for static analysis. */
+
+wink_status_t pal_i2c_bus_init(uint8_t port, uint8_t sda, uint8_t scl, uint32_t hz) {
+    (void)port; (void)sda; (void)scl; (void)hz;
+    return WINK_ERR_UNSUPPORTED;
+}
+
+void pal_i2c_bus_deinit(uint8_t port) {
+    (void)port;
+}
 
 wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
                       const uint8_t *write_buf, uint32_t write_len,

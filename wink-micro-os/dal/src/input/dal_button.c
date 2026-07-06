@@ -192,32 +192,27 @@ wink_status_t dal_button_reset_edge_count(dal_button_t *dev) {
 
 wink_status_t dal_button_deinit(dal_button_t *dev) {
     if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
-    if (!dev->initialized) { return WINK_OK; }  /* no-op on un-init dev */
+    if (!dev->initialized) { return WINK_OK; }  /* idempotent no-op on un-init dev */
 
-    /* 若启用了 ISR 计数器，必须先 disable 再 synchronize（SMP 安全约束：
-     * disable 后仍可能有正在 core-N 执行的 ISR，synchronize 等所有 core 退出）。 */
+    /* 1. Disable interrupt if enabled (SMP safe: disable then synchronize) */
     if (dev->isr_counter_enabled) {
         WINK_IGNORE_UNUSED(pal_gpio_disable_interrupt(dev->config.pin));
         WINK_IGNORE_UNUSED(pal_gpio_synchronize_interrupt(dev->config.pin));
         dev->isr_counter_enabled = false;
     }
 
-    /* 清空事件回调（防止悬空回调被 poll 路径调到已释放上下文）。 */
-    dev->event_cb     = NULL;
-    dev->event_cb_ctx = NULL;
+    /* Keep pin for resource release and GPIO reset */
+    uint16_t pin = dev->config.pin;
+    const char *owner = dev->config.owner;
 
-    /* 释放 GPIO 资源（撤销 pal_resource_claim）。 */
-    WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN,
-                                             dev->config.pin,
-                                             dev->config.owner));
+    /* 2. Reset GPIO pin to high-impedance INPUT mode */
+    WINK_IGNORE_UNUSED(pal_gpio_init(pin, PAL_GPIO_INPUT));
 
-    /* 重置运行期字段（保 config 副本不动，便于诊断）。 */
-    dev->stable_pressed         = false;
-    dev->last_reported          = false;
-    dev->debounce_counter       = 0;
-    dev->long_press_fired       = false;
-    dev->prev_pressed_for_event = false;
-    dev->edge_count             = 0;
-    dev->initialized            = false;
+    /* 3. Release GPIO resource claim */
+    WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN, pin, owner));
+
+    /* 4. Clear the instance data completely to guarantee no residual state */
+    memset(dev, 0, sizeof(dal_button_t));
+
     return WINK_OK;
 }

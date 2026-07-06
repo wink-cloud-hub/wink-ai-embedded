@@ -71,6 +71,36 @@ void test_toggle_flips_state(void) {
     TEST_ASSERT_FALSE(dev.is_on);
 }
 
+void test_deinit_hardening(void) {
+    dal_led_t dev = {0};
+    const dal_led_config_t cfg = { .owner = OWNER, .pin = 2, .active_high = true };
+
+    /* 1. NULL safety */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_led_deinit(NULL));
+
+    /* 2. Idempotency on uninitialized dev */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_deinit(&dev));
+
+    /* 3. Successful deinit and resource release */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_init(&dev, &cfg));
+    TEST_ASSERT_TRUE(dev.initialized);
+    TEST_ASSERT_TRUE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 2));
+
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_deinit(&dev));
+    TEST_ASSERT_FALSE(dev.initialized);
+    TEST_ASSERT_FALSE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 2));
+
+    /* 4. Idempotency after deinit */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_deinit(&dev));
+
+    /* 5. Resource not leaking, can claim again */
+    dal_led_t dev2 = {0};
+    const dal_led_config_t cfg2 = { .owner = "another_owner", .pin = 2, .active_high = true };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_init(&dev2, &cfg2));
+    TEST_ASSERT_TRUE(dev2.initialized);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_deinit(&dev2));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_init_null_returns_invalid_arg);
@@ -79,5 +109,6 @@ int main(void) {
     RUN_TEST(test_active_high_on_off);
     RUN_TEST(test_active_low_on_off);
     RUN_TEST(test_toggle_flips_state);
+    RUN_TEST(test_deinit_hardening);
     return UNITY_END();
 }

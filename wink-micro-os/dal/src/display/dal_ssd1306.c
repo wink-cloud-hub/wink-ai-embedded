@@ -212,3 +212,26 @@ wink_status_t dal_ssd1306_flush(dal_ssd1306_t *dev) {
     }
     return WINK_OK;
 }
+
+wink_status_t dal_ssd1306_deinit(dal_ssd1306_t *dev) {
+    if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (!dev->initialized) { return WINK_OK; }  /* idempotent no-op on un-init dev */
+
+    /* 1. Best-effort turn screen off (command 0xAE) */
+    uint8_t cmd[2] = {0x00, 0xAE};
+    WINK_IGNORE_UNUSED(pal_i2c_transfer(dev->config.i2c_port, dev->config.i2c_addr, cmd, sizeof(cmd), NULL, 0));
+
+    /* Keep port, addr and owner for resource release */
+    uint8_t port = dev->config.i2c_port;
+    uint16_t addr = dev->config.i2c_addr;
+    const char *owner = dev->config.owner;
+
+    /* 2. Release I2C address resource claim */
+    uint32_t res_id = pal_resource_i2c_id(port, addr);
+    WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_I2C_ADDR, res_id, owner));
+
+    /* 3. Clear the instance data completely to guarantee no residual state */
+    memset(dev, 0, sizeof(dal_ssd1306_t));
+
+    return WINK_OK;
+}

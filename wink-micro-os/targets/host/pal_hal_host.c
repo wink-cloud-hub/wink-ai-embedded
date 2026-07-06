@@ -18,6 +18,7 @@
  * 注：虚拟时间状态机在 pal_osal_host.c 维护（sim_* API 经 extern 访问）。
  */
 #include "pal_hal.h"
+#include "hal/pal_i2c.h"
 #include "pal_osal.h"
 #define WINK_ALLOW_ADVANCED_IRQ_APIS
 #include "pal_irq_advanced.h"
@@ -539,8 +540,28 @@ wink_status_t pal_i2c_port_pins(uint8_t port, wink_pin_t *out_sda, wink_pin_t *o
 /* Phase 2：host I2C 事务捕获（供 ssd1306 单测验证 flush 发出正确事务） */
 extern void host_record_i2c(uint8_t port, uint16_t addr, uint32_t write_len);
 
+static bool s_i2c_bus_inited[PAL_I2C_PORTS] = {false};
+
+wink_status_t pal_i2c_bus_init(uint8_t port, uint8_t sda, uint8_t scl, uint32_t hz) {
+    (void)sda; (void)scl; (void)hz;
+    if (port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
+    s_i2c_bus_inited[port] = true;
+    return WINK_OK;
+}
+
+void pal_i2c_bus_deinit(uint8_t port) {
+    if (port < PAL_I2C_PORTS) {
+        s_i2c_bus_inited[port] = false;
+    }
+}
+
 wink_status_t pal_i2c_transfer(uint8_t port, uint16_t addr,
                       const uint8_t *w, uint32_t wl, uint8_t *r, uint32_t rl) {
+    if (port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
+    if (!s_i2c_bus_inited[port]) {
+        printf("WINK_WARN: I2C port %d transfer called before bus init, lazy initializing (deprecated path)\n", port);
+        s_i2c_bus_inited[port] = true;
+    }
     (void)w; (void)r; (void)rl;
     host_record_i2c(port, addr, wl);
     return WINK_OK;
@@ -553,6 +574,10 @@ wink_status_t pal_i2c_scan(uint8_t port, uint8_t start_addr, uint8_t end_addr,
     }
     if (port >= PAL_I2C_PORTS) {
         return WINK_ERR_INVALID_ARG;
+    }
+    if (!s_i2c_bus_inited[port]) {
+        printf("WINK_WARN: I2C port %d scan called before bus init, lazy initializing (deprecated path)\n", port);
+        s_i2c_bus_inited[port] = true;
     }
     if (start_addr > end_addr || end_addr > 0x7F) {
         return WINK_ERR_INVALID_ARG;

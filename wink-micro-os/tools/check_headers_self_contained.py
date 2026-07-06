@@ -52,6 +52,7 @@ INCLUDE_DIRS = [
     os.path.join(REPO_ROOT, "pal", "include"),
     os.path.join(REPO_ROOT, "pal", "include", "osal"),
     os.path.join(REPO_ROOT, "pal", "include", "hal"),
+    os.path.join(REPO_ROOT, "pal", "include", "internal"),
     os.path.join(REPO_ROOT, "dal", "include"),
     os.path.join(REPO_ROOT, "dal", "include", "input"),
     os.path.join(REPO_ROOT, "dal", "include", "output"),

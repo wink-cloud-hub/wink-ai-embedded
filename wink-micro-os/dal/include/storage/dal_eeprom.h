@@ -99,6 +99,13 @@ WINK_WARN_UNUSED_RESULT
 wink_status_t dal_eeprom_write(dal_eeprom_t *dev, uint16_t addr, const uint8_t *buf, uint16_t len);
 #endif /* WINK_STRICT_NONBLOCKING */
 
+/**
+ * @brief 反初始化 EEPROM：释放 I2C 地址资源、清空句柄。
+ * @param dev EEPROM 实例句柄
+ * @return wink_status_t
+ */
+wink_status_t dal_eeprom_deinit(dal_eeprom_t *dev);
+
 #ifdef __cplusplus
 }
 #endif
@@ -118,6 +125,8 @@ WINK_UNAVAILABLE_MSG(WINK_EEPROM_DISABLED_MSG) WINK_BLOCKING WINK_WARN_UNUSED_RE
 wink_status_t dal_eeprom_read(dal_eeprom_t *dev, uint16_t addr, uint8_t *buf, uint16_t len);
 WINK_UNAVAILABLE_MSG(WINK_EEPROM_DISABLED_MSG) WINK_BLOCKING WINK_WARN_UNUSED_RESULT
 wink_status_t dal_eeprom_write(dal_eeprom_t *dev, uint16_t addr, const uint8_t *buf, uint16_t len);
+WINK_UNAVAILABLE_MSG(WINK_EEPROM_DISABLED_MSG)
+wink_status_t dal_eeprom_deinit(dal_eeprom_t *dev);
 #endif /* !WINK_USE_EEPROM */
 
 #endif /* DAL_EEPROM_H */

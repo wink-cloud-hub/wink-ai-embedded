@@ -150,6 +150,31 @@ void test_ops_before_init_returns_not_initialized(void) {
     TEST_ASSERT_EQUAL_INT(WINK_ERR_NOT_INITIALIZED, dal_ssd1306_flush(&dev));
 }
 
+void test_deinit_hardening(void) {
+    static dal_ssd1306_t dev = {0};
+    dal_ssd1306_config_t cfg = { .i2c_port = 0, .i2c_addr = 0x3C,
+                                  .width = 128, .height = 64, .owner = "oled0" };
+
+    /* 1. NULL safety */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_ssd1306_deinit(NULL));
+
+    /* 2. Idempotency on uninitialized dev */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ssd1306_deinit(&dev));
+
+    /* 3. Successful deinit and resource release */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ssd1306_init(&dev, &cfg));
+    TEST_ASSERT_TRUE(dev.initialized);
+    uint32_t res_id = pal_resource_i2c_id(0, 0x3C);
+    TEST_ASSERT_TRUE(pal_resource_is_claimed(PAL_RESOURCE_I2C_ADDR, res_id));
+
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ssd1306_deinit(&dev));
+    TEST_ASSERT_FALSE(dev.initialized);
+    TEST_ASSERT_FALSE(pal_resource_is_claimed(PAL_RESOURCE_I2C_ADDR, res_id));
+
+    /* 4. Idempotency after deinit */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ssd1306_deinit(&dev));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_init_null_returns_invalid_arg);
@@ -164,5 +189,6 @@ int main(void) {
     RUN_TEST(test_draw_text_modifies_framebuffer);
     RUN_TEST(test_flush_generates_i2c_transfers);
     RUN_TEST(test_ops_before_init_returns_not_initialized);
+    RUN_TEST(test_deinit_hardening);
     return UNITY_END();
 }
