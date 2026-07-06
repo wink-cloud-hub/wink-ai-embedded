@@ -13,6 +13,14 @@
 # they only exist as generated artefacts now. ESP-IDF builds must run
 # codegen just like the host build does, otherwise #include "device_tree.h"
 # in app_callbacks.c fails with "No such file or directory".
+#
+# IMPORTANT: IDF invokes component CMakeLists.txt in script mode (via
+# component_get_requirements.cmake) BEFORE the real configure pass, only
+# to extract the REQUIRES list. In script mode commands like
+# add_custom_command / find_package are NOT available and must appear
+# AFTER idf_component_register() — they are only reached during the real
+# configure pass. See comment in targets/esp32/CMakeLists.txt for full
+# rationale.
 # ============================================================
 if(NOT DEFINED WINK_APP)
     set(WINK_APP "devkitc_smoke" CACHE STRING "Samples app name to build")
@@ -35,24 +43,44 @@ endif()
 # 引入自动生成的源文件列表（设 WINK_APP_DIR / WINK_APP_SOURCES / WINK_APP_COMMON_INCLUDE_DIR）
 include(${COMPONENT_DIR}/app_sources.cmake)
 
+# Codegen output directory. idf_component_register requires INCLUDE_DIRS
+# to exist at script time; pre-create it (same pattern as targets/esp32/CMakeLists.txt
+# uses for WINK_CONFIG_DIR). Generated headers are written here during build.
+set(GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
+file(MAKE_DIRECTORY ${GEN_DIR})
+
+idf_component_register(
+    SRCS
+        "app_main.c"
+        ${WINK_APP_SOURCES}       # ← 自动扫描得到（app_callbacks.c + samples/common helpers）
+        # Codegen outputs (device_tree.c + app_support.c) are added after
+        # register() via target_sources() — see below. They cannot be listed
+        # here because the OUTPUT variables (GEN_DEVICE_TREE_C etc.) are only
+        # defined after register() when add_custom_command is available.
+    INCLUDE_DIRS
+        "."
+        ${WINK_APP_DIR}           # ← App 头文件目录
+        ${GEN_DIR}                # ← codegen 生成的 device_tree.h 所在目录
+        ${WINK_APP_COMMON_INCLUDE_DIR}  # ← samples/common/include
+    REQUIRES driver esp32
+)
+
 # ── Codegen (wink-app.json → device_tree.[ch] + app_support.c) ────────
-# Mirror the host/wasm path: every build, if wink-app.json (or any
-# template / driver plugin) changed, app_codegen.py regenerates the
-# four artefacts under ${GEN_DIR}.  App code only #include's device_tree.h
-# (codegen-emitted), so GEN_DIR must be in INCLUDE_DIRS.
+# Everything below runs ONLY during the real configure pass (script mode
+# stops at idf_component_register). Mirrors the host/wasm integration:
+# on every build, if wink-app.json / templates / driver plugins changed,
+# app_codegen.py regenerates the four artefacts under ${GEN_DIR}.
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
 set(WINK_CODEGEN_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../tools/codegen")
 set(WINK_CODEGEN_TOOL "${WINK_CODEGEN_ROOT}/app_codegen.py")
 set(WINK_APP_JSON     "${WINK_APP_DIR}/wink-app.json")
-set(GEN_DIR           "${CMAKE_CURRENT_BINARY_DIR}/generated")
-file(MAKE_DIRECTORY ${GEN_DIR})
 
 set(GEN_DEVICE_TREE_H ${GEN_DIR}/device_tree.h)
 set(GEN_DEVICE_TREE_C ${GEN_DIR}/device_tree.c)
 set(GEN_APP_SUPPORT_C ${GEN_DIR}/app_support.c)
 set(GEN_APP_OPTIONS   ${GEN_DIR}/app_options.cmake)  # reserved for future per-app pruning
 
-# Any change to a codegen template or driver plugin must retrigger generation.
 file(GLOB WINK_CODEGEN_TEMPLATES ${WINK_CODEGEN_ROOT}/templates/*.j2)
 file(GLOB WINK_CODEGEN_DRIVERS   ${WINK_CODEGEN_ROOT}/drivers/*.py)
 
@@ -68,25 +96,16 @@ add_custom_command(
     VERBATIM
 )
 
-# Custom target so idf_component_register can depend on the generated files
-# being produced before it compiles the sources that #include them.
-add_custom_target(wink_app_codegen DEPENDS
-    ${GEN_DEVICE_TREE_H} ${GEN_DEVICE_TREE_C} ${GEN_APP_SUPPORT_C})
-
-idf_component_register(
-    SRCS
-        "app_main.c"
-        ${WINK_APP_SOURCES}       # ← 自动扫描得到（app_callbacks.c + samples/common helpers）
-        ${GEN_DEVICE_TREE_C}      # ← codegen 生成
-        ${GEN_APP_SUPPORT_C}      # ← codegen 生成 (wink_app_services_start, etc.)
-    INCLUDE_DIRS
-        "."
-        ${WINK_APP_DIR}           # ← App 头文件目录
-        ${GEN_DIR}                # ← codegen 生成的 device_tree.h 所在目录
-        ${WINK_APP_COMMON_INCLUDE_DIR}  # ← samples/common/include (default_telemetry / blink / sim_echo)
-    REQUIRES driver esp32
+# Add the generated .c files to this component's sources.
+target_sources(${COMPONENT_LIB} PRIVATE
+    ${GEN_DEVICE_TREE_C}
+    ${GEN_APP_SUPPORT_C}
 )
 
+# Ensure compilation of this component waits until codegen has produced
+# device_tree.h and friends.
+add_custom_target(wink_app_codegen DEPENDS
+    ${GEN_DEVICE_TREE_H} ${GEN_DEVICE_TREE_C} ${GEN_APP_SUPPORT_C})
 add_dependencies(${COMPONENT_LIB} wink_app_codegen)
 
 # Windows GCC 默认按 GBK 解析源文件，中文 UTF-8 注释会乱码报错
