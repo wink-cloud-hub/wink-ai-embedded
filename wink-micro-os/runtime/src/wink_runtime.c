@@ -25,6 +25,7 @@
 #include "pal_wasm_internal.h"
 #include "wink_sim_scheduler.h"
 #include <stdlib.h>   /* getenv / strtoul for H5 seed injection */
+#include <stdio.h>    /* printf */
 #endif
 
 /* ADR-0017 层 1 例外：本 TU 合法调用 WINK_BLOCKING API。抑制
@@ -172,6 +173,11 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
         if (abnormal >= WINK_BOOT_LOCK_THRESHOLD) {
             /* Death loop: lock out user code. */
             wink_runtime_fault(callbacks, WINK_FAULT_BOOT_AFTER_RESET);
+#ifdef SIMULATION
+            /* wasm sim 路径：无 WDT 概念，lockout 路径直接 LOG_E + abort() （让测试框架可见） */
+            printf("FATAL: Boot lockout count reached threshold! Entering Safe-lock.\n");
+            abort();
+#endif
             return WINK_ERR_LOCKED;
         }
         /* abnormal < threshold: recover — fall through */

@@ -45,5 +45,14 @@ int main(void)
         E2E_FAIL("faults recorded during run");
     }
 
+    /* S11: deinit loop verification (5 rounds, no GPIO reserve error, no WDT/leak) */
+    for (int i = 0; i < 5; i++) {
+        wink_device_tree_deinit();
+        wink_status_t st = wink_device_tree_init();
+        if (wink_status_is_error(st)) {
+            E2E_FAIL("S11: failed to reinitialize device tree during deinit loop");
+        }
+    }
+
     E2E_PASS();
 }
