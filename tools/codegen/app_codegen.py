@@ -142,17 +142,116 @@ def topo_sort(devices: Dict[str, dict], source: str) -> List[str]:
 
 
 # ── Context assembly ─────────────────────────────────────────────────
+# ── Context assembly ─────────────────────────────────────────────────
+def _load_board_config(board_name: str, config_source: str) -> dict:
+    """Locate and load a board configuration JSON file using a 2-level search path."""
+    app_path = Path(config_source).resolve()
+    app_dir = app_path.parent
+
+    paths = []
+    if board_name.endswith(".json") or "/" in board_name or "\\" in board_name:
+        paths.append(app_dir / board_name)
+        paths.append(Path(board_name))
+    else:
+        # Standard search paths: local first, then global codegen boards
+        paths.append(app_dir / "boards" / f"{board_name}.json")
+        paths.append(app_dir / f"{board_name}.json")
+        repo_root = Path(__file__).resolve().parent.parent.parent
+        paths.append(repo_root / "tools" / "codegen" / "boards" / f"{board_name}.json")
+
+    for path in paths:
+        if path.exists():
+            try:
+                with path.open("r", encoding="utf-8") as fp:
+                    return json.load(fp)
+            except json.JSONDecodeError as e:
+                _die(f"board config '{path}' is invalid JSON: {e}")
+            except Exception as e:
+                _die(f"failed to read board config '{path}': {e}")
+
+    checked_str = "\n  - ".join(str(p) for p in paths)
+    _die(f"board config '{board_name}' not found. Checked:\n  - {checked_str}")
+    raise RuntimeError("unreachable")
+
+
 def build_context(cfg: dict, config_source: str) -> dict:
     validate_top_level(cfg, config_source)
 
+    board_name = cfg.get("board")
+    board_cfg = {}
+    if board_name:
+        board_cfg = _load_board_config(board_name, config_source)
+
     devices_raw: Dict[str, dict] = cfg["devices"]
-    resolved: List[Tuple[str, DriverBase, dict]] = []
+    resolved_devices: Dict[str, dict] = {}
+
+    # 1. Resolve use_onboard inheritance
     for name, spec in devices_raw.items():
+        if not isinstance(spec, dict):
+            _die(f"{config_source}: device '{name}' must be an object")
+
+        use_onboard = spec.get("use_onboard")
+        if use_onboard:
+            if not board_cfg:
+                _die(f"{config_source}: device '{name}' uses 'use_onboard' but no 'board' is defined")
+            onboard_devices = board_cfg.get("onboard_devices", {})
+            if use_onboard not in onboard_devices:
+                _die(f"{config_source}: device '{name}' uses unknown onboard device '{use_onboard}' on board '{board_name}'")
+            
+            # Deep copy to avoid mutating original board_cfg
+            merged = json.loads(json.dumps(onboard_devices[use_onboard]))
+            for k, v in spec.items():
+                if k != "use_onboard":
+                    merged[k] = v
+            resolved_devices[name] = merged
+        else:
+            resolved_devices[name] = json.loads(json.dumps(spec))
+
+    # 2. Resolve "$board." variables recursively, with support for "$$board." escaping
+    def resolve_val(val, path_context: str):
+        if isinstance(val, str):
+            if val.startswith("$$board."):
+                return val[1:]  # Escaped: strip first '$' and return literal "$board.xxxx"
+            elif val.startswith("$board."):
+                parts = val[1:].split(".")  # Strip '$' and split: ["board", "headers", "D18"]
+                curr = board_cfg
+                for part in parts[1:]:
+                    if not isinstance(curr, dict) or part not in curr:
+                        _die(f"{config_source}: unable to resolve reference '{val}' in '{path_context}'")
+                    curr = curr[part]
+                return curr
+        elif isinstance(val, list):
+            return [resolve_val(item, path_context) for item in val]
+        elif isinstance(val, dict):
+            return {k: resolve_val(v, f"{path_context}.{k}") for k, v in val.items()}
+        return val
+
+    for name, spec in resolved_devices.items():
+        resolved_devices[name] = resolve_val(spec, f"devices.{name}")
+
+    # 3. Pin conflict validation
+    pin_occupancy: Dict[int, List[str]] = {}
+    for name, spec in resolved_devices.items():
+        for k, v in spec.items():
+            if (k == "pin" or k.endswith("_pin")) and isinstance(v, int):
+                pin_occupancy.setdefault(v, []).append(f"{name}.{k}")
+
+    conflicts = []
+    for pin, users in pin_occupancy.items():
+        if len(users) > 1:
+            conflicts.append(f"GPIO {pin} is shared by: {', '.join(users)}")
+
+    if conflicts:
+        _die(f"Pin conflict(s) detected:\n  - " + "\n  - ".join(conflicts))
+
+    # 4. Resolve drivers and validate fields
+    resolved: List[Tuple[str, DriverBase, dict]] = []
+    for name, spec in resolved_devices.items():
         driver = _resolve_driver(name, spec, config_source)
         _validate_required_fields(name, spec, driver, config_source)
         resolved.append((name, driver, spec))
 
-    ordered = topo_sort(devices_raw, config_source)
+    ordered = topo_sort(resolved_devices, config_source)
     lookup = {n: (d, s) for n, d, s in resolved}
     devices_ctx = []
     for name in ordered:

@@ -11,6 +11,7 @@ Usage (repo root):
 """
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 import unittest
@@ -70,6 +71,92 @@ class GoldenTest(unittest.TestCase):
                     f"--config {GOLDEN_JSON} --out-dir {GOLDEN_EXPECTED}"
                 )
                 self.fail("\n".join(lines))
+
+    def test_invalid_board(self) -> None:
+        # Invalid board name should exit with 2 (validation error)
+        cfg = {
+            "app_name": "invalid_board_test",
+            "board": "non_existent_board_name_xyz",
+            "devices": {}
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_json = Path(tmp) / "app.json"
+            tmp_json.write_text(json.dumps(cfg), encoding="utf-8")
+            with self.assertRaises(SystemExit) as cm:
+                app_codegen.main([
+                    "--config", str(tmp_json),
+                    "--out-dir", str(Path(tmp) / "out"),
+                ])
+            self.assertEqual(cm.exception.code, 2)
+
+    def test_pin_conflict(self) -> None:
+        # Reusing pin 2 on both status_led and another led should cause a conflict and exit with 2
+        cfg = {
+            "app_name": "conflict_test",
+            "board": "esp32_devkitc",
+            "devices": {
+                "led1": {
+                    "use_onboard": "status_led"
+                },
+                "led2": {
+                    "type": "led",
+                    "pin": 2
+                }
+            }
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_json = Path(tmp) / "app.json"
+            tmp_json.write_text(json.dumps(cfg), encoding="utf-8")
+            with self.assertRaises(SystemExit) as cm:
+                app_codegen.main([
+                    "--config", str(tmp_json),
+                    "--out-dir", str(Path(tmp) / "out"),
+                ])
+            self.assertEqual(cm.exception.code, 2)
+
+    def test_invalid_reference(self) -> None:
+        # Resolving a non-existent board header path should exit with 2
+        cfg = {
+            "app_name": "invalid_ref_test",
+            "board": "esp32_devkitc",
+            "devices": {
+                "led1": {
+                    "type": "led",
+                    "pin": "$board.headers.NON_EXISTENT_HEADER"
+                }
+            }
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_json = Path(tmp) / "app.json"
+            tmp_json.write_text(json.dumps(cfg), encoding="utf-8")
+            with self.assertRaises(SystemExit) as cm:
+                app_codegen.main([
+                    "--config", str(tmp_json),
+                    "--out-dir", str(Path(tmp) / "out"),
+                ])
+            self.assertEqual(cm.exception.code, 2)
+
+    def test_escaping(self) -> None:
+        # A value starting with $$board. should strip the first $ and return a literal string,
+        # bypassing the board lookup completely.
+        cfg = {
+            "app_name": "escaping_test",
+            "board": "esp32_devkitc",
+            "devices": {
+                "led1": {
+                    "type": "led",
+                    "pin": "$$board.non_existent_header"
+                }
+            }
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_json = Path(tmp) / "app.json"
+            tmp_json.write_text(json.dumps(cfg), encoding="utf-8")
+            
+            # This should NOT raise SystemExit because $$board. is escaped
+            ctx = app_codegen.build_context(cfg, str(tmp_json))
+            dev = ctx["devices"][0]
+            self.assertIn('.pin = $board.non_existent_header', dev["config_init"])
 
 
 if __name__ == "__main__":
