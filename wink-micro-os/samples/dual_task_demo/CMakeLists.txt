@@ -11,11 +11,10 @@ set(WINK_APP_SOURCES ${APP_SOURCES} PARENT_SCOPE)
 
 # host e2e target only defined off-wasm
 if(NOT EMSCRIPTEN)
+    # P2 (2026-07-06): dal linked as a static library instead of listing sources.
     add_executable(app_dual_task_demo_e2e
         ${APP_SOURCES}
         ${WINK_SAMPLE_RUNTIME_SOURCES}
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/actuator/dal_servo.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/sensor/dal_ultrasonic.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../../test/stubs/js_sim_host_stub.c
         ${CMAKE_CURRENT_SOURCE_DIR}/test_dual_task_demo_e2e.c
         $<TARGET_OBJECTS:pal_host>)
@@ -26,6 +25,7 @@ if(NOT EMSCRIPTEN)
     # for the js_* extern signatures. Passed as an extra include dir.
     wink_sample_apply_common(app_dual_task_demo_e2e
         ${CMAKE_CURRENT_SOURCE_DIR}/../../targets/wasm)
+    target_link_libraries(app_dual_task_demo_e2e PRIVATE dal)
 
     add_test(NAME app_dual_task_demo_e2e COMMAND app_dual_task_demo_e2e)
 endif()

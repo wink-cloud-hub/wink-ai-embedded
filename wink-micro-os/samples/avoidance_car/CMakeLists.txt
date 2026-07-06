@@ -17,15 +17,15 @@ if(EMSCRIPTEN)
     return()
 endif()
 
-# ── host e2e binary: runtime + trace + dal + pal_host + app ─────────────
+# ── host e2e binary: runtime + trace + pal_host + app ───────────────────
+# P2 (2026-07-06): dal linked as a static library instead of listing sources.
 add_executable(app_avoidance_car_e2e
     ${APP_SOURCES}
     ${WINK_SAMPLE_RUNTIME_SOURCES}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/sensor/dal_ultrasonic.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/actuator/dal_servo.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../test/test_app_e2e.c
     $<TARGET_OBJECTS:pal_host>)
 wink_sample_apply_common(app_avoidance_car_e2e)
+target_link_libraries(app_avoidance_car_e2e PRIVATE dal)
 add_test(NAME app_avoidance_car_e2e COMMAND app_avoidance_car_e2e)
 
 # ── ADR-0008 device-tree override e2e (host in-memory storage) ─────────
@@ -33,11 +33,9 @@ add_test(NAME app_avoidance_car_e2e COMMAND app_avoidance_car_e2e)
 # apply_override rewrites global fields; empty/corrupt silently degrades.
 add_executable(test_avoidance_override
     ${CMAKE_CURRENT_SOURCE_DIR}/device_tree.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/sensor/dal_ultrasonic.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/actuator/dal_servo.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../test/test_avoidance_override.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../test/unity/unity.c
     $<TARGET_OBJECTS:pal_host>)
 wink_sample_apply_common(test_avoidance_override ${CMAKE_CURRENT_SOURCE_DIR}/../../test/unity)
-target_link_libraries(test_avoidance_override PRIVATE pal)
+target_link_libraries(test_avoidance_override PRIVATE dal)
 add_test(NAME test_avoidance_override COMMAND test_avoidance_override)

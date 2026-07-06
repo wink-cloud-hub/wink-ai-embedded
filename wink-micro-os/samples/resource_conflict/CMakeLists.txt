@@ -15,16 +15,15 @@ if(ESP_PLATFORM)
     return()
 endif()
 
+# P2 (2026-07-06): link dal as a static library (which transitively pulls pal
+# via target_link_libraries(dal PUBLIC pal)), so we don't need to list each
+# dal/src/**/*.c explicitly or link pal separately.
 add_executable(sample_resource_conflict
     ${CMAKE_CURRENT_SOURCE_DIR}/app_main.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/output/dal_led.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/actuator/dal_servo.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/communication/dal_gps.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/storage/dal_eeprom.c
     $<TARGET_OBJECTS:pal_host>)
 
 wink_sample_apply_common(sample_resource_conflict)
-target_link_libraries(sample_resource_conflict PRIVATE pal)
+target_link_libraries(sample_resource_conflict PRIVATE dal)
 
 # CTest: sample_resource_conflict is a counter-example assertion sample;
 # exit code 0 == conflict governance active.
