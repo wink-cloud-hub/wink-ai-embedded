@@ -25,7 +25,10 @@ function(add_wink_test name src)
         ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/internal
         ${CMAKE_CURRENT_SOURCE_DIR}/../trace/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/include)
-    target_link_libraries(${name} PRIVATE pal)
+    # P2 (2026-07-06): link dal instead of pal alone so WINK_USE_XXX pruning
+    # options propagate. dal PUBLIC-depends on pal (INTERFACE), so pal
+    # headers come through transitively.
+    target_link_libraries(${name} PRIVATE dal)
     if(MSVC)
         # /W4: strict warnings; /WX: warnings as errors (0 warning = build fails if any warning
         # /wd4100: match GCC -Wno-unused-parameter (unused function parameters are intentional in HAL contracts)
@@ -84,7 +87,8 @@ function(add_wink_host_test name src)
         ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/sensor
         ${CMAKE_CURRENT_SOURCE_DIR}/../trace/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/include)
-    target_link_libraries(${name} PRIVATE pal)
+    # P2 (2026-07-06): link dal instead of pal alone (pal comes via dal PUBLIC).
+    target_link_libraries(${name} PRIVATE dal)
     if(MSVC)
         # /W4: strict warnings; /WX: warnings as errors (0 warning = build fails if any warning
         # /wd4100: match GCC -Wno-unused-parameter (unused function parameters are intentional in HAL contracts)
@@ -155,6 +159,8 @@ add_wink_host_test(test_sim_mutex_e2e test_sim_mutex_e2e.c)
 set(_BASELINE_H
     ${CMAKE_CURRENT_SOURCE_DIR}/baseline/avoidance_car_semantic_baseline.h)
 if(EXISTS ${_BASELINE_H})
+    # P2 (2026-07-06): dal linked via add_wink_host_test -> target_link_libraries(dal);
+    # removed hard-coded dal/src/**/*.c paths.
     add_wink_host_test(test_single_task_semantic_regression
         test_single_task_semantic_regression.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../samples/avoidance_car/device_tree.c
@@ -163,9 +169,7 @@ if(EXISTS ${_BASELINE_H})
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_runtime_tasks.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_actuator_registry.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_soft_timer.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/../trace/src/wink_trace.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/sensor/dal_ultrasonic.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/actuator/dal_servo.c)
+        ${CMAKE_CURRENT_SOURCE_DIR}/../trace/src/wink_trace.c)
     target_include_directories(test_single_task_semantic_regression PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../samples/avoidance_car
         ${WINK_CONFIG_DIR})
@@ -203,42 +207,35 @@ add_wink_host_test(test_pal_storage test_pal_storage.c)
 # ADR-0009 Wave1 物理退化算法库单测（wink_sim_physical.c 现已并入 pal_host OBJECT）
 add_wink_host_test(test_sim_physical test_sim_physical.c)
 
-# Phase 3：DAL 分类组织后的源文件路径
-set(DAL_SRCS
-    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/sensor/dal_ultrasonic.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/actuator/dal_servo.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/output/dal_led.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/input/dal_button.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/display/dal_ssd1306.c)
+# P2 (2026-07-06): DAL sources are now compiled into the `dal` static library
+# and linked via target_link_libraries(... dal) inside add_wink_host_test /
+# add_wink_test_sim. Per-driver tests no longer need to list dal/src/**/*.c
+# explicitly — they just compile their own test .c file and get the full DAL.
+add_wink_host_test(test_dal_servo test_dal_servo.c)
 
-add_wink_host_test(test_dal_servo test_dal_servo.c ${DAL_SRCS})
+add_wink_host_test(test_dal_led test_dal_led.c)
 
-add_wink_host_test(test_dal_led test_dal_led.c ${DAL_SRCS})
+add_wink_host_test(test_dal_button test_dal_button.c)
 
-add_wink_host_test(test_dal_button test_dal_button.c ${DAL_SRCS})
+add_wink_host_test(test_dal_ssd1306 test_dal_ssd1306.c)
 
-add_wink_host_test(test_dal_ssd1306 test_dal_ssd1306.c ${DAL_SRCS})
-
-add_wink_host_test(test_dal_ultrasonic test_dal_ultrasonic.c ${DAL_SRCS})
+add_wink_host_test(test_dal_ultrasonic test_dal_ultrasonic.c)
 
 # P1-3: samples/common wink_button_helper BAL 组件 host 单测
-# 需要链 dal_button.c、wink_soft_timer.c、wink_trace.c 与 samples/common/src/wink_button_helper.c，
-# 并把 samples/common/include 加入头文件搜索路径。
+# P2: dal is linked via add_wink_host_test -> target_link_libraries(dal);
+# still need to compile wink_button_helper.c and wink_soft_timer.c (not in
+# any library yet) and wink_trace.c directly.
 add_wink_host_test(test_button_helper test_button_helper.c
-    ${DAL_SRCS}
     ${CMAKE_CURRENT_SOURCE_DIR}/../samples/common/src/wink_button_helper.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_soft_timer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../trace/src/wink_trace.c)
 target_include_directories(test_button_helper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../samples/common/include)
 
-# Track A M1 / Task A-4：DAL↔PAL 资源接线 e2e 单测（验证 6 个 DAL init 正确 wire pal_resource_claim）
-# 需要链全部 7 个 DAL（含 communication/gps 与 storage/eeprom），以及 include 全部 DAL 子目录。
-set(DAL_SRCS_WIRE
-    ${DAL_SRCS}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/communication/dal_gps.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/storage/dal_eeprom.c)
-add_wink_host_test(test_pal_resource_wire test_pal_resource_wire.c ${DAL_SRCS_WIRE})
+# Track A M1 / Task A-4：DAL↔PAL 资源接线 e2e 单测（验证 7 个 DAL init 正确 wire pal_resource_claim）
+# P2: dal is linked via add_wink_host_test; need the extra include dirs for
+# gps/eeprom headers that live in subdirectories not on the default surface.
+add_wink_host_test(test_pal_resource_wire test_pal_resource_wire.c)
 target_include_directories(test_pal_resource_wire PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/communication
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/storage)
@@ -250,7 +247,6 @@ function(add_wink_test_sim name src)
         ${UNITY_DIR}/unity.c
         ${CMAKE_CURRENT_SOURCE_DIR}/stubs/js_sim_host_stub.c
         ${HOST_PAL_OBJECT}
-        ${DAL_SRCS}
         ${ARGN})
     target_include_directories(${name} PRIVATE
         ${UNITY_DIR}
@@ -271,7 +267,8 @@ function(add_wink_test_sim name src)
         ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm     # wasm_bridge.h（dal SIMULATION 分支引用）
         ${CMAKE_CURRENT_SOURCE_DIR}/../trace/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/include)
-    target_link_libraries(${name} PRIVATE pal)
+    # P2 (2026-07-06): link dal instead of pal alone.
+    target_link_libraries(${name} PRIVATE dal)
     target_compile_definitions(${name} PRIVATE SIMULATION=1)
     if(MSVC)
         # /W4: strict warnings; /WX: warnings as errors (0 warning = build fails if any warning
@@ -309,6 +306,56 @@ add_wink_host_test(test_wink_selftest test_wink_selftest.c
 # selftest 源需要访问 wink_selftest_internal.h 和 registry.def
 target_include_directories(test_wink_selftest PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/selftest/src)
+
+# P2 (2026-07-06): DAL pruning sanity — link sanity under default (all-ON)
+# config. References every public non-blocking non-strict-gated API so that
+# any driver accidentally dropped from libdal.a shows up at link time.
+# This is NOT a Unity test (plain main()) — use add_executable directly
+# instead of add_wink_host_test (which pulls in unity.c requiring setUp/tearDown).
+add_executable(test_dal_pruning
+    test_dal_pruning.c
+    ${HOST_PAL_OBJECT})
+target_include_directories(test_dal_pruning PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/stubs
+    ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/osal
+    ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/hal
+    ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/input
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/output
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/actuator
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/display
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/sensor
+    ${CMAKE_CURRENT_SOURCE_DIR}/../trace/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/include)
+target_link_libraries(test_dal_pruning PRIVATE dal)
+if(MSVC)
+    target_compile_options(test_dal_pruning PRIVATE /W4 /WX /wd4100 /wd4210)
+else()
+    target_compile_options(test_dal_pruning PRIVATE -Wall -Wextra -Werror
+        -Wno-unused-parameter -Wno-missing-field-initializers
+        -Wno-error=stack-usage=)
+endif()
+add_test(NAME test_dal_pruning COMMAND test_dal_pruning)
+
+# P2 (2026-07-06): compile-negative test — verify WINK_UNAVAILABLE_MSG stubs
+# fire when a driver is forced OFF. Uses a CMake script test that invokes
+# the compiler directly at ctest time (not part of the default build) so
+# that turning WINK_USE_SERVO=OFF in this negative case does not affect the
+# rest of the build.
+add_test(
+    NAME test_dal_pruning_unavailable
+    COMMAND ${CMAKE_COMMAND}
+        -D "GCC=${CMAKE_C_COMPILER}"
+        -D "SRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
+        -D "DAL_INC=${CMAKE_CURRENT_SOURCE_DIR}/../dal/include"
+        -D "PAL_INC=${CMAKE_CURRENT_SOURCE_DIR}/../pal/include"
+        -D "WINK_STATUS_H=${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/wink_status.h"
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/test_dal_pruning_neg.cmake
+)
 
 add_custom_target(check
     COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
