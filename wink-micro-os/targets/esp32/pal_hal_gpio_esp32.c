@@ -227,6 +227,34 @@ wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
     return WINK_OK;
 }
 
+void pal_gpio_reset_pin(wink_pin_t pin) {
+    /* ADR-0024 §4 checkitem 2: deinit must (a) disable interrupt on the pin,
+     * (b) revert to Hi-Z INPUT, (c) release esp_gpio_reserve bitmap so the
+     * next init doesn't fail with "gpio already reserved".
+     * gpio_reset_pin() does all three (it calls gpio_isr_handler_remove()
+     * only if the ISR service is installed; it then calls gpio_config to
+     * INPUT+pull-disabled; it clears the reservation bit).
+     * Callers that already called pal_gpio_disable_interrupt +
+     * pal_gpio_synchronize_interrupt beforehand are fine —
+     * gpio_reset_pin is idempotent on an unreserved pin. */
+    if (pin < 0 || pin >= GPIO_NUM_MAX || !GPIO_IS_VALID_GPIO((gpio_num_t)pin)) {
+        return;
+    }
+    gpio_reset_pin((gpio_num_t)pin);
+    /* Invalidate our cached mode so pal_gpio_set_direction correctly refuses
+     * direction swaps on an unconfigured pin (matches "after deinit we no
+     * longer know the state" invariant). */
+    s_gpio_mode_known[pin] = false;
+
+    /* Also tear down our ISR dispatch entry if we had one — gpio_reset_pin
+     * only uninstalls the GPIO per-pin ISR via gpio_isr_handler_remove,
+     * it doesn't touch our s_gpio_isr/s_gpio_isr_arg cache. */
+    portENTER_CRITICAL(&s_gpio_table_mux);
+    s_gpio_isr[pin] = NULL;
+    s_gpio_isr_arg[pin] = NULL;
+    portEXIT_CRITICAL(&s_gpio_table_mux);
+}
+
 wink_status_t pal_gpio_set_direction(wink_pin_t pin, pal_gpio_mode_t mode) {
     if (pin < 0 || pin >= GPIO_NUM_MAX || !GPIO_IS_VALID_GPIO(pin)) {
         return WINK_ERR_INVALID_ARG;
@@ -650,6 +678,8 @@ wink_status_t pal_test_disable_hardware_loopback(wink_pin_t pin_out, wink_pin_t 
 
 wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode)
 { (void)pin; (void)mode; return WINK_ERR_UNSUPPORTED; }
+
+void pal_gpio_reset_pin(wink_pin_t pin) { (void)pin; }
 
 wink_status_t pal_gpio_set_direction(wink_pin_t pin, pal_gpio_mode_t mode)
 { (void)pin; (void)mode; return WINK_ERR_UNSUPPORTED; }

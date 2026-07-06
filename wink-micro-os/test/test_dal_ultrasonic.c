@@ -197,6 +197,26 @@ void test_deinit_hardening(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_deinit(&dev));
 }
 
+/* ADR-0024 §4 #8 idempotency — Task 0.7 Step 4: 10-round init→deinit loop.
+ * Ultrasonic owns TWO GPIO pins (trig+echo); a leak on either side would
+ * surface as BUSY on the next init. Guard for S11 regression. */
+void test_deinit_loop_two_pins_no_resource_leak(void) {
+    dal_ultrasonic_t dev = {0};
+    const dal_ultrasonic_config_t cfg = {
+        .owner = "radar_loop", .trig_pin = 6, .echo_pin = 7, .use_rmt = false,
+    };
+    for (int round = 0; round < 10; round++) {
+        TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&dev, &cfg));
+        TEST_ASSERT_TRUE(dev.initialized);
+        TEST_ASSERT_TRUE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 6));
+        TEST_ASSERT_TRUE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 7));
+        TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_deinit(&dev));
+        TEST_ASSERT_FALSE(dev.initialized);
+        TEST_ASSERT_FALSE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 6));
+        TEST_ASSERT_FALSE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 7));
+    }
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_ultrasonic_init_null_returns_invalid_arg);
@@ -215,6 +235,7 @@ int main(void) {
     RUN_TEST(test_apply_override_rejects_same_pin);
     RUN_TEST(test_apply_override_null_returns_invalid_arg);
     RUN_TEST(test_deinit_hardening);
+    RUN_TEST(test_deinit_loop_two_pins_no_resource_leak);
     return UNITY_END();
 }
 

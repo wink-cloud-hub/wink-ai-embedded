@@ -74,6 +74,14 @@ wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
     return WINK_OK;
 }
 
+void pal_gpio_reset_pin(wink_pin_t pin) {
+    /* Host simulation: no hardware reservation bitmap, no GPIO ISR dispatch
+     * table to clear — software resource claim is released separately by
+     * pal_resource_release() in the DAL deinit path. Keep this a no-op so
+     * deinit code paths stay uniform across targets. */
+    (void)pin;
+}
+
 wink_status_t pal_gpio_set_direction(wink_pin_t pin, pal_gpio_mode_t mode) {
     /* Host simulation: all pins are always readable + writable regardless
      * of mode; direction change is a no-op that always succeeds. */

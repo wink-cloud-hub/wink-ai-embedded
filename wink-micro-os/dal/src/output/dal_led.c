@@ -48,23 +48,28 @@ wink_status_t dal_led_toggle(dal_led_t *dev) {
 }
 
 wink_status_t dal_led_deinit(dal_led_t *dev) {
+    /* ADR-0024 §4 deinit — checked: 1(off)/2(pal_gpio_reset_pin)/3(N/A: no ISR)/
+     *   4(N/A: no DMA)/5(N/A: bus-owner only)/6(N/A: not on shared bus)/7(memset)/
+     *   8(NULL+uninit idempotent)/9(<10µs, no waits)/10(signature unified) */
     if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_OK; }  /* idempotent no-op on un-init dev */
 
-    /* 1. Best-effort turn LED off before releasing the pin (safe-off semantic). */
+    /* 1. Best-effort turn LED off before releasing the pin (safe-off semantic, ≤1µs). */
     WINK_IGNORE_UNUSED(dal_led_off(dev));
 
     /* Keep pin for resource release and GPIO reset */
     uint16_t pin = dev->config.pin;
     const char *owner = dev->config.owner;
 
-    /* 2. Reset GPIO to high-impedance INPUT mode */
-    WINK_IGNORE_UNUSED(pal_gpio_init(pin, PAL_GPIO_INPUT));
+    /* 2. Reset GPIO: disables any leftover interrupt routing, reverts to
+     *    Hi-Z INPUT, and clears the esp_gpio_reserve bitmap (ADR-0024 §4 #2).
+     *    On host/wasm this is a no-op; pal_resource_release handles SW claim. */
+    pal_gpio_reset_pin(pin);
 
-    /* 3. Release resource claim so a subsequent init does not fail with BUSY. */
+    /* 3. Release software resource claim so a subsequent init does not fail with BUSY. */
     WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN, pin, owner));
 
-    /* 4. Clear the instance data completely to guarantee no residual state */
+    /* 7. Clear the instance data completely to guarantee no residual state */
     memset(dev, 0, sizeof(dal_led_t));
 
     return WINK_OK;

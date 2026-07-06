@@ -153,6 +153,24 @@ void test_deinit_hardening(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_servo_deinit(&dev));
 }
 
+/* ADR-0024 §4 #8 idempotency — Task 0.7 Step 4: 10-round init→deinit loop
+ * guards against PWM channel reservation leak across re-init cycles. */
+void test_deinit_loop_pwm_channel_no_resource_leak(void) {
+    dal_servo_t dev = {0};
+    const dal_servo_config_t cfg = {
+        .owner = "servo_loop", .pwm_channel = 1,
+        .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f,
+    };
+    for (int round = 0; round < 10; round++) {
+        TEST_ASSERT_EQUAL_INT(WINK_OK, dal_servo_init(&dev, &cfg));
+        TEST_ASSERT_TRUE(dev.initialized);
+        TEST_ASSERT_TRUE(pal_resource_is_claimed(PAL_RESOURCE_PWM_CHANNEL, 1));
+        TEST_ASSERT_EQUAL_INT(WINK_OK, dal_servo_deinit(&dev));
+        TEST_ASSERT_FALSE(dev.initialized);
+        TEST_ASSERT_FALSE(pal_resource_is_claimed(PAL_RESOURCE_PWM_CHANNEL, 1));
+    }
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_init_null_returns_invalid_arg);
@@ -169,5 +187,6 @@ int main(void) {
     RUN_TEST(test_apply_override_rejects_bad_channel);
     RUN_TEST(test_apply_override_null_returns_invalid_arg);
     RUN_TEST(test_deinit_hardening);
+    RUN_TEST(test_deinit_loop_pwm_channel_no_resource_leak);
     return UNITY_END();
 }

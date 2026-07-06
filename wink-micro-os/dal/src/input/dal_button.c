@@ -191,27 +191,33 @@ wink_status_t dal_button_reset_edge_count(dal_button_t *dev) {
 }
 
 wink_status_t dal_button_deinit(dal_button_t *dev) {
+    /* ADR-0024 §4 deinit — checked: 1(N/A: button safe-off is Hi-Z, no actuator)/
+     *   2(pal_gpio_reset_pin)/3(disable_interrupt→synchronize before reset)/
+     *   4(N/A: no DMA)/5(N/A)/6(N/A)/7(memset clears event_cb/counter/last_ts)/
+     *   8(NULL+uninit idempotent)/9(<100µs, no waits)/10(signature unified) */
     if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_OK; }  /* idempotent no-op on un-init dev */
 
-    /* 1. Disable interrupt if enabled (SMP safe: disable then synchronize) */
-    if (dev->isr_counter_enabled) {
-        WINK_IGNORE_UNUSED(pal_gpio_disable_interrupt(dev->config.pin));
-        WINK_IGNORE_UNUSED(pal_gpio_synchronize_interrupt(dev->config.pin));
-        dev->isr_counter_enabled = false;
-    }
-
-    /* Keep pin for resource release and GPIO reset */
+    /* Keep pin for resource release and GPIO reset (read before any memset). */
     uint16_t pin = dev->config.pin;
     const char *owner = dev->config.owner;
+    bool had_isr = dev->isr_counter_enabled;
 
-    /* 2. Reset GPIO pin to high-impedance INPUT mode */
-    WINK_IGNORE_UNUSED(pal_gpio_init(pin, PAL_GPIO_INPUT));
+    /* 3. Disable interrupt (hard order: disable → synchronize → reset pin),
+     *    so an in-flight ISR on another core cannot touch the pin post-reset. */
+    if (had_isr) {
+        WINK_IGNORE_UNUSED(pal_gpio_disable_interrupt(pin));
+        WINK_IGNORE_UNUSED(pal_gpio_synchronize_interrupt(pin));
+    }
 
-    /* 3. Release GPIO resource claim */
+    /* 2. Reset GPIO: disables any leftover routing, reverts to Hi-Z INPUT,
+     *    clears esp_gpio_reserve bitmap (ADR-0024 §4 #2). */
+    pal_gpio_reset_pin(pin);
+
+    /* Release software resource claim */
     WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN, pin, owner));
 
-    /* 4. Clear the instance data completely to guarantee no residual state */
+    /* 7. Clear the instance data completely to guarantee no residual state */
     memset(dev, 0, sizeof(dal_button_t));
 
     return WINK_OK;
