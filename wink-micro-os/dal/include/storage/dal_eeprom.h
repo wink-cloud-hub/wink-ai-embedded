@@ -103,4 +103,21 @@ wink_status_t dal_eeprom_write(dal_eeprom_t *dev, uint16_t addr, const uint8_t *
 }
 #endif
 
+/* ── Compile-time pruning stubs (P2-1 2026-07-06) ──────────────────────
+ * All three public APIs are WINK_BLOCKING; stubs carry the attribute so
+ * that callers see the same set of warnings whether the driver is
+ * compiled in or not.
+ */
+#if !defined(WINK_USE_EEPROM) || !WINK_USE_EEPROM
+#define WINK_EEPROM_DISABLED_MSG \
+    "EEPROM driver not enabled; add an \"eeprom\" device to wink-app.json " \
+    "(or set -DWINK_USE_EEPROM=ON)."
+WINK_UNAVAILABLE_MSG(WINK_EEPROM_DISABLED_MSG) WINK_BLOCKING WINK_WARN_UNUSED_RESULT
+wink_status_t dal_eeprom_init(dal_eeprom_t *dev, const dal_eeprom_config_t *cfg);
+WINK_UNAVAILABLE_MSG(WINK_EEPROM_DISABLED_MSG) WINK_BLOCKING WINK_WARN_UNUSED_RESULT
+wink_status_t dal_eeprom_read(dal_eeprom_t *dev, uint16_t addr, uint8_t *buf, uint16_t len);
+WINK_UNAVAILABLE_MSG(WINK_EEPROM_DISABLED_MSG) WINK_BLOCKING WINK_WARN_UNUSED_RESULT
+wink_status_t dal_eeprom_write(dal_eeprom_t *dev, uint16_t addr, const uint8_t *buf, uint16_t len);
+#endif /* !WINK_USE_EEPROM */
+
 #endif /* DAL_EEPROM_H */

@@ -152,4 +152,30 @@ wink_status_t dal_ultrasonic_deinit(dal_ultrasonic_t *dev);
 }
 #endif
 
+/* ── Compile-time pruning stubs (P2-1 2026-07-06) ──────────────────────
+ * See dal_led.h header comment for rationale.
+ *
+ * Note: dal_ultrasonic_read() is itself guarded by #ifndef WINK_STRICT_NONBLOCKING
+ * in its live declaration above; the stub here re-declares it outside that
+ * guard so it is ALSO reported as unavailable when the driver is compiled
+ * out, regardless of strict-nonblocking mode.
+ */
+#if !defined(WINK_USE_ULTRASONIC) || !WINK_USE_ULTRASONIC
+#define WINK_ULTRASONIC_DISABLED_MSG \
+    "Ultrasonic driver not enabled; add an \"ultrasonic\" device to " \
+    "wink-app.json (or set -DWINK_USE_ULTRASONIC=ON)."
+WINK_UNAVAILABLE_MSG(WINK_ULTRASONIC_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_ultrasonic_init(dal_ultrasonic_t *dev, const dal_ultrasonic_config_t *cfg);
+WINK_UNAVAILABLE_MSG(WINK_ULTRASONIC_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_ultrasonic_request_measurement(dal_ultrasonic_t *dev);
+WINK_UNAVAILABLE_MSG(WINK_ULTRASONIC_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_ultrasonic_get_cached_distance(const dal_ultrasonic_t *dev, float *distance_cm);
+WINK_UNAVAILABLE_MSG(WINK_ULTRASONIC_DISABLED_MSG) WINK_BLOCKING WINK_WARN_UNUSED_RESULT
+wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *distance_cm);
+WINK_UNAVAILABLE_MSG(WINK_ULTRASONIC_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_ultrasonic_apply_override(void *dev, const uint8_t *params, uint16_t len);
+WINK_UNAVAILABLE_MSG(WINK_ULTRASONIC_DISABLED_MSG)
+wink_status_t dal_ultrasonic_deinit(dal_ultrasonic_t *dev);
+#endif /* !WINK_USE_ULTRASONIC */
+
 #endif /* DAL_ULTRASONIC_H */

@@ -209,4 +209,33 @@ wink_status_t dal_button_deinit(dal_button_t *dev);
 }
 #endif
 
+/* ── Compile-time pruning stubs (P2-1 2026-07-06) ──────────────────────
+ * See dal_led.h header comment for rationale.
+ */
+#if !defined(WINK_USE_BUTTON) || !WINK_USE_BUTTON
+#define WINK_BUTTON_DISABLED_MSG \
+    "Button driver not enabled; add a \"button\" device to wink-app.json " \
+    "(or set -DWINK_USE_BUTTON=ON)."
+WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_button_init(dal_button_t *dev, const dal_button_config_t *cfg);
+WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_button_poll(dal_button_t *dev);
+WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_button_is_pressed(const dal_button_t *dev, bool *out_pressed);
+WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_button_was_pressed(dal_button_t *dev, bool *out_was_pressed);
+WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_button_on_event(dal_button_t *dev, dal_button_event_cb cb, void *ctx);
+WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_button_set_long_press_ms(dal_button_t *dev, uint32_t ms);
+WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_button_enable_isr_counter(dal_button_t *dev);
+WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_button_get_edge_count(const dal_button_t *dev, uint32_t *out_count);
+WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_button_reset_edge_count(dal_button_t *dev);
+WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG)
+wink_status_t dal_button_deinit(dal_button_t *dev);
+#endif /* !WINK_USE_BUTTON */
+
 #endif /* DAL_BUTTON_H */

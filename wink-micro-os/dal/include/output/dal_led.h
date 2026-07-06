@@ -102,4 +102,31 @@ wink_status_t dal_led_deinit(dal_led_t *dev);
 }
 #endif
 
+/* ── Compile-time pruning stubs (P2-1 2026-07-06) ──────────────────────
+ * When WINK_USE_LED=OFF (CMake static pruning), the driver source is not
+ * compiled. The declarations below are kept visible (outside the #if
+ * guard) but tagged WINK_UNAVAILABLE_MSG so accidental calls produce a
+ * friendly compile error that points the caller at the fix, instead of
+ * an opaque "undefined reference" at link time.
+ *
+ * Adding a new public API? Mirror its signature inside the block.
+ */
+#if !defined(WINK_USE_LED) || !WINK_USE_LED
+#define WINK_LED_DISABLED_MSG \
+    "LED driver not enabled; add a \"led\" device to wink-app.json " \
+    "(or set -DWINK_USE_LED=ON)."
+WINK_UNAVAILABLE_MSG(WINK_LED_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_led_init(dal_led_t *dev, const dal_led_config_t *cfg);
+WINK_UNAVAILABLE_MSG(WINK_LED_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_led_on(dal_led_t *dev);
+WINK_UNAVAILABLE_MSG(WINK_LED_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_led_off(dal_led_t *dev);
+WINK_UNAVAILABLE_MSG(WINK_LED_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_led_set(dal_led_t *dev, bool on);
+WINK_UNAVAILABLE_MSG(WINK_LED_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_led_toggle(dal_led_t *dev);
+WINK_UNAVAILABLE_MSG(WINK_LED_DISABLED_MSG)
+wink_status_t dal_led_deinit(dal_led_t *dev);
+#endif /* !WINK_USE_LED */
+
 #endif /* DAL_LED_H */
