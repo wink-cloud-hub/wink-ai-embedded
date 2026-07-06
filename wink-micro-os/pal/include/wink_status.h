@@ -65,6 +65,39 @@ extern "C" {
 /* Backward-compatible alias (older code / 2026-07-04 PAL log hardening). */
 #define WINK_IGNORE_UNUSED(expr) WINK_IGNORE_RESULT(expr)
 
+/*
+ * WINK_UNAVAILABLE_MSG(msg) — compile-time "driver disabled" stub marker.
+ *
+ * When a DAL driver is compiled out (WINK_USE_XXX=OFF via CMake static
+ * pruning, P2-1 2026-07-06), its public header provides stub declarations
+ * carrying this attribute so that any accidental call produces a friendly
+ * compile error with remediation guidance ("add a <driver> device to
+ * wink-app.json"), instead of a cryptic linker undefined-reference.
+ *
+ * Portability: GCC/Clang support `__attribute__((unavailable(msg)))` which
+ * emits an error at the call site. MSVC has no direct equivalent — fall
+ * back to `__declspec(deprecated(msg))` which still surfaces the message as
+ * a (promotable-to-error) warning. Other compilers fall back to nothing
+ * (the missing definition will still fail at link time, just without the
+ * friendly hint).
+ */
+#if defined(__clang__)
+    /* Clang supports unavailable with a message natively. */
+    #define WINK_UNAVAILABLE_MSG(msg) __attribute__((unavailable(msg)))
+#elif defined(__GNUC__)
+    /* GCC 4.3+ supports unavailable; message text varies by version but is
+     * emitted. Older GCCs fall through to error at link time. */
+    #if __GNUC__ >= 5
+        #define WINK_UNAVAILABLE_MSG(msg) __attribute__((unavailable(msg)))
+    #else
+        #define WINK_UNAVAILABLE_MSG(msg) __attribute__((deprecated(msg)))
+    #endif
+#elif defined(_MSC_VER)
+    #define WINK_UNAVAILABLE_MSG(msg) __declspec(deprecated(msg))
+#else
+    #define WINK_UNAVAILABLE_MSG(msg)
+#endif
+
 
 /*
  * @brief Wink 平台统一状态码
