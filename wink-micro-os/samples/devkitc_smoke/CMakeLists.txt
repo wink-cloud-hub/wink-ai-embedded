@@ -71,13 +71,14 @@ add_executable(app_devkitc_smoke_e2e
     ${APP_SOURCES}
     ${WINK_SAMPLE_RUNTIME_SOURCES}
     ${WINK_SELFTEST_SOURCES}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/output/dal_led.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/input/dal_button.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/src/sensor/dal_ultrasonic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/test_devkitc_smoke_e2e.c
     $<TARGET_OBJECTS:pal_host>)
 wink_sample_apply_common(app_devkitc_smoke_e2e)
 wink_sample_link_common(app_devkitc_smoke_e2e)
+# P2 (2026-07-06): link the dal static library instead of compiling
+# dal/src/**/*.c directly. This makes WINK_USE_XXX pruning options
+# (optionally driven by the generated app_options.cmake) take effect.
+target_link_libraries(app_devkitc_smoke_e2e PRIVATE dal)
 # Selftest internal headers (registry.def / wink_selftest_internal.h) live
 # alongside the sources — app doesn't include them but the selftest .c files do.
 # GEN_DIR: generated device_tree.h + app_support.c live in the build tree.
