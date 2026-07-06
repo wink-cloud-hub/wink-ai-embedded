@@ -10,6 +10,7 @@
  */
 #include "device_tree.h"
 #include "wink_status.h"
+#include "wink_fault.h"
 #include "wink_button_helper.h"
 
 /**
