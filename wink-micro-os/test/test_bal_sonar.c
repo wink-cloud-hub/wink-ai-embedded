@@ -164,6 +164,17 @@ void test_sonar_helper_set_period(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_sonar_helper_stop(&s_sonar1));
 }
 
+/* 7. Preflight: starting against a zeroed (un-inited) sonar must return
+ *    NOT_INITIALIZED and must NOT arm a periodic (anti-"blinking in void"). */
+void test_sonar_helper_uninit_rejected(void) {
+    dal_ultrasonic_t uninit;
+    memset(&uninit, 0, sizeof(uninit));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_NOT_INITIALIZED,
+        wink_sonar_helper_start(&uninit, 100));
+    TEST_ASSERT_EQUAL_UINT32(0, wink_periodic_active_count());
+    TEST_ASSERT_FALSE(wink_sonar_helper_is_running(&uninit));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_sonar_helper_invalid_args);
@@ -173,5 +184,6 @@ int main(void) {
     RUN_TEST(test_sonar_helper_pool_exhaustion);
     RUN_TEST(test_sonar_helper_start_stop_reclamation);
     RUN_TEST(test_sonar_helper_set_period);
+    RUN_TEST(test_sonar_helper_uninit_rejected);
     return UNITY_END();
 }

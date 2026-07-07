@@ -287,12 +287,27 @@ void test_pool_exhaustion_and_reclaim(void) {
     TEST_ASSERT_EQUAL_UINT32(0, wink_periodic_active_count());
 }
 
+/* Preflight: starting the helper against a zeroed-out (never-inited)
+ * button must return WINK_ERR_NOT_INITIALIZED and must NOT arm a periodic
+ * (anti-"blinking in the void" guard, 2026-07-07 stub-WINK_OK cleanup). */
+void test_uninitialized_button_rejected(void) {
+    dal_button_t uninit;
+    memset(&uninit, 0, sizeof(uninit));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_NOT_INITIALIZED,
+        wink_button_helper_start(&uninit, 10u));
+    /* No slot should be consumed, no periodic armed. */
+    TEST_ASSERT_EQUAL_UINT32(0, wink_periodic_active_count());
+    /* Stop should be a safe no-op (idempotent). */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_button_helper_stop(&uninit));
+}
+
 /* ── Runner ───────────────────────────────────────────────────── */
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_null_args_rejected);
     RUN_TEST(test_not_started_stop_is_noop);
     RUN_TEST(test_duplicate_start_rejected);
+    RUN_TEST(test_uninitialized_button_rejected);
     RUN_TEST(test_press_release_event_via_helper);
     RUN_TEST(test_long_press_detected);
     RUN_TEST(test_stop_halts_further_events);

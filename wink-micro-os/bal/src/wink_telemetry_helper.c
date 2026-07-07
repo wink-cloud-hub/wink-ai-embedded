@@ -149,6 +149,34 @@ wink_status_t wink_telemetry_default_start_ex(const dal_ultrasonic_t *sonar,
     ctx->btn      = btn;
     ctx->period_h = WINK_PERIODIC_INVALID;
 
+    /* Preflight: if a non-NULL device is supplied, verify it is initialised.
+     * Mirrors blink/button/sonar helper preflight pattern. NOT_INITIALIZED
+     * on either pointer fails start; BUSY/transient errors are tolerated
+     * (the tick will retry/report on the next 2 s cycle). NULL pointers
+     * are legitimate ("don't report that field") and are skipped. */
+    if (sonar != NULL) {
+        float d = 0.0f;
+        wink_status_t st = dal_ultrasonic_get_cached_distance(sonar, &d);
+        if (st == WINK_ERR_NOT_INITIALIZED) {
+            LOG_D("start: sonar not initialized");
+            ctx->in_use = false;
+            ctx->sonar  = NULL;
+            ctx->btn    = NULL;
+            return WINK_ERR_NOT_INITIALIZED;
+        }
+    }
+    if (btn != NULL) {
+        bool pressed = false;
+        wink_status_t st = dal_button_is_pressed(btn, &pressed);
+        if (st == WINK_ERR_NOT_INITIALIZED) {
+            LOG_D("start: button not initialized");
+            ctx->in_use = false;
+            ctx->sonar  = NULL;
+            ctx->btn    = NULL;
+            return WINK_ERR_NOT_INITIALIZED;
+        }
+    }
+
     wink_periodic_handle_t h = wink_periodic_start_ex(
         "default_telem", stack, WINK_TELEMETRY_DEFAULT_PERIOD_MS,
         telem_tick, ctx, flags, prio, core);

@@ -117,6 +117,18 @@ wink_status_t wink_sonar_helper_start_ex(dal_ultrasonic_t *dev, uint32_t period_
     ctx->dev = dev;
     ctx->period_h = WINK_PERIODIC_INVALID;
 
+    /* Preflight: fire one measurement request so an uninitialised device
+     * fails fast at start() rather than spinning a silent periodic.
+     * NOT_INITIALIZED is fatal; other errors (hardware fault, BUSY on a
+     * still-ringing transducer) are transient and will be retried by the
+     * tick callback. */
+    wink_status_t probe_st = dal_ultrasonic_request_measurement(dev);
+    if (probe_st == WINK_ERR_NOT_INITIALIZED) {
+        LOG_D("start: sonar not initialized");
+        ctx->dev = NULL; /* roll back slot allocation */
+        return WINK_ERR_NOT_INITIALIZED;
+    }
+
     wink_periodic_handle_t h = wink_periodic_start_ex(
         "sonar", stack, period_ms, sonar_tick, ctx, flags, prio, core);
     if (h < 0) {
