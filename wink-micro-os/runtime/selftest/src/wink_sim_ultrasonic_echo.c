@@ -40,6 +40,7 @@
 #include "pal_irq.h"
 #include "pal_osal.h"
 #include "pal_resource.h"
+#include "internal/pal_test_loopback.h"
 
 /* ADR-0017 layer-1 exception: this file is a bringup/test helper and
  * legitimately calls blocking APIs (pal_os_sem_take / pal_os_task_create /
@@ -95,8 +96,16 @@ static void sim_echo_task(void *arg)
          * and stretching the echo pulse.  Interrupts stay enabled so no
          * IDLE/WDT starvation — IDLE WDT timeout is seconds, pulse is ms-scale
          * worst case. */
-        /* Re-assert direction to INPUT_OUTPUT in case RMT driver init reset it to INPUT */
-        WINK_IGNORE_RESULT(pal_gpio_set_direction(st->echo_pin, PAL_GPIO_INPUT_OUTPUT));
+        /* Re-enable self-loopback on echo_pin: when RMT RX channel is initialized
+         * (rmt_new_rx_channel) ESP-IDF takes over the GPIO matrix and disconnects
+         * the GPIO output signal from the pad, so pal_gpio_write() would not be
+         * visible to RMT. pal_test_enable_hardware_loopback(echo, echo) calls
+         * gpio_config(INPUT_OUTPUT) + esp_rom_gpio_connect_out_signal(SIG_GPIO_OUT_IDX)
+         * + PIN_INPUT_ENABLE, which is the exact same setup S9 (selftest rmt loopback)
+         * uses and is proven to work end-to-end at 100µs precision. On host/wasm this
+         * degrades to a virtual wire (host) or returns UNSUPPORTED (wasm, which uses
+         * the sim-echo bypass path instead); swallowed with WINK_IGNORE_RESULT. */
+        WINK_IGNORE_RESULT(pal_test_enable_hardware_loopback(st->echo_pin, st->echo_pin));
         WINK_IGNORE_RESULT(pal_gpio_write(st->echo_pin, true));
         pal_os_busy_wait_us(st->pulse_us);
         WINK_IGNORE_RESULT(pal_gpio_write(st->echo_pin, false));
@@ -138,9 +147,11 @@ wink_status_t wink_sim_ultrasonic_echo_start(dal_ultrasonic_t *dev,
         return WINK_ERR_NO_MEM;
     }
 
-    /* Promote ECHO to INPUT_OUTPUT so the mock task can drive it while RMT
-     * listens on the same pin. */
-    WINK_IGNORE_RESULT(pal_gpio_set_direction(echo_pin, PAL_GPIO_INPUT_OUTPUT));
+    /* Promote ECHO to INPUT_OUTPUT + GPIO-out signal routing so the mock task
+     * can drive it while RMT listens on the same pin. Same mechanism as S9
+     * (pal_test_enable_hardware_loopback) -- see tick callback for why
+     * gpio_set_direction alone is insufficient after RMT init. */
+    WINK_IGNORE_RESULT(pal_test_enable_hardware_loopback(echo_pin, echo_pin));
 
     /* Publish s_active BEFORE arming the ISR so sim_trig_isr sees it. */
     s_active = &s_state;
