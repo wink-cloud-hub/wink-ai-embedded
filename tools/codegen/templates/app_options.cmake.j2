@@ -9,3 +9,6 @@ set({{ opt }} ON CACHE BOOL "" FORCE)
 {% if not cmake_options %}
 # No device drivers declared — no WINK_USE_* flags to force on.
 {% endif %}
+
+# Calculate WINK_MAX_PERIODIC (sum of instance counts + 4)
+set(WINK_MAX_PERIODIC {{ instance_counts.values() | sum + 4 }} CACHE STRING "" FORCE)

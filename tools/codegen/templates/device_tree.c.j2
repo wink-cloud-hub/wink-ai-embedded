@@ -27,6 +27,13 @@ WINK_DEFINE_ACTUATOR_THUNK({{ a.name }}_safe_off, {{ a.safe_off_fn }}, {{ a.devi
 /* ── Init sequence ── */
 wink_status_t wink_device_tree_init(void)
 {
+{% if buses %}
+    /* ── Shared bus initializations ── */
+{% for bus in buses %}
+    WINK_TRY(pal_i2c_bus_init({{ bus.port }}, {{ bus.sda }}, {{ bus.scl }}, {{ bus.hz }}));
+{% endfor %}
+
+{% endif %}
 {% for d in devices %}
     /* {{ d.name }} ({{ d.type }}{% if d.is_actuator %}, actuator{% endif %}) */
 {{ d.config_init }}
@@ -63,6 +70,16 @@ void wink_device_tree_deinit(void)
 {% for d in devices | reverse %}
     WINK_IGNORE_RESULT({{ d.deinit }}(&{{ d.name }}));
 {% endfor %}
+{% if buses %}
+
+    /* ── Shared bus deinitializations (reverse order) ── */
+{% for bus in buses | reverse %}
+    pal_i2c_bus_deinit({{ bus.port }});
+{% endfor %}
+{% endif %}
+#ifdef WINK_PT_DEBUG
+    WINK_ASSERT(wink_periodic_active_count() == 0);
+#endif
 {% if not devices %}
     /* No devices declared — nothing to deinit. */
     (void)0;

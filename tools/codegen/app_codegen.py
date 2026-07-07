@@ -42,7 +42,6 @@ TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 OUTPUT_FILES = (
     ("device_tree.h.j2", "device_tree.h"),
     ("device_tree.c.j2", "device_tree.c"),
-    ("app_support.c.j2", "app_support.c"),
     ("app_options.cmake.j2", "app_options.cmake"),
 )
 
@@ -62,12 +61,12 @@ def validate_top_level(cfg: dict, source: str) -> None:
         _die(f"{source}: 'devices' is required and must be an object (may be empty)")
     for k, expected in (
         ("board", str),
-        ("services", dict),
-        ("callbacks", dict),
-        ("state_variables", list),
     ):
         if k in cfg and not isinstance(cfg[k], expected):
             _die(f"{source}: '{k}' must be a {expected.__name__}")
+    for forbidden in ("services", "callbacks", "state_variables"):
+        if forbidden in cfg:
+            _die(f"{source}: field '{forbidden}' is deprecated and no longer supported")
 
 
 def _resolve_driver(dev_name: str, spec: dict, source: str) -> DriverBase:
@@ -251,6 +250,53 @@ def build_context(cfg: dict, config_source: str) -> dict:
         _validate_required_fields(name, spec, driver, config_source)
         resolved.append((name, driver, spec))
 
+    # Count instances of each helper-managed type, defaulting to 0 for known helper types
+    instance_counts = {"led": 0, "button": 0, "ultrasonic": 0, "servo": 0}
+    # Collect all config macros
+    config_macros = []
+    for name, driver, spec in resolved:
+        t = driver.type
+        if t in instance_counts:
+            instance_counts[t] += 1
+        if hasattr(driver, "render_config_macros"):
+            config_macros.extend(driver.render_config_macros(name, spec))
+
+    # 5. I2C shared bus detection
+    i2c_buses = {}
+    for name, driver, spec in resolved:
+        if "i2c_port" in spec:
+            port = int(spec["i2c_port"])
+            sda = spec.get("sda_pin")
+            scl = spec.get("scl_pin")
+            hz = spec.get("hz") or spec.get("i2c_hz") or 100000  # Default 100kHz
+            if sda is None or scl is None:
+                # Fallback to board definition
+                board_buses = board_cfg.get("buses", {})
+                bus_key = f"i2c{port}"
+                if bus_key in board_buses:
+                    if sda is None:
+                        sda = board_buses[bus_key].get("sda")
+                    if scl is None:
+                        scl = board_buses[bus_key].get("scl")
+            if sda is None or scl is None:
+                _die(f"device '{name}' is on I2C port {port} but SDA/SCL pins cannot be resolved")
+            
+            # Resolve to pins (ensure they are integers/resolved variables)
+            if port in i2c_buses:
+                existing = i2c_buses[port]
+                if existing["sda"] != sda or existing["scl"] != scl:
+                    _die(f"I2C port {port} configuration conflict: device '{name}' uses SDA={sda}, SCL={scl} while another device uses SDA={existing['sda']}, SCL={existing['scl']}")
+                existing["devices"].append(name)
+            else:
+                i2c_buses[port] = {
+                    "port": port,
+                    "sda": sda,
+                    "scl": scl,
+                    "hz": hz,
+                    "devices": [name]
+                }
+    buses_ctx = list(i2c_buses.values())
+
     ordered = topo_sort(resolved_devices, config_source)
     lookup = {n: (d, s) for n, d, s in resolved}
     devices_ctx = []
@@ -266,8 +312,6 @@ def build_context(cfg: dict, config_source: str) -> dict:
             "config_init": driver.render_config_init(name, spec),
             "post_init_calls": driver.render_post_init_calls(name, spec),
             "deinit": driver.render_deinit(name),
-            "service_headers": driver.get_service_headers(name, spec),
-            "service_starts": driver.render_service_starts(name, spec),
         })
 
     # Deduplicate headers preserving order.
@@ -278,9 +322,6 @@ def build_context(cfg: dict, config_source: str) -> dict:
         return list(seen_)
 
     driver_headers = _dedup(h for d in devices_ctx for h in d["headers"])
-    service_headers = _dedup(
-        h for d in devices_ctx for h in d["service_headers"]
-    )
     actuators = [d for d in devices_ctx if d["is_actuator"]]
 
     # Deduplicate CMake options across all driver instances used.
@@ -300,10 +341,9 @@ def build_context(cfg: dict, config_source: str) -> dict:
         "devices": devices_ctx,
         "actuators": actuators,
         "driver_headers": driver_headers,
-        "service_headers": service_headers,
-        "callbacks": cfg.get("callbacks", {}),
-        "services": cfg.get("services", {}),
-        "state_variables": cfg.get("state_variables", []),
+        "config_macros": config_macros,
+        "instance_counts": instance_counts,
+        "buses": buses_ctx,
         "cmake_options": cmake_opts,
     }
 

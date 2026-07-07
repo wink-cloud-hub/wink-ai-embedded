@@ -65,12 +65,8 @@ class DriverBase:
         """
         return []
 
-    def get_service_headers(self, dev_name: str, spec: dict) -> List[str]:
-        """BAL/helper headers required by services attached to this device."""
-        return []
-
-    def render_service_starts(self, dev_name: str, spec: dict) -> List[str]:
-        """C lines inserted into wink_app_services_start() (without ``;``)."""
+    def render_config_macros(self, dev_name: str, spec: dict) -> List[str]:
+        """Return C macros to be defined in device_tree.h for this device."""
         return []
 
     def cmake_options(self) -> List[str]:

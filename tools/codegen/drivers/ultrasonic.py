@@ -35,3 +35,8 @@ class UltrasonicDriver(DriverBase):
 
     def render_deinit(self, dev_name: str) -> str:
         return "dal_ultrasonic_deinit"
+
+    def render_config_macros(self, dev_name: str, spec: dict) -> List[str]:
+        use_rmt = spec.get("use_rmt", True)
+        use_rmt_c = "true" if use_rmt else "false"
+        return [f"#define {dev_name.upper()}_USE_RMT {use_rmt_c}"]

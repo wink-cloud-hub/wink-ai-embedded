@@ -17,9 +17,6 @@ class ButtonDriver(DriverBase):
     def get_device_type(self) -> str:
         return "dal_button_t"
 
-    def get_service_headers(self, dev_name: str, spec: dict) -> List[str]:
-        return ["wink_button_helper.h"] if "auto_poll_ms" in spec else []
-
     def render_config_init(self, dev_name: str, spec: dict) -> str:
         pin = spec["pin"]
         active_low_c = "true" if spec.get("active_low", True) else "false"
@@ -41,9 +38,15 @@ class ButtonDriver(DriverBase):
             lines.append(f"dal_button_enable_isr_counter(&{dev_name})")
         return lines
 
-    def render_service_starts(self, dev_name: str, spec: dict) -> List[str]:
-        ms = spec.get("auto_poll_ms")
-        return [f"wink_button_helper_start(&{dev_name}, {ms})"] if ms is not None else []
+    def render_config_macros(self, dev_name: str, spec: dict) -> List[str]:
+        lines: List[str] = []
+        ms_poll = spec.get("auto_poll_ms")
+        if ms_poll is not None:
+            lines.append(f"#define {dev_name.upper()}_AUTO_POLL_MS {ms_poll}u")
+        ms_long = spec.get("long_press_ms")
+        if ms_long is not None:
+            lines.append(f"#define {dev_name.upper()}_LONG_PRESS_MS {ms_long}u")
+        return lines
 
     def render_deinit(self, dev_name: str) -> str:
         return "dal_button_deinit"

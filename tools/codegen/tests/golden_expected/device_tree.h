@@ -11,6 +11,18 @@
 #include "dal_ultrasonic.h"
 #include "wink_status.h"
 
+/* ── Instance count macros (slots allocation) ── */
+#define WINK_APP_MAX_LED_INSTANCES 1u
+#define WINK_APP_MAX_BUTTON_INSTANCES 1u
+#define WINK_APP_MAX_ULTRASONIC_INSTANCES 1u
+#define WINK_APP_MAX_SERVO_INSTANCES 0u
+
+/* ── Driver configuration constants ── */
+#define BOARD_LED_ACTIVE_HIGH true
+#define BOOT_BUTTON_AUTO_POLL_MS 10u
+#define BOOT_BUTTON_LONG_PRESS_MS 3000u
+#define SMOKE_SONAR_USE_RMT true
+
 #ifdef __cplusplus
 extern "C" {
 #endif

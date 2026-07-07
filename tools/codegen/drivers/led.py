@@ -33,3 +33,8 @@ class LedDriver(DriverBase):
 
     def render_deinit(self, dev_name: str) -> str:
         return "dal_led_deinit"
+
+    def render_config_macros(self, dev_name: str, spec: dict) -> List[str]:
+        active_high = spec.get("active_high", True)
+        active_high_c = "true" if active_high else "false"
+        return [f"#define {dev_name.upper()}_ACTIVE_HIGH {active_high_c}"]

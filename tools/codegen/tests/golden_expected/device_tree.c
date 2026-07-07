@@ -63,4 +63,7 @@ void wink_device_tree_deinit(void)
     WINK_IGNORE_RESULT(dal_ultrasonic_deinit(&smoke_sonar));
     WINK_IGNORE_RESULT(dal_button_deinit(&boot_button));
     WINK_IGNORE_RESULT(dal_led_deinit(&board_led));
+#ifdef WINK_PT_DEBUG
+    WINK_ASSERT(wink_periodic_active_count() == 0);
+#endif
 }

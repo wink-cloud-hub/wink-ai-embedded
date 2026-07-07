@@ -11,6 +11,16 @@
 {% endfor %}
 #include "wink_status.h"
 
+/* ── Instance count macros (slots allocation) ── */
+{% for dev_type, count in instance_counts.items() %}
+#define WINK_APP_MAX_{{ dev_type.upper() }}_INSTANCES {{ count }}u
+{% endfor %}
+
+/* ── Driver configuration constants ── */
+{% for macro in config_macros %}
+{{ macro }}
+{% endfor %}
+
 #ifdef __cplusplus
 extern "C" {
 #endif

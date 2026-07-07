@@ -281,6 +281,20 @@ target_include_directories(test_bal_telemetry PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/comm)
 
+# BAL sonar helper test.
+add_wink_host_test(test_bal_sonar test_bal_sonar.c)
+target_link_libraries(test_bal_sonar PRIVATE wink_bal)
+target_include_directories(test_bal_sonar PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/sensor)
+
+# BAL servo helper test.
+add_wink_host_test(test_bal_servo test_bal_servo.c)
+target_link_libraries(test_bal_servo PRIVATE wink_bal)
+target_include_directories(test_bal_servo PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/actuator)
+
 # Track A M1 / Task A-4：DAL↔PAL 资源接线 e2e 单测（验证 7 个 DAL init 正确 wire pal_resource_claim）
 # P2: dal is linked via add_wink_host_test; need the extra include dirs for
 # gps/eeprom headers that live in subdirectories not on the default surface.
