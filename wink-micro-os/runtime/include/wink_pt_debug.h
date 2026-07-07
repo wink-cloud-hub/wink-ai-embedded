@@ -23,6 +23,15 @@
 #include <stdint.h>
 #include "wink_status.h"   /* wink_status_t / WINK_ERR_PANIC */
 
+/* Fault code for "blocking API called from LIGHT callback".
+ * We do NOT include wink_fault.h here to avoid dragging wink_trace.h into
+ * DAL/runtime header include chains (DAL .c files include wink_pt_debug.h
+ * but don't always have trace/ on their include path).
+ * The numeric value must stay in sync with WINK_FAULT_LIGHT_BLOCKING in
+ * runtime/include/wink_fault.h — a WINK_PT_DEBUG build will catch drift
+ * via compile-time assert in the runtime .c that includes both. */
+#define WINK_PT_DEBUG_FAULT_LIGHT_BLOCKING 8006u
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -39,6 +48,19 @@ extern "C" {
  */
 bool wink_pt_in_context(void);
 
+/**
+ * @brief 当前调用点是否处于 LIGHT (soft-timer) 回调 dispatch 中。
+ *
+ * Maintained by soft_timer dispatch: true while a LIGHT callback is
+ * executing.  WINK_ASSERT_NONBLOCKING checks this to escalate blocking
+ * calls from within LIGHT callbacks into faults (ADR-0023 §9 three-line
+ * defense).
+ *
+ * Forward-declared here to avoid a circular include with wink_soft_timer.h.
+ * Defined in runtime/src/wink_soft_timer.c.
+ */
+bool wink_soft_timer_in_light_dispatch(void);
+
 #ifdef WINK_PT_DEBUG
 #include <assert.h>
 extern void wink_trace_fault(uint32_t fault_code);
@@ -46,6 +68,10 @@ extern void wink_trace_fault(uint32_t fault_code);
     if (wink_pt_in_context()) { \
         wink_trace_fault((uint32_t)WINK_ERR_PANIC); \
         assert(!wink_pt_in_context() && "Fatal: Blocking API called within Protothread context!"); \
+    } \
+    if (wink_soft_timer_in_light_dispatch()) { \
+        wink_trace_fault(WINK_PT_DEBUG_FAULT_LIGHT_BLOCKING); \
+        assert(!wink_soft_timer_in_light_dispatch() && "Fatal: Blocking API called within LIGHT (soft-timer) callback context!"); \
     } \
 } while (0)
 #else

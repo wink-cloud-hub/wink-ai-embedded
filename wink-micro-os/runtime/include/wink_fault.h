@@ -36,8 +36,11 @@ extern "C" {
  * avoid churn and number the macro aliases below accordingly. */
 #define WINK_FAULT_RUNTIME(n)          (8000u + (n))
 #define WINK_FAULT_BOOT_AFTER_RESET    8001u   /* WDT/PANIC → boot safe-lock */
-#define WINK_WARN_WCET_EXCEEDED        8002u   /* warn: single callback >5ms */
+#define WINK_WARN_WCET_EXCEEDED        8002u   /* warn: single callback >5ms (legacy coarse threshold) */
 #define WINK_WARN_TICK_OVERRUN         8003u   /* warn: whole tick >10ms */
+#define WINK_WARN_LIGHT_OVERBUDGET     8004u   /* warn: LIGHT cb >100µs budget */
+#define WINK_FAULT_LIGHT_WCET_VIOLATION 8005u  /* fault: LIGHT cb >500µs hard limit (repeated or severe) */
+#define WINK_FAULT_LIGHT_BLOCKING      8006u  /* fault: WINK_ASSERT_NONBLOCKING triggered inside LIGHT dispatch */
 
 /* ── DAL drivers 9000-9899 (100 slots per driver) ─────────────── */
 #define WINK_FAULT_DAL_LED             9100u

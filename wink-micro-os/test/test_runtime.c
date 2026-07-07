@@ -170,7 +170,7 @@ void test_wcet_normal_does_not_log_warning_in_trace(void) {
 
 /* File-scope counter incremented by the LIGHT periodic callback. */
 static volatile uint32_t s_periodic_light_calls = 0;
-static wink_periodic_handle_t s_periodic_light_h = 0;
+static wink_periodic_handle_t s_periodic_light_h = WINK_PERIODIC_INVALID;
 
 static void periodic_light_cb_test(void *ctx) {
     (void)ctx;
@@ -196,7 +196,7 @@ static wink_status_t init_start_periodic_light(void) {
 
 void test_periodic_start_stop_light(void) {
     s_periodic_light_calls = 0;
-    s_periodic_light_h = 0;
+    s_periodic_light_h = WINK_PERIODIC_INVALID;
 
     /* Minimal no-op callbacks; use init_status so we can return an
      * error from wink_periodic_start without needing extra plumbing. */
