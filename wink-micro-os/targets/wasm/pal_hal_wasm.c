@@ -250,10 +250,14 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us,
 
 wink_status_t pal_test_enable_hardware_loopback(wink_pin_t pin_out, wink_pin_t pin_in) {
     (void)pin_out; (void)pin_in;
-    return WINK_OK;
+    /* wasm 单线程协同调度模型下，无真实硬件环回能力——若返 WINK_OK，selftest 会
+     * 软件翻转后等 ISR 触发，结果 ctx.fired==0 被误判为"PASS (注册成功)"。
+     * 诚实返 UNSUPPORTED 让 selftest 跳过翻转段，note 明确写明需物理信号。*/
+    return WINK_ERR_UNSUPPORTED;
 }
 
 wink_status_t pal_test_disable_hardware_loopback(wink_pin_t pin_out, wink_pin_t pin_in) {
     (void)pin_out; (void)pin_in;
-    return WINK_OK;
+    /* No loopback is ever enabled on wasm; keep disable idempotent and honest. */
+    return WINK_ERR_UNSUPPORTED;
 }

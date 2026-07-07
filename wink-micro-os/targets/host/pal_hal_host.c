@@ -570,8 +570,18 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t addr,
         printf("WINK_WARN: I2C port %d transfer called before bus init, lazy initializing (deprecated path)\n", port);
         s_i2c_bus_inited[port] = true;
     }
-    (void)w; (void)r; (void)rl;
+    (void)w;
     host_record_i2c(port, addr, wl);
+    /* Host simulation has no physical I2C bus and (unlike wasm) no virtual
+     * device registry. Previously we returned WINK_OK without touching r[],
+     * which left stale/undefined bytes in the caller's read buffer — a
+     * "stub returns WINK_OK" anti-pattern that made DAL probe reads look
+     * successful with garbage data. Zero the read buffer so callers see a
+     * deterministic 0x00 response (open-bus default) instead of UB. Write-
+     * only transfers (rl==0 || r==NULL) don't need this. */
+    if (r != NULL && rl > 0u) {
+        memset(r, 0, rl);
+    }
     return WINK_OK;
 }
 
