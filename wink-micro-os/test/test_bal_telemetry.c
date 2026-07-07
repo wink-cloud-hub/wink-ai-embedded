@@ -37,6 +37,10 @@
 #include "host_test_ctrl.h"
 
 #include <stdbool.h>
+#include <string.h>
+
+#include "dal_ultrasonic.h"
+#include "dal_button.h"
 
 /* ── setUp / tearDown ─────────────────────────────────────────── */
 void setUp(void) {
@@ -131,6 +135,27 @@ void test_start_ex_mayblock_explicit_opts_succeeds(void) {
     TEST_ASSERT_TRUE(wink_telemetry_default_is_running());
 }
 
+/* Preflight: passing a non-NULL but un-inited sonar or button must fail
+ * with NOT_INITIALIZED and must NOT arm a periodic (anti-"blinking in
+ * void"). NULL-NULL is already valid and is covered above. */
+void test_start_with_uninitialized_sonar_rejected(void) {
+    dal_ultrasonic_t uninit_sonar;
+    memset(&uninit_sonar, 0, sizeof(uninit_sonar));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_NOT_INITIALIZED,
+        wink_telemetry_default_start(&uninit_sonar, NULL));
+    TEST_ASSERT_FALSE(wink_telemetry_default_is_running());
+    TEST_ASSERT_EQUAL_UINT32(0, wink_periodic_active_count());
+}
+
+void test_start_with_uninitialized_button_rejected(void) {
+    dal_button_t uninit_btn;
+    memset(&uninit_btn, 0, sizeof(uninit_btn));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_NOT_INITIALIZED,
+        wink_telemetry_default_start(NULL, &uninit_btn));
+    TEST_ASSERT_FALSE(wink_telemetry_default_is_running());
+    TEST_ASSERT_EQUAL_UINT32(0, wink_periodic_active_count());
+}
+
 /* ── Runner ───────────────────────────────────────────────────── */
 int main(void) {
     UNITY_BEGIN();
@@ -142,5 +167,7 @@ int main(void) {
     RUN_TEST(test_double_stop_is_idempotent);
     RUN_TEST(test_start_stop_loop_100_light_does_not_leak);
     RUN_TEST(test_start_ex_mayblock_explicit_opts_succeeds);
+    RUN_TEST(test_start_with_uninitialized_sonar_rejected);
+    RUN_TEST(test_start_with_uninitialized_button_rejected);
     return UNITY_END();
 }

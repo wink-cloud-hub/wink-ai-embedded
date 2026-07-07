@@ -114,6 +114,20 @@ wink_status_t wink_button_helper_start(dal_button_t *btn, uint32_t poll_ms)
         return WINK_ERR_RESOURCE_EXHAUSTED;
     }
 
+    /* Preflight probe: fail fast if the button is not initialised. This
+     * mirrors the blink/servo preflight pattern (see wink_blink_helper.c:136,
+     * wink_servo_helper.c:121) so callers get NOT_INITIALIZED at start()
+     * rather than a silent forever-ticking periodic against an un-inited
+     * device ("blinking in the void"). Use is_pressed() which is non-
+     * mutating (no debounce state change). BUSY/other transient errors are
+     * tolerated — the periodic tick will retry next poll. */
+    bool pressed = false;
+    wink_status_t probe_st = dal_button_is_pressed(btn, &pressed);
+    if (probe_st == WINK_ERR_NOT_INITIALIZED) {
+        LOG_D("start: button not initialized");
+        return WINK_ERR_NOT_INITIALIZED;
+    }
+
     btn_ctx_t *ctx = &s_slots[free_idx];
     ctx->btn      = btn;
     ctx->period_h = WINK_PERIODIC_INVALID;
