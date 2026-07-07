@@ -46,6 +46,12 @@ typedef struct {
             pal_os_core_id_t core;
             pal_os_task_handle_t task_handle;
             volatile bool stop_requested;
+            /* Wake-up semaphore: posted on period change OR stop so the
+             * sleeping task body can immediately recompute its next wake
+             * anchor (long-to-short change fires promptly; stop does not
+             * have to wait out the current sleep). Always binary (count
+             * resets to 0 on every wait iteration). */
+            pal_os_sem_t wake_sem;
             /* One-shot "done" sem: posted by the task body just before it
              * returns; wink_periodic_stop() waits on it before clearing the
              * entry so we never memset a struct the task still touches. */
@@ -73,15 +79,36 @@ static void periodic_task_fn(void *arg) {
         if (e->fn != NULL) {
             e->fn(e->ctx);
         }
+
+        /* Absolute-time anchor scheduling (same drift-free approach as
+         * before), BUT use wake_sem instead of pal_os_sleep_ms so that
+         * period changes / stop requests can wake us immediately (ADR-0023
+         * §8: xTaskAbortDelay / fiber-wake equivalent via sem give).
+         *
+         * After wakeup (timeout OR signaled), we re-read e->period_ms
+         * which may have been updated by wink_periodic_change_period().
+         * Recompute the anchor so long→short changes fire promptly and
+         * short→long changes extend the next wait without drift. */
         next_wake += (uint64_t)e->period_ms * 1000ULL;
         uint64_t now = pal_os_get_us();
         int64_t delta_us = (int64_t)(next_wake - now);
         if (delta_us <= 0) {
             /* Missed a tick (or many) — reset anchor to avoid catching up. */
             next_wake = now;
-            pal_os_sleep_ms(1);
+            /* Tiny sleep to yield rather than busy-loop; wake_sem take with
+             * 1ms timeout also lets stop/change_period wake us. */
+            if (e->u.task.wake_sem != NULL) {
+                WINK_IGNORE_UNUSED(pal_os_sem_take(e->u.task.wake_sem, 1u));
+            } else {
+                pal_os_sleep_ms(1);
+            }
         } else {
-            pal_os_sleep_ms((uint32_t)(delta_us / 1000ULL));
+            uint32_t delta_ms = (uint32_t)((delta_us + 999ULL) / 1000ULL); /* ceil */
+            if (e->u.task.wake_sem != NULL) {
+                WINK_IGNORE_UNUSED(pal_os_sem_take(e->u.task.wake_sem, delta_ms));
+            } else {
+                pal_os_sleep_ms(delta_ms);
+            }
         }
     }
     /* Signal wink_periodic_stop() that this task will no longer touch *e. */
@@ -145,8 +172,11 @@ wink_periodic_handle_t wink_periodic_start_ex(
         e->u.task.priority     = priority;
         e->u.task.core         = core;
         e->u.task.stop_requested = false;
+        e->u.task.wake_sem = pal_os_sem_create();
         e->u.task.done_sem = pal_os_sem_create();
-        if (e->u.task.done_sem == NULL) {
+        if (e->u.task.wake_sem == NULL || e->u.task.done_sem == NULL) {
+            if (e->u.task.wake_sem) pal_os_sem_destroy(e->u.task.wake_sem);
+            if (e->u.task.done_sem) pal_os_sem_destroy(e->u.task.done_sem);
             memset(e, 0, sizeof(*e));
             return (wink_periodic_handle_t)WINK_ERR_RESOURCE_EXHAUSTED;
         }
@@ -154,6 +184,7 @@ wink_periodic_handle_t wink_periodic_start_ex(
             periodic_task_fn, (char *)name, e->u.task.stack_bytes,
             e, e->u.task.priority, e->u.task.core, &e->u.task.task_handle);
         if (wink_status_is_error(st)) {
+            pal_os_sem_destroy(e->u.task.wake_sem);
             pal_os_sem_destroy(e->u.task.done_sem);
             memset(e, 0, sizeof(*e));
             return (wink_periodic_handle_t)st;
@@ -169,6 +200,9 @@ wink_periodic_handle_t wink_periodic_start_ex(
             memset(e, 0, sizeof(*e));
             return (wink_periodic_handle_t)WINK_ERR_RESOURCE_EXHAUSTED;
         }
+        /* Attach diagnostic name so LIGHT WCET/blocking faults can log
+         * the offending helper (Task 1.5 / ADR-0023 §9). */
+        wink_soft_timer_set_name(h, name);
         /* soft_timer_create leaves the timer in STOPPED state (active=0);
          * explicitly start it so dispatch() begins counting ticks down. */
         wink_status_t start_st = wink_soft_timer_start(h);
@@ -198,6 +232,12 @@ void wink_periodic_stop(wink_periodic_handle_t h) {
         }
     } else if (e->kind == PERIODIC_ENTRY_TASK) {
         e->u.task.stop_requested = true;
+        /* Wake the sleeping task so it observes stop_requested promptly
+         * (no waiting out the current sleep). Safe even if wake_sem is
+         * already signaled — binary sem, extra gives are benign. */
+        if (e->u.task.wake_sem != NULL) {
+            WINK_IGNORE_UNUSED(pal_os_sem_give(e->u.task.wake_sem));
+        }
         /* The task body runs on another thread (and possibly another core on
          * ESP32). Wait until it acknowledges via done_sem before we clear the
          * entry — otherwise it may still read e->stop_requested / e->fn on
@@ -207,6 +247,10 @@ void wink_periodic_stop(wink_periodic_handle_t h) {
             (void)take_st; /* best-effort; on timeout we accept the risk. */
             pal_os_sem_destroy(e->u.task.done_sem);
             e->u.task.done_sem = NULL;
+        }
+        if (e->u.task.wake_sem != NULL) {
+            pal_os_sem_destroy(e->u.task.wake_sem);
+            e->u.task.wake_sem = NULL;
         }
     }
     memset(e, 0, sizeof(*e));
@@ -220,4 +264,45 @@ uint32_t wink_periodic_active_count(void) {
         }
     }
     return n;
+}
+
+wink_status_t wink_periodic_change_period(wink_periodic_handle_t h, uint32_t period_ms) {
+    /* Match wink_periodic_stop() tolerance: INVALID / error-code handles
+     * (h <= 0) are silent no-ops?  No — change_period has a return value
+     * and callers check success, so we report INVALID_ARG for sentinel/
+     * error handles rather than silently swallowing. */
+    if (h <= 0) return WINK_ERR_INVALID_ARG;
+    if (period_ms == 0) return WINK_ERR_INVALID_ARG;
+
+    int slot = (int)(h - 1);
+    if (slot < 0 || slot >= WINK_MAX_PERIODIC) return WINK_ERR_INVALID_ARG;
+    periodic_entry_t *e = &s_periodic[slot];
+    if (e->kind == PERIODIC_ENTRY_FREE) return WINK_ERR_INVALID_ARG;
+
+    if (e->kind == PERIODIC_ENTRY_LIGHT) {
+        /* LIGHT path: soft_timer handles period rounding internally. */
+        return wink_soft_timer_change_period(e->u.soft_timer_handle, period_ms);
+    }
+
+    /* MAY_BLOCK task path:
+     *   1. Update e->period_ms (task loop re-reads it after wake).
+     *   2. Signal wake_sem → sem_take in task body returns; loop re-reads
+     *      period_ms, recomputes next_wake, and re-sleeps with the new
+     *      delta. Long→short wakes immediately; short→long also wakes
+     *      but simply re-sleeps with the longer delta (one extra wake
+     *      is negligible for this API's expected call frequency).
+     *
+     * No critical section needed: period_ms is read/written from two
+     * contexts (setter + task body) but only with native 32-bit aligned
+     * stores/loads, and the task re-reads after wake and uses a fresh
+     * delta — tearing a uint32_t is not possible on any supported
+     * target. The wake_sem post after the store guarantees the task
+     * eventually picks up the new value (ADR-0014 single-virtual-core
+     * host/wasm: sem_give synchronously queues the fiber; ESP32 SMP:
+     * binary sem posts with proper memory visibility). */
+    e->period_ms = period_ms;
+    if (e->u.task.wake_sem != NULL) {
+        WINK_IGNORE_UNUSED(pal_os_sem_give(e->u.task.wake_sem));
+    }
+    return WINK_OK;
 }

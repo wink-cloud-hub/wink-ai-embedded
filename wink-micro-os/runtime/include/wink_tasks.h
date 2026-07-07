@@ -120,6 +120,31 @@ void wink_periodic_stop(wink_periodic_handle_t h);
  */
 uint32_t wink_periodic_active_count(void);
 
+/**
+ * @brief Zero-stall dynamic period change for a running periodic callback.
+ *
+ * Takes effect on the NEXT cycle (after the running callback returns,
+ * if called from within the callback — ADR-0023 §11 self-set_period
+ * re-entrancy is supported on both LIGHT and MAY_BLOCK paths).
+ *
+ * Long-to-short changes wake the MAY_BLOCK task immediately (via sem
+ * give / xTaskAbortDelay-equivalent) so the new shorter period fires
+ * without waiting out the stale long sleep.  Short-to-long changes
+ * apply at the next scheduled fire (no spurious early wake needed).
+ *
+ * @param h          Periodic handle (from wink_periodic_start/_ex).
+ * @param period_ms  New period in milliseconds; must be >0. Tick
+ *                   alignment follows the same rules as _start_ex
+ *                   (LIGHT: rounded to tick multiple; MAY_BLOCK: ms
+ *                   resolution).
+ * @return WINK_OK on success; WINK_ERR_INVALID_ARG for invalid handle /
+ *         zero period / unallocated slot.
+ * @note Silently no-ops on h == WINK_PERIODIC_INVALID / h < 0 (matches
+ *       wink_periodic_stop()'s tolerance for propagated error codes).
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t wink_periodic_change_period(wink_periodic_handle_t h, uint32_t period_ms);
+
 /* Flag bits. */
 #define WINK_PERIODIC_LIGHT       (1u << 0)
 #define WINK_PERIODIC_MAY_BLOCK   (1u << 1)

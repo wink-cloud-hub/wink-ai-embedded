@@ -118,6 +118,19 @@ add_wink_host_test(test_runtime test_runtime.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_soft_timer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../trace/src/wink_trace.c)
 
+# ADR-0023 Stage 1.4a / 1.4b-iii: WINK_PERIODIC_INVALID sentinel,
+# wink_periodic_active_count(), wink_periodic_change_period()
+# (LIGHT + MAY_BLOCK + self-set_period re-entrancy).
+add_wink_host_test(test_periodic_basics test_periodic_basics.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_runtime_tasks.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_soft_timer.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../trace/src/wink_trace.c)
+
+# ADR-0023 Task 1.5 / ADR-0025 §5: LIGHT dispatch in-flag + WCET enforcement.
+add_wink_host_test(test_light_dispatch_flag test_light_dispatch_flag.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_soft_timer.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../trace/src/wink_trace.c)
+
 add_wink_host_test(test_host_pal test_host_pal.c)
 
 # Target-independent cooperative scheduler algorithm test
