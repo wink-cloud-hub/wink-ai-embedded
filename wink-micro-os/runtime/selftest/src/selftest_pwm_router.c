@@ -18,9 +18,18 @@
 #include "pal_pwm_router.h"
 #include "pal_hal.h"
 
-#define SMOKE_PWM_CH_LO  1u   /* 50 Hz */
-#define SMOKE_PWM_CH_HI  2u   /* 1 kHz */
-#define SMOKE_PWM_CH_SAME 3u /* 另一个 50 Hz 通道（验证同频复用） */
+#define SMOKE_PWM_CH_LO  1u   /* 50 Hz  → GPIO4 */
+#define SMOKE_PWM_CH_HI  2u   /* 1 kHz → GPIO5 */
+/* Third 50 Hz channel for timer-reuse verification. MUST use a channel whose
+ * GPIO is NOT owned by an already-initialized DAL device or sim helper:
+ *   ch0→2 (LED), ch3→18 (TRIG), ch4→19 (ECHO/RMT), ch5→21 (I2C SDA),
+ *   ch6→22 (I2C SCL / S4 ISR).
+ * ch7→GPIO23 is unused on DevKitC and avoidance_car boards.
+ * Using ch3 was a latent bug: pal_pwm_deinit(3) calls gpio_reset_pin(18) which
+ * (a) removes the sim_trig_isr GPIO handler and (b) disables pin 18's output
+ * driver, killing all subsequent ultrasonic TRIG pulses → post-S5 every RMT
+ * capture on pin 19 timed out with trace=00000 (no echo pulse ever driven). */
+#define SMOKE_PWM_CH_SAME 7u /* 另一个 50 Hz 通道（验证同频复用）→ GPIO23 */
 
 wink_status_t wink_selftest_pwm_router_freq_isolation(wink_selftest_result_t *r)
 {
