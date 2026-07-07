@@ -23,9 +23,18 @@
 #include "wink_button_helper.h"
 #include "wink_tasks.h"
 #include "wink_status.h"
+#include "wink_pt_debug.h"  /* WINK_ASSERT_NONBLOCKING() (ADR-0017 layer 3) */
 #include "pal_log.h"
+#include "pal_osal.h"      /* pal_os_get_us() for execution-time budget watchdog */
 
 #include <stddef.h>
+
+/* LIGHT callback execution-time budget (P1-3 Step 5): if a single poll
+ * invocation exceeds this, we LOG_W to expose AI-/developer-written event
+ * callbacks that block or do too much work in the LIGHT (soft-timer)
+ * context. The entire runtime tick is 10 ms; LIGHT timers, polls, and
+ * app_loop all share that budget. 100 us keeps button poll at ≤1% of tick. */
+#define WINK_BTN_POLL_BUDGET_US  100u
 
 /* ── per-button slot ────────────────────────────────────────────
  * A slot with btn == NULL is free. period_h is only meaningful when
@@ -61,11 +70,27 @@ static int find_free_slot(void) {
 
 /* ── periodic callback (LIGHT path — void return, void* ctx) ─── */
 static void btn_poll_tick(void *arg) {
+    /* ADR-0017 layer 3: if a DAL blocking API is called from within this
+     * LIGHT (soft-timer) dispatch, WINK_ASSERT_NONBLOCKING escalates to a
+     * fault (WINK_FAULT_LIGHT_BLOCKING=8006) under WINK_PT_DEBUG builds. */
+    WINK_ASSERT_NONBLOCKING();
+
+    uint64_t t_start = pal_os_get_us();
     dal_button_t *btn = (dal_button_t *)arg;
     /* Transient poll errors are non-fatal (next tick retries); deliberately
      * discard them here to keep the callback non-blocking and to match the
      * documented contract that the periodic callback keeps running. */
     WINK_IGNORE_RESULT(dal_button_poll(btn));
+    uint64_t t_elapsed = pal_os_get_us() - t_start;
+
+    /* Execution-time budget watchdog (P1-3 Step 5): if the user's event
+     * callback (fired synchronously inside dal_button_poll — e.g. short-
+     * press / long-press handlers) does heavy work, we LOG_W to surface the
+     * contract violation rather than silently starving other timers/app_loop. */
+    if (t_elapsed > WINK_BTN_POLL_BUDGET_US) {
+        LOG_W("button poll took %llu us (budget=%u us); event callback may be blocking",
+              (unsigned long long)t_elapsed, (unsigned)WINK_BTN_POLL_BUDGET_US);
+    }
 }
 
 /* ── public API ──────────────────────────────────────────────── */
