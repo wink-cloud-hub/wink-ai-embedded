@@ -15,6 +15,14 @@
 
 #include <stddef.h>
 
+/* HC-SR04 acoustic-ringing budget: a measurement fires an 8-cycle 40 kHz
+ * burst (~200 µs) then listens for the echo. After the echo returns the
+ * transducer keeps ringing for ~10-30 ms; polling faster than 50 ms causes
+ * the next burst's transmitted energy to be picked up as a false echo.
+ * Runtime-enforced (see start_ex / set_period) per 2026-07-06 hardening
+ * review Task 3.1. */
+#define WINK_SONAR_MIN_PERIOD_MS 50u
+
 /* ADR-0017 BAL-exception: helper 内部通过 wink_periodic MAY_BLOCK 路径调用 WINK_BLOCKING API */
 WINK_INTERNAL_BLOCKING_REGION_BEGIN
 
@@ -73,8 +81,9 @@ static void sonar_tick(void *arg) {
 wink_status_t wink_sonar_helper_start_ex(dal_ultrasonic_t *dev, uint32_t period_ms,
                                          const wink_helper_opts_t *opts)
 {
-    if (dev == NULL || period_ms == 0u) {
-        LOG_D("start: invalid arg (dev=%p period_ms=%u)", (void *)dev, (unsigned)period_ms);
+    if (dev == NULL || period_ms < WINK_SONAR_MIN_PERIOD_MS) {
+        LOG_D("start: invalid arg (dev=%p period_ms=%u, need >=%u)",
+              (void *)dev, (unsigned)period_ms, (unsigned)WINK_SONAR_MIN_PERIOD_MS);
         return WINK_ERR_INVALID_ARG;
     }
 
@@ -143,7 +152,7 @@ wink_status_t wink_sonar_helper_stop(dal_ultrasonic_t *dev) {
 }
 
 wink_status_t wink_sonar_helper_set_period(dal_ultrasonic_t *dev, uint32_t period_ms) {
-    if (dev == NULL || period_ms == 0u) {
+    if (dev == NULL || period_ms < WINK_SONAR_MIN_PERIOD_MS) {
         return WINK_ERR_INVALID_ARG;
     }
     int idx = find_slot_by_dev(dev);
