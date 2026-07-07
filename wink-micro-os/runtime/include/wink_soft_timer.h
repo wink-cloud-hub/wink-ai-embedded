@@ -69,12 +69,29 @@ WINK_WARN_UNUSED_RESULT
 wink_status_t wink_soft_timer_start(int32_t handle);
 
 /**
- * @brief 停止定时器
+ * @brief 暂停定时器（active=0，但保留槽位与回调，可用 wink_soft_timer_start 重新启动）。
+ *
+ * @note 调用者若确定不再需要该定时器，应优先使用 wink_soft_timer_destroy()
+ *       以释放槽位供后续 create 复用。stop() 仅暂停，不归还槽位。
+ *
  * @param handle 定时器句柄（由 create 返回）
  * @return wink_status_t WINK_OK 成功，WINK_ERR_INVALID_ARG 句柄无效
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t wink_soft_timer_stop(int32_t handle);
+
+/**
+ * @brief 销毁定时器并释放槽位（不可再 start，需重新 create）。
+ *
+ * 等价于 stop() + 清空槽位元数据（callback/arg/name 等），使该槽位可被
+ * 后续 wink_soft_timer_create() 重新分配。若句柄无效或槽位已经空闲，
+ * 安全地无操作返回。
+ *
+ * @param handle 定时器句柄（由 create 返回）
+ * @return wink_status_t WINK_OK 成功，WINK_ERR_INVALID_ARG 句柄越界
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t wink_soft_timer_destroy(int32_t handle);
 
 /**
  * @brief Dynamically change a running timer's period (zero-stall).

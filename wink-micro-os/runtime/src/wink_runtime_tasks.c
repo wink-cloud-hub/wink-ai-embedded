@@ -207,8 +207,7 @@ wink_periodic_handle_t wink_periodic_start_ex(
          * explicitly start it so dispatch() begins counting ticks down. */
         wink_status_t start_st = wink_soft_timer_start(h);
         if (wink_status_is_error(start_st)) {
-            wink_status_t stop_st = wink_soft_timer_stop(h);
-            (void)stop_st;
+            WINK_IGNORE_UNUSED(wink_soft_timer_destroy(h));
             memset(e, 0, sizeof(*e));
             return (wink_periodic_handle_t)start_st;
         }
@@ -228,7 +227,9 @@ void wink_periodic_stop(wink_periodic_handle_t h) {
 
     if (e->kind == PERIODIC_ENTRY_LIGHT) {
         if (e->u.soft_timer_handle >= 0) {
-            WINK_IGNORE_UNUSED(wink_soft_timer_stop(e->u.soft_timer_handle));
+            /* destroy (not just stop) so the soft_timer slot is freed back to
+             * the pool — stop() only sets active=0 and leaks the slot. */
+            WINK_IGNORE_UNUSED(wink_soft_timer_destroy(e->u.soft_timer_handle));
         }
     } else if (e->kind == PERIODIC_ENTRY_TASK) {
         e->u.task.stop_requested = true;

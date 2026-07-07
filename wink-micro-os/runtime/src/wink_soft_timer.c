@@ -159,6 +159,24 @@ wink_status_t wink_soft_timer_stop(int32_t handle) {
     return WINK_OK;
 }
 
+wink_status_t wink_soft_timer_destroy(int32_t handle) {
+    if (!s_initialized || handle < 0 || handle >= (int32_t)WINK_MAX_SOFT_TIMERS) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    /* Idempotent: if slot is already free (callback == NULL), nothing to do. */
+    if (s_timers[handle].callback == NULL) {
+        return WINK_OK;
+    }
+
+    /* Clear the entire slot so create()'s free-list scan (callback == NULL)
+     * will pick it up.  memset is safe here — the slot's memory is POD, and
+     * any periodic entry pointing at this timer is responsible for forgetting
+     * the handle before calling destroy. */
+    memset(&s_timers[handle], 0, sizeof(s_timers[handle]));
+    return WINK_OK;
+}
+
 wink_status_t wink_soft_timer_change_period(int32_t handle, uint32_t period_ms) {
     uint32_t period_ticks;
 
