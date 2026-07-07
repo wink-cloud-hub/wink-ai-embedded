@@ -1,35 +1,24 @@
 /**
- * @file wink_default_telemetry.h
- * @brief Sample helper: one-call default 2s telemetry task.
+ * @file wink_default_telemetry.h (samples/common compatibility shim)
+ * @brief Forwarding include — BAL migration (ADR-0023 Task 2.3/2.5).
  *
- * Print format is a DEBUG / BRINGUP policy choice — does NOT belong in the OS
- * core.  Apps wanting different fields/cadence should roll their own using
- * wink_runtime_spawn_periodic() + wink_runtime_get_stats().
+ * The default telemetry helper has moved to the BAL (Business Abstraction
+ * Layer).  New code should include <comm/wink_telemetry_helper.h> directly
+ * and use wink_telemetry_default_start(); this shim exists so existing
+ * samples that still #include "wink_default_telemetry.h" continue to
+ * compile during Stage 2-3 migration.
+ *
+ * Copyright (c) 2026 Wink-AI.
  */
 #ifndef WINK_DEFAULT_TELEMETRY_H
 #define WINK_DEFAULT_TELEMETRY_H
 
-#include "wink_status.h"
-#include "dal_ultrasonic.h"
-#include "dal_button.h"
+#include "comm/wink_telemetry_helper.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/**
- * @brief Start a fire-and-forget 2s telemetry task (uptime/heap/faults/warns
- *        + optional sonar distance + button ISR count).
- *
- * @param sonar  Ultrasonic device to report (NULL → skip sonar field).
- * @param btn    Button whose edge_count is reported (NULL → skip isr field).
- * @return WINK_OK on spawn; WINK_ERR_* if the underlying task create fails.
- */
-wink_status_t wink_default_telemetry_start(const dal_ultrasonic_t *sonar,
-                                           const dal_button_t     *btn);
-
-#ifdef __cplusplus
-}
-#endif
+/* Compatibility alias: the old name maps to the new BAL entry point.
+ * The stop/is_running APIs did not exist in the old helper (it was a
+ * fire-and-forget singleton), so only _start needs an alias. */
+#define wink_default_telemetry_start(sonar, btn) \
+    wink_telemetry_default_start((sonar), (btn))
 
 #endif /* WINK_DEFAULT_TELEMETRY_H */

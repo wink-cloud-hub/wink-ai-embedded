@@ -26,6 +26,7 @@ target_sources(wink_bal PRIVATE
     src/wink_bal_stub.c
     src/wink_blink_helper.c
     src/wink_button_helper.c
+    src/wink_telemetry_helper.c
 )
 
 target_include_directories(wink_bal PUBLIC

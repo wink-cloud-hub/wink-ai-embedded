@@ -272,6 +272,15 @@ target_include_directories(test_blink_helper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/output)
 
+# ADR-0023 Task 2.3: BAL wink_telemetry_helper.
+add_wink_host_test(test_bal_telemetry test_bal_telemetry.c)
+target_link_libraries(test_bal_telemetry PRIVATE wink_bal)
+# add_wink_host_test's default include dirs do NOT include bal/include/comm;
+# add it explicitly (mirrors test_button_helper / test_blink_helper pattern).
+target_include_directories(test_bal_telemetry PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/comm)
+
 # Track A M1 / Task A-4：DAL↔PAL 资源接线 e2e 单测（验证 7 个 DAL init 正确 wire pal_resource_claim）
 # P2: dal is linked via add_wink_host_test; need the extra include dirs for
 # gps/eeprom headers that live in subdirectories not on the default surface.
