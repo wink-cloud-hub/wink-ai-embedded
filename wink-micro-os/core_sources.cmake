@@ -38,6 +38,10 @@ set(WINK_SELFTEST_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/runtime/selftest/src/selftest_smp_stress.c
     ${CMAKE_CURRENT_LIST_DIR}/runtime/selftest/src/selftest_gpio_isr.c
     ${CMAKE_CURRENT_LIST_DIR}/runtime/selftest/src/selftest_rmt_loopback.c
+    # ADR-0023 Stage 2.4: bringup shadow-task helper (S10 ultrasonic echo sim),
+    # migrated from samples/common/. Gated by #ifndef WINK_STRICT_NONBLOCKING
+    # so it compiles out of strict non-blocking images.
+    ${CMAKE_CURRENT_LIST_DIR}/runtime/selftest/src/wink_sim_ultrasonic_echo.c
 )
 
 # ── BAL (Business Abstraction Layer) 源文件 — ADR-0023 Stage 2 ────────────
@@ -50,6 +54,7 @@ set(WINK_SELFTEST_SOURCES
 set(WINK_BAL_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/bal/src/wink_blink_helper.c
     ${CMAKE_CURRENT_LIST_DIR}/bal/src/wink_button_helper.c
+    ${CMAKE_CURRENT_LIST_DIR}/bal/src/wink_telemetry_helper.c
     # Stub placeholder (empty TU) intentionally NOT listed — it has no symbols
     # and exists only so wink_bal links when no helpers are migrated yet.
 )

@@ -4,6 +4,10 @@
  *        TRIG-ISR + sem + core-pinned mock task + GPIO direction bookkeeping
  *        that devkitc_smoke used to inline.
  *
+ * Lives under runtime/selftest/ because it is a bringup/test helper, NOT a
+ * product DAL feature. ADR-0023 Stage 2.4: migrated here from samples/common/
+ * so that samples/common can shrink to an INTERFACE forwarding-shim library.
+ *
  * Design:
  *   - A GPIO ISR on TRIG (rising edge) gives a binary semaphore.
  *   - A dedicated task pinned to core 1 (priority 3 — above background stress,
@@ -16,10 +20,19 @@
  *
  * Timing: HC-SR04 round-trip formula  pulse_us = cm / 0.01715 ≈ 58.3 µs/cm.
  * A 100µs dead-time precedes the echo pulse to model acoustic ring-down.
+ *
+ * STRICT_NONBLOCKING (ADR-0017 layer-2): the entire TU compiles out under
+ * -DWINK_STRICT_NONBLOCKING=1; this helper is never part of a strict
+ * non-blocking firmware image.
  */
 #define LOG_TAG "sim_echo"
 
 #include "wink_sim_ultrasonic_echo.h"
+
+/* STRICT_NONBLOCKING: entire body compiles out. Header already stubs the
+ * declarations so #including TUs see nothing to call. */
+#ifndef WINK_STRICT_NONBLOCKING
+
 #include "dal_ultrasonic.h"
 #include "wink_status.h"
 #include "pal_log.h"
@@ -172,3 +185,5 @@ void wink_sim_ultrasonic_echo_stop(dal_ultrasonic_t *dev)
     s_active->armed = false;
     s_active = NULL;
 }
+
+#endif /* WINK_STRICT_NONBLOCKING */

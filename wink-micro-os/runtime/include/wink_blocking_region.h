@@ -15,9 +15,10 @@
  *       Use when the whole TU legitimately calls WINK_BLOCKING APIs
  *       (e.g. wink_sonar_helper.c MAY_BLOCK task body calling
  *       dal_ultrasonic_request_measurement).
- *       Mandatory accompanying comment:
- *         /* ADR-0017 BAL-exception: helper 内部通过 wink_periodic MAY_BLOCK
- *          * 路径调用 WINK_BLOCKING API. *\/
+ *       Mandatory accompanying comment (use C++-style // comment so the
+ *       block-comment opener cannot be nested; prefix with "ADR-0017 ..."):
+ *         // ADR-0017 BAL-exception: helper 内部通过 wink_periodic MAY_BLOCK
+ *         //   路径调用 WINK_BLOCKING API.
  *
  *   WINK_INIT_BLOCKING_REGION_BEGIN/END
  *     — Application layer **small blocks** inside app_init_status() /
@@ -25,8 +26,8 @@
  *       statements). Use for one-off bringup/selftest/I2C-scan calls that
  *       run during synchronous startup (NOT in a PT cooperative context).
  *       Mandatory accompanying comment:
- *         /* ADR-0017 init-phase exception: selftest 在同步启动阶段运行，
- *          * 不在 cooperative PT 上下文，允许阻塞调用. *\/
+ *         // ADR-0017 init-phase exception: selftest 在同步启动阶段运行，
+ *         //   不在 cooperative PT 上下文，允许阻塞调用.
  *
  * Hard rules (CI/review gated — see ADR-0025 §6):
  *   * App business callbacks (on_xxx_click, event handlers, app_loop,

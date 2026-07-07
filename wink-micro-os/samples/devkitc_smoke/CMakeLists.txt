@@ -65,6 +65,9 @@ set(WINK_SELFTEST_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/selftest/src/selftest_smp_stress.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/selftest/src/selftest_gpio_isr.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/selftest/src/selftest_rmt_loopback.c
+    # ADR-0023 Stage 2.4: S10 ultrasonic echo sim bringup helper (migrated
+    # from samples/common/). Strict-nonblocking gate lives in the TU itself.
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/selftest/src/wink_sim_ultrasonic_echo.c
 )
 
 add_executable(app_devkitc_smoke_e2e

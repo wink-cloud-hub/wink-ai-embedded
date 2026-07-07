@@ -189,9 +189,10 @@ if(NOT TARGET_PLATFORM STREQUAL "wasm")
     enable_testing()
     add_subdirectory(targets/host)      # host 一等 target，供 test 链接
 
-    # samples/common: shared helpers (default telemetry, blink, sim echo) —
-    # built as an OBJECT library so each sample pulls only what it refs.
-    # Must be added before the samples that $<TARGET_OBJECTS:wink_sample_common>.
+    # samples/common (ADR-0023 Stage 2): INTERFACE forwarding-shim library.
+    # All helpers have migrated to BAL (blink/button/telemetry) or
+    # runtime/selftest (sim_echo); only #include-path shims remain. Must be
+    # added before the samples that target_link_libraries() against it.
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/common)
 
     # §6.1 约束3：标准 App 注入接口。未指定则默认 samples/avoidance_car。
