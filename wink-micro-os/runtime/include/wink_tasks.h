@@ -21,8 +21,23 @@
 extern "C" {
 #endif
 
-/** Opaque handle returned by wink_periodic_start().  Negative = invalid. */
+/**
+ * Opaque handle returned by wink_periodic_start().
+ *
+ * Encoding (ADR-0023 Erratum-1):
+ *   - >= 1 : valid handle  (== slot_index + 1, so 0 is reserved).
+ *   - == 0 : WINK_PERIODIC_INVALID — "no handle" / un-started state;
+ *            stop/change_period APIs are silent no-ops on this value.
+ *   - <  0 : failure — negative wink_status_t error code passed through
+ *            from the underlying start call (e.g. WINK_ERR_RESOURCE_EXHAUSTED).
+ */
 typedef int32_t wink_periodic_handle_t;
+
+/** Unified invalid-handle sentinel. MUST be 0, NOT (handle_t)-1 (handles are
+ *  slot+1 so 0 cleanly represents "never started"; negatives are error-code
+ *  passthrough). stop/change_period APIs silently no-op on h <= 0, covering
+ *  both INVALID and propagated error codes. */
+#define WINK_PERIODIC_INVALID ((wink_periodic_handle_t)0)
 
 /* Default priority used by the convenience wink_periodic_start() wrapper. */
 #define WINK_PERIODIC_DEFAULT_PRIORITY   2
@@ -97,6 +112,13 @@ static inline wink_periodic_handle_t wink_periodic_start(
 
 /** Stop and (for MAY_BLOCK) delete a previously started periodic callback. */
 void wink_periodic_stop(wink_periodic_handle_t h);
+
+/**
+ * Return count of currently-running periodic handles (LIGHT + MAY_BLOCK).
+ * Intended for deinit leak-assertions / debug telemetry; O(N) over the
+ * slot array.
+ */
+uint32_t wink_periodic_active_count(void);
 
 /* Flag bits. */
 #define WINK_PERIODIC_LIGHT       (1u << 0)
