@@ -112,3 +112,16 @@ target_compile_options(${COMPONENT_LIB} PRIVATE
     -finput-charset=UTF-8
     -fexec-charset=UTF-8
 )
+
+# S10 sim_echo: on devkitc_smoke, arm the ultrasonic echo simulator so the
+# HC-SR04 path is exercised end-to-end (TRIG ISR → mock task drives ECHO
+# → RMT captures pulse → cm computed) WITHOUT requiring a physical
+# reflector.  WINK_CFG_SIM_ECHO gates the #include and the start() call
+# in app_callbacks.c; the runtime TU wink_sim_ultrasonic_echo.c compiles
+# unconditionally into the pal component (gated by WINK_STRICT_NONBLOCKING)
+# and degrades gracefully to WINK_ERR_UNSUPPORTED on host/wasm.
+# Other apps (which may use real ultrasonic hardware with a reflector)
+# don't set this define and therefore don't arm the simulator.
+if(WINK_APP STREQUAL "devkitc_smoke")
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE WINK_CFG_SIM_ECHO=1)
+endif()

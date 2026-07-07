@@ -100,7 +100,9 @@ static wink_status_t app_init_status(void)
         return (wink_status_t)blink_h;
     }
 
-    /* S10: 超声波 echo 仿真 (仅在仿真模式编译) */
+    /* S10: 超声波 echo 仿真 (host e2e + ESP32 真机均启用，无物理反射面时软件注入 ECHO pulse)
+     * WINK_CFG_SIM_ECHO 由构建系统按 app 设置：devkitc_smoke 在 host/ESP32 都开；
+     * 其他未配置 sim_echo 的构建走 SKIP 分支。 */
 #ifdef WINK_CFG_SIM_ECHO
     wink_status_t st_echo = wink_sim_ultrasonic_echo_start(
         &smoke_sonar, 50.0f,
@@ -112,7 +114,7 @@ static wink_status_t app_init_status(void)
         return st_echo;
     }
 #else
-    LOG_I("S10: SKIP (echo sim compiled out on real HW)");
+    LOG_I("\nS10: SKIP (echo sim not enabled for this build)");
 #endif
 
     /* S10: 启动超声波传感器周期测量 helper */
