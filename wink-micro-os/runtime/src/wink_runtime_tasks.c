@@ -211,3 +211,13 @@ void wink_periodic_stop(wink_periodic_handle_t h) {
     }
     memset(e, 0, sizeof(*e));
 }
+
+uint32_t wink_periodic_active_count(void) {
+    uint32_t n = 0;
+    for (int i = 0; i < WINK_MAX_PERIODIC; i++) {
+        if (s_periodic[i].kind != PERIODIC_ENTRY_FREE) {
+            n++;
+        }
+    }
+    return n;
+}
