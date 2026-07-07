@@ -221,4 +221,11 @@ if(NOT TARGET_PLATFORM STREQUAL "wasm")
                      ${CMAKE_BINARY_DIR}/dual_task_demo_build)
 
     add_subdirectory(test)
+
+    # Wasm node smoke: use emcmake to build the unisim_smoke variant as an
+    # ExternalProject, then run it under `node wink_sim_stub.js` from ctest.
+    # This gives the host build a single automated wasm-runtime regression test;
+    # ESP32 remains a manual burn step. Skipped gracefully when node/emcmake is
+    # not on PATH (see wasm_node_smoke.cmake for details).
+    include(targets/wasm/wasm_node_smoke.cmake)
 endif()

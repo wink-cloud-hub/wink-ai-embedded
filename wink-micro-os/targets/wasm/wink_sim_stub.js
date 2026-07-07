@@ -2,75 +2,66 @@
  * wink_sim_stub.js — Wasm 仿真 runtime 烟测桩（Node.js 侧）
  *
  * 目的：
- *   1. 验证 `build-wasm/wink_simulator.wasm` 与 `.js` 胶水能被 Node 的 WebAssembly 引擎实例化；
- *   2. 验证 wink_sim_js.js（`--js-library`）注入的默认 `js_*` 桩集合与 wasm imports 契约一致；
- *   3. 验证 Asyncify 让出 → rewind 循环在 `js_pal_os_sleep_ms` 返回 Promise 的场景下不死锁；
- *   4. **验证 Asyncify 真的挂起 wasm 执行**（ADR-0019 Task 0）——通过 `Module.js_pal_os_sleep_ms`
- *      wrapper 覆盖钩子测量 wasm 连续 sleep 调用间的 wall-clock 间隔，判定 `__async: 'auto'` 修复生效。
- *      老 stub 只验 `onRuntimeInitialized` 存活，`__async: true` 失效（Asyncify 空转）也能通过。
+ *   1. 验证 wasm 与 glue 能被 Node 实例化；
+ *   2. 验证 --js-library 注入的 js_* 桩集合与 wasm imports 契约一致（无 stray symbol）；
+ *   3. 验证 Asyncify 真的挂起 wasm（wall-clock 证明 sleep 让出了执行）；
+ *   4. 验证默认桩推进了 s_virtual_us（app_init 末尾 LOG_I 的 t1>0）——避免
+ *      "setTimeout 触发但虚拟时钟冻结" 的退化（见 wink_sim_js.js §时钟推进契约）。
  *
- * 架构：主线程负责计时 + 判定；wasm runtime 跑在 Worker Thread 里。理由：
- *   Emscripten 6.x Asyncify 在 Node 下与 `setTimeout(resolve, 10)` 配合会让主
- *   event loop 完全 starve —— 我们的 setTimeout / setInterval 永远排不上号，长
- *   时间跑还会 OOM。把 wasm 关进 Worker 隔离，主线程只等它发第一条 "ready"
- *   消息作为 smoke 通过依据，然后 `worker.terminate()` 强制回收。
- *
- * 不做：
- *   - Workbench 前端胶水（本 stub 只用默认 `wink_sim_js.js` 桩，不覆盖它）；
- *   - Device Registry 语义模拟；
- *   - 长时行为验证（1000ms 后强制退出）。
+ * 架构：主线程做超时/判定；Worker 线程加载 wasm（防 Asyncify starve 主 event loop）。
  *
  * 用法：
- *   cd wink-micro-os
- *   node targets/wasm/wink_sim_stub.js
- *   （Node ≥ 16 内置 BigInt / worker_threads / WebAssembly）
+ *   node targets/wasm/wink_sim_stub.js [--build-dir=<path>] [path]
+ *   （Node ≥ 16）
  *
- * 依赖：先执行
- *   emcmake cmake -S . -B build-wasm -DTARGET_PLATFORM=wasm
- *   cmake --build build-wasm
- * 生成 `build-wasm/wink_simulator.js` + `.wasm`。
- *
- * 契约：本 stub 通过 CommonJS 加载 emscripten 胶水，让胶水侧走完整 Asyncify
- *   流程，不做任何 imports 覆盖。若 wink_sim_js.js 未导出某个 wasm 引用的
- *   `js_*` 符号，emscripten 会在编译期直接 abort。`ready` 消息到达 =
- *   onRuntimeInitialized 触发 = wasm 表达式 + Asyncify runtime 存活。
+ * 注：js_pal_log 覆盖里**不能**使用 UTF8ToString——它是 emcc 闭包内部符号，
+ * 未加入 EXPORTED_RUNTIME_METHODS。我们用 HEAPU8 手动读取 null-terminated UTF-8。
  */
 
 'use strict';
 
 const fs = require('fs');
 const path = require('path');
-const { Worker, isMainThread, parentPort } = require('worker_threads');
+const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
 
 const HERE = __dirname;
-/*
- * 构建目录可通过 --build-dir=<path> / WINK_BUILD_DIR 环境变量 / 位置参数覆盖，
- * 默认 wink-micro-os/build-wasm/（即 avoidance_car 默认变体）。这样切换
- * WINK_APP_DIR 出的另一 build 目录（例如 build-wasm-oled）不需要改 stub。
- */
-function resolveBuildDir() {
-    const argv = process.argv.slice(2);
+function resolveBuildDir(argv, env) {
     const flag = argv.find((a) => a.startsWith('--build-dir='));
     if (flag) return path.resolve(flag.slice('--build-dir='.length));
     const positional = argv.find((a) => !a.startsWith('-'));
     if (positional) return path.resolve(positional);
-    if (process.env.WINK_BUILD_DIR) return path.resolve(process.env.WINK_BUILD_DIR);
+    if (env.WINK_BUILD_DIR) return path.resolve(env.WINK_BUILD_DIR);
     return path.resolve(HERE, '..', '..', 'build-wasm');
 }
 
-const BUILD_DIR = resolveBuildDir();
-const GLUE_PATH = path.join(BUILD_DIR, 'wink_simulator.js');
-const WASM_PATH = path.join(BUILD_DIR, 'wink_simulator.wasm');
+/**
+ * Read a null-terminated UTF-8 string from Module.HEAPU8 at byte offset `ptr`.
+ * Replacement for emcc's UTF8ToString which is not in EXPORTED_RUNTIME_METHODS.
+ */
+function readCString(heap, ptr) {
+    if (!heap || !ptr) return '';
+    let end = ptr;
+    while (end < heap.length && heap[end] !== 0) end++;
+    const bytes = heap.subarray(ptr, end);
+    try {
+        return Buffer.from(bytes).toString('utf8');
+    } catch (_e) {
+        return '';
+    }
+}
 
 if (isMainThread) {
-    /* ---------- 主线程：预检 + 计时 + 判定 ---------- */
+    const BUILD_DIR = resolveBuildDir(process.argv.slice(2), process.env);
+    const GLUE_PATH = path.join(BUILD_DIR, 'wink_simulator.js');
+    const WASM_PATH = path.join(BUILD_DIR, 'wink_simulator.wasm');
+
     if (!fs.existsSync(GLUE_PATH) || !fs.existsSync(WASM_PATH)) {
         console.error(`[stub] missing wasm build artifacts under ${BUILD_DIR}`);
         console.error('       run: emcmake cmake -S . -B build-wasm -DTARGET_PLATFORM=wasm && cmake --build build-wasm');
         process.exit(2);
     }
 
-    /* 打印 wasm imports 快照（漂移可视化） */
+    /* wasm imports 契约校验 */
     const bytes = fs.readFileSync(WASM_PATH);
     const mod = new WebAssembly.Module(bytes);
     const imports = WebAssembly.Module.imports(mod)
@@ -80,14 +71,6 @@ if (isMainThread) {
     console.log(`[stub] wasm imports env.js_* (${imports.length}):`);
     for (const name of imports) console.log(`  - ${name}`);
 
-    /* 期望集合：wasm_bridge.h 声明的完整 js_* 全集。任何实际 import 若不在
-     * 此集合内，说明有人在别的 header/源文件里偷偷加了新 extern —— 违反
-     * "wasm_bridge.h 是 JS 看到的 C 符号 SSOT" 契约。反之 DCE 掉某些没被
-     * App 引用的符号是正常的（avoidance_car → 5 个；oled_dashboard → 5 个
-     * 但组合不同）—— 只 warn 不 fail。 */
-    // P2-1 (Phase C): js_pal_os_get_ms / js_pal_os_get_us removed — C-side
-    // pal_os_get_us/ms() reads s_virtual_us directly (zero JS call); JS host
-    // drives virtual time forward via the C→JS export pal_wasm_advance_virtual_clock.
     const knownBridgeSymbols = [
         'js_pal_gpio_write',
         'js_pal_gpio_read',
@@ -98,46 +81,63 @@ if (isMainThread) {
         'js_pal_poll_interrupt',
         'js_pal_os_sleep_ms',
         'js_pal_os_busy_wait_us',
+        'js_pal_log',
         'js_sim_trigger_ultrasonic',
         'js_sim_measure_echo_pulse_us',
     ];
     const stray = imports.filter((n) => !knownBridgeSymbols.includes(n));
     if (stray.length > 0) {
         console.error(`[stub] FAIL: wasm imports symbols not declared in wasm_bridge.h: ${stray.join(', ')}`);
-        console.error('       Add them there (SSOT) or remove the extern from wherever it leaked in.');
         process.exit(1);
     }
     const treeShaken = knownBridgeSymbols.filter((n) => !imports.includes(n));
     if (treeShaken.length > 0) {
-        console.log(`[stub] tree-shaken (unused by current App variant): ${treeShaken.length} symbols`);
+        console.log(`[stub] tree-shaken (unused by current App variant): ${treeShaken.length} symbols — ${treeShaken.join(',')}`);
     }
 
     /* 启动 worker */
-    const worker = new Worker(__filename);
+    const worker = new Worker(__filename, { workerData: { buildDir: BUILD_DIR } });
     let ready = false;
     let asyncifyProven = false;
-    const TIMEOUT_MS = 3000;
-    const OBSERVE_MS = 500;   /* 观察 500ms 内是否至少一次 sleep 真的挂起 */
+    let smokeProven = false;
+    const TIMEOUT_MS = 5000;
 
     worker.on('message', (msg) => {
-        if (msg && msg.type === 'ready') {
-            ready = true;
-            console.log(`[stub] worker signalled ready; imports negotiated OK`);
-            /* ADR-0019 Task 0 补：等 worker 观察 sleep 时序后再判定。
-             * asyncify_ok 消息由 worker 在观测到 wasm sleep 真的耗时了才发出；
-             * 否则超时视为 Asyncify 失效（回归到 __async: true 的既存 bug）。 */
-        } else if (msg && msg.type === 'asyncify_ok') {
-            asyncifyProven = true;
-            console.log(`[stub] Asyncify timing PASS: observed ${msg.observed} sleep call(s), max wall-delta=${msg.maxDeltaMs.toFixed(1)}ms (req ${msg.reqMs}ms)`);
-            console.log('[stub] wasm runtime + Asyncify verified → smoke PASS');
-            worker.terminate().then(() => process.exit(0));
-        } else if (msg && msg.type === 'asyncify_fail') {
-            console.error(`[stub] FAIL: Asyncify not effective — ${msg.reason}`);
-            console.error('[stub]        (ADR-0019 §背景：既存 __async: true bug 未修复？运行 diff wink_sim_js.js 检查是否为 \'auto\')');
-            worker.terminate().then(() => process.exit(1));
-        } else if (msg && msg.type === 'error') {
-            console.error('[stub] FAIL: worker reported error:', msg.err);
-            worker.terminate().then(() => process.exit(1));
+        if (!msg || !msg.type) return;
+        switch (msg.type) {
+            case 'ready':
+                ready = true;
+                console.log(`[stub] worker signalled ready; imports negotiated OK`);
+                break;
+            case 'asyncify_ok':
+                asyncifyProven = true;
+                console.log(`[stub] Asyncify timing PASS: observed ${msg.observed} sleep call(s), max wall-delta=${msg.maxDeltaMs.toFixed(1)}ms (req ${msg.reqMs}ms)`);
+                break;
+            case 'init_observed':
+                smokeProven = true;
+                console.log(`[stub] init complete observed: t0_us=${msg.t0_us} t0_ms=${msg.t0_ms} t1_us=${msg.t1_us} t1_ms=${msg.t1_ms}`);
+                console.log('[stub] wasm runtime + Asyncify + scheduler + virtual clock verified → smoke PASS');
+                worker.terminate().then(() => process.exit(0));
+                break;
+            case 'asyncify_fail':
+                console.error(`[stub] FAIL: Asyncify not effective — ${msg.reason}`);
+                worker.terminate().then(() => process.exit(1));
+                break;
+            case 'clock_fail':
+                console.error(`[stub] FAIL: virtual clock frozen — ${msg.reason}`);
+                worker.terminate().then(() => process.exit(1));
+                break;
+            case 'error':
+                console.error('[stub] FAIL: worker reported error:', msg.err);
+                if (msg.stack) console.error(msg.stack);
+                worker.terminate().then(() => process.exit(1));
+                break;
+            case 'log':
+                /* 透传 worker 侧日志（默认桩 js_pal_log 被我们覆盖，我们自己打） */
+                process.stdout.write(msg.line + '\n');
+                break;
+            default:
+                break;
         }
     });
 
@@ -158,45 +158,44 @@ if (isMainThread) {
             console.error(`[stub] FAIL: worker did not reach onRuntimeInitialized within ${TIMEOUT_MS}ms`);
             worker.terminate().then(() => process.exit(1));
         } else if (!asyncifyProven) {
-            console.error(`[stub] FAIL: Asyncify did not prove effective within ${TIMEOUT_MS}ms — no sleep call took real wall-clock time`);
-            console.error('[stub]        (ADR-0019: __async: \'auto\' 修复未生效？wrapper 未正确 return Promise？)');
+            console.error(`[stub] FAIL: Asyncify did not prove effective within ${TIMEOUT_MS}ms`);
+            worker.terminate().then(() => process.exit(1));
+        } else if (!smokeProven) {
+            console.error(`[stub] FAIL: did not observe 'init complete' with t1>0 within ${TIMEOUT_MS}ms`);
             worker.terminate().then(() => process.exit(1));
         }
     }, TIMEOUT_MS);
 } else {
-    /* ---------- Worker 线程：加载 emscripten 胶水 ---------- */
+    /* ---------- Worker 线程 ---------- */
     try {
+        const BUILD_DIR = (workerData && workerData.buildDir)
+            ? path.resolve(workerData.buildDir)
+            : resolveBuildDir(process.argv.slice(2), process.env);
+        const GLUE_PATH = path.join(BUILD_DIR, 'wink_simulator.js');
         const WasmSandbox = require(GLUE_PATH);
 
-        /* ADR-0019 Task 0：Asyncify 时序验证。
-         * 现有 stub 只验 onRuntimeInitialized 存活，无法暴露 __async: true 失效
-         * 导致 Asyncify 空转的既存 bug（ADR-0019 §背景 spike #5-#6）。
-         *
-         * 判据：通过 Module.js_pal_os_sleep_ms 覆盖钩子拦截 wasm 侧调用，
-         * 记录每次 sleep 请求进入 wrapper 的 wall-clock 时刻；连续两次 sleep
-         * 之间的实际间隔 >= 上一次 req_ms * 0.5 视为 Asyncify 真正让 wasm 挂起。
-         * 若 Asyncify 失效则 wasm 会跑直连、间隔 ≈ 0，超时失败。
-         *
-         * 注意：这里我们仍然返回默认 setTimeout Promise，不改变行为语义——
-         * 只是插入观察点。观察到一次即上报 asyncify_ok，多余的调用照常处理。 */
-        const OBSERVE_MS = 500;
         let lastEnterMs = null;
         let lastReqMs = 0;
         let maxDeltaMs = 0;
         let observed = 0;
-        let proven = false;
+        let asyncifyProven = false;
+
+        let moduleRef = null;
+        let initObserved = false;
+        const INIT_RE = /init complete\s+t0_us=(\d+)\s+t0_ms=(\d+)\s+t1_us=(\d+)\s+t1_ms=(\d+)/;
+        const OBSERVE_MS = 3000;
 
         WasmSandbox({
+            preRun: [(mod) => {
+                moduleRef = mod;
+            }],
             js_pal_os_sleep_ms: (ms) => {
                 const now = Date.now();
                 if (lastEnterMs !== null) {
                     const delta = now - lastEnterMs;
                     if (delta > maxDeltaMs) maxDeltaMs = delta;
-                    /* 判据：wall-delta 大于 req 的 50%，说明上一次 sleep 真的挂起过。
-                     * 用 50% 阈值容忍 setTimeout 抖动与 event loop 调度延迟。
-                     * lastReqMs>=2 避免 ms=0 / ms=1 边界（Node timer 精度不足）。 */
-                    if (!proven && lastReqMs >= 2 && delta >= lastReqMs * 0.5) {
-                        proven = true;
+                    if (!asyncifyProven && lastReqMs >= 2 && delta >= lastReqMs * 0.5) {
+                        asyncifyProven = true;
                         parentPort.postMessage({
                             type: 'asyncify_ok',
                             observed: observed + 1,
@@ -208,39 +207,77 @@ if (isMainThread) {
                 lastEnterMs = now;
                 lastReqMs = ms;
                 observed++;
-                /* 返回真 Promise——沿用默认桩语义，不改变行为 */
-                return new Promise(function (resolve) { setTimeout(resolve, ms); });
+                const advanceUs = BigInt(ms) * 1000n;
+                return new Promise(function (resolve) {
+                    setTimeout(function () {
+                        if (moduleRef && typeof moduleRef._pal_wasm_advance_virtual_clock === 'function') {
+                            moduleRef._pal_wasm_advance_virtual_clock(advanceUs);
+                        }
+                        resolve();
+                    }, ms);
+                });
             },
-            onRuntimeInitialized: () => {
-                parentPort.postMessage({ type: 'ready' });
-                /* main() 会通过 Asyncify 进入无限 sleep 循环；worker 线程被主
-                 * 线程 terminate() 强杀。这是本 stub 唯一"预期不 return"的路径。 */
-
-                /* Fallback：若 OBSERVE_MS 内没观察到有效 sleep 序列，报错。
-                 * 场景：某些 sample（如无阻塞主循环）根本不调用 sleep_ms，
-                 * 此时 Asyncify 是否生效无法从时序判定——但至少要提示。 */
-                setTimeout(() => {
-                    if (!proven) {
-                        if (observed === 0) {
+            /* 不覆盖 js_pal_os_busy_wait_us——走默认桩，默认桩会推进时钟（我们刚修过）。
+             * 但是！默认桩的 js_pal_os_busy_wait_us 实现也依赖闭包内的 UTF8ToString
+             * 吗？不会——busy_wait 不调日志，它只 return setTimeout。默认桩里对
+             * Module._pal_wasm_advance_virtual_clock 的访问是通过 Module 全局（闭包
+             * 内的 Module 是 emcc 内部变量，可用），所以默认桩在被我们覆盖了
+             * sleep_ms 的情况下仍能正常推进 busy_wait 的时钟。 */
+            js_pal_log: function (level, msgPtr) {
+                var msg = '';
+                try {
+                    if (moduleRef && moduleRef.HEAPU8) {
+                        msg = readCString(moduleRef.HEAPU8, msgPtr);
+                    }
+                } catch (_e) { msg = '<decode-err>'; }
+                var line;
+                switch (level) {
+                    case 1: line = '[wink E] ' + msg; break;
+                    case 2: line = '[wink W] ' + msg; break;
+                    case 3: line = '[wink I] ' + msg; break;
+                    case 4: line = null; break; /* debug 默认静默 */
+                    default: line = '[wink ?] ' + msg; break;
+                }
+                if (line) parentPort.postMessage({ type: 'log', line });
+                if (!initObserved) {
+                    const m = msg.match(INIT_RE);
+                    if (m) {
+                        const t0_us = Number(m[1]);
+                        const t0_ms = Number(m[2]);
+                        const t1_us = Number(m[3]);
+                        const t1_ms = Number(m[4]);
+                        initObserved = true;
+                        if (t1_us > 0 || t1_ms > 0) {
                             parentPort.postMessage({
-                                type: 'asyncify_fail',
-                                reason: `wasm 侧在 ${OBSERVE_MS}ms 内未调用 js_pal_os_sleep_ms，无法验证 Asyncify（此 sample 可能无阻塞主循环，请换用调 sleep 的 sample）`,
+                                type: 'init_observed',
+                                t0_us, t0_ms, t1_us, t1_ms,
                             });
                         } else {
                             parentPort.postMessage({
-                                type: 'asyncify_fail',
-                                reason: `wasm 侧调用 ${observed} 次 sleep 但连续间隔最大仅 ${maxDeltaMs}ms（上次 req ${lastReqMs}ms）——Asyncify 未挂起 wasm 执行`,
+                                type: 'clock_fail',
+                                reason: `init complete 但 t1_us=${t1_us} t1_ms=${t1_ms} 均为 0（虚拟时钟未前进）`,
                             });
                         }
                     }
+                }
+            },
+            onRuntimeInitialized: () => {
+                parentPort.postMessage({ type: 'ready' });
+                setTimeout(() => {
+                    if (!initObserved) {
+                        parentPort.postMessage({
+                            type: 'clock_fail',
+                            reason: `${OBSERVE_MS}ms 内未观察到 'init complete t0=... t1=...' 日志（app_init 是否走到末尾？）`,
+                        });
+                    }
                 }, OBSERVE_MS);
             },
-            print: (msg) => process.stdout.write(`[wasm] ${msg}\n`),
-            printErr: (msg) => process.stderr.write(`[wasm-err] ${msg}\n`),
+            print: (s) => parentPort.postMessage({ type: 'log', line: '[wasm] ' + s }),
+            printErr: (s) => parentPort.postMessage({ type: 'log', line: '[wasm-err] ' + s }),
         }).catch((err) => {
-            parentPort.postMessage({ type: 'error', err: String(err) });
+            parentPort.postMessage({ type: 'error', err: String(err), stack: err && err.stack });
         });
     } catch (err) {
-        parentPort.postMessage({ type: 'error', err: String(err) });
+        parentPort.postMessage({ type: 'error', err: String(err), stack: err && err.stack });
     }
 }

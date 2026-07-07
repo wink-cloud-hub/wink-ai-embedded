@@ -90,13 +90,39 @@ addToLibrary({
     /* ---- Asyncify 让出点 ----
      * `__async: 'auto'` 是 emcc 6.x 的正确语法（`true` 无效）。emcc 会用
      * `Asyncify.handleAsync` 包装函数体的 Promise 返回值，与
-     * `-sASYNCIFY_IMPORTS=['js_pal_os_sleep_ms', ...]` 声明匹配。 */
+     * `-sASYNCIFY_IMPORTS=['js_pal_os_sleep_ms', ...]` 声明匹配。
+     *
+     * 默认桩的时钟推进契约（ADR-0013 / pal_osal_wasm.c header 注释）：
+     *   当宿主未覆盖 js_pal_os_sleep_ms/js_pal_os_busy_wait_us 时，本桩用
+     *   wall-clock setTimeout 让出，并在 Promise resolve 前**先**推进 C 侧
+     *   s_virtual_us（_pal_wasm_advance_virtual_clock），保证
+     *   pal_os_get_us() 看到的虚拟时间随 sleep 单调前进——否则协作调度器
+     *   pal_sim_scheduler_run() 会永远把 wakeup_us 当成"未来"陷入无限 sleep
+     *   循环（t1_us/t1_ms 永远 == 0）。
+     *
+     *   覆盖钩子的宿主（jest / Workbench）自己负责虚拟时钟推进——通常通过
+     *   一个 VirtualClock 单步 + _pal_wasm_advance_virtual_clock 双锁步
+     *   （见 simulator/src/unisim/bridge/createUnisimImports.ts +
+     *   nodeSmoke.test.ts 锁步循环）。此时本桩的 setTimeout+advance 路径不
+     *   会执行，不会发生双重推进。
+     *
+     *   _pal_wasm_advance_virtual_clock 由 pal_osal_wasm.c 以
+     *   EMSCRIPTEN_KEEPALIVE 导出，签名为 (uint64_t us) → void，WASM_BIGINT=1
+     *   下以 BigInt 传参。 */
     js_pal_os_sleep_ms__async: 'auto',
     js_pal_os_sleep_ms: function (ms) {
         if (typeof Module !== 'undefined' && typeof Module.js_pal_os_sleep_ms === 'function') {
             return Module.js_pal_os_sleep_ms(ms);
         }
-        return new Promise(function (resolve) { setTimeout(resolve, ms); });
+        var advanceUs = BigInt(ms) * 1000n;
+        return new Promise(function (resolve) {
+            setTimeout(function () {
+                if (typeof Module !== 'undefined' && typeof Module._pal_wasm_advance_virtual_clock === 'function') {
+                    Module._pal_wasm_advance_virtual_clock(advanceUs);
+                }
+                resolve();
+            }, ms);
+        });
     },
 
     js_pal_os_busy_wait_us__async: 'auto',
@@ -104,9 +130,18 @@ addToLibrary({
         if (typeof Module !== 'undefined' && typeof Module.js_pal_os_busy_wait_us === 'function') {
             return Module.js_pal_os_busy_wait_us(us);
         }
-        /* 桩：把微秒转 ms 后 setTimeout 让出；真实宿主可切换到 spin-wait */
+        /* 桩：把微秒转 ms 后 setTimeout 让出；真实宿主可切换到 spin-wait。
+         * 注意：推进值按"请求的微秒数"（非 setTimeout 实际等待），与 C 侧
+         * busy_wait 语义一致——调用者期望至少 us 微秒已过去。 */
+        var waitMs = Math.max(1, Math.floor(us / 1000));
+        var advanceUs = BigInt(us);
         return new Promise(function (resolve) {
-            setTimeout(resolve, Math.max(1, Math.floor(us / 1000)));
+            setTimeout(function () {
+                if (typeof Module !== 'undefined' && typeof Module._pal_wasm_advance_virtual_clock === 'function') {
+                    Module._pal_wasm_advance_virtual_clock(advanceUs);
+                }
+                resolve();
+            }, waitMs);
         });
     },
 
