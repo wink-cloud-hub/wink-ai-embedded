@@ -129,6 +129,7 @@ typedef enum {
     WINK_ERR_INVALID_STATE      = -16,        /**< 状态机非法转移（未 claim 引脚 / 已销毁器件被调用）；可 `WINK_PT_EXIT`。 */
     WINK_ERR_LOCKED             = -17,        /**< 资源被锁（boot safe-lock / 配置 flash 锁定）；不由 PT 自行解锁。 */
     WINK_ERR_NOT_FOUND          = -18,        /**< 查找/反注册目标不存在（如 registry 中无匹配 (fn, ctx)）；幂等类 API 常用。 */
+    WINK_ERR_CANCELED           = -19,        /**< 良性并发取消（stop/change_period 与回调并发）；区别于 INVALID_STATE（编程错误），非故障。 */
 
     WINK_ERR_OVERCURRENT        = -20,        /**< 过流（可恢复：限流重试）；持续则升级为致命。 */
     WINK_ERR_OVERTEMPERATURE    = -21,        /**< 过温（可恢复：降频 / 降占空比）；持续则关输出。 */
