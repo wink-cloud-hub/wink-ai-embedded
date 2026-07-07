@@ -257,6 +257,19 @@ add_wink_host_test(test_button_helper test_button_helper.c
 target_include_directories(test_button_helper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../samples/common/include)
 
+# ADR-0023 Task 2.1: BAL wink_led_blink_helper.
+# wink_bal PUBLIC-links wink_runtime (which contains wink_runtime_tasks.c and
+# wink_soft_timer.c) and dal; transitive deps bring in pal + trace.
+add_wink_host_test(test_blink_helper test_blink_helper.c)
+target_link_libraries(test_blink_helper PRIVATE wink_bal)
+# add_wink_host_test's default include dirs do NOT include bal/include/output
+# (where wink_blink_helper.h lives). wink_bal PUBLIC-includes that path, but
+# add_wink_host_test adds include dirs BEFORE target_link_libraries runs, so
+# we add it explicitly here to be safe.
+target_include_directories(test_blink_helper PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/output)
+
 # Track A M1 / Task A-4：DAL↔PAL 资源接线 e2e 单测（验证 7 个 DAL init 正确 wire pal_resource_claim）
 # P2: dal is linked via add_wink_host_test; need the extra include dirs for
 # gps/eeprom headers that live in subdirectories not on the default surface.
