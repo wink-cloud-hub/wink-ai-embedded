@@ -14,6 +14,7 @@
 #define WINK_SOFT_TIMER_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "wink_status.h"
 
 #ifdef __cplusplus
@@ -76,6 +77,24 @@ WINK_WARN_UNUSED_RESULT
 wink_status_t wink_soft_timer_stop(int32_t handle);
 
 /**
+ * @brief Dynamically change a running timer's period (zero-stall).
+ *
+ * For PERIODIC timers the new period takes effect on the NEXT cycle
+ * (i.e., after the running callback returns, remaining_ticks is
+ * reloaded from the updated period_ticks).  Safe to call from WITHIN
+ * the timer's own callback (ADR-0023 §11 self-set_period re-entrancy).
+ *
+ * @param handle       Timer handle (from wink_soft_timer_create).
+ * @param period_ms    New period in milliseconds (must be >0; tick
+ *                     alignment rules identical to create: rounded
+ *                     down to tick multiple, minimum 1 tick).
+ * @return wink_status_t WINK_OK on success; WINK_ERR_INVALID_ARG on bad
+ *                     handle / zero period / unallocated slot.
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t wink_soft_timer_change_period(int32_t handle, uint32_t period_ms);
+
+/**
  * @brief 调度到期的定时器回调（主循环每个 Tick 调用一次）
  *
  * 遍历所有活动定时器，递减剩余 Tick，到期则执行回调。
@@ -84,6 +103,29 @@ wink_status_t wink_soft_timer_stop(int32_t handle);
  * ONESHOT 定时器执行后自动停止。
  */
 void wink_soft_timer_dispatch(void);
+
+/**
+ * @brief Return true while we are actively dispatching a LIGHT (soft-timer)
+ *        callback on this thread/fiber.
+ *
+ * WINK_ASSERT_NONBLOCKING() checks this to escalate any blocking call from
+ * within a LIGHT callback to a fault (ADR-0017 layer 3 + ADR-0023 §9 three-
+ * line defense).
+ *
+ * Host/wasm: maintained per-fiber by dispatch().  ESP32: LIGHT callbacks
+ * run on the tick task, so a simple global bool suffices (not ISR-preemptible
+ * at the WCET logging points we use).
+ */
+bool wink_soft_timer_in_light_dispatch(void);
+
+/**
+ * @brief Attach a human-readable name to a timer slot for diagnostics.
+ *
+ * Called by wink_periodic_start_ex when routing a LIGHT periodic callback
+ * through the soft timer, so WCET/LIGHT-blocking fault logs can identify
+ * the offending callback.  NULL resets to an empty name.
+ */
+void wink_soft_timer_set_name(int32_t handle, const char *name);
 
 #ifdef __cplusplus
 }
