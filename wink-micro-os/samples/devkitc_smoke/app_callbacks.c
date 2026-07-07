@@ -10,7 +10,7 @@
  *   - invokes the OS built-in selftest suite
  *
  * Verifies on bare metal (no wiring required):
- *   S1  2s telemetry                (common: wink_default_telemetry_start)
+ *   S1  2s telemetry                (BAL: wink_telemetry_default_start)
  *   S2  LED blink                    (common: wink_led_blink_start)
  *   S3  Boot-button debounce         (DAL: dal_button_poll)
  *   S4  GPIO ISR edge count          (DAL: dal_button_enable_isr_counter)
@@ -29,7 +29,7 @@
 #include "wink_selftest.h"
 #include "wink_fault.h"
 #include "wink_blink_helper.h"
-#include "wink_default_telemetry.h"
+#include "wink_telemetry_helper.h"
 #include "wink_sim_ultrasonic_echo.h"
 #include "pal_log.h"
 
@@ -92,8 +92,8 @@ static void app_init(void)
     WINK_IGNORE_RESULT(wink_runtime_spawn_periodic(
         "sonar_poll", 2048, 500, sonar_poll_task, &smoke_sonar, 1, PAL_OS_CORE_ANY));
 
-    /* S1: 默认遥测 */
-    WINK_IGNORE_RESULT(wink_default_telemetry_start(&smoke_sonar, &boot_button));
+    /* S1: 默认遥测（BAL helper, MAY_BLOCK 路径） */
+    WINK_IGNORE_RESULT(wink_telemetry_default_start(&smoke_sonar, &boot_button));
 
     /* ── S5/S6/S7/S9/S4-isr: OS built-in selftest (one call).
      *    selftest_core already logs PASS/SKIP/FAIL per entry; we only need to

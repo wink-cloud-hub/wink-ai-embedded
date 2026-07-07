@@ -10,13 +10,12 @@
 
 include_guard(GLOBAL)
 
-# ADR-0023 Stage 2 migration: wink_blink_helper / wink_button_helper now live
-# in BAL (bal/src/).  They are linked in via the wink_bal static library;
-# samples/common no longer compiles its own copies.  Old include paths
-# "wink_*_helper.h" still resolve through the forwarding shims in
-# samples/common/include/ → bal/include/{output,input}/wink_*_helper.h.
+# ADR-0023 Stage 2 migration: wink_blink_helper / wink_button_helper /
+# wink_default_telemetry all live in BAL (bal/src/).  They are linked in
+# via the wink_bal static library; samples/common no longer compiles its
+# own copies.  Old include paths "wink_*_helper.h" resolve through the
+# forwarding shims in samples/common/include/.
 set(WINK_SAMPLE_COMMON_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/wink_default_telemetry.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/wink_sim_ultrasonic_echo.c
     CACHE INTERNAL "wink-micro-os samples/common source list")
 
