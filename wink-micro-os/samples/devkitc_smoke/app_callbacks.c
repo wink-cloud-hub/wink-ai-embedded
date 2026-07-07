@@ -35,6 +35,8 @@
 #include "sensor/wink_sonar_helper.h"
 #include "wink_telemetry_helper.h"
 #include "wink_blocking_region.h"
+#include "pal_hal.h"
+#include "hal/pal_i2c.h"
 #include "pal_log.h"
 
 #ifdef WINK_CFG_SIM_ECHO
@@ -46,7 +48,7 @@ static void on_boot_button(dal_button_event_t evt, void *ctx)
 {
     (void)ctx;
     if (evt == DAL_BUTTON_EVT_LONG_PRESS) {
-        LOG_I("S8: long-press detected, arming WDT test");
+        LOG_I("\nS8: long-press detected, arming WDT test");
         wink_runtime_trigger_wdt_test(2000); /* does not return */
     }
 }
@@ -56,7 +58,7 @@ static void app_on_boot(const wink_boot_info_t *info)
 {
     if (info->abnormal_boot_count > 0 ||
         info->reset_reason == WINK_RESET_REASON_WATCHDOG) {
-        LOG_I("S8: PASS (watchdog recovered, count=%lu, reason=%d)",
+        LOG_I("\nS8: PASS (watchdog recovered, count=%lu, reason=%d)",
               (unsigned long)info->abnormal_boot_count, (int)info->reset_reason);
     }
 }
@@ -71,30 +73,30 @@ static wink_status_t app_init_status(void)
 #ifdef BOOT_BUTTON_AUTO_POLL_MS
     wink_status_t st_s3 = wink_button_helper_start(&boot_button, BOOT_BUTTON_AUTO_POLL_MS);
     if (st_s3 == WINK_OK) {
-        LOG_I("S3: PASS (button poll helper, period=%ums)", (unsigned)BOOT_BUTTON_AUTO_POLL_MS);
+        LOG_I("\nS3: PASS (button poll helper, period=%ums)", (unsigned)BOOT_BUTTON_AUTO_POLL_MS);
     } else {
-        LOG_E("S3: FAIL (button poll helper, status=%d)", (int)st_s3);
+        LOG_E("\nS3: FAIL (button poll helper, status=%d)", (int)st_s3);
         return st_s3;
     }
 #else
-    LOG_I("S3: SKIP (button poll not configured)");
+    LOG_I("\nS3: SKIP (button poll not configured)");
 #endif
 
     /* S8: 绑定业务回调 */
     wink_status_t st_s8 = dal_button_on_event(&boot_button, on_boot_button, NULL);
     if (st_s8 == WINK_OK) {
-        LOG_I("S8: PASS (WDT trigger registered)");
+        LOG_I("\nS8: PASS (WDT trigger registered)");
     } else {
-        LOG_E("S8: FAIL (WDT trigger register, status=%d)", (int)st_s8);
+        LOG_E("\nS8: FAIL (WDT trigger register, status=%d)", (int)st_s8);
         return st_s8;
     }
 
     /* S2: LED blink helper（fire-and-forget） */
     int32_t blink_h = wink_led_blink_start(&board_led, 1000);
     if (blink_h >= 1) {
-        LOG_I("S2: PASS (led blink, h=%ld)", (long)blink_h);
+        LOG_I("\nS2: PASS (led blink, h=%ld)", (long)blink_h);
     } else {
-        LOG_E("S2: FAIL (led blink, status=%d)", (int)blink_h);
+        LOG_E("\nS2: FAIL (led blink, status=%d)", (int)blink_h);
         return (wink_status_t)blink_h;
     }
 
@@ -104,9 +106,9 @@ static wink_status_t app_init_status(void)
         &smoke_sonar, 50.0f,
         smoke_sonar.config.trig_pin, smoke_sonar.config.echo_pin);
     if (st_echo == WINK_OK) {
-        LOG_I("S10: PASS (echo sim armed, simulated_dist=50cm)");
+        LOG_I("\nS10: PASS (echo sim armed, simulated_dist=50cm)");
     } else {
-        LOG_E("S10: FAIL (echo sim start, status=%d)", (int)st_echo);
+        LOG_E("\nS10: FAIL (echo sim start, status=%d)", (int)st_echo);
         return st_echo;
     }
 #else
@@ -116,19 +118,35 @@ static wink_status_t app_init_status(void)
     /* S10: 启动超声波传感器周期测量 helper */
     wink_status_t st_sonar = wink_sonar_helper_start(&smoke_sonar, 500);
     if (st_sonar == WINK_OK) {
-        LOG_I("S10: PASS (sonar polling helper, period=500ms)");
+        LOG_I("\nS10: PASS (sonar polling helper, period=500ms)");
     } else {
-        LOG_E("S10: FAIL (sonar helper start, status=%d)", (int)st_sonar);
+        LOG_E("\nS10: FAIL (sonar helper start, status=%d)", (int)st_sonar);
         return st_sonar;
     }
 
     /* S1: 默认遥测（BAL helper, MAY_BLOCK 路径） */
     wink_status_t st_s1 = wink_telemetry_default_start(&smoke_sonar, &boot_button);
     if (st_s1 == WINK_OK) {
-        LOG_I("S1: PASS (telemetry default started)");
+        LOG_I("\nS1: PASS (telemetry default started)");
     } else {
-        LOG_E("S1: FAIL (telemetry start, status=%d)", (int)st_s1);
+        LOG_E("\nS1: FAIL (telemetry start, status=%d)", (int)st_s1);
         return st_s1;
+    }
+
+    /* ── S6 readiness: eager-init I2C bus 0 so the selftest i2c.bus_scan
+     *   does not trip the lazy-init WARN path (see review memo: "stub 返
+     *   WINK_OK 反模式清理" prerequisite).
+     *   - ESP32: pal_i2c_port_pins() returns board/weak-default SDA/SCL.
+     *   - host/wasm: port_pins returns UNSUPPORTED (pins ignored), fall
+     *     back to (0,0) which the virtual targets accept. */
+    {
+        wink_pin_t sda = 0, scl = 0;
+        wink_status_t pq = pal_i2c_port_pins(0, &sda, &scl);
+        if (pq == WINK_ERR_UNSUPPORTED) { sda = 0; scl = 0; }
+        wink_status_t i2c_st = pal_i2c_bus_init(0, (uint8_t)sda, (uint8_t)scl, 100000);
+        /* UNSUPPORTED is fine (target has no I2C; S6 will self-SKIP).
+         * Other errors are non-fatal: S6 will surface FAIL itself. */
+        (void)i2c_st;
     }
 
     /* ── S4/S5/S6/S7/S9: OS built-in selftests
@@ -153,11 +171,11 @@ static wink_status_t app_init_status(void)
         else if (strcmp(results[i].name, "rmt.self_loopback") == 0) s_code = "S9";
 
         if (is_ok) {
-            LOG_I("%s: PASS (%s, metric=%lu)", s_code, results[i].name, (unsigned long)results[i].metric);
+            LOG_I("\n%s: PASS (%s, metric=%lu)", s_code, results[i].name, (unsigned long)results[i].metric);
         } else if (is_skip) {
-            LOG_I("%s: SKIP (%s, unsupported)", s_code, results[i].name);
+            LOG_I("\n%s: SKIP (%s, unsupported)", s_code, results[i].name);
         } else {
-            LOG_E("%s: FAIL (%s, status=%d, metric=%lu)", s_code, results[i].name, (int)results[i].status, (unsigned long)results[i].metric);
+            LOG_E("\n%s: FAIL (%s, status=%d, metric=%lu)", s_code, results[i].name, (int)results[i].status, (unsigned long)results[i].metric);
             has_fail = true;
         }
     }
@@ -167,9 +185,9 @@ static wink_status_t app_init_status(void)
     }
 
     /* S11: deinit loop verified in host e2e test */
-    LOG_I("S11: PASS (deinit loop, e2e verified)");
+    LOG_I("\nS11: PASS (deinit loop, e2e verified)");
 
-    LOG_I("init done. Long-press BOOT (>3s) to trigger WDT reset test.");
+    LOG_I("\ninit done. Long-press BOOT (>3s) to trigger WDT reset test.");
     return WINK_OK;
 }
 
