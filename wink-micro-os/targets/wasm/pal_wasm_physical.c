@@ -37,6 +37,7 @@
 #include "wink_sim_physical.h"
 #include "pal_wasm_internal.h"
 #include "wasm_bridge.h"
+#include "devices/wasm_sim_registry.h"
 #include "pal_hal.h"
 #include "wink_status.h"
 
@@ -205,6 +206,13 @@ void pal_wasm_reset_physical(void) {
     s_prng_state = 1u;
     pal_wasm_reset_fault_log();
     pal_wasm_reset_fault_domains();
+    /* Reset C-side virtual device models (ultrasonic distance, GPIO state,
+     * SSD1306 framebuffer, servo angle). In particular this sets
+     * s_virtual_ultrasonic_distance[] back to -1.0f sentinel so
+     * pal_gpio_pulse_in() falls through to js_sim_measure_echo_pulse_us
+     * until the host injects a distance via
+     * pal_wasm_set_ultrasonic_distance(). */
+    wasm_sim_devices_reset();
 }
 
 /* ─────────────────────────────────────────────────────────
