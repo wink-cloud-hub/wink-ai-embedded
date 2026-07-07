@@ -246,16 +246,18 @@ target_include_directories(test_dal_gps PRIVATE
 # Stage 0 Task 0.1: PAL I2C bus lifecycle API host test
 add_wink_host_test(test_pal_i2c_bus test_pal_i2c_bus.c)
 
-# P1-3: samples/common wink_button_helper BAL 组件 host 单测
-# P2: dal is linked via add_wink_host_test -> target_link_libraries(dal);
-# still need to compile wink_button_helper.c and wink_soft_timer.c (not in
-# any library yet) and wink_trace.c directly.
-add_wink_host_test(test_button_helper test_button_helper.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../samples/common/src/wink_button_helper.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_soft_timer.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../trace/src/wink_trace.c)
+# ADR-0023 Task 2.2: BAL wink_button_helper.
+# wink_bal PUBLIC-links wink_runtime (which contains wink_runtime_tasks.c
+# and wink_soft_timer.c) and dal; transitive deps bring in pal + trace.
+add_wink_host_test(test_button_helper test_button_helper.c)
+target_link_libraries(test_button_helper PRIVATE wink_bal)
+# add_wink_host_test's default include dirs do NOT include bal/include/input
+# (where wink_button_helper.h lives). wink_bal PUBLIC-includes that path, but
+# add_wink_host_test adds include dirs BEFORE target_link_libraries runs, so
+# we add it explicitly here to be safe.
 target_include_directories(test_button_helper PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../samples/common/include)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/input)
 
 # ADR-0023 Task 2.1: BAL wink_led_blink_helper.
 # wink_bal PUBLIC-links wink_runtime (which contains wink_runtime_tasks.c and
