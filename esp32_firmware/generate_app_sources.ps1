@@ -59,10 +59,23 @@ $AppSourceFiles = @(Get-ChildItem -Path $AppDir -Filter "*.c" -Recurse |
 #    core_sources.cmake (WINK_BAL_SOURCES), so listing them here would cause
 #    duplicate symbols.
 $CommonDir = Join-Path $RepoRoot "wink-micro-os\samples\common\src"
+# ADR-0023 Stage 2 migration: helpers that moved to BAL (wink_blink_helper.c,
+# wink_button_helper.c, wink_telemetry_helper.c) are compiled via the
+# wink-micro-os ESP32 component (WINK_BAL_SOURCES in core_sources.cmake) and
+# MUST NOT be listed here — that would cause duplicate symbols. The filter
+# below is a safety net; now that common/src/ is empty it's a no-op, but it
+# protects against a helper being accidentally copied back.
+$BAL_MIGRATED_NAMES = @(
+    "wink_blink_helper.c",
+    "wink_button_helper.c",
+    "wink_default_telemetry.c",  # legacy name before Stage 2.3 rename
+    "wink_telemetry_helper.c",
+    "wink_sim_ultrasonic_echo.c" # moved to runtime/selftest/src/ in Stage 2.4
+)
 $CommonSourceFiles = @()
 if (Test-Path $CommonDir) {
     $CommonSourceFiles = @(Get-ChildItem -Path $CommonDir -Filter "*.c" |
-        Where-Object { $_.Name -notlike "wink_blink_helper.c" -and $_.Name -notlike "wink_button_helper.c" } |
+        Where-Object { $name = $_.Name; -not ($BAL_MIGRATED_NAMES | Where-Object { $name -like $_ }) } |
         ForEach-Object {
             $RelPath = $_.FullName.Substring($RepoRootPath.Length).Replace('\', '/')
             "`${CMAKE_CURRENT_LIST_DIR}/../../$RelPath"

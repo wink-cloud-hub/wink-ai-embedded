@@ -351,7 +351,10 @@ add_wink_host_test(test_wink_selftest test_wink_selftest.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/selftest/src/selftest_i2c_scan.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/selftest/src/selftest_smp_stress.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/selftest/src/selftest_gpio_isr.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/selftest/src/selftest_rmt_loopback.c)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/selftest/src/selftest_rmt_loopback.c
+    # ADR-0023 Stage 2.4: S10 bringup shadow-task helper, gates itself with
+    # #ifndef WINK_STRICT_NONBLOCKING so it links out of strict-mirror builds.
+    ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/selftest/src/wink_sim_ultrasonic_echo.c)
 # selftest 源需要访问 wink_selftest_internal.h 和 registry.def
 target_include_directories(test_wink_selftest PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/selftest/src)

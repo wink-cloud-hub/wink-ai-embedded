@@ -1,45 +1,32 @@
 /**
- * @file wink_sim_ultrasonic_echo.h
- * @brief Sample helper: one-line ultrasonic echo simulator (S10 shadow task).
+ * @file wink_sim_ultrasonic_echo.h (samples/common compatibility shim)
+ * @brief Forwarding include — runtime/selftest migration (ADR-0023 Task 2.4/2.5).
  *
- * Wraps the 130-line TRIG-ISR + sem + core-pinned mock task + GPIO direction
- * bookkeeping.  Lab bring-up only — NOT a product DAL feature.
- */
-#ifndef WINK_SIM_ULTRASONIC_ECHO_H
-#define WINK_SIM_ULTRASONIC_ECHO_H
-
-#include <stdint.h>
-#include "wink_status.h"
-#include "dal_ultrasonic.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/**
- * @brief Start the echo-simulator shadow task.
+ * The S10 ultrasonic echo-simulator helper has moved to runtime/selftest/src/
+ * (a bringup/selftest internal helper, NOT a stable public API). This shim
+ * exists so existing samples that #include "wink_sim_ultrasonic_echo.h"
+ * via samples/common/include continue to compile without source changes
+ * during Stage 2 migration.
  *
- * @param dev           Initialised ultrasonic device.
- * @param simulated_cm  Distance to simulate (clamped to [2,400]cm).
- * @param trig_pin      TRIG GPIO (must match cfg->trig_pin).
- * @param echo_pin      ECHO GPIO (must match cfg->echo_pin).
- * @return WINK_OK on success; WINK_ERR_* on failure.  On host/wasm this is a
- *         no-op that returns WINK_OK (no real GPIO ISR there).
- */
-wink_status_t wink_sim_ultrasonic_echo_start(dal_ultrasonic_t *dev,
-                                             float simulated_cm,
-                                             uint16_t trig_pin,
-                                             uint16_t echo_pin);
-
-/**
- * @brief Stop the echo simulator (disarm ISR; mock task goes idle).
+ * STRICT_NONBLOCKING: the target header wraps its declarations with
+ * #ifndef WINK_STRICT_NONBLOCKING, so strict-mirror TUs see nothing.
  *
- * Safe to call even if start was never called or failed (idempotent).
+ * IMPORTANT: this shim uses its own distinct include guard (same rationale
+ * as wink_blink_helper.h shim) — sharing WINK_SIM_ULTRASONIC_ECHO_H with
+ * the canonical header causes the real header body to be skipped when
+ * common/include precedes runtime/selftest/src in the -I search order.
+ *
+ * Copyright (c) 2026 Wink-AI.
  */
-void wink_sim_ultrasonic_echo_stop(dal_ultrasonic_t *dev);
+#ifndef WINK_SIM_ULTRASONIC_ECHO_SHIM_H
+#define WINK_SIM_ULTRASONIC_ECHO_SHIM_H
 
-#ifdef __cplusplus
-}
-#endif
+/* Pull the canonical header from its new home under runtime/selftest/src/.
+ * A relative path is used because runtime/selftest/src is a PRIVATE include
+ * dir in selftest consumers' build rules, not a top-level public surface;
+ * the shim's INTERFACE include on wink_sample_common adds that directory
+ * to any consumer's search path, but the relative form keeps this working
+ * even when invoked through a different include path. */
+#include "../../../runtime/selftest/src/wink_sim_ultrasonic_echo.h"
 
-#endif /* WINK_SIM_ULTRASONIC_ECHO_H */
+#endif /* WINK_SIM_ULTRASONIC_ECHO_SHIM_H */

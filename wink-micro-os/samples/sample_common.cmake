@@ -115,18 +115,14 @@ function(wink_sample_apply_common target)
     wink_sample_apply_compile_options(${target})
 endfunction()
 
-# ── Link samples/common OBJECT library + BAL ──────────────────────────────
-# Pulls in $<TARGET_OBJECTS:wink_sample_common> and the common include dir,
-# plus the wink_bal static library (BAL helpers live here after ADR-0023
-# Stage 2 migration). Safe to call even when no common helper is referenced
-# (--gc-sections drops unreferenced objects at link time on both host and
-# ESP32; wink_bal link is a no-op if no BAL symbol is referenced).
+# ── Link samples/common INTERFACE library + BAL ───────────────────────────
+# ADR-0023 Stage 2.5: samples/common is now an INTERFACE library (no .c
+# sources of its own; all helpers moved to BAL or runtime/selftest). It
+# only contributes include dirs (the forwarding shims) and a transitive
+# link on wink_bal. Using target_link_libraries propagates the INTERFACE
+# usage requirements cleanly; no $<TARGET_OBJECTS> needed.
 function(wink_sample_link_common target)
     if(TARGET wink_sample_common)
-        target_sources(${target} PRIVATE $<TARGET_OBJECTS:wink_sample_common>)
-        target_include_directories(${target} PRIVATE ${WINK_SAMPLE_COMMON_INCLUDE_DIR})
-    endif()
-    if(TARGET wink_bal)
-        target_link_libraries(${target} PRIVATE wink_bal)
+        target_link_libraries(${target} PRIVATE wink_sample_common)
     endif()
 endfunction()
