@@ -73,6 +73,14 @@ function(wink_sample_apply_include_dirs target)
         ${CMAKE_CURRENT_SOURCE_DIR}/../../trace/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../../test
         ${CMAKE_CURRENT_SOURCE_DIR}/../../test/stubs
+        # BAL (Business Abstraction Layer) — ADR-0023 Stage 2
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../bal/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../bal/include/output
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../bal/include/input
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../bal/include/sensor
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../bal/include/actuator
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../bal/include/display
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../bal/include/comm
         ${_extra_dirs}
     )
 
@@ -107,13 +115,18 @@ function(wink_sample_apply_common target)
     wink_sample_apply_compile_options(${target})
 endfunction()
 
-# ── Link samples/common OBJECT library ────────────────────────────────────
-# Pulls in $<TARGET_OBJECTS:wink_sample_common> and the common include dir.
-# Safe to call even when no common helper is referenced (--gc-sections drops
-# unreferenced objects at link time on both host and ESP32).
+# ── Link samples/common OBJECT library + BAL ──────────────────────────────
+# Pulls in $<TARGET_OBJECTS:wink_sample_common> and the common include dir,
+# plus the wink_bal static library (BAL helpers live here after ADR-0023
+# Stage 2 migration). Safe to call even when no common helper is referenced
+# (--gc-sections drops unreferenced objects at link time on both host and
+# ESP32; wink_bal link is a no-op if no BAL symbol is referenced).
 function(wink_sample_link_common target)
     if(TARGET wink_sample_common)
         target_sources(${target} PRIVATE $<TARGET_OBJECTS:wink_sample_common>)
         target_include_directories(${target} PRIVATE ${WINK_SAMPLE_COMMON_INCLUDE_DIR})
+    endif()
+    if(TARGET wink_bal)
+        target_link_libraries(${target} PRIVATE wink_bal)
     endif()
 endfunction()
