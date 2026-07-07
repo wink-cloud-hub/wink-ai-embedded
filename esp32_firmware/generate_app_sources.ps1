@@ -54,14 +54,15 @@ $AppSourceFiles = @(Get-ChildItem -Path $AppDir -Filter "*.c" -Recurse |
 #    -ffunction-sections -fdata-sections -Wl,--gc-sections), so zero cost
 #    for samples that don't call them.
 #    ADR-0023 Stage 2 migration note: helpers that move to BAL
-#    (e.g. wink_blink_helper.c) are excluded here.  BAL sources are compiled
-#    into the wink-micro-os ESP32 component via core_sources.cmake (WINK_BAL_SOURCES),
-#    so listing them here would cause duplicate symbols.
+#    (wink_blink_helper.c, wink_button_helper.c, ...) are excluded here.
+#    BAL sources are compiled into the wink-micro-os ESP32 component via
+#    core_sources.cmake (WINK_BAL_SOURCES), so listing them here would cause
+#    duplicate symbols.
 $CommonDir = Join-Path $RepoRoot "wink-micro-os\samples\common\src"
 $CommonSourceFiles = @()
 if (Test-Path $CommonDir) {
     $CommonSourceFiles = @(Get-ChildItem -Path $CommonDir -Filter "*.c" |
-        Where-Object { $_.Name -notlike "wink_blink_helper.c" } |
+        Where-Object { $_.Name -notlike "wink_blink_helper.c" -and $_.Name -notlike "wink_button_helper.c" } |
         ForEach-Object {
             $RelPath = $_.FullName.Substring($RepoRootPath.Length).Replace('\', '/')
             "`${CMAKE_CURRENT_LIST_DIR}/../../$RelPath"
