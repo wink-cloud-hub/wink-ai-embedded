@@ -19,6 +19,7 @@
 #include "pal_log.h"
 #include "pal_hal.h"   /* pal_gpio_write/read, pal_pwm_init/set_duty, pal_i2c_transfer,
                           pal_gpio_enable_interrupt/disable_interrupt, pal_gpio_pulse_in */
+#include "hal/pal_i2c.h" /* pal_i2c_bus_init */
 #include "pal_resource.h" /* pal_resource_claim */
 #include "pal_osal.h"     /* pal_os_sleep_ms, pal_os_busy_wait_us, pal_os_get_ms/us */
 #include "pal_irq.h"      /* PAL_ISR macro */
@@ -55,7 +56,11 @@ static void app_init(void)
         (void)pal_pwm_set_duty(SMOKE_PWM_CHANNEL, 50.0f);
     }
 
-    /* --- js_pal_i2c_transfer --- */
+    /* --- js_pal_i2c_transfer ---
+     * Eager-init the I2C bus to avoid the lazy-init WARN path. On the wasm
+     * target SDA/SCL pins are ignored, so pass 0/0; real-hardware smoke
+     * samples resolve pins via pal_i2c_port_pins(). */
+    (void)pal_i2c_bus_init(SMOKE_I2C_PORT, 0, 0, 100000);
     uint8_t wbuf[2] = { 0xAA, 0xBB };
     uint8_t rbuf[2] = { 0 };
     (void)pal_i2c_transfer(SMOKE_I2C_PORT, SMOKE_I2C_ADDR, wbuf, sizeof(wbuf), rbuf, sizeof(rbuf));
