@@ -29,7 +29,9 @@ extern "C" {
  * @brief Start automatic periodic measurement on @p dev.
  *
  * @param dev        Initialised dal_ultrasonic_t instance.
- * @param period_ms  Measurement period in ms. Recommended >= 50ms to avoid HC-SR04 crosstalk.
+ * @param period_ms  Measurement period in ms. Must be >= 50ms to avoid HC-SR04
+ *                   acoustic crosstalk (runtime-enforced; values < 50 return
+ *                   WINK_ERR_INVALID_ARG).
  * @return WINK_OK on success.
  */
 WINK_WARN_UNUSED_RESULT

@@ -34,6 +34,7 @@
 #include "wink_button_helper.h"
 #include "sensor/wink_sonar_helper.h"
 #include "wink_telemetry_helper.h"
+#include "wink_blocking_region.h"
 #include "pal_log.h"
 
 #ifdef WINK_CFG_SIM_ECHO
@@ -55,7 +56,7 @@ static void app_on_boot(const wink_boot_info_t *info)
 {
     if (info->abnormal_boot_count > 0 ||
         info->reset_reason == WINK_RESET_REASON_WATCHDOG) {
-        LOG_I("S8 watchdog: PASS (recovered after abnormal reset, count=%lu, reason=%d)",
+        LOG_I("S8: PASS (watchdog recovered, count=%lu, reason=%d)",
               (unsigned long)info->abnormal_boot_count, (int)info->reset_reason);
     }
 }
@@ -70,30 +71,30 @@ static wink_status_t app_init_status(void)
 #ifdef BOOT_BUTTON_AUTO_POLL_MS
     wink_status_t st_s3 = wink_button_helper_start(&boot_button, BOOT_BUTTON_AUTO_POLL_MS);
     if (st_s3 == WINK_OK) {
-        LOG_I("S3 Button poll helper: PASS");
+        LOG_I("S3: PASS (button poll helper, period=%ums)", (unsigned)BOOT_BUTTON_AUTO_POLL_MS);
     } else {
-        LOG_E("S3 Button poll helper: FAIL (status=%d)", (int)st_s3);
+        LOG_E("S3: FAIL (button poll helper, status=%d)", (int)st_s3);
         return st_s3;
     }
 #else
-    LOG_I("S3 Button poll helper: SKIP (not configured)");
+    LOG_I("S3: SKIP (button poll not configured)");
 #endif
 
     /* S8: 绑定业务回调 */
     wink_status_t st_s8 = dal_button_on_event(&boot_button, on_boot_button, NULL);
     if (st_s8 == WINK_OK) {
-        LOG_I("S8 WDT trigger registration: PASS");
+        LOG_I("S8: PASS (WDT trigger registered)");
     } else {
-        LOG_E("S8 WDT trigger registration: FAIL (status=%d)", (int)st_s8);
+        LOG_E("S8: FAIL (WDT trigger register, status=%d)", (int)st_s8);
         return st_s8;
     }
 
     /* S2: LED blink helper（fire-and-forget） */
     int32_t blink_h = wink_led_blink_start(&board_led, 1000);
     if (blink_h >= 1) {
-        LOG_I("S2 LED blink helper: PASS");
+        LOG_I("S2: PASS (led blink, h=%ld)", (long)blink_h);
     } else {
-        LOG_E("S2 LED blink helper: FAIL (status=%d)", (int)blink_h);
+        LOG_E("S2: FAIL (led blink, status=%d)", (int)blink_h);
         return (wink_status_t)blink_h;
     }
 
@@ -103,37 +104,42 @@ static wink_status_t app_init_status(void)
         &smoke_sonar, 50.0f,
         smoke_sonar.config.trig_pin, smoke_sonar.config.echo_pin);
     if (st_echo == WINK_OK) {
-        LOG_I("S10 Ultrasonic echo simulation: PASS");
+        LOG_I("S10: PASS (echo sim armed, simulated_dist=50cm)");
     } else {
-        LOG_E("S10 Ultrasonic echo simulation: FAIL (status=%d)", (int)st_echo);
+        LOG_E("S10: FAIL (echo sim start, status=%d)", (int)st_echo);
         return st_echo;
     }
 #else
-    LOG_I("S10 Ultrasonic echo simulation: SKIP (compiled out)");
+    LOG_I("S10: SKIP (echo sim compiled out on real HW)");
 #endif
 
     /* S10: 启动超声波传感器周期测量 helper */
     wink_status_t st_sonar = wink_sonar_helper_start(&smoke_sonar, 500);
     if (st_sonar == WINK_OK) {
-        LOG_I("S10 Sonar polling helper: PASS");
+        LOG_I("S10: PASS (sonar polling helper, period=500ms)");
     } else {
-        LOG_E("S10 Sonar polling helper: FAIL (status=%d)", (int)st_sonar);
+        LOG_E("S10: FAIL (sonar helper start, status=%d)", (int)st_sonar);
         return st_sonar;
     }
 
     /* S1: 默认遥测（BAL helper, MAY_BLOCK 路径） */
     wink_status_t st_s1 = wink_telemetry_default_start(&smoke_sonar, &boot_button);
     if (st_s1 == WINK_OK) {
-        LOG_I("S1 Telemetry helper: PASS");
+        LOG_I("S1: PASS (telemetry default started)");
     } else {
-        LOG_E("S1 Telemetry helper: FAIL (status=%d)", (int)st_s1);
+        LOG_E("S1: FAIL (telemetry start, status=%d)", (int)st_s1);
         return st_s1;
     }
 
-    /* ── S4/S5/S6/S7/S9: OS built-in selftests */
+    /* ── S4/S5/S6/S7/S9: OS built-in selftests
+     * ADR-0017 init-phase exception: selftest 在同步启动阶段运行，
+     *   不在 cooperative PT 上下文，允许阻塞调用。*/
+    WINK_INIT_BLOCKING_REGION_BEGIN
     wink_selftest_result_t results[8];
     size_t n = 0;
     wink_status_t test_st = wink_selftest_run("*", results, 8, &n);
+    WINK_INIT_BLOCKING_REGION_END
+
     bool has_fail = false;
     for (size_t i = 0; i < n; i++) {
         bool is_ok = (results[i].status == WINK_OK);
@@ -147,11 +153,11 @@ static wink_status_t app_init_status(void)
         else if (strcmp(results[i].name, "rmt.self_loopback") == 0) s_code = "S9";
 
         if (is_ok) {
-            LOG_I("%s %s: PASS (metric=%lu)", s_code, results[i].name, (unsigned long)results[i].metric);
+            LOG_I("%s: PASS (%s, metric=%lu)", s_code, results[i].name, (unsigned long)results[i].metric);
         } else if (is_skip) {
-            LOG_I("%s %s: SKIP (unsupported)", s_code, results[i].name);
+            LOG_I("%s: SKIP (%s, unsupported)", s_code, results[i].name);
         } else {
-            LOG_E("%s %s: FAIL (status=%d, metric=%lu)", s_code, results[i].name, (int)results[i].status, (unsigned long)results[i].metric);
+            LOG_E("%s: FAIL (%s, status=%d, metric=%lu)", s_code, results[i].name, (int)results[i].status, (unsigned long)results[i].metric);
             has_fail = true;
         }
     }
@@ -161,7 +167,7 @@ static wink_status_t app_init_status(void)
     }
 
     /* S11: deinit loop verified in host e2e test */
-    LOG_I("S11 Deinit loop: PASS");
+    LOG_I("S11: PASS (deinit loop, e2e verified)");
 
     LOG_I("init done. Long-press BOOT (>3s) to trigger WDT reset test.");
     return WINK_OK;

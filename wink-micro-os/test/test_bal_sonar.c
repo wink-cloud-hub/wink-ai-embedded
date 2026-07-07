@@ -66,10 +66,23 @@ void tearDown(void) {
 void test_sonar_helper_invalid_args(void) {
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_sonar_helper_start(NULL, 100));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_sonar_helper_start(&s_sonar1, 0));
+    /* MIN_PERIOD=50ms floor (2026-07-07 hardening Task 3.1): values < 50 rejected */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_sonar_helper_start(&s_sonar1, 49));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_sonar_helper_start(&s_sonar1, 1));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_sonar_helper_set_period(NULL, 100));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_sonar_helper_set_period(&s_sonar1, 0));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_sonar_helper_stop(NULL));
     TEST_ASSERT_FALSE(wink_sonar_helper_is_running(NULL));
+}
+
+/* 1b. MIN_PERIOD boundary: period==50 accepted (lower bound) */
+void test_sonar_helper_min_period_accepted(void) {
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_sonar_helper_start(&s_sonar1, 50));
+    TEST_ASSERT_TRUE(wink_sonar_helper_is_running(&s_sonar1));
+    /* set_period also enforces the floor */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_sonar_helper_set_period(&s_sonar1, 49));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_sonar_helper_set_period(&s_sonar1, 60));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_sonar_helper_stop(&s_sonar1));
 }
 
 /* 2. Normal lifecycle (start -> check is_running -> stop) */
@@ -154,6 +167,7 @@ void test_sonar_helper_set_period(void) {
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_sonar_helper_invalid_args);
+    RUN_TEST(test_sonar_helper_min_period_accepted);
     RUN_TEST(test_sonar_helper_lifecycle);
     RUN_TEST(test_sonar_helper_duplicate_start_rejected);
     RUN_TEST(test_sonar_helper_pool_exhaustion);
