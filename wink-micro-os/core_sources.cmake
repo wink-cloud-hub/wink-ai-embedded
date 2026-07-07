@@ -49,6 +49,7 @@ set(WINK_SELFTEST_SOURCES
 # with bal/CMakeLists.txt target_sources(wink_bal ...).
 set(WINK_BAL_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/bal/src/wink_blink_helper.c
+    ${CMAKE_CURRENT_LIST_DIR}/bal/src/wink_button_helper.c
     # Stub placeholder (empty TU) intentionally NOT listed — it has no symbols
     # and exists only so wink_bal links when no helpers are migrated yet.
 )
