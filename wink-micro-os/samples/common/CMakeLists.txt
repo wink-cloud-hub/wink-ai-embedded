@@ -10,8 +10,11 @@
 
 include_guard(GLOBAL)
 
+# ADR-0023 Stage 2 migration: wink_blink_helper now lives in BAL (bal/src/wink_blink_helper.c).
+# It is linked in via the wink_bal static library; samples/common no longer compiles
+# its own copy.  Old include path "wink_blink_helper.h" still resolves through
+# samples/common/include/wink_blink_helper.h forwarding shim → bal/include/output/wink_blink_helper.h.
 set(WINK_SAMPLE_COMMON_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/wink_blink_helper.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/wink_button_helper.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/wink_default_telemetry.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/wink_sim_ultrasonic_echo.c
@@ -40,9 +43,10 @@ endif()
 
 # Link the core static libraries so we inherit their PUBLIC include dirs
 # (pal INTERFACE-exports WINK_CONFIG_DIR, runtime exports runtime/, dal dal/,
-#  trace trace/) and compile options.  OBJECT libraries need PRIVATE linkage.
-if(TARGET pal AND TARGET dal AND TARGET wink_runtime AND TARGET wink_trace)
-    target_link_libraries(wink_sample_common PRIVATE pal dal wink_runtime wink_trace)
+#  trace trace/, BAL includes from wink_bal) and compile options.
+# OBJECT libraries need PRIVATE linkage.
+if(TARGET pal AND TARGET dal AND TARGET wink_runtime AND TARGET wink_trace AND TARGET wink_bal)
+    target_link_libraries(wink_sample_common PRIVATE pal dal wink_runtime wink_trace wink_bal)
 else()
     # Fallback for builds that don't define core targets (e.g. static-analysis
     # invocations): just add include paths manually.
@@ -60,6 +64,13 @@ else()
         ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/storage
         ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../../trace/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../bal/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../bal/include/output
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../bal/include/input
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../bal/include/sensor
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../bal/include/actuator
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../bal/include/display
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../bal/include/comm
     )
     if(DEFINED WINK_CONFIG_DIR)
         target_include_directories(wink_sample_common PRIVATE ${WINK_CONFIG_DIR})
