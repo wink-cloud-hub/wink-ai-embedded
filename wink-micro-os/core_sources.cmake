@@ -40,6 +40,19 @@ set(WINK_SELFTEST_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/runtime/selftest/src/selftest_rmt_loopback.c
 )
 
+# ── BAL (Business Abstraction Layer) 源文件 — ADR-0023 Stage 2 ────────────
+# Helper implementations that migrated from samples/common/ to the BAL
+# static library.  When building via the top-level CMakeLists (host/wasm),
+# these are compiled into the standalone `wink_bal` static library; for the
+# ESP-IDF component build that pulls ${WINK_CORE_SOURCES} directly, listing
+# them here guarantees the ESP32 component also compiles them. Keep in sync
+# with bal/CMakeLists.txt target_sources(wink_bal ...).
+set(WINK_BAL_SOURCES
+    ${CMAKE_CURRENT_LIST_DIR}/bal/src/wink_blink_helper.c
+    # Stub placeholder (empty TU) intentionally NOT listed — it has no symbols
+    # and exists only so wink_bal links when no helpers are migrated yet.
+)
+
 # ── 核心包含目录 ──────────────────────────────────────────────────────────
 # Phase 1 目录重组：pal/include/ 根目录 + osal/ + hal/ 子目录均在搜索路径中。
 # 这样保持向后兼容：现有代码的 #include "pal_hal.h" / #include "pal_osal.h" 无需修改。
@@ -59,6 +72,14 @@ set(WINK_CORE_INCLUDE_DIRS
     ${CMAKE_CURRENT_LIST_DIR}/runtime/include
     ${CMAKE_CURRENT_LIST_DIR}/runtime/selftest/src  # wink_selftest_internal.h + registry.def
     ${CMAKE_CURRENT_LIST_DIR}/trace/include
+    # BAL (ADR-0023 Stage 2) — helper public headers
+    ${CMAKE_CURRENT_LIST_DIR}/bal/include
+    ${CMAKE_CURRENT_LIST_DIR}/bal/include/output
+    ${CMAKE_CURRENT_LIST_DIR}/bal/include/input
+    ${CMAKE_CURRENT_LIST_DIR}/bal/include/sensor
+    ${CMAKE_CURRENT_LIST_DIR}/bal/include/actuator
+    ${CMAKE_CURRENT_LIST_DIR}/bal/include/display
+    ${CMAKE_CURRENT_LIST_DIR}/bal/include/comm
 )
 
 # ── 聚合所有核心源文件 ──────────────────────────────────────────────────────────
@@ -67,4 +88,5 @@ set(WINK_CORE_SOURCES
     ${WINK_TRACE_SOURCES}
     ${WINK_DAL_SOURCES}
     ${WINK_SELFTEST_SOURCES}
+    ${WINK_BAL_SOURCES}
 )
