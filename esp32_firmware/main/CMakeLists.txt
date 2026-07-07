@@ -53,7 +53,7 @@ idf_component_register(
     SRCS
         "app_main.c"
         ${WINK_APP_SOURCES}       # ← 自动扫描得到（app_callbacks.c + samples/common helpers）
-        # Codegen outputs (device_tree.c + app_support.c) are added after
+        # Codegen outputs (device_tree.c) are added after
         # register() via target_sources() — see below. They cannot be listed
         # here because the OUTPUT variables (GEN_DEVICE_TREE_C etc.) are only
         # defined after register() when add_custom_command is available.
@@ -65,7 +65,7 @@ idf_component_register(
     REQUIRES driver esp32
 )
 
-# ── Codegen (wink-app.json → device_tree.[ch] + app_support.c) ────────
+# ── Codegen (wink-app.json → device_tree.[ch]) ────────
 # Everything below runs ONLY during the real configure pass (script mode
 # stops at idf_component_register). Mirrors the host/wasm integration:
 # on every build, if wink-app.json / templates / driver plugins changed,
@@ -78,7 +78,6 @@ set(WINK_APP_JSON     "${WINK_APP_DIR}/wink-app.json")
 
 set(GEN_DEVICE_TREE_H ${GEN_DIR}/device_tree.h)
 set(GEN_DEVICE_TREE_C ${GEN_DIR}/device_tree.c)
-set(GEN_APP_SUPPORT_C ${GEN_DIR}/app_support.c)
 set(GEN_APP_OPTIONS   ${GEN_DIR}/app_options.cmake)  # reserved for future per-app pruning
 
 file(GLOB WINK_CODEGEN_TEMPLATES ${WINK_CODEGEN_ROOT}/templates/*.j2)
@@ -86,7 +85,7 @@ file(GLOB WINK_CODEGEN_DRIVERS   ${WINK_CODEGEN_ROOT}/drivers/*.py)
 
 add_custom_command(
     OUTPUT ${GEN_DEVICE_TREE_H} ${GEN_DEVICE_TREE_C}
-           ${GEN_APP_SUPPORT_C} ${GEN_APP_OPTIONS}
+           ${GEN_APP_OPTIONS}
     COMMAND ${Python3_EXECUTABLE} ${WINK_CODEGEN_TOOL}
             --config ${WINK_APP_JSON}
             --out-dir ${GEN_DIR}
@@ -99,13 +98,12 @@ add_custom_command(
 # Add the generated .c files to this component's sources.
 target_sources(${COMPONENT_LIB} PRIVATE
     ${GEN_DEVICE_TREE_C}
-    ${GEN_APP_SUPPORT_C}
 )
 
 # Ensure compilation of this component waits until codegen has produced
 # device_tree.h and friends.
 add_custom_target(wink_app_codegen DEPENDS
-    ${GEN_DEVICE_TREE_H} ${GEN_DEVICE_TREE_C} ${GEN_APP_SUPPORT_C})
+    ${GEN_DEVICE_TREE_H} ${GEN_DEVICE_TREE_C})
 add_dependencies(${COMPONENT_LIB} wink_app_codegen)
 
 # Windows GCC 默认按 GBK 解析源文件，中文 UTF-8 注释会乱码报错

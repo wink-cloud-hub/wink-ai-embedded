@@ -28,13 +28,12 @@ file(MAKE_DIRECTORY ${GEN_DIR})
 
 set(GEN_DEVICE_TREE_H ${GEN_DIR}/device_tree.h)
 set(GEN_DEVICE_TREE_C ${GEN_DIR}/device_tree.c)
-set(GEN_APP_SUPPORT_C ${GEN_DIR}/app_support.c)
 set(GEN_APP_OPTIONS   ${GEN_DIR}/app_options.cmake)
 
 # Re-run CMake configure when wink-app.json changes so downstream conditional
 # logic (P2: app_options.cmake include) picks up new options.
 set_property(DIRECTORY ${CMAKE_SOURCE_DIR} APPEND
-    PROPERTY CMAKE_CONFIGURE_DEPENDS ${WINK_APP_JSON})
+     PROPERTY CMAKE_CONFIGURE_DEPENDS ${WINK_APP_JSON})
 
 # Any change to a codegen template or driver plugin must retrigger generation.
 file(GLOB WINK_CODEGEN_TEMPLATES ${WINK_CODEGEN_ROOT}/templates/*.j2)
@@ -42,7 +41,7 @@ file(GLOB WINK_CODEGEN_DRIVERS   ${WINK_CODEGEN_ROOT}/drivers/*.py)
 
 add_custom_command(
     OUTPUT ${GEN_DEVICE_TREE_H} ${GEN_DEVICE_TREE_C}
-           ${GEN_APP_SUPPORT_C} ${GEN_APP_OPTIONS}
+           ${GEN_APP_OPTIONS}
     COMMAND ${Python3_EXECUTABLE} ${WINK_CODEGEN_TOOL}
             --config ${WINK_APP_JSON}
             --out-dir ${GEN_DIR}
@@ -54,7 +53,6 @@ add_custom_command(
 
 set(APP_SOURCES
     ${GEN_DEVICE_TREE_C}
-    ${GEN_APP_SUPPORT_C}
     ${CMAKE_CURRENT_SOURCE_DIR}/app_callbacks.c)
 
 # host e2e binary: runtime + trace + dal_led + dal_button + dal_ultrasonic + pal_host + app + selftest + common helpers
@@ -82,6 +80,7 @@ wink_sample_link_common(app_devkitc_smoke_e2e)
 # dal/src/**/*.c directly. This makes WINK_USE_XXX pruning options
 # (optionally driven by the generated app_options.cmake) take effect.
 target_link_libraries(app_devkitc_smoke_e2e PRIVATE dal)
+target_compile_definitions(app_devkitc_smoke_e2e PRIVATE WINK_CFG_SIM_ECHO=1)
 # Selftest internal headers (registry.def / wink_selftest_internal.h) live
 # alongside the sources — app doesn't include them but the selftest .c files do.
 # GEN_DIR: generated device_tree.h + app_support.c live in the build tree.
