@@ -79,6 +79,7 @@ add_subdirectory(pal)
 add_subdirectory(dal)
 add_subdirectory(trace)
 add_subdirectory(runtime)
+add_subdirectory(bal)     # BAL (Business Abstraction Layer) — ADR-0023
 
 # Ensure checker runs before wink_runtime compiles (must come AFTER runtime subdir)
 add_dependencies(wink_runtime check_pt_footguns)
