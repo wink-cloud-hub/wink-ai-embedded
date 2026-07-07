@@ -381,7 +381,7 @@ wink_status_t pal_os_sem_take(pal_os_sem_t sem, uint32_t timeout_ms) {
     assert(!pal_os_in_sim_isr_context() && "pal_os_sem_take called from ISR context");
 
     uint32_t self = sim_scheduler_current_id();
-    uint64_t now = sim_scheduler_get_time();
+    uint64_t now = pal_os_get_us();
 
     if (s->count > 0) {
         s->count = 0;
