@@ -17,6 +17,7 @@
 #include "unity.h"
 #include "wink_button_helper.h"
 #include "wink_soft_timer.h"
+#include "wink_tasks.h"
 #include "wink_status.h"
 #include "dal_button.h"
 #include "pal_osal.h"
@@ -212,6 +213,80 @@ void test_poll_ms_period_honoured(void) {
     TEST_ASSERT_EQUAL_INT(1, s_press_count);
 }
 
+/* REGRESSION for timer-slot leak (old samples/common helper called only
+ * wink_soft_timer_stop without destroy, leaking a soft_timer slot per
+ * start/stop cycle).  Cycling start/stop 100 times must keep succeeding
+ * and must leave zero active periodic handles. */
+void test_start_stop_loop_100_does_not_leak(void) {
+    for (int i = 0; i < 100; i++) {
+        TEST_ASSERT_EQUAL_INT(WINK_OK,
+            wink_button_helper_start(&s_btn, 10u));
+        tick_once();   /* exercise one poll callback */
+        TEST_ASSERT_EQUAL_INT(WINK_OK,
+            wink_button_helper_stop(&s_btn));
+    }
+    TEST_ASSERT_EQUAL_UINT32(0, wink_periodic_active_count());
+}
+
+/* Pool saturation: starting WINK_BUTTON_HELPER_MAX concurrent buttons
+ * succeeds; a (MAX+1)-th returns RESOURCE_EXHAUSTED; stopping one frees
+ * a slot so another can be started. */
+void test_pool_exhaustion_and_reclaim(void) {
+    /* s_btn is already initialised by setUp on pin BTN_PIN=0.
+     * We need 3 more distinct button instances on unique pins. */
+    dal_button_t btns[3];
+    const uint16_t extra_pins[3] = { 1, 2, 3 };
+    for (int i = 0; i < 3; i++) {
+        memset(&btns[i], 0, sizeof(btns[i]));
+        sim_set_gpio_ideal(extra_pins[i], true);  /* idle HIGH for active_low */
+        const dal_button_config_t cfg = {
+            .owner = "test_btn_pool",
+            .pin = extra_pins[i],
+            .active_low = true,
+        };
+        TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&btns[i], &cfg));
+    }
+
+    /* Start all 4 (s_btn + 3 extra). */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_button_helper_start(&s_btn, 10u));
+    for (int i = 0; i < 3; i++) {
+        TEST_ASSERT_EQUAL_INT(WINK_OK,
+            wink_button_helper_start(&btns[i], 10u));
+    }
+
+    /* 5th button on yet another pin must fail (start returns EXHAUSTED
+     * before any poll fires, so we don't need sim_set_gpio_ideal for it —
+     * we have only SIM_GPIO_IDEAL_SLOTS=4 ideal slots, and pins 0-3 already
+     * occupy them). */
+    dal_button_t btn5;
+    memset(&btn5, 0, sizeof(btn5));
+    const dal_button_config_t cfg5 = {
+        .owner = "test_btn_pool", .pin = 4, .active_low = true,
+    };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&btn5, &cfg5));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_RESOURCE_EXHAUSTED,
+        wink_button_helper_start(&btn5, 10u));
+
+    /* Stop one; retry — slot should be reclaimed. */
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+        wink_button_helper_stop(&btns[1]));
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+        wink_button_helper_start(&btn5, 10u));
+
+    /* Tear down. */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_button_helper_stop(&s_btn));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_button_helper_stop(&btns[0]));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_button_helper_stop(&btns[2]));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_button_helper_stop(&btn5));
+    for (int i = 0; i < 3; i++) {
+        WINK_IGNORE_RESULT(dal_button_deinit(&btns[i]));
+    }
+    WINK_IGNORE_RESULT(dal_button_deinit(&btn5));
+
+    /* Final leak check. */
+    TEST_ASSERT_EQUAL_UINT32(0, wink_periodic_active_count());
+}
+
 /* ── Runner ───────────────────────────────────────────────────── */
 int main(void) {
     UNITY_BEGIN();
@@ -222,5 +297,7 @@ int main(void) {
     RUN_TEST(test_long_press_detected);
     RUN_TEST(test_stop_halts_further_events);
     RUN_TEST(test_poll_ms_period_honoured);
+    RUN_TEST(test_start_stop_loop_100_does_not_leak);
+    RUN_TEST(test_pool_exhaustion_and_reclaim);
     return UNITY_END();
 }
