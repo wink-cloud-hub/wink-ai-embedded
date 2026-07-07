@@ -19,10 +19,12 @@
 
 add_library(wink_bal STATIC)
 
-# Stage 1 骨架：空 stub 保证静态库能独立链接（无未解析符号）。
-# Stage 2-3 会把 samples/common/ 的 helper 迁移进来，替换此文件。
+# Stage 1 骨架 → Stage 2 迁移：helper 实现文件按需加入。
+# stub.c 保留为空 TU 占位，保证未来暂时无 helper 时库也能链接；
+# 当所有 helper 都迁移完成后可删除。
 target_sources(wink_bal PRIVATE
     src/wink_bal_stub.c
+    src/wink_blink_helper.c
 )
 
 target_include_directories(wink_bal PUBLIC
@@ -43,3 +45,25 @@ target_link_libraries(wink_bal PUBLIC
     wink_runtime
     wink_trace
 )
+
+# ── Layering red-line CI grep guard (ADR-0023 §8) ──────────────
+# bal/include/**/*.h MUST NOT #include any pal_*.h (pal_log.h is
+# exempt — it exposes only LOG macros, no OSAL/HAL types).
+# Scan all BAL public headers at configure time; FATAL_ERROR if
+# a forbidden include is found.
+file(GLOB_RECURSE _BAL_PUBLIC_HEADERS
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/*/*.h)
+set(_BAL_FORBIDDEN_INCLUDE_REGEX "^[[:space:]]*#[[:space:]]*include[[:space:]]*[<\"]pal_.*\.h[>\"]")
+foreach(_h ${_BAL_PUBLIC_HEADERS})
+    file(STRINGS "${_h}" _matches REGEX "${_BAL_FORBIDDEN_INCLUDE_REGEX}")
+    foreach(_m ${_matches})
+        # pal_log.h is the single exempted header (per ADR-0023 §8).
+        if(NOT _m MATCHES "pal_log\\.h")
+            message(FATAL_ERROR
+                "BAL layering violation: ${_h} includes a pal_ header (${_m}). "
+                "ADR-0023 §8 red-line: bal/include/**/*.h must not include pal_*.h "
+                "(pal_log.h only). Move pal_ usage to the .c file.")
+        endif()
+    endforeach()
+endforeach()
