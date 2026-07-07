@@ -12,13 +12,29 @@
 
 #define WASM_SIM_MAX_PINS 40
 
-// 记录每个 GPIO 引脚作为 Echo 引脚时的虚拟物理距离 (cm)
+// 记录每个 GPIO 引脚作为 Echo 引脚时的虚拟物理距离 (cm)。
+//
+// 重要：BSS 的零初始化会把 float 填成 0.0f，但 get_pulse_us() 会把
+// 0.0f 当成 "~2cm" 并返回 116us（命中 minimum 钳位），从而拦截掉
+// js_sim_measure_echo_pulse_us 的 JS 旁路。我们必须在 startup 前
+// 就把所有槽位填成 -1.0f（"未注入" 哨兵），让 JS fallback 路径在
+// host 未调用 pal_wasm_set_ultrasonic_distance() 时生效。
+//
+// 使用 C99/GNU 的 range designated initializer（emcc/Clang 支持）
+// 直接静态初始化全数组，避免依赖 __attribute__((constructor)) 的
+// 时序或 .data 段膨胀（GCC 会把同值重复数组折叠为 .bss + memset）。
 static float s_virtual_ultrasonic_distance[WASM_SIM_MAX_PINS];
 
-void wasm_dev_ultrasonic_reset(void) {
+/* Fill all slots with -1.0f sentinel at startup. */
+__attribute__((constructor))
+static void ultrasonic_boot_init(void) {
     for (int i = 0; i < WASM_SIM_MAX_PINS; i++) {
-        s_virtual_ultrasonic_distance[i] = -1.0f; // -1.0f 表示未注入，走 JS 旁路 fallback
+        s_virtual_ultrasonic_distance[i] = -1.0f;
     }
+}
+
+void wasm_dev_ultrasonic_reset(void) {
+    ultrasonic_boot_init();
 }
 
 // 供 JS 侧/3D 场景同步注入物理距离的导出接口
