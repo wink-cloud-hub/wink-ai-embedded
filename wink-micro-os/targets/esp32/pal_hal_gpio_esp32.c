@@ -504,6 +504,63 @@ wink_status_t pal_gpio_synchronize_interrupt(wink_pin_t pin) {
 
 static wink_pin_t s_rmt_echo_pin_cache = -1;   /* 缓存当前 RMT 绑定 pin（真源在 pal_rmt_esp32.c 的 s_capture_pin，此缓存仅作同-pin 快速判断） */
 
+/* After rmt_new_rx_channel() (called from pal_rmt_pulse_capture_init on a fresh
+ * or re-built channel), ESP-IDF internally calls gpio_set_direction(pin,
+ * GPIO_MODE_INPUT), which clears the output-enable bit previously set by
+ * pal_test_enable_hardware_loopback(). If the pin is supposed to be in
+ * INPUT_OUTPUT loopback mode (e.g. sim_echo driving ECHO high while RMT
+ * listens), we must re-apply the output driver + GPIO-out signal routing
+ * BEFORE rmt_receive() arms the receiver -- otherwise gpio_set_level() in the
+ * sim task cannot drive the pad, RMT sees no edge, and every capture times out.
+ *
+ * Only pins that pal_test_enable_hardware_loopback() previously configured
+ * (recorded in s_gpio_mode[]) get restored; plain INPUT pins are left alone. */
+static void pal_restore_loopback_direction_if_needed(wink_pin_t pin) {
+    if (pin < 0 || pin >= GPIO_NUM_MAX) { return; }
+    if (!s_gpio_mode_known[pin]) { return; }
+    if (s_gpio_mode[pin] != PAL_GPIO_INPUT_OUTPUT) { return; }
+    /* Full re-apply via gpio_config() (MUST match pal_test_enable_hardware_loopback
+     * same-pin path exactly):
+     *   - gpio_set_direction() alone only toggles OE/IE bits but does NOT reset
+     *     the IOMUX FUNC_SEL mux. rmt_new_rx_channel() / rmt_del_channel() on
+     *     IDF v6 can leave the pin muxed to the RMT peripheral, in which case
+     *     GPIO-out writes never reach the pad and RMT sees no edges → num_sym=0.
+     *   - gpio_config(mode=INPUT_OUTPUT, intr=DISABLED, pulls=off) implicitly
+     *     re-selects GPIO as the pin function, clears leftover interrupt state,
+     *     and enables both driver and input buffer — the same post-state as
+     *     pal_test_enable_hardware_loopback left the pin in before RMT was
+     *     torn down.
+     *   - Then belt-and-suspenders: force output mux back to GPIO peripheral
+     *     (some IDF versions touch OUT-side routing on rmt channel delete)
+     *     and re-enable pad input buffer.
+     */
+    gpio_config_t cfg = {
+        .pin_bit_mask = 1ULL << pin,
+        .mode = GPIO_MODE_INPUT_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    (void)gpio_config(&cfg);
+    esp_rom_gpio_connect_out_signal((gpio_num_t)pin, SIG_GPIO_OUT_IDX, false, false);
+    PIN_INPUT_ENABLE(GPIO_PIN_MUX_REG[pin]);
+    /* Diagnostic: log first 3 restores per pin — verify pad reads back low and
+     * that a forced HIGH write is observable on the input buffer (proves the
+     * loopback path is intact after RMT re-init, including post-S9 cold-start). */
+    static uint8_t s_restore_log_count[GPIO_NUM_MAX];
+    if (s_restore_log_count[pin] < 3) {
+        s_restore_log_count[pin]++;
+        int lvl_before = gpio_get_level((gpio_num_t)pin);
+        (void)gpio_set_level((gpio_num_t)pin, 1);
+        int lvl_high = gpio_get_level((gpio_num_t)pin);
+        (void)gpio_set_level((gpio_num_t)pin, 0);
+        int lvl_after = gpio_get_level((gpio_num_t)pin);
+        esp_rom_printf("[pal_gpio] restore loopback pin=%d (#%u) levels: before=%d hi=%d after=%d\n",
+                       (int)pin, (unsigned)s_restore_log_count[pin],
+                       lvl_before, lvl_high, lvl_after);
+    }
+}
+
 static wink_status_t pal_gpio_pulse_in_busy_wait(wink_pin_t pin, bool level,
                                                  uint32_t timeout_us, uint32_t *pulse_us) {
     if (pulse_us == NULL || pin < 0 || pin >= GPIO_NUM_MAX) {
@@ -561,6 +618,12 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level,
         if (pal_rmt_pulse_capture_init(pin, PAL_RMT_EDGE_RISING) == WINK_OK) {
             rmt_ready = true;
             s_rmt_echo_pin_cache = pin;
+            /* pal_rmt_pulse_capture_init calls rmt_new_rx_channel() on fresh/
+             * re-built channels; IDF internally gpio_set_direction(pin, INPUT)
+             * which would kill the output driver on a loopback pin. Restore
+             * INPUT_OUTPUT direction if pal_test_enable_hardware_loopback()
+             * previously set this pin up for self-loop. */
+            pal_restore_loopback_direction_if_needed(pin);
         } else {
             rmt_ready = false;
             s_rmt_echo_pin_cache = -1;
@@ -610,6 +673,11 @@ wink_status_t pal_test_enable_hardware_loopback(wink_pin_t pin_out, wink_pin_t p
         if (err != ESP_OK) { return WINK_ERR_HARDWARE; }
         esp_rom_gpio_connect_out_signal((gpio_num_t)pin_out, SIG_GPIO_OUT_IDX, false, false);
         PIN_INPUT_ENABLE(GPIO_PIN_MUX_REG[pin_out]);
+        /* Record in our PAL mode cache so later code (e.g. pal_gpio_pulse_in
+         * after a lazy RMT re-init) can detect that this pin is in loopback
+         * mode and needs direction restored. Pin_in==pin_out for self-loop. */
+        s_gpio_mode[pin_out] = PAL_GPIO_INPUT_OUTPUT;
+        s_gpio_mode_known[pin_out] = true;
         return WINK_OK;
     }
 

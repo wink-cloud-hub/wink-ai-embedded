@@ -42,6 +42,10 @@
 #include "pal_resource.h"
 #include "internal/pal_test_loopback.h"
 
+#if defined(ESP_PLATFORM)
+#include "esp_rom_sys.h"   /* esp_rom_printf for ISR-safe immediate diagnostics */
+#endif
+
 /* ADR-0017 layer-1 exception: this file is a bringup/test helper and
  * legitimately calls blocking APIs (pal_os_sem_take / pal_os_task_create /
  * pal_os_busy_wait_us).  Silence -Wdeprecated-declarations for strict
@@ -72,6 +76,14 @@ static PAL_ISR void sim_trig_isr(void *arg)
     (void)arg;
     if (s_active != NULL) {
         s_active->trig_count++;
+        /* ISR heartbeat (first 6 edges) — distinguishes "TRIG ISR dead" from
+         * "sim_echo task not running" vs "ECHO not reaching RMT". */
+        if (s_active->trig_count <= 6) {
+#if defined(ESP_PLATFORM)
+            esp_rom_printf("[sim_echo] ISR TRIG#%lu\n",
+                           (unsigned long)s_active->trig_count);
+#endif
+        }
         if (s_active->sem != NULL) {
             WINK_IGNORE_RESULT(pal_os_sem_give_isr(s_active->sem));
         }
@@ -83,6 +95,7 @@ static void sim_echo_task(void *arg)
 {
     sim_echo_state_t *st = (sim_echo_state_t *)arg;
     (void)arg;
+    bool first_pulse = true;
     for (;;) {
         if (pal_os_sem_take(st->sem, WINK_MUTEX_WAIT_FOREVER) != WINK_OK) {
             continue;
@@ -91,24 +104,36 @@ static void sim_echo_task(void *arg)
         /* Acoustic dead-time (~100µs) before echo fires. */
         pal_os_busy_wait_us(100);
 
-        /* Single-segment busy-wait (per [[memory:freertos-same-priority-pulse-stretch]])
-         * to avoid being round-robined with stress tasks at adjacent priority
-         * and stretching the echo pulse.  Interrupts stay enabled so no
-         * IDLE/WDT starvation — IDLE WDT timeout is seconds, pulse is ms-scale
-         * worst case. */
-        /* Re-enable self-loopback on echo_pin: when RMT RX channel is initialized
-         * (rmt_new_rx_channel) ESP-IDF takes over the GPIO matrix and disconnects
-         * the GPIO output signal from the pad, so pal_gpio_write() would not be
-         * visible to RMT. pal_test_enable_hardware_loopback(echo, echo) calls
-         * gpio_config(INPUT_OUTPUT) + esp_rom_gpio_connect_out_signal(SIG_GPIO_OUT_IDX)
-         * + PIN_INPUT_ENABLE, which is the exact same setup S9 (selftest rmt loopback)
-         * uses and is proven to work end-to-end at 100µs precision. On host/wasm this
-         * degrades to a virtual wire (host) or returns UNSUPPORTED (wasm, which uses
-         * the sim-echo bypass path instead); swallowed with WINK_IGNORE_RESULT. */
-        WINK_IGNORE_RESULT(pal_test_enable_hardware_loopback(st->echo_pin, st->echo_pin));
-        WINK_IGNORE_RESULT(pal_gpio_write(st->echo_pin, true));
+        bool before = false, after_hi = false, after_lo = false;
+        WINK_IGNORE_RESULT(pal_gpio_read(st->echo_pin, &before));
+        wink_status_t wh_st = pal_gpio_write(st->echo_pin, true);
+        WINK_IGNORE_RESULT(pal_gpio_read(st->echo_pin, &after_hi));
+
+        /* First-pulse diagnostic: log readback to verify pad actually drives. */
+        if (first_pulse) {
+            first_pulse = false;
+            LOG_I("sim_echo: first fire wh=%d rd: before=%d after_hi=%d pulse=%luus trig_count=%lu",
+                  (int)wh_st, (int)before, (int)after_hi,
+                  (unsigned long)st->pulse_us,
+                  (unsigned long)st->trig_count);
+        }
+
         pal_os_busy_wait_us(st->pulse_us);
         WINK_IGNORE_RESULT(pal_gpio_write(st->echo_pin, false));
+        WINK_IGNORE_RESULT(pal_gpio_read(st->echo_pin, &after_lo));
+        if (st->trig_count == 1) {
+            /* one extra diag on first pulse: readback after LOW */
+            LOG_I("sim_echo: after pulse: after_lo=%d", (int)after_lo);
+        }
+        /* Pulse-completion heartbeat (first 6 pulses) — proves the TRIG ISR
+         * is firing and the mock echo task is actually driving the pin. Critical
+         * for diagnosing "RMT receives no edges after S9 teardown". */
+        if (st->trig_count <= 6) {
+            LOG_I("pulse#%lu done: before=%d hi=%d lo=%d pulse=%luus",
+                  (unsigned long)st->trig_count,
+                  (int)before, (int)after_hi, (int)after_lo,
+                  (unsigned long)st->pulse_us);
+        }
     }
     /* Unreachable, but MISRA/fallthrough hygiene: */
     pal_os_task_delete(NULL);
@@ -149,8 +174,12 @@ wink_status_t wink_sim_ultrasonic_echo_start(dal_ultrasonic_t *dev,
 
     /* Promote ECHO to INPUT_OUTPUT + GPIO-out signal routing so the mock task
      * can drive it while RMT listens on the same pin. Same mechanism as S9
-     * (pal_test_enable_hardware_loopback) -- see tick callback for why
-     * gpio_set_direction alone is insufficient after RMT init. */
+     * (pal_test_enable_hardware_loopback) -- plain gpio_set_direction is
+     * insufficient because RMT init routes the output mux away from the GPIO
+     * peripheral. Only done ONCE here; per-pulse re-configuration races with
+     * rmt_receive() and breaks captures -- pal_gpio_pulse_in() re-applies
+     * loopback routing after any lazy RMT re-init (e.g. after S9 rmt.self_loopback
+     * deinit/re-init on a different pin). */
     WINK_IGNORE_RESULT(pal_test_enable_hardware_loopback(echo_pin, echo_pin));
 
     /* Publish s_active BEFORE arming the ISR so sim_trig_isr sees it. */
