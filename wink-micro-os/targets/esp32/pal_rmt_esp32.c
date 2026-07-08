@@ -66,10 +66,10 @@ static bool IRAM_ATTR rmt_rx_done_callback(rmt_channel_handle_t channel,
     BaseType_t high_task_wakeup = pdFALSE;
     /* 符号已由 rmt_receive 写入 s_rx_buf（edata->received_symbols 指向它）；仅记录数量即可 */
     s_rx_num_symbols = edata->num_symbols;
-    /* Diagnostic: first few ISR fires per boot — helps diagnose "ISR never fires" cases. */
+    /* Diagnostic: first 20 ISR fires per boot — covers init + post-S7 steady state. */
     static volatile int s_isr_log = 0;
     int n = s_isr_log++;
-    if (n < 8) {
+    if (n < 20) {
         esp_rom_printf("[rmt] ISR done num_sym=%lu pin=%d\n",
                        (unsigned long)edata->num_symbols, (int)s_capture_pin);
     }
@@ -188,10 +188,9 @@ wink_status_t pal_rmt_pulse_capture_arm(void) {
         esp_rom_printf("[rmt] arm: rmt_receive err=%d pin=%d\n", (int)err, (int)s_capture_pin);
         return WINK_ERR_HARDWARE;
     }
-    /* Log first 8 arms per boot so post-S9 re-arms are visible (was capped at 3,
-     * which hid the fact that post-S9 arm was never called or silently failing). */
+    /* Log first 20 arms per boot so post-S7 re-arms are visible. */
     static int s_arm_log = 0;
-    if (s_arm_log++ < 8) {
+    if (s_arm_log++ < 20) {
         esp_rom_printf("[rmt] arm OK pin=%d chan=%p\n", (int)s_capture_pin, s_rmt_rx_chan);
     }
     return WINK_OK;
@@ -214,13 +213,18 @@ wink_status_t pal_rmt_pulse_capture_wait_armed(uint32_t timeout_us, uint32_t *pu
     TickType_t wait_ticks = pdMS_TO_TICKS((timeout_us + 999) / 1000 + 1);
     BaseType_t ok = xSemaphoreTake(s_rx_done_sem, wait_ticks);
     static int s_wait_log = 0;
+    static int s_timeout_log = 0;
     if (ok != pdPASS) {
-        /* 超时恢复：disable → enable 复位 RMT RX 状态机。*/
-        esp_rom_printf("[rmt] wait_armed TIMEOUT num_sym=%lu pin=%d\n",
-                       (unsigned long)s_rx_num_symbols, (int)s_capture_pin);
-        LOG_E("rmt: wait_armed timeout (%lu us, wait_ticks=%lu), s_rx_num_symbols=%lu, pin=%d",
-              (unsigned long)timeout_us, (unsigned long)wait_ticks,
-              (unsigned long)s_rx_num_symbols, (int)s_capture_pin);
+        /* 超时恢复：disable → enable 复位 RMT RX 状态机。
+         * Log pin level at timeout + first 10 timeouts to diagnose ISR/sim_echo death. */
+        int pin_level = gpio_get_level((gpio_num_t)s_capture_pin);
+        esp_rom_printf("[rmt] wait_armed TIMEOUT num_sym=%lu pin=%d level=%d\n",
+                       (unsigned long)s_rx_num_symbols, (int)s_capture_pin, pin_level);
+        if (s_timeout_log++ < 10) {
+            LOG_E("rmt: wait_armed timeout (%lu us, wait_ticks=%lu), s_rx_num_symbols=%lu, pin=%d",
+                  (unsigned long)timeout_us, (unsigned long)wait_ticks,
+                  (unsigned long)s_rx_num_symbols, (int)s_capture_pin);
+        }
         rmt_disable(s_rmt_rx_chan);
         esp_err_t start_err = rmt_enable(s_rmt_rx_chan);
         if (start_err != ESP_OK) {
@@ -228,7 +232,7 @@ wink_status_t pal_rmt_pulse_capture_wait_armed(uint32_t timeout_us, uint32_t *pu
         }
         return WINK_ERR_TIMEOUT;
     }
-    if (s_wait_log++ < 5) {
+    if (s_wait_log++ < 20) {
         esp_rom_printf("[rmt] wait_armed DONE num_sym=%lu pin=%d\n",
                        (unsigned long)s_rx_num_symbols, (int)s_capture_pin);
         for (size_t i = 0; i < s_rx_num_symbols && i < 4; i++) {
@@ -313,7 +317,7 @@ wink_status_t pal_rmt_pulse_capture_wait(uint32_t timeout_us, uint32_t *pulse_us
      * pin. If we see 0→1→0 edges but wait_armed still returns num_sym=0, the
      * fault is in RMT signal routing / GPIO-matrix / not in the echo source. */
     static int s_wait_diag_log = 0;
-    if (s_wait_diag_log < 8) {
+    if (s_wait_diag_log < 20) {
         s_wait_diag_log++;
         int lvl_start = gpio_get_level((gpio_num_t)s_capture_pin);
         esp_rom_printf("[rmt] wait pin=%d: start level=%d (first 10ms):",
