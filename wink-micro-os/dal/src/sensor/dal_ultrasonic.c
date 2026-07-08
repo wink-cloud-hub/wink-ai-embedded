@@ -216,9 +216,16 @@ wink_status_t dal_ultrasonic_request_measurement(dal_ultrasonic_t *dev) {
         dev->last_status = cap;
         dev->state = DAL_ULTRASONIC_ERROR;
     } else {
+        /* Publish data BEFORE state transitions to READY so cross-core
+         * readers (telemetry) always see consistent (distance, status,
+         * state=READY) tuple.  Compiler-barrier prevents reordering. */
         dev->last_pulse_us = pulse_us;
         dev->last_distance = dal_pulse_us_to_cm(pulse_us);
         dev->last_status = WINK_OK;
+#if defined(ESP_PLATFORM)
+        /* Xtensa memw: ensure all prior writes reach RAM before state=READY */
+        __asm__ __volatile__("memw" ::: "memory");
+#endif
         dev->state = DAL_ULTRASONIC_READY;
     }
     return WINK_OK;   /* request 成功（已触发）；结果经 get_cached 读 */
@@ -229,14 +236,32 @@ wink_status_t dal_ultrasonic_get_cached_distance(const dal_ultrasonic_t *dev, fl
     if (dev == NULL || distance_cm == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
 
-    switch (dev->state) {
+    /* Snapshot volatile fields to guarantee a consistent read across SMP cores. */
+    float              dist  = dev->last_distance;
+    wink_status_t      lstat = dev->last_status;
+    dal_ultrasonic_state_t st = dev->state;
+
+    switch (st) {
         case DAL_ULTRASONIC_READY:
-            *distance_cm = dev->last_distance;
+            *distance_cm = dist;
             return WINK_OK;
         case DAL_ULTRASONIC_MEASURING:
+            /* Phase-lock guard: if a previous measurement already succeeded
+             * (last_status == WINK_OK), return the cached distance instead
+             * of BUSY.  Without this, a telemetry reader whose period is an
+             * exact integer multiple of the sonar tick (e.g. 2000ms = 4×500ms)
+             * can permanently land in the ~28ms MEASURING window because the
+             * higher-priority sonar task has already claimed the CPU and
+             * entered RMT wait.  Reporting stale-but-valid data is the
+             * correct telemetry behaviour — BUSY should mean "no data yet",
+             * not "data is one measurement-cycle old". */
+            if (lstat == WINK_OK) {
+                *distance_cm = dist;
+                return WINK_OK;
+            }
             return WINK_ERR_BUSY;
         case DAL_ULTRASONIC_ERROR:
-            return dev->last_status;
+            return lstat;
         case DAL_ULTRASONIC_IDLE:
         default:
             return WINK_ERR_BUSY;   /* 无测量数据：当作未就绪 */

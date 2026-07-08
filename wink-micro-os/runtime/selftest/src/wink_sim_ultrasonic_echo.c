@@ -70,21 +70,15 @@ typedef struct {
  * shim stateless. */
 static sim_echo_state_t *s_active = NULL;
 
-/* Diagnostic counters (extern'd for PAL debug reads after timeouts). */
-volatile uint32_t g_sim_echo_trig_count = 0;
-volatile uint32_t g_sim_echo_pulse_done = 0;
-
 /* ── ISR (TRIG rising edge) ────────────────────────────────────────────── */
 static PAL_ISR void sim_trig_isr(void *arg)
 {
     (void)arg;
     if (s_active != NULL) {
         s_active->trig_count++;
-        g_sim_echo_trig_count = s_active->trig_count;
-        /* ISR heartbeat — first 20 edges to cover init + post-S9 steady state.
-         * No cap beyond 20 keeps boot-time noise bounded while still letting
-         * us see whether the ISR dies after S7 task deletion at ~2s. */
-        if (s_active->trig_count <= 20) {
+        /* ISR heartbeat (first 8 edges) — distinguishes "TRIG ISR dead" from
+         * "sim_echo task not running" vs "ECHO not reaching RMT". */
+        if (s_active->trig_count <= 8) {
 #if defined(ESP_PLATFORM)
             esp_rom_printf("[sim_echo] ISR TRIG#%lu\n",
                            (unsigned long)s_active->trig_count);
@@ -131,15 +125,21 @@ static void sim_echo_task(void *arg)
             /* one extra diag on first pulse: readback after LOW */
             LOG_I("sim_echo: after pulse: after_lo=%d", (int)after_lo);
         }
-        /* Pulse-completion heartbeat — first 20 pulses. Proves the TRIG ISR
+        /* Pulse-completion heartbeat (first 8 pulses) — proves the TRIG ISR
          * is firing and the mock echo task is actually driving the pin. Critical
-         * for diagnosing "RMT receives no edges after S9/S7 teardown". */
-        g_sim_echo_pulse_done = st->trig_count;
-        if (st->trig_count <= 20) {
-            esp_rom_printf("[sim_echo] pulse#%lu done: wh=%d before=%d hi=%d lo=%d pulse=%luus\n",
+         * for diagnosing "RMT receives no edges after S9 teardown". */
+        if (st->trig_count <= 8) {
+#if defined(ESP_PLATFORM)
+            esp_rom_printf("[sim_echo] pulse#%lu done: before=%d hi=%d lo=%d pulse=%luus\n",
                            (unsigned long)st->trig_count,
-                           (int)wh_st, (int)before, (int)after_hi, (int)after_lo,
+                           (int)before, (int)after_hi, (int)after_lo,
                            (unsigned long)st->pulse_us);
+#else
+            LOG_I("pulse#%lu done: before=%d hi=%d lo=%d pulse=%luus",
+                  (unsigned long)st->trig_count,
+                  (int)before, (int)after_hi, (int)after_lo,
+                  (unsigned long)st->pulse_us);
+#endif
         }
     }
     /* Unreachable, but MISRA/fallthrough hygiene: */
