@@ -43,10 +43,10 @@ typedef struct {
  */
 typedef struct {
     /* —— 4B —— */
-    float                   last_distance;   ///< 最近一次测量距离 (cm)
-    uint32_t                last_pulse_us;   ///< Phase 4：上次 echo 脉宽 μs
-    wink_status_t           last_status;     ///< Phase 4：上次测量结果状态（ERROR 时为具体错误码）
-    dal_ultrasonic_state_t  state;           ///< Phase 4：非阻塞测量状态机
+    volatile float          last_distance;   ///< 最近一次测量距离 (cm) (volatile: SMP cross-core reader)
+    volatile uint32_t       last_pulse_us;   ///< Phase 4：上次 echo 脉宽 μs (volatile)
+    volatile wink_status_t  last_status;     ///< Phase 4：上次测量结果状态（ERROR 时为具体错误码）(volatile)
+    volatile dal_ultrasonic_state_t  state;  ///< Phase 4：非阻塞测量状态机 (volatile)
     /* —— 2B —— */
     dal_ultrasonic_config_t config;          ///< 配置副本（trig_pin, echo_pin, use_rmt），由 init 从 cfg 拷贝
     /* —— 1B —— */
