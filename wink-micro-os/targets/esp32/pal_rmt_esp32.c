@@ -25,7 +25,9 @@
 
 #if defined(ESP_PLATFORM)
 #include "driver/rmt_rx.h"
+#include "driver/gpio.h"
 #include "esp_err.h"
+#include "esp_rom_sys.h"   /* esp_rom_delay_us */
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 
@@ -64,6 +66,13 @@ static bool IRAM_ATTR rmt_rx_done_callback(rmt_channel_handle_t channel,
     BaseType_t high_task_wakeup = pdFALSE;
     /* 符号已由 rmt_receive 写入 s_rx_buf（edata->received_symbols 指向它）；仅记录数量即可 */
     s_rx_num_symbols = edata->num_symbols;
+    /* Diagnostic: first few ISR fires per boot — helps diagnose "ISR never fires" cases. */
+    static volatile int s_isr_log = 0;
+    int n = s_isr_log++;
+    if (n < 8) {
+        esp_rom_printf("[rmt] ISR done num_sym=%lu pin=%d\n",
+                       (unsigned long)edata->num_symbols, (int)s_capture_pin);
+    }
     xSemaphoreGiveFromISR(s_rx_done_sem, &high_task_wakeup);
     return high_task_wakeup == pdTRUE;
 }
@@ -88,6 +97,8 @@ wink_status_t pal_rmt_pulse_capture_init(wink_pin_t pin, pal_rmt_edge_t start_ed
         if (s_capture_pin == pin) {
             return WINK_OK;
         }
+        esp_rom_printf("[rmt] init: switching pin %d -> %d, deinit old chan\n",
+                       (int)s_capture_pin, (int)pin);
         pal_rmt_pulse_capture_deinit();
     }
 
@@ -103,6 +114,7 @@ wink_status_t pal_rmt_pulse_capture_init(wink_pin_t pin, pal_rmt_edge_t start_ed
     };
     esp_err_t err = rmt_new_rx_channel(&rx_cfg, &s_rmt_rx_chan);
     if (err != ESP_OK) {
+        esp_rom_printf("[rmt] init: rmt_new_rx_channel(pin=%d) err=%d\n", (int)pin, (int)err);
         s_rmt_rx_chan = NULL;
         return WINK_ERR_HARDWARE;
     }
@@ -125,6 +137,7 @@ wink_status_t pal_rmt_pulse_capture_init(wink_pin_t pin, pal_rmt_edge_t start_ed
         s_rx_done_sem = NULL;
         rmt_del_channel(s_rmt_rx_chan);
         s_rmt_rx_chan = NULL;
+        esp_rom_printf("[rmt] init: register_callbacks(pin=%d) err=%d\n", (int)pin, (int)err);
         return WINK_ERR_HARDWARE;
     }
 
@@ -136,11 +149,13 @@ wink_status_t pal_rmt_pulse_capture_init(wink_pin_t pin, pal_rmt_edge_t start_ed
         s_rx_done_sem = NULL;
         rmt_del_channel(s_rmt_rx_chan);
         s_rmt_rx_chan = NULL;
+        esp_rom_printf("[rmt] init: rmt_enable(pin=%d) err=%d\n", (int)pin, (int)err);
         return WINK_ERR_HARDWARE;
     }
 
     s_capture_pin = pin;
     s_rx_num_symbols = 0;
+    esp_rom_printf("[rmt] init: OK pin=%d chan=%p\n", (int)pin, s_rmt_rx_chan);
     return WINK_OK;
 }
 
@@ -170,7 +185,14 @@ wink_status_t pal_rmt_pulse_capture_arm(void) {
     };
     esp_err_t err = rmt_receive(s_rmt_rx_chan, s_rx_buf, sizeof(s_rx_buf), &recv_cfg);
     if (err != ESP_OK) {
+        esp_rom_printf("[rmt] arm: rmt_receive err=%d pin=%d\n", (int)err, (int)s_capture_pin);
         return WINK_ERR_HARDWARE;
+    }
+    /* Log first 8 arms per boot so post-S9 re-arms are visible (was capped at 3,
+     * which hid the fact that post-S9 arm was never called or silently failing). */
+    static int s_arm_log = 0;
+    if (s_arm_log++ < 8) {
+        esp_rom_printf("[rmt] arm OK pin=%d chan=%p\n", (int)s_capture_pin, s_rmt_rx_chan);
     }
     return WINK_OK;
 }
@@ -191,11 +213,11 @@ wink_status_t pal_rmt_pulse_capture_wait_armed(uint32_t timeout_us, uint32_t *pu
      * 待 ≈ pulse + 25ms，调用方必须给出 ≥ pulse_max + idle_thres + 裕量的超时。 */
     TickType_t wait_ticks = pdMS_TO_TICKS((timeout_us + 999) / 1000 + 1);
     BaseType_t ok = xSemaphoreTake(s_rx_done_sem, wait_ticks);
+    static int s_wait_log = 0;
     if (ok != pdPASS) {
-        /* 超时恢复：disable → enable 复位 RMT RX 状态机。
-         * 信号量残留：超时后 s_rx_done_sem 可能有残留 Give，但下一次 arm 入口的
-         * xSemaphoreTake(s_rx_done_sem, 0) 会清空，故此处不必额外 Take。
-         * 旧实现误用 rmt_receive(NULL,...) 取消——违反 v5.x RX 契约，改为状态机复位。*/
+        /* 超时恢复：disable → enable 复位 RMT RX 状态机。*/
+        esp_rom_printf("[rmt] wait_armed TIMEOUT num_sym=%lu pin=%d\n",
+                       (unsigned long)s_rx_num_symbols, (int)s_capture_pin);
         LOG_E("rmt: wait_armed timeout (%lu us, wait_ticks=%lu), s_rx_num_symbols=%lu, pin=%d",
               (unsigned long)timeout_us, (unsigned long)wait_ticks,
               (unsigned long)s_rx_num_symbols, (int)s_capture_pin);
@@ -205,6 +227,16 @@ wink_status_t pal_rmt_pulse_capture_wait_armed(uint32_t timeout_us, uint32_t *pu
             return WINK_ERR_HARDWARE;
         }
         return WINK_ERR_TIMEOUT;
+    }
+    if (s_wait_log++ < 5) {
+        esp_rom_printf("[rmt] wait_armed DONE num_sym=%lu pin=%d\n",
+                       (unsigned long)s_rx_num_symbols, (int)s_capture_pin);
+        for (size_t i = 0; i < s_rx_num_symbols && i < 4; i++) {
+            esp_rom_printf("[rmt] sym[%lu]: L0=%u D0=%u L1=%u D1=%u\n",
+                           (unsigned long)i,
+                           (unsigned)s_rx_buf[i].level0, (unsigned)s_rx_buf[i].duration0,
+                           (unsigned)s_rx_buf[i].level1, (unsigned)s_rx_buf[i].duration1);
+        }
     }
 
     /* 解析 RMT symbols → 脉宽
@@ -273,6 +305,32 @@ wink_status_t pal_rmt_pulse_capture_wait(uint32_t timeout_us, uint32_t *pulse_us
     if (wink_status_is_error(s)) {
         return s;
     }
+
+    /* ── ECHO-pin level diagnostic (first 8 waits post-boot) ──
+     * After arm, poll the bound pin for ~10ms at 500us resolution to see whether
+     * the echo pulse actually reaches the pad. If levels stay 0 across the poll
+     * window, the upstream driver (sim_echo / TRIG ISR) is no longer driving the
+     * pin. If we see 0→1→0 edges but wait_armed still returns num_sym=0, the
+     * fault is in RMT signal routing / GPIO-matrix / not in the echo source. */
+    static int s_wait_diag_log = 0;
+    if (s_wait_diag_log < 8) {
+        s_wait_diag_log++;
+        int lvl_start = gpio_get_level((gpio_num_t)s_capture_pin);
+        esp_rom_printf("[rmt] wait pin=%d: start level=%d (first 10ms):",
+                       (int)s_capture_pin, lvl_start);
+        uint32_t trace = 0;
+        for (int i = 0; i < 20; i++) {
+            esp_rom_delay_us(500);
+            int l = gpio_get_level((gpio_num_t)s_capture_pin);
+            trace = (trace << 1) | (l & 1u);
+        }
+        /* Print 20-bit trace as 5 hex digits; MSB = oldest sample, LSB = newest.
+         * All 0s means pin stayed low for 10ms (no echo pulse arrived). */
+        int lvl_end = gpio_get_level((gpio_num_t)s_capture_pin);
+        esp_rom_printf(" trace=%05lx end=%d\n",
+                       (unsigned long)trace, lvl_end);
+    }
+
     /* Backward-compat wrapper: arm then wait. The wait_armed() call is marked
      * WINK_BLOCKING (deprecated in cooperative strict mode); this wrapper is
      * itself the legacy blocking API so calling it here is intentional. */
