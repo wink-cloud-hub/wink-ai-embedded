@@ -1,0 +1,319 @@
+=== Wink-Micro-OS ESP32 Firmware ===
+Runtime task created (stack=8192 bytes, handle=0x3ffb9670)
+Wink-Micro-OS ESP32 Runtime started
+  Reset reason: 1
+[rmt] init: OK pin=19 chan=0x3ffb96f4
+
+S3: PASS (button poll helper, period=10ms)
+S8: PASS (WDT trigger registered)
+S2: PASS (led blink, h=2)sim_echo: armed (trig=18 echo=19 sim=50.0cm pulse=2915us)
+[si[pec_gpio] restore loopback pin=19 (#1) levels: before=0 hi=1 after=0
+[rmt] arm OK pin=19 chan=0x3ffb96f4
+S10: PASS (echo sim armed, simulated_dist=50cm)sim_echo: first fire wh=0 rd: before=0 after_hi=1 pulse=2915us trig_count=1sim_ec[rmt] ISR done num_sym=1 pin=19
+[rmt] wait_armed DONE num_sym=1 pin=19
+[rmt] sym[0]: L0=1 D0=3034 L1=0 D1=0
+ho: after pulse: after_[s[rmt]ho] ISR TRIG#2
+OK pin=19 chan=0x3ffb96f4
+lo=0pulse#1 done: before=0 hi=1 lo=0 pulse=2915us
+S10: PASS (sonar polling helper, period=500ms)
+S1: PASS (telemetry default started)uptime=108ms heap=275060 stack_min=1736 faults=0 warns=0 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0[selftest] pwm_router.freq_isolation: PASS metric=16 (50Hz vs 1kHz -> different timer)pulse#2 done: before=0 hi=1 lo=0[rmt] wait_armed TIMEOUT num_sym=1 pin=19
+ pulse=2915us[selftest] i2c.bus_scan: PASS metric=0 (empty bus (all NACK) — driver healthy)r[rmt] ISR done num_sym=1 pin=19
+mt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=1, pin=19[selftest] smp.resource_stress: PASS metric=10000 (single-thread ok; SMP tasks spawned[rmt] init: switching pin 19 -> 4, deinit old chan
+[rmt] init: OK pin=4 chan=0x3ffb96f4
+[rmt] arm OK pin=4 chan=0x3ffb96f4
+[rmt] ISR done num_sym=1 pin=4
+[rmt] wait_armed DONE num_sym=1 pin=4
+[rmt] sym[0]: L0=1 D0=108 L1=0 D1=0
+ (background))[selftest] gpio.isr_roundtrip: PASS metric=1 (ISR registered (firing requires physical/hardware signal))[selftest] rmt.self_loopback: PASS metric=108 (100us pulse captured OK)
+S5: PASS (pwm_router.freq_isolation, metric=16)
+S6: PASS (i2c.bus_scan, metric=0)
+S7: PASS (smp.resource_stress, metric=10000)
+S4: PASS (gpio.isr_roundtrip, metric=1)
+S9: PASS (rmt.self_loopback, metric=108)
+S11: PASS (deinit loop, e2e verified)
+[rmt] init: OK pin=19 chan=0x3ffb96f4
+[pal_gpio] restore loopback pin=19 (#2) levels: before=0 hi=1 after=0
+[rmt] arm OK pin=19 chan=0x3ffb96f4
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+init done. Long-press BOOT (>3s) to trigger WDT reset test.rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Heap baseline (post-init): 264896 bytes
+Uptime: 1s  Stack: [rmt] arm OK pin=19 chan=0x3ffb96f4
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+used=1372B free=6820B  Heap: 264896B (delta+0)  Faults: 0  Warns: 1
+[rmt] arm OK pin=19 chan=0x3ffb96f4
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), [rmt] arm OK pin=19 chan=0x3ffb96f4
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=2166ms heap=264896 stack_min=808 faults=0 warns=1 isrs=0 sonar_st=-2 dist=-1.00cm reset=1 abn=0Uptime: 2s  Stack: used=1372B free=6820B  Heap: 264896B (delta+0)  Faults: 0  Warns: 1
+[rmt] arm OK pin=19 chan=0x3ffb96f4
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 3s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=4107ms heap=273320 stack_min=808 faults=0 wa[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 4s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 5s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=6108ms heap=273320 stack_min=808 faults=0 wa[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 6s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 7s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=8108ms heap=273320 stack_min=808 faults=0 wa[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 8s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 9s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=10108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 10s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 11s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=12108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 12s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 13s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=14108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 14s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 15s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=16108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 16s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 17s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=18108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 18s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 19s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=20108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 20s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 21s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=22108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 22s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 23s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=24108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 24s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 25s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=26108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 26s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 27s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=28108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 28s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 29s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=30108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 30s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 31s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=32108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 32s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 33s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=34108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 34s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 35s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=36108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 36s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 37s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=38108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 38s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 39s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=40108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 40s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 41s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=42108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 42s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 43s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=44108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 44s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 45s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=46108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 46s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 47s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=48108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 48s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 49s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=50108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 50s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 51s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=52108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 52s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 53s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=54108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 54s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 55s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=56108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 56s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 57s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=58108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 58s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 59s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=60108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 60s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 61s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=62108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 62s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 63s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=64108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 64s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 65s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=66108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 66s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 67s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=68108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 68s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 69s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=70108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 70s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 71s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=72108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 72s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 73s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=74108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 74s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 75s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=76108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 76s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 77s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=78108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 78s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 79s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=80108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 80s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 81s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=82108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 82s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 83s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=84108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 84s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 85s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=86108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 86s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 87s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=88108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 88s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 89s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=90108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 90s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 91s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19uptime=92108ms heap=273320 stack_min=808 faults=0 w[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+arns=1 isrs=0 sonar_st=-6 dist=-1.00cm reset=1 abn=0rmt: wait_armed timeout (60000 us, wait_ticks=61), s_rx_num_symbols=0, pin=19Uptime: 92s  Stack: used=1372B free=6820B  Heap: 273320B (delta+8424)  Faults: 0  Warns: 1
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
+[rmt] wait_armed TIMEOUT num_sym=0 pin=19
