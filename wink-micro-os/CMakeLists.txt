@@ -158,8 +158,8 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
         #   - 64 KiB 是当前 AI 生成调用链深度的起步值；若未来 getStackMax()
         #     持续贴近 80%，应同步放大此值而非放宽 CI 阈值。
         "-sASYNCIFY_STACK_SIZE=65536"
-        "-sEXPORTED_FUNCTIONS=['_main']"
-        "-sEXPORTED_RUNTIME_METHODS=['ccall','cwrap','HEAPU8','Asyncify']"
+        "-sEXPORTED_FUNCTIONS=['_main','_malloc','_free']"
+        "-sEXPORTED_RUNTIME_METHODS=['ccall','cwrap','HEAPU8','Asyncify','callMain']"
         "-sMODULARIZE=1"
         "-sEXPORT_NAME=WasmSandbox"
         "-sWASM_BIGINT=1"               # ADR-0009 Wave 2：64 位整型 ↔ JS BigInt 原生映射，杜绝 number 隐式失精
