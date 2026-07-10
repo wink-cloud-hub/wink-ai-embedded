@@ -569,6 +569,14 @@ wink_status_t pal_sim_scheduler_run(const struct wink_app_callbacks* callbacks,
         wcet_threshold_us *= 10ULL;
     }
     bool bypass_wcet = (getenv("WINK_SIM_BYPASS_WCET") != NULL);
+#if defined(__EMSCRIPTEN__)
+    /* Browser Workbench harness: Asyncify sleep-resolve may execute many
+     * scheduler ticks synchronously; 5ms wall-clock WCET false-positives (8002).
+     * Default bypass unless WINK_SIM_ENFORCE_WCET=1 opts in. */
+    if (getenv("WINK_SIM_ENFORCE_WCET") == NULL) {
+        bypass_wcet = true;
+    }
+#endif
 
     /* 红线 15：进入主调度 loop 前清空 current_id */
     sim_scheduler_set_current(SIM_SCHED_NO_READY);
