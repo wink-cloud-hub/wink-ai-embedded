@@ -33,6 +33,8 @@ option(WINK_USE_LED        "Enable DAL LED driver"        ON)
 option(WINK_USE_BUTTON     "Enable DAL Button driver"     ON)
 option(WINK_USE_SERVO      "Enable DAL Servo driver"      ON)
 option(WINK_USE_SSD1306    "Enable DAL SSD1306 OLED"      ON)
+set(WINK_SSD1306_FONT "ascii_upper" CACHE STRING
+    "SSD1306 5x7 font when WINK_USE_SSD1306=ON: minimal | ascii_upper")
 option(WINK_USE_ULTRASONIC "Enable DAL Ultrasonic sensor" ON)
 option(WINK_USE_GPS        "Enable DAL GPS driver"        ON)
 option(WINK_USE_EEPROM     "Enable DAL EEPROM driver"     ON)
@@ -88,7 +90,26 @@ _wink_dal_enable(WINK_USE_LED        WINK_USE_LED        output    led)
 # actuator
 _wink_dal_enable(WINK_USE_SERVO      WINK_USE_SERVO      actuator  servo)
 # display
-_wink_dal_enable(WINK_USE_SSD1306    WINK_USE_SSD1306    display   ssd1306)
+if(WINK_USE_SSD1306)
+    target_sources(dal PRIVATE
+        include/display/dal_ssd1306.h
+        src/display/dal_ssd1306.c
+        src/display/dal_ssd1306_font_internal.h
+    )
+    if(WINK_SSD1306_FONT STREQUAL "minimal")
+        target_sources(dal PRIVATE src/display/dal_ssd1306_font_5x7_minimal.c)
+        target_compile_definitions(dal PUBLIC WINK_SSD1306_FONT_MINIMAL=1)
+    elseif(WINK_SSD1306_FONT STREQUAL "ascii_upper")
+        target_sources(dal PRIVATE src/display/dal_ssd1306_font_5x7_ascii_upper.c)
+        target_compile_definitions(dal PUBLIC WINK_SSD1306_FONT_ASCII_UPPER=1)
+    else()
+        message(FATAL_ERROR
+            "WINK_SSD1306_FONT must be 'minimal' or 'ascii_upper', got '${WINK_SSD1306_FONT}'")
+    endif()
+    target_compile_definitions(dal PUBLIC WINK_USE_SSD1306=1)
+else()
+    # Header stubs only — no font TU linked.
+endif()
 # sensor
 _wink_dal_enable(WINK_USE_ULTRASONIC WINK_USE_ULTRASONIC sensor    ultrasonic)
 # communication
