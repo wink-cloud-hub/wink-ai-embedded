@@ -1,0 +1,30 @@
+# Embedded frontend CI
+name: embedded-frontend-ci
+
+on:
+  push:
+    paths:
+      - 'embedded-frontend/**'
+      - '.github/workflows/embedded-frontend-ci.yml'
+  pull_request:
+    paths:
+      - 'embedded-frontend/**'
+      - '.github/workflows/embedded-frontend-ci.yml'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: embedded-frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: embedded-frontend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
