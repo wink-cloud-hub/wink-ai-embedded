@@ -115,16 +115,31 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
         ${WINK_APP_SOURCES}                # ← App 注入（Task 1.2）
         # pal_pwm_router.c 现由 pal_common OBJECT 库贡献（P1-P3，2026-07-04）
         $<TARGET_OBJECTS:pal_common>)
+
+    # ADR-0017/0025 Stage 5: sim target defaults to STRICT_NONBLOCKING=1 for
+    # app source files. PAL sources are NOT affected (they implement the
+    # blocking APIs). Escape hatch: -DWINK_STRICT_NONBLOCKING=0.
+    set(WINK_STRICT_NONBLOCKING 1 CACHE STRING "Enable strict nonblocking for app sources")
+    if(WINK_STRICT_NONBLOCKING)
+        set_source_files_properties(${WINK_APP_SOURCES} PROPERTIES
+            COMPILE_DEFINITIONS WINK_STRICT_NONBLOCKING=1)
+    endif()
+
+    # ADR-0017 Stage 5 Task 5.3: LIGHT-context blocking assertions → hard fault
+    # (assert/abort) in sim debug builds. ASSERTIONS=1 is already enabled below.
+    target_compile_definitions(wink_simulator PRIVATE WINK_PT_DEBUG)
     # 注：wink_dev_config.c 已迁至 runtime/src/，随 wink_runtime STATIC 库链入，
     # 无需在此显式列出（旧位置 pal/src/wink_dev_config.c 已删除）。
     # 契约断言：wink_simulator 必须 link wink_runtime（否则 wasm_entry.c 里的
     # wink_app.h 找不到、wink_runtime_run 也 undef）。link 顺序无关紧要，这里
     # 显式列出便于人肉 grep 时定位。
-    target_link_libraries(wink_simulator PRIVATE pal dal wink_runtime)
+    target_link_libraries(wink_simulator PRIVATE pal dal wink_runtime wink_bal)
     target_include_directories(wink_simulator PRIVATE
         ${WASM_EXTRA_INCLUDE_DIRS}
         # App 本身的 header（如 device_tree.h）
         ${WINK_APP_DIR}
+        # App codegen 输出目录（如 oled_dashboard 使用 codegen 生成 device_tree.h）
+        ${WINK_APP_INCLUDE_DIRS}
         # DAL 子分类头（供 App 直接 #include "dal_servo.h" 等）
         ${CMAKE_CURRENT_SOURCE_DIR}/dal/include
         ${CMAKE_CURRENT_SOURCE_DIR}/dal/include/input

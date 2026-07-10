@@ -2,6 +2,9 @@
  * @file wink_blink_helper.h (samples/common compatibility shim)
  * @brief Forwarding include — BAL migration (ADR-0023 Task 2.1/2.5).
  *
+ * @deprecated Include <output/wink_led_blink_helper.h> from wink_bal directly.
+ *             This shim will be removed in the next release.
+ *
  * The LED blink helper has moved to the BAL (Business Abstraction Layer).
  * New code should include <wink_blink_helper.h> directly from the wink_bal
  * public include surface; this shim exists so existing samples that still

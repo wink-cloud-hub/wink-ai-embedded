@@ -25,6 +25,7 @@ add_executable(app_avoidance_car_e2e
     ${CMAKE_CURRENT_SOURCE_DIR}/../../test/test_app_e2e.c
     $<TARGET_OBJECTS:pal_host>)
 wink_sample_apply_common(app_avoidance_car_e2e)
+wink_sample_link_common(app_avoidance_car_e2e)
 target_link_libraries(app_avoidance_car_e2e PRIVATE dal)
 add_test(NAME app_avoidance_car_e2e COMMAND app_avoidance_car_e2e)
 
@@ -37,5 +38,6 @@ add_executable(test_avoidance_override
     ${CMAKE_CURRENT_SOURCE_DIR}/../../test/unity/unity.c
     $<TARGET_OBJECTS:pal_host>)
 wink_sample_apply_common(test_avoidance_override ${CMAKE_CURRENT_SOURCE_DIR}/../../test/unity)
+wink_sample_link_common(test_avoidance_override)
 target_link_libraries(test_avoidance_override PRIVATE dal)
 add_test(NAME test_avoidance_override COMMAND test_avoidance_override)

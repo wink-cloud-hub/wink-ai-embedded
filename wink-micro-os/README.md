@@ -9,12 +9,12 @@
 内核采用 **Ports & Adapters（A\*）** 架构：`pal`（纯契约 INTERFACE）← `dal` ← `runtime` + `trace`（两横切一等 peer 层），`targets/`（wasm/host/esp32）为适配器端口，App/BAL 仅 link 公共 include 面。
 
 > **术语澄清**：
-> - ✅ **App 层**：用户代码/AI 生成的一次性业务逻辑（`app_init/app_loop/app_on_fault`）
-> - ✅ **BAL 层**：Business Algorithm Layer（业务算法工具库），可复用的算法组件（如 PID、卡尔曼滤波），**独立仓库维护**，由 App 层调用
+> - ✅ **App 层**：用户代码/AI 生成的一次性业务逻辑（`init_status` / `app_loop` / `on_fault_status`）
+> - ✅ **BAL 层**（[ADR-0023](../docs/design/decisions/0023-bal-business-abstraction-layer.md)）：**Business Abstraction Layer**，器件级可复用 helper（LED blink、button poll、sonar、servo sweep、telemetry 等），位于 `bal/`，由 App 显式 `*_start()`，**禁止** include `pal_*.h`
 
 ```
 ┌────────────────────────────────────────────────────────┐
-│  App（AI 生成，一次性业务） / BAL（独立仓，可复用算法）  │
+│  App（AI 生成，一次性业务） + BAL（器件 helper，bal/ 正式层） │
 ├────────────────────────────────────────────────────────┤
 │  runtime（回调注入主循环） + trace（Golden Trace） ◄ peer 一等层
 ├────────────────────────────────────────────────────────┤
@@ -26,8 +26,8 @@
 └────────────────────────────────────────────────────────┘
 ```
 
-1. **App (应用逻辑层)**：由低代码编排生成的业务逻辑。它经 `wink_app_callbacks_t` 回调注入 runtime，并调用 BAL 算法库或 DAL 暴露的只读/只写业务 API，不对接任何底层的 I2C/GPIO 硬件。
-2. **BAL (业务算法层)**：可复用的算法组件库（如 PID、卡尔曼滤波、传感器融合等），独立仓库维护，由 App 层调用。
+1. **App (应用逻辑层)**：由低代码/codegen 生成的业务逻辑。经 `wink_app_callbacks_t`（`init_status` / `loop` / `on_fault_status` / `on_boot`）注入 runtime；调用 BAL helper 或 DAL 语义 API，**不对接**裸 GPIO/I2C。
+2. **BAL (业务抽象层)**：`bal/` 静态库 `wink_bal`。强类型双轨 API（`_start` 初学者默认 / `_start_ex` 专家覆盖栈/优先级/核）。典型用法：`wink_button_helper_start(&btn, USER_BUTTON_AUTO_POLL_MS)`。迁移指南见 [CHANGELOG.md](./CHANGELOG.md#baldcst-迁移指南2026-07-06-重构)。
 3. **runtime + trace**：一等 peer 层。`runtime` 用回调注入跑协作式主循环（无 `extern app_*` 强依赖，二进制解耦）；`trace` 用静态环形缓冲记录故障（零动态分配）。DAL/PAL 驱动**禁**直接调 `wink_trace_*`，故障捕获收敛在 App 回调。
 4. **DAL (器件抽象层)**：管理具体的传感器和执行器（如超声波测距仪、舵机、温湿度计）。
    * **双模运行能力**：在仿真模式下，DAL 驱动仅旁路最底层物理信号来源（trigger 时序、echo 脉宽），换算与超时判定两端同源；在真机模式下，它调用 PAL 接口操作物理引脚。
@@ -47,8 +47,11 @@ wink-micro-os/
 ├── pal/                        # 平台抽象层 (INTERFACE 契约库，仅头无 .c)
 │   └── include/  pal.h · wink_status.h · pal_hal.h · pal_osal.h
 ├── dal/                        # 器件抽象层 (STATIC，两端同源)
-│   ├── include/  dal_ultrasonic.h · dal_servo.h
-│   └── src/      dal_ultrasonic.c · dal_servo.c
+│   ├── include/  dal_ultrasonic.h · dal_servo.h · dal_led.h · …
+│   └── src/
+├── bal/                        # 业务抽象层 (STATIC，ADR-0023)
+│   ├── include/  wink_helper_opts.h · output/wink_blink_helper.h · input/wink_button_helper.h · …
+│   └── src/      wink_blink_helper.c · wink_button_helper.c · …
 ├── runtime/                    # OS 运行时 (STATIC，回调注入主循环)
 │   ├── include/  wink_app.h · wink_runtime.h
 │   └── src/      wink_runtime.c
@@ -66,7 +69,7 @@ wink-micro-os/
 └── samples/                    # 应用样例（每个含 device_tree + app_callbacks）
     ├── avoidance_car/          # 避障小车：ultrasonic + servo 端到端
     ├── oled_dashboard/         # OLED 仪表盘：button + LED + SSD1306
-    ├── devkitc_smoke/          # ESP32 DevKitC 真机冒烟（S1-S8）
+    ├── devkitc_smoke/          # ESP32 DevKitC 真机冒烟（S1–S11，含 deinit 循环）
     ├── dual_task_demo/         # 协作式双任务 demo（ADR-0013/0014）
     ├── resource_conflict/      # 反例：pal_resource 冲突检测（期望 init 失败）
     └── unisim_smoke/           # wasm 桥接冒烟（Node/浏览器 wasm 端跑，非 host）
@@ -114,14 +117,7 @@ Stub 静态解析 wasm 二进制 imports 集合，与 `wasm_bridge.h` SSOT 交�
 ```bash
 idf.py build
 ```
-> ⚠️ **ESP32 真机代码状态（2026-06）**：GPIO/PWM/I2C/OSAL/WDT/资源治理/RMT 超声波捕获均有实现，
-> **但尚未经 `idf.py` 编译验证，亦未经硬件验证**——本仓 host 测试矩阵（§3.3）不编译 `targets/esp32`，
-> 故 ESP32 真机函数体（`#if defined(ESP_PLATFORM)` 内）未被任何 CI/本地构建覆盖。
-> 已完成：PAL 契约符号（`WINK_ERR_HARDWARE` / `WINK_MUTEX_WAIT_FOREVER` / `PAL_RESET_REASON_*`）补齐、
-> 平台判定宏统一为 `ESP_PLATFORM`、RMT 接收缓冲按 ESP-IDF v5.x 契约重写、host 端契约编译探针
-> （`test_pal_contract`）守卫符号完整性。**仍待**：`idf.py build` 编译通过 + Wave B 硬件验证
-> （示波器测 RMT 中断延迟 < 10us、HC-SR04 测距精度）后，方可声称真机可用。
-> 完整 ESP-IDF 移植（含 device_tree 物理引脚路由 P1-3、LEDC timer 分组 P2-2）见后续 Phase 3 / Wave B。
+> **ESP32 真机（2026-07-10）**：devkitc_smoke **S1–S11 全 PASS**（含 5 轮 init→deinit 循环，无 GPIO 占用/WDT）。构建：`idf.py -C esp32_firmware build`。历史注记：Wave B 示波器级扩展验证（RMT 延迟、测距精度）仍可按 [实施计划](../docs/design/implementation-plans/2026-07-06-bal-dcst-refactor-plan.md) L2 表 ⏭️ 项单独执行。
 
 ### 3.3 在本机（host）构建并运行测试
 
@@ -154,13 +150,13 @@ cd build-test; ctest --output-on-failure
 
 看到 `100% tests passed` 即通过。只跑某项：`ctest -R servo --output-on-failure`；直接看单个 exe 输出：`.\test\test_dal_servo.exe`。
 
-**测试矩阵（35 个可执行，2026-07-04 快照，全部 host 端 GCC 通过）：**
+**测试矩阵（52 个可执行 + wasm_node_smoke，2026-07-10 快照）：**
 
 按梯队组织（完整清单与运行策略见 [TESTING.md](./TESTING.md)）：
 
 | 梯队 | 测试数 | 覆盖 |
 |---|---:|---|
-| **Tier 1 · Core / 门禁** | 12 | PAL 契约（`test_pal_contract`）、pal_irq/resource/pwm_router/storage、runtime、trace、actuator_registry、host_pal |
+| **Tier 1 · Core / 门禁** | 14+ | PAL 契约、BAL helper（button/blink/sonar/servo/telemetry）、runtime change_period、blocking strict |
 | **Tier 2 · DAL 外设** | 9 | servo/ultrasonic/ultrasonic_sim/led/button/ssd1306、dev_config、avoidance_override、button_debounce_e2e |
 | **Tier 3 · 协作式调度器（ADR-0013/0014）** | 9 | sim_scheduler / _e2e / _determinism / _stack_clamp / _wcet_fault / _zombie_gc、sim_mutex_e2e、single_task_semantic_regression、sim_physical |
 | **Tier 4 · Sample e2e** | 5 | app_avoidance_car / oled_dashboard / devkitc_smoke / dual_task_demo、sample_resource_conflict |

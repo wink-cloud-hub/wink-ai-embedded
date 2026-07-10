@@ -1,0 +1,18 @@
+{
+  "app_name": "avoidance_car",
+  "board": "esp32_devkitc",
+  "devices": {
+    "front_radar": {
+      "type": "ultrasonic",
+      "trig_pin": 4,
+      "echo_pin": 5,
+      "use_rmt": false
+    },
+    "neck_servo": {
+      "type": "servo",
+      "pwm_channel": 0,
+      "min_pulse_ms": 0.5,
+      "max_pulse_ms": 2.5
+    }
+  }
+}

@@ -258,6 +258,7 @@ target_link_libraries(test_button_helper PRIVATE wink_bal)
 target_include_directories(test_button_helper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/input)
+target_compile_definitions(test_button_helper PRIVATE WINK_STRICT_NONBLOCKING=1)
 
 # ADR-0023 Task 2.1: BAL wink_led_blink_helper.
 # wink_bal PUBLIC-links wink_runtime (which contains wink_runtime_tasks.c and
@@ -271,6 +272,7 @@ target_link_libraries(test_blink_helper PRIVATE wink_bal)
 target_include_directories(test_blink_helper PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/output)
+target_compile_definitions(test_blink_helper PRIVATE WINK_STRICT_NONBLOCKING=1)
 
 # ADR-0023 Task 2.3: BAL wink_telemetry_helper.
 add_wink_host_test(test_bal_telemetry test_bal_telemetry.c)

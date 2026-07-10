@@ -64,6 +64,7 @@ bool wink_soft_timer_in_light_dispatch(void);
 #ifdef WINK_PT_DEBUG
 #include <assert.h>
 extern void wink_trace_fault(uint32_t fault_code);
+#define WINK_ASSERT(cond) assert(cond)
 #define WINK_ASSERT_NONBLOCKING() do { \
     if (wink_pt_in_context()) { \
         wink_trace_fault((uint32_t)WINK_ERR_PANIC); \
@@ -75,6 +76,7 @@ extern void wink_trace_fault(uint32_t fault_code);
     } \
 } while (0)
 #else
+#define WINK_ASSERT(cond) ((void)0)
 #define WINK_ASSERT_NONBLOCKING() ((void)0)
 #endif
 

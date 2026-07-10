@@ -2,6 +2,9 @@
  * @file wink_telemetry_helper.h (samples/common compatibility shim)
  * @brief Forwarding include — BAL migration (ADR-0023 Task 2.3/2.5).
  *
+ * @deprecated Include <comm/wink_telemetry_helper.h> from wink_bal directly.
+ *             This shim will be removed in the next release.
+ *
  * The telemetry helper has moved to the BAL (Business Abstraction Layer).
  * New code should include <comm/wink_telemetry_helper.h> directly from the
  * wink_bal public include surface; this shim exists so samples that
