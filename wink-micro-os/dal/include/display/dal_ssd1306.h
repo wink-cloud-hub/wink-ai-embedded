@@ -75,7 +75,9 @@ wink_status_t dal_ssd1306_clear(dal_ssd1306_t *dev);
  * @brief 在帧缓冲中绘制文本（不触发 I2C；渲染后须 dal_ssd1306_flush 刷到屏幕）。
  * @param col 起始列（0 ~ width-1）
  * @param page 起始页（0 ~ pages-1；每页 8 像素高）
- * @param str 以 null 结尾的 ASCII 字符串；不支持的字符渲染为空格。
+ * @param str 以 null 结尾的 ASCII 字符串。
+ *   默认字库（WINK_SSD1306_FONT=ascii_upper）：空格、0-9、A-Z/a-z、!；
+ *   其它字符渲染为空格。minimal 字库仅含 demo 常用字母子集。
  * @note API Contract:
  *   - Preconditions: dev/str 非 NULL；initialized。
  *   - Blocking: No。

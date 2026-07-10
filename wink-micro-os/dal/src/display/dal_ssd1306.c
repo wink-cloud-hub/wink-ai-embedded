@@ -1,4 +1,5 @@
 #include "dal_ssd1306.h"
+#include "dal_ssd1306_font_internal.h"
 #include "pal_hal.h"
 #include "pal_resource.h"
 #include <string.h>
@@ -11,51 +12,6 @@
 #if defined(__GNUC__) || defined(__clang__)
 #  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
-
-/* ---- 极简 5×7 字体（MVP 范围：空格、数字 0-9、大写字母 A,H,I,O,P,S,T,W、感叹号） ----
- * 每个字形 5 字节（5 列 × 7 行），LSB=顶行像素。不支持的字符渲染为空格。
- * 字体数据可后续由 codegen / 外部工具扩展，不影响 API 契约。 */
-#define FONT_ENTRIES 20
-
-static const uint8_t s_font[FONT_ENTRIES][5] = {
-    {0x00, 0x00, 0x00, 0x00, 0x00}, /*  0: space       */
-    {0x3E, 0x51, 0x49, 0x45, 0x3E}, /*  1: '0'         */
-    {0x00, 0x42, 0x7F, 0x40, 0x00}, /*  2: '1'         */
-    {0x42, 0x61, 0x51, 0x49, 0x46}, /*  3: '2'         */
-    {0x21, 0x41, 0x45, 0x4B, 0x31}, /*  4: '3'         */
-    {0x18, 0x14, 0x12, 0x7F, 0x10}, /*  5: '4'         */
-    {0x27, 0x45, 0x45, 0x45, 0x39}, /*  6: '5'         */
-    {0x3C, 0x4A, 0x49, 0x49, 0x30}, /*  7: '6'         */
-    {0x01, 0x71, 0x09, 0x05, 0x03}, /*  8: '7'         */
-    {0x36, 0x49, 0x49, 0x49, 0x36}, /*  9: '8'         */
-    {0x06, 0x49, 0x49, 0x29, 0x1E}, /* 10: '9'         */
-    {0x7E, 0x11, 0x11, 0x11, 0x7E}, /* 11: 'A'         */
-    {0x7F, 0x08, 0x08, 0x08, 0x7F}, /* 12: 'H'         */
-    {0x00, 0x41, 0x7F, 0x41, 0x00}, /* 13: 'I'         */
-    {0x3E, 0x41, 0x41, 0x41, 0x3E}, /* 14: 'O'         */
-    {0x7F, 0x09, 0x09, 0x09, 0x06}, /* 15: 'P'         */
-    {0x26, 0x49, 0x49, 0x49, 0x32}, /* 16: 'S'         */
-    {0x01, 0x01, 0x7F, 0x01, 0x01}, /* 17: 'T'         */
-    {0x2F, 0x48, 0x48, 0x48, 0x3F}, /* 18: 'W'         */
-    {0x00, 0x00, 0x5F, 0x00, 0x00}, /* 19: '!'         */
-};
-
-static int font_lookup(char c) {
-    if (c == ' ')  return 0;
-    if (c >= '0' && c <= '9') return 1 + (c - '0');
-    switch (c) {
-        case 'A': return 11;
-        case 'H': return 12;
-        case 'I': return 13;
-        case 'O': return 14;
-        case 'P': return 15;
-        case 'S': return 16;
-        case 'T': return 17;
-        case 'W': return 18;
-        case '!': return 19;
-        default:  return -1; /* 不支持 → 空格 */
-    }
-}
 
 /* ---- SSD1306 标准 init 命令序列（128×64，水平寻址，页式） ---- */
 static const uint8_t s_init_cmds_64[] = {
@@ -168,11 +124,10 @@ wink_status_t dal_ssd1306_draw_text(dal_ssd1306_t *dev, uint16_t col, uint8_t pa
     uint16_t x = col;
     for (const char *p = str; *p != '\0'; p++) {
         if (x + SSD1306_FONT_GLYPH_W > dev->config.width) { break; }
-        int idx = font_lookup(*p);
-        if (idx < 0) { idx = 0; } /* 不支持的字符 → 空格 */
+        const uint8_t *glyph = dal_ssd1306_font_glyph(*p);
         uint16_t base = (uint16_t)page * dev->config.width + x;
         for (int c = 0; c < SSD1306_FONT_GLYPH_W; c++) {
-            dev->framebuffer[base + c] = s_font[idx][c];
+            dev->framebuffer[base + c] = glyph[c];
         }
         x += SSD1306_FONT_WIDTH; /* 5 像素字宽 + 1 像素间距 */
     }
