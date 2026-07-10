@@ -30,20 +30,22 @@ set(WASM_SMOKE_SOURCE_DIR  "${CMAKE_CURRENT_SOURCE_DIR}")
 set(WASM_SMOKE_BINARY_DIR  "${CMAKE_BINARY_DIR}/wasm-unisim-smoke")
 set(WASM_SMOKE_STUB_JS     "${CMAKE_CURRENT_SOURCE_DIR}/targets/wasm/wink_sim_stub.js")
 
-# Override CMAKE_COMMAND to wrap cmake with emcmake. ExternalProject_Add
-# constructs the configure command as ${CMAKE_COMMAND} -S <src> -B <bin> ${CMAKE_ARGS},
-# so this expands to `emcmake cmake -S <src> -B <bin> -DTARGET_PLATFORM=wasm ...`
-# which is exactly the documented invocation (see wink_sim_stub.js header comment).
-# BUILD_COMMAND is left at its default (`${CMAKE_COMMAND} --build <bin>`), which is
-# plain cmake (emcmake only needs to wrap configure).
+# Host cmake for the build step — must NOT be the emcmake-wrapped command.
+set(_WASM_SMOKE_HOST_CMAKE "${CMAKE_COMMAND}")
+
+# Override CMAKE_COMMAND to wrap cmake with emcmake for configure only.
+# Default BUILD_COMMAND would reuse the overridden CMAKE_COMMAND and pass
+# toolchain flags to `cmake --build`, which CMake 4.x rejects.
 ExternalProject_Add(wasm_unisim_smoke_build
     SOURCE_DIR       "${WASM_SMOKE_SOURCE_DIR}"
     BINARY_DIR       "${WASM_SMOKE_BINARY_DIR}"
-    CMAKE_COMMAND    "${EMCMAKE_EXECUTABLE}" "${CMAKE_COMMAND}"
+    CMAKE_COMMAND    "${EMCMAKE_EXECUTABLE}" "${_WASM_SMOKE_HOST_CMAKE}"
+    BUILD_COMMAND    "${_WASM_SMOKE_HOST_CMAKE}" --build <BINARY_DIR>
     CMAKE_ARGS
         -DTARGET_PLATFORM=wasm
         -DWINK_APP_DIR=samples/unisim_smoke
         -DCMAKE_BUILD_TYPE=Debug
+        -DWINK_STRICT_NONBLOCKING=0
     INSTALL_COMMAND  ""
     TEST_COMMAND     ""
     BUILD_ALWAYS     ON

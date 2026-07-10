@@ -2,6 +2,10 @@
  * @file wink_sim_ultrasonic_echo.h (samples/common compatibility shim)
  * @brief Forwarding include — runtime/selftest migration (ADR-0023 Task 2.4/2.5).
  *
+ * @deprecated Include runtime/selftest/src/wink_sim_ultrasonic_echo.h directly
+ *             (bringup/selftest internal only). This shim will be removed in
+ *             the next release.
+ *
  * The S10 ultrasonic echo-simulator helper has moved to runtime/selftest/src/
  * (a bringup/selftest internal helper, NOT a stable public API). This shim
  * exists so existing samples that #include "wink_sim_ultrasonic_echo.h"

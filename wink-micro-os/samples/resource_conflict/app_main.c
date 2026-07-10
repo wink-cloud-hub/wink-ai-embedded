@@ -31,6 +31,7 @@
 #include "pal_resource.h"
 #include "pal_log.h"
 #include "wink_status.h"
+#include "wink_blocking_region.h"
 
 /* stdlib.h: exit(). This sample is host-only by design (skipped on wasm and
  * ESP32 in CMakeLists.txt), so a direct stdlib dep is acceptable — no
@@ -38,13 +39,6 @@
  * LOG_*() to match the project-standard log channel. */
 #include <stdlib.h>
 
-
-/* ADR-0017 层 1 例外：本 TU 合法调用 WINK_BLOCKING API。抑制
- * -Wdeprecated-declarations 使 -Werror 下仍能编译；严格模式
- * (-DWINK_STRICT_NONBLOCKING=1) 下相关 API 声明直接消失，本 TU 会链接失败——那是设计意图。 */
-#if defined(__GNUC__) || defined(__clang__)
-#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
 
 #define ASSERT_EQ(expected, actual, msg) do {                                                  \
     wink_status_t _e = (expected);                                                             \
@@ -128,6 +122,10 @@ static void case_i2c_addr_conflict(void)
  * 这是 ADR-0012 "契约诚实优先于静默降级" 的活文档样本。 */
 static void case_stub_honesty(void)
 {
+    /* ADR-0017 init-phase exception: stub-honesty test calls WINK_BLOCKING
+     * APIs (dal_gps_init, dal_eeprom_init) to verify they return
+     * NOT_SUPPORTED, not fake WINK_OK. */
+    WINK_INIT_BLOCKING_REGION_BEGIN
     dal_gps_t gps = {0};
     const dal_gps_config_t gps_cfg = {
         .owner = "test_gps", .uart_port = 1, .baudrate = 9600, .rx_buffer_size = 256
@@ -142,6 +140,7 @@ static void case_stub_honesty(void)
     };
     ASSERT_EQ(WINK_ERR_UNSUPPORTED, dal_eeprom_init(&ee, &ee_cfg),
               "Stub honesty: dal_eeprom_init must return NOT_SUPPORTED (no fake success)");
+    WINK_INIT_BLOCKING_REGION_END
     LOG_I("stub honesty (ADR-0012): unimplemented DALs return NOT_SUPPORTED, not fake WINK_OK");
 }
 

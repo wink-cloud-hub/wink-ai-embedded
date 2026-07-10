@@ -1,0 +1,17 @@
+{
+  "app_name": "unisim_smoke",
+  "board": "esp32_devkitc",
+  "devices": {
+    "board_led": {
+      "type": "led",
+      "pin": 2,
+      "active_high": true
+    },
+    "us_sensor": {
+      "type": "ultrasonic",
+      "trig_pin": 12,
+      "echo_pin": 13,
+      "use_rmt": false
+    }
+  }
+}

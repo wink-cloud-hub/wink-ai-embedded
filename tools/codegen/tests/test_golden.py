@@ -72,6 +72,51 @@ class GoldenTest(unittest.TestCase):
                 )
                 self.fail("\n".join(lines))
 
+    def test_multi_device_golden(self) -> None:
+        """Test servo + ssd1306 drivers + I2C bus-owner codegen."""
+        golden_json = _HERE / "golden_multi_device.json"
+        golden_expected = _HERE / "golden_multi_expected"
+        self.assertTrue(golden_json.exists(),
+                        f"golden config missing: {golden_json}")
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            rc = app_codegen.main([
+                "--config", str(golden_json),
+                "--out-dir", str(out),
+            ])
+            self.assertEqual(rc, 0, "codegen exited non-zero")
+
+            generated = sorted(out.iterdir())
+            self.assertTrue(generated, "codegen produced no output files")
+
+            missing = []
+            mismatched = []
+            for gen in generated:
+                exp = golden_expected / gen.name
+                if not exp.exists():
+                    missing.append(gen.name)
+                    continue
+                got = gen.read_text(encoding="utf-8")
+                want = exp.read_text(encoding="utf-8")
+                if got.rstrip("\n") != want.rstrip("\n"):
+                    mismatched.append(gen.name)
+
+            if missing or mismatched:
+                lines = []
+                if missing:
+                    lines.append(
+                        "missing golden expected files: " + ", ".join(missing)
+                    )
+                if mismatched:
+                    lines.append(
+                        "output differs from golden: " + ", ".join(mismatched)
+                    )
+                lines.append(
+                    "regenerate with: python tools/codegen/app_codegen.py "
+                    f"--config {golden_json} --out-dir {golden_expected}"
+                )
+                self.fail("\n".join(lines))
+
     def test_invalid_board(self) -> None:
         # Invalid board name should exit with 2 (validation error)
         cfg = {

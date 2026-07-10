@@ -7,8 +7,13 @@
  * at least once. This app's job is only to CALL the C side of each import so
  * emcc doesn't tree-shake the symbol out.
  *
- * All calls live in app_init() so the Node test can drive one wasm boot and
- * observe end state without spinning app_loop.
+ * All calls live in app_init_status() so the Node test can drive one wasm boot
+ * and observe end state without spinning app_loop.
+ *
+ * Note: device_tree.h is hand-written (not codegen) because this sample
+ * exercises raw PAL bridge imports with explicit pin/channel constants, not
+ * DAL-level device init. Codegen would claim resources that conflict with
+ * the raw PAL calls below.
  */
 #define LOG_TAG "unisim_smoke"
 
@@ -16,74 +21,52 @@
 #include "wink_app.h"
 #include "wink_runtime.h"
 #include "wink_status.h"
+#include "wink_blocking_region.h"
 #include "pal_log.h"
-#include "pal_hal.h"   /* pal_gpio_write/read, pal_pwm_init/set_duty, pal_i2c_transfer,
-                          pal_gpio_enable_interrupt/disable_interrupt, pal_gpio_pulse_in */
-#include "hal/pal_i2c.h" /* pal_i2c_bus_init */
-#include "pal_resource.h" /* pal_resource_claim */
-#include "pal_osal.h"     /* pal_os_sleep_ms, pal_os_busy_wait_us, pal_os_get_ms/us */
-#include "pal_irq.h"      /* PAL_ISR macro */
-
-/* ADR-0017 层 1 例外：本 TU 合法调用 WINK_BLOCKING API。抑制
- * -Wdeprecated-declarations 使 -Werror 下仍能编译；严格模式
- * (-DWINK_STRICT_NONBLOCKING=1) 下相关 API 声明直接消失，本 TU 会链接失败——那是设计意图。 */
-#if defined(__GNUC__) || defined(__clang__)
-#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
+#include "pal_hal.h"
+#include "hal/pal_i2c.h"
+#include "pal_resource.h"
+#include "pal_osal.h"
+#include "pal_irq.h"
 
 static PAL_ISR void smoke_isr(void *arg)
 {
     (void)arg;
-    /* No-op — the presence of the registered ISR is what we care about;
-     * the Node test observes the poll pump via wasm ticks. */
 }
 
-static void app_init(void)
+static void app_on_boot(const wink_boot_info_t *info)
 {
-    /* --- js_pal_gpio_write / js_pal_gpio_read ---
-     * PAL requires the pin to be claimed via pal_resource_claim before
-     * write/read will route to js_pal_gpio_*. pal_gpio_init is a no-op on
-     * the wasm target (placeholder for hardware init). */
+    (void)info;
+}
+
+static wink_status_t app_init_status(void)
+{
+    /* --- js_pal_gpio_write / js_pal_gpio_read --- */
     (void)pal_gpio_init(SMOKE_LED_PIN, PAL_GPIO_OUTPUT_PUSH_PULL);
     (void)pal_resource_claim(PAL_RESOURCE_GPIO_PIN, SMOKE_LED_PIN, "smoke_led");
     (void)pal_gpio_write(SMOKE_LED_PIN, true);
     bool level = false;
     (void)pal_gpio_read(SMOKE_LED_PIN, &level);
 
-    /* --- js_pal_pwm_set_duty ---
-     * pal_pwm_init claims the channel internally. */
+    /* --- js_pal_pwm_set_duty --- */
     if (!wink_status_is_error(pal_pwm_init(SMOKE_PWM_CHANNEL, SMOKE_PWM_FREQ_HZ))) {
         (void)pal_pwm_set_duty(SMOKE_PWM_CHANNEL, 50.0f);
     }
 
-    /* --- js_pal_i2c_transfer ---
-     * Eager-init the I2C bus to avoid the lazy-init WARN path. On the wasm
-     * target SDA/SCL pins are ignored, so pass 0/0; real-hardware smoke
-     * samples resolve pins via pal_i2c_port_pins(). */
+    /* --- js_pal_i2c_transfer --- */
     (void)pal_i2c_bus_init(SMOKE_I2C_PORT, 0, 0, 100000);
     uint8_t wbuf[2] = { 0xAA, 0xBB };
     uint8_t rbuf[2] = { 0 };
     (void)pal_i2c_transfer(SMOKE_I2C_PORT, SMOKE_I2C_ADDR, wbuf, sizeof(wbuf), rbuf, sizeof(rbuf));
 
-    /* --- js_pal_register_interrupt / js_pal_deregister_interrupt ---
-     * ISR pin must also be claimed for read-back; enable_interrupt handles
-     * its own service install but the GPIO resource claim is still required. */
+    /* --- js_pal_register_interrupt / js_pal_deregister_interrupt --- */
     (void)pal_gpio_init(SMOKE_ISR_PIN, PAL_GPIO_INPUT);
     (void)pal_resource_claim(PAL_RESOURCE_GPIO_PIN, SMOKE_ISR_PIN, "smoke_isr");
     (void)pal_gpio_enable_interrupt(SMOKE_ISR_PIN, PAL_GPIO_INTR_RISING_EDGE, smoke_isr, NULL);
-    /* Then disable to hit the deregister path in the same run: */
     (void)pal_gpio_disable_interrupt(SMOKE_ISR_PIN);
-    /* Re-enable so the Node test can inject one via irqQueue.push and see
-     * the poll pump deliver it. */
     (void)pal_gpio_enable_interrupt(SMOKE_ISR_PIN, PAL_GPIO_INTR_RISING_EDGE, smoke_isr, NULL);
 
-    /* --- HC-SR04 ultrasonic timing via generic PAL primitives ---
-     *     ADR-0017: no dedicated js_sim_*_ultrasonic bridge hooks exist. The
-     *     ultrasonic simulation is driven end-to-end through generic PAL APIs:
-     *     pal_gpio_write for the TRIG pulse and pal_gpio_pulse_in for ECHO
-     *     capture — both routed to the standard js_pal_gpio_* / js_pal_rmt_*
-     *     bridge imports. Both TRIG and ECHO pins must be claimed for
-     *     pal_gpio_pulse_in to not short-circuit on the resource check. */
+    /* --- HC-SR04 ultrasonic timing via generic PAL primitives --- */
     (void)pal_gpio_init(SMOKE_ULTRASONIC_TRIG, PAL_GPIO_OUTPUT_PUSH_PULL);
     (void)pal_gpio_init(SMOKE_ULTRASONIC_ECHO, PAL_GPIO_INPUT);
     (void)pal_resource_claim(PAL_RESOURCE_GPIO_PIN, SMOKE_ULTRASONIC_TRIG, "smoke_us_trig");
@@ -94,36 +77,41 @@ static void app_init(void)
     uint32_t pulse_us = 0;
     (void)pal_gpio_pulse_in(SMOKE_ULTRASONIC_ECHO, true, 0, &pulse_us);
 
-    /* --- js_pal_os_get_ms / js_pal_os_get_us / js_pal_os_sleep_ms / js_pal_os_busy_wait_us ---
-     * Values printed via LOG_I so the calls survive LTO. */
+    /* --- js_pal_os_get_ms / js_pal_os_get_us / js_pal_os_sleep_ms / js_pal_os_busy_wait_us --- */
     uint64_t t0_us = pal_os_get_us();
     uint64_t t0_ms = pal_os_get_ms();
+#ifndef WINK_STRICT_NONBLOCKING
+    WINK_INIT_BLOCKING_REGION_BEGIN
     pal_os_sleep_ms(5);
+    WINK_INIT_BLOCKING_REGION_END
+#endif
     pal_os_busy_wait_us(100);
     uint64_t t1_us = pal_os_get_us();
     uint64_t t1_ms = pal_os_get_ms();
     LOG_I("init complete t0_us=%llu t0_ms=%llu t1_us=%llu t1_ms=%llu",
           (unsigned long long)t0_us, (unsigned long long)t0_ms,
           (unsigned long long)t1_us, (unsigned long long)t1_ms);
+
+    return WINK_OK;
 }
 
 static void app_loop(void)
 {
-    /* Idle loop; Node smoke drives progression via advance() on the JS clock,
-     * which resolves the sleep(5) promise on the next tick boundary. */
 }
 
-static void app_on_fault(uint32_t code)
+static wink_status_t app_on_fault_status(uint32_t code)
 {
     (void)code;
+    return WINK_OK;
 }
 
 const wink_app_callbacks_t *wink_app_get_callbacks(void)
 {
     static const wink_app_callbacks_t cb = {
-        .init     = app_init,
-        .loop     = app_loop,
-        .on_fault = app_on_fault,
+        .init_status     = app_init_status,
+        .loop            = app_loop,
+        .on_fault_status = app_on_fault_status,
+        .on_boot         = app_on_boot,
     };
     return &cb;
 }

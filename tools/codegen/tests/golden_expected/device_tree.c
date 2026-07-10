@@ -8,6 +8,10 @@
 #include "device_tree.h"
 #include "wink_fault.h"
 #include "wink_actuator_registry.h"
+#ifdef WINK_PT_DEBUG
+#include "wink_pt_debug.h"
+#include "wink_tasks.h"
+#endif
 #include "pal_log.h"
 
 /* ── Static device instances (zero malloc) ── */
