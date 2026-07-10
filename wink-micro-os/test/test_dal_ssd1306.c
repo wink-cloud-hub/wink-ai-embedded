@@ -120,9 +120,28 @@ void test_draw_text_modifies_framebuffer(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ssd1306_init(&dev, &cfg));
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ssd1306_clear(&dev));
 
-    /* 绘制数字 "0"（字体索引 1，首列 0x3E 非零） */
+    /* 绘制数字 "0"（首列 0x3E 非零） */
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ssd1306_draw_text(&dev, 0, 0, "0"));
     TEST_ASSERT_NOT_EQUAL(0x00, dev.framebuffer[0]);
+}
+
+void test_draw_text_ascii_upper_letter_b(void) {
+    static dal_ssd1306_t dev = {0};
+    dal_ssd1306_config_t cfg = { .i2c_port = 0, .i2c_addr = 0x3C,
+                                  .width = 128, .height = 64, .owner = "oled0" };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ssd1306_init(&dev, &cfg));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ssd1306_clear(&dev));
+
+#if defined(WINK_SSD1306_FONT_MINIMAL)
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ssd1306_draw_text(&dev, 0, 0, "B"));
+    TEST_ASSERT_EQUAL_INT(0x00, dev.framebuffer[0]);
+#else
+    /* 'B' 首列 0x7F（ascii_upper 字库） */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ssd1306_draw_text(&dev, 0, 0, "B"));
+    TEST_ASSERT_EQUAL_INT(0x7F, dev.framebuffer[0]);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ssd1306_draw_text(&dev, 6, 0, "z"));
+    TEST_ASSERT_EQUAL_INT(0x61, dev.framebuffer[6]);
+#endif
 }
 
 void test_flush_generates_i2c_transfers(void) {
@@ -207,6 +226,7 @@ int main(void) {
     RUN_TEST(test_init_128x32_ok_and_flush_transfers_4_pages);
     RUN_TEST(test_clear_zeros_framebuffer);
     RUN_TEST(test_draw_text_modifies_framebuffer);
+    RUN_TEST(test_draw_text_ascii_upper_letter_b);
     RUN_TEST(test_flush_generates_i2c_transfers);
     RUN_TEST(test_ops_before_init_returns_not_initialized);
     RUN_TEST(test_deinit_hardening);
