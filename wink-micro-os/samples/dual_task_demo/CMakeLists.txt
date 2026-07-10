@@ -25,6 +25,7 @@ if(NOT EMSCRIPTEN)
     # for the js_* extern signatures. Passed as an extra include dir.
     wink_sample_apply_common(app_dual_task_demo_e2e
         ${CMAKE_CURRENT_SOURCE_DIR}/../../targets/wasm)
+    wink_sample_link_common(app_dual_task_demo_e2e)
     target_link_libraries(app_dual_task_demo_e2e PRIVATE dal)
 
     add_test(NAME app_dual_task_demo_e2e COMMAND app_dual_task_demo_e2e)

@@ -2,6 +2,10 @@
  * @file wink_default_telemetry.h (samples/common compatibility shim)
  * @brief Forwarding include — BAL migration (ADR-0023 Task 2.3/2.5).
  *
+ * @deprecated Include <comm/wink_telemetry_helper.h> and use
+ *             wink_telemetry_default_start() directly. This shim will be
+ *             removed in the next release.
+ *
  * The default telemetry helper has moved to the BAL (Business Abstraction
  * Layer). New code should include <comm/wink_telemetry_helper.h> directly
  * and use wink_telemetry_default_start(); this shim exists so existing

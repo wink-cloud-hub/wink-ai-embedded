@@ -1,129 +1,161 @@
+/**
+ * @file app_callbacks.c
+ * @brief dual_task_demo — two periodic callbacks at different rates.
+ *
+ * Expert-mode sample: demonstrates wink_periodic_start_ex() when BAL helpers
+ * (blink/button/sonar) don't fit.  A 20 ms "sensor" callback generates mock
+ * distance data; a 30 ms "motor" callback reads the latest sample and drives
+ * the servo.  No ringbuf or pal_os_sleep_ms — the runtime schedules callbacks
+ * at the declared period.
+ *
+ * ADR-0008 override: device_tree.c is hand-written (Flash override table);
+ * codegen wink-app.json exists for documentation only.
+ */
 #define LOG_TAG "dual_task"
 
 #include "device_tree.h"
 #include "wink_app.h"
 #include "wink_trace.h"
+#include "wink_fault.h"
 #include "wink_actuator_registry.h"
-#include "pal_osal.h"
+#include "wink_status.h"
+#include "wink_tasks.h"
 #include "pal_log.h"
+#include <stdbool.h>
 
+#define FAULT_SERVO_INIT  7002u
+#define FAULT_RADAR_INIT  7003u
 
-/* ADR-0017 层 1 例外：本 TU 合法调用 WINK_BLOCKING API。抑制
- * -Wdeprecated-declarations 使 -Werror 下仍能编译；严格模式
- * (-DWINK_STRICT_NONBLOCKING=1) 下相关 API 声明直接消失，本 TU 会链接失败——那是设计意图。 */
-#if defined(__GNUC__) || defined(__clang__)
-#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
+/* ── Actuator safe-off thunk (file scope — macro expands to function def) ─ */
+WINK_DEFINE_ACTUATOR_THUNK(neck_servo_safe_off, dal_servo_safe_off, dal_servo_t)
 
-static pal_os_ringbuf_handle_t s_rb = NULL;
-static pal_os_task_handle_t s_sensor_h = NULL;
-static pal_os_task_handle_t s_motor_h = NULL;
+/* ── Shared state between periodic callbacks ── */
+static volatile float s_latest_dist = 50.0f;
+static float s_mock_dist = 50.0f;
+static float s_dir = -2.0f;
 
 volatile bool g_servo_was_180 = false;
 
-static void sensor_task(void* arg) {
-    (void)arg;
-    float mock_dist = 50.0f;
-    float dir = -2.0f;
+/* ── Periodic: sensor tick (20 ms) — generate mock distance ── */
+static void sensor_tick(void *ctx)
+{
+    (void)ctx;
+    s_mock_dist += s_dir;
+    if (s_mock_dist <= 10.0f) {
+        s_mock_dist = 10.0f;
+        s_dir = 2.0f;
+    } else if (s_mock_dist >= 50.0f) {
+        s_mock_dist = 50.0f;
+        s_dir = -2.0f;
+    }
+    s_latest_dist = s_mock_dist;
+}
 
-    while (1) {
-        /* Mock distance variation */
-        mock_dist += dir;
-        if (mock_dist <= 10.0f) {
-            mock_dist = 10.0f;
-            dir = 2.0f;
-        } else if (mock_dist >= 50.0f) {
-            mock_dist = 50.0f;
-            dir = -2.0f;
-        }
+/* ── Periodic: motor tick (30 ms) — read latest distance, drive servo ── */
+static void motor_tick(void *ctx)
+{
+    (void)ctx;
+    float dist = s_latest_dist;
+    float angle = (dist < 20.0f) ? 180.0f : 90.0f;
+    if (angle == 180.0f) {
+        g_servo_was_180 = true;
+    }
+    wink_status_t s = dal_servo_set_angle(&neck_servo, angle);
+    (void)s;
+}
 
-        /* Push mock distance to ringbuf */
-        wink_status_t st = pal_os_ringbuf_push(s_rb, &mock_dist, sizeof(mock_dist));
-        LOG_D("SENSOR: dist=%.1f, push status=%d", (double)mock_dist, (int)st);
-        (void)st;
-
-        pal_os_sleep_ms(20);
+/* ── on_boot: log reset reason ─────────────────────────────────────────── */
+static void app_on_boot(const wink_boot_info_t *info)
+{
+    if (info->abnormal_boot_count > 0) {
+        LOG_I("abnormal boot (count=%lu, reason=%d)",
+              (unsigned long)info->abnormal_boot_count, (int)info->reset_reason);
     }
 }
 
-static void motor_task(void* arg) {
-    (void)arg;
-    float dist = 0.0f;
-
-    while (1) {
-        float latest_dist = -1.0f;
-        /* Drain the ring buffer to get the latest measurement */
-        while (pal_os_ringbuf_pop(s_rb, &dist, sizeof(dist)) == WINK_OK) {
-            latest_dist = dist;
-        }
-
-        if (latest_dist >= 0.0f) {
-            float angle = (latest_dist < 20.0f) ? 180.0f : 90.0f;
-            if (angle == 180.0f) {
-                g_servo_was_180 = true;
-            }
-            LOG_D("MOTOR: latest_dist=%.1f, setting angle=%.1f", (double)latest_dist, (double)angle);
-            wink_status_t st = dal_servo_set_angle(&neck_servo, angle);
-            (void)st;
-        } else {
-            LOG_D("MOTOR: ringbuf pop empty");
-        }
-        pal_os_sleep_ms(30);
-    }
-}
-
-static wink_status_t servo_safe_off_thunk(void *ctx) {
-    return dal_servo_safe_off((dal_servo_t *)ctx);
-}
-
-static void app_init(void) {
-    /* Apply overrides */
+/* ── init: apply Flash overrides → init devices → register safe-off →
+ *                    start two periodic callbacks at different rates. ───── */
+static wink_status_t app_init_status(void)
+{
+    /* ADR-0008: apply Flash overrides before init. */
     wink_status_t cfg = device_tree_apply_flash_config();
     (void)cfg;
 
-    /* Initialize devices */
+    /* servo: config may have been overridden by Flash, so rebuild cfg from
+     * instance fields (dal_servo.h documents this redundancy). */
     const dal_servo_config_t servo_cfg = {
         .owner        = "neck_servo",
         .pwm_channel  = neck_servo.config.pwm_channel,
         .min_pulse_ms = neck_servo.config.min_pulse_ms,
-        .max_pulse_ms = neck_servo.config.max_pulse_ms
+        .max_pulse_ms = neck_servo.config.max_pulse_ms,
     };
     wink_status_t s = dal_servo_init(&neck_servo, &servo_cfg);
-    if (wink_status_is_error(s)) { wink_trace_fault(7002u); }
+    if (wink_status_is_error(s)) {
+        wink_trace_fault(FAULT_SERVO_INIT);
+        return s;
+    }
 
     wink_status_t u = dal_ultrasonic_init(&front_radar, &front_radar.config);
-    if (wink_status_is_error(u)) { wink_trace_fault(7003u); }
+    if (wink_status_is_error(u)) {
+        wink_trace_fault(FAULT_RADAR_INIT);
+        return u;
+    }
 
-    /* Register safe off */
-    wink_status_t ar = wink_actuator_register(servo_safe_off_thunk, &neck_servo);
-    if (wink_status_is_error(ar)) { wink_trace_fault(7002u); }
+    /* Register servo safe-off so fault/boot-lock path can de-energize. */
+    wink_status_t ar = wink_actuator_register(neck_servo_safe_off, &neck_servo);
+    if (wink_status_is_error(ar)) {
+        wink_trace_fault(FAULT_SERVO_INIT);
+        return ar;
+    }
 
     wink_status_t st_angle = dal_servo_set_angle(&neck_servo, 90.0f);
     (void)st_angle;
 
-    /* Create ring buffer */
-    s_rb = pal_os_ringbuf_create(64);
+    /* Start two periodic callbacks — expert mode: when BAL helpers don't fit
+     * (asymmetric rates, custom logic), use wink_periodic_start_ex directly.
+     * LIGHT path: callbacks run in tick context (cooperative, zero stack). */
+    wink_periodic_handle_t h_sensor = wink_periodic_start_ex(
+        "sensor", 0, 20, sensor_tick, NULL,
+        WINK_PERIODIC_LIGHT, 5, PAL_OS_CORE_ANY);
+    if (h_sensor < 1) {
+        wink_trace_fault(FAULT_SERVO_INIT);
+        return (wink_status_t)h_sensor;
+    }
 
-    /* Create tasks */
-    wink_status_t t1 = pal_os_task_create(sensor_task, "sensor", 32*1024, NULL, 5, PAL_OS_CORE_ANY, &s_sensor_h);
-    (void)t1;
-    wink_status_t t2 = pal_os_task_create(motor_task, "motor", 32*1024, NULL, 5, PAL_OS_CORE_ANY, &s_motor_h);
-    (void)t2;
+    wink_periodic_handle_t h_motor = wink_periodic_start_ex(
+        "motor", 0, 30, motor_tick, NULL,
+        WINK_PERIODIC_LIGHT, 5, PAL_OS_CORE_ANY);
+    if (h_motor < 1) {
+        wink_trace_fault(FAULT_SERVO_INIT);
+        return (wink_status_t)h_motor;
+    }
 
-    LOG_I("dual_task_demo initialized: ringbuf+2 tasks created");
+    LOG_I("dual_task_demo initialized: 2 periodic callbacks started");
+    return WINK_OK;
 }
 
-static void app_loop(void) {
-    /* Dual tasks are running independently, nothing to do in main loop */
+/* ── loop (10ms tick): no-op — periodic callbacks handle everything. ──── */
+static void app_loop(void)
+{
 }
 
-static void app_on_fault(uint32_t fault_code) {
+/* ── Fault callback: return OK=recovered, LOCKED=halt for WDT ─────────── */
+static wink_status_t app_on_fault_status(uint32_t fault_code)
+{
     wink_trace_fault(fault_code);
-    wink_status_t st_angle = dal_servo_set_angle(&neck_servo, 90.0f);
-    (void)st_angle;
+    wink_status_t s = dal_servo_set_angle(&neck_servo, 90.0f);
+    (void)s;
+    return WINK_OK;
 }
 
-const wink_app_callbacks_t *wink_app_get_callbacks(void) {
-    static const wink_app_callbacks_t cb = { app_init, app_loop, app_on_fault };
+/* ── Callback factory ─────────────────────────────────────────────────── */
+const wink_app_callbacks_t *wink_app_get_callbacks(void)
+{
+    static const wink_app_callbacks_t cb = {
+        .init_status     = app_init_status,
+        .loop            = app_loop,
+        .on_fault_status = app_on_fault_status,
+        .on_boot         = app_on_boot,
+    };
     return &cb;
 }

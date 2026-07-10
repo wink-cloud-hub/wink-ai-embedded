@@ -1,0 +1,22 @@
+{
+  "app_name": "oled_dashboard",
+  "board": "esp32_devkitc",
+  "devices": {
+    "user_button": {
+      "type": "button",
+      "pin": 10,
+      "active_low": true,
+      "auto_poll_ms": 10
+    },
+    "status_led": {
+      "type": "led",
+      "pin": 2,
+      "active_high": true
+    },
+    "status_oled": {
+      "type": "ssd1306",
+      "i2c_port": 0,
+      "i2c_addr": 60
+    }
+  }
+}

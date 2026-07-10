@@ -2,6 +2,9 @@
  * @file wink_button_helper.h (samples/common compatibility shim)
  * @brief Forwarding include — BAL migration (ADR-0023 Task 2.2/2.5).
  *
+ * @deprecated Include <input/wink_button_helper.h> from wink_bal directly.
+ *             This shim will be removed in the next release.
+ *
  * The button auto-poll helper has moved to the BAL (Business Abstraction
  * Layer). New code should include <wink_button_helper.h> directly from
  * the wink_bal public include surface; this shim exists so existing
