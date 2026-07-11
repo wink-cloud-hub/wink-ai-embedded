@@ -111,6 +111,14 @@ def resolve_scripts_dir() -> Path:
     sys.exit(1)
 
 
+# Export global path environment variables to propagate them to all child subprocesses
+os.environ["WINK_SDK_PATH"] = str(resolve_sdk_dir().as_posix())
+os.environ["WINK_FRONTEND_PATH"] = str(resolve_frontend_dir().as_posix())
+os.environ["WINK_ESP32_PATH"] = str(resolve_esp32_dir().as_posix())
+os.environ["WINK_SCRIPTS_PATH"] = str(resolve_scripts_dir().as_posix())
+os.environ["WINK_CODEGEN_ROOT"] = str((Path(__file__).resolve().parent / "codegen").as_posix())
+
+
 def run_cmd(cmd: list[str] | str, cwd: Path = REPO_ROOT, shell: bool = False, check: bool = True) -> subprocess.CompletedProcess:
     """Helper to run a system command and print output."""
     cmd_str = " ".join(cmd) if isinstance(cmd, list) else cmd
