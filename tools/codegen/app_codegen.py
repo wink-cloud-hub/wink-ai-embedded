@@ -43,6 +43,7 @@ OUTPUT_FILES = (
     ("device_tree.h.j2", "device_tree.h"),
     ("device_tree.c.j2", "device_tree.c"),
     ("app_options.cmake.j2", "app_options.cmake"),
+    ("device_tree_api.md.j2", "device_tree_api.md"),
 )
 
 
@@ -336,6 +337,7 @@ def build_context(cfg: dict, config_source: str) -> dict:
         devices_ctx.append({
             "name": name,
             "type": driver.type,
+            "role": role,
             "is_actuator": driver.is_actuator,
             "headers": driver.get_headers(),
             "device_type": driver.get_device_type(),
@@ -438,6 +440,15 @@ def main(argv: List[str] | None = None) -> int:
 
         ctx = build_context(cfg, source_display)
         render_all(ctx, args.out_dir)
+        try:
+            md_gen_path = args.out_dir / "device_tree_api.md"
+            if md_gen_path.exists():
+                src_doc_dir = args.config.resolve().parent / "docs"
+                src_doc_dir.mkdir(parents=True, exist_ok=True)
+                src_doc_file = src_doc_dir / "device_tree_api.md"
+                src_doc_file.write_text(md_gen_path.read_text(encoding="utf-8"), encoding="utf-8", newline="\n")
+        except Exception as e:
+            print(f"[codegen] warning: failed to write source tree documentation: {e}", file=sys.stderr)
     except SystemExit:
         raise
     except Exception as e:  # noqa: BLE001 — top-level fallback

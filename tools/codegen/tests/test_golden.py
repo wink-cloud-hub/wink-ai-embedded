@@ -30,6 +30,12 @@ GOLDEN_EXPECTED = _HERE / "golden_expected"
 
 
 class GoldenTest(unittest.TestCase):
+    def tearDown(self) -> None:
+        import shutil
+        docs_dir = _HERE / "docs"
+        if docs_dir.exists():
+            shutil.rmtree(docs_dir)
+
     def test_devkitc_golden(self) -> None:
         self.assertTrue(GOLDEN_JSON.exists(),
                         f"golden config missing: {GOLDEN_JSON}")
