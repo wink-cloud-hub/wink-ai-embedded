@@ -8,6 +8,7 @@
 #include "device_tree.h"
 #include "host_test_ctrl.h"
 #include "pal_osal.h"
+#include "wink_event.h"
 
 extern const wink_app_callbacks_t *wink_app_get_callbacks(void);
 extern void host_sim_advance_to(uint64_t us);
@@ -21,7 +22,15 @@ static void advance_runtime_ticks(const wink_app_callbacks_t *cb, int n)
         uint64_t now = pal_os_get_us();
         host_sim_advance_to(now + 10000u);
         wink_soft_timer_dispatch();
-        cb->loop();
+        if (cb->loop) {
+            cb->loop();
+        }
+        if (cb->on_event) {
+            wink_event_t event;
+            while (wink_event_pend(&event, 0) == WINK_OK) {
+                cb->on_event(&event);
+            }
+        }
     }
 }
 
@@ -34,6 +43,9 @@ int main(void) {
         wink_status_t s = wink_runtime_run(cb, 5);
         (void)s;
     }
+
+    /* Re-initialize event queue for the manual ticking phase */
+    WINK_IGNORE_RESULT(wink_event_queue_init(WINK_EVENT_QUEUE_DEFAULT_CAPACITY));
 
     if (status_led.is_on) {
         E2E_FAIL("LED on while button released (pull-up idle)");

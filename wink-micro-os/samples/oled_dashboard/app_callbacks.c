@@ -25,7 +25,6 @@
 #define FAULT_BUTTON_HELPER 8001u
 
 static uint32_t s_press_count = 1;
-static uint32_t s_shown_count = 0;
 
 static void app_on_boot(const wink_boot_info_t *info)
 {
@@ -44,7 +43,6 @@ static wink_status_t app_init_status(void)
     status_oled_flush();
 
     s_press_count = 1;
-    s_shown_count = 0;
 
     LOG_I("init done");
     return WINK_OK;
@@ -52,30 +50,30 @@ static wink_status_t app_init_status(void)
 
 static void app_loop(void)
 {
-    const bool pressed = user_button_is_active();
-    const bool rising_edge = user_button_was_active();
+    /* no-op */
+}
 
-    if (rising_edge) {
-        s_shown_count = s_press_count;
-        LOG_I("Hello World %lu", (unsigned long)s_shown_count);
-        if (s_press_count < UINT32_MAX) {
-            s_press_count++;
+static void app_on_event(const wink_event_t *evt)
+{
+    if (evt->device == &user_button) {
+        if (evt->type == WINK_EVENT_BUTTON_PRESSED) {
+            LOG_I("Hello World %lu", (unsigned long)s_press_count);
+            char line[32];
+            (void)snprintf(line, sizeof(line), "HELLO WORLD %lu", (unsigned long)s_press_count);
+
+            status_led_activate();
+            status_oled_clear();
+            status_oled_draw_text(0, 0, line);
+            status_oled_flush();
+
+            if (s_press_count < UINT32_MAX) {
+                s_press_count++;
+            }
+        } else if (evt->type == WINK_EVENT_BUTTON_RELEASED) {
+            status_led_deactivate();
+            status_oled_clear();
+            status_oled_flush();
         }
-    }
-
-    if (pressed && s_shown_count > 0u) {
-        char line[32];
-        (void)snprintf(line, sizeof(line), "HELLO WORLD %lu", (unsigned long)s_shown_count);
-
-        status_led_activate();
-        status_oled_clear();
-        status_oled_draw_text(0, 0, line);
-        status_oled_flush();
-    } else {
-        s_shown_count = 0;
-        status_led_deactivate();
-        status_oled_clear();
-        status_oled_flush();
     }
 }
 
@@ -91,6 +89,7 @@ const wink_app_callbacks_t *wink_app_get_callbacks(void)
     static const wink_app_callbacks_t cb = {
         .init_status     = app_init_status,
         .loop            = app_loop,
+        .on_event        = app_on_event,
         .on_fault_status = app_on_fault_status,
         .on_boot         = app_on_boot,
     };

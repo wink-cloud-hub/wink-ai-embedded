@@ -224,6 +224,12 @@ void pal_os_set_sim_isr_context(bool in_isr);
  * @note 供单测断言与 wink_trace ISR 分流实现使用；生产代码通常不需读取此标志。
  */
 bool pal_os_in_sim_isr_context(void);
+ 
+ /**
+  * @brief 检测当前执行上下文是否在中断服务程序 (ISR) 中。
+  * @return true 表示在 ISR 上下文中，false 表示在任务 (Task) 上下文中。
+  */
+ bool pal_os_in_isr(void);
 
 /**
  * @brief 切换模拟 PT 协程上下文标志（仅 host/wasm 生效, ADR-0017 §4.2）。
