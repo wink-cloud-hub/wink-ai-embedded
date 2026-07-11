@@ -1,6 +1,6 @@
 # avoidance_car sample App (default App when WINK_APP_DIR is unset).
-# Shared include-dir + compile-option boilerplate lives in ../sample_common.cmake.
-include(${CMAKE_CURRENT_LIST_DIR}/../sample_common.cmake)
+# Shared include-dir + compile-option boilerplate lives in samples/sample_common.cmake.
+include(${wink-micro-os_SOURCE_DIR}/samples/sample_common.cmake)
 
 set(APP_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/device_tree.c
@@ -22,7 +22,7 @@ endif()
 add_executable(app_avoidance_car_e2e
     ${APP_SOURCES}
     ${WINK_SAMPLE_RUNTIME_SOURCES}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../test/test_app_e2e.c
+    ${wink-micro-os_SOURCE_DIR}/test/test_app_e2e.c
     $<TARGET_OBJECTS:pal_host>)
 wink_sample_apply_common(app_avoidance_car_e2e)
 wink_sample_link_common(app_avoidance_car_e2e)
@@ -34,10 +34,10 @@ add_test(NAME app_avoidance_car_e2e COMMAND app_avoidance_car_e2e)
 # apply_override rewrites global fields; empty/corrupt silently degrades.
 add_executable(test_avoidance_override
     ${CMAKE_CURRENT_SOURCE_DIR}/device_tree.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../test/test_avoidance_override.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../test/unity/unity.c
+    ${wink-micro-os_SOURCE_DIR}/test/test_avoidance_override.c
+    ${wink-micro-os_SOURCE_DIR}/test/unity/unity.c
     $<TARGET_OBJECTS:pal_host>)
-wink_sample_apply_common(test_avoidance_override ${CMAKE_CURRENT_SOURCE_DIR}/../../test/unity)
+wink_sample_apply_common(test_avoidance_override ${wink-micro-os_SOURCE_DIR}/test/unity)
 wink_sample_link_common(test_avoidance_override)
 target_link_libraries(test_avoidance_override PRIVATE dal)
 add_test(NAME test_avoidance_override COMMAND test_avoidance_override)

@@ -26,15 +26,29 @@ if(NOT DEFINED WINK_APP)
     set(WINK_APP "devkitc_smoke" CACHE STRING "Samples app name to build")
 endif()
 
+if(DEFINED ENV{WINK_APP_DIR} AND NOT DEFINED WINK_APP_DIR)
+    set(WINK_APP_DIR $ENV{WINK_APP_DIR})
+endif()
+
 # configure 阶段自动跑脚本，生成 app_sources.cmake（App + samples/common 源文件扫描）
 # 注意：用 COMPONENT_DIR 而非 CMAKE_CURRENT_SOURCE_DIR——ESP-IDF 在 build 目录处理组件依赖时后者会变
-execute_process(
-    COMMAND powershell -NoProfile -ExecutionPolicy Bypass
-        -File "${COMPONENT_DIR}/../generate_app_sources.ps1"
-        -AppName "${WINK_APP}"
-    WORKING_DIRECTORY "${COMPONENT_DIR}/.."
-    RESULT_VARIABLE GEN_SCRIPT_RESULT
-)
+if(DEFINED WINK_APP_DIR)
+    execute_process(
+        COMMAND powershell -NoProfile -ExecutionPolicy Bypass
+            -File "${COMPONENT_DIR}/../generate_app_sources.ps1"
+            -AppDir "${WINK_APP_DIR}"
+        WORKING_DIRECTORY "${COMPONENT_DIR}/.."
+        RESULT_VARIABLE GEN_SCRIPT_RESULT
+    )
+else()
+    execute_process(
+        COMMAND powershell -NoProfile -ExecutionPolicy Bypass
+            -File "${COMPONENT_DIR}/../generate_app_sources.ps1"
+            -AppName "${WINK_APP}"
+        WORKING_DIRECTORY "${COMPONENT_DIR}/.."
+        RESULT_VARIABLE GEN_SCRIPT_RESULT
+    )
+endif()
 
 if(NOT GEN_SCRIPT_RESULT EQUAL 0)
     message(FATAL_ERROR "generate_app_sources.ps1 failed with code ${GEN_SCRIPT_RESULT}")
@@ -72,7 +86,9 @@ idf_component_register(
 # app_codegen.py regenerates the four artefacts under ${GEN_DIR}.
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
-set(WINK_CODEGEN_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../tools/codegen")
+if(NOT DEFINED WINK_CODEGEN_ROOT)
+    set(WINK_CODEGEN_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../tools/codegen")
+endif()
 set(WINK_CODEGEN_TOOL "${WINK_CODEGEN_ROOT}/app_codegen.py")
 set(WINK_APP_JSON     "${WINK_APP_DIR}/wink-app.json")
 
