@@ -26,7 +26,6 @@
 
 static uint32_t s_press_count = 1;
 static uint32_t s_shown_count = 0;
-static bool s_prev_pressed = false;
 
 static void app_on_boot(const wink_boot_info_t *info)
 {
@@ -38,21 +37,14 @@ static wink_status_t app_init_status(void)
     WINK_TRY(wink_device_tree_init());
 
 #ifdef USER_BUTTON_AUTO_POLL_MS
-    wink_status_t s = wink_button_helper_start(&user_button, USER_BUTTON_AUTO_POLL_MS);
-    if (wink_status_is_error(s)) {
-        wink_trace_fault(FAULT_BUTTON_HELPER);
-        return s;
-    }
+    WINK_TRY(user_button_start_auto_poll(USER_BUTTON_AUTO_POLL_MS));
 #endif
 
-    WINK_INIT_BLOCKING_REGION_BEGIN
-    wink_status_t oled_s = dal_ssd1306_clear(&status_oled); (void)oled_s;
-    oled_s = dal_ssd1306_flush(&status_oled); (void)oled_s;
-    WINK_INIT_BLOCKING_REGION_END
+    status_oled_clear();
+    status_oled_flush();
 
     s_press_count = 1;
     s_shown_count = 0;
-    s_prev_pressed = false;
 
     LOG_I("init done");
     return WINK_OK;
@@ -60,12 +52,8 @@ static wink_status_t app_init_status(void)
 
 static void app_loop(void)
 {
-    bool pressed = false;
-    wink_status_t s = dal_button_is_pressed(&user_button, &pressed);
-    (void)s;
-
-    const bool rising_edge = pressed && !s_prev_pressed;
-    s_prev_pressed = pressed;
+    const bool pressed = user_button_is_active();
+    const bool rising_edge = user_button_was_active();
 
     if (rising_edge) {
         s_shown_count = s_press_count;
@@ -79,22 +67,22 @@ static void app_loop(void)
         char line[32];
         (void)snprintf(line, sizeof(line), "HELLO WORLD %lu", (unsigned long)s_shown_count);
 
-        s = dal_led_on(&status_led); (void)s;
-        s = dal_ssd1306_clear(&status_oled); (void)s;
-        s = dal_ssd1306_draw_text(&status_oled, 0, 0, line); (void)s;
-        s = dal_ssd1306_flush(&status_oled); (void)s;
+        status_led_activate();
+        status_oled_clear();
+        status_oled_draw_text(0, 0, line);
+        status_oled_flush();
     } else {
         s_shown_count = 0;
-        s = dal_led_off(&status_led); (void)s;
-        s = dal_ssd1306_clear(&status_oled); (void)s;
-        s = dal_ssd1306_flush(&status_oled); (void)s;
+        status_led_deactivate();
+        status_oled_clear();
+        status_oled_flush();
     }
 }
 
 static wink_status_t app_on_fault_status(uint32_t fault_code)
 {
     wink_trace_fault(fault_code);
-    wink_status_t s = dal_led_off(&status_led); (void)s;
+    status_led_deactivate();
     return WINK_OK;
 }
 
