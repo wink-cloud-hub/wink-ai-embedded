@@ -95,7 +95,7 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
     # App CMakeLists 在 EMSCRIPTEN 分支下只 set(WINK_APP_SOURCES ... PARENT_SCOPE)
     # 即 return()，不定义 host e2e target（那些依赖 pal_host / test_*_e2e.c）。
     if(NOT DEFINED WINK_APP_DIR)
-        set(WINK_APP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/samples/avoidance_car)
+        set(WINK_APP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/avoidance_car)
     endif()
     message(STATUS "WINK_APP_DIR = ${WINK_APP_DIR}")
     add_subdirectory(${WINK_APP_DIR} ${CMAKE_BINARY_DIR}/app_build)
@@ -208,17 +208,17 @@ if(NOT TARGET_PLATFORM STREQUAL "wasm")
     # All helpers have migrated to BAL (blink/button/telemetry) or
     # runtime/selftest (sim_echo); only #include-path shims remain. Must be
     # added before the samples that target_link_libraries() against it.
-    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/samples/common)
-        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/common)
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/common)
+        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/common ${CMAKE_BINARY_DIR}/common_build)
     elseif(EXISTS ${WINK_APP_DIR}/../common)
         add_subdirectory(${WINK_APP_DIR}/../common ${CMAKE_BINARY_DIR}/common_build)
     elseif(EXISTS ${WINK_APP_DIR}/common)
         add_subdirectory(${WINK_APP_DIR}/common ${CMAKE_BINARY_DIR}/common_build)
     endif()
 
-    # §6.1 约束3：标准 App 注入接口。未指定则默认 samples/avoidance_car。
+    # §6.1 约束3：标准 App 注入接口。未指定则默认 ../wink-micro-app/avoidance_car。
     if(NOT DEFINED WINK_APP_DIR)
-        set(WINK_APP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/samples/avoidance_car)
+        set(WINK_APP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/avoidance_car)
     endif()
     message(STATUS "WINK_APP_DIR = ${WINK_APP_DIR}")
     if(EXISTS ${WINK_APP_DIR})
@@ -228,26 +228,26 @@ if(NOT TARGET_PLATFORM STREQUAL "wasm")
     endif()
 
     # Phase 2：OLED Dashboard 示例（额外 e2e target，不改默认 App）
-    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/samples/oled_dashboard)
-        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/oled_dashboard
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/oled_dashboard)
+        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/oled_dashboard
                          ${CMAKE_BINARY_DIR}/oled_dashboard_build)
     endif()
 
     # DevKitC 冒烟测试：裸板真机 S1-S8 全链路验证
-    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/samples/devkitc_smoke)
-        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/devkitc_smoke
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/devkitc_smoke)
+        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/devkitc_smoke
                          ${CMAKE_BINARY_DIR}/devkitc_smoke_build)
     endif()
 
     # Track A M1 / Task A-3：资源占用冲突反例样本（host-only 断言样本）
-    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/samples/resource_conflict)
-        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/resource_conflict
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/resource_conflict)
+        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/resource_conflict
                          ${CMAKE_BINARY_DIR}/resource_conflict_build)
     endif()
 
     # Cooperative multi-task scheduler demo App
-    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/samples/dual_task_demo)
-        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/dual_task_demo
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/dual_task_demo)
+        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/dual_task_demo
                          ${CMAKE_BINARY_DIR}/dual_task_demo_build)
     endif()
 
