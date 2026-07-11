@@ -33,7 +33,7 @@ target_include_directories(wink_sample_common INTERFACE
     # own build rules, but the sim_ultrasonic_echo shim needs to resolve its
     # relative-path include to the real header. Add it as INTERFACE so any
     # consumer linking through wink_sample_common sees it.
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/selftest/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../wink-micro-os/runtime/selftest/src
 )
 
 # Forward to BAL (blink/button/telemetry helpers) — PUBLIC because the shim

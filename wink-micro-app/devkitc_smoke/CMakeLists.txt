@@ -61,15 +61,15 @@ set(APP_SOURCES
 
 # host e2e binary: runtime + trace + dal_led + dal_button + dal_ultrasonic + pal_host + app + selftest + common helpers
 set(WINK_SELFTEST_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/selftest/src/selftest_core.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/selftest/src/selftest_pwm_router.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/selftest/src/selftest_i2c_scan.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/selftest/src/selftest_smp_stress.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/selftest/src/selftest_gpio_isr.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/selftest/src/selftest_rmt_loopback.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../wink-micro-os/runtime/selftest/src/selftest_core.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../wink-micro-os/runtime/selftest/src/selftest_pwm_router.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../wink-micro-os/runtime/selftest/src/selftest_i2c_scan.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../wink-micro-os/runtime/selftest/src/selftest_smp_stress.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../wink-micro-os/runtime/selftest/src/selftest_gpio_isr.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../wink-micro-os/runtime/selftest/src/selftest_rmt_loopback.c
     # ADR-0023 Stage 2.4: S10 ultrasonic echo sim bringup helper (migrated
     # from samples/common/). Strict-nonblocking gate lives in the TU itself.
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/selftest/src/wink_sim_ultrasonic_echo.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../wink-micro-os/runtime/selftest/src/wink_sim_ultrasonic_echo.c
 )
 
 add_executable(app_devkitc_smoke_e2e
@@ -91,6 +91,6 @@ target_compile_definitions(app_devkitc_smoke_e2e PRIVATE WINK_CFG_SIM_ECHO=1)
 # (app_support.c was retired in the 2026-07-06 BAL refactor; callbacks now
 # live directly in app_callbacks.c).
 target_include_directories(app_devkitc_smoke_e2e PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/selftest/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../wink-micro-os/runtime/selftest/src
     ${GEN_DIR})
 add_test(NAME app_devkitc_smoke_e2e COMMAND app_devkitc_smoke_e2e)

@@ -15,7 +15,7 @@ if(NOT EMSCRIPTEN)
     add_executable(app_dual_task_demo_e2e
         ${APP_SOURCES}
         ${WINK_SAMPLE_RUNTIME_SOURCES}
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../test/stubs/js_sim_host_stub.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../wink-micro-os/test/stubs/js_sim_host_stub.c
         ${CMAKE_CURRENT_SOURCE_DIR}/test_dual_task_demo_e2e.c
         $<TARGET_OBJECTS:pal_host>)
 
@@ -24,7 +24,7 @@ if(NOT EMSCRIPTEN)
     # dual_task_demo pulls js_sim_host_stub.c which needs targets/wasm headers
     # for the js_* extern signatures. Passed as an extra include dir.
     wink_sample_apply_common(app_dual_task_demo_e2e
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../targets/wasm)
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../wink-micro-os/targets/wasm)
     wink_sample_link_common(app_dual_task_demo_e2e)
     target_link_libraries(app_dual_task_demo_e2e PRIVATE dal)
 

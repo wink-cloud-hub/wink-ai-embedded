@@ -143,6 +143,13 @@ def resolve_app_dir(app: str) -> Path:
         if (resolved / "wink-app.json").exists():
             return resolved
     
+    # Check default wink-micro-app path relative to REPO_ROOT
+    micro_app_dir = REPO_ROOT / "wink-micro-app" / app
+    if micro_app_dir.exists() and micro_app_dir.is_dir():
+        resolved = micro_app_dir.resolve()
+        if (resolved / "wink-app.json").exists():
+            return resolved
+
     # Check default samples path relative to resolved SDK
     sdk_dir = resolve_sdk_dir()
     samples_dir = sdk_dir / "samples" / app

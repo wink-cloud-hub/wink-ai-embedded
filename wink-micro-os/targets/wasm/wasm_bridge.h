@@ -276,6 +276,7 @@ extern uint64_t      pal_wasm_get_total_energy_mj(void);
 extern void           pal_wasm_sim_reset_all_devices(void);
 extern const uint8_t* pal_wasm_get_ssd1306_fb(uint32_t *width, uint32_t *height);
 extern float          pal_wasm_get_servo_angle(uint8_t channel);
+extern float          pal_wasm_get_pwm_duty_percent(uint8_t channel);
 extern void           pal_wasm_set_ultrasonic_distance(uint8_t pin, float distance_cm);
 extern void           pal_wasm_set_gpio_input(uint8_t pin, bool level);
 extern bool           pal_wasm_get_gpio_output(uint8_t pin);

@@ -1,6 +1,6 @@
 # avoidance_car sample App (default App when WINK_APP_DIR is unset).
-# Shared include-dir + compile-option boilerplate lives in samples/sample_common.cmake.
-include(${wink-micro-os_SOURCE_DIR}/samples/sample_common.cmake)
+# Shared include-dir + compile-option boilerplate lives in ../sample_common.cmake.
+include(${CMAKE_CURRENT_LIST_DIR}/../sample_common.cmake)
 
 set(APP_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/device_tree.c

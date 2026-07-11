@@ -67,22 +67,27 @@ void test_virtual_servo_angle_conversion(void) {
     // Set 2.5% duty cycle -> 500us -> 0 degrees
     wasm_sim_pwm_set_duty(1, 2.5f);
     TEST_ASSERT_FLOAT_WITHIN(0.1f, 0.0f, pal_wasm_get_servo_angle(1));
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 2.5f, pal_wasm_get_pwm_duty_percent(1));
 
     // Set 7.5% duty cycle -> 1500us -> 90 degrees
     wasm_sim_pwm_set_duty(1, 7.5f);
     TEST_ASSERT_FLOAT_WITHIN(0.1f, 90.0f, pal_wasm_get_servo_angle(1));
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 7.5f, pal_wasm_get_pwm_duty_percent(1));
 
     // Set 12.5% duty cycle -> 2500us -> 180 degrees
     wasm_sim_pwm_set_duty(1, 12.5f);
     TEST_ASSERT_FLOAT_WITHIN(0.1f, 180.0f, pal_wasm_get_servo_angle(1));
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 12.5f, pal_wasm_get_pwm_duty_percent(1));
 
     // Out of bounds check: 1.0% duty cycle -> < 500us -> clamp to 0
     wasm_sim_pwm_set_duty(1, 1.0f);
     TEST_ASSERT_FLOAT_WITHIN(0.1f, 0.0f, pal_wasm_get_servo_angle(1));
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 1.0f, pal_wasm_get_pwm_duty_percent(1));
 
     // Out of bounds check: 15.0% duty cycle -> > 2500us -> clamp to 180
     wasm_sim_pwm_set_duty(1, 15.0f);
     TEST_ASSERT_FLOAT_WITHIN(0.1f, 180.0f, pal_wasm_get_servo_angle(1));
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 15.0f, pal_wasm_get_pwm_duty_percent(1));
 }
 
 void test_virtual_ultrasonic_distance_and_pulses(void) {
