@@ -10,9 +10,23 @@ class Ssd1306Driver(DriverBase):
     type = "ssd1306"
     is_actuator = False
     required_fields = ["i2c_port"]
+    default_role = "text_display"
+    role_verbs = {
+        "text_display": ["clear", "draw_text", "flush"]
+    }
 
     def get_headers(self) -> List[str]:
         return ["dal_ssd1306.h"]
+
+    def render_role_wrapper(self, dev_name: str, role: str, verb: str, spec: dict) -> str:
+        if role == "text_display":
+            if verb == "clear":
+                return f"static inline void {dev_name}_clear(void) {{ WINK_IGNORE_RESULT(dal_ssd1306_clear(&{dev_name})); }}"
+            elif verb == "draw_text":
+                return f"static inline void {dev_name}_draw_text(uint16_t col, uint8_t page, const char *str) {{ WINK_IGNORE_RESULT(dal_ssd1306_draw_text(&{dev_name}, col, page, str)); }}"
+            elif verb == "flush":
+                return f"static inline void {dev_name}_flush(void) {{ WINK_IGNORE_RESULT(dal_ssd1306_flush(&{dev_name})); }}"
+        return ""
 
     def get_device_type(self) -> str:
         return "dal_ssd1306_t"

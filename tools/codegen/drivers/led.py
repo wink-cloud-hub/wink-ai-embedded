@@ -10,9 +10,23 @@ class LedDriver(DriverBase):
     type = "led"
     is_actuator = True
     required_fields = ["pin"]
+    default_role = "binary_indicator"
+    role_verbs = {
+        "binary_indicator": ["activate", "deactivate", "toggle"]
+    }
 
     def get_headers(self) -> List[str]:
         return ["dal_led.h"]
+
+    def render_role_wrapper(self, dev_name: str, role: str, verb: str, spec: dict) -> str:
+        if role == "binary_indicator":
+            if verb == "activate":
+                return f"static inline void {dev_name}_activate(void) {{ WINK_IGNORE_RESULT(dal_led_on(&{dev_name})); }}"
+            elif verb == "deactivate":
+                return f"static inline void {dev_name}_deactivate(void) {{ WINK_IGNORE_RESULT(dal_led_off(&{dev_name})); }}"
+            elif verb == "toggle":
+                return f"static inline void {dev_name}_toggle(void) {{ WINK_IGNORE_RESULT(dal_led_toggle(&{dev_name})); }}"
+        return ""
 
     def get_device_type(self) -> str:
         return "dal_led_t"
