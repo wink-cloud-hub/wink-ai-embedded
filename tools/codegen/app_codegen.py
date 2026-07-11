@@ -173,6 +173,14 @@ def _load_board_config(board_name: str, config_source: str) -> dict:
     raise RuntimeError("unreachable")
 
 
+ROLE_VERBS = {
+    "binary_sensor": ["is_active", "is_active_status", "was_active", "was_active_status", "start_auto_poll", "stop_auto_poll"],
+    "binary_indicator": ["activate", "deactivate", "toggle"],
+    "distance_sensor": ["request_measurement", "read_distance", "read_distance_status"],
+    "text_display": ["clear", "draw_text", "flush"],
+}
+
+
 def build_context(cfg: dict, config_source: str) -> dict:
     validate_top_level(cfg, config_source)
 
@@ -199,6 +207,10 @@ def build_context(cfg: dict, config_source: str) -> dict:
             
             # Deep copy to avoid mutating original board_cfg
             merged = json.loads(json.dumps(onboard_devices[use_onboard]))
+            decl_type = spec.get("type")
+            if decl_type is not None:
+                if decl_type != merged.get("type"):
+                    _die(f"{config_source}: device '{name}' type '{decl_type}' conflicts with onboard device '{use_onboard}' type '{merged.get('type')}'")
             for k, v in spec.items():
                 if k != "use_onboard":
                     merged[k] = v
@@ -243,11 +255,18 @@ def build_context(cfg: dict, config_source: str) -> dict:
     if conflicts:
         _die(f"Pin conflict(s) detected:\n  - " + "\n  - ".join(conflicts))
 
-    # 4. Resolve drivers and validate fields
+    # 4. Resolve drivers and validate fields/roles
     resolved: List[Tuple[str, DriverBase, dict]] = []
     for name, spec in resolved_devices.items():
         driver = _resolve_driver(name, spec, config_source)
         _validate_required_fields(name, spec, driver, config_source)
+        role = spec.get("role")
+        if role is not None:
+            if not isinstance(role, str) or not role:
+                _die(f"{config_source}: device '{name}' role must be a non-empty string")
+            if role not in getattr(driver, "role_verbs", {}):
+                supported = sorted(list(getattr(driver, "role_verbs", {}).keys()))
+                _die(f"{config_source}: device '{name}' has unsupported role '{role}' for driver '{driver.type}' (supported: {supported})")
         resolved.append((name, driver, spec))
 
     # Count instances of each helper-managed type, defaulting to 0 for known helper types
@@ -300,8 +319,20 @@ def build_context(cfg: dict, config_source: str) -> dict:
     ordered = topo_sort(resolved_devices, config_source)
     lookup = {n: (d, s) for n, d, s in resolved}
     devices_ctx = []
+    role_headers_all = []
+    role_wrappers_all = []
+
     for name in ordered:
         driver, spec = lookup[name]
+        role = spec.get("role") or getattr(driver, "default_role", "")
+        if role:
+            if role in getattr(driver, "role_verbs", {}):
+                role_headers_all.extend(driver.get_role_headers(role))
+                for verb in driver.role_verbs[role]:
+                    code = driver.render_role_wrapper(name, role, verb, spec)
+                    if code:
+                        role_wrappers_all.append(code)
+
         devices_ctx.append({
             "name": name,
             "type": driver.type,
@@ -341,6 +372,8 @@ def build_context(cfg: dict, config_source: str) -> dict:
         "devices": devices_ctx,
         "actuators": actuators,
         "driver_headers": driver_headers,
+        "role_headers": _dedup(role_headers_all),
+        "role_wrappers": role_wrappers_all,
         "config_macros": config_macros,
         "instance_counts": instance_counts,
         "buses": buses_ctx,

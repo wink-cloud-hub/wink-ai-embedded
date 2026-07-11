@@ -9,6 +9,9 @@
 {% for h in driver_headers %}
 #include "{{ h }}"
 {% endfor %}
+{% for h in role_headers %}
+#include "{{ h }}"
+{% endfor %}
 #include "wink_status.h"
 
 /* ── Instance count macros (slots allocation) ── */
@@ -29,6 +32,13 @@ extern "C" {
 /* ── Device instance handles (extern; business code accesses by name) ── */
 {% for d in devices %}
 extern {{ d.device_type }} {{ d.name }};
+{% endfor %}
+
+{% endif %}
+{% if role_wrappers %}
+/* ── Role-based instance APIs (static inline) ── */
+{% for line in role_wrappers %}
+{{ line }}
 {% endfor %}
 
 {% endif %}

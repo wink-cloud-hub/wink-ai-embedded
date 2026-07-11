@@ -72,3 +72,16 @@ class DriverBase:
     def cmake_options(self) -> List[str]:
         """CMake option names this driver requires (default: WINK_USE_<TYPE>)."""
         return [f"WINK_USE_{self.type.upper()}"]
+
+    # ── Role Interface hooks (Phase 1 app optimization) ─────────────────
+    default_role: str = ""
+    role_verbs: dict[str, list[str]] = {}  # e.g. {"binary_indicator": ["activate", ...]}
+
+    def get_role_headers(self, role: str) -> List[str]:
+        """Return additional C headers required by wrappers for this role (e.g. ["wink_button_helper.h"])."""
+        return []
+
+    def render_role_wrapper(self, dev_name: str, role: str, verb: str, spec: dict) -> str:
+        """Render a C static inline helper wrapper block for a given role and verb."""
+        return ""
+
