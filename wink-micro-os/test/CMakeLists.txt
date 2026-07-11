@@ -116,6 +116,7 @@ add_wink_host_test(test_runtime test_runtime.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_runtime_tasks.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_actuator_registry.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_soft_timer.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_event.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../trace/src/wink_trace.c)
 
 # ADR-0023 Stage 1.4a / 1.4b-iii: WINK_PERIODIC_INVALID sentinel,
@@ -132,6 +133,9 @@ add_wink_host_test(test_light_dispatch_flag test_light_dispatch_flag.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../trace/src/wink_trace.c)
 
 add_wink_host_test(test_host_pal test_host_pal.c)
+
+add_wink_host_test(test_wink_event test_wink_event.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_event.c)
 
 # Target-independent cooperative scheduler algorithm test
 add_wink_test(test_sim_scheduler test_sim_scheduler.c
@@ -182,6 +186,7 @@ if(EXISTS ${_BASELINE_H})
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_runtime_tasks.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_actuator_registry.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_soft_timer.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_event.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../trace/src/wink_trace.c)
     target_include_directories(test_single_task_semantic_regression PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../samples/avoidance_car

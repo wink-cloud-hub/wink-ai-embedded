@@ -238,6 +238,7 @@ void pal_os_critical_exit_isr(uint32_t key) {
 /* 真机上下文由 FreeRTOS 直接提供，仿真上下文标志为 no-op */
 void pal_os_set_sim_isr_context(bool in_isr) { (void)in_isr; }
 bool pal_os_in_sim_isr_context(void) { return false; }
+bool pal_os_in_isr(void) { return xPortInIsrContext() == pdTRUE; }
 
 void pal_os_set_sim_pt_context(bool in_pt) { (void)in_pt; }
 bool pal_os_in_sim_pt_context(void) { return false; }

@@ -39,6 +39,7 @@ set(WINK_SAMPLE_RUNTIME_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/../runtime/src/wink_runtime_tasks.c
     ${CMAKE_CURRENT_LIST_DIR}/../runtime/src/wink_actuator_registry.c
     ${CMAKE_CURRENT_LIST_DIR}/../runtime/src/wink_soft_timer.c
+    ${CMAKE_CURRENT_LIST_DIR}/../runtime/src/wink_event.c
     ${CMAKE_CURRENT_LIST_DIR}/../trace/src/wink_trace.c
     CACHE INTERNAL "wink-micro-os sample: runtime + trace core sources")
 

@@ -145,6 +145,7 @@ void pal_os_critical_exit_isr(uint32_t key) {
 
 void pal_os_set_sim_isr_context(bool in_isr) { (void)in_isr; }
 bool pal_os_in_sim_isr_context(void) { return false; }
+bool pal_os_in_isr(void) { return false; }
 
 /* ─────────────────────────────────────────────────────────
  * Task 创建（裸机不支持多任务）

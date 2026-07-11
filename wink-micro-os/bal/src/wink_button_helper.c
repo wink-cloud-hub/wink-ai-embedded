@@ -23,6 +23,7 @@
 #include "wink_button_helper.h"
 #include "wink_tasks.h"
 #include "wink_status.h"
+#include "wink_event.h"
 #include "wink_pt_debug.h"  /* WINK_ASSERT_NONBLOCKING() (ADR-0017 layer 3) */
 #include "pal_log.h"
 #include "pal_osal.h"      /* pal_os_get_us() for execution-time budget watchdog */
@@ -42,6 +43,8 @@
 typedef struct {
     dal_button_t           *btn;
     wink_periodic_handle_t  period_h;
+    dal_button_event_cb     orig_cb;
+    void                   *orig_cb_ctx;
 } btn_ctx_t;
 
 static btn_ctx_t s_slots[WINK_BUTTON_HELPER_MAX];
@@ -93,6 +96,34 @@ static void btn_poll_tick(void *arg) {
     }
 }
 
+/* ── button helper event posting callback ─────────────────────── */
+static void button_helper_event_dispatch(dal_button_event_t evt, void *ctx) {
+    dal_button_t *btn = (dal_button_t *)ctx;
+    /* Safely invoke original callback if registered */
+    int idx = find_slot_by_btn(btn);
+    if (idx >= 0) {
+        btn_ctx_t *slot = &s_slots[idx];
+        if (slot->orig_cb != NULL) {
+            slot->orig_cb(evt, slot->orig_cb_ctx);
+        }
+    }
+
+    wink_event_t event;
+    event.device = btn;
+    event.timestamp = pal_os_get_ms();
+    event.param = (uint32_t)evt;
+    if (evt == DAL_BUTTON_EVT_PRESS) {
+        event.type = WINK_EVENT_BUTTON_PRESSED;
+    } else if (evt == DAL_BUTTON_EVT_RELEASE) {
+        event.type = WINK_EVENT_BUTTON_RELEASED;
+    } else if (evt == DAL_BUTTON_EVT_LONG_PRESS) {
+        event.type = WINK_EVENT_BUTTON_LONG_PRESS;
+    } else {
+        return;
+    }
+    WINK_IGNORE_RESULT(wink_event_post(&event));
+}
+
 /* ── public API ──────────────────────────────────────────────── */
 
 wink_status_t wink_button_helper_start(dal_button_t *btn, uint32_t poll_ms)
@@ -131,6 +162,16 @@ wink_status_t wink_button_helper_start(dal_button_t *btn, uint32_t poll_ms)
     btn_ctx_t *ctx = &s_slots[free_idx];
     ctx->btn      = btn;
     ctx->period_h = WINK_PERIODIC_INVALID;
+    ctx->orig_cb  = btn->event_cb;
+    ctx->orig_cb_ctx = btn->event_cb_ctx;
+
+    /* Register callback to post events to the event queue */
+    probe_st = dal_button_on_event(btn, button_helper_event_dispatch, btn);
+    if (wink_status_is_error(probe_st)) {
+        LOG_D("start: failed to register event callback: %d", (int)probe_st);
+        ctx->btn = NULL; /* roll back slot allocation */
+        return probe_st;
+    }
 
     /* Button poll is pure non-blocking GPIO + debounce FSM → LIGHT path.
      * Priority 2 = background polling (default). Core = ANY (no pinning). */
@@ -164,6 +205,8 @@ wink_status_t wink_button_helper_stop(dal_button_t *btn)
     }
 
     btn_ctx_t *ctx = &s_slots[idx];
+    /* Unregister and restore original callback */
+    WINK_IGNORE_RESULT(dal_button_on_event(btn, ctx->orig_cb, ctx->orig_cb_ctx));
     wink_periodic_stop(ctx->period_h);
     ctx->period_h = WINK_PERIODIC_INVALID;
     ctx->btn      = NULL;   /* mark slot free for reuse */
