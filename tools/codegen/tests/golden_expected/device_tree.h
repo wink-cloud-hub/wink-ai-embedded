@@ -9,6 +9,7 @@
 #include "dal_led.h"
 #include "dal_button.h"
 #include "dal_ultrasonic.h"
+#include "wink_button_helper.h"
 #include "wink_status.h"
 
 /* ── Instance count macros (slots allocation) ── */
@@ -31,6 +32,20 @@ extern "C" {
 extern dal_led_t board_led;
 extern dal_button_t boot_button;
 extern dal_ultrasonic_t smoke_sonar;
+
+/* ── Role-based instance APIs (static inline) ── */
+static inline void board_led_activate(void) { WINK_IGNORE_RESULT(dal_led_on(&board_led)); }
+static inline void board_led_deactivate(void) { WINK_IGNORE_RESULT(dal_led_off(&board_led)); }
+static inline void board_led_toggle(void) { WINK_IGNORE_RESULT(dal_led_toggle(&board_led)); }
+static inline bool boot_button_is_active(void) { bool p = false; WINK_IGNORE_RESULT(dal_button_is_pressed(&boot_button, &p)); return p; }
+WINK_WARN_UNUSED_RESULT static inline wink_status_t boot_button_is_active_status(bool *out_active) { return dal_button_is_pressed(&boot_button, out_active); }
+static inline bool boot_button_was_active(void) { bool p = false; WINK_IGNORE_RESULT(dal_button_was_pressed(&boot_button, &p)); return p; }
+WINK_WARN_UNUSED_RESULT static inline wink_status_t boot_button_was_active_status(bool *out_pressed) { return dal_button_was_pressed(&boot_button, out_pressed); }
+WINK_WARN_UNUSED_RESULT static inline wink_status_t boot_button_start_auto_poll(uint32_t poll_ms) { return wink_button_helper_start(&boot_button, poll_ms); }
+static inline void boot_button_stop_auto_poll(void) { wink_button_helper_stop(&boot_button); }
+WINK_WARN_UNUSED_RESULT static inline wink_status_t smoke_sonar_request_measurement(void) { return dal_ultrasonic_request_measurement(&smoke_sonar); }
+static inline float smoke_sonar_read_distance(void) { float d = -1.0f; WINK_IGNORE_RESULT(dal_ultrasonic_get_cached_distance(&smoke_sonar, &d)); return d; }
+WINK_WARN_UNUSED_RESULT static inline wink_status_t smoke_sonar_read_distance_status(float *out_dist_cm) { return dal_ultrasonic_get_cached_distance(&smoke_sonar, out_dist_cm); }
 
 /* ── Device tree lifecycle ── */
 

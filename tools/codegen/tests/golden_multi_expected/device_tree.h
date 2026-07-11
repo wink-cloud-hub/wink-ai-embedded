@@ -32,6 +32,14 @@ extern dal_led_t status_led;
 extern dal_servo_t neck_servo;
 extern dal_ssd1306_t display;
 
+/* ── Role-based instance APIs (static inline) ── */
+static inline void status_led_activate(void) { WINK_IGNORE_RESULT(dal_led_on(&status_led)); }
+static inline void status_led_deactivate(void) { WINK_IGNORE_RESULT(dal_led_off(&status_led)); }
+static inline void status_led_toggle(void) { WINK_IGNORE_RESULT(dal_led_toggle(&status_led)); }
+static inline void display_clear(void) { WINK_IGNORE_RESULT(dal_ssd1306_clear(&display)); }
+static inline void display_draw_text(uint16_t col, uint8_t page, const char *str) { WINK_IGNORE_RESULT(dal_ssd1306_draw_text(&display, col, page, str)); }
+static inline void display_flush(void) { WINK_IGNORE_RESULT(dal_ssd1306_flush(&display)); }
+
 /* ── Device tree lifecycle ── */
 
 /**

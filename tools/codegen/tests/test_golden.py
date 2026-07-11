@@ -181,6 +181,51 @@ class GoldenTest(unittest.TestCase):
                 ])
             self.assertEqual(cm.exception.code, 2)
 
+    def test_invalid_role(self) -> None:
+        # Configuring an invalid role for a driver should exit with code 2
+        cfg = {
+            "app_name": "invalid_role_test",
+            "board": "esp32_devkitc",
+            "devices": {
+                "led1": {
+                    "type": "led",
+                    "pin": 2,
+                    "role": "binary_sensor"
+                }
+            }
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_json = Path(tmp) / "app.json"
+            tmp_json.write_text(json.dumps(cfg), encoding="utf-8")
+            with self.assertRaises(SystemExit) as cm:
+                app_codegen.main([
+                    "--config", str(tmp_json),
+                    "--out-dir", str(Path(tmp) / "out"),
+                ])
+            self.assertEqual(cm.exception.code, 2)
+
+    def test_onboard_type_conflict(self) -> None:
+        # Explicit type declaration conflicting with onboard device should exit with code 2
+        cfg = {
+            "app_name": "onboard_type_conflict_test",
+            "board": "esp32_devkitc",
+            "devices": {
+                "board_led": {
+                    "use_onboard": "status_led",
+                    "type": "servo"  # Conflicts with onboard "led" type!
+                }
+            }
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_json = Path(tmp) / "app.json"
+            tmp_json.write_text(json.dumps(cfg), encoding="utf-8")
+            with self.assertRaises(SystemExit) as cm:
+                app_codegen.main([
+                    "--config", str(tmp_json),
+                    "--out-dir", str(Path(tmp) / "out"),
+                ])
+            self.assertEqual(cm.exception.code, 2)
+
     def test_escaping(self) -> None:
         # A value starting with $$board. should strip the first $ and return a literal string,
         # bypassing the board lookup completely.
