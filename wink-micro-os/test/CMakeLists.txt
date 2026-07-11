@@ -175,7 +175,7 @@ add_wink_host_test(test_sim_mutex_e2e test_sim_mutex_e2e.c)
 # R5：baseline .h 缺失即编译失败（HAS_BASELINE_HEADER 由 CMake file(EXISTS) 门控）。
 set(_BASELINE_H
     ${CMAKE_CURRENT_SOURCE_DIR}/baseline/avoidance_car_semantic_baseline.h)
-if(EXISTS ${_BASELINE_H})
+if(EXISTS ${_BASELINE_H} AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../samples/avoidance_car)
     # P2 (2026-07-06): dal linked via add_wink_host_test -> target_link_libraries(dal);
     # removed hard-coded dal/src/**/*.c paths.
     add_wink_host_test(test_single_task_semantic_regression

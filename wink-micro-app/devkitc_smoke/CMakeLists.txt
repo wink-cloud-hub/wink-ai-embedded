@@ -23,7 +23,9 @@ endif()
 # Python3 is already found at the top-level CMakeLists.txt (line 20), so we
 # just reuse ${Python3_EXECUTABLE} here.
 set(WINK_APP_JSON     ${CMAKE_CURRENT_SOURCE_DIR}/wink-app.json)
-set(WINK_CODEGEN_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../../tools/codegen)
+if(NOT DEFINED WINK_CODEGEN_ROOT)
+    set(WINK_CODEGEN_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../../tools/codegen)
+endif()
 set(WINK_CODEGEN_TOOL ${WINK_CODEGEN_ROOT}/app_codegen.py)
 set(GEN_DIR           ${CMAKE_CURRENT_BINARY_DIR}/generated)
 file(MAKE_DIRECTORY ${GEN_DIR})

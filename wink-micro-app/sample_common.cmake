@@ -35,12 +35,12 @@ include_guard(GLOBAL)
 #
 # Use with: ${WINK_SAMPLE_RUNTIME_SOURCES}
 set(WINK_SAMPLE_RUNTIME_SOURCES
-    ${CMAKE_CURRENT_LIST_DIR}/../runtime/src/wink_runtime.c
-    ${CMAKE_CURRENT_LIST_DIR}/../runtime/src/wink_runtime_tasks.c
-    ${CMAKE_CURRENT_LIST_DIR}/../runtime/src/wink_actuator_registry.c
-    ${CMAKE_CURRENT_LIST_DIR}/../runtime/src/wink_soft_timer.c
-    ${CMAKE_CURRENT_LIST_DIR}/../runtime/src/wink_event.c
-    ${CMAKE_CURRENT_LIST_DIR}/../trace/src/wink_trace.c
+    ${wink-micro-os_SOURCE_DIR}/runtime/src/wink_runtime.c
+    ${wink-micro-os_SOURCE_DIR}/runtime/src/wink_runtime_tasks.c
+    ${wink-micro-os_SOURCE_DIR}/runtime/src/wink_actuator_registry.c
+    ${wink-micro-os_SOURCE_DIR}/runtime/src/wink_soft_timer.c
+    ${wink-micro-os_SOURCE_DIR}/runtime/src/wink_event.c
+    ${wink-micro-os_SOURCE_DIR}/trace/src/wink_trace.c
     CACHE INTERNAL "wink-micro-os sample: runtime + trace core sources")
 
 # ── Common include directories ────────────────────────────────────────────
@@ -55,33 +55,33 @@ function(wink_sample_apply_include_dirs target)
     target_include_directories(${target} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
         # PAL: root + osal/ + hal/ subdirs (post-Phase-1 dir reorg)
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../pal/include
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../pal/include/osal
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../pal/include/hal
+        ${wink-micro-os_SOURCE_DIR}/pal/include
+        ${wink-micro-os_SOURCE_DIR}/pal/include/osal
+        ${wink-micro-os_SOURCE_DIR}/pal/include/hal
         # targets/common (wink_sim_physical.h and other cross-target headers)
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../targets/common/include
+        ${wink-micro-os_SOURCE_DIR}/targets/common/include
         # DAL: root + all category subdirs
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/input
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/output
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/actuator
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/display
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/sensor
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/communication
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../dal/include/storage
+        ${wink-micro-os_SOURCE_DIR}/dal/include
+        ${wink-micro-os_SOURCE_DIR}/dal/include/input
+        ${wink-micro-os_SOURCE_DIR}/dal/include/output
+        ${wink-micro-os_SOURCE_DIR}/dal/include/actuator
+        ${wink-micro-os_SOURCE_DIR}/dal/include/display
+        ${wink-micro-os_SOURCE_DIR}/dal/include/sensor
+        ${wink-micro-os_SOURCE_DIR}/dal/include/communication
+        ${wink-micro-os_SOURCE_DIR}/dal/include/storage
         # Runtime + trace + test (host e2e drivers live under test/)
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/include
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../trace/include
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../test
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../test/stubs
+        ${wink-micro-os_SOURCE_DIR}/runtime/include
+        ${wink-micro-os_SOURCE_DIR}/trace/include
+        ${wink-micro-os_SOURCE_DIR}/test
+        ${wink-micro-os_SOURCE_DIR}/test/stubs
         # BAL (Business Abstraction Layer) — ADR-0023 Stage 2
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../bal/include
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../bal/include/output
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../bal/include/input
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../bal/include/sensor
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../bal/include/actuator
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../bal/include/display
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../bal/include/comm
+        ${wink-micro-os_SOURCE_DIR}/bal/include
+        ${wink-micro-os_SOURCE_DIR}/bal/include/output
+        ${wink-micro-os_SOURCE_DIR}/bal/include/input
+        ${wink-micro-os_SOURCE_DIR}/bal/include/sensor
+        ${wink-micro-os_SOURCE_DIR}/bal/include/actuator
+        ${wink-micro-os_SOURCE_DIR}/bal/include/display
+        ${wink-micro-os_SOURCE_DIR}/bal/include/comm
         ${_extra_dirs}
     )
 

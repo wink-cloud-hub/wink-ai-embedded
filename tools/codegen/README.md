@@ -8,10 +8,18 @@ directory, ready to be built alongside a sample's hand-written
 |------|---------|
 | `device_tree.h` | `extern` handles + init/deinit prototypes |
 | `device_tree.c` | Static device instances, safe-off thunks, init/deinit sequences |
-| `app_support.c` | Service-start glue (button polling, telemetry, …) |
+| `device_tree_api.md` | Auto-generated Markdown API specification document |
 | `app_options.cmake` | `WINK_USE_XXX` flags forced ON per driver used |
 
 ## Run
+
+The recommended way to run codegen is via the unified CLI orchestrator:
+
+```bash
+python tools/wink.py gen --app devkitc_smoke
+```
+
+Alternatively, run the generator script directly:
 
 ```bash
 python tools/codegen/app_codegen.py \

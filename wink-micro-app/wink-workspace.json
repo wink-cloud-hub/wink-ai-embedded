@@ -1,0 +1,6 @@
+{
+    "sdk_dir": "../wink-micro-os",
+    "frontend_dir": "../embedded-frontend",
+    "esp32_dir": "../esp32_firmware",
+    "scripts_dir": "../scripts"
+}
