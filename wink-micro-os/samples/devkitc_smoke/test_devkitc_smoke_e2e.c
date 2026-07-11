@@ -3,8 +3,7 @@
  * @brief DevKitC 冒烟测试 host e2e：跑 5 tick → 验证 LED + 按钮 + PWM + 无故障。
  *
  * host 侧行为：
- *   - pal_gpio_read 非 echo pin 恒 false（pal_hal_host.c:49）
- *   - active_low=true 按钮经 3 tick 去抖后稳定 pressed
+ *   - active_low 按钮上拉 idle → 释放；显式注入 LOW 后去抖为按下
  *   - PWM router 分配不同 timer 给 50Hz vs 1kHz
  *   - 无 I2C/ISR/双核/看门狗（均为 ESP_PLATFORM 隔离，stub 不崩）
  */
@@ -30,9 +29,9 @@ int main(void)
         (void)st;
     }
 
-    /* 验证：LED 点亮（host 下 active_low 按钮恒 pressed → LED on） */
+    /* 验证：LED 点亮（blink helper 在 tick 内会点亮 LED） */
     if (!board_led.is_on) {
-        E2E_FAIL("LED not on after ticks (button pressed)");
+        E2E_FAIL("LED not on after ticks (blink helper)");
     }
 
     /* 验证：PWM 通道 1 已配置（50Hz 占空比 50%） */
