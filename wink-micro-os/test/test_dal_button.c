@@ -80,8 +80,7 @@ void test_is_pressed_null_out_returns_invalid_arg(void) {
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_button_is_pressed(&dev, NULL));
 }
 
-/* ---- host 去抖：pal_gpio_read 对非 echo pin 恒返回 false ----
- * active_low=true → raw=false 视为按下；经 3 次 poll 后稳定态翻转为 true */
+/* ---- host 去抖：pull-up idle 释放；显式 LOW 后去抖为按下 ---- */
 void test_active_low_debounce_to_pressed(void) {
     dal_button_t dev = {0};
     const dal_button_config_t cfg = { .owner = OWNER, .pin = 10, .active_low = true };
@@ -91,7 +90,15 @@ void test_active_low_debounce_to_pressed(void) {
         TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_poll(&dev));
     }
 
-    bool pressed = false;
+    bool pressed = true;
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_is_pressed(&dev, &pressed));
+    TEST_ASSERT_FALSE(pressed);
+
+    set_btn_pin(10, true, true);
+    for (int i = 0; i < DAL_BUTTON_DEBOUNCE_THRESHOLD; i++) {
+        TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_poll(&dev));
+    }
+
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_is_pressed(&dev, &pressed));
     TEST_ASSERT_TRUE(pressed);
 }
@@ -117,6 +124,7 @@ void test_was_pressed_edge_once(void) {
     const dal_button_config_t cfg = { .owner = OWNER, .pin = 12, .active_low = true };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, &cfg));
 
+    set_btn_pin(12, true, true);
     for (int i = 0; i < DAL_BUTTON_DEBOUNCE_THRESHOLD; i++) {
         wink_status_t s = dal_button_poll(&dev);
         (void)s;
@@ -189,9 +197,7 @@ void test_event_press_dispatched_on_debounce(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, &cfg));
     struct btn_recorder r = {0};
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_on_event(&dev, record_event, &r));
-    /* 默认未按下 raw=false XOR active_low=true → pressed=true，所以 init 后 poll
-     * 会进入 debounce。但先打一帧：需要把 pin 理想电平设到 HIGH（未按）避免 init 后
-     * 立即是 pressed 状态。*/
+    /* pull-up idle → 释放态；显式设 HIGH 与 init 一致，再注入 LOW 测 PRESS 边沿。 */
     set_btn_pin(21, false, true);  /* released → HIGH for active_low */
     poll_n(&dev, DAL_BUTTON_DEBOUNCE_THRESHOLD);
     int count_before = r.count;

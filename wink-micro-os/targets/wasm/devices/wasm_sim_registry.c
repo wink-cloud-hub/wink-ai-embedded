@@ -24,6 +24,7 @@ uint32_t wasm_dev_ultrasonic_get_pulse_us(uint8_t pin);
 
 // 通用 GPIO 输入/输出虚拟状态
 static bool s_gpio_inputs[WASM_SIM_MAX_PINS];
+static bool s_gpio_input_set[WASM_SIM_MAX_PINS];
 static bool s_gpio_outputs[WASM_SIM_MAX_PINS];
 
 // 统一复位接口
@@ -32,6 +33,7 @@ void wasm_sim_devices_reset(void) {
     wasm_dev_servo_reset();
     wasm_dev_ultrasonic_reset();
     memset(s_gpio_inputs, 0, sizeof(s_gpio_inputs));
+    memset(s_gpio_input_set, 0, sizeof(s_gpio_input_set));
     memset(s_gpio_outputs, 0, sizeof(s_gpio_outputs));
 }
 
@@ -74,7 +76,18 @@ void wasm_sim_pwm_set_duty(uint8_t channel, float duty_cycle_percent) {
 void wasm_sim_gpio_set_input(uint8_t pin, bool level) {
     if (pin < WASM_SIM_MAX_PINS) {
         s_gpio_inputs[pin] = level;
+        s_gpio_input_set[pin] = true;
     }
+}
+
+bool wasm_sim_gpio_input_is_set(uint8_t pin, bool *out_level) {
+    if (pin < WASM_SIM_MAX_PINS && s_gpio_input_set[pin]) {
+        if (out_level != NULL) {
+            *out_level = s_gpio_inputs[pin];
+        }
+        return true;
+    }
+    return false;
 }
 
 bool wasm_sim_gpio_get_input(uint8_t pin) {
