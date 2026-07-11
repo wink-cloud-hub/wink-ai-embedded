@@ -32,6 +32,7 @@
 #include <stdbool.h>
 #include "wink_config.h"
 #include "wink_status.h"
+#include "wink_event.h"
 
 /* Forward-declare PAL reset-reason enum to avoid pulling pal_osal.h into
  * the app-facing header (keeps app code zero-PAL-header).  The actual
@@ -335,6 +336,7 @@ typedef struct wink_app_callbacks {
     void          (*on_boot)(const wink_boot_info_t *info);
     wink_status_t (*init_status)(void);            /* return non-OK → auto raise_fault */
     wink_status_t (*on_fault_status)(uint32_t fault_code); /* OK=recovered, LOCKED=halt */
+    void          (*on_event)(const wink_event_t *evt);   /* callback for handling asynchronous events */
 } wink_app_callbacks_t;
 
 /** @brief App 侧周期延时（内部转 PAL pal_delay_ms，语义由 target 实现） */

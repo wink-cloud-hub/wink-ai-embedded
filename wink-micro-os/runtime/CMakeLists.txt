@@ -4,6 +4,7 @@ add_library(wink_runtime STATIC
     src/wink_runtime_tasks.c
     src/wink_actuator_registry.c
     src/wink_soft_timer.c
+    src/wink_event.c
     # ADR-0008 设备树覆写 blob 解析器 + CRC32：runtime 层通用工具（无硬件依赖），
     # 从 pal/src/ 迁出以修复层级反转（PAL 不应含设备树/CRC 领域概念）。
     src/wink_dev_config.c

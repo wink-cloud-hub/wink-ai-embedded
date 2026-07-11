@@ -212,6 +212,7 @@ static bool s_sim_in_pt = false;
 
 void pal_os_set_sim_isr_context(bool in_isr) { s_sim_in_isr = in_isr; }
 bool pal_os_in_sim_isr_context(void) { return s_sim_in_isr; }
+bool pal_os_in_isr(void) { return pal_os_in_sim_isr_context(); }
 
 void pal_os_set_sim_pt_context(bool in_pt) { s_sim_in_pt = in_pt; }
 bool pal_os_in_sim_pt_context(void) { return s_sim_in_pt; }

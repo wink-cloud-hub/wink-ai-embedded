@@ -14,6 +14,7 @@
 #include "wink_fault.h"
 #include "wink_tasks.h"
 #include "wink_soft_timer.h"
+#include "wink_event.h"
 #include "wink_actuator_registry.h"
 #include "wink_trace.h"
 #include "pal_osal.h"
@@ -121,6 +122,14 @@ static void sim_app_main_task(void* arg) {
             s_poll_cbs[i].fn(s_poll_cbs[i].ctx);
         }
 
+        /* --- Run user event callback if events are available --- */
+        if (callbacks->on_event != NULL) {
+            wink_event_t event;
+            while (wink_event_pend(&event, 0) == WINK_OK) {
+                callbacks->on_event(&event);
+            }
+        }
+
         /* --- Run user loop callback with individual WCET monitoring --- */
         wink_runtime_monitor_wcet_loop(callbacks->loop, "app_loop");
 
@@ -135,7 +144,23 @@ static void sim_app_main_task(void* arg) {
             pal_os_set_abnormal_boot_count(0);
         }
 
-        wink_app_delay_ms(WINK_RUNTIME_TICK_MS);
+        uint32_t elapsed_ms = (uint32_t)(tick_elapsed_us / 1000U);
+        uint32_t sleep_ms = 0;
+        if (elapsed_ms < WINK_RUNTIME_TICK_MS) {
+            sleep_ms = WINK_RUNTIME_TICK_MS - elapsed_ms;
+        }
+
+        if (sleep_ms > 0) {
+            if (callbacks->on_event != NULL) {
+                wink_event_t event;
+                wink_status_t st = wink_event_pend(&event, sleep_ms);
+                if (st == WINK_OK) {
+                    callbacks->on_event(&event);
+                }
+            } else {
+                wink_app_delay_ms(sleep_ms);
+            }
+        }
         tick++;
     }
 }
@@ -189,6 +214,12 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
         return st_init;
     }
 
+    /* Initialize event queue subsystem */
+    wink_status_t st_ev = wink_event_queue_init(WINK_EVENT_QUEUE_DEFAULT_CAPACITY);
+    if (wink_status_is_error(st_ev)) {
+        return st_ev;
+    }
+
     /* ── on_boot callback ────────────────────────────────── */
     if (callbacks->on_boot != NULL) {
         wink_boot_info_t info;
@@ -215,6 +246,7 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
         if (wink_status_is_error(init_st)) {
             /* init returned error → auto fault + safe-off. */
             wink_runtime_fault(callbacks, WINK_FAULT_RUNTIME(50)); /* init-failed sentinel */
+            wink_event_queue_deinit();
             return init_st;
         }
     }
@@ -224,9 +256,14 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
     wink_status_t st = sim_scheduler_register(
         sim_app_main_task, (void*)callbacks, "app_main",
         5, PAL_OS_CORE_ANY, 32*1024, &main_task_id);
-    if (st != WINK_OK) return st;
+    if (st != WINK_OK) {
+        wink_event_queue_deinit();
+        return st;
+    }
 
-    return pal_sim_scheduler_run(callbacks, main_task_id, max_ticks);
+    wink_status_t run_st = pal_sim_scheduler_run(callbacks, main_task_id, max_ticks);
+    wink_event_queue_deinit();
+    return run_st;
 #else
     uint32_t tick = 0;
     /* max_ticks == 0 => infinite loop (embedded/wasm); host tests pass a finite value. */
@@ -240,6 +277,14 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
         /* --- Registered poll callbacks (DAL auto-poll) --- */
         for (uint8_t i = 0; i < s_poll_count; i++) {
             s_poll_cbs[i].fn(s_poll_cbs[i].ctx);
+        }
+
+        /* --- Run user event callback if events are available --- */
+        if (callbacks->on_event != NULL) {
+            wink_event_t event;
+            while (wink_event_pend(&event, 0) == WINK_OK) {
+                callbacks->on_event(&event);
+            }
         }
 
         /* --- Run user loop callback with individual WCET monitoring --- */
@@ -256,9 +301,26 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
             pal_os_set_abnormal_boot_count(0);
         }
 
-        wink_app_delay_ms(WINK_RUNTIME_TICK_MS);
+        uint32_t elapsed_ms = (uint32_t)(tick_elapsed_us / 1000U);
+        uint32_t sleep_ms = 0;
+        if (elapsed_ms < WINK_RUNTIME_TICK_MS) {
+            sleep_ms = WINK_RUNTIME_TICK_MS - elapsed_ms;
+        }
+
+        if (sleep_ms > 0) {
+            if (callbacks->on_event != NULL) {
+                wink_event_t event;
+                wink_status_t st = wink_event_pend(&event, sleep_ms);
+                if (st == WINK_OK) {
+                    callbacks->on_event(&event);
+                }
+            } else {
+                wink_app_delay_ms(sleep_ms);
+            }
+        }
         tick++;
     }
+    wink_event_queue_deinit();
     return WINK_OK;
 #endif
 }
