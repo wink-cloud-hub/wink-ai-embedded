@@ -2,15 +2,11 @@
  * @file app_callbacks.c
  * @brief OLED Dashboard 业务逻辑：按钮输入 → OLED 文本 + LED 指示。
  *
- * 真机行为：
+ * 真机 / 仿真一致行为：
  *   - 按钮按下（active_low，内部上拉）→ OLED 显示 "HELLO WORLD N"（N 初值 1；
  *     仅 SSD1306 MVP 字库支持的大写/数字），LOG_I 输出完整 "Hello World N"。
- *   - 按钮释放 → OLED 清屏，LED 熄灭。
- *
- * host e2e 行为：
- *   - host pal_gpio_read 对非 echo pin 恒返回 false。
- *   - active_low=true 按钮经 3 次 poll 去抖后稳定为 pressed。
- *   - 故 host 下 LED 恒亮、OLED 恒显 "Hello World N"（可接受仿真保真）。
+ *   - 按住期间显示序号不变；松开 → OLED 清屏，LED 熄灭。
+ *   - 每次新的按下边沿递增 N（下次按下显示 N+1）。
  */
 #define LOG_TAG "oled_dashboard"
 
@@ -29,6 +25,7 @@
 #define FAULT_BUTTON_HELPER 8001u
 
 static uint32_t s_press_count = 1;
+static uint32_t s_shown_count = 0;
 static bool s_prev_pressed = false;
 
 static void app_on_boot(const wink_boot_info_t *info)
@@ -54,6 +51,7 @@ static wink_status_t app_init_status(void)
     WINK_INIT_BLOCKING_REGION_END
 
     s_press_count = 1;
+    s_shown_count = 0;
     s_prev_pressed = false;
 
     LOG_I("init done");
@@ -69,22 +67,24 @@ static void app_loop(void)
     const bool rising_edge = pressed && !s_prev_pressed;
     s_prev_pressed = pressed;
 
-    if (pressed) {
+    if (rising_edge) {
+        s_shown_count = s_press_count;
+        LOG_I("Hello World %lu", (unsigned long)s_shown_count);
+        if (s_press_count < UINT32_MAX) {
+            s_press_count++;
+        }
+    }
+
+    if (pressed && s_shown_count > 0u) {
         char line[32];
-        (void)snprintf(line, sizeof(line), "HELLO WORLD %lu", (unsigned long)s_press_count);
+        (void)snprintf(line, sizeof(line), "HELLO WORLD %lu", (unsigned long)s_shown_count);
 
         s = dal_led_on(&status_led); (void)s;
         s = dal_ssd1306_clear(&status_oled); (void)s;
         s = dal_ssd1306_draw_text(&status_oled, 0, 0, line); (void)s;
         s = dal_ssd1306_flush(&status_oled); (void)s;
-
-        if (rising_edge) {
-            LOG_I("Hello World %lu", (unsigned long)s_press_count);
-            if (s_press_count < UINT32_MAX) {
-                s_press_count++;
-            }
-        }
     } else {
+        s_shown_count = 0;
         s = dal_led_off(&status_led); (void)s;
         s = dal_ssd1306_clear(&status_oled); (void)s;
         s = dal_ssd1306_flush(&status_oled); (void)s;

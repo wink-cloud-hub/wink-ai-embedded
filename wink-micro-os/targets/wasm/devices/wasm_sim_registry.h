@@ -21,6 +21,8 @@ void wasm_sim_pwm_set_duty(uint8_t channel, float duty_cycle_percent);
 
 // GPIO 仿真与注入
 void wasm_sim_gpio_set_input(uint8_t pin, bool level);
+/** Returns true when UI/JS explicitly injected a level for this pin. */
+bool wasm_sim_gpio_input_is_set(uint8_t pin, bool *out_level);
 bool wasm_sim_gpio_get_input(uint8_t pin);
 bool wasm_sim_gpio_get_output(uint8_t pin);
 void wasm_sim_gpio_write(uint8_t pin, bool level);

@@ -55,6 +55,21 @@ extern void host_record_pwm(uint8_t channel, float duty);
 #define ECHO_POLL_WINDOW_US 30000u
 #define HOST_MAX_GPIO_PIN  50
 
+static pal_gpio_mode_t s_gpio_mode[HOST_MAX_GPIO_PIN];
+static bool            s_gpio_mode_known[HOST_MAX_GPIO_PIN];
+
+static bool pal_gpio_mode_idle_level(pal_gpio_mode_t mode)
+{
+    switch (mode) {
+        case PAL_GPIO_INPUT_PULLUP:
+            return true;
+        case PAL_GPIO_INPUT_PULLDOWN:
+            return false;
+        default:
+            return false;
+    }
+}
+
 #define HOST_MAX_LOOPBACKS 8
 static struct {
     wink_pin_t pin_out;
@@ -69,12 +84,17 @@ static wink_pin_t s_host_pwm_pins[PAL_PWM_CHANNELS] = {
 wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
     /* Track A（M1）：DAL 是资源占用 SSOT，PAL 层不再自 claim（否则与 DAL 语义 owner
      * 二次抢占同 pin，恒返 BUSY）。DAL init 已保证 claim 在此之前完成。 */
-    (void)pin;
-    (void)mode;
+    if (pin >= 0 && pin < HOST_MAX_GPIO_PIN) {
+        s_gpio_mode[pin] = mode;
+        s_gpio_mode_known[pin] = true;
+    }
     return WINK_OK;
 }
 
 void pal_gpio_reset_pin(wink_pin_t pin) {
+    if (pin >= 0 && pin < HOST_MAX_GPIO_PIN) {
+        s_gpio_mode_known[pin] = false;
+    }
     /* Host simulation: no hardware reservation bitmap, no GPIO ISR dispatch
      * table to clear — software resource claim is released separately by
      * pal_resource_release() in the DAL deinit path. Keep this a no-op so
@@ -166,7 +186,11 @@ wink_status_t pal_gpio_read(wink_pin_t pin, bool *out_level) {
     }
 
     if (pin != host_echo_pin()) {
-        *out_level = false;
+        if (s_gpio_mode_known[pin]) {
+            *out_level = pal_gpio_mode_idle_level(s_gpio_mode[pin]);
+        } else {
+            *out_level = false;
+        }
         return WINK_OK;
     }
 

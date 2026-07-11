@@ -33,15 +33,33 @@ _Static_assert(sizeof(void*) == 4,
     "wasm64 migration required: see wasm_bridge.h ABI 契约 #5 "
     "and review every (uint32_t)(uintptr_t) cast in pal_hal_wasm.c / createUnisimImports.ts");
 
+static pal_gpio_mode_t s_gpio_mode[WASM_SIM_MAX_PINS];
+static bool            s_gpio_mode_known[WASM_SIM_MAX_PINS];
+
+static bool pal_gpio_mode_idle_level(pal_gpio_mode_t mode)
+{
+    switch (mode) {
+        case PAL_GPIO_INPUT_PULLUP:
+            return true;
+        case PAL_GPIO_INPUT_PULLDOWN:
+            return false;
+        default:
+            return false;
+    }
+}
+
 wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
-    (void)pin; (void)mode;            /* 仿真下无需硬件配置 */
+    if (pin >= 0 && pin < WASM_SIM_MAX_PINS) {
+        s_gpio_mode[(uint8_t)pin] = mode;
+        s_gpio_mode_known[(uint8_t)pin] = true;
+    }
     return WINK_OK;
 }
 
 void pal_gpio_reset_pin(wink_pin_t pin) {
-    /* Wasm simulation: no hardware reservation bitmap — symmetric with host
-     * no-op; SW resource claim is released by pal_resource_release(). */
-    (void)pin;
+    if (pin >= 0 && pin < WASM_SIM_MAX_PINS) {
+        s_gpio_mode_known[(uint8_t)pin] = false;
+    }
 }
 
 wink_status_t pal_gpio_set_direction(wink_pin_t pin, pal_gpio_mode_t mode) {
@@ -76,9 +94,15 @@ wink_status_t pal_gpio_read(wink_pin_t pin, bool *out_level) {
         return WINK_ERR_INVALID_STATE;
     }
 
-    /* Step 1: 优先读取 Wasm 侧本地注入的电平，若未注入则从 JS 侧获取理想电平。 */
-    bool ideal = wasm_sim_gpio_get_input((uint8_t)pin);
-    if (!ideal) {
+    /* Step 1: 显式注入 > 上拉/下拉 idle 默认 > JS pull（echo 等未 claim 路径）。 */
+    bool ideal;
+    if (wasm_sim_gpio_input_is_set((uint8_t)pin, &ideal)) {
+        /* UI / pal_wasm_set_gpio_input */
+    }
+    else if (s_gpio_mode_known[(uint8_t)pin]) {
+        ideal = pal_gpio_mode_idle_level(s_gpio_mode[(uint8_t)pin]);
+    }
+    else {
         ideal = js_pal_gpio_read(pin);
     }
 

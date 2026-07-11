@@ -111,22 +111,20 @@ void test_virtual_ultrasonic_distance_and_pulses(void) {
 
 void test_virtual_gpio_inputs_and_outputs(void) {
     uint8_t pin = 5;
+    bool level = false;
 
-    // Default states should be false
-    TEST_ASSERT_FALSE(wasm_sim_gpio_get_input(pin));
+    TEST_ASSERT_FALSE(wasm_sim_gpio_input_is_set(pin, &level));
     TEST_ASSERT_FALSE(pal_wasm_get_gpio_output(pin));
 
-    // Inject input
     pal_wasm_set_gpio_input(pin, true);
-    TEST_ASSERT_TRUE(wasm_sim_gpio_get_input(pin));
+    TEST_ASSERT_TRUE(wasm_sim_gpio_input_is_set(pin, &level));
+    TEST_ASSERT_TRUE(level);
 
-    // Write output
     wasm_sim_gpio_write(pin, true);
     TEST_ASSERT_TRUE(pal_wasm_get_gpio_output(pin));
 
-    // Reset should clear states
     pal_wasm_sim_reset_all_devices();
-    TEST_ASSERT_FALSE(wasm_sim_gpio_get_input(pin));
+    TEST_ASSERT_FALSE(wasm_sim_gpio_input_is_set(pin, &level));
     TEST_ASSERT_FALSE(pal_wasm_get_gpio_output(pin));
 }
 
