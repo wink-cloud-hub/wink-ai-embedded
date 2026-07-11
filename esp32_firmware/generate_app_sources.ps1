@@ -17,7 +17,8 @@
 #>
 
 param(
-    [string]$AppName = "devkitc_smoke"
+    [string]$AppName = "devkitc_smoke",
+    [string]$AppDir = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -25,7 +26,12 @@ $ErrorActionPreference = "Stop"
 # 路径计算：脚本所在目录 = esp32_firmware/
 $ScriptDir = $PSScriptRoot
 $RepoRoot = (Get-Item (Join-Path $ScriptDir "..")).FullName
-$AppDir = Join-Path $RepoRoot "wink-micro-os\samples\$AppName"
+if ($AppDir -ne "") {
+    $AppDir = (Get-Item $AppDir).FullName
+    $AppName = Split-Path -Leaf $AppDir
+} else {
+    $AppDir = Join-Path $RepoRoot "wink-micro-os\samples\$AppName"
+}
 
 # 验证 App 目录存在
 if (-not (Test-Path $AppDir)) {
@@ -44,8 +50,12 @@ if (-not $RepoRootPath.EndsWith("\")) {
 $AppSourceFiles = @(Get-ChildItem -Path $AppDir -Filter "*.c" -Recurse |
     Where-Object { $_.Name -notlike "test_*.c" } |
     ForEach-Object {
-        $RelPath = $_.FullName.Substring($RepoRootPath.Length).Replace('\', '/')
-        "`${CMAKE_CURRENT_LIST_DIR}/../../$RelPath"
+        if ($_.FullName.StartsWith($RepoRootPath)) {
+            $RelPath = $_.FullName.Substring($RepoRootPath.Length).Replace('\', '/')
+            "`${CMAKE_CURRENT_LIST_DIR}/../../$RelPath"
+        } else {
+            $_.FullName.Replace('\', '/')
+        }
     })
 
 # 2) samples/common helpers — auto-included so any sample can #include the
@@ -84,8 +94,25 @@ if (Test-Path $CommonDir) {
 
 $SourceFiles = @($AppSourceFiles + $CommonSourceFiles)
 
-$AppDirRel = "`${CMAKE_CURRENT_LIST_DIR}/../../wink-micro-os/samples/$AppName"
-$CommonIncludeDir = "`${CMAKE_CURRENT_LIST_DIR}/../../wink-micro-os/samples/common/include"
+if ($AppDir.StartsWith($RepoRootPath)) {
+    $AppDirRel = "`${CMAKE_CURRENT_LIST_DIR}/../../" + $AppDir.Substring($RepoRootPath.Length).Replace('\', '/')
+} else {
+    $AppDirRel = $AppDir.Replace('\', '/')
+}
+$ParentDir = Split-Path -Parent $AppDir
+$CommonIncludePath = Join-Path $ParentDir "common\include"
+
+if (Test-Path $CommonIncludePath) {
+    $CommonIncludeDirResolved = $CommonIncludePath
+} else {
+    $CommonIncludeDirResolved = Join-Path $RepoRoot "wink-micro-os\samples\common\include"
+}
+
+if ($CommonIncludeDirResolved.StartsWith($RepoRootPath)) {
+    $CommonIncludeDir = "`${CMAKE_CURRENT_LIST_DIR}/../../" + $CommonIncludeDirResolved.Substring($RepoRootPath.Length).Replace('\', '/')
+} else {
+    $CommonIncludeDir = $CommonIncludeDirResolved.Replace('\', '/')
+}
 
 # 生成 CMake 片段（UTF8 无 BOM，CMake 兼容性最好）
 $OutputPath = Join-Path $ScriptDir "main\app_sources.cmake"

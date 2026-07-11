@@ -135,6 +135,20 @@ if(ESP_PLATFORM)
         WINK_USE_GPS=1
         WINK_USE_EEPROM=1
     )
+
+    # Inject active font source file based on WINK_SSD1306_FONT setting
+    if(NOT DEFINED WINK_SSD1306_FONT)
+        set(WINK_SSD1306_FONT "ascii_upper")
+    endif()
+    if(WINK_SSD1306_FONT STREQUAL "minimal")
+        target_sources(${COMPONENT_LIB} PRIVATE
+            ${WINK_MICRO_OS_ROOT}/dal/src/display/dal_ssd1306_font_5x7_minimal.c
+        )
+    else()
+        target_sources(${COMPONENT_LIB} PRIVATE
+            ${WINK_MICRO_OS_ROOT}/dal/src/display/dal_ssd1306_font_5x7_ascii_upper.c
+        )
+    endif()
 elseif(TARGET_PLATFORM STREQUAL "esp32")
     # 非 ESP-IDF 环境：仅声明源文件（供静态分析）
     set(ESP32_PAL_SOURCES

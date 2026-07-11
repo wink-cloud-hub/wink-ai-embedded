@@ -23,6 +23,18 @@ static struct {
     bool                    initialized;
 } s_queue = {0};
 
+static uint32_t round_up_pow2(uint32_t v) {
+    if (v == 0) return 1;
+    v--;
+    v |= v >> 1;
+    v |= v >> 2;
+    v |= v >> 4;
+    v |= v >> 8;
+    v |= v >> 16;
+    v++;
+    return v;
+}
+
 wink_status_t wink_event_queue_init(uint32_t capacity) {
     if (s_queue.initialized) {
         return WINK_OK; /* Idempotent */
@@ -34,9 +46,10 @@ wink_status_t wink_event_queue_init(uint32_t capacity) {
         return WINK_ERR_INVALID_ARG;
     }
 
-    s_queue.ringbuf = pal_os_ringbuf_create(capacity * sizeof(wink_event_t));
+    uint32_t ringbuf_size = round_up_pow2(capacity * sizeof(wink_event_t));
+    s_queue.ringbuf = pal_os_ringbuf_create(ringbuf_size);
     if (s_queue.ringbuf == NULL) {
-        LOG_E("init: failed to create ringbuffer");
+        LOG_E("init: failed to create ringbuffer (size %u)", (unsigned)ringbuf_size);
         return WINK_ERR_NO_MEM;
     }
 

@@ -208,32 +208,48 @@ if(NOT TARGET_PLATFORM STREQUAL "wasm")
     # All helpers have migrated to BAL (blink/button/telemetry) or
     # runtime/selftest (sim_echo); only #include-path shims remain. Must be
     # added before the samples that target_link_libraries() against it.
-    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/common)
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/samples/common)
+        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/common)
+    elseif(EXISTS ${WINK_APP_DIR}/../common)
+        add_subdirectory(${WINK_APP_DIR}/../common ${CMAKE_BINARY_DIR}/common_build)
+    elseif(EXISTS ${WINK_APP_DIR}/common)
+        add_subdirectory(${WINK_APP_DIR}/common ${CMAKE_BINARY_DIR}/common_build)
+    endif()
 
     # §6.1 约束3：标准 App 注入接口。未指定则默认 samples/avoidance_car。
     if(NOT DEFINED WINK_APP_DIR)
         set(WINK_APP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/samples/avoidance_car)
     endif()
     message(STATUS "WINK_APP_DIR = ${WINK_APP_DIR}")
-    add_subdirectory(${WINK_APP_DIR} ${CMAKE_BINARY_DIR}/app_build)
+    if(EXISTS ${WINK_APP_DIR})
+        add_subdirectory(${WINK_APP_DIR} ${CMAKE_BINARY_DIR}/app_build)
+    else()
+        message(FATAL_ERROR "WINK_APP_DIR does not exist: ${WINK_APP_DIR}")
+    endif()
 
     # Phase 2：OLED Dashboard 示例（额外 e2e target，不改默认 App）
-    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/oled_dashboard
-                     ${CMAKE_BINARY_DIR}/oled_dashboard_build)
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/samples/oled_dashboard)
+        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/oled_dashboard
+                         ${CMAKE_BINARY_DIR}/oled_dashboard_build)
+    endif()
 
     # DevKitC 冒烟测试：裸板真机 S1-S8 全链路验证
-    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/devkitc_smoke
-                     ${CMAKE_BINARY_DIR}/devkitc_smoke_build)
-
-
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/samples/devkitc_smoke)
+        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/devkitc_smoke
+                         ${CMAKE_BINARY_DIR}/devkitc_smoke_build)
+    endif()
 
     # Track A M1 / Task A-3：资源占用冲突反例样本（host-only 断言样本）
-    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/resource_conflict
-                     ${CMAKE_BINARY_DIR}/resource_conflict_build)
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/samples/resource_conflict)
+        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/resource_conflict
+                         ${CMAKE_BINARY_DIR}/resource_conflict_build)
+    endif()
 
     # Cooperative multi-task scheduler demo App
-    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/dual_task_demo
-                     ${CMAKE_BINARY_DIR}/dual_task_demo_build)
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/samples/dual_task_demo)
+        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples/dual_task_demo
+                         ${CMAKE_BINARY_DIR}/dual_task_demo_build)
+    endif()
 
     add_subdirectory(test)
 
