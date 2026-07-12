@@ -34,14 +34,22 @@ include_guard(GLOBAL)
 # needs an explicit unset() from callers.
 #
 # Use with: ${WINK_SAMPLE_RUNTIME_SOURCES}
-set(WINK_SAMPLE_RUNTIME_SOURCES
-    ${wink-micro-os_SOURCE_DIR}/runtime/src/wink_runtime.c
-    ${wink-micro-os_SOURCE_DIR}/runtime/src/wink_runtime_tasks.c
-    ${wink-micro-os_SOURCE_DIR}/runtime/src/wink_actuator_registry.c
-    ${wink-micro-os_SOURCE_DIR}/runtime/src/wink_soft_timer.c
-    ${wink-micro-os_SOURCE_DIR}/runtime/src/wink_event.c
-    ${wink-micro-os_SOURCE_DIR}/trace/src/wink_trace.c
-    CACHE INTERNAL "wink-micro-os sample: runtime + trace core sources")
+#
+# Phase 2 BINARY mode: all runtime/trace code is inside libwink_micro_os.a;
+# no individual sources needed.  App links dal/wink_micro_os instead.
+if(WINK_SDK_BINARY_MODE)
+    set(WINK_SAMPLE_RUNTIME_SOURCES ""
+        CACHE INTERNAL "wink-micro-os sample: not needed in BINARY mode (libs in .a)")
+else()
+    set(WINK_SAMPLE_RUNTIME_SOURCES
+        ${wink-micro-os_SOURCE_DIR}/runtime/src/wink_runtime.c
+        ${wink-micro-os_SOURCE_DIR}/runtime/src/wink_runtime_tasks.c
+        ${wink-micro-os_SOURCE_DIR}/runtime/src/wink_actuator_registry.c
+        ${wink-micro-os_SOURCE_DIR}/runtime/src/wink_soft_timer.c
+        ${wink-micro-os_SOURCE_DIR}/runtime/src/wink_event.c
+        ${wink-micro-os_SOURCE_DIR}/trace/src/wink_trace.c
+        CACHE INTERNAL "wink-micro-os sample: runtime + trace core sources")
+endif()
 
 # ── Common include directories ────────────────────────────────────────────
 # The full sample include surface: PAL headers (root + osal/hal), targets/common
@@ -52,38 +60,49 @@ function(wink_sample_apply_include_dirs target)
     # Extra include dirs beyond the shared surface (ARGN)
     set(_extra_dirs ${ARGN})
 
-    target_include_directories(${target} PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        # PAL: root + osal/ + hal/ subdirs (post-Phase-1 dir reorg)
-        ${wink-micro-os_SOURCE_DIR}/pal/include
-        ${wink-micro-os_SOURCE_DIR}/pal/include/osal
-        ${wink-micro-os_SOURCE_DIR}/pal/include/hal
-        # targets/common (wink_sim_physical.h and other cross-target headers)
-        ${wink-micro-os_SOURCE_DIR}/targets/common/include
-        # DAL: root + all category subdirs
-        ${wink-micro-os_SOURCE_DIR}/dal/include
-        ${wink-micro-os_SOURCE_DIR}/dal/include/input
-        ${wink-micro-os_SOURCE_DIR}/dal/include/output
-        ${wink-micro-os_SOURCE_DIR}/dal/include/actuator
-        ${wink-micro-os_SOURCE_DIR}/dal/include/display
-        ${wink-micro-os_SOURCE_DIR}/dal/include/sensor
-        ${wink-micro-os_SOURCE_DIR}/dal/include/communication
-        ${wink-micro-os_SOURCE_DIR}/dal/include/storage
-        # Runtime + trace + test (host e2e drivers live under test/)
-        ${wink-micro-os_SOURCE_DIR}/runtime/include
-        ${wink-micro-os_SOURCE_DIR}/trace/include
-        ${wink-micro-os_SOURCE_DIR}/test
-        ${wink-micro-os_SOURCE_DIR}/test/stubs
-        # BAL (Business Abstraction Layer) — ADR-0023 Stage 2
-        ${wink-micro-os_SOURCE_DIR}/bal/include
-        ${wink-micro-os_SOURCE_DIR}/bal/include/output
-        ${wink-micro-os_SOURCE_DIR}/bal/include/input
-        ${wink-micro-os_SOURCE_DIR}/bal/include/sensor
-        ${wink-micro-os_SOURCE_DIR}/bal/include/actuator
-        ${wink-micro-os_SOURCE_DIR}/bal/include/display
-        ${wink-micro-os_SOURCE_DIR}/bal/include/comm
-        ${_extra_dirs}
-    )
+    if(WINK_SDK_BINARY_MODE)
+        # Phase 2 BINARY mode: all public headers are aggregated under
+        # ${wink-micro-os_SOURCE_DIR}/include/ by pack_sdk_binary.py.
+        # No individual pal/dal/runtime/trace subdirectory paths needed.
+        target_include_directories(${target} PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}
+            ${wink-micro-os_SOURCE_DIR}/include
+            ${_extra_dirs}
+        )
+    else()
+        target_include_directories(${target} PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}
+            # PAL: root + osal/ + hal/ subdirs (post-Phase-1 dir reorg)
+            ${wink-micro-os_SOURCE_DIR}/pal/include
+            ${wink-micro-os_SOURCE_DIR}/pal/include/osal
+            ${wink-micro-os_SOURCE_DIR}/pal/include/hal
+            # targets/common (wink_sim_physical.h and other cross-target headers)
+            ${wink-micro-os_SOURCE_DIR}/targets/common/include
+            # DAL: root + all category subdirs
+            ${wink-micro-os_SOURCE_DIR}/dal/include
+            ${wink-micro-os_SOURCE_DIR}/dal/include/input
+            ${wink-micro-os_SOURCE_DIR}/dal/include/output
+            ${wink-micro-os_SOURCE_DIR}/dal/include/actuator
+            ${wink-micro-os_SOURCE_DIR}/dal/include/display
+            ${wink-micro-os_SOURCE_DIR}/dal/include/sensor
+            ${wink-micro-os_SOURCE_DIR}/dal/include/communication
+            ${wink-micro-os_SOURCE_DIR}/dal/include/storage
+            # Runtime + trace + test (host e2e drivers live under test/)
+            ${wink-micro-os_SOURCE_DIR}/runtime/include
+            ${wink-micro-os_SOURCE_DIR}/trace/include
+            ${wink-micro-os_SOURCE_DIR}/test
+            ${wink-micro-os_SOURCE_DIR}/test/stubs
+            # BAL (Business Abstraction Layer) — ADR-0023 Stage 2
+            ${wink-micro-os_SOURCE_DIR}/bal/include
+            ${wink-micro-os_SOURCE_DIR}/bal/include/output
+            ${wink-micro-os_SOURCE_DIR}/bal/include/input
+            ${wink-micro-os_SOURCE_DIR}/bal/include/sensor
+            ${wink-micro-os_SOURCE_DIR}/bal/include/actuator
+            ${wink-micro-os_SOURCE_DIR}/bal/include/display
+            ${wink-micro-os_SOURCE_DIR}/bal/include/comm
+            ${_extra_dirs}
+        )
+    endif()
 
     # Generated wink_config.h: only present when a wink-app is in play. Sample
     # binaries that don't consume it (resource_conflict) skip this branch.

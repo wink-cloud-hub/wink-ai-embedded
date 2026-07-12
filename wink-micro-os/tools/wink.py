@@ -207,6 +207,12 @@ def handle_build(args):
         micro_os_dir = resolve_sdk_dir()
         codegen_dir = Path(__file__).resolve().parent / "codegen"
 
+        # Validate --sdk-mode against SDK tree early
+        sdk_mode = getattr(args, "sdk_mode", None)
+        if sdk_mode == "binary" and not (micro_os_dir / "libs" / "host").exists():
+            print("[wink] Error: --sdk-mode binary but libs/host/ not found in SDK tree.", file=sys.stderr)
+            sys.exit(1)
+
         configure_cmd = [
             "cmake",
             "-S", str(micro_os_dir),
@@ -215,6 +221,8 @@ def handle_build(args):
             f"-DWINK_APP_DIR={app_dir.as_posix()}",
             f"-DWINK_CODEGEN_ROOT={codegen_dir.as_posix()}"
         ]
+        if sdk_mode:
+            configure_cmd.append(f"-DWINK_SDK_MODE={sdk_mode}")
         if sys.platform == "win32":
             configure_cmd.extend(["-G", "MinGW Makefiles"])
 
@@ -369,6 +377,9 @@ def main():
                          help="App name in samples/ or path to app directory")
     p_build.add_argument("--clean", action="store_true",
                          help="Clean the build directory before building (host only)")
+    p_build.add_argument("--sdk-mode", choices=["source", "binary"], default=None,
+                         help="SDK mode: 'source' (build from source) or 'binary' (use precompiled .a). "
+                              "Default: auto-detect from SDK tree.")
     p_build.set_defaults(handler=handle_build)
 
     p_esp = sub.add_parser("esp32", help="Build, flash, or monitor ESP32 firmware")
