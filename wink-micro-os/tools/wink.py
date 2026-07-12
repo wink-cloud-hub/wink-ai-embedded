@@ -60,7 +60,7 @@ def resolve_sdk_dir() -> Path:
     return SDK_ROOT
 
 
-def resolve_frontend_dir() -> Path:
+def resolve_frontend_dir(required: bool = True) -> Path:
     """Resolve the embedded-frontend directory."""
     env_val = os.environ.get("WINK_FRONTEND_PATH")
     if env_val:
@@ -71,12 +71,13 @@ def resolve_frontend_dir() -> Path:
     default_path = WORKSPACE_ROOT / "embedded-frontend"
     if default_path.exists():
         return default_path
-
+    if not required:
+        return default_path
     print("[wink] Error: Cannot resolve embedded-frontend directory. Set WINK_FRONTEND_PATH environment variable, frontend_dir in wink-workspace.json, or run in the monorepo.", file=sys.stderr)
     sys.exit(1)
 
 
-def resolve_esp32_dir() -> Path:
+def resolve_esp32_dir(required: bool = True) -> Path:
     """Resolve the esp32_firmware directory."""
     env_val = os.environ.get("WINK_ESP32_PATH")
     if env_val:
@@ -87,12 +88,13 @@ def resolve_esp32_dir() -> Path:
     default_path = WORKSPACE_ROOT / "esp32_firmware"
     if default_path.exists():
         return default_path
-
+    if not required:
+        return default_path
     print("[wink] Error: Cannot resolve esp32_firmware directory. Set WINK_ESP32_PATH environment variable, esp32_dir in wink-workspace.json, or run in the monorepo.", file=sys.stderr)
     sys.exit(1)
 
 
-def resolve_scripts_dir() -> Path:
+def resolve_scripts_dir(required: bool = True) -> Path:
     """Resolve the build scripts directory."""
     env_val = os.environ.get("WINK_SCRIPTS_PATH")
     if env_val:
@@ -103,16 +105,24 @@ def resolve_scripts_dir() -> Path:
     default_path = WORKSPACE_ROOT / "scripts"
     if default_path.exists():
         return default_path
-
+    if not required:
+        return default_path
     print("[wink] Error: Cannot resolve scripts directory. Set WINK_SCRIPTS_PATH environment variable, scripts_dir in wink-workspace.json, or run in the monorepo.", file=sys.stderr)
     sys.exit(1)
 
 
-# Export global path environment variables to propagate them to all child subprocesses
+# Export SDK path always; sibling dirs are optional until a command needs them
+# (Source SDK tarball has no embedded-frontend / esp32_firmware siblings).
 os.environ["WINK_SDK_PATH"] = str(resolve_sdk_dir().as_posix())
-os.environ["WINK_FRONTEND_PATH"] = str(resolve_frontend_dir().as_posix())
-os.environ["WINK_ESP32_PATH"] = str(resolve_esp32_dir().as_posix())
-os.environ["WINK_SCRIPTS_PATH"] = str(resolve_scripts_dir().as_posix())
+_fe = resolve_frontend_dir(required=False)
+if _fe.exists():
+    os.environ["WINK_FRONTEND_PATH"] = str(_fe.as_posix())
+_esp = resolve_esp32_dir(required=False)
+if _esp.exists():
+    os.environ["WINK_ESP32_PATH"] = str(_esp.as_posix())
+_scripts = resolve_scripts_dir(required=False)
+if _scripts.exists():
+    os.environ["WINK_SCRIPTS_PATH"] = str(_scripts.as_posix())
 os.environ["WINK_CODEGEN_ROOT"] = str((Path(__file__).resolve().parent / "codegen").as_posix())
 
 
@@ -220,7 +230,7 @@ def handle_build(args):
         print(f"[wink] Success: Host simulator build complete. Output is in {build_dir}")
 
     elif args.target == "wasm":
-        frontend_dir = resolve_frontend_dir()
+        frontend_dir = resolve_frontend_dir(required=True)
         wasm_script = frontend_dir / "scripts" / "build-wasm.mjs"
         run_cmd([
             "node",
@@ -234,8 +244,8 @@ def handle_esp32(args):
     """Build, flash or monitor ESP32 firmware."""
     app_dir = resolve_app_dir(args.app)
     sdk_dir = resolve_sdk_dir()
-    esp32_dir = resolve_esp32_dir()
-    scripts_dir = resolve_scripts_dir()
+    esp32_dir = resolve_esp32_dir(required=True)
+    scripts_dir = resolve_scripts_dir(required=True)
     codegen_dir = Path(__file__).resolve().parent / "codegen"
 
     os.environ["WINK_APP_DIR"] = app_dir.as_posix()
@@ -269,7 +279,7 @@ def handle_esp32(args):
 
 def handle_web(args):
     """Run Vue Vite frontend dev web server."""
-    frontend_dir = resolve_frontend_dir()
+    frontend_dir = resolve_frontend_dir(required=True)
     print("[wink] Starting Vue/Vite frontend dev server (press Ctrl+C to stop)...")
     run_cmd([
         "npm",

@@ -1,0 +1,5 @@
+mode=source
+exclude=test/  (except test/stubs/ — required by host PAL)
+exclude=build-*/
+exclude=.git/
+note=Phase1 faithful tree export of wink-micro-os (no include/src remap)

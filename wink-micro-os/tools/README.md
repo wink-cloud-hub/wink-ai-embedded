@@ -8,6 +8,7 @@ Lives under `wink-micro-os/tools/` so peripheral/driver work stays in one tree.
 | Path | Role |
 |------|------|
 | `wink.py` | Unified CLI (`gen` / `build` / `esp32` / `web` / `test`) |
+| `pack_sdk_source.py` | Phase 1 Source SDK tarball (`wink-micro-os-sdk-source-v*.tar.gz`) |
 | `codegen/` | Generators: device tree, `wink_config.h`, PT state helpers |
 | `lint/` | Build/test gates (PT footguns, header self-containment, log fmt) |
 
@@ -43,6 +44,23 @@ Example `wink-workspace.json` at the workspace root:
 | `esp32 --app … [idf args]` | ESP-IDF build / flash / monitor |
 | `web [--port N]` | Vite frontend |
 | `test` | Codegen golden + host ctest |
+
+### Source SDK pack (Phase 1)
+
+```bash
+python wink-micro-os/tools/pack_sdk_source.py --out-dir wink-micro-os/dist
+# → wink-micro-os/dist/wink-micro-os-sdk-source-v0.1.0.tar.gz
+```
+
+M2 smoke (SDK and App in separate trees):
+
+```powershell
+tar -xzf wink-micro-os/dist/wink-micro-os-sdk-source-v0.1.0.tar.gz -C $env:TEMP/wink-sdk
+$env:WINK_SDK_PATH = "$env:TEMP/wink-sdk/wink-micro-os-sdk-source-v0.1.0"
+python "$env:WINK_SDK_PATH/tools/wink.py" build host --app (Resolve-Path wink-micro-app/avoidance_car)
+```
+
+`wink_config.h` is generated from `$WINK_APP_DIR/wink-app.json` (not the monorepo-root `wink-app.json`).
 
 ### Platform matrix
 
