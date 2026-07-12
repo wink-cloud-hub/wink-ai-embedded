@@ -15,7 +15,7 @@ if(TARGET_PLATFORM STREQUAL "wasm")
     add_compile_definitions(SIMULATION=1)
 endif()
 
-# ── 配置生成层 (Task 0: codegen_config.py) ──────────────────────────
+# ── 配置生成层 (Task 0: codegen/config_h.py) ──────────────────────────
 # Generate wink_config.h from wink_app.json - SSOT for runtime parameters
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 set(WINK_CONFIG_DIR ${CMAKE_BINARY_DIR}/generated)
@@ -23,12 +23,12 @@ set(WINK_CONFIG_H ${WINK_CONFIG_DIR}/wink_config.h)
 
 add_custom_command(
     OUTPUT ${WINK_CONFIG_H}
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/codegen_config.py
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/codegen/config_h.py
             --input ${CMAKE_CURRENT_SOURCE_DIR}/../wink-app.json
             --output ${WINK_CONFIG_H}
             --target ${TARGET_PLATFORM}
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../wink-app.json
-            ${CMAKE_CURRENT_SOURCE_DIR}/tools/codegen_config.py
+            ${CMAKE_CURRENT_SOURCE_DIR}/tools/codegen/config_h.py
     COMMENT "Generating wink_config.h from wink_app.json"
     VERBATIM
 )
@@ -68,7 +68,7 @@ endif()
 # Detects non-static auto variables inside functions that yield.
 add_custom_target(
     check_pt_footguns ALL
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_pt_variables.py
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/lint/check_pt_variables.py
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMENT "🔍 Scanning for protothread auto variable footguns..."
     VERBATIM

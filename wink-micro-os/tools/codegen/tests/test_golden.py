@@ -6,8 +6,9 @@ compares each generated file to a checked-in expected file under
 a message pointing at ``--regen-golden`` — this forces explicit human
 acceptance of new output rather than silent creation.
 
-Usage (repo root):
-    python -m tools.codegen.tests.test_golden
+Usage (workspace root, SDK on PYTHONPATH):
+    $env:PYTHONPATH = "wink-micro-os"   # PowerShell
+    python wink-micro-os/tools/codegen/tests/test_golden.py
 """
 from __future__ import annotations
 
@@ -17,11 +18,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-# Ensure repo root is importable when run as ``python path/to/test_golden.py``.
+# Ensure wink-micro-os (SDK root) is importable when run as a script.
 _HERE = Path(__file__).resolve().parent
-_REPO_ROOT = _HERE.parent.parent.parent
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
+_SDK_ROOT = _HERE.parent.parent.parent
+if str(_SDK_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SDK_ROOT))
 
 from tools.codegen import app_codegen  # noqa: E402
 
@@ -73,7 +74,7 @@ class GoldenTest(unittest.TestCase):
                         "output differs from golden: " + ", ".join(mismatched)
                     )
                 lines.append(
-                    "regenerate with: python tools/codegen/app_codegen.py "
+                    "regenerate with: python wink-micro-os/tools/codegen/app_codegen.py "
                     f"--config {GOLDEN_JSON} --out-dir {GOLDEN_EXPECTED}"
                 )
                 self.fail("\n".join(lines))
@@ -118,7 +119,7 @@ class GoldenTest(unittest.TestCase):
                         "output differs from golden: " + ", ".join(mismatched)
                     )
                 lines.append(
-                    "regenerate with: python tools/codegen/app_codegen.py "
+                    "regenerate with: python wink-micro-os/tools/codegen/app_codegen.py "
                     f"--config {golden_json} --out-dir {golden_expected}"
                 )
                 self.fail("\n".join(lines))

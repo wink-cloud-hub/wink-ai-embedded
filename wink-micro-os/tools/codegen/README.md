@@ -11,43 +11,41 @@ directory, ready to be built alongside a sample's hand-written
 | `device_tree_api.md` | Auto-generated Markdown API specification document |
 | `app_options.cmake` | `WINK_USE_XXX` flags forced ON per driver used |
 
+Sibling generators in this directory:
+
+| File | Purpose |
+|------|---------|
+| `config_h.py` | `wink_app.json` → `wink_config.h` (tick / timers SSOT) |
+| `pt_state.py` | Protothread `WINK_PT_STATE` business-logic helper |
+
 ## Run
 
-The recommended way to run codegen is via the unified CLI orchestrator:
-
 ```bash
-python tools/wink.py gen --app devkitc_smoke
+python wink-micro-os/tools/wink.py gen --app devkitc_smoke
 ```
 
-Alternatively, run the generator script directly:
+Or directly:
 
 ```bash
-python tools/codegen/app_codegen.py \
-    --config wink-micro-os/samples/devkitc_smoke/wink-app.json \
-    --out-dir wink-micro-os/samples/devkitc_smoke/build/generated
+python wink-micro-os/tools/codegen/app_codegen.py \
+    --config wink-micro-app/devkitc_smoke/wink-app.json \
+    --out-dir build/generated
 ```
 
 Exit codes: `0` success, `2` schema/validation error, `1` other errors.
 
 ## Add a device type
 
-Drop a plugin at `tools/codegen/drivers/<type>.py` that subclasses
-`DriverBase` (see `drivers/base.py`). At minimum override `type`,
-`is_actuator`, `required_fields`, `get_headers`, `get_device_type`,
-`render_config_init`, and `render_deinit`. Optional hooks let a driver
-inject post-init calls, service-start lines, and extra headers. Discovery
-is automatic — subclassing registers the plugin.
+Drop a plugin at `wink-micro-os/tools/codegen/drivers/<type>.py` that subclasses
+`DriverBase` (see `drivers/base.py`). Discovery is automatic — subclassing
+registers the plugin.
 
 ## Golden tests
 
 ```bash
-python -m tools.codegen.tests.test_golden
+$env:PYTHONPATH = "wink-micro-os"
+python wink-micro-os/tools/codegen/tests/test_golden.py
 ```
-
-The test renders `tests/golden_devkitc.json` to a temp dir and diffs every
-generated file against `tests/golden_expected/`. Missing expected files
-fail the test — regenerate them explicitly via the hidden `--regen-golden`
-flag (populated in P1-2 once driver plugins land).
 
 ## Constraints (per tech-design)
 

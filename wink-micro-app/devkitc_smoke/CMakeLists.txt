@@ -24,7 +24,7 @@ endif()
 # just reuse ${Python3_EXECUTABLE} here.
 set(WINK_APP_JSON     ${CMAKE_CURRENT_SOURCE_DIR}/wink-app.json)
 if(NOT DEFINED WINK_CODEGEN_ROOT)
-    set(WINK_CODEGEN_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../../tools/codegen)
+    set(WINK_CODEGEN_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../wink-micro-os/tools/codegen)
 endif()
 set(WINK_CODEGEN_TOOL ${WINK_CODEGEN_ROOT}/app_codegen.py)
 set(GEN_DIR           ${CMAKE_CURRENT_BINARY_DIR}/generated)

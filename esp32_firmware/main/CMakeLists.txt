@@ -87,7 +87,7 @@ idf_component_register(
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 if(NOT DEFINED WINK_CODEGEN_ROOT)
-    set(WINK_CODEGEN_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../tools/codegen")
+    set(WINK_CODEGEN_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../wink-micro-os/tools/codegen")
 endif()
 set(WINK_CODEGEN_TOOL "${WINK_CODEGEN_ROOT}/app_codegen.py")
 set(WINK_APP_JSON     "${WINK_APP_DIR}/wink-app.json")

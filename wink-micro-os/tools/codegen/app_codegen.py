@@ -10,9 +10,9 @@ Exit codes:
     1  other errors (IO, template, unexpected)
 
 The tool loads the JSON spec, resolves driver plugins from
-``tools/codegen/drivers/``, topologically sorts devices by ``depends_on`` (if
-present; otherwise preserves declaration order), then renders four Jinja2
-templates. See ``tools/codegen/README.md`` for design rationale.
+``wink-micro-os/tools/codegen/drivers/``, topologically sorts devices by
+``depends_on`` (if present; otherwise preserves declaration order), then
+renders four Jinja2 templates. See ``codegen/README.md`` for design rationale.
 """
 from __future__ import annotations
 
@@ -24,11 +24,11 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 # ── Package-relative import shim ─────────────────────────────────────
-# Allow running either as ``python -m tools.codegen.app_codegen`` (repo root
-# on sys.path) or ``python tools/codegen/app_codegen.py`` (script mode).
+# Allow running either as ``python -m tools.codegen.app_codegen`` (SDK root
+# on sys.path) or ``python …/codegen/app_codegen.py`` (script mode).
 if __package__ in (None, ""):
     _HERE = Path(__file__).resolve().parent
-    # Prepend repo root so ``tools.codegen.drivers`` resolves.
+    # Prepend wink-micro-os so ``tools.codegen.drivers`` resolves.
     sys.path.insert(0, str(_HERE.parent.parent))
     from tools.codegen.drivers import get_driver, all_drivers  # noqa: E402
     from tools.codegen.drivers.base import DriverBase  # noqa: E402
