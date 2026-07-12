@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import tarfile
@@ -91,6 +92,15 @@ _BINARY_PACK_REQUIRED_DEFINES = (
 )
 _BINARY_PACK_GCC_SECTION_FLAGS = ("-ffunction-sections", "-fdata-sections")
 _BINARY_PACK_MSVC_SECTION_FLAG = "/Gy"
+_BINARY_PACK_WINK_CONFIG_CEILINGS = {
+    "WINK_MAX_SOFT_TIMERS": 32,
+    "PAL_PWM_CHANNELS": 16,
+}
+# Matches config_h.py output: #define MACRO    (32U)
+_BINARY_PACK_DEFINE_RE = re.compile(
+    r"^#define\s+(\w+)\s+\((\d+)U\)\s*$",
+    re.MULTILINE,
+)
 
 
 def create_binary_pack_stub_app(parent_dir: Path) -> Path:
@@ -149,6 +159,45 @@ def _collect_cmake_cache_flag_text(build_dir: Path) -> str:
     return " ".join(parts)
 
 
+def _binary_pack_wink_config_h_path(build_dir: Path) -> Path:
+    """Return the pack build's generated wink_config.h path."""
+    return build_dir / "generated" / "wink_config.h"
+
+
+def _parse_wink_config_ceiling(header_text: str, macro: str) -> int | None:
+    """Parse a (NNU) define value from generated wink_config.h."""
+    for name, value in _BINARY_PACK_DEFINE_RE.findall(header_text):
+        if name == macro:
+            return int(value)
+    return None
+
+
+def validate_binary_pack_wink_config_h(build_dir: Path) -> None:
+    """Require pack build's generated wink_config.h to match binary pack ceilings."""
+    config_h = _binary_pack_wink_config_h_path(build_dir)
+    if not config_h.is_file():
+        raise SystemExit(
+            f"[pack-binary] Generated config header not found: {config_h}. "
+            "Re-run without --skip-build to configure and build with binary pack flags."
+        )
+
+    header_text = config_h.read_text(encoding="utf-8")
+    problems: list[str] = []
+    for macro, expected in _BINARY_PACK_WINK_CONFIG_CEILINGS.items():
+        actual = _parse_wink_config_ceiling(header_text, macro)
+        if actual is None:
+            problems.append(f"{macro} missing or not (NU) form")
+        elif actual != expected:
+            problems.append(f"{macro}={actual} (expected {expected})")
+
+    if problems:
+        raise SystemExit(
+            "[pack-binary] Build dir lacks binary pack wink_config.h ceilings: "
+            + ", ".join(problems)
+            + f". Re-run without --skip-build (header: {config_h})."
+        )
+
+
 def validate_binary_pack_build_flags(build_dir: Path) -> None:
     """Require evidence that the build dir was configured for binary pack ABI ceilings."""
     flags = _collect_cmake_cache_flag_text(build_dir)
@@ -166,6 +215,12 @@ def validate_binary_pack_build_flags(build_dir: Path) -> None:
             + ". Re-run without --skip-build (or reconfigure with pack flags: "
             + "-ffunction-sections and -fdata-sections for GCC, /Gy for MSVC)."
         )
+
+
+def validate_binary_pack_skip_build(build_dir: Path) -> None:
+    """Validate an existing pack build dir before --skip-build merge."""
+    validate_binary_pack_build_flags(build_dir)
+    validate_binary_pack_wink_config_h(build_dir)
 
 
 def build_host(sdk_root: Path, build_dir: Path) -> None:
@@ -526,7 +581,7 @@ def main() -> int:
     out_dir = args.out_dir.resolve()
 
     if args.skip_build:
-        validate_binary_pack_build_flags(build_dir)
+        validate_binary_pack_skip_build(build_dir)
         # Just merge from existing build
         ver, abi = read_version(SDK_ROOT)
         pkg_name = f"wink-micro-os-sdk-binary-v{ver}"

@@ -15,6 +15,30 @@ if str(_SDK_ROOT) not in sys.path:
 from tools import pack_sdk_binary  # noqa: E402
 
 
+def _write_valid_pack_cache(build_dir: Path) -> None:
+    (build_dir / "CMakeCache.txt").write_text(
+        "CMAKE_C_FLAGS:STRING="
+        "-DWINK_MAX_SOFT_TIMERS=32 "
+        "-DPAL_PWM_CHANNELS=16 "
+        "-ffunction-sections "
+        "-fdata-sections\n",
+        encoding="utf-8",
+    )
+
+
+def _write_valid_wink_config_h(build_dir: Path) -> None:
+    generated = build_dir / "generated"
+    generated.mkdir(parents=True, exist_ok=True)
+    (generated / "wink_config.h").write_text(
+        "#ifndef WINK_CONFIG_H\n"
+        "#define WINK_CONFIG_H\n"
+        "#define WINK_MAX_SOFT_TIMERS    (32U)\n"
+        "#define PAL_PWM_CHANNELS        (16U)\n"
+        "#endif\n",
+        encoding="utf-8",
+    )
+
+
 class BinarySdkPackTest(unittest.TestCase):
     def test_pack_stub_app_writes_binary_pack_ceilings(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -55,6 +79,60 @@ class BinarySdkPackTest(unittest.TestCase):
             )
 
             pack_sdk_binary.validate_binary_pack_build_flags(Path(tmp))
+
+    def test_skip_build_requires_generated_wink_config_h(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            build_dir = Path(tmp)
+            _write_valid_pack_cache(build_dir)
+
+            with self.assertRaises(SystemExit) as cm:
+                pack_sdk_binary.validate_binary_pack_skip_build(build_dir)
+
+        self.assertIn("wink_config.h", str(cm.exception))
+        self.assertIn("Re-run without --skip-build", str(cm.exception))
+
+    def test_skip_build_rejects_wrong_wink_config_ceilings(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            build_dir = Path(tmp)
+            _write_valid_pack_cache(build_dir)
+            generated = build_dir / "generated"
+            generated.mkdir(parents=True, exist_ok=True)
+            (generated / "wink_config.h").write_text(
+                "#define WINK_MAX_SOFT_TIMERS    (16U)\n"
+                "#define PAL_PWM_CHANNELS        (8U)\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(SystemExit) as cm:
+                pack_sdk_binary.validate_binary_pack_skip_build(build_dir)
+
+        msg = str(cm.exception)
+        self.assertIn("WINK_MAX_SOFT_TIMERS=16 (expected 32)", msg)
+        self.assertIn("PAL_PWM_CHANNELS=8 (expected 16)", msg)
+
+    def test_skip_build_accepts_valid_wink_config_ceilings(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            build_dir = Path(tmp)
+            _write_valid_pack_cache(build_dir)
+            _write_valid_wink_config_h(build_dir)
+
+            pack_sdk_binary.validate_binary_pack_skip_build(build_dir)
+
+    def test_wink_config_h_rejects_non_parenthesized_define(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            build_dir = Path(tmp)
+            generated = build_dir / "generated"
+            generated.mkdir(parents=True, exist_ok=True)
+            (generated / "wink_config.h").write_text(
+                "#define WINK_MAX_SOFT_TIMERS    32U\n"
+                "#define PAL_PWM_CHANNELS        16U\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(SystemExit) as cm:
+                pack_sdk_binary.validate_binary_pack_wink_config_h(build_dir)
+
+        self.assertIn("missing or not (NU) form", str(cm.exception))
 
     def test_binary_sdk_cmake_sets_platform_before_config_codegen(self) -> None:
         cmake = (
