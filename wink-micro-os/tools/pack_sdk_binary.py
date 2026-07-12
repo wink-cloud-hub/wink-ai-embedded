@@ -11,6 +11,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -88,7 +89,31 @@ _BINARY_PACK_REQUIRED_DEFINES = (
     "WINK_MAX_SOFT_TIMERS=32",
     "PAL_PWM_CHANNELS=16",
 )
-_BINARY_PACK_SECTION_FLAGS = ("-ffunction-sections", "/Gy")
+_BINARY_PACK_GCC_SECTION_FLAGS = ("-ffunction-sections", "-fdata-sections")
+_BINARY_PACK_MSVC_SECTION_FLAG = "/Gy"
+
+
+def create_binary_pack_stub_app(parent_dir: Path) -> Path:
+    """Create the app config used to compile Binary SDK archives."""
+    stub_dir = parent_dir / "binary_pack_stub_app"
+    stub_dir.mkdir(parents=True, exist_ok=True)
+    config = {
+        "app_name": "binary_pack_stub",
+        "board": "esp32_devkitc",
+        "tick_ms": 10,
+        "max_soft_timers": 32,
+        "pwm_channels": 16,
+        "devices": {},
+    }
+    (stub_dir / "wink-app.json").write_text(
+        json.dumps(config, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    (stub_dir / "CMakeLists.txt").write_text(
+        "# Binary SDK pack stub: config-only app for pack-time ceilings.\n",
+        encoding="utf-8",
+    )
+    return stub_dir
 
 
 def read_version(sdk_root: Path) -> tuple[str, str]:
@@ -130,25 +155,29 @@ def validate_binary_pack_build_flags(build_dir: Path) -> None:
     missing: list[str] = [
         define for define in _BINARY_PACK_REQUIRED_DEFINES if define not in flags
     ]
-    if not any(marker in flags for marker in _BINARY_PACK_SECTION_FLAGS):
-        missing.append("section splitting (-ffunction-sections or /Gy)")
+    if _BINARY_PACK_MSVC_SECTION_FLAG not in flags:
+        missing.extend(
+            flag for flag in _BINARY_PACK_GCC_SECTION_FLAGS if flag not in flags
+        )
     if missing:
         raise SystemExit(
             "[pack-binary] Build dir lacks binary pack ABI ceiling flags: "
             + ", ".join(missing)
-            + ". Re-run without --skip-build (or reconfigure with pack flags)."
+            + ". Re-run without --skip-build (or reconfigure with pack flags: "
+            + "-ffunction-sections and -fdata-sections for GCC, /Gy for MSVC)."
         )
 
 
 def build_host(sdk_root: Path, build_dir: Path) -> None:
     """Configure and build the OS in SOURCE mode for host."""
     print(f"[pack-binary] Configuring host build in {build_dir} ...")
+    pack_stub_app = create_binary_pack_stub_app(build_dir)
     configure_cmd = [
         "cmake",
         "-S", str(sdk_root),
         "-B", str(build_dir),
         "-DTARGET_PLATFORM=host",
-        f"-DWINK_APP_DIR={sdk_root.parent / 'wink-micro-app' / 'avoidance_car'}",
+        f"-DWINK_APP_DIR={pack_stub_app}",
         f"-DCMAKE_C_FLAGS={BINARY_PACK_GCC_C_FLAGS}",
     ]
     if os.name == "nt":

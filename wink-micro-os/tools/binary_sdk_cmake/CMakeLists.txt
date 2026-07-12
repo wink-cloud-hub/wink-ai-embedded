@@ -30,6 +30,10 @@ endif()
 message(STATUS "WINK_APP_DIR = ${WINK_APP_DIR}")
 message(STATUS "WINK_APP_JSON = ${WINK_APP_JSON}")
 
+# ── Target platform ──────────────────────────────────────────────────────────
+set(TARGET_PLATFORM "host" CACHE STRING "Target hardware platform")
+add_compile_definitions(PLATFORM_${TARGET_PLATFORM})
+
 # ── Config generation ────────────────────────────────────────────────────────
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 set(WINK_CONFIG_DIR ${CMAKE_BINARY_DIR}/generated)
@@ -58,10 +62,6 @@ add_custom_command(
     VERBATIM
 )
 add_custom_target(generate_config DEPENDS ${WINK_CONFIG_H})
-
-# ── Target platform ──────────────────────────────────────────────────────────
-set(TARGET_PLATFORM "host" CACHE STRING "Target hardware platform")
-add_compile_definitions(PLATFORM_${TARGET_PLATFORM})
 
 # ── Import precompiled binary SDK ────────────────────────────────────────────
 # This CMakeLists.txt is the consumer-facing entry point for the Binary SDK.
