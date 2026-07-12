@@ -15,6 +15,41 @@ if(TARGET_PLATFORM STREQUAL "wasm")
     add_compile_definitions(SIMULATION=1)
 endif()
 
+# ── App 注入根（须在 wink_config.h codegen 之前解析）──────────────────
+# Dual-Mode SDK Phase 1: config 只读 App 目录下的 wink-app.json，禁止写死
+# monorepo 根 ../wink-app.json（解压 SDK 后该路径不存在）。
+#
+# 相对路径相对「SDK 的父目录」（workspace 根）解析，以便
+#   cmake -S wink-micro-os -DWINK_APP_DIR=wink-micro-app/avoidance_car
+# 与 wink.py 传入的绝对路径都能工作。
+if(NOT DEFINED WINK_APP_DIR OR WINK_APP_DIR STREQUAL "")
+    set(WINK_APP_DIR "wink-micro-app/avoidance_car"
+        CACHE PATH "Path to App directory containing wink-app.json")
+endif()
+get_filename_component(_WINK_WORKSPACE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
+if(NOT IS_ABSOLUTE "${WINK_APP_DIR}")
+    # Paths starting with "." are relative to the SDK root (e.g. ExternalProject
+    # -DWINK_APP_DIR=../wink-micro-app/unisim_smoke). Other relative paths are
+    # workspace-relative (e.g. wink-micro-app/avoidance_car).
+    if(WINK_APP_DIR MATCHES "^[.]")
+        get_filename_component(WINK_APP_DIR "${WINK_APP_DIR}" ABSOLUTE
+            BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+    else()
+        get_filename_component(WINK_APP_DIR "${WINK_APP_DIR}" ABSOLUTE
+            BASE_DIR "${_WINK_WORKSPACE_ROOT}")
+    endif()
+else()
+    get_filename_component(WINK_APP_DIR "${WINK_APP_DIR}" ABSOLUTE)
+endif()
+set(WINK_APP_JSON "${WINK_APP_DIR}/wink-app.json")
+if(NOT EXISTS "${WINK_APP_JSON}")
+    message(FATAL_ERROR
+        "WINK_APP_JSON not found: ${WINK_APP_JSON}\n"
+        "Set -DWINK_APP_DIR= to a directory that contains wink-app.json.")
+endif()
+message(STATUS "WINK_APP_DIR = ${WINK_APP_DIR}")
+message(STATUS "WINK_APP_JSON = ${WINK_APP_JSON}")
+
 # ── 配置生成层 (Task 0: codegen/config_h.py) ──────────────────────────
 # Generate wink_config.h from wink_app.json - SSOT for runtime parameters
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
@@ -24,12 +59,12 @@ set(WINK_CONFIG_H ${WINK_CONFIG_DIR}/wink_config.h)
 add_custom_command(
     OUTPUT ${WINK_CONFIG_H}
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/codegen/config_h.py
-            --input ${CMAKE_CURRENT_SOURCE_DIR}/../wink-app.json
+            --input ${WINK_APP_JSON}
             --output ${WINK_CONFIG_H}
             --target ${TARGET_PLATFORM}
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../wink-app.json
+    DEPENDS ${WINK_APP_JSON}
             ${CMAKE_CURRENT_SOURCE_DIR}/tools/codegen/config_h.py
-    COMMENT "Generating wink_config.h from wink_app.json"
+    COMMENT "Generating wink_config.h from ${WINK_APP_JSON}"
     VERBATIM
 )
 
@@ -91,13 +126,9 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
     # ADR-0009 Wave 2：算法库 wink_sim_physical.c 在子目录里追加，本顶层无需关心具体源文件。
     add_subdirectory(targets/wasm)
 
-    # §6.1 约束3：标准 App 注入接口。未指定则默认 samples/avoidance_car。
+    # §6.1 约束3：标准 App 注入接口（WINK_APP_DIR 已在文件顶部解析）。
     # App CMakeLists 在 EMSCRIPTEN 分支下只 set(WINK_APP_SOURCES ... PARENT_SCOPE)
     # 即 return()，不定义 host e2e target（那些依赖 pal_host / test_*_e2e.c）。
-    if(NOT DEFINED WINK_APP_DIR)
-        set(WINK_APP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/avoidance_car)
-    endif()
-    message(STATUS "WINK_APP_DIR = ${WINK_APP_DIR}")
     add_subdirectory(${WINK_APP_DIR} ${CMAKE_BINARY_DIR}/app_build)
 
     # 兜底契约：hw-only sample 已用 FATAL_ERROR 硬拦截；此处覆盖第三方 App
@@ -216,11 +247,7 @@ if(NOT TARGET_PLATFORM STREQUAL "wasm")
         add_subdirectory(${WINK_APP_DIR}/common ${CMAKE_BINARY_DIR}/common_build)
     endif()
 
-    # §6.1 约束3：标准 App 注入接口。未指定则默认 ../wink-micro-app/avoidance_car。
-    if(NOT DEFINED WINK_APP_DIR)
-        set(WINK_APP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/avoidance_car)
-    endif()
-    message(STATUS "WINK_APP_DIR = ${WINK_APP_DIR}")
+    # §6.1 约束3：标准 App 注入接口（WINK_APP_DIR 已在文件顶部解析）。
     if(EXISTS ${WINK_APP_DIR})
         add_subdirectory(${WINK_APP_DIR} ${CMAKE_BINARY_DIR}/app_build)
     else()
@@ -251,12 +278,20 @@ if(NOT TARGET_PLATFORM STREQUAL "wasm")
                          ${CMAKE_BINARY_DIR}/dual_task_demo_build)
     endif()
 
-    add_subdirectory(test)
+    # Host unit / e2e tests live under test/. Source SDK tarballs omit this tree
+    # (Dual-Mode SDK Phase 1); skip rather than FATAL when packaging for M2.
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test/CMakeLists.txt")
+        add_subdirectory(test)
+    else()
+        message(STATUS "Skipping test/: not present in this SDK tree (Source SDK / M2)")
+    endif()
 
     # Wasm node smoke: use emcmake to build the unisim_smoke variant as an
     # ExternalProject, then run it under `node wink_sim_stub.js` from ctest.
     # This gives the host build a single automated wasm-runtime regression test;
     # ESP32 remains a manual burn step. Skipped gracefully when node/emcmake is
     # not on PATH (see wasm_node_smoke.cmake for details).
-    include(targets/wasm/wasm_node_smoke.cmake)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/targets/wasm/wasm_node_smoke.cmake")
+        include(targets/wasm/wasm_node_smoke.cmake)
+    endif()
 endif()
