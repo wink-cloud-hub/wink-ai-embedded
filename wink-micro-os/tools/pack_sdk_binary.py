@@ -83,6 +83,13 @@ SDK_TOOL_ROOTS = [
 # duplicate symbol warnings.
 _DUPLICATE_OBJ_NAMES = {"wink_dev_config.c.obj", "wink_dev_config.c.o"}
 
+# Evidence that build_host configured the binary-pack ABI ceilings and section splitting.
+_BINARY_PACK_REQUIRED_DEFINES = (
+    "WINK_MAX_SOFT_TIMERS=32",
+    "PAL_PWM_CHANNELS=16",
+)
+_BINARY_PACK_SECTION_FLAGS = ("-ffunction-sections", "/Gy")
+
 
 def read_version(sdk_root: Path) -> tuple[str, str]:
     version_file = sdk_root / "VERSION"
@@ -97,6 +104,40 @@ def read_version(sdk_root: Path) -> tuple[str, str]:
         if ln.startswith("ABI="):
             abi = ln.split("=", 1)[1].strip()
     return ver, abi
+
+
+def _collect_cmake_cache_flag_text(build_dir: Path) -> str:
+    """Return concatenated CMAKE_*FLAGS values from CMakeCache.txt."""
+    cache_file = build_dir / "CMakeCache.txt"
+    if not cache_file.is_file():
+        raise SystemExit(
+            f"[pack-binary] CMakeCache.txt not found in {build_dir}. "
+            "Re-run without --skip-build to configure and build with binary pack flags."
+        )
+    parts: list[str] = []
+    for line in cache_file.read_text(encoding="utf-8").splitlines():
+        if "CMAKE_C_FLAGS" not in line:
+            continue
+        _, _, value = line.partition("=")
+        if value:
+            parts.append(value)
+    return " ".join(parts)
+
+
+def validate_binary_pack_build_flags(build_dir: Path) -> None:
+    """Require evidence that the build dir was configured for binary pack ABI ceilings."""
+    flags = _collect_cmake_cache_flag_text(build_dir)
+    missing: list[str] = [
+        define for define in _BINARY_PACK_REQUIRED_DEFINES if define not in flags
+    ]
+    if not any(marker in flags for marker in _BINARY_PACK_SECTION_FLAGS):
+        missing.append("section splitting (-ffunction-sections or /Gy)")
+    if missing:
+        raise SystemExit(
+            "[pack-binary] Build dir lacks binary pack ABI ceiling flags: "
+            + ", ".join(missing)
+            + ". Re-run without --skip-build (or reconfigure with pack flags)."
+        )
 
 
 def build_host(sdk_root: Path, build_dir: Path) -> None:
@@ -123,6 +164,7 @@ def build_host(sdk_root: Path, build_dir: Path) -> None:
         else:
             configure_cmd[-1] = f"-DCMAKE_C_FLAGS={BINARY_PACK_MSVC_C_FLAGS}"
     subprocess.run(configure_cmd, check=True)
+    validate_binary_pack_build_flags(build_dir)
 
     print("[pack-binary] Building component libraries ...")
     subprocess.run(
@@ -455,6 +497,7 @@ def main() -> int:
     out_dir = args.out_dir.resolve()
 
     if args.skip_build:
+        validate_binary_pack_build_flags(build_dir)
         # Just merge from existing build
         ver, abi = read_version(SDK_ROOT)
         pkg_name = f"wink-micro-os-sdk-binary-v{ver}"
