@@ -93,16 +93,34 @@ if(ESP_PLATFORM)
     # SRCS/INCLUDE_DIRS/REQUIRES；register 前的代码会在脚本通执行（仅 set 等可脚本化
     # 命令），register 后的代码只在真实配置阶段执行，add_custom_command 才可用。
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    # Dual-Mode SDK Phase 1: wink_config.h 必须来自 App 目录，禁止 ../wink-app.json。
+    if(NOT DEFINED WINK_APP_DIR OR WINK_APP_DIR STREQUAL "")
+        if(DEFINED ENV{WINK_APP_DIR} AND NOT "$ENV{WINK_APP_DIR}" STREQUAL "")
+            set(WINK_APP_DIR "$ENV{WINK_APP_DIR}")
+        else()
+            message(FATAL_ERROR
+                "WINK_APP_DIR must be set for esp32 wink_config.h codegen "
+                "(CMake -DWINK_APP_DIR= or env WINK_APP_DIR).")
+        endif()
+    endif()
+    if(NOT IS_ABSOLUTE "${WINK_APP_DIR}")
+        get_filename_component(WINK_APP_DIR "${WINK_APP_DIR}" ABSOLUTE
+            BASE_DIR "${WINK_MICRO_OS_ROOT}")
+    endif()
+    set(WINK_APP_JSON "${WINK_APP_DIR}/wink-app.json")
+    if(NOT EXISTS "${WINK_APP_JSON}")
+        message(FATAL_ERROR "WINK_APP_JSON not found: ${WINK_APP_JSON}")
+    endif()
     set(WINK_CONFIG_H ${WINK_CONFIG_DIR}/wink_config.h)
     add_custom_command(
         OUTPUT ${WINK_CONFIG_H}
         COMMAND ${Python3_EXECUTABLE} ${WINK_MICRO_OS_ROOT}/tools/codegen/config_h.py
-                --input ${WINK_MICRO_OS_ROOT}/../wink-app.json
+                --input ${WINK_APP_JSON}
                 --output ${WINK_CONFIG_H}
                 --target esp32
-        DEPENDS ${WINK_MICRO_OS_ROOT}/../wink-app.json
+        DEPENDS ${WINK_APP_JSON}
                 ${WINK_MICRO_OS_ROOT}/tools/codegen/config_h.py
-        COMMENT "Generating wink_config.h from wink_app.json (esp32)"
+        COMMENT "Generating wink_config.h from ${WINK_APP_JSON} (esp32)"
         VERBATIM
     )
     add_custom_target(wink_generate_config DEPENDS ${WINK_CONFIG_H})
