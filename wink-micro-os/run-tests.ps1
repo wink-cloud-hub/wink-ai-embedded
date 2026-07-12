@@ -299,7 +299,7 @@ Write-Host "[lint] ADR-0017 L1: dal_ultrasonic_read absent under strict mode OK"
 Write-Host "[lint] Header self-containment (P1-B2)..." -ForegroundColor Cyan
 $pythonCmd = Get-Command python -ErrorAction SilentlyContinue
 if ($pythonCmd) {
-    & python (Join-Path $PSScriptRoot 'tools/check_headers_self_contained.py')
+    & python (Join-Path $PSScriptRoot 'tools/lint/check_headers_self_contained.py')
     if ($LASTEXITCODE -ne 0) {
         Write-Error "[lint] P1-B2 header self-containment check failed (see output above)"
         exit 1
@@ -315,7 +315,7 @@ if ($pythonCmd) {
 # compression) and catches format-string-injection footguns.
 Write-Host "[lint] Log format-string literal gate (P1-L1)..." -ForegroundColor Cyan
 if ($pythonCmd) {
-    & python (Join-Path $PSScriptRoot 'tools/check_log_format_literals.py') --root $PSScriptRoot
+    & python (Join-Path $PSScriptRoot 'tools/lint/check_log_format_literals.py') --root $PSScriptRoot
     if ($LASTEXITCODE -ne 0) {
         Write-Error "[lint] P1-L1 log format-literal check failed (see output above)"
         exit 1

@@ -96,12 +96,12 @@ if(ESP_PLATFORM)
     set(WINK_CONFIG_H ${WINK_CONFIG_DIR}/wink_config.h)
     add_custom_command(
         OUTPUT ${WINK_CONFIG_H}
-        COMMAND ${Python3_EXECUTABLE} ${WINK_MICRO_OS_ROOT}/tools/codegen_config.py
+        COMMAND ${Python3_EXECUTABLE} ${WINK_MICRO_OS_ROOT}/tools/codegen/config_h.py
                 --input ${WINK_MICRO_OS_ROOT}/../wink-app.json
                 --output ${WINK_CONFIG_H}
                 --target esp32
         DEPENDS ${WINK_MICRO_OS_ROOT}/../wink-app.json
-                ${WINK_MICRO_OS_ROOT}/tools/codegen_config.py
+                ${WINK_MICRO_OS_ROOT}/tools/codegen/config_h.py
         COMMENT "Generating wink_config.h from wink_app.json (esp32)"
         VERBATIM
     )
