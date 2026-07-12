@@ -10,12 +10,52 @@ import argparse
 import os
 import sys
 
+# Binary SDK pack ceilings (ADR-0028 §5)
+_BINARY_MAX_SOFT_TIMERS = 32
+_BINARY_PWM_CHANNELS = 16
+
+
+def _resolve_sdk_mode(args):
+    """Return effective SDK mode from CLI flag or WINK_SDK_MODE env."""
+    if args.sdk_mode:
+        return args.sdk_mode
+    env_mode = os.environ.get("WINK_SDK_MODE", "").strip().lower()
+    if env_mode in ("binary", "source"):
+        return env_mode
+    return None
+
+
+def _enforce_binary_ceilings(max_timers, pwm_channels):
+    """Fail if consumer config exceeds Binary SDK pack ceilings (ADR-0028 §5)."""
+    errors = []
+    if max_timers > _BINARY_MAX_SOFT_TIMERS:
+        errors.append(
+            f"max_soft_timers={max_timers} exceeds Binary SDK ceiling "
+            f"({_BINARY_MAX_SOFT_TIMERS}); use Source SDK or reduce the value."
+        )
+    if pwm_channels > _BINARY_PWM_CHANNELS:
+        errors.append(
+            f"pwm_channels={pwm_channels} exceeds Binary SDK ceiling "
+            f"({_BINARY_PWM_CHANNELS}); use Source SDK or reduce the value."
+        )
+    if errors:
+        print("[config_h] Binary SDK config ceiling violation (ADR-0028):", file=sys.stderr)
+        for msg in errors:
+            print(f"  - {msg}", file=sys.stderr)
+        raise SystemExit(1)
+
 
 def main():
     parser = argparse.ArgumentParser(description="Generate wink_config.h")
     parser.add_argument("--input", required=True, help="Path to wink_app.json")
     parser.add_argument("--output", required=True, help="Path to output wink_config.h")
     parser.add_argument("--target", default="esp32", help="Target platform")
+    parser.add_argument(
+        "--sdk-mode",
+        choices=["source", "binary"],
+        default=None,
+        help="SDK consumption mode; binary enforces pack config ceilings (ADR-0028)",
+    )
     args = parser.parse_args()
 
     with open(args.input, "r", encoding="utf-8") as f:
@@ -24,6 +64,9 @@ def main():
     tick_ms = config.get("tick_ms", 10)
     max_timers = config.get("max_soft_timers", 16)
     pwm_channels = config.get("pwm_channels", 8)
+
+    if _resolve_sdk_mode(args) == "binary":
+        _enforce_binary_ceilings(max_timers, pwm_channels)
 
     # Map target names to platform macros (consistent with existing convention)
     target_macro = {
