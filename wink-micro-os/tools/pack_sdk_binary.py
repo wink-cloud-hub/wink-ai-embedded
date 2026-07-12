@@ -11,6 +11,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import tarfile
@@ -18,6 +19,18 @@ import tempfile
 from pathlib import Path
 
 SDK_ROOT = Path(__file__).resolve().parent.parent
+
+BINARY_PACK_GCC_C_FLAGS = (
+    "-DWINK_MAX_SOFT_TIMERS=32 "
+    "-DPAL_PWM_CHANNELS=16 "
+    "-ffunction-sections "
+    "-fdata-sections"
+)
+BINARY_PACK_MSVC_C_FLAGS = (
+    "/DWINK_MAX_SOFT_TIMERS=32 "
+    "/DPAL_PWM_CHANNELS=16 "
+    "/Gy"
+)
 
 # ── Public header whitelist ──────────────────────────────────────────────────
 # Each entry: (source_relative_to_SDK_ROOT, destination_relative_to_include_root)
@@ -95,7 +108,20 @@ def build_host(sdk_root: Path, build_dir: Path) -> None:
         "-B", str(build_dir),
         "-DTARGET_PLATFORM=host",
         f"-DWINK_APP_DIR={sdk_root.parent / 'wink-micro-app' / 'avoidance_car'}",
+        f"-DCMAKE_C_FLAGS={BINARY_PACK_GCC_C_FLAGS}",
     ]
+    if os.name == "nt":
+        gcc = shutil.which("gcc")
+        ninja = shutil.which("ninja")
+        mingw_make = shutil.which("mingw32-make")
+        if gcc and ninja:
+            configure_cmd[1:1] = ["-G", "Ninja"]
+            configure_cmd.append(f"-DCMAKE_C_COMPILER={gcc}")
+        elif gcc and mingw_make:
+            configure_cmd[1:1] = ["-G", "MinGW Makefiles"]
+            configure_cmd.append(f"-DCMAKE_C_COMPILER={gcc}")
+        else:
+            configure_cmd[-1] = f"-DCMAKE_C_FLAGS={BINARY_PACK_MSVC_C_FLAGS}"
     subprocess.run(configure_cmd, check=True)
 
     print("[pack-binary] Building component libraries ...")
