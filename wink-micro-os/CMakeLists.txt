@@ -50,6 +50,38 @@ endif()
 message(STATUS "WINK_APP_DIR = ${WINK_APP_DIR}")
 message(STATUS "WINK_APP_JSON = ${WINK_APP_JSON}")
 
+# ── SDK Mode Detection (early: config codegen needs binary ceilings) ───
+if(NOT DEFINED WINK_SDK_MODE OR WINK_SDK_MODE STREQUAL "")
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/host")
+        set(WINK_SDK_MODE "binary")
+    else()
+        set(WINK_SDK_MODE "source")
+    endif()
+endif()
+message(STATUS "WINK_SDK_MODE = ${WINK_SDK_MODE}")
+
+if(WINK_SDK_MODE STREQUAL "binary" AND NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/host")
+    message(FATAL_ERROR
+        "WINK_SDK_MODE=binary but libs/host/ not found in SDK tree. "
+        "Use a Binary SDK tarball or switch to --sdk-mode source.")
+endif()
+if(WINK_SDK_MODE STREQUAL "source" AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/SDK_MANIFEST.txt")
+    file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/SDK_MANIFEST.txt" _sdk_manifest_lines)
+    foreach(_line ${_sdk_manifest_lines})
+        if(_line MATCHES "^mode=binary")
+            message(FATAL_ERROR
+                "WINK_SDK_MODE=source but SDK_MANIFEST.txt says mode=binary. "
+                "This is a Binary SDK; use --sdk-mode binary.")
+        endif()
+    endforeach()
+endif()
+
+if(WINK_SDK_MODE STREQUAL "binary")
+    set(_CONFIG_SDK_MODE_ARGS --sdk-mode binary)
+else()
+    set(_CONFIG_SDK_MODE_ARGS)
+endif()
+
 # ── 配置生成层 (Task 0: codegen/config_h.py) ──────────────────────────
 # Generate wink_config.h from wink_app.json - SSOT for runtime parameters
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
@@ -62,6 +94,7 @@ add_custom_command(
             --input ${WINK_APP_JSON}
             --output ${WINK_CONFIG_H}
             --target ${TARGET_PLATFORM}
+            ${_CONFIG_SDK_MODE_ARGS}
     DEPENDS ${WINK_APP_JSON}
             ${CMAKE_CURRENT_SOURCE_DIR}/tools/codegen/config_h.py
     COMMENT "Generating wink_config.h from ${WINK_APP_JSON}"
@@ -110,14 +143,22 @@ add_custom_target(
 )
 
 # 收集子组件构建
-add_subdirectory(pal)
-add_subdirectory(dal)
-add_subdirectory(trace)
-add_subdirectory(runtime)
-add_subdirectory(bal)     # BAL (Business Abstraction Layer) — ADR-0023
+if(WINK_SDK_MODE STREQUAL "binary")
+    # BINARY mode: import precompiled libwink_micro_os.a + public headers.
+    # Skip add_subdirectory for pal/dal/trace/runtime/bal — the binary import
+    # creates INTERFACE aliases that forward to the IMPORTED static library.
+    include(${CMAKE_CURRENT_SOURCE_DIR}/targets/host/wink_binary_import.cmake)
+else()
+    # SOURCE mode: build everything from source (monorepo or Source SDK).
+    add_subdirectory(pal)
+    add_subdirectory(dal)
+    add_subdirectory(trace)
+    add_subdirectory(runtime)
+    add_subdirectory(bal)     # BAL (Business Abstraction Layer) — ADR-0023
 
-# Ensure checker runs before wink_runtime compiles (must come AFTER runtime subdir)
-add_dependencies(wink_runtime check_pt_footguns)
+    # Ensure checker runs before wink_runtime compiles (must come AFTER runtime subdir)
+    add_dependencies(wink_runtime check_pt_footguns)
+endif()
 
 # 根据目标平台配置可执行程序或测试用例 (主要针对 WebAssembly / Wasm 仿真)
 if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
@@ -233,7 +274,14 @@ endif()
 # ---- host 单元测试（非 wasm target 时启用）----
 if(NOT TARGET_PLATFORM STREQUAL "wasm")
     enable_testing()
-    add_subdirectory(targets/host)      # host 一等 target，供 test 链接
+
+    if(WINK_SDK_MODE STREQUAL "binary")
+        # BINARY mode: pal_host already provided as INTERFACE IMPORTED by
+        # wink_binary_import.cmake; skip the OBJECT library in targets/host/.
+        message(STATUS "BINARY mode: skipping targets/host/ (pal_host from precompiled .a)")
+    else()
+        add_subdirectory(targets/host)      # host 一等 target，供 test 链接
+    endif()
 
     # samples/common (ADR-0023 Stage 2): INTERFACE forwarding-shim library.
     # All helpers have migrated to BAL (blink/button/telemetry) or
@@ -254,7 +302,9 @@ if(NOT TARGET_PLATFORM STREQUAL "wasm")
         message(FATAL_ERROR "WINK_APP_DIR does not exist: ${WINK_APP_DIR}")
     endif()
 
-    # Phase 2：OLED Dashboard 示例（额外 e2e target，不改默认 App）
+    # Extra sample apps — skipped in BINARY mode (they reference source paths
+    # like test/ and runtime/src/ that don't exist in the binary SDK tree).
+    if(NOT WINK_SDK_BINARY_MODE)
     if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/oled_dashboard)
         add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/oled_dashboard
                          ${CMAKE_BINARY_DIR}/oled_dashboard_build)
@@ -277,6 +327,7 @@ if(NOT TARGET_PLATFORM STREQUAL "wasm")
         add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/dual_task_demo
                          ${CMAKE_BINARY_DIR}/dual_task_demo_build)
     endif()
+    endif()  # NOT WINK_SDK_BINARY_MODE
 
     # Host unit / e2e tests live under test/. Source SDK tarballs omit this tree
     # (Dual-Mode SDK Phase 1); skip rather than FATAL when packaging for M2.
