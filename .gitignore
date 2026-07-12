@@ -4,6 +4,7 @@ build/
 build-*/
 build_*/
 out/
+dist/
 .codegen_test*
 # CMake 内部缓存与生成文件
 CMakeCache.txt
@@ -55,7 +56,10 @@ compile_commands.json
 *.user
 *.suo
 *.sln.docstates
-
+.superpowers
+.pytest_cache
+.trae
+.playwright-cli
 # ===== ESP-IDF / Emscripten =====
 # ESP-IDF 构建与 sdkconfig 本地副本
 sdkconfig.old
