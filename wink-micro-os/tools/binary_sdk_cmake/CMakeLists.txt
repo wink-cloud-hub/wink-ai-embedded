@@ -67,11 +67,39 @@ add_custom_target(generate_config DEPENDS ${WINK_CONFIG_H})
 # This CMakeLists.txt is the consumer-facing entry point for the Binary SDK.
 # It always operates in BINARY mode — the precompiled .a is imported and
 # backward-compatible INTERFACE aliases are created.
-include(${CMAKE_CURRENT_SOURCE_DIR}/targets/host/wink_binary_import.cmake)
 message(STATUS "WINK_SDK_MODE = binary (Binary SDK consumer entry point)")
 
-# ── App subdirectory ─────────────────────────────────────────────────────────
-if(TARGET_PLATFORM STREQUAL "host" OR NOT TARGET_PLATFORM STREQUAL "wasm")
+if(TARGET_PLATFORM STREQUAL "wasm")
+    # ── Wasm Binary consumer ────────────────────────────────────────────────
+    if(NOT EMSCRIPTEN)
+        message(FATAL_ERROR
+            "TARGET_PLATFORM=wasm requires Emscripten. "
+            "Use `emcmake cmake ...` to configure.")
+    endif()
+    include(${CMAKE_CURRENT_SOURCE_DIR}/targets/wasm/wink_binary_import.cmake)
+
+    if(EXISTS ${WINK_APP_DIR})
+        add_subdirectory(${WINK_APP_DIR} ${CMAKE_BINARY_DIR}/app_build)
+    else()
+        message(FATAL_ERROR "WINK_APP_DIR does not exist: ${WINK_APP_DIR}")
+    endif()
+
+    if(NOT DEFINED WINK_APP_SOURCES OR "${WINK_APP_SOURCES}" STREQUAL "")
+        message(FATAL_ERROR
+            "WINK_APP_SOURCES not exported from ${WINK_APP_DIR}. "
+            "Its CMakeLists.txt must call set(WINK_APP_SOURCES ... PARENT_SCOPE) "
+            "before any EMSCRIPTEN return().")
+    endif()
+
+    add_executable(wink_simulator ${WINK_APP_SOURCES})
+    target_link_libraries(wink_simulator PRIVATE wink_micro_os)
+    target_include_directories(wink_simulator PRIVATE
+        ${WINK_APP_DIR}
+        ${WINK_APP_INCLUDE_DIRS}
+        ${WINK_CONFIG_DIR})
+else()
+    # ── Host Binary consumer ────────────────────────────────────────────────
+    include(${CMAKE_CURRENT_SOURCE_DIR}/targets/host/wink_binary_import.cmake)
     enable_testing()
 
     # samples/common (if available)

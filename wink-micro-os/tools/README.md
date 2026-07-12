@@ -62,6 +62,36 @@ python "$env:WINK_SDK_PATH/tools/wink.py" build host --app (Resolve-Path wink-mi
 
 `wink_config.h` is generated from `$WINK_APP_DIR/wink-app.json` (not the monorepo-root `wink-app.json`).
 
+### Binary SDK pack (Phase 2)
+
+```bash
+python wink-micro-os/tools/pack_sdk_binary.py --out-dir wink-micro-os/dist
+# → wink-micro-os/dist/wink-micro-os-sdk-binary-v0.1.0.tar.gz
+```
+
+The binary pack builds the OS with ABI ceiling defines (`-DWINK_MAX_SOFT_TIMERS=32 -DPAL_PWM_CHANNELS=16`) and section-split flags (`-ffunction-sections -fdata-sections`), merges all component `.a` + `pal_host` objects into a single `libwink_micro_os.a`, copies the public header whitelist into `include/`, and writes `SDK_MANIFEST.txt` with toolchain, cflags, and content hash.
+
+M2 BINARY smoke (SDK and App in separate trees):
+
+```powershell
+python wink-micro-os/tools/pack_sdk_binary.py --out-dir wink-micro-os/dist
+tar -xzf wink-micro-os/dist/wink-micro-os-sdk-binary-v0.1.0.tar.gz -C $env:TEMP/wink-sdk-bin
+$sdk = "$env:TEMP/wink-sdk-bin/wink-micro-os-sdk-binary-v0.1.0"
+$env:WINK_SDK_PATH = $sdk
+cmake -S $sdk -B $sdk/build-smoke -DTARGET_PLATFORM=host `
+  -DWINK_APP_DIR=(Resolve-Path wink-micro-app/avoidance_car)
+cmake --build $sdk/build-smoke
+ctest --test-dir $sdk/build-smoke -R binary_sdk_smoke --output-on-failure
+```
+
+Or via `wink.py` with explicit `--sdk-mode`:
+
+```powershell
+python "$env:WINK_SDK_PATH/tools/wink.py" build host --sdk-mode binary --app (Resolve-Path wink-micro-app/avoidance_car)
+```
+
+ABI version and toolchain matrix: see [ADR-0028](../../docs/design/decisions/0028-host-binary-abi-toolchain-contract.md).
+
 ### Platform matrix
 
 | Target | Codegen | Build | Test |

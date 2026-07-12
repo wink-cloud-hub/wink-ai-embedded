@@ -11,11 +11,14 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
+import platform
 import re
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 from pathlib import Path
@@ -70,6 +73,25 @@ BAL_INCLUDE_ROOT = "bal/include"
 # ── Files/dirs to copy verbatim into the binary SDK ──────────────────────────
 SDK_BRIDGE_FILES = [
     "targets/host/wink_binary_import.cmake",
+]
+
+SDK_WASM_BRIDGE_FILES = [
+    "targets/wasm/wink_binary_import.cmake",
+    "targets/wasm/wink_sim_js.js",
+    "targets/wasm/exported_runtime_functions.json",
+]
+
+# Source file basenames compiled into the wasm PAL (targets/wasm/ + targets/common/src/).
+# Used to locate .o files in the build tree for archive merging.
+_WASM_PAL_SOURCE_BASENAMES = [
+    # targets/wasm/
+    "pal_hal_wasm.c", "pal_log_wasm.c", "pal_irq_wasm.c",
+    "pal_osal_wasm.c", "pal_storage_wasm.c",
+    "pal_wasm_physical.c", "pal_wasm_fault.c", "pal_wasm_fault_domain.c",
+    "sim_ctx_emscripten_fiber.c",
+    # targets/common/src/
+    "pal_osal_ringbuf.c", "pal_resource.c",
+    "wink_sim_physical.c", "wink_sim_scheduler.c",
 ]
 
 SDK_TOOL_ROOTS = [
@@ -139,6 +161,48 @@ def read_version(sdk_root: Path) -> tuple[str, str]:
         if ln.startswith("ABI="):
             abi = ln.split("=", 1)[1].strip()
     return ver, abi
+
+
+def detect_toolchain() -> dict[str, str]:
+    """Detect available toolchain versions for manifest pinning."""
+    info: dict[str, str] = {}
+    info["python"] = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    info["platform"] = platform.system()
+
+    for tool, flag in [("gcc", "--version"), ("cmake", "--version")]:
+        try:
+            result = subprocess.run(
+                [tool, flag],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            first_line = result.stdout.strip().splitlines()[0] if result.stdout.strip() else ""
+            if first_line:
+                info[tool] = first_line
+        except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+            pass
+
+    return info
+
+
+def hash_file(path: Path) -> str:
+    """Compute SHA-256 hex digest of a file."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def compute_content_hashes(staging: Path) -> dict[str, str]:
+    """Compute SHA-256 for every file in the staging tree, keyed by relative posix path."""
+    hashes: dict[str, str] = {}
+    for p in staging.rglob("*"):
+        if p.is_file():
+            rel = p.relative_to(staging).as_posix()
+            hashes[rel] = hash_file(p)
+    return hashes
 
 
 def _collect_cmake_cache_flag_text(build_dir: Path) -> str:
@@ -300,10 +364,59 @@ def find_pal_host_objs(build_dir: Path) -> list[Path]:
     return objs
 
 
+def build_wasm(sdk_root: Path, build_dir: Path) -> None:
+    """Configure and build the OS in SOURCE mode for wasm (Emscripten)."""
+    emcmake = shutil.which("emcmake")
+    if not emcmake:
+        raise SystemExit(
+            "[pack-binary] emcmake not found on PATH. "
+            "Install Emscripten SDK and activate it before packing wasm."
+        )
+
+    print(f"[pack-binary] Configuring wasm build in {build_dir} ...")
+    pack_stub_app = create_binary_pack_stub_app(build_dir)
+    configure_cmd = [
+        "emcmake", "cmake",
+        "-S", str(sdk_root),
+        "-B", str(build_dir),
+        "-DTARGET_PLATFORM=wasm",
+        f"-DWINK_APP_DIR={pack_stub_app}",
+    ]
+    subprocess.run(configure_cmd, check=True)
+
+    print("[pack-binary] Building wasm component libraries ...")
+    subprocess.run(
+        ["cmake", "--build", str(build_dir)],
+        check=True,
+    )
+
+
+def find_wasm_pal_objs(build_dir: Path) -> list[Path]:
+    """Locate wasm PAL .o files in the build tree by matching known source basenames."""
+    objs: list[Path] = []
+    stem_to_src = {Path(s).stem: s for s in _WASM_PAL_SOURCE_BASENAMES}
+
+    targets_build = build_dir / "targets"
+    if not targets_build.is_dir():
+        raise SystemExit(f"[pack-binary] wasm targets build dir not found: {targets_build}")
+
+    for o_file in targets_build.rglob("*.o"):
+        if o_file.stem in stem_to_src:
+            objs.append(o_file)
+
+    found_stems = {o.stem for o in objs}
+    missing = set(stem_to_src) - found_stems
+    if missing:
+        print(f"[pack-binary] WARNING: wasm PAL objects not found for: {', '.join(sorted(missing))}")
+
+    return objs
+
+
 def merge_libraries(
     libs: dict[str, Path],
     pal_host_objs: list[Path],
     output: Path,
+    archiver: str | None = None,
 ) -> None:
     """Merge component .a/.lib files + pal_host objects into a single archive."""
     print(f"[pack-binary] Merging {len(libs)} libs + {len(pal_host_objs)} objects → {output.name}")
@@ -349,23 +462,27 @@ def merge_libraries(
         print(f"  merging {len(all_objs)} objects ...")
 
         # Determine archiver
-        ar = shutil.which("ar")
-        lib_exe = shutil.which("lib")
-
-        if ar and all_objs[0].suffix == ".o":
-            # MinGW/GCC
-            cmd = ["ar", "rcs", str(output)] + [str(o) for o in all_objs]
-            subprocess.run(cmd, check=True)
-        elif lib_exe:
-            # MSVC
-            cmd = ["lib", "/NOLOGO", f"/OUT:{output}"] + [str(o) for o in all_objs]
-            subprocess.run(cmd, check=True)
-        elif ar:
-            # Fallback to ar even for .obj (COFF)
-            cmd = ["ar", "rcs", str(output)] + [str(o) for o in all_objs]
+        if archiver:
+            cmd = [archiver, "rcs", str(output)] + [str(o) for o in all_objs]
             subprocess.run(cmd, check=True)
         else:
-            raise SystemExit("[pack-binary] No archiver found (need 'ar' or 'lib')")
+            ar = shutil.which("ar")
+            lib_exe = shutil.which("lib")
+
+            if ar and all_objs[0].suffix == ".o":
+                # MinGW/GCC
+                cmd = ["ar", "rcs", str(output)] + [str(o) for o in all_objs]
+                subprocess.run(cmd, check=True)
+            elif lib_exe:
+                # MSVC
+                cmd = ["lib", "/NOLOGO", f"/OUT:{output}"] + [str(o) for o in all_objs]
+                subprocess.run(cmd, check=True)
+            elif ar:
+                # Fallback to ar even for .obj (COFF)
+                cmd = ["ar", "rcs", str(output)] + [str(o) for o in all_objs]
+                subprocess.run(cmd, check=True)
+            else:
+                raise SystemExit("[pack-binary] No archiver found (need 'ar' or 'lib')")
 
     print(f"[pack-binary] Wrote {output} ({output.stat().st_size:,} bytes)")
 
@@ -435,8 +552,16 @@ def copy_sdk_bridge(staging: Path, sdk_root: Path) -> None:
     if smoke_src.exists():
         shutil.copy2(smoke_src, staging / "smoke_test.c")
 
-    # CMake bridge files
+    # CMake bridge files (host)
     for f in SDK_BRIDGE_FILES:
+        src = sdk_root / f
+        if src.exists():
+            dest = staging / f
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dest)
+
+    # Wasm bridge bridge files
+    for f in SDK_WASM_BRIDGE_FILES:
         src = sdk_root / f
         if src.exists():
             dest = staging / f
@@ -486,26 +611,58 @@ def assert_staging_clean(staging: Path) -> None:
         raise SystemExit(f"[pack-binary] refused: implementation source leaked: {rel_posix}")
 
 
-def build_manifest(staging: Path, ver: str, abi: str) -> None:
-    """Write SDK_MANIFEST.txt into the staging tree."""
-    files = sorted(
-        p.relative_to(staging).as_posix()
-        for p in staging.rglob("*")
-        if p.is_file()
-    )
-    body = (
-        "mode=binary\n"
-        f"targets=host\n"
-        f"version={ver}\n"
-        f"abi={abi}\n"
-        f"files:\n"
-        + "\n".join(f"  {f}" for f in files)
-        + "\n"
-    )
+def assert_wasm_no_host_objs(wasm_objs: list[Path]) -> None:
+    """Refuse to ship pal_host objects inside the wasm archive."""
+    for obj in wasm_objs:
+        obj_posix = obj.as_posix()
+        if "targets/host" in obj_posix or "pal_host" in obj.name:
+            raise SystemExit(
+                f"[pack-binary] refused: host object in wasm archive: {obj_posix}"
+            )
+
+
+def _compute_aggregate_content_hash(content_hashes: dict[str, str]) -> str:
+    """Compute a single SHA-256 over all per-file hashes in sorted key order."""
+    h = hashlib.sha256()
+    for key in sorted(content_hashes):
+        h.update(f"{content_hashes[key]}  {key}\n".encode("utf-8"))
+    return h.hexdigest()
+
+
+def build_manifest(staging: Path, ver: str, abi: str, targets: list[str], primary_build_dir: Path) -> str:
+    """Write SDK_MANIFEST.txt into the staging tree with toolchain + content hashes."""
+    toolchain = detect_toolchain()
+    content_hashes = compute_content_hashes(staging)
+    aggregate_hash = _compute_aggregate_content_hash(content_hashes)
+    cflags = _collect_cmake_cache_flag_text(primary_build_dir)
+    files = sorted(content_hashes.keys())
+
+    lines = [
+        "mode=binary",
+        f"targets={','.join(targets)}",
+        f"version={ver}",
+        f"abi={abi}",
+        f"toolchain={toolchain.get('gcc', toolchain.get('platform', 'unknown'))}",
+        f"cflags={cflags}",
+        f"content_sha256={aggregate_hash}",
+        "",
+        "toolchain_detail:",
+    ]
+    for key in ("platform", "python", "gcc", "cmake"):
+        if key in toolchain:
+            lines.append(f"  {key}={toolchain[key]}")
+
+    lines.append("")
+    lines.append("files:")
+    for f in files:
+        lines.append(f"  {content_hashes[f]}  {f}")
+
+    body = "\n".join(lines) + "\n"
     (staging / "SDK_MANIFEST.txt").write_text(body, encoding="utf-8")
+    return body
 
 
-def pack(build_dir: Path, out_dir: Path) -> Path:
+def pack(targets: list[str], base_build_dir: Path, out_dir: Path) -> Path:
     ver, abi = read_version(SDK_ROOT)
     pkg_name = f"wink-micro-os-sdk-binary-v{ver}"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -515,54 +672,72 @@ def pack(build_dir: Path, out_dir: Path) -> Path:
         staging = Path(tmp) / pkg_name
         staging.mkdir(parents=True)
 
-        # 1. Build component libraries
-        build_host(SDK_ROOT, build_dir)
+        primary_build_dir = None
 
-        # 2. Find and merge libraries
-        libs = find_component_libs(build_dir)
-        require_component_libs(libs)
-        pal_objs = find_pal_host_objs(build_dir)
+        for target in targets:
+            target_build_dir = base_build_dir.parent / f"{base_build_dir.name}-{target}"
 
-        libs_dir = staging / "libs" / "host" / "release"
-        libs_dir.mkdir(parents=True)
-        merge_libraries(libs, pal_objs, libs_dir / "libwink_micro_os.a")
+            if target == "host":
+                build_host(SDK_ROOT, target_build_dir)
+                libs = find_component_libs(target_build_dir)
+                require_component_libs(libs)
+                pal_objs = find_pal_host_objs(target_build_dir)
+                libs_dir = staging / "libs" / "host" / "release"
+                libs_dir.mkdir(parents=True)
+                merge_libraries(libs, pal_objs, libs_dir / "libwink_micro_os.a")
+            elif target == "wasm":
+                build_wasm(SDK_ROOT, target_build_dir)
+                libs = find_component_libs(target_build_dir)
+                require_component_libs(libs)
+                wasm_objs = find_wasm_pal_objs(target_build_dir)
+                assert_wasm_no_host_objs(wasm_objs)
+                libs_dir = staging / "libs" / "wasm" / "release"
+                libs_dir.mkdir(parents=True)
+                merge_libraries(libs, wasm_objs, libs_dir / "libwink_micro_os.a", archiver="emar")
+            else:
+                raise SystemExit(f"[pack-binary] unknown target: {target}")
 
-        # 3. Copy public headers
+            if primary_build_dir is None:
+                primary_build_dir = target_build_dir
+
+        # Copy public headers (shared across targets)
         include_dir = staging / "include"
         include_dir.mkdir(parents=True)
         copy_public_headers(SDK_ROOT, include_dir)
 
-        # 4. Copy SDK bridge files + tools + stubs
+        # Copy SDK bridge files + tools + stubs
         copy_sdk_bridge(staging, SDK_ROOT)
 
-        # 5. Metadata
+        # Metadata
         for meta in ("VERSION", "NOTICE"):
             src = SDK_ROOT / meta
             if src.is_file():
                 shutil.copy2(src, staging / meta)
 
-        build_manifest(staging, ver, abi)
+        build_manifest(staging, ver, abi, targets, primary_build_dir)
 
-        # 6. Negative checks
+        # Negative checks
         assert_staging_clean(staging)
 
-        # 7. Create tarball
+        # Create tarball
         if tarball.exists():
             tarball.unlink()
         with tarfile.open(tarball, "w:gz") as tar:
             tar.add(staging, arcname=pkg_name)
 
+    tarball_hash = hash_file(tarball)
     print(f"[pack-binary] Wrote {tarball}")
+    print(f"[pack-binary] SHA-256: {tarball_hash}")
     return tarball
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description="Pack wink-micro-os Binary SDK (Phase 2, host)")
+    p = argparse.ArgumentParser(description="Pack wink-micro-os Binary SDK (Phase 2)")
     p.add_argument(
         "--build-dir",
         type=Path,
-        default=SDK_ROOT / "build-pack-host",
-        help="Build directory for intermediate compilation (default: build-pack-host)",
+        default=SDK_ROOT / "build-pack",
+        help="Base build directory (default: build-pack; per-target subdirs created automatically)",
     )
     p.add_argument(
         "--out-dir",
@@ -573,31 +748,59 @@ def main() -> int:
     p.add_argument(
         "--skip-build",
         action="store_true",
-        help="Skip cmake configure/build (use existing build-dir)",
+        help="Skip cmake configure/build (use existing build-dirs)",
+    )
+    p.add_argument(
+        "--targets",
+        type=str,
+        default="host",
+        help="Comma-separated target list (default: host; e.g. host,wasm)",
     )
     args = p.parse_args()
 
-    build_dir = args.build_dir.resolve()
+    targets = [t.strip() for t in args.targets.split(",") if t.strip()]
+    if not targets:
+        raise SystemExit("[pack-binary] --targets must not be empty")
+
+    base_build_dir = args.build_dir.resolve()
     out_dir = args.out_dir.resolve()
 
     if args.skip_build:
-        validate_binary_pack_skip_build(build_dir)
-        # Just merge from existing build
         ver, abi = read_version(SDK_ROOT)
         pkg_name = f"wink-micro-os-sdk-binary-v{ver}"
         out_dir.mkdir(parents=True, exist_ok=True)
         tarball = out_dir / f"{pkg_name}.tar.gz"
 
+        primary_build_dir = None
+
         with tempfile.TemporaryDirectory(prefix="wink-sdk-binary-") as tmp:
             staging = Path(tmp) / pkg_name
             staging.mkdir(parents=True)
 
-            libs = find_component_libs(build_dir)
-            require_component_libs(libs)
-            pal_objs = find_pal_host_objs(build_dir)
-            libs_dir = staging / "libs" / "host" / "release"
-            libs_dir.mkdir(parents=True)
-            merge_libraries(libs, pal_objs, libs_dir / "libwink_micro_os.a")
+            for target in targets:
+                target_build_dir = base_build_dir.parent / f"{base_build_dir.name}-{target}"
+
+                if target == "host":
+                    validate_binary_pack_skip_build(target_build_dir)
+                    libs = find_component_libs(target_build_dir)
+                    require_component_libs(libs)
+                    pal_objs = find_pal_host_objs(target_build_dir)
+                    libs_dir = staging / "libs" / "host" / "release"
+                    libs_dir.mkdir(parents=True)
+                    merge_libraries(libs, pal_objs, libs_dir / "libwink_micro_os.a")
+                elif target == "wasm":
+                    wasm_objs = find_wasm_pal_objs(target_build_dir)
+                    assert_wasm_no_host_objs(wasm_objs)
+                    libs = find_component_libs(target_build_dir)
+                    require_component_libs(libs)
+                    libs_dir = staging / "libs" / "wasm" / "release"
+                    libs_dir.mkdir(parents=True)
+                    merge_libraries(libs, wasm_objs, libs_dir / "libwink_micro_os.a", archiver="emar")
+                else:
+                    raise SystemExit(f"[pack-binary] unknown target: {target}")
+
+                if primary_build_dir is None:
+                    primary_build_dir = target_build_dir
 
             include_dir = staging / "include"
             include_dir.mkdir(parents=True)
@@ -608,7 +811,7 @@ def main() -> int:
                 src = SDK_ROOT / meta
                 if src.is_file():
                     shutil.copy2(src, staging / meta)
-            build_manifest(staging, ver, abi)
+            build_manifest(staging, ver, abi, targets, primary_build_dir)
             assert_staging_clean(staging)
 
             if tarball.exists():
@@ -616,9 +819,11 @@ def main() -> int:
             with tarfile.open(tarball, "w:gz") as tar:
                 tar.add(staging, arcname=pkg_name)
 
+        tarball_hash = hash_file(tarball)
         print(f"[pack-binary] Wrote {tarball}")
+        print(f"[pack-binary] SHA-256: {tarball_hash}")
     else:
-        pack(build_dir, out_dir)
+        pack(targets, base_build_dir, out_dir)
 
     return 0
 

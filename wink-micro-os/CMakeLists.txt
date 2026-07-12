@@ -162,6 +162,35 @@ endif()
 
 # 根据目标平台配置可执行程序或测试用例 (主要针对 WebAssembly / Wasm 仿真)
 if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
+    if(WINK_SDK_MODE STREQUAL "binary")
+        # BINARY+wasm: import precompiled libwink_micro_os.a (contains PAL wasm
+        # objects + component libs).  Only App sources need compiling.
+        include(${CMAKE_CURRENT_SOURCE_DIR}/targets/wasm/wink_binary_import.cmake)
+        message(STATUS "WINK_SDK_MODE = binary (Wasm Binary SDK consumer)")
+
+        add_subdirectory(${WINK_APP_DIR} ${CMAKE_BINARY_DIR}/app_build)
+
+        if(NOT DEFINED WINK_APP_SOURCES OR "${WINK_APP_SOURCES}" STREQUAL "")
+            message(FATAL_ERROR
+                "WINK_APP_SOURCES not exported from ${WINK_APP_DIR}. "
+                "Its CMakeLists.txt must call set(WINK_APP_SOURCES ... PARENT_SCOPE) "
+                "before any EMSCRIPTEN return().")
+        endif()
+
+        add_executable(wink_simulator ${WINK_APP_SOURCES})
+        target_link_libraries(wink_simulator PRIVATE wink_micro_os)
+        target_include_directories(wink_simulator PRIVATE
+            ${WINK_APP_DIR}
+            ${WINK_APP_INCLUDE_DIRS}
+            ${CMAKE_CURRENT_SOURCE_DIR}/dal/include
+            ${CMAKE_CURRENT_SOURCE_DIR}/dal/include/input
+            ${CMAKE_CURRENT_SOURCE_DIR}/dal/include/output
+            ${CMAKE_CURRENT_SOURCE_DIR}/dal/include/actuator
+            ${CMAKE_CURRENT_SOURCE_DIR}/dal/include/display
+            ${CMAKE_CURRENT_SOURCE_DIR}/dal/include/sensor
+            ${WINK_CONFIG_DIR})
+    else()
+    # SOURCE+wasm: build PAL sources from source (monorepo or Source SDK).
     # 让 targets/wasm/CMakeLists.txt 作为 wasm PAL 源列表的 SSOT。
     # 该子目录通过 PARENT_SCOPE 导出 PAL_WASM_SOURCES / WASM_ENTRY_SOURCE / WASM_EXTRA_INCLUDE_DIRS。
     # ADR-0009 Wave 2：算法库 wink_sim_physical.c 在子目录里追加，本顶层无需关心具体源文件。
@@ -180,6 +209,29 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
             "Its CMakeLists.txt must call set(WINK_APP_SOURCES ... PARENT_SCOPE) "
             "before any EMSCRIPTEN return(). See samples/avoidance_car/CMakeLists.txt.")
     endif()
+
+    # ── Wasm export manifest SSOT ─────────────────────────────────────────
+    # Read targets/wasm/exported_runtime_functions.json at configure time
+    # so the JSON is the single source of truth for link options.
+    set(_WASM_EXPORT_JSON "${CMAKE_CURRENT_SOURCE_DIR}/targets/wasm/exported_runtime_functions.json")
+    set(_WASM_EXPORT_CMAKE "${CMAKE_BINARY_DIR}/wasm_export_options.cmake")
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} -c
+            "import json,sys; \
+d=json.load(open(sys.argv[1])); \
+f=open(sys.argv[2],'w'); \
+f.write('set(WASM_EXPORT_FUNCTIONS \"' + ','.join(\"'\" + v + \"'\" for v in d['EXPORTED_FUNCTIONS']) + '\")\n'); \
+f.write('set(WASM_EXPORT_RUNTIME \"' + ','.join(\"'\" + v + \"'\" for v in d['EXPORTED_RUNTIME_METHODS']) + '\")\n'); \
+f.write('set(WASM_ASYNCIFY_IMPORTS \"' + ','.join(\"'\" + v + \"'\" for v in d['ASYNCIFY_IMPORTS']) + '\")\n'); \
+f.write('set(WASM_ASYNCIFY_STACK_SIZE \"' + str(d['ASYNCIFY_STACK_SIZE']) + '\")\n'); \
+f.write('set(WASM_EXPORT_NAME \"' + d.get('EXPORT_NAME','Module') + '\")\n'); \
+f.close()"
+        "${_WASM_EXPORT_JSON}" "${_WASM_EXPORT_CMAKE}"
+        RESULT_VARIABLE _wasm_json_rc)
+    if(NOT _wasm_json_rc EQUAL 0)
+        message(FATAL_ERROR "Failed to parse ${_WASM_EXPORT_JSON}")
+    endif()
+    include(${_WASM_EXPORT_CMAKE})
 
     add_executable(wink_simulator
         ${PAL_WASM_SOURCES}
@@ -234,7 +286,7 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
         # Module.js_* 覆盖，无需重编 wasm。
         "--js-library=${CMAKE_CURRENT_SOURCE_DIR}/targets/wasm/wink_sim_js.js"
         "-sASYNCIFY=1"
-        "-sASYNCIFY_IMPORTS=['js_pal_os_sleep_ms','js_pal_os_busy_wait_us']"
+        "-sASYNCIFY_IMPORTS=[${WASM_ASYNCIFY_IMPORTS}]"
         # Asyncify 备份栈配置（P1-1 CI 安全水位门控）：
         #   - ASYNCIFY_STACK_SIZE=65536 (64 KiB)：每个 fiber Asyncify 挂起/恢复时
         #     的 unwind/rewind 备份栈容量。过小会静默破坏线性内存；过大浪费。
@@ -244,11 +296,11 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
         #     80% 计算常量，否则门控会误报/漏报。
         #   - 64 KiB 是当前 AI 生成调用链深度的起步值；若未来 getStackMax()
         #     持续贴近 80%，应同步放大此值而非放宽 CI 阈值。
-        "-sASYNCIFY_STACK_SIZE=65536"
-        "-sEXPORTED_FUNCTIONS=['_main','_malloc','_free']"
-        "-sEXPORTED_RUNTIME_METHODS=['ccall','cwrap','HEAPU8','Asyncify','callMain']"
+        "-sASYNCIFY_STACK_SIZE=${WASM_ASYNCIFY_STACK_SIZE}"
+        "-sEXPORTED_FUNCTIONS=[${WASM_EXPORT_FUNCTIONS}]"
+        "-sEXPORTED_RUNTIME_METHODS=[${WASM_EXPORT_RUNTIME}]"
         "-sMODULARIZE=1"
-        "-sEXPORT_NAME=WasmSandbox"
+        "-sEXPORT_NAME=${WASM_EXPORT_NAME}"
         "-sWASM_BIGINT=1"               # ADR-0009 Wave 2：64 位整型 ↔ JS BigInt 原生映射，杜绝 number 隐式失精
         "-sSTACK_OVERFLOW_CHECK=2"      # dev/debug：栈溢出 abort，避免静默线性内存越界（亦为中断重入早期报警，见 plan Phase 1 Task 1-5）
         "-sASSERTIONS=1")               # dev/debug：带运行时开销/体积代价，生产 profile 调优留作后续
@@ -256,7 +308,8 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
     # 触发 wink_sim_js.js 变化后重 link；否则 CMake 不知道 --js-library=<path>
     # 是构建输入，改 stub 后 make 会认为无事发生。
     set_property(TARGET wink_simulator APPEND PROPERTY LINK_DEPENDS
-        ${CMAKE_CURRENT_SOURCE_DIR}/targets/wasm/wink_sim_js.js)
+        ${CMAKE_CURRENT_SOURCE_DIR}/targets/wasm/wink_sim_js.js
+        ${CMAKE_CURRENT_SOURCE_DIR}/targets/wasm/exported_runtime_functions.json)
 
     # 契约断言：wink_simulator 必须 link wink_runtime。历史上 baca3cf
     # (2026-06-24) 把 wasm_entry.c 改为依赖 wink_runtime_run() 但漏改此处 link
@@ -269,6 +322,7 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
             "wink_runtime_run(). See docs/design/implementation-plans/"
             "2026-07-01-wasm-simulator-target-repair-plan.md §4.2.")
     endif()
+    endif()  # SOURCE+wasm / BINARY+wasm inner branch
 endif()
 
 # ---- host 单元测试（非 wasm target 时启用）----
