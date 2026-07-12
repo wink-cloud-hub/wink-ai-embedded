@@ -11,10 +11,8 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import glob
 import shutil
 import subprocess
-import sys
 import tarfile
 import tempfile
 from pathlib import Path
@@ -129,6 +127,14 @@ def find_component_libs(build_dir: Path) -> dict[str, Path]:
                 if direct_lib.exists():
                     libs[name] = direct_lib
     return libs
+
+
+def require_component_libs(libs: dict[str, Path]) -> None:
+    if len(libs) < 4:
+        raise SystemExit(
+            f"[pack-binary] Expected 4 component libs, found {len(libs)}: "
+            + ", ".join(f"{k}={v}" for k, v in libs.items())
+        )
 
 
 def find_pal_host_objs(build_dir: Path) -> list[Path]:
@@ -295,8 +301,12 @@ def copy_sdk_bridge(staging: Path, sdk_root: Path) -> None:
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src, dest)
         elif src.is_dir():
-            shutil.copytree(src, dest, dirs_exist_ok=True,
-                            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+            shutil.copytree(
+                src,
+                dest,
+                dirs_exist_ok=True,
+                ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "tests"),
+            )
 
     # test/stubs (host PAL dependency)
     stubs_src = sdk_root / "test" / "stubs"
@@ -358,11 +368,7 @@ def pack(build_dir: Path, out_dir: Path) -> Path:
 
         # 2. Find and merge libraries
         libs = find_component_libs(build_dir)
-        if len(libs) < 4:
-            raise SystemExit(
-                f"[pack-binary] Expected 4 component libs, found {len(libs)}: "
-                + ", ".join(f"{k}={v}" for k, v in libs.items())
-            )
+        require_component_libs(libs)
         pal_objs = find_pal_host_objs(build_dir)
 
         libs_dir = staging / "libs" / "host" / "release"
@@ -434,6 +440,7 @@ def main() -> int:
             staging.mkdir(parents=True)
 
             libs = find_component_libs(build_dir)
+            require_component_libs(libs)
             pal_objs = find_pal_host_objs(build_dir)
             libs_dir = staging / "libs" / "host" / "release"
             libs_dir.mkdir(parents=True)
