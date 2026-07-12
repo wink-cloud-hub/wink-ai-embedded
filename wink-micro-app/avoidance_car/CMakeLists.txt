@@ -17,6 +17,15 @@ if(EMSCRIPTEN)
     return()
 endif()
 
+# Source SDK tarballs omit wink-micro-os/test/ (Dual-Mode SDK Phase 1). Skip
+# host e2e binaries that need that harness; libraries + App sources still build
+# via the top-level M1/M2 configure (WINK_APP_SOURCES / dal / runtime).
+if(NOT EXISTS "${wink-micro-os_SOURCE_DIR}/test/test_app_e2e.c")
+    message(STATUS
+        "avoidance_car: skipping host e2e (no ${wink-micro-os_SOURCE_DIR}/test/ harness)")
+    return()
+endif()
+
 # ── host e2e binary: runtime + trace + pal_host + app ───────────────────
 # P2 (2026-07-06): dal linked as a static library instead of listing sources.
 add_executable(app_avoidance_car_e2e
