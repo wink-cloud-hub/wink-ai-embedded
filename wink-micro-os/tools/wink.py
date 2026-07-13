@@ -571,7 +571,6 @@ def handle_esp32(args):
             )
             sys.exit(1)
     esp32_dir = resolve_esp32_dir(required=True)
-    scripts_dir = resolve_scripts_dir(required=True)
     codegen_dir = Path(__file__).resolve().parent / "codegen"
 
     os.environ["WINK_APP_DIR"] = app_dir.as_posix()
@@ -589,7 +588,7 @@ def handle_esp32(args):
         "--app-dir", str(app_dir),
     ])
 
-    build_script = scripts_dir / "build_esp32.ps1"
+    build_script = sdk_dir / "tools" / "esp32" / "build.py"
     idf_args = args.idf_args if args.idf_args else ["build"]
 
     cmake_app_def = f"-DWINK_APP_DIR={app_dir.as_posix()}"
@@ -598,10 +597,10 @@ def handle_esp32(args):
     idf_args = [cmake_app_def, cmake_sdk_def, cmake_codegen_def] + idf_args
 
     run_cmd([
-        "powershell",
-        "-NoProfile",
-        "-ExecutionPolicy", "Bypass",
-        "-File", str(build_script)
+        sys.executable,
+        str(build_script),
+        "--esp32-firmware-dir", str(esp32_dir),
+        "--",
     ] + idf_args)
     print("[wink] Success: ESP32 Firmware build step complete!")
 
