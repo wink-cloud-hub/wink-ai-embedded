@@ -1,11 +1,13 @@
-# ESP-IDF v6.0.1 build helper (EIM install path, clean env for git-bash/cmd invocations).
+# ESP-IDF build helper (env/EIM-driven, clean env for git-bash/cmd invocations).
 # Usage from PowerShell:    pwsh -File scripts/build_esp32.ps1 [<idf.py args>...]
 # Usage from git-bash/MINGW: /c/WINDOWS/System32/WindowsPowerShell/v1.0/powershell.exe \
 #                              -NoProfile -File scripts/build_esp32.ps1 build
 #
 # Rationale: calling idf.py from within MSYS/MINGW triggers the
-# "MSys/Mingw is no longer supported" error in ESP-IDF v6. This script sets up
-# the PATH from scratch (no MSYS entries) before invoking idf.py.
+# "MSys/Mingw is no longer supported" error in ESP-IDF v6. This script strips
+# MSYS/EMSDK contamination and then either (a) trusts env vars already set by
+# `wink.py esp32` (Task 9 ensure_for("esp32")), or (b) auto-discovers the EIM
+# PowerShell profile, or (c) falls back to `$env:IDF_PATH\export.ps1`.
 param(
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$IdfArgs = @("build")
@@ -13,34 +15,82 @@ param(
 
 $ErrorActionPreference = "Stop"
 $env:PYTHONUTF8        = "1"
+$env:PYTHONIOENCODING  = "utf-8"
 $env:MSYSTEM           = ""
 foreach ($v in @("MSYS","MINGW_PREFIX","MSYSTEM_PREFIX","EMSDK","EMSDK_NODE","EMSDK_PYTHON")) {
     Remove-Item Env:$v -ErrorAction SilentlyContinue
 }
 
-$env:IDF_TOOLS_PATH         = "C:\Espressif\tools"
-$env:IDF_PATH               = "D:\software\embedded\esp\v6.0.1\esp-idf"
-$env:IDF_PYTHON_ENV_PATH    = "C:\Espressif\tools\python\v6.0.1\venv"
-$env:ESP_IDF_VERSION        = "6.0.1"
-$env:IDF_CCACHE_ENABLE      = "1"
-$env:ESP_ROM_ELF_DIR        = "C:\Espressif\tools\esp-rom-elfs\20241011/"
-$env:OPENOCD_SCRIPTS        = "C:\Espressif\tools\openocd-esp32\v0.12.0-esp32-20260304\openocd-esp32/share/openocd/scripts"
-$env:ESP_CLANG_LIBS_PATH    = "C:\Espressif\tools\esp-clang-libs\esp-20.1.1_20250829/esp-clang/lib"
+function Test-IdfPathValid {
+    param([string]$IdfPath)
+    if ([string]::IsNullOrEmpty($IdfPath)) { return $false }
+    if (-not (Test-Path $IdfPath)) { return $false }
+    if (-not (Test-Path (Join-Path $IdfPath "tools\idf.py"))) { return $false }
+    return $true
+}
 
-$env:PATH = "C:\Espressif\tools\idf-exe\1.0.3;" + `
-            "C:\Espressif\tools\ccache\4.12.1\ccache-4.12.1-windows-x86_64;" + `
-            "C:\Espressif\tools\cmake\4.0.3\bin;" + `
-            "C:\Espressif\tools\ninja\1.12.1;" + `
-            "C:\Espressif\tools\python\v6.0.1\venv\Scripts;" + `
-            "C:\Espressif\tools\python;" + `
-            "C:\Espressif\tools\xtensa-esp-elf\esp-15.2.0_20251204\xtensa-esp-elf\bin;" + `
-            "C:\Espressif\tools\riscv32-esp-elf\esp-15.2.0_20251204\riscv32-esp-elf\bin;" + `
-            "C:\Espressif\tools\esp32ulp-elf\2.38_20240113\esp32ulp-elf-binutils\bin;" + `
-            "C:\Espressif\tools\openocd-esp32\v0.12.0-esp32-20260304\openocd-esp32\bin;" + `
-            "C:\Espressif\tools\dfu-util\0.11\dfu-util-0.11-win64;" + `
-            "C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;" + `
-            "C:\WINDOWS\System32\WindowsPowerShell\v1.0\;" + `
-            "C:\Program Files\CMake\bin"
+$activated = $false
+
+# (1) Trust env vars already set by wink.py ensure_for("esp32").
+if (Test-IdfPathValid $env:IDF_PATH) {
+    $activated = $true
+}
+
+# (2) Auto-discover EIM PowerShell profile (highest v6.x wins).
+if (-not $activated) {
+    $eimProfiles = Get-ChildItem -Path "C:\Espressif\tools" -Filter "Microsoft.v6*.PowerShell_profile.ps1" -ErrorAction SilentlyContinue |
+                   Sort-Object -Property Name
+    if ($eimProfiles -and $eimProfiles.Count -gt 0) {
+        $profilePath = $eimProfiles[-1].FullName
+        Write-Host "Activating ESP-IDF via EIM profile: $profilePath" -ForegroundColor Cyan
+        . $profilePath
+        if (Test-IdfPathValid $env:IDF_PATH) {
+            $activated = $true
+        }
+    }
+}
+
+# (3) Fallback: IDF_PATH set by user but not exported — dot-source export.ps1.
+if (-not $activated -and -not [string]::IsNullOrEmpty($env:IDF_PATH)) {
+    $exportScript = Join-Path $env:IDF_PATH "export.ps1"
+    if (Test-Path $exportScript) {
+        Write-Host "Activating ESP-IDF via $exportScript" -ForegroundColor Cyan
+        try {
+            . $exportScript
+            if (Test-IdfPathValid $env:IDF_PATH) {
+                $activated = $true
+            }
+        } catch {
+            Write-Host "WARNING: failed to source $exportScript : $_" -ForegroundColor Yellow
+        }
+    }
+}
+
+# (4) Give up with a helpful message.
+if (-not $activated) {
+    Write-Host "ERROR: ESP-IDF not found." -ForegroundColor Red
+    Write-Host "  Run 'python tools/wink.py doctor' to diagnose," -ForegroundColor Red
+    Write-Host "  or see tools/preinstall.md " -NoNewline -ForegroundColor Red
+    Write-Host ([char]0xA7 + "3 for ESP-IDF install instructions.") -ForegroundColor Red
+    exit 1
+}
+
+# (5) Verify idf.py is available on PATH and IDF_PATH points to a real directory.
+if (-not (Test-IdfPathValid $env:IDF_PATH)) {
+    Write-Host "ERROR: IDF_PATH ('$env:IDF_PATH') is not a valid ESP-IDF installation." -ForegroundColor Red
+    Write-Host "  Run 'python tools/wink.py doctor' to diagnose." -ForegroundColor Red
+    exit 1
+}
+if (-not (Get-Command idf.py -ErrorAction SilentlyContinue)) {
+    Write-Host "ERROR: 'idf.py' not on PATH after ESP-IDF activation." -ForegroundColor Red
+    Write-Host "  IDF_PATH = $env:IDF_PATH" -ForegroundColor Red
+    Write-Host "  Run 'python tools/wink.py doctor' to diagnose." -ForegroundColor Red
+    exit 1
+}
+
+# (6) Re-assert UTF-8 (profile/export may have reset these).
+$env:PYTHONUTF8       = "1"
+$env:PYTHONIOENCODING = "utf-8"
 
 Set-Location (Split-Path -Parent $PSScriptRoot)
 & idf.py -C esp32_firmware @IdfArgs
