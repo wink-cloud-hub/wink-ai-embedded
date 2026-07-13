@@ -310,8 +310,33 @@ def _make_workspace_paths_callback(keys: list[str]):
     return _cb
 
 
-def _apply_toolchain_gate(command: str, skip: bool) -> None:
-    """Invoke tools.toolchain.ensure_for for the given wink subcommand.
+def _resolve_gate_command(args) -> str:
+    """Map an argparse Namespace to the ensure_for() command key.
+
+    ensure_for() speaks in profile-selector keys — ``gen``, ``host``, ``wasm``,
+    ``test``, ``esp32``, ``web``, ``doctor`` — not raw subparser names. The
+    ``build`` subparser splits into two profiles depending on its positional
+    ``target`` (host vs wasm), so we resolve that here rather than pushing the
+    conditional into ensure_for's table.
+    """
+    command = getattr(args, "command", None)
+    if command == "build":
+        target = getattr(args, "target", None)
+        if target in ("host", "wasm"):
+            return target
+        # Fall through: ensure_for will raise a clear ValueError.
+        return command
+    return command
+
+
+def _apply_toolchain_gate(gate_command: str, skip: bool) -> None:
+    """Invoke tools.toolchain.ensure_for for the given profile-selector key.
+
+    ``gate_command`` must be one of the keys ensure_for() understands
+    (``gen``/``host``/``wasm``/``test``/``esp32``/``web``/``doctor``), not the
+    raw wink subparser name. Callers driving this from the CLI must first pass
+    ``args`` through :func:`_resolve_gate_command` to translate ``build`` into
+    the host/wasm split.
 
     Import is deferred so ``wink --help`` and doctor/setup can still function
     even when the toolchain package fails to import for some odd reason.
@@ -319,7 +344,9 @@ def _apply_toolchain_gate(command: str, skip: bool) -> None:
     from tools.toolchain.check import ensure_for  # noqa: WPS433
     from tools.toolchain.profiles import WORKSPACE_DEPS  # noqa: WPS433
 
-    # command -> profile mapping for WORKSPACE_DEPS lookup
+    # gate_command -> profile name for WORKSPACE_DEPS lookup. Doctor probes
+    # every capability so it doesn't map to a single profile; other keys map
+    # 1:1 except "gen" which drives the "codegen" profile.
     profile_map = {
         "gen":   "codegen",
         "host":  "host",
@@ -328,12 +355,12 @@ def _apply_toolchain_gate(command: str, skip: bool) -> None:
         "esp32": "esp32",
         "web":   "web",
     }
-    profile = profile_map.get(command)
+    profile = profile_map.get(gate_command)
     ws_keys = WORKSPACE_DEPS.get(profile, []) if profile else []
     cb = _make_workspace_paths_callback(ws_keys) if ws_keys else None
 
     ensure_for(
-        command,
+        gate_command,
         workspace_root=_current_workspace_root(),
         resolve_workspace_paths=cb,
         skip=skip,
@@ -891,7 +918,8 @@ def main():
     # things are missing — that's the point). Every other command must pass
     # the ensure_for gate before its handler runs.
     if args.command not in ("doctor", "setup"):
-        _apply_toolchain_gate(args.command, skip=args.skip_toolchain_check)
+        gate_command = _resolve_gate_command(args)
+        _apply_toolchain_gate(gate_command, skip=args.skip_toolchain_check)
 
     args.handler(args)
 
