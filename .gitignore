@@ -86,6 +86,3 @@ Thumbs.db
 # ===== Python（构建期静态分析工具 check_pt_variables.py 产物）=====
 __pycache__/
 *.pyc
-
-# Simulator Wasm compilation subdirectories
-embedded-frontend/public/wasm/*/
