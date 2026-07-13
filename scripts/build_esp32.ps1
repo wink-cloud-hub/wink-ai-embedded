@@ -1,64 +1,38 @@
 <#
 .SYNOPSIS
-    Thin shim that delegates to wink-micro-os/tools/esp32/build.py.
+    REMOVED: PowerShell build shim replaced by Python.
 
 .DESCRIPTION
-    The build logic (strip MSYS/EMSDK contamination, activate ESP-IDF via
-    EIM profile / export.ps1, run idf.py) moved to Python
-    (wink-micro-os/tools/esp32/build.py). This script is kept for
-    backwards compatibility with docs, skills, and any external callers
-    that still invoke `pwsh -File scripts/build_esp32.ps1 <idf args...>`.
-    It will be removed in a future release.
+    The ESP32 build orchestration (strip MSYS/EMSDK, activate IDF via EIM
+    profile / export script, invoke idf.py) has moved to Python. This
+    script is a fail-fast stub retained only to surface a clear error
+    for workflows, muscle memory, or docs that still invoke the old
+    PowerShell path. It does not perform any build work.
 
-    All arguments after this script's own params are forwarded verbatim
-    to the Python runner after a `--` separator, so any idf.py flags
-    (build, flash, monitor, -DFOO=bar, ...) pass through unchanged.
+    Use one of these replacements instead:
 
-.EXAMPLE
-    pwsh -File scripts/build_esp32.ps1 build
-    pwsh -File scripts/build_esp32.ps1 flash monitor
-    pwsh -File scripts/build_esp32.ps1 -DWINK_APP_DIR=... build
+      # From a shell at the repo root (recommended):
+      python wink-micro-os/tools/wink.py esp32 --app <path-to-app> build
+
+      # Direct invocation of the runner (forwards all idf.py args):
+      python wink-micro-os/tools/esp32/build.py `
+          --esp32-firmware-dir esp32_firmware -- build flash monitor
+
+    The PowerShell shim existed only during the Python migration window
+    on the feat/sdk-phase2-binary branch and was never part of a tagged
+    release. It will be removed entirely in a future cleanup.
 #>
-param(
-    [Parameter(ValueFromRemainingArguments = $true)]
-    [string[]]$IdfArgs = @("build")
-)
 
-$ErrorActionPreference = "Stop"
-
-# Set UTF-8 in the shim so any early failure messages render on cp936
-# consoles. build.py also sets these in the child env for idf.py.
-$env:PYTHONUTF8       = "1"
-$env:PYTHONIOENCODING = "utf-8"
-
-# scripts/ = $PSScriptRoot; repo root = its parent.
-$RepoRoot = (Get-Item (Join-Path $PSScriptRoot "..")).FullName
-
-# Resolve SDK dir: env override wins; otherwise assume in-tree layout.
-if ($env:WINK_SDK_PATH -and (Test-Path $env:WINK_SDK_PATH)) {
-    $SdkDir = (Get-Item $env:WINK_SDK_PATH).FullName
-} else {
-    $SdkDir = Join-Path $RepoRoot "wink-micro-os"
-}
-
-$BuildScript = Join-Path $SdkDir "tools\esp32\build.py"
-if (-not (Test-Path $BuildScript)) {
-    Write-Error "Python build runner not found: $BuildScript"
-    exit 1
-}
-
-$Esp32Dir = Join-Path $RepoRoot "esp32_firmware"
-
-# Pick Python: prefer the IDF-managed venv when the IDF shell is active,
-# else use whatever `python` is on PATH. build.py's activation logic will
-# also work with a plain `python` since it locates IDF itself.
-if ($env:IDF_PYTHON_ENV_PATH -and (Test-Path (Join-Path $env:IDF_PYTHON_ENV_PATH "Scripts\python.exe"))) {
-    $Python = Join-Path $env:IDF_PYTHON_ENV_PATH "Scripts\python.exe"
-} else {
-    $Python = "python"
-}
-
-$pyArgs = @("--esp32-firmware-dir", $Esp32Dir, "--") + $IdfArgs
-
-& $Python $BuildScript @pyArgs
-exit $LASTEXITCODE
+Write-Host ""
+Write-Host "ERROR: scripts/build_esp32.ps1 has been removed." -ForegroundColor Red
+Write-Host ""
+Write-Host "ESP32 build orchestration is now Python. Use:" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "  python wink-micro-os/tools/wink.py esp32 --app <app-dir> build" -ForegroundColor White
+Write-Host ""
+Write-Host "or, for direct idf.py passthrough:" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "  python wink-micro-os/tools/esp32/build.py ``" -ForegroundColor White
+Write-Host "      --esp32-firmware-dir esp32_firmware -- build flash monitor" -ForegroundColor White
+Write-Host ""
+exit 1
