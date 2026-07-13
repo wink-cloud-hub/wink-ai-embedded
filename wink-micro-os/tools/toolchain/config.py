@@ -137,3 +137,28 @@ def save_user_path(key: str, value: str) -> Path:
 def save_workspace_path(workspace_root: Path, key: str, value: str) -> Path:
     """Persist `paths[key] = value` into `<workspace_root>/.wink/tools.json`."""
     return _save_path_to(_workspace_config_path(workspace_root), key, value)
+
+
+_WORKSPACE_LAYOUT_FILE = "wink-workspace.json"
+
+
+def save_workspace_layout_key(workspace_root: Path, key: str, value: str) -> Path:
+    """Merge a sibling-layout key into ``<workspace_root>/wink-workspace.json``.
+
+    Layout keys (``sdk_dir``, ``frontend_dir``, ``esp32_dir``, ``scripts_dir``)
+    belong in ``wink-workspace.json``, not ``.wink/tools.json``. Writing them
+    to tools.json would be silently ignored by ``resolve_*_dir()``.
+    """
+    path = workspace_root / _WORKSPACE_LAYOUT_FILE
+    data: dict = {}
+    if path.exists():
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(raw, dict):
+            raise ValueError(f"{path} must contain a JSON object")
+        data = raw
+    data[key] = value
+    path.write_text(
+        json.dumps(data, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return path

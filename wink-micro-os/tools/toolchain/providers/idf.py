@@ -248,12 +248,22 @@ class IdfProvider(Provider):
             )
         if not idf_path_str:
             return None
+        # Capture sibling env the EIM profile set so ensure_for can forward
+        # them to build_esp32.ps1. This is NOT a full activation (idf.py may
+        # still be missing from PATH); build_esp32.ps1 must fall through to
+        # sourcing the profile when idf.py is not yet on PATH.
+        extra_env: dict[str, str] = {}
+        for key in ("IDF_TOOLS_PATH", "IDF_PYTHON_ENV_PATH", "ESP_IDF_VERSION"):
+            val = kv.get(key, "").strip()
+            if val:
+                extra_env[key] = val
         return DetectResult(
             found=True,
             path=Path(idf_path_str),
             version=v_str,
             reason=None,
             source="eim-profile",
+            extra_env=extra_env or None,
         )
 
     def hint(self, ctx: ResolveContext) -> str:

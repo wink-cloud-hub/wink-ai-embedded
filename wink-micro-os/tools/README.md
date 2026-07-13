@@ -46,7 +46,7 @@ python wink-micro-os/tools/wink.py <command> [options]
 | Command | Purpose |
 |---------|---------|
 | `doctor` | Probe every registered toolchain capability; print a collect-all report (no fail-fast) |
-| `setup --set KEY=PATH [--workspace]` | Validate via `provider.detect()` then write `paths[KEY]=PATH` to `~/.wink/tools.json` (or `<ws>/.wink/tools.json`) |
+| `setup --set KEY=PATH [--workspace]` | Tool caps (`gcc`/`cmake`/…) → `~/.wink/tools.json` (or `<ws>/.wink/tools.json` with `--workspace`). Layout keys (`esp32_dir`/`sdk_dir`/…) → `<ws>/wink-workspace.json` |
 | `setup --install CAP` | Phase B hint-only auto-install (ESP-IDF is never auto-installed — ADR-0030) |
 | `gen --app <name\|path>` | `wink-app.json` → device_tree + docs |
 | `build host\|wasm --app …` | Host or WASM simulator (`build/host/`, `build/wasm/{projectCode}/`) |

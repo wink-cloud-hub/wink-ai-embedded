@@ -43,7 +43,8 @@ if ($Full) { $Sanitize = $true }
 # ---- 1. Verify toolchain present (gcc/cmake must be on PATH) ----
 # Hardcoded toolchain prepends have been removed; the caller is expected to
 # have gcc/cmake on PATH already (e.g. WinLibs MinGW-w64 activated, or via
-# `python tools/wink.py ensure-host` bootstrap). See tools/preinstall.md.
+# `python tools/wink.py setup --set gcc=...`). See tools/preinstall.md.
+# Diagnose with: python tools/wink.py doctor
 foreach ($t in 'gcc','cmake') {
     if (-not (Get-Command $t -ErrorAction SilentlyContinue)) {
         Write-Host "[FAIL] '$t' not found on PATH." -ForegroundColor Red

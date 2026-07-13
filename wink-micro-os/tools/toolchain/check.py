@@ -155,11 +155,21 @@ def _inject_env_for_profile(
         idf_result = cache.get("idf")
         if idf_result is not None and idf_result.found and idf_result.path is not None:
             os.environ["IDF_PATH"] = str(idf_result.path)
-            # If parent shell already exports IDF_TOOLS_PATH, pass it through;
-            # our EIM subprocess probe surfaces it in DetectResult.source only.
-            existing_tools_path = ctx.environ.get("IDF_TOOLS_PATH", "").strip()
-            if existing_tools_path:
-                os.environ["IDF_TOOLS_PATH"] = existing_tools_path
+            # Prefer env captured by the EIM subprocess probe (extra_env), then
+            # fall back to whatever the parent shell already exported.
+            if idf_result.extra_env:
+                for key, val in idf_result.extra_env.items():
+                    if val:
+                        os.environ[key] = val
+            for key in ("IDF_TOOLS_PATH", "IDF_PYTHON_ENV_PATH", "ESP_IDF_VERSION"):
+                if key in os.environ and os.environ[key].strip():
+                    continue
+                existing = ctx.environ.get(key, "").strip()
+                if existing:
+                    os.environ[key] = existing
+            # NOTE: setting IDF_PATH alone does NOT put idf.py on PATH.
+            # scripts/build_esp32.ps1 must only treat the env as "activated"
+            # when idf.py is already resolvable; otherwise it sources EIM.
 
     if profile == "web":
         d = _bin_dir_of("node")

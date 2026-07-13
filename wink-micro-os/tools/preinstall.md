@@ -127,12 +127,13 @@ python wink-micro-os/tools/wink.py build wasm --app <name|path>
 
 ### 环境变量
 
-`scripts/build_esp32.ps1` 会在调用时设置多数 IDF 变量；手工跑 `idf.py` 则需先激活 IDF profile（推荐 EIM 生成的 `Microsoft.v6.0.1.PowerShell_profile.ps1`，非 `export.ps1`）。
+`wink.py esp32` 经 `ensure_for("esp32")` 注入 `IDF_PATH`（以及探测到的 `IDF_TOOLS_PATH` 等），并强制 `PYTHONUTF8=1`。  
+`scripts/build_esp32.ps1` **不再硬编码** Espressif 绝对路径：若当前进程已有有效 `IDF_PATH` **且** `idf.py` 在 PATH 上，则直接使用；否则自动尝试 source EIM profile（`C:\Espressif\tools\Microsoft.v6*.PowerShell_profile.ps1`）或 `$IDF_PATH\export.ps1`。手工跑 `idf.py` 时仍建议先激活 EIM profile。
 
 | 变量 | 说明 / 本机脚本典型值 |
 |------|----------------------|
 | `IDF_PATH` | 如 `D:\software\embedded\esp\v6.0.1\esp-idf`；`idf` provider 读取此项 |
-| `IDF_TOOLS_PATH` | 如 `C:\Espressif\tools` |
+| `IDF_TOOLS_PATH` | 如 `C:\Espressif\tools`（EIM 探测时由 provider 转发） |
 | `IDF_PYTHON_ENV_PATH` | 如 `C:\Espressif\tools\python\v6.0.1\venv` |
 | `ESP_IDF_VERSION` | `6.0.1` |
 | `PYTHONUTF8=1` | 避免中文注释 / 控制台乱码 |
@@ -142,7 +143,15 @@ python wink-micro-os/tools/wink.py build wasm --app <name|path>
 | `WINK_ESP32_PATH` | 指向 `esp32_firmware`（非 monorepo 时） |
 | `WINK_SCRIPTS_PATH` | 指向含 `build_esp32.ps1` 的 `scripts/`（非 monorepo 时） |
 
-也可 `wink setup --set idf=D:/software/embedded/esp/v6.0.1/esp-idf` 让 `doctor` / `ensure_for("esp32")` 自动识别，无需依赖 shell 环境。
+也可：
+
+```powershell
+python wink-micro-os/tools/wink.py setup --set esp32_dir=D:/path/to/esp32_firmware
+# → 写入工作区 wink-workspace.json（不是 .wink/tools.json）
+python wink-micro-os/tools/wink.py setup --set idf=D:/software/embedded/esp/v6.0.1/esp-idf
+```
+
+> 注意：仅设置 `IDF_PATH` 而不激活 shell 时，`build_esp32.ps1` 会继续尝试 EIM profile，以便把 `idf.py` 放进 PATH。
 
 > `build_esp32.ps1` 会清掉 `EMSDK` / `MSYSTEM` 等，避免 MinGW / emsdk 污染 IDF PATH（ESP-IDF v6 不再支持从 MSYS/MinGW 直接调用）。
 

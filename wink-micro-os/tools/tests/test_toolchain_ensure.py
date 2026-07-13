@@ -41,13 +41,19 @@ class _FakeProvider(Provider):
         return self._hint
 
 
-def _found(path_str: str, version: str = "1.0.0", source: str = "path") -> DetectResult:
+def _found(
+    path_str: str,
+    version: str = "1.0.0",
+    source: str = "path",
+    extra_env: dict | None = None,
+) -> DetectResult:
     return DetectResult(
         found=True,
         path=Path(path_str),
         version=version,
         reason=None,
         source=source,
+        extra_env=extra_env,
     )
 
 
@@ -76,7 +82,18 @@ def _all_found_registry(gcc_bin: str = "C:/tools/mingw/bin/gcc.exe",
         "make":       _FakeProvider("make",       _found(make_bin, "4.4.1")),
         "gcc":        _FakeProvider("gcc",        _found(gcc_bin, "16.1.0")),
         "emsdk":      _FakeProvider("emsdk",      _found(emsdk_root, "3.1.55")),
-        "idf":        _FakeProvider("idf",        _found(idf_root, "6.0.1", source="eim-profile")),
+        "idf":        _FakeProvider(
+            "idf",
+            _found(
+                idf_root,
+                "6.0.1",
+                source="eim-profile",
+                extra_env={
+                    "IDF_TOOLS_PATH": "C:/Espressif/tools",
+                    "IDF_PYTHON_ENV_PATH": "C:/Espressif/tools/python/v6.0.1/venv",
+                },
+            ),
+        ),
         "node":       _FakeProvider("node",       _found(node_bin, "20.11.1")),
         "powershell": _FakeProvider("powershell", _found("C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe", "5.1")),
     }
@@ -136,12 +153,7 @@ class TestEnsureFor(unittest.TestCase):
         os.environ["PATH"] = "SENTINEL_PATH_ONLY"
 
         idf_root = "C:/Espressif/frameworks/esp-idf-v6.0"
-        idf_tools = "C:/Espressif"
         reg = _all_found_registry(idf_root=idf_root)
-        # Simulate that idf provider surfaced IDF_TOOLS_PATH via source too:
-        # We store both via a monkey-patched detect that mutates ctx.environ?
-        # Simpler: check.py inspects DetectResult.path (IDF_PATH). IDF_TOOLS_PATH
-        # is optional; verify only that IDF_PATH is set.
         with mock.patch.dict(providers_mod.REGISTRY, reg, clear=True):
             def _resolve_ws():
                 return {"esp32_dir": Path("."), "scripts_dir": Path(".")}
@@ -158,6 +170,12 @@ class TestEnsureFor(unittest.TestCase):
         got_idf_path = os.environ.get("IDF_PATH")
         self.assertIsNotNone(got_idf_path)
         self.assertEqual(Path(got_idf_path), Path(idf_root))
+        # EIM-captured sibling env forwarded via DetectResult.extra_env.
+        self.assertEqual(os.environ.get("IDF_TOOLS_PATH"), "C:/Espressif/tools")
+        self.assertEqual(
+            os.environ.get("IDF_PYTHON_ENV_PATH"),
+            "C:/Espressif/tools/python/v6.0.1/venv",
+        )
         # No host bin prepend: PATH untouched.
         self.assertEqual(os.environ.get("PATH"), "SENTINEL_PATH_ONLY")
 

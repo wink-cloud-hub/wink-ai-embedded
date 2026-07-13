@@ -548,7 +548,28 @@ def handle_build(args):
 def handle_esp32(args):
     """Build, flash or monitor ESP32 firmware."""
     app_dir = resolve_app_dir(args.app)
-    sdk_dir = resolve_sdk_dir()
+    # ESP32 always needs the Source SDK tree (targets/esp32 component). Prefer
+    # the in-tree wink-micro-os even when a stale WINK_SDK_PATH still points at
+    # a Binary SDK tarball from a prior experiment.
+    env_sdk = os.environ.get("WINK_SDK_PATH", "").strip()
+    if _is_in_tree_source_sdk(SDK_ROOT):
+        sdk_dir = SDK_ROOT
+        if env_sdk and Path(env_sdk).resolve() != SDK_ROOT.resolve():
+            print(
+                f"[wink] Note: ignoring WINK_SDK_PATH={env_sdk!r} for esp32; "
+                f"using in-tree Source SDK {sdk_dir}",
+                file=sys.stderr,
+            )
+    else:
+        sdk_dir = resolve_sdk_dir()
+        if (sdk_dir / "libs").is_dir() and not (sdk_dir / "targets" / "esp32").is_dir():
+            print(
+                "[wink] Error: esp32 builds require a Source SDK (targets/esp32). "
+                f"WINK_SDK_PATH={sdk_dir} looks like a Binary SDK. "
+                "Unset WINK_SDK_PATH or point it at a Source SDK tarball.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
     esp32_dir = resolve_esp32_dir(required=True)
     scripts_dir = resolve_scripts_dir(required=True)
     codegen_dir = Path(__file__).resolve().parent / "codegen"
@@ -1068,7 +1089,11 @@ def _handle_setup_set(kv: str, *, workspace: bool) -> None:
     provider.detect() against a temporary snapshot with the new value.
     """
     from tools.toolchain import providers as providers_mod  # noqa: WPS433
-    from tools.toolchain.config import save_user_path, save_workspace_path  # noqa: WPS433
+    from tools.toolchain.config import (  # noqa: WPS433
+        save_user_path,
+        save_workspace_layout_key,
+        save_workspace_path,
+    )
     from tools.toolchain.resolve import ResolveContext, CAP_ENV_VARS  # noqa: WPS433
 
     if "=" not in kv:
@@ -1118,7 +1143,18 @@ def _handle_setup_set(kv: str, *, workspace: bool) -> None:
             )
             sys.exit(1)
 
-    # Workspace path: require the target dir exists.
+        if workspace:
+            ws_root = _current_workspace_root()
+            if ws_root is None:
+                print("[wink] Error: --workspace requested but no workspace root resolved.", file=sys.stderr)
+                sys.exit(1)
+            target = save_workspace_path(ws_root, key, value)
+        else:
+            target = save_user_path(key, value)
+        print(f"[wink] wrote {key}={value} to {target}")
+        return
+
+    # Workspace layout keys → wink-workspace.json (NOT tools.json).
     if key in _WORKSPACE_PATH_KEYS:
         p = Path(value)
         if not p.exists() or not p.is_dir():
@@ -1128,6 +1164,17 @@ def _handle_setup_set(kv: str, *, workspace: bool) -> None:
                 file=sys.stderr,
             )
             sys.exit(1)
+        ws_root = _current_workspace_root()
+        if ws_root is None:
+            print(
+                "[wink] Error: cannot resolve workspace root to write wink-workspace.json. "
+                "Run from the monorepo / set WINK_* paths.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        target = save_workspace_layout_key(ws_root, key, value)
+        print(f"[wink] wrote {key}={value} to {target}")
+        return
 
     # tools_home: also require the dir exists (or can be created), but do not
     # try to enforce provider detect — it's a *base* dir, not a specific tool.
@@ -1140,17 +1187,20 @@ def _handle_setup_set(kv: str, *, workspace: bool) -> None:
                 file=sys.stderr,
             )
             sys.exit(1)
+        if workspace:
+            ws_root = _current_workspace_root()
+            if ws_root is None:
+                print("[wink] Error: --workspace requested but no workspace root resolved.", file=sys.stderr)
+                sys.exit(1)
+            target = save_workspace_path(ws_root, key, value)
+        else:
+            target = save_user_path(key, value)
+        print(f"[wink] wrote {key}={value} to {target}")
+        return
 
-    # Persist.
-    if workspace:
-        ws_root = _current_workspace_root()
-        if ws_root is None:
-            print("[wink] Error: --workspace requested but no workspace root resolved.", file=sys.stderr)
-            sys.exit(1)
-        target = save_workspace_path(ws_root, key, value)
-    else:
-        target = save_user_path(key, value)
-    print(f"[wink] wrote {key}={value} to {target}")
+    # Unreachable: key already validated against the three allowed sets.
+    print(f"[wink] Error: unhandled key {key!r}.", file=sys.stderr)
+    sys.exit(2)
 
 
 def _handle_setup_install(cap: str) -> None:

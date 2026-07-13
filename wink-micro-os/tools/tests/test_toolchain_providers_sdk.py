@@ -310,6 +310,8 @@ class TestIdfProvider(unittest.TestCase):
         self.assertTrue(r.found, r.reason)
         self.assertEqual(r.version, "6.0.1")
         self.assertEqual(r.source, "eim-profile")
+        self.assertIsNotNone(r.extra_env)
+        self.assertEqual(r.extra_env.get("IDF_TOOLS_PATH"), r"C:\Espressif")
         # Verify the subprocess used a bounded timeout. The EIM probe uses
         # a longer per-call timeout than the shared PROBE_TIMEOUT_SEC (10s)
         # because sourcing the profile activates a Python venv (~12s

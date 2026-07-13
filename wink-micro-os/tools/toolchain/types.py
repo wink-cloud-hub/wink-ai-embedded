@@ -13,11 +13,15 @@ class DetectResult:
     """Outcome of a Provider.detect() probe.
 
     Attributes:
-        found:   True if the tool is present and usable.
-        path:    Absolute path to the executable / SDK root, if resolved.
-        version: Parsed version string, if determinable.
-        reason:  Short human-readable reason (mainly for the not-found case).
-        source:  Where the tool was located (e.g. "PATH", "IDF_PATH", "emsdk").
+        found:     True if the tool is present and usable.
+        path:      Absolute path to the executable / SDK root, if resolved.
+        version:   Parsed version string, if determinable.
+        reason:    Short human-readable reason (mainly for the not-found case).
+        source:    Where the tool was located (e.g. "PATH", "IDF_PATH", "emsdk").
+        extra_env: Optional env vars captured during detect (e.g. IDF_TOOLS_PATH
+                   from an EIM profile subprocess). Applied by ensure_for for
+                   the matching profile; never a substitute for shell activation
+                   when binaries are still missing from PATH.
     """
 
     found: bool
@@ -25,6 +29,7 @@ class DetectResult:
     version: str | None
     reason: str | None
     source: str | None
+    extra_env: dict[str, str] | None = None
 
 
 class UnsupportedError(Exception):

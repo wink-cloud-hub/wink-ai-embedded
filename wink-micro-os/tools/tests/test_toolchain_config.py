@@ -148,6 +148,19 @@ class TestToolsConfig(unittest.TestCase):
         cfg = load_tools_config(self.workspace)
         self.assertEqual(cfg.tools_home, Path("C:/ws_tools"))
 
+    def test_save_workspace_layout_key_merges_wink_workspace_json(self):
+        from tools.toolchain.config import save_workspace_layout_key
+
+        first = save_workspace_layout_key(self.workspace, "esp32_dir", "D:/fw/esp32")
+        self.assertEqual(first, self.workspace / "wink-workspace.json")
+        data = json.loads(first.read_text(encoding="utf-8"))
+        self.assertEqual(data["esp32_dir"], "D:/fw/esp32")
+
+        save_workspace_layout_key(self.workspace, "scripts_dir", "D:/fw/scripts")
+        data = json.loads(first.read_text(encoding="utf-8"))
+        self.assertEqual(data["esp32_dir"], "D:/fw/esp32")
+        self.assertEqual(data["scripts_dir"], "D:/fw/scripts")
+
     def test_invalid_json_propagates(self):
         user_file = self.fake_home / ".wink" / "tools.json"
         user_file.parent.mkdir(parents=True, exist_ok=True)
