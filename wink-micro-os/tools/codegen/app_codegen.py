@@ -175,7 +175,11 @@ def _load_board_config(board_name: str, config_source: str) -> dict:
 
 
 ROLE_VERBS = {
-    "binary_sensor": ["is_active", "is_active_status", "was_active", "was_active_status", "start_auto_poll", "stop_auto_poll"],
+    "binary_sensor": [
+        "is_active", "is_active_status", "was_active", "was_active_status",
+        "enable_events", "disable_events",
+        "start_auto_poll", "stop_auto_poll",
+    ],
     "binary_indicator": ["activate", "deactivate", "toggle"],
     "distance_sensor": ["request_measurement", "read_distance", "read_distance_status"],
     "text_display": ["clear", "draw_text", "flush"],
