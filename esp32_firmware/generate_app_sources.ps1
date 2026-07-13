@@ -1,145 +1,62 @@
 <#
 .SYNOPSIS
-    自动生成 ESP32 固件的 App 源文件列表 .cmake 片段
-    自动扫描 wink-micro-os/samples/<AppName> 下的 .c 源文件，排除 host 测试文件（test_*.c）
-    输出到 esp32_firmware/main/app_sources.cmake，供 main/CMakeLists.txt include() 使用
-    实现：换 App / 增删源文件 → 零改 esp32_firmware 源码
+    Thin shim that delegates to tools/esp32/generate_app_sources.py.
+
+.DESCRIPTION
+    The generation logic moved to Python (wink-micro-os/tools/esp32/generate_app_sources.py).
+    This script is kept for backwards compatibility with docs, skills, and any
+    external callers that still invoke `.\generate_app_sources.ps1 -AppDir ... `
+    or `-AppName ...`. It will be removed in a future release.
+
+    PowerShell-style flags (-AppDir, -AppName) are translated to argparse
+    (--app-dir, --app-name) before invoking Python.
 
 .EXAMPLE
-    # 生成默认 App (devkitc_smoke)
-    .\generate_app_sources.ps1
-
-    # 生成指定 App
-    .\generate_app_sources.ps1 -AppName avoidance_car
-
-    # 集成到 idf.py 构建前置钩子（CMake 侧已处理，无需手动调用）
-    # idf.py build 会自动在 configure 阶段跑本脚本
+    .\generate_app_sources.ps1 -AppDir ..\wink-micro-app\devkitc_smoke
+    .\generate_app_sources.ps1 -AppName devkitc_smoke
+    .\generate_app_sources.ps1        # falls back to Python's default (devkitc_smoke)
 #>
-
-param(
-    [string]$AppName = "devkitc_smoke",
-    [string]$AppDir = ""
-)
 
 $ErrorActionPreference = "Stop"
 
-# 路径计算：脚本所在目录 = esp32_firmware/
+# Ensure UTF-8 in the child so the ✅ glyph doesn't mojibake on cp936 consoles.
+$env:PYTHONUTF8 = "1"
+$env:PYTHONIOENCODING = "utf-8"
+
+# esp32_firmware/ = $PSScriptRoot; repo root = its parent.
 $ScriptDir = $PSScriptRoot
-$RepoRoot = (Get-Item (Join-Path $ScriptDir "..")).FullName
-if ($AppDir -ne "") {
-    $AppDir = (Get-Item $AppDir).FullName
-    $AppName = Split-Path -Leaf $AppDir
+$RepoRoot  = (Get-Item (Join-Path $ScriptDir "..")).FullName
+
+# Resolve SDK dir: env override wins; otherwise assume in-tree layout.
+if ($env:WINK_SDK_PATH -and (Test-Path $env:WINK_SDK_PATH)) {
+    $SdkDir = (Get-Item $env:WINK_SDK_PATH).FullName
 } else {
-    $AppDir = Join-Path $RepoRoot "wink-micro-os\samples\$AppName"
+    $SdkDir = Join-Path $RepoRoot "wink-micro-os"
 }
 
-# 验证 App 目录存在
-if (-not (Test-Path $AppDir)) {
-    Write-Error "App directory not found: $AppDir"
+$GenScript = Join-Path $SdkDir "tools\esp32\generate_app_sources.py"
+if (-not (Test-Path $GenScript)) {
+    Write-Error "Python generator not found: $GenScript"
     exit 1
 }
 
-$RepoRootPath = $RepoRoot
-if (-not $RepoRootPath.EndsWith("\")) {
-    $RepoRootPath += "\"
-}
-
-# 扫描 App 下所有 .c 源文件，排除 host 端到端测试文件（test_*.c）
-# 使用相对于 repo root 的路径，并在 CMake 中通过 ${CMAKE_CURRENT_LIST_DIR} 定位，保证跨机器通用且不会遇到 CMake 工作目录变化的坑
-# 1) App's own .c files (exclude host e2e test_*.c)
-$AppSourceFiles = @(Get-ChildItem -Path $AppDir -Filter "*.c" -Recurse |
-    Where-Object { $_.Name -notlike "test_*.c" } |
-    ForEach-Object {
-        if ($_.FullName.StartsWith($RepoRootPath)) {
-            $RelPath = $_.FullName.Substring($RepoRootPath.Length).Replace('\', '/')
-            "`${CMAKE_CURRENT_LIST_DIR}/../../$RelPath"
-        } else {
-            $_.FullName.Replace('\', '/')
-        }
-    })
-
-# 2) samples/common helpers — auto-included so any sample can #include the
-#    wink_* helper headers without touching CMake.  Unreferenced functions
-#    are gc-sections'd at link time (ESP-IDF default builds with
-#    -ffunction-sections -fdata-sections -Wl,--gc-sections), so zero cost
-#    for samples that don't call them.
-#    ADR-0023 Stage 2 migration note: helpers that move to BAL
-#    (wink_blink_helper.c, wink_button_helper.c, ...) are excluded here.
-#    BAL sources are compiled into the wink-micro-os ESP32 component via
-#    core_sources.cmake (WINK_BAL_SOURCES), so listing them here would cause
-#    duplicate symbols.
-$CommonDir = Join-Path $RepoRoot "wink-micro-os\samples\common\src"
-# ADR-0023 Stage 2 migration: helpers that moved to BAL (wink_blink_helper.c,
-# wink_button_helper.c, wink_telemetry_helper.c) are compiled via the
-# wink-micro-os ESP32 component (WINK_BAL_SOURCES in core_sources.cmake) and
-# MUST NOT be listed here — that would cause duplicate symbols. The filter
-# below is a safety net; now that common/src/ is empty it's a no-op, but it
-# protects against a helper being accidentally copied back.
-$BAL_MIGRATED_NAMES = @(
-    "wink_blink_helper.c",
-    "wink_button_helper.c",
-    "wink_default_telemetry.c",  # legacy name before Stage 2.3 rename
-    "wink_telemetry_helper.c",
-    "wink_sim_ultrasonic_echo.c" # moved to runtime/selftest/src/ in Stage 2.4
-)
-$CommonSourceFiles = @()
-if (Test-Path $CommonDir) {
-    $CommonSourceFiles = @(Get-ChildItem -Path $CommonDir -Filter "*.c" |
-        Where-Object { $name = $_.Name; -not ($BAL_MIGRATED_NAMES | Where-Object { $name -like $_ }) } |
-        ForEach-Object {
-            $RelPath = $_.FullName.Substring($RepoRootPath.Length).Replace('\', '/')
-            "`${CMAKE_CURRENT_LIST_DIR}/../../$RelPath"
-        })
-}
-
-$SourceFiles = @($AppSourceFiles + $CommonSourceFiles)
-
-if ($AppDir.StartsWith($RepoRootPath)) {
-    $AppDirRel = "`${CMAKE_CURRENT_LIST_DIR}/../../" + $AppDir.Substring($RepoRootPath.Length).Replace('\', '/')
+# Pick Python: prefer the IDF-managed venv when the IDF shell is active,
+# else use whatever `python` is on PATH.
+if ($env:IDF_PYTHON_ENV_PATH -and (Test-Path (Join-Path $env:IDF_PYTHON_ENV_PATH "Scripts\python.exe"))) {
+    $Python = Join-Path $env:IDF_PYTHON_ENV_PATH "Scripts\python.exe"
 } else {
-    $AppDirRel = $AppDir.Replace('\', '/')
-}
-$ParentDir = Split-Path -Parent $AppDir
-$CommonIncludePath = Join-Path $ParentDir "common\include"
-
-if (Test-Path $CommonIncludePath) {
-    $CommonIncludeDirResolved = $CommonIncludePath
-} else {
-    $CommonIncludeDirResolved = Join-Path $RepoRoot "wink-micro-os\samples\common\include"
+    $Python = "python"
 }
 
-if ($CommonIncludeDirResolved.StartsWith($RepoRootPath)) {
-    $CommonIncludeDir = "`${CMAKE_CURRENT_LIST_DIR}/../../" + $CommonIncludeDirResolved.Substring($RepoRootPath.Length).Replace('\', '/')
-} else {
-    $CommonIncludeDir = $CommonIncludeDirResolved.Replace('\', '/')
+# Translate PowerShell-style flags to argparse.
+$pyArgs = @("--esp32-firmware-dir", $ScriptDir)
+for ($i = 0; $i -lt $args.Count; $i++) {
+    switch -regex ($args[$i]) {
+        '^-AppDir$'  { $pyArgs += '--app-dir';  $pyArgs += $args[++$i] }
+        '^-AppName$' { $pyArgs += '--app-name'; $pyArgs += $args[++$i] }
+        default      { $pyArgs += $args[$i] }
+    }
 }
 
-# 生成 CMake 片段（UTF8 无 BOM，CMake 兼容性最好）
-$OutputPath = Join-Path $ScriptDir "main\app_sources.cmake"
-$Content = @"
-# ============================================================
-# AUTO-GENERATED by generate_app_sources.ps1 - DO NOT EDIT MANUALLY
-# ============================================================
-# App Name: $AppName
-# Generated at: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
-# ============================================================
-
-set(WINK_APP_NAME "$AppName" CACHE STRING "Current samples app name" FORCE)
-set(WINK_APP_DIR "$AppDirRel" CACHE PATH "Current samples app directory" FORCE)
-set(WINK_APP_COMMON_INCLUDE_DIR "$CommonIncludeDir" CACHE PATH "samples/common include dir" FORCE)
-
-set(WINK_APP_SOURCES
-    $($SourceFiles -join "`n    ")
-    CACHE INTERNAL "Auto-scanned source files from samples/$AppName + samples/common"
-)
-
-message(STATUS "[WINK App Auto-Scan] App = $AppName, source files = $($SourceFiles.Count) (app=$($AppSourceFiles.Count), common=$($CommonSourceFiles.Count))")
-"@
-
-# 写文件：UTF8（CMake 对 BOM 完全兼容，PowerShell 5.1 原生默认带 BOM，省心）
-$Content | Out-File -FilePath $OutputPath -Encoding utf8
-
-Write-Host "✅ Generated: $OutputPath"
-Write-Host "   App: $AppName"
-Write-Host "   Source files: $($SourceFiles.Count)"
-$SourceFiles | ForEach-Object { Write-Host "     - $_" }
+& $Python $GenScript @pyArgs
+exit $LASTEXITCODE

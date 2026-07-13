@@ -577,13 +577,16 @@ def handle_esp32(args):
     os.environ["WINK_APP_DIR"] = app_dir.as_posix()
     os.environ["WINK_SDK_PATH"] = sdk_dir.as_posix()
 
-    gen_script = esp32_dir / "generate_app_sources.ps1"
+    # Ensure UTF-8 stdout in the child so the ✅ glyph doesn't mojibake on cp936.
+    os.environ.setdefault("PYTHONUTF8", "1")
+    os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+
+    gen_script = sdk_dir / "tools" / "esp32" / "generate_app_sources.py"
     run_cmd([
-        "powershell",
-        "-NoProfile",
-        "-ExecutionPolicy", "Bypass",
-        "-File", str(gen_script),
-        "-AppDir", str(app_dir)
+        sys.executable,
+        str(gen_script),
+        "--esp32-firmware-dir", str(esp32_dir),
+        "--app-dir", str(app_dir),
     ])
 
     build_script = scripts_dir / "build_esp32.ps1"
