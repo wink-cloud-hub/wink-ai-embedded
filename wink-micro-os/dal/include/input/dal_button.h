@@ -63,6 +63,7 @@ typedef struct {
     bool last_reported;      /* 上次 was_pressed 报告过的状态（边沿消抖） */
     bool initialized;        /* init 成功后置 true */
     uint8_t debounce_counter;/* 连续一致采样计数器 */
+    uint8_t debounce_threshold; /* 稳定态翻转所需的连续一致采样数（≥1；由 dal_button_set_debounce_ms 调整，默认 DAL_BUTTON_DEBOUNCE_THRESHOLD） */
 
     /* ── Wave 3: event callback state ── */
     dal_button_event_cb event_cb;     /* 事件回调（NULL=不派发） */
@@ -162,6 +163,24 @@ wink_status_t dal_button_on_event(dal_button_t *dev, dal_button_event_cb cb, voi
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_button_set_long_press_ms(dal_button_t *dev, uint32_t ms);
 
+/**
+ * @brief 配置去抖窗口（毫秒）。
+ *
+ * 按当前 poll 周期（wink-app.json 中 auto_poll_ms，默认 10 ms 与 runtime tick 对齐）
+ * 换算为「连续一致采样次数」阈值：threshold = max(1, ms / 10)。真实换算发生在
+ * BAL/App 侧对本 API 的调用点：DAL 无法感知 poll 周期，因此上层若使用非 10 ms
+ * 周期，应先按自己的周期折算再传入等效 ms。
+ *
+ * 语义：ms=0 不合法（去抖关闭请勿调用此 API；保留 DAL 默认 30 ms ≈ 3 samples）。
+ * ms<10 ms 会被 clamp 到 threshold=1（等价单次采样，最短去抖）。
+ *
+ * @param ms 去抖毫秒（>0；建议 ≥10ms 以匹配默认 tick）
+ * @return WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED
+ * @note   只影响后续 poll 的稳定态判定；不影响长按阈值和事件回调。
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t dal_button_set_debounce_ms(dal_button_t *dev, uint32_t ms);
+
 /* ── Wave 3: ISR edge counter (hardware-interrupt driven) ─ */
 
 /**
@@ -228,6 +247,8 @@ WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_button_on_event(dal_button_t *dev, dal_button_event_cb cb, void *ctx);
 WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_button_set_long_press_ms(dal_button_t *dev, uint32_t ms);
+WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_button_set_debounce_ms(dal_button_t *dev, uint32_t ms);
 WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_button_enable_isr_counter(dal_button_t *dev);
 WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
