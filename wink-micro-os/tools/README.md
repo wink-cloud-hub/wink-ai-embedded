@@ -3,16 +3,20 @@
 SDK-owned CLI, device-tree codegen, config generators, and static lints.
 Lives under `wink-micro-os/tools/` so peripheral/driver work stays in one tree.
 
+> **Prerequisites & environment setup:** see [preinstall.md](./preinstall.md).
+> First step on a new machine is always `python wink-micro-os/tools/wink.py doctor`.
+
 ## Layout
 
 | Path | Role |
 |------|------|
-| `wink.py` | Unified CLI (`gen` / `build` / `esp32` / `web` / `test`) |
+| `wink.py` | Unified CLI (`gen` / `build` / `esp32` / `web` / `test` / `doctor` / `setup`) |
 | `pack_sdk_source.py` | Phase 1 Source SDK tarball (`wink-micro-os-sdk-source-v*.tar.gz`) |
 | `pack_sdk_binary.py` | Phase 2 Binary SDK tarball (`wink-micro-os-sdk-binary-v*.tar.gz`) |
 | `binary_sdk_cmake/` | Consumer-facing CMake entry + smoke test for Binary SDK |
 | `codegen/` | Generators: device tree, `wink_config.h`, PT state helpers |
 | `lint/` | Build/test gates (PT footguns, header self-containment, log fmt) |
+| `toolchain/` | Toolchain detect / hint / (later) install; drives `doctor` + `setup` and gates every non-diagnostic command via `ensure_for(profile)` (ADR-0029/0030). See `toolchain/tools.json.example` |
 
 ## Workspace Resolution
 
@@ -41,11 +45,18 @@ python wink-micro-os/tools/wink.py <command> [options]
 
 | Command | Purpose |
 |---------|---------|
+| `doctor` | Probe every registered toolchain capability; print a collect-all report (no fail-fast) |
+| `setup --set KEY=PATH [--workspace]` | Validate via `provider.detect()` then write `paths[KEY]=PATH` to `~/.wink/tools.json` (or `<ws>/.wink/tools.json`) |
+| `setup --install CAP` | Phase B hint-only auto-install (ESP-IDF is never auto-installed — ADR-0030) |
 | `gen --app <name\|path>` | `wink-app.json` → device_tree + docs |
-| `build host\|wasm --app …` | Host or WASM simulator |
+| `build host\|wasm --app …` | Host or WASM simulator (`build/host/`, `build/wasm/{projectCode}/`) |
 | `esp32 --app … [idf args]` | ESP-IDF build / flash / monitor |
 | `web [--port N]` | Vite frontend |
 | `test` | Codegen golden + host ctest |
+
+Every non-diagnostic command first runs `tools.toolchain.ensure_for(<profile>)` and
+exits with an actionable report if a required capability is missing. Use
+`--skip-toolchain-check` only as an escape hatch (loud stderr warning).
 
 ---
 
@@ -170,15 +181,15 @@ $env:WINK_SDK_PATH = $sdk
 # 2) Configure + build (emcmake required)
 #    -S must be the SDK root ($sdk), NOT the App directory.
 #    -DWINK_APP_DIR must be one quoted argument (PowerShell splits on '=' otherwise).
-Remove-Item -Recurse -Force build/wasm -ErrorAction SilentlyContinue
-emcmake cmake -S $sdk -B $sdk/build-wasm `
+Remove-Item -Recurse -Force build/wasm/avoidance_car -ErrorAction SilentlyContinue
+emcmake cmake -S $sdk -B build/wasm/avoidance_car `
   -DTARGET_PLATFORM=wasm `
   "-DWINK_APP_DIR=$((Resolve-Path wink-micro-app/avoidance_car).Path)"
-cmake --build $sdk/build-wasm
-# → $sdk/build-wasm/wink_simulator.js + wink_simulator.wasm
+cmake --build build/wasm/avoidance_car
+# → build/wasm/avoidance_car/wink_simulator.js + wink_simulator.wasm
 
-# Easier alternative:
-Remove-Item -Recurse -Force build/wasm -ErrorAction SilentlyContinue
+# Easier alternative (output: build/wasm/{projectCode}/):
+Remove-Item -Recurse -Force build/wasm/avoidance_car -ErrorAction SilentlyContinue
 python "$env:WINK_SDK_PATH/tools/wink.py" build wasm --sdk-mode binary `
   --app (Resolve-Path wink-micro-app/avoidance_car)
 ```
