@@ -46,6 +46,65 @@ if sys.platform == "win32":
     except Exception:
         pass
 
+
+def _color_supported() -> bool:
+    """Decide whether to emit ANSI colour escape sequences.
+
+    Rules (highest priority first):
+    - ``NO_COLOR`` env var set (non-empty) → disabled (https://no-color.org/)
+    - ``FORCE_COLOR`` env var set to a non-``0`` value → enabled
+    - ``TERM`` == ``dumb`` → disabled
+    - Non-TTY stdout (pipe/redirect) → disabled (no junk in log files)
+    - Windows: try to flip ENABLE_VIRTUAL_TERMINAL_PROCESSING (0x0004) on the
+      conhost stdout/stderr handles; require both the GetConsoleMode call to
+      succeed and SetConsoleMode to succeed (a pipe returns INVALID_HANDLE
+      from GetStdHandle → GetConsoleMode fails → we fall back to plain marks).
+    - Non-Windows TTY → enabled.
+    """
+    if os.environ.get("NO_COLOR"):
+        return False
+    fc = os.environ.get("FORCE_COLOR")
+    if fc is not None and fc not in ("0", ""):
+        return True
+    if os.environ.get("TERM") == "dumb":
+        return False
+    if not hasattr(sys.stdout, "isatty") or not sys.stdout.isatty():
+        return False
+    if sys.platform != "win32":
+        return True
+    # Windows: enable VT processing on conhost.
+    try:
+        import ctypes
+        from ctypes import wintypes
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.GetStdHandle.argtypes = [wintypes.DWORD]
+        kernel32.GetStdHandle.restype = wintypes.HANDLE
+        kernel32.GetConsoleMode.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
+        kernel32.GetConsoleMode.restype = wintypes.BOOL
+        kernel32.SetConsoleMode.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+        kernel32.SetConsoleMode.restype = wintypes.BOOL
+        ENABLE_VT = 0x0004
+        STD_OUTPUT_HANDLE = -11 & 0xFFFFFFFF
+        STD_ERROR_HANDLE = -12 & 0xFFFFFFFF
+        INVALID_HANDLE = wintypes.HANDLE(-1).value
+        ok = False
+        for handle_id in (STD_OUTPUT_HANDLE, STD_ERROR_HANDLE):
+            h = kernel32.GetStdHandle(handle_id)
+            if not h or h == INVALID_HANDLE:
+                continue
+            mode = wintypes.DWORD(0)
+            if kernel32.GetConsoleMode(h, ctypes.byref(mode)):
+                if kernel32.SetConsoleMode(h, mode.value | ENABLE_VT):
+                    ok = True
+        return ok
+    except Exception:
+        return False
+
+
+# Resolve colour support once at startup. Doctor and any other coloured output
+# read this; other subcommands are unaffected.
+_VT_ENABLED = _color_supported()
+
 # SDK root = wink-micro-os/ (parent of tools/)
 SDK_ROOT = Path(__file__).resolve().parent.parent
 # Default monorepo / workspace root = parent of the SDK package
@@ -597,24 +656,313 @@ def handle_test(args):
 
 # ── Doctor / Setup handlers ────────────────────────────────────────────
 
-def handle_doctor(args):
-    """Probe all registered capabilities and render a collect-all report.
+# Fixed probe order for `wink doctor`. Fast local probes first, slow SDK
+# probes last so the user sees progress instead of waiting on the ESP-IDF
+# EIM profile subprocess (~12s cold).
+_DOCTOR_PROBE_ORDER: list[str] = [
+    "python",
+    "jinja2",
+    "cmake",
+    "make",
+    "gcc",
+    "node",
+    "emsdk",
+    "powershell",
+    "idf",
+]
 
-    Delegates to ``ensure_for("doctor", ...)`` which handles report rendering
-    and exit codes per spec §9.1: exit 1 iff any required cap is missing for
-    the full profile matrix.
+# ANSI colour codes. When VT mode is unavailable these are still emitted;
+# on a terminal that ignores them they render as short garbage that the user
+# can decipher, which is worse than plain marks — so we blank them out when
+# _VT_ENABLED is False.
+if _VT_ENABLED:
+    _ANSI_GREEN = "\033[32m"
+    _ANSI_RED = "\033[31m"
+    _ANSI_YELLOW = "\033[33m"
+    _ANSI_BOLD = "\033[1m"
+    _ANSI_DIM = "\033[2m"
+    _ANSI_RESET = "\033[0m"
+else:
+    _ANSI_GREEN = _ANSI_RED = _ANSI_YELLOW = _ANSI_BOLD = _ANSI_DIM = _ANSI_RESET = ""
+
+
+# Column widths for the doctor checklist. Tuned for ~80-col terminals but
+# gracefully accepts overflow (we do not truncate the version suffix).
+_COL_ITEM = 14
+_COL_LOCATION = 48
+_COL_STATUS = 20
+
+
+def _truncate_middle(text: str, limit: int) -> str:
+    """Return ``text`` shortened to ``limit`` chars with ``…`` in the middle."""
+    if len(text) <= limit:
+        return text
+    if limit <= 3:
+        return text[:limit]
+    keep = limit - 1  # 1 char for the ellipsis
+    left = keep // 2
+    right = keep - left
+    return text[:left] + "…" + text[-right:]
+
+
+def _doctor_required_and_optional() -> tuple[set[str], set[str]]:
+    """Return (required_caps, optional_caps) sets aggregated over profiles.
+
+    A cap is *required overall* if any profile lists it as required. A cap is
+    *optional overall* if it appears only in some profile's optional list.
+    Matches the semantics used by ``ensure_for("doctor", ...)`` in
+    :mod:`tools.toolchain.check`.
+    """
+    from tools.toolchain.profiles import (  # noqa: WPS433
+        OPTIONAL_CAPS,
+        PROFILES,
+        expand_profile,
+    )
+    required: set[str] = set()
+    optional: set[str] = set()
+    for profile in PROFILES:
+        full = expand_profile(profile)
+        opt = set(OPTIONAL_CAPS.get(profile, []))
+        required |= {c for c in full if c not in opt}
+        optional |= opt
+    optional -= required
+    return required, optional
+
+
+def _format_location(cap_id: str, result) -> str:
+    """Return the "Location" cell text for a single cap result.
+
+    Uses the truncate-middle rule so long MinGW / IDF paths still fit. The
+    version and any provider-specific extra info (gcc triplet, idf source
+    tag) are appended in parentheses.
+    """
+    from tools.toolchain.types import DetectResult  # noqa: WPS433
+    if not isinstance(result, DetectResult):
+        return "(unknown)"
+
+    if not result.found:
+        # Prefer the short reason; if none, generic "not installed".
+        reason = (result.reason or "not installed").strip()
+        # Reasons like "gcc not found on PATH" are already short; longer
+        # ones (bad triplet, IDF version mismatch) get truncated cleanly.
+        return _truncate_middle(reason, _COL_LOCATION)
+
+    # Found: build "<path> (<version>[, <extra>])".
+    path_str = str(result.path) if result.path else "(no path)"
+    extras: list[str] = []
+    if result.version:
+        extras.append(result.version)
+
+    if cap_id == "gcc" and result.path is not None:
+        triplet = _gcc_dumpmachine(result.path)
+        if triplet:
+            extras.append(triplet)
+    elif cap_id == "idf":
+        # Surface where the IDF was located (EIM profile / env / PATH). This
+        # is the field the user cares about when debugging IDF activation.
+        src = (result.source or "").strip()
+        if src == "eim-profile":
+            extras.append("via EIM profile")
+        elif src == "env:IDF_PATH":
+            extras.append("via IDF_PATH")
+        elif src == "path":
+            extras.append("via PATH")
+    elif cap_id == "jinja2":
+        # jinja2 has no filesystem path of its own; show which interpreter
+        # imported it. The path we set on DetectResult IS that interpreter.
+        path_str = f"imported via {path_str}"
+
+    suffix = f" ({', '.join(extras)})" if extras else ""
+    combined = path_str + suffix
+    return _truncate_middle(combined, _COL_LOCATION)
+
+
+def _gcc_dumpmachine(gcc_exe: Path) -> str | None:
+    """Return the GCC target triplet, or None if the probe fails.
+
+    A small extra ~50 ms subprocess call. Only invoked from doctor when gcc
+    is found; other code paths never pay this cost.
+    """
+    try:
+        cp = subprocess.run(
+            [str(gcc_exe), "-dumpmachine"],
+            capture_output=True, text=True, timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if cp.returncode != 0:
+        return None
+    line = (cp.stdout or "").strip().splitlines()
+    return line[0] if line else None
+
+
+def _doctor_status_cell(
+    cap_id: str,
+    result,
+    required: set[str],
+    optional: set[str],
+) -> tuple[str, bool]:
+    """Return (status_cell_string, is_blocking_failure)."""
+    # is_blocking_failure is True iff the cap is required AND result.found is False.
+    is_optional = cap_id in optional and cap_id not in required
+    if result.found:
+        mark = f"{_ANSI_GREEN}✓{_ANSI_RESET}"
+        tag = "  (optional)" if is_optional else ""
+        return f"{mark}{tag}", False
+    if is_optional:
+        mark = f"{_ANSI_YELLOW}!{_ANSI_RESET}"
+        return f"{mark}  (optional)", False
+    mark = f"{_ANSI_RED}✗{_ANSI_RESET}"
+    return mark, True
+
+
+def _pad_visible(text: str, width: int) -> str:
+    """Pad ``text`` on the right to ``width`` visible columns.
+
+    Strips ANSI colour escapes when measuring so coloured cells still align.
+    """
+    import re
+    visible = re.sub(r"\x1b\[[0-9;]*m", "", text)
+    pad = width - len(visible)
+    if pad <= 0:
+        return text
+    return text + " " * pad
+
+
+def _print_doctor_row(item: str, location: str, status: str) -> None:
+    """Emit one checklist row and flush stdout so the user sees streaming output."""
+    line = (
+        f"{_pad_visible(item, _COL_ITEM)}"
+        f" {_pad_visible(location, _COL_LOCATION)}"
+        f" {status}"
+    )
+    print(line)
+    try:
+        sys.stdout.flush()
+    except Exception:
+        pass
+
+
+def handle_doctor(args):
+    """Probe each registered capability, streaming a checklist row per probe.
+
+    Exit code semantics (spec §9.1 / ADR-0029): exit 1 iff any *required*
+    capability (aggregated across profiles) is missing; optional caps are
+    warnings only. See :func:`_doctor_required_and_optional`.
     """
     if args.skip_toolchain_check:
-        # --skip is a no-op for doctor: probing is the whole point.
         print(
             "[wink] Note: --skip-toolchain-check is ignored for `doctor` "
             "(probing is the whole point of doctor).",
             file=sys.stderr,
         )
-    _apply_toolchain_gate("doctor", skip=False)
-    # If we get here, doctor found no blocking issues; ensure_for already
-    # rendered the all-clear line to stderr.
-    print("[wink] doctor: all required toolchain dependencies satisfied.")
+
+    from tools.toolchain import providers as providers_mod  # noqa: WPS433
+    from tools.toolchain.resolve import ResolveContext  # noqa: WPS433
+    from tools.toolchain.types import DetectResult  # noqa: WPS433
+
+    ctx = ResolveContext.snapshot(_current_workspace_root())
+    required, optional = _doctor_required_and_optional()
+
+    # Header
+    hr = "─" * (_COL_ITEM + _COL_LOCATION + _COL_STATUS + 2)
+    print(f"{_ANSI_BOLD}Wink toolchain doctor{_ANSI_RESET}")
+    print(hr)
+    _print_doctor_row("Item", "Location", "Status")
+    print(hr)
+    try:
+        sys.stdout.flush()
+    except Exception:
+        pass
+
+    # Probe in the canonical order; if REGISTRY contains extras (e.g. a test
+    # fake), append them after the canonical list so nothing is dropped.
+    seen: set[str] = set()
+    ordered_ids: list[str] = []
+    for cap_id in _DOCTOR_PROBE_ORDER:
+        if cap_id in providers_mod.REGISTRY and cap_id not in seen:
+            ordered_ids.append(cap_id)
+            seen.add(cap_id)
+    for cap_id in providers_mod.REGISTRY:
+        if cap_id not in seen:
+            ordered_ids.append(cap_id)
+            seen.add(cap_id)
+
+    results: dict[str, DetectResult] = {}
+    blocking_missing: list[str] = []
+    optional_missing: list[str] = []
+
+    for cap_id in ordered_ids:
+        provider = providers_mod.REGISTRY[cap_id]
+        try:
+            result = provider.detect(ctx)
+        except Exception as exc:  # noqa: BLE001 — defensive; report and continue
+            result = DetectResult(
+                found=False, path=None, version=None,
+                reason=f"provider raised: {exc}", source=None,
+            )
+        results[cap_id] = result
+        location = _format_location(cap_id, result)
+        status, is_blocking = _doctor_status_cell(cap_id, result, required, optional)
+        _print_doctor_row(cap_id, location, status)
+        if not result.found:
+            if is_blocking:
+                blocking_missing.append(cap_id)
+            else:
+                optional_missing.append(cap_id)
+
+    print(hr)
+
+    total = len(ordered_ids)
+    installed = sum(1 for r in results.values() if r.found)
+    missing_all = blocking_missing + optional_missing
+    missing_count = len(missing_all)
+
+    summary_line = (
+        f"{_ANSI_BOLD}Summary:{_ANSI_RESET} "
+        f"{total} checked, {installed} installed, {missing_count} missing"
+    )
+    print(summary_line)
+
+    # Actionable hints for each missing cap (blocking first, then optional).
+    if missing_all:
+        print()
+        idx = 1
+        for cap_id in blocking_missing:
+            provider = providers_mod.REGISTRY[cap_id]
+            try:
+                hint_text = provider.hint(ctx)
+            except Exception:  # noqa: BLE001
+                hint_text = "(no hint available)"
+            print(f"  {idx}. {_ANSI_RED}{cap_id}{_ANSI_RESET} — {hint_text}")
+            idx += 1
+        for cap_id in optional_missing:
+            provider = providers_mod.REGISTRY[cap_id]
+            try:
+                hint_text = provider.hint(ctx)
+            except Exception:  # noqa: BLE001
+                hint_text = "(no hint available)"
+            print(
+                f"  {idx}. {_ANSI_YELLOW}{cap_id}{_ANSI_RESET} "
+                f"(optional) — {hint_text}"
+            )
+            idx += 1
+
+        # Spec §8.2: ESP-IDF is never auto-installed by Wink.
+        if "idf" in blocking_missing:
+            print()
+            print(
+                "Note: ESP-IDF is never auto-installed by Wink. "
+                "Install via Espressif IDF Manager (EIM); see preinstall.md §3."
+            )
+
+    try:
+        sys.stdout.flush()
+    except Exception:
+        pass
+
+    if blocking_missing:
+        sys.exit(1)
 
 
 def _probe_all_for_setup():

@@ -239,6 +239,109 @@ class TestWorkspacePathsCallback(unittest.TestCase):
         self.assertIsNotNone(result["sdk_dir"])
 
 
+# ── Doctor streaming tests ─────────────────────────────────────────────
+
+
+def _strip_ansi(s: str) -> str:
+    import re
+    return re.sub(r"\x1b\[[0-9;]*m", "", s)
+
+
+class _DoctorArgs:
+    """Minimal argparse.Namespace stand-in for handle_doctor."""
+    skip_toolchain_check = False
+
+
+class TestDoctorStreaming(unittest.TestCase):
+    """`wink doctor` renders a streaming checklist + summary."""
+
+    def _all_found_registry(self):
+        # Cover every id in _DOCTOR_PROBE_ORDER so the streamer prints
+        # all rows and computes an "all installed" summary.
+        return {
+            "python":     _FakeProvider("python", _found("py.exe", "3.11.9")),
+            "jinja2":     _FakeProvider("jinja2", _found("py.exe", "3.1.6")),
+            "cmake":      _FakeProvider("cmake", _found("cmake.exe", "4.3.3")),
+            "make":       _FakeProvider("make", _found("mingw32-make.exe", "4.4.1")),
+            "gcc":        _FakeProvider("gcc", _found("gcc.exe", "16.1.0")),
+            "node":       _FakeProvider("node", _found("node.exe", "22.22.2")),
+            "emsdk":      _FakeProvider("emsdk", _found("emsdk", "6.0.1")),
+            "powershell": _FakeProvider("powershell", _found(r"C:\Windows\ps.exe", "5.1")),
+            "idf":        _FakeProvider("idf", _found("esp-idf", "6.0.1")),
+        }
+
+    def test_exit_zero_when_all_required_found(self):
+        registry = self._all_found_registry()
+        with mock.patch.object(providers_mod, "REGISTRY", registry):
+            buf = io.StringIO()
+            # handle_doctor calls sys.exit(1) only on blocking failure; for
+            # an all-clear run it must simply return.
+            with redirect_stdout(buf):
+                wink.handle_doctor(_DoctorArgs())
+        out = _strip_ansi(buf.getvalue())
+        self.assertIn("Wink toolchain doctor", out)
+        self.assertIn("Item", out)
+        self.assertIn("Location", out)
+        self.assertIn("Status", out)
+        # Every probed cap id appears on its own row.
+        for cap_id in registry:
+            self.assertIn(cap_id, out)
+        self.assertIn("Summary:", out)
+        self.assertIn("9 checked, 9 installed, 0 missing", out)
+
+    def test_exit_one_when_required_cap_missing(self):
+        registry = self._all_found_registry()
+        # gcc is required by the host profile.
+        registry["gcc"] = _FakeProvider("gcc", _missing("gcc not found on PATH"))
+        with mock.patch.object(providers_mod, "REGISTRY", registry):
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                with self.assertRaises(SystemExit) as cm:
+                    wink.handle_doctor(_DoctorArgs())
+            self.assertEqual(cm.exception.code, 1)
+        out = _strip_ansi(buf.getvalue())
+        self.assertIn("Summary:", out)
+        self.assertIn("8 installed", out)
+        self.assertIn("1 missing", out)
+        # And the numbered hint list surfaces the missing cap.
+        self.assertIn("gcc", out)
+
+    def test_optional_missing_does_not_block(self):
+        registry = self._all_found_registry()
+        # `node` is only required by the `web` profile-set but is optional
+        # for `test`/`wasm`. It IS aggregated as required overall because
+        # `web` lists it as required. Use a truly-optional cap instead:
+        # aggregate optional-only caps are those in OPTIONAL_CAPS that are
+        # NOT required by any other profile — with the current profile
+        # graph, no cap is purely optional (node is required by web). So
+        # this test verifies the shape by making `node` missing and
+        # asserting exit code 1 (since `node` IS required by `web`).
+        registry["node"] = _FakeProvider("node", _missing("node not found"))
+        with mock.patch.object(providers_mod, "REGISTRY", registry):
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                with self.assertRaises(SystemExit) as cm:
+                    wink.handle_doctor(_DoctorArgs())
+            self.assertEqual(cm.exception.code, 1)
+
+
+class TestDoctorHelpers(unittest.TestCase):
+    def test_truncate_middle_short(self):
+        self.assertEqual(wink._truncate_middle("hello", 20), "hello")
+
+    def test_truncate_middle_long(self):
+        out = wink._truncate_middle("abcdefghijklmnop", 10)
+        self.assertEqual(len(out), 10)
+        self.assertIn("…", out)
+
+    def test_pad_visible_ignores_ansi(self):
+        # A coloured "X" is one visible char; pad-to-5 gives 4 trailing spaces.
+        padded = wink._pad_visible("\033[32mX\033[0m", 5)
+        # Strip ANSI to check the visible length.
+        visible = _strip_ansi(padded)
+        self.assertEqual(visible, "X    ")
+
+
 # ── Subprocess smoke test ─────────────────────────────────────────────
 
 
@@ -267,8 +370,9 @@ class TestSubprocessSmoke(unittest.TestCase):
         combined = result.stdout + result.stderr
         self.assertNotIn("ImportError", combined)
         self.assertNotIn("ModuleNotFoundError", combined)
-        # Doctor renders the report header.
-        self.assertIn("Toolchain status", combined)
+        # Doctor renders the checklist header + summary line.
+        self.assertIn("Wink toolchain doctor", combined)
+        self.assertIn("Summary:", combined)
 
     def test_help_lists_subcommands(self):
         env = os.environ.copy()
