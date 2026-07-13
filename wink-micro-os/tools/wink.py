@@ -26,6 +26,26 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Ensure UTF-8 output on Windows to avoid mojibake for Unicode symbols
+# (e.g. ✗, §) in toolchain reports. On zh-CN Windows the console defaults to
+# cp936, which can't encode these glyphs and produces "??" or garbled bytes.
+if sys.platform == "win32":
+    for _stream in (sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            try:
+                _stream.reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
+    # Also flip the Win32 console code page to UTF-8 so downstream child
+    # processes and the terminal render our output correctly.
+    try:
+        import ctypes
+        _kernel32 = ctypes.windll.kernel32
+        _kernel32.SetConsoleOutputCP(65001)  # CP_UTF8
+        _kernel32.SetConsoleCP(65001)
+    except Exception:
+        pass
+
 # SDK root = wink-micro-os/ (parent of tools/)
 SDK_ROOT = Path(__file__).resolve().parent.parent
 # Default monorepo / workspace root = parent of the SDK package

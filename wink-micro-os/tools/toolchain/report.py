@@ -16,6 +16,24 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, NoReturn, TextIO
 
+# Ensure UTF-8 output on Windows so ``✗``/``!`` glyphs don't mojibake through
+# cp936. wink.py applies the same fix at its entry point; we repeat it here
+# for direct-import callers (tests, ad-hoc scripts) that bypass the CLI.
+if sys.platform == "win32":
+    for _stream in (sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            try:
+                _stream.reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
+    try:
+        import ctypes as _ctypes
+        _kernel32 = _ctypes.windll.kernel32
+        _kernel32.SetConsoleOutputCP(65001)
+        _kernel32.SetConsoleCP(65001)
+    except Exception:
+        pass
+
 ReportItemKind = Literal["required_tool", "required_workspace", "optional"]
 
 IDF_NOTICE = (

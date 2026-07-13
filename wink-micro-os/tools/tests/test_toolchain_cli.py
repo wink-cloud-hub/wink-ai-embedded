@@ -252,9 +252,13 @@ class TestSubprocessSmoke(unittest.TestCase):
     def test_doctor_does_not_crash(self):
         env = os.environ.copy()
         env["PYTHONPATH"] = str(SDK) + (os.pathsep + env.get("PYTHONPATH", "") if env.get("PYTHONPATH") else "")
+        # wink.py reconfigures its stdout/stderr to UTF-8 on Windows so the
+        # report's ✗/§ glyphs render without mojibake. The parent must decode
+        # with the same encoding or the reader thread will crash on 0xE2… bytes.
         result = subprocess.run(
             [sys.executable, str(WINK_PY), "doctor"],
             capture_output=True, text=True, timeout=60, env=env,
+            encoding="utf-8", errors="replace",
         )
         # Accept 0 or 1; reject 2 (argparse error) / any other unexpected code.
         self.assertIn(result.returncode, (0, 1),
@@ -272,6 +276,7 @@ class TestSubprocessSmoke(unittest.TestCase):
         result = subprocess.run(
             [sys.executable, str(WINK_PY), "--help"],
             capture_output=True, text=True, timeout=30, env=env,
+            encoding="utf-8", errors="replace",
         )
         self.assertEqual(result.returncode, 0)
         self.assertIn("doctor", result.stdout)
