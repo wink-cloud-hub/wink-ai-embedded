@@ -50,6 +50,7 @@ wink_status_t dal_button_init(dal_button_t *dev, const dal_button_config_t *cfg)
     dev->last_reported    = false;
     dev->initialized      = true;
     dev->debounce_counter = 0;
+    dev->debounce_threshold = DAL_BUTTON_DEBOUNCE_THRESHOLD;
 
     /* Wave 3: 初始化新增字段 */
     dev->event_cb            = NULL;
@@ -78,7 +79,7 @@ wink_status_t dal_button_poll(dal_button_t *dev) {
         dev->debounce_counter = 0;
     } else {
         dev->debounce_counter++;
-        if (dev->debounce_counter >= DAL_BUTTON_DEBOUNCE_THRESHOLD) {
+        if (dev->debounce_counter >= dev->debounce_threshold) {
             dev->stable_pressed = now_pressed;
             dev->debounce_counter = 0;
         }
@@ -146,6 +147,24 @@ wink_status_t dal_button_set_long_press_ms(dal_button_t *dev, uint32_t ms) {
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
     if (ms == 0) { return WINK_ERR_INVALID_ARG; }
     dev->long_press_ms = ms;
+    return WINK_OK;
+}
+
+wink_status_t dal_button_set_debounce_ms(dal_button_t *dev, uint32_t ms) {
+    if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
+    if (ms == 0u) { return WINK_ERR_INVALID_ARG; }
+
+    /* Convert ms → 连续一致采样数：floor(ms / 10 ms tick), min 1, clamp to
+     * uint8_t max (255 samples ≈ 2.55 s @10 ms tick — anything beyond this
+     * is well outside the "debounce" regime). */
+    uint32_t samples = ms / 10u;
+    if (samples < 1u) { samples = 1u; }
+    if (samples > 255u) { samples = 255u; }
+    dev->debounce_threshold = (uint8_t)samples;
+    /* Reset the running counter so a stale in-progress transition doesn't
+     * fire off the new (potentially smaller) threshold on the very next poll. */
+    dev->debounce_counter = 0;
     return WINK_OK;
 }
 

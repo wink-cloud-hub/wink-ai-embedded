@@ -9,6 +9,7 @@
 #include "dal_led.h"
 #include "dal_button.h"
 #include "dal_ultrasonic.h"
+#include "wink_button_events.h"
 #include "wink_button_helper.h"
 #include "wink_status.h"
 
@@ -43,8 +44,8 @@ static inline bool boot_button_is_active(void) { bool p = false; WINK_IGNORE_RES
 WINK_WARN_UNUSED_RESULT static inline wink_status_t boot_button_is_active_status(bool *out_active) { return dal_button_is_pressed(&boot_button, out_active); }
 static inline bool boot_button_was_active(void) { bool p = false; WINK_IGNORE_RESULT(dal_button_was_pressed(&boot_button, &p)); return p; }
 WINK_WARN_UNUSED_RESULT static inline wink_status_t boot_button_was_active_status(bool *out_pressed) { return dal_button_was_pressed(&boot_button, out_pressed); }
-WINK_WARN_UNUSED_RESULT static inline wink_status_t boot_button_enable_events(void) { return wink_button_helper_start(&boot_button, 10u); }
-static inline void boot_button_disable_events(void) { wink_button_helper_stop(&boot_button); }
+WINK_WARN_UNUSED_RESULT static inline wink_status_t boot_button_enable_events(void) { static const wink_button_event_config_t cfg = { .drive = WINK_BUTTON_DRIVE_SOFT_POLL, .auto_poll_ms = 10u, .debounce_ms = 20u, .wake_from_sleep = false }; return wink_button_events_start(&boot_button, &cfg); }
+static inline void boot_button_disable_events(void) { wink_button_events_stop(&boot_button); }
 WINK_WARN_UNUSED_RESULT static inline wink_status_t boot_button_start_auto_poll(uint32_t poll_ms) { return wink_button_helper_start(&boot_button, poll_ms); }
 static inline void boot_button_stop_auto_poll(void) { wink_button_helper_stop(&boot_button); }
 WINK_WARN_UNUSED_RESULT static inline wink_status_t smoke_sonar_request_measurement(void) { return dal_ultrasonic_request_measurement(&smoke_sonar); }

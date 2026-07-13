@@ -90,7 +90,10 @@ class ButtonDriver(DriverBase):
 
     def get_role_headers(self, role: str) -> List[str]:
         if role == "binary_sensor":
-            return ["wink_button_helper.h"]
+            # events.h is the new L1 path (enable_events / disable_events);
+            # helper.h is retained for the L2 verbs start_auto_poll /
+            # stop_auto_poll that keep the pre-S2 signature.
+            return ["wink_button_events.h", "wink_button_helper.h"]
         return []
 
     def render_role_wrapper(self, dev_name: str, role: str, verb: str, spec: dict) -> str:
@@ -104,24 +107,43 @@ class ButtonDriver(DriverBase):
             elif verb == "was_active_status":
                 return f"WINK_WARN_UNUSED_RESULT static inline wink_status_t {dev_name}_was_active_status(bool *out_pressed) {{ return dal_button_was_pressed(&{dev_name}, out_pressed); }}"
             elif verb == "enable_events":
-                # S1: keep calling wink_button_helper_start (soft_poll path).
-                # S2 will switch to wink_button_events_start with a static
-                # wink_button_event_config_t baked from JSON. We only emit
-                # this wrapper when auto_poll_ms is present — for gpio_irq
-                # without auto_poll_ms, S2 (which owns the events API) will
-                # emit the correct cfg-based wrapper.
-                ms = spec.get("auto_poll_ms")
-                if ms is None:
-                    return ""
+                # S2: emit a static-const wink_button_event_config_t and
+                # call wink_button_events_start. Drive/period/debounce all
+                # come from JSON per ADR-0031.
+                drive_str = spec.get("event_drive", "soft_poll")
+                if drive_str == "gpio_irq":
+                    drive_enum = "WINK_BUTTON_DRIVE_GPIO_IRQ"
+                else:
+                    drive_enum = "WINK_BUTTON_DRIVE_SOFT_POLL"
+                # auto_poll_ms: mandatory for soft_poll (validator enforces);
+                # for gpio_irq default to 0 so the BAL runtime picks the
+                # effective debounce follow-up period.
+                ms_raw = spec.get("auto_poll_ms")
+                if ms_raw is None:
+                    if drive_str == "gpio_irq":
+                        ms = 0
+                    else:
+                        # Shouldn't happen: validator rejects soft_poll
+                        # without auto_poll_ms. Emit nothing to avoid a
+                        # broken wrapper (parity with S1 behaviour).
+                        return ""
+                else:
+                    ms = int(ms_raw)
+                deb = int(spec.get("debounce_ms", _DEFAULT_DEBOUNCE_MS))
                 return (
                     f"WINK_WARN_UNUSED_RESULT static inline wink_status_t "
                     f"{dev_name}_enable_events(void) {{ "
-                    f"return wink_button_helper_start(&{dev_name}, {int(ms)}u); }}"
+                    f"static const wink_button_event_config_t cfg = {{ "
+                    f".drive = {drive_enum}, "
+                    f".auto_poll_ms = {ms}u, "
+                    f".debounce_ms = {deb}u, "
+                    f".wake_from_sleep = false }}; "
+                    f"return wink_button_events_start(&{dev_name}, &cfg); }}"
                 )
             elif verb == "disable_events":
                 return (
                     f"static inline void {dev_name}_disable_events(void) {{ "
-                    f"wink_button_helper_stop(&{dev_name}); }}"
+                    f"wink_button_events_stop(&{dev_name}); }}"
                 )
             elif verb == "start_auto_poll":
                 return f"WINK_WARN_UNUSED_RESULT static inline wink_status_t {dev_name}_start_auto_poll(uint32_t poll_ms) {{ return wink_button_helper_start(&{dev_name}, poll_ms); }}"
