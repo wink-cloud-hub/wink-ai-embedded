@@ -26,7 +26,7 @@ class TestProfileConstants(unittest.TestCase):
         self.assertIn("esp32", WORKSPACE_DEPS)
         self.assertIn("web", WORKSPACE_DEPS)
         self.assertIn("esp32_dir", WORKSPACE_DEPS["esp32"])
-        self.assertIn("scripts_dir", WORKSPACE_DEPS["esp32"])
+        self.assertNotIn("scripts_dir", WORKSPACE_DEPS["esp32"])
         self.assertIn("frontend_dir", WORKSPACE_DEPS["web"])
 
     def test_optional_caps_declares_test_and_wasm(self):
@@ -67,7 +67,7 @@ class TestExpandProfile(unittest.TestCase):
 
     def test_esp32_does_not_include_host_tools(self):
         result = expand_profile("esp32")
-        self.assertEqual(result, ["python", "powershell", "idf"])
+        self.assertEqual(result, ["python", "idf"])
         # esp32 must NOT include host/wasm-only tools
         for forbidden in ("gcc", "cmake", "make", "emsdk", "jinja2"):
             self.assertNotIn(forbidden, result)

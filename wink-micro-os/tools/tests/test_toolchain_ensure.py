@@ -156,7 +156,7 @@ class TestEnsureFor(unittest.TestCase):
         reg = _all_found_registry(idf_root=idf_root)
         with mock.patch.dict(providers_mod.REGISTRY, reg, clear=True):
             def _resolve_ws():
-                return {"esp32_dir": Path("."), "scripts_dir": Path(".")}
+                return {"esp32_dir": Path(".")}
             ensure_for(
                 "esp32",
                 workspace_root=None,
@@ -223,7 +223,6 @@ class TestEnsureFor(unittest.TestCase):
                         workspace_root=None,
                         resolve_workspace_paths=lambda: {
                             "esp32_dir": None,
-                            "scripts_dir": Path("."),
                         },
                     )
         self.assertEqual(cm.exception.code, 1)

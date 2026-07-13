@@ -22,7 +22,7 @@ PROFILES: dict[str, list[str]] = {
     "host":    ["codegen", "gcc", "cmake", "make"],
     "wasm":    ["host", "emsdk"],                # node optional (see OPTIONAL_CAPS)
     "test":    ["host"],                          # emsdk, node optional
-    "esp32":   ["python", "powershell", "idf"],  # deliberately no host toolchain
+    "esp32":   ["python", "idf"],  # powershell used internally by activate() on Win only; not a declared cap
     "web":     ["node"],
 }
 
@@ -32,7 +32,7 @@ PROFILES: dict[str, list[str]] = {
 # providers. Values are informal keys the CLI knows how to map to filesystem
 # paths under the workspace root.
 WORKSPACE_DEPS: dict[str, list[str]] = {
-    "esp32": ["esp32_dir", "scripts_dir"],
+    "esp32": ["esp32_dir"],
     "web":   ["frontend_dir"],
 }
 
