@@ -12,15 +12,15 @@
 
 **业务代码放在 `wink-micro-os/samples/<AppName>/`，换 App / 增删源文件，`esp32_firmware/` 源码一行都不用改！**
 
-由 `generate_app_sources.ps1` 脚本自动扫描并注入构建。
+由 `tools/esp32/generate_app_sources.py` 在 CMake configure 阶段自动扫描并注入构建。
 
 ---
 
-## 📜 generate_app_sources.ps1 — 自动扫描 App 源文件
+## 📜 App 源文件扫描器 (tools/esp32/generate_app_sources.py)
 
 ### 作用
 
-自动扫描 `wink-micro-os/samples/<AppName>/` 下的所有 `.c` 源文件（排除 host 端到端测试文件 `test_*.c`），生成 CMake 片段 `main/app_sources.cmake`，供构建系统自动引入。
+自动扫描 `wink-micro-os/samples/<AppName>/` 下的所有 `.c` 源文件（排除 host 端到端测试文件 `test_*.c` 与 BAL-only 文件），生成 CMake 片段 `main/app_sources.cmake`，供构建系统自动引入。CMake 会在 configure 阶段自动调用它，日常构建**无需手动执行**。
 
 **彻底消除：**
 - 换 App 时手动改 `CMakeLists.txt` 路径
@@ -43,13 +43,13 @@ idf.py build -DWINK_APP=avoidance_car
 idf.py build -DWINK_APP=oled_dashboard
 ```
 
-**方式三：单独跑脚本（调试用）**
+**方式三：单独跑扫描器（调试用）**
 ```powershell
-# 生成默认 App (devkitc_smoke)
-.\generate_app_sources.ps1
+# 从仓库根目录跑，生成指定 App 的源文件清单
+python ..\wink-micro-os\tools\esp32\generate_app_sources.py --app-dir ..\wink-micro-app\devkitc_smoke --esp32-firmware-dir .
 
-# 生成指定 App
-.\generate_app_sources.ps1 -AppName avoidance_car
+# 或按 App 名字（解析到 wink-micro-os/samples/<name>）
+python ..\wink-micro-os\tools\esp32\generate_app_sources.py --app-name avoidance_car --esp32-firmware-dir .
 ```
 
 ### 生成产物
@@ -69,41 +69,36 @@ set(WINK_APP_SOURCES
 
 ## 🚀 完整烧录流程
 
-### 1. 进入固件目录并激活 ESP-IDF 环境（PowerShell）
+### 1. 通过 Wink CLI 构建（推荐）
+
+从仓库根目录运行：
 
 ```powershell
-# 进入 esp32_firmware 目录
-cd esp32_firmware
-
-# 激活 EIM profile
-. 'C:\Espressif\tools\Microsoft.v6.0.1.PowerShell_profile.ps1' *> $null
-
-# 解决中文编码问题（必须）
-$env:PYTHONUTF8 = '1'
-$env:PYTHONIOENCODING = 'utf-8'
-
-# 验证激活成功
-idf.py --version
+python wink-micro-os/tools/wink.py esp32 --app <path-to-app> build
 ```
+
+Wink 会自动激活 ESP-IDF（hot PATH → Windows 上通过 `powershell.exe` source EIM profile → `export.ps1` / `export.sh` fallback）。你**不需要**手工 dot-source EIM profile。`PYTHONUTF8=1` / `PYTHONIOENCODING=utf-8` 会被自动注入，避免中文注释乱码。
+
+如需手工调用 `idf.py`（例如 `idf.py menuconfig` 交互式配置），请先在 shell 里激活 EIM profile，参见 [preinstall.md §3](../wink-micro-os/tools/preinstall.md)。
 
 ### 2. 编译固件
 
 ```powershell
 # （可选）彻底清空 build 目录，从零重编
-idf.py fullclean
+python wink-micro-os/tools/wink.py esp32 --app <path-to-app> -- fullclean
 
-# 编译默认 App (devkitc_smoke)
-idf.py build
+# 编译（默认子命令为 build）
+python wink-micro-os/tools/wink.py esp32 --app <path-to-app> build
 
-# 或编译指定 App（零改源码）
-idf.py build -DWINK_APP=avoidance_car
+# `--` 后面的所有参数会原样透传给 idf.py
+python wink-micro-os/tools/wink.py esp32 --app avoidance_car -- build -DSOME_EXTRA=1
 ```
 
 ### 3. 烧录 + 串口监视器
 
 ```powershell
-# 将 COM3 替换为你的实际串口号
-idf.py -p COM3 flash monitor
+# 将 COM3 替换为你的实际串口号（Linux/macOS：/dev/ttyUSB0 等）
+python wink-micro-os/tools/wink.py esp32 --app <path-to-app> -- -p COM3 flash monitor
 ```
 
 ### 4. 退出监视器
@@ -146,10 +141,11 @@ idf.py -p COM3 flash monitor
 ```
 esp32_firmware/
 ├── CMakeLists.txt              # ESP-IDF 工程入口，EXTRA_COMPONENT_DIRS 引入 targets/esp32
-├── generate_app_sources.ps1    # ✅ 自动扫描 samples App 源文件
 ├── sdkconfig                   # ESP32 默认配置（2MB flash）
 └── main/
     ├── app_main.c              # FreeRTOS task 创建 + 栈/heap 监控
     ├── CMakeLists.txt          # 引入自动生成的 app_sources.cmake
-    └── app_sources.cmake       # ⚙️ 脚本自动生成，请勿手动修改
+    └── app_sources.cmake       # ⚙️ CMake configure 阶段由 tools/esp32/generate_app_sources.py 自动生成，请勿手动修改
 ```
+
+> 构建工具位于 `../wink-micro-os/tools/esp32/`（`activate.py`、`build.py`、`generate_app_sources.py`），详见 [wink-micro-os/tools/README.md](../wink-micro-os/tools/README.md)。
