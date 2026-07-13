@@ -40,6 +40,12 @@ from .base import Provider
 _IDF_MAJOR_REQUIRED = 6
 _EIM_PROFILE_GLOB = r"C:\Espressif\tools\Microsoft.v*.PowerShell_profile.ps1"
 
+# Sourcing an EIM profile activates a Python venv (idf-env) and prints a
+# banner — real-world timing on a warm machine is ~12s, so the shared 10s
+# ``PROBE_TIMEOUT_SEC`` is not enough. Use a longer, per-call timeout for
+# this probe only; the version output still lands within one call.
+_EIM_PROBE_TIMEOUT_SEC = 30
+
 _INSTALL_MSG = (
     "ESP-IDF is never auto-installed by Wink. Please install via Espressif "
     "IDF Manager (EIM) or see wink-micro-os/tools/preinstall.md §3."
@@ -59,14 +65,19 @@ def _find_eim_profiles() -> list[Path]:
     return v6
 
 
-def _run(cmd: list[str], **kw) -> tuple[int, str] | None:
-    """Run ``cmd`` with the shared probe timeout; return ``(rc, output)``."""
+def _run(cmd: list[str], timeout: int = PROBE_TIMEOUT_SEC, **kw) -> tuple[int, str] | None:
+    """Run ``cmd`` with a bounded timeout; return ``(rc, output)``.
+
+    Defaults to the shared :data:`PROBE_TIMEOUT_SEC`. Callers can pass a
+    longer ``timeout`` for slow probes (e.g. sourcing an EIM profile that
+    activates a Python venv).
+    """
     try:
         cp = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
-            timeout=PROBE_TIMEOUT_SEC,
+            timeout=timeout,
             **kw,
         )
     except (OSError, subprocess.SubprocessError):
@@ -196,18 +207,26 @@ class IdfProvider(Provider):
         or ``None`` when this profile could not be probed (subprocess error).
         The caller can then try the next candidate profile.
         """
+        # Build the PowerShell command using single-quoted string literals
+        # and PS string concatenation. Embedding escaped double quotes here
+        # (``\"IDF_PATH=$env:IDF_PATH\"``) gets mangled by Windows argv
+        # quoting when we pass this list to ``subprocess.run`` — we saw
+        # observed output like ``IDF_PATH=\; Write-Output \IDF_TOOLS_PATH=``.
+        # Using ``('IDF_PATH=' + $env:IDF_PATH)`` avoids any embedded ``"``.
+        ps_script = (
+            f". '{profile}'; "
+            "idf.py --version; "
+            "Write-Output ('IDF_PATH=' + $env:IDF_PATH); "
+            "Write-Output ('IDF_TOOLS_PATH=' + $env:IDF_TOOLS_PATH); "
+            "Write-Output ('IDF_PYTHON_ENV_PATH=' + $env:IDF_PYTHON_ENV_PATH)"
+        )
         cmd = [
             "powershell.exe",
             "-NoProfile",
             "-Command",
-            (
-                f". '{profile}'; "
-                "idf.py --version; "
-                "Write-Output \"IDF_PATH=$env:IDF_PATH\"; "
-                "Write-Output \"IDF_TOOLS_PATH=$env:IDF_TOOLS_PATH\""
-            ),
+            ps_script,
         ]
-        rv = _run(cmd)
+        rv = _run(cmd, timeout=_EIM_PROBE_TIMEOUT_SEC)
         if rv is None or rv[0] != 0:
             return None
         v = parse_version(rv[1])

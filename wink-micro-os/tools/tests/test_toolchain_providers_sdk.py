@@ -310,10 +310,13 @@ class TestIdfProvider(unittest.TestCase):
         self.assertTrue(r.found, r.reason)
         self.assertEqual(r.version, "6.0.1")
         self.assertEqual(r.source, "eim-profile")
-        # Verify the subprocess used a bounded timeout.
+        # Verify the subprocess used a bounded timeout. The EIM probe uses
+        # a longer per-call timeout than the shared PROBE_TIMEOUT_SEC (10s)
+        # because sourcing the profile activates a Python venv (~12s
+        # real-world).
         _, kwargs = m_run.call_args
         self.assertIn("timeout", kwargs)
-        self.assertLessEqual(kwargs["timeout"], 12)
+        self.assertLessEqual(kwargs["timeout"], 60)
 
     def test_hint_mentions_eim(self):
         h = self.p.hint(_make_ctx(os_name="nt"))
