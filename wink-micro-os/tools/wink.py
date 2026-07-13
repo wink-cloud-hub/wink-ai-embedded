@@ -361,7 +361,7 @@ def handle_build(args):
         app_name = app_dir.name
         frontend_dir = resolve_frontend_dir(required=False)
         if frontend_dir and frontend_dir.exists():
-            meta_dir = frontend_dir / "public" / "wasm"
+            meta_dir = frontend_dir / "public" / "wasm" / app_name
             meta_dir.mkdir(parents=True, exist_ok=True)
             (meta_dir / "wasm-app-id.txt").write_text(f"{app_name}\n", encoding="utf-8")
             print(f"[wink] Wrote {meta_dir / 'wasm-app-id.txt'}")
