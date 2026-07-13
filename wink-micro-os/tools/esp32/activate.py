@@ -50,12 +50,24 @@ _EIM_PROFILE_GLOB = r"C:\Espressif\tools\Microsoft.v*.PowerShell_profile.ps1"
 _IDF_BANNER_RE = re.compile(r"ESP-IDF\s+v?(\d+)(?:\.(\d+))?(?:\.(\d+))?")
 
 # The bare idf-exe shim ships with EIM and answers ``idf.py --version``
-# even before a profile is sourced. It prints
-# "ESP-IDF Tools Installer v1.0.3" (or similar "idf-exe" banner) — never a
-# real ESP-IDF vX.Y.Z line. Reject it explicitly so callers know to source
-# a profile.
+# even before a profile is sourced. Two banner shapes have been observed
+# across EIM versions:
+#
+# * Older versions print ``ESP-IDF Tools Installer v1.0.3``.
+# * The current version prints just ``v1.0.3`` (no "ESP-IDF" prefix) on
+#   its own line.
+#
+# Neither matches the real ``ESP-IDF vX.Y.Z`` pattern. We detect shims
+# explicitly so callers get an actionable error ("source an EIM profile
+# or export script") instead of the vague "banner did not match".
+#
+# Do NOT match the bare substring "idf-exe" — that appears inside PATH
+# output as ``C:\Espressif\tools\idf-exe\1.0.3\`` and would false-positive
+# after a successful EIM source.
 _SHIM_BANNER_RE = re.compile(
-    r"ESP-IDF\s+Tools\s+Installer|idf-exe", re.IGNORECASE
+    r"ESP-IDF\s+Tools\s+Installer"
+    r"|(?:^|\n)\s*v1\.\d+\.\d+\s*(?:\n|$)",
+    re.IGNORECASE,
 )
 
 # Sourcing an EIM profile activates a Python venv (~12s on warm machines);
@@ -201,6 +213,18 @@ def is_shell_ready(
     """
     if environ is None:
         environ = dict(_os_environ_snapshot())
+    else:
+        environ = dict(environ)
+
+    # Defense-in-depth: strip MSYS/EMSDK vars that would make ``idf.py
+    # --version`` misreport. An empty-but-present ``MSYSTEM`` is enough to
+    # trigger IDF v6's MSYS detector across subprocess boundaries (see note
+    # in activate() ``_k`` strip block).
+    for _k in (
+        "MSYSTEM", "MSYS", "MINGW_PREFIX", "MSYSTEM_PREFIX",
+        "EMSDK", "EMSDK_NODE", "EMSDK_PYTHON",
+    ):
+        environ.pop(_k, None)
 
     path_value = environ.get("PATH") or environ.get("Path") or ""
     idf_py = shutil.which("idf.py", path=path_value)
@@ -259,6 +283,24 @@ def activate(environ: Mapping[str, str] | None = None) -> IdfEnv:
     base_env: dict[str, str] = dict(environ) if environ is not None else dict(
         _os_environ_snapshot()
     )
+
+    # Defense-in-depth: strip MSYS/EMSDK contamination before probing the
+    # shell. An empty-but-present MSYSTEM triggers IDF v6's "MSys/Mingw is no
+    # longer supported" warning across subprocess boundaries (observed: when
+    # MSYSTEM="" is inherited, ``idf.py --version`` prints the warning on
+    # stderr and SUPPRESSES the ESP-IDF vX.Y banner on stdout, so our parser
+    # can't confirm a real shell). Delete these keys outright — build.py also
+    # strips before calling us, but direct callers (e.g. ad-hoc scripts)
+    # might not.
+    for _k in (
+        "MSYSTEM", "MSYS", "MINGW_PREFIX", "MSYSTEM_PREFIX",
+        "EMSDK", "EMSDK_NODE", "EMSDK_PYTHON",
+    ):
+        base_env.pop(_k, None)
+    # Force UTF-8 for child processes too, so Chinese/Unicode output from
+    # EIM profiles and idf.py doesn't mojibake on cp936.
+    base_env["PYTHONUTF8"] = "1"
+    base_env["PYTHONIOENCODING"] = "utf-8"
 
     # (1) Hot start — already ready.
     ok, info = is_shell_ready(base_env)

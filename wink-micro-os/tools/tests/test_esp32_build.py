@@ -89,16 +89,14 @@ class TestRunIdfEnvHygiene(unittest.TestCase):
         self.assertEqual(rc, 0)
         # Env passed to activate is stripped.
         seen = captured["activate_env"]
-        self.assertEqual(seen.get("MSYSTEM"), "")
-        for key in ("MSYS", "MINGW_PREFIX", "MSYSTEM_PREFIX",
+        for key in ("MSYSTEM", "MSYS", "MINGW_PREFIX", "MSYSTEM_PREFIX",
                     "EMSDK", "EMSDK_NODE", "EMSDK_PYTHON"):
             self.assertNotIn(key, seen, f"{key} should have been popped")
         # Env passed to subprocess is likewise stripped.
         sub_env = rec.calls[0]["kwargs"]["env"]
-        self.assertEqual(sub_env.get("MSYSTEM"), "")
-        for key in ("MSYS", "MINGW_PREFIX", "MSYSTEM_PREFIX",
+        for key in ("MSYSTEM", "MSYS", "MINGW_PREFIX", "MSYSTEM_PREFIX",
                     "EMSDK", "EMSDK_NODE", "EMSDK_PYTHON"):
-            self.assertNotIn(key, sub_env)
+            self.assertNotIn(key, sub_env, f"{key} should have been popped")
 
     def test_sets_utf8_before_activate(self):
         captured: dict = {}
@@ -144,23 +142,48 @@ class TestRunIdfEnvHygiene(unittest.TestCase):
 
 class TestRunIdfCommandLine(unittest.TestCase):
     def test_command_line_shape(self):
-        def fake_activate(env):
-            return _fake_idf_env(dict(env))
+        """cmd is ``<python> <idf.py> -C <fw> <args...>``; we invoke via the
+        venv python + IDF's ``tools/idf.py`` script (not bare ``idf.py``) so
+        subprocess.run with shell=False can resolve idf.py without file
+        associations or PATH launching tricks."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            idf_path = root / "esp-idf"
+            (idf_path / "tools").mkdir(parents=True)
+            (idf_path / "tools" / "idf.py").write_text("#!/usr/bin/env python\n")
+            venv = root / "venv"
+            (venv / "Scripts").mkdir(parents=True)
+            venv_py = venv / "Scripts" / "python.exe"
+            venv_py.write_bytes(b"")
 
-        rec = _RecordingRun(returncode=0)
-        with mock.patch("tools.esp32.build.activate_idf", side_effect=fake_activate):
-            with mock.patch("subprocess.run", side_effect=rec):
-                build_mod.run_idf(
-                    esp32_firmware_dir=Path(r"C:\repo\esp32_firmware"),
-                    idf_args=["-DFOO=1", "build", "-v"],
-                    environ={},
+            def fake_activate(env):
+                from tools.esp32.activate import IdfEnv
+                env = dict(env)
+                env["IDF_PYTHON_ENV_PATH"] = str(venv)
+                return IdfEnv(
+                    idf_path=idf_path,
+                    environ=env,
+                    version="6.0.1",
+                    source="eim-profile",
                 )
-        cmd = rec.calls[0]["cmd"]
-        self.assertEqual(cmd[0], "idf.py")
-        self.assertEqual(cmd[1], "-C")
-        # str(Path) uses backslashes on Windows; compare via Path.
-        self.assertEqual(Path(cmd[2]), Path(r"C:\repo\esp32_firmware"))
-        self.assertEqual(cmd[3:], ["-DFOO=1", "build", "-v"])
+
+            rec = _RecordingRun(returncode=0)
+            with mock.patch("tools.esp32.build.activate_idf", side_effect=fake_activate):
+                with mock.patch("subprocess.run", side_effect=rec):
+                    build_mod.run_idf(
+                        esp32_firmware_dir=root / "esp32_firmware",
+                        idf_args=["-DFOO=1", "build", "-v"],
+                        environ={},
+                    )
+            cmd = rec.calls[0]["cmd"]
+            # First arg is the venv python.
+            self.assertEqual(Path(cmd[0]), venv_py)
+            # Second arg is the idf.py script.
+            self.assertEqual(Path(cmd[1]), idf_path / "tools" / "idf.py")
+            self.assertEqual(cmd[2], "-C")
+            self.assertEqual(Path(cmd[3]), root / "esp32_firmware")
+            self.assertEqual(cmd[4:], ["-DFOO=1", "build", "-v"])
 
     def test_returns_subprocess_exit_code(self):
         def fake_activate(env):

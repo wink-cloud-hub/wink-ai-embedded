@@ -92,6 +92,29 @@ class TestIsShellReady(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("shim", (reason or "").lower())
 
+    def test_bare_v1_shim_banner_rejected(self):
+        """Current EIM shim prints just ``v1.0.3`` (no prefix) — must be rejected.
+
+        Regression: an earlier regex matched the substring ``idf-exe`` anywhere
+        in output and false-positived on PATH lines that contained
+        ``C:\\Espressif\\tools\\idf-exe\\1.0.3\\`` after a successful source.
+        """
+        with tempfile.TemporaryDirectory() as td:
+            root = _make_fake_idf_root(Path(td))
+            environ = {"IDF_PATH": str(root), "PATH": str(root / "tools")}
+
+            with mock.patch("shutil.which", return_value=str(root / "tools" / "idf.py")):
+                with mock.patch(
+                    "subprocess.run",
+                    return_value=_fake_completed(
+                        stdout="v1.0.3\n",
+                        returncode=0,
+                    ),
+                ):
+                    ok, reason = is_shell_ready(environ)
+        self.assertFalse(ok)
+        self.assertIn("shim", (reason or "").lower())
+
     def test_missing_idf_rejected(self):
         with mock.patch("shutil.which", return_value=None):
             ok, reason = is_shell_ready({"PATH": ""})

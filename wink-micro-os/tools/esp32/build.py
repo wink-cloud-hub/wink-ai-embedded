@@ -69,7 +69,18 @@ if sys.platform == "win32":
 
 # The exact set of MSYS/EMSDK env vars scripts/build_esp32.ps1 strips.
 # Kept as constants so tests can reason about them.
+#
+# Note on MSYSTEM: the PowerShell original did ``$env:MSYSTEM = ""`` in its own
+# process, which worked because the EIM profile dot-sources in-process and
+# idf.py's MSYS detector appears to treat an in-process empty string
+# differently than an empty string inherited across a subprocess boundary.
+# When we launch a child ``powershell.exe`` to harvest env (activate.py) or
+# a child ``idf.py`` directly, an empty-but-present MSYSTEM still triggers
+# IDF v6's "MSys/Mingw is no longer supported" check (observed: idf.py
+# --version prints the warning and SUPPRESSES the ESP-IDF vX.Y version line
+# when MSYSTEM is "" vs. absent). Delete it outright to match a clean shell.
 _MSYS_EMSDK_POP_KEYS: tuple[str, ...] = (
+    "MSYSTEM",
     "MSYS",
     "MINGW_PREFIX",
     "MSYSTEM_PREFIX",
@@ -82,14 +93,10 @@ _MSYS_EMSDK_POP_KEYS: tuple[str, ...] = (
 def _strip_msys_emsdk(env: dict[str, str]) -> None:
     """Mutate ``env`` in place to strip MSYS/EMSDK contamination.
 
-    Matches ``scripts/build_esp32.ps1``:
-
-    * ``MSYSTEM`` is *set to empty string* (not popped) — some IDF checks
-      test for the presence of the key, others for the value; the PS1
-      picked the "value is empty" reading.
-    * The remaining keys are deleted outright.
+    All listed keys are deleted outright (not set to empty string) — an
+    empty-but-present ``MSYSTEM`` still triggers IDF v6's MSYS detector
+    across subprocess boundaries.
     """
-    env["MSYSTEM"] = ""
     for key in _MSYS_EMSDK_POP_KEYS:
         env.pop(key, None)
 
@@ -143,22 +150,23 @@ def run_idf(
     idf_env = activate_idf(base)
 
     # 4. The activated env dict was built by activate() from `base`, so it
-    # inherits our contamination strip. But the EIM profile can reset
-    # PYTHONUTF8 (observed on Chinese Windows), so re-assert.
+    # inherits our contamination strip. But the EIM profile or export script
+    # can reset PYTHONUTF8 (observed on Chinese Windows) or re-introduce
+    # MSYS/EMSDK vars, so re-assert UTF-8 and re-strip before spawning idf.py.
     sub_env = dict(idf_env.environ)
     _assert_utf8(sub_env)
-    # Defensive: activation source-scripts could conceivably re-set MSYSTEM;
-    # keep it empty for the child process too.
-    if sub_env.get("MSYSTEM"):
-        sub_env["MSYSTEM"] = ""
-    for key in _MSYS_EMSDK_POP_KEYS:
-        sub_env.pop(key, None)
+    _strip_msys_emsdk(sub_env)
 
-    # 5. Compose the command line. Mirror PS1's `& idf.py -C esp32_firmware
-    # @IdfArgs`. We rely on the activated env's PATH to resolve idf.py — do
-    # NOT use shell=True (that would re-import the parent shell's env and
-    # reintroduce MSYS/EMSDK on git-bash callers).
-    cmd = ["idf.py", "-C", str(esp32_firmware_dir), *list(idf_args)]
+    # 5. Resolve the idf.py entry point. PowerShell's `& idf.py` invokes the
+    # .py via Windows file association, but Python's subprocess.run with
+    # shell=False does NOT do that reliably (it looks for an exact
+    # ``idf.py``/``idf.exe`` on PATH; EIM ships an ``idf.exe`` shim in
+    # ``IDF_PYTHON_ENV_PATH/Scripts`` which usually works, but using the
+    # venv's python + the idf.py script path inside IDF_PATH is the most
+    # robust cross-platform form and matches what idf.py itself recommends
+    # for CI).
+    idf_py_path, idf_python = _resolve_idf_entry(idf_env.idf_path, sub_env)
+    cmd = [idf_python, str(idf_py_path), "-C", str(esp32_firmware_dir), *list(idf_args)]
 
     # 6. Default cwd is the repo root (parent of esp32_firmware/).
     if cwd is None:
@@ -167,6 +175,39 @@ def run_idf(
     # 7. Run without capture_output so build output streams to console.
     cp = subprocess.run(cmd, cwd=str(cwd), env=sub_env)
     return cp.returncode
+
+
+def _resolve_idf_entry(idf_path: Path, env: dict[str, str]) -> tuple[Path, str]:
+    """Return ``(idf_py_script, python_executable)`` for invoking idf.py.
+
+    Preference order (cross-platform):
+    1. If ``IDF_PYTHON_ENV_PATH`` is set, use its Python (the venv the EIM
+       profile activated) and ``<idf_path>/tools/idf.py``.
+    2. Else fall back to ``sys.executable`` (whatever Python is running us).
+    3. Last resort: look up ``idf.py`` on PATH — only used if neither of the
+       above resolved a venv. On Windows this can hit the ``idf.exe`` shim
+       launcher that EIM drops on PATH, so we prefer option 1.
+    """
+    import shutil
+
+    idf_py_script = idf_path / "tools" / "idf.py"
+    venv = (env.get("IDF_PYTHON_ENV_PATH") or "").strip()
+    if venv:
+        if sys.platform == "win32":
+            candidate = Path(venv) / "Scripts" / "python.exe"
+        else:
+            candidate = Path(venv) / "bin" / "python"
+        if candidate.is_file():
+            return idf_py_script, str(candidate)
+    # Fall back to the Python running build.py.
+    if idf_py_script.is_file():
+        return idf_py_script, sys.executable
+    # Absolute last resort: bare "idf.py" via PATH lookup (shell-style).
+    found = shutil.which("idf.py", path=env.get("PATH") or env.get("Path") or "")
+    if found:
+        return Path(found), sys.executable
+    # Let subprocess.run fail with FileNotFoundError with a clear argv.
+    return idf_py_script, "idf.py"
 
 
 def _build_parser() -> argparse.ArgumentParser:
