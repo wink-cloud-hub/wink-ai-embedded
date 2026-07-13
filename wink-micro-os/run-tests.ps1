@@ -40,17 +40,25 @@ $ErrorActionPreference = 'Stop'
 
 if ($Full) { $Sanitize = $true }
 
-# ---- 1. Locate toolchain (WinLibs MinGW: gcc 16.1.0 + cmake 4.3.2) ----
-$toolchain = "C:\Users\77174\AppData\Local\Microsoft\WinGet\Packages\BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe\mingw64\bin"
-if (Test-Path $toolchain) {
-    $env:PATH = "$toolchain;$env:PATH"
-}
-
-# ---- 2. Verify toolchain present ----
+# ---- 1. Verify toolchain present (gcc/cmake must be on PATH) ----
+# Hardcoded toolchain prepends have been removed; the caller is expected to
+# have gcc/cmake on PATH already (e.g. WinLibs MinGW-w64 activated, or via
+# `python tools/wink.py ensure-host` bootstrap). See tools/preinstall.md.
 foreach ($t in 'gcc','cmake') {
     if (-not (Get-Command $t -ErrorAction SilentlyContinue)) {
-        Write-Host "[FAIL] '$t' not found. Check WinLibs install, or open a NEW PowerShell window so PATH refreshes." -ForegroundColor Red
-        Write-Host "       Expected path: $toolchain"
+        Write-Host "[FAIL] '$t' not found on PATH." -ForegroundColor Red
+        Write-Host "       Run 'python tools/wink.py doctor' to diagnose missing toolchain," -ForegroundColor Red
+        Write-Host "       or see tools/preinstall.md for setup instructions." -ForegroundColor Red
+        exit 1
+    }
+}
+
+# ---- 2. Verify gcc is a MinGW-w64 build on Windows (catch MSYS2/Strawberry contamination) ----
+if ($IsWindows -or $env:OS -eq 'Windows_NT') {
+    $dumpMachine = (& gcc -dumpmachine 2>$null)
+    if ($LASTEXITCODE -eq 0 -and $dumpMachine -and ($dumpMachine -notmatch 'w64-mingw32')) {
+        Write-Host "[FAIL] gcc on PATH is not a MinGW-w64 build (dumpmachine: $dumpMachine)." -ForegroundColor Red
+        Write-Host "       Run 'python tools/wink.py doctor' to diagnose, or see tools/preinstall.md." -ForegroundColor Red
         exit 1
     }
 }
@@ -146,57 +154,61 @@ foreach ($p in $passes) {
 # ---- 5.5 WASM build check (optional compilation verification) ----
 if ($WithWasm) {
     Write-Host "`n===== [wasm build check] =====" -ForegroundColor Cyan
-    $emsdkPath = $env:EMSDK
-    if (-not $emsdkPath) {
-        $defaultEmsdk = "D:\software\embedded\emsdk"
-        if (Test-Path $defaultEmsdk) {
-            $emsdkPath = $defaultEmsdk
-        }
-    }
-    
-    if (-not $emsdkPath -or -not (Test-Path $emsdkPath)) {
-        Write-Host "[FAIL] EMSDK not found. Set EMSDK env var or install at D:\software\embedded\emsdk" -ForegroundColor Red
-        $overallRc = 1
-    } else {
-        $envScript = Join-Path $emsdkPath "emsdk_env.ps1"
+
+    # Resolve emcc / emcmake without any hardcoded fallback path:
+    #   1) If emcc + emcmake are already on PATH (activated shell), use them directly.
+    #   2) Else if $env:EMSDK is set and points at a valid emsdk tree,
+    #      dot-source emsdk_env.ps1 to activate, then re-probe.
+    #   3) Else FAIL this pass and instruct the user to activate emsdk themselves.
+    $emccReady = ($null -ne (Get-Command emcc -ErrorAction SilentlyContinue)) -and `
+                 ($null -ne (Get-Command emcmake -ErrorAction SilentlyContinue))
+
+    if (-not $emccReady -and $env:EMSDK -and (Test-Path $env:EMSDK)) {
+        $envScript = Join-Path $env:EMSDK 'emsdk_env.ps1'
         if (Test-Path $envScript) {
-            Write-Host "-> Activating EMSDK environment from $emsdkPath..." -ForegroundColor Cyan
+            Write-Host "-> Activating EMSDK environment from $env:EMSDK ..." -ForegroundColor Cyan
             $env:EMSDK_QUIET = 1
             . $envScript
+            $emccReady = ($null -ne (Get-Command emcc -ErrorAction SilentlyContinue)) -and `
+                         ($null -ne (Get-Command emcmake -ErrorAction SilentlyContinue))
         }
-        
-        if (-not (Get-Command emcc -ErrorAction SilentlyContinue)) {
-            Write-Host "[FAIL] emcc command not found after EMSDK activation" -ForegroundColor Red
-            $overallRc = 1
-        } else {
-            $oldPreference = $ErrorActionPreference
-            $ErrorActionPreference = 'Continue'
-            try {
-                $wasmBuildDir = "../build/wasm"
-                if ($Clean -and (Test-Path $wasmBuildDir)) {
-                    Write-Host "-> Cleaning $wasmBuildDir ..." -ForegroundColor Yellow
-                    Remove-Item -Recurse -Force $wasmBuildDir
-                }
+    }
 
-                Write-Host "-> Configuring WASM build..." -ForegroundColor Cyan
-                $LASTEXITCODE = 0
-                emcmake cmake -B $wasmBuildDir -DTARGET_PLATFORM=wasm
+    if (-not $emccReady) {
+        Write-Host "[FAIL] emcc not found on PATH and EMSDK env is not set." -ForegroundColor Red
+        Write-Host "       Activate emsdk in your shell first (emsdk_env.ps1), or run" -ForegroundColor Red
+        Write-Host "       'python tools/wink.py doctor' to diagnose." -ForegroundColor Red
+        $overallRc = 1
+    } else {
+        $oldPreference = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try {
+            # Default app for smoke = avoidance_car → build/wasm/{projectCode}/
+            $wasmBuildDir = "../build/wasm/avoidance_car"
+            if ($Clean -and (Test-Path $wasmBuildDir)) {
+                Write-Host "-> Cleaning $wasmBuildDir ..." -ForegroundColor Yellow
+                Remove-Item -Recurse -Force $wasmBuildDir
+            }
+
+            Write-Host "-> Configuring WASM build..." -ForegroundColor Cyan
+            $LASTEXITCODE = 0
+            emcmake cmake -B $wasmBuildDir -DTARGET_PLATFORM=wasm `
+                "-DWINK_APP_DIR=$((Resolve-Path ../wink-micro-app/avoidance_car).Path)"
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "[FAIL] WASM configure failed" -ForegroundColor Red
+                $overallRc = 1
+            } else {
+                Write-Host "-> Building WASM target..." -ForegroundColor Cyan
+                cmake --build $wasmBuildDir
                 if ($LASTEXITCODE -ne 0) {
-                    Write-Host "[FAIL] WASM configure failed" -ForegroundColor Red
+                    Write-Host "[FAIL] WASM build failed" -ForegroundColor Red
                     $overallRc = 1
                 } else {
-                    Write-Host "-> Building WASM target..." -ForegroundColor Cyan
-                    cmake --build $wasmBuildDir
-                    if ($LASTEXITCODE -ne 0) {
-                        Write-Host "[FAIL] WASM build failed" -ForegroundColor Red
-                        $overallRc = 1
-                    } else {
-                        Write-Host "[PASS] WASM build check succeeded" -ForegroundColor Green
-                    }
+                    Write-Host "[PASS] WASM build check succeeded" -ForegroundColor Green
                 }
-            } finally {
-                $ErrorActionPreference = $oldPreference
             }
+        } finally {
+            $ErrorActionPreference = $oldPreference
         }
     }
 }
