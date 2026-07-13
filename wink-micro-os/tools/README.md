@@ -9,14 +9,12 @@ Lives under `wink-micro-os/tools/` so peripheral/driver work stays in one tree.
 |------|------|
 | `wink.py` | Unified CLI (`gen` / `build` / `esp32` / `web` / `test`) |
 | `pack_sdk_source.py` | Phase 1 Source SDK tarball (`wink-micro-os-sdk-source-v*.tar.gz`) |
+| `pack_sdk_binary.py` | Phase 2 Binary SDK tarball (`wink-micro-os-sdk-binary-v*.tar.gz`) |
+| `binary_sdk_cmake/` | Consumer-facing CMake entry + smoke test for Binary SDK |
 | `codegen/` | Generators: device tree, `wink_config.h`, PT state helpers |
 | `lint/` | Build/test gates (PT footguns, header self-containment, log fmt) |
 
-## Main CLI: `wink.py`
-
-```bash
-python wink-micro-os/tools/wink.py <command> [options]
-```
+## Workspace Resolution
 
 Workspace layout (frontend / esp32_firmware / apps) is resolved via:
 
@@ -24,7 +22,7 @@ Workspace layout (frontend / esp32_firmware / apps) is resolved via:
 2. `wink-workspace.json` (`sdk_dir`, `frontend_dir`, …)
 3. Defaults: SDK = this package; siblings = `../embedded-frontend`, `../esp32_firmware`, …
 
-Example `wink-workspace.json` at the workspace root:
+Example `wink-workspace.json`:
 
 ```json
 {
@@ -35,7 +33,11 @@ Example `wink-workspace.json` at the workspace root:
 }
 ```
 
-### Commands
+## wink.py CLI
+
+```bash
+python wink-micro-os/tools/wink.py <command> [options]
+```
 
 | Command | Purpose |
 |---------|---------|
@@ -45,66 +47,162 @@ Example `wink-workspace.json` at the workspace root:
 | `web [--port N]` | Vite frontend |
 | `test` | Codegen golden + host ctest |
 
-### Source SDK pack (Phase 1)
+---
 
-```bash
-python wink-micro-os/tools/pack_sdk_source.py --out-dir wink-micro-os/dist
-# → wink-micro-os/dist/wink-micro-os-sdk-source-v0.1.0.tar.gz
-```
+## SDK Pack & Consume
 
-M2 smoke (SDK and App in separate trees):
+### Source SDK (Phase 1)
+
+Delivers the original implementation source. Supports all targets (host / wasm / esp32).
+
+**Pack:**
 
 ```powershell
-tar -xzf wink-micro-os/dist/wink-micro-os-sdk-source-v0.1.0.tar.gz -C $env:TEMP/wink-sdk
+python wink-micro-os/tools/pack_sdk_source.py --out-dir wink-micro-os/dist
+# → wink-micro-os-sdk-source-v0.1.0.tar.gz
+```
+
+**UnPack:**
+
+```powershell
+Remove-Item -Recurse -Force "$env:TEMP/wink-sdk" -ErrorAction SilentlyContinue
+mkdir "$env:TEMP/wink-sdk" -Force
+tar -xzf wink-micro-os/dist/wink-micro-os-sdk-source-v0.1.0.tar.gz -C "$env:TEMP/wink-sdk"
+```
+
+**Consume — Host:**
+
+```powershell
 $env:WINK_SDK_PATH = "$env:TEMP/wink-sdk/wink-micro-os-sdk-source-v0.1.0"
 python "$env:WINK_SDK_PATH/tools/wink.py" build host --app (Resolve-Path wink-micro-app/avoidance_car)
 ```
 
-`wink_config.h` is generated from `$WINK_APP_DIR/wink-app.json` (not the monorepo-root `wink-app.json`).
+**Consume — Wasm:**
 
-### Binary SDK pack (Phase 2)
-
-```bash
-python wink-micro-os/tools/pack_sdk_binary.py --out-dir wink-micro-os/dist
-# → wink-micro-os/dist/wink-micro-os-sdk-binary-v0.1.0.tar.gz
+```powershell
+# Same extraction, same WINK_SDK_PATH
+$env:WINK_SDK_PATH = "$env:TEMP/wink-sdk/wink-micro-os-sdk-source-v0.1.0"
+python "$env:WINK_SDK_PATH/tools/wink.py" build wasm --app (Resolve-Path wink-micro-app/avoidance_car)
 ```
 
-The binary pack builds the OS with ABI ceiling defines (`-DWINK_MAX_SOFT_TIMERS=32 -DPAL_PWM_CHANNELS=16`) and section-split flags (`-ffunction-sections -fdata-sections`), merges all component `.a` + `pal_host` objects into a single `libwink_micro_os.a`, copies the public header whitelist into `include/`, and writes `SDK_MANIFEST.txt` with toolchain, cflags, and content hash.
+**Consume — ESP32:**
 
-M2 BINARY smoke (SDK and App in separate trees):
+```powershell
+$env:WINK_SDK_PATH = "$env:TEMP/wink-sdk/wink-micro-os-sdk-source-v0.1.0"
+python "$env:WINK_SDK_PATH/tools/wink.py" esp32 --app (Resolve-Path wink-micro-app/avoidance_car) build
+
+# 烧录 + 监视
+python wink-micro-os/tools/wink.py esp32 --app (Resolve-Path wink-micro-app/avoidance_car) -- -p COM3 flash monitor
+
+# 只烧录
+python wink-micro-os/tools/wink.py esp32 --app (Resolve-Path wink-micro-app/avoidance_car) -- -p COM3 flash
+
+```
+
+> `wink_config.h` is always generated from `$WINK_APP_DIR/wink-app.json` (not a hardcoded monorepo path).
+
+---
+
+### Binary SDK (Phase 2)
+
+Delivers precompiled `libwink_micro_os.a` + public headers only — no implementation source.
+
+#### Pack
+
+**Host only:**
 
 ```powershell
 python wink-micro-os/tools/pack_sdk_binary.py --out-dir wink-micro-os/dist
-tar -xzf wink-micro-os/dist/wink-micro-os-sdk-binary-v0.1.0.tar.gz -C $env:TEMP/wink-sdk-bin
+# → wink-micro-os-sdk-binary-v0.1.0.tar.gz  (contains libs/host/)
+```
+
+**Host + Wasm combined:**
+
+```powershell
+python wink-micro-os/tools/pack_sdk_binary.py --targets host,wasm --out-dir wink-micro-os/dist
+# → single tarball containing libs/host/ + libs/wasm/
+```
+
+**Skip build (use existing build dir):**
+
+```powershell
+python wink-micro-os/tools/pack_sdk_binary.py --skip-build --build-dir wink-micro-os/build-pack --out-dir wink-micro-os/dist
+```
+
+The pack script:
+- Compiles with ABI ceilings (`-DWINK_MAX_SOFT_TIMERS=32 -DPAL_PWM_CHANNELS=16`) and section-split flags (`-ffunction-sections -fdata-sections`)
+- Merges all component `.a` + PAL objects into a single `libwink_micro_os.a`
+- Copies public headers into `include/` (auto-scans `pal/include`, `runtime/include`, `trace/include`, `dal/include`, `bal/include`; skips `internal/`)
+- Writes `SDK_MANIFEST.txt` with `toolchain=`, `cflags=`, `content_sha256=`, per-file hashes
+
+#### Consume — Host BINARY
+
+```powershell
+mkdir "$env:TEMP/wink-sdk-bin" -Force
+tar -xzf wink-micro-os/dist/wink-micro-os-sdk-binary-v0.1.0.tar.gz -C "$env:TEMP/wink-sdk-bin"
 $sdk = "$env:TEMP/wink-sdk-bin/wink-micro-os-sdk-binary-v0.1.0"
 $env:WINK_SDK_PATH = $sdk
+
+# Option A: wink.py (auto-detects binary mode from libs/host/)
+python "$env:WINK_SDK_PATH/tools/wink.py" build host --app (Resolve-Path wink-micro-app/avoidance_car)
+
+# Option B: explicit --sdk-mode
+python "$env:WINK_SDK_PATH/tools/wink.py" build host --sdk-mode binary --app (Resolve-Path wink-micro-app/avoidance_car)
+
+# Option C: pure CMake smoke test
 cmake -S $sdk -B $sdk/build-smoke -DTARGET_PLATFORM=host `
-  -DWINK_APP_DIR=(Resolve-Path wink-micro-app/avoidance_car)
+  "-DWINK_APP_DIR=$((Resolve-Path wink-micro-app/avoidance_car).Path)"
 cmake --build $sdk/build-smoke
 ctest --test-dir $sdk/build-smoke -R binary_sdk_smoke --output-on-failure
 ```
 
-Or via `wink.py` with explicit `--sdk-mode`:
+#### Consume — Wasm BINARY
+
+Requires Emscripten SDK activated in the shell.
 
 ```powershell
-python "$env:WINK_SDK_PATH/tools/wink.py" build host --sdk-mode binary --app (Resolve-Path wink-micro-app/avoidance_car)
+# 1) Unpack Binary SDK (if not done in Host section above)
+mkdir "$env:TEMP/wink-sdk-bin" -Force
+tar -xzf wink-micro-os/dist/wink-micro-os-sdk-binary-v0.1.0.tar.gz -C "$env:TEMP/wink-sdk-bin"
+$sdk = "$env:TEMP/wink-sdk-bin/wink-micro-os-sdk-binary-v0.1.0"
+$env:WINK_SDK_PATH = $sdk
+
+# 2) Configure + build (emcmake required)
+#    -S must be the SDK root ($sdk), NOT the App directory.
+#    -DWINK_APP_DIR must be one quoted argument (PowerShell splits on '=' otherwise).
+Remove-Item -Recurse -Force build/wasm -ErrorAction SilentlyContinue
+emcmake cmake -S $sdk -B $sdk/build-wasm `
+  -DTARGET_PLATFORM=wasm `
+  "-DWINK_APP_DIR=$((Resolve-Path wink-micro-app/avoidance_car).Path)"
+cmake --build $sdk/build-wasm
+# → $sdk/build-wasm/wink_simulator.js + wink_simulator.wasm
+
+# Easier alternative:
+Remove-Item -Recurse -Force build/wasm -ErrorAction SilentlyContinue
+python "$env:WINK_SDK_PATH/tools/wink.py" build wasm --sdk-mode binary `
+  --app (Resolve-Path wink-micro-app/avoidance_car)
 ```
 
-ABI version and toolchain matrix: see [ADR-0028](../../docs/design/decisions/0028-host-binary-abi-toolchain-contract.md).
+---
 
-### Platform matrix
+### SDK Mode Detection
 
-| Target | Codegen | Build | Test |
-|--------|---------|-------|------|
-| Host | `…/wink.py gen --app <app>` | `…/wink.py build host --app <app>` | `…/wink.py test` |
-| WASM | same | `…/wink.py build wasm --app <app>` then `web` | via `test` |
-| ESP32 | same | `…/wink.py esp32 --app <app> build` | manual |
+| Signal | Mode |
+|--------|------|
+| SDK root contains `libs/<target>/` or `SDK_MANIFEST.txt` says `mode=binary` | **BINARY** |
+| Otherwise (Source tarball / monorepo tree) | **SOURCE** |
+| Explicit `--sdk-mode binary` but no `libs/` | `FATAL_ERROR` |
+| Explicit `--sdk-mode source` but manifest says `mode=binary` | `FATAL_ERROR` |
+
+ABI version and toolchain matrix: [ADR-0028](../../docs/design/decisions/0028-host-binary-abi-toolchain-contract.md).
+
+---
 
 ## Codegen
 
 ```bash
 python wink-micro-os/tools/wink.py gen --app devkitc_smoke
-# or
+# or directly:
 python wink-micro-os/tools/codegen/app_codegen.py \
     --config wink-micro-app/devkitc_smoke/wink-app.json \
     --out-dir build/generated
@@ -115,7 +213,7 @@ Add a device type: drop `codegen/drivers/<type>.py` subclassing `DriverBase`.
 Golden tests (from workspace root, with SDK on `PYTHONPATH`):
 
 ```bash
-$env:PYTHONPATH = "wink-micro-os"   # PowerShell
+$env:PYTHONPATH = "wink-micro-os"
 python wink-micro-os/tools/codegen/tests/test_golden.py
 ```
 

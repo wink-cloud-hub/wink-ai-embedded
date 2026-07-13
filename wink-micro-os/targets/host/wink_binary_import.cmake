@@ -17,6 +17,8 @@ set_target_properties(wink_micro_os PROPERTIES
 # each subdirectory to the include search path.
 target_include_directories(wink_micro_os INTERFACE
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/hal"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/osal"
     # DAL categories
     "${CMAKE_CURRENT_SOURCE_DIR}/include/input"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/output"

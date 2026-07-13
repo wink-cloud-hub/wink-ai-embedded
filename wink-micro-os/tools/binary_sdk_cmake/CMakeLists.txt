@@ -41,6 +41,7 @@ set(WINK_CONFIG_H ${WINK_CONFIG_DIR}/wink_config.h)
 file(MAKE_DIRECTORY "${WINK_CONFIG_DIR}")
 
 # Use codegen from SDK tools if available, else from WINK_CODEGEN_ROOT
+set(WINK_CODEGEN_ROOT "" CACHE PATH "Path to codegen scripts directory")
 if(NOT DEFINED WINK_CODEGEN_ROOT OR WINK_CODEGEN_ROOT STREQUAL "")
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/codegen/config_h.py")
         set(WINK_CODEGEN_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/tools/codegen")
@@ -62,6 +63,50 @@ add_custom_command(
     VERBATIM
 )
 add_custom_target(generate_config DEPENDS ${WINK_CONFIG_H})
+
+# ── App driver flags (WINK_USE_*) from wink-app.json ────────────────────────
+# Source SDK propagates these via dal PUBLIC compile defs; Binary SDK must set
+# them on App TUs explicitly so DAL headers expose real APIs instead of stubs.
+set(WINK_APP_OPTIONS_CMAKE ${WINK_CONFIG_DIR}/app_options.cmake)
+set(_APP_CODEGEN_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/tools/codegen/app_codegen.py")
+if(NOT EXISTS "${_APP_CODEGEN_SCRIPT}")
+    set(_APP_CODEGEN_SCRIPT "${WINK_CODEGEN_ROOT}/app_codegen.py")
+endif()
+if(NOT EXISTS "${_APP_CODEGEN_SCRIPT}")
+    message(FATAL_ERROR "app_codegen.py not found in Binary SDK tools/codegen/")
+endif()
+execute_process(
+    COMMAND ${Python3_EXECUTABLE} ${_APP_CODEGEN_SCRIPT}
+            --config ${WINK_APP_JSON}
+            --out-dir ${WINK_CONFIG_DIR}
+    RESULT_VARIABLE _app_codegen_rc
+    ERROR_VARIABLE _app_codegen_err
+)
+if(NOT _app_codegen_rc EQUAL 0)
+    message(FATAL_ERROR "app_codegen failed for ${WINK_APP_JSON}: ${_app_codegen_err}")
+endif()
+if(NOT EXISTS "${WINK_APP_OPTIONS_CMAKE}")
+    message(FATAL_ERROR "app_codegen did not produce ${WINK_APP_OPTIONS_CMAKE}")
+endif()
+include(${WINK_APP_OPTIONS_CMAKE})
+
+macro(wink_binary_apply_dal_driver_defs target)
+    foreach(_drv IN ITEMS LED BUTTON SERVO SSD1306 ULTRASONIC GPS EEPROM)
+        if(DEFINED WINK_USE_${_drv} AND WINK_USE_${_drv})
+            target_compile_definitions(${target} PRIVATE WINK_USE_${_drv}=1)
+        endif()
+    endforeach()
+    if(DEFINED WINK_MAX_PERIODIC)
+        target_compile_definitions(${target} PRIVATE WINK_MAX_PERIODIC=${WINK_MAX_PERIODIC})
+    endif()
+    if(DEFINED WINK_USE_SSD1306 AND WINK_USE_SSD1306)
+        if(WINK_SSD1306_FONT STREQUAL "minimal")
+            target_compile_definitions(${target} PRIVATE WINK_SSD1306_FONT_MINIMAL=1)
+        elseif(WINK_SSD1306_FONT STREQUAL "ascii_upper")
+            target_compile_definitions(${target} PRIVATE WINK_SSD1306_FONT_ASCII_UPPER=1)
+        endif()
+    endif()
+endmacro()
 
 # ── Import precompiled binary SDK ────────────────────────────────────────────
 # This CMakeLists.txt is the consumer-facing entry point for the Binary SDK.
@@ -93,6 +138,8 @@ if(TARGET_PLATFORM STREQUAL "wasm")
 
     add_executable(wink_simulator ${WINK_APP_SOURCES})
     target_link_libraries(wink_simulator PRIVATE wink_micro_os)
+    add_dependencies(wink_simulator generate_config)
+    wink_binary_apply_dal_driver_defs(wink_simulator)
     target_include_directories(wink_simulator PRIVATE
         ${WINK_APP_DIR}
         ${WINK_APP_INCLUDE_DIRS}

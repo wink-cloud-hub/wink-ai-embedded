@@ -13,6 +13,8 @@ set_target_properties(wink_micro_os PROPERTIES
 # Public headers (same whitelist as host — packed by pack_sdk_binary.py)
 target_include_directories(wink_micro_os INTERFACE
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/hal"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/osal"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/input"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/output"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/actuator"
@@ -33,18 +35,15 @@ set(_WASM_EXPORT_JSON "${CMAKE_CURRENT_SOURCE_DIR}/targets/wasm/exported_runtime
 if(EXISTS "${_WASM_EXPORT_JSON}")
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
     set(_WASM_EXPORT_CMAKE "${CMAKE_BINARY_DIR}/wasm_binary_export_options.cmake")
+    set(_WASM_EXPORT_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/tools/wasm_export_codegen.py")
+    if(NOT EXISTS "${_WASM_EXPORT_SCRIPT}")
+        message(FATAL_ERROR
+            "Wasm export codegen script not found: ${_WASM_EXPORT_SCRIPT}. "
+            "Re-pack the Binary SDK tarball (tools/wasm_export_codegen.py is required).")
+    endif()
     execute_process(
-        COMMAND ${Python3_EXECUTABLE} -c
-            "import json,sys; \
-d=json.load(open(sys.argv[1])); \
-f=open(sys.argv[2],'w'); \
-f.write('set(WASM_EXPORT_FUNCTIONS \"' + ','.join(\"'\" + v + \"'\" for v in d['EXPORTED_FUNCTIONS']) + '\")\n'); \
-f.write('set(WASM_EXPORT_RUNTIME \"' + ','.join(\"'\" + v + \"'\" for v in d['EXPORTED_RUNTIME_METHODS']) + '\")\n'); \
-f.write('set(WASM_ASYNCIFY_IMPORTS \"' + ','.join(\"'\" + v + \"'\" for v in d['ASYNCIFY_IMPORTS']) + '\")\n'); \
-f.write('set(WASM_ASYNCIFY_STACK_SIZE \"' + str(d['ASYNCIFY_STACK_SIZE']) + '\")\n'); \
-f.write('set(WASM_EXPORT_NAME \"' + d.get('EXPORT_NAME','Module') + '\")\n'); \
-f.close()"
-        "${_WASM_EXPORT_JSON}" "${_WASM_EXPORT_CMAKE}"
+        COMMAND ${Python3_EXECUTABLE} "${_WASM_EXPORT_SCRIPT}"
+                "${_WASM_EXPORT_JSON}" "${_WASM_EXPORT_CMAKE}"
         RESULT_VARIABLE _wasm_json_rc)
     if(NOT _wasm_json_rc EQUAL 0)
         message(FATAL_ERROR "Failed to parse ${_WASM_EXPORT_JSON}")

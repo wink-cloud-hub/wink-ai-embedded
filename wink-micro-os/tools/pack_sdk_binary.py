@@ -37,38 +37,16 @@ BINARY_PACK_MSVC_C_FLAGS = (
     "/Gy"
 )
 
-# ── Public header whitelist ──────────────────────────────────────────────────
-# Each entry: (source_relative_to_SDK_ROOT, destination_relative_to_include_root)
-# DAL and BAL headers preserve their subdirectory structure.
-
-PAL_PUBLIC_HEADERS = [
-    "pal/include/wink_status.h",
-    "pal/include/pal_log.h",
-    "pal/include/pal.h",
-    "pal/include/osal/pal_osal.h",
-    "pal/include/pal_irq.h",
-]
-
-RUNTIME_PUBLIC_HEADERS = [
-    "runtime/include/wink_app.h",
-    "runtime/include/wink_runtime.h",
-    "runtime/include/wink_event.h",
-    "runtime/include/wink_tasks.h",
-    "runtime/include/wink_soft_timer.h",
-    "runtime/include/wink_actuator_registry.h",
-    "runtime/include/wink_fault.h",
-    "runtime/include/wink_log.h",
-    "runtime/include/wink_blocking_region.h",
-    "runtime/include/wink_selftest.h",
-]
-
-TRACE_PUBLIC_HEADERS = [
-    "trace/include/wink_trace.h",
-]
-
 # DAL and BAL: copy entire include/ trees (all public headers by convention).
+# PAL / runtime / trace: same auto-scan; skip `internal/` subtrees (test-only).
 DAL_INCLUDE_ROOT = "dal/include"
 BAL_INCLUDE_ROOT = "bal/include"
+_PUBLIC_INCLUDE_TREES = (
+    "pal/include",
+    "runtime/include",
+    "trace/include",
+)
+_PUBLIC_INCLUDE_EXCLUDE_DIRS = ("internal",)
 
 # ── Files/dirs to copy verbatim into the binary SDK ──────────────────────────
 SDK_BRIDGE_FILES = [
@@ -88,15 +66,18 @@ _WASM_PAL_SOURCE_BASENAMES = [
     "pal_hal_wasm.c", "pal_log_wasm.c", "pal_irq_wasm.c",
     "pal_osal_wasm.c", "pal_storage_wasm.c",
     "pal_wasm_physical.c", "pal_wasm_fault.c", "pal_wasm_fault_domain.c",
-    "sim_ctx_emscripten_fiber.c",
-    # targets/common/src/
-    "pal_osal_ringbuf.c", "pal_resource.c",
+    "sim_ctx_emscripten_fiber.c", "wasm_entry.c",
+    "wasm_sim_registry.c",
+    "wasm_dev_ssd1306.c", "wasm_dev_servo.c", "wasm_dev_ultrasonic.c",
+    # targets/common/src/ + pal/
+    "pal_osal_ringbuf.c", "pal_resource.c", "pal_pwm_router.c",
     "wink_sim_physical.c", "wink_sim_scheduler.c",
 ]
 
 SDK_TOOL_ROOTS = [
     "tools/wink.py",
     "tools/__init__.py",
+    "tools/wasm_export_codegen.py",
     "tools/codegen",
     "tools/lint",
 ]
@@ -125,6 +106,31 @@ _BINARY_PACK_DEFINE_RE = re.compile(
 )
 
 
+_PACK_STUB_C = """\
+/* Empty TU for binary pack stub — only wink-app.json ceilings matter. */
+#if defined(__GNUC__) || defined(__clang__)
+#  define WINK_PACK_USED __attribute__((used))
+#else
+#  define WINK_PACK_USED
+#endif
+WINK_PACK_USED int wink_binary_pack_stub_placeholder = 0;
+"""
+
+_PACK_STUB_CMAKE = """\
+# Binary SDK pack stub: config-only app for pack-time ABI ceilings.
+set(WINK_APP_SOURCES
+    ${CMAKE_CURRENT_LIST_DIR}/pack_stub.c
+    PARENT_SCOPE)
+
+if(EMSCRIPTEN)
+    return()
+endif()
+
+# No host e2e binary; component libs still build via top-level configure.
+return()
+"""
+
+
 def create_binary_pack_stub_app(parent_dir: Path) -> Path:
     """Create the app config used to compile Binary SDK archives."""
     stub_dir = parent_dir / "binary_pack_stub_app"
@@ -141,10 +147,8 @@ def create_binary_pack_stub_app(parent_dir: Path) -> Path:
         json.dumps(config, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    (stub_dir / "CMakeLists.txt").write_text(
-        "# Binary SDK pack stub: config-only app for pack-time ceilings.\n",
-        encoding="utf-8",
-    )
+    (stub_dir / "pack_stub.c").write_text(_PACK_STUB_C, encoding="utf-8")
+    (stub_dir / "CMakeLists.txt").write_text(_PACK_STUB_CMAKE, encoding="utf-8")
     return stub_dir
 
 
@@ -391,25 +395,42 @@ def build_wasm(sdk_root: Path, build_dir: Path) -> None:
     )
 
 
+def _wasm_obj_source_stem(o_file: Path) -> str | None:
+    """Map Emscripten object names like pal_hal_wasm.c.o → pal_hal_wasm."""
+    name = o_file.name
+    if name.endswith(".c.o"):
+        return name[:-4]
+    if name.endswith(".o"):
+        return o_file.stem
+    return None
+
+
 def find_wasm_pal_objs(build_dir: Path) -> list[Path]:
     """Locate wasm PAL .o files in the build tree by matching known source basenames."""
-    objs: list[Path] = []
     stem_to_src = {Path(s).stem: s for s in _WASM_PAL_SOURCE_BASENAMES}
+    found: dict[str, Path] = {}
 
-    targets_build = build_dir / "targets"
-    if not targets_build.is_dir():
-        raise SystemExit(f"[pack-binary] wasm targets build dir not found: {targets_build}")
+    if not build_dir.is_dir():
+        raise SystemExit(f"[pack-binary] wasm build dir not found: {build_dir}")
 
-    for o_file in targets_build.rglob("*.o"):
-        if o_file.stem in stem_to_src:
-            objs.append(o_file)
+    for o_file in build_dir.rglob("*.o"):
+        obj_stem = _wasm_obj_source_stem(o_file)
+        if obj_stem is None:
+            continue
+        if obj_stem in stem_to_src and obj_stem not in found:
+            found[obj_stem] = o_file
 
-    found_stems = {o.stem for o in objs}
-    missing = set(stem_to_src) - found_stems
+    missing = set(stem_to_src) - set(found)
     if missing:
         print(f"[pack-binary] WARNING: wasm PAL objects not found for: {', '.join(sorted(missing))}")
 
-    return objs
+    if "wasm_entry" in missing:
+        raise SystemExit(
+            "[pack-binary] wasm_entry.o not found; Binary SDK wasm archive would miss _main. "
+            f"Re-run pack wasm build in {build_dir}."
+        )
+
+    return list(found.values())
 
 
 def merge_libraries(
@@ -487,41 +508,42 @@ def merge_libraries(
     print(f"[pack-binary] Wrote {output} ({output.stat().st_size:,} bytes)")
 
 
+def _header_rel_excluded(rel: Path, exclude_dir_names: tuple[str, ...]) -> bool:
+    return any(part in exclude_dir_names for part in rel.parts)
+
+
+def copy_include_tree(
+    sdk_root: Path,
+    include_root_rel: str,
+    dest_include_dir: Path,
+    exclude_dir_names: tuple[str, ...] = _PUBLIC_INCLUDE_EXCLUDE_DIRS,
+) -> int:
+    """Copy all public headers under an include/ tree, preserving subdirs."""
+    src_root = sdk_root / include_root_rel
+    if not src_root.is_dir():
+        print(f"  WARNING: include tree not found: {include_root_rel}")
+        return 0
+
+    copied = 0
+    for hdr in sorted(src_root.rglob("*.h")):
+        rel = hdr.relative_to(src_root)
+        if _header_rel_excluded(rel, exclude_dir_names):
+            continue
+        dest = dest_include_dir / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(hdr, dest)
+        copied += 1
+    return copied
+
+
 def copy_public_headers(sdk_root: Path, include_dir: Path) -> None:
-    """Copy whitelisted public headers into include/."""
+    """Copy public headers into include/ (auto-scan; no manual whitelist)."""
     print(f"[pack-binary] Copying public headers → {include_dir}")
 
-    # Flat PAL headers
-    for hdr_rel in PAL_PUBLIC_HEADERS:
-        src = sdk_root / hdr_rel
-        if not src.exists():
-            print(f"  WARNING: header not found: {hdr_rel}")
-            continue
-        dest = include_dir / src.name
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dest)
+    for tree_rel in _PUBLIC_INCLUDE_TREES:
+        count = copy_include_tree(sdk_root, tree_rel, include_dir)
+        print(f"  {tree_rel}: {count} header(s)")
 
-    # Flat runtime headers
-    for hdr_rel in RUNTIME_PUBLIC_HEADERS:
-        src = sdk_root / hdr_rel
-        if not src.exists():
-            print(f"  WARNING: header not found: {hdr_rel}")
-            continue
-        dest = include_dir / src.name
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dest)
-
-    # Flat trace headers
-    for hdr_rel in TRACE_PUBLIC_HEADERS:
-        src = sdk_root / hdr_rel
-        if not src.exists():
-            print(f"  WARNING: header not found: {hdr_rel}")
-            continue
-        dest = include_dir / src.name
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dest)
-
-    # DAL headers (preserve subdirectory structure)
     dal_src = sdk_root / DAL_INCLUDE_ROOT
     if dal_src.is_dir():
         for hdr in dal_src.rglob("*.h"):
@@ -530,7 +552,6 @@ def copy_public_headers(sdk_root: Path, include_dir: Path) -> None:
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(hdr, dest)
 
-    # BAL headers (preserve subdirectory structure)
     bal_src = sdk_root / BAL_INCLUDE_ROOT
     if bal_src.is_dir():
         for hdr in bal_src.rglob("*.h"):

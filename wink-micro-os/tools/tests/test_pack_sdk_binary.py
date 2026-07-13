@@ -44,11 +44,16 @@ class BinarySdkPackTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             stub_dir = pack_sdk_binary.create_binary_pack_stub_app(Path(tmp))
             cfg = json.loads((stub_dir / "wink-app.json").read_text(encoding="utf-8"))
+            cmake = (stub_dir / "CMakeLists.txt").read_text(encoding="utf-8")
+            has_pack_stub = (stub_dir / "pack_stub.c").is_file()
 
         self.assertEqual(cfg["max_soft_timers"], 32)
         self.assertEqual(cfg["pwm_channels"], 16)
         self.assertEqual(cfg["app_name"], "binary_pack_stub")
         self.assertEqual(cfg["devices"], {})
+        self.assertIn("set(WINK_APP_SOURCES", cmake)
+        self.assertIn("PARENT_SCOPE", cmake)
+        self.assertTrue(has_pack_stub)
 
     def test_gcc_skip_build_requires_function_and_data_sections(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -133,6 +138,24 @@ class BinarySdkPackTest(unittest.TestCase):
                 pack_sdk_binary.validate_binary_pack_wink_config_h(build_dir)
 
         self.assertIn("missing or not (NU) form", str(cm.exception))
+
+    def test_copy_include_tree_skips_internal_and_preserves_hal(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            sdk_root = Path(tmp) / "sdk"
+            pal_include = sdk_root / "pal/include"
+            (pal_include / "internal").mkdir(parents=True)
+            (pal_include / "hal").mkdir(parents=True)
+            (pal_include / "internal" / "secret.h").write_text("/* secret */\n", encoding="utf-8")
+            (pal_include / "hal" / "pal_i2c.h").write_text("/* i2c */\n", encoding="utf-8")
+            (pal_include / "pal.h").write_text("/* pal */\n", encoding="utf-8")
+
+            out = Path(tmp) / "include"
+            count = pack_sdk_binary.copy_include_tree(sdk_root, "pal/include", out)
+
+            self.assertEqual(count, 2)
+            self.assertFalse((out / "internal" / "secret.h").exists())
+            self.assertTrue((out / "hal" / "pal_i2c.h").is_file())
+            self.assertTrue((out / "pal.h").is_file())
 
     def test_binary_sdk_cmake_sets_platform_before_config_codegen(self) -> None:
         cmake = (

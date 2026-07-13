@@ -215,18 +215,10 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
     # so the JSON is the single source of truth for link options.
     set(_WASM_EXPORT_JSON "${CMAKE_CURRENT_SOURCE_DIR}/targets/wasm/exported_runtime_functions.json")
     set(_WASM_EXPORT_CMAKE "${CMAKE_BINARY_DIR}/wasm_export_options.cmake")
+    set(_WASM_EXPORT_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/tools/wasm_export_codegen.py")
     execute_process(
-        COMMAND ${Python3_EXECUTABLE} -c
-            "import json,sys; \
-d=json.load(open(sys.argv[1])); \
-f=open(sys.argv[2],'w'); \
-f.write('set(WASM_EXPORT_FUNCTIONS \"' + ','.join(\"'\" + v + \"'\" for v in d['EXPORTED_FUNCTIONS']) + '\")\n'); \
-f.write('set(WASM_EXPORT_RUNTIME \"' + ','.join(\"'\" + v + \"'\" for v in d['EXPORTED_RUNTIME_METHODS']) + '\")\n'); \
-f.write('set(WASM_ASYNCIFY_IMPORTS \"' + ','.join(\"'\" + v + \"'\" for v in d['ASYNCIFY_IMPORTS']) + '\")\n'); \
-f.write('set(WASM_ASYNCIFY_STACK_SIZE \"' + str(d['ASYNCIFY_STACK_SIZE']) + '\")\n'); \
-f.write('set(WASM_EXPORT_NAME \"' + d.get('EXPORT_NAME','Module') + '\")\n'); \
-f.close()"
-        "${_WASM_EXPORT_JSON}" "${_WASM_EXPORT_CMAKE}"
+        COMMAND ${Python3_EXECUTABLE} "${_WASM_EXPORT_SCRIPT}"
+                "${_WASM_EXPORT_JSON}" "${_WASM_EXPORT_CMAKE}"
         RESULT_VARIABLE _wasm_json_rc)
     if(NOT _wasm_json_rc EQUAL 0)
         message(FATAL_ERROR "Failed to parse ${_WASM_EXPORT_JSON}")

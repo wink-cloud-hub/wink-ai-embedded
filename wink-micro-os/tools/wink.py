@@ -28,13 +28,57 @@ if sys.platform == "win32":
         os.environ["PATH"] = mingw_bin + os.pathsep + os.environ.get("PATH", "")
 
 
+def _preparse_app_dir() -> Path | None:
+    """Scan sys.argv for --app and return its resolved directory, if it's a path."""
+    for i, arg in enumerate(sys.argv):
+        if arg == "--app" and i + 1 < len(sys.argv):
+            p = Path(sys.argv[i + 1])
+            if p.exists() and p.is_dir():
+                return p.resolve()
+        elif arg.startswith("--app="):
+            p = Path(arg.split("=", 1)[1])
+            if p.exists() and p.is_dir():
+                return p.resolve()
+    return None
+
+
+def _derive_app_workspace_root(app_dir: Path) -> Path | None:
+    """Walk up from app_dir to find the workspace root.
+
+    Recognises two patterns:
+      - app_dir is <ws>/wink-micro-app/<name>  →  ws
+      - an ancestor directory contains wink-workspace.json
+    """
+    if app_dir.parent.name == "wink-micro-app":
+        return app_dir.parent.parent
+    cur = app_dir.parent
+    for _ in range(5):
+        if (cur / "wink-workspace.json").exists():
+            return cur
+        parent = cur.parent
+        if parent == cur:
+            break
+        cur = parent
+    return None
+
+
+_APP_DIR = _preparse_app_dir()
+_APP_WORKSPACE_ROOT = _derive_app_workspace_root(_APP_DIR) if _APP_DIR else None
+
+
 def load_workspace_config() -> dict:
     """Loads workspace config from 'wink-workspace.json' if present."""
     candidates = [
         Path(os.getcwd()) / "wink-workspace.json",
+    ]
+    if _APP_DIR is not None:
+        candidates.append(_APP_DIR / "wink-workspace.json")
+        if _APP_WORKSPACE_ROOT:
+            candidates.append(_APP_WORKSPACE_ROOT / "wink-workspace.json")
+    candidates.extend([
         WORKSPACE_ROOT / "wink-workspace.json",
         SDK_ROOT / "wink-workspace.json",
-    ]
+    ])
     for c in candidates:
         if c.exists():
             try:
@@ -46,6 +90,39 @@ def load_workspace_config() -> dict:
 
 
 CONFIG = load_workspace_config()
+
+
+def _is_in_tree_source_sdk(sdk_root: Path) -> bool:
+    """True when sdk_root looks like the full monorepo wink-micro-os source tree."""
+    return (
+        (sdk_root / "dal").is_dir()
+        and (sdk_root / "runtime").is_dir()
+        and (sdk_root / "CMakeLists.txt").is_file()
+    )
+
+
+def resolve_sdk_dir_for_build(sdk_mode: str | None = None) -> Path:
+    """Resolve SDK root for build commands (source vs binary consumption)."""
+    if sdk_mode == "binary":
+        env_path = os.environ.get("WINK_SDK_PATH")
+        if env_path:
+            return Path(env_path).resolve()
+        candidate = resolve_sdk_dir()
+        if (candidate / "libs").is_dir():
+            return candidate
+        print(
+            "[wink] Error: --sdk-mode binary but no Binary SDK found. "
+            "Set WINK_SDK_PATH to an extracted wink-micro-os-sdk-binary tarball.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    # Monorepo default: source builds use in-tree SDK even if WINK_SDK_PATH
+    # still points at a Binary SDK tarball from prior experiments.
+    if _is_in_tree_source_sdk(SDK_ROOT):
+        return SDK_ROOT
+
+    return resolve_sdk_dir()
 
 
 def resolve_sdk_dir() -> Path:
@@ -71,6 +148,10 @@ def resolve_frontend_dir(required: bool = True) -> Path:
     default_path = WORKSPACE_ROOT / "embedded-frontend"
     if default_path.exists():
         return default_path
+    if _APP_WORKSPACE_ROOT:
+        app_ws_path = _APP_WORKSPACE_ROOT / "embedded-frontend"
+        if app_ws_path.exists():
+            return app_ws_path
     if not required:
         return default_path
     print("[wink] Error: Cannot resolve embedded-frontend directory. Set WINK_FRONTEND_PATH environment variable, frontend_dir in wink-workspace.json, or run in the monorepo.", file=sys.stderr)
@@ -88,6 +169,10 @@ def resolve_esp32_dir(required: bool = True) -> Path:
     default_path = WORKSPACE_ROOT / "esp32_firmware"
     if default_path.exists():
         return default_path
+    if _APP_WORKSPACE_ROOT:
+        app_ws_path = _APP_WORKSPACE_ROOT / "esp32_firmware"
+        if app_ws_path.exists():
+            return app_ws_path
     if not required:
         return default_path
     print("[wink] Error: Cannot resolve esp32_firmware directory. Set WINK_ESP32_PATH environment variable, esp32_dir in wink-workspace.json, or run in the monorepo.", file=sys.stderr)
@@ -105,6 +190,10 @@ def resolve_scripts_dir(required: bool = True) -> Path:
     default_path = WORKSPACE_ROOT / "scripts"
     if default_path.exists():
         return default_path
+    if _APP_WORKSPACE_ROOT:
+        app_ws_path = _APP_WORKSPACE_ROOT / "scripts"
+        if app_ws_path.exists():
+            return app_ws_path
     if not required:
         return default_path
     print("[wink] Error: Cannot resolve scripts directory. Set WINK_SCRIPTS_PATH environment variable, scripts_dir in wink-workspace.json, or run in the monorepo.", file=sys.stderr)
@@ -203,12 +292,13 @@ def handle_build(args):
     app_dir = resolve_app_dir(args.app)
 
     if args.target == "host":
-        build_dir = WORKSPACE_ROOT / "build-host"
-        micro_os_dir = resolve_sdk_dir()
-        codegen_dir = Path(__file__).resolve().parent / "codegen"
+        ws_root = _APP_WORKSPACE_ROOT or WORKSPACE_ROOT
+        build_dir = ws_root / "build" / "host"
+        sdk_mode = getattr(args, "sdk_mode", None)
+        micro_os_dir = resolve_sdk_dir_for_build(sdk_mode)
+        codegen_dir = micro_os_dir / "tools" / "codegen"
 
         # Validate --sdk-mode against SDK tree early
-        sdk_mode = getattr(args, "sdk_mode", None)
         if sdk_mode == "binary" and not (micro_os_dir / "libs" / "host").exists():
             print("[wink] Error: --sdk-mode binary but libs/host/ not found in SDK tree.", file=sys.stderr)
             sys.exit(1)
@@ -238,14 +328,45 @@ def handle_build(args):
         print(f"[wink] Success: Host simulator build complete. Output is in {build_dir}")
 
     elif args.target == "wasm":
-        frontend_dir = resolve_frontend_dir(required=True)
-        wasm_script = frontend_dir / "scripts" / "build-wasm.mjs"
-        run_cmd([
-            "node",
-            str(wasm_script),
-            str(app_dir)
-        ], cwd=frontend_dir)
-        print("[wink] Success: WASM simulator compilation complete!")
+        ws_root = _APP_WORKSPACE_ROOT or WORKSPACE_ROOT
+        build_dir = ws_root / "build" / "wasm"
+        sdk_mode = getattr(args, "sdk_mode", None)
+        micro_os_dir = resolve_sdk_dir_for_build(sdk_mode)
+        codegen_dir = micro_os_dir / "tools" / "codegen"
+
+        if sdk_mode == "binary" and not (micro_os_dir / "libs" / "wasm").exists():
+            print("[wink] Error: --sdk-mode binary but libs/wasm/ not found in SDK tree.", file=sys.stderr)
+            sys.exit(1)
+
+        configure_cmd = [
+            "emcmake", "cmake",
+            "-S", str(micro_os_dir),
+            "-B", str(build_dir),
+            "-DTARGET_PLATFORM=wasm",
+            f"-DWINK_APP_DIR={app_dir.as_posix()}",
+            f"-DWINK_CODEGEN_ROOT={codegen_dir.as_posix()}",
+        ]
+        if sdk_mode:
+            configure_cmd.append(f"-DWINK_SDK_MODE={sdk_mode}")
+
+        if args.clean:
+            import shutil
+            if build_dir.exists():
+                print(f"[wink] Cleaning build directory: {build_dir}")
+                shutil.rmtree(build_dir)
+
+        run_cmd(configure_cmd)
+        run_cmd(["cmake", "--build", str(build_dir)])
+
+        app_name = app_dir.name
+        frontend_dir = resolve_frontend_dir(required=False)
+        if frontend_dir and frontend_dir.exists():
+            meta_dir = frontend_dir / "public" / "wasm"
+            meta_dir.mkdir(parents=True, exist_ok=True)
+            (meta_dir / "wasm-app-id.txt").write_text(f"{app_name}\n", encoding="utf-8")
+            print(f"[wink] Wrote {meta_dir / 'wasm-app-id.txt'}")
+
+        print(f"[wink] Success: WASM build complete for '{app_name}'. Output in {build_dir}")
 
 
 def handle_esp32(args):
@@ -320,7 +441,8 @@ def handle_test(args):
         sys.exit(e.returncode)
 
     print("\n[wink] Configuring and compiling Host unit tests...")
-    build_dir = WORKSPACE_ROOT / "build-host-test"
+    ws_root = _APP_WORKSPACE_ROOT or WORKSPACE_ROOT
+    build_dir = ws_root / "build" / "test"
     micro_os_dir = resolve_sdk_dir()
 
     if build_dir.exists():
