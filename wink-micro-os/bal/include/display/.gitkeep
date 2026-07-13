@@ -1,0 +1,2 @@
+# This file ensures the display/ include directory is tracked by git and included in SDK tarballs.
+# Future BAL display headers (e.g., bal_oled.h) will live here.
