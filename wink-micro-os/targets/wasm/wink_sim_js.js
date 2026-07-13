@@ -60,7 +60,7 @@
  *   Module.js_pal_os_sleep_ms = (ms) => { clock.advance(ms); };
  *
  * 唯一防线是 TS 侧 `WasmImports.js_pal_os_sleep_ms: Promise<void>` 类型标注
- * （见 simulator/src/unisim/types/wasm/imports.ts，Phase B B1 落地）。
+ * （见 ../../../../wink-ai/packages/unisim/src/unisim/types/wasm/imports.ts，Phase B B1 落地）。
  *
  * ========================================================================
  * 宿主分工提醒
@@ -102,7 +102,7 @@ addToLibrary({
      *
      *   覆盖钩子的宿主（jest / Workbench）自己负责虚拟时钟推进——通常通过
      *   一个 VirtualClock 单步 + _pal_wasm_advance_virtual_clock 双锁步
-     *   （见 simulator/src/unisim/bridge/createUnisimImports.ts +
+     *   （见 ../../../../wink-ai/packages/unisim/src/unisim/bridge/createUnisimImports.ts +
      *   nodeSmoke.test.ts 锁步循环）。此时本桩的 setTimeout+advance 路径不
      *   会执行，不会发生双重推进。
      *
