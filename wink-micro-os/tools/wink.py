@@ -7,6 +7,16 @@ Supports workspace config 'wink-workspace.json' for full directory relocatabilit
 This CLI lives inside the SDK tree (wink-micro-os/tools/). Sibling monorepo
 dirs (frontend, esp32_firmware, apps) are resolved via env / workspace config /
 SDK parent defaults.
+
+Toolchain gating (Phase 2, ADR-0029/0030):
+- Every non-diagnostic subcommand runs ``tools.toolchain.ensure_for(profile)``
+  after argparse and before the handler. On failure a collect-all report is
+  printed to stderr and the process exits 1.
+- ``--skip-toolchain-check`` bypasses the gate with a prominent stderr warning
+  (escape hatch, not the normal path).
+- ``wink doctor`` probes every registered capability regardless of profile.
+- ``wink setup`` reads/writes ``~/.wink/tools.json`` (or ``<ws>/.wink/tools.json``
+  with ``--workspace``); validates via provider.detect() before writing.
 """
 
 import argparse
@@ -21,11 +31,10 @@ SDK_ROOT = Path(__file__).resolve().parent.parent
 # Default monorepo / workspace root = parent of the SDK package
 WORKSPACE_ROOT = SDK_ROOT.parent
 
-# Set up toolchain path on Windows (WinLibs MinGW)
-if sys.platform == "win32":
-    mingw_bin = r"C:\Users\77174\AppData\Local\Microsoft\WinGet\Packages\BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe\mingw64\bin"
-    if os.path.exists(mingw_bin):
-        os.environ["PATH"] = mingw_bin + os.pathsep + os.environ.get("PATH", "")
+# Ensure the SDK package root is importable so we can pull in
+# ``tools.toolchain`` regardless of how wink.py was invoked.
+if str(SDK_ROOT) not in sys.path:
+    sys.path.insert(0, str(SDK_ROOT))
 
 
 def _preparse_app_dir() -> Path | None:
@@ -264,6 +273,73 @@ def resolve_app_dir(app: str) -> Path:
     sys.exit(1)
 
 
+# ── Toolchain gate helpers ─────────────────────────────────────────────
+
+def _current_workspace_root() -> Path:
+    """Workspace root used for toolchain config discovery and ensure_for()."""
+    return _APP_WORKSPACE_ROOT or WORKSPACE_ROOT
+
+
+# Workspace-path keys understood by the toolchain gate and `wink setup`.
+_WORKSPACE_KEY_RESOLVERS = {
+    "sdk_dir":      lambda: resolve_sdk_dir(),
+    "frontend_dir": lambda: resolve_frontend_dir(required=False),
+    "esp32_dir":    lambda: resolve_esp32_dir(required=False),
+    "scripts_dir":  lambda: resolve_scripts_dir(required=False),
+}
+
+
+def _workspace_key_probe(key: str) -> Path | None:
+    """Return the resolved workspace path if it exists on disk, else None."""
+    resolver = _WORKSPACE_KEY_RESOLVERS.get(key)
+    if resolver is None:
+        return None
+    try:
+        p = resolver()
+    except SystemExit:
+        return None
+    if p is None:
+        return None
+    return p if p.exists() else None
+
+
+def _make_workspace_paths_callback(keys: list[str]):
+    """Build the resolve_workspace_paths callback ensure_for expects."""
+    def _cb() -> dict[str, Path | None]:
+        return {k: _workspace_key_probe(k) for k in keys}
+    return _cb
+
+
+def _apply_toolchain_gate(command: str, skip: bool) -> None:
+    """Invoke tools.toolchain.ensure_for for the given wink subcommand.
+
+    Import is deferred so ``wink --help`` and doctor/setup can still function
+    even when the toolchain package fails to import for some odd reason.
+    """
+    from tools.toolchain.check import ensure_for  # noqa: WPS433
+    from tools.toolchain.profiles import WORKSPACE_DEPS  # noqa: WPS433
+
+    # command -> profile mapping for WORKSPACE_DEPS lookup
+    profile_map = {
+        "gen":   "codegen",
+        "host":  "host",
+        "wasm":  "wasm",
+        "test":  "test",
+        "esp32": "esp32",
+        "web":   "web",
+    }
+    profile = profile_map.get(command)
+    ws_keys = WORKSPACE_DEPS.get(profile, []) if profile else []
+    cb = _make_workspace_paths_callback(ws_keys) if ws_keys else None
+
+    ensure_for(
+        command,
+        workspace_root=_current_workspace_root(),
+        resolve_workspace_paths=cb,
+        skip=skip,
+    )
+
+
 # ── Command Handlers ──────────────────────────────────────────────────
 
 def handle_gen(args):
@@ -329,7 +405,9 @@ def handle_build(args):
 
     elif args.target == "wasm":
         ws_root = _APP_WORKSPACE_ROOT or WORKSPACE_ROOT
-        build_dir = ws_root / "build" / "wasm"
+        # Per-app output: build/wasm/{projectCode}/  (projectCode = wink-micro-app/<name>)
+        app_name = app_dir.name
+        build_dir = ws_root / "build" / "wasm" / app_name
         sdk_mode = getattr(args, "sdk_mode", None)
         micro_os_dir = resolve_sdk_dir_for_build(sdk_mode)
         codegen_dir = micro_os_dir / "tools" / "codegen"
@@ -357,14 +435,6 @@ def handle_build(args):
 
         run_cmd(configure_cmd)
         run_cmd(["cmake", "--build", str(build_dir)])
-
-        app_name = app_dir.name
-        frontend_dir = resolve_frontend_dir(required=False)
-        if frontend_dir and frontend_dir.exists():
-            meta_dir = frontend_dir / "public" / "wasm" / app_name
-            meta_dir.mkdir(parents=True, exist_ok=True)
-            (meta_dir / "wasm-app-id.txt").write_text(f"{app_name}\n", encoding="utf-8")
-            print(f"[wink] Wrote {meta_dir / 'wasm-app-id.txt'}")
 
         print(f"[wink] Success: WASM build complete for '{app_name}'. Output in {build_dir}")
 
@@ -478,21 +548,284 @@ def handle_test(args):
     print("[wink] Success: All tests passed successfully!")
 
 
+# ── Doctor / Setup handlers ────────────────────────────────────────────
+
+def handle_doctor(args):
+    """Probe all registered capabilities and render a collect-all report.
+
+    Delegates to ``ensure_for("doctor", ...)`` which handles report rendering
+    and exit codes per spec §9.1: exit 1 iff any required cap is missing for
+    the full profile matrix.
+    """
+    if args.skip_toolchain_check:
+        # --skip is a no-op for doctor: probing is the whole point.
+        print(
+            "[wink] Note: --skip-toolchain-check is ignored for `doctor` "
+            "(probing is the whole point of doctor).",
+            file=sys.stderr,
+        )
+    _apply_toolchain_gate("doctor", skip=False)
+    # If we get here, doctor found no blocking issues; ensure_for already
+    # rendered the all-clear line to stderr.
+    print("[wink] doctor: all required toolchain dependencies satisfied.")
+
+
+def _probe_all_for_setup():
+    """Probe every registered cap and return a list of (id, DetectResult, source_tag).
+
+    Used by ``handle_setup`` (no-args view). Silences per-provider exceptions:
+    a broken provider must not prevent showing the rest of the table.
+    """
+    from tools.toolchain import providers as providers_mod  # noqa: WPS433
+    from tools.toolchain.resolve import ResolveContext, candidate_paths  # noqa: WPS433
+    from tools.toolchain.types import DetectResult  # noqa: WPS433
+
+    ctx = ResolveContext.snapshot(_current_workspace_root())
+    rows: list[tuple[str, "DetectResult", str]] = []
+    for cap_id, provider in providers_mod.REGISTRY.items():
+        # Determine source tag from candidate_paths; if empty, fall back to
+        # "PATH" (found) / "—" (not found) after detect().
+        cands = candidate_paths(cap_id, ctx)
+        try:
+            result = provider.detect(ctx)
+        except Exception as exc:  # noqa: BLE001 — defensive; must not break UI
+            result = DetectResult(
+                found=False, path=None, version=None,
+                reason=f"provider raised: {exc}", source=None,
+            )
+        source_tag = ""
+        if result.found:
+            if cands:
+                source_tag = cands[0][0]  # env:X or config:workspace/user
+            elif result.source:
+                source_tag = result.source
+            else:
+                source_tag = "PATH"
+        else:
+            source_tag = "—"
+        rows.append((cap_id, result, source_tag))
+    return rows, ctx
+
+
+def handle_setup(args):
+    """Setup subcommand dispatcher.
+
+    - No args              → print resolved-toolchain YAML-like table.
+    - --set key=value      → validate then write.
+    - --install cap        → phase-B stub, prints the hint.
+    """
+    # Validate mutually exclusive nature
+    if args.set_kv and args.install_cap:
+        print("[wink] Error: --set and --install are mutually exclusive.", file=sys.stderr)
+        sys.exit(2)
+
+    if args.install_cap:
+        _handle_setup_install(args.install_cap)
+        return
+
+    if args.set_kv:
+        _handle_setup_set(args.set_kv, workspace=args.workspace)
+        return
+
+    _handle_setup_noargs()
+
+
+def _handle_setup_noargs() -> None:
+    """Print the fully-resolved toolchain view (spec §10.3)."""
+    from tools.toolchain.config import (  # noqa: WPS433
+        _user_config_path, _workspace_config_path,
+    )
+
+    rows, ctx = _probe_all_for_setup()
+    print("Wink toolchain resolution:")
+    # Widths tuned to keep the table readable on typical Windows terminals
+    for cap_id, result, source_tag in rows:
+        if result.found:
+            path_str = str(result.path) if result.path else "(no path)"
+            ver_str = f"({result.version})" if result.version else ""
+            print(f"  {cap_id:<8}: {path_str}   {ver_str}   [{source_tag}]")
+        else:
+            reason = result.reason or "not detected"
+            print(f"  {cap_id:<8}: not detected — {reason}   [{source_tag}]")
+
+    print()
+    print("Config files:")
+    user_p = _user_config_path()
+    ws_root = _current_workspace_root()
+    ws_p = _workspace_config_path(ws_root) if ws_root else None
+    user_state = "present" if user_p.exists() else "not present"
+    print(f"  user      : {user_p} ({user_state})")
+    if ws_p is not None:
+        ws_state = "present" if ws_p.exists() else "not present"
+        print(f"  workspace : {ws_p} ({ws_state})")
+
+
+# Capability IDs we accept for `setup --set`.
+_TOOL_CAP_KEYS = {"python", "jinja2", "gcc", "cmake", "make", "emsdk", "idf", "node", "powershell"}
+_TOOLS_HOME_KEY = "tools_home"
+_WORKSPACE_PATH_KEYS = set(_WORKSPACE_KEY_RESOLVERS.keys())
+
+
+def _handle_setup_set(kv: str, *, workspace: bool) -> None:
+    """Validate and persist a single ``paths[key] = value`` update.
+
+    Rejects unknown keys, empty values, and (for tool caps) paths that fail
+    provider.detect() against a temporary snapshot with the new value.
+    """
+    from tools.toolchain import providers as providers_mod  # noqa: WPS433
+    from tools.toolchain.config import save_user_path, save_workspace_path  # noqa: WPS433
+    from tools.toolchain.resolve import ResolveContext, CAP_ENV_VARS  # noqa: WPS433
+
+    if "=" not in kv:
+        print(f"[wink] Error: --set expects key=value, got {kv!r}.", file=sys.stderr)
+        sys.exit(2)
+    key, _, value = kv.partition("=")
+    key = key.strip()
+    value = value.strip()
+
+    if not key or not value:
+        print("[wink] Error: --set key and value must both be non-empty.", file=sys.stderr)
+        sys.exit(2)
+
+    if key not in _TOOL_CAP_KEYS and key != _TOOLS_HOME_KEY and key not in _WORKSPACE_PATH_KEYS:
+        allowed = sorted(_TOOL_CAP_KEYS | {_TOOLS_HOME_KEY} | _WORKSPACE_PATH_KEYS)
+        print(
+            f"[wink] Error: unknown key {key!r}. Allowed: {', '.join(allowed)}.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+    # Tool cap: run provider.detect() against a context that reflects the
+    # candidate value in the appropriate env var (fallback: workspace/user
+    # override). We do NOT persist first — a bad path is rejected up front.
+    if key in _TOOL_CAP_KEYS:
+        provider = providers_mod.REGISTRY.get(key)
+        if provider is None:
+            print(f"[wink] Error: no provider registered for {key!r}.", file=sys.stderr)
+            sys.exit(2)
+
+        env_var = CAP_ENV_VARS.get(key)
+        # Build a probe context that pretends the new value is set.
+        ctx = ResolveContext.snapshot(_current_workspace_root())
+        # candidate_paths reads env first; workspace_paths next; user_paths last.
+        # Simplest injection: shove the value into the top-priority slot.
+        if env_var:
+            ctx.environ[env_var] = value
+        else:
+            ctx.workspace_paths[key] = value
+        result = provider.detect(ctx)
+        if not result.found:
+            reason = result.reason or "detect() reported not-found"
+            print(
+                f"[wink] Error: validation failed for {key}={value!r}: {reason}. "
+                "Config NOT written.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+    # Workspace path: require the target dir exists.
+    if key in _WORKSPACE_PATH_KEYS:
+        p = Path(value)
+        if not p.exists() or not p.is_dir():
+            print(
+                f"[wink] Error: workspace path {key}={value!r} does not exist or is not a directory. "
+                "Config NOT written.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+    # tools_home: also require the dir exists (or can be created), but do not
+    # try to enforce provider detect — it's a *base* dir, not a specific tool.
+    if key == _TOOLS_HOME_KEY:
+        p = Path(value)
+        if not p.exists():
+            print(
+                f"[wink] Error: tools_home={value!r} does not exist. Create it first "
+                "or point at an existing directory. Config NOT written.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+    # Persist.
+    if workspace:
+        ws_root = _current_workspace_root()
+        if ws_root is None:
+            print("[wink] Error: --workspace requested but no workspace root resolved.", file=sys.stderr)
+            sys.exit(1)
+        target = save_workspace_path(ws_root, key, value)
+    else:
+        target = save_user_path(key, value)
+    print(f"[wink] wrote {key}={value} to {target}")
+
+
+def _handle_setup_install(cap: str) -> None:
+    """Phase-B placeholder for automatic installation.
+
+    Never installs anything today; prints the provider's hint and, for
+    ``idf``, the ADR-0030 "never auto-install" notice.
+    """
+    from tools.toolchain import providers as providers_mod  # noqa: WPS433
+    from tools.toolchain.resolve import ResolveContext  # noqa: WPS433
+
+    if cap not in providers_mod.REGISTRY:
+        print(
+            f"[wink] Error: unknown capability {cap!r}. "
+            f"Known: {', '.join(sorted(providers_mod.REGISTRY))}.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+    provider = providers_mod.REGISTRY[cap]
+    ctx = ResolveContext.snapshot(_current_workspace_root())
+    try:
+        hint_text = provider.hint(ctx)
+    except Exception:  # noqa: BLE001
+        hint_text = "(no hint available)"
+
+    if cap == "idf":
+        print(
+            "[wink] ESP-IDF is never auto-installed by Wink (ADR-0030). "
+            "Please install via Espressif IDF Manager (EIM); "
+            "see wink-micro-os/tools/preinstall.md §3."
+        )
+        print(f"[wink] hint: {hint_text}")
+        return
+
+    print(
+        f"[wink] Automatic install is not yet implemented (phase B). "
+        f"Manual step: {hint_text}"
+    )
+
+
 # ── Main Entry ────────────────────────────────────────────────────────
 
-def main():
+def _build_parser() -> argparse.ArgumentParser:
+    """Build the top-level ArgumentParser (extracted for testability)."""
+    # Parent parser: global flags visible on the top-level command and on
+    # every subcommand via ``parents=[global_parent]``.
+    global_parent = argparse.ArgumentParser(add_help=False)
+    global_parent.add_argument(
+        "--skip-toolchain-check",
+        dest="skip_toolchain_check",
+        action="store_true",
+        help="Bypass toolchain gating (emergency escape hatch; prints WARN).",
+    )
+
     p = argparse.ArgumentParser(
         prog="wink",
-        description="Unified build orchestrator CLI for Wink Micro OS."
+        description="Unified build orchestrator CLI for Wink Micro OS.",
+        parents=[global_parent],
     )
     sub = p.add_subparsers(dest="command", required=True, help="Subcommand to execute")
 
-    p_gen = sub.add_parser("gen", help="Run device tree & config macro codegen")
+    p_gen = sub.add_parser("gen", parents=[global_parent],
+                           help="Run device tree & config macro codegen")
     p_gen.add_argument("--app", default="oled_dashboard",
                        help="App name in samples/ or path to app directory")
     p_gen.set_defaults(handler=handle_gen)
 
-    p_build = sub.add_parser("build", help="Build Host or WASM simulators")
+    p_build = sub.add_parser("build", parents=[global_parent],
+                             help="Build Host or WASM simulators")
     p_build.add_argument("target", choices=["host", "wasm"],
                          help="Build target platform")
     p_build.add_argument("--app", default="oled_dashboard",
@@ -504,22 +837,62 @@ def main():
                               "Default: auto-detect from SDK tree.")
     p_build.set_defaults(handler=handle_build)
 
-    p_esp = sub.add_parser("esp32", help="Build, flash, or monitor ESP32 firmware")
+    p_esp = sub.add_parser("esp32", parents=[global_parent],
+                           help="Build, flash, or monitor ESP32 firmware")
     p_esp.add_argument("--app", default="devkitc_smoke",
                        help="App name in samples/ or path to app directory")
     p_esp.add_argument("idf_args", nargs="*", default=["build"],
                        help="Arguments forwarded to idf.py (e.g. build, flash, monitor)")
     p_esp.set_defaults(handler=handle_esp32)
 
-    p_web = sub.add_parser("web", help="Start Vue Vite frontend web server")
+    p_web = sub.add_parser("web", parents=[global_parent],
+                           help="Start Vue Vite frontend web server")
     p_web.add_argument("--port", type=int, default=5173,
                        help="Vite server port (default: 5173)")
     p_web.set_defaults(handler=handle_web)
 
-    p_test = sub.add_parser("test", help="Run Python and C unit tests")
+    p_test = sub.add_parser("test", parents=[global_parent],
+                            help="Run Python and C unit tests")
     p_test.set_defaults(handler=handle_test)
 
+    p_doctor = sub.add_parser("doctor", parents=[global_parent],
+                              help="Probe every registered toolchain capability")
+    p_doctor.set_defaults(handler=handle_doctor)
+
+    p_setup = sub.add_parser("setup", parents=[global_parent],
+                             help="Inspect or edit ~/.wink/tools.json")
+    p_setup.add_argument("--set", dest="set_kv", metavar="KEY=VALUE", default=None,
+                         help="Validate and write paths[KEY]=VALUE.")
+    p_setup.add_argument("--workspace", action="store_true",
+                         help="With --set, write to <workspace>/.wink/tools.json instead of user config.")
+    p_setup.add_argument("--install", dest="install_cap", metavar="CAP", default=None,
+                         help="Attempt automatic install (phase B; currently prints hint only).")
+    p_setup.set_defaults(handler=handle_setup)
+
+    return p
+
+
+def main():
+    p = _build_parser()
+
+    # argparse quirk: with parents=[global_parent] on subparsers, the
+    # subparser's default (False) for --skip-toolchain-check overwrites the
+    # top-level's value when the flag appears BEFORE the subcommand. Preserve
+    # OR semantics with a manual pre-pass on argv so both orderings work.
+    argv = sys.argv[1:]
+    skip_from_prepass = "--skip-toolchain-check" in argv
+
     args = p.parse_args()
+    if skip_from_prepass:
+        args.skip_toolchain_check = True
+
+    # doctor & setup are diagnostic commands: doctor calls ensure_for("doctor")
+    # from its handler; setup does no gating at all (it must still work when
+    # things are missing — that's the point). Every other command must pass
+    # the ensure_for gate before its handler runs.
+    if args.command not in ("doctor", "setup"):
+        _apply_toolchain_gate(args.command, skip=args.skip_toolchain_check)
+
     args.handler(args)
 
 
