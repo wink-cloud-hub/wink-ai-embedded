@@ -590,6 +590,12 @@ def handle_esp32(args):
 
     build_script = sdk_dir / "tools" / "esp32" / "build.py"
     idf_args = args.idf_args if args.idf_args else ["build"]
+    # Strip a leading '--' if the user used one to disambiguate idf.py flags
+    # that start with '-' (e.g. ``wink esp32 -- -- -p COM3 flash`` produces
+    # idf_args=['--', '-p', 'COM3', 'flash']; pop the '--' so build.py sees
+    # clean argv and can join its own REMAINDER after '-C <fw>').
+    if idf_args and idf_args[0] == "--":
+        idf_args = idf_args[1:]
 
     cmake_app_def = f"-DWINK_APP_DIR={app_dir.as_posix()}"
     cmake_sdk_def = f"-DWINK_SDK_PATH={sdk_dir.as_posix()}"
@@ -1288,7 +1294,13 @@ def _build_parser() -> argparse.ArgumentParser:
     p_esp.add_argument("--app", default="devkitc_smoke",
                        help="App name in samples/ or path to app directory")
     p_esp.add_argument("idf_args", nargs="*", default=["build"],
-                       help="Arguments forwarded to idf.py (e.g. build, flash, monitor)")
+                       help="Arguments forwarded to idf.py. Plain subcommands "
+                            "(build, flash, monitor, fullclean) can be passed "
+                            "directly; for idf.py args that start with '-' "
+                            "(like -p, -v, -b, -D), place '--' before them so "
+                            "argparse stops parsing wink flags, e.g. "
+                            "'wink esp32 --app foo -- -p COM3 flash monitor'. "
+                            "Default: 'build'.")
     p_esp.set_defaults(handler=handle_esp32)
 
     p_web = sub.add_parser("web", parents=[global_parent],
