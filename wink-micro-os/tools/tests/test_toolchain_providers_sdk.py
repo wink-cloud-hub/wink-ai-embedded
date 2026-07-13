@@ -1,4 +1,4 @@
-"""Tests for SDK capability providers (emsdk, idf, node, powershell).
+"""Tests for SDK capability providers (emsdk, idf, node).
 
 All external tool invocations, filesystem probes, and platform lookups are
 mocked so these tests run without any real SDK installed and are
@@ -21,7 +21,6 @@ from tools.toolchain.providers.base import Provider  # noqa: E402
 from tools.toolchain.providers.emsdk import EmsdkProvider  # noqa: E402
 from tools.toolchain.providers.idf import IdfProvider  # noqa: E402
 from tools.toolchain.providers.node import NodeProvider  # noqa: E402
-from tools.toolchain.providers.powershell import PowerShellProvider  # noqa: E402
 from tools.toolchain.resolve import ResolveContext  # noqa: E402
 from tools.toolchain.types import PROBE_TIMEOUT_SEC, UnsupportedError  # noqa: E402
 
@@ -375,48 +374,12 @@ class TestNodeProvider(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# powershell
-# ---------------------------------------------------------------------------
-
-
-class TestPowerShellProvider(unittest.TestCase):
-    def setUp(self):
-        self.p = PowerShellProvider()
-
-    def test_id(self):
-        self.assertEqual(self.p.id, "powershell")
-
-    def test_detect_windows_ok(self):
-        ctx = _make_ctx(os_name="nt")
-        with mock.patch("pathlib.Path.exists", return_value=True):
-            r = self.p.detect(ctx)
-        self.assertTrue(r.found, r.reason)
-        self.assertIn("powershell.exe", str(r.path).lower())
-
-    def test_detect_windows_missing(self):
-        ctx = _make_ctx(os_name="nt")
-        with mock.patch("pathlib.Path.exists", return_value=False):
-            r = self.p.detect(ctx)
-        self.assertFalse(r.found)
-
-    def test_detect_non_windows_fails(self):
-        ctx = _make_ctx(os_name="posix")
-        r = self.p.detect(ctx)
-        self.assertFalse(r.found)
-        self.assertIn("Windows", r.reason)
-
-    def test_hint_non_windows(self):
-        h = self.p.hint(_make_ctx(os_name="posix"))
-        self.assertIn("Windows", h)
-
-
-# ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
 
 
 class TestRegistry(unittest.TestCase):
-    def test_all_nine_providers_registered(self):
+    def test_all_eight_providers_registered(self):
         expected = (
             "python",
             "jinja2",
@@ -426,7 +389,6 @@ class TestRegistry(unittest.TestCase):
             "emsdk",
             "idf",
             "node",
-            "powershell",
         )
         for cap_id in expected:
             self.assertIn(cap_id, REGISTRY, f"missing {cap_id!r}")

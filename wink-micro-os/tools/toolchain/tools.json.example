@@ -16,7 +16,6 @@
     "jinja2": null,
     "emsdk": "D:/software/embedded/emsdk",
     "idf": "D:/software/embedded/esp/v6.0.1/esp-idf",
-    "node": null,
-    "powershell": null
+    "node": null
   }
 }

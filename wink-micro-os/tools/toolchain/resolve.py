@@ -33,7 +33,6 @@ from .config import (
 #
 # Caps not present here have no dedicated env override:
 #   - cmake, make, node    -> located via PATH by their provider.
-#   - powershell           -> has a fixed platform path.
 #   - jinja2               -> resolved as an importable Python package.
 CAP_ENV_VARS: dict[str, str] = {
     "gcc":    "WINK_GCC_PREFIX",

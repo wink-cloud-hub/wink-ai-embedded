@@ -95,7 +95,6 @@ def _all_found_registry(gcc_bin: str = "C:/tools/mingw/bin/gcc.exe",
             ),
         ),
         "node":       _FakeProvider("node",       _found(node_bin, "20.11.1")),
-        "powershell": _FakeProvider("powershell", _found("C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe", "5.1")),
     }
 
 

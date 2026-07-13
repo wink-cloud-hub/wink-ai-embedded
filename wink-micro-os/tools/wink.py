@@ -690,7 +690,6 @@ _DOCTOR_PROBE_ORDER: list[str] = [
     "gcc",
     "node",
     "emsdk",
-    "powershell",
     "idf",
 ]
 
@@ -1079,7 +1078,7 @@ def _handle_setup_noargs() -> None:
 
 
 # Capability IDs we accept for `setup --set`.
-_TOOL_CAP_KEYS = {"python", "jinja2", "gcc", "cmake", "make", "emsdk", "idf", "node", "powershell"}
+_TOOL_CAP_KEYS = {"python", "jinja2", "gcc", "cmake", "make", "emsdk", "idf", "node"}
 _TOOLS_HOME_KEY = "tools_home"
 _WORKSPACE_PATH_KEYS = set(_WORKSPACE_KEY_RESOLVERS.keys())
 

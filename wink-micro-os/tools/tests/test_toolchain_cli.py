@@ -266,7 +266,6 @@ class TestDoctorStreaming(unittest.TestCase):
             "gcc":        _FakeProvider("gcc", _found("gcc.exe", "16.1.0")),
             "node":       _FakeProvider("node", _found("node.exe", "22.22.2")),
             "emsdk":      _FakeProvider("emsdk", _found("emsdk", "6.0.1")),
-            "powershell": _FakeProvider("powershell", _found(r"C:\Windows\ps.exe", "5.1")),
             "idf":        _FakeProvider("idf", _found("esp-idf", "6.0.1")),
         }
 
@@ -287,7 +286,7 @@ class TestDoctorStreaming(unittest.TestCase):
         for cap_id in registry:
             self.assertIn(cap_id, out)
         self.assertIn("Summary:", out)
-        self.assertIn("9 checked, 9 installed, 0 missing", out)
+        self.assertIn("8 checked, 8 installed, 0 missing", out)
 
     def test_exit_one_when_required_cap_missing(self):
         registry = self._all_found_registry()
@@ -301,7 +300,7 @@ class TestDoctorStreaming(unittest.TestCase):
             self.assertEqual(cm.exception.code, 1)
         out = _strip_ansi(buf.getvalue())
         self.assertIn("Summary:", out)
-        self.assertIn("8 installed", out)
+        self.assertIn("7 installed", out)
         self.assertIn("1 missing", out)
         # And the numbered hint list surfaces the missing cap.
         self.assertIn("gcc", out)
