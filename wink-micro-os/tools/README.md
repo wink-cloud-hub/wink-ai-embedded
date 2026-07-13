@@ -17,12 +17,13 @@ Lives under `wink-micro-os/tools/` so peripheral/driver work stays in one tree.
 | `codegen/` | Generators: device tree, `wink_config.h`, PT state helpers |
 | `lint/` | Build/test gates (PT footguns, header self-containment, log fmt) |
 | `toolchain/` | Toolchain detect / hint / (later) install; drives `doctor` + `setup` and gates every non-diagnostic command via `ensure_for(profile)` (ADR-0029/0030). See `toolchain/tools.json.example` |
+| `esp32/` | `activate.py` (harvest IDF env: hot PATH → EIM profile via `powershell.exe` → `export.ps1`/`export.sh` fallback), `build.py` (strip MSYS/MinGW/EMSDK contamination and run `idf.py -C esp32_firmware …` in sanitized env, `PYTHONUTF8=1` enforced), `generate_app_sources.py` (scan `samples/<app>/*.c` → `esp32_firmware/main/app_sources.cmake`, invoked automatically at CMake configure). Entry point: `python -m tools.esp32.build`. |
 
 ## Workspace Resolution
 
 Workspace layout (frontend / esp32_firmware / apps) is resolved via:
 
-1. `WINK_SDK_PATH` / `WINK_FRONTEND_PATH` / `WINK_ESP32_PATH` / `WINK_SCRIPTS_PATH`
+1. `WINK_SDK_PATH` / `WINK_FRONTEND_PATH` / `WINK_ESP32_PATH` / `WINK_SCRIPTS_PATH` (legacy — no longer required for `esp32`)
 2. `wink-workspace.json` (`sdk_dir`, `frontend_dir`, …)
 3. Defaults: SDK = this package; siblings = `../embedded-frontend`, `../esp32_firmware`, …
 
@@ -32,8 +33,7 @@ Example `wink-workspace.json`:
 {
   "sdk_dir": "path/to/wink-micro-os",
   "frontend_dir": "path/to/embedded-frontend",
-  "esp32_dir": "path/to/esp32_firmware",
-  "scripts_dir": "path/to/scripts"
+  "esp32_dir": "path/to/esp32_firmware"
 }
 ```
 

@@ -14,7 +14,9 @@ python wink-micro-os/tools/wink.py <command> [options]
 python wink-micro-os/tools/wink.py doctor
 ```
 
-路径类变量（`WINK_*`）在 monorepo 内通常可省略；消费解压后的 SDK tarball 或拆目录布局时才必须设置。也可用根目录或 App 侧的 `wink-workspace.json`（`sdk_dir` / `frontend_dir` / `esp32_dir` / `scripts_dir`）替代，或用 `wink setup --set` 写入 `~/.wink/tools.json`（含绝对路径，`.gitignore` 已排除）。
+路径类变量（`WINK_*`）在 monorepo 内通常可省略；消费解压后的 SDK tarball 或拆目录布局时才必须设置。也可用根目录或 App 侧的 `wink-workspace.json`（`sdk_dir` / `frontend_dir` / `esp32_dir`）替代，或用 `wink setup --set` 写入 `~/.wink/tools.json`（含绝对路径，`.gitignore` 已排除）。
+
+> `scripts_dir` 在 Python 迁移后不再为 esp32 所必需，仅保留向后兼容（供 `run-tests.ps1` 等遗留脚本使用）。
 
 ---
 
@@ -113,22 +115,23 @@ python wink-micro-os/tools/wink.py build wasm --app <name|path>
 
 调用链：
 
-1. `esp32_firmware/generate_app_sources.ps1`
-2. `scripts/build_esp32.ps1`（清理 PATH 后调用 `idf.py -C esp32_firmware …`）
+1. `wink-micro-os/tools/esp32/generate_app_sources.py`（CMake configure 阶段自动触发；扫描 app 源文件生成 `main/app_sources.cmake`）
+2. `wink-micro-os/tools/esp32/activate.py`（自动探测/采集 IDF 环境：优先使用当前已激活 shell，否则在 Windows 上通过 PowerShell 子进程 source EIM profile，fallback 到 `IDF_PATH/export.ps1`/`export.sh`）
+3. `wink-micro-os/tools/esp32/build.py`（剥离 MSYS/MINGW/EMSDK 污染，强制 `PYTHONUTF8=1`，调用 `<IDF venv python> <IDF_PATH>/tools/idf.py -C esp32_firmware <args>`）
 
 ### 工具
 
 | 工具 | 作用 |
 |------|------|
 | **ESP-IDF v6.0.1**（本仓锁定） | `idf.py` + xtensa 工具链 |
-| **PowerShell** | 执行上述 `.ps1`（Windows 必选） |
+| **PowerShell**（Windows 可选） | `activate.py` 仅在需要从 EIM profile 采集环境时才调用 System32 中的 powershell.exe；已激活 IDF shell 不需要 |
 | **Python（IDF 自带 venv）** | IDF 构建用，可与系统 Python 不同 |
 | **串口驱动** | 仅 flash / monitor 需要（如 `COM3`） |
 
 ### 环境变量
 
 `wink.py esp32` 经 `ensure_for("esp32")` 注入 `IDF_PATH`（以及探测到的 `IDF_TOOLS_PATH` 等），并强制 `PYTHONUTF8=1`。  
-`scripts/build_esp32.ps1` **不再硬编码** Espressif 绝对路径：若当前进程已有有效 `IDF_PATH` **且** `idf.py` 在 PATH 上，则直接使用；否则自动尝试 source EIM profile（`C:\Espressif\tools\Microsoft.v6*.PowerShell_profile.ps1`）或 `$IDF_PATH\export.ps1`。手工跑 `idf.py` 时仍建议先激活 EIM profile。
+`tools/esp32/build.py` **不再硬编码** Espressif 绝对路径：若当前进程已有有效 `IDF_PATH` **且** `idf.py` 在 PATH 上，则直接使用；否则由 `activate.py` 在 Windows 上自动 source EIM profile（`C:\Espressif\tools\Microsoft.v6*.PowerShell_profile.ps1`），fallback 到 `$IDF_PATH\export.ps1` / `$IDF_PATH/export.sh`。手工跑 `idf.py` 时仍建议先激活 EIM profile；跑 `wink.py esp32` 则不需要。
 
 | 变量 | 说明 / 本机脚本典型值 |
 |------|----------------------|
@@ -141,7 +144,7 @@ python wink-micro-os/tools/wink.py build wasm --app <name|path>
 | `WINK_APP_DIR` | `wink.py` 注入给 CMake（App 目录） |
 | `WINK_SDK_PATH` | `wink.py` 注入给 CMake（SDK 根） |
 | `WINK_ESP32_PATH` | 指向 `esp32_firmware`（非 monorepo 时） |
-| `WINK_SCRIPTS_PATH` | 指向含 `build_esp32.ps1` 的 `scripts/`（非 monorepo 时） |
+| `WINK_SCRIPTS_PATH` | （遗留）指向 `scripts/` 目录；esp32 构建不再需要，仅保留给 `run-tests.ps1` 等遗留脚本 |
 
 也可：
 
@@ -151,9 +154,9 @@ python wink-micro-os/tools/wink.py setup --set esp32_dir=D:/path/to/esp32_firmwa
 python wink-micro-os/tools/wink.py setup --set idf=D:/software/embedded/esp/v6.0.1/esp-idf
 ```
 
-> 注意：仅设置 `IDF_PATH` 而不激活 shell 时，`build_esp32.ps1` 会继续尝试 EIM profile，以便把 `idf.py` 放进 PATH。
+> 注意：仅设置 `IDF_PATH` 而不激活 shell 时，`tools/esp32/activate.py` 会继续尝试 EIM profile / `export.ps1|sh`，以便把 `idf.py` 放进 PATH。
 
-> `build_esp32.ps1` 会清掉 `EMSDK` / `MSYSTEM` 等，避免 MinGW / emsdk 污染 IDF PATH（ESP-IDF v6 不再支持从 MSYS/MinGW 直接调用）。
+> `tools/esp32/build.py` 会剥离 `EMSDK` / `MSYSTEM` / MinGW bin 等，避免 MinGW / emsdk 污染 IDF PATH（ESP-IDF v6 不再支持从 MSYS/MinGW 直接调用）。
 
 手工激活等价于：
 
@@ -197,7 +200,7 @@ python wink-micro-os/tools/wink.py esp32 --app <name|path> -- -p COM3 flash moni
 | `gen` | Python + Jinja2 |
 | `build host` / `test`（host 部分） | Python + Jinja2 + gcc + cmake + mingw32-make |
 | `build wasm` | 上表 Host 基础 + **已激活的 emsdk**（`emcmake` / `emcc`） |
-| `esp32` | PowerShell + **ESP-IDF 6.0.1**（用户自装，永不自动安装）+ `esp32_firmware` + `scripts/build_esp32.ps1` |
+| `esp32` | ESP-IDF 6.0.1（用户自装，ADR-0030 永不自动安装）+ `esp32_firmware`；`wink.py esp32` 自动采集 IDF 环境 |
 | `web` | Node / npm + `embedded-frontend`（与固件/仿真编译无关） |
 
 更完整的 CLI 用法与 SDK 打包消费说明见同目录 [README.md](./README.md)。
