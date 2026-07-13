@@ -1,15 +1,19 @@
 """Windows PowerShell 5.1 capability provider (cap id: ``powershell``).
 
-Phase A stance
---------------
-esp32 builds are driven by ``scripts/build_esp32.ps1``, which requires
-Windows PowerShell 5.1 (the ``powershell.exe`` shipped at
-``C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\``, distinct from
-cross-platform ``pwsh``). Non-Windows hosts fail detection: esp32 support
-is Windows-only in phase A.
+Phase B stance (post Python migration)
+--------------------------------------
+The ESP32 build pipeline (``tools/esp32/{activate,build,generate_app_sources}.py``)
+no longer declares ``powershell`` as a required capability. It is used
+**only** on Windows by ``activate.py`` as an internal fallback to harvest
+env vars from an EIM PowerShell profile when the current shell is not
+already activated. On non-Windows hosts, the ``idf`` provider itself
+returns a clear "Windows-only in phase A" detection failure.
 
-Detection is a fixed-path existence check — no ``--version`` probe is
-needed since Windows always ships PowerShell 5.1 at this exact location.
+PowerShell 5.1 is the inbox edition shipped at
+``C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe``
+(distinct from cross-platform ``pwsh``). Detection is a fixed-path
+existence check — no ``--version`` probe is needed since Windows always
+ships PowerShell 5.1 at this exact location.
 
 ``install()`` inherits the base ``UnsupportedError``.
 """
