@@ -5,13 +5,13 @@
   Builds and runs all host tests with WinLibs MinGW (gcc) + cmake on your PC.
   No real hardware / browser needed.
 
-  Default: single build in build-test/ (fast, daily iteration).
+  Default: single build in ../build/test/ (fast, daily iteration).
 
   With -Full (or -Sanitize), runs the extended test matrix that Phase 1.5 DoD
   requires as a regression net for PAL IRQ contracts:
 
-    Pass 1  build-test/         default host build (no sanitizers)
-    Pass 2  build-test-san/     -fsanitize=undefined + -Wcast-function-type
+    Pass 1  ../build/test/         default host build (no sanitizers)
+    Pass 2  ../build/test-san/     -fsanitize=undefined + -Wcast-function-type
                                 (UBSan trap-on-error, plus GCC's static approximation
                                  of clang -fsanitize=cfi-icall)
 
@@ -111,7 +111,7 @@ function Invoke-TestPass {
 
 # ---- 5. Execute matrix ----
 $passes = @()
-$passes += @{ Label='default'; Dir='build-test';       Flags=''; Enabled=$true }
+$passes += @{ Label='default'; Dir='../build/test';       Flags=''; Enabled=$true }
 # NOTE: ADR-0018 (2026-07-02) removed PAL_IRQ_PRIO_REALTIME. The historical
 #       -Optin pass with -DWINK_HOST_ALLOW_REALTIME_FOR_TESTING=1 is retired;
 #       no code path consumes that macro anymore.
@@ -134,7 +134,7 @@ $passes += @{ Label='default'; Dir='build-test';       Flags=''; Enabled=$true }
 #       unavailable in the current WinLibs MinGW GCC 16.1 toolchain. Switch to clang
 #       (or add a second sanitize matrix pass) if that check is required.
 # NOTE: -Wcast-function-type-strict does NOT exist in GCC; that spelling is clang-only.
-$passes += @{ Label='sanitize'; Dir='build-test-san';  Flags='-fsanitize=undefined -fsanitize-undefined-trap-on-error -Wcast-function-type -Werror=cast-function-type'; Enabled=$Sanitize }
+$passes += @{ Label='sanitize'; Dir='../build/test-san';  Flags='-fsanitize=undefined -fsanitize-undefined-trap-on-error -Wcast-function-type -Werror=cast-function-type'; Enabled=$Sanitize }
 
 $overallRc = 0
 foreach ($p in $passes) {
@@ -172,7 +172,7 @@ if ($WithWasm) {
             $oldPreference = $ErrorActionPreference
             $ErrorActionPreference = 'Continue'
             try {
-                $wasmBuildDir = "build-wasm"
+                $wasmBuildDir = "../build/wasm"
                 if ($Clean -and (Test-Path $wasmBuildDir)) {
                     Write-Host "-> Cleaning $wasmBuildDir ..." -ForegroundColor Yellow
                     Remove-Item -Recurse -Force $wasmBuildDir
