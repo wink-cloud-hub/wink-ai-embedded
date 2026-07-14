@@ -13,7 +13,7 @@
  * Verifies on bare metal (no wiring required):
  *   S1  2s telemetry                (BAL: wink_telemetry_default_start)
  *   S2  LED blink                    (common: wink_led_blink_start)
- *   S3  Boot-button debounce         (BAL: wink_button_helper_start)
+ *   S3  Boot-button debounce         (BAL: wink_button_enable_events, soft_poll)
  *   S4  GPIO ISR edge count          (selftest: gpio.isr_roundtrip)
  *   S5  PWM router freq isolation    (selftest: pwm_router.freq_isolation)
  *   S6  I2C bus scan (no-panic)      (selftest: i2c.bus_scan)
@@ -31,7 +31,7 @@
 #include "wink_selftest.h"
 #include "wink_fault.h"
 #include "wink_blink_helper.h"
-#include "wink_button_helper.h"
+#include "wink_button_events.h"
 #include "sensor/wink_sonar_helper.h"
 #include "wink_telemetry_helper.h"
 #include "wink_blocking_region.h"
@@ -69,17 +69,23 @@ static wink_status_t app_init_status(void)
     /* 设备树初始化 */
     WINK_TRY(wink_device_tree_init());
 
-    /* S3: 启动 boot_button 10ms auto-poll */
+    /* S3: 启动 boot_button 事件产出（ADR-0032 B 类；soft_poll 后端） */
 #ifdef BOOT_BUTTON_AUTO_POLL_MS
-    wink_status_t st_s3 = wink_button_helper_start(&boot_button, BOOT_BUTTON_AUTO_POLL_MS);
+    static const wink_button_event_config_t s3_cfg = {
+        .drive           = WINK_BUTTON_DRIVE_SOFT_POLL,
+        .auto_poll_ms    = BOOT_BUTTON_AUTO_POLL_MS,
+        .debounce_ms     = 20u,   /* ADR-0031 default */
+        .wake_from_sleep = false,
+    };
+    wink_status_t st_s3 = wink_button_enable_events(&boot_button, &s3_cfg);
     if (st_s3 == WINK_OK) {
-        LOG_I("\nS3: PASS (button poll helper, period=%ums)", (unsigned)BOOT_BUTTON_AUTO_POLL_MS);
+        LOG_I("\nS3: PASS (button events enabled, period=%ums)", (unsigned)BOOT_BUTTON_AUTO_POLL_MS);
     } else {
-        LOG_E("\nS3: FAIL (button poll helper, status=%d)", (int)st_s3);
+        LOG_E("\nS3: FAIL (button events enable, status=%d)", (int)st_s3);
         return st_s3;
     }
 #else
-    LOG_I("\nS3: SKIP (button poll not configured)");
+    LOG_I("\nS3: SKIP (button events not configured)");
 #endif
 
     /* S8: 绑定业务回调 */
