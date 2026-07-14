@@ -79,8 +79,10 @@ Field notes:
 - `auto_poll_ms` is **required for soft_poll**; on ESP32 `gpio_irq` it is
   ignored (codegen WARN) and only used as the fallback poll period when
   `gpio_irq` degrades on host/wasm.
-- `debounce_ms` is optional and defaults to `20`; `0` disables debounce
-  (expert only). Both backends honour it.
+- `debounce_ms` is optional and defaults to `20`; `0` leaves the DAL
+  default threshold (≈30 ms at 10 ms tick) unchanged (this branch does
+  not support turning debounce off entirely — pass a small positive
+  value for faster edges). Both backends honour it.
 - `wake_from_sleep` is only meaningful with `gpio_irq` on ESP32.
 - Opt in to strict CI (fail-fast instead of degrade) with
   `-DWINK_BUTTON_IRQ_STRICT=1`.
