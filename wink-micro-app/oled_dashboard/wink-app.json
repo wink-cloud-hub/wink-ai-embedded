@@ -6,7 +6,8 @@
       "type": "button",
       "pin": 10,
       "active_low": true,
-      "auto_poll_ms": 10
+      "auto_poll_ms": 10,
+      "debounce_ms": 20
     },
     "status_led": {
       "type": "led",
