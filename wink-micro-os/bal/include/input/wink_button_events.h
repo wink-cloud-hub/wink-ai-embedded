@@ -135,6 +135,18 @@ wink_status_t wink_button_events_start(dal_button_t *btn,
  */
 void wink_button_events_stop(dal_button_t *btn);
 
+/**
+ * @brief Whether the current target supports the GPIO-IRQ backend.
+ *
+ * True on ESP32 (S3+); false on host / wasm / baremetal where we degrade
+ * to SOFT_POLL. Callers can query this before choosing `drive` in cfg,
+ * but the normal path is to just set `drive = WINK_BUTTON_DRIVE_GPIO_IRQ`
+ * and let `wink_button_events_start` handle the degrade transparently.
+ *
+ * Layering: returns bool only — no pal_* types leak through the public API.
+ */
+bool wink_button_events_irq_supported(void);
+
 #ifdef __cplusplus
 }
 #endif

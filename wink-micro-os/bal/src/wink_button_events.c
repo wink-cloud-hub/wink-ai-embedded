@@ -1,31 +1,29 @@
 /**
  * @file wink_button_events.c
- * @brief BAL button event stream — soft-poll implementation (S2).
+ * @brief BAL button event stream — soft-poll implementation + IRQ dispatch shim (S3).
  *
- * This file owns the slot pool, the periodic LIGHT tick, and the event
- * dispatch shim that translates DAL edge events into `WINK_EVENT_BUTTON_*`
- * postings on the runtime event queue.
+ * This file owns the slot pool, the periodic LIGHT tick, the shared event
+ * dispatch state machine, and start/stop routing. The GPIO-IRQ backend
+ * lives in wink_button_events_irq.c (target-gated) and shares state
+ * through wink_button_events_internal.h.
  *
- * The soft-poll path is exactly the logic that used to live in
- * `wink_button_helper.c`; `wink_button_helper_*` is now a thin wrapper
- * that builds a SOFT_POLL cfg and calls `wink_button_events_start`.
- *
- * GPIO IRQ path (S3): when cfg->drive == GPIO_IRQ, this file currently
- * degrades to a soft-poll path so cross-target samples keep working.
- * The real IRQ registration and the strict-mode warn (WINK_WARN_BUTTON_
- * IRQ_DEGRADED) land in S3/S4.
+ * S2 shipped the soft-poll body here; S3 factors the PRESS/RELEASE/
+ * LONG_PRESS state machine into wink_button_events_dispatch_stable() so
+ * both the poll tick and the IRQ debounce timeout can drive the same
+ * event postings.
  *
  * Copyright (c) 2026 Wink-AI.
  */
 #define LOG_TAG "bal.btn"
 
 #include "wink_button_events.h"
+#include "wink_button_events_internal.h"
 #include "wink_tasks.h"
 #include "wink_status.h"
 #include "wink_event.h"
 #include "wink_pt_debug.h"  /* WINK_ASSERT_NONBLOCKING() (ADR-0017 layer 3) */
 #include "pal_log.h"
-#include "pal_osal.h"       /* pal_os_get_us() for execution-time budget watchdog */
+#include "pal_osal.h"       /* pal_os_get_us() / pal_os_get_ms() for state machine + budget */
 
 #include <stddef.h>
 
@@ -33,24 +31,14 @@
  * helper.c predecessor for the rationale — same 100 us envelope. */
 #define WINK_BTN_POLL_BUDGET_US  100u
 
-/* ── per-button slot ────────────────────────────────────────────
- * A slot with btn == NULL is free. period_h is only meaningful when
- * btn != NULL. BSS zero-init gives us btn=NULL for free-slot state. */
-typedef struct {
-    dal_button_t           *btn;
-    wink_periodic_handle_t  period_h;
-    dal_button_event_cb     orig_cb;
-    void                   *orig_cb_ctx;
-} button_event_slot_t;
-
-static button_event_slot_t s_slots[WINK_BUTTON_EVENTS_MAX];
+/* Slot pool (definition; internal header has `extern` decl). */
+button_event_slot_t g_button_event_slots[WINK_BUTTON_EVENTS_MAX];
 
 /* ── internal helpers ─────────────────────────────────────────── */
 
-/* Find slot index currently tracking @p btn, or -1 if not tracked. */
-static int find_slot_by_btn(const dal_button_t *btn) {
+int wink_button_events_find_slot(const dal_button_t *btn) {
     for (int i = 0; i < WINK_BUTTON_EVENTS_MAX; i++) {
-        if (s_slots[i].btn == btn) {
+        if (g_button_event_slots[i].btn == btn) {
             return i;
         }
     }
@@ -60,14 +48,99 @@ static int find_slot_by_btn(const dal_button_t *btn) {
 /* Find a free slot index (btn == NULL), or -1 if pool exhausted. */
 static int find_free_slot(void) {
     for (int i = 0; i < WINK_BUTTON_EVENTS_MAX; i++) {
-        if (s_slots[i].btn == NULL) {
+        if (g_button_event_slots[i].btn == NULL) {
             return i;
         }
     }
     return -1;
 }
 
-/* ── periodic callback (LIGHT path — void return, void* ctx) ─── */
+/* ── shared event dispatch (task context, called by poll tick + IRQ deb) ── */
+
+/* Post one WINK_EVENT_BUTTON_* to the runtime event queue. Also invokes
+ * the slot's captured orig_cb (if any) — this is the shim that used to
+ * live inline in the S2 dispatch adapter. */
+static void post_button_event(button_event_slot_t *s, dal_button_event_t evt,
+                              uint64_t now_ms)
+{
+    if (s->orig_cb != NULL) {
+        s->orig_cb(evt, s->orig_cb_ctx);
+    }
+    wink_event_t event;
+    event.device    = s->btn;
+    event.timestamp = now_ms;
+    event.param     = (uint32_t)evt;
+    switch (evt) {
+        case DAL_BUTTON_EVT_PRESS:      event.type = WINK_EVENT_BUTTON_PRESSED;    break;
+        case DAL_BUTTON_EVT_RELEASE:    event.type = WINK_EVENT_BUTTON_RELEASED;   break;
+        case DAL_BUTTON_EVT_LONG_PRESS: event.type = WINK_EVENT_BUTTON_LONG_PRESS; break;
+        default: return;
+    }
+    WINK_IGNORE_RESULT(wink_event_post(&event));
+}
+
+/* Forward decl: long-press timer cancel helper (implemented in IRQ TU
+ * when ESP_PLATFORM, otherwise a no-op stub weakly linked). */
+extern void wink_button_events_irq_cancel_longpress(button_event_slot_t *s);
+extern void wink_button_events_irq_arm_longpress(button_event_slot_t *s);
+
+void wink_button_events_dispatch_stable(button_event_slot_t *s,
+                                        bool stable_pressed,
+                                        uint64_t now_ms)
+{
+    /* Edge detection: only fire on transitions. */
+    if (stable_pressed != s->last_pressed) {
+        s->last_pressed = stable_pressed;
+        if (stable_pressed) {
+            /* Fresh press: clear long-press latch and arm the long-press
+             * timer if we have one (IRQ backend); poll backend handles
+             * long-press through DAL's own poll-driven timer. */
+            s->long_press_fired = false;
+            post_button_event(s, DAL_BUTTON_EVT_PRESS, now_ms);
+            if (s->drive == WINK_BUTTON_DRIVE_GPIO_IRQ) {
+                wink_button_events_irq_arm_longpress(s);
+            }
+        } else {
+            /* Release: cancel pending long-press. */
+            if (s->drive == WINK_BUTTON_DRIVE_GPIO_IRQ) {
+                wink_button_events_irq_cancel_longpress(s);
+            }
+            s->long_press_fired = false;
+            post_button_event(s, DAL_BUTTON_EVT_RELEASE, now_ms);
+        }
+    }
+}
+
+void wink_button_events_dispatch_long_press(button_event_slot_t *s)
+{
+    /* Called from the IRQ long-press one-shot timer callback. Only fire
+     * if the slot is still held (in case a release raced the timer). */
+    if (!s->last_pressed || s->long_press_fired) { return; }
+    s->long_press_fired = true;
+    post_button_event(s, DAL_BUTTON_EVT_LONG_PRESS, pal_os_get_ms());
+}
+
+/* ── periodic callback (LIGHT path — SOFT_POLL) ────────────────
+ * NOTE: For SOFT_POLL we still delegate to dal_button_poll(), which runs
+ * its own event callback (registered via dal_button_on_event) to drive
+ * event posting. We deliberately do NOT double-dispatch by also calling
+ * wink_button_events_dispatch_stable here — that would duplicate PRESS
+ * events. The registered DAL callback (button_events_dispatch_dal_cb) is
+ * the bridge; it forwards each DAL event into the same post_button_event
+ * used by the IRQ path. */
+static void button_events_dispatch_dal_cb(dal_button_event_t evt, void *ctx) {
+    dal_button_t *btn = (dal_button_t *)ctx;
+    int idx = wink_button_events_find_slot(btn);
+    if (idx < 0) { return; }
+    button_event_slot_t *s = &g_button_event_slots[idx];
+    /* Keep last_pressed in sync so LONG_PRESS-cancel-on-release logic
+     * (if any listener wants it) works cross-backend. */
+    if (evt == DAL_BUTTON_EVT_PRESS)   { s->last_pressed = true;  s->long_press_fired = false; }
+    if (evt == DAL_BUTTON_EVT_RELEASE) { s->last_pressed = false; s->long_press_fired = false; }
+    if (evt == DAL_BUTTON_EVT_LONG_PRESS) { s->long_press_fired = true; }
+    post_button_event(s, evt, pal_os_get_ms());
+}
+
 static void btn_poll_tick(void *arg) {
     /* ADR-0017 layer 3: if a DAL blocking API is called from within this
      * LIGHT (soft-timer) dispatch, WINK_ASSERT_NONBLOCKING escalates to a
@@ -90,39 +163,11 @@ static void btn_poll_tick(void *arg) {
     }
 }
 
-/* ── button event posting callback ────────────────────────────── */
-static void button_events_dispatch(dal_button_event_t evt, void *ctx) {
-    dal_button_t *btn = (dal_button_t *)ctx;
-    /* Safely invoke original callback if registered */
-    int idx = find_slot_by_btn(btn);
-    if (idx >= 0) {
-        button_event_slot_t *slot = &s_slots[idx];
-        if (slot->orig_cb != NULL) {
-            slot->orig_cb(evt, slot->orig_cb_ctx);
-        }
-    }
-
-    wink_event_t event;
-    event.device = btn;
-    event.timestamp = pal_os_get_ms();
-    event.param = (uint32_t)evt;
-    if (evt == DAL_BUTTON_EVT_PRESS) {
-        event.type = WINK_EVENT_BUTTON_PRESSED;
-    } else if (evt == DAL_BUTTON_EVT_RELEASE) {
-        event.type = WINK_EVENT_BUTTON_RELEASED;
-    } else if (evt == DAL_BUTTON_EVT_LONG_PRESS) {
-        event.type = WINK_EVENT_BUTTON_LONG_PRESS;
-    } else {
-        return;
-    }
-    WINK_IGNORE_RESULT(wink_event_post(&event));
-}
-
 /* ── S2 degrade helper: pick an effective soft_poll period ─────
  * When cfg->drive == GPIO_IRQ but the runtime cannot yet honour an IRQ
- * path (S3 pending), we fall back to periodic polling. If the JSON did
- * not supply auto_poll_ms (0), pick something reasonable derived from
- * debounce_ms so the fallback is not silently sluggish.
+ * path (S3 pending on non-ESP32 targets), we fall back to periodic polling.
+ * If the JSON did not supply auto_poll_ms (0), pick something reasonable
+ * derived from debounce_ms so the fallback is not silently sluggish.
  * Formula matches S4 default: max(debounce_ms, 10 ms). */
 static uint32_t effective_poll_ms(const wink_button_event_config_t *cfg) {
     if (cfg->auto_poll_ms != 0u) {
@@ -141,12 +186,18 @@ wink_status_t wink_button_events_start(dal_button_t *btn,
         return WINK_ERR_INVALID_ARG;
     }
 
-    /* S2 degrade frame: pretend GPIO_IRQ is SOFT_POLL. S4 adds the trace
-     * warn WINK_WARN_BUTTON_IRQ_DEGRADED + strict-mode failure. */
-    uint32_t poll_ms;
+    /* S3: honour GPIO_IRQ only when the target actually supports it. Non-
+     * ESP32 targets return false from irq_supported() and we degrade to
+     * SOFT_POLL as in S2. S4 will layer a warn-code on top of this degrade. */
+    bool use_irq = false;
+    uint32_t poll_ms = 0;
     if (cfg->drive == WINK_BUTTON_DRIVE_GPIO_IRQ) {
-        LOG_D("gpio_irq requested but not yet available; degrading to soft_poll");
-        poll_ms = effective_poll_ms(cfg);
+        if (wink_button_events_irq_supported()) {
+            use_irq = true;
+        } else {
+            LOG_D("gpio_irq requested but not yet available; degrading to soft_poll");
+            poll_ms = effective_poll_ms(cfg);
+        }
     } else {
         /* SOFT_POLL: auto_poll_ms is mandatory (codegen already validates,
          * belt-and-braces here for hand-authored callers). */
@@ -157,7 +208,7 @@ wink_status_t wink_button_events_start(dal_button_t *btn,
         poll_ms = cfg->auto_poll_ms;
     }
 
-    if (find_slot_by_btn(btn) >= 0) {
+    if (wink_button_events_find_slot(btn) >= 0) {
         LOG_D("start: btn=%p already tracked", (void *)btn);
         return WINK_ERR_INVALID_STATE;
     }
@@ -177,11 +228,19 @@ wink_status_t wink_button_events_start(dal_button_t *btn,
         return WINK_ERR_NOT_INITIALIZED;
     }
 
-    button_event_slot_t *ctx = &s_slots[free_idx];
-    ctx->btn      = btn;
-    ctx->period_h = WINK_PERIODIC_INVALID;
-    ctx->orig_cb  = btn->event_cb;
-    ctx->orig_cb_ctx = btn->event_cb_ctx;
+    button_event_slot_t *ctx = &g_button_event_slots[free_idx];
+    ctx->btn          = btn;
+    ctx->period_h     = WINK_PERIODIC_INVALID;
+    ctx->orig_cb      = btn->event_cb;
+    ctx->orig_cb_ctx  = btn->event_cb_ctx;
+    ctx->drive        = use_irq ? WINK_BUTTON_DRIVE_GPIO_IRQ
+                                : WINK_BUTTON_DRIVE_SOFT_POLL;
+    ctx->debounce_ms  = cfg->debounce_ms;
+    ctx->long_press_ms = 0u; /* filled by IRQ arm; poll backend uses DAL's own */
+    ctx->irq_debounce_h  = -1;
+    ctx->irq_longpress_h = -1;
+    ctx->last_pressed    = pressed;
+    ctx->long_press_fired = false;
 
     /* Apply cfg->debounce_ms to the DAL button (0 = leave DAL default alone
      * so callers that omit the field don't accidentally re-tune below the
@@ -195,11 +254,24 @@ wink_status_t wink_button_events_start(dal_button_t *btn,
         }
     }
 
-    /* Register dispatch callback that posts events to the event queue. */
-    probe_st = dal_button_on_event(btn, button_events_dispatch, btn);
+    if (use_irq) {
+        /* IRQ backend: arm hardware ISR + timers. No periodic poll. */
+        wink_status_t arm_st = wink_button_events_irq_arm(ctx, cfg);
+        if (wink_status_is_error(arm_st)) {
+            LOG_D("start: irq_arm failed: %d — rolling back to slot-free", (int)arm_st);
+            ctx->btn = NULL;
+            return arm_st;
+        }
+        /* wake_from_sleep: TODO(S3 follow-up) — RTC-GPIO PAL API not wired. */
+        return WINK_OK;
+    }
+
+    /* SOFT_POLL branch: register the DAL event callback that forwards each
+     * DAL event onto the event queue, then start the periodic tick. */
+    probe_st = dal_button_on_event(btn, button_events_dispatch_dal_cb, btn);
     if (wink_status_is_error(probe_st)) {
         LOG_D("start: failed to register event callback: %d", (int)probe_st);
-        ctx->btn = NULL; /* roll back slot allocation */
+        ctx->btn = NULL;
         return probe_st;
     }
 
@@ -216,15 +288,14 @@ wink_status_t wink_button_events_start(dal_button_t *btn,
         PAL_OS_CORE_ANY);
     if (h < 0) {
         LOG_D("start: periodic_start failed: %d", (int)h);
-        /* Best-effort unregister so we don't leave the dispatch shim
-         * pointing at a slot we just released. */
         WINK_IGNORE_RESULT(dal_button_on_event(btn, ctx->orig_cb, ctx->orig_cb_ctx));
-        ctx->btn = NULL; /* roll back slot allocation */
+        ctx->btn = NULL;
         return (wink_status_t)h;
     }
 
     ctx->period_h = h;
-    /* wake_from_sleep: TODO(S3) — deep-sleep wake pending RTC GPIO API. */
+    /* Reflect POLL backend at DAL level (informational; DAL only branches on IRQ). */
+    dal_button_set_event_backend(btn, DAL_BUTTON_BACKEND_POLL);
     return WINK_OK;
 }
 
@@ -233,15 +304,25 @@ void wink_button_events_stop(dal_button_t *btn)
     if (btn == NULL) {
         return;
     }
-    int idx = find_slot_by_btn(btn);
+    int idx = wink_button_events_find_slot(btn);
     if (idx < 0) {
         return;  /* not tracked: no-op */
     }
 
-    button_event_slot_t *ctx = &s_slots[idx];
-    /* Unregister and restore original callback */
-    WINK_IGNORE_RESULT(dal_button_on_event(btn, ctx->orig_cb, ctx->orig_cb_ctx));
-    wink_periodic_stop(ctx->period_h);
-    ctx->period_h = WINK_PERIODIC_INVALID;
-    ctx->btn      = NULL;   /* mark slot free for reuse */
+    button_event_slot_t *ctx = &g_button_event_slots[idx];
+    if (ctx->drive == WINK_BUTTON_DRIVE_GPIO_IRQ) {
+        wink_button_events_irq_disarm(ctx);
+    } else {
+        /* SOFT_POLL: unregister callback, stop periodic tick. */
+        WINK_IGNORE_RESULT(dal_button_on_event(btn, ctx->orig_cb, ctx->orig_cb_ctx));
+        wink_periodic_stop(ctx->period_h);
+        dal_button_set_event_backend(btn, DAL_BUTTON_BACKEND_NONE);
+    }
+    ctx->period_h     = WINK_PERIODIC_INVALID;
+    ctx->btn          = NULL;   /* mark slot free for reuse */
+    ctx->orig_cb      = NULL;
+    ctx->orig_cb_ctx  = NULL;
+    ctx->drive        = WINK_BUTTON_DRIVE_SOFT_POLL;
+    ctx->irq_debounce_h  = -1;
+    ctx->irq_longpress_h = -1;
 }
