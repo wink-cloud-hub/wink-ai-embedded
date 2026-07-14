@@ -76,7 +76,47 @@ typedef struct {
     /* ── Wave 3: ISR edge counter ── */
     bool isr_counter_enabled;          /* dal_button_enable_isr_counter() 置 true */
     volatile uint32_t edge_count;      /* ISR 累计触发次数（volatile: ISR 写/poll 上下文读） */
+
+    /* ── Wave 4 (S3): BAL IRQ event backend fan-out (ADR-0031) ──
+     * Shared GPIO ISR dispatcher: the same underlying ISR routes to
+     * (a) edge counter (isr_counter_enabled) and/or (b) BAL IRQ daemon
+     * (event_backend == DAL_BUTTON_BACKEND_IRQ). Refcounted enable/disable
+     * so counter and event backend can coexist on one pin. */
+    uint8_t  event_backend;            /* DAL_BUTTON_BACKEND_{NONE,POLL,IRQ} (default NONE) */
+    bool     gpio_isr_registered;      /* true iff the shared thunk is currently installed */
+    volatile bool irq_pending;         /* set by ISR, cleared by dal_button_consume_irq_pending */
 } dal_button_t;
+
+/**
+ * @brief BAL event-backend selector (S3+, ADR-0031).
+ *
+ * Which mechanism the BAL layer uses to detect edges before running
+ * debounce and dispatching WINK_EVENT_BUTTON_*. Independent from
+ * `isr_counter_enabled` — both can be true at once and share the same
+ * underlying GPIO ISR thunk.
+ */
+typedef enum {
+    DAL_BUTTON_BACKEND_NONE = 0, /**< No BAL event tracking on this button. */
+    DAL_BUTTON_BACKEND_POLL = 1, /**< BAL soft-poll (dal_button_poll from a periodic tick). */
+    DAL_BUTTON_BACKEND_IRQ  = 2, /**< BAL GPIO IRQ + debounce timer (ESP32 only). */
+} dal_button_backend_t;
+
+/**
+ * @brief BAL-internal hook: ISR-safe notify callback invoked by the shared
+ *        GPIO ISR thunk after signalling irq_pending.
+ *
+ * BAL registers a single process-global hook (typically "give the daemon
+ * wake semaphore") via dal_button_set_irq_notify_hook(). The DAL ISR calls
+ * this hook ONLY when the button's `event_backend == DAL_BUTTON_BACKEND_IRQ`.
+ * DAL never depends on BAL; the hook is a function pointer supplied at BAL
+ * init time so the layering stays DAL-below-BAL.
+ *
+ * @param ctx Opaque context provided at set_irq_notify_hook time (typically
+ *            NULL — the BAL daemon uses a file-scope singleton sem).
+ *
+ * ISR contract: must be ISR-safe (no LOG, no blocking, use *_isr sem-give).
+ */
+typedef void (*dal_button_irq_notify_hook_t)(void *ctx);
 
 /**
  * @brief 初始化按钮：校验引脚、按 active_low 配置上拉/下拉输入、置 initialized。
@@ -224,6 +264,62 @@ wink_status_t dal_button_reset_edge_count(dal_button_t *dev);
  */
 wink_status_t dal_button_deinit(dal_button_t *dev);
 
+/* ── Wave 4 (S3): BAL event backend selector + shared GPIO ISR fan-out ── */
+
+/**
+ * @brief 设置 BAL 事件后端类型（BAL 调用；DAL 内部仅记录，作为 ISR 分派条件）。
+ *
+ * BAL 在 arm/disarm IRQ 路径时通知 DAL 当前的事件后端，DAL 共享 ISR thunk
+ * 会依此决定是否要 (a) 设置 irq_pending 并 (b) 调用全局 hook。
+ *
+ * @param dev     Button instance (NULL-safe：NULL 直接返回).
+ * @param backend DAL_BUTTON_BACKEND_{NONE, POLL, IRQ}.
+ */
+void dal_button_set_event_backend(dal_button_t *dev, uint8_t backend);
+
+/**
+ * @brief 启用共享 GPIO ISR（refcount 语义：counter 或 IRQ 后端任一启用时首次注册）。
+ *
+ * 与 dal_button_enable_isr_counter 共用同一底层 thunk；两者可并存（同一 pin
+ * 上既做边沿计数又做 BAL IRQ 事件）。首次调用时向硬件注册 ANY_EDGE ISR；
+ * 重复调用是幂等的。
+ *
+ * @return WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED / WINK_ERR_UNSUPPORTED
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t dal_button_enable_gpio_isr(dal_button_t *dev);
+
+/**
+ * @brief 禁用共享 GPIO ISR（refcount 语义：counter 与 IRQ 后端都 off 时才卸载硬件）。
+ *
+ * 若 counter 仍在运行或事件后端仍是 IRQ，则本调用只减引用不动硬件；
+ * 只有两者都关闭时才真正 disable + synchronize。
+ * NULL-safe / 未 init safe：任何异常输入返回 no-op。
+ */
+void dal_button_disable_gpio_isr(dal_button_t *dev);
+
+/**
+ * @brief 读并清 irq_pending 标志（task 上下文，临界区保护）。
+ *
+ * 由 BAL IRQ daemon 唤醒后调用扫描每个 slot，若 true 表明自上次消费以来
+ * 至少发生过一次边沿，然后立刻 arm 去抖定时器采稳定态。
+ *
+ * @return true = 曾经 pending（已清零）；false = 无 pending 或 dev 无效。
+ */
+bool dal_button_consume_irq_pending(dal_button_t *dev);
+
+/**
+ * @brief 注册进程级 IRQ 通知 hook（BAL 使用，DAL 侧仅回调）。
+ *
+ * 由 BAL 在启动 daemon 时调一次；hook 在 GPIO ISR 上下文中被调用（只在
+ * dev->event_backend == DAL_BUTTON_BACKEND_IRQ 时），必须 ISR-safe——
+ * 通常做法是 `pal_os_sem_give_isr(daemon_sem)`。
+ *
+ * @param fn   Hook 函数（NULL = 取消注册）。
+ * @param ctx  Hook 调用时原样传入。
+ */
+void dal_button_set_irq_hook(dal_button_irq_notify_hook_t fn, void *ctx);
+
 #ifdef __cplusplus
 }
 #endif
@@ -257,6 +353,16 @@ WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_button_reset_edge_count(dal_button_t *dev);
 WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG)
 wink_status_t dal_button_deinit(dal_button_t *dev);
+WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG)
+void dal_button_set_event_backend(dal_button_t *dev, uint8_t backend);
+WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_button_enable_gpio_isr(dal_button_t *dev);
+WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG)
+void dal_button_disable_gpio_isr(dal_button_t *dev);
+WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG)
+bool dal_button_consume_irq_pending(dal_button_t *dev);
+WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG)
+void dal_button_set_irq_hook(dal_button_irq_notify_hook_t fn, void *ctx);
 #endif /* !WINK_USE_BUTTON */
 
 #endif /* DAL_BUTTON_H */
