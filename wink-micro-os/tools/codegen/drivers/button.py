@@ -90,10 +90,10 @@ class ButtonDriver(DriverBase):
 
     def get_role_headers(self, role: str) -> List[str]:
         if role == "binary_sensor":
-            # events.h is the new L1 path (enable_events / disable_events);
-            # helper.h is retained for the L2 verbs start_auto_poll /
-            # stop_auto_poll that keep the pre-S2 signature.
-            return ["wink_button_events.h", "wink_button_helper.h"]
+            # events.h is the single event API path — both L1 verbs
+            # (enable_events / disable_events) and the L2 verbs
+            # (start_auto_poll / stop_auto_poll) generate calls into it.
+            return ["wink_button_events.h"]
         return []
 
     def render_role_wrapper(self, dev_name: str, role: str, verb: str, spec: dict) -> str:
@@ -147,26 +147,25 @@ class ButtonDriver(DriverBase):
                     f"wink_button_disable_events(&{dev_name}); }}"
                 )
             elif verb == "start_auto_poll":
-                # ADR-0032 L2 A-class shim: forwards to the deprecated
-                # `wink_button_helper_start`. Suppress the deprecation
-                # warning at this exact call site — the L2 shim itself is
-                # not deprecated (it will be re-plumbed onto
-                # `wink_button_enable_events` when the helper is removed).
+                # ADR-0032 L2 A-class shim: constructs a local soft-poll cfg
+                # and forwards to the primary `wink_button_enable_events`.
+                # `poll_ms` overrides the JSON auto_poll_ms at call time;
+                # debounce comes from the compile-time
+                # `{NAME}_DEBOUNCE_MS` macro emitted by render_config_macros.
                 return (
-                    f"_Pragma(\"GCC diagnostic push\") "
-                    f"_Pragma(\"GCC diagnostic ignored \\\"-Wdeprecated-declarations\\\"\") "
                     f"WINK_WARN_UNUSED_RESULT static inline wink_status_t "
                     f"{dev_name}_start_auto_poll(uint32_t poll_ms) {{ "
-                    f"return wink_button_helper_start(&{dev_name}, poll_ms); }} "
-                    f"_Pragma(\"GCC diagnostic pop\")"
+                    f"const wink_button_event_config_t cfg = {{ "
+                    f".drive = WINK_BUTTON_DRIVE_SOFT_POLL, "
+                    f".auto_poll_ms = poll_ms, "
+                    f".debounce_ms = {dev_name.upper()}_DEBOUNCE_MS, "
+                    f".wake_from_sleep = false }}; "
+                    f"return wink_button_enable_events(&{dev_name}, &cfg); }}"
                 )
             elif verb == "stop_auto_poll":
                 return (
-                    f"_Pragma(\"GCC diagnostic push\") "
-                    f"_Pragma(\"GCC diagnostic ignored \\\"-Wdeprecated-declarations\\\"\") "
                     f"static inline void {dev_name}_stop_auto_poll(void) {{ "
-                    f"(void)wink_button_helper_stop(&{dev_name}); }} "
-                    f"_Pragma(\"GCC diagnostic pop\")"
+                    f"wink_button_disable_events(&{dev_name}); }}"
                 )
         return ""
 

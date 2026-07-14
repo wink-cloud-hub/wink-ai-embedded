@@ -50,10 +50,12 @@ if sys.platform == "win32":
 # symbol link errors on ESP32 — so filter them out here as a safety net.
 BAL_MIGRATED_NAMES: frozenset[str] = frozenset({
     "wink_blink_helper.c",
-    "wink_button_helper.c",
     "wink_default_telemetry.c",  # legacy name before Stage 2.3 rename
     "wink_telemetry_helper.c",
     "wink_sim_ultrasonic_echo.c",  # moved to runtime/selftest/src/ in Stage 2.4
+    # button events lives in bal/src/wink_button_events{,_irq}.c from day one;
+    # the legacy "wink_button_helper.c" thin wrapper was deleted in the
+    # ADR-0032 cleanup commit (pre-1.0, no forward-compat needed).
 })
 
 

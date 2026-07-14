@@ -29,8 +29,9 @@
 
 #include <stddef.h>
 
-/* LIGHT callback execution-time budget (P1-3 Step 5): see wink_button_
- * helper.c predecessor for the rationale — same 100 us envelope. */
+/* LIGHT callback execution-time budget (P1-3 Step 5): keep any user-
+ * registered event callback under 100 us so we do not eat the whole
+ * runtime tick. */
 #define WINK_BTN_POLL_BUDGET_US  100u
 
 /* Slot pool (definition; internal header has `extern` decl). */

@@ -4,10 +4,7 @@
  *        gated behind ADR-0031's `event_drive` selector).
  *
  * This is the single entry point that codegen emits for the L1 verb
- * `enable_events`. It replaces the older direct `wink_button_helper_*`
- * call: `wink_button_helper_start(&btn, poll_ms)` is now a thin backwards-
- * compat wrapper around `wink_button_enable_events(&btn, &cfg)` with a
- * fixed soft-poll config. The old symbols `wink_button_events_start` /
+ * `enable_events`. The old symbols `wink_button_events_start` /
  * `_stop` remain as `WINK_DEPRECATED` inline shims per ADR-0032; new
  * code MUST call `wink_button_enable_events` / `_disable_events`.
  *
@@ -49,9 +46,7 @@ extern "C" {
  * @brief Slot-pool size for concurrent button event streams.
  *
  * Codegen can size this precisely from the device tree via
- * `-DWINK_BUTTON_EVENTS_MAX=N`. Defaults to 4 to match the historical
- * WINK_BUTTON_HELPER_MAX so the thin helper wrapper never runs out
- * before the events API does.
+ * `-DWINK_BUTTON_EVENTS_MAX=N`. Defaults to 4.
  */
 #ifndef WINK_BUTTON_EVENTS_MAX
 #define WINK_BUTTON_EVENTS_MAX 4
@@ -71,8 +66,8 @@ typedef enum {
 /**
  * @brief Config for one button's event stream.
  *
- * Populated by codegen from `wink-app.json` fields (ADR-0031), or by
- * the thin helper wrapper for legacy `wink_button_helper_start` callers.
+ * Populated by codegen from `wink-app.json` fields (ADR-0031), or
+ * hand-constructed by callers wiring the L2 `start_auto_poll` convenience.
  *
  * @note All members are POD; the struct is designed to be `static const`
  *       at TU scope so codegen output is fully constant-foldable.
