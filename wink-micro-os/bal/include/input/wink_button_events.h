@@ -6,8 +6,10 @@
  * This is the single entry point that codegen emits for the L1 verb
  * `enable_events`. It replaces the older direct `wink_button_helper_*`
  * call: `wink_button_helper_start(&btn, poll_ms)` is now a thin backwards-
- * compat wrapper around `wink_button_events_start(&btn, &cfg)` with a
- * fixed soft-poll config.
+ * compat wrapper around `wink_button_enable_events(&btn, &cfg)` with a
+ * fixed soft-poll config. The old symbols `wink_button_events_start` /
+ * `_stop` remain as `WINK_DEPRECATED` inline shims per ADR-0032; new
+ * code MUST call `wink_button_enable_events` / `_disable_events`.
  *
  * The public API is intentionally cfg-shaped rather than parameterised
  * so that:
@@ -100,7 +102,11 @@ typedef struct {
 } wink_button_event_config_t;
 
 /**
- * @brief Start button event dispatch for @p btn using the given @p cfg.
+ * @brief Enable button event dispatch for @p btn using the given @p cfg.
+ *
+ * B-class (ADR-0032): "打开事件产出通路"。App 调用后按键将按 cfg 中的驱动
+ * 方式（soft_poll / gpio_irq）向全局 `wink_event` 队列投递
+ * `WINK_EVENT_BUTTON_*` 事件。
  *
  * @param btn  Initialised dal_button_t instance.
  * @param cfg  Pointer to a config, typically `static const` at TU scope.
@@ -111,7 +117,7 @@ typedef struct {
  *         WINK_ERR_INVALID_ARG        `btn` or `cfg` NULL, or
  *                                     `SOFT_POLL` with `auto_poll_ms == 0`.
  *         WINK_ERR_INVALID_STATE      `btn` already has an event stream
- *                                     running (call stop first).
+ *                                     running (call disable first).
  *         WINK_ERR_RESOURCE_EXHAUSTED slot pool full.
  *         WINK_ERR_NOT_INITIALIZED    `btn` was never `dal_button_init`ed.
  *         Other codes propagated from `wink_periodic_start_ex`.
@@ -122,20 +128,20 @@ typedef struct {
  *       the trace warn + strict mode.
  */
 WINK_WARN_UNUSED_RESULT
-wink_status_t wink_button_events_start(dal_button_t *btn,
-                                       const wink_button_event_config_t *cfg);
+wink_status_t wink_button_enable_events(dal_button_t *btn,
+                                        const wink_button_event_config_t *cfg);
 
 /**
- * @brief Stop button event dispatch for @p btn.
+ * @brief Disable button event dispatch for @p btn.
  *
- * Idempotent: safe to call on a NULL or never-started button. Restores
- * any pre-existing `dal_button_on_event` user callback captured at
- * start(), tears down the periodic slot fully (no soft-timer slot leak),
- * and frees the events-slot for reuse.
+ * B-class (ADR-0032). Idempotent: safe to call on a NULL or never-enabled
+ * button. Restores any pre-existing `dal_button_on_event` user callback
+ * captured at enable(), tears down the periodic slot fully (no
+ * soft-timer slot leak), and frees the events-slot for reuse.
  *
  * @param btn  Button instance (NULL-safe).
  */
-void wink_button_events_stop(dal_button_t *btn);
+void wink_button_disable_events(dal_button_t *btn);
 
 /**
  * @brief Whether the current target supports the GPIO-IRQ backend.
@@ -143,11 +149,31 @@ void wink_button_events_stop(dal_button_t *btn);
  * True on ESP32 (S3+); false on host / wasm / baremetal where we degrade
  * to SOFT_POLL. Callers can query this before choosing `drive` in cfg,
  * but the normal path is to just set `drive = WINK_BUTTON_DRIVE_GPIO_IRQ`
- * and let `wink_button_events_start` handle the degrade transparently.
+ * and let `wink_button_enable_events` handle the degrade transparently.
  *
  * Layering: returns bool only — no pal_* types leak through the public API.
+ *
+ * @note Name grandfathered per coding-conventions §3.1.1 (祖父 `*_supported`
+ *       保留不迁移). New predicates should use `is_*` / `has_*` / `can_*`.
  */
 bool wink_button_events_irq_supported(void);
+
+/* ── Deprecated compatibility wrappers (ADR-0032) ──────────────
+ * Old A-class-flavoured names kept as static inline shims so existing TUs
+ * continue to compile with a diagnostic. Scheduled for removal two minor
+ * versions from ADR-0032 acceptance date (2026-07-14). New code, new
+ * codegen output, and new samples MUST call `wink_button_enable_events`
+ * / `wink_button_disable_events` directly. */
+WINK_WARN_UNUSED_RESULT WINK_DEPRECATED("use wink_button_enable_events (ADR-0032 B-class)")
+static inline wink_status_t wink_button_events_start(dal_button_t *btn,
+                                                     const wink_button_event_config_t *cfg) {
+    return wink_button_enable_events(btn, cfg);
+}
+
+WINK_DEPRECATED("use wink_button_disable_events (ADR-0032 B-class)")
+static inline void wink_button_events_stop(dal_button_t *btn) {
+    wink_button_disable_events(btn);
+}
 
 #ifdef __cplusplus
 }

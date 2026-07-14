@@ -187,11 +187,11 @@ static uint32_t effective_poll_ms(const wink_button_event_config_t *cfg) {
 
 /* ── public API ──────────────────────────────────────────────── */
 
-wink_status_t wink_button_events_start(dal_button_t *btn,
-                                       const wink_button_event_config_t *cfg)
+wink_status_t wink_button_enable_events(dal_button_t *btn,
+                                        const wink_button_event_config_t *cfg)
 {
     if (btn == NULL || cfg == NULL) {
-        LOG_D("start: invalid arg (btn=%p cfg=%p)", (void *)btn, (const void *)cfg);
+        LOG_D("enable: invalid arg (btn=%p cfg=%p)", (void *)btn, (const void *)cfg);
         return WINK_ERR_INVALID_ARG;
     }
 
@@ -231,20 +231,20 @@ wink_status_t wink_button_events_start(dal_button_t *btn,
         /* SOFT_POLL: auto_poll_ms is mandatory (codegen already validates,
          * belt-and-braces here for hand-authored callers). */
         if (cfg->auto_poll_ms == 0u) {
-            LOG_D("start: soft_poll with auto_poll_ms=0");
+            LOG_D("enable: soft_poll with auto_poll_ms=0");
             return WINK_ERR_INVALID_ARG;
         }
         poll_ms = cfg->auto_poll_ms;
     }
 
     if (wink_button_events_find_slot(btn) >= 0) {
-        LOG_D("start: btn=%p already tracked", (void *)btn);
+        LOG_D("enable: btn=%p already tracked", (void *)btn);
         return WINK_ERR_INVALID_STATE;
     }
 
     int free_idx = find_free_slot();
     if (free_idx < 0) {
-        LOG_D("start: out of button event slots (%d)", WINK_BUTTON_EVENTS_MAX);
+        LOG_D("enable: out of button event slots (%d)", WINK_BUTTON_EVENTS_MAX);
         return WINK_ERR_RESOURCE_EXHAUSTED;
     }
 
@@ -253,7 +253,7 @@ wink_status_t wink_button_events_start(dal_button_t *btn,
     bool pressed = false;
     wink_status_t probe_st = dal_button_is_pressed(btn, &pressed);
     if (probe_st == WINK_ERR_NOT_INITIALIZED) {
-        LOG_D("start: button not initialized");
+        LOG_D("enable: button not initialized");
         return WINK_ERR_NOT_INITIALIZED;
     }
 
@@ -287,7 +287,7 @@ wink_status_t wink_button_events_start(dal_button_t *btn,
         /* IRQ backend: arm hardware ISR + timers. No periodic poll. */
         wink_status_t arm_st = wink_button_events_irq_arm(ctx, cfg);
         if (wink_status_is_error(arm_st)) {
-            LOG_D("start: irq_arm failed: %d — rolling back to slot-free", (int)arm_st);
+            LOG_D("enable: irq_arm failed: %d — rolling back to slot-free", (int)arm_st);
             ctx->btn = NULL;
             return arm_st;
         }
@@ -299,7 +299,7 @@ wink_status_t wink_button_events_start(dal_button_t *btn,
      * DAL event onto the event queue, then start the periodic tick. */
     probe_st = dal_button_on_event(btn, button_events_dispatch_dal_cb, btn);
     if (wink_status_is_error(probe_st)) {
-        LOG_D("start: failed to register event callback: %d", (int)probe_st);
+        LOG_D("enable: failed to register event callback: %d", (int)probe_st);
         ctx->btn = NULL;
         return probe_st;
     }
@@ -316,7 +316,7 @@ wink_status_t wink_button_events_start(dal_button_t *btn,
         WINK_PERIODIC_DEFAULT_PRIORITY,
         PAL_OS_CORE_ANY);
     if (h < 0) {
-        LOG_D("start: periodic_start failed: %d", (int)h);
+        LOG_D("enable: periodic_start failed: %d", (int)h);
         WINK_IGNORE_RESULT(dal_button_on_event(btn, ctx->orig_cb, ctx->orig_cb_ctx));
         ctx->btn = NULL;
         return (wink_status_t)h;
@@ -328,7 +328,7 @@ wink_status_t wink_button_events_start(dal_button_t *btn,
     return WINK_OK;
 }
 
-void wink_button_events_stop(dal_button_t *btn)
+void wink_button_disable_events(dal_button_t *btn)
 {
     if (btn == NULL) {
         return;
