@@ -35,7 +35,7 @@
 | 旧（`samples/common/include/`） | 新（BAL 正式 API） |
 |---|---|
 | `wink_blink_helper.h` | `output/wink_blink_helper.h`（link `wink_bal`） |
-| `wink_button_helper.h` | `input/wink_button_helper.h` |
+| `wink_button_helper.h` | 已删除 → 改用 `input/wink_button_events.h`（`wink_button_enable_events` / `wink_button_disable_events`） |
 | `wink_default_telemetry.h` / `wink_telemetry_helper.h` | `comm/wink_telemetry_helper.h` |
 | `wink_sim_ultrasonic_echo.h` | `runtime/selftest/src/wink_sim_ultrasonic_echo.h`（仅 bringup/selftest） |
 
@@ -47,8 +47,13 @@ CMake：`target_link_libraries(your_app PRIVATE wink_bal)`；BAL 通过 PUBLIC i
 static wink_status_t app_init_status(void)
 {
     WINK_TRY(wink_device_tree_init());
-    wink_status_t s = wink_button_helper_start(&btn, USER_BUTTON_AUTO_POLL_MS);
-    if (wink_status_is_error(s)) { return s; }
+    static const wink_button_event_config_t cfg = {
+        .drive           = WINK_BUTTON_DRIVE_SOFT_POLL,
+        .auto_poll_ms    = USER_BUTTON_AUTO_POLL_MS,
+        .debounce_ms     = USER_BUTTON_DEBOUNCE_MS,
+        .wake_from_sleep = false,
+    };
+    WINK_TRY(wink_button_enable_events(&btn, &cfg));
     return WINK_OK;
 }
 

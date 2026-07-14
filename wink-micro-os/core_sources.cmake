@@ -56,7 +56,6 @@ set(WINK_BAL_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/bal/src/wink_blink_helper.c
     ${CMAKE_CURRENT_LIST_DIR}/bal/src/wink_button_events.c
     ${CMAKE_CURRENT_LIST_DIR}/bal/src/wink_button_events_irq.c
-    ${CMAKE_CURRENT_LIST_DIR}/bal/src/wink_button_helper.c
     ${CMAKE_CURRENT_LIST_DIR}/bal/src/wink_telemetry_helper.c
     ${CMAKE_CURRENT_LIST_DIR}/bal/src/wink_sonar_helper.c
     ${CMAKE_CURRENT_LIST_DIR}/bal/src/wink_servo_helper.c

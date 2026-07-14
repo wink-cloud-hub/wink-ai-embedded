@@ -1,12 +1,12 @@
 /**
- * @file test_button_helper.c
- * @brief Unit tests for wink_button_helper (host, virtual time).
+ * @file test_button_events.c
+ * @brief Unit tests for wink_button_enable_events / wink_button_disable_events
+ *        (host, virtual time).
  *
- * This test suite deliberately exercises the deprecated
- * `wink_button_helper_*` compat shim (ADR-0032). Keeping coverage on the
- * shim is intentional — it stays until the two-minor-version removal
- * window closes. The whole TU is compiled with -Wdeprecated-declarations
- * suppressed via the pragma below so the test binary itself stays clean.
+ * Exercises the BAL button event API through a tiny local helper that
+ * builds a soft-poll `wink_button_event_config_t` per test — this keeps
+ * every assertion in the file focused on behaviour rather than cfg
+ * boilerplate.
  *
  * Verifies:
  *   - Argument contract (NULL / poll_ms=0).
@@ -18,16 +18,10 @@
  *   - poll_ms period is honoured (event does not fire until enough dispatch
  *     ticks pass * period).
  */
-#define LOG_TAG "tst_btn_helper"
-
-/* This test intentionally targets the deprecated helper API (ADR-0032
- * compat shim) — suppress deprecation warnings for the whole TU. */
-#if defined(__GNUC__) || defined(__clang__)
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
+#define LOG_TAG "tst_btn_events"
 
 #include "unity.h"
-#include "wink_button_helper.h"
+#include "wink_button_events.h"
 #include "wink_soft_timer.h"
 #include "wink_tasks.h"
 #include "wink_status.h"
@@ -41,6 +35,23 @@
 
 /* Host sim clock advance (declared in targets/host/pal_osal_host.c). */
 extern void host_sim_advance_to(uint64_t us);
+
+/* ── Local wrappers: build a soft-poll cfg per call and forward to the
+ *    primary event API. Keeps test bodies focused on semantics rather than
+ *    struct construction. ─────────────────────────────────────────── */
+static wink_status_t start_helper(dal_button_t *b, uint32_t poll_ms) {
+    const wink_button_event_config_t cfg = {
+        .drive           = WINK_BUTTON_DRIVE_SOFT_POLL,
+        .auto_poll_ms    = poll_ms,
+        .debounce_ms     = 20u,
+        .wake_from_sleep = false,
+    };
+    return wink_button_enable_events(b, &cfg);
+}
+static wink_status_t stop_helper(dal_button_t *b) {
+    wink_button_disable_events(b);
+    return WINK_OK;
+}
 
 /* ── Test state ───────────────────────────────────────────────── */
 static dal_button_t s_btn;
@@ -79,7 +90,7 @@ static void release_button(void) { sim_set_gpio_ideal(BTN_PIN, true);  } /* acti
 /* ── setUp / tearDown ─────────────────────────────────────────── */
 void setUp(void) {
     /* Test isolation: drop any lingering helper slot before re-init soft_timer. */
-    WINK_IGNORE_RESULT(wink_button_helper_stop(&s_btn));
+    WINK_IGNORE_RESULT(stop_helper(&s_btn));
 
     /* dal_button_init claims a pin via pal_resource; must reset between tests. */
     pal_resource_reset();
@@ -108,7 +119,7 @@ void setUp(void) {
 }
 
 void tearDown(void) {
-    WINK_IGNORE_RESULT(wink_button_helper_stop(&s_btn));
+    WINK_IGNORE_RESULT(stop_helper(&s_btn));
     WINK_IGNORE_RESULT(dal_button_deinit(&s_btn));
     sim_clear_gpio_ideal();
 }
@@ -118,32 +129,32 @@ void tearDown(void) {
 /* Contract: NULL btn, zero poll_ms rejected; NULL btn on stop is no-op. */
 void test_null_args_rejected(void) {
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG,
-        wink_button_helper_start(NULL, 10u));
+        start_helper(NULL, 10u));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG,
-        wink_button_helper_start(&s_btn, 0u));
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_button_helper_stop(NULL));
+        start_helper(&s_btn, 0u));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, stop_helper(NULL));
 }
 
 /* stop() on a button that was never started is a no-op returning WINK_OK. */
 void test_not_started_stop_is_noop(void) {
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_button_helper_stop(&s_btn));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, stop_helper(&s_btn));
     /* And stop again is still a no-op. */
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_button_helper_stop(&s_btn));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, stop_helper(&s_btn));
 }
 
 /* Double-start on the same button → WINK_ERR_INVALID_STATE. */
 void test_duplicate_start_rejected(void) {
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_button_helper_start(&s_btn, 10u));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, start_helper(&s_btn, 10u));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_STATE,
-        wink_button_helper_start(&s_btn, 10u));
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_button_helper_stop(&s_btn));
+        start_helper(&s_btn, 10u));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, stop_helper(&s_btn));
     /* After stop, start again should succeed. */
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_button_helper_start(&s_btn, 10u));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, start_helper(&s_btn, 10u));
 }
 
 /* PRESS then RELEASE flow driven ONLY by soft_timer dispatch (no manual poll). */
 void test_press_release_event_via_helper(void) {
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_button_helper_start(&s_btn, 10u));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, start_helper(&s_btn, 10u));
 
     /* Drive a couple of ticks in the released state to settle debounce. */
     tick_n(DAL_BUTTON_DEBOUNCE_THRESHOLD + 2);
@@ -168,7 +179,7 @@ void test_press_release_event_via_helper(void) {
 void test_long_press_detected(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK,
         dal_button_set_long_press_ms(&s_btn, 100u));   /* 100 ms threshold */
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_button_helper_start(&s_btn, 10u));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, start_helper(&s_btn, 10u));
 
     /* Settle in released state. */
     tick_n(DAL_BUTTON_DEBOUNCE_THRESHOLD + 2);
@@ -188,14 +199,14 @@ void test_long_press_detected(void) {
 
 /* After stop(), no further events are dispatched from the soft_timer. */
 void test_stop_halts_further_events(void) {
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_button_helper_start(&s_btn, 10u));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, start_helper(&s_btn, 10u));
     tick_n(DAL_BUTTON_DEBOUNCE_THRESHOLD + 2);
 
     press_button();
     tick_n(DAL_BUTTON_DEBOUNCE_THRESHOLD + 2);
     TEST_ASSERT_EQUAL_INT(1, s_press_count);
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_button_helper_stop(&s_btn));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, stop_helper(&s_btn));
 
     /* After stop, dispatching further ticks must not poll the button any more,
      * so no RELEASE event should fire even though we drove the pin HIGH. */
@@ -208,7 +219,7 @@ void test_stop_halts_further_events(void) {
  * takes proportionally longer to complete. */
 void test_poll_ms_period_honoured(void) {
     /* poll_ms = 50 ms → soft_timer fires once every 5 dispatches. */
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_button_helper_start(&s_btn, 50u));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, start_helper(&s_btn, 50u));
 
     /* Establish released baseline (need enough dispatches for a few polls). */
     tick_n(30);
@@ -232,15 +243,15 @@ void test_poll_ms_period_honoured(void) {
 void test_start_stop_loop_100_does_not_leak(void) {
     for (int i = 0; i < 100; i++) {
         TEST_ASSERT_EQUAL_INT(WINK_OK,
-            wink_button_helper_start(&s_btn, 10u));
+            start_helper(&s_btn, 10u));
         tick_once();   /* exercise one poll callback */
         TEST_ASSERT_EQUAL_INT(WINK_OK,
-            wink_button_helper_stop(&s_btn));
+            stop_helper(&s_btn));
     }
     TEST_ASSERT_EQUAL_UINT32(0, wink_periodic_active_count());
 }
 
-/* Pool saturation: starting WINK_BUTTON_HELPER_MAX concurrent buttons
+/* Pool saturation: starting WINK_BUTTON_EVENTS_MAX concurrent buttons
  * succeeds; a (MAX+1)-th returns RESOURCE_EXHAUSTED; stopping one frees
  * a slot so another can be started. */
 void test_pool_exhaustion_and_reclaim(void) {
@@ -260,10 +271,10 @@ void test_pool_exhaustion_and_reclaim(void) {
     }
 
     /* Start all 4 (s_btn + 3 extra). */
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_button_helper_start(&s_btn, 10u));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, start_helper(&s_btn, 10u));
     for (int i = 0; i < 3; i++) {
         TEST_ASSERT_EQUAL_INT(WINK_OK,
-            wink_button_helper_start(&btns[i], 10u));
+            start_helper(&btns[i], 10u));
     }
 
     /* 5th button on yet another pin must fail (start returns EXHAUSTED
@@ -277,19 +288,19 @@ void test_pool_exhaustion_and_reclaim(void) {
     };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&btn5, &cfg5));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_RESOURCE_EXHAUSTED,
-        wink_button_helper_start(&btn5, 10u));
+        start_helper(&btn5, 10u));
 
     /* Stop one; retry — slot should be reclaimed. */
     TEST_ASSERT_EQUAL_INT(WINK_OK,
-        wink_button_helper_stop(&btns[1]));
+        stop_helper(&btns[1]));
     TEST_ASSERT_EQUAL_INT(WINK_OK,
-        wink_button_helper_start(&btn5, 10u));
+        start_helper(&btn5, 10u));
 
     /* Tear down. */
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_button_helper_stop(&s_btn));
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_button_helper_stop(&btns[0]));
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_button_helper_stop(&btns[2]));
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_button_helper_stop(&btn5));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, stop_helper(&s_btn));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, stop_helper(&btns[0]));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, stop_helper(&btns[2]));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, stop_helper(&btn5));
     for (int i = 0; i < 3; i++) {
         WINK_IGNORE_RESULT(dal_button_deinit(&btns[i]));
     }
@@ -306,11 +317,11 @@ void test_uninitialized_button_rejected(void) {
     dal_button_t uninit;
     memset(&uninit, 0, sizeof(uninit));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_NOT_INITIALIZED,
-        wink_button_helper_start(&uninit, 10u));
+        start_helper(&uninit, 10u));
     /* No slot should be consumed, no periodic armed. */
     TEST_ASSERT_EQUAL_UINT32(0, wink_periodic_active_count());
     /* Stop should be a safe no-op (idempotent). */
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_button_helper_stop(&uninit));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, stop_helper(&uninit));
 }
 
 /* ── Runner ───────────────────────────────────────────────────── */
