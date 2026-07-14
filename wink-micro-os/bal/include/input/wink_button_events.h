@@ -86,9 +86,11 @@ typedef struct {
      */
     uint32_t auto_poll_ms;
 
-    /** Debounce window in ms. 0 = disable debounce (expert mode: raw edges
-     *  pass straight through). The DAL button's internal debounce state
-     *  machine is retuned from this value at start(). */
+    /** Debounce window in ms. 0 = leave the DAL default threshold
+     *  (≈30 ms at 10 ms tick) unchanged; any positive value retunes the
+     *  DAL button's internal debounce state machine at start(). This
+     *  branch does not support turning debounce off entirely — pass a
+     *  small positive value if you need aggressive edge response. */
     uint32_t debounce_ms;
 
     /** Reserved for S3: request the IRQ path to remain armed across deep

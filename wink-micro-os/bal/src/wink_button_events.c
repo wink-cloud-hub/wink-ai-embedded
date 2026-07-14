@@ -195,6 +195,13 @@ wink_status_t wink_button_events_start(dal_button_t *btn,
         return WINK_ERR_INVALID_ARG;
     }
 
+    /* Surface documented no-op knobs so users don't wonder why deep-sleep
+     * wake isn't happening (per-start, single line — this is documented
+     * future work per ADR-0031; the RTC-GPIO PAL API is pending). */
+    if (cfg->wake_from_sleep) {
+        LOG_I("wake_from_sleep is not yet wired; ignoring (RTC GPIO API pending)");
+    }
+
     /* S4: honour GPIO_IRQ only when the target actually supports it. Non-
      * ESP32 targets return false from irq_supported() — under the default
      * (permissive) build we degrade to SOFT_POLL and raise the
