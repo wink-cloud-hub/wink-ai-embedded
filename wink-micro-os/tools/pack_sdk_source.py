@@ -7,7 +7,11 @@ Writes VERSION / NOTICE / SDK_MANIFEST.txt into the archive root.
 from __future__ import annotations
 
 import argparse
+import hashlib
+import platform
 import shutil
+import subprocess
+import sys
 import tarfile
 import tempfile
 from pathlib import Path
@@ -71,6 +75,48 @@ def read_version(sdk_root: Path) -> tuple[str, str]:
     return ver, abi
 
 
+def detect_toolchain() -> dict[str, str]:
+    """Detect available toolchain versions for manifest pinning."""
+    info: dict[str, str] = {}
+    info["python"] = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    info["platform"] = platform.system()
+
+    for tool, flag in [("gcc", "--version"), ("cmake", "--version")]:
+        try:
+            result = subprocess.run(
+                [tool, flag],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            first_line = result.stdout.strip().splitlines()[0] if result.stdout.strip() else ""
+            if first_line:
+                info[tool] = first_line
+        except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+            pass
+
+    return info
+
+
+def hash_file(path: Path) -> str:
+    """Compute SHA-256 hex digest of a file."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def compute_content_hashes(staging: Path) -> dict[str, str]:
+    """Compute SHA-256 for every file in the staging tree, keyed by relative posix path."""
+    hashes: dict[str, str] = {}
+    for p in staging.rglob("*"):
+        if p.is_file():
+            rel = p.relative_to(staging).as_posix()
+            hashes[rel] = hash_file(p)
+    return hashes
+
+
 def copy_tree(src: Path, dst: Path, sdk_root: Path) -> None:
     if src.is_file():
         dst.parent.mkdir(parents=True, exist_ok=True)
@@ -88,23 +134,32 @@ def copy_tree(src: Path, dst: Path, sdk_root: Path) -> None:
         shutil.copy2(path, out)
 
 
-def build_manifest(staging: Path, ver: str, abi: str, sdk_root: Path) -> None:
+def build_manifest(staging: Path, ver: str, abi: str, sdk_root: Path) -> str:
     template = (sdk_root / "SDK_MANIFEST.in.txt").read_text(encoding="utf-8")
-    files = sorted(
-        p.relative_to(staging).as_posix()
-        for p in staging.rglob("*")
-        if p.is_file()
-    )
-    body = (
-        template.rstrip()
-        + "\n"
-        + f"version={ver}\n"
-        + f"abi={abi}\n"
-        + "files:\n"
-        + "\n".join(f"  {f}" for f in files)
-        + "\n"
-    )
+    toolchain = detect_toolchain()
+    content_hashes = compute_content_hashes(staging)
+
+    files = sorted(content_hashes.keys())
+
+    lines = [
+        template.rstrip(),
+        f"version={ver}",
+        f"abi={abi}",
+        "",
+        "toolchain:",
+    ]
+    for key in ("platform", "python", "gcc", "cmake"):
+        if key in toolchain:
+            lines.append(f"  {key}={toolchain[key]}")
+
+    lines.append("")
+    lines.append("files:")
+    for f in files:
+        lines.append(f"  {content_hashes[f]}  {f}")
+
+    body = "\n".join(lines) + "\n"
     (staging / "SDK_MANIFEST.txt").write_text(body, encoding="utf-8")
+    return body
 
 
 def pack(out_dir: Path) -> Path:
@@ -151,7 +206,9 @@ def pack(out_dir: Path) -> Path:
         with tarfile.open(tarball, "w:gz") as tar:
             tar.add(staging_root, arcname=pkg_name)
 
+    tarball_hash = hash_file(tarball)
     print(f"[pack] Wrote {tarball}")
+    print(f"[pack] SHA-256: {tarball_hash}")
     return tarball
 
 

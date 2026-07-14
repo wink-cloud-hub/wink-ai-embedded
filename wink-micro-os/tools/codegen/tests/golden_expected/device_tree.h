@@ -9,7 +9,7 @@
 #include "dal_led.h"
 #include "dal_button.h"
 #include "dal_ultrasonic.h"
-#include "wink_button_helper.h"
+#include "wink_button_events.h"
 #include "wink_status.h"
 
 /* ── Instance count macros (slots allocation) ── */
@@ -22,6 +22,8 @@
 #define BOARD_LED_ACTIVE_HIGH true
 #define BOOT_BUTTON_AUTO_POLL_MS 10u
 #define BOOT_BUTTON_LONG_PRESS_MS 3000u
+#define BOOT_BUTTON_DEBOUNCE_MS 20u
+#define BOOT_BUTTON_EVENT_DRIVE_SOFT_POLL true
 #define SMOKE_SONAR_USE_RMT true
 
 #ifdef __cplusplus
@@ -41,8 +43,10 @@ static inline bool boot_button_is_active(void) { bool p = false; WINK_IGNORE_RES
 WINK_WARN_UNUSED_RESULT static inline wink_status_t boot_button_is_active_status(bool *out_active) { return dal_button_is_pressed(&boot_button, out_active); }
 static inline bool boot_button_was_active(void) { bool p = false; WINK_IGNORE_RESULT(dal_button_was_pressed(&boot_button, &p)); return p; }
 WINK_WARN_UNUSED_RESULT static inline wink_status_t boot_button_was_active_status(bool *out_pressed) { return dal_button_was_pressed(&boot_button, out_pressed); }
-WINK_WARN_UNUSED_RESULT static inline wink_status_t boot_button_start_auto_poll(uint32_t poll_ms) { return wink_button_helper_start(&boot_button, poll_ms); }
-static inline void boot_button_stop_auto_poll(void) { wink_button_helper_stop(&boot_button); }
+WINK_WARN_UNUSED_RESULT static inline wink_status_t boot_button_enable_events(void) { static const wink_button_event_config_t cfg = { .drive = WINK_BUTTON_DRIVE_SOFT_POLL, .auto_poll_ms = 10u, .debounce_ms = 20u, .wake_from_sleep = false }; return wink_button_enable_events(&boot_button, &cfg); }
+static inline void boot_button_disable_events(void) { wink_button_disable_events(&boot_button); }
+WINK_WARN_UNUSED_RESULT static inline wink_status_t boot_button_start_auto_poll(uint32_t poll_ms) { const wink_button_event_config_t cfg = { .drive = WINK_BUTTON_DRIVE_SOFT_POLL, .auto_poll_ms = poll_ms, .debounce_ms = BOOT_BUTTON_DEBOUNCE_MS, .wake_from_sleep = false }; return wink_button_enable_events(&boot_button, &cfg); }
+static inline void boot_button_stop_auto_poll(void) { wink_button_disable_events(&boot_button); }
 WINK_WARN_UNUSED_RESULT static inline wink_status_t smoke_sonar_request_measurement(void) { return dal_ultrasonic_request_measurement(&smoke_sonar); }
 static inline float smoke_sonar_read_distance(void) { float d = -1.0f; WINK_IGNORE_RESULT(dal_ultrasonic_get_cached_distance(&smoke_sonar, &d)); return d; }
 WINK_WARN_UNUSED_RESULT static inline wink_status_t smoke_sonar_read_distance_status(float *out_dist_cm) { return dal_ultrasonic_get_cached_distance(&smoke_sonar, out_dist_cm); }

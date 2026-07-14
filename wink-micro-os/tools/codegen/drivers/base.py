@@ -78,7 +78,7 @@ class DriverBase:
     role_verbs: dict[str, list[str]] = {}  # e.g. {"binary_indicator": ["activate", ...]}
 
     def get_role_headers(self, role: str) -> List[str]:
-        """Return additional C headers required by wrappers for this role (e.g. ["wink_button_helper.h"])."""
+        """Return additional C headers required by wrappers for this role (e.g. ["wink_button_events.h"])."""
         return []
 
     def render_role_wrapper(self, dev_name: str, role: str, verb: str, spec: dict) -> str:

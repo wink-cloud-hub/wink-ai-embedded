@@ -1,0 +1,21 @@
+{
+  "_comment_root": "Example ~/.wink/tools.json (or <workspace>/.wink/tools.json). Copy without the _comment_* keys; both are ignored on load. Use forward slashes on Windows.",
+  "_comment_ops": "Prefer `python tools/wink.py setup --set KEY=PATH` to edit — it validates the path via provider.detect() before writing. `--workspace` writes to <workspace>/.wink/tools.json instead of the user file.",
+
+  "version": 1,
+
+  "_comment_tools_home": "Optional base dir for tools that Wink may later auto-install (phase B). Currently informational.",
+  "tools_home": "D:/software/wink-tools",
+
+  "_comment_paths": "Per-capability overrides. Values are either a directory containing the tool binary (WinLibs bin/, emsdk root, IDF root) or an absolute file path (python.exe). Set to null to unset an override so PATH lookup wins again.",
+  "paths": {
+    "gcc": "C:/software/WinLibs/mingw64/bin",
+    "cmake": "C:/Program Files/CMake/bin",
+    "make": "C:/software/WinLibs/mingw64/bin",
+    "python": "C:/Python311/python.exe",
+    "jinja2": null,
+    "emsdk": "D:/software/embedded/emsdk",
+    "idf": "D:/software/embedded/esp/v6.0.1/esp-idf",
+    "node": null
+  }
+}

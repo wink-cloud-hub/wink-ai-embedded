@@ -1,0 +1,7 @@
+{
+  "EXPORTED_FUNCTIONS": ["_main", "_malloc", "_free"],
+  "EXPORTED_RUNTIME_METHODS": ["ccall", "cwrap", "HEAPU8", "Asyncify", "callMain"],
+  "ASYNCIFY_IMPORTS": ["js_pal_os_sleep_ms", "js_pal_os_busy_wait_us"],
+  "ASYNCIFY_STACK_SIZE": 65536,
+  "EXPORT_NAME": "WasmSandbox"
+}
