@@ -2,6 +2,12 @@
  * @file test_button_helper.c
  * @brief Unit tests for wink_button_helper (host, virtual time).
  *
+ * This test suite deliberately exercises the deprecated
+ * `wink_button_helper_*` compat shim (ADR-0032). Keeping coverage on the
+ * shim is intentional — it stays until the two-minor-version removal
+ * window closes. The whole TU is compiled with -Wdeprecated-declarations
+ * suppressed via the pragma below so the test binary itself stays clean.
+ *
  * Verifies:
  *   - Argument contract (NULL / poll_ms=0).
  *   - Idempotent stop.
@@ -13,6 +19,12 @@
  *     ticks pass * period).
  */
 #define LOG_TAG "tst_btn_helper"
+
+/* This test intentionally targets the deprecated helper API (ADR-0032
+ * compat shim) — suppress deprecation warnings for the whole TU. */
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 
 #include "unity.h"
 #include "wink_button_helper.h"

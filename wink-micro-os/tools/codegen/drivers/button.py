@@ -107,8 +107,9 @@ class ButtonDriver(DriverBase):
             elif verb == "was_active_status":
                 return f"WINK_WARN_UNUSED_RESULT static inline wink_status_t {dev_name}_was_active_status(bool *out_pressed) {{ return dal_button_was_pressed(&{dev_name}, out_pressed); }}"
             elif verb == "enable_events":
-                # S2: emit a static-const wink_button_event_config_t and
-                # call wink_button_events_start. Drive/period/debounce all
+                # ADR-0032 (B-class): emit a static-const
+                # wink_button_event_config_t and call the primary
+                # `wink_button_enable_events`. Drive/period/debounce all
                 # come from JSON per ADR-0031.
                 drive_str = spec.get("event_drive", "soft_poll")
                 if drive_str == "gpio_irq":
@@ -138,17 +139,35 @@ class ButtonDriver(DriverBase):
                     f".auto_poll_ms = {ms}u, "
                     f".debounce_ms = {deb}u, "
                     f".wake_from_sleep = false }}; "
-                    f"return wink_button_events_start(&{dev_name}, &cfg); }}"
+                    f"return wink_button_enable_events(&{dev_name}, &cfg); }}"
                 )
             elif verb == "disable_events":
                 return (
                     f"static inline void {dev_name}_disable_events(void) {{ "
-                    f"wink_button_events_stop(&{dev_name}); }}"
+                    f"wink_button_disable_events(&{dev_name}); }}"
                 )
             elif verb == "start_auto_poll":
-                return f"WINK_WARN_UNUSED_RESULT static inline wink_status_t {dev_name}_start_auto_poll(uint32_t poll_ms) {{ return wink_button_helper_start(&{dev_name}, poll_ms); }}"
+                # ADR-0032 L2 A-class shim: forwards to the deprecated
+                # `wink_button_helper_start`. Suppress the deprecation
+                # warning at this exact call site — the L2 shim itself is
+                # not deprecated (it will be re-plumbed onto
+                # `wink_button_enable_events` when the helper is removed).
+                return (
+                    f"_Pragma(\"GCC diagnostic push\") "
+                    f"_Pragma(\"GCC diagnostic ignored \\\"-Wdeprecated-declarations\\\"\") "
+                    f"WINK_WARN_UNUSED_RESULT static inline wink_status_t "
+                    f"{dev_name}_start_auto_poll(uint32_t poll_ms) {{ "
+                    f"return wink_button_helper_start(&{dev_name}, poll_ms); }} "
+                    f"_Pragma(\"GCC diagnostic pop\")"
+                )
             elif verb == "stop_auto_poll":
-                return f"static inline void {dev_name}_stop_auto_poll(void) {{ wink_button_helper_stop(&{dev_name}); }}"
+                return (
+                    f"_Pragma(\"GCC diagnostic push\") "
+                    f"_Pragma(\"GCC diagnostic ignored \\\"-Wdeprecated-declarations\\\"\") "
+                    f"static inline void {dev_name}_stop_auto_poll(void) {{ "
+                    f"(void)wink_button_helper_stop(&{dev_name}); }} "
+                    f"_Pragma(\"GCC diagnostic pop\")"
+                )
         return ""
 
     def get_device_type(self) -> str:

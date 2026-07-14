@@ -54,7 +54,7 @@ static void release_button(void) { sim_set_gpio_ideal(BTN_PIN, true);  } /* acti
 
 void setUp(void) {
     /* Drain any lingering slot before test isolation reset. */
-    wink_button_events_stop(&s_btn);
+    wink_button_disable_events(&s_btn);
 
     pal_resource_reset();
     sim_clear_gpio_ideal();
@@ -76,7 +76,7 @@ void setUp(void) {
 }
 
 void tearDown(void) {
-    wink_button_events_stop(&s_btn);
+    wink_button_disable_events(&s_btn);
     WINK_IGNORE_RESULT(dal_button_deinit(&s_btn));
     wink_event_queue_deinit();
     sim_clear_gpio_ideal();
@@ -99,7 +99,7 @@ void test_gpio_irq_degrades_to_soft_poll_on_host(void) {
         .debounce_ms   = 20,
         .wake_from_sleep = false,
     };
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_button_events_start(&s_btn, &cfg));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_button_enable_events(&s_btn, &cfg));
 
     /* Warn recorded exactly once by the degrade branch. */
     TEST_ASSERT_EQUAL_UINT32(warn_before + 1u, wink_warn_count());
@@ -136,7 +136,7 @@ void test_gpio_irq_strict_returns_unsupported(void) {
         .wake_from_sleep = false,
     };
     TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED,
-        wink_button_events_start(&s_btn, &cfg));
+        wink_button_enable_events(&s_btn, &cfg));
 
     /* No warn should be raised on the hard-fail path. */
     TEST_ASSERT_EQUAL_UINT32(warn_before, wink_warn_count());

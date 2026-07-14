@@ -117,7 +117,7 @@ wink_status_t wink_button_events_irq_arm(button_event_slot_t *slot,
  *
  * Idempotent. Stops/destroys timers, clears DAL event backend, disables
  * shared ISR (refcount drops in DAL). Does not touch orig_cb or period_h;
- * the caller (wink_button_events_stop) handles those.
+ * the caller (wink_button_disable_events) handles those.
  */
 void wink_button_events_irq_disarm(button_event_slot_t *slot);
 

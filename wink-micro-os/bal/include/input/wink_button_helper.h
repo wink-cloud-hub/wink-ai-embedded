@@ -74,6 +74,7 @@ extern "C" {
  *         Other codes propagated from wink_periodic_start_ex.
  */
 WINK_WARN_UNUSED_RESULT
+WINK_DEPRECATED("use wink_button_enable_events with WINK_BUTTON_DRIVE_SOFT_POLL (ADR-0032)")
 wink_status_t wink_button_helper_start(dal_button_t *btn, uint32_t poll_ms);
 
 /**
@@ -88,6 +89,7 @@ wink_status_t wink_button_helper_start(dal_button_t *btn, uint32_t poll_ms);
  * @param btn  Button instance (NULL-safe).
  * @return WINK_OK
  */
+WINK_DEPRECATED("use wink_button_disable_events (ADR-0032)")
 wink_status_t wink_button_helper_stop(dal_button_t *btn);
 
 #ifdef __cplusplus

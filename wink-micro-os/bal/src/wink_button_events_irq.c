@@ -312,7 +312,7 @@ wink_status_t wink_button_events_irq_arm(button_event_slot_t *slot,
 {
     (void)slot;
     (void)cfg;
-    /* Should never be called: wink_button_events_start checks
+    /* Should never be called: wink_button_enable_events checks
      * irq_supported() first. Return UNSUPPORTED as a hard-fail sentinel. */
     return WINK_ERR_UNSUPPORTED;
 }
