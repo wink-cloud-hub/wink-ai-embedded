@@ -40,7 +40,7 @@ rules.ninja
 *.gcov
 *.profdata
 *.profraw
-
+*.tar.gz
 # Clang 编译数据库（按需生成，不入库）
 compile_commands.json
 
@@ -86,3 +86,7 @@ Thumbs.db
 # ===== Python（构建期静态分析工具 check_pt_variables.py 产物）=====
 __pycache__/
 *.pyc
+
+# ===== Wink toolchain 本地配置（ADR-0029/0030）=====
+# 用户或工作区级 tools.json（含绝对机器路径，禁止入库）
+.wink/

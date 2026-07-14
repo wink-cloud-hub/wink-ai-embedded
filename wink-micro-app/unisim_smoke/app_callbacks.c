@@ -2,7 +2,7 @@
  * @file app_callbacks.c
  * @brief unisim_smoke wasm fixture — reaches all 13 js_* imports.
  *
- * The Node smoke test (simulator/src/unisim/bridge/__tests__/nodeSmoke.test.ts)
+ * The Node smoke test (../../../wink-ai/packages/unisim/src/unisim/bridge/__tests__/nodeSmoke.test.ts)
  * loads the compiled wasm and, over its lifetime, drives every js_* import
  * at least once. This app's job is only to CALL the C side of each import so
  * emcc doesn't tree-shake the symbol out.

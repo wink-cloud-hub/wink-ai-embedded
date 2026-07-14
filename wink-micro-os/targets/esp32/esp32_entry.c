@@ -9,7 +9,7 @@
  *     2. 创建 wink_runtime_task（8192B 栈, prio=5）→ 调 wink_runtime_run(cb, 0) 永久运行
  *     3. 通过 extern wink_app_get_callbacks() 按 DWINK_APP 选择 sample 的回调表
  *        （samples/<app>/app_callbacks.c 导出，由 esp32_firmware/main/app_sources.cmake
- *         自动扫描，由 generate_app_sources.ps1 驱动）
+ *         自动扫描，由 tools/esp32/generate_app_sources.py 在 CMake configure 阶段驱动）
  *     4. 栈高水位 + Heap delta 每秒串口遥测（栈 <1KB / heap 泄漏 >512B 报警）
  *
  * 此文件仅保留作 "target 内可放置 early-boot hook（如 early UART bw, pin mux,

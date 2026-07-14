@@ -47,6 +47,10 @@ extern "C" {
     #define WINK_DEPRECATED_MSG(msg)
 #endif
 
+/* Short alias — used by ADR-0032 BAL rename compat shims and any future
+ * deprecation without the ADR-0017 blocking-API semantics baked in. */
+#define WINK_DEPRECATED(msg) WINK_DEPRECATED_MSG(msg)
+
 #define WINK_BLOCKING \
     WINK_DEPRECATED_MSG("Blocking API forbidden in cooperative runtime; use non-blocking variant")
 
