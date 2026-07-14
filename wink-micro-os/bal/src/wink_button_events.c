@@ -21,6 +21,8 @@
 #include "wink_tasks.h"
 #include "wink_status.h"
 #include "wink_event.h"
+#include "wink_fault.h"      /* WINK_WARN_BUTTON_IRQ_DEGRADED */
+#include "wink_trace.h"      /* wink_trace_warn() (S4 degrade signal) */
 #include "wink_pt_debug.h"  /* WINK_ASSERT_NONBLOCKING() (ADR-0017 layer 3) */
 #include "pal_log.h"
 #include "pal_osal.h"       /* pal_os_get_us() / pal_os_get_ms() for state machine + budget */
@@ -168,13 +170,20 @@ static void btn_poll_tick(void *arg) {
  * path (S3 pending on non-ESP32 targets), we fall back to periodic polling.
  * If the JSON did not supply auto_poll_ms (0), pick something reasonable
  * derived from debounce_ms so the fallback is not silently sluggish.
- * Formula matches S4 default: max(debounce_ms, 10 ms). */
+ * Formula matches S4 default: max(debounce_ms, 10 ms).
+ *
+ * Gated out under WINK_BUTTON_IRQ_STRICT (S4): strict builds hard-fail
+ * the misconfiguration instead of degrading, so this helper has no
+ * remaining call sites — leaving the definition would trip
+ * -Wunused-function under -Werror. */
+#ifndef WINK_BUTTON_IRQ_STRICT
 static uint32_t effective_poll_ms(const wink_button_event_config_t *cfg) {
     if (cfg->auto_poll_ms != 0u) {
         return cfg->auto_poll_ms;
     }
     return (cfg->debounce_ms > 10u) ? cfg->debounce_ms : 10u;
 }
+#endif
 
 /* ── public API ──────────────────────────────────────────────── */
 
@@ -186,17 +195,30 @@ wink_status_t wink_button_events_start(dal_button_t *btn,
         return WINK_ERR_INVALID_ARG;
     }
 
-    /* S3: honour GPIO_IRQ only when the target actually supports it. Non-
-     * ESP32 targets return false from irq_supported() and we degrade to
-     * SOFT_POLL as in S2. S4 will layer a warn-code on top of this degrade. */
+    /* S4: honour GPIO_IRQ only when the target actually supports it. Non-
+     * ESP32 targets return false from irq_supported() — under the default
+     * (permissive) build we degrade to SOFT_POLL and raise the
+     * `WINK_WARN_BUTTON_IRQ_DEGRADED` warn code so telemetry/CI can see the
+     * fallback happened. Under `-DWINK_BUTTON_IRQ_STRICT` (opt-in CI knob)
+     * the same misconfiguration hard-fails with `WINK_ERR_UNSUPPORTED`
+     * instead so codegen contracts can be enforced at build time. */
     bool use_irq = false;
     uint32_t poll_ms = 0;
     if (cfg->drive == WINK_BUTTON_DRIVE_GPIO_IRQ) {
         if (wink_button_events_irq_supported()) {
             use_irq = true;
         } else {
-            LOG_D("gpio_irq requested but not yet available; degrading to soft_poll");
+#ifdef WINK_BUTTON_IRQ_STRICT
+            LOG_D("gpio_irq requested but unsupported on this target (STRICT)");
+            return WINK_ERR_UNSUPPORTED;
+#else
+            /* Degrade path: signal via warn code first (observable in tests
+             * and telemetry), then compute effective poll_ms and fall
+             * through to the existing SOFT_POLL arming block below. */
+            wink_trace_warn(WINK_WARN_BUTTON_IRQ_DEGRADED);
+            LOG_D("gpio_irq unsupported on this target; degrading to soft_poll");
             poll_ms = effective_poll_ms(cfg);
+#endif
         }
     } else {
         /* SOFT_POLL: auto_poll_ms is mandatory (codegen already validates,
