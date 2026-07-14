@@ -27,7 +27,7 @@
 ```
 
 1. **App (应用逻辑层)**：由低代码/codegen 生成的业务逻辑。经 `wink_app_callbacks_t`（`init_status` / `loop` / `on_fault_status` / `on_boot`）注入 runtime；调用 BAL helper 或 DAL 语义 API，**不对接**裸 GPIO/I2C。
-2. **BAL (业务抽象层)**：`bal/` 静态库 `wink_bal`。强类型双轨 API（`_start` 初学者默认 / `_start_ex` 专家覆盖栈/优先级/核）。典型用法：`wink_button_helper_start(&btn, USER_BUTTON_AUTO_POLL_MS)`。迁移指南见 [CHANGELOG.md](./CHANGELOG.md#baldcst-迁移指南2026-07-06-重构)。
+2. **BAL (业务抽象层)**：`bal/` 静态库 `wink_bal`。强类型双轨 API（`_start` 初学者默认 / `_start_ex` 专家覆盖栈/优先级/核）。典型用法：`wink_button_enable_events(&btn, &cfg)`（ADR-0032 B 类）。迁移指南见 [CHANGELOG.md](./CHANGELOG.md#baldcst-迁移指南2026-07-06-重构)。
 3. **runtime + trace**：一等 peer 层。`runtime` 用回调注入跑协作式主循环（无 `extern app_*` 强依赖，二进制解耦）；`trace` 用静态环形缓冲记录故障（零动态分配）。DAL/PAL 驱动**禁**直接调 `wink_trace_*`，故障捕获收敛在 App 回调。
 4. **DAL (器件抽象层)**：管理具体的传感器和执行器（如超声波测距仪、舵机、温湿度计）。
    * **双模运行能力**：在仿真模式下，DAL 驱动仅旁路最底层物理信号来源（trigger 时序、echo 脉宽），换算与超时判定两端同源；在真机模式下，它调用 PAL 接口操作物理引脚。
@@ -50,8 +50,8 @@ wink-micro-os/
 │   ├── include/  dal_ultrasonic.h · dal_servo.h · dal_led.h · …
 │   └── src/
 ├── bal/                        # 业务抽象层 (STATIC，ADR-0023)
-│   ├── include/  wink_helper_opts.h · output/wink_blink_helper.h · input/wink_button_helper.h · …
-│   └── src/      wink_blink_helper.c · wink_button_helper.c · …
+│   ├── include/  wink_helper_opts.h · output/wink_blink_helper.h · input/wink_button_events.h · …
+│   └── src/      wink_blink_helper.c · wink_button_events.c · wink_button_events_irq.c · …
 ├── runtime/                    # OS 运行时 (STATIC，回调注入主循环)
 │   ├── include/  wink_app.h · wink_runtime.h
 │   └── src/      wink_runtime.c
