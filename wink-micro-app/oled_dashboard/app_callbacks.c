@@ -1,12 +1,16 @@
 /**
  * @file app_callbacks.c
- * @brief OLED Dashboard 业务逻辑：按钮输入 → OLED 文本 + LED 指示。
+ * @brief OLED Dashboard — L1 beginner gold sample (Role API only).
  *
- * 真机 / 仿真一致行为：
- *   - 按钮按下（active_low，内部上拉）→ OLED 显示 "HELLO WORLD N"（N 初值 1；
- *     仅 SSD1306 MVP 字库支持的大写/数字），LOG_I 输出完整 "Hello World N"。
- *   - 按住期间显示序号不变；松开 → OLED 清屏，LED 熄灭。
- *   - 每次新的按下边沿递增 N（下次按下显示 N+1）。
+ * Audience: A (low-code) / B (AI) default path. Prefer `{name}_{verb}` Role
+ * APIs from device_tree.h. Expert (C) escape hatch (&dev + dal_*) is
+ * documented in wink-micro-app/README.md — do not mix into this sample.
+ *
+ * Behavior (host / wasm / ESP32 identical):
+ *   - Press (active_low, pull-up) → OLED "HELLO WORLD N" (N starts at 1;
+ *     MVP glyph set: uppercase + digits), LOG_I "Hello World N".
+ *   - Hold: display stable; release → clear OLED, LED off.
+ *   - Each new press edge increments N.
  */
 #define LOG_TAG "oled_dashboard"
 
@@ -15,29 +19,15 @@
 #include "wink_log.h"
 #include "wink_trace.h"
 #include "wink_fault.h"
-#include "wink_status.h"
-#include "wink_button_helper.h"
-#include "wink_blocking_region.h"
-#include "pal_log.h"
 #include <stdint.h>
 #include <stdio.h>
 
-#define FAULT_BUTTON_HELPER 8001u
-
 static uint32_t s_press_count = 1;
-
-static void app_on_boot(const wink_boot_info_t *info)
-{
-    (void)info;
-}
 
 static wink_status_t app_init_status(void)
 {
     WINK_TRY(wink_device_tree_init());
-
-#ifdef USER_BUTTON_AUTO_POLL_MS
-    WINK_TRY(user_button_start_auto_poll(USER_BUTTON_AUTO_POLL_MS));
-#endif
+    WINK_TRY(user_button_enable_events());
 
     status_oled_clear();
     status_oled_flush();
@@ -50,7 +40,7 @@ static wink_status_t app_init_status(void)
 
 static void app_loop(void)
 {
-    /* no-op */
+    /* no-op — events drive this sample */
 }
 
 static void app_on_event(const wink_event_t *evt)
@@ -59,7 +49,8 @@ static void app_on_event(const wink_event_t *evt)
         if (evt->type == WINK_EVENT_BUTTON_PRESSED) {
             LOG_I("Hello World %lu", (unsigned long)s_press_count);
             char line[32];
-            (void)snprintf(line, sizeof(line), "HELLO WORLD %lu", (unsigned long)s_press_count);
+            (void)snprintf(line, sizeof(line), "HELLO WORLD %lu",
+                           (unsigned long)s_press_count);
 
             status_led_activate();
             status_oled_clear();
@@ -91,7 +82,7 @@ const wink_app_callbacks_t *wink_app_get_callbacks(void)
         .loop            = app_loop,
         .on_event        = app_on_event,
         .on_fault_status = app_on_fault_status,
-        .on_boot         = app_on_boot,
+        /* on_boot omitted (NULL): L1 samples need no reset-reason handling */
     };
     return &cb;
 }

@@ -5,29 +5,51 @@
 #include "pal_irq.h"
 #include <string.h> /* memcpy */
 
+/* ── File-scope: BAL IRQ notify hook (single process-global slot) ──
+ * Set by BAL's IRQ backend (dal_button_set_irq_hook) so the shared GPIO ISR
+ * can wake the BAL daemon without DAL depending on BAL.  DAL never invokes
+ * this hook unless the offending button has event_backend == BACKEND_IRQ,
+ * so a stale hook pointer left after the last IRQ-using button was torn
+ * down is harmless.  Access is a plain load in the ISR: hook install/
+ * uninstall happens on the task path and the ISR just does an ISR-safe
+ * function-pointer read; ADR-0018 §atomic-pointer-load. */
+static volatile dal_button_irq_notify_hook_t s_irq_hook = NULL;
+static void *s_irq_hook_ctx = NULL;
+
 static bool button_raw_pressed(bool raw_level, bool active_low) {
     /* active_low: 按下=LOW(raw=false) → pressed=true */
     return raw_level != active_low;
 }
 
-/* ── ISR counter thunk (file-scope, PAL_DEFINE_ISR typed wrapper) ──
- * Each button with isr_counter_enabled uses the SAME thunk; the dev pointer
- * is passed via the ISR arg (pal_gpio_enable_interrupt stores it per-pin).
- * ISR contract: <10µs, no blocking API, only FromISR RTOS calls (none needed
- * here — we just increment a volatile counter). */
-PAL_DEFINE_ISR(dal_button_edge_counter_isr, dal_button_t, dev) {
-    /* Volatile ++ is NOT atomic on all architectures (Xtensa l32i/addi/s32i is
-     * interruptible at the instruction level? No — a single instruction is
-     * atomic w.r.t. interrupts on Xtensa, but between load and store an ISR
-     * at higher prio could preempt.  However, all GPIO ISRs are registered
-     * at PAL_IRQ_PRIO_NORMAL (pal_gpio_enable_interrupt default) and this ISR
-     * itself cannot nest at equal priority on FreeRTOS (configMAX_SYSCALL_INTERRUPT_PRIORITY
-     * masking plus same-priority ISRs don't nest on Xtensa).  A plain ++ is
-     * safe for counting transitions on the same pin — re-entrant edge on the
-     * SAME pin while already in this ISR cannot happen.
-     *
-     * On host/wasm the ISR runs single-threaded, no re-entrancy possible. */
-    dev->edge_count++;
+/* ── Unified GPIO ISR thunk (file-scope, PAL_DEFINE_ISR typed wrapper) ──
+ * Registered exactly once per pin when either isr_counter_enabled or
+ * event_backend == BACKEND_IRQ becomes true (refcount managed by
+ * dal_button_enable_gpio_isr / dal_button_disable_gpio_isr).
+ *
+ * ISR contract (ADR-0018 §ISR body ≤ 10 simple ops):
+ *   1. if isr_counter_enabled: ++edge_count (volatile, atomic on all supported ISAs)
+ *   2. if event_backend == BACKEND_IRQ:
+ *        - set irq_pending = true (volatile)
+ *        - call BAL hook if installed (ISR-safe sem give — no LOG/malloc/timer)
+ *
+ * NO log, NO malloc, NO event_post, NO timer_start. All heavy work happens
+ * in the BAL daemon task after debounce timer fires. */
+PAL_DEFINE_ISR(dal_button_gpio_isr, dal_button_t, dev) {
+    /* Counter path: same reasoning as the retired dal_button_edge_counter_isr
+     * — same-priority GPIO ISRs on the same pin cannot preempt each other. */
+    if (dev->isr_counter_enabled) {
+        dev->edge_count++;
+    }
+    /* Event-IRQ path: flag + wake daemon. Hook is a plain volatile pointer;
+     * BAL guarantees it is either NULL (no daemon armed) or points to an
+     * ISR-safe give function that survives for the lifetime of the daemon. */
+    if (dev->event_backend == DAL_BUTTON_BACKEND_IRQ) {
+        dev->irq_pending = true;
+        dal_button_irq_notify_hook_t hook = s_irq_hook;
+        if (hook != NULL) {
+            hook(s_irq_hook_ctx);
+        }
+    }
 }
 
 wink_status_t dal_button_init(dal_button_t *dev, const dal_button_config_t *cfg) {
@@ -50,6 +72,7 @@ wink_status_t dal_button_init(dal_button_t *dev, const dal_button_config_t *cfg)
     dev->last_reported    = false;
     dev->initialized      = true;
     dev->debounce_counter = 0;
+    dev->debounce_threshold = DAL_BUTTON_DEBOUNCE_THRESHOLD;
 
     /* Wave 3: 初始化新增字段 */
     dev->event_cb            = NULL;
@@ -60,6 +83,11 @@ wink_status_t dal_button_init(dal_button_t *dev, const dal_button_config_t *cfg)
     dev->press_start_ms      = 0;
     dev->isr_counter_enabled = false;
     dev->edge_count          = 0;
+
+    /* Wave 4 (S3): shared-ISR + BAL event-backend fan-out fields */
+    dev->event_backend       = DAL_BUTTON_BACKEND_NONE;
+    dev->gpio_isr_registered = false;
+    dev->irq_pending         = false;
     return WINK_OK;
 }
 
@@ -78,7 +106,7 @@ wink_status_t dal_button_poll(dal_button_t *dev) {
         dev->debounce_counter = 0;
     } else {
         dev->debounce_counter++;
-        if (dev->debounce_counter >= DAL_BUTTON_DEBOUNCE_THRESHOLD) {
+        if (dev->debounce_counter >= dev->debounce_threshold) {
             dev->stable_pressed = now_pressed;
             dev->debounce_counter = 0;
         }
@@ -149,6 +177,67 @@ wink_status_t dal_button_set_long_press_ms(dal_button_t *dev, uint32_t ms) {
     return WINK_OK;
 }
 
+wink_status_t dal_button_set_debounce_ms(dal_button_t *dev, uint32_t ms) {
+    if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
+    if (ms == 0u) { return WINK_ERR_INVALID_ARG; }
+
+    /* Convert ms → 连续一致采样数：floor(ms / 10 ms tick), min 1, clamp to
+     * uint8_t max (255 samples ≈ 2.55 s @10 ms tick — anything beyond this
+     * is well outside the "debounce" regime). */
+    uint32_t samples = ms / 10u;
+    if (samples < 1u) { samples = 1u; }
+    if (samples > 255u) { samples = 255u; }
+    dev->debounce_threshold = (uint8_t)samples;
+    /* Reset the running counter so a stale in-progress transition doesn't
+     * fire off the new (potentially smaller) threshold on the very next poll. */
+    dev->debounce_counter = 0;
+    return WINK_OK;
+}
+
+/* ── Wave 4 (S3): shared GPIO ISR — refcount enable / disable ─────
+ * The unified ISR (dal_button_gpio_isr) is installed on first enable and
+ * uninstalled on last disable. Both isr_counter_enabled and
+ * event_backend == BACKEND_IRQ count as "someone needs the ISR".  Callers:
+ *   - dal_button_enable_isr_counter → flips isr_counter_enabled ON, then
+ *     calls dal_button_enable_gpio_isr.
+ *   - BAL IRQ arm → sets event_backend, then calls dal_button_enable_gpio_isr.
+ *   - deinit / BAL disarm / counter-disable → calls dal_button_disable_gpio_isr;
+ *     the shared ISR stays installed until BOTH refs drop. */
+
+wink_status_t dal_button_enable_gpio_isr(dal_button_t *dev) {
+    if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
+    if (dev->gpio_isr_registered) { return WINK_OK; } /* 幂等 */
+
+    wink_status_t st = pal_gpio_enable_interrupt(
+        dev->config.pin,
+        PAL_GPIO_INTR_ANY_EDGE,
+        dal_button_gpio_isr,
+        dev);
+    if (wink_status_is_error(st)) { return st; }
+    dev->gpio_isr_registered = true;
+    return WINK_OK;
+}
+
+void dal_button_disable_gpio_isr(dal_button_t *dev) {
+    if (dev == NULL || !dev->initialized) { return; }
+    if (!dev->gpio_isr_registered) { return; }
+    /* Only unregister the shared ISR when no consumer needs it anymore.
+     * counter still on OR event backend still IRQ → keep it. */
+    if (dev->isr_counter_enabled) { return; }
+    if (dev->event_backend == DAL_BUTTON_BACKEND_IRQ) { return; }
+
+    WINK_IGNORE_UNUSED(pal_gpio_disable_interrupt(dev->config.pin));
+    /* Synchronize is only strictly needed before freeing ISR arg / resetting
+     * pin (deinit path handles that separately).  For a plain refcount drop
+     * we still synchronize so a subsequent set_event_backend(NONE) → re-
+     * enable(IRQ) cannot race with an in-flight ISR that still holds the old
+     * dev pointer.  Safe on all targets (host/wasm no-op). */
+    WINK_IGNORE_UNUSED(pal_gpio_synchronize_interrupt(dev->config.pin));
+    dev->gpio_isr_registered = false;
+}
+
 /* ── Wave 3: ISR edge counter ───────────────────────────── */
 
 wink_status_t dal_button_enable_isr_counter(dal_button_t *dev) {
@@ -156,17 +245,17 @@ wink_status_t dal_button_enable_isr_counter(dal_button_t *dev) {
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
     if (dev->isr_counter_enabled) { return WINK_OK; } /* 幂等 */
 
-    /* 注册 ANY_EDGE GPIO ISR，使用 file-scope thunk（PAL_DEFINE_ISR 生成
-     * 的 dal_button_edge_counter_isr 解包装函数）。prio 默认 NORMAL。 */
-    wink_status_t st = pal_gpio_enable_interrupt(
-        dev->config.pin,
-        PAL_GPIO_INTR_ANY_EDGE,
-        dal_button_edge_counter_isr,
-        dev);
-    if (wink_status_is_error(st)) { return st; }
-
+    /* Flip the counter refcount BEFORE registering the shared ISR so that
+     * the very first edge the ISR observes is already accounted for. */
     dev->edge_count          = 0;
     dev->isr_counter_enabled = true;
+
+    wink_status_t st = dal_button_enable_gpio_isr(dev);
+    if (wink_status_is_error(st)) {
+        /* Roll back the refcount flip. */
+        dev->isr_counter_enabled = false;
+        return st;
+    }
     return WINK_OK;
 }
 
@@ -190,6 +279,40 @@ wink_status_t dal_button_reset_edge_count(dal_button_t *dev) {
     return WINK_OK;
 }
 
+/* ── Wave 4 (S3): BAL event-backend + IRQ pending consume ─── */
+
+void dal_button_set_event_backend(dal_button_t *dev, uint8_t backend) {
+    if (dev == NULL) { return; }
+    /* Field is read from ISR context; update via critical section so an
+     * in-flight ISR either sees the OLD or the NEW backend consistently and
+     * never a torn value.  On the platforms we care about (Xtensa / host /
+     * wasm) uint8_t writes are already atomic, but the critical section
+     * keeps the semantics honest under -O2 reordering. */
+    PAL_CRITICAL_SECTION({
+        dev->event_backend = backend;
+    });
+}
+
+bool dal_button_consume_irq_pending(dal_button_t *dev) {
+    if (dev == NULL || !dev->initialized) { return false; }
+    bool was_pending = false;
+    PAL_CRITICAL_SECTION({
+        was_pending = dev->irq_pending;
+        dev->irq_pending = false;
+    });
+    return was_pending;
+}
+
+void dal_button_set_irq_hook(dal_button_irq_notify_hook_t fn, void *ctx) {
+    /* Task-context install; the ISR reads s_irq_hook as a plain volatile
+     * pointer load.  No critical section needed on install because a NULL
+     * hook is a valid transient value (ISR just skips) — the worst case is
+     * one dropped ISR-notify at the instant of install, which the debounce
+     * timer's stable-state read will still catch on the next edge. */
+    s_irq_hook_ctx = ctx;
+    s_irq_hook     = fn;
+}
+
 wink_status_t dal_button_deinit(dal_button_t *dev) {
     /* ADR-0024 §4 deinit — checked: 1(N/A: button safe-off is Hi-Z, no actuator)/
      *   2(pal_gpio_reset_pin)/3(disable_interrupt→synchronize before reset)/
@@ -201,13 +324,16 @@ wink_status_t dal_button_deinit(dal_button_t *dev) {
     /* Keep pin for resource release and GPIO reset (read before any memset). */
     uint16_t pin = dev->config.pin;
     const char *owner = dev->config.owner;
-    bool had_isr = dev->isr_counter_enabled;
 
-    /* 3. Disable interrupt (hard order: disable → synchronize → reset pin),
-     *    so an in-flight ISR on another core cannot touch the pin post-reset. */
-    if (had_isr) {
+    /* 3. Drop BOTH refs and then let the shared ISR uninstall itself.
+     *    Order matters: clear backend + counter first, THEN disable, so
+     *    disable_gpio_isr sees no live consumers and actually unregisters. */
+    dev->event_backend       = DAL_BUTTON_BACKEND_NONE;
+    dev->isr_counter_enabled = false;
+    if (dev->gpio_isr_registered) {
         WINK_IGNORE_UNUSED(pal_gpio_disable_interrupt(pin));
         WINK_IGNORE_UNUSED(pal_gpio_synchronize_interrupt(pin));
+        dev->gpio_isr_registered = false;
     }
 
     /* 2. Reset GPIO: disables any leftover routing, reverts to Hi-Z INPUT,

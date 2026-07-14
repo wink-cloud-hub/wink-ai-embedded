@@ -45,6 +45,11 @@ extern "C" {
 /* ── DAL drivers 9000-9899 (100 slots per driver) ─────────────── */
 #define WINK_FAULT_DAL_LED             9100u
 #define WINK_FAULT_DAL_BUTTON          9200u
+/* warn: BAL button-events requested GPIO_IRQ drive but the current target
+ * (host/wasm/non-ESP32) does not support IRQ dispatch; the runtime has
+ * transparently degraded to SOFT_POLL. See ADR-0031. Countable via
+ * wink_warn_count() (aggregate, not per-code). */
+#define WINK_WARN_BUTTON_IRQ_DEGRADED  9201u
 #define WINK_FAULT_DAL_SERVO           9300u
 #define WINK_FAULT_DAL_ULTRASONIC      9400u
 #define WINK_FAULT_DAL_SSD1306         9500u

@@ -90,6 +90,10 @@ enum {
 带完整上下文（`motor_driver_check_overcurrent`，不是 `check`）。布尔用 `is_`/`has_`/
 `can_`/`should_` 前缀。
 
+**App Role / BAL 操作三类（A 活动 · B 能力 · C 动作）**：  
+口诀——主交付进事件队列 → `enable_*`；否则有后台会话 → `start/stop`；一次做完 → `set/get/request/…`。Role↔BAL 同操作同动词。  
+SSOT：`docs/design/07-platform-governance/coding-conventions.md` §3；决策：`docs/design/decisions/0032-bal-role-operation-naming-classes.md`。写新 API 前先归类；**勿在本文件复制整表**。
+
 ---
 
 ## static inline 与 restrict 优化（硬规）

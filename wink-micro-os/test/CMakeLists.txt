@@ -251,19 +251,45 @@ target_include_directories(test_dal_gps PRIVATE
 # Stage 0 Task 0.1: PAL I2C bus lifecycle API host test
 add_wink_host_test(test_pal_i2c_bus test_pal_i2c_bus.c)
 
-# ADR-0023 Task 2.2: BAL wink_button_helper.
+# ADR-0032: BAL wink_button_enable_events / disable_events.
 # wink_bal PUBLIC-links wink_runtime (which contains wink_runtime_tasks.c
 # and wink_soft_timer.c) and dal; transitive deps bring in pal + trace.
-add_wink_host_test(test_button_helper test_button_helper.c)
-target_link_libraries(test_button_helper PRIVATE wink_bal)
+add_wink_host_test(test_button_events test_button_events.c)
+target_link_libraries(test_button_events PRIVATE wink_bal)
 # add_wink_host_test's default include dirs do NOT include bal/include/input
-# (where wink_button_helper.h lives). wink_bal PUBLIC-includes that path, but
+# (where wink_button_events.h lives). wink_bal PUBLIC-includes that path, but
 # add_wink_host_test adds include dirs BEFORE target_link_libraries runs, so
 # we add it explicitly here to be safe.
-target_include_directories(test_button_helper PRIVATE
+target_include_directories(test_button_events PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/input)
-target_compile_definitions(test_button_helper PRIVATE WINK_STRICT_NONBLOCKING=1)
+target_compile_definitions(test_button_events PRIVATE WINK_STRICT_NONBLOCKING=1)
+
+# ADR-0031 Task S4: BAL wink_button_events GPIO_IRQ → SOFT_POLL degrade
+# path — permissive default (warn + degrade) and strict opt-in (hard-fail).
+# The strict variant reuses the same source file gated on
+# `WINK_BUTTON_IRQ_STRICT` so both mode contracts live next to each other.
+add_wink_host_test(test_button_events_irq_degrade test_button_events_irq_degrade.c)
+target_link_libraries(test_button_events_irq_degrade PRIVATE wink_bal)
+target_include_directories(test_button_events_irq_degrade PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/input)
+
+# STRICT variant: `WINK_BUTTON_IRQ_STRICT` must reach the wink_button_events
+# translation unit, but `libwink_bal.a` is already built without it. To pick
+# up the strict branch we compile the BAL button-events sources directly
+# into this test executable (their .obj resolves `wink_button_enable_events`
+# before the archive is scanned) and rely on wink_bal only for the other
+# helpers we do not touch. Include-dirs mirror the ones wink_bal exports.
+add_wink_host_test(test_button_events_irq_strict
+    test_button_events_irq_degrade.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/src/wink_button_events.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/src/wink_button_events_irq.c)
+target_link_libraries(test_button_events_irq_strict PRIVATE wink_bal)
+target_include_directories(test_button_events_irq_strict PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/input)
+target_compile_definitions(test_button_events_irq_strict PRIVATE WINK_BUTTON_IRQ_STRICT=1)
 
 # ADR-0023 Task 2.1: BAL wink_led_blink_helper.
 # wink_bal PUBLIC-links wink_runtime (which contains wink_runtime_tasks.c and
@@ -283,7 +309,7 @@ target_compile_definitions(test_blink_helper PRIVATE WINK_STRICT_NONBLOCKING=1)
 add_wink_host_test(test_bal_telemetry test_bal_telemetry.c)
 target_link_libraries(test_bal_telemetry PRIVATE wink_bal)
 # add_wink_host_test's default include dirs do NOT include bal/include/comm;
-# add it explicitly (mirrors test_button_helper / test_blink_helper pattern).
+# add it explicitly (mirrors test_button_events / test_blink_helper pattern).
 target_include_directories(test_bal_telemetry PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/comm)

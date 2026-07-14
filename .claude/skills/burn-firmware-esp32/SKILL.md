@@ -1,50 +1,81 @@
 ---
 name: burn-firmware-esp32
-description: 用于 Wink-Micro-OS ESP32 固件的自动扫描、构建、编译、烧录与清理。当用户输入有关 ESP32 固件构建、编译、烧写、清理等命令（或直接提供 App 名称如 devkitc_smoke, avoidance_car, oled_dashboard, resource_conflict 作为参数）时触发。本 Skill 会将紧跟后面的第一个参数解析为 DWINK_APP 名字，并指导进行正确的环境激活和 CMake/idf.py 构建流程。
+description: 用于 Wink-Micro-OS ESP32 固件的自动扫描、构建、编译、烧录与清理。当用户输入有关 ESP32 固件构建、编译、烧写、清理等命令（或直接提供 App 名称如 devkitc_smoke, avoidance_car, oled_dashboard, resource_conflict 作为参数）时触发。本 Skill 会将紧跟后面的第一个参数解析为 App 名字，并指导用户通过统一入口 `wink.py esp32` 驱动构建与烧录流程。
 ---
 
 # ESP32 固件构建与烧录 Skill
 
-本 Skill 旨在协助用户对 `wink-micro-os/samples/` 下的业务应用进行 ESP32 固件编译、烧录及清理。
+本 Skill 协助用户对 `wink-micro-os/samples/` 或 `wink-micro-app/` 下的业务应用进行 ESP32 固件编译、烧录及清理。
 
 ## 🎯 核心逻辑
 
-用户输入有关编译/烧录的指令时，**紧跟后面的第一个参数即为 `DWINK_APP` 的名字**（如 `avoidance_car`）。
-你需要提取该 App 名字，并按以下流程在 Windows PowerShell 下执行相应构建和烧录操作。
+用户输入有关编译/烧录的指令时，**紧跟后面的第一个参数即为 App 名字**（如 `avoidance_car`），未指定时默认 `devkitc_smoke`。
+所有操作**统一通过 Wink CLI**（`python wink-micro-os/tools/wink.py esp32`）执行——Wink 自动激活 IDF 环境、扫描源文件、剥离 PATH 污染，用户**不需要**在 shell 里手工 dot-source EIM profile。所有命令都从**仓库根目录**执行。
 
 ---
 
-## 🚀 执行步骤与命令链 (PowerShell)
+## 🚀 命令速查
 
 > [!IMPORTANT]
-> 由于 PowerShell 的环境变量和 Profile 激活只在当前进程生效，你**必须**在单个 `run_command` 调用中，使用分号 `;` 将环境激活命令与 `idf.py` 命令链拼接在一起执行。
+> **`--` 分隔符规则**：传给 idf.py 的子命令（build / flash / monitor / fullclean / menuconfig 等）可以直接写；但凡是**以 `-` 开头的参数**（-p / -v / -b / -D 等），前面必须加 `--`，让 argparse 停止解析 Wink 自己的 flag。
 
 ### 1. 编译指定 App
-- **目标 App**: 提取自用户输入的第一个参数 `$AppName`（若未指定，默认使用 `devkitc_smoke`）。
-- **执行命令**:
-  ```powershell
-  $env:PYTHONUTF8='1'; $env:PYTHONIOENCODING='utf-8'; . 'C:\Espressif\tools\Microsoft.v6.0.1.PowerShell_profile.ps1'; idf.py build -DWINK_APP=$AppName
-  ```
-  *(注：需在 `esp32_firmware` 目录下运行，通过 `Cwd` 参数指定为 `esp32_firmware` 绝对路径。)*
+
+```powershell
+# 默认 App = devkitc_smoke；默认子命令 = build
+python wink-micro-os/tools/wink.py esp32
+
+# 指定 App 名字（在 wink-micro-os/samples/<name>/ 下）
+python wink-micro-os/tools/wink.py esp32 --app $AppName
+
+# 指定 App 目录（相对或绝对路径）
+python wink-micro-os/tools/wink.py esp32 --app wink-micro-app/my_custom_app
+```
 
 ### 2. 清理并重编 (Fullclean)
-在更换 App、修改 CMake 脚本或遇到奇怪的链接错误时，需要先执行 `fullclean`：
-  ```powershell
-  $env:PYTHONUTF8='1'; $env:PYTHONIOENCODING='utf-8'; . 'C:\Espressif\tools\Microsoft.v6.0.1.PowerShell_profile.ps1'; idf.py fullclean; idf.py build -DWINK_APP=$AppName
-  ```
+
+更换 App、修改 CMake/Kconfig、升级 IDF 或遇奇怪链接错误时使用：
+
+```powershell
+python wink-micro-os/tools/wink.py esp32 --app $AppName fullclean
+```
 
 ### 3. 烧录与串口监视
-将固件烧录到指定串口（例如 `COM3`，请优先从历史命令或用户提示中确认串口号，默认为 `COM3`）：
-  ```powershell
-  $env:PYTHONUTF8='1'; $env:PYTHONIOENCODING='utf-8'; . 'C:\Espressif\tools\Microsoft.v6.0.1.PowerShell_profile.ps1'; idf.py -p COM3 flash monitor
-  ```
-  *(注：串口监视器退出快捷键为 `Ctrl + ]`)*
 
-### 4. 调试脚本运行 (仅生成 CMake 片段，不进行完整编译)
-若只需运行扫描脚本，在 `esp32_firmware` 目录下运行：
-  ```powershell
-  .\generate_app_sources.ps1 -AppName $AppName
-  ```
+```powershell
+# -p 指定串口号（Windows: COM3；Linux: /dev/ttyUSB0；macOS: /dev/tty.usbserial-*）
+# 注意 -p 以 '-' 开头，前面必须加 '--'
+python wink-micro-os/tools/wink.py esp32 --app $AppName -- -p COM3 flash monitor
+
+# 只烧录不打开监视器
+python wink-micro-os/tools/wink.py esp32 --app $AppName -- -p COM3 flash
+
+# 仅打开监视器连接已烧录好的固件
+python wink-micro-os/tools/wink.py esp32 --app $AppName -- -p COM3 monitor
+```
+
+**退出串口监视器：** `Ctrl + ]`。
+
+### 4. 透传其他 idf.py 参数
+
+```powershell
+# 详细构建输出
+python wink-micro-os/tools/wink.py esp32 --app $AppName -- build -v
+
+# 自定义烧录波特率
+python wink-micro-os/tools/wink.py esp32 --app $AppName -- -b 921600 -p COM3 flash
+
+# 交互式 menuconfig
+python wink-micro-os/tools/wink.py esp32 --app $AppName menuconfig
+```
+
+### 5. 仅调试扫描器（不编译）
+
+排查某个源文件为什么没被编到：
+
+```powershell
+python wink-micro-os/tools/esp32/generate_app_sources.py --app-name $AppName --esp32-firmware-dir esp32_firmware
+```
 
 ---
 
@@ -62,8 +93,10 @@ description: 用于 Wink-Micro-OS ESP32 固件的自动扫描、构建、编译�
 ## 💡 常见构建规范与排错
 
 1. **零改动特性**：
-   业务应用代码存放在 `wink-micro-os/samples/$AppName/`。更换 App 或增删源文件时，`esp32_firmware` 目录下的源码不需要做任何修改。CMake 配置会在 configure 阶段自动调用 `generate_app_sources.ps1` 扫描生成 `main/app_sources.cmake`。
+   业务代码放在 `wink-micro-os/samples/$AppName/` 或 `wink-micro-app/<name>/`，换 App / 增删源文件无需改动 `esp32_firmware/` 任何文件。CMake configure 阶段会自动调用 `tools/esp32/generate_app_sources.py` 生成 `main/app_sources.cmake`。
 2. **乱码处理**：
-   在 PowerShell 环境中，必须配置 `$env:PYTHONUTF8 = '1'` 和 `$env:PYTHONIOENCODING = 'utf-8'` 以防止中文注释编译报错或终端乱码。
-3. **IDF_TARGET**：
-   如果看到 `IDF_TARGET is not set, guessed 'esp32'` 提示，这属于正常现象，无需处理。
+   Wink 自动注入 `PYTHONUTF8=1` 与 `PYTHONIOENCODING=utf-8`；GCC 配置了 `-finput-charset=UTF-8`。手工跑 `idf.py` 时需自行设置这两个变量。
+3. **IDF_TARGET 提示**：
+   看到 `IDF_TARGET is not set, guessed 'esp32'` 属正常信息，无需处理。
+4. **IDF 未找到**：
+   运行 `python wink-micro-os/tools/wink.py doctor` 按提示排查。Wink 永远不会自动安装 IDF（ADR-0030），请通过 Espressif IDE Manager (EIM) 安装 ESP-IDF v6.x，详见 [preinstall.md §3](../../wink-micro-os/tools/preinstall.md)。
