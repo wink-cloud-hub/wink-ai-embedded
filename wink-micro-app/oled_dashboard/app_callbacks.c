@@ -37,12 +37,12 @@ static wink_status_t app_init_status(void)
     LOG_I("init done");
     return WINK_OK;
 }
-
+/*
 static void app_loop(void)
 {
-    /* no-op — events drive this sample */
+    // no-op — events drive this sample
 }
-
+*/
 static void app_on_event(const wink_event_t *evt)
 {
     if (evt->device == &user_button) {
@@ -79,7 +79,7 @@ const wink_app_callbacks_t *wink_app_get_callbacks(void)
 {
     static const wink_app_callbacks_t cb = {
         .init_status     = app_init_status,
-        .loop            = app_loop,
+        /*.loop            = app_loop,*/
         .on_event        = app_on_event,
         .on_fault_status = app_on_fault_status,
         /* on_boot omitted (NULL): L1 samples need no reset-reason handling */
