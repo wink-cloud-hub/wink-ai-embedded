@@ -15,13 +15,11 @@
  */
 #include <stdio.h>
 
-/* The Arduino sketch defines these (C++ linkage). */
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-extern void setup(void);
-extern void loop(void);
+/* The Arduino sketch defines setup()/loop() — these are declared with C
+ * linkage by ArduinoCore-API's Common.h (inside its extern "C" block),
+ * so the user's .ino file doesn't need any extern "C" wrapping. */
+extern "C" void setup(void);
+extern "C" void loop(void);
 
 /* PAL resource management — host mock needs pin claims. */
 #include "pal_resource.h"
@@ -29,11 +27,7 @@ extern void loop(void);
 #include "wink_status.h"
 
 /* Arduino compat init */
-extern void wink_arduino_init(void);
-
-#ifdef __cplusplus
-}
-#endif
+extern "C" void wink_arduino_init(void);
 
 #define E2E_PASS()    do { puts("E2E PASS"); return 0; } while(0)
 #define E2E_FAIL(msg) do { puts("E2E FAIL: " msg); return 1; } while(0)

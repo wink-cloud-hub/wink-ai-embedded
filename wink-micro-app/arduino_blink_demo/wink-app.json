@@ -1,9 +1,0 @@
-{
-  "app_name": "arduino_blink_demo",
-  "board": "esp32_devkitc",
-  "devices": {
-    "onboard_led": {
-      "use_onboard": "status_led"
-    }
-  }
-}

@@ -47,7 +47,7 @@ def _enforce_binary_ceilings(max_timers, pwm_channels):
 
 def main():
     parser = argparse.ArgumentParser(description="Generate wink_config.h")
-    parser.add_argument("--input", required=True, help="Path to wink_app.json")
+    parser.add_argument("--input", required=False, default=None, help="Path to wink_app.json")
     parser.add_argument("--output", required=True, help="Path to output wink_config.h")
     parser.add_argument("--target", default="esp32", help="Target platform")
     parser.add_argument(
@@ -58,8 +58,12 @@ def main():
     )
     args = parser.parse_args()
 
-    with open(args.input, "r", encoding="utf-8") as f:
-        config = json.load(f)
+    config = {}
+    if args.input and os.path.exists(args.input):
+        with open(args.input, "r", encoding="utf-8") as f:
+            config = json.load(f)
+    else:
+        print("[config_h] No input file or input file not found. Falling back to default configuration.")
 
     tick_ms = config.get("tick_ms", 10)
     max_timers = config.get("max_soft_timers", 16)
@@ -87,7 +91,7 @@ def main():
  * THIS FILE IS AUTO-GENERATED - DO NOT EDIT MANUALLY!
  * Any manual changes will be OVERWRITTEN on the next build.
  *
- * Source: {os.path.basename(args.input)}
+ * Source: {os.path.basename(args.input) if args.input else "None (default)"}
  * Target: {args.target}
  *
  * Configuration Single Source of Truth (SSOT):

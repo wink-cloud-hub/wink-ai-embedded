@@ -43,9 +43,8 @@ else()
 endif()
 set(WINK_APP_JSON "${WINK_APP_DIR}/wink-app.json")
 if(NOT EXISTS "${WINK_APP_JSON}")
-    message(FATAL_ERROR
-        "WINK_APP_JSON not found: ${WINK_APP_JSON}\n"
-        "Set -DWINK_APP_DIR= to a directory that contains wink-app.json.")
+    message(STATUS "WINK_APP_JSON not found at: ${WINK_APP_JSON} — Using default configuration.")
+    set(WINK_APP_JSON "")
 endif()
 message(STATUS "WINK_APP_DIR = ${WINK_APP_DIR}")
 message(STATUS "WINK_APP_JSON = ${WINK_APP_JSON}")
@@ -88,16 +87,20 @@ find_package(Python3 REQUIRED COMPONENTS Interpreter)
 set(WINK_CONFIG_DIR ${CMAKE_BINARY_DIR}/generated)
 set(WINK_CONFIG_H ${WINK_CONFIG_DIR}/wink_config.h)
 
+set(_CONFIG_H_DEPS ${CMAKE_CURRENT_SOURCE_DIR}/tools/codegen/config_h.py)
+if(NOT WINK_APP_JSON STREQUAL "")
+    list(APPEND _CONFIG_H_DEPS ${WINK_APP_JSON})
+endif()
+
 add_custom_command(
     OUTPUT ${WINK_CONFIG_H}
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/codegen/config_h.py
-            --input ${WINK_APP_JSON}
+            --input "${WINK_APP_JSON}"
             --output ${WINK_CONFIG_H}
             --target ${TARGET_PLATFORM}
             ${_CONFIG_SDK_MODE_ARGS}
-    DEPENDS ${WINK_APP_JSON}
-            ${CMAKE_CURRENT_SOURCE_DIR}/tools/codegen/config_h.py
-    COMMENT "Generating wink_config.h from ${WINK_APP_JSON}"
+    DEPENDS ${_CONFIG_H_DEPS}
+    COMMENT "Generating wink_config.h"
     VERBATIM
 )
 

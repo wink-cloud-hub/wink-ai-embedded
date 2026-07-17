@@ -15,14 +15,6 @@
 
 #define LED_BUILTIN 2   // ESP32 DevKitC on-board LED pin
 
-/*
- * WinkMicroOS host E2E: setup() / loop() are called from a C test harness
- * (test_arduino_blink_e2e.c), so we export them with C linkage.
- * On real Arduino hardware, the Arduino core's main.cpp would call them
- * directly (also via extern "C").
- */
-extern "C" {
-
 void setup() {
     Serial.begin(115200);
     pinMode(LED_BUILTIN, OUTPUT);
@@ -45,5 +37,3 @@ void loop() {
     Serial.println(msg2);
     delay(500);
 }
-
-} // extern "C"
