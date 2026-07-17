@@ -29,7 +29,9 @@ typedef enum {
     WINK_EVENT_BUTTON_PRESSED = 1,
     WINK_EVENT_BUTTON_RELEASED = 2,
     WINK_EVENT_BUTTON_LONG_PRESS = 3,
-    
+    /** Ultrasonic measurement complete (ADR-0033). param = distance in 0.1 cm. */
+    WINK_EVENT_DISTANCE_READY = 4,
+
     WINK_EVENT_USER_START = 1000u
 } wink_event_type_t;
 

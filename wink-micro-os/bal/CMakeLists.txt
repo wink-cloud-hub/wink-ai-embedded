@@ -29,6 +29,7 @@ target_sources(wink_bal PRIVATE
     src/wink_button_events_irq.c
     src/wink_telemetry_helper.c
     src/wink_sonar_helper.c
+    src/wink_ultrasonic_distance_events.c
     src/wink_servo_helper.c
 )
 

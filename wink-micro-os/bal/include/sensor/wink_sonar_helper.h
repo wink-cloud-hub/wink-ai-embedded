@@ -26,7 +26,11 @@ extern "C" {
 #endif
 
 /**
- * @brief Start automatic periodic measurement on @p dev.
+ * @brief Start automatic periodic measurement on @p dev (A-class — no event queue).
+ *
+ * Does **not** post WINK_EVENT_DISTANCE_READY. For L1 queue consumption use
+ * wink_ultrasonic_enable_distance_events() instead (ADR-0033). Same @p dev
+ * cannot run both APIs at once (WINK_ERR_INVALID_STATE).
  *
  * @param dev        Initialised dal_ultrasonic_t instance.
  * @param period_ms  Measurement period in ms. Must be >= 50ms to avoid HC-SR04

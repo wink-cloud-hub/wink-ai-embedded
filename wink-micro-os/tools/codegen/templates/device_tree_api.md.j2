@@ -79,6 +79,14 @@ These macros are exported in `device_tree.h` for configuration settings:
   Get cached distance measurement (returns `-1.0f` on error).
 - **`wink_status_t {{ dev.name }}_read_distance_status(float *out_dist_cm)`** (⚠️ Return value must be checked)
   Contracts-honest get distance measurement.
+- **`wink_status_t {{ dev.name }}_enable_distance_events(void)`** (⚠️ Return value must be checked) — **L1 default**
+  Start posting `WINK_EVENT_DISTANCE_READY` each completed measurement (period from JSON `auto_poll_ms`, default 50).
+- **`void {{ dev.name }}_disable_distance_events(void)`** — **L1 default**
+  Stop posting distance events.
+
+{% elif dev.role == 'angular_actuator' %}
+- **`void {{ dev.name }}_set_angle(float angle)`**
+  Set servo angle in degrees.
 
 {% elif dev.role == 'text_display' %}
 - **`void {{ dev.name }}_clear(void)`**

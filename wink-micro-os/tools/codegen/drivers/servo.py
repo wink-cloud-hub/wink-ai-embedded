@@ -10,9 +10,22 @@ class ServoDriver(DriverBase):
     type = "servo"
     is_actuator = True
     required_fields = ["pwm_channel"]
+    default_role = "angular_actuator"
+    role_verbs = {
+        "angular_actuator": ["set_angle"],
+    }
 
     def get_headers(self) -> List[str]:
         return ["dal_servo.h"]
+
+    def render_role_wrapper(self, dev_name: str, role: str, verb: str, spec: dict) -> str:
+        del spec  # Role wrappers ignore per-device knobs for set_angle.
+        if role == "angular_actuator" and verb == "set_angle":
+            return (
+                f"static inline void {dev_name}_set_angle(float angle) {{ "
+                f"WINK_IGNORE_RESULT(dal_servo_set_angle(&{dev_name}, angle)); }}"
+            )
+        return ""
 
     def get_device_type(self) -> str:
         return "dal_servo_t"

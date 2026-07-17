@@ -52,6 +52,8 @@ extern "C" {
 #define WINK_WARN_BUTTON_IRQ_DEGRADED  9201u
 #define WINK_FAULT_DAL_SERVO           9300u
 #define WINK_FAULT_DAL_ULTRASONIC      9400u
+/* warn: wink_event_post of DISTANCE_READY failed (queue full). ADR-0033. */
+#define WINK_WARN_DISTANCE_EVENT_QUEUE_FULL 9401u
 #define WINK_FAULT_DAL_SSD1306         9500u
 #define WINK_FAULT_DAL_EEPROM          9600u
 #define WINK_FAULT_DAL_GPS             9700u
