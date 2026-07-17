@@ -32,6 +32,7 @@ target_sources(wink_bal PRIVATE
     src/wink_ultrasonic_distance_events.c
     src/wink_servo_helper.c
     src/wink_pid.c
+    src/wink_closed_loop_motor.c
 )
 
 target_include_directories(wink_bal PUBLIC
@@ -42,6 +43,8 @@ target_include_directories(wink_bal PUBLIC
     include/actuator
     include/display
     include/comm
+    include/math
+    include/control
 )
 
 # BAL 依赖 runtime（wink_periodic / wink_pt_debug 等）+ DAL（底层器件驱动）+ trace（LOG/FAULT）。
