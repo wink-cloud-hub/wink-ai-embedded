@@ -385,6 +385,13 @@ if(NOT TARGET_PLATFORM STREQUAL "wasm")
         add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/dual_task_demo
                          ${CMAKE_BINARY_DIR}/dual_task_demo_build)
     endif()
+
+    # Arduino Compat Layer E2E: standard Arduino sketch (Blink + Serial)
+    # running on WinkMicroOS via wink_arduino_compat leaf-node linking.
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/arduino_blink_demo)
+        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/arduino_blink_demo
+                         ${CMAKE_BINARY_DIR}/arduino_blink_demo_build)
+    endif()
     endif()  # NOT WINK_SDK_BINARY_MODE
 
     # Host unit / e2e tests live under test/. Source SDK tarballs omit this tree
