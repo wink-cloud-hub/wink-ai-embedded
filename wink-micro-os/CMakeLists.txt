@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(wink-micro-os C)
+project(wink-micro-os C CXX)
 
 # 设置 C 标准为 C99
 set(CMAKE_C_STANDARD 99)
@@ -127,6 +127,17 @@ elseif(MSVC)
     # Enable UTF-8 source/execution character set for MSVC to prevent C4819 encoding warnings/errors
     add_compile_options(/utf-8)
 endif()
+
+# ── C++ 子集裁剪编译选项 (ADR-0036) ──────────────────────────────────
+# 仅对 C++ 源文件应用异常、RTTI 和静态线程安全初始化锁的禁用选项。
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>)
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>)
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fno-threadsafe-statics>)
+elseif(MSVC)
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/GR->) # MSVC 禁用 RTTI
+endif()
+
 # 注：GCC 参数化警告 -Wstack-usage= 不支持 -Werror=stack-usage= 精确升级。
 # 云端构建服务（Docker worker）在 App 编译阶段使用全局 -Werror 将其升级为硬错误。
 # 本地开发环境仅产出 warning，不阻塞迭代（生产部署由 build service 门禁拦截）。
@@ -155,6 +166,7 @@ else()
     add_subdirectory(trace)
     add_subdirectory(runtime)
     add_subdirectory(bal)     # BAL (Business Abstraction Layer) — ADR-0023
+    add_subdirectory(frameworks)
 
     # Ensure checker runs before wink_runtime compiles (must come AFTER runtime subdir)
     add_dependencies(wink_runtime check_pt_footguns)
