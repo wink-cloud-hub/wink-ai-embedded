@@ -57,6 +57,9 @@ extern "C" {
 #define WINK_FAULT_DAL_SSD1306         9500u
 #define WINK_FAULT_DAL_EEPROM          9600u
 #define WINK_FAULT_DAL_GPS             9700u
+#define WINK_FAULT_DAL_MOTOR           9800u
+#define WINK_FAULT_DAL_ENCODER         9850u
+#define WINK_FAULT_MOTOR_FEEDBACK_LOSS 9860u
 
 /* ── App 10000+ ──────────────────────────────────────────────── */
 #define WINK_FAULT_APP(n)              (10000u + (n))
