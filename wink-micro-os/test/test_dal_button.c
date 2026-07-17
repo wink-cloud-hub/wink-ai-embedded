@@ -458,6 +458,66 @@ void test_deinit_loop_with_isr_no_resource_leak(void) {
     }
 }
 
+/* ADR-0034: explicit pull + NONE floating semantics */
+void test_pull_illegal_rejected_before_claim(void) {
+    dal_button_t dev = {0};
+    dal_button_config_t bad = {
+        .owner = OWNER, .pin = 40, .active_low = true, .pull = (dal_button_pull_t)4
+    };
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_button_init(&dev, &bad));
+    TEST_ASSERT_FALSE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 40));
+
+    dal_button_t victim = {0};
+    const dal_button_config_t ok = { .owner = "pull_victim", .pin = 40, .active_low = true };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&victim, &ok));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_deinit(&victim));
+}
+
+void test_pull_none_disconnected_without_injection(void) {
+    dal_button_t dev = {0};
+    const dal_button_config_t cfg = {
+        .owner = OWNER, .pin = 41, .active_low = true, .pull = DAL_BUTTON_PULL_NONE
+    };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, &cfg));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_DISCONNECTED, dal_button_poll(&dev));
+
+    bool pressed = true;
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_is_pressed(&dev, &pressed));
+    TEST_ASSERT_FALSE(pressed);
+}
+
+void test_pull_none_with_injection_press_release(void) {
+    dal_button_t dev = {0};
+    const dal_button_config_t cfg = {
+        .owner = OWNER, .pin = 42, .active_low = true, .pull = DAL_BUTTON_PULL_NONE
+    };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, &cfg));
+
+    set_btn_pin(42, false, true);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, poll_n(&dev, DAL_BUTTON_DEBOUNCE_THRESHOLD));
+    bool pressed = false;
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_is_pressed(&dev, &pressed));
+    TEST_ASSERT_FALSE(pressed);
+
+    set_btn_pin(42, true, true);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, poll_n(&dev, DAL_BUTTON_DEBOUNCE_THRESHOLD));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_is_pressed(&dev, &pressed));
+    TEST_ASSERT_TRUE(pressed);
+}
+
+void test_pull_explicit_up_overrides_active_low_polarity(void) {
+    dal_button_t dev = {0};
+    const dal_button_config_t cfg = {
+        .owner = OWNER, .pin = 43, .active_low = false, .pull = DAL_BUTTON_PULL_UP
+    };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, &cfg));
+    set_btn_pin(43, false, false);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, poll_n(&dev, DAL_BUTTON_DEBOUNCE_THRESHOLD));
+    bool pressed = true;
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_is_pressed(&dev, &pressed));
+    TEST_ASSERT_FALSE(pressed);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_init_null_returns_invalid_arg);
@@ -483,5 +543,9 @@ int main(void) {
     RUN_TEST(test_isr_counter_no_lost_edges_during_reset);
     RUN_TEST(test_deinit_hardening);
     RUN_TEST(test_deinit_loop_with_isr_no_resource_leak);
+    RUN_TEST(test_pull_illegal_rejected_before_claim);
+    RUN_TEST(test_pull_none_disconnected_without_injection);
+    RUN_TEST(test_pull_none_with_injection_press_release);
+    RUN_TEST(test_pull_explicit_up_overrides_active_low_polarity);
     return UNITY_END();
 }

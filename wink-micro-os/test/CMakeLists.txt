@@ -215,6 +215,7 @@ add_wink_host_test(test_pal_log_hardening
 
 # target 无关 PWM 定时器分配状态机单测（router 经 pal_host OBJECT lib 链接）
 add_wink_host_test(test_pal_pwm_router test_pal_pwm_router.c)
+add_wink_host_test(test_pal_pwm_config test_pal_pwm_config.c)
 
 # ADR-0008 设备树覆写 blob 解析器 + CRC32 单测（wink_dev_config.c 经 pal_host OBJECT 链接）
 add_wink_host_test(test_dev_config test_dev_config.c)

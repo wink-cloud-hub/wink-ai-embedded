@@ -21,6 +21,25 @@ static bool button_raw_pressed(bool raw_level, bool active_low) {
     return raw_level != active_low;
 }
 
+static bool button_pull_valid(dal_button_pull_t pull)
+{
+    return pull <= DAL_BUTTON_PULL_NONE;
+}
+
+static pal_gpio_mode_t button_gpio_mode(const dal_button_config_t *cfg)
+{
+    if (cfg->pull == DAL_BUTTON_PULL_AUTO) {
+        return cfg->active_low ? PAL_GPIO_INPUT_PULLUP : PAL_GPIO_INPUT_PULLDOWN;
+    }
+    if (cfg->pull == DAL_BUTTON_PULL_UP) {
+        return PAL_GPIO_INPUT_PULLUP;
+    }
+    if (cfg->pull == DAL_BUTTON_PULL_DOWN) {
+        return PAL_GPIO_INPUT_PULLDOWN;
+    }
+    return PAL_GPIO_INPUT; /* NONE */
+}
+
 /* ── Unified GPIO ISR thunk (file-scope, PAL_DEFINE_ISR typed wrapper) ──
  * Registered exactly once per pin when either isr_counter_enabled or
  * event_backend == BACKEND_IRQ becomes true (refcount managed by
@@ -55,12 +74,13 @@ PAL_DEFINE_ISR(dal_button_gpio_isr, dal_button_t, dev) {
 wink_status_t dal_button_init(dal_button_t *dev, const dal_button_config_t *cfg) {
     if (dev == NULL || cfg == NULL) { return WINK_ERR_INVALID_ARG; }
     if (cfg->owner == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (!button_pull_valid(cfg->pull)) { return WINK_ERR_INVALID_ARG; }
 
     /* Track A（M1）：GPIO 引脚冲突治理。 */
     wink_status_t rs = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, cfg->pin, cfg->owner);
     if (wink_status_is_error(rs)) { return rs; }
 
-    pal_gpio_mode_t mode = cfg->active_low ? PAL_GPIO_INPUT_PULLUP : PAL_GPIO_INPUT_PULLDOWN;
+    pal_gpio_mode_t mode = button_gpio_mode(cfg);
     wink_status_t status = pal_gpio_init(cfg->pin, mode);
     if (wink_status_is_error(status)) {
         WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN, cfg->pin, cfg->owner));

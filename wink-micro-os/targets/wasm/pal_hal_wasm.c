@@ -100,6 +100,9 @@ wink_status_t pal_gpio_read(wink_pin_t pin, bool *out_level) {
         /* UI / pal_wasm_set_gpio_input */
     }
     else if (s_gpio_mode_known[(uint8_t)pin]) {
+        if (s_gpio_mode[(uint8_t)pin] == PAL_GPIO_INPUT) {
+            return WINK_ERR_DISCONNECTED;
+        }
         ideal = pal_gpio_mode_idle_level(s_gpio_mode[(uint8_t)pin]);
     }
     else {
@@ -134,9 +137,30 @@ wink_status_t pal_gpio_read(wink_pin_t pin, bool *out_level) {
 }
 
 wink_status_t pal_pwm_init(uint8_t channel, uint32_t frequency_hz) {
+    pal_pwm_config_t cfg = { .freq_hz = frequency_hz };
+    return pal_pwm_init_ex(channel, &cfg);
+}
+
+wink_status_t pal_pwm_init_ex(uint8_t channel, const pal_pwm_config_t *cfg) {
+    if (cfg == NULL || cfg->freq_hz == 0u) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    if (cfg->clock_requirement == PAL_PWM_CLOCK_STABLE_REQUIRED) {
+        return WINK_ERR_UNSUPPORTED;
+    }
+
+    uint8_t bits = cfg->resolution_bits ? cfg->resolution_bits : 13u;
+    if (bits == 0u || bits > 20u) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    pal_pwm_timer_profile_t prof = {
+        .freq_hz = cfg->freq_hz,
+        .resolution_bits = bits,
+        .clock_source = PAL_PWM_EFF_CLK_PLATFORM_AUTO,
+    };
     uint8_t timer_num = 0;
-    /* wasm 无资源表/硬件，但 router 提供通道/频率校验与槽位记账，保持与 host/esp32 一致。*/
-    return pal_pwm_router_acquire(channel, frequency_hz, &timer_num);
+    return pal_pwm_router_acquire(channel, &prof, &timer_num);
 }
 
 wink_status_t pal_pwm_set_duty(uint8_t channel, float duty_cycle_percent) {

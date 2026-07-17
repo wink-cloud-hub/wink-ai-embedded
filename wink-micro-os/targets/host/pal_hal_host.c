@@ -187,6 +187,9 @@ wink_status_t pal_gpio_read(wink_pin_t pin, bool *out_level) {
 
     if (pin != host_echo_pin()) {
         if (s_gpio_mode_known[pin]) {
+            if (s_gpio_mode[pin] == PAL_GPIO_INPUT) {
+                return WINK_ERR_DISCONNECTED;
+            }
             *out_level = pal_gpio_mode_idle_level(s_gpio_mode[pin]);
         } else {
             *out_level = false;
@@ -496,10 +499,31 @@ void pal_irq_restore(uint32_t mask)
 }
 
 wink_status_t pal_pwm_init(uint8_t channel, uint32_t freq) {
+    pal_pwm_config_t cfg = { .freq_hz = freq };
+    return pal_pwm_init_ex(channel, &cfg);
+}
+
+wink_status_t pal_pwm_init_ex(uint8_t channel, const pal_pwm_config_t *cfg) {
+    if (cfg == NULL || cfg->freq_hz == 0u) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    if (cfg->clock_requirement == PAL_PWM_CLOCK_STABLE_REQUIRED) {
+        return WINK_ERR_UNSUPPORTED;
+    }
+
+    uint8_t bits = cfg->resolution_bits ? cfg->resolution_bits : 13u;
+    if (bits == 0u || bits > 20u) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    pal_pwm_timer_profile_t prof = {
+        .freq_hz = cfg->freq_hz,
+        .resolution_bits = bits,
+        .clock_source = PAL_PWM_EFF_CLK_PLATFORM_AUTO,
+    };
     uint8_t timer_num = 0;
-    wink_status_t rs = pal_pwm_router_acquire(channel, freq, &timer_num);
+    wink_status_t rs = pal_pwm_router_acquire(channel, &prof, &timer_num);
     if (wink_status_is_error(rs)) { return rs; }
-    /* Track A（M1）：DAL 是资源占用 SSOT，PAL 层不再自 claim PWM 通道。 */
     return WINK_OK;
 }
 wink_status_t pal_pwm_set_duty(uint8_t channel, float duty) {
