@@ -38,6 +38,8 @@ set(WINK_SSD1306_FONT "ascii_upper" CACHE STRING
 option(WINK_USE_ULTRASONIC "Enable DAL Ultrasonic sensor" ON)
 option(WINK_USE_GPS        "Enable DAL GPS driver"        ON)
 option(WINK_USE_EEPROM     "Enable DAL EEPROM driver"     ON)
+option(WINK_USE_MOTOR      "Enable DAL Motor driver"      ON)
+option(WINK_USE_ENCODER    "Enable DAL Encoder driver"    ON)
 
 # ── Public include paths (always exposed — headers are still needed to
 #    provide the WINK_UNAVAILABLE_MSG stubs that give friendly errors
@@ -116,3 +118,7 @@ _wink_dal_enable(WINK_USE_ULTRASONIC WINK_USE_ULTRASONIC sensor    ultrasonic)
 _wink_dal_enable(WINK_USE_GPS        WINK_USE_GPS        communication gps)
 # storage
 _wink_dal_enable(WINK_USE_EEPROM     WINK_USE_EEPROM     storage   eeprom)
+# motor
+_wink_dal_enable(WINK_USE_MOTOR      WINK_USE_MOTOR      actuator  motor)
+# encoder
+_wink_dal_enable(WINK_USE_ENCODER    WINK_USE_ENCODER    sensor    encoder)

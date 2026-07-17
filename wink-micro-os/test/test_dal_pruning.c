@@ -24,6 +24,8 @@
 #include "dal_ssd1306.h"
 #include "dal_gps.h"
 #include "dal_eeprom.h"
+#include "actuator/dal_motor.h"
+#include "sensor/dal_encoder.h"
 
 /* Silence unused-variable warnings in a single obvious macro. */
 #define USE_FN(fn) do { volatile void *_p = (void *)(uintptr_t)(fn); (void)_p; } while (0)
@@ -74,6 +76,16 @@ int main(void) {
     /* (all three other eeprom APIs are WINK_BLOCKING + WINK_STRICT_NONBLOCKING-gated;
      *  we don't reference them here to avoid polluting the all-ON sanity check
      *  with WINK_BLOCKING deprecation warnings.) */
+    /* Motor */
+    USE_FN(dal_motor_init);
+    USE_FN(dal_motor_set_speed);
+    USE_FN(dal_motor_safe_off);
+    USE_FN(dal_motor_deinit);
+    /* Encoder */
+    USE_FN(dal_encoder_init);
+    USE_FN(dal_encoder_get_count);
+    USE_FN(dal_encoder_reset);
+    USE_FN(dal_encoder_deinit);
 
     return 0;
 }

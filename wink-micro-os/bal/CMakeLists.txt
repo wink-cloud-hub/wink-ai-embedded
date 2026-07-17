@@ -31,6 +31,7 @@ target_sources(wink_bal PRIVATE
     src/wink_sonar_helper.c
     src/wink_ultrasonic_distance_events.c
     src/wink_servo_helper.c
+    src/wink_pid.c
 )
 
 target_include_directories(wink_bal PUBLIC

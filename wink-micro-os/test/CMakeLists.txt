@@ -240,6 +240,15 @@ add_wink_host_test(test_dal_ssd1306 test_dal_ssd1306.c)
 
 add_wink_host_test(test_dal_ultrasonic test_dal_ultrasonic.c)
 
+add_wink_host_test(test_dal_motor test_dal_motor.c)
+target_include_directories(test_dal_motor PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/actuator)
+
+add_wink_host_test(test_dal_encoder test_dal_encoder.c)
+target_include_directories(test_dal_encoder PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/sensor)
+
+
 # Stage 0 Task 0.7: DAL deinit contract tests for the two stubbed drivers
 add_wink_host_test(test_dal_eeprom test_dal_eeprom.c)
 target_include_directories(test_dal_eeprom PRIVATE
@@ -336,6 +345,12 @@ target_link_libraries(test_bal_servo PRIVATE wink_bal)
 target_include_directories(test_bal_servo PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/actuator)
+
+# BAL PID helper test.
+add_wink_test(test_pid test_pid.c)
+target_link_libraries(test_pid PRIVATE wink_bal)
+target_include_directories(test_pid PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include)
 
 # Track A M1 / Task A-4：DAL↔PAL 资源接线 e2e 单测（验证 7 个 DAL init 正确 wire pal_resource_claim）
 # P2: dal is linked via add_wink_host_test; need the extra include dirs for
