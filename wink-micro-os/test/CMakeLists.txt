@@ -266,6 +266,14 @@ target_include_directories(test_button_events PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/input)
 target_compile_definitions(test_button_events PRIVATE WINK_STRICT_NONBLOCKING=1)
 
+# ADR-0033: ultrasonic distance events → WINK_EVENT_DISTANCE_READY
+add_wink_host_test(test_ultrasonic_distance_events test_ultrasonic_distance_events.c)
+target_link_libraries(test_ultrasonic_distance_events PRIVATE wink_bal)
+target_include_directories(test_ultrasonic_distance_events PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/sensor)
+target_compile_definitions(test_ultrasonic_distance_events PRIVATE WINK_STRICT_NONBLOCKING=1)
+
 # ADR-0031 Task S4: BAL wink_button_events GPIO_IRQ → SOFT_POLL degrade
 # path — permissive default (warn + degrade) and strict opt-in (hard-fail).
 # The strict variant reuses the same source file gated on
