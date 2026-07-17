@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Configure the search path for the ArduinoCore-API dependency
-set(ARDUINO_CORE_API_DIR "D:/workspaces/open-source/embedded/ArduinoCore-API" CACHE PATH "Path to official ArduinoCore-API repository")
+set(ARDUINO_CORE_API_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/ArduinoCore-API" CACHE PATH "Path to official ArduinoCore-API repository")
 
 if(NOT EXISTS "${ARDUINO_CORE_API_DIR}/api/ArduinoAPI.h")
     message(WARNING "ArduinoCore-API not found at: ${ARDUINO_CORE_API_DIR}. Skipping target wink_arduino_compat.")
@@ -14,6 +14,11 @@ endif()
 
 add_library(wink_arduino_compat STATIC
     src/Common.cpp
+    src/WinkHardwareSerial.cpp
+    ${ARDUINO_CORE_API_DIR}/api/Print.cpp
+    ${ARDUINO_CORE_API_DIR}/api/Stream.cpp
+    ${ARDUINO_CORE_API_DIR}/api/String.cpp
+    ${ARDUINO_CORE_API_DIR}/api/IPAddress.cpp
 )
 
 target_include_directories(wink_arduino_compat PUBLIC
