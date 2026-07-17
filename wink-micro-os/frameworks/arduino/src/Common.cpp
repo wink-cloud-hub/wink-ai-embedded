@@ -30,6 +30,60 @@ static inline wink_pin_t resolve_pin(pin_size_t pinNumber) {
 
 extern "C" {
 
+static char* utoa_helper(unsigned long value, char *string, int radix) {
+    if (radix < 2 || radix > 36) {
+        *string = '\0';
+        return string;
+    }
+    char tmp[65];
+    int pos = 0;
+    do {
+        unsigned long rem = value % radix;
+        tmp[pos++] = (rem < 10) ? (char)('0' + rem) : (char)('a' + (rem - 10));
+        value /= radix;
+    } while (value > 0);
+
+    char *p = string;
+    while (pos > 0) {
+        *p++ = tmp[--pos];
+    }
+    *p = '\0';
+    return string;
+}
+
+char* utoa(unsigned value, char *string, int radix) {
+    return utoa_helper(value, string, radix);
+}
+
+char* ultoa(unsigned long value, char *string, int radix) {
+    return utoa_helper(value, string, radix);
+}
+
+char* itoa(int value, char *string, int radix) {
+    if (radix == 10 && value < 0) {
+        *string = '-';
+        utoa_helper((unsigned long)(-value), string + 1, radix);
+        return string;
+    }
+    return utoa_helper((unsigned long)value, string, radix);
+}
+
+char* ltoa(long value, char *string, int radix) {
+    if (radix == 10 && value < 0) {
+        *string = '-';
+        utoa_helper((unsigned long)(-value), string + 1, radix);
+        return string;
+    }
+    return utoa_helper((unsigned long)value, string, radix);
+}
+
+char* dtostrf(double val, signed char width, unsigned char prec, char *s) {
+    char format[16];
+    sprintf(format, "%%%d.%df", width, prec);
+    sprintf(s, format, val);
+    return s;
+}
+
 void pinMode(pin_size_t pinNumber, PinMode mode) {
     wink_pin_t p = resolve_pin(pinNumber);
     if (p < 0) return;

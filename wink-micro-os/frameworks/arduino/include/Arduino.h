@@ -3,6 +3,7 @@
 #include "api/ArduinoAPI.h"
 #include "hal/pal_hal.h"
 #include "osal/pal_osal.h"
+#include "WinkHardwareSerial.h"
 
 #ifdef __cplusplus
 extern "C" {
