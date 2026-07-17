@@ -8,6 +8,7 @@
 #define LOG_TAG "bal.sonar"
 
 #include "sensor/wink_sonar_helper.h"
+#include "sensor/wink_ultrasonic_distance_events.h"
 #include "wink_tasks.h"
 #include "wink_blocking_region.h"
 #include "pal_log.h"
@@ -90,6 +91,12 @@ wink_status_t wink_sonar_helper_start_ex(dal_ultrasonic_t *dev, uint32_t period_
     /* Reject duplicate start on the same device */
     if (find_slot_by_dev(dev) >= 0) {
         LOG_D("start: dev=%p already running", (void *)dev);
+        return WINK_ERR_INVALID_STATE;
+    }
+
+    /* ADR-0033: mutually exclusive with B-class distance events on same dev. */
+    if (wink_ultrasonic_distance_events_is_enabled(dev)) {
+        LOG_D("start: distance events already own dev=%p", (void *)dev);
         return WINK_ERR_INVALID_STATE;
     }
 
