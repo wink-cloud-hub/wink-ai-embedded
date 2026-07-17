@@ -33,6 +33,15 @@ typedef enum {
  */
 typedef void (*dal_button_event_cb)(dal_button_event_t evt, void *ctx);
 
+typedef uint8_t dal_button_pull_t;
+
+enum {
+    DAL_BUTTON_PULL_AUTO = 0, /**< active_low → UP，否则 DOWN（默认） */
+    DAL_BUTTON_PULL_UP   = 1,
+    DAL_BUTTON_PULL_DOWN = 2,
+    DAL_BUTTON_PULL_NONE = 3,
+};
+
 /**
  * @brief 按钮配置结构体（标准化 config_t 模式，便于 Codegen 设备树生成）
  *
@@ -45,6 +54,7 @@ typedef struct {
     const char *owner;       /* 资源占用 owner 静态字符串（device_tree 实例名，静态存储） */
     uint16_t pin;            /* 逻辑 GPIO 引脚 */
     bool active_low;         /* true: 按下为低电平（常见上拉按钮）；false: 按下为高电平 */
+    dal_button_pull_t pull;  /* 0 = AUTO；ADR-0034 */
 } dal_button_config_t;
 
 /**

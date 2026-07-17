@@ -29,18 +29,65 @@ __attribute__((weak)) const wink_pin_t pal_pwm_pin_map[PAL_PWM_CHANNELS] = {2, 4
 /* Track A（M1）：DAL 是资源占用 SSOT，PAL 层不再自 claim PWM 通道 —— 语义 owner 由 DAL 层
  * （dal_servo 等）持有。这样两个 DAL 实例配同 channel 才能在 DAL init 阶段真正触发 BUSY。 */
 
-wink_status_t pal_pwm_init(uint8_t channel, uint32_t freq_hz) {
+static uint8_t s_ch_bits[PAL_PWM_CHANNELS];
+
+static bool pwm_map_ledc_bits(uint8_t bits, ledc_timer_bit_t *out)
+{
+    if (out == NULL) { return false; }
+    switch (bits) {
+        case 8:  *out = LEDC_TIMER_8_BIT;  return true;
+        case 9:  *out = LEDC_TIMER_9_BIT;  return true;
+        case 10: *out = LEDC_TIMER_10_BIT; return true;
+        case 11: *out = LEDC_TIMER_11_BIT; return true;
+        case 12: *out = LEDC_TIMER_12_BIT; return true;
+        case 13: *out = LEDC_TIMER_13_BIT; return true;
+        case 14: *out = LEDC_TIMER_14_BIT; return true;
+        case 15: *out = LEDC_TIMER_15_BIT; return true;
+        default: return false;
+    }
+}
+
+wink_status_t pal_pwm_init(uint8_t channel, uint32_t freq_hz)
+{
+    pal_pwm_config_t cfg = { .freq_hz = freq_hz };
+    return pal_pwm_init_ex(channel, &cfg);
+}
+
+wink_status_t pal_pwm_init_ex(uint8_t channel, const pal_pwm_config_t *cfg)
+{
+    if (cfg == NULL || cfg->freq_hz == 0u) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    uint8_t bits = cfg->resolution_bits ? cfg->resolution_bits : 13u;
+    ledc_timer_bit_t duty_res;
+    if (!pwm_map_ledc_bits(bits, &duty_res)) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    uint8_t eff_clk = PAL_PWM_EFF_CLK_PLATFORM_AUTO;
+    ledc_clk_cfg_t clk_cfg = LEDC_AUTO_CLK;
+    if (cfg->clock_requirement == PAL_PWM_CLOCK_STABLE_REQUIRED) {
+        eff_clk = PAL_PWM_EFF_CLK_REF_TICK;
+        clk_cfg = LEDC_USE_REF_TICK;
+    }
+
+    pal_pwm_timer_profile_t prof = {
+        .freq_hz = cfg->freq_hz,
+        .resolution_bits = bits,
+        .clock_source = eff_clk,
+    };
+
     uint8_t timer_num = 0;
-    wink_status_t rs = pal_pwm_router_acquire(channel, freq_hz, &timer_num);
+    wink_status_t rs = pal_pwm_router_acquire(channel, &prof, &timer_num);
     if (wink_status_is_error(rs)) { return rs; }
 
-    /* router 分配 timer，不再写死 LEDC_TIMER_0：同频复用、异频隔离。*/
     ledc_timer_config_t timer_cfg = {
         .speed_mode = LEDC_LOW_SPEED_MODE,
-        .duty_resolution = LEDC_TIMER_13_BIT,
+        .duty_resolution = duty_res,
         .timer_num = (ledc_timer_t)timer_num,
-        .freq_hz = freq_hz,
-        .clk_cfg = LEDC_AUTO_CLK,
+        .freq_hz = cfg->freq_hz,
+        .clk_cfg = clk_cfg,
     };
     esp_err_t err = ledc_timer_config(&timer_cfg);
     if (err != ESP_OK) {
@@ -48,7 +95,6 @@ wink_status_t pal_pwm_init(uint8_t channel, uint32_t freq_hz) {
         return WINK_ERR_HARDWARE;
     }
 
-    /* 物理路由来自 board_config.c 的强定义（无覆盖时回落至本 TU 弱默认 pal_pwm_pin_map）。*/
     ledc_channel_config_t ch_cfg = {
         .gpio_num = pal_pwm_pin_map[channel],
         .speed_mode = LEDC_LOW_SPEED_MODE,
@@ -63,6 +109,8 @@ wink_status_t pal_pwm_init(uint8_t channel, uint32_t freq_hz) {
         pal_pwm_router_release(channel);
         return WINK_ERR_HARDWARE;
     }
+
+    s_ch_bits[channel] = bits;
     return WINK_OK;
 }
 
@@ -71,7 +119,7 @@ wink_status_t pal_pwm_set_duty(uint8_t channel, float duty_percent) {
     if (duty_percent < 0.0f) { duty_percent = 0.0f; }
     if (duty_percent > 100.0f) { duty_percent = 100.0f; }
 
-    uint32_t duty = (uint32_t)(duty_percent / 100.0f * 8191.0f); /* 13-bit = 8192 */
+    uint32_t duty = pal_pwm_percent_to_raw(duty_percent, s_ch_bits[channel]);
     esp_err_t err = ledc_set_duty(LEDC_LOW_SPEED_MODE, (ledc_channel_t)channel, duty);
     if (err != ESP_OK) { return WINK_ERR_HARDWARE; }
     err = ledc_update_duty(LEDC_LOW_SPEED_MODE, (ledc_channel_t)channel);
@@ -118,6 +166,9 @@ wink_status_t pal_pwm_channel_pin(uint8_t channel, wink_pin_t *out_pin) {
 
 wink_status_t pal_pwm_init(uint8_t channel, uint32_t freq_hz)
 { (void)channel; (void)freq_hz; return WINK_ERR_UNSUPPORTED; }
+
+wink_status_t pal_pwm_init_ex(uint8_t channel, const pal_pwm_config_t *cfg)
+{ (void)channel; (void)cfg; return WINK_ERR_UNSUPPORTED; }
 
 wink_status_t pal_pwm_set_duty(uint8_t channel, float duty_percent)
 { (void)channel; (void)duty_percent; return WINK_ERR_UNSUPPORTED; }

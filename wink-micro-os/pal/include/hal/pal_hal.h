@@ -87,8 +87,26 @@ wink_status_t pal_pwm_channel_pin(uint8_t channel, wink_pin_t *out_pin);
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_i2c_port_pins(uint8_t port, wink_pin_t *out_sda, wink_pin_t *out_scl);
 
+/* --- PWM (ADR-0034 progressive disclosure) --- */
+
+typedef enum {
+    PAL_PWM_CLOCK_AUTO            = 0,
+    PAL_PWM_CLOCK_STABLE_REQUIRED = 1,
+} pal_pwm_clock_requirement_t;
+
+typedef struct {
+    uint32_t                    freq_hz;
+    uint8_t                     resolution_bits;  /* 0 = AUTO → target default (ESP32: 13) */
+    pal_pwm_clock_requirement_t clock_requirement;
+} pal_pwm_config_t;
+
+/** @brief Legacy thin wrapper (13-bit + AUTO clock). */
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_pwm_init(uint8_t channel, uint32_t frequency_hz);
+
+/** @brief Extended init: freq + resolution + clock requirement. */
+WINK_WARN_UNUSED_RESULT
+wink_status_t pal_pwm_init_ex(uint8_t channel, const pal_pwm_config_t *cfg);
 
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_pwm_set_duty(uint8_t channel, float duty);
