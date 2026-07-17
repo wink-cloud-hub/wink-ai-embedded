@@ -1,9 +1,48 @@
 """Servo driver plugin for app_codegen."""
 from __future__ import annotations
 
-from typing import List
+from typing import List, Optional, Tuple
 
+from .advanced import parse_advanced, require_int, require_string_enum
 from .base import DriverBase
+
+
+_VALID_CLOCK = frozenset({"auto", "stable_required"})
+_CLOCK_TO_C = {
+    "auto": "DAL_SERVO_CLOCK_AUTO",
+    "stable_required": "DAL_SERVO_CLOCK_STABLE_REQUIRED",
+}
+# Broad bounds matching ESP32 LEDC common range; PAL still does final check.
+_BITS_MIN = 1
+_BITS_MAX = 20
+
+
+def _validate_servo_advanced(
+    dev_name: str, spec: dict
+) -> Tuple[Optional[int], Optional[str]]:
+    """Return (resolution_bits | None, clock_c_enum | None)."""
+    adv = parse_advanced(
+        dev_name,
+        spec,
+        allowed_keys=frozenset({"resolution_bits", "clock_requirement"}),
+        top_level_aliases=frozenset({"resolution_bits", "clock_requirement"}),
+    )
+    bits: Optional[int] = None
+    clock_c: Optional[str] = None
+    if "resolution_bits" in adv:
+        bits = require_int(
+            dev_name,
+            "resolution_bits",
+            adv["resolution_bits"],
+            min_v=_BITS_MIN,
+            max_v=_BITS_MAX,
+        )
+    if "clock_requirement" in adv:
+        clock = require_string_enum(
+            dev_name, "clock_requirement", adv["clock_requirement"], _VALID_CLOCK
+        )
+        clock_c = _CLOCK_TO_C[clock]
+    return bits, clock_c
 
 
 class ServoDriver(DriverBase):
@@ -37,20 +76,32 @@ class ServoDriver(DriverBase):
         pwm_channel = spec["pwm_channel"]
         min_pulse = spec.get("min_pulse_ms", 0.5)
         max_pulse = spec.get("max_pulse_ms", 2.5)
-        return (
-            f'    static const dal_servo_config_t {dev_name}_cfg = {{\n'
-            f'        .owner = "{dev_name}",\n'
-            f'        .pwm_channel = {pwm_channel},\n'
-            f'        .min_pulse_ms = {min_pulse}f,\n'
-            f'        .max_pulse_ms = {max_pulse}f,\n'
-            f'    }};\n'
-            f'    WINK_TRY(dal_servo_init(&{dev_name}, &{dev_name}_cfg));'
-        )
+        bits, clock_c = _validate_servo_advanced(dev_name, spec)
+
+        lines = [
+            f'    static const dal_servo_config_t {dev_name}_cfg = {{',
+            f'        .owner = "{dev_name}",',
+            f'        .pwm_channel = {pwm_channel},',
+        ]
+        # ADR-0034: emit advanced fields only when explicit (0 = AUTO).
+        if bits is not None:
+            lines.append(f'        .resolution_bits = {bits}u,')
+        if clock_c is not None:
+            lines.append(f'        .clock_requirement = {clock_c},')
+        lines.extend([
+            f'        .min_pulse_ms = {min_pulse}f,',
+            f'        .max_pulse_ms = {max_pulse}f,',
+            '    };',
+            f'    WINK_TRY(dal_servo_init(&{dev_name}, &{dev_name}_cfg));',
+        ])
+        return '\n'.join(lines)
 
     def render_deinit(self, dev_name: str) -> str:
         return "dal_servo_deinit"
 
     def render_config_macros(self, dev_name: str, spec: dict) -> List[str]:
+        # Validate advanced early so build_context fails before emit.
+        _validate_servo_advanced(dev_name, spec)
         macros: List[str] = []
         min_pulse = spec.get("min_pulse_ms")
         if min_pulse is not None:

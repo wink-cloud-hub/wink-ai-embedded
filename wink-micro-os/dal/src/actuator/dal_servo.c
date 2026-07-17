@@ -10,6 +10,27 @@
 #define SERVO_MAX_ANGLE_DEG  180.0f
 #define SERVO_DUTY_FULL_PCT  100.0f
 
+/** Map DAL servo config → PAL PWM config (no pal_* types in public headers). */
+static wink_status_t servo_map_pwm_config(const dal_servo_config_t *servo_cfg,
+                                          pal_pwm_config_t *out_pwm_cfg)
+{
+    if (servo_cfg == NULL || out_pwm_cfg == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    if (servo_cfg->clock_requirement > DAL_SERVO_CLOCK_STABLE_REQUIRED) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    out_pwm_cfg->freq_hz = SERVO_PWM_FREQ_HZ;
+    out_pwm_cfg->resolution_bits = servo_cfg->resolution_bits; /* 0 = AUTO */
+    if (servo_cfg->clock_requirement == DAL_SERVO_CLOCK_STABLE_REQUIRED) {
+        out_pwm_cfg->clock_requirement = PAL_PWM_CLOCK_STABLE_REQUIRED;
+    } else {
+        out_pwm_cfg->clock_requirement = PAL_PWM_CLOCK_AUTO;
+    }
+    return WINK_OK;
+}
+
 wink_status_t dal_servo_init(dal_servo_t *dev, const dal_servo_config_t *cfg) {
     if (dev == NULL || cfg == NULL) { return WINK_ERR_INVALID_ARG; }
     if (cfg->owner == NULL) { return WINK_ERR_INVALID_ARG; }
@@ -18,13 +39,17 @@ wink_status_t dal_servo_init(dal_servo_t *dev, const dal_servo_config_t *cfg) {
         return WINK_ERR_INVALID_ARG;
     }
 
+    pal_pwm_config_t pwm_cfg;
+    wink_status_t map_st = servo_map_pwm_config(cfg, &pwm_cfg);
+    if (wink_status_is_error(map_st)) { return map_st; }
+
     /* Track A（M1）：PWM 通道冲突治理——两舵机若配同 channel 不同 owner，此处 BUSY。 */
     wink_status_t rs = pal_resource_claim(PAL_RESOURCE_PWM_CHANNEL,
                                           (uint32_t)cfg->pwm_channel, cfg->owner);
     if (wink_status_is_error(rs)) { return rs; }
 
-    /* 一次性 PWM init（占用通道）；失败透传精确 PAL 错误（含 BUSY/EXHAUSTED）。 */
-    wink_status_t status = pal_pwm_init(cfg->pwm_channel, SERVO_PWM_FREQ_HZ);
+    /* 一次性 PWM init_ex（占用通道）；失败透传精确 PAL 错误（含 BUSY/EXHAUSTED/UNSUPPORTED）。 */
+    wink_status_t status = pal_pwm_init_ex(cfg->pwm_channel, &pwm_cfg);
     if (wink_status_is_error(status)) {
         WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_PWM_CHANNEL,
                                                  (uint32_t)cfg->pwm_channel, cfg->owner));

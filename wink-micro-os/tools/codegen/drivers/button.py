@@ -1,8 +1,9 @@
 """Button driver plugin for app_codegen."""
 from __future__ import annotations
 
-from typing import List
+from typing import List, Optional
 
+from .advanced import parse_advanced, require_string_enum
 from .base import DriverBase
 
 
@@ -10,6 +11,14 @@ from .base import DriverBase
 _VALID_EVENT_DRIVES = ("soft_poll", "gpio_irq")
 # Documented default when ``debounce_ms`` is omitted (ADR-0031 §决策结论 #3).
 _DEFAULT_DEBOUNCE_MS = 20
+
+_VALID_PULLS = frozenset({"auto", "up", "down", "none"})
+_PULL_TO_C = {
+    "auto": "DAL_BUTTON_PULL_AUTO",
+    "up": "DAL_BUTTON_PULL_UP",
+    "down": "DAL_BUTTON_PULL_DOWN",
+    "none": "DAL_BUTTON_PULL_NONE",
+}
 
 
 def _validate_button_spec(dev_name: str, spec: dict) -> None:
@@ -63,6 +72,28 @@ def _validate_button_spec(dev_name: str, spec: dict) -> None:
             file=sys.stderr,
         )
         raise SystemExit(2)
+
+    # ADR-0034: advanced.pull only (no top-level pull alias).
+    parse_advanced(
+        dev_name,
+        spec,
+        allowed_keys=frozenset({"pull"}),
+        top_level_aliases=frozenset({"pull"}),
+    )
+
+
+def _button_pull_c(dev_name: str, spec: dict) -> Optional[str]:
+    """Return C enum token for advanced.pull, or None when omitted (= AUTO)."""
+    adv = parse_advanced(
+        dev_name,
+        spec,
+        allowed_keys=frozenset({"pull"}),
+        top_level_aliases=frozenset({"pull"}),
+    )
+    if "pull" not in adv:
+        return None
+    pull = require_string_enum(dev_name, "pull", adv["pull"], _VALID_PULLS)
+    return _PULL_TO_C[pull]
 
 
 class ButtonDriver(DriverBase):
@@ -178,14 +209,19 @@ class ButtonDriver(DriverBase):
         _validate_button_spec(dev_name, spec)
         pin = spec["pin"]
         active_low_c = "true" if spec.get("active_low", True) else "false"
-        return (
-            f'    static const dal_button_config_t {dev_name}_cfg = {{\n'
-            f'        .owner = "{dev_name}",\n'
-            f'        .pin = {pin},\n'
-            f'        .active_low = {active_low_c},\n'
-            f'    }};\n'
-            f'    WINK_TRY(dal_button_init(&{dev_name}, &{dev_name}_cfg));'
-        )
+        pull_c = _button_pull_c(dev_name, spec)
+        lines = [
+            f'    static const dal_button_config_t {dev_name}_cfg = {{',
+            f'        .owner = "{dev_name}",',
+            f'        .pin = {pin},',
+            f'        .active_low = {active_low_c},',
+        ]
+        # ADR-0034: emit .pull only when advanced.pull is explicit (0 = AUTO).
+        if pull_c is not None:
+            lines.append(f'        .pull = {pull_c},')
+        lines.append('    };')
+        lines.append(f'    WINK_TRY(dal_button_init(&{dev_name}, &{dev_name}_cfg));')
+        return '\n'.join(lines)
 
     def render_post_init_calls(self, dev_name: str, spec: dict) -> List[str]:
         lines: List[str] = []

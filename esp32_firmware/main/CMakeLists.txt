@@ -80,6 +80,19 @@ include(${COMPONENT_DIR}/app_sources.cmake)
 set(GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
 file(MAKE_DIRECTORY ${GEN_DIR})
 
+# Check if this is an Arduino app (contains .ino files)
+set(IS_ARDUINO_APP FALSE)
+foreach(src ${WINK_APP_SOURCES})
+    if(src MATCHES "\\.ino$")
+        set(IS_ARDUINO_APP TRUE)
+    endif()
+endforeach()
+
+set(APP_REQUIRES driver esp32)
+if(IS_ARDUINO_APP)
+    list(APPEND APP_REQUIRES arduino)
+endif()
+
 idf_component_register(
     SRCS
         "app_main.c"
@@ -93,8 +106,20 @@ idf_component_register(
         ${WINK_APP_DIR}           # ← App 头文件目录
         ${GEN_DIR}                # ← codegen 生成的 device_tree.h 所在目录
         ${WINK_APP_COMMON_INCLUDE_DIR}  # ← samples/common/include
-    REQUIRES driver esp32
+    REQUIRES ${APP_REQUIRES}
 )
+
+# Set language CXX for .ino files
+foreach(src ${WINK_APP_SOURCES})
+    if(src MATCHES "\\.ino$")
+        set_source_files_properties(${src} PROPERTIES LANGUAGE CXX)
+        if(MSVC)
+            set_source_files_properties(${src} PROPERTIES COMPILE_FLAGS "/TP")
+        else()
+            set_source_files_properties(${src} PROPERTIES COMPILE_FLAGS "-x c++")
+        endif()
+    endif()
+endforeach()
 
 # ── Codegen (wink-app.json → device_tree.[ch]) ────────
 # Everything below runs ONLY during the real configure pass (script mode
@@ -111,35 +136,37 @@ endif()
 set(WINK_CODEGEN_TOOL "${WINK_CODEGEN_ROOT}/app_codegen.py")
 set(WINK_APP_JSON     "${WINK_APP_DIR}/wink-app.json")
 
-set(GEN_DEVICE_TREE_H ${GEN_DIR}/device_tree.h)
-set(GEN_DEVICE_TREE_C ${GEN_DIR}/device_tree.c)
-set(GEN_APP_OPTIONS   ${GEN_DIR}/app_options.cmake)  # reserved for future per-app pruning
+if(EXISTS "${WINK_APP_JSON}")
+    set(GEN_DEVICE_TREE_H ${GEN_DIR}/device_tree.h)
+    set(GEN_DEVICE_TREE_C ${GEN_DIR}/device_tree.c)
+    set(GEN_APP_OPTIONS   ${GEN_DIR}/app_options.cmake)  # reserved for future per-app pruning
 
-file(GLOB WINK_CODEGEN_TEMPLATES ${WINK_CODEGEN_ROOT}/templates/*.j2)
-file(GLOB WINK_CODEGEN_DRIVERS   ${WINK_CODEGEN_ROOT}/drivers/*.py)
+    file(GLOB WINK_CODEGEN_TEMPLATES ${WINK_CODEGEN_ROOT}/templates/*.j2)
+    file(GLOB WINK_CODEGEN_DRIVERS   ${WINK_CODEGEN_ROOT}/drivers/*.py)
 
-add_custom_command(
-    OUTPUT ${GEN_DEVICE_TREE_H} ${GEN_DEVICE_TREE_C}
-           ${GEN_APP_OPTIONS}
-    COMMAND ${Python3_EXECUTABLE} ${WINK_CODEGEN_TOOL}
-            --config ${WINK_APP_JSON}
-            --out-dir ${GEN_DIR}
-    DEPENDS ${WINK_APP_JSON} ${WINK_CODEGEN_TOOL}
-            ${WINK_CODEGEN_TEMPLATES} ${WINK_CODEGEN_DRIVERS}
-    COMMENT "Generating ${WINK_APP} device tree from wink-app.json (esp32)"
-    VERBATIM
-)
+    add_custom_command(
+        OUTPUT ${GEN_DEVICE_TREE_H} ${GEN_DEVICE_TREE_C}
+               ${GEN_APP_OPTIONS}
+        COMMAND ${Python3_EXECUTABLE} ${WINK_CODEGEN_TOOL}
+                --config ${WINK_APP_JSON}
+                --out-dir ${GEN_DIR}
+        DEPENDS ${WINK_APP_JSON} ${WINK_CODEGEN_TOOL}
+                ${WINK_CODEGEN_TEMPLATES} ${WINK_CODEGEN_DRIVERS}
+        COMMENT "Generating ${WINK_APP} device tree from wink-app.json (esp32)"
+        VERBATIM
+    )
 
-# Add the generated .c files to this component's sources.
-target_sources(${COMPONENT_LIB} PRIVATE
-    ${GEN_DEVICE_TREE_C}
-)
+    # Add the generated .c files to this component's sources.
+    target_sources(${COMPONENT_LIB} PRIVATE
+        ${GEN_DEVICE_TREE_C}
+    )
 
-# Ensure compilation of this component waits until codegen has produced
-# device_tree.h and friends.
-add_custom_target(wink_app_codegen DEPENDS
-    ${GEN_DEVICE_TREE_H} ${GEN_DEVICE_TREE_C})
-add_dependencies(${COMPONENT_LIB} wink_app_codegen)
+    # Ensure compilation of this component waits until codegen has produced
+    # device_tree.h and friends.
+    add_custom_target(wink_app_codegen DEPENDS
+        ${GEN_DEVICE_TREE_H} ${GEN_DEVICE_TREE_C})
+    add_dependencies(${COMPONENT_LIB} wink_app_codegen)
+endif()
 
 # Windows GCC 默认按 GBK 解析源文件，中文 UTF-8 注释会乱码报错
 # 强制指定源文件编码为 UTF-8，解决中文注释编译错误

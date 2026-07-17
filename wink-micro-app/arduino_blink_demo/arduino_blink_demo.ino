@@ -9,7 +9,7 @@
  *   - millis()                    (系统时钟)
  *   - delay()                     (延时)
  *   - Serial.begin / print / println  (串口格式化输出)
- *   - String 拼接                 (动态字符串)
+ *   - String 拼接                 (动态字符串)  --- 仅作为能力测试 Arduino 推荐"分步输出"而不是"拼接方式"
  */
 #include <Arduino.h>
 

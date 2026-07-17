@@ -366,35 +366,30 @@ if(NOT TARGET_PLATFORM STREQUAL "wasm")
     # Extra sample apps — skipped in BINARY mode (they reference source paths
     # like test/ and runtime/src/ that don't exist in the binary SDK tree).
     if(NOT WINK_SDK_BINARY_MODE)
-    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/oled_dashboard)
-        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/oled_dashboard
-                         ${CMAKE_BINARY_DIR}/oled_dashboard_build)
-    endif()
+        macro(wink_add_sample_subdirectory name)
+            get_filename_component(_abs_sample_dir "${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/${name}" ABSOLUTE)
+            if(EXISTS "${_abs_sample_dir}")
+                if(NOT "${WINK_APP_DIR}" STREQUAL "${_abs_sample_dir}")
+                    add_subdirectory("${_abs_sample_dir}" "${CMAKE_BINARY_DIR}/${name}_build")
+                endif()
+            endif()
+        endmacro()
 
-    # DevKitC 冒烟测试：裸板真机 S1-S8 全链路验证
-    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/devkitc_smoke)
-        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/devkitc_smoke
-                         ${CMAKE_BINARY_DIR}/devkitc_smoke_build)
-    endif()
+        # oled_dashboard
+        wink_add_sample_subdirectory(oled_dashboard)
 
-    # Track A M1 / Task A-3：资源占用冲突反例样本（host-only 断言样本）
-    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/resource_conflict)
-        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/resource_conflict
-                         ${CMAKE_BINARY_DIR}/resource_conflict_build)
-    endif()
+        # DevKitC 冒烟测试：裸板真机 S1-S8 全链路验证
+        wink_add_sample_subdirectory(devkitc_smoke)
 
-    # Cooperative multi-task scheduler demo App
-    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/dual_task_demo)
-        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/dual_task_demo
-                         ${CMAKE_BINARY_DIR}/dual_task_demo_build)
-    endif()
+        # Track A M1 / Task A-3：资源占用冲突反例样本（host-only 断言样本）
+        wink_add_sample_subdirectory(resource_conflict)
 
-    # Arduino Compat Layer E2E: standard Arduino sketch (Blink + Serial)
-    # running on WinkMicroOS via wink_arduino_compat leaf-node linking.
-    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/arduino_blink_demo)
-        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/arduino_blink_demo
-                         ${CMAKE_BINARY_DIR}/arduino_blink_demo_build)
-    endif()
+        # Cooperative multi-task scheduler demo App
+        wink_add_sample_subdirectory(dual_task_demo)
+
+        # Arduino Compat Layer E2E: standard Arduino sketch (Blink + Serial)
+        # running on WinkMicroOS via wink_arduino_compat leaf-node linking.
+        wink_add_sample_subdirectory(arduino_blink_demo)
     endif()  # NOT WINK_SDK_BINARY_MODE
 
     # Host unit / e2e tests live under test/. Source SDK tarballs omit this tree

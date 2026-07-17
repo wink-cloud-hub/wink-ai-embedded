@@ -171,6 +171,64 @@ void test_deinit_loop_pwm_channel_no_resource_leak(void) {
     }
 }
 
+/* ADR-0034: advanced PWM profile fields */
+void test_init_explicit_resolution_bits_ok(void) {
+    dal_servo_t s = {0};
+    const dal_servo_config_t cfg = {
+        .owner = OWNER, .pwm_channel = 0,
+        .resolution_bits = 10u,
+        .clock_requirement = DAL_SERVO_CLOCK_AUTO,
+        .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f,
+    };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_servo_init(&s, &cfg));
+    TEST_ASSERT_EQUAL_UINT8(10u, s.config.resolution_bits);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_servo_set_angle(&s, 90.0f));
+    TEST_ASSERT_EQUAL_FLOAT(7.5f, sim_last_pwm_duty(0));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_servo_deinit(&s));
+}
+
+void test_init_stable_required_unsupported_on_host(void) {
+    dal_servo_t s = {0};
+    const dal_servo_config_t cfg = {
+        .owner = OWNER, .pwm_channel = 3,
+        .clock_requirement = DAL_SERVO_CLOCK_STABLE_REQUIRED,
+        .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f,
+    };
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_servo_init(&s, &cfg));
+    TEST_ASSERT_FALSE(s.initialized);
+    TEST_ASSERT_FALSE(pal_resource_is_claimed(PAL_RESOURCE_PWM_CHANNEL, 3));
+}
+
+void test_init_illegal_clock_rejected_before_claim(void) {
+    dal_servo_t s = {0};
+    dal_servo_config_t cfg = {
+        .owner = OWNER, .pwm_channel = 4,
+        .clock_requirement = (dal_servo_clock_requirement_t)2,
+        .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f,
+    };
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_servo_init(&s, &cfg));
+    TEST_ASSERT_FALSE(pal_resource_is_claimed(PAL_RESOURCE_PWM_CHANNEL, 4));
+}
+
+void test_apply_override_preserves_advanced_fields(void) {
+    dal_servo_t s = {
+        .config.pwm_channel = 0,
+        .config.resolution_bits = 12u,
+        .config.clock_requirement = DAL_SERVO_CLOCK_STABLE_REQUIRED,
+        .config.min_pulse_ms = 0.5f,
+        .config.max_pulse_ms = 2.5f,
+    };
+    uint8_t p[16];
+    build_servo_params(p, 2, 0.6f, 2.4f);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_servo_apply_override(&s, p, 9u));
+    TEST_ASSERT_EQUAL_UINT8(2u, s.config.pwm_channel);
+    TEST_ASSERT_EQUAL_FLOAT(0.6f, s.config.min_pulse_ms);
+    TEST_ASSERT_EQUAL_FLOAT(2.4f, s.config.max_pulse_ms);
+    /* Flash wire v1 is 9 bytes — advanced fields must not be touched. */
+    TEST_ASSERT_EQUAL_UINT8(12u, s.config.resolution_bits);
+    TEST_ASSERT_EQUAL_UINT8(DAL_SERVO_CLOCK_STABLE_REQUIRED, s.config.clock_requirement);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_init_null_returns_invalid_arg);
@@ -188,5 +246,9 @@ int main(void) {
     RUN_TEST(test_apply_override_null_returns_invalid_arg);
     RUN_TEST(test_deinit_hardening);
     RUN_TEST(test_deinit_loop_pwm_channel_no_resource_leak);
+    RUN_TEST(test_init_explicit_resolution_bits_ok);
+    RUN_TEST(test_init_stable_required_unsupported_on_host);
+    RUN_TEST(test_init_illegal_clock_rejected_before_claim);
+    RUN_TEST(test_apply_override_preserves_advanced_fields);
     return UNITY_END();
 }

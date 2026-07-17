@@ -60,8 +60,9 @@ BAL_MIGRATED_NAMES: frozenset[str] = frozenset({
 
 
 def _is_test_c(name: str) -> bool:
-    """Return True for host end-to-end test files (``test_*.c``, any case)."""
-    return fnmatch.fnmatch(name.lower(), "test_*.c")
+    """Return True for host end-to-end test files (``test_*.c`` or ``test_*.cpp``, any case)."""
+    name_lower = name.lower()
+    return fnmatch.fnmatch(name_lower, "test_*.c") or fnmatch.fnmatch(name_lower, "test_*.cpp")
 
 
 def _is_bal_migrated(name: str) -> bool:
@@ -102,11 +103,12 @@ def _resolve_common_include_dir(app_dir: Path, repo_root: Path) -> Path:
 
 
 def _collect_app_sources(app_dir: Path) -> list[Path]:
-    """Return sorted-by-relative-path ``*.c`` files under ``app_dir`` minus tests."""
+    """Return sorted-by-relative-path source files under ``app_dir`` minus tests."""
     files: list[Path] = []
-    for p in app_dir.rglob("*.c"):
-        if p.is_file() and not _is_test_c(p.name):
-            files.append(p)
+    for ext in ("*.c", "*.cpp", "*.ino"):
+        for p in app_dir.rglob(ext):
+            if p.is_file() and not _is_test_c(p.name):
+                files.append(p)
     # PowerShell's ``Get-ChildItem -Recurse`` walks depth-first with parent
     # entries preceding children; ``rglob`` on CPython yields in filesystem
     # order which on NTFS is typically directory-then-children. Sort by

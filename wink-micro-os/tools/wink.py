@@ -324,31 +324,30 @@ def resolve_app_dir(app: str) -> Path:
     """Resolves the App directory.
     If app is a path that exists and contains 'wink-app.json', returns its absolute path.
     Otherwise, defaults to wink-micro-app/<app> or SDK samples/<app>.
+    If no directory containing 'wink-app.json' matches, falls back to the first existing directory.
     """
     path_opt = Path(app)
-    if path_opt.exists() and path_opt.is_dir():
-        resolved = path_opt.resolve()
-        if (resolved / "wink-app.json").exists():
-            return resolved
-
     micro_app_dir = WORKSPACE_ROOT / "wink-micro-app" / app
-    if micro_app_dir.exists() and micro_app_dir.is_dir():
-        resolved = micro_app_dir.resolve()
-        if (resolved / "wink-app.json").exists():
-            return resolved
-
     sdk_dir = resolve_sdk_dir()
     samples_dir = sdk_dir / "samples" / app
-    if samples_dir.exists() and samples_dir.is_dir():
-        resolved = samples_dir.resolve()
-        if (resolved / "wink-app.json").exists():
-            return resolved
 
+    # 1. Prefer directories that contain 'wink-app.json'
+    if path_opt.exists() and path_opt.is_dir() and (path_opt.resolve() / "wink-app.json").exists():
+        return path_opt.resolve()
+    if micro_app_dir.exists() and micro_app_dir.is_dir() and (micro_app_dir.resolve() / "wink-app.json").exists():
+        return micro_app_dir.resolve()
+    if samples_dir.exists() and samples_dir.is_dir() and (samples_dir.resolve() / "wink-app.json").exists():
+        return samples_dir.resolve()
+
+    # 2. Fall back to any directory that exists (e.g. Arduino apps without 'wink-app.json')
     if path_opt.exists() and path_opt.is_dir():
-        print(f"[wink] Error: Directory '{app}' exists but does not contain 'wink-app.json'.", file=sys.stderr)
-        sys.exit(1)
+        return path_opt.resolve()
+    if micro_app_dir.exists() and micro_app_dir.is_dir():
+        return micro_app_dir.resolve()
+    if samples_dir.exists() and samples_dir.is_dir():
+        return samples_dir.resolve()
 
-    print(f"[wink] Error: Cannot resolve App '{app}' as a path containing 'wink-app.json' or as a sample in '{sdk_dir}/samples/'", file=sys.stderr)
+    print(f"[wink] Error: Cannot resolve App '{app}' as a path or as a sample in '{sdk_dir}/samples/'", file=sys.stderr)
     sys.exit(1)
 
 
@@ -626,23 +625,33 @@ def handle_web(args):
 
 def handle_test(args):
     """Run all Python golden and C unit tests."""
-    print("[wink] Running Codegen Golden regression tests...")
+    print("[wink] Running Codegen Golden + validation regression tests...")
     sdk_dir = resolve_sdk_dir()
     # SDK root on PYTHONPATH so ``tools.codegen`` resolves under wink-micro-os/
     env = os.environ.copy()
     prev = env.get("PYTHONPATH", "")
     env["PYTHONPATH"] = str(sdk_dir) + (os.pathsep + prev if prev else "")
-    golden = sdk_dir / "tools" / "codegen" / "tests" / "test_golden.py"
-    print(f"\n[wink] Running: {sys.executable} {golden} (PYTHONPATH={sdk_dir})")
+    tests_dir = sdk_dir / "tools" / "codegen" / "tests"
+    print(
+        f"\n[wink] Running: {sys.executable} -m unittest discover "
+        f"-s {tests_dir} -p test_*.py (cwd={sdk_dir / 'tools' / 'codegen'}, "
+        f"PYTHONPATH={sdk_dir})"
+    )
     try:
+        # cwd=tools/codegen so golden banner paths match checked-in fixtures
+        # (app_codegen embeds Path.cwd()-relative config source).
         subprocess.run(
-            [sys.executable, str(golden)],
-            cwd=WORKSPACE_ROOT,
+            [
+                sys.executable, "-m", "unittest", "discover",
+                "-s", str(tests_dir),
+                "-p", "test_*.py",
+            ],
+            cwd=str(sdk_dir / "tools" / "codegen"),
             check=True,
             env=env,
         )
     except subprocess.CalledProcessError as e:
-        print(f"[wink] Error: Golden tests failed with exit code {e.returncode}", file=sys.stderr)
+        print(f"[wink] Error: Codegen tests failed with exit code {e.returncode}", file=sys.stderr)
         sys.exit(e.returncode)
 
     print("\n[wink] Configuring and compiling Host unit tests...")
