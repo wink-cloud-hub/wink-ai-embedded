@@ -33,6 +33,8 @@ target_sources(wink_bal PRIVATE
     src/wink_servo_helper.c
     src/wink_pid.c
     src/wink_closed_loop_motor.c
+    src/wink_diff_drive_kinematics.c
+    src/wink_chassis_controller.c
 )
 
 target_include_directories(wink_bal PUBLIC

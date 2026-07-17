@@ -28,6 +28,7 @@ typedef struct {
     float                   counts_per_rev;
     
     volatile float          target_speed;
+    volatile float          current_speed;
     int32_t                 last_encoder_count;
     uint64_t                last_time_us;
     uint64_t                last_pulse_time_ms;
@@ -107,6 +108,7 @@ static void motor_tick(void *arg) {
         WINK_IGNORE_RESULT(dal_motor_safe_off(ctx->motor));
         // Reset PID states
         wink_pid_reset(&ctx->pid);
+        ctx->current_speed = 0.0f;
         // Raise feedback loss fault
         wink_trace_fault(WINK_FAULT_MOTOR_FEEDBACK_LOSS);
         return;
@@ -114,6 +116,7 @@ static void motor_tick(void *arg) {
 
     // 4. Calculate actual feedback speed (counts/s)
     float feedback_speed = (float)delta_ticks / dt;
+    ctx->current_speed = feedback_speed;
 
     // 5. Update PID controller
     float control_output = 0.0f;
@@ -260,6 +263,23 @@ wink_status_t wink_closed_loop_motor_set_speed(dal_motor_t *motor, float target_
     return WINK_OK;
 }
 
+wink_status_t wink_closed_loop_motor_get_speed(dal_motor_t *motor, float *out_speed)
+{
+    if (motor == NULL || out_speed == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    int idx = find_slot_by_motor(motor);
+    if (idx < 0) {
+        return WINK_ERR_INVALID_STATE;
+    }
+    
+    motor_ctx_t *ctx = &s_slots[idx];
+    PAL_CRITICAL_SECTION({
+        *out_speed = ctx->current_speed;
+    });
+    return WINK_OK;
+}
+
 void wink_closed_loop_motor_reset(void)
 {
     for (int i = 0; i < WINK_CLOSED_LOOP_MOTOR_HELPER_MAX; i++) {
@@ -303,6 +323,12 @@ wink_status_t wink_closed_loop_motor_stop(dal_motor_t *motor)
 wink_status_t wink_closed_loop_motor_set_speed(dal_motor_t *motor, float target_speed)
 {
     (void)motor; (void)target_speed;
+    return WINK_ERR_UNAVAILABLE;
+}
+
+wink_status_t wink_closed_loop_motor_get_speed(dal_motor_t *motor, float *out_speed)
+{
+    (void)motor; (void)out_speed;
     return WINK_ERR_UNAVAILABLE;
 }
 
