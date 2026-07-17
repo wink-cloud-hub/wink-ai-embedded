@@ -109,18 +109,22 @@ if(ESP_PLATFORM)
     endif()
     set(WINK_APP_JSON "${WINK_APP_DIR}/wink-app.json")
     if(NOT EXISTS "${WINK_APP_JSON}")
-        message(FATAL_ERROR "WINK_APP_JSON not found: ${WINK_APP_JSON}")
+        message(STATUS "WINK_APP_JSON not found: ${WINK_APP_JSON} — Using default configuration.")
+        set(WINK_APP_JSON "")
     endif()
     set(WINK_CONFIG_H ${WINK_CONFIG_DIR}/wink_config.h)
+    set(_CONFIG_H_DEPS ${WINK_MICRO_OS_ROOT}/tools/codegen/config_h.py)
+    if(NOT WINK_APP_JSON STREQUAL "")
+        list(APPEND _CONFIG_H_DEPS ${WINK_APP_JSON})
+    endif()
     add_custom_command(
         OUTPUT ${WINK_CONFIG_H}
         COMMAND ${Python3_EXECUTABLE} ${WINK_MICRO_OS_ROOT}/tools/codegen/config_h.py
-                --input ${WINK_APP_JSON}
+                --input "${WINK_APP_JSON}"
                 --output ${WINK_CONFIG_H}
                 --target esp32
-        DEPENDS ${WINK_APP_JSON}
-                ${WINK_MICRO_OS_ROOT}/tools/codegen/config_h.py
-        COMMENT "Generating wink_config.h from ${WINK_APP_JSON} (esp32)"
+        DEPENDS ${_CONFIG_H_DEPS}
+        COMMENT "Generating wink_config.h (esp32)"
         VERBATIM
     )
     add_custom_target(wink_generate_config DEPENDS ${WINK_CONFIG_H})

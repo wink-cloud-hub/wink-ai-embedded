@@ -158,6 +158,38 @@ void delayMicroseconds(unsigned int us) {
     pal_os_busy_wait_us(us);
 }
 
+#include "wink_runtime.h"
+
+extern void setup(void);
+extern void loop(void);
+
+static void arduino_app_init(void) {
+    wink_arduino_init();
+    setup();
+}
+
+static void arduino_app_loop(void) {
+    loop();
+}
+
+#if defined(_MSC_VER)
+const wink_app_callbacks_t * __declspec(selectany) wink_app_get_callbacks(void)
+#else
+__attribute__((weak)) const wink_app_callbacks_t *wink_app_get_callbacks(void)
+#endif
+{
+    static const wink_app_callbacks_t s_arduino_callbacks = {
+        arduino_app_init,
+        arduino_app_loop,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL
+    };
+    return &s_arduino_callbacks;
+}
+
 void wink_arduino_init(void) {
     // Compatibility layer initialization if needed
 }

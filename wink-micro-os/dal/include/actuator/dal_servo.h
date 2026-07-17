@@ -9,12 +9,29 @@
 extern "C" {
 #endif
 
-/** @brief 舵机构造期配置（dal_servo_init 输入） */
+/** @brief 舵机 PWM 时钟需求（DAL 语义；不引用 pal_*，ADR-0034） */
+typedef uint8_t dal_servo_clock_requirement_t;
+
+enum {
+    DAL_SERVO_CLOCK_AUTO            = 0,
+    DAL_SERVO_CLOCK_STABLE_REQUIRED = 1,
+};
+
+/**
+ * @brief 舵机构造期配置（dal_servo_init 输入）
+ *
+ * 字段按 ABI 布局排序（pointer → uint8 → float），非机械尾加（ADR-0034 §2.5）。
+ * `resolution_bits` / `clock_requirement` 为 0 (= AUTO) 时行为等同今日
+ * `pal_pwm_init(ch, 50)`（13-bit + AUTO）。Flash override wire v1 仍为 9 bytes，
+ * **不含** advanced 字段。
+ */
 typedef struct {
-    const char *owner;       /* 资源占用 owner 静态字符串（device_tree 实例名，静态存储） */
-    uint8_t pwm_channel;
-    float min_pulse_ms;
-    float max_pulse_ms;
+    const char                    *owner;              /* device_tree 实例名，静态存储 */
+    uint8_t                        pwm_channel;
+    uint8_t                        resolution_bits;    /* 0 = AUTO → 平台默认 13-bit */
+    dal_servo_clock_requirement_t  clock_requirement;  /* 0 = AUTO */
+    float                          min_pulse_ms;
+    float                          max_pulse_ms;
 } dal_servo_config_t;
 
 /**
