@@ -60,6 +60,7 @@ wink_status_t wink_closed_loop_motor_stop(dal_motor_t *motor);
  * @return WINK_OK / WINK_ERR_INVALID_STATE (闭环未激活)
  */
 wink_status_t wink_closed_loop_motor_set_speed(dal_motor_t *motor, float target_speed);
+wink_status_t wink_closed_loop_motor_get_speed(dal_motor_t *motor, float *out_speed);
 
 #ifdef __cplusplus
 }
