@@ -107,6 +107,7 @@ idf_component_register(
         ${GEN_DIR}                # ← codegen 生成的 device_tree.h 所在目录
         ${WINK_APP_COMMON_INCLUDE_DIR}  # ← samples/common/include
     REQUIRES ${APP_REQUIRES}
+    WHOLE_ARCHIVE
 )
 
 # Set language CXX for .ino files

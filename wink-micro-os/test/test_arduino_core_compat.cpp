@@ -89,3 +89,8 @@ extern "C" int run_arduino_compat_tests(void) {
     RUN_TEST(test_arduino_serial_loopback);
     return UNITY_END();
 }
+
+extern "C" {
+void setup(void) {}
+void loop(void) {}
+}
