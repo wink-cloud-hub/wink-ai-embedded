@@ -13,7 +13,7 @@ if(NOT DEFINED WINK_SDK_PATH)
         set(WINK_SDK_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-os")
     endif()
 endif()
-set(EXTRA_COMPONENT_DIRS "${WINK_SDK_PATH}/targets/esp32")
+set(EXTRA_COMPONENT_DIRS "${WINK_SDK_PATH}/targets/esp32" "${WINK_SDK_PATH}/frameworks/arduino")
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(wink_esp32_firmware)
