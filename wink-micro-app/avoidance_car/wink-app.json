@@ -6,7 +6,8 @@
       "type": "ultrasonic",
       "trig_pin": 4,
       "echo_pin": 5,
-      "use_rmt": false
+      "use_rmt": false,
+      "auto_poll_ms": 50
     },
     "neck_servo": {
       "type": "servo",

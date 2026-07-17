@@ -5,8 +5,8 @@ Audience for WinkMicroOS App samples (A+B primary, C supported):
 | Tier | Who | What you edit | Golden sample |
 |------|-----|---------------|---------------|
 | **L0** | A low-code / visual | Pins + intent in UI (generated C) | *(future — P2 intent layer)* |
-| **L1** | B AI / beginner C | `wink-app.json` + Role API business C | **`oled_dashboard`** |
-| **L2** | C embedded expert | Full hooks, `&dev`, `dal_*`, hand `device_tree` | `avoidance_car`, `dual_task_demo` |
+| **L1** | B AI / beginner C | `wink-app.json` + Role API business C | **`oled_dashboard`** (button events), **`avoidance_car`** (distance events) |
+| **L2** | C embedded expert | Full hooks, `&dev`, `dal_*`, hand `device_tree` | `dual_task_demo` |
 | **QA** | Platform CI / board bring-up | Not an onboarding template | `devkitc_smoke` |
 | **Fixture** | Wasm smoke harness | Not an App tutorial | `unisim_smoke` |
 
