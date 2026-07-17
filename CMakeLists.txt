@@ -16,7 +16,7 @@ if(DEFINED ENV{IDF_PATH} OR ESP_PLATFORM)
     add_subdirectory(wink-micro-os)
 else()
     # 非 ESP-IDF 环境：host/wasm 独立构建
-    project(wink-micro-os-top C)
+    project(wink-micro-os-top C CXX)
     message(STATUS "Standalone build - TARGET_PLATFORM not specified, defaulting to host")
     add_subdirectory(wink-micro-os)
 endif()

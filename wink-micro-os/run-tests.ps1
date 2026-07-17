@@ -91,7 +91,10 @@ function Invoke-TestPass {
         $cmakeArgs += "-DCMAKE_C_FLAGS=$ExtraCFlags"
     }
 
+    $oldPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
     cmake @cmakeArgs *> $null
+    $ErrorActionPreference = $oldPreference
     if ($LASTEXITCODE -ne 0) {
         Write-Host "[FAIL] [$Label] configure failed, re-running with full output:" -ForegroundColor Red
         cmake @cmakeArgs
@@ -335,6 +338,18 @@ if ($pythonCmd) {
     }
 } else {
     Write-Host "[SKIP] python not found on PATH — log format-literal check skipped" -ForegroundColor Yellow
+}
+
+# ---- 10. L4 static lint: Arduino isolation check (ADR-0035) -----------------
+Write-Host "[lint] Arduino core isolation check (ADR-0035)..." -ForegroundColor Cyan
+if ($pythonCmd) {
+    & python (Join-Path $PSScriptRoot 'tools/lint/check_arduino_isolation.py')
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "[lint] ADR-0035 Arduino isolation check failed (see output above)"
+        exit 1
+    }
+} else {
+    Write-Host "[SKIP] python not found on PATH — Arduino isolation check skipped" -ForegroundColor Yellow
 }
 
 exit $overallRc

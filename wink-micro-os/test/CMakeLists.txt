@@ -465,6 +465,11 @@ add_test(
         -P ${CMAKE_CURRENT_SOURCE_DIR}/test_dal_pruning_neg.cmake
 )
 
+if(TARGET wink_arduino_compat)
+    add_wink_host_test(test_arduino_core_compat test_arduino_core_compat.cpp test_arduino_core_compat_runner.c)
+    target_link_libraries(test_arduino_core_compat PRIVATE wink_arduino_compat)
+endif()
+
 add_custom_target(check
     COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}

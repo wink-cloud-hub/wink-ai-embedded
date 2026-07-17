@@ -37,7 +37,7 @@ import tempfile
 
 # ── Repository layout ─────────────────────────────────────────────────────────
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.dirname(SCRIPT_DIR)  # wink-micro-os/
+REPO_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))  # wink-micro-os/
 
 # Header roots we scan. Every .h under these (recursively) is a check target.
 HEADER_ROOTS = [
