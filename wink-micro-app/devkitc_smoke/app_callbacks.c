@@ -1,18 +1,18 @@
 /**
  * @file app_callbacks.c
  * @brief DevKitC smoke-test firmware (P0-1 slim): device tree centralized,
- *        app only wires helpers + selftest.
+ *        app only wires BAL services + selftest.
  *
  * Init / deinit boilerplate for LED / button / ultrasonic lives in
  * device_tree.c. This TU only:
- *   - defines business event callbacks (long-press ??WDT test)
- *   - kicks off helper services (blink, button poll, telemetry, ultrasonic polling)
+ *   - defines business event callbacks (long-press -> WDT test)
+ *   - starts BAL services (blink, button events, telemetry, ultrasonic poll)
  *   - invokes the OS built-in selftest suite
  *   - logs S1-S11 status on startup
  *
  * Verifies on bare metal (no wiring required):
  *   S1  2s telemetry                (BAL: wink_telemetry_default_start)
- *   S2  LED blink                    (common: wink_led_blink_start)
+ *   S2  LED blink                    (BAL: wink_led_blink_start)
  *   S3  Boot-button debounce         (BAL: wink_button_enable_events, soft_poll)
  *   S4  GPIO ISR edge count          (selftest: gpio.isr_roundtrip)
  *   S5  PWM router freq isolation    (selftest: pwm_router.freq_isolation)
@@ -20,7 +20,7 @@
  *   S7  Dual-core resource stress    (selftest: smp.resource_stress)
  *   S8  WDT reset via long-press     (Runtime: wink_runtime_trigger_wdt_test)
  *   S9  RMT hardware loopback        (selftest: rmt.self_loopback)
- *   S10 Ultrasonic echo simulation   (BAL: wink_sim_ultrasonic_echo_start & wink_ultrasonic_poll_start)
+ *   S10 Ultrasonic echo simulation   (selftest echo + BAL: wink_ultrasonic_poll_start)
  *   S11 Deinit loop verification     (host e2e test verified)
  */
 #define LOG_TAG "devkitc_smoke"
@@ -43,7 +43,7 @@
 #include "wink_sim_ultrasonic_echo.h"
 #endif
 
-/* ?? S8: Boot-button event callback (long-press ??WDT test, noreturn) ????? */
+/* S8: Boot-button event callback (long-press -> WDT test, noreturn) */
 static void on_boot_button(dal_button_event_t evt, void *ctx)
 {
     (void)ctx;
@@ -53,7 +53,7 @@ static void on_boot_button(dal_button_event_t evt, void *ctx)
     }
 }
 
-/* ?? S8: Boot notification (Runtime fires this once before init()) ???????? */
+/* S8: Boot notification (Runtime fires this once before init()) */
 static void app_on_boot(const wink_boot_info_t *info)
 {
     if (info->abnormal_boot_count > 0 ||
@@ -63,13 +63,12 @@ static void app_on_boot(const wink_boot_info_t *info)
     }
 }
 
-/* ?? init: hand off device init to device_tree, then wire helpers + selftest ? */
+/* init: device_tree then BAL services + selftest */
 static wink_status_t app_init_status(void)
 {
-    /* ?????? */
     WINK_TRY(wink_device_tree_init());
 
-    /* S3: ?? boot_button ?????ADR-0032 B ??soft_poll ????*/
+    /* S3: enable boot_button events (ADR-0032 B-class soft_poll) */
 #ifdef BOOT_BUTTON_AUTO_POLL_MS
     static const wink_button_event_config_t s3_cfg = {
         .drive           = WINK_BUTTON_DRIVE_SOFT_POLL,
@@ -88,7 +87,7 @@ static wink_status_t app_init_status(void)
     LOG_I("\nS3: SKIP (button events not configured)");
 #endif
 
-    /* S8: ?????? */
+    /* S8: register WDT long-press trigger */
     wink_status_t st_s8 = dal_button_on_event(&boot_button, on_boot_button, NULL);
     if (st_s8 == WINK_OK) {
         LOG_I("\nS8: PASS (WDT trigger registered)");
@@ -97,7 +96,7 @@ static wink_status_t app_init_status(void)
         return st_s8;
     }
 
-    /* S2: LED blink helper?fire-and-forget??*/
+    /* S2: LED blink (A-class) */
     int32_t blink_h = wink_led_blink_start(&board_led, 1000);
     if (blink_h >= 1) {
         LOG_I("\nS2: PASS (led blink, h=%ld)", (long)blink_h);
@@ -106,13 +105,12 @@ static wink_status_t app_init_status(void)
         return (wink_status_t)blink_h;
     }
 
-    /* S10: ????echo ?? (host e2e + ESP32 ??????????????????ECHO pulse)
-     * WINK_CFG_SIM_ECHO ?????? app ???devkitc_smoke ??host/ESP32 ????
-     * ??????sim_echo ???? SKIP ????*/
+    /* S10: optional echo sim (host e2e / ESP32 builds with WINK_CFG_SIM_ECHO).
+     * Without the define, skip arming and continue with poll only. */
 #ifdef WINK_CFG_SIM_ECHO
     wink_status_t st_echo = wink_sim_ultrasonic_echo_start(
-        &smoke_sonar, 50.0f,
-        smoke_sonar.config.trig_pin, smoke_sonar.config.echo_pin);
+        &smoke_ultrasonic, 50.0f,
+        smoke_ultrasonic.config.trig_pin, smoke_ultrasonic.config.echo_pin);
     if (st_echo == WINK_OK) {
         LOG_I("\nS10: PASS (echo sim armed, simulated_dist=50cm)");
     } else {
@@ -123,17 +121,17 @@ static wink_status_t app_init_status(void)
     LOG_I("\nS10: SKIP (echo sim not enabled for this build)");
 #endif
 
-    /* S10: ???????????? helper */
-    wink_status_t st_ultrasonic = wink_ultrasonic_poll_start(&smoke_sonar, 500);
+    /* S10: ultrasonic poll (A-class) */
+    wink_status_t st_ultrasonic = wink_ultrasonic_poll_start(&smoke_ultrasonic, 500);
     if (st_ultrasonic == WINK_OK) {
-        LOG_I("\nS10: PASS (ultrasonic polling helper, period=500ms)");
+        LOG_I("\nS10: PASS (ultrasonic poll, period=500ms)");
     } else {
-        LOG_E("\nS10: FAIL (ultrasonic helper start, status=%d)", (int)st_ultrasonic);
+        LOG_E("\nS10: FAIL (ultrasonic poll start, status=%d)", (int)st_ultrasonic);
         return st_ultrasonic;
     }
 
-    /* S1: ?????BAL helper, MAY_BLOCK ????*/
-    wink_status_t st_s1 = wink_telemetry_default_start(&smoke_sonar, &boot_button);
+    /* S1: telemetry default (MAY_BLOCK) */
+    wink_status_t st_s1 = wink_telemetry_default_start(&smoke_ultrasonic, &boot_button);
     if (st_s1 == WINK_OK) {
         LOG_I("\nS1: PASS (telemetry default started)");
     } else {
@@ -141,11 +139,10 @@ static wink_status_t app_init_status(void)
         return st_s1;
     }
 
-    /* ?? S6 readiness: eager-init I2C bus 0 so the selftest i2c.bus_scan
-     *   does not trip the lazy-init WARN path (see review memo: "stub ??
-     *   WINK_OK ?????? prerequisite).
+    /* S6 readiness: eager-init I2C bus 0 so selftest i2c.bus_scan does not
+     * trip the lazy-init WARN path (stub returns WINK_OK as prerequisite).
      *   - ESP32: pal_i2c_port_pins() returns board/weak-default SDA/SCL.
-     *   - host/wasm: port_pins returns UNSUPPORTED (pins ignored), fall
+     *   - host/wasm: port_pins returns UNSUPPORTED (pins ignored); fall
      *     back to (0,0) which the virtual targets accept. */
     {
         wink_pin_t sda = 0, scl = 0;
@@ -199,20 +196,20 @@ static wink_status_t app_init_status(void)
     return WINK_OK;
 }
 
-/* ?? loop (10ms tick): empty. */
+/* loop (10ms tick): empty */
 static void app_loop(void)
 {
     /* no-op */
 }
 
-/* ?? Fault callback ?? */
+/* Fault callback */
 static wink_status_t app_on_fault_status(uint32_t code)
 {
     (void)code;
     return WINK_OK;
 }
 
-/* ?? Callback factory (binary decoupling) ???????????????????????????????? */
+/* Callback factory (binary decoupling) */
 const wink_app_callbacks_t *wink_app_get_callbacks(void)
 {
     static const wink_app_callbacks_t cb = {
