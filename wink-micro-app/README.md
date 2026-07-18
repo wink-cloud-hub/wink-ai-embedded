@@ -103,7 +103,7 @@ Field notes:
 | `devkitc_smoke/` | QA | S1–S11 board selftests |
 | `unisim_smoke/` | Fixture | Wasm JS import smoke |
 | `resource_conflict/` | QA | Resource conflict demo (special entry) |
-| `common/` | — | Forwarding headers / sample helpers |
-| `sample_common.cmake` | — | Shared includes, link helpers, codegen |
+| `common/` | — | INTERFACE: selftest include path + link `wink_bal`（无转发 shim） |
+| `sample_common.cmake` | — | Shared includes, link libraries, codegen |
 
 See also: `docs/design/03-app-codegen/01-app-business-logic.md`.

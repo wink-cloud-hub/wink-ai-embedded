@@ -11,7 +11,7 @@
       "isr_counter": true,
       "auto_poll_ms": 10
     },
-    "smoke_sonar": {
+    "smoke_ultrasonic": {
       "type": "ultrasonic",
       "trig_pin": "$board.headers.D18",
       "echo_pin": "$board.headers.D19",

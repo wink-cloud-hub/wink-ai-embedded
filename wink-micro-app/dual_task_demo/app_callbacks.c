@@ -2,8 +2,9 @@
  * @file app_callbacks.c
  * @brief dual_task_demo — two periodic callbacks at different rates.
  *
- * Expert-mode sample: demonstrates wink_periodic_start_ex() when BAL helpers
- * (blink/button/ultrasonic) don't fit.  A 20 ms "sensor" callback generates mock
+ * Expert-mode sample: demonstrates wink_periodic_start_ex() when BAL services
+ * alone are not enough (custom multi-callback coordination).
+ * A 20 ms "sensor" callback generates mock
  * distance data; a 30 ms "motor" callback reads the latest sample and drives
  * the servo.  No ringbuf or pal_os_sleep_ms — the runtime schedules callbacks
  * at the declared period.
@@ -111,7 +112,7 @@ static wink_status_t app_init_status(void)
     wink_status_t st_angle = dal_servo_set_angle(&neck_servo, 90.0f);
     (void)st_angle;
 
-    /* Start two periodic callbacks — expert mode: when BAL helpers don't fit
+    /* Start two periodic callbacks — expert mode: when BAL services don't fit
      * (asymmetric rates, custom logic), use wink_periodic_start_ex directly.
      * LIGHT path: callbacks run in tick context (cooperative, zero stack). */
     wink_periodic_handle_t h_sensor = wink_periodic_start_ex(
