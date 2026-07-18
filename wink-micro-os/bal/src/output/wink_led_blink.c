@@ -1,5 +1,5 @@
 /**
- * @file wink_led_blink.c (flat src path until Task 7 domain mirror)
+ * @file wink_led_blink.c
  * @brief BAL LED blink helper ù?toggles a DAL LED at 50% duty via the
  *        runtime periodic scheduler (LIGHT path by default).
  *

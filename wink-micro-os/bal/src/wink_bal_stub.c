@@ -2,7 +2,7 @@
  * @file wink_bal_stub.c
  * @brief Stage 1 placeholder — empty translation unit so wink_bal links.
  *
- * Replaced in Stage 2-3 when the real helpers (led_blink, button, ultrasonic,
+ * Replaced in Stage 2-3 when the real BAL modules (led_blink, button, ultrasonic,
  * servo, telemetry, oled) migrate in from samples/common/.
  *
  * Copyright (c) 2026 Wink-AI.

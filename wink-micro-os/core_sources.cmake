@@ -46,19 +46,25 @@ set(WINK_SELFTEST_SOURCES
 )
 
 # ── BAL (Business Abstraction Layer) 源文件 — ADR-0023 Stage 2 ────────────
-# Helper implementations that migrated from samples/common/ to the BAL
-# static library.  When building via the top-level CMakeLists (host/wasm),
+# Domain-mirrored implementations under bal/src/<domain>/.
+# When building via the top-level CMakeLists (host/wasm),
 # these are compiled into the standalone `wink_bal` static library; for the
 # ESP-IDF component build that pulls ${WINK_CORE_SOURCES} directly, listing
 # them here guarantees the ESP32 component also compiles them. Keep in sync
 # with bal/CMakeLists.txt target_sources(wink_bal ...).
 set(WINK_BAL_SOURCES
-    ${CMAKE_CURRENT_LIST_DIR}/bal/src/wink_blink_helper.c
-    ${CMAKE_CURRENT_LIST_DIR}/bal/src/wink_button_events.c
-    ${CMAKE_CURRENT_LIST_DIR}/bal/src/wink_button_events_irq.c
-    ${CMAKE_CURRENT_LIST_DIR}/bal/src/wink_telemetry_helper.c
-    ${CMAKE_CURRENT_LIST_DIR}/bal/src/wink_sonar_helper.c
-    ${CMAKE_CURRENT_LIST_DIR}/bal/src/wink_servo_helper.c
+    ${CMAKE_CURRENT_LIST_DIR}/bal/src/wink_bal_stub.c
+    ${CMAKE_CURRENT_LIST_DIR}/bal/src/output/wink_led_blink.c
+    ${CMAKE_CURRENT_LIST_DIR}/bal/src/input/wink_button_events.c
+    ${CMAKE_CURRENT_LIST_DIR}/bal/src/input/wink_button_events_irq.c
+    ${CMAKE_CURRENT_LIST_DIR}/bal/src/comm/wink_telemetry_default.c
+    ${CMAKE_CURRENT_LIST_DIR}/bal/src/sensor/wink_ultrasonic_poll.c
+    ${CMAKE_CURRENT_LIST_DIR}/bal/src/sensor/wink_ultrasonic_distance_events.c
+    ${CMAKE_CURRENT_LIST_DIR}/bal/src/actuator/wink_servo_sweep.c
+    ${CMAKE_CURRENT_LIST_DIR}/bal/src/math/wink_pid.c
+    ${CMAKE_CURRENT_LIST_DIR}/bal/src/math/wink_diff_drive_kinematics.c
+    ${CMAKE_CURRENT_LIST_DIR}/bal/src/control/wink_closed_loop_motor.c
+    ${CMAKE_CURRENT_LIST_DIR}/bal/src/control/wink_chassis.c
 )
 
 # ── 核心包含目录 ──────────────────────────────────────────────────────────
@@ -80,14 +86,8 @@ set(WINK_CORE_INCLUDE_DIRS
     ${CMAKE_CURRENT_LIST_DIR}/runtime/include
     ${CMAKE_CURRENT_LIST_DIR}/runtime/selftest/src  # wink_selftest_internal.h + registry.def
     ${CMAKE_CURRENT_LIST_DIR}/trace/include
-    # BAL (ADR-0023 Stage 2) — helper public headers
+    # BAL (ADR-0023 Stage 2) — public headers; use domain-prefixed includes
     ${CMAKE_CURRENT_LIST_DIR}/bal/include
-    ${CMAKE_CURRENT_LIST_DIR}/bal/include/output
-    ${CMAKE_CURRENT_LIST_DIR}/bal/include/input
-    ${CMAKE_CURRENT_LIST_DIR}/bal/include/sensor
-    ${CMAKE_CURRENT_LIST_DIR}/bal/include/actuator
-    ${CMAKE_CURRENT_LIST_DIR}/bal/include/display
-    ${CMAKE_CURRENT_LIST_DIR}/bal/include/comm
 )
 
 # ── 聚合所有核心源文件 ──────────────────────────────────────────────────────────

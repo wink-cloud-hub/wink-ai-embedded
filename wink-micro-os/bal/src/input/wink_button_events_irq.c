@@ -21,7 +21,7 @@
  */
 #define LOG_TAG "bal.btn.irq"
 
-#include "wink_button_events.h"
+#include "input/wink_button_events.h"
 #include "wink_button_events_internal.h"
 #include "wink_status.h"
 #include "pal_log.h"

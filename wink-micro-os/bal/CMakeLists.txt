@@ -1,52 +1,44 @@
-# BAL (Business Abstraction Layer) —— 高层器件 helper 静态库
+# BAL (Business Abstraction Layer) — reusable device enhancements,
+# math algorithms, and domain controllers (ADR-0038 / 06-bal-layer).
 #
-# 介于 App 与 {DAL, runtime} 之间：封装 led blink / button poll / sonar / servo /
-# telemetry 等常见组合，让 App 代码保持零阻塞、零手写 task wrapper。
+# 介于 App 与 {DAL, runtime} 之间：封装 led blink / button poll / ultrasonic /
+# servo / telemetry 等常见组合，让 App 代码保持零阻塞、零手写 task wrapper。
 #
 # 分层红线（ADR-0023 §8）：
 #   * bal/include/**/*.h 禁止 #include 任何 pal_*.h（pal_log.h 除外，它只暴露 LOG 宏，
 #     不引入 OSAL/HAL 类型）。CI grep 卡口强制。
 #   * BAL 不得链接 target 专属 PAL 对象，保持跨 target 单源编译。
 #
-# 目录布局（Stage 2-3 迁移填充；Stage 1 仅建骨架 + stub.c 保证库能编过）：
-#   include/output/   —— LED blink 等输出类 helper
-#   include/input/    —— Button poll 等输入类 helper
-#   include/sensor/   —— Ultrasonic 等传感器 helper
-#   include/actuator/ —— Servo 等执行器 helper
-#   include/display/  —— OLED dashboard helper
-#   include/comm/     —— Telemetry / 通信 helper
-#   src/              —— 对应 .c 实现
+# 目录布局（include/ 与 src/ 按 domain 镜像）：
+#   include/output/   — LED blink 等输出类组件
+#   include/input/    — Button events 等输入类组件
+#   include/sensor/   — Ultrasonic 等传感器组件
+#   include/actuator/ — Servo 等执行器组件
+#   include/display/  — OLED dashboard（预留）
+#   include/comm/     — Telemetry / 通信组件
+#   include/math/     — PID、运动学等纯算法
+#   include/control/  — 闭环电机、底盘等控制器
+#   src/<domain>/     — 与 include/<domain>/ 对应的 .c 实现
 
 add_library(wink_bal STATIC)
 
-# Stage 1 骨架 → Stage 2 迁移：helper 实现文件按需加入。
-# stub.c 保留为空 TU 占位，保证未来暂时无 helper 时库也能链接；
-# 当所有 helper 都迁移完成后可删除。
 target_sources(wink_bal PRIVATE
     src/wink_bal_stub.c
-    src/wink_blink_helper.c
-    src/wink_button_events.c
-    src/wink_button_events_irq.c
-    src/wink_telemetry_helper.c
-    src/wink_sonar_helper.c
-    src/wink_ultrasonic_distance_events.c
-    src/wink_servo_helper.c
-    src/wink_pid.c
-    src/wink_closed_loop_motor.c
-    src/wink_diff_drive_kinematics.c
-    src/wink_chassis_controller.c
+    src/output/wink_led_blink.c
+    src/input/wink_button_events.c
+    src/input/wink_button_events_irq.c
+    src/sensor/wink_ultrasonic_poll.c
+    src/sensor/wink_ultrasonic_distance_events.c
+    src/actuator/wink_servo_sweep.c
+    src/comm/wink_telemetry_default.c
+    src/math/wink_pid.c
+    src/math/wink_diff_drive_kinematics.c
+    src/control/wink_closed_loop_motor.c
+    src/control/wink_chassis.c
 )
 
 target_include_directories(wink_bal PUBLIC
-    include
-    include/output
-    include/input
-    include/sensor
-    include/actuator
-    include/display
-    include/comm
-    include/math
-    include/control
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 # BAL 依赖 runtime（wink_periodic / wink_pt_debug 等）+ DAL（底层器件驱动）+ trace（LOG/FAULT）。
