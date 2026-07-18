@@ -1,6 +1,6 @@
 /**
  * @file wink_ultrasonic_poll.c
- * @brief BAL ultrasonic poll ù periodically triggers distance measurements
+ * @brief BAL ultrasonic poll ? periodically triggers distance measurements
  *        via the runtime periodic scheduler (MAY_BLOCK path).
  *
  * Copyright (c) 2026 Wink-AI.
@@ -16,8 +16,15 @@
 
 #include <stddef.h>
 
+/* DAL pruning (WINK_UNAVAILABLE): force the MAX==0 stub path when the
+ * ultrasonic driver is off so ESP32 still links wink_bal (ADR-0039). */
+#if !defined(WINK_USE_ULTRASONIC) || !(WINK_USE_ULTRASONIC)
+#  undef WINK_ULTRASONIC_POLL_MAX
+#  define WINK_ULTRASONIC_POLL_MAX 0
+#endif
+
 /* HC-SR04 acoustic-ringing budget: a measurement fires an 8-cycle 40 kHz
- * burst (~200 ùs) then listens for the echo. After the echo returns the
+ * burst (~200 ?s) then listens for the echo. After the echo returns the
  * transducer keeps ringing for ~10-30 ms; polling faster than 50 ms causes
  * the next burst's transmitted energy to be picked up as a false echo.
  * Runtime-enforced (see start_ex / set_period) per 2026-07-06 hardening
@@ -69,7 +76,7 @@ static int find_slot_by_dev(dal_ultrasonic_t *dev) {
     return -1;
 }
 
-/* ?? periodic callback (MAY_BLOCK path ù?void return, void* ctx) ??? */
+/* ?? periodic callback (MAY_BLOCK path ??void return, void* ctx) ??? */
 static void ultrasonic_poll_tick(void *arg) {
     ultrasonic_poll_ctx_t *ctx = (ultrasonic_poll_ctx_t *)arg;
     if (ctx->dev != NULL) {
@@ -207,12 +214,12 @@ wink_status_t wink_ultrasonic_poll_start_ex(dal_ultrasonic_t *dev, uint32_t peri
                                          const wink_bal_opts_t *opts)
 {
     (void)dev; (void)period_ms; (void)opts;
-    return WINK_ERR_UNAVAILABLE;
+    return WINK_ERR_UNSUPPORTED;
 }
 
 wink_status_t wink_ultrasonic_poll_start(dal_ultrasonic_t *dev, uint32_t period_ms) {
     (void)dev; (void)period_ms;
-    return WINK_ERR_UNAVAILABLE;
+    return WINK_ERR_UNSUPPORTED;
 }
 
 wink_status_t wink_ultrasonic_poll_stop(dal_ultrasonic_t *dev) {
@@ -222,7 +229,7 @@ wink_status_t wink_ultrasonic_poll_stop(dal_ultrasonic_t *dev) {
 
 wink_status_t wink_ultrasonic_poll_set_period(dal_ultrasonic_t *dev, uint32_t period_ms) {
     (void)dev; (void)period_ms;
-    return WINK_ERR_UNAVAILABLE;
+    return WINK_ERR_UNSUPPORTED;
 }
 
 bool wink_ultrasonic_poll_is_running(dal_ultrasonic_t *dev) {
