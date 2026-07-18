@@ -139,7 +139,7 @@ static void motor_tick(void *arg) {
 wink_status_t wink_closed_loop_motor_start_ex(dal_motor_t *motor, 
                                               dal_encoder_t *encoder,
                                               const wink_closed_loop_motor_config_t *cfg,
-                                              const wink_helper_opts_t *opts)
+                                              const wink_bal_opts_t *opts)
 {
     if (motor == NULL || encoder == NULL || cfg == NULL || cfg->period_ms == 0u) {
         return WINK_ERR_INVALID_ARG;
@@ -152,7 +152,7 @@ wink_status_t wink_closed_loop_motor_start_ex(dal_motor_t *motor,
         return WINK_ERR_RESOURCE_EXHAUSTED;
     }
 
-    wink_helper_opts_t effective = WINK_HELPER_OPTS_DEFAULT;
+    wink_bal_opts_t effective = WINK_BAL_OPTS_DEFAULT;
     if (opts != NULL) {
         effective = *opts;
     }
@@ -300,7 +300,7 @@ void wink_closed_loop_motor_reset(void)
 wink_status_t wink_closed_loop_motor_start_ex(dal_motor_t *motor, 
                                               dal_encoder_t *encoder,
                                               const wink_closed_loop_motor_config_t *cfg,
-                                              const wink_helper_opts_t *opts)
+                                              const wink_bal_opts_t *opts)
 {
     (void)motor; (void)encoder; (void)cfg; (void)opts;
     return WINK_ERR_UNAVAILABLE;

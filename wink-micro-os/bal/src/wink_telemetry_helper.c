@@ -1,10 +1,10 @@
 /**
  * @file wink_telemetry_helper.c
- * @brief BAL default telemetry helper — prints runtime stats + optional
+ * @brief BAL default telemetry helper �?prints runtime stats + optional
  *        sensor/button telemetry every 2s via a MAY_BLOCK periodic task.
  *
  * ADR-0017 BAL-exception: this TU legitimately calls WINK_BLOCKING APIs
- * (LOG_I → printf/UART write) from within a periodic MAY_BLOCK task body.
+ * (LOG_I �?printf/UART write) from within a periodic MAY_BLOCK task body.
  * The file-scope WINK_INTERNAL_BLOCKING_REGION_BEGIN/END suppression is
  * placed after all #includes so the pragma does NOT leak into PAL/DAL
  * headers.
@@ -73,7 +73,7 @@ static pal_os_core_id_t map_core(wink_bal_core_t c) {
     }
 }
 
-/* ── periodic callback (MAY_BLOCK path — void return, void* ctx) ── */
+/* ── periodic callback (MAY_BLOCK path �?void return, void* ctx) ── */
 static void telem_tick(void *arg) {
     telem_ctx_t *ctx = (telem_ctx_t *)arg;
     wink_runtime_stats_t st;
@@ -109,12 +109,12 @@ static void telem_tick(void *arg) {
 
 wink_status_t wink_telemetry_default_start_ex(const dal_ultrasonic_t *sonar,
                                               const dal_button_t     *btn,
-                                              const wink_helper_opts_t *opts)
+                                              const wink_bal_opts_t *opts)
 {
     int free_idx = find_free_slot();
     if (free_idx < 0) {
         /* With the default MAX=1 a full pool means "telemetry already
-         * started" — semantically INVALID_STATE.  When a build overrides
+         * started" �?semantically INVALID_STATE.  When a build overrides
          * MAX to >1 this still reports INVALID_STATE (consistent with the
          * no-arg stop() which tears down ALL default-telemetry slots);
          * users wanting multiple independent telemetry streams should
@@ -124,8 +124,8 @@ wink_status_t wink_telemetry_default_start_ex(const dal_ultrasonic_t *sonar,
         return WINK_ERR_INVALID_STATE;
     }
 
-    /* Resolve options (NULL → defaults). */
-    wink_helper_opts_t effective = WINK_HELPER_OPTS_DEFAULT;
+    /* Resolve options (NULL �?defaults). */
+    wink_bal_opts_t effective = WINK_BAL_OPTS_DEFAULT;
     if (opts != NULL) {
         effective = *opts;
     }

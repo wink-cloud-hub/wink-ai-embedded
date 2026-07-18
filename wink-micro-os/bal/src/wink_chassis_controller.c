@@ -52,7 +52,7 @@ static int find_slot_by_left_motor(dal_motor_t *left_motor) {
 wink_status_t wink_chassis_start_ex(dal_motor_t *left_motor, dal_encoder_t *left_encoder,
                                     dal_motor_t *right_motor, dal_encoder_t *right_encoder,
                                     const wink_chassis_config_t *cfg,
-                                    const wink_helper_opts_t *opts)
+                                    const wink_bal_opts_t *opts)
 {
     if (left_motor == NULL || left_encoder == NULL ||
         right_motor == NULL || right_encoder == NULL || cfg == NULL) {
@@ -219,7 +219,7 @@ void wink_chassis_reset(void)
 wink_status_t wink_chassis_start_ex(dal_motor_t *left_motor, dal_encoder_t *left_encoder,
                                     dal_motor_t *right_motor, dal_encoder_t *right_encoder,
                                     const wink_chassis_config_t *cfg,
-                                    const wink_helper_opts_t *opts)
+                                    const wink_bal_opts_t *opts)
 {
     (void)left_motor; (void)left_encoder; (void)right_motor; (void)right_encoder; (void)cfg; (void)opts;
     return WINK_ERR_UNAVAILABLE;

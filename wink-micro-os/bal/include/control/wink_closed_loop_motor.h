@@ -6,7 +6,7 @@
 #include "actuator/dal_motor.h"
 #include "sensor/dal_encoder.h"
 #include "math/wink_pid.h"
-#include "wink_helper_opts.h"
+#include "wink_bal_opts.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,7 +44,7 @@ WINK_WARN_UNUSED_RESULT
 wink_status_t wink_closed_loop_motor_start_ex(dal_motor_t *motor, 
                                               dal_encoder_t *encoder,
                                               const wink_closed_loop_motor_config_t *cfg,
-                                              const wink_helper_opts_t *opts);
+                                              const wink_bal_opts_t *opts);
 
 /**
  * @brief 停止闭环控制会话 (Class A)
