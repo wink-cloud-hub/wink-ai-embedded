@@ -20,16 +20,10 @@ set(WINK_TRACE_SOURCES
 )
 
 # ── DAL 源文件 ──────────────────────────────────────────────────────────
-# Phase 3 分类组织：sensor / actuator / output / input / display / communication / storage
-set(WINK_DAL_SOURCES
-    ${CMAKE_CURRENT_LIST_DIR}/dal/src/sensor/dal_ultrasonic.c
-    ${CMAKE_CURRENT_LIST_DIR}/dal/src/actuator/dal_servo.c
-    ${CMAKE_CURRENT_LIST_DIR}/dal/src/output/dal_led.c
-    ${CMAKE_CURRENT_LIST_DIR}/dal/src/input/dal_button.c
-    ${CMAKE_CURRENT_LIST_DIR}/dal/src/display/dal_ssd1306.c
-    ${CMAKE_CURRENT_LIST_DIR}/dal/src/communication/dal_gps.c
-    ${CMAKE_CURRENT_LIST_DIR}/dal/src/storage/dal_eeprom.c
-)
+# ADR-0039: DAL .c are NOT aggregated into WINK_CORE_SOURCES.
+# Each target injects enabled drivers via wink_dal_add_enabled_sources()
+# after wink_dal_apply_pruning() (see cmake/wink_dal_drivers.cmake).
+set(WINK_DAL_SOURCES)
 
 # ── Selftest 源文件（可选：通过链接或配置排除；此处默认并入核心，由 app 决定是否调用） ──
 set(WINK_SELFTEST_SOURCES

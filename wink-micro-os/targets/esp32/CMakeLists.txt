@@ -137,78 +137,14 @@ if(ESP_PLATFORM)
         -fexec-charset=UTF-8
     )
 
-    # P2 (2026-07-06): DAL drivers are compiled directly into this IDF component
-    # via ${WINK_DAL_SOURCES} (core_sources.cmake), NOT via the standalone
-    # dal/CMakeLists.txt `add_library(dal)` path — so the PUBLIC
-    # target_compile_definitions from that CMakeLists are NOT picked up here.
-    # Without these explicit defines, each dal_<drv>.c TU would see the
-    # WINK_UNAVAILABLE_MSG stubs in its own public header and fail to compile
-    # (e.g. dal_led_on() calling dal_led_set() would hit "LED driver not enabled").
-    # PUBLIC scope propagates these defines to consumers (main component etc.)
-    # so App code linking against this component sees the real declarations.
-    # When per-app pruning is driven by codegen's app_options.cmake, those
-    # CACHE BOOLs are applied below for motor/encoder (and any future drivers
-    # not in this baseline). BAL control components (closed_loop_motor /
-    # chassis) auto-stub when WINK_USE_MOTOR/ENCODER are unset — so Apps
-    # without those devices (Arduino blink, LED-only smoke) compile without
-    # users learning -DWINK_USE_* flags.
-    target_compile_definitions(${COMPONENT_LIB} PUBLIC
-        WINK_USE_LED=1
-        WINK_USE_BUTTON=1
-        WINK_USE_SERVO=1
-        WINK_USE_SSD1306=1
-        WINK_USE_ULTRASONIC=1
-        WINK_USE_GPS=1
-        WINK_USE_EEPROM=1
-    )
-
-    # Optional: wink-app.json → app_options.cmake may FORCE WINK_USE_MOTOR /
-    # WINK_USE_ENCODER ON. Apply at configure time so BAL real paths and DAL
-    # .c units are available when the App actually declares those devices.
-    set(_WINK_APP_OPTS "${WINK_CONFIG_DIR}/app_options.cmake")
-    if(NOT WINK_APP_JSON STREQUAL "")
-        execute_process(
-            COMMAND ${Python3_EXECUTABLE}
-                    ${WINK_MICRO_OS_ROOT}/tools/codegen/app_codegen.py
-                    --config "${WINK_APP_JSON}"
-                    --out-dir "${WINK_CONFIG_DIR}"
-            RESULT_VARIABLE _wink_app_opts_rc
-            OUTPUT_VARIABLE _wink_app_opts_out
-            ERROR_VARIABLE _wink_app_opts_err
-        )
-        if(NOT _wink_app_opts_rc EQUAL 0)
-            message(WARNING
-                "esp32: app_codegen for driver flags failed (rc=${_wink_app_opts_rc}); "
-                "motor/encoder stay pruned. ${_wink_app_opts_err}")
-        endif()
-    endif()
-    if(EXISTS "${_WINK_APP_OPTS}")
-        include("${_WINK_APP_OPTS}")
-    endif()
-    if(DEFINED WINK_USE_MOTOR AND WINK_USE_MOTOR)
-        target_compile_definitions(${COMPONENT_LIB} PUBLIC WINK_USE_MOTOR=1)
-        target_sources(${COMPONENT_LIB} PRIVATE
-            ${WINK_MICRO_OS_ROOT}/dal/src/actuator/dal_motor.c)
-    endif()
-    if(DEFINED WINK_USE_ENCODER AND WINK_USE_ENCODER)
-        target_compile_definitions(${COMPONENT_LIB} PUBLIC WINK_USE_ENCODER=1)
-        target_sources(${COMPONENT_LIB} PRIVATE
-            ${WINK_MICRO_OS_ROOT}/dal/src/sensor/dal_encoder.c)
-    endif()
-
-    # Inject active font source file based on WINK_SSD1306_FONT setting
-    if(NOT DEFINED WINK_SSD1306_FONT)
-        set(WINK_SSD1306_FONT "ascii_upper")
-    endif()
-    if(WINK_SSD1306_FONT STREQUAL "minimal")
-        target_sources(${COMPONENT_LIB} PRIVATE
-            ${WINK_MICRO_OS_ROOT}/dal/src/display/dal_ssd1306_font_5x7_minimal.c
-        )
-    else()
-        target_sources(${COMPONENT_LIB} PRIVATE
-            ${WINK_MICRO_OS_ROOT}/dal/src/display/dal_ssd1306_font_5x7_ascii_upper.c
-        )
-    endif()
+    # ADR-0039: dual-mode DAL pruning via shared cmake helpers.
+    # Must run AFTER idf_component_register (COMPONENT_LIB exists) and after
+    # WINK_APP_JSON / WINK_CONFIG_DIR are set above. DAL .c are no longer in
+    # WINK_CORE_SOURCES; wink_dal_add_enabled_sources injects them (+ font).
+    get_filename_component(WINK_MICRO_OS_ROOT "${WINK_MICRO_OS_ROOT}" ABSOLUTE)
+    include(${WINK_MICRO_OS_ROOT}/cmake/wink_dal_drivers.cmake)
+    wink_dal_apply_pruning("${WINK_APP_JSON}" "${WINK_CONFIG_DIR}")
+    wink_dal_add_enabled_sources(${COMPONENT_LIB})
 elseif(TARGET_PLATFORM STREQUAL "esp32")
     # 非 ESP-IDF 环境：仅声明源文件（供静态分析）
     set(ESP32_PAL_SOURCES
