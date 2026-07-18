@@ -4,7 +4,7 @@
  */
 #include "unity.h"
 #include "wink_ultrasonic_distance_events.h"
-#include "wink_sonar_helper.h"
+#include "sensor/wink_ultrasonic_poll.h"
 #include "wink_soft_timer.h"
 #include "wink_event.h"
 #include "wink_status.h"
@@ -30,7 +30,7 @@ static void tick_once(void)
 
 static void arm_echo(uint32_t high_us)
 {
-    /* sim_reset_time clears echo pin â€” re-arm after every reset. */
+    /* sim_reset_time clears echo pin â€?re-arm after every reset. */
     sim_set_echo_pin(ECHO);
     sim_set_echo_timing(100, high_us);
 }
@@ -38,7 +38,7 @@ static void arm_echo(uint32_t high_us)
 void setUp(void)
 {
     wink_ultrasonic_distance_events_reset();
-    WINK_IGNORE_RESULT(wink_sonar_helper_stop(&s_us));
+    WINK_IGNORE_RESULT(wink_ultrasonic_poll_stop(&s_us));
     wink_event_queue_deinit();
     pal_resource_reset();
     sim_reset_time();
@@ -59,7 +59,7 @@ void tearDown(void)
 {
     wink_ultrasonic_disable_distance_events(&s_us);
     wink_ultrasonic_distance_events_reset();
-    WINK_IGNORE_RESULT(wink_sonar_helper_stop(&s_us));
+    WINK_IGNORE_RESULT(wink_ultrasonic_poll_stop(&s_us));
     WINK_IGNORE_RESULT(dal_ultrasonic_deinit(&s_us));
     wink_event_queue_deinit();
 }
@@ -90,13 +90,13 @@ void test_mutex_with_sonar_helper(void)
 {
     const wink_ultrasonic_distance_event_config_t cfg = { .period_ms = 50u };
     arm_echo(5882);
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_sonar_helper_start(&s_us, 50u));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_ultrasonic_poll_start(&s_us, 50u));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_STATE,
                           wink_ultrasonic_enable_distance_events(&s_us, &cfg));
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_sonar_helper_stop(&s_us));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_ultrasonic_poll_stop(&s_us));
 
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_ultrasonic_enable_distance_events(&s_us, &cfg));
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_STATE, wink_sonar_helper_start(&s_us, 50u));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_STATE, wink_ultrasonic_poll_start(&s_us, 50u));
 }
 
 void test_distance_ready_posted(void)
@@ -105,11 +105,11 @@ void test_distance_ready_posted(void)
     wink_event_t ev;
     int got = 0;
 
-    arm_echo(588); /* â‰ˆ10 cm */
+    arm_echo(588); /* â‰?0 cm */
 
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_ultrasonic_enable_distance_events(&s_us, &cfg));
 
-    /* period 50ms / tick 10ms â†’ need â‰¥5 dispatches; re-arm echo each tick. */
+    /* period 50ms / tick 10ms â†?need â‰? dispatches; re-arm echo each tick. */
     for (int i = 0; i < 12 && got == 0; i++) {
         arm_echo(588);
         tick_once();

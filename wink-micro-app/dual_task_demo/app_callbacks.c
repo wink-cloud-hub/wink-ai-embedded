@@ -3,7 +3,7 @@
  * @brief dual_task_demo — two periodic callbacks at different rates.
  *
  * Expert-mode sample: demonstrates wink_periodic_start_ex() when BAL helpers
- * (blink/button/sonar) don't fit.  A 20 ms "sensor" callback generates mock
+ * (blink/button/ultrasonic) don't fit.  A 20 ms "sensor" callback generates mock
  * distance data; a 30 ms "motor" callback reads the latest sample and drives
  * the servo.  No ringbuf or pal_os_sleep_ms — the runtime schedules callbacks
  * at the declared period.

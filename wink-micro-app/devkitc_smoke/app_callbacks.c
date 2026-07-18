@@ -5,8 +5,8 @@
  *
  * Init / deinit boilerplate for LED / button / ultrasonic lives in
  * device_tree.c. This TU only:
- *   - defines business event callbacks (long-press → WDT test)
- *   - kicks off helper services (blink, button poll, telemetry, sonar polling)
+ *   - defines business event callbacks (long-press ??WDT test)
+ *   - kicks off helper services (blink, button poll, telemetry, ultrasonic polling)
  *   - invokes the OS built-in selftest suite
  *   - logs S1-S11 status on startup
  *
@@ -20,7 +20,7 @@
  *   S7  Dual-core resource stress    (selftest: smp.resource_stress)
  *   S8  WDT reset via long-press     (Runtime: wink_runtime_trigger_wdt_test)
  *   S9  RMT hardware loopback        (selftest: rmt.self_loopback)
- *   S10 Ultrasonic echo simulation   (BAL: wink_sim_ultrasonic_echo_start & wink_sonar_helper_start)
+ *   S10 Ultrasonic echo simulation   (BAL: wink_sim_ultrasonic_echo_start & wink_ultrasonic_poll_start)
  *   S11 Deinit loop verification     (host e2e test verified)
  */
 #define LOG_TAG "devkitc_smoke"
@@ -30,10 +30,10 @@
 #include "wink_runtime.h"
 #include "wink_selftest.h"
 #include "wink_fault.h"
-#include "wink_blink_helper.h"
+#include "output/wink_led_blink.h"
 #include "wink_button_events.h"
-#include "sensor/wink_sonar_helper.h"
-#include "wink_telemetry_helper.h"
+#include "sensor/wink_ultrasonic_poll.h"
+#include "comm/wink_telemetry_default.h"
 #include "wink_blocking_region.h"
 #include "pal_hal.h"
 #include "hal/pal_i2c.h"
@@ -43,7 +43,7 @@
 #include "wink_sim_ultrasonic_echo.h"
 #endif
 
-/* ── S8: Boot-button event callback (long-press → WDT test, noreturn) ───── */
+/* ?? S8: Boot-button event callback (long-press ??WDT test, noreturn) ????? */
 static void on_boot_button(dal_button_event_t evt, void *ctx)
 {
     (void)ctx;
@@ -53,7 +53,7 @@ static void on_boot_button(dal_button_event_t evt, void *ctx)
     }
 }
 
-/* ── S8: Boot notification (Runtime fires this once before init()) ──────── */
+/* ?? S8: Boot notification (Runtime fires this once before init()) ???????? */
 static void app_on_boot(const wink_boot_info_t *info)
 {
     if (info->abnormal_boot_count > 0 ||
@@ -63,13 +63,13 @@ static void app_on_boot(const wink_boot_info_t *info)
     }
 }
 
-/* ── init: hand off device init to device_tree, then wire helpers + selftest ─ */
+/* ?? init: hand off device init to device_tree, then wire helpers + selftest ? */
 static wink_status_t app_init_status(void)
 {
-    /* 设备树初始化 */
+    /* ?????? */
     WINK_TRY(wink_device_tree_init());
 
-    /* S3: 启动 boot_button 事件产出（ADR-0032 B 类；soft_poll 后端） */
+    /* S3: ?? boot_button ?????ADR-0032 B ??soft_poll ????*/
 #ifdef BOOT_BUTTON_AUTO_POLL_MS
     static const wink_button_event_config_t s3_cfg = {
         .drive           = WINK_BUTTON_DRIVE_SOFT_POLL,
@@ -88,7 +88,7 @@ static wink_status_t app_init_status(void)
     LOG_I("\nS3: SKIP (button events not configured)");
 #endif
 
-    /* S8: 绑定业务回调 */
+    /* S8: ?????? */
     wink_status_t st_s8 = dal_button_on_event(&boot_button, on_boot_button, NULL);
     if (st_s8 == WINK_OK) {
         LOG_I("\nS8: PASS (WDT trigger registered)");
@@ -97,7 +97,7 @@ static wink_status_t app_init_status(void)
         return st_s8;
     }
 
-    /* S2: LED blink helper（fire-and-forget） */
+    /* S2: LED blink helper?fire-and-forget??*/
     int32_t blink_h = wink_led_blink_start(&board_led, 1000);
     if (blink_h >= 1) {
         LOG_I("\nS2: PASS (led blink, h=%ld)", (long)blink_h);
@@ -106,9 +106,9 @@ static wink_status_t app_init_status(void)
         return (wink_status_t)blink_h;
     }
 
-    /* S10: 超声波 echo 仿真 (host e2e + ESP32 真机均启用，无物理反射面时软件注入 ECHO pulse)
-     * WINK_CFG_SIM_ECHO 由构建系统按 app 设置：devkitc_smoke 在 host/ESP32 都开；
-     * 其他未配置 sim_echo 的构建走 SKIP 分支。 */
+    /* S10: ????echo ?? (host e2e + ESP32 ??????????????????ECHO pulse)
+     * WINK_CFG_SIM_ECHO ?????? app ???devkitc_smoke ??host/ESP32 ????
+     * ??????sim_echo ???? SKIP ????*/
 #ifdef WINK_CFG_SIM_ECHO
     wink_status_t st_echo = wink_sim_ultrasonic_echo_start(
         &smoke_sonar, 50.0f,
@@ -123,16 +123,16 @@ static wink_status_t app_init_status(void)
     LOG_I("\nS10: SKIP (echo sim not enabled for this build)");
 #endif
 
-    /* S10: 启动超声波传感器周期测量 helper */
-    wink_status_t st_sonar = wink_sonar_helper_start(&smoke_sonar, 500);
-    if (st_sonar == WINK_OK) {
-        LOG_I("\nS10: PASS (sonar polling helper, period=500ms)");
+    /* S10: ???????????? helper */
+    wink_status_t st_ultrasonic = wink_ultrasonic_poll_start(&smoke_sonar, 500);
+    if (st_ultrasonic == WINK_OK) {
+        LOG_I("\nS10: PASS (ultrasonic polling helper, period=500ms)");
     } else {
-        LOG_E("\nS10: FAIL (sonar helper start, status=%d)", (int)st_sonar);
-        return st_sonar;
+        LOG_E("\nS10: FAIL (ultrasonic helper start, status=%d)", (int)st_ultrasonic);
+        return st_ultrasonic;
     }
 
-    /* S1: 默认遥测（BAL helper, MAY_BLOCK 路径） */
+    /* S1: ?????BAL helper, MAY_BLOCK ????*/
     wink_status_t st_s1 = wink_telemetry_default_start(&smoke_sonar, &boot_button);
     if (st_s1 == WINK_OK) {
         LOG_I("\nS1: PASS (telemetry default started)");
@@ -141,9 +141,9 @@ static wink_status_t app_init_status(void)
         return st_s1;
     }
 
-    /* ── S6 readiness: eager-init I2C bus 0 so the selftest i2c.bus_scan
-     *   does not trip the lazy-init WARN path (see review memo: "stub 返
-     *   WINK_OK 反模式清理" prerequisite).
+    /* ?? S6 readiness: eager-init I2C bus 0 so the selftest i2c.bus_scan
+     *   does not trip the lazy-init WARN path (see review memo: "stub ??
+     *   WINK_OK ?????? prerequisite).
      *   - ESP32: pal_i2c_port_pins() returns board/weak-default SDA/SCL.
      *   - host/wasm: port_pins returns UNSUPPORTED (pins ignored), fall
      *     back to (0,0) which the virtual targets accept. */
@@ -157,9 +157,9 @@ static wink_status_t app_init_status(void)
         (void)i2c_st;
     }
 
-    /* ── S4/S5/S6/S7/S9: OS built-in selftests
-     * ADR-0017 init-phase exception: selftest 在同步启动阶段运行，
-     *   不在 cooperative PT 上下文，允许阻塞调用。*/
+    /* S4/S5/S6/S7/S9: OS built-in selftests.
+     * ADR-0017 init-phase exception: selftest runs during synchronous init,
+     * outside cooperative PT context; blocking calls are allowed here. */
     WINK_INIT_BLOCKING_REGION_BEGIN
     wink_selftest_result_t results[8];
     size_t n = 0;
@@ -199,20 +199,20 @@ static wink_status_t app_init_status(void)
     return WINK_OK;
 }
 
-/* ── loop (10ms tick): empty. */
+/* ?? loop (10ms tick): empty. */
 static void app_loop(void)
 {
     /* no-op */
 }
 
-/* ── Fault callback ── */
+/* ?? Fault callback ?? */
 static wink_status_t app_on_fault_status(uint32_t code)
 {
     (void)code;
     return WINK_OK;
 }
 
-/* ── Callback factory (binary decoupling) ──────────────────────────────── */
+/* ?? Callback factory (binary decoupling) ???????????????????????????????? */
 const wink_app_callbacks_t *wink_app_get_callbacks(void)
 {
     static const wink_app_callbacks_t cb = {

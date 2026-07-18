@@ -31,7 +31,7 @@ extern "C" {
 # endif
 #endif
 
-/** Minimum period_ms (HC-SR04 acoustic crosstalk budget; matches sonar helper). */
+/** Minimum period_ms (HC-SR04 acoustic crosstalk budget; matches ultrasonic poll). */
 #define WINK_ULTRASONIC_DISTANCE_EVENT_MIN_PERIOD_MS 50u
 
 /**
@@ -51,7 +51,7 @@ typedef struct {
  *
  * @return WINK_OK /
  *         WINK_ERR_INVALID_ARG (NULL or period_ms < 50) /
- *         WINK_ERR_INVALID_STATE (already enabled, or sonar helper owns @p dev) /
+ *         WINK_ERR_INVALID_STATE (already enabled, or ultrasonic poll owns @p dev) /
  *         WINK_ERR_RESOURCE_EXHAUSTED /
  *         WINK_ERR_NOT_INITIALIZED /
  *         codes from wink_periodic_start_ex.
