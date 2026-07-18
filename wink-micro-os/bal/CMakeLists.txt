@@ -71,3 +71,69 @@ foreach(_h ${_BAL_PUBLIC_HEADERS})
         endif()
     endforeach()
 endforeach()
+
+# ── ADR-0038 / 06-bal-layer §6 CI gates ────────────────────────
+
+# BAL-NAME-1: forbid *_helper.h and *_controller.h public headers.
+file(GLOB_RECURSE _BAL_BAD_NAMES
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*_helper.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*_controller.h")
+if(_BAL_BAD_NAMES)
+    message(FATAL_ERROR "BAL-NAME-1: forbidden helper/controller headers: ${_BAL_BAD_NAMES}")
+endif()
+
+# BAL-MATH-1: math headers must stay pure (no DAL/runtime/PAL leakage).
+file(GLOB _BAL_MATH_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/include/math/*.h")
+set(_BAL_MATH_FORBIDDEN_REGEXES
+    "dal_"
+    "wink_runtime"
+    "wink_periodic"
+    "pal_"
+    "^[[:space:]]*#[[:space:]]*include[[:space:]]*[<\"]pal_")
+foreach(_mh ${_BAL_MATH_HEADERS})
+    file(READ "${_mh}" _mh_content)
+    foreach(_re ${_BAL_MATH_FORBIDDEN_REGEXES})
+        if(_mh_content MATCHES "${_re}")
+            message(FATAL_ERROR
+                "BAL-MATH-1: ${_mh} must not reference DAL/runtime/PAL (${_re}).")
+        endif()
+    endforeach()
+endforeach()
+
+# BAL-NAME-2: forbid identifier 'sonar' in all public headers (incl. comments).
+foreach(_h ${_BAL_PUBLIC_HEADERS})
+    file(READ "${_h}" _h_content)
+    if(_h_content MATCHES "[[:<:]]sonar[[:>:]]")
+        message(FATAL_ERROR "BAL-NAME-2: ${_h} must not contain identifier 'sonar'.")
+    endif()
+endforeach()
+
+# BAL-INC-2: PUBLIC include directories must be only bal/include root.
+get_target_property(_bal_public_inc wink_bal INTERFACE_INCLUDE_DIRECTORIES)
+if(NOT _bal_public_inc)
+    message(FATAL_ERROR "BAL-INC-2: wink_bal has no PUBLIC include directories.")
+endif()
+if(NOT _bal_public_inc STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    message(FATAL_ERROR
+        "BAL-INC-2: wink_bal PUBLIC include must be only "
+        "${CMAKE_CURRENT_SOURCE_DIR}/include (got: ${_bal_public_inc}).")
+endif()
+
+# BAL-SRC-1: include/<domain>/*.h must mirror src/<domain>/*.c (whitelist display).
+set(_BAL_SRC1_WHITELIST_DOMAINS display)
+file(GLOB _BAL_DOMAIN_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/include/*/*.h")
+foreach(_dh ${_BAL_DOMAIN_HEADERS})
+    get_filename_component(_dh_dir "${_dh}" DIRECTORY)
+    get_filename_component(_dh_name "${_dh}" NAME)
+    file(RELATIVE_PATH _dh_rel "${CMAKE_CURRENT_SOURCE_DIR}/include" "${_dh_dir}")
+    if(_dh_rel IN_LIST _BAL_SRC1_WHITELIST_DOMAINS)
+        continue()
+    endif()
+    string(REPLACE ".h" ".c" _dc_name "${_dh_name}")
+    set(_dc_path "${CMAKE_CURRENT_SOURCE_DIR}/src/${_dh_rel}/${_dc_name}")
+    if(NOT EXISTS "${_dc_path}")
+        message(FATAL_ERROR
+            "BAL-SRC-1: ${_dh_rel}/${_dh_name} has no mirrored "
+            "implementation at src/${_dh_rel}/${_dc_name}")
+    endif()
+endforeach()
