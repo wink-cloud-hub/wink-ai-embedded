@@ -30,7 +30,7 @@
 #include "wink_status.h"
 #include "dal_ultrasonic.h"
 #include "dal_button.h"
-#include "wink_helper_opts.h"
+#include "wink_bal_opts.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -96,7 +96,7 @@ wink_status_t wink_telemetry_default_start(const dal_ultrasonic_t *sonar,
 WINK_WARN_UNUSED_RESULT
 wink_status_t wink_telemetry_default_start_ex(const dal_ultrasonic_t *sonar,
                                               const dal_button_t     *btn,
-                                              const wink_helper_opts_t *opts);
+                                              const wink_bal_opts_t *opts);
 
 /**
  * @brief Stop the default telemetry task.

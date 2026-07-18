@@ -129,7 +129,7 @@ void test_servo_helper_pool_exhaustion(void) {
 
 /* 5. REGRESSION: start/stop 100 times must NOT exhaust slots */
 void test_servo_helper_start_stop_reclamation(void) {
-    wink_helper_opts_t opts = WINK_HELPER_OPTS_DEFAULT;
+    wink_bal_opts_t opts = WINK_BAL_OPTS_DEFAULT;
     opts.flags = WINK_PERIODIC_LIGHT;
     for (int i = 0; i < 100; i++) {
         TEST_ASSERT_EQUAL_INT(WINK_OK, wink_servo_sweep_start_ex(&s_servo1, 10.0f, 170.0f, 100, &opts));

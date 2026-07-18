@@ -11,7 +11,7 @@
 #include <stdbool.h>
 #include "wink_status.h"
 #include "dal_servo.h"
-#include "wink_helper_opts.h"
+#include "wink_bal_opts.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,7 +42,7 @@ wink_status_t wink_servo_sweep_start(dal_servo_t *servo, float min_angle, float 
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t wink_servo_sweep_start_ex(dal_servo_t *servo, float min_angle, float max_angle, uint32_t period_ms,
-                                        const wink_helper_opts_t *opts);
+                                        const wink_bal_opts_t *opts);
 
 /**
  * @brief Stop the periodic sweep on @p servo.

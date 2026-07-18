@@ -8,7 +8,7 @@
  * soft_timer / periodic slot bookkeeping in user code.
  *
  * Layering (ADR-0023 §1): this header MUST NOT include any pal_*.h.
- * Core-affinity types go through wink_helper_opts.h (wink_bal_core_t); the
+ * Core-affinity types go through wink_bal_opts.h (wink_bal_core_t); the
  * implementation maps to pal_os_core_id_t internally.
  *
  * Copyright (c) 2026 Wink-AI.
@@ -19,7 +19,7 @@
 #include <stdint.h>
 #include "wink_status.h"
 #include "dal_led.h"
-#include "wink_helper_opts.h"
+#include "wink_bal_opts.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -73,7 +73,7 @@ int32_t wink_led_blink_start(dal_led_t *led, uint32_t period_ms);
  * @return >=1 blink handle on success; <0 WINK_ERR_* on failure.
  */
 int32_t wink_led_blink_start_ex(dal_led_t *led, uint32_t period_ms,
-                                const wink_helper_opts_t *opts);
+                                const wink_bal_opts_t *opts);
 
 /**
  * @brief Stop a blink previously started with wink_led_blink_start/_ex().

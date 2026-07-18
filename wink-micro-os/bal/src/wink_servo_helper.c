@@ -1,6 +1,6 @@
 /**
  * @file wink_servo_helper.c
- * @brief BAL servo helper — sweep and set angles for DAL servos.
+ * @brief BAL servo helper �?sweep and set angles for DAL servos.
  *
  * Copyright (c) 2026 Wink-AI.
  */
@@ -80,7 +80,7 @@ static void servo_tick(void *arg) {
 /* ── public API ──────────────────────────────────────────────── */
 
 wink_status_t wink_servo_sweep_start_ex(dal_servo_t *servo, float min_angle, float max_angle, uint32_t period_ms,
-                                        const wink_helper_opts_t *opts)
+                                        const wink_bal_opts_t *opts)
 {
     if (servo == NULL || period_ms == 0u || min_angle > max_angle) {
         LOG_D("start: invalid arg");
@@ -96,7 +96,7 @@ wink_status_t wink_servo_sweep_start_ex(dal_servo_t *servo, float min_angle, flo
         return WINK_ERR_RESOURCE_EXHAUSTED;
     }
 
-    wink_helper_opts_t effective = WINK_HELPER_OPTS_DEFAULT;
+    wink_bal_opts_t effective = WINK_BAL_OPTS_DEFAULT;
     if (opts != NULL) {
         effective = *opts;
     }
@@ -195,7 +195,7 @@ void wink_servo_helper_reset(void) {
 #else /* WINK_SERVO_HELPER_MAX == 0 */
 
 wink_status_t wink_servo_sweep_start_ex(dal_servo_t *servo, float min_angle, float max_angle, uint32_t period_ms,
-                                        const wink_helper_opts_t *opts)
+                                        const wink_bal_opts_t *opts)
 {
     (void)servo; (void)min_angle; (void)max_angle; (void)period_ms; (void)opts;
     return WINK_ERR_UNAVAILABLE;
