@@ -19,6 +19,13 @@
 
 #include <stddef.h>
 
+/* DAL pruning (WINK_UNAVAILABLE): force the MAX==0 stub path when the
+ * ultrasonic driver is off so ESP32 still links wink_bal (ADR-0039). */
+#if !defined(WINK_USE_ULTRASONIC) || !(WINK_USE_ULTRASONIC)
+#  undef WINK_ULTRASONIC_DISTANCE_EVENTS_MAX
+#  define WINK_ULTRASONIC_DISTANCE_EVENTS_MAX 0
+#endif
+
 /* ADR-0017: tick may call request_measurement (currently sync pulse_in on
  * host/ESP32). Routed via WINK_PERIODIC_LIGHT so host soft_timer / App main
  * tick drive the stream (same model as button soft_poll). ESP32 RMT
@@ -211,7 +218,7 @@ wink_status_t wink_ultrasonic_enable_distance_events(
 {
     (void)dev;
     (void)cfg;
-    return WINK_ERR_UNAVAILABLE;
+    return WINK_ERR_UNSUPPORTED;
 }
 
 void wink_ultrasonic_disable_distance_events(dal_ultrasonic_t *dev)

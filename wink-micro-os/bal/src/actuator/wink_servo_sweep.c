@@ -1,6 +1,6 @@
 /**
  * @file wink_servo_sweep.c
- * @brief BAL servo helper ù?sweep and set angles for DAL servos.
+ * @brief BAL servo helper ??sweep and set angles for DAL servos.
  *
  * Copyright (c) 2026 Wink-AI.
  */
@@ -13,6 +13,13 @@
 #include "wink_status.h"
 
 #include <stddef.h>
+
+/* DAL pruning (WINK_UNAVAILABLE): force the MAX==0 stub path when the
+ * servo driver is off so ESP32 still links wink_bal (ADR-0039). */
+#if !defined(WINK_USE_SERVO) || !(WINK_USE_SERVO)
+#  undef WINK_SERVO_SWEEP_MAX
+#  define WINK_SERVO_SWEEP_MAX 0
+#endif
 
 /* ADR-0017 BAL-exception: helper ???? wink_periodic MAY_BLOCK ???? WINK_BLOCKING API */
 WINK_INTERNAL_BLOCKING_REGION_BEGIN
@@ -198,12 +205,12 @@ wink_status_t wink_servo_sweep_start_ex(dal_servo_t *servo, float min_angle, flo
                                         const wink_bal_opts_t *opts)
 {
     (void)servo; (void)min_angle; (void)max_angle; (void)period_ms; (void)opts;
-    return WINK_ERR_UNAVAILABLE;
+    return WINK_ERR_UNSUPPORTED;
 }
 
 wink_status_t wink_servo_sweep_start(dal_servo_t *servo, float min_angle, float max_angle, uint32_t period_ms) {
     (void)servo; (void)min_angle; (void)max_angle; (void)period_ms;
-    return WINK_ERR_UNAVAILABLE;
+    return WINK_ERR_UNSUPPORTED;
 }
 
 wink_status_t wink_servo_sweep_stop(dal_servo_t *servo) {
@@ -213,7 +220,7 @@ wink_status_t wink_servo_sweep_stop(dal_servo_t *servo) {
 
 wink_status_t wink_servo_sweep_set_period(dal_servo_t *servo, uint32_t period_ms) {
     (void)servo; (void)period_ms;
-    return WINK_ERR_UNAVAILABLE;
+    return WINK_ERR_UNSUPPORTED;
 }
 
 bool wink_servo_sweep_is_running(dal_servo_t *servo) {
@@ -222,7 +229,9 @@ bool wink_servo_sweep_is_running(dal_servo_t *servo) {
 }
 
 wink_status_t wink_servo_set_angle(dal_servo_t *servo, float angle) {
-    return dal_servo_set_angle(servo, angle);
+    (void)servo;
+    (void)angle;
+    return WINK_ERR_UNSUPPORTED;
 }
 
 void wink_servo_sweep_reset(void) {

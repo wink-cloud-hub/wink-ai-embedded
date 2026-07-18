@@ -29,10 +29,19 @@
 
 #include <stddef.h>
 
+/* DAL pruning (WINK_UNAVAILABLE): force the MAX==0 stub path when the
+ * button driver is off so ESP32 still links wink_bal (ADR-0039). */
+#if !defined(WINK_USE_BUTTON) || !(WINK_USE_BUTTON)
+#  undef WINK_BUTTON_EVENTS_MAX
+#  define WINK_BUTTON_EVENTS_MAX 0
+#endif
+
 /* LIGHT callback execution-time budget (P1-3 Step 5): keep any user-
  * registered event callback under 100 us so we do not eat the whole
  * runtime tick. */
 #define WINK_BTN_POLL_BUDGET_US  100u
+
+#if WINK_BUTTON_EVENTS_MAX > 0
 
 /* Slot pool (definition; internal header has `extern` decl). */
 button_event_slot_t g_button_event_slots[WINK_BUTTON_EVENTS_MAX];
@@ -356,3 +365,20 @@ void wink_button_disable_events(dal_button_t *btn)
     ctx->irq_debounce_h  = -1;
     ctx->irq_longpress_h = -1;
 }
+
+#else /* WINK_BUTTON_EVENTS_MAX == 0 */
+
+wink_status_t wink_button_enable_events(dal_button_t *btn,
+                                        const wink_button_event_config_t *cfg)
+{
+    (void)btn;
+    (void)cfg;
+    return WINK_ERR_UNSUPPORTED;
+}
+
+void wink_button_disable_events(dal_button_t *btn)
+{
+    (void)btn;
+}
+
+#endif /* WINK_BUTTON_EVENTS_MAX > 0 */

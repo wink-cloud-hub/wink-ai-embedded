@@ -28,7 +28,9 @@
 
 #include <stddef.h>
 
-#if defined(ESP_PLATFORM)
+/* DAL pruning: real IRQ backend needs the button driver (ADR-0039). */
+#if defined(ESP_PLATFORM) \
+    && defined(WINK_USE_BUTTON) && (WINK_USE_BUTTON)
 
 #include "pal_osal.h"
 #include "pal_hal.h"       /* pal_gpio_read for stable-state sampling */
@@ -301,7 +303,7 @@ void wink_button_events_irq_disarm(button_event_slot_t *slot)
     LOG_I("bal.btn.irq: disarmed");
 }
 
-#else /* !ESP_PLATFORM ── host / wasm / baremetal stubs ── */
+#else /* !ESP_PLATFORM or button pruned — stubs */
 
 bool wink_button_events_irq_supported(void) {
     return false;
@@ -334,4 +336,4 @@ void wink_button_events_irq_cancel_longpress(button_event_slot_t *s) {
     (void)s;
 }
 
-#endif /* ESP_PLATFORM */
+#endif /* ESP_PLATFORM && WINK_USE_BUTTON */
