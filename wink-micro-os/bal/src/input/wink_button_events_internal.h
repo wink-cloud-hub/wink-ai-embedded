@@ -14,7 +14,7 @@
 #ifndef WINK_BUTTON_EVENTS_INTERNAL_H
 #define WINK_BUTTON_EVENTS_INTERNAL_H
 
-#include "wink_button_events.h"
+#include "input/wink_button_events.h"
 #include "wink_tasks.h"
 #include "dal_button.h"
 

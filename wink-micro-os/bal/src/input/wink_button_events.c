@@ -16,7 +16,7 @@
  */
 #define LOG_TAG "bal.btn"
 
-#include "wink_button_events.h"
+#include "input/wink_button_events.h"
 #include "wink_button_events_internal.h"
 #include "wink_tasks.h"
 #include "wink_status.h"

@@ -1,5 +1,5 @@
 /**
- * @file wink_servo_sweep.c (flat src path until Task 7 domain mirror)
+ * @file wink_servo_sweep.c
  * @brief BAL servo helper ù?sweep and set angles for DAL servos.
  *
  * Copyright (c) 2026 Wink-AI.

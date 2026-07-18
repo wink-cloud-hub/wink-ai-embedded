@@ -3,7 +3,7 @@
  * @brief Host unit tests for wink_ultrasonic_enable_distance_events (ADR-0033).
  */
 #include "unity.h"
-#include "wink_ultrasonic_distance_events.h"
+#include "sensor/wink_ultrasonic_distance_events.h"
 #include "sensor/wink_ultrasonic_poll.h"
 #include "wink_soft_timer.h"
 #include "wink_event.h"

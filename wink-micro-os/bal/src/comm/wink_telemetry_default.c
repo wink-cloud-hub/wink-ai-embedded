@@ -1,5 +1,5 @@
 /**
- * @file wink_telemetry_default.c (flat src path until Task 7 domain mirror)
+ * @file wink_telemetry_default.c
  * @brief BAL default telemetry helper ù?prints runtime stats + optional
  *        sensor/button telemetry every 2s via a MAY_BLOCK periodic task.
  *
