@@ -29,9 +29,9 @@ int main(void)
         (void)st;
     }
 
-    /* 验证：LED 点亮（blink helper 在 tick 内会点亮 LED） */
+    /* 验证：LED 点亮（led blink 在 tick 内会点亮 LED） */
     if (!board_led.is_on) {
-        E2E_FAIL("LED not on after ticks (blink helper)");
+        E2E_FAIL("LED not on after ticks (led blink)");
     }
 
     /* 验证：PWM 通道 1 已配置（50Hz 占空比 50%） */
