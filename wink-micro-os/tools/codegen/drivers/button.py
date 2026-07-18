@@ -124,7 +124,8 @@ class ButtonDriver(DriverBase):
             # events.h is the single event API path — both L1 verbs
             # (enable_events / disable_events) and the L2 verbs
             # (start_auto_poll / stop_auto_poll) generate calls into it.
-            return ["wink_button_events.h"]
+            # ADR-0038: PUBLIC include is bal/include root only — domain prefix required.
+            return ["input/wink_button_events.h"]
         return []
 
     def render_role_wrapper(self, dev_name: str, role: str, verb: str, spec: dict) -> str:

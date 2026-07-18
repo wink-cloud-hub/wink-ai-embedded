@@ -46,7 +46,8 @@ class UltrasonicDriver(DriverBase):
 
     def get_role_headers(self, role: str) -> List[str]:
         if role == "distance_sensor":
-            return ["wink_ultrasonic_distance_events.h"]
+            # ADR-0038: PUBLIC include is bal/include root only — domain prefix required.
+            return ["sensor/wink_ultrasonic_distance_events.h"]
         return []
 
     def render_role_wrapper(self, dev_name: str, role: str, verb: str, spec: dict) -> str:
