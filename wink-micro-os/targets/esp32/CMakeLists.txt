@@ -146,8 +146,12 @@ if(ESP_PLATFORM)
     # (e.g. dal_led_on() calling dal_led_set() would hit "LED driver not enabled").
     # PUBLIC scope propagates these defines to consumers (main component etc.)
     # so App code linking against this component sees the real declarations.
-    # When per-app pruning is added to the IDF build (driven by codegen's
-    # app_options.cmake), replace these blanket ONs with codegen-emitted defines.
+    # When per-app pruning is driven by codegen's app_options.cmake, those
+    # CACHE BOOLs are applied below for motor/encoder (and any future drivers
+    # not in this baseline). BAL control components (closed_loop_motor /
+    # chassis) auto-stub when WINK_USE_MOTOR/ENCODER are unset — so Apps
+    # without those devices (Arduino blink, LED-only smoke) compile without
+    # users learning -DWINK_USE_* flags.
     target_compile_definitions(${COMPONENT_LIB} PUBLIC
         WINK_USE_LED=1
         WINK_USE_BUTTON=1
@@ -157,6 +161,40 @@ if(ESP_PLATFORM)
         WINK_USE_GPS=1
         WINK_USE_EEPROM=1
     )
+
+    # Optional: wink-app.json → app_options.cmake may FORCE WINK_USE_MOTOR /
+    # WINK_USE_ENCODER ON. Apply at configure time so BAL real paths and DAL
+    # .c units are available when the App actually declares those devices.
+    set(_WINK_APP_OPTS "${WINK_CONFIG_DIR}/app_options.cmake")
+    if(NOT WINK_APP_JSON STREQUAL "")
+        execute_process(
+            COMMAND ${Python3_EXECUTABLE}
+                    ${WINK_MICRO_OS_ROOT}/tools/codegen/app_codegen.py
+                    --config "${WINK_APP_JSON}"
+                    --out-dir "${WINK_CONFIG_DIR}"
+            RESULT_VARIABLE _wink_app_opts_rc
+            OUTPUT_VARIABLE _wink_app_opts_out
+            ERROR_VARIABLE _wink_app_opts_err
+        )
+        if(NOT _wink_app_opts_rc EQUAL 0)
+            message(WARNING
+                "esp32: app_codegen for driver flags failed (rc=${_wink_app_opts_rc}); "
+                "motor/encoder stay pruned. ${_wink_app_opts_err}")
+        endif()
+    endif()
+    if(EXISTS "${_WINK_APP_OPTS}")
+        include("${_WINK_APP_OPTS}")
+    endif()
+    if(DEFINED WINK_USE_MOTOR AND WINK_USE_MOTOR)
+        target_compile_definitions(${COMPONENT_LIB} PUBLIC WINK_USE_MOTOR=1)
+        target_sources(${COMPONENT_LIB} PRIVATE
+            ${WINK_MICRO_OS_ROOT}/dal/src/actuator/dal_motor.c)
+    endif()
+    if(DEFINED WINK_USE_ENCODER AND WINK_USE_ENCODER)
+        target_compile_definitions(${COMPONENT_LIB} PUBLIC WINK_USE_ENCODER=1)
+        target_sources(${COMPONENT_LIB} PRIVATE
+            ${WINK_MICRO_OS_ROOT}/dal/src/sensor/dal_encoder.c)
+    endif()
 
     # Inject active font source file based on WINK_SSD1306_FONT setting
     if(NOT DEFINED WINK_SSD1306_FONT)

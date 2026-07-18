@@ -17,6 +17,16 @@
 #  endif
 #endif
 
+/* DAL pruning (WINK_UNAVAILABLE): real motor/encoder APIs disappear when
+ * WINK_USE_MOTOR / WINK_USE_ENCODER are off. Force the MAX==0 stub path so
+ * Apps that never declare those devices (e.g. blink / Arduino) still link
+ * wink_bal without compile errors — user need not know about WINK_USE_*. */
+#if !defined(WINK_USE_MOTOR) || !(WINK_USE_MOTOR) \
+    || !defined(WINK_USE_ENCODER) || !(WINK_USE_ENCODER)
+#  undef WINK_CLOSED_LOOP_MOTOR_MAX
+#  define WINK_CLOSED_LOOP_MOTOR_MAX 0
+#endif
+
 #if WINK_CLOSED_LOOP_MOTOR_MAX > 0
 
 typedef struct {
@@ -303,7 +313,7 @@ wink_status_t wink_closed_loop_motor_start_ex(dal_motor_t *motor,
                                               const wink_bal_opts_t *opts)
 {
     (void)motor; (void)encoder; (void)cfg; (void)opts;
-    return WINK_ERR_UNAVAILABLE;
+    return WINK_ERR_UNSUPPORTED;
 }
 
 wink_status_t wink_closed_loop_motor_start(dal_motor_t *motor, 
@@ -311,7 +321,7 @@ wink_status_t wink_closed_loop_motor_start(dal_motor_t *motor,
                                            const wink_closed_loop_motor_config_t *cfg)
 {
     (void)motor; (void)encoder; (void)cfg;
-    return WINK_ERR_UNAVAILABLE;
+    return WINK_ERR_UNSUPPORTED;
 }
 
 wink_status_t wink_closed_loop_motor_stop(dal_motor_t *motor)
@@ -323,13 +333,13 @@ wink_status_t wink_closed_loop_motor_stop(dal_motor_t *motor)
 wink_status_t wink_closed_loop_motor_set_speed(dal_motor_t *motor, float target_speed)
 {
     (void)motor; (void)target_speed;
-    return WINK_ERR_UNAVAILABLE;
+    return WINK_ERR_UNSUPPORTED;
 }
 
 wink_status_t wink_closed_loop_motor_get_speed(dal_motor_t *motor, float *out_speed)
 {
     (void)motor; (void)out_speed;
-    return WINK_ERR_UNAVAILABLE;
+    return WINK_ERR_UNSUPPORTED;
 }
 
 void wink_closed_loop_motor_reset(void)
