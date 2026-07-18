@@ -26,6 +26,15 @@
 
 #include <stddef.h>
 
+/* DAL pruning (WINK_UNAVAILABLE): force the MAX==0 stub path when the
+ * LED driver is off so ESP32 still links wink_bal (ADR-0039). */
+#if !defined(WINK_USE_LED) || !(WINK_USE_LED)
+#  undef WINK_LED_BLINK_MAX
+#  define WINK_LED_BLINK_MAX 0
+#endif
+
+#if WINK_LED_BLINK_MAX > 0
+
 /* ?? per-blink context ?????????????????????????????????????????
  * A slot with led == NULL is free.  period_h is only meaningful when
  * led != NULL.  BSS zero-init gives us led=NULL for free-slot state. */
@@ -182,3 +191,28 @@ void wink_led_blink_stop(int32_t handle)
     ctx->period_h = WINK_PERIODIC_INVALID;
     ctx->led      = NULL;   /* mark slot free for reuse */
 }
+
+#else /* WINK_LED_BLINK_MAX == 0 */
+
+int32_t wink_led_blink_start_ex(dal_led_t *led, uint32_t period_ms,
+                                const wink_bal_opts_t *opts)
+{
+    (void)led;
+    (void)period_ms;
+    (void)opts;
+    return (int32_t)WINK_ERR_UNSUPPORTED;
+}
+
+int32_t wink_led_blink_start(dal_led_t *led, uint32_t period_ms)
+{
+    (void)led;
+    (void)period_ms;
+    return (int32_t)WINK_ERR_UNSUPPORTED;
+}
+
+void wink_led_blink_stop(int32_t handle)
+{
+    (void)handle;
+}
+
+#endif /* WINK_LED_BLINK_MAX > 0 */
