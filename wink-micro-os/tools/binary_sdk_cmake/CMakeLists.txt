@@ -91,7 +91,7 @@ endif()
 include(${WINK_APP_OPTIONS_CMAKE})
 
 macro(wink_binary_apply_dal_driver_defs target)
-    foreach(_drv IN ITEMS LED BUTTON SERVO SSD1306 ULTRASONIC GPS EEPROM)
+    foreach(_drv IN ITEMS LED BUTTON SERVO SSD1306 ULTRASONIC GPS EEPROM MOTOR ENCODER)
         if(DEFINED WINK_USE_${_drv} AND WINK_USE_${_drv})
             target_compile_definitions(${target} PRIVATE WINK_USE_${_drv}=1)
         endif()

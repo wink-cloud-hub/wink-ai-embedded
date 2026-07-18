@@ -6,6 +6,11 @@
 # compile error pointing them to add the device to wink-app.json (instead
 # of an opaque "undefined reference" at link time).
 #
+# ADR-0039: top-level may call wink_dal_apply_pruning() (see
+# cmake/wink_dal_drivers.cmake) BEFORE add_subdirectory(dal) to FORCE CACHE
+# WINK_USE_* from wink-app.json. Host multi-sample / CI skips that call
+# (WINK_DAL_BIND_APP_JSON=OFF) so option() defaults below stay ON = all drivers.
+#
 # How it works:
 #   * WINK_USE_<XXX> options default to ON (backward compat).
 #   * For each enabled driver, we:
@@ -18,11 +23,10 @@
 #     WINK_USE_X=1 is defined, so consumers see the stubs.
 #
 # Defaults: all drivers ON (backward compatible). App-specific builds
-# include() the codegen-produced app_options.cmake before add_subdirectory(dal)
-# to force ON only the drivers declared in wink-app.json. Drivers that are
-# neither forced ON nor explicitly defaulted-OFF here fall through to ON
-# via the option() defaults below — so adding a new driver requires three
-# edits:
+# call wink_dal_apply_pruning() (or include() app_options.cmake) before
+# add_subdirectory(dal) to FORCE CACHE ON/OFF from wink-app.json. Drivers
+# that are neither forced ON nor OFF fall through to ON via option() —
+# so adding a new driver requires three edits:
 #   1) Add an `option(WINK_USE_<XXX> ...)` line in the options block.
 #   2) Add its source/header + compile_definitions in the enable block.
 #   3) Add the WINK_UNAVAILABLE_MSG stub block at the bottom of its header.

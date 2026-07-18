@@ -49,6 +49,14 @@ endif()
 message(STATUS "WINK_APP_DIR = ${WINK_APP_DIR}")
 message(STATUS "WINK_APP_JSON = ${WINK_APP_JSON}")
 
+# ADR-0039: Host multi-sample shares one `dal` — do NOT prune from the
+# WINK_APP_DIR-derived WINK_APP_JSON (that path is for wink_config.h).
+# Opt in for single-app host builds: -DWINK_DAL_BIND_APP_JSON=ON.
+# Wasm / other non-host SOURCE builds prune whenever JSON is present.
+option(WINK_DAL_BIND_APP_JSON
+    "Bind shared host dal pruning to wink-app.json (single-app only; breaks multi-sample)"
+    OFF)
+
 # ── SDK Mode Detection (early: config codegen needs binary ceilings) ───
 if(NOT DEFINED WINK_SDK_MODE OR WINK_SDK_MODE STREQUAL "")
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/host")
@@ -165,6 +173,28 @@ if(WINK_SDK_MODE STREQUAL "binary")
 else()
     # SOURCE mode: build everything from source (monorepo or Source SDK).
     add_subdirectory(pal)
+    # ADR-0039: optional DAL pruning BEFORE add_subdirectory(dal).
+    # Host multi-sample / CI: leave WINK_DAL_BIND_APP_JSON=OFF → option()
+    # defaults in dal/CMakeLists.txt stay ON (all drivers).
+    # Wasm single-app (or host with WINK_DAL_BIND_APP_JSON=ON): prune from JSON.
+    set(_wink_dal_do_prune FALSE)
+    if(TARGET_PLATFORM STREQUAL "host")
+        if(WINK_DAL_BIND_APP_JSON)
+            set(_wink_dal_do_prune TRUE)
+        endif()
+    else()
+        set(_wink_dal_do_prune TRUE)
+    endif()
+    if(_wink_dal_do_prune
+       AND DEFINED WINK_APP_JSON
+       AND NOT "${WINK_APP_JSON}" STREQUAL ""
+       AND EXISTS "${WINK_APP_JSON}")
+        get_filename_component(WINK_MICRO_OS_ROOT
+            "${CMAKE_CURRENT_SOURCE_DIR}" ABSOLUTE)
+        include(${WINK_MICRO_OS_ROOT}/cmake/wink_dal_drivers.cmake)
+        wink_dal_apply_pruning("${WINK_APP_JSON}"
+            "${CMAKE_BINARY_DIR}/generated")
+    endif()
     add_subdirectory(dal)
     add_subdirectory(trace)
     add_subdirectory(runtime)
