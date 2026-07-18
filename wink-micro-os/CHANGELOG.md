@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **BAL naming hard cut ([ADR-0038](../docs/design/decisions/0038-bal-naming-hard-cut-and-layer-ssot.md))**: removed `*_helper.h` / `*_controller.h` public headers; renamed APIs (`wink_ultrasonic_poll_*`, `wink_servo_sweep_*`, etc.); `wink_bal_opts_t` replaces `wink_helper_opts_t`; `src/` mirrors `include/<domain>/`; PUBLIC include is only `bal/include` root. **Breaking:** deleted `wink-micro-app/common/include/` BAL shims — use domain-prefixed includes (e.g. `output/wink_led_blink.h`, `comm/wink_telemetry_default.h`).
+
 ### Added
 
 - **BAL 正式层**（`bal/`，[ADR-0023](../docs/design/decisions/0023-bal-business-abstraction-layer.md)）：LED blink、button poll、sonar、servo sweep、telemetry 等器件级 helper，强类型双轨 API（`_start` / `_start_ex`），codegen 驱动 `WINK_APP_MAX_*_INSTANCES` 槽容量。
