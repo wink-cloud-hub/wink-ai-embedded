@@ -36,6 +36,12 @@
 #include "pal_hal.h"       /* pal_gpio_read for stable-state sampling */
 #include "wink_soft_timer.h"
 #include "dal_button.h"
+#include "wink_blocking_region.h"
+
+/* ADR-0017 BAL-exception: FreeRTOS IRQ daemon task legitimately blocks on
+ * pal_os_sem_take(FOREVER) and creates a dedicated OS task — not a
+ * cooperative PT context. Suppress WINK_BLOCKING deprecation for this TU. */
+WINK_INTERNAL_BLOCKING_REGION_BEGIN
 
 /* ── Daemon singleton ─────────────────────────────────────────
  * The daemon is lazy-created on the first successful arm and runs for the
@@ -302,6 +308,8 @@ void wink_button_events_irq_disarm(button_event_slot_t *slot)
      * (sem is not given so daemon just blocks). */
     LOG_I("bal.btn.irq: disarmed");
 }
+
+WINK_INTERNAL_BLOCKING_REGION_END
 
 #else /* !ESP_PLATFORM or button pruned — stubs */
 
