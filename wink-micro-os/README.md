@@ -10,11 +10,11 @@
 
 > **术语澄清**：
 > - ✅ **App 层**：用户代码/AI 生成的一次性业务逻辑（`init_status` / `app_loop` / `on_fault_status`）
-> - ✅ **BAL 层**（[ADR-0023](../docs/design/decisions/0023-bal-business-abstraction-layer.md)）：**Business Abstraction Layer**，器件级可复用 helper（LED blink、button poll、sonar、servo sweep、telemetry 等），位于 `bal/`，由 App 显式 `*_start()`，**禁止** include `pal_*.h`
+> - ✅ **BAL 层**（[ADR-0023](../docs/design/decisions/0023-bal-business-abstraction-layer.md) / [ADR-0038](../docs/design/decisions/0038-bal-naming-hard-cut-and-layer-ssot.md)）：**Business Abstraction Layer**，可复用业务服务（LED blink、button events、ultrasonic poll、servo sweep、telemetry 等），位于 `bal/`，由 App 显式 `*_start()` / `enable_*`，**禁止** include `pal_*.h`；公开树禁用 `*_helper` / `*_controller` / `sonar`
 
 ```
 ┌────────────────────────────────────────────────────────┐
-│  App（AI 生成，一次性业务） + BAL（器件 helper，bal/ 正式层） │
+│  App（AI 生成，一次性业务） + BAL（业务服务，bal/ 正式层）   │
 ├────────────────────────────────────────────────────────┤
 │  runtime（回调注入主循环） + trace（Golden Trace） ◄ peer 一等层
 ├────────────────────────────────────────────────────────┤
@@ -26,8 +26,8 @@
 └────────────────────────────────────────────────────────┘
 ```
 
-1. **App (应用逻辑层)**：由低代码/codegen 生成的业务逻辑。经 `wink_app_callbacks_t`（`init_status` / `loop` / `on_fault_status` / `on_boot`）注入 runtime；调用 BAL helper 或 DAL 语义 API，**不对接**裸 GPIO/I2C。
-2. **BAL (业务抽象层)**：`bal/` 静态库 `wink_bal`。强类型双轨 API（`_start` 初学者默认 / `_start_ex` 专家覆盖栈/优先级/核）。典型用法：`wink_button_enable_events(&btn, &cfg)`（ADR-0032 B 类）。迁移指南见 [CHANGELOG.md](./CHANGELOG.md#baldcst-迁移指南2026-07-06-重构)。
+1. **App (应用逻辑层)**：由低代码/codegen 生成的业务逻辑。经 `wink_app_callbacks_t`（`init_status` / `loop` / `on_fault_status` / `on_boot`）注入 runtime；调用 BAL 服务或 DAL 语义 API，**不对接**裸 GPIO/I2C。
+2. **BAL (业务抽象层)**：`bal/` 静态库 `wink_bal`。强类型双轨 API（`_start` 初学者默认 / `_start_ex` 专家覆盖栈/优先级/核）。典型用法：`wink_button_enable_events(&btn, &cfg)`（ADR-0032 B 类）。SSOT：[06-bal-layer.md](../docs/design/02-wink-micro-os/06-bal-layer.md)；迁移见 [CHANGELOG.md](./CHANGELOG.md)。
 3. **runtime + trace**：一等 peer 层。`runtime` 用回调注入跑协作式主循环（无 `extern app_*` 强依赖，二进制解耦）；`trace` 用静态环形缓冲记录故障（零动态分配）。DAL/PAL 驱动**禁**直接调 `wink_trace_*`，故障捕获收敛在 App 回调。
 4. **DAL (器件抽象层)**：管理具体的传感器和执行器（如超声波测距仪、舵机、温湿度计）。
    * **双模运行能力**：在仿真模式下，DAL 驱动仅旁路最底层物理信号来源（trigger 时序、echo 脉宽），换算与超时判定两端同源；在真机模式下，它调用 PAL 接口操作物理引脚。
@@ -49,9 +49,9 @@ wink-micro-os/
 ├── dal/                        # 器件抽象层 (STATIC，两端同源)
 │   ├── include/  dal_ultrasonic.h · dal_servo.h · dal_led.h · …
 │   └── src/
-├── bal/                        # 业务抽象层 (STATIC，ADR-0023)
-│   ├── include/  wink_helper_opts.h · output/wink_blink_helper.h · input/wink_button_events.h · …
-│   └── src/      wink_blink_helper.c · wink_button_events.c · wink_button_events_irq.c · …
+├── bal/                        # 业务抽象层 (STATIC，ADR-0023/0038)
+│   ├── include/  wink_bal_opts.h · output/wink_led_blink.h · input/wink_button_events.h · …
+│   └── src/      output/ · input/ · sensor/ · actuator/ · comm/ · math/ · control/ · …
 ├── runtime/                    # OS 运行时 (STATIC，回调注入主循环)
 │   ├── include/  wink_app.h · wink_runtime.h
 │   └── src/      wink_runtime.c
@@ -156,7 +156,7 @@ cd build-test; ctest --output-on-failure
 
 | 梯队 | 测试数 | 覆盖 |
 |---|---:|---|
-| **Tier 1 · Core / 门禁** | 14+ | PAL 契约、BAL helper（button/blink/sonar/servo/telemetry）、runtime change_period、blocking strict |
+| **Tier 1 · Core / 门禁** | 14+ | PAL 契约、BAL 服务（button/blink/ultrasonic/servo/telemetry）、runtime change_period、blocking strict |
 | **Tier 2 · DAL 外设** | 9 | servo/ultrasonic/ultrasonic_sim/led/button/ssd1306、dev_config、avoidance_override、button_debounce_e2e |
 | **Tier 3 · 协作式调度器（ADR-0013/0014）** | 9 | sim_scheduler / _e2e / _determinism / _stack_clamp / _wcet_fault / _zombie_gc、sim_mutex_e2e、single_task_semantic_regression、sim_physical |
 | **Tier 4 · Sample e2e** | 5 | app_avoidance_car / oled_dashboard / devkitc_smoke / dual_task_demo、sample_resource_conflict |

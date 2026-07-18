@@ -13,7 +13,7 @@
  *   WINK_INTERNAL_BLOCKING_REGION_BEGIN/END
  *     — BAL/Runtime **internal** .c files (file-scope, after #includes).
  *       Use when the whole TU legitimately calls WINK_BLOCKING APIs
- *       (e.g. wink_sonar_helper.c MAY_BLOCK task body calling
+ *       (e.g. wink_ultrasonic_poll.c MAY_BLOCK task body calling
  *       dal_ultrasonic_request_measurement).
  *       Mandatory accompanying comment (use C++-style // comment so the
  *       block-comment opener cannot be nested; prefix with "ADR-0017 ..."):

@@ -10,7 +10,7 @@
 
 ### Added
 
-- **BAL 正式层**（`bal/`，[ADR-0023](../docs/design/decisions/0023-bal-business-abstraction-layer.md)）：LED blink、button poll、sonar、servo sweep、telemetry 等器件级 helper，强类型双轨 API（`_start` / `_start_ex`），codegen 驱动 `WINK_APP_MAX_*_INSTANCES` 槽容量。
+- **BAL 正式层**（`bal/`，[ADR-0023](../docs/design/decisions/0023-bal-business-abstraction-layer.md)）：LED blink、button events、ultrasonic poll、servo sweep、telemetry 等业务服务，强类型双轨 API（`_start` / `_start_ex`），codegen 驱动 `WINK_APP_MAX_*_INSTANCES` 槽容量。
 - **Runtime**：`WINK_PERIODIC_INVALID`、`WINK_ERR_CANCELED`、`wink_periodic_change_period()`、`wink_periodic_active_count()`；`wink_blocking_region.h`（`WINK_INIT_BLOCKING_REGION` / `WINK_INTERNAL_BLOCKING_REGION`）。
 - **PAL**：`pal_i2c_bus_init()` / `pal_i2c_bus_deinit()`（极简 I2C bus 生命周期，服务 codegen bus-owner 节点）。
 - **DAL**：7 个驱动补齐 `deinit`（含 ESP32 `gpio_reset_pin`）；ssd1306/eeprom/gps 等新增 deinit。
@@ -21,12 +21,12 @@
 
 - **App 回调签名**：`init` → `init_status()`，`on_fault` → `on_fault_status()`（返回 `wink_status_t`）；业务回调零 file-scope `#pragma`。
 - **Samples 迁移**：`devkitc_smoke`、`oled_dashboard`、`dual_task_demo`、`resource_conflict`、`unisim_smoke` 适配新模式；`oled_dashboard` 使用 codegen 生成 `device_tree`。
-- **`samples/common/`**：helper 实现迁至 `bal/` 或 `runtime/selftest/`；头文件改为 `@deprecated` 转发 shim（**下个 release 移除**）。
+- **`wink-micro-app/common/`**：不再提供 BAL 转发 shim；仅 INTERFACE（selftest include + link `wink_bal`）。
 - **ESP32 真机**：devkitc_smoke **S1–S11** 全 PASS（含 deinit 循环 5 轮无 GPIO 占用）。
 
-### Deprecated
+### Removed
 
-- `#include "wink_blink_helper.h"` 等 `samples/common/include/` 下 shim → 改用 `bal/include/` 对应路径（见下方迁移指南）。
+- `*_helper.h` / `*_controller.h` 公开头、`wink_helper_opts_t`、公开符号中的 `sonar`（ADR-0038 hard cut）。
 
 ---
 
@@ -36,12 +36,16 @@
 
 ### 1. Include 路径
 
-| 旧（`samples/common/include/`） | 新（BAL 正式 API） |
+| 旧 | 新（ADR-0038） |
 |---|---|
-| `wink_blink_helper.h` | `output/wink_blink_helper.h`（link `wink_bal`） |
-| `wink_button_helper.h` | 已删除 → 改用 `input/wink_button_events.h`（`wink_button_enable_events` / `wink_button_disable_events`） |
-| `wink_default_telemetry.h` / `wink_telemetry_helper.h` | `comm/wink_telemetry_helper.h` |
-| `wink_sim_ultrasonic_echo.h` | `runtime/selftest/src/wink_sim_ultrasonic_echo.h`（仅 bringup/selftest） |
+| `wink_blink_helper.h` / `output/wink_blink_helper.h` | `output/wink_led_blink.h`（link `wink_bal`） |
+| `wink_button_helper.h` | `input/wink_button_events.h`（`wink_button_enable_events` / `disable`） |
+| `wink_sonar_helper.h` | `sensor/wink_ultrasonic_poll.h` |
+| `wink_servo_helper.h` | `actuator/wink_servo_sweep.h` |
+| `wink_telemetry_helper.h` / `wink_default_telemetry.h` | `comm/wink_telemetry_default.h` |
+| `wink_helper_opts.h` / `wink_helper_opts_t` | `wink_bal_opts.h` / `wink_bal_opts_t` |
+| `wink_chassis_controller.h` | `control/wink_chassis.h` |
+| `wink_sim_ultrasonic_echo.h`（app common shim） | `runtime/selftest/src/wink_sim_ultrasonic_echo.h`（仅 bringup） |
 
 CMake：`target_link_libraries(your_app PRIVATE wink_bal)`；BAL 通过 PUBLIC include 导出 `bal/include/**`。
 
@@ -70,7 +74,7 @@ static wink_status_t app_on_fault_status(uint32_t code)
 
 - **禁止**在 `app_callbacks.c` 顶部使用 file-scope `#pragma GCC diagnostic ignored`。
 - init 阶段小块阻塞（如 OLED flush、selftest）用 `WINK_INIT_BLOCKING_REGION_BEGIN/END` 包裹。
-- 业务 `app_loop` 内**不得**调用 `WINK_BLOCKING` API；周期任务用 BAL helper 或 `wink_periodic_start_ex(WINK_PERIODIC_MAY_BLOCK, ...)`。
+- 业务 `app_loop` 内**不得**调用 `WINK_BLOCKING` API；周期任务用 BAL 服务或 `wink_periodic_start_ex(WINK_PERIODIC_MAY_BLOCK, ...)`。
 
 ### 3. 设备树与 codegen
 
