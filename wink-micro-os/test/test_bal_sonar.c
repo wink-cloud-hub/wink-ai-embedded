@@ -141,7 +141,7 @@ void test_sonar_helper_pool_exhaustion(void) {
 
 /* 5. REGRESSION (LIFO bug): start/stop 100 times on same sonar must NOT exhaust slots */
 void test_sonar_helper_start_stop_reclamation(void) {
-    wink_helper_opts_t opts = WINK_HELPER_OPTS_DEFAULT;
+    wink_bal_opts_t opts = WINK_BAL_OPTS_DEFAULT;
     opts.flags = WINK_PERIODIC_LIGHT;
     for (int i = 0; i < 100; i++) {
         wink_status_t st = wink_sonar_helper_start_ex(&s_sonar1, 100, &opts);

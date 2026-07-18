@@ -1,6 +1,6 @@
 /**
  * @file wink_blink_helper.c
- * @brief BAL LED blink helper — toggles a DAL LED at 50% duty via the
+ * @brief BAL LED blink helper �?toggles a DAL LED at 50% duty via the
  *        runtime periodic scheduler (LIGHT path by default).
  *
  * Slot management (fixes the LIFO bug from the original samples/common
@@ -13,7 +13,7 @@
  * directly (>=1 = valid, 0 = INVALID, <0 = error passthrough) so the
  * caller can pass it to wink_led_blink_stop() without an indirection
  * table.  blink_ctx_t slots are indexed via a reverse-lookup on stop
- * (iterating the slot array is O(WINK_BLINK_HELPER_MAX) ≤ 4, negligible).
+ * (iterating the slot array is O(WINK_BLINK_HELPER_MAX) �?4, negligible).
  *
  * Copyright (c) 2026 Wink-AI.
  */
@@ -69,7 +69,7 @@ static int find_slot_by_handle(wink_periodic_handle_t h) {
     return -1;
 }
 
-/* ── periodic callback (LIGHT path — void return, void* ctx) ─── */
+/* ── periodic callback (LIGHT path �?void return, void* ctx) ─── */
 static void blink_tick(void *arg) {
     blink_ctx_t *ctx = (blink_ctx_t *)arg;
     /* Toggle: track on/off state via the DAL LED's own is_on field (public
@@ -81,7 +81,7 @@ static void blink_tick(void *arg) {
 /* ── public API ──────────────────────────────────────────────── */
 
 int32_t wink_led_blink_start_ex(dal_led_t *led, uint32_t period_ms,
-                                const wink_helper_opts_t *opts)
+                                const wink_bal_opts_t *opts)
 {
     if (led == NULL || period_ms == 0u) {
         LOG_D("start: invalid arg (led=%p period_ms=%u)",
@@ -104,8 +104,8 @@ int32_t wink_led_blink_start_ex(dal_led_t *led, uint32_t period_ms,
         return (int32_t)WINK_ERR_RESOURCE_EXHAUSTED;
     }
 
-    /* Resolve options (NULL → defaults). */
-    wink_helper_opts_t effective = WINK_HELPER_OPTS_DEFAULT;
+    /* Resolve options (NULL �?defaults). */
+    wink_bal_opts_t effective = WINK_BAL_OPTS_DEFAULT;
     if (opts != NULL) {
         effective = *opts;
     }
@@ -117,7 +117,7 @@ int32_t wink_led_blink_start_ex(dal_led_t *led, uint32_t period_ms,
         flags = WINK_PERIODIC_LIGHT;
     }
 
-    /* Half-period per toggle → full on+off cycle = period_ms. */
+    /* Half-period per toggle �?full on+off cycle = period_ms. */
     uint32_t half = period_ms / 2u;
     if (half == 0u) {
         half = 1u;
@@ -171,7 +171,7 @@ void wink_led_blink_stop(int32_t handle)
     int idx = find_slot_by_handle(h);
     if (idx < 0) {
         /* Not owned by us (e.g. caller passed stale/random handle).
-         * Still forward to wink_periodic_stop for safety — it will
+         * Still forward to wink_periodic_stop for safety �?it will
          * no-op if handle doesn't correspond to a live periodic. */
         wink_periodic_stop(h);
         return;

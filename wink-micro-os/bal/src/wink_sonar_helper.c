@@ -1,6 +1,6 @@
 /**
  * @file wink_sonar_helper.c
- * @brief BAL ultrasonic sonar helper — periodically triggers distance measurements
+ * @brief BAL ultrasonic sonar helper �?periodically triggers distance measurements
  *        via the runtime periodic scheduler (MAY_BLOCK path).
  *
  * Copyright (c) 2026 Wink-AI.
@@ -69,7 +69,7 @@ static int find_slot_by_dev(dal_ultrasonic_t *dev) {
     return -1;
 }
 
-/* ── periodic callback (MAY_BLOCK path — void return, void* ctx) ─── */
+/* ── periodic callback (MAY_BLOCK path �?void return, void* ctx) ─── */
 static void sonar_tick(void *arg) {
     sonar_ctx_t *ctx = (sonar_ctx_t *)arg;
     if (ctx->dev != NULL) {
@@ -80,7 +80,7 @@ static void sonar_tick(void *arg) {
 /* ── public API ──────────────────────────────────────────────── */
 
 wink_status_t wink_sonar_helper_start_ex(dal_ultrasonic_t *dev, uint32_t period_ms,
-                                         const wink_helper_opts_t *opts)
+                                         const wink_bal_opts_t *opts)
 {
     if (dev == NULL || period_ms < WINK_SONAR_MIN_PERIOD_MS) {
         LOG_D("start: invalid arg (dev=%p period_ms=%u, need >=%u)",
@@ -106,7 +106,7 @@ wink_status_t wink_sonar_helper_start_ex(dal_ultrasonic_t *dev, uint32_t period_
         return WINK_ERR_RESOURCE_EXHAUSTED;
     }
 
-    wink_helper_opts_t effective = WINK_HELPER_OPTS_DEFAULT;
+    wink_bal_opts_t effective = WINK_BAL_OPTS_DEFAULT;
     if (opts != NULL) {
         effective = *opts;
     }
@@ -204,7 +204,7 @@ void wink_sonar_helper_reset(void) {
 #else /* WINK_SONAR_HELPER_MAX == 0 */
 
 wink_status_t wink_sonar_helper_start_ex(dal_ultrasonic_t *dev, uint32_t period_ms,
-                                         const wink_helper_opts_t *opts)
+                                         const wink_bal_opts_t *opts)
 {
     (void)dev; (void)period_ms; (void)opts;
     return WINK_ERR_UNAVAILABLE;

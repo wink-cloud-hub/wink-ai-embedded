@@ -8,16 +8,16 @@
  * stop can exhaust the host fiber pool because zombie fibers accumulate.
  * Strategy:
  *   - All default-path (MAY_BLOCK) lifecycle tests run at most 1 start/stop
- *     per test â€” setUp/tearDown guarantee a clean slot state between tests.
+ *     per test â€?setUp/tearDown guarantee a clean slot state between tests.
  *   - The 100-cycle slot-leak regression uses WINK_PERIODIC_LIGHT via
  *     _start_ex.  LIGHT paths don't allocate fibers; the callback body
  *     never fires (soft_timer is not dispatched), so we exercise only the
- *     BAL slot bookkeeping â€” which is exactly what that regression guards.
+ *     BAL slot bookkeeping â€?which is exactly what that regression guards.
  *
  * Verifies:
  *   - NULL sonar/btn are both valid (runtime-stats-only telemetry).
  *   - is_running() lifecycle.
- *   - Duplicate-start â†’ WINK_ERR_INVALID_STATE.
+ *   - Duplicate-start â†?WINK_ERR_INVALID_STATE.
  *   - Stop is idempotent (including before any start).
  *   - 100 LIGHT start/stop cycles don't leak BAL slots or periodic handles.
  *   - _start_ex with explicit MAY_BLOCK opts starts successfully.
@@ -26,7 +26,7 @@
 
 #include "unity.h"
 #include "wink_telemetry_helper.h"
-#include "wink_helper_opts.h"
+#include "wink_bal_opts.h"
 #include "wink_soft_timer.h"
 #include "wink_tasks.h"
 #include "wink_status.h"
@@ -104,11 +104,11 @@ void test_double_stop_is_idempotent(void) {
     TEST_ASSERT_FALSE(wink_telemetry_default_is_running());
 }
 
-/* REGRESSION for BAL slot/handle leak â€” 100 LIGHT start/stop cycles.
+/* REGRESSION for BAL slot/handle leak â€?100 LIGHT start/stop cycles.
  * LIGHT path avoids host fiber allocation, letting us prove slot
  * recycling in the helper itself without depending on scheduler GC. */
 void test_start_stop_loop_100_light_does_not_leak(void) {
-    wink_helper_opts_t opts = WINK_HELPER_OPTS_DEFAULT;
+    wink_bal_opts_t opts = WINK_BAL_OPTS_DEFAULT;
     opts.flags = WINK_PERIODIC_LIGHT;
 
     for (int i = 0; i < 100; i++) {
@@ -121,10 +121,10 @@ void test_start_stop_loop_100_light_does_not_leak(void) {
     TEST_ASSERT_EQUAL_UINT32(0, wink_periodic_active_count());
 }
 
-/* _start_ex with explicit MAY_BLOCK opts (one start per test â€” host
+/* _start_ex with explicit MAY_BLOCK opts (one start per test â€?host
  * fiber is GC'd by tearDown via the scheduler, see file-level note). */
 void test_start_ex_mayblock_explicit_opts_succeeds(void) {
-    wink_helper_opts_t opts = WINK_HELPER_OPTS_DEFAULT;
+    wink_bal_opts_t opts = WINK_BAL_OPTS_DEFAULT;
     opts.stack_bytes = 2048u;
     opts.priority    = 1;
     opts.core_id     = WINK_BAL_CORE_ANY;
