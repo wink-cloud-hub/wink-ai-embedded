@@ -140,7 +140,7 @@ set(WINK_APP_JSON     "${WINK_APP_DIR}/wink-app.json")
 if(EXISTS "${WINK_APP_JSON}")
     set(GEN_DEVICE_TREE_H ${GEN_DIR}/device_tree.h)
     set(GEN_DEVICE_TREE_C ${GEN_DIR}/device_tree.c)
-    set(GEN_APP_OPTIONS   ${GEN_DIR}/app_options.cmake)  # reserved for future per-app pruning
+    set(GEN_APP_OPTIONS   ${GEN_DIR}/app_options.cmake)  # also applied by targets/esp32 for motor/encoder
 
     file(GLOB WINK_CODEGEN_TEMPLATES ${WINK_CODEGEN_ROOT}/templates/*.j2)
     file(GLOB WINK_CODEGEN_DRIVERS   ${WINK_CODEGEN_ROOT}/drivers/*.py)
