@@ -9,15 +9,15 @@
 #include "wink_fault.h"
 #include <string.h>
 
-#ifndef WINK_CLOSED_LOOP_MOTOR_HELPER_MAX
+#ifndef WINK_CLOSED_LOOP_MOTOR_MAX
 #  ifdef WINK_APP_MAX_MOTOR_INSTANCES
-#    define WINK_CLOSED_LOOP_MOTOR_HELPER_MAX WINK_APP_MAX_MOTOR_INSTANCES
+#    define WINK_CLOSED_LOOP_MOTOR_MAX WINK_APP_MAX_MOTOR_INSTANCES
 #  else
-#    define WINK_CLOSED_LOOP_MOTOR_HELPER_MAX 4
+#    define WINK_CLOSED_LOOP_MOTOR_MAX 4
 #  endif
 #endif
 
-#if WINK_CLOSED_LOOP_MOTOR_HELPER_MAX > 0
+#if WINK_CLOSED_LOOP_MOTOR_MAX > 0
 
 typedef struct {
     dal_motor_t            *motor;
@@ -36,7 +36,7 @@ typedef struct {
     wink_periodic_handle_t  period_h;
 } motor_ctx_t;
 
-static motor_ctx_t s_slots[WINK_CLOSED_LOOP_MOTOR_HELPER_MAX];
+static motor_ctx_t s_slots[WINK_CLOSED_LOOP_MOTOR_MAX];
 
 /* ── internal helpers ────────────────────────────────────────── */
 
@@ -51,7 +51,7 @@ static pal_os_core_id_t map_core(wink_bal_core_t c) {
 }
 
 static int find_free_slot(void) {
-    for (int i = 0; i < WINK_CLOSED_LOOP_MOTOR_HELPER_MAX; i++) {
+    for (int i = 0; i < WINK_CLOSED_LOOP_MOTOR_MAX; i++) {
         if (s_slots[i].motor == NULL) {
             return i;
         }
@@ -60,7 +60,7 @@ static int find_free_slot(void) {
 }
 
 static int find_slot_by_motor(dal_motor_t *motor) {
-    for (int i = 0; i < WINK_CLOSED_LOOP_MOTOR_HELPER_MAX; i++) {
+    for (int i = 0; i < WINK_CLOSED_LOOP_MOTOR_MAX; i++) {
         if (s_slots[i].motor == motor) {
             return i;
         }
@@ -282,7 +282,7 @@ wink_status_t wink_closed_loop_motor_get_speed(dal_motor_t *motor, float *out_sp
 
 void wink_closed_loop_motor_reset(void)
 {
-    for (int i = 0; i < WINK_CLOSED_LOOP_MOTOR_HELPER_MAX; i++) {
+    for (int i = 0; i < WINK_CLOSED_LOOP_MOTOR_MAX; i++) {
         if (s_slots[i].motor != NULL) {
             if (s_slots[i].period_h > 0) {
                 wink_periodic_stop(s_slots[i].period_h);
@@ -295,7 +295,7 @@ void wink_closed_loop_motor_reset(void)
     }
 }
 
-#else /* WINK_CLOSED_LOOP_MOTOR_HELPER_MAX == 0 */
+#else /* WINK_CLOSED_LOOP_MOTOR_MAX == 0 */
 
 wink_status_t wink_closed_loop_motor_start_ex(dal_motor_t *motor, 
                                               dal_encoder_t *encoder,
@@ -336,4 +336,4 @@ void wink_closed_loop_motor_reset(void)
 {
 }
 
-#endif /* WINK_CLOSED_LOOP_MOTOR_HELPER_MAX > 0 */
+#endif /* WINK_CLOSED_LOOP_MOTOR_MAX > 0 */

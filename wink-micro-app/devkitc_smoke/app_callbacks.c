@@ -31,7 +31,7 @@
 #include "wink_selftest.h"
 #include "wink_fault.h"
 #include "output/wink_led_blink.h"
-#include "wink_button_events.h"
+#include "input/wink_button_events.h"
 #include "sensor/wink_ultrasonic_poll.h"
 #include "comm/wink_telemetry_default.h"
 #include "wink_blocking_region.h"
