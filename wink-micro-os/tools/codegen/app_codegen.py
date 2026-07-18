@@ -46,6 +46,18 @@ OUTPUT_FILES = (
     ("device_tree_api.md.j2", "device_tree_api.md"),
 )
 
+ALL_WINK_USE_OPTIONS = [
+    "WINK_USE_LED",
+    "WINK_USE_BUTTON",
+    "WINK_USE_SERVO",
+    "WINK_USE_SSD1306",
+    "WINK_USE_ULTRASONIC",
+    "WINK_USE_GPS",
+    "WINK_USE_EEPROM",
+    "WINK_USE_MOTOR",
+    "WINK_USE_ENCODER",
+]
+
 
 # ── Validation ───────────────────────────────────────────────────────
 def _die(msg: str, code: int = 2) -> None:
@@ -361,15 +373,16 @@ def build_context(cfg: dict, config_source: str) -> dict:
     driver_headers = _dedup(h for d in devices_ctx for h in d["headers"])
     actuators = [d for d in devices_ctx if d["is_actuator"]]
 
-    # Deduplicate CMake options across all driver instances used.
-    cmake_opts: List[str] = []
-    seen_opts: Dict[str, None] = {}
+    # Collect ON set from used drivers' cmake_options().
+    on_set: Dict[str, None] = {}
     for name in ordered:
         driver, _ = lookup[name]
         for opt in driver.cmake_options():
-            if opt not in seen_opts:
-                seen_opts[opt] = None
-                cmake_opts.append(opt)
+            on_set[opt] = None
+
+    cmake_option_states: List[Tuple[str, bool]] = [
+        (opt, opt in on_set) for opt in ALL_WINK_USE_OPTIONS
+    ]
 
     return {
         "config_source": config_source,
@@ -383,7 +396,7 @@ def build_context(cfg: dict, config_source: str) -> dict:
         "config_macros": config_macros,
         "instance_counts": instance_counts,
         "buses": buses_ctx,
-        "cmake_options": cmake_opts,
+        "cmake_option_states": cmake_option_states,
     }
 
 

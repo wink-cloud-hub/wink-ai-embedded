@@ -3,12 +3,9 @@
 # {{ config_source }}.
 # Do not edit manually — changes will be overwritten on next build.
 
-{% for opt in cmake_options %}
-set({{ opt }} ON CACHE BOOL "" FORCE)
+{% for opt, enabled in cmake_option_states %}
+set({{ opt }} {% if enabled %}ON{% else %}OFF{% endif %} CACHE BOOL "" FORCE)
 {% endfor %}
-{% if not cmake_options %}
-# No device drivers declared — no WINK_USE_* flags to force on.
-{% endif %}
 
 # Calculate WINK_MAX_PERIODIC (sum of instance counts + 4)
 set(WINK_MAX_PERIODIC {{ instance_counts.values() | sum + 4 }} CACHE STRING "" FORCE)
