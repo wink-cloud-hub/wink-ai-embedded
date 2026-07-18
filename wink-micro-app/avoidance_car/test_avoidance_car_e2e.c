@@ -10,7 +10,7 @@
 #include "wink_soft_timer.h"
 #include "wink_event.h"
 #include "wink_status.h"
-#include "wink_ultrasonic_distance_events.h"
+#include "sensor/wink_ultrasonic_distance_events.h"
 #include "device_tree.h"
 #include "host_test_ctrl.h"
 #include "pal_osal.h"

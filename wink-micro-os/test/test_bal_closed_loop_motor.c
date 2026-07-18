@@ -15,8 +15,8 @@
 
 extern void host_sim_advance_to(uint64_t us);
 
-#ifndef WINK_CLOSED_LOOP_MOTOR_HELPER_MAX
-#  define WINK_CLOSED_LOOP_MOTOR_HELPER_MAX 4
+#ifndef WINK_CLOSED_LOOP_MOTOR_MAX
+#  define WINK_CLOSED_LOOP_MOTOR_MAX 4
 #endif
 
 static dal_motor_t s_motor;
