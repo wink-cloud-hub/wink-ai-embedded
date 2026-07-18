@@ -1,12 +1,12 @@
 /**
- * @file wink_servo_helper.c
- * @brief BAL servo helper �?sweep and set angles for DAL servos.
+ * @file wink_servo_sweep.c (flat src path until Task 7 domain mirror)
+ * @brief BAL servo helper �?sweep and set angles for DAL servos.
  *
  * Copyright (c) 2026 Wink-AI.
  */
 #define LOG_TAG "bal.servo"
 
-#include "actuator/wink_servo_helper.h"
+#include "actuator/wink_servo_sweep.h"
 #include "wink_tasks.h"
 #include "wink_blocking_region.h"
 #include "pal_log.h"
@@ -14,10 +14,10 @@
 
 #include <stddef.h>
 
-/* ADR-0017 BAL-exception: helper 内部通过 wink_periodic MAY_BLOCK 路径调用 WINK_BLOCKING API */
+/* ADR-0017 BAL-exception: helper ???? wink_periodic MAY_BLOCK ???? WINK_BLOCKING API */
 WINK_INTERNAL_BLOCKING_REGION_BEGIN
 
-#if WINK_SERVO_HELPER_MAX > 0
+#if WINK_SERVO_SWEEP_MAX > 0
 
 typedef struct {
     dal_servo_t            *servo;
@@ -28,9 +28,9 @@ typedef struct {
     float                   step;
 } servo_ctx_t;
 
-static servo_ctx_t s_slots[WINK_SERVO_HELPER_MAX];
+static servo_ctx_t s_slots[WINK_SERVO_SWEEP_MAX];
 
-/* ── internal helpers ────────────────────────────────────────── */
+/* ?? internal helpers ?????????????????????????????????????????? */
 
 static pal_os_core_id_t map_core(wink_bal_core_t c) {
     switch (c) {
@@ -43,7 +43,7 @@ static pal_os_core_id_t map_core(wink_bal_core_t c) {
 }
 
 static int find_free_slot(void) {
-    for (int i = 0; i < WINK_SERVO_HELPER_MAX; i++) {
+    for (int i = 0; i < WINK_SERVO_SWEEP_MAX; i++) {
         if (s_slots[i].servo == NULL) {
             return i;
         }
@@ -52,7 +52,7 @@ static int find_free_slot(void) {
 }
 
 static int find_slot_by_servo(dal_servo_t *servo) {
-    for (int i = 0; i < WINK_SERVO_HELPER_MAX; i++) {
+    for (int i = 0; i < WINK_SERVO_SWEEP_MAX; i++) {
         if (s_slots[i].servo == servo) {
             return i;
         }
@@ -77,7 +77,7 @@ static void servo_tick(void *arg) {
     WINK_IGNORE_RESULT(dal_servo_set_angle(ctx->servo, next_angle));
 }
 
-/* ── public API ──────────────────────────────────────────────── */
+/* ?? public API ???????????????????????????????????????????????? */
 
 wink_status_t wink_servo_sweep_start_ex(dal_servo_t *servo, float min_angle, float max_angle, uint32_t period_ms,
                                         const wink_bal_opts_t *opts)
@@ -140,7 +140,7 @@ wink_status_t wink_servo_sweep_start(dal_servo_t *servo, float min_angle, float 
     return wink_servo_sweep_start_ex(servo, min_angle, max_angle, period_ms, NULL);
 }
 
-wink_status_t wink_servo_helper_stop(dal_servo_t *servo) {
+wink_status_t wink_servo_sweep_stop(dal_servo_t *servo) {
     if (servo == NULL) {
         return WINK_ERR_INVALID_ARG;
     }
@@ -157,7 +157,7 @@ wink_status_t wink_servo_helper_stop(dal_servo_t *servo) {
     return WINK_OK;
 }
 
-wink_status_t wink_servo_helper_set_period(dal_servo_t *servo, uint32_t period_ms) {
+wink_status_t wink_servo_sweep_set_period(dal_servo_t *servo, uint32_t period_ms) {
     if (servo == NULL || period_ms == 0u) {
         return WINK_ERR_INVALID_ARG;
     }
@@ -169,7 +169,7 @@ wink_status_t wink_servo_helper_set_period(dal_servo_t *servo, uint32_t period_m
     return wink_periodic_change_period(ctx->period_h, period_ms);
 }
 
-bool wink_servo_helper_is_running(dal_servo_t *servo) {
+bool wink_servo_sweep_is_running(dal_servo_t *servo) {
     if (servo == NULL) {
         return false;
     }
@@ -180,8 +180,8 @@ wink_status_t wink_servo_set_angle(dal_servo_t *servo, float angle) {
     return dal_servo_set_angle(servo, angle);
 }
 
-void wink_servo_helper_reset(void) {
-    for (int i = 0; i < WINK_SERVO_HELPER_MAX; i++) {
+void wink_servo_sweep_reset(void) {
+    for (int i = 0; i < WINK_SERVO_SWEEP_MAX; i++) {
         if (s_slots[i].servo != NULL) {
             if (s_slots[i].period_h > 0) {
                 wink_periodic_stop(s_slots[i].period_h);
@@ -192,7 +192,7 @@ void wink_servo_helper_reset(void) {
     }
 }
 
-#else /* WINK_SERVO_HELPER_MAX == 0 */
+#else /* WINK_SERVO_SWEEP_MAX == 0 */
 
 wink_status_t wink_servo_sweep_start_ex(dal_servo_t *servo, float min_angle, float max_angle, uint32_t period_ms,
                                         const wink_bal_opts_t *opts)
@@ -206,17 +206,17 @@ wink_status_t wink_servo_sweep_start(dal_servo_t *servo, float min_angle, float 
     return WINK_ERR_UNAVAILABLE;
 }
 
-wink_status_t wink_servo_helper_stop(dal_servo_t *servo) {
+wink_status_t wink_servo_sweep_stop(dal_servo_t *servo) {
     (void)servo;
     return WINK_OK;
 }
 
-wink_status_t wink_servo_helper_set_period(dal_servo_t *servo, uint32_t period_ms) {
+wink_status_t wink_servo_sweep_set_period(dal_servo_t *servo, uint32_t period_ms) {
     (void)servo; (void)period_ms;
     return WINK_ERR_UNAVAILABLE;
 }
 
-bool wink_servo_helper_is_running(dal_servo_t *servo) {
+bool wink_servo_sweep_is_running(dal_servo_t *servo) {
     (void)servo;
     return false;
 }
@@ -225,10 +225,10 @@ wink_status_t wink_servo_set_angle(dal_servo_t *servo, float angle) {
     return dal_servo_set_angle(servo, angle);
 }
 
-void wink_servo_helper_reset(void) {
+void wink_servo_sweep_reset(void) {
     /* No-op on stub */
 }
 
-#endif /* WINK_SERVO_HELPER_MAX > 0 */
+#endif /* WINK_SERVO_SWEEP_MAX > 0 */
 
 WINK_INTERNAL_BLOCKING_REGION_END

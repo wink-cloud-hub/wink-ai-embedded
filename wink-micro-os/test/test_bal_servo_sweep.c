@@ -1,13 +1,13 @@
 /**
- * @file test_bal_servo.c
- * @brief Unit tests for BAL wink_servo_helper (host).
+ * @file test_bal_servo_sweep.c
+ * @brief Unit tests for BAL wink_servo_sweep (host).
  *
  * Copyright (c) 2026 Wink-AI.
  */
 #define LOG_TAG "tst_servo"
 
 #include "unity.h"
-#include "actuator/wink_servo_helper.h"
+#include "actuator/wink_servo_sweep.h"
 #include "wink_tasks.h"
 #include "wink_status.h"
 #include "dal_servo.h"
@@ -28,7 +28,7 @@ static dal_servo_t s_servo2;
 #include "wink_soft_timer.h"
 
 void setUp(void) {
-    wink_servo_helper_reset();
+    wink_servo_sweep_reset();
     sim_scheduler_reset(0);
     WINK_IGNORE_RESULT(wink_soft_timer_init());
     pal_resource_reset();
@@ -62,44 +62,39 @@ void tearDown(void) {
     sim_clear_gpio_ideal();
 }
 
-/* 1. Argument verification contract */
-void test_servo_helper_invalid_args(void) {
+void test_servo_sweep_invalid_args(void) {
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_servo_sweep_start(NULL, 10.0f, 170.0f, 100));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_servo_sweep_start(&s_servo1, 10.0f, 170.0f, 0));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_servo_sweep_start(&s_servo1, 170.0f, 10.0f, 100));
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_servo_helper_set_period(NULL, 100));
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_servo_helper_set_period(&s_servo1, 0));
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_servo_helper_stop(NULL));
-    TEST_ASSERT_FALSE(wink_servo_helper_is_running(NULL));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_servo_sweep_set_period(NULL, 100));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_servo_sweep_set_period(&s_servo1, 0));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_servo_sweep_stop(NULL));
+    TEST_ASSERT_FALSE(wink_servo_sweep_is_running(NULL));
 }
 
-/* 2. Normal lifecycle (start -> check is_running -> stop) */
-void test_servo_helper_lifecycle(void) {
-    TEST_ASSERT_FALSE(wink_servo_helper_is_running(&s_servo1));
+void test_servo_sweep_lifecycle(void) {
+    TEST_ASSERT_FALSE(wink_servo_sweep_is_running(&s_servo1));
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_servo_sweep_start(&s_servo1, 10.0f, 170.0f, 100));
-    TEST_ASSERT_TRUE(wink_servo_helper_is_running(&s_servo1));
+    TEST_ASSERT_TRUE(wink_servo_sweep_is_running(&s_servo1));
     TEST_ASSERT_EQUAL_UINT32(1, wink_periodic_active_count());
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_servo_helper_stop(&s_servo1));
-    TEST_ASSERT_FALSE(wink_servo_helper_is_running(&s_servo1));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_servo_sweep_stop(&s_servo1));
+    TEST_ASSERT_FALSE(wink_servo_sweep_is_running(&s_servo1));
     TEST_ASSERT_EQUAL_UINT32(0, wink_periodic_active_count());
 }
 
-/* 3. Duplicate start guard */
-void test_servo_helper_duplicate_start_rejected(void) {
+void test_servo_sweep_duplicate_start_rejected(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_servo_sweep_start(&s_servo1, 10.0f, 170.0f, 100));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_STATE, wink_servo_sweep_start(&s_servo1, 10.0f, 170.0f, 50));
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_servo_helper_stop(&s_servo1));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_servo_sweep_stop(&s_servo1));
 }
 
-/* 4. Slot pool exhaustion */
-void test_servo_helper_pool_exhaustion(void) {
-    /* If WINK_SERVO_HELPER_MAX is 4, we need 5 mock slots to exhaust the pool. */
-    dal_servo_t mocks[WINK_SERVO_HELPER_MAX + 1];
+void test_servo_sweep_pool_exhaustion(void) {
+    dal_servo_t mocks[WINK_SERVO_SWEEP_MAX + 1];
     memset(mocks, 0, sizeof(mocks));
 
     int count = 0;
-    for (int i = 0; i < WINK_SERVO_HELPER_MAX + 1; i++) {
+    for (int i = 0; i < WINK_SERVO_SWEEP_MAX + 1; i++) {
         dal_servo_config_t cfg = {
             .owner = "mock_servo",
             .pwm_channel = (uint8_t)(2 + i),
@@ -113,55 +108,50 @@ void test_servo_helper_pool_exhaustion(void) {
             count++;
         } else {
             TEST_ASSERT_EQUAL_INT(WINK_ERR_RESOURCE_EXHAUSTED, st);
-            /* Clean up the one that failed to start since it was still inited */
             TEST_ASSERT_EQUAL_INT(WINK_OK, dal_servo_deinit(&mocks[i]));
             break;
         }
     }
-    TEST_ASSERT_EQUAL_INT(WINK_SERVO_HELPER_MAX, count);
+    TEST_ASSERT_EQUAL_INT(WINK_SERVO_SWEEP_MAX, count);
 
-    // Clean up
     for (int i = 0; i < count; i++) {
-        TEST_ASSERT_EQUAL_INT(WINK_OK, wink_servo_helper_stop(&mocks[i]));
+        TEST_ASSERT_EQUAL_INT(WINK_OK, wink_servo_sweep_stop(&mocks[i]));
         TEST_ASSERT_EQUAL_INT(WINK_OK, dal_servo_deinit(&mocks[i]));
     }
 }
 
-/* 5. REGRESSION: start/stop 100 times must NOT exhaust slots */
-void test_servo_helper_start_stop_reclamation(void) {
+void test_servo_sweep_start_stop_reclamation(void) {
     wink_bal_opts_t opts = WINK_BAL_OPTS_DEFAULT;
     opts.flags = WINK_PERIODIC_LIGHT;
     for (int i = 0; i < 100; i++) {
         TEST_ASSERT_EQUAL_INT(WINK_OK, wink_servo_sweep_start_ex(&s_servo1, 10.0f, 170.0f, 100, &opts));
-        TEST_ASSERT_EQUAL_INT(WINK_OK, wink_servo_helper_stop(&s_servo1));
+        TEST_ASSERT_EQUAL_INT(WINK_OK, wink_servo_sweep_stop(&s_servo1));
     }
     TEST_ASSERT_EQUAL_UINT32(0, wink_periodic_active_count());
 }
 
-/* 6. Period change check */
-void test_servo_helper_set_period(void) {
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_STATE, wink_servo_helper_set_period(&s_servo1, 200));
+void test_servo_sweep_set_period(void) {
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_STATE, wink_servo_sweep_set_period(&s_servo1, 200));
 
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_servo_sweep_start(&s_servo1, 10.0f, 170.0f, 100));
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_servo_helper_set_period(&s_servo1, 200));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_servo_sweep_set_period(&s_servo1, 200));
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_servo_helper_stop(&s_servo1));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_servo_sweep_stop(&s_servo1));
 }
 
-/* 7. Oneshot angle setting check */
-void test_servo_helper_set_angle_oneshot(void) {
+void test_servo_sweep_set_angle_oneshot(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_servo_set_angle(&s_servo1, 90.0f));
     TEST_ASSERT_EQUAL_FLOAT(90.0f, s_servo1.current_angle);
 }
 
 int main(void) {
     UNITY_BEGIN();
-    RUN_TEST(test_servo_helper_invalid_args);
-    RUN_TEST(test_servo_helper_lifecycle);
-    RUN_TEST(test_servo_helper_duplicate_start_rejected);
-    RUN_TEST(test_servo_helper_pool_exhaustion);
-    RUN_TEST(test_servo_helper_start_stop_reclamation);
-    RUN_TEST(test_servo_helper_set_period);
-    RUN_TEST(test_servo_helper_set_angle_oneshot);
+    RUN_TEST(test_servo_sweep_invalid_args);
+    RUN_TEST(test_servo_sweep_lifecycle);
+    RUN_TEST(test_servo_sweep_duplicate_start_rejected);
+    RUN_TEST(test_servo_sweep_pool_exhaustion);
+    RUN_TEST(test_servo_sweep_start_stop_reclamation);
+    RUN_TEST(test_servo_sweep_set_period);
+    RUN_TEST(test_servo_sweep_set_angle_oneshot);
     return UNITY_END();
 }
