@@ -1,17 +1,17 @@
 #define LOG_TAG "bal.chassis"
 
-#include "control/wink_chassis_controller.h"
+#include "control/wink_chassis.h"
 #include "wink_tasks.h"
 #include "wink_blocking_region.h"
 #include "pal_log.h"
 #include "pal_osal.h"
 #include <string.h>
 
-#ifndef WINK_CHASSIS_HELPER_MAX
-#  define WINK_CHASSIS_HELPER_MAX 2
+#ifndef WINK_CHASSIS_MAX
+#  define WINK_CHASSIS_MAX 2
 #endif
 
-#if WINK_CHASSIS_HELPER_MAX > 0
+#if WINK_CHASSIS_MAX > 0
 
 typedef struct {
     dal_motor_t             *left_motor;
@@ -25,12 +25,12 @@ typedef struct {
     volatile float          target_angular_w;
 } chassis_ctx_t;
 
-static chassis_ctx_t s_chassis_slots[WINK_CHASSIS_HELPER_MAX];
+static chassis_ctx_t s_chassis_slots[WINK_CHASSIS_MAX];
 
 /* ── internal helpers ────────────────────────────────────────── */
 
 static int find_free_slot(void) {
-    for (int i = 0; i < WINK_CHASSIS_HELPER_MAX; i++) {
+    for (int i = 0; i < WINK_CHASSIS_MAX; i++) {
         if (s_chassis_slots[i].left_motor == NULL) {
             return i;
         }
@@ -39,7 +39,7 @@ static int find_free_slot(void) {
 }
 
 static int find_slot_by_left_motor(dal_motor_t *left_motor) {
-    for (int i = 0; i < WINK_CHASSIS_HELPER_MAX; i++) {
+    for (int i = 0; i < WINK_CHASSIS_MAX; i++) {
         if (s_chassis_slots[i].left_motor == left_motor) {
             return i;
         }
@@ -202,7 +202,7 @@ wink_status_t wink_chassis_get_velocity(dal_motor_t *left_motor, float *out_line
 
 void wink_chassis_reset(void)
 {
-    for (int i = 0; i < WINK_CHASSIS_HELPER_MAX; i++) {
+    for (int i = 0; i < WINK_CHASSIS_MAX; i++) {
         if (s_chassis_slots[i].left_motor != NULL) {
             WINK_IGNORE_RESULT(wink_closed_loop_motor_stop(s_chassis_slots[i].left_motor));
             WINK_IGNORE_RESULT(wink_closed_loop_motor_stop(s_chassis_slots[i].right_motor));
@@ -214,7 +214,7 @@ void wink_chassis_reset(void)
     }
 }
 
-#else /* WINK_CHASSIS_HELPER_MAX == 0 */
+#else /* WINK_CHASSIS_MAX == 0 */
 
 wink_status_t wink_chassis_start_ex(dal_motor_t *left_motor, dal_encoder_t *left_encoder,
                                     dal_motor_t *right_motor, dal_encoder_t *right_encoder,
@@ -255,4 +255,4 @@ void wink_chassis_reset(void)
 {
 }
 
-#endif /* WINK_CHASSIS_HELPER_MAX > 0 */
+#endif /* WINK_CHASSIS_MAX > 0 */
