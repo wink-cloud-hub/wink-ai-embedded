@@ -1,6 +1,6 @@
 /**
- * @file wink_telemetry_helper.h
- * @brief BAL helper: fire-and-forget 2s telemetry task that prints runtime
+ * @file wink_telemetry_default.h
+ * @brief BAL: fire-and-forget 2s telemetry task that prints runtime
  *        stats + optional sensor/button telemetry to the log output.
  *
  * Lives in the BAL (Business Abstraction Layer) rather than samples/common
@@ -22,8 +22,8 @@
  *
  * Copyright (c) 2026 Wink-AI.
  */
-#ifndef WINK_TELEMETRY_HELPER_H
-#define WINK_TELEMETRY_HELPER_H
+#ifndef WINK_TELEMETRY_DEFAULT_H
+#define WINK_TELEMETRY_DEFAULT_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -42,10 +42,10 @@ extern "C" {
  * Defined at compile time so memory-constrained builds can shrink the pool
  * or multi-sensor rigs can grow it; defaults to 1 (the default telemetry
  * is a singleton in almost all apps).  Override via
- * -DWINK_TELEMETRY_HELPER_MAX=N at compile time.
+ * -DWINK_TELEMETRY_DEFAULT_MAX=N at compile time.
  */
-#ifndef WINK_TELEMETRY_HELPER_MAX
-#define WINK_TELEMETRY_HELPER_MAX 1
+#ifndef WINK_TELEMETRY_DEFAULT_MAX
+#define WINK_TELEMETRY_DEFAULT_MAX 1
 #endif
 
 /**
@@ -60,11 +60,11 @@ extern "C" {
  * @brief Start the default 2s telemetry task.
  *
  * Prints one line every 2 s containing uptime, free heap, min free stack,
- * fault/warn counts, optional sonar distance, optional button edge-count,
+ * fault/warn counts, optional ultrasonic distance, optional button edge-count,
  * reset reason, and abnormal-boot count.
  *
- * @param sonar  Ultrasonic device to report (NULL → skip sonar field).
- * @param btn    Button whose edge_count is reported (NULL → skip isr field).
+ * @param ultrasonic  Ultrasonic device to report (NULL → skip distance field).
+ * @param btn         Button whose edge_count is reported (NULL → skip isr field).
  * @return WINK_OK on success.
  *         WINK_ERR_INVALID_STATE      telemetry is already running
  *                                     (call wink_telemetry_default_stop first;
@@ -78,23 +78,23 @@ extern "C" {
  *       stack/priority/core/flags control.
  */
 WINK_WARN_UNUSED_RESULT
-wink_status_t wink_telemetry_default_start(const dal_ultrasonic_t *sonar,
+wink_status_t wink_telemetry_default_start(const dal_ultrasonic_t *ultrasonic,
                                            const dal_button_t     *btn);
 
 /**
  * @brief Extended start with explicit helper options.
  *
- * @param sonar  Ultrasonic device (NULL → skip).
- * @param btn    Button device (NULL → skip).
- * @param opts   Helper options (stack/priority/core/flags).  Pass NULL for
- *               defaults (equivalent to wink_telemetry_default_start()).
- *               NOTE: telemetry calls LOG_I (printf/UART) which may block;
- *               WINK_PERIODIC_LIGHT is accepted but will likely trigger
- *               WCET warnings or block the tick — MAY_BLOCK is recommended.
+ * @param ultrasonic  Ultrasonic device (NULL → skip).
+ * @param btn         Button device (NULL → skip).
+ * @param opts        Helper options (stack/priority/core/flags).  Pass NULL for
+ *                    defaults (equivalent to wink_telemetry_default_start()).
+ *                    NOTE: telemetry calls LOG_I (printf/UART) which may block;
+ *                    WINK_PERIODIC_LIGHT is accepted but will likely trigger
+ *                    WCET warnings or block the tick — MAY_BLOCK is recommended.
  * @return WINK_OK on success; same error codes as _start().
  */
 WINK_WARN_UNUSED_RESULT
-wink_status_t wink_telemetry_default_start_ex(const dal_ultrasonic_t *sonar,
+wink_status_t wink_telemetry_default_start_ex(const dal_ultrasonic_t *ultrasonic,
                                               const dal_button_t     *btn,
                                               const wink_bal_opts_t *opts);
 
@@ -118,4 +118,4 @@ bool wink_telemetry_default_is_running(void);
 }
 #endif
 
-#endif /* WINK_TELEMETRY_HELPER_H */
+#endif /* WINK_TELEMETRY_DEFAULT_H */
