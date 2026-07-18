@@ -1,13 +1,13 @@
 /**
  * @file wink_ultrasonic_distance_events.c
- * @brief BAL ultrasonic distance events â€” periodic measure + DISTANCE_READY post.
+ * @brief BAL ultrasonic distance events â€?periodic measure + DISTANCE_READY post.
  *
  * Copyright (c) 2026 Wink-AI.
  */
 #define LOG_TAG "bal.us.dist"
 
 #include "sensor/wink_ultrasonic_distance_events.h"
-#include "sensor/wink_sonar_helper.h"
+#include "sensor/wink_ultrasonic_poll.h"
 #include "wink_tasks.h"
 #include "wink_blocking_region.h"
 #include "wink_event.h"
@@ -92,7 +92,7 @@ static void us_dist_tick(void *arg)
     if (ctx->phase == US_DIST_NEED_TRIGGER) {
         wink_status_t rq = dal_ultrasonic_request_measurement(ctx->dev);
         if (wink_status_is_error(rq) && rq != WINK_ERR_BUSY) {
-            /* Transient / hardware â€” retry next period. */
+            /* Transient / hardware â€?retry next period. */
             return;
         }
         ctx->phase = US_DIST_WAITING;
@@ -127,8 +127,8 @@ wink_status_t wink_ultrasonic_enable_distance_events(
         return WINK_ERR_INVALID_STATE;
     }
 
-    if (wink_sonar_helper_is_running(dev)) {
-        LOG_D("enable: sonar helper already owns dev=%p", (void *)dev);
+    if (wink_ultrasonic_poll_is_running(dev)) {
+        LOG_D("enable: ultrasonic poll already owns dev=%p", (void *)dev);
         return WINK_ERR_INVALID_STATE;
     }
 

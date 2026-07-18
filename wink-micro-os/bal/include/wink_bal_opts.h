@@ -65,7 +65,7 @@ typedef struct {
  *
  *     wink_bal_opts_t opts = WINK_BAL_OPTS_DEFAULT;
  *     opts.priority = 8;                       // override one field
- *     wink_ultrasonic_poll_start_ex(&sonar, 50, &opts);
+ *     wink_ultrasonic_poll_start_ex(&ultrasonic, 50, &opts);
  */
 #define WINK_BAL_OPTS_DEFAULT \
     ((wink_bal_opts_t){ .stack_bytes = 0u, .priority = -1, .core_id = WINK_BAL_CORE_INVALID, .flags = 0u })
