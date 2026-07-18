@@ -45,7 +45,7 @@ static void stress_task_fn(void *arg)
         WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, pin, "selftest_smp"));
 
         /* 每 ~100ms 让出 1ms：
-         *   - ESP32: 让 IDLE 喂 Task WDT 并防止低优先级任务（如 sonar/telemetry）饥饿；
+         *   - ESP32: 让 IDLE 喂 Task WDT 并防止低优先级任务（如 ultrasonic poll/telemetry）饥饿；
          *   - host/wasm: 协程环境下切回主循环推进虚拟时钟（否则 end_time 不前进）。*/
         uint64_t now = pal_os_get_ms();
         if ((uint32_t)(now - last_yield) >= 100u) {

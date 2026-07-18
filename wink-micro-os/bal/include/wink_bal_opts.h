@@ -7,7 +7,7 @@
  *        struct + default-value macros.
  *
  * This is the ONLY public BAL header that defines types shared across
- * all BAL helpers.  Per ADR-0023 §2/§3 layering red-line:
+ * all BAL services.  Per ADR-0023 §2/§3 layering red-line:
  *
  *   * This file MUST NOT include any pal_*.h header.  Core affinity is
  *     isolated to our own enum; BAL .c files map it to pal_os_core_id_t
