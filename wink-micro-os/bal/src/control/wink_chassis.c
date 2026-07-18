@@ -11,6 +11,14 @@
 #  define WINK_CHASSIS_MAX 2
 #endif
 
+/* Same DAL pruning contract as wink_closed_loop_motor.c: chassis needs
+ * motor + encoder; when either is pruned, expose stub APIs only. */
+#if !defined(WINK_USE_MOTOR) || !(WINK_USE_MOTOR) \
+ || !defined(WINK_USE_ENCODER) || !(WINK_USE_ENCODER)
+#  undef WINK_CHASSIS_MAX
+#  define WINK_CHASSIS_MAX 0
+#endif
+
 #if WINK_CHASSIS_MAX > 0
 
 typedef struct {
@@ -222,7 +230,7 @@ wink_status_t wink_chassis_start_ex(dal_motor_t *left_motor, dal_encoder_t *left
                                     const wink_bal_opts_t *opts)
 {
     (void)left_motor; (void)left_encoder; (void)right_motor; (void)right_encoder; (void)cfg; (void)opts;
-    return WINK_ERR_UNAVAILABLE;
+    return WINK_ERR_UNSUPPORTED;
 }
 
 wink_status_t wink_chassis_start(dal_motor_t *left_motor, dal_encoder_t *left_encoder,
@@ -230,7 +238,7 @@ wink_status_t wink_chassis_start(dal_motor_t *left_motor, dal_encoder_t *left_en
                                  const wink_chassis_config_t *cfg)
 {
     (void)left_motor; (void)left_encoder; (void)right_motor; (void)right_encoder; (void)cfg;
-    return WINK_ERR_UNAVAILABLE;
+    return WINK_ERR_UNSUPPORTED;
 }
 
 wink_status_t wink_chassis_stop(dal_motor_t *left_motor)
@@ -242,13 +250,13 @@ wink_status_t wink_chassis_stop(dal_motor_t *left_motor)
 wink_status_t wink_chassis_set_velocity(dal_motor_t *left_motor, float linear_v, float angular_w)
 {
     (void)left_motor; (void)linear_v; (void)angular_w;
-    return WINK_ERR_UNAVAILABLE;
+    return WINK_ERR_UNSUPPORTED;
 }
 
 wink_status_t wink_chassis_get_velocity(dal_motor_t *left_motor, float *out_linear_v, float *out_angular_w)
 {
     (void)left_motor; (void)out_linear_v; (void)out_angular_w;
-    return WINK_ERR_UNAVAILABLE;
+    return WINK_ERR_UNSUPPORTED;
 }
 
 void wink_chassis_reset(void)
