@@ -1,6 +1,6 @@
 /**
  * @file test_bal_telemetry.c
- * @brief Unit tests for wink_telemetry_helper (host, virtual time).
+ * @brief Unit tests for wink_telemetry_default (host, virtual time).
  *
  * Telemetry defaults to the MAY_BLOCK path (dedicated task), which on host
  * creates a fiber.  Those fibers are GC'd inside pal_sim_scheduler_run
@@ -8,16 +8,16 @@
  * stop can exhaust the host fiber pool because zombie fibers accumulate.
  * Strategy:
  *   - All default-path (MAY_BLOCK) lifecycle tests run at most 1 start/stop
- *     per test �?setUp/tearDown guarantee a clean slot state between tests.
+ *     per test �?setUp/tearDown guarantee a clean slot state between tests.
  *   - The 100-cycle slot-leak regression uses WINK_PERIODIC_LIGHT via
  *     _start_ex.  LIGHT paths don't allocate fibers; the callback body
  *     never fires (soft_timer is not dispatched), so we exercise only the
- *     BAL slot bookkeeping �?which is exactly what that regression guards.
+ *     BAL slot bookkeeping �?which is exactly what that regression guards.
  *
  * Verifies:
- *   - NULL sonar/btn are both valid (runtime-stats-only telemetry).
+ *   - NULL ultrasonic/btn are both valid (runtime-stats-only telemetry).
  *   - is_running() lifecycle.
- *   - Duplicate-start �?WINK_ERR_INVALID_STATE.
+ *   - Duplicate-start �?WINK_ERR_INVALID_STATE.
  *   - Stop is idempotent (including before any start).
  *   - 100 LIGHT start/stop cycles don't leak BAL slots or periodic handles.
  *   - _start_ex with explicit MAY_BLOCK opts starts successfully.
@@ -25,7 +25,7 @@
 #define LOG_TAG "tst_telem_helper"
 
 #include "unity.h"
-#include "wink_telemetry_helper.h"
+#include "comm/wink_telemetry_default.h"
 #include "wink_bal_opts.h"
 #include "wink_soft_timer.h"
 #include "wink_tasks.h"
@@ -42,7 +42,7 @@
 #include "dal_ultrasonic.h"
 #include "dal_button.h"
 
-/* ── setUp / tearDown ─────────────────────────────────────────── */
+/* ?? setUp / tearDown ??????????????????????????????????????????? */
 void setUp(void) {
     /* Ensure no telemetry from a previous test is left running. */
     wink_telemetry_default_stop();
@@ -61,7 +61,7 @@ void tearDown(void) {
     TEST_ASSERT_EQUAL_UINT32(0, wink_periodic_active_count());
 }
 
-/* ── Tests ────────────────────────────────────────────────────── */
+/* ?? Tests ?????????????????????????????????????????????????????? */
 
 void test_not_running_initially(void) {
     TEST_ASSERT_FALSE(wink_telemetry_default_is_running());
@@ -104,7 +104,7 @@ void test_double_stop_is_idempotent(void) {
     TEST_ASSERT_FALSE(wink_telemetry_default_is_running());
 }
 
-/* REGRESSION for BAL slot/handle leak �?100 LIGHT start/stop cycles.
+/* REGRESSION for BAL slot/handle leak �?100 LIGHT start/stop cycles.
  * LIGHT path avoids host fiber allocation, letting us prove slot
  * recycling in the helper itself without depending on scheduler GC. */
 void test_start_stop_loop_100_light_does_not_leak(void) {
@@ -121,7 +121,7 @@ void test_start_stop_loop_100_light_does_not_leak(void) {
     TEST_ASSERT_EQUAL_UINT32(0, wink_periodic_active_count());
 }
 
-/* _start_ex with explicit MAY_BLOCK opts (one start per test �?host
+/* _start_ex with explicit MAY_BLOCK opts (one start per test �?host
  * fiber is GC'd by tearDown via the scheduler, see file-level note). */
 void test_start_ex_mayblock_explicit_opts_succeeds(void) {
     wink_bal_opts_t opts = WINK_BAL_OPTS_DEFAULT;
@@ -135,14 +135,14 @@ void test_start_ex_mayblock_explicit_opts_succeeds(void) {
     TEST_ASSERT_TRUE(wink_telemetry_default_is_running());
 }
 
-/* Preflight: passing a non-NULL but un-inited sonar or button must fail
+/* Preflight: passing a non-NULL but un-inited ultrasonic or button must fail
  * with NOT_INITIALIZED and must NOT arm a periodic (anti-"blinking in
  * void"). NULL-NULL is already valid and is covered above. */
-void test_start_with_uninitialized_sonar_rejected(void) {
-    dal_ultrasonic_t uninit_sonar;
-    memset(&uninit_sonar, 0, sizeof(uninit_sonar));
+void test_start_with_uninitialized_ultrasonic_rejected(void) {
+    dal_ultrasonic_t uninit_ultrasonic;
+    memset(&uninit_ultrasonic, 0, sizeof(uninit_ultrasonic));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_NOT_INITIALIZED,
-        wink_telemetry_default_start(&uninit_sonar, NULL));
+        wink_telemetry_default_start(&uninit_ultrasonic, NULL));
     TEST_ASSERT_FALSE(wink_telemetry_default_is_running());
     TEST_ASSERT_EQUAL_UINT32(0, wink_periodic_active_count());
 }
@@ -156,7 +156,7 @@ void test_start_with_uninitialized_button_rejected(void) {
     TEST_ASSERT_EQUAL_UINT32(0, wink_periodic_active_count());
 }
 
-/* ── Runner ───────────────────────────────────────────────────── */
+/* ?? Runner ????????????????????????????????????????????????????? */
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_not_running_initially);
@@ -167,7 +167,7 @@ int main(void) {
     RUN_TEST(test_double_stop_is_idempotent);
     RUN_TEST(test_start_stop_loop_100_light_does_not_leak);
     RUN_TEST(test_start_ex_mayblock_explicit_opts_succeeds);
-    RUN_TEST(test_start_with_uninitialized_sonar_rejected);
+    RUN_TEST(test_start_with_uninitialized_ultrasonic_rejected);
     RUN_TEST(test_start_with_uninitialized_button_rejected);
     return UNITY_END();
 }
