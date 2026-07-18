@@ -1,6 +1,6 @@
 /**
  * @file test_blink_helper.c
- * @brief Unit tests for BAL wink_led_blink_helper (host, virtual time).
+ * @brief Unit tests for BAL wink_led_blink (host, virtual time).
  *
  * Verifies (Task 2.1, ADR-0023 Stage 2):
  *   - Argument contract (NULL led / period_ms=0).
@@ -9,13 +9,13 @@
  *   - Stop() halts further toggles.
  *   - Multiple concurrent LEDs up to pool size.
  *   - REGRESSION (LIFO bug): start/stop 100 cycles on the same LED must NOT
- *     return WINK_ERR_RESOURCE_EXHAUSTED â€” slots must be recycled on stop.
+ *     return WINK_ERR_RESOURCE_EXHAUSTED â€?slots must be recycled on stop.
  *   - No leaked wink_periodic handles after stop (active_count returns to 0).
  */
 #define LOG_TAG "tst_blink"
 
 #include "unity.h"
-#include "wink_blink_helper.h"
+#include "output/wink_led_blink.h"
 #include "wink_tasks.h"
 #include "wink_status.h"
 #include "wink_soft_timer.h"
@@ -92,7 +92,7 @@ void test_null_args_rejected(void) {
 }
 
 /* stop() on INVALID (0) and negative (error passthrough) handles is a no-op
- * â€” must not crash, must not corrupt state. */
+ * â€?must not crash, must not corrupt state. */
 void test_stop_invalid_handle_is_noop(void) {
     wink_led_blink_stop((int32_t)WINK_PERIODIC_INVALID);
     wink_led_blink_stop(-1);
@@ -109,7 +109,7 @@ void test_double_stop_is_idempotent(void) {
     /* no crash = PASS */
 }
 
-/* End-to-end: blink at 20 ms period â†’ half-period 10 ms = one tick per toggle.
+/* End-to-end: blink at 20 ms period â†?half-period 10 ms = one tick per toggle.
  * After 1 toggle tick, LED should be off; after 2, on again.
  * We check is_on via the public dal_led_t field (matches test_dal_led pattern). */
 void test_blink_toggles_led_each_half_period(void) {
@@ -120,13 +120,13 @@ void test_blink_toggles_led_each_half_period(void) {
     /* Start() turns LED on per the documented "start with LED on" contract. */
     TEST_ASSERT_TRUE(s_led1.is_on);
 
-    tick_once(); /* first half-period â†’ off */
+    tick_once(); /* first half-period â†?off */
     TEST_ASSERT_FALSE(s_led1.is_on);
 
-    tick_once(); /* second half-period â†’ on */
+    tick_once(); /* second half-period â†?on */
     TEST_ASSERT_TRUE(s_led1.is_on);
 
-    tick_once(); /* third â†’ off */
+    tick_once(); /* third â†?off */
     TEST_ASSERT_FALSE(s_led1.is_on);
 
     wink_led_blink_stop(h);
@@ -141,7 +141,7 @@ void test_stop_halts_toggles(void) {
 
     wink_led_blink_stop(h);
 
-    /* Drive many more ticks â€” LED must stay at its last level (off). */
+    /* Drive many more ticks â€?LED must stay at its last level (off). */
     tick_n(20);
     TEST_ASSERT_FALSE(s_led1.is_on);
 }
@@ -159,7 +159,7 @@ void test_two_concurrent_leds(void) {
     TEST_ASSERT_TRUE(s_led2.is_on);
 
     tick_once();
-    /* led1 toggled (20ms period â†’ 1 tick), led2 NOT yet (40ms â†’ needs 2 ticks). */
+    /* led1 toggled (20ms period â†?1 tick), led2 NOT yet (40ms â†?needs 2 ticks). */
     TEST_ASSERT_FALSE(s_led1.is_on);
     TEST_ASSERT_TRUE(s_led2.is_on);
 
@@ -174,13 +174,13 @@ void test_two_concurrent_leds(void) {
 
 /* REGRESSION for the LIFO/s_next bug: cycling start/stop 100 times must keep
  * succeeding.  The old buggy code used a monotonically-incremented s_next
- * cursor that was only decremented on soft_timer_create failure â€” after 4
+ * cursor that was only decremented on soft_timer_create failure â€?after 4
  * successful start/stop cycles the pool was permanently exhausted. */
 void test_start_stop_loop_100_does_not_exhaust(void) {
     for (int i = 0; i < 100; i++) {
         int32_t h = wink_led_blink_start(&s_led1, 20);
         TEST_ASSERT_GREATER_OR_EQUAL_INT32_MESSAGE(1, h,
-            "blink slot leaked â€” start/stop cycle exhausted pool");
+            "blink slot leaked â€?start/stop cycle exhausted pool");
         tick_once(); /* drive one toggle just to exercise the callback */
         wink_led_blink_stop(h);
     }

@@ -1,6 +1,6 @@
 /**
  * @file wink_sim_ultrasonic_echo.h (samples/common compatibility shim)
- * @brief Forwarding include â€” runtime/selftest migration (ADR-0023 Task 2.4/2.5).
+ * @brief Forwarding include â€?runtime/selftest migration (ADR-0023 Task 2.4/2.5).
  *
  * @deprecated Include runtime/selftest/src/wink_sim_ultrasonic_echo.h directly
  *             (bringup/selftest internal only). This shim will be removed in
@@ -16,7 +16,7 @@
  * #ifndef WINK_STRICT_NONBLOCKING, so strict-mirror TUs see nothing.
  *
  * IMPORTANT: this shim uses its own distinct include guard (same rationale
- * as wink_blink_helper.h shim) â€” sharing WINK_SIM_ULTRASONIC_ECHO_H with
+ * as BAL LED blink include path) â€?sharing WINK_SIM_ULTRASONIC_ECHO_H with
  * the canonical header causes the real header body to be skipped when
  * common/include precedes runtime/selftest/src in the -I search order.
  *

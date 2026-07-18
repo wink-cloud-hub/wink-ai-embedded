@@ -1,6 +1,6 @@
 /**
- * @file wink_blink_helper.h
- * @brief BAL helper: blink a DAL LED via the runtime periodic scheduler.
+ * @file wink_led_blink.h
+ * @brief BAL: blink a DAL LED via the runtime periodic scheduler.
  *
  * Lives in the BAL (Business Abstraction Layer) rather than samples/common
  * because periodic LED blink is a building block used by essentially every
@@ -13,8 +13,8 @@
  *
  * Copyright (c) 2026 Wink-AI.
  */
-#ifndef WINK_BLINK_HELPER_H
-#define WINK_BLINK_HELPER_H
+#ifndef WINK_LED_BLINK_H
+#define WINK_LED_BLINK_H
 
 #include <stdint.h>
 #include "wink_status.h"
@@ -29,10 +29,10 @@ extern "C" {
  * @brief Default / overridable slot-pool size.
  *
  * Defined at compile time so memory-constrained builds can shrink the pool;
- * defaults to 4 (matches the original samples/common helper).
+ * defaults to 4 (matches the original prior helper).
  */
-#ifndef WINK_BLINK_HELPER_MAX
-#define WINK_BLINK_HELPER_MAX  4
+#ifndef WINK_LED_BLINK_MAX
+#define WINK_LED_BLINK_MAX  4
 #endif
 
 /**
@@ -68,7 +68,7 @@ int32_t wink_led_blink_start(dal_led_t *led, uint32_t period_ms);
  *                   for defaults (equivalent to wink_led_blink_start()).
  *                   NOTE: blink is purely non-blocking; WINK_PERIODIC_MAY_BLOCK
  *                   is accepted but unnecessary and will simply allocate a
- *                   dedicated task for a trivial toggle (wasteful â€” LIGHT
+ *                   dedicated task for a trivial toggle (wasteful â€?LIGHT
  *                   recommended).
  * @return >=1 blink handle on success; <0 WINK_ERR_* on failure.
  */
@@ -80,7 +80,7 @@ int32_t wink_led_blink_start_ex(dal_led_t *led, uint32_t period_ms,
  *
  * Idempotent: stopping an already-stopped / invalid / negative (error-code)
  * handle is a silent no-op.  The context slot is freed for reuse, fixing
- * the LIFO/s_next slot-leak bug in the original samples/common helper.
+ * the LIFO/s_next slot-leak bug in the original prior helper.
  *
  * @param handle  Value returned by wink_led_blink_start/_ex().
  */
@@ -90,4 +90,4 @@ void wink_led_blink_stop(int32_t handle);
 }
 #endif
 
-#endif /* WINK_BLINK_HELPER_H */
+#endif /* WINK_LED_BLINK_H */
