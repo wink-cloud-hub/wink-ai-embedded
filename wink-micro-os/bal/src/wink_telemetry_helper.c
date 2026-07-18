@@ -1,10 +1,10 @@
 /**
- * @file wink_telemetry_helper.c
- * @brief BAL default telemetry helper �?prints runtime stats + optional
+ * @file wink_telemetry_default.c (flat src path until Task 7 domain mirror)
+ * @brief BAL default telemetry helper �?prints runtime stats + optional
  *        sensor/button telemetry every 2s via a MAY_BLOCK periodic task.
  *
  * ADR-0017 BAL-exception: this TU legitimately calls WINK_BLOCKING APIs
- * (LOG_I �?printf/UART write) from within a periodic MAY_BLOCK task body.
+ * (LOG_I �?printf/UART write) from within a periodic MAY_BLOCK task body.
  * The file-scope WINK_INTERNAL_BLOCKING_REGION_BEGIN/END suppression is
  * placed after all #includes so the pragma does NOT leak into PAL/DAL
  * headers.
@@ -12,7 +12,7 @@
  * Slot management: uses a free-list scan (mirroring blink/button helpers)
  * so stop() marks slots free (in_use = false) and the pool is recycled
  * correctly across start/stop cycles.  An explicit `in_use` bool is used
- * (rather than a pointer sentinel) because NULL sonar/btn are both
+ * (rather than a pointer sentinel) because NULL ultrasonic/btn are both
  * legitimate values meaning "skip that field".
  *
  * The callback reads cached DAL state (dal_ultrasonic_get_cached_distance,
@@ -23,7 +23,7 @@
  */
 #define LOG_TAG "bal.telem"
 
-#include "wink_telemetry_helper.h"
+#include "comm/wink_telemetry_default.h"
 #include "wink_tasks.h"
 #include "wink_runtime.h"
 #include "wink_status.h"
@@ -34,27 +34,27 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* ADR-0017 BAL-exception: helper 内部通过 wink_periodic MAY_BLOCK 路径
- * 调用 WINK_BLOCKING API (LOG_I/printf). */
+/* ADR-0017 BAL-exception: helper ???? wink_periodic MAY_BLOCK ??
+ * ?? WINK_BLOCKING API (LOG_I/printf). */
 WINK_INTERNAL_BLOCKING_REGION_BEGIN
 
-/* ── per-telemetry slot ────────────────────────────────────────
- * in_use marks the slot occupied; sonar/btn are user-passed pointers
+/* ?? per-telemetry slot ????????????????????????????????????????
+ * in_use marks the slot occupied; ultrasonic/btn are user-passed pointers
  * (NULL is valid = "skip that field").  BSS zero-init sets in_use=false,
  * which is exactly the free-slot state we want. */
 typedef struct {
     bool                    in_use;
-    const dal_ultrasonic_t *sonar;
+    const dal_ultrasonic_t *ultrasonic;
     const dal_button_t     *btn;
     wink_periodic_handle_t  period_h;
 } telem_ctx_t;
 
-static telem_ctx_t s_slots[WINK_TELEMETRY_HELPER_MAX];
+static telem_ctx_t s_slots[WINK_TELEMETRY_DEFAULT_MAX];
 
-/* ── internal helpers ────────────────────────────────────────── */
+/* ?? internal helpers ?????????????????????????????????????????? */
 
 static int find_free_slot(void) {
-    for (int i = 0; i < WINK_TELEMETRY_HELPER_MAX; i++) {
+    for (int i = 0; i < WINK_TELEMETRY_DEFAULT_MAX; i++) {
         if (!s_slots[i].in_use) {
             return i;
         }
@@ -73,18 +73,18 @@ static pal_os_core_id_t map_core(wink_bal_core_t c) {
     }
 }
 
-/* ── periodic callback (MAY_BLOCK path �?void return, void* ctx) ── */
+/* ?? periodic callback (MAY_BLOCK path �?void return, void* ctx) ?? */
 static void telem_tick(void *arg) {
     telem_ctx_t *ctx = (telem_ctx_t *)arg;
     wink_runtime_stats_t st;
     wink_runtime_get_stats(&st);
 
     float         dist_cm  = -1.0f;
-    wink_status_t sonar_st = WINK_ERR_UNSUPPORTED;
+    wink_status_t ultrasonic_st = WINK_ERR_UNSUPPORTED;
     uint32_t      isrs     = 0u;
 
-    if (ctx->sonar != NULL) {
-        sonar_st = dal_ultrasonic_get_cached_distance(ctx->sonar, &dist_cm);
+    if (ctx->ultrasonic != NULL) {
+        ultrasonic_st = dal_ultrasonic_get_cached_distance(ctx->ultrasonic, &dist_cm);
     }
     if (ctx->btn != NULL) {
         uint32_t cnt = 0u;
@@ -93,38 +93,38 @@ static void telem_tick(void *arg) {
     }
 
     LOG_I("uptime=%lums heap=%lu stack_min=%lu faults=%lu warns=%lu "
-          "isrs=%lu sonar_st=%d dist=%.2fcm reset=%d abn=%lu",
+          "isrs=%lu ultrasonic_st=%d dist=%.2fcm reset=%d abn=%lu",
           (unsigned long)st.uptime_ms,
           (unsigned long)st.free_heap,
           (unsigned long)st.min_free_stack,
           (unsigned long)st.fault_count,
           (unsigned long)st.warn_count,
           (unsigned long)isrs,
-          (int)sonar_st, dist_cm,
+          (int)ultrasonic_st, dist_cm,
           (int)st.last_reset_reason,
           (unsigned long)st.abnormal_boot_count);
 }
 
-/* ── public API ──────────────────────────────────────────────── */
+/* ?? public API ???????????????????????????????????????????????? */
 
-wink_status_t wink_telemetry_default_start_ex(const dal_ultrasonic_t *sonar,
+wink_status_t wink_telemetry_default_start_ex(const dal_ultrasonic_t *ultrasonic,
                                               const dal_button_t     *btn,
                                               const wink_bal_opts_t *opts)
 {
     int free_idx = find_free_slot();
     if (free_idx < 0) {
         /* With the default MAX=1 a full pool means "telemetry already
-         * started" �?semantically INVALID_STATE.  When a build overrides
+         * started" �?semantically INVALID_STATE.  When a build overrides
          * MAX to >1 this still reports INVALID_STATE (consistent with the
          * no-arg stop() which tears down ALL default-telemetry slots);
          * users wanting multiple independent telemetry streams should
          * write their own periodic tasks instead. */
         LOG_D("start: telemetry already running (pool_max=%d)",
-              WINK_TELEMETRY_HELPER_MAX);
+              WINK_TELEMETRY_DEFAULT_MAX);
         return WINK_ERR_INVALID_STATE;
     }
 
-    /* Resolve options (NULL �?defaults). */
+    /* Resolve options (NULL �?defaults). */
     wink_bal_opts_t effective = WINK_BAL_OPTS_DEFAULT;
     if (opts != NULL) {
         effective = *opts;
@@ -145,22 +145,22 @@ wink_status_t wink_telemetry_default_start_ex(const dal_ultrasonic_t *sonar,
 
     telem_ctx_t *ctx = &s_slots[free_idx];
     ctx->in_use   = true;
-    ctx->sonar    = sonar;
+    ctx->ultrasonic = ultrasonic;
     ctx->btn      = btn;
     ctx->period_h = WINK_PERIODIC_INVALID;
 
     /* Preflight: if a non-NULL device is supplied, verify it is initialised.
-     * Mirrors blink/button/sonar helper preflight pattern. NOT_INITIALIZED
+     * Mirrors blink/button/ultrasonic poll preflight pattern. NOT_INITIALIZED
      * on either pointer fails start; BUSY/transient errors are tolerated
      * (the tick will retry/report on the next 2 s cycle). NULL pointers
      * are legitimate ("don't report that field") and are skipped. */
-    if (sonar != NULL) {
+    if (ultrasonic != NULL) {
         float d = 0.0f;
-        wink_status_t st = dal_ultrasonic_get_cached_distance(sonar, &d);
+        wink_status_t st = dal_ultrasonic_get_cached_distance(ultrasonic, &d);
         if (st == WINK_ERR_NOT_INITIALIZED) {
-            LOG_D("start: sonar not initialized");
+            LOG_D("start: ultrasonic not initialized");
             ctx->in_use = false;
-            ctx->sonar  = NULL;
+            ctx->ultrasonic = NULL;
             ctx->btn    = NULL;
             return WINK_ERR_NOT_INITIALIZED;
         }
@@ -171,7 +171,7 @@ wink_status_t wink_telemetry_default_start_ex(const dal_ultrasonic_t *sonar,
         if (st == WINK_ERR_NOT_INITIALIZED) {
             LOG_D("start: button not initialized");
             ctx->in_use = false;
-            ctx->sonar  = NULL;
+            ctx->ultrasonic = NULL;
             ctx->btn    = NULL;
             return WINK_ERR_NOT_INITIALIZED;
         }
@@ -183,7 +183,7 @@ wink_status_t wink_telemetry_default_start_ex(const dal_ultrasonic_t *sonar,
     if (h < 0) {
         LOG_D("start: periodic_start failed: %d", (int)h);
         ctx->in_use = false;   /* roll back slot allocation */
-        ctx->sonar  = NULL;
+        ctx->ultrasonic = NULL;
         ctx->btn    = NULL;
         return (wink_status_t)h;
     }
@@ -192,19 +192,19 @@ wink_status_t wink_telemetry_default_start_ex(const dal_ultrasonic_t *sonar,
     return WINK_OK;
 }
 
-wink_status_t wink_telemetry_default_start(const dal_ultrasonic_t *sonar,
+wink_status_t wink_telemetry_default_start(const dal_ultrasonic_t *ultrasonic,
                                            const dal_button_t     *btn)
 {
-    return wink_telemetry_default_start_ex(sonar, btn, NULL);
+    return wink_telemetry_default_start_ex(ultrasonic, btn, NULL);
 }
 
 void wink_telemetry_default_stop(void)
 {
-    for (int i = 0; i < WINK_TELEMETRY_HELPER_MAX; i++) {
+    for (int i = 0; i < WINK_TELEMETRY_DEFAULT_MAX; i++) {
         if (s_slots[i].in_use) {
             wink_periodic_stop(s_slots[i].period_h);
             s_slots[i].period_h = WINK_PERIODIC_INVALID;
-            s_slots[i].sonar    = NULL;
+            s_slots[i].ultrasonic = NULL;
             s_slots[i].btn      = NULL;
             s_slots[i].in_use   = false;   /* mark slot free for reuse */
         }
@@ -213,7 +213,7 @@ void wink_telemetry_default_stop(void)
 
 bool wink_telemetry_default_is_running(void)
 {
-    for (int i = 0; i < WINK_TELEMETRY_HELPER_MAX; i++) {
+    for (int i = 0; i < WINK_TELEMETRY_DEFAULT_MAX; i++) {
         if (s_slots[i].in_use) {
             return true;
         }
