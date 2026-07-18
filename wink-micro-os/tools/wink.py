@@ -531,6 +531,10 @@ def handle_build(args):
         ]
         if sdk_mode:
             configure_cmd.append(f"-DWINK_SDK_MODE={sdk_mode}")
+        # unisim_smoke exercises blocking PAL imports (js_* bridge coverage);
+        # default wasm STRICT=1 would hide those declarations (ADR-0017).
+        if app_name == "unisim_smoke":
+            configure_cmd.append("-DWINK_STRICT_NONBLOCKING=0")
 
         if args.clean:
             import shutil
