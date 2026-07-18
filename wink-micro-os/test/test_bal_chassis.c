@@ -1,18 +1,18 @@
 /**
- * @file test_bal_chassis_controller.c
- * @brief Unit tests for BAL chassis controller + diff drive kinematics (host).
+ * @file test_bal_chassis.c
+ * @brief Unit tests for BAL chassis + diff drive kinematics (host).
  *
  * Covers:
  *   1. Diff-drive kinematics inverse/forward correctness
  *   2. Speed ↔ counts unit conversion round-trip
- *   3. Chassis controller lifecycle (start → set_velocity → stop)
+ *   3. Chassis lifecycle (start → set_velocity → stop)
  *   4. Argument validation
  *   5. Pool exhaustion
  */
 #define LOG_TAG "tst_chassis"
 
 #include "unity.h"
-#include "control/wink_chassis_controller.h"
+#include "control/wink_chassis.h"
 #include "math/wink_diff_drive_kinematics.h"
 #include "wink_tasks.h"
 #include "wink_soft_timer.h"
@@ -32,13 +32,10 @@
 
 extern void host_sim_advance_to(uint64_t us);
 
-/* ── Test-scoped devices ─────────────────────────────────────── */
 static dal_motor_t   s_left_motor;
 static dal_encoder_t s_left_encoder;
 static dal_motor_t   s_right_motor;
 static dal_encoder_t s_right_encoder;
-
-/* ── setUp / tearDown ────────────────────────────────────────── */
 
 void setUp(void) {
     extern void wink_chassis_reset(void);
@@ -90,12 +87,7 @@ void tearDown(void) {
     WINK_IGNORE_RESULT(dal_encoder_deinit(&s_right_encoder));
 }
 
-/* ═══════════════════════════════════════════════════════════════
- *  Part A: Pure math kinematics tests (no hardware, no runtime)
- * ═══════════════════════════════════════════════════════════════ */
-
 void test_kinematics_inverse_straight(void) {
-    /* v = 0.5 m/s, w = 0 → both wheels same speed */
     wink_diff_drive_params_t p = { .wheel_base = 0.2f, .wheel_radius = 0.03f, .counts_per_rev = 360.0f };
     float vl = 0.0f, vr = 0.0f;
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_diff_drive_to_wheel_speeds(&p, 0.5f, 0.0f, &vl, &vr));
@@ -104,7 +96,6 @@ void test_kinematics_inverse_straight(void) {
 }
 
 void test_kinematics_inverse_pure_rotation(void) {
-    /* v = 0, w = 1 rad/s → left = -W/2, right = +W/2 */
     wink_diff_drive_params_t p = { .wheel_base = 0.2f, .wheel_radius = 0.03f, .counts_per_rev = 360.0f };
     float vl = 0.0f, vr = 0.0f;
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_diff_drive_to_wheel_speeds(&p, 0.0f, 1.0f, &vl, &vr));
@@ -113,7 +104,6 @@ void test_kinematics_inverse_pure_rotation(void) {
 }
 
 void test_kinematics_forward_round_trip(void) {
-    /* Inverse then forward should recover original (v, w) */
     wink_diff_drive_params_t p = { .wheel_base = 0.15f, .wheel_radius = 0.033f, .counts_per_rev = 360.0f };
     float vl = 0.0f, vr = 0.0f;
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_diff_drive_to_wheel_speeds(&p, 0.3f, 0.5f, &vl, &vr));
@@ -125,7 +115,6 @@ void test_kinematics_forward_round_trip(void) {
 }
 
 void test_kinematics_speed_counts_round_trip(void) {
-    /* speed → counts → speed should round-trip */
     wink_diff_drive_params_t p = { .wheel_base = 0.2f, .wheel_radius = 0.03f, .counts_per_rev = 360.0f };
     float speed_in = 0.5f;
     float counts = wink_diff_drive_speed_to_counts(&p, speed_in);
@@ -141,10 +130,6 @@ void test_kinematics_invalid_args(void) {
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_diff_drive_to_wheel_speeds(&bad, 0, 0, &vl, &vr));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_diff_drive_to_chassis_speeds(&bad, 0, 0, &v, &w));
 }
-
-/* ═══════════════════════════════════════════════════════════════
- *  Part B: Chassis controller integration tests (with host sim)
- * ═══════════════════════════════════════════════════════════════ */
 
 static wink_chassis_config_t make_default_cfg(void) {
     wink_pid_config_t pid = {
@@ -179,18 +164,14 @@ void test_chassis_lifecycle(void) {
         wink_chassis_start(&s_left_motor, &s_left_encoder,
                            &s_right_motor, &s_right_encoder, &cfg));
 
-    /* Duplicate start rejected */
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_STATE,
         wink_chassis_start(&s_left_motor, &s_left_encoder,
                            &s_right_motor, &s_right_encoder, &cfg));
 
-    /* Set velocity */
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_chassis_set_velocity(&s_left_motor, 0.3f, 0.0f));
 
-    /* Stop */
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_chassis_stop(&s_left_motor));
 
-    /* set_velocity after stop → INVALID_STATE */
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_STATE, wink_chassis_set_velocity(&s_left_motor, 0.1f, 0.0f));
 }
 
@@ -201,34 +182,27 @@ void test_chassis_set_velocity_drives_motors(void) {
         wink_chassis_start(&s_left_motor, &s_left_encoder,
                            &s_right_motor, &s_right_encoder, &cfg));
 
-    /* Straight forward: both motors should get positive output after a tick */
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_chassis_set_velocity(&s_left_motor, 0.3f, 0.0f));
 
-    /* Advance simulation to let the PID loop fire */
     for (int i = 0; i < 3; i++) {
         uint64_t now = pal_os_get_us();
         host_sim_advance_to(now + 10000u);
         wink_soft_timer_dispatch();
     }
 
-    /* Both motors should have positive speed output (trying to reach target) */
     TEST_ASSERT_TRUE(s_left_motor.current_speed > 0.0f);
     TEST_ASSERT_TRUE(s_right_motor.current_speed > 0.0f);
 
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_chassis_stop(&s_left_motor));
 }
 
-/* ── main ────────────────────────────────────────────────────── */
-
 int main(void) {
     UNITY_BEGIN();
-    /* Part A: pure kinematics math */
     RUN_TEST(test_kinematics_inverse_straight);
     RUN_TEST(test_kinematics_inverse_pure_rotation);
     RUN_TEST(test_kinematics_forward_round_trip);
     RUN_TEST(test_kinematics_speed_counts_round_trip);
     RUN_TEST(test_kinematics_invalid_args);
-    /* Part B: chassis controller integration */
     RUN_TEST(test_chassis_invalid_args);
     RUN_TEST(test_chassis_lifecycle);
     RUN_TEST(test_chassis_set_velocity_drives_motors);

@@ -1,5 +1,5 @@
-#ifndef WINK_CHASSIS_CONTROLLER_H
-#define WINK_CHASSIS_CONTROLLER_H
+#ifndef WINK_CHASSIS_H
+#define WINK_CHASSIS_H
 
 #include "actuator/dal_motor.h"
 #include "sensor/dal_encoder.h"
@@ -30,7 +30,7 @@ typedef struct {
  * @param cfg 控制参数配置
  * @return
  *   WINK_OK                 启动成功，底层左右闭环电机控制器已启动。
- *   WINK_ERR_RESOURCE_EXHAUSTED  Slot 池已满（由 WINK_CHASSIS_HELPER_MAX 决定）。
+ *   WINK_ERR_RESOURCE_EXHAUSTED  Slot 池已满（由 WINK_CHASSIS_MAX 决定）。
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t wink_chassis_start(dal_motor_t *left_motor, dal_encoder_t *left_encoder,
@@ -77,4 +77,4 @@ wink_status_t wink_chassis_get_velocity(dal_motor_t *left_motor, float *out_line
 }
 #endif
 
-#endif /* WINK_CHASSIS_CONTROLLER_H */
+#endif /* WINK_CHASSIS_H */
