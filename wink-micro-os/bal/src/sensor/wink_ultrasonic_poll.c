@@ -1,5 +1,5 @@
 /**
- * @file wink_ultrasonic_poll.c (flat src path until Task 7 domain mirror)
+ * @file wink_ultrasonic_poll.c
  * @brief BAL ultrasonic poll ù periodically triggers distance measurements
  *        via the runtime periodic scheduler (MAY_BLOCK path).
  *

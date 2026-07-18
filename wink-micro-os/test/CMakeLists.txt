@@ -266,21 +266,11 @@ add_wink_host_test(test_pal_i2c_bus test_pal_i2c_bus.c)
 # and wink_soft_timer.c) and dal; transitive deps bring in pal + trace.
 add_wink_host_test(test_button_events test_button_events.c)
 target_link_libraries(test_button_events PRIVATE wink_bal)
-# add_wink_host_test's default include dirs do NOT include bal/include/input
-# (where wink_button_events.h lives). wink_bal PUBLIC-includes that path, but
-# add_wink_host_test adds include dirs BEFORE target_link_libraries runs, so
-# we add it explicitly here to be safe.
-target_include_directories(test_button_events PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/input)
 target_compile_definitions(test_button_events PRIVATE WINK_STRICT_NONBLOCKING=1)
 
 # ADR-0033: ultrasonic distance events ??WINK_EVENT_DISTANCE_READY
 add_wink_host_test(test_ultrasonic_distance_events test_ultrasonic_distance_events.c)
 target_link_libraries(test_ultrasonic_distance_events PRIVATE wink_bal)
-target_include_directories(test_ultrasonic_distance_events PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/sensor)
 target_compile_definitions(test_ultrasonic_distance_events PRIVATE WINK_STRICT_NONBLOCKING=1)
 
 # ADR-0031 Task S4: BAL wink_button_events GPIO_IRQ ??SOFT_POLL degrade
@@ -289,9 +279,6 @@ target_compile_definitions(test_ultrasonic_distance_events PRIVATE WINK_STRICT_N
 # `WINK_BUTTON_IRQ_STRICT` so both mode contracts live next to each other.
 add_wink_host_test(test_button_events_irq_degrade test_button_events_irq_degrade.c)
 target_link_libraries(test_button_events_irq_degrade PRIVATE wink_bal)
-target_include_directories(test_button_events_irq_degrade PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/input)
 
 # STRICT variant: `WINK_BUTTON_IRQ_STRICT` must reach the wink_button_events
 # translation unit, but `libwink_bal.a` is already built without it. To pick
@@ -301,12 +288,9 @@ target_include_directories(test_button_events_irq_degrade PRIVATE
 # helpers we do not touch. Include-dirs mirror the ones wink_bal exports.
 add_wink_host_test(test_button_events_irq_strict
     test_button_events_irq_degrade.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/src/wink_button_events.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/src/wink_button_events_irq.c)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/src/input/wink_button_events.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/src/input/wink_button_events_irq.c)
 target_link_libraries(test_button_events_irq_strict PRIVATE wink_bal)
-target_include_directories(test_button_events_irq_strict PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/input)
 target_compile_definitions(test_button_events_irq_strict PRIVATE WINK_BUTTON_IRQ_STRICT=1)
 
 # ADR-0023 Task 2.1: BAL wink_led_blink.
@@ -314,58 +298,31 @@ target_compile_definitions(test_button_events_irq_strict PRIVATE WINK_BUTTON_IRQ
 # wink_soft_timer.c) and dal; transitive deps bring in pal + trace.
 add_wink_host_test(test_led_blink test_led_blink.c)
 target_link_libraries(test_led_blink PRIVATE wink_bal)
-# add_wink_host_test's default include dirs do NOT include bal/include/output
-# (where wink_led_blink.h lives). wink_bal PUBLIC-includes that path, but
-# add_wink_host_test adds include dirs BEFORE target_link_libraries runs, so
-# we add it explicitly here to be safe.
-target_include_directories(test_led_blink PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/output)
 target_compile_definitions(test_led_blink PRIVATE WINK_STRICT_NONBLOCKING=1)
 
 # ADR-0023 Task 2.3: BAL wink_telemetry_default.
 add_wink_host_test(test_bal_telemetry test_bal_telemetry.c)
 target_link_libraries(test_bal_telemetry PRIVATE wink_bal)
-# add_wink_host_test's default include dirs do NOT include bal/include/comm;
-# add it explicitly (mirrors test_button_events / test_led_blink pattern).
-target_include_directories(test_bal_telemetry PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/comm)
 
 # BAL ultrasonic poll test.
 add_wink_host_test(test_bal_ultrasonic_poll test_bal_ultrasonic_poll.c)
 target_link_libraries(test_bal_ultrasonic_poll PRIVATE wink_bal)
-target_include_directories(test_bal_ultrasonic_poll PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/sensor)
 
 # BAL servo sweep test.
 add_wink_host_test(test_bal_servo_sweep test_bal_servo_sweep.c)
 target_link_libraries(test_bal_servo_sweep PRIVATE wink_bal)
-target_include_directories(test_bal_servo_sweep PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/actuator)
 
 # BAL PID helper test.
 add_wink_test(test_pid test_pid.c)
 target_link_libraries(test_pid PRIVATE wink_bal)
-target_include_directories(test_pid PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include)
 
 # BAL closed loop motor test.
 add_wink_host_test(test_bal_closed_loop_motor test_bal_closed_loop_motor.c)
 target_link_libraries(test_bal_closed_loop_motor PRIVATE wink_bal)
-target_include_directories(test_bal_closed_loop_motor PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/control)
 
 # BAL chassis + diff drive kinematics test.
 add_wink_host_test(test_bal_chassis test_bal_chassis.c)
 target_link_libraries(test_bal_chassis PRIVATE wink_bal)
-target_include_directories(test_bal_chassis PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/control
-    ${CMAKE_CURRENT_SOURCE_DIR}/../bal/include/math)
 
 # Track A M1 / Task A-4?DAL?PAL ???? e2e ??????7 ??DAL init ?? wire pal_resource_claim??
 # P2: dal is linked via add_wink_host_test; need the extra include dirs for

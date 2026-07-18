@@ -15,7 +15,7 @@
 #define LOG_TAG "tst_btn_ev_irq"
 
 #include "unity.h"
-#include "wink_button_events.h"
+#include "input/wink_button_events.h"
 #include "wink_soft_timer.h"
 #include "wink_tasks.h"
 #include "wink_event.h"
