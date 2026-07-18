@@ -249,9 +249,9 @@ wink_status_t dal_ultrasonic_get_cached_distance(const dal_ultrasonic_t *dev, fl
             /* Phase-lock guard: if a previous measurement already succeeded
              * (last_status == WINK_OK), return the cached distance instead
              * of BUSY.  Without this, a telemetry reader whose period is an
-             * exact integer multiple of the sonar tick (e.g. 2000ms = 4×500ms)
+             * exact integer multiple of the ultrasonic poll tick (e.g. 2000ms = 4×500ms)
              * can permanently land in the ~28ms MEASURING window because the
-             * higher-priority sonar task has already claimed the CPU and
+             * higher-priority ultrasonic poll task has already claimed the CPU and
              * entered RMT wait.  Reporting stale-but-valid data is the
              * correct telemetry behaviour — BUSY should mean "no data yet",
              * not "data is one measurement-cycle old". */

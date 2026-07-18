@@ -59,7 +59,7 @@ typedef int32_t wink_periodic_handle_t;
  *                   (higher = more urgent).  Ignored for LIGHT callbacks.
  *                   Use WINK_PERIODIC_DEFAULT_PRIORITY (2) for background
  *                   telemetry/polling; raise for latency-sensitive work
- *                   (e.g. 5-10 for sonar RMT capture, per ADR-0016).
+ *                   (e.g. 5-10 for ultrasonic RMT capture, per ADR-0016).
  * @param core       Core affinity.  PAL_OS_CORE_ANY lets the scheduler
  *                   decide; PAL_OS_CORE_0/1 pins to a specific core
  *                   (ESP32 dual-core).  Ignored on single-core targets.
