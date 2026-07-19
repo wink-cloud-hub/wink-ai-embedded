@@ -631,5 +631,5 @@ wink_status_t pal_sim_scheduler_run(const struct wink_app_callbacks* callbacks,
     return WINK_OK;
 }
 
-/* pal_os_ringbuf_* 环形缓冲区实现已上移至 targets/common/src/pal_osal_ringbuf.c，
- * 与 wasm target 共享（字节级一致的纯内存单线程实现）。 */
+/* pal_os_ringbuf_* 环形缓冲区实现已上移至 osal/common/pal_osal_ringbuf.c，
+ * 与 wasm OSAL 共享（字节级一致的纯内存单线程实现）。 */

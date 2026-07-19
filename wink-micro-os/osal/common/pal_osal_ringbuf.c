@@ -2,9 +2,9 @@
  * @file pal_osal_ringbuf.c
  * @brief PAL OSAL 环形缓冲区 —— WASM / host 共享实现（单线程无并发纯内存环形缓冲）。
  *
- * 由 wasm 与 host 两个仿真 target 共同编译（各自 CMakeLists.txt 通过相对路径
- * `../common/src/pal_osal_ringbuf.c` 引入）。ESP32 target 走 FreeRTOS xRingbuffer、
- * baremetal target 走关中断原子实现，均**不**编译本文件。
+ * 由 wasm 与 host 两个仿真 OSAL 共同编译（经 `osal/CMakeLists.txt` 按
+ * `WINK_OSAL_TYPE` 注入 `WINK_OSAL_SOURCES`）。ESP32 走 FreeRTOS xRingbuffer、
+ * baremetal 走关中断原子实现，均**不**编译本文件。
  *
  * 合约与 pal_osal.h 中的声明一致：
  *   - size 必须是 2 的幂（用作 & mask 掩码）；否则 create 返回 NULL。

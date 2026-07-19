@@ -59,18 +59,21 @@ SDK_WASM_BRIDGE_FILES = [
     "targets/wasm/exported_runtime_functions.json",
 ]
 
-# Source file basenames compiled into the wasm PAL (targets/wasm/ + targets/common/src/).
+# Source file basenames compiled into the wasm PAL/OSAL image.
 # Used to locate .o files in the build tree for archive merging.
+# Layout after ADR-0041: HAL under targets/wasm/; OSAL under osal/wasm|common/.
 _WASM_PAL_SOURCE_BASENAMES = [
-    # targets/wasm/
+    # targets/wasm/ (HAL + wasm-only)
     "pal_hal_wasm.c", "pal_log_wasm.c", "pal_irq_wasm.c",
-    "pal_osal_wasm.c", "pal_storage_wasm.c",
+    "pal_storage_wasm.c",
     "pal_wasm_physical.c", "pal_wasm_fault.c", "pal_wasm_fault_domain.c",
-    "sim_ctx_emscripten_fiber.c", "wasm_entry.c",
+    "wasm_entry.c",
     "wasm_sim_registry.c",
     "wasm_dev_ssd1306.c", "wasm_dev_servo.c", "wasm_dev_ultrasonic.c",
+    # osal/wasm + osal/common/
+    "pal_osal_wasm.c", "sim_ctx_emscripten_fiber.c", "pal_osal_ringbuf.c",
     # targets/common/src/ + pal/
-    "pal_osal_ringbuf.c", "pal_resource.c", "pal_pwm_router.c",
+    "pal_resource.c", "pal_pwm_router.c",
     "wink_sim_physical.c", "wink_sim_scheduler.c",
 ]
 

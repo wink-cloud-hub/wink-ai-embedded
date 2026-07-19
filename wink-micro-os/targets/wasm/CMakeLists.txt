@@ -12,8 +12,6 @@ set(PAL_WASM_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_hal_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_log_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_irq_wasm.c
-    # OSAL 层（虚拟时钟 / scheduler / storage）
-    ${CMAKE_CURRENT_SOURCE_DIR}/pal_osal_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_storage_wasm.c
     # Wasm 特有扩展：物理退化 + fault 子系统 + Wave3 stub + 虚拟器件仿真
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_physical.c
@@ -24,12 +22,9 @@ set(PAL_WASM_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/devices/wasm_dev_servo.c
     ${CMAKE_CURRENT_SOURCE_DIR}/devices/wasm_dev_ultrasonic.c
     # Target 无关共享源（同源复用，见 targets/common/src/）
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/pal_osal_ringbuf.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/pal_resource.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/wink_sim_physical.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/wink_sim_scheduler.c
-    # Emscripten Asyncify fiber 上下文
-    ${CMAKE_CURRENT_SOURCE_DIR}/sim_ctx_emscripten_fiber.c
     PARENT_SCOPE)
 
 set(WASM_ENTRY_SOURCE

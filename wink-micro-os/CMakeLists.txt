@@ -9,6 +9,10 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(TARGET_PLATFORM "wasm" CACHE STRING "Target hardware platform: wasm, esp32, stm32")
 message(STATUS "Configuring wink-micro-os for platform: ${TARGET_PLATFORM}")
 
+# ── OSAL Decoupling Layer (ADR-0041) ──────────────────────────────────
+include(cmake/wink_osal.cmake)
+add_subdirectory(osal)
+
 # 通用全局宏定义
 add_compile_definitions(PLATFORM_${TARGET_PLATFORM})
 if(TARGET_PLATFORM STREQUAL "wasm")
@@ -273,8 +277,8 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
     add_executable(wink_simulator
         ${PAL_WASM_SOURCES}
         ${WASM_ENTRY_SOURCE}
+        ${WINK_OSAL_SOURCES}               # ← OSAL 注入
         ${WINK_APP_SOURCES}                # ← App 注入（Task 1.2）
-        # pal_pwm_router.c 现由 pal_common OBJECT 库贡献（P1-P3，2026-07-04）
         $<TARGET_OBJECTS:pal_common>)
 
     # ADR-0017/0025 Stage 5: sim target defaults to STRICT_NONBLOCKING=1 for
@@ -297,6 +301,7 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
     target_link_libraries(wink_simulator PRIVATE pal dal wink_runtime wink_bal)
     target_include_directories(wink_simulator PRIVATE
         ${WASM_EXTRA_INCLUDE_DIRS}
+        ${WINK_OSAL_INCLUDE_DIRS}          # ← OSAL include 注入
         # App 本身的 header（如 device_tree.h）
         ${WINK_APP_DIR}
         # App codegen 输出目录（如 oled_dashboard 使用 codegen 生成 device_tree.h）

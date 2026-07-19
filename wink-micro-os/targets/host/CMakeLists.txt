@@ -10,8 +10,7 @@ endif()
 add_library(pal_host OBJECT
     pal_hal_host.c
     pal_log_host.c
-    pal_osal_host.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/pal_osal_ringbuf.c
+    ${WINK_OSAL_SOURCES}
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/pal_resource.c
     pal_storage_host.c
     # target 无关 PAL 源（P1-P3 整改，2026-07-04）：SSOT 位于 pal/CMakeLists.txt
@@ -26,13 +25,13 @@ add_library(pal_host OBJECT
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/wink_sim_physical.c
     # Q3 scheduler additions
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/wink_sim_scheduler.c
-    sim_ctx_win32_fiber.c
 )
 
 target_link_libraries(pal_host PUBLIC pal)
 
 target_include_directories(pal_host PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${WINK_OSAL_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/include    # Phase 2：wink_sim_physical.h
     ${CMAKE_CURRENT_SOURCE_DIR}/../../test/stubs     # host_test_ctrl.h
     # wink_dev_config.c 现存放于 runtime/src/，编译时需 runtime/include/ 里的

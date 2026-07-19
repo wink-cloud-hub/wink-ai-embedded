@@ -1,5 +1,5 @@
 /**
- * @file pal_osal_esp32.c
+ * @file pal_osal_freertos_esp32.c
  * @brief ESP32 真机 PAL OSAL 实现（FreeRTOS + ESP-IDF）。
  *
  * ✅ @verified: HARDWARE-SMOKE-PASSED (DevKitC, 2026-06-27)
