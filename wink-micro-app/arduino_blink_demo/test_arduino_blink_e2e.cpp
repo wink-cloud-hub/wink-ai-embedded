@@ -39,7 +39,7 @@ int main(void) {
     pal_resource_reset();
 
     /* Claim the LED pin (pin 2 in this sketch) */
-    if (pal_resource_claim(PAL_RESOURCE_GPIO_PIN, 2, "blink_demo") != WINK_OK)
+    if (pal_resource_claim(PAL_RESOURCE_GPIO_PIN, 2, "arduino_compat") != WINK_OK)
         E2E_FAIL("cannot claim pin 2");
 
     /* Claim a loopback input pin (pin 3) to read back LED state */

@@ -44,6 +44,8 @@ OUTPUT_FILES = (
     ("device_tree.c.j2", "device_tree.c"),
     ("app_options.cmake.j2", "app_options.cmake"),
     ("device_tree_api.md.j2", "device_tree_api.md"),
+    ("wink_arduino_bindings.h.j2", "wink_arduino_bindings.h"),
+    ("wink_arduino_bindings.cpp.j2", "wink_arduino_bindings.cpp"),
 )
 
 ALL_WINK_USE_OPTIONS = [
