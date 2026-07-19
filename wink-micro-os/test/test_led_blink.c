@@ -33,7 +33,7 @@ static dal_led_t s_led2;
 static const uint16_t LED1_PIN = 10;
 static const uint16_t LED2_PIN = 11;
 
-/* Host sim clock advance (declared in targets/host/pal_osal_host.c). */
+/* Host sim clock advance (declared in osal/host/pal_osal_host.c). */
 extern void host_sim_advance_to(uint64_t us);
 
 /* Advance virtual time by one 10 ms runtime tick and dispatch soft_timers.

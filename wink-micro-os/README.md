@@ -58,10 +58,15 @@ wink-micro-os/
 ├── trace/                      # Golden Trace (STATIC，静态环形缓冲)
 │   ├── include/  wink_trace.h
 │   └── src/      wink_trace.c
-├── targets/                    # 平台适配端口
-│   ├── wasm/     pal_hal_wasm.c · pal_osal_wasm.c · wasm_bridge.h · wasm_entry.c
-│   ├── host/     pal_hal_host.c · pal_osal_host.c   # 一等 target，吸收旧 host 桩
-│   └── esp32/    pal_hal_esp32.c · pal_osal_esp32.c · esp32_entry.c (骨架)
+├── osal/                       # OS 适配（ADR-0041；按 WINK_OSAL_TYPE 装配）
+│   ├── wasm/     pal_osal_wasm.c · sim_ctx_emscripten_fiber.c
+│   ├── host/     pal_osal_host.c · sim_ctx_win32_fiber.c
+│   ├── freertos_esp32/ pal_osal_freertos_esp32.c
+│   └── common/   pal_osal_ringbuf.c
+├── targets/                    # 硬件/仿真 HAL 端口（不含 OSAL）
+│   ├── wasm/     pal_hal_wasm.c · wasm_bridge.h · wasm_entry.c
+│   ├── host/     pal_hal_host.c · pal_log_host.c   # 一等 target
+│   └── esp32/    pal_hal_*_esp32.c · esp32_entry.c
 ├── test/                       # host 单元/端到端测试 (Unity)
 │   ├── unity/    unity.{c,h} + unity_internals.h
 │   ├── stubs/    host_test_ctrl.h · js_sim_host_stub.{c,h}

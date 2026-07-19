@@ -20,7 +20,7 @@ void tearDown(void) {
     sim_clear_gpio_ideal();
 }
 
-/* Host sim clock access (declared in targets/host/pal_osal_host.c; same extern
+/* Host sim clock access (declared in osal/host/pal_osal_host.c; same extern
  * pattern used by test_host_pal.c / test_sim_physical.c to advance virtual time). */
 extern void host_sim_advance_to(uint64_t us);
 
