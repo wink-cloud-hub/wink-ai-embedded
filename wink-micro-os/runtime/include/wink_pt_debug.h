@@ -40,9 +40,9 @@ extern "C" {
  * @brief 当前调用点是否处于 Protothread 上下文中。
  *
  * 各 target 由其 OSAL 实现负责定义：
- *   - host  (targets/host/pal_osal_host.c)  → 追踪 sim scheduler 切换
- *   - wasm  (targets/wasm/pal_osal_wasm.c)  → 同上
- *   - esp32 (targets/esp32/pal_osal_esp32.c) → 固定 false（真机无 PT 仿真）
+ *   - host  (osal/host/pal_osal_host.c)              → 追踪 sim scheduler 切换
+ *   - wasm  (osal/wasm/pal_osal_wasm.c)              → 同上
+ *   - esp32 (osal/freertos_esp32/pal_osal_freertos_esp32.c) → 固定 false（真机无 PT 仿真）
  *
  * @note 由 runtime 侧 owner，PAL 不得反向 forward-declare（消除层级反转）。
  */

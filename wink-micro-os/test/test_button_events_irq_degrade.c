@@ -30,7 +30,7 @@
 
 #include <string.h>
 
-/* Host sim clock advance (declared in targets/host/pal_osal_host.c). */
+/* Host sim clock advance (declared in osal/host/pal_osal_host.c). */
 extern void host_sim_advance_to(uint64_t us);
 
 static dal_button_t s_btn;

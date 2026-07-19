@@ -12,6 +12,14 @@ include(${WINK_MICRO_OS_ROOT}/core_sources.cmake)
 # TARGET_PLATFORM，但 IDF 组件在独立作用域内处理，未必继承该 cache 变量，导致组件静默不注册
 # （现象：组件不出现在 Components 列表、app_main 找不到 wink 头文件）。改用 ESP_PLATFORM 判定。
 if(ESP_PLATFORM)
+    # Define fallback OSAL variables for the isolated ESP-IDF component registration context
+    if(NOT WINK_OSAL_SOURCES)
+        set(WINK_OSAL_SOURCES "${WINK_MICRO_OS_ROOT}/osal/freertos_esp32/pal_osal_freertos_esp32.c")
+    endif()
+    if(NOT WINK_OSAL_INCLUDE_DIRS)
+        set(WINK_OSAL_INCLUDE_DIRS "${WINK_MICRO_OS_ROOT}/osal/freertos_esp32")
+    endif()
+
     # wink_config.h 由 codegen 生成（add_custom_command 见 register 之后）。
     # 此处仅定义其输出目录：INCLUDE_DIRS 要引用，且 set 在 requirements 脚本通下可脚本化。
     set(WINK_CONFIG_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
@@ -59,11 +67,11 @@ if(ESP_PLATFORM)
             pal_hal_pwm_esp32.c
             pal_rmt_esp32.c
             pal_irq_esp32.c
-            pal_osal_esp32.c
+            ${WINK_OSAL_SOURCES}
             pal_resource_esp32.c
             pal_storage_esp32.c
             # pal_pwm_router.c: target-independent PWM timer allocator.
-            # P1-P3 (2026-07-04): host/wasm 通过 pal_common OBJECT 库拉入，
+            # P1-P3 (2026-07-04): host/wasm通过 pal_common OBJECT 库拉入，
             # ESP32 是 IDF 组件（独立 CMake 作用域，无法跨作用域引用 pal_common
             # OBJECT target），故此处继续直接列源文件。改动限于 host/wasm。
             ${WINK_MICRO_OS_ROOT}/pal/src/pal_pwm_router.c
@@ -73,13 +81,14 @@ if(ESP_PLATFORM)
             ${WINK_CORE_SOURCES}
         INCLUDE_DIRS
             ${WINK_CORE_INCLUDE_DIRS}
+            ${WINK_OSAL_INCLUDE_DIRS}
             ${WINK_CONFIG_DIR}    # codegen 生成的 wink_config.h 所在目录
         REQUIRES
             ${WINK_ESP_DRIVER_COMPONENTS}
             esp_timer
             esp_system
             # freertos/ringbuf.h + xRingbuffer* API 属于 esp_ringbuf 组件（不在 freertos 组件内），
-            # pal_osal_esp32.c 的 pal_ringbuf 跨核通信需要。host/wasm 构建不含本目录，仅 ESP-IDF 需要。
+            # osal/freertos_esp32 的 pal_ringbuf 跨核通信需要。host/wasm 构建不含本目录，仅 ESP-IDF 需要。
             esp_ringbuf
             # ADR-0008：pal_storage_esp32.c 的 NVS 存取需要 nvs_flash 组件
             nvs_flash
@@ -154,7 +163,7 @@ elseif(TARGET_PLATFORM STREQUAL "esp32")
         pal_hal_pwm_esp32.c
         pal_rmt_esp32.c
         pal_irq_esp32.c
-        pal_osal_esp32.c
+        ${WINK_OSAL_SOURCES}
         pal_resource_esp32.c
         pal_storage_esp32.c
         ${WINK_MICRO_OS_ROOT}/pal/src/pal_pwm_router.c
