@@ -352,4 +352,25 @@ if ($pythonCmd) {
     Write-Host "[SKIP] python not found on PATH — Arduino isolation check skipped" -ForegroundColor Yellow
 }
 
+# ---- 11. L5 static lint: Arduino symbol audit (ADR-0036 / ADR-0040) ----------
+Write-Host "[lint] Arduino symbol audit check (ADR-0036 / ADR-0040)..." -ForegroundColor Cyan
+if ($pythonCmd) {
+    if (Test-Path '../build/test') {
+        & python (Join-Path $PSScriptRoot 'tools/lint/check_arduino_symbols.py') '../build/test'
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "[lint] ADR-0036 Arduino symbol audit failed in ../build/test"
+            exit 1
+        }
+    }
+    if (Test-Path '../build/test-san') {
+        & python (Join-Path $PSScriptRoot 'tools/lint/check_arduino_symbols.py') '../build/test-san'
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "[lint] ADR-0036 Arduino symbol audit failed in ../build/test-san"
+            exit 1
+        }
+    }
+} else {
+    Write-Host "[SKIP] python not found on PATH — Arduino symbol audit check skipped" -ForegroundColor Yellow
+}
+
 exit $overallRc

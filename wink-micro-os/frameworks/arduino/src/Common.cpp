@@ -1,5 +1,8 @@
 #include "Arduino.h"
 #include <stdlib.h>
+#include "pal_resource.h"
+#include "pal_log.h"
+#include <assert.h>
 
 // Default weak definition of the board pin mapping.
 // Individual boards (BSPs) can override these symbols to define custom pin mappings.
@@ -87,6 +90,16 @@ char* dtostrf(double val, signed char width, unsigned char prec, char *s) {
 void pinMode(pin_size_t pinNumber, PinMode mode) {
     wink_pin_t p = resolve_pin(pinNumber);
     if (p < 0) return;
+
+    // R2 / R3 Conflict Prevention & Governance (ADR-0040)
+    wink_status_t claim_rc = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, p, "arduino_compat");
+    if (claim_rc == WINK_ERR_BUSY) {
+        pal_log_w("arduino_compat", "pinMode: pin %d is owned by another device!", p);
+        #if defined(WINK_SIM_STRICT) && WINK_SIM_STRICT
+        assert(false && "pinMode late hijack conflict!");
+        #endif
+        return; // Fail-loud: block pinMode configure
+    }
 
     pal_gpio_mode_t pal_mode;
     switch (mode) {
@@ -192,6 +205,58 @@ __attribute__((weak)) const wink_app_callbacks_t *wink_app_get_callbacks(void)
 
 void wink_arduino_init(void) {
     // Compatibility layer initialization if needed
+}
+
+unsigned long pulseIn(pin_size_t pin, uint8_t state, unsigned long timeout) {
+#if defined(SIMULATION) && SIMULATION
+    static bool warned = false;
+    if (!warned) {
+        pal_log_w("arduino_compat", "pulseIn is unsupported in simulation! Please use WinkUltrasonic semantic facade.");
+        warned = true;
+    }
+    #if defined(WINK_SIM_STRICT) && WINK_SIM_STRICT
+    assert(false && "pulseIn called under STRICT simulation mode!");
+    #endif
+    return 0;
+#else
+    wink_pin_t p = resolve_pin(pin);
+    if (p < 0) return 0;
+    
+    uint32_t start_us = pal_os_get_us();
+    uint32_t timeout_us = timeout;
+    
+    bool val = (state == HIGH);
+    bool current = false;
+    
+    // 1. Wait for pin to be in opposite state
+    while (1) {
+        if (pal_gpio_read(p, &current) != WINK_OK) return 0;
+        if (current != val) break;
+        if ((pal_os_get_us() - start_us) > timeout_us) return 0;
+    }
+    
+    // 2. Wait for transition to state
+    uint32_t transition_start_us = pal_os_get_us();
+    while (1) {
+        if (pal_gpio_read(p, &current) != WINK_OK) return 0;
+        if (current == val) break;
+        if ((pal_os_get_us() - transition_start_us) > timeout_us) return 0;
+    }
+    
+    // 3. Measure duration in state
+    uint32_t pulse_start_us = pal_os_get_us();
+    while (1) {
+        if (pal_gpio_read(p, &current) != WINK_OK) return 0;
+        if (current != val) {
+            return pal_os_get_us() - pulse_start_us;
+        }
+        if ((pal_os_get_us() - pulse_start_us) > timeout_us) return 0;
+    }
+#endif
+}
+
+unsigned long pulseInLong(pin_size_t pin, uint8_t state, unsigned long timeout) {
+    return pulseIn(pin, state, timeout);
 }
 
 } // extern "C"
