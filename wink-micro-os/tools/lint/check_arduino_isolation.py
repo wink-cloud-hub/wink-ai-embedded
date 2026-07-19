@@ -2,7 +2,12 @@
 # -*- coding: utf-8 -*-
 """
 WinkMicroOS Arduino Isolation Linter (ADR-0035)
-Ensures that C++ Arduino headers or symbols do not bleed into the C-based core kernel (pal, dal, trace, runtime, targets).
+Ensures that C++ Arduino headers or symbols do not bleed into the C-based core
+kernel (pal, dal, trace, runtime, targets, osal).
+
+ADR-0041 split OSAL adapters out of `targets/<plat>/` into their own top-level
+`osal/<variant>/` tree; the isolation invariant still applies there, so `osal`
+is included below.
 """
 
 import os
@@ -10,7 +15,7 @@ import sys
 import re
 
 # Directories that must remain strictly isolated from Arduino Core C++ dependencies
-ISOLATED_DIRS = ['pal', 'dal', 'trace', 'runtime', 'targets']
+ISOLATED_DIRS = ['pal', 'dal', 'trace', 'runtime', 'targets', 'osal']
 
 # Keywords or includes that indicate isolation leakage
 FORBIDDEN_PATTERNS = [

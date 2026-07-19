@@ -26,6 +26,13 @@ INCLUDE_TOP = [
     "runtime",
     "trace",
     "targets",
+    # ADR-0041: OSAL adapters live in a top-level tree orthogonal to targets/.
+    # Must be shipped so downstream cmake can resolve include(wink_osal.cmake)
+    # and pull in osal/<variant>/pal_osal_*.c during static assembly.
+    "osal",
+    # ADR-0041: cmake/wink_osal.cmake is the OSAL matrix SSOT included from
+    # the top-level CMakeLists.txt; without it Source SDK configure fails.
+    "cmake",
     "tools",
     "CMakeLists.txt",
     "core_sources.cmake",
