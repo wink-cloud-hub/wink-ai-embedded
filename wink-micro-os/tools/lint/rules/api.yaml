@@ -1,0 +1,69 @@
+version: 1
+id: api
+metadata:
+  owner: "wink-arch"
+  adr: ["ADR-0004", "ADR-0043"]
+
+layers: {}
+
+include_rules: []
+path_rules: []
+
+api_rules:
+  - id: NO-OPS-VTABLE
+    in: [bal_public, bal_math, bal_src, dal_public, dal_src]
+    deny_regex:
+      - pattern: '\b\w+_ops\s*\{'
+      - pattern: '\bcontainer_of\s*\('
+    context:
+      strip_comments: true
+      strip_strings: true
+      scope_by_kind:
+        public_header: declarations_only
+        private_header: full
+        source: full
+    except_regex: []
+    message: >-
+      Forbidden runtime ops/vtable / container_of (ADR-0004 static dispatch).
+    severity: error
+    immutable: true
+    refs: ["ADR-0004"]
+
+  - id: NO-MALLOC-HOTPATH
+    in: [bal_src, dal_src]
+    deny_regex:
+      - pattern: '\b(malloc|calloc|realloc|free)\s*\('
+    context:
+      strip_comments: true
+      strip_strings: true
+      scope_by_kind:
+        source: full
+        public_header: full
+        private_header: full
+    except_regex:
+      - '\bfree_slot\s*\('
+      - '\bfree_\w+_slot\s*\('
+    message: >-
+      Hot-path malloc/free detected (warning for first ship; may promote to error).
+    severity: warning
+    immutable: false
+    refs: ["ADR-0043"]
+
+  - id: STATUS-NOT-BOOL-PUBLIC
+    in: [dal_public]
+    deny_regex:
+      - pattern: '^(?:__\w+\([^)]*\)\s*)*\bbool\s+dal_\w+\s*\('
+    context:
+      strip_comments: true
+      strip_strings: true
+      scope_by_kind:
+        public_header: declarations_only
+    except_regex: []
+    message: >-
+      Public DAL APIs should return wink_status_t, not bool
+      (known miss: complex multi-line signatures may evade v1 matcher).
+    severity: warning
+    immutable: false
+    refs: ["ADR-0001"]
+
+ignore: []

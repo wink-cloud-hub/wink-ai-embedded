@@ -11,6 +11,7 @@ from tools.lint.engine.models import Finding
 from tools.lint.packs.include_graph import check_includes
 from tools.lint.packs.path_name import check_path_names
 from tools.lint.packs.regex_ban import check_regex_bans
+from tools.lint.packs.api_surface import check_api_surface
 
 _SOURCE_SUFFIXES = {".c", ".h", ".cc", ".cpp", ".hpp", ".cxx", ".hxx"}
 
@@ -33,7 +34,7 @@ def run_lint(
         classified = classify_file(rel, cfg.layers, cfg.ignore)
         if classified is None:
             continue
-        layer_id, _kind = classified
+        layer_id, kind = classified
         text = abs_path.read_text(encoding="utf-8", errors="replace")
 
         if pack_set & {"layering", "include_graph", "all"}:
@@ -42,6 +43,9 @@ def run_lint(
             )
             findings.extend(check_path_names(rel, layer_id, cfg))
             findings.extend(check_regex_bans(rel, text, layer_id, cfg))
+
+        if pack_set & {"api", "api_surface", "all"}:
+            findings.extend(check_api_surface(rel, text, layer_id, kind, cfg))
 
     return apply_allowlist(findings, cfg, effective_today)
 
