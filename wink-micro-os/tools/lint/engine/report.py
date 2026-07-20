@@ -14,8 +14,6 @@ def format_text(findings: list[Finding]) -> str:
     blocks: list[str] = []
     for f in findings:
         if f.allowlisted and f.severity == "error":
-            # Still show allowlisted errors when --report-allowlist; default
-            # runners may filter. Keep them printable with a marker.
             header = f"allowlisted[{f.rule_id}]: {f.message}"
         else:
             header = f"{f.severity}[{f.rule_id}]: {f.message}"
@@ -24,7 +22,11 @@ def format_text(findings: list[Finding]) -> str:
         if f.snippet and f.line is not None:
             lines.append("   |")
             lines.append(f" {f.line} | {f.snippet}")
-            caret = " " * max(1, len(str(f.line))) + " | " + "^" * max(1, len(f.snippet))
+            caret = (
+                " " * max(1, len(str(f.line)))
+                + " | "
+                + "^" * max(1, len(f.snippet))
+            )
             lines.append(caret)
         if f.help:
             lines.append(f"   = help: {f.help}")
@@ -42,9 +44,64 @@ def format_json(findings: list[Finding]) -> str:
 
 
 def format_sarif(findings: list[Finding]) -> str:
-    """Placeholder SARIF; full schema lands in Task 10a."""
-    # Minimal stub so --format sarif does not crash before Task 10a.
-    return format_json(findings)
+    """SARIF 2.1.0 minimal subset for IDE / CI consumers."""
+    rules_seen: dict[str, dict[str, Any]] = {}
+    results: list[dict[str, Any]] = []
+
+    for f in findings:
+        if f.rule_id not in rules_seen:
+            rules_seen[f.rule_id] = {
+                "id": f.rule_id,
+                "shortDescription": {"text": f.message},
+                "properties": {"rule_source": f.rule_source},
+            }
+        start_line = 1 if f.line is None else f.line
+        region: dict[str, Any] = {"startLine": start_line}
+        if f.column is not None:
+            region["startColumn"] = f.column
+        props: dict[str, Any] = {"fingerprint": f.fingerprint}
+        if f.line is None:
+            props["locator"] = "filename"
+        if f.allowlisted:
+            props["allowlisted"] = True
+        results.append(
+            {
+                "ruleId": f.rule_id,
+                "level": _sarif_level(f.severity),
+                "message": {"text": f.message},
+                "locations": [
+                    {
+                        "physicalLocation": {
+                            "artifactLocation": {
+                                "uri": f.path.replace("\\", "/")
+                            },
+                            "region": region,
+                        }
+                    }
+                ],
+                "properties": props,
+            }
+        )
+
+    doc = {
+        "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+        "version": "2.1.0",
+        "runs": [
+            {
+                "tool": {
+                    "driver": {
+                        "name": "wink-lint",
+                        "informationUri": (
+                            "https://github.com/wink-ai/wink-ai-embedded"
+                        ),
+                        "rules": list(rules_seen.values()),
+                    }
+                },
+                "results": results,
+            }
+        ],
+    }
+    return json.dumps(doc, indent=2, ensure_ascii=False) + "\n"
 
 
 def exit_code_for(findings: list[Finding], *, strict: bool = False) -> int:
@@ -60,6 +117,14 @@ def exit_code_for(findings: list[Finding], *, strict: bool = False) -> int:
         if strict and f.severity == "warning":
             return 1
     return 0
+
+
+def _sarif_level(severity: str) -> str:
+    if severity == "error":
+        return "error"
+    if severity == "warning":
+        return "warning"
+    return "note"
 
 
 def _location_line(f: Finding) -> str:

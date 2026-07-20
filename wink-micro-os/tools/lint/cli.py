@@ -18,12 +18,18 @@ from tools.lint.engine.runner import run_lint
 
 def handle_lint(args) -> None:
     """Entry point wired from wink.py; may call ``sys.exit``."""
-    if getattr(args, "explain", None):
-        _print_explain(args.explain)
-        sys.exit(0)
-
     root = _resolve_root(getattr(args, "root", None))
     cfg_paths = _config_paths(root, getattr(args, "config", None) or [])
+
+    if getattr(args, "explain", None):
+        try:
+            cfg = load_configs(cfg_paths)
+        except LintConfigError as exc:
+            print(f"[wink lint] config error: {exc}", file=sys.stderr)
+            sys.exit(2)
+        _print_explain(args.explain, cfg)
+        sys.exit(0)
+
     try:
         cfg = load_configs(cfg_paths)
     except LintConfigError as exc:
@@ -120,7 +126,62 @@ def _resolve_paths(
     return collected or None
 
 
-def _print_explain(rule_id: str) -> None:
-    print(f"rule: {rule_id}")
-    print("explain: detailed template lands in Task 10a.")
-    print("note: lint does not evaluate preprocessor conditions (#if 0) or macro includes.")
+def _print_explain(rule_id: str, cfg) -> None:
+    """Print tech-design §8.2 explain template for RULE_ID."""
+    rule = _find_rule(cfg, rule_id)
+    if rule is None:
+        print(f"Rule: {rule_id}  [unknown — not found in loaded packs]")
+        print()
+        print(
+            "note: lint does not evaluate preprocessor conditions (#if 0) "
+            "or macro-concatenated #include."
+        )
+        return
+
+    sev = rule.get("severity", "?")
+    src = rule.get("rule_source", "sdk")
+    imm = "true" if rule.get("immutable") else "false"
+    msg = (rule.get("message") or "").strip().replace("\n", " ")
+    refs = ", ".join(rule.get("refs") or []) or "(none)"
+
+    print(f"Rule: {rule_id}       [severity: {sev} | source: {src} | immutable: {imm}]")
+    print(f"Message: {msg}")
+    print()
+    print("Rationale:")
+    print(f"  See references: {refs}")
+    print("  Layering / API shape gates keep App/BAL/DAL/PAL boundaries enforceable.")
+    print()
+    print(f"References: {refs}")
+    print()
+    print("Examples:")
+    print("  BAD:  violate the deny pattern / filename / API shape for this rule")
+    print("  GOOD: move HAL/PAL usage to .c; use named static APIs (ADR-0004)")
+    print()
+    print("Allowlist policy:")
+    print(
+        "  must include reason; prefer until ≤ 90 days; "
+        "≤30d emit info, ≤7d emit warning (fail only with --strict)."
+    )
+    print()
+    print("Active allowlist:")
+    allows = rule.get("allow_paths") or []
+    if not allows:
+        print("  (none)")
+    else:
+        for entry in allows:
+            until = entry.get("until") or "no-until"
+            reason = entry.get("reason") or ""
+            print(f"  - {entry.get('path')}    until {until}  ({reason})")
+    print()
+    print(
+        "note: lint does not evaluate preprocessor conditions (#if 0) "
+        "or macro-concatenated #include."
+    )
+
+
+def _find_rule(cfg, rule_id: str):
+    for key in ("include_rules", "api_rules", "path_rules"):
+        for rule in getattr(cfg, key, []) or []:
+            if rule.get("id") == rule_id:
+                return rule
+    return None
