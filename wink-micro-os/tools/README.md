@@ -239,6 +239,67 @@ python wink-micro-os/tools/codegen/tests/test_golden.py
 
 ## Lint
 
+### `wink lint` — layer / API gate (ADR-0043)
+
+YAML-driven App/BAL/DAL/PAL boundary + API-shape checks. Rules live in
+`tools/lint/rules/*.yaml` (the single source of truth); the engine only loads
+and reports, so add or relax a rule by editing YAML, not Python.
+
+**Run it (from workspace root):**
+
+```powershell
+# Full scan with the default packs (layering + api)
+python wink-micro-os/tools/wink.py lint
+
+# Pick packs explicitly
+python wink-micro-os/tools/wink.py lint --pack layering --pack api --pack arduino
+```
+
+Exit code `0` = clean (or only allowlisted findings); `1` = an un-allowlisted
+`error`. Warnings do not fail unless you pass `--strict`. `lint` skips the
+toolchain gate, so it needs nothing but Python.
+
+**Packs** (`--pack`, repeatable; default `layering`+`api`):
+
+| Pack | Checks |
+|------|--------|
+| `layering` | include boundaries (`BAL-HDR-NO-PAL`, `DAL-HDR-NO-HAL`, …), forbidden header names, math-header purity |
+| `api` | `NO-OPS-VTABLE`, `NO-MALLOC-HOTPATH` (warn), public DAL APIs must return `wink_status_t` not `bool` |
+| `arduino` | ADR-0035 Arduino C++ bleed into kernel dirs (`pal`/`dal`/`runtime`/…) |
+
+**Common flags:**
+
+| Flag | Use |
+|------|-----|
+| `--changed [REV]` | Only lint files from `git diff --name-only [REV]` (default `HEAD`) — fast pre-commit check |
+| `--paths A B …` | Lint only the given files |
+| `--rule ID` | Report just one rule |
+| `--format text\|json\|sarif` | `sarif` for IDE/CI annotations; pair with `--output FILE` |
+| `--strict` | Treat warnings as failures |
+| `--explain RULE_ID` | Print a rule's rationale, references and active allowlist, then exit 0 |
+| `--report-allowlist` | List active / soon-to-expire `allow_paths` exceptions |
+| `--today YYYY-MM-DD` | Override "now" for `until` expiry (also `$WINK_LINT_TODAY`) |
+
+**Typical workflows:**
+
+```powershell
+# Before committing C changes — lint just what you touched
+python wink-micro-os/tools/wink.py lint --changed
+
+# Understand why a rule fired
+python wink-micro-os/tools/wink.py lint --explain DAL-HDR-NO-HAL
+
+# Emit SARIF for CI code-scanning
+python wink-micro-os/tools/wink.py lint --format sarif --output lint.sarif
+```
+
+**Exceptions:** never disable a rule in code. Add an `allow_paths` entry (with a
+`reason` and, preferably, an `until` date ≤ 90 days) to the rule in
+`tools/lint/rules/*.yaml`. Expiring entries emit `info` at 30 days and `warning`
+at 7 days so they don't rot silently.
+
+### Legacy script gates
+
 Invoked from `wink-micro-os/run-tests.ps1` and CMake (`check_pt_footguns`):
 
 - `lint/check_pt_variables.py`

@@ -1343,7 +1343,7 @@ def _build_parser() -> argparse.ArgumentParser:
     from tools.lint.cli import handle_lint  # noqa: WPS433
 
     p_lint = sub.add_parser("lint", parents=[global_parent],
-                            help="Run YAML layer/API lints (ADR-0043)")
+                            help="Run YAML layer/API/Arduino lints (ADR-0043)")
     p_lint.add_argument("--root", default=None,
                         help="SDK root to scan (default: wink-micro-os/)")
     p_lint.add_argument("--config", action="append", default=[],
