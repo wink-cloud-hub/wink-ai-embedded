@@ -104,6 +104,15 @@ def _require_id(doc: dict[str, Any], path: Path) -> None:
         raise LintConfigError(f"missing required id in {path}")
 
 
+def _reject_unimplemented_extends(doc: dict[str, Any], path: Path) -> None:
+    extends = doc.get("extends")
+    if extends is None or extends == []:
+        return
+    raise LintConfigError(
+        f"extends is not implemented yet in {path} (must be absent or empty list)"
+    )
+
+
 def _is_overlay(doc: dict[str, Any]) -> bool:
     return "overrides" in doc or "disable_rules" in doc
 
@@ -120,6 +129,7 @@ def _apply_sdk_pack(
     _validate_version(doc, path)
     _validate_top_keys(doc, _SDK_TOP_KEYS, path)
     _require_id(doc, path)
+    _reject_unimplemented_extends(doc, path)
 
     pack_id = doc["id"]
     cfg.packs[pack_id] = PackInfo(source=source)

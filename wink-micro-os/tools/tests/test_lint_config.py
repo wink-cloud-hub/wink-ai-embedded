@@ -117,6 +117,66 @@ class TestLoadConfigs(unittest.TestCase):
         self.assertEqual(len(rule["allow_paths"]), 1)
         self.assertEqual(rule["allow_paths"][0]["path"], "vendor_sdk/**")
 
+    def test_workspace_overlay_forbidden_keys_on_immutable_raises(self):
+        sdk = self.tmp_path / "layering.yaml"
+        sdk.write_text(
+            "version: 1\nid: layering\n"
+            "layers:\n  bal_public:\n"
+            "    roots: ['bal/include']\n    kind: public_header\n"
+            "include_rules:\n"
+            "  - id: BAL-HDR-NO-PAL\n"
+            "    in: [bal_public]\n"
+            "    deny:\n"
+            "      - match: basename\n"
+            "        pattern: 'pal_.*\\.h'\n"
+            "    allow_paths: []\n"
+            "    message: 'no pal headers'\n"
+            "    severity: error\n"
+            "    immutable: true\n"
+            "api_rules: []\npath_rules: []\nignore: []\n",
+            encoding="utf-8",
+        )
+        overlay = self.tmp_path / "workspace.yaml"
+        overlay.write_text(
+            "version: 1\nid: workspace\n"
+            "overrides:\n"
+            "  BAL-HDR-NO-PAL:\n"
+            "    severity: warning\n"
+            "    deny:\n"
+            "      - match: basename\n"
+            "        pattern: 'hal_.*\\.h'\n",
+            encoding="utf-8",
+        )
+        with self.assertRaises(LintConfigError) as ctx:
+            load_configs([sdk, overlay])
+        self.assertIn("forbidden key", str(ctx.exception).lower())
+
+    def test_extends_non_empty_raises(self):
+        p = self.tmp_path / "extends.yaml"
+        p.write_text(
+            "version: 1\nid: child\n"
+            "extends: [layering]\n"
+            "layers: {}\n"
+            "include_rules: []\napi_rules: []\npath_rules: []\nignore: []\n",
+            encoding="utf-8",
+        )
+        with self.assertRaises(LintConfigError) as ctx:
+            load_configs([p])
+        self.assertIn("extends is not implemented", str(ctx.exception))
+
+    def test_extends_empty_list_allowed(self):
+        p = self.tmp_path / "empty_extends.yaml"
+        p.write_text(
+            "version: 1\nid: layering\n"
+            "extends: []\n"
+            "layers:\n  bal_public:\n"
+            "    roots: ['bal/include']\n    kind: public_header\n"
+            "include_rules: []\napi_rules: []\npath_rules: []\nignore: []\n",
+            encoding="utf-8",
+        )
+        cfg = load_configs([p])
+        self.assertIn("bal_public", cfg.layers)
+
 
 if __name__ == "__main__":
     unittest.main()
