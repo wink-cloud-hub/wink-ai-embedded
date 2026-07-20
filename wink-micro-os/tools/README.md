@@ -10,12 +10,12 @@ Lives under `wink-micro-os/tools/` so peripheral/driver work stays in one tree.
 
 | Path | Role |
 |------|------|
-| `wink.py` | Unified CLI (`gen` / `build` / `esp32` / `web` / `test` / `doctor` / `setup`) |
+| `wink.py` | Unified CLI (`gen` / `build` / `esp32` / `web` / `test` / `doctor` / `setup` / `lint`) |
 | `pack_sdk_source.py` | Phase 1 Source SDK tarball (`wink-micro-os-sdk-source-v*.tar.gz`) |
 | `pack_sdk_binary.py` | Phase 2 Binary SDK tarball (`wink-micro-os-sdk-binary-v*.tar.gz`) |
 | `binary_sdk_cmake/` | Consumer-facing CMake entry + smoke test for Binary SDK |
 | `codegen/` | Generators: device tree, `wink_config.h`, PT state helpers |
-| `lint/` | Build/test gates (PT footguns, header self-containment, log fmt) |
+| `lint/` | YAML layer/API engine (`wink lint`, ADR-0043) + legacy script gates |
 | `toolchain/` | Toolchain detect / hint / (later) install; drives `doctor` + `setup` and gates every non-diagnostic command via `ensure_for(profile)` (ADR-0029/0030). See `toolchain/tools.json.example` |
 | `esp32/` | `activate.py` (harvest IDF env: hot PATH → EIM profile via `powershell.exe` → `export.ps1`/`export.sh` fallback), `build.py` (strip MSYS/MinGW/EMSDK contamination and run `idf.py -C esp32_firmware …` in sanitized env, `PYTHONUTF8=1` enforced), `generate_app_sources.py` (scan `samples/<app>/*.c` → `esp32_firmware/main/app_sources.cmake`, invoked automatically at CMake configure). Entry point: `python -m tools.esp32.build`. |
 
@@ -53,10 +53,17 @@ python wink-micro-os/tools/wink.py <command> [options]
 | `esp32 --app … [idf args]` | ESP-IDF build / flash / monitor |
 | `web [--port N]` | Vite frontend |
 | `test` | Codegen golden + host ctest |
+| `lint [--pack layering\|api] …` | YAML layer/API lint (ADR-0043); **skips** toolchain gate |
 
 Every non-diagnostic command first runs `tools.toolchain.ensure_for(<profile>)` and
 exits with an actionable report if a required capability is missing. Use
 `--skip-toolchain-check` only as an escape hatch (loud stderr warning).
+`doctor` / `setup` / `lint` skip the gate.
+
+```powershell
+python wink-micro-os/tools/wink.py lint --pack layering --pack api
+# optional: --paths … / --changed / --format text|json / --strict / --today YYYY-MM-DD
+```
 
 ---
 
