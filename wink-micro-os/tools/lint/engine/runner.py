@@ -9,6 +9,8 @@ from tools.lint.engine.classify import classify_file
 from tools.lint.engine.config import LintConfig
 from tools.lint.engine.models import Finding
 from tools.lint.packs.include_graph import check_includes
+from tools.lint.packs.path_name import check_path_names
+from tools.lint.packs.regex_ban import check_regex_bans
 
 _SOURCE_SUFFIXES = {".c", ".h", ".cc", ".cpp", ".hpp", ".cxx", ".hxx"}
 
@@ -38,6 +40,8 @@ def run_lint(
             findings.extend(
                 check_includes(rel, text, layer_id, cfg, root=root)
             )
+            findings.extend(check_path_names(rel, layer_id, cfg))
+            findings.extend(check_regex_bans(rel, text, layer_id, cfg))
 
     return apply_allowlist(findings, cfg, effective_today)
 

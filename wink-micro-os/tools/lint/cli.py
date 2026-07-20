@@ -46,12 +46,13 @@ def handle_lint(args) -> None:
     if rule_filter:
         findings = [f for f in findings if f.rule_id == rule_filter]
 
-    if getattr(args, "report_allowlist", False):
-        findings = [f for f in findings if f.allowlisted or f.rule_id.endswith(".ALLOWLIST")]
-    else:
-        # Default: hide fully-suppressed allowlisted primary errors from text
-        # noise unless they are companion expiry notices.
-        pass
+    report_allowlist = bool(getattr(args, "report_allowlist", False))
+    if report_allowlist:
+        findings = [
+            f
+            for f in findings
+            if f.allowlisted or f.rule_id.endswith(".ALLOWLIST")
+        ]
 
     fmt = getattr(args, "format", "text") or "text"
     if fmt == "json":
@@ -59,12 +60,8 @@ def handle_lint(args) -> None:
     elif fmt == "sarif":
         body = format_sarif(findings)
     else:
-        # For default text, skip allowlisted primary errors (still show companions)
-        visible = [
-            f
-            for f in findings
-            if not (f.allowlisted and f.severity == "error")
-        ]
+        # Default text: hide allowlisted primaries (companions stay visible).
+        visible = findings if report_allowlist else [f for f in findings if not f.allowlisted]
         body = format_text(visible)
 
     out_path = getattr(args, "output", None)
