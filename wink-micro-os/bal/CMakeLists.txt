@@ -4,9 +4,9 @@
 # 介于 App 与 {DAL, runtime} 之间：封装 led blink / button poll / ultrasonic /
 # servo / telemetry 等常见组合，让 App 代码保持零阻塞、零手写 task wrapper。
 #
-# 分层红线（ADR-0023 §8）：
-#   * bal/include/**/*.h 禁止 #include 任何 pal_*.h（pal_log.h 除外，它只暴露 LOG 宏，
-#     不引入 OSAL/HAL 类型）。CI grep 卡口强制。
+# 分层红线（ADR-0023 §8 / ADR-0043）：
+#   * bal/include/**/*.h 禁止 #include 任何 pal_*.h（pal_log.h 除外）。
+#     文本扫描门禁由 `wink lint --pack layering` 执行（不再在此 CMake 重复 REGEX）。
 #   * BAL 不得链接 target 专属 PAL 对象，保持跨 target 单源编译。
 #
 # 目录布局（include/ 与 src/ 按 domain 镜像）：
@@ -50,63 +50,9 @@ target_link_libraries(wink_bal PUBLIC
     wink_trace
 )
 
-# ── Layering red-line CI grep guard (ADR-0023 §8) ──────────────
-# bal/include/**/*.h MUST NOT #include any pal_*.h (pal_log.h is
-# exempt — it exposes only LOG macros, no OSAL/HAL types).
-# Scan all BAL public headers at configure time; FATAL_ERROR if
-# a forbidden include is found.
-file(GLOB_RECURSE _BAL_PUBLIC_HEADERS
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/*.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/*/*.h)
-set(_BAL_FORBIDDEN_INCLUDE_REGEX "^[[:space:]]*#[[:space:]]*include[[:space:]]*[<\"]pal_.*\.h[>\"]")
-foreach(_h ${_BAL_PUBLIC_HEADERS})
-    file(STRINGS "${_h}" _matches REGEX "${_BAL_FORBIDDEN_INCLUDE_REGEX}")
-    foreach(_m ${_matches})
-        # pal_log.h is the single exempted header (per ADR-0023 §8).
-        if(NOT _m MATCHES "pal_log\\.h")
-            message(FATAL_ERROR
-                "BAL layering violation: ${_h} includes a pal_ header (${_m}). "
-                "ADR-0023 §8 red-line: bal/include/**/*.h must not include pal_*.h "
-                "(pal_log.h only). Move pal_ usage to the .c file.")
-        endif()
-    endforeach()
-endforeach()
-
-# ── ADR-0038 / 06-bal-layer §6 CI gates ────────────────────────
-
-# BAL-NAME-1: forbid *_helper.h and *_controller.h public headers.
-file(GLOB_RECURSE _BAL_BAD_NAMES
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/*_helper.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/*_controller.h")
-if(_BAL_BAD_NAMES)
-    message(FATAL_ERROR "BAL-NAME-1: forbidden helper/controller headers: ${_BAL_BAD_NAMES}")
-endif()
-
-# BAL-MATH-1: math headers must stay pure (no DAL/runtime/PAL leakage).
-file(GLOB _BAL_MATH_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/include/math/*.h")
-set(_BAL_MATH_FORBIDDEN_REGEXES
-    "dal_"
-    "wink_runtime"
-    "wink_periodic"
-    "pal_"
-    "^[[:space:]]*#[[:space:]]*include[[:space:]]*[<\"]pal_")
-foreach(_mh ${_BAL_MATH_HEADERS})
-    file(READ "${_mh}" _mh_content)
-    foreach(_re ${_BAL_MATH_FORBIDDEN_REGEXES})
-        if(_mh_content MATCHES "${_re}")
-            message(FATAL_ERROR
-                "BAL-MATH-1: ${_mh} must not reference DAL/runtime/PAL (${_re}).")
-        endif()
-    endforeach()
-endforeach()
-
-# BAL-NAME-2: forbid identifier 'sonar' in all public headers (incl. comments).
-foreach(_h ${_BAL_PUBLIC_HEADERS})
-    file(READ "${_h}" _h_content)
-    if(_h_content MATCHES "[[:<:]]sonar[[:>:]]")
-        message(FATAL_ERROR "BAL-NAME-2: ${_h} must not contain identifier 'sonar'.")
-    endif()
-endforeach()
+# ── Layout / link-face gates (keep in CMake) ───────────────────
+# Text layering REGEX gates (BAL-HDR-NO-PAL / BAL-NAME-* / BAL-MATH-1)
+# moved to `wink lint` (ADR-0043). Parity probe: tools/tests/test_lint_parity.py
 
 # BAL-INC-2: PUBLIC include directories must be only bal/include root.
 get_target_property(_bal_public_inc wink_bal INTERFACE_INCLUDE_DIRECTORIES)
