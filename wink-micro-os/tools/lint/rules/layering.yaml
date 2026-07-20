@@ -21,7 +21,21 @@ layers:
     roots: ["apps/*/src"]
     kind: source
 
-include_rules: []
+include_rules:
+  - id: BAL-HDR-NO-PAL
+    in: [bal_public]
+    deny:
+      - match: basename
+        pattern: 'pal_.*\.h'
+        except_basename: ['pal_log.h']
+        include_forms: [quote]
+    message: >-
+      ADR-0023 §8 red-line: bal/include/**/*.h must not include pal_*.h
+      (pal_log.h only). Move pal_ usage to the .c file.
+    severity: error
+    immutable: true
+    refs: ["ADR-0023"]
+
 api_rules: []
 path_rules: []
 ignore: []
