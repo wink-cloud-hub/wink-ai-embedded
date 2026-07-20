@@ -22,6 +22,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <assert.h>
 
 /* Fault 锁存 / host_fault / 审计日志 已迁至 pal_wasm_fault.c（2026-07 wasm target 拆分）。
@@ -65,14 +66,55 @@ _Static_assert(sizeof(s_virtual_us) == 8, "Virtual clock must be 64-bit");
  * 预警逻辑：跨越 CLOCK_WARNING_THRESHOLD 时一次性置位 s_clock_warning_fired。
  * 故意不直接调用 JS 侧日志函数——避免在 Asyncify 恢复路径上引入重入风险；
  * 由 JS 侧每个 tick 边界轮询 pal_wasm_is_clock_warning_fired()。 */
-EMSCRIPTEN_KEEPALIVE
-void pal_wasm_advance_virtual_clock(uint64_t us) {
-    WASM_FAULT_GUARD_VOID();
-    s_virtual_us += us;
-
+static inline void wink_vclock_advance_internal(uint64_t delta_us) {
+    s_virtual_us += delta_us;
     if (s_virtual_us > CLOCK_WARNING_THRESHOLD && !s_clock_warning_fired) {
         s_clock_warning_fired = true;
     }
+}
+
+EMSCRIPTEN_KEEPALIVE
+void pal_wasm_advance_virtual_clock(uint64_t us) {
+    WASM_FAULT_GUARD_VOID();
+    wink_vclock_advance_internal(us);
+}
+
+static wink_sim_mode_t s_sim_mode = WINK_SIM_MODE_INTERACTIVE;
+static bool s_sim_mode_explicit = false;
+
+static void wink_sim_mode_init_from_env(void) {
+    if (s_sim_mode_explicit) return;
+    const char* env = getenv("WINK_SIM_MODE");
+    if (env && strcmp(env, "HEADLESS") == 0)          s_sim_mode = WINK_SIM_MODE_HEADLESS;
+    else if (env && strcmp(env, "INTERACTIVE") == 0)  s_sim_mode = WINK_SIM_MODE_INTERACTIVE;
+    else {
+#if defined(__EMSCRIPTEN__)
+        s_sim_mode = WINK_SIM_MODE_INTERACTIVE;   /* 浏览器保守默认 */
+#else
+        s_sim_mode = WINK_SIM_MODE_HEADLESS;      /* Host 单测天然无 Asyncify */
+#endif
+    }
+}
+
+EMSCRIPTEN_KEEPALIVE
+void pal_wasm_set_sim_mode(uint32_t mode) {
+    if (mode <= WINK_SIM_MODE_HEADLESS) {
+        s_sim_mode = (wink_sim_mode_t)mode;
+        s_sim_mode_explicit = true;
+    }
+}
+
+EMSCRIPTEN_KEEPALIVE
+uint32_t pal_wasm_get_sim_mode(void) {
+    return (uint32_t)s_sim_mode;
+}
+
+void wink_sim_set_mode(wink_sim_mode_t mode) {
+    pal_wasm_set_sim_mode((uint32_t)mode);
+}
+
+wink_sim_mode_t wink_sim_get_mode(void) {
+    return (wink_sim_mode_t)pal_wasm_get_sim_mode();
 }
 
 EMSCRIPTEN_KEEPALIVE
@@ -547,6 +589,7 @@ wink_status_t pal_sim_scheduler_run(const struct wink_app_callbacks* callbacks,
     }
 
     s_main_ctx = sim_ctx_from_current();
+    wink_sim_mode_init_from_env();
     /* 新 run 周期先清 fault 锁存（同时清空 fault.c 内 App callbacks 缓存），
      * 再把本次 run 的 callbacks 注册进去，供 pal_wasm_host_fault / WCET 兜底
      * 走 wink_runtime_fault 路径时定位 on_fault 回调。 */
@@ -578,6 +621,9 @@ wink_status_t pal_sim_scheduler_run(const struct wink_app_callbacks* callbacks,
         bypass_wcet = true;
     }
 #endif
+    if (s_sim_mode == WINK_SIM_MODE_HEADLESS) {
+        bypass_wcet = true;
+    }
 
     /* 红线 15：进入主调度 loop 前清空 current_id */
     sim_scheduler_set_current(SIM_SCHED_NO_READY);
@@ -618,8 +664,14 @@ wink_status_t pal_sim_scheduler_run(const struct wink_app_callbacks* callbacks,
 
             now = pal_os_get_us();
             if (wake > now) {
-                uint32_t sleep_ms = (uint32_t)((wake - now + 999) / 1000);
-                js_pal_os_sleep_ms(sleep_ms);  /* Asyncify 挂起，由 JS 唤醒并步进时钟 */
+                if (s_sim_mode == WINK_SIM_MODE_HEADLESS) {
+                    /* HEADLESS：C 侧直接跳时钟，不进入 Asyncify unwind/rewind */
+                    wink_vclock_advance_internal(wake - now);
+                } else {
+                    /* INTERACTIVE：交给 JS Worker 推进并挂起 */
+                    uint32_t sleep_ms = (uint32_t)((wake - now + 999) / 1000);
+                    js_pal_os_sleep_ms(sleep_ms);  /* Asyncify 挂起，由 JS 唤醒并步进时钟 */
+                }
             }
             continue;
         }

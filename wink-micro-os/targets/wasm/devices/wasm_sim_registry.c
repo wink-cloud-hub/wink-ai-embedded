@@ -21,6 +21,9 @@ void wasm_dev_servo_set_duty(uint8_t channel, float duty_cycle_percent);
 
 void     wasm_dev_ultrasonic_reset(void);
 uint32_t wasm_dev_ultrasonic_get_pulse_us(uint8_t pin);
+#ifdef __EMSCRIPTEN__
+void     wasm_sim_pin_events_reset(void);
+#endif
 
 // 通用 GPIO 输入/输出虚拟状态
 static bool s_gpio_inputs[WASM_SIM_MAX_PINS];
@@ -32,6 +35,9 @@ void wasm_sim_devices_reset(void) {
     wasm_dev_ssd1306_reset();
     wasm_dev_servo_reset();
     wasm_dev_ultrasonic_reset();
+#ifdef __EMSCRIPTEN__
+    wasm_sim_pin_events_reset();
+#endif
     memset(s_gpio_inputs, 0, sizeof(s_gpio_inputs));
     memset(s_gpio_input_set, 0, sizeof(s_gpio_input_set));
     memset(s_gpio_outputs, 0, sizeof(s_gpio_outputs));

@@ -32,6 +32,30 @@ void pal_wasm_dispatch_pending_interrupts(void) {
 
 
 static uint64_t s_time_us = 0;
+
+static wink_sim_mode_t s_sim_mode = WINK_SIM_MODE_HEADLESS;
+static bool s_sim_mode_explicit = false;
+
+static void wink_sim_mode_init_from_env(void) {
+    if (s_sim_mode_explicit) return;
+    const char* env = getenv("WINK_SIM_MODE");
+    if (env && strcmp(env, "HEADLESS") == 0)          s_sim_mode = WINK_SIM_MODE_HEADLESS;
+    else if (env && strcmp(env, "INTERACTIVE") == 0)  s_sim_mode = WINK_SIM_MODE_INTERACTIVE;
+    else {
+        s_sim_mode = WINK_SIM_MODE_HEADLESS; /* Host 默认无 Asyncify，选用极速 */
+    }
+}
+
+void wink_sim_set_mode(wink_sim_mode_t mode) {
+    if (mode <= WINK_SIM_MODE_HEADLESS) {
+        s_sim_mode = mode;
+        s_sim_mode_explicit = true;
+    }
+}
+
+wink_sim_mode_t wink_sim_get_mode(void) {
+    return s_sim_mode;
+}
 static uint64_t s_echo_rise_us = 0;
 static uint64_t s_echo_high_us = 0;
 static uint16_t s_echo_pin = 0xFFFF;
@@ -552,6 +576,7 @@ uint32_t pal_os_get_current_task_stack_free(void) { return 0u; }
 wink_status_t pal_sim_scheduler_run(const struct wink_app_callbacks* callbacks,
                                     uint32_t main_task_id, uint32_t max_ticks) {
     s_main_ctx = sim_ctx_from_current();
+    wink_sim_mode_init_from_env();
     uint32_t ticks_run = 0;
 
     /* --- WCET config cache（fixup 计划 R9）---
@@ -567,6 +592,9 @@ wink_status_t pal_sim_scheduler_run(const struct wink_app_callbacks* callbacks,
         wcet_threshold_us *= 10ULL;
     }
     bool bypass_wcet = (getenv("WINK_SIM_BYPASS_WCET") != NULL) || IsDebuggerPresent();
+    if (s_sim_mode == WINK_SIM_MODE_HEADLESS) {
+        bypass_wcet = true;
+    }
 
     /* 红线 15：进入主调度 loop 前显式清空 current_id */
     sim_scheduler_set_current(SIM_SCHED_NO_READY);

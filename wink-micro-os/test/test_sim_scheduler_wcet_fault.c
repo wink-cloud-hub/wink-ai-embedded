@@ -93,6 +93,8 @@ void setUp(void) {
     /* 显式清除 CI env，让测试用固定 5ms 默认阈值（不被 10x 放宽干扰） */
     _putenv("CI=");
     _putenv("WINK_SIM_BYPASS_WCET=");
+    /* WCET 测试必须在 INTERACTIVE 模式下进行，否则 HEADLESS 模式会自动绕过 WCET 检查 */
+    wink_sim_set_mode(WINK_SIM_MODE_INTERACTIVE);
 }
 
 void tearDown(void) {

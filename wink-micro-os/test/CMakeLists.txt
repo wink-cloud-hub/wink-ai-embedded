@@ -152,6 +152,7 @@ add_wink_host_test(test_actuator_registry test_actuator_registry.c
 add_wink_host_test(test_pal_resource test_pal_resource.c)
 add_wink_host_test(test_sim_scheduler_e2e test_sim_scheduler_e2e.c)
 add_wink_host_test(test_sim_scheduler_zombie_gc test_sim_scheduler_zombie_gc.c)
+add_wink_host_test(test_sim_scheduler_headless_jump test_sim_scheduler_headless_jump.c)
 
 # fixup ?? F2?WCET 8002 fault ???C2 ??????????
 # ??????host_wall_clock.h??????15ms ?? 5ms ???

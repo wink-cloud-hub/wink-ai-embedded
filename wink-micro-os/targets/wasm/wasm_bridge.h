@@ -159,8 +159,7 @@ extern void js_pal_log(uint8_t level, const char *msg);
 /* ---- DAL bypass 侧 JS 导入（js_sim_*）—— 签名抄 Device Registry (01-device-model-registry.md) ----
  * 仅在 #ifdef SIMULATION 下被 DAL 引用；真机分支不编译本段。
  * ADR-0003 决策2：只旁路最底层物理量来源（trigger 时序 + echo 脉宽），换算/超时两端同源。 */
-extern void     js_sim_trigger_ultrasonic(uint16_t trig_pin);
-extern uint32_t js_sim_measure_echo_pulse_us(uint16_t trig_pin);
+extern void     js_pal_gpio_on_write(uint8_t pin, uint8_t level);
 
 /* ---- WASM 退化引擎导出（ADR-0009 Wave 2，C → JS Worker）----
  *
@@ -277,9 +276,14 @@ extern void           pal_wasm_sim_reset_all_devices(void);
 extern const uint8_t* pal_wasm_get_ssd1306_fb(uint32_t *width, uint32_t *height);
 extern float          pal_wasm_get_servo_angle(uint8_t channel);
 extern float          pal_wasm_get_pwm_duty_percent(uint8_t channel);
+extern void           pal_wasm_push_pin_event(uint8_t pin, uint64_t delay_us, uint8_t level);
 extern void           pal_wasm_set_ultrasonic_distance(uint8_t pin, float distance_cm);
 extern void           pal_wasm_set_gpio_input(uint8_t pin, bool level);
 extern bool           pal_wasm_get_gpio_output(uint8_t pin);
+
+/* ---- 模式控制导出 API（ADR-0042） ---- */
+extern void           pal_wasm_set_sim_mode(uint32_t mode);
+extern uint32_t       pal_wasm_get_sim_mode(void);
 
 #ifdef __cplusplus
 }
