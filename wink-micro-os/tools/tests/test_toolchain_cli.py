@@ -107,6 +107,7 @@ class TestWinkPyStaticShape(unittest.TestCase):
         choices = set(subparser_actions[0].choices.keys())
         self.assertIn("doctor", choices)
         self.assertIn("setup", choices)
+        self.assertIn("lint", choices)
         # And the original commands still exist.
         for cmd in ("gen", "build", "esp32", "web", "test"):
             self.assertIn(cmd, choices)
@@ -384,6 +385,7 @@ class TestSubprocessSmoke(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         self.assertIn("doctor", result.stdout)
         self.assertIn("setup", result.stdout)
+        self.assertIn("lint", result.stdout)
         self.assertIn("--skip-toolchain-check", result.stdout)
 
 

@@ -1340,6 +1340,38 @@ def _build_parser() -> argparse.ArgumentParser:
                          help="Attempt automatic install (phase B; currently prints hint only).")
     p_setup.set_defaults(handler=handle_setup)
 
+    from tools.lint.cli import handle_lint  # noqa: WPS433
+
+    p_lint = sub.add_parser("lint", parents=[global_parent],
+                            help="Run YAML layer/API lints (ADR-0043)")
+    p_lint.add_argument("--root", default=None,
+                        help="SDK root to scan (default: wink-micro-os/)")
+    p_lint.add_argument("--config", action="append", default=[],
+                        help="Extra YAML config path (repeatable)")
+    p_lint.add_argument("--pack", action="append", default=None,
+                        help="Rule pack id to run (repeatable; default: layering+api)")
+    p_lint.add_argument("--rule", default=None,
+                        help="Only report findings for this rule id")
+    p_lint.add_argument("--paths", nargs="*", default=None,
+                        help="Incremental scan: only these files")
+    p_lint.add_argument("--changed", nargs="?", const="HEAD", default=None,
+                        help="Derive --paths from git diff --name-only [REV] (default HEAD)")
+    p_lint.add_argument("--format", choices=["text", "json", "sarif"], default="text",
+                        help="Output format (default: text)")
+    p_lint.add_argument("--output", default=None,
+                        help="Write report to FILE instead of stdout")
+    p_lint.add_argument("--strict", action="store_true",
+                        help="Treat warnings as failures")
+    p_lint.add_argument("--explain", metavar="RULE_ID", default=None,
+                        help="Print rule explanation and exit 0")
+    p_lint.add_argument("--report-allowlist", action="store_true",
+                        help="Report allowlisted / expiring allow_paths entries")
+    p_lint.add_argument("--baseline", default=None,
+                        help="Optional baseline file for fingerprint diff (later)")
+    p_lint.add_argument("--today", default=None,
+                        help="Override today for until expiry (YYYY-MM-DD); also $WINK_LINT_TODAY")
+    p_lint.set_defaults(handler=handle_lint)
+
     return p
 
 
@@ -1357,11 +1389,11 @@ def main():
     if skip_from_prepass:
         args.skip_toolchain_check = True
 
-    # doctor & setup are diagnostic commands: doctor calls ensure_for("doctor")
-    # from its handler; setup does no gating at all (it must still work when
-    # things are missing — that's the point). Every other command must pass
-    # the ensure_for gate before its handler runs.
-    if args.command not in ("doctor", "setup"):
+    # doctor / setup / lint are diagnostic commands: doctor calls
+    # ensure_for("doctor") from its handler; setup and lint do no gating
+    # (must still work when toolchains are missing). Every other command
+    # must pass the ensure_for gate before its handler runs.
+    if args.command not in ("doctor", "setup", "lint"):
         gate_command = _resolve_gate_command(args)
         _apply_toolchain_gate(gate_command, skip=args.skip_toolchain_check)
 
