@@ -352,10 +352,10 @@ if ($pythonCmd) {
     Write-Host "[SKIP] python not found on PATH — wink lint skipped" -ForegroundColor Yellow
 }
 
-# ---- 10. L4 static lint: Arduino isolation check (ADR-0035) -----------------
-Write-Host "[lint] Arduino core isolation check (ADR-0035)..." -ForegroundColor Cyan
+# ---- 10. L4 static lint: Arduino isolation via wink lint (ADR-0035 / ADR-0043)
+Write-Host "[lint] Arduino core isolation check (ADR-0035 via wink lint)..." -ForegroundColor Cyan
 if ($pythonCmd) {
-    & python (Join-Path $PSScriptRoot 'tools/lint/check_arduino_isolation.py')
+    & python (Join-Path $PSScriptRoot 'tools/wink.py') lint --pack arduino --root $PSScriptRoot
     if ($LASTEXITCODE -ne 0) {
         Write-Error "[lint] ADR-0035 Arduino isolation check failed (see output above)"
         exit 1
