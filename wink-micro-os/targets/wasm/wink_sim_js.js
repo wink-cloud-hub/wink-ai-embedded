@@ -109,6 +109,7 @@ addToLibrary({
      *   _pal_wasm_advance_virtual_clock 由 pal_osal_wasm.c 以
      *   EMSCRIPTEN_KEEPALIVE 导出，签名为 (uint64_t us) → void，WASM_BIGINT=1
      *   下以 BigInt 传参。 */
+    js_pal_os_sleep_ms__postset: "Module.setSimMode = function (mode) { var v = (mode === 'HEADLESS') ? 1 : 0; if (typeof Module._pal_wasm_set_sim_mode === 'function') { Module._pal_wasm_set_sim_mode(v); } };",
     js_pal_os_sleep_ms__async: 'auto',
     js_pal_os_sleep_ms: function (ms) {
         if (typeof Module !== 'undefined' && typeof Module.js_pal_os_sleep_ms === 'function') {
@@ -206,16 +207,10 @@ addToLibrary({
         return 0;
     },
 
-    /* ---- DAL bypass 默认桩：ultrasonic 返 ~17cm 让 avoidance_car 跑得动 ---- */
-    js_sim_trigger_ultrasonic: function (trigPin) {
-        if (typeof Module !== 'undefined' && typeof Module.js_sim_trigger_ultrasonic === 'function') {
-            return Module.js_sim_trigger_ultrasonic(trigPin);
+    /* ---- GPIO notify bridge ---- */
+    js_pal_gpio_on_write: function (pin, level) {
+        if (typeof Module !== 'undefined' && typeof Module.js_pal_gpio_on_write === 'function') {
+            return Module.js_pal_gpio_on_write(pin, level);
         }
-    },
-    js_sim_measure_echo_pulse_us: function (trigPin) {
-        if (typeof Module !== 'undefined' && typeof Module.js_sim_measure_echo_pulse_us === 'function') {
-            return Module.js_sim_measure_echo_pulse_us(trigPin);
-        }
-        return 1000;
     },
 });

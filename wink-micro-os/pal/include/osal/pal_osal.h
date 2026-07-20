@@ -418,6 +418,26 @@ uint32_t pal_os_ringbuf_used(pal_os_ringbuf_handle_t rb);
 void pal_os_ringbuf_destroy(pal_os_ringbuf_handle_t rb);
 
 
+/* ========================================================================== */
+/*                        4. 仿真专用模式控制接口 (Simulation Mode)            */
+/* ========================================================================== */
+
+typedef enum {
+    WINK_SIM_MODE_INTERACTIVE = 0,
+    WINK_SIM_MODE_HEADLESS    = 1,
+} wink_sim_mode_t;
+
+/**
+ * @brief 设置仿真模式（仅在仿真平台有效，实机为 no-op）
+ */
+void wink_sim_set_mode(wink_sim_mode_t mode);
+
+/**
+ * @brief 获取当前仿真模式（仅在仿真平台有效，实机返回 WINK_SIM_MODE_INTERACTIVE）
+ */
+wink_sim_mode_t wink_sim_get_mode(void);
+
+
 #ifdef __cplusplus
 }
 #endif
