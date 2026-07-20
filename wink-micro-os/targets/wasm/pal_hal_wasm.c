@@ -23,6 +23,12 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#else
+#define EMSCRIPTEN_KEEPALIVE
+#endif
+
 /* P2-4: wasm64 迁移门控 —— pal_wasm_i2c_transfer 对 wbufPtr/rbufPtr 做
  * (uint32_t)(uintptr_t) 截断，js_pal_gpio_write/read、js_pal_pwm_set_duty 等
  * ABI 契约也依赖 32-bit 指针；开启 wasm64 编译时此 _Static_assert 会立刻红。
@@ -35,6 +41,21 @@ _Static_assert(sizeof(void*) == 4,
 
 static pal_gpio_mode_t s_gpio_mode[WASM_SIM_MAX_PINS];
 static bool            s_gpio_mode_known[WASM_SIM_MAX_PINS];
+
+#define PIN_EVENT_QUEUE_SIZE 8
+
+typedef struct {
+    uint64_t virtual_time_us;
+    uint8_t level;
+} wasm_pin_event_t;
+
+static wasm_pin_event_t s_pin_events[WASM_SIM_MAX_PINS][PIN_EVENT_QUEUE_SIZE];
+static uint8_t s_pin_event_count[WASM_SIM_MAX_PINS] = {0};
+
+void wasm_sim_pin_events_reset(void) {
+    memset(s_pin_event_count, 0, sizeof(s_pin_event_count));
+    memset(s_pin_events, 0, sizeof(s_pin_events));
+}
 
 static bool pal_gpio_mode_idle_level(pal_gpio_mode_t mode)
 {
@@ -77,6 +98,7 @@ wink_status_t pal_gpio_write(wink_pin_t pin, bool level) {
     }
     wasm_sim_gpio_write((uint8_t)pin, level);
     js_pal_gpio_write((uint32_t)pin, level);
+    js_pal_gpio_on_write((uint8_t)pin, level ? 1 : 0);
     return WINK_OK;
 }
 
@@ -283,17 +305,67 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us,
     if (pin < 0 || pin >= WASM_SIM_MAX_PINS) { return WINK_ERR_INVALID_ARG; }
     if (!pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin)) { return WINK_ERR_INVALID_STATE; }
     *pulse_us = 0;
-    (void)level; (void)timeout_us;
+    (void)timeout_us;
 
-    // 优先调用 C 侧虚拟超声波模拟获取脉宽，若无则走 JS 侧 fallback
-    uint32_t v = wasm_dev_ultrasonic_get_pulse_us((uint8_t)pin);
-    if (v == 0) {
-        v = js_sim_measure_echo_pulse_us((uint32_t)pin);
+    // 1. 优先从虚拟引脚未来事件队列中匹配高低电平跳变并进行同步时钟快进
+    uint8_t count = s_pin_event_count[(uint8_t)pin];
+    if (count > 0) {
+        int start_idx = -1;
+        int end_idx = -1;
+        for (int i = 0; i < count; i++) {
+            if (s_pin_events[(uint8_t)pin][i].level == (level ? 1 : 0)) {
+                start_idx = i;
+                for (int j = i + 1; j < count; j++) {
+                    if (s_pin_events[(uint8_t)pin][j].level != (level ? 1 : 0)) {
+                        end_idx = j;
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+        if (start_idx != -1 && end_idx != -1) {
+            uint64_t t_start = s_pin_events[(uint8_t)pin][start_idx].virtual_time_us;
+            uint64_t t_end = s_pin_events[(uint8_t)pin][end_idx].virtual_time_us;
+            if (t_end > t_start) {
+                uint64_t duration = t_end - t_start;
+                uint64_t current_time = pal_os_get_us();
+                if (t_end > current_time) {
+                    pal_wasm_advance_virtual_clock(t_end - current_time);
+                }
+                *pulse_us = (uint32_t)duration;
+                s_pin_event_count[(uint8_t)pin] = 0; // 消费后清空队列
+                return WINK_OK;
+            }
+        }
     }
 
-    if (v == 0) { return WINK_ERR_TIMEOUT; }
-    *pulse_us = v;
-    return WINK_OK;
+    // 2. 次优先调用 C 侧虚拟超声波模拟获取脉宽作为 Fallback
+    uint32_t v = wasm_dev_ultrasonic_get_pulse_us((uint8_t)pin);
+    if (v > 0) {
+        *pulse_us = v;
+        return WINK_OK;
+    }
+
+    return WINK_ERR_TIMEOUT;
+}
+
+EMSCRIPTEN_KEEPALIVE void pal_wasm_push_pin_event(uint8_t pin, uint64_t delay_us, uint8_t level) {
+    WASM_FAULT_GUARD_VOID();
+    if (pin >= WASM_SIM_MAX_PINS) {
+        return;
+    }
+    uint8_t count = s_pin_event_count[pin];
+    if (count >= PIN_EVENT_QUEUE_SIZE) {
+        // 队列满时覆盖最老事件
+        for (int i = 1; i < PIN_EVENT_QUEUE_SIZE; i++) {
+            s_pin_events[pin][i - 1] = s_pin_events[pin][i];
+        }
+        count = PIN_EVENT_QUEUE_SIZE - 1;
+    }
+    s_pin_events[pin][count].virtual_time_us = pal_os_get_us() + delay_us;
+    s_pin_events[pin][count].level = level;
+    s_pin_event_count[pin] = count + 1;
 }
 
 wink_status_t pal_test_enable_hardware_loopback(wink_pin_t pin_out, wink_pin_t pin_in) {
