@@ -1,0 +1,69 @@
+﻿-- The C compiler identification is MSVC 19.44.35228.0
+-- The CXX compiler identification is MSVC 19.44.35228.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - failed
+-- Check for working C compiler: D:/software/code-editor/visualstudio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe
+-- Check for working C compiler: D:/software/code-editor/visualstudio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe - broken
+cmake : CMake Error at C:/Program Files/CMake/share/cmake-4.3/Modules/CMakeTestCCompiler.cmake:67 (message):
+所在位置 C:\Users\77174\AppData\Local\Temp\ps-script-9e545202-7a89-4c4d-ae6c-0c0a0cf47ab0.ps1:132 字符: 79
++ ... osal-bad }; cmake -S wink-micro-os -B build-osal-bad -G "MinGW Makefi ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (CMake Error at ...e:67 (message)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  The C compiler
+
+    "D:/software/code-editor/visualstudio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe"
+
+  is not able to compile a simple test program.
+
+  It fails with the following output:
+
+    Change Dir: 'D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/build-osal-bad/CMakeFiles/CMakeScratch/TryCompile-c2n
+217'
+    
+    Run Build Command(s): "C:/Program Files/CMake/bin/cmake.exe" -E env VERBOSE=1 C:/Users/77174/AppData/Local/Microsof
+t/WinGet/Packages/BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe/mingw64/bin/mingw32-make.exe -
+f Makefile cmTC_47562/fast
+    C:/Users/77174/AppData/Local/Microsoft/WinGet/Packages/BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8we
+kyb3d8bbwe/mingw64/bin/mingw32-make.exe  -f CMakeFiles\cmTC_47562.dir\build.make CMakeFiles/cmTC_47562.dir/build
+    mingw32-make[1]: Entering directory 'D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/build-osal-bad/CMakeFiles/CMa
+keScratch/TryCompile-c2n217'
+    Building C object CMakeFiles/cmTC_47562.dir/testCCompiler.c.obj
+    "C:\Program Files\CMake\bin\cmake.exe" -E cmake_cl_compile_depends --dep-file=CMakeFiles\cmTC_47562.dir\testCCompil
+er.c.obj.d --working-dir=D:\workspaces\ai-coding\wink-ai\wink-ai-embedded\build-osal-bad\CMakeFiles\CMakeScratch\TryCom
+pile-c2n217 --filter-prefix="濞夈劍鍓? 閸栧懎鎯堥弬鍥︽:  " -- D:\software\code-editor\visualstudio\2022\Community\VC\Tools\MSVC\1
+4.44.35207\bin\Hostx64\x64\cl.exe  /nologo -D_MBCS  /DWIN32 /D_WINDOWS  /Zi /Ob0 /Od /RTC1 -MDd /showIncludes /FoCMakeF
+iles\cmTC_47562.dir\testCCompiler.c.obj /FdCMakeFiles\cmTC_47562.dir/ /FS -c D:\workspaces\ai-coding\wink-ai\wink-ai-em
+bedded\build-osal-bad\CMakeFiles\CMakeScratch\TryCompile-c2n217\testCCompiler.c
+    testCCompiler.c
+    Linking C executable cmTC_47562.exe
+    "C:\Program Files\CMake\bin\cmake.exe" -E cmake_link_script CMakeFiles\cmTC_47562.dir\link.txt --verbose=1
+    Visual Studio Incremental Link with embedded manifests
+    Create CMakeFiles\cmTC_47562.dir/manifest.rc
+    Create empty: CMakeFiles\cmTC_47562.dir/embed.manifest
+    RC Pass 1:
+    rc /fo CMakeFiles\cmTC_47562.dir/manifest.res CMakeFiles\cmTC_47562.dir/manifest.rc
+    RC Pass 1: command "rc /fo CMakeFiles\cmTC_47562.dir/manifest.res CMakeFiles\cmTC_47562.dir/manifest.rc" failed (ex
+it code 0) with the following output:
+    no such file or directory"C:\Program Files\CMake\bin\cmake.exe" -E vs_link_exe --msvc-ver=1944 --intdir=CMakeFiles\
+cmTC_47562.dir --rc=rc --mt=CMAKE_MT-NOTFOUND --manifests -- D:\software\code-editor\visualstudio\2022\Community\VC\Too
+ls\MSVC\14.44.35207\bin\Hostx64\x64\link.exe /nologo @CMakeFiles\cmTC_47562.dir\objects1.rsp  /out:cmTC_47562.exe /impl
+ib:cmTC_47562.lib /pdb:D:\workspaces\ai-coding\wink-ai\wink-ai-embedded\build-osal-bad\CMakeFiles\CMakeScratch\TryCompi
+le-c2n217\cmTC_47562.pdb /version:0.0 /machine:x64  /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi
+32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib 
+    mingw32-make[1]: *** [CMakeFiles\cmTC_47562.dir\build.make:103: cmTC_47562.exe] Error -1
+    mingw32-make[1]: Leaving directory 'D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/build-osal-bad/CMakeFiles/CMak
+eScratch/TryCompile-c2n217'
+    mingw32-make: *** [Makefile:133: cmTC_47562/fast] Error 2
+    
+    
+
+
+
+  CMake will not be able to correctly generate this project.
+Call Stack (most recent call first):
+  CMakeLists.txt:2 (project)
+
+
+-- Configuring incomplete, errors occurred!
