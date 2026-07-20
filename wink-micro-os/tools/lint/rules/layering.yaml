@@ -47,15 +47,15 @@ include_rules:
         include_forms: [quote, angle]
     message: >-
       DAL public headers must not leak HAL (pal_hal.h). Keep HAL includes in .c only.
-    severity: warning
+    severity: error
     immutable: false
     refs: ["ADR-0043"]
     allow_paths:
       - path: "dal/include/actuator/dal_motor.h"
-        reason: "known HAL leak; Task 10b migration"
+        reason: "Task 10b deferred — needs wink_pin_t + pal_gpio_mode_t typedef split; backlog"
         until: "2026-12-31"
       - path: "dal/include/sensor/dal_encoder.h"
-        reason: "known HAL leak; Task 10b migration"
+        reason: "Task 10b deferred — needs wink_pin_t + pal_gpio_mode_t typedef split; backlog"
         until: "2026-12-31"
 
   - id: BAL-SRC-HAL-ALLOWLIST

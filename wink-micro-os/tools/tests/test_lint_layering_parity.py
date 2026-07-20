@@ -57,7 +57,7 @@ class TestLayeringRules(unittest.TestCase):
         f = next(x for x in findings if x.rule_id == "BAL-NAME-2")
         self.assertEqual(f.line, 3)
 
-    def test_dal_hdr_no_hal_warning(self):
+    def test_dal_hdr_no_hal_error(self):
         findings = run_lint(
             BAD,
             self.cfg,
@@ -66,7 +66,7 @@ class TestLayeringRules(unittest.TestCase):
             today=date(2026, 7, 20),
         )
         f = next(x for x in findings if x.rule_id == "DAL-HDR-NO-HAL")
-        self.assertEqual(f.severity, "warning")
+        self.assertEqual(f.severity, "error")
         self.assertEqual(f.line, 3)
         self.assertFalse(f.allowlisted)
 

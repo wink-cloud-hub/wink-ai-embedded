@@ -53,7 +53,7 @@ python wink-micro-os/tools/wink.py <command> [options]
 | `esp32 --app … [idf args]` | ESP-IDF build / flash / monitor |
 | `web [--port N]` | Vite frontend |
 | `test` | Codegen golden + host ctest |
-| `lint [--pack layering\|api] …` | YAML layer/API lint (ADR-0043); **skips** toolchain gate |
+| `lint [--pack layering\|api\|arduino] …` | YAML layer/API/Arduino lint (ADR-0043); **skips** toolchain gate |
 
 Every non-diagnostic command first runs `tools.toolchain.ensure_for(<profile>)` and
 exits with an actionable report if a required capability is missing. Use
@@ -62,7 +62,9 @@ exits with an actionable report if a required capability is missing. Use
 
 ```powershell
 python wink-micro-os/tools/wink.py lint --pack layering --pack api
-# optional: --paths … / --changed / --format text|json / --strict / --today YYYY-MM-DD
+python wink-micro-os/tools/wink.py lint --pack arduino
+# optional: --paths … / --changed / --format text|json|sarif / --output FILE
+#           --strict / --today YYYY-MM-DD / --explain RULE_ID
 ```
 
 ---
