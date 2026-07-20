@@ -1,0 +1,27 @@
+version: 1
+id: layering
+metadata:
+  owner: "wink-arch"
+  adr: ["ADR-0043", "ADR-0038"]
+
+layers:
+  bal_public:
+    roots: ["bal/include"]
+    kind: public_header
+  bal_src:
+    roots: ["bal/src"]
+    kind: source
+  dal_public:
+    roots: ["dal/include"]
+    kind: public_header
+  dal_src:
+    roots: ["dal/src"]
+    kind: source
+  app_src:
+    roots: ["apps/*/src"]
+    kind: source
+
+include_rules: []
+api_rules: []
+path_rules: []
+ignore: []
