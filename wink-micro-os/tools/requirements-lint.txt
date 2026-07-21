@@ -1,1 +1,4 @@
+# Dependencies for `wink lint` (ADR-0043 YAML layer/API lint engine).
+# Only needed to run `python wink-micro-os/tools/wink.py lint`; other wink
+# commands (build / gen / esp32 / …) do not require these.
 PyYAML>=6

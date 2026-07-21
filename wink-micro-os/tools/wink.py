@@ -1340,7 +1340,23 @@ def _build_parser() -> argparse.ArgumentParser:
                          help="Attempt automatic install (phase B; currently prints hint only).")
     p_setup.set_defaults(handler=handle_setup)
 
-    from tools.lint.cli import handle_lint  # noqa: WPS433
+    # Lazy handler: keep PyYAML (and the whole lint engine) out of the import
+    # path for unrelated commands like `build` / `gen`. Only `wink lint`
+    # requires it, and we surface a friendly hint if the dep is missing.
+    def _lazy_handle_lint(args):
+        try:
+            from tools.lint.cli import handle_lint  # noqa: WPS433
+        except ModuleNotFoundError as exc:
+            if exc.name == "yaml":
+                print(
+                    "[wink lint] PyYAML is required. Install it with:\n"
+                    "    python -m pip install -r wink-micro-os/tools/requirements-lint.txt\n"
+                    "  (or: python -m pip install \"PyYAML>=6\")",
+                    file=sys.stderr,
+                )
+                sys.exit(2)
+            raise
+        handle_lint(args)
 
     p_lint = sub.add_parser("lint", parents=[global_parent],
                             help="Run YAML layer/API/Arduino lints (ADR-0043)")
@@ -1370,7 +1386,7 @@ def _build_parser() -> argparse.ArgumentParser:
                         help="Optional baseline file for fingerprint diff (later)")
     p_lint.add_argument("--today", default=None,
                         help="Override today for until expiry (YYYY-MM-DD); also $WINK_LINT_TODAY")
-    p_lint.set_defaults(handler=handle_lint)
+    p_lint.set_defaults(handler=_lazy_handle_lint)
 
     return p
 

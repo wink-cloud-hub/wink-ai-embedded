@@ -245,6 +245,10 @@ YAML-driven App/BAL/DAL/PAL boundary + API-shape checks. Rules live in
 `tools/lint/rules/*.yaml` (the single source of truth); the engine only loads
 and reports, so add or relax a rule by editing YAML, not Python.
 
+> **Dependency:** `wink lint` needs PyYAML —
+> `python -m pip install -r wink-micro-os/tools/requirements-lint.txt`.
+> Only this command requires it; `build` / `gen` / `esp32` run without it.
+
 **Run it (from workspace root):**
 
 ```powershell

@@ -30,6 +30,7 @@ python wink-micro-os/tools/wink.py doctor
 |------|------|------|
 | **Python 3** | 跑 `wink.py`、codegen、lint；CMake 也 `find_package(Python3 REQUIRED)` | ≥ 3.10（脚本使用 `Path \| None` 等语法） |
 | **Jinja2** | `codegen/app_codegen.py` 模板渲染 | `pip install jinja2` |
+| **PyYAML** | 仅 `wink lint`（ADR-0043）需要；其它命令不依赖 | `pip install -r wink-micro-os/tools/requirements-lint.txt`（或 `pip install "PyYAML>=6"`） |
 | **gcc**（MinGW） | Host 编译 / 单测 | 推荐 WinLibs：`winget install --id BrechtSanders.WinLibs.POSIX.UCRT -e` |
 | **cmake** ≥ 3.15 | configure + build | WinLibs 自带或独立安装 |
 | **mingw32-make** | Windows 上 `wink.py` 固定 `-G "MinGW Makefiles"` | 随 WinLibs |
