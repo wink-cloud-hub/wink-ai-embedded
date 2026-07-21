@@ -136,7 +136,10 @@ static void bal_irq_daemon_task(void *arg) {
              * already been reused by a subsequent arm). */
             if (s->drive != WINK_BUTTON_DRIVE_GPIO_IRQ) { continue; }
             if (s->irq_debounce_h < 0) { continue; }
-            if (!dal_button_consume_irq_pending(s->btn)) { continue; }
+            bool was_pending = false;
+            wink_status_t cst =
+                dal_button_consume_irq_pending(s->btn, &was_pending);
+            if (wink_status_is_error(cst) || !was_pending) { continue; }
             /* Fresh edge (or coalesced burst): (re-)arm the debounce timer.
              * If it was already running, stop+start restarts the settle
              * window — exactly what we want when bounces keep coming.
