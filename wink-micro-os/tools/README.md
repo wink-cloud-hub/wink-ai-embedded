@@ -264,8 +264,8 @@ toolchain gate, so it needs nothing but Python.
 | Pack | Checks |
 |------|--------|
 | `layering` | include boundaries (`BAL-HDR-NO-PAL`, `DAL-HDR-NO-HAL`, …), forbidden header names, math-header purity |
-| `api` | `NO-OPS-VTABLE`, `NO-MALLOC-HOTPATH` (warn), public DAL APIs must return `wink_status_t` not `bool` |
-| `arduino` | ADR-0035 Arduino C++ bleed into kernel dirs (`pal`/`dal`/`runtime`/…) |
+| `api` | `NO-OPS-VTABLE`; `NO-MALLOC-HOTPATH` (warn) on `bal`/`dal`/`runtime` src; public DAL APIs must return `wink_status_t` not `bool` |
+| `arduino` | ADR-0035 Arduino C++ bleed into kernel dirs (`pal`/`dal`/`runtime`/…); SSOT in `packs/legacy_arduino.py` |
 
 **Common flags:**
 
@@ -298,6 +298,27 @@ python wink-micro-os/tools/wink.py lint --format sarif --output lint.sarif
 `tools/lint/rules/*.yaml`. Expiring entries emit `info` at 30 days and `warning`
 at 7 days so they don't rot silently.
 
+### Coverage: `wink lint` vs legacy scripts
+
+Not every static gate is YAML-driven yet. Text/AST-scan boundary rules live in
+`wink lint`; checks that need a compiler or a built binary stay as scripts (see
+ADR-0043 non-goals). Both run in `run-tests.ps1`.
+
+| Gate | Enforced by | Notes |
+|------|-------------|-------|
+| BAL/DAL include boundaries, header names, math purity | **`wink lint --pack layering`** | ADR-0023 / ADR-0038 / ADR-0043 |
+| ops/vtable, hot-path malloc, `bool` DAL API | **`wink lint --pack api`** | `NO-MALLOC` covers `bal`/`dal`/`runtime` src |
+| Arduino C++ isolation (source) | **`wink lint --pack arduino`** | SSOT `packs/legacy_arduino.py`; `check_arduino_isolation.py` is a CLI shim |
+| `wink_bal` PUBLIC include dirs / `src`↔`include` mirror | CMake (`BAL-INC-2`, `BAL-SRC-1`) | link/layout — stays in `bal/CMakeLists.txt` |
+| Header self-containment (compiles standalone) | `lint/check_headers_self_contained.py` | needs `gcc`/`g++` — not text-scannable |
+| Log format-string literal gate | `lint/check_log_format_literals.py` | tokenizer-based; YAML pack is future work |
+| PT (protothread) variable footguns | `lint/check_pt_variables.py` + CMake (`check_pt_footguns`) | |
+| ESP_PLATFORM guard density / ADR-0017 strict-nonblocking elision | inline steps in `run-tests.ps1` | compile-probe based |
+| Arduino **binary** symbol audit (ADR-0036/0040) | `lint/check_arduino_symbols.py` | scans compiled binary via `nm` — needs a build dir |
+
+Backlog toward more YAML coverage: header self-containment / log-literal packs,
+an App-layer PAL ban, and `--baseline` fingerprint diff (see ADR-0043).
+
 ### Legacy script gates
 
 Invoked from `wink-micro-os/run-tests.ps1` and CMake (`check_pt_footguns`):
@@ -305,3 +326,4 @@ Invoked from `wink-micro-os/run-tests.ps1` and CMake (`check_pt_footguns`):
 - `lint/check_pt_variables.py`
 - `lint/check_headers_self_contained.py`
 - `lint/check_log_format_literals.py`
+- `lint/check_arduino_symbols.py` (binary audit; needs a build dir)

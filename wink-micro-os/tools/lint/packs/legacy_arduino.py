@@ -1,4 +1,7 @@
-"""Legacy Arduino isolation pack — wraps check_arduino_isolation logic as Findings."""
+"""Arduino isolation pack (ADR-0035) — SSOT for ``wink lint --pack arduino``.
+
+``tools/lint/check_arduino_isolation.py`` is a thin CLI shim over this module.
+"""
 from __future__ import annotations
 
 import re

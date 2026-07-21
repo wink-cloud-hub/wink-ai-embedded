@@ -30,7 +30,7 @@ api_rules:
     refs: ["ADR-0004"]
 
   - id: NO-MALLOC-HOTPATH
-    in: [bal_src, dal_src]
+    in: [bal_src, dal_src, runtime_src]
     deny_regex:
       - pattern: '\b(malloc|calloc|realloc|free)\s*\('
     context:

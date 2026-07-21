@@ -1,76 +1,50 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-WinkMicroOS Arduino Isolation Linter (ADR-0035)
-Ensures that C++ Arduino headers or symbols do not bleed into the C-based core
-kernel (pal, dal, trace, runtime, targets, osal).
+"""CLI shim for ADR-0035 Arduino isolation.
 
-ADR-0041 split OSAL adapters out of `targets/<plat>/` into their own top-level
-`osal/<variant>/` tree; the isolation invariant still applies there, so `osal`
-is included below.
+Rule SSOT lives in ``tools/lint/packs/legacy_arduino.py`` (also used by
+``wink lint --pack arduino``). Prefer the wink CLI; this script remains for
+standalone / historical callers.
 """
+from __future__ import annotations
 
-import os
 import sys
-import re
+from pathlib import Path
 
-# Directories that must remain strictly isolated from Arduino Core C++ dependencies
-ISOLATED_DIRS = ['pal', 'dal', 'trace', 'runtime', 'targets', 'osal']
+_SDK = Path(__file__).resolve().parents[2]  # wink-micro-os
+if str(_SDK) not in sys.path:
+    sys.path.insert(0, str(_SDK))
 
-# Keywords or includes that indicate isolation leakage
-FORBIDDEN_PATTERNS = [
-    (re.compile(r'#include\s*[<"](?:api/)?Arduino(?:API)?\.h[>"]'), 'Forbidden Arduino.h or ArduinoAPI.h include'),
-    (re.compile(r'#include\s*[<"](?:api/)?Hardware(?:Serial|I2C|SPI|CAN)\.h[>"]'), 'Forbidden Hardware bus headers'),
-    (re.compile(r'\bTwoWire\b'), 'Forbidden TwoWire type reference'),
-    (re.compile(r'\bHardwareSerial\b'), 'Forbidden HardwareSerial type reference'),
-    (re.compile(r'\bHardwareSPI\b'), 'Forbidden HardwareSPI type reference'),
-]
+from tools.lint.packs.legacy_arduino import check_arduino_isolation  # noqa: E402
 
-def scan_file(filepath):
-    violations = []
-    try:
-        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-            for line_no, line in enumerate(f, 1):
-                # Ignore comments
-                stripped = line.strip()
-                if stripped.startswith('//') or stripped.startswith('*') or stripped.startswith('/*'):
-                    continue
-                for pattern, desc in FORBIDDEN_PATTERNS:
-                    if pattern.search(line):
-                        violations.append((line_no, line.strip(), desc))
-    except Exception as e:
-        print(f"Error reading {filepath}: {e}")
-    return violations
 
-def main():
-    root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    print(f"Scanning kernel core targets under {root_dir} for Arduino leaks...")
+def main(argv: list[str] | None = None) -> int:
+    del argv  # unused; kept for call-site compatibility
+    root = _SDK
+    print(f"Scanning kernel core targets under {root} for Arduino leaks...")
 
-    total_violations = 0
-    for folder in ISOLATED_DIRS:
-        folder_path = os.path.join(root_dir, folder)
-        if not os.path.exists(folder_path):
-            continue
+    findings = check_arduino_isolation(root)
+    if not findings:
+        print(
+            "[PASS] Core kernel is strictly isolated from Arduino C++ references."
+        )
+        return 0
 
-        for root, _, files in os.walk(folder_path):
-            for file in files:
-                if not (file.endswith('.c') or file.endswith('.h')):
-                    continue
-                filepath = os.path.join(root, file)
-                violations = scan_file(filepath)
-                if violations:
-                    rel_path = os.path.relpath(filepath, root_dir)
-                    print(f"\n[FAIL] Isolation violation in {rel_path}:")
-                    for line_no, line_content, desc in violations:
-                        print(f"  Line {line_no}: {line_content}  <-- {desc}")
-                        total_violations += 1
+    by_path: dict[str, list] = {}
+    for f in findings:
+        by_path.setdefault(f.path, []).append(f)
 
-    if total_violations > 0:
-        print(f"\n[ERROR] Found {total_violations} isolation violations! ADR-0035 forbids C++ Arduino dependencies in the core kernel.")
-        sys.exit(1)
+    for rel, items in sorted(by_path.items()):
+        print(f"\n[FAIL] Isolation violation in {rel}:")
+        for f in items:
+            print(f"  Line {f.line}: {f.snippet}  <-- {f.message}")
 
-    print("[PASS] Core kernel is strictly isolated from Arduino C++ references.")
-    sys.exit(0)
+    print(
+        f"\n[ERROR] Found {len(findings)} isolation violations! "
+        "ADR-0035 forbids C++ Arduino dependencies in the core kernel."
+    )
+    return 1
 
-if __name__ == '__main__':
-    main()
+
+if __name__ == "__main__":
+    sys.exit(main())

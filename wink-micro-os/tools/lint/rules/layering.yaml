@@ -23,6 +23,9 @@ layers:
   app_src:
     roots: ["apps/*/src"]
     kind: source
+  runtime_src:
+    roots: ["runtime/src"]
+    kind: source
 
 include_rules:
   - id: BAL-HDR-NO-PAL

@@ -38,6 +38,15 @@ class TestClassifyFile(unittest.TestCase):
         ignore = [{"path": "third_party/**", "scope": ["classify"]}]
         self.assertIsNone(classify_file("third_party/foo/bar.h", LAYERS, ignore))
 
+    def test_classify_runtime_src(self):
+        layers = {
+            "runtime_src": {"roots": ["runtime/src"], "kind": "source"},
+        }
+        self.assertEqual(
+            classify_file("runtime/src/wink_soft_timer.c", layers, []),
+            ("runtime_src", "source"),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

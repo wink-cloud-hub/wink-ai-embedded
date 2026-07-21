@@ -16,7 +16,7 @@ from tools.lint.packs.api_surface import check_api_surface  # noqa: E402
 def _malloc_rule(**extra) -> dict:
     rule = {
         "id": "NO-MALLOC-HOTPATH",
-        "in": ["bal_src", "dal_src"],
+        "in": ["bal_src", "dal_src", "runtime_src"],
         "deny_regex": [{"pattern": r"\b(malloc|calloc|realloc|free)\s*\("}],
         "context": {
             "strip_comments": True,
@@ -81,6 +81,15 @@ class TestApiSurface(unittest.TestCase):
         self.assertEqual(len(findings), 1)
         self.assertEqual(findings[0].rule_id, "NO-MALLOC-HOTPATH")
         self.assertEqual(findings[0].line, 1)
+
+    def test_no_malloc_covers_runtime_src(self):
+        cfg = LintConfig(api_rules=[_malloc_rule()])
+        text = "void *p = calloc(1, 8);\n"
+        findings = check_api_surface(
+            "runtime/src/wink_runtime.c", text, "runtime_src", "source", cfg
+        )
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0].rule_id, "NO-MALLOC-HOTPATH")
 
     def test_no_ops_declarations_only_in_public_header(self):
         cfg = LintConfig(api_rules=[_ops_rule()])
