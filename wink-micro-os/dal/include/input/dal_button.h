@@ -311,12 +311,15 @@ void dal_button_disable_gpio_isr(dal_button_t *dev);
 /**
  * @brief 读并清 irq_pending 标志（task 上下文，临界区保护）。
  *
- * 由 BAL IRQ daemon 唤醒后调用扫描每个 slot，若 true 表明自上次消费以来
- * 至少发生过一次边沿，然后立刻 arm 去抖定时器采稳定态。
+ * 由 BAL IRQ daemon 唤醒后调用扫描每个 slot，若 *out_was_pending == true
+ * 表明自上次消费以来至少发生过一次边沿，然后立刻 arm 去抖定时器采稳定态。
  *
- * @return true = 曾经 pending（已清零）；false = 无 pending 或 dev 无效。
+ * @param[out] out_was_pending  true = 曾经 pending（已清零）；false = 无 pending。
+ * @return WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED
  */
-bool dal_button_consume_irq_pending(dal_button_t *dev);
+WINK_WARN_UNUSED_RESULT
+wink_status_t dal_button_consume_irq_pending(dal_button_t *dev,
+                                             bool *out_was_pending);
 
 /**
  * @brief 注册进程级 IRQ 通知 hook（BAL 使用，DAL 侧仅回调）。
@@ -369,8 +372,9 @@ WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_button_enable_gpio_isr(dal_button_t *dev);
 WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG)
 void dal_button_disable_gpio_isr(dal_button_t *dev);
-WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG)
-bool dal_button_consume_irq_pending(dal_button_t *dev);
+WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_button_consume_irq_pending(dal_button_t *dev,
+                                             bool *out_was_pending);
 WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG)
 void dal_button_set_irq_hook(dal_button_irq_notify_hook_t fn, void *ctx);
 #endif /* !WINK_USE_BUTTON */

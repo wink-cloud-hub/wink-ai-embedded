@@ -313,14 +313,19 @@ void dal_button_set_event_backend(dal_button_t *dev, uint8_t backend) {
     });
 }
 
-bool dal_button_consume_irq_pending(dal_button_t *dev) {
-    if (dev == NULL || !dev->initialized) { return false; }
+wink_status_t dal_button_consume_irq_pending(dal_button_t *dev,
+                                             bool *out_was_pending) {
+    if (dev == NULL || out_was_pending == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
     bool was_pending = false;
     PAL_CRITICAL_SECTION({
         was_pending = dev->irq_pending;
         dev->irq_pending = false;
     });
-    return was_pending;
+    *out_was_pending = was_pending;
+    return WINK_OK;
 }
 
 void dal_button_set_irq_hook(dal_button_irq_notify_hook_t fn, void *ctx) {
