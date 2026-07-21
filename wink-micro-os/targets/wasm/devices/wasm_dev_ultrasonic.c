@@ -3,6 +3,7 @@
  * @brief Wasm 仿真侧 HC-SR04 超声波虚拟外设模型 (C-side Model)。
  */
 #include "wasm_sim_registry.h"
+#include "wasm_bridge.h"
 #include <string.h>
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -51,9 +52,17 @@ uint32_t wasm_dev_ultrasonic_get_pulse_us(uint8_t pin) {
         return 0;
     }
 
-    float distance_cm = s_virtual_ultrasonic_distance[pin];
+    // Phase3: 优先从标准插件通道读取距离（新架构）
+    // 实例 ID "ultrasonic:0" 与 JS 侧 SimulationPluginHost 注册一致
+    float distance_cm = js_sim_get_plugin_channel("ultrasonic:0", "distanceCm");
+
+    // 向后兼容：如果插件通道返回无效值（< 0），尝试旧的 pin 注入方式
     if (distance_cm < 0.0f) {
-        return 0; // 未注入，返回 0 触发 JS fallback
+        distance_cm = s_virtual_ultrasonic_distance[pin];
+    }
+
+    if (distance_cm < 0.0f) {
+        return 0; // 未注入，返回 0
     }
 
     // HC-SR04 超声波测距公式: 脉宽 (us) = 距离 (cm) * 58.0f
