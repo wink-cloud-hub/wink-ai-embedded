@@ -160,6 +160,13 @@ extern void js_pal_log(uint8_t level, const char *msg);
  * 仅在 #ifdef SIMULATION 下被 DAL 引用；真机分支不编译本段。
  * ADR-0003 决策2：只旁路最底层物理量来源（trigger 时序 + echo 脉宽），换算/超时两端同源。 */
 extern void     js_pal_gpio_on_write(uint8_t pin, uint8_t level);
+/* ---- Phase3 Plugin Channel API (2026-07-21) ----
+ * 标准插件通道读取接口：从 JS 侧插件实例读取状态值。
+ * instance_id: 插件实例 ID（如 "ultrasonic:0"）
+ * channel_name: 通道名（如 "distanceCm"）
+ * 返回: 浮点数值（插件支持的所有通道类型均以 float 形式返回）
+ */
+extern float    js_sim_get_plugin_channel(const char *instance_id, const char *channel_name);
 
 /* ---- WASM 退化引擎导出（ADR-0009 Wave 2，C → JS Worker）----
  *
