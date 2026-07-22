@@ -189,6 +189,8 @@ extern void     pal_wasm_set_rc_tau_s(float s);
 extern void     pal_wasm_set_i2c_drop_permil(uint16_t permil);
 extern void     pal_wasm_set_prng_seed(uint32_t seed);
 extern uint32_t pal_wasm_get_prng_state(void);
+/* [双仓联动] Phase 3 SessionRecorder diagnostic replay restore */
+extern void     pal_wasm_set_prng_state(uint32_t state);
 extern void     pal_wasm_reset_physical(void);
 
 /* ---- 虚拟时钟溢出预警导出（Wave2 P1 Task 6）----

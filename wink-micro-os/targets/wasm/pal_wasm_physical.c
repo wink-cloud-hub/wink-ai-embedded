@@ -135,10 +135,10 @@ void pal_wasm_set_prng_seed(uint32_t seed) { WASM_FAULT_GUARD_VOID(); s_prng_sta
  * ─────────────────────────────────────────────────────────
  * Consumed by pal_hal_wasm.c (Wave 2 Task 3) and by unit tests.
  *
- * `pal_wasm_get_prng_state` is also exported because tests / JS may want to
- * snapshot the PRNG for "scenario replay" workflows. JS MUST NOT write the
- * state directly other than via pal_wasm_set_prng_seed() — that would break
- * the single-seed-reproduces-all-degradation invariant.
+ * `pal_wasm_get_prng_state` / `pal_wasm_set_prng_state` are exported for
+ * Phase 3 SessionRecorder diagnostic snapshot restore ([双仓联动]).
+ * Normal scene setup still uses `pal_wasm_set_prng_seed()`; `set_prng_state`
+ * is for restoring a mid-run snapshot, not for ad-hoc reseeding.
  */
 uint32_t pal_wasm_get_bounce_us(void)        { return s_faults.bounce_us; }
 uint16_t pal_wasm_get_i2c_drop_permil(void)  { return s_faults.i2c_drop_permil; }
@@ -146,9 +146,15 @@ uint16_t pal_wasm_get_i2c_drop_permil(void)  { return s_faults.i2c_drop_permil; 
 EMSCRIPTEN_KEEPALIVE
 uint32_t pal_wasm_get_prng_state(void)       { return s_prng_state; }
 
+EMSCRIPTEN_KEEPALIVE
+void pal_wasm_set_prng_state(uint32_t state)
+{
+    WASM_FAULT_GUARD_VOID();
+    s_prng_state = (state == 0u) ? 1u : state;
+}
+
 /* HAL middleware writes back the PRNG state after consuming bytes. Internal —
- * not exported; JS goes through pal_wasm_set_prng_seed() if it needs to
- * reseed. */
+ * not exported; JS restores mid-run state via pal_wasm_set_prng_state(). */
 void pal_wasm_advance_prng_state(uint32_t new_state) { s_prng_state = new_state; }
 
 /* TODO(Wave3): interim accessor — exposes &s_faults so pal_wasm_fault_domain.c
