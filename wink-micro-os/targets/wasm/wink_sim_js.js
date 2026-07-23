@@ -188,6 +188,18 @@ addToLibrary({
         /* 桩：立即返回成功；真实实现须模拟设备响应写入 rbuf */
         return 1;
     },
+    js_pal_spi_transfer: function (port, deviceId, txbuf, len, rxbuf, mode, sckHz) {
+        if (typeof Module !== 'undefined' && typeof Module.js_pal_spi_transfer === 'function') {
+            return Module.js_pal_spi_transfer(port, deviceId, txbuf, len, rxbuf, mode, sckHz);
+        }
+        /* 桩：无设备模型时 NACK（false）；Host 覆盖后走 SPIBus */
+        return 0;
+    },
+    js_pal_uart_write: function (port, buf, len) {
+        if (typeof Module !== 'undefined' && typeof Module.js_pal_uart_write === 'function') {
+            return Module.js_pal_uart_write(port, buf, len);
+        }
+    },
 
     /* ---- 中断桥 Poll 模型（方案 C）默认无 pending ---- */
     js_pal_register_interrupt: function (pin, cbIdx, argPtr) {

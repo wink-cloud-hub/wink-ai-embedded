@@ -114,6 +114,13 @@ extern void js_pal_pwm_set_duty(uint8_t channel, float duty_cycle_percent);
 extern bool js_pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
                                 const uint8_t *write_buf, uint32_t write_len,
                                 uint8_t *read_buf, uint32_t read_len);
+/* Phase 4 T5 minimal stubs — full pal_spi_* / pal_uart_* HAL is Phase 4.1+.
+ * device_id is a host-side chip-select / device index (not a 7-bit I2C addr).
+ * mode is SPI mode 0..3; sck_hz is the nominal SCK frequency for timing models. */
+extern bool js_pal_spi_transfer(uint8_t port, uint16_t device_id,
+                                const uint8_t *tx_buf, uint32_t len,
+                                uint8_t *rx_buf, uint8_t mode, uint32_t sck_hz);
+extern void js_pal_uart_write(uint8_t port, const uint8_t *buf, uint32_t len);
 /* ---- 中断桥 Poll 接口（方案 C：Wasm 主动拉取，取代旧 Push 模型 _trigger_wasm_interrupt）----
  *
  * 架构变更（ADR-0002 方案 C 落地，见 docs/04 01-wasm-sandbox-lifecycle.md §4）：
