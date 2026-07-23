@@ -257,7 +257,8 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
         }
     }
 
-    // Scheme A: 优先使用 C 侧虚拟 I2C 设备模拟
+    // Phase 4 T5: C-side I2C Scheme-A short-circuit retired (SSD1306 → Unisim plugin).
+    // Keep the exists/transfer hooks for future C virtual devices; currently always miss.
     if (wasm_sim_i2c_dev_exists(dev_addr)) {
         return wasm_sim_i2c_dev_transfer(port, dev_addr, write_buf, write_len, read_buf, read_len);
     }
