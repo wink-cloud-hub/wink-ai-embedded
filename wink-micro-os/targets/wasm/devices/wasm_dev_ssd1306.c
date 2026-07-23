@@ -1,6 +1,10 @@
 /**
  * @file wasm_dev_ssd1306.c
- * @brief Wasm 仿真侧 SSD1306 OLED 虚拟外设模型 (C-side Model)。
+ * @brief Wasm SSD1306 helpers kept for compat (reset + empty FB export).
+ *
+ * Phase 4 T5: I2C command/data simulation moved to Unisim `oled-ssd1306` plugin.
+ * `pal_wasm_get_ssd1306_fb` remains as a zeroed fallback for older frontends
+ * that still poll the C export during the migration window.
  */
 #include "wasm_sim_registry.h"
 #include <string.h>

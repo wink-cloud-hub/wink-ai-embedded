@@ -48,23 +48,23 @@ EMSCRIPTEN_KEEPALIVE void pal_wasm_sim_reset_all_devices(void) {
     wasm_sim_devices_reset();
 }
 
-// I2C 拦截判断
+// I2C 拦截判断 — Phase 4 T5: SSD1306 moved to Unisim TS plugin on I2CBus.
+// Scheme-A address short-circuit retired; all I2C goes through js_pal_i2c_transfer.
 bool wasm_sim_i2c_dev_exists(uint16_t dev_addr) {
-    // SSD1306 OLED 默认使用 0x3C 或 0x3D 地址
-    return (dev_addr == 0x3C || dev_addr == 0x3D);
+    (void)dev_addr;
+    return false;
 }
 
-// I2C 拦截处理分发
+// I2C 拦截处理分发 (no C-side I2C devices remain)
 wink_status_t wasm_sim_i2c_dev_transfer(uint8_t port, uint16_t dev_addr,
                                         const uint8_t *write_buf, uint32_t write_len,
                                         uint8_t *read_buf, uint32_t read_len) {
     (void)port;
+    (void)dev_addr;
+    (void)write_buf;
+    (void)write_len;
     (void)read_buf;
     (void)read_len;
-
-    if (dev_addr == 0x3C || dev_addr == 0x3D) {
-        return wasm_dev_ssd1306_transfer(write_buf, write_len);
-    }
     return WINK_ERR_UNSUPPORTED;
 }
 
