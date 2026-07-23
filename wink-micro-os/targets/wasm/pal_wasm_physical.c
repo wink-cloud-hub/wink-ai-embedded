@@ -150,7 +150,16 @@ EMSCRIPTEN_KEEPALIVE
 void pal_wasm_set_prng_state(uint32_t state)
 {
     WASM_FAULT_GUARD_VOID();
-    s_prng_state = (state == 0u) ? 1u : state;
+    s_prng_state = state;
+}
+
+/* [双仓联动] Bump when SimFaultsConfig / SessionRecorder L0 snapshot ABI changes. */
+#define PAL_WASM_ABI_HASH 0x50333031u /* 'P''3''0''1' */
+
+EMSCRIPTEN_KEEPALIVE
+uint32_t pal_wasm_get_abi_hash(void)
+{
+    return PAL_WASM_ABI_HASH;
 }
 
 /* HAL middleware writes back the PRNG state after consuming bytes. Internal —
