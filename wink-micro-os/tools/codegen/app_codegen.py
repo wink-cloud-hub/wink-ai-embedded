@@ -36,7 +36,15 @@ else:
     from .drivers import get_driver, all_drivers
     from .drivers.base import DriverBase
 
-from jinja2 import Environment, FileSystemLoader, StrictUndefined  # noqa: E402
+try:
+    from jinja2 import Environment, FileSystemLoader, StrictUndefined  # noqa: E402
+except ImportError:
+    print(
+        "Error: 'jinja2' module not found. Please install it with `pip install jinja2` or verify your Python environment.",
+        file=sys.stderr,
+    )
+    sys.exit(2)
+
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 OUTPUT_FILES = (
