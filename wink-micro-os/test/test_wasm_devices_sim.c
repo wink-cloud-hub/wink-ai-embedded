@@ -19,44 +19,16 @@ void tearDown(void) {
     // No-op
 }
 
-void test_virtual_ssd1306_display_commands_and_draw(void) {
-    // SSD1306 standard init & page-column config I2C command packet
-    // horizontal address mode, page 0..7, col 0..127
-    uint8_t init_cmd[] = {
-        0x00,              // Control byte: Command
-        0x20, 0x00,        // Addressing mode: Horizontal
-        0x21, 0x00, 0x7F,  // Column range 0..127
-        0x22, 0x00, 0x07   // Page range 0..7
-    };
+void test_ssd1306_scheme_a_retired(void) {
+    /* Phase E: C SSD1306 model + pal_wasm_get_ssd1306_fb removed.
+     * I2C short-circuit stays false; observation SSOT is Unisim plugin. */
+    TEST_ASSERT_FALSE(wasm_sim_i2c_dev_exists(0x3C));
+    TEST_ASSERT_FALSE(wasm_sim_i2c_dev_exists(0x3D));
 
-    TEST_ASSERT_TRUE(wasm_sim_i2c_dev_exists(0x3C));
-    TEST_ASSERT_TRUE(wasm_sim_i2c_dev_exists(0x3D));
-    TEST_ASSERT_FALSE(wasm_sim_i2c_dev_exists(0x1F)); // Non-existent I2C address
-
-    // Send command packet to virtual SSD1306 (address 0x3C)
-    wink_status_t st = wasm_sim_i2c_dev_transfer(0, 0x3C, init_cmd, sizeof(init_cmd), NULL, 0);
-    TEST_ASSERT_EQUAL(WINK_OK, st);
-
-    // Send page data: 128 bytes of pixel data
-    uint8_t data_pkt[129];
-    data_pkt[0] = 0x40; // Control byte: Data
-    for (int i = 1; i <= 128; i++) {
-        data_pkt[i] = (uint8_t)i;
-    }
-    st = wasm_sim_i2c_dev_transfer(0, 0x3C, data_pkt, sizeof(data_pkt), NULL, 0);
-    TEST_ASSERT_EQUAL(WINK_OK, st);
-
-    // Retrieve FB pointer and dimensions
-    uint32_t width = 0, height = 0;
-    const uint8_t *fb = pal_wasm_get_ssd1306_fb(&width, &height);
-    TEST_ASSERT_NOT_NULL(fb);
-    TEST_ASSERT_EQUAL(128, width);
-    TEST_ASSERT_EQUAL(64, height);
-
-    // Check first page pixels
-    for (int i = 0; i < 128; i++) {
-        TEST_ASSERT_EQUAL((uint8_t)(i + 1), fb[i]);
-    }
+    uint8_t init_cmd[] = { 0x00, 0x20, 0x00 };
+    wink_status_t st =
+        wasm_sim_i2c_dev_transfer(0, 0x3C, init_cmd, sizeof(init_cmd), NULL, 0);
+    TEST_ASSERT_EQUAL(WINK_ERR_UNSUPPORTED, st);
 }
 
 void test_virtual_servo_angle_conversion(void) {
@@ -135,7 +107,7 @@ void test_virtual_gpio_inputs_and_outputs(void) {
 
 int main(void) {
     UNITY_BEGIN();
-    RUN_TEST(test_virtual_ssd1306_display_commands_and_draw);
+    RUN_TEST(test_ssd1306_scheme_a_retired);
     RUN_TEST(test_virtual_servo_angle_conversion);
     RUN_TEST(test_virtual_ultrasonic_distance_and_pulses);
     RUN_TEST(test_virtual_gpio_inputs_and_outputs);
