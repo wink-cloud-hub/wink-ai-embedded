@@ -12,10 +12,7 @@
 
 #define WASM_SIM_MAX_PINS 40
 
-// 外部虚拟外设声明
-void          wasm_dev_ssd1306_reset(void);
-wink_status_t wasm_dev_ssd1306_transfer(const uint8_t *write_buf, uint32_t write_len);
-
+// 外部虚拟外设声明（SSD1306 C Model 已退役 → Unisim plugin / I2CBus）
 void wasm_dev_servo_reset(void);
 void wasm_dev_servo_set_duty(uint8_t channel, float duty_cycle_percent);
 
@@ -32,7 +29,6 @@ static bool s_gpio_outputs[WASM_SIM_MAX_PINS];
 
 // 统一复位接口
 void wasm_sim_devices_reset(void) {
-    wasm_dev_ssd1306_reset();
     wasm_dev_servo_reset();
     wasm_dev_ultrasonic_reset();
 #ifdef __EMSCRIPTEN__

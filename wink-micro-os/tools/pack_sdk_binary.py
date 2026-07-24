@@ -69,7 +69,7 @@ _WASM_PAL_SOURCE_BASENAMES = [
     "pal_wasm_physical.c", "pal_wasm_fault.c", "pal_wasm_fault_domain.c",
     "wasm_entry.c",
     "wasm_sim_registry.c",
-    "wasm_dev_ssd1306.c", "wasm_dev_servo.c", "wasm_dev_ultrasonic.c",
+    "wasm_dev_servo.c", "wasm_dev_ultrasonic.c",
     # osal/wasm + osal/common/
     "pal_osal_wasm.c", "sim_ctx_emscripten_fiber.c", "pal_osal_ringbuf.c",
     # targets/common/src/ + pal/

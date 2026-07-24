@@ -290,8 +290,8 @@ extern wink_status_t pal_wasm_set_pin_power_model(uint8_t pin,
 extern uint64_t      pal_wasm_get_total_energy_mj(void);
 
 /* ---- 虚拟外设控制与状态导出 API（Scheme A + Value-injection，2026-07-05）---- */
+/* pal_wasm_get_ssd1306_fb retired (Phase E): OLED FB SSOT is Unisim plugin displays[]. */
 extern void           pal_wasm_sim_reset_all_devices(void);
-extern const uint8_t* pal_wasm_get_ssd1306_fb(uint32_t *width, uint32_t *height);
 extern float          pal_wasm_get_servo_angle(uint8_t channel);
 extern float          pal_wasm_get_pwm_duty_percent(uint8_t channel);
 extern void           pal_wasm_push_pin_event(uint8_t pin, uint64_t delay_us, uint8_t level);

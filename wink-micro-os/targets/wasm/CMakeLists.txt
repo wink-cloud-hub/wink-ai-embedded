@@ -18,7 +18,6 @@ set(PAL_WASM_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_fault.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_fault_domain.c
     ${CMAKE_CURRENT_SOURCE_DIR}/devices/wasm_sim_registry.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/devices/wasm_dev_ssd1306.c
     ${CMAKE_CURRENT_SOURCE_DIR}/devices/wasm_dev_servo.c
     ${CMAKE_CURRENT_SOURCE_DIR}/devices/wasm_dev_ultrasonic.c
     # Target 无关共享源（同源复用，见 targets/common/src/）
