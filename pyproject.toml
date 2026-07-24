@@ -1,0 +1,8 @@
+[tool.pyrefly]
+python-interpreter-path = "D:/software/python/pyenv/pyenv-win/versions/3.11.9/python.exe"
+search-path = [
+    ".",
+    "wink-micro-os",
+    "D:/software/python/pyenv/pyenv-win/versions/3.11.9/Lib/site-packages"
+]
+python-version = "3.11"
