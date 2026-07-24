@@ -74,6 +74,10 @@ if (isMainThread) {
     const knownBridgeSymbols = [
         'js_pal_gpio_write',
         'js_pal_gpio_read',
+        'js_pal_gpio_read_state',
+        'js_pal_gpio_drive_ideal',
+        'js_pal_gpio_release_ideal',
+        'js_pal_gpio_release_mcu',
         'js_pal_pwm_set_duty',
         'js_pal_i2c_transfer',
         'js_pal_spi_transfer',

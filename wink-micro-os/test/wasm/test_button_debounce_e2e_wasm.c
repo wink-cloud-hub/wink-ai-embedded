@@ -88,6 +88,33 @@ EM_JS(bool, js_pal_gpio_read, (uint16_t pin), {
     return (v === true) ? 1 : 0;
 });
 
+/* P1-2: pal_gpio_read prefers Arbiter read_state. Map the same ideal table. */
+EM_JS(uint8_t, js_pal_gpio_read_state, (uint16_t pin), {
+    if (typeof globalThis.__wink_gpio_ideal === 'undefined') {
+        globalThis.__wink_gpio_ideal = {};
+    }
+    if (!Object.prototype.hasOwnProperty.call(globalThis.__wink_gpio_ideal, pin)) {
+        return 2; /* HiZ */
+    }
+    return globalThis.__wink_gpio_ideal[pin] ? 1 : 0;
+});
+
+EM_JS(void, js_pal_gpio_drive_ideal, (uint16_t pin, bool level), {
+    if (typeof globalThis.__wink_gpio_ideal === 'undefined') {
+        globalThis.__wink_gpio_ideal = {};
+    }
+    globalThis.__wink_gpio_ideal[pin] = (level ? true : false);
+});
+
+EM_JS(void, js_pal_gpio_release_ideal, (uint16_t pin), {
+    if (typeof globalThis.__wink_gpio_ideal === 'undefined') return;
+    delete globalThis.__wink_gpio_ideal[pin];
+});
+
+EM_JS(void, js_pal_gpio_release_mcu, (uint16_t pin), {
+    /* debounce e2e does not model MCU drivers */
+});
+
 EM_JS(void, test_set_gpio_ideal_js, (uint16_t pin, bool level), {
     if (typeof globalThis.__wink_gpio_ideal === 'undefined') {
         globalThis.__wink_gpio_ideal = {};

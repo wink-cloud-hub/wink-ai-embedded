@@ -110,6 +110,23 @@ extern "C" {
 /* ---- PAL HAL 侧 JS 导入（来自旧 pal_hal_wasm.c）---- */
 extern void js_pal_gpio_write(uint16_t pin, bool level);
 extern bool js_pal_gpio_read(uint16_t pin);
+
+/* P1 electrical SSOT (PinArbiter): state encoding shared with unisim JsGpioState.
+ * Bump PAL_WASM_ABI_HASH when adding/changing these imports. */
+enum {
+    JS_GPIO_STATE_LOW      = 0,
+    JS_GPIO_STATE_HIGH     = 1,
+    JS_GPIO_STATE_HIZ      = 2,
+    JS_GPIO_STATE_CONFLICT = 3,
+};
+/** 0=LOW, 1=HIGH, 2=HiZ, 3=CONFLICT */
+extern uint8_t js_pal_gpio_read_state(uint16_t pin);
+/** UI / test ideal inject: driver id prefix ideal:ui: */
+extern void js_pal_gpio_drive_ideal(uint16_t pin, bool level);
+/** Release ideal driver only */
+extern void js_pal_gpio_release_ideal(uint16_t pin);
+/** Release MCU driver id mcu:gpio{N} (INPUT* mode / open-drain release) */
+extern void js_pal_gpio_release_mcu(uint16_t pin);
 extern void js_pal_pwm_set_duty(uint8_t channel, float duty_cycle_percent);
 extern bool js_pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
                                 const uint8_t *write_buf, uint32_t write_len,

@@ -153,8 +153,9 @@ void pal_wasm_set_prng_state(uint32_t state)
     s_prng_state = state;
 }
 
-/* [双仓联动] Bump when SimFaultsConfig / SessionRecorder L0 snapshot ABI changes. */
-#define PAL_WASM_ABI_HASH 0x50333031u /* 'P''3''0''1' */
+/* [双仓联动] Bump when SimFaultsConfig / SessionRecorder L0 snapshot ABI changes,
+ * or when js_pal_* GPIO electrical SSOT imports are added/changed (P1-2). */
+#define PAL_WASM_ABI_HASH 0x50333032u /* 'P''3''0''2' */
 
 EMSCRIPTEN_KEEPALIVE
 uint32_t pal_wasm_get_abi_hash(void)

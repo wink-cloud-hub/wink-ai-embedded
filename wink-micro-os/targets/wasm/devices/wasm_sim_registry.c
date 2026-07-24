@@ -3,6 +3,7 @@
  * @brief Wasm 侧虚拟外设拦截分发器实现。
  */
 #include "wasm_sim_registry.h"
+#include "wasm_bridge.h"
 #include <string.h>
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -113,8 +114,10 @@ void wasm_sim_gpio_write(uint8_t pin, bool level) {
 }
 
 // 供 JS 侧注入虚拟 GPIO 输入电平 (如用户点击虚拟开关/按钮)
+// P1: dual-write — drive PinArbiter ideal:ui:{N} AND keep C shadow until P3.
 EMSCRIPTEN_KEEPALIVE void pal_wasm_set_gpio_input(uint8_t pin, bool level) {
     wasm_sim_gpio_set_input(pin, level);
+    js_pal_gpio_drive_ideal((uint16_t)pin, level);
 }
 
 // 供 JS 侧同步获取虚拟 GPIO 输出电平 (如 LED 灯渲染)
