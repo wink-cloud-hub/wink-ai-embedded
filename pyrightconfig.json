@@ -1,0 +1,6 @@
+{
+  "extraPaths": [
+    "wink-micro-os",
+    "."
+  ]
+}
