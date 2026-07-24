@@ -384,7 +384,6 @@ add_wink_test_sim(test_button_debounce_e2e test_button_debounce_e2e.c)
 # WASM ????????????????
 add_wink_host_test(test_wasm_devices_sim test_wasm_devices_sim.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm/devices/wasm_sim_registry.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm/devices/wasm_dev_ssd1306.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm/devices/wasm_dev_servo.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm/devices/wasm_dev_ultrasonic.c)
 
