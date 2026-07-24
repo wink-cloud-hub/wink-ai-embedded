@@ -176,6 +176,28 @@ addToLibrary({
         }
         return 0;
     },
+    /* P1 electrical SSOT — PinArbiter-backed; Host overrides via Module.* */
+    js_pal_gpio_read_state: function (pin) {
+        if (typeof Module !== 'undefined' && typeof Module.js_pal_gpio_read_state === 'function') {
+            return Module.js_pal_gpio_read_state(pin);
+        }
+        return 2; /* HiZ default */
+    },
+    js_pal_gpio_drive_ideal: function (pin, level) {
+        if (typeof Module !== 'undefined' && typeof Module.js_pal_gpio_drive_ideal === 'function') {
+            return Module.js_pal_gpio_drive_ideal(pin, level);
+        }
+    },
+    js_pal_gpio_release_ideal: function (pin) {
+        if (typeof Module !== 'undefined' && typeof Module.js_pal_gpio_release_ideal === 'function') {
+            return Module.js_pal_gpio_release_ideal(pin);
+        }
+    },
+    js_pal_gpio_release_mcu: function (pin) {
+        if (typeof Module !== 'undefined' && typeof Module.js_pal_gpio_release_mcu === 'function') {
+            return Module.js_pal_gpio_release_mcu(pin);
+        }
+    },
     js_pal_pwm_set_duty: function (channel, duty) {
         if (typeof Module !== 'undefined' && typeof Module.js_pal_pwm_set_duty === 'function') {
             return Module.js_pal_pwm_set_duty(channel, duty);

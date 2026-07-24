@@ -73,6 +73,13 @@ wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
     if (pin >= 0 && pin < WASM_SIM_MAX_PINS) {
         s_gpio_mode[(uint8_t)pin] = mode;
         s_gpio_mode_known[(uint8_t)pin] = true;
+        /* P1 electrical SSOT: INPUT* must drop MCU SUPPLY driver so pull/plugin
+         * can take the bus (open-drain / 1-wire style handoff). */
+        if (mode == PAL_GPIO_INPUT
+            || mode == PAL_GPIO_INPUT_PULLUP
+            || mode == PAL_GPIO_INPUT_PULLDOWN) {
+            js_pal_gpio_release_mcu((uint16_t)pin);
+        }
     }
     return WINK_OK;
 }
@@ -116,19 +123,31 @@ wink_status_t pal_gpio_read(wink_pin_t pin, bool *out_level) {
         return WINK_ERR_INVALID_STATE;
     }
 
-    /* Step 1: 显式注入 > 上拉/下拉 idle 默认 > JS pull（echo 等未 claim 路径）。 */
+    /* Step 1: Arbiter-first (P1 electrical SSOT).
+     * HIGH|CONFLICT → true; LOW → false; HiZ → pull idle / DISCONNECTED /
+     * mode-unknown LOW (constraint 14). Shadow is only a TODO(P3) HiZ fallback. */
     bool ideal;
-    if (wasm_sim_gpio_input_is_set((uint8_t)pin, &ideal)) {
-        /* UI / pal_wasm_set_gpio_input */
-    }
-    else if (s_gpio_mode_known[(uint8_t)pin]) {
-        if (s_gpio_mode[(uint8_t)pin] == PAL_GPIO_INPUT) {
+    uint8_t st = js_pal_gpio_read_state((uint16_t)pin);
+    if (st == JS_GPIO_STATE_HIGH || st == JS_GPIO_STATE_CONFLICT) {
+        ideal = true;
+    } else if (st == JS_GPIO_STATE_LOW) {
+        ideal = false;
+    } else {
+        /* HiZ (or unknown encoding treated as floating) */
+        bool shadow = false;
+        if (wasm_sim_gpio_input_is_set((uint8_t)pin, &shadow)) {
+            /* TODO(P3): remove — dual-write insurance for old frontends that
+             * only wrote C shadow without rebuilding JS drive_ideal. Arbiter
+             * driven levels already won above. */
+            ideal = shadow;
+        } else if (!s_gpio_mode_known[(uint8_t)pin]) {
+            /* Constraint 14: mode unknown + HiZ → LOW (not DISCONNECTED). */
+            ideal = false;
+        } else if (s_gpio_mode[(uint8_t)pin] == PAL_GPIO_INPUT) {
             return WINK_ERR_DISCONNECTED;
+        } else {
+            ideal = pal_gpio_mode_idle_level(s_gpio_mode[(uint8_t)pin]);
         }
-        ideal = pal_gpio_mode_idle_level(s_gpio_mode[(uint8_t)pin]);
-    }
-    else {
-        ideal = js_pal_gpio_read(pin);
     }
 
     /* Step 2: 退化中间件（仅当 bounce_us > 0 时生效）。
