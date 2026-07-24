@@ -123,9 +123,9 @@ wink_status_t pal_gpio_read(wink_pin_t pin, bool *out_level) {
         return WINK_ERR_INVALID_STATE;
     }
 
-    /* Step 1: Arbiter-first (P1 electrical SSOT).
+    /* Step 1: Arbiter-only electrical SSOT (P3).
      * HIGH|CONFLICT → true; LOW → false; HiZ → pull idle / DISCONNECTED /
-     * mode-unknown LOW (constraint 14). Shadow is only a TODO(P3) HiZ fallback. */
+     * mode-unknown LOW (constraint 14). C input shadow is not consulted. */
     bool ideal;
     uint8_t st = js_pal_gpio_read_state((uint16_t)pin);
     if (st == JS_GPIO_STATE_HIGH || st == JS_GPIO_STATE_CONFLICT) {
@@ -134,13 +134,7 @@ wink_status_t pal_gpio_read(wink_pin_t pin, bool *out_level) {
         ideal = false;
     } else {
         /* HiZ (or unknown encoding treated as floating) */
-        bool shadow = false;
-        if (wasm_sim_gpio_input_is_set((uint8_t)pin, &shadow)) {
-            /* TODO(P3): remove — dual-write insurance for old frontends that
-             * only wrote C shadow without rebuilding JS drive_ideal. Arbiter
-             * driven levels already won above. */
-            ideal = shadow;
-        } else if (!s_gpio_mode_known[(uint8_t)pin]) {
+        if (!s_gpio_mode_known[(uint8_t)pin]) {
             /* Constraint 14: mode unknown + HiZ → LOW (not DISCONNECTED). */
             ideal = false;
         } else if (s_gpio_mode[(uint8_t)pin] == PAL_GPIO_INPUT) {
