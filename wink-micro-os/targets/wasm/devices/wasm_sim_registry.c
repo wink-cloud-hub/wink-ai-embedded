@@ -114,11 +114,18 @@ void wasm_sim_gpio_write(uint8_t pin, bool level) {
 }
 
 // 供 JS 侧注入虚拟 GPIO 输入电平 (如用户点击虚拟开关/按钮)
-// P1: dual-write — drive PinArbiter ideal:ui:{N} AND keep C shadow until P3.
+// P3: Arbiter-only — drive ideal:ui:{N}; C shadow is unused by pal_gpio_read.
 EMSCRIPTEN_KEEPALIVE void pal_wasm_set_gpio_input(uint8_t pin, bool level) {
-    wasm_sim_gpio_set_input(pin, level);
     js_pal_gpio_drive_ideal((uint16_t)pin, level);
 }
+
+#ifndef __EMSCRIPTEN__
+/* Host unit-test link stub (real import is JS under emscripten). */
+void js_pal_gpio_drive_ideal(uint16_t pin, bool level) {
+    (void)pin;
+    (void)level;
+}
+#endif
 
 // 供 JS 侧同步获取虚拟 GPIO 输出电平 (如 LED 灯渲染)
 EMSCRIPTEN_KEEPALIVE bool pal_wasm_get_gpio_output(uint8_t pin) {

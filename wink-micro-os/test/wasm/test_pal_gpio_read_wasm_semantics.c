@@ -1,6 +1,7 @@
 /**
  * @file test_pal_gpio_read_wasm_semantics.c
- * @brief P1-2 contract tests — Arbiter-first pal_gpio_read + release_mcu on INPUT*.
+ * @brief P3 contract tests — Arbiter-only pal_gpio_read (no C shadow on read)
+ *        + release_mcu on INPUT*.
  *
  * Mini PinArbiter mock via EM_JS (ideal:ui:{N} / mcu:gpio{N} / plugin:*).
  * Build: test/wasm/run_gpio_semantics_emcc.ps1 (emcc + Node).
@@ -229,13 +230,22 @@ void test_hiz_mode_unknown_reads_low_not_disconnected(void) {
     TEST_ASSERT_FALSE(lvl);
 }
 
-/* Arbiter beats shadow dual-write (shadow LOW must not win over Arbiter HIGH) */
-void test_arbiter_beats_shadow(void) {
+/* P3: C shadow must not affect HiZ read — pullup idle wins over shadow LOW */
+void test_shadow_ignored_on_hiz_read(void) {
     claim_pin(PIN);
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_gpio_init(PIN, PAL_GPIO_INPUT_PULLUP));
-    wasm_sim_gpio_set_input((uint8_t)PIN, false); /* shadow LOW */
-    js_pal_gpio_drive_ideal((uint16_t)PIN, true); /* Arbiter HIGH */
-    TEST_ASSERT_TRUE(read_level(PIN));
+    wasm_sim_gpio_set_input((uint8_t)PIN, false); /* shadow LOW, Arbiter HiZ */
+    TEST_ASSERT_TRUE(read_level(PIN)); /* pullup HIGH — shadow must not win */
+}
+
+/* P3: floating INPUT + shadow set still DISCONNECTED (shadow cannot salvage) */
+void test_shadow_ignored_floating_disconnected(void) {
+    claim_pin(PIN);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_gpio_init(PIN, PAL_GPIO_INPUT));
+    wasm_sim_gpio_set_input((uint8_t)PIN, true); /* shadow HIGH, Arbiter HiZ */
+    bool lvl = false;
+    wink_status_t st = pal_gpio_read(PIN, &lvl);
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_DISCONNECTED, st);
 }
 
 int main(void) {
@@ -249,6 +259,7 @@ int main(void) {
     RUN_TEST(test_release_mcu_preserves_plugin_driver);
     RUN_TEST(test_init_input_does_not_remove_ideal);
     RUN_TEST(test_hiz_mode_unknown_reads_low_not_disconnected);
-    RUN_TEST(test_arbiter_beats_shadow);
+    RUN_TEST(test_shadow_ignored_on_hiz_read);
+    RUN_TEST(test_shadow_ignored_floating_disconnected);
     return UNITY_END();
 }

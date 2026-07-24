@@ -93,7 +93,12 @@ void test_virtual_gpio_inputs_and_outputs(void) {
     TEST_ASSERT_FALSE(wasm_sim_gpio_input_is_set(pin, &level));
     TEST_ASSERT_FALSE(pal_wasm_get_gpio_output(pin));
 
+    /* P3: pal_wasm_set_gpio_input drives Arbiter only — C shadow stays unset */
     pal_wasm_set_gpio_input(pin, true);
+    TEST_ASSERT_FALSE(wasm_sim_gpio_input_is_set(pin, &level));
+
+    /* Direct shadow helper still works for leftover callers / tests */
+    wasm_sim_gpio_set_input(pin, true);
     TEST_ASSERT_TRUE(wasm_sim_gpio_input_is_set(pin, &level));
     TEST_ASSERT_TRUE(level);
 
