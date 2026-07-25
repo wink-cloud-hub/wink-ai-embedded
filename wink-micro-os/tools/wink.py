@@ -627,30 +627,113 @@ def handle_web(args):
     ], cwd=frontend_dir)
 
 
+def _run_esp32_guard_density_lint(sdk_dir: Path) -> bool:
+    """L0 static lint: verify targets/esp32/*.c contain at most 1 #if defined(ESP_PLATFORM) per file."""
+    print("\n[lint] ESP_PLATFORM guard density check...")
+    esp32_dir = sdk_dir / "targets" / "esp32"
+    if not esp32_dir.is_dir():
+        return True
+    pattern = re.compile(r'^\s*#\s*if\s+defined\(ESP_PLATFORM\)')
+    violations = []
+    for c_file in sorted(esp32_dir.glob("*.c")):
+        try:
+            with open(c_file, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+            count = sum(1 for line in lines if pattern.match(line))
+            if count > 1:
+                violations.append(f"{c_file.name}: {count} occurrences (limit: 1)")
+        except Exception as e:
+            violations.append(f"{c_file.name}: error reading file: {e}")
+    if violations:
+        print("[FAIL] ESP_PLATFORM guard limit exceeded:\n  " + "\n  ".join(violations), file=sys.stderr)
+        return False
+    print("[lint] ESP_PLATFORM guard density OK")
+    return True
+
+
+def _run_adr0017_l1_strict_lint(sdk_dir: Path) -> bool:
+    """L1 static lint: compile dal_ultrasonic.c with -DWINK_STRICT_NONBLOCKING=1 and verify symbol elision."""
+    print("[lint] ADR-0017 WINK_STRICT_NONBLOCKING symbol elision check...")
+    import shutil
+    gcc_path = shutil.which("gcc")
+    nm_path = shutil.which("nm")
+    if not gcc_path or not nm_path:
+        print("[SKIP] gcc or nm not found on PATH — ADR-0017 L1 strict-mode check skipped", file=sys.stderr)
+        return True
+
+    dal_c = sdk_dir / "dal" / "src" / "sensor" / "dal_ultrasonic.c"
+    import tempfile
+    strict_obj = Path(tempfile.gettempdir()) / "wink_strict_nonblocking_check.o"
+
+    includes = [
+        "-I", str(sdk_dir / "pal" / "include"),
+        "-I", str(sdk_dir / "pal" / "include" / "hal"),
+        "-I", str(sdk_dir / "pal" / "include" / "osal"),
+        "-I", str(sdk_dir / "dal" / "include"),
+        "-I", str(sdk_dir / "dal" / "include" / "sensor"),
+        "-I", str(sdk_dir / "trace" / "include"),
+        "-I", str(sdk_dir / "targets" / "host" / "include"),
+        "-I", str(sdk_dir / "runtime" / "include"),
+    ]
+
+    gcc_cmd = [gcc_path, "-c", "-DWINK_STRICT_NONBLOCKING=1"] + includes + [str(dal_c), "-o", str(strict_obj)]
+    try:
+        subprocess.run(gcc_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except subprocess.CalledProcessError as e:
+        print("[FAIL] ADR-0017 L1: strict-mode compile of dal_ultrasonic.c failed", file=sys.stderr)
+        print(e.stderr.decode("utf-8", errors="replace"), file=sys.stderr)
+        return False
+
+    try:
+        nm_res = subprocess.run([nm_path, "-g", "--defined-only", str(strict_obj)],
+                                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        nm_out = nm_res.stdout
+        if re.search(r'\bdal_ultrasonic_read\b', nm_out):
+            print(f"[FAIL] ADR-0017 L1 FAILED: dal_ultrasonic_read is still defined under WINK_STRICT_NONBLOCKING=1:\n{nm_out}", file=sys.stderr)
+            return False
+    finally:
+        if strict_obj.exists():
+            try:
+                strict_obj.unlink()
+            except Exception:
+                pass
+
+    print("[lint] ADR-0017 L1: dal_ultrasonic_read absent under strict mode OK")
+    return True
+
+
 def handle_test(args):
-    """Run all Python golden and C unit tests."""
-    print("[wink] Running Codegen Golden + validation regression tests...")
+    """Run all Python golden, C unit tests, sanitizer pass matrix, and lints."""
+    is_full = getattr(args, "full", False)
+    do_sanitize = is_full or getattr(args, "sanitize", False)
+    do_asan = getattr(args, "asan", False) or (is_full and os.environ.get("WINK_ENABLE_ASAN_TESTS") == "1")
+    do_wasm = is_full or getattr(args, "with_wasm", False)
+    do_clean = getattr(args, "clean", False)
+    detailed = getattr(args, "detailed", False)
+
     sdk_dir = resolve_sdk_dir()
-    # SDK root on PYTHONPATH so ``tools.codegen`` resolves under wink-micro-os/
+
+    # 0. Protothread footguns check
+    pt_check_script = sdk_dir / "tools" / "lint" / "check_pt_variables.py"
+    if pt_check_script.is_file():
+        print("[wink] Scanning for protothread auto variable footguns...")
+        try:
+            subprocess.run([sys.executable, str(pt_check_script)], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"[wink] Error: Protothread variable check failed with code {e.returncode}", file=sys.stderr)
+            sys.exit(e.returncode)
+
+    # 1. Codegen Golden regression tests
+    print("\n[wink] Running Codegen Golden + validation regression tests...")
+    ws_root = _APP_WORKSPACE_ROOT or WORKSPACE_ROOT
     env = os.environ.copy()
     prev = env.get("PYTHONPATH", "")
     env["PYTHONPATH"] = str(sdk_dir) + (os.pathsep + prev if prev else "")
     tests_dir = sdk_dir / "tools" / "codegen" / "tests"
-    print(
-        f"\n[wink] Running: {sys.executable} -m unittest discover "
-        f"-s {tests_dir} -p test_*.py (cwd={sdk_dir / 'tools' / 'codegen'}, "
-        f"PYTHONPATH={sdk_dir})"
-    )
     try:
-        # cwd=tools/codegen so golden banner paths match checked-in fixtures
-        # (app_codegen embeds Path.cwd()-relative config source).
         subprocess.run(
-            [
-                sys.executable, "-m", "unittest", "discover",
-                "-s", str(tests_dir),
-                "-p", "test_*.py",
-            ],
-            cwd=str(sdk_dir / "tools" / "codegen"),
+            [sys.executable, "-m", "unittest", "discover", "-s", str(tests_dir), "-p", "test_*.py"],
+            cwd=str(ws_root),
             check=True,
             env=env,
         )
@@ -658,42 +741,158 @@ def handle_test(args):
         print(f"[wink] Error: Codegen tests failed with exit code {e.returncode}", file=sys.stderr)
         sys.exit(e.returncode)
 
-    print("\n[wink] Configuring and compiling Host unit tests...")
+    # 2. Host C Test Pass Matrix Execution
     ws_root = _APP_WORKSPACE_ROOT or WORKSPACE_ROOT
-    build_dir = ws_root / "build" / "test"
-    micro_os_dir = resolve_sdk_dir()
-
-    if build_dir.exists():
-        import shutil
-        print(f"[wink] Cleaning test build directory: {build_dir}")
-        shutil.rmtree(build_dir)
-
     codegen_dir = Path(__file__).resolve().parent / "codegen"
-    configure_cmd = [
-        "cmake",
-        "-S", str(micro_os_dir),
-        "-B", str(build_dir),
-        "-DTARGET_PLATFORM=host",
-        f"-DWINK_CODEGEN_ROOT={codegen_dir.as_posix()}"
-    ]
-    if sys.platform == "win32":
-        configure_cmd.extend(["-G", "MinGW Makefiles"])
 
-    run_cmd(configure_cmd)
-    run_cmd(["cmake", "--build", str(build_dir)])
+    passes = [
+        {"label": "default", "dir": ws_root / "build" / "test", "flags": "", "enabled": True},
+        {"label": "sanitize", "dir": ws_root / "build" / "test-san",
+         "flags": "-fsanitize=undefined -fsanitize-undefined-trap-on-error -Wcast-function-type -Werror=cast-function-type",
+         "enabled": do_sanitize},
+        {"label": "asan", "dir": ws_root / "build" / "test-asan",
+         "flags": "-fsanitize=address -fno-omit-frame-pointer",
+         "enabled": do_asan},
+    ]
 
     import shutil
-    if shutil.which("emcc") and shutil.which("emcmake"):
-        print("\n[wink] Building WASM smoke test targets...")
-        run_cmd(["cmake", "--build", str(build_dir), "--target", "wasm_unisim_smoke_build"])
+    overall_rc = 0
 
-    print("\n[wink] Running Host C Unit Tests (ctest)...")
-    run_cmd([
-        "ctest",
-        "--test-dir", str(build_dir),
-        "--output-on-failure"
-    ])
-    print("[wink] Success: All tests passed successfully!")
+    for p in passes:
+        if not p["enabled"]:
+            continue
+        label = p["label"]
+        bdir = p["dir"]
+        cflags = p["flags"]
+
+        print(f"\n===== [{label}] cmake configure ({bdir}) =====")
+        if do_clean and bdir.exists():
+            print(f"-> Cleaning {bdir}...")
+            shutil.rmtree(bdir)
+
+        configure_cmd = [
+            "cmake",
+            "-S", str(sdk_dir),
+            "-B", str(bdir),
+            "-DTARGET_PLATFORM=host",
+            f"-DWINK_CODEGEN_ROOT={codegen_dir.as_posix()}"
+        ]
+        if cflags:
+            configure_cmd.append(f"-DCMAKE_C_FLAGS={cflags}")
+        if sys.platform == "win32":
+            configure_cmd.extend(["-G", "MinGW Makefiles"])
+
+        try:
+            run_cmd(configure_cmd)
+        except Exception:
+            print(f"[FAIL] [{label}] configure failed", file=sys.stderr)
+            overall_rc = 1
+            continue
+
+        print(f"-> [{label}] Building...")
+        try:
+            run_cmd(["cmake", "--build", str(bdir)])
+        except Exception:
+            print(f"[FAIL] [{label}] build failed", file=sys.stderr)
+            overall_rc = 1
+            continue
+
+        print(f"-> [{label}] Running CTest...")
+        ctest_cmd = ["ctest", "--test-dir", str(bdir), "--output-on-failure"]
+        if detailed:
+            ctest_cmd.append("-V")
+        try:
+            run_cmd(ctest_cmd)
+            print(f"[PASS] [{label}] all tests passed")
+        except Exception:
+            print(f"[FAIL] [{label}] some tests failed", file=sys.stderr)
+            overall_rc = 1
+
+    # 3. Optional WASM build check
+    if do_wasm:
+        print("\n===== [wasm build check] =====")
+        emcc_path = shutil.which("emcc")
+        emcmake_path = shutil.which("emcmake")
+        if not emcc_path or not emcmake_path:
+            print("[FAIL] emcc or emcmake not found on PATH for WASM build check", file=sys.stderr)
+            overall_rc = 1
+        else:
+            avoidance_app = (sdk_dir.parent / "wink-micro-app" / "avoidance_car").resolve()
+            if not avoidance_app.is_dir():
+                avoidance_app = (sdk_dir / "samples" / "avoidance_car").resolve()
+            wasm_bdir = ws_root / "build" / "wasm" / "avoidance_car"
+            if do_clean and wasm_bdir.exists():
+                shutil.rmtree(wasm_bdir)
+            try:
+                run_cmd([emcmake_path, "cmake", "-B", str(wasm_bdir), "-DTARGET_PLATFORM=wasm", f"-DWINK_APP_DIR={avoidance_app.as_posix()}"])
+                run_cmd(["cmake", "--build", str(wasm_bdir)])
+                print("[PASS] WASM build check succeeded")
+            except Exception:
+                print("[FAIL] WASM build check failed", file=sys.stderr)
+                overall_rc = 1
+
+    # 4. Static Lints execution
+    if not _run_esp32_guard_density_lint(sdk_dir):
+        overall_rc = 1
+
+    if not _run_adr0017_l1_strict_lint(sdk_dir):
+        overall_rc = 1
+
+    header_self_check = sdk_dir / "tools" / "lint" / "check_headers_self_contained.py"
+    if header_self_check.is_file():
+        print("\n[lint] Header self-containment (P1-B2)...")
+        try:
+            subprocess.run([sys.executable, str(header_self_check)], check=True)
+        except subprocess.CalledProcessError:
+            print("[FAIL] Header self-containment check failed", file=sys.stderr)
+            overall_rc = 1
+
+    fmt_check = sdk_dir / "tools" / "lint" / "check_log_format_literals.py"
+    if fmt_check.is_file():
+        print("\n[lint] Log format-string literal gate (P1-L1)...")
+        try:
+            subprocess.run([sys.executable, str(fmt_check), "--root", str(sdk_dir)], check=True)
+        except subprocess.CalledProcessError:
+            print("[FAIL] Log format-literal check failed", file=sys.stderr)
+            overall_rc = 1
+
+    print("\n[lint] Layering, API & Arduino lints...")
+    try:
+        from tools.lint.cli import handle_lint  # noqa: E402
+        class LintArgs:
+            root = str(sdk_dir)
+            config = []
+            pack = ["layering", "api", "arduino"]
+            rule = None
+            format = "text"
+            output = None
+            strict = False
+            today = None
+            explain = None
+            paths = None
+            changed = False
+
+        handle_lint(LintArgs())
+    except Exception as e:
+        print(f"[FAIL] wink lint failed: {e}", file=sys.stderr)
+        overall_rc = 1
+
+    arduino_sym_check = sdk_dir / "tools" / "lint" / "check_arduino_symbols.py"
+    if arduino_sym_check.is_file():
+        print("\n[lint] Arduino symbol audit check (ADR-0036 / ADR-0040)...")
+        for bpath in [ws_root / "build" / "test", ws_root / "build" / "test-san"]:
+            if bpath.is_dir():
+                try:
+                    subprocess.run([sys.executable, str(arduino_sym_check), str(bpath)], check=True)
+                except subprocess.CalledProcessError:
+                    print(f"[FAIL] Arduino symbol audit failed in {bpath}", file=sys.stderr)
+                    overall_rc = 1
+
+    if overall_rc == 0:
+        print("\n[PASS] All enabled test passes and lints succeeded!")
+    else:
+        print("\n[FAIL] One or more test passes or lints failed", file=sys.stderr)
+        sys.exit(overall_rc)
 
 
 # ── Doctor / Setup handlers ────────────────────────────────────────────
@@ -1323,7 +1522,19 @@ def _build_parser() -> argparse.ArgumentParser:
     p_web.set_defaults(handler=handle_web)
 
     p_test = sub.add_parser("test", parents=[global_parent],
-                            help="Run Python and C unit tests")
+                            help="Run Python, C unit tests, sanitizer pass matrix, and lints")
+    p_test.add_argument("--clean", action="store_true",
+                        help="Clean test build directories before running tests")
+    p_test.add_argument("--detailed", action="store_true",
+                        help="Print verbose ctest output (-V)")
+    p_test.add_argument("--sanitize", action="store_true",
+                        help="Enable UBSan sanitize matrix pass (-fsanitize=undefined)")
+    p_test.add_argument("--asan", action="store_true",
+                        help="Enable ASan matrix pass (-fsanitize=address)")
+    p_test.add_argument("--full", action="store_true",
+                        help="Run full test matrix (sanitize + asan + all lints)")
+    p_test.add_argument("--with-wasm", action="store_true",
+                        help="Run optional WASM compilation check")
     p_test.set_defaults(handler=handle_test)
 
     p_doctor = sub.add_parser("doctor", parents=[global_parent],

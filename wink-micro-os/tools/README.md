@@ -51,8 +51,7 @@ python wink-micro-os/tools/wink.py <command> [options]
 | `gen --app <name\|path>` | `wink-app.json` → device_tree + docs |
 | `build host\|wasm --app …` | Host or WASM simulator (`build/host/`, `build/wasm/{projectCode}/`) |
 | `esp32 --app … [idf args]` | ESP-IDF build / flash / monitor |
-| `web [--port N]` | Vite frontend |
-| `test` | Codegen golden + host ctest |
+| `test [--full] [--sanitize] [--asan] [--with-wasm] [--clean]` | Full test matrix (Codegen golden + host CTest + UBSan/ASan pass matrix + WASM smoke + static lints) |
 | `lint [--pack layering\|api\|arduino] …` | YAML layer/API/Arduino lint (ADR-0043); **skips** toolchain gate |
 
 Every non-diagnostic command first runs `tools.toolchain.ensure_for(<profile>)` and
