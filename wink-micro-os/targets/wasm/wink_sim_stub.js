@@ -78,6 +78,7 @@ if (isMainThread) {
         'js_pal_gpio_drive_ideal',
         'js_pal_gpio_release_ideal',
         'js_pal_gpio_release_mcu',
+        'js_pal_gpio_on_write',
         'js_pal_pwm_set_duty',
         'js_pal_i2c_transfer',
         'js_pal_spi_transfer',
@@ -90,6 +91,7 @@ if (isMainThread) {
         'js_pal_log',
         'js_sim_trigger_ultrasonic',
         'js_sim_measure_echo_pulse_us',
+        'js_sim_get_plugin_channel',
     ];
     const stray = imports.filter((n) => !knownBridgeSymbols.includes(n));
     if (stray.length > 0) {
