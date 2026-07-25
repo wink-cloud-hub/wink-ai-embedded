@@ -1,15 +1,13 @@
 # wink-micro-os host unit tests (PC gcc, no ESP-IDF, no Emscripten)
-# ??????chigo-micro/project/embedded/sim/test/CMakeLists.txt
 
 set(UNITY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/unity)
 
 set(HOST_PAL_OBJECT $<TARGET_OBJECTS:pal_host>)
 
-# Unity ??vendor ??????????vendor ????warning ??????????
+# Unity vendor compile flags
 set_source_files_properties(${UNITY_DIR}/unity.c PROPERTIES COMPILE_FLAGS "-w")
 
-# ?? host ??????pal(INTERFACE,??) + Unity??
-# Plan 3 ???????? targets/host?Plan 4 ?? add_wink_test_sim??
+# Function to register a plain host unit test
 function(add_wink_test name src)
     add_executable(${name}
         ${src}
@@ -18,49 +16,36 @@ function(add_wink_test name src)
     target_include_directories(${name} PRIVATE
         ${UNITY_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}
-        # Phase 1 ?????pal/include/ ????+ osal/ + hal/ ??????????
+        ${CMAKE_CURRENT_SOURCE_DIR}/stubs
         ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/osal
         ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/hal
         ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/internal
         ${CMAKE_CURRENT_SOURCE_DIR}/../trace/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/include)
-    # P2 (2026-07-06): link dal instead of pal alone so WINK_USE_XXX pruning
-    # options propagate. dal PUBLIC-depends on pal (INTERFACE), so pal
-    # headers come through transitively.
     target_link_libraries(${name} PRIVATE dal)
     if(MSVC)
-        # /W4: strict warnings; /WX: warnings as errors (0 warning = build fails if any warning
-        # /wd4100: match GCC -Wno-unused-parameter (unused function parameters are intentional in HAL contracts)
-        # /wd4210: MSVC-specific extension warning about file-scope function-static variables (harmless in C)
         target_compile_options(${name} PRIVATE /W4 /WX /wd4100 /wd4210)
     else()
         target_compile_options(${name} PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter
             -Wno-missing-field-initializers
-            -Wno-error=stack-usage=)  # P-stack?host ????????????
+            -Wno-error=stack-usage=)
     endif()
     add_test(NAME ${name} COMMAND ${name})
 endfunction()
 
-add_wink_test(test_smoke test_smoke.c)
+add_wink_test(test_smoke e2e/test_smoke.c)
 
-# ADR-0017 P1-D2???????? ?????-DWINK_STRICT_NONBLOCKING=1 ????+
-# ???????????API ??TU????
-#   (a) ?????WINK_BLOCKING ????????????????
-#       ??????"??????"?????? undeclared identifier ????
-#   (b) ????????API ??????????#ifndef ????????TU ?????
-# ??dal_ultrasonic ??L1 nm ?????nm ????????????????????
-add_wink_test(test_pal_nonblocking_strict test_pal_nonblocking_strict.c)
+# ADR-0017 P1-D2 strict non-blocking check
+add_wink_test(test_pal_nonblocking_strict unit/pal/test_pal_nonblocking_strict.c)
 target_compile_definitions(test_pal_nonblocking_strict PRIVATE WINK_STRICT_NONBLOCKING=1)
-# ???dal_ ?????????add_wink_test ???? dal include ????????
-# pal-only ???????????????sensor/ storage/ communication/ ????
 target_include_directories(test_pal_nonblocking_strict PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/sensor
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/storage
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/communication)
 
-# ?? targets/host????PAL????
+# Function to register a host test linking host PAL and stubs
 function(add_wink_host_test name src)
     add_executable(${name}
         ${src}
@@ -71,13 +56,10 @@ function(add_wink_host_test name src)
         ${UNITY_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/stubs
-        # Phase 1 ?????pal/include/ ????+ osal/ + hal/ ??????????
         ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/osal
         ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/hal
-        # Phase 2?targets/common/include?wink_sim_physical.h??
         ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
-        # Fix: pal_wasm_internal.h is referenced by wink_runtime.c under SIMULATION
         ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm
         ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/input
@@ -87,31 +69,24 @@ function(add_wink_host_test name src)
         ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/sensor
         ${CMAKE_CURRENT_SOURCE_DIR}/../trace/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/include)
-    # P2 (2026-07-06): link dal instead of pal alone (pal comes via dal PUBLIC).
     target_link_libraries(${name} PRIVATE dal)
     if(MSVC)
-        # /W4: strict warnings; /WX: warnings as errors (0 warning = build fails if any warning
-        # /wd4100: match GCC -Wno-unused-parameter (unused function parameters are intentional in HAL contracts)
-        # /wd4210: MSVC-specific extension warning about file-scope function-static variables (harmless in C)
         target_compile_options(${name} PRIVATE /W4 /WX /wd4100 /wd4210)
     else()
         target_compile_options(${name} PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter
             -Wno-missing-field-initializers
-            -Wno-error=stack-usage=)  # P-stack?host ????????????
+            -Wno-error=stack-usage=)
     endif()
     add_test(NAME ${name} COMMAND ${name})
 endfunction()
 
-add_wink_host_test(test_trace test_trace.c
+add_wink_host_test(test_trace unit/runtime/test_trace.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../trace/src/wink_trace.c)
 
-# ADR-0016 / Task D-2?wink_trace_fault (task) ??wink_trace_fault_from_isr (ISR)
-# ?????? code ???????????? pal_os_set_sim_isr_context() sim-hook
-# ?? ISR ????
-add_wink_host_test(test_wink_trace_isr_equivalence test_wink_trace_isr_equivalence.c
+add_wink_host_test(test_wink_trace_isr_equivalence unit/runtime/test_wink_trace_isr_equivalence.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../trace/src/wink_trace.c)
 
-add_wink_host_test(test_runtime test_runtime.c
+add_wink_host_test(test_runtime unit/runtime/test_runtime.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_runtime.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_runtime_tasks.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_actuator_registry.c
@@ -119,68 +94,49 @@ add_wink_host_test(test_runtime test_runtime.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_event.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../trace/src/wink_trace.c)
 
-# ADR-0023 Stage 1.4a / 1.4b-iii: WINK_PERIODIC_INVALID sentinel,
-# wink_periodic_active_count(), wink_periodic_change_period()
-# (LIGHT + MAY_BLOCK + self-set_period re-entrancy).
-add_wink_host_test(test_periodic_basics test_periodic_basics.c
+add_wink_host_test(test_periodic_basics unit/runtime/test_periodic_basics.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_runtime_tasks.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_soft_timer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../trace/src/wink_trace.c)
 
-# ADR-0023 Task 1.5 / ADR-0025 ?5: LIGHT dispatch in-flag + WCET enforcement.
-add_wink_host_test(test_light_dispatch_flag test_light_dispatch_flag.c
+add_wink_host_test(test_light_dispatch_flag unit/runtime/test_light_dispatch_flag.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_soft_timer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../trace/src/wink_trace.c)
 
-add_wink_host_test(test_host_pal test_host_pal.c)
+add_wink_host_test(test_host_pal unit/pal/test_host_pal.c)
 
-add_wink_host_test(test_wink_event test_wink_event.c
+add_wink_host_test(test_wink_event unit/runtime/test_wink_event.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_event.c)
 
 # Target-independent cooperative scheduler algorithm test
-add_wink_test(test_sim_scheduler test_sim_scheduler.c
+add_wink_test(test_sim_scheduler unit/sim/test_sim_scheduler.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/src/wink_sim_scheduler.c)
 target_include_directories(test_sim_scheduler PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include)
 
-# Phase 5 Task 5-1????????????????registry + wink_trace??
-add_wink_host_test(test_actuator_registry test_actuator_registry.c
+add_wink_host_test(test_actuator_registry unit/dal/test_actuator_registry.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_actuator_registry.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../trace/src/wink_trace.c)
 
-# Phase 2 Task 2-3?host ???????????? pal_host?? pal_resource_host.c??
-add_wink_host_test(test_pal_resource test_pal_resource.c)
-add_wink_host_test(test_sim_scheduler_e2e test_sim_scheduler_e2e.c)
-add_wink_host_test(test_sim_scheduler_zombie_gc test_sim_scheduler_zombie_gc.c)
-add_wink_host_test(test_sim_scheduler_headless_jump test_sim_scheduler_headless_jump.c)
+add_wink_host_test(test_pal_resource unit/pal/test_pal_resource.c)
+add_wink_host_test(test_sim_scheduler_e2e unit/sim/test_sim_scheduler_e2e.c)
+add_wink_host_test(test_sim_scheduler_zombie_gc unit/sim/test_sim_scheduler_zombie_gc.c)
+add_wink_host_test(test_sim_scheduler_headless_jump unit/sim/test_sim_scheduler_headless_jump.c)
+add_wink_host_test(test_sim_scheduler_wcet_fault unit/sim/test_sim_scheduler_wcet_fault.c)
 
-# fixup ?? F2?WCET 8002 fault ???C2 ??????????
-# ??????host_wall_clock.h??????15ms ?? 5ms ???
-# ???? pal_os_busy_wait_us ????+ App on_fault ??????16 / R2???
-add_wink_host_test(test_sim_scheduler_wcet_fault test_sim_scheduler_wcet_fault.c)
-
-# fixup ?? F5 Step 1?? wave RR ???????R4???
-# Task 7 ?? PRNG ????????Case 2 ??? NOT_EQUAL ????
-add_wink_test(test_sim_scheduler_determinism test_sim_scheduler_determinism.c
+add_wink_test(test_sim_scheduler_determinism unit/sim/test_sim_scheduler_determinism.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/src/wink_sim_scheduler.c)
 target_include_directories(test_sim_scheduler_determinism PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include)
 
-# fixup ?? F5 Step 2?? host fiber ???? clamp ????
-add_wink_host_test(test_sim_scheduler_stack_clamp test_sim_scheduler_stack_clamp.c)
+add_wink_host_test(test_sim_scheduler_stack_clamp unit/sim/test_sim_scheduler_stack_clamp.c)
+add_wink_host_test(test_sim_mutex_e2e unit/sim/test_sim_mutex_e2e.c)
 
-# P0 E5-part2?wasm/host ??????mutex BLOCKED ?? e2e ????
-add_wink_host_test(test_sim_mutex_e2e test_sim_mutex_e2e.c)
-
-# fixup ?? F5 Step 3?avoidance_car ????????baseline ???R-002 ???????
-# R5?baseline .h ????????HAS_BASELINE_HEADER ??CMake file(EXISTS) ?????
 set(_BASELINE_H
     ${CMAKE_CURRENT_SOURCE_DIR}/baseline/avoidance_car_semantic_baseline.h)
 if(EXISTS ${_BASELINE_H} AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../samples/avoidance_car)
-    # P2 (2026-07-06): dal linked via add_wink_host_test -> target_link_libraries(dal);
-    # removed hard-coded dal/src/**/*.c paths.
     add_wink_host_test(test_single_task_semantic_regression
-        test_single_task_semantic_regression.c
+        unit/sim/test_single_task_semantic_regression.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../samples/avoidance_car/device_tree.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../samples/avoidance_car/app_callbacks.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_runtime.c
@@ -201,139 +157,87 @@ else()
         "human-review then git add the baseline .h before it re-enters CI.")
 endif()
 
-# PAL ???????????v2.0 ??????????RAII ????
-add_wink_host_test(test_pal_irq test_pal_irq.c)
+add_wink_host_test(test_pal_irq unit/pal/test_pal_irq.c)
+add_wink_host_test(test_pal_contract unit/pal/test_pal_contract.c)
 
-# PAL ????????????ESP32 ??target ??????????P0-1 ?????
-# ????ESP32/wasm/host ??????PAL ?????? ??????????
-add_wink_host_test(test_pal_contract test_pal_contract.c)
-
-# P1-L1 ???????LOG_E/W/I/D + LOG_TAG ???? + ISR ???? + SYS ??
-# test_pal_log_sys_fallback.c ????TU?????? LOG_TAG??????SYS ????
 add_wink_host_test(test_pal_log_hardening
-    test_pal_log_hardening.c
-    test_pal_log_sys_fallback.c)
+    unit/pal/test_pal_log_hardening.c
+    unit/pal/test_pal_log_sys_fallback.c)
 
-# target ?? PWM ???????????router ??pal_host OBJECT lib ????
-add_wink_host_test(test_pal_pwm_router test_pal_pwm_router.c)
-add_wink_host_test(test_pal_pwm_config test_pal_pwm_config.c)
+add_wink_host_test(test_pal_pwm_router unit/pal/test_pal_pwm_router.c)
+add_wink_host_test(test_pal_pwm_config unit/pal/test_pal_pwm_config.c)
+add_wink_host_test(test_dev_config unit/dal/test_dev_config.c)
+add_wink_host_test(test_pal_storage unit/pal/test_pal_storage.c)
+add_wink_host_test(test_sim_physical unit/sim/test_sim_physical.c)
+add_wink_host_test(test_dal_servo unit/dal/test_dal_servo.c)
+add_wink_host_test(test_dal_led unit/dal/test_dal_led.c)
+add_wink_host_test(test_dal_button unit/dal/test_dal_button.c)
+add_wink_host_test(test_dal_ssd1306 unit/dal/test_dal_ssd1306.c)
+add_wink_host_test(test_dal_ultrasonic unit/dal/test_dal_ultrasonic.c)
 
-# ADR-0008 ??????blob ????+ CRC32 ???wink_dev_config.c ??pal_host OBJECT ????
-add_wink_host_test(test_dev_config test_dev_config.c)
-
-# ADR-0008 PAL ???? host ???pal_storage_host.c ??pal_host OBJECT ????
-add_wink_host_test(test_pal_storage test_pal_storage.c)
-
-# ADR-0009 Wave1 ??????????wink_sim_physical.c ???? pal_host OBJECT??
-add_wink_host_test(test_sim_physical test_sim_physical.c)
-
-# P2 (2026-07-06): DAL sources are now compiled into the `dal` static library
-# and linked via target_link_libraries(... dal) inside add_wink_host_test /
-# add_wink_test_sim. Per-driver tests no longer need to list dal/src/**/*.c
-# explicitly ??they just compile their own test .c file and get the full DAL.
-add_wink_host_test(test_dal_servo test_dal_servo.c)
-
-add_wink_host_test(test_dal_led test_dal_led.c)
-
-add_wink_host_test(test_dal_button test_dal_button.c)
-
-add_wink_host_test(test_dal_ssd1306 test_dal_ssd1306.c)
-
-add_wink_host_test(test_dal_ultrasonic test_dal_ultrasonic.c)
-
-add_wink_host_test(test_dal_motor test_dal_motor.c)
+add_wink_host_test(test_dal_motor unit/dal/test_dal_motor.c)
 target_include_directories(test_dal_motor PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/actuator)
 
-add_wink_host_test(test_dal_encoder test_dal_encoder.c)
+add_wink_host_test(test_dal_encoder unit/dal/test_dal_encoder.c)
 target_include_directories(test_dal_encoder PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/sensor)
 
-
-# Stage 0 Task 0.7: DAL deinit contract tests for the two stubbed drivers
-add_wink_host_test(test_dal_eeprom test_dal_eeprom.c)
+add_wink_host_test(test_dal_eeprom unit/dal/test_dal_eeprom.c)
 target_include_directories(test_dal_eeprom PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/storage)
 
-add_wink_host_test(test_dal_gps test_dal_gps.c)
+add_wink_host_test(test_dal_gps unit/dal/test_dal_gps.c)
 target_include_directories(test_dal_gps PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/communication)
 
-# Stage 0 Task 0.1: PAL I2C bus lifecycle API host test
-add_wink_host_test(test_pal_i2c_bus test_pal_i2c_bus.c)
+add_wink_host_test(test_pal_i2c_bus unit/pal/test_pal_i2c_bus.c)
 
-# ADR-0032: BAL wink_button_enable_events / disable_events.
-# wink_bal PUBLIC-links wink_runtime (which contains wink_runtime_tasks.c
-# and wink_soft_timer.c) and dal; transitive deps bring in pal + trace.
-add_wink_host_test(test_button_events test_button_events.c)
+add_wink_host_test(test_button_events unit/bal/test_button_events.c)
 target_link_libraries(test_button_events PRIVATE wink_bal)
 target_compile_definitions(test_button_events PRIVATE WINK_STRICT_NONBLOCKING=1)
 
-# ADR-0033: ultrasonic distance events ??WINK_EVENT_DISTANCE_READY
-add_wink_host_test(test_ultrasonic_distance_events test_ultrasonic_distance_events.c)
+add_wink_host_test(test_ultrasonic_distance_events unit/bal/test_ultrasonic_distance_events.c)
 target_link_libraries(test_ultrasonic_distance_events PRIVATE wink_bal)
 target_compile_definitions(test_ultrasonic_distance_events PRIVATE WINK_STRICT_NONBLOCKING=1)
 
-# ADR-0031 Task S4: BAL wink_button_events GPIO_IRQ ??SOFT_POLL degrade
-# path ??permissive default (warn + degrade) and strict opt-in (hard-fail).
-# The strict variant reuses the same source file gated on
-# `WINK_BUTTON_IRQ_STRICT` so both mode contracts live next to each other.
-add_wink_host_test(test_button_events_irq_degrade test_button_events_irq_degrade.c)
+add_wink_host_test(test_button_events_irq_degrade unit/bal/test_button_events_irq_degrade.c)
 target_link_libraries(test_button_events_irq_degrade PRIVATE wink_bal)
 
-# STRICT variant: `WINK_BUTTON_IRQ_STRICT` must reach the wink_button_events
-# translation unit, but `libwink_bal.a` is already built without it. To pick
-# up the strict branch we compile the BAL button-events sources directly
-# into this test executable (their .obj resolves `wink_button_enable_events`
-# before the archive is scanned) and rely on wink_bal only for the other
-# helpers we do not touch. Include-dirs mirror the ones wink_bal exports.
 add_wink_host_test(test_button_events_irq_strict
-    test_button_events_irq_degrade.c
+    unit/bal/test_button_events_irq_degrade.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../bal/src/input/wink_button_events.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../bal/src/input/wink_button_events_irq.c)
 target_link_libraries(test_button_events_irq_strict PRIVATE wink_bal)
 target_compile_definitions(test_button_events_irq_strict PRIVATE WINK_BUTTON_IRQ_STRICT=1)
 
-# ADR-0023 Task 2.1: BAL wink_led_blink.
-# wink_bal PUBLIC-links wink_runtime (which contains wink_runtime_tasks.c and
-# wink_soft_timer.c) and dal; transitive deps bring in pal + trace.
-add_wink_host_test(test_led_blink test_led_blink.c)
+add_wink_host_test(test_led_blink unit/bal/test_led_blink.c)
 target_link_libraries(test_led_blink PRIVATE wink_bal)
 target_compile_definitions(test_led_blink PRIVATE WINK_STRICT_NONBLOCKING=1)
 
-# ADR-0023 Task 2.3: BAL wink_telemetry_default.
-add_wink_host_test(test_bal_telemetry test_bal_telemetry.c)
+add_wink_host_test(test_bal_telemetry unit/bal/test_bal_telemetry.c)
 target_link_libraries(test_bal_telemetry PRIVATE wink_bal)
 
-# BAL ultrasonic poll test.
-add_wink_host_test(test_bal_ultrasonic_poll test_bal_ultrasonic_poll.c)
+add_wink_host_test(test_bal_ultrasonic_poll unit/bal/test_bal_ultrasonic_poll.c)
 target_link_libraries(test_bal_ultrasonic_poll PRIVATE wink_bal)
 
-# BAL servo sweep test.
-add_wink_host_test(test_bal_servo_sweep test_bal_servo_sweep.c)
+add_wink_host_test(test_bal_servo_sweep unit/bal/test_bal_servo_sweep.c)
 target_link_libraries(test_bal_servo_sweep PRIVATE wink_bal)
 
-# BAL PID helper test.
-add_wink_test(test_pid test_pid.c)
+add_wink_test(test_pid unit/bal/test_pid.c)
 target_link_libraries(test_pid PRIVATE wink_bal)
 
-# BAL closed loop motor test.
-add_wink_host_test(test_bal_closed_loop_motor test_bal_closed_loop_motor.c)
+add_wink_host_test(test_bal_closed_loop_motor unit/bal/test_bal_closed_loop_motor.c)
 target_link_libraries(test_bal_closed_loop_motor PRIVATE wink_bal)
 
-# BAL chassis + diff drive kinematics test.
-add_wink_host_test(test_bal_chassis test_bal_chassis.c)
+add_wink_host_test(test_bal_chassis unit/bal/test_bal_chassis.c)
 target_link_libraries(test_bal_chassis PRIVATE wink_bal)
 
-# Track A M1 / Task A-4?DAL?PAL ???? e2e ??????7 ??DAL init ?? wire pal_resource_claim??
-# P2: dal is linked via add_wink_host_test; need the extra include dirs for
-# gps/eeprom headers that live in subdirectories not on the default surface.
-add_wink_host_test(test_pal_resource_wire test_pal_resource_wire.c)
+add_wink_host_test(test_pal_resource_wire unit/pal/test_pal_resource_wire.c)
 target_include_directories(test_pal_resource_wire PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/communication
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/storage)
 
-# ??????DSIMULATION?????? ADR-0003 ??2 ??????????????
 function(add_wink_test_sim name src)
     add_executable(${name}
         ${src}
@@ -345,11 +249,9 @@ function(add_wink_test_sim name src)
         ${UNITY_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/stubs
-        # Phase 1 ?????pal/include/ ????+ osal/ + hal/ ??????????
         ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/osal
         ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/hal
-        # Phase 2?targets/common/include?wink_sim_physical.h??
         ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/input
@@ -357,58 +259,42 @@ function(add_wink_test_sim name src)
         ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/actuator
         ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/display
         ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/sensor
-        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm     # wasm_bridge.h?dal SIMULATION ??????
+        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm
         ${CMAKE_CURRENT_SOURCE_DIR}/../trace/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/include)
-    # P2 (2026-07-06): link dal instead of pal alone.
     target_link_libraries(${name} PRIVATE dal)
     target_compile_definitions(${name} PRIVATE SIMULATION=1)
     if(MSVC)
-        # /W4: strict warnings; /WX: warnings as errors (0 warning = build fails if any warning
-        # /wd4100: match GCC -Wno-unused-parameter (unused function parameters are intentional in HAL contracts)
-        # /wd4210: MSVC-specific extension warning about file-scope function-static variables (harmless in C)
         target_compile_options(${name} PRIVATE /W4 /WX /wd4100 /wd4210)
     else()
         target_compile_options(${name} PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter
             -Wno-missing-field-initializers
-            -Wno-error=stack-usage=)  # P-stack?host ????????????
+            -Wno-error=stack-usage=)
     endif()
     add_test(NAME ${name} COMMAND ${name})
 endfunction()
 
-add_wink_test_sim(test_dal_ultrasonic_sim test_dal_ultrasonic_sim.c)
+add_wink_test_sim(test_dal_ultrasonic_sim unit/dal/test_dal_ultrasonic_sim.c)
+add_wink_test_sim(test_button_debounce_e2e unit/bal/test_button_debounce_e2e.c)
 
-# ADR-0009 Wave1 ????????dal_button ? ???????pal_host ???? + ????
-add_wink_test_sim(test_button_debounce_e2e test_button_debounce_e2e.c)
-
-# WASM ????????????????
-add_wink_host_test(test_wasm_devices_sim test_wasm_devices_sim.c
+add_wink_host_test(test_wasm_devices_sim unit/sim/test_wasm_devices_sim.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm/devices/wasm_sim_registry.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm/devices/wasm_dev_servo.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm/devices/wasm_dev_ultrasonic.c)
 
-# Wave 4 selftest ?? + ?? selftest ??
-add_wink_host_test(test_wink_selftest test_wink_selftest.c
+add_wink_host_test(test_wink_selftest unit/runtime/test_wink_selftest.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/selftest/src/selftest_core.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/selftest/src/selftest_pwm_router.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/selftest/src/selftest_i2c_scan.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/selftest/src/selftest_smp_stress.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/selftest/src/selftest_gpio_isr.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/selftest/src/selftest_rmt_loopback.c
-    # ADR-0023 Stage 2.4: S10 bringup shadow-task helper, gates itself with
-    # #ifndef WINK_STRICT_NONBLOCKING so it links out of strict-mirror builds.
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/selftest/src/wink_sim_ultrasonic_echo.c)
-# selftest ??????wink_selftest_internal.h ??registry.def
 target_include_directories(test_wink_selftest PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/selftest/src)
 
-# P2 (2026-07-06): DAL pruning sanity ??link sanity under default (all-ON)
-# config. References every public non-blocking non-strict-gated API so that
-# any driver accidentally dropped from libdal.a shows up at link time.
-# This is NOT a Unity test (plain main()) ??use add_executable directly
-# instead of add_wink_host_test (which pulls in unity.c requiring setUp/tearDown).
 add_executable(test_dal_pruning
-    test_dal_pruning.c
+    unit/dal/test_dal_pruning.c
     ${HOST_PAL_OBJECT})
 target_include_directories(test_dal_pruning PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -436,24 +322,19 @@ else()
 endif()
 add_test(NAME test_dal_pruning COMMAND test_dal_pruning)
 
-# P2 (2026-07-06): compile-negative test ??verify WINK_UNAVAILABLE_MSG stubs
-# fire when a driver is forced OFF. Uses a CMake script test that invokes
-# the compiler directly at ctest time (not part of the default build) so
-# that turning WINK_USE_SERVO=OFF in this negative case does not affect the
-# rest of the build.
 add_test(
     NAME test_dal_pruning_unavailable
     COMMAND ${CMAKE_COMMAND}
         -D "GCC=${CMAKE_C_COMPILER}"
-        -D "SRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
+        -D "SRC_DIR=${CMAKE_CURRENT_SOURCE_DIR}/unit/dal"
         -D "DAL_INC=${CMAKE_CURRENT_SOURCE_DIR}/../dal/include"
         -D "PAL_INC=${CMAKE_CURRENT_SOURCE_DIR}/../pal/include"
         -D "WINK_STATUS_H=${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/wink_status.h"
-        -P ${CMAKE_CURRENT_SOURCE_DIR}/test_dal_pruning_neg.cmake
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/unit/dal/test_dal_pruning_neg.cmake
 )
 
 if(TARGET wink_arduino_compat)
-    add_wink_host_test(test_arduino_core_compat test_arduino_core_compat.cpp test_arduino_core_compat_runner.c)
+    add_wink_host_test(test_arduino_core_compat compat/test_arduino_core_compat.cpp compat/test_arduino_core_compat_runner.c)
     target_link_libraries(test_arduino_core_compat PRIVATE wink_arduino_compat)
 endif()
 
