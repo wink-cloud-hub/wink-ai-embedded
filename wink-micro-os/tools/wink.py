@@ -792,6 +792,9 @@ def handle_test(args):
         print(f"-> [{label}] Building...")
         try:
             run_cmd(["cmake", "--build", str(bdir)])
+            if shutil.which("emcc") and shutil.which("emcmake"):
+                print(f"-> [{label}] Building WASM smoke target...")
+                run_cmd(["cmake", "--build", str(bdir), "--target", "wasm_unisim_smoke_build"])
         except Exception:
             print(f"[FAIL] [{label}] build failed", file=sys.stderr)
             overall_rc = 1
