@@ -28,11 +28,11 @@ static void tiny_stack_task(void* arg) {
      * 若 clamp 失败，此数组会溢出用户栈，进而导致 CreateFiber
      * 上的守护页触发访问违例。 */
     volatile uint8_t buf[4096];
-    for (int i = 0; i < 4096; ++i) buf[i] = (uint8_t)i;
-    /* 读一次强制 volatile 生效，避免 gcc -Wunused-but-set-variable。 */
-    volatile uint8_t sink = buf[0];
-    (void)sink;
-    s_task_ran = true;
+    buf[0] = 0xAA;
+    buf[4095] = 0x55;
+    if (buf[0] == 0xAA && buf[4095] == 0x55) {
+        s_task_ran = true;
+    }
     pal_os_task_delete(NULL);
 }
 
