@@ -630,6 +630,7 @@ def handle_web(args):
 def _run_esp32_guard_density_lint(sdk_dir: Path) -> bool:
     """L0 static lint: verify targets/esp32/*.c contain at most 1 #if defined(ESP_PLATFORM) per file."""
     print("\n[lint] ESP_PLATFORM guard density check...")
+    import re
     esp32_dir = sdk_dir / "targets" / "esp32"
     if not esp32_dir.is_dir():
         return True
