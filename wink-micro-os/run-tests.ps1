@@ -32,6 +32,7 @@ param(
     [switch]$Clean,
     [switch]$Detailed,
     [switch]$Sanitize,
+    [switch]$Asan,
     [switch]$Full,
     [switch]$WithWasm
 )
@@ -146,7 +147,8 @@ $passes += @{ Label='default'; Dir='../build/test';       Flags=''; Enabled=$tru
 #       unavailable in the current WinLibs MinGW GCC 16.1 toolchain. Switch to clang
 #       (or add a second sanitize matrix pass) if that check is required.
 # NOTE: -Wcast-function-type-strict does NOT exist in GCC; that spelling is clang-only.
-$passes += @{ Label='sanitize'; Dir='../build/test-san';  Flags='-fsanitize=undefined -fsanitize-undefined-trap-on-error -Wcast-function-type -Werror=cast-function-type'; Enabled=$Sanitize }
+$passes += @{ Label='sanitize'; Dir='../build/test-san';  Flags='-fsanitize=undefined -fsanitize-undefined-trap-on-error -Wcast-function-type -Werror=cast-function-type'; Enabled=($Sanitize -or $Full) }
+$passes += @{ Label='asan';     Dir='../build/test-asan'; Flags='-fsanitize=address -fno-omit-frame-pointer'; Enabled=($Asan -or ($Full -and $env:WINK_ENABLE_ASAN_TESTS -eq "1")) }
 
 $overallRc = 0
 foreach ($p in $passes) {
