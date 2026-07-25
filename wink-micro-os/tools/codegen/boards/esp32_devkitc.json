@@ -2,7 +2,10 @@
   "metadata": {
     "board_name": "esp32_devkitc",
     "mcu": "esp32",
-    "vendor": "espressif"
+    "vendor": "espressif",
+    "memory": {
+      "sim_heap_quota_kb": 256
+    }
   },
   "onboard_devices": {
     "status_led": {

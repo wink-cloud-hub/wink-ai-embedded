@@ -69,6 +69,35 @@ def main():
     max_timers = config.get("max_soft_timers", 16)
     pwm_channels = config.get("pwm_channels", 8)
 
+    # Resolve simulation heap quota bytes per ADR-0045 (3-level lookup chain)
+    heap_quota_kb = 256  # default fallback
+    if "target_config" in config and "sim_heap_quota_kb" in config["target_config"]:
+        heap_quota_kb = config["target_config"]["sim_heap_quota_kb"]
+    elif "sim_heap_quota_kb" in config:
+        heap_quota_kb = config["sim_heap_quota_kb"]
+    elif "board" in config and args.input:
+        board_name = config["board"]
+        app_dir = os.path.dirname(os.path.abspath(args.input))
+        repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        search_paths = [
+            os.path.join(app_dir, "boards", f"{board_name}.json"),
+            os.path.join(app_dir, f"{board_name}.json"),
+            os.path.join(repo_root, "tools", "codegen", "boards", f"{board_name}.json"),
+        ]
+        for p in search_paths:
+            if os.path.exists(p):
+                try:
+                    with open(p, "r", encoding="utf-8") as bf:
+                        bdata = json.load(bf)
+                        quota = bdata.get("metadata", {}).get("memory", {}).get("sim_heap_quota_kb")
+                        if quota is not None:
+                            heap_quota_kb = quota
+                            break
+                except Exception:
+                    pass
+
+    sim_heap_bytes = int(heap_quota_kb) * 1024
+
     if _resolve_sdk_mode(args) == "binary":
         _enforce_binary_ceilings(max_timers, pwm_channels)
 
@@ -99,21 +128,25 @@ def main():
  *   - WINK_MAX_SOFT_TIMERS: Maximum concurrent soft timers
  *   - WINK_TARGET_*: Platform identification macro
  *   - PAL_PWM_CHANNELS: Number of PWM channels for motor control
+ *   - WINK_SIM_HEAP_QUOTA_BYTES: Simulation RAM heap quota assertion baseline (ADR-0045)
  */
 
 #ifndef WINK_CONFIG_H
 #define WINK_CONFIG_H
 
 #undef WINK_RUNTIME_TICK_MS
-#define WINK_RUNTIME_TICK_MS    ({tick_ms}U)
+#define WINK_RUNTIME_TICK_MS        ({tick_ms}U)
 
 #undef WINK_MAX_SOFT_TIMERS
-#define WINK_MAX_SOFT_TIMERS    ({max_timers}U)
+#define WINK_MAX_SOFT_TIMERS        ({max_timers}U)
 
 #undef PAL_PWM_CHANNELS
-#define PAL_PWM_CHANNELS        ({pwm_channels}U)
+#define PAL_PWM_CHANNELS            ({pwm_channels}U)
 
-#define {target_macro}           (1)
+#undef WINK_SIM_HEAP_QUOTA_BYTES
+#define WINK_SIM_HEAP_QUOTA_BYTES   ({sim_heap_bytes}UL)
+
+#define {target_macro}               (1)
 
 #endif /* WINK_CONFIG_H */
 """

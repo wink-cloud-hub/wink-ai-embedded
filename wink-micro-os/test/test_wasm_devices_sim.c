@@ -11,6 +11,12 @@
 void wasm_dev_ultrasonic_reset(void);
 uint32_t wasm_dev_ultrasonic_get_pulse_us(uint8_t pin);
 
+float js_sim_get_plugin_channel(const char *instance_id, const char *channel_name) {
+    (void)instance_id;
+    (void)channel_name;
+    return -1.0f;
+}
+
 void setUp(void) {
     pal_wasm_sim_reset_all_devices();
 }

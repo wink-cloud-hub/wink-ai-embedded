@@ -49,6 +49,23 @@ api_rules:
     immutable: false
     refs: ["ADR-0043"]
 
+  - id: NO-MALLOC-APP
+    in: [app_src]
+    deny_regex:
+      - pattern: '\b(malloc|calloc|realloc)\s*\('
+    context:
+      strip_comments: true
+      strip_strings: true
+      scope_by_kind:
+        source: full
+    except_regex: []
+    message: >-
+      Forbidden dynamic memory allocation in application layer (ADR-0045). Use static pools or framework allocation primitives.
+    severity: error
+    immutable: true
+    refs: ["ADR-0045"]
+
+
   - id: STATUS-NOT-BOOL-PUBLIC
     in: [dal_public]
     deny_regex:
