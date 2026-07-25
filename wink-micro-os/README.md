@@ -72,16 +72,9 @@ wink-micro-os/
 │   ├── host/     pal_hal_host.c · pal_log_host.c   # 一等 target
 │   └── esp32/    pal_hal_*_esp32.c · esp32_entry.c
 ├── test/                       # host 单元/端到端测试 (Unity)
-│   ├── unity/    unity.{c,h} + unity_internals.h
-│   ├── stubs/    host_test_ctrl.h · js_sim_host_stub.{c,h}
-│   └── test_*.c
-└── samples/                    # 应用样例（每个含 device_tree + app_callbacks）
-    ├── avoidance_car/          # 避障小车：ultrasonic + servo 端到端
-    ├── oled_dashboard/         # OLED 仪表盘：button + LED + SSD1306
-    ├── devkitc_smoke/          # ESP32 DevKitC 真机冒烟（S1–S11，含 deinit 循环）
-    ├── dual_task_demo/         # 协作式双任务 demo（ADR-0013/0014）
-    ├── resource_conflict/      # 反例：pal_resource 冲突检测（期望 init 失败）
-    └── unisim_smoke/           # wasm 桥接冒烟（Node/浏览器 wasm 端跑，非 host）
+    ├── unity/    unity.{c,h} + unity_internals.h
+    ├── stubs/    host_test_ctrl.h · js_sim_host_stub.{c,h}
+    └── test_*.c
 ```
 
 ---
@@ -95,7 +88,7 @@ wink-micro-os/
 使用统一 CLI 命令进行构建：
 
 ```bash
-# 1. 默认构建 samples/avoidance_car 避障小车应用
+# 1. 默认构建 wink-micro-app/avoidance_car 避障小车应用
 python tools/wink.py build wasm --app avoidance_car
 
 # 2. 换构建其它 App 变体 (如 oled_dashboard / devkitc_smoke 等)
@@ -104,7 +97,7 @@ python tools/wink.py build wasm --app oled_dashboard
 
 **底层原生 CMake 指令（供参考）**：
 ```bash
-emcmake cmake -S . -B build-wasm -DTARGET_PLATFORM=wasm -DWINK_APP_DIR=$(pwd)/samples/avoidance_car
+emcmake cmake -S . -B build-wasm -DTARGET_PLATFORM=wasm -DWINK_APP_DIR=$(pwd)/wink-micro-app/avoidance_car
 cmake --build build-wasm
 ```
 
