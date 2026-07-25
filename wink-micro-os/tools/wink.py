@@ -22,6 +22,7 @@ Toolchain gating (Phase 2, ADR-0029/0030):
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
