@@ -43,7 +43,11 @@
 ```text
 wink-micro-os/
 ├── CMakeLists.txt              # 顶层：TARGET_PLATFORM 路由 · WINK_APP_DIR 注入 · 层库聚合
-├── run-tests.ps1               # host 测试一键脚本（见 §3.3）
+├── tools/                      # SDK 统一工具链 CLI、CodeGen、Lint 引擎与板级元数据
+│   ├── wink.py                 # 统一 CLI 总入口 (build/test/lint/esp32/doctor)
+│   ├── codegen/                # 代码生成器 (device_tree / wink_config.h / boards/*.json)
+│   ├── lint/                   # YAML 分层/API 代码规约引擎 (ADR-0043)
+│   └── toolchain/              # 工具链自动探测与校验 (ADR-0029/0030)
 ├── pal/                        # 平台抽象层 (INTERFACE 契约库，仅头无 .c)
 │   └── include/  pal.h · wink_status.h · pal_hal.h · pal_osal.h
 ├── dal/                        # 器件抽象层 (STATIC，两端同源)
@@ -84,27 +88,27 @@ wink-micro-os/
 
 ## 3. 构建与编译说明
 
-项目使用 CMake 构建，通过传入 `-DTARGET_PLATFORM` 参数静态绑定编译目标。
+项目推荐使用 **Wink CLI 工具链（`python tools/wink.py`）** 进行统一构建与测试管理，通过 CMake 静态绑定编译目标。
 
 ### 3.1 编译为 WebAssembly 仿真组件
 
-使用 Emscripten 工具链编译，生成 Wasm 字节码供 Web 端 Worker 线程载入。默认构建 `samples/avoidance_car`：
+使用统一 CLI 命令进行构建：
 
 ```bash
-# 从 wink-micro-os/ 目录执行
-emcmake cmake -S . -B build-wasm -DTARGET_PLATFORM=wasm
+# 1. 默认构建 samples/avoidance_car 避障小车应用
+python tools/wink.py build wasm --app avoidance_car
+
+# 2. 换构建其它 App 变体 (如 oled_dashboard / devkitc_smoke 等)
+python tools/wink.py build wasm --app oled_dashboard
+```
+
+**底层原生 CMake 指令（供参考）**：
+```bash
+emcmake cmake -S . -B build-wasm -DTARGET_PLATFORM=wasm -DWINK_APP_DIR=$(pwd)/samples/avoidance_car
 cmake --build build-wasm
 ```
 
 **产出**：`build-wasm/wink_simulator.wasm` + `build-wasm/wink_simulator.js`（MODULARIZE 胶水，UMD 导出 `WasmSandbox`）。
-
-**换 App 变体**：AI 生成的 App 或其它 sample 通过 `WINK_APP_DIR` 注入（当前仓内可选 6 个：`avoidance_car` / `oled_dashboard` / `devkitc_smoke` / `dual_task_demo` / `resource_conflict` / `unisim_smoke`）：
-
-```bash
-emcmake cmake -S . -B build-wasm -DTARGET_PLATFORM=wasm \
-    -DWINK_APP_DIR=$(pwd)/samples/oled_dashboard
-cmake --build build-wasm
-```
 
 **Node 侧烟测（编译期契约门禁）**：
 
@@ -118,55 +122,58 @@ Stub 静态解析 wasm 二进制 imports 集合，与 `wasm_bridge.h` SSOT 交�
 **JS 桥接契约**：所有 `extern js_*` 符号声明在 `targets/wasm/wasm_bridge.h`（SSOT），默认实现在 `targets/wasm/wink_sim_js.js`（编译期 `--js-library` 注入）。宿主（Workbench）通过 `Module.js_* = customImpl` 覆盖默认桩，**无需重编 wasm**。详见 [04-wasm-simulation §2.2.2](../docs/design/04-wasm-simulation/01-wasm-sandbox-lifecycle.md)。
 
 ### 3.2 编译为 ESP32 真机固件
-作为 ESP-IDF 工程的组件 (Component) 引入：
+
+使用 Wink CLI 一键清理工具链冲突并构建：
 ```bash
-idf.py build
+python tools/wink.py esp32 --app devkitc_smoke build
 ```
-> **ESP32 真机（2026-07-10）**：devkitc_smoke **S1–S11 全 PASS**（含 5 轮 init→deinit 循环，无 GPIO 占用/WDT）。构建：`idf.py -C esp32_firmware build`。历史注记：Wave B 示波器级扩展验证（RMT 延迟、测距精度）仍可按 [实施计划](../docs/design/implementation-plans/2026-07-06-bal-dcst-refactor-plan.md) L2 表 ⏭️ 项单独执行。
+
+（底层将环境净化后调动 ESP-IDF 进行构建。常规底层命令：`idf.py -C esp32_firmware build`）。
+
+> **ESP32 真机**：devkitc_smoke **S1–S11 全 PASS**（含 5 轮 init→deinit 循环，无 GPIO 占用/WDT）。
+
+---
 
 ### 3.3 在本机（host）构建并运行测试
 
-内核各层与端到端链路可在 **PC 上用 gcc + cmake 跑测试**（无需真实硬件 / 浏览器），用 Unity 框架。这是日常开发最快的验证回路。
+内核各层与端到端链路可在 **PC 上用 gcc + cmake 跑测试**（无需真实硬件 / 浏览器），用 Unity 框架。
 
-**前置：安装工具链。** 需要 gcc 与 cmake。本机推荐经 winget 安装 WinLibs MinGW（自带 gcc 16.1.0 + cmake 4.3.2）：
-
-```powershell
-winget install --id BrechtSanders.WinLibs.POSIX.UCRT -e
-# 安装后 gcc/cmake 进入 User PATH；若新窗口未识别，重启电脑使其生效。
-gcc --version   # 验证可用
+**前置：工具链环境诊断。**
+运行诊断命令检查 `gcc` 与 `cmake` 环境：
+```bash
+python tools/wink.py doctor
 ```
 
-**方式一：一键脚本（推荐）。** 在 `wink-micro-os/` 目录下：
+**方式一：统一 CLI 总入口（推荐，跨平台 100% 平替）。**
+```bash
+python tools/wink.py test            # 跑全套 Codegen 单元测试 + Host CTest + 6 大静态 Lint
+python tools/wink.py test --full     # 全量 CI 门禁（含 UBSan / ASan Sanitizer 矩阵 Pass）
+python tools/wink.py lint            # 执行分层/API/Arduino 代码规约检查 (ADR-0043)
+```
 
+**方式二：PowerShell 回归矩阵（Windows 本地底层）。**
 ```powershell
 .\run-tests.ps1            # 增量构建 + 跑全部测试
-.\run-tests.ps1 -Clean     # 删 build-test 全量重编（改了 CMake 时用）
-.\run-tests.ps1 -Detailed  # 打印每个测试的完整 Unity 输出
+.\run-tests.ps1 -Full      # 运行完整 Sanitizer 矩阵与全部 Lint 审计
 ```
 
-**方式二：手动三步。**
-
+**方式三：手动三步。**
 ```powershell
-cd wink-micro-os
-cmake -B build-test -DTARGET_PLATFORM=host
-cmake --build build-test
-cd build-test; ctest --output-on-failure
+cmake -B build/test -DTARGET_PLATFORM=host
+cmake --build build/test
+cd build/test; ctest --output-on-failure
 ```
 
-看到 `100% tests passed` 即通过。只跑某项：`ctest -R servo --output-on-failure`；直接看单个 exe 输出：`.\test\test_dal_servo.exe`。
+**测试矩阵（63 个 C Executable 用例 + 32 项 Python Codegen 单元测试 + WASM 烟测）：**
 
-**测试矩阵（52 个可执行 + wasm_node_smoke，2026-07-10 快照）：**
+| 梯队 | 覆盖领域 |
+|---|---|
+| **Tier 1 · Core / 门禁** | PAL 契约、BAL 服务（button/blink/ultrasonic/servo/telemetry）、runtime change_period、blocking strict |
+| **Tier 2 · DAL 外设与物理退化** | servo/ultrasonic/ultrasonic_sim/led/button/ssd1306、dev_config、avoidance_override、button_debounce_e2e |
+| **Tier 3 · 协作式调度器与 Phase 2 堆配额** | sim_scheduler / _e2e / _determinism / _stack_clamp / _wcet_fault / _zombie_gc、sim_mutex_e2e、single_task_semantic_regression、sim_physical、ADR-0045 堆配额断言 |
+| **Tier 4 · Sample e2e 与 Sanitizers 矩阵** | app_avoidance_car / oled_dashboard / devkitc_smoke / dual_task_demo、sample_resource_conflict、UBSan/ASan 矩阵 Pass |
 
-按梯队组织（完整清单与运行策略见 [TESTING.md](./TESTING.md)）：
-
-| 梯队 | 测试数 | 覆盖 |
-|---|---:|---|
-| **Tier 1 · Core / 门禁** | 14+ | PAL 契约、BAL 服务（button/blink/ultrasonic/servo/telemetry）、runtime change_period、blocking strict |
-| **Tier 2 · DAL 外设** | 9 | servo/ultrasonic/ultrasonic_sim/led/button/ssd1306、dev_config、avoidance_override、button_debounce_e2e |
-| **Tier 3 · 协作式调度器（ADR-0013/0014）** | 9 | sim_scheduler / _e2e / _determinism / _stack_clamp / _wcet_fault / _zombie_gc、sim_mutex_e2e、single_task_semantic_regression、sim_physical |
-| **Tier 4 · Sample e2e** | 5 | app_avoidance_car / oled_dashboard / devkitc_smoke / dual_task_demo、sample_resource_conflict |
-
-> `build-test/` 为构建产物，**不提交 git**。
+> `build/test` 为构建产物，**不提交 git**。
 
 ---
 
