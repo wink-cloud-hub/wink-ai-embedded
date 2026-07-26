@@ -12,7 +12,7 @@ _SDK_ROOT = _HERE.parent.parent
 if str(_SDK_ROOT) not in sys.path:
     sys.path.insert(0, str(_SDK_ROOT))
 
-from tools import pack_sdk_binary  # noqa: E402
+from tools.pack import binary as pack_sdk_binary  # noqa: E402
 
 
 def _write_valid_pack_cache(build_dir: Path) -> None:

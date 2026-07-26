@@ -41,15 +41,15 @@ Wink Micro OS 提供了自动化 SDK 发布套件（位于 [wink-micro-os/tools/
 ### 3.1 制作 Binary SDK 二进制包
 ```bash
 # 为 Host 目标生成 Binary SDK 包
-python tools/pack_sdk_binary.py --target host --out-dir dist/wink-sdk-host
+python tools/pack/binary.py --target host --out-dir dist/wink-sdk-host
 
 # 为 WASM 仿真生成 Binary SDK 包
-python tools/pack_sdk_binary.py --target wasm --out-dir dist/wink-sdk-wasm
+python tools/pack/binary.py --target wasm --out-dir dist/wink-sdk-wasm
 ```
 
 ### 3.2 制作 Source SDK 源码包
 ```bash
-python tools/pack_sdk_source.py --out-dir dist/wink-sdk-source
+python tools/pack/source.py --out-dir dist/wink-sdk-source
 ```
 
 ---
