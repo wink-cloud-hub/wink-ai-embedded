@@ -45,6 +45,18 @@ def _enforce_binary_ceilings(max_timers, pwm_channels):
         raise SystemExit(1)
 
 
+def find_config_key(data: dict, target_key: str, default=None):
+    """Recursively search for target_key in nested dictionaries."""
+    if isinstance(data, dict):
+        if target_key in data:
+            return data[target_key]
+        for v in data.values():
+            val = find_config_key(v, target_key, None)
+            if val is not None:
+                return val
+    return default
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate wink_config.h")
     parser.add_argument("--input", required=False, default=None, help="Path to wink_app.json")
@@ -65,17 +77,9 @@ def main():
     else:
         print("[config_h] No input file or input file not found. Falling back to default configuration.")
 
-    tick_ms = config.get("tick_ms", 10)
-    max_timers = config.get("max_soft_timers", 16)
-    pwm_channels = config.get("pwm_channels", 8)
-
-    # Resolve simulation heap quota bytes per ADR-0045 (3-level lookup chain)
-    heap_quota_kb = 256  # default fallback
-    if "target_config" in config and "sim_heap_quota_kb" in config["target_config"]:
-        heap_quota_kb = config["target_config"]["sim_heap_quota_kb"]
-    elif "sim_heap_quota_kb" in config:
-        heap_quota_kb = config["sim_heap_quota_kb"]
-    elif "board" in config and args.input:
+    # Load board config if specified in wink_app.json
+    board_config = {}
+    if "board" in config and args.input:
         board_name = config["board"]
         app_dir = os.path.dirname(os.path.abspath(args.input))
         repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -88,13 +92,16 @@ def main():
             if os.path.exists(p):
                 try:
                     with open(p, "r", encoding="utf-8") as bf:
-                        bdata = json.load(bf)
-                        quota = bdata.get("metadata", {}).get("memory", {}).get("sim_heap_quota_kb")
-                        if quota is not None:
-                            heap_quota_kb = quota
-                            break
+                        board_config = json.load(bf)
+                        break
                 except Exception:
                     pass
+
+    # Resolve runtime and memory parameters using generic recursive key lookup
+    tick_ms = find_config_key(config, "tick_ms", 10)
+    max_timers = find_config_key(config, "max_soft_timers", 16)
+    pwm_channels = find_config_key(config, "pwm_channels", 8)
+    heap_quota_kb = find_config_key(config, "sim_heap_quota_kb") or find_config_key(board_config, "sim_heap_quota_kb", 256)
 
     sim_heap_bytes = int(heap_quota_kb) * 1024
 
