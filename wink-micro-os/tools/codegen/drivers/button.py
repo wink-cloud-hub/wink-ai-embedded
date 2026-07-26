@@ -47,10 +47,10 @@ def _validate_button_spec(dev_name: str, spec: dict) -> None:
             file=sys.stderr,
         )
         raise SystemExit(2)
-    if drive == "gpio_irq" and "pin" not in spec and "use_onboard" not in spec:
+    if drive == "gpio_irq" and "gpio_pin" not in spec and "use_onboard" not in spec:
         print(
             f"error: device '{dev_name}': event_drive 'gpio_irq' requires "
-            f"'pin' (or 'use_onboard' that supplies one)",
+            f"'gpio_pin' (or 'use_onboard' that supplies one)",
             file=sys.stderr,
         )
         raise SystemExit(2)
@@ -99,7 +99,7 @@ def _button_pull_c(dev_name: str, spec: dict) -> Optional[str]:
 class ButtonDriver(DriverBase):
     type = "button"
     is_actuator = False
-    required_fields = ["pin"]
+    required_fields = ["gpio_pin"]
     default_role = "binary_sensor"
     role_verbs = {
         "binary_sensor": [
@@ -208,7 +208,7 @@ class ButtonDriver(DriverBase):
         # Validate ADR-0031 schema rules here — this is the earliest per-device
         # hook that build_context() calls with the fully resolved spec.
         _validate_button_spec(dev_name, spec)
-        pin = spec["pin"]
+        pin = spec["gpio_pin"]
         active_low_c = "true" if spec.get("active_low", True) else "false"
         pull_c = _button_pull_c(dev_name, spec)
         lines = [

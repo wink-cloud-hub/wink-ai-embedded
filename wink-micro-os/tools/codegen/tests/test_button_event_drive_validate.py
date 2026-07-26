@@ -57,7 +57,7 @@ class ButtonEventDriveValidateTest(unittest.TestCase):
             "devices": {
                 "btn": {
                     "type": "button",
-                    "pin": 0,
+                    "gpio_pin": 0,
                     "event_drive": "bogus_backend",
                     "auto_poll_ms": 10,
                 }
@@ -74,7 +74,7 @@ class ButtonEventDriveValidateTest(unittest.TestCase):
             "devices": {
                 "btn": {
                     "type": "button",
-                    "pin": 0,
+                    "gpio_pin": 0,
                     "event_drive": "soft_poll",
                 }
             },
@@ -91,7 +91,7 @@ class ButtonEventDriveValidateTest(unittest.TestCase):
             "devices": {
                 "btn": {
                     "type": "button",
-                    "pin": 0,
+                    "gpio_pin": 0,
                 }
             },
         }
@@ -99,12 +99,12 @@ class ButtonEventDriveValidateTest(unittest.TestCase):
         self.assertNotEqual(rc, 0)
         self.assertIn("auto_poll_ms", err)
 
-    def test_gpio_irq_missing_pin(self) -> None:
-        # required_fields already enforces `pin`, but the message we care about
+    def test_gpio_irq_missing_gpio_pin(self) -> None:
+        # required_fields already enforces `gpio_pin`, but the message we care about
         # here is that codegen exits ≠ 0 with an actionable string. Since
-        # ButtonDriver.required_fields = ["pin"], omit it entirely and let the
+        # ButtonDriver.required_fields = ["gpio_pin"], omit it entirely and let the
         # framework's missing-required-fields error fire — this is the actual
-        # gate. If a future refactor drops `pin` from required_fields, the
+        # gate. If a future refactor drops `gpio_pin` from required_fields, the
         # gpio_irq-specific check must still block it.
         cfg = {
             "app_name": "irq_no_pin",
@@ -120,12 +120,12 @@ class ButtonEventDriveValidateTest(unittest.TestCase):
         # Accept either the generic required-fields message or the
         # gpio_irq-specific message; both are correct rejections.
         self.assertTrue(
-            "pin" in err,
-            f"expected error to mention 'pin'; got: {err!r}",
+            "gpio_pin" in err,
+            f"expected error to mention 'gpio_pin'; got: {err!r}",
         )
 
-    def test_gpio_irq_with_pin_ok(self) -> None:
-        # Positive path: gpio_irq + pin should validate cleanly (build_context
+    def test_gpio_irq_with_gpio_pin_ok(self) -> None:
+        # Positive path: gpio_irq + gpio_pin should validate cleanly (build_context
         # must not raise SystemExit). auto_poll_ms is only mandatory for
         # soft_poll; gpio_irq is allowed to omit it.
         cfg = {
@@ -133,7 +133,7 @@ class ButtonEventDriveValidateTest(unittest.TestCase):
             "devices": {
                 "btn": {
                     "type": "button",
-                    "pin": 0,
+                    "gpio_pin": 0,
                     "event_drive": "gpio_irq",
                     "debounce_ms": 30,
                 }
@@ -155,7 +155,7 @@ class ButtonEventDriveValidateTest(unittest.TestCase):
             "devices": {
                 "btn": {
                     "type": "button",
-                    "pin": 0,
+                    "gpio_pin": 0,
                     "auto_poll_ms": 10,
                 }
             },

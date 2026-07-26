@@ -68,7 +68,7 @@ class AdvancedValidateTest(unittest.TestCase):
             "devices": {
                 "btn": {
                     "type": "button",
-                    "pin": 0,
+                    "gpio_pin": 0,
                     "auto_poll_ms": 10,
                 }
             },
@@ -82,7 +82,7 @@ class AdvancedValidateTest(unittest.TestCase):
             "devices": {
                 "btn": {
                     "type": "button",
-                    "pin": 0,
+                    "gpio_pin": 0,
                     "auto_poll_ms": 10,
                     "advanced": {"pull": "none"},
                 }
@@ -129,7 +129,7 @@ class AdvancedValidateTest(unittest.TestCase):
             "devices": {
                 "btn": {
                     "type": "button",
-                    "pin": 0,
+                    "gpio_pin": 0,
                     "auto_poll_ms": 10,
                     "advanced": "none",
                 }
@@ -146,7 +146,7 @@ class AdvancedValidateTest(unittest.TestCase):
             "devices": {
                 "btn": {
                     "type": "button",
-                    "pin": 0,
+                    "gpio_pin": 0,
                     "auto_poll_ms": 10,
                     "advanced": {"pull": "up", "system_clock_hz": 80000000},
                 }
@@ -162,7 +162,7 @@ class AdvancedValidateTest(unittest.TestCase):
             "devices": {
                 "btn": {
                     "type": "button",
-                    "pin": 0,
+                    "gpio_pin": 0,
                     "auto_poll_ms": 10,
                     "advanced": {"pull": "NONE"},
                 }
@@ -178,7 +178,7 @@ class AdvancedValidateTest(unittest.TestCase):
             "devices": {
                 "btn": {
                     "type": "button",
-                    "pin": 0,
+                    "gpio_pin": 0,
                     "auto_poll_ms": 10,
                     "advanced": {"pull": 3},
                 }
@@ -195,7 +195,7 @@ class AdvancedValidateTest(unittest.TestCase):
             "devices": {
                 "btn": {
                     "type": "button",
-                    "pin": 0,
+                    "gpio_pin": 0,
                     "auto_poll_ms": 10,
                     "pull": "none",
                 }
@@ -274,7 +274,7 @@ class AdvancedValidateTest(unittest.TestCase):
             "devices": {
                 "btn": {
                     "type": "button",
-                    "pin": 0,
+                    "gpio_pin": 0,
                     "auto_poll_ms": 10,
                     "advanced": {"pull": "none"},
                 },

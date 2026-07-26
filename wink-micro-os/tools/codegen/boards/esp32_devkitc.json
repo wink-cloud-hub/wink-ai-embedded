@@ -10,12 +10,12 @@
   "onboard_devices": {
     "status_led": {
       "type": "led",
-      "pin": 2,
+      "gpio_pin": 2,
       "active_high": true
     },
     "boot_button": {
       "type": "button",
-      "pin": 0,
+      "gpio_pin": 0,
       "active_low": true
     }
   },

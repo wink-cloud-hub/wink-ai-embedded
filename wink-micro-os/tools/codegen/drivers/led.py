@@ -9,7 +9,7 @@ from .base import DriverBase
 class LedDriver(DriverBase):
     type = "led"
     is_actuator = True
-    required_fields = ["pin"]
+    required_fields = ["gpio_pin"]
     default_role = "binary_indicator"
     role_verbs = {
         "binary_indicator": ["activate", "deactivate", "toggle"]
@@ -32,7 +32,7 @@ class LedDriver(DriverBase):
         return "dal_led_t"
 
     def render_config_init(self, dev_name: str, spec: dict) -> str:
-        pin = spec["pin"]
+        pin = spec["gpio_pin"]
         active_high = spec.get("active_high", True)
         active_high_c = "true" if active_high else "false"
         owner = dev_name

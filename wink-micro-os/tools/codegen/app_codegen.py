@@ -271,7 +271,7 @@ def build_context(cfg: dict, config_source: str) -> dict:
     pin_occupancy: Dict[int, List[str]] = {}
     for name, spec in resolved_devices.items():
         for k, v in spec.items():
-            if (k == "pin" or k.endswith("_pin")) and isinstance(v, int):
+            if k.endswith("_pin") and isinstance(v, int):
                 pin_occupancy.setdefault(v, []).append(f"{name}.{k}")
 
     conflicts = []

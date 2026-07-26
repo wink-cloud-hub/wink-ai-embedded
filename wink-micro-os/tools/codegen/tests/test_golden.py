@@ -152,7 +152,7 @@ class GoldenTest(unittest.TestCase):
                 },
                 "led2": {
                     "type": "led",
-                    "pin": 2
+                    "gpio_pin": 2
                 }
             }
         }
@@ -174,7 +174,7 @@ class GoldenTest(unittest.TestCase):
             "devices": {
                 "led1": {
                     "type": "led",
-                    "pin": "$board.headers.NON_EXISTENT_HEADER"
+                    "gpio_pin": "$board.headers.NON_EXISTENT_HEADER"
                 }
             }
         }
@@ -196,7 +196,7 @@ class GoldenTest(unittest.TestCase):
             "devices": {
                 "led1": {
                     "type": "led",
-                    "pin": 2,
+                    "gpio_pin": 2,
                     "role": "binary_sensor"
                 }
             }
@@ -242,7 +242,7 @@ class GoldenTest(unittest.TestCase):
             "devices": {
                 "led1": {
                     "type": "led",
-                    "pin": "$$board.non_existent_header"
+                    "gpio_pin": "$$board.non_existent_header"
                 }
             }
         }
