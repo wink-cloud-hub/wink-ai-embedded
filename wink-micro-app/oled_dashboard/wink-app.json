@@ -16,7 +16,7 @@
     },
     "status_oled": {
       "type": "ssd1306",
-      "i2c_port": 0,
+      "i2c_bus": 0,
       "i2c_addr": 60
     }
   }

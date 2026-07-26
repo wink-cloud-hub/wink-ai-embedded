@@ -310,8 +310,8 @@ def build_context(cfg: dict, config_source: str) -> dict:
     # 5. I2C shared bus detection
     i2c_buses = {}
     for name, driver, spec in resolved:
-        if "i2c_port" in spec:
-            port = int(spec["i2c_port"])
+        if "i2c_bus" in spec:
+            port = int(spec["i2c_bus"])
             sda = spec.get("sda_pin")
             scl = spec.get("scl_pin")
             hz = spec.get("hz") or spec.get("i2c_hz") or 100000  # Default 100kHz
@@ -325,7 +325,7 @@ def build_context(cfg: dict, config_source: str) -> dict:
                     if scl is None:
                         scl = board_buses[bus_key].get("scl")
             if sda is None or scl is None:
-                _die(f"device '{name}' is on I2C port {port} but SDA/SCL pins cannot be resolved")
+                _die(f"device '{name}' is on I2C bus {port} but SDA/SCL pins cannot be resolved")
             
             # Resolve to pins (ensure they are integers/resolved variables)
             if port in i2c_buses:

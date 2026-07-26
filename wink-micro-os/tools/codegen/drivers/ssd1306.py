@@ -9,7 +9,7 @@ from .base import DriverBase
 class Ssd1306Driver(DriverBase):
     type = "ssd1306"
     is_actuator = False
-    required_fields = ["i2c_port"]
+    required_fields = ["i2c_bus"]
     default_role = "text_display"
     role_verbs = {
         "text_display": ["clear", "draw_text", "flush"]
@@ -32,13 +32,13 @@ class Ssd1306Driver(DriverBase):
         return "dal_ssd1306_t"
 
     def render_config_init(self, dev_name: str, spec: dict) -> str:
-        i2c_port = spec["i2c_port"]
+        i2c_bus = spec["i2c_bus"]
         i2c_addr = spec.get("i2c_addr", 0x3C)
         width = spec.get("width", 128)
         height = spec.get("height", 64)
         return (
             f'    static const dal_ssd1306_config_t {dev_name}_cfg = {{\n'
-            f'        .i2c_port = {i2c_port},\n'
+            f'        .i2c_port = {i2c_bus},\n'
             f'        .i2c_addr = 0x{i2c_addr:X},\n'
             f'        .width = {width},\n'
             f'        .height = {height},\n'
