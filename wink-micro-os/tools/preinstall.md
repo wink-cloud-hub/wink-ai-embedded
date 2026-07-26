@@ -2,6 +2,8 @@
 
 `wink-micro-os/tools/`（尤其是 `wink.py`）按目标分流构建。按下面三类准备环境后，对应命令才能正常执行。
 
+> 💡 **提示**：关于 Wink OS 工具链管理、环境门控与详细配置步骤，请参阅新的模块化指南：[docs/02-toolchain-and-setup.md](./docs/02-toolchain-and-setup.md)。
+
 统一入口：
 
 ```powershell

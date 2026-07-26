@@ -43,8 +43,9 @@
 ```text
 wink-micro-os/
 ├── CMakeLists.txt              # 顶层：TARGET_PLATFORM 路由 · WINK_APP_DIR 注入 · 层库聚合
-├── tools/                      # SDK 统一工具链 CLI、CodeGen、Lint 引擎与板级元数据
+├── tools/                      # SDK 统一工具链 CLI、CodeGen、Lint 引擎与板级元数据 (参见 tools/docs/)
 │   ├── wink.py                 # 统一 CLI 总入口 (build/test/lint/esp32/doctor)
+│   ├── docs/                   # 工具链模块化详细使用指南
 │   ├── codegen/                # 代码生成器 (device_tree / wink_config.h / boards/*.json)
 │   ├── lint/                   # YAML 分层/API 代码规约引擎 (ADR-0043)
 │   └── toolchain/              # 工具链自动探测与校验 (ADR-0029/0030)
