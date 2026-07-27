@@ -1,11 +1,11 @@
-# Avoidance car — L1 distance-events sample (ADR-0033).
+# Avoidance car �?L1 distance-events sample (ADR-0033).
 # Shared boilerplate in ../sample_common.cmake.
 include(${CMAKE_CURRENT_LIST_DIR}/../sample_common.cmake)
 
-# ── Codegen: wink-app.json → device_tree.[hc] + app_options.cmake ──
+# ── Codegen: wink-app.json �?device_tree.[hc] + app_options.cmake ──
 set(WINK_APP_JSON     ${CMAKE_CURRENT_SOURCE_DIR}/wink-app.json)
 if(NOT DEFINED WINK_CODEGEN_ROOT)
-    set(WINK_CODEGEN_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../wink-micro-os/tools/codegen)
+    set(WINK_CODEGEN_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../wink-tools/tools/codegen)
 endif()
 set(WINK_CODEGEN_TOOL ${WINK_CODEGEN_ROOT}/app_codegen.py)
 set(GEN_DIR           ${CMAKE_CURRENT_BINARY_DIR}/generated)

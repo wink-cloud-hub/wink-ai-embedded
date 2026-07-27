@@ -18,7 +18,7 @@
 # component_get_requirements.cmake) BEFORE the real configure pass, only
 # to extract the REQUIRES list. In script mode commands like
 # add_custom_command / find_package are NOT available and must appear
-# AFTER idf_component_register() — they are only reached during the real
+# AFTER idf_component_register() �?they are only reached during the real
 # configure pass. See comment in targets/esp32/CMakeLists.txt for full
 # rationale.
 # ============================================================
@@ -30,27 +30,27 @@ if(DEFINED ENV{WINK_APP_DIR} AND NOT DEFINED WINK_APP_DIR)
     set(WINK_APP_DIR $ENV{WINK_APP_DIR})
 endif()
 
-# configure 阶段自动跑 Python 生成器，生成 app_sources.cmake（App + samples/common 源文件扫描）
-# 注意：用 COMPONENT_DIR 而非 CMAKE_CURRENT_SOURCE_DIR——ESP-IDF 在 build 目录处理组件依赖时后者会变
-# IDF 组件 CMakeLists 会跑两次（script-mode + real configure）；两次都需要 app_sources.cmake
-# 存在（下方 include() 之前）。execute_process 在 script mode 亦可用（旧 PS1 版本靠此运行）。
-# find_package 在 script mode 有可能不可用，故用 CMAKE_BUILD_EARLY_EXPANSION 门控并回退到 "python"。
+# configure 阶段自动�?Python 生成器，生成 app_sources.cmake（App + samples/common 源文件扫描）
+# 注意：用 COMPONENT_DIR 而非 CMAKE_CURRENT_SOURCE_DIR——ESP-IDF �?build 目录处理组件依赖时后者会�?
+# IDF 组件 CMakeLists 会跑两次（script-mode + real configure）；两次都需�?app_sources.cmake
+# 存在（下�?include() 之前）。execute_process �?script mode 亦可用（�?PS1 版本靠此运行）�?
+# find_package �?script mode 有可能不可用，故�?CMAKE_BUILD_EARLY_EXPANSION 门控并回退�?"python"�?
 if(CMAKE_BUILD_EARLY_EXPANSION)
-    # Script-mode pass：不引 find_package，直接用 PATH 上的 python（IDF 激活环境保证 py3 可用）。
+    # Script-mode pass：不�?find_package，直接用 PATH 上的 python（IDF 激活环境保�?py3 可用）�?
     set(_WINK_GEN_PY "python")
 else()
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
     set(_WINK_GEN_PY "${Python3_EXECUTABLE}")
 endif()
 
-# 定位 Python 生成器脚本：优先 WINK_SDK_PATH（CMake -D 或环境变量），否则回退到 in-tree 布局。
+# 定位 Python 生成器脚本：优先 WINK_SDK_PATH（CMake -D 或环境变量），否则回退�?in-tree 布局�?
 if(NOT DEFINED WINK_SDK_PATH AND DEFINED ENV{WINK_SDK_PATH})
     set(WINK_SDK_PATH "$ENV{WINK_SDK_PATH}")
 endif()
 if(DEFINED WINK_SDK_PATH)
     set(_WINK_GEN_SCRIPT "${WINK_SDK_PATH}/tools/esp32/generate_app_sources.py")
 else()
-    set(_WINK_GEN_SCRIPT "${COMPONENT_DIR}/../../wink-micro-os/tools/esp32/generate_app_sources.py")
+    set(_WINK_GEN_SCRIPT "${COMPONENT_DIR}/../../wink-tools/tools/esp32/generate_app_sources.py")
 endif()
 
 if(DEFINED WINK_APP_DIR)
@@ -71,7 +71,7 @@ if(NOT GEN_SCRIPT_RESULT EQUAL 0)
     message(FATAL_ERROR "generate_app_sources.py failed with code ${GEN_SCRIPT_RESULT}")
 endif()
 
-# 引入自动生成的源文件列表（设 WINK_APP_DIR / WINK_APP_SOURCES / WINK_APP_COMMON_INCLUDE_DIR）
+# 引入自动生成的源文件列表（设 WINK_APP_DIR / WINK_APP_SOURCES / WINK_APP_COMMON_INCLUDE_DIR�?
 include(${COMPONENT_DIR}/app_sources.cmake)
 
 # Codegen output directory. idf_component_register requires INCLUDE_DIRS
@@ -96,16 +96,16 @@ endif()
 idf_component_register(
     SRCS
         "app_main.c"
-        ${WINK_APP_SOURCES}       # ← 自动扫描得到（app_callbacks.c + samples/common helpers）
+        ${WINK_APP_SOURCES}       # �?自动扫描得到（app_callbacks.c + samples/common helpers�?
         # Codegen outputs (device_tree.c) are added after
-        # register() via target_sources() — see below. They cannot be listed
+        # register() via target_sources() �?see below. They cannot be listed
         # here because the OUTPUT variables (GEN_DEVICE_TREE_C etc.) are only
         # defined after register() when add_custom_command is available.
     INCLUDE_DIRS
         "."
-        ${WINK_APP_DIR}           # ← App 头文件目录
-        ${GEN_DIR}                # ← codegen 生成的 device_tree.h 所在目录
-        ${WINK_APP_COMMON_INCLUDE_DIR}  # ← samples/common/include
+        ${WINK_APP_DIR}           # �?App 头文件目�?
+        ${GEN_DIR}                # �?codegen 生成�?device_tree.h 所在目�?
+        ${WINK_APP_COMMON_INCLUDE_DIR}  # �?samples/common/include
     REQUIRES ${APP_REQUIRES}
     WHOLE_ARCHIVE
 )
@@ -122,7 +122,7 @@ foreach(src ${WINK_APP_SOURCES})
     endif()
 endforeach()
 
-# ── Codegen (wink-app.json → device_tree.[ch]) ────────
+# ── Codegen (wink-app.json �?device_tree.[ch]) ────────
 # Everything below runs ONLY during the real configure pass (script mode
 # stops at idf_component_register). Mirrors the host/wasm integration:
 # on every build, if wink-app.json / templates / driver plugins changed,
@@ -132,7 +132,7 @@ endforeach()
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 if(NOT DEFINED WINK_CODEGEN_ROOT)
-    set(WINK_CODEGEN_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../wink-micro-os/tools/codegen")
+    set(WINK_CODEGEN_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../wink-tools/tools/codegen")
 endif()
 set(WINK_CODEGEN_TOOL "${WINK_CODEGEN_ROOT}/app_codegen.py")
 set(WINK_APP_JSON     "${WINK_APP_DIR}/wink-app.json")
@@ -169,16 +169,16 @@ if(EXISTS "${WINK_APP_JSON}")
     add_dependencies(${COMPONENT_LIB} wink_app_codegen)
 endif()
 
-# Windows GCC 默认按 GBK 解析源文件，中文 UTF-8 注释会乱码报错
-# 强制指定源文件编码为 UTF-8，解决中文注释编译错误
+# Windows GCC 默认�?GBK 解析源文件，中文 UTF-8 注释会乱码报�?
+# 强制指定源文件编码为 UTF-8，解决中文注释编译错�?
 target_compile_options(${COMPONENT_LIB} PRIVATE
     -finput-charset=UTF-8
     -fexec-charset=UTF-8
 )
 
 # S10 sim_echo: on devkitc_smoke, arm the ultrasonic echo simulator so the
-# HC-SR04 path is exercised end-to-end (TRIG ISR → mock task drives ECHO
-# → RMT captures pulse → cm computed) WITHOUT requiring a physical
+# HC-SR04 path is exercised end-to-end (TRIG ISR �?mock task drives ECHO
+# �?RMT captures pulse �?cm computed) WITHOUT requiring a physical
 # reflector.  WINK_CFG_SIM_ECHO gates the #include and the start() call
 # in app_callbacks.c; the runtime TU wink_sim_ultrasonic_echo.c compiles
 # unconditionally into the pal component (gated by WINK_STRICT_NONBLOCKING)

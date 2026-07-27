@@ -39,18 +39,21 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+$ToolsRoot = Join-Path (Split-Path $PSScriptRoot -Parent) 'wink-tools'
+$ToolsPkg = Join-Path $ToolsRoot 'tools'
+
 if ($Full) { $Sanitize = $true }
 
 # ---- 1. Verify toolchain present (gcc/cmake must be on PATH) ----
 # Hardcoded toolchain prepends have been removed; the caller is expected to
 # have gcc/cmake on PATH already (e.g. WinLibs MinGW-w64 activated, or via
-# `python tools/wink.py setup --set gcc=...`). See tools/preinstall.md.
-# Diagnose with: python tools/wink.py doctor
+# `python wink-tools/wink.py setup --set gcc=...`). see wink-tools/preinstall.md.
+# Diagnose with: python wink-tools/wink.py doctor
 foreach ($t in 'gcc','cmake') {
     if (-not (Get-Command $t -ErrorAction SilentlyContinue)) {
         Write-Host "[FAIL] '$t' not found on PATH." -ForegroundColor Red
-        Write-Host "       Run 'python tools/wink.py doctor' to diagnose missing toolchain," -ForegroundColor Red
-        Write-Host "       or see tools/preinstall.md for setup instructions." -ForegroundColor Red
+        Write-Host "       Run 'python wink-tools/wink.py doctor' to diagnose missing toolchain," -ForegroundColor Red
+        Write-Host "       or see wink-tools/preinstall.md for setup instructions." -ForegroundColor Red
         exit 1
     }
 }
@@ -60,7 +63,7 @@ if ($IsWindows -or $env:OS -eq 'Windows_NT') {
     $dumpMachine = (& gcc -dumpmachine 2>$null)
     if ($LASTEXITCODE -eq 0 -and $dumpMachine -and ($dumpMachine -notmatch 'w64-mingw32')) {
         Write-Host "[FAIL] gcc on PATH is not a MinGW-w64 build (dumpmachine: $dumpMachine)." -ForegroundColor Red
-        Write-Host "       Run 'python tools/wink.py doctor' to diagnose, or see tools/preinstall.md." -ForegroundColor Red
+        Write-Host "       Run 'python wink-tools/wink.py doctor' to diagnose, or see wink-tools/preinstall.md." -ForegroundColor Red
         exit 1
     }
 }
@@ -86,7 +89,7 @@ function Invoke-TestPass {
     $cmakeArgs = @('-B', $BuildDir, '-DTARGET_PLATFORM=host')
     if ($ExtraCFlags) {
         # Pass sanitize / opt-in flags via CMAKE_C_FLAGS. -fno-sanitize-recover
-        # keeps UBSan noisy (any UB → nonzero exit). Cast-function-type-strict is
+        # keeps UBSan noisy (any UB 鈫?nonzero exit). Cast-function-type-strict is
         # GCC's static approximation of clang's -fsanitize=cfi-icall (mismatched
         # function pointer casts fail at build time, catching the exact G1 regression).
         $cmakeArgs += "-DCMAKE_C_FLAGS=$ExtraCFlags"
@@ -132,7 +135,7 @@ $passes += @{ Label='default'; Dir='../build/test';       Flags=''; Enabled=$tru
 #   -fsanitize=undefined              : UBSan checks (invalid casts, int overflow,
 #                                        misaligned access, etc.)
 #   -fsanitize-undefined-trap-on-error: on UB, call __builtin_trap() instead of
-#                                        libubsan diagnostics — WinLibs MinGW does not
+#                                        libubsan diagnostics 鈥?WinLibs MinGW does not
 #                                        ship libubsan.a, so this variant is required.
 #                                        Tradeoff: on failure ctest reports "abnormal
 #                                        program termination"; re-run the single test
@@ -141,7 +144,7 @@ $passes += @{ Label='default'; Dir='../build/test';       Flags=''; Enabled=$tru
 #                                        -fsanitize=cfi-icall (mismatched function
 #                                        pointer casts, e.g. the (pal_isr_t)handler
 #                                        cast that G1 removed, become build warnings).
-#   -Werror=cast-function-type        : promote it to a hard error → permanent regression
+#   -Werror=cast-function-type        : promote it to a hard error 鈫?permanent regression
 #                                        guard against reintroducing G1-class casts.
 # NOTE: clang -fsanitize=cfi-icall provides stronger, link-time guarantees but is
 #       unavailable in the current WinLibs MinGW GCC 16.1 toolchain. Switch to clang
@@ -183,13 +186,13 @@ if ($WithWasm) {
     if (-not $emccReady) {
         Write-Host "[FAIL] emcc not found on PATH and EMSDK env is not set." -ForegroundColor Red
         Write-Host "       Activate emsdk in your shell first (emsdk_env.ps1), or run" -ForegroundColor Red
-        Write-Host "       'python tools/wink.py doctor' to diagnose." -ForegroundColor Red
+        Write-Host "       'python wink-tools/wink.py doctor' to diagnose." -ForegroundColor Red
         $overallRc = 1
     } else {
         $oldPreference = $ErrorActionPreference
         $ErrorActionPreference = 'Continue'
         try {
-            # Default app for smoke = avoidance_car → build/wasm/{projectCode}/
+            # Default app for smoke = avoidance_car 鈫?build/wasm/{projectCode}/
             $wasmBuildDir = "../build/wasm/avoidance_car"
             if ($Clean -and (Test-Path $wasmBuildDir)) {
                 Write-Host "-> Cleaning $wasmBuildDir ..." -ForegroundColor Yellow
@@ -234,12 +237,12 @@ if ($overallRc -eq 0) {
 # (e.g. driver/gpio.h) MUST remain so IDE non-IDF opens don't fail parsing.
 # Threshold: at most 1 #if defined(ESP_PLATFORM) per file.
 # Runs AFTER host tests so a lint regression does not gate the test signal.
-# ---- P1 保护：targets/esp32/*.c 内 ESP_PLATFORM 出现次数 ≤ 1 -----------------
+# ---- P1 淇濇姢锛歵argets/esp32/*.c 鍐?ESP_PLATFORM 鍑虹幇娆℃暟 鈮?1 -----------------
 # NOTE: cwd is $PSScriptRoot (wink-micro-os/), so path is relative to that.
-# Regex anchor rationale: only count REAL preprocessor directives — lines that
+# Regex anchor rationale: only count REAL preprocessor directives 鈥?lines that
 # START with optional whitespace + `#` + optional space + `if`. This mirrors
 # how the C preprocessor sees directives, so R-4 documentation comments like
-# `* ✅ R-4：全文件仅 1 处最外层 `#if defined(ESP_PLATFORM)` ...` (leading `*`
+# `* 鉁?R-4锛氬叏鏂囦欢浠?1 澶勬渶澶栧眰 `#if defined(ESP_PLATFORM)` ...` (leading `*`
 # from a block comment) or `// #if defined(ESP_PLATFORM)` are correctly
 # ignored. `#\s*if` tolerates the rare `# if defined(...)` spelling.
 # Scope is intentionally narrow: `#ifdef ESP_PLATFORM` / `#if ESP_PLATFORM`
@@ -277,13 +280,13 @@ $includes = @(
     '-I', (Join-Path $PSScriptRoot 'dal/include/sensor'),
     '-I', (Join-Path $PSScriptRoot 'trace/include'),
     '-I', (Join-Path $PSScriptRoot 'targets/host/include'),
-    # 2026-07-04 P1-P2: wink_pt_debug.h(WINK_ASSERT_NONBLOCKING) 已迁至 runtime/include/。
-    # dal_ultrasonic.c 现在 #include "wink_pt_debug.h"，独立 lint 编译需要能找到它。
+    # 2026-07-04 P1-P2: wink_pt_debug.h(WINK_ASSERT_NONBLOCKING) 宸茶縼鑷?runtime/include/銆?
+    # dal_ultrasonic.c 鐜板湪 #include "wink_pt_debug.h"锛岀嫭绔?lint 缂栬瘧闇€瑕佽兘鎵惧埌瀹冦€?
     '-I', (Join-Path $PSScriptRoot 'runtime/include')
 )
 # -c: compile only (no link). -DWINK_STRICT_NONBLOCKING=1: the flag whose
 # semantics we are verifying. Any include-path miss here means the assertion
-# is meaningless — surface it loudly instead of silently passing.
+# is meaningless 鈥?surface it loudly instead of silently passing.
 $gccArgs = @('-c', '-DWINK_STRICT_NONBLOCKING=1') + $includes + @($dalC, '-o', $strictObj)
 & gcc @gccArgs 2>&1 | Out-Host
 if ($LASTEXITCODE -ne 0) {
@@ -317,13 +320,13 @@ Write-Host "[lint] ADR-0017 L1: dal_ultrasonic_read absent under strict mode OK"
 Write-Host "[lint] Header self-containment (P1-B2)..." -ForegroundColor Cyan
 $pythonCmd = Get-Command python -ErrorAction SilentlyContinue
 if ($pythonCmd) {
-    & python (Join-Path $PSScriptRoot 'tools/lint/check_headers_self_contained.py')
+    & python (Join-Path $ToolsPkg 'lint/check_headers_self_contained.py')
     if ($LASTEXITCODE -ne 0) {
         Write-Error "[lint] P1-B2 header self-containment check failed (see output above)"
         exit 1
     }
 } else {
-    Write-Host "[SKIP] python not found on PATH — header self-containment check skipped" -ForegroundColor Yellow
+    Write-Host "[SKIP] python not found on PATH 鈥?header self-containment check skipped" -ForegroundColor Yellow
 }
 
 # ---- 9. L3 static lint: log format-string literal gate (P1-L1) ----------------
@@ -333,58 +336,58 @@ if ($pythonCmd) {
 # compression) and catches format-string-injection footguns.
 Write-Host "[lint] Log format-string literal gate (P1-L1)..." -ForegroundColor Cyan
 if ($pythonCmd) {
-    & python (Join-Path $PSScriptRoot 'tools/lint/check_log_format_literals.py') --root $PSScriptRoot
+    & python (Join-Path $ToolsPkg 'lint/check_log_format_literals.py') --root $PSScriptRoot
     if ($LASTEXITCODE -ne 0) {
         Write-Error "[lint] P1-L1 log format-literal check failed (see output above)"
         exit 1
     }
 } else {
-    Write-Host "[SKIP] python not found on PATH — log format-literal check skipped" -ForegroundColor Yellow
+    Write-Host "[SKIP] python not found on PATH 鈥?log format-literal check skipped" -ForegroundColor Yellow
 }
 
 # ---- 9b. L3b static lint: YAML layer/API lint (ADR-0043) --------------------
 Write-Host "[lint] wink layer lint (ADR-0043)..." -ForegroundColor Cyan
 if ($pythonCmd) {
-    & python (Join-Path $PSScriptRoot 'tools/wink.py') lint --pack layering --pack api --root $PSScriptRoot
+    & python (Join-Path $ToolsRoot 'wink.py') lint --pack layering --pack api --root $PSScriptRoot
     if ($LASTEXITCODE -ne 0) {
         Write-Error "[lint] wink lint failed"
         exit 1
     }
 } else {
-    Write-Host "[SKIP] python not found on PATH — wink lint skipped" -ForegroundColor Yellow
+    Write-Host "[SKIP] python not found on PATH 鈥?wink lint skipped" -ForegroundColor Yellow
 }
 
 # ---- 10. L4 static lint: Arduino isolation via wink lint (ADR-0035 / ADR-0043)
 Write-Host "[lint] Arduino core isolation check (ADR-0035 via wink lint)..." -ForegroundColor Cyan
 if ($pythonCmd) {
-    & python (Join-Path $PSScriptRoot 'tools/wink.py') lint --pack arduino --root $PSScriptRoot
+    & python (Join-Path $ToolsRoot 'wink.py') lint --pack arduino --root $PSScriptRoot
     if ($LASTEXITCODE -ne 0) {
         Write-Error "[lint] ADR-0035 Arduino isolation check failed (see output above)"
         exit 1
     }
 } else {
-    Write-Host "[SKIP] python not found on PATH — Arduino isolation check skipped" -ForegroundColor Yellow
+    Write-Host "[SKIP] python not found on PATH 鈥?Arduino isolation check skipped" -ForegroundColor Yellow
 }
 
 # ---- 11. L5 static lint: Arduino symbol audit (ADR-0036 / ADR-0040) ----------
 Write-Host "[lint] Arduino symbol audit check (ADR-0036 / ADR-0040)..." -ForegroundColor Cyan
 if ($pythonCmd) {
     if (Test-Path '../build/test') {
-        & python (Join-Path $PSScriptRoot 'tools/lint/check_arduino_symbols.py') '../build/test'
+        & python (Join-Path $ToolsPkg 'lint/check_arduino_symbols.py') '../build/test'
         if ($LASTEXITCODE -ne 0) {
             Write-Error "[lint] ADR-0036 Arduino symbol audit failed in ../build/test"
             exit 1
         }
     }
     if (Test-Path '../build/test-san') {
-        & python (Join-Path $PSScriptRoot 'tools/lint/check_arduino_symbols.py') '../build/test-san'
+        & python (Join-Path $ToolsPkg 'lint/check_arduino_symbols.py') '../build/test-san'
         if ($LASTEXITCODE -ne 0) {
             Write-Error "[lint] ADR-0036 Arduino symbol audit failed in ../build/test-san"
             exit 1
         }
     }
 } else {
-    Write-Host "[SKIP] python not found on PATH — Arduino symbol audit check skipped" -ForegroundColor Yellow
+    Write-Host "[SKIP] python not found on PATH 鈥?Arduino symbol audit check skipped" -ForegroundColor Yellow
 }
 
 exit $overallRc
