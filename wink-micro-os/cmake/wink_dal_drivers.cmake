@@ -6,7 +6,9 @@
 #   wink_dal_add_enabled_sources(<target>)
 #
 # Requires WINK_MICRO_OS_ROOT to be an absolute path to wink-micro-os/.
-# Driver universe SSOT = tools/codegen/drivers/ (list_drivers.py).
+# Driver universe SSOT = wink-tools/codegen/drivers/ (list_drivers.py).
+
+include(${WINK_MICRO_OS_ROOT}/cmake/wink_tools.cmake)
 
 function(wink_dal_load_driver_table MODE)
     if(NOT WINK_MICRO_OS_ROOT)
@@ -21,7 +23,7 @@ function(wink_dal_load_driver_table MODE)
     set(_gen "${CMAKE_BINARY_DIR}/generated_drivers_${MODE}.cmake")
     execute_process(
         COMMAND ${Python3_EXECUTABLE}
-                ${WINK_MICRO_OS_ROOT}/tools/codegen/list_drivers.py
+                ${WINK_TOOLS_ROOT}/tools/codegen/list_drivers.py
                 --cmake --mode=${MODE}
         OUTPUT_FILE "${_gen}"
         RESULT_VARIABLE _rc
@@ -32,7 +34,7 @@ function(wink_dal_load_driver_table MODE)
     endif()
     include("${_gen}")
     file(GLOB _wink_driver_plugins CONFIGURE_DEPENDS
-         ${WINK_MICRO_OS_ROOT}/tools/codegen/drivers/*.py)
+         ${WINK_TOOLS_ROOT}/tools/codegen/drivers/*.py)
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${_wink_driver_plugins})
 endfunction()
 
@@ -42,7 +44,7 @@ function(wink_dal_apply_pruning JSON_PATH OUT_DIR)
     endif()
     if(JSON_PATH STREQUAL "")
         message(WARNING
-            "wink_dal: no wink-app.json â€” enabling ALL DAL drivers (ADR-0039). "
+            "wink_dal: no wink-app.json â€?enabling ALL DAL drivers (ADR-0039). "
             "Add wink-app.json to prune unused drivers.")
         foreach(_opt IN LISTS WINK_KNOWN_DRIVERS)
             set(WINK_USE_${_opt} ON CACHE BOOL "" FORCE)
@@ -57,7 +59,7 @@ function(wink_dal_apply_pruning JSON_PATH OUT_DIR)
         endif()
         execute_process(
             COMMAND ${Python3_EXECUTABLE}
-                    ${WINK_MICRO_OS_ROOT}/tools/codegen/app_codegen.py
+                    ${WINK_TOOLS_ROOT}/tools/codegen/app_codegen.py
                     --config "${JSON_PATH}"
                     --out-dir "${OUT_DIR}"
             RESULT_VARIABLE _wink_dal_codegen_rc
