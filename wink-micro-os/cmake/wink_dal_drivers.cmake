@@ -1,4 +1,4 @@
-# Shared DAL dual-mode pruning helpers (ADR-0039).
+# Shared DAL dual-mode pruning helpers (ADR-0039 + ADR-0046).
 #
 # Consumers (ESP32 IDF component, Host, Binary SDK, wasm single-app):
 #   include(${WINK_MICRO_OS_ROOT}/cmake/wink_dal_drivers.cmake)
@@ -6,24 +6,45 @@
 #   wink_dal_add_enabled_sources(<target>)
 #
 # Requires WINK_MICRO_OS_ROOT to be an absolute path to wink-micro-os/.
-#
-# Driver table (SSOT — keep in sync with ADR-0039 / ALL_WINK_USE_OPTIONS):
-#   LED        → dal/src/output/dal_led.c
-#   BUTTON     → dal/src/input/dal_button.c
-#   SERVO      → dal/src/actuator/dal_servo.c
-#   SSD1306    → dal/src/display/dal_ssd1306.c (+ font TU)
-#   ULTRASONIC → dal/src/sensor/dal_ultrasonic.c
-#   GPS        → dal/src/communication/dal_gps.c
-#   EEPROM     → dal/src/storage/dal_eeprom.c
-#   MOTOR      → dal/src/actuator/dal_motor.c
-#   ENCODER    → dal/src/sensor/dal_encoder.c
+# Driver universe SSOT = tools/codegen/drivers/ (list_drivers.py).
+
+function(wink_dal_load_driver_table MODE)
+    if(NOT WINK_MICRO_OS_ROOT)
+        message(FATAL_ERROR "wink_dal_load_driver_table: WINK_MICRO_OS_ROOT is not set")
+    endif()
+    if(NOT Python3_EXECUTABLE)
+        find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    endif()
+    if(NOT MODE STREQUAL "source" AND NOT MODE STREQUAL "defs")
+        message(FATAL_ERROR "wink_dal_load_driver_table: MODE must be source|defs")
+    endif()
+    set(_gen "${CMAKE_BINARY_DIR}/generated_drivers_${MODE}.cmake")
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE}
+                ${WINK_MICRO_OS_ROOT}/tools/codegen/list_drivers.py
+                --cmake --mode=${MODE}
+        OUTPUT_FILE "${_gen}"
+        RESULT_VARIABLE _rc
+        ERROR_VARIABLE _err
+    )
+    if(NOT _rc EQUAL 0)
+        message(FATAL_ERROR "list_drivers.py --mode=${MODE} failed (rc=${_rc}): ${_err}")
+    endif()
+    include("${_gen}")
+    file(GLOB _wink_driver_plugins CONFIGURE_DEPENDS
+         ${WINK_MICRO_OS_ROOT}/tools/codegen/drivers/*.py)
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${_wink_driver_plugins})
+endfunction()
 
 function(wink_dal_apply_pruning JSON_PATH OUT_DIR)
+    if(NOT DEFINED WINK_KNOWN_DRIVERS)
+        wink_dal_load_driver_table(source)
+    endif()
     if(JSON_PATH STREQUAL "")
         message(WARNING
             "wink_dal: no wink-app.json — enabling ALL DAL drivers (ADR-0039). "
             "Add wink-app.json to prune unused drivers.")
-        foreach(_opt IN ITEMS LED BUTTON SERVO SSD1306 ULTRASONIC GPS EEPROM MOTOR ENCODER)
+        foreach(_opt IN LISTS WINK_KNOWN_DRIVERS)
             set(WINK_USE_${_opt} ON CACHE BOOL "" FORCE)
         endforeach()
     else()
@@ -76,34 +97,14 @@ function(wink_dal_add_enabled_sources target)
             "wink_dal_add_enabled_sources: WINK_MICRO_OS_ROOT must be absolute "
             "(got '${WINK_MICRO_OS_ROOT}')")
     endif()
-
-    _wink_dal_enable_one(${target} LED        dal/src/output/dal_led.c)
-    _wink_dal_enable_one(${target} BUTTON     dal/src/input/dal_button.c)
-    _wink_dal_enable_one(${target} SERVO      dal/src/actuator/dal_servo.c)
-    _wink_dal_enable_one(${target} SSD1306    dal/src/display/dal_ssd1306.c)
-    _wink_dal_enable_one(${target} ULTRASONIC dal/src/sensor/dal_ultrasonic.c)
-    _wink_dal_enable_one(${target} GPS        dal/src/communication/dal_gps.c)
-    _wink_dal_enable_one(${target} EEPROM     dal/src/storage/dal_eeprom.c)
-    _wink_dal_enable_one(${target} MOTOR      dal/src/actuator/dal_motor.c)
-    _wink_dal_enable_one(${target} ENCODER    dal/src/sensor/dal_encoder.c)
-
-    # Font TU only when SSD1306 is enabled (matches dal/CMakeLists.txt).
-    if(WINK_USE_SSD1306)
-        if(NOT DEFINED WINK_SSD1306_FONT)
-            set(WINK_SSD1306_FONT "ascii_upper")
-        endif()
-        if(WINK_SSD1306_FONT STREQUAL "minimal")
-            target_sources(${target} PRIVATE
-                ${WINK_MICRO_OS_ROOT}/dal/src/display/dal_ssd1306_font_5x7_minimal.c)
-            target_compile_definitions(${target} PUBLIC WINK_SSD1306_FONT_MINIMAL=1)
-        elseif(WINK_SSD1306_FONT STREQUAL "ascii_upper")
-            target_sources(${target} PRIVATE
-                ${WINK_MICRO_OS_ROOT}/dal/src/display/dal_ssd1306_font_5x7_ascii_upper.c)
-            target_compile_definitions(${target} PUBLIC WINK_SSD1306_FONT_ASCII_UPPER=1)
-        else()
-            message(FATAL_ERROR
-                "WINK_SSD1306_FONT must be 'minimal' or 'ascii_upper', "
-                "got '${WINK_SSD1306_FONT}'")
-        endif()
+    if(NOT DEFINED WINK_KNOWN_DRIVERS)
+        wink_dal_load_driver_table(source)
     endif()
+
+    foreach(_drv IN LISTS WINK_KNOWN_DRIVERS)
+        _wink_dal_enable_one(${target} ${_drv} ${WINK_DAL_${_drv}_REL_SRC})
+    endforeach()
+
+    set(WINK_DAL_TARGET ${target})
+    wink_dal_apply_extra_cmake()
 endfunction()

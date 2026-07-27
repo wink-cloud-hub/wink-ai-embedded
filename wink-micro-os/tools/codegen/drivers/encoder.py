@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import List
 
 from .advanced import require_string_enum
-from .base import DriverBase
+from .base import DriverBase, DriverCategory
 
 _DEFAULT_PIN_B = -1
 _DEFAULT_PULL = "PAL_GPIO_INPUT_PULLUP"
@@ -31,6 +31,7 @@ def _encoder_pull_c(dev_name: str, spec: dict) -> str:
 
 class EncoderDriver(DriverBase):
     type = "encoder"
+    category = DriverCategory.SENSOR
     is_actuator = False
     required_fields = ["pin_a"]
 

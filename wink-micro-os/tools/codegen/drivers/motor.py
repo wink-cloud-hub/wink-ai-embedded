@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import List
 
-from .base import DriverBase
+from .base import DriverBase, DriverCategory
 
 _DEFAULT_PWM_FREQ_HZ = 20000
 _DEFAULT_DIR_PIN_B = -1
@@ -11,6 +11,7 @@ _DEFAULT_DIR_PIN_B = -1
 
 class MotorDriver(DriverBase):
     type = "motor"
+    category = DriverCategory.ACTUATOR
     is_actuator = True
     required_fields = ["pwm_channel", "dir_pin_a"]
 

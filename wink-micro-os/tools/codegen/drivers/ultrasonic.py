@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import List
 
-from .base import DriverBase
+from .base import DriverBase, DriverCategory
 
 _MIN_DISTANCE_EVENT_PERIOD_MS = 50
 
@@ -28,6 +28,7 @@ def _validate_ultrasonic_spec(dev_name: str, spec: dict) -> None:
 
 class UltrasonicDriver(DriverBase):
     type = "ultrasonic"
+    category = DriverCategory.SENSOR
     is_actuator = False
     required_fields = ["trig_pin", "echo_pin"]
     default_role = "distance_sensor"

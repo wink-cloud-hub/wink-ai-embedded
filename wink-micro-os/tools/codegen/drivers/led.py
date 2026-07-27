@@ -3,11 +3,12 @@ from __future__ import annotations
 
 from typing import List
 
-from .base import DriverBase
+from .base import DriverBase, DriverCategory
 
 
 class LedDriver(DriverBase):
     type = "led"
+    category = DriverCategory.OUTPUT
     is_actuator = True
     required_fields = ["gpio_pin"]
     default_role = "binary_indicator"

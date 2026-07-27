@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import List, Optional, Tuple
 
 from .advanced import parse_advanced, require_int, require_string_enum
-from .base import DriverBase
+from .base import DriverBase, DriverCategory
 
 
 _VALID_CLOCK = frozenset({"auto", "stable_required"})
@@ -47,6 +47,7 @@ def _validate_servo_advanced(
 
 class ServoDriver(DriverBase):
     type = "servo"
+    category = DriverCategory.ACTUATOR
     is_actuator = True
     required_fields = ["pwm_channel"]
     default_role = "angular_actuator"

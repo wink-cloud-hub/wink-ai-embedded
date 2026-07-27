@@ -90,8 +90,25 @@ if(NOT EXISTS "${WINK_APP_OPTIONS_CMAKE}")
 endif()
 include(${WINK_APP_OPTIONS_CMAKE})
 
+# ADR-0046: driver defs table (mode=defs — no target_sources extras).
+if(NOT WINK_MICRO_OS_ROOT)
+    get_filename_component(WINK_MICRO_OS_ROOT "${CMAKE_CURRENT_SOURCE_DIR}" ABSOLUTE)
+endif()
+execute_process(
+    COMMAND ${Python3_EXECUTABLE}
+            ${WINK_MICRO_OS_ROOT}/tools/codegen/list_drivers.py
+            --cmake --mode=defs
+    OUTPUT_FILE ${CMAKE_BINARY_DIR}/generated_drivers_defs.cmake
+    RESULT_VARIABLE _list_drv_rc
+    ERROR_VARIABLE _list_drv_err
+)
+if(NOT _list_drv_rc EQUAL 0)
+    message(FATAL_ERROR "list_drivers.py --mode=defs failed: ${_list_drv_err}")
+endif()
+include(${CMAKE_BINARY_DIR}/generated_drivers_defs.cmake)
+
 macro(wink_binary_apply_dal_driver_defs target)
-    foreach(_drv IN ITEMS LED BUTTON SERVO SSD1306 ULTRASONIC GPS EEPROM MOTOR ENCODER)
+    foreach(_drv IN LISTS WINK_KNOWN_DRIVERS)
         if(DEFINED WINK_USE_${_drv} AND WINK_USE_${_drv})
             target_compile_definitions(${target} PRIVATE WINK_USE_${_drv}=1)
         endif()
@@ -99,13 +116,8 @@ macro(wink_binary_apply_dal_driver_defs target)
     if(DEFINED WINK_MAX_PERIODIC)
         target_compile_definitions(${target} PRIVATE WINK_MAX_PERIODIC=${WINK_MAX_PERIODIC})
     endif()
-    if(DEFINED WINK_USE_SSD1306 AND WINK_USE_SSD1306)
-        if(WINK_SSD1306_FONT STREQUAL "minimal")
-            target_compile_definitions(${target} PRIVATE WINK_SSD1306_FONT_MINIMAL=1)
-        elseif(WINK_SSD1306_FONT STREQUAL "ascii_upper")
-            target_compile_definitions(${target} PRIVATE WINK_SSD1306_FONT_ASCII_UPPER=1)
-        endif()
-    endif()
+    set(WINK_DAL_TARGET ${target})
+    wink_dal_apply_extra_cmake()
 endmacro()
 
 # ── Import precompiled binary SDK ────────────────────────────────────────────

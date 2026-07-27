@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import List, Optional
 
 from .advanced import parse_advanced, require_string_enum
-from .base import DriverBase
+from .base import DriverBase, DriverCategory
 
 
 # Allowed values for the JSON ``event_drive`` field (ADR-0031).
@@ -98,6 +98,7 @@ def _button_pull_c(dev_name: str, spec: dict) -> Optional[str]:
 
 class ButtonDriver(DriverBase):
     type = "button"
+    category = DriverCategory.INPUT
     is_actuator = False
     required_fields = ["gpio_pin"]
     default_role = "binary_sensor"

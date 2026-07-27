@@ -56,17 +56,24 @@ OUTPUT_FILES = (
     ("wink_arduino_bindings.cpp.j2", "wink_arduino_bindings.cpp"),
 )
 
-ALL_WINK_USE_OPTIONS = [
-    "WINK_USE_LED",
-    "WINK_USE_BUTTON",
-    "WINK_USE_SERVO",
-    "WINK_USE_SSD1306",
-    "WINK_USE_ULTRASONIC",
-    "WINK_USE_GPS",
-    "WINK_USE_EEPROM",
-    "WINK_USE_MOTOR",
-    "WINK_USE_ENCODER",
-]
+
+def all_wink_use_options() -> List[str]:
+    """WINK_USE_* option names from the driver registry (ADR-0046 SSOT)."""
+    opts: List[str] = []
+    for drv in sorted(all_drivers(), key=lambda d: d.type):
+        opts.extend(drv.cmake_options())
+    # Stable unique order preserving first occurrence.
+    seen = set()
+    out: List[str] = []
+    for o in opts:
+        if o not in seen:
+            seen.add(o)
+            out.append(o)
+    return out
+
+
+# Legacy module-level snapshot (import time). Prefer all_wink_use_options().
+ALL_WINK_USE_OPTIONS = all_wink_use_options()
 
 
 # ── Validation ───────────────────────────────────────────────────────
@@ -391,7 +398,7 @@ def build_context(cfg: dict, config_source: str) -> dict:
             on_set[opt] = None
 
     cmake_option_states: List[Tuple[str, bool]] = [
-        (opt, opt in on_set) for opt in ALL_WINK_USE_OPTIONS
+        (opt, opt in on_set) for opt in all_wink_use_options()
     ]
 
     return {

@@ -3,13 +3,39 @@ from __future__ import annotations
 
 from typing import List
 
-from .base import DriverBase
+from .base import DriverBase, DriverCategory
+
+# ADR-0046: font TU + CACHE split for --mode=source vs --mode=defs.
+_SSD1306_EXTRA_CMAKE_DEFS = """\
+set(WINK_SSD1306_FONT "ascii_upper" CACHE STRING
+    "SSD1306 5x7 font: minimal | ascii_upper")
+if(WINK_SSD1306_FONT STREQUAL "minimal")
+  target_compile_definitions(${WINK_DAL_TARGET} PUBLIC WINK_SSD1306_FONT_MINIMAL=1)
+elseif(WINK_SSD1306_FONT STREQUAL "ascii_upper")
+  target_compile_definitions(${WINK_DAL_TARGET} PUBLIC WINK_SSD1306_FONT_ASCII_UPPER=1)
+else()
+  message(FATAL_ERROR "WINK_SSD1306_FONT must be 'minimal' or 'ascii_upper'")
+endif()
+"""
+
+_SSD1306_EXTRA_CMAKE_SOURCES = """\
+if(WINK_SSD1306_FONT STREQUAL "minimal")
+  target_sources(${WINK_DAL_TARGET} PRIVATE
+      ${WINK_MICRO_OS_ROOT}/dal/src/display/dal_ssd1306_font_5x7_minimal.c)
+elseif(WINK_SSD1306_FONT STREQUAL "ascii_upper")
+  target_sources(${WINK_DAL_TARGET} PRIVATE
+      ${WINK_MICRO_OS_ROOT}/dal/src/display/dal_ssd1306_font_5x7_ascii_upper.c)
+endif()
+"""
 
 
 class Ssd1306Driver(DriverBase):
     type = "ssd1306"
+    category = DriverCategory.DISPLAY
     is_actuator = False
     required_fields = ["i2c_bus"]
+    extra_cmake_defs = _SSD1306_EXTRA_CMAKE_DEFS
+    extra_cmake_sources = _SSD1306_EXTRA_CMAKE_SOURCES
     default_role = "text_display"
     role_verbs = {
         "text_display": ["clear", "draw_text", "flush"]

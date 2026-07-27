@@ -5,10 +5,26 @@ tells codegen how to render its config struct literal, init call, thunk,
 and deinit call. Plugins live in tools/codegen/drivers/<type>.py and
 register themselves by subclassing DriverBase (module-level registry
 populated via ``__init_subclass__``).
+
+ADR-0046: registry is the SSOT for the DAL driver universe (category,
+source path, optional extra CMake fragments).
 """
 from __future__ import annotations
 
-from typing import List
+from enum import Enum
+from typing import List, Union
+
+
+class DriverCategory(str, Enum):
+    """DAL source/include subdirectory under dal/{src,include}/."""
+
+    OUTPUT = "output"
+    INPUT = "input"
+    ACTUATOR = "actuator"
+    SENSOR = "sensor"
+    DISPLAY = "display"
+    COMMUNICATION = "communication"
+    STORAGE = "storage"
 
 
 class DriverBase:
@@ -19,14 +35,54 @@ class DriverBase:
     is_actuator: bool = False            # generate safe-off thunk + register?
     required_fields: List[str] = []      # JSON fields that must be present
 
+    # ADR-0046 metadata (required for registered drivers):
+    category: Union[DriverCategory, str] = ""
+    source_stem: str = ""                # default == type → dal_<stem>.c
+    # Multi-TU / sub-options: split for --mode=source vs --mode=defs (ADR-0046).
+    extra_cmake_defs: str = ""           # CACHE / compile definitions
+    extra_cmake_sources: str = ""        # target_sources (source builds only)
+
     # ── Registration hook ─────────────────────────────────────────────
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         # Skip the abstract base itself (type == "").
-        if cls.type:
-            # Lazy import to avoid circular reference at module load.
-            from . import _REGISTRY
-            _REGISTRY[cls.type] = cls()
+        if not cls.type:
+            return
+        cat = cls.category
+        if isinstance(cat, DriverCategory):
+            pass
+        elif isinstance(cat, str) and cat:
+            try:
+                cls.category = DriverCategory(cat)
+            except ValueError as exc:
+                raise TypeError(
+                    f"driver {cls.__name__!r} (type={cls.type!r}): "
+                    f"category {cat!r} is not a DriverCategory value"
+                ) from exc
+        else:
+            raise TypeError(
+                f"driver {cls.__name__!r} (type={cls.type!r}): "
+                f"category is required and must be a DriverCategory"
+            )
+        # Lazy import to avoid circular reference at module load.
+        from . import _REGISTRY
+        _REGISTRY[cls.type] = cls()
+
+    def resolved_stem(self) -> str:
+        return self.source_stem or self.type
+
+    def resolved_category(self) -> str:
+        cat = self.category
+        return cat.value if isinstance(cat, DriverCategory) else str(cat)
+
+    def rel_src(self) -> str:
+        return f"dal/src/{self.resolved_category()}/dal_{self.resolved_stem()}.c"
+
+    def rel_hdr(self) -> str:
+        return (
+            f"dal/include/{self.resolved_category()}/"
+            f"dal_{self.resolved_stem()}.h"
+        )
 
     # ── C emission surface ────────────────────────────────────────────
     def get_headers(self) -> List[str]:
@@ -85,4 +141,3 @@ class DriverBase:
     def render_role_wrapper(self, dev_name: str, role: str, verb: str, spec: dict) -> str:
         """Render a C static inline helper wrapper block for a given role and verb."""
         return ""
-

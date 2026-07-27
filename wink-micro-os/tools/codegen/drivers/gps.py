@@ -3,11 +3,12 @@ from __future__ import annotations
 
 from typing import List
 
-from .base import DriverBase
+from .base import DriverBase, DriverCategory
 
 
 class GpsDriver(DriverBase):
     type = "gps"
+    category = DriverCategory.COMMUNICATION
     is_actuator = False
     required_fields = ["uart_port"]
 

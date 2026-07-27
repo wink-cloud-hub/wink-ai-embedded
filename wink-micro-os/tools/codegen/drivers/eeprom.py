@@ -3,11 +3,12 @@ from __future__ import annotations
 
 from typing import List
 
-from .base import DriverBase
+from .base import DriverBase, DriverCategory
 
 
 class EepromDriver(DriverBase):
     type = "eeprom"
+    category = DriverCategory.STORAGE
     is_actuator = False
     required_fields = ["i2c_bus"]
 
