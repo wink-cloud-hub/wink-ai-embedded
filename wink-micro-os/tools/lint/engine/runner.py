@@ -13,6 +13,7 @@ from tools.lint.packs.path_name import check_path_names
 from tools.lint.packs.regex_ban import check_regex_bans
 from tools.lint.packs.api_surface import check_api_surface
 from tools.lint.packs.legacy_arduino import check_arduino_isolation
+from tools.lint.packs.drivers import check_drivers
 
 _SOURCE_SUFFIXES = {".c", ".h", ".cc", ".cpp", ".hpp", ".cxx", ".hxx"}
 
@@ -51,6 +52,9 @@ def run_lint(
     if pack_set & {"arduino", "legacy_arduino", "all"}:
         # Arduino pack is path-scoped to kernel dirs; ignore --paths filter.
         findings.extend(check_arduino_isolation(root))
+
+    if pack_set & {"drivers", "all"}:
+        findings.extend(check_drivers(root))
 
     return apply_allowlist(findings, cfg, effective_today)
 
