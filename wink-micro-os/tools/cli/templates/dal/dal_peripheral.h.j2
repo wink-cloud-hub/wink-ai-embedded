@@ -1,0 +1,61 @@
+#ifndef {{ guard }}
+#define {{ guard }}
+
+#include <stdint.h>
+#include <stdbool.h>
+#include "wink_status.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * @brief {{ type_title }} config (codegen-friendly POD; ADR-0004).
+ * Fill pin/bus fields as needed for this peripheral.
+ */
+typedef struct {
+    const char *owner;
+{% for f in pin_fields %}
+    uint16_t {{ f }};
+{% endfor %}
+} dal_{{ type }}_config_t;
+
+typedef struct {
+    dal_{{ type }}_config_t config;
+    bool initialized;
+} dal_{{ type }}_t;
+
+WINK_WARN_UNUSED_RESULT
+wink_status_t dal_{{ type }}_init(dal_{{ type }}_t *dev, const dal_{{ type }}_config_t *cfg);
+
+wink_status_t dal_{{ type }}_deinit(dal_{{ type }}_t *dev);
+
+{% if is_actuator %}
+WINK_WARN_UNUSED_RESULT
+wink_status_t dal_{{ type }}_off(dal_{{ type }}_t *dev);
+
+WINK_WARN_UNUSED_RESULT
+wink_status_t dal_{{ type }}_safe_off(dal_{{ type }}_t *dev);
+{% endif %}
+
+#ifdef __cplusplus
+}
+#endif
+
+#if !defined(WINK_USE_{{ type_upper }}) || !WINK_USE_{{ type_upper }}
+#define WINK_{{ type_upper }}_DISABLED_MSG \
+    "{{ type_title }} driver not enabled; add a \"{{ type }}\" device to wink-app.json " \
+    "(or set -DWINK_USE_{{ type_upper }}=ON)."
+WINK_UNAVAILABLE_MSG(WINK_{{ type_upper }}_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_{{ type }}_init(dal_{{ type }}_t *dev, const dal_{{ type }}_config_t *cfg);
+WINK_UNAVAILABLE_MSG(WINK_{{ type_upper }}_DISABLED_MSG)
+wink_status_t dal_{{ type }}_deinit(dal_{{ type }}_t *dev);
+{% if is_actuator %}
+WINK_UNAVAILABLE_MSG(WINK_{{ type_upper }}_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_{{ type }}_off(dal_{{ type }}_t *dev);
+WINK_UNAVAILABLE_MSG(WINK_{{ type_upper }}_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_{{ type }}_safe_off(dal_{{ type }}_t *dev);
+{% endif %}
+#endif /* !WINK_USE_{{ type_upper }} */
+
+#endif /* {{ guard }} */

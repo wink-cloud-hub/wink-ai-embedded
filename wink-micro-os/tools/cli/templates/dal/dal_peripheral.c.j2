@@ -1,0 +1,51 @@
+#include "dal_{{ type }}.h"
+#include "pal_hal.h"
+#include "pal_resource.h"
+#include <string.h>
+
+wink_status_t dal_{{ type }}_init(dal_{{ type }}_t *dev, const dal_{{ type }}_config_t *cfg) {
+    if (dev == NULL || cfg == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (cfg->owner == NULL) { return WINK_ERR_INVALID_ARG; }
+
+    /* TODO: claim resources (pal_resource_claim) and init PAL handles.
+     * On failure, release already-claimed resources via goto err_release. */
+{% for f in pin_fields %}
+    /* Example claim for {{ f }} — adjust resource kind as needed:
+     * wink_status_t rs = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, cfg->{{ f }}, cfg->owner);
+     * if (wink_status_is_error(rs)) { return rs; }
+     */
+{% endfor %}
+
+    memcpy(&dev->config, cfg, sizeof(dal_{{ type }}_config_t));
+    dev->initialized = true;
+    return WINK_OK;
+
+    /* err_release:
+     *   WINK_IGNORE_UNUSED(pal_resource_release(...));
+     *   return status;
+     */
+}
+
+wink_status_t dal_{{ type }}_deinit(dal_{{ type }}_t *dev) {
+    if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (!dev->initialized) { return WINK_OK; }
+{% if is_actuator %}
+    WINK_IGNORE_UNUSED(dal_{{ type }}_safe_off(dev));
+{% endif %}
+    /* TODO: reset hardware + release claims */
+    memset(dev, 0, sizeof(dal_{{ type }}_t));
+    return WINK_OK;
+}
+
+{% if is_actuator %}
+wink_status_t dal_{{ type }}_off(dal_{{ type }}_t *dev) {
+    if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
+    /* TODO: stop output */
+    return WINK_OK;
+}
+
+wink_status_t dal_{{ type }}_safe_off(dal_{{ type }}_t *dev) {
+    return dal_{{ type }}_off(dev);
+}
+{% endif %}

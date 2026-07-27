@@ -1,0 +1,54 @@
+"""{{ type_title }} driver plugin for app_codegen (scaffolded by wink.py new-dal)."""
+from __future__ import annotations
+
+from typing import List
+
+from .base import DriverBase, DriverCategory
+
+
+class {{ type_title }}Driver(DriverBase):
+    type = "{{ type }}"
+    category = DriverCategory.{{ category_enum }}
+    is_actuator = {{ "True" if is_actuator else "False" }}
+    required_fields = [{% for f in pin_fields %}"{{ f }}"{% if not loop.last %}, {% endif %}{% endfor %}]
+{% if role %}
+    default_role = "{{ role }}"
+    role_verbs = {
+        "{{ role }}": [],  # TODO: list verbs and implement render_role_wrapper
+    }
+{% endif %}
+
+    def get_headers(self) -> List[str]:
+        return ["dal_{{ type }}.h"]
+
+    def get_device_type(self) -> str:
+        return "dal_{{ type }}_t"
+
+    def render_config_init(self, dev_name: str, spec: dict) -> str:
+        # TODO: map JSON fields → dal_{{ type }}_config_t literal + WINK_TRY(init)
+{% for f in pin_fields %}
+        {{ f }} = spec["{{ f }}"]
+{% endfor %}
+        lines = [
+            "    static const dal_{{ type }}_config_t %s_cfg = {" % dev_name,
+            '        .owner = "%s",' % dev_name,
+{% for f in pin_fields %}
+            "        .{{ f }} = %s," % {{ f }},
+{% endfor %}
+            "    };",
+            "    WINK_TRY(dal_{{ type }}_init(&%s, &%s_cfg));" % (dev_name, dev_name),
+        ]
+        return "\n".join(lines)
+
+    def render_deinit(self, dev_name: str) -> str:
+        return "dal_{{ type }}_deinit"
+{% if is_actuator %}
+
+    def get_safe_off_fn(self) -> str:
+        return "dal_{{ type }}_safe_off"
+{% endif %}
+{% if role %}
+
+    def render_role_wrapper(self, dev_name: str, role: str, verb: str, spec: dict) -> str:
+        return ""  # TODO
+{% endif %}

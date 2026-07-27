@@ -9,7 +9,7 @@ from tools.cli.registry import CommandRegistry, register_default_commands
 class TestCLICommandRegistry(unittest.TestCase):
     def test_registered_names_contains_defaults(self):
         names = CommandRegistry.names()
-        expected = ["build", "doctor", "esp32", "gen", "lint", "setup", "test", "web"]
+        expected = ["build", "doctor", "esp32", "gen", "lint", "new-dal", "setup", "test", "web"]
         for name in expected:
             self.assertIn(name, names)
 

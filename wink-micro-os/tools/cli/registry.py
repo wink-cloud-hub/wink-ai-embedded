@@ -43,7 +43,7 @@ class CommandRegistry:
 
 
 def register_default_commands() -> None:
-    """Register lazy factories for all 8 standard Wink CLI subcommands."""
+    """Register lazy factories for standard Wink CLI subcommands."""
 
     def _gen_factory():
         from tools.cli.commands.gen import GenCommand
@@ -77,6 +77,10 @@ def register_default_commands() -> None:
         from tools.cli.commands.lint import LintCommand
         return LintCommand()
 
+    def _new_dal_factory():
+        from tools.cli.commands.new_dal import NewDalCommand
+        return NewDalCommand()
+
     CommandRegistry.register("gen", "Run device tree & config macro codegen", _gen_factory)
     CommandRegistry.register("build", "Build Host or WASM simulators", _build_factory)
     CommandRegistry.register("esp32", "Build, flash, or monitor ESP32 firmware", _esp32_factory)
@@ -85,6 +89,11 @@ def register_default_commands() -> None:
     CommandRegistry.register("doctor", "Probe every registered toolchain capability", _doctor_factory)
     CommandRegistry.register("setup", "Inspect or edit ~/.wink/tools.json", _setup_factory)
     CommandRegistry.register("lint", "Run YAML layer/API/Arduino lints (ADR-0043)", _lint_factory)
+    CommandRegistry.register(
+        "new-dal",
+        "Scaffold DAL .h/.c + codegen driver plugin (ADR-0046)",
+        _new_dal_factory,
+    )
 
 
 # Populate default commands on module load
