@@ -7,6 +7,8 @@
 | **本篇职责** | Role 是什么 / 不是什么、实现位置、如何挂到驱动插件、验收、扩展约定 |
 | **不是本篇** | DAL 驱动本体实现 → [adding-peripheral.md](./adding-peripheral.md)；字段分层摘要 → [dal-best-practices.md §3.0](./dal-best-practices.md) |
 | **动词表 SSOT** | [`01-app-business-logic.md` § Role Interface](../../../docs/design/03-app-codegen/01-app-business-logic.md)（标准角色与错误层级以活规范为准；本篇不复制整表以免漂移） |
+| **用户稳定面 SSOT** | [user-surface-insulation-design.md](../../../docs/design/tech-designs/2026-07-28-user-surface-insulation-design.md) |
+| **关联计划 / 评审** | [user-surface-phase1-plan.md](../../../docs/design/implementation-plans/2026-07-28-user-surface-phase1-plan.md)；[completeness-review §10](../../../docs/design/reviews/2026-07-28-dal-control-semantic-completeness-review.md)；[phase1-plan-review.md](../../../docs/design/reviews/2026-07-28-user-surface-phase1-plan-review.md) |
 | **未来扩展模型** | [ADR-0051](../../../docs/design/decisions/0051-scannable-codegen-extension-roots.md)（Proposed）+ [tech-design](../../../docs/design/tech-designs/2026-07-28-scannable-codegen-extension-roots-design.md)：描述迁出 tools、可扫描扩展根；**Accepted 前本篇仍描述现状（插件在 wink-tools）** |
 
 ---
@@ -52,6 +54,22 @@ wink-app.json
 | App | 业务状态机 | 推荐 role 动词；复杂场景 Escape Hatch → `&instance` + `dal_*` / BAL |
 
 短口诀：**`type` = 是什么驱动；`role` = 当什么用（App 封装，非 BAL）。**
+
+### 2.1 用户稳定面、Escape Hatch、BAL-backed
+
+| 概念 | Role codegen 侧含义 |
+|------|---------------------|
+| **用户稳定面** | 发布后的 `{name}_{verb}` 签名与语义；改/删 = 破坏性变更 |
+| **驱动面** | `render_role_wrapper` 内部如何调 `dal_*`；DAL 改名后只改插件 + 重 codegen |
+| **无板卡模板** | JSON 引脚仍由各 App 填写；Role 不隐藏 `type`/接线 |
+| **Escape Hatch** | 无 role 或专家场景仍可用 `extern dal_*_t` + `dal_*`；lint `APP-NO-DAL-CALL` warn |
+| **BAL-backed** | 如 button 的 `start_auto_poll` 内部调 `wink_button_enable_events`；动词仍在 codegen 插件定义，**不是**把 BAL 注册成 `devices[].role` |
+
+**Phase 1 语义（Role 挡不住的行为变化 = 破坏性）：**
+
+- `open_loop_actuator` / `set_speed`：底层 `in_in` 拓扑与 [IN/IN 真值表](../../../docs/design/03-app-codegen/01-app-business-logic.md)；`set_speed` **必须**返回 `wink_status_t`（禁止 `IGNORE_RESULT`）。
+- `pulse_counter`：`get_count` 为原始脉冲，**无 CPR**；encoder x1 + `invert` 语义见 [dal-best-practices §3.5](./dal-best-practices.md)。
+- `text_display`：底层 `ssd1306` 芯片名仅驱动面；App 不依赖 `type` 字符串。
 
 字段与 `drive_mode` 等关系见 [dal-best-practices §3.0](./dal-best-practices.md)。  
 未来意图平面：[role/意图演进计划](../../../docs/design/implementation-plans/2026-07-28-wink-app-role-intent-evolution-plan.md)（⏸️）。
