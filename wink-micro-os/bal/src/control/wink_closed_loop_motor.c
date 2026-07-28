@@ -20,7 +20,7 @@
 /* DAL pruning (WINK_UNAVAILABLE): real motor/encoder APIs disappear when
  * WINK_USE_DC_MOTOR / WINK_USE_ENCODER are off. Force the MAX==0 stub path so
  * Apps that never declare those devices (e.g. blink / Arduino) still link
- * wink_bal without compile errors — user need not know about WINK_USE_*. */
+ * wink_bal without compile errors ? user need not know about WINK_USE_*. */
 #if !defined(WINK_USE_DC_MOTOR) || !(WINK_USE_DC_MOTOR) \
     || !defined(WINK_USE_ENCODER) || !(WINK_USE_ENCODER)
 #  undef WINK_CLOSED_LOOP_MOTOR_MAX
@@ -48,7 +48,7 @@ typedef struct {
 
 static motor_ctx_t s_slots[WINK_CLOSED_LOOP_MOTOR_MAX];
 
-/* ── internal helpers ────────────────────────────────────────── */
+/* ?? internal helpers ?????????????????????????????????????????? */
 
 static pal_os_core_id_t map_core(wink_bal_core_t c) {
     switch (c) {
@@ -76,6 +76,16 @@ static int find_slot_by_motor(dal_dc_motor_t *motor) {
         }
     }
     return -1;
+}
+
+/* ADR-0048: safe_off binds brake. Single-dir H-bridge cannot short-brake; fall back to coast. */
+static wink_status_t cl_motor_safe_stop(dal_dc_motor_t *motor)
+{
+    wink_status_t st = dal_dc_motor_safe_off(motor);
+    if (st == WINK_ERR_UNSUPPORTED) {
+        return dal_dc_motor_coast(motor);
+    }
+    return st;
 }
 
 static void motor_tick(void *arg) {
@@ -115,7 +125,7 @@ static void motor_tick(void *arg) {
     // 3. Fail-safe timeout check
     if (target != 0.0f && (now_ms - ctx->last_pulse_time_ms) > ctx->timeout_ms) {
         // Stop motor output immediately (Fail-safe)
-        WINK_IGNORE_RESULT(dal_dc_motor_safe_off(ctx->motor));
+        WINK_IGNORE_RESULT(cl_motor_safe_stop(ctx->motor));
         // Reset PID states
         wink_pid_reset(&ctx->pid);
         ctx->current_speed = 0.0f;
@@ -144,7 +154,7 @@ static void motor_tick(void *arg) {
     WINK_IGNORE_RESULT(dal_dc_motor_set_speed(ctx->motor, control_output));
 }
 
-/* ── public API ──────────────────────────────────────────────── */
+/* ?? public API ???????????????????????????????????????????????? */
 
 wink_status_t wink_closed_loop_motor_start_ex(dal_dc_motor_t *motor, 
                                               dal_encoder_t *encoder,
@@ -199,7 +209,7 @@ wink_status_t wink_closed_loop_motor_start_ex(dal_dc_motor_t *motor,
     wink_pid_init(&ctx->pid, &cfg->pid_cfg);
 
     // Initial stop
-    st = dal_dc_motor_safe_off(motor);
+    st = cl_motor_safe_stop(motor);
     if (wink_status_is_error(st)) {
         ctx->motor = NULL;
         return st;
@@ -242,7 +252,7 @@ wink_status_t wink_closed_loop_motor_stop(dal_dc_motor_t *motor)
     ctx->period_h = WINK_PERIODIC_INVALID;
 
     // Safety shutdown of the motor
-    WINK_IGNORE_RESULT(dal_dc_motor_safe_off(ctx->motor));
+    WINK_IGNORE_RESULT(cl_motor_safe_stop(ctx->motor));
 
     // Release slot
     ctx->motor = NULL;
@@ -297,7 +307,7 @@ void wink_closed_loop_motor_reset(void)
             if (s_slots[i].period_h > 0) {
                 wink_periodic_stop(s_slots[i].period_h);
             }
-            WINK_IGNORE_RESULT(dal_dc_motor_safe_off(s_slots[i].motor));
+            WINK_IGNORE_RESULT(cl_motor_safe_stop(s_slots[i].motor));
             s_slots[i].period_h = WINK_PERIODIC_INVALID;
             s_slots[i].motor = NULL;
             s_slots[i].encoder = NULL;
