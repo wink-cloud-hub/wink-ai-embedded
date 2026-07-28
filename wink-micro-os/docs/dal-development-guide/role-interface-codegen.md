@@ -24,7 +24,7 @@
 同仓 monorepo 里两者常一起演进（`wink.py new-dal` 会建插件骨架），但：
 
 - 插件里可以**先只实现** `render_config_init` / DAL 绑定，**晚些再**补 `role_verbs`；
-- 现网例如 `dc_motor`：**有 DAL，无 Role** —— 完全合法。
+- 现网例如 `gps` / `eeprom`：**有 DAL，无 Role** —— 完全合法。
 
 ```text
 wink-app.json
@@ -99,7 +99,8 @@ device_tree.h
 | `ultrasonic` | `distance_sensor` | `drivers/ultrasonic.py` |
 | `ssd1306` | `text_display` | `drivers/ssd1306.py` |
 | `rc_servo` | `angular_actuator` | `drivers/rc_servo.py` |
-| `dc_motor` 等 | （空） | **无** role；App 调 `dal_*` |
+| `dc_motor` | `open_loop_actuator` | `drivers/dc_motor.py` |
+| `encoder` | `pulse_counter` | `drivers/encoder.py` |
 
 以仓库 `drivers/*.py` 为准；本表仅作导航。
 
@@ -119,29 +120,27 @@ device_tree.h
 ### 4.2 在 `drivers/<type>.py` 声明
 
 ```python
-default_role = "speed_actuator"  # 示例名；落地前先对齐活规范命名
+default_role = "open_loop_actuator"
 role_verbs = {
-    "speed_actuator": ["set_speed", "coast", "brake"],
+    "open_loop_actuator": ["set_speed", "coast", "brake", "safe_off"],
 }
 
-def get_role_headers(self, role: str) -> list[str]:
-    # 仅当 wrapper 需要额外头（如 BAL 事件 API）时返回；多数只需 DAL 头（已在 get_headers）
-    return []
-
 def render_role_wrapper(self, dev_name: str, role: str, verb: str, spec: dict) -> str:
-    if role != "speed_actuator":
+    if role != "open_loop_actuator":
         return ""
     if verb == "set_speed":
         return (
-            f"static inline void {dev_name}_set_speed(float speed) {{ "
-            f"WINK_IGNORE_RESULT(dal_dc_motor_set_speed(&{dev_name}, speed)); }}"
+            f"WINK_WARN_UNUSED_RESULT static inline wink_status_t "
+            f"{dev_name}_set_speed(float speed) {{ "
+            f"return dal_dc_motor_set_speed(&{dev_name}, speed); }}"
         )
     if verb == "coast":
         return (
             f"WINK_WARN_UNUSED_RESULT static inline wink_status_t "
-            f"{dev_name}_coast(void) {{ return dal_dc_motor_coast(&{dev_name}); }}"
+            f"{dev_name}_coast(void) {{ "
+            f"return dal_dc_motor_coast(&{dev_name}); }}"
         )
-    # …
+    # … brake / safe_off 同理；禁止对 set_speed 使用 WINK_IGNORE_RESULT
     return ""
 ```
 
@@ -164,7 +163,7 @@ def render_role_wrapper(self, dev_name: str, role: str, verb: str, spec: dict) -
 ```json
 "left_motor": {
   "type": "dc_motor",
-  "role": "speed_actuator",
+  "role": "open_loop_actuator",
   "pwm_channel": 0,
   "dir_pin_a": 18,
   "dir_pin_b": 19
