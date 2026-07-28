@@ -262,8 +262,8 @@ void test_cl_motor_anti_windup_under_saturation(void) {
         wink_soft_timer_dispatch();
     }
 
-    /* No hard reverse overshoot past a generous band. */
-    TEST_ASSERT_TRUE(s_motor.current_speed > -0.6f);
+    /* After matching feedback, command must not reverse hard; stay near [0, 1]. */
+    TEST_ASSERT_TRUE(s_motor.current_speed > -0.15f);
     TEST_ASSERT_TRUE(s_motor.current_speed < 1.01f);
 
     float integral_after = 0.0f;
