@@ -21,7 +21,7 @@ paths:
 | **实时与硬件相关规则** | `_embedded-shared/realtime-hardware.md` |
 | **静态分发架构与设计模式** | `embedded-best-practice/references/static-dispatch/patterns.md` |
 | **DAL/PAL 分层架构** | `embedded-best-practice/references/static-dispatch/architecture.md` |
-| **分层门禁（生成前自查）** | 修改/生成 C 代码后运行：`python wink-micro-os/tools/wink.py lint --pack layering --pack api`（ADR-0043） |
+| **分层门禁（生成前自查）** | 修改/生成 C 代码后运行：`python wink-tools/wink.py lint --pack layering --pack api`（ADR-0043） |
 
 ---
 

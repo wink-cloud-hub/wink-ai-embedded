@@ -78,7 +78,7 @@ static wink_status_t app_on_fault_status(uint32_t code)
 
 ### 3. 设备树与 codegen
 
-- 新建/维护 `wink-app.json`，运行 `wink-micro-os/tools/codegen/app_codegen.py`（或 `python wink-micro-os/tools/wink.py gen`）生成 `device_tree.[hc]` + `app_options.cmake`。
+- 新建/维护 `wink-app.json`，运行 `wink-tools/tools/codegen/app_codegen.py`（或 `python wink-tools/wink.py gen`）生成 `device_tree.[hc]` + `app_options.cmake`。
 - Sample `CMakeLists.txt` 参考 `samples/oled_dashboard/CMakeLists.txt`（host e2e + wasm `PARENT_SCOPE` 导出）。
 - **ADR-0008 例外**：`avoidance_car` / `dual_task_demo` 保留手写 `device_tree.c`（Flash 覆写表）；`wink-app.json` 仅作文档。
 
@@ -99,7 +99,7 @@ target_link_libraries(your_target PRIVATE wink_bal dal wink_runtime)
 
 ```powershell
 # Host（52 tests + wasm_node_smoke）
-.\run-tests.ps1
+python wink-tools/wink.py test
 
 # Wasm（换 App）
 emcmake cmake -B build-wasm -DTARGET_PLATFORM=wasm -DWINK_APP_DIR=samples/oled_dashboard .

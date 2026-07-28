@@ -32,8 +32,8 @@
 ## 运行
 
 ```powershell
-# host 构建（由 wink-micro-os/run-tests.ps1 覆盖）
-powershell wink-micro-os/run-tests.ps1
+# host 构建（由 python wink-tools/wink.py test 覆盖）
+powershell python wink-tools/wink.py test
 # 会构建并运行 sample_resource_conflict 目标；exit 0 = 反例通过
 ```
 

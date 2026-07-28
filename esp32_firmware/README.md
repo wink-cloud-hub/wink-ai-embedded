@@ -23,33 +23,33 @@ Source files are scanned automatically by `tools/esp32/generate_app_sources.py`,
 Run all commands from the **repository root** (the directory containing `wink-micro-os/` and `esp32_firmware/`).
 
 ### Prerequisite
-- ESP-IDF v6.x installed via Espressif IDE Manager (EIM) — see [`wink-micro-os/tools/preinstall.md`](../wink-micro-os/tools/preinstall.md) §3. Wink never auto-installs IDF (ADR-0030).
+- ESP-IDF v6.x installed via Espressif IDE Manager (EIM) — see [`wink-tools/preinstall.md`](../wink-tools/preinstall.md) §3. Wink never auto-installs IDF (ADR-0030).
 - Python 3.10+ on PATH.
 
 ### 1. Build firmware
 ```powershell
 # Build the default sample (devkitc_smoke)
-python wink-micro-os/tools/wink.py esp32
+python wink-tools/wink.py esp32
 
 # Build a named sample under wink-micro-os/samples/<name>/
-python wink-micro-os/tools/wink.py esp32 --app avoidance_car
+python wink-tools/wink.py esp32 --app avoidance_car
 
 # Build an app in the external wink-micro-app directory (or absolute path)
-python wink-micro-os/tools/wink.py esp32 --app wink-micro-app/my_custom_app
-python wink-micro-os/tools/wink.py esp32 --app D:/projects/my_app
+python wink-tools/wink.py esp32 --app wink-micro-app/my_custom_app
+python wink-tools/wink.py esp32 --app D:/projects/my_app
 ```
 
 ### 2. Flash + Serial Monitor
 ```powershell
 # Use '--' BEFORE any idf.py args that start with '-' (e.g. -p, -v, -b, -D).
 # Subcommands like build/flash/monitor/fullclean/menuconfig don't need '--'.
-python wink-micro-os/tools/wink.py esp32 --app devkitc_smoke -- -p COM3 flash monitor
+python wink-tools/wink.py esp32 --app devkitc_smoke -- -p COM3 flash monitor
 
 # Flash without opening the serial monitor
-python wink-micro-os/tools/wink.py esp32 --app devkitc_smoke -- -p COM3 flash
+python wink-tools/wink.py esp32 --app devkitc_smoke -- -p COM3 flash
 
 # Attach serial monitor to an already-built firmware
-python wink-micro-os/tools/wink.py esp32 --app devkitc_smoke -- -p COM3 monitor
+python wink-tools/wink.py esp32 --app devkitc_smoke -- -p COM3 monitor
 ```
 
 Port names: Windows `COM3`; Linux `/dev/ttyUSB0`; macOS `/dev/tty.usbserial-*` or `/dev/cu.usbmodem*`.
@@ -59,27 +59,27 @@ Port names: Windows `COM3`; Linux `/dev/ttyUSB0`; macOS `/dev/tty.usbserial-*` o
 ### 3. Clean build
 ```powershell
 # fullclean removes esp32_firmware/build/ then rebuilds
-python wink-micro-os/tools/wink.py esp32 --app devkitc_smoke fullclean
+python wink-tools/wink.py esp32 --app devkitc_smoke fullclean
 ```
 
 ### 4. Pass extra flags (verbose, baud rate, Kconfig)
 Place `--` before any `-flag`:
 ```powershell
 # Verbose build output
-python wink-micro-os/tools/wink.py esp32 --app devkitc_smoke -- build -v
+python wink-tools/wink.py esp32 --app devkitc_smoke -- build -v
 
 # Custom baud rate for flashing
-python wink-micro-os/tools/wink.py esp32 --app devkitc_smoke -- -b 921600 -p COM3 flash
+python wink-tools/wink.py esp32 --app devkitc_smoke -- -b 921600 -p COM3 flash
 
 # Interactive menuconfig (run in a terminal that stays open)
-python wink-micro-os/tools/wink.py esp32 --app devkitc_smoke menuconfig
+python wink-tools/wink.py esp32 --app devkitc_smoke menuconfig
 ```
 
 ---
 
 ## 🛠️ When to call idf.py directly
 
-Only for advanced interactive workflows (`idf.py menuconfig`, `idf.py size`, `idf.py gdb`, `idf.py efuse-*`). For direct `idf.py` use you must first activate an IDF shell (source the EIM PowerShell profile or run `export.ps1`/`export.sh`) because Wink will not have done it for you. See [`preinstall.md §3`](../wink-micro-os/tools/preinstall.md).
+Only for advanced interactive workflows (`idf.py menuconfig`, `idf.py size`, `idf.py gdb`, `idf.py efuse-*`). For direct `idf.py` use you must first activate an IDF shell (source the EIM PowerShell profile or run `export.ps1`/`export.sh`) because Wink will not have done it for you. See [`preinstall.md §3`](../wink-tools/preinstall.md).
 
 Running `idf.py build` directly from an activated shell **still works** — CMake invokes the Python source scanner at configure time — but bypasses Wink's UTF-8/MSYS guards. **Always prefer `wink.py esp32` for routine builds.**
 
@@ -95,7 +95,7 @@ Normally invoked by Wink CLI or CMake, so you rarely run it by hand. It:
 
 Manual invocation for debugging (single line):
 ```powershell
-python wink-micro-os/tools/esp32/generate_app_sources.py --app-dir wink-micro-app/devkitc_smoke --esp32-firmware-dir esp32_firmware
+python wink-tools/tools/esp32/generate_app_sources.py --app-dir wink-micro-app/devkitc_smoke --esp32-firmware-dir esp32_firmware
 ```
 
 ---
@@ -113,7 +113,7 @@ python wink-micro-os/tools/esp32/generate_app_sources.py --app-dir wink-micro-ap
 ## 💡 FAQ
 
 ### Q: I added a new `.c` source. Do I need to edit CMakeLists.txt?
-**No.** The scanner picks it up automatically. Re-run `python wink-micro-os/tools/wink.py esp32 --app <name>`.
+**No.** The scanner picks it up automatically. Re-run `python wink-tools/wink.py esp32 --app <name>`.
 
 ### Q: Chinese comments cause encoding errors?
 Wink sets `PYTHONUTF8=1`/`PYTHONIOENCODING=utf-8` automatically; GCC is configured with `-finput-charset=UTF-8`. If you still see mojibake, verify your source files are saved as UTF-8 and your terminal uses a Unicode font.
@@ -129,7 +129,7 @@ Wink sets `PYTHONUTF8=1`/`PYTHONIOENCODING=utf-8` automatically; GCC is configur
 **No.** Informational only — ESP-IDF auto-detects the chip target from `sdkconfig`.
 
 ### Q: `wink doctor` says IDF is missing?
-Run `python wink-micro-os/tools/wink.py doctor` and follow the hints; the most common cause is ESP-IDF not installed via EIM. See [`preinstall.md §3`](../wink-micro-os/tools/preinstall.md).
+Run `python wink-tools/wink.py doctor` and follow the hints; the most common cause is ESP-IDF not installed via EIM. See [`preinstall.md §3`](../wink-tools/preinstall.md).
 
 ---
 
@@ -145,4 +145,4 @@ esp32_firmware/
     └── app_sources.cmake       # ⚙️ Auto-generated at configure time by tools/esp32/generate_app_sources.py; do not edit
 ```
 
-The build tools live in `../wink-micro-os/tools/esp32/` — `activate.py` (IDF env harvest), `build.py` (sanitized idf.py runner), `generate_app_sources.py` (source scanner). **Unified entry point: `python wink-micro-os/tools/wink.py esp32`.** See [`wink-micro-os/tools/README.md`](../wink-micro-os/tools/README.md).
+The build tools live in `../wink-tools/tools/esp32/` — `activate.py` (IDF env harvest), `build.py` (sanitized idf.py runner), `generate_app_sources.py` (source scanner). **Unified entry point: `python wink-tools/wink.py esp32`.** See [`wink-tools/README.md`](../wink-tools/README.md).

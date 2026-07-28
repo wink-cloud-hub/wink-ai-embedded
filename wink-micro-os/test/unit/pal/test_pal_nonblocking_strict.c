@@ -13,7 +13,8 @@
  *   - `sizeof(&fn)` 是编译期常量表达式，不产生 link 引用 —— 无需 -c 加 link；直接
  *     交给 add_wink_test（正常 link）也不会拉入 pal target 里的任何 obj。
  *
- * 联动：L1 lint（run-tests.ps1 第 7 段）通过 nm 直接验证 dal_ultrasonic_read 符号
+ * 联动：L1 lint（wink.py test / tools.cli._shared.run_adr0017_l1_strict_lint）
+ * 通过 nm 验证 dal_ultrasonic_read 符号在严格模式下被剔除
  *        从 .o 消失；这里通过头文件的直接引用验证。两层互补。
  */
 
