@@ -2,6 +2,13 @@
 
 `wink-app.json` 是嵌入式应用与仿真引擎的 **SSOT（Single Source of Truth，唯一真相源）** 配置文件。所有硬件资源绑定、GPIO 映射与外设参数均在此文件内完成声明。
 
+| 项 | 内容 |
+|----|------|
+| **用户稳定面 SSOT** | [user-surface-insulation-design.md](../../docs/design/tech-designs/2026-07-28-user-surface-insulation-design.md) |
+| **关联计划** | [user-surface-phase1-plan.md](../../docs/design/implementation-plans/2026-07-28-user-surface-phase1-plan.md) |
+| **关联评审** | [dal-control-semantic-completeness-review §10](../../docs/design/reviews/2026-07-28-dal-control-semantic-completeness-review.md)；[user-surface-phase1-plan-review.md](../../docs/design/reviews/2026-07-28-user-surface-phase1-plan-review.md) |
+| **字段分层摘要** | [dal-best-practices §3.0](./dal-development-guide/dal-best-practices.md) |
+
 ---
 
 ## 📑 一、 顶层结构与全局规范
@@ -24,6 +31,8 @@
 ```
 
 > **字段分层**：跨外设必填的只有 `type`（控制语义族 / DAL 绑定）。可选 `role` 为 **App 侧 Role Interface**（缺省 `default_role`，生成 `{name}_{verb}`）——**不是 BAL**，也不是产品级「左轮/云台」意图。`drive_mode` / `enable_pin` / `driver_ic` **不是**全局通用字段。摘要见 [dal-best-practices §3.0](./dal-development-guide/dal-best-practices.md)；**如何挂 Role** 见 [role-interface-codegen.md](./dal-development-guide/role-interface-codegen.md)。
+>
+> **稳定面 vs 驱动面（Phase 1）**：**无板卡模板**——每个 App 在本文件写全 `type` 与引脚/总线（接线灵活）。`stable` 字段（如 `role`、`max_angle`、`long_press_ms`）影响业务语义；`advanced` 字段（如 `drive_mode`、`decode_mode`、`enable_pin`、`*_pin`）为驱动/接线面。改 advanced 引脚是正常操作，不是「破坏用户面」。
 >
 > **Experimental 类型**：`gps`、`eeprom` 为实验性 stub（DAL 现返回 `WINK_ERR_UNSUPPORTED`），codegen 会 stderr 警告，不宜作为稳定用户面；正式 Role 待 UART/I2C 后端落地后再提供。
 
@@ -83,6 +92,9 @@
 I2C 属于**总线型外设**（多设备共享总线），支持总线端口与默认引脚回退。
 
 #### (1) 核心配置字段（以 `ssd1306` 显示屏为例）
+
+> **`type` 保留芯片名 `ssd1306`**（Phase 1 Owner 裁决：不改名）。App 通过 Role `text_display`（`clear` / `draw_text` / `flush`）交互，不依赖 JSON 中的芯片字符串。异族 SPI 面板 → 新 `type` 或未来 `panel_variant`。
+
 ```json
 "status_oled": {
   "type": "ssd1306",
@@ -139,9 +151,12 @@ wink-app.json 显式填写 sda_pin / scl_pin？
 
 #### (1) `dc_motor` - 有刷直流（H 桥）
 
+> 默认拓扑 **`in_in`**（PWM + IN_A + IN_B）——**不是**业界 Phase/Enable。`phase_enable` / `pwm_on_in` 为**预留**值，未实现时 init fail-closed。
+
 ```json
 "left_motor": {
   "type": "dc_motor",
+  "role": "open_loop_actuator",
   "pwm_channel": 0,
   "dir_pin_a": 18,
   "dir_pin_b": 19
@@ -151,12 +166,63 @@ wink-app.json 显式填写 sda_pin / scl_pin？
 | 字段 | 必填 | 说明 |
 |------|------|------|
 | `type` | 是 | 固定 `"dc_motor"`（语义族；不是芯片名） |
+| `role` | 否 | 缺省 `open_loop_actuator` → `{name}_set_speed` / `coast` / `brake` / `safe_off` |
 | `pwm_channel` / `dir_pin_a` | 是 | 见 codegen `required_fields`；`dir_pin_b` 可选（单方向） |
-| `drive_mode` | 否 | **非全局字段**：仅同语义多拓扑时使用；见 [dal-best-practices §3.0](./dal-development-guide/dal-best-practices.md)（落地前勿假定已支持） |
-| `enable_pin` | 否 | 芯片有 STBY/nSLEEP 且需软件控制时再写 |
-| `driver_ic` | 否 | 一般不需要；与 `drive_mode` 易重复，优先写拓扑 |
+| `drive_mode` | 否 | advanced；默认省略 = `in_in`；仅 `"in_in"` 已实现 |
+| `enable_pin` | 否 | advanced；STBY/nSLEEP（高有效）；`-1` 或未写 = 不用 |
+| `driver_ic` | 否 | 一般不需要；与 `drive_mode` 易重复 |
 
-舵机等其它执行器仍用各自字段（如 `rc_servo` 的 `pwm_channel` / `pwm_pin`），**不要**套用上表扩展列。
+**IN/IN 真值表**（`dir_pin_a`=A，`dir_pin_b`=B）：
+
+```text
+dir_a  dir_b | state
+  0      0   | coast
+  1      0   | forward
+  0      1   | reverse
+  1      1   | brake (short)
+```
+
+**`safe_off` 层级**：有 `enable_pin` → brake（若可）+ 拉低 enable；无 enable 双脚 → brake；单脚 → `WINK_ERR_UNSUPPORTED`（见 ADR-0048）。
+
+#### (2) `rc_servo` - 航模舵机
+
+```json
+"neck_servo": {
+  "type": "rc_servo",
+  "pwm_channel": 0,
+  "min_pulse_ms": 0.5,
+  "max_pulse_ms": 2.5,
+  "max_angle": 180
+}
+```
+
+| 字段 | 说明 |
+|------|------|
+| `min_pulse_ms` / `max_pulse_ms` | stable；脉宽范围（ms） |
+| `max_angle` | stable；0 或未写 → **180°**；钳位 `angle ∈ [0, effective_max_angle]` |
+| 脉宽映射 | `pulse_ms = min_pulse + (angle / effective_max_angle) * (max_pulse - min_pulse)` |
+
+Role 缺省 `angular_actuator` → `{name}_set_angle`（fire-and-forget）。
+
+#### (3) `encoder` - 旋转编码器（脉冲计数）
+
+```json
+"wheel_encoder": {
+  "type": "encoder",
+  "pin_a": 34,
+  "pin_b": 35
+}
+```
+
+| 字段 | 说明 |
+|------|------|
+| `decode_mode` | advanced；默认 `x1_rising`；`x2`/`x4` 未实现 → init 失败 |
+| `invert` | advanced；**交换 A/B 方向语义**，非简单取负计数 |
+| Role | 缺省 `pulse_counter` → `get_count` / `reset`；**无 CPR**（物理换算在 BAL） |
+
+x1 协议：A 上升沿采 B；B 高 ++，B 低 --；无 `pin_b` 仅递增。
+
+舵机等其它执行器仍用各自字段，**不要**套用上表 H 桥扩展列。
 
 ---
 
