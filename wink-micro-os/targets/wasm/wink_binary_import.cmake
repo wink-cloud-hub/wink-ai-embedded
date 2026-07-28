@@ -35,7 +35,11 @@ set(_WASM_EXPORT_JSON "${CMAKE_CURRENT_SOURCE_DIR}/targets/wasm/exported_runtime
 if(EXISTS "${_WASM_EXPORT_JSON}")
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
     set(_WASM_EXPORT_CMAKE "${CMAKE_BINARY_DIR}/wasm_binary_export_options.cmake")
-    set(_WASM_EXPORT_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/tools/wasm_export_codegen.py")
+    if(EXISTS "${WINK_TOOLS_ROOT}/tools/wasm_export_codegen.py")
+        set(_WASM_EXPORT_SCRIPT "${WINK_TOOLS_ROOT}/tools/wasm_export_codegen.py")
+    else()
+        set(_WASM_EXPORT_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/tools/wasm_export_codegen.py")
+    endif()
     if(NOT EXISTS "${_WASM_EXPORT_SCRIPT}")
         message(FATAL_ERROR
             "Wasm export codegen script not found: ${_WASM_EXPORT_SCRIPT}. "

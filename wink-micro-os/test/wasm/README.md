@@ -10,7 +10,7 @@ Every file in this directory unconditionally includes `<emscripten.h>` and/or
 calls symbols that only exist in `targets/wasm/` (`pal_wasm_*`,
 `wasm_fault_event_t`, `wasm_fault_domain_id_t`, `wasm_pin_power_model_t`,
 etc.). They cannot be compiled with host GCC/MinGW — attempting to add them
-to `test/CMakeLists.txt` would break `run-tests.ps1`.
+to `test/CMakeLists.txt` would break `python wink-tools/wink.py test`.
 
 The host test matrix in `test/CMakeLists.txt` already covers the
 target-independent algorithm library (`wink_sim_physical.c`,
@@ -41,7 +41,7 @@ Total: 9 files (~4.4k LOC).
 
 To bring these into CI, the following need to land:
 
-1. **Emscripten toolchain in build environment.** `run-tests.ps1` today only
+1. **Emscripten toolchain in build environment.** `python wink-tools/wink.py test` today only
    provisions MinGW/GCC. A parallel `run-wasm-tests.ps1` (or a Node-side
    runner) would need `emcc` on `$env:Path`.
 2. **`add_wink_wasm_test` CMake helper.** Referenced by every file's header

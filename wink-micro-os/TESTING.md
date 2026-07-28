@@ -8,9 +8,9 @@
 
 | 命令 | 用途 | 用时 | 频率 |
 |------|------|------|------|
-| `pwsh ./run-tests.ps1` | **日常开发门禁**：增量构建 + 跑全部 35 个 GCC 测试 | 5s - 2min | ✅ 每次提交 |
-| `pwsh ./run-tests.ps1 -Clean` | 完全重建 + 跑全部测试 | 1 - 3min | 🔧 改了 CMake / 怀疑缓存污染 |
-| `pwsh ./run-tests.ps1 -Detailed` | 跑测试 + 打印每个用例完整输出 | 2 - 5min | 🐛 排查失败用例 |
+| `python wink-tools/wink.py test` | **日常开发门禁**：增量构建 + 跑全部 35 个 GCC 测试 | 5s - 2min | ✅ 每次提交 |
+| `python wink-tools/wink.py test --clean` | 完全重建 + 跑全部测试 | 1 - 3min | 🔧 改了 CMake / 怀疑缓存污染 |
+| `python wink-tools/wink.py test --detailed` | 跑测试 + 打印每个用例完整输出 | 2 - 5min | 🐛 排查失败用例 |
 | **MSVC 链验证** | Visual Studio x64 Native Tools Command Prompt 中运行：<br>`cmake -G Ninja -DCMAKE_C_COMPILER=cl -DTARGET_PLATFORM=host -B build-msvc`<br>`cmake --build build-msvc`<br>`ctest --test-dir build-msvc --output-on-failure` | 2 - 5min | 📅 PR 合并前 / 重大变更 |
 
 **当前测试规模**（2026-07-04 快照）：**35 个可执行**，覆盖 PAL 契约 / DAL 外设 / runtime / trace / 协作式调度器 / 6 个 sample 端到端。
@@ -42,7 +42,7 @@ wink-micro-os 采用 **GCC + MSVC 双链验证**：
            │                                                  │
   日常开发快速反馈                          最严格的 C99 合规性检查
   -Wall -Wextra -Werror                           /W4 /WX /wd4100 /wd4210
-  run-tests.ps1 封装                              手动跑 / CI 跑
+  python wink-tools/wink.py test 封装                              手动跑 / CI 跑
 ```
 
 - **GCC 链 = 日常门禁**：快、增量、对 Windows 开发环境友好
@@ -151,7 +151,7 @@ wasm 侧协作式确定性调度器的 host 对等验证。共 8 个测试，覆
 
 ### 🏃 每次提交前
 ```powershell
-pwsh ./run-tests.ps1
+python wink-tools/wink.py test
 ```
 → 增量构建 + 全 35 个测试，通常 30 秒内完成。
 
@@ -163,10 +163,10 @@ pwsh ./run-tests.ps1
 **必须确认**：
 1. `test_pal_contract` 编译通过（契约未漂移）
 2. Tier 1 全过（`test_runtime` / `test_actuator_registry` / `test_pal_storage` / `test_pal_resource`）
-3. `run-tests.ps1 -Clean` 全量重建无 warning
+3. `python wink-tools/wink.py test --clean` 全量重建无 warning
 
 ### 🌀 改了调度器（`targets/wasm` scheduler 或 `pal_osal`）后
-Tier 3 全部 8 个必须过；额外跑 `-Clean` 一次防止增量污染。
+Tier 3 全部 8 个必须过；额外跑 `python wink-tools/wink.py test --clean` 一次防止增量污染。
 
 ### 📋 PR 合并前 / 重大变更后
 跑**双链验证**（GCC + MSVC），确保：
@@ -179,7 +179,7 @@ Tier 3 全部 8 个必须过；额外跑 `-Clean` 一次防止增量污染。
 ## 🐛 常见问题排查
 
 ### Q: test_smoke 都失败了？
-→ 构建链本身坏了。跑 `run-tests.ps1 -Clean` 清缓存重建。
+→ 构建链本身坏了。跑 `python wink-tools/wink.py test --clean` 清缓存重建。
 
 ### Q: test_pal_contract 编译失败？
 → **高优先级告警**：你改了 `wink_status.h` / `pal_*.h` 里的枚举/宏，但忘记同步到 ESP32 target 或 host 测试期望值。
@@ -191,7 +191,7 @@ Tier 3 全部 8 个必须过；额外跑 `-Clean` 一次防止增量污染。
 - 函数内 static 变量 → MSVC C4210
 
 ### Q: 改了代码但测试行为没变？
-→ 增量构建的缓存问题。`run-tests.ps1 -Clean` 重建。
+→ 增量构建的缓存问题。`python wink-tools/wink.py test --clean` 重建。
 
 ---
 
