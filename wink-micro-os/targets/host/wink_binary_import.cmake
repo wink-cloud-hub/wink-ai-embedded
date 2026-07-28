@@ -25,11 +25,8 @@ target_include_directories(wink_micro_os INTERFACE
     "${CMAKE_CURRENT_SOURCE_DIR}/include/actuator"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/display"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/sensor"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/comm"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/storage"
-    # BAL categories (share same subdirs as DAL in aggregated include/)
-    # output/, input/, sensor/, actuator/, display/, comm/
-    # Note: 'comm' is BAL-only; DAL uses 'communication'
+    # DAL/BAL share category subdirs in aggregated include/ (incl. comm/)
     "${CMAKE_CURRENT_SOURCE_DIR}/include/comm"
 )
 
