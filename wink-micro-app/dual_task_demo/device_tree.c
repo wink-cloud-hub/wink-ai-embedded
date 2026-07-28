@@ -10,7 +10,7 @@ dal_ultrasonic_t front_radar = {
     .last_distance = 0.0f,
 };
 
-dal_servo_t neck_servo = {
+dal_rc_servo_t neck_servo = {
     .config.owner = "neck_servo",
     .config.pwm_channel = 0,
     .config.min_pulse_ms = 0.5f,
@@ -19,7 +19,7 @@ dal_servo_t neck_servo = {
 };
 
 static const wink_dev_override_entry_t g_overrides[] = {
-    { DEV_ID_NECK_SERVO,  &neck_servo,  dal_servo_apply_override      },
+    { DEV_ID_NECK_SERVO,  &neck_servo,  dal_rc_servo_apply_override      },
     { DEV_ID_FRONT_RADAR, &front_radar, dal_ultrasonic_apply_override },
 };
 

@@ -78,8 +78,8 @@ enum {
 | 元素 | 约定 | 示例 |
 |------|------|------|
 | 宏 / 常量 | 全大写蛇形 | `NUM_JOINTS`、`PID_PERIOD_US`、`RX_BUFFER_SIZE` |
-| 类型 | snake_case + `_t` | `motor_driver_t`、`dal_servo_t`、`cmd_frame_t` |
-| 函数 | `模块_动作()` 小写蛇形 | `motor_driver_init`、`dal_servo_set_angle` |
+| 类型 | snake_case + `_t` | `motor_driver_t`、`dal_rc_servo_t`、`cmd_frame_t` |
+| 函数 | `模块_动作()` 小写蛇形 | `motor_driver_init`、`dal_rc_servo_set_angle` |
 | 局部变量 / 结构体成员 | 小写蛇形 | `retry_count`、`current_angle` |
 | 枚举值 | `UPPER_CASE` 或 `前缀_名称` | `MOTOR_MODE_IDLE`、`CMD_TYPE_TRAJECTORY` |
 | 文件级 static 变量 | `s_` 前缀 | `static int s_pending_count;` |
@@ -105,7 +105,7 @@ SSOT：`docs/design/07-platform-governance/coding-conventions.md` §3；决策�
 ```c
 /* ✅ 正确：访问器用 static inline */
 static inline __attribute__((always_inline))
-float dal_servo_get_angle(const dal_servo_t *self)
+float dal_rc_servo_get_angle(const dal_rc_servo_t *self)
 {
     return self->state.current_angle;
 }
@@ -192,7 +192,7 @@ void buffer_copy(uint8_t *restrict dst,
 
 /* 3. PAL / DAL 头文件 */
 #include "pal/hal/pal_hal_gpio.h"
-#include "dal/dal_servo.h"
+#include "dal/dal_rc_servo.h"
 
 /* 4. 项目模块头文件 */
 #include "app/protocol.h"

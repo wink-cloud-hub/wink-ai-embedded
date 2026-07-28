@@ -1,14 +1,14 @@
 # test_dal_pruning_neg.cmake — compile-negative test invoked as `cmake -P`.
 #
 # Asserts:
-#   1. Compiling test_dal_pruning_neg.c with -DWINK_USE_SERVO=0 FAILS.
+#   1. Compiling test_dal_pruning_neg.c with -DWINK_USE_RC_SERVO=0 FAILS.
 #   2. The compiler's stderr contains the friendly remediation hint from
 #      WINK_UNAVAILABLE_MSG.
 #
 # Input variables (passed via -D from add_test):
 #   GCC         — path to the C compiler (${CMAKE_C_COMPILER}).
 #   SRC_DIR     — directory containing test_dal_pruning_neg.c.
-#   DAL_INC     — path to dal/include (for dal_servo.h).
+#   DAL_INC     — path to dal/include (for dal_rc_servo.h).
 #   PAL_INC     — path to pal/include (for wink_status.h).
 #   WINK_STATUS_H — wink_status.h (unused; kept for diagnostic clarity).
 
@@ -30,7 +30,7 @@ set(_inc_flags
 execute_process(
     COMMAND "${GCC}"
             ${_inc_flags}
-            -DWINK_USE_SERVO=0
+            -DWINK_USE_RC_SERVO=0
             -fsyntax-only
             -Wall -Wextra -Werror
             "${_src}"
@@ -43,16 +43,16 @@ execute_process(
 
 if(_rc EQUAL 0)
     message(FATAL_ERROR
-        "test_dal_pruning_neg: expected COMPILE FAILURE with -DWINK_USE_SERVO=0, "
+        "test_dal_pruning_neg: expected COMPILE FAILURE with -DWINK_USE_RC_SERVO=0, "
         "but gcc exited 0. WINK_UNAVAILABLE_MSG is NOT firing.")
 endif()
 
 # The friendly message should appear in stderr.
-string(FIND "${_stderr}" "Servo driver not enabled" _found)
+string(FIND "${_stderr}" "RC servo driver not enabled" _found)
 if(_found EQUAL -1)
     message(FATAL_ERROR
         "test_dal_pruning_neg: gcc failed (rc=${_rc}) but the expected "
-        "remediation hint \"Servo driver not enabled\" was NOT in stderr.\n"
+        "remediation hint \"RC servo driver not enabled\" was NOT in stderr.\n"
         "--- stderr was ---\n${_stderr}\n"
         "--- end stderr ---")
 endif()

@@ -189,7 +189,7 @@ typedef struct {
         bool       is_enabled;
         uint32_t   last_update_us;
     } state;
-} dal_servo_t;
+} dal_rc_servo_t;
 `
 
 ---
@@ -373,7 +373,7 @@ ISR（最短）→ osSemaphoreRelease / xSemaphoreGiveFromISR（ISR 安全）
 | 检查项 | 状态 | 说明 |
 |--------|------|------|
 | 6.2.1 | | 器件结构是纯 POD：无函数指针、无 ops、无 vptr、无父类嵌入 |
-| 6.2.2 | | 调用是命名式 API 直调：dal_servo_set_angle(&dev, angle) → 直接进函数体 |
+| 6.2.2 | | 调用是命名式 API 直调：dal_rc_servo_set_angle(&dev, angle) → 直接进函数体 |
 | 6.2.3 | | 无 container_of 向下转型：编译期类型已知 |
 | 6.2.4 | | 注册靠编译期绑定（codegen 静态全局 / CMake 文件链接） |
 

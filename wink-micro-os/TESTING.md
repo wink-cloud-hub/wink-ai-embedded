@@ -88,7 +88,7 @@ wink-micro-os 采用 **GCC + MSVC 双链验证**：
 
 | 测试 | 作用 |
 |------|------|
-| **`test_dal_servo`** | 舵机驱动 + ADR-0008 覆写：角度 clamp、脉宽计算、覆写 `min_pulse_ms`/`max_pulse_ms`。 |
+| **`test_dal_rc_servo`** | 舵机驱动 + ADR-0008 覆写：角度 clamp、脉宽计算、覆写 `min_pulse_ms`/`max_pulse_ms`。 |
 | **`test_dal_ultrasonic`** | 超声波驱动 + 覆写：距离计算超时保护、覆写 `trig_pin`/`echo_pin`。ADR-0017 后仅暴露非阻塞 API。 |
 | **`test_dal_ultrasonic_sim`** | 超声波仿真分支（`-DSIMULATION`）与真机同源换算（ADR-0003 fidelity 门禁）。 |
 | **`test_dal_led`** | LED 驱动状态机。 |

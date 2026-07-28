@@ -20,10 +20,10 @@
 
 ### 推荐的设计模式：
 
-> ⚠ **目标形态（尚未落地）**：当前实际头文件（`dal_servo.h` / `dal_ultrasonic.h`）是**扁平字段、非 `const`**（见 README 偏差框）。下面是 ADR 目标形态；迁移示例见 evolution.md §1.4。写新代码按此目标形态，读写现有实例仍用扁平字段（`dev->last_distance`）。
+> ⚠ **目标形态（尚未落地）**：当前实际头文件（`dal_rc_servo.h` / `dal_ultrasonic.h`）是**扁平字段、非 `const`**（见 README 偏差框）。下面是 ADR 目标形态；迁移示例见 evolution.md §1.4。写新代码按此目标形态，读写现有实例仍用扁平字段（`dev->last_distance`）。
 
 ```c
-/* dal_servo.h 中的定义（目标形态；现状为扁平字段） */
+/* dal_rc_servo.h 中的定义（目标形态；现状为扁平字段） */
 typedef struct {
     // --- 1. 静态只读配置区（由 Codegen 填入） ---
     const uint8_t  pwm_channel;   /* const 锁定物理通道，防篡改 */
@@ -35,7 +35,7 @@ typedef struct {
         float         current_angle;  /* 缓存的当前角度 */
         wink_status_t last_status;    /* 器件上一次运行状态 */
     } state;
-} dal_servo_t;
+} dal_rc_servo_t;
 ```
 
 ```c
@@ -43,7 +43,7 @@ typedef struct {
 #include "device_tree.h"
 
 // 编译期绑定引脚配置，将 const 字段完全锁定
-dal_servo_t neck_servo = {
+dal_rc_servo_t neck_servo = {
     .pwm_channel  = 0,
     .min_pulse_ms = 0.5f,
     .max_pulse_ms = 2.5f,

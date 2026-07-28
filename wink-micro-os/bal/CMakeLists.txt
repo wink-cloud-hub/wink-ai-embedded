@@ -29,11 +29,11 @@ target_sources(wink_bal PRIVATE
     src/input/wink_button_events_irq.c
     src/sensor/wink_ultrasonic_poll.c
     src/sensor/wink_ultrasonic_distance_events.c
-    src/actuator/wink_servo_sweep.c
+    src/actuator/wink_rc_servo_sweep.c
     src/comm/wink_telemetry_default.c
     src/math/wink_pid.c
     src/math/wink_diff_drive_kinematics.c
-    src/control/wink_closed_loop_motor.c
+    src/control/wink_closed_loop_dc_motor.c
     src/control/wink_chassis.c
 )
 

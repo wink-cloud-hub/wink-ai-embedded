@@ -39,9 +39,9 @@ static dal_encoder_t s_right_encoder;
 
 void setUp(void) {
     extern void wink_chassis_reset(void);
-    extern void wink_closed_loop_motor_reset(void);
+    extern void wink_closed_loop_dc_motor_reset(void);
     wink_chassis_reset();
-    wink_closed_loop_motor_reset();
+    wink_closed_loop_dc_motor_reset();
 
     extern void sim_scheduler_reset(uint32_t flags);
     sim_scheduler_reset(0);
