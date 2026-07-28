@@ -121,6 +121,8 @@ void sim_reset_time(void) {
     s_last_i2c_write_len = 0; s_i2c_transfer_count = 0;
     sim_clear_gpio_ideal();   /* ADR-0009 Wave1：重置时清空 GPIO 注入表，保证测试隔离 */
 }
+void sim_set_mono_time_us(uint64_t us) { s_time_us = us; }
+void sim_advance_mono_time_us(uint64_t delta_us) { s_time_us += delta_us; }
 void sim_set_echo_pin(uint16_t pin) { s_echo_pin = pin; }
 void sim_set_echo_timing(uint64_t rise_us, uint64_t high_duration_us) {
     s_echo_rise_us = rise_us; s_echo_high_us = high_duration_us;

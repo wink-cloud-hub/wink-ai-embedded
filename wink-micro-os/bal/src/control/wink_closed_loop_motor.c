@@ -300,6 +300,20 @@ wink_status_t wink_closed_loop_motor_get_speed(dal_dc_motor_t *motor, float *out
     return WINK_OK;
 }
 
+wink_status_t wink_closed_loop_motor_debug_get_integral(dal_dc_motor_t *motor,
+                                                       float *out_integral)
+{
+    if (motor == NULL || out_integral == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    int idx = find_slot_by_motor(motor);
+    if (idx < 0) {
+        return WINK_ERR_INVALID_STATE;
+    }
+    *out_integral = s_slots[idx].pid.integral;
+    return WINK_OK;
+}
+
 void wink_closed_loop_motor_reset(void)
 {
     for (int i = 0; i < WINK_CLOSED_LOOP_MOTOR_MAX; i++) {
@@ -349,6 +363,13 @@ wink_status_t wink_closed_loop_motor_set_speed(dal_dc_motor_t *motor, float targ
 wink_status_t wink_closed_loop_motor_get_speed(dal_dc_motor_t *motor, float *out_speed)
 {
     (void)motor; (void)out_speed;
+    return WINK_ERR_UNSUPPORTED;
+}
+
+wink_status_t wink_closed_loop_motor_debug_get_integral(dal_dc_motor_t *motor,
+                                                       float *out_integral)
+{
+    (void)motor; (void)out_integral;
     return WINK_ERR_UNSUPPORTED;
 }
 
