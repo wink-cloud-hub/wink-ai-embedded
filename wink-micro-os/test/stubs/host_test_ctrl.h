@@ -19,6 +19,18 @@ void sim_set_echo_timing(uint64_t rise_us, uint64_t high_duration_us);
 float sim_last_pwm_duty(uint8_t channel);
 void sim_set_reset_reason(pal_os_reset_reason_t reason);   /* Phase 5：注入复位原因供 boot safe-lock 测试 */
 
+/* 虚拟单调时钟注入（R-010）：host 单测驱动实测 dt，禁止墙钟。
+ * 实现于 osal/host/pal_osal_host.c（与 sim_reset_time 同源 s_time_us）。 */
+void sim_set_mono_time_us(uint64_t us);
+void sim_advance_mono_time_us(uint64_t delta_us);
+
+/* Encoder count 注入声明：勿在此 include dal_encoder.h（pal_host 无 DAL 路径）。
+ * 实现放在调用方测试 TU（赋值包装），见 test_bal_closed_loop_motor.c。
+ * 签名约定：
+ *   void sim_set_encoder_count(dal_encoder_t *dev, int32_t count);
+ *   void sim_advance_encoder_count(dal_encoder_t *dev, int32_t delta);
+ */
+
 /* Phase 2：host I2C 事务捕获注入/读取 */
 uint8_t  sim_last_i2c_port(void);
 uint16_t sim_last_i2c_addr(void);

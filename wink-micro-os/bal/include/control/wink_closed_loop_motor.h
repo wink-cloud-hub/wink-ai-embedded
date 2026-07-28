@@ -62,6 +62,16 @@ wink_status_t wink_closed_loop_motor_stop(dal_dc_motor_t *motor);
 wink_status_t wink_closed_loop_motor_set_speed(dal_dc_motor_t *motor, float target_speed);
 wink_status_t wink_closed_loop_motor_get_speed(dal_dc_motor_t *motor, float *out_speed);
 
+/**
+ * @brief Host-test observability: read active-session PID integrator (R-011).
+ *
+ * Not part of the production control contract; used by closed-loop host tests
+ * to assert anti-windup (integrator stops climbing under saturation).
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t wink_closed_loop_motor_debug_get_integral(dal_dc_motor_t *motor,
+                                                       float *out_integral);
+
 #ifdef __cplusplus
 }
 #endif
