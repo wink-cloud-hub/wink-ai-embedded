@@ -18,10 +18,10 @@
 #endif
 
 /* DAL pruning (WINK_UNAVAILABLE): real motor/encoder APIs disappear when
- * WINK_USE_MOTOR / WINK_USE_ENCODER are off. Force the MAX==0 stub path so
+ * WINK_USE_DC_MOTOR / WINK_USE_ENCODER are off. Force the MAX==0 stub path so
  * Apps that never declare those devices (e.g. blink / Arduino) still link
  * wink_bal without compile errors — user need not know about WINK_USE_*. */
-#if !defined(WINK_USE_MOTOR) || !(WINK_USE_MOTOR) \
+#if !defined(WINK_USE_DC_MOTOR) || !(WINK_USE_DC_MOTOR) \
     || !defined(WINK_USE_ENCODER) || !(WINK_USE_ENCODER)
 #  undef WINK_CLOSED_LOOP_MOTOR_MAX
 #  define WINK_CLOSED_LOOP_MOTOR_MAX 0
@@ -30,7 +30,7 @@
 #if WINK_CLOSED_LOOP_MOTOR_MAX > 0
 
 typedef struct {
-    dal_motor_t            *motor;
+    dal_dc_motor_t            *motor;
     dal_encoder_t          *encoder;
     wink_pid_t              pid;
     uint32_t                period_ms;
@@ -69,7 +69,7 @@ static int find_free_slot(void) {
     return -1;
 }
 
-static int find_slot_by_motor(dal_motor_t *motor) {
+static int find_slot_by_motor(dal_dc_motor_t *motor) {
     for (int i = 0; i < WINK_CLOSED_LOOP_MOTOR_MAX; i++) {
         if (s_slots[i].motor == motor) {
             return i;
@@ -115,7 +115,7 @@ static void motor_tick(void *arg) {
     // 3. Fail-safe timeout check
     if (target != 0.0f && (now_ms - ctx->last_pulse_time_ms) > ctx->timeout_ms) {
         // Stop motor output immediately (Fail-safe)
-        WINK_IGNORE_RESULT(dal_motor_safe_off(ctx->motor));
+        WINK_IGNORE_RESULT(dal_dc_motor_safe_off(ctx->motor));
         // Reset PID states
         wink_pid_reset(&ctx->pid);
         ctx->current_speed = 0.0f;
@@ -141,12 +141,12 @@ static void motor_tick(void *arg) {
     } else if (control_output < -1.0f) {
         control_output = -1.0f;
     }
-    WINK_IGNORE_RESULT(dal_motor_set_speed(ctx->motor, control_output));
+    WINK_IGNORE_RESULT(dal_dc_motor_set_speed(ctx->motor, control_output));
 }
 
 /* ── public API ──────────────────────────────────────────────── */
 
-wink_status_t wink_closed_loop_motor_start_ex(dal_motor_t *motor, 
+wink_status_t wink_closed_loop_motor_start_ex(dal_dc_motor_t *motor, 
                                               dal_encoder_t *encoder,
                                               const wink_closed_loop_motor_config_t *cfg,
                                               const wink_bal_opts_t *opts)
@@ -199,7 +199,7 @@ wink_status_t wink_closed_loop_motor_start_ex(dal_motor_t *motor,
     wink_pid_init(&ctx->pid, &cfg->pid_cfg);
 
     // Initial stop
-    st = dal_motor_safe_off(motor);
+    st = dal_dc_motor_safe_off(motor);
     if (wink_status_is_error(st)) {
         ctx->motor = NULL;
         return st;
@@ -217,14 +217,14 @@ wink_status_t wink_closed_loop_motor_start_ex(dal_motor_t *motor,
     return WINK_OK;
 }
 
-wink_status_t wink_closed_loop_motor_start(dal_motor_t *motor, 
+wink_status_t wink_closed_loop_motor_start(dal_dc_motor_t *motor, 
                                            dal_encoder_t *encoder,
                                            const wink_closed_loop_motor_config_t *cfg)
 {
     return wink_closed_loop_motor_start_ex(motor, encoder, cfg, NULL);
 }
 
-wink_status_t wink_closed_loop_motor_stop(dal_motor_t *motor)
+wink_status_t wink_closed_loop_motor_stop(dal_dc_motor_t *motor)
 {
     if (motor == NULL) {
         return WINK_ERR_INVALID_ARG;
@@ -242,7 +242,7 @@ wink_status_t wink_closed_loop_motor_stop(dal_motor_t *motor)
     ctx->period_h = WINK_PERIODIC_INVALID;
 
     // Safety shutdown of the motor
-    WINK_IGNORE_RESULT(dal_motor_safe_off(ctx->motor));
+    WINK_IGNORE_RESULT(dal_dc_motor_safe_off(ctx->motor));
 
     // Release slot
     ctx->motor = NULL;
@@ -251,7 +251,7 @@ wink_status_t wink_closed_loop_motor_stop(dal_motor_t *motor)
     return WINK_OK;
 }
 
-wink_status_t wink_closed_loop_motor_set_speed(dal_motor_t *motor, float target_speed)
+wink_status_t wink_closed_loop_motor_set_speed(dal_dc_motor_t *motor, float target_speed)
 {
     if (motor == NULL) {
         return WINK_ERR_INVALID_ARG;
@@ -273,7 +273,7 @@ wink_status_t wink_closed_loop_motor_set_speed(dal_motor_t *motor, float target_
     return WINK_OK;
 }
 
-wink_status_t wink_closed_loop_motor_get_speed(dal_motor_t *motor, float *out_speed)
+wink_status_t wink_closed_loop_motor_get_speed(dal_dc_motor_t *motor, float *out_speed)
 {
     if (motor == NULL || out_speed == NULL) {
         return WINK_ERR_INVALID_ARG;
@@ -297,7 +297,7 @@ void wink_closed_loop_motor_reset(void)
             if (s_slots[i].period_h > 0) {
                 wink_periodic_stop(s_slots[i].period_h);
             }
-            WINK_IGNORE_RESULT(dal_motor_safe_off(s_slots[i].motor));
+            WINK_IGNORE_RESULT(dal_dc_motor_safe_off(s_slots[i].motor));
             s_slots[i].period_h = WINK_PERIODIC_INVALID;
             s_slots[i].motor = NULL;
             s_slots[i].encoder = NULL;
@@ -307,7 +307,7 @@ void wink_closed_loop_motor_reset(void)
 
 #else /* WINK_CLOSED_LOOP_MOTOR_MAX == 0 */
 
-wink_status_t wink_closed_loop_motor_start_ex(dal_motor_t *motor, 
+wink_status_t wink_closed_loop_motor_start_ex(dal_dc_motor_t *motor, 
                                               dal_encoder_t *encoder,
                                               const wink_closed_loop_motor_config_t *cfg,
                                               const wink_bal_opts_t *opts)
@@ -316,7 +316,7 @@ wink_status_t wink_closed_loop_motor_start_ex(dal_motor_t *motor,
     return WINK_ERR_UNSUPPORTED;
 }
 
-wink_status_t wink_closed_loop_motor_start(dal_motor_t *motor, 
+wink_status_t wink_closed_loop_motor_start(dal_dc_motor_t *motor, 
                                            dal_encoder_t *encoder,
                                            const wink_closed_loop_motor_config_t *cfg)
 {
@@ -324,19 +324,19 @@ wink_status_t wink_closed_loop_motor_start(dal_motor_t *motor,
     return WINK_ERR_UNSUPPORTED;
 }
 
-wink_status_t wink_closed_loop_motor_stop(dal_motor_t *motor)
+wink_status_t wink_closed_loop_motor_stop(dal_dc_motor_t *motor)
 {
     (void)motor;
     return WINK_OK;
 }
 
-wink_status_t wink_closed_loop_motor_set_speed(dal_motor_t *motor, float target_speed)
+wink_status_t wink_closed_loop_motor_set_speed(dal_dc_motor_t *motor, float target_speed)
 {
     (void)motor; (void)target_speed;
     return WINK_ERR_UNSUPPORTED;
 }
 
-wink_status_t wink_closed_loop_motor_get_speed(dal_motor_t *motor, float *out_speed)
+wink_status_t wink_closed_loop_motor_get_speed(dal_dc_motor_t *motor, float *out_speed)
 {
     (void)motor; (void)out_speed;
     return WINK_ERR_UNSUPPORTED;

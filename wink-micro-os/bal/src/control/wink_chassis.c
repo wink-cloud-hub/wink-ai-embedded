@@ -13,7 +13,7 @@
 
 /* Same DAL pruning contract as wink_closed_loop_motor.c: chassis needs
  * motor + encoder; when either is pruned, expose stub APIs only. */
-#if !defined(WINK_USE_MOTOR) || !(WINK_USE_MOTOR) \
+#if !defined(WINK_USE_DC_MOTOR) || !(WINK_USE_DC_MOTOR) \
  || !defined(WINK_USE_ENCODER) || !(WINK_USE_ENCODER)
 #  undef WINK_CHASSIS_MAX
 #  define WINK_CHASSIS_MAX 0
@@ -22,9 +22,9 @@
 #if WINK_CHASSIS_MAX > 0
 
 typedef struct {
-    dal_motor_t             *left_motor;
+    dal_dc_motor_t             *left_motor;
     dal_encoder_t           *left_encoder;
-    dal_motor_t             *right_motor;
+    dal_dc_motor_t             *right_motor;
     dal_encoder_t           *right_encoder;
     
     wink_diff_drive_params_t kinematics_params;
@@ -46,7 +46,7 @@ static int find_free_slot(void) {
     return -1;
 }
 
-static int find_slot_by_left_motor(dal_motor_t *left_motor) {
+static int find_slot_by_left_motor(dal_dc_motor_t *left_motor) {
     for (int i = 0; i < WINK_CHASSIS_MAX; i++) {
         if (s_chassis_slots[i].left_motor == left_motor) {
             return i;
@@ -57,8 +57,8 @@ static int find_slot_by_left_motor(dal_motor_t *left_motor) {
 
 /* ── public API ──────────────────────────────────────────────── */
 
-wink_status_t wink_chassis_start_ex(dal_motor_t *left_motor, dal_encoder_t *left_encoder,
-                                    dal_motor_t *right_motor, dal_encoder_t *right_encoder,
+wink_status_t wink_chassis_start_ex(dal_dc_motor_t *left_motor, dal_encoder_t *left_encoder,
+                                    dal_dc_motor_t *right_motor, dal_encoder_t *right_encoder,
                                     const wink_chassis_config_t *cfg,
                                     const wink_bal_opts_t *opts)
 {
@@ -102,14 +102,14 @@ wink_status_t wink_chassis_start_ex(dal_motor_t *left_motor, dal_encoder_t *left
     return WINK_OK;
 }
 
-wink_status_t wink_chassis_start(dal_motor_t *left_motor, dal_encoder_t *left_encoder,
-                                 dal_motor_t *right_motor, dal_encoder_t *right_encoder,
+wink_status_t wink_chassis_start(dal_dc_motor_t *left_motor, dal_encoder_t *left_encoder,
+                                 dal_dc_motor_t *right_motor, dal_encoder_t *right_encoder,
                                  const wink_chassis_config_t *cfg)
 {
     return wink_chassis_start_ex(left_motor, left_encoder, right_motor, right_encoder, cfg, NULL);
 }
 
-wink_status_t wink_chassis_stop(dal_motor_t *left_motor)
+wink_status_t wink_chassis_stop(dal_dc_motor_t *left_motor)
 {
     if (left_motor == NULL) {
         return WINK_ERR_INVALID_ARG;
@@ -134,7 +134,7 @@ wink_status_t wink_chassis_stop(dal_motor_t *left_motor)
     return WINK_OK;
 }
 
-wink_status_t wink_chassis_set_velocity(dal_motor_t *left_motor, float linear_v, float angular_w)
+wink_status_t wink_chassis_set_velocity(dal_dc_motor_t *left_motor, float linear_v, float angular_w)
 {
     if (left_motor == NULL) {
         return WINK_ERR_INVALID_ARG;
@@ -176,7 +176,7 @@ wink_status_t wink_chassis_set_velocity(dal_motor_t *left_motor, float linear_v,
     return WINK_OK;
 }
 
-wink_status_t wink_chassis_get_velocity(dal_motor_t *left_motor, float *out_linear_v, float *out_angular_w)
+wink_status_t wink_chassis_get_velocity(dal_dc_motor_t *left_motor, float *out_linear_v, float *out_angular_w)
 {
     if (left_motor == NULL || out_linear_v == NULL || out_angular_w == NULL) {
         return WINK_ERR_INVALID_ARG;
@@ -224,8 +224,8 @@ void wink_chassis_reset(void)
 
 #else /* WINK_CHASSIS_MAX == 0 */
 
-wink_status_t wink_chassis_start_ex(dal_motor_t *left_motor, dal_encoder_t *left_encoder,
-                                    dal_motor_t *right_motor, dal_encoder_t *right_encoder,
+wink_status_t wink_chassis_start_ex(dal_dc_motor_t *left_motor, dal_encoder_t *left_encoder,
+                                    dal_dc_motor_t *right_motor, dal_encoder_t *right_encoder,
                                     const wink_chassis_config_t *cfg,
                                     const wink_bal_opts_t *opts)
 {
@@ -233,27 +233,27 @@ wink_status_t wink_chassis_start_ex(dal_motor_t *left_motor, dal_encoder_t *left
     return WINK_ERR_UNSUPPORTED;
 }
 
-wink_status_t wink_chassis_start(dal_motor_t *left_motor, dal_encoder_t *left_encoder,
-                                 dal_motor_t *right_motor, dal_encoder_t *right_encoder,
+wink_status_t wink_chassis_start(dal_dc_motor_t *left_motor, dal_encoder_t *left_encoder,
+                                 dal_dc_motor_t *right_motor, dal_encoder_t *right_encoder,
                                  const wink_chassis_config_t *cfg)
 {
     (void)left_motor; (void)left_encoder; (void)right_motor; (void)right_encoder; (void)cfg;
     return WINK_ERR_UNSUPPORTED;
 }
 
-wink_status_t wink_chassis_stop(dal_motor_t *left_motor)
+wink_status_t wink_chassis_stop(dal_dc_motor_t *left_motor)
 {
     (void)left_motor;
     return WINK_OK;
 }
 
-wink_status_t wink_chassis_set_velocity(dal_motor_t *left_motor, float linear_v, float angular_w)
+wink_status_t wink_chassis_set_velocity(dal_dc_motor_t *left_motor, float linear_v, float angular_w)
 {
     (void)left_motor; (void)linear_v; (void)angular_w;
     return WINK_ERR_UNSUPPORTED;
 }
 
-wink_status_t wink_chassis_get_velocity(dal_motor_t *left_motor, float *out_linear_v, float *out_angular_w)
+wink_status_t wink_chassis_get_velocity(dal_dc_motor_t *left_motor, float *out_linear_v, float *out_angular_w)
 {
     (void)left_motor; (void)out_linear_v; (void)out_angular_w;
     return WINK_ERR_UNSUPPORTED;
