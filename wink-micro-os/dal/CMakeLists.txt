@@ -47,7 +47,7 @@ target_include_directories(dal PUBLIC
     include/actuator
     include/display
     include/sensor
-    include/communication
+    include/comm
     include/storage
 )
 

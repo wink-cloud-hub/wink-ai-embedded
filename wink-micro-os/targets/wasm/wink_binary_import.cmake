@@ -20,7 +20,7 @@ target_include_directories(wink_micro_os INTERFACE
     "${CMAKE_CURRENT_SOURCE_DIR}/include/actuator"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/display"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/sensor"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/communication"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/comm"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/storage"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/comm"
 )

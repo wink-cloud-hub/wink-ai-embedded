@@ -75,7 +75,7 @@ set(WINK_CORE_INCLUDE_DIRS
     ${CMAKE_CURRENT_LIST_DIR}/dal/include/actuator
     ${CMAKE_CURRENT_LIST_DIR}/dal/include/display
     ${CMAKE_CURRENT_LIST_DIR}/dal/include/sensor
-    ${CMAKE_CURRENT_LIST_DIR}/dal/include/communication
+    ${CMAKE_CURRENT_LIST_DIR}/dal/include/comm
     ${CMAKE_CURRENT_LIST_DIR}/dal/include/storage
     ${CMAKE_CURRENT_LIST_DIR}/runtime/include
     ${CMAKE_CURRENT_LIST_DIR}/runtime/selftest/src  # wink_selftest_internal.h + registry.def
