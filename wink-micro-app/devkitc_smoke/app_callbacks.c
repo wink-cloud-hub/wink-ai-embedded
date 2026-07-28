@@ -31,8 +31,8 @@
 #include "wink_selftest.h"
 #include "wink_fault.h"
 #include "output/wink_led_blink.h"
-#include "input/wink_button_events.h"
 #include "sensor/wink_ultrasonic_poll.h"
+#include "wink_event.h"
 #include "comm/wink_telemetry_default.h"
 #include "wink_blocking_region.h"
 #include "pal_hal.h"
@@ -42,16 +42,6 @@
 #ifdef WINK_CFG_SIM_ECHO
 #include "wink_sim_ultrasonic_echo.h"
 #endif
-
-/* S8: Boot-button event callback (long-press -> WDT test, noreturn) */
-static void on_boot_button(dal_button_event_t evt, void *ctx)
-{
-    (void)ctx;
-    if (evt == DAL_BUTTON_EVT_LONG_PRESS) {
-        LOG_I("\nS8: long-press detected, arming WDT test");
-        wink_runtime_trigger_wdt_test(2000); /* does not return */
-    }
-}
 
 /* S8: Boot notification (Runtime fires this once before init()) */
 static void app_on_boot(const wink_boot_info_t *info)
@@ -68,32 +58,15 @@ static wink_status_t app_init_status(void)
 {
     WINK_TRY(wink_device_tree_init());
 
-    /* S3: enable boot_button events (ADR-0032 B-class soft_poll) */
-#ifdef BOOT_BUTTON_AUTO_POLL_MS
-    static const wink_button_event_config_t s3_cfg = {
-        .drive           = WINK_BUTTON_DRIVE_SOFT_POLL,
-        .auto_poll_ms    = BOOT_BUTTON_AUTO_POLL_MS,
-        .debounce_ms     = 20u,   /* ADR-0031 default */
-        .wake_from_sleep = false,
-    };
-    wink_status_t st_s3 = wink_button_enable_events(&boot_button, &s3_cfg);
+    /* S3/S8: enable boot_button events via Role API (ADR-0032 soft_poll;
+     * long-press → app_on_event → WDT test). */
+    wink_status_t st_s3 = boot_button_enable_events();
     if (st_s3 == WINK_OK) {
-        LOG_I("\nS3: PASS (button events enabled, period=%ums)", (unsigned)BOOT_BUTTON_AUTO_POLL_MS);
+        LOG_I("\nS3: PASS (button events enabled via Role API)");
+        LOG_I("\nS8: PASS (long-press WDT wired via app_on_event)");
     } else {
         LOG_E("\nS3: FAIL (button events enable, status=%d)", (int)st_s3);
         return st_s3;
-    }
-#else
-    LOG_I("\nS3: SKIP (button events not configured)");
-#endif
-
-    /* S8: register WDT long-press trigger */
-    wink_status_t st_s8 = dal_button_on_event(&boot_button, on_boot_button, NULL);
-    if (st_s8 == WINK_OK) {
-        LOG_I("\nS8: PASS (WDT trigger registered)");
-    } else {
-        LOG_E("\nS8: FAIL (WDT trigger register, status=%d)", (int)st_s8);
-        return st_s8;
     }
 
     /* S2: LED blink (A-class) */
@@ -196,6 +169,18 @@ static wink_status_t app_init_status(void)
     return WINK_OK;
 }
 
+/* S8: long-press → WDT test (Role event path, replaces dal_button_on_event) */
+static void app_on_event(const wink_event_t *evt)
+{
+    if (evt->device != &boot_button) {
+        return;
+    }
+    if (evt->type == WINK_EVENT_BUTTON_LONG_PRESS) {
+        LOG_I("\nS8: long-press detected, arming WDT test");
+        wink_runtime_trigger_wdt_test(2000); /* does not return */
+    }
+}
+
 /* loop (10ms tick): empty */
 static void app_loop(void)
 {
@@ -215,6 +200,7 @@ const wink_app_callbacks_t *wink_app_get_callbacks(void)
     static const wink_app_callbacks_t cb = {
         .init_status     = app_init_status,
         .loop            = app_loop,
+        .on_event        = app_on_event,
         .on_fault_status = app_on_fault_status,
         .on_boot         = app_on_boot,
     };
