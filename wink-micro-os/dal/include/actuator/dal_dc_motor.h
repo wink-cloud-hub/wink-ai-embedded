@@ -34,8 +34,17 @@ typedef enum {
  *     1      1   | brake (short)
  * @endcode
  *
- * ``enable_pin`` (optional, default -1): STBY / nSLEEP etc.; assumed
- * **high-active** (pull HIGH to enable the H-bridge). Omitted when the
+ * ``enable_pin`` (optional STBY / nSLEEP etc.; assumed **high-active**):
+ *
+ * Init-time contract (before normalization):
+ * - Preferred unused sentinel: ``-1``.
+ * - ``0`` is also treated as unused (C zero-init / omitted designated-init
+ *   field). GPIO 0 cannot be used as enable without a future explicit
+ *   polarity or sentinel path.
+ * - Active enable: ``enable_pin > 0``.
+ *
+ * After ``dal_dc_motor_init``, stored ``enable_pin`` is normalized:
+ * ``-1`` = unused; ``>= 0`` (= input ``> 0``) = active. Omitted when the
  * module ties enable hard-high.
  *
  * No apply_override wire yet. Future serialization follows config member
@@ -48,7 +57,7 @@ typedef struct {
     wink_pin_t dir_pin_b;  /* Direction pin B (optional; -1 if unused) */
     uint32_t pwm_freq_hz;  /* PWM freq; 0 → default 20000 Hz */
     dal_dc_motor_drive_mode_t drive_mode; /* 0 = IN_IN (today's path) */
-    wink_pin_t enable_pin; /* STBY/nSLEEP; -1 if unused */
+    wink_pin_t enable_pin; /* STBY/nSLEEP; -1 unused; 0→-1 at init; >0 active */
 } dal_dc_motor_config_t;
 
 /**
@@ -75,8 +84,8 @@ wink_status_t dal_dc_motor_init(dal_dc_motor_t *dev,
  * @param speed -1.0 (full reverse) … 1.0 (full forward).
  *        0.0 applies coast (both dir pins LOW / inactive, PWM duty 0).
  *
- * When ``enable_pin >= 0``, non-zero speed pulls enable HIGH before
- * applying direction and duty.
+ * When an enable pin was configured at init (stored ``enable_pin >= 0``),
+ * non-zero speed pulls enable HIGH before applying direction and duty.
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_dc_motor_set_speed(dal_dc_motor_t *dev, float speed);
@@ -87,8 +96,8 @@ wink_status_t dal_dc_motor_set_speed(dal_dc_motor_t *dev, float speed);
  * Requires ``dir_pin_b >= 0``. Single-dir configs return
  * ``WINK_ERR_UNSUPPORTED`` (never silently coast).
  *
- * When ``enable_pin >= 0``, enable is driven HIGH so the H-bridge can
- * short the windings.
+ * When an enable pin was configured at init (stored ``enable_pin >= 0``),
+ * enable is driven HIGH so the H-bridge can short the windings.
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_dc_motor_brake(dal_dc_motor_t *dev);
@@ -104,8 +113,9 @@ wink_status_t dal_dc_motor_coast(dal_dc_motor_t *dev);
 /**
  * @brief Fault / registry safe-off hierarchy (ADR-0048 + enable path).
  *
- * 1. ``enable_pin >= 0``: brake when ``dir_pin_b >= 0``, then drive enable
- *    LOW (hard off); always returns ``WINK_OK``.
+ * 1. Enable configured at init (stored ``enable_pin >= 0``; input ``> 0``):
+ *    brake when ``dir_pin_b >= 0``, then drive enable LOW (hard off);
+ *    always returns ``WINK_OK``.
  * 2. No enable and ``dir_pin_b >= 0``: ``dal_dc_motor_brake``.
  * 3. No enable and single dir pin: ``WINK_ERR_UNSUPPORTED`` (not coast).
  */
