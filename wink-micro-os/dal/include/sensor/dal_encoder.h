@@ -11,13 +11,30 @@ extern "C" {
 #endif
 
 /**
+ * @brief Quadrature decode mode (Phase 1: x1 only).
+ */
+typedef enum {
+    DAL_ENCODER_DECODE_X1_RISING = 0, /* default; A rising samples B */
+    DAL_ENCODER_DECODE_X2 = 1,        /* reserved -> init UNSUPPORTED */
+    DAL_ENCODER_DECODE_X4 = 2,        /* reserved -> init UNSUPPORTED */
+} dal_encoder_decode_mode_t;
+
+/**
  * @brief 编码器配置结构体
+ *
+ * x1: A rising edge samples B; B high -> count++, B low -> count--;
+ * no pin_b -> increment only.
+ * invert: swap A/B direction sense (phase polarity), not get_count negation.
+ *
+ * No apply_override wire yet. Future serialization follows config member order.
  */
 typedef struct {
     const char *owner;      /* 资源占用 owner 静态字符串 */
     wink_pin_t pin_a;       /* 编码器 A 相引脚 */
     wink_pin_t pin_b;       /* 编码器 B 相引脚 (可选，若不使用设为 -1) */
     pal_gpio_mode_t pull;   /* 引脚输入上拉/下拉模式：PAL_GPIO_INPUT_PULLUP 等 */
+    dal_encoder_decode_mode_t decode_mode; /* 0 = x1_rising (today's ISR) */
+    bool invert;            /* false = today's A/B sense */
 } dal_encoder_config_t;
 
 /**

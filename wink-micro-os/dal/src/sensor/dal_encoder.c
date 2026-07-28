@@ -3,20 +3,25 @@
 #include "pal_irq.h"
 #include <string.h>
 
+static int32_t dal_encoder_x1_delta(bool val_b, bool invert)
+{
+    int32_t delta = val_b ? 1 : -1;
+    if (invert) {
+        delta = -delta;
+    }
+    return delta;
+}
+
 PAL_DEFINE_ISR(dal_encoder_gpio_isr, dal_encoder_t, dev)
 {
     if (dev->config.pin_b >= 0) {
         bool val_b = false;
-        /* 在 A 相上升沿读取 B 相状态以判断方向 */
+        /* x1: sample B on A rising edge */
         if (pal_gpio_read(dev->config.pin_b, &val_b) == WINK_OK) {
-            if (val_b) {
-                dev->count++;
-            } else {
-                dev->count--;
-            }
+            dev->count += dal_encoder_x1_delta(val_b, dev->config.invert);
         }
     } else {
-        /* 单相计数器：只做递增 */
+        /* Single-phase: increment only (invert N/A without B) */
         dev->count++;
     }
 }
@@ -31,6 +36,9 @@ wink_status_t dal_encoder_init(dal_encoder_t *dev, const dal_encoder_config_t *c
     }
     if (cfg->pin_a < 0) {
         return WINK_ERR_INVALID_ARG;
+    }
+    if (cfg->decode_mode != DAL_ENCODER_DECODE_X1_RISING) {
+        return WINK_ERR_UNSUPPORTED;
     }
 
     /* 1. 声明占用资源 */
