@@ -43,7 +43,7 @@ target_include_directories(test_pal_nonblocking_strict PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/sensor
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/storage
-    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/communication)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/comm)
 
 # Function to register a host test linking host PAL and stubs
 function(add_wink_host_test name src)
@@ -189,7 +189,7 @@ target_include_directories(test_dal_eeprom PRIVATE
 
 add_wink_host_test(test_dal_gps unit/dal/test_dal_gps.c)
 target_include_directories(test_dal_gps PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/communication)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/comm)
 
 add_wink_host_test(test_pal_i2c_bus unit/pal/test_pal_i2c_bus.c)
 
@@ -235,7 +235,7 @@ target_link_libraries(test_bal_chassis PRIVATE wink_bal)
 
 add_wink_host_test(test_pal_resource_wire unit/pal/test_pal_resource_wire.c)
 target_include_directories(test_pal_resource_wire PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/communication
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/comm
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/storage)
 
 function(add_wink_test_sim name src)

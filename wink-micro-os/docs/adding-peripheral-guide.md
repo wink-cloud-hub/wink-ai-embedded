@@ -26,7 +26,7 @@ wink.py new-dal → dal_*.{h,c} + drivers/<type>.py
 
 ```text
 python wink-tools/wink.py new-dal <type> \
-  --category <input|output|actuator|sensor|display|communication|storage> \
+  --category <input|output|actuator|sensor|display|comm|storage> \
   [--actuator] [--role <name>] [--pin-field <name>]... [--force]
 ```
 

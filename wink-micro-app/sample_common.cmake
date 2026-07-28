@@ -85,7 +85,7 @@ function(wink_sample_apply_include_dirs target)
             ${wink-micro-os_SOURCE_DIR}/dal/include/actuator
             ${wink-micro-os_SOURCE_DIR}/dal/include/display
             ${wink-micro-os_SOURCE_DIR}/dal/include/sensor
-            ${wink-micro-os_SOURCE_DIR}/dal/include/communication
+            ${wink-micro-os_SOURCE_DIR}/dal/include/comm
             ${wink-micro-os_SOURCE_DIR}/dal/include/storage
             # Runtime + trace + test (host e2e drivers live under test/)
             ${wink-micro-os_SOURCE_DIR}/runtime/include
