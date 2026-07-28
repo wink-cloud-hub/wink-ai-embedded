@@ -59,10 +59,39 @@ void test_init_then_set_angle_clamps_overflow(void) {
     dal_rc_servo_t s = {0};
     dal_rc_servo_config_t cfg = { .owner = OWNER, .pwm_channel = 1, .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_rc_servo_init(&s, &cfg));
-    /* 200° 钳到 180 -> 脉宽 2.5ms -> 占空比 12.5% */
+    /* 默认 max_angle=180：200° 钳到 180 -> 脉宽 2.5ms -> 占空比 12.5% */
     wink_status_t st_overflow = dal_rc_servo_set_angle(&s, 200.0f);
     TEST_ASSERT_EQUAL_INT(WINK_OK, st_overflow);
+    TEST_ASSERT_EQUAL_FLOAT(180.0f, s.current_angle);
     TEST_ASSERT_EQUAL_FLOAT(12.5f, sim_last_pwm_duty(1));
+}
+
+/* ---- max_angle + pulse-map contract (Task A2) ---- */
+void test_default_set_angle_90_golden_pulse_1_5ms(void) {
+    dal_rc_servo_t s = {0};
+    dal_rc_servo_config_t cfg = { .owner = OWNER, .pwm_channel = 0, .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_rc_servo_init(&s, &cfg));
+    /* golden: 90° -> pulse 1.5ms -> duty (1.5/20)*100 = 7.5% */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_rc_servo_set_angle(&s, 90.0f));
+    TEST_ASSERT_EQUAL_FLOAT(90.0f, s.current_angle);
+    TEST_ASSERT_EQUAL_FLOAT(7.5f, sim_last_pwm_duty(0));
+}
+
+void test_explicit_max_angle_270_no_clamp_at_200(void) {
+    dal_rc_servo_t s = {0};
+    dal_rc_servo_config_t cfg = {
+        .owner = OWNER, .pwm_channel = 2,
+        .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f,
+        .max_angle = 270.0f,
+    };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_rc_servo_init(&s, &cfg));
+    /* 200° 不钳到 180；映射分母为 270 */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_rc_servo_set_angle(&s, 200.0f));
+    TEST_ASSERT_EQUAL_FLOAT(200.0f, s.current_angle);
+    /* pulse = 0.5 + (200/270)*(2.5-0.5) ms */
+    float pulse_ms = 0.5f + (200.0f / 270.0f) * 2.0f;
+    float expected_duty = (pulse_ms / 20.0f) * 100.0f;
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, expected_duty, sim_last_pwm_duty(2));
 }
 
 /* ---- safe-off（Phase 5 Task 5-2）---- */
@@ -237,6 +266,8 @@ int main(void) {
     RUN_TEST(test_set_angle_null_returns_invalid_arg);
     RUN_TEST(test_init_then_set_angle_updates_duty);
     RUN_TEST(test_init_then_set_angle_clamps_overflow);
+    RUN_TEST(test_default_set_angle_90_golden_pulse_1_5ms);
+    RUN_TEST(test_explicit_max_angle_270_no_clamp_at_200);
     RUN_TEST(test_safe_off_null_returns_invalid_arg);
     RUN_TEST(test_safe_off_before_init_returns_not_initialized);
     RUN_TEST(test_safe_off_after_init_sets_zero_duty);

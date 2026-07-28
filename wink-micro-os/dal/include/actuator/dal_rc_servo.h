@@ -32,6 +32,7 @@ typedef struct {
     dal_rc_servo_clock_requirement_t  clock_requirement;  /* 0 = AUTO */
     float                          min_pulse_ms;
     float                          max_pulse_ms;
+    float                          max_angle;          /* 0 = default 180° travel */
 } dal_rc_servo_config_t;
 
 /**
@@ -68,7 +69,7 @@ wink_status_t dal_rc_servo_init(dal_rc_servo_t *dev, const dal_rc_servo_config_t
 /**
  * @brief 设置舵机偏转角度
  * @param dev 舵机实例句柄
- * @param angle 目标角度 (0.0~180.0 度，超出范围自动钳位)
+ * @param angle 目标角度 (0.0~effective_max_angle 度，超出范围自动钳位)
  * @return wink_status_t (0=成功，负数=错误码)
  *
  * @note API Contract:
@@ -102,6 +103,7 @@ wink_status_t dal_rc_servo_safe_off(dal_rc_servo_t *dev);
  * @brief ADR-0008 Flash 覆写：从 16B params 反序列化并改写舵机配置字段。
  * @note params 布局（小端，memcpy 处理非对齐 f32）：pwm_channel:u8@0,
  *       min_pulse_ms:f32@1, max_pulse_ms:f32@5（≥9B）。
+ *       **不含** max_angle（本 Phase Non-goal；未来 wire v2 再版本化）。
  *       轻校验(min>0 / max>min / channel<PAL_PWM_CHANNELS) 与 dal_rc_servo_init 权威校验纵深配合。
  *       非法 → 不写任何字段，返 WINK_ERR_INVALID_ARG。
  *       void* 签名适配 wink_dev_override_fn 注册表（见 wink_dev_config.h），
