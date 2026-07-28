@@ -19,7 +19,7 @@ extern void host_sim_advance_to(uint64_t us);
 #  define WINK_CLOSED_LOOP_MOTOR_MAX 4
 #endif
 
-static dal_motor_t s_motor;
+static dal_dc_motor_t s_motor;
 static dal_encoder_t s_encoder;
 
 void setUp(void) {
@@ -38,14 +38,14 @@ void setUp(void) {
 
     // Init motor and encoder structures
     memset(&s_motor, 0, sizeof(s_motor));
-    const dal_motor_config_t motor_cfg = {
+    const dal_dc_motor_config_t motor_cfg = {
         .owner = "test_motor",
         .pwm_channel = 0,
         .dir_pin_a = 5,
         .dir_pin_b = 6,
         .pwm_freq_hz = 20000
     };
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_motor_init(&s_motor, &motor_cfg));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_init(&s_motor, &motor_cfg));
 
     memset(&s_encoder, 0, sizeof(s_encoder));
     const dal_encoder_config_t encoder_cfg = {
@@ -58,7 +58,7 @@ void setUp(void) {
 }
 
 void tearDown(void) {
-    WINK_IGNORE_RESULT(dal_motor_deinit(&s_motor));
+    WINK_IGNORE_RESULT(dal_dc_motor_deinit(&s_motor));
     WINK_IGNORE_RESULT(dal_encoder_deinit(&s_encoder));
 }
 

@@ -32,9 +32,9 @@
 
 extern void host_sim_advance_to(uint64_t us);
 
-static dal_motor_t   s_left_motor;
+static dal_dc_motor_t   s_left_motor;
 static dal_encoder_t s_left_encoder;
-static dal_motor_t   s_right_motor;
+static dal_dc_motor_t   s_right_motor;
 static dal_encoder_t s_right_encoder;
 
 void setUp(void) {
@@ -52,11 +52,11 @@ void setUp(void) {
     wink_trace_reset();
 
     memset(&s_left_motor, 0, sizeof(s_left_motor));
-    const dal_motor_config_t lm_cfg = {
+    const dal_dc_motor_config_t lm_cfg = {
         .owner = "left_motor", .pwm_channel = 0,
         .dir_pin_a = 5, .dir_pin_b = 6, .pwm_freq_hz = 20000
     };
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_motor_init(&s_left_motor, &lm_cfg));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_init(&s_left_motor, &lm_cfg));
 
     memset(&s_left_encoder, 0, sizeof(s_left_encoder));
     const dal_encoder_config_t le_cfg = {
@@ -66,11 +66,11 @@ void setUp(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_encoder_init(&s_left_encoder, &le_cfg));
 
     memset(&s_right_motor, 0, sizeof(s_right_motor));
-    const dal_motor_config_t rm_cfg = {
+    const dal_dc_motor_config_t rm_cfg = {
         .owner = "right_motor", .pwm_channel = 1,
         .dir_pin_a = 7, .dir_pin_b = 8, .pwm_freq_hz = 20000
     };
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_motor_init(&s_right_motor, &rm_cfg));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_init(&s_right_motor, &rm_cfg));
 
     memset(&s_right_encoder, 0, sizeof(s_right_encoder));
     const dal_encoder_config_t re_cfg = {
@@ -81,9 +81,9 @@ void setUp(void) {
 }
 
 void tearDown(void) {
-    WINK_IGNORE_RESULT(dal_motor_deinit(&s_left_motor));
+    WINK_IGNORE_RESULT(dal_dc_motor_deinit(&s_left_motor));
     WINK_IGNORE_RESULT(dal_encoder_deinit(&s_left_encoder));
-    WINK_IGNORE_RESULT(dal_motor_deinit(&s_right_motor));
+    WINK_IGNORE_RESULT(dal_dc_motor_deinit(&s_right_motor));
     WINK_IGNORE_RESULT(dal_encoder_deinit(&s_right_encoder));
 }
 

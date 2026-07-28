@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "actuator/dal_motor.h"
+#include "actuator/dal_dc_motor.h"
 #include "sensor/dal_encoder.h"
 #include "math/wink_pid.h"
 #include "wink_bal_opts.h"
@@ -33,7 +33,7 @@ typedef struct {
  *   WINK_ERR_RESOURCE_EXHAUSTED  已达系统静态 Slot 容量上限（由 WINK_APP_MAX_MOTOR_INSTANCES 决定）。
  */
 WINK_WARN_UNUSED_RESULT
-wink_status_t wink_closed_loop_motor_start(dal_motor_t *motor, 
+wink_status_t wink_closed_loop_motor_start(dal_dc_motor_t *motor, 
                                            dal_encoder_t *encoder,
                                            const wink_closed_loop_motor_config_t *cfg);
 
@@ -41,16 +41,16 @@ wink_status_t wink_closed_loop_motor_start(dal_motor_t *motor,
  * @brief 启动闭环控制会话（高级专家版，支持重写运行核心与栈大小）
  */
 WINK_WARN_UNUSED_RESULT
-wink_status_t wink_closed_loop_motor_start_ex(dal_motor_t *motor, 
+wink_status_t wink_closed_loop_motor_start_ex(dal_dc_motor_t *motor, 
                                               dal_encoder_t *encoder,
                                               const wink_closed_loop_motor_config_t *cfg,
                                               const wink_bal_opts_t *opts);
 
 /**
  * @brief 停止闭环控制会话 (Class A)
- * @note 停止控制会话的同时，会强制设置底层电机占空比为 0.0f（安全制动）并释放 Slot。
+ * @note 停止控制会话的同时，会调用底层 dal_dc_motor_safe_off（→ brake）并释放 Slot。
  */
-wink_status_t wink_closed_loop_motor_stop(dal_motor_t *motor);
+wink_status_t wink_closed_loop_motor_stop(dal_dc_motor_t *motor);
 
 /**
  * @brief 设置目标转速 (Class C)
@@ -59,8 +59,8 @@ wink_status_t wink_closed_loop_motor_stop(dal_motor_t *motor);
  * @param target_speed 目标物理转速（单位统一钉死为：脉冲数/秒，即 counts/s）
  * @return WINK_OK / WINK_ERR_INVALID_STATE (闭环未激活)
  */
-wink_status_t wink_closed_loop_motor_set_speed(dal_motor_t *motor, float target_speed);
-wink_status_t wink_closed_loop_motor_get_speed(dal_motor_t *motor, float *out_speed);
+wink_status_t wink_closed_loop_motor_set_speed(dal_dc_motor_t *motor, float target_speed);
+wink_status_t wink_closed_loop_motor_get_speed(dal_dc_motor_t *motor, float *out_speed);
 
 #ifdef __cplusplus
 }
