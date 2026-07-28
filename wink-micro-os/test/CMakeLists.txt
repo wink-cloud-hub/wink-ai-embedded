@@ -175,8 +175,8 @@ add_wink_host_test(test_dal_button unit/dal/test_dal_button.c)
 add_wink_host_test(test_dal_ssd1306 unit/dal/test_dal_ssd1306.c)
 add_wink_host_test(test_dal_ultrasonic unit/dal/test_dal_ultrasonic.c)
 
-add_wink_host_test(test_dal_motor unit/dal/test_dal_motor.c)
-target_include_directories(test_dal_motor PRIVATE
+add_wink_host_test(test_dal_dc_motor unit/dal/test_dal_dc_motor.c)
+target_include_directories(test_dal_dc_motor PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/actuator)
 
 add_wink_host_test(test_dal_encoder unit/dal/test_dal_encoder.c)
