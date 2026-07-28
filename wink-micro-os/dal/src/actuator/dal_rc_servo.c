@@ -7,8 +7,16 @@
 #define SERVO_PWM_FREQ_HZ    50                             /* 50Hz -> 周期 20ms */
 #define SERVO_PERIOD_MS      (1000.0f / SERVO_PWM_FREQ_HZ)  /* 派生：单一真相源，禁再写 20.0f */
 #define SERVO_MIN_ANGLE_DEG  0.0f
-#define SERVO_MAX_ANGLE_DEG  180.0f
+#define SERVO_DEFAULT_MAX_ANGLE_DEG  180.0f
 #define SERVO_DUTY_FULL_PCT  100.0f
+
+static float servo_effective_max_angle(const dal_rc_servo_config_t *cfg)
+{
+    if (cfg == NULL || cfg->max_angle <= 0.0f) {
+        return SERVO_DEFAULT_MAX_ANGLE_DEG;
+    }
+    return cfg->max_angle;
+}
 
 /** Map DAL servo config → PAL PWM config (no pal_* types in public headers). */
 static wink_status_t servo_map_pwm_config(const dal_rc_servo_config_t *servo_cfg,
@@ -68,11 +76,12 @@ wink_status_t dal_rc_servo_set_angle(dal_rc_servo_t *dev, float angle) {
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
 
     if (angle < SERVO_MIN_ANGLE_DEG) { angle = SERVO_MIN_ANGLE_DEG; }
-    if (angle > SERVO_MAX_ANGLE_DEG) { angle = SERVO_MAX_ANGLE_DEG; }
+    float effective_max = servo_effective_max_angle(&dev->config);
+    if (angle > effective_max) { angle = effective_max; }
     dev->current_angle = angle;
 
     float pulse_width_ms = dev->config.min_pulse_ms +
-        (angle / SERVO_MAX_ANGLE_DEG) * (dev->config.max_pulse_ms - dev->config.min_pulse_ms);
+        (angle / effective_max) * (dev->config.max_pulse_ms - dev->config.min_pulse_ms);
     float duty_percent = (pulse_width_ms / SERVO_PERIOD_MS) * SERVO_DUTY_FULL_PCT;
 
     /* Phase 2：PWM init 已在 dal_rc_servo_init 一次性完成，set_angle 仅设占空比。 */
