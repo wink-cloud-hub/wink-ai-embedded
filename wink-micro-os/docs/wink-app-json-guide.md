@@ -17,11 +17,13 @@
   "devices": {                       // 所有外设实例集合
     "<instance_id>": {               // 实例唯一 ID（格式建议：位置/功能_类型，如 status_oled）
       "type": "<peripheral_type>",   // 外设类型（必须与 Manifest 声明一致）
-      // ... 外设参数及引脚配置
+      // ... 外设参数及引脚配置（按 type 的 schema，非全局统一字段集）
     }
   }
 }
 ```
+
+> **字段分层**：跨外设必填的只有 `type`（控制语义族 / DAL 绑定）。可选 `role` 为 **App 侧 Role Interface**（缺省 `default_role`，生成 `{name}_{verb}`）——**不是 BAL**，也不是产品级「左轮/云台」意图。`drive_mode` / `enable_pin` / `driver_ic` **不是**全局通用字段。摘要见 [dal-best-practices §3.0](./dal-development-guide/dal-best-practices.md)；**如何挂 Role** 见 [role-interface-codegen.md](./dal-development-guide/role-interface-codegen.md)。
 
 ### 2. 板级配置 (Board Level)
 
@@ -131,7 +133,28 @@ wink-app.json 显式填写 sda_pin / scl_pin？
 
 ---
 
-### 4. PWM / 执行器外设 (Servo / Motor / Buzzer) *(待扩展)*
+### 4. PWM / 执行器外设 (Servo / Motor / Buzzer)
+
+#### (1) `dc_motor` - 有刷直流（H 桥）
+
+```json
+"left_motor": {
+  "type": "dc_motor",
+  "pwm_channel": 0,
+  "dir_pin_a": 18,
+  "dir_pin_b": 19
+}
+```
+
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `type` | 是 | 固定 `"dc_motor"`（语义族；不是芯片名） |
+| `pwm_channel` / `dir_pin_a` | 是 | 见 codegen `required_fields`；`dir_pin_b` 可选（单方向） |
+| `drive_mode` | 否 | **非全局字段**：仅同语义多拓扑时使用；见 [dal-best-practices §3.0](./dal-development-guide/dal-best-practices.md)（落地前勿假定已支持） |
+| `enable_pin` | 否 | 芯片有 STBY/nSLEEP 且需软件控制时再写 |
+| `driver_ic` | 否 | 一般不需要；与 `drive_mode` 易重复，优先写拓扑 |
+
+舵机等其它执行器仍用各自字段（如 `rc_servo` 的 `pwm_channel` / `pwm_pin`），**不要**套用上表扩展列。
 
 ---
 
