@@ -314,7 +314,7 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
         ${WINK_APP_DIR}
         # App codegen ?????? oled_dashboard ?? codegen ?? device_tree.h??
         ${WINK_APP_INCLUDE_DIRS}
-        # DAL ?????? App ?? #include "dal_servo.h" ??
+        # DAL ?????? App ?? #include "dal_rc_servo.h" ??
         ${CMAKE_CURRENT_SOURCE_DIR}/dal/include
         ${CMAKE_CURRENT_SOURCE_DIR}/dal/include/input
         ${CMAKE_CURRENT_SOURCE_DIR}/dal/include/output

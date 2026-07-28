@@ -35,7 +35,7 @@
 
 | 维度 | 静态分发（本项目标准） | 运行期多态（外部阅读 skill） |
 |------|------------------------|------------------------------|
-| 调用形式 | `dal_servo_set_angle(&dev, ...)` 直调 | `me->ops->on(me)` 指针跳转 |
+| 调用形式 | `dal_rc_servo_set_angle(&dev, ...)` 直调 | `me->ops->on(me)` 指针跳转 |
 | 对象结构 | 扁平 POD，无函数指针 | base 嵌入 + `ops` 指针 |
 | 子类恢复 | 不需要，编译期类型已知 | `container_of` 减偏移 |
 | 注册 / 绑定 | `device_tree.c` codegen / CMake 文件链接 | `MODULE_INIT` / 链接段 / 运行期注册 |

@@ -27,7 +27,7 @@
 __attribute__((weak)) const wink_pin_t pal_pwm_pin_map[PAL_PWM_CHANNELS] = {2, 4, 5, 18, 19, 21, 22, 23};
 
 /* Track A（M1）：DAL 是资源占用 SSOT，PAL 层不再自 claim PWM 通道 —— 语义 owner 由 DAL 层
- * （dal_servo 等）持有。这样两个 DAL 实例配同 channel 才能在 DAL init 阶段真正触发 BUSY。 */
+ * （dal_rc_servo 等）持有。这样两个 DAL 实例配同 channel 才能在 DAL init 阶段真正触发 BUSY。 */
 
 static uint8_t s_ch_bits[PAL_PWM_CHANNELS];
 

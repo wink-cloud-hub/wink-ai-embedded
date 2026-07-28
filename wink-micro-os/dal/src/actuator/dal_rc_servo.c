@@ -1,4 +1,4 @@
-#include "dal_servo.h"
+#include "dal_rc_servo.h"
 #include "pal_hal.h"
 #include "pal_resource.h"
 
@@ -11,19 +11,19 @@
 #define SERVO_DUTY_FULL_PCT  100.0f
 
 /** Map DAL servo config → PAL PWM config (no pal_* types in public headers). */
-static wink_status_t servo_map_pwm_config(const dal_servo_config_t *servo_cfg,
+static wink_status_t servo_map_pwm_config(const dal_rc_servo_config_t *servo_cfg,
                                           pal_pwm_config_t *out_pwm_cfg)
 {
     if (servo_cfg == NULL || out_pwm_cfg == NULL) {
         return WINK_ERR_INVALID_ARG;
     }
-    if (servo_cfg->clock_requirement > DAL_SERVO_CLOCK_STABLE_REQUIRED) {
+    if (servo_cfg->clock_requirement > DAL_RC_SERVO_CLOCK_STABLE_REQUIRED) {
         return WINK_ERR_INVALID_ARG;
     }
 
     out_pwm_cfg->freq_hz = SERVO_PWM_FREQ_HZ;
     out_pwm_cfg->resolution_bits = servo_cfg->resolution_bits; /* 0 = AUTO */
-    if (servo_cfg->clock_requirement == DAL_SERVO_CLOCK_STABLE_REQUIRED) {
+    if (servo_cfg->clock_requirement == DAL_RC_SERVO_CLOCK_STABLE_REQUIRED) {
         out_pwm_cfg->clock_requirement = PAL_PWM_CLOCK_STABLE_REQUIRED;
     } else {
         out_pwm_cfg->clock_requirement = PAL_PWM_CLOCK_AUTO;
@@ -31,7 +31,7 @@ static wink_status_t servo_map_pwm_config(const dal_servo_config_t *servo_cfg,
     return WINK_OK;
 }
 
-wink_status_t dal_servo_init(dal_servo_t *dev, const dal_servo_config_t *cfg) {
+wink_status_t dal_rc_servo_init(dal_rc_servo_t *dev, const dal_rc_servo_config_t *cfg) {
     if (dev == NULL || cfg == NULL) { return WINK_ERR_INVALID_ARG; }
     if (cfg->owner == NULL) { return WINK_ERR_INVALID_ARG; }
     if (cfg->pwm_channel >= PAL_PWM_CHANNELS) { return WINK_ERR_INVALID_ARG; }
@@ -57,13 +57,13 @@ wink_status_t dal_servo_init(dal_servo_t *dev, const dal_servo_config_t *cfg) {
     }
 
     /* 深拷贝 config（含 owner 指针拷贝；owner 要求是静态存储，生命周期足够长）*/
-    memcpy(&dev->config, cfg, sizeof(dal_servo_config_t));
+    memcpy(&dev->config, cfg, sizeof(dal_rc_servo_config_t));
     dev->current_angle = 0.0f;
     dev->initialized   = true;
     return WINK_OK;
 }
 
-wink_status_t dal_servo_set_angle(dal_servo_t *dev, float angle) {
+wink_status_t dal_rc_servo_set_angle(dal_rc_servo_t *dev, float angle) {
     if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
 
@@ -75,21 +75,21 @@ wink_status_t dal_servo_set_angle(dal_servo_t *dev, float angle) {
         (angle / SERVO_MAX_ANGLE_DEG) * (dev->config.max_pulse_ms - dev->config.min_pulse_ms);
     float duty_percent = (pulse_width_ms / SERVO_PERIOD_MS) * SERVO_DUTY_FULL_PCT;
 
-    /* Phase 2：PWM init 已在 dal_servo_init 一次性完成，set_angle 仅设占空比。 */
+    /* Phase 2：PWM init 已在 dal_rc_servo_init 一次性完成，set_angle 仅设占空比。 */
     wink_status_t status = pal_pwm_set_duty(dev->config.pwm_channel, duty_percent);
     if (wink_status_is_error(status)) { return status; }
     return WINK_OK;
 }
 
-wink_status_t dal_servo_safe_off(dal_servo_t *dev) {
+wink_status_t dal_rc_servo_safe_off(dal_rc_servo_t *dev) {
     if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
     /* duty=0 → 舵机失保持力（limp）= 安全；不 sleep。仅适用舵机（见头文件语义边界注）。 */
     return pal_pwm_set_duty(dev->config.pwm_channel, 0.0f);
 }
 
-wink_status_t dal_servo_apply_override(void *dev, const uint8_t *params, uint16_t len) {
-    dal_servo_t *s = (dal_servo_t *)dev;
+wink_status_t dal_rc_servo_apply_override(void *dev, const uint8_t *params, uint16_t len) {
+    dal_rc_servo_t *s = (dal_rc_servo_t *)dev;
     if (s == NULL || params == NULL) { return WINK_ERR_INVALID_ARG; }
     /* Blob 布局（共 9B，**不含** owner 指针 —— owner 由 cfg 正常传入，不参与 Flash 覆写）：
      *   byte 0    : pwm_channel (u8)
@@ -105,7 +105,7 @@ wink_status_t dal_servo_apply_override(void *dev, const uint8_t *params, uint16_
     memcpy(&min_pulse_ms, params + 1, 4);
     memcpy(&max_pulse_ms, params + 5, 4);
 
-    /* 轻校验：非法不写（与 dal_servo_init 权威校验纵深一致） */
+    /* 轻校验：非法不写（与 dal_rc_servo_init 权威校验纵深一致） */
     if (pwm_channel >= PAL_PWM_CHANNELS) { return WINK_ERR_INVALID_ARG; }
     if (min_pulse_ms <= 0.0f || max_pulse_ms <= min_pulse_ms) { return WINK_ERR_INVALID_ARG; }
 
@@ -115,7 +115,7 @@ wink_status_t dal_servo_apply_override(void *dev, const uint8_t *params, uint16_
     return WINK_OK;
 }
 
-wink_status_t dal_servo_deinit(dal_servo_t *dev) {
+wink_status_t dal_rc_servo_deinit(dal_rc_servo_t *dev) {
     /* ADR-0024 §4 deinit — checked: 1(safe_off duty=0 limp)/2(pal_gpio_reset_pin
      *   on the routed PWM pin)/3(N/A: servo has no dedicated GPIO ISR — LEDC/PWM
      *   peripheral owns the pin, pal_pwm_deinit stops the timer)/4(N/A: no DMA)/
@@ -129,7 +129,7 @@ wink_status_t dal_servo_deinit(dal_servo_t *dev) {
     const char *owner = dev->config.owner;
 
     /* 1. Best-effort turn servo off (set duty to 0 -> limp state, ≤1µs). */
-    WINK_IGNORE_UNUSED(dal_servo_safe_off(dev));
+    WINK_IGNORE_UNUSED(dal_rc_servo_safe_off(dev));
 
     /* Stop PWM peripheral (disconnects LEDC from the GPIO matrix). */
     pal_pwm_deinit(channel);
@@ -146,7 +146,7 @@ wink_status_t dal_servo_deinit(dal_servo_t *dev) {
     WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_PWM_CHANNEL, (uint32_t)channel, owner));
 
     /* 7. Clear the instance data completely */
-    memset(dev, 0, sizeof(dal_servo_t));
+    memset(dev, 0, sizeof(dal_rc_servo_t));
 
     return WINK_OK;
 }

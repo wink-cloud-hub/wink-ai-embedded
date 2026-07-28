@@ -16,7 +16,7 @@
 void setUp(void) {
     pal_storage_reset();
     /* 重置全局到编译期默认，保证每条用例起点确定 */
-    neck_servo = (dal_servo_t){
+    neck_servo = (dal_rc_servo_t){
         .config.pwm_channel = 0, .current_angle = 90.0f,
         .config.min_pulse_ms = 0.5f, .config.max_pulse_ms = 2.5f
     };

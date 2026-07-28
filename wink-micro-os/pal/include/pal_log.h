@@ -17,7 +17,7 @@
  * 用法：
  *   @code
  *   // 1. 文件顶部定义 LOG_TAG（推荐，作用于整个编译单元）
- *   #define LOG_TAG "dal_servo"
+ *   #define LOG_TAG "dal_rc_servo"
  *   #include "pal_log.h"
  *
  *   LOG_E("init failed: pin=%d rc=%d", pin, rc);   // Error
@@ -234,7 +234,7 @@ static inline void pal_log_d(const char *tag, const char *fmt, ...)
  *  否则回退到默认标签 "SYS"。这避免了每次调用都重复书写 TAG 参数。
  *
  *  推荐在源文件最顶部（include 之前）定义：
- *      #define LOG_TAG "dal_servo"
+ *      #define LOG_TAG "dal_rc_servo"
  * ========================================================================= */
 #ifdef LOG_TAG
 #  define LOG_E(fmt, ...) pal_log_e(LOG_TAG, fmt, ##__VA_ARGS__)

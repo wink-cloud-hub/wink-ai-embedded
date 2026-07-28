@@ -3,7 +3,7 @@
  * 注意：本测试不 link Unity（用断言宏自实现），作为 app_avoidance_car_e2e 的 main。 */
 #include "wink_runtime.h"
 #include "wink_trace.h"
-#include "dal_servo.h"
+#include "dal_rc_servo.h"
 #include "device_tree.h"
 #include "host_test_ctrl.h"
 

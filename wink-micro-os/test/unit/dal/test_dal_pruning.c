@@ -20,7 +20,7 @@
 #include "dal_led.h"
 #include "dal_button.h"
 #include "dal_ultrasonic.h"
-#include "dal_servo.h"
+#include "dal_rc_servo.h"
 #include "dal_ssd1306.h"
 #include "dal_gps.h"
 #include "dal_eeprom.h"
@@ -56,11 +56,11 @@ int main(void) {
     USE_FN(dal_ultrasonic_apply_override);
     USE_FN(dal_ultrasonic_deinit);
     /* Servo */
-    USE_FN(dal_servo_init);
-    USE_FN(dal_servo_set_angle);
-    USE_FN(dal_servo_safe_off);
-    USE_FN(dal_servo_apply_override);
-    USE_FN(dal_servo_deinit);
+    USE_FN(dal_rc_servo_init);
+    USE_FN(dal_rc_servo_set_angle);
+    USE_FN(dal_rc_servo_safe_off);
+    USE_FN(dal_rc_servo_apply_override);
+    USE_FN(dal_rc_servo_deinit);
     /* SSD1306 */
     USE_FN(dal_ssd1306_init);
     USE_FN(dal_ssd1306_clear);

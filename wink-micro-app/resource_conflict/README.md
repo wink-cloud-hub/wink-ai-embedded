@@ -23,7 +23,7 @@
 样本一次跑完 4 种资源类型的冲突：
 
 1. **GPIO 引脚冲突** — 两个 `dal_led` 抢同 pin
-2. **PWM 通道冲突** — 两个 `dal_servo` 抢同 channel
+2. **PWM 通道冲突** — 两个 `dal_rc_servo` 抢同 channel
 3. **UART 端口冲突** — 两个 `dal_gps` 抢同 port
 4. **I2C 地址冲突** — 两个 `dal_eeprom` 抢同 `(port, addr)`
 

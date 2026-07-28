@@ -11,7 +11,7 @@
 #  define WINK_CHASSIS_MAX 2
 #endif
 
-/* Same DAL pruning contract as wink_closed_loop_motor.c: chassis needs
+/* Same DAL pruning contract as wink_closed_loop_dc_motor.c: chassis needs
  * motor + encoder; when either is pruned, expose stub APIs only. */
 #if !defined(WINK_USE_DC_MOTOR) || !(WINK_USE_DC_MOTOR) \
  || !defined(WINK_USE_ENCODER) || !(WINK_USE_ENCODER)
@@ -84,17 +84,17 @@ wink_status_t wink_chassis_start_ex(dal_dc_motor_t *left_motor, dal_encoder_t *l
     ctx->target_angular_w = 0.0f;
 
     // Start left closed-loop motor
-    wink_status_t st = wink_closed_loop_motor_start_ex(left_motor, left_encoder, &cfg->left_motor_cfg, opts);
+    wink_status_t st = wink_closed_loop_dc_motor_start_ex(left_motor, left_encoder, &cfg->left_motor_cfg, opts);
     if (wink_status_is_error(st)) {
         ctx->left_motor = NULL;
         return st;
     }
 
     // Start right closed-loop motor
-    st = wink_closed_loop_motor_start_ex(right_motor, right_encoder, &cfg->right_motor_cfg, opts);
+    st = wink_closed_loop_dc_motor_start_ex(right_motor, right_encoder, &cfg->right_motor_cfg, opts);
     if (wink_status_is_error(st)) {
         // Rollback left motor
-        WINK_IGNORE_RESULT(wink_closed_loop_motor_stop(left_motor));
+        WINK_IGNORE_RESULT(wink_closed_loop_dc_motor_stop(left_motor));
         ctx->left_motor = NULL;
         return st;
     }
@@ -121,9 +121,9 @@ wink_status_t wink_chassis_stop(dal_dc_motor_t *left_motor)
     chassis_ctx_t *ctx = &s_chassis_slots[idx];
 
     // Stop left closed-loop motor
-    WINK_IGNORE_RESULT(wink_closed_loop_motor_stop(ctx->left_motor));
+    WINK_IGNORE_RESULT(wink_closed_loop_dc_motor_stop(ctx->left_motor));
     // Stop right closed-loop motor
-    WINK_IGNORE_RESULT(wink_closed_loop_motor_stop(ctx->right_motor));
+    WINK_IGNORE_RESULT(wink_closed_loop_dc_motor_stop(ctx->right_motor));
 
     // Release slot
     ctx->left_motor = NULL;
@@ -164,11 +164,11 @@ wink_status_t wink_chassis_set_velocity(dal_dc_motor_t *left_motor, float linear
     });
 
     // Update targets on closed-loop motors
-    st = wink_closed_loop_motor_set_speed(ctx->left_motor, left_counts);
+    st = wink_closed_loop_dc_motor_set_speed(ctx->left_motor, left_counts);
     if (wink_status_is_error(st)) {
         return st;
     }
-    st = wink_closed_loop_motor_set_speed(ctx->right_motor, right_counts);
+    st = wink_closed_loop_dc_motor_set_speed(ctx->right_motor, right_counts);
     if (wink_status_is_error(st)) {
         return st;
     }
@@ -191,11 +191,11 @@ wink_status_t wink_chassis_get_velocity(dal_dc_motor_t *left_motor, float *out_l
     float right_counts_s = 0.0f;
 
     // Get current feedback speed of motors (counts/s)
-    wink_status_t st = wink_closed_loop_motor_get_speed(ctx->left_motor, &left_counts_s);
+    wink_status_t st = wink_closed_loop_dc_motor_get_speed(ctx->left_motor, &left_counts_s);
     if (wink_status_is_error(st)) {
         return st;
     }
-    st = wink_closed_loop_motor_get_speed(ctx->right_motor, &right_counts_s);
+    st = wink_closed_loop_dc_motor_get_speed(ctx->right_motor, &right_counts_s);
     if (wink_status_is_error(st)) {
         return st;
     }
@@ -212,8 +212,8 @@ void wink_chassis_reset(void)
 {
     for (int i = 0; i < WINK_CHASSIS_MAX; i++) {
         if (s_chassis_slots[i].left_motor != NULL) {
-            WINK_IGNORE_RESULT(wink_closed_loop_motor_stop(s_chassis_slots[i].left_motor));
-            WINK_IGNORE_RESULT(wink_closed_loop_motor_stop(s_chassis_slots[i].right_motor));
+            WINK_IGNORE_RESULT(wink_closed_loop_dc_motor_stop(s_chassis_slots[i].left_motor));
+            WINK_IGNORE_RESULT(wink_closed_loop_dc_motor_stop(s_chassis_slots[i].right_motor));
             s_chassis_slots[i].left_motor = NULL;
             s_chassis_slots[i].left_encoder = NULL;
             s_chassis_slots[i].right_motor = NULL;
