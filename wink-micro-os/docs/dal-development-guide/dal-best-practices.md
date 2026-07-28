@@ -2,6 +2,28 @@
 
 本文是活规范 [`01-dal-device-abstraction.md`](../../../docs/design/02-wink-micro-os/01-dal-device-abstraction.md) 的**实践摘要**，并固化 H 桥等变体扩展的约定。若与活规范冲突，以活规范 + Accepted ADR 为准，并回写活规范。
 
+| 项 | 内容 |
+|----|------|
+| **关联技术设计** | [user-surface-insulation-design.md](../../../docs/design/tech-designs/2026-07-28-user-surface-insulation-design.md) |
+| **关联实施计划** | [user-surface-phase1-plan.md](../../../docs/design/implementation-plans/2026-07-28-user-surface-phase1-plan.md) |
+| **关联评审** | [dal-control-semantic-completeness-review §10](../../../docs/design/reviews/2026-07-28-dal-control-semantic-completeness-review.md)；[user-surface-phase1-plan-review.md](../../../docs/design/reviews/2026-07-28-user-surface-phase1-plan-review.md) |
+
+---
+
+## 0. 用户稳定面 vs 驱动面（Phase 1）
+
+> 完整机制见 [user-surface-insulation-design.md](../../../docs/design/tech-designs/2026-07-28-user-surface-insulation-design.md)。
+
+| 概念 | 含义 |
+|------|------|
+| **用户稳定面** | App C 推荐 `{name}_{verb}`（Role）；JSON 的 `role` + stable knobs |
+| **驱动面** | `type`、引脚/总线、`drive_mode`、`decode_mode`、`enable_pin` 等 advanced |
+| **无板卡模板** | 接线仍写在本 App `wink-app.json`；**不**锁死引脚 |
+| **Escape Hatch** | `&instance` + `dal_*`；lint warn + allowlist |
+| **BAL-backed** | 部分 Role 动词（如 button 事件 enable）内部调 BAL；仍属稳定面 |
+
+**常见误称纠正**：今日 H 桥接线（PWM + IN_A + IN_B）的拓扑枚举名是 **`in_in`**，**不是** `phase_enable`。`phase_enable`（单 PHASE + ENABLE/PWM）与 `pwm_on_in` 为**预留**拓扑，init fail-closed。
+
 ---
 
 ## 1. 硬约束（写驱动前）
@@ -99,11 +121,29 @@ BAL 边界：[06-bal-layer.md](../../../docs/design/02-wink-micro-os/06-bal-laye
 
 | 字段意图 | 说明 |
 |----------|------|
-| `drive_mode` | 默认 **`in_in`**（PWM + IN_A/IN_B，今日实现）；`phase_enable`、`pwm_on_in` 为保留拓扑 |
+| `drive_mode` | 默认 **`in_in`**（PWM + IN_A/IN_B，今日实现）；**预留** `phase_enable`、`pwm_on_in`（未实现 → init `WINK_ERR_UNSUPPORTED`） |
 | `enable_pin`（可选，默认 -1） | STBY / nSLEEP（**高有效**）；板级焊死高电平则可不配 |
 | 现有脚 | `pwm_channel`、`dir_pin_a`、`dir_pin_b` |
 
-当前 `dal_dc_motor` 实现覆盖 **IN/IN**（PWM 调速 + 双方向脚；TB6612/L298N 等常见接线）。`phase_enable` / `pwm_on_in` 属拓扑扩展，init 返回 `WINK_ERR_UNSUPPORTED`（fail-closed）。
+当前 `dal_dc_motor` 实现覆盖 **IN/IN**（PWM 调速 + 双方向脚；TB6612/L298N 等常见接线）。
+
+**IN/IN 真值表**（`dir_pin_a` = A，`dir_pin_b` = B）：
+
+```text
+dir_a  dir_b | state
+  0      0   | coast
+  1      0   | forward
+  0      1   | reverse
+  1      1   | brake (short)
+```
+
+**`safe_off` 层级**（ADR-0048 + enable 路径；**无 enable 时仍绑 brake**，单脚不改为 coast+OK）：
+
+1. `enable_pin >= 0`（init 后存储值）→ 有 `dir_pin_b` 时先 **brake**，再拉低 enable（硬关断）；返回 `WINK_OK`。
+2. 无 enable 且 `dir_pin_b >= 0` → **`dal_dc_motor_brake`**（ADR-0048 默认）。
+3. 无 enable 且单方向脚 → **`WINK_ERR_UNSUPPORTED`**（禁止静默 coast）。
+
+`phase_enable` / `pwm_on_in` 属未来拓扑扩展；请求时 init 或首调返回 `WINK_ERR_UNSUPPORTED`（fail-closed）。
 
 ### 3.2 条件编译用在哪
 
@@ -159,6 +199,33 @@ wink_status_t dal_dc_motor_set_speed(dal_dc_motor_t *dev, float speed)
 ### 3.4 Fail-closed
 
 未知拓扑 / 单脚无法 brake：返回 `WINK_ERR_UNSUPPORTED`，禁止静默当成 coast（DC `safe_off`→brake，见 ADR-0048）。
+
+### 3.5 Phase 1 语义契约（encoder / rc_servo / ssd1306）
+
+#### `encoder`（Role：`pulse_counter`）
+
+| 项 | 契约 |
+|----|------|
+| `decode_mode` | 默认 `x1_rising`；x2/x4 **未实现** → init `WINK_ERR_UNSUPPORTED` |
+| x1 协议 | A 上升沿采 B；B 高 → `count++`，B 低 → `count--`；无 `pin_b` → 仅递增 |
+| `invert` | **交换 A/B 方向语义（换相极性）**；禁止仅在 `get_count` 取负冒充 |
+| Role | `get_count` / `reset` 返回**原始脉冲**；**无 CPR**；`cpr` 名本 Phase 仅文档预留 |
+
+#### `rc_servo`（Role：`angular_actuator`）
+
+- `max_angle`：0 或未设 → **180.0f**；钳位 `angle ∈ [0, effective_max_angle]`。
+- 脉宽映射（分母必须用 `effective_max_angle`，禁止写死 180 常量）：
+
+```text
+pulse_ms = min_pulse + (angle / effective_max_angle) * (max_pulse - min_pulse)
+```
+
+- Flash override wire v1 **不含** `max_angle`（本 Phase Non-goal）。
+
+#### `ssd1306`（Role：`text_display`）
+
+- JSON **`type` 保留芯片名 `ssd1306`**（本 Phase 不改名）；异族 SPI 面板 → 新 `type` 或未来 `panel_variant`。
+- App 推荐 `{name}_clear` / `draw_text` / `flush`，不依赖芯片字符串。
 
 ---
 
