@@ -2,6 +2,15 @@
 #include "pal_resource.h"
 #include <string.h>
 
+static wink_status_t write_enable_if_present(const dal_dc_motor_t *dev,
+                                             bool level)
+{
+    if (dev->config.enable_pin < 0) {
+        return WINK_OK;
+    }
+    return pal_gpio_write(dev->config.enable_pin, level);
+}
+
 static wink_status_t apply_dir_and_duty(dal_dc_motor_t *dev,
                                         bool pin_a_level,
                                         bool pin_b_level,
@@ -23,6 +32,14 @@ static wink_status_t apply_dir_and_duty(dal_dc_motor_t *dev,
     return pal_pwm_set_duty(dev->config.pwm_channel, duty_percent);
 }
 
+static wink_status_t release_gpio_claim(wink_pin_t pin, const char *owner)
+{
+    if (pin < 0) {
+        return WINK_OK;
+    }
+    return pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, owner);
+}
+
 wink_status_t dal_dc_motor_init(dal_dc_motor_t *dev,
                                 const dal_dc_motor_config_t *cfg)
 {
@@ -37,6 +54,15 @@ wink_status_t dal_dc_motor_init(dal_dc_motor_t *dev,
     }
     if (cfg->dir_pin_a < 0) {
         return WINK_ERR_INVALID_ARG;
+    }
+    if (cfg->drive_mode != DAL_DC_MOTOR_MODE_IN_IN) {
+        return WINK_ERR_UNSUPPORTED;
+    }
+
+    wink_pin_t enable_pin = cfg->enable_pin;
+    if (enable_pin == 0) {
+        /* Zero-init / omitted optional field; -1 = unused (not GPIO 0). */
+        enable_pin = -1;
     }
 
     /* 1. Claim resources */
@@ -56,8 +82,20 @@ wink_status_t dal_dc_motor_init(dal_dc_motor_t *dev,
         rs = pal_resource_claim(
             PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->dir_pin_b, cfg->owner);
         if (wink_status_is_error(rs)) {
+            WINK_IGNORE_UNUSED(release_gpio_claim(cfg->dir_pin_a, cfg->owner));
             WINK_IGNORE_UNUSED(pal_resource_release(
-                PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->dir_pin_a, cfg->owner));
+                PAL_RESOURCE_PWM_CHANNEL,
+                (uint32_t)cfg->pwm_channel,
+                cfg->owner));
+            return rs;
+        }
+    }
+    if (enable_pin >= 0) {
+        rs = pal_resource_claim(
+            PAL_RESOURCE_GPIO_PIN, (uint32_t)enable_pin, cfg->owner);
+        if (wink_status_is_error(rs)) {
+            WINK_IGNORE_UNUSED(release_gpio_claim(cfg->dir_pin_b, cfg->owner));
+            WINK_IGNORE_UNUSED(release_gpio_claim(cfg->dir_pin_a, cfg->owner));
             WINK_IGNORE_UNUSED(pal_resource_release(
                 PAL_RESOURCE_PWM_CHANNEL,
                 (uint32_t)cfg->pwm_channel,
@@ -86,8 +124,29 @@ wink_status_t dal_dc_motor_init(dal_dc_motor_t *dev,
         }
     }
 
+    if (enable_pin >= 0) {
+        status = pal_gpio_init(enable_pin, PAL_GPIO_OUTPUT_PUSH_PULL);
+        if (wink_status_is_error(status)) {
+            if (cfg->dir_pin_b >= 0) {
+                pal_gpio_reset_pin(cfg->dir_pin_b);
+            }
+            pal_gpio_reset_pin(cfg->dir_pin_a);
+            goto err_pwm_deinit;
+        }
+        status = pal_gpio_write(enable_pin, false);
+        if (wink_status_is_error(status)) {
+            pal_gpio_reset_pin(enable_pin);
+            if (cfg->dir_pin_b >= 0) {
+                pal_gpio_reset_pin(cfg->dir_pin_b);
+            }
+            pal_gpio_reset_pin(cfg->dir_pin_a);
+            goto err_pwm_deinit;
+        }
+    }
+
     /* 3. Save config; start in coast */
     memcpy(&dev->config, cfg, sizeof(dal_dc_motor_config_t));
+    dev->config.enable_pin = enable_pin;
     dev->current_speed = 0.0f;
     dev->initialized = true;
 
@@ -98,12 +157,9 @@ wink_status_t dal_dc_motor_init(dal_dc_motor_t *dev,
 err_pwm_deinit:
     pal_pwm_deinit(cfg->pwm_channel);
 err_release:
-    if (cfg->dir_pin_b >= 0) {
-        WINK_IGNORE_UNUSED(pal_resource_release(
-            PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->dir_pin_b, cfg->owner));
-    }
-    WINK_IGNORE_UNUSED(pal_resource_release(
-        PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->dir_pin_a, cfg->owner));
+    WINK_IGNORE_UNUSED(release_gpio_claim(enable_pin, cfg->owner));
+    WINK_IGNORE_UNUSED(release_gpio_claim(cfg->dir_pin_b, cfg->owner));
+    WINK_IGNORE_UNUSED(release_gpio_claim(cfg->dir_pin_a, cfg->owner));
     WINK_IGNORE_UNUSED(pal_resource_release(
         PAL_RESOURCE_PWM_CHANNEL, (uint32_t)cfg->pwm_channel, cfg->owner));
     return status;
@@ -128,6 +184,11 @@ wink_status_t dal_dc_motor_set_speed(dal_dc_motor_t *dev, float speed)
         return dal_dc_motor_coast(dev);
     }
 
+    wink_status_t s = write_enable_if_present(dev, true);
+    if (wink_status_is_error(s)) {
+        return s;
+    }
+
     bool pin_a_level = false;
     bool pin_b_level = false;
     if (speed > 0.0f) {
@@ -139,8 +200,7 @@ wink_status_t dal_dc_motor_set_speed(dal_dc_motor_t *dev, float speed)
     }
 
     float abs_speed = speed >= 0.0f ? speed : -speed;
-    wink_status_t s = apply_dir_and_duty(dev, pin_a_level, pin_b_level,
-                                         abs_speed);
+    s = apply_dir_and_duty(dev, pin_a_level, pin_b_level, abs_speed);
     if (wink_status_is_error(s)) {
         return s;
     }
@@ -158,7 +218,12 @@ wink_status_t dal_dc_motor_coast(dal_dc_motor_t *dev)
         return WINK_ERR_NOT_INITIALIZED;
     }
 
-    wink_status_t s = apply_dir_and_duty(dev, false, false, 0.0f);
+    wink_status_t s = write_enable_if_present(dev, true);
+    if (wink_status_is_error(s)) {
+        return s;
+    }
+
+    s = apply_dir_and_duty(dev, false, false, 0.0f);
     if (wink_status_is_error(s)) {
         return s;
     }
@@ -180,7 +245,12 @@ wink_status_t dal_dc_motor_brake(dal_dc_motor_t *dev)
         return WINK_ERR_UNSUPPORTED;
     }
 
-    wink_status_t s = apply_dir_and_duty(dev, true, true, 0.0f);
+    wink_status_t s = write_enable_if_present(dev, true);
+    if (wink_status_is_error(s)) {
+        return s;
+    }
+
+    s = apply_dir_and_duty(dev, true, true, 0.0f);
     if (wink_status_is_error(s)) {
         return s;
     }
@@ -191,7 +261,27 @@ wink_status_t dal_dc_motor_brake(dal_dc_motor_t *dev)
 
 wink_status_t dal_dc_motor_safe_off(dal_dc_motor_t *dev)
 {
-    /* ADR-0048: safe_off binds to brake only. */
+    if (dev == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    if (!dev->initialized) {
+        return WINK_ERR_NOT_INITIALIZED;
+    }
+
+    if (dev->config.enable_pin >= 0) {
+        if (dev->config.dir_pin_b >= 0) {
+            WINK_IGNORE_UNUSED(dal_dc_motor_brake(dev));
+        } else {
+            WINK_IGNORE_UNUSED(dal_dc_motor_coast(dev));
+        }
+        wink_status_t s = write_enable_if_present(dev, false);
+        if (wink_status_is_error(s)) {
+            return s;
+        }
+        dev->current_speed = 0.0f;
+        return WINK_OK;
+    }
+
     return dal_dc_motor_brake(dev);
 }
 
@@ -204,7 +294,7 @@ wink_status_t dal_dc_motor_deinit(dal_dc_motor_t *dev)
         return WINK_OK;
     }
 
-    /* Prefer brake; ignore if unsupported (single-dir). */
+    /* Prefer safe_off; ignore unsupported single-dir without enable. */
     WINK_IGNORE_UNUSED(dal_dc_motor_safe_off(dev));
 
     pal_pwm_deinit(dev->config.pwm_channel);
@@ -212,10 +302,14 @@ wink_status_t dal_dc_motor_deinit(dal_dc_motor_t *dev)
     if (dev->config.dir_pin_b >= 0) {
         pal_gpio_reset_pin(dev->config.dir_pin_b);
     }
+    if (dev->config.enable_pin >= 0) {
+        pal_gpio_reset_pin(dev->config.enable_pin);
+    }
 
     uint8_t channel = dev->config.pwm_channel;
     wink_pin_t pin_a = dev->config.dir_pin_a;
     wink_pin_t pin_b = dev->config.dir_pin_b;
+    wink_pin_t enable = dev->config.enable_pin;
     const char *owner = dev->config.owner;
 
     WINK_IGNORE_UNUSED(pal_resource_release(
@@ -225,6 +319,10 @@ wink_status_t dal_dc_motor_deinit(dal_dc_motor_t *dev)
     if (pin_b >= 0) {
         WINK_IGNORE_UNUSED(pal_resource_release(
             PAL_RESOURCE_GPIO_PIN, (uint32_t)pin_b, owner));
+    }
+    if (enable >= 0) {
+        WINK_IGNORE_UNUSED(pal_resource_release(
+            PAL_RESOURCE_GPIO_PIN, (uint32_t)enable, owner));
     }
 
     memset(dev, 0, sizeof(dal_dc_motor_t));
