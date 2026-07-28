@@ -82,7 +82,7 @@ wink-micro-os/
 
 ## 3. 构建与编译说明
 
-项目推荐使用 **Wink CLI 工具链（`python tools/wink.py`）** 进行统一构建与测试管理，通过 CMake 静态绑定编译目标。
+项目推荐使用 **Wink CLI 工具链（`python wink-tools/wink.py`）** 进行统一构建与测试管理，通过 CMake 静态绑定编译目标。
 
 ### 3.1 编译为 WebAssembly 仿真组件
 
@@ -90,10 +90,10 @@ wink-micro-os/
 
 ```bash
 # 1. 默认构建 wink-micro-app/avoidance_car 避障小车应用
-python tools/wink.py build wasm --app avoidance_car
+python wink-tools/wink.py build wasm --app avoidance_car
 
 # 2. 换构建其它 App 变体 (如 oled_dashboard / devkitc_smoke 等)
-python tools/wink.py build wasm --app oled_dashboard
+python wink-tools/wink.py build wasm --app oled_dashboard
 ```
 
 **底层原生 CMake 指令（供参考）**：
@@ -119,7 +119,7 @@ Stub 静态解析 wasm 二进制 imports 集合，与 `wasm_bridge.h` SSOT 交�
 
 使用 Wink CLI 一键清理工具链冲突并构建：
 ```bash
-python tools/wink.py esp32 --app devkitc_smoke build
+python wink-tools/wink.py esp32 --app devkitc_smoke build
 ```
 
 （底层将环境净化后调动 ESP-IDF 进行构建。常规底层命令：`idf.py -C esp32_firmware build`）。
@@ -135,23 +135,17 @@ python tools/wink.py esp32 --app devkitc_smoke build
 **前置：工具链环境诊断。**
 运行诊断命令检查 `gcc` 与 `cmake` 环境：
 ```bash
-python tools/wink.py doctor
+python wink-tools/wink.py doctor
 ```
 
-**方式一：统一 CLI 总入口（推荐，跨平台 100% 平替）。**
+**方式一：统一 CLI（推荐）。**
 ```bash
-python tools/wink.py test            # 跑全套 Codegen 单元测试 + Host CTest + 6 大静态 Lint
-python tools/wink.py test --full     # 全量 CI 门禁（含 UBSan / ASan Sanitizer 矩阵 Pass）
-python tools/wink.py lint            # 执行分层/API/Arduino 代码规约检查 (ADR-0043)
+python wink-tools/wink.py test            # Codegen + Host CTest + 静态 Lint
+python wink-tools/wink.py test --full     # CI 门禁（含 UBSan / ASan 矩阵）
+python wink-tools/wink.py lint            # 分层/API/Arduino 规约检查 (ADR-0043)
 ```
 
-**方式二：PowerShell 回归矩阵（Windows 本地底层）。**
-```powershell
-.\run-tests.ps1            # 增量构建 + 跑全部测试
-.\run-tests.ps1 -Full      # 运行完整 Sanitizer 矩阵与全部 Lint 审计
-```
-
-**方式三：手动三步。**
+**方式二：手动三步。**
 ```powershell
 cmake -B build/test -DTARGET_PLATFORM=host
 cmake --build build/test

@@ -248,7 +248,7 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
     # ADR-0009 Wave 2???? wink_sim_physical.c ??????????????????????
     add_subdirectory(targets/wasm)
 
-    # §6.1 ??3????App ?????WINK_APP_DIR ???????????
+    # ?6.1 ??3????App ?????WINK_APP_DIR ???????????
     # App CMakeLists ??EMSCRIPTEN ???? set(WINK_APP_SOURCES ... PARENT_SCOPE)
     # ??return()???? host e2e target??????pal_host / test_*_e2e.c???
     add_subdirectory(${WINK_APP_DIR} ${CMAKE_BINARY_DIR}/app_build)
@@ -267,7 +267,12 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
     # so the JSON is the single source of truth for link options.
     set(_WASM_EXPORT_JSON "${CMAKE_CURRENT_SOURCE_DIR}/targets/wasm/exported_runtime_functions.json")
     set(_WASM_EXPORT_CMAKE "${CMAKE_BINARY_DIR}/wasm_export_options.cmake")
-    set(_WASM_EXPORT_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/tools/wasm_export_codegen.py")
+    # Monorepo: wink-tools/; Binary/Source SDK tarball: bundled tools/
+    if(EXISTS "${WINK_TOOLS_ROOT}/tools/wasm_export_codegen.py")
+        set(_WASM_EXPORT_SCRIPT "${WINK_TOOLS_ROOT}/tools/wasm_export_codegen.py")
+    else()
+        set(_WASM_EXPORT_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/tools/wasm_export_codegen.py")
+    endif()
     execute_process(
         COMMAND ${Python3_EXECUTABLE} "${_WASM_EXPORT_SCRIPT}"
                 "${_WASM_EXPORT_JSON}" "${_WASM_EXPORT_CMAKE}"
@@ -365,7 +370,7 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
         message(FATAL_ERROR
             "wink_simulator must link wink_runtime; wasm_entry.c depends on "
             "wink_runtime_run(). See docs/design/implementation-plans/"
-            "2026-07-01-wasm-simulator-target-repair-plan.md §4.2.")
+            "2026-07-01-wasm-simulator-target-repair-plan.md ?4.2.")
     endif()
     endif()  # SOURCE+wasm / BINARY+wasm inner branch
 endif()
@@ -394,7 +399,7 @@ if(NOT TARGET_PLATFORM STREQUAL "wasm")
         add_subdirectory(${WINK_APP_DIR}/common ${CMAKE_BINARY_DIR}/common_build)
     endif()
 
-    # §6.1 ??3????App ?????WINK_APP_DIR ???????????
+    # ?6.1 ??3????App ?????WINK_APP_DIR ???????????
     if(EXISTS ${WINK_APP_DIR})
         add_subdirectory(${WINK_APP_DIR} ${CMAKE_BINARY_DIR}/app_build)
     else()
