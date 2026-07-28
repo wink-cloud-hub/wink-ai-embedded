@@ -24,6 +24,8 @@
 ```
 
 > **字段分层**：跨外设必填的只有 `type`（控制语义族 / DAL 绑定）。可选 `role` 为 **App 侧 Role Interface**（缺省 `default_role`，生成 `{name}_{verb}`）——**不是 BAL**，也不是产品级「左轮/云台」意图。`drive_mode` / `enable_pin` / `driver_ic` **不是**全局通用字段。摘要见 [dal-best-practices §3.0](./dal-development-guide/dal-best-practices.md)；**如何挂 Role** 见 [role-interface-codegen.md](./dal-development-guide/role-interface-codegen.md)。
+>
+> **Experimental 类型**：`gps`、`eeprom` 为实验性 stub（DAL 现返回 `WINK_ERR_UNSUPPORTED`），codegen 会 stderr 警告，不宜作为稳定用户面；正式 Role 待 UART/I2C 后端落地后再提供。
 
 ### 2. 板级配置 (Board Level)
 
