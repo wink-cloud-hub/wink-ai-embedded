@@ -99,11 +99,11 @@ BAL 边界：[06-bal-layer.md](../../../docs/design/02-wink-micro-os/06-bal-laye
 
 | 字段意图 | 说明 |
 |----------|------|
-| `drive_mode` | 如 `phase_enable`（独立 PWM + IN_A/IN_B）、`pwm_on_in`（PWM 打在输入脚） |
-| `enable_pin`（可选，默认 -1） | STBY / nSLEEP；常拉高则可不配 |
+| `drive_mode` | 默认 **`in_in`**（PWM + IN_A/IN_B，今日实现）；`phase_enable`、`pwm_on_in` 为保留拓扑 |
+| `enable_pin`（可选，默认 -1） | STBY / nSLEEP（**高有效**）；板级焊死高电平则可不配 |
 | 现有脚 | `pwm_channel`、`dir_pin_a`、`dir_pin_b` |
 
-当前 `dal_dc_motor` 实现覆盖主流 **Phase/Enable**（L298N 模块、TB6612 且 STBY 拉高等）。DRV8833 常见 PWM-on-IN 属拓扑扩展，不是新 DAL 类型。
+当前 `dal_dc_motor` 实现覆盖 **IN/IN**（PWM 调速 + 双方向脚；TB6612/L298N 等常见接线）。`phase_enable` / `pwm_on_in` 属拓扑扩展，init 返回 `WINK_ERR_UNSUPPORTED`（fail-closed）。
 
 ### 3.2 条件编译用在哪
 
@@ -127,9 +127,9 @@ wink_status_t dal_dc_motor_set_speed(dal_dc_motor_t *dev, float speed)
 {
     /* … clamp / init 检查 … */
     switch (dev->config.drive_mode) {
-    case DAL_DC_MOTOR_MODE_PHASE_ENABLE:
-        /* 独立 PWM + IN_A/IN_B（当前实现路径） */
-        return apply_phase_enable(dev, speed);
+    case DAL_DC_MOTOR_MODE_IN_IN:
+        /* PWM + IN_A/IN_B（当前实现路径） */
+        return apply_in_in(dev, speed);
 
 #if WINK_DC_MOTOR_HAS_PWM_ON_IN
     case DAL_DC_MOTOR_MODE_PWM_ON_IN:
