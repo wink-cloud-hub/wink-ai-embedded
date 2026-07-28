@@ -34,7 +34,7 @@ description: 嵌入式 C 最佳实践（本项目静态分发专用）。Use whe
 
 ### 本项目 = 静态分发（ADR-0004）
 
-本项目器件是 **POD 结构 + 命名式 API**：`dal_servo_set_angle(&dev, angle)`、`motor_driver_set_outputs(&drv, out)`。**没有** `struct device_ops`、**没有**运行期虚表、**没有** `container_of`。换芯片 / 换器件靠**编译期选择**（CMake 链接 / codegen 静态绑定）。
+本项目器件是 **POD 结构 + 命名式 API**：`dal_rc_servo_set_angle(&dev, angle)`、`motor_driver_set_outputs(&drv, out)`。**没有** `struct device_ops`、**没有**运行期虚表、**没有** `container_of`。换芯片 / 换器件靠**编译期选择**（CMake 链接 / codegen 静态绑定）。
 
 如果用户明确要求解释 `ops` / `container_of` / Linux 设备模型，停止使用本 skill，改用 `c-runtime-polymorphism-reading`。
 

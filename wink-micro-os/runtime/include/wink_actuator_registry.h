@@ -8,7 +8,7 @@
  * ⚠ safe-off 语义边界：duty=0 对舵机=limp=安全；对有刷 DC（dal_dc_motor）则
  *    safe_off → brake（H 桥短接制动，ADR-0048），与 coast（滑行）正交，不得混用。
  *    故「各自定义 safe-off」模型——各执行器须注册语义正确的关断回调。
- *    本 registry 不假设通用关断范式（见 dal_servo.h / dal_dc_motor.h）。
+ *    本 registry 不假设通用关断范式（见 dal_rc_servo.h / dal_dc_motor.h）。
  *
  * ⚠ 复位期间硬件级默认安全态（引脚 Hi-Z 弱拉、执行器使能脚默认关断、电源门控）**必须由板级
  *    电路保证**——软件无法覆盖 HardFault/总线死锁/CPU 卡死/WDT 硬复位瞬间。本 registry 只补软件闭环。

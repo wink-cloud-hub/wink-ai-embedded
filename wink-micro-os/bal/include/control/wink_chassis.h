@@ -3,7 +3,7 @@
 
 #include "actuator/dal_dc_motor.h"
 #include "sensor/dal_encoder.h"
-#include "control/wink_closed_loop_motor.h"
+#include "control/wink_closed_loop_dc_motor.h"
 #include "math/wink_diff_drive_kinematics.h"
 #include "wink_bal_opts.h"
 
@@ -13,11 +13,14 @@ extern "C" {
 
 /**
  * @brief 差速底盘控制器配置参数
+ *
+ * 领域能力名保留 `chassis`；当前后端仅为左右各一路
+ * `wink_closed_loop_dc_motor`（`dal_dc_motor` + `dal_encoder`，ADR-0049）。
  */
 typedef struct {
     wink_diff_drive_params_t kinematics_params;  /* 几何参数，用于正逆运动学 */
-    wink_closed_loop_motor_config_t left_motor_cfg;  /* 左轮闭环控制参数 */
-    wink_closed_loop_motor_config_t right_motor_cfg; /* 右轮闭环控制参数 */
+    wink_closed_loop_dc_motor_config_t left_motor_cfg;  /* 左轮 DC 闭环参数 */
+    wink_closed_loop_dc_motor_config_t right_motor_cfg; /* 右轮 DC 闭环参数 */
 } wink_chassis_config_t;
 
 /**

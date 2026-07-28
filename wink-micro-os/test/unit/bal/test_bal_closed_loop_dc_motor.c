@@ -1,7 +1,7 @@
 #define LOG_TAG "tst_cl_motor"
 
 #include "unity.h"
-#include "control/wink_closed_loop_motor.h"
+#include "control/wink_closed_loop_dc_motor.h"
 #include "wink_tasks.h"
 #include "wink_soft_timer.h"
 #include "wink_status.h"
@@ -16,8 +16,8 @@
 #include <limits.h>
 #include <stdint.h>
 
-#ifndef WINK_CLOSED_LOOP_MOTOR_MAX
-#  define WINK_CLOSED_LOOP_MOTOR_MAX 4
+#ifndef WINK_CLOSED_LOOP_DC_MOTOR_MAX
+#  define WINK_CLOSED_LOOP_DC_MOTOR_MAX 4
 #endif
 
 static dal_dc_motor_t s_motor;
@@ -39,8 +39,8 @@ void sim_advance_encoder_count(dal_encoder_t *dev, int32_t delta)
 }
 
 void setUp(void) {
-    extern void wink_closed_loop_motor_reset(void);
-    wink_closed_loop_motor_reset();
+    extern void wink_closed_loop_dc_motor_reset(void);
+    wink_closed_loop_dc_motor_reset();
 
     extern void sim_scheduler_reset(uint32_t flags);
     sim_scheduler_reset(0);
@@ -88,75 +88,75 @@ static void tick_n(int n) {
 }
 
 void test_cl_motor_invalid_args(void) {
-    const wink_closed_loop_motor_config_t cfg = {
+    const wink_closed_loop_dc_motor_config_t cfg = {
         .pid_cfg = { .kp = 1.0f, .ki = 0.0f, .kd = 0.0f, .min_output = -1.0f, .max_output = 1.0f, .min_integral = -1.0f, .max_integral = 1.0f },
         .period_ms = 20,
         .timeout_ms = 200,
         .counts_per_rev = 360.0f
     };
     
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_closed_loop_motor_start(NULL, &s_encoder, &cfg));
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_closed_loop_motor_start(&s_motor, NULL, &cfg));
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_closed_loop_motor_start(&s_motor, &s_encoder, NULL));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_closed_loop_dc_motor_start(NULL, &s_encoder, &cfg));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_closed_loop_dc_motor_start(&s_motor, NULL, &cfg));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_closed_loop_dc_motor_start(&s_motor, &s_encoder, NULL));
     
-    wink_closed_loop_motor_config_t invalid_cfg = cfg;
+    wink_closed_loop_dc_motor_config_t invalid_cfg = cfg;
     invalid_cfg.period_ms = 0;
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_closed_loop_motor_start(&s_motor, &s_encoder, &invalid_cfg));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_closed_loop_dc_motor_start(&s_motor, &s_encoder, &invalid_cfg));
     
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_closed_loop_motor_stop(NULL));
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_closed_loop_motor_set_speed(NULL, 10.0f));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_closed_loop_dc_motor_stop(NULL));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, wink_closed_loop_dc_motor_set_speed(NULL, 10.0f));
 }
 
 void test_cl_motor_lifecycle(void) {
-    const wink_closed_loop_motor_config_t cfg = {
+    const wink_closed_loop_dc_motor_config_t cfg = {
         .pid_cfg = { .kp = 1.0f, .ki = 0.0f, .kd = 0.0f, .min_output = -1.0f, .max_output = 1.0f, .min_integral = -1.0f, .max_integral = 1.0f },
         .period_ms = 20,
         .timeout_ms = 200,
         .counts_per_rev = 360.0f
     };
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_motor_start(&s_motor, &s_encoder, &cfg));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_dc_motor_start(&s_motor, &s_encoder, &cfg));
     
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_STATE, wink_closed_loop_motor_start(&s_motor, &s_encoder, &cfg));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_STATE, wink_closed_loop_dc_motor_start(&s_motor, &s_encoder, &cfg));
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_motor_set_speed(&s_motor, 50.0f));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_dc_motor_set_speed(&s_motor, 50.0f));
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_motor_stop(&s_motor));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_dc_motor_stop(&s_motor));
 }
 
 void test_cl_motor_pid_control_loop(void) {
-    const wink_closed_loop_motor_config_t cfg = {
+    const wink_closed_loop_dc_motor_config_t cfg = {
         .pid_cfg = { .kp = 0.01f, .ki = 0.0f, .kd = 0.0f, .min_output = -1.0f, .max_output = 1.0f, .min_integral = -1.0f, .max_integral = 1.0f },
         .period_ms = 20,
         .timeout_ms = 500,
         .counts_per_rev = 360.0f
     };
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_motor_start(&s_motor, &s_encoder, &cfg));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_dc_motor_start(&s_motor, &s_encoder, &cfg));
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_motor_set_speed(&s_motor, 100.0f));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_dc_motor_set_speed(&s_motor, 100.0f));
 
     tick_n(2);
 
     TEST_ASSERT_TRUE(s_motor.current_speed > 0.0f);
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_motor_set_speed(&s_motor, -100.0f));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_dc_motor_set_speed(&s_motor, -100.0f));
     tick_n(2);
     TEST_ASSERT_TRUE(s_motor.current_speed < 0.0f);
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_motor_stop(&s_motor));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_dc_motor_stop(&s_motor));
 }
 
 void test_cl_motor_failsafe_timeout(void) {
-    const wink_closed_loop_motor_config_t cfg = {
+    const wink_closed_loop_dc_motor_config_t cfg = {
         .pid_cfg = { .kp = 0.01f, .ki = 0.0f, .kd = 0.0f, .min_output = -1.0f, .max_output = 1.0f, .min_integral = -1.0f, .max_integral = 1.0f },
         .period_ms = 20,
         .timeout_ms = 100,
         .counts_per_rev = 360.0f
     };
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_motor_start(&s_motor, &s_encoder, &cfg));
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_motor_set_speed(&s_motor, 100.0f));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_dc_motor_start(&s_motor, &s_encoder, &cfg));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_dc_motor_set_speed(&s_motor, 100.0f));
 
     tick_n(2);
     TEST_ASSERT_TRUE(s_motor.current_speed > 0.0f);
@@ -170,7 +170,7 @@ void test_cl_motor_failsafe_timeout(void) {
 
     TEST_ASSERT_EQUAL_UINT32(WINK_FAULT_MOTOR_FEEDBACK_LOSS, wink_trace_last());
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_motor_stop(&s_motor));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_dc_motor_stop(&s_motor));
 }
 
 /*
@@ -180,7 +180,7 @@ void test_cl_motor_failsafe_timeout(void) {
 void test_cl_motor_tracks_injected_encoder_ramp(void) {
     const float target_cps = 100.0f;
     const uint32_t period_ms = 20u;
-    const wink_closed_loop_motor_config_t cfg = {
+    const wink_closed_loop_dc_motor_config_t cfg = {
         .pid_cfg = {
             .kp = 0.02f, .ki = 0.05f, .kd = 0.0f,
             .min_output = -1.0f, .max_output = 1.0f,
@@ -191,8 +191,8 @@ void test_cl_motor_tracks_injected_encoder_ramp(void) {
         .counts_per_rev = 360.0f
     };
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_motor_start(&s_motor, &s_encoder, &cfg));
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_motor_set_speed(&s_motor, target_cps));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_dc_motor_start(&s_motor, &s_encoder, &cfg));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_dc_motor_set_speed(&s_motor, target_cps));
 
     const int32_t counts_per_period =
         (int32_t)(target_cps * ((float)period_ms / 1000.0f)); /* ~2 */
@@ -209,13 +209,13 @@ void test_cl_motor_tracks_injected_encoder_ramp(void) {
 
     float feedback = 0.0f;
     TEST_ASSERT_EQUAL_INT(WINK_OK,
-                          wink_closed_loop_motor_get_speed(&s_motor, &feedback));
+                          wink_closed_loop_dc_motor_get_speed(&s_motor, &feedback));
     TEST_ASSERT_FLOAT_WITHIN(40.0f, target_cps, feedback);
 
     /* Tracking well → command not stuck at saturation. */
     TEST_ASSERT_TRUE(fabsf(s_motor.current_speed) < 0.85f);
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_motor_stop(&s_motor));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_dc_motor_stop(&s_motor));
 }
 
 /*
@@ -223,7 +223,7 @@ void test_cl_motor_tracks_injected_encoder_ramp(void) {
  * (R-011). After releasing saturation, command recovers without hard overshoot.
  */
 void test_cl_motor_anti_windup_under_saturation(void) {
-    const wink_closed_loop_motor_config_t cfg = {
+    const wink_closed_loop_dc_motor_config_t cfg = {
         .pid_cfg = {
             .kp = 0.05f, .ki = 40.0f, .kd = 0.0f,
             .min_output = -1.0f, .max_output = 1.0f,
@@ -234,8 +234,8 @@ void test_cl_motor_anti_windup_under_saturation(void) {
         .counts_per_rev = 360.0f
     };
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_motor_start(&s_motor, &s_encoder, &cfg));
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_motor_set_speed(&s_motor, 200.0f));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_dc_motor_start(&s_motor, &s_encoder, &cfg));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_dc_motor_set_speed(&s_motor, 200.0f));
 
     /* Saturate with frozen encoder. */
     tick_n(30);
@@ -244,7 +244,7 @@ void test_cl_motor_anti_windup_under_saturation(void) {
     float integral_at_sat = 0.0f;
     TEST_ASSERT_EQUAL_INT(
         WINK_OK,
-        wink_closed_loop_motor_debug_get_integral(&s_motor, &integral_at_sat));
+        wink_closed_loop_dc_motor_debug_get_integral(&s_motor, &integral_at_sat));
     /* I-term clamp: |integral| <= max_integral / ki */
     TEST_ASSERT_TRUE(fabsf(integral_at_sat) <= (0.4f / 40.0f) + 1e-4f);
 
@@ -252,7 +252,7 @@ void test_cl_motor_anti_windup_under_saturation(void) {
     float integral_later = 0.0f;
     TEST_ASSERT_EQUAL_INT(
         WINK_OK,
-        wink_closed_loop_motor_debug_get_integral(&s_motor, &integral_later));
+        wink_closed_loop_dc_motor_debug_get_integral(&s_motor, &integral_later));
     TEST_ASSERT_FLOAT_WITHIN(1e-4f, integral_at_sat, integral_later);
 
     /* Release: inject feedback near target so error collapses. */
@@ -269,15 +269,15 @@ void test_cl_motor_anti_windup_under_saturation(void) {
     float integral_after = 0.0f;
     TEST_ASSERT_EQUAL_INT(
         WINK_OK,
-        wink_closed_loop_motor_debug_get_integral(&s_motor, &integral_after));
+        wink_closed_loop_dc_motor_debug_get_integral(&s_motor, &integral_after));
     TEST_ASSERT_TRUE(fabsf(integral_after) <= fabsf(integral_at_sat) + 1e-3f);
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_motor_stop(&s_motor));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_dc_motor_stop(&s_motor));
 }
 
 /* Encoder int32 wraparound must not produce a velocity spike (R-012). */
 void test_cl_motor_encoder_count_wraparound(void) {
-    const wink_closed_loop_motor_config_t cfg = {
+    const wink_closed_loop_dc_motor_config_t cfg = {
         .pid_cfg = {
             .kp = 0.01f, .ki = 0.0f, .kd = 0.0f,
             .min_output = -1.0f, .max_output = 1.0f,
@@ -294,8 +294,8 @@ void test_cl_motor_encoder_count_wraparound(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_encoder_get_count(&s_encoder, &via_api));
     TEST_ASSERT_EQUAL_INT(near_max, via_api);
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_motor_start(&s_motor, &s_encoder, &cfg));
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_motor_set_speed(&s_motor, 100.0f));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_dc_motor_start(&s_motor, &s_encoder, &cfg));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_dc_motor_set_speed(&s_motor, 100.0f));
 
     /* Establish one control period on virtual clock (same cadence as other tests). */
     tick_n(2);
@@ -310,14 +310,14 @@ void test_cl_motor_encoder_count_wraparound(void) {
 
     float feedback = 0.0f;
     TEST_ASSERT_EQUAL_INT(WINK_OK,
-                          wink_closed_loop_motor_get_speed(&s_motor, &feedback));
+                          wink_closed_loop_dc_motor_get_speed(&s_motor, &feedback));
     /* Signed delta of +10 over one ~20 ms period → hundreds of counts/s.
      * Must not explode to INT32-scale (broken unsigned/wrap handling). */
     TEST_ASSERT_TRUE(feedback > 0.0f);
     TEST_ASSERT_TRUE(feedback < 5000.0f);
     TEST_ASSERT_FLOAT_WITHIN(400.0f, 500.0f, feedback);
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_motor_stop(&s_motor));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_dc_motor_stop(&s_motor));
 }
 
 int main(void) {

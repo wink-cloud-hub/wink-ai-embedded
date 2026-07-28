@@ -175,7 +175,7 @@ typedef struct {
         uint32_t   last_update_us;
         uint8_t    retry_count;
     } state;
-} dal_servo_t;
+} dal_rc_servo_t;
 ```
 
 > 理由：

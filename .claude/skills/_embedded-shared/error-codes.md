@@ -10,7 +10,7 @@
 
 ```c
 /* wink-micro-os */
-wink_status_t dal_servo_set_angle(dal_servo_t *dev, float angle);
+wink_status_t dal_rc_servo_set_angle(dal_rc_servo_t *dev, float angle);
 
 /* chigo-micro（同为 0/负数约定，类型为 int） */
 int motor_driver_init(motor_driver_t *drv);

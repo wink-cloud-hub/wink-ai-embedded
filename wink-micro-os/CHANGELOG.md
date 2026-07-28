@@ -6,7 +6,7 @@
 
 ### Changed
 
-- **BAL naming hard cut ([ADR-0038](../docs/design/decisions/0038-bal-naming-hard-cut-and-layer-ssot.md))**: removed `*_helper.h` / `*_controller.h` public headers; renamed APIs (`wink_ultrasonic_poll_*`, `wink_servo_sweep_*`, etc.); `wink_bal_opts_t` replaces `wink_helper_opts_t`; `src/` mirrors `include/<domain>/`; PUBLIC include is only `bal/include` root. **Breaking:** deleted `wink-micro-app/common/include/` BAL shims — use domain-prefixed includes (e.g. `output/wink_led_blink.h`, `comm/wink_telemetry_default.h`).
+- **BAL naming hard cut ([ADR-0038](../docs/design/decisions/0038-bal-naming-hard-cut-and-layer-ssot.md))**: removed `*_helper.h` / `*_controller.h` public headers; renamed APIs (`wink_ultrasonic_poll_*`, `wink_rc_servo_sweep_*`, etc.); `wink_bal_opts_t` replaces `wink_helper_opts_t`; `src/` mirrors `include/<domain>/`; PUBLIC include is only `bal/include` root. **Breaking:** deleted `wink-micro-app/common/include/` BAL shims — use domain-prefixed includes (e.g. `output/wink_led_blink.h`, `comm/wink_telemetry_default.h`).
 
 ### Added
 
@@ -41,7 +41,7 @@
 | `wink_blink_helper.h` / `output/wink_blink_helper.h` | `output/wink_led_blink.h`（link `wink_bal`） |
 | `wink_button_helper.h` | `input/wink_button_events.h`（`wink_button_enable_events` / `disable`） |
 | `wink_sonar_helper.h` | `sensor/wink_ultrasonic_poll.h` |
-| `wink_servo_helper.h` | `actuator/wink_servo_sweep.h` |
+| `wink_servo_helper.h` | `actuator/wink_rc_servo_sweep.h` |
 | `wink_telemetry_helper.h` / `wink_default_telemetry.h` | `comm/wink_telemetry_default.h` |
 | `wink_helper_opts.h` / `wink_helper_opts_t` | `wink_bal_opts.h` / `wink_bal_opts_t` |
 | `wink_chassis_controller.h` | `control/wink_chassis.h` |

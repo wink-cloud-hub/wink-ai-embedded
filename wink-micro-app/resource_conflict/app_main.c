@@ -25,7 +25,7 @@
 #define LOG_TAG "resource_conflict"
 
 #include "dal_led.h"
-#include "dal_servo.h"
+#include "dal_rc_servo.h"
 #include "dal_gps.h"
 #include "dal_eeprom.h"
 #include "pal_resource.h"
@@ -63,19 +63,19 @@ static void case_gpio_pin_conflict(void)
 
 static void case_pwm_channel_conflict(void)
 {
-    dal_servo_t servo_a = {0};
-    dal_servo_t servo_b = {0};
-    const dal_servo_config_t cfg_a = {
+    dal_rc_servo_t servo_a = {0};
+    dal_rc_servo_t servo_b = {0};
+    const dal_rc_servo_config_t cfg_a = {
         .owner = "steering", .pwm_channel = 0,
         .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f
     };
-    const dal_servo_config_t cfg_b = {
+    const dal_rc_servo_config_t cfg_b = {
         .owner = "gripper",  .pwm_channel = 0,
         .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f
     };
 
-    ASSERT_EQ(WINK_OK,        dal_servo_init(&servo_a, &cfg_a), "PWM: first servo init");
-    ASSERT_EQ(WINK_ERR_BUSY,  dal_servo_init(&servo_b, &cfg_b), "PWM: second servo same channel should BUSY");
+    ASSERT_EQ(WINK_OK,        dal_rc_servo_init(&servo_a, &cfg_a), "PWM: first servo init");
+    ASSERT_EQ(WINK_ERR_BUSY,  dal_rc_servo_init(&servo_b, &cfg_b), "PWM: second servo same channel should BUSY");
     LOG_I("PWM channel 0 conflict correctly rejected");
 }
 

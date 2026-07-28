@@ -40,7 +40,7 @@ paths:
 
 wink-micro-os 采用 **编译期静态分发**：
 
-- ✅ POD 结构体 + 命名式 API（如 `dal_servo_set_angle(&dev, angle)`）
+- ✅ POD 结构体 + 命名式 API（如 `dal_rc_servo_set_angle(&dev, angle)`）
 - ❌ 不使用 `struct device_ops` 运行期虚表
 - ❌ 不使用 `container_of` 向下转型
 

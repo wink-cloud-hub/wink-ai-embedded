@@ -1,6 +1,6 @@
-#define LOG_TAG "bal.cl_motor"
+#define LOG_TAG "bal.cl_dc_motor"
 
-#include "control/wink_closed_loop_motor.h"
+#include "control/wink_closed_loop_dc_motor.h"
 #include "wink_tasks.h"
 #include "wink_blocking_region.h"
 #include "pal_log.h"
@@ -9,11 +9,11 @@
 #include "wink_fault.h"
 #include <string.h>
 
-#ifndef WINK_CLOSED_LOOP_MOTOR_MAX
+#ifndef WINK_CLOSED_LOOP_DC_MOTOR_MAX
 #  ifdef WINK_APP_MAX_MOTOR_INSTANCES
-#    define WINK_CLOSED_LOOP_MOTOR_MAX WINK_APP_MAX_MOTOR_INSTANCES
+#    define WINK_CLOSED_LOOP_DC_MOTOR_MAX WINK_APP_MAX_MOTOR_INSTANCES
 #  else
-#    define WINK_CLOSED_LOOP_MOTOR_MAX 4
+#    define WINK_CLOSED_LOOP_DC_MOTOR_MAX 4
 #  endif
 #endif
 
@@ -23,11 +23,11 @@
  * wink_bal without compile errors ? user need not know about WINK_USE_*. */
 #if !defined(WINK_USE_DC_MOTOR) || !(WINK_USE_DC_MOTOR) \
     || !defined(WINK_USE_ENCODER) || !(WINK_USE_ENCODER)
-#  undef WINK_CLOSED_LOOP_MOTOR_MAX
-#  define WINK_CLOSED_LOOP_MOTOR_MAX 0
+#  undef WINK_CLOSED_LOOP_DC_MOTOR_MAX
+#  define WINK_CLOSED_LOOP_DC_MOTOR_MAX 0
 #endif
 
-#if WINK_CLOSED_LOOP_MOTOR_MAX > 0
+#if WINK_CLOSED_LOOP_DC_MOTOR_MAX > 0
 
 typedef struct {
     dal_dc_motor_t            *motor;
@@ -46,7 +46,7 @@ typedef struct {
     wink_periodic_handle_t  period_h;
 } motor_ctx_t;
 
-static motor_ctx_t s_slots[WINK_CLOSED_LOOP_MOTOR_MAX];
+static motor_ctx_t s_slots[WINK_CLOSED_LOOP_DC_MOTOR_MAX];
 
 /* ?? internal helpers ?????????????????????????????????????????? */
 
@@ -61,7 +61,7 @@ static pal_os_core_id_t map_core(wink_bal_core_t c) {
 }
 
 static int find_free_slot(void) {
-    for (int i = 0; i < WINK_CLOSED_LOOP_MOTOR_MAX; i++) {
+    for (int i = 0; i < WINK_CLOSED_LOOP_DC_MOTOR_MAX; i++) {
         if (s_slots[i].motor == NULL) {
             return i;
         }
@@ -70,7 +70,7 @@ static int find_free_slot(void) {
 }
 
 static int find_slot_by_motor(dal_dc_motor_t *motor) {
-    for (int i = 0; i < WINK_CLOSED_LOOP_MOTOR_MAX; i++) {
+    for (int i = 0; i < WINK_CLOSED_LOOP_DC_MOTOR_MAX; i++) {
         if (s_slots[i].motor == motor) {
             return i;
         }
@@ -156,9 +156,9 @@ static void motor_tick(void *arg) {
 
 /* ?? public API ???????????????????????????????????????????????? */
 
-wink_status_t wink_closed_loop_motor_start_ex(dal_dc_motor_t *motor, 
+wink_status_t wink_closed_loop_dc_motor_start_ex(dal_dc_motor_t *motor, 
                                               dal_encoder_t *encoder,
-                                              const wink_closed_loop_motor_config_t *cfg,
+                                              const wink_closed_loop_dc_motor_config_t *cfg,
                                               const wink_bal_opts_t *opts)
 {
     if (motor == NULL || encoder == NULL || cfg == NULL || cfg->period_ms == 0u) {
@@ -227,14 +227,14 @@ wink_status_t wink_closed_loop_motor_start_ex(dal_dc_motor_t *motor,
     return WINK_OK;
 }
 
-wink_status_t wink_closed_loop_motor_start(dal_dc_motor_t *motor, 
+wink_status_t wink_closed_loop_dc_motor_start(dal_dc_motor_t *motor, 
                                            dal_encoder_t *encoder,
-                                           const wink_closed_loop_motor_config_t *cfg)
+                                           const wink_closed_loop_dc_motor_config_t *cfg)
 {
-    return wink_closed_loop_motor_start_ex(motor, encoder, cfg, NULL);
+    return wink_closed_loop_dc_motor_start_ex(motor, encoder, cfg, NULL);
 }
 
-wink_status_t wink_closed_loop_motor_stop(dal_dc_motor_t *motor)
+wink_status_t wink_closed_loop_dc_motor_stop(dal_dc_motor_t *motor)
 {
     if (motor == NULL) {
         return WINK_ERR_INVALID_ARG;
@@ -261,7 +261,7 @@ wink_status_t wink_closed_loop_motor_stop(dal_dc_motor_t *motor)
     return WINK_OK;
 }
 
-wink_status_t wink_closed_loop_motor_set_speed(dal_dc_motor_t *motor, float target_speed)
+wink_status_t wink_closed_loop_dc_motor_set_speed(dal_dc_motor_t *motor, float target_speed)
 {
     if (motor == NULL) {
         return WINK_ERR_INVALID_ARG;
@@ -283,7 +283,7 @@ wink_status_t wink_closed_loop_motor_set_speed(dal_dc_motor_t *motor, float targ
     return WINK_OK;
 }
 
-wink_status_t wink_closed_loop_motor_get_speed(dal_dc_motor_t *motor, float *out_speed)
+wink_status_t wink_closed_loop_dc_motor_get_speed(dal_dc_motor_t *motor, float *out_speed)
 {
     if (motor == NULL || out_speed == NULL) {
         return WINK_ERR_INVALID_ARG;
@@ -301,7 +301,7 @@ wink_status_t wink_closed_loop_motor_get_speed(dal_dc_motor_t *motor, float *out
 }
 
 #if defined(PLATFORM_host) || defined(SIMULATION)
-wink_status_t wink_closed_loop_motor_debug_get_integral(dal_dc_motor_t *motor,
+wink_status_t wink_closed_loop_dc_motor_debug_get_integral(dal_dc_motor_t *motor,
                                                        float *out_integral)
 {
     if (motor == NULL || out_integral == NULL) {
@@ -316,9 +316,9 @@ wink_status_t wink_closed_loop_motor_debug_get_integral(dal_dc_motor_t *motor,
 }
 #endif
 
-void wink_closed_loop_motor_reset(void)
+void wink_closed_loop_dc_motor_reset(void)
 {
-    for (int i = 0; i < WINK_CLOSED_LOOP_MOTOR_MAX; i++) {
+    for (int i = 0; i < WINK_CLOSED_LOOP_DC_MOTOR_MAX; i++) {
         if (s_slots[i].motor != NULL) {
             if (s_slots[i].period_h > 0) {
                 wink_periodic_stop(s_slots[i].period_h);
@@ -331,45 +331,45 @@ void wink_closed_loop_motor_reset(void)
     }
 }
 
-#else /* WINK_CLOSED_LOOP_MOTOR_MAX == 0 */
+#else /* WINK_CLOSED_LOOP_DC_MOTOR_MAX == 0 */
 
-wink_status_t wink_closed_loop_motor_start_ex(dal_dc_motor_t *motor, 
+wink_status_t wink_closed_loop_dc_motor_start_ex(dal_dc_motor_t *motor, 
                                               dal_encoder_t *encoder,
-                                              const wink_closed_loop_motor_config_t *cfg,
+                                              const wink_closed_loop_dc_motor_config_t *cfg,
                                               const wink_bal_opts_t *opts)
 {
     (void)motor; (void)encoder; (void)cfg; (void)opts;
     return WINK_ERR_UNSUPPORTED;
 }
 
-wink_status_t wink_closed_loop_motor_start(dal_dc_motor_t *motor, 
+wink_status_t wink_closed_loop_dc_motor_start(dal_dc_motor_t *motor, 
                                            dal_encoder_t *encoder,
-                                           const wink_closed_loop_motor_config_t *cfg)
+                                           const wink_closed_loop_dc_motor_config_t *cfg)
 {
     (void)motor; (void)encoder; (void)cfg;
     return WINK_ERR_UNSUPPORTED;
 }
 
-wink_status_t wink_closed_loop_motor_stop(dal_dc_motor_t *motor)
+wink_status_t wink_closed_loop_dc_motor_stop(dal_dc_motor_t *motor)
 {
     (void)motor;
     return WINK_OK;
 }
 
-wink_status_t wink_closed_loop_motor_set_speed(dal_dc_motor_t *motor, float target_speed)
+wink_status_t wink_closed_loop_dc_motor_set_speed(dal_dc_motor_t *motor, float target_speed)
 {
     (void)motor; (void)target_speed;
     return WINK_ERR_UNSUPPORTED;
 }
 
-wink_status_t wink_closed_loop_motor_get_speed(dal_dc_motor_t *motor, float *out_speed)
+wink_status_t wink_closed_loop_dc_motor_get_speed(dal_dc_motor_t *motor, float *out_speed)
 {
     (void)motor; (void)out_speed;
     return WINK_ERR_UNSUPPORTED;
 }
 
 #if defined(PLATFORM_host) || defined(SIMULATION)
-wink_status_t wink_closed_loop_motor_debug_get_integral(dal_dc_motor_t *motor,
+wink_status_t wink_closed_loop_dc_motor_debug_get_integral(dal_dc_motor_t *motor,
                                                        float *out_integral)
 {
     (void)motor; (void)out_integral;
@@ -377,8 +377,8 @@ wink_status_t wink_closed_loop_motor_debug_get_integral(dal_dc_motor_t *motor,
 }
 #endif
 
-void wink_closed_loop_motor_reset(void)
+void wink_closed_loop_dc_motor_reset(void)
 {
 }
 
-#endif /* WINK_CLOSED_LOOP_MOTOR_MAX > 0 */
+#endif /* WINK_CLOSED_LOOP_DC_MOTOR_MAX > 0 */

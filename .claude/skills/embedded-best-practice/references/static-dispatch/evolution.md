@@ -10,7 +10,7 @@ wink-micro-os 现有代码处于 ADR-0001 / ADR-0004 落地前。迁移对照表
 
 | 现状 | 迁移到 | 动作 |
 |------|--------|------|
-| `bool dal_servo_set_angle(...)` | `wink_status_t dal_servo_set_angle(...)` | 改返回类型，失败返回负码 |
+| `bool dal_rc_servo_set_angle(...)` | `wink_status_t dal_rc_servo_set_angle(...)` | 改返回类型，失败返回负码 |
 | `float dal_ultrasonic_get_distance(...)`（哨兵 `-1.0f`） | `wink_status_t dal_ultrasonic_read(dev, float *out)` | 拆成「状态 + 出参」，消除哨兵歧义 |
 | `dal_*_get_distance` | `dal_*_read` | 按 Registry 改名 |
 | `js_sim_*` 三种签名 | 以 Registry 为准的单一签名 | 统一，删除他处声明 |
@@ -131,7 +131,7 @@ wink_status_t dal_sensor_read(dal_sensor_t *dev, float *out) {
 
 ### 1.4 典型迁移重构示例 4：扁平结构体 → config/state 显式分离
 
-现状（`dal_ultrasonic.h` / `dal_servo.h`）是扁平字段、非 `const`：
+现状（`dal_ultrasonic.h` / `dal_rc_servo.h`）是扁平字段、非 `const`：
 
 ```c
 /* BEFORE（现状扁平）：配置与状态平级，字段可被任意篡改 */

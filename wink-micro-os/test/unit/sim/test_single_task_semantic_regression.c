@@ -16,7 +16,7 @@
 
 #include "wink_runtime.h"
 #include "wink_trace.h"
-#include "dal_servo.h"
+#include "dal_rc_servo.h"
 #include "device_tree.h"
 #include "host_test_ctrl.h"
 #include "unity.h"

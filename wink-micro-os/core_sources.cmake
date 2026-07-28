@@ -54,10 +54,10 @@ set(WINK_BAL_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/bal/src/comm/wink_telemetry_default.c
     ${CMAKE_CURRENT_LIST_DIR}/bal/src/sensor/wink_ultrasonic_poll.c
     ${CMAKE_CURRENT_LIST_DIR}/bal/src/sensor/wink_ultrasonic_distance_events.c
-    ${CMAKE_CURRENT_LIST_DIR}/bal/src/actuator/wink_servo_sweep.c
+    ${CMAKE_CURRENT_LIST_DIR}/bal/src/actuator/wink_rc_servo_sweep.c
     ${CMAKE_CURRENT_LIST_DIR}/bal/src/math/wink_pid.c
     ${CMAKE_CURRENT_LIST_DIR}/bal/src/math/wink_diff_drive_kinematics.c
-    ${CMAKE_CURRENT_LIST_DIR}/bal/src/control/wink_closed_loop_motor.c
+    ${CMAKE_CURRENT_LIST_DIR}/bal/src/control/wink_closed_loop_dc_motor.c
     ${CMAKE_CURRENT_LIST_DIR}/bal/src/control/wink_chassis.c
 )
 

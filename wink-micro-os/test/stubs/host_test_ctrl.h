@@ -25,7 +25,7 @@ void sim_set_mono_time_us(uint64_t us);
 void sim_advance_mono_time_us(uint64_t delta_us);
 
 /* Encoder count 注入声明：勿在此 include dal_encoder.h（pal_host 无 DAL 路径）。
- * 实现放在调用方测试 TU（赋值包装），见 test_bal_closed_loop_motor.c。
+ * 实现放在调用方测试 TU（赋值包装），见 test_bal_closed_loop_dc_motor.c。
  * 签名约定：
  *   void sim_set_encoder_count(dal_encoder_t *dev, int32_t count);
  *   void sim_advance_encoder_count(dal_encoder_t *dev, int32_t delta);

@@ -20,7 +20,7 @@
 
 #include "dal_button.h"
 #include "dal_led.h"
-#include "dal_servo.h"
+#include "dal_rc_servo.h"
 #include "dal_ultrasonic.h"
 #include "dal_gps.h"
 #include "dal_eeprom.h"
@@ -81,22 +81,22 @@ void test_wire_cross_dal_button_vs_led_same_pin(void) {
 }
 
 /* =====================================================================
- * 4. dal_servo：同 PWM channel 冲突
+ * 4. dal_rc_servo：同 PWM channel 冲突
  * ===================================================================== */
-void test_wire_dal_servo_same_channel_conflict(void) {
-    dal_servo_t a = {0};
-    dal_servo_t b = {0};
-    const dal_servo_config_t cfg_a = {
+void test_wire_dal_rc_servo_same_channel_conflict(void) {
+    dal_rc_servo_t a = {0};
+    dal_rc_servo_t b = {0};
+    const dal_rc_servo_config_t cfg_a = {
         .owner = "servo_a", .pwm_channel = 3,
         .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f
     };
-    const dal_servo_config_t cfg_b = {
+    const dal_rc_servo_config_t cfg_b = {
         .owner = "servo_b", .pwm_channel = 3,
         .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f
     };
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_servo_init(&a, &cfg_a));
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_BUSY, dal_servo_init(&b, &cfg_b));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_rc_servo_init(&a, &cfg_a));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_BUSY, dal_rc_servo_init(&b, &cfg_b));
     TEST_ASSERT_FALSE(b.initialized);
 }
 
@@ -273,11 +273,11 @@ void test_wire_all_dal_reject_null_owner(void) {
     const dal_led_config_t lcfg = { .owner = NULL, .pin = 4, .active_high = true };
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_led_init(&led, &lcfg));
 
-    dal_servo_t servo = {0};
-    const dal_servo_config_t scfg = {
+    dal_rc_servo_t servo = {0};
+    const dal_rc_servo_config_t scfg = {
         .owner = NULL, .pwm_channel = 0, .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f
     };
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_servo_init(&servo, &scfg));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_rc_servo_init(&servo, &scfg));
 
     dal_ultrasonic_t us = {0};
     const dal_ultrasonic_config_t ucfg = {
@@ -324,7 +324,7 @@ int main(void) {
     RUN_TEST(test_wire_dal_button_same_pin_conflict);
     RUN_TEST(test_wire_dal_led_same_pin_conflict);
     RUN_TEST(test_wire_cross_dal_button_vs_led_same_pin);
-    RUN_TEST(test_wire_dal_servo_same_channel_conflict);
+    RUN_TEST(test_wire_dal_rc_servo_same_channel_conflict);
     RUN_TEST(test_wire_dal_ultrasonic_trig_pin_conflict);
     RUN_TEST(test_wire_dal_ultrasonic_echo_conflict_rolls_back_trig);
     RUN_TEST(test_wire_uart_port_resource_conflict_via_pal);

@@ -72,11 +72,11 @@ wink_status_t dal_xxx_read(dal_xxx_t *dev, float *out_value)
 #ifndef DEVICE_TREE_H
 #define DEVICE_TREE_H
 #include "dal_ultrasonic.h"
-#include "dal_servo.h"
+#include "dal_rc_servo.h"
 
 /* 只暴露逻辑实例，绝不暴露 SDK 类型 */
 extern dal_ultrasonic_t front_radar;
-extern dal_servo_t      neck_servo;
+extern dal_rc_servo_t      neck_servo;
 #endif
 ```
 
@@ -86,7 +86,7 @@ extern dal_servo_t      neck_servo;
 #include "device_tree.h"
 
 dal_ultrasonic_t front_radar = { .trig_pin = 4, .echo_pin = 5, .last_distance = 0.0f };
-dal_servo_t      neck_servo  = { .pwm_channel = 0, .current_angle = 90.0f,
+dal_rc_servo_t      neck_servo  = { .pwm_channel = 0, .current_angle = 90.0f,
                                  .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f };
 ```
 
@@ -298,7 +298,7 @@ void dal_button_on_press(dal_button_t *dev) {
 #include <assert.h>   /* C11: static_assert / _Static_assert */
 
 /* 锁结构体大小——换编译器/平台时暴露对齐/位域漂移（双 target 护栏） */
-static_assert(sizeof(dal_servo_t) == 12u, "dal_servo_t layout drifted");
+static_assert(sizeof(dal_rc_servo_t) == 12u, "dal_rc_servo_t layout drifted");
 
 /* 锁枚举与查找表大小一致（错误码表常漏增项） */
 static_assert(ARRAY_SIZE(k_error_table) == WINK_ERR_COUNT,

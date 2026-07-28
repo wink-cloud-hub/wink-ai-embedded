@@ -28,7 +28,7 @@
 #define FAULT_RADAR_INIT  7003u
 
 /* ── Actuator safe-off thunk (file scope — macro expands to function def) ─ */
-WINK_DEFINE_ACTUATOR_THUNK(neck_servo_safe_off, dal_servo_safe_off, dal_servo_t)
+WINK_DEFINE_ACTUATOR_THUNK(neck_servo_safe_off, dal_rc_servo_safe_off, dal_rc_servo_t)
 
 /* ── Shared state between periodic callbacks ── */
 static volatile float s_latest_dist = 50.0f;
@@ -61,7 +61,7 @@ static void motor_tick(void *ctx)
     if (angle == 180.0f) {
         g_servo_was_180 = true;
     }
-    wink_status_t s = dal_servo_set_angle(&neck_servo, angle);
+    wink_status_t s = dal_rc_servo_set_angle(&neck_servo, angle);
     (void)s;
 }
 
@@ -83,14 +83,14 @@ static wink_status_t app_init_status(void)
     (void)cfg;
 
     /* servo: config may have been overridden by Flash, so rebuild cfg from
-     * instance fields (dal_servo.h documents this redundancy). */
-    const dal_servo_config_t servo_cfg = {
+     * instance fields (dal_rc_servo.h documents this redundancy). */
+    const dal_rc_servo_config_t servo_cfg = {
         .owner        = "neck_servo",
         .pwm_channel  = neck_servo.config.pwm_channel,
         .min_pulse_ms = neck_servo.config.min_pulse_ms,
         .max_pulse_ms = neck_servo.config.max_pulse_ms,
     };
-    wink_status_t s = dal_servo_init(&neck_servo, &servo_cfg);
+    wink_status_t s = dal_rc_servo_init(&neck_servo, &servo_cfg);
     if (wink_status_is_error(s)) {
         wink_trace_fault(FAULT_SERVO_INIT);
         return s;
@@ -109,7 +109,7 @@ static wink_status_t app_init_status(void)
         return ar;
     }
 
-    wink_status_t st_angle = dal_servo_set_angle(&neck_servo, 90.0f);
+    wink_status_t st_angle = dal_rc_servo_set_angle(&neck_servo, 90.0f);
     (void)st_angle;
 
     /* Start two periodic callbacks — expert mode: when BAL services don't fit
@@ -144,7 +144,7 @@ static void app_loop(void)
 static wink_status_t app_on_fault_status(uint32_t fault_code)
 {
     wink_trace_fault(fault_code);
-    wink_status_t s = dal_servo_set_angle(&neck_servo, 90.0f);
+    wink_status_t s = dal_rc_servo_set_angle(&neck_servo, 90.0f);
     (void)s;
     return WINK_OK;
 }

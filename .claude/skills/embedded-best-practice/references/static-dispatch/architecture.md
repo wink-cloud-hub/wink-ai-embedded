@@ -28,9 +28,9 @@ App/BAL  →  DAL  →  PAL  →  Targets (wasm / esp32 / stm32)
 
 ## 铁律
 
-- 器件结构是**纯 POD**：`dal_servo_t { pwm_channel; current_angle; ... }`，**无函数指针、
+- 器件结构是**纯 POD**：`dal_rc_servo_t { pwm_channel; current_angle; ... }`，**无函数指针、
   无 `ops`、无 `vptr`、无父类嵌入**。
-- 调用是**命名式 API 直调**：`dal_servo_set_angle(&dev, angle)` → 直接进函数体，无查表。
+- 调用是**命名式 API 直调**：`dal_rc_servo_set_angle(&dev, angle)` → 直接进函数体，无查表。
 - 子类恢复**不需要**——编译期类型已知，你拿的就是具体类型指针，没有「父类指针反推子类」。
 - 注册靠**编译期绑定**（codegen 静态全局 / CMake 文件链接），不靠运行期 `MODULE_INIT`。
 
@@ -47,8 +47,8 @@ App/BAL  →  DAL  →  PAL  →  Targets (wasm / esp32 / stm32)
 ```c
 /* wink-micro-os DAL */
 typedef struct { uint8_t pwm_channel; float current_angle;
-                 float min_pulse_ms; float max_pulse_ms; } dal_servo_t;
-wink_status_t dal_servo_set_angle(dal_servo_t *dev, float angle);   /* 目标签名 */
+                 float min_pulse_ms; float max_pulse_ms; } dal_rc_servo_t;
+wink_status_t dal_rc_servo_set_angle(dal_rc_servo_t *dev, float angle);   /* 目标签名 */
 
 /* chigo-micro driver（同一 idiom） */
 typedef struct { encoder_t encoders[NUM_JOINTS]; motor_mode_t mode; ... } motor_driver_t;
@@ -76,7 +76,7 @@ platform.h（接口，不变）
 ```c
 /* device_tree.c（codegen 生成，仓库尚无此文件——见 README 偏差框） */
 dal_ultrasonic_t front_radar = { .trig_pin = 4, .echo_pin = 5, .last_distance = 0.0f };
-dal_servo_t      neck_servo  = { .pwm_channel = 0, .current_angle = 90.0f, ... };
+dal_rc_servo_t      neck_servo  = { .pwm_channel = 0, .current_angle = 90.0f, ... };
 ```
 
 PAL 侧的编译期路由则是 CMake `-DTARGET_PLATFORM=<wasm|esp32|stm32>` 静态链接。
