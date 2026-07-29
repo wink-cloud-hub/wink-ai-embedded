@@ -94,7 +94,7 @@ wink-micro-os 采用 **GCC + MSVC 双链验证**：
 | **`test_dal_led`** | LED 驱动状态机。 |
 | **`test_dal_button`** | 按键驱动状态机（原始状态）。 |
 | **`test_button_debounce_e2e`** | 按键去抖动 e2e：runtime tick 驱动 dal_button 状态机，跨 sample_rate/debounce_ms 边界。 |
-| **`test_dal_ssd1306`** | SSD1306 OLED I2C 驱动：初始化序列、画点/清屏、命令/数据区分。Phase 2 I2C 协议旁路验证。 |
+| **`test_dal_mono_oled`** | 单色 OLED (mono_oled) I2C 驱动：初始化序列、画点/清屏、命令/数据区分。Phase 2 I2C 协议旁路验证。 |
 | **`test_dev_config`** | ADR-0008 设备树覆写核心：CRC32 golden vector、合法/损坏 blob 解析降级、magic/version/CRC 校验、空 count、buffer 过小、未命中 id 跳过、apply 失败仅降级该项。 |
 | **`test_avoidance_override`** | ADR-0008 覆写端到端：`pal_storage` 读 blob → 注册表派发 → 真实 DAL `apply_override` 改写全局 `neck_servo`/`front_radar` 字段；空/损坏 blob 静默降级。 |
 

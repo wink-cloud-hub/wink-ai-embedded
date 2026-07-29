@@ -1,11 +1,11 @@
-#include "dal_ssd1306.h"
-#include "dal_ssd1306_font_internal.h"
+#include "dal_mono_oled.h"
+#include "dal_mono_oled_font_internal.h"
 #include "pal_hal.h"
 #include "pal_resource.h"
 #include <string.h>
 
 /* ADR-0017 层 1 例外：本 TU 合法调用 WINK_BLOCKING API (pal_i2c_transfer)。
- * SSD1306 显示驱动本质要走 I2C 传输，是"消费端"角色；WINK_BLOCKING 的告警
+ * 单色 OLED 显示驱动本质要走 I2C 传输，是"消费端"角色；WINK_BLOCKING 的告警
  * 作用于新代码抑制误用，对 DAL 内部有意为之的调用退化为 no-op。
  * 严格模式（-DWINK_STRICT_NONBLOCKING=1）下 pal_i2c_transfer 声明消失，本文件将链接失败——
  * 这正是设计意图（严格 nonblocking 构建路径需要非阻塞 I2C 后端）。 */
@@ -13,7 +13,7 @@
 #  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
-/* ---- SSD1306 标准 init 命令序列（128×64，水平寻址，页式） ---- */
+/* ---- SSD1306 / 单色 OLED 标准 init 命令序列（128×64，水平寻址，页式） ---- */
 static const uint8_t s_init_cmds_64[] = {
     0xAE,       /* display off */
     0xD5, 0x80, /* clock divide */
@@ -33,7 +33,7 @@ static const uint8_t s_init_cmds_64[] = {
     0xAF,       /* display on */
 };
 
-/* ---- SSD1306 标准 init 命令序列（128×32，水平寻址，页式） ---- */
+/* ---- SSD1306 / 单色 OLED 标准 init 命令序列（128×32，水平寻址，页式） ---- */
 static const uint8_t s_init_cmds_32[] = {
     0xAE,       /* display off */
     0xD5, 0x80, /* clock divide */
@@ -53,17 +53,17 @@ static const uint8_t s_init_cmds_32[] = {
     0xAF,       /* display on */
 };
 
-wink_status_t dal_ssd1306_init(dal_ssd1306_t *dev, const dal_ssd1306_config_t *cfg) {
+wink_status_t dal_mono_oled_init(dal_mono_oled_t *dev, const dal_mono_oled_config_t *cfg) {
     if (dev == NULL || cfg == NULL) { return WINK_ERR_INVALID_ARG; }
     if (cfg->owner == NULL) { return WINK_ERR_INVALID_ARG; }
     if (cfg->i2c_port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
 
     /* 宽度/高度合法性校验（P0 E3 栈溢出防护）：
-     *   - SSD1306 驱动当前只实现 128 像素宽
+     *   - 单色 OLED 驱动当前只实现 128 像素宽
      *   - 高度仅支持 32 / 64（两种常见商用模组）
      * 任何其他尺寸都会导致帧缓冲溢出、init 序列 mux/COM 配置错误或 flush 栈缓冲越界。
      * 未来若加 96×16/64×32 等尺寸，需要同步：
-     *   ① 扩大/调整 SSD1306_FB_SIZE；
+     *   ① 扩大/调整 MONO_OLED_FB_SIZE；
      *   ② 增加对应 s_init_cmds_xx 表；
      *   ③ 调整 flush 栈缓冲上限。 */
     if (cfg->width != 128) { return WINK_ERR_INVALID_ARG; }
@@ -100,41 +100,41 @@ wink_status_t dal_ssd1306_init(dal_ssd1306_t *dev, const dal_ssd1306_config_t *c
         return status;
     }
 
-    memset(dev->framebuffer, 0, SSD1306_FB_SIZE);
+    memset(dev->framebuffer, 0, MONO_OLED_FB_SIZE);
     /* 深拷贝配置到实例（支持 ADR-0008 Flash 动态覆写，与 led/button/ultrasonic 一致）*/
-    memcpy(&dev->config, cfg, sizeof(dal_ssd1306_config_t));
+    memcpy(&dev->config, cfg, sizeof(dal_mono_oled_config_t));
     dev->pages       = (uint8_t)(cfg->height >> 3); /* /8：派生量，缓存到顶层字段 */
     dev->initialized = true;
     return WINK_OK;
 }
 
-wink_status_t dal_ssd1306_clear(dal_ssd1306_t *dev) {
+wink_status_t dal_mono_oled_clear(dal_mono_oled_t *dev) {
     if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
-    memset(dev->framebuffer, 0, SSD1306_FB_SIZE);
+    memset(dev->framebuffer, 0, MONO_OLED_FB_SIZE);
     return WINK_OK;
 }
 
-wink_status_t dal_ssd1306_draw_text(dal_ssd1306_t *dev, uint16_t col, uint8_t page,
-                                    const char *str) {
+wink_status_t dal_mono_oled_draw_text(dal_mono_oled_t *dev, uint16_t col, uint8_t page,
+                                      const char *str) {
     if (dev == NULL || str == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
     if (page >= dev->pages) { return WINK_ERR_INVALID_ARG; }
 
     uint16_t x = col;
     for (const char *p = str; *p != '\0'; p++) {
-        if (x + SSD1306_FONT_GLYPH_W > dev->config.width) { break; }
-        const uint8_t *glyph = dal_ssd1306_font_glyph(*p);
+        if (x + MONO_OLED_FONT_GLYPH_W > dev->config.width) { break; }
+        const uint8_t *glyph = dal_mono_oled_font_glyph(*p);
         uint16_t base = (uint16_t)page * dev->config.width + x;
-        for (int c = 0; c < SSD1306_FONT_GLYPH_W; c++) {
+        for (int c = 0; c < MONO_OLED_FONT_GLYPH_W; c++) {
             dev->framebuffer[base + c] = glyph[c];
         }
-        x += SSD1306_FONT_WIDTH; /* 5 像素字宽 + 1 像素间距 */
+        x += MONO_OLED_FONT_WIDTH; /* 5 像素字宽 + 1 像素间距 */
     }
     return WINK_OK;
 }
 
-wink_status_t dal_ssd1306_flush(dal_ssd1306_t *dev) {
+wink_status_t dal_mono_oled_flush(dal_mono_oled_t *dev) {
     if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
 
@@ -154,7 +154,7 @@ wink_status_t dal_ssd1306_flush(dal_ssd1306_t *dev) {
     if (wink_status_is_error(st)) { return st; }
 
     /* 按页发送帧缓冲（1 控制字节 + width 数据字节 = 1+width B 栈缓冲）。
-     * 仅支持 width<=128 的 SSD1306 模组（init 已校验），故 129B 足够。 */
+     * 仅支持 width<=128 的单色 OLED 模组（init 已校验），故 129B 足够。 */
     for (uint8_t pg = 0; pg < dev->pages; pg++) {
         uint8_t page_buf[129];
         page_buf[0] = 0x40; /* 控制字节：数据 */
@@ -168,15 +168,7 @@ wink_status_t dal_ssd1306_flush(dal_ssd1306_t *dev) {
     return WINK_OK;
 }
 
-wink_status_t dal_ssd1306_deinit(dal_ssd1306_t *dev) {
-    /* ADR-0024 §4 deinit — checked: 1(best-effort display-off command 0xAE)/
-     *   2(N/A: I2C client, SDA/SCL owned by bus-owner; no GPIO to reset)/
-     *   3(N/A: no GPIO ISR)/4(N/A: no DMA, single I2C transfer is force-stopped
-     *   by bus-owner if needed)/5(N/A: bus-owner deinit does SCL 9-pulse)/
-     *   6(client-level deinit: does NOT call pal_i2c_bus_deinit, only releases
-     *   its own I2C_ADDR claim; other clients on same bus remain usable)/
-     *   7(memset clears framebuffer+config)/8(NULL+uninit idempotent)/
-     *   9(single best-effort transfer ≤5ms)/10(signature unified) */
+wink_status_t dal_mono_oled_deinit(dal_mono_oled_t *dev) {
     if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_OK; }  /* idempotent no-op on un-init dev */
 
@@ -197,7 +189,7 @@ wink_status_t dal_ssd1306_deinit(dal_ssd1306_t *dev) {
     WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_I2C_ADDR, res_id, owner));
 
     /* 7. Clear the instance data completely */
-    memset(dev, 0, sizeof(dal_ssd1306_t));
+    memset(dev, 0, sizeof(dal_mono_oled_t));
 
     return WINK_OK;
 }

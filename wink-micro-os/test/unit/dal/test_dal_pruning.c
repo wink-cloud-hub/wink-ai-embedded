@@ -21,7 +21,7 @@
 #include "dal_button.h"
 #include "dal_ultrasonic.h"
 #include "dal_rc_servo.h"
-#include "dal_ssd1306.h"
+#include "dal_mono_oled.h"
 #include "dal_gps.h"
 #include "dal_eeprom.h"
 #include "actuator/dal_dc_motor.h"
@@ -61,12 +61,12 @@ int main(void) {
     USE_FN(dal_rc_servo_safe_off);
     USE_FN(dal_rc_servo_apply_override);
     USE_FN(dal_rc_servo_deinit);
-    /* SSD1306 */
-    USE_FN(dal_ssd1306_init);
-    USE_FN(dal_ssd1306_clear);
-    USE_FN(dal_ssd1306_draw_text);
-    USE_FN(dal_ssd1306_flush);
-    USE_FN(dal_ssd1306_deinit);
+    /* MONO_OLED */
+    USE_FN(dal_mono_oled_init);
+    USE_FN(dal_mono_oled_clear);
+    USE_FN(dal_mono_oled_draw_text);
+    USE_FN(dal_mono_oled_flush);
+    USE_FN(dal_mono_oled_deinit);
     /* GPS */
     USE_FN(dal_gps_poll);
     USE_FN(dal_gps_get_position);

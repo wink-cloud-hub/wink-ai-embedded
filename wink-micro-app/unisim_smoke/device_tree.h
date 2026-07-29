@@ -17,10 +17,10 @@
 #define SMOKE_PWM_CHANNEL        1u
 #define SMOKE_PWM_FREQ_HZ        1000u
 #define SMOKE_I2C_PORT           0u
-/* 0x50 is a generic EEPROM-style address NOT intercepted by the C-side SSD1306
+/* 0x50 is a generic EEPROM-style address NOT intercepted by the C-side mono_oled
  * simulator (which unconditionally claims 0x3C/0x3D). Using 0x50 lets the
  * js_pal_i2c_transfer bridge fire so the nodeSmoke jest test can verify the
- * JS I2C path. The C-side SSD1306 sim path is covered separately by
+ * JS I2C path. The C-side mono_oled sim path is covered separately by
  * test_wasm_devices_sim. */
 #define SMOKE_I2C_ADDR           0x50u
 #define SMOKE_ISR_PIN            4u
