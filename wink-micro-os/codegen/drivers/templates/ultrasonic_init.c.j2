@@ -1,7 +1,0 @@
-    static const dal_ultrasonic_config_t {{ name }}_cfg = {
-        .owner = "{{ name }}",
-        .trig_pin = {{ trig_pin }},
-        .echo_pin = {{ echo_pin }},
-        .use_rmt = {{ use_rmt | bool_c }},
-    };
-    WINK_TRY(dal_ultrasonic_init(&{{ name }}, &{{ name }}_cfg));

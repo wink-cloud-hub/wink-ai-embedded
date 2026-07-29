@@ -1,0 +1,40 @@
+codegen_schema: "1.1"
+type: eeprom
+category: storage
+is_actuator: false
+experimental: true
+
+fields:
+  i2c_bus:
+    tier: advanced
+    type: int
+    required: true
+    c: i2c_port
+  i2c_addr:
+    tier: advanced
+    type: int
+    default: 80
+    hex: true
+    c_suffix: ""
+  capacity_bytes:
+    tier: stable
+    type: int
+    default: 256
+    emit: macro
+    c_suffix: u
+  page_size_bytes:
+    tier: advanced
+    type: int
+    default: 8
+    c: page_size
+  write_time_ms:
+    tier: advanced
+    type: int
+    default: 5
+
+config:
+  c_type: dal_eeprom_t
+  config_type: dal_eeprom_config_t
+  headers: [dal_eeprom.h]
+  deinit_fn: dal_eeprom_deinit
+  safe_off_fn: ""

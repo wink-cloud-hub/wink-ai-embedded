@@ -1,37 +1,40 @@
-codegen_schema: 1
+codegen_schema: "1.1"
 type: ultrasonic
 category: sensor
-source_stem: ultrasonic
 is_actuator: false
 experimental: false
-
-required_fields: [trig_pin, echo_pin]
-stable_fields: [role, auto_poll_ms]
-advanced_fields: [trig_pin, echo_pin, use_rmt]
-
 default_role: distance_sensor
 
-extra_cmake_defs: ""
-extra_cmake_sources: ""
-
-constraints:
-  - field: auto_poll_ms
+fields:
+  trig_pin:
+    tier: advanced
     type: int
-    optional: true
+    required: true
+    min: 0
+    max: 39
+  echo_pin:
+    tier: advanced
+    type: int
+    required: true
+    min: 0
+    max: 39
+  use_rmt:
+    tier: advanced
+    type: bool
+    default: true
+    emit: macro
+    config_member: true
+  auto_poll_ms:
+    tier: stable
+    type: int
     default: 50
     min: 50
-    on_violation: error
-
-config:
-  c_type: dal_ultrasonic_t
-  config_type: dal_ultrasonic_config_t
-  headers: [dal_ultrasonic.h]
-  init_template_file: templates/ultrasonic_init.c.j2
-  deinit_fn: dal_ultrasonic_deinit
-  safe_off_fn: ""
-  macros_template: |
-    #define {{ name | upper }}_USE_RMT {{ use_rmt | bool_c }}
-    #define {{ name | upper }}_AUTO_POLL_MS {{ auto_poll_ms }}u
+    emit: macro
+    c_suffix: u
+  role:
+    tier: stable
+    type: string
+    emit: none
 
 role_bindings:
   distance_sensor:

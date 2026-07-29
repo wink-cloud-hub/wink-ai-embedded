@@ -1,7 +1,7 @@
 # Role contract SSOT (machine-readable). Human-readable SSOT:
 # docs/design/03-app-codegen/01-app-business-logic.md § Role Interface
 # BAL-backed distance events (enable/disable) are stable surface (ADR-0033).
-codegen_schema: 1
+codegen_schema: "1.1"
 id: distance_sensor
 verbs:
   - id: request_measurement
