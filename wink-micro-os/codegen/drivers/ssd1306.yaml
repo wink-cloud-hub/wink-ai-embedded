@@ -1,0 +1,67 @@
+codegen_schema: 1
+type: ssd1306
+category: display
+source_stem: ssd1306
+is_actuator: false
+experimental: false
+
+required_fields: [i2c_bus]
+stable_fields: [role, width, height]
+advanced_fields: [i2c_bus, i2c_addr]
+
+default_role: text_display
+
+# ADR-0046: font TU + CACHE split for --mode=source vs --mode=defs.
+extra_cmake_defs: |
+  set(WINK_SSD1306_FONT "ascii_upper" CACHE STRING
+      "SSD1306 5x7 font: minimal | ascii_upper")
+  if(WINK_SSD1306_FONT STREQUAL "minimal")
+    target_compile_definitions(${WINK_DAL_TARGET} PUBLIC WINK_SSD1306_FONT_MINIMAL=1)
+  elseif(WINK_SSD1306_FONT STREQUAL "ascii_upper")
+    target_compile_definitions(${WINK_DAL_TARGET} PUBLIC WINK_SSD1306_FONT_ASCII_UPPER=1)
+  else()
+    message(FATAL_ERROR "WINK_SSD1306_FONT must be 'minimal' or 'ascii_upper'")
+  endif()
+extra_cmake_sources: |
+  if(WINK_SSD1306_FONT STREQUAL "minimal")
+    target_sources(${WINK_DAL_TARGET} PRIVATE
+        ${WINK_MICRO_OS_ROOT}/dal/src/display/dal_ssd1306_font_5x7_minimal.c)
+  elseif(WINK_SSD1306_FONT STREQUAL "ascii_upper")
+    target_sources(${WINK_DAL_TARGET} PRIVATE
+        ${WINK_MICRO_OS_ROOT}/dal/src/display/dal_ssd1306_font_5x7_ascii_upper.c)
+  endif()
+
+constraints:
+  - field: i2c_addr
+    type: int
+    optional: true
+    default: 60
+  - field: width
+    type: int
+    optional: true
+    default: 128
+  - field: height
+    type: int
+    optional: true
+    default: 64
+
+config:
+  c_type: dal_ssd1306_t
+  config_type: dal_ssd1306_config_t
+  headers: [dal_ssd1306.h]
+  init_template_file: templates/ssd1306_init.c.j2
+  deinit_fn: dal_ssd1306_deinit
+  safe_off_fn: ""
+  macros_template: |
+    #define {{ name | upper }}_I2C_ADDR 0x{{ '%X'|format(i2c_addr) }}
+
+role_bindings:
+  text_display:
+    headers: []
+    verbs:
+      clear:
+        template: "static inline void {{ name }}_clear(void) { WINK_IGNORE_RESULT(dal_ssd1306_clear(&{{ name }})); }"
+      draw_text:
+        template: "static inline void {{ name }}_draw_text(uint16_t col, uint8_t page, const char *str) { WINK_IGNORE_RESULT(dal_ssd1306_draw_text(&{{ name }}, col, page, str)); }"
+      flush:
+        template: "static inline void {{ name }}_flush(void) { WINK_IGNORE_RESULT(dal_ssd1306_flush(&{{ name }})); }"

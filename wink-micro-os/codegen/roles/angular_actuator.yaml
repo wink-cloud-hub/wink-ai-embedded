@@ -1,0 +1,7 @@
+# Role contract SSOT (machine-readable). Human-readable SSOT:
+# docs/design/03-app-codegen/01-app-business-logic.md § Role Interface
+codegen_schema: 1
+id: angular_actuator
+verbs:
+  - id: set_angle
+    error_class: fire_and_forget

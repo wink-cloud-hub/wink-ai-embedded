@@ -1,0 +1,42 @@
+codegen_schema: 1
+type: led
+category: output
+source_stem: led
+is_actuator: true
+experimental: false
+
+required_fields: [gpio_pin]
+stable_fields: [role]
+advanced_fields: [gpio_pin, active_high]
+
+default_role: binary_indicator
+
+extra_cmake_defs: ""
+extra_cmake_sources: ""
+
+constraints:
+  - field: active_high
+    type: bool
+    optional: true
+    default: true
+
+config:
+  c_type: dal_led_t
+  config_type: dal_led_config_t
+  headers: [dal_led.h]
+  init_template_file: templates/led_init.c.j2
+  deinit_fn: dal_led_deinit
+  safe_off_fn: dal_led_off
+  macros_template: |
+    #define {{ name | upper }}_ACTIVE_HIGH {{ active_high | default(true) | bool_c }}
+
+role_bindings:
+  binary_indicator:
+    headers: []
+    verbs:
+      activate:
+        template: "static inline void {{ name }}_activate(void) { WINK_IGNORE_RESULT(dal_led_on(&{{ name }})); }"
+      deactivate:
+        template: "static inline void {{ name }}_deactivate(void) { WINK_IGNORE_RESULT(dal_led_off(&{{ name }})); }"
+      toggle:
+        template: "static inline void {{ name }}_toggle(void) { WINK_IGNORE_RESULT(dal_led_toggle(&{{ name }})); }"

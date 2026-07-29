@@ -1,0 +1,49 @@
+codegen_schema: 1
+type: ultrasonic
+category: sensor
+source_stem: ultrasonic
+is_actuator: false
+experimental: false
+
+required_fields: [trig_pin, echo_pin]
+stable_fields: [role, auto_poll_ms]
+advanced_fields: [trig_pin, echo_pin, use_rmt]
+
+default_role: distance_sensor
+
+extra_cmake_defs: ""
+extra_cmake_sources: ""
+
+constraints:
+  - field: auto_poll_ms
+    type: int
+    optional: true
+    default: 50
+    min: 50
+    on_violation: error
+
+config:
+  c_type: dal_ultrasonic_t
+  config_type: dal_ultrasonic_config_t
+  headers: [dal_ultrasonic.h]
+  init_template_file: templates/ultrasonic_init.c.j2
+  deinit_fn: dal_ultrasonic_deinit
+  safe_off_fn: ""
+  macros_template: |
+    #define {{ name | upper }}_USE_RMT {{ use_rmt | bool_c }}
+    #define {{ name | upper }}_AUTO_POLL_MS {{ auto_poll_ms }}u
+
+role_bindings:
+  distance_sensor:
+    headers: [sensor/wink_ultrasonic_distance_events.h]
+    verbs:
+      request_measurement:
+        template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_request_measurement(void) { return dal_ultrasonic_request_measurement(&{{ name }}); }"
+      read_distance:
+        template: "static inline float {{ name }}_read_distance(void) { float d = -1.0f; WINK_IGNORE_RESULT(dal_ultrasonic_get_cached_distance(&{{ name }}, &d)); return d; }"
+      read_distance_status:
+        template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_read_distance_status(float *out_dist_cm) { return dal_ultrasonic_get_cached_distance(&{{ name }}, out_dist_cm); }"
+      enable_distance_events:
+        template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_enable_distance_events(void) { static const wink_ultrasonic_distance_event_config_t cfg = { .period_ms = {{ auto_poll_ms }}u }; return wink_ultrasonic_enable_distance_events(&{{ name }}, &cfg); }"
+      disable_distance_events:
+        template: "static inline void {{ name }}_disable_distance_events(void) { wink_ultrasonic_disable_distance_events(&{{ name }}); }"
