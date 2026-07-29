@@ -20,7 +20,7 @@ status_oled_flush();
 ```
 
 Prefer `{instance}_{verb}` wrappers from generated `device_tree.h`.
-Do **not** teach pin numbers, `pal_*`, or `dal_ssd1306_*` on this path.
+Do **not** teach pin numbers, `pal_*`, or `dal_mono_oled_*` on this path.
 Button: use `enable_events` / `disable_events` (not `start_auto_poll`) at L1.
 
 Build wiring for declarative apps:

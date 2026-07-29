@@ -1,11 +1,11 @@
-#include "dal_ssd1306_font_internal.h"
+#include "dal_mono_oled_font_internal.h"
 
 /* MVP 子集：空格、0-9、A/D/E/H/I/L/O/P/R/S/T/W、!（共 24 字形）。
- * 构建选项 WINK_SSD1306_FONT=minimal 时链入，约 120 B Flash。 */
+ * 构建选项 WINK_MONO_OLED_FONT=minimal 时链入，约 120 B Flash。 */
 
 #define FONT_ENTRIES 24
 
-static const uint8_t s_font[FONT_ENTRIES][DAL_SSD1306_FONT_GLYPH_BYTES] = {
+static const uint8_t s_font[FONT_ENTRIES][DAL_MONO_OLED_FONT_GLYPH_BYTES] = {
     {0x00, 0x00, 0x00, 0x00, 0x00}, /*  0: space */
     {0x3E, 0x51, 0x49, 0x45, 0x3E}, /*  1: '0' */
     {0x00, 0x42, 0x7F, 0x40, 0x00}, /*  2: '1' */
@@ -57,7 +57,7 @@ static int font_index(char c) {
     }
 }
 
-const uint8_t *dal_ssd1306_font_glyph(char c) {
+const uint8_t *dal_mono_oled_font_glyph(char c) {
     int idx = font_index(c);
     if (idx < 0) {
         return s_font[0];

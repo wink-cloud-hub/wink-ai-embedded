@@ -80,9 +80,9 @@ foreach(_drv IN LISTS WINK_KNOWN_DRIVERS)
     )
 endforeach()
 
-# IDE-only: font internal header when SSD1306 is enabled (not a compile TU).
-if(WINK_USE_SSD1306)
-    target_sources(dal PRIVATE src/display/dal_ssd1306_font_internal.h)
+# IDE-only: font internal header when MONO_OLED is enabled (not a compile TU).
+if(WINK_USE_MONO_OLED)
+    target_sources(dal PRIVATE src/display/dal_mono_oled_font_internal.h)
 endif()
 
 set(WINK_DAL_TARGET dal)

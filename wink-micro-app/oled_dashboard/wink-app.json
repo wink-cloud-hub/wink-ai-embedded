@@ -15,7 +15,7 @@
       "active_high": true
     },
     "status_oled": {
-      "type": "ssd1306",
+      "type": "mono_oled",
       "i2c_bus": 0,
       "i2c_addr": 60
     }

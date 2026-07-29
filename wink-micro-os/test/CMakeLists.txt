@@ -172,7 +172,7 @@ add_wink_host_test(test_sim_physical unit/sim/test_sim_physical.c)
 add_wink_host_test(test_dal_rc_servo unit/dal/test_dal_rc_servo.c)
 add_wink_host_test(test_dal_led unit/dal/test_dal_led.c)
 add_wink_host_test(test_dal_button unit/dal/test_dal_button.c)
-add_wink_host_test(test_dal_ssd1306 unit/dal/test_dal_ssd1306.c)
+add_wink_host_test(test_dal_mono_oled unit/dal/test_dal_mono_oled.c)
 add_wink_host_test(test_dal_ultrasonic unit/dal/test_dal_ultrasonic.c)
 
 add_wink_host_test(test_dal_dc_motor unit/dal/test_dal_dc_motor.c)

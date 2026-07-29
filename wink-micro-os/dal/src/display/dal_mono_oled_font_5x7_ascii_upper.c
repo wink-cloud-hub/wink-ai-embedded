@@ -1,4 +1,4 @@
-#include "dal_ssd1306_font_internal.h"
+#include "dal_mono_oled_font_internal.h"
 
 /* 5×7 紧凑字体：空格、数字 0-9、大写 A-Z、感叹号（共 38 字形）。
  * 每字形 5 字节（5 列 × 7 行），LSB = 顶行像素。
@@ -10,7 +10,7 @@
 #define FONT_BANG   37
 #define FONT_COUNT  38
 
-static const uint8_t s_font[FONT_COUNT][DAL_SSD1306_FONT_GLYPH_BYTES] = {
+static const uint8_t s_font[FONT_COUNT][DAL_MONO_OLED_FONT_GLYPH_BYTES] = {
     [FONT_SPACE]  = {0x00, 0x00, 0x00, 0x00, 0x00}, /* space */
     [FONT_DIGIT0] = {0x3E, 0x51, 0x49, 0x45, 0x3E}, /* '0' */
     [FONT_DIGIT0 + 1] = {0x00, 0x42, 0x7F, 0x40, 0x00}, /* '1' */
@@ -70,7 +70,7 @@ static int font_index(char c) {
     return -1;
 }
 
-const uint8_t *dal_ssd1306_font_glyph(char c) {
+const uint8_t *dal_mono_oled_font_glyph(char c) {
     int idx = font_index(c);
     if (idx < 0) {
         return s_font[FONT_SPACE];
