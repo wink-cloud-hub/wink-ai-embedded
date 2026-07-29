@@ -8,6 +8,7 @@
 | **关联计划** | [user-surface-phase1-plan.md](../../docs/design/implementation-plans/2026-07-28-user-surface-phase1-plan.md) |
 | **关联评审** | [dal-control-semantic-completeness-review §10](../../docs/design/reviews/2026-07-28-dal-control-semantic-completeness-review.md)；[user-surface-phase1-plan-review.md](../../docs/design/reviews/2026-07-28-user-surface-phase1-plan-review.md) |
 | **字段分层摘要** | [dal-best-practices §3.0](./dal-development-guide/dal-best-practices.md) |
+| **Codegen 扩展根（ADR-0051）** | 各 `type` 的 codegen 描述与 Role bindings 外置在 [`wink-micro-os/codegen/`](../codegen/README.md)，加外设无需改 `wink-tools` 源码 — 见 [adding-peripheral.md](./dal-development-guide/adding-peripheral.md) |
 
 ---
 

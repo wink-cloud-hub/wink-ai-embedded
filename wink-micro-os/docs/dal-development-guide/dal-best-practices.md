@@ -78,6 +78,11 @@ driver_ic   → 可选别名，能省则省
 enable_pin  → 可选使能脚，有且要软件控才写
 ```
 
+> 💡 **架构心法（三维抽象边界）**：
+> - **`type` = 驱动护城河**：只要底层的通信协议、控制物理量单位（角度 / 步数 / 占空比 / 原始电压）和 C 驱动代码改变，就必须建立新的 `type`。
+> - **`drive_mode` = 拓扑避风港**：驱动代码框架不变，仅硬件接线、引脚排列或驱动 H 桥芯片变了，就在 `type` 内部用 `drive_mode` 枚举消化，绝不向 App 暴露新的 API。
+> - **`role` = 应用变形金刚**：底层如何驱动与采集由 DAL 固化，但上层 App 想以何种角色接口称呼它、调用它（如 `hmi_dial` vs `pulse_counter`），交由 `role` 进行能力平面映射。
+
 全局 JSON 骨架与引脚约定见 [`../wink-app-json-guide.md`](../wink-app-json-guide.md)。H 桥扩展字段落地前，以各 `drivers/<type>.py` 的 `required_fields` 为准；上表是约定方向。
 
 #### `type` 与 `role`（勿混为一谈）
