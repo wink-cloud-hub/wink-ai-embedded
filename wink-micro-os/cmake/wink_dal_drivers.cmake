@@ -1,4 +1,4 @@
-# Shared DAL dual-mode pruning helpers (ADR-0039 + ADR-0046).
+# Shared DAL dual-mode pruning helpers (ADR-0039 + ADR-0046 + ADR-0051).
 #
 # Consumers (ESP32 IDF component, Host, Binary SDK, wasm single-app):
 #   include(${WINK_MICRO_OS_ROOT}/cmake/wink_dal_drivers.cmake)
@@ -6,9 +6,68 @@
 #   wink_dal_add_enabled_sources(<target>)
 #
 # Requires WINK_MICRO_OS_ROOT to be an absolute path to wink-micro-os/.
-# Driver universe SSOT = wink-tools/codegen/drivers/ (list_drivers.py).
+# Driver universe SSOT = wink-tools codegen registry + extension-root YAML
+# (list_drivers.py). Build truth for extra roots: cache WINK_CODEGEN_PATHS.
 
 include(${WINK_MICRO_OS_ROOT}/cmake/wink_tools.cmake)
+
+# Register CMAKE_CONFIGURE_DEPENDS for builtin plugins, extension YAML,
+# referenced templates, plus GLOB_RECURSE watches on OS codegen/drivers|roles.
+function(wink_dal_register_codegen_configure_depends)
+    if(NOT WINK_MICRO_OS_ROOT)
+        message(FATAL_ERROR
+            "wink_dal_register_codegen_configure_depends: WINK_MICRO_OS_ROOT is not set")
+    endif()
+    if(NOT Python3_EXECUTABLE)
+        find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    endif()
+
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE}
+                ${WINK_TOOLS_ROOT}/tools/codegen/list_drivers.py
+                --depend-files
+                "--codegen-paths=${WINK_CODEGEN_PATHS}"
+        OUTPUT_VARIABLE _wink_depend_out
+        RESULT_VARIABLE _wink_depend_rc
+        ERROR_VARIABLE _wink_depend_err
+    )
+    if(NOT _wink_depend_rc EQUAL 0)
+        message(FATAL_ERROR
+            "list_drivers.py --depend-files failed (rc=${_wink_depend_rc}): "
+            "${_wink_depend_err}")
+    endif()
+    string(REPLACE "\r\n" "\n" _wink_depend_out "${_wink_depend_out}")
+    string(REPLACE "\n" ";" _wink_depend_list "${_wink_depend_out}")
+    set(_wink_depend_clean "")
+    foreach(_p IN LISTS _wink_depend_list)
+        if(NOT _p STREQUAL "")
+            list(APPEND _wink_depend_clean "${_p}")
+        endif()
+    endforeach()
+    if(_wink_depend_clean)
+        set_property(DIRECTORY APPEND PROPERTY
+            CMAKE_CONFIGURE_DEPENDS ${_wink_depend_clean})
+    endif()
+
+    # Add/delete under OS extension root must reconfigure even before
+    # list_drivers has seen the new file in a prior configure.
+    if(IS_DIRECTORY "${WINK_MICRO_OS_ROOT}/codegen/drivers")
+        file(GLOB_RECURSE _wink_os_codegen_drivers CONFIGURE_DEPENDS
+            "${WINK_MICRO_OS_ROOT}/codegen/drivers/*")
+        if(_wink_os_codegen_drivers)
+            set_property(DIRECTORY APPEND PROPERTY
+                CMAKE_CONFIGURE_DEPENDS ${_wink_os_codegen_drivers})
+        endif()
+    endif()
+    if(IS_DIRECTORY "${WINK_MICRO_OS_ROOT}/codegen/roles")
+        file(GLOB_RECURSE _wink_os_codegen_roles CONFIGURE_DEPENDS
+            "${WINK_MICRO_OS_ROOT}/codegen/roles/*")
+        if(_wink_os_codegen_roles)
+            set_property(DIRECTORY APPEND PROPERTY
+                CMAKE_CONFIGURE_DEPENDS ${_wink_os_codegen_roles})
+        endif()
+    endif()
+endfunction()
 
 function(wink_dal_load_driver_table MODE)
     if(NOT WINK_MICRO_OS_ROOT)
@@ -25,6 +84,7 @@ function(wink_dal_load_driver_table MODE)
         COMMAND ${Python3_EXECUTABLE}
                 ${WINK_TOOLS_ROOT}/tools/codegen/list_drivers.py
                 --cmake --mode=${MODE}
+                "--codegen-paths=${WINK_CODEGEN_PATHS}"
         OUTPUT_FILE "${_gen}"
         RESULT_VARIABLE _rc
         ERROR_VARIABLE _err
@@ -33,9 +93,7 @@ function(wink_dal_load_driver_table MODE)
         message(FATAL_ERROR "list_drivers.py --mode=${MODE} failed (rc=${_rc}): ${_err}")
     endif()
     include("${_gen}")
-    file(GLOB _wink_driver_plugins CONFIGURE_DEPENDS
-         ${WINK_TOOLS_ROOT}/tools/codegen/drivers/*.py)
-    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${_wink_driver_plugins})
+    wink_dal_register_codegen_configure_depends()
 endfunction()
 
 function(wink_dal_apply_pruning JSON_PATH OUT_DIR)
@@ -44,7 +102,7 @@ function(wink_dal_apply_pruning JSON_PATH OUT_DIR)
     endif()
     if(JSON_PATH STREQUAL "")
         message(WARNING
-            "wink_dal: no wink-app.json â€?enabling ALL DAL drivers (ADR-0039). "
+            "wink_dal: no wink-app.json - enabling ALL DAL drivers (ADR-0039). "
             "Add wink-app.json to prune unused drivers.")
         foreach(_opt IN LISTS WINK_KNOWN_DRIVERS)
             set(WINK_USE_${_opt} ON CACHE BOOL "" FORCE)
