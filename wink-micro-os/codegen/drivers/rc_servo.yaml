@@ -1,0 +1,79 @@
+codegen_schema: "1.1"
+type: rc_servo
+category: actuator
+is_actuator: true
+experimental: true
+default_role: angular_actuator
+
+advanced_only: [resolution_bits, clock_requirement]
+
+fields:
+  pwm_channel:
+    tier: advanced
+    type: int
+    required: true
+  resolution_bits:
+    tier: advanced
+    type: int
+    min: 1
+    max: 20
+    emit_when: present
+    c_suffix: u
+  clock_requirement:
+    tier: advanced
+    type: enum
+    emit_when: present
+    enum: [auto, stable_required]
+    map:
+      auto: DAL_RC_SERVO_CLOCK_AUTO
+      stable_required: DAL_RC_SERVO_CLOCK_STABLE_REQUIRED
+  min_pulse_ms:
+    tier: stable
+    type: float
+    default: 0.5
+    emit: macro
+    emit_when: present
+  max_pulse_ms:
+    tier: stable
+    type: float
+    default: 2.5
+    emit: macro
+    emit_when: present
+  max_angle:
+    tier: stable
+    type: float
+    emit_when: present
+  role:
+    tier: stable
+    type: string
+    emit: none
+
+constraints:
+  - field: max_angle
+    type: float
+    optional: true
+    min: 0.0001
+  - when:
+      field: max_angle
+      equals: 0
+    omit: [max_angle]
+    on_violation: warn
+    message: "device '{dev_name}': max_angle: 0 is ambiguous with the default sentinel (180°); use a positive angle instead."
+  - when:
+      field: max_angle
+      equals: 180
+    omit: [max_angle]
+
+config:
+  c_type: dal_rc_servo_t
+  config_type: dal_rc_servo_config_t
+  headers: [dal_rc_servo.h]
+  deinit_fn: dal_rc_servo_deinit
+  safe_off_fn: dal_rc_servo_safe_off
+
+role_bindings:
+  angular_actuator:
+    headers: []
+    verbs:
+      set_angle:
+        template: "static inline void {{ name }}_set_angle(float angle) { WINK_IGNORE_RESULT(dal_rc_servo_set_angle(&{{ name }}, angle)); }"

@@ -1,0 +1,28 @@
+codegen_schema: "1.1"
+type: gps
+category: comm
+is_actuator: false
+experimental: true
+
+fields:
+  uart_port:
+    tier: advanced
+    type: int
+    required: true
+  baudrate:
+    tier: stable
+    type: int
+    default: 9600
+    emit: macro
+    c_suffix: u
+  rx_buffer_size:
+    tier: advanced
+    type: int
+    default: 256
+
+config:
+  c_type: dal_gps_t
+  config_type: dal_gps_config_t
+  headers: [dal_gps.h]
+  deinit_fn: dal_gps_deinit
+  safe_off_fn: ""

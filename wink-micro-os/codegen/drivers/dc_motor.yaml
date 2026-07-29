@@ -1,0 +1,62 @@
+codegen_schema: "1.1"
+type: dc_motor
+category: actuator
+is_actuator: true
+experimental: false
+default_role: open_loop_actuator
+
+fields:
+  pwm_channel:
+    tier: advanced
+    type: int
+    required: true
+  dir_pin_a:
+    tier: advanced
+    type: int
+    required: true
+  dir_pin_b:
+    tier: advanced
+    type: int
+    default: -1
+  pwm_freq_hz:
+    tier: advanced
+    type: int
+    default: 20000
+    c_suffix: u
+  drive_mode:
+    tier: advanced
+    type: enum
+    emit_when: present
+    enum: [in_in, phase_enable, pwm_on_in]
+    map:
+      in_in: DAL_DC_MOTOR_MODE_IN_IN
+      phase_enable: DAL_DC_MOTOR_MODE_PHASE_ENABLE
+      pwm_on_in: DAL_DC_MOTOR_MODE_PWM_ON_IN
+  enable_pin:
+    tier: advanced
+    type: int
+    default: -1
+  role:
+    tier: stable
+    type: string
+    emit: none
+
+config:
+  c_type: dal_dc_motor_t
+  config_type: dal_dc_motor_config_t
+  headers: [dal_dc_motor.h]
+  deinit_fn: dal_dc_motor_deinit
+  safe_off_fn: dal_dc_motor_safe_off
+
+role_bindings:
+  open_loop_actuator:
+    headers: []
+    verbs:
+      set_speed:
+        template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_set_speed(float speed) { return dal_dc_motor_set_speed(&{{ name }}, speed); }"
+      coast:
+        template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_coast(void) { return dal_dc_motor_coast(&{{ name }}); }"
+      brake:
+        template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_brake(void) { return dal_dc_motor_brake(&{{ name }}); }"
+      safe_off:
+        template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_safe_off(void) { return dal_dc_motor_safe_off(&{{ name }}); }"

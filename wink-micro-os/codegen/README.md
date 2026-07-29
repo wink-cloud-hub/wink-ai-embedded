@@ -49,6 +49,12 @@ are unregistered / fallback-only for comparison tests):
 | `led` | `drivers/led.yaml` |
 | `ultrasonic` | `drivers/ultrasonic.yaml` |
 | `ssd1306` | `drivers/ssd1306.yaml` |
+| `rc_servo` | `drivers/rc_servo.yaml` |
+| `button` | `drivers/button.yaml` |
+| `dc_motor` | `drivers/dc_motor.yaml` |
+| `encoder` | `drivers/encoder.yaml` |
+| `gps` | `drivers/gps.yaml` |
+| `eeprom` | `drivers/eeprom.yaml` |
 
 ## Role contracts
 
@@ -64,24 +70,13 @@ are unregistered / fallback-only for comparison tests):
 
 ## Builtin Python exceptions (P3 exit — Owner sign-off list)
 
-Target set for YAML migration: `led` / `button` / `ultrasonic` / `ssd1306` /
-`rc_servo` (+ Phase 1 role types). Types below remain **tools builtin plugins**
-until Owner signs off a migration. Do **not** add a competing OS YAML while
-they stay registered in `wink-tools/tools/codegen/drivers/*.py`.
+All nine official driver types are OS YAML SSOT. Python plugins under
+`wink-tools/tools/codegen/drivers/*.py` remain importable with `register = False`
+for golden / comparison tests only.
 
-| type | Status | Rationale (why not OS YAML yet) |
-|------|--------|----------------------------------|
-| `button` | **Exception — pending Owner sign-off** | Cross-field (`event_drive`↔`auto_poll_ms`/`gpio_pin`) + nested `advanced.pull` enum→C + conditional BAL event wrappers + post-init; exceeds declarative constraints without advanced.* maps |
-| `rc_servo` | **Exception — pending Owner sign-off** | Nested `advanced.resolution_bits` / `clock_requirement` + `max_angle` 0-sentinel warning; conditional designated initializers |
-| `dc_motor` | Exception (out of T10 target migrate set) | Multi-mode actuator semantics |
-| `encoder` | Exception (out of T10 target migrate set) | Decode-mode / coupling complexity |
-| `gps` / `eeprom` | Exception | Experimental or niche stubs (review before migrate) |
+**No types remain on the exception list** (see `EXCEPTIONS.md` if re-opened).
 
-**Migrated (OS YAML SSOT):** `led`, `ultrasonic`, `ssd1306`.
-
-> **Owner action:** Confirm `button` / `rc_servo` remain on this exception list
-> for P3 exit, or authorize a follow-up task to extend constraints for
-> `advanced.*` and migrate them. This table is the provisional sign-off surface.
+Previously listed before T11: `button`, `rc_servo`, `dc_motor`, `encoder`, `gps`, `eeprom`.
 
 ## Scan order (later wins)
 
@@ -102,20 +97,46 @@ Same `type` in a later root replaces the earlier definition entirely (no deep
 merge in MVP).
 
 
-## Schema
+## Schema 1.1
 
-Each driver YAML includes `codegen_schema: 1`. The engine supports schema
-version `1`. Schema `0` loads with a warning (N−1 compatibility). Newer or
-older unsupported versions fail closed.
+Each driver YAML declares `codegen_schema: "1.1"`. Schema `1` / `"1.0"` loads with a
+warning (N−1 compatibility window). Unsupported versions fail closed.
 
-See the tech design for the full field mapping:
-[scannable-codegen-extension-roots-design.md](../../docs/design/tech-designs/2026-07-28-scannable-codegen-extension-roots-design.md).
+Full field mapping:
+[scannable-codegen-extension-roots-design.md §4](../../docs/design/tech-designs/2026-07-28-scannable-codegen-extension-roots-design.md).
+
+### 必填 / 可省 / 何时手写
+
+| 类别 | 内容 |
+|------|------|
+| **必填** | `codegen_schema`, `type`, `experimental`, `fields`（每项含 `tier` + `type`；有歧义时加 `c` / `emit` / `map`） |
+| **能推则省** | `category`（唯一 `dal/include/<cat>/dal_<type>.h` 时可省略）、`is_actuator`、`config.*` 命名约定、1:1 `role_bindings`、标准 init 约定发射 |
+| **何时手写** | stub 必填 `category`；非标 `safe_off_fn`；事件/解包类 role 动词；`build_variants` 或 escape `extra_cmake_*`；JSON 名 ≠ C 成员时 `fields.<n>.c` |
+
+**禁止**在描述文件里写旧四表（`required_fields` / `stable_fields` /
+`advanced_fields` / `constraints`）——引擎从 `fields:` **派生**这些视图供
+`list_drivers` / `user_surface` / 约束求值使用。
+
+### 渲染三态分发（T3a）
+
+`render_strategy()` 取代旧二态「有模板 / 无模板→plugin」：
+
+| 策略 | 条件 |
+|------|------|
+| `template_override` | 存在 `config.init_template` 或 `init_template_file` |
+| `convention_emit` | 扩展根 YAML 获胜、无 init 模板、已物化 `config` |
+| `plugin` | 仅 builtin Python 插件 |
+
+**T3a 硬闸：** OS / env / app YAML 去掉 init 模板后**必须**走
+`convention_emit`（或显式报错），**禁止**静默回退 `plugin`。否则已迁 YAML
+驱动会在去模板时误触 `_require_plugin` 或破坏 SSOT。
 
 ## Adding a driver
 
 1. Implement DAL C sources under `wink-micro-os/dal/`.
-2. Add `codegen/drivers/<type>.yaml` with `config`, `constraints`, and optional
-   `role_bindings` (cover `roles/<role>.yaml` verbs or declare subset).
+2. Add `codegen/drivers/<type>.yaml` with `codegen_schema: "1.1"`,
+   `experimental`, `fields:`, and optional `role_bindings`. Stubs must set
+   `category` explicitly.
 3. Run `python wink-tools/wink.py list_drivers --check` to confirm discovery.
 
 Detailed steps: [adding-peripheral.md](../docs/dal-development-guide/adding-peripheral.md).
@@ -136,18 +157,3 @@ sandboxed regardless.
 Before shipping a closed-source `wink-tools` build, Owner must sign off:
 [`CLOSED_SOURCE_CHECKLIST.md`](CLOSED_SOURCE_CHECKLIST.md).
 
-## Python hooks (P4 — **default OFF**)
-
-MVP and current releases are **YAML + Jinja templates only**. The engine does not
-load user Python from extension roots (`ENABLE_USER_HOOKS = False`).
-
-Future optional hooks (narrow API, `hooks_schema` version, root-relative
-`module_file` only) are documented in
-[`wink-tools/tools/codegen/HOOKS.md`](../../wink-tools/tools/codegen/HOOKS.md).
-Hooks run as trusted build-time code — **not** sandboxed; Jinja templates remain
-sandboxed regardless.
-
-## Closed-source release
-
-Before shipping a closed-source `wink-tools` build, Owner must sign off:
-[`CLOSED_SOURCE_CHECKLIST.md`](CLOSED_SOURCE_CHECKLIST.md).
