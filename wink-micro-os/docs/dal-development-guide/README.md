@@ -19,7 +19,7 @@
 | 静态分发 | [ADR-0004](../../../docs/design/decisions/0004-static-dispatch-vs-runtime-ops.md) |
 | 驱动 registry | [ADR-0046](../../../docs/design/decisions/0046-dal-driver-registry-ssot.md) |
 | 执行器命名 / DC safe_off | [ADR-0048](../../../docs/design/decisions/0048-actuator-control-semantic-naming.md) |
-| Role Interface / 未来扩展根 | [ADR-0051](../../../docs/design/decisions/0051-scannable-codegen-extension-roots.md)（Proposed）；[tech-design](../../../docs/design/tech-designs/2026-07-28-scannable-codegen-extension-roots-design.md) |
+| Role Interface / 扩展根 | [ADR-0051](../../../docs/design/decisions/0051-scannable-codegen-extension-roots.md)（**Accepted**）；[tech-design](../../../docs/design/tech-designs/2026-07-28-scannable-codegen-extension-roots-design.md)；[实施计划](../../../docs/design/implementation-plans/2026-07-29-scannable-codegen-extension-roots-plan.md) |
 
 ## 同级相关 Howto
 
