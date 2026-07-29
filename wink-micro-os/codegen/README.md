@@ -111,11 +111,16 @@ Full field mapping:
 |------|------|
 | **必填** | `codegen_schema`, `type`, `experimental`, `fields`（每项含 `tier` + `type`；有歧义时加 `c` / `emit` / `map`） |
 | **能推则省** | `category`（唯一 `dal/include/<cat>/dal_<type>.h` 时可省略）、`is_actuator`、`config.*` 命名约定、1:1 `role_bindings`、标准 init 约定发射 |
-| **何时手写** | stub 必填 `category`；非标 `safe_off_fn`；事件/解包类 role 动词；`build_variants` 或 escape `extra_cmake_*`；JSON 名 ≠ C 成员时 `fields.<n>.c` |
+| **何时手写** | stub 必填 `category`；非标 `safe_off_fn`；事件/解包类 role 动词；`build_variants` 或 escape `extra_cmake_*`；JSON 名 ≠ C 成员时 `fields.<n>.c`；既进 config 又发 macro/post_init 时用 `config_member: true` |
 
 **禁止**在描述文件里写旧四表（`required_fields` / `stable_fields` /
 `advanced_fields` / `constraints`）——引擎从 `fields:` **派生**这些视图供
-`list_drivers` / `user_surface` / 约束求值使用。
+`list_drivers` / `user_surface` / 约束求值使用。N−1 旧文件仍可加载并 **warn**；
+下一 schema minor / 下一 tools release 起升 **error**（见 tech-design §3.3）。
+
+**`config_member`：** 默认跟 `emit`——`emit: config` 进结构体，其它不进。若同一字段既要
+`.member = …` 又要 `#define` / post_init（如 `use_rmt`、`i2c_addr`），写
+`emit: macro`（或 `post_init`）并加 `config_member: true`。
 
 ### 渲染三态分发（T3a）
 
