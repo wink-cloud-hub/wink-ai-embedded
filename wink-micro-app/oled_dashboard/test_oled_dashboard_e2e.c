@@ -52,7 +52,7 @@ int main(void) {
     }
 
     int nonzero = 0;
-    for (int i = 0; i < SSD1306_FB_SIZE; i++) {
+    for (int i = 0; i < MONO_OLED_FB_SIZE; i++) {
         if (status_oled.framebuffer[i] != 0) {
             nonzero++;
         }
@@ -76,7 +76,7 @@ int main(void) {
     }
 
     nonzero = 0;
-    for (int i = 0; i < SSD1306_FB_SIZE; i++) {
+    for (int i = 0; i < MONO_OLED_FB_SIZE; i++) {
         if (status_oled.framebuffer[i] != 0) {
             nonzero++;
         }

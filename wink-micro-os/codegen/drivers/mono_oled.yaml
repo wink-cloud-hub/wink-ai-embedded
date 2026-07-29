@@ -1,0 +1,66 @@
+codegen_schema: "1.1"
+type: mono_oled
+category: display
+source_stem: mono_oled
+is_actuator: false
+experimental: false
+
+default_role: text_display
+
+fields:
+  i2c_bus:
+    tier: advanced
+    type: int
+    required: true
+    c: i2c_port
+  i2c_addr:
+    tier: advanced
+    type: int
+    default: 60
+    hex: true
+    c_suffix: ""
+    emit: macro
+    config_member: true
+  width:
+    tier: stable
+    type: int
+    default: 128
+  height:
+    tier: stable
+    type: int
+    default: 64
+  role:
+    tier: stable
+    type: string
+    emit: none
+
+build_variants:
+  - name: font
+    cache_var: WINK_MONO_OLED_FONT
+    values: [minimal, ascii_upper]
+    default: ascii_upper
+    cache_description: "MONO_OLED 5x7 font: minimal | ascii_upper"
+    compile_defines:
+      minimal: WINK_MONO_OLED_FONT_MINIMAL=1
+      ascii_upper: WINK_MONO_OLED_FONT_ASCII_UPPER=1
+    extra_sources:
+      minimal: dal/src/display/dal_mono_oled_font_5x7_minimal.c
+      ascii_upper: dal/src/display/dal_mono_oled_font_5x7_ascii_upper.c
+
+config:
+  c_type: dal_mono_oled_t
+  config_type: dal_mono_oled_config_t
+  headers: [dal_mono_oled.h]
+  deinit_fn: dal_mono_oled_deinit
+  safe_off_fn: ""
+
+role_bindings:
+  text_display:
+    headers: []
+    verbs:
+      clear:
+        template: "static inline void {{ name }}_clear(void) { WINK_IGNORE_RESULT(dal_mono_oled_clear(&{{ name }})); }"
+      draw_text:
+        template: "static inline void {{ name }}_draw_text(uint16_t col, uint8_t page, const char *str) { WINK_IGNORE_RESULT(dal_mono_oled_draw_text(&{{ name }}, col, page, str)); }"
+      flush:
+        template: "static inline void {{ name }}_flush(void) { WINK_IGNORE_RESULT(dal_mono_oled_flush(&{{ name }})); }"
