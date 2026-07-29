@@ -1,0 +1,62 @@
+codegen_schema: "1.1"
+type: encoder
+category: sensor
+is_actuator: false
+experimental: false
+default_role: pulse_counter
+
+fields:
+  pin_a:
+    tier: advanced
+    type: int
+    required: true
+  pin_b:
+    tier: advanced
+    type: int
+    default: -1
+  pull:
+    tier: advanced
+    type: enum
+    default: up
+    enum: [up, down, none]
+    map:
+      up: PAL_GPIO_INPUT_PULLUP
+      down: PAL_GPIO_INPUT_PULLDOWN
+      none: PAL_GPIO_INPUT
+  decode_mode:
+    tier: advanced
+    type: enum
+    emit_when: present
+    enum: [x1_rising, x2, x4]
+    map:
+      x1_rising: DAL_ENCODER_DECODE_X1_RISING
+      x2: DAL_ENCODER_DECODE_X2
+      x4: DAL_ENCODER_DECODE_X4
+  invert:
+    tier: advanced
+    type: bool
+    emit_when: present
+  role:
+    tier: stable
+    type: string
+    emit: none
+  cpr:
+    tier: stable
+    type: int
+    emit: none
+
+config:
+  c_type: dal_encoder_t
+  config_type: dal_encoder_config_t
+  headers: [dal_encoder.h]
+  deinit_fn: dal_encoder_deinit
+  safe_off_fn: ""
+
+role_bindings:
+  pulse_counter:
+    headers: []
+    verbs:
+      get_count:
+        template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_get_count(int32_t *out_count) { return dal_encoder_get_count(&{{ name }}, out_count); }"
+      reset:
+        template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_reset(void) { return dal_encoder_reset(&{{ name }}); }"

@@ -1,0 +1,111 @@
+codegen_schema: "1.1"
+type: button
+category: input
+is_actuator: false
+experimental: false
+default_role: binary_sensor
+
+advanced_only: [pull]
+
+fields:
+  gpio_pin:
+    tier: advanced
+    type: int
+    required: true
+    c: pin
+  active_low:
+    tier: advanced
+    type: bool
+    default: true
+  pull:
+    tier: advanced
+    type: enum
+    emit_when: present
+    enum: [auto, up, down, none]
+    map:
+      auto: DAL_BUTTON_PULL_AUTO
+      up: DAL_BUTTON_PULL_UP
+      down: DAL_BUTTON_PULL_DOWN
+      none: DAL_BUTTON_PULL_NONE
+  role:
+    tier: stable
+    type: string
+    emit: none
+  auto_poll_ms:
+    tier: stable
+    type: int
+    emit: macro
+    emit_when: present
+    c_suffix: u
+  long_press_ms:
+    tier: stable
+    type: int
+    emit: post_init
+    emit_when: present
+    c_suffix: u
+  debounce_ms:
+    tier: stable
+    type: int
+    default: 20
+    min: 0
+    emit: none
+  event_drive:
+    tier: stable
+    type: enum
+    default: soft_poll
+    enum: [soft_poll, gpio_irq]
+    emit: none
+  isr_counter:
+    tier: stable
+    type: bool
+    default: false
+    emit: post_init
+    emit_when: present
+
+constraints:
+  - when:
+      field: event_drive
+      equals: soft_poll
+    require: [auto_poll_ms]
+    on_violation: error
+
+config:
+  c_type: dal_button_t
+  config_type: dal_button_config_t
+  headers: [dal_button.h]
+  deinit_fn: dal_button_deinit
+  safe_off_fn: ""
+  macros_template: |
+    #define {{ name | upper }}_DEBOUNCE_MS {{ debounce_ms | default(20) }}u
+    {% if event_drive | default('soft_poll') == 'gpio_irq' %}
+    #define {{ name | upper }}_EVENT_DRIVE_GPIO_IRQ true
+    {% else %}
+    #define {{ name | upper }}_EVENT_DRIVE_SOFT_POLL true
+    {% endif %}
+    {% if auto_poll_ms is defined %}
+    #define {{ name | upper }}_AUTO_POLL_MS {{ auto_poll_ms }}u
+    {% endif %}
+    {% if long_press_ms is defined %}
+    #define {{ name | upper }}_LONG_PRESS_MS {{ long_press_ms }}u
+    {% endif %}
+
+role_bindings:
+  binary_sensor:
+    headers: [input/wink_button_events.h]
+    verbs:
+      is_active:
+        template: "static inline bool {{ name }}_is_active(void) { bool p = false; WINK_IGNORE_RESULT(dal_button_is_pressed(&{{ name }}, &p)); return p; }"
+      is_active_status:
+        template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_is_active_status(bool *out_active) { return dal_button_is_pressed(&{{ name }}, out_active); }"
+      was_active:
+        template: "static inline bool {{ name }}_was_active(void) { bool p = false; WINK_IGNORE_RESULT(dal_button_was_pressed(&{{ name }}, &p)); return p; }"
+      was_active_status:
+        template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_was_active_status(bool *out_pressed) { return dal_button_was_pressed(&{{ name }}, out_pressed); }"
+      enable_events:
+        template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_enable_events(void) { static const wink_button_event_config_t cfg = { .drive = {% if event_drive | default('soft_poll') == 'gpio_irq' %}WINK_BUTTON_DRIVE_GPIO_IRQ{% else %}WINK_BUTTON_DRIVE_SOFT_POLL{% endif %}, .auto_poll_ms = {{ auto_poll_ms | default(0) }}u, .debounce_ms = {{ debounce_ms | default(20) }}u, .wake_from_sleep = false }; return wink_button_enable_events(&{{ name }}, &cfg); }"
+      disable_events:
+        template: "static inline void {{ name }}_disable_events(void) { wink_button_disable_events(&{{ name }}); }"
+      start_auto_poll:
+        template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_start_auto_poll(uint32_t poll_ms) { const wink_button_event_config_t cfg = { .drive = WINK_BUTTON_DRIVE_SOFT_POLL, .auto_poll_ms = poll_ms, .debounce_ms = {{ name | upper }}_DEBOUNCE_MS, .wake_from_sleep = false }; return wink_button_enable_events(&{{ name }}, &cfg); }"
+      stop_auto_poll:
+        template: "static inline void {{ name }}_stop_auto_poll(void) { wink_button_disable_events(&{{ name }}); }"

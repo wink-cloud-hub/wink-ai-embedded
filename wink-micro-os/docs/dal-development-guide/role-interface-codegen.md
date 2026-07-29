@@ -316,7 +316,7 @@ role_bindings:
 
 
 
-模板为**单行** Jinja 字符串；可用 `{{ name }}`、`{{ auto_poll_ms }}` 等 device spec 字段。复杂 wrapper 可参考 `drivers/ultrasonic.yaml`（Convenience + `_status` 成对、`headers` 引 BAL 域头）。
+模板为**单行** Jinja 字符串；可用 `{{ name }}`、`{{ auto_poll_ms }}` 等 device spec 字段（来自 driver `fields:`，非旧四表）。复杂 wrapper 可参考 `drivers/ultrasonic.yaml`（Convenience + `_status` 成对、`headers` 引 BAL 域头）。
 
 
 
