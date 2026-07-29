@@ -1,0 +1,6 @@
+    static const dal_led_config_t {{ name }}_cfg = {
+        .owner = "{{ name }}",
+        .pin = {{ gpio_pin }},
+        .active_high = {{ active_high | default(true) | bool_c }},
+    };
+    WINK_TRY(dal_led_init(&{{ name }}, &{{ name }}_cfg));

@@ -1,0 +1,11 @@
+# Role contract SSOT (machine-readable). Human-readable SSOT:
+# docs/design/03-app-codegen/01-app-business-logic.md § Role Interface
+codegen_schema: 1
+id: binary_indicator
+verbs:
+  - id: activate
+    error_class: fire_and_forget
+  - id: deactivate
+    error_class: fire_and_forget
+  - id: toggle
+    error_class: fire_and_forget

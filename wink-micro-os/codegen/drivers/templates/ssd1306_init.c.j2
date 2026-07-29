@@ -1,0 +1,8 @@
+    static const dal_ssd1306_config_t {{ name }}_cfg = {
+        .i2c_port = {{ i2c_bus }},
+        .i2c_addr = 0x{{ '%X'|format(i2c_addr) }},
+        .width = {{ width }},
+        .height = {{ height }},
+        .owner = "{{ name }}",
+    };
+    WINK_TRY(dal_ssd1306_init(&{{ name }}, &{{ name }}_cfg));

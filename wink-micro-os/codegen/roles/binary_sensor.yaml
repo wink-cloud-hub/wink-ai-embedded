@@ -1,0 +1,22 @@
+# Role contract SSOT (machine-readable). Human-readable SSOT:
+# docs/design/03-app-codegen/01-app-business-logic.md § Role Interface
+# BAL-backed L1 event verbs (enable_events / disable_events) are stable surface.
+codegen_schema: 1
+id: binary_sensor
+verbs:
+  - id: is_active
+    error_class: convenience
+  - id: is_active_status
+    error_class: normal
+  - id: was_active
+    error_class: convenience
+  - id: was_active_status
+    error_class: normal
+  - id: enable_events
+    error_class: fatal
+  - id: disable_events
+    error_class: fire_and_forget
+  - id: start_auto_poll
+    error_class: fatal
+  - id: stop_auto_poll
+    error_class: fire_and_forget
