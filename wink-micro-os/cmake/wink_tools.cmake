@@ -22,3 +22,8 @@ if(NOT EXISTS "${WINK_TOOLS_ROOT}/tools/codegen/list_drivers.py")
         "(missing tools/codegen/list_drivers.py). Set WINK_TOOLS_ROOT or place "
         "wink-tools/ next to wink-micro-os/.")
 endif()
+
+# ADR-0051: build truth for extra codegen extension roots. Env WINK_CODEGEN_PATHS
+# is CLI convenience only — configure always passes this cache into list_drivers.
+set(WINK_CODEGEN_PATHS "" CACHE STRING
+    "Extra codegen extension roots (os.pathsep or comma-separated). CMake cache is build truth; env is CLI-only.")
