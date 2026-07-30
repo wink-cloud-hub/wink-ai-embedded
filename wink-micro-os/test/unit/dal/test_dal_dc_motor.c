@@ -213,7 +213,7 @@ void test_dc_motor_safe_off_binds_brake(void)
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_deinit(&single));
 }
 
-void test_dc_motor_unimplemented_drive_mode_init_unsupported(void)
+void test_dc_motor_unimplemented_variant_init_unsupported(void)
 {
     dal_dc_motor_t dev = {0};
     const dal_dc_motor_config_t cfg = {
@@ -222,7 +222,7 @@ void test_dc_motor_unimplemented_drive_mode_init_unsupported(void)
         .dir_pin_a = 1,
         .dir_pin_b = 2,
         .pwm_freq_hz = 20000,
-        .drive_mode = DAL_DC_MOTOR_MODE_PHASE_ENABLE,
+        .variant = DAL_DC_MOTOR_VARIANT_PHASE_ENABLE,
     };
 
     TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_dc_motor_init(&dev, &cfg));
@@ -316,7 +316,7 @@ int main(void)
     RUN_TEST(test_dc_motor_brake_dual_pin_ok);
     RUN_TEST(test_dc_motor_brake_single_pin_unsupported);
     RUN_TEST(test_dc_motor_safe_off_binds_brake);
-    RUN_TEST(test_dc_motor_unimplemented_drive_mode_init_unsupported);
+    RUN_TEST(test_dc_motor_unimplemented_variant_init_unsupported);
     RUN_TEST(test_dc_motor_enable_pin_claimed_and_safe_off_ok);
     RUN_TEST(test_dc_motor_enable_safe_off_dual_pin_brakes_first);
     return UNITY_END();

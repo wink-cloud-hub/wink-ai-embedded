@@ -29,6 +29,14 @@ fields:
     tier: stable
     type: int
     default: 64
+  variant:
+    tier: advanced
+    type: enum
+    emit_when: present
+    enum: [ssd1306, sh1106]
+    map:
+      ssd1306: DAL_MONO_OLED_VARIANT_SSD1306
+      sh1106: DAL_MONO_OLED_VARIANT_SH1106
   role:
     tier: stable
     type: string

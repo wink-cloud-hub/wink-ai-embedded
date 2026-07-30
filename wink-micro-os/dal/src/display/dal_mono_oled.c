@@ -70,6 +70,9 @@ wink_status_t dal_mono_oled_init(dal_mono_oled_t *dev, const dal_mono_oled_confi
     if (cfg->height != 32 && cfg->height != 64) { return WINK_ERR_INVALID_ARG; }
     /* i2c 7-bit 地址合法性 (0x00~0x07 和 0x78~0x7F 保留，仅 0x08~0x77 可用于设备) */
     if (cfg->i2c_addr < 0x08 || cfg->i2c_addr > 0x77) { return WINK_ERR_INVALID_ARG; }
+    if (cfg->variant != DAL_MONO_OLED_VARIANT_SSD1306) {
+        return WINK_ERR_UNSUPPORTED;
+    }
 
     /* Phase 2：(port,addr) 粒度地址冲突治理 */
     uint32_t res_id = pal_resource_i2c_id(cfg->i2c_port, cfg->i2c_addr);
