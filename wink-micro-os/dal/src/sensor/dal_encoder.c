@@ -37,7 +37,7 @@ wink_status_t dal_encoder_init(dal_encoder_t *dev, const dal_encoder_config_t *c
     if (cfg->pin_a < 0) {
         return WINK_ERR_INVALID_ARG;
     }
-    if (cfg->decode_mode != DAL_ENCODER_DECODE_X1_RISING) {
+    if (cfg->variant != DAL_ENCODER_VARIANT_X1_RISING) {
         return WINK_ERR_UNSUPPORTED;
     }
 

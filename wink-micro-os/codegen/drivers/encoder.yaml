@@ -23,15 +23,15 @@ fields:
       up: PAL_GPIO_INPUT_PULLUP
       down: PAL_GPIO_INPUT_PULLDOWN
       none: PAL_GPIO_INPUT
-  decode_mode:
+  variant:
     tier: advanced
     type: enum
     emit_when: present
     enum: [x1_rising, x2, x4]
     map:
-      x1_rising: DAL_ENCODER_DECODE_X1_RISING
-      x2: DAL_ENCODER_DECODE_X2
-      x4: DAL_ENCODER_DECODE_X4
+      x1_rising: DAL_ENCODER_VARIANT_X1_RISING
+      x2: DAL_ENCODER_VARIANT_X2
+      x4: DAL_ENCODER_VARIANT_X4
   invert:
     tier: advanced
     type: bool

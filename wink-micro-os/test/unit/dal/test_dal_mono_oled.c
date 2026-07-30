@@ -214,6 +214,21 @@ void test_deinit_loop_i2c_client_no_resource_leak(void) {
     }
 }
 
+void test_mono_oled_sh1106_variant_unsupported(void)
+{
+    static dal_mono_oled_t dev = {0};
+    dal_mono_oled_config_t cfg = {
+        .owner = "t",
+        .i2c_addr = 0x3C,
+        .width = 128,
+        .height = 64,
+        .i2c_port = 0,
+        .variant = DAL_MONO_OLED_VARIANT_SH1106,
+    };
+    TEST_ASSERT_EQUAL(WINK_ERR_UNSUPPORTED, dal_mono_oled_init(&dev, &cfg));
+    TEST_ASSERT_FALSE(dev.initialized);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_init_null_returns_invalid_arg);
@@ -231,5 +246,6 @@ int main(void) {
     RUN_TEST(test_ops_before_init_returns_not_initialized);
     RUN_TEST(test_deinit_hardening);
     RUN_TEST(test_deinit_loop_i2c_client_no_resource_leak);
+    RUN_TEST(test_mono_oled_sh1106_variant_unsupported);
     return UNITY_END();
 }
