@@ -251,14 +251,14 @@ void test_wire_eeprom_stub_returns_not_supported(void) {
     TEST_ASSERT_FALSE(dev.initialized);
 
     uint8_t buf[4] = {0x00, 0x00, 0x00, 0x00};
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_eeprom_read(&dev, 0, buf, sizeof(buf)));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_eeprom_read_blocking(&dev, 0, buf, sizeof(buf)));
     /* read 虽返 NOT_SUPPORTED，但 buf 必须被安全填充为 0xFF（未编程 EEPROM 默认值），
      * 避免 caller 看到未初始化内存 */
     TEST_ASSERT_EQUAL_UINT8(0xFF, buf[0]);
     TEST_ASSERT_EQUAL_UINT8(0xFF, buf[3]);
 
     const uint8_t wbuf[4] = {1,2,3,4};
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_eeprom_write(&dev, 0, wbuf, sizeof(wbuf)));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_eeprom_write_blocking(&dev, 0, wbuf, sizeof(wbuf)));
 }
 
 /* =====================================================================

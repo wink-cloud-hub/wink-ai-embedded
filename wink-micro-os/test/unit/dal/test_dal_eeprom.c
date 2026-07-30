@@ -11,7 +11,7 @@
 #include "dal_eeprom.h"
 #include "pal_resource.h"
 
-/* ADR-0017 层 1 例外：dal_eeprom_init/read/write are WINK_BLOCKING APIs;
+/* ADR-0017 层 1 例外：dal_eeprom_read_blocking/write_blocking are WINK_BLOCKING APIs;
  * host unit tests run outside the cooperative scheduler. */
 #if defined(__GNUC__) || defined(__clang__)
 #  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -58,14 +58,14 @@ void test_eeprom_rw_stub_returns_unsupported_and_safety_fills(void) {
      * (in the real backend) or returns UNSUPPORTED for the stub. Pass NULL buf
      * to test the early invalid-arg path first, then use a real buffer. */
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG,
-                          dal_eeprom_write(&dev, 0, NULL, 3));
+                          dal_eeprom_write_blocking(&dev, 0, NULL, 3));
     const uint8_t w[3] = {'a', 'b', 'c'};
     TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED,
-                          dal_eeprom_write(&dev, 0, w, sizeof(w)));
+                          dal_eeprom_write_blocking(&dev, 0, w, sizeof(w)));
     /* read must safety-fill the buffer with 0xFF (factory unprogrammed value),
      * not leave uninitialized memory for the caller. */
     uint8_t out[4] = {0};
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_eeprom_read(&dev, 0, out, sizeof(out)));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_eeprom_read_blocking(&dev, 0, out, sizeof(out)));
     TEST_ASSERT_EQUAL_UINT8(0xFF, out[0]);
     TEST_ASSERT_EQUAL_UINT8(0xFF, out[3]);
 }

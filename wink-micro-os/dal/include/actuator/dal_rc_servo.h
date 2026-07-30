@@ -116,7 +116,14 @@ wink_status_t dal_rc_servo_apply_override(void *dev, const uint8_t *params, uint
  * @brief 反初始化舵机：停止 PWM 占空比、反初始化 PWM、GPIO reset、释放资源。
  * @param dev 舵机实例句柄
  * @return wink_status_t
+ * @note API Contract:
+ *   - Preconditions: dev 非 NULL。
+ *   - Blocking: No.
+ *   - Thread-safe: No; ISR-safe: No.
+ *   - Idempotent: 未 init 时返回 WINK_OK。
+ *   - ADR-0024: 停 PWM、GPIO reset、释放 resource claim、memset 清零。
  */
+WINK_WARN_UNUSED_RESULT
 wink_status_t dal_rc_servo_deinit(dal_rc_servo_t *dev);
 
 #ifdef __cplusplus
@@ -136,7 +143,7 @@ WINK_UNAVAILABLE_MSG(WINK_RC_SERVO_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_rc_servo_safe_off(dal_rc_servo_t *dev);
 WINK_UNAVAILABLE_MSG(WINK_RC_SERVO_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_rc_servo_apply_override(void *dev, const uint8_t *params, uint16_t len);
-WINK_UNAVAILABLE_MSG(WINK_RC_SERVO_DISABLED_MSG)
+WINK_UNAVAILABLE_MSG(WINK_RC_SERVO_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_rc_servo_deinit(dal_rc_servo_t *dev);
 #endif /* !WINK_USE_RC_SERVO */
 

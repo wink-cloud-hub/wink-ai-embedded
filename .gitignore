@@ -50,6 +50,10 @@ compile_commands.json
 
 # JetBrains IDE
 .idea/
+.trae/
+.superpowers/
+.playwright-cli/
+Testing/
 
 # Visual Studio
 .vs/
