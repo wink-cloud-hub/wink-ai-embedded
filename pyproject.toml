@@ -6,4 +6,10 @@ search-path = [
     "wink-micro-os",
     "D:/software/python/pyenv/pyenv-win/versions/3.11.9/Lib/site-packages"
 ]
+search_path = [
+    ".",
+    "wink-tools",
+    "wink-micro-os",
+    "D:/software/python/pyenv/pyenv-win/versions/3.11.9/Lib/site-packages"
+]
 python-version = "3.11"

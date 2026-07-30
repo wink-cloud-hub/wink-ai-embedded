@@ -11,8 +11,9 @@
 #include "pal_resource.h"
 #include <string.h>
 
-/* ADR-0017 层 1 例外：dal_gps_init is a WINK_BLOCKING API; tests run on host
- * outside the cooperative scheduler, so suppress -Wdeprecated-declarations. */
+/* Note: dal_gps_init is now non-blocking (always visible, no WINK_BLOCKING).
+ * The ADR-0017 deprecated-declarations pragma below is kept for any future
+ * dal_gps_init_blocking calls added to the test. */
 #if defined(__GNUC__) || defined(__clang__)
 #  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
@@ -59,11 +60,10 @@ void test_gps_get_position_safety_zeroes_output(void) {
     memset(&pos, 0x55, sizeof(pos));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_gps_get_position(&dev, &pos));
     /* All numeric fields must be zeroed (stub safety-fill), not left as
-     * uninitialized stack garbage for the caller. memset(0) on IEEE 754 floats
-     * produces positive zero 0.0f; use a small epsilon for Unity compatibility. */
-    TEST_ASSERT_FLOAT_WITHIN(1e-9f, 0.0f, pos.latitude);
-    TEST_ASSERT_FLOAT_WITHIN(1e-9f, 0.0f, pos.longitude);
-    TEST_ASSERT_FLOAT_WITHIN(1e-9f, 0.0f, pos.altitude_m);
+     * uninitialized stack garbage for the caller. */
+    TEST_ASSERT_EQUAL_INT32(0, pos.lat_udeg);
+    TEST_ASSERT_EQUAL_INT32(0, pos.lon_udeg);
+    TEST_ASSERT_EQUAL_INT32(0, pos.alt_mm);
     TEST_ASSERT_FLOAT_WITHIN(1e-9f, 0.0f, pos.speed_kmh);
     TEST_ASSERT_EQUAL_UINT8(0, pos.satellites);
     TEST_ASSERT_FALSE(pos.fix_valid);

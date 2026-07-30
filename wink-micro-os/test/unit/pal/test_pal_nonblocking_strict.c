@@ -98,10 +98,9 @@ enum {
  *   enum { X = sizeof(&pal_gpio_pulse_in) };
  *   enum { X = sizeof(&pal_rmt_pulse_capture_wait) };
  *   enum { X = sizeof(&dal_ultrasonic_read) };
- *   enum { X = sizeof(&dal_eeprom_init) };
- *   enum { X = sizeof(&dal_eeprom_read) };
- *   enum { X = sizeof(&dal_eeprom_write) };
- *   enum { X = sizeof(&dal_gps_init) };
+ *   enum { X = sizeof(&dal_eeprom_read_blocking) };
+ *   enum { X = sizeof(&dal_eeprom_write_blocking) };
+ *   enum { X = sizeof(&dal_gps_init_blocking) };
  */
 
 int main(void) { return 0; }

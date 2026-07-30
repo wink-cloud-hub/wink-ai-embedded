@@ -189,9 +189,12 @@ wink_status_t dal_dc_motor_set_speed(dal_dc_motor_t *dev, float speed)
         return s;
     }
 
+    /* Apply invert: swap direction sense when config.invert == true */
+    float effective_speed = dev->config.invert ? -speed : speed;
+
     bool pin_a_level = false;
     bool pin_b_level = false;
-    if (speed > 0.0f) {
+    if (effective_speed > 0.0f) {
         pin_a_level = true;
         pin_b_level = false;
     } else {
@@ -199,13 +202,25 @@ wink_status_t dal_dc_motor_set_speed(dal_dc_motor_t *dev, float speed)
         pin_b_level = true;
     }
 
-    float abs_speed = speed >= 0.0f ? speed : -speed;
+    float abs_speed = effective_speed >= 0.0f ? effective_speed : -effective_speed;
     s = apply_dir_and_duty(dev, pin_a_level, pin_b_level, abs_speed);
     if (wink_status_is_error(s)) {
         return s;
     }
 
     dev->current_speed = speed;
+    return WINK_OK;
+}
+
+wink_status_t dal_dc_motor_get_speed(const dal_dc_motor_t *dev, float *out_speed)
+{
+    if (dev == NULL || out_speed == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    if (!dev->initialized) {
+        return WINK_ERR_NOT_INITIALIZED;
+    }
+    *out_speed = dev->current_speed;
     return WINK_OK;
 }
 
