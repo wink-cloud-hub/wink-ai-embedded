@@ -55,7 +55,7 @@ wink_status_t dal_dc_motor_init(dal_dc_motor_t *dev,
     if (cfg->dir_pin_a < 0) {
         return WINK_ERR_INVALID_ARG;
     }
-    if (cfg->drive_mode != DAL_DC_MOTOR_MODE_IN_IN) {
+    if (cfg->variant != DAL_DC_MOTOR_VARIANT_IN_IN) {
         return WINK_ERR_UNSUPPORTED;
     }
 

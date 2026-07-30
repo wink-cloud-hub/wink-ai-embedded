@@ -14,10 +14,10 @@ extern "C" {
  * @brief Brushed DC motor electrical topology (Phase 1: IN/IN only).
  */
 typedef enum {
-    DAL_DC_MOTOR_MODE_IN_IN = 0,        /* default — today's PWM + IN_A + IN_B */
-    DAL_DC_MOTOR_MODE_PHASE_ENABLE = 1, /* reserved */
-    DAL_DC_MOTOR_MODE_PWM_ON_IN = 2,    /* reserved */
-} dal_dc_motor_drive_mode_t;
+    DAL_DC_MOTOR_VARIANT_IN_IN = 0,        /* default — today's PWM + IN_A + IN_B */
+    DAL_DC_MOTOR_VARIANT_PHASE_ENABLE = 1, /* reserved */
+    DAL_DC_MOTOR_VARIANT_PWM_ON_IN = 2,    /* reserved */
+} dal_dc_motor_variant_t;
 
 /**
  * @brief Brushed DC motor (H-bridge PWM) configuration.
@@ -56,7 +56,7 @@ typedef struct {
     wink_pin_t dir_pin_a;  /* Direction pin A */
     wink_pin_t dir_pin_b;  /* Direction pin B (optional; -1 if unused) */
     uint32_t pwm_freq_hz;  /* PWM freq; 0 → default 20000 Hz */
-    dal_dc_motor_drive_mode_t drive_mode; /* 0 = IN_IN (today's path) */
+    dal_dc_motor_variant_t variant; /* 0 = IN_IN (today's path) */
     wink_pin_t enable_pin; /* STBY/nSLEEP; -1 unused; 0→-1 at init; >0 active */
     bool invert;           /* true = swap forward/reverse direction; default false */
 } dal_dc_motor_config_t;

@@ -64,7 +64,7 @@ void test_encoder_unidirectional(void)
 void test_encoder_bidirectional(void)
 {
     dal_encoder_t dev = {0};
-    /* Pin A = 2, Pin B = 3; zero-init decode_mode/invert = x1 / false */
+    /* Pin A = 2, Pin B = 3; zero-init variant/invert = x1 / false */
     const dal_encoder_config_t cfg = {
         .owner = OWNER,
         .pin_a = 2,
@@ -99,7 +99,7 @@ void test_encoder_bidirectional(void)
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_encoder_deinit(&dev));
 }
 
-void test_encoder_x1_explicit_decode_mode(void)
+void test_encoder_x1_explicit_variant(void)
 {
     dal_encoder_t dev = {0};
     const dal_encoder_config_t cfg = {
@@ -107,7 +107,7 @@ void test_encoder_x1_explicit_decode_mode(void)
         .pin_a = 4,
         .pin_b = 5,
         .pull = PAL_GPIO_INPUT_PULLUP,
-        .decode_mode = DAL_ENCODER_DECODE_X1_RISING,
+        .variant = DAL_ENCODER_VARIANT_X1_RISING,
         .invert = false,
     };
 
@@ -133,7 +133,7 @@ void test_encoder_invert_swaps_direction(void)
         .pin_a = 6,
         .pin_b = 7,
         .pull = PAL_GPIO_INPUT_PULLUP,
-        .decode_mode = DAL_ENCODER_DECODE_X1_RISING,
+        .variant = DAL_ENCODER_VARIANT_X1_RISING,
         .invert = true,
     };
 
@@ -167,14 +167,14 @@ void test_encoder_decode_x2_x4_unsupported(void)
         .pin_a = 8,
         .pin_b = 9,
         .pull = PAL_GPIO_INPUT_PULLUP,
-        .decode_mode = DAL_ENCODER_DECODE_X2,
+        .variant = DAL_ENCODER_VARIANT_X2,
     };
     const dal_encoder_config_t cfg_x4 = {
         .owner = OWNER,
         .pin_a = 10,
         .pin_b = 11,
         .pull = PAL_GPIO_INPUT_PULLUP,
-        .decode_mode = DAL_ENCODER_DECODE_X4,
+        .variant = DAL_ENCODER_VARIANT_X4,
     };
 
     TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_encoder_init(&dev, &cfg_x2));
@@ -193,7 +193,7 @@ int main(void)
     RUN_TEST(test_encoder_get_count_before_init_returns_not_initialized);
     RUN_TEST(test_encoder_unidirectional);
     RUN_TEST(test_encoder_bidirectional);
-    RUN_TEST(test_encoder_x1_explicit_decode_mode);
+    RUN_TEST(test_encoder_x1_explicit_variant);
     RUN_TEST(test_encoder_invert_swaps_direction);
     RUN_TEST(test_encoder_decode_x2_x4_unsupported);
     return UNITY_END();

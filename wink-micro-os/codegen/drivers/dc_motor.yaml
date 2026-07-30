@@ -5,6 +5,11 @@ is_actuator: true
 experimental: false
 default_role: open_loop_actuator
 
+ic_to_variant_map:
+  tb6612: in_in
+  l298n: in_in
+  # phase_enable chip aliases wait until that topology is implemented
+
 fields:
   pwm_channel:
     tier: advanced
@@ -23,19 +28,24 @@ fields:
     type: int
     default: 20000
     c_suffix: u
-  drive_mode:
+  variant:
     tier: advanced
     type: enum
     emit_when: present
+    affects_pins: true   # UniSim/前端消费；codegen 未知键静默忽略——Wave B 消费前需 schema 白名单
     enum: [in_in, phase_enable, pwm_on_in]
     map:
-      in_in: DAL_DC_MOTOR_MODE_IN_IN
-      phase_enable: DAL_DC_MOTOR_MODE_PHASE_ENABLE
-      pwm_on_in: DAL_DC_MOTOR_MODE_PWM_ON_IN
+      in_in: DAL_DC_MOTOR_VARIANT_IN_IN
+      phase_enable: DAL_DC_MOTOR_VARIANT_PHASE_ENABLE
+      pwm_on_in: DAL_DC_MOTOR_VARIANT_PWM_ON_IN
   enable_pin:
     tier: advanced
     type: int
     default: -1
+  driver_ic:
+    tier: advanced
+    type: string
+    emit: none          # derivation only; not emitted into C init
   role:
     tier: stable
     type: string

@@ -17,14 +17,25 @@ extern "C" {
 #define MONO_OLED_FONT_GLYPH_W 5
 
 /**
- * @brief 单色 OLED 屏驱芯片变体枚举
+ * @brief 单色 OLED 同族变体（屏驱芯片）— 强制 1 字节存储。
  *
- * 控制语义族 `type` 为 `mono_oled`，芯片名仅作 JSON/板级别名。
+ * ``typedef uint8_t`` 保持 layout；取值见下方枚举常量。
+ * 今日成员本已是裸 ``uint8_t``，本改动引入强类型别名 + 绑定常量。
  */
-typedef enum {
-    DAL_MONO_OLED_PANEL_SSD1306 = 0,  /**< SSD1306（默认，Zero-as-Default） */
-    DAL_MONO_OLED_PANEL_SH1106  = 1,  /**< SH1106（列偏移补偿） */
-} dal_mono_oled_panel_variant_t;
+typedef uint8_t dal_mono_oled_variant_t;
+
+enum {
+    DAL_MONO_OLED_VARIANT_SSD1306 = 0,  /**< SSD1306（默认，Zero-as-Default） */
+    DAL_MONO_OLED_VARIANT_SH1106  = 1,  /**< SH1106（列偏移；未实现 → UNSUPPORTED） */
+};
+
+#ifdef __cplusplus
+static_assert(sizeof(dal_mono_oled_variant_t) == 1,
+              "variant must stay 1 byte to keep dal_mono_oled_config_t layout stable");
+#else
+_Static_assert(sizeof(dal_mono_oled_variant_t) == 1,
+               "variant must stay 1 byte to keep dal_mono_oled_config_t layout stable");
+#endif
 
 /**
  * @brief 单色 OLED 构造期配置（dal_mono_oled_init 输入）
@@ -35,7 +46,7 @@ typedef struct {
     uint16_t width;         /* 屏幕宽度像素（常见 128） */
     uint16_t height;        /* 屏幕高度像素（常见 64） */
     uint8_t  i2c_port;      /* 逻辑 I2C 端口号 */
-    uint8_t  panel_variant; /* 0=SSD1306(默认), 1=SH1106; Zero-as-Default (ADR-0034) */
+    dal_mono_oled_variant_t variant; /* 0=SSD1306; values from enum above */
 } dal_mono_oled_config_t;
 
 /**
