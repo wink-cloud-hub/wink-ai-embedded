@@ -17,6 +17,7 @@
 #include "input/wink_button_events.h"
 #include "wink_tasks.h"
 #include "dal_button.h"
+#include "input/dal_button_bal.h"
 
 #include <stdbool.h>
 #include <stdint.h>

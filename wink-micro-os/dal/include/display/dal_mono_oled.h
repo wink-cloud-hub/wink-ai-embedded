@@ -17,14 +17,25 @@ extern "C" {
 #define MONO_OLED_FONT_GLYPH_W 5
 
 /**
+ * @brief 单色 OLED 屏驱芯片变体枚举
+ *
+ * 控制语义族 `type` 为 `mono_oled`，芯片名仅作 JSON/板级别名。
+ */
+typedef enum {
+    DAL_MONO_OLED_PANEL_SSD1306 = 0,  /**< SSD1306（默认，Zero-as-Default） */
+    DAL_MONO_OLED_PANEL_SH1106  = 1,  /**< SH1106（列偏移补偿） */
+} dal_mono_oled_panel_variant_t;
+
+/**
  * @brief 单色 OLED 构造期配置（dal_mono_oled_init 输入）
  */
 typedef struct {
-    uint8_t  i2c_port;      /* 逻辑 I2C 端口号 */
+    const char *owner;      /* 资源占用 owner 静态字符串（device_tree 实例名） */
     uint16_t i2c_addr;      /* 7 位 I2C 地址（常见 0x3C 或 0x3D） */
     uint16_t width;         /* 屏幕宽度像素（常见 128） */
     uint16_t height;        /* 屏幕高度像素（常见 64） */
-    const char *owner;      /* 资源占用 owner 静态字符串（device_tree 实例名） */
+    uint8_t  i2c_port;      /* 逻辑 I2C 端口号 */
+    uint8_t  panel_variant; /* 0=SSD1306(默认), 1=SH1106; Zero-as-Default (ADR-0034) */
 } dal_mono_oled_config_t;
 
 /**
@@ -100,9 +111,21 @@ wink_status_t dal_mono_oled_flush(dal_mono_oled_t *dev);
 
 /**
  * @brief 反初始化单色 OLED：熄灭屏幕、释放 I2C 地址资源。
+ *
+ * 共享 I2C 契约（ADR-0024 §4 #6）：deinit 仅卸本设备 client 的 I2C 地址 claim，
+ * **不** 调用 pal_i2c_bus_deinit()——总线生命周期由 bus-owner（device_tree）管理。
+ * 与 eeprom 等同 bus 器件共存时安全。
+ *
  * @param dev 单色 OLED 实例句柄
  * @return wink_status_t
+ * @note API Contract:
+ *   - Preconditions: dev 非 NULL。
+ *   - Blocking: No（best-effort 屏幕关闭命令，失败忽略）。
+ *   - Thread-safe: No; ISR-safe: No.
+ *   - Idempotent: 未 init 时返回 WINK_OK。
+ *   - ADR-0024: 只释放 I2C_ADDR claim，不销毁共享 bus。
  */
+WINK_WARN_UNUSED_RESULT
 wink_status_t dal_mono_oled_deinit(dal_mono_oled_t *dev);
 
 #ifdef __cplusplus
@@ -123,7 +146,7 @@ wink_status_t dal_mono_oled_draw_text(dal_mono_oled_t *dev, uint16_t col, uint8_
                                       const char *str);
 WINK_UNAVAILABLE_MSG(WINK_MONO_OLED_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_mono_oled_flush(dal_mono_oled_t *dev);
-WINK_UNAVAILABLE_MSG(WINK_MONO_OLED_DISABLED_MSG)
+WINK_UNAVAILABLE_MSG(WINK_MONO_OLED_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_mono_oled_deinit(dal_mono_oled_t *dev);
 #endif /* !WINK_USE_MONO_OLED */
 

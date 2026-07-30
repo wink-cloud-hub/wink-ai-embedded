@@ -66,8 +66,15 @@ WINK_WARN_UNUSED_RESULT
 wink_status_t dal_encoder_reset(dal_encoder_t *dev);
 
 /**
- * @brief 反初始化编码器
+ * @brief 反初始化编码器：卸 ISR、GPIO reset、释放资源。
+ * @note API Contract:
+ *   - Preconditions: dev 非 NULL。
+ *   - Blocking: No.
+ *   - Thread-safe: No; ISR-safe: No.
+ *   - Idempotent: 未 init 时返回 WINK_OK。
+ *   - ADR-0024: 卸 GPIO ISR + synchronize、GPIO reset、释放 resource claim、memset 清零。
  */
+WINK_WARN_UNUSED_RESULT
 wink_status_t dal_encoder_deinit(dal_encoder_t *dev);
 
 #ifdef __cplusplus
@@ -85,7 +92,7 @@ WINK_UNAVAILABLE_MSG(WINK_ENCODER_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_encoder_get_count(const dal_encoder_t *dev, int32_t *out_count);
 WINK_UNAVAILABLE_MSG(WINK_ENCODER_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_encoder_reset(dal_encoder_t *dev);
-WINK_UNAVAILABLE_MSG(WINK_ENCODER_DISABLED_MSG)
+WINK_UNAVAILABLE_MSG(WINK_ENCODER_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_encoder_deinit(dal_encoder_t *dev);
 #endif /* !WINK_USE_ENCODER */
 

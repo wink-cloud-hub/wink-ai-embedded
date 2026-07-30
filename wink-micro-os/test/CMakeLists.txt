@@ -191,6 +191,8 @@ add_wink_host_test(test_dal_gps unit/dal/test_dal_gps.c)
 target_include_directories(test_dal_gps PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/comm)
 
+add_wink_host_test(test_dal_abi_freeze unit/dal/test_dal_abi_freeze.c)
+
 add_wink_host_test(test_pal_i2c_bus unit/pal/test_pal_i2c_bus.c)
 
 add_wink_host_test(test_button_events unit/bal/test_button_events.c)

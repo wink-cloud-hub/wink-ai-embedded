@@ -58,6 +58,7 @@ typedef struct {
     uint32_t pwm_freq_hz;  /* PWM freq; 0 → default 20000 Hz */
     dal_dc_motor_drive_mode_t drive_mode; /* 0 = IN_IN (today's path) */
     wink_pin_t enable_pin; /* STBY/nSLEEP; -1 unused; 0→-1 at init; >0 active */
+    bool invert;           /* true = swap forward/reverse direction; default false */
 } dal_dc_motor_config_t;
 
 /**
@@ -83,12 +84,32 @@ wink_status_t dal_dc_motor_init(dal_dc_motor_t *dev,
  *
  * @param speed -1.0 (full reverse) … 1.0 (full forward).
  *        0.0 applies coast (both dir pins LOW / inactive, PWM duty 0).
+ *        When ``config.invert == true``, the direction sense is swapped:
+ *        positive speed drives the motor in the "reverse" direction.
  *
  * When an enable pin was configured at init (stored ``enable_pin >= 0``),
  * non-zero speed pulls enable HIGH before applying direction and duty.
+ *
+ * @note API Contract:
+ *   - Thread-safe: No (caller must serialize; 多任务访问需外部互斥)
+ *   - ISR-safe: No
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_dc_motor_set_speed(dal_dc_motor_t *dev, float speed);
+
+/**
+ * @brief Read back the current set speed (no I/O; reads cached value).
+ *
+ * @param dev DC motor instance handle
+ * @param out_speed Output: current speed in [-1.0, 1.0]
+ * @return wink_status_t
+ * @note API Contract:
+ *   - Preconditions: dev/out_speed 非 NULL；dal_dc_motor_init() 已成功。
+ *   - Blocking: No.
+ *   - Thread-safe: No; ISR-safe: No.
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t dal_dc_motor_get_speed(const dal_dc_motor_t *dev, float *out_speed);
 
 /**
  * @brief Short-brake: both direction pins HIGH, PWM duty 0.
@@ -124,7 +145,16 @@ wink_status_t dal_dc_motor_safe_off(dal_dc_motor_t *dev);
 
 /**
  * @brief Deinitialize brushed DC motor driver.
+ *
+ * ADR-0024 清场：safe_off → 停 PWM → GPIO reset → 释放资源 → memset 清零。
+ *
+ * @note API Contract:
+ *   - Preconditions: dev 非 NULL。
+ *   - Blocking: No.
+ *   - Thread-safe: No; ISR-safe: No.
+ *   - Idempotent: 未 init 时返回 WINK_OK。
  */
+WINK_WARN_UNUSED_RESULT
 wink_status_t dal_dc_motor_deinit(dal_dc_motor_t *dev);
 
 #ifdef __cplusplus
@@ -142,12 +172,14 @@ wink_status_t dal_dc_motor_init(dal_dc_motor_t *dev,
 WINK_UNAVAILABLE_MSG(WINK_DC_MOTOR_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_dc_motor_set_speed(dal_dc_motor_t *dev, float speed);
 WINK_UNAVAILABLE_MSG(WINK_DC_MOTOR_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_dc_motor_get_speed(const dal_dc_motor_t *dev, float *out_speed);
+WINK_UNAVAILABLE_MSG(WINK_DC_MOTOR_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_dc_motor_brake(dal_dc_motor_t *dev);
 WINK_UNAVAILABLE_MSG(WINK_DC_MOTOR_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_dc_motor_coast(dal_dc_motor_t *dev);
 WINK_UNAVAILABLE_MSG(WINK_DC_MOTOR_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_dc_motor_safe_off(dal_dc_motor_t *dev);
-WINK_UNAVAILABLE_MSG(WINK_DC_MOTOR_DISABLED_MSG)
+WINK_UNAVAILABLE_MSG(WINK_DC_MOTOR_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_dc_motor_deinit(dal_dc_motor_t *dev);
 #endif /* !WINK_USE_DC_MOTOR */
 

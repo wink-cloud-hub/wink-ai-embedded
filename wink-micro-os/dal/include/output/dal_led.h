@@ -94,8 +94,15 @@ wink_status_t dal_led_toggle(dal_led_t *dev);
 /**
  * @brief 反初始化 LED：关闭输出、释放 GPIO 资源、置 initialized=false。
  * @note 可在未 init 的 dev 上安全调用（直接返回 WINK_OK，no-op）。
+ * @note API Contract:
+ *   - Preconditions: dev 非 NULL。
+ *   - Blocking: No.
+ *   - Thread-safe: No; ISR-safe: No.
+ *   - Idempotent: 未 init 时返回 WINK_OK。
+ *   - ADR-0024: GPIO reset + 释放 resource claim。
  * @return WINK_OK
  */
+WINK_WARN_UNUSED_RESULT
 wink_status_t dal_led_deinit(dal_led_t *dev);
 
 #ifdef __cplusplus
@@ -125,7 +132,7 @@ WINK_UNAVAILABLE_MSG(WINK_LED_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_led_set(dal_led_t *dev, bool on);
 WINK_UNAVAILABLE_MSG(WINK_LED_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_led_toggle(dal_led_t *dev);
-WINK_UNAVAILABLE_MSG(WINK_LED_DISABLED_MSG)
+WINK_UNAVAILABLE_MSG(WINK_LED_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_led_deinit(dal_led_t *dev);
 #endif /* !WINK_USE_LED */
 

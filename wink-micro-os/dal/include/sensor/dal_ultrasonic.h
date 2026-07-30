@@ -1,4 +1,4 @@
-﻿#ifndef DAL_ULTRASONIC_H
+#ifndef DAL_ULTRASONIC_H
 #define DAL_ULTRASONIC_H
 
 #include <stdint.h>
@@ -174,7 +174,7 @@ WINK_UNAVAILABLE_MSG(WINK_ULTRASONIC_DISABLED_MSG) WINK_BLOCKING WINK_WARN_UNUSE
 wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *distance_cm);
 WINK_UNAVAILABLE_MSG(WINK_ULTRASONIC_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_ultrasonic_apply_override(void *dev, const uint8_t *params, uint16_t len);
-WINK_UNAVAILABLE_MSG(WINK_ULTRASONIC_DISABLED_MSG)
+WINK_UNAVAILABLE_MSG(WINK_ULTRASONIC_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_ultrasonic_deinit(dal_ultrasonic_t *dev);
 #endif /* !WINK_USE_ULTRASONIC */
 
