@@ -17,7 +17,7 @@
 | 概念 | 含义 |
 |------|------|
 | **用户稳定面** | App C 推荐 `{name}_{verb}`（Role）；JSON 的 `role` + stable knobs |
-| **驱动面** | `type`、引脚/总线、`drive_mode`、`decode_mode`、`enable_pin` 等 advanced |
+| **驱动面** | `type`、引脚/总线、`variant`、`enable_pin`、`*_pin` 等 advanced |
 | **无板卡模板** | 接线仍写在本 App `wink-app.json`；**不**锁死引脚 |
 | **Escape Hatch** | `&instance` + `dal_*`；lint warn + allowlist |
 | **BAL-backed** | 部分 Role 动词（如 button 事件 enable）内部调 BAL；仍属稳定面 |
@@ -64,23 +64,23 @@
 |------|----------|------|------|
 | **`type`** | **全部**实例必填 | **控制语义族** + DAL 驱动绑定（驱动平面） | 如 `dc_motor`、`ultrasonic`；回答「是什么驱动 / 控什么量」，**不是**芯片名，也不是「GPIO 物理细节」 |
 | **`role`** | 可选；缺省用驱动 `default_role` | **能力角色接口**（能力平面） | 如 `distance_sensor`、`binary_indicator`；回答「当什么用」，codegen 生成 `{name}_{verb}`。**不是**产品级「左轮 / 云台」叙事（那属未来意图平面） |
-| **`drive_mode`** | 仅「同语义、多电气拓扑」的类型（典型 `dc_motor`） | 同族内**怎么接线/驱动** | 拓扑变了才需要；芯片不同但拓扑相同 → 可省略。本身是 **config 枚举**（runtime `switch`）；可选 `#if WINK_*_HAS_*` 由 codegen 按 mode **并集**裁 `.text`，≠「写了 mode = 条件编译」 |
+| **`variant`** | 仅「该 type 已登记同族变体」时出现（典型 `dc_motor` / `encoder` / `mono_oled`） | 同族内**怎么接线 / 解码 / 面板** | 变体变了才需要；芯片不同但变体相同 → 可省略。本身是 **config 枚举**（runtime `switch`）；可选 `#if WINK_*_HAS_*` 由 codegen 按变体 **并集**裁 `.text`（Wave B）。**非全 type 必填** |
 | **`enable_pin`** | 该芯片/模块有软件可控使能脚时 | STBY、nSLEEP 等 | 板级焊死高电平则**不写** |
-| **`driver_ic`** | 可选糖衣，**一般不需要** | 芯片/模块别名（如 `tb6612`） | 与 `drive_mode` 易重复；冲突应校验报错 |
+| **`driver_ic`** | 可选糖衣，**一般不需要** | 芯片/模块别名（如 `tb6612`） | 经 `ic_to_variant_map` 推导 `variant`；与 `variant` 冲突应校验报错。旧键 `drive_mode`/`decode_mode`/`panel_variant` 迁移期 deprecated |
 
 一句话（拓扑相关）：
 
 ```text
 type        → 控制语义族 / 哪个 DAL（驱动平面）
 role        → 能力角色 / App 怎么调（能力平面；可缺省）
-drive_mode  → 同族内拓扑（怎么驱）——接线变了才用
+variant     → 同族变体（接线 / 解码 / 面板）——变了才用
 driver_ic   → 可选别名，能省则省
 enable_pin  → 可选使能脚，有且要软件控才写
 ```
 
 > 💡 **架构心法（三维抽象边界）**：
 > - **`type` = 驱动护城河**：只要底层的通信协议、控制物理量单位（角度 / 步数 / 占空比 / 原始电压）和 C 驱动代码改变，就必须建立新的 `type`。
-> - **`drive_mode` = 拓扑避风港**：驱动代码框架不变，仅硬件接线、引脚排列或驱动 H 桥芯片变了，就在 `type` 内部用 `drive_mode` 枚举消化，绝不向 App 暴露新的 API。
+> - **`variant` = 同族避风港**：驱动代码框架不变，仅硬件接线、解码倍率或面板命令集等差异，就在 `type` 内部用 `variant` 枚举消化，绝不向 App 暴露新的 API。
 > - **`role` = 应用变形金刚**：底层如何驱动与采集由 DAL 固化，但上层 App 想以何种角色接口称呼它、调用它（如 `hmi_dial` vs `pulse_counter`），交由 `role` 进行能力平面映射。
 
 全局 JSON 骨架与引脚约定见 [`../wink-app-json-guide.md`](../wink-app-json-guide.md)。H 桥扩展字段落地前，以各 `drivers/<type>.py` 的 `required_fields` 为准；上表是约定方向。
@@ -110,7 +110,7 @@ enable_pin  → 可选使能脚，有且要软件控才写
 | ~~把 type 说成「物理语义」~~ | 易误解成 GPIO/PWM；应说 **控制语义**（占空比 / 角度 / 距离…） |
 | ~~把现网 role 说成完整「业务语义」或 BAL~~ | 现网是 **App 侧 Role Interface**；「左轮要速度」等属 [role/意图演进计划](../../../docs/design/implementation-plans/2026-07-28-wink-app-role-intent-evolution-plan.md)（⏸️） |
 
-与 `drive_mode` 的边界：`drive_mode` 只在**同一 `type` 内**选接线拓扑，既不替代 `type`，也不替代 `role`。
+与 `variant` 的边界：`variant` 只在**同一 `type` 内**选已登记同族变体，既不替代 `type`，也不替代 `role`。
 
 **如何实现 / 扩展 Role（codegen 专文）**：[role-interface-codegen.md](./role-interface-codegen.md)。  
 角色动词表 SSOT：[01-app-business-logic.md § Role Interface](../../../docs/design/03-app-codegen/01-app-business-logic.md)。  
@@ -120,13 +120,13 @@ BAL 边界：[06-bal-layer.md](../../../docs/design/02-wink-micro-os/06-bal-laye
 
 - **对外 API** 按业务语义冻结：`set_speed` / `coast` / `brake` / `safe_off` 等。
 - **对内**用有限枚举表示**电气拓扑**（一等公民），不是芯片型号表。
-- **芯片名**最多作为 JSON `driver_ic` 别名，由 codegen 映射到 `drive_mode` + 默认脚；**不要**进入 `dal_*.h` 的公共类型名。
+- **芯片名**最多作为 JSON `driver_ic` 别名，由 codegen 映射到 `variant` + 默认脚；**不要**进入 `dal_*.h` 的公共类型名。
 
 推荐 `dc_motor` config 方向（落地时以头文件为准；未实现前勿假定字段已存在）：
 
 | 字段意图 | 说明 |
 |----------|------|
-| `drive_mode` | 默认 **`in_in`**（PWM + IN_A/IN_B，今日实现）；**预留** `phase_enable`、`pwm_on_in`（未实现 → init `WINK_ERR_UNSUPPORTED`） |
+| `variant` | 默认 **`in_in`**（PWM + IN_A/IN_B，今日实现）；**预留** `phase_enable`、`pwm_on_in`（未实现 → init `WINK_ERR_UNSUPPORTED`） |
 | `enable_pin`（可选，默认 -1） | STBY / nSLEEP（**高有效**）；板级焊死高电平则可不配 |
 | 现有脚 | `pwm_channel`、`dir_pin_a`、`dir_pin_b` |
 
@@ -158,7 +158,7 @@ dir_a  dir_b | state
 | （可选）`WINK_DC_MOTOR_HAS_<MODE>` | 按 App JSON **实际用到的拓扑**裁分支；裁的是能力，不是芯片名 |
 | ~~`WINK_USE_TB6612`~~ | **不要** |
 
-纯 runtime `switch(drive_mode)`：**性能可忽略**；**默认不会**因某实例未选某模式而自动从 `.text` 删掉分支。体积敏感时再上 `HAS_*`；双拓扑常驻通常可接受。
+纯 runtime `switch(variant)`：**性能可忽略**；**默认不会**因某实例未选某模式而自动从 `.text` 删掉分支。体积敏感时再上 `HAS_*`；双拓扑常驻通常可接受。
 
 ### 3.3 按拓扑裁剪（可选能力宏，示意）
 
@@ -166,18 +166,18 @@ dir_a  dir_b | state
 
 ```c
 /* app_options.cmake / 生成头：由 codegen 根据 wink-app.json 汇总 */
-/* 若任一 dc_motor 的 drive_mode == pwm_on_in → HAS=1，否则 0 */
+/* 若任一 dc_motor 的 variant == pwm_on_in → HAS=1，否则 0 */
 
 wink_status_t dal_dc_motor_set_speed(dal_dc_motor_t *dev, float speed)
 {
     /* … clamp / init 检查 … */
-    switch (dev->config.drive_mode) {
-    case DAL_DC_MOTOR_MODE_IN_IN:
+    switch (dev->config.variant) {
+    case DAL_DC_MOTOR_VARIANT_IN_IN:
         /* PWM + IN_A/IN_B（当前实现路径） */
         return apply_in_in(dev, speed);
 
 #if WINK_DC_MOTOR_HAS_PWM_ON_IN
-    case DAL_DC_MOTOR_MODE_PWM_ON_IN:
+    case DAL_DC_MOTOR_VARIANT_PWM_ON_IN:
         /* PWM 打在输入脚（如部分 DRV8833 接线） */
         return apply_pwm_on_in(dev, speed);
 #endif
@@ -193,7 +193,7 @@ wink_status_t dal_dc_motor_set_speed(dal_dc_motor_t *dev, float speed)
 | 项 | 约定 |
 |----|------|
 | 宏命名 | `WINK_<TYPE>_HAS_<MODE>`，MODE 与枚举后缀对齐（如 `PWM_ON_IN`） |
-| 谁写宏 | Codegen 扫本 App 所有相关实例的 `drive_mode`（及芯片别名映射结果）的**并集** |
+| 谁写宏 | Codegen 扫本 App 所有相关实例的 `variant`（及芯片别名映射结果）的**并集** |
 | 无 JSON / 全量驱动构建 | 各 `HAS_*` 置 **1**（或未定义时头文件 `#ifndef` 默认 1），避免 stub/CI 缺分支 |
 | 仅 Phase/Enable 的 App | `WINK_DC_MOTOR_HAS_PWM_ON_IN=0` → `case PWM_ON_IN` **不进镜像**；若运行时 config 误写成该模式 → 落到 `default` → `WINK_ERR_UNSUPPORTED` |
 | 与 `WINK_USE_DC_MOTOR` | `USE=OFF` 整文件 stub；`USE=ON` 且 `HAS_*=0` 只裁**拓扑分支**，API 符号仍在 |
@@ -211,7 +211,7 @@ wink_status_t dal_dc_motor_set_speed(dal_dc_motor_t *dev, float speed)
 
 | 项 | 契约 |
 |----|------|
-| `decode_mode` | 默认 `x1_rising`；x2/x4 **未实现** → init `WINK_ERR_UNSUPPORTED` |
+| `variant` | 默认 `x1_rising`；x2/x4 **未实现** → init `WINK_ERR_UNSUPPORTED` |
 | x1 协议 | A 上升沿采 B；B 高 → `count++`，B 低 → `count--`；无 `pin_b` → 仅递增 |
 | `invert` | **交换 A/B 方向语义（换相极性）**；禁止仅在 `get_count` 取负冒充 |
 | Role | `get_count` / `reset` 返回**原始脉冲**；**无 CPR**；`cpr` 名本 Phase 仅文档预留 |
@@ -229,7 +229,7 @@ pulse_ms = min_pulse + (angle / effective_max_angle) * (max_pulse - min_pulse)
 
 #### `ssd1306`（Role：`text_display`）
 
-- JSON **`type` 保留芯片名 `ssd1306`**（本 Phase 不改名）；异族 SPI 面板 → 新 `type` 或未来 `panel_variant`。
+- JSON **`type` 为 `mono_oled`**；同族面板差异用 `variant`（`ssd1306`/`sh1106`）；异族 SPI 面板 → 新 `type`。
 - App 推荐 `{name}_clear` / `draw_text` / `flush`，不依赖芯片字符串。
 
 ---

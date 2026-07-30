@@ -8,7 +8,7 @@
 | [adding-peripheral.md](./adding-peripheral.md) | 新增一种外设类型 / DAL（`wink.py new-dal`，ADR-0046） |
 | [role-interface-codegen.md](./role-interface-codegen.md) | 可选：把驱动包装成 App Role（`{name}_{verb}`，codegen） |
 | [dal-best-practices.md](./dal-best-practices.md) | 设计驱动变体、拓扑扩展、裁剪与命名 |
-| → 其中 [§3.0 字段分层](./dal-best-practices.md#30-wink-appjson-字段分层) | `type` / `role` / `drive_mode` / … 谁通用 |
+| → 其中 [§3.0 字段分层](./dal-best-practices.md#30-wink-appjson-字段分层) | `type` / `role` / `variant` / … 谁通用 |
 | → 其中 [type 与 role](./dal-best-practices.md#type-与-role勿混为一谈) | 驱动平面 vs 能力平面；非 BAL；细节见 role 专文 |
 
 ## 规范 SSOT（勿在本目录另起一套架构真相）

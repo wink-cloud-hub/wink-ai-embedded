@@ -144,7 +144,7 @@ wink-app.json
 
 
 
-字段与 `drive_mode` 等关系见 [dal-best-practices §3.0](./dal-best-practices.md)。  
+字段与 `variant` 等关系见 [dal-best-practices §3.0](./dal-best-practices.md)。  
 
 未来意图平面：[role/意图演进计划](../../../docs/design/implementation-plans/2026-07-28-wink-app-role-intent-evolution-plan.md)（⏸️）。
 
