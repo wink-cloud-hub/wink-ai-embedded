@@ -42,7 +42,7 @@ DAL            ──调用──►  pal_*（真机）或仿真旁路（SIMULAT
 
 字段约定见 [`../wink-app-json-guide.md`](../wink-app-json-guide.md)（引脚名须以 `_pin` 结尾等）。  
 实例**必有** `type`（驱动平面）；可选 `role`（App 侧 Role Interface，缺省 `default_role`；**非 BAL**）。  
-`drive_mode` / `enable_pin` / `driver_ic` **不是**全外设通用字段。字段分层与 **type vs role** 见 [dal-best-practices.md §3.0](./dal-best-practices.md)。
+`variant` / `enable_pin` / `driver_ic` **不是**全外设通用字段。字段分层与 **type vs role** 见 [dal-best-practices.md §3.0](./dal-best-practices.md)。
 
 App 推荐优先调 codegen 生成的 `{instance}_{verb}`（由 `role` 决定），复杂场景再直接调 `dal_*` 或 BAL（逃生 / 算法）。
 
