@@ -395,3 +395,10 @@ wink_status_t pal_test_disable_hardware_loopback(wink_pin_t pin_out, wink_pin_t 
     /* No loopback is ever enabled on wasm; keep disable idempotent and honest. */
     return WINK_ERR_UNSUPPORTED;
 }
+
+wink_status_t pal_rmt_pulse_capture_init(wink_pin_t pin, uint8_t start_edge) {
+    (void)pin;
+    (void)start_edge;
+    /* WASM target uses pal_gpio_pulse_in fallback for ultrasonic distance measurement. */
+    return WINK_ERR_UNSUPPORTED;
+}
