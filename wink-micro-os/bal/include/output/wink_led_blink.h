@@ -68,7 +68,7 @@ int32_t wink_led_blink_start(dal_led_t *led, uint32_t period_ms);
  *                   for defaults (equivalent to wink_led_blink_start()).
  *                   NOTE: blink is purely non-blocking; WINK_PERIODIC_MAY_BLOCK
  *                   is accepted but unnecessary and will simply allocate a
- *                   dedicated task for a trivial toggle (wasteful â€?LIGHT
+ *                   dedicated task for a trivial toggle (wasteful â€”LIGHT
  *                   recommended).
  * @return >=1 blink handle on success; <0 WINK_ERR_* on failure.
  */
