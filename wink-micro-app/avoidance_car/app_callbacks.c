@@ -43,6 +43,8 @@ static void app_on_event(const wink_event_t *evt)
     }
 
     cm = (float)evt->param / 10.0f;
+    LOG_D("front_radar DISTANCE_READY: cm=%.1f", cm);
+
     if (cm > 0.0f && cm < OBSTACLE_THRESHOLD_CM) {
         neck_servo_set_angle(180.0f);
     } else {

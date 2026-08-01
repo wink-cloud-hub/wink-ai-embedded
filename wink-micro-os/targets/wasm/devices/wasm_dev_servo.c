@@ -3,6 +3,7 @@
  * @brief Wasm 仿真侧 SG90 舵机虚拟外设模型 (C-side Model)。
  */
 #include "wasm_sim_registry.h"
+#include <stdio.h>
 #include <string.h>
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>

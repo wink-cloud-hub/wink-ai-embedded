@@ -43,9 +43,9 @@ wink_status_t dal_rc_servo_init(dal_rc_servo_t *dev, const dal_rc_servo_config_t
     if (dev == NULL || cfg == NULL) { return WINK_ERR_INVALID_ARG; }
     if (cfg->owner == NULL) { return WINK_ERR_INVALID_ARG; }
     if (cfg->pwm_channel >= PAL_PWM_CHANNELS) { return WINK_ERR_INVALID_ARG; }
-    if (cfg->min_pulse_ms <= 0.0f || cfg->max_pulse_ms <= cfg->min_pulse_ms) {
-        return WINK_ERR_INVALID_ARG;
-    }
+
+    float min_pulse = cfg->min_pulse_ms > 0.0f ? cfg->min_pulse_ms : 0.5f;
+    float max_pulse = cfg->max_pulse_ms > min_pulse ? cfg->max_pulse_ms : 2.5f;
 
     pal_pwm_config_t pwm_cfg;
     wink_status_t map_st = servo_map_pwm_config(cfg, &pwm_cfg);
@@ -66,6 +66,8 @@ wink_status_t dal_rc_servo_init(dal_rc_servo_t *dev, const dal_rc_servo_config_t
 
     /* 深拷贝 config（含 owner 指针拷贝；owner 要求是静态存储，生命周期足够长）*/
     memcpy(&dev->config, cfg, sizeof(dal_rc_servo_config_t));
+    dev->config.min_pulse_ms = min_pulse;
+    dev->config.max_pulse_ms = max_pulse;
     dev->current_angle = 0.0f;
     dev->initialized   = true;
     return WINK_OK;
