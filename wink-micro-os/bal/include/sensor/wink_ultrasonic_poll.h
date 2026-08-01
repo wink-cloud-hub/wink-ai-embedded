@@ -26,7 +26,7 @@ extern "C" {
 #endif
 
 /**
- * @brief Start automatic periodic measurement on @p dev (A-class —no event queue).
+ * @brief Start automatic periodic measurement on @p dev (A-class — no event queue).
  *
  * Does **not** post WINK_EVENT_DISTANCE_READY. For L1 queue consumption use
  * wink_ultrasonic_enable_distance_events() instead (ADR-0033). Same @p dev
