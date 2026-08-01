@@ -4,6 +4,7 @@
  */
 #include "wasm_sim_registry.h"
 #include "wasm_bridge.h"
+#include <stdio.h>
 #include <string.h>
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -71,14 +72,12 @@ uint32_t wasm_dev_ultrasonic_get_pulse_us(uint8_t pin) {
         return 0; // 无有效距离，返回 0 模拟无回波
     }
 
-    // HC-SR04 超声波测距公式: 脉宽 (us) = 距离 (cm) * 58.0f
-    // 限制在合理范围内 (最远 400cm，对应约 23200us)
+    uint32_t pulse_us = (uint32_t)(distance_cm * 58.0f);
     if (distance_cm <= 2.0f) {
-        return 116; // 最小限制约 2cm
-    }
-    if (distance_cm >= 400.0f) {
-        return 0; // 超出范围返回 0，模拟超时
+        pulse_us = 116;
+    } else if (distance_cm >= 400.0f) {
+        pulse_us = 0;
     }
 
-    return (uint32_t)(distance_cm * 58.0f);
+    return pulse_us;
 }
