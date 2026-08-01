@@ -140,7 +140,6 @@ wink_status_t dal_dc_motor_coast(dal_dc_motor_t *dev);
  * 2. No enable and ``dir_pin_b >= 0``: ``dal_dc_motor_brake``.
  * 3. No enable and single dir pin: ``WINK_ERR_UNSUPPORTED`` (not coast).
  */
-WINK_WARN_UNUSED_RESULT
 wink_status_t dal_dc_motor_safe_off(dal_dc_motor_t *dev);
 
 /**
@@ -154,7 +153,6 @@ wink_status_t dal_dc_motor_safe_off(dal_dc_motor_t *dev);
  *   - Thread-safe: No; ISR-safe: No.
  *   - Idempotent: 未 init 时返回 WINK_OK。
  */
-WINK_WARN_UNUSED_RESULT
 wink_status_t dal_dc_motor_deinit(dal_dc_motor_t *dev);
 
 #ifdef __cplusplus
@@ -177,9 +175,8 @@ WINK_UNAVAILABLE_MSG(WINK_DC_MOTOR_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_dc_motor_brake(dal_dc_motor_t *dev);
 WINK_UNAVAILABLE_MSG(WINK_DC_MOTOR_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_dc_motor_coast(dal_dc_motor_t *dev);
-WINK_UNAVAILABLE_MSG(WINK_DC_MOTOR_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
-wink_status_t dal_dc_motor_safe_off(dal_dc_motor_t *dev);
-WINK_UNAVAILABLE_MSG(WINK_DC_MOTOR_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+WINK_UNAVAILABLE_MSG(WINK_DC_MOTOR_DISABLED_MSG) wink_status_t dal_dc_motor_safe_off(dal_dc_motor_t *dev);
+WINK_UNAVAILABLE_MSG(WINK_DC_MOTOR_DISABLED_MSG)
 wink_status_t dal_dc_motor_deinit(dal_dc_motor_t *dev);
 #endif /* !WINK_USE_DC_MOTOR */
 

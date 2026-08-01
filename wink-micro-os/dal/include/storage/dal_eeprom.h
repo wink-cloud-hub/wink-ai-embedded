@@ -138,7 +138,6 @@ wink_status_t dal_eeprom_request_write(dal_eeprom_t *dev, uint32_t addr,
  *   - Blocking: No。
  *   - Thread-safe: No; ISR-safe: No.
  */
-WINK_WARN_UNUSED_RESULT
 wink_status_t dal_eeprom_poll(dal_eeprom_t *dev);
 
 /**
@@ -218,7 +217,6 @@ wink_status_t dal_eeprom_write_blocking(dal_eeprom_t *dev, uint32_t addr,
  *   - Idempotent: 未 init 时返回 WINK_OK；NULL 返回 WINK_ERR_INVALID_ARG。
  *   - ADR-0024: 仅释放 I2C_ADDR claim；不销毁共享 bus。
  */
-WINK_WARN_UNUSED_RESULT
 wink_status_t dal_eeprom_deinit(dal_eeprom_t *dev);
 
 #ifdef __cplusplus
@@ -242,7 +240,7 @@ wink_status_t dal_eeprom_request_read(dal_eeprom_t *dev, uint32_t addr, uint32_t
 WINK_UNAVAILABLE_MSG(WINK_EEPROM_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_eeprom_request_write(dal_eeprom_t *dev, uint32_t addr,
                                         const uint8_t *buf, uint32_t len);
-WINK_UNAVAILABLE_MSG(WINK_EEPROM_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+WINK_UNAVAILABLE_MSG(WINK_EEPROM_DISABLED_MSG)
 wink_status_t dal_eeprom_poll(dal_eeprom_t *dev);
 WINK_UNAVAILABLE_MSG(WINK_EEPROM_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_eeprom_get_status(const dal_eeprom_t *dev, dal_eeprom_state_t *out_state);
@@ -256,7 +254,7 @@ WINK_UNAVAILABLE_MSG(WINK_EEPROM_DISABLED_MSG) WINK_BLOCKING WINK_WARN_UNUSED_RE
 wink_status_t dal_eeprom_write_blocking(dal_eeprom_t *dev, uint32_t addr,
                                          const uint8_t *buf, uint32_t len);
 #endif /* WINK_STRICT_NONBLOCKING */
-WINK_UNAVAILABLE_MSG(WINK_EEPROM_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+WINK_UNAVAILABLE_MSG(WINK_EEPROM_DISABLED_MSG)
 wink_status_t dal_eeprom_deinit(dal_eeprom_t *dev);
 #endif /* !WINK_USE_EEPROM */
 

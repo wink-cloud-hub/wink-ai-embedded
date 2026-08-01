@@ -118,7 +118,6 @@ wink_status_t dal_gps_init_blocking(dal_gps_t *dev, const dal_gps_config_t *cfg)
  *   - Thread-safe: No; ISR-safe: No.
  *   - Error-codes: WINK_ERR_UNSUPPORTED (stub) / WINK_OK / WINK_ERR_NOT_INITIALIZED / WINK_ERR_INVALID_ARG。
  */
-WINK_WARN_UNUSED_RESULT
 wink_status_t dal_gps_poll(dal_gps_t *dev);
 
 /**
@@ -148,7 +147,6 @@ wink_status_t dal_gps_get_position(const dal_gps_t *dev, dal_gps_position_t *pos
  *   - Idempotent: 未 init 或 NULL 时返回 WINK_OK / WINK_ERR_INVALID_ARG。
  *   - ADR-0024: 释放 UART 资源 claim；未来须停 UART RX DMA/ISR、≤50ms。
  */
-WINK_WARN_UNUSED_RESULT
 wink_status_t dal_gps_deinit(dal_gps_t *dev);
 
 #ifdef __cplusplus
@@ -173,11 +171,11 @@ wink_status_t dal_gps_init(dal_gps_t *dev, const dal_gps_config_t *cfg);
 WINK_UNAVAILABLE_MSG(WINK_GPS_DISABLED_MSG) WINK_BLOCKING WINK_WARN_UNUSED_RESULT
 wink_status_t dal_gps_init_blocking(dal_gps_t *dev, const dal_gps_config_t *cfg);
 #endif /* WINK_STRICT_NONBLOCKING */
-WINK_UNAVAILABLE_MSG(WINK_GPS_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+WINK_UNAVAILABLE_MSG(WINK_GPS_DISABLED_MSG)
 wink_status_t dal_gps_poll(dal_gps_t *dev);
 WINK_UNAVAILABLE_MSG(WINK_GPS_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_gps_get_position(const dal_gps_t *dev, dal_gps_position_t *pos);
-WINK_UNAVAILABLE_MSG(WINK_GPS_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+WINK_UNAVAILABLE_MSG(WINK_GPS_DISABLED_MSG)
 wink_status_t dal_gps_deinit(dal_gps_t *dev);
 #endif /* !WINK_USE_GPS */
 

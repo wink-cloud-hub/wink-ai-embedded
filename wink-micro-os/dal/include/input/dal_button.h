@@ -148,7 +148,6 @@ wink_status_t dal_button_init(dal_button_t *dev, const dal_button_config_t *cfg)
  *   - Blocking: No。
  *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED。
  */
-WINK_WARN_UNUSED_RESULT
 wink_status_t dal_button_poll(dal_button_t *dev);
 
 /**
@@ -272,7 +271,6 @@ wink_status_t dal_button_reset_edge_count(dal_button_t *dev);
  *   - ADR-0024: 卸 GPIO ISR + synchronize、GPIO reset、释放 resource claim、memset 清零。
  * @return WINK_OK
  */
-WINK_WARN_UNUSED_RESULT
 wink_status_t dal_button_deinit(dal_button_t *dev);
 
 /* ── Wave 4 (S3): BAL event backend APIs ──────────────────────────────
@@ -301,7 +299,7 @@ wink_status_t dal_button_deinit(dal_button_t *dev);
     "(or set -DWINK_USE_BUTTON=ON)."
 WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_button_init(dal_button_t *dev, const dal_button_config_t *cfg);
-WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG)
 wink_status_t dal_button_poll(dal_button_t *dev);
 WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_button_is_pressed(const dal_button_t *dev, bool *out_pressed);
@@ -319,7 +317,7 @@ WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_button_get_edge_count(const dal_button_t *dev, uint32_t *out_count);
 WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_button_reset_edge_count(dal_button_t *dev);
-WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG)
 wink_status_t dal_button_deinit(dal_button_t *dev);
 /* BAL-internal APIs (set_event_backend, enable/disable_gpio_isr,
  * consume_irq_pending, set_irq_hook) are pruned in dal_button_bal.h,
