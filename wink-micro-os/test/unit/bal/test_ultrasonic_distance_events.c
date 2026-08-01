@@ -30,7 +30,7 @@ static void tick_once(void)
 
 static void arm_echo(uint32_t high_us)
 {
-    /* sim_reset_time clears echo pin â€?re-arm after every reset. */
+    /* sim_reset_time clears echo pin â€” re-arm after every reset. */
     sim_set_echo_pin(ECHO);
     sim_set_echo_timing(100, high_us);
 }
@@ -105,11 +105,11 @@ void test_distance_ready_posted(void)
     wink_event_t ev;
     int got = 0;
 
-    arm_echo(588); /* â‰?0 cm */
+    arm_echo(588); /* â‰ˆ10 cm */
 
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_ultrasonic_enable_distance_events(&s_us, &cfg));
 
-    /* period 50ms / tick 10ms â†?need â‰? dispatches; re-arm echo each tick. */
+    /* period 50ms / tick 10ms â†’ need â‰¥5 dispatches; re-arm echo each tick. */
     for (int i = 0; i < 12 && got == 0; i++) {
         arm_echo(588);
         tick_once();

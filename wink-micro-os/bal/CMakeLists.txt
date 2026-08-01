@@ -22,20 +22,43 @@
 
 add_library(wink_bal STATIC)
 
-target_sources(wink_bal PRIVATE
+set(_BAL_SOURCES
     src/wink_bal_stub.c
-    src/output/wink_led_blink.c
-    src/input/wink_button_events.c
-    src/input/wink_button_events_irq.c
-    src/sensor/wink_ultrasonic_poll.c
-    src/sensor/wink_ultrasonic_distance_events.c
-    src/actuator/wink_rc_servo_sweep.c
     src/comm/wink_telemetry_default.c
-    src/math/wink_pid.c
-    src/math/wink_diff_drive_kinematics.c
-    src/control/wink_closed_loop_dc_motor.c
-    src/control/wink_chassis.c
 )
+
+if(WINK_USE_BUTTON)
+    list(APPEND _BAL_SOURCES
+        src/input/wink_button_events.c
+        src/input/wink_button_events_irq.c
+    )
+endif()
+
+if(WINK_USE_LED)
+    list(APPEND _BAL_SOURCES src/output/wink_led_blink.c)
+endif()
+
+if(WINK_USE_ULTRASONIC)
+    list(APPEND _BAL_SOURCES
+        src/sensor/wink_ultrasonic_poll.c
+        src/sensor/wink_ultrasonic_distance_events.c
+    )
+endif()
+
+if(WINK_USE_RC_SERVO)
+    list(APPEND _BAL_SOURCES src/actuator/wink_rc_servo_sweep.c)
+endif()
+
+if(WINK_USE_DC_MOTOR OR WINK_USE_ENCODER)
+    list(APPEND _BAL_SOURCES
+        src/math/wink_pid.c
+        src/math/wink_diff_drive_kinematics.c
+        src/control/wink_closed_loop_dc_motor.c
+        src/control/wink_chassis.c
+    )
+endif()
+
+target_sources(wink_bal PRIVATE ${_BAL_SOURCES})
 
 target_include_directories(wink_bal PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include

@@ -307,6 +307,37 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
     # wink_app.h ????wink_runtime_run ??undef??link ??????????
     # ???????? grep ?????
     target_link_libraries(wink_simulator PRIVATE pal dal wink_runtime wink_bal)
+
+    # Auto-detect if App requires Arduino compatibility layer (.ino files or #include <Arduino.h>)
+    set(_NEED_ARDUINO FALSE)
+    if(WINK_ENABLE_ARDUINO)
+        set(_NEED_ARDUINO TRUE)
+    else()
+        foreach(_src IN LISTS WINK_APP_SOURCES)
+            if(_src MATCHES "\\.ino$")
+                set(_NEED_ARDUINO TRUE)
+                break()
+            endif()
+        endforeach()
+        if(NOT _NEED_ARDUINO AND DEFINED WINK_APP_DIR AND EXISTS "${WINK_APP_DIR}")
+            file(GLOB_RECURSE _app_files
+                "${WINK_APP_DIR}/*.c" "${WINK_APP_DIR}/*.cpp"
+                "${WINK_APP_DIR}/*.h" "${WINK_APP_DIR}/*.hpp"
+                "${WINK_APP_DIR}/*.ino")
+            foreach(_f IN LISTS _app_files)
+                file(READ "${_f}" _f_content LIMIT 2048)
+                if(_f_content MATCHES "#include[ \t]*[\"<]Arduino\\.h[\">]")
+                    set(_NEED_ARDUINO TRUE)
+                    break()
+                endif()
+            endforeach()
+        endif()
+    endif()
+
+    if(_NEED_ARDUINO AND TARGET wink_arduino_compat)
+        message(STATUS "[frameworks] Arduino compatibility enabled for App")
+        target_link_libraries(wink_simulator PRIVATE wink_arduino_compat)
+    endif()
     target_include_directories(wink_simulator PRIVATE
         ${WASM_EXTRA_INCLUDE_DIRS}
         ${WINK_OSAL_INCLUDE_DIRS}          # ??OSAL include ??

@@ -8,16 +8,16 @@
  * stop can exhaust the host fiber pool because zombie fibers accumulate.
  * Strategy:
  *   - All default-path (MAY_BLOCK) lifecycle tests run at most 1 start/stop
- *     per test �?setUp/tearDown guarantee a clean slot state between tests.
+ *     per test — setUp/tearDown guarantee a clean slot state between tests.
  *   - The 100-cycle slot-leak regression uses WINK_PERIODIC_LIGHT via
  *     _start_ex.  LIGHT paths don't allocate fibers; the callback body
  *     never fires (soft_timer is not dispatched), so we exercise only the
- *     BAL slot bookkeeping �?which is exactly what that regression guards.
+ *     BAL slot bookkeeping — which is exactly what that regression guards.
  *
  * Verifies:
  *   - NULL ultrasonic/btn are both valid (runtime-stats-only telemetry).
  *   - is_running() lifecycle.
- *   - Duplicate-start �?WINK_ERR_INVALID_STATE.
+ *   - Duplicate-start → WINK_ERR_INVALID_STATE.
  *   - Stop is idempotent (including before any start).
  *   - 100 LIGHT start/stop cycles don't leak BAL slots or periodic handles.
  *   - _start_ex with explicit MAY_BLOCK opts starts successfully.
@@ -104,7 +104,7 @@ void test_double_stop_is_idempotent(void) {
     TEST_ASSERT_FALSE(wink_telemetry_default_is_running());
 }
 
-/* REGRESSION for BAL slot/handle leak �?100 LIGHT start/stop cycles.
+/* REGRESSION for BAL slot/handle leak — 100 LIGHT start/stop cycles.
  * LIGHT path avoids host fiber allocation, letting us prove slot
  * recycling in the helper itself without depending on scheduler GC. */
 void test_start_stop_loop_100_light_does_not_leak(void) {
@@ -121,7 +121,7 @@ void test_start_stop_loop_100_light_does_not_leak(void) {
     TEST_ASSERT_EQUAL_UINT32(0, wink_periodic_active_count());
 }
 
-/* _start_ex with explicit MAY_BLOCK opts (one start per test �?host
+/* _start_ex with explicit MAY_BLOCK opts (one start per test — host
  * fiber is GC'd by tearDown via the scheduler, see file-level note). */
 void test_start_ex_mayblock_explicit_opts_succeeds(void) {
     wink_bal_opts_t opts = WINK_BAL_OPTS_DEFAULT;

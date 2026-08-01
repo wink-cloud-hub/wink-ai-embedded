@@ -107,8 +107,8 @@ wink_status_t dal_button_consume_irq_pending(dal_button_t *dev,
  *            NULL — the BAL daemon uses a file-scope singleton sem).
  *
  * ISR contract: must be ISR-safe (no LOG, no blocking, use *_isr sem-give).
+ * Note: typedef dal_button_irq_notify_hook_t is defined in dal_button.h.
  */
-typedef void (*dal_button_irq_notify_hook_t)(void *ctx);
 
 /**
  * @brief 注册进程级 IRQ 通知 hook（BAL 使用，DAL 侧仅回调）。
