@@ -52,30 +52,23 @@ uint32_t wasm_dev_ultrasonic_get_pulse_us(uint8_t pin) {
         return 0;
     }
 
-    float distance_cm = -1.0f;
+    // 1. 优先从标准 Unisim 插件通道读取距离 (SSOT 规范: type:index，如 "ultrasonic:0")
+    float distance_cm = js_sim_get_plugin_channel("ultrasonic:0", "distanceCm");
 
-    // 1. 优先尝试直接从目标引脚 (echo_pin) 读取物理注入的距离
-    if (s_virtual_ultrasonic_distance[pin] >= 0.0f) {
+    // 2. 回退机制：若插件通道未就绪，查直接注入到 pin 槽位的物理距离
+    if (distance_cm < 0.0f && s_virtual_ultrasonic_distance[pin] >= 0.0f) {
         distance_cm = s_virtual_ultrasonic_distance[pin];
     }
-    // 2. 双向容错：检查前一个引脚 (解决前端把距离注入到 trig_pin 的情况, 如 trig=4, echo=5)
-    else if (pin > 0 && s_virtual_ultrasonic_distance[pin - 1] >= 0.0f) {
+    // 3. 容错：检查邻近引脚 (解决前端把物理距离误注到 trig_pin 的情况)
+    else if (distance_cm < 0.0f && pin > 0 && s_virtual_ultrasonic_distance[pin - 1] >= 0.0f) {
         distance_cm = s_virtual_ultrasonic_distance[pin - 1];
     }
-    // 3. 双向容错：检查后一个引脚 (如 trig=6, echo=5)
-    else if (pin < WASM_SIM_MAX_PINS - 1 && s_virtual_ultrasonic_distance[pin + 1] >= 0.0f) {
+    else if (distance_cm < 0.0f && pin < WASM_SIM_MAX_PINS - 1 && s_virtual_ultrasonic_distance[pin + 1] >= 0.0f) {
         distance_cm = s_virtual_ultrasonic_distance[pin + 1];
-    }
-    // 4. 通道模型检索：尝试插件通道获取距离
-    else {
-        distance_cm = js_sim_get_plugin_channel("front_radar", "distanceCm");
-        if (distance_cm < 0.0f) {
-            distance_cm = js_sim_get_plugin_channel("ultrasonic:0", "distanceCm");
-        }
     }
 
     if (distance_cm < 0.0f) {
-        return 0; // 未注入，返回 0 模拟无回波
+        return 0; // 无有效距离，返回 0 模拟无回波
     }
 
     // HC-SR04 超声波测距公式: 脉宽 (us) = 距离 (cm) * 58.0f
