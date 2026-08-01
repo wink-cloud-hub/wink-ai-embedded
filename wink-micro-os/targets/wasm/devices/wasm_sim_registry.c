@@ -30,8 +30,12 @@ static bool s_gpio_outputs[WASM_SIM_MAX_PINS];
 
 // 统一复位接口
 void wasm_sim_devices_reset(void) {
+#if defined(WINK_USE_RC_SERVO) && (WINK_USE_RC_SERVO)
     wasm_dev_servo_reset();
+#endif
+#if defined(WINK_USE_ULTRASONIC) && (WINK_USE_ULTRASONIC)
     wasm_dev_ultrasonic_reset();
+#endif
 #ifdef __EMSCRIPTEN__
     wasm_sim_pin_events_reset();
 #endif
@@ -72,7 +76,12 @@ bool wasm_sim_pwm_channel_exists(uint8_t channel) {
 
 // PWM 拦截处理分发
 void wasm_sim_pwm_set_duty(uint8_t channel, float duty_cycle_percent) {
+#if defined(WINK_USE_RC_SERVO) && (WINK_USE_RC_SERVO)
     wasm_dev_servo_set_duty(channel, duty_cycle_percent);
+#else
+    (void)channel;
+    (void)duty_cycle_percent;
+#endif
 }
 
 // GPIO 状态获取/写入

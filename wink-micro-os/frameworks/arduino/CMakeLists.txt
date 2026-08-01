@@ -35,8 +35,8 @@ if(ESP_PLATFORM)
         -fexec-charset=UTF-8
     )
 else()
-    # Host/wasm standalone target mode
-    add_library(wink_arduino_compat STATIC
+    # Host/wasm standalone target mode (EXCLUDE_FROM_ALL: only build when linked)
+    add_library(wink_arduino_compat STATIC EXCLUDE_FROM_ALL
         src/Common.cpp
         src/WinkHardwareSerial.cpp
         src/ArduinoStubs.cpp
@@ -46,10 +46,16 @@ else()
         ${ARDUINO_CORE_API_DIR}/api/IPAddress.cpp
     )
 
-    target_include_directories(wink_arduino_compat PUBLIC
-        include
-        ${ARDUINO_CORE_API_DIR}
+    target_include_directories(wink_arduino_compat
+        PUBLIC include
+        SYSTEM PUBLIC ${ARDUINO_CORE_API_DIR}
     )
+
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU|Emscripten")
+        target_compile_options(wink_arduino_compat PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:-Wno-main>
+        )
+    endif()
 
     # Link against basic Wink OSAL, HAL, and runtime libraries
     target_link_libraries(wink_arduino_compat PUBLIC

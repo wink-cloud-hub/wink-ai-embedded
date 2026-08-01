@@ -1,6 +1,6 @@
 /**
  * @file wink_ultrasonic_distance_events.c
- * @brief BAL ultrasonic distance events �?periodic measure + DISTANCE_READY post.
+ * @brief BAL ultrasonic distance events — periodic measure + DISTANCE_READY post.
  *
  * Copyright (c) 2026 Wink-AI.
  */
@@ -99,7 +99,7 @@ static void us_dist_tick(void *arg)
     if (ctx->phase == US_DIST_NEED_TRIGGER) {
         wink_status_t rq = dal_ultrasonic_request_measurement(ctx->dev);
         if (wink_status_is_error(rq) && rq != WINK_ERR_BUSY) {
-            /* Transient / hardware �?retry next period. */
+            /* Transient / hardware — retry next period. */
             return;
         }
         ctx->phase = US_DIST_WAITING;
