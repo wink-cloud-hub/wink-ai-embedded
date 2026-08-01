@@ -42,6 +42,7 @@ static wink_status_t servo_map_pwm_config(const dal_rc_servo_config_t *servo_cfg
 wink_status_t dal_rc_servo_init(dal_rc_servo_t *dev, const dal_rc_servo_config_t *cfg) {
     if (dev == NULL || cfg == NULL) { return WINK_ERR_INVALID_ARG; }
     if (cfg->owner == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (dev->initialized) { return WINK_ERR_ALREADY_INITIALIZED; }
     if (cfg->pwm_channel >= PAL_PWM_CHANNELS) { return WINK_ERR_INVALID_ARG; }
 
     float min_pulse = cfg->min_pulse_ms > 0.0f ? cfg->min_pulse_ms : 0.5f;

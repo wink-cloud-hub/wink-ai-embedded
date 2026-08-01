@@ -40,6 +40,9 @@ wink_status_t dal_encoder_init(dal_encoder_t *dev, const dal_encoder_config_t *c
     if (cfg->variant != DAL_ENCODER_VARIANT_X1_RISING) {
         return WINK_ERR_UNSUPPORTED;
     }
+    if (dev->initialized) {
+        return WINK_ERR_ALREADY_INITIALIZED;
+    }
 
     /* 1. 声明占用资源 */
     wink_status_t rs = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_a, cfg->owner);

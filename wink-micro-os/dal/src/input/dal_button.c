@@ -74,6 +74,7 @@ PAL_DEFINE_ISR(dal_button_gpio_isr, dal_button_t, dev) {
 wink_status_t dal_button_init(dal_button_t *dev, const dal_button_config_t *cfg) {
     if (dev == NULL || cfg == NULL) { return WINK_ERR_INVALID_ARG; }
     if (cfg->owner == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (dev->initialized) { return WINK_ERR_ALREADY_INITIALIZED; }
     if (!button_pull_valid(cfg->pull)) { return WINK_ERR_INVALID_ARG; }
 
     /* Track A（M1）：GPIO 引脚冲突治理。 */
