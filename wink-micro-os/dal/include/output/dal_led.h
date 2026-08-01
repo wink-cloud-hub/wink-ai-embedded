@@ -102,7 +102,6 @@ wink_status_t dal_led_toggle(dal_led_t *dev);
  *   - ADR-0024: GPIO reset + 释放 resource claim。
  * @return WINK_OK
  */
-WINK_WARN_UNUSED_RESULT
 wink_status_t dal_led_deinit(dal_led_t *dev);
 
 #ifdef __cplusplus
@@ -132,7 +131,7 @@ WINK_UNAVAILABLE_MSG(WINK_LED_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_led_set(dal_led_t *dev, bool on);
 WINK_UNAVAILABLE_MSG(WINK_LED_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_led_toggle(dal_led_t *dev);
-WINK_UNAVAILABLE_MSG(WINK_LED_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+WINK_UNAVAILABLE_MSG(WINK_LED_DISABLED_MSG)
 wink_status_t dal_led_deinit(dal_led_t *dev);
 #endif /* !WINK_USE_LED */
 

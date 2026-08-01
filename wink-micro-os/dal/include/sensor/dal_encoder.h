@@ -74,7 +74,6 @@ wink_status_t dal_encoder_reset(dal_encoder_t *dev);
  *   - Idempotent: 未 init 时返回 WINK_OK。
  *   - ADR-0024: 卸 GPIO ISR + synchronize、GPIO reset、释放 resource claim、memset 清零。
  */
-WINK_WARN_UNUSED_RESULT
 wink_status_t dal_encoder_deinit(dal_encoder_t *dev);
 
 #ifdef __cplusplus
@@ -92,7 +91,7 @@ WINK_UNAVAILABLE_MSG(WINK_ENCODER_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_encoder_get_count(const dal_encoder_t *dev, int32_t *out_count);
 WINK_UNAVAILABLE_MSG(WINK_ENCODER_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_encoder_reset(dal_encoder_t *dev);
-WINK_UNAVAILABLE_MSG(WINK_ENCODER_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+WINK_UNAVAILABLE_MSG(WINK_ENCODER_DISABLED_MSG)
 wink_status_t dal_encoder_deinit(dal_encoder_t *dev);
 #endif /* !WINK_USE_ENCODER */
 

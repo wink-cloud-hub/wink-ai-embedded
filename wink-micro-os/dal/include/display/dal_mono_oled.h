@@ -136,7 +136,6 @@ wink_status_t dal_mono_oled_flush(dal_mono_oled_t *dev);
  *   - Idempotent: 未 init 时返回 WINK_OK。
  *   - ADR-0024: 只释放 I2C_ADDR claim，不销毁共享 bus。
  */
-WINK_WARN_UNUSED_RESULT
 wink_status_t dal_mono_oled_deinit(dal_mono_oled_t *dev);
 
 #ifdef __cplusplus
@@ -157,7 +156,7 @@ wink_status_t dal_mono_oled_draw_text(dal_mono_oled_t *dev, uint16_t col, uint8_
                                       const char *str);
 WINK_UNAVAILABLE_MSG(WINK_MONO_OLED_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_mono_oled_flush(dal_mono_oled_t *dev);
-WINK_UNAVAILABLE_MSG(WINK_MONO_OLED_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+WINK_UNAVAILABLE_MSG(WINK_MONO_OLED_DISABLED_MSG)
 wink_status_t dal_mono_oled_deinit(dal_mono_oled_t *dev);
 #endif /* !WINK_USE_MONO_OLED */
 

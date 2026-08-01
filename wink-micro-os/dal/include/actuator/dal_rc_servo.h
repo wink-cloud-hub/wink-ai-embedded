@@ -96,7 +96,6 @@ wink_status_t dal_rc_servo_set_angle(dal_rc_servo_t *dev, float angle);
  *    本函数仅适用舵机；其它执行器类型须注册各自语义正确的关断（见 wink_actuator_registry.h），
  *    不得外推为通用执行器关断范式。
  */
-WINK_WARN_UNUSED_RESULT
 wink_status_t dal_rc_servo_safe_off(dal_rc_servo_t *dev);
 
 /**
@@ -123,7 +122,6 @@ wink_status_t dal_rc_servo_apply_override(void *dev, const uint8_t *params, uint
  *   - Idempotent: 未 init 时返回 WINK_OK。
  *   - ADR-0024: 停 PWM、GPIO reset、释放 resource claim、memset 清零。
  */
-WINK_WARN_UNUSED_RESULT
 wink_status_t dal_rc_servo_deinit(dal_rc_servo_t *dev);
 
 #ifdef __cplusplus
@@ -139,11 +137,10 @@ WINK_UNAVAILABLE_MSG(WINK_RC_SERVO_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_rc_servo_init(dal_rc_servo_t *dev, const dal_rc_servo_config_t *cfg);
 WINK_UNAVAILABLE_MSG(WINK_RC_SERVO_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_rc_servo_set_angle(dal_rc_servo_t *dev, float angle);
-WINK_UNAVAILABLE_MSG(WINK_RC_SERVO_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
-wink_status_t dal_rc_servo_safe_off(dal_rc_servo_t *dev);
+WINK_UNAVAILABLE_MSG(WINK_RC_SERVO_DISABLED_MSG) wink_status_t dal_rc_servo_safe_off(dal_rc_servo_t *dev);
 WINK_UNAVAILABLE_MSG(WINK_RC_SERVO_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_rc_servo_apply_override(void *dev, const uint8_t *params, uint16_t len);
-WINK_UNAVAILABLE_MSG(WINK_RC_SERVO_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+WINK_UNAVAILABLE_MSG(WINK_RC_SERVO_DISABLED_MSG)
 wink_status_t dal_rc_servo_deinit(dal_rc_servo_t *dev);
 #endif /* !WINK_USE_RC_SERVO */
 
