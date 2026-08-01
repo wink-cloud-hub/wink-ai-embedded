@@ -250,14 +250,12 @@ addToLibrary({
 
     /* ---- Phase3 Plugin Channel API (2026-07-21) ----
      * 标准插件通道读取：从 JS 侧插件实例读取状态值。
+     * ADR-0019 规约：原样传递 C 指针（由 unisim/worker createUnisimImports 的 readCString 处理）。
      * 默认桩返回 -1（表示插件未初始化，C 侧使用旧路径或默认值）。
-     * UTF8ToString 是 emscripten 内置函数，用于把 C 字符串指针转为 JS 字符串。
      */
     js_sim_get_plugin_channel: function (instanceIdPtr, channelNamePtr) {
         if (typeof Module !== 'undefined' && typeof Module.js_sim_get_plugin_channel === 'function') {
-            var instanceId = UTF8ToString(instanceIdPtr);
-            var channelName = UTF8ToString(channelNamePtr);
-            return Module.js_sim_get_plugin_channel(instanceId, channelName);
+            return Module.js_sim_get_plugin_channel(instanceIdPtr, channelNamePtr);
         }
         return -1.0; // 未初始化哨兵
     },
