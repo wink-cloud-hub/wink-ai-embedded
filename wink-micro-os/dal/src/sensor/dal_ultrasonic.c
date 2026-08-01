@@ -96,6 +96,7 @@ wink_status_t dal_ultrasonic_init(dal_ultrasonic_t *dev, const dal_ultrasonic_co
     if (cfg->trig_pin == cfg->echo_pin) {
         return WINK_ERR_INVALID_ARG;
     }
+    if (dev->initialized) { return WINK_ERR_ALREADY_INITIALIZED; }
 
     /* Track A（M1）：GPIO 双引脚冲突治理。trig 成功后 echo 失败必须回滚 trig。 */
     wink_status_t rs = pal_resource_claim(PAL_RESOURCE_GPIO_PIN,

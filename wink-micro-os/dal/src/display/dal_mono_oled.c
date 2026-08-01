@@ -73,6 +73,7 @@ wink_status_t dal_mono_oled_init(dal_mono_oled_t *dev, const dal_mono_oled_confi
     if (cfg->variant != DAL_MONO_OLED_VARIANT_SSD1306) {
         return WINK_ERR_UNSUPPORTED;
     }
+    if (dev->initialized) { return WINK_ERR_ALREADY_INITIALIZED; }
 
     /* Phase 2：(port,addr) 粒度地址冲突治理 */
     uint32_t res_id = pal_resource_i2c_id(cfg->i2c_port, cfg->i2c_addr);

@@ -58,6 +58,9 @@ wink_status_t dal_dc_motor_init(dal_dc_motor_t *dev,
     if (cfg->variant != DAL_DC_MOTOR_VARIANT_IN_IN) {
         return WINK_ERR_UNSUPPORTED;
     }
+    if (dev->initialized) {
+        return WINK_ERR_ALREADY_INITIALIZED;
+    }
 
     wink_pin_t enable_pin = cfg->enable_pin;
     if (enable_pin == 0) {

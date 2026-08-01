@@ -10,6 +10,7 @@ wink_status_t dal_eeprom_init(dal_eeprom_t *dev, const dal_eeprom_config_t *cfg)
     /* 参数合法性校验（必须保留） */
     if (dev == NULL || cfg == NULL) { return WINK_ERR_INVALID_ARG; }
     if (cfg->owner == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (dev->initialized) { return WINK_ERR_ALREADY_INITIALIZED; }
 
     /* @experimental Stub: I2C EEPROM backend not yet implemented.
      * 不 claim I2C 资源、不置 initialized=true、不做硬件探测——避免"假成功"反模式
