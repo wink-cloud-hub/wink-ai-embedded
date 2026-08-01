@@ -137,6 +137,7 @@ typedef enum {
 
     WINK_ERR_OVERCURRENT        = -20,        /**< 过流（可恢复：限流重试）；持续则升级为致命。 */
     WINK_ERR_OVERTEMPERATURE    = -21,        /**< 过温（可恢复：降频 / 降占空比）；持续则关输出。 */
+    WINK_ERR_ALREADY_INITIALIZED = -22,       /**< 对已 initialized 的器件重复调用 init；调用序 bug（DAL-L-004），不隐式 deinit。 */
 
     WINK_ERR_WATCHDOG           = -30,        /**< 看门狗超时（致命）；由 boot safe-lock 复位处理。 */
 

@@ -6,6 +6,7 @@
 wink_status_t dal_led_init(dal_led_t *dev, const dal_led_config_t *cfg) {
     if (dev == NULL || cfg == NULL) { return WINK_ERR_INVALID_ARG; }
     if (cfg->owner == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (dev->initialized) { return WINK_ERR_ALREADY_INITIALIZED; }
 
     /* Track A（M1）：GPIO 引脚冲突治理——两 LED 若配同 pin 不同 owner，此处 BUSY。 */
     wink_status_t rs = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, cfg->pin, cfg->owner);
