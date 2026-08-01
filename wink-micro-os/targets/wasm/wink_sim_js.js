@@ -255,7 +255,9 @@ addToLibrary({
      */
     js_sim_get_plugin_channel: function (instanceIdPtr, channelNamePtr) {
         if (typeof Module !== 'undefined' && typeof Module.js_sim_get_plugin_channel === 'function') {
-            return Module.js_sim_get_plugin_channel(instanceIdPtr, channelNamePtr);
+            var instanceId = UTF8ToString(instanceIdPtr);
+            var channelName = UTF8ToString(channelNamePtr);
+            return Module.js_sim_get_plugin_channel(instanceId, channelName);
         }
         return -1.0; // 未初始化哨兵
     },
