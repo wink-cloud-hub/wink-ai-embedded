@@ -52,7 +52,7 @@ void test_eeprom_init_stub_reports_unsupported_and_does_not_claim(void) {
     TEST_ASSERT_FALSE(pal_resource_is_claimed(PAL_RESOURCE_I2C_ADDR, res_id));
 }
 
-void test_eeprom_rw_stub_returns_unsupported_and_safety_fills(void) {
+void test_eeprom_rw_stub_returns_unsupported_and_leaves_buf_untouched(void) {
     dal_eeprom_t dev = {0};
     /* write on an uninitialized dev is rejected via early NULL/init checks
      * (in the real backend) or returns UNSUPPORTED for the stub. Pass NULL buf
@@ -62,12 +62,12 @@ void test_eeprom_rw_stub_returns_unsupported_and_safety_fills(void) {
     const uint8_t w[3] = {'a', 'b', 'c'};
     TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED,
                           dal_eeprom_write_blocking(&dev, 0, w, sizeof(w)));
-    /* read must safety-fill the buffer with 0xFF (factory unprogrammed value),
-     * not leave uninitialized memory for the caller. */
-    uint8_t out[4] = {0};
+    /* DAL-F-020: on error the out buffer MUST be left untouched (no 0xFF fill).
+     * A real backend writes buf only on the WINK_OK path. */
+    uint8_t out[4] = {0x11, 0x22, 0x33, 0x44};
     TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_eeprom_read_blocking(&dev, 0, out, sizeof(out)));
-    TEST_ASSERT_EQUAL_UINT8(0xFF, out[0]);
-    TEST_ASSERT_EQUAL_UINT8(0xFF, out[3]);
+    TEST_ASSERT_EQUAL_UINT8(0x11, out[0]);
+    TEST_ASSERT_EQUAL_UINT8(0x44, out[3]);
 }
 
 int main(void) {
@@ -75,6 +75,6 @@ int main(void) {
     RUN_TEST(test_eeprom_deinit_null_returns_invalid_arg);
     RUN_TEST(test_eeprom_deinit_uninitialized_is_idempotent_noop);
     RUN_TEST(test_eeprom_init_stub_reports_unsupported_and_does_not_claim);
-    RUN_TEST(test_eeprom_rw_stub_returns_unsupported_and_safety_fills);
+    RUN_TEST(test_eeprom_rw_stub_returns_unsupported_and_leaves_buf_untouched);
     return UNITY_END();
 }

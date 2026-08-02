@@ -53,21 +53,17 @@ void test_gps_poll_stub_returns_unsupported(void) {
     TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_gps_poll(&dev));
 }
 
-void test_gps_get_position_safety_zeroes_output(void) {
+void test_gps_get_position_leaves_output_untouched_on_error(void) {
     dal_gps_t dev = {0};
     dal_gps_position_t pos;
-    /* Set sentinel bytes so we can detect the zero-fill. */
+    /* DAL-F-020: out params MUST stay untouched on non-OK returns.
+     * Fill with a sentinel and assert the stub preserves every byte. */
     memset(&pos, 0x55, sizeof(pos));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_gps_get_position(&dev, &pos));
-    /* All numeric fields must be zeroed (stub safety-fill), not left as
-     * uninitialized stack garbage for the caller. */
-    TEST_ASSERT_EQUAL_INT32(0, pos.lat_udeg);
-    TEST_ASSERT_EQUAL_INT32(0, pos.lon_udeg);
-    TEST_ASSERT_EQUAL_INT32(0, pos.alt_mm);
-    TEST_ASSERT_FLOAT_WITHIN(1e-9f, 0.0f, pos.speed_kmh);
-    TEST_ASSERT_EQUAL_UINT8(0, pos.satellites);
-    TEST_ASSERT_FALSE(pos.fix_valid);
-    TEST_ASSERT_EQUAL_UINT32(0, pos.timestamp_ms);
+    uint8_t *raw = (uint8_t *)&pos;
+    for (size_t i = 0; i < sizeof(pos); i++) {
+        TEST_ASSERT_EQUAL_UINT8(0x55, raw[i]);
+    }
 }
 
 void test_gps_get_position_null_returns_invalid_arg(void) {
@@ -82,7 +78,7 @@ int main(void) {
     RUN_TEST(test_gps_deinit_uninitialized_is_idempotent_noop);
     RUN_TEST(test_gps_init_stub_reports_unsupported_and_does_not_claim);
     RUN_TEST(test_gps_poll_stub_returns_unsupported);
-    RUN_TEST(test_gps_get_position_safety_zeroes_output);
+    RUN_TEST(test_gps_get_position_leaves_output_untouched_on_error);
     RUN_TEST(test_gps_get_position_null_returns_invalid_arg);
     return UNITY_END();
 }

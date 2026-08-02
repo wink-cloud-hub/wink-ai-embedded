@@ -221,13 +221,14 @@ void test_wire_i2c_addr_resource_conflict_via_pal(void) {
  *    且 dev->initialized 必须保持 false，read/write/poll/get_position 也返 NOT_SUPPORTED。
  * ===================================================================== */
 void test_wire_gps_stub_returns_not_supported(void) {
+    /* Fresh (uninitialized) dev exercises the honest stub path: memset +
+     * WINK_ERR_UNSUPPORTED, initialized stays false. A pre-initialized dev
+     * instead returns WINK_ERR_ALREADY_INITIALIZED (DAL-L-004), which is a
+     * different contract and not what this test targets. */
     dal_gps_t dev = {0};
     const dal_gps_config_t cfg = {
         .owner = "test_gps", .uart_port = 1, .baudrate = 9600, .rx_buffer_size = 256
     };
-    /* 前态污染：确保 init 会清零 dev */
-    dev.initialized = true;
-    dev.last_fix_time_ms = 0xDEADBEEFu;
 
     TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_gps_init(&dev, &cfg));
     TEST_ASSERT_FALSE(dev.initialized);
@@ -240,22 +241,23 @@ void test_wire_gps_stub_returns_not_supported(void) {
 }
 
 void test_wire_eeprom_stub_returns_not_supported(void) {
+    /* Fresh (uninitialized) dev exercises the honest stub path; a pre-init dev
+     * would instead hit DAL-L-004 (WINK_ERR_ALREADY_INITIALIZED). */
     dal_eeprom_t dev = {0};
     const dal_eeprom_config_t cfg = {
         .owner = "test_eeprom", .i2c_port = 0, .i2c_addr = 0x50,
         .capacity_bytes = 32768, .page_size = 32, .write_time_ms = 5
     };
-    dev.initialized = true;
 
     TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_eeprom_init(&dev, &cfg));
     TEST_ASSERT_FALSE(dev.initialized);
 
-    uint8_t buf[4] = {0x00, 0x00, 0x00, 0x00};
+    /* DAL-F-020: read returns UNSUPPORTED and MUST leave the caller buffer
+     * untouched (no 0xFF fill); a real backend writes buf only on WINK_OK. */
+    uint8_t buf[4] = {0x11, 0x22, 0x33, 0x44};
     TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_eeprom_read_blocking(&dev, 0, buf, sizeof(buf)));
-    /* read 虽返 NOT_SUPPORTED，但 buf 必须被安全填充为 0xFF（未编程 EEPROM 默认值），
-     * 避免 caller 看到未初始化内存 */
-    TEST_ASSERT_EQUAL_UINT8(0xFF, buf[0]);
-    TEST_ASSERT_EQUAL_UINT8(0xFF, buf[3]);
+    TEST_ASSERT_EQUAL_UINT8(0x11, buf[0]);
+    TEST_ASSERT_EQUAL_UINT8(0x44, buf[3]);
 
     const uint8_t wbuf[4] = {1,2,3,4};
     TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_eeprom_write_blocking(&dev, 0, wbuf, sizeof(wbuf)));

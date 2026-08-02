@@ -62,8 +62,9 @@ wink_status_t dal_eeprom_get_status(const dal_eeprom_t *dev, dal_eeprom_state_t 
 wink_status_t dal_eeprom_get_read_result(dal_eeprom_t *dev, uint8_t *buf, uint32_t len) {
     if (dev == NULL || buf == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
-    /* @experimental Stub: 安全填充 0xFF（未编程 EEPROM 典型值） */
-    if (len > 0) { memset(buf, 0xFF, len); }
+    /* @experimental Stub: DAL-F-020 — leave *buf untouched on error; a real
+     * implementation fills buf only on the success path. */
+    (void)len;
     return WINK_ERR_UNSUPPORTED;
 }
 
@@ -74,9 +75,8 @@ wink_status_t dal_eeprom_read_blocking(dal_eeprom_t *dev, uint32_t addr,
                                         uint8_t *buf, uint32_t len) {
     if (dev == NULL || buf == NULL) { return WINK_ERR_INVALID_ARG; }
     WINK_ASSERT_NONBLOCKING();
-    /* 安全填充：0xFF 是未编程 EEPROM 的典型出厂值，避免 caller 使用未初始化内存。 */
-    if (len > 0) { memset(buf, 0xFF, len); }
-    (void)addr;
+    /* @experimental Stub: DAL-F-020 — leave *buf untouched on error. */
+    (void)addr; (void)len;
     return WINK_ERR_UNSUPPORTED;
 }
 
