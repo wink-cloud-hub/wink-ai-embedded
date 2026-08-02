@@ -32,7 +32,7 @@ fields:
     tier: advanced
     type: enum
     emit_when: present
-    affects_pins: true   # UniSim/前端消费；codegen 未知键静默忽略——Wave B 消费前需 schema 白名单
+    affects_pins: true   # UniSim/frontend metadata; FieldSpec-whitelisted (Wave B-A)
     enum: [in_in, phase_enable, pwm_on_in]
     map:
       in_in: DAL_DC_MOTOR_VARIANT_IN_IN
