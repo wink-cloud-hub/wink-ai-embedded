@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include "wink_status.h"
 
 #ifdef __cplusplus
@@ -54,6 +55,9 @@ typedef struct {
     uint8_t            *req_buf;      /**< 当前请求缓冲区指针（read: 输出; write: 输入的内部 copy 或 NULL） */
     bool                initialized;  /**< init 成功后置 true */
 } dal_eeprom_t;
+
+/* ABI stability: config MUST remain the first member (DAL-S-011). */
+_Static_assert(offsetof(dal_eeprom_t, config) == 0, "config must be the first member");
 
 /* ── Non-blocking lifecycle API (always visible, STRICT-safe) ──────── */
 

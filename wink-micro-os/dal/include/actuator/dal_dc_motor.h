@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include "wink_status.h"
 #include "pal_hal.h"
 
@@ -69,6 +70,9 @@ typedef struct {
     float current_speed;          /* Last set speed in [-1.0, 1.0] */
     bool initialized;             /* Init succeeded */
 } dal_dc_motor_t;
+
+/* ABI stability: config MUST remain the first member (DAL-S-011). */
+_Static_assert(offsetof(dal_dc_motor_t, config) == 0, "config must be the first member");
 
 /**
  * @brief Initialize brushed DC motor driver.
