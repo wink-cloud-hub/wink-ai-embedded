@@ -51,8 +51,9 @@ wink_status_t dal_gps_poll(dal_gps_t *dev) {
 
 wink_status_t dal_gps_get_position(const dal_gps_t *dev, dal_gps_position_t *pos) {
     if (dev == NULL || pos == NULL) { return WINK_ERR_INVALID_ARG; }
-    /* @experimental Stub: 清零输出以避免 caller 使用未初始化栈值。 */
-    memset(pos, 0, sizeof(dal_gps_position_t));
+    /* @experimental Stub: DAL-F-020 — leave *pos untouched on error; callers
+     * SHOULD zero the out-param before invoking (DAL-F-022). No write until a
+     * real implementation has a fix to return. */
     return WINK_ERR_UNSUPPORTED;
 }
 
