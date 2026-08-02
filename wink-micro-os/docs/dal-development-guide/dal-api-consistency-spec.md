@@ -2,12 +2,12 @@
 
 | 项 | 内容 |
 |----|------|
-| **规范版本** | v2.1.0 (Draft) |
+| **规范版本** | v3.1.0 (Draft) |
 | **状态** | 拟定中 / 待评审 |
 | **适用范围** | `wink-micro-os` 器件抽象层 (`dal/`) 驱动开发与代码生成器 (`codegen`) |
 | **关联活规范** | [`01-dal-device-abstraction.md`](../../../docs/design/02-wink-micro-os/01-dal-device-abstraction.md) |
 | **关联 ADR** | [ADR-0001](../../../docs/design/decisions/0001-error-code-sign-convention.md) (错误码符号约定), [ADR-0004](../../../docs/design/decisions/0004-static-dispatch-vs-runtime-ops.md) (静态分发), [ADR-0017](../../../docs/design/decisions/0017-blocking-api-hard-isolation.md) (阻塞隔离), [ADR-0024](../../../docs/design/decisions/0024-fault-three-phase-model-and-dal-deinit-contract.md) (Deinit 清场), [ADR-0043](../../../docs/design/decisions/0043-yaml-driven-layer-lint.md) (Lint 规约), [ADR-0046](../../../docs/design/decisions/0046-dal-driver-registry-ssot.md) (驱动 Registry SSOT), [ADR-0048](../../../docs/design/decisions/0048-actuator-control-semantic-naming.md) (执行器语义命名) |
-| **变更历史** | v1.0.0 (2026-08-01) 初稿; v2.0.0 (2026-08-01) 基于评审全面重写; v2.1.0 (2026-08-01) 整合 review notes (R-01~R-12) 并完成第二轮复核修正（版本/事实一致性、规则 ID 去重） |
+| **变更历史** | v1.0.0 (2026-08-01) 初稿; v2.0.0 基于评审重写; v2.1.0 整合 review notes; v3.0.0 整合 8 位 Profile 体系; v3.1.0 (2026-08-02) 补充 8 位动态内存禁令 (DAL-8B-S-020)、跨主频空循环忙等禁令 (DAL-B-012)、Golden Reference 样板驱动标定及 SDCC 8051 CI 编译拦截规约 (DAL-8B-T-010) |
 
 ---
 
@@ -15,7 +15,7 @@
 
 本文使用 RFC 2119 关键字：
 
-- **MUST / MUST NOT** — 强制规则，CI lint 以 error 报告违反（新增驱动立即适用）
+- **MUST / MUST NOT** — 强制规则，CI lint 以 error 报告违反（新增驱动指示平台立即适用）
 - **SHOULD / SHOULD NOT** — 推荐规则，CI lint 以 warning 报告违反（存量可豁免至迁移期结束）
 - **MAY** — 可选，不纳入 lint
 
@@ -31,6 +31,7 @@
 2. **工具链适配成本高** — `app_codegen.py` 和 `wink.py lint` 难以自动提取设备能力。
 3. **应用层学习曲线陡峭** — 掌握 `dal_led` 后无法自然推导 `dal_dc_motor` 或 `dal_ultrasonic` 的使用范式。
 4. **安全隐患** — 并发与失效安全缺乏统一契约，在双核 SMP (ESP32-S3) 上产生真实 bug。
+5. **跨芯片级别兼容物理阻碍** — 8 位超低端 MCU (8051/STC8/AVR) 存在 RAM 极度匮乏 (<256B)、无硬件 FPU、Harvard 存储区隔离与 Keil C51 Overlay 覆盖分析机制，无法直接运行 32 位全量 C 代码。
 
 ### 核心设计目标
 
@@ -39,9 +40,26 @@
 | **高度一致性** | 统一生命周期范式、领域动词库与注释契约 |
 | **安全优先** | 并发/ISR 安全、失效安全是硬性条款 |
 | **零破坏性演进** | 新特性不破坏现有 App/BAL 代码 |
-| **两端同源** | Wasm 仿真与 ESP32 硬件跑同一套 C 驱动源文件 |
-| **静态化** | POD 句柄模式，无 vtable / 无堆分配（ADR-0004） |
+| **两端同源** | Wasm 仿真、ESP32/STM32 硬件与 8051 极简 MCU 共享同一套 YAML SSOT |
+| **静态化与零开销** | POD 句柄模式，无 vtable / 无堆分配（ADR-0004），8 位下实现零开销 Flash 引用 |
 | **AI 可分析** | codegen 能从 DAL 静态提取能力并生成 role verb |
+
+### 1.3 Profile 分级设计原则 (Profile Tiering)
+
+为实现“**同源 YAML SSOT，两端精准生成**”，`wink-micro-os` 引入 Profile 区分机制：
+
+* **Full Profile (32-bit / POSIX / WASM / STM32 / ESP32)**：使用 `float` 物理量、包含 `owner` 跟踪、支持 32/64 位高精度时间戳与 POD 配置深拷贝句柄。
+* **Micro Profile (8-bit / 8051 / STC8 / AVR)**：使用定点数/整数量纲缩放、Flash Zero-Copy 句柄引用、静态硬编码/直接分发、16 位低开销计数器与 `uint8_t` 状态标志。
+
+| 特性维度 | Full Profile (32-bit Target) | Micro Profile (8-bit Target) |
+|---------|-----------------------------|------------------------------|
+| **适用芯片** | ESP32-S3, STM32, WASM 仿真 | 8051, STC8, AVR, PIC |
+| **物理量类型** | `float` / `double` | `int16_t` / `uint16_t` (整数量纲缩放) |
+| **控制量刻度** | 归一化浮点 `[-1.0, 1.0]` | 千分比 promille ‰ `[-1000, 1000]` / 0.1度 ddeg |
+| **句柄内存模式** | POD 深拷贝 `config_t` (24+ 字节 RAM) | Flash 指针引用 `const WINK_CODE *cfg` (2~4 字节 RAM) |
+| **资源归因** | 包含 `const char *owner` 指针 | 可通过 `#ifdef WINK_DISABLE_OWNER_TRACKING` 裁减 |
+| **调度与分发** | C 函数调用、C99 `bool` | 静态内联/硬编码宏、`uint8_t` 替代 `bool` |
+| **临界区实现** | PAL 总线锁 / 互斥锁 / 原子操作 | `EA` 总中断使能保存/恢复宏 (`WINK_8B_CRITICAL_*`) |
 
 ---
 
@@ -100,6 +118,60 @@ _Static_assert(sizeof(dal_dc_motor_config_t) == 32, "ABI break: config size chan
 
 > 纯数据字段（不含指针）的结构体可直接用无条件 `sizeof` 断言。含指针的句柄/config 优先用 `offsetof` 锁定关键成员偏移。
 
+### 2.4 Micro Profile (8-bit) 句柄与内存规约 (Zero-Copy Flash)
+
+在 8 位 MCU (8051/STC8/AVR) 环境下，由于 RAM 极其匮乏 (128~256B)，深拷贝整个 `config_t` 到句柄 RAM 中会导致严重的内存挤压。
+
+#### 2.4.1 存储区修饰符抽象
+
+为适配 Harvard 哈佛架构，DAL 头文件与生成代码中与存储区相关的修饰符 MUST 使用 PAL 统一抽象宏：
+
+```c
+#if defined(WINK_TARGET_MCU_8051)
+  #define WINK_CODE     code      /* 存储于 Flash / ROM */
+  #define WINK_XDATA    xdata     /* 存储于 外部扩展 RAM */
+  #define WINK_IDATA    idata     /* 存储于 内部高 128B RAM */
+  #define WINK_DATA     data      /* 存储于 内部低 128B RAM */
+#else
+  #define WINK_CODE
+  #define WINK_XDATA
+  #define WINK_IDATA
+  #define WINK_DATA
+#endif
+#define WINK_CODE_PTR   const WINK_CODE   /* Flash 字符串/只读结构体指针修饰符 */
+```
+
+#### 2.4.2 Flash 常量配置引用模式 (Zero-Copy)
+
+| 规则 ID | 级别 | 条款 |
+|---------|------|------|
+| DAL-8B-S-001 | MUST | 在 8 位 Profile 下，`dal_<type>_8b_t` 句柄 **MUST NOT** 深拷贝整个 `config_t` 结构体到 RAM |
+| DAL-8B-S-002 | MUST | 句柄结构体包含指向 Flash 的只读配置指针：`const WINK_CODE dal_<type>_8b_config_t *cfg;` |
+| DAL-8B-S-003 | MUST | 配置结构体 `dal_<type>_8b_config_t` 变量 MUST 加上 `WINK_CODE` 声明在 ROM 中 |
+| DAL-8B-S-010 | SHOULD | 当编译宏 `#ifdef WINK_DISABLE_OWNER_TRACKING` 启用时，`config_t` 中可以裁剪掉 `const char *owner` 成员，以在 8 位 MCU 上再省去 2~3 字节指针 |
+
+**句柄定义对比**：
+
+```c
+/* 32 位 Full Profile: 深拷贝配置，占用 24+ 字节 RAM */
+typedef struct {
+    dal_led_config_t config; /* 深拷贝 */
+    bool initialized;
+} dal_led_t;
+
+/* 8 位 Micro Profile: Zero-Copy Flash 引用，仅占用 3~4 字节 RAM */
+typedef struct {
+    const WINK_CODE dal_led_8b_config_t *cfg; /* 指向 ROM 的指针 (2 字节) */
+    uint8_t initialized;                     /* C51 下 uint8_t 比 bool 更高效 (1 字节) */
+} dal_led_8b_t;
+```
+
+#### 2.4.3 Micro Profile 静态内存分配禁令 (No-Malloc Ban)
+
+| 规则 ID | 级别 | 条款 |
+|---------|------|------|
+| DAL-8B-S-020 | MUST | 在 Micro Profile 模式下 **MUST NOT** 调用任何动态内存分配函数（`malloc` / `free` / `calloc` / `realloc`）。所有临时 Buffer、驱动句柄与配置数据必须为编译期可确定的静态存储期（`static` / 全局 / ROM）或栈常量，防止 8 位 MCU 堆内存崩溃 |
+
 ---
 
 ## 3. 生命周期 API
@@ -118,8 +190,8 @@ wink_status_t dal_<type>_init(dal_<type>_t *dev, const dal_<type>_config_t *cfg)
 | 规则 ID | 条款 |
 |---------|------|
 | DAL-L-001 | MUST 校验 `dev` 和 `cfg` 非 NULL |
-| DAL-L-002 | MUST 将 `cfg` 深拷贝到 `dev->config` |
-| DAL-L-003 | 成功时 MUST 置 `dev->initialized = true` |
+| DAL-L-002 | Full Profile 下 MUST 将 `cfg` 深拷贝到 `dev->config`；Micro Profile 下 MUST 赋值 Flash 只读指针 `dev->cfg = cfg` (Zero-Copy) |
+| DAL-L-003 | 成功时 MUST 置 `dev->initialized = true` (8 位下置 `dev->initialized = 1`) |
 | DAL-L-004 | 对已 `initialized` 的设备重复调用 MUST 返回 `WINK_ERR_ALREADY_INITIALIZED`（fail-fast，不隐式 deinit） |
 | DAL-L-005 | MUST 对关键配置参数做最小化防御校验（NULL 检查、引脚范围等），即使 codegen 已校验 |
 | DAL-L-006 | **执行器**的 init MUST 使输出处于零能量状态（duty=0 / enable 引脚 inactive），严禁 init 即通电 |
@@ -206,6 +278,18 @@ wink_status_t dal_<type>_safe_off(dal_<type>_t *dev);
 ### 4.4 `apply_override` 技术债声明
 
 `dal_rc_servo_apply_override(void *dev, ...)` 和 `dal_ultrasonic_apply_override(void *dev, ...)` 的 `void *dev` 是为适配统一函数指针表 `wink_dev_override_fn` 的已知技术债（违反 DAL-F-010），列入合规矩阵例外。收敛计划：未来 `wink_dev_override_fn` 类型参数化后消除 `void *`。
+
+### 4.5 Micro Profile (8-bit) 函数分发与重入契约
+
+在 8051 / Keil C51 环境下，编译器默认使用静态覆盖分析（Overlay Analysis）分配局部变量内存。函数指针与泛型 `void *` 指针会导致分析失效，强迫参数压入极其狭小的 Hardware Stack。
+
+| 规则 ID | 级别 | 条款 |
+|---------|------|------|
+| DAL-8B-F-001 | MUST | 8 位 Profile 下 **MUST NOT** 使用 `void *dev` 虚分发与函数指针表 (Function Pointer Tables) |
+| DAL-8B-F-002 | MUST | 驱动方法 MUST 为具名静态函数或内联函数（如 `dal_led_8b_on(dal_led_8b_t *dev)`），允许编译器进行完整的 Overlay 覆盖分析 |
+| DAL-8B-C-001 | MUST | 8 位 Profile 下不使用原子指令，临界区保护统一使用 `EA` 保存/恢复宏：<br/>`#define WINK_8B_CRITICAL_ENTER() do { uint8_t _ea_save = EA; EA = 0;`<br/>`#define WINK_8B_CRITICAL_EXIT() EA = _ea_save; } while(0)` |
+| DAL-8B-C-002 | MUST | 临界区内部 **MUST NOT** 调用含有耗时 busy-wait 或复杂状态机推进的代码 |
+| DAL-8B-C-010 | MUST | 若某个 DAL API 既可能在 ISR 中被调用，又可能在主循环 (Task) 中被调用，在 Keil C51 环境下该 API **MUST** 加上 `reentrant` 关键字声明，或设计为完全无局部变量的内联宏 |
 
 ---
 
@@ -399,12 +483,13 @@ WINK_BLOCKING WINK_WARN_UNUSED_RESULT
 wink_status_t dal_gps_init_blocking(dal_gps_t *dev, const dal_gps_config_t *cfg);
 ```
 
-### 7.2 超时来源
+### 7.2 超时来源与延时规约
 
 | 规则 ID | 级别 | 条款 |
 |---------|------|------|
 | DAL-B-010 | MUST | 超时值 MUST 来自 config 字段或编译期常量宏，MUST NOT 硬编码在函数体内 |
 | DAL-B-011 | MUST | 非阻塞 API MUST NOT 内部 busy-wait 超过 100μs，否则必须改为 request/poll 三段式 |
+| DAL-B-012 | MUST | 微秒/毫秒级等待 **MUST NOT** 使用空循环忙等（如 `for(int i=0; i<N; i++)`），必须统一调用 PAL 时钟/延时原语（`pal_delay_us()` / `pal_os_get_ms()`），防止 ESP32 (240MHz) 与 8051 (12MHz) 之间产生高达 250 倍的指令耗时漂移 |
 
 ### 7.3 异步三段式 (request / poll / get_result)
 
@@ -541,6 +626,29 @@ wink_status_t dal_dc_motor_set_speed(dal_dc_motor_t *dev, float speed);
  */
 wink_status_t dal_rc_servo_set_angle(dal_rc_servo_t *dev, float angle);
 ```
+
+### 9.3 8 位 Micro Profile 整型量纲与缩放规范
+
+在 8 位 Micro Profile 模式下，DAL 公开 API **MUST NOT** 使用 `float` 或 `double` 数据类型（因无 FPU 支持会导致软浮点库膨胀与运行缓慢）。所有物理量与归一化控制量 MUST 转换为固定量纲的整型（`int16_t` / `uint16_t` / `int8_t`）。
+
+| 规则 ID | 级别 | 条款 |
+|---------|------|------|
+| DAL-8B-U-001 | MUST | 8 位 Profile 下公开 API 物理量参数与出参 MUST 使用整型与显式量纲后缀 |
+| DAL-8B-U-002 | MUST | 归一化控制量（如速度、占空比）MUST 使用 **千分比 (promille, ‰)** 整数表示，取值范围 `[-1000, 1000]` 或 `[0, 1000]` |
+| DAL-8B-U-003 | SHOULD | 角度物理量 SHOULD 使用 **0.1 度 (deci-degree, ddeg)** 或 **1 度** 整数表示 |
+| DAL-8B-T-001 | MUST | 8 位 Profile 下时间戳与计数值默认使用 `uint16_t` (最大 65535 ms / us) |
+| DAL-8B-T-002 | MUST | 状态标志与布尔值 **MUST** 使用 `uint8_t` 代替 `bool`（在 Keil C51 中 `uint8_t` 直接对应 R0-R7 寄存器，运算效率远高于 `bool`） |
+
+**标准 8 位 Micro Profile 量纲对照表**：
+
+| 物理量 | Full Profile (32-bit) 类型 | Micro Profile (8-bit) 类型 | 单位说明与取值范围 |
+|--------|---------------------------|----------------------------|-------------------|
+| 速度归一化 | `float speed` (`[-1.0, 1.0]`) | `int16_t speed_promille` | 千分比，`[-1000, 1000]` |
+| 占空比 | `float duty` (`[0.0, 1.0]`) | `uint16_t duty_promille` | 千分比，`[0, 1000]` |
+| 舵机角度 | `float angle_deg` (`[0.0, 180.0]`) | `uint16_t angle_ddeg` | 0.1 度，`0 ~ 1800` (180.0°) |
+| 距离 | `float distance_cm` | `uint16_t distance_mm` | 毫米，`0 ~ 65535 mm` |
+| 毫秒延迟/超时 | `uint32_t timeout_ms` | `uint16_t timeout_ms` | 毫秒，`0 ~ 65535 ms` (最大 65.5s) |
+| 微秒脉冲 | `uint32_t pulse_us` | `uint16_t pulse_us` | 微秒，`0 ~ 65535 us` |
 
 ---
 
@@ -748,40 +856,52 @@ YAML 中 `experimental: true` 表示"接口可能变动 + 实现可能不完整"
 
 | 本规范条款 | YAML 字段 | 说明 |
 |-----------|----------|------|
+| §1.3 Profile 分级支持 | `profiles` | 声明驱动支持的 Profile（如 `[full, micro_8bit]`） |
+| §2.4 / §9.3 8位类型重映射 | `profile_overrides.micro_8bit` | 定义 8 位 Micro Profile 专用的 `config_type`、`handle_type` 与整数量纲类型 |
 | §3.2 safe_off 按 category | `is_actuator: true/false` + `config.safe_off_fn` | `safe_off_fn: ""` = 该器件无安全关断语义 |
 | §5.3 按 category 分组 | `category: actuator/output/input/sensor/display/storage/comm` | 直接复用，不引入新分类词 |
 | §5.4 器件特有 API | 未来 `device_specific: true` | 待 codegen 支持 |
 | §11.2 Stub | `experimental: true` | 标记实现未完成 |
 | §13 兼容性 | `codegen_schema: "1.1"` | schema 版本变更需评审 |
 
-### 16.3 真实 YAML 结构参考
+### 16.3 真实 YAML Profile 多 Target 支持参考
 
-请直接查阅 `codegen/drivers/*.yaml` 和 `codegen/README.md`。以下为字段概览（以 `dc_motor.yaml` 为参考）：
+`codegen/drivers/*.yaml` 增加 Profile 分级表达式示例（以 `rc_servo.yaml` 为参考）：
 
 ```yaml
 codegen_schema: "1.1"     # schema 版本号
-type: dc_motor             # 器件类型名
-category: actuator         # 分类（7 类之一）
-is_actuator: true          # 是否为执行器（决定 safe_off 是否必须）
-experimental: false        # 接口稳定性
-default_role: open_loop_actuator  # 默认 role
+type: rc_servo             # 器件类型名
+category: actuator         # 分类
+is_actuator: true          # 执行器标记
+experimental: false
+default_role: angular_actuator
 
-fields:                    # 配置字段定义（tier: stable/advanced）
-  pwm_channel: { tier: advanced, type: int, required: true }
-  ...
+# 声明支持的 Profile 列表
+profiles:
+  - full
+  - micro_8bit
 
-config:                    # C 类型映射
-  c_type: dal_dc_motor_t
-  config_type: dal_dc_motor_config_t
-  headers: [dal_dc_motor.h]
-  deinit_fn: dal_dc_motor_deinit
-  safe_off_fn: dal_dc_motor_safe_off   # "" = 无 safe_off
+# 8 位 Profile 专用重映射 (Zero-Copy Flash 配置与整数量纲)
+profile_overrides:
+  micro_8bit:
+    config_type: dal_rc_servo_8b_config_t
+    handle_type: dal_rc_servo_8b_t
+    value_types:
+      angle: { type: uint16_t, unit: deci_deg, range: [0, 1800] }
 
-role_bindings:             # Role verb → Jinja 模板
-  open_loop_actuator:
+config:                    # Full Profile 默认 C 类型映射
+  c_type: dal_rc_servo_t
+  config_type: dal_rc_servo_config_t
+  headers: [dal_rc_servo.h]
+  deinit_fn: dal_rc_servo_deinit
+  safe_off_fn: dal_rc_servo_safe_off
+
+role_bindings:             # Role verb → Jinja 模板 (支持两端分发)
+  angular_actuator:
     verbs:
-      set_speed:
-        template: "WINK_WARN_UNUSED_RESULT static inline ..."
+      set_angle:
+        template_full: "dal_rc_servo_set_angle(&{{dev}}, {{angle_deg}}f);"
+        template_micro_8bit: "dal_rc_servo_8b_set_angle(&{{dev}}, {{angle_ddeg}});"
 ```
 
 ---
@@ -793,10 +913,12 @@ role_bindings:             # Role verb → Jinja 模板
 图例：✅ 合规 / ❌ 不合规 / — 不适用 / ⚠ 部分合规
 
 > 本基线冻结于 v2.1.0，覆盖本轮新增的 MUST 条款（DAL-C-040、DAL-F-020、DAL-B-024 等）。下方矩阵聚焦生命周期与注释形态；完整逐条合规状态见 [§17.3.1](#1731-规则实施状态)。
+>
+> 🌟 **Golden Reference (黄金参考驱动样板)**：正式标定 `led` 驱动 (`dal_led.h/c` 与 `dal_led_8b.h/c`) 为双 Profile 黄金参考实现。新增驱动开发与 Code Review 必须以 `led` 驱动的接口范式、ABI 断言、Contract 注释与剪枝守卫格式为标准样板。
 
 | 驱动 | init | deinit | safe_off | const getter | Contract 注释 | WINK_BLOCKING 标注 |
 |------|------|--------|----------|-------------|---------------|-------------------|
-| led | ✅ | ✅ | ⚠ (别名 off) | — | ⚠ 部分缺 | — |
+| led (⭐Golden Ref) | ✅ | ✅ | ⚠ (别名 off) | — | ⚠ 部分缺 | — |
 | dc_motor | ✅ | ✅ | ✅ (brake) | ✅ | ✅ | — |
 | rc_servo | ✅ | ✅ | ✅ (duty=0) | — | ✅ | — |
 | button | ✅ | ✅ | — | ✅ | ⚠ 部分缺 | — |
@@ -846,6 +968,15 @@ role_bindings:             # Role verb → Jinja 模板
 | DAL-U-010 | Range 值域声明 | `review-enforced` | — |
 | DAL-E-001 | safe_off 声明具体行为 | `review-enforced` | — |
 | DAL-F-020 | 错误返回时出参不变 | `review-enforced` | — |
+| DAL-B-012 | 严禁空循环忙等 | `review-enforced` | — |
+| DAL-8B-S-001 | 8位禁句柄深拷贝 config | `review-enforced` | — |
+| DAL-8B-S-002 | 8位句柄包含 ROM 指针 | `review-enforced` | — |
+| DAL-8B-S-020 | 8位模式静态内存禁令 (No-malloc) | `review-enforced` | — |
+| DAL-8B-U-001 | 8位 API 禁用 float | `pending` | `dal.8bit` lint pack 跟踪 |
+| DAL-8B-U-002 | 归一化量使用千分比 ‰ | `review-enforced` | — |
+| DAL-8B-F-001 | 8位禁用 void* 虚分发 | `review-enforced` | — |
+| DAL-8B-C-001 | 8位使用 EA 中断保护 | `review-enforced` | — |
+| DAL-8B-T-010 | 8位符合 ANSI C89 / SDCC CI 构建检查 | `pending` | CI 集成 SDCC 跟踪 |
 
 ### 17.4 已知例外
 
