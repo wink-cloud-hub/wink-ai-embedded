@@ -58,12 +58,12 @@ DAL_STATIC_ASSERT(offsetof(dal_encoder_t, config) == 0, "dal_encoder_t config at
 /* 6. dal_ultrasonic_t */
 DAL_STATIC_ASSERT(sizeof(dal_ultrasonic_config_t) > 0, "dal_ultrasonic_config_t size check");
 DAL_STATIC_ASSERT(sizeof(dal_ultrasonic_t) > 0, "dal_ultrasonic_t size check");
-DAL_STATIC_ASSERT(offsetof(dal_ultrasonic_t, config) == offsetof(dal_ultrasonic_t, config), "dal_ultrasonic_t config layout check");
+DAL_STATIC_ASSERT(offsetof(dal_ultrasonic_t, config) == 0, "dal_ultrasonic_t config at offset 0 (DAL-S-011)");
 
 /* 7. dal_mono_oled_t */
 DAL_STATIC_ASSERT(sizeof(dal_mono_oled_config_t) > 0, "dal_mono_oled_config_t size check");
 DAL_STATIC_ASSERT(sizeof(dal_mono_oled_t) > 0, "dal_mono_oled_t size check");
-DAL_STATIC_ASSERT(offsetof(dal_mono_oled_t, framebuffer) == 0, "dal_mono_oled_t framebuffer at offset 0");
+DAL_STATIC_ASSERT(offsetof(dal_mono_oled_t, config) == 0, "dal_mono_oled_t config at offset 0 (DAL-S-011)");
 
 /* 8. dal_gps_t & dal_gps_position_t */
 DAL_STATIC_ASSERT(sizeof(dal_gps_config_t) > 0, "dal_gps_config_t size check");
@@ -95,10 +95,10 @@ void test_abi_layout_freeze_member_positions(void) {
     TEST_ASSERT_EQUAL_PTR((void *)&motor, (void *)&motor.config);
     TEST_ASSERT_EQUAL_PTR((void *)&servo, (void *)&servo.config);
     TEST_ASSERT_EQUAL_PTR((void *)&enc, (void *)&enc.config);
-    TEST_ASSERT_EQUAL_PTR((void *)&oled, (void *)&oled.framebuffer);
+    TEST_ASSERT_EQUAL_PTR((void *)&oled, (void *)&oled.config);
     TEST_ASSERT_EQUAL_PTR((void *)&gps, (void *)&gps.config);
     TEST_ASSERT_EQUAL_PTR((void *)&ee, (void *)&ee.config);
-    TEST_ASSERT_EQUAL_PTR((void *)&ultra.config, (void *)((char *)&ultra + offsetof(dal_ultrasonic_t, config)));
+    TEST_ASSERT_EQUAL_PTR((void *)&ultra, (void *)&ultra.config);
 }
 
 int main(void) {

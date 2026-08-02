@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include "wink_status.h"
 
 #ifdef __cplusplus
@@ -59,6 +60,9 @@ typedef struct {
     uint32_t last_fix_time_ms;      /**< 最近一次定位有效时间戳 */
     bool initialized;               /**< init 成功后置 true */
 } dal_gps_t;
+
+/* ABI stability: config MUST remain the first member (DAL-S-011). */
+_Static_assert(offsetof(dal_gps_t, config) == 0, "config must be the first member");
 
 /**
  * @brief 非阻塞初始化 GPS：校验配置参数、配置 UART、初始化 NMEA 解析器状态。

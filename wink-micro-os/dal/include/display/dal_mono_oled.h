@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include "wink_status.h"
 
 #ifdef __cplusplus
@@ -61,15 +62,19 @@ typedef struct {
  * 顶层字段，避免每次 draw/flush 重复右移；不进 config 副本，避免"输入 vs 派生态"
  * 语义混淆。
  *
- * 成员按对齐需求降序排列（c-code.md §4）：uint8_t[]（1B 数组，任意对齐）→
- * config_t（含 u16→u8） → uint8_t → bool，无内部 padding。
+ * config MUST be the first member (DAL-S-011, offsetof==0). The 1024-byte
+ * framebuffer follows it (uint8 array has no alignment constraint); trailing
+ * uint8/bool need no tail padding on either ILP32 or 64-bit host.
  */
 typedef struct {
+    dal_mono_oled_config_t config;    /* 配置副本，由 init 从 cfg 深拷贝（首成员，offsetof==0） */
     uint8_t                framebuffer[MONO_OLED_FB_SIZE]; /* 帧缓冲（页式：每页 8 行 × 128 列） */
-    dal_mono_oled_config_t config;    /* 配置副本，由 init 从 cfg 深拷贝 */
     uint8_t                pages;     /* 派生：config.height / 8 */
     bool                   initialized;
 } dal_mono_oled_t;
+
+/* ABI stability: config MUST remain the first member (DAL-S-011). */
+_Static_assert(offsetof(dal_mono_oled_t, config) == 0, "config must be the first member");
 
 /**
  * @brief 初始化单色 OLED：I2C 地址冲突治理、下发 init 命令序列。
