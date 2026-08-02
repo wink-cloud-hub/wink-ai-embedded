@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include "wink_status.h"
 
 #ifdef __cplusplus
@@ -96,6 +97,9 @@ typedef struct {
     bool     gpio_isr_registered;      /* true iff the shared thunk is currently installed */
     volatile bool irq_pending;         /* set by ISR, cleared by dal_button_consume_irq_pending */
 } dal_button_t;
+
+/* ABI stability: config MUST remain the first member (DAL-S-011). */
+_Static_assert(offsetof(dal_button_t, config) == 0, "config must be the first member");
 
 /**
  * @brief BAL event-backend selector (S3+, ADR-0031).

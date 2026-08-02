@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include "wink_status.h"
 #include "pal_hal.h"
 
@@ -47,20 +48,51 @@ typedef struct {
     bool isr_registered;         /* 是否注册了中断 */
 } dal_encoder_t;
 
+/* ABI stability: config MUST remain the first member (DAL-S-011). */
+_Static_assert(offsetof(dal_encoder_t, config) == 0, "config must be the first member");
+
 /**
- * @brief 初始化编码器
+ * @brief 初始化编码器：校验参数、claim GPIO 引脚、配置输入模式、注册上升沿 ISR。
+ *
+ * @param dev 编码器实例句柄
+ * @param cfg 配置结构体指针（内部深拷贝到 dev->config）
+ * @return wink_status_t
+ * @note API Contract:
+ *   - Preconditions: dev 非 NULL；cfg 非 NULL；cfg->owner 非 NULL（静态存储）；cfg->pin_a >= 0。
+ *   - Postconditions: WINK_OK 时 dev->initialized=true；count=0；ISR 已注册；cfg 已深拷贝。
+ *   - Blocking: No。
+ *   - Thread-safe: No（默认非线程安全，调用方串行化，DAL-C-040）。
+ *   - ISR-safe: No。
+ *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG(NULL/越界) / WINK_ERR_UNSUPPORTED(variant) /
+ *     透传 PAL 错误（WINK_ERR_IO / WINK_ERR_BUSY / WINK_ERR_RESOURCE_EXHAUSTED）。
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_encoder_init(dal_encoder_t *dev, const dal_encoder_config_t *cfg);
 
 /**
- * @brief 获取当前脉冲计数值
+ * @brief 获取当前脉冲计数值（读缓存，不触发硬件采样）。
+ * @param dev 编码器实例句柄
+ * @param out_count 输出当前计数值（只读 volatile 单字，无临界区）
+ * @note API Contract:
+ *   - Preconditions: dev 非 NULL；out_count 非 NULL；dal_encoder_init() 已成功。
+ *   - Postconditions: WINK_OK 时 *out_count 为当前计数值。
+ *   - Blocking: No。
+ *   - Thread-safe: No（单字宽 volatile 读，容忍旧值，DAL-C-001）。
+ *   - ISR-safe: Yes（单字 aligned 读，无锁/无阻塞）。
+ *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED。
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_encoder_get_count(const dal_encoder_t *dev, int32_t *out_count);
 
 /**
- * @brief 重置脉冲计数值为零
+ * @brief 重置脉冲计数值为零（临界区原子清零）。
+ * @note API Contract:
+ *   - Preconditions: dev 非 NULL；dal_encoder_init() 已成功。
+ *   - Postconditions: WINK_OK 时 count=0。
+ *   - Blocking: No。
+ *   - Thread-safe: No（使用 PAL_CRITICAL_SECTION 原子清零，DAL-C-002）。
+ *   - ISR-safe: No（临界区在 task 上下文使用）。
+ *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED。
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_encoder_reset(dal_encoder_t *dev);

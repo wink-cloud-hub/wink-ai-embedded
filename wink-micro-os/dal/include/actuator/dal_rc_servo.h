@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include "wink_status.h"
 
 #ifdef __cplusplus
@@ -49,6 +50,9 @@ typedef struct {
     float    current_angle;          /**< State: 当前角度（度，钳位后） */
     bool     initialized;            /**< State: init 成功后置 true */
 } dal_rc_servo_t;
+
+/* ABI stability: config MUST remain the first member (DAL-S-011). */
+_Static_assert(offsetof(dal_rc_servo_t, config) == 0, "config must be the first member");
 
 /**
  * @brief 初始化舵机：校验配置、一次性 PWM init（占用 PWM 通道）、置 initialized。

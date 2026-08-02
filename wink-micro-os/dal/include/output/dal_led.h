@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include "wink_status.h"
 
 #ifdef __cplusplus
@@ -38,6 +39,9 @@ typedef struct {
     bool initialized;      /* init 成功后置 true */
 } dal_led_t;
 
+/* ABI stability: config MUST remain the first member (DAL-S-011). */
+_Static_assert(offsetof(dal_led_t, config) == 0, "config must be the first member");
+
 /**
  * @brief 初始化 LED：校验引脚、配置 GPIO 推挽输出、置 initialized。
  *
@@ -63,7 +67,10 @@ wink_status_t dal_led_init(dal_led_t *dev, const dal_led_config_t *cfg);
  * @brief 点亮 LED
  * @note API Contract:
  *   - Preconditions: dev 非 NULL；dal_led_init() 已成功。
+ *   - Postconditions: WINK_OK 时 LED 点亮且 dev->is_on=true。
  *   - Blocking: No.
+ *   - Thread-safe: No（默认非线程安全，调用方串行化，DAL-C-040）。
+ *   - ISR-safe: No。
  *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG(dev NULL) / WINK_ERR_NOT_INITIALIZED。
  */
 WINK_WARN_UNUSED_RESULT
@@ -71,7 +78,13 @@ wink_status_t dal_led_on(dal_led_t *dev);
 
 /**
  * @brief 熄灭 LED
- * @note API Contract: 同 dal_led_on。
+ * @note API Contract:
+ *   - Preconditions: dev 非 NULL；dal_led_init() 已成功。
+ *   - Postconditions: WINK_OK 时 LED 熄灭且 dev->is_on=false。
+ *   - Blocking: No.
+ *   - Thread-safe: No（默认非线程安全，调用方串行化，DAL-C-040）。
+ *   - ISR-safe: No。
+ *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG(dev NULL) / WINK_ERR_NOT_INITIALIZED。
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_led_off(dal_led_t *dev);
@@ -79,14 +92,26 @@ wink_status_t dal_led_off(dal_led_t *dev);
 /**
  * @brief 设置 LED 显式开关状态
  * @param on true=点亮；false=熄灭
- * @note API Contract: 同 dal_led_on。
+ * @note API Contract:
+ *   - Preconditions: dev 非 NULL；dal_led_init() 已成功。
+ *   - Postconditions: WINK_OK 时 dev->is_on == on。
+ *   - Blocking: No.
+ *   - Thread-safe: No（默认非线程安全，调用方串行化，DAL-C-040）。
+ *   - ISR-safe: No。
+ *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG(dev NULL) / WINK_ERR_NOT_INITIALIZED。
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_led_set(dal_led_t *dev, bool on);
 
 /**
  * @brief 翻转 LED 状态（on↔off）
- * @note API Contract: 同 dal_led_on。
+ * @note API Contract:
+ *   - Preconditions: dev 非 NULL；dal_led_init() 已成功。
+ *   - Postconditions: WINK_OK 时 dev->is_on 取反。
+ *   - Blocking: No.
+ *   - Thread-safe: No（默认非线程安全，调用方串行化，DAL-C-040）。
+ *   - ISR-safe: No。
+ *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG(dev NULL) / WINK_ERR_NOT_INITIALIZED。
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_led_toggle(dal_led_t *dev);

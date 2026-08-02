@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include "wink_status.h"
 
 #ifdef __cplusplus
@@ -42,16 +43,19 @@ typedef struct {
  *   2. 运行时诊断：可直接打印当前生效的配置
  */
 typedef struct {
+    /* config MUST be the first member (DAL-S-011, offsetof==0). */
+    dal_ultrasonic_config_t config;          ///< 配置副本（trig_pin, echo_pin, use_rmt），由 init 从 cfg 拷贝
     /* —— 4B —— */
     volatile float          last_distance;   ///< 最近一次测量距离 (cm) (volatile: SMP cross-core reader)
     volatile uint32_t       last_pulse_us;   ///< Phase 4：上次 echo 脉宽 μs (volatile)
     volatile wink_status_t  last_status;     ///< Phase 4：上次测量结果状态（ERROR 时为具体错误码）(volatile)
     volatile dal_ultrasonic_state_t  state;  ///< Phase 4：非阻塞测量状态机 (volatile)
-    /* —— 2B —— */
-    dal_ultrasonic_config_t config;          ///< 配置副本（trig_pin, echo_pin, use_rmt），由 init 从 cfg 拷贝
     /* —— 1B —— */
     bool                    initialized;     ///< Phase 2：dal_ultrasonic_init 成功后置 true
 } dal_ultrasonic_t;
+
+/* ABI stability: config MUST remain the first member (DAL-S-011). */
+_Static_assert(offsetof(dal_ultrasonic_t, config) == 0, "config must be the first member");
 
 /**
  * @brief 初始化超声波：校验引脚、配置 GPIO 方向（真机）、置 initialized。
