@@ -1,12 +1,14 @@
 # DAL API 8位单片机 (8051) 适配规范与扩展指南
 
+> 📦 **已归档 (ARCHIVED — 2026-08-02)**：本文档的 8 位 MCU 适配条款、Profile 分级体系（Full Profile vs. Micro Profile）、Zero-Copy Flash 内存模型及整数量纲缩放规范已全部整合进主规范 [`dal-api-consistency-spec.md`](./dal-api-consistency-spec.md) v3.0.0。后续开发与 CI Lint 均以主规范正文为准，本文件仅作历史提案与技术背景留存。
+
 | 项 | 内容 |
 |----|------|
-| **规范版本** | v1.0.0 (Draft) |
-| **状态** | 拟定中 / 补充扩展规范 |
+| **规范版本** | v1.0.0 (Archived) |
+| **状态** | **已归档** — 已整合进 [`dal-api-consistency-spec.md`](./dal-api-consistency-spec.md) v3.0.0 |
 | **适用范围** | `wink-micro-os` 器件抽象层 (`dal/`) 在 8 位微控制器（如 8051、STC8、AVR、PIC 等）上的驱动适配与代码生成器 (`codegen`) 导出 |
-| **主规范引用** | [`dal-api-consistency-spec.md`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-os/docs/dal-development-guide/dal-api-consistency-spec.md) (v2.1.0) |
-| **变更历史** | v1.0.0 (2026-08-01) 初稿，建立 8 位单片机 Profile 适配体系与硬核物理约束解法 |
+| **主规范引用** | [`dal-api-consistency-spec.md`](./dal-api-consistency-spec.md) (v3.0.0) |
+| **变更历史** | v1.0.0 (2026-08-01) 初稿；(2026-08-02) 宣布归档并合并入主规范 v3.0.0 |
 
 ---
 
