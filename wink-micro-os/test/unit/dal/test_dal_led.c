@@ -28,6 +28,42 @@ void test_set_null_returns_invalid_arg(void) {
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_led_off(NULL));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_led_set(NULL, true));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_led_toggle(NULL));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_led_safe_off(NULL));
+}
+
+/* F-1: init must leave the LED in zero-energy (off) state regardless of
+ * polarity; DAL-L-006. We assert the cached is_on state; the off-level
+ * write is exercised via the host pal_gpio_write path. */
+void test_init_leaves_led_off_active_high(void) {
+    dal_led_t dev = {0};
+    const dal_led_config_t cfg = { .owner = OWNER, .pin = 6, .active_high = true };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_init(&dev, &cfg));
+    TEST_ASSERT_FALSE(dev.is_on);
+}
+
+void test_init_leaves_led_off_active_low(void) {
+    dal_led_t dev = {0};
+    const dal_led_config_t cfg = { .owner = OWNER, .pin = 7, .active_high = false };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_init(&dev, &cfg));
+    TEST_ASSERT_FALSE(dev.is_on);
+}
+
+/* F-2 / DAL-L-022: safe_off on an uninitialized handle returns WINK_OK
+ * ("nothing to shut off"), NOT NOT_INITIALIZED. Safe_off is invoked by
+ * safe_off_all() on watchdog/panic/rollback paths. */
+void test_safe_off_uninitialized_returns_ok(void) {
+    dal_led_t dev = {0};
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_safe_off(&dev));
+}
+
+void test_safe_off_initialized_turns_off(void) {
+    dal_led_t dev = {0};
+    const dal_led_config_t cfg = { .owner = OWNER, .pin = 8, .active_high = true };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_init(&dev, &cfg));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_on(&dev));
+    TEST_ASSERT_TRUE(dev.is_on);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_safe_off(&dev));
+    TEST_ASSERT_FALSE(dev.is_on);
 }
 
 /* ---- init 后 on/off/set/toggle（host pal_gpio_write 无真实电平可校验，校验状态位）---- */
@@ -127,6 +163,10 @@ int main(void) {
     RUN_TEST(test_init_null_returns_invalid_arg);
     RUN_TEST(test_set_before_init_returns_not_initialized);
     RUN_TEST(test_set_null_returns_invalid_arg);
+    RUN_TEST(test_init_leaves_led_off_active_high);
+    RUN_TEST(test_init_leaves_led_off_active_low);
+    RUN_TEST(test_safe_off_uninitialized_returns_ok);
+    RUN_TEST(test_safe_off_initialized_turns_off);
     RUN_TEST(test_active_high_on_off);
     RUN_TEST(test_active_low_on_off);
     RUN_TEST(test_toggle_flips_state);

@@ -25,7 +25,7 @@ static wink_status_t app_init_status(void)
 {
     WINK_TRY(wink_device_tree_init());
     WINK_TRY(front_radar_enable_distance_events());
-    neck_servo_set_angle(90.0f);
+    neck_servo_set_angle(900); /* 90.0° in 0.1° ddeg */
 
     LOG_I("init done");
     return WINK_OK;
@@ -46,16 +46,16 @@ static void app_on_event(const wink_event_t *evt)
     LOG_D("front_radar DISTANCE_READY: cm=%.1f", cm);
 
     if (cm > 0.0f && cm < OBSTACLE_THRESHOLD_CM) {
-        neck_servo_set_angle(180.0f);
+        neck_servo_set_angle(1800); /* 180.0° in 0.1° ddeg */
     } else {
-        neck_servo_set_angle(90.0f);
+        neck_servo_set_angle(900);  /* 90.0° in 0.1° ddeg */
     }
 }
 
 static wink_status_t app_on_fault_status(uint32_t fault_code)
 {
     wink_trace_fault(fault_code);
-    neck_servo_set_angle(90.0f);
+    neck_servo_set_angle(900); /* 90.0° in 0.1° ddeg */
     return WINK_OK;
 }
 
