@@ -220,9 +220,17 @@ wink_status_t dal_ultrasonic_init(dal_ultrasonic_t *dev, const dal_ultrasonic_co
     }
 
     dev->initialized = true;
+    LOG_I(LOG_TAG, "init OK: owner=%s trig=%u echo=%u rmt=%d",
+          (cfg->owner == NULL ? "?" : cfg->owner), (unsigned)cfg->trig_pin,
+          (unsigned)cfg->echo_pin, (int)cfg->use_rmt);
     return WINK_OK;
 
 cleanup:
+    /* DAL-B-031: log the failed step + rc before we tear down so the operator
+     * can correlate with the cleanup traces below. */
+    LOG_E(LOG_TAG, "init FAILED rc=%d: owner=%s trig=%u echo=%u rmt=%d (rolling back)",
+          (int)rc, (cfg->owner == NULL ? "?" : cfg->owner),
+          (unsigned)cfg->trig_pin, (unsigned)cfg->echo_pin, (int)cfg->use_rmt);
     /* Roll back in REVERSE order. pal_gpio_reset_pin is the inverse of
      * pal_gpio_init; pal_resource_release is the inverse of pal_resource_claim.
      * pal_gpio_reset_pin returns void, so use plain (void) cast; the others
