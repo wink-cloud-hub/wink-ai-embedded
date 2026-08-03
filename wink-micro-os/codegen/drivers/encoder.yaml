@@ -20,9 +20,9 @@ fields:
     default: up
     enum: [up, down, none]
     map:
-      up: PAL_GPIO_INPUT_PULLUP
-      down: PAL_GPIO_INPUT_PULLDOWN
-      none: PAL_GPIO_INPUT
+      up: DAL_ENCODER_PULL_UP
+      down: DAL_ENCODER_PULL_DOWN
+      none: DAL_ENCODER_PULL_NONE
   variant:
     tier: advanced
     type: enum
