@@ -103,15 +103,24 @@ _Static_assert(sizeof(dal_ultrasonic_t) == 40, "ABI break: handle size changed o
  * 旧 API（trig_pin + echo_pin 分离参数）已迁移至此。
  *
  * @note API Contract:
- *   - Preconditions: dev 非 NULL；cfg 非 NULL；cfg->trig_pin != cfg->echo_pin。
+ *   - Preconditions: dev 非 NULL；cfg 非 NULL；cfg->owner 非 NULL（静态存储）；
+ *                    cfg->trig_pin != cfg->echo_pin；dev 未 initialized。
+ *   - Postconditions: WINK_OK 时 dev->initialized=true；trig/echo 方向已配置（真机）；
+ *                     cfg 的内容已深拷贝到 dev->config；失败时 dev->initialized
+ *                     保持 false 并回滚所有已 claim 的 PAL 资源（DAL-L-007/008）。
+ *   - Range: trig_pin / echo_pin MUST 互不相等（具体值域由底层 PAL 校验）。
  *   - Blocking: No.
  *   - Thread-safe: No; ISR-safe: No.
- *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG(NULL/同 pin) / 透传 PAL 错误
+ *   - Reentrancy: No (caller MUST serialize init/deinit against other methods).
+ *   - Side-effects: claim trig/echo GPIO 资源；配置 GPIO 方向（真机）；
+ *                   触发 RMT 硬件 capture warm-up（仅 ESP32 且 cfg->use_rmt=true）；
+ *                   writes dev->config / dev->state = IDLE / dev->last_status = OK。
+ *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG(NULL/owner/同 pin) /
+ *     WINK_ERR_ALREADY_INITIALIZED / 透传 PAL 错误
  *     （真机：WINK_ERR_IO / WINK_ERR_BUSY / WINK_ERR_RESOURCE_EXHAUSTED）。
- *   - Postconditions: WINK_OK 时 dev->initialized=true；trig/echo 方向已配置（真机）；
- *                     cfg 的内容已深拷贝到 dev->config。
- *   - Sim 分支：跳过物理 GPIO 配置（旁路最低物理信号层，ADR-0003 决策2），仅置结构状态。
- *   - ESP32：自动初始化 RMT 硬件脉冲捕获；RMT 失败自动降级到 busy-wait（cfg->use_rmt 变为 false）。
+ *   - Simulation-parity: WASM 仿真跳过物理 GPIO 配置（旁路最低物理信号层，
+ *                       ADR-0003 决策2），仅置结构状态；ESP32 真机自动初始化
+ *                       RMT 硬件脉冲捕获，RMT 失败自动降级到 busy-wait。
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_ultrasonic_init(dal_ultrasonic_t *dev, const dal_ultrasonic_config_t *cfg);
@@ -122,11 +131,25 @@ wink_status_t dal_ultrasonic_init(dal_ultrasonic_t *dev, const dal_ultrasonic_co
  *       表现为「单 tick ready」——这是可接受的仿真保真（host 测状态机契约，非真实 wall-clock 异步）。
  *       ESP32：经 RMT 硬件测量，CPU 仅阻塞在信号量等待（不消耗 CPU，由 FreeRTOS 调度）。
  * @note API Contract:
- *   - Preconditions: dev 非 NULL；dal_ultrasonic_init() 已成功。
- *   - Blocking: Yes (≈ 测量时间 + 调度开销)，but RMT version is not busy-waiting.
+ *   - Preconditions: dev 非 NULL；dal_ultrasonic_init() 已成功；
+ *                    dev->state != MEASURING（DAL-B-021 BUSY guard）。
+ *   - Postconditions: dev->state ∈ {READY, ERROR}（详见 Side-effects）；
+ *                     触发已发出；结果经 get_cached_distance 读。
+ *   - Range: N/A（无单位参数）。
+ *   - Blocking: Yes（实测耗时；约等于 echo 脉宽 + 调度开销）。
+ *       真实硬件 worst-case ≈ 60ms（ULTRASONIC_TIMEOUT_US + trigger 10µs）。
+ *       RMT 后端不消耗 CPU，但函数仍同步等待 RMT done 中断——不满足协作式
+ *       runtime loop 的"非阻塞"语义（DAL-B-001a 迁移期保留）。
  *   - Thread-safe: No; ISR-safe: No.
- *   - Error-codes: WINK_OK(请求已发出) / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED。
- *   - Postconditions: 触发已发出；结果（READY/ERROR + last_status）经 get_cached_distance 读。
+ *   - Reentrancy: No.
+ *   - Side-effects: 拉高 trig_pin 10µs（触发脉冲）→ 拉低 → 调 pal_gpio_pulse_in 等待 echo
+ *                   脉宽 → 写 dev->last_pulse_us / dev->last_distance / dev->last_status
+ *                   → Xtensa memw barrier → 写 dev->state ∈ {READY, ERROR}。
+ *                   失败时 dev->state = ERROR 且 dev->last_status 保存具体错误码。
+ *   - Error-codes: WINK_OK(请求已发出；状态码读 get_cached 查) /
+ *     WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED / WINK_ERR_BUSY(并发请求)。
+ *   - Simulation-parity: WASM 端 pal_gpio_pulse_in 委托 js_sim_* 旁路；ESP32 端
+ *                       RMT 硬件测量；两端共享单位换算与超时判定逻辑。
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_ultrasonic_request_measurement(dal_ultrasonic_t *dev);
@@ -134,12 +157,23 @@ wink_status_t dal_ultrasonic_request_measurement(dal_ultrasonic_t *dev);
 /**
  * @brief 非阻塞读取上次测量的缓存距离/状态。
  * @note API Contract:
- *   - Preconditions: dev/out_distance_cm 非 NULL；dal_ultrasonic_init() 已成功。
+ *   - Preconditions: dev 非 NULL；out_distance_cm 非 NULL；dal_ultrasonic_init() 已成功。
+ *   - Postconditions: WINK_OK 时 *out_distance_cm 写入缓存距离；其他返码
+ *                     MUST NOT 写入 *out_distance_cm（DAL-F-020）。
+ *   - Range: *out_distance_cm ∈ [2.0, 400.0] cm（HC-SR04 物理量程，超出视为无效/钳位）；
+ *            0 cm 表示尚未成功测量过（state == IDLE 返回 NO_DATA，*out_distance_cm 不被写入）。
  *   - Blocking: No.
  *   - Thread-safe: No; ISR-safe: No.
- *   - Error-codes: WINK_OK(READY，*out_distance_cm 有效) / WINK_ERR_BUSY(MEASURING) /
- *     last_status(ERROR) / WINK_ERR_NO_DATA(IDLE) / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED。
- *   - Postconditions: WINK_OK 时 *out_distance_cm 为缓存距离。
+ *   - Reentrancy: Yes (只读 volatile snapshot，无副作用)。
+ *   - Side-effects: 仅 snapshot dev 的 4 个 volatile 字段到本地后做 switch；不碰硬件。
+ *   - Error-codes:
+ *       WINK_OK            (state==READY 且缓存有效)
+ *       WINK_ERR_BUSY      (state==MEASURING 且尚无 READY 缓存)
+ *       WINK_ERR_NO_DATA   (state==IDLE，从未 request_measurement 过)
+ *       last_status         (state==ERROR，透传具体错误码如 TIMEOUT/IO 等)
+ *       WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED
+ *   - Simulation-parity: 同 request_measurement——两端共享状态机与单位换算；
+ *                       WASM 单 tick 即 READY，ESP32 真异步。
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_ultrasonic_get_cached_distance(const dal_ultrasonic_t *dev, float *out_distance_cm);
@@ -163,31 +197,70 @@ wink_status_t dal_ultrasonic_get_cached_distance(const dal_ultrasonic_t *dev, fl
  * @see dal_ultrasonic_request_measurement + dal_ultrasonic_get_cached_distance（非阻塞替代路径）。
  * @note Blocking: Yes. Worst-case ≈ 2 * ULTRASONIC_TIMEOUT_US + trigger pulse (≈ 60ms+)。
  *       Not allowed in cooperative runtime loop.
+ *       TWDT-safe at default 5s window (60ms ≪ 5s) — DTRT on apps that bump
+ *       TWDT below 200ms; otherwise prefer request_measurement + get_cached_distance.
  * @note API Contract:
  *   - Preconditions: dev/out_distance_cm 非 NULL；dal_ultrasonic_init() 已成功。
+ *   - Postconditions: WINK_OK 时 *out_distance_cm 与 dev->last_distance 均更新为新距离。
+ *   - Range: *out_distance_cm ∈ [2.0, 400.0] cm (HC-SR04 量程); 0 仅在未触发时。
  *   - Thread-safe: No; ISR-safe: No (含阻塞 delay/polling)
+ *   - Reentrancy: No.
+ *   - Side-effects: 触发 trig 10µs 脉冲 → pal_gpio_pulse_in 阻塞等待 echo → 写
+ *                   dev->last_distance 与 *out_distance_cm。
  *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED / WINK_ERR_TIMEOUT
- *   - Postconditions: dev->last_distance 在 WINK_OK 时更新
+ *   - Simulation-parity: 同 request_measurement——两端共享 pal_gpio_pulse_in 实现。
  */
 WINK_BLOCKING WINK_WARN_UNUSED_RESULT
 wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *out_distance_cm);
 #endif  /* WINK_STRICT_NONBLOCKING */
 
 /**
- * @brief ADR-0008 Flash 覆写：从 16B params 反序列化并改写超声波 trig/echo 引脚。
- * @note params 布局（小端）：trig_pin:u16@0, echo_pin:u16@2（≥4B）。
+ * @brief ADR-0008 Flash 覆写：从 wire payload 反序列化并改写超声波 trig/echo 引脚。
+ *
+ * @note params 布局（v0 旧格式，小端）：trig_pin:u16@0, echo_pin:u16@2（≥4B）。
+ *       v0 与 v1 共用同一反序列化（v1 引入的 schema_version 不影响字段位置）。
  *       轻校验(trig≠echo) 与 dal_ultrasonic_init 权威校验纵深配合。
  *       非法 → 不写任何字段，返 WINK_ERR_INVALID_ARG。
  *       void* 签名适配 wink_dev_override_fn 注册表（见 wink_dev_config.h），
  *       dev 在 dal_ultrasonic_init 之前被覆写。
+ *
+ * @note API Contract:
+ *   - Preconditions: dev 非 NULL；params 非 NULL；len ≥ 4（v0/v1 wire 最少 5B 含 version 字节）。
+ *   - Postconditions: WINK_OK 时 u->config.trig_pin/echo_pin 已写入新值；其他返码字段保持不变。
+ *   - Range: u16 (0..65535)，具体值域由底层 PAL 校验。
+ *   - Blocking: No.
+ *   - Thread-safe: No; ISR-safe: No.
+ *   - Reentrancy: No (MUST 串行于 init/deinit)。
+ *   - Side-effects: 写入 dev->config.trig_pin 与 dev->config.echo_pin；不碰硬件，不
+ *                   改变 dev->state / dev->initialized。
+ *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG(NULL/len/version/同 pin)。
+ *   - Simulation-parity: 与 init 一致——两端共用同一反序列化逻辑，无平台分支。
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_ultrasonic_apply_override(void *dev, const uint8_t *params, uint16_t len);
 
 /**
- * @brief 反初始化超声波：停止 RMT（若已启用）、释放 trig/echo GPIO 资源、置 initialized=false。
+ * @brief 反初始化超声波：拉低 trig、停 RMT、复位 GPIO、释放资源、memset 清零。
+ *
  * @note 可在未 init 的 dev 上安全调用（直接返回 WINK_OK，no-op）。
- * @return WINK_OK
+ *       内部每个 step 失败时 LOG_W 并继续 best-effort 执行后续 step；最终
+ *       返回值为第一个失败的 rc（若无失败则 WINK_OK）。无论返码如何，
+ *       句柄 MUST 已被 memset 清零（DAL-L-015），调用方 MUST NOT 重试或继续使用。
+ *
+ * @note API Contract:
+ *   - Preconditions: dev 非 NULL。
+ *   - Postconditions: dev 已 memset 清零；dev->initialized=false；trig/echo 资源已
+ *                     释放（best-effort）；RMT 已 deinit（若曾启用）。
+ *   - Range: N/A.
+ *   - Blocking: No.
+ *   - Thread-safe: No; ISR-safe: No.
+ *   - Reentrancy: Yes (idempotent; 未 init 返 WINK_OK).
+ *   - Side-effects: 拉低 trig_pin (safe-off) → RMT deinit (force-stop DMA) →
+ *                   pal_gpio_reset_pin(trig/echo) → pal_resource_release(trig/echo) →
+ *                   memset dev 清零。
+ *   - Error-codes: WINK_OK（无失败）/ WINK_ERR_INVALID_ARG (dev NULL) /
+ *                  透传 first-fail rc（其余 step 已 best-effort 执行但 LOG_W 留痕）。
+ *   - Simulation-parity: WASM 端 RMT 与 GPIO 复位为 no-op；ESP32 端 force-stop RMT DMA。
  */
 wink_status_t dal_ultrasonic_deinit(dal_ultrasonic_t *dev);
 
