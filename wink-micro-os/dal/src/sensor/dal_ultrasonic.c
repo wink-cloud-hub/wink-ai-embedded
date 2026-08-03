@@ -182,6 +182,13 @@ wink_status_t dal_ultrasonic_request_measurement(dal_ultrasonic_t *dev) {
     if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
 
+    /* DAL-B-021: BUSY 时重复 request_* MUST 返回 WINK_ERR_BUSY，不改变状态。
+     * 当前实现是同步完成测量（state=MEASURING 仅在函数内部瞬时存在），
+     * 但加 guard 防止未来切到真非阻塞 RMT 后端时状态机被破坏。 */
+    if (dev->state == DAL_ULTRASONIC_MEASURING) {
+        return WINK_ERR_BUSY;
+    }
+
     /* 1. 触发超声波（TRIG 时序）
      * - WASM 仿真：内部委托 js_sim_trigger_ultrasonic 旁路
      * - ESP32 真机：输出 10us GPIO 脉冲
