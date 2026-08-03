@@ -85,13 +85,14 @@ void test_ultrasonic_init_then_read_real_timeout(void) {
 }
 
 /* ---- 非阻塞状态机（Phase 4 Task 4-3；host 单 tick 同步 ready）---- */
-void test_nonblocking_get_cached_before_request_returns_busy(void) {
+void test_nonblocking_get_cached_before_request_returns_empty(void) {
     dal_ultrasonic_t dev = {0};
     const dal_ultrasonic_config_t cfg = { .owner = OWNER, .trig_pin = 4, .echo_pin = 5, .use_rmt = false };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&dev, &cfg));
     float dist = 0.0f;
-    /* state == IDLE（未 request）→ BUSY（无数据） */
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_BUSY, dal_ultrasonic_get_cached_distance(&dev, &dist));
+    /* DAL-B-024: state == IDLE (no request yet) -> WINK_ERR_EMPTY ("无数据"语义)
+     * 不得返回 WINK_ERR_BUSY（BUSY 仅保留给 MEASURING 传输中） */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_EMPTY, dal_ultrasonic_get_cached_distance(&dev, &dist));
 }
 
 void test_nonblocking_request_then_get_cached_returns_distance(void) {
@@ -250,7 +251,7 @@ int main(void) {
     RUN_TEST(test_pulse_to_cm_100cm);
     RUN_TEST(test_ultrasonic_init_then_read_real_measure_pulse);
     RUN_TEST(test_ultrasonic_init_then_read_real_timeout);
-    RUN_TEST(test_nonblocking_get_cached_before_request_returns_busy);
+    RUN_TEST(test_nonblocking_get_cached_before_request_returns_empty);
     RUN_TEST(test_nonblocking_request_then_get_cached_returns_distance);
     RUN_TEST(test_nonblocking_request_timeout_returns_error_status);
     RUN_TEST(test_nonblocking_single_tick_wallclock_is_small);

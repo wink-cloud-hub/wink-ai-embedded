@@ -62,6 +62,15 @@ typedef struct {
  *   The four fields are 4B each, single-writer (request_measurement or
  *   get_cached_distance paths only), so DAL-C-001 (single-writer tolerated
  *   stale-read) holds.
+ *
+ * @note DAL-S-015 contract: After `dal_ultrasonic_init` succeeds, the
+ *   `config` member is driver-owned. Callers MUST NOT directly mutate
+ *   `dev->config.trig_pin` / `dev->config.echo_pin` / `dev->config.use_rmt`
+ *   / `dev->config.owner` — doing so desynchronises the hardware state from
+ *   the cached copy and is the leading source of "the driver behaves
+ *   differently after a re-init" bugs. For runtime updates use
+ *   `dal_ultrasonic_apply_override` (Flash-driven updates) or call
+ *   `dal_ultrasonic_deinit` + `dal_ultrasonic_init` with a new cfg.
  */
 typedef struct {
     /* config MUST be the first member (DAL-S-011, offsetof==0). */
@@ -161,7 +170,7 @@ wink_status_t dal_ultrasonic_request_measurement(dal_ultrasonic_t *dev);
  *   - Postconditions: WINK_OK 时 *out_distance_cm 写入缓存距离；其他返码
  *                     MUST NOT 写入 *out_distance_cm（DAL-F-020）。
  *   - Range: *out_distance_cm ∈ [2.0, 400.0] cm（HC-SR04 物理量程，超出视为无效/钳位）；
- *            0 cm 表示尚未成功测量过（state == IDLE 返回 NO_DATA，*out_distance_cm 不被写入）。
+ *            0 cm 表示尚未成功测量过（state == IDLE 返回 EMPTY，*out_distance_cm 不被写入）。
  *   - Blocking: No.
  *   - Thread-safe: No; ISR-safe: No.
  *   - Reentrancy: Yes (只读 volatile snapshot，无副作用)。
@@ -169,7 +178,9 @@ wink_status_t dal_ultrasonic_request_measurement(dal_ultrasonic_t *dev);
  *   - Error-codes:
  *       WINK_OK            (state==READY 且缓存有效)
  *       WINK_ERR_BUSY      (state==MEASURING 且尚无 READY 缓存)
- *       WINK_ERR_NO_DATA   (state==IDLE，从未 request_measurement 过)
+ *       WINK_ERR_EMPTY     (state==IDLE，从未 request_measurement 过；对应规范
+ *                           §7.4 "无数据"语义——wink_status.h 无 NO_DATA 码，EMPTY
+ *                           是 wink_status.h 中规范明确允许的等价物)
  *       last_status         (state==ERROR，透传具体错误码如 TIMEOUT/IO 等)
  *       WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED
  *   - Simulation-parity: 同 request_measurement——两端共享状态机与单位换算；
