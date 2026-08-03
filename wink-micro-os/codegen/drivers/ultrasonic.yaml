@@ -53,6 +53,14 @@ config:
   deinit_fn: dal_ultrasonic_deinit
   safe_off_fn: ""
 
+# Spec §5.4 / DAL-V-002: device-specific API hooks (apply_override) MUST
+# be tagged so they do not enter the generic role-verb plane. The
+# apply_override entry point is invoked by the device_tree override
+# machinery (wink_dev_config.h) only — codegen does not generate role
+# bindings for it. Marked here for forthcoming per-API-tagged codegen.
+device_specific_apis:
+  - apply_override
+
 role_bindings:
   distance_sensor:
     headers: [sensor/wink_ultrasonic_distance_events.h]
