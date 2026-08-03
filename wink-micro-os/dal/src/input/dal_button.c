@@ -74,19 +74,37 @@ PAL_DEFINE_ISR(dal_button_gpio_isr, dal_button_t, dev) {
 wink_status_t dal_button_init(dal_button_t *dev, const dal_button_config_t *cfg) {
     if (dev == NULL || cfg == NULL) { return WINK_ERR_INVALID_ARG; }
     if (cfg->owner == NULL) { return WINK_ERR_INVALID_ARG; }
+    /* DAL-L-004: detect double-init FIRST so the error path doesn't
+     * clobber the existing initialized=true marker.  This check must
+     * come before the DAL-L-007 unconditional reset below. */
     if (dev->initialized) { return WINK_ERR_ALREADY_INITIALIZED; }
     if (!button_pull_valid(cfg->pull)) { return WINK_ERR_INVALID_ARG; }
 
+    /* DAL-L-007: even on early-return paths (after the ALREADY check),
+     * dev->initialized MUST stay false so a subsequent deinit is safe
+     * (DAL-L-010 idempotent).  Explicit reset here means we don't depend
+     * on the {0}-init assumption from the caller. */
+    dev->initialized = false;
+
+    /* DAL-L-008: chained resource acquisition with goto-cleanup rollback.
+     * Each step inverts in REVERSE order on failure.  Without the cleanup
+     * label, every new step would need its own bespoke inline release,
+     * which is exactly the class of bug we already hit once (the original
+     * 4 inline-release sequences diverged when the GPIO init step moved
+     * to a different code path). */
+    bool          pin_claimed = false;
+    bool          pin_inited  = false;
+    wink_status_t rc;
+
     /* Track A（M1）：GPIO 引脚冲突治理。 */
-    wink_status_t rs = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, cfg->pin, cfg->owner);
-    if (wink_status_is_error(rs)) { return rs; }
+    rc = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, cfg->pin, cfg->owner);
+    if (wink_status_is_error(rc)) { return rc; }
+    pin_claimed = true;
 
     pal_gpio_mode_t mode = button_gpio_mode(cfg);
-    wink_status_t status = pal_gpio_init(cfg->pin, mode);
-    if (wink_status_is_error(status)) {
-        WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN, cfg->pin, cfg->owner));
-        return status;
-    }
+    rc = pal_gpio_init(cfg->pin, mode);
+    if (wink_status_is_error(rc)) { goto cleanup; }
+    pin_inited = true;
     /* 深拷贝配置到实例（支持 ADR-0008 Flash 动态覆写） */
     memcpy(&dev->config, cfg, sizeof(dal_button_config_t));
     dev->stable_pressed   = false;
@@ -111,6 +129,20 @@ wink_status_t dal_button_init(dal_button_t *dev, const dal_button_config_t *cfg)
     dev->gpio_isr_registered = false;
     dev->irq_pending         = false;
     return WINK_OK;
+
+cleanup:
+    /* Roll back in REVERSE order.  pal_gpio_reset_pin is the inverse of
+     * pal_gpio_init; pal_resource_release is the inverse of pal_resource_claim.
+     * pal_gpio_reset_pin returns void, so use plain (void) cast; the other
+     * returns wink_status_t and uses WINK_IGNORE_UNUSED to silence the
+     * warn_unused_result attribute.  We do NOT memset the whole handle here
+     * because the caller may still be holding a reference to inspect the
+     * failed-init state; the dedicated dal_button_deinit is the path that
+     * clears everything (DAL-L-013). */
+    if (pin_inited)  { (void)pal_gpio_reset_pin(cfg->pin); }
+    if (pin_claimed) { WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN, cfg->pin, cfg->owner)); }
+    /* dev->initialized already false (set at function top per DAL-L-007). */
+    return rc;
 }
 
 wink_status_t dal_button_poll(dal_button_t *dev) {
