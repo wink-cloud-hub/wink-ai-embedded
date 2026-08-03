@@ -96,15 +96,15 @@ wink_status_t dal_ultrasonic_request_measurement(dal_ultrasonic_t *dev);
 /**
  * @brief 非阻塞读取上次测量的缓存距离/状态。
  * @note API Contract:
- *   - Preconditions: dev/distance_cm 非 NULL；dal_ultrasonic_init() 已成功。
+ *   - Preconditions: dev/out_distance_cm 非 NULL；dal_ultrasonic_init() 已成功。
  *   - Blocking: No.
  *   - Thread-safe: No; ISR-safe: No.
- *   - Error-codes: WINK_OK(READY，*distance_cm 有效) / WINK_ERR_BUSY(MEASURING/IDLE) /
- *     last_status(ERROR) / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED。
- *   - Postconditions: WINK_OK 时 *distance_cm 为缓存距离。
+ *   - Error-codes: WINK_OK(READY，*out_distance_cm 有效) / WINK_ERR_BUSY(MEASURING) /
+ *     last_status(ERROR) / WINK_ERR_NO_DATA(IDLE) / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED。
+ *   - Postconditions: WINK_OK 时 *out_distance_cm 为缓存距离。
  */
 WINK_WARN_UNUSED_RESULT
-wink_status_t dal_ultrasonic_get_cached_distance(const dal_ultrasonic_t *dev, float *distance_cm);
+wink_status_t dal_ultrasonic_get_cached_distance(const dal_ultrasonic_t *dev, float *out_distance_cm);
 
 /* ADR-0017：blocking API 三层硬隔离首个应用点。
  * 层 1（编译期）：WINK_BLOCKING → __attribute__((deprecated(msg)))，所有调用点告警。
@@ -126,13 +126,13 @@ wink_status_t dal_ultrasonic_get_cached_distance(const dal_ultrasonic_t *dev, fl
  * @note Blocking: Yes. Worst-case ≈ 2 * ULTRASONIC_TIMEOUT_US + trigger pulse (≈ 60ms+)。
  *       Not allowed in cooperative runtime loop.
  * @note API Contract:
- *   - Preconditions: dev/distance_cm 非 NULL；dal_ultrasonic_init() 已成功。
+ *   - Preconditions: dev/out_distance_cm 非 NULL；dal_ultrasonic_init() 已成功。
  *   - Thread-safe: No; ISR-safe: No (含阻塞 delay/polling)
  *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED / WINK_ERR_TIMEOUT
  *   - Postconditions: dev->last_distance 在 WINK_OK 时更新
  */
 WINK_BLOCKING WINK_WARN_UNUSED_RESULT
-wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *distance_cm);
+wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *out_distance_cm);
 #endif  /* WINK_STRICT_NONBLOCKING */
 
 /**
@@ -174,9 +174,9 @@ wink_status_t dal_ultrasonic_init(dal_ultrasonic_t *dev, const dal_ultrasonic_co
 WINK_UNAVAILABLE_MSG(WINK_ULTRASONIC_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_ultrasonic_request_measurement(dal_ultrasonic_t *dev);
 WINK_UNAVAILABLE_MSG(WINK_ULTRASONIC_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
-wink_status_t dal_ultrasonic_get_cached_distance(const dal_ultrasonic_t *dev, float *distance_cm);
+wink_status_t dal_ultrasonic_get_cached_distance(const dal_ultrasonic_t *dev, float *out_distance_cm);
 WINK_UNAVAILABLE_MSG(WINK_ULTRASONIC_DISABLED_MSG) WINK_BLOCKING WINK_WARN_UNUSED_RESULT
-wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *distance_cm);
+wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *out_distance_cm);
 WINK_UNAVAILABLE_MSG(WINK_ULTRASONIC_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_ultrasonic_apply_override(void *dev, const uint8_t *params, uint16_t len);
 WINK_UNAVAILABLE_MSG(WINK_ULTRASONIC_DISABLED_MSG)
