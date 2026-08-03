@@ -233,8 +233,8 @@ wink_status_t dal_ultrasonic_request_measurement(dal_ultrasonic_t *dev) {
 }
 #endif /* WINK_STRICT_NONBLOCKING (request_measurement) */
 
-wink_status_t dal_ultrasonic_get_cached_distance(const dal_ultrasonic_t *dev, float *distance_cm) {
-    if (dev == NULL || distance_cm == NULL) { return WINK_ERR_INVALID_ARG; }
+wink_status_t dal_ultrasonic_get_cached_distance(const dal_ultrasonic_t *dev, float *out_distance_cm) {
+    if (dev == NULL || out_distance_cm == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
 
     /* Snapshot volatile fields to guarantee a consistent read across SMP cores. */
@@ -244,7 +244,7 @@ wink_status_t dal_ultrasonic_get_cached_distance(const dal_ultrasonic_t *dev, fl
 
     switch (st) {
         case DAL_ULTRASONIC_READY:
-            *distance_cm = dist;
+            *out_distance_cm = dist;
             return WINK_OK;
         case DAL_ULTRASONIC_MEASURING:
             /* Phase-lock guard: if a previous measurement already succeeded
@@ -257,7 +257,7 @@ wink_status_t dal_ultrasonic_get_cached_distance(const dal_ultrasonic_t *dev, fl
              * correct telemetry behaviour — BUSY should mean "no data yet",
              * not "data is one measurement-cycle old". */
             if (lstat == WINK_OK) {
-                *distance_cm = dist;
+                *out_distance_cm = dist;
                 return WINK_OK;
             }
             return WINK_ERR_BUSY;
@@ -265,7 +265,7 @@ wink_status_t dal_ultrasonic_get_cached_distance(const dal_ultrasonic_t *dev, fl
             return lstat;
         case DAL_ULTRASONIC_IDLE:
         default:
-            return WINK_ERR_BUSY;   /* 无测量数据：当作未就绪 */
+            return WINK_ERR_NO_DATA;   /* 未 request_measurement：当作无测量数据 */
     }
 }
 
@@ -278,9 +278,9 @@ wink_status_t dal_ultrasonic_get_cached_distance(const dal_ultrasonic_t *dev, fl
  * ADR-0017 §落地规则 #2：与 dal_ultrasonic.h 中 #ifndef 包围匹配，严格模式下整段消失。
  * 函数体首行 WINK_ASSERT_NONBLOCKING() 为 T5 阶段 PT-context 检测预留占位（当前 no-op）。 */
 #ifndef WINK_STRICT_NONBLOCKING
-wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *distance_cm) {
+wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *out_distance_cm) {
     WINK_ASSERT_NONBLOCKING();
-    if (dev == NULL || distance_cm == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (dev == NULL || out_distance_cm == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
 
     /* 1. 触发超声波（TRIG 时序） */
@@ -308,7 +308,7 @@ wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *distance_cm) {
 
     /* 3. 单位换算：全平台同源代码（ADR-0003 决策2） */
     dev->last_distance = dal_pulse_us_to_cm(pulse_us);
-    *distance_cm = dev->last_distance;
+    *out_distance_cm = dev->last_distance;
     return WINK_OK;
 }
 #endif  /* WINK_STRICT_NONBLOCKING */
