@@ -102,6 +102,7 @@ wink_status_t dal_button_init(dal_button_t *dev, const dal_button_config_t *cfg)
     dev->prev_pressed_for_event = false;
     dev->long_press_ms       = DAL_BUTTON_DEFAULT_LONG_PRESS_MS;
     dev->press_start_ms      = 0;
+    dev->last_status         = WINK_OK;
     dev->isr_counter_enabled = false;
     dev->edge_count          = 0;
 
@@ -118,7 +119,16 @@ wink_status_t dal_button_poll(dal_button_t *dev) {
 
     bool raw = false;
     wink_status_t s = pal_gpio_read(dev->config.pin, &raw);
-    if (wink_status_is_error(s)) { return s; }
+    if (wink_status_is_error(s)) {
+        /* DAL-B-025: record the error so callers can introspect it via
+         * dal_button_get_status() without losing the state machine.  The
+         * state machine itself is left untouched — the previous stable
+         * state remains valid until the next successful poll restores
+         * a fresh reading. */
+        dev->last_status = s;
+        return s;
+    }
+    dev->last_status = WINK_OK;
 
     bool now_pressed = button_raw_pressed(raw, dev->config.active_low);
 
@@ -164,6 +174,16 @@ wink_status_t dal_button_is_pressed(const dal_button_t *dev, bool *out_pressed) 
     if (dev == NULL || out_pressed == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
     *out_pressed = dev->stable_pressed;
+    return WINK_OK;
+}
+
+wink_status_t dal_button_get_status(const dal_button_t *dev, wink_status_t *out_status) {
+    if (dev == NULL || out_status == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
+    /* Volatile read; no critical section needed (a single wink_status_t word
+     * load is atomic on Xtensa/host/wasm; the read may race with a poll
+     * write but the worst case is observing a stale value, not a torn one). */
+    *out_status = dev->last_status;
     return WINK_OK;
 }
 

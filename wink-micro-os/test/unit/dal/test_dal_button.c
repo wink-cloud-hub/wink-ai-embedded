@@ -518,6 +518,82 @@ void test_pull_explicit_up_overrides_active_low_polarity(void) {
     TEST_ASSERT_FALSE(pressed);
 }
 
+/* ═══════════════════════════════════════════════════════════
+ * DAL-B-025: dal_button_get_status / last_status propagation
+ * ═══════════════════════════════════════════════════════════ */
+
+/* Contract: NULL / uninitialized errors */
+void test_get_status_contract(void) {
+    dal_button_t dev = {0};
+    /* NULL dev / NULL out */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_button_get_status(NULL, (wink_status_t[]){0}));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_button_get_status(&dev, NULL));
+    /* uninitialized dev */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_NOT_INITIALIZED, dal_button_get_status(&dev, (wink_status_t[]){0}));
+}
+
+/* Init → get_status returns WINK_OK (fresh handle, no poll yet) */
+void test_get_status_initially_ok(void) {
+    dal_button_t dev = {0};
+    const dal_button_config_t cfg = { .owner = OWNER, .pin = 50, .active_low = true };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, &cfg));
+    wink_status_t st = WINK_ERR_DISCONNECTED;
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_get_status(&dev, &st));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, st);
+}
+
+/* Successful poll → get_status stays WINK_OK */
+void test_get_status_clears_after_recovery(void) {
+    dal_button_t dev = {0};
+    const dal_button_config_t cfg = { .owner = OWNER, .pin = 51, .active_low = true };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, &cfg));
+    /* poll a few times successfully */
+    set_btn_pin(51, false, true);  /* released */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, poll_n(&dev, DAL_BUTTON_DEBOUNCE_THRESHOLD));
+    wink_status_t st = WINK_ERR_PANIC;
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_get_status(&dev, &st));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, st);
+}
+
+/* Pull=NONE without injection → poll returns DISCONNECTED and get_status
+ * mirrors it; after the next successful read get_status resets to OK. */
+void test_get_status_propagates_poll_error_and_clears(void) {
+    dal_button_t dev = {0};
+    const dal_button_config_t cfg = {
+        .owner = OWNER, .pin = 52, .active_low = true, .pull = DAL_BUTTON_PULL_NONE
+    };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, &cfg));
+    /* First poll: no injection → DISCONNECTED */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_DISCONNECTED, dal_button_poll(&dev));
+    wink_status_t st = WINK_OK;
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_get_status(&dev, &st));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_DISCONNECTED, st);
+    /* State machine left untouched: still reports the previous stable state
+     * (which is "released" since init). */
+    bool pressed = true;
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_is_pressed(&dev, &pressed));
+    TEST_ASSERT_FALSE(pressed);
+    /* Inject level → next poll succeeds → last_status returns to OK */
+    set_btn_pin(52, false, true);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_poll(&dev));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_get_status(&dev, &st));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, st);
+}
+
+/* deinit clears the handle → get_status returns NOT_INITIALIZED
+ * and last_status field is reset to 0 by memset. */
+void test_get_status_after_deinit(void) {
+    dal_button_t dev = {0};
+    const dal_button_config_t cfg = {
+        .owner = OWNER, .pin = 53, .active_low = true, .pull = DAL_BUTTON_PULL_NONE
+    };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, &cfg));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_DISCONNECTED, dal_button_poll(&dev));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_deinit(&dev));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_NOT_INITIALIZED,
+                          dal_button_get_status(&dev, (wink_status_t[]){0}));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_init_null_returns_invalid_arg);
@@ -547,5 +623,11 @@ int main(void) {
     RUN_TEST(test_pull_none_disconnected_without_injection);
     RUN_TEST(test_pull_none_with_injection_press_release);
     RUN_TEST(test_pull_explicit_up_overrides_active_low_polarity);
+    /* DAL-B-025: last_status propagation */
+    RUN_TEST(test_get_status_contract);
+    RUN_TEST(test_get_status_initially_ok);
+    RUN_TEST(test_get_status_clears_after_recovery);
+    RUN_TEST(test_get_status_propagates_poll_error_and_clears);
+    RUN_TEST(test_get_status_after_deinit);
     return UNITY_END();
 }
