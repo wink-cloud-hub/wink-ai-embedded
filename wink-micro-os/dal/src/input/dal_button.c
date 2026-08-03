@@ -171,9 +171,19 @@ wink_status_t dal_button_was_pressed(dal_button_t *dev, bool *out_was_pressed) {
     if (dev == NULL || out_was_pressed == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_ERR_NOT_INITIALIZED; }
 
-    bool event = (dev->stable_pressed && !dev->last_reported);
-    dev->last_reported = dev->stable_pressed;
-    *out_was_pressed = event;
+    /* DAL-V-010: read-clear of (stable_pressed, last_reported) MUST be atomic
+     * with respect to a concurrent was_pressed caller on another core / in an
+     * ISR-context poll.  Without a critical section, two callers can both
+     * observe the rising edge and both write last_reported=true, causing a
+     * single press to be reported twice.  Wrap read + write in a single
+     * PAL_CRITICAL_SECTION so the two fields are observed as a consistent
+     * snapshot by every caller (SMP-safe). */
+    bool event = false;
+    PAL_CRITICAL_SECTION({
+        event = (dev->stable_pressed && !dev->last_reported);
+        dev->last_reported = dev->stable_pressed;
+        *out_was_pressed = event;
+    });
     return WINK_OK;
 }
 
