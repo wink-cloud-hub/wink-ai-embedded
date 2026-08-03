@@ -47,7 +47,7 @@ int main(void)
             E2E_FAIL("runtime_run far failed");
         }
     }
-    if (neck_servo.current_angle != 90.0f) {
+    if (neck_servo.current_angle_ddeg != 900) {
         E2E_FAIL("servo not 90 when clear");
     }
 
@@ -82,7 +82,7 @@ int main(void)
         }
     }
 
-    if (neck_servo.current_angle != 180.0f) {
+    if (neck_servo.current_angle_ddeg != 1800) {
         E2E_FAIL("servo not 180 on near obstacle");
     }
 

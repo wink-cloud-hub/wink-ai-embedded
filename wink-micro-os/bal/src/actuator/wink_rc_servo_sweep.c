@@ -81,7 +81,9 @@ static void servo_tick(void *arg) {
         ctx->step = -ctx->step;
     }
     ctx->curr_angle = next_angle;
-    WINK_IGNORE_RESULT(dal_rc_servo_set_angle(ctx->servo, next_angle));
+    /* Math domain (float degrees) -> hardware domain (uint16_t 0.1° ddeg), ADR-0056 */
+    uint16_t next_ddeg = (uint16_t)(next_angle * 10.0f + 0.5f);
+    WINK_IGNORE_RESULT(dal_rc_servo_set_angle(ctx->servo, next_ddeg));
 }
 
 /* ?? public API ???????????????????????????????????????????????? */
@@ -125,7 +127,9 @@ wink_status_t wink_rc_servo_sweep_start_ex(dal_rc_servo_t *servo, float min_angl
     ctx->step = 5.0f; /* default step 5 degrees per tick */
     ctx->period_h = WINK_PERIODIC_INVALID;
 
-    wink_status_t st = dal_rc_servo_set_angle(servo, min_angle);
+    /* Math domain (float degrees) -> hardware domain (uint16_t 0.1° ddeg), ADR-0056 */
+    uint16_t min_ddeg = (uint16_t)(min_angle * 10.0f + 0.5f);
+    wink_status_t st = dal_rc_servo_set_angle(servo, min_ddeg);
     if (wink_status_is_error(st)) {
         LOG_D("start: initial angle set failed");
         ctx->servo = NULL;
@@ -184,7 +188,9 @@ bool wink_rc_servo_sweep_is_running(dal_rc_servo_t *servo) {
 }
 
 wink_status_t wink_rc_servo_set_angle(dal_rc_servo_t *servo, float angle) {
-    return dal_rc_servo_set_angle(servo, angle);
+    /* Math domain (float degrees) -> hardware domain (uint16_t 0.1° ddeg), ADR-0056 */
+    uint16_t angle_ddeg = (uint16_t)(angle * 10.0f + 0.5f);
+    return dal_rc_servo_set_angle(servo, angle_ddeg);
 }
 
 void wink_rc_servo_sweep_reset(void) {

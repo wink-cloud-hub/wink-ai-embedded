@@ -65,21 +65,21 @@ void wink_actuator_safe_off_all(void);
  *        functions with the registry.
  *
  * DAL safe-off APIs have typed signatures (e.g.
- * `wink_status_t dal_led_off(dal_led_t*)`) while the registry stores
+ * `wink_status_t dal_led_safe_off(dal_led_t*)`) while the registry stores
  * `wink_status_t (*)(void*)`.  ISO C forbids nested functions, so we
  * cannot define the adapter at the registration call site.  This macro
  * declares a file-scoped static thunk with the correct signature.
  *
  * Usage at **file scope** (not inside a function body):
  * @code
- *     WINK_DEFINE_ACTUATOR_THUNK(board_led_safe_off, dal_led_off, dal_led_t)
+ *     WINK_DEFINE_ACTUATOR_THUNK(board_led_safe_off, dal_led_safe_off, dal_led_t)
  *     // ... in app_init:
  *     WINK_IGNORE_RESULT(wink_actuator_register(board_led_safe_off, &board_led));
  * @endcode
  *
  * @param thunk_name  Name for the generated static function (must be
  *                    unique within the translation unit).
- * @param fn          The typed DAL function to wrap (e.g. dal_led_off).
+ * @param fn          The typed DAL function to wrap (e.g. dal_led_safe_off).
  * @param dev_type    The DAL device pointer type (e.g. dal_led_t).
  */
 #define WINK_DEFINE_ACTUATOR_THUNK(thunk_name, fn, dev_type) \

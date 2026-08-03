@@ -57,11 +57,11 @@ static void motor_tick(void *ctx)
 {
     (void)ctx;
     float dist = s_latest_dist;
-    float angle = (dist < 20.0f) ? 180.0f : 90.0f;
-    if (angle == 180.0f) {
+    uint16_t angle_ddeg = (dist < 20.0f) ? 1800u : 900u; /* 180.0° / 90.0° in 0.1° ddeg */
+    if (angle_ddeg == 1800u) {
         g_servo_was_180 = true;
     }
-    wink_status_t s = dal_rc_servo_set_angle(&neck_servo, angle);
+    wink_status_t s = dal_rc_servo_set_angle(&neck_servo, angle_ddeg);
     (void)s;
 }
 
@@ -85,10 +85,10 @@ static wink_status_t app_init_status(void)
     /* servo: config may have been overridden by Flash, so rebuild cfg from
      * instance fields (dal_rc_servo.h documents this redundancy). */
     const dal_rc_servo_config_t servo_cfg = {
-        .owner        = "neck_servo",
-        .pwm_channel  = neck_servo.config.pwm_channel,
-        .min_pulse_ms = neck_servo.config.min_pulse_ms,
-        .max_pulse_ms = neck_servo.config.max_pulse_ms,
+        .owner         = "neck_servo",
+        .pwm_channel   = neck_servo.config.pwm_channel,
+        .min_pulse_us  = neck_servo.config.min_pulse_us,
+        .max_pulse_us  = neck_servo.config.max_pulse_us,
     };
     wink_status_t s = dal_rc_servo_init(&neck_servo, &servo_cfg);
     if (wink_status_is_error(s)) {
@@ -109,7 +109,7 @@ static wink_status_t app_init_status(void)
         return ar;
     }
 
-    wink_status_t st_angle = dal_rc_servo_set_angle(&neck_servo, 90.0f);
+    wink_status_t st_angle = dal_rc_servo_set_angle(&neck_servo, 900); /* 90.0° in ddeg */
     (void)st_angle;
 
     /* Start two periodic callbacks — expert mode: when BAL services don't fit
@@ -144,7 +144,7 @@ static void app_loop(void)
 static wink_status_t app_on_fault_status(uint32_t fault_code)
 {
     wink_trace_fault(fault_code);
-    wink_status_t s = dal_rc_servo_set_angle(&neck_servo, 90.0f);
+    wink_status_t s = dal_rc_servo_set_angle(&neck_servo, 900); /* 90.0° in ddeg */
     (void)s;
     return WINK_OK;
 }

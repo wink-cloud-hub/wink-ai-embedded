@@ -5,6 +5,9 @@ is_actuator: true
 experimental: true
 default_role: angular_actuator
 
+quantity: angle
+quantity_class: actuator_command
+
 advanced_only: [resolution_bits, clock_requirement]
 
 fields:
@@ -27,42 +30,36 @@ fields:
     map:
       auto: DAL_RC_SERVO_CLOCK_AUTO
       stable_required: DAL_RC_SERVO_CLOCK_STABLE_REQUIRED
-  min_pulse_ms:
+  min_pulse_us:
     tier: stable
-    type: float
-    default: 0.5
+    type: int
+    default: 500
     emit: macro
     emit_when: present
-  max_pulse_ms:
+    c_suffix: u
+  max_pulse_us:
     tier: stable
-    type: float
-    default: 2.5
+    type: int
+    default: 2500
     emit: macro
     emit_when: present
-  max_angle:
+    c_suffix: u
+  max_angle_ddeg:
     tier: stable
-    type: float
+    type: int
+    default: 1800
     emit_when: present
+    c_suffix: u
   role:
     tier: stable
     type: string
     emit: none
 
 constraints:
-  - field: max_angle
-    type: float
+  - field: max_angle_ddeg
+    type: int
     optional: true
-    min: 0.0001
-  - when:
-      field: max_angle
-      equals: 0
-    omit: [max_angle]
-    on_violation: warn
-    message: "device '{dev_name}': max_angle: 0 is ambiguous with the default sentinel (180°); use a positive angle instead."
-  - when:
-      field: max_angle
-      equals: 180
-    omit: [max_angle]
+    min: 1
 
 config:
   c_type: dal_rc_servo_t
@@ -76,4 +73,4 @@ role_bindings:
     headers: []
     verbs:
       set_angle:
-        template: "static inline void {{ name }}_set_angle(float angle) { WINK_IGNORE_RESULT(dal_rc_servo_set_angle(&{{ name }}, angle)); }"
+        template: "static inline void {{ name }}_set_angle(uint16_t angle_ddeg) { WINK_IGNORE_RESULT(dal_rc_servo_set_angle(&{{ name }}, angle_ddeg)); }"

@@ -23,6 +23,8 @@ fields:
     emit: none
 
 config:
-  safe_off_fn: dal_led_off
+  # Dedicated safe_off (vs dal_led_off): uninitialized→WINK_OK, no WARN_UNUSED_RESULT
+  # (DAL-L-021/022); invoked by wink_actuator_safe_off_all() on fault paths.
+  safe_off_fn: dal_led_safe_off
 
 # role_bindings: omitted — 1:1 binary_indicator verbs derived from roles/*.yaml
