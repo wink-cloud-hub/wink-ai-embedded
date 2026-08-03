@@ -61,8 +61,22 @@ typedef struct {
     bool initialized;               /**< init 成功后置 true */
 } dal_gps_t;
 
-/* ABI stability: config MUST remain the first member (DAL-S-011). */
+/* ABI stability: config MUST remain the first member (DAL-S-011).
+ * sizeof/offsetof numbers below are compiler-verified by
+ * `wink.py lint --pack abi`; do not hand-edit without re-running the pack.
+ * The ILP32 arm is verified on machines with gcc-multilib installed;
+ * the LP64 arm is verified on every host build. */
 _Static_assert(offsetof(dal_gps_t, config) == 0, "config must be the first member");
+
+#if INTPTR_MAX == INT32_MAX   /* ILP32: ESP32 xtensa, wasm32 */
+_Static_assert(sizeof(dal_gps_config_t) == 16, "ABI break: config size changed on 32-bit target");
+_Static_assert(offsetof(dal_gps_t, initialized) == 52, "ABI break: initialized offset changed on 32-bit");
+_Static_assert(sizeof(dal_gps_t) == 56, "ABI break: handle size changed on 32-bit target");
+#else                         /* LP64 / LLP64: 64-bit Host Simulation */
+_Static_assert(sizeof(dal_gps_config_t) == 24, "ABI break: config size changed on 64-bit host");
+_Static_assert(offsetof(dal_gps_t, initialized) == 60, "ABI break: initialized offset changed on 64-bit host");
+_Static_assert(sizeof(dal_gps_t) == 64, "ABI break: handle size changed on 64-bit host");
+#endif
 
 /**
  * @brief 非阻塞初始化 GPS：校验配置参数、配置 UART、初始化 NMEA 解析器状态。
