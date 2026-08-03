@@ -73,8 +73,22 @@ typedef struct {
     bool                   initialized;
 } dal_mono_oled_t;
 
-/* ABI stability: config MUST remain the first member (DAL-S-011). */
+/* ABI stability: config MUST remain the first member (DAL-S-011).
+ * sizeof/offsetof numbers below are compiler-verified by
+ * `wink.py lint --pack abi`; do not hand-edit without re-running the pack.
+ * The ILP32 arm is verified on machines with gcc-multilib installed;
+ * the LP64 arm is verified on every host build. */
 _Static_assert(offsetof(dal_mono_oled_t, config) == 0, "config must be the first member");
+
+#if INTPTR_MAX == INT32_MAX   /* ILP32: ESP32 xtensa, wasm32 */
+_Static_assert(sizeof(dal_mono_oled_config_t) == 12, "ABI break: config size changed on 32-bit target");
+_Static_assert(offsetof(dal_mono_oled_t, initialized) == 1037, "ABI break: initialized offset changed on 32-bit");
+_Static_assert(sizeof(dal_mono_oled_t) == 1040, "ABI break: handle size changed on 32-bit target");
+#else                         /* LP64 / LLP64: 64-bit Host Simulation */
+_Static_assert(sizeof(dal_mono_oled_config_t) == 16, "ABI break: config size changed on 64-bit host");
+_Static_assert(offsetof(dal_mono_oled_t, initialized) == 1041, "ABI break: initialized offset changed on 64-bit host");
+_Static_assert(sizeof(dal_mono_oled_t) == 1048, "ABI break: handle size changed on 64-bit host");
+#endif
 
 /**
  * @brief 初始化单色 OLED：I2C 地址冲突治理、下发 init 命令序列。
