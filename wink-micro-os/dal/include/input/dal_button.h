@@ -84,6 +84,13 @@ typedef struct {
     uint32_t long_press_ms;           /* 长按判定阈值（毫秒），默认 DAL_BUTTON_DEFAULT_LONG_PRESS_MS */
     uint64_t press_start_ms;          /* 当前按下周期的起始时间（pal_os_get_ms() 时间戳） */
 
+    /* ── Poll error observability (DAL-B-025) ──
+     * When pal_gpio_read() fails (e.g. WINK_ERR_DISCONNECTED on a pull=NONE
+     * floating pin) dal_button_poll() returns the error AND records it here
+     * so callers can ask "what was the last poll error?" without losing the
+     * state machine.  Replaced by WINK_OK on the next successful poll. */
+    volatile wink_status_t last_status;
+
     /* ── Wave 3: ISR edge counter ── */
     bool isr_counter_enabled;          /* dal_button_enable_isr_counter() 置 true */
     volatile uint32_t edge_count;      /* ISR 累计触发次数（volatile: ISR 写/poll 上下文读） */
@@ -178,6 +185,25 @@ wink_status_t dal_button_poll(dal_button_t *dev);
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_button_is_pressed(const dal_button_t *dev, bool *out_pressed);
+
+/**
+ * @brief 读取 dal_button_poll() 上一次调用的结果状态（DAL-B-025）。
+ *
+ * 当 pal_gpio_read() 失败时（典型如 pull=NONE 浮空读出 WINK_ERR_DISCONNECTED）
+ * poll() 直接 return 错误，调用方只知道"读失败"但无法查询"上次错在哪"。
+ * 通过本 API 可在任意时刻查询 last_status 字段——但请注意：与 ultrasonic
+ * 不同，**这里 last_status 仅用于错误诊断，不影响去抖状态机**（即使 poll
+ * 持续失败，stable_pressed 也保持上一次成功 poll 时的值不变，避免一过性
+ * 故障导致按钮状态被"冻结"在错误态）。
+ *
+ * @param out_status 输出：上次 poll 的返回值（init 时初值 WINK_OK）。
+ * @note API Contract:
+ *   - Preconditions: dev/out_status 非 NULL；dal_button_init() 已成功。
+ *   - Blocking: No。
+ *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED。
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t dal_button_get_status(const dal_button_t *dev, wink_status_t *out_status);
 
 /**
  * @brief 检测「按下」边沿事件（按下瞬间触发一次，读后清）。
@@ -321,6 +347,8 @@ WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG)
 wink_status_t dal_button_poll(dal_button_t *dev);
 WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_button_is_pressed(const dal_button_t *dev, bool *out_pressed);
+WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_button_get_status(const dal_button_t *dev, wink_status_t *out_status);
 WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
 wink_status_t dal_button_was_pressed(dal_button_t *dev, bool *out_was_pressed);
 WINK_UNAVAILABLE_MSG(WINK_BUTTON_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
