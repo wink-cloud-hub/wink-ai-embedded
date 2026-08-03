@@ -172,6 +172,29 @@ void test_apply_override_null_returns_invalid_arg(void) {
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_ultrasonic_apply_override(&u, NULL, sizeof p));
 }
 
+/* DAL-BC-012: v1 wire format with explicit schema_version byte. */
+void test_apply_override_v1_writes_pins(void) {
+    dal_ultrasonic_t u = { .config.trig_pin = 4, .config.echo_pin = 5 };
+    uint8_t p[16] = {0};
+    p[0] = 0x01u;                        /* schema_version = v1 */
+    uint16_t trig = 6, echo = 7;
+    memcpy(p + 1, &trig, 2);
+    memcpy(p + 3, &echo, 2);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_apply_override(&u, p, sizeof p));
+    TEST_ASSERT_EQUAL_UINT16(6, u.config.trig_pin);
+    TEST_ASSERT_EQUAL_UINT16(7, u.config.echo_pin);
+}
+
+/* DAL-BC-012: too-short payload rejected for both v0 and v1. */
+void test_apply_override_too_short_rejected(void) {
+    dal_ultrasonic_t u = { .config.trig_pin = 4, .config.echo_pin = 5 };
+    uint8_t p[3] = {0x06, 0x00, 0x07};   /* 3B < v0 minimum 4B */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_ultrasonic_apply_override(&u, p, sizeof p));
+    /* 字段保持不变 */
+    TEST_ASSERT_EQUAL_UINT16(4, u.config.trig_pin);
+    TEST_ASSERT_EQUAL_UINT16(5, u.config.echo_pin);
+}
+
 void test_deinit_hardening(void) {
     dal_ultrasonic_t dev = {0};
     const dal_ultrasonic_config_t cfg = { .owner = "radar0", .trig_pin = 4, .echo_pin = 5, .use_rmt = false };
@@ -234,6 +257,8 @@ int main(void) {
     RUN_TEST(test_apply_override_writes_pins);
     RUN_TEST(test_apply_override_rejects_same_pin);
     RUN_TEST(test_apply_override_null_returns_invalid_arg);
+    RUN_TEST(test_apply_override_v1_writes_pins);
+    RUN_TEST(test_apply_override_too_short_rejected);
     RUN_TEST(test_deinit_hardening);
     RUN_TEST(test_deinit_loop_two_pins_no_resource_leak);
     return UNITY_END();
