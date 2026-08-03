@@ -284,6 +284,25 @@ wink_status_t dal_ultrasonic_apply_override(void *dev, const uint8_t *params, ui
  */
 wink_status_t dal_ultrasonic_deinit(dal_ultrasonic_t *dev);
 
+/**
+ * @brief No dedicated reset() entry point — rationale.
+ *
+ * Spec §3.3 / DAL-L-007: a "reset" verb means "drop state and return to the
+ * post-deinit baseline without releasing system resources". For B-class
+ * devices (sensor) with no in-flight DMA / ISR, deinit already drops state
+ * and releases resources; the only state worth preserving across a reset
+ * is the GPIO pin claim + RMT channel ownership, which for this driver are
+ * tightly coupled to the calibration owner_id.
+ *
+ * Therefore: callers who want a "soft reset" SHOULD deinit + reinit. This
+ * is the same path the dal_dc_motor / dal_led_pwm drivers take, and it
+ * matches ADR-0024's "explicit is better than implicit" rule. We do not
+ * expose a reset() here because (a) there is no separate hardware state
+ * to clear, (b) it would just be deinit() in disguise, and (c) keeping the
+ * API surface minimal reduces the chance of an unbalanced reset()/deinit()
+ * pair causing the S11-class claim leak regression seen in dal_led.
+ */
+
 #ifdef __cplusplus
 }
 #endif
