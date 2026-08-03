@@ -3,7 +3,10 @@
 #include "pal_resource.h"
 #include "pal_osal.h"
 #include "pal_irq.h"
+#include "pal_log.h"   /* LOG_TAG / LOG_W for deinit best-effort trace (DAL-L-014) */
 #include <string.h> /* memcpy */
+
+#define LOG_TAG "dal_button"
 
 /* ── File-scope: BAL IRQ notify hook (single process-global slot) ──
  * Set by BAL's IRQ backend (dal_button_set_irq_hook) so the shared GPIO ISR
@@ -409,30 +412,61 @@ wink_status_t dal_button_deinit(dal_button_t *dev) {
     if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_OK; }  /* idempotent no-op on un-init dev */
 
-    /* Keep pin for resource release and GPIO reset (read before any memset). */
+    /* Keep pin + owner for resource release and GPIO reset (read before any
+     * memset, since the handle is about to be zeroed). */
     uint16_t pin = dev->config.pin;
     const char *owner = dev->config.owner;
 
-    /* 3. Drop BOTH refs and then let the shared ISR uninstall itself.
-     *    Order matters: clear backend + counter first, THEN disable, so
-     *    disable_gpio_isr sees no live consumers and actually unregisters. */
+    /* DAL-L-015 best-effort 清场.  Every step must run even if a previous
+     * one failed so a partial failure cannot leave a half-initialized handle
+     * dangling.  The first non-OK rc is captured into first_err for the
+     * function return + LOG_W (DAL-L-014). */
+    /* 区分 void-return 与 wink_status_t-return：前者只能记 "called" 痕迹,
+     * 后者才能在 first_err 上累积 rc. */
+    wink_status_t first_err = WINK_OK;
+#define LOGW_IF_RC(step, expr) do {                                              \
+        if (wink_status_is_error((expr)) && !wink_status_is_error(first_err)) { \
+            first_err = (expr);                                                  \
+            LOG_W("deinit step '%s' failed rc=%d (continuing best-effort)",      \
+                  (step), (int)(expr));                                          \
+        }                                                                        \
+    } while (0)
+#define LOGW_IF_VOID(step, call) do {                                            \
+        LOG_W("deinit step '%s' returned void (no rc to record; check PAL)",     \
+              (step));                                                           \
+        (void)(call);                                                            \
+    } while (0)
+
+    /* Step 1: drop BOTH refs and then let the shared ISR uninstall itself.
+     *         Order matters: clear backend + counter first, THEN disable, so
+     *         disable_gpio_isr sees no live consumers and actually unregisters.
+     *         Clearing the refs is local state only — no PAL call to log. */
     dev->event_backend       = DAL_BUTTON_BACKEND_NONE;
     dev->isr_counter_enabled = false;
     if (dev->gpio_isr_registered) {
-        WINK_IGNORE_UNUSED(pal_gpio_disable_interrupt(pin));
-        WINK_IGNORE_UNUSED(pal_gpio_synchronize_interrupt(pin));
+        LOGW_IF_RC("pal_gpio_disable_interrupt", pal_gpio_disable_interrupt(pin));
+        LOGW_IF_RC("pal_gpio_synchronize_interrupt",
+                   pal_gpio_synchronize_interrupt(pin));
         dev->gpio_isr_registered = false;
     }
 
-    /* 2. Reset GPIO: disables any leftover routing, reverts to Hi-Z INPUT,
-     *    clears esp_gpio_reserve bitmap (ADR-0024 §4 #2). */
-    pal_gpio_reset_pin(pin);
+    /* Step 2: Reset GPIO — disables any leftover routing, reverts to Hi-Z
+     *         INPUT, clears esp_gpio_reserve bitmap (ADR-0024 §4 #2).
+     *         pal_gpio_reset_pin is void so use LOGW_IF_VOID. */
+    LOGW_IF_VOID("pal_gpio_reset_pin", pal_gpio_reset_pin(pin));
 
-    /* Release software resource claim */
-    WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN, pin, owner));
+    /* Step 3: Release software resource claim */
+    LOGW_IF_RC("pal_resource_release",
+               pal_resource_release(PAL_RESOURCE_GPIO_PIN, pin, owner));
 
-    /* 7. Clear the instance data completely to guarantee no residual state */
+#undef LOGW_IF_RC
+#undef LOGW_IF_VOID
+
+    /* Step 4: Clear the instance data completely to guarantee no residual
+     *         state (DAL-L-013).  Done unconditionally so the handle is
+     *         safe to discard / re-init / not reuse, even on partial
+     *         failure (DAL-L-015). */
     memset(dev, 0, sizeof(dal_button_t));
 
-    return WINK_OK;
+    return first_err;
 }
