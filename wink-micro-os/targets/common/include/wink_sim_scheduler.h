@@ -2,6 +2,8 @@
 #define WINK_SIM_SCHEDULER_H
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include <assert.h>
 #include "wink_status.h"
 #include "sim_ctx.h"
 

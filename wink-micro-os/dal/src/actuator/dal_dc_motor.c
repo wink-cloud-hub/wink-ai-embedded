@@ -1,5 +1,7 @@
+#define LOG_TAG "dal_dc_motor"
 #include "actuator/dal_dc_motor.h"
 #include "pal_resource.h"
+#include "pal_log.h"
 #include <string.h>
 
 static wink_status_t write_enable_if_present(const dal_dc_motor_t *dev,
@@ -14,7 +16,7 @@ static wink_status_t write_enable_if_present(const dal_dc_motor_t *dev,
 static wink_status_t apply_dir_and_duty(dal_dc_motor_t *dev,
                                         bool pin_a_level,
                                         bool pin_b_level,
-                                        float abs_speed)
+                                        uint16_t abs_promille)
 {
     wink_status_t s = pal_gpio_write(dev->config.dir_pin_a, pin_a_level);
     if (wink_status_is_error(s)) {
@@ -28,16 +30,39 @@ static wink_status_t apply_dir_and_duty(dal_dc_motor_t *dev,
         }
     }
 
-    float duty_percent = abs_speed * 100.0f;
+    if (abs_promille > 1000) {
+        abs_promille = 1000;
+    }
+    float duty_percent = ((float)abs_promille) / 10.0f;
     return pal_pwm_set_duty(dev->config.pwm_channel, duty_percent);
 }
 
-static wink_status_t release_gpio_claim(wink_pin_t pin, const char *owner)
+/* Best-effort GPIO claim release for init-rollback/deinit: releases the pin
+ * and logs on failure, but never aborts the remaining teardown (DAL-L-008
+ * rollback, DAL-L-014/L-015). Pins < 0 are unused and treated as success. */
+static void release_gpio_claim(wink_pin_t pin, const char *owner)
 {
     if (pin < 0) {
-        return WINK_OK;
+        return;
     }
-    return pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, owner);
+    wink_status_t rs = pal_resource_release(
+        PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, owner);
+    if (wink_status_is_error(rs)) {
+        LOG_W("release GPIO pin %d for '%s' failed: %d",
+              (int)pin, owner ? owner : "(null)", (int)rs);
+    }
+}
+
+/* Best-effort resource release for deinit: release and log on failure, but
+ * never abort the remaining teardown (DAL-L-014/L-015). */
+static void release_resource_logged(pal_resource_type_t type, uint32_t id,
+                                    const char *owner)
+{
+    wink_status_t rs = pal_resource_release(type, id, owner);
+    if (wink_status_is_error(rs)) {
+        LOG_W("deinit: release resource type=%d id=%u for '%s' failed: %d",
+              (int)type, (unsigned)id, owner ? owner : "(null)", (int)rs);
+    }
 }
 
 wink_status_t dal_dc_motor_init(dal_dc_motor_t *dev,
@@ -72,24 +97,30 @@ wink_status_t dal_dc_motor_init(dal_dc_motor_t *dev,
     wink_status_t rs = pal_resource_claim(
         PAL_RESOURCE_PWM_CHANNEL, (uint32_t)cfg->pwm_channel, cfg->owner);
     if (wink_status_is_error(rs)) {
+        LOG_W("init: claim PWM ch%u for '%s' failed: %d",
+              (unsigned)cfg->pwm_channel, cfg->owner, (int)rs);
         return rs;
     }
     rs = pal_resource_claim(
         PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->dir_pin_a, cfg->owner);
     if (wink_status_is_error(rs)) {
-        WINK_IGNORE_UNUSED(pal_resource_release(
-            PAL_RESOURCE_PWM_CHANNEL, (uint32_t)cfg->pwm_channel, cfg->owner));
+        LOG_W("init: claim dir_pin_a %d for '%s' failed: %d",
+              (int)cfg->dir_pin_a, cfg->owner, (int)rs);
+        release_resource_logged(
+            PAL_RESOURCE_PWM_CHANNEL, (uint32_t)cfg->pwm_channel, cfg->owner);
         return rs;
     }
     if (cfg->dir_pin_b >= 0) {
         rs = pal_resource_claim(
             PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->dir_pin_b, cfg->owner);
         if (wink_status_is_error(rs)) {
-            WINK_IGNORE_UNUSED(release_gpio_claim(cfg->dir_pin_a, cfg->owner));
-            WINK_IGNORE_UNUSED(pal_resource_release(
+            LOG_W("init: claim dir_pin_b %d for '%s' failed: %d",
+                  (int)cfg->dir_pin_b, cfg->owner, (int)rs);
+            release_gpio_claim(cfg->dir_pin_a, cfg->owner);
+            release_resource_logged(
                 PAL_RESOURCE_PWM_CHANNEL,
                 (uint32_t)cfg->pwm_channel,
-                cfg->owner));
+                cfg->owner);
             return rs;
         }
     }
@@ -97,12 +128,14 @@ wink_status_t dal_dc_motor_init(dal_dc_motor_t *dev,
         rs = pal_resource_claim(
             PAL_RESOURCE_GPIO_PIN, (uint32_t)enable_pin, cfg->owner);
         if (wink_status_is_error(rs)) {
-            WINK_IGNORE_UNUSED(release_gpio_claim(cfg->dir_pin_b, cfg->owner));
-            WINK_IGNORE_UNUSED(release_gpio_claim(cfg->dir_pin_a, cfg->owner));
-            WINK_IGNORE_UNUSED(pal_resource_release(
+            LOG_W("init: claim enable_pin %d for '%s' failed: %d",
+                  (int)enable_pin, cfg->owner, (int)rs);
+            release_gpio_claim(cfg->dir_pin_b, cfg->owner);
+            release_gpio_claim(cfg->dir_pin_a, cfg->owner);
+            release_resource_logged(
                 PAL_RESOURCE_PWM_CHANNEL,
                 (uint32_t)cfg->pwm_channel,
-                cfg->owner));
+                cfg->owner);
             return rs;
         }
     }
@@ -150,25 +183,31 @@ wink_status_t dal_dc_motor_init(dal_dc_motor_t *dev,
     /* 3. Save config; start in coast */
     memcpy(&dev->config, cfg, sizeof(dal_dc_motor_config_t));
     dev->config.enable_pin = enable_pin;
-    dev->current_speed = 0.0f;
+    dev->current_speed_promille = 0;
     dev->initialized = true;
 
     WINK_IGNORE_UNUSED(dal_dc_motor_coast(dev));
 
+    LOG_I("init: '%s' ready (ch%u, dir_a=%d dir_b=%d en=%d, %lu Hz)",
+          cfg->owner, (unsigned)cfg->pwm_channel, (int)cfg->dir_pin_a,
+          (int)cfg->dir_pin_b, (int)enable_pin,
+          (unsigned long)(cfg->pwm_freq_hz > 0 ? cfg->pwm_freq_hz : 20000));
     return WINK_OK;
 
 err_pwm_deinit:
     pal_pwm_deinit(cfg->pwm_channel);
 err_release:
-    WINK_IGNORE_UNUSED(release_gpio_claim(enable_pin, cfg->owner));
-    WINK_IGNORE_UNUSED(release_gpio_claim(cfg->dir_pin_b, cfg->owner));
-    WINK_IGNORE_UNUSED(release_gpio_claim(cfg->dir_pin_a, cfg->owner));
-    WINK_IGNORE_UNUSED(pal_resource_release(
-        PAL_RESOURCE_PWM_CHANNEL, (uint32_t)cfg->pwm_channel, cfg->owner));
+    LOG_W("init: hardware setup failed for '%s' (ch%u): %d; rolled back claims",
+          cfg->owner, (unsigned)cfg->pwm_channel, (int)status);
+    release_gpio_claim(enable_pin, cfg->owner);
+    release_gpio_claim(cfg->dir_pin_b, cfg->owner);
+    release_gpio_claim(cfg->dir_pin_a, cfg->owner);
+    release_resource_logged(
+        PAL_RESOURCE_PWM_CHANNEL, (uint32_t)cfg->pwm_channel, cfg->owner);
     return status;
 }
 
-wink_status_t dal_dc_motor_set_speed(dal_dc_motor_t *dev, float speed)
+wink_status_t dal_dc_motor_set_speed_promille(dal_dc_motor_t *dev, int16_t speed_promille)
 {
     if (dev == NULL) {
         return WINK_ERR_INVALID_ARG;
@@ -177,13 +216,13 @@ wink_status_t dal_dc_motor_set_speed(dal_dc_motor_t *dev, float speed)
         return WINK_ERR_NOT_INITIALIZED;
     }
 
-    if (speed > 1.0f) {
-        speed = 1.0f;
-    } else if (speed < -1.0f) {
-        speed = -1.0f;
+    if (speed_promille > 1000) {
+        speed_promille = 1000;
+    } else if (speed_promille < -1000) {
+        speed_promille = -1000;
     }
 
-    if (speed == 0.0f) {
+    if (speed_promille == 0) {
         return dal_dc_motor_coast(dev);
     }
 
@@ -193,11 +232,11 @@ wink_status_t dal_dc_motor_set_speed(dal_dc_motor_t *dev, float speed)
     }
 
     /* Apply invert: swap direction sense when config.invert == true */
-    float effective_speed = dev->config.invert ? -speed : speed;
+    int16_t effective_speed = dev->config.invert ? -speed_promille : speed_promille;
 
     bool pin_a_level = false;
     bool pin_b_level = false;
-    if (effective_speed > 0.0f) {
+    if (effective_speed > 0) {
         pin_a_level = true;
         pin_b_level = false;
     } else {
@@ -205,25 +244,25 @@ wink_status_t dal_dc_motor_set_speed(dal_dc_motor_t *dev, float speed)
         pin_b_level = true;
     }
 
-    float abs_speed = effective_speed >= 0.0f ? effective_speed : -effective_speed;
-    s = apply_dir_and_duty(dev, pin_a_level, pin_b_level, abs_speed);
+    uint16_t abs_promille = (uint16_t)(effective_speed >= 0 ? effective_speed : -effective_speed);
+    s = apply_dir_and_duty(dev, pin_a_level, pin_b_level, abs_promille);
     if (wink_status_is_error(s)) {
         return s;
     }
 
-    dev->current_speed = speed;
+    dev->current_speed_promille = speed_promille;
     return WINK_OK;
 }
 
-wink_status_t dal_dc_motor_get_speed(const dal_dc_motor_t *dev, float *out_speed)
+wink_status_t dal_dc_motor_get_speed_promille(const dal_dc_motor_t *dev, int16_t *out_speed_promille)
 {
-    if (dev == NULL || out_speed == NULL) {
+    if (dev == NULL || out_speed_promille == NULL) {
         return WINK_ERR_INVALID_ARG;
     }
     if (!dev->initialized) {
         return WINK_ERR_NOT_INITIALIZED;
     }
-    *out_speed = dev->current_speed;
+    *out_speed_promille = dev->current_speed_promille;
     return WINK_OK;
 }
 
@@ -241,12 +280,12 @@ wink_status_t dal_dc_motor_coast(dal_dc_motor_t *dev)
         return s;
     }
 
-    s = apply_dir_and_duty(dev, false, false, 0.0f);
+    s = apply_dir_and_duty(dev, false, false, 0);
     if (wink_status_is_error(s)) {
         return s;
     }
 
-    dev->current_speed = 0.0f;
+    dev->current_speed_promille = 0;
     return WINK_OK;
 }
 
@@ -268,12 +307,12 @@ wink_status_t dal_dc_motor_brake(dal_dc_motor_t *dev)
         return s;
     }
 
-    s = apply_dir_and_duty(dev, true, true, 0.0f);
+    s = apply_dir_and_duty(dev, true, true, 0);
     if (wink_status_is_error(s)) {
         return s;
     }
 
-    dev->current_speed = 0.0f;
+    dev->current_speed_promille = 0;
     return WINK_OK;
 }
 
@@ -282,8 +321,11 @@ wink_status_t dal_dc_motor_safe_off(dal_dc_motor_t *dev)
     if (dev == NULL) {
         return WINK_ERR_INVALID_ARG;
     }
+    /* DAL-L-022: idempotent on uninitialized handles — invoked from
+     * safe_off_all() on watchdog/panic/rollback paths where "nothing to
+     * shut off" is success, not an error. */
     if (!dev->initialized) {
-        return WINK_ERR_NOT_INITIALIZED;
+        return WINK_OK;
     }
 
     if (dev->config.enable_pin >= 0) {
@@ -296,7 +338,7 @@ wink_status_t dal_dc_motor_safe_off(dal_dc_motor_t *dev)
         if (wink_status_is_error(s)) {
             return s;
         }
-        dev->current_speed = 0.0f;
+        dev->current_speed_promille = 0;
         return WINK_OK;
     }
 
@@ -330,17 +372,13 @@ wink_status_t dal_dc_motor_deinit(dal_dc_motor_t *dev)
     wink_pin_t enable = dev->config.enable_pin;
     const char *owner = dev->config.owner;
 
-    WINK_IGNORE_UNUSED(pal_resource_release(
-        PAL_RESOURCE_PWM_CHANNEL, (uint32_t)channel, owner));
-    WINK_IGNORE_UNUSED(pal_resource_release(
-        PAL_RESOURCE_GPIO_PIN, (uint32_t)pin_a, owner));
+    release_resource_logged(PAL_RESOURCE_PWM_CHANNEL, (uint32_t)channel, owner);
+    release_resource_logged(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin_a, owner);
     if (pin_b >= 0) {
-        WINK_IGNORE_UNUSED(pal_resource_release(
-            PAL_RESOURCE_GPIO_PIN, (uint32_t)pin_b, owner));
+        release_resource_logged(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin_b, owner);
     }
     if (enable >= 0) {
-        WINK_IGNORE_UNUSED(pal_resource_release(
-            PAL_RESOURCE_GPIO_PIN, (uint32_t)enable, owner));
+        release_resource_logged(PAL_RESOURCE_GPIO_PIN, (uint32_t)enable, owner);
     }
 
     memset(dev, 0, sizeof(dal_dc_motor_t));

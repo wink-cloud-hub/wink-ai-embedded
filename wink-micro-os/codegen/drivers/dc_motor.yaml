@@ -10,6 +10,9 @@ ic_to_variant_map:
   l298n: in_in
   # phase_enable chip aliases wait until that topology is implemented
 
+quantity: speed
+quantity_class: actuator_command
+
 fields:
   pwm_channel:
     tier: advanced
@@ -62,8 +65,8 @@ role_bindings:
   open_loop_actuator:
     headers: []
     verbs:
-      set_speed:
-        template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_set_speed(float speed) { return dal_dc_motor_set_speed(&{{ name }}, speed); }"
+      set_speed_promille:
+        template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_set_speed_promille(int16_t speed_promille) { return dal_dc_motor_set_speed_promille(&{{ name }}, speed_promille); }"
       coast:
         template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_coast(void) { return dal_dc_motor_coast(&{{ name }}); }"
       brake:

@@ -32,9 +32,10 @@ void test_dc_motor_set_speed_before_init_returns_not_initialized(void)
 {
     dal_dc_motor_t dev = {0};
     TEST_ASSERT_EQUAL_INT(WINK_ERR_NOT_INITIALIZED,
-                          dal_dc_motor_set_speed(&dev, 0.5f));
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_NOT_INITIALIZED,
-                          dal_dc_motor_safe_off(&dev));
+                          dal_dc_motor_set_speed_promille(&dev, 500));
+    /* DAL-L-022: safe_off is idempotent on uninitialized handles — "nothing
+     * to shut off" is success (called from safe_off_all fault paths). */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_safe_off(&dev));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_NOT_INITIALIZED,
                           dal_dc_motor_brake(&dev));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_NOT_INITIALIZED,
@@ -58,17 +59,21 @@ void test_dc_motor_basic_speed_control(void)
     TEST_ASSERT_TRUE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 2));
     TEST_ASSERT_TRUE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 3));
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed(&dev, 0.75f));
-    TEST_ASSERT_FLOAT_WITHIN(1e-5f, 0.75f, dev.current_speed);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed_promille(&dev, 750));
+    TEST_ASSERT_EQUAL_INT16(750, dev.current_speed_promille);
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed(&dev, -0.5f));
-    TEST_ASSERT_FLOAT_WITHIN(1e-5f, -0.5f, dev.current_speed);
+    int16_t out_speed = 0;
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_get_speed_promille(&dev, &out_speed));
+    TEST_ASSERT_EQUAL_INT16(750, out_speed);
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed(&dev, 2.5f));
-    TEST_ASSERT_FLOAT_WITHIN(1e-5f, 1.0f, dev.current_speed);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed_promille(&dev, -500));
+    TEST_ASSERT_EQUAL_INT16(-500, dev.current_speed_promille);
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed(&dev, -2.5f));
-    TEST_ASSERT_FLOAT_WITHIN(1e-5f, -1.0f, dev.current_speed);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed_promille(&dev, 2500));
+    TEST_ASSERT_EQUAL_INT16(1000, dev.current_speed_promille);
+
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed_promille(&dev, -2500));
+    TEST_ASSERT_EQUAL_INT16(-1000, dev.current_speed_promille);
 
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_deinit(&dev));
     TEST_ASSERT_FALSE(dev.initialized);
@@ -95,7 +100,7 @@ void test_dc_motor_single_direction_pin(void)
     TEST_ASSERT_FALSE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN,
                                               (uint32_t)-1));
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed(&dev, 0.8f));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed_promille(&dev, 800));
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_deinit(&dev));
 }
 
@@ -111,14 +116,14 @@ void test_dc_motor_coast_zeros_speed(void)
     };
 
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_init(&dev, &cfg));
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed(&dev, 0.6f));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed_promille(&dev, 600));
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_coast(&dev));
-    TEST_ASSERT_FLOAT_WITHIN(1e-5f, 0.0f, dev.current_speed);
+    TEST_ASSERT_EQUAL_INT16(0, dev.current_speed_promille);
 
-    /* set_speed(0) must match coast (freewheel). */
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed(&dev, -0.4f));
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed(&dev, 0.0f));
-    TEST_ASSERT_FLOAT_WITHIN(1e-5f, 0.0f, dev.current_speed);
+    /* set_speed_promille(0) must match coast (freewheel). */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed_promille(&dev, -400));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed_promille(&dev, 0));
+    TEST_ASSERT_EQUAL_INT16(0, dev.current_speed_promille);
 
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_deinit(&dev));
 }
@@ -142,9 +147,9 @@ void test_dc_motor_brake_dual_pin_ok(void)
     sim_set_gpio_ideal(20, false);
     sim_set_gpio_ideal(21, false);
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed(&dev, 0.9f));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed_promille(&dev, 900));
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_brake(&dev));
-    TEST_ASSERT_FLOAT_WITHIN(1e-5f, 0.0f, dev.current_speed);
+    TEST_ASSERT_EQUAL_INT16(0, dev.current_speed_promille);
     TEST_ASSERT_FLOAT_WITHIN(1e-5f, 0.0f, sim_last_pwm_duty(1));
 
     /* Host loopback: both dir outputs HIGH for short-brake. */
@@ -172,10 +177,10 @@ void test_dc_motor_brake_single_pin_unsupported(void)
     };
 
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_init(&dev, &cfg));
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed(&dev, 0.5f));
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_dc_motor_brake(&dev));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed_promille(&dev, 500));
+    TEST_ASSERT_EQUAL_INT_UNSUPPORTED, dal_dc_motor_brake(&dev));
     /* Must not silently coast: speed left unchanged on unsupported brake. */
-    TEST_ASSERT_FLOAT_WITHIN(1e-5f, 0.5f, dev.current_speed);
+    TEST_ASSERT_EQUAL_INT16(500, dev.current_speed_promille);
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_deinit(&dev));
 }
 
@@ -191,9 +196,9 @@ void test_dc_motor_safe_off_binds_brake(void)
     };
 
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_init(&dual, &dual_cfg));
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed(&dual, 0.7f));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed_promille(&dual, 700));
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_safe_off(&dual));
-    TEST_ASSERT_FLOAT_WITHIN(1e-5f, 0.0f, dual.current_speed);
+    TEST_ASSERT_EQUAL_INT16(0, dual.current_speed_promille);
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_deinit(&dual));
 
     dal_dc_motor_t single = {0};
@@ -206,10 +211,10 @@ void test_dc_motor_safe_off_binds_brake(void)
     };
 
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_init(&single, &single_cfg));
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed(&single, 0.3f));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed_promille(&single, 300));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED,
                           dal_dc_motor_safe_off(&single));
-    TEST_ASSERT_FLOAT_WITHIN(1e-5f, 0.3f, single.current_speed);
+    TEST_ASSERT_EQUAL_INT16(300, single.current_speed_promille);
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_deinit(&single));
 }
 
@@ -249,13 +254,13 @@ void test_dc_motor_enable_pin_claimed_and_safe_off_ok(void)
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_resource_claim(PAL_RESOURCE_GPIO_PIN, 11, OWNER));
     sim_set_gpio_ideal(11, false);
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed(&dev, 0.5f));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed_promille(&dev, 500));
     bool enable_lvl = false;
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_gpio_read(11, &enable_lvl));
     TEST_ASSERT_TRUE(enable_lvl);
 
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_safe_off(&dev));
-    TEST_ASSERT_FLOAT_WITHIN(1e-5f, 0.0f, dev.current_speed);
+    TEST_ASSERT_EQUAL_INT16(0, dev.current_speed_promille);
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_gpio_read(11, &enable_lvl));
     TEST_ASSERT_FALSE(enable_lvl);
 
@@ -286,7 +291,7 @@ void test_dc_motor_enable_safe_off_dual_pin_brakes_first(void)
     sim_set_gpio_ideal(21, false);
     sim_set_gpio_ideal(11, false);
 
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed(&dev, 0.8f));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed_promille(&dev, 800));
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_safe_off(&dev));
 
     bool dir_a = false;
