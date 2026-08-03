@@ -1,7 +1,38 @@
+#define LOG_TAG "dal_encoder"
 #include "sensor/dal_encoder.h"
 #include "pal_resource.h"
 #include "pal_irq.h"
+#include "pal_log.h"
 #include <string.h>
+
+/** Map DAL pull semantics -> PAL GPIO input mode (no pal_* types in public header). */
+static wink_status_t encoder_map_pull(dal_encoder_pull_t pull, pal_gpio_mode_t *out_mode)
+{
+    if (out_mode == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    switch (pull) {
+        case DAL_ENCODER_PULL_UP:   *out_mode = PAL_GPIO_INPUT_PULLUP;   return WINK_OK;
+        case DAL_ENCODER_PULL_DOWN: *out_mode = PAL_GPIO_INPUT_PULLDOWN; return WINK_OK;
+        case DAL_ENCODER_PULL_NONE: *out_mode = PAL_GPIO_INPUT;          return WINK_OK;
+        default:                    return WINK_ERR_INVALID_ARG;
+    }
+}
+
+/* Best-effort GPIO claim release for init-rollback/deinit: releases the pin and
+ * logs on failure, but never aborts the remaining teardown (DAL-L-014/015).
+ * Pins < 0 are unused and treated as success. */
+static void release_gpio_claim_logged(wink_pin_t pin, const char *owner)
+{
+    if (pin < 0) {
+        return;
+    }
+    wink_status_t rs = pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, owner);
+    if (wink_status_is_error(rs)) {
+        LOG_W("release GPIO pin %d for '%s' failed: %d",
+              (int)pin, owner ? owner : "(null)", (int)rs);
+    }
+}
 
 static int32_t dal_encoder_x1_delta(bool val_b, bool invert)
 {
@@ -44,61 +75,85 @@ wink_status_t dal_encoder_init(dal_encoder_t *dev, const dal_encoder_config_t *c
         return WINK_ERR_ALREADY_INITIALIZED;
     }
 
-    /* 1. 声明占用资源 */
+    pal_gpio_mode_t pull_mode;
+    wink_status_t map_st = encoder_map_pull(cfg->pull, &pull_mode);
+    if (wink_status_is_error(map_st)) {
+        return map_st;
+    }
+
+    /* 1. Claim resources (GPIO pin conflict detection) */
     wink_status_t rs = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_a, cfg->owner);
     if (wink_status_is_error(rs)) {
+        LOG_W("init: claim pin_a %d for '%s' failed: %d",
+              (int)cfg->pin_a, cfg->owner, (int)rs);
         return rs;
     }
     if (cfg->pin_b >= 0) {
         rs = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_b, cfg->owner);
         if (wink_status_is_error(rs)) {
-            WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_a, cfg->owner));
+            LOG_W("init: claim pin_b %d for '%s' failed: %d",
+                  (int)cfg->pin_b, cfg->owner, (int)rs);
+            release_gpio_claim_logged(cfg->pin_a, cfg->owner);
             return rs;
         }
     }
 
-    /* 2. 初始化底层 GPIO */
-    wink_status_t status = pal_gpio_init(cfg->pin_a, cfg->pull);
+    /* 2. Configure GPIO inputs */
+    wink_status_t status = pal_gpio_init(cfg->pin_a, pull_mode);
     if (wink_status_is_error(status)) {
+        LOG_W("init: pal_gpio_init pin_a %d for '%s' failed: %d",
+              (int)cfg->pin_a, cfg->owner, (int)status);
         goto err_release;
     }
 
     if (cfg->pin_b >= 0) {
-        status = pal_gpio_init(cfg->pin_b, cfg->pull);
+        status = pal_gpio_init(cfg->pin_b, pull_mode);
         if (wink_status_is_error(status)) {
+            LOG_W("init: pal_gpio_init pin_b %d for '%s' failed: %d",
+                  (int)cfg->pin_b, cfg->owner, (int)status);
             pal_gpio_reset_pin(cfg->pin_a);
             goto err_release;
         }
     }
 
-    /* 保存配置 */
+    /* 3. Stage config + counter so the ISR sees a consistent handle, but keep
+     *    `initialized` false until the ISR is actually registered (DAL-L-003/007):
+     *    a failed registration must not leave a zombie "initialized" handle whose
+     *    resources have already been released. */
     memcpy(&dev->config, cfg, sizeof(dal_encoder_config_t));
     dev->count = 0;
-    dev->initialized = true;
     dev->isr_registered = false;
 
-    /* 3. 注册上升沿中断 */
+    /* 4. Register rising-edge interrupt on pin A */
     status = pal_gpio_enable_interrupt(
         cfg->pin_a,
         PAL_GPIO_INTR_RISING_EDGE,
         dal_encoder_gpio_isr,
         dev);
     if (wink_status_is_error(status)) {
+        LOG_W("init: enable interrupt pin_a %d for '%s' failed: %d",
+              (int)cfg->pin_a, cfg->owner, (int)status);
         pal_gpio_reset_pin(cfg->pin_a);
         if (cfg->pin_b >= 0) {
             pal_gpio_reset_pin(cfg->pin_b);
         }
+        /* Clear the staged config so the half-built handle is not mistaken for
+         * a usable device (initialized was never set — stays false). */
+        memset(dev, 0, sizeof(dal_encoder_t));
         goto err_release;
     }
-    dev->isr_registered = true;
 
+    dev->isr_registered = true;
+    dev->initialized = true;   /* commit only after all resources are ready */
+
+    LOG_I("init: '%s' ready (pin_a=%d pin_b=%d pull=%d%s)",
+          cfg->owner, (int)cfg->pin_a, (int)cfg->pin_b, (int)cfg->pull,
+          cfg->invert ? ", inverted" : "");
     return WINK_OK;
 
 err_release:
-    if (cfg->pin_b >= 0) {
-        WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_b, cfg->owner));
-    }
-    WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_a, cfg->owner));
+    release_gpio_claim_logged(cfg->pin_b, cfg->owner);
+    release_gpio_claim_logged(cfg->pin_a, cfg->owner);
     return status;
 }
 
@@ -133,35 +188,41 @@ wink_status_t dal_encoder_reset(dal_encoder_t *dev)
 
 wink_status_t dal_encoder_deinit(dal_encoder_t *dev)
 {
+    /* ADR-0024 §4 deinit:
+     * 1. disable ISR + synchronize (wait for in-flight callbacks)
+     * 2. pal_gpio_reset_pin (Hi-Z, clears esp_gpio_reserve bitmap)
+     * 3. N/A (no DMA)  4. N/A (not on shared bus)
+     * 5. release resource claims (failures logged, not fatal)
+     * 6. memset  7. NULL + uninit idempotent  8. synchronous, no waits */
     if (dev == NULL) {
         return WINK_ERR_INVALID_ARG;
     }
     if (!dev->initialized) {
-        return WINK_OK;
+        return WINK_OK;   /* idempotent no-op */
     }
 
-    /* 禁用中断 */
+    /* 1. Disable interrupt and wait for in-flight ISR to finish (DAL-L-012) */
     if (dev->isr_registered) {
         WINK_IGNORE_UNUSED(pal_gpio_disable_interrupt(dev->config.pin_a));
         WINK_IGNORE_UNUSED(pal_gpio_synchronize_interrupt(dev->config.pin_a));
     }
 
-    /* 重置引脚 */
+    /* 2. Reset pins to Hi-Z and clear hardware reservations */
     pal_gpio_reset_pin(dev->config.pin_a);
     if (dev->config.pin_b >= 0) {
         pal_gpio_reset_pin(dev->config.pin_b);
     }
 
-    /* 释放资源 */
+    /* Capture before memset */
     wink_pin_t pin_a = dev->config.pin_a;
     wink_pin_t pin_b = dev->config.pin_b;
     const char *owner = dev->config.owner;
 
-    WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin_a, owner));
-    if (pin_b >= 0) {
-        WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin_b, owner));
-    }
+    /* 3. Release software resource claims (failures logged, teardown continues) */
+    release_gpio_claim_logged(pin_a, owner);
+    release_gpio_claim_logged(pin_b, owner);
 
+    /* 4. Clear the instance data completely */
     memset(dev, 0, sizeof(dal_encoder_t));
     return WINK_OK;
 }

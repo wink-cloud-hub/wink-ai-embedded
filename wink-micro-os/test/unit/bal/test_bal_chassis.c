@@ -61,7 +61,7 @@ void setUp(void) {
     memset(&s_left_encoder, 0, sizeof(s_left_encoder));
     const dal_encoder_config_t le_cfg = {
         .owner = "left_enc", .pin_a = 2, .pin_b = 3,
-        .pull = PAL_GPIO_INPUT_PULLUP
+        .pull = DAL_ENCODER_PULL_UP
     };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_encoder_init(&s_left_encoder, &le_cfg));
 
@@ -75,7 +75,7 @@ void setUp(void) {
     memset(&s_right_encoder, 0, sizeof(s_right_encoder));
     const dal_encoder_config_t re_cfg = {
         .owner = "right_enc", .pin_a = 10, .pin_b = 11,
-        .pull = PAL_GPIO_INPUT_PULLUP
+        .pull = DAL_ENCODER_PULL_UP
     };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_encoder_init(&s_right_encoder, &re_cfg));
 }
