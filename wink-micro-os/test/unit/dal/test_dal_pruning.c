@@ -78,7 +78,8 @@ int main(void) {
      *  with WINK_BLOCKING deprecation warnings.) */
     /* DC motor (ADR-0048) */
     USE_FN(dal_dc_motor_init);
-    USE_FN(dal_dc_motor_set_speed);
+    USE_FN(dal_dc_motor_set_speed_promille);
+    USE_FN(dal_dc_motor_get_speed_promille);
     USE_FN(dal_dc_motor_brake);
     USE_FN(dal_dc_motor_coast);
     USE_FN(dal_dc_motor_safe_off);
