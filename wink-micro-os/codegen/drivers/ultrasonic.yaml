@@ -5,6 +5,12 @@ is_actuator: false
 experimental: false
 default_role: distance_sensor
 
+# Spec §9.3 / ADR-0056: ultrasonic distance is a B-class (sensor measurement)
+# physical quantity. The C DAL exposes float distance_cm on Full Profile;
+# Micro Profile binding collapses it to a scaled integer (per dal-micro-profile-spec).
+quantity: distance
+quantity_class: sensor_measurement
+
 fields:
   trig_pin:
     tier: advanced
@@ -35,6 +41,17 @@ fields:
     tier: stable
     type: string
     emit: none
+
+# Spec §16.2 / ADR-0046: explicit init/deinit/safe_off binding for the OS
+# driver registry SSOT. Empty safe_off_fn marks "no safe-off semantic"
+# (required for is_actuator: false devices per DAL-L-020).
+config:
+  c_type: dal_ultrasonic_t
+  config_type: dal_ultrasonic_config_t
+  headers: [dal_ultrasonic.h]
+  init_fn: dal_ultrasonic_init
+  deinit_fn: dal_ultrasonic_deinit
+  safe_off_fn: ""
 
 role_bindings:
   distance_sensor:
