@@ -55,8 +55,26 @@ typedef struct {
     bool                    initialized;     ///< Phase 2：dal_ultrasonic_init 成功后置 true
 } dal_ultrasonic_t;
 
-/* ABI stability: config MUST remain the first member (DAL-S-011). */
+/* ABI stability (spec §2.3 / DAL-BC-010): config MUST remain the first member.
+ * Offsets below are compiler-verified:
+ *   - 64-bit host (LP64) measured: config=16, handle=40, initialized@32
+ *     (config: ptr 8B + u16 2B + u16 2B + bool 1B + 3B pad = 16B;
+ *      handle: 16B + float 4B + u32 4B + enum 4B + enum 4B + bool 1B + 3B pad = 40B).
+ *   - 32-bit target (ILP32) derived: config=12 (ptr 4B + u16 + u16 + bool 1B + 3B pad);
+ *     handle=32; initialized@24.
+ * Recompute with the target compiler if the struct layout changes — enums are
+ * int-sized (4B), pointers are 4B on ILP32 / 8B on LP64, bool is 1B. */
 _Static_assert(offsetof(dal_ultrasonic_t, config) == 0, "config must be the first member");
+
+#if INTPTR_MAX == INT32_MAX   /* ILP32: ESP32 xtensa, wasm32 */
+_Static_assert(sizeof(dal_ultrasonic_config_t) == 12, "ABI break: config size changed on 32-bit target");
+_Static_assert(offsetof(dal_ultrasonic_t, initialized) == 24, "ABI break: initialized offset changed on 32-bit");
+_Static_assert(sizeof(dal_ultrasonic_t) == 32, "ABI break: handle size changed on 32-bit target");
+#else                         /* LP64 / LLP64: 64-bit Host Simulation */
+_Static_assert(sizeof(dal_ultrasonic_config_t) == 16, "ABI break: config size changed on 64-bit host");
+_Static_assert(offsetof(dal_ultrasonic_t, initialized) == 32, "ABI break: initialized offset changed on 64-bit host");
+_Static_assert(sizeof(dal_ultrasonic_t) == 40, "ABI break: handle size changed on 64-bit host");
+#endif
 
 /**
  * @brief 初始化超声波：校验引脚、配置 GPIO 方向（真机）、置 initialized。
