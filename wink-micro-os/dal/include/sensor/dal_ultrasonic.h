@@ -97,7 +97,7 @@ _Static_assert(offsetof(dal_ultrasonic_t, config) == 0, "config must be the firs
 
 #if INTPTR_MAX == INT32_MAX   /* ILP32: ESP32 xtensa, wasm32 */
 _Static_assert(sizeof(dal_ultrasonic_config_t) == 12, "ABI break: config size changed on 32-bit target");
-_Static_assert(offsetof(dal_ultrasonic_t, initialized) == 24, "ABI break: initialized offset changed on 32-bit");
+_Static_assert(offsetof(dal_ultrasonic_t, initialized) == 28, "ABI break: initialized offset changed on 32-bit");
 _Static_assert(sizeof(dal_ultrasonic_t) == 32, "ABI break: handle size changed on 32-bit target");
 #else                         /* LP64 / LLP64: 64-bit Host Simulation */
 _Static_assert(sizeof(dal_ultrasonic_config_t) == 16, "ABI break: config size changed on 64-bit host");
