@@ -217,15 +217,24 @@ wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *out_distance_cm)
 /**
  * @brief ADR-0008 Flash 覆写：从 wire payload 反序列化并改写超声波 trig/echo 引脚。
  *
- * @note params 布局（v0 旧格式，小端）：trig_pin:u16@0, echo_pin:u16@2（≥4B）。
- *       v0 与 v1 共用同一反序列化（v1 引入的 schema_version 不影响字段位置）。
- *       轻校验(trig≠echo) 与 dal_ultrasonic_init 权威校验纵深配合。
- *       非法 → 不写任何字段，返 WINK_ERR_INVALID_ARG。
- *       void* 签名适配 wink_dev_override_fn 注册表（见 wink_dev_config.h），
- *       dev 在 dal_ultrasonic_init 之前被覆写。
+ * @note Wire format versions (DAL-BC-012):
+ *   - v0 (legacy, 4B): trig_pin:u16@0, echo_pin:u16@2 — 无 version 字节.
+ *   - v1 (current, 5B): schema_version:u8@0 (=0x01), trig_pin:u16@1, echo_pin:u16@3.
+ *
+ *   Version detection: 当 `len >= 5` 且 `params[0] == 0x01` 时按 v1 解析;
+ *   否则按 v0 解析（len >= 4B）。v0 在字段为 0x00 起头时仍能正确解析。
+ *   任何 v2 及以上版本当前拒绝（len >= 5 但 params[0] != 0x01 走 v0 路径，
+ *   若 v0 字段意外命中 0x01 字节组合则按 v0 解析，可能产生伪数据——后续
+ *   v2 引入时需收紧此规则）。
+ *
+ *   轻校验(trig≠echo) 与 dal_ultrasonic_init 权威校验纵深配合。
+ *   非法 → 不写任何字段，返 WINK_ERR_INVALID_ARG。
+ *
+ *   void* 签名适配 wink_dev_override_fn 注册表（见 wink_dev_config.h），
+ *   dev 在 dal_ultrasonic_init 之前被覆写。
  *
  * @note API Contract:
- *   - Preconditions: dev 非 NULL；params 非 NULL；len ≥ 4（v0/v1 wire 最少 5B 含 version 字节）。
+ *   - Preconditions: dev 非 NULL；params 非 NULL；len >= 4（v0 最少）且 v1 时 len >= 5。
  *   - Postconditions: WINK_OK 时 u->config.trig_pin/echo_pin 已写入新值；其他返码字段保持不变。
  *   - Range: u16 (0..65535)，具体值域由底层 PAL 校验。
  *   - Blocking: No.
