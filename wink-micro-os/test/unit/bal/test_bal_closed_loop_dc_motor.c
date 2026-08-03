@@ -65,7 +65,7 @@ void setUp(void) {
         .owner = "test_encoder",
         .pin_a = 2,
         .pin_b = 3,
-        .pull = PAL_GPIO_INPUT_PULLUP
+        .pull = DAL_ENCODER_PULL_UP
     };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_encoder_init(&s_encoder, &encoder_cfg));
 }
