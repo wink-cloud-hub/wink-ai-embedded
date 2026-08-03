@@ -35,13 +35,33 @@ typedef struct {
 } dal_ultrasonic_config_t;
 
 /**
- * 成员按对齐需求降序排列（c-code.md §4）：4B(float/uint32/enum) → 2B(config) → 1B(bool)，
- * 消除内部 padding。仅重排顺序、未改字段名，designated initializer 与
- * 所有 `dev->xxx` 访问均不受影响（非破坏性）。
+ * @brief 超声波非阻塞测量句柄（POD，ADR-0004 静态分发；DAL-C-040 默认非线程安全）
  *
- * Phase 2 改进：内嵌 config 副本，便于：
+ * 内嵌 config 副本，便于：
  *   1. Flash 动态覆写（ADR-0008）：从 Flash blob 读取 → 写入 config → dal_xxx_apply_override
  *   2. 运行时诊断：可直接打印当前生效的配置
+ *
+ * @note SMP cross-core snapshot / publication order contract (DAL-C-010):
+ *   Four fields are cross-core shared via `volatile`:
+ *     - `last_distance`  (float,  4B) — payload
+ *     - `last_pulse_us`  (uint32, 4B) — payload
+ *     - `last_status`    (wink_status_t, 4B) — payload
+ *     - `state`          (dal_ultrasonic_state_t, 4B) — state machine
+ *
+ *   **Reader order** (in `dal_ultrasonic_get_cached_distance`): snapshot all
+ *   three payload fields into locals FIRST, then snapshot `state`. State drives
+ *   payload validity — when state == READY, the snapshotted payload is valid.
+ *
+ *   **Writer order** (in `dal_ultrasonic_request_measurement` success path):
+ *   write `last_pulse_us` → `last_distance` → `last_status` (payload) FIRST,
+ *   then `memw` compiler barrier, then `state = READY`. On Xtensa the explicit
+ *   `__asm__ __volatile__("memw" ::: "memory")` ensures prior writes reach RAM
+ *   before state becomes visible; on other targets the compiler barrier is
+ *   sufficient since the fields are 4-byte aligned naturally.
+ *
+ *   The four fields are 4B each, single-writer (request_measurement or
+ *   get_cached_distance paths only), so DAL-C-001 (single-writer tolerated
+ *   stale-read) holds.
  */
 typedef struct {
     /* config MUST be the first member (DAL-S-011, offsetof==0). */
