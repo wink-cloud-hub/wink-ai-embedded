@@ -2,12 +2,12 @@
 
 | 项 | 内容 |
 |----|------|
-| **规范版本** | v3.1.0 (Draft) |
+| **规范版本** | v3.4.0 (Draft) |
 | **状态** | 拟定中 / 待评审 |
 | **适用范围** | `wink-micro-os` 器件抽象层 (`dal/`) 驱动开发与代码生成器 (`codegen`) |
 | **关联活规范** | [`01-dal-device-abstraction.md`](../../../docs/design/02-wink-micro-os/01-dal-device-abstraction.md) |
-| **关联 ADR** | [ADR-0001](../../../docs/design/decisions/0001-error-code-sign-convention.md) (错误码符号约定), [ADR-0004](../../../docs/design/decisions/0004-static-dispatch-vs-runtime-ops.md) (静态分发), [ADR-0017](../../../docs/design/decisions/0017-blocking-api-hard-isolation.md) (阻塞隔离), [ADR-0024](../../../docs/design/decisions/0024-fault-three-phase-model-and-dal-deinit-contract.md) (Deinit 清场), [ADR-0043](../../../docs/design/decisions/0043-yaml-driven-layer-lint.md) (Lint 规约), [ADR-0046](../../../docs/design/decisions/0046-dal-driver-registry-ssot.md) (驱动 Registry SSOT), [ADR-0048](../../../docs/design/decisions/0048-actuator-control-semantic-naming.md) (执行器语义命名) |
-| **变更历史** | v1.0.0 (2026-08-01) 初稿; v2.0.0 基于评审重写; v2.1.0 整合 review notes; v3.0.0 整合 8 位 Profile 体系; v3.1.0 (2026-08-02) 补充 8 位动态内存禁令 (DAL-8B-S-020)、跨主频空循环忙等禁令 (DAL-B-012)、Golden Reference 样板驱动标定及 SDCC 8051 CI 编译拦截规约 (DAL-8B-T-010) |
+| **关联 ADR** | [ADR-0001](../../../docs/design/decisions/0001-error-code-sign-convention.md) (错误码符号约定), [ADR-0004](../../../docs/design/decisions/0004-static-dispatch-vs-runtime-ops.md) (静态分发), [ADR-0017](../../../docs/design/decisions/0017-blocking-api-hard-isolation.md) (阻塞隔离), [ADR-0024](../../../docs/design/decisions/0024-fault-three-phase-model-and-dal-deinit-contract.md) (Deinit 清场), [ADR-0043](../../../docs/design/decisions/0043-yaml-driven-layer-lint.md) (Lint 规约), [ADR-0046](../../../docs/design/decisions/0046-dal-driver-registry-ssot.md) (驱动 Registry SSOT), [ADR-0048](../../../docs/design/decisions/0048-actuator-control-semantic-naming.md) (执行器语义命名), [ADR-0056](../../../docs/design/decisions/0056-cross-profile-quantity-ab-class-and-scaled-integers.md) (跨 Profile 量纲 A/B 两分类与定标整数) |
+| **变更历史** | v3.4.0 (2026-08-03) **跨 Profile 量纲两分类融合（[ADR-0056](../../../docs/design/decisions/0056-cross-profile-quantity-ab-class-and-scaled-integers.md)）**：重构 §9——§9.1 升级为封闭单位后缀枚举表；§9.2 强化越界钳位饱和无 UB（DAL-U-011）；新增 §9.3 量纲两分类原则（A 执行器命令 / B 传感器测量）、§9.4 A 类全 Profile 整数定标（两种定标形态、符号规范、运算溢出防护、钳位饱和、同表示、禁弱 typedef，DAL-U-020~028）、§9.5 B 类跨 Profile 映射、§9.6 Micro Profile 量纲瘦身概览（纯 8 位机制移交子规范）；§1.3 补 codegen binding 同源边界；§16 新增 YAML `quantity`/`quantity_class` 字段并标注 per-profile 模板为待实现；§17.1 说明 dc_motor float 为迁移前现状；本次纯文档变更，9 个 32 位驱动零代码改动; v1.0.0 (2026-08-01) 初稿; v2.0.0 基于评审重写; v2.1.0 整合 review notes; v3.0.0 整合 8 位 Profile 体系; v3.1.0 (2026-08-02) 补充 8 位动态内存禁令; v3.2.0 (2026-08-03) 纠正 offsetof 位宽误导与断言逻辑、更正 Golden Ref 样板为 dc_motor、新增 DMA 缓冲区归属契约 (§7.3)、修订忙等禁令微秒豁免与 ERR_NO_DATA 状态码、将 8 位 Micro Profile 解耦独立出子规范 [`dal-micro-profile-spec.md`](dal-micro-profile-spec.md); v3.3.0 (2026-08-03) 新增 init 资源回滚契约 (DAL-L-008)、deinit best-effort 语义 (DAL-L-015)、config 不可变性 (DAL-S-015)、poll 返回值语义 (DAL-B-025)、错误码分段 (DAL-EC-004)；补充 Watchdog/总线恢复/init 时间预算/was_* 原子性/self_test API 等中优先级规则；补充电流功率单位后缀与 Contract Side-effects 字段；修复 5 处文字/格式问题; v3.3.1 (2026-08-03) **勘误 §2.3 ABI 范例**：更正 Golden Ref 偏移常量（原 dc_motor 范例将 `offsetof(initialized)` 误写为 24/32，实测为 28/36——`initialized` 在 `float current_speed` 之后，并非紧跟 config 末尾），补全整句柄 `sizeof` 断言并加注"实测勿臆测"说明；补充 DAL-L-022「safe_off 未初始化返回 WINK_OK」的设计理由（基于 actuator_registry safe_off_all 故障消费链路分析） |
 
 ---
 
@@ -48,15 +48,22 @@
 
 为实现“**同源 YAML SSOT，两端精准生成**”，`wink-micro-os` 引入 Profile 区分机制：
 
-* **Full Profile (32-bit / POSIX / WASM / STM32 / ESP32)**：使用 `float` 物理量、包含 `owner` 跟踪、支持 32/64 位高精度时间戳与 POD 配置深拷贝句柄。
-* **Micro Profile (8-bit / 8051 / STC8 / AVR)**：使用定点数/整数量纲缩放、Flash Zero-Copy 句柄引用、静态硬编码/直接分发、16 位低开销计数器与 `uint8_t` 状态标志。
+* **Full Profile (32-bit / POSIX / WASM / STM32 / ESP32)**：包含 `owner` 跟踪、支持 32/64 位高精度时间戳与 POD 配置深拷贝句柄（本规范主推标准）。**A 类执行器命令用定标整数（不用 float），B 类传感器测量用 `float`/`double`**（见 §9）。
+* **Micro Profile (8-bit / 8051 / STC8 / AVR)**：整数量纲（A 类与 Full 同刻度定标整数；B 类定点）、Flash Zero-Copy 句柄引用、静态硬编码/直接分发、16 位低开销计数器与 `uint8_t` 状态标志。详细条款已独立解耦出扩展规范 [`dal-micro-profile-spec.md`](dal-micro-profile-spec.md)。
 
-| 特性维度 | Full Profile (32-bit Target) | Micro Profile (8-bit Target) |
-|---------|-----------------------------|------------------------------|
+**同源边界 = codegen binding 层（[ADR-0056](../../../docs/design/decisions/0056-cross-profile-quantity-ab-class-and-scaled-integers.md)）**：
+
+- **逻辑契约**（动词集、生命周期、错误码、状态机、量纲语义、safe_off 绑定、A 类刻度）全 Profile 一致；
+- **C 符号名**全 Profile 一致（都叫 `dal_<type>_<verb>`，函数名不带 `_8b_`；Micro **类型名**保留 `_8b_t`/`_8b_config_t`，因其内存模型不同构）；
+- **C 签名 / 句柄 / 实现**允许按 Profile 分化——一个固件只链接一个 Profile，同名不冲突；
+- App MUST NOT 直接调用 DAL，MUST 通过 codegen 从 YAML 生成的 role binding 访问器件；同源承诺由 binding 层兑现，**而非强行让 DAL 的 C 签名两端完全相同**。
+
+| 特性维度 | Full Profile (32-bit Target) | Micro Profile (8-bit Target, 见扩展规范) |
+|---------|-----------------------------|---------------------------------------|
 | **适用芯片** | ESP32-S3, STM32, WASM 仿真 | 8051, STC8, AVR, PIC |
-| **物理量类型** | `float` / `double` | `int16_t` / `uint16_t` (整数量纲缩放) |
-| **控制量刻度** | 归一化浮点 `[-1.0, 1.0]` | 千分比 promille ‰ `[-1000, 1000]` / 0.1度 ddeg |
-| **句柄内存模式** | POD 深拷贝 `config_t` (24+ 字节 RAM) | Flash 指针引用 `const WINK_CODE *cfg` (2~4 字节 RAM) |
+| **A 类执行器命令** | 定标整数（`int16_t`/`uint16_t`/`uint32_t` + 刻度后缀） | **与 Full 完全相同的定标整数类型与刻度** |
+| **B 类传感器测量** | `float` / `double` + 单位后缀 | 定点整型 + 后缀（由 codegen binding 吸收） |
+| **句柄内存模式** | POD 深拷贝 `config_t` (RAM 驻留) | Flash 指针引用 `const WINK_CODE *cfg` (2~4 字节 RAM) |
 | **资源归因** | 包含 `const char *owner` 指针 | 可通过 `#ifdef WINK_DISABLE_OWNER_TRACKING` 裁减 |
 | **调度与分发** | C 函数调用、C99 `bool` | 静态内联/硬编码宏、`uint8_t` 替代 `bool` |
 | **临界区实现** | PAL 总线锁 / 互斥锁 / 原子操作 | `EA` 总中断使能保存/恢复宏 (`WINK_8B_CRITICAL_*`) |
@@ -94,83 +101,43 @@ typedef struct {
 | DAL-S-012 | MUST | MUST 包含 `bool initialized;` 状态标志 |
 | DAL-S-013 | MUST | MUST 支持 `{0}` 零初始化（所有成员零值为安全默认态） |
 | DAL-S-014 | SHOULD | 新增句柄类型 SHOULD 添加 `_Static_assert(offsetof(dal_xxx_t, config) == 0, ...)` |
+| DAL-S-015 | MUST | `init` 成功后，调用方 MUST NOT 直接修改 `dev->config` 中的任何字段。需要运行时变更配置的操作 MUST 通过专用 API（如 `set_*` / `apply_override`）进行，由驱动实现负责同步硬件状态与配置缓存。直接写 `dev->config.xxx = val` 会导致硬件状态与缓存脱节，是隐蔽 bug 的常见来源 |
 
 ### 2.3 ABI 稳定性断言
 
 每个 config_t 和 dal_<type>_t SHOULD 添加编译期断言，使任何布局变化在编译时被捕获。
 
-**首选 `offsetof` 断言**（与目标位宽无关，host 64 位测试与 32 位 target 均成立）：
+**位宽相关的 `offsetof` 与 `sizeof` 编译期断言规约**：
+
+1. **绝对首成员断言**：`offsetof(dal_xxx_t, config) == 0` 以及不含指针的纯数据结构体成员偏移跨位宽恒等。
+2. **含指针结构体的后续成员断言**：结构体中若包含指针（如 `config_t` 首成员 `const char *owner`），其后成员（如 `initialized`）的偏移在 32 位 Target（指针 4B）与 64 位 Host 测试（指针 8B）上不同。**严禁声明无条件的具体数值 `offsetof` 断言**。
+3. **断言分发**：所有含指针的结构体 `offsetof` 与 `sizeof` 断言 MUST 按 `INTPTR_MAX` 分档：
 
 ```c
 _Static_assert(offsetof(dal_dc_motor_t, config) == 0, "config must be the first member");
-_Static_assert(offsetof(dal_dc_motor_t, initialized) == 24, "ABI break: initialized offset changed");
-```
 
-**整体 `sizeof` 断言须按 target 位宽分档**。`config_t` 含 `const char *owner` 指针，在 ILP32（ESP32 / wasm32）与 64 位 host 测试上尺寸不同，裸写 `sizeof(...) == N` 会在 64 位 host 编译失败：
-
-```c
 #if INTPTR_MAX == INT32_MAX   /* ILP32: ESP32 xtensa, wasm32 */
 _Static_assert(sizeof(dal_dc_motor_config_t) == 24, "ABI break: config size changed on 32-bit target");
-#else
+_Static_assert(offsetof(dal_dc_motor_t, initialized) == 28, "ABI break: initialized offset changed on 32-bit");
+_Static_assert(sizeof(dal_dc_motor_t) == 32, "ABI break: handle size changed on 32-bit target");
+#else                         /* LP64 / LLP64: 64-bit Host Simulation */
 _Static_assert(sizeof(dal_dc_motor_config_t) == 32, "ABI break: config size changed on 64-bit host");
+_Static_assert(offsetof(dal_dc_motor_t, initialized) == 36, "ABI break: initialized offset changed on 64-bit host");
+_Static_assert(sizeof(dal_dc_motor_t) == 40, "ABI break: handle size changed on 64-bit host");
 #endif
 ```
 
-> 纯数据字段（不含指针）的结构体可直接用无条件 `sizeof` 断言。含指针的句柄/config 优先用 `offsetof` 锁定关键成员偏移。
+> **数字来源（实测，勿臆测）**：以上偏移以 Full Profile 的前提为准——`enum` 为 `int`(4B)、`wink_pin_t` 为 `int16_t`(2B)。`initialized` 并不紧跟 `config` 末尾：它在 `float current_speed`(4B) 之后，故 32 位为 28（config=24 + speed 4）、64 位为 36（config=32 + speed 4）。任何 config/handle 布局改动都 MUST 用目标编译器重新核算这些常量，禁止凭"末尾紧挨"直觉填写。优先 `sizeof(整结构体)` 断言：指向中间字段的 `offsetof` 无法捕获该字段之后的追加/重排，而整尺寸断言能捕获除"末尾等尺寸替换"外的几乎所有 ABI 漂移。
 
-### 2.4 Micro Profile (8-bit) 句柄与内存规约 (Zero-Copy Flash)
+> **owner 裁剪与 Wire Format**：若通过 `#ifdef WINK_DISABLE_OWNER_TRACKING` 裁减 `owner`，`config_t` 成员偏移将整体前移。序列化/反序列化（如 `apply_override`）MUST 显式解耦线格式，或在 8 位裁剪模式下保留对应尺寸的 reserved 占位字段。
 
-在 8 位 MCU (8051/STC8/AVR) 环境下，由于 RAM 极其匮乏 (128~256B)，深拷贝整个 `config_t` 到句柄 RAM 中会导致严重的内存挤压。
-
-#### 2.4.1 存储区修饰符抽象
-
-为适配 Harvard 哈佛架构，DAL 头文件与生成代码中与存储区相关的修饰符 MUST 使用 PAL 统一抽象宏：
-
-```c
-#if defined(WINK_TARGET_MCU_8051)
-  #define WINK_CODE     code      /* 存储于 Flash / ROM */
-  #define WINK_XDATA    xdata     /* 存储于 外部扩展 RAM */
-  #define WINK_IDATA    idata     /* 存储于 内部高 128B RAM */
-  #define WINK_DATA     data      /* 存储于 内部低 128B RAM */
-#else
-  #define WINK_CODE
-  #define WINK_XDATA
-  #define WINK_IDATA
-  #define WINK_DATA
-#endif
-#define WINK_CODE_PTR   const WINK_CODE   /* Flash 字符串/只读结构体指针修饰符 */
-```
-
-#### 2.4.2 Flash 常量配置引用模式 (Zero-Copy)
+### 2.4 动态内存与句柄分配规约
 
 | 规则 ID | 级别 | 条款 |
 |---------|------|------|
-| DAL-8B-S-001 | MUST | 在 8 位 Profile 下，`dal_<type>_8b_t` 句柄 **MUST NOT** 深拷贝整个 `config_t` 结构体到 RAM |
-| DAL-8B-S-002 | MUST | 句柄结构体包含指向 Flash 的只读配置指针：`const WINK_CODE dal_<type>_8b_config_t *cfg;` |
-| DAL-8B-S-003 | MUST | 配置结构体 `dal_<type>_8b_config_t` 变量 MUST 加上 `WINK_CODE` 声明在 ROM 中 |
-| DAL-8B-S-010 | SHOULD | 当编译宏 `#ifdef WINK_DISABLE_OWNER_TRACKING` 启用时，`config_t` 中可以裁剪掉 `const char *owner` 成员，以在 8 位 MCU 上再省去 2~3 字节指针 |
-
-**句柄定义对比**：
-
-```c
-/* 32 位 Full Profile: 深拷贝配置，占用 24+ 字节 RAM */
-typedef struct {
-    dal_led_config_t config; /* 深拷贝 */
-    bool initialized;
-} dal_led_t;
-
-/* 8 位 Micro Profile: Zero-Copy Flash 引用，仅占用 3~4 字节 RAM */
-typedef struct {
-    const WINK_CODE dal_led_8b_config_t *cfg; /* 指向 ROM 的指针 (2 字节) */
-    uint8_t initialized;                     /* C51 下 uint8_t 比 bool 更高效 (1 字节) */
-} dal_led_8b_t;
-```
-
-#### 2.4.3 Micro Profile 静态内存分配禁令 (No-Malloc Ban)
-
-| 规则 ID | 级别 | 条款 |
-|---------|------|------|
-| DAL-8B-S-020 | MUST | 在 Micro Profile 模式下 **MUST NOT** 调用任何动态内存分配函数（`malloc` / `free` / `calloc` / `realloc`）。所有临时 Buffer、驱动句柄与配置数据必须为编译期可确定的静态存储期（`static` / 全局 / ROM）或栈常量，防止 8 位 MCU 堆内存崩溃 |
+| DAL-S-020 | SHOULD | 在 Full Profile 下，DAL 驱动 `init` 阶段 SHOULD NOT 进行堆内存动态分配（`malloc`）。所有驱动句柄与配置数据由调用方提供静态/栈存储空间，满足零开销与 POD 属性（ADR-0004） |
+| DAL-S-021 | MUST | 若底层硬件驱动（如 ESP32 RMT 传输通道）确需初始化堆内存，MUST 在头文件 API Contract 的 `@note` 处显式声明 `Eager-init Memory: Heap (X bytes)`，并在 `init` 阶段一次性分配完成（Eager Allocation），严禁在运行期 `read/write` 路径做隐式 `malloc` |
+| DAL-S-022 | MUST | 8 位 Micro Profile 的 Flash 常量 Zero-Copy 配置模式与严格 No-Malloc 禁令见扩展规范 [`dal-micro-profile-spec.md`](dal-micro-profile-spec.md) |
 
 ---
 
@@ -190,11 +157,40 @@ wink_status_t dal_<type>_init(dal_<type>_t *dev, const dal_<type>_config_t *cfg)
 | 规则 ID | 条款 |
 |---------|------|
 | DAL-L-001 | MUST 校验 `dev` 和 `cfg` 非 NULL |
-| DAL-L-002 | Full Profile 下 MUST 将 `cfg` 深拷贝到 `dev->config`；Micro Profile 下 MUST 赋值 Flash 只读指针 `dev->cfg = cfg` (Zero-Copy) |
-| DAL-L-003 | 成功时 MUST 置 `dev->initialized = true` (8 位下置 `dev->initialized = 1`) |
+| DAL-L-002 | Full Profile 下 MUST 将 `cfg` 深拷贝到 `dev->config` |
+| DAL-L-003 | 成功时 MUST 置 `dev->initialized = true` |
 | DAL-L-004 | 对已 `initialized` 的设备重复调用 MUST 返回 `WINK_ERR_ALREADY_INITIALIZED`（fail-fast，不隐式 deinit） |
 | DAL-L-005 | MUST 对关键配置参数做最小化防御校验（NULL 检查、引脚范围等），即使 codegen 已校验 |
 | DAL-L-006 | **执行器**的 init MUST 使输出处于零能量状态（duty=0 / enable 引脚 inactive），严禁 init 即通电 |
+| DAL-L-007 | `init` 失败时（如参数校验失败或硬件 claim 失败），MUST 将句柄清理回 `dev->initialized = false` 的可 safe-deinit 状态，严禁留下半初始化隐患 |
+| DAL-L-008 | `init` 内部若在某一步失败，MUST 回滚释放本次 init 已成功 claim 的所有 PAL 资源（GPIO/PWM/Timer/I2C client 等），保证不产生资源泄漏。推荐实现模式为 goto-cleanup 链式回滚（见下方范例） |
+
+**DAL-L-008 goto-cleanup 回滚范例**：
+
+```c
+wink_status_t dal_dc_motor_init(dal_dc_motor_t *dev, const dal_dc_motor_config_t *cfg) {
+    // ... 参数校验 (DAL-L-001/005) ...
+    wink_status_t rc = pal_pwm_init(cfg->pwm_a, ...);
+    if (rc != WINK_OK) return rc;  // 无需回滚，尚未 claim 任何资源
+
+    rc = pal_pwm_init(cfg->pwm_b, ...);
+    if (rc != WINK_OK) goto cleanup_pwm_a;  // 回滚 pwm_a
+
+    rc = pal_gpio_init(cfg->enable_pin, ...);
+    if (rc != WINK_OK) goto cleanup_pwm_b;  // 回滚 pwm_b + pwm_a
+
+    // ... 深拷贝 config (DAL-L-002) ...
+    dev->initialized = true;  // DAL-L-003
+    return WINK_OK;
+
+cleanup_pwm_b:
+    pal_pwm_deinit(cfg->pwm_b);
+cleanup_pwm_a:
+    pal_pwm_deinit(cfg->pwm_a);
+    // dev->initialized 保持 false (DAL-L-007)
+    return rc;
+}
+```
 
 #### `dal_<type>_deinit`
 
@@ -209,6 +205,8 @@ wink_status_t dal_<type>_deinit(dal_<type>_t *dev);
 | DAL-L-011 | MUST 按 ADR-0024 清场顺序：禁用中断/ISR → 等待 in-flight 回调结束（见 DAL-L-012）→ 释放硬件资源 → 清零句柄（`memset` 清零，含 `initialized=false`） |
 | DAL-L-012 | 若驱动使用 ISR，MUST 先禁中断 → 等待 in-flight 回调结束 → 再释放资源（防 use-after-deinit） |
 | DAL-L-013 | 共享总线（I2C/SPI）的驱动 deinit MUST 仅释放自身 client claim，MUST NOT 销毁总线（bus-owner 管理） |
+| DAL-L-014 | `deinit` 内部若底层 PAL/硬件清场失败，MUST 在函数内部输出 `LOGW` 日志痕迹，确保在调用方忽略返回值时故障依然可追溯 |
+| DAL-L-015 | `deinit` 返回非 `WINK_OK` 时，句柄 MUST 仍已完成 **best-effort 清场**（`initialized = false`，硬件资源尽力释放）。调用方 MUST NOT 对失败的 deinit 进行重试，也 MUST NOT 尝试继续使用该句柄。`deinit` 的返回值仅供诊断日志使用，不驱动恢复逻辑 |
 
 ### 3.2 按 category 必需 (MUST — 仅当 `is_actuator: true`)
 
@@ -222,10 +220,22 @@ wink_status_t dal_<type>_safe_off(dal_<type>_t *dev);
 |---------|------|
 | DAL-L-020 | 仅当 YAML `is_actuator: true` 时 MUST 实现；`is_actuator: false` 的器件（button, encoder, eeprom, gps, ultrasonic）MUST NOT 实现空壳 `safe_off`（YAML `safe_off_fn: ""` 是正确表达） |
 | DAL-L-021 | MUST 不标 `WINK_WARN_UNUSED_RESULT`（应急路径不强制检查返回值）；但返回 `wink_status_t` 以报告成功/失败 |
-| DAL-L-022 | MUST 幂等 + 未初始化时安全返回 `WINK_OK` |
+| DAL-L-022 | MUST 幂等 + 未初始化时安全返回 `WINK_OK`（设计理由见下方「safe_off 未初始化返回值」） |
 | DAL-L-023 | MUST NOT 依赖调度器与堆 |
 | DAL-L-024 | SHOULD 满足 ISR-safe（见 [§6](#6-并发isr-与线程安全)） |
 | DAL-L-025 | `safe_off` 绑定的具体关断原语由 ADR-0048 逐器件裁决（如 dc_motor 绑定 brake，rc_servo 绑定 duty=0），MUST 在头注释声明具体行为 |
+
+**设计理由：为什么 `safe_off` 未初始化必须返回 `WINK_OK`（DAL-L-022）**
+
+这条规则不是洁癖，而是由真实故障消费链路决定的：
+
+1. **主消费方是系统级批量关断。** `wink_actuator_safe_off_all()`（`runtime/src/wink_actuator_registry.c`）在 watchdog / panic / assert 失败 / 异常回滚路径被调用，遍历注册表逐个调 `safe_off`；单个返回错误码时会 `wink_trace_fault(7000u + i)` 记一条故障码，**然后继续遍历其余执行器**。
+2. **未初始化是该路径下的合法态。** 故障可能发生在启动早期（执行器尚未 init 完），或执行器已 deinit 但其 registry 条目因生命周期竞态尚未摘除。此时该执行器本就无能量输出——「没东西可关」在应急关断语义里**就是成功**，不是错误。
+3. **返回错误码只会制造假阳性。** 若此时返回 `WINK_ERR_NOT_INITIALIZED`，系统在已经处理一个真实故障的同时，会凭空刷出一条 7000 段 actuator fault，干扰根因诊断、可能掩盖真正的故障。应急路径应当「尽力关、少报噪」。
+4. **与 teardown 语义族保持一致。** `deinit` 对未初始化句柄同样返回 `WINK_OK`（DAL-L-010 幂等）；`safe_off` 与 `deinit` 同属关断语义，应对齐。
+5. **它不承担「检测忘记 init」的职责。** `safe_off` 依 DAL-L-021 不标 `WINK_WARN_UNUSED_RESULT`，返回值本就不驱动任何恢复逻辑，因此返回 `NOT_INITIALIZED` 对帮助程序员发现忘记 init 毫无作用——忘记 init 的真实症状是「器件从不响应控制」，应由带 `WARN_UNUSED_RESULT` 的 `init` 返回值与开发期 assert 来捕获，而不是在 best-effort 的应急关断里兜底。
+
+> 反过来说：若想在开发期暴露「对未初始化句柄调 safe_off」这类编程错误，正确手段是 `WINK_ASSERT` 之类的**调试期检查**，而非改变运行期返回码。生产路径仍返回 `WINK_OK`。
 
 ### 3.3 推荐 (SHOULD)
 
@@ -233,6 +243,7 @@ wink_status_t dal_<type>_safe_off(dal_<type>_t *dev);
 |-----|------|------|
 | `dal_<type>_reset(dev)` | SHOULD | 软件复位，重置器件内部状态机与缓存。语义因器件而异（encoder 的 reset 含义是计数清零，不是硬件复位）。如实现，MUST 在头注释明确语义 |
 | `dal_<type>_get_state(dev, *out_state)` | SHOULD | 返回器件统一状态枚举。如实现，签名 MUST 为 `wink_status_t dal_xxx_get_state(const dal_xxx_t *dev, dal_xxx_state_t *out_state)`，不得直接返回枚举值 |
+| `dal_<type>_self_test(dev, *out_result)` | MAY | 触发硬件自检（如 IMU 内建自检模式、EEPROM 读写校验、电机编码器回读）。如实现，签名 MUST 为 `wink_status_t dal_xxx_self_test(dal_xxx_t *dev, dal_xxx_self_test_result_t *out_result)`，MUST 标 `WINK_BLOCKING`，MUST 在头注释声明自检内容与预期耗时 |
 
 ---
 
@@ -253,7 +264,7 @@ wink_status_t dal_<type>_safe_off(dal_<type>_t *dev);
 |---------|------|
 | `safe_off` | 应急路径不强制检查返回值 |
 | `poll` | 每 tick 调用的状态机推进函数，大部分调用点有意忽略返回值（"推进一下，失败了下次再推"）；错误通过 `get_status` 查询。强制检查会在事件循环中制造告警噪音 |
-| `deinit` | 幂等 no-op，失败时无恢复动作 |
+| `deinit` | best-effort 清场，返回值仅供诊断日志（见 DAL-L-015） |
 
 > **注意**：`toggle` 等操作类 API 不在豁免名单中——`toggle` 失败（如 `ERR_NOT_INITIALIZED`）应被检查。`poll` 的返回值对单测和故障诊断仍有价值（`ERR_NOT_INITIALIZED`, `ERR_DISCONNECTED`），白名单仅豁免 `WINK_WARN_UNUSED_RESULT` 属性，不改变返回类型。
 
@@ -286,7 +297,7 @@ wink_status_t dal_<type>_safe_off(dal_<type>_t *dev);
 | 规则 ID | 级别 | 条款 |
 |---------|------|------|
 | DAL-8B-F-001 | MUST | 8 位 Profile 下 **MUST NOT** 使用 `void *dev` 虚分发与函数指针表 (Function Pointer Tables) |
-| DAL-8B-F-002 | MUST | 驱动方法 MUST 为具名静态函数或内联函数（如 `dal_led_8b_on(dal_led_8b_t *dev)`），允许编译器进行完整的 Overlay 覆盖分析 |
+| DAL-8B-F-002 | MUST | 驱动方法 MUST 为具名静态函数或内联函数（如 `dal_led_on(dal_led_8b_t *dev)`——**函数名去 `_8b_`，仅句柄类型保留 `_8b_t`**，见 [ADR-0056](../../../docs/design/decisions/0056-cross-profile-quantity-ab-class-and-scaled-integers.md) §4），允许编译器进行完整的 Overlay 覆盖分析 |
 | DAL-8B-C-001 | MUST | 8 位 Profile 下不使用原子指令，临界区保护统一使用 `EA` 保存/恢复宏：<br/>`#define WINK_8B_CRITICAL_ENTER() do { uint8_t _ea_save = EA; EA = 0;`<br/>`#define WINK_8B_CRITICAL_EXIT() EA = _ea_save; } while(0)` |
 | DAL-8B-C-002 | MUST | 临界区内部 **MUST NOT** 调用含有耗时 busy-wait 或复杂状态机推进的代码 |
 | DAL-8B-C-010 | MUST | 若某个 DAL API 既可能在 ISR 中被调用，又可能在主循环 (Task) 中被调用，在 Keil C51 环境下该 API **MUST** 加上 `reentrant` 关键字声明，或设计为完全无局部变量的内联宏 |
@@ -331,7 +342,7 @@ dal_<type>_<verb>[_<object>](dal_<type>_t *dev, ...)
 | `off` | `(dev)` | 关闭/熄灭 | `dal_led_off(dev)` |
 | `toggle` | `(dev)` | 翻转开关状态 | `dal_led_toggle(dev)` |
 | `set` | `(dev, bool on)` | 显式设置开关 | `dal_led_set(dev, true)` |
-| `set_<property>` | `(dev, <type> val)` | 设置物理量 | `dal_dc_motor_set_speed(dev, 0.8f)`, `dal_rc_servo_set_angle(dev, 90.0f)` |
+| `set_<property>` | `(dev, <type> val)` | 设置物理量。新增 A 类执行器命令用定标整数（§9.4，如 `set_speed_promille(dev, -500)`）；下表 float 范例为 stable 驱动迁移前现状 | `dal_dc_motor_set_speed(dev, 0.8f)`（stable，迁移前），`dal_rc_servo_set_angle(dev, 90.0f)`（experimental，待整型化） |
 | `get_<property>` | `(const dev, <type> *out_val)` | 读回最后设定值（不碰硬件） | `dal_dc_motor_get_speed(dev, &speed)` |
 | `is_<pred>` | `(const dev, bool *out_pred)` | 布尔状态查询 | — |
 | `brake` | `(dev)` | 执行器制动（电机专用，ADR-0048） | `dal_dc_motor_brake(dev)` |
@@ -360,6 +371,8 @@ dal_<type>_<verb>[_<object>](dal_<type>_t *dev, ...)
 **黑名单**：❌ `fetch_data`, `sample_now`, `get_dist`（缩写不清晰）
 
 > **注意**：`get_value` 不再列入黑名单。`get_*` 系列在本仓库有明确语义（读缓存/读设定值），是合法动词。
+
+> **`was_*` 原子性要求 (DAL-V-010)**：`was_*` 类读后清 API 的内部 "读取+清除" 操作 MUST 是原子的（使用 PAL 临界区或原子 compare-and-swap），防止 SMP 双核或 ISR 并发场景下事件丢失。在 8 位 Micro Profile 下使用 `WINK_8B_CRITICAL_ENTER/EXIT` 宏保护。
 
 #### 5.3.3 显示屏类 (category: display)
 
@@ -439,8 +452,8 @@ dal_<type>_<verb>[_<object>](dal_<type>_t *dev, ...)
 | 规则 ID | 级别 | 条款 |
 |---------|------|------|
 | DAL-C-020 | MUST | ISR 上下文 MUST NOT：分配/释放内存、取互斥锁、调用日志 API、执行阻塞操作 |
-| DAL-C-021 | SHOULD | 可在 ISR 上下文安全调用的 API **计划**标注 `WINK_ISR_SAFE` 属性宏（风格对齐 `WINK_BLOCKING`）。该宏当前**尚未在 `wink_status.h` 定义**，待配套 ADR 落地后启用；在此之前以 DAL-C-022 的 Contract 注释声明为准 |
-| DAL-C-022 | MUST | API Contract 注释的 `ISR-safe` 字段 MUST 如实声明 |
+| DAL-C-021 | SHOULD | 可在 ISR 上下文安全调用的 API 必须在其内部调用的 PAL/HAL 原语全量落在 **PAL ISR 安全白名单** 内（如 `pal_gpio_write` 允许；`pal_pwm` / `pal_i2c` / `pal_os_mutex` 严禁）。若执行器 `safe_off` 内部涉及非 ISR 安全调用（如 ESP-IDF `ledc_stop`），该 API **MUST NOT** 标注为 ISR-safe |
+| DAL-C-022 | MUST | API Contract 注释的 `ISR-safe` 字段 MUST 如实声明（`No` / `Yes`） |
 
 ### 6.4 回调上下文归属
 
@@ -489,9 +502,21 @@ wink_status_t dal_gps_init_blocking(dal_gps_t *dev, const dal_gps_config_t *cfg)
 |---------|------|------|
 | DAL-B-010 | MUST | 超时值 MUST 来自 config 字段或编译期常量宏，MUST NOT 硬编码在函数体内 |
 | DAL-B-011 | MUST | 非阻塞 API MUST NOT 内部 busy-wait 超过 100μs，否则必须改为 request/poll 三段式 |
-| DAL-B-012 | MUST | 微秒/毫秒级等待 **MUST NOT** 使用空循环忙等（如 `for(int i=0; i<N; i++)`），必须统一调用 PAL 时钟/延时原语（`pal_delay_us()` / `pal_os_get_ms()`），防止 ESP32 (240MHz) 与 8051 (12MHz) 之间产生高达 250 倍的指令耗时漂移 |
+| DAL-B-012 | MUST | 微秒/毫秒级长等待 **MUST NOT** 使用与 CPU 主频相关的裸空循环 busy-wait（如 `for(int i=0; i<N; i++)`），必须统一调用 PAL 时钟/延时原语（`pal_delay_us()` / `pal_os_get_ms()`），防止跨芯片主频产生耗时漂移。<br/>**豁免条款**：10μs 以下的亚微秒/微秒级确定性硬件脉冲（如 1-Wire 1μs 复位脉冲、HC-SR04 10μs 触发脉冲、SPI CS 建立时间），允许使用 PAL 封装的 `pal_nop_n(n)` 或编译期 barrier 原语，避免 `pal_delay_us(1)` 函数开销引入大的时序抖动 |
+| DAL-B-013 | SHOULD | 阻塞 API 的 worst-case 超时 SHOULD 显著小于系统 Task Watchdog Timer (TWDT) 窗口（建议 ≤ TWDT × 50%）。API Contract 注释的 `Blocking` 字段 SHOULD 同时声明与 TWDT 的关系（如 "worst-case 60ms, TWDT-safe at default 5s window"）。若阻塞时间可能接近或超过 TWDT 窗口，MUST 在文档中明确警告调用方需调整 TWDT 配置或使用异步三段式替代 |
+| DAL-B-014 | SHOULD | `init` 函数耗时超过 **100ms** 的（如 GPS 初始化序列、OLED 复位、EEPROM 自检），SHOULD 标注 `WINK_BLOCKING` 并在函数名使用 `_blocking` 后缀（如 `dal_gps_init_blocking`）。API Contract 注释 SHOULD 声明 `Init-time budget: ≤ Xms`，使系统启动时间可预测 |
 
-### 7.3 异步三段式 (request / poll / get_result)
+### 7.3 DMA 与共享 Buffer 归属契约 (Buffer Ownership & DMA Constraints)
+
+在包含 DMA 背景传输（如 SPI Flash、RMT 脉冲捕获/发送、Display 刷新）的驱动中，内存与 Buffer 的生命周期管理是安全隐患的高发区。
+
+| 规则 ID | 级别 | 条款 |
+|---------|------|------|
+| DAL-BUF-001 | MUST | **Buffer 持有生命周期**：在异步三段式（`request_*` / `get_result`）或异步传输中，调用方传入的 Buffer MUST 在 `get_result` 返回或回调完成前由调用方保持有效。驱动内部 MUST NOT 隐式做异步深拷贝 |
+| DAL-BUF-002 | MUST | **DMA 内存域与对齐**：支持 DMA 传输的 DAL 驱动（如 SPI Flash、Mono OLED），其 Buffer MUST 满足硬件平台对齐与内存域限制。在 ESP32-S3 等芯片上，DMA Buffer MUST 分配在 Internal SRAM（`DRAM_ATTR` 或 `MALLOC_CAP_DMA`），**严禁直接对 PSRAM 或栈上 Buffer 启动 DMA 硬件传输** |
+| DAL-BUF-003 | MUST | 驱动在启动 DMA 传输前后，MUST 显式调用 PAL Cache 原语（如 `pal_cache_msync` / Cache Line Flush/Invalidate），确保 CPU 缓存与物理 RAM 之间的数据一致性 |
+
+### 7.4 异步三段式 (request / poll / get_result)
 
 本仓库的主流异步模式是三段式状态机，优先于回调模式，契合协作式调度与双 target 同源。
 
@@ -520,11 +545,26 @@ IDLE ──request──▶ BUSY ──[完成]──▶ DONE/READY ──get_re
 | DAL-B-021 | MUST | BUSY 时重复 `request_*` MUST 返回 `WINK_ERR_BUSY`，不改变状态 |
 | DAL-B-022 | MUST | `poll` 在 IDLE / DONE / ERROR 时 MUST 为 no-op |
 | DAL-B-023 | MUST | `get_*_result` 成功读取后 MUST 将状态机重置为 IDLE |
-| DAL-B-024 | MUST | 三段式的 `get_cached_*` / `get_*_result` 在从未执行过 `request_*` 时（state == IDLE）MUST 返回 `WINK_ERR_BUSY`（或 `WINK_ERR_EMPTY`），MUST NOT 返回 `WINK_OK`。这确保调用方不会误读初始化时的零值为有效测量结果 |
+| DAL-B-024 | MUST | 三段式的 `get_cached_*` / `get_*_result` 在从未执行过 `request_*` 时（state == IDLE），MUST 返回 `WINK_ERR_NO_DATA` 或 `WINK_ERR_EMPTY`，MUST NOT 返回 `WINK_OK` 或 `WINK_ERR_BUSY`（`BUSY` 仅保留给传输中）。这确保调用方不会误读初始化时的零值为有效测量结果 |
 
 **现存范例**：`dal_eeprom` (request_read/request_write → poll → get_status/get_read_result) 和 `dal_ultrasonic` (request_measurement → get_cached_distance) 是已验证的参考实现。
 
-### 7.4 与仿真 Asyncify 的关系
+#### `poll` 返回值语义 (DAL-B-025)
+
+| 规则 ID | 级别 | 条款 |
+|---------|------|------|
+| DAL-B-025 | MUST | `poll` 返回值语义 MUST 遵循以下约定：|
+
+| 返回值 | 含义 |
+|--------|------|
+| `WINK_OK` | 状态机正常推进（含 no-op 空转，如 IDLE/DONE/ERROR 状态下的合法调用） |
+| `WINK_ERR_NOT_INITIALIZED` | 句柄未初始化 |
+| `WINK_ERR_NO_DATA` | 当前无新数据或状态无变化（可选，供诊断使用；调用方 MAY 忽略） |
+| 其他负数错误码 | 状态机内部遇到不可恢复错误；驱动 MUST 同时将内部 state 迁移到 ERROR，后续可通过 `get_status` 查询 |
+
+> **注意**：`poll` 的返回值已被 DAL-F-004 豁免 `WINK_WARN_UNUSED_RESULT`，但返回值语义依然有意义——单测和故障诊断依赖此契约。
+
+### 7.5 与仿真 Asyncify 的关系
 
 阻塞 API 在 Wasm target 下通过 Asyncify 挂起/恢复实现。DAL 作者约束：
 
@@ -576,42 +616,48 @@ IDLE ──request──▶ BUSY ──[完成]──▶ DONE/READY ──get_re
 
 ## 9. 单位、量纲与值域
 
-### 9.1 参数命名
+> **本章核心（[ADR-0056](../../../docs/design/decisions/0056-cross-profile-quantity-ab-class-and-scaled-integers.md)）**：DAL 物理量按数据流向与硬件终态分 **A 类（执行器命令）/ B 类（传感器测量）** 两类。**A 类在所有 Profile（含 32 位 Full）MUST 用定标整数，MUST NOT 用 float**；B 类 Full 用 float、Micro 用定点，差异由 codegen binding 吸收。浮点属于 BAL 的数学域（PID / 滤波），在 BAL→DAL 边界完成 float→定标整数转换。
+
+### 9.1 参数命名与封闭单位后缀表
 
 | 规则 ID | 级别 | 条款 |
 |---------|------|------|
 | DAL-U-001 | MUST | 所有物理量参数与出参名 MUST 带单位后缀 |
 | DAL-U-002 | MUST | 无量纲归一化参数 MUST 在参数名中体现（`_norm` / `_ratio`），并在注释声明值域 |
+| DAL-U-003 | MUST | 单位后缀 MUST 取自下方**封闭枚举表**，严禁任意自造拼写或同义后缀（如自造 `_msec` / `_millis`）。新增后缀 MUST 走规范评审并补入本表 |
+| DAL-U-004 | MUST | A 类量的后缀 MUST 同时编码其刻度（`_promille` / `_ddeg` / `_um` / `_cmm` ...），使读到 `900` 即知是 90.0% 还是 90.0°；MUST NOT 用不编码刻度的裸后缀（如 `_angle`）配合隐含缩放 |
 
-**标准后缀**：
+**封闭单位后缀枚举表（Closed Enumeration）**：
 
-| 后缀 | 单位 | 现存使用 |
-|------|------|---------|
-| `_cm` | 厘米 | `distance_cm` |
-| `_mm` | 毫米 | `alt_mm` |
-| `_ms` | 毫秒 | `long_press_ms`, `debounce_ms`, `write_time_ms` |
-| `_us` | 微秒 | `last_pulse_us` |
-| `_hz` | 赫兹 | `pwm_freq_hz` |
-| `_deg` | 角度 | `course_deg` |
-| `_udeg` | 微度 (1e-6°) | `lat_udeg`, `lon_udeg` |
-| `_kmh` | 公里/小时 | `speed_kmh` |
-| `_pct` | 百分比 | — |
-| `_dps` | 度/秒 (角速度) | — (IMU 预留) |
-| `_mps2` | m/s² (加速度) | — (IMU 预留) |
-| `_mv` | 毫伏 | — (ADC 预留) |
-| `_raw` | 原始 ADC 计数 | — (ADC 预留) |
-| `_c` | 摄氏度 | — (温湿度预留) |
+| 物理维度 | 标准后缀 | 刻度 / LSB | 现存 / 典型示例 |
+|----------|----------|-----------|----------------|
+| 时间 | `_us` / `_ms` / `_s` | 微秒 / 毫秒 / 秒 | `timeout_ms`, `pulse_us`, `last_pulse_us` |
+| 长度 / 位置 | `_nm` / `_um` / `_cmm` / `_mm` / `_cm` | 纳米 / 微米 / 0.01 mm（丝）/ 毫米 / 厘米 | `position_um`, `stroke_cmm`, `distance_cm`, `alt_mm` |
+| 角度 | `_ddeg` / `_mdeg` / `_udeg` / `_deg` | 0.1° / 0.001° / 10⁻⁶° / 1° | `angle_ddeg`, `course_deg`, `lat_udeg` |
+| 电气量 | `_ma` / `_mv` / `_ua` / `_uv` | 毫安 / 毫伏 / 微安 / 微伏 | `current_ma`, `voltage_mv` |
+| 归一化比例 | `_promille` / `_per10k` | 千分比 ‰（1000=100%）/ 万分比（0.01%） | `speed_promille`, `duty_per10k` |
+| 频率 | `_hz` | 赫兹 | `pwm_freq_hz` |
+| 速度 | `_kmh` | 公里/小时 | `speed_kmh` |
+| 百分比 | `_pct` | 百分比 | — |
+| 角速度 | `_dps` | 度/秒 | （IMU 预留） |
+| 加速度 | `_mps2` | m/s² | （IMU 预留） |
+| 原始计数 | `_raw` | 原始 ADC/传感器计数 | （ADC 预留） |
+| 温度 | `_degc` | 摄氏度（禁用易撞名的 `_c`） | （温湿度预留） |
+| 功耗 / 容量 | `_mw` / `_mah` | 毫瓦 / 毫安时 | （电池管理预留） |
 
-> **关于 `_norm`**：`_norm` 后缀不编码正负号区间。有符号归一化（如 dc_motor speed `[-1.0, 1.0]`）与无符号归一化（如 duty `[0, 1.0]`）的值域区分以 API Contract 注释的 `Range` 字段为权威，不在后缀中引入 `_snorm` / `_unorm` 区分。
+> **关于 `_norm`**：`_norm` 后缀不编码正负号区间。有符号归一化（如电机转速 `[-1.0, 1.0]`）与无符号归一化（如占空比 `[0, 1.0]`）的值域区分以 API Contract 注释的 `Range` 字段为权威，不在后缀中引入 `_snorm` / `_unorm`。注意：A 类控制量在新驱动中应优先用 `_promille`（带符号）等定标整数后缀，而非 float `_norm`（见 §9.4）。
 
-### 9.2 值域声明
+### 9.2 值域声明与钳位饱和
 
 | 规则 ID | 级别 | 条款 |
 |---------|------|------|
-| DAL-U-010 | MUST | API Contract 注释 MUST 在 `Range` 字段声明参数合法值域 |
-| DAL-U-011 | MUST | 对执行器的控制量（speed / angle / duty），越界行为 MUST 明确声明为**饱和截断 (saturate)** 或**返回 `WINK_ERR_INVALID_ARG`** 二选一 |
+| DAL-U-010 | MUST | API Contract 注释 MUST 在 `Range` 字段声明参数合法值域（含单位与正负号区间） |
+| DAL-U-011 | MUST | A 类执行器控制量越界 MUST 采用**隐式钳位饱和（saturate to [min, max]）**，**MUST NOT 溢出回卷（overflow wrap-around）**。Debug 构建 MAY 输出 Warn/Assert 提醒开发者，Release 构建 MUST 保持安全钳位运行。只有非控制量（如配置索引、枚举）才 MAY 选择返回 `WINK_ERR_INVALID_ARG` |
+| DAL-U-012 | MUST | B 类传感器测量的内部换算 MUST 饱和无 UB：超量程值钳至该整数类型可表示的物理极值（或标记为无效/饱和状态），MUST NOT 产生回卷或未定义行为 |
 
-**范例**：
+**钳位饱和的安全意义**：执行器越界值若直接写入寄存器（如 `(ARR * duty_promille) / 1000` 中 `duty_promille=1200`），在无饱和保护下可能因整数回卷产生一个极小占空比或反向输出，导致电机/舵机暴走。钳位至硬件安全边界是与位宽无关的硬性安全约束。
+
+**现状范例**（迁移前的 stable 驱动，仍为 float；新 A 类驱动应按 §9.4 用整数）：
 
 ```c
 /**
@@ -627,28 +673,144 @@ wink_status_t dal_dc_motor_set_speed(dal_dc_motor_t *dev, float speed);
 wink_status_t dal_rc_servo_set_angle(dal_rc_servo_t *dev, float angle);
 ```
 
-### 9.3 8 位 Micro Profile 整型量纲与缩放规范
+### 9.3 量纲两分类原则（A / B）
 
-在 8 位 Micro Profile 模式下，DAL 公开 API **MUST NOT** 使用 `float` 或 `double` 数据类型（因无 FPU 支持会导致软浮点库膨胀与运行缓慢）。所有物理量与归一化控制量 MUST 转换为固定量纲的整型（`int16_t` / `uint16_t` / `int8_t`）。
+DAL 物理量按**数据流向与硬件终态**分两类，采用截然不同的跨 Profile 策略。这是本章主干原则。
+
+| | **A 类：执行器命令（Actuator Command）** | **B 类：传感器测量（Sensor Measurement）** |
+|---|---|---|
+| 方向 | App → 硬件（输出） | 硬件 → App（输入） |
+| 硬件终态 | 离散寄存器整数（PWM CCR/ARR、比较值、分频） | 物理量，喂给滤波 / 融合 / 显示 |
+| 典型量 | 速度、占空比、舵机角度、亮度、频率、**直线/角度位置**、超时/延时、引脚、计数 | 温度、距离、电压、电流、加速度、角速度、经纬度 |
+| Full 类型 | **定标整数**（刻度见 §9.4），MUST NOT 用 float | `float` / `double` + 单位后缀 |
+| Micro 类型 | **与 Full 完全相同的定标整数类型与刻度** | 定点整型 + 后缀 |
+| App 字面量 | 直接写整数（`-500`、`900`、`2500`），无需转换宏 | `_LITERAL` 宏（字面量）或具名转换函数（运行时变量） |
+| 软浮点成本 | 零 | 低频可接受，成本显式声明 |
 
 | 规则 ID | 级别 | 条款 |
 |---------|------|------|
-| DAL-8B-U-001 | MUST | 8 位 Profile 下公开 API 物理量参数与出参 MUST 使用整型与显式量纲后缀 |
-| DAL-8B-U-002 | MUST | 归一化控制量（如速度、占空比）MUST 使用 **千分比 (promille, ‰)** 整数表示，取值范围 `[-1000, 1000]` 或 `[0, 1000]` |
-| DAL-8B-U-003 | SHOULD | 角度物理量 SHOULD 使用 **0.1 度 (deci-degree, ddeg)** 或 **1 度** 整数表示 |
-| DAL-8B-T-001 | MUST | 8 位 Profile 下时间戳与计数值默认使用 `uint16_t` (最大 65535 ms / us) |
-| DAL-8B-T-002 | MUST | 状态标志与布尔值 **MUST** 使用 `uint8_t` 代替 `bool`（在 Keil C51 中 `uint8_t` 直接对应 R0-R7 寄存器，运算效率远高于 `bool`） |
+| DAL-U-020 | MUST | 每个 DAL 物理量 MUST 归类为 A（执行器命令）或 B（传感器测量）。归类依据是**数据方向与硬件终态**，而非"是否有单位"。舵机角度是 A 类（终态=PWM 脉宽整数），不是 B 类 |
+| DAL-U-021 | MUST | 新驱动的新增物理量 MUST 在 YAML 中以 `quantity_class: actuator_command \| sensor_measurement` 声明其分类（见 §16）；codegen MUST 对缺失分类报错拦截，MUST NOT 提供隐式默认 |
+| DAL-U-022 | MUST NOT | MUST NOT 引入跨 Profile 弱 typedef 量纲别名（如 `typedef float/int16_t dal_speed_t;`）"统一"类型。C typedef 不做单位检查、隐藏真实刻度、诱导 App 直连 DAL，是虚假的类型安全（[ADR-0056](../../../docs/design/decisions/0056-cross-profile-quantity-ab-class-and-scaled-integers.md) 方案①否决理由 3） |
 
-**标准 8 位 Micro Profile 量纲对照表**：
+**Math Domain ↔ Hardware Control Domain 边界**：控制量在硬件侧终态本就是离散整数——即便 32 位用 `float 0.8f`，DAL 内部写寄存器仍要 `(uint32_t)(0.8f * max_duty)`。这层 float 多此一举，还迫使 8 位端做 float↔int 软浮点转换。把 A 类量在**所有 Profile（含 32 位 Full）统一为定标整数**，可在最热控制路径消除全部浮点与转换宏；PID / 滤波等数学域留在 BAL，在 BAL→DAL 边界做一次 `(int16_t)(u * 1000)`。
 
-| 物理量 | Full Profile (32-bit) 类型 | Micro Profile (8-bit) 类型 | 单位说明与取值范围 |
-|--------|---------------------------|----------------------------|-------------------|
-| 速度归一化 | `float speed` (`[-1.0, 1.0]`) | `int16_t speed_promille` | 千分比，`[-1000, 1000]` |
-| 占空比 | `float duty` (`[0.0, 1.0]`) | `uint16_t duty_promille` | 千分比，`[0, 1000]` |
-| 舵机角度 | `float angle_deg` (`[0.0, 180.0]`) | `uint16_t angle_ddeg` | 0.1 度，`0 ~ 1800` (180.0°) |
-| 距离 | `float distance_cm` | `uint16_t distance_mm` | 毫米，`0 ~ 65535 mm` |
-| 毫秒延迟/超时 | `uint32_t timeout_ms` | `uint16_t timeout_ms` | 毫秒，`0 ~ 65535 ms` (最大 65.5s) |
-| 微秒脉冲 | `uint32_t pulse_us` | `uint16_t pulse_us` | 微秒，`0 ~ 65535 us` |
+### 9.4 A 类执行器命令的整数定标
+
+#### 9.4.1 两种定标形态
+
+A 类"用定标整数"不等于只能用千分比（‰）。按物理量性质选刻度：
+
+| 形态 | 适用 | 定标示例 | 后缀 |
+|------|------|---------|------|
+| **归一化比例量** | 无量纲相对命令（速度、占空比、亮度） | 千分比 ‰（`[-1000,1000]` / `[0,1000]`，约 10 位）；需更细用 per-10k（0.01%） | `_promille` / `_per10k` |
+| **绝对物理量** | 有 SI 单位的绝对命令（位置、脉宽、电流、转矩） | 直接选物理 LSB：µm、0.01 mm(cmm)、µs、mA、0.1°(ddeg) | `_um` / `_cmm` / `_us` / `_ma` / `_ddeg` |
+
+**0.01 mm 位置精度用例**：用绝对物理量整数定标而非 ‰——`int32_t position_um`（1 LSB=1µm=0.001mm，量程 ±2147 m，精度高于 0.01mm，长行程首选）或 `uint16_t position_cmm`（1 LSB=0.01mm，量程 0~655.35mm，短行程 8 位最省）。全 Profile 同类型同字面量（`set_position(&m, 1500)` = 15.00mm），32/8 位零软浮点、真同源。约束是位宽×量程（要"0.01mm 精度 + >655mm 行程"则 `uint16_cmm` 装不下，需 `uint32_um`），这是任何方案（含 float）都存在的物理权衡。
+
+| 规则 ID | 级别 | 条款 |
+|---------|------|------|
+| DAL-U-023 | MUST | A 类执行器命令在 Full 与 Micro 下 MUST 使用**完全相同的定标整型类型、单位后缀与倍率**，MUST NOT 在 Full 下退化为 `float`。两端原型仅句柄指针类型不同。刻度是全 Profile 契约，不可按 Profile 分化 |
+| DAL-U-024 | MUST | 定标刻度 MUST 满足器件全量程有效精度，MUST NOT 为"统一 ‰"而牺牲绝对物理量的直观性。8 位优先 `uint16_t`/`int16_t`（8051 上 32 位乘除显著更贵）；需更大量程才用 `uint32_t` 并在头注释声明 8 位成本 |
+| DAL-U-025 | MUST | A 类量的 App 字面量 MUST 直接写成目标刻度整数（`-500`、`800`），MUST NOT 用 `DAL_*()` 转换宏包装——这是 A 类相对 B 类的核心简洁性优势 |
+| DAL-U-026 | MUST | A 类定标整型 API 的头注释 MUST 含至少 3 个具名字面量示例（如 `1000=全速正转, 0=停车/coast, -500=半速反转`）及刻度换算说明，MUST NOT 假设调用者熟悉 ‰ / ddeg 隐藏缩放 |
+
+#### 9.4.2 符号规范（Signedness）
+
+| 规则 ID | 级别 | 条款 |
+|---------|------|------|
+| DAL-U-027 | MUST | 无物理反向的控制量（PWM 占空比、LED 亮度、单向脉冲、超时）**MUST** 使用无符号类型（`uint16_t` / `uint32_t`） |
+| DAL-U-028 | MUST | 允许反向/双向的控制量（双向电机转速、舵机相对偏角）**MUST** 使用有符号类型（`int16_t` / `int32_t`） |
+
+#### 9.4.3 定标整型运算溢出防护（Arithmetic Overflow Guard）
+
+8 位 / 16 位 MCU 存在 C 语言 **Integer Promotion（整型隐式提升）** 陷阱：即使操作数是 `uint16_t`，`(ARR * duty_promille)` 的中间乘积也可能在 16 位运算中溢出。
+
+| 规则 ID | 级别 | 条款 |
+|---------|------|------|
+| DAL-U-029 | MUST | DAL 驱动底层硬件寄存器换算涉及乘法中间值时（如 `CCR = (ARR * duty_promille) / 1000`），MUST 显式强转为 `uint32_t` / `int32_t` 完成乘法再做除法，MUST NOT 依赖 16 位隐式提升。codegen 与静态检查工具 MUST 对此自动化校验 |
+
+```c
+/* ✅ 正确：中间乘积提升至 32 位，避免 16 位溢出 */
+uint32_t ccr = ((uint32_t)arr * (uint32_t)duty_promille) / 1000u;
+
+/* ❌ 错误：arr 与 duty_promille 均 uint16_t 时，乘积可能在 16 位回卷 */
+uint16_t ccr = (arr * duty_promille) / 1000u;
+```
+
+#### 9.4.4 钳位饱和（Clamp Saturation）
+
+A 类 Setter 越界参数 MUST 按 DAL-U-011 隐式钳位饱和至 `[min, max]`，严禁溢出回卷引致硬件暴走：
+
+```c
+/* set_duty_promille(dev, 1200) → 钳位为 1000（100%），而非回卷 */
+if (duty_promille > 1000) duty_promille = 1000;
+```
+
+#### 9.4.5 Setter / Getter / 句柄同表示（防半整型化撕裂）
+
+| 规则 ID | 级别 | 条款 |
+|---------|------|------|
+| DAL-U-030 | MUST | 新增 A 类驱动的 Setter 参数类型、Getter 出参类型、句柄内部缓存成员 MUST 使用**同一定标整型表示**，MUST NOT 出现"Setter 用定点而 Getter 或句柄成员留存 float"的半整型化撕裂——这种不一致是最难迁移的隐蔽债 |
+
+#### 9.4.6 A 类标准量纲映射
+
+| 逻辑量 | 全 Profile 类型 / 刻度 | 说明 |
+|--------|----------------------|------|
+| 有符号归一化速度/控制量 | `int16_t speed_promille` `[-1000,1000]` ‰ | 0.1% 精度，0=coast/stop |
+| 无符号占空比/亮度 | `uint16_t duty_promille` `[0,1000]` ‰ | 0.1% 精度 |
+| 舵机/执行器角度 | `uint16_t angle_ddeg` 0.1° | 0~1800 = 0~180.0°；精度远高于机械公差 |
+| 直线位置 | `int32_t position_um` / `uint16_t position_cmm` | 按行程与精度选 |
+| PWM 频率 | `uint32_t pwm_freq_hz` | 全 Profile 同宽 |
+| 超时/延时/周期 | 见 §9.4.7 | 时间是 A 类但宽度需特殊处理 |
+
+> **精度论证**：‰（约 10 位）对电机、舵机、LED 背光、蜂鸣器音量等 99.9% 场景足够——8 位 PWM 仅 256 级，舵机机械公差通常 ±1° 以上。若个别器件需更细（如 12 位以上调光），按 DAL-U-024 提升至 per-10k 或物理定标，MUST NOT 为此回退 float。
+
+#### 9.4.7 时间量的特殊处理
+
+时间/超时/延时属 A 类（终态是定时器计数），但宽度跨 Profile 不同，是已知例外：
+
+| 规则 ID | 级别 | 条款 |
+|---------|------|------|
+| DAL-U-031 | MUST | Full Profile 时间量用 `uint32_t`（ms）；Micro Profile 默认 `uint16_t`（ms，上限 65535 ≈ 65.5s）。两端**宽度不同但刻度相同（毫秒）**，字面量 `100` 语义一致 |
+| DAL-U-032 | MUST | 超过 Micro `uint16_t` 上限的时间值 MUST 在 codegen 阶段报错，MUST NOT 静默截断/回绕。需要更长超时的 Micro 器件可显式选用 `uint32_t`（8051 运算更贵，需在头注释声明成本） |
+
+### 9.5 B 类传感器测量的跨 Profile 映射
+
+B 类量（温度、距离、电压、IMU、GPS 等）在 32 位上常需浮点做滤波/融合，在 8 位上退化为定点整型。此类**不追求全 Profile 同类型**，差异由 codegen binding 吸收。
+
+| 规则 ID | 级别 | 条款 |
+|---------|------|------|
+| DAL-U-040 | MUST | B 类量在 Full Profile MUST 使用带单位后缀的 `float`/`double`（`temp_degc`、`distance_cm`、`voltage_mv`）；在 Micro Profile 使用带后缀的定标整型（`temp_ddegc`、`distance_mm`、`voltage_mv`） |
+| DAL-U-041 | SHOULD | B 类量在两端 SHOULD 优先统一物理单位（如 Full 内部也用 mm 而非 cm），以减少 App 阈值换算；单位选择以"物理不变量最直观、App 换算最少"为准，但不强制（cm 在 32 位浮点更直观时可保留） |
+| DAL-U-042 | MUST | **物理不变量**：同一 B 类量折算到标准物理单位后在两端 MUST 相等；Micro 超位宽量程由 codegen 生成期报错或饱和标记，MUST NOT 静默截断导致"同一读数跨端语义不同" |
+| DAL-U-043 | SHOULD | B 类 Micro binding SHOULD 区分两种策略：①`float_bridge`（默认，App 接口保持 float，内部转换，同源优先）；②`native_int`（暴露原生定点整型，零软浮点优先）。器件作者按采样频率与资源预算在 YAML 显式选择 |
+
+**标准 B 类量纲映射**：
+
+| 逻辑量 | Full 类型/刻度 | Micro 类型/刻度 | 不变量 |
+|--------|---------------|----------------|--------|
+| 温度 | `float temp_degc` °C | `int16_t temp_ddegc` 0.1°C | 同一温度 |
+| 距离 | `float distance_cm` cm | `uint16_t distance_mm` mm | 同一距离 |
+| 电压 | `float voltage_mv` mV | `uint16_t voltage_mv` mV | 同一电压 |
+| 电流/加速度/角速度 | `float`（A / m·s⁻² / °·s⁻¹） | 定标整型（`_ma` / `_mps2` / `_mdps`） | 同一物理量 |
+| 经纬度 | `double`（µ°） | 仅 Full（`supported_profiles: [full]`） | — |
+
+> B 类的字面量转换宏（`_LITERAL` 后缀，零开销，仅实参为编译期常量时成立）与运行时具名转换函数（Micro 上软浮点成本由头注释显式声明）属纯 8 位机制，细节见 [`dal-micro-profile-spec.md`](dal-micro-profile-spec.md)。MUST 严格区分"编译期字面量换算"与"运行时变量换算"，不得用同一宏掩盖运行时软浮点成本。
+
+### 9.6 8 位 Micro Profile 量纲（概览）
+
+8 位 Micro Profile 下 DAL 公开 API MUST NOT 使用 `float`/`double`（无 FPU，软浮点库膨胀且缓慢）。A 类量纲直接适用 §9.4 的全 Profile 定标整数表；B 类量按 §9.5 退化为定点整型。纯 8 位机制——Flash Zero-Copy 句柄、`WINK_CODE/XDATA/IDATA` 存储区、`reentrant` 与 Overlay 分析、`uint8_t` 代 `bool`、`uint16_t` 时间戳、`_LITERAL` 宏与运行时转换、codegen micro 模板分支——见独立子规范 [`dal-micro-profile-spec.md`](dal-micro-profile-spec.md)。
+
+**Micro Profile 量纲对照（概览，详见子规范）**：
+
+| 物理量 | Full (32-bit) | Micro (8-bit) | 单位 / 范围 |
+|--------|--------------|---------------|------------|
+| 速度（A 类） | `int16_t speed_promille` | `int16_t speed_promille` | 千分比，`[-1000,1000]` |
+| 占空比（A 类） | `uint16_t duty_promille` | `uint16_t duty_promille` | 千分比，`[0,1000]` |
+| 舵机角度（A 类） | `uint16_t angle_ddeg` | `uint16_t angle_ddeg` | 0.1°，`0~1800` |
+| 距离（B 类） | `float distance_cm` | `uint16_t distance_mm` | cm / mm |
+| 毫秒超时（A 类） | `uint32_t timeout_ms` | `uint16_t timeout_ms` | 毫秒（宽度差异见 DAL-U-031） |
 
 ---
 
@@ -773,6 +935,18 @@ YAML 中 `experimental: true` 表示"接口可能变动 + 实现可能不完整"
 |---------|------|------|
 | DAL-BC-010 | SHOULD | config_t 和 dal_xxx_t SHOULD 添加编译期 ABI 断言。首选 `offsetof(...) == N`（位宽无关，详见 [§2.3](#23-abi-稳定性断言)）；含指针的结构体若用整体 `sizeof` 断言 MUST 按 `INTPTR_MAX` 分 32/64 位两档，避免在 64 位 host 测试上误报 |
 | DAL-BC-011 | SHOULD | `apply_override` 的 params 反序列化 SHOULD 有显式长度校验（不仅依赖 `len` 参数隐式判版本） |
+| DAL-BC-012 | MUST | `apply_override` 的 wire payload MUST 携带 `schema_version` 字段（至少 1 字节），接收方 MUST 校验 version + length 后再反序列化。版本不匹配时 MUST 返回 `WINK_ERR_VERSION_MISMATCH`（待定义）或 `WINK_ERR_INVALID_ARG` |
+
+### 13.4 API 版本标识 (MAY)
+
+驱动头文件 MAY 定义编译期 API 版本宏，供 OTA 升级、Wasm 模块热加载等场景的版本兼容性检查使用：
+
+```c
+/* 版本格式: 0xMMmmPP (Major.Minor.Patch) */
+#define DAL_DC_MOTOR_API_VERSION  0x030300  /* v3.3.0 */
+```
+
+运行时如需查询，可通过全局宏或包裹函数（待设计）暂不作强制规定。
 
 ---
 
@@ -785,6 +959,18 @@ YAML 中 `experimental: true` 表示"接口可能变动 + 实现可能不完整"
 | DAL-EC-001 | MUST | 通用错误码（`WINK_OK`, `WINK_ERR_INVALID_ARG`, `WINK_ERR_NOT_INITIALIZED`, `WINK_ERR_TIMEOUT`, `WINK_ERR_BUSY`, `WINK_ERR_UNSUPPORTED`, `WINK_ERR_IO`）从 `wink_status.h` 全局定义 |
 | DAL-EC-002 | MUST | DAL API MUST 优先使用通用错误码 |
 | DAL-EC-003 | SHOULD | 如需器件特有错误码（如未来可为 GPS 定义 `WINK_ERR_GPS_NO_FIX`，当前 `wink_status.h` 尚未定义），SHOULD 通过头文件中的 `#define` 宏定义并在 `wink_status.h` 预留数值范围 |
+| DAL-EC-004 | MUST | 器件特有错误码 MUST 落在 `wink_status.h` 预留的分段范围内，严禁随意选取数值导致集成期冲突 |
+
+**错误码分段预留方案**（待 `wink_status.h` 正式落地）：
+
+| 数值范围 | 所属层 | 说明 |
+|-----------|--------|------|
+| 0 | 全局 | `WINK_OK` |
+| -1 ~ -99 | 全局通用 | `WINK_ERR_INVALID_ARG`, `WINK_ERR_TIMEOUT` 等 |
+| -100 ~ -199 | DAL 保留 | DAL 层共用错误码（如未来的 `WINK_ERR_VERSION_MISMATCH`） |
+| -200 ~ -299 | 器件特有 | 按器件类型分配子段（由 driver registry 管理） |
+| -300 ~ -399 | PAL | PAL 层平台相关错误码 |
+| -400 ~ -499 | App | 应用层错误码 |
 
 ### 14.2 init 幂等性
 
@@ -808,6 +994,15 @@ YAML 中 `experimental: true` 表示"接口可能变动 + 实现可能不完整"
 |---------|------|------|
 | DAL-EC-030 | MUST | `init` 函数 MUST 做最小化防御校验（NULL 检查、关键字段范围），即使 codegen 已在生成时校验 |
 | DAL-EC-031 | SHOULD | codegen 层 SHOULD 做完整语义校验（字段约束、值域、枚举合法性）。两层防御 |
+
+### 14.5 总线错误恢复策略 (Bus Error Recovery)
+
+| 规则 ID | 级别 | 条款 |
+|---------|------|------|
+| DAL-EC-040 | SHOULD | 使用 I2C/SPI 总线的 DAL 驱动，在检测到连续 N 次通信超时/NAK 后，SHOULD 通过 PAL 层的 bus recovery 原语（如 `pal_i2c_bus_recover`）尝试恢复总线，并在 API Contract 注释声明恢复策略。重试次数 N SHOULD 可通过 config 字段配置（默认值建议 3 次） |
+| DAL-EC-041 | SHOULD | 总线恢复失败后 SHOULD 将驱动状态设为 ERROR，并通过事件回调或 `get_status` 通知上层。在三段式驱动中，总线故障 SHOULD 将状态机迁移到 ERROR 状态 |
+
+> **I2C 总线死锁背景**：I2C 总线因 slave 设备异常保持 SDA 低电平导致总线挂死（bus stuck）是嵌入式产品中极其常见的故障场景。PAL 层 bus recovery 通常通过发送 9 个时钟脉冲释放 SDA 来恢复。
 
 ---
 
@@ -834,6 +1029,7 @@ YAML 中 `experimental: true` 表示"接口可能变动 + 实现可能不完整"
  *   - ISR-safe: ★ No / Yes。
  *   - Reentrancy: No / Yes。
  *   - Simulation-parity: 两端行为差异说明（如有）。
+ *   - Side-effects: 除返回值外的所有可观测副作用（如 "Modifies dev->last_speed; triggers PWM duty update"）。
  *   - Error-codes: ★ WINK_OK / WINK_ERR_xxx / ...
  */
 ```
@@ -857,23 +1053,26 @@ YAML 中 `experimental: true` 表示"接口可能变动 + 实现可能不完整"
 | 本规范条款 | YAML 字段 | 说明 |
 |-----------|----------|------|
 | §1.3 Profile 分级支持 | `profiles` | 声明驱动支持的 Profile（如 `[full, micro_8bit]`） |
-| §2.4 / §9.3 8位类型重映射 | `profile_overrides.micro_8bit` | 定义 8 位 Micro Profile 专用的 `config_type`、`handle_type` 与整数量纲类型 |
+| §2.4 / §9.6 8位类型重映射 | `profile_overrides.micro_8bit` | 定义 8 位 Micro Profile 专用的 `config_type`、`handle_type` 与整数量纲类型 |
+| §9.3 量纲两分类 | `quantity_class: actuator_command \| sensor_measurement` | 每个物理量字段声明 A/B 分类；缺失 MUST 在 codegen 生成期报错（DAL-U-021） |
+| §9 量纲与定标 | `quantity` + `unit`/`scale`/`range` | 声明逻辑量纲（speed/angle/distance...）、刻度后缀与量程；codegen 据此生成类型、后缀、全 Profile 同刻度校验与 Micro 超量程报错（DAL-U-023/032/042） |
 | §3.2 safe_off 按 category | `is_actuator: true/false` + `config.safe_off_fn` | `safe_off_fn: ""` = 该器件无安全关断语义 |
 | §5.3 按 category 分组 | `category: actuator/output/input/sensor/display/storage/comm` | 直接复用，不引入新分类词 |
 | §5.4 器件特有 API | 未来 `device_specific: true` | 待 codegen 支持 |
 | §11.2 Stub | `experimental: true` | 标记实现未完成 |
 | §13 兼容性 | `codegen_schema: "1.1"` | schema 版本变更需评审 |
+| §3.1 / §14.5 总线依赖 (建议) | `dependencies` (待引入) | 声明驱动对总线/其他器件的依赖关系（如 I2C bus, encoder feedback） |
 
 ### 16.3 真实 YAML Profile 多 Target 支持参考
 
-`codegen/drivers/*.yaml` 增加 Profile 分级表达式示例（以 `rc_servo.yaml` 为参考）：
+> **现状说明（待 codegen 落地）**：当前 `codegen/drivers/*.yaml` 的 role verb 模板使用**单一 `template` 字段**（见 `rc_servo.yaml`），per-profile 模板（`template_full` / `template_micro_8bit`）、`quantity`/`quantity_class` 量纲元数据、`profile_overrides` 类型重映射均为**待 codegen 实现的目标形态**，尚未在生成器中生效。下列示例为规范目标（[ADR-0056](../../../docs/design/decisions/0056-cross-profile-quantity-ab-class-and-scaled-integers.md)），不代表当前生成器能力。
 
 ```yaml
 codegen_schema: "1.1"     # schema 版本号
 type: rc_servo             # 器件类型名
 category: actuator         # 分类
 is_actuator: true          # 执行器标记
-experimental: false
+experimental: true
 default_role: angular_actuator
 
 # 声明支持的 Profile 列表
@@ -881,13 +1080,18 @@ profiles:
   - full
   - micro_8bit
 
-# 8 位 Profile 专用重映射 (Zero-Copy Flash 配置与整数量纲)
+# 8 位 Profile 专用重映射 (Zero-Copy Flash 配置与定标整数)
 profile_overrides:
   micro_8bit:
     config_type: dal_rc_servo_8b_config_t
     handle_type: dal_rc_servo_8b_t
-    value_types:
-      angle: { type: uint16_t, unit: deci_deg, range: [0, 1800] }
+
+quantities:                # 量纲 SSOT（§9）
+  angle:
+    quantity_class: actuator_command   # A 类：全 Profile 同定标整数
+    type: uint16_t
+    unit: ddeg             # 0.1°
+    range: [0, 1800]       # 0~180.0°
 
 config:                    # Full Profile 默认 C 类型映射
   c_type: dal_rc_servo_t
@@ -896,30 +1100,35 @@ config:                    # Full Profile 默认 C 类型映射
   deinit_fn: dal_rc_servo_deinit
   safe_off_fn: dal_rc_servo_safe_off
 
-role_bindings:             # Role verb → Jinja 模板 (支持两端分发)
+role_bindings:             # Role verb → Jinja 模板 (per-profile 待实现)
   angular_actuator:
     verbs:
+      # A 类：angle 全 Profile 都是 uint16_t angle_ddeg，模板体完全一致（无转换、无软浮点）
       set_angle:
-        template_full: "dal_rc_servo_set_angle(&{{dev}}, {{angle_deg}}f);"
-        template_micro_8bit: "dal_rc_servo_8b_set_angle(&{{dev}}, {{angle_ddeg}});"
+        template_full:       "dal_rc_servo_set_angle(&{{dev}}, {{angle_ddeg}});"
+        template_micro_8bit: "dal_rc_servo_set_angle(&{{dev}}, {{angle_ddeg}});"
 ```
+
+> **B 类（传感器测量）模板差异**：B 类量在 Full 是 float、Micro 是定点整型，Micro 模板中用 `_LITERAL` 宏包装字面量或具名函数转换运行时变量（见 §9.5 与子规范）；其软浮点成本须显式声明。A 类无此问题——这是分类治理带来的核心简洁性。
 
 ---
 
 ## 17. 合规矩阵与迁移策略
 
-### 17.1 现状合规矩阵 (v2.1.0 基线)
+### 17.1 现状合规矩阵 (v3.2.0 基线)
 
 图例：✅ 合规 / ❌ 不合规 / — 不适用 / ⚠ 部分合规
 
-> 本基线冻结于 v2.1.0，覆盖本轮新增的 MUST 条款（DAL-C-040、DAL-F-020、DAL-B-024 等）。下方矩阵聚焦生命周期与注释形态；完整逐条合规状态见 [§17.3.1](#1731-规则实施状态)。
+> 本基线冻结于 v3.3.0，覆盖本轮新增的 MUST 条款（DAL-L-008, DAL-L-015, DAL-S-015, DAL-B-025, DAL-EC-004, DAL-BUF-003, DAL-BC-012 等）。下方矩阵聚焦生命周期与注释形态；完整逐条合规状态见 [§17.3.1](#1731-规则实施状态)。
 >
-> 🌟 **Golden Reference (黄金参考驱动样板)**：正式标定 `led` 驱动 (`dal_led.h/c` 与 `dal_led_8b.h/c`) 为双 Profile 黄金参考实现。新增驱动开发与 Code Review 必须以 `led` 驱动的接口范式、ABI 断言、Contract 注释与剪枝守卫格式为标准样板。
+> 🌟 **Golden Reference (黄金参考驱动样板)**：正式标定 `dc_motor` 驱动 (`dal_dc_motor.h/c`) 为 Full Profile 黄金参考实现。新增驱动开发与 Code Review 必须以 `dc_motor` 驱动的接口范式、ABI 断言、Contract 注释与剪枝守卫格式为标准样板。待 `dal_led_8b` 在 8051 CI 上成功构建后，双 Profile 标杆将迁移至 `led` 驱动。
+>
+> ⚠️ **dc_motor 的 `float set_speed` 是迁移前现状，不是新 A 类驱动的量纲范例**：dc_motor 为 stable（Golden Ref、已冻结），其 `set_speed(dev, float speed_norm)` 与句柄 `float current_speed` 保留至真正的 8 位需求出现，再经 deprecation（新增 `set_speed_promille(int16_t)` + 两个 minor 窗口 + ADR，见 [ADR-0056](../../../docs/design/decisions/0056-cross-profile-quantity-ab-class-and-scaled-integers.md)）整型化。**新增 A 类执行器驱动的 Golden Ref 行为应以 §9.4 定标整数为准**（如 rc_servo 整型化后可考虑更新量纲标杆）；stable 现状不构成对新驱动使用 float 的背书。
 
 | 驱动 | init | deinit | safe_off | const getter | Contract 注释 | WINK_BLOCKING 标注 |
 |------|------|--------|----------|-------------|---------------|-------------------|
-| led (⭐Golden Ref) | ✅ | ✅ | ⚠ (别名 off) | — | ⚠ 部分缺 | — |
-| dc_motor | ✅ | ✅ | ✅ (brake) | ✅ | ✅ | — |
+| dc_motor (⭐Golden Ref) | ✅ | ✅ | ✅ (brake) | ✅ | ✅ | — |
+| led | ✅ | ✅ | ⚠ (别名 off) | — | ⚠ 部分缺 | — |
 | rc_servo | ✅ | ✅ | ✅ (duty=0) | — | ✅ | — |
 | button | ✅ | ✅ | — | ✅ | ⚠ 部分缺 | — |
 | encoder | ✅ | ✅ | — | ✅ | ⚠ 缺 Contract | — |
@@ -932,16 +1141,16 @@ role_bindings:             # Role verb → Jinja 模板 (支持两端分发)
 
 | 阶段 | 范围 | 规则模式 | 截止 |
 |------|------|---------|------|
-| v2.1 发布 | 冻结基线矩阵（见 §17.1） | — | 本文档合并时 |
+| v3.2 发布 | 冻结基线矩阵（见 §17.1） | — | 本文档合并时 |
 | 新增驱动 | 新增 YAML + 头文件 | 所有 MUST 规则以 **error** 模式执行 | 立即生效 |
-| 存量驱动 | 已有 9 个驱动 | MUST 规则以 **warning** 模式执行 | v2.2 迁移完成 |
-| v2.2 | 存量提级 | warning → error | 待定（建议 2 个迭代内） |
+| 存量驱动 | 已有 9 个驱动 | MUST 规则以 **warning** 模式执行 | v3.3 迁移完成 |
+| v3.3 | 存量提级 | warning → error | 待定（建议 2 个迭代内） |
 
 ### 17.3 规则 ID 与 lint 集成
 
 | 要素 | 约定 |
 |------|------|
-| 规则 ID 格式 | `DAL-<category>-<number>`（如 `DAL-S-001`, `DAL-L-010`） |
+| 规则 ID 格式 | `DAL-<category>-<number>`（如 `DAL-S-001`, `DAL-BUF-001`） |
 | Lint 引擎 ID | `dal.<snake_case_rule>`（如 `dal.config_owner_first`），与 `wink-tools/tools/lint/` 的 `<pack>.<rule>` 命名法对齐 |
 | 所属 pack | DAL 规则使用独立 pack `dal`（`wink lint --pack dal`），不塞进现有 `api` 或 `layering` pack |
 | 例外标注 | 代码内：`// lint-allow: DAL-S-001 (reason)`；YAML 内：`lint_exceptions` 字段（待引擎支持） |
@@ -954,29 +1163,35 @@ role_bindings:             # Role verb → Jinja 模板 (支持两端分发)
 |------|------|
 | `lint-enforced` | CI 已有 lint 规则拦截 |
 | `review-enforced` | 纯语义约束，靠代码评审保障（如"越界饱和还是报错"） |
-| `pending` | 待实现（需给 issue 跟踪号，避免"永远 pending"） |
+| `pending` | 待实现（必须指定 Issue 跟踪号，如 `#WINK-DAL-001`，避免永不落地） |
 
-**核心规则实施状态**（完整表待 `dal` lint pack 落地后补齐）：
+**核心规则实施状态**：
 
 | 规则 ID | 条款摘要 | 实施状态 | 跟踪 |
 |---------|---------|----------|------|
 | DAL-F-001 | 返回 wink_status_t | `lint-enforced` (api pack: `STATUS-NOT-BOOL-PUBLIC`) | — |
 | DAL-F-002 | 禁止 bool 返回值 | `lint-enforced` (api pack: `STATUS-NOT-BOOL-PUBLIC`) | — |
 | DAL-T-001 | dal/ 禁 #ifdef 平台宏 | `lint-enforced` (layering pack) | — |
-| DAL-S-001 | config 首成员 owner | `pending` | `dal` lint pack 首迭代落地（issue 待建） |
+| DAL-S-001 | config 首成员 owner | `pending` | issue `#WINK-DAL-001` |
+| DAL-BUF-001 | DMA/Buffer 持有契约 | `review-enforced` | issue `#WINK-DAL-002` |
 | DAL-C-040 | 默认非线程安全 | `review-enforced` | — |
 | DAL-U-010 | Range 值域声明 | `review-enforced` | — |
+| DAL-U-011 | A 类越界钳位饱和无回卷 | `review-enforced` | — |
+| DAL-U-023 | A 类全 Profile 定标整数（Full 禁用 float） | `review-enforced`（新增驱动）；codegen `quantity_class` 校验待实现 | issue `#WINK-DAL-030` |
+| DAL-U-029 | 定标乘法中间值提升 32 位 | `pending`（静态检查） | issue `#WINK-DAL-031` |
+| DAL-U-022 | 禁弱 typedef 量纲别名 | `review-enforced` | — |
 | DAL-E-001 | safe_off 声明具体行为 | `review-enforced` | — |
 | DAL-F-020 | 错误返回时出参不变 | `review-enforced` | — |
 | DAL-B-012 | 严禁空循环忙等 | `review-enforced` | — |
-| DAL-8B-S-001 | 8位禁句柄深拷贝 config | `review-enforced` | — |
-| DAL-8B-S-002 | 8位句柄包含 ROM 指针 | `review-enforced` | — |
-| DAL-8B-S-020 | 8位模式静态内存禁令 (No-malloc) | `review-enforced` | — |
-| DAL-8B-U-001 | 8位 API 禁用 float | `pending` | `dal.8bit` lint pack 跟踪 |
-| DAL-8B-U-002 | 归一化量使用千分比 ‰ | `review-enforced` | — |
-| DAL-8B-F-001 | 8位禁用 void* 虚分发 | `review-enforced` | — |
-| DAL-8B-C-001 | 8位使用 EA 中断保护 | `review-enforced` | — |
-| DAL-8B-T-010 | 8位符合 ANSI C89 / SDCC CI 构建检查 | `pending` | CI 集成 SDCC 跟踪 |
+| DAL-L-008 | init 失败资源回滚 | `review-enforced` | issue `#WINK-DAL-020` |
+| DAL-L-015 | deinit best-effort 语义 | `review-enforced` | — |
+| DAL-S-015 | config 不可变性 | `review-enforced` | — |
+| DAL-B-025 | poll 返回值语义 | `review-enforced` | issue `#WINK-DAL-021` |
+| DAL-EC-004 | 错误码分段预留 | `pending` | issue `#WINK-DAL-022` |
+| DAL-V-010 | was_* 读后清原子性 | `review-enforced` | — |
+| DAL-BUF-003 | DMA Cache 同步 | `review-enforced` | — |
+| DAL-BC-012 | override wire 版本校验 | `pending` | issue `#WINK-DAL-023` |
+| DAL-8B-* | 8位 Micro Profile 规则全集 | `pending` | 见 [`dal-micro-profile-spec.md`](dal-micro-profile-spec.md) (issue `#WINK-DAL-010`) |
 
 ### 17.4 已知例外
 
@@ -988,14 +1203,14 @@ role_bindings:             # Role verb → Jinja 模板 (支持两端分发)
 
 ---
 
-## 附录 A. 功耗模式 (Reserved — MUST NOT 实现)
+## 附录 A. 功耗模式 (Reserved — 暂不实现)
 
 > **状态**：Reserved (Phase N, 待 PM 框架 ADR)
 
 当前无系统级 PM (Power Management) 框架，0 个驱动实现 `suspend` / `resume`。
 
 ```c
-/* ⚠ RESERVED — 当前 MUST NOT 实现 */
+/* ⚠ RESERVED — 待 PM ADR 裁决后再实现，当前不得提前实现空壳 */
 wink_status_t dal_<type>_suspend(dal_<type>_t *dev);
 wink_status_t dal_<type>_resume(dal_<type>_t *dev);
 ```
