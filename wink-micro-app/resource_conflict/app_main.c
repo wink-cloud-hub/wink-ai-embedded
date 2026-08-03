@@ -67,11 +67,11 @@ static void case_pwm_channel_conflict(void)
     dal_rc_servo_t servo_b = {0};
     const dal_rc_servo_config_t cfg_a = {
         .owner = "steering", .pwm_channel = 0,
-        .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f
+        .min_pulse_us = 500, .max_pulse_us = 2500
     };
     const dal_rc_servo_config_t cfg_b = {
         .owner = "gripper",  .pwm_channel = 0,
-        .min_pulse_ms = 0.5f, .max_pulse_ms = 2.5f
+        .min_pulse_us = 500, .max_pulse_us = 2500
     };
 
     ASSERT_EQ(WINK_OK,        dal_rc_servo_init(&servo_a, &cfg_a), "PWM: first servo init");

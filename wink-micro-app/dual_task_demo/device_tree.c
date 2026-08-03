@@ -13,9 +13,9 @@ dal_ultrasonic_t front_radar = {
 dal_rc_servo_t neck_servo = {
     .config.owner = "neck_servo",
     .config.pwm_channel = 0,
-    .config.min_pulse_ms = 0.5f,
-    .config.max_pulse_ms = 2.5f,
-    .current_angle = 90.0f,
+    .config.min_pulse_us = 500,
+    .config.max_pulse_us = 2500,
+    .current_angle_ddeg = 900, /* 90.0° */
 };
 
 static const wink_dev_override_entry_t g_overrides[] = {
