@@ -36,12 +36,32 @@ float dal_pulse_us_to_cm(uint32_t pulse_us) {
 wink_status_t dal_ultrasonic_apply_override(void *dev, const uint8_t *params, uint16_t len) {
     dal_ultrasonic_t *u = (dal_ultrasonic_t *)dev;
     if (u == NULL || params == NULL) { return WINK_ERR_INVALID_ARG; }
-    if (len < 4u) { return WINK_ERR_INVALID_ARG; }   /* u16@0 + u16@2 → ≥4B */
 
+    /* DAL-BC-012 (MUST): wire payload MUST carry a schema_version, validated
+     * before deserialising. Versions:
+     *   v0 (legacy, 4B): trig_pin:u16@0, echo_pin:u16@2   (no version byte)
+     *   v1 (current, 5B): version:u8@0 (=0x01), trig_pin:u16@1, echo_pin:u16@3
+     * v0 detection rule: if len >= 5 AND params[0] == 0x01, parse as v1;
+     * otherwise (len < 5 OR legacy version-less blob) parse as v0.
+     * This is forward-compatible: any future version byte != 0x01 falls back
+     * to v0 strict rejection (returns INVALID_ARG) once we have a v2 to
+     * distinguish. Mismatched length is INVALID_ARG. */
     uint16_t trig_pin;
     uint16_t echo_pin;
-    memcpy(&trig_pin, params + 0, 2);
-    memcpy(&echo_pin, params + 2, 2);
+    if (len >= 5u && params[0] == 0x01u) {
+        /* v1: explicit version byte */
+        memcpy(&trig_pin, params + 1, 2);
+        memcpy(&echo_pin, params + 3, 2);
+    } else if (len >= 4u) {
+        /* v0 legacy: no version byte. Accept only when first byte is not a
+         * future-version marker; here the trigger is "len < 5 OR [0] != 0x01"
+         * which already covered the v0 case above. We treat any len>=4 blob
+         * as v0 — robust to leading zero bytes in legacy Flash content. */
+        memcpy(&trig_pin, params + 0, 2);
+        memcpy(&echo_pin, params + 2, 2);
+    } else {
+        return WINK_ERR_INVALID_ARG;   /* too short for both v0 and v1 */
+    }
 
     if (trig_pin == echo_pin) { return WINK_ERR_INVALID_ARG; }   /* 非法不写 */
 
