@@ -5,8 +5,11 @@
 #include "pal_resource.h"
 #include "hal/pal_rmt.h"     /* pal_rmt_pulse_capture_init eager warm-up (see init below) */
 #include "wink_pt_debug.h"   /* WINK_ASSERT_NONBLOCKING() (ADR-0017 层 3 runtime hook) */
+#include "pal_log.h"         /* LOG_TAG / LOG_W for deinit best-effort trace (DAL-L-014) */
 
 #include <string.h>   /* memcpy（ADR-0008 apply_override 反序列化） */
+
+#define LOG_TAG "dal_ultrasonic"
 
 /* ADR-0017 层 1 例外：本 TU 合法调用多个 WINK_BLOCKING API
  * (pal_os_busy_wait_us, pal_gpio_pulse_in) 以及 blocking 的 dal_ultrasonic_read 自身。
@@ -63,31 +66,49 @@ wink_status_t dal_ultrasonic_deinit(dal_ultrasonic_t *dev) {
     const char *owner = dev->config.owner;
     bool use_rmt = dev->config.use_rmt;
 
+    /* DAL-L-015: best-effort 清场. 每个 step 即使失败也继续执行后续 step,
+     * 同时记录第一个失败的 rc 用于函数返回 + LOG_W (DAL-L-014). */
+    wink_status_t first_err = WINK_OK;
+#define LOGW_IF_ERR(step, rc) do {                                              \
+        if (wink_status_is_error((rc)) && !wink_status_is_error(first_err)) {  \
+            first_err = (rc);                                                  \
+            LOG_W("deinit step '%s' failed rc=%d (continuing best-effort)",    \
+                  (step), (int)(rc));                                          \
+        }                                                                       \
+    } while (0)
+
     /* 1. Best-effort pull trig_pin LOW (safe-off semantic, ≤1µs). */
-    WINK_IGNORE_UNUSED(pal_gpio_write(trig_pin, false));
+    LOGW_IF_ERR("pal_gpio_write(trig LOW)", pal_gpio_write(trig_pin, false));
 
     /* 4. Deinitialize RMT hardware capture if RMT was enabled —
      *    this force-stops any in-flight burst without waiting for idle_thres
      *    (ADR-0024 §4 #4 DMA/descriptor cleanup; pal_rmt_pulse_capture_deinit
      *    calls rmt_rx_stop + rmt_del_channel internally). */
     if (use_rmt) {
-        pal_rmt_pulse_capture_deinit();
+        LOGW_IF_ERR("pal_rmt_pulse_capture_deinit", pal_rmt_pulse_capture_deinit());
     }
 
     /* 2. Reset both GPIO pins: disables leftover routing, reverts to Hi-Z,
      *    releases esp_gpio_reserve bitmap (ADR-0024 §4 #2). Both pins must be
      *    reset — trig is an output, echo is the RMT input. */
-    pal_gpio_reset_pin(trig_pin);
-    pal_gpio_reset_pin(echo_pin);
+    LOGW_IF_ERR("pal_gpio_reset_pin(trig)", pal_gpio_reset_pin(trig_pin));
+    LOGW_IF_ERR("pal_gpio_reset_pin(echo)", pal_gpio_reset_pin(echo_pin));
 
     /* Release SW resource claims for both pins */
-    WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN, trig_pin, owner));
-    WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN, echo_pin, owner));
+    LOGW_IF_ERR("pal_resource_release(trig)",
+                pal_resource_release(PAL_RESOURCE_GPIO_PIN, trig_pin, owner));
+    LOGW_IF_ERR("pal_resource_release(echo)",
+                pal_resource_release(PAL_RESOURCE_GPIO_PIN, echo_pin, owner));
+
+#undef LOGW_IF_ERR
 
     /* 7. Clear the instance data completely to guarantee no residual state */
     memset(dev, 0, sizeof(dal_ultrasonic_t));
 
-    return WINK_OK;
+    /* DAL-L-015: 返回 first_err 让调用方知晓是否有 step 失败, 但硬件
+     * 状态已 best-effort 清场, 调用方 MUST NOT 重试或继续使用 dev.
+     * 我们的语义: success = WINK_OK; 部分 step 失败 = 返回 first_err 但清场已完成. */
+    return first_err;
 }
 
 wink_status_t dal_ultrasonic_init(dal_ultrasonic_t *dev, const dal_ultrasonic_config_t *cfg) {
