@@ -35,6 +35,7 @@
 | 双 target | 同源可编 wasm / ESP-IDF（[ADR-0002](../../../docs/design/decisions/0002-dual-target-compilation.md)） |
 | 语义命名 | 控制语义优先（如 `dc_motor`、`rc_servo`）；禁止用泛称 `motor` 当 DAL 类型前缀（[ADR-0048](../../../docs/design/decisions/0048-actuator-control-semantic-naming.md)） |
 | A/B 量纲分类 | A 类执行器命令全 Profile 统一定标整数，B 类传感器测量用 float/定点分化（[ADR-0056](../../../docs/design/decisions/0056-cross-profile-quantity-ab-class-and-scaled-integers.md)） |
+| Profile 内存模式 | Full Profile (32-bit) 采用 POD 深拷贝 `config_t`；Micro Profile (8-bit) 采用 ROM 零拷贝引用（[dal-micro-profile-spec.md](./dal-micro-profile-spec.md)） |
 | 资源认领 | init 认领 PWM/GPIO 等；deinit / 失败路径释放 |
 | 分层 | App/BAL → DAL → PAL；改完跑 `wink.py lint --pack layering --pack api` |
 
@@ -240,28 +241,29 @@ pulse_ms = min_pulse + (angle / effective_max_angle) * (max_pulse - min_pulse)
 每个可失败操作返回 `wink_status_t`，并通常提供：
 
 - `dal_<type>_init` / `deinit`
-- 语义读写或设定（如 `set_speed`、`read`）
-- 执行器：`safe_off`（语义在 ADR/头文件注释中写死，如 DC→brake）
-- 头文件：`WINK_USE_*` 关闭时的 `WINK_UNAVAILABLE` stub
+- 语义读写或设定（如 `set_speed_promille`、`set_angle_ddeg`）
+- **A 类量纲类型**：全 Profile 统一定标整数（千分比 ‰ / ddeg 0.1度）；参数越界执行**隐式钳位饱和（saturate）**，禁止溢出回卷（[ADR-0056](../../../docs/design/decisions/0056-cross-profile-quantity-ab-class-and-scaled-integers.md)）。
+- **执行器 `safe_off`**：未初始化调用 MUST 安全返回 `WINK_OK`（确保故障消费链路连贯）；初始化后执行安全关断（如 DC 刹车 brake，ADR-0048）。
+- **头文件 Stub**：`WINK_USE_*` 关闭时的 `WINK_UNAVAILABLE` stub。
 
 执行器类别、目录归属（`actuator/` vs `comm/` 等）遵循活规范与近期 ADR（如 VESC 协议帧归 `actuator/` 等约定）。
 
 ---
 
-## 5. Codegen 与裁剪
+## 5. Codegen 与裁剪（ADR-0051）
 
-- 插件：`wink-tools/tools/codegen/drivers/<type>.py`
-- App 有 JSON：只打开用到的 `WINK_USE_*`
-- 无 JSON：全量驱动（验收 stub 时需要）；若已引入拓扑 `HAS_*`，全量时各 `HAS_*=1`
-- 拓扑能力宏：见 §3.3（`WINK_DC_MOTOR_HAS_PWM_ON_IN` 等）
-- 新增类型流程：[adding-peripheral.md](./adding-peripheral.md)
+- **驱动描述 SSOT**：`wink-micro-os/codegen/drivers/<type>.yaml`（+ 可选 `templates/<type>_init.c.j2`）；引擎动态扫描扩展根。内置 Python 插件仅为历史例外（见 [codegen/README.md](../../codegen/README.md)）。
+- **App 有 JSON**：只打开用到的 `WINK_USE_*`。
+- **无 JSON / 全量驱动**：用于验收 stub 路径；若引入了拓扑 `HAS_*`，全量构建时各 `HAS_*=1`。
+- **拓扑能力宏**：见 §3.3（`WINK_DC_MOTOR_HAS_PWM_ON_IN` 等）。
+- **新增类型流程**：[adding-peripheral.md](./adding-peripheral.md)。
 
 ---
 
-## 6. 仿真与旁路
+## 6. 仿真与旁路（[Wasm 仿真 3.0 SSOT](../../../docs/design/04-wasm-simulation-3.0/00-README.md)）
 
-- `#ifdef SIMULATION` 旁路尽量靠下，让更多协议路径可同源测。
-- 仿真 Manifest `type` 与 `DriverBase.type` 一致。
+- **通道选择**：优先通过 Channel 1 (GPIO) / Channel 2b (PWM) 进行底层同源仿真测试；若要跳过底层 PAL 直接与前端交互，可通过 WASM Bridge 挂载 **Channel 4 语义 Bypass**（`dal_<type>_*` Direct Bridge，详见 [08-channel-routing.md](../../../docs/design/04-wasm-simulation-3.0/02-mechanisms/08-channel-routing.md)）。
+- **Manifest 对齐**：仿真侧 Manifest / 元数据中的 `type` 字符串与 codegen YAML 的 `type:` 须**逐字一致**。
 
 ---
 

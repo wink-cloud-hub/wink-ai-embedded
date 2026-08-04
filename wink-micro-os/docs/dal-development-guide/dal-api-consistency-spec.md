@@ -1248,19 +1248,25 @@ role_bindings:             # Role verb → Jinja 模板 (per-profile 待实现)
 | DAL-F-001 | 返回 wink_status_t | `lint-enforced` (api pack: `STATUS-NOT-BOOL-PUBLIC`) | — |
 | DAL-F-002 | 禁止 bool 返回值 | `lint-enforced` (api pack: `STATUS-NOT-BOOL-PUBLIC`) | — |
 | DAL-T-001 | dal/ 禁 #ifdef 平台宏 | `lint-enforced` (layering pack) | — |
-| DAL-S-001 | config 首成员 owner | `pending` | issue `#WINK-DAL-001` |
+| DAL-S-001 | config 首成员 owner | `lint-enforced` (dal pack: `dal.config_owner_first`) | issue `#WINK-DAL-001` |
+| DAL-S-005 | config 禁位域 / pragma pack | `lint-enforced` (dal pack: `dal.config_no_bitfield`, `dal.config_no_pragma_pack`) | — |
+| DAL-S-006 | 引脚字段类型约定 | `lint-enforced` (dal pack: `dal.pin_required_uint16`, `dal.pin_optional_wink_pin_t`) | — |
+| DAL-S-011 | handle 首成员 config | `lint-enforced` (dal pack: `dal.handle_config_first`) | — |
+| DAL-S-012 | handle 必含 initialized 标志 | `lint-enforced` (dal pack: `dal.handle_has_initialized`) | — |
+| DAL-S-014 | handle 必含 ABI size/offset 断言 | `lint-enforced` (dal pack: `dal.handle_has_static_assert`) | — |
+| DAL-S-020 | handle 禁用动态内存分配 | `lint-enforced` (dal pack: `dal.handle_no_dynamic_alloc`) | — |
 | DAL-BUF-001 | DMA/Buffer 持有契约 | `review-enforced` | issue `#WINK-DAL-002` |
 | DAL-C-040 | 默认非线程安全 | `review-enforced` | — |
-| DAL-U-010 | Range 值域声明 | `review-enforced` | — |
-| DAL-U-011 | A 类越界钳位饱和无回卷 | `review-enforced` | — |
-| DAL-U-023 | A 类全 Profile 定标整数（Full 禁用 float） | `review-enforced`（新增驱动）；codegen `quantity_class` 校验待实现 | issue `#WINK-DAL-030` |
-| DAL-U-029 | 定标乘法中间值提升 32 位 | `pending`（静态检查） | issue `#WINK-DAL-031` |
-| DAL-U-022 | 禁弱 typedef 量纲别名 | `review-enforced` | — |
-| DAL-E-001 | safe_off 声明具体行为 | `review-enforced` | — |
+| DAL-U-010 | Range 值域声明 | `lint-enforced` (dal pack: `dal.contract.required_fields`) | — |
+| DAL-U-011 | A 类越界钳位饱和无回卷 | `lint-enforced` (dal pack: `dal.quantity.a_class_saturate_not_reject`) | — |
+| DAL-U-023 | A 类全 Profile 定标整数（Full 禁用 float） | `lint-enforced` (dal pack: `dal.quantity.a_class_no_float`) | issue `#WINK-DAL-030` |
+| DAL-U-029 | 定标乘法中间值提升 32 位 | `lint-enforced` (dal pack: `dal.quantity.a_class_overflow_guard`) | issue `#WINK-DAL-031` |
+| DAL-U-022 | 禁弱 typedef 量纲别名 | `lint-enforced` (dal pack: `dal.quantity.no_weak_typedef`) | — |
+| DAL-E-001 | safe_off 声明具体行为 | `lint-enforced` (dal pack: `dal.yaml.actuator_safe_off_present`, `dal.lc.safe_off_idempotent`) | — |
 | DAL-F-020 | 错误返回时出参不变 | `review-enforced` | — |
-| DAL-B-012 | 严禁空循环忙等 | `review-enforced` | — |
+| DAL-B-012 | 严禁空循环忙等 | `lint-enforced` (dal pack: `dal.blk.no_busy_wait_loop`) | — |
 | DAL-L-008 | init 失败资源回滚 | `review-enforced` | issue `#WINK-DAL-020` |
-| DAL-L-015 | deinit best-effort 语义 | `review-enforced` | — |
+| DAL-L-015 | deinit best-effort 语义 | `lint-enforced` (dal pack: `dal.lc.deinit_idempotent`) | — |
 | DAL-S-015 | config 不可变性 | `review-enforced` | — |
 | DAL-B-025 | poll 返回值语义 | `review-enforced` | issue `#WINK-DAL-021` |
 | DAL-EC-004 | 错误码分段预留 | `pending` | issue `#WINK-DAL-022` |
