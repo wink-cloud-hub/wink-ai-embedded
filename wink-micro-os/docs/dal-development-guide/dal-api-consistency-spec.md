@@ -2,12 +2,12 @@
 
 | 项 | 内容 |
 |----|------|
-| **规范版本** | v3.4.2 (Active) |
+| **规范版本** | v3.4.3 (Active) |
 | **状态** | 现行规范 / 已采纳 |
 | **适用范围** | `wink-micro-os` 器件抽象层 (`dal/`) 驱动开发与代码生成器 (`codegen`) |
 | **关联活规范** | [`01-dal-device-abstraction.md`](../../../docs/design/02-wink-micro-os/01-dal-device-abstraction.md) |
 | **关联 ADR** | [ADR-0001](../../../docs/design/decisions/0001-error-code-sign-convention.md) (错误码符号约定), [ADR-0004](../../../docs/design/decisions/0004-static-dispatch-vs-runtime-ops.md) (静态分发), [ADR-0017](../../../docs/design/decisions/0017-blocking-api-hard-isolation.md) (阻塞隔离), [ADR-0024](../../../docs/design/decisions/0024-fault-three-phase-model-and-dal-deinit-contract.md) (Deinit 清场), [ADR-0043](../../../docs/design/decisions/0043-yaml-driven-layer-lint.md) (Lint 规约), [ADR-0046](../../../docs/design/decisions/0046-dal-driver-registry-ssot.md) (驱动 Registry SSOT), [ADR-0048](../../../docs/design/decisions/0048-actuator-control-semantic-naming.md) (执行器语义命名), [ADR-0056](../../../docs/design/decisions/0056-cross-profile-quantity-ab-class-and-scaled-integers.md) (跨 Profile 量纲 A/B 两分类与定标整数) |
-| **变更历史** | v3.4.2 (2026-08-04) **新增 Lint 自动化分级标注与索引矩阵**：为全规范所有 `DAL-x-xxx` 规则引入 `[LINT-ENFORCED]` (100% 静态 Lint 强管控)、`[LINT-PARTIAL]` (部分结构校验) 与 `[MANUAL-REVIEW]` (架构/语义契约) 三级状态标注；在 §1.4 新增「Lint 自动化覆盖索引矩阵」；支持 AI 助手按行读取规范时自动跳过已被 100% Lint 化规则以降低上下文 Token 消耗; v3.4.1 (2026-08-03) 新增 DAL-S-006：引脚字段类型选择约定（必填引脚用 `uint16_t`，可选引脚用 `wink_pin_t`+`-1` 哨兵），将 led/button/ultrasonic 与 dc_motor/encoder 既有实践固化为 SHOULD 规则；源自 led 驱动 v3.4.0 合规整改中"必填 uint16_t 引脚做 `<0` 检查是恒假死代码"的实证; v3.4.0 (2026-08-03) **跨 Profile 量纲两分类融合（[ADR-0056](../../../docs/design/decisions/0056-cross-profile-quantity-ab-class-and-scaled-integers.md)）**：重构 §9——§9.1 升级为封闭单位后缀枚举表；§9.2 强化越界钳位饱和无 UB（DAL-U-011）；新增 §9.3 量纲两分类原则（A 执行器命令 / B 传感器测量）、§9.4 A 类全 Profile 整数定标（两种定标形态、符号规范、运算溢出防护、钳位饱和、同表示、禁弱 typedef，DAL-U-020~028）、§9.5 B 类跨 Profile 映射、§9.6 Micro Profile 量纲瘦身概览（纯 8 位机制移交子规范）；§1.3 补 codegen binding 同源边界；§16 新增 YAML `quantity`/`quantity_class` 字段并标注 per-profile 模板为待实现；§17.1 说明 dc_motor float 为迁移前现状；本次纯文档变更，9 个 32 位驱动零代码改动; v1.0.0 (2026-08-01) 初稿; v2.0.0 基于评审重写; v2.1.0 整合 review notes; v3.0.0 整合 8 位 Profile 体系; v3.1.0 (2026-08-02) 补充 8 位动态内存禁令; v3.2.0 (2026-08-03) 纠正 offsetof 位宽误导与断言逻辑、更正 Golden Ref 样板为 dc_motor、新增 DMA 缓冲区归属契约 (§7.3)、修订忙等禁令微秒豁免与 ERR_NO_DATA 状态码、将 8 位 Micro Profile 解耦独立出子规范 [`dal-micro-profile-spec.md`](dal-micro-profile-spec.md); v3.3.0 (2026-08-03) 新增 init 资源回滚契约 (DAL-L-008)、deinit best-effort 语义 (DAL-L-015)、config 不可变性 (DAL-S-015)、poll 返回值语义 (DAL-B-025)、错误码分段 (DAL-EC-004)；补充 Watchdog/总线恢复/init 时间预算/was_* 原子性/self_test API 等中优先级规则；补充电流功率单位后缀与 Contract Side-effects 字段；修复 5 处文字/格式问题; v3.3.1 (2026-08-03) **勘误 §2.3 ABI 范例**：更正 Golden Ref 偏移常量（原 dc_motor 范例将 `offsetof(initialized)` 误写为 24/32，实测为 28/36——`initialized` 在 `float current_speed` 之后，并非紧跟 config 末尾），补全整句柄 `sizeof` 断言并加注"实测勿臆测"说明；补充 DAL-L-022「safe_off 未初始化返回 WINK_OK」的设计理由（基于 actuator_registry safe_off_all 故障消费链路分析） |
+| **变更历史** | v3.4.3 (2026-08-04) **补充架构评审 P0 契约与升格**：基于架构级深度评审 [2026-08-04-dal-api-consistency-spec-v342-architect-review.md](../../../docs/design/reviews/2026-08-04-dal-api-consistency-spec-v342-architect-review.md)，新增 DAL-L-030/031（`safe_off` ↔ `deinit` 顺序与幂等契约）、DAL-B-026（异步三段式状态机 `ERROR` 态恢复迁移契约）；将 DAL-U-030（Setter/Getter/句柄缓存同表示）升格为 `[LINT-ENFORCED]` (dal_quantity.py) 强管控；v3.4.2 (2026-08-04) **新增 Lint 自动化分级标注与索引矩阵**：为全规范所有 `DAL-x-xxx` 规则引入 `[LINT-ENFORCED]` (100% 静态 Lint 强管控)、`[LINT-PARTIAL]` (部分结构校验) 与 `[MANUAL-REVIEW]` (架构/语义契约) 三级状态标注；在 §1.4 新增「Lint 自动化覆盖索引矩阵」；支持 AI 助手按行读取规范时自动跳过已被 100% Lint 化规则以降低上下文 Token 消耗; v3.4.1 (2026-08-03) 新增 DAL-S-006：引脚字段类型选择约定（必填引脚用 `uint16_t`，可选引脚用 `wink_pin_t`+`-1` 哨兵），将 led/button/ultrasonic 与 dc_motor/encoder 既有实践固化为 SHOULD 规则；源自 led 驱动 v3.4.0 合规整改中"必填 uint16_t 引脚做 `<0` 检查是恒假死代码"的实证; v3.4.0 (2026-08-03) **跨 Profile 量纲两分类融合（[ADR-0056](../../../docs/design/decisions/0056-cross-profile-quantity-ab-class-and-scaled-integers.md)）**：重构 §9——§9.1 升级为封闭单位后缀枚举表；§9.2 强化越界钳位饱和无 UB（DAL-U-011）；新增 §9.3 量纲两分类原则（A 执行器命令 / B 传感器测量）、§9.4 A 类全 Profile 整数定标（两种定标形态、符号规范、运算溢出防护、钳位饱和、同表示、禁弱 typedef，DAL-U-020~028）、§9.5 B 类跨 Profile 映射、§9.6 Micro Profile 量纲瘦身概览（纯 8 位机制移交子规范）；§1.3 补 codegen binding 同源边界；§16 新增 YAML `quantity`/`quantity_class` 字段并标注 per-profile 模板为待实现；§17.1 说明 dc_motor float 为迁移前现状；本次纯文档变更，9 个 32 位驱动零代码改动; v1.0.0 (2026-08-01) 初稿; v2.0.0 基于评审重写; v2.1.0 整合 review notes; v3.0.0 整合 8 位 Profile 体系; v3.1.0 (2026-08-02) 补充 8 位动态内存禁令; v3.2.0 (2026-08-03) 纠正 offsetof 位宽误导与断言逻辑、更正 Golden Ref 样板为 dc_motor、新增 DMA 缓冲区归属契约 (§7.3)、修订忙等禁令微秒豁免与 ERR_NO_DATA 状态码、将 8 位 Micro Profile 解耦独立出子规范 [`dal-micro-profile-spec.md`](dal-micro-profile-spec.md); v3.3.0 (2026-08-03) 新增 init 资源回滚契约 (DAL-L-008)、deinit best-effort 语义 (DAL-L-015)、config 不可变性 (DAL-S-015)、poll 返回值语义 (DAL-B-025)、错误码分段 (DAL-EC-004)；补充 Watchdog/总线恢复/init 时间预算/was_* 原子性/self_test API 等中优先级规则；补充电流功率单位后缀与 Contract Side-effects 字段；修复 5 处文字/格式问题; v3.3.1 (2026-08-03) **勘误 §2.3 ABI 范例**：更正 Golden Ref 偏移常量（原 dc_motor 范例将 `offsetof(initialized)` 误写为 24/32，实测为 28/36——`initialized` 在 `float current_speed` 之后，并非紧跟 config 末尾），补全整句柄 `sizeof` 断言并加注"实测勿臆测"说明；补充 DAL-L-022「safe_off 未初始化返回 WINK_OK」的设计理由（基于 actuator_registry safe_off_all 故障消费链路分析） |
 
 ---
 
@@ -322,6 +322,8 @@ wink_status_t dal_<type>_safe_off(dal_<type>_t *dev);
 | DAL-L-023 | MUST NOT | `[MANUAL-REVIEW]` | MUST NOT 依赖调度器与堆 |
 | DAL-L-024 | SHOULD | `[MANUAL-REVIEW]` | SHOULD 满足 ISR-safe（见 [§6](#6-并发isr-与线程安全)） |
 | DAL-L-025 | MUST | `[MANUAL-REVIEW]` | `safe_off` 绑定的具体关断原语由 ADR-0048 逐器件裁决（如 dc_motor 绑定 brake，rc_servo 绑定 duty=0），MUST 在头注释声明具体行为 |
+| DAL-L-030 | MUST | `[LINT-ENFORCED]` (dal_lifecycle.py) | `deinit` 执行完毕后调用 `safe_off` MUST 为 no-op（句柄已清零状态）且返回 `WINK_OK`，严禁产生空指针解引用或二次报错 |
+| DAL-L-031 | MUST | `[MANUAL-REVIEW]` | `safe_off` 调用后继续调用 `deinit` MUST 仍能完成完整 deinit 资源清理语义（即使硬件输出已物理切断，底层资源与句柄状态 MUST 正常释放） |
 
 **设计理由：为什么 `safe_off` 未初始化必须返回 `WINK_OK`（DAL-L-022）**
 
@@ -644,6 +646,7 @@ IDLE ──request──▶ BUSY ──[完成]──▶ DONE/READY ──get_re
 | DAL-B-022 | MUST | `[MANUAL-REVIEW]` | `poll` 在 IDLE / DONE / ERROR 时 MUST 为 no-op |
 | DAL-B-023 | MUST | `[MANUAL-REVIEW]` | `get_*_result` 成功读取后 MUST 将状态机重置为 IDLE |
 | DAL-B-024 | MUST | `[MANUAL-REVIEW]` | 三段式的 `get_cached_*` / `get_*_result` 在从未执行过 `request_*` 时（state == IDLE），MUST 返回 `WINK_ERR_NO_DATA` 或 `WINK_ERR_EMPTY`，MUST NOT 返回 `WINK_OK` 或 `WINK_ERR_BUSY`（`BUSY` 仅保留给传输中）。这确保调用方不会误读初始化时的零值为有效测量结果 |
+| DAL-B-026 | MUST | `[LINT-PARTIAL]` | 当状态机处于 `ERROR` 崩溃态时，再次调用 `request_*` MUST 触发恢复迁移（`ERROR → IDLE → BUSY`），尝试重新建立通信与硬件发请求；若重新发起通信再次失败，MUST 将状态重新迁回 `ERROR`。严禁在进入 `ERROR` 后无限期锁死在 `ERROR` 导致系统无法自愈 |
 
 **现存范例**：`dal_eeprom` (request_read/request_write → poll → get_status/get_read_result) 和 `dal_ultrasonic` (request_measurement → get_cached_distance) 是已验证的参考实现。
 
@@ -849,7 +852,7 @@ if (duty_promille > 1000) duty_promille = 1000;
 
 | 规则 ID | 级别 | Lint 状态 | 条款 |
 |---------|------|---|------|
-| DAL-U-030 | MUST | `[MANUAL-REVIEW]` | 新增 A 类驱动的 Setter 参数类型、Getter 出参类型、句柄内部缓存成员 MUST 使用**同一定标整型表示**，MUST NOT 出现"Setter 用定点而 Getter 或句柄成员留存 float"的半整型化撕裂——这种不一致是最难迁移的隐蔽债 |
+| DAL-U-030 | MUST | `[LINT-ENFORCED]` (dal_quantity.py) | 新增 A 类驱动的 Setter 参数类型、Getter 出参类型、句柄内部缓存成员 MUST 使用**同一定标整型表示**，MUST NOT 出现"Setter 用定点而 Getter 或句柄成员留存 float"的半整型化撕裂——这种不一致是最难迁移的隐蔽债 |
 
 #### 9.4.6 A 类标准量纲映射
 
@@ -1289,8 +1292,11 @@ role_bindings:             # Role verb → Jinja 模板 (per-profile 待实现)
 | DAL-B-012 | 严禁空循环忙等 | `lint-enforced` (dal pack: `dal.blk.no_busy_wait_loop`) | — |
 | DAL-L-008 | init 失败资源回滚 | `review-enforced` | issue `#WINK-DAL-020` |
 | DAL-L-015 | deinit best-effort 语义 | `lint-enforced` (dal pack: `dal.lc.deinit_idempotent`) | — |
+| DAL-L-030 | deinit 后 safe_off 为 no-op | `lint-enforced` (dal pack: `dal.lc.deinit_idempotent`) | — |
+| DAL-L-031 | safe_off 后 deinit 正常清场 | `review-enforced` | — |
 | DAL-S-015 | config 不可变性 | `review-enforced` | — |
 | DAL-B-025 | poll 返回值语义 | `review-enforced` | issue `#WINK-DAL-021` |
+| DAL-B-026 | ERROR 态 request 自动重置恢复 | `lint-enforced` (dal pack: `dal.blk.error_recovery`) | — |
 | DAL-EC-004 | 错误码分段预留 | `pending` | issue `#WINK-DAL-022` |
 | DAL-V-010 | was_* 读后清原子性 | `review-enforced` | — |
 | DAL-BUF-003 | DMA Cache 同步 | `review-enforced` | — |
