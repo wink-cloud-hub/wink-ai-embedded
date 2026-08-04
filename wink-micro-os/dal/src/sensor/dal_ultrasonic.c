@@ -140,16 +140,18 @@ wink_status_t dal_ultrasonic_deinit(dal_ultrasonic_t *dev) {
 }
 
 wink_status_t dal_ultrasonic_init(dal_ultrasonic_t *dev, const dal_ultrasonic_config_t *cfg) {
-    /* DAL-L-007: even on early-return paths, dev->initialized MUST stay false
-     * so a subsequent deinit is safe (DAL-L-010 idempotent). Explicit reset
-     * here means we don't depend on the {0}-init assumption from the caller. */
-    dev->initialized = false;
-
+    /* NULL guards first — writing dev->initialized before this check
+     * would deref a NULL dev in test_ultrasonic_init_null_returns_invalid_arg. */
     if (dev == NULL || cfg == NULL) { return WINK_ERR_INVALID_ARG; }
     if (cfg->owner == NULL) { return WINK_ERR_INVALID_ARG; }
     if (cfg->trig_pin == cfg->echo_pin) {
         return WINK_ERR_INVALID_ARG;
     }
+
+    /* DAL-L-007: even on early-return paths, dev->initialized MUST stay false
+     * so a subsequent deinit is safe (DAL-L-010 idempotent). Explicit reset
+     * here means we don't depend on the {0}-init assumption from the caller. */
+    dev->initialized = false;
     if (dev->initialized) { return WINK_ERR_ALREADY_INITIALIZED; }
 
     /* DAL-L-008: chained resource acquisition with goto-cleanup rollback.
