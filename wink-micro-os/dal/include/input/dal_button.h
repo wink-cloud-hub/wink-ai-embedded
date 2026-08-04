@@ -154,12 +154,22 @@ typedef void (*dal_button_irq_notify_hook_t)(void *ctx);
  * @param cfg 配置结构体指针（内部深拷贝到 dev->config）
  * @return wink_status_t
  * @note API Contract:
- *   - Preconditions: dev 非 NULL；cfg 非 NULL。
- *   - Blocking: No。
+ *   - Preconditions: dev 非 NULL；cfg 非 NULL；cfg->owner 指向静态存储期字符串。
+ *   - Postconditions: WINK_OK 时 dev->initialized=true；cfg 的内容已深拷贝到
+ *                     dev->config；GPIO 方向已配置（真机）；事件/计数器/后端
+ *                     字段全部 reset。
+ *   - Blocking: No.
  *   - Thread-safe: No; ISR-safe: No.
- *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG(NULL) / 透传 PAL 错误。
- *   - Postconditions: WINK_OK 时 dev->initialized=true；GPIO 方向已配置（真机）；
- *                     cfg 的内容已深拷贝到 dev->config。
+ *   - Side-effects: pal_resource_claim(GPIO pin, owner)；pal_gpio_init(pin, mode)；
+ *                   dev->config / state 字段写入。失败路径通过 goto-cleanup
+ *                   回滚已 claim 的资源（DAL-L-008）。
+ *   - Error-codes:
+ *       - WINK_OK                    成功
+ *       - WINK_ERR_INVALID_ARG       dev/cfg/owner NULL, pull 越界
+ *       - WINK_ERR_ALREADY_INITIALIZED 重复 init（DAL-L-004）
+ *       - WINK_ERR_BUSY              pal_resource_claim 冲突
+ *       - 透传 pal_gpio_init 错误
+ *   - Simulation-parity: WASM 下 pal_gpio_init 为 no-op；ESP32 走实际硬件。
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_button_init(dal_button_t *dev, const dal_button_config_t *cfg);
@@ -170,8 +180,14 @@ wink_status_t dal_button_init(dal_button_t *dev, const dal_button_config_t *cfg)
  *       去抖阈值 DAL_BUTTON_DEBOUNCE_THRESHOLD（≈30ms @ 10ms tick）。
  * @note API Contract:
  *   - Preconditions: dev 非 NULL；dal_button_init() 已成功。
- *   - Blocking: No。
- *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED。
+ *   - Blocking: No.
+ *   - Thread-safe: No; ISR-safe: No.
+ *   - Side-effects: 读 dev->config.pin；更新 dev->stable_pressed /
+ *                   debounce_counter / last_status；可能同步调用
+ *                   dev->event_cb 派发 PRESS/RELEASE/LONG_PRESS。
+ *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED /
+ *                  WINK_ERR_DISCONNECTED（pull=NONE 未注入电平）/
+ *                  透传 pal_gpio_read 错误。
  */
 wink_status_t dal_button_poll(dal_button_t *dev);
 
@@ -180,7 +196,8 @@ wink_status_t dal_button_poll(dal_button_t *dev);
  * @param out_pressed 输出：true=已按下；false=未按下
  * @note API Contract:
  *   - Preconditions: dev/out_pressed 非 NULL；dal_button_init() 已成功。
- *   - Blocking: No。
+ *   - Blocking: No.
+ *   - Thread-safe: No; ISR-safe: No.
  *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED。
  */
 WINK_WARN_UNUSED_RESULT
@@ -199,7 +216,8 @@ wink_status_t dal_button_is_pressed(const dal_button_t *dev, bool *out_pressed);
  * @param out_status 输出：上次 poll 的返回值（init 时初值 WINK_OK）。
  * @note API Contract:
  *   - Preconditions: dev/out_status 非 NULL；dal_button_init() 已成功。
- *   - Blocking: No。
+ *   - Blocking: No.
+ *   - Thread-safe: No; ISR-safe: No.
  *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED。
  */
 WINK_WARN_UNUSED_RESULT
@@ -212,7 +230,9 @@ wink_status_t dal_button_get_status(const dal_button_t *dev, wink_status_t *out_
  *       适用于触发单次动作（如切换模式）；is_pressed 返回当前持续状态，适用于按住动作。
  * @note API Contract:
  *   - Preconditions: dev/out_was_pressed 非 NULL；dal_button_init() 已成功。
- *   - Blocking: No。
+ *   - Blocking: No.
+ *   - Thread-safe: No; ISR-safe: No.
+ *     （SMP 安全：内部 PAL_CRITICAL_SECTION 保护 read-clear，不会双报）
  *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED。
  */
 WINK_WARN_UNUSED_RESULT
@@ -232,17 +252,32 @@ wink_status_t dal_button_was_pressed(dal_button_t *dev, bool *out_was_pressed);
  * @param cb  事件回调（传入 NULL 注销）
  * @param ctx Opaque 指针，调用 cb 时原样转发
  * @return WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED
- * @note   线程安全：只在 poll 上下文调用；enable/disable 必须在 poll 启动
- *         之前完成（或在同一 task 中串行调用）。
+ * @note API Contract:
+ *   - Preconditions: dev 非 NULL；dal_button_init() 已成功。
+ *   - Blocking: No.
+ *   - Thread-safe: No; ISR-safe: No.
+ *     线程安全：只在 poll 上下文调用；enable/disable 必须在 poll 启动
+ *     之前完成（或在同一 task 中串行调用）。
+ *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG(NULL dev) /
+ *                  WINK_ERR_NOT_INITIALIZED。NULL cb 视为注销，返回 WINK_OK。
+ *   - Side-effects: 覆盖 dev->event_cb / event_cb_ctx / prev_pressed_for_event。
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_button_on_event(dal_button_t *dev, dal_button_event_cb cb, void *ctx);
 
 /**
  * @brief 配置长按判定时间。
- * @param ms 长按毫秒阈值（必须 > 0；默认 DAL_BUTTON_DEFAULT_LONG_PRESS_MS = 3000ms）
+ * @param ms 长按毫秒阈值
  * @return WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED
- * @note   只影响 LONG_PRESS 事件派发；不改变去抖行为。
+ * @note API Contract:
+ *   - Preconditions: dev 非 NULL；dal_button_init() 已成功。
+ *   - Blocking: No.
+ *   - Thread-safe: No; ISR-safe: No.
+ *   - Range: ms > 0（默认 DAL_BUTTON_DEFAULT_LONG_PRESS_MS = 3000ms）。
+ *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG(NULL dev / ms == 0) /
+ *                  WINK_ERR_NOT_INITIALIZED。
+ *   - Side-effects: 写 dev->long_press_ms（仅影响后续 LONG_PRESS 事件派发；
+ *                   不改变去抖行为）。
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_button_set_long_press_ms(dal_button_t *dev, uint32_t ms);
@@ -257,10 +292,19 @@ wink_status_t dal_button_set_long_press_ms(dal_button_t *dev, uint32_t ms);
  *
  * 语义：ms=0 不合法（去抖关闭请勿调用此 API；保留 DAL 默认 30 ms ≈ 3 samples）。
  * ms<10 ms 会被 clamp 到 threshold=1（等价单次采样，最短去抖）。
+ * 上限：ms > 2550 (≈ 2.55 s) 会被 clamp 到 threshold=255。
  *
- * @param ms 去抖毫秒（>0；建议 ≥10ms 以匹配默认 tick）
+ * @param ms 去抖毫秒
  * @return WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED
- * @note   只影响后续 poll 的稳定态判定；不影响长按阈值和事件回调。
+ * @note API Contract:
+ *   - Preconditions: dev 非 NULL；dal_button_init() 已成功。
+ *   - Blocking: No.
+ *   - Thread-safe: No; ISR-safe: No.
+ *   - Range: (0, 2550] ms（>0；建议 ≥10ms 以匹配默认 tick）。
+ *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG(NULL dev / ms == 0) /
+ *                  WINK_ERR_NOT_INITIALIZED。
+ *   - Side-effects: 写 dev->debounce_threshold / 清零 dev->debounce_counter
+ *                   （避免阈值缩小后立即误触发）。
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_button_set_debounce_ms(dal_button_t *dev, uint32_t ms);
@@ -277,6 +321,18 @@ wink_status_t dal_button_set_debounce_ms(dal_button_t *dev, uint32_t ms);
  * 第二次调用（重复启用）是幂等的：直接返回 WINK_OK，不重复注册。
  *
  * @return WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED / WINK_ERR_UNSUPPORTED
+ * @note API Contract:
+ *   - Preconditions: dev 非 NULL；dal_button_init() 已成功。
+ *   - Blocking: No.
+ *   - Thread-safe: No; ISR-safe: No.
+ *   - Range: N/A.
+ *   - Error-codes:
+ *       - WINK_OK                  成功（或已 enable，幂等）
+ *       - WINK_ERR_INVALID_ARG     dev == NULL
+ *       - WINK_ERR_NOT_INITIALIZED dev 未 init
+ *       - WINK_ERR_UNSUPPORTED     target 不支持 GPIO 中断
+ *       - 透传 pal_gpio_enable_interrupt 错误（如 WINK_ERR_HARDWARE / WINK_ERR_BUSY）
+ *   - Side-effects: 写 dev->isr_counter_enabled = true；可能注册 ISR thunk。
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_button_enable_isr_counter(dal_button_t *dev);
@@ -285,7 +341,13 @@ wink_status_t dal_button_enable_isr_counter(dal_button_t *dev);
  * @brief 读取 ISR 边沿累计计数。
  * @param out_count 输出：自 enable/上次 reset 以来的 ISR 触发次数
  * @return WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED
- * @note   未 enable 时 out_count = 0（返回 WINK_OK）；volatile 读安全，无需临界区。
+ * @note API Contract:
+ *   - Preconditions: dev/out_count 非 NULL；dal_button_init() 已成功。
+ *   - Blocking: No.
+ *   - Thread-safe: No; ISR-safe: No.
+ *     未 enable 时 out_count = 0（返回 WINK_OK）；volatile 读本身 atomic，
+ *     无需临界区——只是瞬时快照，允许 ±1 的竞争。
+ *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG(NULL) / WINK_ERR_NOT_INITIALIZED。
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_button_get_edge_count(const dal_button_t *dev, uint32_t *out_count);
@@ -297,6 +359,11 @@ wink_status_t dal_button_get_edge_count(const dal_button_t *dev, uint32_t *out_c
  * 不会被丢失（ISR 在临界区内被 PENDING，恢复后写入新的计数 1）。
  *
  * @return WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED
+ * @note API Contract:
+ *   - Preconditions: dev 非 NULL；dal_button_init() 已成功。
+ *   - Blocking: No.
+ *   - Thread-safe: No; ISR-safe: No.
+ *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED。
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t dal_button_reset_edge_count(dal_button_t *dev);
@@ -312,8 +379,28 @@ wink_status_t dal_button_reset_edge_count(dal_button_t *dev);
  *   - Blocking: No.
  *   - Thread-safe: No; ISR-safe: No.
  *   - Idempotent: 未 init 时返回 WINK_OK。
- *   - ADR-0024: 卸 GPIO ISR + synchronize、GPIO reset、释放 resource claim、memset 清零。
- * @return WINK_OK
+ *   - Side-effects: 卸 GPIO ISR + synchronize、GPIO reset、释放 resource claim、
+ *                   memset 清零整个 dev（initialized=false）。
+ *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG(NULL dev) /
+ *                  first non-OK rc from any teardown step (DAL-L-015 best-effort:
+ *                  even on partial failure every step still runs, and the
+ *                  first failing rc is returned).
+ *
+ * @note deinit 顺序 rationale (DAL-L-011/012):
+ *   1) 清 backend/counter（清掉 ISR 写后端依赖的本地引用）——即使 ISR 此时仍
+ *      触发，hook 也不会执行（DAL-C-001 单写者原则），irq_pending 也不会被置位。
+ *   2) disable + synchronize（等所有 in-flight ISR 退出）——pin 上的"逻辑反转"
+ *      已经在 step 1 完成。
+ *   3) reset_pin（回 Hi-Z，释放 pull 配置）
+ *   4) release（释放 PAL resource claim）
+ *   5) memset（清所有状态；DAL-L-013 兜底）
+ *
+ *   Step 1 必须在 step 2 之前：backend 字段是 ISR 读 + task 写的单字节 RMW
+ *   （DAL-C-001），如果没有 step 1 的"逻辑反转"，disable+synchronize 之间
+ *   的 in-flight ISR 仍能读到旧 backend 并设置 irq_pending，导致 deinit 后
+ *   的状态机看到虚假信号。
+ *
+ * @return WINK_OK（成功）或首个失败 step 的 rc（DAL-L-015 best-effort）
  */
 wink_status_t dal_button_deinit(dal_button_t *dev);
 
