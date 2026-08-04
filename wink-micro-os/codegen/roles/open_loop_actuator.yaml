@@ -3,7 +3,7 @@
 codegen_schema: "1.1"
 id: open_loop_actuator
 verbs:
-  - id: set_speed
+  - id: set_speed_promille
     error_class: normal
   - id: coast
     error_class: normal
