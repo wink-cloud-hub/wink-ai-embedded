@@ -4,6 +4,16 @@
 #include "pal_resource.h"
 #include <string.h>
 
+#define LOG_TAG "dal_mono_oled"
+
+#define LOGW_IF_RC(call, first_err) do {                                  \
+    wink_status_t _rc = (call);                                            \
+    if (wink_status_is_error(_rc) && wink_status_is_ok(first_err)) {       \
+        first_err = _rc;                                                   \
+        LOG_W(LOG_TAG, "step failed rc=%d at line %d", (int)_rc, __LINE__);\
+    }                                                                      \
+} while(0)
+
 /* ADR-0017 层 1 例外：本 TU 合法调用 WINK_BLOCKING API (pal_i2c_transfer)。
  * 单色 OLED 显示驱动本质要走 I2C 传输，是"消费端"角色；WINK_BLOCKING 的告警
  * 作用于新代码抑制误用，对 DAL 内部有意为之的调用退化为 no-op。
@@ -74,6 +84,9 @@ wink_status_t dal_mono_oled_init(dal_mono_oled_t *dev, const dal_mono_oled_confi
         return WINK_ERR_UNSUPPORTED;
     }
     if (dev->initialized) { return WINK_ERR_ALREADY_INITIALIZED; }
+
+    /* DAL-L-007: 显式置 initialized=false，确保失败路径句柄处于 safe-deinit 态 */
+    dev->initialized = false;
 
     /* Phase 2：(port,addr) 粒度地址冲突治理 */
     uint32_t res_id = pal_resource_i2c_id(cfg->i2c_port, cfg->i2c_addr);
@@ -176,24 +189,27 @@ wink_status_t dal_mono_oled_deinit(dal_mono_oled_t *dev) {
     if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_OK; }  /* idempotent no-op on un-init dev */
 
+    dev->initialized = false;
+
     /* Read fields before mutation/memset. */
     uint8_t port = dev->config.i2c_port;
     uint16_t addr = dev->config.i2c_addr;
     const char *owner = dev->config.owner;
 
-    /* 1. Best-effort turn screen off (command 0xAE); ignore error (bus may
-     *    already be wedged, we are tearing down anyway). */
-    uint8_t cmd[2] = {0x00, 0xAE};
-    WINK_IGNORE_UNUSED(pal_i2c_transfer(port, addr, cmd, sizeof(cmd), NULL, 0));
+    wink_status_t first_err = WINK_OK;
 
-    /* 6. Release only this client's I2C address claim — do NOT touch the bus
+    /* 1. Best-effort turn screen off (command 0xAE); log warning if fails (DAL-L-014 + DAL-L-015). */
+    uint8_t cmd[2] = {0x00, 0xAE};
+    LOGW_IF_RC(pal_i2c_transfer(port, addr, cmd, sizeof(cmd), NULL, 0), first_err);
+
+    /* 2. Release only this client's I2C address claim — do NOT touch the bus
      *    (other clients like EEPROM may still be active on the same port;
      *    bus lifecycle is the bus-owner's responsibility per ADR-0024 §4 #6). */
     uint32_t res_id = pal_resource_i2c_id(port, addr);
-    WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_I2C_ADDR, res_id, owner));
+    LOGW_IF_RC(pal_resource_release(PAL_RESOURCE_I2C_ADDR, res_id, owner), first_err);
 
-    /* 7. Clear the instance data completely */
+    /* 3. Clear the instance data completely */
     memset(dev, 0, sizeof(dal_mono_oled_t));
 
-    return WINK_OK;
+    return first_err;
 }

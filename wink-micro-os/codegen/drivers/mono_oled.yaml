@@ -5,6 +5,9 @@ source_stem: mono_oled
 is_actuator: false
 experimental: false
 
+quantity: text_display
+quantity_class: actuator_command
+
 default_role: text_display
 
 fields:
