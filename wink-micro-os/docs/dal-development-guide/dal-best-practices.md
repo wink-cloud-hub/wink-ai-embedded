@@ -34,6 +34,7 @@
 | 负数错误码 | `wink_status_t`：0 成功，负数为错（[ADR-0001](../../../docs/design/decisions/0001-error-code-sign-convention.md)） |
 | 双 target | 同源可编 wasm / ESP-IDF（[ADR-0002](../../../docs/design/decisions/0002-dual-target-compilation.md)） |
 | 语义命名 | 控制语义优先（如 `dc_motor`、`rc_servo`）；禁止用泛称 `motor` 当 DAL 类型前缀（[ADR-0048](../../../docs/design/decisions/0048-actuator-control-semantic-naming.md)） |
+| A/B 量纲分类 | A 类执行器命令全 Profile 统一定标整数，B 类传感器测量用 float/定点分化（[ADR-0056](../../../docs/design/decisions/0056-cross-profile-quantity-ab-class-and-scaled-integers.md)） |
 | 资源认领 | init 认领 PWM/GPIO 等；deinit / 失败路径释放 |
 | 分层 | App/BAL → DAL → PAL；改完跑 `wink.py lint --pack layering --pack api` |
 
