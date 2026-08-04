@@ -28,9 +28,8 @@
 #include "pal_osal.h"
 
 /* ADR-0017 层 1 例外：本 TU 合法调用 WINK_BLOCKING API. */
-#if defined(__GNUC__) || defined(__clang__)
-#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
+#include "compat/wink_test_compat.h"
+WINK_TEST_ALLOW_DEPRECATED
 
 /* ── helpers ─────────────────────────────────────────────── */
 

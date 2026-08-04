@@ -14,9 +14,8 @@
 /* Note: dal_gps_init is now non-blocking (always visible, no WINK_BLOCKING).
  * The ADR-0017 deprecated-declarations pragma below is kept for any future
  * dal_gps_init_blocking calls added to the test. */
-#if defined(__GNUC__) || defined(__clang__)
-#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
+#include "compat/wink_test_compat.h"
+WINK_TEST_ALLOW_DEPRECATED
 #ifdef _MSC_VER
 #  pragma warning(disable: 4996)
 #endif

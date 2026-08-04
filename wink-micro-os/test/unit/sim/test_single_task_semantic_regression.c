@@ -42,8 +42,8 @@ void test_avoidance_car_business_fields_match_baseline(void) {
     sim_set_echo_timing(100, 5882);   /* ≈100cm */
     wink_status_t s1 = wink_runtime_run(cb, 1);
     (void)s1;
-    TEST_ASSERT_EQUAL_FLOAT(AVOIDANCE_CAR_BASELINE_SERVO_ANGLE_CLEAR,
-                            neck_servo.current_angle);
+    TEST_ASSERT_EQUAL_UINT16(AVOIDANCE_CAR_BASELINE_SERVO_ANGLE_CLEAR,
+                            neck_servo.current_angle_ddeg);
 
     /* Case 2：near obstacle → servo 180° */
     sim_reset_time();
@@ -51,8 +51,8 @@ void test_avoidance_car_business_fields_match_baseline(void) {
     sim_set_echo_timing(100, 588);    /* ≈10cm */
     wink_status_t s2 = wink_runtime_run(cb, 1);
     (void)s2;
-    TEST_ASSERT_EQUAL_FLOAT(AVOIDANCE_CAR_BASELINE_SERVO_ANGLE_NEAR,
-                            neck_servo.current_angle);
+    TEST_ASSERT_EQUAL_UINT16(AVOIDANCE_CAR_BASELINE_SERVO_ANGLE_NEAR,
+                            neck_servo.current_angle_ddeg);
 
     /* Case 3：no fault recorded during the run */
     TEST_ASSERT_EQUAL_UINT32(AVOIDANCE_CAR_BASELINE_TRACE_COUNT,

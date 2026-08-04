@@ -14,10 +14,10 @@
 #define AVOIDANCE_CAR_SEMANTIC_BASELINE_H
 
 /* Case 1: 无近障（echo ≈100cm > 20cm 阈值）→ 舵机复位到 90° */
-#define AVOIDANCE_CAR_BASELINE_SERVO_ANGLE_CLEAR    90.0f
+#define AVOIDANCE_CAR_BASELINE_SERVO_ANGLE_CLEAR    900
 
 /* Case 2: 近障（echo ≈10cm < 20cm 阈值）→ 舵机扫到 180° */
-#define AVOIDANCE_CAR_BASELINE_SERVO_ANGLE_NEAR     180.0f
+#define AVOIDANCE_CAR_BASELINE_SERVO_ANGLE_NEAR     1800
 
 /* 两个 tick 均无 fault 期望：trace_count 保持 0 */
 #define AVOIDANCE_CAR_BASELINE_TRACE_COUNT          0u

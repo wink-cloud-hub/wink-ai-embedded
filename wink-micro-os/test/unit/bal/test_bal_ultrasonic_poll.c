@@ -20,9 +20,8 @@
 static dal_ultrasonic_t s_ultrasonic1;
 static dal_ultrasonic_t s_ultrasonic2;
 
-#if defined(__GNUC__) || defined(__clang__)
-#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
+#include "compat/wink_test_compat.h"
+WINK_TEST_ALLOW_DEPRECATED
 
 #include "wink_sim_scheduler.h"
 #include "wink_soft_timer.h"

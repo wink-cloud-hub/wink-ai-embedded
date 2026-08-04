@@ -25,9 +25,8 @@ static uint64_t get_wall_us(void) {
 }
 #endif
 
-#if defined(__GNUC__) || defined(__clang__)
-#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
+#include "compat/wink_test_compat.h"
+WINK_TEST_ALLOW_DEPRECATED
 
 static uint32_t task_runs = 0;
 
