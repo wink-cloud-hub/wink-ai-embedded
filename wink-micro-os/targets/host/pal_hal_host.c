@@ -31,7 +31,11 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
-#include <pthread.h>   /* v2.2 G3：并发首次注册竞态保护 */
+#if defined(_WIN32)
+#  include <windows.h>    /* CRITICAL_SECTION — MSVC 上替代 pthread_mutex */
+#else
+#  include <pthread.h>    /* v2.2 G3：并发首次注册竞态保护（POSIX 路径） */
+#endif
 
 /* PAL 实现自身合法调用 WINK_BLOCKING API（pal_gpio_pulse_in / pal_rmt_pulse_capture_wait_armed）：
  * 抑制 -Wdeprecated-declarations 使 -Werror 下仍能编译。ADR-0017 层 2 严格模式生效时，
@@ -229,9 +233,30 @@ static uint32_t         s_isr_call_count[HOST_MAX_GPIO_PIN] = {0};
 
 /* v2.2 G3（Phase 1.5，2026-07-01）：GPIO service 首次锁定的 prio。
  * 由 s_gpio_service_mux 同步。host 支持多线程，需真实 mutex。 */
+/* Platform-portable mutex wrapper: CRITICAL_SECTION on Windows (avoids the
+ * pthread.h dependency that MSVC lacks), pthread_mutex_t on POSIX.  Both
+ * are recursive-friendly (EnterCriticalSection is reentrant by design;
+ * PTHREAD_MUTEX_INITIALIZER is the default non-recursive type but the
+ * call sites here are task-context only and never recurse, so a plain
+ * mutex is sufficient). */
+#if defined(_WIN32)
+static CRITICAL_SECTION s_gpio_service_mux;
+static LONG             s_gpio_service_mux_init = 0;
+static void host_gpio_service_mux_init(void)
+{
+    if (InterlockedCompareExchange(&s_gpio_service_mux_init, 1, 0) == 0) {
+        InitializeCriticalSection(&s_gpio_service_mux);
+    }
+}
+#  define HOST_GPIO_SERVICE_LOCK()   do { host_gpio_service_mux_init(); EnterCriticalSection(&s_gpio_service_mux); } while (0)
+#  define HOST_GPIO_SERVICE_UNLOCK() LeaveCriticalSection(&s_gpio_service_mux)
+#else
+static pthread_mutex_t  s_gpio_service_mux         = PTHREAD_MUTEX_INITIALIZER;
+#  define HOST_GPIO_SERVICE_LOCK()   pthread_mutex_lock(&s_gpio_service_mux)
+#  define HOST_GPIO_SERVICE_UNLOCK() pthread_mutex_unlock(&s_gpio_service_mux)
+#endif
 static bool             s_gpio_service_initialized = false;
 static pal_irq_prio_t   s_gpio_service_prio        = PAL_IRQ_PRIO_NORMAL;
-static pthread_mutex_t  s_gpio_service_mux         = PTHREAD_MUTEX_INITIALIZER;
 
 /* Pending 中断队列（中断锁语义仿真） */
 static uint32_t s_pending_gpio[HOST_MAX_PENDING];
@@ -274,17 +299,17 @@ wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin, pal_gpio_intr_t intr_
 
     /* v2.2 G3：GPIO service 首次锁定 prio。host 支持并发，需 mutex 保护。
      * 一旦锁定，进程生命周期内不再释放（见 pal_hal.h 契约）。 */
-    pthread_mutex_lock(&s_gpio_service_mux);
+    HOST_GPIO_SERVICE_LOCK();
     if (s_gpio_service_initialized) {
         if (prio != s_gpio_service_prio) {
-            pthread_mutex_unlock(&s_gpio_service_mux);
+            HOST_GPIO_SERVICE_UNLOCK();
             return WINK_ERR_INVALID_ARG;   /* G3: prio 冲突，本次拒接 */
         }
     } else {
         s_gpio_service_prio        = prio;
         s_gpio_service_initialized = true;
     }
-    pthread_mutex_unlock(&s_gpio_service_mux);
+    HOST_GPIO_SERVICE_UNLOCK();
 
     s_gpio_isr[pin] = callback;
     s_gpio_isr_arg[pin] = arg;
@@ -452,10 +477,10 @@ void pal_host_reset_isr_stats(void)
     /* v2.2 G3：单测隔离——重置 GPIO service 锁定状态。
      * 生产 API 不提供解锁（见 pal_hal.h 契约）；这里只在 host 测试钩子里放行，
      * 以便每个用例从干净的 uninitialized 状态开始。 */
-    pthread_mutex_lock(&s_gpio_service_mux);
+    HOST_GPIO_SERVICE_LOCK();
     s_gpio_service_initialized = false;
     s_gpio_service_prio        = PAL_IRQ_PRIO_NORMAL;
-    pthread_mutex_unlock(&s_gpio_service_mux);
+    HOST_GPIO_SERVICE_UNLOCK();
 
     /* 一并清 GPIO handler 表 —— 单测每个 case 应从零状态开始 */
     memset(s_gpio_isr, 0, sizeof(s_gpio_isr));

@@ -20,11 +20,23 @@ static inline bool IsDebuggerPresent(void) { return false; }
 #endif
 
 struct wink_app_callbacks;
+/* MSVC 没有 __attribute__((weak))。在 host Windows build 上, app 若想覆盖
+ * 这条 stub, 直接在自己的 TU 提供同名 strong 符号并在链接时把本 TU 排除
+ * (例如把 pal_osal_host 编进 lib 时让链接器先选 app 的实现)。POSIX 路径
+ * 保持 weak, 允许 app 端 weak override。 */
+#if defined(_MSC_VER)
+void wink_runtime_fault(const struct wink_app_callbacks* callbacks, uint32_t fault_code) {
+    (void)callbacks;
+    (void)fault_code;
+    fprintf(stderr, "[STUB] wink_runtime_fault called with code %u\n", (unsigned int)fault_code);
+}
+#else
 __attribute__((weak)) void wink_runtime_fault(const struct wink_app_callbacks* callbacks, uint32_t fault_code) {
     (void)callbacks;
     (void)fault_code;
     fprintf(stderr, "[STUB] wink_runtime_fault called with code %u\n", (unsigned int)fault_code);
 }
+#endif
 
 void pal_wasm_dispatch_pending_interrupts(void) {
     /* No-op on host simulation target */
