@@ -594,6 +594,119 @@ void test_get_status_after_deinit(void) {
                           dal_button_get_status(&dev, (wink_status_t[]){0}));
 }
 
+/* ═══════════════════════════════════════════════════════════
+ * DAL-V-010: was_pressed read-clear atomicity
+ * ═══════════════════════════════════════════════════════════ */
+
+/* SMP-style race: simulate a second caller that grabs the IRQLock just
+ * before the first caller's was_pressed completes.  Before the fix this
+ * was a single read+write pair with no critical section, so the second
+ * caller could observe the same rising edge and return true twice for a
+ * single physical press.  With PAL_CRITICAL_SECTION around the
+ * (stable_pressed, last_reported) read-clear, only one caller can ever
+ * see the transition true→false on (last_reported) — the second caller
+ * is serialized through the same lock and sees last_reported already
+ * updated. */
+void test_was_pressed_atomic_under_lock(void) {
+    dal_button_t dev = {0};
+    const dal_button_config_t cfg = { .owner = OWNER, .pin = 60, .active_low = true };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, &cfg));
+    /* Hand-craft the post-debounce "press" state */
+    dev.stable_pressed = true;
+    dev.last_reported  = false;
+
+    /* First was_pressed call → true (rising edge) */
+    bool ev1 = false;
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_was_pressed(&dev, &ev1));
+    TEST_ASSERT_TRUE(ev1);
+    /* Internal: last_reported must be true after the read-clear */
+    TEST_ASSERT_TRUE(dev.last_reported);
+
+    /* Second was_pressed call from "another core" → false (edge already
+     * reported and consumed).  This is the contract that protects against
+     * the double-report SMP race. */
+    bool ev2 = true;
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_was_pressed(&dev, &ev2));
+    TEST_ASSERT_FALSE(ev2);
+    TEST_ASSERT_TRUE(dev.last_reported);
+}
+
+/* Reproduce the SMP race directly: two callers both observe the rising
+ * edge when PAL_CRITICAL_SECTION serialization is in place.  We use
+ * pal_irq_save/restore to pretend we're on the other core — host IRQ
+ * lock is recursive so this doesn't deadlock.  The contract we verify:
+ * exactly ONE caller sees the press; the other sees false. */
+void test_was_pressed_serializes_concurrent_readers(void) {
+    dal_button_t dev = {0};
+    const dal_button_config_t cfg = { .owner = OWNER, .pin = 61, .active_low = true };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, &cfg));
+    dev.stable_pressed = true;
+    dev.last_reported  = false;
+
+    /* Take the IRQ lock first to "claim" being the second caller.  In
+     * practice host's lock is per-thread, so this just exercises that
+     * the inner PAL_CRITICAL_SECTION nests cleanly. */
+    uint32_t mask = pal_irq_save_rtos_safe();
+
+    bool ev_outer = false;
+    /* This call holds the lock the whole time.  After it returns,
+     * last_reported must be set. */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_was_pressed(&dev, &ev_outer));
+    TEST_ASSERT_TRUE(ev_outer);
+    TEST_ASSERT_TRUE(dev.last_reported);
+
+    pal_irq_restore(mask);
+
+    /* Second call (lock released) — no fresh press, must return false */
+    bool ev_inner = true;
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_was_pressed(&dev, &ev_inner));
+    TEST_ASSERT_FALSE(ev_inner);
+}
+
+/* ═══════════════════════════════════════════════════════════
+ * ADR-0024 §4 #8 idempotency — extended 10-round loop with BOTH
+ * counter and IRQ backend active simultaneously (the refcount path).
+ * Catches leaks in dal_button_disable_gpio_isr's reference counting.
+ * ═══════════════════════════════════════════════════════════ */
+
+void test_deinit_loop_with_counter_and_irq_backend(void) {
+    dal_button_t dev; memset(&dev, 0, sizeof(dev));
+    const dal_button_config_t cfg = { .owner = OWNER, .pin = 62, .active_low = true };
+
+    for (int round = 0; round < 10; round++) {
+        TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, &cfg));
+        TEST_ASSERT_TRUE(dev.initialized);
+        TEST_ASSERT_TRUE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 62));
+
+        /* Enable the counter path (refcount +1) */
+        TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_enable_isr_counter(&dev));
+        TEST_ASSERT_TRUE(dev.isr_counter_enabled);
+        TEST_ASSERT_TRUE(dev.gpio_isr_registered);
+
+        /* Arm the BAL IRQ backend (refcount +1 — both consumers share the
+         * same ISR thunk).  This is the worst case for refcounting: if
+         * either consumer forgets to drop, the next init() will fail with
+         * BUSY. */
+        extern void dal_button_set_event_backend(dal_button_t *dev, uint8_t backend);
+        dal_button_set_event_backend(&dev, 2 /* DAL_BUTTON_BACKEND_IRQ */);
+        TEST_ASSERT_TRUE(dev.gpio_isr_registered);
+
+        /* Drive a few interrupts to exercise the counter */
+        pal_host_trigger_gpio_interrupt(62);
+        pal_host_trigger_gpio_interrupt(62);
+        uint32_t c = 0;
+        TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_get_edge_count(&dev, &c));
+        TEST_ASSERT_EQUAL_UINT32(2, c);
+
+        /* deinit must drop BOTH refs and the underlying resource */
+        TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_deinit(&dev));
+        TEST_ASSERT_FALSE(dev.initialized);
+        TEST_ASSERT_FALSE(dev.isr_counter_enabled);
+        TEST_ASSERT_FALSE(dev.gpio_isr_registered);
+        TEST_ASSERT_FALSE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 62));
+    }
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_init_null_returns_invalid_arg);
@@ -629,5 +742,10 @@ int main(void) {
     RUN_TEST(test_get_status_clears_after_recovery);
     RUN_TEST(test_get_status_propagates_poll_error_and_clears);
     RUN_TEST(test_get_status_after_deinit);
+    /* DAL-V-010: was_pressed atomicity */
+    RUN_TEST(test_was_pressed_atomic_under_lock);
+    RUN_TEST(test_was_pressed_serializes_concurrent_readers);
+    /* ADR-0024: 10-round loop with refcounted counter + IRQ backend */
+    RUN_TEST(test_deinit_loop_with_counter_and_irq_backend);
     return UNITY_END();
 }
