@@ -39,6 +39,13 @@ _Static_assert(sizeof(dal_mono_oled_variant_t) == 1,
 #endif
 
 /**
+ * @brief display 离散坐标与尺寸字段说明：
+ *   - width / height / col / page / pages 是 0-indexed 屏幕坐标/尺寸，
+ *     单位 = 像素（width/col）或 8 像素页（height/page/pages）。
+ *   - 属于显示栅格坐标，非 spec §9.1 封闭单位后缀表覆盖的物理量（_cm / _ddeg / _us 等）。
+ */
+
+/**
  * @brief 单色 OLED 构造期配置（dal_mono_oled_init 输入）
  */
 typedef struct {
@@ -96,6 +103,8 @@ _Static_assert(sizeof(dal_mono_oled_t) == 1048, "ABI break: handle size changed 
  *   - Preconditions: dev/cfg 非 NULL；cfg->owner 非 NULL（静态存储）。
  *   - Blocking: No（pal_i2c_transfer 不阻塞）。
  *   - Thread-safe: No; ISR-safe: No.
+ *   - Side-effects: dev->config, dev->framebuffer, dev->pages, dev->initialized modified;
+ *     pal_resource_claim(I2C_ADDR); sends I2C init command sequence.
  *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_BUSY(地址冲突) /
  *     透传 PAL 错误（WINK_ERR_IO 等）。
  *   - Postconditions: WINK_OK 时 dev->initialized=true；帧缓冲已清零；显示已开启。
@@ -107,6 +116,9 @@ wink_status_t dal_mono_oled_init(dal_mono_oled_t *dev, const dal_mono_oled_confi
  * @brief 清空帧缓冲（纯内存操作，无 I2C）。
  * @note API Contract:
  *   - Preconditions: dev 非 NULL；initialized。
+ *   - Blocking: No（纯 memset）。
+ *   - Thread-safe: No; ISR-safe: No.
+ *   - Side-effects: dev->framebuffer[0..1023] cleared to 0.
  *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED。
  */
 WINK_WARN_UNUSED_RESULT
@@ -122,6 +134,8 @@ wink_status_t dal_mono_oled_clear(dal_mono_oled_t *dev);
  * @note API Contract:
  *   - Preconditions: dev/str 非 NULL；initialized。
  *   - Blocking: No。
+ *   - Thread-safe: No; ISR-safe: No.
+ *   - Side-effects: modifies dev->framebuffer for glyph pixels.
  *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED。
  */
 WINK_WARN_UNUSED_RESULT
@@ -134,6 +148,8 @@ wink_status_t dal_mono_oled_draw_text(dal_mono_oled_t *dev, uint16_t col, uint8_
  * @note API Contract:
  *   - Preconditions: dev 非 NULL；initialized。
  *   - Blocking: No。
+ *   - Thread-safe: No; ISR-safe: No.
+ *   - Side-effects: sends I2C page transfers to OLED display hardware.
  *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED / 透传 PAL 错误。
  */
 WINK_WARN_UNUSED_RESULT
@@ -152,6 +168,8 @@ wink_status_t dal_mono_oled_flush(dal_mono_oled_t *dev);
  *   - Preconditions: dev 非 NULL。
  *   - Blocking: No（best-effort 屏幕关闭命令，失败忽略）。
  *   - Thread-safe: No; ISR-safe: No.
+ *   - Side-effects: sends display off command via I2C (best-effort);
+ *     pal_resource_release(I2C_ADDR); memset(dev, 0).
  *   - Idempotent: 未 init 时返回 WINK_OK。
  *   - ADR-0024: 只释放 I2C_ADDR claim，不销毁共享 bus。
  */
