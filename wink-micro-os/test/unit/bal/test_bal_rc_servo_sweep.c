@@ -20,9 +20,8 @@
 static dal_rc_servo_t s_servo1;
 static dal_rc_servo_t s_servo2;
 
-#if defined(__GNUC__) || defined(__clang__)
-#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
+#include "compat/wink_test_compat.h"
+WINK_TEST_ALLOW_DEPRECATED
 
 #include "wink_sim_scheduler.h"
 #include "wink_soft_timer.h"
@@ -41,8 +40,8 @@ void setUp(void) {
     const dal_rc_servo_config_t cfg1 = {
         .owner = "test_servo1",
         .pwm_channel = 0,
-        .min_pulse_ms = 0.5f,
-        .max_pulse_ms = 2.5f,
+        .min_pulse_us = 500,
+        .max_pulse_us = 2500,
     };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_rc_servo_init(&s_servo1, &cfg1));
 
@@ -50,8 +49,8 @@ void setUp(void) {
     const dal_rc_servo_config_t cfg2 = {
         .owner = "test_servo2",
         .pwm_channel = 1,
-        .min_pulse_ms = 0.5f,
-        .max_pulse_ms = 2.5f,
+        .min_pulse_us = 500,
+        .max_pulse_us = 2500,
     };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_rc_servo_init(&s_servo2, &cfg2));
 }
@@ -98,8 +97,8 @@ void test_servo_sweep_pool_exhaustion(void) {
         dal_rc_servo_config_t cfg = {
             .owner = "mock_servo",
             .pwm_channel = (uint8_t)(2 + i),
-            .min_pulse_ms = 0.5f,
-            .max_pulse_ms = 2.5f,
+            .min_pulse_us = 500,
+            .max_pulse_us = 2500,
         };
         TEST_ASSERT_EQUAL_INT(WINK_OK, dal_rc_servo_init(&mocks[i], &cfg));
 
@@ -141,7 +140,7 @@ void test_servo_sweep_set_period(void) {
 
 void test_servo_sweep_set_angle_oneshot(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_rc_servo_set_angle(&s_servo1, 90.0f));
-    TEST_ASSERT_EQUAL_FLOAT(90.0f, s_servo1.current_angle);
+    TEST_ASSERT_EQUAL_UINT16(900, s_servo1.current_angle_ddeg);
 }
 
 int main(void) {
