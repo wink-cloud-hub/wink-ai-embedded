@@ -2,8 +2,8 @@
 
 | 项 | 内容 |
 |----|------|
-| **规范版本** | v3.4.1 (Draft) |
-| **状态** | 拟定中 / 待评审 |
+| **规范版本** | v3.4.1 (Active) |
+| **状态** | 现行规范 / 已采纳 |
 | **适用范围** | `wink-micro-os` 器件抽象层 (`dal/`) 驱动开发与代码生成器 (`codegen`) |
 | **关联活规范** | [`01-dal-device-abstraction.md`](../../../docs/design/02-wink-micro-os/01-dal-device-abstraction.md) |
 | **关联 ADR** | [ADR-0001](../../../docs/design/decisions/0001-error-code-sign-convention.md) (错误码符号约定), [ADR-0004](../../../docs/design/decisions/0004-static-dispatch-vs-runtime-ops.md) (静态分发), [ADR-0017](../../../docs/design/decisions/0017-blocking-api-hard-isolation.md) (阻塞隔离), [ADR-0024](../../../docs/design/decisions/0024-fault-three-phase-model-and-dal-deinit-contract.md) (Deinit 清场), [ADR-0043](../../../docs/design/decisions/0043-yaml-driven-layer-lint.md) (Lint 规约), [ADR-0046](../../../docs/design/decisions/0046-dal-driver-registry-ssot.md) (驱动 Registry SSOT), [ADR-0048](../../../docs/design/decisions/0048-actuator-control-semantic-naming.md) (执行器语义命名), [ADR-0056](../../../docs/design/decisions/0056-cross-profile-quantity-ab-class-and-scaled-integers.md) (跨 Profile 量纲 A/B 两分类与定标整数) |
@@ -48,7 +48,7 @@
 
 为实现“**同源 YAML SSOT，两端精准生成**”，`wink-micro-os` 引入 Profile 区分机制：
 
-* **Full Profile (32-bit / POSIX / WASM / STM32 / ESP32)**：包含 `owner` 跟踪、支持 32/64 位高精度时间戳与 POD 配置深拷贝句柄（本规范主推标准）。**A 类执行器命令用定标整数（不用 float），B 类传感器测量用 `float`/`double`**（见 §9）。
+* **Full Profile (32-bit / POSIX / WASM / STM32 / ESP32)**：包含 `owner` 跟踪、支持 32/64 位高精度时间戳与 POD 配置深拷贝句柄（本规范主推标准；WASM 仿真架构与通道定义见 [Wasm 仿真 3.0 SSOT](../../../docs/design/04-wasm-simulation-3.0/00-README.md)）。**A 类执行器命令用定标整数（不用 float），B 类传感器测量用 `float`/`double`**（见 §9）。
 * **Micro Profile (8-bit / 8051 / STC8 / AVR)**：整数量纲（A 类与 Full 同刻度定标整数；B 类定点）、Flash Zero-Copy 句柄引用、静态硬编码/直接分发、16 位低开销计数器与 `uint8_t` 状态标志。详细条款已独立解耦出扩展规范 [`dal-micro-profile-spec.md`](dal-micro-profile-spec.md)。
 
 **同源边界 = codegen binding 层（[ADR-0056](../../../docs/design/decisions/0056-cross-profile-quantity-ab-class-and-scaled-integers.md)）**：
@@ -1099,7 +1099,7 @@ YAML 中 `experimental: true` 表示"接口可能变动 + 实现可能不完整"
  * @note API Contract:
  *   - Preconditions: ★ dev 非 NULL；init 已成功。
  *   - Postconditions: ★ 成功时的状态变化。
- *   - Range: ★ 参数值域与单位（如 speed: [-1.0, 1.0] normalized）。
+ *   - Range: ★ 参数值域与单位（A 类例 speed_promille: [-1000, 1000]；B 类例 distance_cm: [0.0, 500.0]）。
  *   - Blocking: ★ No / Yes (worst-case Xms)。
  *   - Thread-safe: ★ No（默认值；缺失时按 No 解释，见 DAL-C-042）。
  *   - ISR-safe: ★ No / Yes。
@@ -1315,6 +1315,7 @@ wink_status_t dal_<type>_resume(dal_<type>_t *dev);
 本文件定位为 **DAL 开发编码规范**（位于 `dal-development-guide/`），面向驱动开发者和 AI 代码生成器提供可查阅的实操规范。
 
 - **架构真相** → [`docs/design/02-wink-micro-os/01-dal-device-abstraction.md`](../../../docs/design/02-wink-micro-os/01-dal-device-abstraction.md)
+- **Wasm 仿真 SSOT** → [`docs/design/04-wasm-simulation-3.0/00-README.md`](../../../docs/design/04-wasm-simulation-3.0/00-README.md)
 - **设计决策** → 各 ADR
 - **Codegen SSOT** → `codegen/drivers/*.yaml` + `codegen/roles/*.yaml`
 

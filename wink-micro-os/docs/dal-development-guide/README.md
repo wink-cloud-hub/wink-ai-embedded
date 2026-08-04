@@ -21,6 +21,8 @@
 | 驱动 registry | [ADR-0046](../../../docs/design/decisions/0046-dal-driver-registry-ssot.md) |
 | 执行器命名 / DC safe_off | [ADR-0048](../../../docs/design/decisions/0048-actuator-control-semantic-naming.md) |
 | Role Interface / 扩展根 | [ADR-0051](../../../docs/design/decisions/0051-scannable-codegen-extension-roots.md)（**Accepted**）；[tech-design](../../../docs/design/tech-designs/2026-07-28-scannable-codegen-extension-roots-design.md)；[实施计划](../../../docs/design/implementation-plans/2026-07-29-scannable-codegen-extension-roots-plan.md) |
+| 跨 Profile A/B 量纲与定标整数 | [ADR-0056](../../../docs/design/decisions/0056-cross-profile-quantity-ab-class-and-scaled-integers.md)（**Accepted**） |
+| Wasm 仿真 3.0 SSOT | [`docs/design/04-wasm-simulation-3.0/`](../../../docs/design/04-wasm-simulation-3.0/00-README.md)（**Active**） |
 
 ## 同级相关 Howto
 
