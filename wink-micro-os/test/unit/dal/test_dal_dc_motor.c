@@ -178,7 +178,7 @@ void test_dc_motor_brake_single_pin_unsupported(void)
 
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_init(&dev, &cfg));
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_set_speed_promille(&dev, 500));
-    TEST_ASSERT_EQUAL_INT_UNSUPPORTED, dal_dc_motor_brake(&dev));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_dc_motor_brake(&dev));
     /* Must not silently coast: speed left unchanged on unsupported brake. */
     TEST_ASSERT_EQUAL_INT16(500, dev.current_speed_promille);
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_deinit(&dev));
