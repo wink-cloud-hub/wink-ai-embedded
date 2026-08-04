@@ -4,6 +4,7 @@
  */
 #include "wasm_sim_registry.h"
 #include "wasm_bridge.h"
+#include "wink_init_ctor.h"
 #include <stdio.h>
 #include <string.h>
 #ifdef __EMSCRIPTEN__
@@ -28,8 +29,7 @@
 static float s_virtual_ultrasonic_distance[WASM_SIM_MAX_PINS];
 
 /* Fill all slots with -1.0f sentinel at startup. */
-__attribute__((constructor))
-static void ultrasonic_boot_init(void) {
+WINK_CONSTRUCTOR(ultrasonic_boot_init) {
     for (int i = 0; i < WASM_SIM_MAX_PINS; i++) {
         s_virtual_ultrasonic_distance[i] = -1.0f;
     }
