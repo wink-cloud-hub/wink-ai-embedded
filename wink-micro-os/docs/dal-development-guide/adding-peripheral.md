@@ -87,9 +87,15 @@ Host 构建至少一次带 `wink-app.json` 裁剪、一次不带 JSON（全量�
 
 ---
 
-## 5. Unisim 对齐（文档级）
+## 5. Unisim 仿真侧对齐（[Wasm 仿真 3.0 SSOT](../../../docs/design/04-wasm-simulation-3.0/00-README.md)）
 
-仿真侧 Manifest 的 `type` 字符串必须与 codegen YAML 的 `type:` **逐字一致**。不强制跨仓 CI；嵌入式侧以 `list_drivers.py --json` 作为对照源。
+1. **`type` 字符串强制逐字一致**：仿真侧 Manifest / `peripheral-definition.json` 的 `type`（或 `id`）字符串必须与 codegen YAML 的 `type:` **逐字一致**。嵌入式侧以 `list_drivers.py --json` 作为对照源。
+2. **四层配置源职责（[07-peripheral-registry.md](../../../docs/design/04-wasm-simulation-3.0/02-mechanisms/07-peripheral-registry.md#L18-L32)）**：
+   - `wink-app.json`：固件设备树 SSOT（声明 App 用到的外设实例与引脚）。
+   - `sim-project.json`：仿真电路画布拓扑（导线连接、元件坐标）。
+   - `peripheral-definition.json`：Unisim / Wokwi UI 元数据（管脚定义、SchemaForm 属性面板）。
+   - `device_tree.h`：固件编译产物。
+3. **仿真 Bypass 方式**：若外设需要在 WASM 仿真中跳过底层 PAL 驱动直接与前端交互，可通过 WASM Bridge 实现 Channel 4 语义旁路（`dal_<type>_*` Direct Bridge，详见 [08-channel-routing.md](../../../docs/design/04-wasm-simulation-3.0/02-mechanisms/08-channel-routing.md)）。
 
 ---
 
