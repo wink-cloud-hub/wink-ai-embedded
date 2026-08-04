@@ -14,6 +14,7 @@
 #include "unity.h"
 #include "control/wink_chassis.h"
 #include "math/wink_diff_drive_kinematics.h"
+#include "dal_dc_motor.h"
 #include "wink_tasks.h"
 #include "wink_soft_timer.h"
 #include "wink_status.h"
@@ -190,8 +191,12 @@ void test_chassis_set_velocity_drives_motors(void) {
         wink_soft_timer_dispatch();
     }
 
-    TEST_ASSERT_TRUE(s_left_motor.current_speed > 0.0f);
-    TEST_ASSERT_TRUE(s_right_motor.current_speed > 0.0f);
+    int16_t s_left_speed = 0;
+    int16_t s_right_speed = 0;
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_get_speed_promille(&s_left_motor, &s_left_speed));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_get_speed_promille(&s_right_motor, &s_right_speed));
+    TEST_ASSERT_TRUE(s_left_speed > 0);
+    TEST_ASSERT_TRUE(s_right_speed > 0);
 
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_chassis_stop(&s_left_motor));
 }

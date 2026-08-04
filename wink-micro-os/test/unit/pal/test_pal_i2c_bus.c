@@ -18,9 +18,8 @@
 /* ADR-0017 层 1 例外：本 TU 合法调用 WINK_BLOCKING 的 pal_i2c_transfer 来验证
  * bus_init→transfer 通路（pal_i2c_transfer 是阻塞 API）。抑制 -Wdeprecated-declarations
  * 使 -Werror 下仍能编译；严格模式下 pal_i2c_transfer 声明本身消失，本 TU 不会被编译。 */
-#if defined(__GNUC__) || defined(__clang__)
-#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
+#include "compat/wink_test_compat.h"
+WINK_TEST_ALLOW_DEPRECATED
 #ifdef _MSC_VER
 #  pragma warning(disable: 4996)
 #endif

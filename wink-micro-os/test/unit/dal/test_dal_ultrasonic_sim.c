@@ -9,10 +9,8 @@
 
 /* ADR-0017：dal_ultrasonic_read 挂 WINK_BLOCKING 后，本文件对其调用属过渡期例外，
  * 见 test_dal_ultrasonic.c 顶部同款说明。 */
-#if defined(__GNUC__) || defined(__clang__)
-#  pragma GCC diagnostic push
-#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
+#include "compat/wink_test_compat.h"
+WINK_TEST_ALLOW_DEPRECATED_BEGIN
 
 static const char *const OWNER = "test_dal_ultrasonic_sim";
 
@@ -54,6 +52,4 @@ int main(void) {
     return UNITY_END();
 }
 
-#if defined(__GNUC__) || defined(__clang__)
-#  pragma GCC diagnostic pop
-#endif
+WINK_TEST_ALLOW_DEPRECATED_END

@@ -25,9 +25,8 @@
 
 /* ADR-0017 层 1 例外：本 TU 合法调用 WINK_BLOCKING API (pal_os_task_create
  * via wink_periodic_start_ex for MAY_BLOCK tasks). */
-#if defined(__GNUC__) || defined(__clang__)
-#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
+#include "compat/wink_test_compat.h"
+WINK_TEST_ALLOW_DEPRECATED
 
 /* ── helpers ─────────────────────────────────────────────── */
 

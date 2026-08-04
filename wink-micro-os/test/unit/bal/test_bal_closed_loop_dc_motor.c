@@ -2,6 +2,7 @@
 
 #include "unity.h"
 #include "control/wink_closed_loop_dc_motor.h"
+#include "dal_dc_motor.h"
 #include "wink_tasks.h"
 #include "wink_soft_timer.h"
 #include "wink_status.h"
@@ -138,11 +139,14 @@ void test_cl_motor_pid_control_loop(void) {
 
     tick_n(2);
 
-    TEST_ASSERT_TRUE(s_motor.current_speed > 0.0f);
+    int16_t s_motor_speed = 0;
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_get_speed_promille(&s_motor, &s_motor_speed));
+    TEST_ASSERT_TRUE(s_motor_speed > 0);
 
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_dc_motor_set_speed(&s_motor, -100.0f));
     tick_n(2);
-    TEST_ASSERT_TRUE(s_motor.current_speed < 0.0f);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_get_speed_promille(&s_motor, &s_motor_speed));
+    TEST_ASSERT_TRUE(s_motor_speed < 0);
 
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_dc_motor_stop(&s_motor));
 }
@@ -159,13 +163,21 @@ void test_cl_motor_failsafe_timeout(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_dc_motor_set_speed(&s_motor, 100.0f));
 
     tick_n(2);
-    TEST_ASSERT_TRUE(s_motor.current_speed > 0.0f);
+    {
+        int16_t s_motor_speed = 0;
+        TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_get_speed_promille(&s_motor, &s_motor_speed));
+        TEST_ASSERT_TRUE(s_motor_speed > 0);
+    }
 
     /* Virtual-clock timeout: count frozen → fail-safe (R-010). */
     tick_n(15);
 
     /* safe_off → brake on dual-dir H-bridge: speed + PWM duty cleared. */
-    TEST_ASSERT_EQUAL_FLOAT(0.0f, s_motor.current_speed);
+    {
+        int16_t s_motor_speed = 0;
+        TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_get_speed_promille(&s_motor, &s_motor_speed));
+        TEST_ASSERT_EQUAL_INT(0, s_motor_speed);
+    }
     TEST_ASSERT_FLOAT_WITHIN(1e-5f, 0.0f, sim_last_pwm_duty(0));
 
     TEST_ASSERT_EQUAL_UINT32(WINK_FAULT_MOTOR_FEEDBACK_LOSS, wink_trace_last());
@@ -213,7 +225,11 @@ void test_cl_motor_tracks_injected_encoder_ramp(void) {
     TEST_ASSERT_FLOAT_WITHIN(40.0f, target_cps, feedback);
 
     /* Tracking well → command not stuck at saturation. */
-    TEST_ASSERT_TRUE(fabsf(s_motor.current_speed) < 0.85f);
+    {
+        int16_t s_motor_speed = 0;
+        TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_get_speed_promille(&s_motor, &s_motor_speed));
+        TEST_ASSERT_TRUE(s_motor_speed < 850 && s_motor_speed > -850);
+    }
 
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_closed_loop_dc_motor_stop(&s_motor));
 }
@@ -239,7 +255,11 @@ void test_cl_motor_anti_windup_under_saturation(void) {
 
     /* Saturate with frozen encoder. */
     tick_n(30);
-    TEST_ASSERT_TRUE(s_motor.current_speed >= 0.99f);
+    {
+        int16_t s_motor_speed = 0;
+        TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_get_speed_promille(&s_motor, &s_motor_speed));
+        TEST_ASSERT_TRUE(s_motor_speed >= 990);
+    }
 
     float integral_at_sat = 0.0f;
     TEST_ASSERT_EQUAL_INT(
@@ -263,8 +283,12 @@ void test_cl_motor_anti_windup_under_saturation(void) {
     }
 
     /* After matching feedback, command must not reverse hard; stay near [0, 1]. */
-    TEST_ASSERT_TRUE(s_motor.current_speed > -0.15f);
-    TEST_ASSERT_TRUE(s_motor.current_speed < 1.01f);
+    {
+        int16_t s_motor_speed = 0;
+        TEST_ASSERT_EQUAL_INT(WINK_OK, dal_dc_motor_get_speed_promille(&s_motor, &s_motor_speed));
+        TEST_ASSERT_TRUE(s_motor_speed > -150);
+        TEST_ASSERT_TRUE(s_motor_speed < 1010);
+    }
 
     float integral_after = 0.0f;
     TEST_ASSERT_EQUAL_INT(

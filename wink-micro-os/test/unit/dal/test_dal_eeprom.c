@@ -13,9 +13,8 @@
 
 /* ADR-0017 层 1 例外：dal_eeprom_read_blocking/write_blocking are WINK_BLOCKING APIs;
  * host unit tests run outside the cooperative scheduler. */
-#if defined(__GNUC__) || defined(__clang__)
-#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
+#include "compat/wink_test_compat.h"
+WINK_TEST_ALLOW_DEPRECATED
 #ifdef _MSC_VER
 #  pragma warning(disable: 4996)
 #endif
