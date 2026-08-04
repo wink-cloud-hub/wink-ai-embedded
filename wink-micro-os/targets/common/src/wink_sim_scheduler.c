@@ -4,6 +4,13 @@
 #include <stdio.h>
 #include <assert.h>
 
+/* MSVC CRT deprecation suppression: strncpy is used for bounded task-name
+ * initialization; the field is always NUL-terminated below. */
+#if defined(_MSC_VER)
+#  pragma warning(disable: 4996)
+#  define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #ifndef WINK_SIM_SCHED_TRACE
 #define WINK_SIM_SCHED_TRACE 0
 #endif
