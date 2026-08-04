@@ -39,9 +39,14 @@ extern "C" {
  * @param backend DAL_BUTTON_BACKEND_{NONE, POLL, IRQ}.
  *
  * @note API Contract:
- *   - Thread-safe: No (task context only; must not race with deinit)
- *   - ISR-safe: No
- *   - Callback-context: N/A
+ *   - Preconditions: dev 非 NULL（NULL 直接 no-op）；dev 已 init。
+ *   - Blocking: No.
+ *   - Thread-safe: No; ISR-safe: No.
+ *     （task 上下文；与 ISR 共享 event_backend 字段，但访问由
+ *      PAL_CRITICAL_SECTION 串行化，in-flight ISR 要么见 OLD 要么见 NEW，
+ *      不会读到撕裂值。DAL-C-001 单字宽 RMW 保护。）
+ *   - Side-effects: 写 dev->event_backend（在临界区内）。
+ *   - Error-codes: 无（void 函数）。
  *   - Stability: BAL-internal; NOT part of the public DAL frozen surface.
  */
 void dal_button_set_event_backend(dal_button_t *dev, uint8_t backend);
@@ -85,8 +90,14 @@ void dal_button_disable_gpio_isr(dal_button_t *dev);
  * @return WINK_OK / WINK_ERR_INVALID_ARG / WINK_ERR_NOT_INITIALIZED
  *
  * @note API Contract:
- *   - Thread-safe: No (task context only)
- *   - ISR-safe: No
+ *   - Preconditions: dev 非 NULL；out_was_pending 非 NULL；dev 已 init。
+ *   - Blocking: No.
+ *   - Thread-safe: No; ISR-safe: No.
+ *     （task 上下文；与 IRQ 共享 irq_pending 字段，但访问由
+ *      PAL_CRITICAL_SECTION 串行化，所以从 BAL daemon 单 task
+ *      视角是安全的——SMP 视角下也安全）
+ *   - Side-effects: 读并清 dev->irq_pending（清零在临界区内）。
+ *   - Error-codes: WINK_OK / WINK_ERR_INVALID_ARG(NULL) / WINK_ERR_NOT_INITIALIZED。
  *   - Stability: BAL-internal.
  */
 WINK_WARN_UNUSED_RESULT
@@ -117,12 +128,21 @@ wink_status_t dal_button_consume_irq_pending(dal_button_t *dev,
  * dev->event_backend == DAL_BUTTON_BACKEND_IRQ 时），必须 ISR-safe——
  * 通常做法是 `pal_os_sem_give_isr(daemon_sem)`。
  *
+ * 进程级：同一进程所有 button 实例共享一个 hook（s_irq_hook 静态）。
+ * 这是有意的：避免每实例一个 ISR 上下文，减小共享 thunk 体积。
+ *
  * @param fn   Hook 函数（NULL = 取消注册）。
  * @param ctx  Hook 调用时原样传入。
  *
  * @note API Contract:
- *   - Thread-safe: No (call from task context during BAL init)
- *   - ISR-safe: No
+ *   - Preconditions: 调用前 BAL 侧应已完成 daemon 初始化（sem 已创建）。
+ *   - Blocking: No.
+ *   - Thread-safe: No; ISR-safe: No.
+ *     （task 上下文；与 ISR 的 s_irq_hook 读共享 volatile 指针，
+ *      install/uninstall 期间不需临界区——NULL hook 是合法瞬态值，
+ *      ISR 端会跳过，最坏丢一次 notify，下个边沿 / 定时器会兜底。）
+ *   - Side-effects: 写 s_irq_hook / s_irq_hook_ctx 全局变量。
+ *   - Error-codes: 无（void 函数）。
  *   - Stability: BAL-internal.
  */
 void dal_button_set_irq_hook(dal_button_irq_notify_hook_t fn, void *ctx);
