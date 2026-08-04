@@ -341,7 +341,7 @@ void test_irq_priority_enum_bounds(void)
  * initialization —— 一条获得锁定为其 prio，另一条应返回 WINK_ERR_INVALID_ARG，
  * 且不出现 UB / crash / 双重初始化。 */
 
-#if !defined(ESP_PLATFORM) && !defined(__EMSCRIPTEN__)
+#if !defined(ESP_PLATFORM) && !defined(__EMSCRIPTEN__) && !defined(_WIN32)
 #include <pthread.h>
 
 typedef struct {

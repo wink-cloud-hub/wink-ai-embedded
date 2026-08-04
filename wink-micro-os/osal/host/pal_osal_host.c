@@ -5,6 +5,8 @@
  */
 #include "pal_osal.h"
 #include "host_test_ctrl.h"
+#include "wink_init_ctor.h"
+#include "wink_compiler.h"
 #include "wink_sim_physical.h"   /* wink_phys_debounce_ctx_t + WINK_SIM_FAULTS_IDEAL */
 #include "wink_sim_scheduler.h"
 #include "host_wall_clock.h"     /* F2 R6：WCET 物理墙钟量测共享 helper */
@@ -20,23 +22,16 @@ static inline bool IsDebuggerPresent(void) { return false; }
 #endif
 
 struct wink_app_callbacks;
-/* MSVC 没有 __attribute__((weak))。在 host Windows build 上, app 若想覆盖
- * 这条 stub, 直接在自己的 TU 提供同名 strong 符号并在链接时把本 TU 排除
- * (例如把 pal_osal_host 编进 lib 时让链接器先选 app 的实现)。POSIX 路径
- * 保持 weak, 允许 app 端 weak override。 */
-#if defined(_MSC_VER)
-void wink_runtime_fault(const struct wink_app_callbacks* callbacks, uint32_t fault_code) {
+/* 跨平台 weak stub —— 真实实现由 wink_runtime.c 提供（强符号）。
+ * GCC 路径下 weak override 行为天然支持；
+ * MSVC 路径下 WINK_WEAK 退化为 COMDAT selectany, 由链接器在多个定义间
+ * 折叠挑选 (实际语义为"先来后到"—— 同一进程内只能有一个有效实现)。
+ * 详见 docs/design/decisions/ADR-0059-cross-platform-weak-symbol.md. */
+WINK_WEAK void wink_runtime_fault(const struct wink_app_callbacks* callbacks, uint32_t fault_code) {
     (void)callbacks;
     (void)fault_code;
     fprintf(stderr, "[STUB] wink_runtime_fault called with code %u\n", (unsigned int)fault_code);
 }
-#else
-__attribute__((weak)) void wink_runtime_fault(const struct wink_app_callbacks* callbacks, uint32_t fault_code) {
-    (void)callbacks;
-    (void)fault_code;
-    fprintf(stderr, "[STUB] wink_runtime_fault called with code %u\n", (unsigned int)fault_code);
-}
-#endif
 
 void pal_wasm_dispatch_pending_interrupts(void) {
     /* No-op on host simulation target */

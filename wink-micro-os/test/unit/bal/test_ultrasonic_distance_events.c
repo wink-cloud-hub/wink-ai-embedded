@@ -102,7 +102,7 @@ void test_mutex_with_sonar_helper(void)
 void test_distance_ready_posted(void)
 {
     const wink_ultrasonic_distance_event_config_t cfg = { .period_ms = 50u };
-    wink_event_t ev;
+    wink_event_t ev = {0}; /* explicit zero-init: suppress MSVC C4701 */
     int got = 0;
 
     arm_echo(588); /* ≈10 cm */
@@ -128,7 +128,7 @@ void test_distance_ready_posted(void)
 void test_disable_stops_events(void)
 {
     const wink_ultrasonic_distance_event_config_t cfg = { .period_ms = 50u };
-    wink_event_t ev;
+    wink_event_t ev = {0}; /* explicit zero-init: suppress MSVC C4701 */
 
     arm_echo(5882);
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_ultrasonic_enable_distance_events(&s_us, &cfg));
