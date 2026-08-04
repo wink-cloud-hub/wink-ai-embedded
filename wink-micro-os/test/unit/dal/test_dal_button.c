@@ -535,7 +535,7 @@ void test_get_status_contract(void) {
 /* Init → get_status returns WINK_OK (fresh handle, no poll yet) */
 void test_get_status_initially_ok(void) {
     dal_button_t dev = {0};
-    const dal_button_config_t cfg = { .owner = OWNER, .pin = 50, .active_low = true };
+    const dal_button_config_t cfg = { .owner = OWNER, .pin = 14, .active_low = true };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, &cfg));
     wink_status_t st = WINK_ERR_DISCONNECTED;
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_get_status(&dev, &st));
@@ -545,10 +545,10 @@ void test_get_status_initially_ok(void) {
 /* Successful poll → get_status stays WINK_OK */
 void test_get_status_clears_after_recovery(void) {
     dal_button_t dev = {0};
-    const dal_button_config_t cfg = { .owner = OWNER, .pin = 51, .active_low = true };
+    const dal_button_config_t cfg = { .owner = OWNER, .pin = 15, .active_low = true };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, &cfg));
     /* poll a few times successfully */
-    set_btn_pin(51, false, true);  /* released */
+    set_btn_pin(15, false, true);  /* released */
     TEST_ASSERT_EQUAL_INT(WINK_OK, poll_n(&dev, DAL_BUTTON_DEBOUNCE_THRESHOLD));
     wink_status_t st = WINK_ERR_PANIC;
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_get_status(&dev, &st));
@@ -560,7 +560,7 @@ void test_get_status_clears_after_recovery(void) {
 void test_get_status_propagates_poll_error_and_clears(void) {
     dal_button_t dev = {0};
     const dal_button_config_t cfg = {
-        .owner = OWNER, .pin = 52, .active_low = true, .pull = DAL_BUTTON_PULL_NONE
+        .owner = OWNER, .pin = 16, .active_low = true, .pull = DAL_BUTTON_PULL_NONE
     };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, &cfg));
     /* First poll: no injection → DISCONNECTED */
@@ -574,7 +574,7 @@ void test_get_status_propagates_poll_error_and_clears(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_is_pressed(&dev, &pressed));
     TEST_ASSERT_FALSE(pressed);
     /* Inject level → next poll succeeds → last_status returns to OK */
-    set_btn_pin(52, false, true);
+    set_btn_pin(16, false, true);
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_poll(&dev));
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_get_status(&dev, &st));
     TEST_ASSERT_EQUAL_INT(WINK_OK, st);
@@ -585,7 +585,7 @@ void test_get_status_propagates_poll_error_and_clears(void) {
 void test_get_status_after_deinit(void) {
     dal_button_t dev = {0};
     const dal_button_config_t cfg = {
-        .owner = OWNER, .pin = 53, .active_low = true, .pull = DAL_BUTTON_PULL_NONE
+        .owner = OWNER, .pin = 17, .active_low = true, .pull = DAL_BUTTON_PULL_NONE
     };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, &cfg));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_DISCONNECTED, dal_button_poll(&dev));
@@ -609,7 +609,7 @@ void test_get_status_after_deinit(void) {
  * updated. */
 void test_was_pressed_atomic_under_lock(void) {
     dal_button_t dev = {0};
-    const dal_button_config_t cfg = { .owner = OWNER, .pin = 60, .active_low = true };
+    const dal_button_config_t cfg = { .owner = OWNER, .pin = 18, .active_low = true };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, &cfg));
     /* Hand-craft the post-debounce "press" state */
     dev.stable_pressed = true;
@@ -638,7 +638,7 @@ void test_was_pressed_atomic_under_lock(void) {
  * exactly ONE caller sees the press; the other sees false. */
 void test_was_pressed_serializes_concurrent_readers(void) {
     dal_button_t dev = {0};
-    const dal_button_config_t cfg = { .owner = OWNER, .pin = 61, .active_low = true };
+    const dal_button_config_t cfg = { .owner = OWNER, .pin = 19, .active_low = true };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, &cfg));
     dev.stable_pressed = true;
     dev.last_reported  = false;
@@ -671,12 +671,12 @@ void test_was_pressed_serializes_concurrent_readers(void) {
 
 void test_deinit_loop_with_counter_and_irq_backend(void) {
     dal_button_t dev; memset(&dev, 0, sizeof(dev));
-    const dal_button_config_t cfg = { .owner = OWNER, .pin = 62, .active_low = true };
+    const dal_button_config_t cfg = { .owner = OWNER, .pin = 44, .active_low = true };
 
     for (int round = 0; round < 10; round++) {
         TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_init(&dev, &cfg));
         TEST_ASSERT_TRUE(dev.initialized);
-        TEST_ASSERT_TRUE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 62));
+        TEST_ASSERT_TRUE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 44));
 
         /* Enable the counter path (refcount +1) */
         TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_enable_isr_counter(&dev));
@@ -692,8 +692,8 @@ void test_deinit_loop_with_counter_and_irq_backend(void) {
         TEST_ASSERT_TRUE(dev.gpio_isr_registered);
 
         /* Drive a few interrupts to exercise the counter */
-        pal_host_trigger_gpio_interrupt(62);
-        pal_host_trigger_gpio_interrupt(62);
+        pal_host_trigger_gpio_interrupt(44);
+        pal_host_trigger_gpio_interrupt(44);
         uint32_t c = 0;
         TEST_ASSERT_EQUAL_INT(WINK_OK, dal_button_get_edge_count(&dev, &c));
         TEST_ASSERT_EQUAL_UINT32(2, c);
@@ -703,7 +703,7 @@ void test_deinit_loop_with_counter_and_irq_backend(void) {
         TEST_ASSERT_FALSE(dev.initialized);
         TEST_ASSERT_FALSE(dev.isr_counter_enabled);
         TEST_ASSERT_FALSE(dev.gpio_isr_registered);
-        TEST_ASSERT_FALSE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 62));
+        TEST_ASSERT_FALSE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 44));
     }
 }
 
