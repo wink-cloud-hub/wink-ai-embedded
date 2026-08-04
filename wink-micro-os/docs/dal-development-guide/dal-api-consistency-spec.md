@@ -132,6 +132,81 @@ _Static_assert(sizeof(dal_dc_motor_t) == 40, "ABI break: handle size changed on 
 
 > **owner 裁剪与 Wire Format**：若通过 `#ifdef WINK_DISABLE_OWNER_TRACKING` 裁减 `owner`，`config_t` 成员偏移将整体前移。序列化/反序列化（如 `apply_override`）MUST 显式解耦线格式，或在 8 位裁剪模式下保留对应尺寸的 reserved 占位字段。
 
+#### 2.3.1 自动化验证（`wink.py lint --pack abi`）
+
+§2.3 的数字**严禁凭直觉填写**。本仓库提供 `wink.py lint --pack abi` 子命令**自动核对**手填数字是否与目标编译器实测一致：
+
+```bash
+# 跑全部 DAL 头文件的 ABI 探针（ILP32 + LP64 两档）
+python wink-tools/wink.py lint --pack abi
+
+# 只对单个文件
+python wink-tools/wink.py lint --pack abi --paths wink-micro-os/dal/include/output/dal_led.h
+```
+
+**工作原理**：pack 对每个 `dal/include/**/dal_<type>.h` 临时生成一个**探针 TU**（probe translation unit）：
+
+```c
+#include <stddef.h>
+#include <stdint.h>
+#include "<header>"
+#include "wink_status.h"
+
+#define EMIT(name, expr) \
+    const unsigned long long v_##name = (unsigned long long)(expr)
+
+EMIT(handle_sizeof,     sizeof(dal_<type>_t));
+EMIT(config_sizeof,     sizeof(dal_<type>_config_t));
+EMIT(handle_config_off, offsetof(dal_<type>_t, config));
+EMIT(<field1>_off,      offsetof(dal_<type>_t, <field1>));
+EMIT(<field2>_off,      offsetof(dal_<type>_t, <field2>));
+/* ... */
+```
+
+接着用 `gcc -m32 -S`（ILP32）和 `gcc -S`（LP64）各编一次，从 `.s` 产物中解析出每个 `v_<name>` 标号的 `.long`/`.quad` 初值（即 sizeof/offsetof 的实际数字）。然后将**探针数字**与头文件中**已声明的 `_Static_assert` 右值**逐行对照：
+
+| Rule ID | 级别 | 触发条件 | 含义 |
+|---------|------|----------|------|
+| `abi.abi_assert_value_mismatch` | **error** | 探针数字 ≠ `_Static_assert` RHS | 手填数字与目标编译器实测不符；该断言会在 real target 编译挂掉，或在 host 静默失效。**修法**：用探针给出的真实数字替换 RHS（参考 `wink.py lint --pack abi` 的 `measured` 字段） |
+| `abi.abi_assert_missing` | warning | 缺 `offsetof(handle, config) == 0` 断言 | spec §2.3 的最小护栏（DAL-S-011 首成员保证）未声明 |
+| `abi.probe_compile_failed` | warning | gcc -m32 / gcc -S 编译失败 | 多为 `gcc-multilib` 未装、include 路径不全、或头文件本身有编译错误。**关键副作用**：若 LP64 probe 失败的原因是头文件内 `_Static_assert(... == 32-bit-number)` 在 64 位编译时直接挂掉，**说明该 DAL 已有真实 ABI bug**，必须先修 |
+| `abi.probe_compile_failed`（找不到 gcc） | warning | PATH 上无 gcc / cc / clang | 安装 `build-essential` 后重跑 |
+
+**典型修法**（以 `dal_led.h` 为例）：
+
+```bash
+$ python wink-tools/wink.py lint --pack abi
+error[abi.abi_assert_value_mismatch]: sizeof(dal_led_config_t) declared == 8
+                                   but probe measured 16 on LP64
+  --> dal/include/output/dal_led.h:50
+error[abi.abi_assert_value_mismatch]: sizeof(dal_led_t) declared == 12
+                                   but probe measured 24 on LP64
+  --> dal/include/output/dal_led.h:52
+```
+
+→ 头文件 `dal_led.h:50-52` 的 `_Static_assert` 右值 8 / 12 是**手填时凭"末尾紧挨"直觉**得到的，**与 `owner` 指针在 64 位上 8B 翻倍的事实不符**。修法是改为探针给出的真实数字：
+
+```c
+#if INTPTR_MAX == INT32_MAX   /* ILP32: ESP32 xtensa, wasm32 */
+_Static_assert(sizeof(dal_led_config_t) == 8,  "...");
+_Static_assert(sizeof(dal_led_t)         == 12, "...");
+#else                         /* LP64 / LLP64 */
+_Static_assert(sizeof(dal_led_config_t) == 16, "...");
+_Static_assert(sizeof(dal_led_t)         == 24, "...");
+#endif
+```
+
+> **ILP32 数字可能仍然**靠手填**（若开发机无 32-bit multilib）**。此时 pack 只能验证 LP64。要拿 ILP64 数字请装 `gcc-multilib`（Debian/Ubuntu：`apt install gcc-multilib`；MSYS2：`pacman -S mingw-w64-i686-gcc`）后重跑。
+
+**CI 集成建议**：在仓库根的 `wink.py test`（或等效的 CI 步骤）中加入：
+
+```yaml
+- name: ABI lint
+  run: python wink-tools/wink.py lint --pack abi --strict
+```
+
+`--strict` 把 warning 也升级为 error，可在迁移期逐步推广（先 `--pack abi` 单跑无 strict，仅在 PR 模板中说明"必须 0 个 abi.abi_assert_value_mismatch"）。
+
 ### 2.4 动态内存与句柄分配规约
 
 | 规则 ID | 级别 | 条款 |
