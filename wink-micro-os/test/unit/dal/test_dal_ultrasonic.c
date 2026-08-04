@@ -12,10 +12,18 @@
  * （见 ADR-0017 §Consequences「保留过渡期能力：host 单测继续可用」）——
  * 单测本就是契约守卫，deprecation 告警对它无意义；协作式调度器构建路径经
  * -DWINK_STRICT_NONBLOCKING=1 从符号表剔除后，此单测自动不参与那条链，无 gap。
- * MSVC/其它编译器无 -Wdeprecated-declarations，编译期告警本就退化为空，pragma 无副作用。 */
+ *
+ * 编译器分支：
+ *   - gcc/clang：#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+ *   - MSVC：     __declspec(deprecated) 在这里产生 C4996，需 #pragma warning(disable: 4996)
+ *                （注：之前注释说"MSVC 无 deprecation 警告"是错的——C4996
+ *                 是 MSVC 标准的 deprecated-declarations 等价告警，2005 起就在。） */
 #if defined(__GNUC__) || defined(__clang__)
 #  pragma GCC diagnostic push
 #  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#elif defined(_MSC_VER)
+#  pragma warning(push)
+#  pragma warning(disable: 4996)   /* 'X': was declared deprecated */
 #endif
 
 static const char *const OWNER = "test_dal_ultrasonic";
@@ -267,4 +275,6 @@ int main(void) {
 
 #if defined(__GNUC__) || defined(__clang__)
 #  pragma GCC diagnostic pop
+#elif defined(_MSC_VER)
+#  pragma warning(pop)
 #endif
