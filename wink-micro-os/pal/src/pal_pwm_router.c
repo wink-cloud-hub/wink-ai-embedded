@@ -1,9 +1,10 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file pal_pwm_router.c
- * @brief target 无关 PWM 定时器分配状态机（纯逻辑，无锁，无硬件）。
+ * @brief Target-agnostic PWM timer allocation state machine.
  *
- * ADR-0034: timer 身份 = 完整 effective profile（freq + bits + clock）。
- * 非并发契约见 pal_pwm_router.h。host/wasm/esp32 三 target 共享链接。
+ * ADR-0034: Timer profile allocation manager.
+ * Shared implementation across Host, Wasm, and ESP32 targets.
  */
 #include "pal_pwm_router.h"
 

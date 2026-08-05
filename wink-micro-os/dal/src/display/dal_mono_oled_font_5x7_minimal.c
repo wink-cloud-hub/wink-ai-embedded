@@ -1,7 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 #include "dal_mono_oled_font_internal.h"
 
-/* MVP 子集：空格、0-9、A/D/E/H/I/L/O/P/R/S/T/W、!（共 24 字形）。
- * 构建选项 WINK_MONO_OLED_FONT=minimal 时链入，约 120 B Flash。 */
+/* Minimal subset: space, 0-9, A/D/E/H/I/L/O/P/R/S/T/W, ! (24 glyphs) */
 
 #define FONT_ENTRIES 24
 

@@ -1,23 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file pal_hal_i2c_esp32.c
- * @brief ESP32 target 的 I2C 主控实现（ESP-IDF v5.x / v6.x 双 API 兼容）：
- *        pal_i2c_transfer + weak pal_i2c_pin_map 默认 + 设备缓存 LRU + SMP 安全互斥锁。
- *
- * 由 targets/esp32/pal_hal_esp32.c 拆出（PLAN-20260701-PAL-TARGET-P1-MAINT Task 2 Step 5）。
- * 契约不变：仅物理位置调整；见 pal/include/pal_hal.h 的 pal_i2c_transfer 契约。
- *
- * ✅ @verified: HARDWARE-SMOKE-PASSED (DevKitC, 2026-06-27)
- *    - I2C v6 master bus scan (3 addresses NACK, no panic)
- *
- * ✅ R-1：pal_i2c_transfer 公共签名、返回码集合、v5/v6 传输语义均逐字保留。
- * ✅ R-4：全文件仅 1 处最外层 `#if defined(ESP_PLATFORM)`，包住所有 IDF 头文件
- *   与实现；WINK_I2C_USE_V6_API 是外层 guard 内部的版本门控，非平台 guard。
- *
- * MVP status:
- * - v5/v6 双 API 通过 WINK_I2C_USE_V6_API 门控 + CONFIG_WINK_I2C_FORCE_V5_API 覆盖
- * - v7.x 前向保护：编译期 #error 拦截未验证版本
- * - LRU 设备缓存 + 事务安全的 pal_i2c_get_or_create_device()
- * - constructor(101) 静态初始化互斥锁，避免双核懒初始化竞态
+ * @brief ESP32 target PAL HAL I2C subsystem implementation.
  */
 #include "pal_hal.h"
 #include "hal/pal_i2c.h"
@@ -28,26 +12,19 @@
 #include "esp_err.h"
 #include "esp_idf_version.h"
 
-/* ─────────────────────────────────────────────────────────
- * I2C 版本门控：ESP-IDF v6.x 使用新的 driver/i2c_master.h
- * ───────────────────────────────────────────────────────── */
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
-    /* v6.x 新 API：总线-设备二级模型 */
     #include "driver/i2c_master.h"
     #define WINK_I2C_USE_V6_API  1
 #else
-    /* v5.x 旧 API：单级 port 模型 */
     #include "driver/i2c.h"
     #define WINK_I2C_USE_V6_API  0
 #endif
 
-/* v7.0 前向保护：检测到未验证的版本时编译报错 */
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(7, 0, 0)
     #error "ESP-IDF v7.x I2C API compatibility not verified yet. " \
            "Please update tech-designs/pal-i2c-v6-compatibility.md first."
 #endif
 
-/* 强制回退开关：Kconfig 可配置强制使用 v5.x API */
 #if defined(CONFIG_WINK_I2C_FORCE_V5_API) && CONFIG_WINK_I2C_FORCE_V5_API
     #undef WINK_I2C_USE_V6_API
     #define WINK_I2C_USE_V6_API  0
@@ -60,42 +37,20 @@
 
 static const char *TAG = "wink_pal_i2c";
 
-/* I2C 引脚弱默认：无 board_config.c 强覆盖时使用。
- * I2C0: SDA=21, SCL=22; I2C1: SDA=33, SCL=32 */
 __attribute__((weak)) const wink_pin_t pal_i2c_pin_map[PAL_I2C_PORTS][2] = {
     {21, 22},
     {33, 32}
 };
 
-/* ─────────────────────────────────────────────────────────
- * I2C 实现（v5.x / v6.x 双版本兼容）
- * ───────────────────────────────────────────────────────── */
-
-#define I2C_MAX_DEVICES      4    /* MVP：每总线最多 4 个设备 */
+#define I2C_MAX_DEVICES      4
 #define I2C_TRANSFER_TIMEOUT_MS  1000
 
 static bool s_i2c_initialized[PAL_I2C_PORTS] = {false};
 
-/* 并发安全：静态互斥锁，保护初始化与设备缓存操作
- * ✅ SMP-safe: 使用静态分配 + portMUX 保护的懒惰首次初始化，
- *    避免依赖 constructor(101) 的执行顺序（P1-P5-2）。
- * 参见: https://www.freertos.org/xSemaphoreCreateMutexStatic.html */
 static SemaphoreHandle_t s_i2c_mutex = NULL;
 static StaticSemaphore_t s_i2c_mutex_buf;
 static portMUX_TYPE      s_i2c_mutex_init_lock = portMUX_INITIALIZER_UNLOCKED;
 
-/**
- * @brief 懒惰首次初始化 I2C 互斥锁（SMP 安全，P1-P5-2）
- *
- * 使用 portMUX spinlock 保护双检模式：
- *   1. 无锁快速路径：s_i2c_mutex != NULL → 立即返回
- *   2. 首次调用：进入 spinlock 临界区，再次检查后创建 mutex
- *
- * 相比 constructor(101)：
- *   - 不依赖 GCC/link 段初始化顺序
- *   - portMUX_TYPE 静态初始化即可用，不需要额外的 init
- *   - 与 FreeRTOS 调度器启动状态解耦
- */
 static inline SemaphoreHandle_t pal_i2c_get_mutex(void) {
     if (s_i2c_mutex != NULL) {
         return s_i2c_mutex;
@@ -109,12 +64,11 @@ static inline SemaphoreHandle_t pal_i2c_get_mutex(void) {
 }
 
 #if WINK_I2C_USE_V6_API
-/* v6.x：总线-设备二级模型 */
 static i2c_master_bus_handle_t s_i2c_bus[PAL_I2C_PORTS] = {NULL};
 
 typedef struct {
     i2c_master_dev_handle_t handle;
-    uint16_t                dev_addr;    /* 0 = slot 空闲 */
+    uint16_t                dev_addr;
 } i2c_dev_cache_entry_t;
 
 static i2c_dev_cache_entry_t s_i2c_dev_cache[PAL_I2C_PORTS][I2C_MAX_DEVICES] = {
@@ -122,9 +76,6 @@ static i2c_dev_cache_entry_t s_i2c_dev_cache[PAL_I2C_PORTS][I2C_MAX_DEVICES] = {
     {{NULL, 0}, {NULL, 0}, {NULL, 0}, {NULL, 0}}
 };
 
-/**
- * @brief ESP-IDF I2C 错误码精细映射
- */
 static inline wink_status_t pal_i2c_map_esp_err(esp_err_t esp_err)
 {
     if (esp_err == ESP_OK) {
@@ -149,10 +100,6 @@ static inline wink_status_t pal_i2c_map_esp_err(esp_err_t esp_err)
     return WINK_ERR_HARDWARE;
 }
 
-/**
- * @brief 将缓存条目移动到队尾（LRU 热更新）
- * @note 每次命中后调用，确保访问频率高的设备不被淘汰
- */
 static inline void pal_i2c_lru_touch(uint8_t port, int hit_idx)
 {
     i2c_dev_cache_entry_t hit = s_i2c_dev_cache[port][hit_idx];
@@ -166,22 +113,12 @@ static inline void pal_i2c_lru_touch(uint8_t port, int hit_idx)
     s_i2c_dev_cache[port][I2C_MAX_DEVICES - 1] = hit;
 }
 
-/**
- * @brief 获取或创建 I2C 设备句柄（懒加载 + LRU 替换 + 事务安全）
- * @note 必须在持有 s_i2c_mutex 的情况下调用
- * @design
- *   - ✅ LRU: 命中时将条目移到队尾，淘汰时总是淘汰 index 0（最久未用）
- *   - ✅ 事务安全: 先分配临时句柄，仅在完全成功后才修改缓存
- *   - ✅ 无中间状态: 即使创建设备失败，缓存也不会被破坏
- */
 static wink_status_t pal_i2c_get_or_create_device(uint8_t port, uint16_t dev_addr,
                                                    i2c_master_dev_handle_t *out_handle)
 {
-    /* Step 1：线性扫描缓存，查找已存在的设备 */
     int free_slot = -1;
     for (int i = 0; i < I2C_MAX_DEVICES; i++) {
         if (s_i2c_dev_cache[port][i].dev_addr == dev_addr) {
-            /* ✅ LRU: 命中时将该条目移到队尾（提高后续访问局部性） */
             i2c_master_dev_handle_t handle = s_i2c_dev_cache[port][i].handle;
             pal_i2c_lru_touch(port, i);
             *out_handle = handle;
@@ -192,10 +129,6 @@ static wink_status_t pal_i2c_get_or_create_device(uint8_t port, uint16_t dev_add
         }
     }
 
-    /* Step 2：先在栈上分配临时句柄，不修改任何缓存状态 */
-    /* TODO P1-P5-6: scl_speed_hz hardcoded to 100 kHz standard-mode as safer default.
-     * Full solution requires cross-target public API `pal_i2c_set_speed(port, hz)`
-     * (deferred to P2 work — needs contract in pal_hal.h + host/wasm impls). */
     i2c_device_config_t dev_cfg = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
         .device_address = dev_addr,
@@ -210,7 +143,6 @@ static wink_status_t pal_i2c_get_or_create_device(uint8_t port, uint16_t dev_add
         return pal_i2c_map_esp_err(err);
     }
 
-    /* Step 3: 需要淘汰缓存（仅在设备创建成功后执行） */
     if (free_slot == -1) {
         ESP_LOGW(TAG, "port %d device cache full, LRU evicting addr 0x%02X",
                  port, s_i2c_dev_cache[port][0].dev_addr);
@@ -227,16 +159,12 @@ static wink_status_t pal_i2c_get_or_create_device(uint8_t port, uint16_t dev_add
         free_slot = I2C_MAX_DEVICES - 1;
     }
 
-    /* Step 4：唯一的缓存写入点 - 原子性提交 */
     s_i2c_dev_cache[port][free_slot].handle = temp_handle;
     s_i2c_dev_cache[port][free_slot].dev_addr = dev_addr;
     *out_handle = temp_handle;
     return WINK_OK;
 }
-#else  /* WINK_I2C_USE_V6_API == 0：v5.x 旧 API */
-/**
- * @brief v5.x 错误码映射（复用相同的精细映射，v5.x 也受益）
- */
+#else
 static inline wink_status_t pal_i2c_map_esp_err(esp_err_t esp_err)
 {
     if (esp_err == ESP_OK) {
@@ -251,29 +179,23 @@ static inline wink_status_t pal_i2c_map_esp_err(esp_err_t esp_err)
     if (esp_err == ESP_ERR_INVALID_STATE) {
         return WINK_ERR_NOT_INITIALIZED;
     }
-    /* v5.x i2c_master_write_read_device 对 NACK 返回 ESP_FAIL */
     if (esp_err == ESP_FAIL) {
         return WINK_ERR_DISCONNECTED;
     }
     ESP_LOGD(TAG, "unmapped esp_err: %s", esp_err_to_name(esp_err));
     return WINK_ERR_HARDWARE;
 }
-#endif /* WINK_I2C_USE_V6_API */
+#endif
 
 wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
                       const uint8_t *write_buf, uint32_t write_len,
                       uint8_t *read_buf, uint32_t read_len) {
     if (port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
 
-    /* P1-P5-1: 空操作快速拒绝（both-zero 是调用方 bug，不再静默返回 OK）。
-     * 契约上正常 I2C 传输至少一个方向 non-zero；同时非零(write+read) 是合法的
-     * write-then-read 组合。若某方向 len>0 但 buf==NULL 也拒绝。 */
     if (write_len == 0 && read_len == 0) { return WINK_ERR_INVALID_ARG; }
     if (write_len > 0 && write_buf == NULL) { return WINK_ERR_INVALID_ARG; }
     if (read_len  > 0 && read_buf  == NULL) { return WINK_ERR_INVALID_ARG; }
 
-    /* 临界区：初始化 + 设备缓存操作
-     * ✅ 互斥锁按需懒惰首次初始化，SMP 安全（P1-P5-2） */
     SemaphoreHandle_t mutex = pal_i2c_get_mutex();
     if (mutex == NULL) {
         ESP_LOGE(TAG, "I2C mutex allocation failed");
@@ -286,10 +208,7 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
 
     if (!s_i2c_initialized[port]) {
         ESP_LOGW(TAG, "I2C port %d transfer called before bus init, lazy initializing (deprecated path)", port);
-        /* SDA/SCL 物理路由来自 pal_i2c_pin_map（board_config.c 强定义，
-         * 缺省时回落至本 TU 的弱默认值）。*/
 #if WINK_I2C_USE_V6_API
-        /* v6.x：总线初始化 */
         i2c_master_bus_config_t bus_cfg = {
             .i2c_port = (i2c_port_t)port,
             .sda_io_num = pal_i2c_pin_map[port][0],
@@ -306,10 +225,6 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
             return WINK_ERR_HARDWARE;
         }
 #else
-        /* v5.x：旧 API 初始化 */
-        /* TODO P1-P5-6: master.clk_speed hardcoded to 100 kHz standard-mode as safer
-         * default. Full solution requires cross-target public API `pal_i2c_set_speed`
-         * (deferred to P2 work — needs contract in pal_hal.h + host/wasm impls). */
         i2c_config_t cfg = {
             .mode = I2C_MODE_MASTER,
             .sda_io_num = pal_i2c_pin_map[port][0],
@@ -328,7 +243,7 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
             xSemaphoreGive(s_i2c_mutex);
             return WINK_ERR_HARDWARE;
         }
-#endif /* WINK_I2C_USE_V6_API */
+#endif
         s_i2c_initialized[port] = true;
     }
 
@@ -336,44 +251,37 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
     esp_err_t err = ESP_OK;
 
 #if WINK_I2C_USE_V6_API
-    /* v6.x：先获取/创建设备句柄（在临界区内） */
     i2c_master_dev_handle_t dev_handle = NULL;
     rs = pal_i2c_get_or_create_device(port, dev_addr, &dev_handle);
     if (wink_status_is_error(rs)) {
         xSemaphoreGive(s_i2c_mutex);
         return rs;
     }
-#endif /* WINK_I2C_USE_V6_API */
+#endif
 
-    /* 实际数据传输：持有 s_i2c_mutex 锁以防止并发时设备被驱逐引致 UAF 漏洞 */
 #if WINK_I2C_USE_V6_API
     if (write_buf != NULL && write_len > 0) {
         if (read_buf != NULL && read_len > 0) {
-            /* 写+读 组合传输（repeated START） */
             err = i2c_master_transmit_receive(dev_handle,
                                               write_buf, (size_t)write_len,
                                               read_buf, (size_t)read_len,
                                               I2C_TRANSFER_TIMEOUT_MS);
         } else {
-            /* 只写 */
             err = i2c_master_transmit(dev_handle, write_buf, (size_t)write_len,
                                       I2C_TRANSFER_TIMEOUT_MS);
         }
     } else if (read_buf != NULL && read_len > 0) {
-        /* 只读 */
         err = i2c_master_receive(dev_handle, read_buf, (size_t)read_len,
                                  I2C_TRANSFER_TIMEOUT_MS);
     }
-    /* else: 空操作已被入口 both-zero 校验拒绝（P1-P5-1），此分支不可达。 */
 #else
-    /* v5.x：旧 API 传输 */
     err = i2c_master_write_read_device(
         (i2c_port_t)port, dev_addr,
         write_buf, (size_t)write_len,
         read_buf, (size_t)read_len,
         pdMS_TO_TICKS(I2C_TRANSFER_TIMEOUT_MS)
     );
-#endif /* WINK_I2C_USE_V6_API */
+#endif
 
     xSemaphoreGive(s_i2c_mutex);
 
@@ -383,9 +291,6 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
     return WINK_OK;
 }
 
-/* P1-P4 (2026-07-04)：pin_map 数组不再暴露到公共头，改经 getter。
- * board_config.c 仍以强定义覆盖弱默认 pal_i2c_pin_map（linker 层选中强符号）。
- * out_sda / out_scl 至少一个非 NULL 即可（部分调用方只关心一路）。*/
 wink_status_t pal_i2c_port_pins(uint8_t port, wink_pin_t *out_sda, wink_pin_t *out_scl) {
     if (out_sda == NULL && out_scl == NULL) { return WINK_ERR_INVALID_ARG; }
     if (port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
@@ -394,11 +299,6 @@ wink_status_t pal_i2c_port_pins(uint8_t port, wink_pin_t *out_sda, wink_pin_t *o
     return WINK_OK;
 }
 
-/* pal_i2c_scan() is an ADR-0017 Layer-1 exception: a blocking bus-scan
- * primitive intended for selftest/init contexts where blocking (worst-case
- * ~120 × per-transfer timeout) is acceptable. Suppress the
- * -Wdeprecated-declarations warning that WINK_BLOCKING on pal_i2c_transfer
- * emits under strict non-blocking auditing, only around this function. */
 #if defined(__GNUC__) || defined(__clang__)
 #  pragma GCC diagnostic push
 #  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -410,24 +310,13 @@ wink_status_t pal_i2c_scan(uint8_t port, uint8_t start_addr, uint8_t end_addr,
     if (start_addr > end_addr || end_addr > 0x7F) { return WINK_ERR_INVALID_ARG; }
     memset(out_found_bitmap, 0, 16);
 
-    /* Clamp to valid 7-bit range (0x03..0x77 per I2C spec — 0x00..0x02 are
-     * reserved, 0x78..0x7F are 10-bit addressing / reserved). */
     uint8_t lo = start_addr < 0x03 ? 0x03 : start_addr;
     uint8_t hi = end_addr   > 0x77 ? 0x77 : end_addr;
 
-    /* Lazy-init bus through a zero-length probe at lo — reuses
-     * pal_i2c_transfer's mutex + init path.  We don't hold the mutex across
-     * the scan loop; instead each probe acquires/releases it via
-     * pal_i2c_transfer. */
     uint8_t dummy;
     wink_status_t probe_st = pal_i2c_transfer(port, lo, NULL, 0, &dummy, 1);
-    /* lo may be a real device; we don't care about this probe's result
-     * beyond initializing the bus — the loop below re-probes every addr. */
     (void)probe_st;
 
-    /* Scan [lo, hi].  Per transfer contract, zero-byte write + 1-byte read
-     * returns WINK_OK on ACK, WINK_ERR_DISCONNECTED on NACK, other codes
-     * on bus errors. */
     for (uint16_t addr = lo; addr <= hi; addr++) {
 #if WINK_I2C_USE_V6_API
         SemaphoreHandle_t mutex = pal_i2c_get_mutex();
@@ -530,7 +419,6 @@ void pal_i2c_bus_deinit(uint8_t port) {
     }
 
 #if WINK_I2C_USE_V6_API
-    /* Step 1: Remove all cached devices to prevent memory leaks or dangling handles */
     for (int i = 0; i < I2C_MAX_DEVICES; i++) {
         if (s_i2c_dev_cache[port][i].dev_addr != 0) {
             esp_err_t rm_err = i2c_master_bus_rm_device(s_i2c_dev_cache[port][i].handle);
@@ -543,23 +431,17 @@ void pal_i2c_bus_deinit(uint8_t port) {
         }
     }
 
-    /* Step 2: SCL 9-pulse bus recovery.
-     * ESP-IDF v6.0.x names the API i2c_master_bus_reset() (not _clear_bus which
-     * arrived in later IDF releases). It performs 9 SCL pulses to release any
-     * slave stuck driving SDA low (ADR-0024 §7 WDT-dirty-reset recovery). */
     esp_err_t clear_err = i2c_master_bus_reset(s_i2c_bus[port]);
     if (clear_err != ESP_OK) {
         ESP_LOGW(TAG, "clear bus port %d in bus_deinit failed: %s", port, esp_err_to_name(clear_err));
     }
 
-    /* Step 3: Delete master bus */
     esp_err_t err = i2c_del_master_bus(s_i2c_bus[port]);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "failed to delete I2C master bus port %d: %s", port, esp_err_to_name(err));
     }
     s_i2c_bus[port] = NULL;
 #else
-    /* v5.x: Delete driver */
     esp_err_t err = i2c_driver_delete((i2c_port_t)port);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "failed to delete I2C driver port %d: %s", port, esp_err_to_name(err));
@@ -573,7 +455,7 @@ void pal_i2c_bus_deinit(uint8_t port) {
 #  pragma GCC diagnostic pop
 #endif
 
-#else /* !ESP_PLATFORM: non-IDF stub for static analysis. */
+#else
 
 wink_status_t pal_i2c_bus_init(uint8_t port, uint8_t sda, uint8_t scl, uint32_t hz) {
     (void)port; (void)sda; (void)scl; (void)hz;
@@ -600,4 +482,4 @@ wink_status_t pal_i2c_scan(uint8_t port, uint8_t start_addr, uint8_t end_addr,
                             uint8_t *out_found_bitmap, size_t bitmap_bytes)
 { (void)port; (void)start_addr; (void)end_addr; (void)out_found_bitmap; (void)bitmap_bytes; return WINK_ERR_UNSUPPORTED; }
 
-#endif /* ESP_PLATFORM */
+#endif

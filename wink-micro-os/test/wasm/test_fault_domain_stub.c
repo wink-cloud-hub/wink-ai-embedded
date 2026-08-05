@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file test_fault_domain_stub.c
  * @brief ADR-0009 Wave 2 Task 10 — fault domain isolation framework (Wave3 forward compat).

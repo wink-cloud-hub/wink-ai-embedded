@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
+/**
+ * @file test_pid.c
+ * @brief BAL PID controller math unit tests.
+ */
 #include "unity.h"
 #include "math/wink_pid.h"
 #include <math.h>

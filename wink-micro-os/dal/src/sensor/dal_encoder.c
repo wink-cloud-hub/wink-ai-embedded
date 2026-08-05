@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 #define LOG_TAG "dal_encoder"
 #include "sensor/dal_encoder.h"
 #include "pal_resource.h"
@@ -116,10 +117,7 @@ wink_status_t dal_encoder_init(dal_encoder_t *dev, const dal_encoder_config_t *c
         }
     }
 
-    /* 3. Stage config + counter so the ISR sees a consistent handle, but keep
-     *    `initialized` false until the ISR is actually registered (DAL-L-003/007):
-     *    a failed registration must not leave a zombie "initialized" handle whose
-     *    resources have already been released. */
+    /* 3. Stage config + counter */
     memcpy(&dev->config, cfg, sizeof(dal_encoder_config_t));
     dev->count = 0;
     dev->isr_registered = false;
@@ -137,14 +135,12 @@ wink_status_t dal_encoder_init(dal_encoder_t *dev, const dal_encoder_config_t *c
         if (cfg->pin_b >= 0) {
             pal_gpio_reset_pin(cfg->pin_b);
         }
-        /* Clear the staged config so the half-built handle is not mistaken for
-         * a usable device (initialized was never set — stays false). */
         memset(dev, 0, sizeof(dal_encoder_t));
         goto err_release;
     }
 
     dev->isr_registered = true;
-    dev->initialized = true;   /* commit only after all resources are ready */
+    dev->initialized = true;
 
     LOG_I("init: '%s' ready (pin_a=%d pin_b=%d pull=%d%s)",
           cfg->owner, (int)cfg->pin_a, (int)cfg->pin_b, (int)cfg->pull,
@@ -188,41 +184,30 @@ wink_status_t dal_encoder_reset(dal_encoder_t *dev)
 
 wink_status_t dal_encoder_deinit(dal_encoder_t *dev)
 {
-    /* ADR-0024 §4 deinit:
-     * 1. disable ISR + synchronize (wait for in-flight callbacks)
-     * 2. pal_gpio_reset_pin (Hi-Z, clears esp_gpio_reserve bitmap)
-     * 3. N/A (no DMA)  4. N/A (not on shared bus)
-     * 5. release resource claims (failures logged, not fatal)
-     * 6. memset  7. NULL + uninit idempotent  8. synchronous, no waits */
     if (dev == NULL) {
         return WINK_ERR_INVALID_ARG;
     }
     if (!dev->initialized) {
-        return WINK_OK;   /* idempotent no-op */
+        return WINK_OK;
     }
 
-    /* 1. Disable interrupt and wait for in-flight ISR to finish (DAL-L-012) */
     if (dev->isr_registered) {
         WINK_IGNORE_UNUSED(pal_gpio_disable_interrupt(dev->config.pin_a));
         WINK_IGNORE_UNUSED(pal_gpio_synchronize_interrupt(dev->config.pin_a));
     }
 
-    /* 2. Reset pins to Hi-Z and clear hardware reservations */
     pal_gpio_reset_pin(dev->config.pin_a);
     if (dev->config.pin_b >= 0) {
         pal_gpio_reset_pin(dev->config.pin_b);
     }
 
-    /* Capture before memset */
     wink_pin_t pin_a = dev->config.pin_a;
     wink_pin_t pin_b = dev->config.pin_b;
     const char *owner = dev->config.owner;
 
-    /* 3. Release software resource claims (failures logged, teardown continues) */
     release_gpio_claim_logged(pin_a, owner);
     release_gpio_claim_logged(pin_b, owner);
 
-    /* 4. Clear the instance data completely */
     memset(dev, 0, sizeof(dal_encoder_t));
     return WINK_OK;
 }

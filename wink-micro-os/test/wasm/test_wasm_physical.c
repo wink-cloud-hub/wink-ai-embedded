@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file test_wasm_physical.c
  * @brief ADR-0009 Wave 2 — WASM-side degradation engine unit tests.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file test_button_events_irq_degrade.c
  * @brief S4 host test — GPIO_IRQ drive requested on a non-ESP32 target

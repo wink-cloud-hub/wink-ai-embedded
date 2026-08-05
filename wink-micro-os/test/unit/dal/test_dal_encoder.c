@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
+/**
+ * @file test_dal_encoder.c
+ * @brief DAL quadrature encoder driver unit tests.
+ */
 #include "unity.h"
 #include "wink_status.h"
 #include "sensor/dal_encoder.h"

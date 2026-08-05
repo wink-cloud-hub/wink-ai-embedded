@@ -1,24 +1,17 @@
-/* wink_compiler.h
- * Cross-compiler abstraction macros.
+// SPDX-License-Identifier: Apache-2.0
+/**
+ * @file wink_compiler.h
+ * @brief Cross-compiler abstraction macros.
  *
  *   WINK_WEAK
- *     GCC/Clang: __attribute__((weak))  — real weak symbol override.
- *     MSVC:      __declspec(selectany)  — COMDAT folding (linker picks one
- *                among identical definitions; NOT a true weak override).
- *                When WINK_WEAK is used on a definition that may be
- *                overridden by a strong symbol with a different body on
- *                MSVC, the override is only reliably honored if the strong
- *                symbol is referenced from a TU compiled with /INCLUDE.
- *                Most app-level overrides work via /alternatename; see
- *                WINK_WEAK_ALIAS below.
+ *     GCC/Clang: __attribute__((weak))  - real weak symbol override.
+ *     MSVC:      __declspec(selectany)  - COMDAT folding.
  *
  *   WINK_WEAK_ALIAS(weak_func, default_func)
  *     GCC/Clang: no-op (weak_func is its own weak symbol; user may override).
- *     MSVC:      emits a linker /alternatename directive so any unresolved
- *                reference to weak_func is redirected to default_func at
- *                link time.
+ *     MSVC:      emits a linker /alternatename directive.
  *
- * Spec: ADR-0059 cross-platform weak symbol (proposed).
+ * Spec: ADR-0059 cross-platform weak symbol convention.
  */
 #ifndef WINK_COMPILER_H
 #define WINK_COMPILER_H

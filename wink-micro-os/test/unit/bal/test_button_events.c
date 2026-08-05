@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file test_button_events.c
  * @brief Unit tests for wink_button_enable_events / wink_button_disable_events

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file test_pal_gpio_read_wasm_semantics.c
  * @brief P3 contract tests — Arbiter-only pal_gpio_read (no C shadow on read)

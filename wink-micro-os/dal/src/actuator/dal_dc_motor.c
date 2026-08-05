@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 #define LOG_TAG "dal_dc_motor"
 #include "actuator/dal_dc_motor.h"
 #include "pal_resource.h"

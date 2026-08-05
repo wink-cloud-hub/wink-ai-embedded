@@ -1,11 +1,10 @@
+// SPDX-License-Identifier: Apache-2.0
 #include "wink_sim_scheduler.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
 
-/* MSVC CRT deprecation suppression: strncpy is used for bounded task-name
- * initialization; the field is always NUL-terminated below. */
 #if defined(_MSC_VER)
 #  pragma warning(disable: 4996)
 #  define _CRT_SECURE_NO_WARNINGS
@@ -25,12 +24,8 @@ static sim_task_t s_tasks[WINK_SIM_MAX_TASKS];
 static uint32_t s_task_id_counter = 0;
 static uint32_t s_current_task_id = SIM_SCHED_NO_READY;
 static uint32_t s_prng_state = 42;
-/* fixup 计划 M6：round-robin 上次调度的 slot ID —— pick_next 从 (last+1) % N 开始扫描。
- * SIM_SCHED_NO_READY 表示首次调度或 reset 后（从 slot 0 起扫）。 */
 static uint32_t s_last_scheduled_task_id = SIM_SCHED_NO_READY;
 
-/* target-independent xorshift32 PRNG（Task 7 Chaos Scheduling 时启用；
- * 本 wave 内 pick_next 走 round-robin，PRNG 状态仍随 seed 初始化以固定序列）。 */
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((unused))
 #endif
@@ -46,14 +41,10 @@ static uint32_t sim_prng_next(void) {
 void sim_scheduler_reset(uint32_t prng_seed) {
     SCHED_TRACE("Resetting scheduler with seed %u", prng_seed);
 
-    /* fixup 计划红线 13 / H3：禁止在 fiber 任务上下文调用——否则清理时会
-     * DeleteFiber(当前正在运行的 fiber)，Win32 UB / emscripten fiber_swap 无处返回。
-     * 允许在完全空闲状态（首次启动、legacy 测试）或主调度 loop 退出后调用。 */
     assert(s_current_task_id == SIM_SCHED_NO_READY &&
            "sim_scheduler_reset called while task fiber is running; "
            "return to main scheduler ctx before resetting");
 
-    /* 强制清理旧的活跃上下文，避免单元测试顺序跑（同进程）时产生的协程/内存泄漏 */
     for (uint32_t i = 0; i < WINK_SIM_MAX_TASKS; ++i) {
         if (s_tasks[i].state != SIM_TASK_STATE_INVALID &&
             s_tasks[i].state != SIM_TASK_STATE_TERMINATED) {
@@ -67,7 +58,7 @@ void sim_scheduler_reset(uint32_t prng_seed) {
     memset(s_tasks, 0, sizeof(s_tasks));
     s_task_id_counter = 0;
     s_current_task_id = SIM_SCHED_NO_READY;
-    s_last_scheduled_task_id = SIM_SCHED_NO_READY;   /* fixup M6：reset round-robin 状态 */
+    s_last_scheduled_task_id = SIM_SCHED_NO_READY;
     s_prng_state = prng_seed ? prng_seed : 42;
 }
 
@@ -91,7 +82,6 @@ wink_status_t sim_scheduler_register(void (*func)(void*), void* arg,
     
     uint32_t eff_stack = stack_depth;
     if (eff_stack < WINK_SIM_STACK_MIN) {
-        /* 对齐 R-011 栈下限保护与 warning 日志 */
         fprintf(stderr, "[WARN] task '%s' stack_depth=%u < sim min=%u, clamped (ADR-0013 §sim-stack-contract)\n",
                 name, stack_depth, WINK_SIM_STACK_MIN);
         eff_stack = WINK_SIM_STACK_MIN;
@@ -172,18 +162,6 @@ uint32_t sim_scheduler_wakeup_by_time(uint64_t now_us) {
 }
 
 uint32_t sim_scheduler_pick_next(void) {
-    /* fixup 计划 M6：改回经典 round-robin。
-     *
-     * 语义：从 (s_last_scheduled_task_id + 1) mod N 开始扫描 slot 数组，第一个 READY
-     * 的即为下一个被调度的任务。相较于原 PRNG 方案（sim_prng_next() % ready_count）
-     * 的优点：
-     *   1. 公平性天然保证：无饥饿——每个 READY 任务在一轮扫描内必被选中一次；
-     *   2. 确定性天然保证：无 PRNG 依赖，seed 值无关 pick 序列；
-     *   3. 简单：无需构造 ready_indices 数组。
-     *
-     * R7 注意事项：若上一次调度的 slot 已被 gc_zombies 释放并被新 task 复用，新 task
-     * 首次调度会延迟一轮（从 last+1 开始扫，不会立刻选到刚被复用的那个 slot）。这
-     * 是可接受的一次性延迟，且不引入特殊 case，保持代码线性简单。 */
     uint32_t start_id = (s_last_scheduled_task_id == SIM_SCHED_NO_READY)
                         ? 0u
                         : (s_last_scheduled_task_id + 1u) % WINK_SIM_MAX_TASKS;
@@ -198,9 +176,6 @@ uint32_t sim_scheduler_pick_next(void) {
     }
     return SIM_SCHED_NO_READY;
 }
-
-/* 保留 sim_prng_next 未使用引用避免 gcc -Wunused-function 报错。
- * 未来 Task 7（Chaos Scheduling）会通过 PRNG 生成 tick 边界抖动，届时重新启用。 */
 
 void sim_scheduler_yield_timed(uint32_t task_id, uint64_t now_us, uint64_t duration_us) {
     if (task_id < WINK_SIM_MAX_TASKS) {

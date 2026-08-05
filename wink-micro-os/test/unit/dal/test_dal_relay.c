@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
+/**
+ * @file test_dal_relay.c
+ * @brief DAL relay driver unit tests.
+ */
 #include "unity.h"
 #include "wink_status.h"
 #include "output/dal_relay.h"

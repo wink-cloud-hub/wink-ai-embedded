@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 #include "dal_mono_oled_font_internal.h"
 
-/* 5×7 紧凑字体：空格、数字 0-9、大写 A-Z、感叹号（共 38 字形）。
- * 每字形 5 字节（5 列 × 7 行），LSB = 顶行像素。
- * Flash ≈ 190 B；为兼顾开发简单，小写 a-z 自动映射到大写。 */
+/* 5x7 compact font: space, digits 0-9, uppercase A-Z, exclamation mark (38 glyphs) */
 
 #define FONT_SPACE  0
 #define FONT_DIGIT0 1

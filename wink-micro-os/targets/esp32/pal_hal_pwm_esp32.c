@@ -1,12 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file pal_hal_pwm_esp32.c
- * @brief ESP32 target 的 PWM (LEDC) 实现：pal_pwm_init/set_duty/deinit +
- *        pal_pwm_router 集成 + weak pal_pwm_pin_map 默认值。
- *
- * 由 targets/esp32/pal_hal_esp32.c 拆出（PLAN-20260701-PAL-TARGET-P1-MAINT Task 2 Step 4）。
- * 契约不变：仅物理位置调整；见 pal/include/pal_hal.h 与 pal/include/hal/pal_pwm_router.h。
- *
- * ✅ R-4：全文件仅 1 处最外层 `#if defined(ESP_PLATFORM)`。
+ * @brief ESP32 target PAL HAL PWM (LEDC) subsystem implementation.
  */
 #include "pal_hal.h"
 #include "pal_pwm_router.h"
@@ -22,12 +17,7 @@
 #define SIG_GPIO_OUT_IDX 256
 #endif
 
-/* 板级路由弱默认：无 board_config.c 覆盖时使用，避免链接缺符号。
- * 强定义由 samples/<app>/board_config.c 提供。*/
 __attribute__((weak)) const wink_pin_t pal_pwm_pin_map[PAL_PWM_CHANNELS] = {2, 4, 5, 18, 19, 21, 22, 23};
-
-/* Track A（M1）：DAL 是资源占用 SSOT，PAL 层不再自 claim PWM 通道 —— 语义 owner 由 DAL 层
- * （dal_rc_servo 等）持有。这样两个 DAL 实例配同 channel 才能在 DAL init 阶段真正触发 BUSY。 */
 
 static uint8_t s_ch_bits[PAL_PWM_CHANNELS];
 
@@ -128,33 +118,18 @@ wink_status_t pal_pwm_set_duty(uint8_t channel, float duty_percent) {
 }
 
 void pal_pwm_deinit(uint8_t channel) {
-    if (!pal_pwm_router_channel_ready(channel)) { return; }   /* no-op if uninitialized */
+    if (!pal_pwm_router_channel_ready(channel)) { return; }
     (void)ledc_set_duty(LEDC_LOW_SPEED_MODE, (ledc_channel_t)channel, 0);
     (void)ledc_update_duty(LEDC_LOW_SPEED_MODE, (ledc_channel_t)channel);
     (void)ledc_stop(LEDC_LOW_SPEED_MODE, (ledc_channel_t)channel, 0);
-    /* Track A（M1）：PAL 不再持 PWM claim；release 归 DAL 层未来 deinit。 */
     pal_pwm_router_release(channel);
 
-    /* Fully release the pin back to GPIO + clear the LEDC driver's software
-     * reservation (esp_gpio_reserve bit). IDF v6 LEDC only revokes its bit via
-     * ledc_channel_config({.deconfigure=true}) or gpio_reset_pin(); ledc_stop()
-     * alone leaves the bit set, which makes any subsequent driver bind on the
-     * same pin emit "GPIO N is not usable, maybe conflict with others".
-     * gpio_reset_pin() also:
-     *   - disconnects the LEDC output signal from the pin's func_out mux,
-     *   - disables input/output drivers,
-     *   - disconnects any RTC/IOMUX alternate function,
-     *   - revokes the reservation bit.
-     * After this, the pin is in its reset (GPIO, input-only, no-pull) state
-     * and the next pal_gpio_init() / driver bind starts from a clean slate. */
     wink_pin_t pin = pal_pwm_pin_map[channel];
     if (pin >= 0 && pin < GPIO_NUM_MAX) {
         (void)gpio_reset_pin((gpio_num_t)pin);
     }
 }
 
-/* P1-P4 (2026-07-04)：pin_map 数组不再暴露到公共头，改经 getter。
- * board_config.c 仍以强定义覆盖弱默认 pal_pwm_pin_map（linker 层，无 forward decl 必要）。*/
 wink_status_t pal_pwm_channel_pin(uint8_t channel, wink_pin_t *out_pin) {
     if (out_pin == NULL) { return WINK_ERR_INVALID_ARG; }
     if (channel >= PAL_PWM_CHANNELS) { return WINK_ERR_INVALID_ARG; }
@@ -162,7 +137,7 @@ wink_status_t pal_pwm_channel_pin(uint8_t channel, wink_pin_t *out_pin) {
     return WINK_OK;
 }
 
-#else /* !ESP_PLATFORM: non-IDF stub for static analysis. */
+#else
 
 wink_status_t pal_pwm_init(uint8_t channel, uint32_t freq_hz)
 { (void)channel; (void)freq_hz; return WINK_ERR_UNSUPPORTED; }
@@ -178,4 +153,4 @@ void pal_pwm_deinit(uint8_t channel) { (void)channel; }
 wink_status_t pal_pwm_channel_pin(uint8_t channel, wink_pin_t *out_pin)
 { (void)channel; (void)out_pin; return WINK_ERR_UNSUPPORTED; }
 
-#endif /* ESP_PLATFORM */
+#endif

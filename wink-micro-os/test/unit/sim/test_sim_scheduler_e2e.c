@@ -1,12 +1,13 @@
+// SPDX-License-Identifier: Apache-2.0
+/**
+ * @file test_sim_scheduler_e2e.c
+ * @brief End-to-end unit tests for dual-task ringbuffer using simulation scheduler.
+ */
 #include "unity.h"
 #include "pal_osal.h"
 #include "wink_sim_scheduler.h"
 #include <stdint.h>
 
-
-/* ADR-0017 层 1 例外：本 TU 合法调用 WINK_BLOCKING API。抑制
- * -Wdeprecated-declarations 使 -Werror 下仍能编译；严格模式
- * (-DWINK_STRICT_NONBLOCKING=1) 下相关 API 声明直接消失，本 TU 会链接失败——那是设计意图。 */
 #include "compat/wink_test_compat.h"
 WINK_TEST_ALLOW_DEPRECATED
 
@@ -49,15 +50,14 @@ void tearDown(void) {
 
 void test_dual_task_ringbuf_e2e(void) {
     sim_scheduler_reset(42);
-    
+
     pal_os_task_handle_t prod_h, cons_h;
     TEST_ASSERT_EQUAL(WINK_OK, pal_os_task_create(producer_task, "prod", 32*1024, NULL, 5, PAL_OS_CORE_ANY, &prod_h));
     TEST_ASSERT_EQUAL(WINK_OK, pal_os_task_create(consumer_task, "cons", 32*1024, NULL, 5, PAL_OS_CORE_ANY, &cons_h));
-    
-    /* 运行仿真调度主循环，限制 max_ticks=500；测试无 App callbacks，传 NULL。 */
+
     wink_status_t st = pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 500);
     TEST_ASSERT_EQUAL(WINK_OK, st);
-    
+
     TEST_ASSERT_EQUAL_UINT32(10, produced);
     TEST_ASSERT_EQUAL_UINT32(10, consumed);
 }

@@ -33,6 +33,31 @@ set(WASM_SMOKE_STUB_JS     "${CMAKE_CURRENT_SOURCE_DIR}/targets/wasm/wink_sim_st
 # Host cmake for the build step — must NOT be the emcmake-wrapped command.
 set(_WASM_SMOKE_HOST_CMAKE "${CMAKE_COMMAND}")
 
+# Pick a generator the inner emcmake project can actually drive with emcc.
+# On Windows the CMake default is Visual Studio/MSBuild, which invokes cl.exe
+# and chokes on gcc-style flags (-Wframe-larger-than, etc). Match the host
+# test matrix (tools/cli/commands/test.py): MinGW Makefiles on Windows,
+# default (Unix Makefiles) elsewhere.
+if(WIN32)
+    find_program(MINGW_MAKE_EXECUTABLE NAMES mingw32-make gmake make)
+    if(NOT MINGW_MAKE_EXECUTABLE)
+        message(STATUS "wasm_node_smoke: skipping (mingw32-make not found; needed for inner emcmake build)")
+        return()
+    endif()
+    set(_WASM_SMOKE_GENERATOR "MinGW Makefiles")
+    set(_WASM_SMOKE_MAKE_PROGRAM "${MINGW_MAKE_EXECUTABLE}")
+else()
+    set(_WASM_SMOKE_GENERATOR "Unix Makefiles")
+    set(_WASM_SMOKE_MAKE_PROGRAM "")
+endif()
+
+set(_WASM_SMOKE_CMAKE_GENERATOR_ARGS
+    -G "${_WASM_SMOKE_GENERATOR}"
+)
+if(_WASM_SMOKE_MAKE_PROGRAM)
+    list(APPEND _WASM_SMOKE_CMAKE_GENERATOR_ARGS -DCMAKE_MAKE_PROGRAM=${_WASM_SMOKE_MAKE_PROGRAM})
+endif()
+
 # Override CMAKE_COMMAND to wrap cmake with emcmake for configure only.
 # Default BUILD_COMMAND would reuse the overridden CMAKE_COMMAND and pass
 # toolchain flags to `cmake --build`, which CMake 4.x rejects.
@@ -42,6 +67,7 @@ ExternalProject_Add(wasm_unisim_smoke_build
     CMAKE_COMMAND    "${EMCMAKE_EXECUTABLE}" "${_WASM_SMOKE_HOST_CMAKE}"
     BUILD_COMMAND    "${_WASM_SMOKE_HOST_CMAKE}" --build <BINARY_DIR>
     CMAKE_ARGS
+        ${_WASM_SMOKE_CMAKE_GENERATOR_ARGS}
         -DTARGET_PLATFORM=wasm
         -DWINK_APP_DIR=../wink-micro-app/unisim_smoke
         -DCMAKE_BUILD_TYPE=Debug
