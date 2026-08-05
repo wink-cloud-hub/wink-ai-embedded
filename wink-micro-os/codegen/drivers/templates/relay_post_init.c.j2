@@ -1,0 +1,5 @@
+{# Rendered after dal_relay_init() inside wink_device_tree_init(). The
+   file-scope {{ name }}_poll_tick thunk is emitted by device_tree.c.j2 from
+   config.poll_fn. Registering here makes the runtime tick drive
+   dal_relay_poll() so latching pulses are cleared (no-op for DIRECT_GPIO/SSR). #}
+wink_runtime_register_poll({{ name }}_poll_tick, &{{ name }})
