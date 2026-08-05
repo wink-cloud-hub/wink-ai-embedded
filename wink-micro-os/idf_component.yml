@@ -1,12 +1,12 @@
-## wink-micro-os ESP-IDF 组件配置
-## 用法：在 ESP-IDF 项目中通过 idf_component.yml 依赖此目录
+## wink-micro-os ESP-IDF Component Configuration
+## Usage: Depend on this directory via idf_component.yml in your ESP-IDF project
 ##
 ## dependencies:
 ##   wink-micro-os:
 ##     path: ../path/to/wink-micro-os
 
 version: "0.1.0"
-description: "Wink Micro OS - 面向 AI 生成嵌入式应用的最小运行时"
+description: "Wink Micro OS - Lightweight runtime for AI-generated embedded applications"
 url: "https://github.com/wink-ai/wink-micro-os"
 maintainers:
   - "Wink AI Team"

@@ -5,7 +5,7 @@ is_actuator: true
 experimental: false
 default_role: binary_indicator
 
-# 物理量量纲标记 (ADR-0056 / DAL-U-021)
+# Physical quantity dimension marker (ADR-0056 / DAL-U-021)
 quantity: binary
 quantity_class: actuator_command
 
