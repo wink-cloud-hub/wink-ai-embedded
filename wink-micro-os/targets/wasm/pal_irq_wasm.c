@@ -13,7 +13,7 @@
 #if defined(__EMSCRIPTEN__)
 
 _Static_assert(sizeof(void*) == 4,
-    "wasm64 migration required: see wasm_bridge.h ABI 契约 #5 "
+    "wasm64 migration required: see wasm_bridge.h ABI contract #5 "
     "and review every (uint32_t)(uintptr_t) cast in pal_irq_wasm.c / createUnisimImports.ts");
 
 #define WASM_MAX_GPIO_PIN  50

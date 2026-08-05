@@ -23,7 +23,7 @@
 #endif
 
 _Static_assert(sizeof(void*) == 4,
-    "wasm64 migration required: see wasm_bridge.h ABI 契约 #5 "
+    "wasm64 migration required: see wasm_bridge.h ABI contract #5 "
     "and review every (uint32_t)(uintptr_t) cast in pal_hal_wasm.c / createUnisimImports.ts");
 
 static pal_gpio_mode_t s_gpio_mode[WASM_SIM_MAX_PINS];

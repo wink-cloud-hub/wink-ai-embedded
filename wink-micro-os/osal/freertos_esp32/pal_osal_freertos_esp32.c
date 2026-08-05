@@ -1,26 +1,20 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file pal_osal_freertos_esp32.c
- * @brief ESP32 真机 PAL OSAL 实现（FreeRTOS + ESP-IDF）。
+ * @brief ESP32 physical target PAL OSAL implementation (FreeRTOS + ESP-IDF).
  *
- * ✅ @verified: HARDWARE-SMOKE-PASSED (DevKitC, 2026-06-27)
+ * @verified HARDWARE-SMOKE-PASSED (DevKitC, 2026-06-27)
  *    - pal_os_get_ms(): monotonic timestamp verified
  *    - pal_os_wdt_init(): timeout + reset + reason detection works
  *    - Reset reason: WATCHDOG/PANIC detected by runtime boot check
- * ✅ @verified: HARDWARE-SMOKE-PASSED (DevKitC, 2026-06-28) — ADR-0007 闭环
- *    - pal_os_task_create(): Core 0/1/ANY 亲和性钉核（Core 1 控制环物理隔离）真机验证
- *    - pal_os_ringbuf_create/push/pop(): 跨核逃生舱环形缓冲（RingBuffer bytebuf）真机验证
- *
- * 实现功能：
- * - 阻塞延时（vTaskDelay）
- * - 高精度时间戳（esp_timer）
- * - 互斥锁（FreeRTOS Semaphore）
- * - WDT 看门狗（esp_task_wdt）
- * - 复位原因（esp_reset_reason）
- * - 临界区（portENTER_CRITICAL）
+ * @verified HARDWARE-SMOKE-PASSED (DevKitC, 2026-06-28) — ADR-0007 closed-loop
+ *    - pal_os_task_create(): Core 0/1/ANY affinity pinning verified
+ *    - pal_os_ringbuf_create/push/pop(): Cross-core ring buffer verified
  */
+
 #include "pal_osal.h"
-#include <stdlib.h>     /* malloc/free（pal_os_ringbuf_create/destroy） */
-#include <string.h>     /* memcpy（pal_os_ringbuf_pop）；勿依赖 ESP-IDF 头的传递包含 */
+#include <stdlib.h>     /* malloc/free */
+#include <string.h>     /* memcpy */
 
 #if defined(ESP_PLATFORM)
 #include "freertos/FreeRTOS.h"
@@ -29,11 +23,11 @@
 #include "freertos/ringbuf.h"
 #include "esp_timer.h"
 #include "esp_task_wdt.h"
-#include "esp_system.h"       /* esp_reset_reason() + esp_reset_reason_t (IDF v5.x moved it here) */
+#include "esp_system.h"       /* esp_reset_reason() + esp_reset_reason_t */
 #include "esp_idf_version.h"
-#include "esp_attr.h"         /* RTC_NOINIT_ATTR（boot-count 持久化，ADR-0010）*/
+#include "esp_attr.h"         /* RTC_NOINIT_ATTR (boot-count persistence, ADR-0010) */
 #else
-/* 非 ESP32 编译环境：stub 声明供静态分析 */
+/* Non-ESP32 build stub definitions for static analysis */
 typedef void* SemaphoreHandle_t;
 #define pdMS_TO_TICKS(ms) (ms)
 #define portMAX_DELAY 0xffffffff
@@ -41,9 +35,9 @@ typedef void* SemaphoreHandle_t;
 typedef struct { int reserved; } portMUX_TYPE;
 #endif
 
-/* ─────────────────────────────────────────────────────────
- * 系统时间与高精度延时
- * ───────────────────────────────────────────────────────── */
+/* ---------------------------------------------------------
+ * System Time and High-Precision Delays
+ * --------------------------------------------------------- */
 
 void pal_os_sleep_ms(uint32_t ms) {
     extern int esp_rom_printf(const char *fmt, ...);
@@ -75,9 +69,9 @@ uint64_t pal_os_get_us(void) {
     return esp_timer_get_time();
 }
 
-/* ─────────────────────────────────────────────────────────
- * 线程同步互斥锁（Mutex）
- * ───────────────────────────────────────────────────────── */
+/* ---------------------------------------------------------
+ * Thread Synchronization Mutex
+ * --------------------------------------------------------- */
 
 pal_os_mutex_t pal_os_mutex_create(void) {
     SemaphoreHandle_t mux = xSemaphoreCreateMutex();
@@ -103,9 +97,9 @@ void pal_os_mutex_destroy(pal_os_mutex_t mutex) {
     }
 }
 
-/* ─────────────────────────────────────────────────────────
- * 线程同步二值信号量（Semaphore）
- * ───────────────────────────────────────────────────────── */
+/* ---------------------------------------------------------
+ * Thread Synchronization Binary Semaphore
+ * --------------------------------------------------------- */
 
 pal_os_sem_t pal_os_sem_create(void) {
     SemaphoreHandle_t sem = xSemaphoreCreateBinary();
@@ -141,9 +135,9 @@ void pal_os_sem_destroy(pal_os_sem_t sem) {
     }
 }
 
-/* ─────────────────────────────────────────────────────────
- * 复位原因与看门狗（Phase 5 Fail-Safe）
- * ───────────────────────────────────────────────────────── */
+/* ---------------------------------------------------------
+ * Reset Reason and Watchdog (Phase 5 Fail-Safe)
+ * --------------------------------------------------------- */
 
 pal_os_reset_reason_t pal_os_get_reset_reason(void) {
     esp_reset_reason_t rr = esp_reset_reason();
@@ -154,15 +148,12 @@ pal_os_reset_reason_t pal_os_get_reset_reason(void) {
         case ESP_RST_TASK_WDT:    return PAL_OS_RESET_REASON_WATCHDOG;
         case ESP_RST_WDT:         return PAL_OS_RESET_REASON_WATCHDOG;
         case ESP_RST_BROWNOUT:    return PAL_OS_RESET_REASON_BROWNOUT;
-        case ESP_RST_PANIC:       return PAL_OS_RESET_REASON_PANIC;   /* 触发 boot safe-lock */
+        case ESP_RST_PANIC:       return PAL_OS_RESET_REASON_PANIC;   /* Triggers boot safe-lock */
         default:                  return PAL_OS_RESET_REASON_UNKNOWN;
     }
 }
 
-/* ─────────────────────────────────────────────────────────
- * 连续异常复位计数（ADR-0010 boot safe-lock 恢复策略）
- * ESP32 持久化在 RTC_NOINIT（跨 WDT/panic 复位保留、断电丢失），magic 守卫防 RTC 残留值。
- * ───────────────────────────────────────────────────────── */
+/* ADR-0010 boot safe-lock recovery strategy */
 #define WINK_BOOT_COUNT_MAGIC 0xB007C0DEu
 static RTC_NOINIT_ATTR uint32_t s_abnormal_count;
 static RTC_NOINIT_ATTR uint32_t s_abnormal_count_magic;
@@ -180,12 +171,12 @@ WINK_WARN_UNUSED_RESULT wink_status_t pal_os_wdt_init(uint32_t timeout_ms) {
     /* ESP-IDF v5.x Task Watchdog API */
     esp_task_wdt_config_t cfg = {
         .timeout_ms = timeout_ms,
-        .idle_core_mask = 0,  /* 不监控 idle task */
+        .idle_core_mask = 0,  /* Do not monitor idle task */
         .trigger_panic = true,
     };
     esp_err_t err = esp_task_wdt_init(&cfg);
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 1, 0)
-    /* 如果已初始化，则尝试重配置（v5.1+ 支持） */
+    /* If already initialized, attempt reconfiguration (supported in v5.1+) */
     if (err == ESP_ERR_INVALID_STATE) {
         err = esp_task_wdt_reconfigure(&cfg);
     }
@@ -193,7 +184,7 @@ WINK_WARN_UNUSED_RESULT wink_status_t pal_os_wdt_init(uint32_t timeout_ms) {
     if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
         return WINK_ERR_HARDWARE;
     }
-    err = esp_task_wdt_add(NULL);  /* 订阅当前 task */
+    err = esp_task_wdt_add(NULL);  /* Subscribe current task */
     if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
         return WINK_ERR_HARDWARE;
     }
@@ -206,12 +197,9 @@ WINK_WARN_UNUSED_RESULT wink_status_t pal_os_wdt_feed(void) {
     return WINK_OK;
 }
 
-/* ─────────────────────────────────────────────────────────
- * 临界区（task/ISR 双入口显式分流, ADR-0016）
- * task 版使用 portENTER_CRITICAL，ISR 版使用 portENTER_CRITICAL_ISR，
- * 二者共享 s_global_mux 保证 task/ISR 互斥。
- * 真机上模拟上下文标志为 no-op（真正的上下文由 xPortInIsrContext() 提供）。
- * ───────────────────────────────────────────────────────── */
+/* ---------------------------------------------------------
+ * Critical Section (Explicit task/ISR dual-entry dispatch, ADR-0016)
+ * --------------------------------------------------------- */
 
 static portMUX_TYPE s_global_mux = portMUX_INITIALIZER_UNLOCKED;
 
@@ -235,7 +223,7 @@ void pal_os_critical_exit_isr(uint32_t key) {
     portEXIT_CRITICAL_ISR(&s_global_mux);
 }
 
-/* 真机上下文由 FreeRTOS 直接提供，仿真上下文标志为 no-op */
+/* Physical context provided directly by FreeRTOS; simulation context flags are no-ops */
 void pal_os_set_sim_isr_context(bool in_isr) { (void)in_isr; }
 bool pal_os_in_sim_isr_context(void) { return false; }
 bool pal_os_in_isr(void) { return xPortInIsrContext() == pdTRUE; }
@@ -244,9 +232,9 @@ void pal_os_set_sim_pt_context(bool in_pt) { (void)in_pt; }
 bool pal_os_in_sim_pt_context(void) { return false; }
 bool wink_pt_in_context(void) { return false; }
 
-/* ─────────────────────────────────────────────────────────
- * Task 创建与多核亲和性
- * ───────────────────────────────────────────────────────── */
+/* ---------------------------------------------------------
+ * Task Creation and Multi-Core Affinity
+ * --------------------------------------------------------- */
 
 wink_status_t pal_os_task_create(
     void (*func)(void* arg),
@@ -264,14 +252,14 @@ wink_status_t pal_os_task_create(
     /* Map PAL core ID to FreeRTOS xCoreID */
     switch (core_id) {
         case PAL_OS_CORE_0:
-            core = 0;                /* 钉到 Core 0：tskNO_AFFINITY 允许调度到任意核，破坏 CPU 隔离语义 */
+            core = 0;                /* Pin to Core 0 */
             break;
         case PAL_OS_CORE_1:
             core = 1;                /* Pin to Core 1 for control loop isolation */
             break;
         case PAL_OS_CORE_ANY:
         default:
-            core = tskNO_AFFINITY;   /* 显式 ANY 才用无亲和性，交由调度器选择 */
+            core = tskNO_AFFINITY;   /* Explicit ANY uses no affinity */
             break;
     }
 
@@ -309,19 +297,12 @@ uint32_t pal_os_get_min_free_heap_size(void) {
 }
 
 uint32_t pal_os_get_current_task_stack_free(void) {
-    /* uxTaskGetStackHighWaterMark(NULL) returns words on ESP32
-     * (StackType_t is uint8_t in ESP-IDF's newlib — but the canonical
-     * conversion is words * sizeof(StackType_t); on ESP32 that equals bytes
-     * directly since StackType_t is 1 byte for Xtensa windowed ABI? Actually
-     * FreeRTOS StackType_t is portSTACK_TYPE which is uint8_t on ESP32 only
-     * when configSTACK_DEPTH_TYPE is bytes. IDF v5+ uses bytes natively;
-     * multiply to be safe against future ADR-0002 dual-target reuse. */
     return (uint32_t)uxTaskGetStackHighWaterMark(NULL) * (uint32_t)sizeof(StackType_t);
 }
 
-/* ─────────────────────────────────────────────────────────
- * 跨核通信环形缓冲区 (Ringbuf)
- * ───────────────────────────────────────────────────────── */
+/* ---------------------------------------------------------
+ * Cross-Core Communication Ring Buffer (Ringbuf)
+ * --------------------------------------------------------- */
 
 struct pal_os_ringbuf {
     RingbufHandle_t handle;
@@ -402,16 +383,11 @@ wink_status_t pal_os_ringbuf_pop(
 }
 
 uint32_t pal_os_ringbuf_used(pal_os_ringbuf_handle_t rb) {
-    /* P1-P5-5: 用 xRingbufferGetCurFreeSize 反推 used。
-     * RINGBUF_TYPE_BYTEBUF 无 per-item 头部开销（不同于 NO_SPLIT/ALLOW_SPLIT
-     * 的 8-byte header），因此 used = capacity - free 精确。
-     * 参见 ESP-IDF FreeRTOS Additions: ringbuf.h `xRingbufferGetCurFreeSize`. */
     if (rb == NULL) {
         return 0;
     }
     size_t free_size = xRingbufferGetCurFreeSize(rb->handle);
     if (free_size >= rb->size) {
-        /* 防御：理论上不会发生，但如果 IDF 版本行为异常，视作空 */
         return 0;
     }
     return (uint32_t)(rb->size - free_size);
