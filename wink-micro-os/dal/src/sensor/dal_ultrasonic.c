@@ -1,3 +1,5 @@
+#define LOG_TAG "dal_ultrasonic"
+
 #include "dal_ultrasonic.h"
 
 #include "pal_hal.h"
@@ -8,8 +10,6 @@
 #include "pal_log.h"         /* LOG_TAG / LOG_W for deinit best-effort trace (DAL-L-014) */
 
 #include <string.h>   /* memcpy（ADR-0008 apply_override 反序列化） */
-
-#define LOG_TAG "dal_ultrasonic"
 
 /* ADR-0017 层 1 例外：本 TU 合法调用多个 WINK_BLOCKING API
  * (pal_os_busy_wait_us, pal_gpio_pulse_in) 以及 blocking 的 dal_ultrasonic_read 自身。
@@ -222,7 +222,7 @@ wink_status_t dal_ultrasonic_init(dal_ultrasonic_t *dev, const dal_ultrasonic_co
     }
 
     dev->initialized = true;
-    LOG_I(LOG_TAG, "init OK: owner=%s trig=%u echo=%u rmt=%d",
+    LOG_I("init OK: owner=%s trig=%u echo=%u rmt=%d",
           (cfg->owner == NULL ? "?" : cfg->owner), (unsigned)cfg->trig_pin,
           (unsigned)cfg->echo_pin, (int)cfg->use_rmt);
     return WINK_OK;
@@ -230,7 +230,7 @@ wink_status_t dal_ultrasonic_init(dal_ultrasonic_t *dev, const dal_ultrasonic_co
 cleanup:
     /* DAL-B-031: log the failed step + rc before we tear down so the operator
      * can correlate with the cleanup traces below. */
-    LOG_E(LOG_TAG, "init FAILED rc=%d: owner=%s trig=%u echo=%u rmt=%d (rolling back)",
+    LOG_E("init FAILED rc=%d: owner=%s trig=%u echo=%u rmt=%d (rolling back)",
           (int)rc, (cfg->owner == NULL ? "?" : cfg->owner),
           (unsigned)cfg->trig_pin, (unsigned)cfg->echo_pin, (int)cfg->use_rmt);
     /* Roll back in REVERSE order. pal_gpio_reset_pin is the inverse of

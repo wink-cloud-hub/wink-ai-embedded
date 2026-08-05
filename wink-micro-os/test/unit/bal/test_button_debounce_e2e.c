@@ -46,7 +46,7 @@ void test_dal_button_absorbs_bounce_and_settles(void) {
     f.bounce_us = BOUNCE_US; f.prng_seed = 1;
     sim_set_faults(&f);
 
-    dal_button_t btn;
+    dal_button_t btn = {0};
     const dal_button_config_t cfg = { .owner = "e2e_debounce_bounce", .pin = 7, .active_low = true };
     TEST_ASSERT_EQUAL(WINK_OK, dal_button_init(&btn, &cfg));   /* active_low */
     sim_set_gpio_ideal(7, true);                                   /* ① 上电态=释放(raw=true)，不抖 */
