@@ -62,6 +62,12 @@ extern void host_record_pwm(uint8_t channel, float duty);
 static pal_gpio_mode_t s_gpio_mode[HOST_MAX_GPIO_PIN];
 static bool            s_gpio_mode_known[HOST_MAX_GPIO_PIN];
 
+/* GPIO output-level capture (host tests only): last level written via
+ * pal_gpio_write, plus a "known" flag cleared by pal_gpio_reset_pin. Lets
+ * output drivers (relay/led) assert polarity and pulse sequences. */
+static bool s_gpio_out_level[HOST_MAX_GPIO_PIN];
+static bool s_gpio_out_known[HOST_MAX_GPIO_PIN];
+
 static bool pal_gpio_mode_idle_level(pal_gpio_mode_t mode)
 {
     switch (mode) {
@@ -98,12 +104,32 @@ wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
 void pal_gpio_reset_pin(wink_pin_t pin) {
     if (pin >= 0 && pin < HOST_MAX_GPIO_PIN) {
         s_gpio_mode_known[pin] = false;
+        s_gpio_out_known[pin] = false;
     }
     /* Host simulation: no hardware reservation bitmap, no GPIO ISR dispatch
      * table to clear — software resource claim is released separately by
      * pal_resource_release() in the DAL deinit path. Keep this a no-op so
      * deinit code paths stay uniform across targets. */
     (void)pin;
+}
+
+bool pal_host_get_gpio_level(wink_pin_t pin, bool *out_level) {
+    if (out_level != NULL) {
+        *out_level = false;
+    }
+    if (pin < 0 || pin >= HOST_MAX_GPIO_PIN || out_level == NULL) {
+        return false;
+    }
+    if (!s_gpio_out_known[pin]) {
+        return false;
+    }
+    *out_level = s_gpio_out_level[pin];
+    return true;
+}
+
+void pal_host_reset_gpio_levels(void) {
+    memset(s_gpio_out_level, 0, sizeof(s_gpio_out_level));
+    memset(s_gpio_out_known, 0, sizeof(s_gpio_out_known));
 }
 
 wink_status_t pal_gpio_set_direction(wink_pin_t pin, pal_gpio_mode_t mode) {
@@ -153,6 +179,8 @@ wink_status_t pal_gpio_write(wink_pin_t pin, bool level) {
     if (!pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin)) {
         return WINK_ERR_INVALID_STATE;
     }
+    s_gpio_out_level[pin] = level;
+    s_gpio_out_known[pin] = true;
     for (int i = 0; i < HOST_MAX_LOOPBACKS; i++) {
         if (s_host_loopbacks[i].active && s_host_loopbacks[i].pin_out == pin) {
             sim_set_gpio_ideal((uint16_t)s_host_loopbacks[i].pin_in, level);
