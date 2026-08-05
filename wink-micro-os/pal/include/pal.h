@@ -11,6 +11,7 @@
 #include "wink_status.h"
 #include "pal_hal.h"
 #include "hal/pal_i2c.h"
+#include "hal/pal_adc.h"
 #include "pal_osal.h"
 #include "pal_log.h"
 #include "pal_resource.h"

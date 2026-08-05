@@ -1,3 +1,4 @@
+cmake_minimum_required(VERSION 3.15)
 # wink-micro-os host unit tests (PC gcc, no ESP-IDF, no Emscripten)
 
 set(UNITY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/unity)
@@ -104,6 +105,7 @@ add_wink_host_test(test_light_dispatch_flag unit/runtime/test_light_dispatch_fla
     ${CMAKE_CURRENT_SOURCE_DIR}/../trace/src/wink_trace.c)
 
 add_wink_host_test(test_host_pal unit/pal/test_host_pal.c)
+add_wink_host_test(test_pal_adc unit/pal/test_pal_adc.c)
 
 add_wink_host_test(test_wink_event unit/runtime/test_wink_event.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_event.c)
@@ -171,6 +173,7 @@ add_wink_host_test(test_pal_storage unit/pal/test_pal_storage.c)
 add_wink_host_test(test_sim_physical unit/sim/test_sim_physical.c)
 add_wink_host_test(test_dal_rc_servo unit/dal/test_dal_rc_servo.c)
 add_wink_host_test(test_dal_led unit/dal/test_dal_led.c)
+add_wink_host_test(test_dal_relay unit/dal/test_dal_relay.c)
 add_wink_host_test(test_dal_button unit/dal/test_dal_button.c)
 add_wink_host_test(test_dal_mono_oled unit/dal/test_dal_mono_oled.c)
 add_wink_host_test(test_dal_ultrasonic unit/dal/test_dal_ultrasonic.c)

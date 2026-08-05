@@ -13,6 +13,7 @@ set(PAL_WASM_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_log_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_irq_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_storage_wasm.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_adc.c
     # Wasm 特有扩展：物理退化 + fault 子系统 + Wave3 stub + 虚拟器件仿真
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_physical.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_fault.c
