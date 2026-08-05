@@ -1,0 +1,11 @@
+# Role contract SSOT (machine-readable). Human-readable SSOT:
+# docs/dal-development-guide/dal-role-architecture-spec.md
+codegen_schema: "1.1"
+id: analog_input
+verbs:
+  - id: read_promille
+    error_class: convenience
+  - id: read_mv
+    error_class: convenience
+  - id: read_promille_status
+    error_class: normal
