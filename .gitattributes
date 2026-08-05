@@ -1,25 +1,20 @@
-# Git 属性配置
+# Git attributes configuration
 #
-# 目标：
-# 1. 文本文件在仓库内统一以 LF 存储，避免 CRLF/LF 混用；
-# 2. Markdown 等文档强制 UTF-8 编码，杜绝 Windows 代码页（GBK/CP936）
-#    把中文双重编码成 mojibake 的问题；
-# 3. 二进制文件不做任何行尾/编码转换。
-#
-# 说明：Git 本身不校验工作区文件的字节编码，`working-tree-encoding=UTF-8`
-# 会在检出/提交时按 UTF-8 转码；若某文件不是合法 UTF-8，提交时 Git 会报错，
-# 从而在源头拦住非 UTF-8 文档。
+# Objectives:
+# 1. Store text files with LF line endings consistently to avoid CRLF/LF mixing.
+# 2. Enforce UTF-8 encoding for Markdown and text files to eliminate encoding issues on Windows.
+# 3. Keep binary files untransformed.
 
-# 默认：自动识别文本，仓库内用 LF
+# Default: auto-detect text, store with LF in repository
 * text=auto eol=lf
 
-# ── 文档：强制 UTF-8 ──────────────────────────────────────────────
+# ── Documentation: Enforce UTF-8 ──────────────────────────────────
 *.md        text eol=lf working-tree-encoding=UTF-8
 *.markdown  text eol=lf working-tree-encoding=UTF-8
 *.txt       text eol=lf working-tree-encoding=UTF-8
 *.adoc      text eol=lf working-tree-encoding=UTF-8
 
-# ── 源码与脚本：UTF-8，LF ────────────────────────────────────────
+# ── Source Code & Scripts: UTF-8, LF ──────────────────────────────
 *.c    text eol=lf working-tree-encoding=UTF-8
 *.h    text eol=lf working-tree-encoding=UTF-8
 *.cpp  text eol=lf working-tree-encoding=UTF-8
@@ -32,12 +27,12 @@
 *.cmake text eol=lf working-tree-encoding=UTF-8
 CMakeLists.txt text eol=lf working-tree-encoding=UTF-8
 
-# ── Windows 专用脚本保留 CRLF（批处理/PowerShell 需 CRLF）────────
+# ── Windows Scripts: Retain CRLF ──────────────────────────────────
 *.bat  text eol=crlf
 *.cmd  text eol=crlf
 *.ps1  text eol=crlf working-tree-encoding=UTF-8
 
-# ── 二进制：不做任何转换 ────────────────────────────────────────
+# ── Binary Files ──────────────────────────────────────────────────
 *.png   binary
 *.jpg   binary
 *.jpeg  binary

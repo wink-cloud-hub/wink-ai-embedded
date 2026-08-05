@@ -1,15 +1,8 @@
 /*
  * Arduino Blink + Serial Demo
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- * 这是一份 100% 标准 Arduino 写法的 Sketch，验证 WinkMicroOS Arduino 兼容层的
- * GPIO / Timing / Serial / String 功能在 host E2E 环境下可正确编译和运行。
- *
- * 功能覆盖：
- *   - pinMode / digitalWrite      (GPIO 输出)
- *   - millis()                    (系统时钟)
- *   - delay()                     (延时)
- *   - Serial.begin / print / println  (串口格式化输出)
- *   - String 拼接                 (动态字符串)  --- 仅作为能力测试 Arduino 推荐"分步输出"而不是"拼接方式"
+ * Standard Arduino Sketch verifying the WinkMicroOS Arduino Compatibility Layer
+ * (GPIO / Timing / Serial / String features under host E2E environment).
  */
 #include <Arduino.h>
 

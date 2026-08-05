@@ -1,12 +1,13 @@
-# ===== C / CMake 构建产物 =====
-# 构建目录（cmake -B 生成的全部产物）
+# ===== C / CMake Build Artifacts =====
+# Build directories
 build/
 build-*/
 build_*/
 out/
 dist/
 .codegen_test*
-# CMake 内部缓存与生成文件
+
+# CMake internal cache and generated files
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
@@ -15,7 +16,7 @@ Makefile
 !**/CMakeLists.txt
 !**/*.cmake
 
-# 编译产物
+# Compilation artifacts
 *.o
 *.obj
 *.a
@@ -27,28 +28,29 @@ Makefile
 *.exe
 *.out
 
-# Ninja / Make 构建数据库
+# Ninja / Make build databases
 .ninja_deps
 .ninja_log
 build.ninja
 rules.ninja
 
-# ===== 编译器 / IDE =====
-# GCC 覆盖率与 profile
+# ===== Compilers / IDE =====
+# GCC coverage and profile
 *.gcno
 *.gcda
 *.gcov
 *.profdata
 *.profraw
 *.tar.gz
-# Clang 编译数据库（按需生成，不入库）
+
+# Clang compilation database
 compile_commands.json
 
 # VS Code
 .vscode/
 !.vscode/settings.json
 
-# JetBrains IDE
+# JetBrains IDE / Tools
 .idea/
 .trae/
 .superpowers/
@@ -64,18 +66,19 @@ Testing/
 .pytest_cache
 .trae
 .playwright-cli
+
 # ===== ESP-IDF / Emscripten =====
-# ESP-IDF 构建与 sdkconfig 本地副本
+# ESP-IDF build and local sdkconfig copies
 sdkconfig.old
 managed_components/
 dependencies.lock
 
-# Emscripten 产物
+# Emscripten artifacts
 *.wasm
 *.js.map
 *.wat
 
-# ===== 编辑器临时 / 系统文件 =====
+# ===== Temporary / System Files =====
 *~
 *.swp
 *.swo
@@ -84,13 +87,12 @@ dependencies.lock
 .DS_Store
 Thumbs.db
 
-# ===== 日志 =====
+# ===== Logs =====
 *.log
 
-# ===== Python（构建期静态分析工具 check_pt_variables.py 产物）=====
+# ===== Python =====
 __pycache__/
 *.pyc
 
-# ===== Wink toolchain 本地配置（ADR-0029/0030）=====
-# 用户或工作区级 tools.json（含绝对机器路径，禁止入库）
+# ===== Wink toolchain local config =====
 .wink/

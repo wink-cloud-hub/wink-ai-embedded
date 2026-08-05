@@ -1,21 +1,20 @@
-# wink-micro-os 顶层 CMakeLists.txt
+# wink-micro-os top-level CMakeLists.txt
 #
-# 构建配置：
+# Build configuration:
 # - host:   cmake -B build-host -DTARGET_PLATFORM=host
 # - wasm:   emcmake cmake -B build-wasm -DTARGET_PLATFORM=wasm
-# - esp32:  idf.py build (由 ESP-IDF 构建系统接管)
+# - esp32:  idf.py build (handled by ESP-IDF build system)
 
 cmake_minimum_required(VERSION 3.15)
 
-# ESP-IDF 组件模式：在 idf_component_register 之前设置项目变量
+# ESP-IDF component mode check
 if(DEFINED ENV{IDF_PATH} OR ESP_PLATFORM)
-    # ESP-IDF 环境：作为 IDF component 参与构建
+    # ESP-IDF environment: build as IDF component
     message(STATUS "Building as ESP-IDF component")
-    # 此处的变量会被 wink-micro-os/CMakeLists.txt 继承
     set(TARGET_PLATFORM "esp32" CACHE STRING "")
     add_subdirectory(wink-micro-os)
 else()
-    # 非 ESP-IDF 环境：host/wasm 独立构建
+    # Standalone build (host/wasm)
     project(wink-micro-os-top C CXX)
     message(STATUS "Standalone build - TARGET_PLATFORM not specified, defaulting to host")
     add_subdirectory(wink-micro-os)

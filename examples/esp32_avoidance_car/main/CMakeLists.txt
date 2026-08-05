@@ -14,9 +14,9 @@ idf_component_register(
         driver
 )
 
-# 传递 TARGET_PLATFORM 定义
+# Pass TARGET_PLATFORM definition
 target_compile_definitions(${COMPONENT_LIB} PRIVATE TARGET_PLATFORM_esp32)
 
-# 链接 wink-micro-os 核心库
+# Link wink-micro-os core libraries
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../wink-micro-os ${CMAKE_BINARY_DIR}/wink-micro-os)
 target_link_libraries(${COMPONENT_LIB} PRIVATE pal dal wink_runtime wink_trace)

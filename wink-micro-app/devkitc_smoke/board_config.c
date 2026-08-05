@@ -1,17 +1,14 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file board_config.c
- * @brief DevKitC 板级硬件路由（覆盖 esp32 target 的弱默认 pal_pwm_pin_map）。
- *
- * S5 PWM 测试使用通道 1（GPIO4）和通道 2（GPIO5）验证异频隔离。
+ * @brief DevKitC board hardware routing (overriding esp32 target weak default pal_pwm_pin_map).
  */
 #include "pal_hal.h"
 
-/* 强定义，覆盖 esp32 target 的弱默认。GPIO2 预留作 LED，
- * 通道 1=GPIO4，通道 2=GPIO5（与 avoidance_car 一致）。*/
+/* Strong definition overriding the weak default for ESP32 target. */
 const wink_pin_t pal_pwm_pin_map[PAL_PWM_CHANNELS] = {2, 4, 5, 18, 19, 21, 22, 23};
 
-/* DevKitC I2C 路由：保持 ESP32 默认硬件映射（I2C0: SDA=21/SCL=22，I2C1: SDA=33/SCL=32）。
- * 强定义，覆盖 esp32 target 的弱默认 pal_i2c_pin_map。*/
+/* DevKitC I2C routing: default hardware mapping (I2C0: SDA=21/SCL=22, I2C1: SDA=33/SCL=32). */
 const wink_pin_t pal_i2c_pin_map[PAL_I2C_PORTS][2] = {
     {21, 22},
     {33, 32}

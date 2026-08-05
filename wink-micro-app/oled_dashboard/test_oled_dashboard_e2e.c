@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file test_oled_dashboard_e2e.c
- * @brief OLED Dashboard host e2e：pull-up idle → 注入按下 → 验证 LED + OLED。
+ * @brief OLED Dashboard host E2E runner.
  */
 #include "wink_runtime.h"
 #include "wink_trace.h"
