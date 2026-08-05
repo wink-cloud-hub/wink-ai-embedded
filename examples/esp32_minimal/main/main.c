@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file main.c
- * @brief ESP32 最小测试项目 - 验证 PAL 编译
+ * @brief ESP32 Minimal test project — verifies PAL compilation.
  */
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
