@@ -1,21 +1,11 @@
 /**
- * wink_sim_stub.js — Wasm 仿真 runtime 烟测桩（Node.js 侧）
+ * wink_sim_stub.js — Wasm simulation runtime smoke test stub (Node.js side).
  *
- * 目的：
- *   1. 验证 wasm 与 glue 能被 Node 实例化；
- *   2. 验证 --js-library 注入的 js_* 桩集合与 wasm imports 契约一致（无 stray symbol）；
- *   3. 验证 Asyncify 真的挂起 wasm（wall-clock 证明 sleep 让出了执行）；
- *   4. 验证默认桩推进了 s_virtual_us（app_init 末尾 LOG_I 的 t1>0）——避免
- *      "setTimeout 触发但虚拟时钟冻结" 的退化（见 wink_sim_js.js §时钟推进契约）。
- *
- * 架构：主线程做超时/判定；Worker 线程加载 wasm（防 Asyncify starve 主 event loop）。
- *
- * 用法：
- *   node targets/wasm/wink_sim_stub.js [--build-dir=<path>] [path]
- *   （Node ≥ 16）
- *
- * 注：js_pal_log 覆盖里**不能**使用 UTF8ToString——它是 emcc 闭包内部符号，
- * 未加入 EXPORTED_RUNTIME_METHODS。我们用 HEAPU8 手动读取 null-terminated UTF-8。
+ * Purpose:
+ *   1. Verify that wasm and glue code can be instantiated by Node;
+ *   2. Verify that js_* stubs injected via --js-library match wasm imports contract (no stray symbols);
+ *   3. Verify that Asyncify actually suspends wasm execution (wall-clock proof);
+ *   4. Verify that default stubs advance s_virtual_us (app_init end LOG_I shows t1>0).
  */
 
 'use strict';
@@ -61,7 +51,7 @@ if (isMainThread) {
         process.exit(2);
     }
 
-    /* wasm imports 契约校验 */
+    /* Wasm imports contract verification */
     const bytes = fs.readFileSync(WASM_PATH);
     const mod = new WebAssembly.Module(bytes);
     const imports = WebAssembly.Module.imports(mod)
@@ -104,7 +94,7 @@ if (isMainThread) {
         console.log(`[stub] tree-shaken (unused by current App variant): ${treeShaken.length} symbols — ${treeShaken.join(',')}`);
     }
 
-    /* 启动 worker */
+    /* Start worker thread */
     const worker = new Worker(__filename, { workerData: { buildDir: BUILD_DIR } });
     let ready = false;
     let asyncifyProven = false;
@@ -142,7 +132,6 @@ if (isMainThread) {
                 worker.terminate().then(() => process.exit(1));
                 break;
             case 'log':
-                /* 透传 worker 侧日志（默认桩 js_pal_log 被我们覆盖，我们自己打） */
                 process.stdout.write(msg.line + '\n');
                 break;
             default:
@@ -175,7 +164,7 @@ if (isMainThread) {
         }
     }, TIMEOUT_MS);
 } else {
-    /* ---------- Worker 线程 ---------- */
+    /* ---------- Worker Thread ---------- */
     try {
         const BUILD_DIR = (workerData && workerData.buildDir)
             ? path.resolve(workerData.buildDir)
@@ -226,12 +215,6 @@ if (isMainThread) {
                     }, ms);
                 });
             },
-            /* 不覆盖 js_pal_os_busy_wait_us——走默认桩，默认桩会推进时钟（我们刚修过）。
-             * 但是！默认桩的 js_pal_os_busy_wait_us 实现也依赖闭包内的 UTF8ToString
-             * 吗？不会——busy_wait 不调日志，它只 return setTimeout。默认桩里对
-             * Module._pal_wasm_advance_virtual_clock 的访问是通过 Module 全局（闭包
-             * 内的 Module 是 emcc 内部变量，可用），所以默认桩在被我们覆盖了
-             * sleep_ms 的情况下仍能正常推进 busy_wait 的时钟。 */
             js_pal_log: function (level, msgPtr) {
                 var msg = '';
                 try {
@@ -244,7 +227,7 @@ if (isMainThread) {
                     case 1: line = '[wink E] ' + msg; break;
                     case 2: line = '[wink W] ' + msg; break;
                     case 3: line = '[wink I] ' + msg; break;
-                    case 4: line = null; break; /* debug 默认静默 */
+                    case 4: line = null; break;
                     default: line = '[wink ?] ' + msg; break;
                 }
                 if (line) parentPort.postMessage({ type: 'log', line });
@@ -264,7 +247,7 @@ if (isMainThread) {
                         } else {
                             parentPort.postMessage({
                                 type: 'clock_fail',
-                                reason: `init complete 但 t1_us=${t1_us} t1_ms=${t1_ms} 均为 0（虚拟时钟未前进）`,
+                                reason: `init complete but t1_us=${t1_us} t1_ms=${t1_ms} both 0 (virtual clock not advanced)`,
                             });
                         }
                     }
@@ -276,7 +259,7 @@ if (isMainThread) {
                     if (!initObserved) {
                         parentPort.postMessage({
                             type: 'clock_fail',
-                            reason: `${OBSERVE_MS}ms 内未观察到 'init complete t0=... t1=...' 日志（app_init 是否走到末尾？）`,
+                            reason: `${OBSERVE_MS}ms elapsed without observing 'init complete t0=... t1=...' log`,
                         });
                     }
                 }, OBSERVE_MS);

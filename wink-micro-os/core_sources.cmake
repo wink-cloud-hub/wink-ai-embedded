@@ -1,31 +1,29 @@
-# wink-micro-os 核心源文件列表（供各 target 共享引用）
-# 避免 host/wasm/esp32 各 target 重复硬编码源文件路径
-# 使用方式：在各 target CMakeLists.txt 中 include 本文件
+# Wink Micro-OS core source file manifest (shared across target builds)
+# Prevents host/wasm/esp32 targets from repeating source file lists.
+# Usage: include this file in target CMakeLists.txt.
 
-# ── Runtime 源文件 ──────────────────────────────────────────────────────────
+# ── Runtime Sources ──────────────────────────────────────────────────────────
 set(WINK_RUNTIME_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/runtime/src/wink_runtime.c
     ${CMAKE_CURRENT_LIST_DIR}/runtime/src/wink_runtime_tasks.c
     ${CMAKE_CURRENT_LIST_DIR}/runtime/src/wink_actuator_registry.c
     ${CMAKE_CURRENT_LIST_DIR}/runtime/src/wink_soft_timer.c
     ${CMAKE_CURRENT_LIST_DIR}/runtime/src/wink_event.c
-    # ADR-0008 设备树覆写 blob 解析器 + CRC32：runtime 层通用工具（无硬件依赖），
-    # 从 pal/src/ 迁出以修复层级反转。
     ${CMAKE_CURRENT_LIST_DIR}/runtime/src/wink_dev_config.c
 )
 
-# ── Trace 源文件 ──────────────────────────────────────────────────────────
+# ── Trace Sources ──────────────────────────────────────────────────────────
 set(WINK_TRACE_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/trace/src/wink_trace.c
 )
 
-# ── DAL 源文件 ──────────────────────────────────────────────────────────
+# ── DAL Sources ──────────────────────────────────────────────────────────
 # ADR-0039: DAL .c are NOT aggregated into WINK_CORE_SOURCES.
 # Each target injects enabled drivers via wink_dal_add_enabled_sources()
 # after wink_dal_apply_pruning() (see cmake/wink_dal_drivers.cmake).
 set(WINK_DAL_SOURCES)
 
-# ── Selftest 源文件（可选：通过链接或配置排除；此处默认并入核心，由 app 决定是否调用） ──
+# ── Selftest Sources ────────────────────────────────────────────────────────
 set(WINK_SELFTEST_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/runtime/selftest/src/selftest_core.c
     ${CMAKE_CURRENT_LIST_DIR}/runtime/selftest/src/selftest_pwm_router.c
@@ -33,19 +31,10 @@ set(WINK_SELFTEST_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/runtime/selftest/src/selftest_smp_stress.c
     ${CMAKE_CURRENT_LIST_DIR}/runtime/selftest/src/selftest_gpio_isr.c
     ${CMAKE_CURRENT_LIST_DIR}/runtime/selftest/src/selftest_rmt_loopback.c
-    # ADR-0023 Stage 2.4: bringup shadow-task helper (S10 ultrasonic echo sim),
-    # migrated from samples/common/. Gated by #ifndef WINK_STRICT_NONBLOCKING
-    # so it compiles out of strict non-blocking images.
     ${CMAKE_CURRENT_LIST_DIR}/runtime/selftest/src/wink_sim_ultrasonic_echo.c
 )
 
-# ── BAL (Business Abstraction Layer) 源文件 — ADR-0023 Stage 2 ────────────
-# Domain-mirrored implementations under bal/src/<domain>/.
-# When building via the top-level CMakeLists (host/wasm),
-# these are compiled into the standalone `wink_bal` static library; for the
-# ESP-IDF component build that pulls ${WINK_CORE_SOURCES} directly, listing
-# them here guarantees the ESP32 component also compiles them. Keep in sync
-# with bal/CMakeLists.txt target_sources(wink_bal ...).
+# ── BAL (Business Abstraction Layer) Sources ────────────────────────────────
 set(WINK_BAL_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/bal/src/wink_bal_stub.c
     ${CMAKE_CURRENT_LIST_DIR}/bal/src/output/wink_led_blink.c
@@ -61,10 +50,7 @@ set(WINK_BAL_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/bal/src/control/wink_chassis.c
 )
 
-# ── 核心包含目录 ──────────────────────────────────────────────────────────
-# Phase 1 目录重组：pal/include/ 根目录 + osal/ + hal/ 子目录均在搜索路径中。
-# 这样保持向后兼容：现有代码的 #include "pal_hal.h" / #include "pal_osal.h" 无需修改。
-# DAL 头文件按分类组织在子目录中，源文件用 #include "dal_xxx.h" 直接引用（无需前缀）。
+# ── Core Include Directories ────────────────────────────────────────────────
 set(WINK_CORE_INCLUDE_DIRS
     ${CMAKE_CURRENT_LIST_DIR}/pal/include
     ${CMAKE_CURRENT_LIST_DIR}/pal/include/osal
@@ -78,13 +64,12 @@ set(WINK_CORE_INCLUDE_DIRS
     ${CMAKE_CURRENT_LIST_DIR}/dal/include/comm
     ${CMAKE_CURRENT_LIST_DIR}/dal/include/storage
     ${CMAKE_CURRENT_LIST_DIR}/runtime/include
-    ${CMAKE_CURRENT_LIST_DIR}/runtime/selftest/src  # wink_selftest_internal.h + registry.def
+    ${CMAKE_CURRENT_LIST_DIR}/runtime/selftest/src
     ${CMAKE_CURRENT_LIST_DIR}/trace/include
-    # BAL (ADR-0023 Stage 2) — public headers; use domain-prefixed includes
     ${CMAKE_CURRENT_LIST_DIR}/bal/include
 )
 
-# ── 聚合所有核心源文件 ──────────────────────────────────────────────────────────
+# ── Aggregate Core Sources ──────────────────────────────────────────────────
 set(WINK_CORE_SOURCES
     ${WINK_RUNTIME_SOURCES}
     ${WINK_TRACE_SOURCES}

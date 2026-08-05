@@ -1,24 +1,20 @@
 # BAL (Business Abstraction Layer) — reusable device enhancements,
 # math algorithms, and domain controllers (ADR-0038 / 06-bal-layer).
 #
-# 介于 App 与 {DAL, runtime} 之间：封装 led blink / button poll / ultrasonic /
-# servo / telemetry 等常见组合，让 App 代码保持零阻塞、零手写 task wrapper。
+# Layering rules (ADR-0023 §8 / ADR-0043):
+#   * bal/include/**/*.h MUST NOT #include any pal_*.h (except pal_log.h).
+#   * BAL MUST NOT link target-specific PAL objects.
 #
-# 分层红线（ADR-0023 §8 / ADR-0043）：
-#   * bal/include/**/*.h 禁止 #include 任何 pal_*.h（pal_log.h 除外）。
-#     文本扫描门禁由 `wink lint --pack layering` 执行（不再在此 CMake 重复 REGEX）。
-#   * BAL 不得链接 target 专属 PAL 对象，保持跨 target 单源编译。
-#
-# 目录布局（include/ 与 src/ 按 domain 镜像）：
-#   include/output/   — LED blink 等输出类组件
-#   include/input/    — Button events 等输入类组件
-#   include/sensor/   — Ultrasonic 等传感器组件
-#   include/actuator/ — Servo 等执行器组件
-#   include/display/  — OLED dashboard（预留）
-#   include/comm/     — Telemetry / 通信组件
-#   include/math/     — PID、运动学等纯算法
-#   include/control/  — 闭环电机、底盘等控制器
-#   src/<domain>/     — 与 include/<domain>/ 对应的 .c 实现
+# Directory layout (include/ and src/ mirrored by domain):
+#   include/output/   — Output components like LED blink
+#   include/input/    — Input components like Button events
+#   include/sensor/   — Sensor components like Ultrasonic
+#   include/actuator/ — Actuator components like Servo
+#   include/display/  — Display components (OLED dashboard)
+#   include/comm/     — Telemetry and communication components
+#   include/math/     — Pure math algorithms like PID, kinematics
+#   include/control/  — Closed-loop controllers like DC motor, chassis
+#   src/<domain>/     — Corresponding .c implementations
 
 add_library(wink_bal STATIC)
 
@@ -64,8 +60,6 @@ target_include_directories(wink_bal PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-# BAL 依赖 runtime（wink_periodic / wink_pt_debug 等）+ DAL（底层器件驱动）+ trace（LOG/FAULT）。
-# 注意：不直接依赖 pal —— 通过 DAL/runtime 间接拿 PAL 类型，强化分层红线。
 target_link_libraries(wink_bal PUBLIC
     pal
     dal
@@ -74,8 +68,6 @@ target_link_libraries(wink_bal PUBLIC
 )
 
 # ── Layout / link-face gates (keep in CMake) ───────────────────
-# Text layering REGEX gates (BAL-HDR-NO-PAL / BAL-NAME-* / BAL-MATH-1)
-# moved to `wink lint` (ADR-0043). Parity probe: tools/tests/test_lint_parity.py
 
 # BAL-INC-2: PUBLIC include directories must be only bal/include root.
 get_target_property(_bal_public_inc wink_bal INTERFACE_INCLUDE_DIRECTORIES)
