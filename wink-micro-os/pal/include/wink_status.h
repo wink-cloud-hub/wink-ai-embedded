@@ -4,7 +4,9 @@
 #include <stddef.h>
 
 #ifndef _Static_assert
-#  if defined(_MSC_VER) && !defined(__clang__) && !defined(__cplusplus)
+#  if defined(__cplusplus)
+#    define _Static_assert(cond, msg) static_assert(cond, msg)
+#  elif defined(_MSC_VER) && !defined(__clang__)
 #    define _Static_assert(cond, msg) static_assert(cond, msg)
 #  endif
 #endif

@@ -1,16 +1,17 @@
+#define LOG_TAG "dal_mono_oled"
+
 #include "dal_mono_oled.h"
 #include "dal_mono_oled_font_internal.h"
 #include "pal_hal.h"
 #include "pal_resource.h"
+#include "pal_log.h"
 #include <string.h>
-
-#define LOG_TAG "dal_mono_oled"
 
 #define LOGW_IF_RC(call, first_err) do {                                  \
     wink_status_t _rc = (call);                                            \
-    if (wink_status_is_error(_rc) && wink_status_is_ok(first_err)) {       \
+    if (wink_status_is_error(_rc) && !wink_status_is_error(first_err)) {  \
         first_err = _rc;                                                   \
-        LOG_W(LOG_TAG, "step failed rc=%d at line %d", (int)_rc, __LINE__);\
+        LOG_W("step failed rc=%d at line %d", (int)_rc, __LINE__);         \
     }                                                                      \
 } while(0)
 
