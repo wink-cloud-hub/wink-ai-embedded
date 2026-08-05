@@ -27,7 +27,7 @@
 #  define WINK_WEAK __attribute__((weak))
 #  define WINK_WEAK_ALIAS(weak_func, default_func) /* no-op on GCC/Clang */
 #elif defined(_MSC_VER)
-#  define WINK_WEAK __declspec(selectany)
+#  define WINK_WEAK
 #  define WINK_WEAK_ALIAS(weak_func, default_func)                  \
         __pragma(comment(linker,                                    \
             "/alternatename:" #weak_func "=" #default_func))

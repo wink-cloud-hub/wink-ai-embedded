@@ -110,6 +110,7 @@ extern "C" {
 /* ---- PAL HAL 侧 JS 导入（来自旧 pal_hal_wasm.c）---- */
 extern void js_pal_gpio_write(uint16_t pin, bool level);
 extern bool js_pal_gpio_read(uint16_t pin);
+extern float js_pal_adc_read_norm(uint16_t pin);
 
 /* P1 electrical SSOT (PinArbiter): state encoding shared with unisim JsGpioState.
  * Bump PAL_WASM_ABI_HASH when adding/changing these imports. */

@@ -45,6 +45,13 @@ void sim_set_gpio_ideal(uint16_t pin, bool level);   /* 注册(上电态)/更新
 void sim_clear_gpio_ideal(void);                      /* 清空所有注入（sim_reset_time 也会调） */
 void sim_set_faults(const wink_sim_faults_t *faults); /* 设全局故障配置（退化强度） */
 
+/* GPIO 输出电平捕获（仅 host 单测用）：记录经 pal_gpio_write 写入的最后电平，
+ * 供 output 类驱动（relay/led）断言极性与脉冲序列。pal_host_get_gpio_level 返回
+ * true 表示该 pin 自上次 reset 以来被写过，电平写入 *out_level。pal_gpio_reset_pin
+ * 会清除该 pin 的记录。 */
+bool pal_host_get_gpio_level(wink_pin_t pin, bool *out_level);
+void pal_host_reset_gpio_levels(void);
+
 /* ─────────────────────────────────────────────────────────
  * Phase 1：统一中断子系统测试注入 API
  * ───────────────────────────────────────────────────────── */
@@ -93,5 +100,11 @@ void pal_host_trigger_logical_interrupt(uint32_t irq_num);
  * @return ISR 调用计数
  */
 uint32_t pal_host_get_logical_isr_call_count(uint32_t irq_num);
+
+/**
+ * @brief Host ADC 虚拟数据注入 API
+ */
+void pal_host_adc_inject_raw(uint8_t ch, uint16_t raw);
+void pal_host_adc_inject_mv(uint8_t ch, uint16_t mv);
 
 #endif /* HOST_TEST_CTRL_H */

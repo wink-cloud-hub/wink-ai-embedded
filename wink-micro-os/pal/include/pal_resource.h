@@ -30,6 +30,7 @@ typedef enum {
     PAL_RESOURCE_I2C_PORT    = 3,
     PAL_RESOURCE_I2C_ADDR    = 4,   /* Phase 2：(port,7位地址) 粒度，见 pal_resource_i2c_id */
     PAL_RESOURCE_UART_PORT   = 5,   /* Track A（M1）：UART 端口独占（GPS/串行外设） */
+    PAL_RESOURCE_ADC_CHANNEL = 6,   /* PAL ADC 子系统逻辑通道 */
 } pal_resource_type_t;
 
 /**
