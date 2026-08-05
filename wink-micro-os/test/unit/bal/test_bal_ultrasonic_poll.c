@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file test_bal_sonar.c
  * @brief Unit tests for BAL wink_ultrasonic_poll (host).

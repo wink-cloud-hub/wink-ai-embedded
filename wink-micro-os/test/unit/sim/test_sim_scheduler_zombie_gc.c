@@ -1,12 +1,13 @@
+// SPDX-License-Identifier: Apache-2.0
+/**
+ * @file test_sim_scheduler_zombie_gc.c
+ * @brief Unit tests for task self-deletion zombie garbage collection in simulation scheduler.
+ */
 #include "unity.h"
 #include "pal_osal.h"
 #include "wink_sim_scheduler.h"
 #include <stdint.h>
 
-
-/* ADR-0017 层 1 例外：本 TU 合法调用 WINK_BLOCKING API。抑制
- * -Wdeprecated-declarations 使 -Werror 下仍能编译；严格模式
- * (-DWINK_STRICT_NONBLOCKING=1) 下相关 API 声明直接消失，本 TU 会链接失败——那是设计意图。 */
 #include "compat/wink_test_compat.h"
 WINK_TEST_ALLOW_DEPRECATED
 
@@ -17,7 +18,6 @@ void self_deleter_task(void* arg) {
     pal_os_sleep_ms(1);
     s_self_delete_count++;
     pal_os_task_delete(NULL);
-    /* 崩溃保护，如果删除失败回到这里说明有bug */
     TEST_FAIL_MESSAGE("pal_os_task_delete(NULL) should not return!");
 }
 
@@ -31,17 +31,15 @@ void tearDown(void) {
 
 void test_self_delete_reaches_zombie_gc(void) {
     sim_scheduler_reset(42);
-    
+
     pal_os_task_handle_t t_h;
     TEST_ASSERT_EQUAL(WINK_OK, pal_os_task_create(self_deleter_task, "sd", 32*1024, NULL, 5, PAL_OS_CORE_ANY, &t_h));
-    
-    /* 运行调度循环，主任务 id 设为 0（即注册的唯一任务）；测试无 App，传 NULL。 */
+
     wink_status_t st = pal_sim_scheduler_run(NULL, 0, 50);
     TEST_ASSERT_EQUAL(WINK_OK, st);
-    
+
     TEST_ASSERT_EQUAL_UINT32(1, s_self_delete_count);
-    
-    /* 验证任务已被回收并置为 TERMINATED 状态 */
+
     const sim_task_t* t = sim_scheduler_get(0);
     TEST_ASSERT_NOT_NULL(t);
     TEST_ASSERT_EQUAL(SIM_TASK_STATE_TERMINATED, t->state);

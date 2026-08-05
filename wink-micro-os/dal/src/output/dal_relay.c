@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: Apache-2.0
 #define LOG_TAG "dal_relay"
 #include "output/dal_relay.h"
 #include "pal_hal.h"
 #include "pal_resource.h"
 #include "pal_log.h"
 #include "osal/pal_osal.h"
-#include <string.h> /* memcpy, memset */
+#include <string.h>
 
 /* Release the GPIO resource claims best-effort; logs but never aborts teardown
  * (DAL-L-014). The main pin is uint16_t and is always claimed on success;
@@ -26,23 +27,21 @@ static void release_relay_claims(const dal_relay_config_t *cfg)
     }
 }
 
-/* Drive both coil pins to the inactive level (break-before-make for latching
- * variants; prevents two coils / H-bridge legs from being active at once). */
+/* Drive both coil pins to the inactive level. */
 static void relay_write_both_inactive(const dal_relay_config_t *cfg)
 {
-    bool inactive = cfg->active_low; /* active_low: inactive level is HIGH (true) */
+    bool inactive = cfg->active_low;
     WINK_IGNORE_UNUSED(pal_gpio_write((wink_pin_t)cfg->pin, inactive));
     if (cfg->reset_pin >= 0) {
         WINK_IGNORE_UNUSED(pal_gpio_write((wink_pin_t)cfg->reset_pin, inactive));
     }
 }
 
-/* Start a set/reset pulse on the appropriate coil pin. Caller must have already
- * established break-before-make (relay_write_both_inactive). */
+/* Start a set/reset pulse on the appropriate coil pin. */
 static wink_status_t relay_start_pulse(dal_relay_t *dev, bool on)
 {
     const dal_relay_config_t *cfg = &dev->config;
-    bool active = !cfg->active_low; /* active_low: active level is LOW (false) */
+    bool active = !cfg->active_low;
     wink_pin_t target = on ? (wink_pin_t)cfg->pin : (wink_pin_t)cfg->reset_pin;
 
     wink_status_t status = pal_gpio_write(target, active);
@@ -63,14 +62,11 @@ wink_status_t dal_relay_init(dal_relay_t *dev, const dal_relay_config_t *cfg)
         return WINK_ERR_ALREADY_INITIALIZED;
     }
 
-    /* Latching variants require a valid reset pin. */
     if (cfg->variant == DAL_RELAY_VARIANT_LATCHING_DUAL_PIN && cfg->reset_pin < 0) {
         LOG_E("init: '%s' latching variant requires valid reset_pin", cfg->owner);
         return WINK_ERR_INVALID_ARG;
     }
 
-    /* Pulse width guard: zero -> default; over the hard upper bound is rejected
-     * (a uint16 max ~65s pulse would destroy a latching coil). */
     uint16_t pulse_ms = cfg->pulse_duration_ms;
     if (pulse_ms == 0) {
         pulse_ms = DAL_RELAY_DEFAULT_PULSE_MS;
@@ -80,14 +76,12 @@ wink_status_t dal_relay_init(dal_relay_t *dev, const dal_relay_config_t *cfg)
         return WINK_ERR_INVALID_ARG;
     }
 
-    /* Claim main GPIO pin. */
     wink_status_t rs = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, cfg->pin, cfg->owner);
     if (wink_status_is_error(rs)) {
         LOG_W("init: claim GPIO pin %d for '%s' failed: %d", (int)cfg->pin, cfg->owner, (int)rs);
         return rs;
     }
 
-    /* Claim reset GPIO pin if applicable. */
     if (cfg->reset_pin >= 0) {
         rs = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->reset_pin, cfg->owner);
         if (wink_status_is_error(rs)) {
@@ -97,7 +91,6 @@ wink_status_t dal_relay_init(dal_relay_t *dev, const dal_relay_config_t *cfg)
         }
     }
 
-    /* Configure main GPIO pin. */
     wink_status_t status = pal_gpio_init((wink_pin_t)cfg->pin, PAL_GPIO_OUTPUT_PUSH_PULL);
     if (wink_status_is_error(status)) {
         LOG_W("init: pal_gpio_init pin %d for '%s' failed: %d", (int)cfg->pin, cfg->owner, (int)status);
@@ -105,7 +98,6 @@ wink_status_t dal_relay_init(dal_relay_t *dev, const dal_relay_config_t *cfg)
         return status;
     }
 
-    /* Configure reset GPIO pin if applicable. */
     if (cfg->reset_pin >= 0) {
         status = pal_gpio_init((wink_pin_t)cfg->reset_pin, PAL_GPIO_OUTPUT_PUSH_PULL);
         if (wink_status_is_error(status)) {
@@ -116,7 +108,6 @@ wink_status_t dal_relay_init(dal_relay_t *dev, const dal_relay_config_t *cfg)
         }
     }
 
-    /* Store config copy (with normalized pulse width). */
     memcpy(&dev->config, cfg, sizeof(dal_relay_config_t));
     dev->config.pulse_duration_ms = pulse_ms;
 
@@ -127,7 +118,6 @@ wink_status_t dal_relay_init(dal_relay_t *dev, const dal_relay_config_t *cfg)
     bool is_latching = (dev->config.variant == DAL_RELAY_VARIANT_LATCHING_DUAL_PIN);
 
     if (!is_latching) {
-        /* DIRECT_GPIO / SSR: hold the initial level. */
         bool active = !dev->config.active_low;
         bool target_level = dev->is_on ? active : !active;
         status = pal_gpio_write((wink_pin_t)dev->config.pin, target_level);
@@ -140,11 +130,6 @@ wink_status_t dal_relay_init(dal_relay_t *dev, const dal_relay_config_t *cfg)
             return status;
         }
     } else {
-        /* Latching: establish a known physical contact state with one SET or
-         * RESET pulse. Start from both pins inactive, then pulse the coil that
-         * matches initial_state. The pulse is cleared by poll() (auto-registered
-         * to the runtime tick), after which both pins return to inactive
-         * (zero static power). */
         relay_write_both_inactive(&dev->config);
         status = relay_start_pulse(dev, dev->is_on);
         if (wink_status_is_error(status)) {
@@ -187,9 +172,6 @@ wink_status_t dal_relay_set(dal_relay_t *dev, bool on)
     }
 
     case DAL_RELAY_VARIANT_LATCHING_DUAL_PIN: {
-        /* Break-before-make: force both coils inactive before energizing the
-         * target coil, so a rapid on->off (or off->on) never overlaps pulses on
-         * the two pins. */
         relay_write_both_inactive(&dev->config);
         status = relay_start_pulse(dev, on);
         break;
@@ -258,7 +240,7 @@ wink_status_t dal_relay_poll(dal_relay_t *dev)
         return WINK_ERR_INVALID_ARG;
     }
     if (!dev->initialized) {
-        return WINK_OK; /* Idempotent no-op when uninitialized */
+        return WINK_OK;
     }
 
     if (dev->pulse_active) {
@@ -274,9 +256,6 @@ wink_status_t dal_relay_poll(dal_relay_t *dev)
 
 wink_status_t dal_relay_safe_off(dal_relay_t *dev)
 {
-    /* DAL-L-022: idempotent on uninitialized handles — "nothing to shut off"
-     * is success on watchdog/panic/rollback paths. Best-effort; do not inspect
-     * the off() result (DAL-L-021, no WARN_UNUSED_RESULT on this API). */
     if (dev == NULL) {
         return WINK_ERR_INVALID_ARG;
     }
@@ -293,14 +272,9 @@ wink_status_t dal_relay_deinit(dal_relay_t *dev)
         return WINK_ERR_INVALID_ARG;
     }
     if (!dev->initialized) {
-        return WINK_OK; /* DAL-L-010 idempotent no-op */
+        return WINK_OK;
     }
 
-    /* Best-effort de-energize before releasing pins. For DIRECT_GPIO/SSR this
-     * writes the inactive level (coil off); for LATCHING this starts a RESET
-     * pulse but the non-blocking path cannot guarantee it reaches full width —
-     * see dal_relay.h deinit doc (ADR-0058): physical contact state is not
-     * guaranteed here. */
     WINK_IGNORE_UNUSED(dal_relay_off(dev));
 
     relay_write_both_inactive(&dev->config);

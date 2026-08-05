@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
+/**
+ * @file test_pal_pwm_router.c
+ * @brief PAL PWM router timer allocation and sharing unit tests.
+ */
 #include "unity.h"
 #include "pal_pwm_router.h"
 #include "pal_resource.h"
@@ -33,7 +38,7 @@ void test_router_acquire_release_basic(void) {
 void test_router_same_freq_reuses_timer(void) {
     uint8_t t0 = acquire_ok(0, 50);
     uint8_t t1 = acquire_ok(1, 50);
-    TEST_ASSERT_EQUAL_UINT8(t0, t1);   /* same profile → same timer */
+    TEST_ASSERT_EQUAL_UINT8(t0, t1);
 }
 
 void test_router_same_freq_diff_bits_no_share(void) {

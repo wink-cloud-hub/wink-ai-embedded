@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
+/**
+ * @file test_wink_event.c
+ * @brief Wink async event bus unit tests.
+ */
 #include "unity.h"
 #include "wink_event.h"
 #include "pal_osal.h"

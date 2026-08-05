@@ -1,6 +1,12 @@
+// SPDX-License-Identifier: Apache-2.0
+/**
+ * @file test_dal_dc_motor.c
+ * @brief DAL DC motor driver unit tests.
+ */
 #include "unity.h"
 #include "wink_status.h"
 #include "actuator/dal_dc_motor.h"
+#include "wink_actuator_registry.h"
 #include "pal_resource.h"
 #include "host_test_ctrl.h"
 #include "internal/pal_test_loopback.h"

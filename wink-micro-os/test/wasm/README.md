@@ -1,8 +1,15 @@
-# `test/wasm/` — Wasm-only unit tests (deferred wiring)
+# `test/wasm/` — Wasm-only unit tests
 
-**Status:** Source-only, not yet built. Requires an Emscripten toolchain and
-an `add_wink_wasm_test` CMake helper that does not exist yet in this repo.
-Audited and confirmed non-orphan (P1-T1, 2026-07-04).
+**Status (2026-08-05):** First wired test landed — `pal_adc/test_pal_adc_wasm.c`
+builds via `pal_adc/add_wink_wasm_adc_test.cmake` (emcc + Node) and is registered
+as ctest label `wasm_adc_test`. It runs automatically under
+`python wink-tools/wink.py test` when emcc and node are on PATH; otherwise CMake
+skips it gracefully.
+
+The remaining tests below are still source-only (deferred). A generalized
+`add_wink_wasm_test` helper does not exist yet; the ADC helper is the first
+concrete instance of the pattern described in "Wiring dependencies" below and
+can be generalized when the next wasm-only test is brought online.
 
 ## Why these tests live outside the host CMake
 
@@ -34,8 +41,9 @@ cover.
 | `test_fault_log.c` | 256-entry fault-audit ring buffer: empty/reset state, single event round-trip, saturation at 256 (no overflow) | `pal_wasm_log_fault` / `pal_wasm_get_fault_event` are wasm-only |
 | `test_fault_domain_stub.c` | Wave3 forward-compat: `pal_wasm_get_domain_config`, `pal_wasm_arm_fault_domain`, `pal_wasm_get_domain_trigger_count`; GLOBAL domain today, per-domain in Wave3 | Domain enum and config aliasing live in `pal_wasm_fault_domain.c` |
 | `test_power_model_stub.c` | Wave3 forward-compat: `pal_wasm_set_pin_power_model` / `pal_wasm_get_total_energy_mj`; locks the `wasm_pin_power_model_t` field set so Wave3 can plug in the real accumulator | The type and setter live in `pal_wasm_internal.h` (wasm-only) |
+| `pal_adc/test_pal_adc_wasm.c` | **Wired (2026-08-05).** Channel 3 analog bridge: norm→raw/mv quantization, warmup BUSY / sample-interval TIMEOUT, `has_sample` zero-value cache contract, per-channel isolation, JS-side NaN/Infinity clamp | Uses `EM_JS` fixture for `js_pal_adc_read_norm` + minimal virtual-clock/fault link stubs; compiled by `pal_adc/add_wink_wasm_adc_test.cmake` |
 
-Total: 9 files (~4.4k LOC).
+Total: 10 files (~4.8k LOC, 1 wired to ctest).
 
 ## Wiring dependencies (what needs to exist to build these)
 

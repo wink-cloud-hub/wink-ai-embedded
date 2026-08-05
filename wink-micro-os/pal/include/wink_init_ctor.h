@@ -1,13 +1,14 @@
-/* wink_init_ctor.h
- * Cross-platform "run before main()" constructor macro.
+// SPDX-License-Identifier: Apache-2.0
+/**
+ * @file wink_init_ctor.h
+ * @brief Cross-platform "run before main()" constructor macro.
  *
  *   WINK_CONSTRUCTOR(func)  -  func() runs at program startup, before main().
  *
  *   GCC/Clang: __attribute__((constructor))
- *   MSVC:      .CRT$XCU section + volatile function pointer to defeat /OPT:REF
- *              dead-code elimination in Release builds.
+ *   MSVC:      .CRT$XCU section + volatile function pointer to defeat /OPT:REF.
  *
- * Spec: ADR-0060 cross-platform constructor (proposed).
+ * Spec: ADR-0060 cross-platform constructor convention.
  */
 #ifndef WINK_INIT_CTOR_H
 #define WINK_INIT_CTOR_H

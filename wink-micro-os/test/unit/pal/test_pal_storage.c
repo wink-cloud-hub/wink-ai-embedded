@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file test_pal_storage.c
- * @brief ADR-0008 PAL 存储抽象 host 内存单槽实现单测。
+ * @brief PAL storage abstraction host memory unit tests.
  */
 #include "unity.h"
 #include "pal_storage.h"
@@ -12,7 +13,7 @@ void test_read_empty_returns_empty(void) {
     uint8_t buf[16];
     uint16_t len = 999;
     TEST_ASSERT_EQUAL_INT(WINK_ERR_EMPTY, pal_storage_read("dtcfg", buf, sizeof buf, &len));
-    TEST_ASSERT_EQUAL_UINT16(999, len);   /* out_len 在 EMPTY 时不被改写 */
+    TEST_ASSERT_EQUAL_UINT16(999, len);
 }
 
 void test_write_then_read_roundtrip(void) {

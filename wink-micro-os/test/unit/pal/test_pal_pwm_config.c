@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
+/**
+ * @file test_pal_pwm_config.c
+ * @brief PAL PWM configuration and profile unit tests.
+ */
 #include "unity.h"
 #include "pal_hal.h"
 #include "pal_pwm_router.h"

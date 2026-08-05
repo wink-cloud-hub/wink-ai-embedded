@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file test_periodic_basics.c
  * @brief Unit tests for wink_periodic lifecycle + active_count +
@@ -23,8 +24,7 @@
 #include "wink_trace.h"
 #include "pal_osal.h"
 
-/* ADR-0017 层 1 例外：本 TU 合法调用 WINK_BLOCKING API (pal_os_task_create
- * via wink_periodic_start_ex for MAY_BLOCK tasks). */
+/* ADR-0017 Layer 1 exception: this TU legitimately invokes WINK_BLOCKING API. */
 #include "compat/wink_test_compat.h"
 WINK_TEST_ALLOW_DEPRECATED
 

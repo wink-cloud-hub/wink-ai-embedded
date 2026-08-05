@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 #ifndef WINK_CLOSED_LOOP_DC_MOTOR_H
 #define WINK_CLOSED_LOOP_DC_MOTOR_H
 
@@ -13,26 +14,22 @@ extern "C" {
 #endif
 
 /**
- * @brief DC 电机软件闭环静态参数（仅 `dal_dc_motor` + `dal_encoder`；ADR-0049）
+ * @brief Closed-loop DC motor control configuration struct
  */
 typedef struct {
-    wink_pid_config_t pid_cfg;  /* 控制环 PID 配置 */
-    uint32_t period_ms;         /* 闭环更新节拍（毫秒，通常 10~50ms） */
-    uint32_t timeout_ms;        /* 反馈传感器失效超时阈值（毫秒）。若超时，强制脱扣制动 */
-    float counts_per_rev;       /* 编码器物理线数（用于物理量单位转换） */
+    wink_pid_config_t pid_cfg;  /**< PID controller config */
+    uint32_t period_ms;         /**< Control loop period in ms */
+    uint32_t timeout_ms;        /**< Encoder feedback timeout threshold in ms */
+    float counts_per_rev;       /**< Encoder pulses per revolution */
 } wink_closed_loop_dc_motor_config_t;
 
 /**
- * @brief 启动 DC 电机软件闭环会话 (Class A)
+ * @brief Start closed-loop DC motor control session
  *
- * 仅绑定有刷 DC 开环占空比驱动 + 编码器反馈；非通用电机门面（ADR-0049）。
- *
- * @param motor 关联的 `dal_dc_motor` 句柄（会话主 Key）
- * @param encoder 关联的编码器反馈源（DAL 句柄）
- * @param cfg 控制参数配置
- * @return
- *   WINK_OK                 启动成功，后台定时控制任务已激活。
- *   WINK_ERR_RESOURCE_EXHAUSTED  已达系统静态 Slot 容量上限（由 WINK_APP_MAX_MOTOR_INSTANCES 决定）。
+ * @param[in,out] motor DC motor driver handle.
+ * @param[in,out] encoder Encoder sensor handle.
+ * @param[in] cfg Configuration struct.
+ * @return WINK_OK on success, error status code otherwise.
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t wink_closed_loop_dc_motor_start(dal_dc_motor_t *motor, 
@@ -40,7 +37,13 @@ wink_status_t wink_closed_loop_dc_motor_start(dal_dc_motor_t *motor,
                                            const wink_closed_loop_dc_motor_config_t *cfg);
 
 /**
- * @brief 启动闭环控制会话（高级专家版，支持重写运行核心与栈大小）
+ * @brief Start closed-loop DC motor control session with options
+ *
+ * @param[in,out] motor DC motor driver handle.
+ * @param[in,out] encoder Encoder sensor handle.
+ * @param[in] cfg Configuration struct.
+ * @param[in] opts Options struct.
+ * @return WINK_OK on success, error status code otherwise.
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t wink_closed_loop_dc_motor_start_ex(dal_dc_motor_t *motor, 
@@ -49,26 +52,31 @@ wink_status_t wink_closed_loop_dc_motor_start_ex(dal_dc_motor_t *motor,
                                               const wink_bal_opts_t *opts);
 
 /**
- * @brief 停止闭环控制会话 (Class A)
- * @note 停止控制会话的同时，会调用底层 dal_dc_motor_safe_off（→ brake）并释放 Slot。
+ * @brief Stop closed-loop DC motor control session
+ *
+ * @param[in,out] motor DC motor driver handle.
+ * @return WINK_OK on success, error status code otherwise.
  */
 wink_status_t wink_closed_loop_dc_motor_stop(dal_dc_motor_t *motor);
 
 /**
- * @brief 设置目标转速 (Class C)
- * 
- * @param motor 电机实例（必须已处于活动控制会话中）
- * @param target_speed 目标物理转速（单位统一钉死为：脉冲数/秒，即 counts/s）
- * @return WINK_OK / WINK_ERR_INVALID_STATE (闭环未激活)
+ * @brief Set closed-loop target speed
+ *
+ * @param[in,out] motor DC motor driver handle.
+ * @param[in] target_speed Target speed in counts/sec.
+ * @return WINK_OK on success, error status code otherwise.
  */
 wink_status_t wink_closed_loop_dc_motor_set_speed(dal_dc_motor_t *motor, float target_speed);
-wink_status_t wink_closed_loop_dc_motor_get_speed(dal_dc_motor_t *motor, float *out_speed);
 
 /**
- * @brief Host-test observability: read active-session PID integrator (R-011).
+ * @brief Get estimated current speed
  *
- * Not part of the production control contract; compiled only on host/sim.
+ * @param[in] motor DC motor driver handle.
+ * @param[out] out_speed Output pointer for current speed in counts/sec.
+ * @return WINK_OK on success, error status code otherwise.
  */
+wink_status_t wink_closed_loop_dc_motor_get_speed(dal_dc_motor_t *motor, float *out_speed);
+
 #if defined(PLATFORM_host) || defined(SIMULATION)
 WINK_WARN_UNUSED_RESULT
 wink_status_t wink_closed_loop_dc_motor_debug_get_integral(dal_dc_motor_t *motor,
