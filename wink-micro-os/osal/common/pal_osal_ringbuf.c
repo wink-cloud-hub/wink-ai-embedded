@@ -1,16 +1,17 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file pal_osal_ringbuf.c
- * @brief PAL OSAL 环形缓冲区 —— WASM / host 共享实现（单线程无并发纯内存环形缓冲）。
+ * @brief PAL OSAL ring buffer — shared WASM / host implementation (single-threaded lock-free in-memory ring buffer).
  *
- * 由 wasm 与 host 两个仿真 OSAL 共同编译（经 `osal/CMakeLists.txt` 按
- * `WINK_OSAL_TYPE` 注入 `WINK_OSAL_SOURCES`）。ESP32 走 FreeRTOS xRingbuffer、
- * baremetal 走关中断原子实现，均**不**编译本文件。
+ * Compiled jointly by WASM and host simulation OSAL targets.
+ * ESP32 uses FreeRTOS xRingbuffer and bare-metal uses interrupt disable atomic implementation.
  *
- * 合约与 pal_osal.h 中的声明一致：
- *   - size 必须是 2 的幂（用作 & mask 掩码）；否则 create 返回 NULL。
- *   - 单生产者/单消费者，无锁；仿真沙箱天然单线程，volatile head/tail 足矣。
- *   - malloc 失败返回 NULL 或降级错误码，符合 wink_status_t 负数错误码约定。
+ * API Contract:
+ *   - size must be a power of 2 (used as bitmask); returns NULL if invalid.
+ *   - Single producer / single consumer, lock-free. Single-threaded simulation sandbox.
+ *   - Returns NULL or negative status code on malloc failure according to status code conventions.
  */
+
 #include <stdlib.h>
 #include <stdint.h>
 #include "pal_osal.h"
