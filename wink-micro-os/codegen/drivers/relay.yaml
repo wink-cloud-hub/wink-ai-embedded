@@ -1,0 +1,82 @@
+codegen_schema: "1.1"
+type: relay
+category: output
+is_actuator: false
+experimental: false
+default_role: binary_indicator
+
+# 物理量量纲标记 (ADR-0056 / DAL-U-021)
+quantity: binary
+quantity_class: actuator_command
+
+fields:
+  owner:
+    tier: stable
+    type: string
+    emit: none
+  gpio_pin:
+    tier: advanced
+    type: int
+    required: true
+    c: pin
+  reset_pin:
+    tier: advanced
+    type: int
+    default: -1
+  pulse_duration_ms:
+    tier: advanced
+    type: int
+    default: 50
+  variant:
+    tier: advanced
+    type: enum
+    enum: [direct_gpio, ssr, latching_dual_pin, latching_single_pin]
+    map:
+      direct_gpio: DAL_RELAY_VARIANT_DIRECT_GPIO
+      ssr: DAL_RELAY_VARIANT_SSR
+      latching_dual_pin: DAL_RELAY_VARIANT_LATCHING_DUAL_PIN
+      latching_single_pin: DAL_RELAY_VARIANT_LATCHING_SINGLE_PIN
+    default: direct_gpio
+  active_low:
+    tier: advanced
+    type: bool
+    default: false
+  initial_state:
+    tier: advanced
+    type: bool
+    default: false
+  role:
+    tier: stable
+    type: string
+    emit: none
+
+quantities:
+  owner:             { quantity_class: actuator_command }
+  gpio_pin:          { quantity_class: actuator_command }
+  reset_pin:         { quantity_class: actuator_command }
+  pulse_duration_ms: { quantity_class: actuator_command }
+  variant:           { quantity_class: actuator_command }
+  active_low:        { quantity_class: actuator_command }
+  initial_state:     { quantity_class: actuator_command }
+  role:              { quantity_class: actuator_command }
+
+config:
+  c_type: dal_relay_t
+  config_type: dal_relay_config_t
+  headers: [output/dal_relay.h]
+  init_fn: dal_relay_init
+  deinit_fn: dal_relay_deinit
+  init_template_file: templates/relay_init.c.j2
+  safe_off_fn: ""                 # is_actuator: false -> 必须为空字符串 (DAL-L-020)
+
+role_bindings:
+  binary_indicator:
+    covers_contract: full
+    headers: []
+    verbs:
+      activate:
+        template: "static inline void {{ name }}_activate(void) { WINK_IGNORE_RESULT(dal_relay_turn_on(&{{ name }})); }"
+      deactivate:
+        template: "static inline void {{ name }}_deactivate(void) { WINK_IGNORE_RESULT(dal_relay_turn_off(&{{ name }})); }"
+      toggle:
+        template: "static inline void {{ name }}_toggle(void) { WINK_IGNORE_RESULT(dal_relay_toggle(&{{ name }})); }"

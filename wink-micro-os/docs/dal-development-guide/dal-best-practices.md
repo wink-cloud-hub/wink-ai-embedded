@@ -65,7 +65,7 @@
 | 字段 | 适用范围 | 含义 | 要点 |
 |------|----------|------|------|
 | **`type`** | **全部**实例必填 | **控制语义族** + DAL 驱动绑定（驱动平面） | 如 `dc_motor`、`ultrasonic`；回答「是什么驱动 / 控什么量」，**不是**芯片名，也不是「GPIO 物理细节」 |
-| **`role`** | 可选；缺省用驱动 `default_role` | **能力角色接口**（能力平面） | 如 `distance_sensor`、`binary_indicator`；回答「当什么用」，codegen 生成 `{name}_{verb}`。**不是**产品级「左轮 / 云台」叙事（那属未来意图平面） |
+| **`role`** | 可选；缺省用驱动 `default_role` | **能力角色接口**（能力平面） | 如 `distance_sensor`、`binary_indicator`；回答「当什么用」，codegen 生成 `{name}_{verb}`。详见 [`dal-role-architecture-spec.md`](./dal-role-architecture-spec.md) SSOT。**不是**产品级叙事 |
 | **`variant`** | 仅「该 type 已登记同族变体」时出现（典型 `dc_motor` / `encoder` / `mono_oled`） | 同族内**怎么接线 / 解码 / 面板** | 变体变了才需要；芯片不同但变体相同 → 可省略。本身是 **config 枚举**（runtime `switch`）；可选 `#if WINK_*_HAS_*` 由 codegen 按变体 **并集**裁 `.text`（Wave B）。**非全 type 必填** |
 | **`enable_pin`** | 该芯片/模块有软件可控使能脚时 | STBY、nSLEEP 等 | 板级焊死高电平则**不写** |
 | **`driver_ic`** | 可选糖衣，**一般不需要** | 芯片/模块别名（如 `tb6612`） | 经 `ic_to_variant_map` 推导 `variant`；与 `variant` 冲突应校验报错。旧键 `drive_mode`/`decode_mode`/`panel_variant` 迁移期 deprecated |
