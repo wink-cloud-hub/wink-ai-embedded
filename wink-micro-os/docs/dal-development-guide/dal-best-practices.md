@@ -234,6 +234,17 @@ pulse_ms = min_pulse + (angle / effective_max_angle) * (max_pulse - min_pulse)
 - JSON **`type` 为 `mono_oled`**；同族面板差异用 `variant`（`ssd1306`/`sh1106`）；异族 SPI 面板 → 新 `type`。
 - App 推荐 `{name}_clear` / `draw_text` / `flush`，不依赖芯片字符串。
 
+### 3.6 非阻塞脉冲态器件（磁保持继电器等）
+
+某些器件的输出是**限时脉冲**而非持续电平（如双线圈磁保持继电器 SET/RESET 线圈，设计脉宽 30~100ms，持续通电会烧毁）。这类器件的标准模式（见 `dal_relay` 与 [ADR-0058](../../../docs/design/decisions/0058-relay-actuator-classification-and-latching-semantics.md)）：
+
+- **发起端非阻塞**：`set/on/off` 只驱动目标线圈脚到 active、记录 `pulse_start_ms`、置 `pulse_active=true` 后立即返回；**严禁 busy-wait 脉冲宽度**（违反 `WINK_STRICT_NONBLOCKING`）。
+- **清除端是 `dal_<type>_poll(dev)`**：到点（`pal_os_get_ms() - pulse_start_ms >= pulse_duration_ms`）把相关脚写回 inactive、清 `pulse_active`。对非脉冲拓扑它是廉价 no-op。
+- **poll 必须被周期驱动**：在 driver yaml 设 `config.poll_fn: dal_<type>_poll`，codegen 自动生成 `WINK_DEFINE_POLL_THUNK` 并经 `wink_runtime_register_poll` 挂到 runtime tick（SIMULATION 与 native 两条主循环都会派发）。裸用 DAL 而不接 poll 会导致脉冲不清除——头文件顶层必须明示。
+- **break-before-make**：每次发新脉冲前先把所有相关脚写 inactive，再驱动目标脚，避免快速反向时多脚同时 active（双线圈重叠 / H 桥穿通）。
+- **脉宽 fail-closed**：`pulse_duration_ms == 0` 回退默认常量；超过硬上限（如 `DAL_RELAY_MAX_PULSE_MS`）init 直接 `WINK_ERR_INVALID_ARG`，防 uint16 最大值造成超长脉冲。
+- **init 建立已知态**：磁保持器件掉电后物理触点保持，init 应按 `initial_state` 发一次 SET/RESET 脉冲使软件态与物理态一致；deinit 非阻塞路径不保证 RESET 脉冲满宽，故**不得**承诺"安全断开物理负载"，文档须如实声明，运行期可靠断开由 poll/`safe_off` 承担。
+
 ---
 
 ## 4. API 形态清单（新驱动自检）
