@@ -119,6 +119,30 @@ WINK_NORETURN void wink_runtime_trigger_wdt_test(uint32_t timeout_ms);
  */
 wink_status_t wink_runtime_register_poll(void (*fn)(void *ctx), void *ctx);
 
+/**
+ * @brief Define a type-adapting thunk for registering a typed DAL poll
+ *        function with wink_runtime_register_poll().
+ *
+ * DAL poll APIs have typed signatures (e.g.
+ * ``wink_status_t dal_relay_poll(dal_relay_t*)``) while the runtime stores
+ * ``void (*)(void*)`` and discards the status (poll runs every tick; a
+ * transient failure is retried next tick). ISO C forbids nested functions, so
+ * this declares a file-scoped static thunk with the correct signature.
+ *
+ * Usage at **file scope** (mirrors WINK_DEFINE_ACTUATOR_THUNK):
+ * @code
+ *     WINK_DEFINE_POLL_THUNK(board_relay_poll_tick, dal_relay_poll, dal_relay_t)
+ *     // ... in device_tree init:
+ *     WINK_TRY(wink_runtime_register_poll(board_relay_poll_tick, &board_relay));
+ * @endcode
+ *
+ * @param thunk_name Name for the generated static function (unique per TU).
+ * @param fn         The typed DAL poll function (e.g. dal_relay_poll).
+ * @param dev_type   The DAL device pointer type (e.g. dal_relay_t).
+ */
+#define WINK_DEFINE_POLL_THUNK(thunk_name, fn, dev_type) \
+    static void thunk_name(void *_ctx) { WINK_IGNORE_UNUSED(fn((dev_type *)_ctx)); }
+
 /* ── Plan-compatible spawn helper (fire-and-forget) ─────── */
 /**
  * @brief Spawn a periodic task with explicit priority and core affinity.
