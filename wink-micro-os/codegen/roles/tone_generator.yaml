@@ -1,0 +1,9 @@
+# Role contract SSOT (machine-readable). Human-readable SSOT:
+# docs/dal-development-guide/dal-role-architecture-spec.md
+codegen_schema: "1.1"
+id: tone_generator
+verbs:
+  - id: play_tone_hz
+    error_class: fire_and_forget
+  - id: stop_tone
+    error_class: fire_and_forget

@@ -14,7 +14,7 @@
 
 | **不是本篇** | DAL 驱动本体实现 → [adding-peripheral.md](./adding-peripheral.md)；字段分层摘要 → [dal-best-practices.md §3.0](./dal-best-practices.md) |
 
-| **动词表 SSOT** | [`01-app-business-logic.md` § Role Interface](../../../docs/design/03-app-codegen/01-app-business-logic.md)（标准角色与错误层级以活规范为准；本篇不复制整表以免漂移） |
+| **动词表与角色分类 SSOT** | [`dal-role-architecture-spec.md`](./dal-role-architecture-spec.md)（全量 19 个标准角色、能力动词与 29 DAL Type 映射以活规范为准；本篇仅作为 Codegen 实现指南） |
 
 | **用户稳定面 SSOT** | [user-surface-insulation-design.md](../../../docs/design/tech-designs/2026-07-28-user-surface-insulation-design.md) |
 

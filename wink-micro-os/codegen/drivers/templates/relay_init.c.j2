@@ -1,0 +1,10 @@
+    static const dal_relay_config_t {{ name }}_cfg = {
+        .owner = "{{ name }}",
+        .pin = {{ pin if pin is defined else gpio_pin }},
+        .reset_pin = {{ reset_pin | default(-1) }},
+        .pulse_duration_ms = {{ pulse_duration_ms | default(50) }},
+        .variant = {{ variant | default("DAL_RELAY_VARIANT_DIRECT_GPIO") }},
+        .active_low = {{ active_low | default(false) | c_bool }},
+        .initial_state = {{ initial_state | default(false) | c_bool }},
+    };
+    WINK_TRY(dal_relay_init(&{{ name }}, &{{ name }}_cfg));
