@@ -1,21 +1,23 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file pal_osal_baremetal.c
- * @brief 裸机 (no RTOS) PAL OSAL 实现。
+ * @brief Bare-metal (no RTOS) PAL OSAL implementation.
  *
- * 针对无 FreeRTOS 的低端 MCU：
- * - Task creation 返回 WINK_ERR_UNSUPPORTED
- * - Ring buffer 使用关中断临界区保证原子性
- * - 所有时间函数需由 BSP 提供具体实现
+ * Designed for low-end MCUs without FreeRTOS:
+ * - Task creation returns WINK_ERR_UNSUPPORTED
+ * - Ring buffer uses interrupt disable critical section for atomicity
+ * - All time functions require BSP implementation
  */
+
 #include "pal_osal.h"
 #include <stdlib.h>
 #include <string.h>
 
-/* ─────────────────────────────────────────────────────────
- * 系统时间与延时（BSP 需提供具体实现）
- * ───────────────────────────────────────────────────────── */
+/* ---------------------------------------------------------
+ * System Time and Delay (BSP implementation required)
+ * --------------------------------------------------------- */
 
-/* BSP 必须提供的时钟访问函数 */
+/* BSP provided clock access functions */
 extern uint64_t pal_bsp_get_us(void);
 extern void pal_bsp_delay_us(uint32_t us);
 
@@ -38,9 +40,9 @@ uint64_t pal_os_get_us(void) {
     return pal_bsp_get_us();
 }
 
-/* ─────────────────────────────────────────────────────────
- * 互斥锁（裸机：关中断作为退避实现）
- * ───────────────────────────────────────────────────────── */
+/* ---------------------------------------------------------
+ * Mutex (Bare-metal: interrupt disable fallback)
+ * --------------------------------------------------------- */
 
 pal_os_mutex_t pal_os_mutex_create(void) {
     /* No-op - bare metal single-threaded */
@@ -64,9 +66,9 @@ void pal_os_mutex_destroy(pal_os_mutex_t mutex) {
     (void)mutex;
 }
 
-/* ─────────────────────────────────────────────────────────
- * 信号量（裸机：no-op 退避实现）
- * ───────────────────────────────────────────────────────── */
+/* ---------------------------------------------------------
+ * Semaphore (Bare-metal: no-op fallback implementation)
+ * --------------------------------------------------------- */
 
 pal_os_sem_t pal_os_sem_create(void) {
     return (pal_os_sem_t)1;
@@ -92,22 +94,22 @@ void pal_os_sem_destroy(pal_os_sem_t sem) {
     (void)sem;
 }
 
-/* ─────────────────────────────────────────────────────────
- * 复位原因与看门狗
- * ───────────────────────────────────────────────────────── */
+/* ---------------------------------------------------------
+ * Reset Reason and Watchdog
+ * --------------------------------------------------------- */
 
 pal_os_reset_reason_t pal_os_get_reset_reason(void) {
-    /* BSP 可覆写此函数提供真实复位原因 */
+    /* BSP may override to provide real reset reason */
     return PAL_OS_RESET_REASON_UNKNOWN;
 }
 
-/* ADR-0010：裸机无持久化复位计数语义（BSP 可覆写），默认恒 0 / no-op */
+/* ADR-0010: Bare-metal no persistent boot count semantics (BSP overridable) */
 uint32_t pal_os_get_abnormal_boot_count(void) { return 0; }
 void pal_os_set_abnormal_boot_count(uint32_t count) { (void)count; }
 
 WINK_WARN_UNUSED_RESULT wink_status_t pal_os_wdt_init(uint32_t timeout_ms) {
     (void)timeout_ms;
-    /* BSP 可提供硬件 WDT 实现 */
+    /* BSP may provide hardware WDT implementation */
     return WINK_ERR_UNSUPPORTED;
 }
 
@@ -115,15 +117,11 @@ WINK_WARN_UNUSED_RESULT wink_status_t pal_os_wdt_feed(void) {
     return WINK_ERR_UNSUPPORTED;
 }
 
-/* ─────────────────────────────────────────────────────────
- * 临界区（task/ISR 双入口显式分流, ADR-0016）
- * 裸机上 task/ISR 版共用 BSP 关中断原语（`pal_bsp_irq_save/restore`）——
- * 关中断本身既保护 task 上下文又保护 ISR 上下文；显式分流的价值在于契约诚实
- * （调用方从头文件即知调用位置），符合 ADR-0016 §4.2 baremetal 分支约定。
- * 真机上下文由硬件寄存器判定，仿真上下文标志为 no-op。
- * ───────────────────────────────────────────────────────── */
+/* ---------------------------------------------------------
+ * Critical Section (Explicit task/ISR dual-entry dispatch, ADR-0016)
+ * --------------------------------------------------------- */
 
-/* BSP 必须提供的中断控制函数 */
+/* BSP provided interrupt control functions */
 extern uint32_t pal_bsp_irq_save(void);
 extern void pal_bsp_irq_restore(uint32_t state);
 
@@ -147,9 +145,9 @@ void pal_os_set_sim_isr_context(bool in_isr) { (void)in_isr; }
 bool pal_os_in_sim_isr_context(void) { return false; }
 bool pal_os_in_isr(void) { return false; }
 
-/* ─────────────────────────────────────────────────────────
- * Task 创建（裸机不支持多任务）
- * ───────────────────────────────────────────────────────── */
+/* ---------------------------------------------------------
+ * Task Creation (Bare-metal unsupported)
+ * --------------------------------------------------------- */
 
 wink_status_t pal_os_task_create(
     void (*func)(void* arg),
@@ -170,9 +168,9 @@ void pal_os_task_delete(pal_os_task_handle_t task_handle) {
     (void)task_handle;  /* bare-metal: no-op */
 }
 
-/* ─────────────────────────────────────────────────────────
- * 环形缓冲区 (裸机关中断保护)
- * ───────────────────────────────────────────────────────── */
+/* ---------------------------------------------------------
+ * Ring Buffer (Bare-metal interrupt disable protection)
+ * --------------------------------------------------------- */
 
 struct pal_os_ringbuf {
     uint8_t* buffer;
@@ -222,8 +220,7 @@ wink_status_t pal_os_ringbuf_push(
 
     key = pal_os_critical_enter();
 
-    /* 内联已用量计算（rb->head - rb->tail），避免在临界区内再次调用 pal_os_ringbuf_used
-     * ——后者会重复 enter/exit 临界区，依赖 BSP irq_save/restore 的可重入性。 */
+    /* Inline usage calculation (rb->head - rb->tail) to avoid re-entering critical section */
     if ((rb->head - rb->tail) + size > rb->size) {
         pal_os_critical_exit(key);
         return WINK_ERR_FULL;
@@ -253,7 +250,7 @@ wink_status_t pal_os_ringbuf_pop(
 
     key = pal_os_critical_enter();
 
-    /* 内联已用量计算，避免临界区内重复加锁（见 pal_os_ringbuf_push 注释）。 */
+    /* Inline usage calculation */
     if ((rb->head - rb->tail) < size) {
         pal_os_critical_exit(key);
         return WINK_ERR_EMPTY;

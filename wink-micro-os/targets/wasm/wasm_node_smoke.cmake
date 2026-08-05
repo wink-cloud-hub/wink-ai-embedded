@@ -49,6 +49,7 @@ if(WIN32)
 else()
     set(_WASM_SMOKE_GENERATOR "Unix Makefiles")
     set(_WASM_SMOKE_MAKE_PROGRAM "")
+    find_program(_UNIX_MAKE_EXECUTABLE NAMES gmake make)
 endif()
 
 set(_WASM_SMOKE_CMAKE_GENERATOR_ARGS
@@ -61,11 +62,28 @@ endif()
 # Override CMAKE_COMMAND to wrap cmake with emcmake for configure only.
 # Default BUILD_COMMAND would reuse the overridden CMAKE_COMMAND and pass
 # toolchain flags to `cmake --build`, which CMake 4.x rejects.
+# Explicit BUILD_BYPRODUCTS so Ninja/MSBuild knows the step produces the
+# wink_simulator artifact, plus an explicit BUILD_COMMAND that invokes the
+# native make tool directly. The default `cmake --build <BINARY_DIR>` inherits
+# `--config Debug` / `/p:Configuration=Debug` from a Visual Studio outer
+# generator, which mingw32-make does not understand (single-config).
+set(_WASM_SMOKE_JS "${WASM_SMOKE_BINARY_DIR}/wink_simulator.js")
+if(WIN32)
+    set(_WASM_SMOKE_MAKE_TOOL "${MINGW_MAKE_EXECUTABLE}")
+else()
+    set(_WASM_SMOKE_MAKE_TOOL "${_UNIX_MAKE_EXECUTABLE}")
+endif()
 ExternalProject_Add(wasm_unisim_smoke_build
     SOURCE_DIR       "${WASM_SMOKE_SOURCE_DIR}"
     BINARY_DIR       "${WASM_SMOKE_BINARY_DIR}"
     CMAKE_COMMAND    "${EMCMAKE_EXECUTABLE}" "${_WASM_SMOKE_HOST_CMAKE}"
-    BUILD_COMMAND    "${_WASM_SMOKE_HOST_CMAKE}" --build <BINARY_DIR>
+    # BUILD_COMMAND defaults to `cmake --build <BINARY_DIR>`, but under a Visual
+    # Studio outer generator that forwards `--config Debug` / `/p:Configuration=Debug`
+    # to mingw32-make, which doesn't understand them. Invoke make with an
+    # explicit cwd (VS runs custom commands from the outer project dir).
+    BUILD_COMMAND    "${CMAKE_COMMAND}" -E chdir "${WASM_SMOKE_BINARY_DIR}"
+                     "${_WASM_SMOKE_MAKE_TOOL}" -j
+    BUILD_BYPRODUCTS "${_WASM_SMOKE_JS}"
     CMAKE_ARGS
         ${_WASM_SMOKE_CMAKE_GENERATOR_ARGS}
         -DTARGET_PLATFORM=wasm

@@ -1,25 +1,27 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file pal_rmt.h
- * @brief PAL 通用脉冲捕获（pulse capture）API。
+ * @brief PAL generic pulse-capture API.
  *
- * 提供一个硬件无关的非阻塞脉冲宽度测量原语。原名 "pal_rmt" 保留自
- * ESP32 上的 RMT (Remote Control Transceiver) 外设——RMT 目前是本 API
- * 在真机端的实现后端，但语义已泛化为通用 pulse capture：给定一个数字输入
- * 引脚和触发沿类型，测量下一次沿-到-反向沿的脉冲宽度（微秒）。
+ * Provides a hardware-independent non-blocking pulse width measurement primitive.
+ * The legacy name "pal_rmt" is retained from the RMT (Remote Control Transceiver)
+ * peripheral on ESP32, which serves as the physical execution backend. The semantics
+ * have been generalized to generic pulse capture: given a digital input pin and trigger
+ * edge type, measure the edge-to-opposite-edge pulse duration in microseconds.
  *
- * 典型用途：
- *   - 超声波（HC-SR04）ECHO 脉宽（PAL_RMT_EDGE_RISING）
- *   - 红外接收器（IR receiver）解码
- *   - 增量编码器脉冲宽度（占空比测量）
+ * Typical applications:
+ *   - Ultrasonic (HC-SR04) ECHO pulse width (PAL_RMT_EDGE_RISING)
+ *   - Infrared receiver (IR receiver) decoding
+ *   - Incremental encoder pulse width / duty cycle measurement
  *
- * ⚠️ 单实例语义：当前实现只支持同时存在一路 pulse-capture 通道
- *   （静态单例设计）。如需并发多路捕获，需在未来 ADR 中扩展。
+ * @note Single Instance Semantics: The current implementation supports a single active
+ *   pulse-capture channel (static singleton design). Multi-channel capture will be
+ *   expanded in a future ADR if required.
  *
- * ⚠️ 平台支持矩阵：
- *   - ESP32: 实现完整（RMT RX channel）
- *   - Wasm/Host: 当前无独立实现；pulse 捕获在这两个 target 上直接经由
- *     pal_gpio_pulse_in 完成，此 API 在这两个 target 上以 stub 返回
- *     WINK_ERR_UNSUPPORTED（is_active 返回 false）。
+ * @note Platform Support Matrix:
+ *   - ESP32: Fully implemented via RMT RX channel.
+ *   - Wasm/Host: Direct pal_gpio_pulse_in fallback. This API acts as a stub returning
+ *     WINK_ERR_UNSUPPORTED (is_active returns false).
  */
 
 #ifndef PAL_RMT_H
@@ -35,103 +37,65 @@ extern "C" {
 #endif
 
 /**
- * @brief 脉冲捕获起始沿方向。
+ * @brief Pulse capture start edge direction.
  *
- * 决定 pulse capture 通道以哪种电平跳变作为脉宽测量的起点：
- *   - RISING  : 上升沿开始计时，到下一次下降沿结束（测量高电平脉宽）
- *   - FALLING : 下降沿开始计时，到下一次上升沿结束（测量低电平脉宽）
+ * Determines which voltage transition starts the measurement:
+ *   - RISING  : Start on rising edge, stop on falling edge (high pulse width)
+ *   - FALLING : Start on falling edge, stop on rising edge (low pulse width)
  */
 typedef enum {
-    PAL_RMT_EDGE_RISING  = 0,   /* 上升沿起，测量到下一次下降沿——高电平脉宽 */
-    PAL_RMT_EDGE_FALLING = 1,   /* 下降沿起，测量到下一次上升沿——低电平脉宽 */
+    PAL_RMT_EDGE_RISING  = 0,   /**< Start at rising edge, measure to falling edge (high pulse width). */
+    PAL_RMT_EDGE_FALLING = 1,   /**< Start at falling edge, measure to rising edge (low pulse width). */
 } pal_rmt_edge_t;
 
 /**
- * @brief 初始化 pulse-capture 通道并绑定到指定输入引脚。
+ * @brief Initialize pulse-capture channel and bind to input pin.
  *
- * @param pin        脉冲输入引脚编号（wink_pin_t，含 -1 无效值语义）
- * @param start_edge 起始沿类型（RISING / FALLING）
- * @return WINK_OK 成功；其它错误码失败
+ * @param[in] pin Input pin number (wink_pin_t)
+ * @param[in] start_edge Start edge trigger direction (RISING / FALLING)
+ * @return WINK_OK on success, error status on failure.
  *
- * @note 单实例：若通道已绑定到同一 pin，返回 WINK_OK（幂等）；若绑定到
- *   其它 pin，本次调用会先 deinit 旧绑定再重建到新 pin。
- * @note 平台限制：某些后端（如 ESP32 RMT v5.x）目前不直接暴露"起始沿选择"
- *   的硬件配置，实现层可能忽略 start_edge 并按上升沿起（同 HC-SR04 惯例）
- *   处理——此为 TODO，未来 ADR 化后再修正。调用方仍应按语义正确传入。
+ * @note Idempotency: If already bound to the same pin, returns WINK_OK.
+ *   If bound to a different pin, deinits the old binding first.
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_rmt_pulse_capture_init(wink_pin_t pin, pal_rmt_edge_t start_edge);
 
 /**
- * @brief 武装（arm）pulse-capture 接收机：开始监听下一次起始沿。非阻塞。
+ * @brief Arm pulse-capture receiver: start listening for next start edge (non-blocking).
  *
- * 用于"软件触发脉冲捕获"模式：先 arm 让硬件进入监听态，再由调用方软件
- * 驱动一次脉冲，最后 wait_armed 阻塞取结果。此拆分使得 arm 与实际驱动
- * 脉冲之间有明确窗口，避免 wait() 一体化时 rmt_receive 与 pulse 生成
- * 竞态（同一线程无法边阻塞边驱动）。
+ * Used in software-triggered pulse capture mode: arm first to set receiver into
+ * listening state, drive signal in caller software, and then call wait_armed to block for result.
  *
- * 必须在 pal_rmt_pulse_capture_init() 之后、pal_rmt_pulse_capture_wait_armed()
- * 之前调用。ESP32 后端此处会调用 rmt_receive() 用一个保守的最大脉宽上限
- * （25ms，对齐 HC-SR04 有效范围），实际阻塞超时由 wait_armed 参数决定。
- *
- * @return WINK_OK              接收机已武装成功。
- * @return WINK_ERR_INVALID_ARG 未 init 或状态非法。
- * @return WINK_ERR_HARDWARE    底层 rmt_receive 失败。
- * @return WINK_ERR_UNSUPPORTED 平台无 RMT 支持（仅本 header 有 stub）。
+ * @return WINK_OK on success, WINK_ERR_INVALID_ARG if uninitialized, or hardware error.
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_rmt_pulse_capture_arm(void);
 
 #ifndef WINK_STRICT_NONBLOCKING
 /**
- * @brief 等待一次先前 arm() 的 pulse-capture 完成并返回脉宽（微秒）。
+ * @brief Wait for a previously armed pulse-capture to complete and return pulse duration.
  *
- * 与 pal_rmt_pulse_capture_wait() 不同：本函数假设 arm() 已经把接收机放入
- * 监听态，只做「等信号量 + 解析符号」。调用方通常在 arm() 与
- * wait_armed() 之间以软件驱动出脉冲（例如自环 GPIO 模式）。
+ * @param[in] timeout_us Timeout in microseconds.
+ * @param[out] pulse_us_out Output pulse duration pointer in microseconds.
+ * @return WINK_OK on success, WINK_ERR_TIMEOUT on timeout, or error status.
  *
- * @param timeout_us    超时时间（微秒）；超时或脉宽不在 [MIN,MAX] 有效范围
- *                      内返回 WINK_ERR_TIMEOUT。
- * @param pulse_us_out  输出脉宽（微秒），入口置 0，失败时保持 0。
- * @return WINK_OK             捕获成功且脉宽合法。
- * @return WINK_ERR_TIMEOUT    超时或捕获脉宽越界。
- * @return WINK_ERR_INVALID_ARG 未 init 或参数非法。
- * @return WINK_ERR_HARDWARE   超时恢复时 rmt re-enable 失败。
- *
- * @note Blocking: Yes. Not available under WINK_STRICT_NONBLOCKING (ADR-0017 层 2).
+ * @note Blocking: Yes. Not available under WINK_STRICT_NONBLOCKING (ADR-0017 Layer 2).
  */
 WINK_BLOCKING
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_rmt_pulse_capture_wait_armed(uint32_t timeout_us, uint32_t *pulse_us_out);
 
 /**
- * @brief 等待一次脉冲捕获完成并返回脉宽（微秒）。
+ * @brief Wait for pulse capture completion and return pulse duration in microseconds.
  *
- * 该函数不驱动信号源，仅被动等待起始沿→反向沿事件完成；发送方（如
- * HC-SR04 的 TRIG 或 IR 发射端）需由调用方另行触发。
+ * Convenience wrapper over arm() + wait_armed().
  *
- * 本函数是 pal_rmt_pulse_capture_arm() + pal_rmt_pulse_capture_wait_armed()
- * 的便捷 wrapper：适合发送方独立驱动、接收方单纯等结果的场景（如
- * HC-SR04 由外部器件驱动 ECHO 脉冲）。软件自触发场景请拆开用
- * arm + 驱动 + wait_armed。
+ * @param[in] timeout_us Timeout in microseconds.
+ * @param[out] pulse_us_out Output pulse duration pointer in microseconds.
+ * @return WINK_OK on success, WINK_ERR_TIMEOUT on timeout, or error status.
  *
- * @param timeout_us    超时时间（微秒）；超时未捕获返回 WINK_ERR_TIMEOUT
- * @param pulse_us_out  输出脉宽（微秒），入口置 0，失败时保持 0
- * @return WINK_OK 测量成功；WINK_ERR_TIMEOUT 超时；WINK_ERR_INVALID_ARG
- *   通道未初始化或参数非法；其它错误码硬件失败
- *
- * @note Blocking: Yes. Not available under WINK_STRICT_NONBLOCKING (ADR-0017 层 2).
- *       本函数会阻塞调用线程直至捕获完成或超时；在真机上依赖
- *   FreeRTOS 信号量，不消耗 CPU。10ms tick 上下文应避免长 timeout_us。
- *
- * 使用方法（以 HC-SR04 为例）：
- *   pal_gpio_write(trig_pin, true);
- *   pal_os_busy_wait_us(10);
- *   pal_gpio_write(trig_pin, false);
- *   uint32_t pulse_us;
- *   if (pal_rmt_pulse_capture_wait(30000, &pulse_us) == WINK_OK) {
- *       float distance_mm = (float)pulse_us * 0.343f / 2.0f;
- *   }
+ * @note Blocking: Yes. Not available under WINK_STRICT_NONBLOCKING (ADR-0017 Layer 2).
  */
 WINK_BLOCKING
 WINK_WARN_UNUSED_RESULT
@@ -139,19 +103,16 @@ wink_status_t pal_rmt_pulse_capture_wait(uint32_t timeout_us, uint32_t *pulse_us
 #endif /* WINK_STRICT_NONBLOCKING */
 
 /**
- * @brief 反初始化 pulse-capture 通道并释放其占用的外设资源。
+ * @brief De-initialize pulse-capture channel and release resources.
  *
- * 幂等：未初始化时调用是 no-op。
+ * Idempotent: No-op if not initialized.
  */
 void pal_rmt_pulse_capture_deinit(void);
 
 /**
- * @brief 查询 pulse-capture 通道当前是否已初始化。
+ * @brief Query if pulse-capture channel is currently active.
  *
- * @return true 已初始化；false 未初始化
- *
- * @note 用于 pal_gpio_pulse_in 侧的 fast-path 判定（决定是否需要走 RMT
- *   路径还是 busy-wait 回退）。
+ * @return true if initialized, false otherwise.
  */
 bool pal_rmt_pulse_capture_is_active(void);
 
