@@ -1,33 +1,34 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file wink_selftest_registry.def
- * @brief X-macro 注册表：每行注册一个 selftest 条目。
+ * @brief X-macro registry: registers one selftest entry per line.
  *
- * 列：
- *   1. entry name（C 标识符；前缀 selftest_）
- *   2. string name（点分命名：subsystem.test）
- *   3. function（wink_selftest_fn 类型）
+ * Columns:
+ *   1. entry name (C identifier; prefix selftest_)
+ *   2. string name (dotted naming: subsystem.test)
+ *   3. function (wink_selftest_fn type)
  *
- * 用法：
- *   在 selftest_core.c 中：
+ * Usage:
+ *   In selftest_core.c:
  *     #define WINK_SELFTEST_ENTRY(entry, name_str, fn) { name_str, fn },
  *     static const wink_selftest_entry_t s_registry[] = {
  *     #include "wink_selftest_registry.def"
  *     };
  *
- * 新增 selftest：在本文件追加一行即可，无需改其他注册点。
+ * Adding a selftest: append a line to this file.
  */
 
-/* PWM router 异频分配验证（S5） */
+/* PWM router frequency isolation test (S5) */
 WINK_SELFTEST_ENTRY(pwm_router_freq_isolation,  "pwm_router.freq_isolation",  wink_selftest_pwm_router_freq_isolation)
 
-/* I2C 总线扫描（S6） */
+/* I2C bus scan (S6) */
 WINK_SELFTEST_ENTRY(i2c_bus_scan,               "i2c.bus_scan",               wink_selftest_i2c_bus_scan)
 
-/* 双核临界区资源压测（S7） */
+/* Dual-core critical section resource stress test (S7) */
 WINK_SELFTEST_ENTRY(smp_resource_stress,        "smp.resource_stress",        wink_selftest_smp_resource_stress)
 
-/* GPIO ISR arg round-trip（S4-isr） */
+/* GPIO ISR arg round-trip (S4-isr) */
 WINK_SELFTEST_ENTRY(gpio_isr_roundtrip,         "gpio.isr_roundtrip",         wink_selftest_gpio_isr_roundtrip)
 
-/* RMT 硬件自环捕获（S9） */
+/* RMT hardware loopback capture (S9) */
 WINK_SELFTEST_ENTRY(rmt_self_loopback,          "rmt.self_loopback",          wink_selftest_rmt_self_loopback)
