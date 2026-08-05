@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
+/**
+ * @file test_dal_mono_oled.c
+ * @brief DAL monochrome OLED display driver unit tests.
+ */
 #include "unity.h"
 #include "wink_status.h"
 #include "dal_mono_oled.h"
@@ -10,10 +15,8 @@ void setUp(void) {
 }
 void tearDown(void) {}
 
-/* ---- init 契约 ---- */
 void test_init_null_returns_invalid_arg(void) {
-    static dal_mono_oled_t dev = {0};   /* static：1024B 帧缓冲移出栈，满足 -Wstack-usage 纪律；
-                                       * 各测试函数的 static 局部为独立对象且只跑一次，语义不变 */
+    static dal_mono_oled_t dev = {0};
     dal_mono_oled_config_t cfg = { .i2c_port = 0, .i2c_addr = 0x3C,
                                   .width = 128, .height = 64, .owner = "oled0" };
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_mono_oled_init(NULL, &cfg));
@@ -28,14 +31,13 @@ void test_init_null_owner_returns_invalid_arg(void) {
 }
 
 void test_init_valid_claims_addr_and_sends_init(void) {
-    static dal_mono_oled_t dev = {0};   /* static：1024B 帧缓冲移出栈，满足 -Wstack-usage 纪律；
-                                       * 各测试函数的 static 局部为独立对象且只跑一次，语义不变 */
+    static dal_mono_oled_t dev = {0};
     dal_mono_oled_config_t cfg = { .i2c_port = 0, .i2c_addr = 0x3C,
                                   .width = 128, .height = 64, .owner = "oled0" };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_init(&dev, &cfg));
     TEST_ASSERT_TRUE(dev.initialized);
     TEST_ASSERT_EQUAL_INT(0x3C, sim_last_i2c_addr());
-    TEST_ASSERT_EQUAL_INT(1, sim_i2c_transfer_count()); /* init 命令序列 1 次 transfer */
+    TEST_ASSERT_EQUAL_INT(1, sim_i2c_transfer_count());
 }
 
 void test_init_addr_conflict_returns_busy(void) {
@@ -49,10 +51,8 @@ void test_init_addr_conflict_returns_busy(void) {
     TEST_ASSERT_EQUAL_INT(WINK_ERR_BUSY, dal_mono_oled_init(&dev1, &cfg1));
 }
 
-/* ---- P0 E3：width/height 合法性校验，防止栈缓冲溢出 ---- */
 void test_init_rejects_invalid_width(void) {
     static dal_mono_oled_t dev = {0};
-    /* 当前只支持 width=128：64/96/127/256 都应被拒 */
     dal_mono_oled_config_t cfg64 = { .i2c_port = 0, .i2c_addr = 0x3C,
                                     .width = 64, .height = 64, .owner = "oled_bad_w" };
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_mono_oled_init(&dev, &cfg64));
@@ -61,7 +61,6 @@ void test_init_rejects_invalid_width(void) {
 
 void test_init_rejects_invalid_height(void) {
     static dal_mono_oled_t dev = {0};
-    /* 48/128 等非 {32,64} 高度应被拒 */
     dal_mono_oled_config_t cfg48 = { .i2c_port = 0, .i2c_addr = 0x3C,
                                     .width = 128, .height = 48, .owner = "oled_bad_h" };
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_mono_oled_init(&dev, &cfg48));
@@ -74,7 +73,6 @@ void test_init_rejects_invalid_height(void) {
 
 void test_init_rejects_invalid_i2c_addr(void) {
     static dal_mono_oled_t dev = {0};
-    /* 0x00/0x7F 保留/广播地址，应被拒 */
     dal_mono_oled_config_t cfg0 = { .i2c_port = 0, .i2c_addr = 0x00,
                                    .width = 128, .height = 64, .owner = "oled_bad_addr0" };
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_mono_oled_init(&dev, &cfg0));
@@ -91,19 +89,16 @@ void test_init_128x32_ok_and_flush_transfers_4_pages(void) {
     TEST_ASSERT_TRUE(dev.initialized);
     TEST_ASSERT_EQUAL_UINT16(128, dev.config.width);
     TEST_ASSERT_EQUAL_UINT16(32, dev.config.height);
-    TEST_ASSERT_EQUAL_UINT8(4, dev.pages);     /* 32/8 = 4 pages */
+    TEST_ASSERT_EQUAL_UINT8(4, dev.pages);
 
     uint32_t before = sim_i2c_transfer_count();
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_flush(&dev));
     uint32_t after = sim_i2c_transfer_count();
-    /* flush = 1 addr + 4 pages = 5 transfers */
     TEST_ASSERT_EQUAL_INT(5, (int)(after - before));
 }
 
-/* ---- clear / draw_text / flush ---- */
 void test_clear_zeros_framebuffer(void) {
-    static dal_mono_oled_t dev = {0};   /* static：1024B 帧缓冲移出栈，满足 -Wstack-usage 纪律；
-                                       * 各测试函数的 static 局部为独立对象且只跑一次，语义不变 */
+    static dal_mono_oled_t dev = {0};
     dal_mono_oled_config_t cfg = { .i2c_port = 0, .i2c_addr = 0x3C,
                                   .width = 128, .height = 64, .owner = "oled0" };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_init(&dev, &cfg));
@@ -113,14 +108,12 @@ void test_clear_zeros_framebuffer(void) {
 }
 
 void test_draw_text_modifies_framebuffer(void) {
-    static dal_mono_oled_t dev = {0};   /* static：1024B 帧缓冲移出栈，满足 -Wstack-usage 纪律；
-                                       * 各测试函数的 static 局部为独立对象且只跑一次，语义不变 */
+    static dal_mono_oled_t dev = {0};
     dal_mono_oled_config_t cfg = { .i2c_port = 0, .i2c_addr = 0x3C,
                                   .width = 128, .height = 64, .owner = "oled0" };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_init(&dev, &cfg));
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_clear(&dev));
 
-    /* 绘制数字 "0"（首列 0x3E 非零） */
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_draw_text(&dev, 0, 0, "0"));
     TEST_ASSERT_NOT_EQUAL(0x00, dev.framebuffer[0]);
 }
@@ -136,7 +129,6 @@ void test_draw_text_ascii_upper_letter_b(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_draw_text(&dev, 0, 0, "B"));
     TEST_ASSERT_EQUAL_INT(0x00, dev.framebuffer[0]);
 #else
-    /* 'B' 首列 0x7F（ascii_upper 字库） */
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_draw_text(&dev, 0, 0, "B"));
     TEST_ASSERT_EQUAL_INT(0x7F, dev.framebuffer[0]);
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_draw_text(&dev, 6, 0, "z"));
@@ -145,8 +137,7 @@ void test_draw_text_ascii_upper_letter_b(void) {
 }
 
 void test_flush_generates_i2c_transfers(void) {
-    static dal_mono_oled_t dev = {0};   /* static：1024B 帧缓冲移出栈，满足 -Wstack-usage 纪律；
-                                       * 各测试函数的 static 局部为独立对象且只跑一次，语义不变 */
+    static dal_mono_oled_t dev = {0};
     dal_mono_oled_config_t cfg = { .i2c_port = 0, .i2c_addr = 0x3C,
                                   .width = 128, .height = 64, .owner = "oled0" };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_init(&dev, &cfg));
@@ -155,14 +146,12 @@ void test_flush_generates_i2c_transfers(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_flush(&dev));
     uint32_t count_after = sim_i2c_transfer_count();
 
-    /* flush = 1 次地址设置 + 8 页数据 = 9 次 transfer */
     TEST_ASSERT_EQUAL_INT(9, (int)(count_after - count_before));
     TEST_ASSERT_EQUAL_INT(0x3C, sim_last_i2c_addr());
 }
 
 void test_ops_before_init_returns_not_initialized(void) {
-    static dal_mono_oled_t dev = {0};   /* static：1024B 帧缓冲移出栈，满足 -Wstack-usage 纪律；
-                                       * 各测试函数的 static 局部为独立对象且只跑一次，语义不变 */
+    static dal_mono_oled_t dev = {0};
     TEST_ASSERT_EQUAL_INT(WINK_ERR_NOT_INITIALIZED, dal_mono_oled_clear(&dev));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_NOT_INITIALIZED,
                           dal_mono_oled_draw_text(&dev, 0, 0, "A"));
@@ -174,13 +163,10 @@ void test_deinit_hardening(void) {
     dal_mono_oled_config_t cfg = { .i2c_port = 0, .i2c_addr = 0x3C,
                                   .width = 128, .height = 64, .owner = "oled0" };
 
-    /* 1. NULL safety */
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_mono_oled_deinit(NULL));
 
-    /* 2. Idempotency on uninitialized dev */
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_deinit(&dev));
 
-    /* 3. Successful deinit and resource release */
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_init(&dev, &cfg));
     TEST_ASSERT_TRUE(dev.initialized);
     uint32_t res_id = pal_resource_i2c_id(0, 0x3C);
@@ -190,13 +176,9 @@ void test_deinit_hardening(void) {
     TEST_ASSERT_FALSE(dev.initialized);
     TEST_ASSERT_FALSE(pal_resource_is_claimed(PAL_RESOURCE_I2C_ADDR, res_id));
 
-    /* 4. Idempotency after deinit */
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_deinit(&dev));
 }
 
-/* ADR-0024 §4 #8 idempotency + #6 bus-owner separation: 10-round init→deinit
- * loop must not leak I2C_ADDR claims and must NOT tear down the bus (we call
- * deinit on the client only; bus lifecycle is bus-owner's job). */
 void test_deinit_loop_i2c_client_no_resource_leak(void) {
     static dal_mono_oled_t dev = {0};
     const dal_mono_oled_config_t cfg = {

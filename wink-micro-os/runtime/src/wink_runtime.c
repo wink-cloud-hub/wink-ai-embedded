@@ -1,14 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file wink_runtime.c
- * @brief Cooperative main loop (callback injection) + fail-safe / boot safe-lock (Phase 5).
- *
- * Safety Hierarchy:
- * 1. Boot Safe-Lock: WDT/PANIC reset → never execute user init/loop
- * 2. Fine-grained WCET: Per-callback timing at both init and loop level
- * 3. Global tick WCET: Backup for total tick duration
- *
- * Wave 2 (2026-07): added on_boot / init_status / on_fault_status callbacks,
- * wink_runtime_raise_fault(), poll registration, get_stats, trigger_wdt.
+ * @brief Cooperative main loop + fail-safe / boot safe-lock implementation.
  */
 #include "wink_runtime.h"
 #include "wink_fault.h"
@@ -20,34 +13,25 @@
 #include "pal_osal.h"
 #include <string.h>
 
-/* Method C: poll-based interrupt dispatch at tick boundary (wasm simulation target only).
- * Included only under SIMULATION macro; host/esp32 targets skip this header at compile time. */
 #ifdef SIMULATION
 #include "pal_wasm_internal.h"
 #include "wink_sim_scheduler.h"
-#include <stdlib.h>   /* getenv / strtoul for H5 seed injection */
-#include <stdio.h>    /* printf */
+#include <stdlib.h>
+#include <stdio.h>
 #endif
 
-/* ADR-0017 层 1 例外：本 TU 合法调用 WINK_BLOCKING API。抑制
- * -Wdeprecated-declarations 使 -Werror 下仍能编译；严格模式
- * (-DWINK_STRICT_NONBLOCKING=1) 下相关 API 声明直接消失，本 TU 会链接失败——那是设计意图。 */
 #if defined(__GNUC__) || defined(__clang__)
 #  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
-/* ── Static state ─────────────────────────────────────────── */
 static const wink_app_callbacks_t *s_active_cbs = NULL;
 
-/* Poll registry (for DAL auto-poll, e.g. button debounce). */
 #define WINK_MAX_POLL_CBS 16
 static struct {
     void (*fn)(void *ctx);
     void *ctx;
 } s_poll_cbs[WINK_MAX_POLL_CBS];
 static uint8_t s_poll_count = 0;
-
-/* ── Helpers ─────────────────────────────────────────────── */
 
 static void wink_runtime_monitor_wcet_loop(void (*callback)(void), const char* name) {
     uint64_t start_us;
@@ -67,7 +51,6 @@ static void wink_runtime_monitor_wcet_loop(void (*callback)(void), const char* n
     (void)name;
 }
 
-/* Invoke init via whichever variant is present. */
 static wink_status_t wink_runtime_invoke_init(const wink_app_callbacks_t *cb) {
     if (cb->init_status != NULL) {
         return cb->init_status();
@@ -79,29 +62,21 @@ static wink_status_t wink_runtime_invoke_init(const wink_app_callbacks_t *cb) {
     return WINK_OK;
 }
 
-/* Invoke on_fault; returns WINK_ERR_LOCKED if app wants us to halt. */
 static wink_status_t wink_runtime_invoke_on_fault(const wink_app_callbacks_t *cb, uint32_t code) {
     if (cb->on_fault_status != NULL) {
         return cb->on_fault_status(code);
     }
     if (cb->on_fault != NULL) {
         cb->on_fault(code);
-        /* Legacy void-returning on_fault: do NOT spin forever. Callers that
-         * want halt can use on_fault_status returning LOCKED, or we are
-         * being called from a non-loop context (tests / explicit raise). */
         return WINK_OK;
     }
-    return WINK_OK; /* no fault handler: nothing to do */
+    return WINK_OK;
 }
-
-/* ── Public API ──────────────────────────────────────────── */
 
 void wink_app_delay_ms(uint32_t ms) {
     pal_os_sleep_ms(ms);
 }
 
-/* Translate PAL reset reason → runtime reset reason (simple identity map
- * since enum values match by design). */
 static wink_reset_reason_t map_reset_reason(pal_os_reset_reason_t rr) {
     return (wink_reset_reason_t)rr;
 }
@@ -114,15 +89,12 @@ static void sim_app_main_task(void* arg) {
         uint64_t tick_start_us = pal_os_get_us();
         uint64_t tick_elapsed_us;
 
-        /* --- Soft timer callbacks first --- */
         wink_soft_timer_dispatch();
 
-        /* --- Registered poll callbacks (DAL auto-poll) --- */
         for (uint8_t i = 0; i < s_poll_count; i++) {
             s_poll_cbs[i].fn(s_poll_cbs[i].ctx);
         }
 
-        /* --- Run user event callback if events are available --- */
         if (callbacks->on_event != NULL) {
             wink_event_t event;
             while (wink_event_pend(&event, 0) == WINK_OK) {
@@ -130,16 +102,13 @@ static void sim_app_main_task(void* arg) {
             }
         }
 
-        /* --- Run user loop callback with individual WCET monitoring --- */
         wink_runtime_monitor_wcet_loop(callbacks->loop, "app_loop");
 
-        /* --- Global tick WCET check (backup safety net) --- */
         tick_elapsed_us = pal_os_get_us() - tick_start_us;
         if (tick_elapsed_us > WINK_RUNTIME_TICK_MS * 1000U) {
             wink_trace_warn(WINK_WARN_TICK_OVERRUN);
         }
 
-        /* ADR-0010: healthy milestone */
         if (tick == WINK_BOOT_HEALTHY_TICKS) {
             pal_os_set_abnormal_boot_count(0);
         }
@@ -173,12 +142,9 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
         return WINK_ERR_INVALID_ARG;
     }
 
-    /* Stash active callbacks so wink_runtime_raise_fault can find them. */
     s_active_cbs = callbacks;
 
 #ifdef SIMULATION
-    /* 在运行任何用户初始化(app_init)之前，必须先重置调度器，
-     * 否则 app_init 中注册的所有用户协程都会被随后的重置给抹除。 */
     {
         const char* seed_env = getenv("WINK_SIM_SEED");
         uint32_t seed = seed_env ? (uint32_t)strtoul(seed_env, NULL, 10) : 42u;
@@ -186,9 +152,6 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
     }
 #endif
 
-    /* ============================================================
-     *  BOOT SAFE-LOCK with recovery (ADR-0010, revises ADR-0007)
-     * ============================================================ */
     rr = pal_os_get_reset_reason();
     if (rr == PAL_OS_RESET_REASON_POWER_ON) {
         pal_os_set_abnormal_boot_count(0);
@@ -196,31 +159,25 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
         uint32_t abnormal = pal_os_get_abnormal_boot_count() + 1u;
         pal_os_set_abnormal_boot_count(abnormal);
         if (abnormal >= WINK_BOOT_LOCK_THRESHOLD) {
-            /* Death loop: lock out user code. */
             wink_runtime_fault(callbacks, WINK_FAULT_BOOT_AFTER_RESET);
 #ifdef SIMULATION
-            /* wasm sim 路径：无 WDT 概念，lockout 路径直接 LOG_E + abort() （让测试框架可见） */
             printf("FATAL: Boot lockout count reached threshold! Entering Safe-lock.\n");
             abort();
 #endif
             return WINK_ERR_LOCKED;
         }
-        /* abnormal < threshold: recover — fall through */
     }
 
-    /* Initialize soft timer subsystem before user code */
     wink_status_t st_init = wink_soft_timer_init();
     if (wink_status_is_error(st_init)) {
         return st_init;
     }
 
-    /* Initialize event queue subsystem */
     wink_status_t st_ev = wink_event_queue_init(WINK_EVENT_QUEUE_DEFAULT_CAPACITY);
     if (wink_status_is_error(st_ev)) {
         return st_ev;
     }
 
-    /* ── on_boot callback ────────────────────────────────── */
     if (callbacks->on_boot != NULL) {
         wink_boot_info_t info;
         memset(&info, 0, sizeof(info));
@@ -235,7 +192,6 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
         callbacks->on_boot(&info);
     }
 
-    /* ── User init (WCET monitored, status-aware) ────────── */
     {
         uint64_t t0 = pal_os_get_us();
         wink_status_t init_st = wink_runtime_invoke_init(callbacks);
@@ -244,8 +200,7 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
             wink_trace_warn(WINK_WARN_WCET_EXCEEDED);
         }
         if (wink_status_is_error(init_st)) {
-            /* init returned error → auto fault + safe-off. */
-            wink_runtime_fault(callbacks, WINK_FAULT_RUNTIME(50)); /* init-failed sentinel */
+            wink_runtime_fault(callbacks, WINK_FAULT_RUNTIME(50));
             wink_event_queue_deinit();
             return init_st;
         }
@@ -266,20 +221,16 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
     return run_st;
 #else
     uint32_t tick = 0;
-    /* max_ticks == 0 => infinite loop (embedded/wasm); host tests pass a finite value. */
     while ((max_ticks == 0U) || (tick < max_ticks)) {
         uint64_t tick_start_us = pal_os_get_us();
         uint64_t tick_elapsed_us;
 
-        /* --- Soft timer callbacks first --- */
         wink_soft_timer_dispatch();
 
-        /* --- Registered poll callbacks (DAL auto-poll) --- */
         for (uint8_t i = 0; i < s_poll_count; i++) {
             s_poll_cbs[i].fn(s_poll_cbs[i].ctx);
         }
 
-        /* --- Run user event callback if events are available --- */
         if (callbacks->on_event != NULL) {
             wink_event_t event;
             while (wink_event_pend(&event, 0) == WINK_OK) {
@@ -287,16 +238,13 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
             }
         }
 
-        /* --- Run user loop callback with individual WCET monitoring --- */
         wink_runtime_monitor_wcet_loop(callbacks->loop, "app_loop");
 
-        /* --- Global tick WCET check (backup safety net) --- */
         tick_elapsed_us = pal_os_get_us() - tick_start_us;
         if (tick_elapsed_us > WINK_RUNTIME_TICK_MS * 1000U) {
             wink_trace_warn(WINK_WARN_TICK_OVERRUN);
         }
 
-        /* ADR-0010: healthy milestone */
         if (tick == WINK_BOOT_HEALTHY_TICKS) {
             pal_os_set_abnormal_boot_count(0);
         }
@@ -330,16 +278,10 @@ void wink_runtime_fault(const wink_app_callbacks_t* callbacks, uint32_t fault_co
     wink_actuator_safe_off_all();
     if (callbacks != NULL) {
         (void)wink_runtime_invoke_on_fault(callbacks, fault_code);
-        /* Note: we do NOT spin/halt here. On real hardware a non-recoverable
-         * fault should be escalated via WDT (wink_runtime_trigger_wdt_test or
-         * app-specific). Returning lets host tests and non-fatal faults
-         * continue; boot-safe-lock path in wink_runtime_run returns its own
-         * WINK_ERR_LOCKED to the caller without entering the loop. */
     }
 }
 
 void wink_runtime_raise_fault(uint32_t fault_code) {
-    /* Use stashed callbacks pointer — app code never holds this. */
     wink_runtime_fault(s_active_cbs, fault_code);
 }
 
@@ -360,24 +302,13 @@ void wink_runtime_get_stats(wink_runtime_stats_t *out) {
     out->warn_count          = wink_warn_count();
     out->abnormal_boot_count = pal_os_get_abnormal_boot_count();
     out->last_reset_reason   = map_reset_reason(pal_os_get_reset_reason());
-    /* Heap stats: current free heap bytes + historical min-ever-free
-     * (0 on host/wasm where the PAL stubs return 0 as "unsupported"). */
-    out->free_heap = pal_os_get_free_heap_size();
-    /* min_free_stack: unused stack bytes for the calling task (i.e. the
-     * runtime main-loop task, since this is normally called from app_loop
-     * or the telemetry task on real hardware).  Not a system-wide minimum
-     * (that would need uxTaskGetSystemState in v2). */
-    out->min_free_stack = pal_os_get_current_task_stack_free();
+    out->free_heap           = pal_os_get_free_heap_size();
+    out->min_free_stack      = pal_os_get_current_task_stack_free();
 }
 
 void wink_runtime_trigger_wdt_test(uint32_t timeout_ms) {
-    /* Initialise WDT, briefly feed, then spin. Real hardware will reset.
-     * Host/wasm targets either no-op WDT init or loop forever (test can
-     * observe the loop via max_ticks timeout). */
     WINK_IGNORE_UNUSED(pal_os_wdt_init(timeout_ms));
-    /* Brief feed to let WDT arm, then stop feeding. */
     WINK_IGNORE_UNUSED(pal_os_wdt_feed());
     while (1) {
-        /* Spin without feeding. */
     }
 }

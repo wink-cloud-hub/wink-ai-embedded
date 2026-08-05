@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
+/**
+ * @file test_dal_led.c
+ * @brief DAL LED driver unit tests.
+ */
 #include "unity.h"
 #include "wink_status.h"
 #include "dal_led.h"
@@ -8,7 +13,6 @@ static const char *const OWNER = "test_dal_led";
 void setUp(void) { pal_resource_reset(); }
 void tearDown(void) {}
 
-/* ---- init 契约 ---- */
 void test_init_null_returns_invalid_arg(void) {
     const dal_led_config_t cfg = { .owner = OWNER, .pin = 2, .active_high = true };
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_led_init(NULL, &cfg));
@@ -31,9 +35,6 @@ void test_set_null_returns_invalid_arg(void) {
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_led_safe_off(NULL));
 }
 
-/* F-1: init must leave the LED in zero-energy (off) state regardless of
- * polarity; DAL-L-006. We assert the cached is_on state; the off-level
- * write is exercised via the host pal_gpio_write path. */
 void test_init_leaves_led_off_active_high(void) {
     dal_led_t dev = {0};
     const dal_led_config_t cfg = { .owner = OWNER, .pin = 6, .active_high = true };
@@ -48,9 +49,6 @@ void test_init_leaves_led_off_active_low(void) {
     TEST_ASSERT_FALSE(dev.is_on);
 }
 
-/* F-2 / DAL-L-022: safe_off on an uninitialized handle returns WINK_OK
- * ("nothing to shut off"), NOT NOT_INITIALIZED. Safe_off is invoked by
- * safe_off_all() on watchdog/panic/rollback paths. */
 void test_safe_off_uninitialized_returns_ok(void) {
     dal_led_t dev = {0};
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_safe_off(&dev));
@@ -66,7 +64,6 @@ void test_safe_off_initialized_turns_off(void) {
     TEST_ASSERT_FALSE(dev.is_on);
 }
 
-/* ---- init 后 on/off/set/toggle（host pal_gpio_write 无真实电平可校验，校验状态位）---- */
 void test_active_high_on_off(void) {
     dal_led_t dev = {0};
     const dal_led_config_t cfg = { .owner = OWNER, .pin = 2, .active_high = true };
@@ -111,13 +108,10 @@ void test_deinit_hardening(void) {
     dal_led_t dev = {0};
     const dal_led_config_t cfg = { .owner = OWNER, .pin = 2, .active_high = true };
 
-    /* 1. NULL safety */
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_led_deinit(NULL));
 
-    /* 2. Idempotency on uninitialized dev */
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_deinit(&dev));
 
-    /* 3. Successful deinit and resource release */
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_init(&dev, &cfg));
     TEST_ASSERT_TRUE(dev.initialized);
     TEST_ASSERT_TRUE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 2));
@@ -126,10 +120,8 @@ void test_deinit_hardening(void) {
     TEST_ASSERT_FALSE(dev.initialized);
     TEST_ASSERT_FALSE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 2));
 
-    /* 4. Idempotency after deinit */
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_deinit(&dev));
 
-    /* 5. Resource not leaking, can claim again */
     dal_led_t dev2 = {0};
     const dal_led_config_t cfg2 = { .owner = "another_owner", .pin = 2, .active_high = true };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_init(&dev2, &cfg2));
@@ -137,10 +129,6 @@ void test_deinit_hardening(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_deinit(&dev2));
 }
 
-/* ADR-0024 §4 #8 idempotency / Task 0.7 Step 4: 10-round init→deinit loop must
- * not leak SW resource reservations (S11-class regression guard). Host cannot
- * observe the ESP32-specific esp_gpio_reserve bitmap leak directly, but pal_resource
- * leak (mismatched claim/release) would cause init to return BUSY on round ≥2. */
 void test_deinit_loop_no_resource_leak(void) {
     dal_led_t dev = {0};
     const dal_led_config_t cfg = { .owner = OWNER, .pin = 5, .active_high = true };
@@ -149,7 +137,6 @@ void test_deinit_loop_no_resource_leak(void) {
         TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_init(&dev, &cfg));
         TEST_ASSERT_TRUE(dev.initialized);
         TEST_ASSERT_TRUE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 5));
-        /* Toggle a few times to exercise the driver while initialized. */
         TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_on(&dev));
         TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_off(&dev));
         TEST_ASSERT_EQUAL_INT(WINK_OK, dal_led_deinit(&dev));

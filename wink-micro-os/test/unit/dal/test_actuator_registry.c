@@ -1,5 +1,8 @@
-/* Phase 5 Task 5-1：执行器关断注册表（静态表）直接单测。
- * 覆盖 NULL 拒绝 / 幂等 / safe_off_all 遍历 / 表满 四语义。 */
+// SPDX-License-Identifier: Apache-2.0
+/**
+ * @file test_actuator_registry.c
+ * @brief Actuator safe-off registry unit tests.
+ */
 #include "unity.h"
 #include "wink_status.h"
 #include "wink_actuator_registry.h"
@@ -18,7 +21,6 @@ void test_register_null_returns_invalid_arg(void) {
 
 void test_register_duplicate_is_idempotent(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_actuator_register(mock_safe_off_ok, (void *)1));
-    /* 同 (fn, ctx) → 幂等 OK，不重复占表项 */
     TEST_ASSERT_EQUAL_INT(WINK_OK, wink_actuator_register(mock_safe_off_ok, (void *)1));
 }
 
@@ -35,7 +37,6 @@ void test_registry_full_returns_resource_exhausted(void) {
         TEST_ASSERT_EQUAL_INT(WINK_OK,
             wink_actuator_register(mock_safe_off_ok, (void *)(uintptr_t)(i + 1)));
     }
-    /* 第 CAPACITY+1 项 → 表满 EXHAUSTED */
     TEST_ASSERT_EQUAL_INT(WINK_ERR_RESOURCE_EXHAUSTED,
         wink_actuator_register(mock_safe_off_ok, (void *)(uintptr_t)(WINK_ACTUATOR_REGISTRY_CAPACITY + 1)));
 }

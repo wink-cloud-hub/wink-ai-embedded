@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file test_bal_rc_servo_sweep.c
  * @brief Unit tests for BAL wink_rc_servo_sweep (host).

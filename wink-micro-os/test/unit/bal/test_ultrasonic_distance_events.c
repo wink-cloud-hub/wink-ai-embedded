@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file test_ultrasonic_distance_events.c
  * @brief Host unit tests for wink_ultrasonic_enable_distance_events (ADR-0033).

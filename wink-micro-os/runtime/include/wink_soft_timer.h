@@ -1,14 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file wink_soft_timer.h
- * @brief 软定时器调度器（ADR-0007 协作式执行模型）。
- *
- * 基于 Tick 的软件定时器，支持：
- * - 单次触发 (ONESHOT) 与周期触发 (PERIODIC)
- * - 静态内存分配，零动态分配（max timers 编译期配置）
- * - 每个回调独立 WCET 监控
- * - Tick 对齐：回调执行时间是 Tick 的整数倍
- *
- * 注意：period_ms 必须是 WINK_RUNTIME_TICK_MS 的整数倍！
+ * @brief Software timer scheduler interface (ADR-0007).
  */
 #ifndef WINK_SOFT_TIMER_H
 #define WINK_SOFT_TIMER_H
@@ -21,36 +14,30 @@
 extern "C" {
 #endif
 
-/** @brief 软定时器模式 */
+/** @brief Software timer mode */
 typedef enum {
-    WINK_TIMER_ONESHOT  = 0,  /**< 执行一次后停止 */
-    WINK_TIMER_PERIODIC = 1,  /**< 周期重复执行 */
+    WINK_TIMER_ONESHOT  = 0,  /**< Single shot execution */
+    WINK_TIMER_PERIODIC = 1,  /**< Periodic repetition */
 } wink_timer_mode_t;
 
-/** @brief 软定时器回调函数类型
- *  @param arg 用户上下文指针
- *  @return WINK_OK 继续运行，非 WINK_OK 停止定时器
- */
+/** @brief Software timer callback prototype */
 typedef wink_status_t (*wink_soft_timer_callback_t)(void* arg);
 
 /**
- * @brief 初始化软定时器子系统
- * @return wink_status_t WINK_OK 成功
- * @note 必须在 wink_runtime_run() 之前调用
+ * @brief Initialize software timer subsystem
+ * @return WINK_OK on success, error status code otherwise.
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t wink_soft_timer_init(void);
 
 /**
- * @brief 创建新的软定时器
+ * @brief Create a new software timer
  *
- * @param callback 定时器回调函数（非 NULL）
- * @param arg 回调上下文指针
- * @param mode 定时器模式：单次或周期
- * @param period_ms 周期（毫秒，必须是 WINK_RUNTIME_TICK_MS 的整数倍）
- * @return int32_t >= 0 成功（timer handle），< 0 错误（WINK_ERR_*）
- *
- * @note 定时器创建后处于 STOPPED 状态，需调用 wink_soft_timer_start() 启动
+ * @param[in] callback Callback function pointer.
+ * @param[in] arg Context argument pointer.
+ * @param[in] mode Timer mode (oneshot or periodic).
+ * @param[in] period_ms Timer period in ms.
+ * @return Timer handle (>= 0) on success, error status code (< 0) otherwise.
  */
 WINK_WARN_UNUSED_RESULT
 int32_t wink_soft_timer_create(
@@ -61,86 +48,58 @@ int32_t wink_soft_timer_create(
 );
 
 /**
- * @brief 启动定时器
- * @param handle 定时器句柄（由 create 返回）
- * @return wink_status_t WINK_OK 成功，WINK_ERR_INVALID_ARG 句柄无效
+ * @brief Start software timer
+ *
+ * @param[in] handle Timer handle.
+ * @return WINK_OK on success, error status code otherwise.
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t wink_soft_timer_start(int32_t handle);
 
 /**
- * @brief 暂停定时器（active=0，但保留槽位与回调，可用 wink_soft_timer_start 重新启动）。
+ * @brief Stop software timer
  *
- * @note 调用者若确定不再需要该定时器，应优先使用 wink_soft_timer_destroy()
- *       以释放槽位供后续 create 复用。stop() 仅暂停，不归还槽位。
- *
- * @param handle 定时器句柄（由 create 返回）
- * @return wink_status_t WINK_OK 成功，WINK_ERR_INVALID_ARG 句柄无效
+ * @param[in] handle Timer handle.
+ * @return WINK_OK on success, error status code otherwise.
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t wink_soft_timer_stop(int32_t handle);
 
 /**
- * @brief 销毁定时器并释放槽位（不可再 start，需重新 create）。
+ * @brief Destroy software timer and release slot
  *
- * 等价于 stop() + 清空槽位元数据（callback/arg/name 等），使该槽位可被
- * 后续 wink_soft_timer_create() 重新分配。若句柄无效或槽位已经空闲，
- * 安全地无操作返回。
- *
- * @param handle 定时器句柄（由 create 返回）
- * @return wink_status_t WINK_OK 成功，WINK_ERR_INVALID_ARG 句柄越界
+ * @param[in] handle Timer handle.
+ * @return WINK_OK on success, error status code otherwise.
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t wink_soft_timer_destroy(int32_t handle);
 
 /**
- * @brief Dynamically change a running timer's period (zero-stall).
+ * @brief Dynamically change timer period
  *
- * For PERIODIC timers the new period takes effect on the NEXT cycle
- * (i.e., after the running callback returns, remaining_ticks is
- * reloaded from the updated period_ticks).  Safe to call from WITHIN
- * the timer's own callback (ADR-0023 §11 self-set_period re-entrancy).
- *
- * @param handle       Timer handle (from wink_soft_timer_create).
- * @param period_ms    New period in milliseconds (must be >0; tick
- *                     alignment rules identical to create: rounded
- *                     down to tick multiple, minimum 1 tick).
- * @return wink_status_t WINK_OK on success; WINK_ERR_INVALID_ARG on bad
- *                     handle / zero period / unallocated slot.
+ * @param[in] handle Timer handle.
+ * @param[in] period_ms New period in ms.
+ * @return WINK_OK on success, error status code otherwise.
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t wink_soft_timer_change_period(int32_t handle, uint32_t period_ms);
 
 /**
- * @brief 调度到期的定时器回调（主循环每个 Tick 调用一次）
- *
- * 遍历所有活动定时器，递减剩余 Tick，到期则执行回调。
- * 每个回调执行时带独立 WCET 监控。
- * PERIODIC 定时器执行后重新加载周期计数。
- * ONESHOT 定时器执行后自动停止。
+ * @brief Dispatch expired software timers
  */
 void wink_soft_timer_dispatch(void);
 
 /**
- * @brief Return true while we are actively dispatching a LIGHT (soft-timer)
- *        callback on this thread/fiber.
- *
- * WINK_ASSERT_NONBLOCKING() checks this to escalate any blocking call from
- * within a LIGHT callback to a fault (ADR-0017 layer 3 + ADR-0023 §9 three-
- * line defense).
- *
- * Host/wasm: maintained per-fiber by dispatch().  ESP32: LIGHT callbacks
- * run on the tick task, so a simple global bool suffices (not ISR-preemptible
- * at the WCET logging points we use).
+ * @brief Check if currently in LIGHT dispatch context
+ * @return True if in LIGHT callback dispatch context.
  */
 bool wink_soft_timer_in_light_dispatch(void);
 
 /**
- * @brief Attach a human-readable name to a timer slot for diagnostics.
+ * @brief Attach diagnostic name to timer slot
  *
- * Called by wink_periodic_start_ex when routing a LIGHT periodic callback
- * through the soft timer, so WCET/LIGHT-blocking fault logs can identify
- * the offending callback.  NULL resets to an empty name.
+ * @param[in] handle Timer handle.
+ * @param[in] name Diagnostic name string.
  */
 void wink_soft_timer_set_name(int32_t handle, const char *name);
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 #ifndef WINK_STATUS_H
 #define WINK_STATUS_H
 
@@ -22,31 +23,10 @@ extern "C" {
 #endif
 
 /* ─────────────────────────────────────────────────────────
- * 阻塞 API 硬隔离（ADR-0017）
- * `WINK_DEPRECATED_MSG(msg)` — 通用 deprecation 属性，携带调用点解释。
- * `WINK_BLOCKING`             — 语义子集：单次调用 busy-wait > 一个 runtime tick
- *                               (10ms) / 硬件轮询未主动 yield / 违反 ADR-0007
- *                               协作式执行契约。
- *
- * 三层硬隔离（ADR-0017 §决策结论 §落地规则）：
- *   1. 编译期：GCC/Clang `__attribute__((deprecated(msg)))` /
- *              MSVC `__declspec(deprecated(msg))` → 所有调用点 warning。
- *   2. 链接期：`-DWINK_STRICT_NONBLOCKING=1` 时，API 头文件用 `#ifndef` 包围
- *              把声明从翻译单元剔除 → 调用点变 undefined reference。
- *              协作式调度器构建路径**必须**默认开启（PLAN R-8）。
- *   3. 运行期：`WINK_PT_DEBUG` 下 `WINK_ASSERT_NONBLOCKING()` 检测 PT 上下文
- *              误调 → `wink_trace_fault(WINK_ERR_PANIC) + assert`。
- *              **第三层已迁至 runtime 层**：包含 wink_pt_in_context() 前向声明
- *              与 WINK_ASSERT_NONBLOCKING() 宏的头文件是
- *              `runtime/include/wink_pt_debug.h`（2026-07-04 P1-P2 层级修正）。
- *              PAL 契约层不得引用 runtime 符号（消除层级反转）。
- *              需要 PT-context 断言的 DAL/App 源文件请 `#include "wink_pt_debug.h"`；
- *              大多数场景可通过 `#include "wink_runtime.h"` 传递获得。
- *
- * 谁负责挂载：新增 DAL/PAL API 时若满足上述条件，**必须**由该 API 的 owner
- * 在头文件挂 `WINK_BLOCKING` 并加 `#ifndef WINK_STRICT_NONBLOCKING` 包围
- * （Code Review 卡口，见 PLAN §3.3 R-5）。
- */
+ * Blocking API Hard Isolation (ADR-0017)
+ * `WINK_DEPRECATED_MSG(msg)` - Generic deprecation attribute
+ * `WINK_BLOCKING`             - Applied to APIs that busy-wait > 1 tick (10ms)
+ * ───────────────────────────────────────────────────────── */
 #if defined(__GNUC__) || defined(__clang__)
     #define WINK_DEPRECATED_MSG(msg) __attribute__((deprecated(msg)))
 #elif defined(_MSC_VER)
@@ -55,8 +35,7 @@ extern "C" {
     #define WINK_DEPRECATED_MSG(msg)
 #endif
 
-/* Short alias — used by ADR-0032 BAL rename compat shims and any future
- * deprecation without the ADR-0017 blocking-API semantics baked in. */
+/* Short alias for deprecation */
 #define WINK_DEPRECATED(msg) WINK_DEPRECATED_MSG(msg)
 
 #define WINK_BLOCKING \
@@ -64,41 +43,21 @@ extern "C" {
 
 /*
  * Suppress -Wunused-result on WINK_WARN_UNUSED_RESULT APIs when the error
- * is intentionally discarded (e.g. best-effort cleanup, fire-and-forget
- * telemetry).  A bare `(void)expr;` is NOT sufficient on gcc ≥ 16 — the
- * result must be consumed by assignment.  This macro wraps the canonical
- * "assign to local + cast to void" idiom so call sites stay on one line.
+ * is intentionally discarded.
  */
 #define WINK_IGNORE_RESULT(expr) do { \
     wink_status_t _wink_ignored_result = (expr); \
     (void)_wink_ignored_result; \
 } while (0)
 
-/* Backward-compatible alias (older code / 2026-07-04 PAL log hardening). */
 #define WINK_IGNORE_UNUSED(expr) WINK_IGNORE_RESULT(expr)
 
 /*
- * WINK_UNAVAILABLE_MSG(msg) — compile-time "driver disabled" stub marker.
- *
- * When a DAL driver is compiled out (WINK_USE_XXX=OFF via CMake static
- * pruning, P2-1 2026-07-06), its public header provides stub declarations
- * carrying this attribute so that any accidental call produces a friendly
- * compile error with remediation guidance ("add a <driver> device to
- * wink-app.json"), instead of a cryptic linker undefined-reference.
- *
- * Portability: GCC/Clang support `__attribute__((unavailable(msg)))` which
- * emits an error at the call site. MSVC has no direct equivalent — fall
- * back to `__declspec(deprecated(msg))` which still surfaces the message as
- * a (promotable-to-error) warning. Other compilers fall back to nothing
- * (the missing definition will still fail at link time, just without the
- * friendly hint).
+ * WINK_UNAVAILABLE_MSG(msg) - Compile-time "driver disabled" stub marker.
  */
 #if defined(__clang__)
-    /* Clang supports unavailable with a message natively. */
     #define WINK_UNAVAILABLE_MSG(msg) __attribute__((unavailable(msg)))
 #elif defined(__GNUC__)
-    /* GCC 4.3+ supports unavailable; message text varies by version but is
-     * emitted. Older GCCs fall through to error at link time. */
     #if __GNUC__ >= 5
         #define WINK_UNAVAILABLE_MSG(msg) __attribute__((unavailable(msg)))
     #else
@@ -110,53 +69,54 @@ extern "C" {
     #define WINK_UNAVAILABLE_MSG(msg)
 #endif
 
-
-/*
- * @brief Wink 平台统一状态码
+/**
+ * @brief Wink Platform Status Codes
  *
- * **AI Codegen 语义详表 SSOT**：见
- * `docs/design/07-platform-governance/02-error-fault-model.md` §11
- *（触发场景 / 恢复策略 / 是否可作 `WINK_PT_EXIT` 条件）。
- * 本 enum 每一值的 brief 与该表格首列 bit-for-bit 一致；调整任一侧
- * 必须同步另一侧。
+ * Negative error code convention (ADR-0001).
+ * All status codes < 0 represent errors or special yield signals.
  */
 typedef enum {
-    WINK_OK = 0,                              /**< 操作成功；`if (status)` 语义为假。 */
+    WINK_OK = 0,                              /**< Operation succeeded; evaluates to false in `if (status)`. */
 
-    WINK_ERR_INVALID_ARG        = -1,         /**< 参数校验失败（NULL / 越界 / 非法枚举）；caller bug。 */
-    WINK_ERR_TIMEOUT            = -2,         /**< 操作超时（I2C ACK / GPIO wait / RMT）；短期重试 ≤ N 次后 fault。 */
-    WINK_ERR_DISCONNECTED       = -3,         /**< 器件断线（探测 NACK / 长期无响应）；进 fail-safe，可 `WINK_PT_EXIT`。 */
-    WINK_ERR_OUT_OF_RANGE       = -4,         /**< 数值越界（ADC 超量程 / 几何超行程）；限幅继续。 */
-    WINK_ERR_IO                 = -5,         /**< 通用 I/O 错误（未归类的 bus 层错）；短期重试。 */
-    WINK_ERR_BUSY               = -6,         /**< 资源被占用 / 未就绪；**同时是 PT yield 信号**，生成器需特判非错误。 */
-    WINK_ERR_UNSUPPORTED        = -7,         /**< 当前 target/构建缺失能力；编译期应拦截，可 `WINK_PT_EXIT`。 */
-    WINK_ERR_CHECKSUM           = -8,         /**< 校验失败（CRC / 数据完整性）；重试 ≤ 2 次。 */
-    WINK_ERR_PERMISSION         = -9,         /**< 权限拒绝（沙箱越权 / Flash 保护区）；不会自愈，可 `WINK_PT_EXIT`。 */
-    WINK_ERR_RESOURCE_EXHAUSTED = -10,        /**< 资源池耗尽（claim 表满 / PWM 通道用尽）；部署期 bug。 */
-    WINK_ERR_NOT_INITIALIZED    = -11,        /**< 器件未 init 就被调用；caller bug，可 `WINK_PT_EXIT`。 */
-    WINK_ERR_HARDWARE           = -12,        /**< 底层驱动返错（含 `esp_err_t != ESP_OK` 的统一映射）。 */
-    WINK_ERR_NO_MEM             = -13,        /**< 内存不足；runtime path 禁止动态分配，出现即部署错。 */
-    WINK_ERR_EMPTY              = -14,        /**< 容器/队列空；通常是 poll API 的正常返回。 */
-    WINK_ERR_FULL               = -15,        /**< 容器/队列满；lossless 需扩容 / 加速消费。 */
-    WINK_ERR_INVALID_STATE      = -16,        /**< 状态机非法转移（未 claim 引脚 / 已销毁器件被调用）；可 `WINK_PT_EXIT`。 */
-    WINK_ERR_LOCKED             = -17,        /**< 资源被锁（boot safe-lock / 配置 flash 锁定）；不由 PT 自行解锁。 */
-    WINK_ERR_NOT_FOUND          = -18,        /**< 查找/反注册目标不存在（如 registry 中无匹配 (fn, ctx)）；幂等类 API 常用。 */
-    WINK_ERR_CANCELED           = -19,        /**< 良性并发取消（stop/change_period 与回调并发）；区别于 INVALID_STATE（编程错误），非故障。 */
+    WINK_ERR_INVALID_ARG        = -1,         /**< Invalid argument (NULL / out of bounds / invalid enum); caller bug. */
+    WINK_ERR_TIMEOUT            = -2,         /**< Operation timeout (I2C ACK / GPIO wait / RMT). */
+    WINK_ERR_DISCONNECTED       = -3,         /**< Device disconnected (NACK / no response); enter fail-safe. */
+    WINK_ERR_OUT_OF_RANGE       = -4,         /**< Value out of range (ADC overrange / limit reached); clamp and proceed. */
+    WINK_ERR_IO                 = -5,         /**< General I/O error (unclassified bus level error). */
+    WINK_ERR_BUSY               = -6,         /**< Resource busy / not ready; also serves as PT yield signal. */
+    WINK_ERR_UNSUPPORTED        = -7,         /**< Feature unsupported on current target/build. */
+    WINK_ERR_CHECKSUM           = -8,         /**< Checksum failure (CRC / data integrity). */
+    WINK_ERR_PERMISSION         = -9,         /**< Permission denied (sandbox / flash protection). */
+    WINK_ERR_RESOURCE_EXHAUSTED = -10,        /**< Resource pool exhausted (claim table full / PWM channels exhausted). */
+    WINK_ERR_NOT_INITIALIZED    = -11,        /**< Device uninitialized when invoked; caller bug. */
+    WINK_ERR_HARDWARE           = -12,        /**< Hardware driver underlying failure. */
+    WINK_ERR_NO_MEM             = -13,        /**< Memory allocation failure / out of memory. */
+    WINK_ERR_EMPTY              = -14,        /**< Container / queue empty; normal poll API return. */
+    WINK_ERR_FULL               = -15,        /**< Container / queue full. */
+    WINK_ERR_INVALID_STATE      = -16,        /**< Invalid state machine transition. */
+    WINK_ERR_LOCKED             = -17,        /**< Resource locked (boot safe-lock / config flash lock). */
+    WINK_ERR_NOT_FOUND          = -18,        /**< Target item not found in registry / lookup table. */
+    WINK_ERR_CANCELED           = -19,        /**< Concurrency benign cancellation. */
 
-    WINK_ERR_OVERCURRENT        = -20,        /**< 过流（可恢复：限流重试）；持续则升级为致命。 */
-    WINK_ERR_OVERTEMPERATURE    = -21,        /**< 过温（可恢复：降频 / 降占空比）；持续则关输出。 */
-    WINK_ERR_ALREADY_INITIALIZED = -22,       /**< 对已 initialized 的器件重复调用 init；调用序 bug（DAL-L-004），不隐式 deinit。 */
+    WINK_ERR_OVERCURRENT        = -20,        /**< Overcurrent condition detected. */
+    WINK_ERR_OVERTEMPERATURE    = -21,        /**< Overtemperature condition detected. */
+    WINK_ERR_ALREADY_INITIALIZED = -22,       /**< Duplicate init call on initialized device. */
 
-    WINK_ERR_WATCHDOG           = -30,        /**< 看门狗超时（致命）；由 boot safe-lock 复位处理。 */
+    WINK_ERR_WATCHDOG           = -30,        /**< Watchdog timeout (fatal). */
 
-    WINK_ERR_OVERFLOW           = -40,        /**< 数值溢出 / 计算 UB（致命）；停止不可信计算并 halt。 */
+    WINK_ERR_OVERFLOW           = -40,        /**< Value overflow / arithmetic UB (fatal). */
 
-    WINK_ERR_CONFIG_CORRUPT_DEGRADED = -50,   /**< 配置损坏 → 用安全默认值继续（不停机，BAL 走保守分支）。 */
-    WINK_ERR_FAILED_INIT             = -51,   /**< 器件 init 失败 → 器件隔离，系统继续；强依赖 PT 可 `WINK_PT_EXIT`。 */
+    WINK_ERR_CONFIG_CORRUPT_DEGRADED = -50,   /**< Config corrupt -> fall back to safe defaults. */
+    WINK_ERR_FAILED_INIT             = -51,   /**< Device init failed -> isolate device, system continues. */
 
-    WINK_ERR_PANIC              = -99,        /**< 不可恢复内部错误（INVARIANT / 非法 PT 调用）；halt 等外部复位。 */
+    WINK_ERR_PANIC              = -99,        /**< Unrecoverable internal error (INVARIANT / illegal call); halt. */
 } wink_status_t;
 
+/**
+ * @brief Helper function to check if a status code indicates an error
+ * @param[in] s Status code to evaluate
+ * @return Non-zero (true) if error (s < 0), zero (false) if success (s == 0)
+ */
 static inline int wink_status_is_error(wink_status_t s) {
     return s < 0;
 }
@@ -177,4 +137,4 @@ static inline int wink_status_is_error(wink_status_t s) {
 }
 #endif
 
-#endif
+#endif /* WINK_STATUS_H */

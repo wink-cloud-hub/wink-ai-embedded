@@ -1,18 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file selftest_gpio_isr.c
- * @brief S4-isr: GPIO 中断注册 + arg roundtrip 验证。
- *
- * 验证：
- *   1. pal_gpio_init + pal_gpio_enable_interrupt 在测试 pin 上注册成功，
- *      无错误返回；
- *   2. ISR 被触发时 arg 指针正确（通过 magic 标记）。
- *      触发方式：启用 pal_test_enable_hardware_loopback(pin, pin) 自环，
- *      配 INPUT_OUTPUT 模式，软件翻转电平；在支持 GPIO 矩阵回灌触发的
- *      平台（ESP32 真机）会真的触发 ISR；host/wasm 因 loopback 不 fire ISR，
- *      只验证注册路径不崩，注册成功即 PASS（与 smoke S4 原验收一致）。
- *   3. 清理：disable_interrupt + synchronize + deinit loopback + release pin。
- *
- * 测试 pin 选择 22（DevKitC 上未被 smoke 其他 S-test 占用；避开 boot=0/led=?/trig=18/echo=19/pwm=4,5）。
+ * @brief GPIO ISR registration and argument roundtrip selftest.
  */
 #define LOG_TAG "selftest.isr"
 
@@ -49,7 +38,6 @@ wink_status_t wink_selftest_gpio_isr_roundtrip(wink_selftest_result_t *r)
     r->note = "ISR registration";
     r->metric = 0;
 
-    /* 防御性：先 release（防御未清理场景，结果忽略）*/
     WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, ISR_TEST_PIN, "selftest_isr"));
     wink_status_t st = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, ISR_TEST_PIN, "selftest_isr");
     if (wink_status_is_error(st) && st != WINK_ERR_BUSY) {
@@ -57,10 +45,8 @@ wink_status_t wink_selftest_gpio_isr_roundtrip(wink_selftest_result_t *r)
         return st;
     }
 
-    /* 配置 pin 为 bidir（输出可写，输入可触发中断）*/
     st = pal_gpio_init(ISR_TEST_PIN, PAL_GPIO_INPUT_OUTPUT);
     if (wink_status_is_error(st)) {
-        /* 回退到 INPUT_PULLUP（某些 target 不支持 INPUT_OUTPUT）*/
         st = pal_gpio_init(ISR_TEST_PIN, PAL_GPIO_INPUT_PULLUP);
         if (wink_status_is_error(st)) {
             WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, ISR_TEST_PIN, "selftest_isr"));
@@ -70,7 +56,6 @@ wink_status_t wink_selftest_gpio_isr_roundtrip(wink_selftest_result_t *r)
     }
     WINK_IGNORE_RESULT(pal_gpio_write(ISR_TEST_PIN, false));
 
-    /* 准备 ctx 并注册 ISR（ANY_EDGE：双向翻转都触发）*/
     static isr_test_ctx_t ctx;
     ctx.fired = 0;
     ctx.magic_seen = 0;
@@ -89,11 +74,9 @@ wink_status_t wink_selftest_gpio_isr_roundtrip(wink_selftest_result_t *r)
         r->note = "pal_gpio_enable_interrupt failed";
         return st;
     }
-    r->metric = 1;  /* registered successfully */
+    r->metric = 1;
 
-    /* 尝试自环 + 软件翻转，期望在真机上触发 ISR */
     if (pal_test_enable_hardware_loopback(ISR_TEST_PIN, ISR_TEST_PIN) == WINK_OK) {
-        /* busy-wait 让硬件环回稳定 */
         pal_os_busy_wait_us(50);
         WINK_IGNORE_RESULT(pal_gpio_write(ISR_TEST_PIN, true));
         pal_os_busy_wait_us(20);
@@ -102,7 +85,6 @@ wink_status_t wink_selftest_gpio_isr_roundtrip(wink_selftest_result_t *r)
         WINK_IGNORE_RESULT(pal_test_disable_hardware_loopback(ISR_TEST_PIN, ISR_TEST_PIN));
     }
 
-    /* 清理：disable + synchronize 保证 ISR 已退出 */
     WINK_IGNORE_RESULT(pal_gpio_disable_interrupt(ISR_TEST_PIN));
     WINK_IGNORE_RESULT(pal_gpio_synchronize_interrupt(ISR_TEST_PIN));
 
@@ -116,7 +98,6 @@ wink_status_t wink_selftest_gpio_isr_roundtrip(wink_selftest_result_t *r)
             return WINK_ERR_HARDWARE;
         }
     } else {
-        /* 平台未支持 loopback 触发（host/wasm）——注册成功本身就是 PASS */
         r->note = "ISR registered (firing requires physical/hardware signal)";
     }
 

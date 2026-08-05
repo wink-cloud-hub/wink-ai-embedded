@@ -1,13 +1,14 @@
+// SPDX-License-Identifier: Apache-2.0
 #define LOG_TAG "dal_rc_servo"
 #include "actuator/dal_rc_servo.h"
 #include "pal_hal.h"
 #include "pal_resource.h"
 #include "pal_log.h"
 
-#include <string.h>   /* memcpy（ADR-0008 apply_override 反序列化） */
+#include <string.h>   /* memcpy (ADR-0008 apply_override deserialization) */
 
-#define SERVO_PWM_FREQ_HZ             50u     /* 50Hz -> 周期 20ms */
-#define SERVO_PERIOD_US               20000u  /* 20ms = 20000µs，单一真相源 */
+#define SERVO_PWM_FREQ_HZ             50u     /* 50Hz -> period 20ms */
+#define SERVO_PERIOD_US               20000u  /* 20ms = 20000µs */
 #define SERVO_MIN_ANGLE_DDEG          0u
 #define SERVO_DEFAULT_MAX_ANGLE_DDEG  1800u   /* 180.0° */
 #define SERVO_DEFAULT_MIN_PULSE_US    500u
@@ -21,9 +22,9 @@ static uint16_t servo_effective_max_angle_ddeg(const dal_rc_servo_config_t *cfg)
     return cfg->max_angle_ddeg;
 }
 
-/** Map DAL servo config → PAL PWM config (no pal_* types in public headers). */
+/** Map DAL servo config -> PAL PWM config (no pal_* types in public headers). */
 static wink_status_t servo_map_pwm_config(const dal_rc_servo_config_t *servo_cfg,
-                                          pal_pwm_config_t *out_pwm_cfg)
+                                           pal_pwm_config_t *out_pwm_cfg)
 {
     if (servo_cfg == NULL || out_pwm_cfg == NULL) {
         return WINK_ERR_INVALID_ARG;
@@ -48,7 +49,7 @@ wink_status_t dal_rc_servo_init(dal_rc_servo_t *dev, const dal_rc_servo_config_t
     if (dev->initialized) { return WINK_ERR_ALREADY_INITIALIZED; }
     if (cfg->pwm_channel >= PAL_PWM_CHANNELS) { return WINK_ERR_INVALID_ARG; }
 
-    /* Normalize pulse range: 0/invalid → defaults. */
+    /* Normalize pulse range: 0/invalid -> defaults. */
     uint16_t min_pulse = (cfg->min_pulse_us > 0) ? cfg->min_pulse_us : SERVO_DEFAULT_MIN_PULSE_US;
     uint16_t max_pulse = (cfg->max_pulse_us > min_pulse) ? cfg->max_pulse_us : SERVO_DEFAULT_MAX_PULSE_US;
 
@@ -56,7 +57,7 @@ wink_status_t dal_rc_servo_init(dal_rc_servo_t *dev, const dal_rc_servo_config_t
     wink_status_t map_st = servo_map_pwm_config(cfg, &pwm_cfg);
     if (wink_status_is_error(map_st)) { return map_st; }
 
-    /* PWM channel conflict detection — two servos on same channel with different owners → BUSY. */
+    /* PWM channel conflict detection - two servos on same channel with different owners -> BUSY. */
     wink_status_t rs = pal_resource_claim(PAL_RESOURCE_PWM_CHANNEL,
                                           (uint32_t)cfg->pwm_channel, cfg->owner);
     if (wink_status_is_error(rs)) {
@@ -82,7 +83,7 @@ wink_status_t dal_rc_servo_init(dal_rc_servo_t *dev, const dal_rc_servo_config_t
     dev->current_angle_ddeg = 0;
     dev->initialized = true;
 
-    /* DAL-L-006: explicitly write zero-energy output (duty=0 → limp).
+    /* DAL-L-006: explicitly write zero-energy output (duty=0 -> limp).
      * Do not rely on PAL init default. */
     WINK_IGNORE_UNUSED(pal_pwm_set_duty(dev->config.pwm_channel, 0.0f));
 
@@ -120,12 +121,12 @@ wink_status_t dal_rc_servo_set_angle(dal_rc_servo_t *dev, uint16_t angle_ddeg) {
 }
 
 wink_status_t dal_rc_servo_safe_off(dal_rc_servo_t *dev) {
-    /* DAL-L-022: idempotent on uninitialized handles — invoked from
+    /* DAL-L-022: idempotent on uninitialized handles - invoked from
      * safe_off_all() on watchdog/panic/rollback paths where "nothing to
      * shut off" is success, not an error. */
     if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_OK; }
-    /* duty=0 → servo limp = safe; no sleep. Servo-specific only (see header red-line note). */
+    /* duty=0 -> servo limp = safe; no sleep. Servo-specific only. */
     return pal_pwm_set_duty(dev->config.pwm_channel, 0.0f);
 }
 
@@ -136,7 +137,7 @@ wink_status_t dal_rc_servo_apply_override(void *dev, const uint8_t *params, uint
     /* DAL-S-015: config is immutable after init; override only valid before init. */
     if (s->initialized) { return WINK_ERR_INVALID_ARG; }
 
-    /* Blob layout (7 bytes, **not** containing owner — owner comes via cfg):
+    /* Blob layout (7 bytes, not containing owner - owner comes via cfg):
      *   byte 0    : pwm_channel (u8)
      *   byte 1..2 : min_pulse_us (u16 little-endian)
      *   byte 3..4 : max_pulse_us (u16 little-endian)
@@ -153,7 +154,7 @@ wink_status_t dal_rc_servo_apply_override(void *dev, const uint8_t *params, uint
     memcpy(&max_pulse_us,    params + 3, 2);
     memcpy(&max_angle_ddeg,  params + 5, 2);
 
-    /* Light validation — illegal values do not write any field (defense in depth with init). */
+    /* Light validation - illegal values do not write any field (defense in depth with init). */
     if (pwm_channel >= PAL_PWM_CHANNELS) { return WINK_ERR_INVALID_ARG; }
     if (min_pulse_us == 0 || max_pulse_us <= min_pulse_us) { return WINK_ERR_INVALID_ARG; }
 

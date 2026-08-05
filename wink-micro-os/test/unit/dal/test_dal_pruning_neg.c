@@ -1,20 +1,13 @@
-/*
- * test_dal_pruning_neg.c — compile-negative test case.
- *
- * This TU is expected to FAIL compilation with -DWINK_USE_RC_SERVO=0.
- * It deliberately calls dal_rc_servo_init() even though the driver is
- * disabled; the WINK_UNAVAILABLE_MSG stub in dal_rc_servo.h should emit a
- * compile error whose message points the user at remediation
- * ("add a \"servo\" device to wink-app.json").
- *
- * It is compiled directly by test_dal_pruning_neg.cmake outside the
- * normal build (never linked into libdal or any host test binary).
+// SPDX-License-Identifier: Apache-2.0
+/**
+ * @file test_dal_pruning_neg.c
+ * @brief Compile-negative test case for DAL driver pruning.
  */
 #include "dal_rc_servo.h"
 
 int main(void) {
     dal_rc_servo_t dev;
     dal_rc_servo_config_t cfg = {0};
-    (void)dal_rc_servo_init(&dev, &cfg);  /* expect: unavailable error here */
+    (void)dal_rc_servo_init(&dev, &cfg);
     return 0;
 }

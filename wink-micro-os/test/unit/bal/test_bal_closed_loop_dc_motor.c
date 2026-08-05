@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
+/**
+ * @file test_bal_closed_loop_dc_motor.c
+ * @brief BAL closed loop DC motor controller unit tests.
+ */
 #define LOG_TAG "tst_cl_motor"
 
 #include "unity.h"

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file test_light_dispatch_flag.c
  * @brief Unit tests for LIGHT dispatch in-flag and WCET enforcement
@@ -27,7 +28,7 @@
 #include "wink_fault.h"
 #include "pal_osal.h"
 
-/* ADR-0017 层 1 例外：本 TU 合法调用 WINK_BLOCKING API. */
+/* ADR-0017 Layer 1 exception: this TU legitimately invokes WINK_BLOCKING API. */
 #include "compat/wink_test_compat.h"
 WINK_TEST_ALLOW_DEPRECATED
 

@@ -22,6 +22,9 @@
 {
   "app_name": "oled_dashboard",      // 应用唯一标识（必须与目录名一致）
   "board": "esp32_devkitc",          // 目标开发板型号
+  "system": {                        // 可选：系统级能力声明（见 §1.4）
+    "connectivity": { "wifi": false, "ble": false }
+  },
   "devices": {                       // 所有外设实例集合
     "<instance_id>": {               // 实例唯一 ID（格式建议：位置/功能_类型，如 status_oled）
       "type": "<peripheral_type>",   // 外设类型（必须与 Manifest 声明一致）
@@ -43,6 +46,7 @@
 | :--- | :--- | :--- | :--- |
 | `app_name` | `string` | **是** | 应用程序名称（snake_case 命名）。 |
 | `board` | `string` | **是** | 指定目标物理开发板型号（例如 `esp32_devkitc`）。系统会根据此字段加载对应的硬件默认总线定义。 |
+| `system` | `object` | 否 | 系统级能力声明，详见 §1.4。 |
 
 ### 3. 核心转换与引脚识别契约 (CRITICAL)
 
@@ -52,6 +56,35 @@
 2. **引脚识别规则 (`*_pin`)**：
    - 字段名**必须以 `_pin` 结尾**（例如 `gpio_pin`、`trig_pin`、`sda_pin`），系统才会将其提取至 `pinMapping`。
    - 若忘记加 `_pin`（例如误写成 `"pin": 2` 或 `"sda": 21`），该字段会被错误归类为普通属性 `properties`，导致物理引脚无法绑定！
+
+### 4. 系统能力声明 (`system.connectivity`)
+
+可选顶级段，声明本 App 是否启用 **SoC 内置 radio 协议栈**。目前唯一作用是驱动 ADC 静态门禁（ADR-0057 §6 / Plan 00.5 §7）：ESP32 的 ADC2 在 Wi-Fi/BLE 启用后部分通道不可用，codegen 在生成期据此 Fail-Loud。
+
+```json
+"system": {
+  "connectivity": {
+    "wifi": true,
+    "ble": false
+  }
+}
+```
+
+| 字段 | 类型 | 默认 | 说明 |
+| :--- | :--- | :--- | :--- |
+| `system.connectivity.wifi` | `boolean` | `false` | `true` = App 会初始化 SoC 内置 Wi-Fi 协议栈，触发 ADC2 通道限制。 |
+| `system.connectivity.ble` | `boolean` | `false` | `true` = App 会初始化 SoC 内置 BLE 协议栈，同样占用 ADC2。 |
+
+**语义边界（重要）：**
+
+- 该段描述的是 **主控 SoC 内置 radio**，不是外接通信模组。经 UART/SPI 挂载的 ESP8266、ESP32-C3 AT 模组、4G Cat.1 模块等是 `devices` 里的 comm 外设，**不**置位 `system.connectivity.wifi`，也不会触发 ADC2 门禁。
+- **board 有 Wi-Fi 硬件 ≠ App 启用 Wi-Fi**。纯本地应用（无网络）即便跑在 `esp32_devkitc` 上也可以自由使用 ADC2 引脚；只有显式声明 `wifi: true` 才会拦截 ADC2 脚。
+- 门禁规则（详见 `app_codegen.py::_validate_adc_gate`）：
+  - **R1**：`role: analog_input`（或驱动 `default_role: analog_input`）的设备所接 `gpio_pin` 必须在 board json 的 `adc.pins` 中，否则该脚无 ADC 能力；
+  - **R2**：所接脚 `wifi_conflict: true`（即 ADC2 通道）且 `wifi || ble` 为真 → Fail-Loud，报错建议改用 ADC1 引脚或关闭 radio；
+  - **R3**：同一 ADC `(unit, channel)` 被两个模拟外设实例声明 → Fail-Loud。
+- 报错信息会指明实例 id、引脚、所属 ADC unit 与修复建议（例如 "GPIO25 属 ADC2，在 system.connectivity.wifi=true 时不可用"）。
+- 省略整个 `system` 段等价于 `wifi: false, ble: false`（不启用内置 radio）。非法子字段/类型由 `validate_top_level` Fail-Loud。
 
 ---
 
@@ -246,3 +279,9 @@ x1 协议：A 上升沿采 B；B 高 ++，B 低 --；无 `pin_b` 仅递增。
 3. **屏幕无显示或通信失败**
    * ❌ **原因**：`i2c_addr` 填写了十六进制字符串（如 `"0x3C"`）或填写错误。
    * ✅ **解决**：`i2c_addr` 必须填 **十进制数字**（`0x3C` 转换为十进制为 `60`）。
+
+4. **ADC 静态门禁报错（analog_input 设备）**
+   * `gpio_pin X does not support ADC on board '...'`（R1）：该 GPIO 在板级 json 的 `adc.pins` 中缺失，没有 ADC 能力。更换为 ADC 引脚（如 `esp32_devkitc` 的 GPIO 32–39）。
+   * `belongs to ADC2 (wifi_conflict=true), which conflicts with system.connectivity.wifi/ble=true`（R2）：该引脚属于 ADC2，而 App 声明启用 SoC 内置 Wi-Fi/BLE。改用 ADC1 引脚（GPIO 32–39），或把 `system.connectivity.wifi/ble` 设为 `false`。外接 UART/SPI Wi-Fi 模组不会触发此门禁——只有 SoC 内置 radio 才会。
+   * `ADC channel conflict detected: devices '...' and '...' share ADC unit N channel M`（R3）：两个模拟外设接到了映射到同一 ADC 通道的不同引脚上。更换其中一个引脚。
+   * 门禁按 **Role** 判定（设备 `role` 字段或驱动 `default_role` 为 `analog_input`），不是按 `type` 名字硬编码。新增模拟类驱动时，在其 codegen yaml 里正确声明 `default_role: analog_input` 或 `role_bindings.analog_input` 即可纳入门禁。

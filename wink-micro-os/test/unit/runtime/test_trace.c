@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
+/**
+ * @file test_trace.c
+ * @brief Wink trace and fault logging unit tests.
+ */
 #include "unity.h"
 #include "wink_trace.h"
 
@@ -18,7 +23,6 @@ void test_fault_recorded_in_order(void) {
 }
 
 void test_ring_buffer_overwrites_oldest(void) {
-    /* WINK_TRACE_CAPACITY 见 wink_trace.h；填满后再写，count 封顶、last 为最新 */
     for (uint32_t i = 0; i < WINK_TRACE_CAPACITY + 5; i++) {
         wink_trace_fault(i);
     }
@@ -31,7 +35,6 @@ void test_last_when_empty_is_zero(void) {
 }
 
 void test_warn_counter_independent_of_fault(void) {
-    /* faults 和 warns 是两个独立计数器：互不影响。 */
     wink_trace_fault(1001);
     wink_trace_fault(1002);
     wink_trace_warn(8002);
@@ -39,7 +42,6 @@ void test_warn_counter_independent_of_fault(void) {
     wink_trace_warn(8002);
     TEST_ASSERT_EQUAL_UINT32(2, wink_trace_count());
     TEST_ASSERT_EQUAL_UINT32(3, wink_warn_count());
-    /* warns 不进 fault 环形缓冲，last 仍指向最新 fault。 */
     TEST_ASSERT_EQUAL_UINT32(1002, wink_trace_last());
 }
 

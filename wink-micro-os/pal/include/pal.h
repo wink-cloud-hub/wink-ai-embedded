@@ -1,9 +1,10 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file pal.h
- * @brief PAL 聚合头 —— 一次 include 拉全 PAL 契约面（HAL + OSAL + 系统服务 + 状态码）。
- *        内核内部组件（dal/runtime/trace/targets）可 #include "pal.h"；
- *        App/BAL 禁用本头（见 03-directory-architecture.md §6 App/BAL 禁入规则），
- *        它们只应 include wink_status.h（基础类型例外）。
+ * @brief PAL aggregate header - Includes the entire PAL contract surface (HAL + OSAL + system services + status codes).
+ *        Kernel internal components (dal/runtime/trace/targets) may #include "pal.h".
+ *        App/BAL components are prohibited from including this header (see 03-directory-architecture.md §6).
+ *        App/BAL should only include wink_status.h for status types.
  */
 #ifndef PAL_H
 #define PAL_H

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file test_fault_log.c
  * @brief ADR-0009 Wave 2 Task 8 — fault audit log (causal-chain tracing) tests.

@@ -1,17 +1,18 @@
+// SPDX-License-Identifier: Apache-2.0
 #include <stddef.h>
 #include "wink_sim_physical.h"
 
-const wink_sim_faults_t WINK_SIM_FAULTS_IDEAL = {0};  /* 全 0 = 理想，无退化 */
+const wink_sim_faults_t WINK_SIM_FAULTS_IDEAL = {0};
 
 float wink_phys_prng_next(uint32_t *seed) {
     if (seed == NULL) { return 0.0f; }
     *seed = (*seed * 1103515245u + 12345u) & 0x7fffffffu;
-    return (float)(*seed >> 8) / 8388608.0f; /* Use top 23 bits to ensure exact FPU representation and strictly [0, 1) range */
+    return (float)(*seed >> 8) / 8388608.0f;
 }
 
 bool wink_phys_debounce_step(wink_phys_debounce_ctx_t *ctx,
                              bool target_level, uint64_t now_us, uint32_t bounce_us) {
-    if (ctx == NULL) { return target_level; }              /* 降级 */
+    if (ctx == NULL) { return target_level; }
     if (bounce_us == 0u) {
         ctx->stable_level = target_level;
         ctx->in_bounce = false;
@@ -21,15 +22,14 @@ bool wink_phys_debounce_step(wink_phys_debounce_ctx_t *ctx,
         if (!ctx->in_bounce) {
             ctx->bounce_start_us = now_us;
             ctx->in_bounce = true;
-            ctx->bounce_flip = false;                      /* 每次启动抖动重置翻转状态，保证测试确定性 */
-            ST_DEBOUNCE_START(-1, target_level, now_us, bounce_us);  /* pin=-1 表示算法层，caller 层补充 */
+            ctx->bounce_flip = false;
+            ST_DEBOUNCE_START(-1, target_level, now_us, bounce_us);
         }
-        /* 防御时钟回拨/重置 */
         if (now_us < ctx->bounce_start_us) {
             ctx->bounce_start_us = now_us;
         }
         if (now_us - ctx->bounce_start_us < bounce_us) {
-            ctx->bounce_flip = !ctx->bounce_flip;          /* 强制交替：每次采样翻转（采样周期无关） */
+            ctx->bounce_flip = !ctx->bounce_flip;
             bool result = ctx->bounce_flip ? target_level : !target_level;
             ST_DEBOUNCE_IN_WINDOW(-1, ctx->bounce_flip, result);
             return result;
@@ -38,27 +38,32 @@ bool wink_phys_debounce_step(wink_phys_debounce_ctx_t *ctx,
         ctx->in_bounce = false;
         ST_DEBOUNCE_SETTLED(-1, target_level);
     } else {
-        ctx->in_bounce = false;                            /* 理想电平提前回弹，重置抖动标志防止后续丢失去抖保护 */
+        ctx->in_bounce = false;
     }
     return ctx->stable_level;
 }
 
 float wink_phys_rc_lowpass(wink_phys_rc_ctx_t *ctx, float target, uint64_t now_us,
                            float tau_s, float noise_v, uint32_t *prng_seed) {
-    if (ctx == NULL) { return target; }                    /* 降级 */
+    if (ctx == NULL) { return target; }
     if (!ctx->is_initialized || now_us < ctx->last_us) {
         ctx->current = target;
         ctx->last_us = now_us;
         ctx->is_initialized = true;
-        ST_RC_STEP(-1, target, now_us, tau_s, target);     /* chan=-1 表示算法层，caller 层补充 */
+        ST_RC_STEP(-1, target, now_us, tau_s, target);
         return target;
     }
-    float dt = (float)(now_us - ctx->last_us) / 1000000.0f; /* 字面量统一 f 后缀，避免中间 double 提升，保确定性 */
-    ctx->last_us = now_us;
-    if (tau_s > 0.0f && dt > 0.0f) {
-        float alpha = dt / tau_s;
-        if (alpha > 1.0f) { alpha = 1.0f; }
-        ctx->current += (target - ctx->current) * alpha;
+    if (tau_s <= 0.0f) {
+        ctx->current = target;
+        ctx->last_us = now_us;
+    } else {
+        float dt = (float)(now_us - ctx->last_us) / 1000000.0f;
+        ctx->last_us = now_us;
+        if (dt > 0.0f) {
+            float alpha = dt / tau_s;
+            if (alpha > 1.0f) { alpha = 1.0f; }
+            ctx->current += (target - ctx->current) * alpha;
+        }
     }
     float out = ctx->current;
     if (noise_v > 0.0f && prng_seed != NULL) {
@@ -70,8 +75,6 @@ float wink_phys_rc_lowpass(wink_phys_rc_ctx_t *ctx, float target, uint64_t now_u
     return out;
 }
 
-/* warmup/采样间隔检查（§3.2）：预热内返回 WINK_ERR_BUSY；采样过近返回 WINK_ERR_TIMEOUT；否则 OK。
- * last_sample_us=NULL → 仅检查预热；时钟回拨→强制 OK+reset last_sample。 */
 wink_status_t wink_phys_warmup_check(uint64_t now_us, uint64_t power_on_us,
                                      uint32_t warmup_us, uint32_t sample_interval_us,
                                      uint64_t *last_sample_us) {
@@ -84,7 +87,7 @@ wink_status_t wink_phys_warmup_check(uint64_t now_us, uint64_t power_on_us,
     }
     if (last_sample_us != NULL && sample_interval_us > 0u) {
         if (now_us < *last_sample_us) {
-            *last_sample_us = now_us; /* 时钟回拨：强制复位 */
+            *last_sample_us = now_us;
             status = WINK_OK;
             ST_WARMUP_CHECK(now_us, power_on_us, warmup_us, elapsed, status);
             return status;

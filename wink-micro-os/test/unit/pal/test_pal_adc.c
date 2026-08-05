@@ -1,4 +1,8 @@
-/* PAL ADC 子系统单元测试 */
+// SPDX-License-Identifier: Apache-2.0
+/**
+ * @file test_pal_adc.c
+ * @brief PAL ADC subsystem unit tests.
+ */
 #include "unity.h"
 #include "wink_status.h"
 #include "hal/pal_adc.h"
@@ -44,10 +48,8 @@ void test_pal_adc_uninitialized_reads(void) {
 void test_pal_adc_init_deinit_reinit(void) {
     pal_adc_config_t cfg = { .pin = 36, .full_scale_mv = 3100, .resolution_bits = 12 };
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_adc_init(0, &cfg));
-    /* 重复 init 同通道返回 ALREADY_INITIALIZED */
     TEST_ASSERT_EQUAL_INT(WINK_ERR_ALREADY_INITIALIZED, pal_adc_init(0, &cfg));
 
-    /* deinit 后可重新 init */
     pal_adc_deinit(0);
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_adc_init(0, &cfg));
 }
@@ -71,7 +73,6 @@ void test_pal_adc_inject_raw_and_read(void) {
     pal_adc_config_t cfg = { .pin = 34, .full_scale_mv = 3300, .resolution_bits = 12 };
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_adc_init(2, &cfg));
 
-    /* 注入 2047 采样 Raw (~1650mV 对应半刻度) */
     pal_host_adc_inject_raw(2, 2047);
 
     uint16_t raw = 0;
@@ -86,7 +87,6 @@ void test_pal_adc_inject_mv_and_read(void) {
     pal_adc_config_t cfg = { .pin = 35, .full_scale_mv = 3100, .resolution_bits = 12 };
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_adc_init(3, &cfg));
 
-    /* 注入 3100mV (满量程 4095) */
     pal_host_adc_inject_mv(3, 3100);
 
     uint16_t raw = 0;
@@ -97,12 +97,54 @@ void test_pal_adc_inject_mv_and_read(void) {
     TEST_ASSERT_EQUAL_UINT16(3100, mv);
 }
 
+void test_pal_adc_zero_value_cache_contract(void) {
+    pal_adc_config_t cfg = { .pin = 32, .full_scale_mv = 3300, .resolution_bits = 12 };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_adc_init(4, &cfg));
+
+    pal_host_adc_inject_raw(4, 0);
+
+    uint16_t raw = 0xFFFF;
+    uint16_t mv = 0xFFFF;
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_adc_read_raw(4, &raw));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_adc_read_mv(4, &mv));
+    TEST_ASSERT_EQUAL_UINT16(0, raw);
+    TEST_ASSERT_EQUAL_UINT16(0, mv);
+}
+
+void test_pal_adc_read_mv_before_read_raw_returns_zero_not_timeout(void) {
+    pal_adc_config_t cfg = { .pin = 33, .full_scale_mv = 3300, .resolution_bits = 12 };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_adc_init(5, &cfg));
+
+    uint16_t mv = 0xFFFF;
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_adc_read_mv(5, &mv));
+    TEST_ASSERT_EQUAL_UINT16(0, mv);
+}
+
+void test_pal_adc_raw_mv_consistency_across_scale(void) {
+    pal_adc_config_t cfg = { .pin = 34, .full_scale_mv = 3300, .resolution_bits = 12 };
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_adc_init(6, &cfg));
+
+    static const struct { uint16_t raw; uint16_t expect_mv; } cases[] = {
+        { 0,    0   },
+        { 2048, 1650 },
+        { 4095, 3300 },
+    };
+    for (unsigned i = 0; i < sizeof(cases)/sizeof(cases[0]); i++) {
+        pal_host_adc_inject_raw(6, cases[i].raw);
+        uint16_t raw = 0, mv = 0, raw2 = 0;
+        TEST_ASSERT_EQUAL_INT(WINK_OK, pal_adc_read_raw(6, &raw));
+        TEST_ASSERT_EQUAL_INT(WINK_OK, pal_adc_read_mv(6, &mv));
+        TEST_ASSERT_EQUAL_INT(WINK_OK, pal_adc_read_raw(6, &raw2));
+        TEST_ASSERT_EQUAL_UINT16(cases[i].raw, raw);
+        TEST_ASSERT_EQUAL_UINT16(cases[i].expect_mv, mv);
+        TEST_ASSERT_EQUAL_UINT16(cases[i].raw, raw2);
+    }
+}
+
 void test_pal_adc_dual_resource_claim(void) {
-    /* 模拟 DAL 视角：同时 claim PAL_RESOURCE_ADC_CHANNEL 与 PAL_RESOURCE_GPIO_PIN */
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_resource_claim(PAL_RESOURCE_ADC_CHANNEL, 0, "dal_analog_knob_0"));
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_resource_claim(PAL_RESOURCE_GPIO_PIN, 36, "dal_analog_knob_0"));
 
-    /* 另一个 owner 重复占用 GPIO 脚或 ADC 通道返回 BUSY */
     TEST_ASSERT_EQUAL_INT(WINK_ERR_BUSY, pal_resource_claim(PAL_RESOURCE_GPIO_PIN, 36, "dal_button_0"));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_BUSY, pal_resource_claim(PAL_RESOURCE_ADC_CHANNEL, 0, "dal_sensor_1"));
 }
@@ -115,6 +157,9 @@ int main(void) {
     RUN_TEST(test_pal_adc_pin_channel_mapping);
     RUN_TEST(test_pal_adc_inject_raw_and_read);
     RUN_TEST(test_pal_adc_inject_mv_and_read);
+    RUN_TEST(test_pal_adc_zero_value_cache_contract);
+    RUN_TEST(test_pal_adc_read_mv_before_read_raw_returns_zero_not_timeout);
+    RUN_TEST(test_pal_adc_raw_mv_consistency_across_scale);
     RUN_TEST(test_pal_adc_dual_resource_claim);
     return UNITY_END();
 }

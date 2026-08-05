@@ -347,3 +347,7 @@ add_custom_target(check
     COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )
+
+# Wasm-side ADC unit test (emcc + Node). Gracefully skips when emcc or node is
+# not on PATH. Registered as ctest label "wasm".
+include(${CMAKE_CURRENT_SOURCE_DIR}/wasm/pal_adc/add_wink_wasm_adc_test.cmake)

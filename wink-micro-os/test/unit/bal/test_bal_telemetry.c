@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file test_bal_telemetry.c
  * @brief Unit tests for wink_telemetry_default (host, virtual time).

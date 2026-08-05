@@ -1,23 +1,14 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file pal_irq_esp32.c
- * @brief ESP32 target 的 pal_irq.h 实现：generic wrapper / direct trampoline /
- *        shared chain wrapper / synchronize / set_pending / clear_pending.
- *
- * 由 targets/esp32/pal_hal_esp32.c 拆出（PLAN-20260701-PAL-TARGET-P1-MAINT Task 2）。
- * 契约不变：仅物理位置调整；见 pal/include/pal_irq.h。
- *
- * ✅ R-5：`s_esp32_shared_sync_ops` 与 shared_chain synchronize→free 时序按字节保留。
- * ✅ R-1：pal_irq_* 公共 API 签名、返回码、handler 调用顺序均与旧实现等价。
- * ⚠️ 跨 TU：pal_irq_synchronize(~0U) 通过 pal_hal_internal_esp32.h 调 GPIO TU 的
- *   pal_esp32_gpio_synchronize_all() 完成 GPIO ISR 全量等待，避免暴露
- *   s_gpio_irq_in_flight[]。
+ * @brief ESP32 target PAL IRQ subsystem implementation.
  */
 #include "pal_hal.h"
 #define WINK_ALLOW_ADVANCED_IRQ_APIS
 #include "pal_irq_advanced.h"
-#include "pal_osal.h"        /* pal_os_get_us() for synchronize timeout */
-#include "pal_atomic_esp32.h" /* target-private atomic helpers */
-#include "pal_hal_internal_esp32.h" /* pal_esp32_gpio_synchronize_all() */
+#include "pal_osal.h"
+#include "pal_atomic_esp32.h"
+#include "pal_hal_internal_esp32.h"
 
 #if defined(ESP_PLATFORM)
 #include "esp_err.h"
@@ -27,31 +18,12 @@
 #include "freertos/portmacro.h"
 #include "xtensa/hal.h"
 
-/* ⚠️ SMP ISR 同步机制（ADR-IRQ-007 完整实现）
- *
- * 问题：pal_irq_disable() 返回后，另一个核心可能仍在执行该 ISR。
- * 如果此时释放 ISR 使用的内存，会导致 UAF (Use-After-Free)。
- *
- * 解决方案：
- * 1. 每个中断号维护一个原子 in_flight 计数器
- * 2. ISR wrapper 在入口处 +1，出口处 -1
- * 3. pal_irq_synchronize() 忙等待计数器归 0
- * 4. 增加超时保护，避免死锁
- */
 static volatile uint32_t s_irq_in_flight[32] = {0};
 
-#define SYNCHRONIZE_TIMEOUT_US  100000  /* 100ms 超时（远大于 ISR 最大执行时间） */
+#define SYNCHRONIZE_TIMEOUT_US  100000
 
-/* ─────────────────────────────────────────────────────────
- * 中断控制器核心接口实现（ESP32 平台）
- * ───────────────────────────────────────────────────────── */
-
-/* 逻辑中断句柄表（32 个逻辑中断源，未来扩展至 Device Tree） */
 static intr_handle_t s_irq_handles[32] = {NULL};
 
-
-
-/* 通用 ISR wrapper：跟踪 in-flight 计数并调用用户 handler */
 typedef struct {
     pal_isr_t user_handler;
     void     *user_arg;
@@ -66,10 +38,8 @@ static void PAL_ISR generic_isr_wrapper(void *arg)
         return;
     }
 
-    /* ✅ 第一时间清除 Pending 标志，防止重入与中断风暴 */
     pal_irq_clear_pending(irq_num);
 
-    /* ✅ SMP 同步：标记 ISR 正在执行 */
     Atomic_Increment_u32(&s_irq_in_flight[irq_num]);
 
     isr_wrapper_ctx_t *ctx = &s_isr_ctx[irq_num];
@@ -77,56 +47,40 @@ static void PAL_ISR generic_isr_wrapper(void *arg)
         ctx->user_handler(ctx->user_arg);
     }
 
-    /* ✅ SMP 同步：ISR 执行完成 */
     Atomic_Decrement_u32(&s_irq_in_flight[irq_num]);
 }
 
 wink_status_t pal_irq_enable(uint32_t irq_num, pal_irq_prio_t prio,
                               pal_isr_t handler, void *arg)
 {
-    /* P1-P5-9: prio 边界检查——使用命名常量而非 magic 0，语义清晰。
-     * PAL_IRQ_PRIO_LOW = 1, PAL_IRQ_PRIO_HIGH = 3 (见 pal_irq.h)。 */
     if (irq_num >= 32 || handler == NULL ||
         prio < PAL_IRQ_PRIO_LOW || prio > PAL_IRQ_PRIO_HIGH) {
         return WINK_ERR_INVALID_ARG;
     }
 
-    /* P1-P5-4: irq_num 强校验（ADR-0018）。
-     * pal_irq_enable 仅支持 CPU 内部软件中断（ETS_INTERNAL_SW0/SW1，逻辑号 7/8）。
-     * GPIO 中断请通过 pal_gpio_enable_interrupt_ex()。其它 irq_num 无正确
-     * source 映射，历史行为是把 irq_num 直接当 IDF source id 传入 esp_intr_alloc
-     * ——语义不定义且易误用，此处显式拒绝。 */
     if (irq_num != 7 && irq_num != 8) {
         return WINK_ERR_INVALID_ARG;
     }
 
-    /* 优先级映射表（3 级）
-     * 注意：ESP_INTR_FLAG_LEVELn 是标志位，不能直接用数值做 | 运算
-     */
     static const int s_prio_flag_map[PAL_IRQ_PRIO_COUNT] = {
         [PAL_IRQ_PRIO_LOW]      = ESP_INTR_FLAG_LEVEL1,
         [PAL_IRQ_PRIO_NORMAL]   = ESP_INTR_FLAG_LEVEL2,
-        [PAL_IRQ_PRIO_HIGH]     = ESP_INTR_FLAG_LEVEL3,  /* configMAX_SYSCALL_INTERRUPT_PRIORITY is Level 3 */
+        [PAL_IRQ_PRIO_HIGH]     = ESP_INTR_FLAG_LEVEL3,
     };
 
     int source = (irq_num == 7) ? ETS_INTERNAL_SW0_INTR_SOURCE
                                  : ETS_INTERNAL_SW1_INTR_SOURCE;
     int flags = ESP_INTR_FLAG_IRAM | s_prio_flag_map[prio];
 
-    /* P1-P5-3: install-first-then-swap 语义。
-     * 先在栈局部变量上分配新句柄；若成功，再释放旧句柄并原子性替换。
-     * 若 esp_intr_alloc 失败，旧的 s_irq_handles[irq_num] / s_isr_ctx[irq_num]
-     * 保持不变，调用方回到干净的"就绪"状态而非孤儿态。 */
     intr_handle_t new_handle = NULL;
     esp_err_t err = esp_intr_alloc(source, flags,
                                     (intr_handler_t)generic_isr_wrapper,
                                     (void *)(uintptr_t)irq_num,
                                     &new_handle);
     if (err != ESP_OK) {
-        return WINK_ERR_HARDWARE;   /* 旧状态原样保留，未破坏现有 handler */
+        return WINK_ERR_HARDWARE;
     }
 
-    /* 新句柄安装成功后，再释放旧句柄并覆盖 ctx / handle */
     if (s_irq_handles[irq_num] != NULL) {
         (void)esp_intr_free(s_irq_handles[irq_num]);
         s_irq_handles[irq_num] = NULL;
@@ -177,17 +131,7 @@ void pal_irq_clear_pending(uint32_t irq_num)
 
 void pal_irq_synchronize(uint32_t irq_num)
 {
-    /* ✅ SMP 同步完整实现（ADR-IRQ-007）：
-     *
-     * 机制：每个 ISR wrapper 在进入时 +1，退出时 -1。
-     * synchronize() 忙等待计数归 0，确保所有核心都已退出 ISR。
-     *
-     * 这是 Linux 内核 synchronize_irq() 在 ESP32 上的简化实现。
-     * 无需 IPI，因为原子操作在 SMP 下是全局可见的。
-     */
-
     if (irq_num == ~0U) {
-        /* 等待所有中断：逐个检查 32 个逻辑中断 + GPIO 中断 */
         for (uint32_t i = 0; i < 32; i++) {
             uint64_t start = pal_os_get_us();
             while (Atomic_Load_u32(&s_irq_in_flight[i]) > 0) {
@@ -198,11 +142,8 @@ void pal_irq_synchronize(uint32_t irq_num)
                 }
             }
         }
-        /* GPIO 中断由 pal_hal_gpio_esp32.c 拥有 s_gpio_irq_in_flight[]；
-         * 通过 target-private 内部函数完成全量等待，避免跨 TU 暴露数组。 */
         pal_esp32_gpio_synchronize_all(SYNCHRONIZE_TIMEOUT_US);
     } else {
-        /* 等待单个中断 */
         uint64_t start = pal_os_get_us();
         while (Atomic_Load_u32(&s_irq_in_flight[irq_num]) > 0) {
             if (pal_os_get_us() - start > SYNCHRONIZE_TIMEOUT_US) {
@@ -213,43 +154,22 @@ void pal_irq_synchronize(uint32_t irq_num)
         }
     }
 
-    /* 确保后续的内存释放操作（如 free）不会被编译器重排到等待之前 */
     esp_memory_barrier();
 }
 
-/* ─────────────────────────────────────────────────────────
- * 全局中断锁实现（双等级语义，ADR-IRQ-006）
- * ───────────────────────────────────────────────────────── */
-
 uint32_t pal_irq_save(void)
 {
-    /* ✅ 设置到最高屏蔽级别，禁用所有可屏蔽中断（ADR-IRQ-001）
-     * 不使用 XCHAL_EXCM_LEVEL (= 3)，因为它只能禁用优先级 ≤3 的中断，
-     * 高优先级中断（如 5、7）仍能触发，临界区保护失效。
-     *
-     * 使用 XCHAL_NUM_INTLEVELS 达到真正的全局禁用效果。
-     *
-     * ⚠️ 约束：受此锁保护的临界区必须 < 1µs，避免影响 Wi-Fi 和看门狗。
-     */
     return XTOS_SET_INTLEVEL(XCHAL_NUM_INTLEVELS);
 }
 
 uint32_t pal_irq_save_rtos_safe(void)
 {
-    /* ✅ 仅禁用到 RTOS 安全边界（ADR-0018，业务默认推荐）
-     * configMAX_SYSCALL_INTERRUPT_PRIORITY = 5
-     * 设置 INTLEVEL = 5 将屏蔽所有优先级 ≤5 的中断
-     * 优先级 6-7 的中断（如 Wi-Fi 基带）仍可触发，不影响底层硬件协议时序。
-     *
-     * PAL_IRQ_PRIO_LOW / NORMAL / HIGH（LEVEL1/2/3）均在此屏蔽范围内。
-     */
     return XTOS_SET_INTLEVEL(XCHAL_EXCM_LEVEL);
 }
 
 void pal_irq_restore(uint32_t mask)
 {
-    /* 恢复 PS 寄存器中的 INTLEVEL 字段 */
     XTOS_RESTORE_JUST_INTLEVEL(mask);
 }
 
-#endif /* ESP_PLATFORM */
+#endif

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file test_wasm_devices_sim.c
  * @brief Unit tests for the WASM C-side virtual devices simulation models.

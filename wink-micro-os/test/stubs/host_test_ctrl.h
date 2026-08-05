@@ -1,108 +1,85 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file host_test_ctrl.h
- * @brief host 测试专用注入控制 API（非 PAL 契约，仅测试用）。
- *        驱动 targets/host 的虚拟时间/echo/pwm 行为，供 DAL/runtime 端到端测。
+ * @brief Host test injection control API.
  */
 #ifndef HOST_TEST_CTRL_H
 #define HOST_TEST_CTRL_H
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "pal_irq.h"    /* pal_irq_prio_t, pal_isr_t（中断测试注入） */
-#include "pal_hal.h"    /* pal_gpio_intr_t, wink_pin_t */
-#include "pal_osal.h"   /* pal_os_reset_reason_t（sim_set_reset_reason 测试注入，Phase 5 Task 5-4） */
-#include "wink_sim_physical.h"   /* wink_sim_faults_t（ADR-0009 Wave1 物理退化注入） */
+#include "pal_irq.h"
+#include "pal_hal.h"
+#include "pal_osal.h"
+#include "wink_sim_physical.h"
 
 void sim_reset_time(void);
 void sim_set_echo_pin(uint16_t pin);
 void sim_set_echo_timing(uint64_t rise_us, uint64_t high_duration_us);
 float sim_last_pwm_duty(uint8_t channel);
-void sim_set_reset_reason(pal_os_reset_reason_t reason);   /* Phase 5：注入复位原因供 boot safe-lock 测试 */
+void sim_set_reset_reason(pal_os_reset_reason_t reason);
 
-/* 虚拟单调时钟注入（R-010）：host 单测驱动实测 dt，禁止墙钟。
- * 实现于 osal/host/pal_osal_host.c（与 sim_reset_time 同源 s_time_us）。 */
 void sim_set_mono_time_us(uint64_t us);
 void sim_advance_mono_time_us(uint64_t delta_us);
 
-/* Encoder count 注入声明：勿在此 include dal_encoder.h（pal_host 无 DAL 路径）。
- * 实现放在调用方测试 TU（赋值包装），见 test_bal_closed_loop_dc_motor.c。
- * 签名约定：
- *   void sim_set_encoder_count(dal_encoder_t *dev, int32_t count);
- *   void sim_advance_encoder_count(dal_encoder_t *dev, int32_t delta);
- */
-
-/* Phase 2：host I2C 事务捕获注入/读取 */
 uint8_t  sim_last_i2c_port(void);
 uint16_t sim_last_i2c_addr(void);
 uint32_t sim_last_i2c_write_len(void);
 uint32_t sim_i2c_transfer_count(void);
 
-/* ADR-0009 Wave1：host GPIO 理想电平注入 + 故障配置（仅测试用）。
- * sim_set_gpio_ideal 双语义（§2.3 红线 6）：首次注册=上电态(不抖)；更新电平=跃变(触发抖动)。
- * 注入 pin 须 ≠ echo pin（§2.3 红线 7）。 */
 #define SIM_GPIO_IDEAL_SLOTS 4
-void sim_set_gpio_ideal(uint16_t pin, bool level);   /* 注册(上电态)/更新(跃变) pin 理想电平 */
-void sim_clear_gpio_ideal(void);                      /* 清空所有注入（sim_reset_time 也会调） */
-void sim_set_faults(const wink_sim_faults_t *faults); /* 设全局故障配置（退化强度） */
+void sim_set_gpio_ideal(uint16_t pin, bool level);
+void sim_clear_gpio_ideal(void);
+void sim_set_faults(const wink_sim_faults_t *faults);
 
-/* GPIO 输出电平捕获（仅 host 单测用）：记录经 pal_gpio_write 写入的最后电平，
- * 供 output 类驱动（relay/led）断言极性与脉冲序列。pal_host_get_gpio_level 返回
- * true 表示该 pin 自上次 reset 以来被写过，电平写入 *out_level。pal_gpio_reset_pin
- * 会清除该 pin 的记录。 */
 bool pal_host_get_gpio_level(wink_pin_t pin, bool *out_level);
 void pal_host_reset_gpio_levels(void);
 
-/* ─────────────────────────────────────────────────────────
- * Phase 1：统一中断子系统测试注入 API
- * ───────────────────────────────────────────────────────── */
-
 /**
- * @brief 手动触发 GPIO 中断（仅 Host 平台，单元测试注入）
- * @param pin GPIO 引脚号
- *
- * ⚠️ 中断锁语义：持有中断锁期间触发的中断会被 pending，直到锁释放才执行
+ * @brief Manually trigger GPIO interrupt (Host platform only)
+ * @param pin GPIO pin number
  */
 void pal_host_trigger_gpio_interrupt(wink_pin_t pin);
 
 /**
- * @brief 获取 ISR 被调用的次数（用于单测断言）
- * @param pin GPIO 引脚号
- * @return ISR 调用计数
+ * @brief Get ISR invocation count
+ * @param pin GPIO pin number
+ * @return ISR call count
  */
 uint32_t pal_host_get_isr_call_count(wink_pin_t pin);
 
 /**
- * @brief 重置 ISR 统计和 pending 队列
+ * @brief Reset ISR statistics and pending queue
  */
 void pal_host_reset_isr_stats(void);
 
 /**
- * @brief 获取当前 pending 中断数量（用于单测断言中断锁语义）
- * @return pending 队列中的中断数量
+ * @brief Get count of pending interrupts
+ * @return Number of pending interrupts
  */
 uint32_t pal_host_get_pending_count(void);
 
 /**
- * @brief 获取中断锁嵌套深度（用于单测检测锁泄漏）
- * @return 当前中断锁嵌套深度
+ * @brief Get IRQ lock nesting depth
+ * @return IRQ lock depth
  */
 int pal_host_get_irq_lock_depth(void);
 
 /**
- * @brief 手动触发逻辑中断（仅 Host 平台，单元测试注入）
- * @param irq_num 逻辑中断号
+ * @brief Manually trigger logical interrupt (Host platform only)
+ * @param irq_num Logical IRQ number
  */
 void pal_host_trigger_logical_interrupt(uint32_t irq_num);
 
 /**
- * @brief 获取逻辑中断 ISR 调用次数
- * @param irq_num 逻辑中断号
- * @return ISR 调用计数
+ * @brief Get logical IRQ ISR call count
+ * @param irq_num Logical IRQ number
+ * @return ISR call count
  */
 uint32_t pal_host_get_logical_isr_call_count(uint32_t irq_num);
 
 /**
- * @brief Host ADC 虚拟数据注入 API
+ * @brief Host ADC virtual data injection API
  */
 void pal_host_adc_inject_raw(uint8_t ch, uint16_t raw);
 void pal_host_adc_inject_mv(uint8_t ch, uint16_t mv);

@@ -1,9 +1,7 @@
-/*
- * test_dal_gps.c — host unit tests for dal_gps deinit hardening.
- *
- * The GPS driver is currently a stub (init returns WINK_ERR_UNSUPPORTED, never
- * sets initialized=true). These tests lock down the deinit contract so the
- * future UART/NMEA backend satisfies ADR-0024 §4 from day one.
+// SPDX-License-Identifier: Apache-2.0
+/**
+ * @file test_dal_gps.c
+ * @brief DAL GPS driver unit tests.
  */
 #include "unity.h"
 #include "wink_status.h"
@@ -11,9 +9,6 @@
 #include "pal_resource.h"
 #include <string.h>
 
-/* Note: dal_gps_init is now non-blocking (always visible, no WINK_BLOCKING).
- * The ADR-0017 deprecated-declarations pragma below is kept for any future
- * dal_gps_init_blocking calls added to the test. */
 #include "compat/wink_test_compat.h"
 WINK_TEST_ALLOW_DEPRECATED
 #ifdef _MSC_VER
@@ -23,8 +18,6 @@ WINK_TEST_ALLOW_DEPRECATED
 void setUp(void) { pal_resource_reset(); }
 void tearDown(void) {}
 
-/* ---- deinit contract ---- */
-
 void test_gps_deinit_null_returns_invalid_arg(void) {
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_gps_deinit(NULL));
 }
@@ -32,10 +25,8 @@ void test_gps_deinit_null_returns_invalid_arg(void) {
 void test_gps_deinit_uninitialized_is_idempotent_noop(void) {
     dal_gps_t dev = {0};
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_gps_deinit(&dev));
-    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_gps_deinit(&dev));  /* double deinit still OK */
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_gps_deinit(&dev));
 }
-
-/* ---- init stub honesty ---- */
 
 void test_gps_init_stub_reports_unsupported_and_does_not_claim(void) {
     dal_gps_t dev = {0};
@@ -55,8 +46,6 @@ void test_gps_poll_stub_returns_unsupported(void) {
 void test_gps_get_position_leaves_output_untouched_on_error(void) {
     dal_gps_t dev = {0};
     dal_gps_position_t pos;
-    /* DAL-F-020: out params MUST stay untouched on non-OK returns.
-     * Fill with a sentinel and assert the stub preserves every byte. */
     memset(&pos, 0x55, sizeof(pos));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_gps_get_position(&dev, &pos));
     uint8_t *raw = (uint8_t *)&pos;
