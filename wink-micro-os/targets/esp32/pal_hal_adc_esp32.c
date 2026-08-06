@@ -329,6 +329,64 @@ wink_status_t pal_adc_pin_channel(wink_pin_t pin, pal_adc_channel_t *out_ch) {
     return st;
 }
 
+wink_status_t pal_adc_acquire(wink_pin_t pin, const pal_adc_config_t *cfg, pal_adc_channel_t *out_ch) {
+    if (out_ch == NULL || pin < 0) return WINK_ERR_INVALID_ARG;
+    pal_adc_config_t ch_cfg;
+    if (cfg != NULL) {
+        ch_cfg = *cfg;
+    } else {
+        memset(&ch_cfg, 0, sizeof(ch_cfg));
+    }
+    ch_cfg.pin = pin;
+
+    pal_adc_ensure_locks();
+    for (uint8_t i = 0; i < PAL_ADC_CHANNELS; i++) {
+        if (!ch_lock_take(i)) {
+            for (int16_t k = (int16_t)i - 1; k >= 0; k--) ch_lock_give((uint8_t)k);
+            return WINK_ERR_TIMEOUT;
+        }
+    }
+
+    /* 1. Check if an initialized channel exists for pin */
+    for (uint8_t i = 0; i < PAL_ADC_CHANNELS; i++) {
+        if (s_channels[i].is_initialized && s_channels[i].pin == pin) {
+            *out_ch = i;
+            for (int16_t j = (int16_t)PAL_ADC_CHANNELS - 1; j >= 0; j--) {
+                ch_lock_give((uint8_t)j);
+            }
+            return WINK_OK;
+        }
+    }
+
+    /* 2. Find an uninitialized free channel slot */
+    uint8_t free_ch = PAL_ADC_CHANNELS;
+    for (uint8_t i = 0; i < PAL_ADC_CHANNELS; i++) {
+        if (!s_channels[i].is_initialized) {
+            free_ch = i;
+            break;
+        }
+    }
+    for (int16_t j = (int16_t)PAL_ADC_CHANNELS - 1; j >= 0; j--) {
+        ch_lock_give((uint8_t)j);
+    }
+
+    if (free_ch >= PAL_ADC_CHANNELS) {
+        return WINK_ERR_NO_MEM;
+    }
+
+    wink_status_t st = pal_adc_init(free_ch, &ch_cfg);
+    if (st == WINK_OK) {
+        *out_ch = free_ch;
+    }
+    return st;
+}
+
+wink_status_t pal_adc_release(pal_adc_channel_t ch) {
+    if (ch >= PAL_ADC_CHANNELS) return WINK_ERR_INVALID_ARG;
+    pal_adc_deinit(ch);
+    return WINK_OK;
+}
+
 wink_status_t pal_adc_full_scale_mv(pal_adc_channel_t ch, uint16_t *out_mv) {
     if (ch >= PAL_ADC_CHANNELS || out_mv == NULL) return WINK_ERR_INVALID_ARG;
     if (s_ch_locks[ch] == NULL) return WINK_ERR_NOT_INITIALIZED;

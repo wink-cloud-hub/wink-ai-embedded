@@ -1,0 +1,11 @@
+    static const dal_analog_knob_config_t {{ name }}_cfg = {
+        .owner = "{{ name }}",
+        .min_mv = {{ min_mv | default(0) }},
+        .max_mv = {{ max_mv | default(0) }},
+        .hysteresis_promille = {{ hysteresis_promille | default(10) }},
+        .pin = {{ gpio_pin }},
+        .enable_pin = {{ enable_pin | default(-1) }},
+        .variant = DAL_ANALOG_KNOB_VARIANT_{{ variant | default('standard') | upper }},
+        .inverted = {% if inverted | default(false) %}true{% else %}false{% endif %},
+    };
+    WINK_TRY(dal_analog_knob_init(&{{ name }}, &{{ name }}_cfg));
