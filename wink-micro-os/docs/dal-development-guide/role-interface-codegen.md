@@ -378,7 +378,7 @@ def render_role_wrapper(self, dev_name: str, role: str, verb: str, spec: dict) -
 
 
 
-同一物理量常成对提供 Convenience + `_status`（见 `binary_sensor` / `distance_sensor`）。`roles/*.yaml` 用 `error_class` 显式声明；`wink lint --pack drivers` 以 **warn** 校验签名 / init 透传 / `isr_safe`（升 error 条件见 [codegen/README.md](../../codegen/README.md#safety-lint-wink-lint---pack-drivers-task-t11)）。
+同一物理量常成对提供 Convenience + `_status`（见 `binary_sensor` / `distance_sensor`）。`roles/*.yaml` 用 `error_class` 显式声明；`wink lint arch --pack drivers` 以 **warn** 校验签名 / init 透传 / `isr_safe`（升 error 条件见 [codegen/README.md](../../codegen/README.md#safety-lint-wink-lint---pack-drivers-task-t11)）。
 
 
 
