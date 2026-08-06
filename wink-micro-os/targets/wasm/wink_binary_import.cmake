@@ -35,19 +35,13 @@ set(_WASM_EXPORT_JSON "${CMAKE_CURRENT_SOURCE_DIR}/targets/wasm/exported_runtime
 if(EXISTS "${_WASM_EXPORT_JSON}")
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
     set(_WASM_EXPORT_CMAKE "${CMAKE_BINARY_DIR}/wasm_binary_export_options.cmake")
-    if(EXISTS "${WINK_TOOLS_ROOT}/tools/wasm_export_codegen.py")
-        set(_WASM_EXPORT_SCRIPT "${WINK_TOOLS_ROOT}/tools/wasm_export_codegen.py")
-    else()
-        set(_WASM_EXPORT_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/tools/wasm_export_codegen.py")
-    endif()
-    if(NOT EXISTS "${_WASM_EXPORT_SCRIPT}")
-        message(FATAL_ERROR
-            "Wasm export codegen script not found: ${_WASM_EXPORT_SCRIPT}. "
-            "Re-pack the Binary SDK tarball (tools/wasm_export_codegen.py is required).")
+    set(_WINK_ENTRY_SCRIPT "${WINK_TOOLS_ROOT}/wink.py")
+    if(NOT EXISTS "${_WINK_ENTRY_SCRIPT}")
+        set(_WINK_ENTRY_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/wink.py")
     endif()
     execute_process(
-        COMMAND ${Python3_EXECUTABLE} "${_WASM_EXPORT_SCRIPT}"
-                "${_WASM_EXPORT_JSON}" "${_WASM_EXPORT_CMAKE}"
+        COMMAND ${Python3_EXECUTABLE} "${_WINK_ENTRY_SCRIPT}" --skip-toolchain-check gen wasm-export
+                --input "${_WASM_EXPORT_JSON}" --output "${_WASM_EXPORT_CMAKE}"
         RESULT_VARIABLE _wasm_json_rc)
     if(NOT _wasm_json_rc EQUAL 0)
         message(FATAL_ERROR "Failed to parse ${_WASM_EXPORT_JSON}")
