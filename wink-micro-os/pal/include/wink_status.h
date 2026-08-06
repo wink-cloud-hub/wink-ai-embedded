@@ -121,6 +121,10 @@ static inline int wink_status_is_error(wink_status_t s) {
     return s < 0;
 }
 
+static inline int wink_status_is_success(wink_status_t s) {
+    return s == WINK_OK;
+}
+
 #ifndef PAL_PWM_CHANNELS
 #define PAL_PWM_CHANNELS 8
 #endif

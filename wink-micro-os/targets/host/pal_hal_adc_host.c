@@ -129,6 +129,56 @@ wink_status_t pal_adc_pin_channel(wink_pin_t pin, pal_adc_channel_t *out_ch) {
     return WINK_ERR_NOT_FOUND;
 }
 
+wink_status_t pal_adc_acquire(wink_pin_t pin, const pal_adc_config_t *cfg, pal_adc_channel_t *out_ch) {
+    if (out_ch == NULL || pin < 0) return WINK_ERR_INVALID_ARG;
+    pal_adc_config_t ch_cfg;
+    if (cfg != NULL) {
+        ch_cfg = *cfg;
+    } else {
+        memset(&ch_cfg, 0, sizeof(ch_cfg));
+    }
+    ch_cfg.pin = pin;
+
+    for (uint8_t i = 0; i < PAL_ADC_CHANNELS; i++) {
+        host_adc_lock(i);
+    }
+    /* 1. Check if a channel is already initialized with this pin */
+    for (uint8_t i = 0; i < PAL_ADC_CHANNELS; i++) {
+        if (s_adc_channels[i].is_initialized && s_adc_channels[i].cfg.pin == pin) {
+            *out_ch = i;
+            for (int16_t j = (int16_t)PAL_ADC_CHANNELS - 1; j >= 0; j--) {
+                host_adc_unlock((uint8_t)j);
+            }
+            return WINK_OK;
+        }
+    }
+    /* 2. Find an uninitialized free channel slot and initialize it */
+    for (uint8_t i = 0; i < PAL_ADC_CHANNELS; i++) {
+        if (!s_adc_channels[i].is_initialized) {
+            s_adc_channels[i].is_initialized = true;
+            s_adc_channels[i].has_sample = false;
+            s_adc_channels[i].cfg = ch_cfg;
+            s_adc_channels[i].last_raw = 0;
+            s_adc_channels[i].last_mv = 0;
+            *out_ch = i;
+            for (int16_t j = (int16_t)PAL_ADC_CHANNELS - 1; j >= 0; j--) {
+                host_adc_unlock((uint8_t)j);
+            }
+            return WINK_OK;
+        }
+    }
+    for (int16_t j = (int16_t)PAL_ADC_CHANNELS - 1; j >= 0; j--) {
+        host_adc_unlock((uint8_t)j);
+    }
+    return WINK_ERR_NO_MEM;
+}
+
+wink_status_t pal_adc_release(pal_adc_channel_t ch) {
+    if (ch >= PAL_ADC_CHANNELS) return WINK_ERR_INVALID_ARG;
+    pal_adc_deinit(ch);
+    return WINK_OK;
+}
+
 wink_status_t pal_adc_full_scale_mv(pal_adc_channel_t ch, uint16_t *out_mv) {
     if (ch >= PAL_ADC_CHANNELS || out_mv == NULL) return WINK_ERR_INVALID_ARG;
     host_adc_lock(ch);

@@ -65,6 +65,27 @@ WINK_WARN_UNUSED_RESULT
 wink_status_t pal_adc_pin_channel(wink_pin_t pin, pal_adc_channel_t *out_ch);
 
 /**
+ * @brief Acquire and initialize an ADC channel for a physical GPIO pin.
+ *
+ * Searches for an existing channel initialized for pin, or finds an uninitialized free channel,
+ * initializes it with cfg, and returns the logical channel handle.
+ *
+ * @param[in] pin Physical GPIO pin number
+ * @param[in] cfg Configuration struct (full_scale_mv, resolution_bits)
+ * @param[out] out_ch Output pointer for acquired ADC channel handle
+ * @return WINK_OK on success, WINK_ERR_NO_MEMORY if no channel slot available
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t pal_adc_acquire(wink_pin_t pin, const pal_adc_config_t *cfg, pal_adc_channel_t *out_ch);
+
+/**
+ * @brief Release an acquired ADC channel
+ * @param[in] ch Logical ADC channel number
+ * @return WINK_OK on success
+ */
+wink_status_t pal_adc_release(pal_adc_channel_t ch);
+
+/**
  * @brief Query full scale millivolt rating for ADC channel
  * @param[in] ch Logical ADC channel number
  * @param[out] out_mv Output pointer for full scale mV
@@ -80,7 +101,6 @@ wink_status_t pal_adc_full_scale_mv(pal_adc_channel_t ch, uint16_t *out_mv);
  * @param[out] out_raw Output pointer for raw ADC sample value
  * @return WINK_OK on success, WINK_ERR_INVALID_ARG, WINK_ERR_NOT_INITIALIZED, WINK_ERR_BUSY, or WINK_ERR_TIMEOUT
  */
-WINK_BLOCKING
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_adc_read_raw(pal_adc_channel_t ch, uint16_t *out_raw);
 
@@ -90,7 +110,6 @@ wink_status_t pal_adc_read_raw(pal_adc_channel_t ch, uint16_t *out_raw);
  * @param[out] out_mv Output pointer for calculated millivolts
  * @return WINK_OK on success, WINK_ERR_INVALID_ARG, WINK_ERR_NOT_INITIALIZED, WINK_ERR_BUSY, or WINK_ERR_TIMEOUT
  */
-WINK_BLOCKING
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_adc_read_mv(pal_adc_channel_t ch, uint16_t *out_mv);
 #endif /* WINK_STRICT_NONBLOCKING */
