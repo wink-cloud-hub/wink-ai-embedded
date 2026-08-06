@@ -80,6 +80,39 @@ wink_status_t pal_adc_pin_channel(wink_pin_t pin, pal_adc_channel_t *out_ch) {
     return WINK_ERR_NOT_FOUND;
 }
 
+wink_status_t pal_adc_acquire(wink_pin_t pin, const pal_adc_config_t *cfg, pal_adc_channel_t *out_ch) {
+    if (out_ch == NULL || pin < 0) return WINK_ERR_INVALID_ARG;
+    for (uint8_t i = 0; i < PAL_ADC_CHANNELS; i++) {
+        if (s_channels[i].is_initialized && s_channels[i].pin == pin) {
+            *out_ch = i;
+            return WINK_OK;
+        }
+    }
+    pal_adc_config_t ch_cfg;
+    if (cfg != NULL) {
+        ch_cfg = *cfg;
+    } else {
+        memset(&ch_cfg, 0, sizeof(ch_cfg));
+    }
+    ch_cfg.pin = pin;
+    for (uint8_t i = 0; i < PAL_ADC_CHANNELS; i++) {
+        if (!s_channels[i].is_initialized) {
+            wink_status_t st = pal_adc_init(i, &ch_cfg);
+            if (st == WINK_OK) {
+                *out_ch = i;
+            }
+            return st;
+        }
+    }
+    return WINK_ERR_NO_MEM;
+}
+
+wink_status_t pal_adc_release(pal_adc_channel_t ch) {
+    if (ch >= PAL_ADC_CHANNELS) return WINK_ERR_INVALID_ARG;
+    pal_adc_deinit(ch);
+    return WINK_OK;
+}
+
 wink_status_t pal_adc_full_scale_mv(pal_adc_channel_t ch, uint16_t *out_mv) {
     if (ch >= PAL_ADC_CHANNELS || out_mv == NULL) return WINK_ERR_INVALID_ARG;
     if (!s_channels[ch].is_initialized) return WINK_ERR_NOT_INITIALIZED;

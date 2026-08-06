@@ -1,0 +1,92 @@
+codegen_schema: "1.1"
+type: analog_knob
+category: input
+is_actuator: false
+experimental: false
+default_role: analog_input
+
+aliases:
+  potentiometer:       { min_mv: 0, max_mv: 0, hysteresis_promille: 10 }
+  slide_potentiometer: { min_mv: 0, max_mv: 0, hysteresis_promille: 10 }
+  wh148:               { min_mv: 0, max_mv: 0, hysteresis_promille: 10 }
+  b10k_slide:          { min_mv: 0, max_mv: 0, hysteresis_promille: 10 }
+  rk097:               { min_mv: 0, max_mv: 0, hysteresis_promille: 10 }
+
+quantity: ratio
+quantity_class: sensor_measurement
+
+fields:
+  owner:
+    tier: stable
+    type: string
+    emit: none
+  min_mv:
+    tier: advanced
+    type: int
+    default: 0
+  max_mv:
+    tier: advanced
+    type: int
+    default: 0
+  hysteresis_promille:
+    tier: stable
+    type: int
+    default: 10
+    min: 0
+    max: 500
+  gpio_pin:
+    tier: advanced
+    type: int
+    required: true
+    c: pin
+  enable_pin:
+    tier: advanced
+    type: int
+    default: -1
+  variant:
+    tier: advanced
+    type: enum
+    enum: [standard]
+    default: standard
+    map:
+      standard: DAL_ANALOG_KNOB_VARIANT_STANDARD
+  inverted:
+    tier: advanced
+    type: bool
+    default: false
+  role:
+    tier: stable
+    type: string
+    emit: none
+
+quantities:
+  owner:               { quantity_class: sensor_measurement }
+  min_mv:              { quantity_class: sensor_measurement }
+  max_mv:              { quantity_class: sensor_measurement }
+  hysteresis_promille: { quantity_class: sensor_measurement }
+  gpio_pin:            { quantity_class: sensor_measurement }
+  enable_pin:          { quantity_class: sensor_measurement }
+  variant:             { quantity_class: sensor_measurement }
+  inverted:            { quantity_class: sensor_measurement }
+  role:                { quantity_class: sensor_measurement }
+
+config:
+  c_type: dal_analog_knob_t
+  config_type: dal_analog_knob_config_t
+  headers: [input/dal_analog_knob.h]
+  init_fn: dal_analog_knob_init
+  deinit_fn: dal_analog_knob_deinit
+  init_template_file: templates/analog_knob_init.c.j2
+  safe_off_fn: ""
+
+role_bindings:
+  analog_input:
+    covers_contract: full
+    headers: []
+    verbs:
+      read_promille:
+        template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_read_promille(uint16_t *out_promille) { return dal_analog_knob_read_promille(&{{ name }}, out_promille); }"
+      read_promille_status:
+        template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_read_promille_status(uint16_t *out_promille) { return dal_analog_knob_read_promille(&{{ name }}, out_promille); }"
+      read_mv:
+        template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_read_mv(uint16_t *out_mv) { return dal_analog_knob_read_mv(&{{ name }}, out_mv); }"
