@@ -1253,7 +1253,7 @@ role_bindings:             # Role verb → Jinja 模板 (per-profile 待实现)
 |------|------|
 | 规则 ID 格式 | `DAL-<category>-<number>`（如 `DAL-S-001`, `DAL-BUF-001`） |
 | Lint 引擎 ID | `dal.<snake_case_rule>`（如 `dal.config_owner_first`），与 `wink-tools/tools/lint/` 的 `<pack>.<rule>` 命名法对齐 |
-| 所属 pack | DAL 规则使用独立 pack `dal`（`wink lint --pack dal`），不塞进现有 `api` 或 `layering` pack |
+| 所属 pack | DAL 规则使用独立 pack `dal`（`wink lint arch --pack dal`），不塞进现有 `api` 或 `layering` pack |
 | 例外标注 | 代码内：`// lint-allow: DAL-S-001 (reason)`；YAML 内：`lint_exceptions` 字段（待引擎支持） |
 
 ### 17.3.1 规则实施状态

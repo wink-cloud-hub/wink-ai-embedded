@@ -123,13 +123,13 @@ Wink 自动设置 `PYTHONUTF8=1` 与 `PYTHONIOENCODING=utf-8`，GCC 也配置了
 - 修改 CMake 脚本或 Kconfig 之后
 - 升级 ESP-IDF 之后
 - 遇到奇怪的链接错误或构建产物污染时
-- 日常改代码直接 `esp32`（默认 `build`）即可，不必 clean
+- 日常改代码直接 `build esp32` 即可，不必 clean
 
 ### Q: `IDF_TARGET is not set, guessed 'esp32'` 是错误吗？
 **不是。** 这是正常信息——ESP-IDF 从 `sdkconfig` 自动探测到芯片目标为 `esp32`，可忽略。
 
-### Q: `wink doctor` 报 IDF 未找到？
-运行 `python wink-tools/wink.py doctor` 按提示排查；最常见原因是未通过 EIM 安装 ESP-IDF。参见 [`preinstall.md §3`](../wink-tools/preinstall.md)。
+### Q: `wink env doctor` 报 IDF 未找到？
+运行 `python wink-tools/wink.py env doctor` 按提示排查；最常见原因是未通过 EIM 安装 ESP-IDF。参见 [`preinstall.md §3`](../wink-tools/preinstall.md)。
 
 ---
 

@@ -25,7 +25,7 @@ the filename stem. Driver `role_bindings` must cover contract verbs
 **Do not** embed DAL type templates inside shared role contracts — put C
 wrappers in driver `role_bindings` (required for multi-type roles).
 
-## Safety lint (`wink lint --pack drivers`, Task T11)
+## Safety lint (`wink lint arch --pack drivers`, Task T11)
 
 These rules are **warning** on first landing (exit 0 unless `--strict`):
 

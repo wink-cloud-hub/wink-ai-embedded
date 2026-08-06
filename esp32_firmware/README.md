@@ -123,13 +123,13 @@ Wink sets `PYTHONUTF8=1`/`PYTHONIOENCODING=utf-8` automatically; GCC is configur
 - After modifying CMake scripts or Kconfig
 - After upgrading ESP-IDF
 - On strange link errors or stale-build artifacts
-- For daily iteration just run `esp32` (default `build`)
+- For daily iteration just run `build esp32`
 
 ### Q: Is "IDF_TARGET is not set, guessed 'esp32'" an error?
 **No.** Informational only — ESP-IDF auto-detects the chip target from `sdkconfig`.
 
-### Q: `wink doctor` says IDF is missing?
-Run `python wink-tools/wink.py doctor` and follow the hints; the most common cause is ESP-IDF not installed via EIM. See [`preinstall.md §3`](../wink-tools/preinstall.md).
+### Q: `wink env doctor` says IDF is missing?
+Run `python wink-tools/wink.py env doctor` and follow the hints; the most common cause is ESP-IDF not installed via EIM. See [`preinstall.md §3`](../wink-tools/preinstall.md).
 
 ---
 
