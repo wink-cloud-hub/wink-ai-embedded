@@ -16,10 +16,10 @@ elseif(NOT DEFINED WINK_TOOLS_ROOT OR WINK_TOOLS_ROOT STREQUAL "")
 endif()
 get_filename_component(WINK_TOOLS_ROOT "${WINK_TOOLS_ROOT}" ABSOLUTE)
 
-if(NOT EXISTS "${WINK_TOOLS_ROOT}/tools/codegen/list_drivers.py")
+if(NOT EXISTS "${WINK_TOOLS_ROOT}/tools/codegen/scripts/list_drivers.py")
     message(FATAL_ERROR
         "WINK_TOOLS_ROOT='${WINK_TOOLS_ROOT}' is invalid "
-        "(missing tools/codegen/list_drivers.py). Set WINK_TOOLS_ROOT or place "
+        "(missing tools/codegen/scripts/list_drivers.py). Set WINK_TOOLS_ROOT or place "
         "wink-tools/ next to wink-micro-os/.")
 endif()
 

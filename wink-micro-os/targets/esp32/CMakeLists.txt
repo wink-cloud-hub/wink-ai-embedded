@@ -88,13 +88,13 @@ if(ESP_PLATFORM)
     endif()
     set(WINK_CONFIG_H ${WINK_CONFIG_DIR}/wink_config.h)
     include(${WINK_MICRO_OS_ROOT}/cmake/wink_tools.cmake)
-    set(_CONFIG_H_DEPS ${WINK_TOOLS_ROOT}/tools/codegen/config_h.py)
+    set(_CONFIG_H_DEPS ${WINK_TOOLS_ROOT}/tools/codegen/generators/config_h.py)
     if(NOT WINK_APP_JSON STREQUAL "")
         list(APPEND _CONFIG_H_DEPS ${WINK_APP_JSON})
     endif()
     add_custom_command(
         OUTPUT ${WINK_CONFIG_H}
-        COMMAND ${Python3_EXECUTABLE} ${WINK_TOOLS_ROOT}/tools/codegen/config_h.py
+        COMMAND ${Python3_EXECUTABLE} ${WINK_TOOLS_ROOT}/tools/codegen/generators/config_h.py
                 --input "${WINK_APP_JSON}"
                 --output ${WINK_CONFIG_H}
                 --target esp32
