@@ -40,7 +40,7 @@ Wink-AI 嵌入式运行时及仿真系统（**WinkMicroOS**）：面向 AI 生�
 - **编译期静态分发**: 偏离传统 C 语言 OOP 多态，不使用虚拟函数表或 `container_of` 强转。DAL 外设实例使用 POD 结构体与命名 API（详见 [ADR-0004](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/docs/design/decisions/0004-static-dispatch-vs-runtime-ops.md)）。
 - **负数错误码**: 所有可能失败的函数返回 `wink_status_t`，**0 = 成功，负数 = 错误**（详见 [ADR-0001](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/docs/design/decisions/0001-error-code-sign-convention.md)）。
 - **双 target 同源编译**: 编写的 C 代码必须同时兼容 Emscripten/wasm32 与 ESP-IDF/xtensa 编译（详见 [ADR-0002](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/docs/design/decisions/0002-dual-target-compilation.md)）。
-- **分层门禁：`wink lint`（ADR-0043）**: App/BAL/DAL/PAL 边界与 API 形态由 `wink-tools/lint/rules/*.yaml` 驱动；生成或修改 C 代码后应运行 `python wink-tools/wink.py lint --pack layering --pack api`。
+- **分层门禁：`wink lint arch`（ADR-0043）**: App/BAL/DAL/PAL 边界与 API 形态由 `wink-tools/tools/lint/rules/*.yaml` 驱动；生成或修改 C 代码后应运行 `python wink-tools/wink.py lint arch --pack layering --pack api`。
 
 ## Git Commit Rules
 - 保持提交的原子性。推荐对修改过的文件分别提交（每次 commit 按一个独立逻辑模块聚合）。
