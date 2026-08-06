@@ -24,7 +24,7 @@ endif()
 set(_WINK_DAL_GEN "${CMAKE_CURRENT_BINARY_DIR}/generated_drivers.cmake")
 execute_process(
     COMMAND ${Python3_EXECUTABLE}
-            ${WINK_TOOLS_ROOT}/tools/codegen/list_drivers.py
+            ${WINK_TOOLS_ROOT}/tools/codegen/scripts/list_drivers.py
             --cmake --mode=source
             "--codegen-paths=${WINK_CODEGEN_PATHS}"
     OUTPUT_FILE "${_WINK_DAL_GEN}"

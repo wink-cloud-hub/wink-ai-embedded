@@ -24,7 +24,7 @@ function(wink_dal_register_codegen_configure_depends)
 
     execute_process(
         COMMAND ${Python3_EXECUTABLE}
-                ${WINK_TOOLS_ROOT}/tools/codegen/list_drivers.py
+                ${WINK_TOOLS_ROOT}/tools/codegen/scripts/list_drivers.py
                 --depend-files
                 "--codegen-paths=${WINK_CODEGEN_PATHS}"
         OUTPUT_VARIABLE _wink_depend_out
@@ -82,7 +82,7 @@ function(wink_dal_load_driver_table MODE)
     set(_gen "${CMAKE_BINARY_DIR}/generated_drivers_${MODE}.cmake")
     execute_process(
         COMMAND ${Python3_EXECUTABLE}
-                ${WINK_TOOLS_ROOT}/tools/codegen/list_drivers.py
+                ${WINK_TOOLS_ROOT}/tools/codegen/scripts/list_drivers.py
                 --cmake --mode=${MODE}
                 "--codegen-paths=${WINK_CODEGEN_PATHS}"
         OUTPUT_FILE "${_gen}"
