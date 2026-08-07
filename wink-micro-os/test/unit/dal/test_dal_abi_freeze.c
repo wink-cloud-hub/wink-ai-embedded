@@ -16,6 +16,7 @@
 #include "sensor/dal_encoder.h"
 #include "sensor/dal_ultrasonic.h"
 #include "input/dal_analog_knob.h"
+#include "input/dal_keypad.h"
 
 #include <stddef.h>
 
@@ -28,6 +29,10 @@
 DAL_STATIC_ASSERT(sizeof(dal_analog_knob_config_t) > 0, "dal_analog_knob_config_t size check");
 DAL_STATIC_ASSERT(sizeof(dal_analog_knob_t) > 0, "dal_analog_knob_t size check");
 DAL_STATIC_ASSERT(offsetof(dal_analog_knob_t, config) == 0, "dal_analog_knob_t config at offset 0");
+
+DAL_STATIC_ASSERT(sizeof(dal_keypad_config_t) > 0, "dal_keypad_config_t size check");
+DAL_STATIC_ASSERT(sizeof(dal_keypad_t) > 0, "dal_keypad_t size check");
+DAL_STATIC_ASSERT(offsetof(dal_keypad_t, config) == 0, "dal_keypad_t config at offset 0");
 
 DAL_STATIC_ASSERT(sizeof(dal_led_config_t) > 0, "dal_led_config_t size check");
 DAL_STATIC_ASSERT(sizeof(dal_led_t) > 0, "dal_led_t size check");
@@ -71,6 +76,7 @@ void tearDown(void) {}
 
 void test_abi_layout_freeze_member_positions(void) {
     dal_analog_knob_t knob = {0};
+    dal_keypad_t keypad = {0};
     dal_led_t led = {0};
     dal_button_t btn = {0};
     dal_dc_motor_t motor = {0};
@@ -82,6 +88,7 @@ void test_abi_layout_freeze_member_positions(void) {
     dal_eeprom_t ee = {0};
 
     TEST_ASSERT_EQUAL_PTR((void *)&knob, (void *)&knob.config);
+    TEST_ASSERT_EQUAL_PTR((void *)&keypad, (void *)&keypad.config);
     TEST_ASSERT_EQUAL_PTR((void *)&led, (void *)&led.config);
     TEST_ASSERT_EQUAL_PTR((void *)&btn, (void *)&btn.config);
     TEST_ASSERT_EQUAL_PTR((void *)&motor, (void *)&motor.config);

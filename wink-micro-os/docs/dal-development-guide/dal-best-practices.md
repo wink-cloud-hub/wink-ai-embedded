@@ -114,6 +114,8 @@ enable_pin  → 可选使能脚，有且要软件控才写
 
 与 `variant` 的边界：`variant` 只在**同一 `type` 内**选已登记同族变体，既不替代 `type`，也不替代 `role`。
 
+> 💡 **选通/扩展芯片不属于 DAL `variant`**：译码器（74HC138）、IO 扩展芯片（PCF8574）、I2C 总线开关（TCA9548A）等拓扑器件属于 **基础设施外设 (Infrastructure Devices)**，不得混入 DAL 驱动的 `variant` 枚举中。DAL 驱动应保持纯粹；引脚选通与总线切换由系统拓扑与 PAL/Codegen 解耦完成。详见设计规范 [hardware-topology-and-infrastructure-devices-design.md](../../../docs/design/tech-designs/2026-08-03-hardware-topology-and-infrastructure-devices-design.md)。
+
 **如何实现 / 扩展 Role（codegen 专文）**：[role-interface-codegen.md](./role-interface-codegen.md)。  
 角色动词表 SSOT：[01-app-business-logic.md § Role Interface](../../../docs/design/03-app-codegen/01-app-business-logic.md)。  
 BAL 边界：[06-bal-layer.md](../../../docs/design/02-wink-micro-os/06-bal-layer.md)。
