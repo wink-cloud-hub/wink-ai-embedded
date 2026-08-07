@@ -38,6 +38,8 @@
 >
 > **稳定面 vs 驱动面（Phase 1）**：**无板卡模板**——每个 App 在本文件写全 `type` 与引脚/总线（接线灵活）。`stable` 字段（如 `role`、`max_angle`、`long_press_ms`）影响业务语义；`advanced` 字段（如 `variant`、`enable_pin`、`*_pin`）为驱动/接线面。改 advanced 引脚是正常操作，不是「破坏用户面」。
 >
+> **业务功能外设 vs 基础设施外设 (Infrastructure Devices)**：`devices` 集合中包含 **业务功能外设**（`input`/`output`/`sensor` 等，暴露 Role API）与 **基础设施拓扑外设**（如 `pcf8574` IO扩展、`decoder_3to8` 3-8译码器、`tca9548a` 总线开关，使用 `"category": "infrastructure"`）。基础设施外设不向 App 暴露业务 API，业务外设可使用虚拟引脚（如 `"io_expander:P0"`）或选通父节点（如 `"parent": "sel_decoder"`）进行路由。详见架构设计规范 [hardware-topology-and-infrastructure-devices-design.md](../../docs/design/tech-designs/2026-08-03-hardware-topology-and-infrastructure-devices-design.md)。
+>
 > **Experimental 类型**：`gps`、`eeprom` 为实验性 stub（DAL 现返回 `WINK_ERR_UNSUPPORTED`），codegen 会 stderr 警告，不宜作为稳定用户面；正式 Role 待 UART/I2C 后端落地后再提供。
 
 ### 2. 板级配置 (Board Level)

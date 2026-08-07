@@ -1,0 +1,93 @@
+codegen_schema: "1.1"
+type: keypad
+category: input
+is_actuator: false
+experimental: false
+default_role: binary_sensor
+
+aliases:
+  membrane_keypad_4x4: { variant: matrix_4x4, num_rows: 4, num_cols: 4, debounce_ms: 10 }
+  membrane_keypad_3x4: { variant: matrix_3x4, num_rows: 4, num_cols: 3, debounce_ms: 10 }
+
+quantity: binary
+quantity_class: sensor_measurement
+
+fields:
+  owner:
+    tier: stable
+    type: string
+    emit: none
+  debounce_ms:
+    tier: advanced
+    type: int
+    default: 10
+  variant:
+    tier: advanced
+    type: enum
+    enum: [matrix_4x4, matrix_3x4, custom]
+    default: matrix_4x4
+    map:
+      matrix_4x4: DAL_KEYPAD_VARIANT_MATRIX_4X4
+      matrix_3x4: DAL_KEYPAD_VARIANT_MATRIX_3X4
+      custom: DAL_KEYPAD_VARIANT_CUSTOM
+  custom_keymap:
+    tier: advanced
+    type: string
+    default: ""
+  num_rows:
+    tier: advanced
+    type: int
+    default: 4
+  num_cols:
+    tier: advanced
+    type: int
+    default: 4
+  active_low:
+    tier: advanced
+    type: bool
+    default: true
+  role:
+    tier: stable
+    type: string
+    emit: none
+
+quantities:
+  owner:         { quantity_class: sensor_measurement }
+  custom_keymap: { quantity_class: sensor_measurement }
+  debounce_ms:   { quantity_class: sensor_measurement }
+  variant:       { quantity_class: sensor_measurement }
+  num_rows:      { quantity_class: sensor_measurement }
+  num_cols:      { quantity_class: sensor_measurement }
+  active_low:    { quantity_class: sensor_measurement }
+  role:          { quantity_class: sensor_measurement }
+
+config:
+  c_type: dal_keypad_t
+  config_type: dal_keypad_config_t
+  headers: [input/dal_keypad.h]
+  init_fn: dal_keypad_init
+  deinit_fn: dal_keypad_deinit
+  init_template_file: templates/keypad_init.c.j2
+  safe_off_fn: ""
+
+role_bindings:
+  binary_sensor:
+    covers_contract: full
+    headers: []
+    verbs:
+      is_active:
+        template: "WINK_WARN_UNUSED_RESULT static inline bool {{ name }}_is_active(void) { bool p = false; (void)dal_keypad_is_pressed(&{{ name }}, &p); return p; }"
+      is_active_status:
+        template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_is_active_status(bool *out_active) { return dal_keypad_is_pressed(&{{ name }}, out_active); }"
+      was_active:
+        template: "WINK_WARN_UNUSED_RESULT static inline bool {{ name }}_was_active(void) { bool p = false; (void)dal_keypad_is_pressed(&{{ name }}, &p); return p; }"
+      was_active_status:
+        template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_was_active_status(bool *out_active) { return dal_keypad_is_pressed(&{{ name }}, out_active); }"
+      enable_events:
+        template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_enable_events(void) { return WINK_ERR_UNSUPPORTED; }"
+      disable_events:
+        template: "static inline void {{ name }}_disable_events(void) {}"
+      start_auto_poll:
+        template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_start_auto_poll(void) { return WINK_ERR_UNSUPPORTED; }"
+      stop_auto_poll:
+        template: "static inline void {{ name }}_stop_auto_poll(void) {}"
