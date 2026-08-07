@@ -120,6 +120,35 @@ enable_pin  → 可选使能脚，有且要软件控才写
 角色动词表 SSOT：[01-app-business-logic.md § Role Interface](../../../docs/design/03-app-codegen/01-app-business-logic.md)。  
 BAL 边界：[06-bal-layer.md](../../../docs/design/02-wink-micro-os/06-bal-layer.md)。
 
+### 3.0.1 变体（variant）与引脚拓扑（topology）确切映射准则
+
+> ⚠️ **新增 DAL 外设 mandatory 确认项**：每次新增 DAL 层外设驱动时，必须严格执行本节的变体与拓扑分析。
+
+#### 1. 扁平层级与细分变体优先原则（Subdivided Variant First）
+外设抽象统一维持 `category -> type -> variant` 3 层扁平结构，**不得在 `variant` 下增加第 4 层级 `topology`**：
+* **细分变体优先（开发心智极简）**：凡是描述“硬件型号 / 接口协议 / 接线拓扑 / 算法机制”的字符串选型，开发者一律统一采用**细分变体 `variant`**（例如 `ssd1306_i2c` / `ssd1306_spi`；`in_in` / `phase_enable`；`matrix_4x4` / `adc_resistor_ladder`；`standard` / `logarithmic`）。
+* **零性能与 Flash 开销**：C 驱动中 `variant` 仅为 1 字节整数枚举（`uint8_t`），在 `init` 时仅做 1 次 `switch` 整数跳转；配合 Codegen DCE（死代码消除）机制，App 未引用的变体代码在编译期裁掉，运行期 CPU 性能无损，Flash 体积零冗余。
+
+#### 2. 一变体一确定拓扑与 `variant_fields` 契约（Mandatory Schema Contract）
+* **确定性契约**：在选定某一个具体的 `variant` 枚举值后，其底层的物理引脚映射（Pin Map）与参数配置必须是**绝对唯一且确定**的。
+* **变体全量字段契约 (`variant_fields`)**：多变体外设在驱动 Schema YAML (`codegen/drivers/<type>.yaml`) 中**必须声明 `fields.variant.variant_fields`**，列出每个变体使用到的字段子集。若缺失，`wink.py lint --pack drivers` **直接抛出 Error 拦截构建**。
+* **参数与引脚自动裁剪**：Codegen 在生成 `device_tree.c` 时，依据 `variant_fields[active_variant]` 自动将当前变体未使用的引脚裁剪赋值为 `-1` 哨兵值，误填的无关软参数自动警示并裁剪抛弃。
+
+#### 3. `affects_pins` 元数据标注与消费机制
+在驱动 Schema YAML（`wink-micro-os/codegen/drivers/<type>.yaml`）中，使用 `affects_pins` 元数据标记变体切换对物理引脚拓扑的影响：
+* **`affects_pins: false`（默认/省略）**：变体切换仅改变 C 内部计算或通信指令（如 `analog_knob` 的 `standard` vs `logarithmic`；`mono_oled` 的 `ssd1306_i2c` vs `sh1106_i2c`）。前端画布与 UniSim 仿真器执行**静默无感切换（Silent）**，保持画布电路连线 100% 不动。
+* **`affects_pins: true`**：变体切换会导致物理管脚数量或功能发生增减/重排（如 `dc_motor` 的 `in_in` 3脚 vs `phase_enable` 2脚；`keypad` 的 `matrix_4x4` 8脚 vs `adc_resistor_ladder` 1脚）。前端 Workbench 与 UniSim 据此触发**画布物理引脚重新排布（Re-layout pin overlay）**，并基于 `simRole` 语义角色自动进行智能连线重映射（`remapPinConnections`）。
+
+#### 4. 新增 DAL 外设变体与拓扑评审 Checklist
+每次新增/重构 DAL 外设时，必须对照下表完成确认：
+- [ ] **细分变体覆盖**：硬件选型/总线/拓扑/算法字符串是否已统一收拢为确切的细分 `variant`？
+- [ ] **拓扑与字段契约**：多变体外设是否在 YAML 中声明了 `variant_fields`，且引脚与参数表 100% 确定唯一？
+- [ ] **元数据完整性**：若变体涉及物理脚位变化，`codegen/drivers/<type>.yaml` 是否设置了 `variant.affects_pins: true`？
+- [ ] **基础设施隔离**：拓展/选通芯片（如 PCF8574/74HC138）是否已解耦为 Infrastructure Devices，未混入 DAL `variant`？
+- [ ] **后端 Fail-Closed**：未实现的预留 `variant` 在 init 时是否返回 `WINK_ERR_UNSUPPORTED`？
+
+
+
 ### 3.1 原则
 
 - **对外 API** 按业务语义冻结：`set_speed` / `coast` / `brake` / `safe_off` 等。

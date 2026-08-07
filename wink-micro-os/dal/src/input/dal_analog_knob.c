@@ -5,6 +5,32 @@
 #include "pal_resource.h"
 #include <string.h>
 
+/* Fixed-point integer square root linearization for Audio Logarithmic A-taper */
+static inline uint16_t dal_analog_knob_log_to_linear(uint16_t promille) {
+    uint32_t val32 = (uint32_t)promille * 1000u;
+    uint32_t root = 0;
+    uint32_t bit = 1u << 30;
+    while (bit > val32) {
+        bit >>= 2;
+    }
+    while (bit != 0) {
+        if (val32 >= root + bit) {
+            val32 -= root + bit;
+            root = (root >> 1) + bit;
+        } else {
+            root >>= 1;
+        }
+        bit >>= 2;
+    }
+    return (root > 1000u) ? 1000u : (uint16_t)root;
+}
+
+/* Quadratic mapping for Anti-Logarithmic C-taper */
+static inline uint16_t dal_analog_knob_antilog_to_linear(uint16_t promille) {
+    uint32_t sq = ((uint32_t)promille * (uint32_t)promille) / 1000u;
+    return (sq > 1000u) ? 1000u : (uint16_t)sq;
+}
+
 wink_status_t dal_analog_knob_init(dal_analog_knob_t *dev, const dal_analog_knob_config_t *cfg) {
     if (dev == NULL || cfg == NULL || cfg->owner == NULL) {
         return WINK_ERR_INVALID_ARG;
@@ -167,8 +193,40 @@ wink_status_t dal_analog_knob_read_promille(dal_analog_knob_t *dev, uint16_t *ou
     }
 
     uint16_t promille = (uint16_t)promille_32;
+
+    /* Topology variant processing: curve linearization & center detent clamping */
+    switch (dev->config.variant) {
+        case DAL_ANALOG_KNOB_VARIANT_CENTER_DETENT:
+            /* Center detent deadzone: 480~520 promille (48%~52%) clamps to exact 500 (50%) */
+            if (promille >= 480u && promille <= 520u) {
+                promille = 500u;
+            }
+            break;
+
+        case DAL_ANALOG_KNOB_VARIANT_LOGARITHMIC:
+            /* Audio A-taper logarithmic to linear linearization */
+            promille = dal_analog_knob_log_to_linear(promille);
+            break;
+
+        case DAL_ANALOG_KNOB_VARIANT_ANTI_LOGARITHMIC:
+            /* Anti-log C-taper to linear linearization */
+            promille = dal_analog_knob_antilog_to_linear(promille);
+            break;
+
+        case DAL_ANALOG_KNOB_VARIANT_STANDARD:
+        default:
+            break;
+    }
+
     if (dev->config.inverted) {
         promille = (uint16_t)(1000u - promille);
+    }
+
+    /* Endpoint clamping: 1% (10 promille) deadzone for reliable 0 and 1000 bounds */
+    if (promille <= 10u) {
+        promille = 0u;
+    } else if (promille >= 990u) {
+        promille = 1000u;
     }
 
     dev->last_knob_promille = promille;
@@ -186,7 +244,7 @@ wink_status_t dal_analog_knob_poll(dal_analog_knob_t *dev, bool *out_changed, ui
         return WINK_ERR_NOT_INITIALIZED;
     }
 
-    /* Take snapshot of previous promille BEFORE reading current sample */
+    /* Take snapshot of previous stable promille baseline BEFORE reading current sample */
     uint16_t prev_promille = dev->last_knob_promille;
 
     uint16_t current_promille = 0;
@@ -202,8 +260,15 @@ wink_status_t dal_analog_knob_poll(dal_analog_knob_t *dev, bool *out_changed, ui
                     (prev_promille - current_promille);
 
     bool changed = (diff >= dev->config.hysteresis_promille);
+    if (!changed) {
+        /* Sub-threshold fluctuation: restore previous stable baseline to prevent integration drift */
+        dev->last_knob_promille = prev_promille;
+        *out_knob_promille = prev_promille;
+    } else {
+        *out_knob_promille = current_promille;
+    }
+
     *out_changed = changed;
-    *out_knob_promille = current_promille;
     dev->last_status = WINK_OK;
 
     return WINK_OK;

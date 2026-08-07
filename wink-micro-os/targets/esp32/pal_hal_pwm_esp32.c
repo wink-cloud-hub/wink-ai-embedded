@@ -117,6 +117,17 @@ wink_status_t pal_pwm_set_duty(uint8_t channel, float duty_percent) {
     return WINK_OK;
 }
 
+wink_status_t pal_pwm_set_freq(uint8_t channel, uint32_t freq_hz) {
+    if (!pal_pwm_router_channel_ready(channel) || freq_hz == 0u) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    uint8_t timer_num = pal_pwm_router_channel_timer(channel);
+    if (timer_num == 0xFF) { return WINK_ERR_INVALID_STATE; }
+    esp_err_t err = ledc_set_freq(LEDC_LOW_SPEED_MODE, (ledc_timer_t)timer_num, freq_hz);
+    if (err != ESP_OK) { return WINK_ERR_HARDWARE; }
+    return pal_pwm_router_set_freq(channel, freq_hz);
+}
+
 void pal_pwm_deinit(uint8_t channel) {
     if (!pal_pwm_router_channel_ready(channel)) { return; }
     (void)ledc_set_duty(LEDC_LOW_SPEED_MODE, (ledc_channel_t)channel, 0);

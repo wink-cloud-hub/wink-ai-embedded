@@ -74,6 +74,15 @@ void pal_pwm_router_release(uint8_t channel);
 bool pal_pwm_router_channel_ready(uint8_t channel);
 
 /**
+ * @brief Update frequency of an initialized PWM channel profile
+ * @param[in] channel PWM channel ID
+ * @param[in] freq_hz New frequency in Hz
+ * @return WINK_OK on success, WINK_ERR_INVALID_ARG if channel invalid or freq 0
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t pal_pwm_router_set_freq(uint8_t channel, uint32_t freq_hz);
+
+/**
  * @brief Query hardware timer ID allocated to PWM channel
  * @param[in] channel PWM channel ID
  * @return Hardware timer ID

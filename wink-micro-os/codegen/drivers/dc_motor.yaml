@@ -35,12 +35,17 @@ fields:
     tier: advanced
     type: enum
     emit_when: present
-    affects_pins: true   # UniSim/frontend metadata; FieldSpec-whitelisted (Wave B-A)
+    affects_pins: true
     enum: [in_in, phase_enable, pwm_on_in]
     map:
       in_in: DAL_DC_MOTOR_VARIANT_IN_IN
       phase_enable: DAL_DC_MOTOR_VARIANT_PHASE_ENABLE
       pwm_on_in: DAL_DC_MOTOR_VARIANT_PWM_ON_IN
+    variant_fields:
+      in_in:        [pwm_channel, dir_pin_a, dir_pin_b, pwm_freq_hz, enable_pin]
+      phase_enable: [pwm_channel, dir_pin_a, pwm_freq_hz, enable_pin]
+      pwm_on_in:    [pwm_channel, dir_pin_a, pwm_freq_hz, enable_pin]
+
   enable_pin:
     tier: advanced
     type: int

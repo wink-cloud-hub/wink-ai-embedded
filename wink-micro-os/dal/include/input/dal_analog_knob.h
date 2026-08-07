@@ -18,7 +18,10 @@ extern "C" {
  * @brief HMI Analog Knob Topology Variant Enum (DAL-S-001)
  */
 typedef enum {
-    DAL_ANALOG_KNOB_VARIANT_STANDARD = 0, /**< Standard 3-Pin voltage divider potentiometer (default) */
+    DAL_ANALOG_KNOB_VARIANT_STANDARD = 0,        /**< Standard 3-Pin voltage divider potentiometer (default) */
+    DAL_ANALOG_KNOB_VARIANT_LOGARITHMIC = 1,     /**< Audio logarithmic taper A (logarithmic-to-linear correction) */
+    DAL_ANALOG_KNOB_VARIANT_ANTI_LOGARITHMIC = 2,/**< Anti-logarithmic taper C (anti-logarithmic correction) */
+    DAL_ANALOG_KNOB_VARIANT_CENTER_DETENT = 3,  /**< Center detent with 50% midpoint deadzone clamping */
 } dal_analog_knob_variant_t;
 
 /**

@@ -36,10 +36,15 @@ fields:
     tier: advanced
     type: enum
     emit_when: present
+    affects_pins: false
     enum: [ssd1306, sh1106]
     map:
       ssd1306: DAL_MONO_OLED_VARIANT_SSD1306
       sh1106: DAL_MONO_OLED_VARIANT_SH1106
+    variant_fields:
+      ssd1306: [i2c_bus, i2c_addr, width, height]
+      sh1106:  [i2c_bus, i2c_addr, width, height]
+
   role:
     tier: stable
     type: string

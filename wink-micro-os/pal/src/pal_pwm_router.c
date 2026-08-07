@@ -139,6 +139,19 @@ bool pal_pwm_router_channel_ready(uint8_t channel)
     return channel < PAL_PWM_CHANNELS && s_channel_init[channel];
 }
 
+wink_status_t pal_pwm_router_set_freq(uint8_t channel, uint32_t freq_hz)
+{
+    if (channel >= PAL_PWM_CHANNELS || !s_channel_init[channel] || freq_hz == 0u) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    s_channel_profile[channel].freq_hz = freq_hz;
+    uint8_t t = s_channel_timer[channel];
+    if (t < PAL_PWM_TIMERS) {
+        s_timer_slots[t].profile.freq_hz = freq_hz;
+    }
+    return WINK_OK;
+}
+
 uint8_t pal_pwm_router_channel_timer(uint8_t channel)
 {
     if (!pal_pwm_router_channel_ready(channel)) {
