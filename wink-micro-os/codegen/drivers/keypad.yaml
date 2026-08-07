@@ -24,12 +24,18 @@ fields:
   variant:
     tier: advanced
     type: enum
+    affects_pins: true
     enum: [matrix_4x4, matrix_3x4, custom]
     default: matrix_4x4
     map:
       matrix_4x4: DAL_KEYPAD_VARIANT_MATRIX_4X4
       matrix_3x4: DAL_KEYPAD_VARIANT_MATRIX_3X4
       custom: DAL_KEYPAD_VARIANT_CUSTOM
+    variant_fields:
+      matrix_4x4: [debounce_ms, num_rows, num_cols, active_low]
+      matrix_3x4: [debounce_ms, num_rows, num_cols, active_low]
+      custom:     [debounce_ms, num_rows, num_cols, active_low, custom_keymap]
+
   custom_keymap:
     tier: advanced
     type: string

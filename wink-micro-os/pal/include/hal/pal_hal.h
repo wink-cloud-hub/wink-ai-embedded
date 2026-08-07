@@ -93,6 +93,9 @@ wink_status_t pal_pwm_init_ex(uint8_t channel, const pal_pwm_config_t *cfg);
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_pwm_set_duty(uint8_t channel, float duty);
 
+WINK_WARN_UNUSED_RESULT
+wink_status_t pal_pwm_set_freq(uint8_t channel, uint32_t freq_hz);
+
 void pal_pwm_deinit(uint8_t channel);
 
 WINK_WARN_UNUSED_RESULT

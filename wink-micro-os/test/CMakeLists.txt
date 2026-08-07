@@ -177,6 +177,7 @@ add_wink_host_test(test_dal_relay unit/dal/test_dal_relay.c)
 add_wink_host_test(test_dal_button unit/dal/test_dal_button.c)
 add_wink_host_test(test_dal_mono_oled unit/dal/test_dal_mono_oled.c)
 add_wink_host_test(test_dal_analog_knob unit/dal/test_dal_analog_knob.c)
+add_wink_host_test(test_dal_buzzer unit/dal/test_dal_buzzer.c)
 target_include_directories(test_dal_analog_knob PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/input)
 
