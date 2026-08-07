@@ -470,6 +470,13 @@ wink_status_t pal_pwm_set_duty(uint8_t channel, float duty) {
     return WINK_OK;
 }
 
+wink_status_t pal_pwm_set_freq(uint8_t channel, uint32_t freq_hz) {
+    if (!pal_pwm_router_channel_ready(channel) || freq_hz == 0u) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    return pal_pwm_router_set_freq(channel, freq_hz);
+}
+
 void pal_pwm_deinit(uint8_t channel) {
     if (!pal_pwm_router_channel_ready(channel)) { return; }
     pal_pwm_router_release(channel);

@@ -46,10 +46,20 @@ fields:
   variant:
     tier: advanced
     type: enum
-    enum: [standard]
+    affects_pins: false
+    enum: [standard, logarithmic, anti_logarithmic, center_detent]
     default: standard
     map:
       standard: DAL_ANALOG_KNOB_VARIANT_STANDARD
+      logarithmic: DAL_ANALOG_KNOB_VARIANT_LOGARITHMIC
+      anti_logarithmic: DAL_ANALOG_KNOB_VARIANT_ANTI_LOGARITHMIC
+      center_detent: DAL_ANALOG_KNOB_VARIANT_CENTER_DETENT
+    variant_fields:
+      standard:         [min_mv, max_mv, hysteresis_promille, gpio_pin, enable_pin, inverted]
+      logarithmic:      [min_mv, max_mv, hysteresis_promille, gpio_pin, enable_pin, inverted]
+      anti_logarithmic: [min_mv, max_mv, hysteresis_promille, gpio_pin, enable_pin, inverted]
+      center_detent:    [min_mv, max_mv, hysteresis_promille, gpio_pin, enable_pin, inverted]
+
   inverted:
     tier: advanced
     type: bool

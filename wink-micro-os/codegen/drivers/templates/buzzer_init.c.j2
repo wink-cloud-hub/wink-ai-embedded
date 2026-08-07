@@ -1,0 +1,11 @@
+    static const dal_buzzer_config_t {{ name }}_cfg = {
+        .owner = "{{ name }}",
+        .default_freq_hz = {{ default_freq_hz | default(2000) }}u,
+        .pin = {{ gpio_pin | default(0) }}u,
+        .enable_pin = {{ enable_pin | default(-1) }},
+        .pwm_channel = {{ pwm_channel | default(0) }}u,
+        .active_high = {% if active_high | default(true) %}true{% else %}false{% endif %},
+        .enable_active_high = {% if enable_active_high | default(true) %}true{% else %}false{% endif %},
+        .variant = DAL_BUZZER_VARIANT_{{ variant | default('passive_pwm') | upper }},
+    };
+    WINK_TRY(dal_buzzer_init(&{{ name }}, &{{ name }}_cfg));

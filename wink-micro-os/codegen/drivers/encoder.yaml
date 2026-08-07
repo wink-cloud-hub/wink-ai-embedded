@@ -27,11 +27,17 @@ fields:
     tier: advanced
     type: enum
     emit_when: present
+    affects_pins: false
     enum: [x1_rising, x2, x4]
     map:
       x1_rising: DAL_ENCODER_VARIANT_X1_RISING
       x2: DAL_ENCODER_VARIANT_X2
       x4: DAL_ENCODER_VARIANT_X4
+    variant_fields:
+      x1_rising: [pin_a, pin_b, pull, invert, cpr]
+      x2:        [pin_a, pin_b, pull, invert, cpr]
+      x4:        [pin_a, pin_b, pull, invert, cpr]
+
   invert:
     tier: advanced
     type: bool

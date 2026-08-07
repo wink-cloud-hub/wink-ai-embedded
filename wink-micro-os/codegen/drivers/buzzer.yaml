@@ -1,0 +1,104 @@
+codegen_schema: "1.1"
+type: buzzer
+category: output
+is_actuator: true
+experimental: false
+default_role: tone_generator
+
+aliases:
+  buzzer:         { variant: passive_pwm, default_freq_hz: 2000, active_high: true }
+  passive_buzzer: { variant: passive_pwm, default_freq_hz: 2000, active_high: true }
+  active_buzzer:  { variant: active_gpio, default_freq_hz: 0,    active_high: true }
+  piezo_speaker:  { variant: passive_pwm, default_freq_hz: 1000, active_high: true }
+
+quantity: frequency
+quantity_class: actuator_command
+
+fields:
+  owner:
+    tier: stable
+    type: string
+    emit: none
+  default_freq_hz:
+    tier: advanced
+    type: int
+    default: 2000
+  gpio_pin:
+    tier: advanced
+    type: int
+    default: 0
+    c: pin
+  enable_pin:
+    tier: advanced
+    type: int
+    default: -1
+  pwm_channel:
+    tier: advanced
+    type: int
+    default: 0
+  active_high:
+    tier: advanced
+    type: bool
+    default: true
+  enable_active_high:
+    tier: advanced
+    type: bool
+    default: true
+  variant:
+    tier: advanced
+    type: enum
+    affects_pins: false
+    enum: [passive_pwm, active_gpio]
+    map:
+      passive_pwm: DAL_BUZZER_VARIANT_PASSIVE_PWM
+      active_gpio: DAL_BUZZER_VARIANT_ACTIVE_GPIO
+    default: passive_pwm
+    variant_fields:
+      passive_pwm: [default_freq_hz, gpio_pin, enable_pin, pwm_channel, active_high, enable_active_high]
+      active_gpio: [default_freq_hz, gpio_pin, enable_pin, active_high, enable_active_high]
+
+  role:
+    tier: stable
+    type: string
+    emit: none
+
+quantities:
+  owner:              { quantity_class: actuator_command }
+  default_freq_hz:    { quantity: frequency, unit: hz, quantity_class: actuator_command }
+  gpio_pin:           { quantity_class: actuator_command }
+  enable_pin:         { quantity_class: actuator_command }
+  pwm_channel:        { quantity_class: actuator_command }
+  active_high:        { quantity_class: actuator_command }
+  enable_active_high: { quantity_class: actuator_command }
+  variant:            { quantity_class: actuator_command }
+  role:               { quantity_class: actuator_command }
+
+config:
+  c_type: dal_buzzer_t
+  config_type: dal_buzzer_config_t
+  headers: [output/dal_buzzer.h]
+  init_fn: dal_buzzer_init
+  deinit_fn: dal_buzzer_deinit
+  init_template_file: templates/buzzer_init.c.j2
+  safe_off_fn: dal_buzzer_safe_off
+
+role_bindings:
+  tone_generator:
+    covers_contract: full
+    headers: []
+    verbs:
+      play_tone_hz:
+        template: "static inline void {{ name }}_play_tone_hz(uint32_t freq_hz) { WINK_IGNORE_RESULT(dal_buzzer_play_tone(&{{ name }}, freq_hz)); }"
+      stop_tone:
+        template: "static inline void {{ name }}_stop_tone(void) { WINK_IGNORE_RESULT(dal_buzzer_stop_tone(&{{ name }})); }"
+
+  binary_indicator:
+    covers_contract: full
+    headers: []
+    verbs:
+      activate:
+        template: "static inline void {{ name }}_activate(void) { WINK_IGNORE_RESULT(dal_buzzer_on(&{{ name }})); }"
+      deactivate:
+        template: "static inline void {{ name }}_deactivate(void) { WINK_IGNORE_RESULT(dal_buzzer_off(&{{ name }})); }"
+      toggle:
+        template: "static inline void {{ name }}_toggle(void) { WINK_IGNORE_RESULT(dal_buzzer_toggle(&{{ name }})); }"
