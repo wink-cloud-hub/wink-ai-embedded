@@ -1,0 +1,24 @@
+    static const dal_keypad_config_t {{ name }}_cfg = {
+        .owner = "{{ name }}",
+        .debounce_ms = {{ debounce_ms | default(10) }},
+        .row_pins = {
+            {% if row_pins is defined and row_pins|length >= 4 %}
+            {{ row_pins[0] }}, {{ row_pins[1] }}, {{ row_pins[2] }}, {{ row_pins[3] }}
+            {% else %}
+            {{ row_pin_0 | default(-1) }}, {{ row_pin_1 | default(-1) }}, {{ row_pin_2 | default(-1) }}, {{ row_pin_3 | default(-1) }}
+            {% endif %}
+        },
+        .col_pins = {
+            {% if col_pins is defined and col_pins|length >= 4 %}
+            {{ col_pins[0] }}, {{ col_pins[1] }}, {{ col_pins[2] }}, {{ col_pins[3] }}
+            {% else %}
+            {{ col_pin_0 | default(-1) }}, {{ col_pin_1 | default(-1) }}, {{ col_pin_2 | default(-1) }}, {{ col_pin_3 | default(-1) }}
+            {% endif %}
+        },
+        .variant = DAL_KEYPAD_VARIANT_{{ variant | default('matrix_4x4') | upper }},
+        .custom_keymap = {% if custom_keymap is defined and custom_keymap != "" %}"{{ custom_keymap }}"{% else %}NULL{% endif %},
+        .num_rows = {{ num_rows | default(4) }},
+        .num_cols = {{ num_cols | default(4) }},
+        .active_low = {% if active_low | default(true) %}true{% else %}false{% endif %},
+    };
+    WINK_TRY(dal_keypad_init(&{{ name }}, &{{ name }}_cfg));
