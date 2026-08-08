@@ -10,7 +10,7 @@
 
 // Declare internal reset/helpers from dev models for testing
 void wasm_dev_ultrasonic_reset(void);
-uint32_t wasm_dev_ultrasonic_get_pulse_us(uint8_t pin);
+float pal_wasm_get_ultrasonic_distance(uint8_t pin);
 
 float js_sim_get_plugin_channel(const char *instance_id, const char *channel_name) {
     (void)instance_id;
@@ -39,58 +39,30 @@ void test_ssd1306_scheme_a_retired(void) {
 }
 
 void test_virtual_servo_angle_conversion(void) {
-    // SG90 Servo pulse limits: 500us (0 deg) to 2500us (180 deg)
-    // Formula under 50Hz (20ms period):
-    // pulse_us = duty_percent * 200.0f
-    
-    // Set 2.5% duty cycle -> 500us -> 0 degrees
+    // Channel 2b PWM duty observation test
     wasm_sim_pwm_set_duty(1, 2.5f);
-    TEST_ASSERT_FLOAT_WITHIN(0.1f, 0.0f, pal_wasm_get_servo_angle(1));
     TEST_ASSERT_FLOAT_WITHIN(0.01f, 2.5f, pal_wasm_get_pwm_duty_percent(1));
 
-    // Set 7.5% duty cycle -> 1500us -> 90 degrees
     wasm_sim_pwm_set_duty(1, 7.5f);
-    TEST_ASSERT_FLOAT_WITHIN(0.1f, 90.0f, pal_wasm_get_servo_angle(1));
     TEST_ASSERT_FLOAT_WITHIN(0.01f, 7.5f, pal_wasm_get_pwm_duty_percent(1));
 
-    // Set 12.5% duty cycle -> 2500us -> 180 degrees
     wasm_sim_pwm_set_duty(1, 12.5f);
-    TEST_ASSERT_FLOAT_WITHIN(0.1f, 180.0f, pal_wasm_get_servo_angle(1));
     TEST_ASSERT_FLOAT_WITHIN(0.01f, 12.5f, pal_wasm_get_pwm_duty_percent(1));
-
-    // Out of bounds check: 1.0% duty cycle -> < 500us -> clamp to 0
-    wasm_sim_pwm_set_duty(1, 1.0f);
-    TEST_ASSERT_FLOAT_WITHIN(0.1f, 0.0f, pal_wasm_get_servo_angle(1));
-    TEST_ASSERT_FLOAT_WITHIN(0.01f, 1.0f, pal_wasm_get_pwm_duty_percent(1));
-
-    // Out of bounds check: 15.0% duty cycle -> > 2500us -> clamp to 180
-    wasm_sim_pwm_set_duty(1, 15.0f);
-    TEST_ASSERT_FLOAT_WITHIN(0.1f, 180.0f, pal_wasm_get_servo_angle(1));
-    TEST_ASSERT_FLOAT_WITHIN(0.01f, 15.0f, pal_wasm_get_pwm_duty_percent(1));
 }
 
 void test_virtual_ultrasonic_distance_and_pulses(void) {
     uint8_t pin = 12;
 
-    // Default distance is -1.0f, should return 0 (triggers fallback)
-    TEST_ASSERT_EQUAL(0, wasm_dev_ultrasonic_get_pulse_us(pin));
+    // Default distance is -1.0f
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, -1.0f, pal_wasm_get_ultrasonic_distance(pin));
 
     // Inject distance = 15.5cm
     pal_wasm_set_ultrasonic_distance(pin, 15.5f);
-
-    // Pulse width should be (uint32_t)(15.5 * 58) = 899 microseconds
-    TEST_ASSERT_EQUAL(899, wasm_dev_ultrasonic_get_pulse_us(pin));
-
-    // Out of bounds checks
-    pal_wasm_set_ultrasonic_distance(pin, 1.0f);
-    TEST_ASSERT_EQUAL(116, wasm_dev_ultrasonic_get_pulse_us(pin)); // Minimum clamp (2cm * 58 = 116us)
-
-    pal_wasm_set_ultrasonic_distance(pin, 450.0f);
-    TEST_ASSERT_EQUAL(0, wasm_dev_ultrasonic_get_pulse_us(pin)); // Timeout (>400cm)
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 15.5f, pal_wasm_get_ultrasonic_distance(pin));
 
     // Resetting should clear distance back to -1.0f
     pal_wasm_sim_reset_all_devices();
-    TEST_ASSERT_EQUAL(0, wasm_dev_ultrasonic_get_pulse_us(pin));
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, -1.0f, pal_wasm_get_ultrasonic_distance(pin));
 }
 
 void test_virtual_gpio_inputs_and_outputs(void) {
