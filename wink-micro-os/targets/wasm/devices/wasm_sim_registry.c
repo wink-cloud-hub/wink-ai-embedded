@@ -18,7 +18,6 @@ void wasm_dev_servo_reset(void);
 void wasm_dev_servo_set_duty(uint8_t channel, float duty_cycle_percent);
 
 void     wasm_dev_ultrasonic_reset(void);
-uint32_t wasm_dev_ultrasonic_get_pulse_us(uint8_t pin);
 #ifdef __EMSCRIPTEN__
 void     wasm_sim_pin_events_reset(void);
 #endif

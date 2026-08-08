@@ -19,33 +19,69 @@ extern "C" {
 #define MONO_OLED_FONT_GLYPH_W 5
 
 /**
- * @brief Monochrome OLED display controller variant
+ * @brief Monochrome OLED physical interface variant (affects pinout)
  */
 typedef uint8_t dal_mono_oled_variant_t;
-
 enum {
-    DAL_MONO_OLED_VARIANT_SSD1306 = 0,  /**< SSD1306 (default) */
-    DAL_MONO_OLED_VARIANT_SH1106  = 1,  /**< SH1106 */
+    DAL_MONO_OLED_VARIANT_SSD1306_I2C = 0,  /**< I2C mode: [VCC, GND, SCL, SDA] 4-Pin */
+    DAL_MONO_OLED_VARIANT_SSD1306_SPI = 1,  /**< SPI mode: [VCC, GND, CLK, MOSI, CS, DC, RES] 7-Pin */
 };
+#define DAL_MONO_OLED_VARIANT_COUNT 2
 
 #ifdef __cplusplus
 static_assert(sizeof(dal_mono_oled_variant_t) == 1,
               "variant must stay 1 byte to keep dal_mono_oled_config_t layout stable");
+static_assert(DAL_MONO_OLED_VARIANT_COUNT == 2,
+              "Variant count mismatch with SSOT §2 and codegen YAML");
+static_assert(DAL_MONO_OLED_VARIANT_SSD1306_SPI + 1 == DAL_MONO_OLED_VARIANT_COUNT,
+              "Sequential variant ordering error");
 #else
 _Static_assert(sizeof(dal_mono_oled_variant_t) == 1,
                "variant must stay 1 byte to keep dal_mono_oled_config_t layout stable");
+_Static_assert(DAL_MONO_OLED_VARIANT_COUNT == 2,
+               "Variant count mismatch with SSOT §2 and codegen YAML");
+_Static_assert(DAL_MONO_OLED_VARIANT_SSD1306_SPI + 1 == DAL_MONO_OLED_VARIANT_COUNT,
+               "Sequential variant ordering error");
 #endif
 
 /**
- * @brief Monochrome OLED configuration struct
+ * @brief Monochrome OLED display controller IC variant (algorithm only, affects_pins: false)
+ */
+typedef uint8_t dal_mono_oled_ic_t;
+enum {
+    DAL_MONO_OLED_IC_SSD1306 = 0,  /**< Standard SSD1306 (horizontal/page addressing) */
+    DAL_MONO_OLED_IC_SH1106  = 1,  /**< SH1106 (page addressing with 0x02 column offset) */
+};
+#define DAL_MONO_OLED_IC_COUNT 2
+
+#ifdef __cplusplus
+static_assert(sizeof(dal_mono_oled_ic_t) == 1,
+              "panel_ic must stay 1 byte to keep dal_mono_oled_config_t layout stable");
+#else
+_Static_assert(sizeof(dal_mono_oled_ic_t) == 1,
+               "panel_ic must stay 1 byte to keep dal_mono_oled_config_t layout stable");
+#endif
+
+/**
+ * @brief Monochrome OLED configuration struct (Flat layout with sentinel trimming)
  */
 typedef struct {
-    const char *owner;      /**< Instance owner static string */
-    uint16_t i2c_addr;      /**< 7-bit I2C address (typically 0x3C or 0x3D) */
-    uint16_t width;         /**< Display width in pixels (typically 128) */
-    uint16_t height;        /**< Display height in pixels (typically 64) */
-    uint8_t  i2c_port;      /**< Logical I2C port number */
-    dal_mono_oled_variant_t variant; /**< Display controller variant */
+    const char             *owner;      /**< Instance owner static string */
+    dal_mono_oled_variant_t variant;    /**< Physical variant (determines pinout) */
+    dal_mono_oled_ic_t      panel_ic;   /**< Controller IC (determines flush algorithm) */
+    uint8_t                 i2c_port;   /**< Logical I2C bus index */
+    uint8_t                 padding0;   /**< Explicit byte alignment padding */
+    uint16_t                i2c_addr;   /**< 7-bit I2C address (typically 0x3C or 0x3D) */
+    uint16_t                width;      /**< Display width in pixels (typically 128) */
+    uint16_t                height;     /**< Display height in pixels (typically 64) */
+
+    /* SPI fields (Active when variant == DAL_MONO_OLED_VARIANT_SSD1306_SPI, trimmed to -1 on I2C) */
+    int16_t                 pin_clk;    /**< SPI Clock pin */
+    int16_t                 pin_mosi;   /**< SPI MOSI pin */
+    int16_t                 pin_cs;     /**< SPI Chip Select pin (-1 if bus dedicated) */
+    int16_t                 pin_dc;     /**< SPI Data/Command pin */
+    int16_t                 pin_res;    /**< SPI Reset pin (-1 if hardwired) */
+    int16_t                 padding1;   /**< Explicit 2-byte alignment padding */
 } dal_mono_oled_config_t;
 
 /**
@@ -60,14 +96,14 @@ typedef struct {
 
 _Static_assert(offsetof(dal_mono_oled_t, config) == 0, "config must be the first member");
 
-#if INTPTR_MAX == INT32_MAX   /* ILP32: ESP32 xtensa, wasm32 */
-_Static_assert(sizeof(dal_mono_oled_config_t) == 12, "ABI break: config size changed on 32-bit target");
-_Static_assert(offsetof(dal_mono_oled_t, initialized) == 1037, "ABI break: initialized offset changed on 32-bit");
-_Static_assert(sizeof(dal_mono_oled_t) == 1040, "ABI break: handle size changed on 32-bit target");
+#if INTPTR_MAX == INT32_MAX   /* ILP32: ESP32 xtensa, WASM32 */
+_Static_assert(sizeof(dal_mono_oled_config_t) == 28, "ABI break: config size changed on 32-bit target");
+_Static_assert(offsetof(dal_mono_oled_t, initialized) == 1053, "ABI break: initialized offset changed on 32-bit");
+_Static_assert(sizeof(dal_mono_oled_t) == 1056, "ABI break: handle size changed on 32-bit target");
 #else                         /* LP64 / LLP64: 64-bit Host Simulation */
-_Static_assert(sizeof(dal_mono_oled_config_t) == 16, "ABI break: config size changed on 64-bit host");
-_Static_assert(offsetof(dal_mono_oled_t, initialized) == 1041, "ABI break: initialized offset changed on 64-bit host");
-_Static_assert(sizeof(dal_mono_oled_t) == 1048, "ABI break: handle size changed on 64-bit host");
+_Static_assert(sizeof(dal_mono_oled_config_t) == 32, "ABI break: config size changed on 64-bit host");
+_Static_assert(offsetof(dal_mono_oled_t, initialized) == 1057, "ABI break: initialized offset changed on 64-bit host");
+_Static_assert(sizeof(dal_mono_oled_t) == 1064, "ABI break: handle size changed on 64-bit host");
 #endif
 
 /**
@@ -142,3 +178,4 @@ wink_status_t dal_mono_oled_deinit(dal_mono_oled_t *dev);
 #endif /* !WINK_USE_MONO_OLED */
 
 #endif /* DAL_MONO_OLED_H */
+

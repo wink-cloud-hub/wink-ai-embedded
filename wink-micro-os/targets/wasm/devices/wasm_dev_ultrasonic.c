@@ -18,14 +18,18 @@
 
 static float s_virtual_ultrasonic_distance[WASM_SIM_MAX_PINS];
 
-WINK_CONSTRUCTOR(ultrasonic_boot_init) {
+static void ultrasonic_do_reset(void) {
     for (int i = 0; i < WASM_SIM_MAX_PINS; i++) {
         s_virtual_ultrasonic_distance[i] = -1.0f;
     }
 }
 
+WINK_CONSTRUCTOR(ultrasonic_boot_init) {
+    ultrasonic_do_reset();
+}
+
 void wasm_dev_ultrasonic_reset(void) {
-    ultrasonic_boot_init();
+    ultrasonic_do_reset();
 }
 
 EMSCRIPTEN_KEEPALIVE void pal_wasm_set_ultrasonic_distance(uint8_t pin, float distance_cm) {
@@ -35,33 +39,19 @@ EMSCRIPTEN_KEEPALIVE void pal_wasm_set_ultrasonic_distance(uint8_t pin, float di
     s_virtual_ultrasonic_distance[pin] = distance_cm;
 }
 
-uint32_t wasm_dev_ultrasonic_get_pulse_us(uint8_t pin) {
+EMSCRIPTEN_KEEPALIVE float pal_wasm_get_ultrasonic_distance(uint8_t pin) {
     if (pin >= WASM_SIM_MAX_PINS) {
-        return 0;
+        return -1.0f;
     }
-
-    float distance_cm = js_sim_get_plugin_channel("ultrasonic:0", "distanceCm");
-
-    if (distance_cm < 0.0f && s_virtual_ultrasonic_distance[pin] >= 0.0f) {
-        distance_cm = s_virtual_ultrasonic_distance[pin];
+    if (s_virtual_ultrasonic_distance[pin] >= 0.0f) {
+        return s_virtual_ultrasonic_distance[pin];
     }
-    else if (distance_cm < 0.0f && pin > 0 && s_virtual_ultrasonic_distance[pin - 1] >= 0.0f) {
-        distance_cm = s_virtual_ultrasonic_distance[pin - 1];
+    if (pin > 0 && s_virtual_ultrasonic_distance[pin - 1] >= 0.0f) {
+        return s_virtual_ultrasonic_distance[pin - 1];
     }
-    else if (distance_cm < 0.0f && pin < WASM_SIM_MAX_PINS - 1 && s_virtual_ultrasonic_distance[pin + 1] >= 0.0f) {
-        distance_cm = s_virtual_ultrasonic_distance[pin + 1];
+    if (pin + 1 < WASM_SIM_MAX_PINS && s_virtual_ultrasonic_distance[pin + 1] >= 0.0f) {
+        return s_virtual_ultrasonic_distance[pin + 1];
     }
-
-    if (distance_cm < 0.0f) {
-        return 0;
-    }
-
-    uint32_t pulse_us = (uint32_t)(distance_cm * 58.0f);
-    if (distance_cm <= 2.0f) {
-        pulse_us = 116;
-    } else if (distance_cm >= 400.0f) {
-        pulse_us = 0;
-    }
-
-    return pulse_us;
+    return -1.0f;
 }
+

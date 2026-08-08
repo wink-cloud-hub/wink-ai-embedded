@@ -312,12 +312,6 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us,
         }
     }
 
-    uint32_t v = wasm_dev_ultrasonic_get_pulse_us((uint8_t)pin);
-    if (v > 0) {
-        *pulse_us = v;
-        return WINK_OK;
-    }
-
     return WINK_ERR_TIMEOUT;
 }
 

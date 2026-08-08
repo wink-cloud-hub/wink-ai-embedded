@@ -24,7 +24,6 @@ bool wasm_sim_gpio_input_is_set(uint8_t pin, bool *out_level);
 bool wasm_sim_gpio_get_input(uint8_t pin);
 bool wasm_sim_gpio_get_output(uint8_t pin);
 void wasm_sim_gpio_write(uint8_t pin, bool level);
-uint32_t wasm_dev_ultrasonic_get_pulse_us(uint8_t pin);
 
 void wasm_sim_devices_reset(void);
 
