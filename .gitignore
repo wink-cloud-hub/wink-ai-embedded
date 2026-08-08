@@ -3,6 +3,7 @@
 build/
 build-*/
 build_*/
+!wink-tools/tools/commands/build/
 out/
 dist/
 .codegen_test*
