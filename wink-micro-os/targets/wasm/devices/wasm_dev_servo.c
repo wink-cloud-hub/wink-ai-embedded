@@ -24,13 +24,6 @@ void wasm_dev_servo_reset(void) {
     }
 }
 
-EMSCRIPTEN_KEEPALIVE float pal_wasm_get_servo_angle(uint8_t channel) {
-    if (channel >= MAX_PWM_CHANNELS) {
-        return 0.0f;
-    }
-    return s_virtual_servo_angles[channel];
-}
-
 EMSCRIPTEN_KEEPALIVE float pal_wasm_get_pwm_duty_percent(uint8_t channel) {
     if (channel >= MAX_PWM_CHANNELS) {
         return 0.0f;
@@ -42,19 +35,6 @@ void wasm_dev_servo_set_duty(uint8_t channel, float duty_cycle_percent) {
     if (channel >= MAX_PWM_CHANNELS) {
         return;
     }
-
     s_pwm_duty_percent[channel] = duty_cycle_percent;
-
-    float pulse_us = duty_cycle_percent * 200.0f;
-
-    float angle = 0.0f;
-    if (pulse_us <= 500.0f) {
-        angle = 0.0f;
-    } else if (pulse_us >= 2500.0f) {
-        angle = 180.0f;
-    } else {
-        angle = (pulse_us - 500.0f) * 180.0f / 2000.0f;
-    }
-
-    s_virtual_servo_angles[channel] = angle;
 }
+

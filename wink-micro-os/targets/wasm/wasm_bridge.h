@@ -89,10 +89,10 @@ extern wink_status_t pal_wasm_set_pin_power_model(uint8_t pin,
 extern uint64_t      pal_wasm_get_total_energy_mj(void);
 
 extern void           pal_wasm_sim_reset_all_devices(void);
-extern float          pal_wasm_get_servo_angle(uint8_t channel);
 extern float          pal_wasm_get_pwm_duty_percent(uint8_t channel);
 extern void           pal_wasm_push_pin_event(uint8_t pin, uint64_t delay_us, uint8_t level);
 extern void           pal_wasm_set_ultrasonic_distance(uint8_t pin, float distance_cm);
+extern float          pal_wasm_get_ultrasonic_distance(uint8_t pin);
 extern void           pal_wasm_set_gpio_input(uint8_t pin, bool level);
 extern bool           pal_wasm_get_gpio_output(uint8_t pin);
 

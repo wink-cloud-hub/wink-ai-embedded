@@ -17,7 +17,9 @@ void tearDown(void) {}
 
 void test_init_null_returns_invalid_arg(void) {
     static dal_mono_oled_t dev = {0};
-    dal_mono_oled_config_t cfg = { .i2c_port = 0, .i2c_addr = 0x3C,
+    dal_mono_oled_config_t cfg = { .variant = DAL_MONO_OLED_VARIANT_SSD1306_I2C,
+                                  .panel_ic = DAL_MONO_OLED_IC_SSD1306,
+                                  .i2c_port = 0, .i2c_addr = 0x3C,
                                   .width = 128, .height = 64, .owner = "oled0" };
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_mono_oled_init(NULL, &cfg));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_mono_oled_init(&dev, NULL));
@@ -25,14 +27,18 @@ void test_init_null_returns_invalid_arg(void) {
 
 void test_init_null_owner_returns_invalid_arg(void) {
     static dal_mono_oled_t dev = {0};
-    dal_mono_oled_config_t cfg = { .i2c_port = 0, .i2c_addr = 0x3C,
+    dal_mono_oled_config_t cfg = { .variant = DAL_MONO_OLED_VARIANT_SSD1306_I2C,
+                                  .panel_ic = DAL_MONO_OLED_IC_SSD1306,
+                                  .i2c_port = 0, .i2c_addr = 0x3C,
                                   .width = 128, .height = 64, .owner = NULL };
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_mono_oled_init(&dev, &cfg));
 }
 
 void test_init_valid_claims_addr_and_sends_init(void) {
     static dal_mono_oled_t dev = {0};
-    dal_mono_oled_config_t cfg = { .i2c_port = 0, .i2c_addr = 0x3C,
+    dal_mono_oled_config_t cfg = { .variant = DAL_MONO_OLED_VARIANT_SSD1306_I2C,
+                                  .panel_ic = DAL_MONO_OLED_IC_SSD1306,
+                                  .i2c_port = 0, .i2c_addr = 0x3C,
                                   .width = 128, .height = 64, .owner = "oled0" };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_init(&dev, &cfg));
     TEST_ASSERT_TRUE(dev.initialized);
@@ -43,9 +49,13 @@ void test_init_valid_claims_addr_and_sends_init(void) {
 void test_init_addr_conflict_returns_busy(void) {
     static dal_mono_oled_t dev0 = {0};
     static dal_mono_oled_t dev1 = {0};
-    dal_mono_oled_config_t cfg0 = { .i2c_port = 0, .i2c_addr = 0x3C,
+    dal_mono_oled_config_t cfg0 = { .variant = DAL_MONO_OLED_VARIANT_SSD1306_I2C,
+                                   .panel_ic = DAL_MONO_OLED_IC_SSD1306,
+                                   .i2c_port = 0, .i2c_addr = 0x3C,
                                    .width = 128, .height = 64, .owner = "oled0" };
-    dal_mono_oled_config_t cfg1 = { .i2c_port = 0, .i2c_addr = 0x3C,
+    dal_mono_oled_config_t cfg1 = { .variant = DAL_MONO_OLED_VARIANT_SSD1306_I2C,
+                                   .panel_ic = DAL_MONO_OLED_IC_SSD1306,
+                                   .i2c_port = 0, .i2c_addr = 0x3C,
                                    .width = 128, .height = 64, .owner = "oled1" };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_init(&dev0, &cfg0));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_BUSY, dal_mono_oled_init(&dev1, &cfg1));
@@ -53,7 +63,9 @@ void test_init_addr_conflict_returns_busy(void) {
 
 void test_init_rejects_invalid_width(void) {
     static dal_mono_oled_t dev = {0};
-    dal_mono_oled_config_t cfg64 = { .i2c_port = 0, .i2c_addr = 0x3C,
+    dal_mono_oled_config_t cfg64 = { .variant = DAL_MONO_OLED_VARIANT_SSD1306_I2C,
+                                    .panel_ic = DAL_MONO_OLED_IC_SSD1306,
+                                    .i2c_port = 0, .i2c_addr = 0x3C,
                                     .width = 64, .height = 64, .owner = "oled_bad_w" };
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_mono_oled_init(&dev, &cfg64));
     TEST_ASSERT_FALSE(dev.initialized);
@@ -61,29 +73,39 @@ void test_init_rejects_invalid_width(void) {
 
 void test_init_rejects_invalid_height(void) {
     static dal_mono_oled_t dev = {0};
-    dal_mono_oled_config_t cfg48 = { .i2c_port = 0, .i2c_addr = 0x3C,
+    dal_mono_oled_config_t cfg48 = { .variant = DAL_MONO_OLED_VARIANT_SSD1306_I2C,
+                                    .panel_ic = DAL_MONO_OLED_IC_SSD1306,
+                                    .i2c_port = 0, .i2c_addr = 0x3C,
                                     .width = 128, .height = 48, .owner = "oled_bad_h" };
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_mono_oled_init(&dev, &cfg48));
     TEST_ASSERT_FALSE(dev.initialized);
 
-    dal_mono_oled_config_t cfg128 = { .i2c_port = 0, .i2c_addr = 0x3C,
+    dal_mono_oled_config_t cfg128 = { .variant = DAL_MONO_OLED_VARIANT_SSD1306_I2C,
+                                     .panel_ic = DAL_MONO_OLED_IC_SSD1306,
+                                     .i2c_port = 0, .i2c_addr = 0x3C,
                                      .width = 128, .height = 128, .owner = "oled_bad_h2" };
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_mono_oled_init(&dev, &cfg128));
 }
 
 void test_init_rejects_invalid_i2c_addr(void) {
     static dal_mono_oled_t dev = {0};
-    dal_mono_oled_config_t cfg0 = { .i2c_port = 0, .i2c_addr = 0x00,
+    dal_mono_oled_config_t cfg0 = { .variant = DAL_MONO_OLED_VARIANT_SSD1306_I2C,
+                                   .panel_ic = DAL_MONO_OLED_IC_SSD1306,
+                                   .i2c_port = 0, .i2c_addr = 0x00,
                                    .width = 128, .height = 64, .owner = "oled_bad_addr0" };
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_mono_oled_init(&dev, &cfg0));
-    dal_mono_oled_config_t cfg7f = { .i2c_port = 0, .i2c_addr = 0x7F,
+    dal_mono_oled_config_t cfg7f = { .variant = DAL_MONO_OLED_VARIANT_SSD1306_I2C,
+                                    .panel_ic = DAL_MONO_OLED_IC_SSD1306,
+                                    .i2c_port = 0, .i2c_addr = 0x7F,
                                     .width = 128, .height = 64, .owner = "oled_bad_addr7f" };
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_mono_oled_init(&dev, &cfg7f));
 }
 
 void test_init_128x32_ok_and_flush_transfers_4_pages(void) {
     static dal_mono_oled_t dev = {0};
-    dal_mono_oled_config_t cfg = { .i2c_port = 0, .i2c_addr = 0x3C,
+    dal_mono_oled_config_t cfg = { .variant = DAL_MONO_OLED_VARIANT_SSD1306_I2C,
+                                  .panel_ic = DAL_MONO_OLED_IC_SSD1306,
+                                  .i2c_port = 0, .i2c_addr = 0x3C,
                                   .width = 128, .height = 32, .owner = "oled32" };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_init(&dev, &cfg));
     TEST_ASSERT_TRUE(dev.initialized);
@@ -99,7 +121,9 @@ void test_init_128x32_ok_and_flush_transfers_4_pages(void) {
 
 void test_clear_zeros_framebuffer(void) {
     static dal_mono_oled_t dev = {0};
-    dal_mono_oled_config_t cfg = { .i2c_port = 0, .i2c_addr = 0x3C,
+    dal_mono_oled_config_t cfg = { .variant = DAL_MONO_OLED_VARIANT_SSD1306_I2C,
+                                  .panel_ic = DAL_MONO_OLED_IC_SSD1306,
+                                  .i2c_port = 0, .i2c_addr = 0x3C,
                                   .width = 128, .height = 64, .owner = "oled0" };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_init(&dev, &cfg));
     dev.framebuffer[10] = 0xFF;
@@ -109,7 +133,9 @@ void test_clear_zeros_framebuffer(void) {
 
 void test_draw_text_modifies_framebuffer(void) {
     static dal_mono_oled_t dev = {0};
-    dal_mono_oled_config_t cfg = { .i2c_port = 0, .i2c_addr = 0x3C,
+    dal_mono_oled_config_t cfg = { .variant = DAL_MONO_OLED_VARIANT_SSD1306_I2C,
+                                  .panel_ic = DAL_MONO_OLED_IC_SSD1306,
+                                  .i2c_port = 0, .i2c_addr = 0x3C,
                                   .width = 128, .height = 64, .owner = "oled0" };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_init(&dev, &cfg));
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_clear(&dev));
@@ -120,7 +146,9 @@ void test_draw_text_modifies_framebuffer(void) {
 
 void test_draw_text_ascii_upper_letter_b(void) {
     static dal_mono_oled_t dev = {0};
-    dal_mono_oled_config_t cfg = { .i2c_port = 0, .i2c_addr = 0x3C,
+    dal_mono_oled_config_t cfg = { .variant = DAL_MONO_OLED_VARIANT_SSD1306_I2C,
+                                  .panel_ic = DAL_MONO_OLED_IC_SSD1306,
+                                  .i2c_port = 0, .i2c_addr = 0x3C,
                                   .width = 128, .height = 64, .owner = "oled0" };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_init(&dev, &cfg));
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_clear(&dev));
@@ -138,7 +166,9 @@ void test_draw_text_ascii_upper_letter_b(void) {
 
 void test_flush_generates_i2c_transfers(void) {
     static dal_mono_oled_t dev = {0};
-    dal_mono_oled_config_t cfg = { .i2c_port = 0, .i2c_addr = 0x3C,
+    dal_mono_oled_config_t cfg = { .variant = DAL_MONO_OLED_VARIANT_SSD1306_I2C,
+                                  .panel_ic = DAL_MONO_OLED_IC_SSD1306,
+                                  .i2c_port = 0, .i2c_addr = 0x3C,
                                   .width = 128, .height = 64, .owner = "oled0" };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_init(&dev, &cfg));
 
@@ -160,7 +190,9 @@ void test_ops_before_init_returns_not_initialized(void) {
 
 void test_deinit_hardening(void) {
     static dal_mono_oled_t dev = {0};
-    dal_mono_oled_config_t cfg = { .i2c_port = 0, .i2c_addr = 0x3C,
+    dal_mono_oled_config_t cfg = { .variant = DAL_MONO_OLED_VARIANT_SSD1306_I2C,
+                                  .panel_ic = DAL_MONO_OLED_IC_SSD1306,
+                                  .i2c_port = 0, .i2c_addr = 0x3C,
                                   .width = 128, .height = 64, .owner = "oled0" };
 
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_mono_oled_deinit(NULL));
@@ -182,6 +214,8 @@ void test_deinit_hardening(void) {
 void test_deinit_loop_i2c_client_no_resource_leak(void) {
     static dal_mono_oled_t dev = {0};
     const dal_mono_oled_config_t cfg = {
+        .variant = DAL_MONO_OLED_VARIANT_SSD1306_I2C,
+        .panel_ic = DAL_MONO_OLED_IC_SSD1306,
         .i2c_port = 0, .i2c_addr = 0x3C,
         .width = 128, .height = 64, .owner = "oled_loop",
     };
@@ -196,19 +230,63 @@ void test_deinit_loop_i2c_client_no_resource_leak(void) {
     }
 }
 
-void test_mono_oled_sh1106_variant_unsupported(void)
-{
+void test_mono_oled_sh1106_i2c_supported_and_flush(void) {
     static dal_mono_oled_t dev = {0};
     dal_mono_oled_config_t cfg = {
-        .owner = "t",
+        .owner = "sh1106_i2c",
+        .variant = DAL_MONO_OLED_VARIANT_SSD1306_I2C,
+        .panel_ic = DAL_MONO_OLED_IC_SH1106,
+        .i2c_port = 0,
         .i2c_addr = 0x3C,
         .width = 128,
         .height = 64,
-        .i2c_port = 0,
-        .variant = DAL_MONO_OLED_VARIANT_SH1106,
     };
-    TEST_ASSERT_EQUAL(WINK_ERR_UNSUPPORTED, dal_mono_oled_init(&dev, &cfg));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_init(&dev, &cfg));
+    TEST_ASSERT_TRUE(dev.initialized);
+
+    uint32_t count_before = sim_i2c_transfer_count();
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_flush(&dev));
+    uint32_t count_after = sim_i2c_transfer_count();
+
+    /* SH1106 flushes 8 pages with 2 transfers per page (cmd + data) = 16 transfers */
+    TEST_ASSERT_EQUAL_INT(16, (int)(count_after - count_before));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_deinit(&dev));
+}
+
+void test_mono_oled_ssd1306_spi_mode_init_and_deinit(void) {
+    static dal_mono_oled_t dev = {0};
+    dal_mono_oled_config_t cfg = {
+        .owner = "oled_spi",
+        .variant = DAL_MONO_OLED_VARIANT_SSD1306_SPI,
+        .panel_ic = DAL_MONO_OLED_IC_SSD1306,
+        .pin_clk = 14,
+        .pin_mosi = 13,
+        .pin_cs = 15,
+        .pin_dc = 16,
+        .pin_res = 17,
+        .width = 128,
+        .height = 64,
+    };
+
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_init(&dev, &cfg));
+    TEST_ASSERT_TRUE(dev.initialized);
+
+    TEST_ASSERT_TRUE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 14));
+    TEST_ASSERT_TRUE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 13));
+    TEST_ASSERT_TRUE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 15));
+    TEST_ASSERT_TRUE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 16));
+    TEST_ASSERT_TRUE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 17));
+
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_flush(&dev));
+
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_mono_oled_deinit(&dev));
     TEST_ASSERT_FALSE(dev.initialized);
+
+    TEST_ASSERT_FALSE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 14));
+    TEST_ASSERT_FALSE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 13));
+    TEST_ASSERT_FALSE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 15));
+    TEST_ASSERT_FALSE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 16));
+    TEST_ASSERT_FALSE(pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, 17));
 }
 
 int main(void) {
@@ -228,6 +306,8 @@ int main(void) {
     RUN_TEST(test_ops_before_init_returns_not_initialized);
     RUN_TEST(test_deinit_hardening);
     RUN_TEST(test_deinit_loop_i2c_client_no_resource_leak);
-    RUN_TEST(test_mono_oled_sh1106_variant_unsupported);
+    RUN_TEST(test_mono_oled_sh1106_i2c_supported_and_flush);
+    RUN_TEST(test_mono_oled_ssd1306_spi_mode_init_and_deinit);
     return UNITY_END();
 }
+
