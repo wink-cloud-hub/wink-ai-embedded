@@ -5,31 +5,82 @@ is_actuator: false
 experimental: false
 default_role: distance_sensor
 
-# Spec §9.3 / ADR-0056: ultrasonic distance is a B-class (sensor measurement)
-# physical quantity. The C DAL exposes float distance_cm on Full Profile;
-# Micro Profile binding collapses it to a scaled integer (per dal-micro-profile-spec).
 quantity: distance
 quantity_class: sensor_measurement
 
 fields:
+  variant:
+    tier: advanced
+    type: enum
+    enum: [hcsr04, single_pin_ping, uart_stream, i2c]
+    default: hcsr04
+    map:
+      hcsr04: DAL_ULTRASONIC_VARIANT_HCSR04
+      single_pin_ping: DAL_ULTRASONIC_VARIANT_SINGLE_PIN_PING
+      uart_stream: DAL_ULTRASONIC_VARIANT_UART_STREAM
+      i2c: DAL_ULTRASONIC_VARIANT_I2C
+    affects_pins: true
+    variant_fields:
+      hcsr04: [trig_pin, echo_pin, backend, timeout_us]
+      single_pin_ping: [sig_pin, backend, timeout_us]
+      uart_stream: [uart_port, baud_rate, timeout_us]
+      i2c: [i2c_port, i2c_addr, timeout_us]
+
+  backend:
+    tier: advanced
+    type: enum
+    enum: [auto, gpio_poll, esp32_rmt]
+    default: auto
+    map:
+      auto: DAL_ULTRASONIC_BACKEND_AUTO
+      gpio_poll: DAL_ULTRASONIC_BACKEND_GPIO_POLL
+      esp32_rmt: DAL_ULTRASONIC_BACKEND_ESP32_RMT
+
   trig_pin:
     tier: advanced
     type: int
     required: true
     min: 0
     max: 39
+
   echo_pin:
     tier: advanced
     type: int
     required: true
     min: 0
     max: 39
-  use_rmt:
+
+  sig_pin:
     tier: advanced
-    type: bool
-    default: true
-    emit: macro
-    config_member: true
+    type: int
+    min: 0
+    max: 39
+
+  uart_port:
+    tier: advanced
+    type: int
+    default: 0
+
+  baud_rate:
+    tier: advanced
+    type: int
+    default: 9600
+
+  i2c_port:
+    tier: advanced
+    type: int
+    default: 0
+
+  i2c_addr:
+    tier: advanced
+    type: int
+    default: 112 # 0x70
+
+  timeout_us:
+    tier: advanced
+    type: int
+    default: 30000
+
   auto_poll_ms:
     tier: stable
     type: int
@@ -37,14 +88,12 @@ fields:
     min: 50
     emit: macro
     c_suffix: u
+
   role:
     tier: stable
     type: string
     emit: none
 
-# Spec §16.2 / ADR-0046: explicit init/deinit/safe_off binding for the OS
-# driver registry SSOT. Empty safe_off_fn marks "no safe-off semantic"
-# (required for is_actuator: false devices per DAL-L-020).
 config:
   c_type: dal_ultrasonic_t
   config_type: dal_ultrasonic_config_t
@@ -53,11 +102,6 @@ config:
   deinit_fn: dal_ultrasonic_deinit
   safe_off_fn: ""
 
-# Spec §5.4 / DAL-V-002: device-specific API hooks (apply_override) MUST
-# be tagged so they do not enter the generic role-verb plane. The
-# apply_override entry point is invoked by the device_tree override
-# machinery (wink_dev_config.h) only — codegen does not generate role
-# bindings for it. Marked here for forthcoming per-API-tagged codegen.
 device_specific_apis:
   - apply_override
 

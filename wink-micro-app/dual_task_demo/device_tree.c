@@ -3,10 +3,17 @@
 #include "pal_storage.h"
 
 dal_ultrasonic_t front_radar = {
-    .config.owner    = "front_radar",
-    .config.trig_pin = 4,
-    .config.echo_pin = 5,
-    .config.use_rmt = false,
+    .config.owner     = "front_radar",
+    .config.variant   = DAL_ULTRASONIC_VARIANT_HCSR04,
+    .config.backend   = DAL_ULTRASONIC_BACKEND_GPIO_POLL,
+    .config.trig_pin  = 4,
+    .config.echo_pin  = 5,
+    .config.sig_pin   = -1,
+    .config.uart_port = -1,
+    .config.baud_rate = -1,
+    .config.i2c_port  = -1,
+    .config.i2c_addr  = -1,
+    .config.timeout_us = 30000,
     .last_distance = 0.0f,
 };
 

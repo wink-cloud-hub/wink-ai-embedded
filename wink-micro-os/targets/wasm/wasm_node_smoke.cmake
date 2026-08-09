@@ -71,7 +71,6 @@ ExternalProject_Add(wasm_unisim_smoke_build
         -DTARGET_PLATFORM=wasm
         -DWINK_APP_DIR=../wink-micro-app/unisim_smoke
         -DCMAKE_BUILD_TYPE=Debug
-        -DWINK_STRICT_NONBLOCKING=0
     INSTALL_COMMAND     ""
     TEST_COMMAND        ""
     BUILD_ALWAYS        ON
