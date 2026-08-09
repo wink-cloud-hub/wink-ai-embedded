@@ -13,12 +13,12 @@
 #include "pal_osal.h"
 #include "pal_resource.h"
 #include "wasm_bridge.h"
-#include "pal_wasm_internal.h"
+#include "pal_wasm_common.h"
 #include "wink_sim_physical.h"
-#include "devices/wasm_sim_registry.h"
 
 static pal_gpio_mode_t s_gpio_mode[WASM_SIM_MAX_PINS];
 static bool            s_gpio_mode_known[WASM_SIM_MAX_PINS];
+static bool            s_gpio_output_state[WASM_SIM_MAX_PINS];
 
 #define PIN_EVENT_QUEUE_SIZE 8
 
@@ -33,6 +33,13 @@ static uint8_t s_pin_event_count[WASM_SIM_MAX_PINS] = {0};
 void wasm_sim_pin_events_reset(void) {
     memset(s_pin_event_count, 0, sizeof(s_pin_event_count));
     memset(s_pin_events, 0, sizeof(s_pin_events));
+}
+
+void pal_wasm_ch1_gpio_reset(void) {
+    memset(s_gpio_mode, 0, sizeof(s_gpio_mode));
+    memset(s_gpio_mode_known, 0, sizeof(s_gpio_mode_known));
+    memset(s_gpio_output_state, 0, sizeof(s_gpio_output_state));
+    wasm_sim_pin_events_reset();
 }
 
 static bool pal_gpio_mode_idle_level(pal_gpio_mode_t mode)
@@ -78,7 +85,7 @@ wink_status_t pal_gpio_write(wink_pin_t pin, bool level) {
     if (!pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin)) {
         return WINK_ERR_INVALID_STATE;
     }
-    wasm_sim_gpio_write((uint8_t)pin, level);
+    s_gpio_output_state[(uint8_t)pin] = level;
     js_pal_gpio_write((uint32_t)pin, level);
     js_pal_gpio_on_write((uint8_t)pin, level ? 1 : 0);
     return WINK_OK;
@@ -209,7 +216,7 @@ void pal_wasm_set_gpio_input(uint8_t pin, bool level) {
 
 EMSCRIPTEN_KEEPALIVE
 bool pal_wasm_get_gpio_output(uint8_t pin) {
-    return wasm_sim_gpio_get_output(pin);
+    return (pin < WASM_SIM_MAX_PINS) ? s_gpio_output_state[pin] : false;
 }
 
 wink_status_t pal_test_enable_hardware_loopback(wink_pin_t pin_out, wink_pin_t pin_in) {

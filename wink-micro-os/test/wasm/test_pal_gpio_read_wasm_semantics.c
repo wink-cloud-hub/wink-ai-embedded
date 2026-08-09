@@ -11,8 +11,7 @@
 #include "pal_hal.h"
 #include "pal_resource.h"
 #include "wasm_bridge.h"
-#include "devices/wasm_sim_registry.h"
-#include "pal_wasm_internal.h"
+#include "pal_wasm_common.h"
 
 #include <emscripten.h>
 #include <stdint.h>
