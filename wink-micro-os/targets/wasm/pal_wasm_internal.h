@@ -10,6 +10,8 @@
 #include <stdbool.h>
 #include "wink_sim_physical.h"
 
+#include "pal_wasm_fault_types.h"
+
 #ifndef PAL_WASM_INTERRUPT_QUEUE_SIZE
 #define PAL_WASM_INTERRUPT_QUEUE_SIZE 16
 #endif
@@ -31,26 +33,6 @@ void     pal_wasm_advance_prng_state(uint32_t new_state);
 wink_phys_debounce_ctx_t *pal_wasm_get_debounce_ctx(uint16_t pin);
 
 wink_sim_faults_t *pal_wasm_get_faults_ref(void);
-
-typedef enum {
-    FAULT_TYPE_GPIO_BOUNCE = 1,
-    FAULT_TYPE_I2C_DROP    = 2,
-    FAULT_TYPE_I2C_NOISE   = 3,
-    FAULT_TYPE_CLOCK_DRIFT = 4,
-} wasm_fault_type_t;
-
-typedef struct {
-    uint64_t timestamp_us;
-    uint8_t  fault_type;
-    uint16_t pin_or_bus;
-    uint32_t sequence;
-} wasm_fault_event_t;
-
-bool pal_wasm_is_faulted(void);
-
-#define WASM_FAULT_GUARD_VOID()    do { if (pal_wasm_is_faulted()) return; } while (0)
-#define WASM_FAULT_GUARD_WINKERR() do { if (pal_wasm_is_faulted()) return WINK_ERR_INVALID_STATE; } while (0)
-#define WASM_FAULT_GUARD_BOOL()    do { if (pal_wasm_is_faulted()) return false; } while (0)
 
 void pal_wasm_clear_fault_latch(void);
 
