@@ -141,58 +141,7 @@ wink_status_t pal_gpio_read(wink_pin_t pin, bool *out_level) {
     return WINK_OK;
 }
 
-wink_status_t pal_pwm_init(uint8_t channel, uint32_t frequency_hz) {
-    pal_pwm_config_t cfg = { .freq_hz = frequency_hz };
-    return pal_pwm_init_ex(channel, &cfg);
-}
-
-wink_status_t pal_pwm_init_ex(uint8_t channel, const pal_pwm_config_t *cfg) {
-    if (cfg == NULL || cfg->freq_hz == 0u) {
-        return WINK_ERR_INVALID_ARG;
-    }
-    if (cfg->clock_requirement == PAL_PWM_CLOCK_STABLE_REQUIRED) {
-        return WINK_ERR_UNSUPPORTED;
-    }
-
-    uint8_t bits = cfg->resolution_bits ? cfg->resolution_bits : 13u;
-    if (bits == 0u || bits > 20u) {
-        return WINK_ERR_INVALID_ARG;
-    }
-
-    pal_pwm_timer_profile_t prof = {
-        .freq_hz = cfg->freq_hz,
-        .resolution_bits = bits,
-        .clock_source = PAL_PWM_EFF_CLK_PLATFORM_AUTO,
-    };
-    uint8_t timer_num = 0;
-    return pal_pwm_router_acquire(channel, &prof, &timer_num);
-}
-
-wink_status_t pal_pwm_set_duty(uint8_t channel, float duty_cycle_percent) {
-    if (!pal_pwm_router_channel_ready(channel)) { return WINK_ERR_INVALID_ARG; }
-    if (wasm_sim_pwm_channel_exists(channel)) {
-        wasm_sim_pwm_set_duty(channel, duty_cycle_percent);
-    }
-    js_pal_pwm_set_duty(channel, duty_cycle_percent);
-    return WINK_OK;
-}
-
-wink_status_t pal_pwm_set_freq(uint8_t channel, uint32_t freq_hz) {
-    if (!pal_pwm_router_channel_ready(channel) || freq_hz == 0u) {
-        return WINK_ERR_INVALID_ARG;
-    }
-    return pal_pwm_router_set_freq(channel, freq_hz);
-}
-
-void pal_pwm_deinit(uint8_t channel) {
-    pal_pwm_router_release(channel);
-}
-
-wink_status_t pal_pwm_channel_pin(uint8_t channel, wink_pin_t *out_pin) {
-    if (out_pin == NULL) { return WINK_ERR_INVALID_ARG; }
-    if (channel >= PAL_PWM_CHANNELS) { return WINK_ERR_INVALID_ARG; }
-    return WINK_ERR_UNSUPPORTED;
-}
+/* PWM implementation relocated to pal_wasm_ch2b_pwm.c */
 
 wink_status_t pal_i2c_port_pins(uint8_t port, wink_pin_t *out_sda, wink_pin_t *out_scl) {
     if (out_sda == NULL && out_scl == NULL) { return WINK_ERR_INVALID_ARG; }
