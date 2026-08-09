@@ -24,12 +24,7 @@ void wasm_dev_servo_reset(void) {
     }
 }
 
-EMSCRIPTEN_KEEPALIVE float pal_wasm_get_pwm_duty_percent(uint8_t channel) {
-    if (channel >= MAX_PWM_CHANNELS) {
-        return 0.0f;
-    }
-    return s_pwm_duty_percent[channel];
-}
+/* pal_wasm_get_pwm_duty_percent relocated to pal_wasm_ch2b_pwm.c */
 
 void wasm_dev_servo_set_duty(uint8_t channel, float duty_cycle_percent) {
     if (channel >= MAX_PWM_CHANNELS) {

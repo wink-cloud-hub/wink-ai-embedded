@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
- * @file pal_wasm_adc.c
- * @brief Wasm target PAL ADC subsystem implementation.
+ * @file pal_wasm_ch3_adc.c
+ * @brief Wasm target Axis A (CH3) Analog ADC subsystem implementation.
  */
 #include "hal/pal_adc.h"
 #include "wasm_bridge.h"
@@ -179,5 +179,9 @@ wink_status_t pal_adc_read_mv(pal_adc_channel_t ch, uint16_t *out_mv) {
 
     *out_mv = s_channels[ch].last_mv;
     return WINK_OK;
+}
+
+void pal_wasm_ch3_adc_reset(void) {
+    memset(s_channels, 0, sizeof(s_channels));
 }
 #endif
