@@ -22,7 +22,10 @@
 
 static wink_sim_faults_t s_faults;
 static wink_phys_debounce_ctx_t s_debounce_ctx[WASM_SIM_MAX_PINS];
-static uint32_t s_prng_state = 1u;
+static uint8_t s_fidelity_level = 0;
+
+EMSCRIPTEN_KEEPALIVE
+void pal_wasm_set_fidelity_level(uint8_t level) { WASM_FAULT_GUARD_VOID(); s_fidelity_level = level; }
 
 EMSCRIPTEN_KEEPALIVE
 void pal_wasm_set_bounce_us(uint32_t us) { WASM_FAULT_GUARD_VOID(); s_faults.bounce_us = us; }

@@ -273,6 +273,7 @@ extern uint32_t pal_wasm_get_abi_hash(void);
  * pal_wasm_set_fidelity_level() added in Phase 3 Task 3.6.
  * ====================================================================== */
 
+extern void     pal_wasm_set_fidelity_level(uint8_t level);
 extern void     pal_wasm_set_bounce_us(uint32_t us);
 extern void     pal_wasm_set_warmup_us(uint32_t us);
 extern void     pal_wasm_set_sample_interval_us(uint32_t us);
