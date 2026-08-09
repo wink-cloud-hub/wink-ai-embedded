@@ -108,6 +108,12 @@ bool pal_wasm_i2c_transfer(uint8_t port, uint16_t dev_addr,
     return !wink_status_is_error(st);
 }
 
+wink_status_t pal_i2c_port_pins(uint8_t port, wink_pin_t *out_sda, wink_pin_t *out_scl) {
+    if (out_sda == NULL && out_scl == NULL) { return WINK_ERR_INVALID_ARG; }
+    if (port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
+    return WINK_ERR_UNSUPPORTED;
+}
+
 void pal_wasm_ch2_bus_reset(void)
 {
     memset(s_i2c_bus_inited, 0, sizeof(s_i2c_bus_inited));

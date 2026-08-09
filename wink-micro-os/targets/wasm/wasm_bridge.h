@@ -242,6 +242,9 @@ extern uint8_t  pal_wasm_fault_event_get_type(uint32_t index);
 extern uint16_t pal_wasm_fault_event_get_pin_or_bus(uint32_t index);
 extern uint32_t pal_wasm_fault_event_get_sequence(uint32_t index);
 
+/* -- CH4: Buffer Payload — WS2812 Framebuffer (C->JS import) ------------ */
+extern void    js_pal_ws2812_write(uint16_t pin, const uint8_t *buf, uint32_t len);
+
 /* -- F: Fault state  (JS->C, KEEPALIVE) -------------------------------- */
 
 /** Returns true when the firmware is in faulted (locked) state. */
@@ -252,6 +255,9 @@ extern bool   pal_wasm_is_faulted(void);
  * msg may be NULL. msg string is copied via malloc+stringToUTF8 before return.
  */
 extern void   pal_wasm_host_fault(uint32_t code, const char *msg_cstr);
+
+/** Report an Out-Of-Memory allocation failure to Axis F fault domain. */
+extern void   pal_wasm_report_oom(const char *tag, uint32_t size);
 
 /* -- F: ABI hash lock  (JS->C, KEEPALIVE) ------------------------------ */
 

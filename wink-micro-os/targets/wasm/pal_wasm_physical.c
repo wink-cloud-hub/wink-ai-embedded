@@ -91,12 +91,6 @@ void pal_wasm_reset_physical(void) {
     wasm_sim_devices_reset();
 }
 
-EMSCRIPTEN_KEEPALIVE
-bool pal_wasm_gpio_read(uint16_t pin) {
-    WASM_FAULT_GUARD_BOOL();
-    bool level = false;
-    wink_status_t st = pal_gpio_read((wink_pin_t)pin, &level);
-    return wink_status_is_error(st) ? false : level;
-}
+/* pal_wasm_gpio_read relocated to pal_wasm_ch1_gpio.c */
 
 /* pal_wasm_i2c_transfer relocated to pal_wasm_ch2_bus.c */
