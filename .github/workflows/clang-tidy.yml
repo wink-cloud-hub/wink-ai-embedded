@@ -28,3 +28,22 @@ jobs:
             echo "::error::Clang-Tidy found errors, see report above"
             exit 1
           fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install wink-tools dependencies
+        run: |
+          pip install -r wink-tools/requirements-lint-dal.txt pytest
+
+      - name: Run wink lint (layering + API rules)
+        working-directory: wink-micro-os
+        run: |
+          python ../wink-tools/wink.py lint --strict
+
+      - name: Run wink-tools Python unit tests
+        run: |
+          python -m pytest wink-tools/tools/tests/ -x -q
+
