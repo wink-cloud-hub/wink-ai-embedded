@@ -16,6 +16,12 @@
 #include "internal/pal_test_loopback.h"
 #include "hal/pal_rmt.h"
 
+#if defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#elif defined(_MSC_VER)
+#  pragma warning(disable: 4996)
+#endif
+
 #define RMT_TEST_PIN   4u
 #define RMT_PWM_CH     1u
 #define RMT_PULSE_US   100u

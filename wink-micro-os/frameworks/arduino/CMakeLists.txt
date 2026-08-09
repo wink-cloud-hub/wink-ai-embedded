@@ -55,6 +55,8 @@ else()
         target_compile_options(wink_arduino_compat PRIVATE
             $<$<COMPILE_LANGUAGE:CXX>:-Wno-main>
         )
+    elseif(MSVC)
+        target_compile_definitions(wink_arduino_compat PRIVATE "__attribute__(x)=")
     endif()
 
     # Link against basic Wink OSAL, HAL, and runtime libraries

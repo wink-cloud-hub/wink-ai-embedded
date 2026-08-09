@@ -42,7 +42,8 @@ void setUp(void) {
         .owner = "test_sonar1",
         .trig_pin = 4,
         .echo_pin = 5,
-        .use_rmt = false,
+        .variant = DAL_ULTRASONIC_VARIANT_HCSR04,
+        .backend = DAL_ULTRASONIC_BACKEND_GPIO_POLL,
     };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&s_ultrasonic1, &cfg1));
 
@@ -51,7 +52,8 @@ void setUp(void) {
         .owner = "test_sonar2",
         .trig_pin = 6,
         .echo_pin = 7,
-        .use_rmt = false,
+        .variant = DAL_ULTRASONIC_VARIANT_HCSR04,
+        .backend = DAL_ULTRASONIC_BACKEND_GPIO_POLL,
     };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&s_ultrasonic2, &cfg2));
 }
@@ -116,7 +118,8 @@ void test_sonar_helper_pool_exhaustion(void) {
             .owner = "mock_sonar",
             .trig_pin = (uint16_t)(8 + i * 2),
             .echo_pin = (uint16_t)(9 + i * 2),
-            .use_rmt = false,
+            .variant = DAL_ULTRASONIC_VARIANT_HCSR04,
+        .backend = DAL_ULTRASONIC_BACKEND_GPIO_POLL,
         };
         TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&mocks[i], &cfg));
 

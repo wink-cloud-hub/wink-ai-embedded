@@ -188,28 +188,26 @@ if (isMainThread) {
                 moduleRef = mod;
             }],
             js_pal_os_sleep_ms: (ms) => {
-                const now = Date.now();
-                if (lastEnterMs !== null) {
-                    const delta = now - lastEnterMs;
-                    if (delta > maxDeltaMs) maxDeltaMs = delta;
-                    if (!asyncifyProven && lastReqMs >= 2 && delta >= lastReqMs * 0.5) {
-                        asyncifyProven = true;
-                        parentPort.postMessage({
-                            type: 'asyncify_ok',
-                            observed: observed + 1,
-                            reqMs: lastReqMs,
-                            maxDeltaMs,
-                        });
-                    }
-                }
-                lastEnterMs = now;
-                lastReqMs = ms;
+                const start = Date.now();
                 observed++;
                 const advanceUs = BigInt(ms) * 1000n;
                 return new Promise(function (resolve) {
                     setTimeout(function () {
-                        if (moduleRef && typeof moduleRef._pal_wasm_advance_virtual_clock === 'function') {
-                            moduleRef._pal_wasm_advance_virtual_clock(advanceUs);
+                        const delta = Date.now() - start;
+                        if (!asyncifyProven && delta >= ms * 0.5) {
+                            asyncifyProven = true;
+                            parentPort.postMessage({
+                                type: 'asyncify_ok',
+                                observed,
+                                reqMs: ms,
+                                maxDeltaMs: delta,
+                            });
+                        }
+                        const m = moduleRef || (typeof Module !== 'undefined' ? Module : null);
+                        if (m && typeof m._pal_wasm_advance_virtual_clock === 'function') {
+                            try { m._pal_wasm_advance_virtual_clock(advanceUs); } catch (_e) {}
+                        } else if (m && typeof m.ccall === 'function') {
+                            try { m.ccall('pal_wasm_advance_virtual_clock', null, ['bigint'], [advanceUs]); } catch (_e) {}
                         }
                         resolve();
                     }, ms);
