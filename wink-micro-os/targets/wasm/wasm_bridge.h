@@ -299,6 +299,11 @@ extern bool     pal_wasm_i2c_transfer(uint8_t port, uint16_t dev_addr,
                                        const uint8_t *write_buf, uint32_t write_len,
                                        uint8_t *read_buf,        uint32_t read_len);
 
+/** Push a byte from host JS into Wasm UART RX fifo (Async RX, Phase 2). */
+extern void     pal_wasm_push_uart_rx_byte(uint8_t port, uint8_t byte);
+/** Get number of bytes available in Wasm UART RX fifo. */
+extern uint32_t pal_wasm_get_uart_rx_available(uint8_t port);
+
 /** Inject a GPIO input level from the JS host (plugin stimulus / test). */
 extern void     pal_wasm_set_gpio_input(uint8_t pin, bool level);
 /** Read the GPIO output currently driven by the C firmware. */

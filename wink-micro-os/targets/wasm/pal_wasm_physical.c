@@ -96,12 +96,4 @@ bool pal_wasm_gpio_read(uint16_t pin) {
     return wink_status_is_error(st) ? false : level;
 }
 
-EMSCRIPTEN_KEEPALIVE
-bool pal_wasm_i2c_transfer(uint8_t port, uint16_t dev_addr,
-                           const uint8_t *write_buf, uint32_t write_len,
-                           uint8_t *read_buf, uint32_t read_len) {
-    WASM_FAULT_GUARD_BOOL();
-    wink_status_t st = pal_i2c_transfer(port, dev_addr, write_buf, write_len,
-                                        read_buf, read_len);
-    return !wink_status_is_error(st);
-}
+/* pal_wasm_i2c_transfer relocated to pal_wasm_ch2_bus.c */

@@ -46,6 +46,7 @@ if(ESP_PLATFORM)
             pal_hal_i2c_esp32.c
             pal_hal_pwm_esp32.c
             pal_hal_adc_esp32.c
+            pal_hal_uart_esp32.c
             pal_rmt_esp32.c
             pal_irq_esp32.c
             ${WINK_OSAL_SOURCES}
@@ -121,6 +122,7 @@ elseif(TARGET_PLATFORM STREQUAL "esp32")
         pal_hal_i2c_esp32.c
         pal_hal_pwm_esp32.c
         pal_hal_adc_esp32.c
+        pal_hal_uart_esp32.c
         pal_rmt_esp32.c
         pal_irq_esp32.c
         ${WINK_OSAL_SOURCES}
