@@ -217,7 +217,9 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
     }
 
     wink_status_t run_st = pal_sim_scheduler_run(callbacks, main_task_id, max_ticks);
-    wink_event_queue_deinit();
+    if (max_ticks == 0U) {
+        wink_event_queue_deinit();
+    }
     return run_st;
 #else
     uint32_t tick = 0;
