@@ -278,7 +278,6 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us,
     if (pin < 0 || pin >= WASM_SIM_MAX_PINS) { return WINK_ERR_INVALID_ARG; }
     if (!pal_resource_is_claimed(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin)) { return WINK_ERR_INVALID_STATE; }
     *pulse_us = 0;
-    (void)timeout_us;
 
     uint8_t count = s_pin_event_count[(uint8_t)pin];
     if (count > 0) {
@@ -312,6 +311,9 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us,
         }
     }
 
+    if (timeout_us > 0) {
+        pal_wasm_advance_virtual_clock((uint64_t)timeout_us);
+    }
     return WINK_ERR_TIMEOUT;
 }
 
