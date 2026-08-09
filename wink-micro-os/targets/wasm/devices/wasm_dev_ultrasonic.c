@@ -2,6 +2,8 @@
 /**
  * @file wasm_dev_ultrasonic.c
  * @brief Wasm simulation HC-SR04 ultrasonic virtual peripheral model implementation.
+ * @deprecated Since v3.1.0. Legacy C-side mathematical shortcuts are replaced by TS UltrasonicPlugin edge injection.
+ *             Will be removed in v3.2.0.
  */
 #include "wasm_sim_registry.h"
 #include "wasm_bridge.h"
