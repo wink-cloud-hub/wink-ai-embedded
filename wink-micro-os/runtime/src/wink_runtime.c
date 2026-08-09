@@ -14,7 +14,7 @@
 #include <string.h>
 
 #ifdef SIMULATION
-#include "pal_wasm_internal.h"
+#include "pal_wasm_common.h"
 #include "wink_sim_scheduler.h"
 #include <stdlib.h>
 #include <stdio.h>

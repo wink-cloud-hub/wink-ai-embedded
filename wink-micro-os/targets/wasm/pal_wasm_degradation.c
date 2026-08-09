@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
- * @file pal_wasm_physical.c
- * @brief Wasm simulation physical degradation engine implementation.
+ * @file pal_wasm_degradation.c
+ * @brief Wasm target physical degradation engine implementation.
  */
 #include "wink_sim_physical.h"
-#include "pal_wasm_internal.h"
+#include "pal_wasm_degradation.h"
 #include "wasm_bridge.h"
-#include "devices/wasm_sim_registry.h"
 #include "pal_hal.h"
 #include "wink_status.h"
 
@@ -20,9 +19,17 @@
 #  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
+extern void pal_wasm_ch1_gpio_reset(void);
+extern void pal_wasm_ch2_bus_reset(void);
+extern void pal_wasm_ch2_uart_reset(void);
+extern void pal_wasm_ch2b_pwm_reset(void);
+extern void pal_wasm_ch3_adc_reset(void);
+extern void pal_wasm_ch4_buffer_reset(void);
+
 static wink_sim_faults_t s_faults;
 static wink_phys_debounce_ctx_t s_debounce_ctx[WASM_SIM_MAX_PINS];
 static uint8_t s_fidelity_level = 0;
+static uint32_t s_prng_state = 1u;
 
 EMSCRIPTEN_KEEPALIVE
 void pal_wasm_set_fidelity_level(uint8_t level) { WASM_FAULT_GUARD_VOID(); s_fidelity_level = level; }
@@ -88,9 +95,17 @@ void pal_wasm_reset_physical(void) {
     s_prng_state = 1u;
     pal_wasm_reset_fault_log();
     pal_wasm_reset_fault_domains();
-    wasm_sim_devices_reset();
 }
 
-/* pal_wasm_gpio_read relocated to pal_wasm_ch1_gpio.c */
-
-/* pal_wasm_i2c_transfer relocated to pal_wasm_ch2_bus.c */
+/** G3 requirement: preserve ABI export pal_wasm_sim_reset_all_devices */
+EMSCRIPTEN_KEEPALIVE
+void pal_wasm_sim_reset_all_devices(void) {
+    pal_wasm_reset_physical();
+    pal_wasm_ch2_bus_reset();
+    pal_wasm_ch2_uart_reset();
+    pal_wasm_ch2b_pwm_reset();
+#ifndef WINK_STRICT_NONBLOCKING
+    pal_wasm_ch3_adc_reset();
+#endif
+    pal_wasm_ch4_buffer_reset();
+}
