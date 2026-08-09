@@ -103,6 +103,14 @@ uint64_t pal_wasm_get_virtual_clock_us(void) {
 }
 
 static sim_ctx_t* s_main_ctx = NULL;
+static bool s_scheduler_running = false;
+
+EMSCRIPTEN_KEEPALIVE
+void pal_wasm_reset_scheduler_state(void) {
+    s_scheduler_running = false;
+    sim_scheduler_set_current(SIM_SCHED_NO_READY);
+    pal_wasm_clear_fault_latch();
+}
 
 void pal_os_sleep_ms(uint32_t ms) {
     if (s_main_ctx == NULL) {
@@ -475,11 +483,8 @@ static inline uint64_t wasm_wall_clock_us(void) {
 
 wink_status_t pal_sim_scheduler_run(const struct wink_app_callbacks* callbacks,
                                     uint32_t main_task_id, uint32_t max_ticks) {
-    static bool s_scheduler_running = false;
-    assert(!s_scheduler_running && "pal_sim_scheduler_run is not re-entrant");
     if (s_scheduler_running) {
-        wink_trace_fault(WINK_ERR_PANIC);
-        return WINK_ERR_INVALID_STATE;
+        return WINK_OK;
     }
     s_scheduler_running = true;
 

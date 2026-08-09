@@ -7,8 +7,7 @@
     "_pal_wasm_set_sim_mode",
     "_pal_wasm_get_sim_mode",
     "_pal_wasm_get_virtual_clock_us",
-    "_pal_wasm_set_ultrasonic_distance",
-    "_pal_wasm_get_ultrasonic_distance"
+    "_pal_wasm_reset_scheduler_state"
   ],
   "EXPORTED_RUNTIME_METHODS": ["ccall", "cwrap", "HEAPU8", "Asyncify", "callMain"],
   "ASYNCIFY_IMPORTS": ["js_pal_os_sleep_ms", "js_pal_os_busy_wait_us"],
