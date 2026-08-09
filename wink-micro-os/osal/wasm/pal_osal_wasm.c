@@ -488,7 +488,9 @@ wink_status_t pal_sim_scheduler_run(const struct wink_app_callbacks* callbacks,
         return WINK_ERR_INVALID_ARG;
     }
 
-    s_main_ctx = sim_ctx_from_current();
+    if (s_main_ctx == NULL) {
+        s_main_ctx = sim_ctx_from_current();
+    }
     wink_sim_mode_init_from_env();
     pal_wasm_clear_fault_latch();
     pal_wasm_fault_set_callbacks(callbacks);
@@ -541,8 +543,11 @@ wink_status_t pal_sim_scheduler_run(const struct wink_app_callbacks* callbacks,
                     wink_vclock_advance_internal(wake - now);
                 } else {
                     uint32_t sleep_ms = (uint32_t)((wake - now + 999) / 1000);
-                    js_pal_os_sleep_ms(sleep_ms);
                 }
+            }
+            if (max_ticks > 0) {
+                ticks_run++;
+                break;
             }
             continue;
         }

@@ -8,7 +8,7 @@
 addToLibrary({
     /* ---- Asyncify Yield Point ---- */
     js_pal_os_sleep_ms__postset: "Module.setSimMode = function (mode) { var v = (mode === 'HEADLESS') ? 1 : 0; if (typeof Module._pal_wasm_set_sim_mode === 'function') { Module._pal_wasm_set_sim_mode(v); } };",
-    js_pal_os_sleep_ms__async: 'auto',
+    js_pal_os_sleep_ms__async: true,
     js_pal_os_sleep_ms: function (ms) {
         if (typeof Module !== 'undefined' && typeof Module.js_pal_os_sleep_ms === 'function') {
             return Module.js_pal_os_sleep_ms(ms);
@@ -24,7 +24,7 @@ addToLibrary({
         });
     },
 
-    js_pal_os_busy_wait_us__async: 'auto',
+    js_pal_os_busy_wait_us__async: true,
     js_pal_os_busy_wait_us: function (us) {
         if (typeof Module !== 'undefined' && typeof Module.js_pal_os_busy_wait_us === 'function') {
             return Module.js_pal_os_busy_wait_us(us);
