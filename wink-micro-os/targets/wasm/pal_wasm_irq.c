@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
- * @file pal_irq_wasm.c
+ * @file pal_wasm_irq.c
  * @brief Wasm simulation target PAL IRQ subsystem implementation.
  */
 #include "pal_hal.h"
@@ -8,13 +8,13 @@
 #define WINK_ALLOW_ADVANCED_IRQ_APIS
 #include "pal_irq_advanced.h"
 #include "wasm_bridge.h"
-#include "pal_wasm_internal.h"
+#include "pal_wasm_common.h"
 
 #if defined(__EMSCRIPTEN__)
 
 _Static_assert(sizeof(void*) == 4,
     "wasm64 migration required: see wasm_bridge.h ABI contract #5 "
-    "and review every (uint32_t)(uintptr_t) cast in pal_irq_wasm.c / createUnisimImports.ts");
+    "and review every (uint32_t)(uintptr_t) cast in pal_wasm_irq.c / createUnisimImports.ts");
 
 #define WASM_MAX_GPIO_PIN  50
 static pal_gpio_isr_t s_gpio_isr[WASM_MAX_GPIO_PIN] = {NULL};

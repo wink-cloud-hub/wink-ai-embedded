@@ -5,7 +5,7 @@
  */
 #include "unity.h"
 #include "pal_osal.h"
-#include "pal_wasm_internal.h"
+#include "pal_wasm_common.h"
 #include <emscripten.h>
 #include <stdint.h>
 

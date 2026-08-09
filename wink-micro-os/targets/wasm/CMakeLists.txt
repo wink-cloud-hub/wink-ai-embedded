@@ -1,35 +1,25 @@
 # Wasm simulation port build configuration (Emscripten environment only).
 
 set(PAL_WASM_SOURCES
-    # HAL layer
-    ${CMAKE_CURRENT_SOURCE_DIR}/pal_hal_wasm.c
+    # Core Modular Channels (Axis A)
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch1_gpio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch2_bus.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch2_uart.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch2b_pwm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch3_adc.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch4_buffer.c
+    # Support & Fault Domain (Axis F)
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_log_wasm.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/pal_irq_wasm.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_irq.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_storage_wasm.c
-    # Wasm extensions
-    ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_physical.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_degradation.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_fault.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_fault_domain.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/devices/wasm_sim_registry.c
     # Target independent common sources
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/pal_resource.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/wink_sim_physical.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/wink_sim_scheduler.c
 )
-
-if(WINK_USE_RC_SERVO)
-    list(APPEND PAL_WASM_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/devices/wasm_dev_servo.c)
-endif()
-
-if(WINK_USE_ULTRASONIC)
-    list(APPEND PAL_WASM_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/devices/wasm_dev_ultrasonic.c)
-endif()
 
 set(PAL_WASM_SOURCES ${PAL_WASM_SOURCES} PARENT_SCOPE)
 

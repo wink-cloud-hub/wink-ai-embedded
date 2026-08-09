@@ -23,7 +23,7 @@
  */
 #include "unity.h"
 #include "wink_sim_physical.h"
-#include "pal_wasm_internal.h"
+#include "pal_wasm_common.h"
 #include "test_physical_golden.h"
 
 #include <emscripten.h>

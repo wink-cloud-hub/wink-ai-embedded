@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
- * @file pal_wasm_internal.h
- * @brief Wasm simulation target internal interface definitions.
+ * @file pal_wasm_common.h
+ * @brief Common definitions for Wasm target PAL subsystem.
  */
-#ifndef PAL_WASM_INTERNAL_H
-#define PAL_WASM_INTERNAL_H
+#ifndef PAL_WASM_COMMON_H
+#define PAL_WASM_COMMON_H
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "wink_sim_physical.h"
+#include <stddef.h>
 
+#include "wink_sim_physical.h"
 #include "pal_wasm_fault_types.h"
 
 #ifndef PAL_WASM_INTERRUPT_QUEUE_SIZE
@@ -33,7 +34,6 @@ void     pal_wasm_advance_prng_state(uint32_t new_state);
 wink_phys_debounce_ctx_t *pal_wasm_get_debounce_ctx(uint16_t pin);
 
 wink_sim_faults_t *pal_wasm_get_faults_ref(void);
-
 void pal_wasm_clear_fault_latch(void);
 
 struct wink_app_callbacks;
@@ -81,4 +81,4 @@ uint32_t           pal_wasm_get_domain_trigger_count(uint32_t domain_id);
 
 void pal_wasm_reset_fault_domains(void);
 
-#endif /* PAL_WASM_INTERNAL_H */
+#endif /* PAL_WASM_COMMON_H */

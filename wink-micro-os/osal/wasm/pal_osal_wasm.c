@@ -11,7 +11,7 @@
  */
 #include "pal_osal.h"
 #include "wasm_bridge.h"
-#include "pal_wasm_internal.h"
+#include "pal_wasm_common.h"
 #include "wink_sim_scheduler.h"
 #include "wink_trace.h"
 #include <emscripten.h>
