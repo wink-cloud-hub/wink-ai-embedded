@@ -112,17 +112,4 @@ void wasm_sim_gpio_write(uint8_t pin, bool level) {
     }
 }
 
-EMSCRIPTEN_KEEPALIVE void pal_wasm_set_gpio_input(uint8_t pin, bool level) {
-    js_pal_gpio_drive_ideal((uint16_t)pin, level);
-}
-
-#ifndef __EMSCRIPTEN__
-void js_pal_gpio_drive_ideal(uint16_t pin, bool level) {
-    (void)pin;
-    (void)level;
-}
-#endif
-
-EMSCRIPTEN_KEEPALIVE bool pal_wasm_get_gpio_output(uint8_t pin) {
-    return wasm_sim_gpio_get_output(pin);
-}
+/* pal_wasm_set_gpio_input & pal_wasm_get_gpio_output relocated to pal_wasm_ch1_gpio.c */

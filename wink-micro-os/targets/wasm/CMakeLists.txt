@@ -3,10 +3,12 @@
 set(PAL_WASM_SOURCES
     # HAL layer
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_hal_wasm.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch1_gpio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch2_bus.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch2_uart.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch2b_pwm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch3_adc.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch4_buffer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_log_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_irq_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_storage_wasm.c
