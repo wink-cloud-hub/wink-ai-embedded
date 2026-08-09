@@ -1,5 +1,15 @@
 {
-  "EXPORTED_FUNCTIONS": ["_main", "_malloc", "_free"],
+  "EXPORTED_FUNCTIONS": [
+    "_main",
+    "_malloc",
+    "_free",
+    "_pal_wasm_advance_virtual_clock",
+    "_pal_wasm_set_sim_mode",
+    "_pal_wasm_get_sim_mode",
+    "_pal_wasm_get_virtual_clock_us",
+    "_pal_wasm_set_ultrasonic_distance",
+    "_pal_wasm_get_ultrasonic_distance"
+  ],
   "EXPORTED_RUNTIME_METHODS": ["ccall", "cwrap", "HEAPU8", "Asyncify", "callMain"],
   "ASYNCIFY_IMPORTS": ["js_pal_os_sleep_ms", "js_pal_os_busy_wait_us"],
   "ASYNCIFY_STACK_SIZE": 65536,

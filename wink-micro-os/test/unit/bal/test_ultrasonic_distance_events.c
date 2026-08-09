@@ -51,7 +51,8 @@ void setUp(void)
         .owner = "tst_us_dist",
         .trig_pin = TRIG,
         .echo_pin = ECHO,
-        .use_rmt = false,
+        .variant = DAL_ULTRASONIC_VARIANT_HCSR04,
+        .backend = DAL_ULTRASONIC_BACKEND_GPIO_POLL,
     };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&s_us, &cfg));
 }

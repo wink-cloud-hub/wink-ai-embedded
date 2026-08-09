@@ -12,6 +12,12 @@
 #include "pal_osal.h"
 #include "pal_resource.h"
 
+#if defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#elif defined(_MSC_VER)
+#  pragma warning(disable: 4996)
+#endif
+
 #if defined(PLATFORM_host) || defined(PLATFORM_wasm) || defined(SIMULATION)
 #define STRESS_DURATION_MS   10u
 #define SINGLE_THREAD_ITERS  2000u

@@ -7,44 +7,56 @@
 
 addToLibrary({
     /* ---- Asyncify Yield Point ---- */
-    js_pal_os_sleep_ms__postset: "Module.setSimMode = function (mode) { var v = (mode === 'HEADLESS') ? 1 : 0; if (typeof Module._pal_wasm_set_sim_mode === 'function') { Module._pal_wasm_set_sim_mode(v); } };",
-    js_pal_os_sleep_ms__async: true,
+    js_pal_os_sleep_ms__deps: ['pal_wasm_advance_virtual_clock'],
+    js_pal_os_sleep_ms__postset: "Module['setSimMode'] = function (mode) { var v = (mode === 'HEADLESS') ? 1 : 0; if (typeof Module['_pal_wasm_set_sim_mode'] === 'function') { Module['_pal_wasm_set_sim_mode'](v); } };",
     js_pal_os_sleep_ms: function (ms) {
-        if (typeof Module !== 'undefined' && typeof Module.js_pal_os_sleep_ms === 'function') {
-            return Module.js_pal_os_sleep_ms(ms);
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_os_sleep_ms'] === 'function' && Module['js_pal_os_sleep_ms'] !== _js_pal_os_sleep_ms) {
+            return Asyncify.handleSleep(function(wakeUp) {
+                Promise.resolve(Module['js_pal_os_sleep_ms'](ms)).then(function() {
+                    wakeUp();
+                });
+            });
         }
         var advanceUs = BigInt(ms) * 1000n;
-        return new Promise(function (resolve) {
-            setTimeout(function () {
-                if (typeof Module !== 'undefined' && typeof Module._pal_wasm_advance_virtual_clock === 'function') {
-                    Module._pal_wasm_advance_virtual_clock(advanceUs);
+        return Asyncify.handleSleep(function(wakeUp) {
+            setTimeout(function() {
+                try {
+                    _pal_wasm_advance_virtual_clock(advanceUs);
+                } catch (_e1) {
+                    try { _pal_wasm_advance_virtual_clock(Number(advanceUs)); } catch (_e2) {}
                 }
-                resolve();
+                wakeUp();
             }, ms);
         });
     },
 
-    js_pal_os_busy_wait_us__async: true,
+    js_pal_os_busy_wait_us__deps: ['pal_wasm_advance_virtual_clock'],
     js_pal_os_busy_wait_us: function (us) {
-        if (typeof Module !== 'undefined' && typeof Module.js_pal_os_busy_wait_us === 'function') {
-            return Module.js_pal_os_busy_wait_us(us);
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_os_busy_wait_us'] === 'function' && Module['js_pal_os_busy_wait_us'] !== _js_pal_os_busy_wait_us) {
+            return Asyncify.handleSleep(function(wakeUp) {
+                Promise.resolve(Module['js_pal_os_busy_wait_us'](us)).then(function() {
+                    wakeUp();
+                });
+            });
         }
         var waitMs = Math.max(1, Math.floor(us / 1000));
         var advanceUs = BigInt(us);
-        return new Promise(function (resolve) {
-            setTimeout(function () {
-                if (typeof Module !== 'undefined' && typeof Module._pal_wasm_advance_virtual_clock === 'function') {
-                    Module._pal_wasm_advance_virtual_clock(advanceUs);
+        return Asyncify.handleSleep(function(wakeUp) {
+            setTimeout(function() {
+                try {
+                    _pal_wasm_advance_virtual_clock(advanceUs);
+                } catch (_e1) {
+                    try { _pal_wasm_advance_virtual_clock(Number(advanceUs)); } catch (_e2) {}
                 }
-                resolve();
+                wakeUp();
             }, waitMs);
         });
     },
 
     /* ---- Leveled Logging Bridge ---- */
     js_pal_log: function (level, msgPtr) {
-        if (typeof Module !== 'undefined' && typeof Module.js_pal_log === 'function') {
-            return Module.js_pal_log(level, msgPtr);
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_log'] === 'function' && Module['js_pal_log'] !== _js_pal_log) {
+            return Module['js_pal_log'](level, msgPtr);
         }
         var msg = UTF8ToString(msgPtr);
         switch (level) {
@@ -58,89 +70,89 @@ addToLibrary({
 
     /* ---- PAL HAL Defaults (No-Op Stub) ---- */
     js_pal_gpio_write: function (pin, level) {
-        if (typeof Module !== 'undefined' && typeof Module.js_pal_gpio_write === 'function') {
-            return Module.js_pal_gpio_write(pin, level);
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_gpio_write'] === 'function' && Module['js_pal_gpio_write'] !== _js_pal_gpio_write) {
+            return Module['js_pal_gpio_write'](pin, level);
         }
     },
     js_pal_gpio_read: function (pin) {
-        if (typeof Module !== 'undefined' && typeof Module.js_pal_gpio_read === 'function') {
-            return Module.js_pal_gpio_read(pin);
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_gpio_read'] === 'function' && Module['js_pal_gpio_read'] !== _js_pal_gpio_read) {
+            return Module['js_pal_gpio_read'](pin);
         }
         return 0;
     },
     js_pal_gpio_read_state: function (pin) {
-        if (typeof Module !== 'undefined' && typeof Module.js_pal_gpio_read_state === 'function') {
-            return Module.js_pal_gpio_read_state(pin);
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_gpio_read_state'] === 'function' && Module['js_pal_gpio_read_state'] !== _js_pal_gpio_read_state) {
+            return Module['js_pal_gpio_read_state'](pin);
         }
         return 2; /* HiZ default */
     },
     js_pal_gpio_drive_ideal: function (pin, level) {
-        if (typeof Module !== 'undefined' && typeof Module.js_pal_gpio_drive_ideal === 'function') {
-            return Module.js_pal_gpio_drive_ideal(pin, level);
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_gpio_drive_ideal'] === 'function' && Module['js_pal_gpio_drive_ideal'] !== _js_pal_gpio_drive_ideal) {
+            return Module['js_pal_gpio_drive_ideal'](pin, level);
         }
     },
     js_pal_gpio_release_ideal: function (pin) {
-        if (typeof Module !== 'undefined' && typeof Module.js_pal_gpio_release_ideal === 'function') {
-            return Module.js_pal_gpio_release_ideal(pin);
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_gpio_release_ideal'] === 'function' && Module['js_pal_gpio_release_ideal'] !== _js_pal_gpio_release_ideal) {
+            return Module['js_pal_gpio_release_ideal'](pin);
         }
     },
     js_pal_gpio_release_mcu: function (pin) {
-        if (typeof Module !== 'undefined' && typeof Module.js_pal_gpio_release_mcu === 'function') {
-            return Module.js_pal_gpio_release_mcu(pin);
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_gpio_release_mcu'] === 'function' && Module['js_pal_gpio_release_mcu'] !== _js_pal_gpio_release_mcu) {
+            return Module['js_pal_gpio_release_mcu'](pin);
         }
     },
     js_pal_pwm_set_duty: function (channel, duty) {
-        if (typeof Module !== 'undefined' && typeof Module.js_pal_pwm_set_duty === 'function') {
-            return Module.js_pal_pwm_set_duty(channel, duty);
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_pwm_set_duty'] === 'function' && Module['js_pal_pwm_set_duty'] !== _js_pal_pwm_set_duty) {
+            return Module['js_pal_pwm_set_duty'](channel, duty);
         }
     },
     js_pal_i2c_transfer: function (port, addr, wbuf, wlen, rbuf, rlen) {
-        if (typeof Module !== 'undefined' && typeof Module.js_pal_i2c_transfer === 'function') {
-            return Module.js_pal_i2c_transfer(port, addr, wbuf, wlen, rbuf, rlen);
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_i2c_transfer'] === 'function' && Module['js_pal_i2c_transfer'] !== _js_pal_i2c_transfer) {
+            return Module['js_pal_i2c_transfer'](port, addr, wbuf, wlen, rbuf, rlen);
         }
         return 1;
     },
     js_pal_spi_transfer: function (port, deviceId, txbuf, len, rxbuf, mode, sckHz) {
-        if (typeof Module !== 'undefined' && typeof Module.js_pal_spi_transfer === 'function') {
-            return Module.js_pal_spi_transfer(port, deviceId, txbuf, len, rxbuf, mode, sckHz);
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_spi_transfer'] === 'function' && Module['js_pal_spi_transfer'] !== _js_pal_spi_transfer) {
+            return Module['js_pal_spi_transfer'](port, deviceId, txbuf, len, rxbuf, mode, sckHz);
         }
         return 0;
     },
     js_pal_uart_write: function (port, buf, len) {
-        if (typeof Module !== 'undefined' && typeof Module.js_pal_uart_write === 'function') {
-            return Module.js_pal_uart_write(port, buf, len);
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_uart_write'] === 'function' && Module['js_pal_uart_write'] !== _js_pal_uart_write) {
+            return Module['js_pal_uart_write'](port, buf, len);
         }
     },
 
     /* ---- Interrupt Bridge Poll Model ---- */
     js_pal_register_interrupt: function (pin, cbIdx, argPtr) {
-        if (typeof Module !== 'undefined' && typeof Module.js_pal_register_interrupt === 'function') {
-            return Module.js_pal_register_interrupt(pin, cbIdx, argPtr);
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_register_interrupt'] === 'function' && Module['js_pal_register_interrupt'] !== _js_pal_register_interrupt) {
+            return Module['js_pal_register_interrupt'](pin, cbIdx, argPtr);
         }
     },
     js_pal_deregister_interrupt: function (pin) {
-        if (typeof Module !== 'undefined' && typeof Module.js_pal_deregister_interrupt === 'function') {
-            return Module.js_pal_deregister_interrupt(pin);
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_deregister_interrupt'] === 'function' && Module['js_pal_deregister_interrupt'] !== _js_pal_deregister_interrupt) {
+            return Module['js_pal_deregister_interrupt'](pin);
         }
     },
     js_pal_poll_interrupt: function (outCbPtr, outArgPtr) {
-        if (typeof Module !== 'undefined' && typeof Module.js_pal_poll_interrupt === 'function') {
-            return Module.js_pal_poll_interrupt(outCbPtr, outArgPtr);
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_poll_interrupt'] === 'function' && Module['js_pal_poll_interrupt'] !== _js_pal_poll_interrupt) {
+            return Module['js_pal_poll_interrupt'](outCbPtr, outArgPtr);
         }
         return 0;
     },
 
     /* ---- GPIO Notify Bridge ---- */
     js_pal_gpio_on_write: function (pin, level) {
-        if (typeof Module !== 'undefined' && typeof Module.js_pal_gpio_on_write === 'function') {
-            return Module.js_pal_gpio_on_write(pin, level);
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_gpio_on_write'] === 'function' && Module['js_pal_gpio_on_write'] !== _js_pal_gpio_on_write) {
+            return Module['js_pal_gpio_on_write'](pin, level);
         }
     },
 
     /* ---- Plugin Channel API ---- */
     js_sim_get_plugin_channel: function (instanceIdPtr, channelNamePtr) {
-        if (typeof Module !== 'undefined' && typeof Module.js_sim_get_plugin_channel === 'function') {
-            return Module.js_sim_get_plugin_channel(instanceIdPtr, channelNamePtr);
+        if (typeof Module !== 'undefined' && typeof Module['js_sim_get_plugin_channel'] === 'function' && Module['js_sim_get_plugin_channel'] !== _js_sim_get_plugin_channel) {
+            return Module['js_sim_get_plugin_channel'](instanceIdPtr, channelNamePtr);
         }
         return -1.0; /* Uninitialized sentinel */
     },

@@ -77,7 +77,7 @@ void test_wire_dal_ultrasonic_trig_pin_conflict(void) {
 
     dal_ultrasonic_t us = {0};
     const dal_ultrasonic_config_t cfg_us = {
-        .owner = "us_a", .trig_pin = 20, .echo_pin = 21, .use_rmt = false
+        .owner = "us_a", .trig_pin = 20, .echo_pin = 21, .variant = DAL_ULTRASONIC_VARIANT_HCSR04, .backend = DAL_ULTRASONIC_BACKEND_GPIO_POLL
     };
     TEST_ASSERT_EQUAL_INT(WINK_ERR_BUSY, dal_ultrasonic_init(&us, &cfg_us));
     TEST_ASSERT_FALSE(us.initialized);
@@ -90,7 +90,7 @@ void test_wire_dal_ultrasonic_echo_conflict_rolls_back_trig(void) {
 
     dal_ultrasonic_t us = {0};
     const dal_ultrasonic_config_t cfg_us = {
-        .owner = "us_rollback", .trig_pin = 30, .echo_pin = 31, .use_rmt = false
+        .owner = "us_rollback", .trig_pin = 30, .echo_pin = 31, .variant = DAL_ULTRASONIC_VARIANT_HCSR04, .backend = DAL_ULTRASONIC_BACKEND_GPIO_POLL
     };
     TEST_ASSERT_EQUAL_INT(WINK_ERR_BUSY, dal_ultrasonic_init(&us, &cfg_us));
     TEST_ASSERT_FALSE(us.initialized);
@@ -195,7 +195,7 @@ void test_wire_all_dal_reject_null_owner(void) {
 
     dal_ultrasonic_t us = {0};
     const dal_ultrasonic_config_t ucfg = {
-        .owner = NULL, .trig_pin = 4, .echo_pin = 5, .use_rmt = false
+        .owner = NULL, .trig_pin = 4, .echo_pin = 5, .variant = DAL_ULTRASONIC_VARIANT_HCSR04, .backend = DAL_ULTRASONIC_BACKEND_GPIO_POLL
     };
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_ultrasonic_init(&us, &ucfg));
 

@@ -25,14 +25,14 @@ void setUp(void) { sim_reset_time(); pal_resource_reset(); }
 void tearDown(void) {}
 
 void test_ultrasonic_init_null_returns_invalid_arg(void) {
-    const dal_ultrasonic_config_t cfg = { .owner = OWNER, .trig_pin = 4, .echo_pin = 5, .use_rmt = false };
+    const dal_ultrasonic_config_t cfg = { .owner = OWNER, .trig_pin = 4, .echo_pin = 5, .variant = DAL_ULTRASONIC_VARIANT_HCSR04, .backend = DAL_ULTRASONIC_BACKEND_GPIO_POLL };
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_ultrasonic_init(NULL, &cfg));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_ultrasonic_init(NULL, NULL));
 }
 
 void test_ultrasonic_init_rejects_same_pin(void) {
     dal_ultrasonic_t dev = {0};
-    const dal_ultrasonic_config_t cfg = { .owner = OWNER, .trig_pin = 5, .echo_pin = 5, .use_rmt = false };
+    const dal_ultrasonic_config_t cfg = { .owner = OWNER, .trig_pin = 5, .echo_pin = 5, .variant = DAL_ULTRASONIC_VARIANT_HCSR04, .backend = DAL_ULTRASONIC_BACKEND_GPIO_POLL };
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_ultrasonic_init(&dev, &cfg));
 }
 
@@ -59,7 +59,7 @@ void test_pulse_to_cm_100cm(void) {
 
 void test_ultrasonic_init_then_read_real_measure_pulse(void) {
     dal_ultrasonic_t dev = {0};
-    const dal_ultrasonic_config_t cfg = { .owner = OWNER, .trig_pin = 4, .echo_pin = 5, .use_rmt = false };
+    const dal_ultrasonic_config_t cfg = { .owner = OWNER, .trig_pin = 4, .echo_pin = 5, .variant = DAL_ULTRASONIC_VARIANT_HCSR04, .backend = DAL_ULTRASONIC_BACKEND_GPIO_POLL };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&dev, &cfg));
     sim_set_echo_pin(5);
     sim_set_echo_timing(100, 5882);
@@ -71,7 +71,7 @@ void test_ultrasonic_init_then_read_real_measure_pulse(void) {
 
 void test_ultrasonic_init_then_read_real_timeout(void) {
     dal_ultrasonic_t dev = {0};
-    const dal_ultrasonic_config_t cfg = { .owner = OWNER, .trig_pin = 4, .echo_pin = 5, .use_rmt = false };
+    const dal_ultrasonic_config_t cfg = { .owner = OWNER, .trig_pin = 4, .echo_pin = 5, .variant = DAL_ULTRASONIC_VARIANT_HCSR04, .backend = DAL_ULTRASONIC_BACKEND_GPIO_POLL };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&dev, &cfg));
     sim_set_echo_pin(5);
     sim_set_echo_timing(100000, 1000);
@@ -82,7 +82,7 @@ void test_ultrasonic_init_then_read_real_timeout(void) {
 
 void test_nonblocking_get_cached_before_request_returns_empty(void) {
     dal_ultrasonic_t dev = {0};
-    const dal_ultrasonic_config_t cfg = { .owner = OWNER, .trig_pin = 4, .echo_pin = 5, .use_rmt = false };
+    const dal_ultrasonic_config_t cfg = { .owner = OWNER, .trig_pin = 4, .echo_pin = 5, .variant = DAL_ULTRASONIC_VARIANT_HCSR04, .backend = DAL_ULTRASONIC_BACKEND_GPIO_POLL };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&dev, &cfg));
     float dist = 0.0f;
     TEST_ASSERT_EQUAL_INT(WINK_ERR_EMPTY, dal_ultrasonic_get_cached_distance(&dev, &dist));
@@ -90,7 +90,7 @@ void test_nonblocking_get_cached_before_request_returns_empty(void) {
 
 void test_nonblocking_request_then_get_cached_returns_distance(void) {
     dal_ultrasonic_t dev = {0};
-    const dal_ultrasonic_config_t cfg = { .owner = OWNER, .trig_pin = 4, .echo_pin = 5, .use_rmt = false };
+    const dal_ultrasonic_config_t cfg = { .owner = OWNER, .trig_pin = 4, .echo_pin = 5, .variant = DAL_ULTRASONIC_VARIANT_HCSR04, .backend = DAL_ULTRASONIC_BACKEND_GPIO_POLL };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&dev, &cfg));
     sim_set_echo_pin(5);
     sim_set_echo_timing(100, 5882);
@@ -103,7 +103,7 @@ void test_nonblocking_request_then_get_cached_returns_distance(void) {
 
 void test_nonblocking_request_timeout_returns_error_status(void) {
     dal_ultrasonic_t dev = {0};
-    const dal_ultrasonic_config_t cfg = { .owner = OWNER, .trig_pin = 4, .echo_pin = 5, .use_rmt = false };
+    const dal_ultrasonic_config_t cfg = { .owner = OWNER, .trig_pin = 4, .echo_pin = 5, .variant = DAL_ULTRASONIC_VARIANT_HCSR04, .backend = DAL_ULTRASONIC_BACKEND_GPIO_POLL };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&dev, &cfg));
     sim_set_echo_pin(5);
     sim_set_echo_timing(100000, 1000);
@@ -115,7 +115,7 @@ void test_nonblocking_request_timeout_returns_error_status(void) {
 
 void test_nonblocking_single_tick_wallclock_is_small(void) {
     dal_ultrasonic_t dev = {0};
-    const dal_ultrasonic_config_t cfg = { .owner = OWNER, .trig_pin = 4, .echo_pin = 5, .use_rmt = false };
+    const dal_ultrasonic_config_t cfg = { .owner = OWNER, .trig_pin = 4, .echo_pin = 5, .variant = DAL_ULTRASONIC_VARIANT_HCSR04, .backend = DAL_ULTRASONIC_BACKEND_GPIO_POLL };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&dev, &cfg));
     sim_set_echo_pin(5);
     sim_set_echo_timing(100, 5882);
@@ -182,7 +182,7 @@ void test_apply_override_too_short_rejected(void) {
 
 void test_deinit_hardening(void) {
     dal_ultrasonic_t dev = {0};
-    const dal_ultrasonic_config_t cfg = { .owner = "radar0", .trig_pin = 4, .echo_pin = 5, .use_rmt = false };
+    const dal_ultrasonic_config_t cfg = { .owner = "radar0", .trig_pin = 4, .echo_pin = 5, .variant = DAL_ULTRASONIC_VARIANT_HCSR04, .backend = DAL_ULTRASONIC_BACKEND_GPIO_POLL };
 
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_ultrasonic_deinit(NULL));
 
@@ -204,7 +204,7 @@ void test_deinit_hardening(void) {
 void test_deinit_loop_two_pins_no_resource_leak(void) {
     dal_ultrasonic_t dev = {0};
     const dal_ultrasonic_config_t cfg = {
-        .owner = "radar_loop", .trig_pin = 6, .echo_pin = 7, .use_rmt = false,
+        .owner = "radar_loop", .trig_pin = 6, .echo_pin = 7, .variant = DAL_ULTRASONIC_VARIANT_HCSR04, .backend = DAL_ULTRASONIC_BACKEND_GPIO_POLL,
     };
     for (int round = 0; round < 10; round++) {
         TEST_ASSERT_EQUAL_INT(WINK_OK, dal_ultrasonic_init(&dev, &cfg));

@@ -6,7 +6,8 @@
       "type": "ultrasonic",
       "trig_pin": 4,
       "echo_pin": 5,
-      "use_rmt": false,
+      "variant": "hcsr04",
+      "backend": "gpio_poll",
       "auto_poll_ms": 50
     },
     "neck_servo": {
