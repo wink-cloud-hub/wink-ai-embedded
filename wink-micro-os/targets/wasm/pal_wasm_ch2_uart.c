@@ -42,7 +42,7 @@ static void ensure_port_fifo_created(uint8_t port)
 EMSCRIPTEN_KEEPALIVE
 bool pal_wasm_push_uart_rx_byte(uint8_t port, uint8_t byte)
 {
-    WASM_FAULT_GUARD(false);
+    WASM_FAULT_GUARD_BOOL();
 
     if (port >= WASM_UART_MAX_PORTS) {
         return false;
