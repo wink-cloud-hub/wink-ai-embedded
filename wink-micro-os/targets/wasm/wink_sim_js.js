@@ -78,12 +78,6 @@ addToLibrary({
             return Module['js_pal_gpio_write'](pin, level);
         }
     },
-    js_pal_gpio_read: function (pin) {
-        if (typeof Module !== 'undefined' && typeof Module['js_pal_gpio_read'] === 'function' && Module['js_pal_gpio_read'] !== _js_pal_gpio_read) {
-            return Module['js_pal_gpio_read'](pin);
-        }
-        return 0;
-    },
     js_pal_gpio_read_state: function (pin) {
         if (typeof Module !== 'undefined' && typeof Module['js_pal_gpio_read_state'] === 'function' && Module['js_pal_gpio_read_state'] !== _js_pal_gpio_read_state) {
             return Module['js_pal_gpio_read_state'](pin);
