@@ -274,9 +274,15 @@ extern void   pal_wasm_report_oom(const char *tag, uint32_t size);
  * Hash algorithm: SHA-256 of sorted function-signature lines (excluding
  * comments and blank lines), truncated to the lower 32 bits.
  * Any add/remove/rename of a symbol in this file MUST bump PAL_WASM_ABI_HASH
- * in pal_wasm_physical.c and update the TypeScript WasmImports/WasmExports.
+ * in pal_wasm_degradation.c and update the TypeScript WasmImports/WasmExports.
  */
 extern uint32_t pal_wasm_get_abi_hash(void);
+
+/** Export C firmware simulation state buffer for TS ReplayHashCollector. */
+extern uint32_t pal_wasm_export_state_hash_buffer(uint8_t *out_buf, uint32_t max_len);
+
+/** Reset app initialization state and all physical/bus/irq devices. */
+extern void     pal_wasm_reset_app_state(void);
 
 /* ======================================================================
  * AXES A+F — Physical Degradation Engine  (JS->C, KEEPALIVE)
@@ -314,8 +320,10 @@ extern bool     pal_wasm_i2c_transfer(uint8_t port, uint16_t dev_addr,
                                        const uint8_t *write_buf, uint32_t write_len,
                                        uint8_t *read_buf,        uint32_t read_len);
 
-/** Push a byte from host JS into Wasm UART RX fifo (Async RX, Phase 2). */
-extern void     pal_wasm_push_uart_rx_byte(uint8_t port, uint8_t byte);
+/** Push a byte from host JS into Wasm UART RX fifo (Async RX, Phase 2). Returns false on overrun. */
+extern bool     pal_wasm_push_uart_rx_byte(uint8_t port, uint8_t byte);
+/** Inject a UART RX error (flags: 1=FRAMING, 2=PARITY, 4=OVERRUN) */
+extern void     pal_wasm_push_uart_rx_error(uint8_t port, uint8_t error_flags);
 /** Get number of bytes available in Wasm UART RX fifo. */
 extern uint32_t pal_wasm_get_uart_rx_available(uint8_t port);
 

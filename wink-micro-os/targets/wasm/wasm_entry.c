@@ -35,6 +35,11 @@ EMSCRIPTEN_KEEPALIVE int pal_wasm_app_tick(void) {
     return (int)pal_sim_scheduler_run(cb, 0, 1);
 }
 
+EMSCRIPTEN_KEEPALIVE void pal_wasm_reset_app_state(void) {
+    s_app_inited = false;
+    pal_wasm_sim_reset_all_devices();
+}
+
 int main(void) {
     return pal_wasm_app_init();
 }
