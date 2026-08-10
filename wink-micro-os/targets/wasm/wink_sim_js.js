@@ -39,8 +39,12 @@ addToLibrary({
                 });
             });
         }
-        var waitMs = Math.max(1, Math.floor(us / 1000));
+        // VirtualClock advances by the exact BigInt(us) value — determinism is preserved regardless
+        // of the wall-clock setTimeout delay. For sub-ms durations (us < 1000), use a 0ms timeout
+        // (next event-loop tick) rather than a forced 1ms wait. This prevents I²C/SPI bit-bang
+        // simulations from running 2-10x slower than the equivalent real MCU timing.
         var advanceUs = BigInt(us);
+        var waitMs = us >= 1000 ? Math.floor(us / 1000) : 0;
         return Asyncify.handleSleep(function(wakeUp) {
             setTimeout(function() {
                 try {
