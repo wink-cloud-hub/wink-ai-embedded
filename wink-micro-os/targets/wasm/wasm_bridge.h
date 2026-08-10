@@ -166,6 +166,8 @@ extern uint64_t pal_os_get_ms(void);
  */
 extern void     pal_wasm_push_pin_event(uint8_t pin, uint64_t delay_us,
                                          uint8_t level);
+/** Instant-trigger distance measurement for the ultrasonic device on trig_pin. */
+extern void     pal_wasm_trigger_ultrasonic_measurement(uint8_t trig_pin);
 
 /* ======================================================================
  * AXIS C — Timer / PWM Semantics

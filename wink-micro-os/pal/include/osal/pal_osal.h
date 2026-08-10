@@ -330,6 +330,17 @@ wink_status_t pal_os_ringbuf_pop(
 );
 
 /**
+ * @brief Search unconsumed ringbuffer entries and coalesce (update in-place) matching entry.
+ */
+bool pal_os_ringbuf_coalesce_event(
+    pal_os_ringbuf_handle_t rb,
+    const void* event_ptr,
+    uint32_t event_size,
+    uint32_t match_offset,
+    uint32_t match_size
+);
+
+/**
  * @brief Get used bytes in ring buffer
  * @param[in] rb Ring buffer handle
  * @return Number of available bytes

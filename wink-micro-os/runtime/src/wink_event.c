@@ -96,6 +96,14 @@ wink_status_t wink_event_post(const wink_event_t *event) {
         return WINK_ERR_INVALID_ARG;
     }
 
+    /* Coalesce continuous sensor status events (e.g. DISTANCE_READY) in-place */
+    if (event->type == WINK_EVENT_DISTANCE_READY) {
+        uint32_t match_len = (uint32_t)(offsetof(wink_event_t, device) + sizeof(void *));
+        if (pal_os_ringbuf_coalesce_event(s_queue.ringbuf, event, sizeof(wink_event_t), 0, match_len)) {
+            return WINK_OK;
+        }
+    }
+
     /* Push event copy into ringbuffer */
     wink_status_t st = pal_os_ringbuf_push(s_queue.ringbuf, event, sizeof(wink_event_t));
     if (st == WINK_ERR_FULL) {

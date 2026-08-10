@@ -15,6 +15,7 @@
 #include "wasm_bridge.h"
 #include "pal_wasm_common.h"
 #include "wink_sim_physical.h"
+#include "sensor/wink_ultrasonic_distance_events.h"
 
 static pal_gpio_mode_t s_gpio_mode[WASM_SIM_MAX_PINS];
 static bool            s_gpio_mode_known[WASM_SIM_MAX_PINS];
@@ -177,6 +178,7 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us,
         }
     }
 
+    s_pin_event_count[(uint8_t)pin] = 0;
     if (timeout_us > 0) {
         pal_wasm_advance_virtual_clock((uint64_t)timeout_us);
     }
@@ -199,6 +201,12 @@ void pal_wasm_push_pin_event(uint8_t pin, uint64_t delay_us, uint8_t level) {
     s_pin_events[pin][count].virtual_time_us = pal_os_get_us() + delay_us;
     s_pin_events[pin][count].level = level;
     s_pin_event_count[pin] = count + 1;
+}
+
+EMSCRIPTEN_KEEPALIVE
+void pal_wasm_trigger_ultrasonic_measurement(uint8_t trig_pin) {
+    WASM_FAULT_GUARD_VOID();
+    (void)wink_ultrasonic_distance_events_trigger_now_by_trig_pin(trig_pin);
 }
 
 EMSCRIPTEN_KEEPALIVE
