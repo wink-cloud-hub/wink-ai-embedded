@@ -12,6 +12,7 @@
 #include "wink_app.h"
 #include "wink_runtime.h"
 #include "wink_sim_scheduler.h"
+#include "wasm_bridge.h"
 
 extern const wink_app_callbacks_t *wink_app_get_callbacks(void);
 

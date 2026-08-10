@@ -92,8 +92,19 @@ bool pal_wasm_i2c_transfer(uint8_t port, uint16_t dev_addr,
                            uint8_t *read_buf, uint32_t read_len)
 {
     WASM_FAULT_GUARD_BOOL();
+
+#if defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
     wink_status_t st = pal_i2c_transfer(port, dev_addr, write_buf, write_len,
                                         read_buf, read_len);
+
+#if defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic pop
+#endif
+
     return !wink_status_is_error(st);
 }
 
