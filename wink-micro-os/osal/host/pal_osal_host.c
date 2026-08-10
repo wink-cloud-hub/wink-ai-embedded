@@ -31,8 +31,9 @@ WINK_WEAK void wink_runtime_fault(const struct wink_app_callbacks* callbacks, ui
     fprintf(stderr, "[STUB] wink_runtime_fault called with code %u\n", (unsigned int)fault_code);
 }
 
-void pal_wasm_dispatch_pending_interrupts(void) {
+int32_t pal_wasm_dispatch_pending_interrupts(void) {
     /* No-op on host simulation target */
+    return 0;
 }
 
 static uint64_t s_time_us = 0;

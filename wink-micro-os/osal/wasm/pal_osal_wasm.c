@@ -113,6 +113,7 @@ void pal_wasm_reset_scheduler_state(void) {
 }
 
 void pal_os_sleep_ms(uint32_t ms) {
+    assert(!pal_os_in_sim_isr_context() && "pal_os_sleep_ms called from ISR context; ISRs must never sleep.");
     if (s_main_ctx == NULL) {
         js_pal_os_sleep_ms(ms);
         return;

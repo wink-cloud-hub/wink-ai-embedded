@@ -192,11 +192,12 @@ void pal_wasm_dispatch_pending_irqs(void)
     }
 }
 
-void pal_wasm_dispatch_pending_interrupts(void) {
+int32_t pal_wasm_dispatch_pending_interrupts(void) {
     if (s_irq_lock_nest_count > 0) {
-        return;
+        return -1; // PAL_WASM_DISPATCH_LOCKED
     }
 
+    int32_t dispatched_count = 0;
     uint32_t callback_index;
     uint32_t arg_ptr;
     while (js_pal_poll_interrupt(&callback_index, &arg_ptr)) {
@@ -205,10 +206,12 @@ void pal_wasm_dispatch_pending_interrupts(void) {
             pal_os_set_sim_isr_context(true);
             isr((void *)(uintptr_t)arg_ptr);
             pal_os_set_sim_isr_context(false);
+            dispatched_count++;
         }
     }
 
     pal_wasm_dispatch_pending_irqs();
+    return dispatched_count;
 }
 
 #endif
