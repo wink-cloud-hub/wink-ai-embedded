@@ -10,7 +10,9 @@
 #include <stdbool.h>
 #include "wink_sim_physical.h"
 
-#define WASM_SIM_MAX_PINS 50
+#ifndef WASM_SIM_MAX_PINS
+#define WASM_SIM_MAX_PINS 128
+#endif
 #define WASM_SIM_MAX_UART_PORTS 2
 #define WASM_SIM_UART_FIFO_SIZE 256
 #define WASM_SIM_MAX_PENDING_IRQ 64

@@ -16,11 +16,14 @@
 #include <stdbool.h>
 
 #if defined(__GNUC__) || defined(__clang__)
+#  pragma GCC diagnostic push
 #  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 #include "pal_wasm_sim_state.h"
 
 #if defined(__GNUC__) || defined(__clang__)
-#  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#  pragma GCC diagnostic pop
 #endif
 
 extern void pal_wasm_ch1_gpio_reset(void);
