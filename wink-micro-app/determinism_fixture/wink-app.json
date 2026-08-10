@@ -1,0 +1,16 @@
+{
+  "app_name": "determinism_fixture",
+  "board": "esp32_devkitc",
+  "devices": {
+    "status_led": {
+      "type": "led",
+      "gpio_pin": 2,
+      "active_high": true
+    },
+    "trigger_btn": {
+      "type": "button",
+      "gpio_pin": 4,
+      "active_low": true
+    }
+  }
+}

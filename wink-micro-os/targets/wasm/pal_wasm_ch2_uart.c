@@ -40,7 +40,35 @@ static void ensure_port_fifo_created(uint8_t port)
 }
 
 EMSCRIPTEN_KEEPALIVE
-void pal_wasm_push_uart_rx_byte(uint8_t port, uint8_t byte)
+bool pal_wasm_push_uart_rx_byte(uint8_t port, uint8_t byte)
+{
+    WASM_FAULT_GUARD(false);
+
+    if (port >= WASM_UART_MAX_PORTS) {
+        return false;
+    }
+
+    ensure_port_fifo_created(port);
+
+    if (s_uart_rx_fifo[port] == NULL) {
+        return false;
+    }
+
+    wink_status_t st = pal_os_ringbuf_push(s_uart_rx_fifo[port], &byte, sizeof(byte));
+    if (st != WINK_OK) {
+        /* Overrun: drop newest byte and log fault (G6 overrun policy) */
+        pal_wasm_log_fault(FAULT_TYPE_UART_OVERRUN, port);
+        return false;
+    }
+
+    /* Raise the UART RX software IRQ; cooperative single-core, no race. */
+    pal_irq_set_pending(WASM_UART_RX_IRQ_BASE + port);
+    pal_wasm_dispatch_pending_irqs();
+    return true;
+}
+
+EMSCRIPTEN_KEEPALIVE
+void pal_wasm_push_uart_rx_error(uint8_t port, uint8_t error_flags)
 {
     WASM_FAULT_GUARD_VOID();
 
@@ -48,22 +76,10 @@ void pal_wasm_push_uart_rx_byte(uint8_t port, uint8_t byte)
         return;
     }
 
-    ensure_port_fifo_created(port);
-
-    if (s_uart_rx_fifo[port] == NULL) {
-        return;
-    }
-
-    wink_status_t st = pal_os_ringbuf_push(s_uart_rx_fifo[port], &byte, sizeof(byte));
-    if (st != WINK_OK) {
-        /* Overrun: drop newest byte and log fault (G6 overrun policy) */
+    /* flags: 1=FRAMING, 2=PARITY, 4=OVERRUN */
+    if (error_flags & 4) {
         pal_wasm_log_fault(FAULT_TYPE_UART_OVERRUN, port);
-        return;
     }
-
-    /* Raise the UART RX software IRQ; cooperative single-core, no race. */
-    pal_irq_set_pending(WASM_UART_RX_IRQ_BASE + port);
-    pal_wasm_dispatch_pending_irqs();
 }
 
 EMSCRIPTEN_KEEPALIVE
