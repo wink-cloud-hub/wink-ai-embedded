@@ -196,6 +196,21 @@ bool wink_ultrasonic_distance_events_is_enabled(const dal_ultrasonic_t *dev)
     return find_slot_by_dev(dev) >= 0;
 }
 
+wink_status_t wink_ultrasonic_distance_events_trigger_now_by_trig_pin(uint8_t trig_pin)
+{
+    for (int i = 0; i < WINK_ULTRASONIC_DISTANCE_EVENTS_MAX; i++) {
+        if (s_slots[i].dev != NULL) {
+            dal_ultrasonic_t *dev = s_slots[i].dev;
+            if (dev->config.trig_pin == (int16_t)trig_pin || dev->config.sig_pin == (int16_t)trig_pin) {
+                s_slots[i].phase = US_DIST_NEED_TRIGGER;
+                us_dist_tick(&s_slots[i]);
+                return WINK_OK;
+            }
+        }
+    }
+    return WINK_ERR_NOT_FOUND;
+}
+
 void wink_ultrasonic_distance_events_reset(void)
 {
     for (int i = 0; i < WINK_ULTRASONIC_DISTANCE_EVENTS_MAX; i++) {
@@ -211,6 +226,12 @@ void wink_ultrasonic_distance_events_reset(void)
 }
 
 #else /* WINK_ULTRASONIC_DISTANCE_EVENTS_MAX == 0 */
+
+wink_status_t wink_ultrasonic_distance_events_trigger_now_by_trig_pin(uint8_t trig_pin)
+{
+    (void)trig_pin;
+    return WINK_ERR_UNSUPPORTED;
+}
 
 wink_status_t wink_ultrasonic_enable_distance_events(
     dal_ultrasonic_t *dev,

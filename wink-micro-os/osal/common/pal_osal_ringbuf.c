@@ -98,6 +98,45 @@ wink_status_t pal_os_ringbuf_pop(
     return WINK_OK;
 }
 
+bool pal_os_ringbuf_coalesce_event(
+    pal_os_ringbuf_handle_t rb,
+    const void* event_ptr,
+    uint32_t event_size,
+    uint32_t match_offset,
+    uint32_t match_size
+) {
+    if (rb == NULL || event_ptr == NULL || event_size == 0 || match_size == 0) {
+        return false;
+    }
+    uint32_t used = pal_os_ringbuf_used(rb);
+    if (used < event_size) {
+        return false;
+    }
+
+    uint32_t count = used / event_size;
+    const uint8_t *new_evt = (const uint8_t *)event_ptr;
+
+    for (uint32_t idx = 0; idx < count; idx++) {
+        uint32_t item_tail = rb->tail + idx * event_size;
+        bool match = true;
+        for (uint32_t k = 0; k < match_size; k++) {
+            uint32_t buf_pos = (item_tail + match_offset + k) & (rb->size - 1);
+            if (rb->buffer[buf_pos] != new_evt[match_offset + k]) {
+                match = false;
+                break;
+            }
+        }
+        if (match) {
+            for (uint32_t k = 0; k < event_size; k++) {
+                uint32_t buf_pos = (item_tail + k) & (rb->size - 1);
+                rb->buffer[buf_pos] = new_evt[k];
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
 uint32_t pal_os_ringbuf_used(pal_os_ringbuf_handle_t rb) {
     if (rb == NULL) {
         return 0;

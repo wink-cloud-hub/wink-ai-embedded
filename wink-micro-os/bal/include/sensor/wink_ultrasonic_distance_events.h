@@ -72,6 +72,11 @@ void wink_ultrasonic_disable_distance_events(dal_ultrasonic_t *dev);
 bool wink_ultrasonic_distance_events_is_enabled(const dal_ultrasonic_t *dev);
 
 /**
+ * @brief Instant-trigger distance measurement for slot matching @p trig_pin.
+ */
+wink_status_t wink_ultrasonic_distance_events_trigger_now_by_trig_pin(uint8_t trig_pin);
+
+/**
  * @brief Test helper: stop all slots.
  */
 void wink_ultrasonic_distance_events_reset(void);
