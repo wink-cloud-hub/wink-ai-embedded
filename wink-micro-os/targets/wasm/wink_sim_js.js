@@ -128,6 +128,21 @@ addToLibrary({
         }
     },
 
+    /* ---- CH3: Analog ADC (normalised [0,1] read) ---- */
+    js_pal_adc_read_norm: function (pin) {
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_adc_read_norm'] === 'function' && Module['js_pal_adc_read_norm'] !== _js_pal_adc_read_norm) {
+            return Module['js_pal_adc_read_norm'](pin);
+        }
+        return 0.0;
+    },
+
+    /* ---- CH4: WS2812 framebuffer (zero-copy; JS must .slice() before return) ---- */
+    js_pal_ws2812_write: function (pin, buf, len) {
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_ws2812_write'] === 'function' && Module['js_pal_ws2812_write'] !== _js_pal_ws2812_write) {
+            return Module['js_pal_ws2812_write'](pin, buf, len);
+        }
+    },
+
     /* ---- Interrupt Bridge Poll Model ---- */
     js_pal_register_interrupt: function (pin, cbIdx, argPtr) {
         if (typeof Module !== 'undefined' && typeof Module['js_pal_register_interrupt'] === 'function' && Module['js_pal_register_interrupt'] !== _js_pal_register_interrupt) {

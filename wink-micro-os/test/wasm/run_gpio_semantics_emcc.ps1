@@ -25,10 +25,7 @@ $srcs = @(
     "$Root/test/wasm/test_pal_gpio_read_wasm_semantics.c",
     "$Root/test/wasm/gpio_semantics_link_stubs.c",
     "$Root/test/unity/unity.c",
-    "$Root/targets/wasm/pal_hal_wasm.c",
-    "$Root/targets/wasm/devices/wasm_sim_registry.c",
-    "$Root/targets/wasm/devices/wasm_dev_servo.c",
-    "$Root/targets/wasm/devices/wasm_dev_ultrasonic.c",
+    "$Root/targets/wasm/pal_wasm_ch1_gpio.c",
     "$Root/targets/common/src/pal_resource.c"
 )
 

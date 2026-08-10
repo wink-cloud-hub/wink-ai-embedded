@@ -5,7 +5,7 @@
  */
 #include "hal/pal_adc.h"
 #include "wasm_bridge.h"
-#include "pal_wasm_internal.h"
+#include "pal_wasm_common.h"
 #include "wink_sim_physical.h"
 #include "pal_osal.h"
 #include <string.h>

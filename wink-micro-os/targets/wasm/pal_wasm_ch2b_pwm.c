@@ -11,9 +11,8 @@
 
 #include "pal_hal.h"
 #include "pal_pwm_router.h"
-#include "pal_wasm_internal.h"
+#include "pal_wasm_common.h"
 #include "wasm_bridge.h"
-#include "devices/wasm_sim_registry.h"
 
 #define WASM_PWM_MAX_CHANNELS 16
 
@@ -50,15 +49,16 @@ wink_status_t pal_pwm_init_ex(uint8_t channel, const pal_pwm_config_t *cfg)
 
 wink_status_t pal_pwm_set_duty(uint8_t channel, float duty_cycle_percent)
 {
-    if (!pal_pwm_router_channel_ready(channel)) {
+    if (channel >= WASM_PWM_MAX_CHANNELS) {
         return WINK_ERR_INVALID_ARG;
     }
-    if (channel < WASM_PWM_MAX_CHANNELS) {
-        s_pwm_duty_percent[channel] = duty_cycle_percent;
+    if (duty_cycle_percent < 0.0f || duty_cycle_percent > 100.0f) {
+        return WINK_ERR_INVALID_ARG;
     }
-    if (wasm_sim_pwm_channel_exists(channel)) {
-        wasm_sim_pwm_set_duty(channel, duty_cycle_percent);
+    if (!pal_pwm_router_channel_ready(channel)) {
+        return WINK_ERR_INVALID_STATE;
     }
+    s_pwm_duty_percent[channel] = duty_cycle_percent;
     js_pal_pwm_set_duty(channel, duty_cycle_percent);
     return WINK_OK;
 }

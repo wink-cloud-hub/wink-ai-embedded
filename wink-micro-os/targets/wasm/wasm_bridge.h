@@ -20,7 +20,7 @@
  *   JS->C  JS host calls a KEEPALIVE export  (pal_wasm_* / pal_os_*)
  *
  * ABI integrity rule: any add/remove/rename of a symbol MUST bump
- * PAL_WASM_ABI_HASH (pal_wasm_physical.c) and update the matching
+ * PAL_WASM_ABI_HASH (pal_wasm_degradation.c) and update the matching
  * TypeScript WasmImports / WasmExports declarations.
  */
 #ifndef WASM_BRIDGE_H
@@ -243,6 +243,14 @@ extern uint16_t pal_wasm_fault_event_get_pin_or_bus(uint32_t index);
 extern uint32_t pal_wasm_fault_event_get_sequence(uint32_t index);
 
 /* -- CH4: Buffer Payload — WS2812 Framebuffer (C->JS import) ------------ */
+/**
+ * Zero-copy RGB frame delivery: buf is a WASM heap pointer valid only for the
+ * duration of this call. The JS implementation MUST synchronously copy the
+ * bytes it needs (e.g. new Uint8Array(memory.buffer).subarray(...).slice())
+ * BEFORE returning, and MUST NOT retain a view into the WASM heap across calls
+ * (Asyncify/memory growth would invalidate it). pal_ws2812_write forwards the
+ * App/DAL buffer directly; there is no intermediate C malloc.
+ */
 extern void    js_pal_ws2812_write(uint16_t pin, const uint8_t *buf, uint32_t len);
 
 /* -- F: Fault state  (JS->C, KEEPALIVE) -------------------------------- */
@@ -319,6 +327,9 @@ extern bool     pal_wasm_get_gpio_output(uint8_t pin);
 /** Set execution mode: 0=INTERACTIVE  1=HEADLESS (ADR-0042). */
 extern void     pal_wasm_set_sim_mode(uint32_t mode);
 extern uint32_t pal_wasm_get_sim_mode(void);
+
+/** Reset sim scheduler and fault latch (called before re-running firmware on RESET). */
+extern void     pal_wasm_reset_scheduler_state(void);
 
 /* -- Power model  (Wave 3 stub, Axis F) -------------------------------- */
 struct wasm_pin_power_model_t;

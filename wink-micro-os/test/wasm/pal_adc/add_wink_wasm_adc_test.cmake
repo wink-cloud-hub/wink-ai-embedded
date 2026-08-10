@@ -47,7 +47,7 @@ set(_WASM_ADC_INCLUDES
 set(_WASM_ADC_SOURCES
     ${_WASM_ADC_HELPER_DIR}/test_pal_adc_wasm.c
     ${_WASM_ADC_HELPER_DIR}/adc_wasm_link_stubs.c
-    ${_SDK_ROOT}/targets/wasm/pal_wasm_adc.c
+    ${_SDK_ROOT}/targets/wasm/pal_wasm_ch3_adc.c
     ${_SDK_ROOT}/targets/common/src/wink_sim_physical.c
     ${_SDK_ROOT}/targets/common/src/pal_resource.c
     ${_SDK_ROOT}/test/unity/unity.c
