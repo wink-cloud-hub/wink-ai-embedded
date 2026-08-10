@@ -213,6 +213,24 @@ if (isMainThread) {
                     }, ms);
                 });
             },
+            // Sub-ms fix: for us < 1000 use setTimeout(0) (next event-loop tick) to avoid the
+            // forced 1ms floor from the Emscripten default stub. VirtualClock advances by exact
+            // BigInt(us), so determinism is fully preserved regardless of wall-clock delay.
+            js_pal_os_busy_wait_us: (us) => {
+                const advanceUs = BigInt(us);
+                const waitMs = us >= 1000 ? Math.floor(us / 1000) : 0;
+                return new Promise(function (resolve) {
+                    setTimeout(function () {
+                        const m = moduleRef || (typeof Module !== 'undefined' ? Module : null);
+                        if (m && typeof m._pal_wasm_advance_virtual_clock === 'function') {
+                            try { m._pal_wasm_advance_virtual_clock(advanceUs); } catch (_e) {}
+                        } else if (m && typeof m.ccall === 'function') {
+                            try { m.ccall('pal_wasm_advance_virtual_clock', null, ['bigint'], [advanceUs]); } catch (_e) {}
+                        }
+                        resolve();
+                    }, waitMs);
+                });
+            },
             js_pal_log: function (level, msgPtr) {
                 var msg = '';
                 try {
