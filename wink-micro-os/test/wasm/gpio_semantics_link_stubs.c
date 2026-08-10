@@ -5,7 +5,7 @@
  *        Only symbols required by GPIO read/write/init path + TU-referenced deps.
  */
 #include "pal_pwm_router.h"
-#include "pal_wasm_internal.h"
+#include "pal_wasm_common.h"
 #include "wink_sim_physical.h"
 #include "wasm_bridge.h"
 #include "wink_status.h"
