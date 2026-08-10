@@ -20,8 +20,8 @@
 #define WASM_SIM_MAX_PINS 128
 #define WASM_FAULT_LOG_SIZE 256
 
-void pal_wasm_dispatch_pending_interrupts(void);
-void pal_wasm_dispatch_pending_irqs(void);
+int32_t pal_wasm_dispatch_pending_interrupts(void);
+void    pal_wasm_dispatch_pending_irqs(void);
 
 void     pal_wasm_advance_virtual_clock(uint64_t us);
 bool     pal_wasm_is_clock_warning_fired(void);
