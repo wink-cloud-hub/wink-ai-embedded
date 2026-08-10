@@ -25,6 +25,7 @@ extern void pal_wasm_ch2_uart_reset(void);
 extern void pal_wasm_ch2b_pwm_reset(void);
 extern void pal_wasm_ch3_adc_reset(void);
 extern void pal_wasm_ch4_buffer_reset(void);
+extern void pal_wasm_irq_reset(void);
 
 static wink_sim_faults_t s_faults;
 static wink_phys_debounce_ctx_t s_debounce_ctx[WASM_SIM_MAX_PINS];
@@ -101,6 +102,7 @@ void pal_wasm_reset_physical(void) {
 EMSCRIPTEN_KEEPALIVE
 void pal_wasm_sim_reset_all_devices(void) {
     pal_wasm_reset_physical();
+    pal_wasm_ch1_gpio_reset();
     pal_wasm_ch2_bus_reset();
     pal_wasm_ch2_uart_reset();
     pal_wasm_ch2b_pwm_reset();
@@ -108,4 +110,5 @@ void pal_wasm_sim_reset_all_devices(void) {
     pal_wasm_ch3_adc_reset();
 #endif
     pal_wasm_ch4_buffer_reset();
+    pal_wasm_irq_reset();
 }

@@ -12,9 +12,8 @@
 
 #include "pal_hal.h"
 #include "hal/pal_i2c.h"
-#include "pal_wasm_internal.h"
+#include "pal_wasm_common.h"
 #include "wasm_bridge.h"
-#include "devices/wasm_sim_registry.h"
 
 static bool s_i2c_bus_inited[PAL_I2C_PORTS] = {false};
 
@@ -43,8 +42,7 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
         return WINK_ERR_INVALID_ARG;
     }
     if (!s_i2c_bus_inited[port]) {
-        printf("WINK_WARN: I2C port %d transfer called before bus init, lazy initializing (deprecated path)\n", port);
-        s_i2c_bus_inited[port] = true;
+        return WINK_ERR_INVALID_STATE;
     }
 
     uint16_t drop_permil = pal_wasm_get_i2c_drop_permil();
@@ -56,10 +54,6 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
             pal_wasm_log_fault(FAULT_TYPE_I2C_DROP, port);
             return WINK_ERR_IO;
         }
-    }
-
-    if (wasm_sim_i2c_dev_exists(dev_addr)) {
-        return wasm_sim_i2c_dev_transfer(port, dev_addr, write_buf, write_len, read_buf, read_len);
     }
 
     return js_pal_i2c_transfer(port, dev_addr, write_buf, write_len, read_buf, read_len)
@@ -76,24 +70,19 @@ wink_status_t pal_i2c_scan(uint8_t port, uint8_t start_addr, uint8_t end_addr,
         return WINK_ERR_INVALID_ARG;
     }
     if (!s_i2c_bus_inited[port]) {
-        printf("WINK_WARN: I2C port %d scan called before bus init, lazy initializing (deprecated path)\n", port);
-        s_i2c_bus_inited[port] = true;
+        return WINK_ERR_INVALID_STATE;
     }
     if (start_addr > end_addr || end_addr > 0x7F) {
         return WINK_ERR_INVALID_ARG;
     }
 
-    uint8_t lo = start_addr < 0x03 ? 0x03 : start_addr;
-    uint8_t hi = end_addr   > 0x77 ? 0x77 : end_addr;
-
+    /*
+     * Device presence is owned by the TS I2CBus model; the C target has no
+     * local device registry. The bus scan result is provided by the host via
+     * js_pal_i2c_scan when available. Without a host override the bus reports
+     * no devices (empty bitmap), which is a safe default.
+     */
     memset(out_found_bitmap, 0, 16);
-    for (uint16_t addr = lo; addr <= hi; addr++) {
-        if (wasm_sim_i2c_dev_exists((uint8_t)addr)) {
-            uint8_t byte_idx = (uint8_t)(addr >> 3);
-            uint8_t bit_idx  = (uint8_t)(addr & 0x7);
-            out_found_bitmap[byte_idx] |= (uint8_t)(1u << bit_idx);
-        }
-    }
     return WINK_OK;
 }
 

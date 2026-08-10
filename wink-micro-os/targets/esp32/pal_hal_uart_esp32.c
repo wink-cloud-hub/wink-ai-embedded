@@ -30,19 +30,19 @@ wink_status_t pal_uart_init(uint8_t port, uint8_t tx_pin, uint8_t rx_pin, uint32
     esp_err_t err = uart_param_config((uart_port_t)port, &uart_config);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "uart_param_config failed port=%d: %d", port, err);
-        return WINK_ERR_HARDWARE_FAILURE;
+        return WINK_ERR_HARDWARE;
     }
 
     err = uart_set_pin((uart_port_t)port, (int)tx_pin, (int)rx_pin, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "uart_set_pin failed port=%d: %d", port, err);
-        return WINK_ERR_HARDWARE_FAILURE;
+        return WINK_ERR_HARDWARE;
     }
 
     err = uart_driver_install((uart_port_t)port, 256 * 2, 0, 0, NULL, 0);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "uart_driver_install failed port=%d: %d", port, err);
-        return WINK_ERR_HARDWARE_FAILURE;
+        return WINK_ERR_HARDWARE;
     }
 
     return WINK_OK;
@@ -56,13 +56,13 @@ void pal_uart_deinit(uint8_t port)
 wink_status_t pal_uart_read(uint8_t port, uint8_t *buf, uint32_t len, uint32_t *out_read)
 {
     if (!buf || !out_read) {
-        return WINK_ERR_INVALID_ARGUMENT;
+        return WINK_ERR_INVALID_ARG;
     }
 
     int read_bytes = uart_read_bytes((uart_port_t)port, buf, len, 0);
     if (read_bytes < 0) {
         *out_read = 0;
-        return WINK_ERR_HARDWARE_FAILURE;
+        return WINK_ERR_HARDWARE;
     }
 
     *out_read = (uint32_t)read_bytes;
@@ -72,12 +72,12 @@ wink_status_t pal_uart_read(uint8_t port, uint8_t *buf, uint32_t len, uint32_t *
 wink_status_t pal_uart_write(uint8_t port, const uint8_t *buf, uint32_t len)
 {
     if (!buf && len > 0) {
-        return WINK_ERR_INVALID_ARGUMENT;
+        return WINK_ERR_INVALID_ARG;
     }
 
     int sent = uart_write_bytes((uart_port_t)port, (const char *)buf, (size_t)len);
     if (sent < 0) {
-        return WINK_ERR_HARDWARE_FAILURE;
+        return WINK_ERR_HARDWARE;
     }
 
     return WINK_OK;

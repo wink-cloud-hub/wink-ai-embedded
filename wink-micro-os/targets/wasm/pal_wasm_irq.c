@@ -10,6 +10,8 @@
 #include "wasm_bridge.h"
 #include "pal_wasm_common.h"
 
+#include <string.h>
+
 #if defined(__EMSCRIPTEN__)
 
 _Static_assert(sizeof(void*) == 4,
@@ -142,6 +144,29 @@ void pal_irq_set_pending(uint32_t irq_num)
     if (irq_num < WASM_MAX_IRQ && s_wasm_irq_table[irq_num] != NULL) {
         sw_enqueue(irq_num);
     }
+}
+
+void pal_wasm_irq_reset(void)
+{
+    /* Full IRQ subsystem reset for hot-reload / sim_reset_all_devices. */
+    memset(s_gpio_isr, 0, sizeof(s_gpio_isr));
+    memset(s_gpio_isr_arg, 0, sizeof(s_gpio_isr_arg));
+    for (uint32_t i = 0; i < WASM_MAX_GPIO_PIN; i++) {
+        s_gpio_intr_type[i] = PAL_GPIO_INTR_DISABLE;
+    }
+    s_gpio_service_initialized = false;
+    s_gpio_service_prio = PAL_IRQ_PRIO_NORMAL;
+
+    memset(s_wasm_irq_table, 0, sizeof(s_wasm_irq_table));
+    memset(s_wasm_irq_arg, 0, sizeof(s_wasm_irq_arg));
+
+    memset(s_pending_queue, 0, sizeof(s_pending_queue));
+    s_pending_head = 0;
+    s_pending_count = 0;
+    s_pending_overflow_count = 0;
+
+    /* Release any held critical section so dispatch can run post-reset. */
+    s_irq_lock_nest_count = 0;
 }
 
 void pal_irq_clear_pending(uint32_t irq_num)

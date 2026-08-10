@@ -3,6 +3,18 @@ cmake_minimum_required(VERSION 3.15)
 
 set(UNITY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/unity)
 
+# Tests that exercise Wasm-target PAL channels (pal_wasm_ch*.c) require
+# <emscripten.h> and Wasm-only KEEPALIVE symbols. They cannot be compiled by
+# the host toolchain and are instead built/run via the emcc+Node harness under
+# test/wasm/ (see pal_adc/add_wink_wasm_adc_test.cmake). Skip them on host.
+find_program(EMCC_EXECUTABLE emcc)
+find_program(NODE_EXECUTABLE node)
+if(EMCC_EXECUTABLE AND NODE_EXECUTABLE)
+    set(WINK_BUILD_WASM_TESTS TRUE)
+else()
+    set(WINK_BUILD_WASM_TESTS FALSE)
+endif()
+
 set(HOST_PAL_OBJECT $<TARGET_OBJECTS:pal_host>)
 
 # Unity vendor compile flags
@@ -177,17 +189,12 @@ add_wink_host_test(test_dal_relay unit/dal/test_dal_relay.c)
 add_wink_host_test(test_dal_button unit/dal/test_dal_button.c)
 add_wink_host_test(test_dal_mono_oled unit/dal/test_dal_mono_oled.c)
 add_wink_host_test(test_dal_analog_knob unit/dal/test_dal_analog_knob.c)
-add_wink_host_test(test_dal_analog_knob_sim unit/dal/test_dal_analog_knob_sim.c)
-add_wink_host_test(test_dal_ws2812_sim unit/dal/test_dal_ws2812_sim.c)
+# Wasm-target channel sim tests (pal_wasm_ch*.c) require <emscripten.h> and are
+# built/run by the emcc+Node harness under test/wasm/ — NOT the host gcc build.
+# (Wiring: follow-up, modeled on wasm/pal_adc/add_wink_wasm_adc_test.cmake.)
 add_wink_host_test(test_dal_buzzer unit/dal/test_dal_buzzer.c)
 target_include_directories(test_dal_analog_knob PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/input)
-target_include_directories(test_dal_analog_knob_sim PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm
-    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/input)
-target_include_directories(test_dal_ws2812_sim PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm
-    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/display)
 
 add_wink_host_test(test_dal_keypad unit/dal/test_dal_keypad.c)
 target_include_directories(test_dal_keypad PRIVATE
@@ -209,10 +216,8 @@ add_wink_host_test(test_dal_gps unit/dal/test_dal_gps.c)
 target_include_directories(test_dal_gps PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/comm)
 
-add_wink_host_test(test_dal_uart_rx_sim unit/dal/test_dal_uart_rx_sim.c)
-target_include_directories(test_dal_uart_rx_sim PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm
-    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/comm)
+# test_dal_uart_rx_sim — Wasm-target channel test (pal_wasm_ch2_uart.c), requires
+# <emscripten.h>; built/run by the test/wasm/ emcc+Node harness, not host gcc.
 
 add_wink_host_test(test_dal_abi_freeze unit/dal/test_dal_abi_freeze.c)
 
@@ -302,10 +307,10 @@ endfunction()
 add_wink_test_sim(test_dal_ultrasonic_sim unit/dal/test_dal_ultrasonic_sim.c)
 add_wink_test_sim(test_button_debounce_e2e unit/bal/test_button_debounce_e2e.c)
 
-add_wink_host_test(test_wasm_devices_sim unit/sim/test_wasm_devices_sim.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm/devices/wasm_sim_registry.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm/devices/wasm_dev_servo.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm/devices/wasm_dev_ultrasonic.c)
+# test_wasm_devices_sim — G3 ABI export compatibility test; its symbols
+# (pal_wasm_sim_reset_all_devices / get_pwm_duty_percent / get_gpio_output)
+# live in targets/wasm/*.c which require <emscripten.h>, so it is built/run by
+# the test/wasm/ emcc+Node harness, NOT the native host gcc build.
 
 add_wink_host_test(test_wink_selftest unit/runtime/test_wink_selftest.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/selftest/src/selftest_core.c

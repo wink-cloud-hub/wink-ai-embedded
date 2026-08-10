@@ -13,7 +13,7 @@
 #include "pal_hal.h"
 #include "pal_resource.h"
 #include "wasm_bridge.h"
-#include "pal_wasm_internal.h"
+#include "pal_wasm_common.h"
 
 wink_status_t pal_ws2812_write(wink_pin_t pin, const uint8_t *rgb_buf, size_t num_leds)
 {

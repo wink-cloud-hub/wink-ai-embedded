@@ -3,7 +3,7 @@
  * @file pal_wasm_fault.c
  * @brief Wasm simulation fault fast-fail subsystem implementation.
  */
-#include "pal_wasm_internal.h"
+#include "pal_wasm_common.h"
 #include "wink_trace.h"
 
 #if defined(__EMSCRIPTEN__)

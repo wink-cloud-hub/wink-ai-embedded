@@ -24,6 +24,8 @@
 
 #define PIN 10
 
+extern void pal_wasm_ch1_gpio_reset(void);
+
 /* ─────────────────────────────────────────────────────────
  * Mini PinArbiter mock (matches unisim createUnisimImports id prefixes)
  * ───────────────────────────────────────────────────────── */
@@ -137,7 +139,7 @@ static bool read_level(wink_pin_t pin) {
 void setUp(void) {
     mock_arbiter_reset();
     pal_resource_reset();
-    wasm_sim_devices_reset();
+    pal_wasm_ch1_gpio_reset();
     pal_gpio_reset_pin(PIN);
 }
 
@@ -230,24 +232,6 @@ void test_hiz_mode_unknown_reads_low_not_disconnected(void) {
     TEST_ASSERT_FALSE(lvl);
 }
 
-/* P3: C shadow must not affect HiZ read — pullup idle wins over shadow LOW */
-void test_shadow_ignored_on_hiz_read(void) {
-    claim_pin(PIN);
-    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_gpio_init(PIN, PAL_GPIO_INPUT_PULLUP));
-    wasm_sim_gpio_set_input((uint8_t)PIN, false); /* shadow LOW, Arbiter HiZ */
-    TEST_ASSERT_TRUE(read_level(PIN)); /* pullup HIGH — shadow must not win */
-}
-
-/* P3: floating INPUT + shadow set still DISCONNECTED (shadow cannot salvage) */
-void test_shadow_ignored_floating_disconnected(void) {
-    claim_pin(PIN);
-    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_gpio_init(PIN, PAL_GPIO_INPUT));
-    wasm_sim_gpio_set_input((uint8_t)PIN, true); /* shadow HIGH, Arbiter HiZ */
-    bool lvl = false;
-    wink_status_t st = pal_gpio_read(PIN, &lvl);
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_DISCONNECTED, st);
-}
-
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_pullup_idle_reads_high);
@@ -259,7 +243,5 @@ int main(void) {
     RUN_TEST(test_release_mcu_preserves_plugin_driver);
     RUN_TEST(test_init_input_does_not_remove_ideal);
     RUN_TEST(test_hiz_mode_unknown_reads_low_not_disconnected);
-    RUN_TEST(test_shadow_ignored_on_hiz_read);
-    RUN_TEST(test_shadow_ignored_floating_disconnected);
     return UNITY_END();
 }

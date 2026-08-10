@@ -3,7 +3,7 @@
  * @file pal_wasm_fault_domain.c
  * @brief Wasm simulation fault domain isolation framework and power model stubs.
  */
-#include "pal_wasm_internal.h"
+#include "pal_wasm_common.h"
 #include "wink_status.h"
 
 #if defined(__EMSCRIPTEN__)
