@@ -47,12 +47,6 @@ extern "C" {
 
 extern void    js_pal_gpio_write(uint16_t pin, bool level);
 
-/**
- * Convenience digital read (legacy / simplified). Returns true/false only;
- * does NOT distinguish Hi-Z or electrical conflict.
- * Prefer js_pal_gpio_read_state() for new code and electrical diagnostics.
- */
-extern bool    js_pal_gpio_read(uint16_t pin);
 
 /**
  * Electrical SSOT read.
@@ -372,17 +366,6 @@ extern void js_pal_log(uint8_t level, const char *msg);
  * Migration guide: docs/migration/v3.1-ultrasonic-edge-injection.md
  * ====================================================================== */
 
-/**
- * @deprecated Since v3.1.0. Will be removed in v3.2.0.
- * Use UltrasonicPlugin ECHO edge injection via pal_wasm_push_pin_event()
- * instead. See Phase 1 plan Task 1.3.
- */
-extern void  pal_wasm_set_ultrasonic_distance(uint8_t pin, float distance_cm)
-    __attribute__((deprecated("Use UltrasonicPlugin ECHO edge injection instead")));
-
-/** @deprecated Since v3.1.0. See pal_wasm_set_ultrasonic_distance note above. */
-extern float pal_wasm_get_ultrasonic_distance(uint8_t pin)
-    __attribute__((deprecated("Use UltrasonicPlugin ECHO edge injection instead")));
 
 #ifdef __cplusplus
 }
