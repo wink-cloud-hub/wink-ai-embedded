@@ -14,6 +14,7 @@
 #include "pal_resource.h"
 #include "wasm_bridge.h"
 #include "pal_wasm_common.h"
+#include "pal_wasm_waveform.h"
 #include "wink_sim_physical.h"
 #include "sensor/wink_ultrasonic_distance_events.h"
 
@@ -169,7 +170,9 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us,
                 uint64_t duration = t_end - t_start;
                 uint64_t current_time = pal_os_get_us();
                 if (t_end > current_time) {
+                    pal_wasm_set_pulse_measurement_active(true);
                     pal_wasm_advance_virtual_clock(t_end - current_time);
+                    pal_wasm_set_pulse_measurement_active(false);
                 }
                 *pulse_us = (uint32_t)duration;
                 s_pin_event_count[(uint8_t)pin] = 0;
@@ -180,7 +183,9 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us,
 
     s_pin_event_count[(uint8_t)pin] = 0;
     if (timeout_us > 0) {
+        pal_wasm_set_pulse_measurement_active(true);
         pal_wasm_advance_virtual_clock((uint64_t)timeout_us);
+        pal_wasm_set_pulse_measurement_active(false);
     }
     return WINK_ERR_TIMEOUT;
 }
@@ -201,6 +206,8 @@ void pal_wasm_push_pin_event(uint8_t pin, uint64_t delay_us, uint8_t level) {
     s_pin_events[pin][count].virtual_time_us = pal_os_get_us() + delay_us;
     s_pin_events[pin][count].level = level;
     s_pin_event_count[pin] = count + 1;
+
+    pal_wasm_push_waveform_edge((uint16_t)pin, pal_os_get_us() + delay_us, level, 0);
 }
 
 EMSCRIPTEN_KEEPALIVE
