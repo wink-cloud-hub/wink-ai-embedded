@@ -12,6 +12,7 @@
 #include "pal_osal.h"
 #include "wasm_bridge.h"
 #include "pal_wasm_common.h"
+#include "pal_wasm_waveform.h"
 #include "wink_sim_scheduler.h"
 #include "wink_trace.h"
 #include <emscripten.h>
@@ -47,6 +48,7 @@ EMSCRIPTEN_KEEPALIVE
 void pal_wasm_advance_virtual_clock(uint64_t us) {
     WASM_FAULT_GUARD_VOID();
     wink_vclock_advance_internal(us);
+    pal_wasm_drain_due_waveform_edges(s_virtual_us);
 }
 
 static wink_sim_mode_t s_sim_mode = WINK_SIM_MODE_INTERACTIVE;

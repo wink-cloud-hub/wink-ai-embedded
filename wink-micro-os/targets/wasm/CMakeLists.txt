@@ -8,6 +8,7 @@ set(PAL_WASM_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch2b_pwm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch3_adc.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch4_buffer.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_waveform.c
     # Support & Fault Domain (Axis F)
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_log_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_irq.c

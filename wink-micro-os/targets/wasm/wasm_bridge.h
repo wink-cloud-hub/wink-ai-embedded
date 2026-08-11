@@ -67,6 +67,8 @@ extern void    js_pal_gpio_drive_ideal(uint16_t pin, bool level);
 extern void    js_pal_gpio_release_ideal(uint16_t pin);
 /** Remove the MCU driver "mcu:gpio{N}" (INPUT / open-drain release). */
 extern void    js_pal_gpio_release_mcu(uint16_t pin);
+/** C-to-JS synchronous pin edge notification for C-driven SSOT waveform delivery. */
+extern void    js_pal_notify_pin_edge(uint16_t pin, uint8_t level, uint64_t t_us);
 /** GPIO write notification bridge (legacy observation hook). */
 extern void    js_pal_gpio_on_write(uint8_t pin, uint8_t level);
 
@@ -162,6 +164,14 @@ extern void     pal_wasm_push_pin_event(uint8_t pin, uint64_t delay_us,
                                          uint8_t level);
 /** Instant-trigger distance measurement for the ultrasonic device on trig_pin. */
 extern void     pal_wasm_trigger_ultrasonic_measurement(uint8_t trig_pin);
+
+/** Batch waveform injection and snapshot state accessors. */
+extern void     pal_wasm_push_waveform_edge(uint16_t pin, uint64_t t_us, uint8_t level, uint32_t generation);
+extern void     pal_wasm_cancel_waveform_generation(uint16_t pin, uint32_t generation);
+extern uint32_t pal_wasm_drain_due_waveform_edges(uint64_t until_us);
+extern uint32_t pal_wasm_get_waveform_overflow_count(void);
+extern int32_t  pal_wasm_export_waveform_state(uint8_t *out_buf, uint32_t max_len);
+extern int32_t  pal_wasm_restore_waveform_state(const uint8_t *in_buf, uint32_t len);
 
 /* ======================================================================
  * AXIS C — Timer / PWM Semantics
