@@ -169,4 +169,16 @@ addToLibrary({
         }
         return -1.0; /* Uninitialized sentinel */
     },
+
+    /* ---- Sub-step Waveform & Ultrasonic Event Bridges ---- */
+    js_pal_notify_pin_edge: function (pin, level, tUs) {
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_notify_pin_edge'] === 'function' && Module['js_pal_notify_pin_edge'] !== _js_pal_notify_pin_edge) {
+            return Module['js_pal_notify_pin_edge'](pin, level, tUs);
+        }
+    },
+    wink_ultrasonic_distance_events_trigger_now_by_trig_pin: function (pin) {
+        if (typeof Module !== 'undefined' && typeof Module['wink_ultrasonic_distance_events_trigger_now_by_trig_pin'] === 'function' && Module['wink_ultrasonic_distance_events_trigger_now_by_trig_pin'] !== _wink_ultrasonic_distance_events_trigger_now_by_trig_pin) {
+            return Module['wink_ultrasonic_distance_events_trigger_now_by_trig_pin'](pin);
+        }
+    },
 });

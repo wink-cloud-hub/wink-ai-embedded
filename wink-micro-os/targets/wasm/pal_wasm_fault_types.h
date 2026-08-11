@@ -35,6 +35,7 @@ bool pal_wasm_is_faulted(void);
 #define WASM_FAULT_GUARD_VOID()    do { if (pal_wasm_is_faulted()) return; } while (0)
 #define WASM_FAULT_GUARD_WINKERR() do { if (pal_wasm_is_faulted()) return WINK_ERR_INVALID_STATE; } while (0)
 #define WASM_FAULT_GUARD_BOOL()    do { if (pal_wasm_is_faulted()) return false; } while (0)
+#define WASM_FAULT_GUARD_INT32()   do { if (pal_wasm_is_faulted()) return -1; } while (0)
 
 #ifdef __cplusplus
 }

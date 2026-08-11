@@ -21,9 +21,8 @@ extern "C" {
  * @brief Relay topology variant enum
  */
 typedef enum {
-    DAL_RELAY_VARIANT_DIRECT_GPIO       = 0, /**< Direct GPIO / Optocoupler isolated (default) */
-    DAL_RELAY_VARIANT_SSR               = 1, /**< Solid State Relay (SSR) */
-    DAL_RELAY_VARIANT_LATCHING_DUAL_PIN = 2, /**< Dual-coil latching relay */
+    DAL_RELAY_VARIANT_DIRECT_GPIO       = 0, /**< Direct GPIO / Optocoupler isolated / SSR (default) */
+    DAL_RELAY_VARIANT_LATCHING_DUAL_PIN = 1, /**< Dual-coil latching relay */
 } dal_relay_variant_t;
 
 /**
