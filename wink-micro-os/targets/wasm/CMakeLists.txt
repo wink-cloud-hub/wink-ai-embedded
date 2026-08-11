@@ -5,7 +5,7 @@ set(PAL_WASM_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch1_gpio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch2_bus.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch2_uart.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch2b_pwm.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch1b_pwm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch3_adc.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch4_buffer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_waveform.c
