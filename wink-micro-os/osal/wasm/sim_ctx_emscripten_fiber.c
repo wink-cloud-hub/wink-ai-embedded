@@ -33,8 +33,8 @@ sim_ctx_t* sim_ctx_from_current(void) {
     struct sim_ctx* c = calloc(1, sizeof(*c));
     if (!c) return NULL;
     c->is_main = true;
-    /* Round up async stack size to 16-byte alignment */
-    c->async_bytes = (4u * 1024u + 15u) & ~(size_t)15u;
+    /* Round up async stack size to 16-byte alignment (64 KB minimum for Asyncify fibers) */
+    c->async_bytes = (64u * 1024u + 15u) & ~(size_t)15u;
     c->asyncify_stack = aligned_alloc(16, c->async_bytes);
     if (!c->asyncify_stack) {
         free(c);
@@ -50,7 +50,7 @@ sim_ctx_t* sim_ctx_create(void (*entry)(void*), void* arg, size_t stack_bytes) {
     if (!c) return NULL;
     /* Round up stack size to 16-byte alignment */
     c->stack_bytes = (stack_bytes + 15u) & ~(size_t)15u;
-    size_t base_async = WINK_SIM_ASYNCIFY_MIN > 4096u ? WINK_SIM_ASYNCIFY_MIN : 4096u;
+    size_t base_async = WINK_SIM_ASYNCIFY_MIN > 65536u ? WINK_SIM_ASYNCIFY_MIN : 65536u;
     c->async_bytes = (base_async + 15u) & ~(size_t)15u;
     /* 16-byte aligned memory allocation */
     c->stack = aligned_alloc(16, c->stack_bytes);
