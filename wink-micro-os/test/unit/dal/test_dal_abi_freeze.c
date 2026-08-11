@@ -15,6 +15,7 @@
 #include "display/dal_mono_oled.h"
 #include "sensor/dal_encoder.h"
 #include "sensor/dal_ultrasonic.h"
+#include "sensor/dal_load_cell.h"
 #include "input/dal_analog_knob.h"
 #include "input/dal_keypad.h"
 
@@ -67,6 +68,10 @@ DAL_STATIC_ASSERT(sizeof(dal_gps_position_t) > 0, "dal_gps_position_t size check
 DAL_STATIC_ASSERT(sizeof(dal_gps_t) > 0, "dal_gps_t size check");
 DAL_STATIC_ASSERT(offsetof(dal_gps_t, config) == 0, "dal_gps_t config offset 0");
 
+DAL_STATIC_ASSERT(sizeof(dal_load_cell_config_t) > 0, "dal_load_cell_config_t size check");
+DAL_STATIC_ASSERT(sizeof(dal_load_cell_t) > 0, "dal_load_cell_t size check");
+DAL_STATIC_ASSERT(offsetof(dal_load_cell_t, config) == 0, "dal_load_cell_t config at offset 0");
+
 DAL_STATIC_ASSERT(sizeof(dal_eeprom_config_t) > 0, "dal_eeprom_config_t size check");
 DAL_STATIC_ASSERT(sizeof(dal_eeprom_t) > 0, "dal_eeprom_t size check");
 DAL_STATIC_ASSERT(offsetof(dal_eeprom_t, config) == 0, "dal_eeprom_t config offset 0");
@@ -83,6 +88,7 @@ void test_abi_layout_freeze_member_positions(void) {
     dal_rc_servo_t servo = {0};
     dal_encoder_t enc = {0};
     dal_ultrasonic_t ultra = {0};
+    dal_load_cell_t lc = {0};
     dal_mono_oled_t oled = {0};
     dal_gps_t gps = {0};
     dal_eeprom_t ee = {0};
@@ -98,6 +104,7 @@ void test_abi_layout_freeze_member_positions(void) {
     TEST_ASSERT_EQUAL_PTR((void *)&gps, (void *)&gps.config);
     TEST_ASSERT_EQUAL_PTR((void *)&ee, (void *)&ee.config);
     TEST_ASSERT_EQUAL_PTR((void *)&ultra, (void *)&ultra.config);
+    TEST_ASSERT_EQUAL_PTR((void *)&lc, (void *)&lc.config);
 }
 
 int main(void) {
