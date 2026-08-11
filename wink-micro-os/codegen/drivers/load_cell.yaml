@@ -1,0 +1,133 @@
+codegen_schema: "1.1"
+type: load_cell
+category: sensor
+is_actuator: false
+experimental: false
+default_role: weight_sensor
+
+quantity: weight
+quantity_class: sensor_measurement
+
+fields:
+  variant:
+    tier: advanced
+    type: enum
+    enum: [hx711_two_wire, cs1237_two_wire, ads1232_spi, modbus_rtu]
+    default: hx711_two_wire
+    map:
+      hx711_two_wire: DAL_LOAD_CELL_VARIANT_HX711_TWO_WIRE
+      cs1237_two_wire: DAL_LOAD_CELL_VARIANT_CS1237_TWO_WIRE
+      ads1232_spi: DAL_LOAD_CELL_VARIANT_ADS1232_SPI
+      modbus_rtu: DAL_LOAD_CELL_VARIANT_MODBUS_RTU
+    affects_pins: true
+    variant_fields:
+      hx711_two_wire: [dt_pin, sck_pin, gain, calibration_factor, zero_offset, timeout_us]
+      cs1237_two_wire: [out_in_pin, sclk_pin, gain, calibration_factor, zero_offset, timeout_us]
+      ads1232_spi: [sclk_pin, dout_pin, gain0_pin, gain1_pin, calibration_factor, zero_offset, timeout_us]
+      modbus_rtu: [uart_port, baud_rate, modbus_addr, calibration_factor, timeout_us]
+
+  gain:
+    tier: advanced
+    type: enum
+    enum: [gain_128, gain_64, gain_32]
+    default: gain_128
+    map:
+      gain_128: DAL_LOAD_CELL_GAIN_128
+      gain_64: DAL_LOAD_CELL_GAIN_64
+      gain_32: DAL_LOAD_CELL_GAIN_32
+
+  dt_pin:
+    tier: advanced
+    type: int
+    min: 0
+    max: 39
+
+  sck_pin:
+    tier: advanced
+    type: int
+    min: 0
+    max: 39
+
+  out_in_pin:
+    tier: advanced
+    type: int
+    min: 0
+    max: 39
+
+  sclk_pin:
+    tier: advanced
+    type: int
+    min: 0
+    max: 39
+
+  dout_pin:
+    tier: advanced
+    type: int
+    min: 0
+    max: 39
+
+  gain0_pin:
+    tier: advanced
+    type: int
+    min: 0
+    max: 39
+
+  gain1_pin:
+    tier: advanced
+    type: int
+    min: 0
+    max: 39
+
+  uart_port:
+    tier: advanced
+    type: int
+    default: 0
+
+  baud_rate:
+    tier: advanced
+    type: int
+    default: 9600
+
+  modbus_addr:
+    tier: advanced
+    type: int
+    default: 1
+
+  calibration_factor:
+    tier: advanced
+    type: float
+    default: 1.0
+
+  zero_offset:
+    tier: advanced
+    type: int
+    default: 0
+
+  timeout_us:
+    tier: advanced
+    type: int
+    default: 150000
+
+  role:
+    tier: stable
+    type: string
+    emit: none
+
+config:
+  c_type: dal_load_cell_t
+  config_type: dal_load_cell_config_t
+  headers: [sensor/dal_load_cell.h]
+  init_fn: dal_load_cell_init
+  deinit_fn: dal_load_cell_deinit
+  safe_off_fn: ""
+
+device_specific_apis:
+  - apply_override
+
+role_bindings:
+  weight_sensor:
+    verbs:
+      read_weight_g:
+        template: "static inline float {{ name }}_read_weight_g(void) { float w = 0.0f; WINK_IGNORE_RESULT(dal_load_cell_get_cached_weight_g(&{{ name }}, &w)); return w; }"
+      tare:
+        template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_tare(void) { return dal_load_cell_tare(&{{ name }}); }"
