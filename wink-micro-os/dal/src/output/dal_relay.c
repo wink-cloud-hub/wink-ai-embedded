@@ -62,6 +62,12 @@ wink_status_t dal_relay_init(dal_relay_t *dev, const dal_relay_config_t *cfg)
         return WINK_ERR_ALREADY_INITIALIZED;
     }
 
+    if (cfg->variant != DAL_RELAY_VARIANT_DIRECT_GPIO &&
+        cfg->variant != DAL_RELAY_VARIANT_LATCHING_DUAL_PIN) {
+        LOG_E("init: '%s' invalid variant %d", cfg->owner, (int)cfg->variant);
+        return WINK_ERR_INVALID_ARG;
+    }
+
     if (cfg->variant == DAL_RELAY_VARIANT_LATCHING_DUAL_PIN && cfg->reset_pin < 0) {
         LOG_E("init: '%s' latching variant requires valid reset_pin", cfg->owner);
         return WINK_ERR_INVALID_ARG;
@@ -163,8 +169,7 @@ wink_status_t dal_relay_set(dal_relay_t *dev, bool on)
     wink_status_t status = WINK_OK;
 
     switch (dev->config.variant) {
-    case DAL_RELAY_VARIANT_DIRECT_GPIO:
-    case DAL_RELAY_VARIANT_SSR: {
+    case DAL_RELAY_VARIANT_DIRECT_GPIO: {
         bool active = !dev->config.active_low;
         bool target_level = on ? active : !active;
         status = pal_gpio_write((wink_pin_t)dev->config.pin, target_level);

@@ -105,14 +105,14 @@ void test_relay_direct_gpio_init_and_state(void) {
     TEST_ASSERT_FALSE(dev.initialized);
 }
 
-/* ---- SSR / active-low polarity ---- */
+/* ---- Direct GPIO active-low polarity (SSR alias behavior) ---- */
 void test_relay_ssr_active_low_polarity(void) {
     dal_relay_t dev = {0};
     const dal_relay_config_t cfg = {
         .owner = OWNER,
         .pin = 14,
         .reset_pin = -1,
-        .variant = DAL_RELAY_VARIANT_SSR,
+        .variant = DAL_RELAY_VARIANT_DIRECT_GPIO,
         .active_low = true,
         .initial_state = true
     };
@@ -238,6 +238,17 @@ void test_relay_latching_missing_reset_pin_fails(void) {
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_relay_init(&dev, &cfg));
 }
 
+void test_relay_invalid_variant_returns_invalid_arg(void) {
+    dal_relay_t dev = {0};
+    const dal_relay_config_t cfg = {
+        .owner = OWNER,
+        .pin = 15,
+        .reset_pin = -1,
+        .variant = (dal_relay_variant_t)99
+    };
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, dal_relay_init(&dev, &cfg));
+}
+
 void test_relay_pulse_duration_zero_defaults(void) {
     dal_relay_t dev = {0};
     const dal_relay_config_t cfg = {
@@ -349,6 +360,7 @@ int main(void) {
     RUN_TEST(test_relay_latching_initial_state_true_emits_set_pulse);
     RUN_TEST(test_relay_latching_break_before_make_no_overlap);
     RUN_TEST(test_relay_latching_missing_reset_pin_fails);
+    RUN_TEST(test_relay_invalid_variant_returns_invalid_arg);
     RUN_TEST(test_relay_pulse_duration_zero_defaults);
     RUN_TEST(test_relay_pulse_duration_over_max_rejected);
     RUN_TEST(test_relay_safe_off_deenergizes);

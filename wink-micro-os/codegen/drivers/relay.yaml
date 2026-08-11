@@ -31,15 +31,13 @@ fields:
     tier: advanced
     type: enum
     affects_pins: true
-    enum: [direct_gpio, ssr, latching_dual_pin]
+    enum: [direct_gpio, latching_dual_pin]
     map:
       direct_gpio: DAL_RELAY_VARIANT_DIRECT_GPIO
-      ssr: DAL_RELAY_VARIANT_SSR
       latching_dual_pin: DAL_RELAY_VARIANT_LATCHING_DUAL_PIN
     default: direct_gpio
     variant_fields:
       direct_gpio:       [gpio_pin, active_low, initial_state]
-      ssr:               [gpio_pin, active_low, initial_state]
       latching_dual_pin: [gpio_pin, reset_pin, pulse_duration_ms, active_low, initial_state]
 
   active_low:
