@@ -18,7 +18,7 @@
 
 #if defined(__EMSCRIPTEN__)
     #define WINK_SIM_STACK_MIN     (16u * 1024u)
-    #define WINK_SIM_ASYNCIFY_MIN  (2u  * 1024u)
+    #define WINK_SIM_ASYNCIFY_MIN  (64u * 1024u)
 #elif defined(_WIN32)
     #define WINK_SIM_STACK_MIN     (32u * 1024u)
     #define WINK_SIM_ASYNCIFY_MIN  0u

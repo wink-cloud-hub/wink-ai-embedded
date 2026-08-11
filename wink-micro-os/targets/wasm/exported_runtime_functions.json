@@ -7,7 +7,14 @@
     "_pal_wasm_set_sim_mode",
     "_pal_wasm_get_sim_mode",
     "_pal_wasm_get_virtual_clock_us",
-    "_pal_wasm_reset_scheduler_state"
+    "_pal_wasm_reset_scheduler_state",
+    "_pal_wasm_push_pin_event",
+    "_pal_wasm_trigger_ultrasonic_measurement",
+    "_pal_wasm_set_gpio_input",
+    "_pal_wasm_get_pwm_duty_percent",
+    "_pal_wasm_is_faulted",
+    "_pal_wasm_gpio_read",
+    "_pal_wasm_get_abi_hash"
   ],
   "EXPORTED_RUNTIME_METHODS": ["ccall", "cwrap", "HEAPU8", "Asyncify", "callMain"],
   "ASYNCIFY_IMPORTS": ["js_pal_os_sleep_ms", "js_pal_os_busy_wait_us"],

@@ -109,8 +109,6 @@ static void us_dist_tick(void *arg)
     if (st == WINK_OK) {
         post_distance_ready(ctx->dev, distance);
         ctx->phase = US_DIST_NEED_TRIGGER;
-    } else if (st == WINK_ERR_BUSY) {
-        /* Still measuring. */
     } else {
         ctx->phase = US_DIST_NEED_TRIGGER;
     }
