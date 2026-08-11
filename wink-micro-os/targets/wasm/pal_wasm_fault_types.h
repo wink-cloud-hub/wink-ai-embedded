@@ -28,6 +28,8 @@ typedef struct {
     uint32_t sequence;
 } wasm_fault_event_t;
 
+_Static_assert(sizeof(wasm_fault_event_t) == 16, "wasm_fault_event_t struct size must be 16 bytes for Bulk DataView ABI");
+
 bool pal_wasm_is_faulted(void);
 
 #define WASM_FAULT_GUARD_VOID()    do { if (pal_wasm_is_faulted()) return; } while (0)

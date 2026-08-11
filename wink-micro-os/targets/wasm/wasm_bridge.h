@@ -232,6 +232,8 @@ extern bool    js_pal_poll_interrupt(uint32_t *out_callback_index,
 
 extern uint32_t pal_wasm_get_fault_log_count(void);
 extern void     pal_wasm_reset_fault_log(void);
+/** Bulk log unpacking: returns base address of wasm_fault_event_t array (16 bytes per struct). */
+extern const void* pal_wasm_get_fault_log_raw_ptr(void);
 /** timestamp MUST be handled as a JS BigInt (uint64_t). */
 extern uint64_t pal_wasm_fault_event_get_timestamp(uint32_t index);
 extern uint8_t  pal_wasm_fault_event_get_type(uint32_t index);

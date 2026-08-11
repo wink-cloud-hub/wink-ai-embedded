@@ -90,6 +90,11 @@ uint32_t pal_wasm_get_fault_log_count(void) {
 }
 
 EMSCRIPTEN_KEEPALIVE
+const void* pal_wasm_get_fault_log_raw_ptr(void) {
+    return s_fault_log;
+}
+
+EMSCRIPTEN_KEEPALIVE
 bool pal_wasm_get_fault_event(uint32_t index, wasm_fault_event_t *out_event) {
     if (out_event == NULL || index >= s_fault_log_count) {
         return false;
