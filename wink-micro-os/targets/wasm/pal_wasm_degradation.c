@@ -29,7 +29,7 @@
 extern void pal_wasm_ch1_gpio_reset(void);
 extern void pal_wasm_ch2_bus_reset(void);
 extern void pal_wasm_ch2_uart_reset(void);
-extern void pal_wasm_ch2b_pwm_reset(void);
+extern void pal_wasm_ch1b_pwm_reset(void);
 extern void pal_wasm_ch3_adc_reset(void);
 extern void pal_wasm_ch4_buffer_reset(void);
 extern void pal_wasm_irq_reset(void);
@@ -127,7 +127,7 @@ void pal_wasm_sim_reset_all_devices(void) {
     pal_wasm_ch1_gpio_reset();
     pal_wasm_ch2_bus_reset();
     pal_wasm_ch2_uart_reset();
-    pal_wasm_ch2b_pwm_reset();
+    pal_wasm_ch1b_pwm_reset();
 #ifndef WINK_STRICT_NONBLOCKING
     pal_wasm_ch3_adc_reset();
 #endif
