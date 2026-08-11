@@ -38,7 +38,7 @@ extern "C" {
  *
  * Channel 1 : Pin     digital GPIO edge injection / readback
  * Channel 2 : Bus     I2C / SPI / UART TX (+ async RX planned Phase 2)
- * Channel 2b: PWM     duty-cycle output, sub-axis of channel 2
+ * Channel 1b: PWM     duty-cycle output, modulation sub-axis of channel 1
  * Channel 3 : Analog  normalised [0,1] ADC read from PinArbiter
  * Channel 4 : Buffer  WS2812 / camera frame payload   — Phase 4
  * ====================================================================== */
@@ -72,9 +72,9 @@ extern void    js_pal_notify_pin_edge(uint16_t pin, uint8_t level, uint64_t t_us
 /** GPIO write notification bridge (legacy observation hook). */
 extern void    js_pal_gpio_on_write(uint8_t pin, uint8_t level);
 
-/* -- CH2b: PWM output  (C->JS import) ---------------------------------- */
+/* -- CH1b: PWM output  (C->JS import) ---------------------------------- */
 
-/** duty_cycle_percent in [0, 100]. Routed via channel 2b (PWM sub-axis). */
+/** duty_cycle_percent in [0, 100]. Routed via channel 1b (PWM modulation). */
 extern void    js_pal_pwm_set_duty(uint8_t channel, float duty_cycle_percent);
 
 /* -- CH2: Bus — I2C / SPI / UART TX  (C->JS imports) ------------------ */

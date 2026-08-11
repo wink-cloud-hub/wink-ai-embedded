@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
- * @file pal_wasm_ch2b_pwm.c
- * @brief Wasm target Axis A (CH2b) PWM duty-cycle output & observation implementation.
+ * @file pal_wasm_ch1b_pwm.c
+ * @brief Wasm target Axis A (CH1b) PWM duty-cycle output & observation implementation.
  */
 
 #include <emscripten.h>
@@ -99,7 +99,7 @@ float pal_wasm_get_pwm_duty_percent(uint8_t channel)
     return s_pwm_duty_percent[channel];
 }
 
-void pal_wasm_ch2b_pwm_reset(void)
+void pal_wasm_ch1b_pwm_reset(void)
 {
     memset(s_pwm_duty_percent, 0, sizeof(s_pwm_duty_percent));
 }
