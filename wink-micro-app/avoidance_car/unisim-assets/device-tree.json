@@ -1,0 +1,31 @@
+{
+  "appName": "avoidance_car",
+  "board": "esp32_devkitc",
+  "devices": {
+    "front_radar": {
+      "id": "front_radar",
+      "type": "ultrasonic",
+      "pinMapping": {
+        "TRIG": 4,
+        "ECHO": 5
+      },
+      "properties": {
+        "variant": "hcsr04",
+        "backend": "gpio_poll",
+        "autoPollMs": 50
+      }
+    },
+    "neck_servo": {
+      "id": "neck_servo",
+      "type": "rc_servo",
+      "pinMapping": {
+        "PWM": 18
+      },
+      "properties": {
+        "pwmChannel": 0,
+        "minPulseMs": 0.5,
+        "maxPulseMs": 2.5
+      }
+    }
+  }
+}

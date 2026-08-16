@@ -1,0 +1,40 @@
+{
+  "appName": "oled_dashboard",
+  "board": "esp32_devkitc",
+  "devices": {
+    "user_button": {
+      "id": "user_button",
+      "type": "button",
+      "pinMapping": {
+        "1.l": 10
+      },
+      "properties": {
+        "activeLow": true,
+        "autoPollMs": 10,
+        "debounceMs": 20
+      }
+    },
+    "status_led": {
+      "id": "status_led",
+      "type": "led",
+      "pinMapping": {
+        "A": 2
+      },
+      "properties": {
+        "activeHigh": true
+      }
+    },
+    "status_oled": {
+      "id": "status_oled",
+      "type": "mono_oled",
+      "pinMapping": {
+        "DATA": 21,
+        "CLK": 22
+      },
+      "properties": {
+        "i2cBus": 0,
+        "i2cAddr": 60
+      }
+    }
+  }
+}
