@@ -1,0 +1,9 @@
+{
+  "name": "@wink-peripheral/ws2812-strip",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@wink-ai/unisim": "^0.2.0",
+    "@wink-ai/unisim-ui": "^0.1.0"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "@wink-peripheral/button",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@wink-ai/unisim": "^0.2.0",
+    "@wink-ai/unisim-ui": "^0.1.0"
+  },
+  "peerDependencies": {
+    "@wokwi/elements": "*",
+    "vue": "^3.4.0"
+  }
+}
