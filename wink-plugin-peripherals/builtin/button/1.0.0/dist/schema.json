@@ -1,0 +1,94 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "button DeviceTree Config",
+  "type": "object",
+  "properties": {
+    "type": {
+      "const": "button"
+    },
+    "variant": {
+      "type": "string",
+      "default": "default"
+    },
+    "color": {
+      "type": "string",
+      "default": "red",
+      "enum": [
+        "red",
+        "green",
+        "blue",
+        "yellow",
+        "white",
+        "black"
+      ]
+    },
+    "activeLow": {
+      "type": "boolean",
+      "default": true
+    },
+    "autoPollMs": {
+      "type": "number",
+      "default": 10,
+      "minimum": 0,
+      "maximum": 10000
+    },
+    "debounceMs": {
+      "type": "number",
+      "default": 20,
+      "minimum": 0,
+      "maximum": 1000
+    },
+    "longPressMs": {
+      "type": "number",
+      "default": 3000,
+      "minimum": 0,
+      "maximum": 60000
+    },
+    "isrCounter": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "type"
+  ],
+  "additionalProperties": false,
+  "x-wink-pins": [
+    {
+      "name": "1.l",
+      "direction": "source",
+      "signal": "digital",
+      "required": false,
+      "simRole": "signal",
+      "catalogType": "gpio",
+      "aliases": [
+        "signal",
+        "gpio"
+      ]
+    },
+    {
+      "name": "2.l",
+      "direction": "ground",
+      "signal": "power",
+      "required": false,
+      "simRole": "gnd",
+      "catalogType": "power"
+    },
+    {
+      "name": "1.r",
+      "direction": "source",
+      "signal": "digital",
+      "required": false,
+      "simRole": "signal",
+      "catalogType": "gpio"
+    },
+    {
+      "name": "2.r",
+      "direction": "ground",
+      "signal": "power",
+      "required": false,
+      "simRole": "gnd",
+      "catalogType": "power"
+    }
+  ]
+}

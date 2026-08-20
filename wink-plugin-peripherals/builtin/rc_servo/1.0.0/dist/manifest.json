@@ -1,0 +1,106 @@
+{
+  "_generated": "DO NOT EDIT — generated from src/simulation.ts by build-peripheral",
+  "type": "rc_servo",
+  "version": "1.0.0",
+  "category": "output",
+  "displayName": "RC Servo Motor",
+  "description": "RC Servo Motor (0-180 degrees)",
+  "timingModel": "event-driven",
+  "pins": [
+    {
+      "name": "PWM",
+      "direction": "source",
+      "signal": "analog",
+      "required": true,
+      "simRole": "pwm",
+      "catalogType": "pwm"
+    },
+    {
+      "name": "VCC",
+      "direction": "power",
+      "signal": "power",
+      "required": false,
+      "voltage": "5V",
+      "simRole": "vcc",
+      "catalogType": "power"
+    },
+    {
+      "name": "GND",
+      "direction": "ground",
+      "signal": "power",
+      "required": false,
+      "simRole": "gnd",
+      "catalogType": "power"
+    }
+  ],
+  "properties": {
+    "variant": {
+      "type": "string",
+      "default": "sg90"
+    },
+    "minAngle": {
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 180
+    },
+    "maxAngle": {
+      "type": "number",
+      "default": 180,
+      "min": 0,
+      "max": 180
+    },
+    "minPulseMs": {
+      "type": "number",
+      "default": 0.5,
+      "min": 0.3,
+      "max": 1
+    },
+    "maxPulseMs": {
+      "type": "number",
+      "default": 2.5,
+      "min": 2,
+      "max": 3
+    },
+    "framePeriodMs": {
+      "type": "number",
+      "default": 20,
+      "min": 1,
+      "max": 100,
+      "unit": "ms"
+    },
+    "pwmChannel": {
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 15
+    }
+  },
+  "stateChannels": {
+    "angle": {
+      "type": "number",
+      "default": 90,
+      "unit": "degrees",
+      "description": "Current servo angle"
+    },
+    "targetAngle": {
+      "type": "number",
+      "default": 90,
+      "unit": "degrees",
+      "show": false,
+      "description": "Target angle (smoothing)"
+    }
+  },
+  "events": {
+    "SET_ANGLE": {
+      "description": "Set servo target angle",
+      "params": {
+        "angle": {
+          "type": "number",
+          "required": true,
+          "unit": "degrees"
+        }
+      }
+    }
+  }
+}

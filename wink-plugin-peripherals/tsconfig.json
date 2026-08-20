@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "preserve",
+    "jsxImportSource": "vue",
+    "skipLibCheck": true,
+    "paths": {
+      "vue": [
+        "./node_modules/vue"
+      ],
+      "@wokwi/elements": [
+        "./node_modules/@wokwi/elements"
+      ],
+      "@wink-ai/unisim-ui": [
+        "./node_modules/@wink-ai/unisim-ui"
+      ],
+      "@wink-ai/unisim-ui/vite": [
+        "./node_modules/@wink-ai/unisim-ui/src/vite/index.ts",
+        "./node_modules/@wink-ai/unisim-ui"
+      ],
+      "@wink-ai/unisim-ui/*": [
+        "./node_modules/@wink-ai/unisim-ui/*"
+      ],
+      "@wink-ai/unisim": [
+        "./node_modules/@wink-ai/unisim"
+      ],
+      "@wink-ai/unisim/*": [
+        "./node_modules/@wink-ai/unisim/*"
+      ]
+    }
+  },
+  "include": [
+    "builtin/**/src/**/*",
+    "builtin/**/vite.config.*.ts"
+  ]
+}

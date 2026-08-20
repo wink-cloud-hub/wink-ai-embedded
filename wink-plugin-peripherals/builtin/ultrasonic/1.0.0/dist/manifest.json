@@ -1,0 +1,114 @@
+{
+  "_generated": "DO NOT EDIT — generated from src/simulation.ts by build-peripheral",
+  "type": "ultrasonic",
+  "version": "1.0.0",
+  "category": "sensor",
+  "displayName": "HC-SR04 Ultrasonic Sensor",
+  "description": "4-pin ultrasonic distance sensor (2cm-400cm range, ~1cm resolution)",
+  "timingModel": "event-driven",
+  "pins": [
+    {
+      "name": "TRIG",
+      "direction": "sink",
+      "signal": "digital",
+      "required": true,
+      "catalogType": "gpio"
+    },
+    {
+      "name": "ECHO",
+      "direction": "source",
+      "signal": "digital",
+      "required": true,
+      "catalogType": "gpio"
+    },
+    {
+      "name": "VCC",
+      "direction": "power",
+      "signal": "power",
+      "required": false,
+      "simRole": "vcc",
+      "catalogType": "power"
+    },
+    {
+      "name": "GND",
+      "direction": "ground",
+      "signal": "power",
+      "required": false,
+      "simRole": "gnd",
+      "catalogType": "power"
+    }
+  ],
+  "properties": {
+    "variant": {
+      "type": "string",
+      "default": "default"
+    },
+    "backend": {
+      "type": "string",
+      "default": "auto"
+    },
+    "maxDistanceCm": {
+      "type": "number",
+      "default": 400,
+      "min": 2,
+      "max": 400,
+      "unit": "cm"
+    },
+    "minDistanceCm": {
+      "type": "number",
+      "default": 2,
+      "min": 0,
+      "max": 10,
+      "unit": "cm"
+    },
+    "speedOfSoundMps": {
+      "type": "number",
+      "default": 343,
+      "min": 300,
+      "max": 400,
+      "unit": "m/s"
+    },
+    "useRmt": {
+      "type": "boolean",
+      "default": false
+    },
+    "autoPollMs": {
+      "type": "number",
+      "default": 50,
+      "min": 0,
+      "max": 10000,
+      "unit": "ms"
+    }
+  },
+  "stateChannels": {
+    "distanceCm": {
+      "type": "number",
+      "default": 100,
+      "unit": "cm",
+      "min": 2,
+      "max": 400,
+      "description": "Measured distance in centimeters"
+    },
+    "echoUs": {
+      "type": "number",
+      "default": 0,
+      "unit": "us",
+      "description": "Echo pulse width in microseconds"
+    }
+  },
+  "events": {
+    "SET_DISTANCE_CM": {
+      "description": "Set the simulated distance for testing",
+      "params": {
+        "cm": {
+          "type": "number",
+          "required": true,
+          "unit": "cm",
+          "min": 2,
+          "max": 400,
+          "default": 100
+        }
+      }
+    }
+  }
+}

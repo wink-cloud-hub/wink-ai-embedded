@@ -1,0 +1,116 @@
+{
+  "_generated": "DO NOT EDIT — generated from src/simulation.ts by build-peripheral",
+  "type": "mono_oled",
+  "version": "1.0.0",
+  "category": "display",
+  "displayName": "SSD1306 0.96\" I2C OLED Display",
+  "description": "Mono OLED display (SSD1306/SH1106) with a throttled framebuffer channel",
+  "timingModel": "event-driven",
+  "pins": [
+    {
+      "name": "DATA",
+      "direction": "bidirectional",
+      "signal": "digital",
+      "required": true,
+      "description": "I2C SDA",
+      "busGroup": "i2c0",
+      "simRole": "sda",
+      "catalogType": "i2c",
+      "aliases": [
+        "sda"
+      ]
+    },
+    {
+      "name": "CLK",
+      "direction": "sink",
+      "signal": "digital",
+      "required": true,
+      "description": "I2C SCL",
+      "busGroup": "i2c0",
+      "simRole": "scl",
+      "catalogType": "i2c",
+      "aliases": [
+        "scl"
+      ]
+    },
+    {
+      "name": "3V3",
+      "direction": "power",
+      "signal": "power",
+      "required": false,
+      "voltage": "3.3V",
+      "description": "Power 3.3V",
+      "simRole": "vcc",
+      "catalogType": "power"
+    },
+    {
+      "name": "GND",
+      "direction": "ground",
+      "signal": "power",
+      "required": false,
+      "description": "Ground",
+      "simRole": "gnd",
+      "catalogType": "power"
+    }
+  ],
+  "properties": {
+    "variant": {
+      "type": "string",
+      "default": "ssd1306_i2c"
+    },
+    "panel_ic": {
+      "type": "string",
+      "default": "ssd1306"
+    },
+    "i2cAddr": {
+      "type": "number",
+      "default": 60,
+      "min": 3,
+      "max": 119
+    },
+    "i2cBus": {
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 1
+    }
+  },
+  "requirements": {
+    "i2c": [
+      {
+        "bus": 0,
+        "address": "0x3C"
+      }
+    ]
+  },
+  "stateChannels": {
+    "fb": {
+      "type": "string",
+      "show": false,
+      "description": "Uint8Array binary framebuffer snapshot (128x64, page-major)"
+    },
+    "width": {
+      "type": "number",
+      "default": 128,
+      "description": "Framebuffer width in pixels"
+    },
+    "height": {
+      "type": "number",
+      "default": 64,
+      "description": "Framebuffer height in pixels"
+    },
+    "colorFormat": {
+      "type": "string",
+      "default": "mono-ssd1306",
+      "show": false,
+      "description": "Pixel layout format (mono-ssd1306)"
+    },
+    "displayKind": {
+      "type": "string",
+      "default": "ssd1306_fb",
+      "show": false,
+      "description": "Worker display collection kind (ssd1306_fb)"
+    }
+  },
+  "events": {}
+}

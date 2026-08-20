@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "mono_oled DeviceTree Config",
+  "type": "object",
+  "properties": {
+    "type": {
+      "const": "mono_oled"
+    },
+    "variant": {
+      "type": "string",
+      "default": "ssd1306_i2c"
+    },
+    "panel_ic": {
+      "type": "string",
+      "default": "ssd1306"
+    },
+    "i2cAddr": {
+      "type": "number",
+      "default": 60,
+      "minimum": 3,
+      "maximum": 119
+    },
+    "i2cBus": {
+      "type": "number",
+      "default": 0,
+      "minimum": 0,
+      "maximum": 1
+    }
+  },
+  "required": [
+    "type"
+  ],
+  "additionalProperties": false,
+  "x-wink-pins": [
+    {
+      "name": "DATA",
+      "direction": "bidirectional",
+      "signal": "digital",
+      "required": true,
+      "description": "I2C SDA",
+      "busGroup": "i2c0",
+      "simRole": "sda",
+      "catalogType": "i2c",
+      "aliases": [
+        "sda"
+      ]
+    },
+    {
+      "name": "CLK",
+      "direction": "sink",
+      "signal": "digital",
+      "required": true,
+      "description": "I2C SCL",
+      "busGroup": "i2c0",
+      "simRole": "scl",
+      "catalogType": "i2c",
+      "aliases": [
+        "scl"
+      ]
+    },
+    {
+      "name": "3V3",
+      "direction": "power",
+      "signal": "power",
+      "required": false,
+      "voltage": "3.3V",
+      "description": "Power 3.3V",
+      "simRole": "vcc",
+      "catalogType": "power"
+    },
+    {
+      "name": "GND",
+      "direction": "ground",
+      "signal": "power",
+      "required": false,
+      "description": "Ground",
+      "simRole": "gnd",
+      "catalogType": "power"
+    }
+  ]
+}
