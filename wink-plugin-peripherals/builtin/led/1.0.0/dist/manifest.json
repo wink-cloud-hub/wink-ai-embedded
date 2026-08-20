@@ -1,0 +1,71 @@
+{
+  "_generated": "DO NOT EDIT — generated from src/simulation.ts by build-peripheral",
+  "type": "led",
+  "version": "1.0.0",
+  "category": "output",
+  "displayName": "GPIO LED",
+  "description": "Discrete LED with anode/cathode package pins",
+  "timingModel": "event-driven",
+  "pins": [
+    {
+      "name": "A",
+      "direction": "sink",
+      "signal": "digital",
+      "required": false,
+      "simRole": "anode",
+      "catalogType": "gpio",
+      "aliases": [
+        "anode",
+        "gpio"
+      ]
+    },
+    {
+      "name": "C",
+      "direction": "ground",
+      "signal": "power",
+      "required": false,
+      "simRole": "cathode",
+      "catalogType": "power",
+      "aliases": [
+        "cathode"
+      ]
+    }
+  ],
+  "properties": {
+    "variant": {
+      "type": "string",
+      "default": "default"
+    },
+    "color": {
+      "type": "string",
+      "default": "red",
+      "enum": [
+        "red",
+        "green",
+        "blue",
+        "yellow",
+        "white",
+        "orange",
+        "purple"
+      ]
+    },
+    "brightness": {
+      "type": "number",
+      "default": 1,
+      "min": 0,
+      "max": 1
+    },
+    "activeHigh": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "stateChannels": {
+    "on": {
+      "type": "boolean",
+      "default": false,
+      "description": "Lit state"
+    }
+  },
+  "events": {}
+}

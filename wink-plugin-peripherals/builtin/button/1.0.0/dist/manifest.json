@@ -1,0 +1,120 @@
+{
+  "_generated": "DO NOT EDIT — generated from src/simulation.ts by build-peripheral",
+  "type": "button",
+  "version": "1.0.0",
+  "category": "input",
+  "displayName": "GPIO Push Button",
+  "description": "Momentary push button with dual-side package pins",
+  "timingModel": "event-driven",
+  "pins": [
+    {
+      "name": "1.l",
+      "direction": "source",
+      "signal": "digital",
+      "required": false,
+      "simRole": "signal",
+      "catalogType": "gpio",
+      "aliases": [
+        "signal",
+        "gpio"
+      ]
+    },
+    {
+      "name": "2.l",
+      "direction": "ground",
+      "signal": "power",
+      "required": false,
+      "simRole": "gnd",
+      "catalogType": "power"
+    },
+    {
+      "name": "1.r",
+      "direction": "source",
+      "signal": "digital",
+      "required": false,
+      "simRole": "signal",
+      "catalogType": "gpio"
+    },
+    {
+      "name": "2.r",
+      "direction": "ground",
+      "signal": "power",
+      "required": false,
+      "simRole": "gnd",
+      "catalogType": "power"
+    }
+  ],
+  "properties": {
+    "variant": {
+      "type": "string",
+      "default": "default"
+    },
+    "color": {
+      "type": "string",
+      "default": "red",
+      "enum": [
+        "red",
+        "green",
+        "blue",
+        "yellow",
+        "white",
+        "black"
+      ]
+    },
+    "activeLow": {
+      "type": "boolean",
+      "default": true
+    },
+    "autoPollMs": {
+      "type": "number",
+      "default": 10,
+      "min": 0,
+      "max": 10000,
+      "unit": "ms"
+    },
+    "debounceMs": {
+      "type": "number",
+      "default": 20,
+      "min": 0,
+      "max": 1000,
+      "unit": "ms"
+    },
+    "longPressMs": {
+      "type": "number",
+      "default": 3000,
+      "min": 0,
+      "max": 60000,
+      "unit": "ms"
+    },
+    "isrCounter": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "stateChannels": {
+    "pressed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Pressed state"
+    }
+  },
+  "events": {
+    "SET_PRESSED": {
+      "description": "Set button pressed state",
+      "params": {
+        "pressed": {
+          "type": "boolean",
+          "required": true
+        }
+      }
+    },
+    "PRESS": {
+      "description": "Press button",
+      "params": {}
+    },
+    "RELEASE": {
+      "description": "Release button",
+      "params": {}
+    }
+  }
+}

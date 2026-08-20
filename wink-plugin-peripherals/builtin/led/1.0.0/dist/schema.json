@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "led DeviceTree Config",
+  "type": "object",
+  "properties": {
+    "type": {
+      "const": "led"
+    },
+    "variant": {
+      "type": "string",
+      "default": "default"
+    },
+    "color": {
+      "type": "string",
+      "default": "red",
+      "enum": [
+        "red",
+        "green",
+        "blue",
+        "yellow",
+        "white",
+        "orange",
+        "purple"
+      ]
+    },
+    "brightness": {
+      "type": "number",
+      "default": 1,
+      "minimum": 0,
+      "maximum": 1
+    },
+    "activeHigh": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "type"
+  ],
+  "additionalProperties": false,
+  "x-wink-pins": [
+    {
+      "name": "A",
+      "direction": "sink",
+      "signal": "digital",
+      "required": false,
+      "simRole": "anode",
+      "catalogType": "gpio",
+      "aliases": [
+        "anode",
+        "gpio"
+      ]
+    },
+    {
+      "name": "C",
+      "direction": "ground",
+      "signal": "power",
+      "required": false,
+      "simRole": "cathode",
+      "catalogType": "power",
+      "aliases": [
+        "cathode"
+      ]
+    }
+  ]
+}
