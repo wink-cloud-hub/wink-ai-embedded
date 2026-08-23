@@ -236,6 +236,11 @@ add_wink_host_test(test_pal_hwtimer unit/pal/test_pal_hwtimer.c)
 add_wink_host_test(test_pal_mcpwm unit/pal/test_pal_mcpwm.c)
 add_wink_host_test(test_pal_adc_continuous unit/pal/test_pal_adc_continuous.c)
 add_wink_host_test(test_pal_lockfree_pipeline unit/pal/test_pal_lockfree_pipeline.c)
+add_wink_host_test(test_pal_wasm_completion
+    unit/pal/test_pal_wasm_completion.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm/pal_wasm_completion.c
+)
+target_include_directories(test_pal_wasm_completion PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm)
 
 add_wink_host_test(test_button_events unit/bal/test_button_events.c)
 target_link_libraries(test_button_events PRIVATE wink_bal)
