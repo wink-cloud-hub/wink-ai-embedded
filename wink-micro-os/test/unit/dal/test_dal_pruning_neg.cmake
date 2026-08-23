@@ -26,13 +26,18 @@ set(_inc_flags
     "-I${PAL_INC}"
 )
 
+if(MSVC OR GCC MATCHES "cl(\\.exe)?$")
+    set(_warn_flags "/Zs" "/we4996")
+else()
+    set(_warn_flags "-fsyntax-only" "-Wall" "-Wextra" "-Werror")
+endif()
+
 # Run the compiler; expect non-zero exit.
 execute_process(
     COMMAND "${GCC}"
             ${_inc_flags}
             -DWINK_USE_RC_SERVO=0
-            -fsyntax-only
-            -Wall -Wextra -Werror
+            ${_warn_flags}
             "${_src}"
     RESULT_VARIABLE _rc
     OUTPUT_VARIABLE _stdout
@@ -47,14 +52,15 @@ if(_rc EQUAL 0)
         "but gcc exited 0. WINK_UNAVAILABLE_MSG is NOT firing.")
 endif()
 
-# The friendly message should appear in stderr.
-string(FIND "${_stderr}" "RC servo driver not enabled" _found)
+# The friendly message should appear in stdout or stderr (MSVC emits to stdout).
+set(_combined_out "${_stdout}\n${_stderr}")
+string(FIND "${_combined_out}" "RC servo driver not enabled" _found)
 if(_found EQUAL -1)
     message(FATAL_ERROR
-        "test_dal_pruning_neg: gcc failed (rc=${_rc}) but the expected "
-        "remediation hint \"RC servo driver not enabled\" was NOT in stderr.\n"
-        "--- stderr was ---\n${_stderr}\n"
-        "--- end stderr ---")
+        "test_dal_pruning_neg: compiler failed (rc=${_rc}) but the expected "
+        "remediation hint \"RC servo driver not enabled\" was NOT found.\n"
+        "--- output was ---\n${_combined_out}\n"
+        "--- end output ---")
 endif()
 
 message(STATUS "test_dal_pruning_neg: PASS — unavailable error fired with remediation hint.")
