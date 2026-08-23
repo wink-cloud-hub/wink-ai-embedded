@@ -4,10 +4,15 @@ set(PAL_WASM_SOURCES
     # Core Modular Channels (Axis A)
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch1_gpio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch2_bus.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch2_spi.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch2_uart.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch1b_pwm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch3_adc.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_ch4_buffer.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_completion.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_hwtimer.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_mcpwm.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_pcnt.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_waveform.c
     # Support & Fault Domain (Axis F)
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_log_wasm.c

@@ -181,4 +181,22 @@ addToLibrary({
             return Module['wink_ultrasonic_distance_events_trigger_now_by_trig_pin'](pin);
         }
     },
+
+    /* ---- CH5: Soft Edge / Motor Semantics ---- */
+    js_pal_pcnt_edge: function (unit, delta) {
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_pcnt_edge'] === 'function' && Module['js_pal_pcnt_edge'] !== _js_pal_pcnt_edge) {
+            return Module['js_pal_pcnt_edge'](unit, delta);
+        }
+    },
+    js_pal_mcpwm_capture_edge: function (capChannel, tsNs, rising) {
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_mcpwm_capture_edge'] === 'function' && Module['js_pal_mcpwm_capture_edge'] !== _js_pal_mcpwm_capture_edge) {
+            return Module['js_pal_mcpwm_capture_edge'](capChannel, tsNs, rising);
+        }
+    },
+    js_pal_mcpwm_get_duty_ticks: function (mcpwmUnit, cmpId) {
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_mcpwm_get_duty_ticks'] === 'function' && Module['js_pal_mcpwm_get_duty_ticks'] !== _js_pal_mcpwm_get_duty_ticks) {
+            return Module['js_pal_mcpwm_get_duty_ticks'](mcpwmUnit, cmpId);
+        }
+        return 0;
+    },
 });
