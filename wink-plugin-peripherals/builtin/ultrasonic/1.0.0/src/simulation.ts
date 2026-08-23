@@ -200,6 +200,13 @@ export class UltrasonicPlugin extends BaseSimulationPlugin<UltrasonicState, Ultr
           (this.ctx as any).injectWaveform('ECHO', waveform);
         } else if (this.ctx.gpio) {
           this.ctx.gpio.injectWaveform('ECHO', waveform);
+        } else if (typeof (this.ctx as any).writePin === 'function') {
+          (this.ctx as any).writePin('ECHO', true);
+          if (typeof (this.ctx as any).deferUs === 'function') {
+            (this.ctx as any).deferUs(BigInt(echoUs), () => {
+              (this.ctx as any).writePin('ECHO', false);
+            });
+          }
         }
       }
     }
