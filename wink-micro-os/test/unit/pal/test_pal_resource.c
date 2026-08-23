@@ -59,6 +59,31 @@ void test_resource_release_wrong_owner_returns_invalid_arg(void) {
                           pal_resource_release(PAL_RESOURCE_GPIO_PIN, 99, "nobody"));
 }
 
+void test_resource_max_bounds(void) {
+    TEST_ASSERT_EQUAL_UINT32(2, pal_resource_max(PAL_RESOURCE_SPI_BUS));
+    TEST_ASSERT_EQUAL_UINT32(8, pal_resource_max(PAL_RESOURCE_PCNT_UNIT));
+    TEST_ASSERT_EQUAL_UINT32(2, pal_resource_max(PAL_RESOURCE_MCPWM_UNIT));
+    TEST_ASSERT_EQUAL_UINT32(8, pal_resource_max(PAL_RESOURCE_RMT_CHAN));
+    TEST_ASSERT_EQUAL_UINT32(4, pal_resource_max(PAL_RESOURCE_HWTIMER));
+    TEST_ASSERT_EQUAL_UINT32(3, pal_resource_max(PAL_RESOURCE_UART_PORT));
+    TEST_ASSERT_EQUAL_UINT32(PAL_RESOURCE_UNLIMITED_MAX, pal_resource_max(PAL_RESOURCE_I2C_ADDR));
+}
+
+void test_resource_claim_out_of_bounds_returns_invalid_arg(void) {
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG,
+                          pal_resource_claim(PAL_RESOURCE_SPI_BUS, 2, "spi_overflow"));
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+                          pal_resource_claim(PAL_RESOURCE_SPI_BUS, 1, "spi1"));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG,
+                          pal_resource_claim(PAL_RESOURCE_PCNT_UNIT, 8, "pcnt_overflow"));
+    TEST_ASSERT_EQUAL_INT(WINK_OK,
+                          pal_resource_claim(PAL_RESOURCE_PCNT_UNIT, 7, "pcnt7"));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG,
+                          pal_resource_claim(PAL_RESOURCE_MCPWM_UNIT, 2, "mcpwm_overflow"));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG,
+                          pal_resource_claim(PAL_RESOURCE_HWTIMER, 4, "hwtimer_overflow"));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_resource_claim_same_owner_idempotent);
@@ -68,5 +93,7 @@ int main(void) {
     RUN_TEST(test_resource_claim_i2c_addr_table_full_returns_exhausted);
     RUN_TEST(test_resource_release_then_reclaim_ok);
     RUN_TEST(test_resource_release_wrong_owner_returns_invalid_arg);
+    RUN_TEST(test_resource_max_bounds);
+    RUN_TEST(test_resource_claim_out_of_bounds_returns_invalid_arg);
     return UNITY_END();
 }
