@@ -229,6 +229,7 @@ add_wink_host_test(test_pal_i2c_bus unit/pal/test_pal_i2c_bus.c)
 add_wink_host_test(test_pal_spi unit/pal/test_pal_spi.c)
 add_wink_host_test(test_pal_rmt unit/pal/test_pal_rmt.c)
 add_wink_host_test(test_pal_pcnt unit/pal/test_pal_pcnt.c)
+add_wink_host_test(test_pal_uart unit/pal/test_pal_uart.c)
 
 add_wink_host_test(test_button_events unit/bal/test_button_events.c)
 target_link_libraries(test_button_events PRIVATE wink_bal)
