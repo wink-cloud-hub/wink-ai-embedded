@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { I2CBus, PinArbiter, VirtualClock, PluginContext } from '@wink-ai/unisim';
+import { I2CBus, PinArbiter, VirtualClock } from '@wink-ai/unisim/core';
+import { PluginContext } from '@wink-ai/unisim';
 
 import { MonoOledPlugin } from '../simulation';
 

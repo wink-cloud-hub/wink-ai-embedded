@@ -164,7 +164,9 @@ var u = l("default"), d = (e) => l(c(e)), f = class extends e {
 					}],
 					generation: this._echoGeneration++
 				};
-				typeof this.ctx.injectWaveform == "function" ? this.ctx.injectWaveform("ECHO", r) : this.ctx.gpio && this.ctx.gpio.injectWaveform("ECHO", r);
+				typeof this.ctx.injectWaveform == "function" ? this.ctx.injectWaveform("ECHO", r) : this.ctx.gpio ? this.ctx.gpio.injectWaveform("ECHO", r) : typeof this.ctx.writePin == "function" && (this.ctx.writePin("ECHO", !0), typeof this.ctx.deferUs == "function" && this.ctx.deferUs(BigInt(e), () => {
+					this.ctx.writePin("ECHO", !1);
+				}));
 			}
 		}
 	}

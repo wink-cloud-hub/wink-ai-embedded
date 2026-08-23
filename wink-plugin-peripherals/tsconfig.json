@@ -6,6 +6,10 @@
     "jsx": "preserve",
     "jsxImportSource": "vue",
     "skipLibCheck": true,
+    "types": [
+      "bun",
+      "bun-types"
+    ],
     "paths": {
       "vue": [
         "./node_modules/vue"

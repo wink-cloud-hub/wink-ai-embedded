@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
 import { RcServoPlugin, rcServoManifest } from '../simulation';
-import { SimulationPluginHost, PluginRegistry, PinArbiter, VirtualClock } from '@wink-ai/unisim';
+import { SimulationPluginHost } from '@wink-ai/unisim/host';
+import { PinArbiter, VirtualClock } from '@wink-ai/unisim/core';
+import { PluginRegistry } from '@wink-ai/unisim';
 
 describe('SG90 Servo analog duty pathway', () => {
   let arbiter: PinArbiter;
