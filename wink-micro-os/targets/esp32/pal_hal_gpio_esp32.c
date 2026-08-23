@@ -7,6 +7,7 @@
 #include "pal_irq.h"
 #include "pal_osal.h"
 #include "pal_resource.h"
+#include "pal_spinlock.h"
 #include "pal_atomic_esp32.h"
 #include "pal_hal_internal_esp32.h"
 #include "hal/pal_rmt.h"
@@ -44,7 +45,7 @@ static inline void gpio_clear_intr_status(gpio_num_t gpio_num) {
     }
 }
 
-static portMUX_TYPE s_gpio_table_mux = portMUX_INITIALIZER_UNLOCKED;
+static pal_spinlock_t s_gpio_table_mux = PAL_SPINLOCK_INITIALIZER;
 
 static pal_gpio_isr_t s_gpio_isr[GPIO_NUM_MAX] = {NULL};
 static void *s_gpio_isr_arg[GPIO_NUM_MAX] = {NULL};
@@ -87,20 +88,20 @@ static void PAL_ISR gpio_isr_wrapper(void *arg)
     void *isr_arg = NULL;
     bool need_reenable = false;
 
-    portENTER_CRITICAL_ISR(&s_gpio_table_mux);
+    pal_spinlock_lock_isr(&s_gpio_table_mux);
     isr = s_gpio_isr[pin];
     isr_arg = s_gpio_isr_arg[pin];
     need_reenable = (s_gpio_isr[pin] != NULL);
-    portEXIT_CRITICAL_ISR(&s_gpio_table_mux);
+    pal_spinlock_unlock_isr(&s_gpio_table_mux);
 
     if (isr != NULL) {
         isr(isr_arg);
     }
 
     if (need_reenable) {
-        portENTER_CRITICAL_ISR(&s_gpio_table_mux);
+        pal_spinlock_lock_isr(&s_gpio_table_mux);
         need_reenable = (s_gpio_isr[pin] != NULL);
-        portEXIT_CRITICAL_ISR(&s_gpio_table_mux);
+        pal_spinlock_unlock_isr(&s_gpio_table_mux);
 
         if (need_reenable) {
             gpio_intr_enable((gpio_num_t)pin);
@@ -232,14 +233,14 @@ wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin,
     if (callback == NULL) { return WINK_ERR_INVALID_ARG; }
     if (prio < PAL_IRQ_PRIO_LOW || prio > PAL_IRQ_PRIO_HIGH) { return WINK_ERR_INVALID_ARG; }
 
-    portENTER_CRITICAL(&s_gpio_table_mux);
+    pal_spinlock_lock(&s_gpio_table_mux);
     if (s_gpio_service_initialized) {
         if (prio != s_gpio_service_prio) {
-            portEXIT_CRITICAL(&s_gpio_table_mux);
+            pal_spinlock_unlock(&s_gpio_table_mux);
             return WINK_ERR_INVALID_ARG;
         }
     }
-    portEXIT_CRITICAL(&s_gpio_table_mux);
+    pal_spinlock_unlock(&s_gpio_table_mux);
 
     gpio_int_type_t esp_intr_type;
     switch (intr_type) {
@@ -272,34 +273,34 @@ wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin,
         int intr_flags = s_gpio_prio_flag_map[prio] | ESP_INTR_FLAG_IRAM;
         esp_err_t err = gpio_install_isr_service(intr_flags);
         if (err == ESP_OK) {
-            portENTER_CRITICAL(&s_gpio_table_mux);
+            pal_spinlock_lock(&s_gpio_table_mux);
             s_gpio_service_prio        = prio;
             s_gpio_service_initialized = true;
-            portEXIT_CRITICAL(&s_gpio_table_mux);
+            pal_spinlock_unlock(&s_gpio_table_mux);
         } else if (err == ESP_ERR_INVALID_STATE) {
             ESP_LOGI("pal_hal", "GPIO ISR service already installed externally; "
                                 "locking pal tracker to prio=%d", (int)prio);
-            portENTER_CRITICAL(&s_gpio_table_mux);
+            pal_spinlock_lock(&s_gpio_table_mux);
             s_gpio_service_prio        = prio;
             s_gpio_service_initialized = true;
-            portEXIT_CRITICAL(&s_gpio_table_mux);
+            pal_spinlock_unlock(&s_gpio_table_mux);
         } else {
             return WINK_ERR_HARDWARE;
         }
     }
 
-    portENTER_CRITICAL(&s_gpio_table_mux);
+    pal_spinlock_lock(&s_gpio_table_mux);
     s_gpio_isr[pin] = callback;
     s_gpio_isr_arg[pin] = arg;
-    portEXIT_CRITICAL(&s_gpio_table_mux);
+    pal_spinlock_unlock(&s_gpio_table_mux);
 
     esp_err_t err = gpio_isr_handler_add((gpio_num_t)pin,
                                           gpio_isr_wrapper,
                                           (void *)(uintptr_t)pin);
     if (err != ESP_OK) {
-        portENTER_CRITICAL(&s_gpio_table_mux);
+        pal_spinlock_lock(&s_gpio_table_mux);
         s_gpio_isr[pin] = NULL;
-        portEXIT_CRITICAL(&s_gpio_table_mux);
+        pal_spinlock_unlock(&s_gpio_table_mux);
         return WINK_ERR_HARDWARE;
     }
 
@@ -316,9 +317,9 @@ wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin,
     err = gpio_set_intr_type((gpio_num_t)pin, esp_intr_type);
     if (err != ESP_OK) {
         (void)gpio_isr_handler_remove((gpio_num_t)pin);
-        portENTER_CRITICAL(&s_gpio_table_mux);
+        pal_spinlock_lock(&s_gpio_table_mux);
         s_gpio_isr[pin] = NULL;
-        portEXIT_CRITICAL(&s_gpio_table_mux);
+        pal_spinlock_unlock(&s_gpio_table_mux);
         return WINK_ERR_HARDWARE;
     }
     return WINK_OK;
@@ -332,10 +333,10 @@ wink_status_t pal_gpio_disable_interrupt(wink_pin_t pin) {
 
     (void)gpio_isr_handler_remove((gpio_num_t)pin);
 
-    portENTER_CRITICAL(&s_gpio_table_mux);
+    pal_spinlock_lock(&s_gpio_table_mux);
     s_gpio_isr[pin] = NULL;
     s_gpio_isr_arg[pin] = NULL;
-    portEXIT_CRITICAL(&s_gpio_table_mux);
+    pal_spinlock_unlock(&s_gpio_table_mux);
     return WINK_OK;
 }
 

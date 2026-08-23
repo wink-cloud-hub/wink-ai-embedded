@@ -22,6 +22,8 @@
 
 #if defined(__GNUC__) || defined(__clang__)
 #  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#elif defined(_MSC_VER)
+#  pragma warning(disable: 4996)
 #endif
 
 static const wink_app_callbacks_t *s_active_cbs = NULL;

@@ -5,6 +5,7 @@
  */
 #include "pal_hal.h"
 #include "hal/pal_i2c.h"
+#include "pal_spinlock.h"
 
 #include <string.h>
 
@@ -49,17 +50,17 @@ static bool s_i2c_initialized[PAL_I2C_PORTS] = {false};
 
 static SemaphoreHandle_t s_i2c_mutex = NULL;
 static StaticSemaphore_t s_i2c_mutex_buf;
-static portMUX_TYPE      s_i2c_mutex_init_lock = portMUX_INITIALIZER_UNLOCKED;
+static pal_spinlock_t    s_i2c_mutex_init_lock = PAL_SPINLOCK_INITIALIZER;
 
 static inline SemaphoreHandle_t pal_i2c_get_mutex(void) {
     if (s_i2c_mutex != NULL) {
         return s_i2c_mutex;
     }
-    portENTER_CRITICAL(&s_i2c_mutex_init_lock);
+    pal_spinlock_lock(&s_i2c_mutex_init_lock);
     if (s_i2c_mutex == NULL) {
         s_i2c_mutex = xSemaphoreCreateMutexStatic(&s_i2c_mutex_buf);
     }
-    portEXIT_CRITICAL(&s_i2c_mutex_init_lock);
+    pal_spinlock_unlock(&s_i2c_mutex_init_lock);
     return s_i2c_mutex;
 }
 

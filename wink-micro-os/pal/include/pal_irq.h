@@ -80,12 +80,9 @@ typedef void (*pal_isr_t)(void *arg);
  * - STM32/ARM: Empty (Cortex-M hardware handles stack frame; standard C function serves as ISR)
  * - WASM/Host: Empty (Standard function)
  */
-#if defined(ESP_PLATFORM)
-#include "esp_attr.h"
-#define PAL_ISR  IRAM_ATTR
-#else
-#define PAL_ISR  /* No special attribute */
-#endif
+#include "wink_compiler.h"
+
+#define PAL_ISR PAL_IRAM_TEXT
 
 /**
  * @def PAL_DEFINE_ISR
