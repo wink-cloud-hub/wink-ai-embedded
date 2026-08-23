@@ -359,6 +359,12 @@ extern wink_status_t pal_wasm_set_pin_power_model(
     uint8_t pin, const struct wasm_pin_power_model_t *model);
 extern uint64_t      pal_wasm_get_total_energy_mj(void);
 
+/* -- CH5: Soft Edge / Motor Semantics (C<->JS imports/exports) --------- */
+extern void     js_pal_pcnt_edge(uint8_t unit, int32_t delta);
+extern void     js_pal_mcpwm_capture_edge(uint8_t cap_channel, uint32_t ts_ns, bool rising);
+extern uint32_t js_pal_mcpwm_get_duty_ticks(uint8_t mcpwm_unit, uint8_t cmp_id);
+extern void     pal_wasm_push_pcnt_edge(uint8_t unit, int32_t delta);
+
 /* ======================================================================
  * CROSS-AXIS UTILITY — Logging
  * ====================================================================== */
