@@ -78,7 +78,7 @@ void test_raw_read_without_debounce_bounces(void) {
 
 void test_no_bounce_config_settles_fast(void) {
     sim_set_faults(&WINK_SIM_FAULTS_IDEAL);
-    dal_button_t btn;
+    dal_button_t btn = {0};
     const dal_button_config_t cfg = { .owner = "e2e_debounce_baseline", .pin = 8, .active_low = false };
     TEST_ASSERT_EQUAL(WINK_OK, dal_button_init(&btn, &cfg));
     sim_set_gpio_ideal(8, true);

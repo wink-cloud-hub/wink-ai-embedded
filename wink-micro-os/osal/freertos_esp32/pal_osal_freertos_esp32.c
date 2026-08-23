@@ -13,6 +13,7 @@
  */
 
 #include "pal_osal.h"
+#include "pal_spinlock.h"
 #include <stdlib.h>     /* malloc/free */
 #include <string.h>     /* memcpy */
 
@@ -31,8 +32,6 @@
 typedef void* SemaphoreHandle_t;
 #define pdMS_TO_TICKS(ms) (ms)
 #define portMAX_DELAY 0xffffffff
-#define portMUX_INITIALIZER_UNLOCKED {0}
-typedef struct { int reserved; } portMUX_TYPE;
 #endif
 
 /* ---------------------------------------------------------
@@ -201,26 +200,26 @@ WINK_WARN_UNUSED_RESULT wink_status_t pal_os_wdt_feed(void) {
  * Critical Section (Explicit task/ISR dual-entry dispatch, ADR-0016)
  * --------------------------------------------------------- */
 
-static portMUX_TYPE s_global_mux = portMUX_INITIALIZER_UNLOCKED;
+static pal_spinlock_t s_global_mux = PAL_SPINLOCK_INITIALIZER;
 
 uint32_t pal_os_critical_enter(void) {
-    portENTER_CRITICAL(&s_global_mux);
+    pal_spinlock_lock(&s_global_mux);
     return 0;
 }
 
 void pal_os_critical_exit(uint32_t key) {
     (void)key;
-    portEXIT_CRITICAL(&s_global_mux);
+    pal_spinlock_unlock(&s_global_mux);
 }
 
 uint32_t pal_os_critical_enter_isr(void) {
-    portENTER_CRITICAL_ISR(&s_global_mux);
+    pal_spinlock_lock_isr(&s_global_mux);
     return 0;
 }
 
 void pal_os_critical_exit_isr(uint32_t key) {
     (void)key;
-    portEXIT_CRITICAL_ISR(&s_global_mux);
+    pal_spinlock_unlock_isr(&s_global_mux);
 }
 
 /* Physical context provided directly by FreeRTOS; simulation context flags are no-ops */

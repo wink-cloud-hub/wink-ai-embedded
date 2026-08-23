@@ -29,4 +29,19 @@
 #  define WINK_WEAK_ALIAS(weak_func, default_func)
 #endif
 
+#if defined(ESP_PLATFORM)
+#  include "esp_attr.h"
+#  define PAL_IRAM_TEXT     IRAM_ATTR        /* ISR 函数 */
+#  define PAL_IRAM_DATA     IRAM_DATA_ATTR   /* ISR 读写数据（非 DMA） */
+#  define PAL_IRAM_RODATA   IRAM_DATA_ATTR   /* ISR 只读常量表 */
+#  define PAL_DMA_ATTR      WORD_ALIGNED_ATTR DRAM_ATTR /* DMA 描述符 */
+#  define PAL_DMA_BUF_ATTR  WORD_ALIGNED_ATTR DRAM_ATTR /* DMA 数据缓冲 */
+#else
+#  define PAL_IRAM_TEXT
+#  define PAL_IRAM_DATA
+#  define PAL_IRAM_RODATA
+#  define PAL_DMA_ATTR
+#  define PAL_DMA_BUF_ATTR
+#endif
+
 #endif /* WINK_COMPILER_H */

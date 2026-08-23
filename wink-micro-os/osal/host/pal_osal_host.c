@@ -25,11 +25,20 @@ static inline bool IsDebuggerPresent(void) { return false; }
 
 struct wink_app_callbacks;
 /* Cross-platform weak stub */
+#if defined(_MSC_VER)
+void _default_wink_runtime_fault(const struct wink_app_callbacks* callbacks, uint32_t fault_code) {
+    (void)callbacks;
+    (void)fault_code;
+    fprintf(stderr, "[STUB] wink_runtime_fault called with code %u\n", (unsigned int)fault_code);
+}
+WINK_WEAK_ALIAS(wink_runtime_fault, _default_wink_runtime_fault)
+#else
 WINK_WEAK void wink_runtime_fault(const struct wink_app_callbacks* callbacks, uint32_t fault_code) {
     (void)callbacks;
     (void)fault_code;
     fprintf(stderr, "[STUB] wink_runtime_fault called with code %u\n", (unsigned int)fault_code);
 }
+#endif
 
 int32_t pal_wasm_dispatch_pending_interrupts(void) {
     /* No-op on host simulation target */
