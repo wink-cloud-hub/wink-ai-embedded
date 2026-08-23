@@ -36,6 +36,8 @@ if(ESP_PLATFORM)
             esp_driver_i2c
             esp_driver_spi
             esp_driver_pcnt
+            esp_driver_gptimer
+            esp_driver_mcpwm
         )
     else()
         set(WINK_ESP_DRIVER_COMPONENTS driver)
@@ -52,6 +54,8 @@ if(ESP_PLATFORM)
             pal_hal_rmt_esp32.c
             pal_hal_spi_esp32.c
             pal_hal_pcnt_esp32.c
+            pal_hal_hwtimer_esp32.c
+            pal_hal_mcpwm_esp32.c
             pal_irq_esp32.c
             ${WINK_OSAL_SOURCES}
             pal_resource_esp32.c
@@ -130,6 +134,8 @@ elseif(TARGET_PLATFORM STREQUAL "esp32")
         pal_hal_rmt_esp32.c
         pal_hal_spi_esp32.c
         pal_hal_pcnt_esp32.c
+        pal_hal_hwtimer_esp32.c
+        pal_hal_mcpwm_esp32.c
         pal_irq_esp32.c
         ${WINK_OSAL_SOURCES}
         pal_resource_esp32.c

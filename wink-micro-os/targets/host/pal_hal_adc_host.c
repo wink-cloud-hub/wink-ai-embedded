@@ -238,3 +238,40 @@ void pal_host_adc_inject_mv(pal_adc_channel_t ch, uint16_t mv) {
     }
     host_adc_unlock(ch);
 }
+
+/* --- Continuous DMA Simulation --- */
+
+typedef struct {
+    bool                     active;
+    pal_adc_continuous_cfg_t cfg;
+} host_adc_cont_t;
+
+static host_adc_cont_t s_host_adc_cont[2];
+
+wink_status_t pal_adc_continuous_start(const pal_adc_continuous_cfg_t *cfg) {
+    if (cfg == NULL || cfg->adc_unit > 1 || cfg->dma_buf_a == NULL || cfg->samples_per_buf == 0) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    s_host_adc_cont[cfg->adc_unit].active = true;
+    s_host_adc_cont[cfg->adc_unit].cfg = *cfg;
+
+    if (cfg->on_half_full != NULL) {
+        for (size_t i = 0; i < cfg->samples_per_buf / 2; i++) {
+            cfg->dma_buf_a[i] = 1000;
+        }
+        cfg->on_half_full(cfg->cb_arg, cfg->dma_buf_a, cfg->samples_per_buf / 2);
+    }
+    if (cfg->on_full != NULL) {
+        for (size_t i = 0; i < cfg->samples_per_buf; i++) {
+            cfg->dma_buf_a[i] = 2000;
+        }
+        cfg->on_full(cfg->cb_arg, cfg->dma_buf_a, cfg->samples_per_buf);
+    }
+    return WINK_OK;
+}
+
+wink_status_t pal_adc_continuous_stop(uint8_t adc_unit) {
+    if (adc_unit > 1) return WINK_ERR_INVALID_ARG;
+    s_host_adc_cont[adc_unit].active = false;
+    return WINK_OK;
+}
