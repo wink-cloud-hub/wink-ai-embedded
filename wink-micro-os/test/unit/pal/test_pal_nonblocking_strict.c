@@ -13,6 +13,7 @@
 #include "dal_ultrasonic.h"
 #include "dal_eeprom.h"
 #include "dal_gps.h"
+#include "sensor/dal_load_cell.h"
 
 #include <stddef.h>
 
@@ -51,6 +52,8 @@ enum {
     NB_HAS_dal_ultrasonic_apply_override   = sizeof(&dal_ultrasonic_apply_override),
     NB_HAS_dal_gps_poll                    = sizeof(&dal_gps_poll),
     NB_HAS_dal_gps_get_position            = sizeof(&dal_gps_get_position),
+    NB_HAS_dal_load_cell_request_read      = sizeof(&dal_load_cell_request_read),
+    NB_HAS_dal_load_cell_get_cached_weight = sizeof(&dal_load_cell_get_cached_weight_g),
 };
 
 int main(void) { return 0; }

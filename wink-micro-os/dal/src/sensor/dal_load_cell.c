@@ -167,8 +167,16 @@ wink_status_t dal_load_cell_request_read(dal_load_cell_t *dev) {
         return WINK_ERR_BUSY;
     }
 
-    /* Bit-bang 24 bits DOUT on SCK pulses */
+    /* Bit-bang 24 bits DOUT on SCK pulses with micro-critical section protection */
     uint32_t raw24 = 0;
+    int extra_pulses = 1;
+    if (dev->pending_gain == DAL_LOAD_CELL_GAIN_32) {
+        extra_pulses = 2;
+    } else if (dev->pending_gain == DAL_LOAD_CELL_GAIN_64) {
+        extra_pulses = 3;
+    }
+
+    pal_os_critical_enter();
     for (int i = 0; i < 24; i++) {
         pal_gpio_write(dev->config.sck_pin, true);
         pal_os_busy_wait_us(1);
@@ -182,26 +190,15 @@ wink_status_t dal_load_cell_request_read(dal_load_cell_t *dev) {
         pal_os_busy_wait_us(1);
     }
 
-    /* Extra pulses for Gain / Channel setting on NEXT conversion:
-     * 1 pulse  -> Gain 128 Channel A
-     * 2 pulses -> Gain 32  Channel B
-     * 3 pulses -> Gain 64  Channel A
-     */
-    int extra_pulses = 1;
-    if (dev->pending_gain == DAL_LOAD_CELL_GAIN_32) {
-        extra_pulses = 2;
-    } else if (dev->pending_gain == DAL_LOAD_CELL_GAIN_64) {
-        extra_pulses = 3;
-    }
-
     for (int i = 0; i < extra_pulses; i++) {
         pal_gpio_write(dev->config.sck_pin, true);
         pal_os_busy_wait_us(1);
         pal_gpio_write(dev->config.sck_pin, false);
         pal_os_busy_wait_us(1);
     }
+    pal_os_critical_exit();
 
-    /* 24-bit Sign Extension to int32_t */
+    /* 24-bit Sign Extension to int32_t (executed outside critical section) */
     int32_t signed_raw = (int32_t)raw24;
     if (raw24 & 0x800000u) {
         signed_raw |= (int32_t)0xFF000000u;
@@ -246,11 +243,10 @@ wink_status_t dal_load_cell_read_weight_g(dal_load_cell_t *dev, float *out_g) {
         return WINK_ERR_NOT_INITIALIZED;
     }
 
-    uint32_t elapsed_us = 0;
-    const uint32_t step_us = 1000;
+    uint64_t start_us = pal_os_get_us();
     bool ready = false;
 
-    while (elapsed_us < dev->config.timeout_us) {
+    while (pal_os_get_us() - start_us < dev->config.timeout_us) {
         wink_status_t st = dal_load_cell_is_data_ready(dev, &ready);
         if (st != WINK_OK) {
             return st;
@@ -258,12 +254,11 @@ wink_status_t dal_load_cell_read_weight_g(dal_load_cell_t *dev, float *out_g) {
         if (ready) {
             st = dal_load_cell_request_read(dev);
             if (st == WINK_OK) {
-                *out_g = dev->last_weight_g;
-                return WINK_OK;
+                return dal_load_cell_get_cached_weight_g(dev, out_g);
             }
+            return st;
         }
         pal_os_sleep_ms(1);
-        elapsed_us += step_us;
     }
 
     return WINK_ERR_TIMEOUT;
