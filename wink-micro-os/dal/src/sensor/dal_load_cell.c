@@ -176,7 +176,7 @@ wink_status_t dal_load_cell_request_read(dal_load_cell_t *dev) {
         extra_pulses = 3;
     }
 
-    pal_os_critical_enter();
+    uint32_t crit_key = pal_os_critical_enter();
     for (int i = 0; i < 24; i++) {
         pal_gpio_write(dev->config.sck_pin, true);
         pal_os_busy_wait_us(1);
@@ -196,7 +196,7 @@ wink_status_t dal_load_cell_request_read(dal_load_cell_t *dev) {
         pal_gpio_write(dev->config.sck_pin, false);
         pal_os_busy_wait_us(1);
     }
-    pal_os_critical_exit();
+    pal_os_critical_exit(crit_key);
 
     /* 24-bit Sign Extension to int32_t (executed outside critical section) */
     int32_t signed_raw = (int32_t)raw24;

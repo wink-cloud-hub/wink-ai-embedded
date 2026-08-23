@@ -36,7 +36,7 @@ void test_pal_os_get_us_monotonicity(void) {
 
 void test_pal_os_get_ms_monotonicity(void) {
     uint64_t m0 = pal_os_get_ms();
-    pal_os_sleep_ms(5);
+    pal_os_busy_wait_us(2000);
     uint64_t m1 = pal_os_get_ms();
 
     TEST_ASSERT_TRUE(m1 >= m0);
