@@ -5,6 +5,7 @@
  */
 #include "hal/pal_adc.h"
 #include "pal_resource.h"
+#include "pal_spinlock.h"
 #include <string.h>
 
 #if defined(ESP_PLATFORM)
@@ -42,13 +43,13 @@ static SemaphoreHandle_t s_ch_locks[PAL_ADC_CHANNELS];
 static StaticSemaphore_t s_ch_lock_bufs[PAL_ADC_CHANNELS];
 static SemaphoreHandle_t s_unit_mux;
 static StaticSemaphore_t s_unit_mux_buf;
-static portMUX_TYPE      s_init_mux = portMUX_INITIALIZER_UNLOCKED;
+static pal_spinlock_t    s_init_mux = PAL_SPINLOCK_INITIALIZER;
 
 static adc_oneshot_unit_handle_t s_unit_handles[ESP32_ADC_NUM_UNITS];
 static uint8_t                   s_unit_refcount[ESP32_ADC_NUM_UNITS];
 
 static void pal_adc_ensure_locks(void) {
-    portENTER_CRITICAL(&s_init_mux);
+    pal_spinlock_lock(&s_init_mux);
     if (s_unit_mux == NULL) {
         s_unit_mux = xSemaphoreCreateMutexStatic(&s_unit_mux_buf);
     }
@@ -57,7 +58,7 @@ static void pal_adc_ensure_locks(void) {
             s_ch_locks[i] = xSemaphoreCreateMutexStatic(&s_ch_lock_bufs[i]);
         }
     }
-    portEXIT_CRITICAL(&s_init_mux);
+    pal_spinlock_unlock(&s_init_mux);
 }
 
 #ifndef SOC_ADC_RTC_MIN_BITWIDTH

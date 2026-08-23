@@ -7,6 +7,7 @@
 
 #if defined(WINK_USE_LOAD_CELL) && WINK_USE_LOAD_CELL
 
+#include "pal_hal.h"
 #include "pal_osal.h"
 #include "pal_resource.h"
 #include "pal_log.h"
@@ -15,7 +16,9 @@
 
 #define LOG_TAG "dal_load_cell"
 
+#if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
 
 /* --- Internal Helper Functions --- */
 
@@ -29,7 +32,7 @@ static void dal_load_cell_cleanup_resources(dal_load_cell_t *dev) {
 
     if (cfg->variant == DAL_LOAD_CELL_VARIANT_HX711_TWO_WIRE) {
         if (dal_load_cell_is_pin_valid(cfg->sck_pin)) {
-            pal_gpio_write(cfg->sck_pin, PAL_GPIO_LEVEL_LOW); /* Force SCK low to avoid power-down state */
+            pal_gpio_write(cfg->sck_pin, false); /* Force SCK low to avoid power-down state */
             pal_gpio_reset_pin(cfg->sck_pin);
             pal_resource_release(PAL_RESOURCE_GPIO_PIN, cfg->sck_pin, cfg->owner);
         }
@@ -86,7 +89,7 @@ wink_status_t dal_load_cell_init(dal_load_cell_t *dev, const dal_load_cell_confi
         LOG_E(LOG_TAG, "Failed to claim DT pin %d", dev->config.dt_pin);
         return WINK_ERR_BUSY;
     }
-    if (pal_gpio_init(dev->config.dt_pin, PAL_GPIO_MODE_INPUT) != WINK_OK) {
+    if (pal_gpio_init(dev->config.dt_pin, PAL_GPIO_INPUT) != WINK_OK) {
         LOG_E(LOG_TAG, "Failed to init DT pin %d", dev->config.dt_pin);
         pal_resource_release(PAL_RESOURCE_GPIO_PIN, dev->config.dt_pin, dev->config.owner);
         return WINK_ERR_HARDWARE;
@@ -99,7 +102,7 @@ wink_status_t dal_load_cell_init(dal_load_cell_t *dev, const dal_load_cell_confi
         pal_resource_release(PAL_RESOURCE_GPIO_PIN, dev->config.dt_pin, dev->config.owner);
         return WINK_ERR_BUSY;
     }
-    if (pal_gpio_init(dev->config.sck_pin, PAL_GPIO_MODE_OUTPUT_PUSH_PULL) != WINK_OK) {
+    if (pal_gpio_init(dev->config.sck_pin, PAL_GPIO_OUTPUT_PUSH_PULL) != WINK_OK) {
         LOG_E(LOG_TAG, "Failed to init SCK pin %d", dev->config.sck_pin);
         pal_gpio_reset_pin(dev->config.dt_pin);
         pal_resource_release(PAL_RESOURCE_GPIO_PIN, dev->config.dt_pin, dev->config.owner);
@@ -108,7 +111,7 @@ wink_status_t dal_load_cell_init(dal_load_cell_t *dev, const dal_load_cell_confi
     }
 
     /* Set SCK to LOW initially */
-    pal_gpio_write(dev->config.sck_pin, PAL_GPIO_LEVEL_LOW);
+    pal_gpio_write(dev->config.sck_pin, false);
     dev->pending_gain = dev->config.gain;
     dev->initialized = true;
 
@@ -137,13 +140,13 @@ wink_status_t dal_load_cell_is_data_ready(const dal_load_cell_t *dev, bool *out_
     }
 
     /* HX711: DRDY is active LOW on DT pin */
-    pal_gpio_level_t level = PAL_GPIO_LEVEL_HIGH;
+    bool level = true;
     wink_status_t status = pal_gpio_read(dev->config.dt_pin, &level);
     if (status != WINK_OK) {
         return status;
     }
 
-    *out_ready = (level == PAL_GPIO_LEVEL_LOW);
+    *out_ready = (level == false);
     return WINK_OK;
 }
 
@@ -167,15 +170,15 @@ wink_status_t dal_load_cell_request_read(dal_load_cell_t *dev) {
     /* Bit-bang 24 bits DOUT on SCK pulses */
     uint32_t raw24 = 0;
     for (int i = 0; i < 24; i++) {
-        pal_gpio_write(dev->config.sck_pin, PAL_GPIO_LEVEL_HIGH);
+        pal_gpio_write(dev->config.sck_pin, true);
         pal_os_busy_wait_us(1);
 
-        pal_gpio_level_t bit_level = PAL_GPIO_LEVEL_LOW;
+        bool bit_level = false;
         pal_gpio_read(dev->config.dt_pin, &bit_level);
 
-        raw24 = (raw24 << 1) | (bit_level == PAL_GPIO_LEVEL_HIGH ? 1u : 0u);
+        raw24 = (raw24 << 1) | (bit_level ? 1u : 0u);
 
-        pal_gpio_write(dev->config.sck_pin, PAL_GPIO_LEVEL_LOW);
+        pal_gpio_write(dev->config.sck_pin, false);
         pal_os_busy_wait_us(1);
     }
 
@@ -192,9 +195,9 @@ wink_status_t dal_load_cell_request_read(dal_load_cell_t *dev) {
     }
 
     for (int i = 0; i < extra_pulses; i++) {
-        pal_gpio_write(dev->config.sck_pin, PAL_GPIO_LEVEL_HIGH);
+        pal_gpio_write(dev->config.sck_pin, true);
         pal_os_busy_wait_us(1);
-        pal_gpio_write(dev->config.sck_pin, PAL_GPIO_LEVEL_LOW);
+        pal_gpio_write(dev->config.sck_pin, false);
         pal_os_busy_wait_us(1);
     }
 
@@ -259,7 +262,7 @@ wink_status_t dal_load_cell_read_weight_g(dal_load_cell_t *dev, float *out_g) {
                 return WINK_OK;
             }
         }
-        pal_os_delay_ms(1);
+        pal_os_sleep_ms(1);
         elapsed_us += step_us;
     }
 
@@ -288,7 +291,7 @@ wink_status_t dal_load_cell_tare(dal_load_cell_t *dev) {
                 samples[valid_count++] = dev->last_raw;
             }
         }
-        pal_os_delay_ms(10);
+        pal_os_sleep_ms(10);
         elapsed_us += 10000;
     }
 
