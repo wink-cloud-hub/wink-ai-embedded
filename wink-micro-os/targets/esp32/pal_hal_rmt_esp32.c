@@ -1,291 +1,397 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
  * @file pal_hal_rmt_esp32.c
- * @brief ESP32 target PAL RMT pulse capture subsystem implementation.
+ * @brief ESP32 target PAL RMT pulse transceiver subsystem implementation.
  */
 #include "pal_hal.h"
 #include "hal/pal_rmt.h"
+#include "pal_resource.h"
+#include "pal_spinlock.h"
 #include "pal_log.h"
 
+#include <string.h>
+
 #if defined(ESP_PLATFORM)
+#include "driver/rmt_tx.h"
 #include "driver/rmt_rx.h"
+#include "driver/rmt_encoder.h"
 #include "driver/gpio.h"
 #include "esp_err.h"
 #include "esp_rom_sys.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 
-#define RMT_CLK_DIV             80
-#define RMT_MEM_BLOCK_SYMB      64
-#define RMT_RX_MAX_BYTES        1024
+#define LOG_TAG "pal_rmt"
 
-#define MIN_VALID_PULSE_US      100
-#define MAX_VALID_PULSE_US      25000
+#define RMT_MEM_BLOCK_SYMB_DEFAULT 64
+#define RMT_MAX_SYMBOLS_BUFFER      256
 
-#define RMT_RX_SYMBOLS 64
-static rmt_channel_handle_t   s_rmt_rx_chan = NULL;
-static rmt_symbol_word_t      s_rx_buf[RMT_RX_SYMBOLS];
-static volatile size_t        s_rx_num_symbols = 0;
-static SemaphoreHandle_t      s_rx_done_sem = NULL;
-static wink_pin_t             s_capture_pin = -1;
+struct pal_rmt_channel_s {
+    bool                     in_use;
+    uint8_t                  id;
+    pal_rmt_channel_config_t cfg;
+    rmt_channel_handle_t     chan_handle;
+    rmt_encoder_handle_t     copy_encoder;
+    pal_rmt_tx_callback_t    tx_cb;
+    void                    *tx_cb_arg;
+    pal_rmt_rx_callback_t    rx_cb;
+    void                    *rx_cb_arg;
+    rmt_symbol_word_t        rx_symbols[RMT_MAX_SYMBOLS_BUFFER];
+    pal_rmt_symbol_t         converted_rx[RMT_MAX_SYMBOLS_BUFFER];
+};
 
-static bool IRAM_ATTR rmt_rx_done_callback(rmt_channel_handle_t channel,
-                                            const rmt_rx_done_event_data_t *edata,
-                                            void *user_data) {
-    (void)channel;
-    (void)user_data;
-    BaseType_t high_task_wakeup = pdFALSE;
-    s_rx_num_symbols = edata->num_symbols;
-    static volatile int s_isr_log = 0;
-    int n = s_isr_log++;
-    if (n < 8) {
-        esp_rom_printf("[rmt] ISR done num_sym=%lu pin=%d\n",
-                       (unsigned long)edata->num_symbols, (int)s_capture_pin);
+static struct pal_rmt_channel_s s_channels[PAL_RMT_CHAN_MAX];
+static pal_spinlock_t s_rmt_lock = PAL_SPINLOCK_INITIALIZER;
+
+/* --- ESP-IDF RMT Callbacks --- */
+
+static bool IRAM_ATTR esp32_rmt_tx_done_cb(rmt_channel_handle_t tx_chan,
+                                           const rmt_tx_done_event_data_t *edata,
+                                           void *user_data) {
+    (void)tx_chan;
+    (void)edata;
+    struct pal_rmt_channel_s *ch = (struct pal_rmt_channel_s *)user_data;
+    if (ch != NULL && ch->tx_cb != NULL) {
+        pal_rmt_tx_callback_t cb = ch->tx_cb;
+        void *arg = ch->tx_cb_arg;
+        ch->tx_cb = NULL;
+        ch->tx_cb_arg = NULL;
+        cb(arg, WINK_OK);
     }
-    xSemaphoreGiveFromISR(s_rx_done_sem, &high_task_wakeup);
-    return high_task_wakeup == pdTRUE;
-}
-
-wink_status_t pal_rmt_pulse_capture_init(wink_pin_t pin, pal_rmt_edge_t start_edge) {
-    if (start_edge != PAL_RMT_EDGE_RISING && start_edge != PAL_RMT_EDGE_FALLING) {
-        return WINK_ERR_INVALID_ARG;
-    }
-    if (pin < 0) {
-        return WINK_ERR_INVALID_ARG;
-    }
-
-    if (s_rmt_rx_chan != NULL) {
-        if (s_capture_pin == pin) {
-            return WINK_OK;
-        }
-        esp_rom_printf("[rmt] init: switching pin %d -> %d, deinit old chan\n",
-                       (int)s_capture_pin, (int)pin);
-        pal_rmt_pulse_capture_deinit();
-    }
-
-    rmt_rx_channel_config_t rx_cfg = {
-        .clk_src = RMT_CLK_SRC_DEFAULT,
-        .resolution_hz = 1000000,
-        .mem_block_symbols = RMT_MEM_BLOCK_SYMB,
-        .gpio_num = pin,
-        .flags.invert_in = false,
-        .flags.with_dma = false,
-    };
-    esp_err_t err = rmt_new_rx_channel(&rx_cfg, &s_rmt_rx_chan);
-    if (err != ESP_OK) {
-        esp_rom_printf("[rmt] init: rmt_new_rx_channel(pin=%d) err=%d\n", (int)pin, (int)err);
-        s_rmt_rx_chan = NULL;
-        return WINK_ERR_HARDWARE;
-    }
-
-    s_rx_done_sem = xSemaphoreCreateBinary();
-    if (s_rx_done_sem == NULL) {
-        rmt_del_channel(s_rmt_rx_chan);
-        s_rmt_rx_chan = NULL;
-        return WINK_ERR_RESOURCE_EXHAUSTED;
-    }
-
-    rmt_rx_event_callbacks_t cbs = {
-        .on_recv_done = rmt_rx_done_callback,
-    };
-    err = rmt_rx_register_event_callbacks(s_rmt_rx_chan, &cbs, NULL);
-    if (err != ESP_OK) {
-        vSemaphoreDelete(s_rx_done_sem);
-        s_rx_done_sem = NULL;
-        rmt_del_channel(s_rmt_rx_chan);
-        s_rmt_rx_chan = NULL;
-        esp_rom_printf("[rmt] init: register_callbacks(pin=%d) err=%d\n", (int)pin, (int)err);
-        return WINK_ERR_HARDWARE;
-    }
-
-    err = rmt_enable(s_rmt_rx_chan);
-    if (err != ESP_OK) {
-        vSemaphoreDelete(s_rx_done_sem);
-        s_rx_done_sem = NULL;
-        rmt_del_channel(s_rmt_rx_chan);
-        s_rmt_rx_chan = NULL;
-        esp_rom_printf("[rmt] init: rmt_enable(pin=%d) err=%d\n", (int)pin, (int)err);
-        return WINK_ERR_HARDWARE;
-    }
-
-    s_capture_pin = pin;
-    s_rx_num_symbols = 0;
-    esp_rom_printf("[rmt] init: OK pin=%d chan=%p\n", (int)pin, s_rmt_rx_chan);
-    return WINK_OK;
-}
-
-wink_status_t pal_rmt_pulse_capture_arm(void) {
-    if (s_rmt_rx_chan == NULL) {
-        return WINK_ERR_INVALID_ARG;
-    }
-
-    xSemaphoreTake(s_rx_done_sem, 0);
-
-    rmt_receive_config_t recv_cfg = {
-        .signal_range_min_ns = 1000,
-        .signal_range_max_ns = (uint32_t)((uint64_t)MAX_VALID_PULSE_US * 1000),
-    };
-    esp_err_t err = rmt_receive(s_rmt_rx_chan, s_rx_buf, sizeof(s_rx_buf), &recv_cfg);
-    if (err != ESP_OK) {
-        esp_rom_printf("[rmt] arm: rmt_receive err=%d pin=%d\n", (int)err, (int)s_capture_pin);
-        return WINK_ERR_HARDWARE;
-    }
-    static int s_arm_log = 0;
-    if (s_arm_log++ < 8) {
-        esp_rom_printf("[rmt] arm OK pin=%d chan=%p\n", (int)s_capture_pin, s_rmt_rx_chan);
-    }
-    return WINK_OK;
-}
-
-wink_status_t pal_rmt_pulse_capture_wait_armed(uint32_t timeout_us, uint32_t *pulse_us_out) {
-    if (pulse_us_out == NULL || s_rmt_rx_chan == NULL) {
-        return WINK_ERR_INVALID_ARG;
-    }
-    *pulse_us_out = 0;
-
-    TickType_t wait_ticks = pdMS_TO_TICKS((timeout_us + 999) / 1000 + 1);
-    BaseType_t ok = xSemaphoreTake(s_rx_done_sem, wait_ticks);
-    static int s_wait_log = 0;
-    static int s_timeout_log = 0;
-    if (ok != pdPASS) {
-        int pin_level = gpio_get_level((gpio_num_t)s_capture_pin);
-        if (s_timeout_log++ < 3) {
-            esp_rom_printf("[rmt] wait_armed TIMEOUT num_sym=%lu pin=%d level=%d\n",
-                           (unsigned long)s_rx_num_symbols, (int)s_capture_pin, pin_level);
-            LOG_E("rmt: wait_armed timeout (%lu us, wait_ticks=%lu), s_rx_num_symbols=%lu, pin=%d",
-                  (unsigned long)timeout_us, (unsigned long)wait_ticks,
-                  (unsigned long)s_rx_num_symbols, (int)s_capture_pin);
-        }
-        rmt_disable(s_rmt_rx_chan);
-        esp_err_t start_err = rmt_enable(s_rmt_rx_chan);
-        if (start_err != ESP_OK) {
-            return WINK_ERR_HARDWARE;
-        }
-        return WINK_ERR_TIMEOUT;
-    }
-    if (s_wait_log++ < 8) {
-        esp_rom_printf("[rmt] wait_armed DONE num_sym=%lu pin=%d\n",
-                       (unsigned long)s_rx_num_symbols, (int)s_capture_pin);
-        for (size_t i = 0; i < s_rx_num_symbols && i < 4; i++) {
-            esp_rom_printf("[rmt] sym[%lu]: L0=%u D0=%u L1=%u D1=%u\n",
-                           (unsigned long)i,
-                           (unsigned)s_rx_buf[i].level0, (unsigned)s_rx_buf[i].duration0,
-                           (unsigned)s_rx_buf[i].level1, (unsigned)s_rx_buf[i].duration1);
-        }
-    }
-
-    size_t num = s_rx_num_symbols;
-    if (num >= 1 && num <= RMT_RX_SYMBOLS) {
-        uint32_t max_high_duration = 0;
-
-        for (size_t i = 0; i < num; i++) {
-            const rmt_symbol_word_t *sym = &s_rx_buf[i];
-
-            if (sym->level0 == 1 && sym->duration0 > max_high_duration) {
-                max_high_duration = sym->duration0;
-            }
-            if (sym->level1 == 1 && sym->duration1 > max_high_duration) {
-                max_high_duration = sym->duration1;
-            }
-        }
-
-        if (max_high_duration >= MIN_VALID_PULSE_US &&
-            max_high_duration <= MAX_VALID_PULSE_US) {
-            *pulse_us_out = max_high_duration;
-            return WINK_OK;
-        }
-
-        LOG_E("rmt: %lu symbols captured but high pulse=%luus out of [%u,%u]; first 4 syms:",
-              (unsigned long)num, (unsigned long)max_high_duration,
-              (unsigned)MIN_VALID_PULSE_US, (unsigned)MAX_VALID_PULSE_US);
-        for (size_t i = 0; i < num && i < 4; i++) {
-            LOG_E("  sym[%lu]: L0=%u D0=%u  L1=%u D1=%u",
-                  (unsigned long)i,
-                  (unsigned)s_rx_buf[i].level0, (unsigned)s_rx_buf[i].duration0,
-                  (unsigned)s_rx_buf[i].level1, (unsigned)s_rx_buf[i].duration1);
-        }
-    } else {
-        LOG_E("rmt: done ISR fired but num_symbols=%lu (invalid or zero)", (unsigned long)num);
-    }
-
-    return WINK_ERR_TIMEOUT;
-}
-
-wink_status_t pal_rmt_pulse_capture_wait(uint32_t timeout_us, uint32_t *pulse_us_out) {
-    if (pulse_us_out == NULL) {
-        return WINK_ERR_INVALID_ARG;
-    }
-    *pulse_us_out = 0;
-    wink_status_t s = pal_rmt_pulse_capture_arm();
-    if (wink_status_is_error(s)) {
-        return s;
-    }
-
-    static int s_wait_diag_log = 0;
-    if (s_wait_diag_log < 8) {
-        s_wait_diag_log++;
-        int lvl_start = gpio_get_level((gpio_num_t)s_capture_pin);
-        esp_rom_printf("[rmt] wait pin=%d: start level=%d (first 10ms):",
-                       (int)s_capture_pin, lvl_start);
-        uint32_t trace = 0;
-        for (int i = 0; i < 20; i++) {
-            esp_rom_delay_us(500);
-            int l = gpio_get_level((gpio_num_t)s_capture_pin);
-            trace = (trace << 1) | (l & 1u);
-        }
-        int lvl_end = gpio_get_level((gpio_num_t)s_capture_pin);
-        esp_rom_printf(" trace=%05lx end=%d\n",
-                       (unsigned long)trace, lvl_end);
-    }
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-    return pal_rmt_pulse_capture_wait_armed(timeout_us, pulse_us_out);
-#pragma GCC diagnostic pop
-}
-
-void pal_rmt_pulse_capture_deinit(void) {
-    if (s_rmt_rx_chan != NULL) {
-        rmt_disable(s_rmt_rx_chan);
-        rmt_del_channel(s_rmt_rx_chan);
-        s_rmt_rx_chan = NULL;
-    }
-    if (s_rx_done_sem != NULL) {
-        vSemaphoreDelete(s_rx_done_sem);
-        s_rx_done_sem = NULL;
-    }
-    s_capture_pin = -1;
-    s_rx_num_symbols = 0;
-}
-
-bool pal_rmt_pulse_capture_is_active(void) {
-    return s_rmt_rx_chan != NULL;
-}
-
-#else
-
-wink_status_t pal_rmt_pulse_capture_init(wink_pin_t pin, pal_rmt_edge_t start_edge) {
-    (void)pin; (void)start_edge; return WINK_ERR_UNSUPPORTED;
-}
-
-wink_status_t pal_rmt_pulse_capture_arm(void) {
-    return WINK_ERR_UNSUPPORTED;
-}
-
-wink_status_t pal_rmt_pulse_capture_wait_armed(uint32_t timeout_us, uint32_t *pulse_us_out) {
-    if (pulse_us_out != NULL) { *pulse_us_out = 0; }
-    (void)timeout_us; return WINK_ERR_UNSUPPORTED;
-}
-
-wink_status_t pal_rmt_pulse_capture_wait(uint32_t timeout_us, uint32_t *pulse_us_out) {
-    if (pulse_us_out != NULL) { *pulse_us_out = 0; }
-    (void)timeout_us; return WINK_ERR_UNSUPPORTED;
-}
-
-void pal_rmt_pulse_capture_deinit(void) {}
-
-bool pal_rmt_pulse_capture_is_active(void) {
     return false;
 }
 
+static bool IRAM_ATTR esp32_rmt_rx_done_cb(rmt_channel_handle_t rx_chan,
+                                           const rmt_rx_done_event_data_t *edata,
+                                           void *user_data) {
+    (void)rx_chan;
+    struct pal_rmt_channel_s *ch = (struct pal_rmt_channel_s *)user_data;
+    if (ch != NULL && ch->rx_cb != NULL && edata != NULL) {
+        size_t count = edata->num_symbols;
+        if (count > RMT_MAX_SYMBOLS_BUFFER) {
+            count = RMT_MAX_SYMBOLS_BUFFER;
+        }
+        for (size_t i = 0; i < count; i++) {
+            ch->converted_rx[i].duration0_ticks = edata->received_symbols[i].duration0;
+            ch->converted_rx[i].level0 = (uint8_t)edata->received_symbols[i].level0;
+            ch->converted_rx[i].duration1_ticks = edata->received_symbols[i].duration1;
+            ch->converted_rx[i].level1 = (uint8_t)edata->received_symbols[i].level1;
+            ch->converted_rx[i]._pad[0] = 0;
+            ch->converted_rx[i]._pad[1] = 0;
+        }
+        ch->rx_cb(ch->rx_cb_arg, ch->converted_rx, count);
+    }
+    return false;
+}
+
+/* --- PAL Multi-Channel RMT API --- */
+
+WINK_WARN_UNUSED_RESULT
+wink_status_t pal_rmt_acquire_channel(const pal_rmt_channel_config_t *cfg,
+                                      pal_rmt_channel_handle_t *out_ch) {
+    if (cfg == NULL || out_ch == NULL || cfg->pin < 0) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    pal_spinlock_lock(&s_rmt_lock);
+
+    struct pal_rmt_channel_s *slot = NULL;
+    for (uint8_t i = 0; i < PAL_RMT_CHAN_MAX; i++) {
+        if (!s_channels[i].in_use) {
+            slot = &s_channels[i];
+            slot->id = i;
+            break;
+        }
+    }
+    if (slot == NULL) {
+        pal_spinlock_unlock(&s_rmt_lock);
+        return WINK_ERR_RESOURCE_EXHAUSTED;
+    }
+
+    wink_status_t st = pal_resource_claim(PAL_RESOURCE_RMT_CHAN, slot->id, "pal_rmt_esp32");
+    if (st != WINK_OK) {
+        pal_spinlock_unlock(&s_rmt_lock);
+        return st;
+    }
+
+    st = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin, "pal_rmt_esp32");
+    if (st != WINK_OK) {
+        pal_resource_release(PAL_RESOURCE_RMT_CHAN, slot->id, "pal_rmt_esp32");
+        pal_spinlock_unlock(&s_rmt_lock);
+        return st;
+    }
+
+    uint32_t res_hz = cfg->resolution_hz > 0 ? cfg->resolution_hz : 10000000;
+    size_t mem_syms = cfg->mem_block_symbols > 0 ? cfg->mem_block_symbols : RMT_MEM_BLOCK_SYMB_DEFAULT;
+
+    if (cfg->direction == PAL_RMT_DIR_TX) {
+        rmt_tx_channel_config_t tx_cfg = {
+            .gpio_num = cfg->pin,
+            .clk_src = RMT_CLK_SRC_DEFAULT,
+            .resolution_hz = res_hz,
+            .mem_block_symbols = mem_syms,
+            .trans_queue_depth = 4,
+        };
+        esp_err_t err = rmt_new_tx_channel(&tx_cfg, &slot->chan_handle);
+        if (err != ESP_OK) {
+            pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin, "pal_rmt_esp32");
+            pal_resource_release(PAL_RESOURCE_RMT_CHAN, slot->id, "pal_rmt_esp32");
+            pal_spinlock_unlock(&s_rmt_lock);
+            return WINK_ERR_HARDWARE;
+        }
+
+        rmt_copy_encoder_config_t enc_cfg = {};
+        err = rmt_new_copy_encoder(&enc_cfg, &slot->copy_encoder);
+        if (err != ESP_OK) {
+            rmt_del_channel(slot->chan_handle);
+            pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin, "pal_rmt_esp32");
+            pal_resource_release(PAL_RESOURCE_RMT_CHAN, slot->id, "pal_rmt_esp32");
+            pal_spinlock_unlock(&s_rmt_lock);
+            return WINK_ERR_HARDWARE;
+        }
+
+        rmt_tx_event_callbacks_t cbs = {
+            .on_trans_done = esp32_rmt_tx_done_cb,
+        };
+        rmt_tx_register_event_callbacks(slot->chan_handle, &cbs, slot);
+        rmt_enable(slot->chan_handle);
+    } else {
+        rmt_rx_channel_config_t rx_cfg = {
+            .gpio_num = cfg->pin,
+            .clk_src = RMT_CLK_SRC_DEFAULT,
+            .resolution_hz = res_hz,
+            .mem_block_symbols = mem_syms,
+        };
+        esp_err_t err = rmt_new_rx_channel(&rx_cfg, &slot->chan_handle);
+        if (err != ESP_OK) {
+            pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin, "pal_rmt_esp32");
+            pal_resource_release(PAL_RESOURCE_RMT_CHAN, slot->id, "pal_rmt_esp32");
+            pal_spinlock_unlock(&s_rmt_lock);
+            return WINK_ERR_HARDWARE;
+        }
+
+        rmt_rx_event_callbacks_t cbs = {
+            .on_recv_done = esp32_rmt_rx_done_cb,
+        };
+        rmt_rx_register_event_callbacks(slot->chan_handle, &cbs, slot);
+        rmt_enable(slot->chan_handle);
+        slot->copy_encoder = NULL;
+    }
+
+    slot->in_use = true;
+    slot->cfg = *cfg;
+    slot->tx_cb = NULL;
+    slot->tx_cb_arg = NULL;
+    slot->rx_cb = NULL;
+    slot->rx_cb_arg = NULL;
+
+    *out_ch = slot;
+    pal_spinlock_unlock(&s_rmt_lock);
+    return WINK_OK;
+}
+
+wink_status_t pal_rmt_release_channel(pal_rmt_channel_handle_t ch) {
+    if (ch == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    pal_spinlock_lock(&s_rmt_lock);
+    if (!ch->in_use || ch->id >= PAL_RMT_CHAN_MAX) {
+        pal_spinlock_unlock(&s_rmt_lock);
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    rmt_disable(ch->chan_handle);
+    if (ch->copy_encoder != NULL) {
+        rmt_del_encoder(ch->copy_encoder);
+        ch->copy_encoder = NULL;
+    }
+    rmt_del_channel(ch->chan_handle);
+    ch->chan_handle = NULL;
+
+    pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)ch->cfg.pin, "pal_rmt_esp32");
+    pal_resource_release(PAL_RESOURCE_RMT_CHAN, ch->id, "pal_rmt_esp32");
+
+    ch->in_use = false;
+    pal_spinlock_unlock(&s_rmt_lock);
+    return WINK_OK;
+}
+
+WINK_WARN_UNUSED_RESULT
+wink_status_t pal_rmt_tx_send(pal_rmt_channel_handle_t ch,
+                              const pal_rmt_symbol_t *symbols,
+                              size_t count,
+                              pal_rmt_tx_callback_t cb,
+                              void *arg) {
+    if (ch == NULL || symbols == NULL || count == 0) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    pal_spinlock_lock(&s_rmt_lock);
+    if (!ch->in_use || ch->cfg.direction != PAL_RMT_DIR_TX) {
+        pal_spinlock_unlock(&s_rmt_lock);
+        return WINK_ERR_INVALID_STATE;
+    }
+
+    ch->tx_cb = cb;
+    ch->tx_cb_arg = arg;
+
+    rmt_symbol_word_t sym_words[RMT_MAX_SYMBOLS_BUFFER];
+    size_t send_count = (count > RMT_MAX_SYMBOLS_BUFFER) ? RMT_MAX_SYMBOLS_BUFFER : count;
+    for (size_t i = 0; i < send_count; i++) {
+        sym_words[i].duration0 = symbols[i].duration0_ticks;
+        sym_words[i].level0 = symbols[i].level0;
+        sym_words[i].duration1 = symbols[i].duration1_ticks;
+        sym_words[i].level1 = symbols[i].level1;
+    }
+
+    rmt_transmit_config_t tx_cfg = {
+        .loop_count = 0,
+    };
+    esp_err_t err = rmt_transmit(ch->chan_handle, ch->copy_encoder, sym_words,
+                                 send_count * sizeof(rmt_symbol_word_t), &tx_cfg);
+    if (err != ESP_OK) {
+        ch->tx_cb = NULL;
+        ch->tx_cb_arg = NULL;
+        pal_spinlock_unlock(&s_rmt_lock);
+        return WINK_ERR_HARDWARE;
+    }
+
+    pal_spinlock_unlock(&s_rmt_lock);
+    return WINK_OK;
+}
+
+wink_status_t pal_rmt_rx_set_callback(pal_rmt_channel_handle_t ch,
+                                      pal_rmt_rx_callback_t cb,
+                                      void *arg) {
+    if (ch == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    pal_spinlock_lock(&s_rmt_lock);
+    if (!ch->in_use || ch->cfg.direction != PAL_RMT_DIR_RX) {
+        pal_spinlock_unlock(&s_rmt_lock);
+        return WINK_ERR_INVALID_STATE;
+    }
+
+    ch->rx_cb = cb;
+    ch->rx_cb_arg = arg;
+    pal_spinlock_unlock(&s_rmt_lock);
+    return WINK_OK;
+}
+
+wink_status_t pal_rmt_rx_start(pal_rmt_channel_handle_t ch) {
+    if (ch == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    pal_spinlock_lock(&s_rmt_lock);
+    if (!ch->in_use || ch->cfg.direction != PAL_RMT_DIR_RX) {
+        pal_spinlock_unlock(&s_rmt_lock);
+        return WINK_ERR_INVALID_STATE;
+    }
+
+    rmt_receive_config_t recv_cfg = {
+        .signal_range_min_ns = 1000,
+        .signal_range_max_ns = 25000000,
+    };
+    esp_err_t err = rmt_receive(ch->chan_handle, ch->rx_symbols,
+                                sizeof(ch->rx_symbols), &recv_cfg);
+    pal_spinlock_unlock(&s_rmt_lock);
+    return (err == ESP_OK) ? WINK_OK : WINK_ERR_HARDWARE;
+}
+
+wink_status_t pal_rmt_rx_stop(pal_rmt_channel_handle_t ch) {
+    if (ch == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    return WINK_OK;
+}
+
+/* --- Legacy Pulse-Capture Singleton Backward Compatibility --- */
+
+static pal_rmt_channel_handle_t s_legacy_pulse_chan = NULL;
+static SemaphoreHandle_t        s_legacy_rx_done_sem = NULL;
+static uint32_t                 s_legacy_last_pulse_us = 0;
+
+static void legacy_rmt_rx_cb(void *arg, const pal_rmt_symbol_t *symbols, size_t count) {
+    (void)arg;
+    if (count > 0 && symbols != NULL) {
+        /* Level 1 duration in ticks (1 tick = 1us at 1MHz) */
+        s_legacy_last_pulse_us = (uint32_t)symbols[0].duration0_ticks;
+    }
+    if (s_legacy_rx_done_sem != NULL) {
+        BaseType_t high_task_wakeup = pdFALSE;
+        xSemaphoreGiveFromISR(s_legacy_rx_done_sem, &high_task_wakeup);
+    }
+}
+
+wink_status_t pal_rmt_pulse_capture_init(wink_pin_t pin, pal_rmt_edge_t start_edge) {
+    (void)start_edge;
+    if (s_legacy_pulse_chan != NULL) {
+        pal_rmt_pulse_capture_deinit();
+    }
+    if (s_legacy_rx_done_sem == NULL) {
+        s_legacy_rx_done_sem = xSemaphoreCreateBinary();
+    }
+    pal_rmt_channel_config_t cfg = {
+        .pin = pin,
+        .direction = PAL_RMT_DIR_RX,
+        .resolution_hz = 1000000, /* 1us/tick */
+        .mem_block_symbols = 64,
+    };
+    wink_status_t st = pal_rmt_acquire_channel(&cfg, &s_legacy_pulse_chan);
+    if (st == WINK_OK) {
+        pal_rmt_rx_set_callback(s_legacy_pulse_chan, legacy_rmt_rx_cb, NULL);
+    }
+    return st;
+}
+
+wink_status_t pal_rmt_pulse_capture_arm(void) {
+    if (s_legacy_pulse_chan == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    if (s_legacy_rx_done_sem != NULL) {
+        xSemaphoreTake(s_legacy_rx_done_sem, 0);
+    }
+    return pal_rmt_rx_start(s_legacy_pulse_chan);
+}
+
+#ifndef WINK_STRICT_NONBLOCKING
+wink_status_t pal_rmt_pulse_capture_wait_armed(uint32_t timeout_us, uint32_t *pulse_us_out) {
+    if (pulse_us_out == NULL || s_legacy_pulse_chan == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    *pulse_us_out = 0;
+    TickType_t wait_ticks = pdMS_TO_TICKS((timeout_us + 999) / 1000 + 1);
+    BaseType_t ok = xSemaphoreTake(s_legacy_rx_done_sem, wait_ticks);
+    if (ok != pdPASS) {
+        return WINK_ERR_TIMEOUT;
+    }
+    *pulse_us_out = s_legacy_last_pulse_us;
+    return WINK_OK;
+}
+
+wink_status_t pal_rmt_pulse_capture_wait(uint32_t timeout_us, uint32_t *pulse_us_out) {
+    wink_status_t s = pal_rmt_pulse_capture_arm();
+    if (s != WINK_OK) return s;
+    return pal_rmt_pulse_capture_wait_armed(timeout_us, pulse_us_out);
+}
 #endif
+
+void pal_rmt_pulse_capture_deinit(void) {
+    if (s_legacy_pulse_chan != NULL) {
+        pal_rmt_release_channel(s_legacy_pulse_chan);
+        s_legacy_pulse_chan = NULL;
+    }
+    if (s_legacy_rx_done_sem != NULL) {
+        vSemaphoreDelete(s_legacy_rx_done_sem);
+        s_legacy_rx_done_sem = NULL;
+    }
+}
+
+bool pal_rmt_pulse_capture_is_active(void) {
+    return (s_legacy_pulse_chan != NULL);
+}
+
+#endif /* ESP_PLATFORM */
