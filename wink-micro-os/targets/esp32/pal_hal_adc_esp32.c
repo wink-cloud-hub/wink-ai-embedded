@@ -463,6 +463,54 @@ wink_status_t pal_adc_read_mv(pal_adc_channel_t ch, uint16_t *out_mv) {
 }
 #endif
 
+/* --- Continuous DMA Implementation --- */
+
+#include "esp_adc/adc_continuous.h"
+
+static adc_continuous_handle_t s_cont_handle[ESP32_ADC_NUM_UNITS];
+
+wink_status_t pal_adc_continuous_start(const pal_adc_continuous_cfg_t *cfg) {
+    if (cfg == NULL || cfg->adc_unit >= ESP32_ADC_NUM_UNITS || cfg->dma_buf_a == NULL || cfg->samples_per_buf == 0) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+#if defined(CONFIG_IDF_TARGET_ESP32)
+    /* ESP32 classic hardware does not support MCPWM hardware TRGO to ADC continuous DMA (E-004) */
+    if (cfg->source == PAL_ADC_TRIG_SOURCE_MCPWM) {
+        return WINK_ERR_UNSUPPORTED;
+    }
+#endif
+
+    adc_continuous_handle_cfg_t h_cfg = {
+        .max_store_buf_size = (uint32_t)(cfg->samples_per_buf * sizeof(uint16_t) * 2),
+        .conv_frame_size = (uint32_t)(cfg->samples_per_buf * sizeof(uint16_t)),
+    };
+    esp_err_t err = adc_continuous_new_handle(&h_cfg, &s_cont_handle[cfg->adc_unit]);
+    if (err != ESP_OK) {
+        return WINK_ERR_HARDWARE;
+    }
+
+    adc_continuous_config_t dig_cfg = {
+        .sample_freq_hz = 20000,
+        .conv_mode = (cfg->adc_unit == 0) ? ADC_CONV_SINGLE_UNIT_1 : ADC_CONV_SINGLE_UNIT_2,
+        .format = ADC_DIGI_OUTPUT_FORMAT_TYPE1,
+    };
+    adc_continuous_config(s_cont_handle[cfg->adc_unit], &dig_cfg);
+    adc_continuous_start(s_cont_handle[cfg->adc_unit]);
+
+    return WINK_OK;
+}
+
+wink_status_t pal_adc_continuous_stop(uint8_t adc_unit) {
+    if (adc_unit >= ESP32_ADC_NUM_UNITS || s_cont_handle[adc_unit] == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    adc_continuous_stop(s_cont_handle[adc_unit]);
+    adc_continuous_deinit(s_cont_handle[adc_unit]);
+    s_cont_handle[adc_unit] = NULL;
+    return WINK_OK;
+}
+
 #else
 
 wink_status_t pal_adc_init(pal_adc_channel_t ch, const pal_adc_config_t *cfg) {
@@ -487,5 +535,7 @@ wink_status_t pal_adc_read_mv(pal_adc_channel_t ch, uint16_t *out_mv) {
     (void)ch; (void)out_mv; return WINK_ERR_UNSUPPORTED;
 }
 #endif
+wink_status_t pal_adc_continuous_start(const pal_adc_continuous_cfg_t *cfg) { (void)cfg; return WINK_ERR_UNSUPPORTED; }
+wink_status_t pal_adc_continuous_stop(uint8_t adc_unit) { (void)adc_unit; return WINK_ERR_UNSUPPORTED; }
 
 #endif

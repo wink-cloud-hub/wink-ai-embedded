@@ -114,6 +114,46 @@ WINK_WARN_UNUSED_RESULT
 wink_status_t pal_adc_read_mv(pal_adc_channel_t ch, uint16_t *out_mv);
 #endif /* WINK_STRICT_NONBLOCKING */
 
+/* --- Continuous DMA & PWM-ADC TRGO Subsystem --- */
+
+typedef enum {
+    PAL_ADC_TRIG_SOURCE_SW,        /**< Software / built-in timer trigger (ESP32 classic continuous mode) */
+    PAL_ADC_TRIG_SOURCE_MCPWM,     /**< MCPWM event hardware trigger (ESP32-S2/S3) */
+} pal_adc_trig_source_t;
+
+typedef enum {
+    PAL_ADC_TRIG_AT_PWM_PEAK,      /**< Sample at PWM counter peak */
+    PAL_ADC_TRIG_AT_PWM_VALLEY,    /**< Sample at PWM counter valley */
+    PAL_ADC_TRIG_AT_PWM_BOTH,      /**< Sample at both peak and valley */
+} pal_adc_trgo_edge_t;
+
+typedef struct {
+    pal_adc_trig_source_t source;
+    void                 *pwm_timer;             /**< Associated pal_mcpwm_timer_handle_t if source=MCPWM */
+    uint8_t               adc_unit;              /**< ADC unit (0 or 1) */
+    const uint8_t        *channels;              /**< Array of logical channels to scan */
+    uint8_t               channel_count;         /**< Number of channels */
+    pal_adc_trgo_edge_t   edge;                  /**< TRGO trigger edge alignment */
+    uint16_t              sampling_period_pwm;   /**< Sample every N PWM cycles */
+    uint16_t             *dma_buf_a;             /**< DMA double buffer A (PAL_DMA_BUF_ATTR) */
+    uint16_t             *dma_buf_b;             /**< DMA double buffer B (PAL_DMA_BUF_ATTR) */
+    size_t                samples_per_buf;       /**< Buffer length in samples */
+    void                (*on_half_full)(void *arg, const uint16_t *buf, size_t n);
+    void                (*on_full)(void *arg, const uint16_t *buf, size_t n);
+    void                 *cb_arg;
+} pal_adc_continuous_cfg_t;
+
+/**
+ * @brief Start continuous ADC sampling with DMA double buffering.
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t pal_adc_continuous_start(const pal_adc_continuous_cfg_t *cfg);
+
+/**
+ * @brief Stop continuous ADC DMA sampling.
+ */
+wink_status_t pal_adc_continuous_stop(uint8_t adc_unit);
+
 #ifdef __cplusplus
 }
 #endif
