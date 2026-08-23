@@ -226,6 +226,7 @@ target_include_directories(test_dal_gps PRIVATE
 add_wink_host_test(test_dal_abi_freeze unit/dal/test_dal_abi_freeze.c)
 
 add_wink_host_test(test_pal_i2c_bus unit/pal/test_pal_i2c_bus.c)
+add_wink_host_test(test_pal_spi unit/pal/test_pal_spi.c)
 
 add_wink_host_test(test_button_events unit/bal/test_button_events.c)
 target_link_libraries(test_button_events PRIVATE wink_bal)
