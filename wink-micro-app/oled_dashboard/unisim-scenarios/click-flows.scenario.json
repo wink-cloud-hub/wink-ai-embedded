@@ -1,0 +1,39 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "OLED Dashboard Hardware Reaction Scenario",
+    "templateId": "tpl_oled_dashboard",
+    "description": "Verifies user_button PRESS -> C WASM firmware drives status_led (GPIO 2) HIGH",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "5000000",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "500ms",
+      "targetPluginId": "user_button",
+      "action": "PRESS",
+      "params": {}
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "+700ms",
+      "target": "gpio:2",
+      "matcher": 1,
+      "description": "Verify C firmware drives status_led (GPIO 2) HIGH when button is pressed"
+    },
+    {
+      "type": "ASSERT_BUFFER_FRAME",
+      "timeUs": "+0ms",
+      "channel": "oled_screen",
+      "minActivePixels": {
+        "count": 50
+      },
+      "description": "Simultaneously (+0ms) verify OLED display buffer has active pixels rendered (non-blank screen)"
+    }
+  ]
+}

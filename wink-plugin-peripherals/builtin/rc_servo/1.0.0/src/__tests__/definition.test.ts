@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { servoDefinition } from '../definition';
 import type { CircuitComponentInstance } from '@wink-ai/unisim-ui';
 
@@ -18,7 +18,7 @@ describe('rc_servo peripheral definition', () => {
   });
 
   it('does not declare redundant simulation.observe in frontend definition (SSOT in unisim binder)', () => {
-    const def = servoDefinition;
+    const def:any = servoDefinition;
     expect(def?.simulation?.observe).toBeUndefined();
   });
 
