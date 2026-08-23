@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include "wink_status.h"
 #include "pal_irq.h"
+#include "pal_pin_types.h"   /* re-export wink_pin_t — backward compat */
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,11 +43,6 @@ typedef enum {
     PAL_GPIO_INTR_HIGH_LEVEL      = 5,
 } pal_gpio_intr_t;
 
-/**
- * @brief Unified pin number type
- * @note Uses int16_t to ensure GPIO_NUM_NC (-1) is not truncated to 65535.
- */
-typedef int16_t wink_pin_t;
 
 /**
  * @brief Query physical GPIO mapped to specified PWM channel

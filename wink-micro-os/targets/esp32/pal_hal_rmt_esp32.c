@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
- * @file pal_rmt_esp32.c
+ * @file pal_hal_rmt_esp32.c
  * @brief ESP32 target PAL RMT pulse capture subsystem implementation.
  */
 #include "pal_hal.h"
