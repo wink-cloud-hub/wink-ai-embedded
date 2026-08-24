@@ -57,22 +57,55 @@ static bool pal_gpio_mode_idle_level(pal_gpio_mode_t mode)
 }
 
 wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
-    if (pin >= 0 && pin < WASM_SIM_MAX_PINS) {
-        s_gpio_mode[(uint8_t)pin] = mode;
-        s_gpio_mode_known[(uint8_t)pin] = true;
-        if (mode == PAL_GPIO_INPUT
-            || mode == PAL_GPIO_INPUT_PULLUP
-            || mode == PAL_GPIO_INPUT_PULLDOWN) {
-            js_pal_gpio_release_mcu((uint16_t)pin);
-        }
+    if (pin < 0 || pin >= WASM_SIM_MAX_PINS) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    (void)pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, "pal_gpio");
+    s_gpio_mode[(uint8_t)pin] = mode;
+    s_gpio_mode_known[(uint8_t)pin] = true;
+    if (mode == PAL_GPIO_INPUT
+        || mode == PAL_GPIO_INPUT_PULLUP
+        || mode == PAL_GPIO_INPUT_PULLDOWN) {
+        js_pal_gpio_release_mcu((uint16_t)pin);
     }
     return WINK_OK;
 }
 
-void pal_gpio_reset_pin(wink_pin_t pin) {
-    if (pin >= 0 && pin < WASM_SIM_MAX_PINS) {
-        s_gpio_mode_known[(uint8_t)pin] = false;
+wink_status_t pal_gpio_init_output(wink_pin_t pin, pal_gpio_mode_t mode, bool initial_level) {
+    if (pin < 0 || pin >= WASM_SIM_MAX_PINS) {
+        return WINK_ERR_INVALID_ARG;
     }
+    if (mode != PAL_GPIO_OUTPUT_PUSH_PULL && mode != PAL_GPIO_OUTPUT_OPEN_DRAIN) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    (void)pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, "pal_gpio");
+    s_gpio_mode[(uint8_t)pin] = mode;
+    s_gpio_mode_known[(uint8_t)pin] = true;
+    s_gpio_output_state[(uint8_t)pin] = initial_level;
+    js_pal_gpio_write((uint32_t)pin, initial_level);
+    js_pal_gpio_on_write((uint8_t)pin, initial_level ? 1 : 0);
+    return WINK_OK;
+}
+
+wink_status_t pal_gpio_set_hold(wink_pin_t pin, bool hold_enable) {
+    if (pin < 0 || pin >= WASM_SIM_MAX_PINS) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    (void)hold_enable;
+    return WINK_OK;
+}
+
+wink_status_t pal_gpio_deinit(wink_pin_t pin) {
+    if (pin < 0 || pin >= WASM_SIM_MAX_PINS) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    s_gpio_mode_known[(uint8_t)pin] = false;
+    (void)pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, "pal_gpio");
+    return WINK_OK;
+}
+
+void pal_gpio_reset_pin(wink_pin_t pin) {
+    (void)pal_gpio_deinit(pin);
 }
 
 wink_status_t pal_gpio_set_direction(wink_pin_t pin, pal_gpio_mode_t mode) {

@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "wink_status.h"
+#include "hal/pal_target_caps.h"
 
 #ifdef __cplusplus
 extern "C" {

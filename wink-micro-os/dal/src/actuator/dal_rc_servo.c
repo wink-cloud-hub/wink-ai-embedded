@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #define LOG_TAG "dal_rc_servo"
 #include "actuator/dal_rc_servo.h"
-#include "pal_hal.h"
+#include "hal/pal_pwm.h"
 #include "pal_resource.h"
 #include "pal_log.h"
 
@@ -85,7 +85,7 @@ wink_status_t dal_rc_servo_init(dal_rc_servo_t *dev, const dal_rc_servo_config_t
 
     /* DAL-L-006: explicitly write zero-energy output (duty=0 -> limp).
      * Do not rely on PAL init default. */
-    WINK_IGNORE_UNUSED(pal_pwm_set_duty(dev->config.pwm_channel, 0.0f));
+    WINK_IGNORE_UNUSED(pal_pwm_set_duty_bp(dev->config.pwm_channel, 0u));
 
     LOG_I("init: '%s' ready (ch%u, pulse %u-%u us, max %u ddeg)",
           cfg->owner, (unsigned)cfg->pwm_channel,
@@ -109,11 +109,11 @@ wink_status_t dal_rc_servo_set_angle(dal_rc_servo_t *dev, uint16_t angle_ddeg) {
     uint32_t pulse_us = (uint32_t)dev->config.min_pulse_us
                       + ((uint32_t)angle_ddeg * pulse_range_us) / (uint32_t)max_ddeg;
 
-    /* Convert to duty percentage for PAL: (pulse_us / period_us) * 100. */
-    float duty_percent = ((float)pulse_us * 100.0f) / (float)SERVO_PERIOD_US;
+    /* Convert to basis points for PAL: (pulse_us * 10000) / SERVO_PERIOD_US (ADR-0066, Zero Soft-FP). */
+    uint16_t basis_points = (uint16_t)(((uint32_t)pulse_us * 10000u + (SERVO_PERIOD_US / 2)) / (uint32_t)SERVO_PERIOD_US);
 
     /* Hardware first, cache last (F-1): only update current_angle after PAL success. */
-    wink_status_t status = pal_pwm_set_duty(dev->config.pwm_channel, duty_percent);
+    wink_status_t status = pal_pwm_set_duty_bp(dev->config.pwm_channel, basis_points);
     if (wink_status_is_error(status)) { return status; }
 
     dev->current_angle_ddeg = angle_ddeg;
@@ -127,7 +127,7 @@ wink_status_t dal_rc_servo_safe_off(dal_rc_servo_t *dev) {
     if (dev == NULL) { return WINK_ERR_INVALID_ARG; }
     if (!dev->initialized) { return WINK_OK; }
     /* duty=0 -> servo limp = safe; no sleep. Servo-specific only. */
-    return pal_pwm_set_duty(dev->config.pwm_channel, 0.0f);
+    return pal_pwm_set_duty_bp(dev->config.pwm_channel, 0u);
 }
 
 wink_status_t dal_rc_servo_apply_override(void *dev, const uint8_t *params, uint16_t len) {

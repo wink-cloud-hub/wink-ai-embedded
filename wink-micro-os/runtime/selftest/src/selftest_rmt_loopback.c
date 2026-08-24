@@ -11,7 +11,7 @@
 #include "wink_log.h"
 #include "pal_hal.h"
 #include "pal_osal.h"
-#include "pal_pwm_router.h"
+#include "hal/pal_pwm_router.h"
 #include "pal_resource.h"
 #include "internal/pal_test_loopback.h"
 #include "hal/pal_rmt.h"

@@ -9,7 +9,7 @@
 #include "wink_selftest_internal.h"
 #include "wink_status.h"
 #include "wink_log.h"
-#include "pal_pwm_router.h"
+#include "hal/pal_pwm_router.h"
 #include "pal_hal.h"
 
 #define SMOKE_PWM_CH_LO  1u

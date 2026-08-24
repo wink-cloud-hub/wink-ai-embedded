@@ -23,7 +23,7 @@ void js_pal_ws2812_write(uint16_t pin, const uint8_t *buf, uint32_t len)
 void setUp(void)
 {
     pal_resource_reset();
-    pal_gpio_init(12, PAL_GPIO_OUTPUT);
+    pal_gpio_init(12, PAL_GPIO_OUTPUT_PUSH_PULL);
     pal_resource_claim(PAL_RESOURCE_GPIO_PIN, 12, "ws2812_test");
 }
 

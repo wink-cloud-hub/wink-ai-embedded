@@ -76,6 +76,8 @@ extern void    js_pal_gpio_on_write(uint8_t pin, uint8_t level);
 
 /** duty_cycle_percent in [0, 100]. Routed via channel 1b (PWM modulation). */
 extern void    js_pal_pwm_set_duty(uint8_t channel, float duty_cycle_percent);
+/** basis_points in [0, 10000]. Basis point duty cycle output (ADR-0066). */
+extern void    js_pal_pwm_set_duty_bp(uint8_t channel, uint16_t basis_points);
 
 /* -- CH2: Bus — I2C / SPI / UART TX  (C->JS imports) ------------------ */
 

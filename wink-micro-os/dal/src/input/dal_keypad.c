@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "input/dal_keypad.h"
-#include "hal/pal_hal.h"
+#include "hal/pal_gpio.h"
 #include "pal_resource.h"
 #include "pal_osal.h"
 #include <string.h>

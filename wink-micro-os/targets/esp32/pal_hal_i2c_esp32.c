@@ -188,21 +188,65 @@ static inline wink_status_t pal_i2c_map_esp_err(esp_err_t esp_err)
 }
 #endif
 
-wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
-                      const uint8_t *write_buf, uint32_t write_len,
-                      uint8_t *read_buf, uint32_t read_len) {
+wink_status_t pal_i2c_bus_recover(uint8_t port) {
     if (port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
+    wink_pin_t sda_pin = pal_i2c_pin_map[port][0];
+    wink_pin_t scl_pin = pal_i2c_pin_map[port][1];
+    if (sda_pin < 0 || scl_pin < 0) { return WINK_ERR_INVALID_STATE; }
 
-    if (write_len == 0 && read_len == 0) { return WINK_ERR_INVALID_ARG; }
-    if (write_len > 0 && write_buf == NULL) { return WINK_ERR_INVALID_ARG; }
-    if (read_len  > 0 && read_buf  == NULL) { return WINK_ERR_INVALID_ARG; }
+    /* Configure SCL and SDA as open-drain outputs to generate 9 recovery clock pulses */
+    gpio_config_t cfg = {
+        .pin_bit_mask = (1ULL << sda_pin) | (1ULL << scl_pin),
+        .mode = GPIO_MODE_INPUT_OUTPUT_OD,
+        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    (void)gpio_config(&cfg);
+    (void)gpio_set_level((gpio_num_t)sda_pin, 1);
+    (void)gpio_set_level((gpio_num_t)scl_pin, 1);
+    esp_rom_delay_us(10);
+
+    /* 9 SCL clock pulses (NXP I2C bus recovery specification) */
+    for (int i = 0; i < 9; i++) {
+        (void)gpio_set_level((gpio_num_t)scl_pin, 0);
+        esp_rom_delay_us(5);
+        (void)gpio_set_level((gpio_num_t)scl_pin, 1);
+        esp_rom_delay_us(5);
+    }
+
+    /* Generate STOP condition: SDA low -> SCL high -> SDA high */
+    (void)gpio_set_level((gpio_num_t)sda_pin, 0);
+    esp_rom_delay_us(5);
+    (void)gpio_set_level((gpio_num_t)scl_pin, 1);
+    esp_rom_delay_us(5);
+    (void)gpio_set_level((gpio_num_t)sda_pin, 1);
+    esp_rom_delay_us(5);
+
+    return WINK_OK;
+}
+
+wink_status_t pal_i2c_transfer_timeout(uint8_t port, uint16_t dev_addr,
+                                       const uint8_t *write_buf, uint32_t write_len,
+                                       uint8_t *read_buf, uint32_t read_len,
+                                       uint32_t timeout_ms)
+{
+    if (port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
+    if ((write_buf == NULL && write_len > 0) || (read_buf == NULL && read_len > 0)) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    if (write_len == 0 && read_len == 0) {
+        return WINK_OK;
+    }
+
+    uint32_t eff_timeout = (timeout_ms == 0) ? PAL_I2C_DEFAULT_TIMEOUT_MS : timeout_ms;
 
     SemaphoreHandle_t mutex = pal_i2c_get_mutex();
     if (mutex == NULL) {
         ESP_LOGE(TAG, "I2C mutex allocation failed");
         return WINK_ERR_RESOURCE_EXHAUSTED;
     }
-    if (xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
+    if (xSemaphoreTake(mutex, pdMS_TO_TICKS(eff_timeout)) != pdTRUE) {
         ESP_LOGE(TAG, "I2C mutex timeout");
         return WINK_ERR_BUSY;
     }
@@ -212,8 +256,8 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
 #if WINK_I2C_USE_V6_API
         i2c_master_bus_config_t bus_cfg = {
             .i2c_port = (i2c_port_t)port,
-            .sda_io_num = pal_i2c_pin_map[port][0],
-            .scl_io_num = pal_i2c_pin_map[port][1],
+            .sda_io_num = (gpio_num_t)pal_i2c_pin_map[port][0],
+            .scl_io_num = (gpio_num_t)pal_i2c_pin_map[port][1],
             .clk_source = I2C_CLK_SRC_DEFAULT,
             .glitch_ignore_cnt = 7,
             .flags.enable_internal_pullup = true,
@@ -228,8 +272,8 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
 #else
         i2c_config_t cfg = {
             .mode = I2C_MODE_MASTER,
-            .sda_io_num = pal_i2c_pin_map[port][0],
-            .scl_io_num = pal_i2c_pin_map[port][1],
+            .sda_io_num = (gpio_num_t)pal_i2c_pin_map[port][0],
+            .scl_io_num = (gpio_num_t)pal_i2c_pin_map[port][1],
             .sda_pullup_en = GPIO_PULLUP_ENABLE,
             .scl_pullup_en = GPIO_PULLUP_ENABLE,
             .master.clk_speed = 100000,
@@ -261,31 +305,38 @@ wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
 #endif
 
 #if WINK_I2C_USE_V6_API
+    int xfer_timeout_ms = (eff_timeout == UINT32_MAX) ? -1 : (int)eff_timeout;
     if (write_buf != NULL && write_len > 0) {
         if (read_buf != NULL && read_len > 0) {
             err = i2c_master_transmit_receive(dev_handle,
                                               write_buf, (size_t)write_len,
                                               read_buf, (size_t)read_len,
-                                              I2C_TRANSFER_TIMEOUT_MS);
+                                              xfer_timeout_ms);
         } else {
             err = i2c_master_transmit(dev_handle, write_buf, (size_t)write_len,
-                                      I2C_TRANSFER_TIMEOUT_MS);
+                                      xfer_timeout_ms);
         }
     } else if (read_buf != NULL && read_len > 0) {
         err = i2c_master_receive(dev_handle, read_buf, (size_t)read_len,
-                                 I2C_TRANSFER_TIMEOUT_MS);
+                                 xfer_timeout_ms);
     }
 #else
+    TickType_t ticks = (eff_timeout == UINT32_MAX) ? portMAX_DELAY : pdMS_TO_TICKS(eff_timeout);
     err = i2c_master_write_read_device(
         (i2c_port_t)port, dev_addr,
         write_buf, (size_t)write_len,
         read_buf, (size_t)read_len,
-        pdMS_TO_TICKS(I2C_TRANSFER_TIMEOUT_MS)
+        ticks
     );
 #endif
 
     xSemaphoreGive(s_i2c_mutex);
 
+    if (err == ESP_ERR_TIMEOUT) {
+        /* Auto-recover bus if slave held SDA low (ADR-0067) */
+        (void)pal_i2c_bus_recover(port);
+        return WINK_ERR_TIMEOUT;
+    }
     if (err != ESP_OK) {
         return pal_i2c_map_esp_err(err);
     }
@@ -304,88 +355,59 @@ wink_status_t pal_i2c_port_pins(uint8_t port, wink_pin_t *out_sda, wink_pin_t *o
 #  pragma GCC diagnostic push
 #  pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
+
 wink_status_t pal_i2c_scan(uint8_t port, uint8_t start_addr, uint8_t end_addr,
                             uint8_t *out_found_bitmap, size_t bitmap_bytes) {
-    if (out_found_bitmap == NULL || bitmap_bytes < 16) { return WINK_ERR_INVALID_ARG; }
-    if (port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
-    if (start_addr > end_addr || end_addr > 0x7F) { return WINK_ERR_INVALID_ARG; }
-    memset(out_found_bitmap, 0, 16);
+    if (port >= PAL_I2C_PORTS || out_found_bitmap == NULL || bitmap_bytes < 16) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    if (start_addr > end_addr || end_addr > 0x7F) {
+        return WINK_ERR_INVALID_ARG;
+    }
 
-    uint8_t lo = start_addr < 0x03 ? 0x03 : start_addr;
-    uint8_t hi = end_addr   > 0x77 ? 0x77 : end_addr;
+    memset(out_found_bitmap, 0, bitmap_bytes);
 
-    uint8_t dummy;
-    wink_status_t probe_st = pal_i2c_transfer(port, lo, NULL, 0, &dummy, 1);
-    (void)probe_st;
-
-    for (uint16_t addr = lo; addr <= hi; addr++) {
-#if WINK_I2C_USE_V6_API
-        SemaphoreHandle_t mutex = pal_i2c_get_mutex();
-        if (mutex == NULL || xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
+    for (uint8_t addr = start_addr; addr <= end_addr; addr++) {
+        if (addr < 0x08 || addr > 0x77) {
             continue;
         }
-        esp_err_t err = ESP_FAIL;
-        if (s_i2c_initialized[port]) {
-            err = i2c_master_probe(s_i2c_bus[port], addr, 50);
+
+        uint8_t dummy = 0;
+        wink_status_t rs = pal_i2c_transfer_timeout(port, addr, &dummy, 0, NULL, 0, 50);
+        if (rs == WINK_OK) {
+            out_found_bitmap[addr >> 3] |= (uint8_t)(1u << (addr & 7));
         }
-        xSemaphoreGive(mutex);
-        if (err == ESP_OK) {
-            uint8_t byte_idx = (uint8_t)(addr >> 3);
-            uint8_t bit_idx  = (uint8_t)(addr & 0x7);
-            out_found_bitmap[byte_idx] |= (uint8_t)(1u << bit_idx);
-        }
-#else
-        wink_status_t st = pal_i2c_transfer(port, (uint8_t)addr, NULL, 0, &dummy, 1);
-        if (st == WINK_OK) {
-            uint8_t byte_idx = (uint8_t)(addr >> 3);
-            uint8_t bit_idx  = (uint8_t)(addr & 0x7);
-            out_found_bitmap[byte_idx] |= (uint8_t)(1u << bit_idx);
-        }
-#endif
+        if (addr == 127) { break; }
     }
     return WINK_OK;
 }
 
-static void pal_i2c_bus_recovery_pulses(uint8_t sda_pin, uint8_t scl_pin) {
-    gpio_config_t io_conf = {
-        .mode = GPIO_MODE_INPUT_OUTPUT_OD,
-        .pull_up_en = GPIO_PULLUP_ENABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE,
-        .pin_bit_mask = (1ULL << sda_pin) | (1ULL << scl_pin),
-    };
-    gpio_config(&io_conf);
-    gpio_set_level((gpio_num_t)sda_pin, 1);
-    gpio_set_level((gpio_num_t)scl_pin, 1);
-    pal_os_busy_wait_us(10);
-
-    /* Generate 9 SCL clock pulses to release stuck I2C slave devices */
-    for (int i = 0; i < 9; i++) {
-        gpio_set_level((gpio_num_t)scl_pin, 0);
-        pal_os_busy_wait_us(5);
-        gpio_set_level((gpio_num_t)scl_pin, 1);
-        pal_os_busy_wait_us(5);
+wink_status_t pal_i2c_bus_init(uint8_t port, wink_pin_t sda, wink_pin_t scl, uint32_t hz) {
+    if (port >= PAL_I2C_PORTS || sda < 0 || scl < 0 || hz == 0) {
+        return WINK_ERR_INVALID_ARG;
     }
 
-    /* Send STOP condition: SDA goes LOW then HIGH while SCL is HIGH */
-    gpio_set_level((gpio_num_t)sda_pin, 0);
-    pal_os_busy_wait_us(5);
-    gpio_set_level((gpio_num_t)scl_pin, 1);
-    pal_os_busy_wait_us(5);
-    gpio_set_level((gpio_num_t)sda_pin, 1);
-    pal_os_busy_wait_us(5);
-}
-
-wink_status_t pal_i2c_bus_init(uint8_t port, uint8_t sda, uint8_t scl, uint32_t hz) {
-    if (port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
+    wink_status_t rc = pal_resource_claim(PAL_RESOURCE_I2C_PORT, port, "pal_i2c");
+    if (rc != WINK_OK) { return rc; }
+    rc = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)sda, "pal_i2c");
+    if (rc != WINK_OK) {
+        pal_resource_release(PAL_RESOURCE_I2C_PORT, port, "pal_i2c");
+        return rc;
+    }
+    rc = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)scl, "pal_i2c");
+    if (rc != WINK_OK) {
+        pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)sda, "pal_i2c");
+        pal_resource_release(PAL_RESOURCE_I2C_PORT, port, "pal_i2c");
+        return rc;
+    }
 
     SemaphoreHandle_t mutex = pal_i2c_get_mutex();
     if (mutex == NULL) {
         ESP_LOGE(TAG, "I2C mutex allocation failed");
         return WINK_ERR_RESOURCE_EXHAUSTED;
     }
-    if (xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
-        ESP_LOGE(TAG, "I2C mutex timeout");
+    if (xSemaphoreTake(mutex, pdMS_TO_TICKS(500)) != pdTRUE) {
+        ESP_LOGE(TAG, "I2C mutex timeout in bus_init");
         return WINK_ERR_BUSY;
     }
 
@@ -393,9 +415,6 @@ wink_status_t pal_i2c_bus_init(uint8_t port, uint8_t sda, uint8_t scl, uint32_t 
         xSemaphoreGive(mutex);
         return WINK_OK;
     }
-
-    /* Recover any stuck slave devices on the bus before initializing hardware controller */
-    pal_i2c_bus_recovery_pulses(sda, scl);
 
 #if WINK_I2C_USE_V6_API
     i2c_master_bus_config_t bus_cfg = {
@@ -439,18 +458,18 @@ wink_status_t pal_i2c_bus_init(uint8_t port, uint8_t sda, uint8_t scl, uint32_t 
     return WINK_OK;
 }
 
-void pal_i2c_bus_deinit(uint8_t port) {
-    if (port >= PAL_I2C_PORTS) { return; }
+wink_status_t pal_i2c_bus_deinit(uint8_t port) {
+    if (port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
 
     SemaphoreHandle_t mutex = pal_i2c_get_mutex();
     if (mutex == NULL || xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
         ESP_LOGE(TAG, "I2C mutex timeout in bus_deinit");
-        return;
+        return WINK_ERR_BUSY;
     }
 
     if (!s_i2c_initialized[port]) {
         xSemaphoreGive(mutex);
-        return;
+        return WINK_OK;
     }
 
 #if WINK_I2C_USE_V6_API
@@ -485,6 +504,11 @@ void pal_i2c_bus_deinit(uint8_t port) {
 
     s_i2c_initialized[port] = false;
     xSemaphoreGive(mutex);
+
+    pal_resource_release(PAL_RESOURCE_I2C_PORT, port, "pal_i2c");
+    pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pal_i2c_pin_map[port][0], "pal_i2c");
+    pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pal_i2c_pin_map[port][1], "pal_i2c");
+    return WINK_OK;
 }
 #if defined(__GNUC__) || defined(__clang__)
 #  pragma GCC diagnostic pop
@@ -492,21 +516,28 @@ void pal_i2c_bus_deinit(uint8_t port) {
 
 #else
 
-wink_status_t pal_i2c_bus_init(uint8_t port, uint8_t sda, uint8_t scl, uint32_t hz) {
+wink_status_t pal_i2c_bus_init(uint8_t port, wink_pin_t sda, wink_pin_t scl, uint32_t hz) {
     (void)port; (void)sda; (void)scl; (void)hz;
     return WINK_ERR_UNSUPPORTED;
 }
 
-void pal_i2c_bus_deinit(uint8_t port) {
+wink_status_t pal_i2c_bus_deinit(uint8_t port) {
     (void)port;
+    return WINK_ERR_UNSUPPORTED;
 }
 
-wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
-                      const uint8_t *write_buf, uint32_t write_len,
-                      uint8_t *read_buf, uint32_t read_len)
+wink_status_t pal_i2c_bus_recover(uint8_t port) {
+    (void)port;
+    return WINK_ERR_UNSUPPORTED;
+}
+
+wink_status_t pal_i2c_transfer_timeout(uint8_t port, uint16_t dev_addr,
+                                       const uint8_t *write_buf, uint32_t write_len,
+                                       uint8_t *read_buf, uint32_t read_len,
+                                       uint32_t timeout_ms)
 {
     (void)port; (void)dev_addr; (void)write_buf; (void)write_len;
-    (void)read_buf; (void)read_len;
+    (void)read_buf; (void)read_len; (void)timeout_ms;
     return WINK_ERR_UNSUPPORTED;
 }
 

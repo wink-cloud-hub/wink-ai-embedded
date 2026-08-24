@@ -8,7 +8,9 @@ endif()
 
 # host first-class target (OBJECT library) — Provides complete PAL implementation for tests and samples.
 add_library(pal_host OBJECT
-    pal_hal_host.c
+    pal_hal_gpio_host.c
+    pal_hal_pwm_host.c
+    pal_hal_i2c_host.c
     pal_hal_adc_host.c
     pal_hal_spi_host.c
     pal_hal_rmt_host.c

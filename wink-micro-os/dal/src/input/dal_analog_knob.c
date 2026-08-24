@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "input/dal_analog_knob.h"
 #include "hal/pal_adc.h"
-#include "hal/pal_hal.h"
+#include "hal/pal_gpio.h"
 #include "pal_resource.h"
 #include <string.h>
 

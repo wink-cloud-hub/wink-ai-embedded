@@ -104,6 +104,11 @@ addToLibrary({
             return Module['js_pal_pwm_set_duty'](channel, duty);
         }
     },
+    js_pal_pwm_set_duty_bp: function (channel, bp) {
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_pwm_set_duty_bp'] === 'function' && Module['js_pal_pwm_set_duty_bp'] !== _js_pal_pwm_set_duty_bp) {
+            return Module['js_pal_pwm_set_duty_bp'](channel, bp);
+        }
+    },
     js_pal_i2c_transfer: function (port, addr, wbuf, wlen, rbuf, rlen) {
         if (typeof Module !== 'undefined' && typeof Module['js_pal_i2c_transfer'] === 'function' && Module['js_pal_i2c_transfer'] !== _js_pal_i2c_transfer) {
             return Module['js_pal_i2c_transfer'](port, addr, wbuf, wlen, rbuf, rlen);

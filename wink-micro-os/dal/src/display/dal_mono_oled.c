@@ -3,7 +3,7 @@
 
 #include "dal_mono_oled.h"
 #include "dal_mono_oled_font_internal.h"
-#include "pal_hal.h"
+#include "hal/pal_i2c.h"
 #include "pal_osal.h"
 #include "pal_resource.h"
 #include "pal_log.h"

@@ -5,7 +5,8 @@
  */
 #define LOG_TAG "dal_buzzer"
 #include "output/dal_buzzer.h"
-#include "pal_hal.h"
+#include "hal/pal_gpio.h"
+#include "hal/pal_pwm.h"
 #include "pal_resource.h"
 #include "pal_log.h"
 #include <string.h>
@@ -69,7 +70,7 @@ wink_status_t dal_buzzer_init(dal_buzzer_t *dev, const dal_buzzer_config_t *cfg)
             return st;
         }
 
-        WINK_IGNORE_RESULT(pal_pwm_set_duty(dev->config.pwm_channel, 0.0f));
+        WINK_IGNORE_RESULT(pal_pwm_set_duty_bp(dev->config.pwm_channel, 0u));
 
         if (dev->config.enable_pin >= 0) {
             WINK_IGNORE_RESULT(pal_gpio_write(dev->config.enable_pin, dev->config.enable_active_high));
@@ -92,8 +93,17 @@ wink_status_t dal_buzzer_init(dal_buzzer_t *dev, const dal_buzzer_config_t *cfg)
                                                         dev->config.owner));
                 return st;
             }
-            WINK_IGNORE_RESULT(pal_gpio_init(dev->config.enable_pin, PAL_GPIO_OUTPUT_PUSH_PULL));
-            WINK_IGNORE_RESULT(pal_gpio_write(dev->config.enable_pin, !dev->config.enable_active_high));
+            st = pal_gpio_init(dev->config.enable_pin, PAL_GPIO_OUTPUT_PUSH_PULL);
+            if (wink_status_is_error(st)) {
+                WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN,
+                                                        (uint32_t)dev->config.enable_pin,
+                                                        dev->config.owner));
+                WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN,
+                                                        (uint32_t)dev->config.pin,
+                                                        dev->config.owner));
+                return st;
+            }
+            WINK_IGNORE_RESULT(pal_gpio_write(dev->config.enable_pin, dev->config.enable_active_high));
         }
 
         st = pal_gpio_init(dev->config.pin, PAL_GPIO_OUTPUT_PUSH_PULL);
@@ -111,17 +121,13 @@ wink_status_t dal_buzzer_init(dal_buzzer_t *dev, const dal_buzzer_config_t *cfg)
         }
 
         WINK_IGNORE_RESULT(pal_gpio_write(dev->config.pin, !dev->config.active_high));
-
-        if (dev->config.enable_pin >= 0) {
-            WINK_IGNORE_RESULT(pal_gpio_write(dev->config.enable_pin, dev->config.enable_active_high));
-        }
     } else {
         return WINK_ERR_INVALID_ARG;
     }
 
-    dev->current_freq_hz = 0u;
-    dev->is_on = false;
     dev->initialized = true;
+    dev->is_on = false;
+    dev->current_freq_hz = 0u;
     return WINK_OK;
 }
 
@@ -148,7 +154,7 @@ wink_status_t dal_buzzer_play_tone(dal_buzzer_t *dev, uint32_t freq_hz)
             return st;
         }
 
-        st = pal_pwm_set_duty(dev->config.pwm_channel, 50.0f);
+        st = pal_pwm_set_duty_bp(dev->config.pwm_channel, 5000u);
         if (wink_status_is_error(st)) {
             return st;
         }
@@ -180,7 +186,7 @@ wink_status_t dal_buzzer_stop_tone(dal_buzzer_t *dev)
     }
 
     if (dev->config.variant == DAL_BUZZER_VARIANT_PASSIVE_PWM) {
-        WINK_IGNORE_RESULT(pal_pwm_set_duty(dev->config.pwm_channel, 0.0f));
+        WINK_IGNORE_RESULT(pal_pwm_set_duty_bp(dev->config.pwm_channel, 0u));
     } else if (dev->config.variant == DAL_BUZZER_VARIANT_ACTIVE_GPIO) {
         WINK_IGNORE_RESULT(pal_gpio_write(dev->config.pin, !dev->config.active_high));
     }

@@ -17,7 +17,7 @@
 
 static bool s_i2c_bus_inited[PAL_I2C_PORTS] = {false};
 
-wink_status_t pal_i2c_bus_init(uint8_t port, uint8_t sda, uint8_t scl, uint32_t hz)
+wink_status_t pal_i2c_bus_init(uint8_t port, wink_pin_t sda, wink_pin_t scl, uint32_t hz)
 {
     (void)sda; (void)scl; (void)hz;
     if (port >= PAL_I2C_PORTS) {
@@ -27,17 +27,29 @@ wink_status_t pal_i2c_bus_init(uint8_t port, uint8_t sda, uint8_t scl, uint32_t 
     return WINK_OK;
 }
 
-void pal_i2c_bus_deinit(uint8_t port)
+wink_status_t pal_i2c_bus_deinit(uint8_t port)
 {
-    if (port < PAL_I2C_PORTS) {
-        s_i2c_bus_inited[port] = false;
+    if (port >= PAL_I2C_PORTS) {
+        return WINK_ERR_INVALID_ARG;
     }
+    s_i2c_bus_inited[port] = false;
+    return WINK_OK;
 }
 
-wink_status_t pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
-                              const uint8_t *write_buf, uint32_t write_len,
-                              uint8_t *read_buf, uint32_t read_len)
+wink_status_t pal_i2c_bus_recover(uint8_t port)
 {
+    if (port >= PAL_I2C_PORTS) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    return WINK_OK;
+}
+
+wink_status_t pal_i2c_transfer_timeout(uint8_t port, uint16_t dev_addr,
+                                       const uint8_t *write_buf, uint32_t write_len,
+                                       uint8_t *read_buf, uint32_t read_len,
+                                       uint32_t timeout_ms)
+{
+    (void)timeout_ms;
     if (port >= PAL_I2C_PORTS) {
         return WINK_ERR_INVALID_ARG;
     }

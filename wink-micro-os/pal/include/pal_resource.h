@@ -17,6 +17,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "wink_status.h"
+#include "hal/pal_target_caps.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,19 +49,45 @@ typedef enum {
 #define PAL_RESOURCE_UNLIMITED_MAX    0xFFFFFFFFu
 
 /* Hardware limits (ESP32 classic & simulation baselines) */
+#ifndef PAL_SPI_BUS_MAX
 #define PAL_SPI_BUS_MAX               2u   /* SPI2 (HSPI), SPI3 (VSPI) */
+#endif
+#ifndef PAL_PCNT_UNIT_MAX
 #define PAL_PCNT_UNIT_MAX             8u   /* Unit 0..7 */
+#endif
+#ifndef PAL_PCNT_CHAN_MAX
 #define PAL_PCNT_CHAN_MAX             2u   /* 2 channels per unit */
+#endif
+#ifndef PAL_RMT_CHAN_MAX
 #define PAL_RMT_CHAN_MAX              8u   /* Channel 0..7 */
+#endif
+#ifndef PAL_HWTIMER_MAX
 #define PAL_HWTIMER_MAX               4u   /* Timer 0..3 */
+#endif
+#ifndef PAL_MCPWM_UNIT_MAX
 #define PAL_MCPWM_UNIT_MAX            2u   /* Unit 0..1 */
+#endif
+#ifndef PAL_MCPWM_TIMER_MAX
 #define PAL_MCPWM_TIMER_MAX           3u   /* 3 timers per unit */
+#endif
+#ifndef PAL_MCPWM_OPERATOR_MAX
 #define PAL_MCPWM_OPERATOR_MAX        3u   /* 3 operators per unit */
+#endif
+#ifndef PAL_MCPWM_COMPARATOR_MAX
 #define PAL_MCPWM_COMPARATOR_MAX      2u   /* 2 comparators per operator */
+#endif
+#ifndef PAL_UART_PORT_MAX
 #define PAL_UART_PORT_MAX             3u   /* UART 0..2 */
+#endif
+#ifndef PAL_ADC_CHANNEL_MAX
 #define PAL_ADC_CHANNEL_MAX           10u  /* Logical ADC channel 0..9 */
+#endif
+#ifndef PAL_PWM_CHANNEL_MAX
 #define PAL_PWM_CHANNEL_MAX           8u   /* LEDC channels 0..7 */
+#endif
+#ifndef PAL_GPIO_PIN_MAX
 #define PAL_GPIO_PIN_MAX              50u  /* GPIO 0..49 */
+#endif
 
 #if defined(CONFIG_IDF_TARGET_ESP32)
 _Static_assert(PAL_SPI_BUS_MAX == 2, "ESP32 classic has 2 DMA-capable SPI hosts");

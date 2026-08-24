@@ -6,6 +6,9 @@
 #ifndef DAL_LOAD_CELL_SENSOR_H
 #define DAL_LOAD_CELL_SENSOR_H
 
+#include <stdint.h>
+#include <stdbool.h>
+#include "wink_config.h"
 #include "wink_status.h"
 #include "hal/pal_pin_types.h"
 

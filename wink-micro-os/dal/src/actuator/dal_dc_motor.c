@@ -34,8 +34,8 @@ static wink_status_t apply_dir_and_duty(dal_dc_motor_t *dev,
     if (abs_promille > 1000) {
         abs_promille = 1000;
     }
-    float duty_percent = ((float)abs_promille) / 10.0f;
-    return pal_pwm_set_duty(dev->config.pwm_channel, duty_percent);
+    uint16_t basis_points = (uint16_t)(abs_promille * 10u);
+    return pal_pwm_set_duty_bp(dev->config.pwm_channel, basis_points);
 }
 
 /* Best-effort GPIO claim release for init-rollback/deinit: releases the pin

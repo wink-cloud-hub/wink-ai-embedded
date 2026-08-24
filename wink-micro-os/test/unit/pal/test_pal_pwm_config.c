@@ -5,7 +5,7 @@
  */
 #include "unity.h"
 #include "pal_hal.h"
-#include "pal_pwm_router.h"
+#include "hal/pal_pwm_router.h"
 #include "host_test_ctrl.h"
 
 void setUp(void) {

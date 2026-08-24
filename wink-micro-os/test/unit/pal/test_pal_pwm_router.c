@@ -4,7 +4,7 @@
  * @brief PAL PWM router timer allocation and sharing unit tests.
  */
 #include "unity.h"
-#include "pal_pwm_router.h"
+#include "hal/pal_pwm_router.h"
 #include "pal_resource.h"
 
 void setUp(void) {

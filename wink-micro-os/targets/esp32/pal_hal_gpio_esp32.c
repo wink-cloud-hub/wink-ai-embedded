@@ -112,7 +112,13 @@ static void PAL_ISR gpio_isr_wrapper(void *arg)
 }
 
 wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
-    if (pin < 0 || pin >= GPIO_NUM_MAX) { return WINK_ERR_INVALID_ARG; }
+    if (pin < 0 || pin >= GPIO_NUM_MAX || !GPIO_IS_VALID_GPIO(pin)) { return WINK_ERR_INVALID_ARG; }
+
+    wink_status_t rc = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, "pal_gpio");
+    if (rc != WINK_OK && rc != WINK_ERR_BUSY) {
+        /* If already claimed by pal_gpio, allow idempotent re-init, otherwise propagate error */
+        return rc;
+    }
 
     gpio_config_t cfg = {
         .pin_bit_mask = 1ULL << pin,
@@ -153,10 +159,60 @@ wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode) {
     return WINK_OK;
 }
 
-void pal_gpio_reset_pin(wink_pin_t pin) {
-    if (pin < 0 || pin >= GPIO_NUM_MAX || !GPIO_IS_VALID_GPIO((gpio_num_t)pin)) {
-        return;
+wink_status_t pal_gpio_init_output(wink_pin_t pin, pal_gpio_mode_t mode, bool initial_level) {
+    if (pin < 0 || pin >= GPIO_NUM_MAX || !GPIO_IS_VALID_GPIO(pin)) { return WINK_ERR_INVALID_ARG; }
+    if (mode != PAL_GPIO_OUTPUT_PUSH_PULL && mode != PAL_GPIO_OUTPUT_OPEN_DRAIN) {
+        return WINK_ERR_INVALID_ARG;
     }
+
+    wink_status_t rc = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, "pal_gpio");
+    if (rc != WINK_OK && rc != WINK_ERR_BUSY) {
+        return rc;
+    }
+
+    /* Pre-set hardware output register BEFORE configuring pad direction to prevent glitch (ADR-0065) */
+    (void)gpio_set_level((gpio_num_t)pin, initial_level ? 1 : 0);
+
+    gpio_config_t cfg = {
+        .pin_bit_mask = 1ULL << pin,
+        .mode = (mode == PAL_GPIO_OUTPUT_PUSH_PULL) ? GPIO_MODE_OUTPUT : GPIO_MODE_OUTPUT_OD,
+        .pull_up_en = (mode == PAL_GPIO_OUTPUT_OPEN_DRAIN && initial_level) ? GPIO_PULLUP_ENABLE : GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+
+    esp_err_t err = gpio_config(&cfg);
+    if (err != ESP_OK) { return WINK_ERR_HARDWARE; }
+    s_gpio_mode[pin] = mode;
+    s_gpio_mode_known[pin] = true;
+    return WINK_OK;
+}
+
+wink_status_t pal_gpio_set_hold(wink_pin_t pin, bool hold_enable) {
+    if (pin < 0 || pin >= GPIO_NUM_MAX || !GPIO_IS_VALID_GPIO(pin)) {
+        return WINK_ERR_INVALID_ARG;
+    }
+#if SOC_GPIO_SUPPORT_HOLD_SINGLE_IO
+    esp_err_t err = hold_enable ? gpio_hold_en((gpio_num_t)pin) : gpio_hold_dis((gpio_num_t)pin);
+    return (err == ESP_OK) ? WINK_OK : WINK_ERR_HARDWARE;
+#else
+    (void)hold_enable;
+    return WINK_ERR_UNSUPPORTED;
+#endif
+}
+
+wink_status_t pal_gpio_deinit(wink_pin_t pin) {
+    if (pin < 0 || pin >= GPIO_NUM_MAX || !GPIO_IS_VALID_GPIO((gpio_num_t)pin)) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    /* 1. Disable interrupt */
+    (void)pal_gpio_disable_interrupt(pin);
+
+    /* 2. Wait for in-flight ISR execution barrier */
+    (void)pal_gpio_synchronize_interrupt(pin);
+
+    /* 3. Reset hardware pad to high-Z default */
     gpio_reset_pin((gpio_num_t)pin);
     s_gpio_mode_known[pin] = false;
 
@@ -164,6 +220,14 @@ void pal_gpio_reset_pin(wink_pin_t pin) {
     s_gpio_isr[pin] = NULL;
     s_gpio_isr_arg[pin] = NULL;
     portEXIT_CRITICAL(&s_gpio_table_mux);
+
+    /* 4. Release resource claim */
+    (void)pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, "pal_gpio");
+    return WINK_OK;
+}
+
+void pal_gpio_reset_pin(wink_pin_t pin) {
+    (void)pal_gpio_deinit(pin);
 }
 
 wink_status_t pal_gpio_set_direction(wink_pin_t pin, pal_gpio_mode_t mode) {
@@ -532,6 +596,15 @@ wink_status_t pal_test_disable_hardware_loopback(wink_pin_t pin_out, wink_pin_t 
 
 wink_status_t pal_gpio_init(wink_pin_t pin, pal_gpio_mode_t mode)
 { (void)pin; (void)mode; return WINK_ERR_UNSUPPORTED; }
+
+wink_status_t pal_gpio_init_output(wink_pin_t pin, pal_gpio_mode_t mode, bool initial_level)
+{ (void)pin; (void)mode; (void)initial_level; return WINK_ERR_UNSUPPORTED; }
+
+wink_status_t pal_gpio_set_hold(wink_pin_t pin, bool hold_enable)
+{ (void)pin; (void)hold_enable; return WINK_ERR_UNSUPPORTED; }
+
+wink_status_t pal_gpio_deinit(wink_pin_t pin)
+{ (void)pin; return WINK_ERR_UNSUPPORTED; }
 
 void pal_gpio_reset_pin(wink_pin_t pin) { (void)pin; }
 
