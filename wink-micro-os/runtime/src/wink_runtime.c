@@ -165,8 +165,9 @@ wink_status_t wink_runtime_run(const wink_app_callbacks_t* callbacks, uint32_t m
 #ifdef SIMULATION
             printf("FATAL: Boot lockout count reached threshold! Entering Safe-lock.\n");
             abort();
-#endif
+#else
             return WINK_ERR_LOCKED;
+#endif
         }
     }
 

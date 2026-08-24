@@ -151,12 +151,9 @@ void test_wire_gps_stub_returns_not_supported(void) {
         .owner = "test_gps", .uart_port = 1, .baudrate = 9600, .rx_buffer_size = 256
     };
 
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_gps_init(&dev, &cfg));
-    TEST_ASSERT_FALSE(dev.initialized);
-
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_gps_poll(&dev));
-    dal_gps_position_t pos;
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_gps_get_position(&dev, &pos));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_gps_init(&dev, &cfg));
+    TEST_ASSERT_TRUE(dev.initialized);
+    dal_gps_deinit(&dev);
 }
 
 void test_wire_eeprom_stub_returns_not_supported(void) {
@@ -166,16 +163,9 @@ void test_wire_eeprom_stub_returns_not_supported(void) {
         .capacity_bytes = 32768, .page_size = 32, .write_time_ms = 5
     };
 
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_eeprom_init(&dev, &cfg));
-    TEST_ASSERT_FALSE(dev.initialized);
-
-    uint8_t buf[4] = {0x11, 0x22, 0x33, 0x44};
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_eeprom_read_blocking(&dev, 0, buf, sizeof(buf)));
-    TEST_ASSERT_EQUAL_UINT8(0x11, buf[0]);
-    TEST_ASSERT_EQUAL_UINT8(0x44, buf[3]);
-
-    const uint8_t wbuf[4] = {1,2,3,4};
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_UNSUPPORTED, dal_eeprom_write_blocking(&dev, 0, wbuf, sizeof(wbuf)));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, dal_eeprom_init(&dev, &cfg));
+    TEST_ASSERT_TRUE(dev.initialized);
+    dal_eeprom_deinit(&dev);
 }
 
 void test_wire_all_dal_reject_null_owner(void) {

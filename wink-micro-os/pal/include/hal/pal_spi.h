@@ -28,6 +28,10 @@ extern "C" {
 #define PAL_SPI_DEV_MAX_PER_BUS 4
 #endif
 
+#ifndef PAL_SPI_DEFAULT_TIMEOUT_MS
+#define PAL_SPI_DEFAULT_TIMEOUT_MS 1000
+#endif
+
 typedef struct {
     uint8_t    spi_bus;     /**< 0 = SPI2_HOST (HSPI), 1 = SPI3_HOST (VSPI) */
     wink_pin_t sclk;
@@ -36,6 +40,7 @@ typedef struct {
     uint32_t   clock_hz;    /**< Maximum bus clock frequency (e.g. 1 MHz ~ 40 MHz) */
     uint8_t    mode;        /**< SPI mode 0..3 (CPOL/CPHA) */
     bool       dma_enabled; /**< Enable DMA engine for high-speed transfers */
+    uint32_t   timeout_ms;  /**< Timeout in ms for SPI queue/transfer (0 = PAL_SPI_DEFAULT_TIMEOUT_MS) */
 } pal_spi_bus_config_t;
 
 typedef struct {

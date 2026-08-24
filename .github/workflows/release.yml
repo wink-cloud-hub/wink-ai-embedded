@@ -1,0 +1,19 @@
+name: Release Verification Gates
+
+on:
+  release:
+    types: [ published ]
+  workflow_dispatch:
+
+jobs:
+  release-verification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify Clean Build & ABI Compatibility
+        run: |
+          python3 wink-micro-os/scripts/check_wasm_abi_hash.py
+          python3 wink-micro-os/scripts/check_wasm_stub_symbols.py
+          python3 wink-micro-os/scripts/check_isr_no_log.py
+          python3 wink-micro-os/scripts/check_isr_iram_flag.py

@@ -5,6 +5,7 @@
  */
 #include "pal_hal.h"
 #include "hal/pal_mcpwm.h"
+#include "osal/pal_deferred.h"
 #include "pal_resource.h"
 #include "pal_spinlock.h"
 #include "pal_log.h"
@@ -113,10 +114,38 @@ wink_status_t pal_mcpwm_new_timer(const pal_mcpwm_timer_cfg_t *cfg, pal_mcpwm_ti
     return WINK_OK;
 }
 
+static void esp32_mcpwm_brake_deferred_worker(void *arg) {
+    struct pal_mcpwm_fault_s *slot = (struct pal_mcpwm_fault_s *)arg;
+    if (slot != NULL && slot->cfg.on_brake_isr != NULL) {
+        slot->cfg.on_brake_isr(slot->cfg.on_brake_arg);
+    }
+}
+
+static PAL_ISR bool esp32_mcpwm_brake_cb(mcpwm_fault_handle_t fault,
+                                         const mcpwm_fault_event_data_t *edata,
+                                         void *user_data) {
+    (void)fault;
+    (void)edata;
+    struct pal_mcpwm_fault_s *slot = (struct pal_mcpwm_fault_s *)user_data;
+    if (slot != NULL && slot->cfg.on_brake_isr != NULL) {
+        pal_deferred_post_from_isr(PAL_DEFERRED_HI, PAL_DEFERRED_CRITICAL,
+                                   esp32_mcpwm_brake_deferred_worker, slot);
+    }
+    return false;
+}
+
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_mcpwm_new_oper(const pal_mcpwm_oper_cfg_t *cfg, pal_mcpwm_oper_handle_t *out_oper) {
     if (cfg == NULL || out_oper == NULL || cfg->timer == NULL || cfg->operator_id > 2) {
         return WINK_ERR_INVALID_ARG;
+    }
+
+    /* Shoot-through prevention: reject complementary pairs with 0 deadtime */
+    if (cfg->complementary_enable) {
+        if (cfg->pin_pwm_a < 0 || cfg->pin_pwm_b < 0 ||
+            cfg->deadtime_red_ticks == 0 || cfg->deadtime_fed_ticks == 0) {
+            return WINK_ERR_INVALID_ARG;
+        }
     }
 
     pal_spinlock_lock(&s_mcpwm_lock);
@@ -176,13 +205,19 @@ wink_status_t pal_mcpwm_new_oper(const pal_mcpwm_oper_cfg_t *cfg, pal_mcpwm_oper
         mcpwm_new_generator(slot->oper_handle, &gen_b_config, &slot->gen_b);
     }
 
-    /* Dead-time configuration */
+    /* Dead-time configuration for complementary pairs */
     if (cfg->complementary_enable && slot->gen_a && slot->gen_b) {
         mcpwm_dead_time_config_t dt_red = {
+            .posedge_path = MCPWM_DEAD_TIME_PATH_DELAY,
+            .negedge_path = MCPWM_DEAD_TIME_PATH_BYPASS,
+        };
+        mcpwm_generator_set_dead_time(slot->gen_a, slot->gen_a, &dt_red);
+
+        mcpwm_dead_time_config_t dt_fed = {
             .posedge_path = MCPWM_DEAD_TIME_PATH_BYPASS,
             .negedge_path = MCPWM_DEAD_TIME_PATH_DELAY,
         };
-        mcpwm_generator_set_dead_time(slot->gen_a, slot->gen_a, &dt_red);
+        mcpwm_generator_set_dead_time(slot->gen_b, slot->gen_b, &dt_fed);
     }
 
     slot->in_use = true;
@@ -261,8 +296,21 @@ wink_status_t pal_mcpwm_new_fault(const pal_mcpwm_fault_cfg_t *cfg, pal_mcpwm_fa
             .group_id = 0,
             .gpio_num = cfg->fault_pin,
             .flags.active_level = cfg->active_level,
+            .intr_flags = ESP_INTR_FLAG_IRAM,
         };
-        mcpwm_new_gpio_fault(&gpio_fault_config, &slot->fault_handle);
+        esp_err_t err = mcpwm_new_gpio_fault(&gpio_fault_config, &slot->fault_handle);
+        if (err != ESP_OK) {
+            pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->fault_pin, "pal_mcpwm_esp32");
+            pal_spinlock_unlock(&s_mcpwm_lock);
+            return WINK_ERR_HARDWARE;
+        }
+
+        if (cfg->on_brake_isr != NULL) {
+            mcpwm_fault_event_callbacks_t cbs = {
+                .on_fault_enter = esp32_mcpwm_brake_cb,
+            };
+            mcpwm_fault_register_event_callbacks(slot->fault_handle, &cbs, slot);
+        }
     }
 
     slot->in_use = true;
@@ -333,9 +381,14 @@ wink_status_t pal_mcpwm_sync_gpio_config(wink_pin_t sync_gpio, bool active_level
 }
 
 wink_status_t pal_mcpwm_timer_enable_phase_lock(pal_mcpwm_timer_handle_t t, uint32_t phase_ticks) {
-    (void)t;
-    (void)phase_ticks;
-    return WINK_OK;
+    if (t == NULL) return WINK_ERR_INVALID_ARG;
+    mcpwm_timer_sync_phase_config_t sync_phase_cfg = {
+        .count_value = phase_ticks,
+        .direction = MCPWM_TIMER_DIRECTION_UP,
+        .sync_src = NULL,
+    };
+    esp_err_t err = mcpwm_timer_set_phase_on_sync(t->timer_handle, &sync_phase_cfg);
+    return (err == ESP_OK) ? WINK_OK : WINK_ERR_HARDWARE;
 }
 
 wink_status_t pal_mcpwm_trigger_software_sync(void) {
@@ -351,6 +404,41 @@ void pal_mcpwm_del_timer(pal_mcpwm_timer_handle_t t) {
     if (t == NULL) return;
     pal_spinlock_lock(&s_mcpwm_lock);
     if (t->in_use) {
+        /* Release all operators attached to this timer */
+        for (int i = 0; i < ESP32_MCPWM_OPERS_MAX; i++) {
+            if (s_opers[i].in_use && s_opers[i].cfg.timer == t) {
+                /* Release comparators attached to this operator */
+                for (int j = 0; j < ESP32_MCPWM_CMPS_MAX; j++) {
+                    if (s_cmps[j].in_use && s_cmps[j].cfg.oper == &s_opers[i]) {
+                        if (s_cmps[j].cmp_handle != NULL) {
+                            mcpwm_del_comparator(s_cmps[j].cmp_handle);
+                            s_cmps[j].cmp_handle = NULL;
+                        }
+                        s_cmps[j].in_use = false;
+                    }
+                }
+                if (s_opers[i].gen_a != NULL) {
+                    mcpwm_del_generator(s_opers[i].gen_a);
+                    s_opers[i].gen_a = NULL;
+                }
+                if (s_opers[i].gen_b != NULL) {
+                    mcpwm_del_generator(s_opers[i].gen_b);
+                    s_opers[i].gen_b = NULL;
+                }
+                if (s_opers[i].cfg.pin_pwm_b >= 0) {
+                    pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)s_opers[i].cfg.pin_pwm_b, "pal_mcpwm_esp32");
+                }
+                if (s_opers[i].cfg.pin_pwm_a >= 0) {
+                    pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)s_opers[i].cfg.pin_pwm_a, "pal_mcpwm_esp32");
+                }
+                if (s_opers[i].oper_handle != NULL) {
+                    mcpwm_del_operator(s_opers[i].oper_handle);
+                    s_opers[i].oper_handle = NULL;
+                }
+                s_opers[i].in_use = false;
+            }
+        }
+
         mcpwm_timer_disable(t->timer_handle);
         mcpwm_del_timer(t->timer_handle);
         t->timer_handle = NULL;
@@ -363,18 +451,18 @@ void pal_mcpwm_del_timer(pal_mcpwm_timer_handle_t t) {
 #else
 
 /* Non-ESP32 fallback stubs for cross-compilation static analysis */
-WINK_WARN_UNUSED_RESULT wink_status_t pal_mcpwm_new_timer(const pal_mcpwm_timer_cfg_t *cfg, pal_mcpwm_timer_handle_t *out_timer) { (void)cfg; (void)out_timer; return WINK_ERR_NOT_SUPPORTED; }
-WINK_WARN_UNUSED_RESULT wink_status_t pal_mcpwm_new_oper(const pal_mcpwm_oper_cfg_t *cfg, pal_mcpwm_oper_handle_t *out_oper) { (void)cfg; (void)out_oper; return WINK_ERR_NOT_SUPPORTED; }
-WINK_WARN_UNUSED_RESULT wink_status_t pal_mcpwm_new_cmp(const pal_mcpwm_cmp_cfg_t *cfg, pal_mcpwm_cmp_handle_t *out_cmp) { (void)cfg; (void)out_cmp; return WINK_ERR_NOT_SUPPORTED; }
-WINK_WARN_UNUSED_RESULT wink_status_t pal_mcpwm_new_fault(const pal_mcpwm_fault_cfg_t *cfg, pal_mcpwm_fault_handle_t *out_fault) { (void)cfg; (void)out_fault; return WINK_ERR_NOT_SUPPORTED; }
-WINK_WARN_UNUSED_RESULT wink_status_t pal_mcpwm_new_capture(const pal_mcpwm_cap_cfg_t *cfg, pal_mcpwm_cap_handle_t *out_cap) { (void)cfg; (void)out_cap; return WINK_ERR_NOT_SUPPORTED; }
-wink_status_t pal_mcpwm_timer_start(pal_mcpwm_timer_handle_t t) { (void)t; return WINK_ERR_NOT_SUPPORTED; }
-wink_status_t pal_mcpwm_timer_stop(pal_mcpwm_timer_handle_t t) { (void)t; return WINK_ERR_NOT_SUPPORTED; }
-wink_status_t pal_mcpwm_set_duty_ticks(pal_mcpwm_cmp_handle_t cmp, uint32_t duty_ticks) { (void)cmp; (void)duty_ticks; return WINK_ERR_NOT_SUPPORTED; }
-wink_status_t pal_mcpwm_sync_gpio_config(wink_pin_t sync_gpio, bool active_level) { (void)sync_gpio; (void)active_level; return WINK_ERR_NOT_SUPPORTED; }
-wink_status_t pal_mcpwm_timer_enable_phase_lock(pal_mcpwm_timer_handle_t t, uint32_t phase_ticks) { (void)t; (void)phase_ticks; return WINK_ERR_NOT_SUPPORTED; }
-wink_status_t pal_mcpwm_trigger_software_sync(void) { return WINK_ERR_NOT_SUPPORTED; }
-wink_status_t pal_mcpwm_fault_clear(pal_mcpwm_fault_handle_t f) { (void)f; return WINK_ERR_NOT_SUPPORTED; }
+WINK_WARN_UNUSED_RESULT wink_status_t pal_mcpwm_new_timer(const pal_mcpwm_timer_cfg_t *cfg, pal_mcpwm_timer_handle_t *out_timer) { (void)cfg; (void)out_timer; return WINK_ERR_UNSUPPORTED; }
+WINK_WARN_UNUSED_RESULT wink_status_t pal_mcpwm_new_oper(const pal_mcpwm_oper_cfg_t *cfg, pal_mcpwm_oper_handle_t *out_oper) { (void)cfg; (void)out_oper; return WINK_ERR_UNSUPPORTED; }
+WINK_WARN_UNUSED_RESULT wink_status_t pal_mcpwm_new_cmp(const pal_mcpwm_cmp_cfg_t *cfg, pal_mcpwm_cmp_handle_t *out_cmp) { (void)cfg; (void)out_cmp; return WINK_ERR_UNSUPPORTED; }
+WINK_WARN_UNUSED_RESULT wink_status_t pal_mcpwm_new_fault(const pal_mcpwm_fault_cfg_t *cfg, pal_mcpwm_fault_handle_t *out_fault) { (void)cfg; (void)out_fault; return WINK_ERR_UNSUPPORTED; }
+WINK_WARN_UNUSED_RESULT wink_status_t pal_mcpwm_new_capture(const pal_mcpwm_cap_cfg_t *cfg, pal_mcpwm_cap_handle_t *out_cap) { (void)cfg; (void)out_cap; return WINK_ERR_UNSUPPORTED; }
+wink_status_t pal_mcpwm_timer_start(pal_mcpwm_timer_handle_t t) { (void)t; return WINK_ERR_UNSUPPORTED; }
+wink_status_t pal_mcpwm_timer_stop(pal_mcpwm_timer_handle_t t) { (void)t; return WINK_ERR_UNSUPPORTED; }
+wink_status_t pal_mcpwm_set_duty_ticks(pal_mcpwm_cmp_handle_t cmp, uint32_t duty_ticks) { (void)cmp; (void)duty_ticks; return WINK_ERR_UNSUPPORTED; }
+wink_status_t pal_mcpwm_sync_gpio_config(wink_pin_t sync_gpio, bool active_level) { (void)sync_gpio; (void)active_level; return WINK_ERR_UNSUPPORTED; }
+wink_status_t pal_mcpwm_timer_enable_phase_lock(pal_mcpwm_timer_handle_t t, uint32_t phase_ticks) { (void)t; (void)phase_ticks; return WINK_ERR_UNSUPPORTED; }
+wink_status_t pal_mcpwm_trigger_software_sync(void) { return WINK_ERR_UNSUPPORTED; }
+wink_status_t pal_mcpwm_fault_clear(pal_mcpwm_fault_handle_t f) { (void)f; return WINK_ERR_UNSUPPORTED; }
 void pal_mcpwm_del_timer(pal_mcpwm_timer_handle_t t) { (void)t; }
 
 #endif

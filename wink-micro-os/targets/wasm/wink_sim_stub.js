@@ -73,6 +73,7 @@ if (isMainThread) {
         'js_pal_i2c_transfer',
         'js_pal_spi_transfer',
         'js_pal_uart_write',
+        'js_pal_rmt_tx',
         'js_pal_register_interrupt',
         'js_pal_deregister_interrupt',
         'js_pal_poll_interrupt',

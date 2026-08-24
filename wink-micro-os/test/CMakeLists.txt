@@ -185,6 +185,10 @@ add_wink_host_test(test_pal_storage unit/pal/test_pal_storage.c)
 add_wink_host_test(test_sim_physical unit/sim/test_sim_physical.c)
 add_wink_host_test(test_dal_rc_servo unit/dal/test_dal_rc_servo.c)
 add_wink_host_test(test_dal_led unit/dal/test_dal_led.c)
+add_wink_host_test(test_dal_ws2812 unit/dal/test_dal_ws2812.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/src/output/dal_ws2812.c)
+target_include_directories(test_dal_ws2812 PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/output)
 add_wink_host_test(test_dal_relay unit/dal/test_dal_relay.c)
 add_wink_host_test(test_dal_button unit/dal/test_dal_button.c)
 add_wink_host_test(test_dal_mono_oled unit/dal/test_dal_mono_oled.c)
@@ -232,6 +236,8 @@ add_wink_host_test(test_pal_pcnt unit/pal/test_pal_pcnt.c)
 add_wink_host_test(test_pal_uart unit/pal/test_pal_uart.c)
 add_wink_host_test(test_pal_time_safety unit/pal/test_pal_time_safety.c)
 add_wink_host_test(test_pal_atomic unit/pal/test_pal_atomic.c)
+add_wink_host_test(test_pal_deferred unit/pal/test_pal_deferred.c)
+add_wink_host_test(test_pal_dma unit/pal/test_pal_dma.c)
 add_wink_host_test(test_pal_hwtimer unit/pal/test_pal_hwtimer.c)
 add_wink_host_test(test_pal_mcpwm unit/pal/test_pal_mcpwm.c)
 add_wink_host_test(test_pal_adc_continuous unit/pal/test_pal_adc_continuous.c)
@@ -241,6 +247,24 @@ add_wink_host_test(test_pal_wasm_completion
     ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm/pal_wasm_completion.c
 )
 target_include_directories(test_pal_wasm_completion PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm)
+
+add_executable(test_pal_wasm_drain
+    unit/pal/test_pal_wasm_drain.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm/pal_wasm_completion.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm/pal_wasm_hwtimer.c
+    ${UNITY_DIR}/unity.c
+)
+target_include_directories(test_pal_wasm_drain PRIVATE
+    ${UNITY_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/stubs
+    ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/hal
+    ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/osal
+    ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../targets/wasm
+)
+add_test(NAME test_pal_wasm_drain COMMAND test_pal_wasm_drain)
 
 add_wink_host_test(test_button_events unit/bal/test_button_events.c)
 target_link_libraries(test_button_events PRIVATE wink_bal)

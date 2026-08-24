@@ -14,11 +14,13 @@ extern "C" {
 #endif
 
 typedef enum {
-    FAULT_TYPE_GPIO_BOUNCE  = 1,
-    FAULT_TYPE_I2C_DROP     = 2,
-    FAULT_TYPE_I2C_NOISE    = 3,
-    FAULT_TYPE_CLOCK_DRIFT  = 4,
-    FAULT_TYPE_UART_OVERRUN = 5,
+    FAULT_TYPE_GPIO_BOUNCE       = 1,
+    FAULT_TYPE_I2C_DROP          = 2,
+    FAULT_TYPE_I2C_NOISE         = 3,
+    FAULT_TYPE_CLOCK_DRIFT       = 4,
+    FAULT_TYPE_UART_OVERRUN      = 5,
+    FAULT_TYPE_TIMER_OVERRUN     = 6,
+    FAULT_TYPE_DEFERRED_OVERFLOW = 7,
 } wasm_fault_type_t;
 
 typedef struct {
