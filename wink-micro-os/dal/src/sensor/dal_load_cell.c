@@ -7,7 +7,7 @@
 
 #if defined(WINK_USE_LOAD_CELL) && WINK_USE_LOAD_CELL
 
-#include "pal_hal.h"
+#include "hal/pal_gpio.h"
 #include "pal_osal.h"
 #include "pal_resource.h"
 #include "pal_log.h"
