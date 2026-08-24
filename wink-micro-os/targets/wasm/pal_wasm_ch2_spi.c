@@ -27,13 +27,13 @@ static struct pal_spi_device_s s_devices[WASM_SPI_DEV_MAX];
 
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_spi_init_bus(const pal_spi_bus_config_t *cfg) {
-    if (cfg == NULL || cfg->bus_id >= WASM_SPI_BUS_MAX) {
+    if (cfg == NULL || cfg->spi_bus >= WASM_SPI_BUS_MAX) {
         return WINK_ERR_INVALID_ARG;
     }
-    if (s_bus_initialized[cfg->bus_id]) {
+    if (s_bus_initialized[cfg->spi_bus]) {
         return WINK_ERR_BUSY;
     }
-    s_bus_initialized[cfg->bus_id] = true;
+    s_bus_initialized[cfg->spi_bus] = true;
     return WINK_OK;
 }
 
