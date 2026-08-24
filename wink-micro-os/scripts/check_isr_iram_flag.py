@@ -1,38 +1,18 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 """
-check_isr_iram_flag.py - Validates that all hardware interrupt registrations in ESP32 specify ESP_INTR_FLAG_IRAM.
+[DEPRECATED] check_isr_iram_flag.py - Migrated to `wink lint --pack isr_safety` (ADR-0047, ADR-0051).
 """
 import sys
-import re
+import subprocess
 from pathlib import Path
 
 def main():
+    print("[DEPRECATED] check_isr_iram_flag.py is deprecated. Delegating to `run_lint.py --pack isr_safety`...", file=sys.stderr)
     repo_root = Path(__file__).resolve().parent.parent
-    esp32_dir = repo_root / "targets" / "esp32"
-
-    if not esp32_dir.exists():
-        print(f"Error: Missing {esp32_dir}")
-        return 1
-
-    violations = []
-    for c_file in esp32_dir.glob("*.c"):
-        content = c_file.read_text(encoding="utf-8", errors="ignore")
-        # Check esp_intr_alloc calls
-        for match in re.finditer(r"esp_intr_alloc\s*\([^,]+,\s*([^,]+),", content):
-            flags_arg = match.group(1).strip()
-            # If flags_arg is a variable (e.g. 'flags'), check if ESP_INTR_FLAG_IRAM is in the file or assigned to flags
-            if "ESP_INTR_FLAG_IRAM" not in flags_arg and flags_arg != "0":
-                if not re.search(r"ESP_INTR_FLAG_IRAM", content):
-                    violations.append((c_file, f"esp_intr_alloc without ESP_INTR_FLAG_IRAM: {flags_arg}"))
-
-    if violations:
-        print(f"FAILED: Found {len(violations)} ISR IRAM flag violations:")
-        for f, msg in violations:
-            print(f"  {f.name}: {msg}")
-        return 1
-
-    print("ISR IRAM flag check: PASSED.")
+    run_lint = repo_root / "tools" / "run_lint.py"
+    if run_lint.exists():
+        return subprocess.run([sys.executable, str(run_lint), "--pack", "isr_safety", "--rule", "ISR-IRAM-FLAG-REQUIRED"]).returncode
     return 0
 
 if __name__ == "__main__":

@@ -1,0 +1,40 @@
+codegen_schema: "1.1"
+type: mock_sensor_legacy
+category: sensor
+is_actuator: false
+experimental: true
+
+# Quantity classification (ADR-0056 / DAL-U-021)
+quantity: binary
+quantity_class: sensor_measurement
+
+
+config:
+  init_template_file: templates/mock_sensor_legacy_init.c.j2
+  safe_off_fn: ""
+
+fields:
+  owner:
+    tier: stable
+    type: string
+    emit: none
+
+  gpio_pin:
+    tier: advanced
+    type: int
+    required: true
+    min: 0
+    max: 39
+
+
+
+quantities:
+  owner: { quantity_class: sensor_measurement }
+
+  gpio_pin: { quantity_class: sensor_measurement }
+
+
+
+
+role_bindings: {}
+
