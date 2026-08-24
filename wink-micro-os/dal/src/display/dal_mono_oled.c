@@ -4,6 +4,7 @@
 #include "dal_mono_oled.h"
 #include "dal_mono_oled_font_internal.h"
 #include "hal/pal_i2c.h"
+#include "hal/pal_gpio.h"
 #include "pal_osal.h"
 #include "pal_resource.h"
 #include "pal_log.h"

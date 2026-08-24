@@ -79,7 +79,7 @@ void test_echo_timing_stored(void) {
 void test_pwm_deinit_then_reinit(void) {
     extern wink_status_t pal_pwm_init(uint8_t, uint32_t);
     extern wink_status_t pal_pwm_set_duty(uint8_t, float);
-    extern void pal_pwm_deinit(uint8_t);
+    extern wink_status_t pal_pwm_deinit(uint8_t);
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_pwm_init(3, 1000));
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_pwm_set_duty(3, 50.0f));
     pal_pwm_deinit(3);
@@ -89,14 +89,14 @@ void test_pwm_deinit_then_reinit(void) {
 
 void test_pwm_reinit_different_freq_returns_busy(void) {
     extern wink_status_t pal_pwm_init(uint8_t, uint32_t);
-    extern void pal_pwm_deinit(uint8_t);
+    extern wink_status_t pal_pwm_deinit(uint8_t);
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_pwm_init(0, 50));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_BUSY, pal_pwm_init(0, 1000));
     pal_pwm_deinit(0);
 }
 
 void test_pwm_deinit_uninit_is_noop(void) {
-    extern void pal_pwm_deinit(uint8_t);
+    extern wink_status_t pal_pwm_deinit(uint8_t);
     pal_pwm_deinit(5);
     TEST_PASS();
 }

@@ -38,7 +38,7 @@ void test_pwm_init_legacy_wraps_init_ex(void) {
 
 void test_pwm_set_duty_percent_on_host(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_pwm_init(2, 50u));
-    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_pwm_set_duty(2, 37.5f));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_pwm_set_duty_bp(2, 3750u));
     TEST_ASSERT_EQUAL_FLOAT(37.5f, sim_last_pwm_duty(2));
     pal_pwm_deinit(2);
 }

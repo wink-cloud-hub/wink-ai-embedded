@@ -345,6 +345,11 @@ uint32_t pal_host_get_gpio_isr_count(wink_pin_t pin)
     return s_isr_call_count[pin];
 }
 
+uint32_t pal_host_get_isr_call_count(wink_pin_t pin)
+{
+    return pal_host_get_gpio_isr_count(pin);
+}
+
 void pal_host_reset_gpio_isr_count(wink_pin_t pin)
 {
     if (pin < 0 || pin >= HOST_MAX_GPIO_PIN) {
@@ -353,9 +358,71 @@ void pal_host_reset_gpio_isr_count(wink_pin_t pin)
     s_isr_call_count[pin] = 0;
 }
 
+#define HOST_MAX_IRQ 32
+static pal_isr_t s_host_irq_table[HOST_MAX_IRQ] = {NULL};
+static void *s_host_irq_arg[HOST_MAX_IRQ] = {NULL};
+static uint32_t s_host_logical_isr_count[HOST_MAX_IRQ] = {0};
+
+wink_status_t pal_irq_enable(uint32_t irq_num, pal_irq_prio_t prio,
+                              pal_isr_t handler, void *arg)
+{
+    if (irq_num >= HOST_MAX_IRQ || handler == NULL ||
+        prio < PAL_IRQ_PRIO_LOW || prio > PAL_IRQ_PRIO_HIGH) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    s_host_irq_table[irq_num] = handler;
+    s_host_irq_arg[irq_num] = arg;
+    return WINK_OK;
+}
+
+wink_status_t pal_irq_disable(uint32_t irq_num)
+{
+    if (irq_num >= HOST_MAX_IRQ) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    s_host_irq_table[irq_num] = NULL;
+    s_host_irq_arg[irq_num] = NULL;
+    return WINK_OK;
+}
+
+void pal_irq_synchronize(uint32_t irq_num)
+{
+    (void)irq_num;
+}
+
+void pal_host_trigger_logical_interrupt(uint32_t irq_num)
+{
+    if (irq_num < HOST_MAX_IRQ && s_host_irq_table[irq_num] != NULL) {
+        s_host_logical_isr_count[irq_num]++;
+        pal_os_set_sim_isr_context(true);
+        s_host_irq_table[irq_num](s_host_irq_arg[irq_num]);
+        pal_os_set_sim_isr_context(false);
+    }
+}
+
+uint32_t pal_host_get_logical_isr_call_count(uint32_t irq_num)
+{
+    if (irq_num >= HOST_MAX_IRQ) return 0;
+    return s_host_logical_isr_count[irq_num];
+}
+
+uint32_t pal_host_get_pending_count(void)
+{
+    return s_pending_count;
+}
+
+int pal_host_get_irq_lock_depth(void)
+{
+    return s_irq_lock_depth;
+}
+
 void pal_host_reset_all_gpio_interrupts(void)
 {
     memset(s_isr_call_count, 0, sizeof(s_isr_call_count));
+    memset(s_host_logical_isr_count, 0, sizeof(s_host_logical_isr_count));
+    memset(s_host_irq_table, 0, sizeof(s_host_irq_table));
+    memset(s_host_irq_arg, 0, sizeof(s_host_irq_arg));
     s_pending_count = 0;
     s_irq_lock_depth = 0;
 
@@ -366,6 +433,11 @@ void pal_host_reset_all_gpio_interrupts(void)
 
     memset(s_gpio_isr, 0, sizeof(s_gpio_isr));
     memset(s_gpio_isr_arg, 0, sizeof(s_gpio_isr_arg));
+}
+
+void pal_host_reset_isr_stats(void)
+{
+    pal_host_reset_all_gpio_interrupts();
 }
 
 uint32_t pal_irq_save(void)
