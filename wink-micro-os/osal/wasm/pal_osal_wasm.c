@@ -13,15 +13,13 @@
 #include "wasm_bridge.h"
 #include "pal_wasm_common.h"
 #include "pal_wasm_waveform.h"
+#include "pal_wasm_hwtimer.h"
+#include "pal_wasm_completion.h"
 #include "wink_sim_scheduler.h"
 #include "wink_trace.h"
 #include <emscripten.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <assert.h>
+
+extern void pal_wasm_drain_deferred(void);
 
 static bool s_sim_in_isr = false;
 static bool s_sim_in_pt = false;
@@ -32,23 +30,44 @@ static bool s_sim_in_pt = false;
 
 static uint64_t s_virtual_us = 0;
 static bool s_clock_warning_fired = false;
+static bool s_draining = false;
 
-_Static_assert(sizeof(s_virtual_us) == 8, "Virtual clock must be 64-bit");
+#include "pal_log.h"
+#include <inttypes.h>
 
-#define CLOCK_WARNING_THRESHOLD (UINT64_C(0x8000000000000000))
+#define LOG_TAG "pal_osal_wasm"
+
+/* 1000 hours in microseconds (3.6e12 us) */
+#define CLOCK_WARNING_THRESHOLD (UINT64_C(3600000000000))
+
+static inline void wink_vclock_drain_all(void) {
+    if (s_draining) return;
+    s_draining = true;
+
+    /* Multi-pass drain: waveform -> hwtimer -> completions -> deferred */
+    for (int pass = 0; pass < 2; pass++) {
+        pal_wasm_drain_due_waveform_edges(s_virtual_us);
+        pal_wasm_hwtimer_drain();
+        pal_wasm_drain_completions();
+        pal_wasm_drain_deferred();
+    }
+
+    s_draining = false;
+}
 
 static inline void wink_vclock_advance_internal(uint64_t delta_us) {
     s_virtual_us += delta_us;
     if (s_virtual_us > CLOCK_WARNING_THRESHOLD && !s_clock_warning_fired) {
         s_clock_warning_fired = true;
+        LOG_W(LOG_TAG, "Virtual clock exceeded 1000 hours (%" PRIu64 " us)", s_virtual_us);
     }
+    wink_vclock_drain_all();
 }
 
 EMSCRIPTEN_KEEPALIVE
 void pal_wasm_advance_virtual_clock(uint64_t us) {
     WASM_FAULT_GUARD_VOID();
     wink_vclock_advance_internal(us);
-    pal_wasm_drain_due_waveform_edges(s_virtual_us);
 }
 
 static wink_sim_mode_t s_sim_mode = WINK_SIM_MODE_INTERACTIVE;

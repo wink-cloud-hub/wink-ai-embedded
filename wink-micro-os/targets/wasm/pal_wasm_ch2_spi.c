@@ -46,8 +46,8 @@ wink_status_t pal_spi_deinit_bus(uint8_t bus_id) {
 }
 
 WINK_WARN_UNUSED_RESULT
-wink_status_t pal_spi_add_device(const pal_spi_device_config_t *cfg, pal_spi_device_handle_t *out_handle) {
-    if (cfg == NULL || out_handle == NULL || cfg->bus_id >= WASM_SPI_BUS_MAX || !s_bus_initialized[cfg->bus_id]) {
+wink_status_t pal_spi_add_device(uint8_t bus, const pal_spi_device_config_t *cfg, pal_spi_device_handle_t *out_handle) {
+    if (cfg == NULL || out_handle == NULL || bus >= WASM_SPI_BUS_MAX || !s_bus_initialized[bus]) {
         return WINK_ERR_INVALID_ARG;
     }
 
@@ -63,7 +63,7 @@ wink_status_t pal_spi_add_device(const pal_spi_device_config_t *cfg, pal_spi_dev
     }
 
     slot->in_use = true;
-    slot->bus_id = cfg->bus_id;
+    slot->bus_id = bus;
     slot->cs_pin = (uint8_t)cfg->cs_pin;
     slot->clock_hz = (cfg->clock_hz > 0) ? cfg->clock_hz : 1000000;
     slot->mode = (uint8_t)cfg->mode;
@@ -79,18 +79,6 @@ wink_status_t pal_spi_remove_device(pal_spi_device_handle_t dev) {
     }
     dev->in_use = false;
     return WINK_OK;
-}
-
-typedef struct {
-    pal_spi_dma_callback_t user_cb;
-    void                  *user_arg;
-} wasm_spi_cb_adapter_t;
-
-static void wasm_spi_completion_trampoline(void *arg, wink_status_t result) {
-    wasm_spi_cb_adapter_t *adapt = (wasm_spi_cb_adapter_t *)arg;
-    if (adapt != NULL && adapt->user_cb != NULL) {
-        adapt->user_cb(adapt->user_arg, result);
-    }
 }
 
 WINK_WARN_UNUSED_RESULT
@@ -112,13 +100,7 @@ wink_status_t pal_spi_transfer_dma(pal_spi_device_handle_t dev,
         uint32_t delta_us = (uint32_t)((len * 8 * 1000000ULL + dev->clock_hz - 1) / dev->clock_hz);
         if (delta_us == 0) delta_us = 1;
 
-        static wasm_spi_cb_adapter_t s_adapt[WASM_SPI_DEV_MAX];
-        size_t slot_idx = (size_t)(dev - s_devices);
-        if (slot_idx >= WASM_SPI_DEV_MAX) slot_idx = 0;
-        s_adapt[slot_idx].user_cb = cb;
-        s_adapt[slot_idx].user_arg = arg;
-
-        return pal_wasm_schedule_complete_us(delta_us, wasm_spi_completion_trampoline, &s_adapt[slot_idx]);
+        return pal_wasm_schedule_complete_us(delta_us, (pal_wasm_completion_cb_t)cb, arg);
     }
 
     return WINK_OK;

@@ -58,6 +58,8 @@ typedef struct {
     pal_rmt_dir_t direction;         /**< TX or RX */
     uint32_t      resolution_hz;     /**< Clock resolution (e.g. 10000000 = 10 MHz -> 100ns/tick) */
     size_t        mem_block_symbols; /**< Hardware memory block size in symbols (default 64) */
+    bool          dma_enabled;       /**< Enable GDMA for direct large-buffer streaming (S3+ only) */
+    uint32_t      max_symbols;       /**< Maximum symbols buffer capacity (0 for driver default) */
 } pal_rmt_channel_config_t;
 
 typedef struct pal_rmt_channel_s *pal_rmt_channel_handle_t;

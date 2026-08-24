@@ -55,7 +55,7 @@ void stub_pcnt_force_failure(pal_pcnt_unit_handle_t handle, wink_status_t err) {
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_pcnt_init(const pal_pcnt_config_t *cfg,
                             pal_pcnt_unit_handle_t *out_handle) {
-    if (cfg == NULL || out_handle == NULL || cfg->pin_a < 0) {
+    if (cfg == NULL || out_handle == NULL || cfg->pin_a < 0 || cfg->filter_ns > 12500) {
         return WINK_ERR_INVALID_ARG;
     }
 
@@ -175,7 +175,7 @@ wink_status_t pal_pcnt_clear(pal_pcnt_unit_handle_t handle) {
 }
 
 wink_status_t pal_pcnt_set_glitch_filter(pal_pcnt_unit_handle_t handle, uint32_t filter_ns) {
-    if (handle == NULL) {
+    if (handle == NULL || filter_ns > 12500) {
         return WINK_ERR_INVALID_ARG;
     }
 

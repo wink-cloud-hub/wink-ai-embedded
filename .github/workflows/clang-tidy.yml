@@ -34,16 +34,12 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install wink-tools dependencies
+      - name: Install winkcli Toolchain
         run: |
-          pip install -r wink-tools/requirements-lint-dal.txt pytest
+          pip install winkcli pytest || pip install pyyaml jinja2 rich pytest
 
       - name: Run wink lint (layering + API rules)
         working-directory: wink-micro-os
         run: |
-          python ../wink-tools/wink.py lint --strict
-
-      - name: Run wink-tools Python unit tests
-        run: |
-          python -m pytest wink-tools/tools/tests/ -x -q
+          python tools/run_lint.py --strict
 

@@ -62,8 +62,38 @@ void test_adc_continuous_start_stop(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_adc_continuous_stop(0));
 }
 
+void test_adc_continuous_invalid_args(void) {
+    uint16_t dma_a[64];
+    const uint8_t channels[2] = {0, 1};
+
+    /* NULL config */
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, pal_adc_continuous_start(NULL));
+
+    /* NULL buffer */
+    pal_adc_continuous_cfg_t cfg = {
+        .source = PAL_ADC_TRIG_SOURCE_SW,
+        .adc_unit = 0,
+        .channels = channels,
+        .channel_count = 2,
+        .dma_buf_a = NULL,
+        .samples_per_buf = 64,
+    };
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, pal_adc_continuous_start(&cfg));
+
+    /* Zero sample count */
+    cfg.dma_buf_a = dma_a;
+    cfg.samples_per_buf = 0;
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, pal_adc_continuous_start(&cfg));
+
+    /* Invalid unit */
+    cfg.samples_per_buf = 64;
+    cfg.adc_unit = 99;
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, pal_adc_continuous_start(&cfg));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_adc_continuous_start_stop);
+    RUN_TEST(test_adc_continuous_invalid_args);
     return UNITY_END();
 }

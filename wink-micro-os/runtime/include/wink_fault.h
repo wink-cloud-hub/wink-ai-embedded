@@ -42,7 +42,11 @@ extern "C" {
 #define WINK_FAULT_LIGHT_WCET_VIOLATION 8005u  /* fault: LIGHT cb >500µs hard limit (repeated or severe) */
 #define WINK_FAULT_LIGHT_BLOCKING      8006u  /* fault: WINK_ASSERT_NONBLOCKING triggered inside LIGHT dispatch */
 
-/* ── DAL drivers 9000-9899 (100 slots per driver) ─────────────── */
+/* ── Wasm Simulation faults 9000-9099 ──────────────────────────── */
+#define WINK_FAULT_WASM_OOM            9001u   /* Wasm heap exhaustion / allocation failure */
+#define WINK_FAULT_WASM_TIMER_OVERRUN  9002u   /* Wasm timer queue overrun */
+
+/* ── DAL drivers 9100-9899 (100 slots per driver) ─────────────── */
 #define WINK_FAULT_DAL_LED             9100u
 #define WINK_FAULT_DAL_BUTTON          9200u
 /* warn: BAL button-events requested GPIO_IRQ drive but the current target

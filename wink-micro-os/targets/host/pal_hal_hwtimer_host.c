@@ -54,7 +54,7 @@ void stub_hwtimer_reset(uint8_t timer_id) {
 
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_hwtimer_init(const pal_hwtimer_cfg_t *cfg) {
-    if (cfg == NULL || cfg->timer_id >= PAL_HWTIMERS_MAX || cfg->period_us == 0) {
+    if (cfg == NULL || cfg->timer_id >= PAL_HWTIMERS_MAX || cfg->period_us == 0 || cfg->uses_fpu) {
         return WINK_ERR_INVALID_ARG;
     }
 

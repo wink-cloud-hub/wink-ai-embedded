@@ -465,12 +465,38 @@ wink_status_t pal_adc_read_mv(pal_adc_channel_t ch, uint16_t *out_mv) {
 
 /* --- Continuous DMA Implementation --- */
 
+#include "hal/pal_dma.h"
+#include "osal/pal_deferred.h"
+
+#if defined(ESP_PLATFORM) && (defined(SOC_ADC_DMA_SUPPORTED) || defined(SOC_GDMA_SUPPORTED) || defined(CONFIG_IDF_TARGET_ESP32))
 #include "esp_adc/adc_continuous.h"
 
 static adc_continuous_handle_t s_cont_handle[ESP32_ADC_NUM_UNITS];
 
+#define PAL_ADC_MAX_CHANNELS_PER_UNIT 8
+
+static pal_adc_continuous_cfg_t s_active_cont_cfg[ESP32_ADC_NUM_UNITS];
+
+static bool PAL_ISR s_adc_conv_done_cb(adc_continuous_handle_t handle,
+                                       const adc_continuous_evt_data_t *edata,
+                                       void *user_data) {
+    (void)handle;
+    uint8_t unit = (uint8_t)(uintptr_t)user_data;
+    if (unit < ESP32_ADC_NUM_UNITS) {
+        pal_adc_continuous_cfg_t *cfg = &s_active_cont_cfg[unit];
+        if (cfg->on_full != NULL && edata != NULL && edata->conv_frame_buffer != NULL) {
+            pal_dma_cache_invalidate(edata->conv_frame_buffer, edata->size);
+            cfg->on_full(cfg->cb_arg, (const uint16_t *)edata->conv_frame_buffer,
+                         edata->size / sizeof(uint16_t));
+        }
+    }
+    return false;
+}
+
 wink_status_t pal_adc_continuous_start(const pal_adc_continuous_cfg_t *cfg) {
-    if (cfg == NULL || cfg->adc_unit >= ESP32_ADC_NUM_UNITS || cfg->dma_buf_a == NULL || cfg->samples_per_buf == 0) {
+    if (cfg == NULL || cfg->adc_unit >= ESP32_ADC_NUM_UNITS || cfg->dma_buf_a == NULL ||
+        cfg->samples_per_buf == 0 || cfg->channel_count == 0 || cfg->channels == NULL ||
+        cfg->channel_count > PAL_ADC_MAX_CHANNELS_PER_UNIT) {
         return WINK_ERR_INVALID_ARG;
     }
 
@@ -481,22 +507,64 @@ wink_status_t pal_adc_continuous_start(const pal_adc_continuous_cfg_t *cfg) {
     }
 #endif
 
+    uint32_t frame_bytes = (uint32_t)(cfg->samples_per_buf * sizeof(uint16_t));
+#if defined(SOC_ADC_DIGI_DATA_BYTES_PER_CONV)
+    if ((frame_bytes % SOC_ADC_DIGI_DATA_BYTES_PER_CONV) != 0) {
+        return WINK_ERR_INVALID_ARG;
+    }
+#endif
+
+    if (cfg->dma_buf_a != NULL) {
+        pal_dma_cache_clean(cfg->dma_buf_a, frame_bytes);
+    }
+    if (cfg->dma_buf_b != NULL) {
+        pal_dma_cache_clean(cfg->dma_buf_b, frame_bytes);
+    }
+
+    s_active_cont_cfg[cfg->adc_unit] = *cfg;
+
     adc_continuous_handle_cfg_t h_cfg = {
-        .max_store_buf_size = (uint32_t)(cfg->samples_per_buf * sizeof(uint16_t) * 2),
-        .conv_frame_size = (uint32_t)(cfg->samples_per_buf * sizeof(uint16_t)),
+        .max_store_buf_size = frame_bytes * 2,
+        .conv_frame_size = frame_bytes,
     };
     esp_err_t err = adc_continuous_new_handle(&h_cfg, &s_cont_handle[cfg->adc_unit]);
     if (err != ESP_OK) {
         return WINK_ERR_HARDWARE;
     }
 
+    adc_digi_pattern_config_t pattern[PAL_ADC_MAX_CHANNELS_PER_UNIT] = {0};
+    for (uint8_t i = 0; i < cfg->channel_count; i++) {
+        pattern[i].atten = ADC_ATTEN_DB_12;
+        pattern[i].channel = cfg->channels[i];
+        pattern[i].unit = (cfg->adc_unit == 0) ? ADC_UNIT_1 : ADC_UNIT_2;
+        pattern[i].bit_width = SOC_ADC_DIGI_MAX_BITWIDTH;
+    }
+
     adc_continuous_config_t dig_cfg = {
+        .pattern_num = cfg->channel_count,
+        .adc_pattern = pattern,
         .sample_freq_hz = 20000,
         .conv_mode = (cfg->adc_unit == 0) ? ADC_CONV_SINGLE_UNIT_1 : ADC_CONV_SINGLE_UNIT_2,
         .format = ADC_DIGI_OUTPUT_FORMAT_TYPE1,
     };
-    adc_continuous_config(s_cont_handle[cfg->adc_unit], &dig_cfg);
-    adc_continuous_start(s_cont_handle[cfg->adc_unit]);
+    err = adc_continuous_config(s_cont_handle[cfg->adc_unit], &dig_cfg);
+    if (err != ESP_OK) {
+        adc_continuous_deinit(s_cont_handle[cfg->adc_unit]);
+        s_cont_handle[cfg->adc_unit] = NULL;
+        return WINK_ERR_HARDWARE;
+    }
+
+    adc_continuous_evt_cbs_t cbs = {
+        .on_conv_done = s_adc_conv_done_cb,
+    };
+    adc_continuous_register_event_callbacks(s_cont_handle[cfg->adc_unit], &cbs, (void *)(uintptr_t)cfg->adc_unit);
+
+    err = adc_continuous_start(s_cont_handle[cfg->adc_unit]);
+    if (err != ESP_OK) {
+        adc_continuous_deinit(s_cont_handle[cfg->adc_unit]);
+        s_cont_handle[cfg->adc_unit] = NULL;
+        return WINK_ERR_HARDWARE;
+    }
 
     return WINK_OK;
 }
@@ -510,6 +578,20 @@ wink_status_t pal_adc_continuous_stop(uint8_t adc_unit) {
     s_cont_handle[adc_unit] = NULL;
     return WINK_OK;
 }
+
+#else
+
+wink_status_t pal_adc_continuous_start(const pal_adc_continuous_cfg_t *cfg) {
+    (void)cfg;
+    return WINK_ERR_UNSUPPORTED;
+}
+
+wink_status_t pal_adc_continuous_stop(uint8_t adc_unit) {
+    (void)adc_unit;
+    return WINK_ERR_UNSUPPORTED;
+}
+
+#endif
 
 #else
 

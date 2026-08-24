@@ -1,0 +1,58 @@
+codegen_schema: "1.1"
+type: ws2812
+category: output
+source_stem: ws2812
+is_actuator: true
+experimental: false
+
+quantity: rgb_strip
+quantity_class: actuator_command
+
+default_role: rgb_strip
+
+fields:
+  gpio_pin:
+    tier: advanced
+    type: int
+    required: true
+    c: pin
+  num_leds:
+    tier: stable
+    type: int
+    default: 1
+    emit: macro
+    config_member: true
+  variant:
+    tier: advanced
+    type: enum
+    emit_when: present
+    affects_pins: false
+    default: ws2812
+    enum: [ws2812, sk6812]
+    map:
+      ws2812: DAL_WS2812_VARIANT_WS2812
+      sk6812: DAL_WS2812_VARIANT_SK6812
+    variant_fields:
+      ws2812: [gpio_pin, num_leds]
+      sk6812:  [gpio_pin, num_leds]
+
+  role:
+    tier: stable
+    type: string
+    emit: none
+
+config:
+  c_type: dal_ws2812_t
+  config_type: dal_ws2812_config_t
+  headers: [output/dal_ws2812.h]
+  deinit_fn: dal_ws2812_deinit
+  safe_off_fn: dal_ws2812_safe_off
+
+role_bindings:
+  rgb_strip:
+    headers: []
+    verbs:
+      write:
+        template: "static inline wink_status_t {{ name }}_write(const dal_ws2812_color_t *pixels, uint16_t count) { return dal_ws2812_write(&{{ name }}, pixels, count); }"
+      safe_off:
+        template: "static inline void {{ name }}_safe_off(void) { dal_ws2812_safe_off(&{{ name }}); }"

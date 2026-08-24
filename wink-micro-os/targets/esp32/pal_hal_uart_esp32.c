@@ -98,8 +98,8 @@ static void esp32_uart_event_task(void *pvParameters) {
 }
 
 WINK_WARN_UNUSED_RESULT
-wink_status_t pal_uart_init(uint8_t port, wink_pin_t tx_pin, wink_pin_t rx_pin, uint32_t baud_rate) {
-    if (port >= PAL_UART_PORT_MAX) {
+wink_status_t pal_uart_init_ex(uint8_t port, const pal_uart_config_ex_t *cfg) {
+    if (port >= PAL_UART_PORT_MAX || cfg == NULL) {
         return WINK_ERR_INVALID_ARG;
     }
 
@@ -116,8 +116,8 @@ wink_status_t pal_uart_init(uint8_t port, wink_pin_t tx_pin, wink_pin_t rx_pin, 
         return st;
     }
 
-    if (tx_pin >= 0) {
-        st = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)tx_pin, "pal_uart_esp32");
+    if (cfg->tx_pin >= 0) {
+        st = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->tx_pin, "pal_uart_esp32");
         if (st != WINK_OK) {
             pal_resource_release(PAL_RESOURCE_UART_PORT, port, "pal_uart_esp32");
             pal_spinlock_unlock(&s_uart_lock);
@@ -125,11 +125,11 @@ wink_status_t pal_uart_init(uint8_t port, wink_pin_t tx_pin, wink_pin_t rx_pin, 
         }
     }
 
-    if (rx_pin >= 0) {
-        st = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)rx_pin, "pal_uart_esp32");
+    if (cfg->rx_pin >= 0) {
+        st = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->rx_pin, "pal_uart_esp32");
         if (st != WINK_OK) {
-            if (tx_pin >= 0) {
-                pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)tx_pin, "pal_uart_esp32");
+            if (cfg->tx_pin >= 0) {
+                pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->tx_pin, "pal_uart_esp32");
             }
             pal_resource_release(PAL_RESOURCE_UART_PORT, port, "pal_uart_esp32");
             pal_spinlock_unlock(&s_uart_lock);
@@ -138,7 +138,7 @@ wink_status_t pal_uart_init(uint8_t port, wink_pin_t tx_pin, wink_pin_t rx_pin, 
     }
 
     uart_config_t uart_config = {
-        .baud_rate = (int)baud_rate,
+        .baud_rate = (int)cfg->baud_rate,
         .data_bits = UART_DATA_8_BITS,
         .parity    = UART_PARITY_DISABLE,
         .stop_bits = UART_STOP_BITS_1,
@@ -148,43 +148,67 @@ wink_status_t pal_uart_init(uint8_t port, wink_pin_t tx_pin, wink_pin_t rx_pin, 
 
     esp_err_t err = uart_param_config((uart_port_t)port, &uart_config);
     if (err != ESP_OK) {
-        if (rx_pin >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)rx_pin, "pal_uart_esp32");
-        if (tx_pin >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)tx_pin, "pal_uart_esp32");
+        if (cfg->rx_pin >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->rx_pin, "pal_uart_esp32");
+        if (cfg->tx_pin >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->tx_pin, "pal_uart_esp32");
         pal_resource_release(PAL_RESOURCE_UART_PORT, port, "pal_uart_esp32");
         pal_spinlock_unlock(&s_uart_lock);
         return WINK_ERR_HARDWARE;
     }
 
-    err = uart_set_pin((uart_port_t)port, (int)tx_pin, (int)rx_pin, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    err = uart_set_pin((uart_port_t)port, (int)cfg->tx_pin, (int)cfg->rx_pin, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     if (err != ESP_OK) {
-        if (rx_pin >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)rx_pin, "pal_uart_esp32");
-        if (tx_pin >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)tx_pin, "pal_uart_esp32");
+        if (cfg->rx_pin >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->rx_pin, "pal_uart_esp32");
+        if (cfg->tx_pin >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->tx_pin, "pal_uart_esp32");
         pal_resource_release(PAL_RESOURCE_UART_PORT, port, "pal_uart_esp32");
         pal_spinlock_unlock(&s_uart_lock);
         return WINK_ERR_HARDWARE;
     }
 
-    err = uart_driver_install((uart_port_t)port, UART_RX_BUF_SIZE, UART_TX_BUF_SIZE, 16, &p->uart_queue, 0);
+    uint32_t rx_buf_sz = cfg->rx_ring_buf_size ? cfg->rx_ring_buf_size : UART_RX_BUF_SIZE;
+    uint32_t tx_buf_sz = cfg->tx_ring_buf_size ? cfg->tx_ring_buf_size : UART_TX_BUF_SIZE;
+
+    err = uart_driver_install((uart_port_t)port, (int)rx_buf_sz, (int)tx_buf_sz, 16, &p->uart_queue, 0);
     if (err != ESP_OK) {
-        if (rx_pin >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)rx_pin, "pal_uart_esp32");
-        if (tx_pin >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)tx_pin, "pal_uart_esp32");
+        if (cfg->rx_pin >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->rx_pin, "pal_uart_esp32");
+        if (cfg->tx_pin >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->tx_pin, "pal_uart_esp32");
         pal_resource_release(PAL_RESOURCE_UART_PORT, port, "pal_uart_esp32");
         pal_spinlock_unlock(&s_uart_lock);
         return WINK_ERR_HARDWARE;
+    }
+
+    if (cfg->rx_idle_timeout_us > 0 && cfg->baud_rate > 0) {
+        uint8_t tout = (uint8_t)(((uint64_t)cfg->rx_idle_timeout_us * cfg->baud_rate) / 10000000ULL);
+        if (tout == 0) tout = 1;
+        uart_set_rx_timeout((uart_port_t)port, tout);
     }
 
     p->in_use = true;
-    p->tx_pin = tx_pin;
-    p->rx_pin = rx_pin;
-    p->baud_rate = baud_rate;
-    p->event_cb = NULL;
-    p->event_cb_arg = NULL;
+    p->tx_pin = cfg->tx_pin;
+    p->rx_pin = cfg->rx_pin;
+    p->baud_rate = cfg->baud_rate;
+    p->event_cb = cfg->event_cb;
+    p->event_cb_arg = cfg->event_cb_arg;
 
     /* Create background event task */
     xTaskCreate(esp32_uart_event_task, "uart_evt", 2048, (void *)(uintptr_t)port, 12, &p->event_task);
 
     pal_spinlock_unlock(&s_uart_lock);
     return WINK_OK;
+}
+
+WINK_WARN_UNUSED_RESULT
+wink_status_t pal_uart_init(uint8_t port, wink_pin_t tx_pin, wink_pin_t rx_pin, uint32_t baud_rate) {
+    pal_uart_config_ex_t cfg = {
+        .tx_pin = tx_pin,
+        .rx_pin = rx_pin,
+        .baud_rate = baud_rate,
+        .rx_ring_buf_size = 0,
+        .tx_ring_buf_size = 0,
+        .rx_idle_timeout_us = 0,
+        .event_cb = NULL,
+        .event_cb_arg = NULL,
+    };
+    return pal_uart_init_ex(port, &cfg);
 }
 
 void pal_uart_deinit(uint8_t port) {
@@ -279,11 +303,11 @@ wink_status_t pal_uart_write_async(uint8_t port, const uint8_t *buf, size_t len)
 #else
 
 /* Non-ESP32 fallback stubs for cross-compilation static analysis */
-WINK_WARN_UNUSED_RESULT wink_status_t pal_uart_init(uint8_t port, wink_pin_t tx_pin, wink_pin_t rx_pin, uint32_t baud_rate) { (void)port; (void)tx_pin; (void)rx_pin; (void)baud_rate; return WINK_ERR_NOT_SUPPORTED; }
+WINK_WARN_UNUSED_RESULT wink_status_t pal_uart_init(uint8_t port, wink_pin_t tx_pin, wink_pin_t rx_pin, uint32_t baud_rate) { (void)port; (void)tx_pin; (void)rx_pin; (void)baud_rate; return WINK_ERR_UNSUPPORTED; }
 void pal_uart_deinit(uint8_t port) { (void)port; }
-wink_status_t pal_uart_set_event_callback(uint8_t port, pal_uart_event_callback_t cb, void *arg) { (void)port; (void)cb; (void)arg; return WINK_ERR_NOT_SUPPORTED; }
-WINK_WARN_UNUSED_RESULT wink_status_t pal_uart_read(uint8_t port, uint8_t *buf, uint32_t len, uint32_t *out_read) { (void)port; (void)buf; (void)len; if (out_read) *out_read = 0; return WINK_ERR_NOT_SUPPORTED; }
-WINK_WARN_UNUSED_RESULT wink_status_t pal_uart_write(uint8_t port, const uint8_t *buf, uint32_t len) { (void)port; (void)buf; (void)len; return WINK_ERR_NOT_SUPPORTED; }
-WINK_WARN_UNUSED_RESULT wink_status_t pal_uart_write_async(uint8_t port, const uint8_t *buf, size_t len) { (void)port; (void)buf; (void)len; return WINK_ERR_NOT_SUPPORTED; }
+wink_status_t pal_uart_set_event_callback(uint8_t port, pal_uart_event_callback_t cb, void *arg) { (void)port; (void)cb; (void)arg; return WINK_ERR_UNSUPPORTED; }
+WINK_WARN_UNUSED_RESULT wink_status_t pal_uart_read(uint8_t port, uint8_t *buf, uint32_t len, uint32_t *out_read) { (void)port; (void)buf; (void)len; if (out_read) *out_read = 0; return WINK_ERR_UNSUPPORTED; }
+WINK_WARN_UNUSED_RESULT wink_status_t pal_uart_write(uint8_t port, const uint8_t *buf, uint32_t len) { (void)port; (void)buf; (void)len; return WINK_ERR_UNSUPPORTED; }
+WINK_WARN_UNUSED_RESULT wink_status_t pal_uart_write_async(uint8_t port, const uint8_t *buf, size_t len) { (void)port; (void)buf; (void)len; return WINK_ERR_UNSUPPORTED; }
 
 #endif

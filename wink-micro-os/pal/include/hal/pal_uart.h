@@ -48,8 +48,19 @@ typedef void (*pal_uart_event_callback_t)(uint8_t port,
                                           size_t len,
                                           void *arg);
 
+typedef struct {
+    wink_pin_t                tx_pin;
+    wink_pin_t                rx_pin;
+    uint32_t                  baud_rate;
+    uint32_t                  rx_ring_buf_size;   /**< Size of RX ring buffer in bytes (0 = default 1024) */
+    uint32_t                  tx_ring_buf_size;   /**< Size of TX ring buffer in bytes (0 = default 512) */
+    uint32_t                  rx_idle_timeout_us; /**< Idle line timeout in us for frame dispatch (0 = default 10 baud symbols) */
+    pal_uart_event_callback_t event_cb;           /**< Optional initial event callback */
+    void                     *event_cb_arg;       /**< Optional callback argument */
+} pal_uart_config_ex_t;
+
 /**
- * @brief Initialize specified physical UART port
+ * @brief Initialize specified physical UART port with default ring buffers
  * @param[in] port UART hardware port ID (0..PAL_UART_PORT_MAX-1)
  * @param[in] tx_pin Physical TX GPIO pin number
  * @param[in] rx_pin Physical RX GPIO pin number
@@ -58,6 +69,15 @@ typedef void (*pal_uart_event_callback_t)(uint8_t port,
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_uart_init(uint8_t port, wink_pin_t tx_pin, wink_pin_t rx_pin, uint32_t baud_rate);
+
+/**
+ * @brief Initialize specified physical UART port with extended ring buffer & idle timeout configuration
+ * @param[in] port UART hardware port ID (0..PAL_UART_PORT_MAX-1)
+ * @param[in] cfg Pointer to extended UART configuration
+ * @return WINK_OK on success, error status code otherwise
+ */
+WINK_WARN_UNUSED_RESULT
+wink_status_t pal_uart_init_ex(uint8_t port, const pal_uart_config_ex_t *cfg);
 
 /**
  * @brief Deinitialize specified physical UART port

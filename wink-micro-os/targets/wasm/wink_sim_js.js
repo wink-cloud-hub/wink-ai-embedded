@@ -121,6 +121,12 @@ addToLibrary({
             return Module['js_pal_uart_write'](port, buf, len);
         }
     },
+    js_pal_rmt_tx: function (channel, symbolsPtr, count, resolutionHz) {
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_rmt_tx'] === 'function' && Module['js_pal_rmt_tx'] !== _js_pal_rmt_tx) {
+            return Module['js_pal_rmt_tx'](channel, symbolsPtr, count, resolutionHz);
+        }
+        return 1;
+    },
 
     /* ---- CH3: Analog ADC (normalised [0,1] read) ---- */
     js_pal_adc_read_norm: function (pin) {

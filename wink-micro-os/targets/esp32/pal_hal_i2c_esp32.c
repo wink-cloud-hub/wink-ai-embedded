@@ -345,6 +345,37 @@ wink_status_t pal_i2c_scan(uint8_t port, uint8_t start_addr, uint8_t end_addr,
     }
     return WINK_OK;
 }
+
+static void pal_i2c_bus_recovery_pulses(uint8_t sda_pin, uint8_t scl_pin) {
+    gpio_config_t io_conf = {
+        .mode = GPIO_MODE_INPUT_OUTPUT_OD,
+        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+        .pin_bit_mask = (1ULL << sda_pin) | (1ULL << scl_pin),
+    };
+    gpio_config(&io_conf);
+    gpio_set_level((gpio_num_t)sda_pin, 1);
+    gpio_set_level((gpio_num_t)scl_pin, 1);
+    pal_os_busy_wait_us(10);
+
+    /* Generate 9 SCL clock pulses to release stuck I2C slave devices */
+    for (int i = 0; i < 9; i++) {
+        gpio_set_level((gpio_num_t)scl_pin, 0);
+        pal_os_busy_wait_us(5);
+        gpio_set_level((gpio_num_t)scl_pin, 1);
+        pal_os_busy_wait_us(5);
+    }
+
+    /* Send STOP condition: SDA goes LOW then HIGH while SCL is HIGH */
+    gpio_set_level((gpio_num_t)sda_pin, 0);
+    pal_os_busy_wait_us(5);
+    gpio_set_level((gpio_num_t)scl_pin, 1);
+    pal_os_busy_wait_us(5);
+    gpio_set_level((gpio_num_t)sda_pin, 1);
+    pal_os_busy_wait_us(5);
+}
+
 wink_status_t pal_i2c_bus_init(uint8_t port, uint8_t sda, uint8_t scl, uint32_t hz) {
     if (port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
 
@@ -362,6 +393,9 @@ wink_status_t pal_i2c_bus_init(uint8_t port, uint8_t sda, uint8_t scl, uint32_t 
         xSemaphoreGive(mutex);
         return WINK_OK;
     }
+
+    /* Recover any stuck slave devices on the bus before initializing hardware controller */
+    pal_i2c_bus_recovery_pulses(sda, scl);
 
 #if WINK_I2C_USE_V6_API
     i2c_master_bus_config_t bus_cfg = {

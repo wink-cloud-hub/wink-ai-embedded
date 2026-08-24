@@ -16,6 +16,7 @@ add_library(pal_host OBJECT
     pal_hal_uart_host.c
     pal_hal_hwtimer_host.c
     pal_hal_mcpwm_host.c
+    pal_dma_host.c
     pal_log_host.c
     ${WINK_OSAL_SOURCES}
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/pal_resource.c

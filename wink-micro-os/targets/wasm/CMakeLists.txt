@@ -13,9 +13,11 @@ set(PAL_WASM_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_hwtimer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_mcpwm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_pcnt.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_rmt.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_waveform.c
     # Support & Fault Domain (Axis F)
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_log_wasm.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/pal_dma_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_irq.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_storage_wasm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pal_wasm_degradation.c

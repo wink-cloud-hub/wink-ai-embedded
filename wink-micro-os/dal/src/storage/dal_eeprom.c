@@ -43,8 +43,9 @@ wink_status_t dal_eeprom_request_read(dal_eeprom_t *dev, uint32_t addr, uint32_t
     addr_buf[0] = (uint8_t)((addr >> 8) & 0xFF);
     addr_buf[1] = (uint8_t)(addr & 0xFF);
 
+    uint8_t *dst = (dev->req_buf != NULL) ? dev->req_buf : s_eeprom_rx_buf;
     wink_status_t st = pal_i2c_transfer(dev->config.i2c_port, dev->config.i2c_addr,
-                                        addr_buf, 2, s_eeprom_rx_buf, len);
+                                        addr_buf, 2, dst, len);
 
     dev->last_status = st;
     dev->state = (st == WINK_OK) ? DAL_EEPROM_READY : DAL_EEPROM_ERROR;
@@ -91,7 +92,10 @@ wink_status_t dal_eeprom_get_read_result(dal_eeprom_t *dev, uint8_t *buf, uint32
     if (dev->state != DAL_EEPROM_READY) { return WINK_ERR_INVALID_STATE; }
 
     uint32_t copy_len = (len < dev->req_len) ? len : dev->req_len;
-    memcpy(buf, s_eeprom_rx_buf, copy_len);
+    uint8_t *src = (dev->req_buf != NULL) ? dev->req_buf : s_eeprom_rx_buf;
+    if (buf != src) {
+        memcpy(buf, src, copy_len);
+    }
     dev->state = DAL_EEPROM_IDLE;
     return WINK_OK;
 }
@@ -103,9 +107,12 @@ wink_status_t dal_eeprom_read_blocking(dal_eeprom_t *dev, uint32_t addr,
     if (dev == NULL || buf == NULL) { return WINK_ERR_INVALID_ARG; }
     WINK_ASSERT_NONBLOCKING();
 
+    dev->req_buf = buf;
     wink_status_t st = dal_eeprom_request_read(dev, addr, len);
+    dev->req_buf = NULL;
     if (st != WINK_OK) return st;
-    return dal_eeprom_get_read_result(dev, buf, len);
+    dev->state = DAL_EEPROM_IDLE;
+    return WINK_OK;
 }
 
 wink_status_t dal_eeprom_write_blocking(dal_eeprom_t *dev, uint32_t addr,
