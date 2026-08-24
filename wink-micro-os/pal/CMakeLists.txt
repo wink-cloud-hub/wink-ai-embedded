@@ -11,6 +11,7 @@ add_library(pal INTERFACE)
 target_include_directories(pal INTERFACE
     include
     include/osal
+    include/hal
 )
 
 # Generated configuration header (wink_config.h) directory

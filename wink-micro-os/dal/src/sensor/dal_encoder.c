@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #define LOG_TAG "dal_encoder"
 #include "sensor/dal_encoder.h"
+#include "hal/pal_gpio.h"
 #include "pal_resource.h"
 #include "pal_irq.h"
 #include "pal_log.h"
