@@ -7,7 +7,7 @@
 #define DAL_LOAD_CELL_SENSOR_H
 
 #include "wink_status.h"
-#include "pal_hal.h"
+#include "hal/pal_pin_types.h"
 
 #ifdef __cplusplus
 extern "C" {

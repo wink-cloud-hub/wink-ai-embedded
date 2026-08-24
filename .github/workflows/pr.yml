@@ -35,17 +35,9 @@ jobs:
         run: |
           pip install winkcli pytest || pip install pyyaml jinja2 rich pytest
 
-      - name: Run Embedded CI Integrity Guards
+      - name: Run Architecture & Safety Linter (Unified Guards)
         run: |
-          python wink-micro-os/scripts/check_wasm_abi_hash.py
-          python wink-micro-os/scripts/check_wasm_stub_symbols.py
-          python wink-micro-os/scripts/check_isr_no_log.py
-          python wink-micro-os/scripts/check_isr_iram_flag.py
-
-      - name: Run Architecture & Safety Linter (Canary)
-        run: |
-          python wink-micro-os/tools/run_lint.py --pack layering --pack api --pack dal --baseline .github/lint-baseline.json
-        continue-on-error: true
+          python wink-micro-os/tools/run_lint.py --pack isr_safety --pack wasm_parity --pack layering --pack api --pack dal --baseline .github/lint-baseline.json
 
       - name: Configure CMake (Host)
         run: |
