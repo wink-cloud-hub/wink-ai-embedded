@@ -2079,6 +2079,7 @@ var _pal_wasm_report_oom = Module['_pal_wasm_report_oom'] = createExportWrapper(
 var _pal_wasm_push_uart_rx_error = Module['_pal_wasm_push_uart_rx_error'] = createExportWrapper('pal_wasm_push_uart_rx_error', 2);
 var _pal_wasm_get_uart_rx_available = Module['_pal_wasm_get_uart_rx_available'] = createExportWrapper('pal_wasm_get_uart_rx_available', 1);
 var _pal_wasm_get_pwm_duty_percent = Module['_pal_wasm_get_pwm_duty_percent'] = createExportWrapper('pal_wasm_get_pwm_duty_percent', 1);
+var _pal_wasm_inject_rmt_rx = Module['_pal_wasm_inject_rmt_rx'] = createExportWrapper('pal_wasm_inject_rmt_rx', 3);
 var _pal_wasm_cancel_waveform_generation = Module['_pal_wasm_cancel_waveform_generation'] = createExportWrapper('pal_wasm_cancel_waveform_generation', 2);
 var _pal_wasm_drain_due_waveform_edges = Module['_pal_wasm_drain_due_waveform_edges'] = createExportWrapper('pal_wasm_drain_due_waveform_edges', 1);
 var _pal_wasm_get_waveform_overflow_count = Module['_pal_wasm_get_waveform_overflow_count'] = createExportWrapper('pal_wasm_get_waveform_overflow_count', 0);
