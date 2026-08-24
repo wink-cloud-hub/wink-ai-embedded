@@ -243,9 +243,3 @@ wink_status_t pal_test_disable_hardware_loopback(wink_pin_t pin_out, wink_pin_t 
     (void)pin_out; (void)pin_in;
     return WINK_ERR_UNSUPPORTED;
 }
-
-wink_status_t pal_rmt_pulse_capture_init(wink_pin_t pin, uint8_t start_edge) {
-    (void)pin;
-    (void)start_edge;
-    return WINK_ERR_UNSUPPORTED;
-}
