@@ -14,7 +14,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "wink_status.h"
-#include "hal/pal_hal.h"
+#include "hal/pal_pin_types.h"
 
 #ifdef __cplusplus
 extern "C" {

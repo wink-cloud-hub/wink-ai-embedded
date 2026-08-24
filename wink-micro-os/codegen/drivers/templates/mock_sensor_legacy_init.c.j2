@@ -1,0 +1,7 @@
+    static const dal_mock_sensor_legacy_config_t {{ name }}_cfg = {
+        .owner = "{{ name }}",
+
+        .gpio_pin = {{ gpio_pin }},
+
+    };
+    WINK_TRY(dal_mock_sensor_legacy_init(&{{ name }}, &{{ name }}_cfg));

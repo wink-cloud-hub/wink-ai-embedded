@@ -77,7 +77,7 @@ void pal_wasm_set_prng_state(uint32_t state)
     g_sim.prng_state = state;
 }
 
-#define PAL_WASM_ABI_HASH 0x50333038u
+#define PAL_WASM_ABI_HASH 0x3D75955Eu
 
 EMSCRIPTEN_KEEPALIVE
 uint32_t pal_wasm_get_abi_hash(void)
