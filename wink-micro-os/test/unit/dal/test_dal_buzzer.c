@@ -7,7 +7,7 @@
 #include "wink_status.h"
 #include "output/dal_buzzer.h"
 #include "pal_resource.h"
-#include "pal_pwm_router.h"
+#include "hal/pal_pwm_router.h"
 
 static const char *const OWNER = "test_dal_buzzer";
 

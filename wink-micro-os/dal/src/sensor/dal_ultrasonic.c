@@ -3,7 +3,7 @@
 
 #include "dal_ultrasonic.h"
 
-#include "pal_hal.h"
+#include "hal/pal_gpio.h"
 #include "pal_osal.h"
 #include "pal_resource.h"
 #include "hal/pal_rmt.h"

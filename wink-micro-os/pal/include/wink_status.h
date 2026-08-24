@@ -125,10 +125,6 @@ static inline int wink_status_is_success(wink_status_t s) {
     return s == WINK_OK;
 }
 
-#ifndef PAL_PWM_CHANNELS
-#define PAL_PWM_CHANNELS 8
-#endif
-
 #ifndef WINK_MAX_SOFT_TIMERS
 #define WINK_MAX_SOFT_TIMERS 16
 #endif

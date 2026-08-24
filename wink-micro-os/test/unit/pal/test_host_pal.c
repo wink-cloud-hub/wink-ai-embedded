@@ -7,7 +7,7 @@
 #include "pal_hal.h"
 #include "internal/pal_test_loopback.h"
 #include "pal_osal.h"
-#include "pal_pwm_router.h"
+#include "hal/pal_pwm_router.h"
 #include "pal_resource.h"
 #include "host_test_ctrl.h"
 

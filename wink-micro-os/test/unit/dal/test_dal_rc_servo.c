@@ -6,7 +6,7 @@
 #include "unity.h"
 #include "wink_status.h"
 #include "dal_rc_servo.h"
-#include "pal_pwm_router.h"
+#include "hal/pal_pwm_router.h"
 #include "pal_resource.h"
 #include "host_test_ctrl.h"
 
@@ -128,8 +128,9 @@ void test_explicit_max_angle_2700_no_clamp_at_2000(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_rc_servo_set_angle(&s, 2000));
     TEST_ASSERT_EQUAL_UINT16(2000, s.current_angle_ddeg);
     uint32_t pulse_us = 500 + ((uint32_t)2000 * 2000u) / 2700u;
-    float expected_duty = ((float)pulse_us / 20000.0f) * 100.0f;
-    TEST_ASSERT_FLOAT_WITHIN(0.001f, expected_duty, sim_last_pwm_duty(2));
+    uint16_t expected_bp = (uint16_t)(((uint32_t)pulse_us * 10000u + 10000u) / 20000u);
+    float expected_duty = (float)expected_bp / 100.0f;
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, expected_duty, sim_last_pwm_duty(2));
 }
 
 void test_safe_off_null_returns_invalid_arg(void) {

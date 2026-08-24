@@ -3,8 +3,8 @@
  * @file pal_hal_pwm_esp32.c
  * @brief ESP32 target PAL HAL PWM (LEDC) subsystem implementation.
  */
-#include "pal_hal.h"
-#include "pal_pwm_router.h"
+#include "hal/pal_pwm.h"
+#include "hal/pal_pwm_router.h"
 #include "pal_resource.h"
 
 #if defined(ESP_PLATFORM)
@@ -55,7 +55,7 @@ wink_status_t pal_pwm_init_ex(uint8_t channel, const pal_pwm_config_t *cfg)
         return rc;
     }
 
-    wink_pin_t pin = pal_pwm_pin_map[channel];
+    wink_pin_t pin = (cfg->pin != WINK_PIN_NC) ? cfg->pin : pal_pwm_pin_map[channel];
     if (pin >= 0) {
         rc = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, "pal_pwm_esp32");
         if (rc != WINK_OK) {
@@ -109,7 +109,7 @@ wink_status_t pal_pwm_init_ex(uint8_t channel, const pal_pwm_config_t *cfg)
     }
 
     ledc_channel_config_t ch_cfg = {
-        .gpio_num = pal_pwm_pin_map[channel],
+        .gpio_num = (pin >= 0) ? (int)pin : (int)pal_pwm_pin_map[channel],
         .speed_mode = LEDC_LOW_SPEED_MODE,
         .channel = (ledc_channel_t)channel,
         .intr_type = LEDC_INTR_DISABLE,
@@ -129,18 +129,31 @@ wink_status_t pal_pwm_init_ex(uint8_t channel, const pal_pwm_config_t *cfg)
     return WINK_OK;
 }
 
-wink_status_t pal_pwm_set_duty(uint8_t channel, float duty_percent) {
-    if (!pal_pwm_router_channel_ready(channel)) { return WINK_ERR_INVALID_ARG; }
-    if (duty_percent < 0.0f) { duty_percent = 0.0f; }
-    if (duty_percent > 100.0f) { duty_percent = 100.0f; }
+wink_status_t pal_pwm_set_duty_bp(uint8_t channel, uint16_t basis_points) {
+    if (!pal_pwm_router_channel_ready(channel)) { return WINK_ERR_INVALID_STATE; }
+    if (basis_points > 10000u) { return WINK_ERR_INVALID_ARG; }
 
-    uint32_t duty = pal_pwm_percent_to_raw(duty_percent, s_ch_bits[channel]);
+    uint32_t top = (1u << s_ch_bits[channel]) - 1u;
+    uint32_t duty = (uint32_t)(((uint64_t)basis_points * (uint64_t)top + 5000ull) / 10000ull);
+    if (duty > top) { duty = top; }
+
     esp_err_t err = ledc_set_duty(LEDC_LOW_SPEED_MODE, (ledc_channel_t)channel, duty);
     if (err != ESP_OK) { return WINK_ERR_HARDWARE; }
     err = ledc_update_duty(LEDC_LOW_SPEED_MODE, (ledc_channel_t)channel);
     if (err != ESP_OK) { return WINK_ERR_HARDWARE; }
     return WINK_OK;
 }
+
+#ifndef PAL_PWM_HIDE_FLOAT_API
+wink_status_t pal_pwm_set_duty(uint8_t channel, float duty_percent) {
+    if (duty_percent < 0.0f) { duty_percent = 0.0f; }
+    if (duty_percent > 100.0f) { duty_percent = 100.0f; }
+    /* Convert 0.0%..100.0% to basis points 0..10000 */
+    uint16_t bp = (uint16_t)(duty_percent * 100.0f + 0.5f);
+    if (bp > 10000u) { bp = 10000u; }
+    return pal_pwm_set_duty_bp(channel, bp);
+}
+#endif
 
 wink_status_t pal_pwm_set_freq(uint8_t channel, uint32_t freq_hz) {
     if (!pal_pwm_router_channel_ready(channel) || freq_hz == 0u) {
@@ -153,8 +166,8 @@ wink_status_t pal_pwm_set_freq(uint8_t channel, uint32_t freq_hz) {
     return pal_pwm_router_set_freq(channel, freq_hz);
 }
 
-void pal_pwm_deinit(uint8_t channel) {
-    if (!pal_pwm_router_channel_ready(channel)) { return; }
+wink_status_t pal_pwm_deinit(uint8_t channel) {
+    if (!pal_pwm_router_channel_ready(channel)) { return WINK_ERR_INVALID_STATE; }
     (void)ledc_set_duty(LEDC_LOW_SPEED_MODE, (ledc_channel_t)channel, 0);
     (void)ledc_update_duty(LEDC_LOW_SPEED_MODE, (ledc_channel_t)channel);
     (void)ledc_stop(LEDC_LOW_SPEED_MODE, (ledc_channel_t)channel, 0);
@@ -166,6 +179,7 @@ void pal_pwm_deinit(uint8_t channel) {
         pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, "pal_pwm_esp32");
     }
     pal_resource_release(PAL_RESOURCE_PWM_CHANNEL, channel, "pal_pwm_esp32");
+    return WINK_OK;
 }
 
 wink_status_t pal_pwm_channel_pin(uint8_t channel, wink_pin_t *out_pin) {
@@ -183,10 +197,18 @@ wink_status_t pal_pwm_init(uint8_t channel, uint32_t freq_hz)
 wink_status_t pal_pwm_init_ex(uint8_t channel, const pal_pwm_config_t *cfg)
 { (void)channel; (void)cfg; return WINK_ERR_UNSUPPORTED; }
 
+wink_status_t pal_pwm_set_duty_bp(uint8_t channel, uint16_t basis_points)
+{ (void)channel; (void)basis_points; return WINK_ERR_UNSUPPORTED; }
+
+#ifndef PAL_PWM_HIDE_FLOAT_API
 wink_status_t pal_pwm_set_duty(uint8_t channel, float duty_percent)
 { (void)channel; (void)duty_percent; return WINK_ERR_UNSUPPORTED; }
+#endif
 
-void pal_pwm_deinit(uint8_t channel) { (void)channel; }
+wink_status_t pal_pwm_set_freq(uint8_t channel, uint32_t freq_hz)
+{ (void)channel; (void)freq_hz; return WINK_ERR_UNSUPPORTED; }
+
+wink_status_t pal_pwm_deinit(uint8_t channel) { (void)channel; return WINK_ERR_UNSUPPORTED; }
 
 wink_status_t pal_pwm_channel_pin(uint8_t channel, wink_pin_t *out_pin)
 { (void)channel; (void)out_pin; return WINK_ERR_UNSUPPORTED; }

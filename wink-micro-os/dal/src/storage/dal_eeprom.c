@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "dal_eeprom.h"
-#include "pal_hal.h"
+#include "hal/pal_i2c.h"
 #include "pal_osal.h"
 #include "pal_resource.h"
 #include "wink_pt_debug.h"

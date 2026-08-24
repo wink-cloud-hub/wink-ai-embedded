@@ -10,14 +10,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "wink_status.h"
-#include "hal/pal_hal.h"
+#include "hal/pal_pin_types.h"
+#include "hal/pal_target_caps.h"
 
 #ifdef __cplusplus
 extern "C" {
-#endif
-
-#ifndef PAL_ADC_CHANNELS
-#define PAL_ADC_CHANNELS 16
 #endif
 
 typedef uint8_t pal_adc_channel_t;

@@ -4,7 +4,7 @@
  * @brief Minimal stubs so pal_hal_wasm.c links under a focused emcc test build.
  *        Only symbols required by GPIO read/write/init path + TU-referenced deps.
  */
-#include "pal_pwm_router.h"
+#include "hal/pal_pwm_router.h"
 #include "pal_wasm_common.h"
 #include "wink_sim_physical.h"
 #include "wasm_bridge.h"

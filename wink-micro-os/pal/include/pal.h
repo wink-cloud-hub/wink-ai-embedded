@@ -10,9 +10,14 @@
 #define PAL_H
 
 #include "wink_status.h"
-#include "pal_hal.h"
+#include "hal/pal_target_caps.h"
+#include "hal/pal_pin_types.h"
+#include "hal/pal_gpio.h"
+#include "hal/pal_pwm.h"
 #include "hal/pal_i2c.h"
 #include "hal/pal_adc.h"
+#include "hal/pal_spi.h"
+#include "hal/pal_uart.h"
 #include "pal_osal.h"
 #include "pal_log.h"
 #include "pal_resource.h"

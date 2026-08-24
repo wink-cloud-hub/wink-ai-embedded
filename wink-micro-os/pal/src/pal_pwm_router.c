@@ -6,7 +6,7 @@
  * ADR-0034: Timer profile allocation manager.
  * Shared implementation across Host, Wasm, and ESP32 targets.
  */
-#include "pal_pwm_router.h"
+#include "hal/pal_pwm_router.h"
 
 typedef struct {
     pal_pwm_timer_profile_t profile;

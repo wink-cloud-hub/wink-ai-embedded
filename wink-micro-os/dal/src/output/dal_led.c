@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #define LOG_TAG "dal_led"
 #include "output/dal_led.h"
-#include "pal_hal.h"
+#include "hal/pal_gpio.h"
 #include "pal_resource.h"
 #include "pal_log.h"
 #include <string.h>
