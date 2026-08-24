@@ -91,7 +91,7 @@ uint32_t pal_wasm_get_uart_rx_available(uint8_t port)
     return pal_os_ringbuf_used(s_uart_rx_fifo[port]);
 }
 
-wink_status_t pal_uart_init(uint8_t port, uint8_t tx_pin, uint8_t rx_pin, uint32_t baud_rate)
+wink_status_t pal_uart_init(uint8_t port, wink_pin_t tx_pin, wink_pin_t rx_pin, uint32_t baud_rate)
 {
     (void)tx_pin;
     (void)rx_pin;

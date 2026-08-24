@@ -42,7 +42,7 @@ typedef enum {
  * Phase 0: duration0_ticks at level0 (0 or 1)
  * Phase 1: duration1_ticks at level1 (0 or 1)
  */
-typedef struct {
+typedef struct pal_rmt_symbol_s {
     uint16_t duration0_ticks; /**< Duration of phase 0 in timer ticks (0..32767) */
     uint16_t duration1_ticks; /**< Duration of phase 1 in timer ticks (0..32767) */
     uint8_t  level0;          /**< Output level for phase 0 (0 or 1) */
