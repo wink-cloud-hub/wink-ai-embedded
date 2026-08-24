@@ -8,7 +8,10 @@ include(${WINK_MICRO_OS_ROOT}/core_sources.cmake)
 if(ESP_PLATFORM)
     # Define fallback OSAL variables for the isolated ESP-IDF component registration context
     if(NOT WINK_OSAL_SOURCES)
-        set(WINK_OSAL_SOURCES "${WINK_MICRO_OS_ROOT}/osal/freertos_esp32/pal_osal_freertos_esp32.c")
+        set(WINK_OSAL_SOURCES
+            "${WINK_MICRO_OS_ROOT}/osal/freertos_esp32/pal_osal_freertos_esp32.c"
+            "${WINK_MICRO_OS_ROOT}/osal/freertos_esp32/pal_deferred_freertos.c"
+        )
     endif()
     if(NOT WINK_OSAL_INCLUDE_DIRS)
         set(WINK_OSAL_INCLUDE_DIRS "${WINK_MICRO_OS_ROOT}/osal/freertos_esp32")
@@ -38,9 +41,10 @@ if(ESP_PLATFORM)
             esp_driver_pcnt
             esp_driver_gptimer
             esp_driver_mcpwm
+            esp_driver_gdma
         )
     else()
-        set(WINK_ESP_DRIVER_COMPONENTS driver)
+        message(FATAL_ERROR "ESP-IDF >= 5.4 required for wink-micro-os esp32 target (found: ${ESP_IDF_VERSION})")
     endif()
 
     idf_component_register(
@@ -57,6 +61,7 @@ if(ESP_PLATFORM)
             pal_hal_hwtimer_esp32.c
             pal_hal_mcpwm_esp32.c
             pal_irq_esp32.c
+            pal_dma_esp32.c
             ${WINK_OSAL_SOURCES}
             pal_resource_esp32.c
             pal_storage_esp32.c
@@ -137,6 +142,7 @@ elseif(TARGET_PLATFORM STREQUAL "esp32")
         pal_hal_hwtimer_esp32.c
         pal_hal_mcpwm_esp32.c
         pal_irq_esp32.c
+        pal_dma_esp32.c
         ${WINK_OSAL_SOURCES}
         pal_resource_esp32.c
         pal_storage_esp32.c

@@ -29,6 +29,14 @@
 #  define WINK_WEAK_ALIAS(weak_func, default_func)
 #endif
 
+#if defined(__GNUC__) || defined(__clang__)
+#  define PAL_DMA_BUF_ALIGN __attribute__((aligned(32)))
+#elif defined(_MSC_VER)
+#  define PAL_DMA_BUF_ALIGN __declspec(align(32))
+#else
+#  define PAL_DMA_BUF_ALIGN
+#endif
+
 #if defined(ESP_PLATFORM)
 #  include "esp_attr.h"
 #  define PAL_IRAM_TEXT     IRAM_ATTR        /* ISR 函数 */

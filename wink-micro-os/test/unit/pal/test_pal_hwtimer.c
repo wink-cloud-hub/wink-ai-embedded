@@ -134,9 +134,21 @@ void test_hwtimer_change_period(void) {
     pal_hwtimer_deinit(0);
 }
 
+void test_hwtimer_fpu_rejection(void) {
+    pal_hwtimer_cfg_t cfg = {
+        .timer_id = 0,
+        .period_us = 50,
+        .uses_fpu = true,
+        .callback = test_timer_isr_cb,
+    };
+
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, pal_hwtimer_init(&cfg));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_hwtimer_init_deinit);
+    RUN_TEST(test_hwtimer_fpu_rejection);
     RUN_TEST(test_hwtimer_periodic_fire_soft);
     RUN_TEST(test_hwtimer_oneshot_fire_soft);
     RUN_TEST(test_hwtimer_change_period);

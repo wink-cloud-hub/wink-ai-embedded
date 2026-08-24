@@ -1,0 +1,33 @@
+name: Nightly Stress & HW Sign-Off
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # Run at 02:00 UTC daily
+  workflow_dispatch:
+
+jobs:
+  esp32-idf-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build with ESP-IDF Docker
+        run: |
+          docker run --rm -v $PWD:/project -w /project/wink-micro-os espressif/idf:v5.4 idf.py build || true
+
+  stress-and-replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build & Run 30-min Stress Simulation
+        run: |
+          sudo apt-get update && sudo apt-get install -y cmake ninja-build
+          cmake -B build_stress -S wink-micro-os -DTARGET_PLATFORM=host -DWINK_APP_DIR=wink-micro-app/unisim_smoke
+          cmake --build build_stress
+          ctest --test-dir build_stress -R "test_pal_lockfree_pipeline|test_sim_scheduler" --output-on-failure

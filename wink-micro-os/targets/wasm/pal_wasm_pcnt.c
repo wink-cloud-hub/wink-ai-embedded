@@ -9,70 +9,76 @@
 
 #define WASM_PCNT_UNITS_MAX 4
 
-typedef struct {
-    bool             in_use;
-    bool             is_running;
+struct pal_pcnt_unit_s {
+    bool              in_use;
     pal_pcnt_config_t cfg;
-    int64_t          count;
-} wasm_pcnt_slot_t;
+    int64_t           count;
+    uint32_t          filter_ns;
+};
 
-static wasm_pcnt_slot_t s_pcnt[WASM_PCNT_UNITS_MAX];
+static struct pal_pcnt_unit_s s_pcnt[WASM_PCNT_UNITS_MAX];
 
 WINK_WARN_UNUSED_RESULT
-wink_status_t pal_pcnt_init(const pal_pcnt_config_t *cfg, pal_pcnt_handle_t *out_handle) {
-    if (cfg == NULL || out_handle == NULL || cfg->unit >= WASM_PCNT_UNITS_MAX) {
+wink_status_t pal_pcnt_init(const pal_pcnt_config_t *cfg, pal_pcnt_unit_handle_t *out_handle) {
+    if (cfg == NULL || out_handle == NULL) {
         return WINK_ERR_INVALID_ARG;
     }
-    wasm_pcnt_slot_t *slot = &s_pcnt[cfg->unit];
-    if (slot->in_use) {
-        return WINK_ERR_BUSY;
+
+    struct pal_pcnt_unit_s *slot = NULL;
+    for (int i = 0; i < WASM_PCNT_UNITS_MAX; i++) {
+        if (!s_pcnt[i].in_use) {
+            slot = &s_pcnt[i];
+            break;
+        }
     }
+    if (slot == NULL) {
+        return WINK_ERR_RESOURCE_EXHAUSTED;
+    }
+
     slot->in_use = true;
-    slot->is_running = false;
     slot->cfg = *cfg;
     slot->count = 0;
+    slot->filter_ns = cfg->filter_ns;
 
-    *out_handle = (pal_pcnt_handle_t)slot;
+    *out_handle = slot;
     return WINK_OK;
 }
 
-wink_status_t pal_pcnt_start(pal_pcnt_handle_t handle) {
-    if (handle == NULL) return WINK_ERR_INVALID_ARG;
-    wasm_pcnt_slot_t *slot = (wasm_pcnt_slot_t *)handle;
-    slot->is_running = true;
+wink_status_t pal_pcnt_deinit(pal_pcnt_unit_handle_t handle) {
+    if (handle == NULL || !handle->in_use) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    handle->in_use = false;
+    handle->count = 0;
     return WINK_OK;
 }
 
-wink_status_t pal_pcnt_stop(pal_pcnt_handle_t handle) {
-    if (handle == NULL) return WINK_ERR_INVALID_ARG;
-    wasm_pcnt_slot_t *slot = (wasm_pcnt_slot_t *)handle;
-    slot->is_running = false;
+wink_status_t pal_pcnt_get_count(pal_pcnt_unit_handle_t handle, int64_t *count_out) {
+    if (handle == NULL || !handle->in_use || count_out == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    *count_out = handle->count;
     return WINK_OK;
 }
 
-wink_status_t pal_pcnt_get_count(pal_pcnt_handle_t handle, int64_t *out_count) {
-    if (handle == NULL || out_count == NULL) return WINK_ERR_INVALID_ARG;
-    wasm_pcnt_slot_t *slot = (wasm_pcnt_slot_t *)handle;
-    *out_count = slot->count;
+wink_status_t pal_pcnt_clear(pal_pcnt_unit_handle_t handle) {
+    if (handle == NULL || !handle->in_use) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    handle->count = 0;
     return WINK_OK;
 }
 
-wink_status_t pal_pcnt_clear_count(pal_pcnt_handle_t handle) {
-    if (handle == NULL) return WINK_ERR_INVALID_ARG;
-    wasm_pcnt_slot_t *slot = (wasm_pcnt_slot_t *)handle;
-    slot->count = 0;
+wink_status_t pal_pcnt_set_glitch_filter(pal_pcnt_unit_handle_t handle, uint32_t filter_ns) {
+    if (handle == NULL || !handle->in_use) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    handle->filter_ns = filter_ns;
     return WINK_OK;
-}
-
-void pal_pcnt_deinit(pal_pcnt_handle_t handle) {
-    if (handle == NULL) return;
-    wasm_pcnt_slot_t *slot = (wasm_pcnt_slot_t *)handle;
-    slot->in_use = false;
-    slot->is_running = false;
 }
 
 void pal_wasm_push_pcnt_edge(uint8_t unit, int32_t delta) {
-    if (unit < WASM_PCNT_UNITS_MAX && s_pcnt[unit].in_use && s_pcnt[unit].is_running) {
+    if (unit < WASM_PCNT_UNITS_MAX && s_pcnt[unit].in_use) {
         s_pcnt[unit].count += delta;
     }
 }

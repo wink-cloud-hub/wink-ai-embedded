@@ -47,6 +47,34 @@ uint64_t pal_os_get_ms(void);
  */
 uint64_t pal_os_get_us(void);
 
+#if defined(_MSC_VER) && (defined(_M_X64) || defined(_M_IX86))
+#include <intrin.h>
+#endif
+
+/**
+ * @brief Get CPU cycle counter (for ultra-high precision sub-microsecond delta timing)
+ * @return Monotonic CPU cycle count
+ */
+static inline uint32_t pal_os_get_cycles(void) {
+#if defined(__xtensa__)
+    uint32_t ccount;
+    __asm__ __volatile__("rsr %0, ccount" : "=a"(ccount));
+    return ccount;
+#elif defined(__riscv)
+    uint32_t ccount;
+    __asm__ __volatile__("rdcycle %0" : "=r"(ccount));
+    return ccount;
+#elif defined(_MSC_VER) && (defined(_M_X64) || defined(_M_IX86))
+    return (uint32_t)__rdtsc();
+#elif defined(__x86_64__) || defined(__i386__)
+    uint32_t lo, hi;
+    __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));
+    return lo;
+#else
+    return (uint32_t)(pal_os_get_us() * 100);
+#endif
+}
+
 /* ========================================================================== */
 /*                             2. Mutex & Semaphore                           */
 /* ========================================================================== */

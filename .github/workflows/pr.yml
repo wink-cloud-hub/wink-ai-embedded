@@ -1,0 +1,60 @@
+name: Pull Request Fast CI
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ main, develop ]
+
+jobs:
+  host-build-and-test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Toolchain Dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build
+
+      - name: Install Toolchain Dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install ninja cmake --no-progress
+
+      - name: Install winkcli Toolchain
+        run: |
+          pip install winkcli pytest || pip install pyyaml jinja2 rich pytest
+
+      - name: Run Embedded CI Integrity Guards
+        run: |
+          python wink-micro-os/scripts/check_wasm_abi_hash.py
+          python wink-micro-os/scripts/check_wasm_stub_symbols.py
+          python wink-micro-os/scripts/check_isr_no_log.py
+          python wink-micro-os/scripts/check_isr_iram_flag.py
+
+      - name: Run Architecture & Safety Linter (Canary)
+        run: |
+          python wink-micro-os/tools/run_lint.py --pack layering --pack api --pack dal --baseline .github/lint-baseline.json
+        continue-on-error: true
+
+      - name: Configure CMake (Host)
+        run: |
+          cmake -B build_host -S wink-micro-os -G Ninja \
+            -DTARGET_PLATFORM=host \
+            -DWINK_APP_DIR=wink-micro-app/unisim_smoke
+
+      - name: Build Host Binaries
+        run: cmake --build build_host
+
+      - name: Run PAL & DAL Unit Tests
+        run: ctest --test-dir build_host --output-on-failure

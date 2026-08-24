@@ -102,6 +102,15 @@ extern bool    js_pal_spi_transfer(uint8_t port, uint16_t device_id,
 /** UART TX — writes a byte frame to the host. Async RX is Planned (Phase 2). */
 extern void    js_pal_uart_write(uint8_t port, const uint8_t *buf, uint32_t len);
 
+/**
+ * Transmit an array of RMT pulse symbols to the JS renderer / simulation model.
+ * SAFETY: JS implementation MUST NOT hold symbols across calls.
+ */
+struct pal_rmt_symbol_s;
+typedef struct pal_rmt_symbol_s pal_rmt_symbol_t;
+extern bool    js_pal_rmt_tx(uint8_t channel, const pal_rmt_symbol_t *symbols,
+                             uint32_t count, uint32_t resolution_hz);
+
 /* -- CH3: Analog ADC  (C->JS import) ----------------------------------- */
 
 /**

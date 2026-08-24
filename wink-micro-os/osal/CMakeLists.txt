@@ -7,6 +7,7 @@ set(OSAL_INCLUDE_DIRS)
 if(WINK_OSAL_TYPE STREQUAL "wasm")
     list(APPEND OSAL_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/wasm/pal_osal_wasm.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/wasm/pal_deferred_wasm.c
         ${CMAKE_CURRENT_SOURCE_DIR}/wasm/sim_ctx_emscripten_fiber.c
         ${CMAKE_CURRENT_SOURCE_DIR}/common/pal_osal_ringbuf.c
     )
@@ -20,6 +21,7 @@ if(WINK_OSAL_TYPE STREQUAL "wasm")
 elseif(WINK_OSAL_TYPE STREQUAL "host")
     list(APPEND OSAL_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/host/pal_osal_host.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/host/pal_deferred_host.c
         ${CMAKE_CURRENT_SOURCE_DIR}/host/sim_ctx_win32_fiber.c
         ${CMAKE_CURRENT_SOURCE_DIR}/common/pal_osal_ringbuf.c
     )
@@ -32,6 +34,7 @@ elseif(WINK_OSAL_TYPE STREQUAL "host")
 elseif(WINK_OSAL_TYPE STREQUAL "freertos_esp32")
     list(APPEND OSAL_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/freertos_esp32/pal_osal_freertos_esp32.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/freertos_esp32/pal_deferred_freertos.c
     )
     list(APPEND OSAL_INCLUDE_DIRS
         ${CMAKE_CURRENT_SOURCE_DIR}/freertos_esp32

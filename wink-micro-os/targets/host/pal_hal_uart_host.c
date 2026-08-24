@@ -121,8 +121,8 @@ void stub_uart_reset(uint8_t port) {
 /* --- PAL UART Public API --- */
 
 WINK_WARN_UNUSED_RESULT
-wink_status_t pal_uart_init(uint8_t port, wink_pin_t tx_pin, wink_pin_t rx_pin, uint32_t baud_rate) {
-    if (port >= PAL_UART_PORT_MAX) {
+wink_status_t pal_uart_init_ex(uint8_t port, const pal_uart_config_ex_t *cfg) {
+    if (port >= PAL_UART_PORT_MAX || cfg == NULL) {
         return WINK_ERR_INVALID_ARG;
     }
 
@@ -139,8 +139,8 @@ wink_status_t pal_uart_init(uint8_t port, wink_pin_t tx_pin, wink_pin_t rx_pin, 
         return st;
     }
 
-    if (tx_pin >= 0) {
-        st = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)tx_pin, "pal_uart_host");
+    if (cfg->tx_pin >= 0) {
+        st = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->tx_pin, "pal_uart_host");
         if (st != WINK_OK) {
             pal_resource_release(PAL_RESOURCE_UART_PORT, port, "pal_uart_host");
             pal_spinlock_unlock(&s_uart_lock);
@@ -148,11 +148,11 @@ wink_status_t pal_uart_init(uint8_t port, wink_pin_t tx_pin, wink_pin_t rx_pin, 
         }
     }
 
-    if (rx_pin >= 0) {
-        st = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)rx_pin, "pal_uart_host");
+    if (cfg->rx_pin >= 0) {
+        st = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->rx_pin, "pal_uart_host");
         if (st != WINK_OK) {
-            if (tx_pin >= 0) {
-                pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)tx_pin, "pal_uart_host");
+            if (cfg->tx_pin >= 0) {
+                pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->tx_pin, "pal_uart_host");
             }
             pal_resource_release(PAL_RESOURCE_UART_PORT, port, "pal_uart_host");
             pal_spinlock_unlock(&s_uart_lock);
@@ -161,11 +161,11 @@ wink_status_t pal_uart_init(uint8_t port, wink_pin_t tx_pin, wink_pin_t rx_pin, 
     }
 
     p->in_use = true;
-    p->tx_pin = tx_pin;
-    p->rx_pin = rx_pin;
-    p->baud_rate = baud_rate;
-    p->event_cb = NULL;
-    p->event_cb_arg = NULL;
+    p->tx_pin = cfg->tx_pin;
+    p->rx_pin = cfg->rx_pin;
+    p->baud_rate = cfg->baud_rate;
+    p->event_cb = cfg->event_cb;
+    p->event_cb_arg = cfg->event_cb_arg;
     p->rx_head = 0;
     p->rx_tail = 0;
     p->last_tx_len = 0;
@@ -173,6 +173,21 @@ wink_status_t pal_uart_init(uint8_t port, wink_pin_t tx_pin, wink_pin_t rx_pin, 
 
     pal_spinlock_unlock(&s_uart_lock);
     return WINK_OK;
+}
+
+WINK_WARN_UNUSED_RESULT
+wink_status_t pal_uart_init(uint8_t port, wink_pin_t tx_pin, wink_pin_t rx_pin, uint32_t baud_rate) {
+    pal_uart_config_ex_t cfg = {
+        .tx_pin = tx_pin,
+        .rx_pin = rx_pin,
+        .baud_rate = baud_rate,
+        .rx_ring_buf_size = 0,
+        .tx_ring_buf_size = 0,
+        .rx_idle_timeout_us = 0,
+        .event_cb = NULL,
+        .event_cb_arg = NULL,
+    };
+    return pal_uart_init_ex(port, &cfg);
 }
 
 void pal_uart_deinit(uint8_t port) {

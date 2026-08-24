@@ -60,7 +60,7 @@ typedef enum {
 #define PAL_UART_PORT_MAX             3u   /* UART 0..2 */
 #define PAL_ADC_CHANNEL_MAX           10u  /* Logical ADC channel 0..9 */
 #define PAL_PWM_CHANNEL_MAX           8u   /* LEDC channels 0..7 */
-#define PAL_GPIO_PIN_MAX              40u  /* GPIO 0..39 */
+#define PAL_GPIO_PIN_MAX              50u  /* GPIO 0..49 */
 
 #if defined(CONFIG_IDF_TARGET_ESP32)
 _Static_assert(PAL_SPI_BUS_MAX == 2, "ESP32 classic has 2 DMA-capable SPI hosts");

@@ -59,6 +59,12 @@ void test_mcpwm_timer_and_oper_init(void) {
         .complementary_enable = true,
     };
 
+    /* Verify zero deadtime rejection for complementary pairs (shoot-through prevention) */
+    pal_mcpwm_oper_cfg_t zero_dt_cfg = oper_cfg;
+    zero_dt_cfg.deadtime_red_ticks = 0;
+    pal_mcpwm_oper_handle_t bad_oper = NULL;
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, pal_mcpwm_new_oper(&zero_dt_cfg, &bad_oper));
+
     pal_mcpwm_oper_handle_t oper = NULL;
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_mcpwm_new_oper(&oper_cfg, &oper));
     TEST_ASSERT_NOT_NULL(oper);

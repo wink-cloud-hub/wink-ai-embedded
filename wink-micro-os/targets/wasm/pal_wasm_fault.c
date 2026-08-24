@@ -53,7 +53,7 @@ EMSCRIPTEN_KEEPALIVE
 void pal_wasm_report_oom(const char *tag, uint32_t size) {
     (void)tag;
     (void)size;
-    pal_wasm_invoke_fault(8004); /* WINK_FAULT_OOM = 8004 */
+    pal_wasm_invoke_fault(9001); /* WINK_FAULT_WASM_OOM = 9001 */
 }
 
 static wasm_fault_event_t s_fault_log[WASM_FAULT_LOG_SIZE];

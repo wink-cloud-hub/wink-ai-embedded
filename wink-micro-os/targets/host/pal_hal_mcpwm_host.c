@@ -148,6 +148,13 @@ wink_status_t pal_mcpwm_new_oper(const pal_mcpwm_oper_cfg_t *cfg, pal_mcpwm_oper
         return WINK_ERR_INVALID_ARG;
     }
 
+    if (cfg->complementary_enable) {
+        if (cfg->pin_pwm_a < 0 || cfg->pin_pwm_b < 0 ||
+            cfg->deadtime_red_ticks == 0 || cfg->deadtime_fed_ticks == 0) {
+            return WINK_ERR_INVALID_ARG;
+        }
+    }
+
     pal_spinlock_lock(&s_mcpwm_lock);
     struct pal_mcpwm_oper_s *slot = NULL;
     for (int i = 0; i < HOST_MCPWM_OPERS_MAX; i++) {

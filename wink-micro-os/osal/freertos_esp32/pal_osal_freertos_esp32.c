@@ -57,6 +57,13 @@ void pal_os_sleep_ms(uint32_t ms) {
 }
 
 void pal_os_busy_wait_us(uint32_t us) {
+    if (us > 50000) {
+        while (us > 10000) {
+            esp_rom_delay_us(10000);
+            (void)pal_os_wdt_feed();
+            us -= 10000;
+        }
+    }
     esp_rom_delay_us(us);
 }
 

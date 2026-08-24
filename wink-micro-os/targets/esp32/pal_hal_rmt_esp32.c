@@ -1,10 +1,7 @@
-// SPDX-License-Identifier: Apache-2.0
-/**
- * @file pal_hal_rmt_esp32.c
- * @brief ESP32 target PAL RMT pulse transceiver subsystem implementation.
- */
 #include "pal_hal.h"
 #include "hal/pal_rmt.h"
+#include "hal/pal_dma.h"
+#include "osal/pal_deferred.h"
 #include "pal_resource.h"
 #include "pal_spinlock.h"
 #include "pal_log.h"
@@ -20,11 +17,24 @@
 #include "esp_rom_sys.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "soc/soc_caps.h"
 
 #define LOG_TAG "pal_rmt"
 
 #define RMT_MEM_BLOCK_SYMB_DEFAULT 64
 #define RMT_MAX_SYMBOLS_BUFFER      256
+
+_Static_assert(sizeof(pal_rmt_symbol_t) == sizeof(rmt_symbol_word_t),
+               "pal_rmt_symbol_t size must match IDF rmt_symbol_word_t");
+
+#if defined(CONFIG_IDF_TARGET_ESP32)
+    /* Classic ESP32: use REF_TICK (1MHz) to avoid APB clock scaling breaking WS2812 timings */
+    #define PAL_RMT_CLK_SRC RMT_CLK_SRC_REF_TICK
+#elif defined(CONFIG_IDF_TARGET_ESP32S3) || defined(CONFIG_IDF_TARGET_ESP32S2) || defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32C6)
+    #define PAL_RMT_CLK_SRC RMT_CLK_SRC_XTAL
+#else
+    #define PAL_RMT_CLK_SRC RMT_CLK_SRC_DEFAULT
+#endif
 
 struct pal_rmt_channel_s {
     bool                     in_use;
@@ -36,8 +46,10 @@ struct pal_rmt_channel_s {
     void                    *tx_cb_arg;
     pal_rmt_rx_callback_t    rx_cb;
     void                    *rx_cb_arg;
+    bool                     rx_active;
     rmt_symbol_word_t        rx_symbols[RMT_MAX_SYMBOLS_BUFFER];
     pal_rmt_symbol_t         converted_rx[RMT_MAX_SYMBOLS_BUFFER];
+    size_t                   rx_count;
 };
 
 static struct pal_rmt_channel_s s_channels[PAL_RMT_CHAN_MAX];
@@ -45,9 +57,9 @@ static pal_spinlock_t s_rmt_lock = PAL_SPINLOCK_INITIALIZER;
 
 /* --- ESP-IDF RMT Callbacks --- */
 
-static bool IRAM_ATTR esp32_rmt_tx_done_cb(rmt_channel_handle_t tx_chan,
-                                           const rmt_tx_done_event_data_t *edata,
-                                           void *user_data) {
+static PAL_ISR bool esp32_rmt_tx_done_cb(rmt_channel_handle_t tx_chan,
+                                         const rmt_tx_done_event_data_t *edata,
+                                         void *user_data) {
     (void)tx_chan;
     (void)edata;
     struct pal_rmt_channel_s *ch = (struct pal_rmt_channel_s *)user_data;
@@ -61,12 +73,19 @@ static bool IRAM_ATTR esp32_rmt_tx_done_cb(rmt_channel_handle_t tx_chan,
     return false;
 }
 
-static bool IRAM_ATTR esp32_rmt_rx_done_cb(rmt_channel_handle_t rx_chan,
-                                           const rmt_rx_done_event_data_t *edata,
-                                           void *user_data) {
+static void esp32_rmt_rx_deferred_worker(void *arg) {
+    struct pal_rmt_channel_s *ch = (struct pal_rmt_channel_s *)arg;
+    if (ch != NULL && ch->rx_cb != NULL && ch->rx_active) {
+        ch->rx_cb(ch->rx_cb_arg, ch->converted_rx, ch->rx_count);
+    }
+}
+
+static PAL_ISR bool esp32_rmt_rx_done_cb(rmt_channel_handle_t rx_chan,
+                                         const rmt_rx_done_event_data_t *edata,
+                                         void *user_data) {
     (void)rx_chan;
     struct pal_rmt_channel_s *ch = (struct pal_rmt_channel_s *)user_data;
-    if (ch != NULL && ch->rx_cb != NULL && edata != NULL) {
+    if (ch != NULL && ch->rx_cb != NULL && ch->rx_active && edata != NULL) {
         size_t count = edata->num_symbols;
         if (count > RMT_MAX_SYMBOLS_BUFFER) {
             count = RMT_MAX_SYMBOLS_BUFFER;
@@ -79,7 +98,9 @@ static bool IRAM_ATTR esp32_rmt_rx_done_cb(rmt_channel_handle_t rx_chan,
             ch->converted_rx[i]._pad[0] = 0;
             ch->converted_rx[i]._pad[1] = 0;
         }
-        ch->rx_cb(ch->rx_cb_arg, ch->converted_rx, count);
+        ch->rx_count = count;
+        pal_deferred_post_from_isr(PAL_DEFERRED_LO, PAL_DEFERRED_LOSSY,
+                                   esp32_rmt_rx_deferred_worker, ch);
     }
     return false;
 }
@@ -127,11 +148,15 @@ wink_status_t pal_rmt_acquire_channel(const pal_rmt_channel_config_t *cfg,
     if (cfg->direction == PAL_RMT_DIR_TX) {
         rmt_tx_channel_config_t tx_cfg = {
             .gpio_num = cfg->pin,
-            .clk_src = RMT_CLK_SRC_DEFAULT,
+            .clk_src = PAL_RMT_CLK_SRC,
             .resolution_hz = res_hz,
             .mem_block_symbols = mem_syms,
             .trans_queue_depth = 4,
+            .intr_flags = ESP_INTR_FLAG_IRAM,
         };
+#if defined(CONFIG_SOC_RMT_SUPPORT_DMA) && CONFIG_SOC_RMT_SUPPORT_DMA
+        tx_cfg.flags.with_dma = cfg->dma_enabled;
+#endif
         esp_err_t err = rmt_new_tx_channel(&tx_cfg, &slot->chan_handle);
         if (err != ESP_OK) {
             pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin, "pal_rmt_esp32");
@@ -158,10 +183,14 @@ wink_status_t pal_rmt_acquire_channel(const pal_rmt_channel_config_t *cfg,
     } else {
         rmt_rx_channel_config_t rx_cfg = {
             .gpio_num = cfg->pin,
-            .clk_src = RMT_CLK_SRC_DEFAULT,
+            .clk_src = PAL_RMT_CLK_SRC,
             .resolution_hz = res_hz,
             .mem_block_symbols = mem_syms,
+            .intr_flags = ESP_INTR_FLAG_IRAM,
         };
+#if defined(CONFIG_SOC_RMT_SUPPORT_DMA) && CONFIG_SOC_RMT_SUPPORT_DMA
+        rx_cfg.flags.with_dma = cfg->dma_enabled;
+#endif
         esp_err_t err = rmt_new_rx_channel(&rx_cfg, &slot->chan_handle);
         if (err != ESP_OK) {
             pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin, "pal_rmt_esp32");
@@ -184,6 +213,7 @@ wink_status_t pal_rmt_acquire_channel(const pal_rmt_channel_config_t *cfg,
     slot->tx_cb_arg = NULL;
     slot->rx_cb = NULL;
     slot->rx_cb_arg = NULL;
+    slot->rx_active = false;
 
     *out_ch = slot;
     pal_spinlock_unlock(&s_rmt_lock);
@@ -201,6 +231,7 @@ wink_status_t pal_rmt_release_channel(pal_rmt_channel_handle_t ch) {
         return WINK_ERR_INVALID_ARG;
     }
 
+    ch->rx_active = false;
     rmt_disable(ch->chan_handle);
     if (ch->copy_encoder != NULL) {
         rmt_del_encoder(ch->copy_encoder);
@@ -227,6 +258,10 @@ wink_status_t pal_rmt_tx_send(pal_rmt_channel_handle_t ch,
         return WINK_ERR_INVALID_ARG;
     }
 
+    /* 1. Flush DMA cache for output symbol stream */
+    pal_dma_cache_clean(symbols, count * sizeof(pal_rmt_symbol_t));
+
+    /* 2. Fast critical section: update callback context and grab channel handle */
     pal_spinlock_lock(&s_rmt_lock);
     if (!ch->in_use || ch->cfg.direction != PAL_RMT_DIR_TX) {
         pal_spinlock_unlock(&s_rmt_lock);
@@ -235,29 +270,24 @@ wink_status_t pal_rmt_tx_send(pal_rmt_channel_handle_t ch,
 
     ch->tx_cb = cb;
     ch->tx_cb_arg = arg;
+    rmt_channel_handle_t chan = ch->chan_handle;
+    rmt_encoder_handle_t enc = ch->copy_encoder;
+    pal_spinlock_unlock(&s_rmt_lock);
 
-    rmt_symbol_word_t sym_words[RMT_MAX_SYMBOLS_BUFFER];
-    size_t send_count = (count > RMT_MAX_SYMBOLS_BUFFER) ? RMT_MAX_SYMBOLS_BUFFER : count;
-    for (size_t i = 0; i < send_count; i++) {
-        sym_words[i].duration0 = symbols[i].duration0_ticks;
-        sym_words[i].level0 = symbols[i].level0;
-        sym_words[i].duration1 = symbols[i].duration1_ticks;
-        sym_words[i].level1 = symbols[i].level1;
-    }
-
+    /* 3. Transmit outside spinlock (zero-copy on S3+ GDMA / layout-compatible cast) */
     rmt_transmit_config_t tx_cfg = {
         .loop_count = 0,
     };
-    esp_err_t err = rmt_transmit(ch->chan_handle, ch->copy_encoder, sym_words,
-                                 send_count * sizeof(rmt_symbol_word_t), &tx_cfg);
+    esp_err_t err = rmt_transmit(chan, enc, (const rmt_symbol_word_t *)symbols,
+                                 count * sizeof(rmt_symbol_word_t), &tx_cfg);
     if (err != ESP_OK) {
+        pal_spinlock_lock(&s_rmt_lock);
         ch->tx_cb = NULL;
         ch->tx_cb_arg = NULL;
         pal_spinlock_unlock(&s_rmt_lock);
         return WINK_ERR_HARDWARE;
     }
 
-    pal_spinlock_unlock(&s_rmt_lock);
     return WINK_OK;
 }
 
@@ -291,6 +321,7 @@ wink_status_t pal_rmt_rx_start(pal_rmt_channel_handle_t ch) {
         return WINK_ERR_INVALID_STATE;
     }
 
+    ch->rx_active = true;
     rmt_receive_config_t recv_cfg = {
         .signal_range_min_ns = 1000,
         .signal_range_max_ns = 25000000,
@@ -305,6 +336,17 @@ wink_status_t pal_rmt_rx_stop(pal_rmt_channel_handle_t ch) {
     if (ch == NULL) {
         return WINK_ERR_INVALID_ARG;
     }
+
+    pal_spinlock_lock(&s_rmt_lock);
+    if (!ch->in_use || ch->cfg.direction != PAL_RMT_DIR_RX) {
+        pal_spinlock_unlock(&s_rmt_lock);
+        return WINK_ERR_INVALID_STATE;
+    }
+
+    ch->rx_active = false;
+    rmt_disable(ch->chan_handle);
+    rmt_enable(ch->chan_handle);
+    pal_spinlock_unlock(&s_rmt_lock);
     return WINK_OK;
 }
 
