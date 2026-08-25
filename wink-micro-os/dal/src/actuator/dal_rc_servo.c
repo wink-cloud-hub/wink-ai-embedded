@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #define LOG_TAG "dal_rc_servo"
 #include "actuator/dal_rc_servo.h"
+#include "hal/pal_gpio.h"
 #include "hal/pal_pwm.h"
 #include "pal_resource.h"
 #include "pal_log.h"
@@ -193,7 +194,7 @@ wink_status_t dal_rc_servo_deinit(dal_rc_servo_t *dev) {
     WINK_IGNORE_UNUSED(dal_rc_servo_safe_off(dev));
 
     /* 2. Stop PWM peripheral (disconnects LEDC from GPIO matrix). */
-    pal_pwm_deinit(channel);
+    WINK_IGNORE_UNUSED(pal_pwm_deinit(channel));
 
     /* 3. Query GPIO pin associated with this channel, then reset it to release
      *    the esp_gpio_reserve bitmap and revert to Hi-Z (ADR-0024 §4 #2). */
