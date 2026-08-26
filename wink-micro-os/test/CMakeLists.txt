@@ -216,6 +216,10 @@ add_wink_host_test(test_dal_load_cell unit/dal/test_dal_load_cell.c)
 target_include_directories(test_dal_load_cell PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/sensor)
 
+add_wink_host_test(test_dal_ntc unit/dal/test_dal_ntc.c)
+target_include_directories(test_dal_ntc PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/sensor)
+
 add_wink_host_test(test_dal_eeprom unit/dal/test_dal_eeprom.c)
 target_include_directories(test_dal_eeprom PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../dal/include/storage)
