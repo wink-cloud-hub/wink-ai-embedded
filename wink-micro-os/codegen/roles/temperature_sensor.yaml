@@ -1,0 +1,13 @@
+# Role contract SSOT (machine-readable). Human-readable SSOT:
+# docs/dal-development-guide/dal-role-architecture-spec.md
+codegen_schema: "1.1"
+id: temperature_sensor
+verbs:
+  - id: read_ddegc
+    error_class: convenience
+  - id: read_degc
+    error_class: convenience
+  - id: read_mv
+    error_class: convenience
+  - id: clear_faults
+    error_class: normal

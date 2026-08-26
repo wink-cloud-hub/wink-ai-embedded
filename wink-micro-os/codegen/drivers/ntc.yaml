@@ -1,0 +1,157 @@
+codegen_schema: "1.1"
+type: ntc
+category: sensor
+is_actuator: false
+experimental: false
+default_role: temperature_sensor
+
+aliases:
+  mf58_100k_3950:
+    variant: single_ended_adc
+    divider_type: pull_up
+    r25_ohm: 100000
+    b_value: 3950
+    r_pull_ohm: 4700
+    max_valid_temp_c: 280
+  mf52d_10k_3950:
+    variant: single_ended_adc
+    divider_type: pull_up
+    r25_ohm: 10000
+    b_value: 3950
+    r_pull_ohm: 10000
+    max_valid_temp_c: 135
+  mf52d_10k_3435:
+    variant: single_ended_adc
+    divider_type: pull_up
+    r25_ohm: 10000
+    b_value: 3435
+    r_pull_ohm: 10000
+    max_valid_temp_c: 135
+  mf51e_bullet:
+    variant: single_ended_adc
+    divider_type: pull_up
+    r25_ohm: 10000
+    b_value: 3950
+    r_pull_ohm: 4700
+  wokwi_ntc:
+    variant: single_ended_adc
+    divider_type: pull_up
+    r25_ohm: 10000
+    b_value: 3950
+    r_pull_ohm: 10000
+    max_valid_temp_c: 150
+
+# LUT is not configured here. When rendering an instance, codegen calls the
+# ntc_lut_array(r25_ohm, b_value, r_pull_ohm, divider_type) Jinja global (provided
+# by tools/codegen/scripts/ntc_lut_gen.py) to emit the per-instance 33-entry
+# table referenced by .lut_table in the init template. Non-standard materials
+# only need to set the four material parameters above.
+
+quantity: temperature
+quantity_class: sensor_measurement
+
+fields:
+  owner:
+    tier: stable
+    type: string
+    emit: none
+  ao_pin:
+    tier: advanced
+    type: int
+    required: true
+    c: pin
+  diff_neg_pin:
+    tier: advanced
+    type: int
+    default: -1
+    c: pin
+  variant:
+    tier: advanced
+    type: enum
+    affects_pins: false
+    enum: [single_ended_adc, differential_bridge]
+    default: single_ended_adc
+    map:
+      single_ended_adc: DAL_NTC_VARIANT_SINGLE_ENDED_ADC
+      differential_bridge: DAL_NTC_VARIANT_DIFFERENTIAL_BRIDGE
+    variant_fields:
+      single_ended_adc: [ao_pin, divider_type, r25_ohm, b_value, r_pull_ohm, vref_mv, min_valid_temp_c, max_valid_temp_c, debounce_count]
+      differential_bridge: [ao_pin, diff_neg_pin, divider_type, r25_ohm, b_value, r_pull_ohm, vref_mv]
+  divider_type:
+    tier: advanced
+    type: enum
+    enum: [pull_up, pull_down]
+    default: pull_up
+    map:
+      pull_up: DAL_NTC_DIVIDER_PULL_UP
+      pull_down: DAL_NTC_DIVIDER_PULL_DOWN
+  r25_ohm:
+    tier: advanced
+    type: int
+    default: 100000
+  b_value:
+    tier: advanced
+    type: int
+    default: 3950
+  r_pull_ohm:
+    tier: advanced
+    type: int
+    default: 4700
+  vref_mv:
+    tier: advanced
+    type: int
+    default: 0
+  min_valid_temp_c:
+    tier: advanced
+    type: int
+    default: -30
+  max_valid_temp_c:
+    tier: advanced
+    type: int
+    default: 280
+  debounce_count:
+    tier: advanced
+    type: int
+    default: 3
+  role:
+    tier: stable
+    type: string
+    emit: none
+
+quantities:
+  owner:            { quantity_class: sensor_measurement }
+  ao_pin:           { quantity_class: sensor_measurement }
+  diff_neg_pin:     { quantity_class: sensor_measurement }
+  variant:          { quantity_class: sensor_measurement }
+  divider_type:     { quantity_class: sensor_measurement }
+  r25_ohm:          { quantity_class: sensor_measurement }
+  b_value:          { quantity_class: sensor_measurement }
+  r_pull_ohm:       { quantity_class: sensor_measurement }
+  vref_mv:          { quantity_class: sensor_measurement }
+  min_valid_temp_c: { quantity_class: sensor_measurement }
+  max_valid_temp_c: { quantity_class: sensor_measurement }
+  debounce_count:   { quantity_class: sensor_measurement }
+  role:             { quantity_class: sensor_measurement }
+
+config:
+  c_type: dal_ntc_t
+  config_type: dal_ntc_config_t
+  headers: [sensor/dal_ntc.h]
+  init_fn: dal_ntc_init
+  deinit_fn: dal_ntc_deinit
+  init_template_file: templates/ntc_init.c.j2
+  safe_off_fn: ""
+
+role_bindings:
+  temperature_sensor:
+    covers_contract: full
+    headers: []
+    verbs:
+      read_ddegc:
+        template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_read_ddegc(int16_t *out_ddegc) { return dal_ntc_read_ddegc(&{{ name }}, out_ddegc); }"
+      read_degc:
+        template: "#if !defined(WINK_PROFILE_MICRO) && !defined(WINK_NO_FLOAT)\nWINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_read_degc(float *out_degc) { return dal_ntc_read_degc(&{{ name }}, out_degc); }\n#endif"
+      read_mv:
+        template: "WINK_WARN_UNUSED_RESULT static inline wink_status_t {{ name }}_read_mv(uint16_t *out_mv) { return dal_ntc_read_mv(&{{ name }}, out_mv); }"
+      clear_faults:
+        template: "static inline wink_status_t {{ name }}_clear_faults(void) { return dal_ntc_clear_faults(&{{ name }}); }"
