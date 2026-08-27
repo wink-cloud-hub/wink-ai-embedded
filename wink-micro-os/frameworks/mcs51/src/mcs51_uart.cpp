@@ -80,12 +80,19 @@ void wink_mcs51_uart_on_write(uint8_t addr) {
 }
 
 void wink_mcs51_uart_on_read(uint8_t /*addr*/) {
-    // Receive is modeled minimally: SBUF reads return the shadowed last
-    // written byte (or 0); RI is shadow storage only. No side effect.
+    // No model side effect. SBUF/SCON reads are served entirely by the SFR
+    // shadow (the proxy returns wink_mcs51_sfr_shadow[addr]); this hook exists
+    // only so the bridge can route UART addresses symmetrically. Receive is
+    // not modeled: a SBUF read simply returns whatever byte the shadow holds
+    // (the last transmitted byte, or 0), and RI is shadow storage only.
 }
 
 void wink_mcs51_uart_reset(void) {
     s_count = 0;
+    s_capture[0] = 0;  // not observable via the bounds-checked accessor
+    // Clear the latched transmit-complete flag so a re-init starts with TI=0.
+    wink_mcs51_sfr_shadow[SFR_SCON] &=
+        static_cast<uint8_t>(~(1u << SCON_TI));
 }
 
 uint32_t wink_mcs51_uart_byte_count(void) {

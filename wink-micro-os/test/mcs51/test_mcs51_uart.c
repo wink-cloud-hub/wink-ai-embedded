@@ -24,9 +24,8 @@ extern uint8_t  wink_mcs51_uart_byte_at(uint32_t i);
 
 #define RUN_TICKS 100u
 
-/* Exactly what the sample sends. */
+/* Exactly what the sample sends ("MCS51-UART-OK\r\n" three times). */
 #define UART_LINE    "MCS51-UART-OK\r\n"
-#define UART_REPEATS 3u
 
 void setUp(void) {}
 void tearDown(void) {}
