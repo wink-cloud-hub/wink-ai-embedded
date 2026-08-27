@@ -493,6 +493,11 @@ if(TARGET wink_mcs51_compat)
         ${_MCS51_uart_printf_CPP}
         ${_MCS51_RUNTIME_SRCS})
 
+    # M3 review: UART vector-4 EA+ES gated ISR dispatch + TI-not-auto-cleared
+    # (host-only framework unit test; drives the model hook directly).
+    add_mcs51_host_test(test_mcs51_uart_isr
+        mcs51/unit/test_uart_isr_dispatch.cpp)
+
     # M2: 100 ms virtual delay == 10 master ticks, 1:1 clock conservation.
     add_mcs51_host_test(test_mcs51_clock_mapping
         mcs51/unit/test_unisim_clock_mapping.cpp

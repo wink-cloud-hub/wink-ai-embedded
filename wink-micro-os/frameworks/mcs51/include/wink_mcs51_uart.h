@@ -37,10 +37,16 @@ extern "C" {
 // vector UART ISR (4) when EA+ES are gated. SCON writes do nothing special —
 // the shadow already holds the value (software clears TI via a bit write).
 void wink_mcs51_uart_on_write(uint8_t addr);
-// SBUF/SCON read: no model side effect (microstep is charged by the bridge).
+// SBUF/SCON read hook: a no-op. Reads are served entirely by the SFR shadow
+// (the proxy returns the shadow byte); the model does not drive receive, so
+// there is no side effect. The bridge still calls it for symmetric routing.
 void wink_mcs51_uart_on_read(uint8_t addr);
 
-// Reset UART model state + capture buffer (test isolation; framework init).
+// Reset UART model state (test isolation; called at framework init): zero the
+// capture-buffer length and clear the latched TI bit in the SCON shadow, so a
+// re-init starts with no captured bytes and TI=0. The capture storage itself
+// is not scrubbed — it is unreachable once the length is 0 (byte_at bounds-
+// checks against the length).
 void wink_mcs51_uart_reset(void);
 
 // ── Test observability (C ABI) ──────────────────────────────────────────────
