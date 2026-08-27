@@ -511,6 +511,12 @@ if(TARGET wink_mcs51_compat)
         mcs51/unit/mcs51_static_tu_b.cpp
         mcs51/unit/mcs51_static_tu_c.cpp
         ${_MCS51_RUNTIME_SRCS})
+
+    # M3: intrins _crol_/_cror_/_testbit_ shims, absacc XBYTE/XWORD linear
+    # XDATA shadow (aperture + R-008 OOB semantics), and the WINK_MCS51_STRICT
+    # dual-mode unsupported-feature latch (release warn-once path).
+    add_mcs51_host_test(test_mcs51_shims
+        mcs51/unit/test_mcs51_shims.cpp)
 endif()
 
 add_custom_target(check
