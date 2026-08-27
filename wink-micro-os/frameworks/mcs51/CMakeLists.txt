@@ -27,6 +27,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_library(wink_mcs51_compat STATIC EXCLUDE_FROM_ALL
     src/mcs51_proxy.cpp
     src/mcs51_isr.cpp
+    src/mcs51_clock.cpp
+    src/mcs51_timer.cpp
     src/mcs51_bridge.cpp
 )
 
@@ -36,6 +38,8 @@ target_include_directories(wink_mcs51_compat
     # linked here — the final executable (simulator or test) provides it — so we
     # only add the header path.
     PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../../runtime/include
+    # wink_sim_scheduler.h (fiber-context detection in the clock engine).
+    PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../../targets/common/include
 )
 
 # Per-compiler flag chain — proven on GCC 14.2 / MSVC 14.40 / emcc 4.0.5 in
