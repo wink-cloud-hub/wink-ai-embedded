@@ -30,8 +30,27 @@ add_library(wink_mcs51_compat STATIC EXCLUDE_FROM_ALL
     src/mcs51_clock.cpp
     src/mcs51_timer.cpp
     src/mcs51_uart.cpp
+    src/mcs51_xdata.cpp
+    src/mcs51_unsupported.cpp
     src/mcs51_bridge.cpp
 )
+
+# ── M3 configurable knobs (cache options) ────────────────────────────────────
+# Legal XDATA aperture for XBYTE/XWORD (bytes); spec band 4–16 KB, default 8 KB.
+set(WINK_MCS51_XDATA_SIZE 8192 CACHE STRING
+    "MCS-51 sim: legal XDATA aperture size in bytes (XBYTE/XWORD; 4096..16384)")
+target_compile_definitions(wink_mcs51_compat PUBLIC
+    WINK_MCS51_XDATA_SIZE=${WINK_MCS51_XDATA_SIZE})
+
+# STRICT dual-mode unsupported-feature mechanism (plan prose: WINK_SIM_STRICT).
+# OFF (default): unmodeled features log one pal_log_w warning and continue.
+# ON: the same call sites assert — a debug/test configuration that fails loudly.
+option(WINK_MCS51_STRICT
+    "MCS-51 sim: assert on unsupported 8051 features instead of warning (debug/test only)"
+    OFF)
+if(WINK_MCS51_STRICT)
+    target_compile_definitions(wink_mcs51_compat PUBLIC WINK_MCS51_STRICT=1)
+endif()
 
 target_include_directories(wink_mcs51_compat
     PUBLIC include

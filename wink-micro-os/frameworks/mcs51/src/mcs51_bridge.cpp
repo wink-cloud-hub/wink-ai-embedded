@@ -12,8 +12,10 @@
 #include "pal_osal.h"
 #include "wink_app.h"
 
+#include "absacc.h"
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_isr.h"
+#include "wink_mcs51_strict.h"
 #include "wink_mcs51_timer.h"
 #include "wink_mcs51_uart.h"
 
@@ -34,6 +36,8 @@ void mcs51_framework_init(void) {
     wink_mcs51_clock_reset();
     wink_mcs51_timers_reset();
     wink_mcs51_uart_reset();
+    wink_mcs51_xdata_reset();
+    wink_mcs51_unsupported_reset();
     wink_mcs51_set_catchup_hook(wink_mcs51_timers_step_to);
     wink_mcs51_isr_enable();
 }

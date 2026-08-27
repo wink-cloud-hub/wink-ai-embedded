@@ -109,6 +109,8 @@ function(add_wink_wasm_mcs51_test test_name sample_name driver_c)
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_clock.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_timer.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_uart.cpp
+        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_xdata.cpp
+        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_unsupported.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_bridge.cpp
         ${_SDK_ROOT}/runtime/src/wink_runtime.c
         ${_SDK_ROOT}/runtime/src/wink_runtime_tasks.c
