@@ -440,6 +440,7 @@ if(TARGET wink_mcs51_compat)
 
     mcs51_cleanup_sample(blinky)
     mcs51_cleanup_sample(blinky_timer0)
+    mcs51_cleanup_sample(uart_printf)
 
     # Runtime sources every mcs51 host test links (fiber scheduler path).
     set(_MCS51_RUNTIME_SRCS
@@ -484,6 +485,12 @@ if(TARGET wink_mcs51_compat)
     add_mcs51_host_test(test_mcs51_timer0_host
         mcs51/test_mcs51_timer0.c
         ${_MCS51_blinky_timer0_CPP}
+        ${_MCS51_RUNTIME_SRCS})
+
+    # M3: UART SBUF write emits to console + capture buffer; TI set synchronously.
+    add_mcs51_host_test(test_mcs51_uart_host
+        mcs51/test_mcs51_uart.c
+        ${_MCS51_uart_printf_CPP}
         ${_MCS51_RUNTIME_SRCS})
 
     # M2: 100 ms virtual delay == 10 master ticks, 1:1 clock conservation.
