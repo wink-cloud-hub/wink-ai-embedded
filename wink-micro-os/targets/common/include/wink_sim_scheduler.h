@@ -13,6 +13,10 @@
 #include "wink_status.h"
 #include "sim_ctx.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define WINK_SIM_MAX_TASKS 8
 #define WINK_SIM_TASK_WCET_THRESHOLD_US (5000u)
 
@@ -80,5 +84,9 @@ uint32_t      sim_scheduler_current_id(void);
 void          sim_scheduler_set_current(uint32_t task_id);
 
 sim_ctx_t*    sim_scheduler_current_ctx(void);
+
+#ifdef __cplusplus
+}  /* extern "C" */
+#endif
 
 #endif /* WINK_SIM_SCHEDULER_H */
