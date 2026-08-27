@@ -97,3 +97,6 @@ __pycache__/
 
 # ===== Wink toolchain local config =====
 .wink/
+
+# Spike/probe generated device-tree outputs (regenerable; inputs are tracked)
+docs/tech-designs/mcs51/spikes/assets/**/device-tree.*.json
