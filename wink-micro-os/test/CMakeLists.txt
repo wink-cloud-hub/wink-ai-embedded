@@ -417,53 +417,88 @@ endif()
 
 # ── MCS-51/8051 zero-code sim interception (Axis B, ADR-0070) ────────────────
 if(TARGET wink_mcs51_compat)
+    set(_MCS51_FW_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/mcs51)
+    set(_MCS51_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/mcs51_generated)
+
     # Cleanup pass: UNMODIFIED Keil .c sample -> .cpp copy in the build tree.
     # The source is never edited in place (Spike-S2 §6).
-    set(_MCS51_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/mcs51_generated)
-    set(_MCS51_BLINKY_CPP ${_MCS51_GEN_DIR}/blinky.cpp)
-    add_custom_command(
-        OUTPUT ${_MCS51_BLINKY_CPP}
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${_MCS51_GEN_DIR}
-        COMMAND ${Python3_EXECUTABLE}
-            ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/mcs51/tools/mcs51_cleanup.py
-            ${CMAKE_CURRENT_SOURCE_DIR}/mcs51/samples/blinky.c
-            ${_MCS51_BLINKY_CPP}
-        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/mcs51/samples/blinky.c
-                ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/mcs51/tools/mcs51_cleanup.py
-        COMMENT "mcs51 cleanup: blinky.c -> blinky.cpp"
-        VERBATIM)
+    function(mcs51_cleanup_sample sample_name)
+        set(_cpp ${_MCS51_GEN_DIR}/${sample_name}.cpp)
+        add_custom_command(
+            OUTPUT ${_cpp}
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${_MCS51_GEN_DIR}
+            COMMAND ${Python3_EXECUTABLE}
+                ${_MCS51_FW_DIR}/tools/mcs51_cleanup.py
+                ${CMAKE_CURRENT_SOURCE_DIR}/mcs51/samples/${sample_name}.c
+                ${_cpp}
+            DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/mcs51/samples/${sample_name}.c
+                    ${_MCS51_FW_DIR}/tools/mcs51_cleanup.py
+            COMMENT "mcs51 cleanup: ${sample_name}.c -> ${sample_name}.cpp"
+            VERBATIM)
+        set(_MCS51_${sample_name}_CPP ${_cpp} PARENT_SCOPE)
+    endfunction()
 
-    add_wink_host_test(test_mcs51_blinky_host
-        mcs51/test_mcs51_blinky_host.c
-        ${_MCS51_BLINKY_CPP}
+    mcs51_cleanup_sample(blinky)
+    mcs51_cleanup_sample(blinky_timer0)
+
+    # Runtime sources every mcs51 host test links (fiber scheduler path).
+    set(_MCS51_RUNTIME_SRCS
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_runtime.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_runtime_tasks.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_actuator_registry.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_soft_timer.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/src/wink_event.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../trace/src/wink_trace.c)
-    target_link_libraries(test_mcs51_blinky_host PRIVATE wink_mcs51_compat)
-    # The Keil super-loop (wink_mcs51_user_main) never returns, so it MUST run on
-    # the cooperative fiber scheduler (pal_sim_scheduler_run), not the host
-    # direct-call tick path. SIMULATION selects that path in wink_runtime.c (the
-    # wasm build defines it globally; host tests opt in per-target).
-    target_compile_definitions(test_mcs51_blinky_host PRIVATE SIMULATION=1)
-    # Keil string literals are char* (not const char*); allow on the C++ sample.
-    if(NOT MSVC)
-        target_compile_options(test_mcs51_blinky_host PRIVATE
-            $<$<COMPILE_LANGUAGE:CXX>:-std=c++17 -Wno-write-strings
-                -fno-exceptions -fno-rtti -fno-threadsafe-statics>)
-    else()
-        target_compile_options(test_mcs51_blinky_host PRIVATE
-            $<$<COMPILE_LANGUAGE:CXX>:/std:c++17 /utf-8 /wd4101>)
-    endif()
-    target_include_directories(test_mcs51_blinky_host PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/mcs51/include)
-    # dal/pal_host include the generated wink_config.h; ensure it exists when
-    # building this target standalone.
-    if(TARGET generate_config)
-        add_dependencies(test_mcs51_blinky_host generate_config)
-    endif()
+
+    # Common wiring for mcs51 host tests: fiber scheduler (SIMULATION), C++17
+    # dialect for the cleaned/hand-written C++ TUs, mcs51 framework include.
+    function(add_mcs51_host_test name)
+        add_wink_host_test(${name} ${ARGN})
+        target_link_libraries(${name} PRIVATE wink_mcs51_compat)
+        # The Keil super-loop (wink_mcs51_user_main) never returns, so it MUST
+        # run on the cooperative fiber scheduler (pal_sim_scheduler_run), not
+        # the host direct-call tick path. SIMULATION selects that path in
+        # wink_runtime.c (wasm defines it globally; host opts in per-target).
+        target_compile_definitions(${name} PRIVATE SIMULATION=1)
+        if(NOT MSVC)
+            target_compile_options(${name} PRIVATE
+                $<$<COMPILE_LANGUAGE:CXX>:-std=c++17 -Wno-write-strings
+                    -fno-exceptions -fno-rtti -fno-threadsafe-statics>)
+        else()
+            target_compile_options(${name} PRIVATE
+                $<$<COMPILE_LANGUAGE:CXX>:/std:c++17 /utf-8 /wd4101>)
+        endif()
+        target_include_directories(${name} PRIVATE ${_MCS51_FW_DIR}/include)
+        if(TARGET generate_config)
+            add_dependencies(${name} generate_config)
+        endif()
+    endfunction()
+
+    # M1: polling blinky (SFR proxies + cooperative yield, no ISR dispatch).
+    add_mcs51_host_test(test_mcs51_blinky_host
+        mcs51/test_mcs51_blinky_host.c
+        ${_MCS51_blinky_CPP}
+        ${_MCS51_RUNTIME_SRCS})
+
+    # M2: Timer0 mode-1 50 ms overflow drives the ISR via catch-up (D1~D3).
+    add_mcs51_host_test(test_mcs51_timer0_host
+        mcs51/test_mcs51_timer0.c
+        ${_MCS51_blinky_timer0_CPP}
+        ${_MCS51_RUNTIME_SRCS})
+
+    # M2: 100 ms virtual delay == 10 master ticks, 1:1 clock conservation.
+    add_mcs51_host_test(test_mcs51_clock_mapping
+        mcs51/unit/test_unisim_clock_mapping.cpp
+        mcs51/unit/mcs51_clock_user.cpp
+        ${_MCS51_RUNTIME_SRCS})
+
+    # M2: 3-TU static-init ISR registration + execution-phase gate (D5).
+    add_mcs51_host_test(test_mcs51_static_init
+        mcs51/unit/test_static_init_safety.cpp
+        mcs51/unit/mcs51_static_tu_a.cpp
+        mcs51/unit/mcs51_static_tu_b.cpp
+        mcs51/unit/mcs51_static_tu_c.cpp
+        ${_MCS51_RUNTIME_SRCS})
 endif()
 
 add_custom_target(check
