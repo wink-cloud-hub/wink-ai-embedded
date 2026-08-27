@@ -15,6 +15,7 @@
 #include "mcs51_proxy.hpp"
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_isr.h"
+#include "wink_mcs51_strict.h"
 
 #include <cstdint>
 
@@ -109,6 +110,20 @@ void schedule_from_reload(uint8_t t, uint64_t now_us) {
     if (tm.external_clk || tm.mode == 3) {
         // External pin counting and Timer0 mode-3 split are not modeled at
         // functional level (no time source / no ISR impact); timer stays idle.
+        // Flag the unmodeled feature through the STRICT mechanism (release:
+        // warn once; STRICT build: assert) — the configuration was actually
+        // selected, so silence here would hide a wrong simulation result.
+        if (tm.external_clk) {
+            wink_mcs51_unsupported(MCS51_FEAT_TIMER_EXT_CLK,
+                                   "timer external C/T pin clock");
+        }
+        // Mode 3 is the split-8-bit configuration on Timer 0 (unmodeled). On
+        // Timer 1 mode 3 simply halts the counter, which running=false below
+        // already reproduces, so no report there.
+        if (tm.mode == 3 && t == 0) {
+            wink_mcs51_unsupported(MCS51_FEAT_TIMER_MODE3,
+                                   "Timer0 mode 3 (split 8-bit)");
+        }
         tm.running = false;
         tm.next_ovf_us = NO_OVERFLOW;
         return;
