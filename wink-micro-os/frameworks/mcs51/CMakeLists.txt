@@ -29,6 +29,7 @@ add_library(wink_mcs51_compat STATIC EXCLUDE_FROM_ALL
     src/mcs51_isr.cpp
     src/mcs51_clock.cpp
     src/mcs51_timer.cpp
+    src/mcs51_uart.cpp
     src/mcs51_bridge.cpp
 )
 

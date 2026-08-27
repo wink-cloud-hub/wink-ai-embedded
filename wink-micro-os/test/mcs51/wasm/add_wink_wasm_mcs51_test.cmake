@@ -108,6 +108,7 @@ function(add_wink_wasm_mcs51_test test_name sample_name driver_c)
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_isr.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_clock.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_timer.cpp
+        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_uart.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_bridge.cpp
         ${_SDK_ROOT}/runtime/src/wink_runtime.c
         ${_SDK_ROOT}/runtime/src/wink_runtime_tasks.c
@@ -178,3 +179,10 @@ add_wink_wasm_mcs51_test(
     wasm_mcs51_timer0_test
     blinky_timer0
     ${_SDK_ROOT}/test/mcs51/wasm/test_mcs51_timer0_wasm.c)
+
+# M3: UART SBUF write emits bytes to the Node console (stdout) and the C-ABI
+# capture buffer; TI is set synchronously so `while(!TI)` closes on first read.
+add_wink_wasm_mcs51_test(
+    wasm_mcs51_uart_test
+    uart_printf
+    ${_SDK_ROOT}/test/mcs51/wasm/test_mcs51_uart_wasm.c)
