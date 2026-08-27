@@ -15,6 +15,7 @@
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_isr.h"
 #include "wink_mcs51_timer.h"
+#include "wink_mcs51_uart.h"
 
 #include <cstdint>
 
@@ -32,6 +33,7 @@ namespace {
 void mcs51_framework_init(void) {
     wink_mcs51_clock_reset();
     wink_mcs51_timers_reset();
+    wink_mcs51_uart_reset();
     wink_mcs51_set_catchup_hook(wink_mcs51_timers_step_to);
     wink_mcs51_isr_enable();
 }
@@ -52,10 +54,15 @@ void wink_mcs51_microstep(void) {
 // catch-up on the same interception point steps the freshly configured timer.
 void wink_mcs51_on_sfr_read(uint8_t addr) {
     wink_mcs51_timer_on_read(addr);
+    wink_mcs51_uart_on_read(addr);
     wink_mcs51_microstep();
 }
 
 void wink_mcs51_on_sfr_write(uint8_t addr) {
+    // Latch the UART model BEFORE charging the microstep, mirroring the timer
+    // ordering: a SBUF write emits + sets TI + vectors synchronously in the
+    // same interception point.
+    wink_mcs51_uart_on_write(addr);
     wink_mcs51_timer_on_write(addr);
     wink_mcs51_microstep();
 }
