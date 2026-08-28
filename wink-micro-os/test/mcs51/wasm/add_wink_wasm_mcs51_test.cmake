@@ -188,3 +188,10 @@ add_wink_wasm_mcs51_test(
     wasm_mcs51_uart_test
     uart_printf
     ${_SDK_ROOT}/test/mcs51/wasm/test_mcs51_uart_wasm.c)
+
+# M3: GPIO in->out sync — P3.2 key (latch-injected) drives P1.0 LED across
+# three repeated runtime runs (released -> pressed -> released) under Node.
+add_wink_wasm_mcs51_test(
+    wasm_mcs51_gpio_test
+    gpio_in_out
+    ${_SDK_ROOT}/test/mcs51/wasm/test_mcs51_gpio_wasm.c)
