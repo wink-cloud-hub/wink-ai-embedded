@@ -24,4 +24,10 @@ mergeInto(LibraryManager.library, {
   // No external interrupts in the bounded test: drain loop stops immediately.
   js_pal_poll_interrupt: function (outCbPtr, outArgPtr) { return false; },
   js_pal_notify_pin_edge: function (pin, level, tUs) {},
+  // M4 UniSim channels: channel-1 instant pin-edge notify is a no-op (edge
+  // dispatch is asserted host-side via the pin traps), and channel-3 analog
+  // pulls read 0.0 — bounded tests inject deterministically via the C rail
+  // (mcs51_adc_set_value), so no JS-side analog source is needed.
+  js_pal_gpio_write: function (pin, level) {},
+  js_pal_adc_read_norm: function (pin) { return 0.0; },
 });

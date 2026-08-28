@@ -442,6 +442,8 @@ if(TARGET wink_mcs51_compat)
     mcs51_cleanup_sample(blinky_timer0)
     mcs51_cleanup_sample(uart_printf)
     mcs51_cleanup_sample(gpio_in_out)
+    mcs51_cleanup_sample(sfr_rmw_isolation_test)
+    mcs51_cleanup_sample(adc0832_read)
 
     # Runtime sources every mcs51 host test links (fiber scheduler path).
     set(_MCS51_RUNTIME_SRCS
@@ -468,7 +470,10 @@ if(TARGET wink_mcs51_compat)
                     -fno-exceptions -fno-rtti -fno-threadsafe-statics>)
         else()
             target_compile_options(${name} PRIVATE
-                $<$<COMPILE_LANGUAGE:CXX>:/std:c++17 /utf-8 /wd4101>)
+                # /wd4245: Keil C51 mixes int/unsigned freely (`P1 &= ~0x01`
+                # passes a signed int ~-result to the unsigned proxy param);
+                # WinkSfr/WinkSbit mask to bit/byte internally.
+                $<$<COMPILE_LANGUAGE:CXX>:/std:c++17 /utf-8 /wd4101 /wd4245>)
         endif()
         target_include_directories(${name} PRIVATE ${_MCS51_FW_DIR}/include)
         if(TARGET generate_config)
@@ -525,6 +530,41 @@ if(TARGET wink_mcs51_compat)
     # dual-mode unsupported-feature latch (release warn-once path).
     add_mcs51_host_test(test_mcs51_shims
         mcs51/unit/test_mcs51_shims.cpp)
+
+    # M4: data plane — RMW Read-Latch integrity (external-low pin never
+    # written back into the latch, whole-port + sbit RMW).
+    add_mcs51_host_test(test_mcs51_sfr_rmw_latch
+        mcs51/unit/test_sfr_rmw_latch_integrity.cpp)
+
+    # M4: diff = old^val edge dispatch accuracy (Zero False-Trigger across
+    # DI/CLK/CS-style pins) + linear pin map (port<<3)|bit via host sink log.
+    add_mcs51_host_test(test_mcs51_sfr_edge
+        mcs51/unit/test_sfr_edge_dispatch_accuracy.cpp)
+
+    # M4: full operator algebra |= &= ^= += -= <<= >>=, pre/post ++/--, sbit
+    # ops, copy assignment, absolute-form sbit, vendor non-GPIO SFR.
+    add_mcs51_host_test(test_mcs51_sfr_operators
+        mcs51/unit/test_sfr_operators_coverage.cpp)
+
+    # M4: ADC0832 3-wire DIO instant state machine — sbit vs whole-port RMW
+    # drive parity, CH0/CH1 mux, null-bit alignment, bus-release absorption.
+    add_mcs51_host_test(test_mcs51_adc0832
+        mcs51/unit/test_adc0832_dio_shared.cpp)
+
+    # M4: Zero False-Trigger acceptance (data-plane SSOT §4.3) — unmodified
+    # Keil sample exercises the four RMW isolation vectors; the C driver binds
+    # per-pin edge traps + a Read-Pin button trap and asserts XDATA snapshots.
+    add_mcs51_host_test(test_mcs51_rmw_isolation
+        mcs51/test_mcs51_sfr_rmw_isolation.c
+        ${_MCS51_sfr_rmw_isolation_test_CPP}
+        ${_MCS51_RUNTIME_SRCS})
+
+    # M4: ADC0832 3-wire DIO end-to-end through an unmodified Keil bit-bang
+    # sample (CH0/CH1 read via instant trap FSM + channel-3 injection rail).
+    add_mcs51_host_test(test_mcs51_adc0832_e2e
+        mcs51/test_mcs51_adc0832_e2e.c
+        ${_MCS51_adc0832_read_CPP}
+        ${_MCS51_RUNTIME_SRCS})
 endif()
 
 add_custom_target(check
