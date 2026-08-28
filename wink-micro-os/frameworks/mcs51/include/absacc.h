@@ -86,6 +86,14 @@ public:
             wink_mcs51_xdata_write(addr_, v, 0u);
             return *this;
         }
+        // Ref = Ref (`XBYTE[a] = XBYTE[b];`): READ the rhs through its checked
+        // accessor and write the value at THIS address. The compiler-generated
+        // trivial copy assignment would rebind addr_ and store nothing.
+        Ref& operator=(const Ref& rhs) {
+            wink_mcs51_xdata_write(addr_,
+                                   wink_mcs51_xdata_read(rhs.addr_, 0u), 0u);
+            return *this;
+        }
         operator uint8_t() const {
             return wink_mcs51_xdata_read(addr_, 0u);
         }
@@ -153,6 +161,15 @@ public:
         explicit Ref(uint32_t word_index)
             : addr_(static_cast<uint64_t>(word_index) * 2u) {}
         Ref& operator=(uint16_t v) {
+            wink_mcs51_xdata_write(addr_,
+                                   static_cast<uint8_t>(v >> 8), 1u);
+            wink_mcs51_xdata_write(addr_ + 1u,
+                                   static_cast<uint8_t>(v & 0xFFu), 1u);
+            return *this;
+        }
+        // Ref = Ref (`XWORD[a] = XWORD[b];`): copy the VALUE, not the index.
+        Ref& operator=(const Ref& rhs) {
+            const uint16_t v = static_cast<uint16_t>(rhs);
             wink_mcs51_xdata_write(addr_,
                                    static_cast<uint8_t>(v >> 8), 1u);
             wink_mcs51_xdata_write(addr_ + 1u,
