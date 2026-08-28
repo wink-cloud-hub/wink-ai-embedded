@@ -441,6 +441,7 @@ if(TARGET wink_mcs51_compat)
     mcs51_cleanup_sample(blinky)
     mcs51_cleanup_sample(blinky_timer0)
     mcs51_cleanup_sample(uart_printf)
+    mcs51_cleanup_sample(gpio_in_out)
 
     # Runtime sources every mcs51 host test links (fiber scheduler path).
     set(_MCS51_RUNTIME_SRCS
@@ -491,6 +492,13 @@ if(TARGET wink_mcs51_compat)
     add_mcs51_host_test(test_mcs51_uart_host
         mcs51/test_mcs51_uart.c
         ${_MCS51_uart_printf_CPP}
+        ${_MCS51_RUNTIME_SRCS})
+
+    # M3: GPIO in->out sync — P3.2 key (latch-injected) drives P1.0 LED across
+    # three repeated runtime runs (released -> pressed -> released).
+    add_mcs51_host_test(test_mcs51_gpio_host
+        mcs51/test_mcs51_gpio.c
+        ${_MCS51_gpio_in_out_CPP}
         ${_MCS51_RUNTIME_SRCS})
 
     # M3 review: UART vector-4 EA+ES gated ISR dispatch + TI-not-auto-cleared
