@@ -103,6 +103,30 @@ void test_xdata(void) {
     XWORD[0x0020] |= 0x0F00;
     check(static_cast<uint16_t>(XWORD[0x0020]) == 0x0FF0u, "XWORD |= RMW");
 
+    // Arithmetic compound-assign and increment/decrement (Keil idioms:
+    // `XBYTE[p] += n; XBYTE[i]++; --XWORD[sp];`).
+    XBYTE[0x0030] = 0x10u;
+    XBYTE[0x0030] += 0x05u;
+    check(static_cast<uint8_t>(XBYTE[0x0030]) == 0x15u, "XBYTE += in aperture");
+    check(wink_mcs51_xdata_shadow[0x0030] == 0x15u, "XBYTE += hits shadow");
+    ++XBYTE[0x0030];
+    check(static_cast<uint8_t>(XBYTE[0x0030]) == 0x16u, "XBYTE prefix ++");
+    uint8_t post = XBYTE[0x0030]++;
+    check(post == 0x16u && static_cast<uint8_t>(XBYTE[0x0030]) == 0x17u,
+          "XBYTE postfix ++ returns old, stores new");
+    --XBYTE[0x0030];
+    check(static_cast<uint8_t>(XBYTE[0x0030]) == 0x16u, "XBYTE prefix --");
+    XBYTE[0x0030] -= 0x06u;
+    check(static_cast<uint8_t>(XBYTE[0x0030]) == 0x10u, "XBYTE -= wraps mod 256");
+
+    XWORD[0x0040] = 0x0100u;
+    XWORD[0x0040] += 0x000Fu;
+    check(static_cast<uint16_t>(XWORD[0x0040]) == 0x010Fu, "XWORD += in aperture");
+    ++XWORD[0x0040];
+    check(static_cast<uint16_t>(XWORD[0x0040]) == 0x0110u, "XWORD prefix ++");
+    XWORD[0x0040]--;
+    check(static_cast<uint16_t>(XWORD[0x0040]) == 0x010Fu, "XWORD postfix --");
+
     // OOB (R-008): write dropped, read returns 0xFF, counter advances, shadow
     // beyond the aperture is never touched.
     uint32_t oob_before = wink_mcs51_xdata_oob_count();
@@ -113,6 +137,24 @@ void test_xdata(void) {
           "OOB XWORD read returns 0xFFFF");
     check(wink_mcs51_xdata_oob_count() >= oob_before + 4u,
           "OOB access counter advances");
+
+    // OOB arithmetic/increment: read 0xFF, the (wrapping) write is dropped,
+    // and the shadow beyond the aperture stays untouched.
+    uint8_t oob_post = XBYTE[0x8000]++;
+    check(oob_post == 0xFFu, "OOB XBYTE++ reads 0xFF");
+    check(wink_mcs51_xdata_shadow[0x8000] == 0u,
+          "OOB XBYTE++ must not write shadow");
+    ++XWORD[0x8000];  // bytes 0x10000/0x10001: far outside the 64 KB shadow
+    check(wink_mcs51_xdata_oob_count() > oob_before,
+          "OOB XWORD++ counted");
+
+    // M2: a word index whose 2*i byte address would wrap in 32-bit must be
+    // rejected as OOB, never alias low shadow memory. 0x80000000u*2 wraps to
+    // 0 in 32-bit; the 64-bit address math makes it 0x100000000 (OOB).
+    uint32_t shadow_before = wink_mcs51_xdata_shadow[0x0010];
+    (void)static_cast<uint16_t>(XWORD[0x80000000u]);
+    check(wink_mcs51_xdata_shadow[0x0010] == shadow_before,
+          "XWORD huge index must not alias low shadow");
 }
 
 void test_unsupported(void) {
