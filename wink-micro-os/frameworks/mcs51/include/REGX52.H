@@ -76,8 +76,14 @@ sfr PSW  = 0xD0;
 sfr ACC  = 0xE0;
 sfr B    = 0xF0;
 
-// ── 5) Predefined sbits (absolute bit-address form) ─────────────────────────
-// Port bits (bit addr = SFR base + bit; e.g. P1.0 = 0x90).
+// ── 5) Predefined sbits (absolute bit-address form, as in real Keil REG52.H) ─
+// Port bits (bit addr = SFR base + bit; e.g. P1.0 = 0x90). The absolute-form
+// constexpr WinkSbit constructor derives the SFR address (abs & 0xF8) AND the
+// port index from it (0x80/0x90/0xA0/0xB0 → P0..P3), so Level-2 pin traps and
+// js_pal_gpio_write edge dispatch resolve correctly with pure constant
+// initialization — no dynamic ctor, no static-init ordering hazard (铁律 2,
+// ADR-0072 D5). User code's relative form `sbit LED = P1^0;` is carried by
+// WinkSfr::operator^, which forwards the same port index.
 sbit P0_0 = 0x80; sbit P0_1 = 0x81; sbit P0_2 = 0x82; sbit P0_3 = 0x83;
 sbit P0_4 = 0x84; sbit P0_5 = 0x85; sbit P0_6 = 0x86; sbit P0_7 = 0x87;
 sbit P1_0 = 0x90; sbit P1_1 = 0x91; sbit P1_2 = 0x92; sbit P1_3 = 0x93;
