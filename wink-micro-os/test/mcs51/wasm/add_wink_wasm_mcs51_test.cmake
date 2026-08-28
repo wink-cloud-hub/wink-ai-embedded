@@ -104,7 +104,9 @@ function(add_wink_wasm_mcs51_test test_name sample_name driver_c)
     set(_test_sources
         ${driver_c}
         ${_sample_cpp}
-        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_proxy.cpp
+        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_sfr.cpp
+        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_adc.cpp
+        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_adc0832.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_isr.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_clock.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_timer.cpp
@@ -195,3 +197,11 @@ add_wink_wasm_mcs51_test(
     wasm_mcs51_gpio_test
     gpio_in_out
     ${_SDK_ROOT}/test/mcs51/wasm/test_mcs51_gpio_wasm.c)
+
+# M4: ADC0832 3-wire DIO end-to-end — the unmodified Keil bit-bang sample reads
+# CH0/CH1 through the instant Level-2 trap FSM; the shared host/wasm C driver
+# binds the traps via the post-init hook and injects 0xA5/0x5A on channel-3.
+add_wink_wasm_mcs51_test(
+    wasm_mcs51_adc0832_test
+    adc0832_read
+    ${_SDK_ROOT}/test/mcs51/test_mcs51_adc0832_e2e.c)
