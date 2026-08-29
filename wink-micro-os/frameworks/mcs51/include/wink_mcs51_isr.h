@@ -27,8 +27,11 @@ extern "C" {
 #endif
 
 // 8051 standard vectors: 0 external0, 1 timer0, 2 external1, 3 timer1,
-// 4 UART, (5..7 = 8052 extra / RFU). Table sized for the core 8 vectors.
-#define WINK_MCS51_NUM_VECTORS 8u
+// 4 UART, (5..7 = 8052 extra / RFU). Enhanced-vendor parts (CMS8S78xx) add
+// extended vectors 8..27 — e.g. the on-chip ADC end-of-conversion ISR uses
+// Keil `interrupt 19` (vector address 0x9B). Table sized for 28 so extended
+// ISRs register and dispatch instead of being silently dropped (M5, ADR-0073).
+#define WINK_MCS51_NUM_VECTORS 28u
 
 // Register an ISR function for interrupt vector `n` (called by the WINK_ISR
 // auto-registration shim). Safe at static-init time (POD table). Defined in
