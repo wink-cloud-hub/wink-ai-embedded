@@ -45,16 +45,18 @@ uint16_t mcs51_adc_get_value(uint8_t ch) {
     if (s_inject_flag[ch] != 0u) {
         return s_injected[ch];
     }
-    // Production Pull track: instant channel-3 sample → 8-bit code value.
+    // Production Pull track: instant channel-3 sample → 12-bit code value
+    // (CMS8S78xx native width; the 8-bit ADC0832 masks the low byte in its
+    // own shim).
     float norm = js_pal_adc_read_norm((uint16_t)(32u + ch));
     if (norm < 0.0f) {
         norm = 0.0f;
     } else if (norm > 1.0f) {
         norm = 1.0f;
     }
-    uint32_t raw = (uint32_t)(norm * 255.0f + 0.5f);
-    if (raw > 255u) {
-        raw = 255u;
+    uint32_t raw = (uint32_t)(norm * 4095.0f + 0.5f);
+    if (raw > 4095u) {
+        raw = 4095u;
     }
     return (uint16_t)raw;
 }
