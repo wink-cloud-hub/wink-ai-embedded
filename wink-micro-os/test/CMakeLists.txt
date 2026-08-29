@@ -550,6 +550,14 @@ if(TARGET wink_mcs51_compat)
         ${_MCS51_gpio_in_out_CPP}
         ${_MCS51_RUNTIME_SRCS})
 
+    # Channel-1 external Read-Pin seam: the same gpio_in_out button->LED sample
+    # but the button is driven as a real external driver via js_pal_gpio_read_state
+    # (host fallback in mcs51_uni_bridge.cpp), not by writing the P3 latch.
+    add_mcs51_host_test(test_mcs51_gpio_external
+        mcs51/test_mcs51_gpio_external_e2e.c
+        ${_MCS51_gpio_in_out_CPP}
+        ${_MCS51_RUNTIME_SRCS})
+
     # M3 review: UART vector-4 EA+ES gated ISR dispatch + TI-not-auto-cleared
     # (host-only framework unit test; drives the model hook directly).
     add_mcs51_host_test(test_mcs51_uart_isr
