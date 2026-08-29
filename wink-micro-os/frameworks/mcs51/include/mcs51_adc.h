@@ -8,10 +8,11 @@
 //
 // Dual-track data path (umbrella SSOT §3.4):
 //   * Production (wasm/UniSim 3.0): the value is PULLED from the JS
-//     PinArbiter via js_pal_adc_read_norm(pin) → [0.0, 1.0] and scaled to an
-//     8-bit code (raw = norm * 255). No 51-specific JS glue — the standard
+//     PinArbiter via js_pal_adc_read_norm(pin) → [0.0, 1.0] and scaled to a
+//     12-bit code (raw = norm * 4095). No 51-specific JS glue — the standard
 //     channel-3 interface is reused, so the thermal/NTC plugins work
-//     unmodified.
+//     unmodified. The 8-bit ADC0832 masks to the low byte at its own shim;
+//     the 12-bit CMS8S78xx on-chip ADC consumes the full width (M5).
 //   * Test/CI (host, or wasm bounded tests): mcs51_adc_set_value() injects an
 //     override that wins over the pull, giving deterministic high-speed tests
 //     without any JS environment.
@@ -31,14 +32,18 @@ extern "C" {
 #endif
 
 // ADC0832 has 2 multiplexed inputs (CH0/CH1 single-ended, or differential
-// pairs); the rail keeps a small generous BSS table — CMS8S on-chip channels
-// (M5) reuse the same rail.
-#define MCS51_ADC_MAX_CHANNELS 8u
+// pairs); the CMS8S78xx on-chip ADC exposes AN0..AN25 (26 external channels,
+// plus internal AN63). The rail keeps a 32-entry BSS table covering both.
+#define MCS51_ADC_MAX_CHANNELS 32u
+
+// Full-scale code of the unified rail: 12-bit (CMS8S78xx native width). The
+// 8-bit ADC0832 shims mask the low byte.
+#define MCS51_ADC_RAW_MAX 4095u
 
 // Sentinel: no test value injected on this channel → pull from PinArbiter.
 #define MCS51_ADC_RAIL_INJECT_NONE 0xFFFFu
 
-// Pull the current code value (8-bit, 0..255) for analog channel `ch`.
+// Pull the current code value (12-bit, 0..4095) for analog channel `ch`.
 // Injection rail wins; otherwise js_pal_adc_read_norm(32 + ch) scaled.
 // Out-of-range channels read 0.
 uint16_t mcs51_adc_get_value(uint8_t ch);

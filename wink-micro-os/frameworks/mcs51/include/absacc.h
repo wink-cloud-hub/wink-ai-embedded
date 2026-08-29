@@ -13,10 +13,12 @@
 // (defined in mcs51_xdata.cpp), each access charges one interception
 // microstep (so a `while(XBYTE[f]!=x){}` poll cannot freeze the fiber), and
 // only the configurable legal aperture (WINK_MCS51_XDATA_SIZE, default 8 KB)
-// is backed by reachable storage. Accesses outside the aperture are R-008
-// out-of-bounds: in a WINK_MCS51_STRICT build they assert; otherwise they are
-// warned once (rate-limited per access kind), writes are dropped, and reads
-// return 0xFF.
+// plus the CMS8S78xx extended-SFR window [0xF000, 0x10000) (pin mux PxxCFG,
+// ADCLDO @ 0xF692 — reached by vendor code as `xdata` pointers; proxied by
+// WinkXsfr in mcs51_xsfr.hpp) are backed by reachable storage. Accesses
+// outside both apertures are R-008 out-of-bounds: in a WINK_MCS51_STRICT
+// build they assert; otherwise they are warned once (rate-limited per access
+// kind), writes are dropped, and reads return 0xFF.
 //
 // The proxies support the full set of lvalue operations Keil code uses on
 // XBYTE/XWORD: plain assignment, bitwise RMW (|= &= ^=), arithmetic RMW
