@@ -35,6 +35,45 @@ float js_pal_adc_read_norm(uint16_t pin) {
     return 0.0f;
 }
 
+// Channel-1 read direction (external digital level driven by the JS
+// PinArbiter / an input plugin). No JS data plane on host, so the compat
+// library supplies a scriptable fallback. State codes mirror the platform
+// JS_GPIO_STATE_* enum (0 low, 1 high, 2 HiZ, 3 conflict); the array lazily
+// initialises to HiZ (2 = no external driver -> the proxy falls back to the
+// latch), so tests that never inject still see latch semantics.
+#define MCS51_HOST_EXT_HIZ 2u
+static uint8_t s_host_ext_pin[32];
+static bool s_host_ext_pin_ready = false;
+
+static void host_ext_pin_ensure_init(void) {
+    if (!s_host_ext_pin_ready) {
+        for (uint32_t i = 0; i < 32u; ++i) {
+            s_host_ext_pin[i] = MCS51_HOST_EXT_HIZ;
+        }
+        s_host_ext_pin_ready = true;
+    }
+}
+
+uint8_t js_pal_gpio_read_state(uint16_t pin) {
+    host_ext_pin_ensure_init();
+    return (pin < 32u) ? s_host_ext_pin[pin] : MCS51_HOST_EXT_HIZ;
+}
+
+// Test injection for the channel-1 external Read-Pin path. state uses the
+// JS_GPIO_STATE_* codes (0 low / 1 high / 2 HiZ).
+void wink_mcs51_host_set_ext_pin(uint16_t pin, uint8_t state) {
+    host_ext_pin_ensure_init();
+    if (pin < 32u) {
+        s_host_ext_pin[pin] = state;
+    }
+}
+void wink_mcs51_host_ext_pins_reset(void) {
+    host_ext_pin_ensure_init();
+    for (uint32_t i = 0; i < 32u; ++i) {
+        s_host_ext_pin[i] = MCS51_HOST_EXT_HIZ;
+    }
+}
+
 // Test observability for the channel-1 instant-notification path.
 uint32_t wink_mcs51_host_gpio_notify_count(void) {
     return s_host_gpio_notifies;
