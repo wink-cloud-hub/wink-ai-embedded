@@ -30,4 +30,14 @@ mergeInto(LibraryManager.library, {
   // (mcs51_adc_set_value), so no JS-side analog source is needed.
   js_pal_gpio_write: function (pin, level) {},
   js_pal_adc_read_norm: function (pin) { return 0.0; },
+  // Channel-1 read direction (external digital level, e.g. a button plugin via
+  // PinArbiter): delegate to the test driver's exported getter; absent (the
+  // other wasm tests) return 2 = HiZ so the proxy falls back to the latch.
+  js_pal_gpio_read_state: function (pin) {
+    if (typeof Module !== 'undefined' &&
+        typeof Module['_mcs51_wasm_ext_pin_state'] === 'function') {
+      return Module['_mcs51_wasm_ext_pin_state'](pin);
+    }
+    return 2; /* HiZ default — fall back to latch */
+  },
 });

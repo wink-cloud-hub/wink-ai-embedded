@@ -9,11 +9,17 @@
 //     edge fire the Level-2 pin on_write trap and the channel-1 instant
 //     notification js_pal_gpio_write (Zero False-Trigger, D2/D3). diff == 0
 //     is a fast no-op path.
-//   * Whole-register READS reconstruct the external pin level via per-bit
-//     on_read traps (Read-Pin). Compound assignments (RMW: |= &= ^= += -=
-//     ++ -- <<= >>=) read the LATCH shadow only — never the pin — so an
-//     externally-held-low input bit can never be written back into the latch
-//     (quasi-bidirectional FET lock-up, data-plane SSOT §2.2).
+//   * Whole-register READS reconstruct the external pin level (Read-Pin) with
+//     a three-way resolution per GPIO bit: (1) a per-bit on_read trap owned by
+//     an internal model (e.g. the ADC0832 DO line) wins; (2) else the UniSim
+//     channel-1 external level js_pal_gpio_read_state() — a driven 0/1 from the
+//     JS PinArbiter / a button plugin is returned, while HiZ/conflict (2/3)
+//     means "no external driver"; (3) else (HiZ, or a non-GPIO control SFR)
+//     the LATCH shadow is used. Compound assignments (RMW: |= &= ^= += -=
+//     ++ -- <<= >>=) read the LATCH shadow only — never the pin or the
+//     external level — so an externally-held-low input bit can never be
+//     written back into the latch (quasi-bidirectional FET lock-up, data-plane
+//     SSOT §2.2).
 //   * Non-GPIO SFRs (port 0xFF: TCON/SCON/ADCON/…) route through the SFR
 //     read/write hook tables instead (timer lazy eval, UART, CMS8S ADC).
 //
@@ -41,7 +47,24 @@ void wink_mcs51_on_sfr_write(uint8_t addr, uint8_t old_val, uint8_t new_val);
 // under emscripten (wink_sim_js.js / node stub); a weak host fallback in
 // mcs51_uni_bridge.cpp counts notifications. global_pin = (port << 3) | bit.
 void js_pal_gpio_write(uint16_t pin, bool level);
+
+// UniSim 3.0 channel 1 (read direction): external digital pin level driven by
+// the JS PinArbiter / an input plugin (button). A JS import under emscripten;
+// a host fallback in mcs51_uni_bridge.cpp. Returns the platform JS_GPIO_STATE_*
+// code: 0 = driven LOW, 1 = driven HIGH, 2 = HiZ (no external driver), 3 =
+// conflict. Only 0/1 are real pin levels; HiZ/conflict mean the caller must
+// fall back to the latch.
+uint8_t js_pal_gpio_read_state(uint16_t pin);
 }  // extern "C"
+
+// Resolve the externally-driven level of one GPIO bit. Returns 0/1 when the
+// PinArbiter actively drives the pin, or -1 when it is HiZ/conflict (no
+// external driver) so the Read-Pin path falls back to the latch shadow.
+inline int mcs51_ext_pin_level(uint8_t port, uint8_t bit) {
+    const uint8_t st = js_pal_gpio_read_state(
+        static_cast<uint16_t>((static_cast<uint16_t>(port) << 3) | bit));
+    return st == 1u ? 1 : (st == 0u ? 0 : -1);
+}
 
 // Port index for an SFR address: P0=0x80…P3=0xB0 → 0..3; anything else 0xFF.
 constexpr uint8_t wink_mcs51_port_for(uint8_t addr) {
@@ -110,10 +133,16 @@ struct WinkSbit {
         if (port < 4u) {
             const mcs51_pin_trap_t& trap = wink_mcs51_pin_traps[port][bit];
             if (trap.on_read != nullptr) {
-                return trap.on_read(trap.read_ctx) ? 1u : 0u;  // Read-Pin
+                return trap.on_read(trap.read_ctx) ? 1u : 0u;  // Read-Pin (model)
+            }
+            // Channel-1 external level (button plugin / PinArbiter). A driven
+            // 0/1 wins; HiZ (-1) falls through to the latch.
+            const int ext = mcs51_ext_pin_level(port, bit);
+            if (ext >= 0) {
+                return static_cast<uint8_t>(ext);
             }
         }
-        // Control SFR (hook already ran above) or latched GPIO bit.
+        // Control SFR (hook already ran above) or latched GPIO bit (HiZ input).
         return static_cast<uint8_t>((wink_mcs51_sfr_shadow[addr] >> bit) & 1u);
     }
 
@@ -204,12 +233,18 @@ struct WinkSfr {
             uint8_t val = wink_mcs51_sfr_shadow[addr];
             for (uint8_t b = 0; b < 8u; ++b) {
                 const mcs51_pin_trap_t& trap = wink_mcs51_pin_traps[port][b];
+                uint8_t pin_level;
                 if (trap.on_read != nullptr) {
-                    const uint8_t pin_level =
-                        trap.on_read(trap.read_ctx) ? 1u : 0u;
-                    val = pin_level ? static_cast<uint8_t>(val | (1u << b))
-                                    : static_cast<uint8_t>(val & ~(1u << b));
+                    pin_level = trap.on_read(trap.read_ctx) ? 1u : 0u;  // model
+                } else {
+                    const int ext = mcs51_ext_pin_level(port, b);  // channel-1
+                    if (ext < 0) {
+                        continue;  // HiZ/conflict: keep the latch bit
+                    }
+                    pin_level = static_cast<uint8_t>(ext);
                 }
+                val = pin_level ? static_cast<uint8_t>(val | (1u << b))
+                                : static_cast<uint8_t>(val & ~(1u << b));
             }
             wink_mcs51_on_sfr_read(addr);  // microstep (GPIO hook slot empty)
             return val;
