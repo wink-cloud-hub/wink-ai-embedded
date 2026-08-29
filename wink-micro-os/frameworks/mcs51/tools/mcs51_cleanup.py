@@ -14,11 +14,35 @@ M1 scope:
     real code, so a signature appearing in a comment or string is left untouched
     (Spike-S2 §4.5 residual closed).
 
+Encoding:
+  Vendor SDK fixtures (e.g. the Cmsemicon StdDriver) are GBK-encoded with
+  Chinese comments. The input is decoded as UTF-8 first and falls back to GBK,
+  so a vendor .c normalizes to UTF-8 on output (the host /utf-8 and emcc
+  builds both expect UTF-8). No hardcoded input charset is assumed for the
+  project's own UTF-8 sources.
+
+Vendor headers (e.g. StdDriver/inc/adc.h) are GBK as well and are #included
+directly by the cleaned TU, so they must also be normalized to UTF-8 in the
+build tree -- the `--transcode` mode copies a file byte-for-byte after the
+UTF-8/GBK decode (no ISR rewrite), e.g.:
+
+    python mcs51_cleanup.py --transcode <input.h> <output.h>
+
 Usage:
     python mcs51_cleanup.py <input.c> <output.cpp>
 """
 import re
 import sys
+
+
+def read_source(path: str) -> str:
+    """Read a source file as text: UTF-8 first, GBK fallback (vendor fixtures)."""
+    with open(path, "rb") as f:
+        data = f.read()
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError:
+        return data.decode("gbk")
 
 # Strict Keil ISR signature: void name( void | () ) interrupt N [using M].
 # Non-void parameters are illegal for a Keil ISR and intentionally do NOT match
@@ -112,16 +136,27 @@ def cleanup(source: str) -> tuple[str, int]:
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 3:
-        sys.stderr.write("usage: mcs51_cleanup.py <input.c> <output.cpp>\n")
+    transcode = False
+    args = argv[1:]
+    if args and args[0] == "--transcode":
+        transcode = True
+        args = args[1:]
+    if len(args) != 2:
+        sys.stderr.write(
+            "usage: mcs51_cleanup.py [--transcode] <input> <output>\n")
         return 2
-    inp, outp = argv[1], argv[2]
-    with open(inp, "r", encoding="utf-8") as f:
-        source = f.read()
-    cleaned, count = cleanup(source)
+    inp, outp = args
+    source = read_source(inp)
+    if transcode:
+        cleaned, count = source, 0
+    else:
+        cleaned, count = cleanup(source)
     with open(outp, "w", encoding="utf-8", newline="\n") as f:
         f.write(cleaned)
-    print(f"[mcs51_cleanup] {inp} -> {outp}: {count} ISR signature(s) rewritten")
+    if transcode:
+        print(f"[mcs51_cleanup] {inp} -> {outp}: transcoded to UTF-8")
+    else:
+        print(f"[mcs51_cleanup] {inp} -> {outp}: {count} ISR signature(s) rewritten")
     return 0
 
 

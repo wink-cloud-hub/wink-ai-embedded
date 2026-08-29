@@ -579,6 +579,68 @@ if(TARGET wink_mcs51_compat)
         mcs51/test_mcs51_cms8s_adc_e2e.c
         ${_MCS51_cms8s_adc_test_CPP}
         ${_MCS51_RUNTIME_SRCS})
+
+    # ── M5 tier-b harvest: compile+RUN the UNMODIFIED vendor StdDriver adc.c ──
+    # The vendor SDK is a reference-only fixture under docs/vendors (never
+    # committed). When present, transcode its GBK adc.h to UTF-8 and run the
+    # Keil-dialect cleanup on adc.c in the build tree; the sandbox shim
+    # cms8s78xx.h (framework include) shadows the vendor Keil device header.
+    # Skips gracefully when the fixture is absent (plain-C/CI checkouts).
+    set(_MCS51_VENDOR_STD
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../docs/vendors/Cmsemicon/CMS8S78xx_DemoCode_V2.0.2/CMS8S78xx_Demo/Libary/StdDriver")
+    set(_MCS51_VENDOR_ADC_C "${_MCS51_VENDOR_STD}/src/adc.c")
+    if(EXISTS "${_MCS51_VENDOR_ADC_C}")
+        set(_MCS51_VENDOR_INC_DIR ${_MCS51_GEN_DIR}/vendor_inc)
+        set(_MCS51_VENDOR_ADC_H  ${_MCS51_VENDOR_INC_DIR}/adc.h)
+        set(_MCS51_VENDOR_ADC_CPP ${_MCS51_GEN_DIR}/vendor_adc.cpp)
+
+        # GBK vendor header -> UTF-8 build-tree copy (drivers #include "adc.h").
+        add_custom_command(
+            OUTPUT ${_MCS51_VENDOR_ADC_H}
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${_MCS51_VENDOR_INC_DIR}
+            COMMAND ${Python3_EXECUTABLE}
+                ${_MCS51_FW_DIR}/tools/mcs51_cleanup.py --transcode
+                ${_MCS51_VENDOR_STD}/inc/adc.h ${_MCS51_VENDOR_ADC_H}
+            DEPENDS ${_MCS51_VENDOR_STD}/inc/adc.h
+                    ${_MCS51_FW_DIR}/tools/mcs51_cleanup.py
+            COMMENT "mcs51 vendor: transcode StdDriver/inc/adc.h (GBK->UTF-8)"
+            VERBATIM)
+
+        # Unmodified vendor adc.c -> cleaned .cpp (ISR rewrite; GBK->UTF-8).
+        add_custom_command(
+            OUTPUT ${_MCS51_VENDOR_ADC_CPP}
+            COMMAND ${Python3_EXECUTABLE}
+                ${_MCS51_FW_DIR}/tools/mcs51_cleanup.py
+                ${_MCS51_VENDOR_ADC_C} ${_MCS51_VENDOR_ADC_CPP}
+            DEPENDS ${_MCS51_VENDOR_ADC_C} ${_MCS51_VENDOR_ADC_H}
+                    ${_MCS51_FW_DIR}/tools/mcs51_cleanup.py
+            COMMENT "mcs51 vendor cleanup: StdDriver/src/adc.c -> vendor_adc.cpp"
+            VERBATIM)
+
+        # Host-only: the tier-b driver is a direct model unit test (own main,
+        # no fiber super-loop); the wasm harness already covers the same model
+        # via the cms8s_adc e2e sample.
+        add_mcs51_host_test(test_mcs51_cms8s_vendor
+            mcs51/unit/test_cms8s_vendor_stdriver.cpp
+            ${_MCS51_VENDOR_ADC_CPP})
+        # SYSTEM: the transcoded vendor adc.h is third-party code we must not
+        # edit (its banner block-comments re-open "/*" inside a comment, and it
+        # re-#defines the enum macros). GCC/Clang compile -isystem headers with
+        # warnings suppressed (incl. -Wcomment and macro redefinition), so our
+        # own TUs stay under -Werror without silencing anything in our code.
+        target_include_directories(test_mcs51_cms8s_vendor SYSTEM PRIVATE
+            ${_MCS51_VENDOR_INC_DIR})
+        if(MSVC)
+            # /wd4005: vendor adc.h re-#defines the enum macros (ADC_RESULT_*,
+            # ADC_VREF_*, ADC_GO ...) that REG_CMS8S.H also defines. They are
+            # token-identical (legal redefinition) — the shim intentionally
+            # mirrors the vendor names so StdDriver compiles unmodified.
+            target_compile_options(test_mcs51_cms8s_vendor PRIVATE /wd4005)
+        endif()
+    else()
+        message(STATUS "mcs51 tier-b: vendor StdDriver fixture not found "
+            "(docs/vendors/Cmsemicon) — skipping test_mcs51_cms8s_vendor")
+    endif()
 endif()
 
 add_custom_target(check
