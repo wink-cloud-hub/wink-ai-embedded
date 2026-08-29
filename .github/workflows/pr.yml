@@ -50,3 +50,44 @@ jobs:
 
       - name: Run PAL & DAL Unit Tests
         run: ctest --test-dir build_host --output-on-failure
+
+  wasm-build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: '3.1.64'
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Toolchain Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build
+
+      - name: Install winkcli Toolchain
+        run: |
+          pip install winkcli pytest || pip install pyyaml jinja2 rich pytest
+
+      - name: Configure CMake (Host tree hosts the emcc wasm tests)
+        run: |
+          cmake -B build_host -S wink-micro-os -G Ninja \
+            -DTARGET_PLATFORM=host \
+            -DWINK_APP_DIR=wink-micro-app/unisim_smoke
+
+      - name: Build (emcc wasm test targets are ALL)
+        run: cmake --build build_host
+
+      - name: Run wasm/Node tests (label "wasm")
+        run: ctest --test-dir build_host -L wasm --output-on-failure
