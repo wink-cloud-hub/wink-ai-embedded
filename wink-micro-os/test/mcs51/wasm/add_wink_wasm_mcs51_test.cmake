@@ -110,10 +110,13 @@ file(GLOB _WASM_MCS51_PAL_WASM
     "${_SDK_ROOT}/targets/wasm/pal_wasm_*.c")
 list(FILTER _WASM_MCS51_PAL_WASM EXCLUDE REGEX "_ch[0-9]")
 
-# add_wink_wasm_mcs51_test(<test_name> <sample_name> <driver_c>):
+# add_wink_wasm_mcs51_test(<test_name> <sample_name> <driver_c> [extra_emcc_flags]):
 #   cleanup <sample_name>.c -> <sample_name>.cpp, compile with the framework
-#   under emcc + ASYNCIFY, register a ctest under node.
+#   under emcc + ASYNCIFY, register a ctest under node. The optional 4th arg is
+#   appended to the emcc command line (e.g. -sEXPORTED_FUNCTIONS=... for a test
+#   that exports a getter the node JS library calls back into).
 function(add_wink_wasm_mcs51_test test_name sample_name driver_c)
+    set(_extra_emcc_flags "${ARGN}")
     set(_sample_cpp "${_WASM_MCS51_DIR}/${sample_name}.cpp")
     set(_out_js     "${_WASM_MCS51_DIR}/${test_name}.js")
 
@@ -179,6 +182,7 @@ function(add_wink_wasm_mcs51_test test_name sample_name driver_c)
             -sERROR_ON_UNDEFINED_SYMBOLS=1
             -sEXIT_RUNTIME=1
             --js-library=${_SDK_ROOT}/test/mcs51/wasm/mcs51_wasm_node_stub.js
+            ${_extra_emcc_flags}
             -o ${_out_js}
         DEPENDS
             ${_test_sources}
@@ -255,3 +259,13 @@ if(_MCS51_BOARD_CONFIG_H)
         iron_ntc
         ${_SDK_ROOT}/test/mcs51/test_mcs51_iron_ntc_e2e.c)
 endif()
+
+# Channel-1 external Read-Pin seam: the gpio_in_out button->LED sample but the
+# button is driven as a real external driver (js_pal_gpio_read_state), not via
+# the P3 latch. The node library calls back into the exported getter below to
+# read the scripted level.
+add_wink_wasm_mcs51_test(
+    wasm_mcs51_gpio_external_test
+    gpio_in_out
+    ${_SDK_ROOT}/test/mcs51/test_mcs51_gpio_external_e2e.c
+    "-sEXPORTED_FUNCTIONS=_main,_mcs51_wasm_ext_pin_state")
