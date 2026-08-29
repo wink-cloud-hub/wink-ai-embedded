@@ -1,0 +1,62 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51 button->led headless proof (ADR-0075)",
+    "templateId": "mcs51_button_led",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "2000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "100ms",
+      "target": "plugin:led/on",
+      "matcher": false,
+      "description": "LED off before press (button idle/released)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "200ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "800ms",
+      "target": "plugin:led/on",
+      "matcher": true,
+      "description": "LED lit while button pressed"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "800ms",
+      "target": "gpio:8",
+      "matcher": 0,
+      "description": "MCU drives P1.0 (linear pin 8) low while pressed"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "900ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "plugin:led/on",
+      "matcher": false,
+      "description": "LED off after button released"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "gpio:8",
+      "matcher": 1,
+      "description": "MCU drives P1.0 high after release"
+    }
+  ]
+}
