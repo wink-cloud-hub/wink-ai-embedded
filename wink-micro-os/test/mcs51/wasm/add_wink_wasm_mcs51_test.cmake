@@ -55,6 +55,34 @@ add_custom_command(
     COMMENT "mcs51 wasm: generating wink_config.h"
     VERBATIM)
 
+# ── M6: board-config codegen (wink-app.json -> mcs51_board_config.h) ──────────
+# The framework bridge __has_include()s this at compile time; the gen dir is
+# already in _WASM_MCS51_INCLUDES (-I.../gen). When present the bridge auto-binds
+# the codegen ADC0832, so the iron_ntc driver never calls mcs51_adc0832_init.
+# Gated on the generator (skips gracefully when wink-tools source is absent).
+set(_MCS51_BOARD_CONFIG_H "")
+set(_MCS51_BOARD_CONFIG_GENERATOR
+    "${WINK_TOOLS_ROOT}/tools/codegen/generators/mcs51_board_config.py")
+set(_MCS51_IRON_NTC_APP "${_SDK_ROOT}/test/mcs51/apps/iron_ntc/wink-app.json")
+if(WINK_TOOLS_ROOT AND EXISTS "${_MCS51_BOARD_CONFIG_GENERATOR}"
+        AND EXISTS "${_MCS51_IRON_NTC_APP}")
+    set(_MCS51_BOARD_CONFIG_H "${_WASM_MCS51_DIR}/gen/mcs51_board_config.h")
+    add_custom_command(
+        OUTPUT ${_MCS51_BOARD_CONFIG_H}
+        COMMAND ${Python3_EXECUTABLE} "${_MCS51_BOARD_CONFIG_GENERATOR}"
+            --input "${_MCS51_IRON_NTC_APP}"
+            --output ${_MCS51_BOARD_CONFIG_H}
+        DEPENDS "${_MCS51_IRON_NTC_APP}"
+                "${_MCS51_BOARD_CONFIG_GENERATOR}"
+                "${WINK_TOOLS_ROOT}/tools/codegen/templates/mcs51_board_config.h.j2"
+                "${WINK_TOOLS_ROOT}/tools/codegen/boards/mcs51_devboard.json"
+        COMMENT "mcs51 wasm: generating mcs51_board_config.h (iron_ntc)"
+        VERBATIM)
+else()
+    message(STATUS "wasm_mcs51: mcs51_board_config generator/iron_ntc app not "
+        "found — skipping wasm_mcs51_iron_ntc_test")
+endif()
+
 set(_WASM_MCS51_INCLUDES
     -I${_SDK_ROOT}/frameworks/mcs51/include
     -I${_SDK_ROOT}/pal/include
@@ -156,6 +184,7 @@ function(add_wink_wasm_mcs51_test test_name sample_name driver_c)
             ${_test_sources}
             ${_sample_cpp}
             ${_MCS51_CONFIG_H}
+            ${_MCS51_BOARD_CONFIG_H}
             ${_SDK_ROOT}/test/mcs51/wasm/mcs51_wasm_node_stub.js
         COMMENT "Building ${test_name} (emcc + ASYNCIFY fibers)"
         VERBATIM)
@@ -215,3 +244,14 @@ add_wink_wasm_mcs51_test(
     wasm_mcs51_cms8s_adc_test
     cms8s_adc_test
     ${_SDK_ROOT}/test/mcs51/test_mcs51_cms8s_adc_e2e.c)
+
+# M6: NTC closed-loop thermostat through the board-codegen ADC0832 seam —
+# the shared host/wasm C driver injects cold/hot/open/short codes via the
+# post-init hook (no mcs51_adc0832_init in the driver: the bridge auto-binds
+# the codegen pins) and asserts heater toggle + open/short safe states.
+if(_MCS51_BOARD_CONFIG_H)
+    add_wink_wasm_mcs51_test(
+        wasm_mcs51_iron_ntc_test
+        iron_ntc
+        ${_SDK_ROOT}/test/mcs51/test_mcs51_iron_ntc_e2e.c)
+endif()
