@@ -445,6 +445,49 @@ if(TARGET wink_mcs51_compat)
     mcs51_cleanup_sample(sfr_rmw_isolation_test)
     mcs51_cleanup_sample(adc0832_read)
     mcs51_cleanup_sample(cms8s_adc_test)
+    mcs51_cleanup_sample(iron_ntc)
+
+    # ── M6: board-config codegen seam (wink-app.json -> mcs51_board_config.h) ──
+    # The framework bridge (mcs51_bridge.cpp) does __has_include("mcs51_board_config.h")
+    # at COMPILE time and, when present, auto-binds the codegen-described ADC0832
+    # during framework init (MCS51_HAS_ADC0832). Because bridge.cpp is compiled
+    # into the wink_mcs51_compat static library, the generated header's directory
+    # must be on THAT target's include path (not just the test exe's) and the
+    # library must depend on the generation target. Gate on the generator existing
+    # so plain-C/CI checkouts without the wink-tools source configure cleanly and
+    # just skip the iron_ntc codegen test (mirrors the tier-b fixture gate).
+    set(_MCS51_BOARD_CONFIG_GENERATOR
+        "${WINK_TOOLS_ROOT}/tools/codegen/generators/mcs51_board_config.py")
+    set(_MCS51_IRON_NTC_APP
+        "${CMAKE_CURRENT_SOURCE_DIR}/mcs51/apps/iron_ntc/wink-app.json")
+    if(WINK_TOOLS_ROOT AND EXISTS "${_MCS51_BOARD_CONFIG_GENERATOR}"
+            AND EXISTS "${_MCS51_IRON_NTC_APP}")
+        set(_MCS51_BOARD_CONFIG_H "${_MCS51_GEN_DIR}/mcs51_board_config.h")
+        set(_MCS51_BOARD_JSON
+            "${WINK_TOOLS_ROOT}/tools/codegen/boards/mcs51_devboard.json")
+        add_custom_command(
+            OUTPUT ${_MCS51_BOARD_CONFIG_H}
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${_MCS51_GEN_DIR}
+            COMMAND ${Python3_EXECUTABLE} ${_MCS51_BOARD_CONFIG_GENERATOR}
+                --input ${_MCS51_IRON_NTC_APP}
+                --output ${_MCS51_BOARD_CONFIG_H}
+            DEPENDS ${_MCS51_IRON_NTC_APP}
+                    ${_MCS51_BOARD_CONFIG_GENERATOR}
+                    "${WINK_TOOLS_ROOT}/tools/codegen/templates/mcs51_board_config.h.j2"
+                    ${_MCS51_BOARD_JSON}
+            COMMENT "mcs51 codegen: iron_ntc wink-app.json -> mcs51_board_config.h"
+            VERBATIM)
+        add_custom_target(generate_mcs51_board_config DEPENDS ${_MCS51_BOARD_CONFIG_H})
+
+        # bridge.cpp's __has_include is evaluated while compiling the LIBRARY.
+        target_include_directories(wink_mcs51_compat PRIVATE ${_MCS51_GEN_DIR})
+        add_dependencies(wink_mcs51_compat generate_mcs51_board_config)
+        set(_MCS51_HAS_BOARD_CONFIG TRUE)
+    else()
+        message(STATUS "mcs51 M6: mcs51_board_config generator or iron_ntc app "
+            "not found — skipping codegen board-config + iron_ntc e2e")
+        set(_MCS51_HAS_BOARD_CONFIG FALSE)
+    endif()
 
     # Runtime sources every mcs51 host test links (fiber scheduler path).
     set(_MCS51_RUNTIME_SRCS
@@ -579,6 +622,18 @@ if(TARGET wink_mcs51_compat)
         mcs51/test_mcs51_cms8s_adc_e2e.c
         ${_MCS51_cms8s_adc_test_CPP}
         ${_MCS51_RUNTIME_SRCS})
+
+    # M6: NTC closed-loop thermostat through the board-codegen ADC0832 seam.
+    # The driver does NOT call mcs51_adc0832_init — the bridge auto-binds the
+    # codegen pins (CS=P2.0/CLK=P2.1/DIO=P2.2) from mcs51_board_config.h; the
+    # post-init hook only injects NTC codes. Asserts heater latch toggle at the
+    # setpoint and open/short safe states (acceptance #4). Gated on codegen.
+    if(_MCS51_HAS_BOARD_CONFIG)
+        add_mcs51_host_test(test_mcs51_iron_ntc_e2e
+            mcs51/test_mcs51_iron_ntc_e2e.c
+            ${_MCS51_iron_ntc_CPP}
+            ${_MCS51_RUNTIME_SRCS})
+    endif()
 
     # ── M5 tier-b harvest: compile+RUN the UNMODIFIED vendor StdDriver adc.c ──
     # The vendor SDK is a reference-only fixture under docs/vendors (never
