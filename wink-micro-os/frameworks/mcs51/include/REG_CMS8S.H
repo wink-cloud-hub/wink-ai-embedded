@@ -162,9 +162,16 @@ xsfr P32CFG(0xF032);  // P3.2 pin function mux
 #define ADC_CLK_DIV_128  (0x06)
 #define ADC_CLK_DIV_256  (0x07)
 
-// Result justification
-#define ADC_RESULT_LEFT   (0x00 << ADC_ADCON0_ADFM_Pos)
-#define ADC_RESULT_RIGHT  (0x01 << ADC_ADCON0_ADFM_Pos)
+// Result justification.
+// NOTE: bodies use the vendor StdDriver adc.h EXACT token spacing (e.g.
+// "(0x00<< ADC_..._Pos)"). GCC treats two macro definitions as identical only
+// when their replacement lists match whitespace-for-whitespace — unlike Clang
+// (/wd4005 / -Wno-macro-redefined), GCC has no flag to silence a non-identical
+// redefinition and escalates it under -Werror. The vendor header re-#defines
+// these same enums, so matching its spacing makes that redefinition silently
+// legal on GCC too (tier-b harvest, ADR-0073 D6).
+#define ADC_RESULT_LEFT	(0x00<< ADC_ADCON0_ADFM_Pos)
+#define ADC_RESULT_RIGHT	(0x01<< ADC_ADCON0_ADFM_Pos)
 
 // Hardware trigger sources/modes (ADCON2; accepted and ignored by the v1
 // instant model — conversion runs synchronously on ADGO).
@@ -176,19 +183,22 @@ xsfr P32CFG(0xF032);  // P3.2 pin function mux
 #define ADC_TG_PWM_PM    (0x02)
 #define ADC_TG_PWM_PE    (0x03)
 
-// Compare polarity
-#define ADC_ADRES_LESS_THAN_ADCMP  (0x01 << ADC_ADCMPC_ADCMPPS_Pos)
-#define ADC_ADRES_MORE_THAN_ADCMP  (0x00 << ADC_ADCMPC_ADCMPPS_Pos)
+// Compare polarity (vendor-exact spacing — see result-justify note above).
+#define ADC_ADRES_LESS_THAN_ADCMP		(0x01<< ADC_ADCMPC_ADCMPPS_Pos)
+#define ADC_ADRES_MORE_THAN_ADCMP		(0x00<< ADC_ADCMPC_ADCMPPS_Pos)
 
 // Reference voltage (ADCLDO VSEL; v1 model: fixed full-scale, VSEL ignored).
+// VSEL enums use "(0xNN<<ADC_..._Pos)" with NO space around the shift in the
+// vendor header — matched here byte-for-byte for GCC identical-redefinition.
 #define ADC_VREF_1P2V  (0x00)
-#define ADC_VREF_2V    (0x01 << ADC_ADCLDO_VSEL_Pos)
-#define ADC_VREF_2P4V  (0x02 << ADC_ADCLDO_VSEL_Pos)
-#define ADC_VREF_3V    (0x03 << ADC_ADCLDO_VSEL_Pos)
+#define ADC_VREF_2V				(0x01<<ADC_ADCLDO_VSEL_Pos)
+#define ADC_VREF_2P4V			(0x02<<ADC_ADCLDO_VSEL_Pos)
+#define ADC_VREF_3V				(0x03<<ADC_ADCLDO_VSEL_Pos)
 
 // Busy test / conversion start (verbatim vendor idioms). ADGO self-clears
 // inside the write hook, so ADC_GO()'s poll (if any) exits immediately.
+// ADC_GO() body tokens match the vendor multi-line macro ("do{" ... "}while(0)").
 #define ADC_IS_BUSY  (ADCON0 & ADC_ADCON0_ADGO_Msk)
-#define ADC_GO()     do { ADCON0 |= ADC_ADCON0_ADGO_Msk; } while (0)
+#define ADC_GO()     do{ ADCON0 |= ADC_ADCON0_ADGO_Msk; }while(0)
 
 #endif  // __C51__
