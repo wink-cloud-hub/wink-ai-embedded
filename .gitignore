@@ -100,3 +100,10 @@ __pycache__/
 
 # Spike/probe generated device-tree outputs (regenerable; inputs are tracked)
 docs/tech-designs/mcs51/spikes/assets/**/device-tree.*.json
+
+# ===== Vendor SDK / real-project fixtures (E-003: license, never committed) =====
+# Chip-vendor SDKs and private real-project demos stay LOCAL ONLY as reference
+# material. They live on disk under docs/vendors/ for local sim/test but are
+# never redistributed. CMake fixture-gates the tests that consume them and
+# gracefully skips on a fresh clone/CI where they are absent.
+docs/vendors/
