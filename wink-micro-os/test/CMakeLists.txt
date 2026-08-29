@@ -444,6 +444,7 @@ if(TARGET wink_mcs51_compat)
     mcs51_cleanup_sample(gpio_in_out)
     mcs51_cleanup_sample(sfr_rmw_isolation_test)
     mcs51_cleanup_sample(adc0832_read)
+    mcs51_cleanup_sample(cms8s_adc_test)
 
     # Runtime sources every mcs51 host test links (fiber scheduler path).
     set(_MCS51_RUNTIME_SRCS
@@ -564,6 +565,19 @@ if(TARGET wink_mcs51_compat)
     add_mcs51_host_test(test_mcs51_adc0832_e2e
         mcs51/test_mcs51_adc0832_e2e.c
         ${_MCS51_adc0832_read_CPP}
+        ${_MCS51_RUNTIME_SRCS})
+
+    # M5: CMS8S78xx on-chip ADC — 0-cycle instant model: ADGO self-clear,
+    # right/left ADRESH/ADRESL packing, ADCIE/EA vector-19 gating, ADEN gate,
+    # AN25/AN63 channels, XSFR proxy window + OOB trap.
+    add_mcs51_host_test(test_mcs51_cms8s_adc
+        mcs51/unit/test_cms8s_adc_instant.cpp)
+
+    # M5: CMS8S78xx ADC end-to-end through an unmodified Keil polled sample
+    # (real register map; AN0 right / AN1 left / AN25 right via 12-bit rail).
+    add_mcs51_host_test(test_mcs51_cms8s_adc_e2e
+        mcs51/test_mcs51_cms8s_adc_e2e.c
+        ${_MCS51_cms8s_adc_test_CPP}
         ${_MCS51_RUNTIME_SRCS})
 endif()
 
