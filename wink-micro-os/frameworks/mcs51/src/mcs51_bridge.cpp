@@ -20,6 +20,7 @@
 
 #include "ADC0832.H"
 #include "absacc.h"
+#include "cms8s_adc.h"
 #include "mcs51_adc.h"
 #include "mcs51_trap.h"
 #include "wink_mcs51_clock.h"
@@ -100,6 +101,9 @@ void mcs51_framework_init(void) {
     mcs51_trap_register_sfr_write(SFR_TH0, &sfr_write_hook_timer);
     mcs51_trap_register_sfr_write(SFR_TH1, &sfr_write_hook_timer);
     mcs51_trap_register_sfr_write(SFR_SBUF, &sfr_write_hook_uart);
+
+    // CMS8S78xx on-chip ADC: ADCON0 write hook (0-cycle instant conversion).
+    cms8s_adc_init();
 
 #ifdef MCS51_HAS_ADC0832
     // Codegen-provided board: external ADC0832 on fixed pins (runtime app_init
