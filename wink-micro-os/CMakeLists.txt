@@ -112,17 +112,32 @@ add_custom_command(
 add_custom_target(generate_config DEPENDS ${WINK_CONFIG_H})
 message(STATUS "Configuration will be generated at: ${WINK_CONFIG_H}")
 
+# Detect an MCS-51 app from its wink-app.json "board" field, once. This gates
+# both the production board-config codegen below and the DAL pruning bypass
+# further down (ADR-0075). mcs51 apps link the wink_mcs51_compat framework and
+# use NO DAL drivers; their devices exist solely for the frontend unisim-plugin
+# device-tree (a separate codegen path). The framework link itself is driven by
+# the app's WINK_APP_MCS51 opt-in exported from add_subdirectory(app).
+set(_wink_app_is_mcs51 FALSE)
+if(NOT WINK_APP_JSON STREQUAL "" AND EXISTS "${WINK_APP_JSON}")
+    file(READ "${WINK_APP_JSON}" _wink_app_json_text LIMIT 4096)
+    if(_wink_app_json_text MATCHES "\"board\"[ \t\r\n]*:[ \t\r\n]*\"[^\"]*mcs51[^\"]*\"")
+        set(_wink_app_is_mcs51 TRUE)
+    endif()
+endif()
+
 # MCS-51 board-config codegen (ADR-0075): production mcs51 apps need
 # mcs51_board_config.h alongside wink_config.h. The framework bridge
 # (frameworks/mcs51/src/mcs51_bridge.cpp) __has_include()s it; emitting into
 # WINK_CONFIG_DIR puts it on the pal INTERFACE include path that
-# wink_mcs51_compat sees transitively. Only wired for wasm source builds where
-# an mcs51 app may be linked (the app CMakeLists opts in via WINK_APP_MCS51).
+# wink_mcs51_compat sees transitively. Only wired for wasm source builds of an
+# mcs51 app (esp32-style apps never include the bridge's board-config path).
 set(_MCS51_BOARD_CONFIG_GENERATOR
     "${WINK_TOOLS_ROOT}/tools/codegen/generators/mcs51_board_config.py")
 set(WINK_MCS51_BOARD_CONFIG_H "${WINK_CONFIG_DIR}/mcs51_board_config.h")
 if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN
         AND WINK_SDK_MODE STREQUAL "source"
+        AND _wink_app_is_mcs51
         AND EXISTS "${_MCS51_BOARD_CONFIG_GENERATOR}"
         AND NOT WINK_APP_JSON STREQUAL "")
     add_custom_command(
@@ -183,17 +198,10 @@ else()
     # and use NO DAL drivers; their wink-app.json devices exist solely for the
     # frontend unisim-plugin device-tree (a separate codegen path). Skip C-side
     # DAL pruning/app_codegen for them (it would reject button/led as DAL
-    # drivers). Detected via the mcs51 board; the dal target then links only
-    # its unconditional stub TU. The app's own WINK_APP_MCS51 opt-in (exported
-    # from add_subdirectory(app) below) drives the framework link later.
-    set(_wink_app_is_mcs51 FALSE)
-    if(NOT WINK_APP_JSON STREQUAL "" AND EXISTS "${WINK_APP_JSON}")
-        file(READ "${WINK_APP_JSON}" _wink_app_json_text LIMIT 4096)
-        if(_wink_app_json_text MATCHES "\"board\"[ \t\r\n]*:[ \t\r\n]*\"[^\"]*mcs51[^\"]*\"")
-            set(_wink_app_is_mcs51 TRUE)
-        endif()
-    endif()
-
+    # drivers). Detected via the mcs51 board (_wink_app_is_mcs51, computed once
+    # above alongside the board-config codegen gate); the dal target then links
+    # only its unconditional stub TU. The app's own WINK_APP_MCS51 opt-in
+    # (exported from add_subdirectory(app) below) drives the framework link.
     set(_wink_dal_do_prune FALSE)
     if(TARGET_PLATFORM STREQUAL "host")
         if(WINK_DAL_BIND_APP_JSON)
