@@ -1,0 +1,26 @@
+{
+  "appName": "mcs51_button_led",
+  "board": "mcs51_devboard",
+  "devices": {
+    "btn": {
+      "id": "btn",
+      "type": "button",
+      "pinMapping": {
+        "1.l": 26
+      },
+      "properties": {
+        "activeLow": true
+      }
+    },
+    "led": {
+      "id": "led",
+      "type": "led",
+      "pinMapping": {
+        "A": 8
+      },
+      "properties": {
+        "activeHigh": false
+      }
+    }
+  }
+}
