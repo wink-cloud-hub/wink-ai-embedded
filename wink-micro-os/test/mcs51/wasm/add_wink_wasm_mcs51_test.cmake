@@ -107,6 +107,7 @@ function(add_wink_wasm_mcs51_test test_name sample_name driver_c)
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_sfr.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_adc.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_adc0832.cpp
+        ${_SDK_ROOT}/frameworks/mcs51/src/cms8s_adc.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_isr.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_clock.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_timer.cpp
@@ -205,3 +206,12 @@ add_wink_wasm_mcs51_test(
     wasm_mcs51_adc0832_test
     adc0832_read
     ${_SDK_ROOT}/test/mcs51/test_mcs51_adc0832_e2e.c)
+
+# M5: CMS8S78xx on-chip ADC end-to-end — the unmodified Keil polled sample
+# drives the real register map (ADCON0 ADGO/ADFM, ADRESH/ADRESL packing); the
+# shared host/wasm C driver injects 0xABC/0x801/0xFFF on AN0/AN1/AN25 via the
+# post-init hook and asserts the recombined 12-bit codes.
+add_wink_wasm_mcs51_test(
+    wasm_mcs51_cms8s_adc_test
+    cms8s_adc_test
+    ${_SDK_ROOT}/test/mcs51/test_mcs51_cms8s_adc_e2e.c)
