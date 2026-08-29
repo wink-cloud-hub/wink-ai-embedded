@@ -112,6 +112,36 @@ add_custom_command(
 add_custom_target(generate_config DEPENDS ${WINK_CONFIG_H})
 message(STATUS "Configuration will be generated at: ${WINK_CONFIG_H}")
 
+# MCS-51 board-config codegen (ADR-0075): production mcs51 apps need
+# mcs51_board_config.h alongside wink_config.h. The framework bridge
+# (frameworks/mcs51/src/mcs51_bridge.cpp) __has_include()s it; emitting into
+# WINK_CONFIG_DIR puts it on the pal INTERFACE include path that
+# wink_mcs51_compat sees transitively. Only wired for wasm source builds where
+# an mcs51 app may be linked (the app CMakeLists opts in via WINK_APP_MCS51).
+set(_MCS51_BOARD_CONFIG_GENERATOR
+    "${WINK_TOOLS_ROOT}/tools/codegen/generators/mcs51_board_config.py")
+set(WINK_MCS51_BOARD_CONFIG_H "${WINK_CONFIG_DIR}/mcs51_board_config.h")
+if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN
+        AND WINK_SDK_MODE STREQUAL "source"
+        AND EXISTS "${_MCS51_BOARD_CONFIG_GENERATOR}"
+        AND NOT WINK_APP_JSON STREQUAL "")
+    add_custom_command(
+        OUTPUT ${WINK_MCS51_BOARD_CONFIG_H}
+        COMMAND ${Python3_EXECUTABLE} "${_MCS51_BOARD_CONFIG_GENERATOR}"
+                --input "${WINK_APP_JSON}"
+                --output "${WINK_MCS51_BOARD_CONFIG_H}"
+        DEPENDS ${WINK_APP_JSON}
+                "${_MCS51_BOARD_CONFIG_GENERATOR}"
+                "${WINK_TOOLS_ROOT}/tools/codegen/templates/mcs51_board_config.h.j2"
+                "${WINK_TOOLS_ROOT}/tools/codegen/boards/mcs51_devboard.json"
+        COMMENT "Generating mcs51_board_config.h"
+        VERBATIM
+    )
+    add_custom_target(generate_mcs51_board_config
+        DEPENDS ${WINK_MCS51_BOARD_CONFIG_H})
+    message(STATUS "MCS-51 board config will be generated at: ${WINK_MCS51_BOARD_CONFIG_H}")
+endif()
+
 # Stack Safety Enforcement (-Wstack-usage / -Wframe-larger-than)
 set(WINK_STACK_USAGE_LIMIT 1536 CACHE STRING
     "Per-function stack usage hard limit in bytes (-Wstack-usage)")
@@ -148,6 +178,22 @@ if(WINK_SDK_MODE STREQUAL "binary")
     include(${CMAKE_CURRENT_SOURCE_DIR}/targets/host/wink_binary_import.cmake)
 else()
     add_subdirectory(pal)
+
+    # ADR-0075: MCS-51 framework apps drive hardware directly via SFR proxies
+    # and use NO DAL drivers; their wink-app.json devices exist solely for the
+    # frontend unisim-plugin device-tree (a separate codegen path). Skip C-side
+    # DAL pruning/app_codegen for them (it would reject button/led as DAL
+    # drivers). Detected via the mcs51 board; the dal target then links only
+    # its unconditional stub TU. The app's own WINK_APP_MCS51 opt-in (exported
+    # from add_subdirectory(app) below) drives the framework link later.
+    set(_wink_app_is_mcs51 FALSE)
+    if(NOT WINK_APP_JSON STREQUAL "" AND EXISTS "${WINK_APP_JSON}")
+        file(READ "${WINK_APP_JSON}" _wink_app_json_text LIMIT 4096)
+        if(_wink_app_json_text MATCHES "\"board\"[ \t\r\n]*:[ \t\r\n]*\"[^\"]*mcs51[^\"]*\"")
+            set(_wink_app_is_mcs51 TRUE)
+        endif()
+    endif()
+
     set(_wink_dal_do_prune FALSE)
     if(TARGET_PLATFORM STREQUAL "host")
         if(WINK_DAL_BIND_APP_JSON)
@@ -155,6 +201,31 @@ else()
         endif()
     else()
         set(_wink_dal_do_prune TRUE)
+    endif()
+    if(_wink_app_is_mcs51)
+        # Do NOT run app_codegen DAL pruning (it rejects the frontend-only
+        # button/led plugin devices). Instead prune to EMPTY explicitly: load
+        # the driver table at this scope and force every WINK_USE_<driver> OFF
+        # so dal/bal compile only their unconditional stub TUs. (Inlined rather
+        # than wink_dal_load_driver_table(): that is a function whose
+        # WINK_KNOWN_DRIVERS stays function-scoped.)
+        set(_wink_dal_do_prune FALSE)
+        get_filename_component(WINK_MICRO_OS_ROOT
+            "${CMAKE_CURRENT_SOURCE_DIR}" ABSOLUTE)
+        set(_mcs51_drv_gen "${CMAKE_BINARY_DIR}/mcs51_drivers.cmake")
+        execute_process(
+            COMMAND ${Python3_EXECUTABLE}
+                    "${WINK_TOOLS_ROOT}/tools/codegen/scripts/list_drivers.py"
+                    --cmake --mode=source
+            OUTPUT_FILE "${_mcs51_drv_gen}"
+            RESULT_VARIABLE _mcs51_drv_rc)
+        if(NOT _mcs51_drv_rc EQUAL 0)
+            message(FATAL_ERROR "mcs51: list_drivers.py failed (rc=${_mcs51_drv_rc})")
+        endif()
+        include("${_mcs51_drv_gen}")
+        foreach(_wink_mcs51_drv IN LISTS WINK_KNOWN_DRIVERS)
+            set(WINK_USE_${_wink_mcs51_drv} OFF CACHE BOOL "" FORCE)
+        endforeach()
     endif()
     if(_wink_dal_do_prune
        AND DEFINED WINK_APP_JSON
@@ -273,6 +344,30 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
     if(_NEED_ARDUINO AND TARGET wink_arduino_compat)
         message(STATUS "[frameworks] Arduino compatibility enabled for App")
         target_link_libraries(wink_simulator PRIVATE wink_arduino_compat)
+    endif()
+
+    # ADR-0075: MCS-51 interception framework is the second auto-linked
+    # production framework (mirrors the Arduino block above). A mcs51 app's
+    # CMakeLists opts in by exporting WINK_APP_MCS51=TRUE. The framework's
+    # mcs51_bridge.cpp strongly defines wink_app_get_callbacks(), so a mcs51
+    # app must NOT also compile app_callbacks.c (duplicate symbol). Linking the
+    # compat lib pulls the real channel PAL data plane (js_pal_gpio_* /
+    # js_pal_adc_read_norm via wink_sim_js.js -> PinArbiter); the bounded mcs51
+    # test's channel stubs are never part of this production link.
+    if(WINK_APP_MCS51 AND TARGET wink_mcs51_compat)
+        message(STATUS "[frameworks] MCS-51 interception enabled for App")
+        target_link_libraries(wink_simulator PRIVATE wink_mcs51_compat)
+        # The STATIC lib compiles mcs51_bridge.cpp independently of the exe;
+        # it includes wink_app.h -> wink_config.h (via pal's INTERFACE include
+        # of WINK_CONFIG_DIR) and __has_include("mcs51_board_config.h"). The
+        # include paths propagate from pal, but the generated FILES need an
+        # explicit build-order dependency (parallel builds otherwise race).
+        if(TARGET generate_config)
+            add_dependencies(wink_mcs51_compat generate_config)
+        endif()
+        if(TARGET generate_mcs51_board_config)
+            add_dependencies(wink_mcs51_compat generate_mcs51_board_config)
+        endif()
     endif()
     target_include_directories(wink_simulator PRIVATE
         ${WASM_EXTRA_INCLUDE_DIRS}
