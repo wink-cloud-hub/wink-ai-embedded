@@ -79,6 +79,17 @@ dependencies.lock
 *.js.map
 *.wat
 
+# ===== SDCC / MCU Compiler Artifacts =====
+*.rel
+*.lst
+*.rst
+*.sym
+*.lk
+*.map
+*.ihx
+*.cdb
+*.adb
+
 # ===== Temporary / System Files =====
 *~
 *.swp
