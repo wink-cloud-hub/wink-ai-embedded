@@ -65,17 +65,18 @@ Set `$env:WINK_AI_ROOT to the wink-ai checkout root."
 
 $microAppDir = Join-Path $embeddedRoot 'wink-micro-app'
 
-# Carrier apps in channel-proof order. The two digital-INPUT apps
-# (button_led polled, button_led_int /INT0) depend on mcs51 digital pin INPUT,
-# which the sister multi-arch headless engine (0c3a7609) currently breaks
-# (js_pal_gpio_read_state returns constant HIGH). They are still exercised;
-# their FAIL is the known engine regression, not a scenario/relocation problem.
+# Carrier apps in channel-proof order. All five are expected to PASS. The two
+# digital-INPUT apps (button_led polled, button_led_int /INT0) exercise mcs51
+# digital pin INPUT; they were broken by the sister multi-arch headless engine
+# (behavioral-mode PluginContext.writePin gate) and are green again after the
+# sister fix 8d06a4e8 (arbiter driven unconditionally; only the timing waveform
+# edge queue is gated to timing mode).
 $carriers = @(
     @{ Name = 'mcs51_uart_hello';       Channel = 'ch2 UART TX (T1)' },
     @{ Name = 'mcs51_uart_echo';        Channel = 'ch2 UART RX live (T2.3)' },
     @{ Name = 'mcs51_analog_threshold'; Channel = 'ch3 analog ADC (T4)' },
-    @{ Name = 'mcs51_button_led_int';   Channel = 'ch1 INT0/1 (T3) [digital-input regression]' },
-    @{ Name = 'mcs51_button_led';       Channel = 'ch1 digital read (Stage 0) [digital-input regression]' }
+    @{ Name = 'mcs51_button_led_int';   Channel = 'ch1 INT0/1 (T3)' },
+    @{ Name = 'mcs51_button_led';       Channel = 'ch1 digital read (Stage 0)' }
 )
 if ($App) { $carriers = $carriers | Where-Object { $_.Name -eq $App } }
 if (-not $carriers) { Write-Error "No carrier app matched '$App'."; exit 2 }
@@ -133,7 +134,7 @@ foreach ($r in $results) {
 $failed = $results | Where-Object { -not $_.Ok }
 if ($failed) {
     Write-Host ""
-    Write-Warning "$($failed.Count) carrier(s) failed. Digital-INPUT failures are the known sister-engine regression (0c3a7609); see Layer-1 spec dashboard note."
+    Write-Warning "$($failed.Count) carrier(s) failed. Inspect the scenario step output above; all five carriers are expected to pass (digital-INPUT fixed in sister 8d06a4e8)."
     exit 1
 }
 Write-Host ""
