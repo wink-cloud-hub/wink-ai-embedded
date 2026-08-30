@@ -1,0 +1,48 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "pdk button->led headless simulation proof",
+    "templateId": "pdk_button_led",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "2000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "100ms",
+      "target": "gpio:PA.4",
+      "matcher": 0,
+      "description": "LED off before press (button idle/released with pull-up)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "200ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "gpio:PA.4",
+      "matcher": 1,
+      "description": "MCU drives PA.4 high (LED ON) while button is pressed"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "800ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1200ms",
+      "target": "gpio:PA.4",
+      "matcher": 0,
+      "description": "MCU drives PA.4 low (LED OFF) after button is released"
+    }
+  ]
+}
