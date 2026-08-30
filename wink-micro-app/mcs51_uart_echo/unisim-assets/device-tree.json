@@ -1,0 +1,5 @@
+{
+  "appName": "mcs51_uart_echo",
+  "board": "mcs51_devboard",
+  "devices": {}
+}

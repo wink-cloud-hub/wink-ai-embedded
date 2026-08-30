@@ -1,0 +1,59 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51 live UART RX echo headless proof (Stage 2 T2.3)",
+    "templateId": "mcs51_uart_echo",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000000",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "INPUT_BUS",
+      "timeUs": "200ms",
+      "busType": "uart",
+      "busId": 0,
+      "payload": "A",
+      "description": "Host sends 'A' TO the MCU over UART (live channel-2 RX, no injection)",
+      "mode": "stream"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "150ms",
+        "1000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "A",
+      "minPackets": 1,
+      "description": "The RX byte reached firmware (wink_mcs51_uart_rx_push -> SBUF/RI -> vector 4 ISR) and was echoed back out on TX"
+    },
+    {
+      "type": "INPUT_BUS",
+      "timeUs": "1200ms",
+      "busType": "uart",
+      "busId": 0,
+      "payload": "BC",
+      "description": "Host sends two more bytes 'BC' to the MCU",
+      "mode": "stream"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "1150ms",
+        "2500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "BC",
+      "minPackets": 1,
+      "description": "Second burst's two live RX bytes echoed in order: contiguous TX stream coalesces to 'BC' (multi-byte RX drain pacing across microsteps works)"
+    }
+  ]
+}
