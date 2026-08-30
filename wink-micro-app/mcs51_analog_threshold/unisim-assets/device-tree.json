@@ -1,0 +1,16 @@
+{
+  "appName": "mcs51_analog_threshold",
+  "board": "mcs51_devboard",
+  "devices": {
+    "led": {
+      "id": "led",
+      "type": "led",
+      "pinMapping": {
+        "A": 8
+      },
+      "properties": {
+        "activeHigh": false
+      }
+    }
+  }
+}
