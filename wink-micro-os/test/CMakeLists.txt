@@ -443,6 +443,7 @@ if(TARGET wink_mcs51_compat)
     mcs51_cleanup_sample(uart_printf)
     mcs51_cleanup_sample(uart_echo)
     mcs51_cleanup_sample(gpio_in_out)
+    mcs51_cleanup_sample(int0_button)
     mcs51_cleanup_sample(sfr_rmw_isolation_test)
     mcs51_cleanup_sample(adc0832_read)
     mcs51_cleanup_sample(cms8s_adc_test)
@@ -566,6 +567,16 @@ if(TARGET wink_mcs51_compat)
         ${_MCS51_gpio_in_out_CPP}
         ${_MCS51_RUNTIME_SRCS})
 
+    # Stage 2 T3: /INT0 external-interrupt e2e — the interrupt-driven
+    # button->LED sample toggles P1.0 from the vector-0 ISR; the main loop
+    # never reads the button, so a toggle proves the ext-int model sampled the
+    # external falling edge via channel-1 read and vectored (host + wasm/Node
+    # share the driver).
+    add_mcs51_host_test(test_mcs51_int0
+        mcs51/test_mcs51_int0_e2e.c
+        ${_MCS51_int0_button_CPP}
+        ${_MCS51_RUNTIME_SRCS})
+
     # M3 review: UART vector-4 EA+ES gated ISR dispatch + TI-not-auto-cleared
     # (host-only framework unit test; drives the model hook directly).
     add_mcs51_host_test(test_mcs51_uart_isr
@@ -576,6 +587,13 @@ if(TARGET wink_mcs51_compat)
     # interleave (host-only framework unit test; drives the model directly).
     add_mcs51_host_test(test_mcs51_uart_rx
         mcs51/unit/test_uart_rx_model.cpp)
+
+    # Stage 2 T3: INT0/INT1 external interrupt model — edge-mode falling latch
+    # + vector 0/2 with hardware auto-clear, pending-through-disable, level-mode
+    # per-slice re-request, 10 ms sample throttle, HiZ ignore, reset semantics
+    # (host-only framework unit test; drives the model directly).
+    add_mcs51_host_test(test_mcs51_extint
+        mcs51/unit/test_extint_model.cpp)
 
     # M2: 100 ms virtual delay == 10 master ticks, 1:1 clock conservation.
     add_mcs51_host_test(test_mcs51_clock_mapping

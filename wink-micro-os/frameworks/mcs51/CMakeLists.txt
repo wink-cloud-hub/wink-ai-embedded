@@ -34,6 +34,7 @@ add_library(wink_mcs51_compat STATIC EXCLUDE_FROM_ALL
     src/mcs51_clock.cpp
     src/mcs51_timer.cpp
     src/mcs51_uart.cpp
+    src/mcs51_extint.cpp
     src/mcs51_xdata.cpp
     src/mcs51_unsupported.cpp
     src/mcs51_bridge.cpp

@@ -143,6 +143,7 @@ function(add_wink_wasm_mcs51_test test_name sample_name driver_c)
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_clock.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_timer.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_uart.cpp
+        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_extint.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_xdata.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_unsupported.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_bridge.cpp
@@ -281,4 +282,14 @@ add_wink_wasm_mcs51_test(
     wasm_mcs51_gpio_external_test
     gpio_in_out
     ${_SDK_ROOT}/test/mcs51/test_mcs51_gpio_external_e2e.c
+    "-sEXPORTED_FUNCTIONS=_main,_mcs51_wasm_ext_pin_state")
+
+# Stage 2 T3: /INT0 external-interrupt e2e — the int0_button sample toggles
+# P1.0 from the vector-0 ISR (edge-triggered); the button level is driven as a
+# real external driver through js_pal_gpio_read_state, and the node library
+# reads the scripted level via the exported mcs51_wasm_ext_pin_state getter.
+add_wink_wasm_mcs51_test(
+    wasm_mcs51_int0_test
+    int0_button
+    ${_SDK_ROOT}/test/mcs51/test_mcs51_int0_e2e.c
     "-sEXPORTED_FUNCTIONS=_main,_mcs51_wasm_ext_pin_state")
