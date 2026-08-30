@@ -17,13 +17,22 @@
 // vectoring, so TI stays set until software clears it (mirrors the timer
 // model's gating, not its auto-clear).
 //
-// The byte goes to two sinks: the host/wasm console (plain putchar to stdout;
-// emscripten libc maps stdout to Node's fd 1) and an in-memory capture buffer
-// exposed over the C ABI so host/wasm tests can assert exact byte sequences
-// without parsing stdout.
+// The byte goes to three sinks: the host/wasm console (plain putchar to
+// stdout; emscripten libc maps stdout to Node's fd 1), an in-memory capture
+// buffer exposed over the C ABI so host/wasm tests can assert exact byte
+// sequences without parsing stdout, and the live channel-2 route
+// (js_pal_uart_write -> PinArbiter UARTBus in production).
 //
-// Receive is modeled minimally: reading SBUF returns the last transmitted byte
-// (or 0); RI is shadow storage only. No receive ring buffer (YAGNI).
+// Receive (Stage 2, ADR-0076 A-class): external bytes enter via
+// wink_mcs51_uart_rx_push() (host test injection; emscripten KEEPALIVE export
+// for the UARTBus plugin). Bytes queue in a small PENDING FIFO and are drained
+// at microstep interception points ON THE FIBER CONTEXT — a push from the JS
+// side never re-enters the firmware directly. Drain honors SCON.REN (bytes
+// stay pending while the receiver is disabled), latches RI (SCON.0), writes
+// the SBUF shadow, and vectors UART ISR 4 when EA+ES are gated. Hardware does
+// NOT auto-clear RI on vectoring — the ISR (or polling code) clears it; a new
+// byte arriving while RI is still set is dropped (saturating counter), which
+// mirrors the no-FIFO 8051 overflow behavior.
 #pragma once
 
 #include <stdint.h>
@@ -43,11 +52,26 @@ void wink_mcs51_uart_on_write(uint8_t addr);
 void wink_mcs51_uart_on_read(uint8_t addr);
 
 // Reset UART model state (test isolation; called at framework init): zero the
-// capture-buffer length and clear the latched TI bit in the SCON shadow, so a
-// re-init starts with no captured bytes and TI=0. The capture storage itself
-// is not scrubbed — it is unreachable once the length is 0 (byte_at bounds-
-// checks against the length).
+// capture-buffer length, clear the latched TI/RI bits in the SCON shadow, and
+// flush the RX pending FIFO + drop counter, so a re-init starts clean.
 void wink_mcs51_uart_reset(void);
+
+// Receive injection entry (channel-2 plugin -> firmware; called from OUTSIDE
+// the fiber — host test harness or the emscripten-exported UARTBus callback).
+// The byte is queued (POD BSS FIFO) and later drained on the fiber context at
+// a microstep interception point via wink_mcs51_uart_rx_drain() — never
+// re-enters firmware from the caller. Queue-full bytes are dropped (saturating
+// counter, observable via wink_mcs51_uart_rx_dropped()).
+void wink_mcs51_uart_rx_push(uint8_t byte);
+
+// Fiber-context drain: deliver pending RX bytes per the REN/RI/EA+ES rules
+// (called from the microstep interception point). Pure state machine, zero
+// simulated time.
+void wink_mcs51_uart_rx_drain(void);
+
+// Saturating count of RX bytes lost to overflow (FIFO full, or byte completed
+// while RI was still set — the 8051 has no hardware RX FIFO).
+uint32_t wink_mcs51_uart_rx_dropped(void);
 
 // ── Test observability (C ABI) ──────────────────────────────────────────────
 // Number of bytes captured since reset (capped at the buffer capacity).

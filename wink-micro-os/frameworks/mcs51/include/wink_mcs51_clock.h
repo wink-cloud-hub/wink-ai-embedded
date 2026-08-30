@@ -80,6 +80,13 @@ uint64_t wink_mcs51_virtual_us(void);
 uint32_t wink_mcs51_quota_yield_count(void);
 uint32_t wink_mcs51_master_tick_count(void);
 
+// Test seam: advance the slave clock directly (no master billing, no yield),
+// for framework unit tests that drive models outside a fiber context (the
+// virtual clock otherwise only moves through charge_us, which no-ops without
+// a fiber). Models/firmware must never call this — time pacing reads the clock,
+// never sets it (trap red line 4).
+void wink_mcs51_test_advance_virtual_us(uint32_t us);
+
 // Catch-up hook: invoked on the fiber side each time the fiber resumes after a
 // quota yield (or after a delay sleep), with the slave clock advanced to
 // `now_us`. Timer models hook here to step counters and dispatch overflows
