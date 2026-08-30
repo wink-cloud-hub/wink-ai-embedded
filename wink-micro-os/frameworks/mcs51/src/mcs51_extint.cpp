@@ -70,10 +70,13 @@ bool s_in_poll = false;
 
 void poll_line(ExtIntLine& ln) {
     uint8_t st = js_pal_gpio_read_state(ln.pin);
-    if (st != EXT_LOW && st != EXT_HIGH) {
-        return;  // HiZ / conflict: no external driver — treat as "no change"
-    }
-    uint8_t level = st;  // INT pins are active-low: 0 = asserted
+    // Resolve the pin level the same way the hardware does for an active-low
+    // INT input: a driven 0/1 from the PinArbiter/button wins; HiZ or conflict
+    // (no external driver) means the line idles HIGH via the 8051's internal
+    // (weak) pull-up — a released button. Returning "no sample" here would
+    // never establish a baseline for the common open/HiZ-at-rest wiring, so an
+    // undriven INT line is modelled as deasserted (high), not ignored.
+    uint8_t level = (st == EXT_LOW) ? EXT_LOW : EXT_HIGH;
     bool was_low = (ln.last_level == EXT_LOW);
     bool now_low = (level == EXT_LOW);
     bool falling = ln.have_sample && !was_low && now_low;
