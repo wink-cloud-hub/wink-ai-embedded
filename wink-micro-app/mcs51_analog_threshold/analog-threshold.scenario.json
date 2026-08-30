@@ -1,0 +1,69 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51 live analog threshold->led headless proof (Stage 2 T4)",
+    "templateId": "mcs51_analog_threshold",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "2500000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "100ms",
+      "target": "gpio:8",
+      "matcher": 1,
+      "description": "No analog driver yet: AN0 rail reads 0 -> raw below mid-scale -> LED off (P1.0 high)"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "200ms",
+      "adcChannel": 32,
+      "valueNorm": 0.8,
+      "description": "Drive AN0 (analog rail pin 32 = 32 + AN0) to 80% (raw ~0xCCC)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "600ms",
+      "target": "gpio:8",
+      "matcher": 0,
+      "description": "High analog level crosses bridge into firmware: raw >= mid-scale -> LED on (P1.0 low)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "600ms",
+      "target": "plugin:led/on",
+      "matcher": true,
+      "description": "LED plugin reports lit for the high analog level"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "800ms",
+      "adcChannel": 32,
+      "valueNorm": 0.2,
+      "description": "Drive AN0 back down to 20% (raw ~0x333)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1200ms",
+      "target": "gpio:8",
+      "matcher": 1,
+      "description": "Low analog level: raw below mid-scale -> LED off (P1.0 high); analog tracks changes, not stuck"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "1400ms",
+      "adcChannel": 32,
+      "valueNorm": 0.8,
+      "description": "Drive AN0 high again to 80%"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1900ms",
+      "target": "gpio:8",
+      "matcher": 0,
+      "description": "Second high level: LED on again (P1.0 low) — live analog round-trip confirmed"
+    }
+  ]
+}
