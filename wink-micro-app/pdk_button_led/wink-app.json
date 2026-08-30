@@ -1,0 +1,21 @@
+{
+  "app_name": "pdk_button_led",
+  "board": "pdk_pfs154_devboard",
+  "mcu": "pfs154",
+  "core": "pdk14",
+  "tick_ms": 1,
+  "devices": {
+    "btn": {
+      "type": "button",
+      "gpio_pin": 5,
+      "port": "PA",
+      "active_low": true
+    },
+    "led": {
+      "type": "led",
+      "gpio_pin": 4,
+      "port": "PA",
+      "active_high": true
+    }
+  }
+}

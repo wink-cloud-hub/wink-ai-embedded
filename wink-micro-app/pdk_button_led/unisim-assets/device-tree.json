@@ -1,0 +1,33 @@
+{
+  "appName": "pdk_button_led",
+  "board": "pdk_pfs154_devboard",
+  "target": {
+    "architecture": "pdk",
+    "core": "pdk14",
+    "format": "hex",
+    "firmware": "pdk_button_led.hex",
+    "clockFreqHz": 8000000
+  },
+  "devices": {
+    "btn": {
+      "id": "btn",
+      "type": "button",
+      "pinMapping": {
+        "1.l": 5
+      },
+      "properties": {
+        "activeLow": true
+      }
+    },
+    "led": {
+      "id": "led",
+      "type": "led",
+      "pinMapping": {
+        "A": 4
+      },
+      "properties": {
+        "activeHigh": true
+      }
+    }
+  }
+}
