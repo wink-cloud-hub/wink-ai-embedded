@@ -228,6 +228,16 @@ add_wink_wasm_mcs51_test(
     ${_SDK_ROOT}/test/mcs51/wasm/test_mcs51_uart_wasm.c
     "-sEXPORTED_FUNCTIONS=_main,_mcs51_wasm_uart_accept_byte")
 
+# Stage 2 T2: UART echo — RX bytes pushed from the post-init hook drain at
+# microstep points (RI + vector 4), the ISR stashes them, the main loop echoes
+# via SBUF; the echoed sequence returns through the Node stub's js_pal_uart_write
+# into the exported accept sink.
+add_wink_wasm_mcs51_test(
+    wasm_mcs51_uart_echo_test
+    uart_echo
+    ${_SDK_ROOT}/test/mcs51/test_mcs51_uart_echo_e2e.c
+    "-sEXPORTED_FUNCTIONS=_main,_mcs51_wasm_uart_accept_byte")
+
 # M3: GPIO in->out sync — P3.2 key (latch-injected) drives P1.0 LED across
 # three repeated runtime runs (released -> pressed -> released) under Node.
 add_wink_wasm_mcs51_test(

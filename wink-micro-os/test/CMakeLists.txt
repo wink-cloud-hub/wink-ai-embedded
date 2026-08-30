@@ -441,6 +441,7 @@ if(TARGET wink_mcs51_compat)
     mcs51_cleanup_sample(blinky)
     mcs51_cleanup_sample(blinky_timer0)
     mcs51_cleanup_sample(uart_printf)
+    mcs51_cleanup_sample(uart_echo)
     mcs51_cleanup_sample(gpio_in_out)
     mcs51_cleanup_sample(sfr_rmw_isolation_test)
     mcs51_cleanup_sample(adc0832_read)
@@ -543,6 +544,13 @@ if(TARGET wink_mcs51_compat)
         ${_MCS51_uart_printf_CPP}
         ${_MCS51_RUNTIME_SRCS})
 
+    # Stage 2 T2: RX injection -> ISR mailbox -> polled TX echo through the live
+    # channel-2 route (host recording fallback asserts the echoed bytes).
+    add_mcs51_host_test(test_mcs51_uart_echo
+        mcs51/test_mcs51_uart_echo_e2e.c
+        ${_MCS51_uart_echo_CPP}
+        ${_MCS51_RUNTIME_SRCS})
+
     # M3: GPIO in->out sync — P3.2 key (latch-injected) drives P1.0 LED across
     # three repeated runtime runs (released -> pressed -> released).
     add_mcs51_host_test(test_mcs51_gpio_host
@@ -562,6 +570,12 @@ if(TARGET wink_mcs51_compat)
     # (host-only framework unit test; drives the model hook directly).
     add_mcs51_host_test(test_mcs51_uart_isr
         mcs51/unit/test_uart_isr_dispatch.cpp)
+
+    # Stage 2 T2: UART RX model — pending FIFO drained at microstep points,
+    # REN gate, RI latch + vector 4, no-FIFO drop on RI pending, TX/RX shadow
+    # interleave (host-only framework unit test; drives the model directly).
+    add_mcs51_host_test(test_mcs51_uart_rx
+        mcs51/unit/test_uart_rx_model.cpp)
 
     # M2: 100 ms virtual delay == 10 master ticks, 1:1 clock conservation.
     add_mcs51_host_test(test_mcs51_clock_mapping

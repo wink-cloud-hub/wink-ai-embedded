@@ -95,6 +95,10 @@ uint32_t wink_mcs51_quota_yield_count(void) {
     return s_quota_yields;
 }
 
+void wink_mcs51_test_advance_virtual_us(uint32_t us) {
+    s_virtual_us += static_cast<uint64_t>(us);
+}
+
 uint32_t wink_mcs51_master_tick_count(void) {
     // 100 Hz master tick = 10,000 us boundaries crossed by the slave clock
     // (1:1 conserved with master time billed via pal_os_busy_wait_us).
