@@ -30,6 +30,21 @@ mergeInto(LibraryManager.library, {
   // (mcs51_adc_set_value), so no JS-side analog source is needed.
   js_pal_gpio_write: function (pin, level) {},
   js_pal_adc_read_norm: function (pin) { return 0.0; },
+  // Channel-2 UART TX (SBUF write -> UARTBus): copy the byte run off the
+  // WASM heap into a Module log the Node driver can assert.
+  js_pal_uart_write: function (port, bufPtr, len) {
+    if (typeof Module !== 'undefined') {
+      if (!Module['mcs51UartTxLog']) Module['mcs51UartTxLog'] = [];
+      const bytes = Array.from(Module.HEAPU8.subarray(bufPtr, bufPtr + len));
+      Module['mcs51UartTxLog'] = Module['mcs51UartTxLog'].concat(bytes);
+      // Optional C-side sink (kept alive by -sEXPORTED_FUNCTIONS on the
+      // test): lets the driver assert the live route from C (exit-code gate),
+      // mirroring the mcs51_wasm_ext_pin_state callback direction.
+      if (typeof Module['_mcs51_wasm_uart_accept_byte'] === 'function') {
+        for (const b of bytes) Module['_mcs51_wasm_uart_accept_byte'](b);
+      }
+    }
+  },
   // Channel-1 read direction (external digital level, e.g. a button plugin via
   // PinArbiter): delegate to the test driver's exported getter; absent (the
   // other wasm tests) return 2 = HiZ so the proxy falls back to the latch.
