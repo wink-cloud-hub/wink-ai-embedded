@@ -23,6 +23,22 @@ extern const wink_app_callbacks_t *wink_app_get_callbacks(void);
 extern uint32_t wink_mcs51_uart_byte_count(void);
 extern uint8_t  wink_mcs51_uart_byte_at(uint32_t i);
 
+/* Live channel-2 route under wasm: the Node stub's js_pal_uart_write calls
+ * back into this exported sink (kept alive by -sEXPORTED_FUNCTIONS on this
+ * test only), so the exact SBUF -> js_pal_uart_write byte stream is asserted
+ * from C (ctest gates on exit code, not Node-side log scraping). */
+#ifdef __EMSCRIPTEN__
+static uint8_t  s_tx_route[4096];
+static uint32_t s_tx_route_count;
+int mcs51_wasm_uart_accept_byte(unsigned b) {
+    if (s_tx_route_count < sizeof(s_tx_route)) {
+        s_tx_route[s_tx_route_count] = (uint8_t)b;
+    }
+    ++s_tx_route_count;
+    return 0;
+}
+#endif
+
 #define RUN_TICKS 100u
 
 /* Exactly what the sample sends ("MCS51-UART-OK\r\n" three times). */
@@ -74,11 +90,30 @@ int main(void) {
         }
     }
 
+    /* Live channel-2 route: the Node stub must have delivered the same
+     * sequence through js_pal_uart_write into the exported sink. */
+    if (s_tx_route_count != want_len) {
+        printf("[mcs51-wasm] FAIL: js_pal_uart_write route saw %u bytes, want %u\n",
+               (unsigned)s_tx_route_count, (unsigned)want_len);
+        fails++;
+    }
+    for (uint32_t i = 0; i < s_tx_route_count && i < want_len; i++) {
+        if (s_tx_route[i] != (uint8_t)expected[i]) {
+            printf("[mcs51-wasm] FAIL: route byte %u is 0x%02X, want 0x%02X\n",
+                   (unsigned)i, (unsigned)s_tx_route[i],
+                   (unsigned)(uint8_t)expected[i]);
+            fails++;
+            if (fails > 8) {
+                break;
+            }
+        }
+    }
+
     if (fails) {
         return 1;
     }
     printf("[mcs51-wasm] PASS: UART captured %u bytes == 3x \"MCS51-UART-OK\" "
-           "(TI synchronous, stdout + capture sink under node)\n",
+           "(TI synchronous, stdout + capture + live ch2 route under node)\n",
            (unsigned)got_len);
     return 0;
 }

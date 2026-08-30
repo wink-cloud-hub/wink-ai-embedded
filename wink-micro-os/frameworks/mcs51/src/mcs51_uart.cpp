@@ -13,6 +13,13 @@
 #include <cstdint>
 #include <cstdio>
 
+// Channel-2 live bridge (mirrors targets/wasm/wasm_bridge.h; the mcs51 layer
+// declares it locally to stay free of axis-A PAL headers). Under emscripten
+// this is a JS import (production wink_sim_js.js routes it to the UARTBus;
+// the bounded Node stub logs it); on host mcs51_uni_bridge.cpp supplies a
+// recording fallback. Port 0 = the 8051's single hardware UART.
+extern "C" void js_pal_uart_write(uint8_t port, const uint8_t* buf, uint32_t len);
+
 namespace {
 
 constexpr uint8_t SFR_SCON = 0x98;
@@ -51,6 +58,11 @@ void on_sbuf_write(void) {
         s_capture[s_count] = b;
         ++s_count;
     }
+
+    // Live channel-2 route: SBUF write -> js_pal_uart_write -> PinArbiter
+    // UARTBus (production) / recording fallback (host) / Node stub. Zero
+    // simulated delay, same instant-complete semantics as TI below.
+    js_pal_uart_write(0, &b, 1);
 
     // Transmit complete: latch TI synchronously, before returning, so the
     // classic `SBUF = c; while(!TI);` poll observes TI=1 on its first read.
