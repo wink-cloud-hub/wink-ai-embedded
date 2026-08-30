@@ -1,0 +1,17 @@
+{
+  "app_name": "mcs51_button_led_int",
+  "board": "mcs51_devboard",
+  "tick_ms": 10,
+  "devices": {
+    "btn": {
+      "type": "button",
+      "gpio_pin": 26,
+      "active_low": true
+    },
+    "led": {
+      "type": "led",
+      "gpio_pin": 8,
+      "active_high": false
+    }
+  }
+}
