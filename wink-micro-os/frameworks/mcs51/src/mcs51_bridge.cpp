@@ -128,8 +128,12 @@ void mcs51_framework_init(void) {
 extern "C" {
 
 // Interception point for <intrins.h> _nop_(): charge one functional microstep.
+// Also the fiber-context rendezvous for events pushed from outside the fiber:
+// queued UART RX bytes drain here (RI latch + vector 4 on the firmware's own
+// context, never re-entered from the JS/host pusher).
 void wink_mcs51_microstep(void) {
     wink_mcs51_charge_us(WINK_MCS51_MICROSTEP_US);
+    wink_mcs51_uart_rx_drain();
 }
 
 // SFR proxy interception entries (boundary ③ crosses into this TU). The proxy
