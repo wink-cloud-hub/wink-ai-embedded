@@ -35,6 +35,27 @@ float js_pal_adc_read_norm(uint16_t pin) {
     return 0.0f;
 }
 
+// Channel-2 UART TX (mirrors targets/wasm/wasm_bridge.h:
+// void js_pal_uart_write(uint8_t port, const uint8_t* buf, uint32_t len)).
+// Host has no JS data plane: record the (port, byte) stream so tests can
+// assert the live SBUF -> UARTBus route fired; production JS routes it to
+// the UARTBus plugin via wink_sim_js.js.
+#define MCS51_HOST_UART_LOG_SIZE 256u
+static uint32_t s_host_uart_tx;
+static uint8_t  s_uart_tx_port[MCS51_HOST_UART_LOG_SIZE];
+static uint8_t  s_uart_tx_byte[MCS51_HOST_UART_LOG_SIZE];
+
+void js_pal_uart_write(uint8_t port, const uint8_t* buf, uint32_t len) {
+    for (uint32_t i = 0; i < len; ++i) {
+        uint32_t j = s_host_uart_tx;
+        if (j < MCS51_HOST_UART_LOG_SIZE) {
+            s_uart_tx_port[j] = port;
+            s_uart_tx_byte[j] = buf ? buf[i] : 0u;
+        }
+        ++s_host_uart_tx;
+    }
+}
+
 // Channel-1 read direction (external digital level driven by the JS
 // PinArbiter / an input plugin). No JS data plane on host, so the compat
 // library supplies a scriptable fallback. State codes mirror the platform
@@ -72,6 +93,21 @@ void wink_mcs51_host_ext_pins_reset(void) {
     for (uint32_t i = 0; i < 32u; ++i) {
         s_host_ext_pin[i] = MCS51_HOST_EXT_HIZ;
     }
+}
+
+// Test observability for the channel-2 UART TX route (SBUF write ->
+// js_pal_uart_write). Mirrors the gpio notify log accessors.
+uint32_t wink_mcs51_host_uart_tx_count(void) {
+    return s_host_uart_tx;
+}
+uint8_t wink_mcs51_host_uart_tx_byte(uint32_t i) {
+    return (i < MCS51_HOST_UART_LOG_SIZE) ? s_uart_tx_byte[i] : 0u;
+}
+uint8_t wink_mcs51_host_uart_tx_port(uint32_t i) {
+    return (i < MCS51_HOST_UART_LOG_SIZE) ? s_uart_tx_port[i] : 0xFFu;
+}
+void wink_mcs51_host_uart_tx_reset(void) {
+    s_host_uart_tx = 0;
 }
 
 // Test observability for the channel-1 instant-notification path.

@@ -220,10 +220,13 @@ add_wink_wasm_mcs51_test(
 
 # M3: UART SBUF write emits bytes to the Node console (stdout) and the C-ABI
 # capture buffer; TI is set synchronously so `while(!TI)` closes on first read.
+# Stage 2: also asserts the live ch2 route — the Node stub's js_pal_uart_write
+# calls back into the exported mcs51_wasm_uart_accept_byte sink.
 add_wink_wasm_mcs51_test(
     wasm_mcs51_uart_test
     uart_printf
-    ${_SDK_ROOT}/test/mcs51/wasm/test_mcs51_uart_wasm.c)
+    ${_SDK_ROOT}/test/mcs51/wasm/test_mcs51_uart_wasm.c
+    "-sEXPORTED_FUNCTIONS=_main,_mcs51_wasm_uart_accept_byte")
 
 # M3: GPIO in->out sync — P3.2 key (latch-injected) drives P1.0 LED across
 # three repeated runtime runs (released -> pressed -> released) under Node.
