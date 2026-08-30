@@ -1,0 +1,33 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51 UART HELLO beacon headless proof (Stage 2 T1)",
+    "templateId": "mcs51_uart_hello",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "HELLO",
+      "minPackets": 1,
+      "description": "Firmware SBUF writes reach the UARTBus TX timeline as the 'HELLO' beacon (live channel-2 route, no injection)"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "3000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "HELLO\nHELLO",
+      "minPackets": 1,
+      "description": "The beacon repeats: BusAnalyzer coalesces the contiguous TX byte stream, so a second beacon appears right after the first"
+    }
+  ]
+}
