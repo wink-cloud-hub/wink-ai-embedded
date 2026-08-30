@@ -24,6 +24,7 @@
 #include "mcs51_adc.h"
 #include "mcs51_trap.h"
 #include "wink_mcs51_clock.h"
+#include "wink_mcs51_extint.h"
 #include "wink_mcs51_isr.h"
 #include "wink_mcs51_strict.h"
 #include "wink_mcs51_timer.h"
@@ -83,6 +84,7 @@ void mcs51_framework_init(void) {
     wink_mcs51_clock_reset();
     wink_mcs51_timers_reset();
     wink_mcs51_uart_reset();
+    wink_mcs51_extint_reset();
     wink_mcs51_xdata_reset();
     wink_mcs51_unsupported_reset();
 
@@ -134,6 +136,7 @@ extern "C" {
 void wink_mcs51_microstep(void) {
     wink_mcs51_charge_us(WINK_MCS51_MICROSTEP_US);
     wink_mcs51_uart_rx_drain();
+    wink_mcs51_extint_poll();
 }
 
 // SFR proxy interception entries (boundary ③ crosses into this TU). The proxy
