@@ -3,7 +3,7 @@
     "version": "2.0",
     "name": "pdk button->led headless simulation proof",
     "templateId": "pdk_button_led",
-    "accuracyMode": "behavioral",
+    "accuracyMode": "timing",
     "timeoutUs": "2000000",
     "failurePolicy": "fail-fast",
     "determinism": { "prngSeed": 42 }
