@@ -1,0 +1,6 @@
+{
+  "app_name": "mcs51_uart_echo",
+  "board": "mcs51_devboard",
+  "tick_ms": 10,
+  "devices": {}
+}
