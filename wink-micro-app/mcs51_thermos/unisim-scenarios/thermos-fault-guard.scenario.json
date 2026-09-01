@@ -63,13 +63,13 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["0ms", "4000ms"],
+      "windowUs": ["2500ms", "3500ms"],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
       "matcher": "S=3,H=0,F=2",
       "minPackets": 1,
-      "description": "Telemetry: FAULT state (S=3), heater forced off (H=0), fault code 2 = NTC short. Frame field order is S,H,F."
+      "description": "Telemetry frame at ~3 s: FAULT state (S=3), heater forced off (H=0), fault code 2 = NTC short (short injected 2.0 s, latched by the ~2.1 s control tick). Idle-gap framing (ADR-0065) targets the post-fault frame directly. Frame field order is S,H,F."
     },
     {
       "type": "INPUT_ANALOG",
@@ -80,13 +80,13 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["0ms", "6500ms"],
+      "windowUs": ["4800ms", "6300ms"],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
       "matcher": "S=0,H=0,F=0",
       "minPackets": 1,
-      "description": "Sensor fault auto-clears to OFF (S=0, H=0, F=0); heater stays off. Frame field order is S,H,F."
+      "description": "Telemetry frame after probe recovery (recovered 4.5 s, auto-OFF by the ~4.6 s tick): S=0, H=0, F=0, heater stays off with no auto-restart. Idle-gap framing targets the post-recovery frame directly. Frame field order is S,H,F."
     },
     {
       "type": "ASSERT_POINT",

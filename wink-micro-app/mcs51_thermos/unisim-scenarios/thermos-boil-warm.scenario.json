@@ -84,13 +84,13 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["0ms", "6800ms"],
+      "windowUs": ["5500ms", "6500ms"],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
       "matcher": "S=2,H=0",
       "minPackets": 1,
-      "description": "Telemetry reports WARM state (S=2), heater off while water is hot. NOTE: BusAnalyzer coalesces same-direction UART bytes into ONE burst packet stamped at the first byte (~1 s), so bus-assertion windows must start at 0; the 6.8 s end bounds the content generation epoch (WARM LED asserted at 5.2 s, heat-off water until 6.8 s)"
+      "description": "Telemetry frame at ~6 s reports WARM state (S=2), heater off while water is hot. Idle-gap framing (ADR-0065) splits the 1 Hz telemetry into per-frame packets stamped at each frame, so the window targets the WARM epoch directly (WARM entered ~4.7-5.2 s; water stays hot/heater-off until the 6.8 s cool-down inject)"
     },
     {
       "type": "INPUT_PLUGIN_EVENT",

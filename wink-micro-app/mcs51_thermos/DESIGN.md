@@ -236,7 +236,7 @@ wink-micro-app/mcs51_thermos/
 3. **PWM 占空比边沿测量** → 加热器改可控硅调功（相位/过零）时观测功率占空比。
 4. Track B 热物理插件（`thermal_heater_plate` 连续热平衡）→ 免去 `INPUT_ANALOG` 脚本注温度，水温由加热功率+热容自动演化。
 
-**跨仓 host 框架增强（wink-ai/unisim，需独立 ADR + 实施计划，本次未动）**：
+**跨仓 host 框架增强（wink-ai/unisim）**：
 
-5. **准双向口弱上拉建模**：8051 锁存 1 = 弱上拉（外部强低可压倒）、锁存 0 = 强驱动低。现 host `js_pal_gpio_write` 把所有 MCU 写登记为 `DriveStrength.SUPPLY` 强驱动。改为「锁存 1→WEAK 弱上拉 + 上电种子、锁存 0→SUPPLY 强低」后，固件即可用标准 `Pn = 0xFF` 初始化输入口而不与输入插件冲突，idle 高输出脚也能被插件正确读为高（当前靠固件「不写输入口」惯例规避）。
-6. **UART 空闲间隔分帧**：`BusAnalyzer.parseUartBurst` 现把连续同向字节聚成单包、时间戳钉在首字节，导致多帧遥测无法按窗口定位。改为按字节间空闲间隔（或 `\n`）分帧后，`ASSERT_BUS_PAYLOAD` 窗口即可精确定位到某一秒的帧（当前约定窗口起点 `0ms` 规避）。
+5. **准双向口弱上拉建模**（**待落地**，ADR-0077 Proposed）：8051 锁存 1 = 弱上拉（外部强低可压倒）、锁存 0 = 强驱动低。现 host `js_pal_gpio_write` 把所有 MCU 写登记为 `DriveStrength.SUPPLY` 强驱动。改为「锁存 1→WEAK 弱上拉 + 上电种子、锁存 0→SUPPLY 强低」后，固件即可用标准 `Pn = 0xFF` 初始化输入口而不与输入插件冲突，idle 高输出脚也能被插件正确读为高（当前靠固件「不写输入口」惯例规避）。
+6. **UART 空闲间隔分帧**（**已落地**，ADR-0065 Accepted）：`BusAnalyzer.parseUartBurst` 现按相邻字节 `atUs` 空闲间隔切包——`gap > max(4×帧时长, 5000µs)` 即结束当前包、下一字节起新包，包时间戳取该帧首字节；阈值由端口波特率 config 推算。背靠背/轮询回显字节（gap≈0 或 ~1ms）不切碎，1 Hz 遥测拆成逐帧包。因此 `ASSERT_BUS_PAYLOAD` 窗口可直接用精确晚起点定位「某一秒那一帧」（本应用场景已改回精确区间，不再钉 `0ms` 起点）。
