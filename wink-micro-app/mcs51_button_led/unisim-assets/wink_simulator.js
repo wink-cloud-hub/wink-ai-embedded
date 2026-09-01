@@ -1803,6 +1803,12 @@ async function createWasm() {
           return 0;
       }
 
+  function _js_pal_uart_write(port, buf, len) {
+          if (typeof Module !== 'undefined' && typeof Module['js_pal_uart_write'] === 'function' && Module['js_pal_uart_write'] !== _js_pal_uart_write) {
+              return Module['js_pal_uart_write'](port, buf, len);
+          }
+      }
+
   function _wink_ultrasonic_distance_events_trigger_now_by_trig_pin(pin) {
           if (typeof Module !== 'undefined' && typeof Module['wink_ultrasonic_distance_events_trigger_now_by_trig_pin'] === 'function' && Module['wink_ultrasonic_distance_events_trigger_now_by_trig_pin'] !== _wink_ultrasonic_distance_events_trigger_now_by_trig_pin) {
               return Module['wink_ultrasonic_distance_events_trigger_now_by_trig_pin'](pin);
@@ -2052,6 +2058,8 @@ var wasmImports = {
   /** @export */
   js_pal_poll_interrupt: _js_pal_poll_interrupt,
   /** @export */
+  js_pal_uart_write: _js_pal_uart_write,
+  /** @export */
   wink_ultrasonic_distance_events_trigger_now_by_trig_pin: _wink_ultrasonic_distance_events_trigger_now_by_trig_pin
 };
 var wasmExports = await createWasm();
@@ -2114,6 +2122,7 @@ var _pal_wasm_get_sim_mode = Module['_pal_wasm_get_sim_mode'] = createExportWrap
 var _pal_wasm_is_clock_warning_fired = Module['_pal_wasm_is_clock_warning_fired'] = createExportWrapper('pal_wasm_is_clock_warning_fired', 0);
 var _free = Module['_free'] = createExportWrapper('free', 1);
 var _malloc = Module['_malloc'] = createExportWrapper('malloc', 1);
+var _wink_mcs51_uart_rx_push = Module['_wink_mcs51_uart_rx_push'] = createExportWrapper('wink_mcs51_uart_rx_push', 1);
 var _fflush = createExportWrapper('fflush', 1);
 var _emscripten_stack_get_base = wasmExports['emscripten_stack_get_base']
 var _emscripten_stack_get_end = wasmExports['emscripten_stack_get_end']
