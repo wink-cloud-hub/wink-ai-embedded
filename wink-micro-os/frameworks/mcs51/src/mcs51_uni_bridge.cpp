@@ -14,18 +14,23 @@
 
 extern "C" {
 
-// Mirrors targets/wasm/wasm_bridge.h: void js_pal_gpio_write(uint16_t, bool).
+// Mirrors targets/wasm/wasm_bridge.h:
+//   void js_pal_gpio_write(uint16_t, bool, uint8_t strength) (ADR-0077).
 #define MCS51_HOST_NOTIFY_LOG_SIZE 128u
 
 static uint32_t s_host_gpio_notifies;
 static uint16_t s_notify_pin[MCS51_HOST_NOTIFY_LOG_SIZE];
 static uint8_t  s_notify_level[MCS51_HOST_NOTIFY_LOG_SIZE];
+static uint8_t  s_notify_strength[MCS51_HOST_NOTIFY_LOG_SIZE];
 
-void js_pal_gpio_write(uint16_t pin, bool level) {
+void js_pal_gpio_write(uint16_t pin, bool level, uint8_t strength) {
     uint32_t i = s_host_gpio_notifies;
     if (i < MCS51_HOST_NOTIFY_LOG_SIZE) {
         s_notify_pin[i] = pin;
         s_notify_level[i] = level ? 1u : 0u;
+        // Default 0 -> SUPPLY so a caller that omits strength still reads
+        // push-pull (mirrors the host `strength ?? SUPPLY` skew fallback).
+        s_notify_strength[i] = strength != 0u ? strength : 3u;
     }
     ++s_host_gpio_notifies;
 }
@@ -122,6 +127,9 @@ uint16_t wink_mcs51_host_gpio_notify_pin(uint32_t i) {
 }
 uint8_t wink_mcs51_host_gpio_notify_level(uint32_t i) {
     return (i < MCS51_HOST_NOTIFY_LOG_SIZE) ? s_notify_level[i] : 0u;
+}
+uint8_t wink_mcs51_host_gpio_notify_strength(uint32_t i) {
+    return (i < MCS51_HOST_NOTIFY_LOG_SIZE) ? s_notify_strength[i] : 0u;
 }
 
 }  // extern "C"
