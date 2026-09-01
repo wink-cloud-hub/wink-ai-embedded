@@ -8,6 +8,7 @@
 #include "pal_wasm_common.h"
 #include "wink_sim_physical.h"
 #include "wasm_bridge.h"
+#include "sensor/wink_ultrasonic_distance_events.h"
 #include "wink_status.h"
 
 #include <stdint.h>
@@ -61,6 +62,24 @@ bool pal_pwm_router_channel_ready(uint8_t channel) {
     return false;
 }
 void pal_pwm_router_release(uint8_t channel) { (void)channel; }
+
+/* --- ultrasonic trigger (referenced by pal_wasm_ch1_gpio.c; the BAL body
+ * pulls the full task/event stack and is never exercised in this bounded
+ * GPIO-semantics build, so provide a no-op returning OK) --- */
+wink_status_t wink_ultrasonic_distance_events_trigger_now_by_trig_pin(uint8_t trig_pin) {
+    (void)trig_pin;
+    return WINK_OK;
+}
+
+/* --- waveform edge sink (owned by pal_wasm_waveform.c in full builds; the
+ * pin-event push path references it but no waveform assertions run here) --- */
+void pal_wasm_push_waveform_edge(uint16_t pin, uint64_t t_us, uint8_t level,
+                                 uint32_t generation) {
+    (void)pin;
+    (void)t_us;
+    (void)level;
+    (void)generation;
+}
 
 /* --- unused JS imports that may survive GC --- */
 void js_pal_pwm_set_duty(uint8_t channel, float duty) {

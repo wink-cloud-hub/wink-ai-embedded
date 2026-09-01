@@ -18,10 +18,15 @@
  * previously-suspended super-loop fiber is torn down by sim_scheduler_reset()
  * at the top of the next run (Win32 DeleteFiber / emscripten free of the
  * suspended fiber). The new fiber restarts wink_mcs51_user_main from its first
- * instruction (LED = 1; then the loop). The SFR shadow is BSS and is NOT reset
- * by framework init, so the button state injected between runs persists. That
- * lets us exercise all three phases (released -> pressed -> released) in one
- * process. ctest gates on the process exit code.
+ * instruction (LED = 1; then the loop).
+ *
+ * ADR-0077: framework init now models the real 8051 reset and seeds the four
+ * port latches P0..P3 to 0xFF (quasi-bidirectional power-on state), so a latch
+ * bit poked BEFORE the run would be wiped back to released. The M3 injection is
+ * therefore applied from the post-init hook (runs AFTER the reset seed): the
+ * per-phase "button" level is written into the P3 shadow there, letting us
+ * exercise all three phases (released -> pressed -> released) in one process.
+ * ctest gates on the process exit code.
  */
 #include <stdint.h>
 #include <stdio.h>
@@ -29,10 +34,11 @@
 #include "wink_runtime.h"
 #include "wink_app.h"
 #include "wink_status.h"
+#include "mcs51_trap.h"
 
 extern const wink_app_callbacks_t *wink_app_get_callbacks(void);
 
-/* SFR shadow (C linkage, defined in mcs51_proxy.cpp). Index = SFR address. */
+/* SFR shadow (C linkage, defined in mcs51_sfr.cpp). Index = SFR address. */
 extern uint8_t wink_mcs51_sfr_shadow[256];
 
 #define P3_SFR_ADDR 0xB0u   /* P3 port */
@@ -45,13 +51,22 @@ extern uint8_t wink_mcs51_sfr_shadow[256];
 void setUp(void) {}
 void tearDown(void) {}
 
-/* Drive the simulated button: 1 = released (active-high latch), 0 = pressed. */
-static void set_key(uint8_t released) {
-    if (released) {
+/* Button level for the upcoming run: 1 = released (latch high), 0 = pressed. */
+static volatile uint8_t s_key_released = 1u;
+
+/* Post-init hook: re-apply the scripted button latch AFTER the ADR-0077 reset
+ * seed (which restores P0..P3 to the power-on 0xFF input state). */
+static void inject_key(void) {
+    if (s_key_released) {
         wink_mcs51_sfr_shadow[P3_SFR_ADDR] |= KEY_BIT;
     } else {
         wink_mcs51_sfr_shadow[P3_SFR_ADDR] &= (uint8_t)(~KEY_BIT & 0xFFu);
     }
+}
+
+/* Drive the simulated button for the NEXT run: 1 = released, 0 = pressed. */
+static void set_key(uint8_t released) {
+    s_key_released = released;
 }
 
 static uint8_t read_led(void) {
@@ -66,6 +81,10 @@ int main(void) {
     }
 
     int fails = 0;
+
+    /* Re-apply the scripted button latch on every framework init (after the
+     * ADR-0077 power-on port seed restores P3 to 0xFF). */
+    mcs51_framework_set_post_init_hook(inject_key);
 
     /* Phase 1: button RELEASED before/through the run -> LED off (latch 1). */
     set_key(1u);
@@ -108,6 +127,8 @@ int main(void) {
                (unsigned)led3);
         fails++;
     }
+
+    mcs51_framework_set_post_init_hook(NULL);
 
     if (fails) {
         return 1;

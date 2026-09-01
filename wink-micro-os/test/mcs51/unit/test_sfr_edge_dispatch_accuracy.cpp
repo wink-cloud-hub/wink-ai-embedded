@@ -20,6 +20,10 @@ uint32_t wink_mcs51_host_gpio_notify_count(void);
 void     wink_mcs51_host_gpio_notify_reset(void);
 uint16_t wink_mcs51_host_gpio_notify_pin(uint32_t i);
 uint8_t  wink_mcs51_host_gpio_notify_level(uint32_t i);
+// ADR-0077: quasi-bidirectional drive strength per notification
+// (1 = WEAK weak pull-up on a rising latch edge, 3 = SUPPLY strong NMOS
+// pull-down on a falling edge; identity-maps the host DriveStrength enum).
+uint8_t  wink_mcs51_host_gpio_notify_strength(uint32_t i);
 }
 
 namespace {
@@ -105,25 +109,42 @@ void test_linear_pin_map() {
           "P2.0 -> global_pin 16");
     check(wink_mcs51_host_gpio_notify_pin(3) == 24u,
           "P3.0 -> global_pin 24");
+    // ADR-0077: a rising latch edge enables the weak internal pull-up.
+    for (uint32_t i = 0; i < 4u; ++i) {
+        check(wink_mcs51_host_gpio_notify_strength(i) == 1u,
+              "rising latch edge reports WEAK (1) drive strength");
+    }
 
-    // High bit + falling edge: P2.7 = 23, level 0.
+    // P2 = 0x80: bit0 falls 1->0 (strong NMOS pull-down, SUPPLY) while bit7
+    // rises 0->1 (weak pull-up, WEAK) — two notifications, bit order b=0..7.
     P2 = 0x80;
     uint32_t n = wink_mcs51_host_gpio_notify_count();
+    check(n == 6u, "P2=0x80 fires two edges (bit0 fall + bit7 rise)");
+    check(wink_mcs51_host_gpio_notify_pin(4) == 16u
+          && wink_mcs51_host_gpio_notify_level(4) == 0u
+          && wink_mcs51_host_gpio_notify_strength(4) == 3u,
+          "P2.0 falling edge reports SUPPLY (3) drive strength");
+    check(wink_mcs51_host_gpio_notify_pin(5) == 23u
+          && wink_mcs51_host_gpio_notify_level(5) == 1u
+          && wink_mcs51_host_gpio_notify_strength(5) == 1u,
+          "P2.7 rising edge reports WEAK (1) drive strength");
     P2 = 0x00;
     check(wink_mcs51_host_gpio_notify_count() == n + 1u,
           "P2 falling edge notifies once");
     uint32_t last = wink_mcs51_host_gpio_notify_count() - 1u;
     check(wink_mcs51_host_gpio_notify_pin(last) == 23u
-          && wink_mcs51_host_gpio_notify_level(last) == 0u,
-          "P2.7 -> global_pin 23, falling level 0");
+          && wink_mcs51_host_gpio_notify_level(last) == 0u
+          && wink_mcs51_host_gpio_notify_strength(last) == 3u,
+          "P2.7 -> global_pin 23, falling level 0, SUPPLY (3)");
 
     // sbit path uses the same linear map: P3.7 = 31.
     WinkSbit p3_7(P3 ^ 7);
     p3_7 = 1;
     last = wink_mcs51_host_gpio_notify_count() - 1u;
     check(wink_mcs51_host_gpio_notify_pin(last) == 31u
-          && wink_mcs51_host_gpio_notify_level(last) == 1u,
-          "sbit P3.7 -> global_pin 31 rising");
+          && wink_mcs51_host_gpio_notify_level(last) == 1u
+          && wink_mcs51_host_gpio_notify_strength(last) == 1u,
+          "sbit P3.7 -> global_pin 31 rising, WEAK (1)");
 
     // Non-GPIO SFR (TCON 0x88) never reaches the channel-1 GPIO sink.
     uint32_t before = wink_mcs51_host_gpio_notify_count();

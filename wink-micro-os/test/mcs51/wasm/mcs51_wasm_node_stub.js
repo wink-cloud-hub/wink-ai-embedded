@@ -28,7 +28,7 @@ mergeInto(LibraryManager.library, {
   // dispatch is asserted host-side via the pin traps), and channel-3 analog
   // pulls read 0.0 — bounded tests inject deterministically via the C rail
   // (mcs51_adc_set_value), so no JS-side analog source is needed.
-  js_pal_gpio_write: function (pin, level) {},
+  js_pal_gpio_write: function (pin, level, strength) {},
   js_pal_adc_read_norm: function (pin) { return 0.0; },
   // Channel-2 UART TX (SBUF write -> UARTBus): copy the byte run off the
   // WASM heap into a Module log the Node driver can assert.
