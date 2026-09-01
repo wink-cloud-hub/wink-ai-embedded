@@ -82,7 +82,8 @@ wink_status_t pal_gpio_init_output(wink_pin_t pin, pal_gpio_mode_t mode, bool in
     s_gpio_mode[(uint8_t)pin] = mode;
     s_gpio_mode_known[(uint8_t)pin] = true;
     s_gpio_output_state[(uint8_t)pin] = initial_level;
-    js_pal_gpio_write((uint32_t)pin, initial_level);
+    /* esp32 push-pull: both levels are strong drive (ADR-0077). */
+    js_pal_gpio_write((uint32_t)pin, initial_level, WINK_DRIVE_SUPPLY);
     js_pal_gpio_on_write((uint8_t)pin, initial_level ? 1 : 0);
     return WINK_OK;
 }
@@ -121,7 +122,8 @@ wink_status_t pal_gpio_write(wink_pin_t pin, bool level) {
         return WINK_ERR_INVALID_STATE;
     }
     s_gpio_output_state[(uint8_t)pin] = level;
-    js_pal_gpio_write((uint32_t)pin, level);
+    /* esp32 push-pull: strong drive on both levels (ADR-0077). */
+    js_pal_gpio_write((uint32_t)pin, level, WINK_DRIVE_SUPPLY);
     js_pal_gpio_on_write((uint8_t)pin, level ? 1 : 0);
     return WINK_OK;
 }

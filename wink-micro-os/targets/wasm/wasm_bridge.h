@@ -45,7 +45,22 @@ extern "C" {
 
 /* -- CH1: Digital pin  (C->JS imports) --------------------------------- */
 
-extern void    js_pal_gpio_write(uint16_t pin, bool level);
+/**
+ * Drive strength for a digital GPIO write (ADR-0077). Values are the identity
+ * mapping of the host PinArbiter DriveStrength (WEAK=1, PULL=2, SUPPLY=3);
+ * the JS side does `strength ?? SUPPLY` so an older wasm that omits the arg
+ * still resolves to push-pull.
+ *   WEAK   : weak internal pull-up / open-drain release — 8051 latch=1, I2C SDA release.
+ *   PULL   : external resistor pull-up/down (e.g. 4.7k).
+ *   SUPPLY : VCC/GND direct or push-pull strong drive — esp32 output, 8051 latch=0.
+ */
+typedef enum {
+    WINK_DRIVE_WEAK   = 1,
+    WINK_DRIVE_PULL   = 2,
+    WINK_DRIVE_SUPPLY = 3,
+} wink_drive_t;
+
+extern void    js_pal_gpio_write(uint16_t pin, bool level, uint8_t strength);
 
 
 /**

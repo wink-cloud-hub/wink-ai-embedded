@@ -22,6 +22,7 @@
 #include "absacc.h"
 #include "cms8s_adc.h"
 #include "mcs51_adc.h"
+#include "mcs51_proxy.hpp"  // js_pal_gpio_write + MCS51_DRIVE_WEAK (ADR-0077)
 #include "mcs51_trap.h"
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_extint.h"
@@ -94,6 +95,24 @@ void mcs51_framework_init(void) {
     // point is intentionally wiped for run-to-run test isolation.)
     mcs51_trap_reset();
     mcs51_adc_reset();
+
+    // Power-on port state (ADR-0077): a real 8051 leaves P0..P3 latched at
+    // 0xFF after reset — every pin is a quasi-bidirectional input held high by
+    // the weak internal pull-up. Seed BOTH halves of that state:
+    //   1. the latch shadow = 0xFF, so firmware's first `Pn = 0xFF` input-init
+    //      write computes diff==0 (no edge, mirroring silicon that never edges);
+    //   2. an explicit WEAK-HIGH driver registration on all 32 pins, so the
+    //      host PinArbiter knows the MCU weakly drives high even before the
+    //      firmware's first pin edge (an input button then arbitrates WEAK vs
+    //      SUPPLY-low instead of reading HiZ). Shadow alone is insufficient:
+    //      with no registered driver the host side sees no MCU drive at all.
+    wink_mcs51_sfr_shadow[0x80] = 0xFFu;  // P0
+    wink_mcs51_sfr_shadow[0x90] = 0xFFu;  // P1
+    wink_mcs51_sfr_shadow[0xA0] = 0xFFu;  // P2
+    wink_mcs51_sfr_shadow[0xB0] = 0xFFu;  // P3
+    for (uint16_t pin = 0u; pin < 32u; ++pin) {
+        js_pal_gpio_write(pin, true, MCS51_DRIVE_WEAK);
+    }
 
     mcs51_trap_register_sfr_read(SFR_TCON, &sfr_read_hook_timer);
     mcs51_trap_register_sfr_write(SFR_TCON, &sfr_write_hook_timer);

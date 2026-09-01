@@ -46,7 +46,16 @@ void wink_mcs51_on_sfr_write(uint8_t addr, uint8_t old_val, uint8_t new_val);
 // UniSim 3.0 channel 1: instant pin-edge notification (AD-18). A JS import
 // under emscripten (wink_sim_js.js / node stub); a weak host fallback in
 // mcs51_uni_bridge.cpp counts notifications. global_pin = (port << 3) | bit.
-void js_pal_gpio_write(uint16_t pin, bool level);
+//
+// strength (ADR-0077) is the identity mapping of the host PinArbiter
+// DriveStrength / WINK_DRIVE_* in targets/wasm/wasm_bridge.h (WEAK=1, PULL=2,
+// SUPPLY=3). An 8051 quasi-bidirectional port: latch=1 enables the weak
+// internal pull-up (input release / weak high-side), latch=0 turns on the
+// strong NMOS pull-down — so a rising latch edge reports WEAK and a falling
+// edge reports SUPPLY.
+constexpr uint8_t MCS51_DRIVE_WEAK   = 1;
+constexpr uint8_t MCS51_DRIVE_SUPPLY = 3;
+void js_pal_gpio_write(uint16_t pin, bool level, uint8_t strength);
 
 // UniSim 3.0 channel 1 (read direction): external digital pin level driven by
 // the JS PinArbiter / an input plugin (button). A JS import under emscripten;
@@ -109,8 +118,11 @@ struct WinkSbit {
 
         if (port < 4u && old_bit != new_bit) {
             // GPIO pin edge: channel-1 instant notify + Level-2 write trap.
+            // Quasi-bidirectional strength (ADR-0077): latch 1 = weak pull-up,
+            // latch 0 = strong NMOS pull-down.
             js_pal_gpio_write(static_cast<uint16_t>((port << 3) | bit),
-                              new_bit != 0u);
+                              new_bit != 0u,
+                              new_bit ? MCS51_DRIVE_WEAK : MCS51_DRIVE_SUPPLY);
             const mcs51_pin_trap_t& trap = wink_mcs51_pin_traps[port][bit];
             if (trap.on_write != nullptr) {
                 trap.on_write(trap.write_ctx, new_bit);
@@ -200,9 +212,15 @@ struct WinkSfr {
                     if ((diff & static_cast<uint8_t>(1u << b)) != 0u) {
                         const uint8_t level =
                             static_cast<uint8_t>((nv >> b) & 1u);
+                        // Quasi-bidirectional strength (ADR-0077): latch 1 =
+                        // weak pull-up, latch 0 = strong NMOS pull-down.
+                        const uint8_t strength = level
+                            ? MCS51_DRIVE_WEAK
+                            : MCS51_DRIVE_SUPPLY;
                         js_pal_gpio_write(
                             static_cast<uint16_t>((port << 3) | b),
-                            level != 0u);
+                            level != 0u,
+                            strength);
                         const mcs51_pin_trap_t& trap =
                             wink_mcs51_pin_traps[port][b];
                         if (trap.on_write != nullptr) {
