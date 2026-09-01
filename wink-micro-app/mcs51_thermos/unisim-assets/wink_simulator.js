@@ -1716,9 +1716,9 @@ async function createWasm() {
           return 2; /* HiZ default */
       }
 
-  function _js_pal_gpio_write(pin, level) {
+  function _js_pal_gpio_write(pin, level, strength) {
           if (typeof Module !== 'undefined' && typeof Module['js_pal_gpio_write'] === 'function' && Module['js_pal_gpio_write'] !== _js_pal_gpio_write) {
-              return Module['js_pal_gpio_write'](pin, level);
+              return Module['js_pal_gpio_write'](pin, level, strength);
           }
       }
 
