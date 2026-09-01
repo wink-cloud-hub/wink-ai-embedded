@@ -66,7 +66,7 @@
 未用引脚：P0 口全部、P1.5–P1.7、P2.3–P2.7、P3.0(RXD)/P3.4(T0)/P3.5(T1)/P3.6/P3.7。
 > 注：按键走主循环轮询消抖（功能级保真足够）；INT0/INT1 外部中断模型（`mcs51_extint.cpp`）同时存在但本固件未挂 `interrupt 0/2` ISR，引脚复用无冲突。
 
-> **仿真关键约定（准双向口初始化）**：8051 准双向口**上电复位即为输入态（锁存器=1）**，故输入引脚（按键 P3.2/P3.3、RXD P3.0）**固件无需也不应写 `P3 = 0xFF`**。拦截层 SFR shadow 为 BSS（初值 0）：若固件对输入口写 1，会产生 0→1 diff 边沿，把 MCU 登记为该引脚的**强高驱动者**，与 button 插件的强低驱动在 PinArbiter 中冲突，读脚回退锁存值 → 按键永远读为高（失效）。本固件 `main()` 只初始化**输出口** `P1=0xFF`（执行器/LED idle）、`P2=0xFF`（ADC CS idle），**不写 P3**，与 `iron_ntc`/`button_led` 已验证惯例一致。
+> **仿真关键约定（准双向口初始化，ADR-0077 已落地）**：8051 准双向口**上电复位即为输入态（锁存器=1，弱上拉）**。拦截层在 framework init 即对 P0–P3 播种「shadow=0xFF + WEAK-HIGH 弱高驱动」（精确镜像硅片上电态），且 GPIO 写 ABI 带驱动强度轴（锁存 1=WEAK 弱上拉、锁存 0=SUPPLY 强灌低，见 `07-mcs51-simulation-interception.md` §2.6）。故固件可照标准 Keil 惯例写 **`P1 = 0xFF; P2 = 0xFF; P3 = 0xFF;`**——与上电影子同值 → diff=0、无边沿、不重复注册；按键按下时插件 SUPPLY-LOW 胜过 WEAK-HIGH 上拉，释放后回高，**零冲突**。早期「固件不写输入口 P3」的 workaround 已随 ADR-0077 移除。
 
 ---
 
@@ -238,5 +238,5 @@ wink-micro-app/mcs51_thermos/
 
 **跨仓 host 框架增强（wink-ai/unisim）**：
 
-5. **准双向口弱上拉建模**（**待落地**，ADR-0077 Proposed）：8051 锁存 1 = 弱上拉（外部强低可压倒）、锁存 0 = 强驱动低。现 host `js_pal_gpio_write` 把所有 MCU 写登记为 `DriveStrength.SUPPLY` 强驱动。改为「锁存 1→WEAK 弱上拉 + 上电种子、锁存 0→SUPPLY 强低」后，固件即可用标准 `Pn = 0xFF` 初始化输入口而不与输入插件冲突，idle 高输出脚也能被插件正确读为高（当前靠固件「不写输入口」惯例规避）。
+5. **准双向口弱上拉建模**（**已落地**，ADR-0077 Accepted）：8051 锁存 1 = WEAK 弱上拉（外部 SUPPLY 强低可压倒、不冲突）、锁存 0 = SUPPLY 强灌低。`js_pal_gpio_write` 新增 `strength` 强度轴（数值恒等映射 host `DriveStrength`，缺省兜底 SUPPLY），mcs51 proxy 上升沿报 WEAK/下降沿报 SUPPLY，framework init 播种 P0–P3「shadow=0xFF + WEAK-HIGH 驱动」。固件已恢复标准 `P1=P2=P3=0xFF` 初始化，早期「不写输入口」规避已删除（详见 §3 仿真关键约定）。
 6. **UART 空闲间隔分帧**（**已落地**，ADR-0065 Accepted）：`BusAnalyzer.parseUartBurst` 现按相邻字节 `atUs` 空闲间隔切包——`gap > max(4×帧时长, 5000µs)` 即结束当前包、下一字节起新包，包时间戳取该帧首字节；阈值由端口波特率 config 推算。背靠背/轮询回显字节（gap≈0 或 ~1ms）不切碎，1 Hz 遥测拆成逐帧包。因此 `ASSERT_BUS_PAYLOAD` 窗口可直接用精确晚起点定位「某一秒那一帧」（本应用场景已改回精确区间，不再钉 `0ms` 起点）。
