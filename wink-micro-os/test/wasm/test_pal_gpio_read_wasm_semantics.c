@@ -97,7 +97,7 @@ EM_JS(void, js_pal_gpio_release_mcu, (uint16_t pin), {
     delete globalThis.__wink_arb[key]['mcu:gpio' + pin];
 });
 
-EM_JS(void, js_pal_gpio_write, (uint16_t pin, bool level), {
+EM_JS(void, js_pal_gpio_write, (uint16_t pin, bool level, uint8_t strength), {
     if (!globalThis.__wink_arb) globalThis.__wink_arb = {};
     var key = String(pin);
     if (!globalThis.__wink_arb[key]) globalThis.__wink_arb[key] = {};

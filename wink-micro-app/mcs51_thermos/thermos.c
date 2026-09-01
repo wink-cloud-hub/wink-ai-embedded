@@ -382,14 +382,16 @@ static void timer0_init(void) {
 }
 
 void main(void) {
-    /* Output ports are driven to their idle-high level. P1 actuators/LEDs:
-     * high = relay/buzzer off, LEDs off (active low). P2: ADC CS idle high.
-     * P3 (buttons on P3.2/P3.3, UART TX on P3.1) is deliberately NOT written:
-     * 8051 quasi-bidirectional ports reset to input mode (latch=1), and driving
-     * P3 high would register the MCU as a strong high driver that arbitrates
-     * against the button plugin (the input plugins supply the external level). */
+    /* Standard 8051 power-on idiom: latch every port high so pins are
+     * quasi-bidirectional inputs (weak internal pull-up) / idle-high outputs.
+     * P1 actuators/LEDs: high = relay/buzzer off, LEDs off (active low);
+     * P2: ADC CS idle high; P3: buttons (P3.2/P3.3) released, UART TX idle.
+     * Under simulation (ADR-0077) the framework already seeds P0..P3 latch=0xFF
+     * with a WEAK-HIGH driver at reset, so these writes compute diff==0 and
+     * emit no edge — exactly mirroring silicon, which never edges either. */
     P1 = 0xFF;
     P2 = 0xFF;
+    P3 = 0xFF;
 
     SCON = 0x40;    /* UART mode 1 (8-bit), REN=0, TX only */
 
