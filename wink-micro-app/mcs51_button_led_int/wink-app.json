@@ -1,6 +1,7 @@
 {
   "app_name": "mcs51_button_led_int",
   "board": "mcs51_devboard",
+  "category": "demo",
   "tick_ms": 10,
   "devices": {
     "btn": {

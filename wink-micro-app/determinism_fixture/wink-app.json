@@ -1,6 +1,7 @@
 {
   "app_name": "determinism_fixture",
   "board": "esp32_devkitc",
+  "category": "fixture",
   "devices": {
     "status_led": {
       "type": "led",

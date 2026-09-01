@@ -1,6 +1,7 @@
 {
   "app_name": "oled_dashboard",
   "board": "esp32_devkitc",
+  "category": "demo",
   "devices": {
     "user_button": {
       "type": "button",
