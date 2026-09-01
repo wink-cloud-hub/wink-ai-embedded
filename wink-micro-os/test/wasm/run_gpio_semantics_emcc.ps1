@@ -18,7 +18,12 @@ $incs = @(
     "-I$Root/pal/include/internal",
     "-I$Root/targets/wasm",
     "-I$Root/targets/common/include",
-    "-I$Root/trace/include"
+    "-I$Root/trace/include",
+    # pal_wasm_ch1_gpio.c references the ultrasonic trigger (header-only for
+    # this bounded build; the body lives in BAL and pulls the full task/event
+    # stack, so the symbol is stubbed in gpio_semantics_link_stubs.c).
+    "-I$Root/bal/include",
+    "-I$Root/dal/include/sensor"
 )
 
 $srcs = @(
