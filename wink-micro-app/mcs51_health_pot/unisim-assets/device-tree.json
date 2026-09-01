@@ -1,5 +1,5 @@
 {
-  "appName": "mcs51_thermos",
+  "appName": "mcs51_health_pot",
   "board": "mcs51_devboard",
   "devices": {
     "heater_relay": {
