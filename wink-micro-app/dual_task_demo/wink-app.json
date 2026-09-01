@@ -1,6 +1,7 @@
 {
   "app_name": "dual_task_demo",
   "board": "esp32_devkitc",
+  "category": "enterprise",
   "devices": {
     "front_radar": {
       "type": "ultrasonic",

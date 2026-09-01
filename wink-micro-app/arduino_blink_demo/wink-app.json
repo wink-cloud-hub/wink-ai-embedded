@@ -1,5 +1,6 @@
 {
   "app_name": "arduino_blink_demo",
   "board": "esp32_devkitc",
+  "category": "demo",
   "devices": {}
 }
