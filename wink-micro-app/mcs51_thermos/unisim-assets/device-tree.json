@@ -1,0 +1,76 @@
+{
+  "appName": "mcs51_thermos",
+  "board": "mcs51_devboard",
+  "devices": {
+    "heater_relay": {
+      "id": "heater_relay",
+      "type": "led",
+      "pinMapping": {
+        "A": 8
+      },
+      "properties": {
+        "activeHigh": true
+      }
+    },
+    "buzzer": {
+      "id": "buzzer",
+      "type": "led",
+      "pinMapping": {
+        "A": 9
+      },
+      "properties": {
+        "activeHigh": true
+      }
+    },
+    "led_heat": {
+      "id": "led_heat",
+      "type": "led",
+      "pinMapping": {
+        "A": 10
+      },
+      "properties": {
+        "activeHigh": false
+      }
+    },
+    "led_warm": {
+      "id": "led_warm",
+      "type": "led",
+      "pinMapping": {
+        "A": 11
+      },
+      "properties": {
+        "activeHigh": false
+      }
+    },
+    "led_fault": {
+      "id": "led_fault",
+      "type": "led",
+      "pinMapping": {
+        "A": 12
+      },
+      "properties": {
+        "activeHigh": false
+      }
+    },
+    "btn_onoff": {
+      "id": "btn_onoff",
+      "type": "button",
+      "pinMapping": {
+        "1.l": 26
+      },
+      "properties": {
+        "activeLow": true
+      }
+    },
+    "btn_func": {
+      "id": "btn_func",
+      "type": "button",
+      "pinMapping": {
+        "1.l": 27
+      },
+      "properties": {
+        "activeLow": true
+      }
+    }
+  }
+}

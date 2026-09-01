@@ -1,0 +1,50 @@
+{
+  "app_name": "mcs51_thermos",
+  "board": "mcs51_devboard",
+  "tick_ms": 10,
+  "devices": {
+    "ntc_adc": {
+      "type": "adc0832",
+      "cs_pin": "$board.headers.P2.0",
+      "clk_pin": "$board.headers.P2.1",
+      "dio_pin": "$board.headers.P2.2",
+      "channel": 0,
+      "vref_mv": 5000
+    },
+    "heater_relay": {
+      "type": "led",
+      "gpio_pin": 8,
+      "active_high": true
+    },
+    "buzzer": {
+      "type": "led",
+      "gpio_pin": 9,
+      "active_high": true
+    },
+    "led_heat": {
+      "type": "led",
+      "gpio_pin": 10,
+      "active_high": false
+    },
+    "led_warm": {
+      "type": "led",
+      "gpio_pin": 11,
+      "active_high": false
+    },
+    "led_fault": {
+      "type": "led",
+      "gpio_pin": 12,
+      "active_high": false
+    },
+    "btn_onoff": {
+      "type": "button",
+      "gpio_pin": 26,
+      "active_low": true
+    },
+    "btn_func": {
+      "type": "button",
+      "gpio_pin": 27,
+      "active_low": true
+    }
+  }
+}
