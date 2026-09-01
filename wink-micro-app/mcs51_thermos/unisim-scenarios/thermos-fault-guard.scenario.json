@@ -1,0 +1,99 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51_thermos safety: NTC short -> FAULT latches heater off -> probe recovers -> auto OFF",
+    "templateId": "mcs51_thermos",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "8000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "30ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0586,
+      "description": "Cold water present before first control tick: 8-bit code ~240 -> 25 C (valueNorm = code/4095, low-byte rail convention)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "400ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "700ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1200ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "Heating normally before the fault"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["900ms", "1500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=1,H=1",
+      "minPackets": 1,
+      "description": "Telemetry: HEAT with heater on before fault"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "2000ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0,
+      "description": "NTC probe shorts: rail 0 -> 8-bit code 0 <= NTC_SHORT_CODE(8) => sensor-short fault"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2600ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Fault forces heater relay off immediately (safe state re-derived every control tick)"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "4000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=3,H=0,F=2",
+      "minPackets": 1,
+      "description": "Telemetry: FAULT state (S=3), heater forced off (H=0), fault code 2 = NTC short. Frame field order is S,H,F."
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "4500ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0586,
+      "description": "Probe recovered: code back to ~240 (valid range)"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "6500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=0,H=0,F=0",
+      "minPackets": 1,
+      "description": "Sensor fault auto-clears to OFF (S=0, H=0, F=0); heater stays off. Frame field order is S,H,F."
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "6000ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Heater remains off after fault recovery (no auto-restart)"
+    }
+  ]
+}
