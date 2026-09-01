@@ -1,0 +1,145 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51_thermos happy path: OFF -> boil -> keep-warm with FUNC setpoint cycle",
+    "templateId": "mcs51_thermos",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "10000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "100ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Boot: state OFF, heater relay off"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "30ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0586,
+      "description": "Cold water present BEFORE the first 100 ms control tick (rail default 0 would read as NTC short): ADC0832 8-bit code ~240 -> 25 C. Rail note: the ADC0832 shim reads the low byte of the 12-bit rail, so valueNorm = code/4095 (240/4095 ~= 0.0586)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "400ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "700ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1200ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "ON pressed in cold water: HEAT state, heater relay on"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1200ms",
+      "target": "plugin:led_heat/on",
+      "matcher": true,
+      "description": "Heating indicator lit while boiling"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["900ms", "1500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=1,H=1",
+      "minPackets": 1,
+      "description": "Telemetry reports HEAT state (S=1) with heater on (H=1)"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "1600ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0122,
+      "description": "Water reaches boil: 8-bit code ~50 -> ~105 C (>= 98 C boil threshold); valueNorm = 50/4095 ~= 0.0122 (low-byte rail convention)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2200ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Boil reached: heater cuts off during the 3 s boil-hold confirmation"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "5200ms",
+      "target": "plugin:led_warm/on",
+      "matcher": true,
+      "description": "After 3 s boil hold: WARM state, keep-warm indicator lit"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "6800ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=2,H=0",
+      "minPackets": 1,
+      "description": "Telemetry reports WARM state (S=2), heater off while water is hot. NOTE: BusAnalyzer coalesces same-direction UART bytes into ONE burst packet stamped at the first byte (~1 s), so bus-assertion windows must start at 0; the 6.8 s end bounds the content generation epoch (WARM LED asserted at 5.2 s, heat-off water until 6.8 s)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "5800ms",
+      "targetPluginId": "btn_func",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "6100ms",
+      "targetPluginId": "btn_func",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "6800ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0366,
+      "description": "Water cools to ~60 C (8-bit code ~150); FUNC cycled warm setpoint to 80 C, so 60 < 80-3 => heat (valueNorm = 150/4095)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "7800ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "Keep-warm hysteresis: below setpoint-3 C the heater re-engages"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "8400ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "8700ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "9300ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "ON/OFF pressed in WARM: back to OFF, heater off"
+    }
+  ]
+}
