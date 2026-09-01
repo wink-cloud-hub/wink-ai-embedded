@@ -1,4 +1,4 @@
-# mcs51_thermos — production MCS-51 (8051) wasm-sim app: health-pot (养生壶)
+# mcs51_health_pot — production MCS-51 (8051) wasm-sim app: health-pot (养生壶)
 # thermostat with ADC0832 NTC probe, heater relay, buttons, buzzer, LEDs and
 # UART telemetry (Stage-3 class-A channel composition demo).
 #
@@ -16,19 +16,19 @@ get_filename_component(_MCS51_APP_OS_ROOT
     "${CMAKE_CURRENT_SOURCE_DIR}/../../wink-micro-os" ABSOLUTE)
 set(_MCS51_CLEANUP
     "${_MCS51_APP_OS_ROOT}/frameworks/mcs51/tools/mcs51_cleanup.py")
-set(_MCS51_KEYLE_SRC  "${CMAKE_CURRENT_SOURCE_DIR}/thermos.c")
+set(_MCS51_KEYLE_SRC  "${CMAKE_CURRENT_SOURCE_DIR}/health_pot.c")
 
 set(GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
 file(MAKE_DIRECTORY "${GEN_DIR}")
-set(GEN_KEYLE_CPP "${GEN_DIR}/thermos.cpp")
+set(GEN_KEYLE_CPP "${GEN_DIR}/health_pot.cpp")
 
-# Keil dialect cleanup: thermos.c -> thermos.cpp (source never edited).
+# Keil dialect cleanup: health_pot.c -> health_pot.cpp (source never edited).
 add_custom_command(
     OUTPUT ${GEN_KEYLE_CPP}
     COMMAND ${Python3_EXECUTABLE} ${_MCS51_CLEANUP}
             ${_MCS51_KEYLE_SRC} ${GEN_KEYLE_CPP}
     DEPENDS ${_MCS51_KEYLE_SRC} ${_MCS51_CLEANUP}
-    COMMENT "mcs51_thermos cleanup: thermos.c -> thermos.cpp"
+    COMMENT "mcs51_health_pot cleanup: health_pot.c -> health_pot.cpp"
     VERBATIM
 )
 
@@ -47,7 +47,7 @@ if(EMSCRIPTEN)
     )
     if(NOT _mcs51_keyle_cleanup_rc EQUAL 0)
         message(FATAL_ERROR
-            "mcs51_thermos cleanup failed (rc=${_mcs51_keyle_cleanup_rc}); "
+            "mcs51_health_pot cleanup failed (rc=${_mcs51_keyle_cleanup_rc}); "
             "check ${_MCS51_KEYLE_SRC}")
     endif()
 
@@ -58,5 +58,5 @@ if(EMSCRIPTEN)
 endif()
 
 message(STATUS
-    "mcs51_thermos: wasm-sim only — no host/esp32 target produced.")
+    "mcs51_health_pot: wasm-sim only — no host/esp32 target produced.")
 set(WINK_APP_SOURCES "" PARENT_SCOPE)
