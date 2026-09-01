@@ -1,6 +1,7 @@
 {
   "app_name": "devkitc_smoke",
   "board": "esp32_devkitc",
+  "category": "test",
   "devices": {
     "board_led": {
       "use_onboard": "status_led"

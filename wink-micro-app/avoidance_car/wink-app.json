@@ -1,6 +1,7 @@
 {
   "app_name": "avoidance_car",
   "board": "esp32_devkitc",
+  "category": "enterprise",
   "devices": {
     "front_radar": {
       "type": "ultrasonic",
