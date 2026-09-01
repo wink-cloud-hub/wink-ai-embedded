@@ -1,8 +1,8 @@
 {
   "header": {
     "version": "2.0",
-    "name": "mcs51_thermos happy path: OFF -> boil -> keep-warm with FUNC setpoint cycle",
-    "templateId": "mcs51_thermos",
+    "name": "mcs51_health_pot happy path: OFF -> boil -> keep-warm with FUNC setpoint cycle",
+    "templateId": "mcs51_health_pot",
     "accuracyMode": "behavioral",
     "timeoutUs": "10000000",
     "failurePolicy": "fail-fast",

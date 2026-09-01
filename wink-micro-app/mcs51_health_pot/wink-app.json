@@ -1,5 +1,5 @@
 {
-  "app_name": "mcs51_thermos",
+  "app_name": "mcs51_health_pot",
   "board": "mcs51_devboard",
   "tick_ms": 10,
   "devices": {

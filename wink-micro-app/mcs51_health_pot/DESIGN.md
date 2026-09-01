@@ -1,9 +1,9 @@
-# mcs51_thermos —— 养生壶（电热水壶）仿真应用设计文档
+# mcs51_health_pot —— 养生壶（电热水壶）仿真应用设计文档
 
 > 平台：WinkMicroOS · MCS-51 零侵入仿真拦截层（Axis-B，ADR-0070~0076）
 > MCU 模型：AT89C52 内核（REGX52.H 方言）+ 外置 ADC0832 测温
 > 仿真通道：CH1 GPIO（输入/输出/外部中断）· CH2 UART（遥测）· CH3 模拟量（NTC→ADC0832）
-> 固件：`thermos.c`（Keil C51 风格，经 `mcs51_cleanup.py` 清洗为 C++17 原生/wasm 编译，源码不改）
+> 固件：`health_pot.c`（Keil C51 风格，经 `mcs51_cleanup.py` 清洗为 C++17 原生/wasm 编译，源码不改）
 
 ---
 
@@ -199,34 +199,34 @@ valueNorm = K / 4095        （不是 K/255）
 
 | 场景文件 | 覆盖路径 | 关键断言 |
 |---|---|---|
-| `unisim-scenarios/thermos-boil-warm.scenario.json` | 快乐路径：OFF→HEAT→（98℃×3s）→WARM→FUNC 切档→迟滞重加热→ON/OFF 关机 | 加热继电器 on/off、加热/保温灯、遥测 `S=1,H=1` / `S=2,H=0`、迟滞再加热、关机 |
-| `unisim-scenarios/thermos-fault-guard.scenario.json` | 安全路径：加热中 NTC 短路→FAULT（加热器立即关）→探头恢复→自动回 OFF | 故障后继电器 off、遥测 `S=3,F=2`、恢复后 `S=0,F=0` 且不自动重启加热 |
+| `unisim-scenarios/health-pot-boil-warm.scenario.json` | 快乐路径：OFF→HEAT→（98℃×3s）→WARM→FUNC 切档→迟滞重加热→ON/OFF 关机 | 加热继电器 on/off、加热/保温灯、遥测 `S=1,H=1` / `S=2,H=0`、迟滞再加热、关机 |
+| `unisim-scenarios/health-pot-fault-guard.scenario.json` | 安全路径：加热中 NTC 短路→FAULT（加热器立即关）→探头恢复→自动回 OFF | 故障后继电器 off、遥测 `S=3,F=2`、恢复后 `S=0,F=0` 且不自动重启加热 |
 
 运行（跨仓 CLI，目录形式）：
 
 ```powershell
 python D:\MyWorkSpace_program\lowcode-nocode\ai-app\wink-ai\packages\wink-tools\wink.py sim run `
-  --mode headless --app mcs51_thermos `
-  --scenarios wink-micro-app\mcs51_thermos\unisim-scenarios
+  --mode headless --app mcs51_health_pot `
+  --scenarios wink-micro-app\mcs51_health_pot\unisim-scenarios
 ```
 
-构建产物：`thermos.c` →（`mcs51_cleanup.py`）→ `thermos.cpp` → 链接 `wink_mcs51_compat` → `unisim-assets/wink_simulator.{js,wasm}`（wasm-only；host/esp32 不出 target，mcs51 树在 `ESP_PLATFORM` 自跳过）。
+构建产物：`health_pot.c` →（`mcs51_cleanup.py`）→ `health_pot.cpp` → 链接 `wink_mcs51_compat` → `unisim-assets/wink_simulator.{js,wasm}`（wasm-only；host/esp32 不出 target，mcs51 树在 `ESP_PLATFORM` 自跳过）。
 
 ---
 
 ## 7. 文件清单
 
 ```
-wink-micro-app/mcs51_thermos/
-├── thermos.c                       # Keil C51 风格固件（唯一 app 源，不改写原文件）
+wink-micro-app/mcs51_health_pot/
+├── health_pot.c                       # Keil C51 风格固件（唯一 app 源，不改写原文件）
 ├── CMakeLists.txt                  # cleanup→.cpp→链 wink_mcs51_compat（ADR-0075 契约）
 ├── wink-app.json                   # 板级/设备声明（adc0832 codegen + led/button 设备）
 ├── DESIGN.md                       # 本文件
 ├── unisim-assets/
 │   └── device-tree.json            # 运行时插件声明（relay/buzzer 用 led 型，3 LED，2 按键）
 └── unisim-scenarios/
-    ├── thermos-boil-warm.scenario.json    # 快乐路径
-    └── thermos-fault-guard.scenario.json  # 安全保护路径
+    ├── health-pot-boil-warm.scenario.json    # 快乐路径
+    └── health-pot-fault-guard.scenario.json  # 安全保护路径
 ```
 
 ## 8. 后续可扩展（Stage-3 Class A，零用户代码改动）

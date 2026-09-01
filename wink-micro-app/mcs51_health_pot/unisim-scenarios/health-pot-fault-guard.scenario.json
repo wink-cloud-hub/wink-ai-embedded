@@ -1,8 +1,8 @@
 {
   "header": {
     "version": "2.0",
-    "name": "mcs51_thermos safety: NTC short -> FAULT latches heater off -> probe recovers -> auto OFF",
-    "templateId": "mcs51_thermos",
+    "name": "mcs51_health_pot safety: NTC short -> FAULT latches heater off -> probe recovers -> auto OFF",
+    "templateId": "mcs51_health_pot",
     "accuracyMode": "behavioral",
     "timeoutUs": "8000000",
     "failurePolicy": "fail-fast",
