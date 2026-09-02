@@ -615,6 +615,10 @@ if(TARGET wink_mcs51_compat)
     add_mcs51_host_test(test_mcs51_shims
         mcs51/unit/test_mcs51_shims.cpp)
 
+    # MCU facade: wink_mcu.h routing to REG_CMS8S78XX.H / REGX52.H
+    add_mcs51_host_test(test_mcs51_wink_mcu
+        mcs51/unit/test_mcs51_wink_mcu.cpp)
+
     # M4: data plane — RMW Read-Latch integrity (external-low pin never
     # written back into the latch, whole-port + sbit RMW).
     add_mcs51_host_test(test_mcs51_sfr_rmw_latch

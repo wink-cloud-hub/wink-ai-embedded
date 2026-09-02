@@ -2,6 +2,7 @@
   "app_name": "mcs51_analog_threshold",
   "board": "mcs51_devboard",
   "category": "demo",
+  "mcu": "cms8s78xx",
   "tick_ms": 10,
   "devices": {
     "led": {

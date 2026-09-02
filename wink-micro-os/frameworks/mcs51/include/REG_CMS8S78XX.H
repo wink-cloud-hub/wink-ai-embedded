@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-// REG_CMS8S.H — CMS8S78xx (Cmsemicon) SFR dialect shim for the host/wasm
+// REG_CMS8S78XX.H — CMS8S78xx (Cmsemicon) SFR dialect shim for the host/wasm
 // sandbox.
 //
 // Unmodified Keil C51 user sources written for the CMS8S78xx part
-// `#include <REG_CMS8S.H>` and program the on-chip 12-bit ADC through the
-// vendor register map (reference manual Ch.22, verified against the vendor
-// device header cms8s78xx.h and StdDriver adc.c):
+// `#include <REG_CMS8S78XX.H>` (or `#include <wink_mcu.h>`) and program the
+// on-chip 12-bit ADC through the vendor register map (reference manual Ch.22,
+// verified against the vendor device header cms8s78xx.h and StdDriver adc.c):
 //
 //   ADCON0 (0xDF)  bit1 ADGO  — write 1 to start; hardware self-clears to 0
 //                               when the conversion completes, so the bit IS

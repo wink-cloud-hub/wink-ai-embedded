@@ -50,8 +50,8 @@ enum {
     // Code depending on the Keil generic 3-byte pointer's internal tag byte:
     // host/wasm pointers are flat.
     MCS51_FEAT_GENERIC_POINTER   = 6,
-    // `sbit name = 0xXX` absolute bit-address form (third-party dialect; the
-    // official REG headers use the REG^n form exclusively).
+    // `sbit name = 0xXX` absolute bit-address form: natively supported via
+    // constexpr WinkSbit(int) since ADR-0072 D5 (retained for backward enum stability).
     MCS51_FEAT_ABS_SBIT_ADDR     = 7,
     // Sub-microsecond instruction-cycle timing (bit-banged WS2812/1-Wire
     // counting _nop_() cycles): the microstep granularity is too coarse.

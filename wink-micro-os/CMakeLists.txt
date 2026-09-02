@@ -47,6 +47,17 @@ endif()
 message(STATUS "WINK_APP_DIR = ${WINK_APP_DIR}")
 message(STATUS "WINK_APP_JSON = ${WINK_APP_JSON}")
 
+# Extract target MCU from wink-app.json and inject compile definition (e.g. WINK_MCU_AT89C52=1)
+if(NOT WINK_APP_JSON STREQUAL "" AND EXISTS "${WINK_APP_JSON}")
+    file(READ "${WINK_APP_JSON}" _wink_app_json_raw LIMIT 4096)
+    if(_wink_app_json_raw MATCHES "\"mcu\"[ \t\r\n]*:[ \t\r\n]*\"([^\"]+)\"")
+        string(TOUPPER "${CMAKE_MATCH_1}" _wink_app_mcu_upper)
+        string(REPLACE "-" "_" _wink_app_mcu_upper "${_wink_app_mcu_upper}")
+        add_compile_definitions(WINK_MCU_${_wink_app_mcu_upper}=1)
+        message(STATUS "Target MCU from wink-app.json: ${CMAKE_MATCH_1} -> WINK_MCU_${_wink_app_mcu_upper}=1")
+    endif()
+endif()
+
 # ADR-0039: Host multi-sample shares one `dal` -- do NOT prune from the
 # WINK_APP_DIR-derived WINK_APP_JSON (that path is for wink_config.h).
 # Opt in for single-app host builds: -DWINK_DAL_BIND_APP_JSON=ON.

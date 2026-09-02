@@ -7,7 +7,6 @@
  * When released (PA.5 = 1), drives LED on PA.4 to OFF (0 = unlit).
  */
 
-#define PFS154
 #include <stdint.h>
 #include <device.h>
 

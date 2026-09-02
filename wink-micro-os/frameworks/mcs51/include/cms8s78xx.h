@@ -12,11 +12,11 @@
 // the include path, so their `#include "cms8s78xx.h"` resolves here rather than
 // to the vendor Keil header. Everything the vendor driver needs — the SFR
 // proxy instances, the XSFR proxies, the verbatim vendor bit masks, and the
-// stdint/intrins shims — is provided by REG_CMS8S.H / REGX52.H.
+// stdint/intrins shims — is provided by REG_CMS8S78XX.H / REGX52.H.
 //
 // The vendor header and sources remain reference-only fixtures under
 // docs/vendors/ and are NEVER committed; this committed shim is the sandbox
 // stand-in (M5 tier-b harvest, ADR-0073 D6).
 #pragma once
 
-#include "REG_CMS8S.H"
+#include "REG_CMS8S78XX.H"
