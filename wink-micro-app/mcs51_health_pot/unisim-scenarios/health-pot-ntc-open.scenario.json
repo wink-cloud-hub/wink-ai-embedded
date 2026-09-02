@@ -1,0 +1,99 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51_health_pot safety: NTC open (F=1) -> FAULT latches heater off -> probe recovers -> auto OFF",
+    "templateId": "mcs51_health_pot",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "8000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "30ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0586,
+      "description": "Cold water present before first control tick: 8-bit code ~240 -> 25 C (valueNorm = code/4095, low-byte rail convention)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "400ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "700ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1200ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "Heating normally before the fault"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["900ms", "1500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=1,H=1",
+      "minPackets": 1,
+      "description": "Telemetry: HEAT with heater on before fault"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "2000ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0623,
+      "description": "NTC probe opens: rail -> 8-bit code 255 >= NTC_OPEN_CODE(250) => sensor-open fault F=1. valueNorm = 255/4095 ~= 0.0623"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2600ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Fault forces heater relay off immediately (safe state re-derived every control tick)"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["2500ms", "3500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=3,H=0,F=1",
+      "minPackets": 1,
+      "description": "Telemetry frame at ~3 s: FAULT state (S=3), heater forced off (H=0), fault code 1 = NTC open. Idle-gap framing targets the post-fault frame directly."
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "4500ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0586,
+      "description": "Probe recovered: code back to ~240 (valid range)"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["4800ms", "6300ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=0,H=0,F=0",
+      "minPackets": 1,
+      "description": "Telemetry frame after probe recovery (recovered 4.5 s, 3x100ms debounce, auto-OFF by ~4.8 s): S=0, H=0, F=0, heater stays off with no auto-restart."
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "6000ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Heater remains off after fault recovery (no auto-restart)"
+    }
+  ]
+}

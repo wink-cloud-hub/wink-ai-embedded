@@ -1,0 +1,185 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51_health_pot safety: dry-fire (F=3) latches, survives later off-scale/short readings, manual ON/OFF reset only",
+    "templateId": "mcs51_health_pot",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "45000000",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "100ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Boot: state OFF, heater relay off"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "30ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0586,
+      "description": "Cold water present before first control tick: 8-bit code ~240 -> 25 C (valueNorm = code/4095, low-byte rail convention)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "400ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": true
+      }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "700ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": false
+      }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1200ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "ON pressed: HEAT state, heater relay on"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "900ms",
+        "1500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=1,H=1,F=0",
+      "minPackets": 1,
+      "description": "Telemetry: HEAT with heater on, no fault"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "20000ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "Still heating cold water at 20 s: dry-fire watchdog (25 s accelerated threshold) has not tripped yet"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "19500ms",
+        "21500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=1,H=1,F=0",
+      "minPackets": 1,
+      "description": "Telemetry at ~20 s still HEAT"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "30000ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Dry-fire tripped by ~29 s (heater on >25 s while temp stays <45 C; tick/frame phase set by the 400 ms button press): heater forced off"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "28500ms",
+        "31500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=3,H=0,F=3",
+      "minPackets": 1,
+      "description": "Telemetry frame at ~29-30 s: FAULT (S=3), heater off (H=0), fault code 3 = dry-fire. Frame field order is S,H,F."
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "32000ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0,
+      "description": "Dry-fired plate runs the NTC off-scale: rail 0 -> code 0 (short band). A reclassifying firmware would downgrade F=3 to auto-clearing F=2; the latched thermal fault must keep F=3."
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "32500ms",
+        "35500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=3,H=0,F=3",
+      "minPackets": 1,
+      "description": "Sticky priority: off-scale/short reading after dry-fire does NOT reclassify the fault — frame still F=3"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "36000ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0586,
+      "description": "Probe reads valid again (code ~240) with NO button press: thermal faults are not auto-cleared"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "36500ms",
+        "39500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=3,H=0,F=3",
+      "minPackets": 1,
+      "description": "Valid probe reading without ON/OFF: still FAULT F=3 (manual reset required)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "40000ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": true
+      }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "40300ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": false
+      }
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "40500ms",
+        "43500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=0,H=0,F=0",
+      "minPackets": 1,
+      "description": "Manual ON/OFF clears the dry-fire latch: back to OFF, F=0, heater stays off (no auto-restart)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "41500ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Heater remains off after manual reset"
+    }
+  ]
+}
