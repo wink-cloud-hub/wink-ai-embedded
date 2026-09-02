@@ -51,6 +51,13 @@ ISR_RE = re.compile(
     r"void\s+(\w+)\s*\(\s*(?:void)?\s*\)\s*interrupt\s+(\d+)(?:\s+using\s+\d+)?"
 )
 
+# Legacy Keil C51 MCU register headers to normalize to <wink_mcu.h>
+# Enables zero-touch migration for unmodified legacy user code.
+MCU_HEADER_RE = re.compile(
+    r'#\s*include\s*[<"](?:regx?5[12]|cms8s[0-9a-z]*|reg_cms[0-9a-z]*|stc[0-9a-z]*)\.h[>"]',
+    re.IGNORECASE
+)
+
 
 def build_code_mask(source: str) -> str:
     """Return a copy with comments and string/char-literal contents blanked to
@@ -117,27 +124,46 @@ def build_code_mask(source: str) -> str:
     return "".join(mask)
 
 
-def cleanup(source: str) -> tuple[str, int]:
-    """Return (cleaned_cpp_source, isr_rewrite_count)."""
+def cleanup(source: str) -> tuple[str, int, int]:
+    """Return (cleaned_cpp_source, isr_rewrite_count, header_rewrite_count)."""
     mask = build_code_mask(source)
-    matches = list(ISR_RE.finditer(mask))
-    if not matches:
-        return source, 0
 
-    out = []
-    prev = 0
-    for m in matches:
-        out.append(source[prev:m.start()])
+    regions: list[tuple[int, int, str, str]] = []
+
+    # 1. Collect ISR rewrites
+    for m in ISR_RE.finditer(mask):
         vector = m.group(2)
         rest = mask[m.end():]
         rest_stripped = rest.lstrip()
         if rest_stripped.startswith(";"):
-            out.append(f'extern "C" void wink_isr_vector_{vector}(void)')
+            repl = f'extern "C" void wink_isr_vector_{vector}(void)'
         else:
-            out.append(f"WINK_ISR({vector})")
-        prev = m.end()
+            repl = f"WINK_ISR({vector})"
+        regions.append((m.start(), m.end(), repl, "isr"))
+
+    # 2. Collect Legacy MCU Header normalizations
+    for m in MCU_HEADER_RE.finditer(mask):
+        regions.append((m.start(), m.end(), "#include <wink_mcu.h>", "header"))
+
+    if not regions:
+        return source, 0, 0
+
+    regions.sort(key=lambda r: r[0])
+
+    out = []
+    prev = 0
+    isr_count = 0
+    header_count = 0
+    for start, end, repl, kind in regions:
+        out.append(source[prev:start])
+        out.append(repl)
+        prev = end
+        if kind == "isr":
+            isr_count += 1
+        elif kind == "header":
+            header_count += 1
     out.append(source[prev:])
-    return "".join(out), len(matches)
+    return "".join(out), isr_count, header_count
 
 
 def main(argv: list[str]) -> int:
@@ -153,15 +179,15 @@ def main(argv: list[str]) -> int:
     inp, outp = args
     source = read_source(inp)
     if transcode:
-        cleaned, count = source, 0
+        cleaned, isr_c, hdr_c = source, 0, 0
     else:
-        cleaned, count = cleanup(source)
+        cleaned, isr_c, hdr_c = cleanup(source)
     with open(outp, "w", encoding="utf-8", newline="\n") as f:
         f.write(cleaned)
     if transcode:
         print(f"[mcs51_cleanup] {inp} -> {outp}: transcoded to UTF-8")
     else:
-        print(f"[mcs51_cleanup] {inp} -> {outp}: {count} ISR signature(s) rewritten")
+        print(f"[mcs51_cleanup] {inp} -> {outp}: {isr_c} ISR, {hdr_c} MCU header(s) rewritten")
     return 0
 
 
