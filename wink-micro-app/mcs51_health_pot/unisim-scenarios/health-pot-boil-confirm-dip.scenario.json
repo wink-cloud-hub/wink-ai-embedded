@@ -1,0 +1,86 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51_health_pot boil-confirm: temperature dip during 3 s hold does NOT restart heating",
+    "templateId": "mcs51_health_pot",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "10000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "30ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0586,
+      "description": "Cold water present before first control tick: 8-bit code ~240 -> 25 C (valueNorm = code/4095)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "400ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "700ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1200ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "ON pressed: HEAT state, heater relay on"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "1600ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0122,
+      "description": "Water reaches boil: 8-bit code ~50 -> ~105 C (>= 98 C boil threshold); boil_confirm flag set, heater turns off, 3 s hold countdown begins"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2200ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Boil reached: heater cuts off, boil-hold confirmation in progress"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "2500ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0366,
+      "description": "Temperature dips to ~60 C (code ~150) during boil-hold confirmation — simulating NTC thermal lag or plate-mount reading lag. This is BELOW the 98 C boil threshold but the boil_confirm flag prevents the dip from restarting heating or resetting the 3 s hold counter."
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "3200ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "KEY ASSERTION: heater stays OFF despite temperature dipping below 98 C during boil-hold (boil_confirm is time-only, not temperature-conditional)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "5200ms",
+      "target": "plugin:led_warm/on",
+      "matcher": true,
+      "description": "After the full 3 s boil-hold completes (despite the dip): WARM state entered, keep-warm indicator lit. The hold timer was NOT reset by the temperature dip."
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["5500ms", "6500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=2",
+      "minPackets": 1,
+      "description": "Telemetry confirms WARM state (S=2) — boil-hold completed normally despite temperature dip"
+    }
+  ]
+}
