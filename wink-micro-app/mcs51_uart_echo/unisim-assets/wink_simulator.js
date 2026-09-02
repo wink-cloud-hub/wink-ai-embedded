@@ -1696,13 +1696,6 @@ async function createWasm() {
       return 0;
     };
 
-  function _js_pal_adc_read_norm(pin) {
-          if (typeof Module !== 'undefined' && typeof Module['js_pal_adc_read_norm'] === 'function' && Module['js_pal_adc_read_norm'] !== _js_pal_adc_read_norm) {
-              return Module['js_pal_adc_read_norm'](pin);
-          }
-          return 0.0;
-      }
-
   function _js_pal_gpio_drive_ideal(pin, level) {
           if (typeof Module !== 'undefined' && typeof Module['js_pal_gpio_drive_ideal'] === 'function' && Module['js_pal_gpio_drive_ideal'] !== _js_pal_gpio_drive_ideal) {
               return Module['js_pal_gpio_drive_ideal'](pin, level);
@@ -2037,8 +2030,6 @@ var wasmImports = {
   fd_seek: _fd_seek,
   /** @export */
   fd_write: _fd_write,
-  /** @export */
-  js_pal_adc_read_norm: _js_pal_adc_read_norm,
   /** @export */
   js_pal_gpio_drive_ideal: _js_pal_gpio_drive_ideal,
   /** @export */
