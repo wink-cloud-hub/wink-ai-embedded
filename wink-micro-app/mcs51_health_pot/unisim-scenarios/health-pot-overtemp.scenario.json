@@ -1,0 +1,134 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51_health_pot safety: keep-warm over-temp (F=4) — plate runs beyond scale in WARM, latched manual reset",
+    "templateId": "mcs51_health_pot",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "25000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "100ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Boot: state OFF, heater relay off"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "30ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0586,
+      "description": "Cold water before first control tick: code ~240 -> 25 C (valueNorm = code/4095)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "400ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "700ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1200ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "ON pressed: HEAT, heater on"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "1600ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0122,
+      "description": "Water reaches boil: code ~50 -> ~105 C (>= 98 C); normal boiling reads ~50, above the over-temp band (<=20)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2200ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Boil reached: heater off during 3 s boil hold"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "5200ms",
+      "target": "plugin:led_warm/on",
+      "matcher": true,
+      "description": "After boil hold: WARM state"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "5500ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0037,
+      "description": "Keep-warm session has boiled the pot dry: plate runs away beyond scale, code ~15 (9..20 = hotter-than-table band, distinct from short <=8). valueNorm = 15/4095 ~= 0.0037"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "16000ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Over-temp watchdog trips after ~10 s of beyond-scale code in WARM (dry-fire watchdog only covers HEAT): heater forced off"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["14500ms", "16500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=3,H=0,F=4",
+      "minPackets": 1,
+      "description": "Telemetry frame at ~15 s: FAULT (S=3), heater off (H=0), fault code 4 = over-temp. Field order S,H,F."
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "18000ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0586,
+      "description": "Probe reads valid again (code ~240) with NO button press: thermal fault latches"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["18500ms", "20500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=3,H=0,F=4",
+      "minPackets": 1,
+      "description": "Valid reading without ON/OFF: still FAULT F=4 (thermal faults never auto-clear)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "21000ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "21300ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["21500ms", "23500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=0,H=0,F=0",
+      "minPackets": 1,
+      "description": "Manual ON/OFF clears the over-temp latch: back to OFF, F=0"
+    }
+  ]
+}
