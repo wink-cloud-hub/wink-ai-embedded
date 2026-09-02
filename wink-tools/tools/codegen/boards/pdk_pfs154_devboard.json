@@ -1,0 +1,18 @@
+{
+  "metadata": {
+    "board_name": "pdk_pfs154_devboard",
+    "family": "pdk",
+    "core": "pdk14",
+    "mcu": "pfs154",
+    "vendor": "padauk",
+    "memory": {
+      "sim_heap_quota_kb": 8
+    }
+  },
+  "headers": {
+    "PA.0": 0, "PA.1": 1, "PA.2": 2, "PA.3": 3,
+    "PA.4": 4, "PA.5": 5, "PA.6": 6, "PA.7": 7,
+    "PB.0": 8, "PB.1": 9, "PB.2": 10, "PB.3": 11,
+    "PB.4": 12, "PB.5": 13, "PB.6": 14, "PB.7": 15
+  }
+}
