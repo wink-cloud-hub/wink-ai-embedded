@@ -21,7 +21,7 @@
  * -> wink_simulator.{js,wasm}); this original is never edited in place.
  * Linear pin (ADR-0074 D3): LED = P1.0 -> 8; analog rail pin = 32 + AN0 = 32.
  */
-#include <REG_CMS8S.H>
+#include <wink_mcu.h>
 
 sbit LED = P1^0;    /* threshold indicator on P1.0, low-drive-on (0 = lit) */
 

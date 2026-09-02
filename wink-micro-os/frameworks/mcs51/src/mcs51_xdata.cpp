@@ -32,7 +32,7 @@ namespace {
 
 constexpr uint8_t KIND_BYTE = 0u;  // XBYTE accessor
 constexpr uint8_t KIND_WORD = 1u;  // XWORD accessor
-constexpr uint8_t KIND_XSFR = 2u;  // XSFR proxy (WinkXsfr / REG_CMS8S.H)
+constexpr uint8_t KIND_XSFR = 2u;  // XSFR proxy (WinkXsfr / REG_CMS8S78XX.H)
 
 // CMS8S78xx extended-SFR window (MOVX @DPTR, manual §2.2): pin config
 // PxxCFG @ 0xF000..0xF033, ADC LDO ADCLDO @ 0xF692, …

@@ -9,7 +9,7 @@
 //
 // After the cleanup pass erases the Keil `xdata` keyword, that expression
 // becomes `*(volatile unsigned char *) 0xF692` — a WILD host-pointer
-// dereference (address 0xF692 in the host process). REG_CMS8S.H therefore
+// dereference (address 0xF692 in the host process). REG_CMS8S78XX.H therefore
 // replaces such macros with a WinkXsfr proxy bound to the same address. Every
 // load/store/RMW funnels through the bounds-checked C-ABI xdata path
 // (mcs51_xdata.cpp, kind = XSFR), so the access lands in the XSFR window of
