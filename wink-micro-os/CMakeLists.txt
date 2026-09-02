@@ -55,13 +55,20 @@ if(NOT WINK_APP_JSON STREQUAL "" AND EXISTS "${WINK_APP_JSON}")
         set(_found_mcu "${CMAKE_MATCH_1}")
     elseif(_wink_app_json_raw MATCHES "\"board\"[ \t\r\n]*:[ \t\r\n]*\"([^\"]+)\"")
         set(_board_name "${CMAKE_MATCH_1}")
-        set(_board_json "${WINK_TOOLS_ROOT}/tools/codegen/boards/${_board_name}.json")
-        if(EXISTS "${_board_json}")
-            file(READ "${_board_json}" _board_json_raw LIMIT 4096)
-            if(_board_json_raw MATCHES "\"mcu\"[ \t\r\n]*:[ \t\r\n]*\"([^\"]+)\"")
-                set(_found_mcu "${CMAKE_MATCH_1}")
+        set(_board_search_paths
+            "${WINK_APP_DIR}/boards/${_board_name}.json"
+            "${WINK_APP_DIR}/${_board_name}.json"
+            "${WINK_TOOLS_ROOT}/tools/codegen/boards/${_board_name}.json"
+        )
+        foreach(_bpath IN LISTS _board_search_paths)
+            if(EXISTS "${_bpath}")
+                file(READ "${_bpath}" _board_json_raw LIMIT 4096)
+                if(_board_json_raw MATCHES "\"mcu\"[ \t\r\n]*:[ \t\r\n]*\"([^\"]+)\"")
+                    set(_found_mcu "${CMAKE_MATCH_1}")
+                    break()
+                endif()
             endif()
-        endif()
+        endforeach()
     endif()
 
     if(NOT _found_mcu STREQUAL "")
