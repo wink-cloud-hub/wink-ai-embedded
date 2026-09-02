@@ -8,6 +8,7 @@
 #endif
 
 #include "wink_mcu.h"
+#include "reg51.h"
 
 // Undefine the Keil dialect main remap so the test runner main() can link
 #ifdef main

@@ -62,6 +62,12 @@ public:
     WinkXsfr& operator-=(unsigned v) {
         return *this = (static_cast<uint8_t>(*this) - v);
     }
+    WinkXsfr& operator<<=(unsigned s) {
+        return *this = (static_cast<uint8_t>(*this) << s);
+    }
+    WinkXsfr& operator>>=(unsigned s) {
+        return *this = (static_cast<uint8_t>(*this) >> s);
+    }
     WinkXsfr& operator++() {
         return *this = static_cast<unsigned>(
                    static_cast<uint8_t>(static_cast<uint8_t>(*this) + 1u));

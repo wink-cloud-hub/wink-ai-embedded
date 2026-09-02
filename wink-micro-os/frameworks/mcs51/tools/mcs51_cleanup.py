@@ -129,7 +129,12 @@ def cleanup(source: str) -> tuple[str, int]:
     for m in matches:
         out.append(source[prev:m.start()])
         vector = m.group(2)
-        out.append(f"WINK_ISR({vector})")
+        rest = mask[m.end():]
+        rest_stripped = rest.lstrip()
+        if rest_stripped.startswith(";"):
+            out.append(f'extern "C" void wink_isr_vector_{vector}(void)')
+        else:
+            out.append(f"WINK_ISR({vector})")
         prev = m.end()
     out.append(source[prev:])
     return "".join(out), len(matches)
