@@ -175,6 +175,33 @@ struct WinkSbit {
             static_cast<uint8_t>((wink_mcs51_sfr_shadow[addr] >> bit) & 1u);
         return *this = (latch & (v & 1u));
     }
+
+    // Bitwise NOT (`b = ~b;`): returns 1 when bit is 0, and 0 when bit is 1.
+    uint8_t operator~() const {
+        return static_cast<uint8_t>(*this) ? 0u : 1u;
+    }
+
+    // Prefix/postfix inc/dec for sbit (`b++;`): toggles bit mod 2.
+    WinkSbit& operator++() {
+        const uint8_t latch =
+            static_cast<uint8_t>((wink_mcs51_sfr_shadow[addr] >> bit) & 1u);
+        return *this = static_cast<uint8_t>((latch + 1u) & 1u);
+    }
+    uint8_t operator++(int) {
+        const uint8_t old = static_cast<uint8_t>(*this);
+        *this = static_cast<uint8_t>((old + 1u) & 1u);
+        return old;
+    }
+    WinkSbit& operator--() {
+        const uint8_t latch =
+            static_cast<uint8_t>((wink_mcs51_sfr_shadow[addr] >> bit) & 1u);
+        return *this = static_cast<uint8_t>((latch + 1u) & 1u);
+    }
+    uint8_t operator--(int) {
+        const uint8_t old = static_cast<uint8_t>(*this);
+        *this = static_cast<uint8_t>((old + 1u) & 1u);
+        return old;
+    }
 };
 
 // ── SFR proxy: `sfr P1 = 0x90;` ─────────────────────────────────────────────
