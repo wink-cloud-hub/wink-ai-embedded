@@ -464,9 +464,11 @@ if(TARGET wink_mcs51_compat)
         "${CMAKE_CURRENT_SOURCE_DIR}/mcs51/apps/iron_ntc/wink-app.json")
     if(WINK_TOOLS_ROOT AND EXISTS "${_MCS51_BOARD_CONFIG_GENERATOR}"
             AND EXISTS "${_MCS51_IRON_NTC_APP}")
-        set(_MCS51_BOARD_CONFIG_H "${_MCS51_GEN_DIR}/mcs51_board_config.h")
         set(_MCS51_BOARD_JSON
-            "${WINK_TOOLS_ROOT}/tools/codegen/boards/mcs51_devboard.json")
+            "${CMAKE_CURRENT_SOURCE_DIR}/../wink-tools/tools/codegen/boards/mcs51_devboard.json")
+        if(NOT EXISTS "${_MCS51_BOARD_JSON}")
+            set(_MCS51_BOARD_JSON "${WINK_TOOLS_ROOT}/tools/codegen/boards/mcs51_devboard.json")
+        endif()
         add_custom_command(
             OUTPUT ${_MCS51_BOARD_CONFIG_H}
             COMMAND ${CMAKE_COMMAND} -E make_directory ${_MCS51_GEN_DIR}

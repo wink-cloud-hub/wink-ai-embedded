@@ -58,6 +58,7 @@ if(NOT WINK_APP_JSON STREQUAL "" AND EXISTS "${WINK_APP_JSON}")
         set(_board_search_paths
             "${WINK_APP_DIR}/boards/${_board_name}.json"
             "${WINK_APP_DIR}/${_board_name}.json"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../wink-tools/tools/codegen/boards/${_board_name}.json"
             "${WINK_TOOLS_ROOT}/tools/codegen/boards/${_board_name}.json"
         )
         foreach(_bpath IN LISTS _board_search_paths)
@@ -172,6 +173,10 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN
         AND _wink_app_is_mcs51
         AND EXISTS "${_MCS51_BOARD_CONFIG_GENERATOR}"
         AND NOT WINK_APP_JSON STREQUAL "")
+    set(_mcs51_board_json "${CMAKE_CURRENT_SOURCE_DIR}/../wink-tools/tools/codegen/boards/mcs51_devboard.json")
+    if(NOT EXISTS "${_mcs51_board_json}")
+        set(_mcs51_board_json "${WINK_TOOLS_ROOT}/tools/codegen/boards/mcs51_devboard.json")
+    endif()
     add_custom_command(
         OUTPUT ${WINK_MCS51_BOARD_CONFIG_H}
         COMMAND ${Python3_EXECUTABLE} "${_MCS51_BOARD_CONFIG_GENERATOR}"
@@ -180,7 +185,7 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN
         DEPENDS ${WINK_APP_JSON}
                 "${_MCS51_BOARD_CONFIG_GENERATOR}"
                 "${WINK_TOOLS_ROOT}/tools/codegen/templates/mcs51_board_config.h.j2"
-                "${WINK_TOOLS_ROOT}/tools/codegen/boards/mcs51_devboard.json"
+                "${_mcs51_board_json}"
         COMMENT "Generating mcs51_board_config.h"
         VERBATIM
     )

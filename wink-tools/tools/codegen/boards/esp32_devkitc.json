@@ -1,0 +1,80 @@
+{
+  "metadata": {
+    "board_name": "esp32_devkitc",
+    "family": "esp32",
+    "core": "xtensa-lx6",
+    "mcu": "esp32",
+    "vendor": "espressif",
+    "memory": {
+      "sim_heap_quota_kb": 256
+    }
+  },
+  "onboard_devices": {
+    "status_led": {
+      "type": "led",
+      "gpio_pin": 2,
+      "active_high": true
+    },
+    "boot_button": {
+      "type": "button",
+      "gpio_pin": 0,
+      "active_low": true
+    }
+  },
+  "buses": {
+    "i2c0": {
+      "sda": 21,
+      "scl": 22
+    },
+    "spi2": {
+      "mosi": 23,
+      "miso": 19,
+      "sclk": 18,
+      "cs": 5
+    }
+  },
+  "adc": {
+    "pins": {
+      "36": { "channel": 0, "unit": 1 },
+      "39": { "channel": 3, "unit": 1 },
+      "34": { "channel": 6, "unit": 1 },
+      "35": { "channel": 7, "unit": 1 },
+      "32": { "channel": 4, "unit": 1 },
+      "33": { "channel": 5, "unit": 1 },
+      "25": { "channel": 8, "unit": 2, "wifi_conflict": true },
+      "26": { "channel": 9, "unit": 2, "wifi_conflict": true },
+      "27": { "channel": 7, "unit": 2, "wifi_conflict": true },
+      "14": { "channel": 6, "unit": 2, "wifi_conflict": true },
+      "12": { "channel": 5, "unit": 2, "wifi_conflict": true },
+      "13": { "channel": 4, "unit": 2, "wifi_conflict": true },
+      "4":  { "channel": 0, "unit": 2, "wifi_conflict": true },
+      "0":  { "channel": 1, "unit": 2, "wifi_conflict": true },
+      "2":  { "channel": 2, "unit": 2, "wifi_conflict": true },
+      "15": { "channel": 3, "unit": 2, "wifi_conflict": true }
+    }
+  },
+  "headers": {
+    "GPIO2": 2,
+    "GPIO0": 0,
+    "GPIO21": 21,
+    "GPIO22": 22,
+    "GPIO23": 23,
+    "GPIO19": 19,
+    "GPIO18": 18,
+    "GPIO5": 5,
+    "GPIO36": 36,
+    "GPIO39": 39,
+    "GPIO34": 34,
+    "GPIO35": 35,
+    "GPIO32": 32,
+    "GPIO33": 33,
+    "GPIO25": 25,
+    "GPIO26": 26,
+    "GPIO27": 27,
+    "GPIO14": 14,
+    "GPIO12": 12,
+    "GPIO13": 13,
+    "GPIO4": 4,
+    "GPIO15": 15
+  }
+}
