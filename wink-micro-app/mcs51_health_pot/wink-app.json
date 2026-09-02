@@ -1,6 +1,7 @@
 {
   "app_name": "mcs51_health_pot",
   "board": "mcs51_devboard",
+  "mcu": "at89c52",
   "tick_ms": 10,
   "devices": {
     "ntc_adc": {

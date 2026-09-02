@@ -123,8 +123,10 @@ void mcs51_framework_init(void) {
     mcs51_trap_register_sfr_write(SFR_TH1, &sfr_write_hook_timer);
     mcs51_trap_register_sfr_write(SFR_SBUF, &sfr_write_hook_uart);
 
+#if defined(WINK_MCU_CMS8S78XX) || defined(WINK_MCU_CMS8S) || defined(CMS8S78XX) || !defined(WINK_MCU_AT89C52)
     // CMS8S78xx on-chip ADC: ADCON0 write hook (0-cycle instant conversion).
     cms8s_adc_init();
+#endif
 
 #ifdef MCS51_HAS_ADC0832
     // Codegen-provided board: external ADC0832 on fixed pins (runtime app_init

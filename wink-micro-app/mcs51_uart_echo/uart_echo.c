@@ -23,8 +23,8 @@
  */
 #include <REGX52.H>
 
-static unsigned char echo_byte;
-static unsigned char echo_pending;
+static volatile unsigned char echo_byte;
+static volatile unsigned char echo_pending;
 
 void UART_ISR(void) interrupt 4 {
     /* RX is interrupt-driven; TX stays polled in the main loop, so the ISR

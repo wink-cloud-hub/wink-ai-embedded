@@ -1,5 +1,5 @@
 #include "dal_mock_sensor_legacy.h"
-#include "hal/pal_gpio.h"
+#include "pal_hal.h"
 #include "pal_resource.h"
 #include <string.h>
 

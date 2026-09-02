@@ -17,7 +17,7 @@
  * its first iteration. Three conversions land in XDATA for the driver to
  * assert: AN0 right-justify, AN1 left-justify, AN25 right-justify. No ISR.
  */
-#include <REG_CMS8S.H>
+#include <REG_CMS8S78XX.H>
 #include <absacc.h>
 
 static unsigned int cms8s_adc_read(unsigned char channel,
