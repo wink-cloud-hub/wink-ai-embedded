@@ -16,7 +16,7 @@
  * production app (cleanup -> .cpp -> links wink_mcs51_compat ->
  * wink_simulator.{js,wasm}); this original is never edited in place.
  */
-#include <REGX52.H>
+#include <wink_mcu.h>
 
 static const char HELLO[] = "HELLO\n";
 

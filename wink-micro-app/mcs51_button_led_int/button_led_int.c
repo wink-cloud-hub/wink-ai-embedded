@@ -19,7 +19,7 @@
  * edited in place. Linear pins (ADR-0074 D3): KEY = P3.2 -> 26, LED =
  * P1.0 -> 8.
  */
-#include <REGX52.H>
+#include <wink_mcu.h>
 
 sbit LED = P1^0;    /* LED on P1.0, low-drive-on (0 = lit, 1 = off) */
 

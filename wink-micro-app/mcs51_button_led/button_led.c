@@ -13,7 +13,7 @@
  * PinArbiter + button/led plugins. This original is never edited in place.
  * Linear pins (ADR-0074 D3): KEY = P3.2 -> 26, LED = P1.0 -> 8.
  */
-#include <REGX52.H>
+#include <wink_mcu.h>
 
 sbit KEY = P3^2;    /* push button on P3.2 / INT0, active-low (0 = pressed) */
 sbit LED = P1^0;    /* LED on P1.0, low-drive-on (0 = lit, 1 = off)          */

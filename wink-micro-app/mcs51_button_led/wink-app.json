@@ -1,6 +1,7 @@
 {
   "app_name": "mcs51_button_led",
   "board": "mcs51_devboard",
+  "mcu": "at89c52",
   "category": "enterprise",
   "tick_ms": 10,
   "devices": {

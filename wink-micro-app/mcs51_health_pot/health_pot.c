@@ -74,7 +74,7 @@
  *             (js_pal_adc_read_norm, headless INPUT_ANALOG on rail pin 32).
  * The cleanup pass emits a .cpp copy; this original is never edited in place.
  */
-#include <REGX52.H>
+#include <wink_mcu.h>
 #include <absacc.h>
 
 /* ---- Pins ---------------------------------------------------------------- */
