@@ -509,7 +509,7 @@ if(TARGET wink_mcs51_compat)
         # run on the cooperative fiber scheduler (pal_sim_scheduler_run), not
         # the host direct-call tick path. SIMULATION selects that path in
         # wink_runtime.c (wasm defines it globally; host opts in per-target).
-        target_compile_definitions(${name} PRIVATE SIMULATION=1)
+        target_compile_definitions(${name} PRIVATE SIMULATION=1 WINK_MCU_AT89C52=1)
         if(NOT MSVC)
             target_compile_options(${name} PRIVATE
                 $<$<COMPILE_LANGUAGE:CXX>:-std=c++17 -Wno-write-strings
@@ -659,6 +659,7 @@ if(TARGET wink_mcs51_compat)
     # AN25/AN63 channels, XSFR proxy window + OOB trap.
     add_mcs51_host_test(test_mcs51_cms8s_adc
         mcs51/unit/test_cms8s_adc_instant.cpp)
+    target_compile_definitions(test_mcs51_cms8s_adc PRIVATE WINK_MCU_CMS8S78XX=1)
 
     # M5: CMS8S78xx ADC end-to-end through an unmodified Keil polled sample
     # (real register map; AN0 right / AN1 left / AN25 right via 12-bit rail).
@@ -666,6 +667,7 @@ if(TARGET wink_mcs51_compat)
         mcs51/test_mcs51_cms8s_adc_e2e.c
         ${_MCS51_cms8s_adc_test_CPP}
         ${_MCS51_RUNTIME_SRCS})
+    target_compile_definitions(test_mcs51_cms8s_adc_e2e PRIVATE WINK_MCU_CMS8S78XX=1)
 
     # M6: NTC closed-loop thermostat through the board-codegen ADC0832 seam.
     # The driver does NOT call mcs51_adc0832_init — the bridge auto-binds the
