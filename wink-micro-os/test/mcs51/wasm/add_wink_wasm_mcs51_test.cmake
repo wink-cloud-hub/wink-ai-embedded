@@ -166,6 +166,12 @@ function(add_wink_wasm_mcs51_test test_name sample_name driver_c)
         ${_SDK_ROOT}/test/mcs51/wasm/mcs51_wasm_link_stubs.c
     )
 
+    if(sample_name MATCHES "cms8s")
+        set(_mcu_def "-DWINK_MCU_CMS8S78XX=1")
+    else()
+        set(_mcu_def "-DWINK_MCU_AT89C52=1")
+    endif()
+
     add_custom_command(
         OUTPUT ${_out_js}
         COMMAND ${EMCC_EXECUTABLE}
@@ -174,6 +180,7 @@ function(add_wink_wasm_mcs51_test test_name sample_name driver_c)
             -O1
             -DSIMULATION=1
             -DPLATFORM_wasm
+            ${_mcu_def}
             -Wno-write-strings
             -Wno-deprecated-declarations
             -sASYNCIFY=1
