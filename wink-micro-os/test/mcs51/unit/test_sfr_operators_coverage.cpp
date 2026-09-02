@@ -8,6 +8,8 @@
 #include <stdio.h>
 
 #include "mcs51_proxy.hpp"
+#include "mcs51_xsfr.hpp"
+#include "absacc.h"
 
 namespace {
 
@@ -87,6 +89,15 @@ void test_sbit_operators() {
     led &= 1u;               check((latch(0xB0) & 0x04u) == 0x04u, "sbit &= 1 holds");
     led &= 0u;               check((latch(0xB0) & 0x04u) == 0x00u, "sbit &= 0 clears");
 
+    // sbit ~ and ++ / --
+    led = 1;
+    check((~led) == 0u, "sbit ~ on 1 returns 0");
+    led = 0;
+    check((~led) == 1u, "sbit ~ on 0 returns 1");
+    ++led;                   check((latch(0xB0) & 0x04u) == 0x04u, "sbit prefix ++ toggles 0->1");
+    --led;                   check((latch(0xB0) & 0x04u) == 0x00u, "sbit prefix -- toggles 1->0");
+    uint8_t old_s = led++;   check(old_s == 0u && (latch(0xB0) & 0x04u) == 0x04u, "sbit postfix ++ returns old");
+
     // sbit copy: source read goes through Read-Pin; sink write dispatches.
     P3 = 0x00;
     WinkSbit src(P3 ^ 0);
@@ -98,6 +109,22 @@ void test_sbit_operators() {
     WinkSfr P1(0x90);
     P1 = P3;                 // port-to-port copy reads P3 pins (=0xFF latch)
     check(latch(0x90) == 0xFFu, "WinkSfr copy assignment reads source port");
+}
+
+void test_xsfr_operators() {
+    wink_mcs51_xdata_reset();
+    WinkXsfr adclldo(0xF692);
+
+    adclldo = 0x01;
+    check(static_cast<uint8_t>(adclldo) == 0x01u, "xsfr write / read");
+    adclldo <<= 3;           check(static_cast<uint8_t>(adclldo) == 0x08u, "xsfr <<= 3");
+    adclldo >>= 2;           check(static_cast<uint8_t>(adclldo) == 0x02u, "xsfr >>= 2");
+    adclldo |= 0x80;         check(static_cast<uint8_t>(adclldo) == 0x82u, "xsfr |= 0x80");
+    adclldo &= ~0x02u;       check(static_cast<uint8_t>(adclldo) == 0x80u, "xsfr &= ~0x02");
+    adclldo ^= 0x81;         check(static_cast<uint8_t>(adclldo) == 0x01u, "xsfr ^= 0x81");
+    ++adclldo;               check(static_cast<uint8_t>(adclldo) == 0x02u, "xsfr prefix ++");
+    uint8_t old_x = adclldo++; check(old_x == 0x02u && static_cast<uint8_t>(adclldo) == 0x03u, "xsfr postfix ++");
+    --adclldo;               check(static_cast<uint8_t>(adclldo) == 0x02u, "xsfr prefix --");
 }
 
 void test_absolute_sbit_forms() {
@@ -134,6 +161,7 @@ int main(void) {
     test_compound_assignments();
     test_increment_decrement();
     test_sbit_operators();
+    test_xsfr_operators();
     test_absolute_sbit_forms();
 
     if (g_fails != 0) {
