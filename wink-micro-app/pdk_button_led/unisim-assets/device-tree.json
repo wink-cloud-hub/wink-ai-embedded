@@ -1,6 +1,6 @@
 {
   "appName": "pdk_button_led",
-  "board": "pdk_pfs154_devboard",
+  "board": "padauk_pfs154_devboard",
   "target": {
     "architecture": "pdk",
     "core": "pdk14",

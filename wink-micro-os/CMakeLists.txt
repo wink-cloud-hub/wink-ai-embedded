@@ -55,13 +55,18 @@ if(NOT WINK_APP_JSON STREQUAL "" AND EXISTS "${WINK_APP_JSON}")
         set(_found_mcu "${CMAKE_MATCH_1}")
     elseif(_wink_app_json_raw MATCHES "\"board\"[ \t\r\n]*:[ \t\r\n]*\"([^\"]+)\"")
         set(_board_name "${CMAKE_MATCH_1}")
-        set(_board_search_paths
+        set(_board_search_patterns
+            "${WINK_APP_DIR}/boards/*/${_board_name}.json"
             "${WINK_APP_DIR}/boards/${_board_name}.json"
             "${WINK_APP_DIR}/${_board_name}.json"
-            "${CMAKE_CURRENT_SOURCE_DIR}/../wink-tools/tools/codegen/boards/${_board_name}.json"
+            "${WINK_TOOLS_ROOT}/tools/codegen/boards/*/${_board_name}.json"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../wink-tools/tools/codegen/boards/*/${_board_name}.json"
+            "${WINK_TOOLS_ROOT}/tools/codegen/boards/*/*${_board_name}*.json"
             "${WINK_TOOLS_ROOT}/tools/codegen/boards/${_board_name}.json"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../wink-tools/tools/codegen/boards/${_board_name}.json"
         )
-        foreach(_bpath IN LISTS _board_search_paths)
+        file(GLOB _found_board_files LIST_DIRECTORIES false ${_board_search_patterns})
+        foreach(_bpath IN LISTS _found_board_files)
             if(EXISTS "${_bpath}")
                 file(READ "${_bpath}" _board_json_raw LIMIT 4096)
                 if(_board_json_raw MATCHES "\"mcu\"[ \t\r\n]*:[ \t\r\n]*\"([^\"]+)\"")
@@ -173,9 +178,15 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN
         AND _wink_app_is_mcs51
         AND EXISTS "${_MCS51_BOARD_CONFIG_GENERATOR}"
         AND NOT WINK_APP_JSON STREQUAL "")
-    set(_mcs51_board_json "${CMAKE_CURRENT_SOURCE_DIR}/../wink-tools/tools/codegen/boards/mcs51_devboard.json")
+    set(_mcs51_board_json "${WINK_TOOLS_ROOT}/tools/codegen/boards/mcs51/stc89c52_devboard.json")
     if(NOT EXISTS "${_mcs51_board_json}")
-        set(_mcs51_board_json "${WINK_TOOLS_ROOT}/tools/codegen/boards/mcs51_devboard.json")
+        set(_mcs51_board_json "${CMAKE_CURRENT_SOURCE_DIR}/../wink-tools/tools/codegen/boards/mcs51/stc89c52_devboard.json")
+    endif()
+    if(NOT EXISTS "${_mcs51_board_json}")
+        set(_mcs51_board_json "${WINK_TOOLS_ROOT}/tools/codegen/boards/mcs51/generic_mcs51_devboard.json")
+    endif()
+    if(NOT EXISTS "${_mcs51_board_json}")
+        set(_mcs51_board_json "${CMAKE_CURRENT_SOURCE_DIR}/../wink-tools/tools/codegen/boards/mcs51/generic_mcs51_devboard.json")
     endif()
     add_custom_command(
         OUTPUT ${WINK_MCS51_BOARD_CONFIG_H}

@@ -1,6 +1,6 @@
 {
   "appName": "mcs51_button_led_int",
-  "board": "mcs51_devboard",
+  "board": "stc89c52_devboard",
   "devices": {
     "btn": {
       "id": "btn",
