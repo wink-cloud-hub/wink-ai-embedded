@@ -27,5 +27,9 @@
         "maxPulseMs": 2.5
       }
     }
-  }
+  },
+  "family": "esp32",
+  "core": "xtensa-lx6",
+  "mcu": "esp32",
+  "vendor": "espressif"
 }
