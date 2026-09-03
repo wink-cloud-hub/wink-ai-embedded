@@ -1,7 +1,7 @@
 {
   "name": "wink-ai-embedded",
   "version": "1.0.0",
-  "target_board": "esp32_devkitc",
+  "target_board": "esp32_devkitc_v4",
   "tick_ms": 10,
   "max_soft_timers": 16,
   "pwm_channels": 8

@@ -1,6 +1,6 @@
 {
   "app_name": "avoidance_car",
-  "board": "esp32_devkitc",
+  "board": "esp32_devkitc_v4",
   "category": "enterprise",
   "devices": {
     "front_radar": {

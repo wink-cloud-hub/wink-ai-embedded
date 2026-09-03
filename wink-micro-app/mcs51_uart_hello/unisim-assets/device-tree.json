@@ -1,5 +1,5 @@
 {
   "appName": "mcs51_uart_hello",
-  "board": "mcs51_devboard",
+  "board": "stc89c52_devboard",
   "devices": {}
 }

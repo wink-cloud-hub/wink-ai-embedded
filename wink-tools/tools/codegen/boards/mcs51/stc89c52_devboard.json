@@ -1,10 +1,10 @@
 {
   "metadata": {
-    "board_name": "mcs51_devboard",
+    "board_name": "stc89c52_devboard",
     "family": "mcs51",
     "core": "8051",
-    "mcu": "mcs51",
-    "vendor": "generic-8051",
+    "mcu": "stc89c52",
+    "vendor": "stc",
     "memory": {
       "sim_heap_quota_kb": 16
     }

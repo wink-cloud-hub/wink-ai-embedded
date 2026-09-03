@@ -1,6 +1,6 @@
 {
   "appName": "avoidance_car",
-  "board": "esp32_devkitc",
+  "board": "esp32_devkitc_v4",
   "devices": {
     "front_radar": {
       "id": "front_radar",

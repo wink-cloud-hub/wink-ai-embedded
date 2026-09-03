@@ -67,9 +67,15 @@ set(_MCS51_IRON_NTC_APP "${_SDK_ROOT}/test/mcs51/apps/iron_ntc/wink-app.json")
 if(WINK_TOOLS_ROOT AND EXISTS "${_MCS51_BOARD_CONFIG_GENERATOR}"
         AND EXISTS "${_MCS51_IRON_NTC_APP}")
     set(_MCS51_BOARD_CONFIG_H "${_WASM_MCS51_DIR}/gen/mcs51_board_config.h")
-    set(_mcs51_board_json "${_SDK_ROOT}/../wink-tools/tools/codegen/boards/mcs51_devboard.json")
+    set(_mcs51_board_json "${WINK_TOOLS_ROOT}/tools/codegen/boards/mcs51/stc89c52_devboard.json")
     if(NOT EXISTS "${_mcs51_board_json}")
-        set(_mcs51_board_json "${WINK_TOOLS_ROOT}/tools/codegen/boards/mcs51_devboard.json")
+        set(_mcs51_board_json "${_SDK_ROOT}/../wink-tools/tools/codegen/boards/mcs51/stc89c52_devboard.json")
+    endif()
+    if(NOT EXISTS "${_mcs51_board_json}")
+        set(_mcs51_board_json "${WINK_TOOLS_ROOT}/tools/codegen/boards/mcs51/generic_mcs51_devboard.json")
+    endif()
+    if(NOT EXISTS "${_mcs51_board_json}")
+        set(_mcs51_board_json "${_SDK_ROOT}/../wink-tools/tools/codegen/boards/mcs51/generic_mcs51_devboard.json")
     endif()
     add_custom_command(
         OUTPUT ${_MCS51_BOARD_CONFIG_H}

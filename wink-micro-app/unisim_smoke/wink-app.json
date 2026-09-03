@@ -1,6 +1,6 @@
 {
   "app_name": "unisim_smoke",
-  "board": "esp32_devkitc",
+  "board": "esp32_devkitc_v4",
   "category": "fixture",
   "devices": {
     "board_led": {

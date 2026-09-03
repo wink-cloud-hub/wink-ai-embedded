@@ -1,6 +1,6 @@
 {
   "app_name": "iron_ntc",
-  "board": "mcs51_devboard",
+  "board": "stc89c52_devboard",
   "tick_ms": 10,
   "devices": {
     "temp_adc": {
