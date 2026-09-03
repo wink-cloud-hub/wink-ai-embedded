@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "board_name": "pdk_pfs154_devboard",
+    "board_name": "padauk_pfs154_devboard",
     "family": "pdk",
     "core": "pdk14",
     "mcu": "pfs154",

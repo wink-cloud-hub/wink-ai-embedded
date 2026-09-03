@@ -1,6 +1,6 @@
 {
   "app_name": "pdk_button_led",
-  "board": "pdk_pfs154_devboard",
+  "board": "padauk_pfs154_devboard",
   "category": "demo",
   "mcu": "pfs154",
   "core": "pdk14",

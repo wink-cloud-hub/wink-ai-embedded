@@ -465,9 +465,15 @@ if(TARGET wink_mcs51_compat)
     if(WINK_TOOLS_ROOT AND EXISTS "${_MCS51_BOARD_CONFIG_GENERATOR}"
             AND EXISTS "${_MCS51_IRON_NTC_APP}")
         set(_MCS51_BOARD_JSON
-            "${CMAKE_CURRENT_SOURCE_DIR}/../wink-tools/tools/codegen/boards/mcs51_devboard.json")
+            "${WINK_TOOLS_ROOT}/tools/codegen/boards/mcs51/stc89c52_devboard.json")
         if(NOT EXISTS "${_MCS51_BOARD_JSON}")
-            set(_MCS51_BOARD_JSON "${WINK_TOOLS_ROOT}/tools/codegen/boards/mcs51_devboard.json")
+            set(_MCS51_BOARD_JSON "${CMAKE_CURRENT_SOURCE_DIR}/../wink-tools/tools/codegen/boards/mcs51/stc89c52_devboard.json")
+        endif()
+        if(NOT EXISTS "${_MCS51_BOARD_JSON}")
+            set(_MCS51_BOARD_JSON "${WINK_TOOLS_ROOT}/tools/codegen/boards/mcs51/generic_mcs51_devboard.json")
+        endif()
+        if(NOT EXISTS "${_MCS51_BOARD_JSON}")
+            set(_MCS51_BOARD_JSON "${CMAKE_CURRENT_SOURCE_DIR}/../wink-tools/tools/codegen/boards/mcs51/generic_mcs51_devboard.json")
         endif()
         add_custom_command(
             OUTPUT ${_MCS51_BOARD_CONFIG_H}

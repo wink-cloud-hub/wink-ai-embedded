@@ -1,6 +1,6 @@
 {
   "appName": "mcs51_analog_threshold",
-  "board": "mcs51_devboard",
+  "board": "stc89c52_devboard",
   "devices": {
     "led": {
       "id": "led",

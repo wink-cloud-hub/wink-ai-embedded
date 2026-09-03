@@ -1,6 +1,6 @@
 {
   "appName": "mcs51_health_pot",
-  "board": "mcs51_devboard",
+  "board": "stc89c52_devboard",
   "devices": {
     "heater_relay": {
       "id": "heater_relay",
