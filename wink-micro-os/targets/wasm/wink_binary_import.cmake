@@ -66,6 +66,7 @@ target_link_options(wink_micro_os INTERFACE
     "-sWASM_BIGINT=1"
     "-sSTACK_OVERFLOW_CHECK=2"
     "-sASSERTIONS=1"
+    "-sINCOMING_MODULE_JS_API=[wasmBinary,instantiateWasm,print,printErr,noInitialRun,preRun,postRun,onRuntimeInitialized,locateFile,onAbort,quit]"
 )
 
 # ── Backward-compatible INTERFACE aliases ────────────────────────────────────
