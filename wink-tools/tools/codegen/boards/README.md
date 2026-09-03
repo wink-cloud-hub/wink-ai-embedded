@@ -62,7 +62,7 @@ boards/
 | `adc.pins.<gpio>.wifi_conflict` | `boolean` | 否 | **射频硬件冲突标记**：`true` 表示该引脚归属 ADC2，与片上 Wi-Fi/BLE 射频前端互斥。 |
 | `adc.default_full_scale_mv` | `integer` | 否 | 默认满量程参考电压（毫伏），如衰减 11dB 典型为 3100mV，供前端将原始采样值折算为电压。 |
 | `adc.default_resolution_bits` | `integer` | 否 | 模数转换精度（位），如 12bit (0~4095) 或 10bit (0~1023)。 |
-| **`headers`** | `object` | **是** | 外部排针丝印/别名到物理引脚编号的映射字典。 |
+| **`headers`** | `object` | **是** | 外部排针丝印/别名到物理引脚或线性端口编号的映射字典。**核心价值在于让存量 C/C++ 业务代码（如 Keil C51 原生语法、Arduino 内置常量）一字不改即可在 Wink 仿真环境中直接运行**，详见 [§3.3](#33-headers-排针映射与-8051-端口位线性化)。 |
 | `headers.<label>` | `integer` | **是** | 排针引脚名映射到的物理引脚或线性端口编号。 |
 
 ---
@@ -104,20 +104,55 @@ boards/
 
 ### 3.3 `headers` 排针映射与 8051 端口位线性化
 
-#### 1. 逻辑别名解耦（Arduino 友好）
-为屏蔽不同 MCU 复杂的物理 GPIO 编号，支持在应用中通过 `$board.headers.<KEY>` 间接寻址：
+`headers` 是 Wink 板级架构中最具特色的桥梁设计，其核心理念在于实现**“业务源码与仿真平台两端皆无需迁就”的双重价值闭环**：
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│ 1. 业务源码层 (Zero-Modification Code)                                   │
+│    • Keil C51 原生源码:  sbit KEY = P3^2;  sbit LED = P1^0; (一字不改)   │
+│    • Arduino 原生 Sketch: pinMode(LED_BUILTIN, OUTPUT); 或 D2, A0 内置常量│
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ headers 桥接映射
+┌───────────────────────────────────▼────────────────────────────────────┐
+│ 2. 仿真与配置层 (Unified Bridge)                                         │
+│    • wink-app.json / 设备树: "gpio_pin": 26 (或 "$board.headers.P3.2")  │
+│    • UniSim WASM 仿真器: PinArbiter 高速投递电平到 8051 虚拟 SFR 寄存器位    │
+│    • 前端可视化电路: 画布根据引脚通道生成端点，实现导线精准物理吸附       │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 1. 核心价值一：存量 C/C++ 业务代码“一字不改”（Zero-Modification Code）
+在高校单片机教学、教科书经典实验与开源社区中，存在大量存量代码：
+* **标准 8051 代码**：深度依赖 Keil C51 的特有语法 `sbit` 进行端口位操作（如 `sbit KEY = P3^2;`）；
+* **Arduino 生态代码**：直接使用 SDK 内置的引脚常量（如 `A0`、`D2` 或 `LED_BUILTIN`）。
+
+**Wink 的设计原则是：绝不要求开发者为了适配仿真平台而修改原生业务逻辑。**  
+通过将板卡的排针标号（如 `P3.2`、`D2`、`A0`）收录在 `headers` 字典中，微应用工程可以直接无缝编译原生单片机源码（如 `wink-micro-app/mcs51_button_led/button_led.c`），底层自动完成对接。
+
+#### 2. 核心价值二：跨架构统一映射桥梁（Unified Simulation Bridge）
+不同单片机体系的引脚寻址模式天然割裂：
+* 8051 采用二维“端口+位”寻址（`P0.0 ~ P3.7`）；
+* ESP32 采用一维数字编号（`GPIO 0 ~ 39`）；
+* Arduino 采用功能复合标号（`D0 ~ D13`，`A0 ~ A5`）。
+
+`headers` 充当了异构硬件在 Wink 系统中的**统一标尺与符号查表器**：
+
+##### A. 逻辑别名解耦与多习惯兼容（Arduino / ESP-IDF 通吃）
+为屏蔽不同 MCU 复杂的物理 GPIO 编号，支持在应用配置中通过 `$board.headers.<KEY>` 间接寻址：
 ```json
 "headers": {
   "D2": 2,
-  "D18": 18,
-  "A0": 36
+  "GPIO2": 2,
+  "A0": 36,
+  "GPIO36": 36
 }
 ```
-在 `wink-app.json` 中写 `"gpio_pin": "$board.headers.D18"`，换板时只需替换 `board.json`，无需修改 App 引脚配置。
+* **多习惯友好**：习惯 Arduino 的开发者配置 `"pin": "D2"`，看芯片手册的工程师配置 `"pin": "GPIO2"`，两者均能通过 `headers` 准确解析到底层物理 GPIO 2；
+* **换板零修改**：在 `wink-app.json` 中写 `"gpio_pin": "$board.headers.D18"`，换板时只需替换 `board.json`，无需修改 App 引脚配置；
 * **转义规则**：若应用需要输出字面量 `"$board.headers.D18"`，使用 `"$$board.headers.D18"`，生成器会自动剥离第一个 `$` 符号。
 
-#### 2. 8051 端口位的线性索引投影
-8051 架构以 `P0` ~ `P3` 端口寻址，每个端口 8 位。`stc89c52_devboard.json` 采用以下数学投影将其展平为 `0 ~ 31` 的线性索引：
+##### B. 8051 端口位的线性索引投影（以 `stc89c52_devboard.json` 为例）
+8051 架构以 `P0` ~ `P3` 端口寻址，每个端口 8 位。`headers` 采用以下数学投影将其展平为 `0 ~ 31` 的线性连续索引：
 
 $$\text{linear\_index} = (\text{port} \times 8) + \text{bit}$$
 
@@ -129,10 +164,15 @@ $$\text{linear\_index} = (\text{port} \times 8) + \text{bit}$$
   "P3.0": 24, "P3.1": 25, ..., "P3.7": 31
 }
 ```
-* **解码算法**：`mcs51_board_config.py` 在固件生成期直接通过位运算解算：
-  * $\text{port} = (\text{linear\_index} \gg 3) \ \& \ 0\text{x}3$
-  * $\text{bit} = \text{linear\_index} \ \& \ 0\text{x}7$
-  生成直接操作 SFR 的超紧凑 C 代码，做到零内存损耗。
+* **实战闭环链路（以按键点灯 `mcs51_button_led` 为例）**：
+  1. 用户原生 C 源码：`sbit KEY = P3^2;`（端口 3，位 2）；
+  2. `headers` 数学投影：`P3.2` 对应通道 $(3 \times 8) + 2 = \mathbf{26}$；
+  3. `wink-app.json` / 设备树：按钮外设直接配置 `"gpio_pin": 26`（或 `"$board.headers.P3.2"`）；
+  4. UniSim 虚拟外设：当用户在界面按下按钮，虚拟引脚仲裁器（PinArbiter）将电平精准注入通道 26；
+  5. 固件生成期解码：`mcs51_board_config.py` 通过极低开销的位运算直接生成操作 SFR 寄存器的底层指令：
+     * $\text{port} = (\text{linear\_index} \gg 3) \ \& \ 0\text{x}3 \implies 3$（对应 `P3`）
+     * $\text{bit} = \text{linear\_index} \ \& \ 0\text{x}7 \implies 2$（对应位 2）
+  从而达成从界面交互、设备树配置到原生 C 语言执行的全链路零摩擦直通！
 
 ---
 
