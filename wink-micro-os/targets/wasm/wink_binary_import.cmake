@@ -63,10 +63,9 @@ target_link_options(wink_micro_os INTERFACE
     "-sEXPORTED_RUNTIME_METHODS=[${WASM_EXPORT_RUNTIME}]"
     "-sMODULARIZE=1"
     "-sEXPORT_NAME=${WASM_EXPORT_NAME}"
-    "-sWASM_BIGINT=1"
     "-sSTACK_OVERFLOW_CHECK=2"
     "-sASSERTIONS=1"
-    "-sINCOMING_MODULE_JS_API=[wasmBinary,instantiateWasm,print,printErr,noInitialRun,preRun,postRun,onRuntimeInitialized,locateFile,onAbort,quit]"
+    "-sINCOMING_MODULE_JS_API=[wasmBinary,instantiateWasm,print,printErr,noInitialRun,preRun,postRun,onRuntimeInitialized,locateFile,onAbort]"
 )
 
 # ── Backward-compatible INTERFACE aliases ────────────────────────────────────

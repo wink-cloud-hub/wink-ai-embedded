@@ -72,7 +72,10 @@ static wink_status_t deferred_post_internal(pal_deferred_pri_t pri,
                                             pal_deferred_cb_t cb,
                                             void *arg) {
     if (!s_initialized) {
-        pal_deferred_init(0);
+        wink_status_t init_status = pal_deferred_init(0);
+        if (init_status != WINK_OK) {
+            return init_status;
+        }
     }
     if (pri >= PAL_DEFERRED_PRI_COUNT || cb == NULL) {
         return WINK_ERR_INVALID_ARG;
