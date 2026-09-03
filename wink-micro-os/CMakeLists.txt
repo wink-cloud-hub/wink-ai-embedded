@@ -442,7 +442,8 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
         "-sMAXIMUM_MEMORY=32MB"
         "-sABORTING_MALLOC=0"
         "-sSTACK_OVERFLOW_CHECK=2"
-        "-sASSERTIONS=1")
+        "-sASSERTIONS=1"
+        "-sINCOMING_MODULE_JS_API=[wasmBinary,instantiateWasm,print,printErr,noInitialRun,preRun,postRun,onRuntimeInitialized,locateFile,onAbort,quit]")
 
     set_property(TARGET wink_simulator APPEND PROPERTY LINK_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/targets/wasm/wink_sim_js.js
