@@ -3,7 +3,7 @@
  * @file wasm_entry.c
  * @brief Wasm target entry point main().
  */
-#ifdef EMSCRIPTEN
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #else
 #define EMSCRIPTEN_KEEPALIVE
