@@ -14,7 +14,10 @@
     "_pal_wasm_get_pwm_duty_percent",
     "_pal_wasm_is_faulted",
     "_pal_wasm_gpio_read",
-    "_pal_wasm_get_abi_hash"
+    "_pal_wasm_get_abi_hash",
+    "_pal_wasm_app_init",
+    "_pal_wasm_app_tick",
+    "_pal_wasm_reset_app_state"
   ],
   "EXPORTED_RUNTIME_METHODS": ["ccall", "cwrap", "HEAPU8", "Asyncify", "callMain"],
   "ASYNCIFY_IMPORTS": ["js_pal_os_sleep_ms", "js_pal_os_busy_wait_us"],
