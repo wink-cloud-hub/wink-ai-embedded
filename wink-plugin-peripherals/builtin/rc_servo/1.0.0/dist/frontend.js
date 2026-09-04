@@ -1,26 +1,28 @@
 import { definePeripheral as e, pinsFromBinderVariant as t, resolvePluginInstanceId as n } from "@wink-ai/unisim-ui";
 import { resolvePluginIdentity as r } from "@wink-ai/unisim";
-import { createElementBlock as i, createElementVNode as a, defineComponent as o, openBlock as s, toDisplayString as c } from "vue";
+import { computed as i, createElementBlock as a, createElementVNode as o, defineComponent as s, normalizeClass as c, openBlock as l, toDisplayString as u } from "vue";
 import "@wokwi/elements";
 //#region builtin/rc_servo/1.0.0/src/CanvasGlyph.vue?vue&type=script&setup=true&lang.ts
-var l = { class: "servo-container" }, u = ["angle"], d = { class: "label" }, f = /*#__PURE__*/ ((e, t) => {
+var d = { class: "servo-container" }, f = ["angle"], p = /*#__PURE__*/ ((e, t) => {
 	let n = e.__vccOpts || e;
 	for (let [e, r] of t) n[e] = r;
 	return n;
-})(/* @__PURE__ */ o({
+})(/* @__PURE__ */ s({
 	__name: "CanvasGlyph",
 	props: {
 		id: {},
 		label: {},
 		pwmChannel: {},
-		angle: {}
+		angle: {},
+		rotation: {}
 	},
 	setup(e) {
-		return (t, n) => (s(), i("div", l, [a("wokwi-servo", { angle: e.angle }, null, 8, u), a("span", d, c(e.label || e.id) + " (" + c(Math.round(e.angle)) + "°)", 1)]));
+		let t = e, n = i(() => Math.abs((t.rotation ?? 0) % 180) === 90);
+		return (t, r) => (l(), a("div", d, [o("wokwi-servo", { angle: e.angle }, null, 8, f), o("span", { class: c(["label", { "is-transposed": n.value }]) }, u(e.label || e.id) + " (" + u(Math.round(e.angle)) + "°) ", 3)]));
 	}
-}), [["__scopeId", "data-v-24cf67f0"]]);
+}), [["__scopeId", "data-v-414a5e05"]]);
 Object.freeze({});
-var p = Object.freeze({
+var m = Object.freeze({
 	PWM: Object.freeze({
 		relX: -5,
 		relY: 50,
@@ -42,10 +44,10 @@ var p = Object.freeze({
 		defaultConnection: "GND",
 		required: !1
 	})
-}), m = Object.freeze({ sg90: Object.freeze({
+}), h = Object.freeze({ sg90: Object.freeze({
 	variant: "sg90",
 	getPins: () => t("rc_servo", "sg90"),
-	pinsOverlay: p,
+	pinsOverlay: m,
 	defaultAppearanceId: "rc_servo_sg90"
 }) });
 Object.freeze({ rc_servo_sg90: Object.freeze({
@@ -60,14 +62,14 @@ Object.freeze({ rc_servo_sg90: Object.freeze({
 }) });
 //#endregion
 //#region builtin/rc_servo/1.0.0/src/definition.ts
-var h = r(import.meta.url, "rc_servo", "1.0.0", "actuator"), g = m.sg90, _ = e({
-	type: h.type,
+var g = r(import.meta.url, "rc_servo", "1.0.0", "actuator"), _ = h.sg90, v = e({
+	type: g.type,
 	size: {
 		width: 80,
 		height: 60
 	},
 	wireColor: "#3b82f6",
-	pinsOverlay: g.pinsOverlay,
+	pinsOverlay: _.pinsOverlay,
 	props: {
 		variant: {
 			type: "string",
@@ -125,16 +127,17 @@ var h = r(import.meta.url, "rc_servo", "1.0.0", "actuator"), g = m.sg90, _ = e({
 			}
 		}
 	},
-	canvas: f,
+	canvas: p,
 	ui: { canvasProps: (e, t) => {
 		let r = n(e, "rc_servo"), i = t.pluginChannels?.[r]?.angle, a = typeof i == "number" ? i : 90;
 		return {
 			id: e.id,
 			label: e.props.label ?? e.id,
 			pwmChannel: e.props.pwmChannel,
-			angle: a
+			angle: a,
+			rotation: e.rotation ?? 0
 		};
 	} }
 });
 //#endregion
-export { _ as default, _ as servoDefinition };
+export { v as default, v as servoDefinition };

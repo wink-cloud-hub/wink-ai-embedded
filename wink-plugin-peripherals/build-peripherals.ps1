@@ -5,6 +5,112 @@ param(
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 
+function Ensure-PeripheralEnvironment {
+    param()
+
+    $NodeModulesDir = Join-Path $ScriptDir "node_modules"
+    $WinkAiDir = Join-Path $NodeModulesDir "@wink-ai"
+
+    # 1. Probe for local wink-ai source packages
+    $LocalPackagesDir = $null
+    $CandidateRoots = @(
+        Join-Path $ScriptDir "..\..\wink-ai\packages",
+        Join-Path $ScriptDir "..\wink-ai\packages",
+        Join-Path $ScriptDir "..\packages"
+    )
+    if ($env:WINK_AI_ROOT) {
+        $CandidateRoots = @(Join-Path $env:WINK_AI_ROOT "packages") + $CandidateRoots
+    }
+
+    foreach ($cand in $CandidateRoots) {
+        if ($cand -and (Test-Path (Join-Path $cand "unisim-ui")) -and (Test-Path (Join-Path $cand "unisim"))) {
+            $LocalPackagesDir = (Get-Item $cand).FullName
+            break
+        }
+    }
+
+    # 2. If node_modules is missing, attempt installation or minimal setup
+    if (-not (Test-Path $NodeModulesDir)) {
+        Write-Host "[SETUP] Missing node_modules in wink-plugin-peripherals. Setting up dependencies..." -ForegroundColor Cyan
+        $PackageManager = $null
+        if (Get-Command "bun" -ErrorAction SilentlyContinue) {
+            $PackageManager = "bun"
+        } elseif (Get-Command "npm" -ErrorAction SilentlyContinue) {
+            $PackageManager = "npm"
+        }
+
+        if ($PackageManager) {
+            Write-Host "[SETUP] Running '$PackageManager install' in $ScriptDir..." -ForegroundColor Cyan
+            Push-Location $ScriptDir
+            try {
+                if ($PackageManager -eq "bun") {
+                    & bun install
+                } else {
+                    & npm install --no-audit --no-fund
+                }
+            } catch {
+                Write-Host "[WARN] Package install encountered warning: $_" -ForegroundColor Yellow
+            } finally {
+                Pop-Location
+            }
+        } else {
+            New-Item -ItemType Directory -Path $NodeModulesDir -Force | Out-Null
+        }
+    }
+
+    # 3. Fallback devDependencies linking from embedded-frontend/node_modules if needed
+    if ($LocalPackagesDir) {
+        $FeNodeModules = Join-Path $LocalPackagesDir "embedded-frontend\node_modules"
+        if ((Test-Path $FeNodeModules) -and (-not (Test-Path (Join-Path $NodeModulesDir "vue")))) {
+            Write-Host "[SETUP] Linking devDependencies from embedded-frontend/node_modules..." -ForegroundColor Cyan
+            foreach ($pkg in @("vue", "@wokwi", "vite", "@vitejs", "@types", "typescript", "postcss-prefix-selector")) {
+                $srcPkg = Join-Path $FeNodeModules $pkg
+                $dstPkg = Join-Path $NodeModulesDir $pkg
+                if ((Test-Path $srcPkg) -and (-not (Test-Path $dstPkg))) {
+                    try {
+                        New-Item -ItemType Junction -Path $dstPkg -Target $srcPkg -Force | Out-Null
+                    } catch {
+                        # Ignore link fallback warning
+                    }
+                }
+            }
+        }
+
+        # 4. Link @wink-ai/unisim and @wink-ai/unisim-ui
+        if (-not (Test-Path $WinkAiDir)) {
+            New-Item -ItemType Directory -Path $WinkAiDir -Force | Out-Null
+        }
+
+        $SrcUnisim = Join-Path $LocalPackagesDir "unisim"
+        $SrcUnisimUi = Join-Path $LocalPackagesDir "unisim-ui"
+
+        $LinkUnisim = Join-Path $WinkAiDir "unisim"
+        $LinkUnisimUi = Join-Path $WinkAiDir "unisim-ui"
+
+        function Setup-ModuleJunction([string]$target, [string]$link) {
+            if (Test-Path $link) {
+                $item = Get-Item $link -Force
+                if ($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
+                    return
+                }
+                Write-Host "[SETUP] Replacing npm directory with junction: $link -> $target" -ForegroundColor Cyan
+                Remove-Item -Path $link -Recurse -Force
+            }
+            try {
+                New-Item -ItemType Junction -Path $link -Target $target -Force | Out-Null
+                Write-Host "[SETUP] Linked $(Split-Path -Leaf $link) -> $target" -ForegroundColor Green
+            } catch {
+                Write-Host "[WARN] Could not create junction for $link : $_" -ForegroundColor Yellow
+            }
+        }
+
+        Setup-ModuleJunction $SrcUnisim $LinkUnisim
+        Setup-ModuleJunction $SrcUnisimUi $LinkUnisimUi
+    }
+}
+
+Ensure-PeripheralEnvironment
+
 # 1. Detect Dependency Mode (SOURCE_LINKED vs NPM_SEMVER)
 $NodeModulesDir = Join-Path $ScriptDir "node_modules\@wink-ai"
 $UnisimLink = Join-Path $NodeModulesDir "unisim"

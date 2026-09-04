@@ -130,6 +130,7 @@ export const oledDefinition: PeripheralDefinition = definePeripheral({
   type: identity.type,
   size: { width: OLED_WIDTH, height: OLED_HEIGHT },
   wireColor: '#a855f7',
+  rotationPolicy: 'fixed',
   pinsOverlay: oledPinsOverlay,
   props: oledProps,
   canvas: CanvasGlyph,

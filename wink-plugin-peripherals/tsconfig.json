@@ -7,9 +7,13 @@
     "jsxImportSource": "vue",
     "skipLibCheck": true,
     "types": [
-      "bun",
-      "bun-types"
+      "bun"
     ],
+    "typeRoots": [
+      "./node_modules/@types",
+      "./node_modules"
+    ],
+    "noEmit": true,
     "paths": {
       "vue": [
         "./node_modules/vue"
