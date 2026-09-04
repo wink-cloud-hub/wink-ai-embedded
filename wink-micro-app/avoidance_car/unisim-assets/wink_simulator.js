@@ -2389,6 +2389,9 @@ var _pal_wasm_fault_event_get_pin_or_bus = Module['_pal_wasm_fault_event_get_pin
 var _pal_wasm_fault_event_get_sequence = Module['_pal_wasm_fault_event_get_sequence'] = makeInvalidEarlyAccess('_pal_wasm_fault_event_get_sequence');
 var _pal_wasm_set_pin_power_model = Module['_pal_wasm_set_pin_power_model'] = makeInvalidEarlyAccess('_pal_wasm_set_pin_power_model');
 var _pal_wasm_get_total_energy_mj = Module['_pal_wasm_get_total_energy_mj'] = makeInvalidEarlyAccess('_pal_wasm_get_total_energy_mj');
+var _pal_wasm_app_init = Module['_pal_wasm_app_init'] = makeInvalidEarlyAccess('_pal_wasm_app_init');
+var _pal_wasm_app_tick = Module['_pal_wasm_app_tick'] = makeInvalidEarlyAccess('_pal_wasm_app_tick');
+var _pal_wasm_reset_app_state = Module['_pal_wasm_reset_app_state'] = makeInvalidEarlyAccess('_pal_wasm_reset_app_state');
 var _main = Module['_main'] = makeInvalidEarlyAccess('_main');
 var _pal_wasm_set_sim_mode = Module['_pal_wasm_set_sim_mode'] = makeInvalidEarlyAccess('_pal_wasm_set_sim_mode');
 var _pal_wasm_get_sim_mode = Module['_pal_wasm_get_sim_mode'] = makeInvalidEarlyAccess('_pal_wasm_get_sim_mode');
@@ -2471,6 +2474,9 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['pal_wasm_fault_event_get_sequence'] != 'undefined', 'missing Wasm export: pal_wasm_fault_event_get_sequence');
   assert(typeof wasmExports['pal_wasm_set_pin_power_model'] != 'undefined', 'missing Wasm export: pal_wasm_set_pin_power_model');
   assert(typeof wasmExports['pal_wasm_get_total_energy_mj'] != 'undefined', 'missing Wasm export: pal_wasm_get_total_energy_mj');
+  assert(typeof wasmExports['pal_wasm_app_init'] != 'undefined', 'missing Wasm export: pal_wasm_app_init');
+  assert(typeof wasmExports['pal_wasm_app_tick'] != 'undefined', 'missing Wasm export: pal_wasm_app_tick');
+  assert(typeof wasmExports['pal_wasm_reset_app_state'] != 'undefined', 'missing Wasm export: pal_wasm_reset_app_state');
   assert(typeof wasmExports['main'] != 'undefined', 'missing Wasm export: main');
   assert(typeof wasmExports['pal_wasm_set_sim_mode'] != 'undefined', 'missing Wasm export: pal_wasm_set_sim_mode');
   assert(typeof wasmExports['pal_wasm_get_sim_mode'] != 'undefined', 'missing Wasm export: pal_wasm_get_sim_mode');
@@ -2550,6 +2556,9 @@ function assignWasmExports(wasmExports) {
   _pal_wasm_fault_event_get_sequence = Module['_pal_wasm_fault_event_get_sequence'] = createExportWrapper('pal_wasm_fault_event_get_sequence', wasmExports['pal_wasm_fault_event_get_sequence'], 1);
   _pal_wasm_set_pin_power_model = Module['_pal_wasm_set_pin_power_model'] = createExportWrapper('pal_wasm_set_pin_power_model', wasmExports['pal_wasm_set_pin_power_model'], 2);
   _pal_wasm_get_total_energy_mj = Module['_pal_wasm_get_total_energy_mj'] = createExportWrapper('pal_wasm_get_total_energy_mj', wasmExports['pal_wasm_get_total_energy_mj'], 0);
+  _pal_wasm_app_init = Module['_pal_wasm_app_init'] = createExportWrapper('pal_wasm_app_init', wasmExports['pal_wasm_app_init'], 0);
+  _pal_wasm_app_tick = Module['_pal_wasm_app_tick'] = createExportWrapper('pal_wasm_app_tick', wasmExports['pal_wasm_app_tick'], 0);
+  _pal_wasm_reset_app_state = Module['_pal_wasm_reset_app_state'] = createExportWrapper('pal_wasm_reset_app_state', wasmExports['pal_wasm_reset_app_state'], 0);
   _main = Module['_main'] = createExportWrapper('main', wasmExports['main'], 2);
   _pal_wasm_set_sim_mode = Module['_pal_wasm_set_sim_mode'] = createExportWrapper('pal_wasm_set_sim_mode', wasmExports['pal_wasm_set_sim_mode'], 1);
   _pal_wasm_get_sim_mode = Module['_pal_wasm_get_sim_mode'] = createExportWrapper('pal_wasm_get_sim_mode', wasmExports['pal_wasm_get_sim_mode'], 0);
