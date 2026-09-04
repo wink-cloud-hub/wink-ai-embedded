@@ -266,6 +266,7 @@ var j = "ssd1306_i2c", M = _[j], N = {
 		height: y
 	},
 	wireColor: "#a855f7",
+	rotationPolicy: "fixed",
 	pinsOverlay: P,
 	props: N,
 	canvas: p,
