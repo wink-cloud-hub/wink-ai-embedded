@@ -1,14 +1,14 @@
-# 高保真波形与四大通道 API 指南 (High-Fidelity & APIs Guide)
+# 高保真波形与全通道 API 指南 (High-Fidelity & APIs Guide)
 
 > **目标**：指导开发者如何使用底层硬件 API 与波形注入机制，实现微秒级高保真仿真与 100% 确定性。  
 > **面向对象**：编写高精度时序外设、物理传感器、协议总线外设及 Display 设备的插件开发者。  
-> **入口索引**：[README.md](./README.md) | **底层 SSOT 规范**：[unified-peripheral-channel-architecture.md](../../packages/unisim/docs/design/unified-peripheral-channel-architecture.md) | [07-peripheral-registry.md](../../../wink-ai-embedded/docs/design/04-wasm-simulation/02-mechanisms/07-peripheral-registry.md)
+> **入口索引**：[README.md](./README.md) | **底层 SSOT 规范**：[hardware-channel-c-abi-guide.md](../../wink-ai/packages/unisim/docs/architecture/hardware-channel-c-abi-guide.md)
 
 ---
 
 ## 🏛️ 1. 高保真仿真核心设计原则
 
-在 UniSim 3.1 仿真体系中，高保真仿真（High-Fidelity Simulation）遵循以下底层硬原则：
+在 UniSim 4.0 仿真体系中，高保真仿真（High-Fidelity Simulation）遵循以下底层硬原则：
 
 1. **绝对虚拟时间坐标系 (`VirtualClock`)**：所有时间戳统一使用 `this.ctx.nowUs()`（返回 `bigint` 微秒），严禁使用宿主机真实时间（`Date.now()` / `performance.now()` / `setTimeout`），确保在任何性能的机器上运行结果逐字节一致（Deterministic）。
 2. **C 驱动单一数据源 (C-Driven SSOT)**：通过 `injectWaveform` 将波形边沿预加载推入底层 C 事件队列（512 容量环形缓冲区），由 C 仿真引擎在微秒时刻精准排空并同步反向回调 `js_pal_notify_pin_edge` 翻转 `PinArbiter` 电平。
@@ -18,9 +18,9 @@
 
 ---
 
-## 🔌 2. 四大硬件通道 API 详细使用指南
+## 🔌 2. 全硬件通道 API 详细使用指南
 
-UniSim 3.1 将底层物理抽象划分为四大硬件通道，开发者必须依据数据吞吐与物理类型选择正确的通道 API：
+UniSim 4.0 将底层物理抽象划分为五大硬件通道，开发者必须依据数据吞吐与物理类型选择正确的通道 API：
 
 ```text
                                UniSim 物理数据通道划分
@@ -281,7 +281,7 @@ this.ctx.writeWs2812('DIN', rgbData);
 
 当外设（如 MPU6050 传感器 FIFO 溢出中断、加速度计自由落体 INT、触摸屏 PENIRQ）需要向 MCU 引脚发送硬件中断信号时，**严禁在 JS 侧直接强行同步调用 WASM 的 ISR 函数指针**（这会破坏 Asyncify 恢复堆栈导致 `unreachable` 崩溃）。
 
-UniSim 3.1 建立了基于 **[Axis D] `InterruptQueue` 中断队列 + C-Pull 轮询拉取** 的控制面契约：
+UniSim 4.0 建立了基于 **[Axis D] `InterruptQueue` 中断队列 + C-Pull 轮询拉取** 的控制面契约：
 
 ```text
  ┌─────────────────────────┐                            ┌─────────────────────────┐
@@ -391,7 +391,7 @@ private triggerFifoWatermarkInterrupt(): void {
 ```typescript
 export class Mpu6050Plugin
   extends BaseSimulationPlugin<MpuState, MpuProps>
-  implements UnisimPluginABI
+  implements UnisimPluginLifecycle
 {
   readonly manifest = mpu6050Manifest;
   private fifoBuffer: Uint8Array[] = [];
@@ -399,7 +399,8 @@ export class Mpu6050Plugin
 
   /** 1. 异步预热钩子：模拟传感器上电 10ms PLL 锁定 */
   async onReady(): Promise<void> {
-    await this.ctx?.deferUs(10_000n); // 模拟 10ms 物理上电延迟
+    // deferUs 是回调式调度器，在异步生命周期中可通过 Promise 等待
+    await new Promise<void>(resolve => this.ctx?.deferUs(10_000n, resolve));
     this.isPllLocked = true;
   }
 
@@ -433,7 +434,7 @@ export class Mpu6050Plugin
 外设插件目录下的 `src/physics/` 是**纯物理域算法模块 (Pure Physical Domain)**。它不依赖 DOM 或前端组件，负责**物理 ➔ 电气**与**电气 ➔ 物理**的双向公式换算，并专门负责**模拟真实世界的物理噪声、触点抖动及边缘 Case**，用以强力验证 MCU 固件侧 DAL/HAL 层的防抖、重试与容错算法。
 
 ```text
-peripherals/builtin/button/1.0.0/src/
+builtin/button/1.0.0/src/
 ├── physics/
 │   ├── button-bounce.ts          # 按键触点抖动 (Glitch/Bouncing) 算法
 │   └── ntc-temperature.ts        # NTC B值曲线与高斯白噪声算法

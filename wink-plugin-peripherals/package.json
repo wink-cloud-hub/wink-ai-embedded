@@ -7,6 +7,8 @@
   "scripts": {
     "build": "powershell -File build-peripherals.ps1",
     "build:watch": "powershell -File build-peripherals.ps1 -Watch",
+    "create": "bun scripts/create-peripheral.mjs",
+    "test": "bun test",
     "lint": "oxlint builtin",
     "lint:fix": "oxlint --fix builtin",
     "format": "oxfmt --write builtin",
