@@ -73,6 +73,7 @@ export const servoDefinition: PeripheralDefinition = definePeripheral({
         label: comp.props.label ?? comp.id,
         pwmChannel: comp.props.pwmChannel,
         angle,
+        rotation: comp.rotation ?? 0,
       };
     },
   },
