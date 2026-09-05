@@ -59,7 +59,7 @@ const segmentValues = computed<number[]>(() => {
     const len = (bright as any).length;
     for (let i = 0; i < total; i++) {
       const b = i < len ? (bright as any)[i] : 0;
-      vals.push(b >= 30 ? 1 : 0);
+      vals.push(b >= 50 ? 1 : 0);
     }
     return vals;
   }

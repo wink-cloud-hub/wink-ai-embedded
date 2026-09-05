@@ -149,11 +149,11 @@ export const segDisplayManifestFactory: ManifestFactory = (variant: string) =>
   createSegDisplayManifest(resolveSegVariant(variant));
 
 // Simulation physics constants
-export const DECAY_TAU_US = 30_000n; // 30ms RC equivalent persistence
+export const DECAY_TAU_US = 80_000n; // 80ms persistence of vision (POV) equivalent to human eye retinal integration
 export const CHARGE_RATE = 255.0 / 2000.0; // 255 / 2000us = 0.1275 / us
-export const LOGIC_THRESHOLD = 120;
+export const LOGIC_THRESHOLD = 50; // Calibrated for multiplexed displays, rejects <40 ghosting glitches
 export const GHOST_MAX_BRIGHT = 40;
-export const PUBLISH_INTERVAL_US = 33_000n; // ~30 fps throttle interval
+export const PUBLISH_INTERVAL_US = 16_000n; // ~60 fps throttle interval (aligns with 60Hz display refresh)
 export const MAX_DT_US = 100_000n; // Max integration step clamp
 
 export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegDisplayProps> {

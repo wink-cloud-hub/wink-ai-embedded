@@ -401,7 +401,7 @@ function w(e = "direct_gpio_8d") {
 		events: {}
 	});
 }
-var T = w("direct_gpio_8d"), E = (e) => w(f(e)), D = 30000n, O = 255 / 2e3, k = 120, A = 40, j = 33000n, M = 100000n, N = class extends e {
+var T = w("direct_gpio_8d"), E = (e) => w(f(e)), D = 80000n, O = 255 / 2e3, k = 50, A = 40, j = 16000n, M = 100000n, N = class extends e {
 	manifest = T;
 	static manifest = T;
 	nDigits = 8;
@@ -512,7 +512,7 @@ var T = w("direct_gpio_8d"), E = (e) => w(f(e)), D = 30000n, O = 255 / 2e3, k = 
 		let t = "";
 		for (let e = 0; e < this.nDigits; e++) {
 			let n = 0, r = e * 8;
-			for (let e = 0; e < 8; e++) this.bright[r + e] >= 120 && (n |= 1 << e);
+			for (let e = 0; e < 8; e++) this.bright[r + e] >= 50 && (n |= 1 << e);
 			this.segMask[e] = n, t += b(n);
 		}
 		this.ctx && (this.ctx.publish("bright", this.bright), this.ctx.publish("segMask", JSON.stringify(Array.from(this.segMask))), this.ctx.publish("text", t), this.ctx.publish("scanHz", this.scanHz), this.ctx.publish("activeDigits", this.maxActiveDigitsInWindow)), this.maxActiveDigitsInWindow = 0;
