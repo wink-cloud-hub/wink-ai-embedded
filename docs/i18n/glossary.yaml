@@ -1,0 +1,180 @@
+# WinkMicroOS Machine-Readable Terminology Glossary
+version: "v1.0"
+last_updated: "2026-08-17"
+
+canonical_forms:
+  # 1. System Layers
+  - canonical: "Platform Abstraction Layer (PAL)"
+    acronym: "PAL"
+    zh: "平台抽象层"
+    aliases:
+      - "Pal"
+      - "pal layer"
+      - "platform abstraction"
+
+  - canonical: "Device Abstraction Layer (DAL)"
+    acronym: "DAL"
+    zh: "器件抽象层"
+    aliases:
+      - "dal layer"
+      - "device abstraction"
+
+  - canonical: "Business Abstraction Layer (BAL)"
+    acronym: "BAL"
+    zh: "业务抽象层"
+    aliases:
+      - "bal layer"
+      - "business abstraction"
+
+  - canonical: "Operating System Abstraction Layer (OSAL)"
+    acronym: "OSAL"
+    zh: "操作系统抽象层"
+    aliases:
+      - "osal layer"
+
+  - canonical: "Hardware Abstraction Layer (HAL)"
+    acronym: "HAL"
+    zh: "硬件抽象层"
+    aliases:
+      - "hal layer"
+
+  - canonical: "UniSim Engine"
+    acronym: "UniSim"
+    zh: "行为级仿真引擎"
+    aliases:
+      - "unisim"
+      - "UniSim simulator"
+
+  - canonical: "Wokwi Adapter"
+    acronym: "Wokwi"
+    zh: "Wokwi 适配器"
+    aliases:
+      - "wokwi adapter"
+
+  # 2. Core Architectural Concepts
+  - canonical: "single-source dual-target compilation"
+    zh: "单源双目标编译 / 同源编译"
+    aliases:
+      - "single source dual target"
+      - "dual-target single-source"
+      - "dual-target compilation"
+
+  - canonical: "compile-time static dispatch"
+    zh: "编译期静态分发"
+    aliases:
+      - "compile time dispatch"
+      - "static dispatch"
+
+  - canonical: "negative status-code convention"
+    zh: "负数错误码约定"
+    aliases:
+      - "negative status code"
+      - "status-code convention"
+
+  - canonical: "behavioral high-fidelity simulation"
+    zh: "行为级高保真仿真"
+    aliases:
+      - "behavior-level simulation"
+      - "high-fidelity simulation"
+
+  - canonical: "living specification"
+    zh: "活文档 / 持续演进规范"
+    aliases:
+      - "living spec"
+
+  - canonical: "Single Source of Truth (SSOT)"
+    acronym: "SSOT"
+    zh: "唯一事实源 / 架构真相"
+    aliases:
+      - "single source of truth"
+
+  - canonical: "Plain Old Data (POD) struct"
+    acronym: "POD"
+    zh: "POD 结构体"
+    aliases:
+      - "POD struct"
+      - "POD structure"
+
+  - canonical: "ISR context"
+    zh: "中断上下文"
+    aliases:
+      - "interrupt context"
+      - "ISR service context"
+
+  - canonical: "critical section"
+    zh: "临界区"
+    aliases:
+      - "critical region"
+
+  - canonical: "stack clamping"
+    zh: "栈钳位"
+    aliases:
+      - "stack clamp"
+
+  - canonical: "zombie resource reclamation"
+    zh: "僵尸资源回收"
+    aliases:
+      - "zombie reclamation"
+      - "orphaned handle reclamation"
+
+  - canonical: "Channel-routed Bypass"
+    zh: "通道分流旁路"
+    aliases:
+      - "channel routed bypass"
+      - "channel bypass"
+
+  - canonical: "Golden Trace"
+    zh: "黄金追踪 / Golden Trace"
+    aliases:
+      - "golden trace"
+      - "GoldenTrace"
+
+  - canonical: "Protothreads"
+    zh: "无栈协程 / Protothreads"
+    aliases:
+      - "protothreads"
+      - "stackless coroutine"
+
+  - canonical: "Wasm-JS Bridge"
+    zh: "Wasm-JS 桥接"
+    aliases:
+      - "wasm js bridge"
+      - "Wasm bridge"
+
+  - canonical: "Device Model Registry"
+    zh: "器件模型注册表"
+    aliases:
+      - "device registry"
+      - "device model registry"
+
+  - canonical: "Safe Codegen"
+    zh: "安全代码生成"
+    aliases:
+      - "safe code generation"
+
+  - canonical: "Watchdog"
+    zh: "看门狗"
+    aliases:
+      - "watchdog timer"
+
+forbidden:
+  - pattern: "\\bfriend\\b"
+    reason: "Mistranslation for PAL (Platform Abstraction Layer)"
+  - pattern: "\\bDali\\b"
+    reason: "Mistranslation for DAL (Device Abstraction Layer)"
+  - pattern: "\\bsame source compile\\b"
+    reason: "Use canonical 'single-source dual-target compilation'"
+  - pattern: "\\bdead resource\\b"
+    reason: "Use canonical 'zombie resource reclamation'"
+  - pattern: "\\binterrupt background\\b"
+    reason: "Use canonical 'ISR context'"
+  - pattern: "\\bminus error code\\b"
+    reason: "Use canonical 'negative status-code convention'"
+  - pattern: "\\bdangerous zone\\b"
+    reason: "Use canonical 'critical section'"
+  - pattern: "\\balive doc\\b"
+    reason: "Use canonical 'living specification'"
+  - pattern: "\\btruth source\\b"
+    reason: "Use canonical 'Single Source of Truth (SSOT)'"
+  - pattern: "\\bstack fix\\b"
+    reason: "Use canonical 'stack clamping'"

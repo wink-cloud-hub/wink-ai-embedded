@@ -1,0 +1,34 @@
+{
+  "appName": "iron_ntc",
+  "board": "mcs51_devboard",
+  "devices": {
+    "temp_adc": {
+      "id": "temp_adc",
+      "type": "adc0832",
+      "pinMapping": {
+        "CS": 16,
+        "CLK": 17,
+        "DIO": 18
+      },
+      "properties": {
+        "channel": 0,
+        "vrefMv": 5000
+      }
+    },
+    "heater": {
+      "id": "heater",
+      "type": "thermal_heater_plate",
+      "pinMapping": {
+        "DRIVE": 8
+      },
+      "properties": {
+        "ntcChannel": 0,
+        "setpointC": 180.0,
+        "thermalTauS": 8.0,
+        "heaterWatts": 40.0,
+        "ntcBeta": 3950,
+        "ntcR25Ohm": 100000
+      }
+    }
+  }
+}

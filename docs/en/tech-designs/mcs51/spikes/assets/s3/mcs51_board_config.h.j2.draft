@@ -1,0 +1,42 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * DRAFT for M4 (spike-S3 artifact, not wired into codegen yet).
+ * mcs51_board_config.h — firmware-time static constants for the MCS-51 sim
+ * sandbox. Auto-generated from wink-app.json by wink-tools codegen, mirroring
+ * device_tree.h.j2 but scoped to the 8051 interception layer.
+ *
+ * Pin index convention (MUST match boards/mcs51_devboard.json headers):
+ *   P0.0..P0.7 -> 0..7   P1.0..P1.7 -> 8..15
+ *   P2.0..P2.7 -> 16..23 P3.0..P3.7 -> 24..31
+ * i.e. index = port*8 + bit; SFR port addr = 0x80 + port*0x10 (P0=0x80..P3=0xB0).
+ */
+#ifndef MCS51_BOARD_CONFIG_H
+#define MCS51_BOARD_CONFIG_H
+
+#include <stdint.h>
+
+/* ── ADC0832 instance(s) — 3-wire DIO bus ── */
+{% for adc in adc0832_devices %}
+#define MCS51_ADC0832_{{ adc.name|upper }}_CS_PIN_IDX   {{ adc.cs_idx }}u   /* P{{ adc.cs_port }}.{{ adc.cs_bit }} */
+#define MCS51_ADC0832_{{ adc.name|upper }}_CLK_PIN_IDX  {{ adc.clk_idx }}u  /* P{{ adc.clk_port }}.{{ adc.clk_bit }} */
+#define MCS51_ADC0832_{{ adc.name|upper }}_DIO_PIN_IDX  {{ adc.dio_idx }}u  /* P{{ adc.dio_port }}.{{ adc.dio_bit }} */
+#define MCS51_ADC0832_{{ adc.name|upper }}_CHANNEL      {{ adc.channel }}u
+#define MCS51_ADC0832_{{ adc.name|upper }}_VREF_MV      {{ adc.vref_mv }}u
+{% endfor %}
+
+/* ── Thermal heater plate instance(s) — actuator + NTC feedback binding ── */
+{% for h in heater_devices %}
+#define MCS51_HEATER_{{ h.name|upper }}_DRIVE_PIN_IDX   {{ h.drive_idx }}u  /* P{{ h.drive_port }}.{{ h.drive_bit }} */
+#define MCS51_HEATER_{{ h.name|upper }}_NTC_ADC_CHANNEL {{ h.ntc_channel }}u /* ADC channel reading the plate NTC */
+#define MCS51_HEATER_{{ h.name|upper }}_SETPOINT_C_X100 {{ h.setpoint_c_x100 }}L /* fixed-point, 180.0C -> 18000 */
+/* Thermal dynamics live in the unisim plugin (runtime device-tree.properties);
+ * these firmware-side constants only bind pins/channels. tau/watts/beta/R25 are
+ * simulation model parameters and are NOT compiled into firmware. */
+{% endfor %}
+
+/* ── Compile-time guard: every pin index must be inside the 4-port space ── */
+#define MCS51_PIN_IDX_PORT(idx) (((idx) >> 3) & 0x3u)   /* 0..3 -> P0..P3 */
+#define MCS51_PIN_IDX_BIT(idx)  ((idx) & 0x7u)          /* 0..7 */
+#define MCS51_PIN_IDX_VALID(idx) ((idx) < 32u)
+
+#endif /* MCS51_BOARD_CONFIG_H */
