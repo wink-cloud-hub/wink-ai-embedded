@@ -109,7 +109,7 @@ Field notes:
     "vendor": "Cmsemicon",
     "family": "CMS8S",
     "chip": "CMS8S78xx",
-    "sdk_version": "V2.0.2",
+    "version": "V2.0.2",
     "source_dir": "docs/vendors/Cmsemicon/CMS8S78xx_DemoCode_V2.0.2/CMS8S78xx_Example/Example/LED/4COM_8SEG_LED/code"
   }
 }
