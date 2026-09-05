@@ -524,6 +524,7 @@ var T = w("direct_gpio_8d"), E = (e) => w(f(e)), D = 80000n, O = 255 / 2e3, k = 
 		n && !this.tailPending && this.ctx && this.scheduleTail(e);
 	}
 	scheduleTail(e) {
+		if (this.tailPending) return;
 		this.tailPending = !0;
 		let t = ++this.tailGen, n = this.ctx;
 		typeof n?.deferUs == "function" ? n.deferUs(j, () => {
