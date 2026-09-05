@@ -1,0 +1,281 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "seg_display DeviceTree Config",
+  "type": "object",
+  "properties": {
+    "type": {
+      "const": "seg_display"
+    },
+    "variant": {
+      "type": "string",
+      "default": "direct_gpio_8d",
+      "enum": [
+        "direct_gpio_8d",
+        "direct_gpio_4d",
+        "direct_gpio_2d",
+        "direct_gpio_1d"
+      ]
+    },
+    "appearanceId": {
+      "type": "string",
+      "default": "seg_display_8"
+    },
+    "segActiveLevel": {
+      "type": "string",
+      "default": "high",
+      "enum": [
+        "high",
+        "low"
+      ]
+    },
+    "digitActiveLevel": {
+      "type": "string",
+      "default": "low",
+      "enum": [
+        "high",
+        "low"
+      ]
+    },
+    "commonAnode": {
+      "type": "boolean",
+      "default": false
+    },
+    "color": {
+      "type": "string",
+      "default": "red",
+      "enum": [
+        "red",
+        "green",
+        "blue",
+        "yellow",
+        "white",
+        "orange",
+        "purple"
+      ]
+    },
+    "glow": {
+      "type": "boolean",
+      "default": true
+    },
+    "brightness": {
+      "type": "number",
+      "default": 1,
+      "minimum": 0,
+      "maximum": 1
+    },
+    "label": {
+      "type": "string",
+      "default": ""
+    },
+    "flip": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "type"
+  ],
+  "additionalProperties": false,
+  "x-wink-pins": [
+    {
+      "name": "A",
+      "direction": "sink",
+      "signal": "digital",
+      "required": false,
+      "simRole": "seg_a",
+      "catalogType": "gpio",
+      "aliases": [
+        "a",
+        "seg_a"
+      ]
+    },
+    {
+      "name": "B",
+      "direction": "sink",
+      "signal": "digital",
+      "required": false,
+      "simRole": "seg_b",
+      "catalogType": "gpio",
+      "aliases": [
+        "b",
+        "seg_b"
+      ]
+    },
+    {
+      "name": "C",
+      "direction": "sink",
+      "signal": "digital",
+      "required": false,
+      "simRole": "seg_c",
+      "catalogType": "gpio",
+      "aliases": [
+        "c",
+        "seg_c"
+      ]
+    },
+    {
+      "name": "D",
+      "direction": "sink",
+      "signal": "digital",
+      "required": false,
+      "simRole": "seg_d",
+      "catalogType": "gpio",
+      "aliases": [
+        "d",
+        "seg_d"
+      ]
+    },
+    {
+      "name": "E",
+      "direction": "sink",
+      "signal": "digital",
+      "required": false,
+      "simRole": "seg_e",
+      "catalogType": "gpio",
+      "aliases": [
+        "e",
+        "seg_e"
+      ]
+    },
+    {
+      "name": "F",
+      "direction": "sink",
+      "signal": "digital",
+      "required": false,
+      "simRole": "seg_f",
+      "catalogType": "gpio",
+      "aliases": [
+        "f",
+        "seg_f"
+      ]
+    },
+    {
+      "name": "G",
+      "direction": "sink",
+      "signal": "digital",
+      "required": false,
+      "simRole": "seg_g",
+      "catalogType": "gpio",
+      "aliases": [
+        "g",
+        "seg_g"
+      ]
+    },
+    {
+      "name": "DP",
+      "direction": "sink",
+      "signal": "digital",
+      "required": false,
+      "simRole": "seg_dp",
+      "catalogType": "gpio",
+      "aliases": [
+        "dp",
+        "seg_dp"
+      ]
+    },
+    {
+      "name": "DIG1",
+      "direction": "sink",
+      "signal": "digital",
+      "required": true,
+      "simRole": "dig_1",
+      "catalogType": "gpio",
+      "aliases": [
+        "dig1",
+        "digit1",
+        "com0"
+      ]
+    },
+    {
+      "name": "DIG2",
+      "direction": "sink",
+      "signal": "digital",
+      "required": true,
+      "simRole": "dig_2",
+      "catalogType": "gpio",
+      "aliases": [
+        "dig2",
+        "digit2",
+        "com1"
+      ]
+    },
+    {
+      "name": "DIG3",
+      "direction": "sink",
+      "signal": "digital",
+      "required": true,
+      "simRole": "dig_3",
+      "catalogType": "gpio",
+      "aliases": [
+        "dig3",
+        "digit3",
+        "com2"
+      ]
+    },
+    {
+      "name": "DIG4",
+      "direction": "sink",
+      "signal": "digital",
+      "required": true,
+      "simRole": "dig_4",
+      "catalogType": "gpio",
+      "aliases": [
+        "dig4",
+        "digit4",
+        "com3"
+      ]
+    },
+    {
+      "name": "DIG5",
+      "direction": "sink",
+      "signal": "digital",
+      "required": true,
+      "simRole": "dig_5",
+      "catalogType": "gpio",
+      "aliases": [
+        "dig5",
+        "digit5",
+        "com4"
+      ]
+    },
+    {
+      "name": "DIG6",
+      "direction": "sink",
+      "signal": "digital",
+      "required": true,
+      "simRole": "dig_6",
+      "catalogType": "gpio",
+      "aliases": [
+        "dig6",
+        "digit6",
+        "com5"
+      ]
+    },
+    {
+      "name": "DIG7",
+      "direction": "sink",
+      "signal": "digital",
+      "required": true,
+      "simRole": "dig_7",
+      "catalogType": "gpio",
+      "aliases": [
+        "dig7",
+        "digit7",
+        "com6"
+      ]
+    },
+    {
+      "name": "DIG8",
+      "direction": "sink",
+      "signal": "digital",
+      "required": true,
+      "simRole": "dig_8",
+      "catalogType": "gpio",
+      "aliases": [
+        "dig8",
+        "digit8",
+        "com7"
+      ]
+    }
+  ]
+}
