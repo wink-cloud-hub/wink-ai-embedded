@@ -1,0 +1,31 @@
+{
+  "appName": "mcs51_seg_display",
+  "board": "cms8s78xx_devboard",
+  "devices": {
+    "display": {
+      "id": "display",
+      "type": "seg_display",
+      "pinMapping": {
+        "DIG1": 24,
+        "DIG2": 25,
+        "DIG3": 26,
+        "DIG4": 27,
+        "A": 8,
+        "B": 9,
+        "C": 10,
+        "D": 11,
+        "E": 12,
+        "F": 13,
+        "G": 14,
+        "DP": 15
+      },
+      "properties": {
+        "variant": "direct_gpio_4d"
+      }
+    }
+  },
+  "family": "mcs51",
+  "core": "8051",
+  "mcu": "cms8s78xx",
+  "vendor": "cmsemicon"
+}

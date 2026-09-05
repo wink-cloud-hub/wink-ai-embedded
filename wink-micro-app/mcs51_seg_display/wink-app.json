@@ -1,0 +1,25 @@
+{
+  "app_name": "mcs51_seg_display",
+  "board": "cms8s78xx_devboard",
+  "category": "demo",
+  "mcu": "cms8s78xx",
+  "tick_ms": 1,
+  "devices": {
+    "display": {
+      "type": "seg_display",
+      "variant": "direct_gpio_4d",
+      "com0_pin": "$board.headers.P30",
+      "com1_pin": "$board.headers.P31",
+      "com2_pin": "$board.headers.P32",
+      "com3_pin": "$board.headers.P33",
+      "a_pin": "$board.headers.P10",
+      "b_pin": "$board.headers.P11",
+      "c_pin": "$board.headers.P12",
+      "d_pin": "$board.headers.P13",
+      "e_pin": "$board.headers.P14",
+      "f_pin": "$board.headers.P15",
+      "g_pin": "$board.headers.P16",
+      "dp_pin": "$board.headers.P17"
+    }
+  }
+}
