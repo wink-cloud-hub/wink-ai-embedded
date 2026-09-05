@@ -21,16 +21,27 @@ const identity = resolvePluginIdentity(import.meta.url, 'seg_display', '1.0.0', 
 
 function resolveChannel(comp: CircuitComponentInstance, ctx: SimViewContext, channel: string): unknown {
   const id = resolvePluginInstanceId(comp, identity.type);
-  return ctx.pluginChannels?.[id]?.[channel];
+  return (
+    ctx.pluginChannels?.[comp.id]?.[channel] ??
+    ctx.pluginChannels?.[id]?.[channel] ??
+    ctx.pluginChannels?.[`${identity.type}:0`]?.[channel] ??
+    ctx.pluginChannels?.[identity.type]?.[channel]
+  );
 }
 
 function resolveBright(comp: CircuitComponentInstance, ctx: SimViewContext): Uint8Array | null {
   const val = resolveChannel(comp, ctx, 'bright');
-  return val instanceof Uint8Array ? val : null;
+  if (val instanceof Uint8Array) return val;
+  if (Array.isArray(val)) return new Uint8Array(val);
+  if (val && typeof val === 'object') {
+    return new Uint8Array(Object.values(val) as number[]);
+  }
+  return null;
 }
 
 function resolveSegMask(comp: CircuitComponentInstance, ctx: SimViewContext): number[] {
   const val = resolveChannel(comp, ctx, 'segMask');
+  if (Array.isArray(val)) return val;
   if (typeof val === 'string') {
     try {
       const parsed = JSON.parse(val);
@@ -50,6 +61,32 @@ function resolveText(comp: CircuitComponentInstance, ctx: SimViewContext): strin
 function resolveNDigits(comp: CircuitComponentInstance): number {
   const key = resolveSegVariant(comp.props?.variant as string | undefined);
   return SEG_VARIANT_DIGITS[key] ?? 8;
+}
+
+function resolveValues(comp: CircuitComponentInstance, ctx: SimViewContext): number[] {
+  const nDigits = resolveNDigits(comp);
+  const total = nDigits * 8;
+  const bright = resolveBright(comp, ctx);
+  if (bright && bright.length > 0) {
+    const vals: number[] = [];
+    for (let i = 0; i < total; i++) {
+      const b = i < bright.length ? bright[i] : 0;
+      vals.push(b >= 30 ? 1 : 0);
+    }
+    return vals;
+  }
+  const segMask = resolveSegMask(comp, ctx);
+  if (segMask && segMask.length > 0) {
+    const vals: number[] = [];
+    for (let d = 0; d < nDigits; d++) {
+      const m = segMask[d] ?? 0;
+      for (let s = 0; s < 8; s++) {
+        vals.push((m >> s) & 1);
+      }
+    }
+    return vals;
+  }
+  return new Array(total).fill(0);
 }
 
 const defaultTopology = SEG_TOPOLOGIES.direct_gpio_8d;
@@ -132,15 +169,22 @@ export const segDisplayDefinition: PeripheralDefinition = definePeripheral({
       segMask: resolveSegMask(comp, ctx),
       text: resolveText(comp, ctx),
       nDigits: resolveNDigits(comp),
+      values: resolveValues(comp, ctx),
     }),
     worldProps: (comp, ctx) => ({
       pinConnections: comp.pinConnections,
+      variant: comp.props.variant,
       color: comp.props.color,
       brightness: comp.props.brightness,
       label: comp.props.label,
       text: resolveText(comp, ctx),
+      bright: resolveBright(comp, ctx),
+      segMask: resolveSegMask(comp, ctx),
+      nDigits: resolveNDigits(comp),
+      values: resolveValues(comp, ctx),
     }),
   },
 });
 
 export default segDisplayDefinition;
+export * from './variants';

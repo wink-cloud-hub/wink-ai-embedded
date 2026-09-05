@@ -8,6 +8,7 @@
     "@wink-ai/unisim-ui": "^0.1.0"
   },
   "peerDependencies": {
+    "@wokwi/elements": "*",
     "vue": "^3.4.0"
   }
 }

@@ -1,52 +1,114 @@
 <script setup lang="ts">
-defineProps<{
-  pinConnections?: Record<string, unknown>;
-  color: string;
-  brightness: number;
-  label: string;
-  text?: string;
-}>();
+import { computed, ref, watchEffect } from 'vue';
+import '@wokwi/elements';
+
+const props = withDefaults(
+  defineProps<{
+    pinConnections?: Record<string, unknown>;
+    color?: string;
+    brightness?: number;
+    label?: string;
+    text?: string;
+    variant?: string;
+    nDigits?: number;
+    bright?: Uint8Array | number[] | null;
+    segMask?: number[] | string | null;
+    values?: number[];
+  }>(),
+  {
+    color: 'red',
+    brightness: 1.0,
+    label: '',
+    text: '',
+    variant: 'direct_gpio_4d',
+    nDigits: 4,
+    bright: null,
+    segMask: () => [],
+    values: () => [],
+  },
+);
+
+const segEl = ref<any>(null);
+
+const effectiveNDigits = computed(() => {
+  if (props.nDigits && props.nDigits > 0) return props.nDigits;
+  if (props.variant === 'direct_gpio_8d') return 8;
+  if (props.variant === 'direct_gpio_4d') return 4;
+  if (props.variant === 'direct_gpio_2d') return 2;
+  if (props.variant === 'direct_gpio_1d') return 1;
+  return 4;
+});
+
+const segmentValues = computed<number[]>(() => {
+  const dCount = effectiveNDigits.value;
+  const total = dCount * 8;
+
+  if (props.values && props.values.length >= total) {
+    return props.values.slice(0, total);
+  }
+
+  const bright = props.bright;
+  if (bright && (bright as any).length > 0) {
+    const vals: number[] = [];
+    const len = (bright as any).length;
+    for (let i = 0; i < total; i++) {
+      const b = i < len ? (bright as any)[i] : 0;
+      vals.push(b >= 30 ? 1 : 0);
+    }
+    return vals;
+  }
+
+  let maskArr: number[] = [];
+  if (Array.isArray(props.segMask)) {
+    maskArr = props.segMask;
+  } else if (typeof props.segMask === 'string') {
+    try {
+      maskArr = JSON.parse(props.segMask);
+    } catch {}
+  }
+
+  if (maskArr.length > 0) {
+    const vals: number[] = [];
+    for (let d = 0; d < dCount; d++) {
+      const m = maskArr[d] ?? 0;
+      for (let s = 0; s < 8; s++) {
+        vals.push((m >> s) & 1);
+      }
+    }
+    return vals;
+  }
+
+  return new Array(total).fill(0);
+});
+
+watchEffect(() => {
+  if (segEl.value) {
+    segEl.value.values = segmentValues.value;
+  }
+});
 </script>
 
 <template>
   <div class="seg-display-world-widget">
-    <div class="display-bezel">
-      <div class="display-screen">
-        <span class="display-text" :style="{ color }">
-          {{ text || '--------' }}
-        </span>
-      </div>
-      <div v-if="label" class="display-label">{{ label }}</div>
-    </div>
+    <wokwi-7segment
+      ref="segEl"
+      :digits="effectiveNDigits"
+      :color="color || 'red'"
+      :values="segmentValues"
+      .values="segmentValues"
+      pins="none"
+    />
+    <div v-if="label" class="display-label">{{ label }}</div>
   </div>
 </template>
 
 <style scoped>
 .seg-display-world-widget {
-  display: inline-block;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   user-select: none;
-}
-.display-bezel {
-  background: #141416;
-  border: 1.5px solid #2c2d33;
-  border-radius: 4px;
-  padding: 6px 12px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
-}
-.display-screen {
-  background: #090a0c;
-  border: 1px solid #1c1d22;
-  border-radius: 2px;
-  padding: 4px 8px;
-  min-width: 100px;
-  text-align: center;
-}
-.display-text {
-  font-family: 'Courier New', monospace;
-  font-weight: bold;
-  letter-spacing: 2px;
-  font-size: 14px;
-  text-shadow: 0 0 6px currentColor;
 }
 .display-label {
   margin-top: 4px;
