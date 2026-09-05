@@ -40,10 +40,15 @@
 
 // ── 1) CMS8S78xx extended SFR bytes (addresses per vendor cms8s78xx.h) ──────
 // All are non-GPIO addresses (port index 0xFF) → SFR hook path only.
+sfr TA     = 0x86;  // Time Access protection register
+sfr CKCON  = 0x8E;  // Clock control (timer prescaler)
+sfr T34MOD = 0x96;  // Timer 3/4 mode
+sfr CLKDIV = 0x97;  // Clock divider
 sfr P0TRIS = 0x9A;  // P0 direction (TRIS register, vendor GPIO driver)
 sfr P1TRIS = 0xA1;
 sfr P2TRIS = 0xA2;
 sfr P3TRIS = 0xA3;
+sfr EIE1   = 0xA9;  // extended interrupt enable 1
 sfr EIE2   = 0xAA;  // extended interrupt enable 2 (bit4 = ADCIE)
 sfr EIF2   = 0xB2;  // extended interrupt flag 2   (bit4 = ADCIF)
 sfr EIP1   = 0xB9;  // extended interrupt priority
@@ -61,6 +66,16 @@ sfr ADCON1 = 0xDE;  // bit7 ADEN, bits6:4 ADCKS clock divider
 sfr ADCON0 = 0xDF;  // bit6 ADFM, bit1 ADGO
 sfr ADCON2 = 0xE9;  // trigger config
 
+// ── 1.1) Port pin sbit aliases (CMS8S78xx vendor convention: P00 instead of P0_0) ──
+sbit P00 = 0x80; sbit P01 = 0x81; sbit P02 = 0x82; sbit P03 = 0x83;
+sbit P04 = 0x84; sbit P05 = 0x85; sbit P06 = 0x86; sbit P07 = 0x87;
+sbit P10 = 0x90; sbit P11 = 0x91; sbit P12 = 0x92; sbit P13 = 0x93;
+sbit P14 = 0x94; sbit P15 = 0x95; sbit P16 = 0x96; sbit P17 = 0x97;
+sbit P20 = 0xA0; sbit P21 = 0xA1; sbit P22 = 0xA2; sbit P23 = 0xA3;
+sbit P24 = 0xA4; sbit P25 = 0xA5; sbit P26 = 0xA6; sbit P27 = 0xA7;
+sbit P30 = 0xB0; sbit P31 = 0xB1; sbit P32 = 0xB2; sbit P33 = 0xB3;
+sbit P34 = 0xB4; sbit P35 = 0xB5; sbit P36 = 0xB6; sbit P37 = 0xB7;
+
 // ── 2) XSFR proxies (MOVX space; wild-pointer-safe, see mcs51_xsfr.hpp) ────
 #if defined(__cplusplus) && __cplusplus >= 201703L
   #define xsfr inline WinkXsfr
@@ -68,9 +83,30 @@ sfr ADCON2 = 0xE9;  // trigger config
   #define xsfr static WinkXsfr
 #endif
 
+// Pin Function MUX (0xF000..0xF03F)
+xsfr P00CFG(0xF000); xsfr P01CFG(0xF001); xsfr P02CFG(0xF002); xsfr P03CFG(0xF003);
+xsfr P04CFG(0xF004); xsfr P05CFG(0xF005); xsfr P06CFG(0xF006); xsfr P07CFG(0xF007);
+xsfr P10CFG(0xF010); xsfr P11CFG(0xF011); xsfr P12CFG(0xF012); xsfr P13CFG(0xF013);
+xsfr P14CFG(0xF014); xsfr P15CFG(0xF015); xsfr P16CFG(0xF016); xsfr P17CFG(0xF017);
+xsfr P20CFG(0xF020); xsfr P21CFG(0xF021); xsfr P22CFG(0xF022); xsfr P23CFG(0xF023);
+xsfr P24CFG(0xF024); xsfr P25CFG(0xF025);
+xsfr P30CFG(0xF030); xsfr P31CFG(0xF031); xsfr P32CFG(0xF032); xsfr P33CFG(0xF033);
+
+// Port Drive Strength (0xF00C..0xF03C)
+xsfr P0DR(0xF00C); xsfr P1DR(0xF01C); xsfr P2DR(0xF02C); xsfr P3DR(0xF03C);
+
+// LED Segment Driver (0xF710..0xF716)
+xsfr LEDSDRP0L(0xF710); xsfr LEDSDRP0H(0xF711);
+xsfr LEDSDRP1L(0xF712); xsfr LEDSDRP1H(0xF713);
+xsfr LEDSDRP2L(0xF714); xsfr LEDSDRP2H(0xF715);
+xsfr LEDSDRP3L(0xF716);
+
+// Open-drain / Pull-up / Pull-down
+xsfr P0OD(0xF008); xsfr P1OD(0xF018); xsfr P2OD(0xF028); xsfr P3OD(0xF038);
+xsfr P0UP(0xF009); xsfr P1UP(0xF019); xsfr P2UP(0xF029); xsfr P3UP(0xF039);
+xsfr P0RD(0xF00A); xsfr P1RD(0xF01A); xsfr P2RD(0xF02A); xsfr P3RD(0xF03A);
+
 xsfr ADCLDO(0xF692);  // ADC LDO control (bit7 LDOEN, bits6:5 VSEL, bit4 OUTEN)
-xsfr P00CFG(0xF000);  // P0.0 pin function mux
-xsfr P32CFG(0xF032);  // P3.2 pin function mux
 
 // ── 3) Vendor bit-position / mask macros (names verbatim from cms8s78xx.h,
 //       so the vendor StdDriver adc.c can compile against this shim) ────────
@@ -200,5 +236,182 @@ xsfr P32CFG(0xF032);  // P3.2 pin function mux
 // ADC_GO() body tokens match the vendor multi-line macro ("do{" ... "}while(0)").
 #define ADC_IS_BUSY  (ADCON0 & ADC_ADCON0_ADGO_Msk)
 #define ADC_GO()     do{ ADCON0 |= ADC_ADCON0_ADGO_Msk; }while(0)
+
+// ── 5) Vendor GPIO driver macros (verbatim from StdDriver inc/gpio.h) ──────
+#define GPIO_SET_MUX_MODE(PortCFG, PinMode)  (PortCFG = PinMode)
+#define GPIO_MUX_GPIO                        (0x00)
+#define GPIO_ENABLE_OUTPUT(PortTRIS, PinNum) ((PortTRIS) |= (1 << (PinNum)))
+#define GPIO_ENABLE_INPUT(PortTRIS, PinNum)  ((PortTRIS) &= ~(1 << (PinNum)))
+#define GPIO_ENABLE_OD(PortOD, PinNum)       ((PortOD) |= (1 << (PinNum)))
+#define GPIO_DISABLE_OD(PortOD, PinNum)      ((PortOD) &= ~(1 << (PinNum)))
+#define GPIO_ENABLE_UP(PortUP, PinNum)       ((PortUP) |= (1 << (PinNum)))
+#define GPIO_DISABLE_UP(PortUP, PinNum)      ((PortUP) &= ~(1 << (PinNum)))
+#define GPIO_ENABLE_RD(PortRD, PinNum)       ((PortRD) |= (1 << (PinNum)))
+#define GPIO_DISABLE_RD(PortRD, PinNum)      ((PortRD) &= ~(1 << (PinNum)))
+
+#define GPIO_PIN_0_MSK                       (0x01)
+#define GPIO_PIN_1_MSK                       (0x02)
+#define GPIO_PIN_2_MSK                       (0x04)
+#define GPIO_PIN_3_MSK                       (0x08)
+#define GPIO_PIN_4_MSK                       (0x10)
+#define GPIO_PIN_5_MSK                       (0x20)
+#define GPIO_PIN_6_MSK                       (0x40)
+#define GPIO_PIN_7_MSK                       (0x80)
+
+#define GPIO_PIN_0                           (0x00)
+#define GPIO_PIN_1                           (0x01)
+#define GPIO_PIN_2                           (0x02)
+#define GPIO_PIN_3                           (0x03)
+#define GPIO_PIN_4                           (0x04)
+#define GPIO_PIN_5                           (0x05)
+#define GPIO_PIN_6                           (0x06)
+#define GPIO_PIN_7                           (0x07)
+
+// ── 6) Vendor System clock macros (verbatim from StdDriver inc/system.h) ───
+#define SYS_SET_SYSTEM_CLK(SystemClkDiv)     do{ CLKDIV = (SystemClkDiv); }while(0)
+#define SYS_CLK_DIV_1                        (0x00)
+#define SYS_CLK_DIV_2                        (0x01)
+#define SYS_CLK_DIV_4                        (0x02)
+#define SYS_CLK_DIV_6                        (0x03)
+#define SYS_CLK_DIV_8                        (0x04)
+#define SYS_CLK_DIV_10                       (0x05)
+#define SYS_CLK_DIV_12                       (0x06)
+#define SYS_CLK_DIV_14                       (0x07)
+#define SYS_CLK_DIV_16                       (0x08)
+#define SYS_CLK_DIV_18                       (0x09)
+#define SYS_CLK_DIV_20                       (0x0a)
+
+// ── 7) Vendor IRQ macros, priorities, and interrupt vectors ────────────────
+#define IRQ_ALL_ENABLE()                     do{ EA = 1; }while(0)
+#define IRQ_ALL_DISABLE()                    do{ EA = 0; }while(0)
+#define IRQ_SET_PRIORITY(Module, Priority)   do{ (void)(Module); (void)(Priority); }while(0)
+#define IRQ_PRIORITY_LOW                     (0x00)
+#define IRQ_PRIORITY_HIGH                    (0x01)
+
+typedef enum {
+    IRQ_INT0    = 0,
+    IRQ_TMR0    = 1,
+    IRQ_INT1    = 2,
+    IRQ_TMR1    = 3,
+    IRQ_UART0   = 4,
+    IRQ_TMR2    = 5,
+    IRQ_P0      = 8,
+    IRQ_P1      = 9,
+    IRQ_P2      = 10,
+    IRQ_P3      = 11,
+    IRQ_ACMP    = 15,
+    IRQ_TMR3    = 16,
+    IRQ_TMR4    = 17,
+    IRQ_EPWM    = 18,
+    IRQ_ADC     = 19,
+    IRQ_WDT     = 20,
+    IRQ_I2C     = 21,
+    IRQ_SPI     = 22,
+    IRQ_LSE_SCM = 25,
+    IRQ_LVD     = 26
+} en_Priority_Module_t;
+
+#define INT0_VECTOR                          0
+#define TMR0_VECTOR                          1
+#define INT1_VECTOR                          2
+#define TMR1_VECTOR                          3
+#define UART0_VECTOR                         4
+#define TMR2_VECTOR                          5
+#define P0EI_VECTOR                          7
+#define P1EI_VECTOR                          8
+#define P2EI_VECTOR                          9
+#define P3EI_VECTOR                          10
+#define ACMP_VECTOR                          14
+#define TMR3_VECTOR                          15
+#define TMR4_VECTOR                          16
+#define EPWM_VECTOR                          18
+#define ADC_VECTOR                           19
+#define WDT_VECTOR                           20
+#define I2C_VECTOR                           21
+#define SPI_VECTOR                           22
+#define LSE_SCM_VECTOR                       25
+#define LVD_VECTOR                           26
+
+// ── 8) Vendor Timer driver macros & shims (verbatim from StdDriver inc/timer.h) ───
+#define TMR0                                 (0x00)
+#define TMR1                                 (0x01)
+#define TMR2                                 (0x02)
+#define TMR3                                 (0x03)
+#define TMR4                                 (0x04)
+
+#define TMR_MODE_TIMING                      (0x00)
+#define TMR_MODE_COUNT                       (0x01)
+#define TMR_CLK_DIV_12                       (0x00)
+#define TMR_CLK_DIV_4                        (0x01)
+
+#define TMR_TIM_13BIT                        (0x00)
+#define TMR_TIM_16BIT                        (0x01)
+#define TMR_TIM_AUTO_8BIT                    (0x02)
+#define TMR_TIM_TWO_INDEPENDENT_8BIT         (0x03)
+
+#define TMR0_SET_PERIOD(TimerPeriodH, TimerPeriodL) do{ \
+    TH0 = (uint8_t)(TimerPeriodH); \
+    TL0 = (uint8_t)(TimerPeriodL); \
+}while(0)
+
+#define TMR1_SET_PERIOD(TimerPeriodH, TimerPeriodL) do{ \
+    TH1 = (uint8_t)(TimerPeriodH); \
+    TL1 = (uint8_t)(TimerPeriodL); \
+}while(0)
+
+static inline void TMR_ConfigRunMode(uint8_t Timern, uint8_t TimerMode, uint8_t TimerModeBranch) {
+    if (Timern == 0) {
+        TMOD = (TMOD & 0xF0) | ((TimerMode & 0x01) << 2) | (TimerModeBranch & 0x03);
+    } else if (Timern == 1) {
+        TMOD = (TMOD & 0x0F) | ((((TimerMode & 0x01) << 2) | (TimerModeBranch & 0x03)) << 4);
+    }
+}
+
+static inline void TMR_ConfigTimerClk(uint8_t Timern, uint8_t TimerClkDiv) {
+    (void)Timern;
+    (void)TimerClkDiv;
+}
+
+static inline void TMR_ConfigTimerPeriod(uint8_t Timern, uint16_t TimerPeriodH, uint16_t TimerPeriodL) {
+    if (Timern == 0) {
+        TH0 = (uint8_t)TimerPeriodH;
+        TL0 = (uint8_t)TimerPeriodL;
+    } else if (Timern == 1) {
+        TH1 = (uint8_t)TimerPeriodH;
+        TL1 = (uint8_t)TimerPeriodL;
+    }
+}
+
+static inline void TMR_EnableOverflowInt(uint8_t Timern) {
+    if (Timern == 0) {
+        ET0 = 1;
+    } else if (Timern == 1) {
+        ET1 = 1;
+    }
+}
+
+static inline void TMR_DisableOverflowInt(uint8_t Timern) {
+    if (Timern == 0) {
+        ET0 = 0;
+    } else if (Timern == 1) {
+        ET1 = 0;
+    }
+}
+
+static inline void TMR_Start(uint8_t Timern) {
+    if (Timern == 0) {
+        TR0 = 1;
+    } else if (Timern == 1) {
+        TR1 = 1;
+    }
+}
+
+static inline void TMR_Stop(uint8_t Timern) {
+    if (Timern == 0) {
+        TR0 = 0;
+    } else if (Timern == 1) {
+        TR1 = 0;
+    }
+}
 
 #endif  // __C51__
