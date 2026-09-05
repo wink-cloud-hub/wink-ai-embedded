@@ -177,7 +177,7 @@
       "name": "DIG1",
       "direction": "sink",
       "signal": "digital",
-      "required": true,
+      "required": false,
       "simRole": "dig_1",
       "catalogType": "gpio",
       "aliases": [
@@ -190,7 +190,7 @@
       "name": "DIG2",
       "direction": "sink",
       "signal": "digital",
-      "required": true,
+      "required": false,
       "simRole": "dig_2",
       "catalogType": "gpio",
       "aliases": [
@@ -203,7 +203,7 @@
       "name": "DIG3",
       "direction": "sink",
       "signal": "digital",
-      "required": true,
+      "required": false,
       "simRole": "dig_3",
       "catalogType": "gpio",
       "aliases": [
@@ -216,7 +216,7 @@
       "name": "DIG4",
       "direction": "sink",
       "signal": "digital",
-      "required": true,
+      "required": false,
       "simRole": "dig_4",
       "catalogType": "gpio",
       "aliases": [
@@ -229,7 +229,7 @@
       "name": "DIG5",
       "direction": "sink",
       "signal": "digital",
-      "required": true,
+      "required": false,
       "simRole": "dig_5",
       "catalogType": "gpio",
       "aliases": [
@@ -242,7 +242,7 @@
       "name": "DIG6",
       "direction": "sink",
       "signal": "digital",
-      "required": true,
+      "required": false,
       "simRole": "dig_6",
       "catalogType": "gpio",
       "aliases": [
@@ -255,7 +255,7 @@
       "name": "DIG7",
       "direction": "sink",
       "signal": "digital",
-      "required": true,
+      "required": false,
       "simRole": "dig_7",
       "catalogType": "gpio",
       "aliases": [
@@ -268,7 +268,7 @@
       "name": "DIG8",
       "direction": "sink",
       "signal": "digital",
-      "required": true,
+      "required": false,
       "simRole": "dig_8",
       "catalogType": "gpio",
       "aliases": [
