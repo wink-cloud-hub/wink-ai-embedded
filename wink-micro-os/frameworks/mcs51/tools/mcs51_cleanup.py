@@ -45,11 +45,34 @@ def read_source(path: str) -> str:
         return data.decode("gbk")
 
 # Strict Keil ISR signature: void name( void | () ) interrupt N [using M].
-# Non-void parameters are illegal for a Keil ISR and intentionally do NOT match
-# (left for the compiler to reject) — Spike-S2 §4.5.
+# Vector can be a bare decimal integer or a symbolic macro (e.g. TMR0_VECTOR).
 ISR_RE = re.compile(
-    r"void\s+(\w+)\s*\(\s*(?:void)?\s*\)\s*interrupt\s+(\d+)(?:\s+using\s+\d+)?"
+    r"void\s+(\w+)\s*\(\s*(?:void)?\s*\)\s*interrupt\s+([a-zA-Z0-9_]+)(?:\s+using\s+\d+)?"
 )
+
+# Standard and vendor symbolic interrupt vector names normalized to vector index
+KNOWN_VECTORS = {
+    "INT0_VECTOR": "0",
+    "TMR0_VECTOR": "1",
+    "INT1_VECTOR": "2",
+    "TMR1_VECTOR": "3",
+    "UART0_VECTOR": "4",
+    "TMR2_VECTOR": "5",
+    "P0EI_VECTOR": "7",
+    "P1EI_VECTOR": "8",
+    "P2EI_VECTOR": "9",
+    "P3EI_VECTOR": "10",
+    "ACMP_VECTOR": "14",
+    "TMR3_VECTOR": "15",
+    "TMR4_VECTOR": "16",
+    "EPWM_VECTOR": "18",
+    "ADC_VECTOR": "19",
+    "WDT_VECTOR": "20",
+    "I2C_VECTOR": "21",
+    "SPI_VECTOR": "22",
+    "LSE_SCM_VECTOR": "25",
+    "LVD_VECTOR": "26",
+}
 
 # Legacy Keil C51 MCU register headers to normalize to <wink_mcu.h>
 # Enables zero-touch migration for unmodified legacy user code.
@@ -57,6 +80,9 @@ MCU_HEADER_RE = re.compile(
     r'#\s*include\s*[<"](?:regx?5[12]|cms8s[0-9a-z]*|reg_cms[0-9a-z]*|stc[0-9a-z]*)\.h[>"]',
     re.IGNORECASE
 )
+
+# Normalize `int main(` to `void main(` for bare-metal MCS-51 entry ABI
+MAIN_RE = re.compile(r"\bint\s+main\s*\(")
 
 
 def build_code_mask(source: str) -> str:
@@ -133,6 +159,7 @@ def cleanup(source: str) -> tuple[str, int, int]:
     # 1. Collect ISR rewrites
     for m in ISR_RE.finditer(mask):
         vector = m.group(2)
+        vector = KNOWN_VECTORS.get(vector, vector)
         rest = mask[m.end():]
         rest_stripped = rest.lstrip()
         if rest_stripped.startswith(";"):
@@ -144,6 +171,10 @@ def cleanup(source: str) -> tuple[str, int, int]:
     # 2. Collect Legacy MCU Header normalizations
     for m in MCU_HEADER_RE.finditer(mask):
         regions.append((m.start(), m.end(), "#include <wink_mcu.h>", "header"))
+
+    # 3. Collect main signature normalizations (int main -> void main)
+    for m in MAIN_RE.finditer(mask):
+        regions.append((m.start(), m.end(), "void main(", "main"))
 
     if not regions:
         return source, 0, 0

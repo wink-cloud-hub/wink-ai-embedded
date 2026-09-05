@@ -448,6 +448,7 @@ if(TARGET wink_mcs51_compat)
     mcs51_cleanup_sample(adc0832_read)
     mcs51_cleanup_sample(cms8s_adc_test)
     mcs51_cleanup_sample(iron_ntc)
+    mcs51_cleanup_sample(seg_display_scan)
 
     # ── M6: board-config codegen seam (wink-app.json -> mcs51_board_config.h) ──
     # The framework bridge (mcs51_bridge.cpp) does __has_include("mcs51_board_config.h")
@@ -583,6 +584,12 @@ if(TARGET wink_mcs51_compat)
     add_mcs51_host_test(test_mcs51_int0
         mcs51/test_mcs51_int0_e2e.c
         ${_MCS51_int0_button_CPP}
+        ${_MCS51_RUNTIME_SRCS})
+
+    # Part 2: 8-digit 7-segment display dynamic scanning e2e test (P0=segments, P2=digits)
+    add_mcs51_host_test(test_mcs51_seg_display_e2e
+        mcs51/test_mcs51_seg_display_e2e.c
+        ${_MCS51_seg_display_scan_CPP}
         ${_MCS51_RUNTIME_SRCS})
 
     # M3 review: UART vector-4 EA+ES gated ISR dispatch + TI-not-auto-cleared
