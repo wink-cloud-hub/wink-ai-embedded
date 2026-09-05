@@ -1,0 +1,94 @@
+{
+  "metadata": {
+    "board_name": "cms8s78xx_devboard",
+    "family": "mcs51",
+    "core": "8051",
+    "mcu": "cms8s78xx",
+    "vendor": "cmsemicon",
+    "memory": {
+      "sim_heap_quota_kb": 16
+    }
+  },
+  "onboard_devices": {
+    "status_led": {
+      "type": "led",
+      "gpio_pin": 0,
+      "active_low": true
+    }
+  },
+  "buses": {
+    "i2c0": {
+      "sda": 3,
+      "scl": 4
+    },
+    "spi0": {
+      "mosi": 0,
+      "miso": 3,
+      "sclk": 4,
+      "cs": 5
+    }
+  },
+  "adc": {
+    "pins": {
+      "0":  { "channel": 0,  "unit": 1 },
+      "1":  { "channel": 1,  "unit": 1 },
+      "2":  { "channel": 2,  "unit": 1 },
+      "3":  { "channel": 3,  "unit": 1 },
+      "4":  { "channel": 4,  "unit": 1 },
+      "5":  { "channel": 5,  "unit": 1 },
+      "6":  { "channel": 6,  "unit": 1 },
+      "7":  { "channel": 7,  "unit": 1 },
+      "8":  { "channel": 8,  "unit": 1 },
+      "9":  { "channel": 9,  "unit": 1 },
+      "10": { "channel": 10, "unit": 1 },
+      "11": { "channel": 11, "unit": 1 },
+      "12": { "channel": 12, "unit": 1 },
+      "13": { "channel": 13, "unit": 1 },
+      "14": { "channel": 14, "unit": 1 },
+      "15": { "channel": 15, "unit": 1 },
+      "16": { "channel": 16, "unit": 1 },
+      "17": { "channel": 17, "unit": 1 },
+      "18": { "channel": 18, "unit": 1 },
+      "19": { "channel": 19, "unit": 1 },
+      "20": { "channel": 20, "unit": 1 },
+      "21": { "channel": 21, "unit": 1 },
+      "24": { "channel": 22, "unit": 1 },
+      "25": { "channel": 23, "unit": 1 },
+      "26": { "channel": 24, "unit": 1 },
+      "27": { "channel": 25, "unit": 1 }
+    },
+    "default_full_scale_mv": 5000,
+    "default_resolution_bits": 12
+  },
+  "headers": {
+    "P0.0": 0,  "P00": 0,  "P0_0": 0,  "AN0": 0,   "SCOM0": 0,   "SSEG0": 0,
+    "P0.1": 1,  "P01": 1,  "P0_1": 1,  "AN1": 1,
+    "P0.2": 2,  "P02": 2,  "P0_2": 2,  "AN2": 2,   "SCOM21": 2,  "SSEG21": 2,
+    "P0.3": 3,  "P03": 3,  "P0_3": 3,  "AN3": 3,   "SCOM22": 3,  "SSEG22": 3,
+    "P0.4": 4,  "P04": 4,  "P0_4": 4,  "AN4": 4,   "SCOM1": 4,   "SSEG1": 4,
+    "P0.5": 5,  "P05": 5,  "P0_5": 5,  "AN5": 5,   "SCOM23": 5,  "SSEG23": 5,
+    "P0.6": 6,  "P06": 6,  "P0_6": 6,  "AN6": 6,   "SCOM2": 6,   "SSEG2": 6,
+    "P0.7": 7,  "P07": 7,  "P0_7": 7,  "AN7": 7,
+
+    "P1.0": 8,  "P10": 8,  "P1_0": 8,  "AN8": 8,   "SCOM3": 8,   "SSEG3": 8,
+    "P1.1": 9,  "P11": 9,  "P1_1": 9,  "AN9": 9,   "SCOM4": 9,   "SSEG4": 9,
+    "P1.2": 10, "P12": 10, "P1_2": 10, "AN10": 10, "SCOM5": 10,  "SSEG5": 10,
+    "P1.3": 11, "P13": 11, "P1_3": 11, "AN11": 11, "SCOM6": 11,  "SSEG6": 11,
+    "P1.4": 12, "P14": 12, "P1_4": 12, "AN12": 12, "SCOM7": 12,  "SSEG7": 12,
+    "P1.5": 13, "P15": 13, "P1_5": 13, "AN13": 13, "SCOM8": 13,  "SSEG8": 13,
+    "P1.6": 14, "P16": 14, "P1_6": 14, "AN14": 14, "SCOM9": 14,  "SSEG9": 14,
+    "P1.7": 15, "P17": 15, "P1_7": 15, "AN15": 15, "SCOM10": 15, "SSEG10": 15,
+
+    "P2.0": 16, "P20": 16, "P2_0": 16, "AN16": 16, "SCOM11": 16, "SSEG11": 16,
+    "P2.1": 17, "P21": 17, "P2_1": 17, "AN17": 17, "SCOM12": 17, "SSEG12": 17,
+    "P2.2": 18, "P22": 18, "P2_2": 18, "AN18": 18, "SCOM13": 18, "SSEG13": 18,
+    "P2.3": 19, "P23": 19, "P2_3": 19, "AN19": 19, "SCOM14": 19, "SSEG14": 19,
+    "P2.4": 20, "P24": 20, "P2_4": 20, "AN20": 20, "SCOM15": 20, "SSEG15": 20,
+    "P2.5": 21, "P25": 21, "P2_5": 21, "AN21": 21, "SCOM16": 21, "SSEG16": 21,
+
+    "P3.0": 24, "P30": 24, "P3_0": 24, "AN22": 24, "SCOM17": 24, "SSEG17": 24,
+    "P3.1": 25, "P31": 25, "P3_1": 25, "AN23": 25, "SCOM18": 25, "SSEG18": 25,
+    "P3.2": 26, "P32": 26, "P3_2": 26, "AN24": 26, "SCOM19": 26, "SSEG19": 26,
+    "P3.3": 27, "P33": 27, "P3_3": 27, "AN25": 27, "SCOM20": 27, "SSEG20": 27
+  }
+}
