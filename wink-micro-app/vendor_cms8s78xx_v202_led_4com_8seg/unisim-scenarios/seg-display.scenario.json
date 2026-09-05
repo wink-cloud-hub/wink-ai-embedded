@@ -2,7 +2,7 @@
   "header": {
     "version": "2.0",
     "name": "mcs51 CMS8S78xx 4COM-8SEG display headless proof",
-    "templateId": "mcs51_seg_display",
+    "templateId": "vendor_cms8s78xx_v202_led_4com_8seg",
     "accuracyMode": "behavioral",
     "timeoutUs": "2000000",
     "failurePolicy": "fail-fast",
