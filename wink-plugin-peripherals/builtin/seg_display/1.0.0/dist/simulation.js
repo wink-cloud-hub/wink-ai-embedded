@@ -418,6 +418,7 @@ var T = w("direct_gpio_8d"), E = (e) => w(f(e)), D = 80000n, O = 255 / 2e3, k = 
 	segActiveHigh = !0;
 	digActiveHigh = !1;
 	lastDig0ActiveUs = 0n;
+	dig0HistoryUs = [];
 	scanHz = 0;
 	maxActiveDigitsInWindow = 0;
 	lastConflictWarnUs = 0n;
@@ -445,7 +446,7 @@ var T = w("direct_gpio_8d"), E = (e) => w(f(e)), D = 80000n, O = 255 / 2e3, k = 
 		}
 		this.staticDrive = this.nDigits === 1 && this.digPinOf.size === 0;
 		let o = this.getNowUs();
-		return this.lastEdgeUs = o, this.tailGen = 0, this.tailPending = !1, this.scanHz = 0, this.maxActiveDigitsInWindow = 0, this.lastConflictWarnUs = 0n, {
+		return this.lastEdgeUs = o, this.tailGen = 0, this.tailPending = !1, this.scanHz = 0, this.lastDig0ActiveUs = 0n, this.dig0HistoryUs = [], this.maxActiveDigitsInWindow = 0, this.lastConflictWarnUs = 0n, {
 			bright: this.bright,
 			segMask: JSON.stringify(Array.from(this.segMask)),
 			text: "".padStart(this.nDigits, " "),
@@ -503,9 +504,22 @@ var T = w("direct_gpio_8d"), E = (e) => w(f(e)), D = 80000n, O = 255 / 2e3, k = 
 			this.digLevel[d] !== a && (this.digLevel[d] = a ?? t.HI_Z, l = !0);
 			let n = this.isDigitActive(d);
 			if (d === 0 && n && !e) {
-				if (this.lastDig0ActiveUs > 0n && c > this.lastDig0ActiveUs) {
-					let e = c - this.lastDig0ActiveUs;
-					e > 0n && (this.scanHz = Math.round(1e6 / Number(e)));
+				if (this.dig0HistoryUs.length > 0) {
+					let e = this.dig0HistoryUs[this.dig0HistoryUs.length - 1];
+					c - e > 500000n && (this.dig0HistoryUs = []);
+				}
+				this.dig0HistoryUs.push(c);
+				this.dig0HistoryUs.length > 3 && this.dig0HistoryUs.shift();
+				if (this.dig0HistoryUs.length >= 2) {
+					let e = this.dig0HistoryUs.length - 1,
+						t = c - this.dig0HistoryUs[0];
+					if (t > 0n) {
+						let n = t / BigInt(e);
+						if (n > 0n) {
+							this.scanHz = Math.round(1e6 / Number(n));
+							this.ctx?.publish?.("scanHz", this.scanHz);
+						}
+					}
 				}
 				this.lastDig0ActiveUs = c;
 			}
@@ -541,7 +555,7 @@ var T = w("direct_gpio_8d"), E = (e) => w(f(e)), D = 80000n, O = 255 / 2e3, k = 
 		}) : this.tailPending = !1;
 	}
 	onReset() {
-		this.segLevel.fill(t.HI_Z), this.digLevel.fill(t.HI_Z), this.bright.fill(0), this.segMask.fill(0), this.throttle.reset(), this.tailGen++, this.tailPending = !1, this.scanHz = 0, this.maxActiveDigitsInWindow = 0, this.lastEdgeUs = this.getNowUs(), this.publishFrame(this.lastEdgeUs);
+		this.segLevel.fill(t.HI_Z), this.digLevel.fill(t.HI_Z), this.bright.fill(0), this.segMask.fill(0), this.throttle.reset(), this.tailGen++, this.tailPending = !1, this.scanHz = 0, this.lastDig0ActiveUs = 0n, this.dig0HistoryUs = [], this.maxActiveDigitsInWindow = 0, this.lastEdgeUs = this.getNowUs(), this.publishFrame(this.lastEdgeUs);
 	}
 	serializeState() {
 		return {

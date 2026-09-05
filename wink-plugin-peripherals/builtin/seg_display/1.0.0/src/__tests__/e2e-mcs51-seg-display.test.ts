@@ -363,4 +363,105 @@ describe('Part 2: 8051 Bare-Metal Firmware End-to-End Simulation Suite', () => {
     }
     expect(ctx.getLatestPublish('text')).toBe('12345678');
   });
+
+  test('E2E-5: 4COM 5ms scanning with 10ms coroutine slicing yields robust ~40Hz scanHz', () => {
+    const plugin = new SegDisplayPlugin();
+    const ctx = createMockCtx();
+    const pinMap: Record<string, number> = {
+      DIG1: 24,
+      DIG2: 25,
+      DIG3: 26,
+      DIG4: 27,
+      A: 8,
+      B: 9,
+      C: 10,
+      D: 11,
+      E: 12,
+      F: 13,
+      G: 14,
+      DP: 15,
+    };
+
+    plugin.onBind(ctx as any, pinMap, {
+      variant: 'direct_gpio_4d',
+      segActiveLevel: 'high',
+      digitActiveLevel: 'low',
+    });
+
+    // In CMS8S78xx 4COM-8SEG (demo_timer.c 5ms, isr.c 5COM cycle):
+    // Under 10ms coroutine quota slices, DIG1 rising edges occur with
+    // 20ms and 30ms quantized intervals (alternating 50Hz and 33Hz instantaneous).
+    // The multi-cycle moving window must stabilize scanHz to 40Hz (between [40, 50]).
+    const dig1ActiveTimestampsUs = [
+      10_000n,
+      30_000n,  // delta = 20ms
+      60_000n,  // delta = 30ms
+      80_000n,  // delta = 20ms
+      110_000n, // delta = 30ms
+      130_000n, // delta = 20ms
+      160_000n, // delta = 30ms
+      180_000n, // delta = 20ms
+    ];
+
+    for (const tUs of dig1ActiveTimestampsUs) {
+      // Deactivate DIG1
+      plugin.onPinChange(24, LogicStates.HIGH, tUs - 1000n);
+      // Activate DIG1 (active low)
+      plugin.onPinChange(24, LogicStates.LOW, tUs);
+      ctx.advanceTime(1000n);
+    }
+
+    // Assert scanHz at steady-state (180ms ~ 200ms) is in [40, 50]
+    const scanHz = ctx.getLatestPublish('scanHz') as number;
+    expect(scanHz).toBeGreaterThanOrEqual(40);
+    expect(scanHz).toBeLessThanOrEqual(50);
+  });
+
+  test('E2E-6: cold-boot startup delay transient does not corrupt steady-state 40Hz convergence', () => {
+    const plugin = new SegDisplayPlugin();
+    const ctx = createMockCtx();
+    const pinMap: Record<string, number> = {
+      DIG1: 24,
+      DIG2: 25,
+      DIG3: 26,
+      DIG4: 27,
+      A: 8,
+      B: 9,
+      C: 10,
+      D: 11,
+      E: 12,
+      F: 13,
+      G: 14,
+      DP: 15,
+    };
+
+    plugin.onBind(ctx as any, pinMap, {
+      variant: 'direct_gpio_4d',
+      segActiveLevel: 'high',
+      digitActiveLevel: 'low',
+    });
+
+    // Simulate startup transient: first pulse delayed to 35ms due to firmware config,
+    // followed by alternating 20ms and 30ms slices.
+    const startupWithJitterUs = [
+      35_000n,
+      65_000n,  // delta = 30ms
+      85_000n,  // delta = 20ms
+      115_000n, // delta = 30ms
+      135_000n, // delta = 20ms
+      165_000n, // delta = 30ms
+      185_000n, // delta = 20ms
+    ];
+
+    for (const tUs of startupWithJitterUs) {
+      plugin.onPinChange(24, LogicStates.HIGH, tUs - 1000n);
+      plugin.onPinChange(24, LogicStates.LOW, tUs);
+      ctx.advanceTime(1000n);
+    }
+
+    const scanHz = ctx.getLatestPublish('scanHz') as number;
+    // Under 2-cycle FIR filter, steady-state converges exactly to 40Hz (20ms+30ms=50ms -> 25ms avg -> 40Hz)
+    expect(scanHz).toBe(40);
+  });
 });
+

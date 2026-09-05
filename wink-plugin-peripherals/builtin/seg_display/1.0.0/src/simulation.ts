@@ -176,6 +176,7 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
   private digActiveHigh = false;
 
   private lastDig0ActiveUs = 0n;
+  private dig0HistoryUs: bigint[] = [];
   private scanHz = 0;
   private maxActiveDigitsInWindow = 0;
   private lastConflictWarnUs = 0n;
@@ -264,6 +265,8 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
     this.tailGen = 0;
     this.tailPending = false;
     this.scanHz = 0;
+    this.lastDig0ActiveUs = 0n;
+    this.dig0HistoryUs = [];
     this.maxActiveDigitsInWindow = 0;
     this.lastConflictWarnUs = 0n;
 
@@ -392,10 +395,29 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
 
       // Track frame scan frequency on rising active edge of DIG1
       if (digIndex === 0 && isActiveNow && !wasActive) {
-        if (this.lastDig0ActiveUs > 0n && nowUs > this.lastDig0ActiveUs) {
-          const periodUs = nowUs - this.lastDig0ActiveUs;
-          if (periodUs > 0n) {
-            this.scanHz = Math.round(1_000_000 / Number(periodUs));
+        if (this.dig0HistoryUs.length > 0) {
+          const lastUs = this.dig0HistoryUs[this.dig0HistoryUs.length - 1];
+          // If paused or blanked for > 500ms, reset history to avoid stale calculation
+          if (nowUs - lastUs > 500_000n) {
+            this.dig0HistoryUs = [];
+          }
+        }
+        this.dig0HistoryUs.push(nowUs);
+        // Keep exactly 3 timestamps (2 complete cycles), which is the minimal sufficient
+        // invariant subspace for canceling 10ms-slice/25ms-hardware aliasing jitter (20ms + 30ms = 50ms -> 25ms avg -> 40Hz).
+        // Using 2 cycles instead of 4 prevents cold-boot startup transient pollution.
+        if (this.dig0HistoryUs.length > 3) {
+          this.dig0HistoryUs.shift();
+        }
+        if (this.dig0HistoryUs.length >= 2) {
+          const intervals = this.dig0HistoryUs.length - 1;
+          const totalSpanUs = nowUs - this.dig0HistoryUs[0];
+          if (totalSpanUs > 0n) {
+            const avgPeriodUs = totalSpanUs / BigInt(intervals);
+            if (avgPeriodUs > 0n) {
+              this.scanHz = Math.round(1_000_000 / Number(avgPeriodUs));
+              this.ctx?.publish?.('scanHz', this.scanHz);
+            }
           }
         }
         this.lastDig0ActiveUs = nowUs;
@@ -484,6 +506,8 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
     this.tailGen++;
     this.tailPending = false;
     this.scanHz = 0;
+    this.lastDig0ActiveUs = 0n;
+    this.dig0HistoryUs = [];
     this.maxActiveDigitsInWindow = 0;
     this.lastEdgeUs = this.getNowUs();
     this.publishFrame(this.lastEdgeUs);
