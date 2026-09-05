@@ -65,7 +65,7 @@ export function createSegDisplayPins(variantName: SegVariantKey): PeripheralMani
       pinType: 'digital_in',
       role: `dig_${num}`,
       aliases: [`dig${num}`, `digit${num}`, `com${d}`],
-      required: nDigits === 1 ? false : true,
+      required: false,
     });
   }
 
