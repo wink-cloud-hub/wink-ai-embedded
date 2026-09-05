@@ -95,7 +95,6 @@ watchEffect(() => {
       :digits="effectiveNDigits"
       :color="color || 'red'"
       :values="segmentValues"
-      .values="segmentValues"
       pins="none"
     />
     <div v-if="label" class="display-label">{{ label }}</div>
