@@ -300,7 +300,29 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
     return this.segActiveHigh ? lvl === LogicStates.HIGH : lvl === LogicStates.LOW;
   }
 
+  private getActiveDigitsCount(): number {
+    let count = 0;
+    for (let d = 0; d < this.nDigits; d++) {
+      if (this.isDigitActive(d)) {
+        count++;
+      }
+    }
+    return count;
+  }
+
   private integrateTo(nowUs: bigint): void {
+    const currentActiveCount = this.getActiveDigitsCount();
+    if (currentActiveCount > this.maxActiveDigitsInWindow) {
+      this.maxActiveDigitsInWindow = currentActiveCount;
+    }
+
+    if (currentActiveCount > 1 && nowUs - this.lastConflictWarnUs >= 100_000n) {
+      this.lastConflictWarnUs = nowUs;
+      (this.ctx as any)?.system?.log?.warn?.(
+        `[seg_display] multiple digits driven simultaneously (${currentActiveCount})`,
+      );
+    }
+
     if (nowUs <= this.lastEdgeUs) return;
 
     let dtBig = nowUs - this.lastEdgeUs;
@@ -315,23 +337,6 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
 
     const decayFactor = Math.exp(-dtUs / Number(DECAY_TAU_US));
     const chargeDelta = dtUs * CHARGE_RATE;
-
-    let currentActiveCount = 0;
-    for (let d = 0; d < this.nDigits; d++) {
-      if (this.isDigitActive(d)) {
-        currentActiveCount++;
-      }
-    }
-    if (currentActiveCount > this.maxActiveDigitsInWindow) {
-      this.maxActiveDigitsInWindow = currentActiveCount;
-    }
-
-    if (currentActiveCount > 1 && nowUs - this.lastConflictWarnUs >= 100_000n) {
-      this.lastConflictWarnUs = nowUs;
-      (this.ctx as any)?.system?.log?.warn?.(
-        `[seg_display] multiple digits driven simultaneously (${currentActiveCount})`,
-      );
-    }
 
     for (let d = 0; d < this.nDigits; d++) {
       const digitActive = this.isDigitActive(d);
@@ -410,6 +415,9 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
   private publishFrame(nowUs: bigint = this.getNowUs()): void {
     this.integrateTo(nowUs);
 
+    const currentActive = this.getActiveDigitsCount();
+    const activeToPublish = Math.max(this.maxActiveDigitsInWindow, currentActive);
+
     let textStr = '';
     for (let d = 0; d < this.nDigits; d++) {
       let mask = 0;
@@ -428,10 +436,10 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
       this.ctx.publish('segMask', JSON.stringify(Array.from(this.segMask)));
       this.ctx.publish('text', textStr);
       this.ctx.publish('scanHz', this.scanHz);
-      this.ctx.publish('activeDigits', this.maxActiveDigitsInWindow);
+      this.ctx.publish('activeDigits', activeToPublish);
     }
 
-    this.maxActiveDigitsInWindow = 0;
+    this.maxActiveDigitsInWindow = currentActive;
 
     // Check residual brightness for tail decay chaining (until full darkness)
     let hasResidual = false;
@@ -442,13 +450,14 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
       }
     }
 
-    if (hasResidual && !this.tailPending && this.ctx) {
+    if (hasResidual && !this.tailPending && !this.throttle.isPending() && this.ctx) {
       this.scheduleTail(nowUs);
     }
   }
 
   private scheduleTail(scheduledAtUs: bigint): void {
     if (this.tailPending) return;
+    if (this.throttle.isPending()) return;
     this.tailPending = true;
     const gen = ++this.tailGen;
     const ctx = this.ctx as any;
