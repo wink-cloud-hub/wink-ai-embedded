@@ -18,7 +18,8 @@ boards/
 ├── esp32/
 │   └── esp32_devkitc_v4.json          # 乐鑫 ESP32-DevKitC V4 商业物理板
 ├── mcs51/
-│   └── stc89c52_devboard.json         # 宏晶 STC89C52 教学开发板 (标准 P0-P3 排针 + ADC0832 扩展)
+│   ├── stc89c52_devboard.json         # 宏晶 STC89C52 教学开发板 (标准 P0-P3 排针 + ADC0832 扩展)
+│   └── cms8s78xx_devboard.json        # 中微 CMS8S78xx 工业开发板 (1T 8051, 12-bit ADC, 26路 GPIO, LED/LCD 硬件驱动)
 └── pdk/
     └── padauk_pfs154_devboard.json    # 应广 PFS154 参考开发板 (PA/PB 双端口)
 ```
@@ -28,6 +29,7 @@ boards/
 | [`avr/arduino_uno_r3.json`](./avr/arduino_uno_r3.json) | ATmega328P | AVR8 | 经典 Arduino 排针 (D0-D13, A0-A5)、5V/10 位 ADC、板载 D13 LED |
 | [`esp32/esp32_devkitc_v4.json`](./esp32/esp32_devkitc_v4.json) | ESP32 | Xtensa-LX6 | Wi-Fi/BLE 射频、ADC1/ADC2 双单元分区、I2C/SPI 总线 |
 | [`mcs51/stc89c52_devboard.json`](./mcs51/stc89c52_devboard.json) | STC89C52 | 8051 / 8052 | P0-P3 线性化 32 引脚映射、ADC0832 外部采样支持 |
+| [`mcs51/cms8s78xx_devboard.json`](./mcs51/cms8s78xx_devboard.json) | CMS8S78xx | 1T 8051 | 26路 GPIO、内置 12 位 ADC (AN0-AN25)、COM/SEG 硬件驱动 |
 | [`pdk/padauk_pfs154_devboard.json`](./pdk/padauk_pfs154_devboard.json) | PFS154 | PDK14 | 超低成本应广单片机、PA/PB 双端口排针 |
 
 ---
