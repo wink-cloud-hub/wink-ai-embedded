@@ -4,31 +4,45 @@
     "name": "mcs51 CMS8S78xx 4COM-8SEG display headless proof",
     "templateId": "vendor_cms8s78xx_v202_led_4com_8seg",
     "accuracyMode": "behavioral",
-    "timeoutUs": "2000000",
+    "timeoutUs": "300000",
     "failurePolicy": "fail-fast",
     "determinism": { "prngSeed": 42 }
   },
   "steps": [
     {
       "type": "ASSERT_POINT",
-      "timeUs": "50ms",
+      "timeUs": "1000us",
       "target": "gpio:0",
       "matcher": 0,
-      "description": "P0.0 heartbeat pin initialized to LOW"
+      "description": "P0.0 heartbeat pin correctly initialized to LOW before timer starts toggling"
     },
     {
       "type": "ASSERT_POINT",
-      "timeUs": "100ms",
-      "target": "gpio:24",
-      "matcher": 0,
-      "description": "COM0 (P3.0) driven LOW during scanning"
+      "timeUs": "150ms",
+      "target": "plugin:display/activeDigits",
+      "matcher": 1,
+      "description": "Exactly 1 digit active per instant (healthy dynamic scan, no multi-digit conflict)"
     },
     {
       "type": "ASSERT_POINT",
       "timeUs": "200ms",
-      "target": "plugin:display/activeDigits",
-      "matcher": 4,
-      "description": "SegDisplayPlugin detects all 4 digits actively multiplexed"
+      "target": "plugin:display/text",
+      "matcher": "1234",
+      "description": "SegDisplayPlugin decodes multiplexed COM/SEG signals into expected text '1234'"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "200ms",
+      "target": "plugin:display/scanHz",
+      "matcher": { "$between": [70, 90] },
+      "description": "Multiplexing refresh rate is stable around expected ~80Hz"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "200ms",
+      "target": "plugin:display/segMask",
+      "matcher": "[6,91,79,102]",
+      "description": "Segment bitmasks for digits 0-3 match font table [0x06, 0x5B, 0x4F, 0x66]"
     }
   ]
 }
