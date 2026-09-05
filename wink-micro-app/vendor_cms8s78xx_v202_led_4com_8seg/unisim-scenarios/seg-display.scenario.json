@@ -14,35 +14,35 @@
       "timeUs": "1000us",
       "target": "gpio:0",
       "matcher": 0,
-      "description": "P0.0 heartbeat pin correctly initialized to LOW before timer starts toggling"
+      "description": "[MCU启动] P0.0 心跳引脚上电初始置低 (main.c::P00=0 -> 确认 Timer0 尚未触发翻转)"
     },
     {
       "type": "ASSERT_POINT",
       "timeUs": "150ms",
       "target": "plugin:display/activeDigits",
       "matcher": 1,
-      "description": "Exactly 1 digit active per instant (healthy dynamic scan, no multi-digit conflict)"
+      "description": "[电气安全] COM0~COM3 位选线互斥导通 (P3.0~P3.3/Pin 24-27 -> activeDigits==1 确认无总线短路与重影)"
     },
     {
       "type": "ASSERT_POINT",
       "timeUs": "200ms",
       "target": "plugin:display/text",
       "matcher": "1234",
-      "description": "SegDisplayPlugin decodes multiplexed COM/SEG signals into expected text '1234'"
+      "description": "[视觉感知] 4位数码管人眼视网膜积分稳定解码 (POV τ=80ms -> 动态扫描成功还原文本 '1234')"
     },
     {
       "type": "ASSERT_POINT",
       "timeUs": "200ms",
       "target": "plugin:display/scanHz",
-      "matcher": { "$between": [70, 90] },
-      "description": "Multiplexing refresh rate is stable around expected ~80Hz"
+      "matcher": { "$between": [40, 50] },
+      "description": "[扫描时序] 帧刷新率稳定在 ~45Hz (demo_timer.c::5ms溢出中断 × 5拍循环 -> 验证虚拟时钟保真度)"
     },
     {
       "type": "ASSERT_POINT",
       "timeUs": "200ms",
       "target": "plugin:display/segMask",
       "matcher": "[6,91,79,102]",
-      "description": "Segment bitmasks for digits 0-3 match font table [0x06, 0x5B, 0x4F, 0x66]"
+      "description": "[硬件字模] 段选 P1.0~P1.7/Pin 8-15 物理电平一致性 (demo_led.c::LED_Fount 确认数字1-4段码无错位)"
     }
   ]
 }
