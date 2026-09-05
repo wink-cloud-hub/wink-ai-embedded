@@ -42,7 +42,7 @@ var h = [
 				let e = [], t = i.length;
 				for (let r = 0; r < n; r++) {
 					let n = r < t ? i[r] : 0;
-					e.push(+(n >= 30));
+					e.push(+(n >= 50));
 				}
 				return e;
 			}
@@ -80,7 +80,7 @@ var h = [
 	let n = e.__vccOpts || e;
 	for (let [e, r] of t) n[e] = r;
 	return n;
-}, y = /*#__PURE__*/ v(_, [["__scopeId", "data-v-5d3b2113"]]), b = { class: "seg-display-world-widget" }, x = [
+}, y = /*#__PURE__*/ v(_, [["__scopeId", "data-v-57525e19"]]), b = { class: "seg-display-world-widget" }, x = [
 	"digits",
 	"color",
 	"values",
@@ -357,7 +357,7 @@ function G(e, t) {
 		let e = [];
 		for (let t = 0; t < r; t++) {
 			let n = t < i.length ? i[t] : 0;
-			e.push(+(n >= 30));
+			e.push(+(n >= 50));
 		}
 		return e;
 	}

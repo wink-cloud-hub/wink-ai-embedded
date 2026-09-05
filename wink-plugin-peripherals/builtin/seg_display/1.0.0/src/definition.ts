@@ -71,7 +71,7 @@ function resolveValues(comp: CircuitComponentInstance, ctx: SimViewContext): num
     const vals: number[] = [];
     for (let i = 0; i < total; i++) {
       const b = i < bright.length ? bright[i] : 0;
-      vals.push(b >= 30 ? 1 : 0);
+      vals.push(b >= 50 ? 1 : 0);
     }
     return vals;
   }
