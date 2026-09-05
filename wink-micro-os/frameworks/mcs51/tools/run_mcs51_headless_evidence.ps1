@@ -79,7 +79,15 @@ $carriers = @(
     @{ Name = 'mcs51_button_led';       Channel = 'ch1 digital read (Stage 0)' }
 )
 if ($App) { $carriers = $carriers | Where-Object { $_.Name -eq $App } }
-if (-not $carriers) { Write-Error "No carrier app matched '$App'."; exit 2 }
+if (-not $carriers) {
+    $customAppDir = Join-Path $microAppDir $App
+    if (Test-Path $customAppDir) {
+        $carriers = @( @{ Name = $App; Channel = 'Custom / Vendor app' } )
+    } else {
+        Write-Error "No carrier app matched '$App'."
+        exit 2
+    }
+}
 
 # --- Run each carrier -------------------------------------------------------
 $env:WINK_DEV = '1'   # make winkcli use the sister TS source directly (no build)

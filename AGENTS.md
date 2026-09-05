@@ -25,7 +25,9 @@ Wink-AI 嵌入式运行时及仿真系统（**WinkMicroOS**）：面向 AI 生�
 | ④ 评审记录 | `reviews/` | 时间点快照，代码/架构评审的归档记录。 | 只读，归档后不可修改 |
 | ⑤ 架构决策 (ADR) | `decisions/` | 重大设计决策记录：背景、备选方案、决策结论、后果与约束。 | 只读，Accepted 后需回写至设计规范 |
 
-> **Wasm 仿真（UniSim）设计现行入口**：[docs/design/04-wasm-simulation-3.0/00-README.md](docs/design/04-wasm-simulation-3.0/00-README.md)（**Active**；四层：overview / mechanisms / axes / assurance）。2.0 与 1.0 已归档为只读历史对照。
+> **Wasm 仿真（UniSim）设计现行入口**：[docs/zh/design/04-wasm-simulation/00-README.md](docs/zh/design/04-wasm-simulation/00-README.md)（**Active**；四层：overview / mechanisms / axes / assurance）。
+>
+> 💡 **本地 AI 深度研发通道**：私有包源码机制与白盒审查通过本地联结 `docs/.internals/`（受 `.gitignore` 保护）透明挂载，支持本地 AI 进行全量上下文推理。
 
 **文档流转规则（重要）：**
 ```

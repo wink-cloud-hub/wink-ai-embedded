@@ -117,3 +117,8 @@ docs/tech-designs/mcs51/spikes/assets/**/device-tree.*.json
 # never redistributed. CMake fixture-gates the tests that consume them and
 # gracefully skips on a fresh clone/CI where they are absent.
 docs/vendors/
+
+# ===== Internal AI Context & Local Secret Junction =====
+docs/.internals/
+.internals/
+
