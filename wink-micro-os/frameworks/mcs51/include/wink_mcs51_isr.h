@@ -68,13 +68,18 @@ void wink_mcs51_reset_isrs(void);
 
 #ifdef __cplusplus
 
+#define WINK_ISR_CONCAT_IMPL(a, b) a##b
+#define WINK_ISR_CONCAT(a, b) WINK_ISR_CONCAT_IMPL(a, b)
+
 #define WINK_ISR(n)                                                          \
-    extern "C" void wink_isr_vector_##n(void);                               \
+    extern "C" void WINK_ISR_CONCAT(wink_isr_vector_, n)(void);              \
     namespace {                                                              \
-    struct WinkIsrAutoReg_##n {                                              \
-        WinkIsrAutoReg_##n() { wink_mcs51_set_isr(n, wink_isr_vector_##n); } \
-    } s_auto_reg_##n;                                                        \
+    struct WINK_ISR_CONCAT(WinkIsrAutoReg_, n) {                             \
+        WINK_ISR_CONCAT(WinkIsrAutoReg_, n)() {                              \
+            wink_mcs51_set_isr(n, WINK_ISR_CONCAT(wink_isr_vector_, n));    \
+        }                                                                    \
+    } WINK_ISR_CONCAT(s_auto_reg_, n);                                       \
     }                                                                        \
-    extern "C" void wink_isr_vector_##n(void)
+    extern "C" void WINK_ISR_CONCAT(wink_isr_vector_, n)(void)
 
 #endif  // __cplusplus
