@@ -466,7 +466,14 @@ var T = w("direct_gpio_8d"), E = (e) => w(f(e)), D = 80000n, O = 255 / 2e3, k = 
 		let n = this.segLevel[e];
 		return n === t.HI_Z || n === t.CONFLICT ? !1 : this.segActiveHigh ? n === t.HIGH : n === t.LOW;
 	}
+	getActiveDigitsCount() {
+		let e = 0;
+		for (let t = 0; t < this.nDigits; t++) this.isDigitActive(t) && e++;
+		return e;
+	}
 	integrateTo(e) {
+		let a = this.getActiveDigitsCount();
+		a > this.maxActiveDigitsInWindow && (this.maxActiveDigitsInWindow = a), a > 1 && e - this.lastConflictWarnUs >= 100000n && (this.lastConflictWarnUs = e, this.ctx?.system?.log?.warn?.(`[seg_display] multiple digits driven simultaneously (${a})`));
 		if (e <= this.lastEdgeUs) return;
 		let t = e - this.lastEdgeUs;
 		t > 100000n && (t = M);
@@ -475,9 +482,7 @@ var T = w("direct_gpio_8d"), E = (e) => w(f(e)), D = 80000n, O = 255 / 2e3, k = 
 			this.lastEdgeUs = e;
 			return;
 		}
-		let r = Math.exp(-n / Number(D)), i = n * O, a = 0;
-		for (let e = 0; e < this.nDigits; e++) this.isDigitActive(e) && a++;
-		a > this.maxActiveDigitsInWindow && (this.maxActiveDigitsInWindow = a), a > 1 && e - this.lastConflictWarnUs >= 100000n && (this.lastConflictWarnUs = e, this.ctx?.system?.log?.warn?.(`[seg_display] multiple digits driven simultaneously (${a})`));
+		let r = Math.exp(-n / Number(D)), i = n * O;
 		for (let e = 0; e < this.nDigits; e++) {
 			let t = this.isDigitActive(e), n = e * 8;
 			for (let e = 0; e < 8; e++) {
@@ -509,22 +514,23 @@ var T = w("direct_gpio_8d"), E = (e) => w(f(e)), D = 80000n, O = 255 / 2e3, k = 
 	}
 	publishFrame(e = this.getNowUs()) {
 		this.integrateTo(e);
-		let t = "";
+		let t = "", curActive = this.getActiveDigitsCount(), pubActive = Math.max(this.maxActiveDigitsInWindow, curActive);
 		for (let e = 0; e < this.nDigits; e++) {
 			let n = 0, r = e * 8;
 			for (let e = 0; e < 8; e++) this.bright[r + e] >= 50 && (n |= 1 << e);
 			this.segMask[e] = n, t += b(n);
 		}
-		this.ctx && (this.ctx.publish("bright", this.bright), this.ctx.publish("segMask", JSON.stringify(Array.from(this.segMask))), this.ctx.publish("text", t), this.ctx.publish("scanHz", this.scanHz), this.ctx.publish("activeDigits", this.maxActiveDigitsInWindow)), this.maxActiveDigitsInWindow = 0;
+		this.ctx && (this.ctx.publish("bright", this.bright), this.ctx.publish("segMask", JSON.stringify(Array.from(this.segMask))), this.ctx.publish("text", t), this.ctx.publish("scanHz", this.scanHz), this.ctx.publish("activeDigits", pubActive)), this.maxActiveDigitsInWindow = curActive;
 		let n = !1;
 		for (let e = 0; e < this.bright.length; e++) if (this.bright[e] > 0) {
 			n = !0;
 			break;
 		}
-		n && !this.tailPending && this.ctx && this.scheduleTail(e);
+		n && !this.tailPending && !this.throttle.isPending() && this.ctx && this.scheduleTail(e);
 	}
 	scheduleTail(e) {
 		if (this.tailPending) return;
+		if (this.throttle.isPending()) return;
 		this.tailPending = !0;
 		let t = ++this.tailGen, n = this.ctx;
 		typeof n?.deferUs == "function" ? n.deferUs(j, () => {
