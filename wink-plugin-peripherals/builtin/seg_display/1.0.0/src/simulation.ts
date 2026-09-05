@@ -448,6 +448,7 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
   }
 
   private scheduleTail(scheduledAtUs: bigint): void {
+    if (this.tailPending) return;
     this.tailPending = true;
     const gen = ++this.tailGen;
     const ctx = this.ctx as any;
