@@ -84,6 +84,14 @@ MCU_HEADER_RE = re.compile(
 # Normalize `int main(` to `void main(` for bare-metal MCS-51 entry ABI
 MAIN_RE = re.compile(r"\bint\s+main\s*\(")
 
+# Empty infinite loop regex (e.g. `while(1) { ; }`, `while(1) {}`, `while(1);`, `for(;;);`, `for(;;) {}`).
+# In cooperative fiber simulation (ASYNCIFY), an empty infinite loop without SFR access
+# or _nop_() never yields and never charges virtual time, starving timers and freezing execution.
+# Injecting _nop_() charges functional microsteps and allows cooperative scheduling and catch-up.
+EMPTY_SUPERLOOP_RE = re.compile(
+    r"\b(?:while\s*\(\s*1\s*\)|for\s*\(\s*;\s*;\s*\))\s*(?:\{\s*;?\s*\}|;)"
+)
+
 
 def build_code_mask(source: str) -> str:
     """Return a copy with comments and string/char-literal contents blanked to
@@ -176,8 +184,12 @@ def cleanup(source: str) -> tuple[str, int, int]:
     for m in MAIN_RE.finditer(mask):
         regions.append((m.start(), m.end(), "void main(", "main"))
 
+    # 4. Collect empty super-loops and inject _nop_() to prevent fiber freeze
+    for m in EMPTY_SUPERLOOP_RE.finditer(mask):
+        regions.append((m.start(), m.end(), "while(1) { _nop_(); }", "loop"))
+
     if not regions:
-        return source, 0, 0
+        return source, 0, 0, 0
 
     regions.sort(key=lambda r: r[0])
 
@@ -185,6 +197,7 @@ def cleanup(source: str) -> tuple[str, int, int]:
     prev = 0
     isr_count = 0
     header_count = 0
+    loop_count = 0
     for start, end, repl, kind in regions:
         out.append(source[prev:start])
         out.append(repl)
@@ -193,8 +206,10 @@ def cleanup(source: str) -> tuple[str, int, int]:
             isr_count += 1
         elif kind == "header":
             header_count += 1
+        elif kind == "loop":
+            loop_count += 1
     out.append(source[prev:])
-    return "".join(out), isr_count, header_count
+    return "".join(out), isr_count, header_count, loop_count
 
 
 def main(argv: list[str]) -> int:
@@ -210,15 +225,15 @@ def main(argv: list[str]) -> int:
     inp, outp = args
     source = read_source(inp)
     if transcode:
-        cleaned, isr_c, hdr_c = source, 0, 0
+        cleaned, isr_c, hdr_c, loop_c = source, 0, 0, 0
     else:
-        cleaned, isr_c, hdr_c = cleanup(source)
+        cleaned, isr_c, hdr_c, loop_c = cleanup(source)
     with open(outp, "w", encoding="utf-8", newline="\n") as f:
         f.write(cleaned)
     if transcode:
         print(f"[mcs51_cleanup] {inp} -> {outp}: transcoded to UTF-8")
     else:
-        print(f"[mcs51_cleanup] {inp} -> {outp}: {isr_c} ISR, {hdr_c} MCU header(s) rewritten")
+        print(f"[mcs51_cleanup] {inp} -> {outp}: {isr_c} ISR, {hdr_c} MCU header(s), {loop_c} loop(s) rewritten")
     return 0
 
 
