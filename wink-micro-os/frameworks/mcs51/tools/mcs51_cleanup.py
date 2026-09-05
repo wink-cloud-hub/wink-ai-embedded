@@ -44,10 +44,13 @@ def read_source(path: str) -> str:
     except UnicodeDecodeError:
         return data.decode("gbk")
 
-# Strict Keil ISR signature: void name( void | () ) interrupt N [using M].
-# Vector can be a bare decimal integer or a symbolic macro (e.g. TMR0_VECTOR).
+
+# Strict Keil ISR signature: [static] void name( void | () ) interrupt N [using M].
+# Vector can be a bare decimal integer or a symbolic macro (e.g. TMR0_VECTOR),
+# optionally enclosed in parentheses (e.g. `interrupt (1)`).
+# Register bank `using` can be an integer or a symbolic macro (e.g. `using BANK1`).
 ISR_RE = re.compile(
-    r"void\s+(\w+)\s*\(\s*(?:void)?\s*\)\s*interrupt\s+([a-zA-Z0-9_]+)(?:\s+using\s+\d+)?"
+    r"\b(?:static\s+)?void\s+(\w+)\s*\(\s*(?:void)?\s*\)\s*interrupt\s+(?:\(\s*([a-zA-Z0-9_]+)\s*\)|([a-zA-Z0-9_]+))(?:\s+using\s+[a-zA-Z0-9_]+)?"
 )
 
 # Standard and vendor symbolic interrupt vector names normalized to vector index
@@ -74,10 +77,11 @@ KNOWN_VECTORS = {
     "LVD_VECTOR": "26",
 }
 
-# Legacy Keil C51 MCU register headers to normalize to <wink_mcu.h>
-# Enables zero-touch migration for unmodified legacy user code.
+# Legacy Keil C51 MCU register headers to normalize to <wink_mcu.h>.
+# Supports optional relative paths (e.g. `inc/cms8s78xx.h`, `../reg52.h`).
+# Restricts model matching so peripheral drivers (e.g. `cms8s_flash.h`, `stcuart.h`) are NOT touched.
 MCU_HEADER_RE = re.compile(
-    r'#\s*include\s*[<"](?:regx?5[12]|cms8s[0-9a-z]*|reg_cms[0-9a-z]*|stc[0-9a-z]*)\.h[>"]',
+    r'#\s*include\s*[<"](?:[^\r\n<">]*[/\\])?(?:regx?5[12]|cms8s|cms8s\d[a-z0-9]*|reg_cms\d*[a-z0-9]*|stc|stc\d[a-z0-9]*)\.h[>"]',
     re.IGNORECASE
 )
 
@@ -88,9 +92,41 @@ MAIN_RE = re.compile(r"\bint\s+main\s*\(")
 # In cooperative fiber simulation (ASYNCIFY), an empty infinite loop without SFR access
 # or _nop_() never yields and never charges virtual time, starving timers and freezing execution.
 # Injecting _nop_() charges functional microsteps and allows cooperative scheduling and catch-up.
+# Supports `while(1)`, `while(true)`, `while(!0)`, `while(1U)`, and multiple semicolons inside braces.
 EMPTY_SUPERLOOP_RE = re.compile(
-    r"\b(?:while\s*\(\s*1\s*\)|for\s*\(\s*;\s*;\s*\))\s*(?:\{\s*;?\s*\}|;)"
+    r"\b(?:while\s*\(\s*(?:1[uUlL]?|true|!0)\s*\)|for\s*\(\s*;\s*;\s*\))\s*(?:\{\s*(?:;\s*)*\}|;)"
 )
+
+
+def is_do_while_tail(mask: str, while_pos: int) -> bool:
+    """Check if the `while` at `while_pos` is the closing condition of a `do ... while` statement."""
+    i = while_pos - 1
+    while i >= 0 and mask[i].isspace():
+        i -= 1
+    if i < 0:
+        return False
+    if mask[i] == "}":
+        depth = 1
+        i -= 1
+        while i >= 0 and depth > 0:
+            if mask[i] == "}":
+                depth += 1
+            elif mask[i] == "{":
+                depth -= 1
+            i -= 1
+        if depth != 0:
+            return False
+    else:
+        # Single statement like `do statement; while(1);`
+        while i >= 0 and mask[i] not in ";{}":
+            i -= 1
+    # Skip whitespace backwards to find the preceding keyword
+    while i >= 0 and mask[i].isspace():
+        i -= 1
+    if i >= 1 and mask[i - 1:i + 1] == "do":
+        if i - 2 < 0 or not (mask[i - 2].isalnum() or mask[i - 2] == "_"):
+            return True
+    return False
 
 
 def build_code_mask(source: str) -> str:
@@ -124,6 +160,19 @@ def build_code_mask(source: str) -> str:
             continue
         # String literal
         if c == '"':
+            # Preserve header name in `#include "..."` so MCU_HEADER_RE can match it
+            line_start = source.rfind("\n", 0, i)
+            line_prefix = source[0 if line_start == -1 else line_start + 1:i].strip()
+            if line_prefix.startswith("#") and "include" in line_prefix:
+                i += 1
+                while i < n and source[i] != '"':
+                    if source[i] == "\n":
+                        break
+                    i += 1
+                if i < n and source[i] == '"':
+                    i += 1
+                continue
+
             mask[i] = " "
             i += 1
             while i < n and source[i] != '"':
@@ -158,15 +207,15 @@ def build_code_mask(source: str) -> str:
     return "".join(mask)
 
 
-def cleanup(source: str) -> tuple[str, int, int]:
-    """Return (cleaned_cpp_source, isr_rewrite_count, header_rewrite_count)."""
+def cleanup(source: str) -> tuple[str, int, int, int]:
+    """Return (cleaned_cpp_source, isr_rewrite_count, header_rewrite_count, loop_rewrite_count)."""
     mask = build_code_mask(source)
 
     regions: list[tuple[int, int, str, str]] = []
 
     # 1. Collect ISR rewrites
     for m in ISR_RE.finditer(mask):
-        vector = m.group(2)
+        vector = m.group(2) or m.group(3)
         vector = KNOWN_VECTORS.get(vector, vector)
         rest = mask[m.end():]
         rest_stripped = rest.lstrip()
@@ -181,11 +230,35 @@ def cleanup(source: str) -> tuple[str, int, int]:
         regions.append((m.start(), m.end(), "#include <wink_mcu.h>", "header"))
 
     # 3. Collect main signature normalizations (int main -> void main)
+    # Also strip any return-value statements (`return 0;` -> `return;`) inside main
+    # because C++ disallows returning a value from a void function.
     for m in MAIN_RE.finditer(mask):
         regions.append((m.start(), m.end(), "void main(", "main"))
+        open_brace = mask.find("{", m.end())
+        if open_brace != -1:
+            depth = 1
+            i = open_brace + 1
+            n = len(mask)
+            while i < n and depth > 0:
+                if mask[i] == "{":
+                    depth += 1
+                elif mask[i] == "}":
+                    depth -= 1
+                i += 1
+            if depth == 0:
+                close_brace = i - 1
+                body = mask[open_brace:close_brace]
+                for ret_m in re.finditer(r"\breturn\s+[^;]+;", body):
+                    r_start = open_brace + ret_m.start()
+                    r_end = open_brace + ret_m.end()
+                    regions.append((r_start, r_end, "return;", "main_ret"))
 
     # 4. Collect empty super-loops and inject _nop_() to prevent fiber freeze
+    # Skips `do { ... } while(1);` which is NOT an empty loop.
     for m in EMPTY_SUPERLOOP_RE.finditer(mask):
+        match_str = m.group(0).lstrip()
+        if match_str.startswith("while") and is_do_while_tail(mask, m.start()):
+            continue
         regions.append((m.start(), m.end(), "while(1) { _nop_(); }", "loop"))
 
     if not regions:
@@ -199,6 +272,8 @@ def cleanup(source: str) -> tuple[str, int, int]:
     header_count = 0
     loop_count = 0
     for start, end, repl, kind in regions:
+        if start < prev:
+            continue  # Defensive guard against overlapping regions
         out.append(source[prev:start])
         out.append(repl)
         prev = end
