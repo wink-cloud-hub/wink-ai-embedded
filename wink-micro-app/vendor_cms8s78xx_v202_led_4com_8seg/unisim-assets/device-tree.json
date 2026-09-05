@@ -1,5 +1,5 @@
 {
-  "appName": "mcs51_seg_display",
+  "appName": "vendor_cms8s78xx_v202_led_4com_8seg",
   "board": "cms8s78xx_devboard",
   "devices": {
     "display": {

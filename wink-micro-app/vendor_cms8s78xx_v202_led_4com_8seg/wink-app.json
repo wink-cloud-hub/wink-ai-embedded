@@ -1,9 +1,17 @@
 {
-  "app_name": "mcs51_seg_display",
+  "app_name": "vendor_cms8s78xx_v202_led_4com_8seg",
+  "display_name": "CMS8S78xx V2.0.2 - LED 4COM_8SEG_LED",
   "board": "cms8s78xx_devboard",
-  "category": "demo",
+  "category": "vendor_example",
   "mcu": "cms8s78xx",
   "tick_ms": 1,
+  "upstream": {
+    "vendor": "Cmsemicon",
+    "family": "CMS8S",
+    "chip": "CMS8S78xx",
+    "sdk_version": "V2.0.2",
+    "source_dir": "docs/vendors/Cmsemicon/CMS8S78xx_DemoCode_V2.0.2/CMS8S78xx_Example/Example/LED/4COM_8SEG_LED/code"
+  },
   "devices": {
     "display": {
       "type": "seg_display",
