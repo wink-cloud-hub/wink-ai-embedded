@@ -6,8 +6,7 @@ import "@wokwi/elements";
 var h = [
 	"digits",
 	"color",
-	"values",
-	".values"
+	"values"
 ], g = {
 	key: 0,
 	class: "display-label"
@@ -72,19 +71,17 @@ var h = [
 			digits: r.value,
 			color: e.color || "red",
 			values: i.value,
-			".values": i.value,
 			pins: "top"
-		}, null, 40, h), e.label ? (d(), s("span", g, p(e.label), 1)) : o("", !0)], 4));
+		}, null, 8, h), e.label ? (d(), s("span", g, p(e.label), 1)) : o("", !0)], 4));
 	}
 }), v = (e, t) => {
 	let n = e.__vccOpts || e;
 	for (let [e, r] of t) n[e] = r;
 	return n;
-}, y = /*#__PURE__*/ v(_, [["__scopeId", "data-v-57525e19"]]), b = { class: "seg-display-world-widget" }, x = [
+}, y = /*#__PURE__*/ v(_, [["__scopeId", "data-v-1a3bb5a1"]]), b = { class: "seg-display-world-widget" }, x = [
 	"digits",
 	"color",
-	"values",
-	".values"
+	"values"
 ], S = {
 	key: 0,
 	class: "display-label"
@@ -138,11 +135,10 @@ var h = [
 			digits: r.value,
 			color: e.color || "red",
 			values: i.value,
-			".values": i.value,
 			pins: "none"
-		}, null, 40, x), e.label ? (d(), s("div", S, p(e.label), 1)) : o("", !0)]));
+		}, null, 8, x), e.label ? (d(), s("div", S, p(e.label), 1)) : o("", !0)]));
 	}
-}), [["__scopeId", "data-v-3e35649d"]]), w = Object.freeze([
+}), [["__scopeId", "data-v-de5254b3"]]), w = Object.freeze([
 	"direct_gpio_8d",
 	"direct_gpio_4d",
 	"direct_gpio_2d",
