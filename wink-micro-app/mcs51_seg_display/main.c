@@ -35,6 +35,7 @@
 #include "cms8s78xx.h"
 #include "demo_timer.h"
 #include "demo_led.h"
+#include <intrins.h>
 /****************************************************************************/
 /*	Local pre-processor symbols('#define')
 *****************************************************************************/
@@ -81,6 +82,6 @@ int main(void)
 	
 	while(1)
 	{
-		;
+		_nop_();
 	}
 }
