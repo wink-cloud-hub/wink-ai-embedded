@@ -3,6 +3,7 @@
 // See wink_mcs51_extint.h for the model contract.
 #include "wink_mcs51_extint.h"
 
+#include "absacc.h"
 #include "mcs51_proxy.hpp"
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_isr.h"
@@ -55,6 +56,27 @@ ExtIntLine s_lines[2] = {
     {PIN_INT0, VECTOR_INT0, TCON_IT0, TCON_IE0, IE_EX0, 0xFFu, 0, false},
     {PIN_INT1, VECTOR_INT1, TCON_IT1, TCON_IE1, IE_EX1, 0xFFu, 0, false},
 };
+
+// CMS8S78xx port external interrupt model (P0EI..P3EI: vectors 7..10)
+constexpr uint8_t SFR_P0EXTIE = 0xACu;
+constexpr uint8_t SFR_P0EXTIF = 0xB4u;
+constexpr uint8_t PORT_PINS[4] = {8u, 8u, 6u, 4u};
+constexpr uint16_t PORT_EICFG_BASE[4] = {0xF080u, 0xF088u, 0xF090u, 0xF098u};
+constexpr uint8_t PORT_VECTORS[4] = {7u, 8u, 9u, 10u};
+
+struct PortPinState {
+    uint8_t last_level;
+    bool    have_sample;
+};
+
+PortPinState s_port_pins[4][8] = {
+    {{0xFFu, false}, {0xFFu, false}, {0xFFu, false}, {0xFFu, false}, {0xFFu, false}, {0xFFu, false}, {0xFFu, false}, {0xFFu, false}},
+    {{0xFFu, false}, {0xFFu, false}, {0xFFu, false}, {0xFFu, false}, {0xFFu, false}, {0xFFu, false}, {0xFFu, false}, {0xFFu, false}},
+    {{0xFFu, false}, {0xFFu, false}, {0xFFu, false}, {0xFFu, false}, {0xFFu, false}, {0xFFu, false}, {0xFFu, false}, {0xFFu, false}},
+    {{0xFFu, false}, {0xFFu, false}, {0xFFu, false}, {0xFFu, false}, {0xFFu, false}, {0xFFu, false}, {0xFFu, false}, {0xFFu, false}},
+};
+
+uint64_t s_port_last_sample_us = 0;
 
 // Set by reset(): framework init also zeroes the virtual clock, so a plain
 // timestamp reset would leave the first post-init poll throttled for a full
@@ -114,6 +136,56 @@ void poll_line(ExtIntLine& ln) {
     }
 }
 
+void poll_port_ints(bool force, uint64_t now) {
+    if (!force && (now - s_port_last_sample_us) < SAMPLE_PERIOD_US) {
+        return;
+    }
+    s_port_last_sample_us = now;
+
+    uint8_t ie = wink_mcs51_sfr_shadow[SFR_IE];
+    bool ea = (ie & (1u << IE_EA)) != 0;
+
+    for (uint8_t p = 0; p < 4u; ++p) {
+        uint8_t extie = wink_mcs51_sfr_shadow[SFR_P0EXTIE + p];
+        uint8_t extif = wink_mcs51_sfr_shadow[SFR_P0EXTIF + p];
+        uint8_t npins = PORT_PINS[p];
+
+        for (uint8_t b = 0; b < npins; ++b) {
+            uint16_t pin = static_cast<uint16_t>((p << 3) | b);
+            uint8_t st = js_pal_gpio_read_state(pin);
+            uint8_t level = (st == EXT_LOW) ? EXT_LOW : EXT_HIGH;
+            PortPinState& ps = s_port_pins[p][b];
+            bool was_low = (ps.last_level == EXT_LOW);
+            bool now_low = (level == EXT_LOW);
+            bool have = ps.have_sample;
+            ps.last_level = level;
+            ps.have_sample = true;
+
+            if ((extie & (1u << b)) != 0 && have) {
+                uint16_t eicfg_addr = static_cast<uint16_t>(PORT_EICFG_BASE[p] + b);
+                uint8_t mode = wink_mcs51_xdata_shadow[eicfg_addr] & 0x03u;
+                bool match = false;
+                if (mode == 1u) {
+                    match = was_low && !now_low;        // Rising
+                } else if (mode == 2u) {
+                    match = !was_low && now_low;        // Falling
+                } else if (mode == 3u) {
+                    match = (was_low != now_low);       // Both edges
+                }
+                if (match) {
+                    extif |= static_cast<uint8_t>(1u << b);
+                    wink_mcs51_sfr_shadow[SFR_P0EXTIF + p] = extif;
+                }
+            }
+        }
+
+        // Interrupt pending: software clears the flag via GPIO_ClearIntFlag in the ISR
+        if (ea && (extif & extie) != 0) {
+            (void)wink_mcs51_dispatch_vector(PORT_VECTORS[p]);
+        }
+    }
+}
+
 }  // namespace
 
 extern "C" {
@@ -135,6 +207,7 @@ void wink_mcs51_extint_poll(void) {
         ln.have_sample = true;
         poll_line(ln);
     }
+    poll_port_ints(force, now);
     s_in_poll = false;
 }
 
@@ -144,13 +217,17 @@ void wink_mcs51_extint_reset(void) {
     // host ext-pin array — so it is deliberately NOT cleared: a press that
     // falls between two runtime runs must still be seen as a high->low edge.
     // Only the per-slice throttle is reset so the first poll after init
-    // samples immediately, plus any latched IE0/IE1 flags for a clean start.
+    // samples immediately, plus any latched flags for a clean start.
     for (ExtIntLine& ln : s_lines) {
         ln.last_sample_us = 0;
     }
+    s_port_last_sample_us = 0;
     s_sample_due = true;
     wink_mcs51_sfr_shadow[SFR_TCON] &=
         static_cast<uint8_t>(~((1u << TCON_IE0) | (1u << TCON_IE1)));
+    for (uint8_t p = 0; p < 4u; ++p) {
+        wink_mcs51_sfr_shadow[SFR_P0EXTIF + p] = 0;
+    }
 }
 
 }  // extern "C"
