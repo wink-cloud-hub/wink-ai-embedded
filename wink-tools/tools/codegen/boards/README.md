@@ -64,7 +64,7 @@ boards/
 | `adc.pins.<gpio>.wifi_conflict` | `boolean` | 否 | **射频硬件冲突标记**：`true` 表示该引脚归属 ADC2，与片上 Wi-Fi/BLE 射频前端互斥。 |
 | `adc.default_full_scale_mv` | `integer` | 否 | 默认满量程参考电压（毫伏），如衰减 11dB 典型为 3100mV，供前端将原始采样值折算为电压。 |
 | `adc.default_resolution_bits` | `integer` | 否 | 模数转换精度（位），如 12bit (0~4095) 或 10bit (0~1023)。 |
-| **`headers`** | `object` | **是** | 外部排针丝印/别名到物理引脚或线性端口编号的映射字典。**核心价值在于让存量 C/C++ 业务代码（如 Keil C51 原生语法、Arduino 内置常量）一字不改即可在 Wink 仿真环境中直接运行**，详见 [§3.3](#33-headers-排针映射与-8051-端口位线性化)。 |
+| **`headers`** | `object` | **是** | 外部排针丝印/别名到物理引脚或线性端口编号的映射字典。服务三条消费链路：codegen 期 `$board.headers.<KEY>` 符号解析、前端画布丝印与走线端点派生、仿真 PinArbiter 通道号约定。**注意：headers 标签本身不会在固件中生成具名 C 常量**（Arduino 引脚常量由专门的 `wink_board_pins.h` 生成契约承担），详见 [§3.3](#33-headers-排针映射与三方消费链路) 与 [§3.5](#35-wink_board_pinsh-板级引脚常量生成契约arduino)。 |
 | `headers.<label>` | `integer` | **是** | 排针引脚名映射到的物理引脚或线性端口编号。 |
 
 ---
@@ -104,43 +104,27 @@ boards/
 
 ---
 
-### 3.3 `headers` 排针映射与 8051 端口位线性化
+### 3.3 `headers` 排针映射与三方消费链路
 
-`headers` 是 Wink 板级架构中最具特色的桥梁设计，其核心理念在于实现**“业务源码与仿真平台两端皆无需迁就”的双重价值闭环**：
+`headers` 是板卡排针丝印名（`D2`、`A0`、`P3.2`、`GPIO2` 等）到统一线性引脚编号的符号查表字典。需要首先明确：**headers 标签本身不会在微应用固件中生成具名 C 常量**——标签在 codegen 期被解析为整数后即完成使命（Arduino 式引脚常量 `D2`/`A0`/`LED_BUILTIN` 由 §3.5 的 `wink_board_pins.h` 契约单独承担）。headers 通过以下三条链路被系统消费：
 
 ```text
-┌────────────────────────────────────────────────────────────────────────┐
-│ 1. 业务源码层 (Zero-Modification Code)                                   │
-│    • Keil C51 原生源码:  sbit KEY = P3^2;  sbit LED = P1^0; (一字不改)   │
-│    • Arduino 原生 Sketch: pinMode(LED_BUILTIN, OUTPUT); 或 D2, A0 内置常量│
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │ headers 桥接映射
-┌───────────────────────────────────▼────────────────────────────────────┐
-│ 2. 仿真与配置层 (Unified Bridge)                                         │
-│    • wink-app.json / 设备树: "gpio_pin": 26 (或 "$board.headers.P3.2")  │
-│    • UniSim WASM 仿真器: PinArbiter 高速投递电平到 8051 虚拟 SFR 寄存器位    │
-│    • 前端可视化电路: 画布根据引脚通道生成端点，实现导线精准物理吸附       │
-└────────────────────────────────────────────────────────────────────────┘
+          boards/<board>.json  "headers": { "P3.2": 26, "D2": 2, ... }
+                                    │
+      ┌─────────────────────────────┼─────────────────────────────┐
+      ▼                             ▼                             ▼
+① codegen 符号解析（构建期）   ② 前端画布与走线（UI 运行期）  ③ 仿真通道号约定（固件↔仿真器）
+wink-app.json 中               embedded-frontend:            线性编号 port*8+bit 是
+"$board.headers.P3.2" → 26     board-json-loader.ts:         PinArbiter 的电平投递地址；
+写入 generated/device_tree.c   丝印规范名去重、排针几何、    mcs51_board_config.h 的
+与 device-tree.json，仅存整数  走线 LEFT/RIGHT 吸附端点      MCS51_PIN_IDX_PORT/BIT 宏
+                               均由 headers 派生             与此约定 MUST match
 ```
 
-#### 1. 核心价值一：存量 C/C++ 业务代码“一字不改”（Zero-Modification Code）
-在高校单片机教学、教科书经典实验与开源社区中，存在大量存量代码：
-* **标准 8051 代码**：深度依赖 Keil C51 的特有语法 `sbit` 进行端口位操作（如 `sbit KEY = P3^2;`）；
-* **Arduino 生态代码**：直接使用 SDK 内置的引脚常量（如 `A0`、`D2` 或 `LED_BUILTIN`）。
+#### 1. 链路一：codegen 期符号解析（标签不进入固件）
 
-**Wink 的设计原则是：绝不要求开发者为了适配仿真平台而修改原生业务逻辑。**  
-通过将板卡的排针标号（如 `P3.2`、`D2`、`A0`）收录在 `headers` 字典中，微应用工程可以直接无缝编译原生单片机源码（如 `wink-micro-app/mcs51_button_led/button_led.c`），底层自动完成对接。
+为屏蔽不同 MCU 复杂的物理 GPIO 编号，应用配置支持通过 `$board.headers.<KEY>` 间接寻址：
 
-#### 2. 核心价值二：跨架构统一映射桥梁（Unified Simulation Bridge）
-不同单片机体系的引脚寻址模式天然割裂：
-* 8051 采用二维“端口+位”寻址（`P0.0 ~ P3.7`）；
-* ESP32 采用一维数字编号（`GPIO 0 ~ 39`）；
-* Arduino 采用功能复合标号（`D0 ~ D13`，`A0 ~ A5`）。
-
-`headers` 充当了异构硬件在 Wink 系统中的**统一标尺与符号查表器**：
-
-##### A. 逻辑别名解耦与多习惯兼容（Arduino / ESP-IDF 通吃）
-为屏蔽不同 MCU 复杂的物理 GPIO 编号，支持在应用配置中通过 `$board.headers.<KEY>` 间接寻址：
 ```json
 "headers": {
   "D2": 2,
@@ -149,11 +133,22 @@ boards/
   "GPIO36": 36
 }
 ```
+
 * **多习惯友好**：习惯 Arduino 的开发者配置 `"pin": "D2"`，看芯片手册的工程师配置 `"pin": "GPIO2"`，两者均能通过 `headers` 准确解析到底层物理 GPIO 2；
 * **换板零修改**：在 `wink-app.json` 中写 `"gpio_pin": "$board.headers.D18"`，换板时只需替换 `board.json`，无需修改 App 引脚配置；
-* **转义规则**：若应用需要输出字面量 `"$board.headers.D18"`，使用 `"$$board.headers.D18"`，生成器会自动剥离第一个 `$` 符号。
+* **转义规则**：若应用需要输出字面量 `"$board.headers.D18"`，使用 `"$$board.headers.D18"`，生成器会自动剥离第一个 `$` 符号；
+* **解析产物是整数**：标签在 codegen 期完成查表替换，`generated/device_tree.c` 中只保留数值（如 `.trig_pin = 4`），符号名不进入固件。
 
-##### B. 8051 端口位的线性索引投影（以 `stc89c52_devboard.json` 为例）
+#### 2. 链路二：前端画布丝印与走线端点
+
+前端仿真器（`embedded-frontend/boards/board-json-loader.ts`）直接加载板级 JSON：
+
+* `Object.values(headers)` 去重排序 → 板上可布线引脚集合（`gpioPins` / `routablePins`）；
+* **规范丝印名**：多个别名指向同一 GPIO 时（如 `D2` 与 `GPIO2` 同为 2），按芯片家族优先级只保留一个画布标签——esp32 优先 `IO#/GPIO#`（避免与板载 SPI Flash 的 D0~D3 丝印混淆），avr 优先 `D#/A#`，mcs51 为 `P#.#`，pdk 为 `PA.#/PB.#`；
+* **排针几何**：由引脚数派生双列排针的本地坐标与 LEFT/RIGHT 边，作为画布导线物理吸附的端点。
+
+#### 3. 链路三：8051 端口位线性化与仿真通道号
+
 8051 架构以 `P0` ~ `P3` 端口寻址，每个端口 8 位。`headers` 采用以下数学投影将其展平为 `0 ~ 31` 的线性连续索引：
 
 $$\text{linear\_index} = (\text{port} \times 8) + \text{bit}$$
@@ -166,15 +161,21 @@ $$\text{linear\_index} = (\text{port} \times 8) + \text{bit}$$
   "P3.0": 24, "P3.1": 25, ..., "P3.7": 31
 }
 ```
-* **实战闭环链路（以按键点灯 `mcs51_button_led` 为例）**：
-  1. 用户原生 C 源码：`sbit KEY = P3^2;`（端口 3，位 2）；
-  2. `headers` 数学投影：`P3.2` 对应通道 $(3 \times 8) + 2 = \mathbf{26}$；
-  3. `wink-app.json` / 设备树：按钮外设直接配置 `"gpio_pin": 26`（或 `"$board.headers.P3.2"`）；
-  4. UniSim 虚拟外设：当用户在界面按下按钮，虚拟引脚仲裁器（PinArbiter）将电平精准注入通道 26；
-  5. 固件生成期解码：`mcs51_board_config.py` 通过极低开销的位运算直接生成操作 SFR 寄存器的底层指令：
-     * $\text{port} = (\text{linear\_index} \gg 3) \ \& \ 0\text{x}3 \implies 3$（对应 `P3`）
-     * $\text{bit} = \text{linear\_index} \ \& \ 0\text{x}7 \implies 2$（对应位 2）
-  从而达成从界面交互、设备树配置到原生 C 语言执行的全链路零摩擦直通！
+
+该投影同时是**固件侧与仿真侧的共同编号约定**：固件生成头 `mcs51_board_config.h` 提供 `MCS51_PIN_IDX_PORT(idx) = (idx >> 3) & 0x3` 与 `MCS51_PIN_IDX_BIT(idx) = idx & 0x7` 两个通用宏，其头注释明确要求 *"Pin index convention (MUST match boards/\<board\>.json headers)"*——board.json 是 SSOT，固件宏与 PinArbiter 通道号都是消费方，codegen 不为每个排针标签生成常量。
+
+**实战闭环链路（以按键点灯 `mcs51_button_led` 为例）**：
+
+1. 用户原生 C 源码：`sbit KEY = P3^2;`（端口 3，位 2）；
+2. `headers` 数学投影：`P3.2` 对应通道 $(3 \times 8) + 2 = \mathbf{26}$；
+3. `wink-app.json` / 设备树：按钮外设配置 `"gpio_pin": 26`（或 `"$board.headers.P3.2"`）；
+4. UniSim 虚拟外设：当用户在界面按下按钮，虚拟引脚仲裁器（PinArbiter）将电平注入通道 26；
+5. 仿真桥解码：mcs51 框架用 `idx >> 3` / `idx & 0x7` 将通道 26 分解回 (P3, 位 2)，写入虚拟 SFR 位；原生固件中 `sbit KEY = P3^2` 读取的正是该 SFR 位。
+
+#### 4. 原生源码“零修改”的真实机制
+
+* **Keil C51 `sbit` 源码**：`sbit KEY = P3^2;` 由真实 SFR 寄存器头在编译期解析——`wink_mcu.h` 按 MCU 宏路由到 `REGX52.H`（标准 8051）或 `REG_CMS8S78XX.H`（中微），`P3` 本身就是 SFR。**这条链路不依赖 headers 字典生成任何 C 常量**；headers 的职责是保证“配置/仿真侧的通道 26”与“固件侧的 `P3^2`”指向同一个物理点。
+* **Arduino 引脚常量（`D2`、`A0`、`LED_BUILTIN`）**：由 codegen 从 `headers` 与 `onboard_devices` 生成板级常量头 `wink_board_pins.h`，Arduino 框架经 `Arduino.h` 中的 `__has_include` 守卫自动引入，生成规则见 §3.5。
 
 ---
 
@@ -225,6 +226,37 @@ Wink Micro OS 设计了统一的门面头文件 `wink_mcu.h`（`frameworks/mcs51
 * **Tier 1 (AI-Native OS, 如 `esp32`, `stm32`)**：全功能 WASM 运行时，模拟调度器与多任务；
 * **Tier 2 (C51 Proxy, 如 `at89c52`, `cms8s78xx`)**：8051 固件指令拦截与 SFR 虚拟仿真网关；
 * **Tier 3 (1:1 ISA VM, 如 `pfs154`, `pms150c`)**：周期精确级硬件指令集虚拟机。
+
+---
+
+### 3.5 `wink_board_pins.h` 板级引脚常量生成契约（Arduino）
+
+未修改的 Arduino Sketch 会直接使用 SDK 内置引脚常量（`D2`、`A0`、`LED_BUILTIN` 等）。为让这类源码在 Wink 仿真环境中零修改编译，codegen 在每个 app 的构建树 `generated/` 下发射 `wink_board_pins.h`，由 `frameworks/arduino/include/Arduino.h` 通过 `__has_include` 守卫自动引入（头文件不存在时静默跳过，框架保持自包含）。
+
+**生成规则**：
+
+1. **仅发射标识符安全且符合引脚命名范式的标签**：白名单正则 `^(D|A|GPIO|IO)\d+$`（PDK 家族为 `^P[AB]\d+$`）。带点号的 8051/PDK 端口位标签（`P3.2`、`PA.0`）一律跳过——它们由原生 SFR 头（`REGX52.H`、`pfs154.h`）服务；`EN`、`VP`、`3V3` 等特殊功能/电源名同样跳过，避免与上游核心或业务代码的符号冲突；
+2. **每个宏带 `#ifndef` 守卫**：用户 Sketch 内自定义的同名常量优先（如 `arduino_blink_demo` 中手写的 `#define LED_BUILTIN 2` 不被覆盖，同值重定义亦合法）；
+3. **`LED_BUILTIN` 从 `onboard_devices` 推导，而非 headers 标签**：取名为 `status_led` / `led_builtin` 的 `type: "led"` 板载设备，否则取第一个板载 LED 设备的 `gpio_pin`。例如 `esp32_devkitc_v4` 推导出 GPIO 2、`arduino_uno_r3` 推导出 D13，与上游 Arduino 核心约定一致；
+4. **职责边界**：该头只承载“手写原生源码”使用的引脚常量宏；设备树外设引脚仍走链路一（`$board.headers.<KEY>` 在 codegen 期解析为整数写入 `device_tree.c`），两条链路不重叠。
+
+```c
+/* AUTO-GENERATED by wink-tools codegen from boards/<board>.json. DO NOT EDIT. */
+#ifndef WINK_BOARD_PINS_H
+#define WINK_BOARD_PINS_H
+
+#ifndef D2
+#define D2              (2)
+#endif
+#ifndef A0
+#define A0              (36)
+#endif
+#ifndef LED_BUILTIN
+#define LED_BUILTIN     (2)   /* onboard_devices.status_led.gpio_pin */
+#endif
+
+#endif /* WINK_BOARD_PINS_H */
+```
 
 ---
 
