@@ -50,7 +50,16 @@ sfr P2TRIS = 0xA2;
 sfr P3TRIS = 0xA3;
 sfr EIE1   = 0xA9;  // extended interrupt enable 1
 sfr EIE2   = 0xAA;  // extended interrupt enable 2 (bit4 = ADCIE)
+sfr P0EXTIE = 0xAC; // P0 pin interrupt enable
+sfr P1EXTIE = 0xAD; // P1 pin interrupt enable
+sfr P2EXTIE = 0xAE; // P2 pin interrupt enable
+sfr P3EXTIE = 0xAF; // P3 pin interrupt enable
+
 sfr EIF2   = 0xB2;  // extended interrupt flag 2   (bit4 = ADCIF)
+sfr P0EXTIF = 0xB4; // P0 pin interrupt flag
+sfr P1EXTIF = 0xB5; // P1 pin interrupt flag
+sfr P2EXTIF = 0xB6; // P2 pin interrupt flag
+sfr P3EXTIF = 0xB7; // P3 pin interrupt flag
 sfr EIP1   = 0xB9;  // extended interrupt priority
 sfr EIP2   = 0xBA;
 sfr EIP3   = 0xBB;
@@ -91,6 +100,15 @@ xsfr P14CFG(0xF014); xsfr P15CFG(0xF015); xsfr P16CFG(0xF016); xsfr P17CFG(0xF01
 xsfr P20CFG(0xF020); xsfr P21CFG(0xF021); xsfr P22CFG(0xF022); xsfr P23CFG(0xF023);
 xsfr P24CFG(0xF024); xsfr P25CFG(0xF025);
 xsfr P30CFG(0xF030); xsfr P31CFG(0xF031); xsfr P32CFG(0xF032); xsfr P33CFG(0xF033);
+
+// Port External Interrupt Configuration (0xF080..0xF09B)
+xsfr P00EICFG(0xF080); xsfr P01EICFG(0xF081); xsfr P02EICFG(0xF082); xsfr P03EICFG(0xF083);
+xsfr P04EICFG(0xF084); xsfr P05EICFG(0xF085); xsfr P06EICFG(0xF086); xsfr P07EICFG(0xF087);
+xsfr P10EICFG(0xF088); xsfr P11EICFG(0xF089); xsfr P12EICFG(0xF08A); xsfr P13EICFG(0xF08B);
+xsfr P14EICFG(0xF08C); xsfr P15EICFG(0xF08D); xsfr P16EICFG(0xF08E); xsfr P17EICFG(0xF08F);
+xsfr P20EICFG(0xF090); xsfr P21EICFG(0xF091); xsfr P22EICFG(0xF092); xsfr P23EICFG(0xF093);
+xsfr P24EICFG(0xF094); xsfr P25EICFG(0xF095);
+xsfr P30EICFG(0xF098); xsfr P31EICFG(0xF099); xsfr P32EICFG(0xF09A); xsfr P33EICFG(0xF09B);
 
 // Port Drive Strength (0xF00C..0xF03C)
 xsfr P0DR(0xF00C); xsfr P1DR(0xF01C); xsfr P2DR(0xF02C); xsfr P3DR(0xF03C);
@@ -266,6 +284,58 @@ xsfr ADCLDO(0xF692);  // ADC LDO control (bit7 LDOEN, bits6:5 VSEL, bit4 OUTEN)
 #define GPIO_PIN_5                           (0x05)
 #define GPIO_PIN_6                           (0x06)
 #define GPIO_PIN_7                           (0x07)
+
+#define GPIO0                                (0x00)
+#define GPIO1                                (0x01)
+#define GPIO2                                (0x02)
+#define GPIO3                                (0x03)
+
+#define GPIO_SET_INT_MODE(PortEICFG, PinIntMode) ((PortEICFG) = (PinIntMode))
+#define GPIO_INT_RISING                      (0x01)
+#define GPIO_INT_FALLING                     (0x02)
+#define GPIO_INT_BOTH_EDGE                   (0x03)
+
+static inline void GPIO_EnableInt(uint8_t Port, uint8_t PinMSK) {
+    switch (Port) {
+        case GPIO0: P0EXTIE |= PinMSK; break;
+        case GPIO1: P1EXTIE |= PinMSK; break;
+        case GPIO2: P2EXTIE |= PinMSK; break;
+        case GPIO3: P3EXTIE |= PinMSK; break;
+        default: break;
+    }
+}
+
+static inline void GPIO_DisableInt(uint8_t Port, uint8_t PinMSK) {
+    switch (Port) {
+        case GPIO0: P0EXTIE &= ~PinMSK; break;
+        case GPIO1: P1EXTIE &= ~PinMSK; break;
+        case GPIO2: P2EXTIE &= ~PinMSK; break;
+        case GPIO3: P3EXTIE &= ~PinMSK; break;
+        default: break;
+    }
+}
+
+static inline uint8_t GPIO_GetIntFlag(uint8_t Port, uint8_t PinNum) {
+    uint8_t PinIntFlag = 0;
+    switch (Port) {
+        case GPIO0: PinIntFlag = (uint8_t)(P0EXTIF & (1u << PinNum)); break;
+        case GPIO1: PinIntFlag = (uint8_t)(P1EXTIF & (1u << PinNum)); break;
+        case GPIO2: PinIntFlag = (uint8_t)(P2EXTIF & (1u << PinNum)); break;
+        case GPIO3: PinIntFlag = (uint8_t)(P3EXTIF & (1u << PinNum)); break;
+        default: break;
+    }
+    return PinIntFlag;
+}
+
+static inline void GPIO_ClearIntFlag(uint8_t Port, uint8_t PinNum) {
+    switch (Port) {
+        case GPIO0: P0EXTIF = (uint8_t)(0xff & (~(1u << PinNum))); break;
+        case GPIO1: P1EXTIF = (uint8_t)(0xff & (~(1u << PinNum))); break;
+        case GPIO2: P2EXTIF = (uint8_t)(0xff & (~(1u << PinNum))); break;
+        case GPIO3: P3EXTIF = (uint8_t)(0xff & (~(1u << PinNum))); break;
+        default: break;
+    }
+}
 
 // ── 6) Vendor System clock macros (verbatim from StdDriver inc/system.h) ───
 #define SYS_SET_SYSTEM_CLK(SystemClkDiv)     do{ CLKDIV = (SystemClkDiv); }while(0)

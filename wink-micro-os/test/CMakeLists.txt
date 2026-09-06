@@ -610,6 +610,10 @@ if(TARGET wink_mcs51_compat)
     add_mcs51_host_test(test_mcs51_extint
         mcs51/unit/test_extint_model.cpp)
 
+    # CMS8S78xx port external interrupt model (P0EI..P3EI vectors 7..10)
+    add_mcs51_host_test(test_mcs51_port_extint
+        mcs51/unit/test_mcs51_port_extint.cpp)
+
     # M2: 100 ms virtual delay == 10 master ticks, 1:1 clock conservation.
     add_mcs51_host_test(test_mcs51_clock_mapping
         mcs51/unit/test_unisim_clock_mapping.cpp
