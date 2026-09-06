@@ -10,6 +10,7 @@
 | :--- | :--- | :--- |
 | **`core`** | C 内核架构 (PAL/DAL/BAL)、驱动重构、中断子系统、I2C/SPI 兼容性 | [core/](core/README.md) |
 | **`mcs51`** | MCS-51/8051 零侵入仿真拦截层、SFR 代理、双时钟域与 Spike 资产 | [mcs51/](mcs51/README.md) |
+| **`arduino`** | Arduino 兼容框架、板级引脚常量供给（`wink_board_pins.h` codegen 生成）、Arduino API 沙箱桥接 | [arduino/](arduino/README.md) |
 | **`tools`** | CLI 工具链架构、SDK 打包发布、Scannable Codegen、Layer Lint 规则 | [tools/](tools/README.md) |
 | **`frontend`** | 前端工作台 HCTR 走线算法、拓扑元器件、Phase B 仿真体验 | [frontend/](frontend/README.md) |
 | **`unisim`** | Wasm 仿真观察层、并发压力测试、联合仿真插件契约、Arduino 仿真门控 | [unisim/](unisim/README.md) |
