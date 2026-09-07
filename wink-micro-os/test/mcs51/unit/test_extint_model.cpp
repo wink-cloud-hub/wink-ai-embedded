@@ -18,6 +18,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "absacc.h"
 #include "mcs51_proxy.hpp"
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_extint.h"
@@ -35,8 +36,14 @@ constexpr uint8_t IE_EX0   = 0u;
 constexpr uint8_t IE_EX1   = 2u;
 constexpr uint8_t IE_EA    = 7u;
 
-constexpr uint16_t PIN_INT0 = 26u;  // P3.2
-constexpr uint16_t PIN_INT1 = 27u;  // P3.3
+constexpr uint16_t PIN_INT0 = 26u;  // P3.2 (classic default)
+constexpr uint16_t PIN_INT1 = 27u;  // P3.3 (classic default)
+constexpr uint16_t PIN_P30  = 24u;  // P3.0 (vendor EXTINT0 demo mux target)
+
+// PS_INT0 pin-share selector (XSFR, ref manual §7.2.3; reset 0x7F = none).
+constexpr uint16_t XSFR_PS_INT0 = 0xF0C0u;
+constexpr uint8_t  PS_GPIO_P30_MUX_INT0 = 0x30u;
+constexpr uint8_t  PS_RESET_UNMAPPED   = 0x7Fu;
 
 constexpr uint8_t EXT_LOW  = 0u;
 constexpr uint8_t EXT_HIGH = 1u;
@@ -240,11 +247,54 @@ int main(void) {
     CHECK(g_isr0_hits == 0,
           "G: no spurious vector — baseline is world state kept across reset");
 
+    // ── H: PS pin-share mux routes INT0 to P3.0 (vendor EXTINT0 demo) ───────
+    // PS_INT0 = 0x30 (GPIO_P30_MUX_INT0): the falling edge must be sampled on
+    // P3.0 (pin 24); edges on the classic P3.2 pin are now ignored.
+    g_isr0_hits = 0;
+    ie0_config(/*it0=*/true, /*ex0=*/true, /*ea=*/true);
+    ext_set(PIN_INT0, EXT_HIGH);
+    ext_set(PIN_P30, EXT_HIGH);
+    wink_mcs51_xdata_shadow[XSFR_PS_INT0] = PS_GPIO_P30_MUX_INT0;
+    next_slice();
+    poll();  // mux change -> fresh baseline on P3.0, no edge
+    CHECK(g_isr0_hits == 0,
+          "H: PS mux to P3.0 establishes a fresh baseline, no edge");
+    next_slice();
+    ext_set(PIN_P30, EXT_LOW);  // button press on P3.0
+    poll();
+    CHECK(g_isr0_hits == 1, "H: falling edge on muxed P3.0 vectors INT0");
+    next_slice();
+    poll();  // held low — edge mode does not re-request
+    CHECK(g_isr0_hits == 1, "H: held-low on P3.0 does not re-trigger");
+    next_slice();
+    ext_set(PIN_INT0, EXT_LOW);  // falling edge on the CLASSIC pin — ignored
+    poll();
+    CHECK(g_isr0_hits == 1, "H: edge on classic P3.2 ignored after PS mux");
+    next_slice();
+    ext_set(PIN_P30, EXT_HIGH);  // release: rising edge does nothing
+    poll();
+    CHECK(g_isr0_hits == 1, "H: rising edge on P3.0 does not re-trigger");
+
+    // ── I: unprogrammed PS (reset 0x7F) restores the classic P3.2 mapping ──
+    g_isr0_hits = 0;
+    wink_mcs51_xdata_shadow[XSFR_PS_INT0] = PS_RESET_UNMAPPED;
+    ext_set(PIN_INT0, EXT_HIGH);
+    next_slice();
+    poll();  // mux back to classic -> baseline reset, no edge
+    CHECK(g_isr0_hits == 0,
+          "I: PS reset 0x7F re-baselines on classic P3.2, no edge");
+    next_slice();
+    ext_set(PIN_INT0, EXT_LOW);
+    poll();
+    CHECK(g_isr0_hits == 1,
+          "I: reset PS 0x7F restores classic P3.2 as the INT0 pin");
+
     if (fails) {
         return 1;
     }
     printf("[mcs51-ext] PASS: INT0/INT1 model — edge latch+auto-clear, pending "
            "through disable, level-mode per-slice re-request, 10 ms throttle, "
-           "HiZ ignore, reset flag/baseline semantics\n");
+           "HiZ ignore, PS pin-share mux (INT0->P3.0) + reset fallback, "
+           "reset flag/baseline semantics\n");
     return 0;
 }
