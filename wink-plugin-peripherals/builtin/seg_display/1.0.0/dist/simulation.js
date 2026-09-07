@@ -473,22 +473,21 @@ var T = w("direct_gpio_8d"), E = (e) => w(f(e)), D = 80000n, O = 255 / 2e3, k = 
 		return e;
 	}
 	integrateTo(e) {
-		let a = this.getActiveDigitsCount();
-		a > this.maxActiveDigitsInWindow && (this.maxActiveDigitsInWindow = a), a > 1 && e - this.lastConflictWarnUs >= 100000n && (this.lastConflictWarnUs = e, this.ctx?.system?.log?.warn?.(`[seg_display] multiple digits driven simultaneously (${a})`));
-		if (e <= this.lastEdgeUs) return;
-		let t = e - this.lastEdgeUs;
-		t > 100000n && (t = M);
-		let n = Number(t);
-		if (n <= 0) {
+		let t = this.getActiveDigitsCount();
+		if (t > this.maxActiveDigitsInWindow && (this.maxActiveDigitsInWindow = t), t > 1 && e - this.lastConflictWarnUs >= 100000n && (this.lastConflictWarnUs = e, this.ctx?.system?.log?.warn?.(`[seg_display] multiple digits driven simultaneously (${t})`)), e <= this.lastEdgeUs) return;
+		let n = e - this.lastEdgeUs;
+		n > 100000n && (n = M);
+		let r = Number(n);
+		if (r <= 0) {
 			this.lastEdgeUs = e;
 			return;
 		}
-		let r = Math.exp(-n / Number(D)), i = n * O;
+		let i = Math.exp(-r / Number(D)), a = r * O;
 		for (let e = 0; e < this.nDigits; e++) {
 			let t = this.isDigitActive(e), n = e * 8;
 			for (let e = 0; e < 8; e++) {
-				let a = this.isSegActive(e), o = t && a, s = n + e, c = this.bright[s];
-				o && (c = Math.min(255, c + i)), c = Math.max(0, c * r), this.bright[s] = Math.round(c);
+				let r = this.isSegActive(e), o = t && r, s = n + e, c = this.bright[s];
+				o && (c = Math.min(255, c + a)), c = Math.max(0, c * i), this.bright[s] = Math.round(c);
 			}
 		}
 		this.lastEdgeUs = e;
@@ -504,21 +503,11 @@ var T = w("direct_gpio_8d"), E = (e) => w(f(e)), D = 80000n, O = 255 / 2e3, k = 
 			this.digLevel[d] !== a && (this.digLevel[d] = a ?? t.HI_Z, l = !0);
 			let n = this.isDigitActive(d);
 			if (d === 0 && n && !e) {
-				if (this.dig0HistoryUs.length > 0) {
-					let e = this.dig0HistoryUs[this.dig0HistoryUs.length - 1];
-					c - e > 500000n && (this.dig0HistoryUs = []);
-				}
-				this.dig0HistoryUs.push(c);
-				this.dig0HistoryUs.length > 3 && this.dig0HistoryUs.shift();
-				if (this.dig0HistoryUs.length >= 2) {
-					let e = this.dig0HistoryUs.length - 1,
-						t = c - this.dig0HistoryUs[0];
+				if (this.dig0HistoryUs.length > 0 && c - this.dig0HistoryUs[this.dig0HistoryUs.length - 1] > 500000n && (this.dig0HistoryUs = []), this.dig0HistoryUs.push(c), this.dig0HistoryUs.length > 3 && this.dig0HistoryUs.shift(), this.dig0HistoryUs.length >= 2) {
+					let e = this.dig0HistoryUs.length - 1, t = c - this.dig0HistoryUs[0];
 					if (t > 0n) {
 						let n = t / BigInt(e);
-						if (n > 0n) {
-							this.scanHz = Math.round(1e6 / Number(n));
-							this.ctx?.publish?.("scanHz", this.scanHz);
-						}
+						n > 0n && (this.scanHz = Math.round(1e6 / Number(n)), this.ctx?.publish?.("scanHz", this.scanHz));
 					}
 				}
 				this.lastDig0ActiveUs = c;
@@ -528,23 +517,22 @@ var T = w("direct_gpio_8d"), E = (e) => w(f(e)), D = 80000n, O = 255 / 2e3, k = 
 	}
 	publishFrame(e = this.getNowUs()) {
 		this.integrateTo(e);
-		let t = "", curActive = this.getActiveDigitsCount(), pubActive = Math.max(this.maxActiveDigitsInWindow, curActive);
+		let t = this.getActiveDigitsCount(), n = Math.max(this.maxActiveDigitsInWindow, t), r = "";
 		for (let e = 0; e < this.nDigits; e++) {
-			let n = 0, r = e * 8;
-			for (let e = 0; e < 8; e++) this.bright[r + e] >= 50 && (n |= 1 << e);
-			this.segMask[e] = n, t += b(n);
+			let t = 0, n = e * 8;
+			for (let e = 0; e < 8; e++) this.bright[n + e] >= 50 && (t |= 1 << e);
+			this.segMask[e] = t, r += b(t);
 		}
-		this.ctx && (this.ctx.publish("bright", this.bright), this.ctx.publish("segMask", JSON.stringify(Array.from(this.segMask))), this.ctx.publish("text", t), this.ctx.publish("scanHz", this.scanHz), this.ctx.publish("activeDigits", pubActive)), this.maxActiveDigitsInWindow = curActive;
-		let n = !1;
+		this.ctx && (this.ctx.publish("bright", this.bright), this.ctx.publish("segMask", JSON.stringify(Array.from(this.segMask))), this.ctx.publish("text", r), this.ctx.publish("scanHz", this.scanHz), this.ctx.publish("activeDigits", n)), this.maxActiveDigitsInWindow = t;
+		let i = !1;
 		for (let e = 0; e < this.bright.length; e++) if (this.bright[e] > 0) {
-			n = !0;
+			i = !0;
 			break;
 		}
-		n && !this.tailPending && !this.throttle.isPending() && this.ctx && this.scheduleTail(e);
+		i && !this.tailPending && !this.throttle.isPending() && this.ctx && this.scheduleTail(e);
 	}
 	scheduleTail(e) {
-		if (this.tailPending) return;
-		if (this.throttle.isPending()) return;
+		if (this.tailPending || this.throttle.isPending()) return;
 		this.tailPending = !0;
 		let t = ++this.tailGen, n = this.ctx;
 		typeof n?.deferUs == "function" ? n.deferUs(j, () => {
