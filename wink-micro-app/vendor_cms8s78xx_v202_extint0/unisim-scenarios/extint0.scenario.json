@@ -1,0 +1,104 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51 CMS8S78xx EXTINT0 (P3.0 falling edge -> P3.2 toggle) headless proof",
+    "templateId": "vendor_cms8s78xx_v202_extint0",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "2500000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "gpio:24",
+      "matcher": 1,
+      "description": "[上电初始] P3.0 (Pin 24 / INT0 按键) 内部上拉，空闲为高电平 1"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "gpio:26",
+      "matcher": 0,
+      "description": "[上电初始] P3.2 (Pin 26 / LED) 初始置低，LED 熄灭"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "100ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "150ms",
+      "target": "gpio:24",
+      "matcher": 0,
+      "description": "[按下按键] P3.0 瞬间跳变为低电平 0 (产生下降沿)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "200ms",
+      "target": "gpio:26",
+      "matcher": 1,
+      "description": "[首次触发] 下降沿经 PS_INT0 复用触发 INT0 中断 (向量0)，P3.2 翻转为 1 (LED 点亮)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "gpio:24",
+      "matcher": 0,
+      "description": "[长按保持 400ms] P3.0 持续锁死在低电平 0，无任何毛刺回弹"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1000ms",
+      "target": "gpio:26",
+      "matcher": 1,
+      "description": "[状态稳定] 边沿模式下长按不重复触发，P3.2 稳定保持为 1"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "1100ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1200ms",
+      "target": "gpio:24",
+      "matcher": 1,
+      "description": "[松开按键] P3.0 恢复高电平 1 (产生上升沿)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1200ms",
+      "target": "gpio:26",
+      "matcher": 1,
+      "description": "[边沿单向性] 松开上升沿不触发 INT0，P3.2 依然保持高电平 1"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "1500ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1600ms",
+      "target": "gpio:26",
+      "matcher": 0,
+      "description": "[再次按下] 第二次下降沿触发 INT0，P3.2 翻转回 0 (LED 熄灭)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "1700ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    }
+  ]
+}

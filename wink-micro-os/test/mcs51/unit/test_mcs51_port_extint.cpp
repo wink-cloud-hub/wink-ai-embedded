@@ -18,6 +18,12 @@
 #include "wink_mcs51_extint.h"
 #include "wink_mcs51_isr.h"
 
+// Undefine the Keil dialect main remap (REGX52.H) so the test runner main()
+// can link; wink_mcs51_user_main is provided as an explicit stub below.
+#ifdef main
+#undef main
+#endif
+
 namespace {
 
 constexpr uint16_t PIN_P01 = 1u;   // Port 0, Pin 1
@@ -136,6 +142,7 @@ int main(void) {
     GPIO_EnableInt(GPIO0, GPIO_PIN_1_MSK);
     g_p0ei_hits = 0;
 
+    next_slice();
     ext_set(PIN_P01, EXT_LOW);
     poll();
     CHECK(g_p0ei_hits == 0, "T2.1: Low baseline produces no interrupt");
@@ -146,12 +153,16 @@ int main(void) {
     CHECK(g_p0ei_hits == 1, "T2.2: Rising edge triggers P0EI");
 
     // ── Test 3: P20 Both Edges Interrupt ────────────────────────────────
+    // Earlier polls already sampled P20 as HiZ->high, so establish a LOW
+    // baseline first while the P2 edge interrupt is still disabled (mode 0 /
+    // P2EXTIE masked); only then arm both-edge mode, so the assertions count
+    // transitions after arming.
+    ext_set(PIN_P20, EXT_LOW);
+    next_slice();
+    poll();
     GPIO_SET_INT_MODE(P20EICFG, GPIO_INT_BOTH_EDGE);
     GPIO_EnableInt(GPIO2, GPIO_PIN_0_MSK);
     g_p2ei_hits = 0;
-
-    ext_set(PIN_P20, EXT_LOW);
-    poll();
     CHECK(g_p2ei_hits == 0, "T3.1: Low baseline");
 
     next_slice();

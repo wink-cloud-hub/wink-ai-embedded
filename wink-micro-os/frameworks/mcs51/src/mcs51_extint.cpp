@@ -16,8 +16,15 @@ constexpr uint8_t SFR_TCON = 0x88;
 constexpr uint8_t SFR_IE   = 0xA8;
 
 // TCON bits: IT0/IE0 (bit 0/1), IT1/IE1 (bit 2/3). IE bits: EX0/EX1
-// (bit 0/2), EA (bit 7). INT0 -> vector 0 (P3.2, linear pin 26);
-// INT1 -> vector 2 (P3.3, linear pin 27).
+// (bit 0/2), EA (bit 7). INT0 -> vector 0; INT1 -> vector 2.
+//
+// On a classic 8051 the INT inputs are bond-fixed to P3.2 (linear pin 26) and
+// P3.3 (pin 27). The CMS8S78xx routes them through a pin-share mux instead:
+// PS_INT0 (XSFR 0xF0C0) / PS_INT1 (XSFR 0xF0C1), value 0xPN = port P, pin N
+// (ref manual §7.2.3; reset 0x7F = no pin connected). The vendor EXTINT demo
+// muxes INT0->P3.0 (pin 24) and INT1->P3.1 (pin 25). An unprogrammed/reserved
+// selector falls back to the classic P3.2/P3.3 pins, so generic-8051 firmware
+// that never touches PS keeps the textbook mapping.
 constexpr uint8_t TCON_IT0 = 0u;
 constexpr uint8_t TCON_IE0 = 1u;
 constexpr uint8_t TCON_IT1 = 2u;
@@ -29,8 +36,8 @@ constexpr uint8_t IE_EA    = 7u;
 constexpr uint8_t VECTOR_INT0 = 0u;
 constexpr uint8_t VECTOR_INT1 = 2u;
 
-constexpr uint16_t PIN_INT0 = (3u << 3) | 2u;  // 26
-constexpr uint16_t PIN_INT1 = (3u << 3) | 3u;  // 27
+constexpr uint16_t PIN_INT0 = (3u << 3) | 2u;  // 26, classic default
+constexpr uint16_t PIN_INT1 = (3u << 3) | 3u;  // 27, classic default
 
 // js_pal_gpio_read_state state codes (mirror JS_GPIO_STATE_*).
 constexpr uint8_t EXT_LOW = 0u;
@@ -41,8 +48,35 @@ constexpr uint8_t EXT_HIGH = 1u;
 // nothing new and just burns JS bridge calls.
 constexpr uint64_t SAMPLE_PERIOD_US = 10000ull;
 
+// CMS8S78xx port external interrupt model (P0EI..P3EI: vectors 7..10)
+constexpr uint8_t SFR_P0EXTIE = 0xACu;
+constexpr uint8_t SFR_P0EXTIF = 0xB4u;
+constexpr uint8_t PORT_PINS[4] = {8u, 8u, 6u, 4u};
+constexpr uint16_t PORT_EICFG_BASE[4] = {0xF080u, 0xF088u, 0xF090u, 0xF098u};
+constexpr uint8_t PORT_VECTORS[4] = {7u, 8u, 9u, 10u};
+
+// Pin-share selector XSFR addresses (ref manual §7.2.3; reset value 0x7F).
+constexpr uint16_t XSFR_PS_INT0 = 0xF0C0u;
+constexpr uint16_t XSFR_PS_INT1 = 0xF0C1u;
+constexpr uint8_t  PS_RESET     = 0x7Fu;  // "no pin connected"
+
+// Decode a PS_XX<6:0> selector: 0xPN encodes port P (bits 6:4) + pin N
+// (bits 3:0), e.g. 0x30 = P3.0. The reset value (0x7F), 0xFF, and any
+// out-of-range encoding mean "not connected here" -> classic default pin.
+uint16_t resolve_int_pin(uint16_t ps_addr, uint16_t fallback_pin) {
+    uint8_t sel  = wink_mcs51_xdata_shadow[ps_addr];
+    uint8_t port = (sel >> 4) & 0x07u;
+    uint8_t bit  = sel & 0x0Fu;
+    if (port < 4u && bit < PORT_PINS[port]) {
+        return static_cast<uint16_t>((port << 3) | bit);
+    }
+    return fallback_pin;
+}
+
 struct ExtIntLine {
-    uint16_t pin;
+    uint16_t pin;            // currently-resolved input pin (linear 0..27)
+    uint16_t fallback_pin;   // classic-8051 pin when PS is unprogrammed
+    uint16_t ps_addr;        // XSFR pin-share selector address
     uint8_t  vector;
     uint8_t  it_bit;   // TCON ITx bit
     uint8_t  ie_bit;   // TCON IEx bit
@@ -53,16 +87,9 @@ struct ExtIntLine {
 };
 
 ExtIntLine s_lines[2] = {
-    {PIN_INT0, VECTOR_INT0, TCON_IT0, TCON_IE0, IE_EX0, 0xFFu, 0, false},
-    {PIN_INT1, VECTOR_INT1, TCON_IT1, TCON_IE1, IE_EX1, 0xFFu, 0, false},
+    {PIN_INT0, PIN_INT0, XSFR_PS_INT0, VECTOR_INT0, TCON_IT0, TCON_IE0, IE_EX0, 0xFFu, 0, false},
+    {PIN_INT1, PIN_INT1, XSFR_PS_INT1, VECTOR_INT1, TCON_IT1, TCON_IE1, IE_EX1, 0xFFu, 0, false},
 };
-
-// CMS8S78xx port external interrupt model (P0EI..P3EI: vectors 7..10)
-constexpr uint8_t SFR_P0EXTIE = 0xACu;
-constexpr uint8_t SFR_P0EXTIF = 0xB4u;
-constexpr uint8_t PORT_PINS[4] = {8u, 8u, 6u, 4u};
-constexpr uint16_t PORT_EICFG_BASE[4] = {0xF080u, 0xF088u, 0xF090u, 0xF098u};
-constexpr uint8_t PORT_VECTORS[4] = {7u, 8u, 9u, 10u};
 
 struct PortPinState {
     uint8_t last_level;
@@ -91,6 +118,16 @@ bool s_sample_due = false;
 bool s_in_poll = false;
 
 void poll_line(ExtIntLine& ln) {
+    // Resolve the physical INT pin through the PS_INTx pin-share mux
+    // (0xF0C0/0xF0C1). A mux change is a configuration event, not world
+    // state: drop the edge baseline so the old pin's last level and the new
+    // pin's first sample cannot synthesize a spurious edge.
+    uint16_t pin = resolve_int_pin(ln.ps_addr, ln.fallback_pin);
+    bool mux_changed = (pin != ln.pin);
+    if (mux_changed) {
+        ln.pin = pin;
+        ln.last_level = 0xFFu;
+    }
     uint8_t st = js_pal_gpio_read_state(ln.pin);
     // Resolve the pin level the same way the hardware does for an active-low
     // INT input: a driven 0/1 from the PinArbiter/button wins; HiZ or conflict
@@ -101,7 +138,7 @@ void poll_line(ExtIntLine& ln) {
     uint8_t level = (st == EXT_LOW) ? EXT_LOW : EXT_HIGH;
     bool was_low = (ln.last_level == EXT_LOW);
     bool now_low = (level == EXT_LOW);
-    bool falling = ln.have_sample && !was_low && now_low;
+    bool falling = !mux_changed && ln.have_sample && !was_low && now_low;
     ln.last_level = level;
 
     uint8_t tcon = wink_mcs51_sfr_shadow[SFR_TCON];
@@ -228,6 +265,12 @@ void wink_mcs51_extint_reset(void) {
     for (uint8_t p = 0; p < 4u; ++p) {
         wink_mcs51_sfr_shadow[SFR_P0EXTIF + p] = 0;
     }
+    // PS_INT0/PS_INT1 pin-share selectors reset to 0x7F ("no pin connected",
+    // ref manual §7.2.3); resolve_int_pin() maps that to the classic P3.2/
+    // P3.3 INT pins. Bridge init calls this AFTER wink_mcs51_xdata_reset(),
+    // so the xdata zeroing does not wipe the seed.
+    wink_mcs51_xdata_shadow[XSFR_PS_INT0] = PS_RESET;
+    wink_mcs51_xdata_shadow[XSFR_PS_INT1] = PS_RESET;
 }
 
 }  // extern "C"

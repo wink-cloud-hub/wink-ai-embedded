@@ -124,6 +124,13 @@ xsfr P0OD(0xF008); xsfr P1OD(0xF018); xsfr P2OD(0xF028); xsfr P3OD(0xF038);
 xsfr P0UP(0xF009); xsfr P1UP(0xF019); xsfr P2UP(0xF029); xsfr P3UP(0xF039);
 xsfr P0RD(0xF00A); xsfr P1RD(0xF01A); xsfr P2RD(0xF02A); xsfr P3RD(0xF03A);
 
+// Pin Share function selectors (ref manual §7.2.3; MOVX/xdata space).
+// PS_XX<6:0> = 0xPN selects port P + pin N for the peripheral function;
+// silicon reset 0x7F = no pin connected. The extint model resolves these to
+// the physical INT0/INT1 input pin (mcs51_extint.cpp).
+xsfr PS_INT0(0xF0C0);  // INT0 input pin selector
+xsfr PS_INT1(0xF0C1);  // INT1 input pin selector
+
 xsfr ADCLDO(0xF692);  // ADC LDO control (bit7 LDOEN, bits6:5 VSEL, bit4 OUTEN)
 
 // ── 3) Vendor bit-position / mask macros (names verbatim from cms8s78xx.h,
@@ -267,6 +274,11 @@ xsfr ADCLDO(0xF692);  // ADC LDO control (bit7 LDOEN, bits6:5 VSEL, bit4 OUTEN)
 #define GPIO_ENABLE_RD(PortRD, PinNum)       ((PortRD) |= (1 << (PinNum)))
 #define GPIO_DISABLE_RD(PortRD, PinNum)      ((PortRD) &= ~(1 << (PinNum)))
 
+// Pin-share mux: PS_XX selector <- 0xPN pin code (verbatim StdDriver inc/gpio.h)
+#define GPIO_SET_PS_MODE(Ps_mode, gpio)      (Ps_mode = gpio)
+#define GPIO_P30_MUX_INT0                    (0x30)  // PS_INT0 <- P3.0
+#define GPIO_P31_MUX_INT1                    (0x31)  // PS_INT1 <- P3.1
+
 #define GPIO_PIN_0_MSK                       (0x01)
 #define GPIO_PIN_1_MSK                       (0x02)
 #define GPIO_PIN_2_MSK                       (0x04)
@@ -335,6 +347,56 @@ static inline void GPIO_ClearIntFlag(uint8_t Port, uint8_t PinNum) {
         case GPIO3: P3EXTIF = (uint8_t)(0xff & (~(1u << PinNum))); break;
         default: break;
     }
+}
+
+// ── 5b) Vendor External-Interrupt driver (verbatim semantics from
+//        StdDriver inc/extint.h + src/extint.c): classic 8051 INT0/INT1 with
+//        TCON.ITx trigger select (0 = low level, 1 = falling edge) and
+//        IE.EXx enable; the physical input pin is routed via the PS_INT0/
+//        PS_INT1 pin-share mux (modeled in mcs51_extint.cpp). ────────────────
+#define EXTINT0                              (0x00)
+#define EXTINT1                              (0x01)
+#define EXTINT_TRIG_LOW                      (0x00)
+#define EXTINT_TRIG_FALLING                  (0x01)
+
+static inline void EXTINT_ConfigInt(uint8_t Extintn, uint8_t IntMode) {
+    if (EXTINT0 == Extintn) {
+        if (EXTINT_TRIG_LOW == IntMode) {
+            IT0 = 0;
+        }
+        if (EXTINT_TRIG_FALLING == IntMode) {
+            IT0 = 1;
+        }
+    }
+    if (EXTINT1 == Extintn) {
+        if (EXTINT_TRIG_LOW == IntMode) {
+            IT1 = 0;
+        }
+        if (EXTINT_TRIG_FALLING == IntMode) {
+            IT1 = 1;
+        }
+    }
+}
+
+static inline void EXTINT_EnableInt(uint8_t Extintn) {
+    if (EXTINT0 == Extintn) { EX0 = 1; }
+    if (EXTINT1 == Extintn) { EX1 = 1; }
+}
+
+static inline void EXTINT_DisableInt(uint8_t Extintn) {
+    if (EXTINT0 == Extintn) { EX0 = 0; }
+    if (EXTINT1 == Extintn) { EX1 = 0; }
+}
+
+static inline uint8_t EXTINT_GetIntFlag(uint8_t Extintn) {
+    if (EXTINT0 == Extintn) { return (uint8_t)IE0; }
+    if (EXTINT1 == Extintn) { return (uint8_t)IE1; }
+    return 0u;
+}
+
+static inline void EXTINT_ClearIntFlag(uint8_t Extintn) {
+    if (EXTINT0 == Extintn) { IE0 = 0; }
+    if (EXTINT1 == Extintn) { IE1 = 0; }
 }
 
 // ── 6) Vendor System clock macros (verbatim from StdDriver inc/system.h) ───

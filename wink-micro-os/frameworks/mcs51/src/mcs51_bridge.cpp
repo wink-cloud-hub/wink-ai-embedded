@@ -85,8 +85,10 @@ void mcs51_framework_init(void) {
     wink_mcs51_clock_reset();
     wink_mcs51_timers_reset();
     wink_mcs51_uart_reset();
-    wink_mcs51_extint_reset();
+    // xdata first: extint reset seeds the PS_INT0/PS_INT1 pin-share selectors
+    // (XSFR 0xF0C0/0xF0C1) with their silicon reset value 0x7F after the zeroing.
     wink_mcs51_xdata_reset();
+    wink_mcs51_extint_reset();
     wink_mcs51_unsupported_reset();
 
     // M4: clear all Level-2 pin traps + SFR hooks, then re-register the
