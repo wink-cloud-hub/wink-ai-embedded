@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import '@wokwi/elements';
-import { computed, ref } from 'vue';
+import { computed, ref, onBeforeUnmount } from 'vue';
 import type { PinConnectionValue } from '@wink-ai/unisim-ui';
 
 const props = defineProps<{
@@ -20,6 +20,8 @@ const emit = defineEmits<{
 const isPressed = ref(false);
 const isSticky = ref(false);
 
+let cleanupGlobalUp: (() => void) | null = null;
+
 const pinLabel = computed(() => {
   const left1 = props.pinConnections ? props.pinConnections['1.l'] : undefined;
   const left2 = props.pinConnections ? props.pinConnections['2.l'] : undefined;
@@ -30,6 +32,9 @@ const pinLabel = computed(() => {
 
 function onPointerDown(e: PointerEvent) {
   if (e.button !== 0) return;
+  e.preventDefault();
+  e.stopPropagation();
+
   if (isSticky.value) {
     isSticky.value = false;
     isPressed.value = false;
@@ -37,39 +42,40 @@ function onPointerDown(e: PointerEvent) {
     return;
   }
 
-  try {
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  } catch {}
-
   isPressed.value = true;
   emit('buttonPress');
-}
 
-function onPointerUp(e: PointerEvent) {
-  try {
-    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-  } catch {}
+  const handleGlobalUp = (upEvent: PointerEvent) => {
+    if (cleanupGlobalUp) {
+      cleanupGlobalUp();
+      cleanupGlobalUp = null;
+    }
 
-  if (!isPressed.value) return;
+    if (!isPressed.value) return;
 
-  if (e.ctrlKey || e.metaKey) {
-    isSticky.value = true;
-    return;
-  }
+    if (upEvent.ctrlKey || upEvent.metaKey) {
+      isSticky.value = true;
+      return;
+    }
 
-  isPressed.value = false;
-  emit('buttonRelease');
-}
-
-function onPointerCancel(e: PointerEvent) {
-  try {
-    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-  } catch {}
-  if (isPressed.value && !isSticky.value) {
     isPressed.value = false;
     emit('buttonRelease');
-  }
+  };
+
+  window.addEventListener('pointerup', handleGlobalUp);
+  window.addEventListener('pointercancel', handleGlobalUp);
+  cleanupGlobalUp = () => {
+    window.removeEventListener('pointerup', handleGlobalUp);
+    window.removeEventListener('pointercancel', handleGlobalUp);
+  };
 }
+
+onBeforeUnmount(() => {
+  if (cleanupGlobalUp) {
+    cleanupGlobalUp();
+    cleanupGlobalUp = null;
+  }
+});
 </script>
 
 <template>
@@ -77,9 +83,11 @@ function onPointerCancel(e: PointerEvent) {
     <div class="component-label">Button ({{ pinLabel }})</div>
     <div
       class="btn-wrapper"
+      draggable="false"
       @pointerdown="onPointerDown"
-      @pointerup="onPointerUp"
-      @pointercancel="onPointerCancel"
+      @dragstart.prevent
+      @selectstart.prevent
+      @contextmenu.prevent
     >
       <wokwi-pushbutton
         :color="color"
@@ -121,7 +129,9 @@ function onPointerCancel(e: PointerEvent) {
   align-items: center;
   height: 50px;
   cursor: pointer;
+  touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-user-drag: none;
 }
 </style>

@@ -56,10 +56,11 @@ export const buttonDefinition: PeripheralDefinition = definePeripheral({
   canvas: CanvasGlyph,
   world: WorldWidget,
   ui: {
-    canvasProps: comp => ({
+    canvasProps: (comp, ctx) => ({
       color: comp.props.color,
       label: comp.props.label,
       xray: comp.props.xray,
+      ...(ctx?.readonly !== undefined ? { readonly: ctx.readonly } : {}),
     }),
     worldProps: comp => ({
       pinConnections: comp.pinConnections,
