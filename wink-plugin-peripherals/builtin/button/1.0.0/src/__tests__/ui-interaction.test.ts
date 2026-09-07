@@ -5,11 +5,15 @@ import { describe, expect, test } from 'bun:test';
  * and Ctrl-click sticky gesture state-machine for the Button UI.
  */
 describe('Button UI Gesture & Pointer Capture State Machine', () => {
-  function createButtonGestureHarness() {
+  function createButtonGestureHarness(options: { readonly?: boolean } = {}) {
     let isPressed = false;
     let isSticky = false;
     let capturedPointerId: number | null = null;
     const emittedEvents: string[] = [];
+    let preventDefaultCalled = false;
+    let stopPropagationCalled = false;
+
+    const readonly = options.readonly ?? true;
 
     const harness = {
       get isPressed() {
@@ -21,10 +25,32 @@ describe('Button UI Gesture & Pointer Capture State Machine', () => {
       get capturedPointerId() {
         return capturedPointerId;
       },
+      get preventDefaultCalled() {
+        return preventDefaultCalled;
+      },
+      get stopPropagationCalled() {
+        return stopPropagationCalled;
+      },
       emittedEvents,
 
-      onPointerDown(e: { button: number; pointerId: number }) {
+      onPointerDown(e: {
+        button: number;
+        pointerId: number;
+        preventDefault?: () => void;
+        stopPropagation?: () => void;
+      }) {
         if (e.button !== 0) return;
+        if (!readonly) return;
+
+        if (e.preventDefault) {
+          e.preventDefault();
+          preventDefaultCalled = true;
+        }
+        if (e.stopPropagation) {
+          e.stopPropagation();
+          stopPropagationCalled = true;
+        }
+
         if (isSticky) {
           isSticky = false;
           isPressed = false;
@@ -37,12 +63,21 @@ describe('Button UI Gesture & Pointer Capture State Machine', () => {
         emittedEvents.push('buttonPress');
       },
 
-      onPointerUp(e: { pointerId: number; ctrlKey?: boolean; metaKey?: boolean }) {
+      onPointerUp(e: {
+        pointerId: number;
+        ctrlKey?: boolean;
+        metaKey?: boolean;
+        stopPropagation?: () => void;
+      }) {
         if (capturedPointerId === e.pointerId) {
           capturedPointerId = null;
         }
 
         if (!isPressed) return;
+
+        if (e.stopPropagation) {
+          e.stopPropagation();
+        }
 
         if (e.ctrlKey || e.metaKey) {
           isSticky = true;
@@ -67,12 +102,25 @@ describe('Button UI Gesture & Pointer Capture State Machine', () => {
     return harness;
   }
 
-  test('normal press and release: emits press on down, release on up', () => {
+  test('normal press and release: emits press on down, release on up, prevents default', () => {
     const btn = createButtonGestureHarness();
+    let pd = false;
+    let sp = false;
 
-    btn.onPointerDown({ button: 0, pointerId: 1 });
+    btn.onPointerDown({
+      button: 0,
+      pointerId: 1,
+      preventDefault: () => {
+        pd = true;
+      },
+      stopPropagation: () => {
+        sp = true;
+      },
+    });
     expect(btn.isPressed).toBe(true);
     expect(btn.capturedPointerId).toBe(1);
+    expect(pd).toBe(true);
+    expect(sp).toBe(true);
     expect(btn.emittedEvents).toEqual(['buttonPress']);
 
     btn.onPointerUp({ pointerId: 1, ctrlKey: false });
@@ -81,7 +129,24 @@ describe('Button UI Gesture & Pointer Capture State Machine', () => {
     expect(btn.emittedEvents).toEqual(['buttonPress', 'buttonRelease']);
   });
 
-  test('sustained long-press: stays pressed across time without bouncing', () => {
+  test('readonly=false (edit mode): pointerdown is ignored so canvas drag can take over', () => {
+    const btn = createButtonGestureHarness({ readonly: false });
+    let pd = false;
+
+    btn.onPointerDown({
+      button: 0,
+      pointerId: 1,
+      preventDefault: () => {
+        pd = true;
+      },
+    });
+    expect(btn.isPressed).toBe(false);
+    expect(pd).toBe(false);
+    expect(btn.capturedPointerId).toBe(null);
+    expect(btn.emittedEvents).toEqual([]);
+  });
+
+  test('sustained long-press: stays pressed across time without bouncing or dropping', () => {
     const btn = createButtonGestureHarness();
 
     btn.onPointerDown({ button: 0, pointerId: 1 });

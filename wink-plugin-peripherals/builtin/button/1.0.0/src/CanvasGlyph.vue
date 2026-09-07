@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import '@wokwi/elements';
-import { ref } from 'vue';
+import { ref, onBeforeUnmount } from 'vue';
 
-defineProps<{
-  color: string;
-  label: string;
-  xray: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    color: string;
+    label: string;
+    xray: boolean;
+    readonly?: boolean;
+  }>(),
+  {
+    readonly: true,
+  },
+);
 
 const emit = defineEmits<{
   buttonPress: [];
@@ -16,8 +22,16 @@ const emit = defineEmits<{
 const isPressed = ref(false);
 const isSticky = ref(false);
 
+let cleanupGlobalUp: (() => void) | null = null;
+
 function onPointerDown(e: PointerEvent) {
   if (e.button !== 0) return;
+  // In circuit edit mode (readonly === false), let pointerdown bubble to component drag
+  if (props.readonly === false) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+
   // If previously latched via Ctrl-click, clicking it again unlatches and releases it
   if (isSticky.value) {
     isSticky.value = false;
@@ -26,48 +40,50 @@ function onPointerDown(e: PointerEvent) {
     return;
   }
 
-  try {
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  } catch {}
-
   isPressed.value = true;
   emit('buttonPress');
-}
 
-function onPointerUp(e: PointerEvent) {
-  try {
-    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-  } catch {}
+  const handleGlobalUp = (upEvent: PointerEvent) => {
+    if (cleanupGlobalUp) {
+      cleanupGlobalUp();
+      cleanupGlobalUp = null;
+    }
 
-  if (!isPressed.value) return;
+    if (!isPressed.value) return;
 
-  // If Ctrl/Cmd was held during release, latch the button (sticky mode)
-  if (e.ctrlKey || e.metaKey) {
-    isSticky.value = true;
-    return;
-  }
+    if (upEvent.ctrlKey || upEvent.metaKey) {
+      isSticky.value = true;
+      return;
+    }
 
-  isPressed.value = false;
-  emit('buttonRelease');
-}
-
-function onPointerCancel(e: PointerEvent) {
-  try {
-    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-  } catch {}
-  if (isPressed.value && !isSticky.value) {
     isPressed.value = false;
     emit('buttonRelease');
-  }
+  };
+
+  window.addEventListener('pointerup', handleGlobalUp);
+  window.addEventListener('pointercancel', handleGlobalUp);
+  cleanupGlobalUp = () => {
+    window.removeEventListener('pointerup', handleGlobalUp);
+    window.removeEventListener('pointercancel', handleGlobalUp);
+  };
 }
+
+onBeforeUnmount(() => {
+  if (cleanupGlobalUp) {
+    cleanupGlobalUp();
+    cleanupGlobalUp = null;
+  }
+});
 </script>
 
 <template>
   <div
     class="button-glyph-wrapper"
+    draggable="false"
     @pointerdown="onPointerDown"
-    @pointerup="onPointerUp"
-    @pointercancel="onPointerCancel"
+    @dragstart.prevent
+    @selectstart.prevent
+    @contextmenu.prevent
   >
     <wokwi-pushbutton
       :color="color"
@@ -84,7 +100,9 @@ function onPointerCancel(e: PointerEvent) {
   display: inline-block;
   vertical-align: top;
   cursor: pointer;
+  touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-user-drag: none;
 }
 </style>

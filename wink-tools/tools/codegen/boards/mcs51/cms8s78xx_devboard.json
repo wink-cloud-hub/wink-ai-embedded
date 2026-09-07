@@ -9,13 +9,6 @@
       "sim_heap_quota_kb": 16
     }
   },
-  "onboard_devices": {
-    "status_led": {
-      "type": "led",
-      "gpio_pin": 0,
-      "active_low": true
-    }
-  },
   "buses": {
     "i2c0": {
       "sda": 3,
