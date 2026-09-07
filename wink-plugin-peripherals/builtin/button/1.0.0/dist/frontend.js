@@ -1,13 +1,14 @@
 import { definePeripheral as e, pinsFromBinderVariant as t } from "@wink-ai/unisim-ui";
 import { resolvePluginIdentity as n } from "@wink-ai/unisim";
-import { computed as r, createElementBlock as i, createElementVNode as a, defineComponent as o, openBlock as s, toDisplayString as c } from "vue";
+import { computed as r, createElementBlock as i, createElementVNode as a, defineComponent as o, openBlock as s, ref as c, toDisplayString as l } from "vue";
 import "@wokwi/elements";
 //#region builtin/button/1.0.0/src/CanvasGlyph.vue?vue&type=script&setup=true&lang.ts
-var l = [
+var u = [
 	"color",
 	"label",
-	"xray"
-], u = /* @__PURE__ */ o({
+	"xray",
+	"pressed"
+], d = /*@__PURE__*/ o({
 	__name: "CanvasGlyph",
 	props: {
 		color: {},
@@ -15,24 +16,61 @@ var l = [
 		xray: { type: Boolean }
 	},
 	emits: ["buttonPress", "buttonRelease"],
-	setup(e) {
-		return (t, n) => (s(), i("wokwi-pushbutton", {
+	setup(e, { emit: t }) {
+		let n = t, r = c(!1), o = c(!1);
+		function l(e) {
+			if (e.button === 0) {
+				if (o.value) {
+					o.value = !1, r.value = !1, n("buttonRelease");
+					return;
+				}
+				try {
+					e.currentTarget.setPointerCapture(e.pointerId);
+				} catch {}
+				r.value = !0, n("buttonPress");
+			}
+		}
+		function d(e) {
+			try {
+				e.currentTarget.releasePointerCapture(e.pointerId);
+			} catch {}
+			if (r.value) {
+				if (e.ctrlKey || e.metaKey) {
+					o.value = !0;
+					return;
+				}
+				r.value = !1, n("buttonRelease");
+			}
+		}
+		function f(e) {
+			try {
+				e.currentTarget.releasePointerCapture(e.pointerId);
+			} catch {}
+			r.value && !o.value && (r.value = !1, n("buttonRelease"));
+		}
+		return (t, n) => (s(), i("div", {
+			class: "button-glyph-wrapper",
+			onPointerdown: l,
+			onPointerup: d,
+			onPointercancel: f
+		}, [a("wokwi-pushbutton", {
 			color: e.color,
 			label: e.label,
 			xray: e.xray,
-			onButtonPress: n[0] ||= (e) => t.$emit("buttonPress"),
-			onButtonRelease: n[1] ||= (e) => t.$emit("buttonRelease")
-		}, null, 40, l));
+			pressed: r.value,
+			style: { "pointer-events": "none" }
+		}, null, 8, u)], 32));
 	}
-}), d = { class: "virtual-button" }, f = { class: "component-label" }, p = { class: "btn-wrapper" }, m = [
-	"color",
-	"label",
-	"xray"
-], h = /*#__PURE__*/ ((e, t) => {
+}), f = (e, t) => {
 	let n = e.__vccOpts || e;
 	for (let [e, r] of t) n[e] = r;
 	return n;
-})(/* @__PURE__ */ o({
+}, p = /*#__PURE__*/ f(d, [["__scopeId", "data-v-87ea0df7"]]), m = { class: "virtual-button" }, h = { class: "component-label" }, g = [
+	"color",
+	"label",
+	"xray",
+	"pressed"
+], _ = /*#__PURE__*/ f(/* @__PURE__ */ o({
 	__name: "WorldWidget",
 	props: {
 		pluginInstanceId: {},
@@ -44,24 +82,53 @@ var l = [
 	},
 	emits: ["buttonPress", "buttonRelease"],
 	setup(e, { emit: t }) {
-		let n = e, o = t, l = r(() => `1.l:${n.pinConnections ? n.pinConnections["1.l"] : void 0}, 2.l:${n.pinConnections ? n.pinConnections["2.l"] : void 0}, 1.r:${n.pinConnections ? n.pinConnections["1.r"] : void 0}, 2.r:${n.pinConnections ? n.pinConnections["2.r"] : void 0}`);
-		function u() {
-			o("buttonPress");
+		let n = e, o = t, u = c(!1), d = c(!1), f = r(() => `1.l:${n.pinConnections ? n.pinConnections["1.l"] : void 0}, 2.l:${n.pinConnections ? n.pinConnections["2.l"] : void 0}, 1.r:${n.pinConnections ? n.pinConnections["1.r"] : void 0}, 2.r:${n.pinConnections ? n.pinConnections["2.r"] : void 0}`);
+		function p(e) {
+			if (e.button === 0) {
+				if (d.value) {
+					d.value = !1, u.value = !1, o("buttonRelease");
+					return;
+				}
+				try {
+					e.currentTarget.setPointerCapture(e.pointerId);
+				} catch {}
+				u.value = !0, o("buttonPress");
+			}
 		}
-		function h() {
-			o("buttonRelease");
+		function _(e) {
+			try {
+				e.currentTarget.releasePointerCapture(e.pointerId);
+			} catch {}
+			if (u.value) {
+				if (e.ctrlKey || e.metaKey) {
+					d.value = !0;
+					return;
+				}
+				u.value = !1, o("buttonRelease");
+			}
 		}
-		return (t, n) => (s(), i("div", d, [a("div", f, "Button (" + c(l.value) + ")", 1), a("div", p, [a("wokwi-pushbutton", {
+		function v(e) {
+			try {
+				e.currentTarget.releasePointerCapture(e.pointerId);
+			} catch {}
+			u.value && !d.value && (u.value = !1, o("buttonRelease"));
+		}
+		return (t, n) => (s(), i("div", m, [a("div", h, "Button (" + l(f.value) + ")", 1), a("div", {
+			class: "btn-wrapper",
+			onPointerdown: p,
+			onPointerup: _,
+			onPointercancel: v
+		}, [a("wokwi-pushbutton", {
 			color: e.color,
 			label: e.label,
 			xray: e.xray,
-			onButtonPress: u,
-			onButtonRelease: h
-		}, null, 40, m)])]));
+			pressed: u.value,
+			style: { "pointer-events": "none" }
+		}, null, 8, g)], 32)]));
 	}
-}), [["__scopeId", "data-v-bb07f06d"]]);
+}), [["__scopeId", "data-v-4f593bfc"]]);
 Object.freeze({});
-var g = Object.freeze({
+var v = Object.freeze({
 	"1.l": Object.freeze({
 		relX: -5,
 		relY: 20,
@@ -83,10 +150,10 @@ var g = Object.freeze({
 		relY: 33,
 		wireNet: "gnd"
 	})
-}), _ = Object.freeze({ default: Object.freeze({
+}), y = Object.freeze({ default: Object.freeze({
 	variant: "default",
 	getPins: () => t("button", "default"),
-	pinsOverlay: g,
+	pinsOverlay: v,
 	defaultAppearanceId: "button_default"
 }) });
 Object.freeze({ button_default: Object.freeze({
@@ -103,14 +170,14 @@ Object.freeze({ button_default: Object.freeze({
 }) });
 //#endregion
 //#region builtin/button/1.0.0/src/definition.ts
-var v = n(import.meta.url, "button", "1.0.0", "input"), y = _.default, b = e({
-	type: v.type,
+var b = n(import.meta.url, "button", "1.0.0", "input"), x = y.default, S = e({
+	type: b.type,
 	size: {
 		width: 80,
 		height: 60
 	},
 	wireColor: "#38bdf8",
-	pinsOverlay: y.pinsOverlay,
+	pinsOverlay: x.pinsOverlay,
 	props: {
 		variant: {
 			type: "string",
@@ -151,8 +218,8 @@ var v = n(import.meta.url, "button", "1.0.0", "input"), y = _.default, b = e({
 			description: "Active low mode (pull-up)"
 		}
 	},
-	canvas: u,
-	world: h,
+	canvas: p,
+	world: _,
 	ui: {
 		canvasProps: (e) => ({
 			color: e.props.color,
@@ -170,4 +237,4 @@ var v = n(import.meta.url, "button", "1.0.0", "input"), y = _.default, b = e({
 	}
 });
 //#endregion
-export { b as buttonDefinition, b as default };
+export { S as buttonDefinition, S as default };

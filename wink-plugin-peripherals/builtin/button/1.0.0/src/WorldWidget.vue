@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import '@wokwi/elements';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { PinConnectionValue } from '@wink-ai/unisim-ui';
 
 const props = defineProps<{
@@ -17,6 +17,9 @@ const emit = defineEmits<{
   (e: 'buttonRelease'): void;
 }>();
 
+const isPressed = ref(false);
+const isSticky = ref(false);
+
 const pinLabel = computed(() => {
   const left1 = props.pinConnections ? props.pinConnections['1.l'] : undefined;
   const left2 = props.pinConnections ? props.pinConnections['2.l'] : undefined;
@@ -25,25 +28,65 @@ const pinLabel = computed(() => {
   return `1.l:${left1}, 2.l:${left2}, 1.r:${right1}, 2.r:${right2}`;
 });
 
-function handlePress() {
+function onPointerDown(e: PointerEvent) {
+  if (e.button !== 0) return;
+  if (isSticky.value) {
+    isSticky.value = false;
+    isPressed.value = false;
+    emit('buttonRelease');
+    return;
+  }
+
+  try {
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  } catch {}
+
+  isPressed.value = true;
   emit('buttonPress');
 }
 
-function handleRelease() {
+function onPointerUp(e: PointerEvent) {
+  try {
+    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+  } catch {}
+
+  if (!isPressed.value) return;
+
+  if (e.ctrlKey || e.metaKey) {
+    isSticky.value = true;
+    return;
+  }
+
+  isPressed.value = false;
   emit('buttonRelease');
+}
+
+function onPointerCancel(e: PointerEvent) {
+  try {
+    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+  } catch {}
+  if (isPressed.value && !isSticky.value) {
+    isPressed.value = false;
+    emit('buttonRelease');
+  }
 }
 </script>
 
 <template>
   <div class="virtual-button">
     <div class="component-label">Button ({{ pinLabel }})</div>
-    <div class="btn-wrapper">
+    <div
+      class="btn-wrapper"
+      @pointerdown="onPointerDown"
+      @pointerup="onPointerUp"
+      @pointercancel="onPointerCancel"
+    >
       <wokwi-pushbutton
         :color="color"
         :label="label"
         :xray="xray"
-        @button-press="handlePress"
-        @button-release="handleRelease"
+        :pressed="isPressed"
+        style="pointer-events: none;"
       />
     </div>
   </div>
@@ -77,5 +120,8 @@ function handleRelease() {
   justify-content: center;
   align-items: center;
   height: 50px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
 }
 </style>
