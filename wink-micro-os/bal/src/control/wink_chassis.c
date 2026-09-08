@@ -5,6 +5,7 @@
 #include "wink_blocking_region.h"
 #include "pal_log.h"
 #include "pal_osal.h"
+#include "pal_irq.h"
 #include <string.h>
 
 #ifndef WINK_CHASSIS_MAX

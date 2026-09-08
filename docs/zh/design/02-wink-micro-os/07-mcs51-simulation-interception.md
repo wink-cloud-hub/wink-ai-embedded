@@ -6,7 +6,7 @@
 > - 技术设计：[`docs/tech-designs/mcs51/`](../../tech-designs/mcs51/)（总纲 + 数据面 + 时序面 + 用户手册 + [物理一致性与测试方法论](../../tech-designs/mcs51/2026-09-08-mcs51-simulation-vs-silicon-fidelity-and-test-limits.md) + 总方案）
 > - 实施计划：[`2026-08-27-mcs51-zero-code-simulation-plan.md`](../../implementation-plans/core/2026-08-27-mcs51-zero-code-simulation-plan.md)
 > - 评审记录：[`2026-08-29-mcs51-simulation-layer-review.md`](../../reviews/core/2026-08-29-mcs51-simulation-layer-review.md)（Layer-④）
-> - 路线决策：[ADR-0076](../../decisions/core/0076-mcs51-sim-backends-native-vs-iss-channel-roadmap.md)（双后端 native vs ISS + 通道对接路线 + 小家电域频率，**Accepted 2026-08-30**；见 §2.5）
+> - 路线决策：[ADR-0076](../../decisions/core/0076-mcs51-sim-backends-native-vs-iss-channel-roadmap.md)（双后端 native vs ISS + 通道对接路线 + 小家电域频率，**Accepted 2026-08-30**；见 §2.5）、[ADR-0077](../../decisions/core/0077-gpio-write-drive-strength-axis.md)（准双向口驱动强度模型，**Accepted 2026-09-01**；见 §2.6）、[ADR-0078](../../decisions/core/0078-mcs51-two-phase-irq-and-in-service-masking.md)（中断两阶段挂起、语义中断源映射与在服务屏蔽，**Accepted 2026-09-08**；见 §2.7）
 
 ## 0. 进度看板（SSOT 索引）
 
@@ -196,6 +196,21 @@ native 功能级后端的虚拟钟（ADR-0072）：`s_virtual_us` 只在拦截�
 - **host 桥**（wink-ai `unisim-bridge-factory.ts`）：强度恒等映射进 `arbiter.setDriver`，非 1/2/3/缺省兜底 SUPPLY（`strength ?? SUPPLY`）——旧 wasm 配新 host 退回 esp32 行为不炸；新 wasm 配旧 host 时 JS 忽略多余实参、强度丢失（mcs51 退回强驱动、旧 bug 复现）但不崩。ABI SSOT 见 abi-catalog `js_pal_gpio_write` 条目（strength 参数 `desc` 编码枚举，挂 ADR-0077）。
 - **仲裁自洽**：按键 P3.2 锁存 1 = WEAK-HIGH 上拉，按下插件 SUPPLY-LOW → SUPPLY 胜、读 LOW，释放仅剩 WEAK-HIGH → HIGH；WEAK vs SUPPLY 异态**不**触发 CONFLICT（不同强度）。未修改 Keil 例程的标准 `Pn=0xFF` 初始化即可工作——health_pot 已删除「不写输入口」workaround、恢复 `P3 = 0xFF`。
 - Read-Pin 三路解析序（ADR-0074）与 RMW 只读锁存红线（ADR-0071）**不变**；本决策仅改「写边沿上报的强度」。证据：mcs51 ctest host 23 + wasm/Node 10 全绿（含新增 WEAK/SUPPLY 强度断言）、5 carrier + health_pot 2/2 headless、esp32 emcc/Node GPIO 语义 9/9（SUPPLY 路径不变）。
+
+### 2.7 中断两阶段挂起与在服务屏蔽模型（ADR-0078 Accepted）
+
+原 AD-2 条款中“同步派发且不建模嵌套中断”的假设在深度外设交互场景下暴露深调用栈递归与优先级反转缺陷。ADR-0078 正式 supersede 该条款，建立两阶段挂起与在服务屏蔽模型：
+
+- **架构中立语义中断源（`mcs51_irq_source_t`）**：外设模型（ADC、UART、Timer、ExtInt）严禁硬编码物理向量号，统一通过 `mcs51_raise_irq(src)` 请求中断；物理向量号、使能寄存器（IE/EIE）、请求标志（TCON/SCON/EIF）与优先级寄存器（IP/EIP）由厂商 Profile 映射表（`mcs51_irq_map_entry_t`）集中声明。
+- **两阶段中断派发（Two-Phase IRQ Dispatch）**：
+  - 第一阶段（挂起）：外设触发中断事件时，控制器校验使能门控并将事件记录在 `pending_interrupts` 位图中，不进入用户 ISR；
+  - 第二阶段（派发）：在微步边界（`wink_mcs51_microstep()`）、配额切出（`wink_mcs51_yield()`）等汇合点（Rendezvous points），由硬件扫描器按优先级与向量号自然序（升序）仲裁派发。
+- **在服务屏蔽（In-Service Masking）与嵌套栈**：
+  - 维护嵌套优先级栈 `in_service_prio_stack[4]` 与栈深 `in_service_depth`；
+  - 同优先级绝不抢占（排队等待当前 ISR 返回 RETI）；仅高优先级允许嵌套抢占；
+  - 彻底淘汰简单的 `s_in_isr` 标志，以 `in_service_depth > 0` 作为唯一真值源。
+- **单指令执行抑制（Single-Instruction Suppression）**：RETI 或写 IE/IP 后，硬件置位 `reti_suppress_one`，强制主程序至少推进一个微步周期才允许响应下一 pending 中断，杜绝主循环饥饿。
+- **标志清除契约**：区分 `MCS51_IRQ_HW_AUTO_CLEAR`（硬件响应自清）与 `MCS51_IRQ_SW_CLEAR`（固件显式清零；未清零则退出 ISR 后重新触发）。
 
 ## 3. 目录树、API 面、构建与测试矩阵（活规范）
 

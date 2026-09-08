@@ -38,9 +38,6 @@ constexpr uint8_t  IE_ET0 = 1u;
 constexpr uint8_t  IE_ET1 = 3u;
 constexpr uint8_t  IE_EA  = 7u;
 
-constexpr uint8_t  VECTOR_T0 = 1u;
-constexpr uint8_t  VECTOR_T1 = 3u;
-
 constexpr uint64_t NO_OVERFLOW = UINT64_MAX;
 // Pathological guard: never dispatch more than this many overflows in one
 // catch-up call (a misconfigured sub-microsecond period cannot hang the sim).
@@ -156,20 +153,18 @@ void timer_stop(uint8_t t) {
 void on_overflow(uint8_t t, uint64_t at_us) {
     TimerModel& tm = s_timers[t];
     uint8_t tcon_bit = (t == 0) ? TCON_TF0 : TCON_TF1;
-    uint8_t vector   = (t == 0) ? VECTOR_T0 : VECTOR_T1;
-    uint8_t et_bit   = (t == 0) ? IE_ET0 : IE_ET1;
 
     // Overflow latches TFx unconditionally.
     sfr_set_bit(SFR_TCON, tcon_bit);
 
-    // Vector the ISR when the interrupt is enabled (EA + ETx). Hardware
-    // clears TFx automatically when vectored; a polled/disabled TFx stays
-    // for software to clear.
-    uint8_t ie = sfr(SFR_IE);
-    bool enabled = (ie & (1u << IE_EA)) && (ie & (1u << et_bit));
-    if (enabled && wink_mcs51_dispatch_vector(vector) != 0u) {
-        sfr_clear_bit(SFR_TCON, tcon_bit);
-    }
+    // Raise semantic timer IRQ (ADR-0078).
+    // Hardware auto-clears TFx on vectoring (handled by clear_mode MCS51_IRQ_HW_AUTO_CLEAR).
+    mcs51_raise_irq((t == 0) ? IRQ_SOURCE_TIMER0 : IRQ_SOURCE_TIMER1);
+
+    // Run arbitration and dispatch so the ISR can reload THx/TLx for Mode 1/0
+    // before the next overflow is scheduled.
+    wink_mcs51_clear_reti_suppress();
+    mcs51_irq_scan_and_dispatch();
 
     // The ISR (or a polling handler) may have stopped the timer by clearing
     // TRx; respect that instead of re-arming.

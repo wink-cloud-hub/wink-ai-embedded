@@ -37,7 +37,6 @@ constexpr uint8_t SCON_REN = 4u;  // SCON.4 receive enable
 constexpr uint8_t IE_ES   = 4u;   // IE.4 UART interrupt enable
 constexpr uint8_t IE_EA   = 7u;   // IE.7 global interrupt enable
 
-constexpr uint8_t  VECTOR_UART   = 4u;
 constexpr uint32_t CAPTURE_CAP   = 4096u;
 constexpr uint32_t RX_FIFO_CAP   = 64u;
 // Functional byte-arrival spacing: on real hardware receive-complete events
@@ -54,6 +53,12 @@ constexpr uint64_t RX_BYTE_SPACING_US = 1000ull;
 uint8_t  s_capture[CAPTURE_CAP] = {};
 uint32_t s_count = 0;
 
+// Host / wasm-recording capture accessor.
+extern "C" uint32_t wink_mcs51_uart_capture_count(void) { return s_count; }
+extern "C" uint8_t  wink_mcs51_uart_capture_byte(uint32_t idx) {
+    return (idx < s_count) ? s_capture[idx] : 0u;
+}
+
 // RX pending FIFO (POD BSS). External bytes are pushed from outside the fiber
 // (host harness / JS UARTBus callback) and drained on the fiber context at
 // microstep points. 8051 hardware has no RX FIFO: a byte completing while RI
@@ -66,9 +71,11 @@ uint64_t s_rx_last_deliver_us = 0;
 bool     s_rx_have_delivered = false;
 
 void sfr_set_bit(uint8_t addr, uint8_t bit) {
-    wink_mcs51_sfr_shadow[addr] |= static_cast<uint8_t>(1u << bit);
+    wink_mcs51_sfr_shadow[addr] =
+        static_cast<uint8_t>(wink_mcs51_sfr_shadow[addr] | (1u << bit));
 }
 
+// Emits one byte to the host recording buffer and js_pal_uart_write.
 void on_sbuf_write(void) {
     uint8_t b = wink_mcs51_sfr_shadow[SFR_SBUF];
 
@@ -80,13 +87,9 @@ void on_sbuf_write(void) {
         fflush(stdout);
     }
 
-    // In-memory capture for exact byte-sequence assertions (C ABI below).
     if (s_count < CAPTURE_CAP) {
-        s_capture[s_count] = b;
-        ++s_count;
+        s_capture[s_count++] = b;
     }
-
-    // Live channel-2 route: SBUF write -> js_pal_uart_write -> PinArbiter
     // UARTBus (production) / recording fallback (host) / Node stub. Zero
     // simulated delay, same instant-complete semantics as TI below.
     js_pal_uart_write(0, &b, 1);
@@ -95,14 +98,8 @@ void on_sbuf_write(void) {
     // classic `SBUF = c; while(!TI);` poll observes TI=1 on its first read.
     sfr_set_bit(SFR_SCON, SCON_TI);
 
-    // Vector the UART ISR when EA+ES are enabled. Unlike the timer model,
-    // hardware does NOT auto-clear TI/RI on vectoring — TI stays set for the
-    // ISR (or polling code) to clear.
-    uint8_t ie = wink_mcs51_sfr_shadow[SFR_IE];
-    bool enabled = (ie & (1u << IE_EA)) && (ie & (1u << IE_ES));
-    if (enabled) {
-        (void)wink_mcs51_dispatch_vector(VECTOR_UART);
-    }
+    // Raise semantic UART IRQ (ADR-0078)
+    mcs51_raise_irq(IRQ_SOURCE_UART0);
 }
 
 // Deliver one pending RX byte per the hardware rules. Returns true while more
@@ -138,12 +135,7 @@ bool rx_deliver_one(void) {
     sfr_set_bit(SFR_SCON, SCON_RI);
     s_rx_last_deliver_us = now;
     s_rx_have_delivered = true;
-
-    uint8_t ie = wink_mcs51_sfr_shadow[SFR_IE];
-    bool enabled = (ie & (1u << IE_EA)) && (ie & (1u << IE_ES));
-    if (enabled) {
-        (void)wink_mcs51_dispatch_vector(VECTOR_UART);
-    }
+    mcs51_raise_irq(IRQ_SOURCE_UART0);
     return s_rx_tail != s_rx_head;
 }
 
@@ -175,6 +167,7 @@ void wink_mcs51_uart_rx_drain(void) {
             break;
         }
     }
+    mcs51_irq_scan_and_dispatch();
 }
 
 uint32_t wink_mcs51_uart_rx_dropped(void) {

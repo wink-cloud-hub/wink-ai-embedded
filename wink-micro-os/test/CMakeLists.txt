@@ -469,13 +469,13 @@ if(TARGET wink_mcs51_compat)
         set(_MCS51_BOARD_JSON
             "${WINK_TOOLS_ROOT}/tools/codegen/boards/mcs51/stc89c52_devboard.json")
         if(NOT EXISTS "${_MCS51_BOARD_JSON}")
-            set(_MCS51_BOARD_JSON "${CMAKE_CURRENT_SOURCE_DIR}/../wink-tools/tools/codegen/boards/mcs51/stc89c52_devboard.json")
+            set(_MCS51_BOARD_JSON "${CMAKE_CURRENT_SOURCE_DIR}/../../wink-tools/tools/codegen/boards/mcs51/stc89c52_devboard.json")
         endif()
         if(NOT EXISTS "${_MCS51_BOARD_JSON}")
             set(_MCS51_BOARD_JSON "${WINK_TOOLS_ROOT}/tools/codegen/boards/mcs51/generic_mcs51_devboard.json")
         endif()
         if(NOT EXISTS "${_MCS51_BOARD_JSON}")
-            set(_MCS51_BOARD_JSON "${CMAKE_CURRENT_SOURCE_DIR}/../wink-tools/tools/codegen/boards/mcs51/generic_mcs51_devboard.json")
+            set(_MCS51_BOARD_JSON "${CMAKE_CURRENT_SOURCE_DIR}/../../wink-tools/tools/codegen/boards/mcs51/generic_mcs51_devboard.json")
         endif()
         add_custom_command(
             OUTPUT ${_MCS51_BOARD_CONFIG_H}
@@ -597,6 +597,10 @@ if(TARGET wink_mcs51_compat)
     # (host-only framework unit test; drives the model hook directly).
     add_mcs51_host_test(test_mcs51_uart_isr
         mcs51/unit/test_uart_isr_dispatch.cpp)
+
+    # Task R3 / ADR-0078: Two-phase IRQ, in-service priority masking & call stack isolation
+    add_mcs51_host_test(test_mcs51_irq_arbitration
+        mcs51/unit/test_mcs51_irq_arbitration.cpp)
 
     # Stage 2 T2: UART RX model — pending FIFO drained at microstep points,
     # REN gate, RI latch + vector 4, no-FIFO drop on RI pending, TX/RX shadow

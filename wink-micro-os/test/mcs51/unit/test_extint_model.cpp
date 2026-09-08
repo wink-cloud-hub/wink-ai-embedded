@@ -95,7 +95,10 @@ uint8_t ie0_bit(void) {
 
 // One model evaluation, plus the virtual-slice advance the next evaluation
 // needs to pass the sample throttle.
-void poll(void) { wink_mcs51_extint_poll(); }
+void poll(void) {
+    wink_mcs51_extint_poll();
+    mcs51_irq_scan_and_dispatch();
+}
 void next_slice(void) { wink_mcs51_test_advance_virtual_us(SLICE_US); }
 
 }  // namespace
