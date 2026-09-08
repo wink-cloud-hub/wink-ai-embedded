@@ -60,14 +60,27 @@ struct AdetPinState {
     bool     have_sample;
 };
 
-Cms8sAdcState s_adc = {};
-AdetPinState  s_adet = {};
-bool          s_in_poll = false;
+struct Cms8sAdcPriv {
+    Cms8sAdcState adc;
+    AdetPinState  adet;
+    bool          in_poll;
+};
+
+static Cms8sAdcPriv s_default_cms8s_adc_priv = {};
+
+inline Cms8sAdcPriv* get_adc_priv(Mcu51Context* ctx) {
+    if (!ctx) ctx = mcs51_get_context();
+    if (ctx->soc_priv == nullptr) {
+        ctx->soc_priv = &s_default_cms8s_adc_priv;
+    }
+    return static_cast<Cms8sAdcPriv*>(ctx->soc_priv);
+}
 
 // Performs one 12-bit ADC conversion synchronously: pulls analog rail,
 // packs ADRESH/ADRESL per ADFM, latches ADCIF, and dispatches vector 19 if enabled.
 void do_adc_conversion(Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
+    Cms8sAdcPriv* priv = get_adc_priv(ctx);
     const uint8_t ch = static_cast<uint8_t>(ctx->sfr_shadow[SFR_ADCCHS] & 0x3Fu);
     uint16_t raw;
     if (ch <= ADC_CH_MAX_EXTERNAL) {
@@ -89,8 +102,8 @@ void do_adc_conversion(Mcu51Context* ctx) {
     // Clear ADGO in case this was triggered by software poll
     ctx->sfr_shadow[SFR_ADCON0] = static_cast<uint8_t>(adcon0 & ~ADCON0_ADGO);
 
-    ++s_adc.conversion_count;
-    s_adc.last_channel = ch;
+    ++priv->adc.conversion_count;
+    priv->adc.last_channel = ch;
 
     // End-of-conversion interrupt: latch ADCIF when ADCIE is set,
     // and raise semantic ADC IRQ (ADR-0078).
@@ -126,27 +139,30 @@ extern "C" {
 
 void cms8s_adc_model_reset(struct Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
-    s_in_poll = false;
-    s_adet.last_pin = 0xFFFFu;
-    s_adet.last_level = 0xFFu;
-    s_adet.have_sample = false;
+    Cms8sAdcPriv* priv = get_adc_priv(ctx);
+    priv->in_poll = false;
+    priv->adet.last_pin = 0xFFFFu;
+    priv->adet.last_level = 0xFFu;
+    priv->adet.have_sample = false;
     // PS_ADET selector resets to 0x7F ("no pin connected", ref manual §7.2.3)
     ctx->xdata_shadow[XSFR_PS_ADET] = 0x7Fu;
 }
 
 void cms8s_adc_init(struct Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
-    s_adc.conversion_count = 0u;
-    s_adc.last_channel = 0xFFu;
+    Cms8sAdcPriv* priv = get_adc_priv(ctx);
+    priv->adc.conversion_count = 0u;
+    priv->adc.last_channel = 0xFFu;
     cms8s_adc_model_reset(ctx);
     mcs51_trap_register_sfr_write(SFR_ADCON0, on_adcon0_write);
 }
 
 void cms8s_adc_poll(struct Mcu51Context* ctx) {
-    if (s_in_poll) {
+    if (!ctx) ctx = mcs51_get_context();
+    Cms8sAdcPriv* priv = get_adc_priv(ctx);
+    if (priv->in_poll) {
         return;
     }
-    if (!ctx) ctx = mcs51_get_context();
 
     // Gate 1: Module must be enabled
     if ((ctx->sfr_shadow[SFR_ADCON1] & ADCON1_ADEN) == 0u) {
@@ -173,27 +189,27 @@ void cms8s_adc_poll(struct Mcu51Context* ctx) {
     }
     const uint16_t pin = static_cast<uint16_t>((port << 3) | bit);
 
-    bool pin_changed = (pin != s_adet.last_pin);
+    bool pin_changed = (pin != priv->adet.last_pin);
     if (pin_changed) {
-        s_adet.last_pin = pin;
-        s_adet.last_level = 0xFFu;
-        s_adet.have_sample = false;
+        priv->adet.last_pin = pin;
+        priv->adet.last_level = 0xFFu;
+        priv->adet.have_sample = false;
     }
 
     uint8_t st = js_pal_gpio_read_state(pin);
     uint8_t level = (st == EXT_LOW) ? EXT_LOW : EXT_HIGH;
 
-    if (!s_adet.have_sample) {
-        s_adet.last_level = level;
-        s_adet.have_sample = true;
+    if (!priv->adet.have_sample) {
+        priv->adet.last_level = level;
+        priv->adet.have_sample = true;
         return;
     }
 
-    bool was_high = (s_adet.last_level == EXT_HIGH);
+    bool was_high = (priv->adet.last_level == EXT_HIGH);
     bool now_low  = (level == EXT_LOW);
-    bool was_low  = (s_adet.last_level == EXT_LOW);
+    bool was_low  = (priv->adet.last_level == EXT_LOW);
     bool now_high = (level == EXT_HIGH);
-    s_adet.last_level = level;
+    priv->adet.last_level = level;
 
     const uint8_t tg_mode = static_cast<uint8_t>((adcon2 & ADCON2_ADEGS_Msk) >> ADCON2_ADEGS_Pos);
     bool triggered = false;
@@ -204,9 +220,9 @@ void cms8s_adc_poll(struct Mcu51Context* ctx) {
     }
 
     if (triggered) {
-        s_in_poll = true;
+        priv->in_poll = true;
         do_adc_conversion(ctx);
-        s_in_poll = false;
+        priv->in_poll = false;
         mcs51_irq_scan_and_dispatch();
     }
 }
@@ -217,11 +233,11 @@ uint64_t cms8s_adc_next_event_us(struct Mcu51Context* ctx) {
 }
 
 uint32_t cms8s_adc_conversion_count(void) {
-    return s_adc.conversion_count;
+    return get_adc_priv(nullptr)->adc.conversion_count;
 }
 
 uint8_t cms8s_adc_last_channel(void) {
-    return s_adc.last_channel;
+    return get_adc_priv(nullptr)->adc.last_channel;
 }
 
 }  // extern "C"

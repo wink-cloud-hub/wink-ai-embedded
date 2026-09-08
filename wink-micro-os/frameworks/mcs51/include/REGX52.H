@@ -14,7 +14,17 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
+
+// Keil C51 applications commonly provide their own putchar(char), getchar(void),
+// and puts(const char*) implementations targeting SBUF/UART. To avoid signature
+// and return-type conflicts with standard libc headers in C++, rename libc symbols.
+#define putchar __wink_libc_putchar
+#define getchar __wink_libc_getchar
+#define puts    __wink_libc_puts
 #include <stdio.h>
+#undef putchar
+#undef getchar
+#undef puts
 
 #include "mcs51_proxy.hpp"
 #include "wink_mcs51_isr.h"
