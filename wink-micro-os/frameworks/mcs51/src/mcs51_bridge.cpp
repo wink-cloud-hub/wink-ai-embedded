@@ -19,6 +19,7 @@
 #include "wink_mcs51_strict.h"
 #include "wink_mcs51_timer.h"
 #include "wink_mcs51_uart.h"
+#include "mcs51_pcon.h"
 
 #include <cstdint>
 
@@ -55,6 +56,8 @@ void mcs51_framework_init(void) {
 #endif
 
     mcs51_framework_run_post_init_hook();
+
+    ctx->sfr_write_hooks[0x87] = mcs51_on_pcon_write;
 
     wink_mcs51_set_catchup_hook(wink_mcs51_timers_step_to);
     wink_mcs51_isr_enable();

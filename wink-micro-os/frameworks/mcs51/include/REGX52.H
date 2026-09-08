@@ -26,6 +26,8 @@
 extern "C" {
 #endif
 void wink_mcs51_user_main(void);
+void wink_delay_us(uint32_t total_us);
+void wink_mcs51_delay_ms(uint32_t ms);
 #ifdef __cplusplus
 }
 #endif

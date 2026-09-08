@@ -66,11 +66,15 @@ void wink_mcs51_charge_us(uint32_t us);
 // Equivalent to wink_mcs51_charge_us(WINK_MCS51_MICROSTEP_US).
 void wink_mcs51_microstep(void);
 
+// Step-pumped software delay service (Task R5, ADR-0072).
+// Advances time smoothly in WINK_MCS51_MICROSTEP_US quanta via microstep()
+// and charges remainder via charge_us(), preventing interrupt collapse.
+void wink_delay_us(uint32_t total_us);
+
 // User-visible delay rail: Keil projects bring their own `delay_ms(n)` busy
 // wait (it burns microsteps through SFR/NOP interception), but a delay helper
 // is also exposed for samples and tests that want exact virtual-time sleeps.
-// Bills `ms` of virtual time 1:1 and yields the fiber until that virtual
-// deadline; remaining master time is advanced 1:1.
+// Bills `ms` of virtual time 1:1 via step-pumped wink_delay_us().
 void wink_mcs51_delay_ms(uint32_t ms);
 
 // Current slave clock, in virtual microseconds.

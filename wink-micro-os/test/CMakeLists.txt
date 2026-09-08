@@ -514,7 +514,7 @@ if(TARGET wink_mcs51_compat)
     # dialect for the cleaned/hand-written C++ TUs, mcs51 framework include.
     function(add_mcs51_host_test name)
         add_wink_host_test(${name} ${ARGN})
-        target_link_libraries(${name} PRIVATE wink_mcs51_compat)
+        target_link_libraries(${name} PRIVATE wink_mcs51_compat wink_runtime)
         # The Keil super-loop (wink_mcs51_user_main) never returns, so it MUST
         # run on the cooperative fiber scheduler (pal_sim_scheduler_run), not
         # the host direct-call tick path. SIMULATION selects that path in
@@ -605,6 +605,10 @@ if(TARGET wink_mcs51_compat)
     # Task R0 / ADR-0077: GPIO dual read path (Read-Pin vs Read-Latch) & arbitration
     add_mcs51_host_test(test_mcs51_gpio_dual_path
         mcs51/unit/test_mcs51_gpio_dual_path.cpp)
+
+    # Task R6: PCON IDL/PD low power dual-mode scheduling
+    add_mcs51_host_test(test_mcs51_low_power
+        mcs51/unit/test_mcs51_low_power.cpp)
 
     # Stage 2 T2: UART RX model — pending FIFO drained at microstep points,
     # REN gate, RI latch + vector 4, no-FIFO drop on RI pending, TX/RX shadow
