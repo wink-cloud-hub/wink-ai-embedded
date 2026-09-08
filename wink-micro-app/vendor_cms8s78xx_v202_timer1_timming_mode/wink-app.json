@@ -1,0 +1,14 @@
+{
+  "app_name": "vendor_cms8s78xx_v202_timer1_timming_mode",
+  "display_name": "CMS8S78xx V2.0.2 - Timer1 Timing Mode",
+  "board": "cms8s78xx_devboard",
+  "category": "vendor_example",
+  "mcu": "cms8s78xx",
+  "tick_ms": 1,
+  "upstream": {
+    "vendor": "Cmsemicon",
+    "version": "V2.0.2",
+    "source_dir": "docs/vendors/Cmsemicon/CMS8S78xx_DemoCode_V2.0.2/CMS8S78xx_Example/Example/Timer1/TimmingMode/code"
+  },
+  "devices": {}
+}

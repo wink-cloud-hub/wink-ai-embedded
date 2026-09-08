@@ -1,0 +1,29 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "CMS8S78xx Timer0 TimingMode headless proof",
+    "templateId": "vendor_cms8s78xx_v202_timer0_timming_mode",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "100000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "60ms",
+      "windowUs": ["10ms", "60ms"],
+      "pin": 26,
+      "expected": {
+        "kind": "frequencyHz",
+        "value": {
+          "$near": {
+            "target": 5000,
+            "tolerance": 100
+          }
+        }
+      },
+      "description": "Timer0 auto-reload 100us overflow triggers Timer0_IRQHandler toggling P32 (pin 26) producing exactly 5kHz square wave"
+    }
+  ]
+}
