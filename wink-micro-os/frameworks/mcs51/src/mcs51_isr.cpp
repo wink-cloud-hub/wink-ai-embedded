@@ -7,6 +7,7 @@
 
 #include "mcs51_trap.h"
 #include "mcs51_context.h"
+#include "wink_event.h"
 #include "wink_mcs51_clock.h"
 
 namespace {
@@ -196,6 +197,20 @@ void mcs51_raise_irq(mcs51_irq_source_t src) {
         }
     }
     ctx->pending_interrupts |= (1u << src);
+
+    // Task R6: Low-power wake
+    if ((ctx->sfr_shadow[0x87] & 0x01u) != 0) {
+        // IDLE mode: post wake event to unblock silent pend
+        wink_event_t evt = {0};
+        (void)wink_event_post(&evt);
+    } else if ((ctx->sfr_shadow[0x87] & 0x02u) != 0) {
+        // Power-down mode: external interrupts INT0/INT1 with EA=1 wake the CPU
+        bool ea = (ctx->sfr_shadow[0xA8] & (1u << 7)) != 0;
+        if (ea && (src == IRQ_SOURCE_INT0 || src == IRQ_SOURCE_INT1)) {
+            wink_event_t evt = {0};
+            (void)wink_event_post(&evt);
+        }
+    }
 }
 
 uint8_t mcs51_irq_scan_and_dispatch(void) {

@@ -78,13 +78,13 @@ uint32_t wink_mcs51_master_tick_count(void) {
 }
 
 void wink_mcs51_charge_us(uint32_t us) {
-    if (us == 0 || !in_fiber()) {
+    if (us == 0) {
         return;
     }
     Mcu51Context* ctx = mcs51_get_context();
     ctx->virtual_us += us;
 
-    if (wink_mcs51_in_isr()) {
+    if (!in_fiber() || wink_mcs51_in_isr()) {
         return;
     }
 
@@ -100,25 +100,25 @@ void wink_mcs51_charge_us(uint32_t us) {
     }
 }
 
-void wink_mcs51_delay_ms(uint32_t ms) {
-    if (!in_fiber() || ms == 0) {
+void wink_delay_us(uint32_t total_us) {
+    if (total_us == 0) {
         return;
     }
-    Mcu51Context* ctx = mcs51_get_context();
-    const uint64_t target = ctx->virtual_us + static_cast<uint64_t>(ms) * 1000u;
-    while (ctx->virtual_us < target) {
-        uint64_t remaining = target - ctx->virtual_us;
-        uint32_t step = (remaining >= WINK_MCS51_QUOTA_US)
-                            ? WINK_MCS51_QUOTA_US
-                            : static_cast<uint32_t>(remaining);
-        ctx->virtual_us += step;
-        bill_master(step);
-        ++ctx->quota_yields;
-        cooperative_yield();
-        ctx->slice_start_us = ctx->virtual_us;
-        do_catchup();
-        mcs51_irq_scan_and_dispatch();
+    uint32_t elapsed = 0;
+    while (elapsed + WINK_MCS51_MICROSTEP_US <= total_us) {
+        // Full quantum: step-pumped microstep (charges 5us and evaluates microstep hooks & catchup)
+        wink_mcs51_microstep();
+        elapsed += WINK_MCS51_MICROSTEP_US;
     }
+    uint32_t remainder = total_us - elapsed;
+    if (remainder > 0) {
+        // Remainder: charge directly without overshoot
+        wink_mcs51_charge_us(remainder);
+    }
+}
+
+void wink_mcs51_delay_ms(uint32_t ms) {
+    wink_delay_us(ms * 1000u);
 }
 
 }  // extern "C"
