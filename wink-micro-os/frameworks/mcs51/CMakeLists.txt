@@ -41,6 +41,8 @@ add_library(wink_mcs51_compat STATIC EXCLUDE_FROM_ALL
     src/mcs51_unsupported.cpp
     src/mcs51_gpio.cpp
     src/mcs51_pcon.cpp
+    src/mcs51_edge_queue.cpp
+    src/mcs51_pwm_meter.cpp
     src/mcs51_bridge.cpp
 )
 

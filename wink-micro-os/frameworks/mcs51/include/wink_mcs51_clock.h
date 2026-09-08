@@ -33,10 +33,21 @@
 extern "C" {
 #endif
 
+#ifndef WINK_MCS51_DEFAULT_CLOCK_HZ
+#define WINK_MCS51_DEFAULT_CLOCK_HZ 12000000u
+#endif
+
 // Functional microseconds charged per interception point (an intercepted SFR
-// access or a `_nop_()`). Approximates a few 12-T machine cycles at 12 MHz;
-// it is the granularity of virtual-time progress inside tight loops.
+// access or a `_nop_()`). Calibrated dynamically based on clock_hz (Task F3).
+#ifndef WINK_MCS51_MICROSTEP_US
 #define WINK_MCS51_MICROSTEP_US 5u
+#endif
+
+// Task F3: Dynamic microstep quantum calibration from clock_hz
+uint32_t wink_mcs51_calc_microstep_us(uint32_t clock_hz);
+void     wink_mcs51_set_clock_hz(uint32_t clock_hz);
+uint32_t wink_mcs51_get_clock_hz(void);
+uint32_t wink_mcs51_get_microstep_us(void);
 
 // Virtual-time slice budget, aligned to one 100 Hz master tick (10,000 us):
 // the production runtime (pal_sim_scheduler_run) counts one fiber dispatch as

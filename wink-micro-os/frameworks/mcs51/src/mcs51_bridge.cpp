@@ -20,6 +20,7 @@
 #include "wink_mcs51_timer.h"
 #include "wink_mcs51_uart.h"
 #include "mcs51_pcon.h"
+#include "wink_mcs51_edge_queue.h"
 
 #include <cstdint>
 
@@ -69,8 +70,9 @@ extern "C" {
 
 void wink_mcs51_microstep(void) {
     wink_mcs51_clear_reti_suppress();
-    wink_mcs51_charge_us(WINK_MCS51_MICROSTEP_US);
+    wink_mcs51_charge_us(wink_mcs51_get_microstep_us());
     Mcu51Context* ctx = mcs51_get_context();
+    mcs51_edge_queue_drain(ctx);
     for (uint8_t i = 0; i < g_mcs51_num_peripherals; ++i) {
         if (g_mcs51_peripherals[i].poll != nullptr) {
             g_mcs51_peripherals[i].poll(ctx);
