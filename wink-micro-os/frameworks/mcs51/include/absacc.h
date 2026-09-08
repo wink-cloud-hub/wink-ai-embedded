@@ -50,12 +50,9 @@
 static_assert(WINK_MCS51_XDATA_SIZE <= 65536u &&
                   (WINK_MCS51_XDATA_SIZE % 2u) == 0u,
               "WINK_MCS51_XDATA_SIZE must be <= 65536 and even");
-extern "C" {
 #endif
 
-// Full 64 KB xdata shadow (BSS; defined in mcs51_xdata.cpp). Only the first
-// WINK_MCS51_XDATA_SIZE bytes are reachable through the bounds-checked path.
-extern uint8_t wink_mcs51_xdata_shadow[65536];
+extern "C" {
 
 // Bounds-checked byte access (boundary ③ C ABI; microstep charging, OOB
 // handling and the future M4 peripheral write hook live in mcs51_xdata.cpp,

@@ -8,6 +8,7 @@
 #include <stdio.h>
 
 #include "mcs51_proxy.hpp"
+#include "mcs51_context.h"
 #include "mcs51_xsfr.hpp"
 #include "absacc.h"
 
@@ -24,7 +25,7 @@ void check(bool cond, const char* what) {
 
 // Shadow helper (read the latch directly, bypassing Read-Pin reconstruction).
 uint8_t& latch(uint8_t addr) {
-    return wink_mcs51_sfr_shadow[addr];
+    return mcs51_get_context()->sfr_shadow[addr];
 }
 
 void test_compound_assignments() {

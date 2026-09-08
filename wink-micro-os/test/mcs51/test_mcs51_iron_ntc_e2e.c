@@ -26,13 +26,9 @@
 #include "wink_status.h"
 #include "mcs51_adc.h"
 #include "mcs51_trap.h"
+#include "mcs51_context.h"
 
 extern const wink_app_callbacks_t *wink_app_get_callbacks(void);
-
-/* SFR shadow (C linkage, framework BSS; NOT reset across runs). P1 = 0x90. */
-extern uint8_t wink_mcs51_sfr_shadow[256];
-/* XDATA shadow (C linkage; reset each run; the sample rewrites it every loop). */
-extern uint8_t wink_mcs51_xdata_shadow[65536];
 
 #define P1_SFR_ADDR  0x90u
 #define HEATER_BIT   0x01u   /* P1.0 */
@@ -66,11 +62,11 @@ static int run_phase(const wink_app_callbacks_t *cb, uint8_t code,
         return 1;
     }
 
-    uint8_t heater_latch = (uint8_t)(wink_mcs51_sfr_shadow[P1_SFR_ADDR]
+    uint8_t heater_latch = (uint8_t)(mcs51_get_context()->sfr_shadow[P1_SFR_ADDR]
                                      & HEATER_BIT);
-    uint8_t tlm_code   = wink_mcs51_xdata_shadow[TLM_CODE];
-    uint8_t tlm_heater = wink_mcs51_xdata_shadow[TLM_HEATER];
-    uint8_t tlm_fault  = wink_mcs51_xdata_shadow[TLM_FAULT];
+    uint8_t tlm_code   = mcs51_get_context()->xdata_shadow[TLM_CODE];
+    uint8_t tlm_heater = mcs51_get_context()->xdata_shadow[TLM_HEATER];
+    uint8_t tlm_fault  = mcs51_get_context()->xdata_shadow[TLM_FAULT];
 
     int fails = 0;
     if (tlm_code != code) {

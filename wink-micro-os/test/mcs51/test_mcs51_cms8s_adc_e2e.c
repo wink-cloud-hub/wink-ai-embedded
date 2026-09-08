@@ -20,11 +20,9 @@
 #include "wink_status.h"
 #include "mcs51_adc.h"
 #include "mcs51_trap.h"
+#include "mcs51_context.h"
 
 extern const wink_app_callbacks_t *wink_app_get_callbacks(void);
-
-/* XDATA shadow (C linkage, framework BSS) for the sample's XBYTE results. */
-extern uint8_t wink_mcs51_xdata_shadow[65536];
 
 #define RUN_TICKS 20u
 
@@ -37,8 +35,8 @@ static void inject_cms8s_channels(void) {
 }
 
 static int check_pair(uint16_t addr, uint16_t want, const char *tag) {
-    uint16_t got = (uint16_t)(((uint16_t)wink_mcs51_xdata_shadow[addr] << 8) |
-                              wink_mcs51_xdata_shadow[addr + 1u]);
+    uint16_t got = (uint16_t)(((uint16_t)mcs51_get_context()->xdata_shadow[addr] << 8) |
+                              mcs51_get_context()->xdata_shadow[addr + 1u]);
     if (got != want) {
         printf("[mcs51] FAIL: CMS8S ADC %s read 0x%03X, want 0x%03X\n",
                tag, (unsigned)got, (unsigned)want);

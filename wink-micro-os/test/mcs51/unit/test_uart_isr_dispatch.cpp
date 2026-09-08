@@ -13,6 +13,7 @@
 #include <stdio.h>
 
 #include "mcs51_proxy.hpp"
+#include "mcs51_context.h"
 #include "wink_mcs51_isr.h"
 #include "wink_mcs51_uart.h"
 
@@ -30,7 +31,7 @@ uint32_t g_uart_isr_hits = 0;
 
 uint8_t ti_bit(void) {
     return static_cast<uint8_t>(
-        (wink_mcs51_sfr_shadow[SFR_SCON] >> SCON_TI_BIT) & 1u);
+        (mcs51_get_context()->sfr_shadow[SFR_SCON] >> SCON_TI_BIT) & 1u);
 }
 
 }  // namespace
@@ -56,9 +57,9 @@ int main(void) {
     wink_mcs51_uart_reset();  // start with TI=0 and empty capture
 
     // ── Gated: EA+ES enabled → SBUF write vectors UART ISR (4) ──────────────
-    wink_mcs51_sfr_shadow[SFR_IE] =
+    mcs51_get_context()->sfr_shadow[SFR_IE] =
         static_cast<uint8_t>((1u << IE_EA_BIT) | (1u << IE_ES_BIT));
-    wink_mcs51_sfr_shadow[SFR_SBUF] = static_cast<uint8_t>('A');
+    mcs51_get_context()->sfr_shadow[SFR_SBUF] = static_cast<uint8_t>('A');
     wink_mcs51_uart_on_write(SFR_SBUF);
     mcs51_irq_scan_and_dispatch();
 
@@ -76,11 +77,11 @@ int main(void) {
     }
 
     // ── Ungated: EA/ES clear → another SBUF write must NOT vector ───────────
-    wink_mcs51_sfr_shadow[SFR_IE] = 0u;
+    mcs51_get_context()->sfr_shadow[SFR_IE] = 0u;
     // Emulate the polling idiom's software TI clear, then write again.
-    wink_mcs51_sfr_shadow[SFR_SCON] &=
+    mcs51_get_context()->sfr_shadow[SFR_SCON] &=
         static_cast<uint8_t>(~(1u << SCON_TI_BIT));
-    wink_mcs51_sfr_shadow[SFR_SBUF] = static_cast<uint8_t>('B');
+    mcs51_get_context()->sfr_shadow[SFR_SBUF] = static_cast<uint8_t>('B');
     wink_mcs51_uart_on_write(SFR_SBUF);
     mcs51_irq_scan_and_dispatch();
 

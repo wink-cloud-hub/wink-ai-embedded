@@ -9,7 +9,7 @@
 // pure state machine, no virtual-time advance.
 //
 // Deviation from timing SSOT §3.3 (documented in the M4 plan): the reference
-// snippet mirrors DO output bits into wink_mcs51_sfr_shadow. We do NOT — the
+// snippet mirrors DO output bits into SFR shadow. We do NOT — the
 // data-plane Read-Latch golden rule forbids peripheral writes to the latch
 // (they would corrupt RMW instructions on the DIO pin and double-fire
 // js_pal_gpio_write). Whole-port reads reconstruct the DO level through the
@@ -20,6 +20,7 @@
 
 #include "mcs51_adc.h"
 #include "mcs51_trap.h"
+#include "wink_mcs51_gpio.h"
 
 namespace {
 
@@ -75,9 +76,7 @@ void on_clk_write(void *ctx, uint8_t level) {
             return;  // output-phase rising edges: MCU samples DO, nothing to do
         }
         // DI is sampled from the MCU's LATCH (config phase: MCU drives DIO).
-        const uint8_t di_val =
-            (uint8_t)((wink_mcs51_sfr_shadow[sfr_addr_for(s_adc.di_port)]
-                       >> s_adc.di_bit) & 1u);
+        const uint8_t di_val = mcs51_gpio_bit_read_latch(s_adc.di_port, s_adc.di_bit);
         ++s_adc.rise_count;
 
         if (s_adc.rise_count == 1u) {
@@ -135,8 +134,7 @@ uint8_t on_do_read(void *ctx) {
     if (s_adc.phase == PHASE_INPUT && s_adc.is_dio_shared) {
         // 3-wire mode: the MCU itself drives DIO with the config bits, so a
         // read-back sees the driven latch level.
-        return (uint8_t)((wink_mcs51_sfr_shadow[sfr_addr_for(s_adc.do_port)]
-                          >> s_adc.do_bit) & 1u);
+        return mcs51_gpio_bit_read_latch(s_adc.do_port, s_adc.do_bit);
     }
     return 1u;  // IDLE, or 4-wire DO: chip high-Z, bus pulled high
 }

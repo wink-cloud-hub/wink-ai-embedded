@@ -32,6 +32,7 @@
 #include <cstdint>
 
 #include "mcs51_trap.h"
+#include "mcs51_context.h"
 #include "wink_mcs51_gpio.h"
 
 // ── C-ABI interception entries (defined in mcs51_bridge.cpp, boundary ③→④) ──
@@ -81,7 +82,7 @@ struct WinkSbit {
     // uint8_t): `ADC_DIO = channel & 1;` promotes to int and would narrow at
     // the call site under /WX.
     WinkSbit& operator=(unsigned v) {
-        const uint8_t old_val = wink_mcs51_sfr_shadow[addr];
+        const uint8_t old_val = mcs51_get_context()->sfr_shadow[addr];
         const uint8_t new_bit = v ? 1u : 0u;
         const uint8_t mask = static_cast<uint8_t>(1u << bit);
         const uint8_t new_val = new_bit ? static_cast<uint8_t>(old_val | mask)
@@ -89,7 +90,7 @@ struct WinkSbit {
         if (port < 4u) {
             mcs51_gpio_bit_write(port, bit, new_bit);
         } else {
-            wink_mcs51_sfr_shadow[addr] = new_val;
+            mcs51_get_context()->sfr_shadow[addr] = new_val;
         }
         // Non-GPIO SFR hooks (timer/UART/…) fire via the bridge entry; for
         // GPIO addresses the hook slot is empty (microstep charge only).
@@ -109,7 +110,7 @@ struct WinkSbit {
             return mcs51_gpio_bit_read_pin(port, bit);
         }
         // Control SFR (hook already ran above)
-        return static_cast<uint8_t>((wink_mcs51_sfr_shadow[addr] >> bit) & 1u);
+        return static_cast<uint8_t>((mcs51_get_context()->sfr_shadow[addr] >> bit) & 1u);
     }
 
     // Bit-level RMW (`LED ^= 1;`): the Keil CPL/ORL/ANL bit class reads the
@@ -117,19 +118,19 @@ struct WinkSbit {
     WinkSbit& operator^=(unsigned v) {
         const uint8_t latch = (port < 4u)
             ? mcs51_gpio_bit_read_latch(port, bit)
-            : static_cast<uint8_t>((wink_mcs51_sfr_shadow[addr] >> bit) & 1u);
+            : static_cast<uint8_t>((mcs51_get_context()->sfr_shadow[addr] >> bit) & 1u);
         return *this = (latch ^ (v & 1u));
     }
     WinkSbit& operator|=(unsigned v) {
         const uint8_t latch = (port < 4u)
             ? mcs51_gpio_bit_read_latch(port, bit)
-            : static_cast<uint8_t>((wink_mcs51_sfr_shadow[addr] >> bit) & 1u);
+            : static_cast<uint8_t>((mcs51_get_context()->sfr_shadow[addr] >> bit) & 1u);
         return *this = (latch | (v & 1u));
     }
     WinkSbit& operator&=(unsigned v) {
         const uint8_t latch = (port < 4u)
             ? mcs51_gpio_bit_read_latch(port, bit)
-            : static_cast<uint8_t>((wink_mcs51_sfr_shadow[addr] >> bit) & 1u);
+            : static_cast<uint8_t>((mcs51_get_context()->sfr_shadow[addr] >> bit) & 1u);
         return *this = (latch & (v & 1u));
     }
 
@@ -142,7 +143,7 @@ struct WinkSbit {
     WinkSbit& operator++() {
         const uint8_t latch = (port < 4u)
             ? mcs51_gpio_bit_read_latch(port, bit)
-            : static_cast<uint8_t>((wink_mcs51_sfr_shadow[addr] >> bit) & 1u);
+            : static_cast<uint8_t>((mcs51_get_context()->sfr_shadow[addr] >> bit) & 1u);
         return *this = static_cast<uint8_t>((latch + 1u) & 1u);
     }
     uint8_t operator++(int) {
@@ -153,7 +154,7 @@ struct WinkSbit {
     WinkSbit& operator--() {
         const uint8_t latch = (port < 4u)
             ? mcs51_gpio_bit_read_latch(port, bit)
-            : static_cast<uint8_t>((wink_mcs51_sfr_shadow[addr] >> bit) & 1u);
+            : static_cast<uint8_t>((mcs51_get_context()->sfr_shadow[addr] >> bit) & 1u);
         return *this = static_cast<uint8_t>((latch + 1u) & 1u);
     }
     uint8_t operator--(int) {
@@ -188,11 +189,11 @@ struct WinkSfr {
     // so unmodified user code compiles clean.
     WinkSfr& operator=(unsigned v) {
         const uint8_t nv = static_cast<uint8_t>(v & 0xFFu);
-        const uint8_t old_val = wink_mcs51_sfr_shadow[addr];
+        const uint8_t old_val = mcs51_get_context()->sfr_shadow[addr];
         if (port < 4u) {
             mcs51_gpio_sfr_write(port, nv);
         } else {
-            wink_mcs51_sfr_shadow[addr] = nv;
+            mcs51_get_context()->sfr_shadow[addr] = nv;
         }
         // Non-GPIO SFR write hook (timer/UART/CMS8S) + microstep; for GPIO
         // ports the hook slot is empty (microstep charge only).
@@ -217,7 +218,7 @@ struct WinkSfr {
             return val;
         }
         wink_mcs51_on_sfr_read(addr);  // lazy SFR hook + microstep
-        return wink_mcs51_sfr_shadow[addr];
+        return mcs51_get_context()->sfr_shadow[addr];
     }
 
     // ── RMW compound assignments (Read-LATCH, golden rule, SSOT §2.2) ───────
@@ -229,50 +230,50 @@ struct WinkSfr {
     // `P1 &= ~0x01;` / `P1 |= 1 << n;` carry int/unsigned operands that must
     // not narrow at the call site. operator= masks to a byte.
     WinkSfr& operator|=(unsigned v) {
-        const uint8_t latch = (port < 4u) ? mcs51_gpio_read_latch(port) : wink_mcs51_sfr_shadow[addr];
+        const uint8_t latch = (port < 4u) ? mcs51_gpio_read_latch(port) : mcs51_get_context()->sfr_shadow[addr];
         return *this = (latch | v);
     }
     WinkSfr& operator&=(unsigned v) {
-        const uint8_t latch = (port < 4u) ? mcs51_gpio_read_latch(port) : wink_mcs51_sfr_shadow[addr];
+        const uint8_t latch = (port < 4u) ? mcs51_gpio_read_latch(port) : mcs51_get_context()->sfr_shadow[addr];
         return *this = (latch & v);
     }
     WinkSfr& operator^=(unsigned v) {
-        const uint8_t latch = (port < 4u) ? mcs51_gpio_read_latch(port) : wink_mcs51_sfr_shadow[addr];
+        const uint8_t latch = (port < 4u) ? mcs51_gpio_read_latch(port) : mcs51_get_context()->sfr_shadow[addr];
         return *this = (latch ^ v);
     }
     WinkSfr& operator+=(unsigned v) {
-        const uint8_t latch = (port < 4u) ? mcs51_gpio_read_latch(port) : wink_mcs51_sfr_shadow[addr];
+        const uint8_t latch = (port < 4u) ? mcs51_gpio_read_latch(port) : mcs51_get_context()->sfr_shadow[addr];
         return *this = (latch + v);
     }
     WinkSfr& operator-=(unsigned v) {
-        const uint8_t latch = (port < 4u) ? mcs51_gpio_read_latch(port) : wink_mcs51_sfr_shadow[addr];
+        const uint8_t latch = (port < 4u) ? mcs51_gpio_read_latch(port) : mcs51_get_context()->sfr_shadow[addr];
         return *this = (latch - v);
     }
     WinkSfr& operator<<=(unsigned s) {
-        const uint8_t latch = (port < 4u) ? mcs51_gpio_read_latch(port) : wink_mcs51_sfr_shadow[addr];
+        const uint8_t latch = (port < 4u) ? mcs51_gpio_read_latch(port) : mcs51_get_context()->sfr_shadow[addr];
         return *this = (latch << s);
     }
     WinkSfr& operator>>=(unsigned s) {
-        const uint8_t latch = (port < 4u) ? mcs51_gpio_read_latch(port) : wink_mcs51_sfr_shadow[addr];
+        const uint8_t latch = (port < 4u) ? mcs51_gpio_read_latch(port) : mcs51_get_context()->sfr_shadow[addr];
         return *this = (latch >> s);
     }
 
     // Prefix/postfix inc/dec (INC/DEC port are RMW-latch instructions).
     WinkSfr& operator++() {
-        const uint8_t latch = (port < 4u) ? mcs51_gpio_read_latch(port) : wink_mcs51_sfr_shadow[addr];
+        const uint8_t latch = (port < 4u) ? mcs51_gpio_read_latch(port) : mcs51_get_context()->sfr_shadow[addr];
         return *this = static_cast<uint8_t>(latch + 1u);
     }
     uint8_t operator++(int) {
-        const uint8_t old = (port < 4u) ? mcs51_gpio_read_latch(port) : wink_mcs51_sfr_shadow[addr];
+        const uint8_t old = (port < 4u) ? mcs51_gpio_read_latch(port) : mcs51_get_context()->sfr_shadow[addr];
         *this = static_cast<uint8_t>(old + 1u);
         return old;
     }
     WinkSfr& operator--() {
-        const uint8_t latch = (port < 4u) ? mcs51_gpio_read_latch(port) : wink_mcs51_sfr_shadow[addr];
+        const uint8_t latch = (port < 4u) ? mcs51_gpio_read_latch(port) : mcs51_get_context()->sfr_shadow[addr];
         return *this = static_cast<uint8_t>(latch - 1u);
     }
     uint8_t operator--(int) {
-        const uint8_t old = (port < 4u) ? mcs51_gpio_read_latch(port) : wink_mcs51_sfr_shadow[addr];
+        const uint8_t old = (port < 4u) ? mcs51_gpio_read_latch(port) : mcs51_get_context()->sfr_shadow[addr];
         *this = static_cast<uint8_t>(old - 1u);
         return old;
     }

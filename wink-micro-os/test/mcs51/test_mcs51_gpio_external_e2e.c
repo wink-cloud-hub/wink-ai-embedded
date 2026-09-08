@@ -28,11 +28,9 @@
 #include "wink_app.h"
 #include "wink_status.h"
 #include "mcs51_trap.h"
+#include "mcs51_context.h"
 
 extern const wink_app_callbacks_t *wink_app_get_callbacks(void);
-
-/* SFR shadow (C linkage, framework BSS; NOT reset across runs). P1 = 0x90. */
-extern uint8_t wink_mcs51_sfr_shadow[256];
 
 #define P1_SFR_ADDR 0x90u
 #define LED_BIT     0x01u   /* P1.0 */
@@ -82,7 +80,7 @@ static int run_phase(const wink_app_callbacks_t *cb, uint8_t ext_level,
         printf("[mcs51] FAIL: runtime run (%s) returned %d\n", label, (int)st);
         return 1;
     }
-    uint8_t led_latch = (uint8_t)(wink_mcs51_sfr_shadow[P1_SFR_ADDR]
+    uint8_t led_latch = (uint8_t)(mcs51_get_context()->sfr_shadow[P1_SFR_ADDR]
                                    & LED_BIT);
     if (led_latch != want_led) {
         printf("[mcs51] FAIL: %s — external KEY=%u but P1.0 latch=%u, want %u "

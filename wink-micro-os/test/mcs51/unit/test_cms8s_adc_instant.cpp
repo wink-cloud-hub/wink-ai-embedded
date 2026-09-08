@@ -15,6 +15,7 @@
 #include "absacc.h"
 #include "cms8s_adc.h"
 #include "mcs51_adc.h"
+#include "mcs51_context.h"
 #include "mcs51_proxy.hpp"
 #include "mcs51_xsfr.hpp"
 #include "wink_mcs51_isr.h"
@@ -86,7 +87,7 @@ int main(void) {
     wink_mcs51_isr_enable();       // open the execution-phase dispatch gate
     wink_mcs51_xdata_reset();      // clean XDATA shadow + OOB counters
     mcs51_adc_reset();             // clear injection rail
-    cms8s_adc_init();              // register ADCON0 write hook, zero counters
+    cms8s_adc_init(mcs51_get_context());  // register ADCON0 write hook, zero counters
 
     // ── 1) 0-cycle passthrough: ADGO self-clears inside the write ───────────
     mcs51_adc_set_value(0, 0x0ABCu);
@@ -186,7 +187,7 @@ int main(void) {
     check((uint8_t)adcldo == 0x80u, "ADCLDO store/readback mismatch");
     adcldo = static_cast<unsigned>((uint8_t)adcldo | 0x10u);  // RMW (OUTEN)
     check((uint8_t)adcldo == 0x90u, "ADCLDO RMW want 0x90");
-    check(wink_mcs51_xdata_shadow[0xF692u] == 0x90u,
+    check(mcs51_get_context()->xdata_shadow[0xF692u] == 0x90u,
           "ADCLDO did not land in the XSFR window shadow");
     check(wink_mcs51_xdata_oob_count() == oob_before,
           "in-window XSFR access counted as OOB");
@@ -196,7 +197,7 @@ int main(void) {
     bad = 0x55u;
     const uint8_t readback = static_cast<uint8_t>(bad);
     check(readback == 0xFFu, "OOB XSFR read should return 0xFF");
-    check(wink_mcs51_xdata_shadow[0xE000u] == 0x00u,
+    check(mcs51_get_context()->xdata_shadow[0xE000u] == 0x00u,
           "OOB XSFR write must be dropped");
     check(wink_mcs51_xdata_oob_count() >= oob_before + 2u,
           "OOB XSFR access not counted (want >= 2: write + read)");
@@ -205,7 +206,7 @@ int main(void) {
     WinkSfr  ADCON2(0xE9u);
     WinkXsfr ps_adet(0xF0CCu);
 
-    cms8s_adc_reset();
+    cms8s_adc_model_reset(mcs51_get_context());
     ADCON1 = ADCON1_ADEN;
     ADCON0 = 0u;  // left justify, ADGO=0
     ADCCHS = 0u;  // channel 0 (AN0)
@@ -222,13 +223,13 @@ int main(void) {
 
     // Pin initially high (idle with pullup)
     wink_mcs51_host_set_ext_pin(5, 1);
-    cms8s_adc_poll();
+    cms8s_adc_poll(mcs51_get_context());
     check(cms8s_adc_conversion_count() == count_hw_start,
           "hardware trigger fired on baseline sample");
 
     // Falling edge: pin goes low -> conversion triggered
     wink_mcs51_host_set_ext_pin(5, 0);
-    cms8s_adc_poll();
+    cms8s_adc_poll(mcs51_get_context());
     check(cms8s_adc_conversion_count() == count_hw_start + 1u,
           "hardware trigger did not fire on falling edge");
     check(g_adc_isr_hits == isr_hw_start + 1u,
@@ -237,19 +238,19 @@ int main(void) {
           "hardware trigger result ADRESH mismatch");
 
     // Pin held low -> no duplicate trigger
-    cms8s_adc_poll();
+    cms8s_adc_poll(mcs51_get_context());
     check(cms8s_adc_conversion_count() == count_hw_start + 1u,
           "hardware trigger re-fired while pin held low");
 
     // Rising edge -> should not trigger in falling-edge mode
     wink_mcs51_host_set_ext_pin(5, 1);
-    cms8s_adc_poll();
+    cms8s_adc_poll(mcs51_get_context());
     check(cms8s_adc_conversion_count() == count_hw_start + 1u,
           "hardware trigger fired on rising edge in falling-only mode");
 
     // Second falling edge -> triggers second conversion
     wink_mcs51_host_set_ext_pin(5, 0);
-    cms8s_adc_poll();
+    cms8s_adc_poll(mcs51_get_context());
     check(cms8s_adc_conversion_count() == count_hw_start + 2u,
           "hardware trigger did not fire on second falling edge");
     check(g_adc_isr_hits == isr_hw_start + 2u,
@@ -262,13 +263,13 @@ int main(void) {
 
     // Pin goes low (falling edge) -> should NOT trigger in rising-only mode
     wink_mcs51_host_set_ext_pin(5, 0);
-    cms8s_adc_poll();
+    cms8s_adc_poll(mcs51_get_context());
     check(cms8s_adc_conversion_count() == count_rising_start,
           "hardware trigger fired on falling edge in rising-only mode");
 
     // Pin goes high (rising edge) -> triggers conversion
     wink_mcs51_host_set_ext_pin(5, 1);
-    cms8s_adc_poll();
+    cms8s_adc_poll(mcs51_get_context());
     check(cms8s_adc_conversion_count() == count_rising_start + 1u,
           "hardware trigger did not fire on rising edge");
     check(g_adc_isr_hits == isr_rising_start + 1u,

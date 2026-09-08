@@ -27,12 +27,9 @@
 #include "wink_app.h"
 #include "wink_status.h"
 #include "mcs51_trap.h"
+#include "mcs51_context.h"
 
 extern const wink_app_callbacks_t *wink_app_get_callbacks(void);
-
-/* SFR + XDATA shadows (C linkage, framework BSS). */
-extern uint8_t wink_mcs51_sfr_shadow[256];
-extern uint8_t wink_mcs51_xdata_shadow[65536];
 
 #define P1_SFR_ADDR   0x90u
 #define P1_PORT       1u
@@ -58,14 +55,14 @@ static uint8_t key_low_read_trap(void *ctx) {
 static void bind_rmw_traps(void) {
     for (uint8_t pin = 0; pin < 8u; pin++) {
         mcs51_trap_register_write(P1_PORT, pin, edge_count_trap,
-                                  (void *)&wink_mcs51_xdata_shadow[pin]);
+                                  (void *)&mcs51_get_context()->xdata_shadow[pin]);
     }
     mcs51_trap_register_read(P1_PORT, KEY_BIT, key_low_read_trap, NULL);
 }
 
 static int check_vector(int v, int fails) {
     for (uint8_t pin = 0; pin < 8u; pin++) {
-        uint8_t got = wink_mcs51_xdata_shadow[0x0020u + (unsigned)v * 8u + pin];
+        uint8_t got = mcs51_get_context()->xdata_shadow[0x0020u + (unsigned)v * 8u + pin];
         uint8_t want = (pin == 0u) ? 1u : 0u;
         if (got != want) {
             printf("[mcs51] FAIL: V%d pin%u edge count %u, want %u "
@@ -96,17 +93,18 @@ int main(void) {
     }
 
     int fails = 0;
+    struct Mcu51Context *ctx = mcs51_get_context();
 
     /* All four vectors completed. */
-    if (wink_mcs51_xdata_shadow[0x0010u] != 1u ||
-        wink_mcs51_xdata_shadow[0x0011u] != 1u ||
-        wink_mcs51_xdata_shadow[0x0012u] != 1u ||
-        wink_mcs51_xdata_shadow[0x0013u] != 1u) {
+    if (ctx->xdata_shadow[0x0010u] != 1u ||
+        ctx->xdata_shadow[0x0011u] != 1u ||
+        ctx->xdata_shadow[0x0012u] != 1u ||
+        ctx->xdata_shadow[0x0013u] != 1u) {
         printf("[mcs51] FAIL: not all vectors ran (done markers %u %u %u %u)\n",
-               (unsigned)wink_mcs51_xdata_shadow[0x0010u],
-               (unsigned)wink_mcs51_xdata_shadow[0x0011u],
-               (unsigned)wink_mcs51_xdata_shadow[0x0012u],
-               (unsigned)wink_mcs51_xdata_shadow[0x0013u]);
+               (unsigned)ctx->xdata_shadow[0x0010u],
+               (unsigned)ctx->xdata_shadow[0x0011u],
+               (unsigned)ctx->xdata_shadow[0x0012u],
+               (unsigned)ctx->xdata_shadow[0x0013u]);
         return 1;
     }
 
@@ -114,7 +112,7 @@ int main(void) {
     fails = check_vector(1, fails);
     /* V3: zero-delta fast path — every pin must stay at 0 edges. */
     for (uint8_t pin = 0; pin < 8u; pin++) {
-        uint8_t got = wink_mcs51_xdata_shadow[0x0020u + 2u * 8u + pin];
+        uint8_t got = ctx->xdata_shadow[0x0020u + 2u * 8u + pin];
         if (got != 0u) {
             printf("[mcs51] FAIL: V3 zero-delta pin%u fired %u edges "
                    "(fast path must be silent)\n", (unsigned)pin,
@@ -126,7 +124,7 @@ int main(void) {
 
     /* V4 latch protection: P1 latch must be 0xFE — bit2 still 1 despite the
      * externally-low button (RMW read the latch, never the pin). */
-    uint8_t latch = wink_mcs51_sfr_shadow[P1_SFR_ADDR];
+    uint8_t latch = ctx->sfr_shadow[P1_SFR_ADDR];
     if (latch != 0xFEu) {
         printf("[mcs51] FAIL: V4 P1 latch = 0x%02X, want 0xFE (Read-Latch "
                "violation: pin2 low written back into latch)\n",
@@ -135,16 +133,16 @@ int main(void) {
     }
 
     /* V4 Keil-side whole-port Read-Pin views: bit2 reconstructed low. */
-    if (wink_mcs51_xdata_shadow[0x0015u] != 0xFBu) {
+    if (ctx->xdata_shadow[0x0015u] != 0xFBu) {
         printf("[mcs51] FAIL: V4 Read-Pin view before RMW = 0x%02X, want 0xFB "
                "(button low on bit2)\n",
-               (unsigned)wink_mcs51_xdata_shadow[0x0015u]);
+               (unsigned)ctx->xdata_shadow[0x0015u]);
         fails++;
     }
-    if (wink_mcs51_xdata_shadow[0x0014u] != 0xFAu) {
+    if (ctx->xdata_shadow[0x0014u] != 0xFAu) {
         printf("[mcs51] FAIL: V4 Read-Pin view after RMW = 0x%02X, want 0xFA "
                "(bit0 written low, button low on bit2)\n",
-               (unsigned)wink_mcs51_xdata_shadow[0x0014u]);
+               (unsigned)ctx->xdata_shadow[0x0014u]);
         fails++;
     }
 

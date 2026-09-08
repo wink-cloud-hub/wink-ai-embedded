@@ -11,6 +11,7 @@
 #include <stdio.h>
 
 #include "mcs51_proxy.hpp"
+#include "mcs51_context.h"
 #include "intrins.h"
 #include "absacc.h"
 #include "wink_mcs51_strict.h"
@@ -73,14 +74,15 @@ void test_testbit(void) {
 
 void test_xdata(void) {
     wink_mcs51_xdata_reset();
+    struct Mcu51Context *ctx = mcs51_get_context();
 
     // Byte write/read at low and high (in-aperture) addresses.
     XBYTE[0x0010] = 0xAB;
     XBYTE[0x1FF0] = 0xCD;  // aperture 8 KB: last 16 bytes still in bounds
     check(static_cast<uint8_t>(XBYTE[0x0010]) == 0xAB, "XBYTE low readback");
     check(static_cast<uint8_t>(XBYTE[0x1FF0]) == 0xCD, "XBYTE high readback");
-    check(wink_mcs51_xdata_shadow[0x0010] == 0xAB, "XBYTE low hits shadow");
-    check(wink_mcs51_xdata_shadow[0x1FF0] == 0xCD, "XBYTE high hits shadow");
+    check(ctx->xdata_shadow[0x0010] == 0xAB, "XBYTE low hits shadow");
+    check(ctx->xdata_shadow[0x1FF0] == 0xCD, "XBYTE high hits shadow");
 
     // RMW lvalue form.
     XBYTE[0x0010] = 0xF0u;
@@ -93,8 +95,8 @@ void test_xdata(void) {
 
     // XWORD 16-bit big-endian: word i occupies bytes 2i (high), 2i+1 (low).
     XWORD[0x0010] = 0x1234;
-    check(wink_mcs51_xdata_shadow[0x0020] == 0x12u, "XWORD high byte at 2i");
-    check(wink_mcs51_xdata_shadow[0x0021] == 0x34u, "XWORD low byte at 2i+1");
+    check(ctx->xdata_shadow[0x0020] == 0x12u, "XWORD high byte at 2i");
+    check(ctx->xdata_shadow[0x0021] == 0x34u, "XWORD low byte at 2i+1");
     check(static_cast<uint16_t>(XWORD[0x0010]) == 0x1234u, "XWORD readback BE");
     XWORD[0x0FFF] = 0xBEEF;  // bytes 0x1FFE/0x1FFF: last in-aperture word
     check(static_cast<uint16_t>(XWORD[0x0FFF]) == 0xBEEFu,
@@ -108,7 +110,7 @@ void test_xdata(void) {
     XBYTE[0x0030] = 0x10u;
     XBYTE[0x0030] += 0x05u;
     check(static_cast<uint8_t>(XBYTE[0x0030]) == 0x15u, "XBYTE += in aperture");
-    check(wink_mcs51_xdata_shadow[0x0030] == 0x15u, "XBYTE += hits shadow");
+    check(ctx->xdata_shadow[0x0030] == 0x15u, "XBYTE += hits shadow");
     ++XBYTE[0x0030];
     check(static_cast<uint8_t>(XBYTE[0x0030]) == 0x16u, "XBYTE prefix ++");
     uint8_t post = XBYTE[0x0030]++;
@@ -131,7 +133,7 @@ void test_xdata(void) {
     // beyond the aperture is never touched.
     uint32_t oob_before = wink_mcs51_xdata_oob_count();
     XBYTE[0x8000] = 0x5A;  // >= 8 KB aperture
-    check(wink_mcs51_xdata_shadow[0x8000] == 0u, "OOB write must not hit shadow");
+    check(ctx->xdata_shadow[0x8000] == 0u, "OOB write must not hit shadow");
     check(static_cast<uint8_t>(XBYTE[0x8000]) == 0xFFu, "OOB read returns 0xFF");
     check(static_cast<uint16_t>(XWORD[0x4000]) == 0xFFFFu,
           "OOB XWORD read returns 0xFFFF");
@@ -142,7 +144,7 @@ void test_xdata(void) {
     // and the shadow beyond the aperture stays untouched.
     uint8_t oob_post = XBYTE[0x8000]++;
     check(oob_post == 0xFFu, "OOB XBYTE++ reads 0xFF");
-    check(wink_mcs51_xdata_shadow[0x8000] == 0u,
+    check(ctx->xdata_shadow[0x8000] == 0u,
           "OOB XBYTE++ must not write shadow");
     ++XWORD[0x8000];  // bytes 0x10000/0x10001: far outside the 64 KB shadow
     check(wink_mcs51_xdata_oob_count() > oob_before,
@@ -151,9 +153,9 @@ void test_xdata(void) {
     // M2: a word index whose 2*i byte address would wrap in 32-bit must be
     // rejected as OOB, never alias low shadow memory. 0x80000000u*2 wraps to
     // 0 in 32-bit; the 64-bit address math makes it 0x100000000 (OOB).
-    uint32_t shadow_before = wink_mcs51_xdata_shadow[0x0010];
+    uint32_t shadow_before = ctx->xdata_shadow[0x0010];
     (void)static_cast<uint16_t>(XWORD[0x80000000u]);
-    check(wink_mcs51_xdata_shadow[0x0010] == shadow_before,
+    check(ctx->xdata_shadow[0x0010] == shadow_before,
           "XWORD huge index must not alias low shadow");
 }
 

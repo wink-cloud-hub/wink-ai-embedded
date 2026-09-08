@@ -12,6 +12,7 @@
 
 #include "absacc.h"
 #include "cms8s_adc.h"
+#include "mcs51_context.h"
 #include "mcs51_proxy.hpp"
 #include "mcs51_trap.h"
 #include "wink_mcs51_clock.h"
@@ -66,14 +67,14 @@ WINK_ISR(19) {
     g_depth_during_adc = wink_mcs51_get_in_service_depth();
 
     // Clear ADCIF
-    wink_mcs51_sfr_shadow[SFR_EIF2] &= static_cast<uint8_t>(~(1u << 4));
+    mcs51_get_context()->sfr_shadow[SFR_EIF2] &= static_cast<uint8_t>(~(1u << 4));
 
     if (g_write_sbuf_in_adc) {
         // Write to SBUF inside ADC ISR:
         // Prior to ADR-0078, this synchronously recursed into UART ISR on the same stack.
         // Under ADR-0078 two-phase dispatch, UART IRQ is raised to pending, but because
         // both have priority 0, it does NOT preempt this ISR!
-        wink_mcs51_sfr_shadow[SFR_SBUF] = static_cast<uint8_t>('Z');
+        mcs51_get_context()->sfr_shadow[SFR_SBUF] = static_cast<uint8_t>('Z');
         wink_mcs51_uart_on_write(SFR_SBUF);
 
         // Attempt scan_and_dispatch inside the ISR: must NOT dispatch same-prio UART0!
@@ -87,7 +88,7 @@ WINK_ISR(19) {
 WINK_ISR(4) {
     ++g_uart_hits;
     if (g_clear_uart_in_isr) {
-        wink_mcs51_sfr_shadow[SFR_SCON] &= static_cast<uint8_t>(~0x03u);  // clear RI and TI
+        mcs51_get_context()->sfr_shadow[SFR_SCON] &= static_cast<uint8_t>(~0x03u);  // clear RI and TI
     }
 }
 
@@ -128,11 +129,11 @@ int main(void) {
         g_write_sbuf_in_adc = true;
 
         // Enable EA, ES, ADCIE (all default priority 0)
-        wink_mcs51_sfr_shadow[SFR_IE]   = (1u << IE_EA) | (1u << IE_ES);
-        wink_mcs51_sfr_shadow[SFR_EIE2] = (1u << EIE2_ADCIE);
-        wink_mcs51_sfr_shadow[SFR_EIF2] = (1u << 4);  // ADCIF set on conversion complete
-        wink_mcs51_sfr_shadow[SFR_IP]   = 0u;
-        wink_mcs51_sfr_shadow[SFR_EIP2] = 0u;
+        mcs51_get_context()->sfr_shadow[SFR_IE]   = (1u << IE_EA) | (1u << IE_ES);
+        mcs51_get_context()->sfr_shadow[SFR_EIE2] = (1u << EIE2_ADCIE);
+        mcs51_get_context()->sfr_shadow[SFR_EIF2] = (1u << 4);  // ADCIF set on conversion complete
+        mcs51_get_context()->sfr_shadow[SFR_IP]   = 0u;
+        mcs51_get_context()->sfr_shadow[SFR_EIP2] = 0u;
 
         // Raise ADC IRQ
         mcs51_raise_irq(IRQ_SOURCE_ADC);
@@ -168,8 +169,8 @@ int main(void) {
         g_trigger_t1_in_t0 = true;
 
         // Enable EA, ET0, ET1. Both priority 0.
-        wink_mcs51_sfr_shadow[SFR_IE] = (1u << IE_EA) | (1u << IE_ET0) | (1u << IE_ET1);
-        wink_mcs51_sfr_shadow[SFR_IP] = 0u;
+        mcs51_get_context()->sfr_shadow[SFR_IE] = (1u << IE_EA) | (1u << IE_ET0) | (1u << IE_ET1);
+        mcs51_get_context()->sfr_shadow[SFR_IP] = 0u;
 
         mcs51_raise_irq(IRQ_SOURCE_TIMER0);
         mcs51_irq_scan_and_dispatch();
@@ -195,8 +196,8 @@ int main(void) {
         g_trigger_t1_in_t0 = true;
 
         // Enable EA, ET0, ET1. Timer1 has priority 1 (IP.PT1 = 1).
-        wink_mcs51_sfr_shadow[SFR_IE] = (1u << IE_EA) | (1u << IE_ET0) | (1u << IE_ET1);
-        wink_mcs51_sfr_shadow[SFR_IP] = (1u << 3);  // PT1 = 1
+        mcs51_get_context()->sfr_shadow[SFR_IE] = (1u << IE_EA) | (1u << IE_ET0) | (1u << IE_ET1);
+        mcs51_get_context()->sfr_shadow[SFR_IP] = (1u << 3);  // PT1 = 1
 
         mcs51_raise_irq(IRQ_SOURCE_TIMER0);
         mcs51_irq_scan_and_dispatch();
@@ -216,7 +217,7 @@ int main(void) {
         g_trigger_t1_in_t0 = false;
 
         // EA = 0 (critical section), ET0 = 1
-        wink_mcs51_sfr_shadow[SFR_IE] = (1u << IE_ET0);
+        mcs51_get_context()->sfr_shadow[SFR_IE] = (1u << IE_ET0);
 
         mcs51_raise_irq(IRQ_SOURCE_TIMER0);
         uint8_t dispatched = mcs51_irq_scan_and_dispatch();
@@ -226,7 +227,7 @@ int main(void) {
               "T4: Pending bit lost while EA=0");
 
         // Re-enable EA
-        wink_mcs51_sfr_shadow[SFR_IE] |= (1u << IE_EA);
+        mcs51_get_context()->sfr_shadow[SFR_IE] |= (1u << IE_EA);
         dispatched = mcs51_irq_scan_and_dispatch();
 
         check(dispatched == 1 && g_t0_hits == 1, "T4: ISR did not dispatch after EA restored");
@@ -240,20 +241,20 @@ int main(void) {
         g_uart_hits = 0;
         g_clear_uart_in_isr = false;  // Firmware stub leaves RI/TI set
 
-        wink_mcs51_sfr_shadow[SFR_IE]   = (1u << IE_EA) | (1u << IE_ES);
-        wink_mcs51_sfr_shadow[SFR_SCON] = 0x02u;  // TI = 1
+        mcs51_get_context()->sfr_shadow[SFR_IE]   = (1u << IE_EA) | (1u << IE_ES);
+        mcs51_get_context()->sfr_shadow[SFR_SCON] = 0x02u;  // TI = 1
 
         mcs51_raise_irq(IRQ_SOURCE_UART0);
         mcs51_irq_scan_and_dispatch();
 
         check(g_uart_hits == 1, "T5: First UART ISR did not run");
         // Because clear_mode is SW_CLEAR, hardware must NOT auto-clear SCON.TI!
-        check((wink_mcs51_sfr_shadow[SFR_SCON] & 0x02u) != 0,
+        check((mcs51_get_context()->sfr_shadow[SFR_SCON] & 0x02u) != 0,
               "T5: SW_CLEAR flag was erroneously cleared by hardware");
 
         // When firmware clears the flag, SCON is cleared
-        wink_mcs51_sfr_shadow[SFR_SCON] = 0u;
-        check((wink_mcs51_sfr_shadow[SFR_SCON] & 0x02u) == 0,
+        mcs51_get_context()->sfr_shadow[SFR_SCON] = 0u;
+        check((mcs51_get_context()->sfr_shadow[SFR_SCON] & 0x02u) == 0,
               "T5: Software flag clear failed");
     }
 
@@ -265,15 +266,15 @@ int main(void) {
         g_t0_hits = 0;
         g_trigger_t1_in_t0 = false;
 
-        wink_mcs51_sfr_shadow[SFR_IE]   = (1u << IE_EA) | (1u << IE_ET0);
-        wink_mcs51_sfr_shadow[SFR_TCON] = (1u << 5);  // TF0 = 1
+        mcs51_get_context()->sfr_shadow[SFR_IE]   = (1u << IE_EA) | (1u << IE_ET0);
+        mcs51_get_context()->sfr_shadow[SFR_TCON] = (1u << 5);  // TF0 = 1
 
         mcs51_raise_irq(IRQ_SOURCE_TIMER0);
         mcs51_irq_scan_and_dispatch();
 
         check(g_t0_hits == 1, "T6: Timer0 ISR did not run");
         // TF0 should be automatically cleared by hardware
-        check((wink_mcs51_sfr_shadow[SFR_TCON] & (1u << 5)) == 0,
+        check((mcs51_get_context()->sfr_shadow[SFR_TCON] & (1u << 5)) == 0,
               "T6: TF0 was not automatically cleared by HW_AUTO_CLEAR");
     }
 

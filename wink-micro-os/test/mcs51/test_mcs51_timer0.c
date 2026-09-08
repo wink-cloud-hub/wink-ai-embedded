@@ -18,9 +18,9 @@
 #include "wink_runtime.h"
 #include "wink_app.h"
 #include "wink_status.h"
+#include "mcs51_context.h"
 
 extern const wink_app_callbacks_t *wink_app_get_callbacks(void);
-extern uint8_t wink_mcs51_sfr_shadow[256];
 extern void (*wink_mcs51_get_isr(uint8_t vector_num))(void);
 
 /* C-ABI observability from the mcs51 framework. */
@@ -60,7 +60,7 @@ int main(void) {
     uint32_t isr_count = wink_mcs51_isr_dispatch_count(MCS51_TIMER0_VECTOR);
     uint32_t quota     = wink_mcs51_quota_yield_count();
     uint64_t virt_us   = wink_mcs51_virtual_us();
-    uint8_t  led       = (uint8_t)(wink_mcs51_sfr_shadow[P1_SFR_ADDR] & LED_BIT);
+    uint8_t  led       = (uint8_t)(mcs51_get_context()->sfr_shadow[P1_SFR_ADDR] & LED_BIT);
 
     /* 2000 ms budget / 50 ms period = 40 overflows; allow boundary slack. */
     uint32_t expected = (RUN_TICKS * 10u) / TIMER_PERIOD_MS;
