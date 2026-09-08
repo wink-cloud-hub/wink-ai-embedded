@@ -130,6 +130,7 @@ xsfr P0RD(0xF00A); xsfr P1RD(0xF01A); xsfr P2RD(0xF02A); xsfr P3RD(0xF03A);
 // the physical INT0/INT1 input pin (mcs51_extint.cpp).
 xsfr PS_INT0(0xF0C0);  // INT0 input pin selector
 xsfr PS_INT1(0xF0C1);  // INT1 input pin selector
+xsfr PS_ADET(0xF0CC);  // ADET hardware trigger input pin selector
 
 xsfr ADCLDO(0xF692);  // ADC LDO control (bit7 LDOEN, bits6:5 VSEL, bit4 OUTEN)
 
@@ -282,6 +283,8 @@ xsfr ADCLDO(0xF692);  // ADC LDO control (bit7 LDOEN, bits6:5 VSEL, bit4 OUTEN)
 #define GPIO_SET_PS_MODE(Ps_mode, gpio)      (Ps_mode = gpio)
 #define GPIO_P30_MUX_INT0                    (0x30)  // PS_INT0 <- P3.0
 #define GPIO_P31_MUX_INT1                    (0x31)  // PS_INT1 <- P3.1
+#define GPIO_P05_MUX_ADET                    (0x05)  // PS_ADET <- P0.5
+#define GPIO_P13_MUX_ADET                    (0x13)  // PS_ADET <- P1.3
 
 #define GPIO_PIN_0_MSK                       (0x01)
 #define GPIO_PIN_1_MSK                       (0x02)
@@ -612,6 +615,19 @@ static inline void ADC_ConfigADCVref(uint8_t ADCVref) {
 }
 static inline void ADC_EnableLDOOutput(void) {
     ADCLDO |= ADC_ADCLDO_OUTEN_Msk;
+}
+static inline void ADC_EnableHardwareTrig(void) {
+    ADCON2 |= (ADC_ADCON2_ADCEX_Msk);
+}
+static inline void ADC_DisableHardwareTrig(void) {
+    ADCON2 &= ~(ADC_ADCON2_ADCEX_Msk);
+}
+static inline void ADC_ConfigHardwareTrig(uint8_t ADCTGSource, uint8_t TGMode) {
+    uint8_t temp;
+    temp = ADCON2;
+    temp &= ~(ADC_ADCON2_ADTGS_Msk | ADC_ADCON2_ADEGS_Msk);
+    temp |= (uint8_t)((ADCTGSource << ADC_ADCON2_ADTGS_Pos) | (TGMode << ADC_ADCON2_ADEGS_Pos));
+    ADCON2 = temp;
 }
 #endif  // WINK_CMS8S_VENDOR_ADC
 

@@ -1,0 +1,30 @@
+{
+  "appName": "vendor_cms8s78xx_v202_adc_hardware_trigger",
+  "board": "cms8s78xx_devboard",
+  "devices": {
+    "btn": {
+      "id": "btn",
+      "type": "button",
+      "pinMapping": {
+        "1.l": 5
+      },
+      "properties": {
+        "activeLow": true
+      }
+    },
+    "led": {
+      "id": "led",
+      "type": "led",
+      "pinMapping": {
+        "A": 26
+      },
+      "properties": {
+        "activeHigh": true
+      }
+    }
+  },
+  "family": "mcs51",
+  "core": "8051",
+  "mcu": "cms8s78xx",
+  "vendor": "cmsemicon"
+}

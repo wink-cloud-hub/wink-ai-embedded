@@ -77,6 +77,7 @@ WINK_ISR(19) {
 // The bridge TU references the user entry; this test drives the model
 // directly, so an empty definition closes the link.
 extern "C" void wink_mcs51_user_main(void) {}
+extern "C" void wink_mcs51_host_set_ext_pin(uint16_t pin, uint8_t state);
 
 extern "C" void setUp(void) {}
 extern "C" void tearDown(void) {}
@@ -200,11 +201,84 @@ int main(void) {
     check(wink_mcs51_xdata_oob_count() >= oob_before + 2u,
           "OOB XSFR access not counted (want >= 2: write + read)");
 
+    // ── 12) Hardware trigger: ADCON2 ADCEX + ADET falling edge ────────────
+    WinkSfr  ADCON2(0xE9u);
+    WinkXsfr ps_adet(0xF0CCu);
+
+    cms8s_adc_reset();
+    ADCON1 = ADCON1_ADEN;
+    ADCON0 = 0u;  // left justify, ADGO=0
+    ADCCHS = 0u;  // channel 0 (AN0)
+    ADCON2 = 0x80u | (0x03u << 4) | (0x00u << 2);  // ADCEX=1, ADTGS=ADET (3), ADEGS=FALLING (0)
+    ps_adet = 0x05u;                                // P0.5
+
+    EIE2 = EIE2_ADCIE;
+    IE   = IE_EA;
+    EIF2 = 0u;
+
+    mcs51_adc_set_value(0, 0x0567u);
+    const uint32_t count_hw_start = cms8s_adc_conversion_count();
+    const uint32_t isr_hw_start   = g_adc_isr_hits;
+
+    // Pin initially high (idle with pullup)
+    wink_mcs51_host_set_ext_pin(5, 1);
+    cms8s_adc_poll();
+    check(cms8s_adc_conversion_count() == count_hw_start,
+          "hardware trigger fired on baseline sample");
+
+    // Falling edge: pin goes low -> conversion triggered
+    wink_mcs51_host_set_ext_pin(5, 0);
+    cms8s_adc_poll();
+    check(cms8s_adc_conversion_count() == count_hw_start + 1u,
+          "hardware trigger did not fire on falling edge");
+    check(g_adc_isr_hits == isr_hw_start + 1u,
+          "vector 19 not dispatched on hardware trigger EOC");
+    check((uint8_t)ADRESH == (uint8_t)((0x567u >> 4) & 0xFFu),
+          "hardware trigger result ADRESH mismatch");
+
+    // Pin held low -> no duplicate trigger
+    cms8s_adc_poll();
+    check(cms8s_adc_conversion_count() == count_hw_start + 1u,
+          "hardware trigger re-fired while pin held low");
+
+    // Rising edge -> should not trigger in falling-edge mode
+    wink_mcs51_host_set_ext_pin(5, 1);
+    cms8s_adc_poll();
+    check(cms8s_adc_conversion_count() == count_hw_start + 1u,
+          "hardware trigger fired on rising edge in falling-only mode");
+
+    // Second falling edge -> triggers second conversion
+    wink_mcs51_host_set_ext_pin(5, 0);
+    cms8s_adc_poll();
+    check(cms8s_adc_conversion_count() == count_hw_start + 2u,
+          "hardware trigger did not fire on second falling edge");
+    check(g_adc_isr_hits == isr_hw_start + 2u,
+          "vector 19 not dispatched on second hardware trigger EOC");
+
+    // ── 13) Hardware trigger: rising edge mode (ADC_TG_RISING) ─────────────
+    ADCON2 = 0x80u | (0x03u << 4) | (0x01u << 2);  // ADCEX=1, ADTGS=ADET (3), ADEGS=RISING (1)
+    const uint32_t count_rising_start = cms8s_adc_conversion_count();
+    const uint32_t isr_rising_start   = g_adc_isr_hits;
+
+    // Pin goes low (falling edge) -> should NOT trigger in rising-only mode
+    wink_mcs51_host_set_ext_pin(5, 0);
+    cms8s_adc_poll();
+    check(cms8s_adc_conversion_count() == count_rising_start,
+          "hardware trigger fired on falling edge in rising-only mode");
+
+    // Pin goes high (rising edge) -> triggers conversion
+    wink_mcs51_host_set_ext_pin(5, 1);
+    cms8s_adc_poll();
+    check(cms8s_adc_conversion_count() == count_rising_start + 1u,
+          "hardware trigger did not fire on rising edge");
+    check(g_adc_isr_hits == isr_rising_start + 1u,
+          "vector 19 not dispatched on rising edge trigger EOC");
+
     if (g_fails) {
         return 1;
     }
     printf("[mcs51] PASS: CMS8S78xx ADC 0-cycle model — ADGO self-clear, "
            "right/left packing, ADCIE/EA vector-19 gating, ADEN gate, "
-           "AN25/AN63 channels, XSFR window + OOB trap\n");
+           "AN25/AN63 channels, XSFR window + OOB trap, ADET hardware trigger (falling & rising)\n");
     return 0;
 }
