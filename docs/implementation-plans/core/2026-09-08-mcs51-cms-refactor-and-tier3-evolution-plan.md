@@ -23,7 +23,7 @@
 |------|------|
 | **目标平台/SoC** | `wasm` (UniSim 浏览器沙箱 & Node Headless) / `host` (MSVC & GCC 单元测试) |
 | **工具链/语言标准**| C++17 (`-std=c++17`, MSVC `/std:c++17`), Emscripten (Asyncify + JSPI), SDCC 4.2+ (Target=SDCC), Python 3.10+ |
-| **计划状态** | 📋 架构纯洁度定稿已就绪（v3.5 Production Ready Architecture） |
+| **计划状态** | ✅ Phase 1 & Phase 2 实施与回归 100% 完成（v4.0 Phase 1/2 Production Ready & Verified） |
 | **优先级** | 🔴 P1（重构关键数据面下沉与中断收口，直接决定 Tier 3 资产复用率） |
 | **计划负责人** | 嵌入式系统架构团队 |
 | **所需技能** | `embedded-best-practice`, `c-runtime-polymorphism-reading` |
