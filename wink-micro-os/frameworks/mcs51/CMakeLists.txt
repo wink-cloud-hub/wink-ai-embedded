@@ -37,6 +37,7 @@ add_library(wink_mcs51_compat STATIC EXCLUDE_FROM_ALL
     src/mcs51_extint.cpp
     src/mcs51_xdata.cpp
     src/mcs51_unsupported.cpp
+    src/mcs51_gpio.cpp
     src/mcs51_bridge.cpp
 )
 
