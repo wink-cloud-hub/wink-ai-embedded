@@ -602,6 +602,10 @@ if(TARGET wink_mcs51_compat)
     add_mcs51_host_test(test_mcs51_irq_arbitration
         mcs51/unit/test_mcs51_irq_arbitration.cpp)
 
+    # Task R0 / ADR-0077: GPIO dual read path (Read-Pin vs Read-Latch) & arbitration
+    add_mcs51_host_test(test_mcs51_gpio_dual_path
+        mcs51/unit/test_mcs51_gpio_dual_path.cpp)
+
     # Stage 2 T2: UART RX model — pending FIFO drained at microstep points,
     # REN gate, RI latch + vector 4, no-FIFO drop on RI pending, TX/RX shadow
     # interleave (host-only framework unit test; drives the model directly).
