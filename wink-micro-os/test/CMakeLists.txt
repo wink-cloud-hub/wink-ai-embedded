@@ -717,6 +717,11 @@ if(TARGET wink_mcs51_compat)
         ${_MCS51_RUNTIME_SRCS})
     target_compile_definitions(test_mcs51_cms8s_adc_e2e PRIVATE WINK_MCU_CMS8S78XX=1)
 
+    # CMS8S78xx on-chip Buzzer peripheral model test
+    add_mcs51_host_test(test_mcs51_cms8s_buzzer
+        mcs51/unit/test_cms8s_buzzer.cpp)
+    target_compile_definitions(test_mcs51_cms8s_buzzer PRIVATE WINK_MCU_CMS8S78XX=1)
+
     # M6: NTC closed-loop thermostat through the board-codegen ADC0832 seam.
     # The driver does NOT call mcs51_adc0832_init — the bridge auto-binds the
     # codegen pins (CS=P2.0/CLK=P2.1/DIO=P2.2) from mcs51_board_config.h; the

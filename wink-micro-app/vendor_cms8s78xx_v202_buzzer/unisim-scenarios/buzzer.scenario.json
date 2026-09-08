@@ -1,0 +1,29 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "CMS8S78xx Buzzer 10kHz headless proof",
+    "templateId": "vendor_cms8s78xx_v202_buzzer",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "100000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "60ms",
+      "windowUs": ["10ms", "60ms"],
+      "pin": 3,
+      "expected": {
+        "kind": "frequencyHz",
+        "value": {
+          "$near": {
+            "target": 10000,
+            "tolerance": 200
+          }
+        }
+      },
+      "description": "CMS8S78xx on-chip Buzzer peripheral divider outputs 10kHz square wave on P0.3 (pin 3)"
+    }
+  ]
+}

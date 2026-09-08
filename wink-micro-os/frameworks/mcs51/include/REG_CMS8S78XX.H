@@ -66,6 +66,8 @@ sfr P3EXTIF = 0xB7; // P3 pin interrupt flag
 sfr EIP1   = 0xB9;  // extended interrupt priority
 sfr EIP2   = 0xBA;
 sfr EIP3   = 0xBB;
+sfr BUZDIV = 0xBE;  // Buzzer clock divider
+sfr BUZCON = 0xBF;  // Buzzer control
 
 sfr T2CON  = 0xC8;  // Timer 2 control
 sfr T2IF   = 0xC9;  // Timer 2 interrupt flags
@@ -197,6 +199,12 @@ xsfr ADCLDO(0xF692);  // ADC LDO control (bit7 LDOEN, bits6:5 VSEL, bit4 OUTEN)
 #define UART_BRTCON_BRTEN_Msk   (0x1 << UART_BRTCON_BRTEN_Pos)
 #define UART_BRTCON_BRTCKDIV_Pos (0)
 #define UART_BRTCON_BRTCKDIV_Msk (0x7 << UART_BRTCON_BRTCKDIV_Pos)
+
+// BUZCON
+#define BUZZER_BUZCON_BUZEN_Pos  (7)
+#define BUZZER_BUZCON_BUZEN_Msk  (0x1 << BUZZER_BUZCON_BUZEN_Pos)
+#define BUZZER_BUZCON_BUZCKS_Pos (0)
+#define BUZZER_BUZCON_BUZCKS_Msk (0x3 << BUZZER_BUZCON_BUZCKS_Pos)
 
 // UART modes & baud timers (from StdDriver inc/uart.h)
 #define UART_MOD_SYN             (0x00)
@@ -352,6 +360,7 @@ xsfr ADCLDO(0xF692);  // ADC LDO control (bit7 LDOEN, bits6:5 VSEL, bit4 OUTEN)
 // P00 configured as AN0 = mux code 0x01. The XSFR PxxCFG write lands on the
 // XSFR shadow window; mux routing to the ADC rail is behavioral (no-op).
 #define GPIO_P00_MUX_AN0                     (0x01)
+#define GPIO_P03_MUX_BUZZ                    (0x05)
 #define GPIO_ENABLE_OUTPUT(PortTRIS, PinNum) ((PortTRIS) |= (1 << (PinNum)))
 #define GPIO_ENABLE_INPUT(PortTRIS, PinNum)  ((PortTRIS) &= ~(1 << (PinNum)))
 #define GPIO_ENABLE_OD(PortOD, PinNum)       ((PortOD) |= (1 << (PinNum)))
@@ -906,6 +915,35 @@ static inline uint16_t UART_ConfigBaudRate(uint32_t BaudRateValue) {
     return 0;
 }
 #endif  // WINK_CMS8S_VENDOR_UART
+
+// ── 10b) Vendor Buzzer driver macros & shims (verbatim from StdDriver inc/buzzer.h + src/buzzer.c) ───
+#define BUZ_CKS_8            (0x00)
+#define BUZ_CKS_16           (0x01)
+#define BUZ_CKS_32           (0x02)
+#define BUZ_CKS_64           (0x03)
+
+#define BUZ_SET_DIV(CLKDiv)  ((BUZDIV = (CLKDiv)))
+
+#ifndef WINK_CMS8S_VENDOR_BUZZER
+#define WINK_CMS8S_VENDOR_BUZZER
+
+static inline void BUZ_EnableBuzzer(void) {
+    BUZCON |= BUZZER_BUZCON_BUZEN_Msk;
+}
+
+static inline void BUZ_DisableBuzzer(void) {
+    BUZCON &= ~(BUZZER_BUZCON_BUZEN_Msk);
+}
+
+static inline void BUZ_ConfigBuzzer(uint8_t BuzCKS, uint8_t CLKDiv) {
+    uint8_t temp = BUZCON;
+    temp &= ~(BUZZER_BUZCON_BUZCKS_Msk);
+    temp |= BuzCKS;
+    BUZCON = temp;
+    BUZDIV = CLKDiv;
+}
+
+#endif  // WINK_CMS8S_VENDOR_BUZZER
 
 // ── 11) Keil C51 printf & putchar bridge ───────────────────────────────────────
 // In Keil C51, printf formats strings and emits each character via user-defined
