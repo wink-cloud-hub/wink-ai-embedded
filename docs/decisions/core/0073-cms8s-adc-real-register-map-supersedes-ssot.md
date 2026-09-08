@@ -69,6 +69,7 @@ XSFR 处理子决策：
   - XSFR 代理只可经 `wink_mcs51_xdata_*` 受检路径访问，**禁止**在清洗后代码中出现裸 `*(unsigned char xdata *)` 宿主指针（cleanup 擦除 `xdata` 后即野指针）。
   - 向量号 ≥8 的 ISR 依赖扩表后的 28 项表；新增扩展向量时在 `REG_CMS8S.H`/文档登记。
   - ESP32 真机零增量：mcs51 框架整体在 `if(ESP_PLATFORM) return()` 门控之后，新文件不进入固件链接图。
+  - **即时外设与虚拟频率的断言语义边界**：ADC 模型为 0 周期即时转换（D2），连续转换在虚拟时钟微步内折叠。测试实测得到的 ~10.7kHz 是宿主 Native 软件循环的微步执行节拍，而非真硅片 `ADC_CLK_DIV_256` 的物理转换率（真机在 24MHz 下物理转换率约 3.3kHz）。CI 场景测试断言证明的是“EOC 中断 vector 19 派发 → ISR 翻转 P32”这一中断服务链路与引脚翻转活性（Liveness）闭环，严禁以物理频率数值进行强校验；断言应采用宽容活性区间（`$between: [1000, 50000]`）。
 - **测试证据（2026-08-29 M5）**：MSVC host mcs51 ctest 16/16、MinGW host 16/16、wasm/Node 6/6（含 `test_mcs51_cms8s_adc` 单元测试 11 组断言、`test_mcs51_cms8s_adc_e2e` 与 `wasm_mcs51_cms8s_adc_test`）；STRICT 抽测（窗口内合法、0xE000 OOB assert+abort）；`wink lint --pack layering --pack api` 无发现。
 - **测试证据（2026-08-29 tier-b 收割）**：未修改原厂 StdDriver `adc.c` 编译运行 —— MSVC host mcs51 ctest **23/23**（17 host 含新 `test_mcs51_cms8s_vendor` + 6 wasm）、MinGW host **17/17**；vendor exe 直跑 PASS（ADC_* config/start/GO/result、向量 19 EOC 中断、XSFR LDO、compare/trig/AN63 smoke）；`wink lint` 无发现。构建注记：REG_CMS8S.H 的枚举重定义宏采用原厂逐字 token 间距（GCC 无 `-Wmacro-redefined`，仅逐字一致才静默；Clang/MSVC 另以 `/wd4005`、system include 抑制第三方头告警）。
 

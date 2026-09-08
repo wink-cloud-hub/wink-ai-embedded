@@ -12,6 +12,7 @@
 | **[2026-08-27-mcs51-sfr-proxy-rmw-and-edge-detection-design.md](./2026-08-27-mcs51-sfr-proxy-rmw-and-edge-detection-design.md)** | SFR 代理、影子内存、RMW 红线与引脚边沿检测数据面 | [ADR-0071](../../../decisions/core/0071-sfr-proxy-rmw-edge-data-plane.md) (Accepted) |
 | **[2026-08-27-mcs51-clock-domains-and-timing-consistency-design.md](./2026-08-27-mcs51-clock-domains-and-timing-consistency-design.md)** | 双时钟域映射、配额强制切出与 Catch-Up 补账时序方案 | [ADR-0072](../../../decisions/core/0072-dual-clock-domain-and-quota-catchup.md) (Accepted) |
 | **[2026-08-27-mcs51-user-code-compatibility-and-limitations-guide.md](./2026-08-27-mcs51-user-code-compatibility-and-limitations-guide.md)** | 用户 Keil C51 源码兼容性矩阵、方言擦除与不支持清单 | 设计指南 (Active) |
+| **[2026-09-08-mcs51-simulation-vs-silicon-fidelity-and-test-limits.md](./2026-09-08-mcs51-simulation-vs-silicon-fidelity-and-test-limits.md)** | MCS-51 仿真与物理硅片一致性差异、时序边界与场景测试方法论 | [ADR-0072](../../../decisions/core/0072-dual-clock-domain-and-quota-catchup.md) / [ADR-0073](../../../decisions/core/0073-cms8s-adc-real-register-map-supersedes-ssot.md) (Active) |
 | **[mcu-compat-plan.md](./mcu-compat-plan.md)** | 多架构 MCU 兼容路线与生态扩展综合规划 | 路线规划 (Accepted) |
 
 ---

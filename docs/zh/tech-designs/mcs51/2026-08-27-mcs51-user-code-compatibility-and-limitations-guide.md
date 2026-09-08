@@ -8,7 +8,7 @@
 | **修订日期** | 2026-09-02 (全面对齐现行框架源码与 ADR-0077 架构) |
 | **适用对象** | 8051 业务固件工程师、小家电应用迁移者、AI 嵌入式代码生成 Agent |
 | **所属模块** | `wink-micro-os` / `frameworks/mcs51/` / `UniSim` |
-| **底层设计规格书** | [总纲：8051 零侵入仿真拦截与 C++ 代理架构](2026-08-27-mcs51-zero-code-simulation-and-proxy-design.md)<br>[数据面：SFR 影子代理、整端口 RMW 与边沿感知](2026-08-27-mcs51-sfr-proxy-rmw-and-edge-detection-design.md)<br>[时序面：时钟域与时序一致性规格书](2026-08-27-mcs51-clock-domains-and-timing-consistency-design.md)<br>[主规划书：MCU 兼容方案规划](mcu-compat-plan.md) |
+| **底层设计规格书** | [总纲：8051 零侵入仿真拦截与 C++ 代理架构](2026-08-27-mcs51-zero-code-simulation-and-proxy-design.md)<br>[数据面：SFR 影子代理、整端口 RMW 与边沿感知](2026-08-27-mcs51-sfr-proxy-rmw-and-edge-detection-design.md)<br>[时序面：时钟域与时序一致性规格书](2026-08-27-mcs51-clock-domains-and-timing-consistency-design.md)<br>[物理一致性与测试：仿真与物理硅片差异及测试方法论](2026-09-08-mcs51-simulation-vs-silicon-fidelity-and-test-limits.md)<br>[主规划书：MCU 兼容方案规划](mcu-compat-plan.md) |
 
 ---
 
