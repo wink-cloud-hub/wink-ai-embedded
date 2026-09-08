@@ -12,5 +12,9 @@
         "activeHigh": false
       }
     }
-  }
+  },
+  "family": "mcs51",
+  "core": "8051",
+  "mcu": "cms8s78xx",
+  "vendor": "stc"
 }

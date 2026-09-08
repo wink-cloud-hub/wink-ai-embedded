@@ -1,5 +1,9 @@
 {
   "appName": "mcs51_uart_echo",
   "board": "stc89c52_devboard",
-  "devices": {}
+  "devices": {},
+  "family": "mcs51",
+  "core": "8051",
+  "mcu": "at89c52",
+  "vendor": "stc"
 }

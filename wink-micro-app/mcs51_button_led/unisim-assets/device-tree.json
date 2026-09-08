@@ -22,5 +22,9 @@
         "activeHigh": false
       }
     }
-  }
+  },
+  "family": "mcs51",
+  "core": "8051",
+  "mcu": "at89c52",
+  "vendor": "stc"
 }

@@ -1,14 +1,14 @@
 import { definePeripheral as e, pinsFromBinderVariant as t } from "@wink-ai/unisim-ui";
 import { resolvePluginIdentity as n } from "@wink-ai/unisim";
-import { computed as r, createElementBlock as i, createElementVNode as a, defineComponent as o, openBlock as s, ref as c, toDisplayString as l, withModifiers as u, onBeforeUnmount as unmountFn } from "vue";
+import { computed as r, createElementBlock as i, createElementVNode as a, defineComponent as o, onBeforeUnmount as s, openBlock as c, ref as l, toDisplayString as u, withModifiers as d } from "vue";
 import "@wokwi/elements";
 //#region builtin/button/1.0.0/src/CanvasGlyph.vue?vue&type=script&setup=true&lang.ts
-var d = [
+var f = [
 	"color",
 	"label",
 	"xray",
 	"pressed"
-], f = /*@__PURE__*/ o({
+], p = /*@__PURE__*/ o({
 	__name: "CanvasGlyph",
 	props: {
 		color: {},
@@ -21,62 +21,54 @@ var d = [
 	},
 	emits: ["buttonPress", "buttonRelease"],
 	setup(e, { emit: t }) {
-		let n = e, r = t, o = c(!1), l = c(!1), k = null;
-		function f(e) {
-			if (e.button === 0 && n.readonly !== !1) {
-				if (e.preventDefault(), e.stopPropagation(), l.value) {
-					l.value = !1, o.value = !1, r("buttonRelease");
-					return;
-				}
-				o.value = !0, r("buttonPress");
-				let handleGlobalUp = e => {
-					k && (k(), k = null);
-					if (!o.value) return;
+		let n = e, r = t, o = l(!1), u = l(!1), p = null;
+		function m(e) {
+			if (e.button !== 0 || n.readonly === !1) return;
+			if (e.preventDefault(), e.stopPropagation(), u.value) {
+				u.value = !1, o.value = !1, r("buttonRelease");
+				return;
+			}
+			o.value = !0, r("buttonPress");
+			let t = (e) => {
+				if (p &&= (p(), null), o.value) {
 					if (e.ctrlKey || e.metaKey) {
-						l.value = !0;
+						u.value = !0;
 						return;
 					}
 					o.value = !1, r("buttonRelease");
-				};
-				window.addEventListener("pointerup", handleGlobalUp);
-				window.addEventListener("pointercancel", handleGlobalUp);
-				k = () => {
-					window.removeEventListener("pointerup", handleGlobalUp);
-					window.removeEventListener("pointercancel", handleGlobalUp);
-				};
-			}
+				}
+			};
+			window.addEventListener("pointerup", t), window.addEventListener("pointercancel", t), p = () => {
+				window.removeEventListener("pointerup", t), window.removeEventListener("pointercancel", t);
+			};
 		}
-		unmountFn(() => {
-			k && (k(), k = null);
-		});
-		return (t, n) => (s(), i("div", {
+		return s(() => {
+			p &&= (p(), null);
+		}), (t, n) => (c(), i("div", {
 			class: "button-glyph-wrapper",
 			draggable: "false",
-			onPointerdown: f,
-			onDragstart: n[0] ||= u(() => {}, ["prevent"]),
-			onSelectstart: n[1] ||= u(() => {}, ["prevent"]),
-			onContextmenu: n[2] ||= u(() => {}, ["prevent"])
+			onPointerdown: m,
+			onDragstart: n[0] ||= d(() => {}, ["prevent"]),
+			onSelectstart: n[1] ||= d(() => {}, ["prevent"]),
+			onContextmenu: n[2] ||= d(() => {}, ["prevent"])
 		}, [a("wokwi-pushbutton", {
 			color: e.color,
 			label: e.label,
 			xray: e.xray,
 			pressed: o.value,
 			style: { "pointer-events": "none" }
-		}, null, 8, d)], 32));
+		}, null, 8, f)], 32));
 	}
-}), p = (e, t) => {
+}), m = (e, t) => {
 	let n = e.__vccOpts || e;
 	for (let [e, r] of t) n[e] = r;
 	return n;
-}, m = /*@__PURE__*/ p(f, [["__scopeId", "data-v-c563efee"]]);
-//#endregion
-//#region builtin/button/1.0.0/src/WorldWidget.vue?vue&type=script&setup=true&lang.ts
-var h = { class: "virtual-button" }, g = { class: "component-label" }, _ = [
+}, h = /*#__PURE__*/ m(p, [["__scopeId", "data-v-a720bf4d"]]), g = { class: "virtual-button" }, _ = { class: "component-label" }, v = [
 	"color",
 	"label",
 	"xray",
 	"pressed"
-], v = /*#__PURE__*/ p(/* @__PURE__ */ o({
+], y = /*#__PURE__*/ m(/* @__PURE__ */ o({
 	__name: "WorldWidget",
 	props: {
 		pluginInstanceId: {},
@@ -88,52 +80,47 @@ var h = { class: "virtual-button" }, g = { class: "component-label" }, _ = [
 	},
 	emits: ["buttonPress", "buttonRelease"],
 	setup(e, { emit: t }) {
-		let n = e, o = t, d = c(!1), f = c(!1), k = null, p = r(() => `1.l:${n.pinConnections ? n.pinConnections["1.l"] : void 0}, 2.l:${n.pinConnections ? n.pinConnections["2.l"] : void 0}, 1.r:${n.pinConnections ? n.pinConnections["1.r"] : void 0}, 2.r:${n.pinConnections ? n.pinConnections["2.r"] : void 0}`);
-		function m(e) {
-			if (e.button === 0) {
-				if (e.preventDefault(), e.stopPropagation(), f.value) {
-					f.value = !1, d.value = !1, o("buttonRelease");
-					return;
-				}
-				d.value = !0, o("buttonPress");
-				let handleGlobalUp = e => {
-					k && (k(), k = null);
-					if (!d.value) return;
+		let n = e, o = t, f = l(!1), p = l(!1), m = null, h = r(() => `1.l:${n.pinConnections ? n.pinConnections["1.l"] : void 0}, 2.l:${n.pinConnections ? n.pinConnections["2.l"] : void 0}, 1.r:${n.pinConnections ? n.pinConnections["1.r"] : void 0}, 2.r:${n.pinConnections ? n.pinConnections["2.r"] : void 0}`);
+		function y(e) {
+			if (e.button !== 0) return;
+			if (e.preventDefault(), e.stopPropagation(), p.value) {
+				p.value = !1, f.value = !1, o("buttonRelease");
+				return;
+			}
+			f.value = !0, o("buttonPress");
+			let t = (e) => {
+				if (m &&= (m(), null), f.value) {
 					if (e.ctrlKey || e.metaKey) {
-						f.value = !0;
+						p.value = !0;
 						return;
 					}
-					d.value = !1, o("buttonRelease");
-				};
-				window.addEventListener("pointerup", handleGlobalUp);
-				window.addEventListener("pointercancel", handleGlobalUp);
-				k = () => {
-					window.removeEventListener("pointerup", handleGlobalUp);
-					window.removeEventListener("pointercancel", handleGlobalUp);
-				};
-			}
+					f.value = !1, o("buttonRelease");
+				}
+			};
+			window.addEventListener("pointerup", t), window.addEventListener("pointercancel", t), m = () => {
+				window.removeEventListener("pointerup", t), window.removeEventListener("pointercancel", t);
+			};
 		}
-		unmountFn(() => {
-			k && (k(), k = null);
-		});
-		return (t, n) => (s(), i("div", h, [a("div", g, "Button (" + l(p.value) + ")", 1), a("div", {
+		return s(() => {
+			m &&= (m(), null);
+		}), (t, n) => (c(), i("div", g, [a("div", _, "Button (" + u(h.value) + ")", 1), a("div", {
 			class: "btn-wrapper",
 			draggable: "false",
-			onPointerdown: m,
-			onDragstart: n[0] ||= u(() => {}, ["prevent"]),
-			onSelectstart: n[1] ||= u(() => {}, ["prevent"]),
-			onContextmenu: n[2] ||= u(() => {}, ["prevent"])
+			onPointerdown: y,
+			onDragstart: n[0] ||= d(() => {}, ["prevent"]),
+			onSelectstart: n[1] ||= d(() => {}, ["prevent"]),
+			onContextmenu: n[2] ||= d(() => {}, ["prevent"])
 		}, [a("wokwi-pushbutton", {
 			color: e.color,
 			label: e.label,
 			xray: e.xray,
-			pressed: d.value,
+			pressed: f.value,
 			style: { "pointer-events": "none" }
-		}, null, 8, _)], 32)]));
+		}, null, 8, v)], 32)]));
 	}
-}), [["__scopeId", "data-v-1436a574"]]);
+}), [["__scopeId", "data-v-1debaa6a"]]);
 Object.freeze({});
-var y = Object.freeze({
+var b = Object.freeze({
 	"1.l": Object.freeze({
 		relX: -5,
 		relY: 20,
@@ -155,10 +142,10 @@ var y = Object.freeze({
 		relY: 33,
 		wireNet: "gnd"
 	})
-}), b = Object.freeze({ default: Object.freeze({
+}), x = Object.freeze({ default: Object.freeze({
 	variant: "default",
 	getPins: () => t("button", "default"),
-	pinsOverlay: y,
+	pinsOverlay: b,
 	defaultAppearanceId: "button_default"
 }) });
 Object.freeze({ button_default: Object.freeze({
@@ -175,14 +162,14 @@ Object.freeze({ button_default: Object.freeze({
 }) });
 //#endregion
 //#region builtin/button/1.0.0/src/definition.ts
-var x = n(import.meta.url, "button", "1.0.0", "input"), S = b.default, C = e({
-	type: x.type,
+var S = n(import.meta.url, "button", "1.0.0", "input"), C = x.default, w = e({
+	type: S.type,
 	size: {
 		width: 80,
 		height: 60
 	},
 	wireColor: "#38bdf8",
-	pinsOverlay: S.pinsOverlay,
+	pinsOverlay: C.pinsOverlay,
 	props: {
 		variant: {
 			type: "string",
@@ -223,8 +210,8 @@ var x = n(import.meta.url, "button", "1.0.0", "input"), S = b.default, C = e({
 			description: "Active low mode (pull-up)"
 		}
 	},
-	canvas: m,
-	world: v,
+	canvas: h,
+	world: y,
 	ui: {
 		canvasProps: (e, t) => ({
 			color: e.props.color,
@@ -243,4 +230,4 @@ var x = n(import.meta.url, "button", "1.0.0", "input"), S = b.default, C = e({
 	}
 });
 //#endregion
-export { C as buttonDefinition, C as default };
+export { w as buttonDefinition, w as default };

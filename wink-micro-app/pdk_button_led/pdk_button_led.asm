@@ -1,6 +1,6 @@
 ;--------------------------------------------------------
 ; File Created by SDCC : free open source ISO C Compiler
-; Version 4.6.0 #16555 (MINGW64)
+; Version 4.6.2 #16847 (MINGW64)
 ;--------------------------------------------------------
 	.module pdk_button_led
 	
@@ -205,38 +205,38 @@ __sdcc_program_startup:
 ; code
 ;--------------------------------------------------------
 	.area CODE
-;	D:\MyWorkSpace_program\lowcode-nocode\ai-app\wink-ai-embedded\wink-micro-app\pdk_button_led\pdk_button_led.c: 23: void main(void) {
+;	D:\workspaces\ai-coding\wink-ai\wink-ai-embedded\wink-micro-app\pdk_button_led\pdk_button_led.c: 22: void main(void) {
 ;	-----------------------------------------
 ;	 function main
 ;	-----------------------------------------
 _main:
-;	D:\MyWorkSpace_program\lowcode-nocode\ai-app\wink-ai-embedded\wink-micro-app\pdk_button_led\pdk_button_led.c: 25: PADIER |= (1 << BTN_BIT);       // 使能 PA.5 为数字输入模式
+;	D:\workspaces\ai-coding\wink-ai\wink-ai-embedded\wink-micro-app\pdk_button_led\pdk_button_led.c: 24: PADIER |= (1 << BTN_BIT);       // 使能 PA.5 为数字输入模式
 	set1.io	__padier, #5
-;	D:\MyWorkSpace_program\lowcode-nocode\ai-app\wink-ai-embedded\wink-micro-app\pdk_button_led\pdk_button_led.c: 26: PAPH   |= (1 << BTN_BIT);       // 使能 PA.5 内部硬件上拉电阻
+;	D:\workspaces\ai-coding\wink-ai\wink-ai-embedded\wink-micro-app\pdk_button_led\pdk_button_led.c: 25: PAPH   |= (1 << BTN_BIT);       // 使能 PA.5 内部硬件上拉电阻
 	set1.io	__paph, #5
-;	D:\MyWorkSpace_program\lowcode-nocode\ai-app\wink-ai-embedded\wink-micro-app\pdk_button_led\pdk_button_led.c: 27: PAC    &= ~(1 << BTN_BIT);      // 设为输入方向
+;	D:\workspaces\ai-coding\wink-ai\wink-ai-embedded\wink-micro-app\pdk_button_led\pdk_button_led.c: 26: PAC    &= ~(1 << BTN_BIT);      // 设为输入方向
 	set0.io	__pac, #5
-;	D:\MyWorkSpace_program\lowcode-nocode\ai-app\wink-ai-embedded\wink-micro-app\pdk_button_led\pdk_button_led.c: 30: PAC    |= (1 << LED_BIT);       // 设为输出方向
+;	D:\workspaces\ai-coding\wink-ai\wink-ai-embedded\wink-micro-app\pdk_button_led\pdk_button_led.c: 29: PAC    |= (1 << LED_BIT);       // 设为输出方向
 	set1.io	__pac, #4
-;	D:\MyWorkSpace_program\lowcode-nocode\ai-app\wink-ai-embedded\wink-micro-app\pdk_button_led\pdk_button_led.c: 31: set_led_off();                  // 初始状态：熄灭
+;	D:\workspaces\ai-coding\wink-ai\wink-ai-embedded\wink-micro-app\pdk_button_led\pdk_button_led.c: 30: set_led_off();                  // 初始状态：熄灭
 	set0.io	__pa, #4
-;	D:\MyWorkSpace_program\lowcode-nocode\ai-app\wink-ai-embedded\wink-micro-app\pdk_button_led\pdk_button_led.c: 34: while (1) {
+;	D:\workspaces\ai-coding\wink-ai\wink-ai-embedded\wink-micro-app\pdk_button_led\pdk_button_led.c: 33: while (1) {
 00105$:
-;	D:\MyWorkSpace_program\lowcode-nocode\ai-app\wink-ai-embedded\wink-micro-app\pdk_button_led\pdk_button_led.c: 35: if (is_button_pressed()) {
+;	D:\workspaces\ai-coding\wink-ai\wink-ai-embedded\wink-micro-app\pdk_button_led\pdk_button_led.c: 34: if (is_button_pressed()) {
 	t0sn.io	__pa, #5
 	goto	00102$
 00123$:
-;	D:\MyWorkSpace_program\lowcode-nocode\ai-app\wink-ai-embedded\wink-micro-app\pdk_button_led\pdk_button_led.c: 36: set_led_on();           // 按下时点亮
+;	D:\workspaces\ai-coding\wink-ai\wink-ai-embedded\wink-micro-app\pdk_button_led\pdk_button_led.c: 35: set_led_on();           // 按下时点亮
 	set1.io	__pa, #4
 	goto	00103$
 00102$:
-;	D:\MyWorkSpace_program\lowcode-nocode\ai-app\wink-ai-embedded\wink-micro-app\pdk_button_led\pdk_button_led.c: 38: set_led_off();          // 松开时熄灭
+;	D:\workspaces\ai-coding\wink-ai\wink-ai-embedded\wink-micro-app\pdk_button_led\pdk_button_led.c: 37: set_led_off();          // 松开时熄灭
 	set0.io	__pa, #4
 00103$:
-;	D:\MyWorkSpace_program\lowcode-nocode\ai-app\wink-ai-embedded\wink-micro-app\pdk_button_led\pdk_button_led.c: 40: __asm__("nop");             // 协作式微步推进
+;	D:\workspaces\ai-coding\wink-ai\wink-ai-embedded\wink-micro-app\pdk_button_led\pdk_button_led.c: 39: __asm__("nop");             // 协作式微步推进
 	nop
 	goto	00105$
-;	D:\MyWorkSpace_program\lowcode-nocode\ai-app\wink-ai-embedded\wink-micro-app\pdk_button_led\pdk_button_led.c: 42: }
+;	D:\workspaces\ai-coding\wink-ai\wink-ai-embedded\wink-micro-app\pdk_button_led\pdk_button_led.c: 41: }
 	ret
 	.area CODE
 	.area CONST
