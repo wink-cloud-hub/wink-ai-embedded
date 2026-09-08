@@ -16,10 +16,10 @@
 #include "wink_runtime.h"
 #include "wink_app.h"
 #include "wink_status.h"
+#include "mcs51_context.h"
 
 /* Provided by the mcs51 compat layer */
 extern const wink_app_callbacks_t *wink_app_get_callbacks(void);
-extern uint8_t wink_mcs51_sfr_shadow[256];
 extern void (*wink_mcs51_get_isr(uint8_t vector_num))(void);
 
 extern uint32_t wink_mcs51_isr_dispatch_count(uint8_t vector_num);
@@ -72,8 +72,8 @@ int main(void) {
     }
 
     /* 3. P0 (segments) and P2 (digits) must be actively driven */
-    uint8_t p0 = wink_mcs51_sfr_shadow[P0_SFR_ADDR];
-    uint8_t p2 = wink_mcs51_sfr_shadow[P2_SFR_ADDR];
+    uint8_t p0 = mcs51_get_context()->sfr_shadow[P0_SFR_ADDR];
+    uint8_t p2 = mcs51_get_context()->sfr_shadow[P2_SFR_ADDR];
     if (p0 == 0x00u && p2 == 0xFFu) {
         printf("[mcs51-seg] FAIL: P0=0x00 and P2=0xFF, dynamic scan never started\n");
         fails++;

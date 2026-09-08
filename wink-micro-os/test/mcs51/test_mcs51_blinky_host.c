@@ -10,12 +10,11 @@
 #include "wink_runtime.h"
 #include "wink_app.h"
 #include "wink_status.h"
+#include "mcs51_context.h"
 
 /* Provided by the mcs51 compat layer (weak/selectany). */
 extern const wink_app_callbacks_t *wink_app_get_callbacks(void);
 
-/* C-ABI SFR shadow + ISR table (boundaries ②/③). */
-extern uint8_t wink_mcs51_sfr_shadow[256];
 extern void (*wink_mcs51_get_isr(uint8_t vector_num))(void);
 
 #define P1_SFR_ADDR 0x90u
@@ -49,7 +48,7 @@ int main(void) {
     }
 
     /* (b) blinky drives P1 to 0x55 each super-loop pass via the SFR proxy. */
-    uint8_t p1 = wink_mcs51_sfr_shadow[P1_SFR_ADDR];
+    uint8_t p1 = mcs51_get_context()->sfr_shadow[P1_SFR_ADDR];
     if (p1 != 0x55u) {
         printf("[mcs51] FAIL: P1 shadow = 0x%02X, want 0x55\n", (unsigned)p1);
         fails++;

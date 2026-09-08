@@ -19,6 +19,7 @@
 #include <stdio.h>
 
 #include "absacc.h"
+#include "mcs51_context.h"
 #include "mcs51_proxy.hpp"
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_extint.h"
@@ -64,33 +65,33 @@ void ext_set(uint16_t pin, uint8_t state) {
 }
 
 void ie0_config(bool it0, bool ex0, bool ea) {
-    uint8_t tcon = wink_mcs51_sfr_shadow[SFR_TCON];
+    uint8_t tcon = mcs51_get_context()->sfr_shadow[SFR_TCON];
     tcon &= static_cast<uint8_t>(~(1u << TCON_IT0));
     if (it0) tcon |= (1u << TCON_IT0);
-    wink_mcs51_sfr_shadow[SFR_TCON] = tcon;
+    mcs51_get_context()->sfr_shadow[SFR_TCON] = tcon;
     uint8_t ie = 0;
     if (ex0) ie |= (1u << IE_EX0);
     if (ea)  ie |= (1u << IE_EA);
     // Keep EX1/IT1 untouched for the INT1 case.
-    ie |= static_cast<uint8_t>(wink_mcs51_sfr_shadow[SFR_IE] & (1u << IE_EX1));
-    wink_mcs51_sfr_shadow[SFR_IE] = ie;
+    ie |= static_cast<uint8_t>(mcs51_get_context()->sfr_shadow[SFR_IE] & (1u << IE_EX1));
+    mcs51_get_context()->sfr_shadow[SFR_IE] = ie;
 }
 
 void ie1_config(bool it1, bool ex1, bool ea) {
-    uint8_t tcon = wink_mcs51_sfr_shadow[SFR_TCON];
+    uint8_t tcon = mcs51_get_context()->sfr_shadow[SFR_TCON];
     tcon &= static_cast<uint8_t>(~(1u << TCON_IT1));
     if (it1) tcon |= (1u << TCON_IT1);
-    wink_mcs51_sfr_shadow[SFR_TCON] = tcon;
-    uint8_t ie = wink_mcs51_sfr_shadow[SFR_IE];
+    mcs51_get_context()->sfr_shadow[SFR_TCON] = tcon;
+    uint8_t ie = mcs51_get_context()->sfr_shadow[SFR_IE];
     ie &= static_cast<uint8_t>(~((1u << IE_EX1) | (1u << IE_EA)));
     if (ex1) ie |= (1u << IE_EX1);
     if (ea)  ie |= (1u << IE_EA);
-    wink_mcs51_sfr_shadow[SFR_IE] = ie;
+    mcs51_get_context()->sfr_shadow[SFR_IE] = ie;
 }
 
 uint8_t ie0_bit(void) {
     return static_cast<uint8_t>(
-        (wink_mcs51_sfr_shadow[SFR_TCON] >> TCON_IE0) & 1u);
+        (mcs51_get_context()->sfr_shadow[SFR_TCON] >> TCON_IE0) & 1u);
 }
 
 // One model evaluation, plus the virtual-slice advance the next evaluation
@@ -257,7 +258,7 @@ int main(void) {
     ie0_config(/*it0=*/true, /*ex0=*/true, /*ea=*/true);
     ext_set(PIN_INT0, EXT_HIGH);
     ext_set(PIN_P30, EXT_HIGH);
-    wink_mcs51_xdata_shadow[XSFR_PS_INT0] = PS_GPIO_P30_MUX_INT0;
+    mcs51_get_context()->xdata_shadow[XSFR_PS_INT0] = PS_GPIO_P30_MUX_INT0;
     next_slice();
     poll();  // mux change -> fresh baseline on P3.0, no edge
     CHECK(g_isr0_hits == 0,
@@ -280,7 +281,7 @@ int main(void) {
 
     // ── I: unprogrammed PS (reset 0x7F) restores the classic P3.2 mapping ──
     g_isr0_hits = 0;
-    wink_mcs51_xdata_shadow[XSFR_PS_INT0] = PS_RESET_UNMAPPED;
+    mcs51_get_context()->xdata_shadow[XSFR_PS_INT0] = PS_RESET_UNMAPPED;
     ext_set(PIN_INT0, EXT_HIGH);
     next_slice();
     poll();  // mux back to classic -> baseline reset, no edge

@@ -14,6 +14,7 @@
 
 #include "ADC0832.H"
 #include "mcs51_adc.h"
+#include "mcs51_context.h"
 #include "mcs51_proxy.hpp"
 
 namespace {
@@ -34,7 +35,7 @@ constexpr uint8_t BIT_CLK = 0x02;
 constexpr uint8_t BIT_DIO = 0x01;
 
 void reset_pins() {
-    wink_mcs51_sfr_shadow[P1_ADDR] = 0xFF;  // idle: CS=1, CLK=1, DIO high
+    mcs51_get_context()->sfr_shadow[P1_ADDR] = 0xFF;  // idle: CS=1, CLK=1, DIO high
 }
 
 // Drive style A: sbit toggles (the classic Keil bit-bang).

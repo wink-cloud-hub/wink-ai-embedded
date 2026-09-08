@@ -13,6 +13,7 @@
 #include <stdio.h>
 
 #include "absacc.h"
+#include "mcs51_context.h"
 #include "cms8s78xx.h"
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_extint.h"
@@ -188,7 +189,7 @@ int main(void) {
     // Reset clears flags
     wink_mcs51_extint_reset();
     for (uint8_t p = 0; p < 4; ++p) {
-        CHECK(wink_mcs51_sfr_shadow[0xB4 + p] == 0, "T4.2: Reset clears EXTIF");
+        CHECK(mcs51_get_context()->sfr_shadow[0xB4 + p] == 0, "T4.2: Reset clears EXTIF");
     }
 
     if (fails == 0) {

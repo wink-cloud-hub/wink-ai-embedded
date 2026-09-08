@@ -20,11 +20,9 @@
 #include "wink_runtime.h"
 #include "wink_app.h"
 #include "wink_status.h"
+#include "mcs51_context.h"
 
 extern const wink_app_callbacks_t *wink_app_get_callbacks(void);
-
-/* SFR shadow (C linkage, defined in mcs51_proxy.cpp). Index = SFR address. */
-extern uint8_t wink_mcs51_sfr_shadow[256];
 
 #define P3_SFR_ADDR 0xB0u   /* P3 port */
 #define P1_SFR_ADDR 0x90u   /* P1 port */
@@ -36,14 +34,14 @@ extern uint8_t wink_mcs51_sfr_shadow[256];
 /* Drive the simulated button: 1 = released, 0 = pressed (active-low). */
 static void set_key(uint8_t released) {
     if (released) {
-        wink_mcs51_sfr_shadow[P3_SFR_ADDR] |= KEY_BIT;
+        mcs51_get_context()->sfr_shadow[P3_SFR_ADDR] |= KEY_BIT;
     } else {
-        wink_mcs51_sfr_shadow[P3_SFR_ADDR] &= (uint8_t)(~KEY_BIT & 0xFFu);
+        mcs51_get_context()->sfr_shadow[P3_SFR_ADDR] &= (uint8_t)(~KEY_BIT & 0xFFu);
     }
 }
 
 static uint8_t read_led(void) {
-    return (uint8_t)(wink_mcs51_sfr_shadow[P1_SFR_ADDR] & LED_BIT);
+    return (uint8_t)(mcs51_get_context()->sfr_shadow[P1_SFR_ADDR] & LED_BIT);
 }
 
 int main(void) {

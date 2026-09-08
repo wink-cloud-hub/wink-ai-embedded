@@ -20,11 +20,9 @@
 #include "ADC0832.H"
 #include "mcs51_adc.h"
 #include "mcs51_trap.h"
+#include "mcs51_context.h"
 
 extern const wink_app_callbacks_t *wink_app_get_callbacks(void);
-
-/* XDATA shadow (C linkage, framework BSS) for the sample's XBYTE results. */
-extern uint8_t wink_mcs51_xdata_shadow[65536];
 
 #define RUN_TICKS 20u
 
@@ -56,8 +54,8 @@ int main(void) {
     }
 
     int fails = 0;
-    uint8_t ch0 = wink_mcs51_xdata_shadow[0x0010u];
-    uint8_t ch1 = wink_mcs51_xdata_shadow[0x0011u];
+    uint8_t ch0 = mcs51_get_context()->xdata_shadow[0x0010u];
+    uint8_t ch1 = mcs51_get_context()->xdata_shadow[0x0011u];
     if (ch0 != 0xA5u) {
         printf("[mcs51] FAIL: ADC0832 CH0 read 0x%02X, want 0xA5\n",
                (unsigned)ch0);

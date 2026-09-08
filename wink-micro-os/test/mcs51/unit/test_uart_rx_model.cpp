@@ -14,6 +14,7 @@
 #include <stdio.h>
 
 #include "mcs51_proxy.hpp"
+#include "mcs51_context.h"
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_isr.h"
 #include "wink_mcs51_uart.h"
@@ -35,17 +36,17 @@ uint32_t g_rx_count = 0;
 
 uint8_t ri_bit(void) {
     return static_cast<uint8_t>(
-        (wink_mcs51_sfr_shadow[SFR_SCON] >> SCON_RI_BIT) & 1u);
+        (mcs51_get_context()->sfr_shadow[SFR_SCON] >> SCON_RI_BIT) & 1u);
 }
 
 void configure(bool ren, bool es, bool ea) {
     uint8_t scon = 0x40u;  // mode 1 (8-bit UART)
     if (ren) scon |= (1u << SCON_REN_BIT);
-    wink_mcs51_sfr_shadow[SFR_SCON] = scon;
+    mcs51_get_context()->sfr_shadow[SFR_SCON] = scon;
     uint8_t ie = 0;
     if (es) ie |= (1u << IE_ES_BIT);
     if (ea) ie |= (1u << IE_EA_BIT);
-    wink_mcs51_sfr_shadow[SFR_IE] = ie;
+    mcs51_get_context()->sfr_shadow[SFR_IE] = ie;
 }
 
 }  // namespace
@@ -53,17 +54,17 @@ void configure(bool ren, bool es, bool ea) {
 // UART ISR: standard Keil shape — on RI, read SBUF and clear RI; on TI, clear
 // TI. Hardware vectors here for both flags on vector 4.
 WINK_ISR(4) {
-    uint8_t scon = wink_mcs51_sfr_shadow[SFR_SCON];
+    uint8_t scon = mcs51_get_context()->sfr_shadow[SFR_SCON];
     if (scon & (1u << SCON_RI_BIT)) {
         if (g_rx_count < sizeof(g_rx)) {
-            g_rx[g_rx_count] = wink_mcs51_sfr_shadow[SFR_SBUF];
+            g_rx[g_rx_count] = mcs51_get_context()->sfr_shadow[SFR_SBUF];
         }
         ++g_rx_count;
-        wink_mcs51_sfr_shadow[SFR_SCON] &=
+        mcs51_get_context()->sfr_shadow[SFR_SCON] &=
             static_cast<uint8_t>(~(1u << SCON_RI_BIT));
     }
     if (scon & (1u << SCON_TI_BIT)) {
-        wink_mcs51_sfr_shadow[SFR_SCON] &=
+        mcs51_get_context()->sfr_shadow[SFR_SCON] &=
             static_cast<uint8_t>(~(1u << SCON_TI_BIT));
     }
     ++g_isr_hits;
@@ -136,13 +137,13 @@ int main(void) {
     wink_mcs51_uart_rx_drain();
     CHECK(g_isr_hits == 0, "C: no vector when ES=0 (polled RX)");
     CHECK(ri_bit() == 1, "C: RI latched for polling path");
-    CHECK(wink_mcs51_sfr_shadow[SFR_SBUF] == 'P', "C: SBUF holds received byte");
+    CHECK(mcs51_get_context()->sfr_shadow[SFR_SBUF] == 'P', "C: SBUF holds received byte");
 
     // ── D: slow consumer (RI never cleared) → second byte dropped ───────────
     g_isr_hits = 0;
     g_rx_count = 0;
     configure(/*ren=*/true, /*es=*/false, /*ea=*/true);  // RI stays set
-    wink_mcs51_sfr_shadow[SFR_SCON] |= (1u << SCON_RI_BIT);  // RI already pending
+    mcs51_get_context()->sfr_shadow[SFR_SCON] |= (1u << SCON_RI_BIT);  // RI already pending
     uint32_t dropped_before = wink_mcs51_uart_rx_dropped();
     wink_mcs51_uart_rx_push('Q');
     wink_mcs51_test_advance_virtual_us(1000);
@@ -155,7 +156,7 @@ int main(void) {
     g_rx_count = 0;
     configure(/*ren=*/true, /*es=*/true, /*ea=*/true);
     uint32_t cap_before = wink_mcs51_uart_byte_count();
-    wink_mcs51_sfr_shadow[SFR_SBUF] = static_cast<uint8_t>('T');
+    mcs51_get_context()->sfr_shadow[SFR_SBUF] = static_cast<uint8_t>('T');
     wink_mcs51_uart_on_write(SFR_SBUF);  // TX: console + capture + ch2 route
     CHECK(wink_mcs51_uart_byte_count() == cap_before + 1,
           "E: TX captured one byte");

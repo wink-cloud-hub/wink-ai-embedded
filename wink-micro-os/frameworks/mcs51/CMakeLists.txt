@@ -25,6 +25,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Host/wasm standalone target. EXCLUDE_FROM_ALL: only built when an app/test
 # links it (mirrors wink_arduino_compat).
 add_library(wink_mcs51_compat STATIC EXCLUDE_FROM_ALL
+    src/mcs51_context.cpp
+    src/mcs51_peripheral.cpp
     src/mcs51_sfr.cpp
     src/mcs51_uni_bridge.cpp
     src/mcs51_adc.cpp
@@ -60,10 +62,8 @@ endif()
 
 target_include_directories(wink_mcs51_compat
     PUBLIC include
-    # wink_app.h (callback binding). The runtime LIBRARY is deliberately NOT
-    # linked here — the final executable (simulator or test) provides it — so we
-    # only add the header path.
-    PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../../runtime/include
+    # wink_event.h, wink_app.h (callback binding and Mcu51Context wake event).
+    PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../../runtime/include
     # wink_sim_scheduler.h (fiber-context detection in the clock engine).
     PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../../targets/common/include
 )

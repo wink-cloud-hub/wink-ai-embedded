@@ -22,6 +22,7 @@
 
 #include "absacc.h"
 #include "cms8s_adc.h"
+#include "mcs51_context.h"
 #include "mcs51_adc.h"
 #include "mcs51_proxy.hpp"
 #include "mcs51_xsfr.hpp"
@@ -74,7 +75,7 @@ int main(void) {
     wink_mcs51_isr_enable();
     wink_mcs51_xdata_reset();
     mcs51_adc_reset();
-    cms8s_adc_init();
+    cms8s_adc_init(mcs51_get_context());
 
     // ── 1) Right-justify mode through the vendor config API ─────────────────
     // ADC_ConfigRunMode(div, ADC_RESULT_RIGHT) sets ADFM; ADCKS is accepted.
