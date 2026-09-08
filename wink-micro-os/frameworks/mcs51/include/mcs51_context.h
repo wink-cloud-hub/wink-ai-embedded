@@ -34,6 +34,9 @@ typedef struct {
 
 typedef struct {
     Mcu51TimerChannel channels[2];
+    bool     t2_running;
+    uint64_t t2_next_ovf_us;
+    uint8_t  t2_tr_prev;
 } Mcu51TimerState;
 
 // ── ExtInt State (Task R2 / R1) ────────────────────────────────────────────

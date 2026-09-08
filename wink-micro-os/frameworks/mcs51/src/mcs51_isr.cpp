@@ -25,6 +25,7 @@ const mcs51_irq_map_entry_t s_default_irq_map[IRQ_SOURCE__COUNT] = {
     /* IRQ_SOURCE_INT1 */   { 2u,  0xA8u, 2u, 0x88u, 3u, 0xB8u, 2u, MCS51_IRQ_HW_AUTO_CLEAR }, // IE.EX1, TCON.IE1, IP.PX1
     /* IRQ_SOURCE_TIMER1 */ { 3u,  0xA8u, 3u, 0x88u, 7u, 0xB8u, 3u, MCS51_IRQ_HW_AUTO_CLEAR }, // IE.ET1, TCON.TF1, IP.PT1
     /* IRQ_SOURCE_UART0 */  { 4u,  0xA8u, 4u, 0x98u, 0u, 0xB8u, 4u, MCS51_IRQ_SW_CLEAR },      // IE.ES0, SCON.RI/TI, IP.PS0
+    /* IRQ_SOURCE_TIMER2 */ { 5u,  0xA8u, 5u, 0xC9u, 7u, 0xB8u, 5u, MCS51_IRQ_SW_CLEAR },      // IE.ET2, T2IF.T2F, IP.PT2
     /* IRQ_SOURCE_ADC */    { 19u, 0xAAu, 4u, 0xB2u, 4u, 0xB9u, 4u, MCS51_IRQ_SW_CLEAR },      // EIE2.ADCIE, EIF2.ADCIF, EIP2.ADCIP
     /* IRQ_SOURCE_UART1 */  { 16u, 0xAAu, 1u, 0xFFu, 0u, 0xB9u, 1u, MCS51_IRQ_SW_CLEAR },
     /* IRQ_SOURCE_PWM */    { 18u, 0xAAu, 3u, 0xFFu, 0u, 0xB9u, 3u, MCS51_IRQ_SW_CLEAR },

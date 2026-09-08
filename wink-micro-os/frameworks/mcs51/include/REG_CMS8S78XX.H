@@ -67,6 +67,14 @@ sfr EIP1   = 0xB9;  // extended interrupt priority
 sfr EIP2   = 0xBA;
 sfr EIP3   = 0xBB;
 
+sfr T2CON  = 0xC8;  // Timer 2 control
+sfr T2IF   = 0xC9;  // Timer 2 interrupt flags
+sfr RLDL   = 0xCA;  // Timer 2 reload low
+sfr RLDH   = 0xCB;  // Timer 2 reload high
+sfr TL2    = 0xCC;  // Timer 2 counter low
+sfr TH2    = 0xCD;  // Timer 2 counter high
+sfr CCEN   = 0xCE;  // Timer 2 compare/capture enable
+sfr T2IE   = 0xCF;  // Timer 2 interrupt enable
 
 sfr ADCMPC = 0xD1;  // ADC compare control
 sfr ADDLYL = 0xD3;  // hardware-trigger delay low
@@ -101,6 +109,8 @@ sbit U0SM1 = 0x9E;  // SCON0.6
 sbit U0SM0 = 0x9F;  // SCON0.7
 
 // Timer 2 sbit aliases
+sbit ET2   = 0xAD;  // IE^5 (Timer 2 interrupt enable)
+sbit PT2   = 0xBD;  // IP^5 (Timer 2 interrupt priority)
 
 // ── 2) XSFR proxies (MOVX space; wild-pointer-safe, see mcs51_xsfr.hpp) ────
 #if defined(__cplusplus) && __cplusplus >= 201703L
@@ -627,6 +637,90 @@ static inline void TMR_Stop(uint8_t Timern) {
         TR1 = 0;
     }
 }
+
+// Timer 2 control & interrupt bit definitions
+#define TMR_T2CON_T2PS_Pos   (7)
+#define TMR_T2CON_T2PS_Msk   (0x1 << TMR_T2CON_T2PS_Pos)
+#define TMR_T2CON_T2Rn_Pos   (3)
+#define TMR_T2CON_T2Rn_Msk   (0x3 << TMR_T2CON_T2Rn_Pos)
+#define TMR_T2CON_T2In_Pos   (0)
+#define TMR_T2CON_T2In_Msk   (0x3 << TMR_T2CON_T2In_Pos)
+#define TMR_TMOD_T0Mn_Msk    (0x3 << 0)
+
+#define TMR2_MODE_TIMING     (0x01)
+#define TMR2_MODE_COUNT      (0x02)
+#define TMR2_MODE_COMPARE    (0x02)
+
+#define TMR2_CLK_DIV_12      (0x00)
+#define TMR2_CLK_DIV_24      (0x01 << TMR_T2CON_T2PS_Pos)
+
+#define TMR2_AUTO_LOAD       (0x02 << TMR_T2CON_T2Rn_Pos)
+#define TMR2_T2EX_LOAD       (0x03 << TMR_T2CON_T2Rn_Pos)
+#define TMR2_LOAD_DISBALE    (0x00 << TMR_T2CON_T2Rn_Pos)
+
+#define IRQ_T2IE_T2OVIE_Pos  (7)
+#define IRQ_T2IE_T2OVIE_Msk  (0x1 << IRQ_T2IE_T2OVIE_Pos)
+#define IRQ_T2IF_T2F_Pos     (7)
+#define IRQ_T2IF_T2F_Msk     (0x1 << IRQ_T2IF_T2F_Pos)
+
+// Timer 2 StdDriver shims (verbatim from StdDriver/src/timer.c)
+static inline void TMR2_ConfigRunMode(uint8_t Timer2Mode, uint8_t Timer2LoadMode) {
+    uint8_t temp = T2CON;
+    temp &= ~(TMR_T2CON_T2Rn_Msk | TMR_T2CON_T2In_Msk);
+    temp |= (Timer2Mode | Timer2LoadMode);
+    T2CON = temp;
+}
+
+static inline void TMR2_ConfigTimerClk(uint8_t TimerClkDiv) {
+    uint8_t temp = T2CON;
+    temp &= ~(TMR_T2CON_T2PS_Msk);
+    temp |= TimerClkDiv;
+    T2CON = temp;
+}
+
+static inline void TMR2_ConfigTimerPeriod(uint16_t TimerPeriod) {
+    TL2 = (uint8_t)TimerPeriod;
+    TH2 = (uint8_t)(TimerPeriod >> 8);
+    if ((TMR2_AUTO_LOAD == (T2CON & TMR_T2CON_T2Rn_Msk)) || (TMR2_T2EX_LOAD == (T2CON & TMR_T2CON_T2Rn_Msk))) {
+        RLDL = (uint8_t)TimerPeriod;
+        RLDH = (uint8_t)(TimerPeriod >> 8);
+    }
+}
+
+static inline void TMR2_EnableOverflowInt(void) {
+    T2IE |= IRQ_T2IE_T2OVIE_Msk;
+}
+
+static inline void TMR2_DisableOverflowInt(void) {
+    T2IE &= ~(IRQ_T2IE_T2OVIE_Msk);
+}
+
+static inline uint8_t TMR2_GetOverflowIntFlag(void) {
+    return (uint8_t)((T2IF & IRQ_T2IF_T2F_Msk) ? 1 : 0);
+}
+
+static inline void TMR2_ClearOverflowIntFlag(void) {
+    T2IF = (uint8_t)(0xFF & (~IRQ_T2IF_T2F_Msk));
+}
+
+static inline void TMR2_AllIntEnable(void) {
+    ET2 = 1;
+}
+
+static inline void TMR2_AllIntDisable(void) {
+    ET2 = 0;
+}
+
+static inline void TMR2_Start(void) {
+    if (0x0 == (T2CON & TMR_T2CON_T2In_Msk)) {
+        T2CON |= (0x1 << TMR_T2CON_T2In_Pos);
+    }
+}
+
+static inline void TMR2_Stop(void) {
+    T2CON &= ~(TMR_T2CON_T2In_Msk);
+}
+
 
 // ── 9) Vendor ADC driver shims (verbatim bodies from StdDriver/src/adc.c) ──
 // Demo apps compile WITHOUT the vendor Keil-side adc.c (see extint/timer

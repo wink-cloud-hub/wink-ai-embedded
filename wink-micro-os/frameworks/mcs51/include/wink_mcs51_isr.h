@@ -33,10 +33,6 @@ extern "C" {
 // ISRs register and dispatch instead of being silently dropped (M5, ADR-0073).
 #define WINK_MCS51_NUM_VECTORS 28u
 
-#ifndef WINK_MCS51_TWO_PHASE_IRQ
-#define WINK_MCS51_TWO_PHASE_IRQ 1
-#endif
-
 // Architecture-neutral semantic interrupt sources (ADR-0078 D1)
 typedef enum {
     IRQ_SOURCE_INT0 = 0,
@@ -44,6 +40,7 @@ typedef enum {
     IRQ_SOURCE_INT1,
     IRQ_SOURCE_TIMER1,
     IRQ_SOURCE_UART0,
+    IRQ_SOURCE_TIMER2,
     IRQ_SOURCE_ADC,
     IRQ_SOURCE_UART1,
     IRQ_SOURCE_PWM,
