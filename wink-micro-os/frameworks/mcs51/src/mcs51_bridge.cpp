@@ -22,6 +22,8 @@
 #include "mcs51_pcon.h"
 #include "wink_mcs51_edge_queue.h"
 
+#include "wink_event.h"
+
 #include <cstdint>
 
 #if defined(__has_include)
@@ -39,14 +41,10 @@ void mcs51_framework_init(void) {
     Mcu51Context* ctx = mcs51_get_context();
     mcs51_context_reset(ctx);
 
+    (void)wink_event_queue_init(WINK_EVENT_QUEUE_DEFAULT_CAPACITY);
+
     for (uint16_t pin = 0u; pin < 32u; ++pin) {
         js_pal_gpio_write(pin, true, MCS51_DRIVE_WEAK);
-    }
-
-    for (uint8_t i = 0; i < g_mcs51_num_peripherals; ++i) {
-        if (g_mcs51_peripherals[i].init != nullptr) {
-            g_mcs51_peripherals[i].init(ctx);
-        }
     }
 
 #ifdef MCS51_HAS_ADC0832
