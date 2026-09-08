@@ -3,7 +3,7 @@
 > **状态：Active（M0–M6 轨 A 已验收；**生产 wasm 链接 + headless 在线实证阶段 0 已验收，2026-08-29，ADR-0075 Accepted**）**
 > 本文件为 Layer-① 活规范。设计真相以下列文档为准：
 > - ADR：[ADR-0070](../../decisions/core/0070-mcs51-zero-code-simulation-interception-layer.md)（umbrella，Accepted）、[ADR-0071](../../decisions/core/0071-sfr-proxy-rmw-edge-data-plane.md)（SFR 数据面，Accepted）、[ADR-0072](../../decisions/core/0072-dual-clock-domain-and-quota-catchup.md)（双时钟域）、[ADR-0073](../../decisions/core/0073-cms8s-adc-real-register-map-supersedes-ssot.md)（CMS8S78xx ADC 真实寄存器图，Accepted）、[ADR-0074](../../decisions/core/0074-mcs51-channel1-external-read-pin.md)（通道-1 外部数字 Read-Pin 缝，Accepted）、[ADR-0075](../../decisions/core/0075-mcs51-production-wasm-target-headless.md)（**生产 wasm 链接 + headless 阶段 0，Accepted**）
-> - 技术设计：[`docs/tech-designs/mcs51/`](../../tech-designs/mcs51/)（总纲 + 数据面 + 时序面 + 用户手册 + 总方案）
+> - 技术设计：[`docs/tech-designs/mcs51/`](../../tech-designs/mcs51/)（总纲 + 数据面 + 时序面 + 用户手册 + [物理一致性与测试方法论](../../tech-designs/mcs51/2026-09-08-mcs51-simulation-vs-silicon-fidelity-and-test-limits.md) + 总方案）
 > - 实施计划：[`2026-08-27-mcs51-zero-code-simulation-plan.md`](../../implementation-plans/core/2026-08-27-mcs51-zero-code-simulation-plan.md)
 > - 评审记录：[`2026-08-29-mcs51-simulation-layer-review.md`](../../reviews/core/2026-08-29-mcs51-simulation-layer-review.md)（Layer-④）
 > - 路线决策：[ADR-0076](../../decisions/core/0076-mcs51-sim-backends-native-vs-iss-channel-roadmap.md)（双后端 native vs ISS + 通道对接路线 + 小家电域频率，**Accepted 2026-08-30**；见 §2.5）
@@ -91,6 +91,7 @@ MCU 兼容分两条正交轴：
 - **基础设施**：ISR 向量表 `WINK_MCS51_NUM_VECTORS` 8→28（核心 0~7、CMS8S 扩展 8~27）；xdata 合法孔径 = XRAM `[0, WINK_MCS51_XDATA_SIZE)` ∪ XSFR 窗口 `[0xF000,0x10000)`（STRICT assert+abort / release 告警丢弃双态）；模拟注入轨统一 12-bit（0~4095，32 通道），ADC0832 消费点 `&0xFF` 掩码不受影响。
 - **原厂 StdDriver 未修改编译（tier-b，2026-08-29 收割，ADR-0073 D6）**：原厂 StdDriver `adc.c` 经 committed shim `frameworks/mcs51/include/cms8s78xx.h`（置于 include 首位遮蔽原厂 Keil 设备头——其重定义 stdint/sfr、野指针 `ADCLDO`，仅 `#include "REG_CMS8S.H"`）+ GBK→UTF-8 transcode（`mcs51_cleanup.py` `read_source`/`--transcode`，构建树规范化、源只读不入库）+ C++17 `inline WinkSfr/WinkXsfr` ODR 安全多 TU 共享，在 host 编译运行（`test_mcs51_cms8s_vendor`）。REG_CMS8S.H 与原厂重名枚举宏采用原厂逐字 token 间距（GCC 无 `-Wmacro-redefined`，仅逐字一致静默；vendor 头目录标 SYSTEM include、MSVC `/wd4005`）；夹具缺失 CMake 优雅跳过。原厂夹具（`docs/vendors/`）参考只读、永不入库（E-003/license）。
 - **v1 收窄**：AN63 内部通道（BGR/温度/VDD）返回 0；ADCLDO VSEL 不影响满量程；完整 ADC_Ldo 例程（tier-c，需 system.h/gpio.h shim + 19 个 ISR 桩）延后 M6。
+- **即时外设与虚拟频率的断言语义边界**：ADC 模型是 0 周期即时转换（ADR-0073 D2 / ADR-0072 D1），连续转换在虚拟时钟量子与微步内折叠。实测 ~10.7kHz 是 Native 宿主 C 软件循环的微步累计节拍，而非真硅片 `ADC_CLK_DIV_256` 的物理转换率（真硅片在 24MHz 下物理转换率约为 3.3kHz）。EOC 场景断言（如 `adc-ldo.scenario.json`）证明的是“EOC 中断 vector 19 派发 → ISR 翻转 P32”这一中断服务链路与引脚翻转活性（Liveness）闭环，而非校验硬件物理振荡频率；场景断言采用活性宽容区间（`$between: [1000, 50000]`），避免将仿真软件循环微步假象误作为物理 Gold Reference。详见专用技术设计规格书：[`2026-09-08-mcs51-simulation-vs-silicon-fidelity-and-test-limits.md`](../../tech-designs/mcs51/2026-09-08-mcs51-simulation-vs-silicon-fidelity-and-test-limits.md)。
 - 证据：M5 host（MSVC/MinGW）mcs51 ctest 16/16、wasm/Node 6/6、STRICT 抽测、arch lint 无发现；tier-b 收割后 MSVC 23/23（17 host 含 `test_mcs51_cms8s_vendor` + 6 wasm）、MinGW host 17/17、arch lint 无发现。
 
 ### 2.2 板级 codegen 缝与 NTC 闭环（M6 轨 A，验收 #4）
