@@ -60,6 +60,7 @@ int main(void) {
         static_cast<uint8_t>((1u << IE_EA_BIT) | (1u << IE_ES_BIT));
     wink_mcs51_sfr_shadow[SFR_SBUF] = static_cast<uint8_t>('A');
     wink_mcs51_uart_on_write(SFR_SBUF);
+    mcs51_irq_scan_and_dispatch();
 
     uint32_t dispatched = wink_mcs51_isr_dispatch_count(VECTOR_UART);
     if (dispatched != 1u || g_uart_isr_hits != 1u) {
@@ -81,6 +82,7 @@ int main(void) {
         static_cast<uint8_t>(~(1u << SCON_TI_BIT));
     wink_mcs51_sfr_shadow[SFR_SBUF] = static_cast<uint8_t>('B');
     wink_mcs51_uart_on_write(SFR_SBUF);
+    mcs51_irq_scan_and_dispatch();
 
     dispatched = wink_mcs51_isr_dispatch_count(VECTOR_UART);
     if (dispatched != 1u || g_uart_isr_hits != 1u) {

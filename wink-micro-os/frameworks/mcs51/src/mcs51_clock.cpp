@@ -15,15 +15,12 @@
 //     side at every resume point, so timer overflows are always evaluated in
 //     fiber context and ISRs can safely touch SFRs.
 #include "wink_mcs51_clock.h"
+#include "wink_mcs51_isr.h"
 
 #include "pal_osal.h"
 #include "wink_sim_scheduler.h"
 
 #include <cstdint>
-
-// Defined in mcs51_isr.cpp. True while a virtual ISR is running on the fiber
-// (ISRs charge time but must never yield — Trap red line 2, ADR-0072 D4).
-extern "C" bool wink_mcs51_in_isr(void);
 
 namespace {
 
@@ -97,6 +94,7 @@ uint32_t wink_mcs51_quota_yield_count(void) {
 
 void wink_mcs51_test_advance_virtual_us(uint32_t us) {
     s_virtual_us += static_cast<uint64_t>(us);
+    wink_mcs51_clear_reti_suppress();
 }
 
 uint32_t wink_mcs51_master_tick_count(void) {
@@ -118,6 +116,8 @@ void wink_mcs51_charge_us(uint32_t us) {
         return;
     }
 
+    wink_mcs51_clear_reti_suppress();
+
     if (static_cast<uint64_t>(s_virtual_us - s_slice_start) >= WINK_MCS51_QUOTA_US) {
         // Slice budget consumed: bill the whole slice 1:1 to the master,
         // hand control over (physics/UI drain), then run catch-up on resume.
@@ -126,6 +126,7 @@ void wink_mcs51_charge_us(uint32_t us) {
         cooperative_yield();
         s_slice_start = s_virtual_us;
         do_catchup();
+        mcs51_irq_scan_and_dispatch();
     }
 }
 
@@ -148,6 +149,7 @@ void wink_mcs51_delay_ms(uint32_t ms) {
         cooperative_yield();
         s_slice_start = s_virtual_us;
         do_catchup();
+        mcs51_irq_scan_and_dispatch();
     }
 }
 

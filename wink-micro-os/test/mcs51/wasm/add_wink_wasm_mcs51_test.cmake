@@ -199,6 +199,7 @@ function(add_wink_wasm_mcs51_test test_name sample_name driver_c)
             -sALLOW_MEMORY_GROWTH=1
             -sERROR_ON_UNDEFINED_SYMBOLS=1
             -sEXIT_RUNTIME=1
+            -sEXPORTED_RUNTIME_METHODS=HEAPU8
             --js-library=${_SDK_ROOT}/test/mcs51/wasm/mcs51_wasm_node_stub.js
             ${_extra_emcc_flags}
             -o ${_out_js}

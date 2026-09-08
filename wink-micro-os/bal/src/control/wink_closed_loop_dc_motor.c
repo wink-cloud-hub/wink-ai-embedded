@@ -5,6 +5,7 @@
 #include "wink_blocking_region.h"
 #include "pal_log.h"
 #include "pal_osal.h"
+#include "pal_irq.h"
 #include "wink_trace.h"
 #include "wink_fault.h"
 #include <string.h>

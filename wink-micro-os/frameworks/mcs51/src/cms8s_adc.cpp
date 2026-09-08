@@ -49,7 +49,6 @@ constexpr uint8_t IE_EA             = 0x80;  // IE bit7
 
 constexpr uint8_t ADC_CH_MAX_EXTERNAL = 25u;   // AN0..AN25
 constexpr uint8_t ADC_CH_INTERNAL     = 0x3Fu;  // AN63
-constexpr uint8_t VECTOR_ADC          = 19u;   // Keil interrupt 19 (0x9B)
 
 constexpr uint8_t PORT_PINS[4]        = {8u, 8u, 6u, 4u};
 constexpr uint8_t EXT_LOW             = 0u;
@@ -98,13 +97,11 @@ void do_adc_conversion(void) {
     s_adc.last_channel = ch;
 
     // End-of-conversion interrupt: latch ADCIF when ADCIE is set,
-    // and dispatch vector 19 when EA is also set.
+    // and raise semantic ADC IRQ (ADR-0078).
     if ((wink_mcs51_sfr_shadow[SFR_EIE2] & EIE2_ADCIE) != 0u) {
         wink_mcs51_sfr_shadow[SFR_EIF2] =
             (uint8_t)(wink_mcs51_sfr_shadow[SFR_EIF2] | EIF2_ADCIF);
-        if ((wink_mcs51_sfr_shadow[SFR_IE] & IE_EA) != 0u) {
-            (void)wink_mcs51_dispatch_vector(VECTOR_ADC);
-        }
+        mcs51_raise_irq(IRQ_SOURCE_ADC);
     }
 }
 
@@ -210,6 +207,7 @@ void cms8s_adc_poll(void) {
         s_in_poll = true;
         do_adc_conversion();
         s_in_poll = false;
+        mcs51_irq_scan_and_dispatch();
     }
 }
 

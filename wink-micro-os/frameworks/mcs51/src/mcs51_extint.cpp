@@ -156,19 +156,15 @@ void poll_line(ExtIntLine& ln) {
             tcon = wink_mcs51_sfr_shadow[SFR_TCON];
         }
         bool pending = (tcon & (1u << ln.ie_bit)) != 0;
-        if (pending && gated) {
-            (void)wink_mcs51_dispatch_vector(ln.vector);
-            // Hardware auto-clears edge-mode IEx on vectoring.
-            wink_mcs51_sfr_shadow[SFR_TCON] =
-                static_cast<uint8_t>(wink_mcs51_sfr_shadow[SFR_TCON] &
-                                     ~(1u << ln.ie_bit));
+        if (pending) {
+            mcs51_raise_irq(ln.vector == VECTOR_INT0 ? IRQ_SOURCE_INT0 : IRQ_SOURCE_INT1);
         }
     } else {
         // ITx=0: level mode — a low pin requests the interrupt; throttled to
         // one dispatch per slice by the caller's sample period. IEx is not
         // latched by model (level-triggered, re-requests while held low).
-        if (now_low && gated) {
-            (void)wink_mcs51_dispatch_vector(ln.vector);
+        if (now_low) {
+            mcs51_raise_irq(ln.vector == VECTOR_INT0 ? IRQ_SOURCE_INT0 : IRQ_SOURCE_INT1);
         }
     }
 }
@@ -262,6 +258,8 @@ void wink_mcs51_extint_reset(void) {
     s_sample_due = true;
     wink_mcs51_sfr_shadow[SFR_TCON] &=
         static_cast<uint8_t>(~((1u << TCON_IE0) | (1u << TCON_IE1)));
+    wink_mcs51_clear_irq(IRQ_SOURCE_INT0);
+    wink_mcs51_clear_irq(IRQ_SOURCE_INT1);
     for (uint8_t p = 0; p < 4u; ++p) {
         wink_mcs51_sfr_shadow[SFR_P0EXTIF + p] = 0;
     }

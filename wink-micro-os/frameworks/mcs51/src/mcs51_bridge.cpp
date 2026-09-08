@@ -158,10 +158,12 @@ extern "C" {
 // queued UART RX bytes drain here (RI latch + vector 4 on the firmware's own
 // context, never re-entered from the JS/host pusher).
 void wink_mcs51_microstep(void) {
+    wink_mcs51_clear_reti_suppress();
     wink_mcs51_charge_us(WINK_MCS51_MICROSTEP_US);
     wink_mcs51_uart_rx_drain();
     wink_mcs51_extint_poll();
     cms8s_adc_poll();
+    mcs51_irq_scan_and_dispatch();
 }
 
 // SFR proxy interception entries (boundary ③ crosses into this TU). The proxy

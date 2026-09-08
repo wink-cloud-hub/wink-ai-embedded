@@ -35,7 +35,8 @@ mergeInto(LibraryManager.library, {
   js_pal_uart_write: function (port, bufPtr, len) {
     if (typeof Module !== 'undefined') {
       if (!Module['mcs51UartTxLog']) Module['mcs51UartTxLog'] = [];
-      const bytes = Array.from(Module.HEAPU8.subarray(bufPtr, bufPtr + len));
+      const heap = (typeof HEAPU8 !== 'undefined') ? HEAPU8 : (Module && Module.HEAPU8);
+      const bytes = heap ? Array.from(heap.subarray(bufPtr, bufPtr + len)) : [];
       Module['mcs51UartTxLog'] = Module['mcs51UartTxLog'].concat(bytes);
       // Optional C-side sink (kept alive by -sEXPORTED_FUNCTIONS on the
       // test): lets the driver assert the live route from C (exit-code gate),

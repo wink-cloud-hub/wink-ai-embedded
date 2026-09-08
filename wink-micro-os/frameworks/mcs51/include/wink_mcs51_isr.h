@@ -33,6 +33,76 @@ extern "C" {
 // ISRs register and dispatch instead of being silently dropped (M5, ADR-0073).
 #define WINK_MCS51_NUM_VECTORS 28u
 
+#ifndef WINK_MCS51_TWO_PHASE_IRQ
+#define WINK_MCS51_TWO_PHASE_IRQ 1
+#endif
+
+// Architecture-neutral semantic interrupt sources (ADR-0078 D1)
+typedef enum {
+    IRQ_SOURCE_INT0 = 0,
+    IRQ_SOURCE_TIMER0,
+    IRQ_SOURCE_INT1,
+    IRQ_SOURCE_TIMER1,
+    IRQ_SOURCE_UART0,
+    IRQ_SOURCE_ADC,
+    IRQ_SOURCE_UART1,
+    IRQ_SOURCE_PWM,
+    IRQ_SOURCE_I2C,
+    IRQ_SOURCE_SPI,
+    IRQ_SOURCE__COUNT
+} mcs51_irq_source_t;
+
+#define MCS51_IRQ_HW_AUTO_CLEAR 0
+#define MCS51_IRQ_SW_CLEAR      1
+
+// Interrupt profile mapping entry (ADR-0078 D1)
+typedef struct {
+    uint8_t vector;        // Physical vector number (Tier 2 looks up isr_table, Tier 3 jumps 0x0003+8*vector)
+    uint8_t ie_sfr;        // Interrupt enable SFR address (IE/EIE1/EIE2..., 0xFF = none/always open)
+    uint8_t ie_bit;        // Enable bit position (0..7)
+    uint8_t flag_sfr;      // Flag SFR address (TCON/SCON/EIF2..., 0xFF = internal/none)
+    uint8_t flag_bit;      // Flag bit position (0..7)
+    uint8_t prio_sfr;      // Priority SFR address (IP/EIP1/EIP2..., 0xFF = default prio 0)
+    uint8_t prio_bit;      // Priority bit position (0..7)
+    uint8_t clear_mode;    // MCS51_IRQ_HW_AUTO_CLEAR / MCS51_IRQ_SW_CLEAR
+} mcs51_irq_map_entry_t;
+
+typedef enum {
+    MCS51_IRQ_EVT_RAISE = 0,
+    MCS51_IRQ_EVT_DISPATCH = 1,
+    MCS51_IRQ_EVT_RETI = 2
+} mcs51_irq_event_t;
+
+#ifndef WINK_TRACE_MCS51_IRQ
+#define WINK_TRACE_MCS51_IRQ(src, vector, prio, virtual_us, event_type) ((void)0)
+#endif
+
+// Peripheral entry point: raise a semantic interrupt request (ADR-0078 D1)
+void mcs51_raise_irq(mcs51_irq_source_t src);
+
+// Rendezvous arbitration & dispatch point (ADR-0078 D2, D3)
+uint8_t mcs51_irq_scan_and_dispatch(void);
+
+// Profile mapping table configuration & inspection
+void wink_mcs51_set_irq_map_entry(mcs51_irq_source_t src, const mcs51_irq_map_entry_t* entry);
+const mcs51_irq_map_entry_t* wink_mcs51_get_irq_map_entry(mcs51_irq_source_t src);
+void wink_mcs51_reset_irq_map(void);
+
+// RETI / write IE/IP single-instruction suppression (ADR-0078 D4)
+void wink_mcs51_suppress_next_irq(void);
+void wink_mcs51_clear_reti_suppress(void);
+
+// Peripheral reset / flag clearing: clear pending bit for an IRQ source
+void wink_mcs51_clear_irq(mcs51_irq_source_t src);
+
+// Observability & diagnostic getters
+uint32_t wink_mcs51_get_pending_interrupts(void);
+uint8_t wink_mcs51_get_in_service_depth(void);
+uint8_t wink_mcs51_get_in_service_prio(uint8_t depth_index);
+
+// Reset dynamic IRQ state (pending, in-service stack, reti suppression) without wiping registered ISR vectors
+void wink_mcs51_reset_irq_state(void);
+
 // Register an ISR function for interrupt vector `n` (called by the WINK_ISR
 // auto-registration shim). Safe at static-init time (POD table). Defined in
 // mcs51_isr.cpp.
