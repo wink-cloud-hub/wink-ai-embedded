@@ -23,6 +23,9 @@ static uint16_t s_notify_pin[MCS51_HOST_NOTIFY_LOG_SIZE];
 static uint8_t  s_notify_level[MCS51_HOST_NOTIFY_LOG_SIZE];
 static uint8_t  s_notify_strength[MCS51_HOST_NOTIFY_LOG_SIZE];
 
+extern uint64_t wink_mcs51_virtual_us(void);
+extern void wink_mcs51_pwm_meter_update(uint16_t pin, uint8_t level, uint64_t timestamp_us);
+
 void js_pal_gpio_write(uint16_t pin, bool level, uint8_t strength) {
     uint32_t i = s_host_gpio_notifies;
     if (i < MCS51_HOST_NOTIFY_LOG_SIZE) {
@@ -33,6 +36,7 @@ void js_pal_gpio_write(uint16_t pin, bool level, uint8_t strength) {
         s_notify_strength[i] = strength != 0u ? strength : 3u;
     }
     ++s_host_gpio_notifies;
+    wink_mcs51_pwm_meter_update(pin, level ? 1u : 0u, wink_mcs51_virtual_us());
 }
 
 float js_pal_adc_read_norm(uint16_t pin) {

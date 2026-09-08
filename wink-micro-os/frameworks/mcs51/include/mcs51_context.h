@@ -29,6 +29,7 @@ typedef struct {
     uint8_t  mode;
     uint64_t next_ovf_us;
     uint8_t  tr_prev;
+    uint8_t  last_pin_level;
 } Mcu51TimerChannel;
 
 typedef struct {
@@ -104,6 +105,8 @@ typedef struct Mcu51Context {
     uint64_t slice_start_us;
     uint32_t quota_yields;
     uint32_t step_count;
+    uint32_t clock_hz;
+    uint32_t microstep_us;
 
     // 5. Standard peripheral private states
     Mcu51TimerState    timer;

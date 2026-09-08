@@ -35,6 +35,9 @@ void wink_mcs51_timer_on_write(uint8_t addr);
 // clock catch-up hook at framework init.
 void wink_mcs51_timers_step_to(uint64_t now_us);
 
+// Trigger one external clock pulse on Timer 0 or Timer 1 (Task F2: C/T=1).
+void wink_mcs51_timer_pulse(uint8_t timer_idx);
+
 // Reset timer state (test isolation).
 void wink_mcs51_timers_reset(void);
 

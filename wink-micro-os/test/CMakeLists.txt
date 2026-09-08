@@ -610,6 +610,22 @@ if(TARGET wink_mcs51_compat)
     add_mcs51_host_test(test_mcs51_low_power
         mcs51/unit/test_mcs51_low_power.cpp)
 
+    # Task F1: Timed edge event injection queue
+    add_mcs51_host_test(test_mcs51_edge_queue
+        mcs51/unit/test_mcs51_edge_queue.cpp)
+
+    # Task F2: TMOD C/T=1 external pulse counter modeling
+    add_mcs51_host_test(test_mcs51_timer_ext_clk
+        mcs51/unit/test_mcs51_timer_ext_clk.cpp)
+
+    # Task F3: Dynamic microstep quantum calibration
+    add_mcs51_host_test(test_mcs51_clock_quantum
+        mcs51/unit/test_mcs51_clock_quantum.cpp)
+
+    # Task F4: Channel 1b Soft PWM duty cycle measurement (< 2% error)
+    add_mcs51_host_test(test_mcs51_soft_pwm
+        mcs51/unit/test_mcs51_soft_pwm.cpp)
+
     # Stage 2 T2: UART RX model — pending FIFO drained at microstep points,
     # REN gate, RI latch + vector 4, no-FIFO drop on RI pending, TX/RX shadow
     # interleave (host-only framework unit test; drives the model directly).

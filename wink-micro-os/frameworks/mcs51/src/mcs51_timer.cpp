@@ -7,8 +7,9 @@
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_isr.h"
 #include "wink_mcs51_strict.h"
-
 #include <cstdint>
+
+extern "C" uint8_t js_pal_gpio_read_state(uint16_t pin);
 
 namespace {
 
@@ -93,9 +94,8 @@ void schedule_from_reload(uint8_t t, uint64_t from_us) {
         return;
     }
     if (tm.external_clk) {
-        tm.running = false;
+        tm.running = true;
         tm.next_ovf_us = NO_OVERFLOW;
-        wink_mcs51_unsupported(MCS51_FEAT_TIMER_EXT_CLK, "Timer C/T=1 (external clock)");
         return;
     }
 
@@ -177,11 +177,54 @@ void wink_mcs51_timers_step_to(uint64_t now_us) {
     step_timer(1, now_us);
 }
 
+void wink_mcs51_timer_pulse(uint8_t t) {
+    if (t >= 2) return;
+    Mcu51TimerChannel& tm = get_tm(t);
+    if (!tm.running || !tm.external_clk) return;
+
+    if (tm.mode == 1) {
+        // 16-bit counter mode
+        uint8_t th_addr = (t == 0) ? SFR_TH0 : SFR_TH1;
+        uint8_t tl_addr = (t == 0) ? SFR_TL0 : SFR_TL1;
+        uint16_t val = (static_cast<uint16_t>(sfr(th_addr)) << 8) | sfr(tl_addr);
+        val++;
+        mcs51_get_context()->sfr_shadow[th_addr] = static_cast<uint8_t>((val >> 8) & 0xFFu);
+        mcs51_get_context()->sfr_shadow[tl_addr] = static_cast<uint8_t>(val & 0xFFu);
+        if (val == 0u) {
+            on_overflow(t, wink_mcs51_virtual_us());
+        }
+    } else if (tm.mode == 2) {
+        // 8-bit auto-reload counter mode
+        uint8_t th_addr = (t == 0) ? SFR_TH0 : SFR_TH1;
+        uint8_t tl_addr = (t == 0) ? SFR_TL0 : SFR_TL1;
+        uint8_t val = sfr(tl_addr);
+        val++;
+        if (val == 0u) {
+            mcs51_get_context()->sfr_shadow[tl_addr] = sfr(th_addr);
+            on_overflow(t, wink_mcs51_virtual_us());
+        } else {
+            mcs51_get_context()->sfr_shadow[tl_addr] = val;
+        }
+    } else if (tm.mode == 0) {
+        // 13-bit counter mode
+        uint8_t th_addr = (t == 0) ? SFR_TH0 : SFR_TH1;
+        uint8_t tl_addr = (t == 0) ? SFR_TL0 : SFR_TL1;
+        uint16_t val = (static_cast<uint16_t>(sfr(th_addr) & 0x1Fu) << 8) | sfr(tl_addr);
+        val = (val + 1) & 0x1FFFu;
+        mcs51_get_context()->sfr_shadow[th_addr] = static_cast<uint8_t>((sfr(th_addr) & 0xE0u) | ((val >> 8) & 0x1Fu));
+        mcs51_get_context()->sfr_shadow[tl_addr] = static_cast<uint8_t>(val & 0xFFu);
+        if (val == 0u) {
+            on_overflow(t, wink_mcs51_virtual_us());
+        }
+    }
+}
+
 void mcs51_timer_reset(struct Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
     for (uint8_t t = 0; t < 2; ++t) {
         ctx->timer.channels[t] = Mcu51TimerChannel{};
         ctx->timer.channels[t].next_ovf_us = NO_OVERFLOW;
+        ctx->timer.channels[t].last_pin_level = 0xFFu;
     }
 }
 
@@ -256,6 +299,21 @@ void mcs51_timer_init(struct Mcu51Context* ctx) {
 void mcs51_timer_poll(struct Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
     wink_mcs51_timers_step_to(ctx->virtual_us);
+
+    // Poll external clock pins T0 (P3.4 = pin 28) and T1 (P3.5 = pin 29)
+    constexpr uint16_t TIMER_PINS[2] = {28u, 29u};
+    for (uint8_t t = 0; t < 2; ++t) {
+        Mcu51TimerChannel& tm = ctx->timer.channels[t];
+        if (tm.running && tm.external_clk) {
+            uint8_t level = js_pal_gpio_read_state(TIMER_PINS[t]);
+            if (level <= 1u) {
+                if (tm.last_pin_level == 1u && level == 0u) {
+                    wink_mcs51_timer_pulse(t);
+                }
+                tm.last_pin_level = level;
+            }
+        }
+    }
 }
 
 uint64_t mcs51_timer_next_event_us(struct Mcu51Context* ctx) {

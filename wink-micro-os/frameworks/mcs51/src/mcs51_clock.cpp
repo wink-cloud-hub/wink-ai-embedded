@@ -100,15 +100,47 @@ void wink_mcs51_charge_us(uint32_t us) {
     }
 }
 
+uint32_t wink_mcs51_calc_microstep_us(uint32_t clock_hz) {
+    if (clock_hz == 0) {
+        clock_hz = WINK_MCS51_DEFAULT_CLOCK_HZ;
+    }
+    // Inverse proportional calibration:
+    // 12 MHz base produces 5 us quantum (60,000,000 numerator).
+    // E.g. 12 MHz -> 5 us, 24 MHz -> 3 us, 60 MHz -> 1 us.
+    // Minimum 1 us floor prevents 0-charge freezing.
+    uint32_t step = static_cast<uint32_t>((60000000ULL + clock_hz / 2) / clock_hz);
+    return step > 0 ? step : 1u;
+}
+
+void wink_mcs51_set_clock_hz(uint32_t clock_hz) {
+    Mcu51Context* ctx = mcs51_get_context();
+    ctx->clock_hz = clock_hz;
+    ctx->microstep_us = wink_mcs51_calc_microstep_us(clock_hz);
+}
+
+uint32_t wink_mcs51_get_clock_hz(void) {
+    Mcu51Context* ctx = mcs51_get_context();
+    return ctx->clock_hz != 0 ? ctx->clock_hz : WINK_MCS51_DEFAULT_CLOCK_HZ;
+}
+
+uint32_t wink_mcs51_get_microstep_us(void) {
+    Mcu51Context* ctx = mcs51_get_context();
+    if (ctx->microstep_us != 0) {
+        return ctx->microstep_us;
+    }
+    return WINK_MCS51_MICROSTEP_US;
+}
+
 void wink_delay_us(uint32_t total_us) {
     if (total_us == 0) {
         return;
     }
+    uint32_t quantum = wink_mcs51_get_microstep_us();
     uint32_t elapsed = 0;
-    while (elapsed + WINK_MCS51_MICROSTEP_US <= total_us) {
-        // Full quantum: step-pumped microstep (charges 5us and evaluates microstep hooks & catchup)
+    while (elapsed + quantum <= total_us) {
+        // Step-pumped microstep with calibrated quantum
         wink_mcs51_microstep();
-        elapsed += WINK_MCS51_MICROSTEP_US;
+        elapsed += quantum;
     }
     uint32_t remainder = total_us - elapsed;
     if (remainder > 0) {
