@@ -8,6 +8,9 @@ out/
 dist/
 .codegen_test*
 
+# Test-run recordings (browser --record output: gifs/videos/reports)
+artifacts/
+
 # CMake internal cache and generated files
 CMakeCache.txt
 CMakeFiles/
