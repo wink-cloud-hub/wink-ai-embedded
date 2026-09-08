@@ -25,9 +25,9 @@
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
-      "matcher": "HELLO\nHELLO",
-      "minPackets": 1,
-      "description": "The beacon repeats: BusAnalyzer coalesces the contiguous TX byte stream, so a second beacon appears right after the first"
+      "matcher": "HELLO",
+      "minPackets": 2,
+      "description": "The beacon repeats: BusAnalyzer parses repeated TX beacon bursts, so at least two beacons appear in the window"
     }
   ]
 }
