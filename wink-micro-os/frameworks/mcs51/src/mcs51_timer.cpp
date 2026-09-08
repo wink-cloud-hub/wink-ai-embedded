@@ -20,6 +20,17 @@ constexpr uint8_t  SFR_TL1  = 0x8B;
 constexpr uint8_t  SFR_TH0  = 0x8C;
 constexpr uint8_t  SFR_TH1  = 0x8D;
 constexpr uint8_t  SFR_IE   = 0xA8;
+constexpr uint8_t  SFR_T2CON = 0xC8;
+constexpr uint8_t  SFR_T2IF  = 0xC9;
+constexpr uint8_t  SFR_RLDL  = 0xCA;
+constexpr uint8_t  SFR_RLDH  = 0xCB;
+constexpr uint8_t  SFR_TL2   = 0xCC;
+constexpr uint8_t  SFR_TH2   = 0xCD;
+constexpr uint8_t  SFR_CCEN  = 0xCE;
+constexpr uint8_t  SFR_T2IE  = 0xCF;
+
+constexpr uint8_t  T2IF_T2F    = 7u;
+constexpr uint8_t  T2IE_T2OVIE = 7u;
 
 constexpr uint8_t  TCON_TR0 = 4u;
 constexpr uint8_t  TCON_TF0 = 5u;
@@ -168,6 +179,95 @@ void step_timer(uint8_t t, uint64_t now_us) {
     }
 }
 
+uint32_t timer2_reload_period(void) {
+    uint8_t rldh = sfr(SFR_RLDH);
+    uint8_t rldl = sfr(SFR_RLDL);
+    uint16_t reload_val = (static_cast<uint16_t>(rldh) << 8) | rldl;
+    uint32_t counts = 65536u - reload_val;
+    if (counts == 0u) counts = 65536u;
+    uint8_t t2con = sfr(SFR_T2CON);
+    if ((t2con & 0x80u) != 0) {
+        return counts;
+    }
+    uint32_t us = counts / 2u;
+    return us == 0u ? 1u : us;
+}
+
+uint32_t timer2_current_period(void) {
+    uint8_t th2 = sfr(SFR_TH2);
+    uint8_t tl2 = sfr(SFR_TL2);
+    uint16_t cur_val = (static_cast<uint16_t>(th2) << 8) | tl2;
+    uint32_t counts = 65536u - cur_val;
+    if (counts == 0u) counts = 65536u;
+    uint8_t t2con = sfr(SFR_T2CON);
+    if ((t2con & 0x80u) != 0) {
+        return counts;
+    }
+    uint32_t us = counts / 2u;
+    return us == 0u ? 1u : us;
+}
+
+void timer2_schedule_from_now(uint64_t from_us) {
+    Mcu51TimerState& tm = mcs51_get_context()->timer;
+    uint32_t period = timer2_current_period();
+    tm.t2_next_ovf_us = from_us + period;
+}
+
+void timer2_start(uint64_t now_us) {
+    Mcu51TimerState& tm = mcs51_get_context()->timer;
+    tm.t2_running = true;
+    timer2_schedule_from_now(now_us);
+}
+
+void timer2_stop(void) {
+    Mcu51TimerState& tm = mcs51_get_context()->timer;
+    tm.t2_running = false;
+    tm.t2_next_ovf_us = NO_OVERFLOW;
+}
+
+void on_timer2_overflow(uint64_t at_us) {
+    Mcu51TimerState& tm = mcs51_get_context()->timer;
+    sfr_set_bit(SFR_T2IF, T2IF_T2F);
+
+    uint8_t rldl = sfr(SFR_RLDL);
+    uint8_t rldh = sfr(SFR_RLDH);
+    mcs51_get_context()->sfr_shadow[SFR_TL2] = rldl;
+    mcs51_get_context()->sfr_shadow[SFR_TH2] = rldh;
+
+    if ((sfr(SFR_T2IE) & (1u << T2IE_T2OVIE)) != 0) {
+        mcs51_raise_irq(IRQ_SOURCE_TIMER2);
+        wink_mcs51_clear_reti_suppress();
+        mcs51_irq_scan_and_dispatch();
+    }
+
+    if (!tm.t2_running) {
+        tm.t2_next_ovf_us = NO_OVERFLOW;
+        return;
+    }
+
+    uint32_t period = timer2_reload_period();
+    tm.t2_next_ovf_us = at_us + period;
+}
+
+void step_timer2(uint64_t now_us) {
+    Mcu51TimerState& tm = mcs51_get_context()->timer;
+    if (!tm.t2_running || tm.t2_next_ovf_us == NO_OVERFLOW) {
+        return;
+    }
+    uint32_t fired = 0;
+    while (tm.t2_next_ovf_us != NO_OVERFLOW && now_us >= tm.t2_next_ovf_us) {
+        uint64_t at = tm.t2_next_ovf_us;
+        on_timer2_overflow(at);
+        if (++fired >= MAX_OVERFLOWS_PER_STEP) {
+            timer2_stop();
+            break;
+        }
+        if (!tm.t2_running) {
+            break;
+        }
+    }
+}
+
 }  // namespace
 
 extern "C" {
@@ -175,6 +275,7 @@ extern "C" {
 void wink_mcs51_timers_step_to(uint64_t now_us) {
     step_timer(0, now_us);
     step_timer(1, now_us);
+    step_timer2(now_us);
 }
 
 void wink_mcs51_timer_pulse(uint8_t t) {
@@ -226,10 +327,13 @@ void mcs51_timer_reset(struct Mcu51Context* ctx) {
         ctx->timer.channels[t].next_ovf_us = NO_OVERFLOW;
         ctx->timer.channels[t].last_pin_level = 0xFFu;
     }
+    ctx->timer.t2_running = false;
+    ctx->timer.t2_next_ovf_us = NO_OVERFLOW;
+    ctx->timer.t2_tr_prev = 0;
 }
 
 void wink_mcs51_timer_on_read(uint8_t addr) {
-    if (addr == SFR_TCON) {
+    if (addr == SFR_TCON || addr == SFR_T2IF) {
         wink_mcs51_timers_step_to(wink_mcs51_virtual_us());
     }
 }
@@ -269,6 +373,30 @@ void wink_mcs51_timer_on_write(uint8_t addr) {
         if (get_tm(t).running) {
             schedule_from_reload(t, now);
         }
+        return;
+    }
+
+    if (addr == SFR_T2CON) {
+        uint8_t t2con = sfr(SFR_T2CON);
+        uint8_t running = (t2con & 0x03u) != 0 ? 1u : 0u;
+        Mcu51TimerState& tm = mcs51_get_context()->timer;
+        if (running != tm.t2_tr_prev) {
+            tm.t2_tr_prev = running;
+            if (running) {
+                timer2_start(now);
+            } else {
+                timer2_stop();
+            }
+        }
+        return;
+    }
+
+    if (addr == SFR_TL2 || addr == SFR_TH2 || addr == SFR_RLDL || addr == SFR_RLDH) {
+        Mcu51TimerState& tm = mcs51_get_context()->timer;
+        if (tm.t2_running) {
+            timer2_schedule_from_now(now);
+        }
+        return;
     }
 }
 
@@ -294,6 +422,12 @@ void mcs51_timer_init(struct Mcu51Context* ctx) {
     mcs51_trap_register_sfr_write(SFR_TL1, sfr_write_hook_timer);
     mcs51_trap_register_sfr_write(SFR_TH0, sfr_write_hook_timer);
     mcs51_trap_register_sfr_write(SFR_TH1, sfr_write_hook_timer);
+    mcs51_trap_register_sfr_read(SFR_T2IF, sfr_read_hook_timer);
+    mcs51_trap_register_sfr_write(SFR_T2CON, sfr_write_hook_timer);
+    mcs51_trap_register_sfr_write(SFR_TL2, sfr_write_hook_timer);
+    mcs51_trap_register_sfr_write(SFR_TH2, sfr_write_hook_timer);
+    mcs51_trap_register_sfr_write(SFR_RLDL, sfr_write_hook_timer);
+    mcs51_trap_register_sfr_write(SFR_RLDH, sfr_write_hook_timer);
 }
 
 void mcs51_timer_poll(struct Mcu51Context* ctx) {
@@ -325,6 +459,11 @@ uint64_t mcs51_timer_next_event_us(struct Mcu51Context* ctx) {
             if (tm.next_ovf_us < earliest) {
                 earliest = tm.next_ovf_us;
             }
+        }
+    }
+    if (ctx->timer.t2_running && ctx->timer.t2_next_ovf_us != NO_OVERFLOW) {
+        if (ctx->timer.t2_next_ovf_us < earliest) {
+            earliest = ctx->timer.t2_next_ovf_us;
         }
     }
     return earliest;
