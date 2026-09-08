@@ -751,6 +751,10 @@ if(TARGET wink_mcs51_compat)
         # own TUs stay under -Werror without silencing anything in our code.
         target_include_directories(test_mcs51_cms8s_vendor SYSTEM PRIVATE
             ${_MCS51_VENDOR_INC_DIR})
+        # The vendor adc.c TU defines the StdDriver ADC_* functions itself;
+        # suppress the header's file-local shim copies (REG_CMS8S78XX.H §9) to
+        # avoid a static/extern redefinition clash.
+        target_compile_definitions(test_mcs51_cms8s_vendor PRIVATE WINK_CMS8S_VENDOR_ADC=1)
         if(MSVC)
             # /wd4005: vendor adc.h re-#defines the enum macros (ADC_RESULT_*,
             # ADC_VREF_*, ADC_GO ...) that REG_CMS8S.H also defines. They are

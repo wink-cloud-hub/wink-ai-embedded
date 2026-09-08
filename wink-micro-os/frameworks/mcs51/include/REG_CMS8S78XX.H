@@ -265,6 +265,10 @@ xsfr ADCLDO(0xF692);  // ADC LDO control (bit7 LDOEN, bits6:5 VSEL, bit4 OUTEN)
 // ── 5) Vendor GPIO driver macros (verbatim from StdDriver inc/gpio.h) ──────
 #define GPIO_SET_MUX_MODE(PortCFG, PinMode)  (PortCFG = PinMode)
 #define GPIO_MUX_GPIO                        (0x00)
+// Analog channel pin-mux selectors (verbatim values from StdDriver inc/gpio.h).
+// P00 configured as AN0 = mux code 0x01. The XSFR PxxCFG write lands on the
+// XSFR shadow window; mux routing to the ADC rail is behavioral (no-op).
+#define GPIO_P00_MUX_AN0                     (0x01)
 #define GPIO_ENABLE_OUTPUT(PortTRIS, PinNum) ((PortTRIS) |= (1 << (PinNum)))
 #define GPIO_ENABLE_INPUT(PortTRIS, PinNum)  ((PortTRIS) &= ~(1 << (PinNum)))
 #define GPIO_ENABLE_OD(PortOD, PinNum)       ((PortOD) |= (1 << (PinNum)))
@@ -545,5 +549,70 @@ static inline void TMR_Stop(uint8_t Timern) {
         TR1 = 0;
     }
 }
+
+// ── 9) Vendor ADC driver shims (verbatim bodies from StdDriver/src/adc.c) ──
+// Demo apps compile WITHOUT the vendor Keil-side adc.c (see extint/timer
+// precedent), so the StdDriver API they call is provided here as file-local
+// inline bodies mirroring adc.c line-for-line against the SFR proxies. The
+// tier-b host test compiles the UNMODIFIED vendor adc.c instead and defines
+// WINK_CMS8S_VENDOR_ADC to suppress these and avoid a linkage/redefinition
+// clash (see test/CMakeLists.txt test_mcs51_cms8s_vendor).
+#ifndef WINK_CMS8S_VENDOR_ADC
+static inline void ADC_Start(void) {
+    ADCON1 |= ADC_ADCON1_ADEN_Msk;
+}
+static inline void ADC_Stop(void) {
+    ADCON1 &= ~(ADC_ADCON1_ADEN_Msk);
+}
+static inline void ADC_ConfigRunMode(uint8_t ADCClkDiv, uint8_t ADCResultType) {
+    uint8_t temp;
+    temp = ADCON0;
+    temp &= ~(ADC_ADCON0_ADFM_Msk);
+    temp |= ADCResultType;
+    ADCON0 = temp;
+
+    temp = ADCON1;
+    temp &= ~(ADC_ADCON1_ADCKS_Msk);
+    temp |= (uint8_t)(ADCClkDiv << ADC_ADCON1_ADCKS_Pos);
+    ADCON1 = temp;
+}
+static inline void ADC_EnableChannel(uint8_t ADCChannel) {
+    ADCCHS = ADCChannel;
+}
+static inline uint16_t ADC_GetADCResult(void) {
+    if (!(ADCON0 & ADC_ADCON0_ADFM_Msk)) { /* left-justify (ADFM=0) */
+        return (uint16_t)(0xfff & (((ADRESH << 4) | (ADRESL >> 4))));
+    }
+    return (uint16_t)(0xfff & ((ADRESH << 8) | ADRESL));
+}
+static inline void ADC_EnableInt(void) {
+    EIE2 |= IRQ_EIE2_ADCIE_Msk;
+}
+static inline void ADC_DisableInt(void) {
+    EIE2 &= ~(IRQ_EIE2_ADCIE_Msk);
+}
+static inline uint8_t ADC_GetIntFlag(void) {
+    return (uint8_t)((EIF2 & IRQ_EIF2_ADCIF_Msk) ? 1 : 0);
+}
+static inline void ADC_ClearIntFlag(void) {
+    EIF2 = (uint8_t)(0xFF & (~(IRQ_EIF2_ADCIF_Msk)));
+}
+static inline void ADC_EnableLDO(void) {
+    ADCLDO |= ADC_ADCLDO_LDOEN_Msk;
+}
+static inline void ADC_DisableLDO(void) {
+    ADCLDO &= ~(ADC_ADCLDO_LDOEN_Msk);
+}
+static inline void ADC_ConfigADCVref(uint8_t ADCVref) {
+    uint8_t temp;
+    temp = ADCLDO;
+    temp &= ~(ADC_ADCLDO_VSEL_Msk);
+    temp |= ADCVref;
+    ADCLDO = temp;
+}
+static inline void ADC_EnableLDOOutput(void) {
+    ADCLDO |= ADC_ADCLDO_OUTEN_Msk;
+}
+#endif  // WINK_CMS8S_VENDOR_ADC
 
 #endif  // __C51__

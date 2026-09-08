@@ -1,0 +1,31 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51 CMS8S78xx ADC_Ldo end-of-conversion interrupt headless proof",
+    "templateId": "vendor_cms8s78xx_v202_adc_ldo",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "500000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "20ms",
+      "adcChannel": 32,
+      "valueNorm": 0.5,
+      "description": "Drive AN0 (analog rail pin 32 = 32 + AN0) to mid-scale so conversions sample a defined level"
+    },
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "400ms",
+      "windowUs": ["100ms", "400ms"],
+      "pin": 26,
+      "expected": {
+        "kind": "frequencyHz",
+        "value": { "$near": { "target": 10000, "tolerance": 4000 } }
+      },
+      "description": "[核心断言] ADC 持续转换：每次转换完成触发中断 vector 19 (ADC_IRQHandler)，ISR 内 P32=~P32。窗口内 P3.2 连续翻转（实测 ~10.7kHz 上升沿），证明片内 12-bit ADC EOC 中断链路；无中断则频率为 0 断言失败"
+    }
+  ]
+}
