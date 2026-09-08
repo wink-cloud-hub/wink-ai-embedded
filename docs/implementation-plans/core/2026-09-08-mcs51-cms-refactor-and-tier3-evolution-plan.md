@@ -49,6 +49,31 @@
 * `clock_hz`：MCU 主频，Task F3 用于动态换算机器周期与配额步长；
 * `timing_tolerance`：是否容忍未加桩纯软件空循环的时序漂移（见 Task R5 与 §8 验收矩阵）。
 
+### 1.3 本期实施边界：交付范围与明确非目标（In-Scope vs Out-of-Scope）
+
+为确保研发资源聚焦于核心资产下沉与生产业务稳定性，明确界定本计划的实施边界与非目标（Non-Goals）：
+
+#### 1. In-Scope（本期必须执行与交付范围）
+* **Phase 1（关键路径重构，P1）**：
+  * Task R3：中断两阶段挂起、逻辑源映射与在服务屏蔽（配套 ADR-0078）；
+  * Task R0：GPIO 仲裁与强度逻辑下沉为后端中立 C 服务（Read-Pin vs Read-Latch 双读路径）；
+  * Task R2：标准核心运行上下文容器（`Mcu51Context`）、硅片复位种子与零过渡宏硬切换；
+  * Task R1：外设 `const` 强符号描述符表与微秒级事件槽；
+  * Task R4：`mcs51_cleanup.py` 预处理分支感知与加桩 Target 门控；
+  * Task R5：软件微步延时泵与延时入口统一（消除防塌缩隐患）；
+  * Task R6：低功耗双模时钟域治理（PCON 影子 SSOT 与纯事件唤醒）。
+* **Phase 2（功能闭环恢复，P2）**：
+  * Task F1 ~ F4：边沿注入队列、定时器外部脉冲计数转正、微步量子动态标定、软 PWM 占空量测。
+
+#### 2. Out-of-Scope（明确非目标 / 本期坚决不予实现）
+* ❌ **严禁在当前周期编写 Tier 3 指令级解释器实体代码**：包括 256 Opcode 解码器循环、虚拟 CPU 寄存器派发执行引擎、以及 SDCC 编译后端接入；
+* ❌ **不交付原生 Hex/Bin 二进制固件直接运行能力**：当前所有仿真 App 继续 100% 运行于 Tier 2 源码级 C++ 代理通道；
+* ❌ **不阻塞执行 Phase 3 的 Golden ISA 汇编测试集**：§8 中列出的 Phase 3 验收项属于未来演进准入门禁，不作为当前 Phase 1/2 的交付阻塞项。
+
+#### 3. §7 Phase 3 内容的真实定位澄清
+* §7 属于 **Layer-② 技术设计规格预留（Tech Design Spec）**，其唯一工程价值是为 Phase 1 的数据面下沉（R0/R1/R2/R3）提供**“逆向契约约束”**，确保当下编写的外设 C-ABI 接口形状能在未来直接被 ISS 零成本复用；
+* Task T1~T3 当前处于**挂起等待（Pending ADR-0079）状态**，在本期 Phase 1/2 重构验收全面通过前严禁启动编码。
+
 ---
 
 ## 2. 总体架构定位与关键认知澄清
@@ -662,10 +687,10 @@ struct Cpu51State {
 | **Phase 1 R6** | 逻辑断言 | IDLE/PD 停泊与唤醒 | 验证 PCON.IDL/PD 触发挂起、定时器到期快进与外部中断立即唤醒，0 假死死锁 |
 | **Phase 1 重构** | 架构门禁 | 架构分层门禁 | `python wink-tools/wink.py lint arch --pack layering --pack api` **0 findings** |
 | **Phase 2 扩展** | 逻辑/时序 | 定时计数与软 PWM | **Task F2 外部脉冲计数测试 PASS**；**Task F4 软 PWM 占空量测精度误差 $< 2\%$** |
-| **Phase 3 Tier 3**| 核心门禁 | **Golden ISA Suite** | 全 256 Opcode 寻址方式 / Flag 边界 / BCD / 堆栈 **100% PASS**（T3 准入条件） |
-| **Phase 3 Tier 3**| 核心门禁 | 差分对拍 | 随机指令流自研核 vs CI 参考机（ucsim oracle）寄存器/内存差异 **0** |
-| **Phase 3 Tier 3**| 场景一致性 | 双后端同场景一致性 | 加桩场景双后端运行波形 100% 吻合；`timing-tolerance` 场景走宽容区间 |
-| **Phase 3 Tier 3**| 性能吞吐 | 亚微秒时序闭环 | 1T @ 24MHz 吞吐 $\ge 20\text{M}$ inst/s；WS2812 亚微秒时序波形闭环 |
+| **Phase 3 远期演进**| 架构准入门禁 (非本期阻塞) | **Golden ISA Suite** | 全 256 Opcode 寻址方式 / Flag 边界 / BCD / 堆栈 **100% PASS**（T3 准入条件） |
+| **Phase 3 远期演进**| 架构准入门禁 (非本期阻塞) | 差分对拍 | 随机指令流自研核 vs CI 参考机（ucsim oracle）寄存器/内存差异 **0** |
+| **Phase 3 远期演进**| 远期一致性 (非本期阻塞) | 双后端同场景一致性 | 加桩场景双后端运行波形 100% 吻合；`timing-tolerance` 场景走宽容区间 |
+| **Phase 3 远期演进**| 远期性能门禁 (非本期阻塞) | 亚微秒时序闭环 | 1T @ 24MHz 吞吐 $\ge 20\text{M}$ inst/s；WS2812 亚微秒时序波形闭环 |
 
 ---
 
