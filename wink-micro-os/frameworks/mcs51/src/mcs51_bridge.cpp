@@ -89,6 +89,7 @@ void mcs51_framework_init(void) {
     // (XSFR 0xF0C0/0xF0C1) with their silicon reset value 0x7F after the zeroing.
     wink_mcs51_xdata_reset();
     wink_mcs51_extint_reset();
+    cms8s_adc_reset();
     wink_mcs51_unsupported_reset();
 
     // M4: clear all Level-2 pin traps + SFR hooks, then re-register the
@@ -160,6 +161,7 @@ void wink_mcs51_microstep(void) {
     wink_mcs51_charge_us(WINK_MCS51_MICROSTEP_US);
     wink_mcs51_uart_rx_drain();
     wink_mcs51_extint_poll();
+    cms8s_adc_poll();
 }
 
 // SFR proxy interception entries (boundary ③ crosses into this TU). The proxy

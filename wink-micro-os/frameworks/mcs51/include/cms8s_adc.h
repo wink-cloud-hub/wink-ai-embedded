@@ -31,6 +31,13 @@ extern "C" {
 // mcs51_framework_init, after mcs51_trap_reset() which wipes hook tables).
 void cms8s_adc_init(void);
 
+// Reset ADET hardware trigger edge baseline and seed PS_ADET selector to 0x7F.
+void cms8s_adc_reset(void);
+
+// Poll ADET hardware trigger pin and dispatch conversion on configured edge.
+// Called on each microstep (wink_mcs51_microstep) during execution.
+void cms8s_adc_poll(void);
+
 // Test observability: completed conversions since init, and the channel
 // (ADCCHS value) of the most recent one.
 uint32_t cms8s_adc_conversion_count(void);
