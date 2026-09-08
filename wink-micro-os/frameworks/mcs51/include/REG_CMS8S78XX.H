@@ -42,8 +42,11 @@
 // All are non-GPIO addresses (port index 0xFF) → SFR hook path only.
 sfr TA     = 0x86;  // Time Access protection register
 sfr CKCON  = 0x8E;  // Clock control (timer prescaler)
+sfr FUNCCR = 0x91;  // Function control (UART0 clock source)
 sfr T34MOD = 0x96;  // Timer 3/4 mode
 sfr CLKDIV = 0x97;  // Clock divider
+sfr SCON0  = 0x98;  // UART0 control
+sfr SBUF0  = 0x99;  // UART0 data buffer
 sfr P0TRIS = 0x9A;  // P0 direction (TRIS register, vendor GPIO driver)
 sfr P1TRIS = 0xA1;
 sfr P2TRIS = 0xA2;
@@ -63,6 +66,7 @@ sfr P3EXTIF = 0xB7; // P3 pin interrupt flag
 sfr EIP1   = 0xB9;  // extended interrupt priority
 sfr EIP2   = 0xBA;
 sfr EIP3   = 0xBB;
+
 
 sfr ADCMPC = 0xD1;  // ADC compare control
 sfr ADDLYL = 0xD3;  // hardware-trigger delay low
@@ -84,6 +88,19 @@ sbit P20 = 0xA0; sbit P21 = 0xA1; sbit P22 = 0xA2; sbit P23 = 0xA3;
 sbit P24 = 0xA4; sbit P25 = 0xA5; sbit P26 = 0xA6; sbit P27 = 0xA7;
 sbit P30 = 0xB0; sbit P31 = 0xB1; sbit P32 = 0xB2; sbit P33 = 0xB3;
 sbit P34 = 0xB4; sbit P35 = 0xB5; sbit P36 = 0xB6; sbit P37 = 0xB7;
+
+// UART0 sbit aliases
+sbit ES0   = 0xAC;  // IE^4 (UART0 interrupt enable)
+sbit RI0   = 0x98;  // SCON0.0
+sbit TI0   = 0x99;  // SCON0.1
+sbit U0RB8 = 0x9A;  // SCON0.2
+sbit U0TB8 = 0x9B;  // SCON0.3
+sbit U0REN = 0x9C;  // SCON0.4
+sbit U0SM2 = 0x9D;  // SCON0.5
+sbit U0SM1 = 0x9E;  // SCON0.6
+sbit U0SM0 = 0x9F;  // SCON0.7
+
+// Timer 2 sbit aliases
 
 // ── 2) XSFR proxies (MOVX space; wild-pointer-safe, see mcs51_xsfr.hpp) ────
 #if defined(__cplusplus) && __cplusplus >= 201703L
@@ -131,11 +148,66 @@ xsfr P0RD(0xF00A); xsfr P1RD(0xF01A); xsfr P2RD(0xF02A); xsfr P3RD(0xF03A);
 xsfr PS_INT0(0xF0C0);  // INT0 input pin selector
 xsfr PS_INT1(0xF0C1);  // INT1 input pin selector
 xsfr PS_ADET(0xF0CC);  // ADET hardware trigger input pin selector
+xsfr PS_RXD(0xF69F);   // RXD input pin selector
+
+xsfr BRTCON(0xF5C0);   // Baud Rate Timer control
+xsfr BRTDL(0xF5C1);    // Baud Rate Timer reload low
+xsfr BRTDH(0xF5C2);    // Baud Rate Timer reload high
 
 xsfr ADCLDO(0xF692);  // ADC LDO control (bit7 LDOEN, bits6:5 VSEL, bit4 OUTEN)
 
 // ── 3) Vendor bit-position / mask macros (names verbatim from cms8s78xx.h,
 //       so the vendor StdDriver adc.c can compile against this shim) ────────
+// FUNCCR
+#define SYS_FUNCCR_UART0_CKS_Pos (0)
+#define SYS_FUNCCR_UART0_CKS_Msk (0x7 << SYS_FUNCCR_UART0_CKS_Pos)
+
+// SCON0
+#define UART_SCON0_U0SMn_Pos    (6)
+#define UART_SCON0_U0SMn_Msk    (0x3 << UART_SCON0_U0SMn_Pos)
+#define UART_SCON0_U0SM2_Pos    (5)
+#define UART_SCON0_U0SM2_Msk    (0x1 << UART_SCON0_U0SM2_Pos)
+#define UART_SCON0_U0REN_Pos    (4)
+#define UART_SCON0_U0REN_Msk    (0x1 << UART_SCON0_U0REN_Pos)
+#define UART_SCON0_U0TB8_Pos    (3)
+#define UART_SCON0_U0TB8_Msk    (0x1 << UART_SCON0_U0TB8_Pos)
+#define UART_SCON0_U0RB8_Pos    (2)
+#define UART_SCON0_U0RB8_Msk    (0x1 << UART_SCON0_U0RB8_Pos)
+#define UART_SCON0_TI0_Pos      (1)
+#define UART_SCON0_TI0_Msk      (0x1 << UART_SCON0_TI0_Pos)
+#define UART_SCON0_RI0_Pos      (0)
+#define UART_SCON0_RI0_Msk      (0x1 << UART_SCON0_RI0_Pos)
+
+// PCON
+#define SYS_PCON_SMOD0_Pos      (7)
+#define SYS_PCON_SMOD0_Msk      (0x1 << SYS_PCON_SMOD0_Pos)
+
+// BRTCON
+#define UART_BRTCON_BRTEN_Pos   (7)
+#define UART_BRTCON_BRTEN_Msk   (0x1 << UART_BRTCON_BRTEN_Pos)
+#define UART_BRTCON_BRTCKDIV_Pos (0)
+#define UART_BRTCON_BRTCKDIV_Msk (0x7 << UART_BRTCON_BRTCKDIV_Pos)
+
+// UART modes & baud timers (from StdDriver inc/uart.h)
+#define UART_MOD_SYN             (0x00)
+#define UART_MOD_ASY_8BIT        (0x01)
+#define UART_MOD_ASY_9BIT        (0x03)
+#define UART_MOD_ASY_9BIT_STATIC (0x02)
+
+#define UART_BAUD_TMR1           (0x00)
+#define UART_BAUD_TMR4           (0x01)
+#define UART_BAUD_TMR2           (0x02)
+#define UART_BAUD_BRT            (0x03)
+
+#define BRT_CLK_DIV_1            (0x00)
+#define BRT_CLK_DIV_2            (0x01)
+#define BRT_CLK_DIV_4            (0x02)
+#define BRT_CLK_DIV_8            (0x03)
+#define BRT_CLK_DIV_16           (0x04)
+#define BRT_CLK_DIV_32           (0x05)
+#define BRT_CLK_DIV_64           (0x06)
+#define BRT_CLK_DIV_128          (0x07)
+
 // ADCON0
 #define ADC_ADCON0_ADFM_Pos    (6)
 #define ADC_ADCON0_ADFM_Msk    (0x1 << ADC_ADCON0_ADFM_Pos)   // 0x40
@@ -285,6 +357,9 @@ xsfr ADCLDO(0xF692);  // ADC LDO control (bit7 LDOEN, bits6:5 VSEL, bit4 OUTEN)
 #define GPIO_P31_MUX_INT1                    (0x31)  // PS_INT1 <- P3.1
 #define GPIO_P05_MUX_ADET                    (0x05)  // PS_ADET <- P0.5
 #define GPIO_P13_MUX_ADET                    (0x13)  // PS_ADET <- P1.3
+#define GPIO_P14_MUX_TXD                     (0x03)  // P1.4 as UART TXD
+#define GPIO_P13_MUX_RXD                     (0x02)  // P1.3 as UART RXD
+#define GPIO_P13                             (0x13)  // PS_RXD <- P1.3
 
 #define GPIO_PIN_0_MSK                       (0x01)
 #define GPIO_PIN_1_MSK                       (0x02)
@@ -630,5 +705,134 @@ static inline void ADC_ConfigHardwareTrig(uint8_t ADCTGSource, uint8_t TGMode) {
     ADCON2 = temp;
 }
 #endif  // WINK_CMS8S_VENDOR_ADC
+
+// ── 10) Vendor UART driver shims (verbatim bodies from StdDriver/src/uart.c) ──
+#ifndef WINK_CMS8S_VENDOR_UART
+static inline void UART_ConfigRunMode(uint8_t UARTMode, uint8_t UARTBaudTimer) {
+    uint8_t temp = SCON0;
+    temp &= ~(UART_SCON0_U0SMn_Msk);
+    temp |= (uint8_t)(UARTMode << UART_SCON0_U0SMn_Pos);
+    SCON0 = temp;
+    temp = FUNCCR;
+    temp &= ~(SYS_FUNCCR_UART0_CKS_Msk);
+    temp |= UARTBaudTimer;
+    FUNCCR = temp;
+}
+
+static inline void UART_EnableDoubleFrequency(void) {
+    PCON |= SYS_PCON_SMOD0_Msk;
+}
+
+static inline void UART_DisableDoubleFrequency(void) {
+    PCON &= ~(SYS_PCON_SMOD0_Msk);
+}
+
+static inline void UART_EnableReceive(void) {
+    U0REN = 1;
+}
+
+static inline void UART_DisableReceive(void) {
+    U0REN = 0;
+}
+
+static inline void UART_EnableMult(void) {
+    SCON0 |= UART_SCON0_U0SM2_Msk;
+}
+
+static inline void UART_DisableMult(void) {
+    SCON0 &= ~(UART_SCON0_U0SM2_Msk);
+}
+
+static inline void UART_EnableInt(void) {
+    ES0 = 1;
+}
+
+static inline void UART_DisableInt(void) {
+    ES0 = 0;
+}
+
+static inline uint8_t UART_GetReceiveIntFlag(void) {
+    return ((SCON0 & UART_SCON0_RI0_Msk) ? 1 : 0);
+}
+
+static inline void UART_ClearReceiveIntFlag(void) {
+    RI0 = 0;
+}
+
+static inline uint8_t UART_GetSendIntFlag(void) {
+    return ((SCON0 & UART_SCON0_TI0_Msk) ? 1 : 0);
+}
+
+static inline void UART_ClearSendIntFlag(void) {
+    TI0 = 0;
+}
+
+static inline uint8_t UART_GetBuff(void) {
+    return SBUF0;
+}
+
+static inline void UART_SendBuff(uint8_t UARTSendValue) {
+    SBUF0 = UARTSendValue;
+}
+
+static inline void UART_SendNinthBit(uint8_t UARTSendValue) {
+    if (0 == UARTSendValue) {
+        U0TB8 = 0;
+    } else {
+        U0TB8 = 1;
+    }
+}
+
+static inline uint8_t UART_GetNinthBit(void) {
+    return ((SCON0 & UART_SCON0_U0RB8_Msk) ? 1 : 0);
+}
+
+static inline void UART_EnableBRT(void) {
+    BRTCON |= UART_BRTCON_BRTEN_Msk;
+}
+
+static inline void UART_DisableBRT(void) {
+    BRTCON &= ~(UART_BRTCON_BRTEN_Msk);
+}
+
+static inline void UART_ConfigBRTClk(uint8_t BRTClkDiv) {
+    uint8_t temp = BRTCON;
+    temp &= ~(UART_BRTCON_BRTCKDIV_Msk);
+    temp |= BRTClkDiv;
+    BRTCON = temp;
+}
+
+static inline void UART_ConfigBRTPeriod(uint16_t BRTPeriod) {
+    BRTDL = (uint8_t)BRTPeriod;
+    BRTDH = (uint8_t)(BRTPeriod >> 8);
+}
+
+static inline uint16_t UART_ConfigBaudRate(uint32_t BaudRateValue) {
+    (void)BaudRateValue;
+    return 0;
+}
+#endif  // WINK_CMS8S_VENDOR_UART
+
+// ── 11) Keil C51 printf & putchar bridge ───────────────────────────────────────
+// In Keil C51, printf formats strings and emits each character via user-defined
+// putchar(char ch). In the Wasm/host C++ sandbox, we redirect printf calls to
+// format into a local buffer and invoke putchar(char ch), ensuring unmodified
+// vendor firmware printf statements route through SBUF0 to UARTBus.
+#include <stdarg.h>
+
+char putchar(char ch);
+
+static inline int wink_mcs51_printf(const char* fmt, ...) {
+    char buf[256];
+    va_list ap;
+    va_start(ap, fmt);
+    int n = vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+    for (int i = 0; i < n; ++i) {
+        putchar(buf[i]);
+    }
+    return n;
+}
+#define printf wink_mcs51_printf
 
 #endif  // __C51__
