@@ -1,50 +1,62 @@
 {
   "app_name": "mcs51_health_pot",
-  "board": "stc89c52_devboard",
-  "mcu": "at89c52",
+  "display_name": "CMS8S78xx Commercial Health Pot (4COM-8SEG + Buzzer + 12-bit NTC)",
+  "board": "cms8s78xx_devboard",
+  "mcu": "cms8s78xx",
   "tick_ms": 10,
   "devices": {
-    "ntc_adc": {
-      "type": "adc0832",
-      "cs_pin": "$board.headers.P2.0",
-      "clk_pin": "$board.headers.P2.1",
-      "dio_pin": "$board.headers.P2.2",
-      "channel": 0,
-      "vref_mv": 5000
+    "display": {
+      "type": "seg_display",
+      "variant": "direct_gpio_4d",
+      "com0_pin": "$board.headers.P30",
+      "com1_pin": "$board.headers.P31",
+      "com2_pin": "$board.headers.P32",
+      "com3_pin": "$board.headers.P33",
+      "a_pin": "$board.headers.P10",
+      "b_pin": "$board.headers.P11",
+      "c_pin": "$board.headers.P12",
+      "d_pin": "$board.headers.P13",
+      "e_pin": "$board.headers.P14",
+      "f_pin": "$board.headers.P15",
+      "g_pin": "$board.headers.P16",
+      "dp_pin": "$board.headers.P17"
+    },
+    "buzzer": {
+      "type": "buzzer",
+      "variant": "passive_pwm",
+      "pins": {
+        "1": "$board.headers.P03"
+      },
+      "label": "Buzzer"
     },
     "heater_relay": {
       "type": "led",
-      "gpio_pin": 8,
-      "active_high": true
-    },
-    "buzzer": {
-      "type": "led",
-      "gpio_pin": 9,
+      "gpio_pin": "$board.headers.P20",
       "active_high": true
     },
     "led_heat": {
       "type": "led",
-      "gpio_pin": 10,
+      "gpio_pin": "$board.headers.P01",
       "active_high": false
     },
     "led_warm": {
       "type": "led",
-      "gpio_pin": 11,
+      "gpio_pin": "$board.headers.P02",
       "active_high": false
     },
     "led_fault": {
       "type": "led",
-      "gpio_pin": 12,
+      "gpio_pin": "$board.headers.P06",
       "active_high": false
     },
     "btn_onoff": {
       "type": "button",
-      "gpio_pin": 26,
+      "gpio_pin": "$board.headers.P04",
       "active_low": true
     },
     "btn_func": {
       "type": "button",
-      "gpio_pin": 27,
+      "gpio_pin": "$board.headers.P05",
       "active_low": true
     }
   }

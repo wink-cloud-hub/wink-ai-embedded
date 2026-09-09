@@ -1,0 +1,97 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51_health_pot CMS8S78xx 4COM-8SEG display and hardware buzzer proof",
+    "templateId": "mcs51_health_pot",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "8000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "30ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0586,
+      "description": "Cold water present at boot (25 C)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "200ms",
+      "target": "plugin:display/text",
+      "matcher": " -- ",
+      "description": "Standby display decoded as ' -- ' on 4COM-8SEG digital tube"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "400ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "600ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1200ms",
+      "target": "plugin:display/text",
+      "matcher": "25b0",
+      "description": "Heating state: 4COM-8SEG displays current temperature 25 and Boil mode 'b0' ('25b0')"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1200ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "Heater relay engaged"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "1600ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0122,
+      "description": "Water heats to boil (98 C)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2000ms",
+      "target": "plugin:display/text",
+      "matcher": "98b0",
+      "description": "Boil reached: display shows '98b0'"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "5200ms",
+      "target": "plugin:display/text",
+      "matcher": "9860",
+      "description": "After boil-hold: keep-warm entered, display shows current water temp 98 and target 60 ('9860')"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "5500ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0,
+      "description": "Inject NTC short fault"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "6000ms",
+      "target": "plugin:display/text",
+      "matcher": "E-02",
+      "description": "Sensor fault: 4COM-8SEG displays international appliance fault code 'E-02'"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "6000ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Heater immediately forced off on fault"
+    }
+  ]
+}
