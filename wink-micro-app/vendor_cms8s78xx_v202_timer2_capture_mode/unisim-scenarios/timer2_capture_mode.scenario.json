@@ -1,0 +1,93 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "CMS8S78xx Timer2 CaptureMode (P0.0 rising edge capture -> P3.2 toggle) headless proof",
+    "templateId": "vendor_cms8s78xx_v202_timer2_capture_mode",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "500000",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "20ms",
+      "target": "gpio:26",
+      "matcher": 0,
+      "description": "[Initial] P3.2 (Pin 26 / LED) starts LOW (0)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "20ms",
+      "target": "gpio:0",
+      "matcher": 0,
+      "description": "[Initial] P0.0 (Pin 0 / CAP0 input) starts pull-down LOW (0)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "40ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": true
+      }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "60ms",
+      "target": "gpio:26",
+      "matcher": 1,
+      "description": "[Capture 1] Rising edge on P0.0 captured by CAP0 -> ISR toggles P3.2 to HIGH (1)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "80ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": false
+      }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "100ms",
+      "target": "gpio:26",
+      "matcher": 1,
+      "description": "[Falling edge] Falling edge on P0.0 does NOT trigger capture -> P3.2 remains HIGH (1)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "120ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": true
+      }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "140ms",
+      "target": "gpio:26",
+      "matcher": 0,
+      "description": "[Capture 2] Second rising edge on P0.0 captured by CAP0 -> ISR toggles P3.2 back to LOW (0)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "160ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": false
+      }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "180ms",
+      "target": "gpio:26",
+      "matcher": 0,
+      "description": "[Final] P3.2 remains LOW (0)"
+    }
+  ]
+}
