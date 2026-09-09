@@ -159,6 +159,16 @@ xsfr P0RD(0xF00A); xsfr P1RD(0xF01A); xsfr P2RD(0xF02A); xsfr P3RD(0xF03A);
 // the physical INT0/INT1 input pin (mcs51_extint.cpp).
 xsfr PS_INT0(0xF0C0);  // INT0 input pin selector
 xsfr PS_INT1(0xF0C1);  // INT1 input pin selector
+xsfr PS_T0(0xF0C2);    // Timer 0 external clock input pin selector
+xsfr PS_T0G(0xF0C3);   // Timer 0 gate input pin selector
+xsfr PS_T1(0xF0C4);    // Timer 1 external clock input pin selector
+xsfr PS_T1G(0xF0C5);   // Timer 1 gate input pin selector
+xsfr PS_T2(0xF0C6);    // Timer 2 external clock input pin selector
+xsfr PS_T2EX(0xF0C7);  // Timer 2 external reload input pin selector
+xsfr PS_CAP0(0xF0C8);  // Timer 2 capture channel 0 input pin selector
+xsfr PS_CAP1(0xF0C9);  // Timer 2 capture channel 1 input pin selector
+xsfr PS_CAP2(0xF0CA);  // Timer 2 capture channel 2 input pin selector
+xsfr PS_CAP3(0xF0CB);  // Timer 2 capture channel 3 input pin selector
 xsfr PS_ADET(0xF0CC);  // ADET hardware trigger input pin selector
 xsfr PS_RXD(0xF69F);   // RXD input pin selector
 
@@ -374,6 +384,19 @@ xsfr ADCLDO(0xF692);  // ADC LDO control (bit7 LDOEN, bits6:5 VSEL, bit4 OUTEN)
 #define GPIO_SET_PS_MODE(Ps_mode, gpio)      (Ps_mode = gpio)
 #define GPIO_P30_MUX_INT0                    (0x30)  // PS_INT0 <- P3.0
 #define GPIO_P31_MUX_INT1                    (0x31)  // PS_INT1 <- P3.1
+#define GPIO_P25_MUX_T0                      (0x25)  // PS_T0 <- P2.5
+#define GPIO_P24_MUX_T1                      (0x24)  // PS_T1 <- P2.4
+#define GPIO_P16_MUX_T2                      (0x16)  // PS_T2 <- P1.6
+#define GPIO_P12_MUX_T2EX                    (0x12)  // PS_T2EX <- P1.2
+#define GPIO_P17_MUX_T2EX                    (0x17)  // PS_T2EX <- P1.7
+#define GPIO_P00_MUX_CAP0                    (0x00)  // PS_CAP0 <- P0.0
+#define GPIO_P01_MUX_CAP1                    (0x01)  // PS_CAP1 <- P0.1
+#define GPIO_P15_MUX_CAP2                    (0x15)  // PS_CAP2 <- P1.5
+#define GPIO_P14_MUX_CAP3                    (0x14)  // PS_CAP3 <- P1.4
+#define GPIO_P00_MUX_CC0                     (0x05)  // P0.0 as CC0
+#define GPIO_P01_MUX_CC1                     (0x05)  // P0.1 as CC1
+#define GPIO_P15_MUX_CC2                     (0x05)  // P1.5 as CC2
+#define GPIO_P14_MUX_CC3                     (0x05)  // P1.4 as CC3
 #define GPIO_P05_MUX_ADET                    (0x05)  // PS_ADET <- P0.5
 #define GPIO_P13_MUX_ADET                    (0x13)  // PS_ADET <- P1.3
 #define GPIO_P14_MUX_TXD                     (0x03)  // P1.4 as UART TXD

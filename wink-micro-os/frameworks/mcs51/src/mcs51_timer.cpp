@@ -140,7 +140,7 @@ void on_overflow(uint8_t t, uint64_t at_us) {
     wink_mcs51_clear_reti_suppress();
     mcs51_irq_scan_and_dispatch();
 
-    if (!tm.running) {
+    if (!tm.running || tm.external_clk) {
         tm.next_ovf_us = NO_OVERFLOW;
         return;
     }
@@ -430,21 +430,36 @@ void mcs51_timer_init(struct Mcu51Context* ctx) {
     mcs51_trap_register_sfr_write(SFR_RLDH, sfr_write_hook_timer);
 }
 
+static uint16_t resolve_timer_pin(struct Mcu51Context* ctx, uint8_t t) {
+    uint16_t fallback = (t == 0) ? 28u : 29u;
+    uint16_t ps_addr = (t == 0) ? 0xF0C2u : 0xF0C4u;
+    uint8_t sel = ctx->xdata_shadow[ps_addr];
+    uint8_t port = (sel >> 4) & 0x07u;
+    uint8_t bit = sel & 0x0Fu;
+    constexpr uint8_t PORT_PINS[4] = {8u, 8u, 6u, 4u};
+    if (port < 4u && bit < PORT_PINS[port]) {
+        return static_cast<uint16_t>((port << 3) | bit);
+    }
+    return fallback;
+}
+
 void mcs51_timer_poll(struct Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
     wink_mcs51_timers_step_to(ctx->virtual_us);
 
-    // Poll external clock pins T0 (P3.4 = pin 28) and T1 (P3.5 = pin 29)
-    constexpr uint16_t TIMER_PINS[2] = {28u, 29u};
+    // Poll external clock pins T0 (default P3.4 = pin 28) and T1 (default P3.5 = pin 29),
+    // or port-selected pin via PS_T0 / PS_T1 (CMS8S78xx).
     for (uint8_t t = 0; t < 2; ++t) {
         Mcu51TimerChannel& tm = ctx->timer.channels[t];
         if (tm.running && tm.external_clk) {
-            uint8_t level = js_pal_gpio_read_state(TIMER_PINS[t]);
+            uint16_t pin = resolve_timer_pin(ctx, t);
+            uint8_t level = js_pal_gpio_read_state(pin);
             if (level <= 1u) {
-                if (tm.last_pin_level == 1u && level == 0u) {
+                uint8_t last = tm.last_pin_level;
+                tm.last_pin_level = level;
+                if (last == 1u && level == 0u) {
                     wink_mcs51_timer_pulse(t);
                 }
-                tm.last_pin_level = level;
             }
         }
     }
