@@ -1,0 +1,209 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "CMS8S78xx Timer0 CountMode (P2.5 5-pulse counter -> P3.2 toggle) headless proof",
+    "templateId": "vendor_cms8s78xx_v202_timer0_count_mode",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "600000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "20ms",
+      "target": "gpio:26",
+      "matcher": 0,
+      "description": "[Initial] P3.2 (Pin 26 / LED) starts LOW (0)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "20ms",
+      "target": "gpio:21",
+      "matcher": 1,
+      "description": "[Initial] P2.5 (Pin 21 / T0 input) starts pullup HIGH (1)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "40ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "60ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "80ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "100ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "120ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "140ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "160ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "180ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "190ms",
+      "target": "gpio:26",
+      "matcher": 0,
+      "description": "[After 4 pulses] P3.2 still 0 (no overflow yet)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "200ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "220ms",
+      "target": "gpio:26",
+      "matcher": 1,
+      "description": "[5th pulse] 5th falling edge triggers Timer0 overflow ISR -> P3.2 toggles to 1"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "240ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "260ms",
+      "target": "gpio:26",
+      "matcher": 1,
+      "description": "[Release] Button release (rising edge) does not trigger overflow -> P3.2 remains 1"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "280ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "300ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "320ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "340ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "360ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "380ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "400ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "420ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "430ms",
+      "target": "gpio:26",
+      "matcher": 1,
+      "description": "[After 9 pulses] P3.2 still 1"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "440ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "460ms",
+      "target": "gpio:26",
+      "matcher": 0,
+      "description": "[10th pulse] 10th falling edge triggers second overflow -> P3.2 toggles back to 0"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "480ms",
+      "targetPluginId": "btn",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "gpio:26",
+      "matcher": 0,
+      "description": "[Final stable] P3.2 remains 0"
+    }
+  ]
+}
