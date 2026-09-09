@@ -20,7 +20,12 @@ constexpr uint8_t  SFR_TL0  = 0x8A;
 constexpr uint8_t  SFR_TL1  = 0x8B;
 constexpr uint8_t  SFR_TH0  = 0x8C;
 constexpr uint8_t  SFR_TH1  = 0x8D;
-constexpr uint8_t  SFR_IE   = 0xA8;
+constexpr uint8_t  SFR_CCL1  = 0xC2;
+constexpr uint8_t  SFR_CCH1  = 0xC3;
+constexpr uint8_t  SFR_CCL2  = 0xC4;
+constexpr uint8_t  SFR_CCH2  = 0xC5;
+constexpr uint8_t  SFR_CCL3  = 0xC6;
+constexpr uint8_t  SFR_CCH3  = 0xC7;
 constexpr uint8_t  SFR_T2CON = 0xC8;
 constexpr uint8_t  SFR_T2IF  = 0xC9;
 constexpr uint8_t  SFR_RLDL  = 0xCA;
@@ -225,40 +230,107 @@ uint32_t timer2_current_period(void) {
     return us == 0u ? 1u : us;
 }
 
+inline uint8_t timer2_mode(void) {
+    return sfr(SFR_T2CON) & 0x03u;
+}
+
+static uint16_t timer2_compare_value(uint8_t c) {
+    if (c == 0) {
+        return (static_cast<uint16_t>(sfr(SFR_RLDH)) << 8) | sfr(SFR_RLDL);
+    } else if (c == 1) {
+        return (static_cast<uint16_t>(sfr(SFR_CCH1)) << 8) | sfr(SFR_CCL1);
+    } else if (c == 2) {
+        return (static_cast<uint16_t>(sfr(SFR_CCH2)) << 8) | sfr(SFR_CCL2);
+    } else if (c == 3) {
+        return (static_cast<uint16_t>(sfr(SFR_CCH3)) << 8) | sfr(SFR_CCL3);
+    }
+    return 0u;
+}
+
 void timer2_schedule_from_now(uint64_t from_us) {
     Mcu51TimerState& tm = mcs51_get_context()->timer;
     uint32_t period = timer2_current_period();
     tm.t2_next_ovf_us = from_us + period;
+
+    uint8_t th2 = sfr(SFR_TH2);
+    uint8_t tl2 = sfr(SFR_TL2);
+    uint16_t cur_val = (static_cast<uint16_t>(th2) << 8) | tl2;
+    uint8_t ccen = sfr(SFR_CCEN);
+    uint8_t t2con = sfr(SFR_T2CON);
+    bool div24 = (t2con & 0x80u) != 0;
+
+    for (uint8_t c = 0; c < 4; ++c) {
+        uint8_t mode = (ccen >> (c * 2)) & 0x03u;
+        // Mode 2 is compare mode (TMR2_MODE_COMPARE = 0x02)
+        if (mode == 2u) {
+            uint16_t cmp_val = timer2_compare_value(c);
+            if (cmp_val > cur_val) {
+                uint32_t diff = cmp_val - cur_val;
+                uint32_t delay_us = div24 ? diff : (diff / 2u);
+                if (delay_us == 0u) delay_us = 1u;
+                tm.t2_next_cmp_us[c] = from_us + delay_us;
+            } else {
+                tm.t2_next_cmp_us[c] = NO_OVERFLOW;
+            }
+        } else {
+            tm.t2_next_cmp_us[c] = NO_OVERFLOW;
+        }
+    }
 }
 
 void timer2_start(uint64_t now_us) {
     Mcu51TimerState& tm = mcs51_get_context()->timer;
     tm.t2_running = true;
-    timer2_schedule_from_now(now_us);
+    if (timer2_mode() == 1u) {
+        timer2_schedule_from_now(now_us);
+    } else {
+        tm.t2_next_ovf_us = NO_OVERFLOW;
+        for (uint8_t c = 0; c < 4; ++c) {
+            tm.t2_next_cmp_us[c] = NO_OVERFLOW;
+        }
+    }
 }
 
 void timer2_stop(void) {
     Mcu51TimerState& tm = mcs51_get_context()->timer;
     tm.t2_running = false;
     tm.t2_next_ovf_us = NO_OVERFLOW;
+    for (uint8_t c = 0; c < 4; ++c) {
+        tm.t2_next_cmp_us[c] = NO_OVERFLOW;
+    }
 }
 
 void on_timer2_overflow(uint64_t at_us) {
     Mcu51TimerState& tm = mcs51_get_context()->timer;
     sfr_set_bit(SFR_T2IF, T2IF_T2F);
 
-    uint8_t rldl = sfr(SFR_RLDL);
-    uint8_t rldh = sfr(SFR_RLDH);
-    mcs51_get_context()->sfr_shadow[SFR_TL2] = rldl;
-    mcs51_get_context()->sfr_shadow[SFR_TH2] = rldh;
+    uint8_t t2con = sfr(SFR_T2CON);
+    if ((t2con & 0x30u) != 0) { // T2Rn != 0: auto-reload or T2EX reload
+        uint8_t rldl = sfr(SFR_RLDL);
+        uint8_t rldh = sfr(SFR_RLDH);
+        mcs51_get_context()->sfr_shadow[SFR_TL2] = rldl;
+        mcs51_get_context()->sfr_shadow[SFR_TH2] = rldh;
+    } else {
+        mcs51_get_context()->sfr_shadow[SFR_TL2] = 0;
+        mcs51_get_context()->sfr_shadow[SFR_TH2] = 0;
+    }
 
     if (!tm.t2_running) {
         tm.t2_next_ovf_us = NO_OVERFLOW;
         return;
     }
 
-    uint32_t period = timer2_reload_period();
-    tm.t2_next_ovf_us = at_us + period;
+    if (timer2_mode() == 1u) {
+        if ((t2con & 0x30u) != 0) {
+            uint32_t period = timer2_reload_period();
+            tm.t2_next_ovf_us = at_us + period;
+        } else {
+            // LOAD_DISABLE: wait for software reload in ISR (e.g. TMR2_ConfigTimerPeriod)
+            tm.t2_next_ovf_us = NO_OVERFLOW;
+        }
+    } else {
+        tm.t2_next_ovf_us = NO_OVERFLOW;
+    }
 
     if ((sfr(SFR_T2IE) & (1u << T2IE_T2OVIE)) != 0) {
         mcs51_raise_irq(IRQ_SOURCE_TIMER2);
@@ -267,9 +339,38 @@ void on_timer2_overflow(uint64_t at_us) {
     }
 }
 
+static void on_timer2_compare_match(uint8_t c) {
+    Mcu51Context* ctx = mcs51_get_context();
+    Mcu51TimerState& tm = ctx->timer;
+    tm.t2_next_cmp_us[c] = NO_OVERFLOW;
+
+    sfr_set_bit(SFR_T2IF, c);
+
+    if ((sfr(SFR_T2IE) & (1u << c)) != 0) {
+        mcs51_raise_irq(IRQ_SOURCE_TIMER2);
+        wink_mcs51_clear_reti_suppress();
+        mcs51_irq_scan_and_dispatch();
+    }
+}
+
 void step_timer2(uint64_t now_us) {
     Mcu51TimerState& tm = mcs51_get_context()->timer;
-    if (!tm.t2_running || tm.t2_next_ovf_us == NO_OVERFLOW) {
+    if (!tm.t2_running) {
+        return;
+    }
+
+    // Process compare match events first
+    for (uint8_t c = 0; c < 4; ++c) {
+        if (tm.t2_next_cmp_us[c] != NO_OVERFLOW && now_us >= tm.t2_next_cmp_us[c]) {
+            on_timer2_compare_match(c);
+            if (!tm.t2_running) {
+                return;
+            }
+        }
+    }
+
+    // Process overflow events
+    if (tm.t2_next_ovf_us == NO_OVERFLOW) {
         return;
     }
     uint32_t fired = 0;
@@ -533,7 +634,24 @@ void wink_mcs51_timers_step_to(uint64_t now_us) {
 }
 
 void wink_mcs51_timer_pulse(uint8_t t) {
-    if (t >= 2) return;
+    if (t == 2) {
+        Mcu51TimerState& tm = mcs51_get_context()->timer;
+        if (!tm.t2_running || timer2_mode() != 2u) return;
+        uint16_t val = (static_cast<uint16_t>(sfr(SFR_TH2)) << 8) | sfr(SFR_TL2);
+        val++;
+        if (val == 0u) {
+            uint8_t rldh = sfr(SFR_RLDH);
+            uint8_t rldl = sfr(SFR_RLDL);
+            mcs51_get_context()->sfr_shadow[SFR_TH2] = rldh;
+            mcs51_get_context()->sfr_shadow[SFR_TL2] = rldl;
+            on_timer2_overflow(wink_mcs51_virtual_us());
+        } else {
+            mcs51_get_context()->sfr_shadow[SFR_TH2] = static_cast<uint8_t>((val >> 8) & 0xFFu);
+            mcs51_get_context()->sfr_shadow[SFR_TL2] = static_cast<uint8_t>(val & 0xFFu);
+        }
+        return;
+    }
+    if (t > 2) return;
     Mcu51TimerChannel& tm = get_tm(t);
     if (!tm.running || !tm.external_clk) return;
 
@@ -584,6 +702,11 @@ void mcs51_timer_reset(struct Mcu51Context* ctx) {
     ctx->timer.t2_running = false;
     ctx->timer.t2_next_ovf_us = NO_OVERFLOW;
     ctx->timer.t2_tr_prev = 0;
+    ctx->timer.t2_last_pin_level = 0xFFu;
+    for (uint8_t c = 0; c < 4; ++c) {
+        ctx->timer.t2_cap_last_level[c] = 0xFFu;
+        ctx->timer.t2_next_cmp_us[c] = NO_OVERFLOW;
+    }
 
     ctx->timer.t3_running = false;
     ctx->timer.t3_next_ovf_us = NO_OVERFLOW;
@@ -653,9 +776,10 @@ void wink_mcs51_timer_on_write(uint8_t addr) {
         return;
     }
 
-    if (addr == SFR_TL2 || addr == SFR_TH2 || addr == SFR_RLDL || addr == SFR_RLDH) {
+    if (addr == SFR_TL2 || addr == SFR_TH2 || addr == SFR_RLDL || addr == SFR_RLDH ||
+        addr == SFR_CCEN || (addr >= SFR_CCL1 && addr <= SFR_CCH3)) {
         Mcu51TimerState& tm = mcs51_get_context()->timer;
-        if (tm.t2_running) {
+        if (tm.t2_running && timer2_mode() == 1u) {
             timer2_schedule_from_now(now);
         }
         return;
@@ -715,9 +839,14 @@ static void sfr_read_hook_timer(struct Mcu51Context* ctx, uint8_t addr) {
 
 static void sfr_write_hook_timer(struct Mcu51Context* ctx, uint8_t addr,
                                  uint8_t old_val, uint8_t new_val) {
-    (void)ctx;
-    (void)old_val;
-    (void)new_val;
+    if (addr == SFR_T2IF || addr == SFR_EIF2) {
+        // CMS8S78xx interrupt flag registers are write-0-to-clear (W0C):
+        // writing 0 clears that bit; writing 1 leaves that bit unchanged.
+        if (ctx) {
+            ctx->sfr_shadow[addr] = old_val & new_val;
+        }
+        return;
+    }
     wink_mcs51_timer_on_write(addr);
 }
 
@@ -731,18 +860,27 @@ void mcs51_timer_init(struct Mcu51Context* ctx) {
     mcs51_trap_register_sfr_write(SFR_TH0, sfr_write_hook_timer);
     mcs51_trap_register_sfr_write(SFR_TH1, sfr_write_hook_timer);
     mcs51_trap_register_sfr_read(SFR_T2IF, sfr_read_hook_timer);
+    mcs51_trap_register_sfr_write(SFR_T2IF, sfr_write_hook_timer);
     mcs51_trap_register_sfr_write(SFR_T2CON, sfr_write_hook_timer);
     mcs51_trap_register_sfr_write(SFR_TL2, sfr_write_hook_timer);
     mcs51_trap_register_sfr_write(SFR_TH2, sfr_write_hook_timer);
     mcs51_trap_register_sfr_write(SFR_RLDL, sfr_write_hook_timer);
     mcs51_trap_register_sfr_write(SFR_RLDH, sfr_write_hook_timer);
     mcs51_trap_register_sfr_read(SFR_EIF2, sfr_read_hook_timer);
+    mcs51_trap_register_sfr_write(SFR_EIF2, sfr_write_hook_timer);
     mcs51_trap_register_sfr_read(SFR_T34MOD, sfr_read_hook_timer);
     mcs51_trap_register_sfr_write(SFR_T34MOD, sfr_write_hook_timer);
     mcs51_trap_register_sfr_write(SFR_TL3, sfr_write_hook_timer);
     mcs51_trap_register_sfr_write(SFR_TH3, sfr_write_hook_timer);
     mcs51_trap_register_sfr_write(SFR_TL4, sfr_write_hook_timer);
     mcs51_trap_register_sfr_write(SFR_TH4, sfr_write_hook_timer);
+    mcs51_trap_register_sfr_write(SFR_CCEN, sfr_write_hook_timer);
+    mcs51_trap_register_sfr_write(SFR_CCL1, sfr_write_hook_timer);
+    mcs51_trap_register_sfr_write(SFR_CCH1, sfr_write_hook_timer);
+    mcs51_trap_register_sfr_write(SFR_CCL2, sfr_write_hook_timer);
+    mcs51_trap_register_sfr_write(SFR_CCH2, sfr_write_hook_timer);
+    mcs51_trap_register_sfr_write(SFR_CCL3, sfr_write_hook_timer);
+    mcs51_trap_register_sfr_write(SFR_CCH3, sfr_write_hook_timer);
 }
 
 static uint16_t resolve_timer_pin(struct Mcu51Context* ctx, uint8_t t) {
@@ -756,6 +894,60 @@ static uint16_t resolve_timer_pin(struct Mcu51Context* ctx, uint8_t t) {
         return static_cast<uint16_t>((port << 3) | bit);
     }
     return fallback;
+}
+
+static uint16_t resolve_timer2_pin(struct Mcu51Context* ctx) {
+    uint16_t fallback = 14u; // P1.6 (CMS8S78xx default T2 external input)
+    if (!ctx) return fallback;
+    uint8_t sel = ctx->xdata_shadow[0xF0C6u]; // PS_T2
+    uint8_t port = (sel >> 4) & 0x07u;
+    uint8_t bit = sel & 0x0Fu;
+    constexpr uint8_t PORT_PINS[4] = {8u, 8u, 6u, 4u};
+    if (port < 4u && bit < PORT_PINS[port]) {
+        return static_cast<uint16_t>((port << 3) | bit);
+    }
+    return fallback;
+}
+
+static uint16_t resolve_cap_pin(struct Mcu51Context* ctx, uint8_t c) {
+    constexpr uint16_t FALLBACK[4] = {0u, 1u, 13u, 12u}; // P0.0, P0.1, P1.5, P1.4
+    if (c >= 4) return 0u;
+    if (!ctx) return FALLBACK[c];
+    uint8_t sel = ctx->xdata_shadow[0xF0C8u + c];
+    uint8_t port = (sel >> 4) & 0x07u;
+    uint8_t bit = sel & 0x0Fu;
+    constexpr uint8_t PORT_PINS[4] = {8u, 8u, 6u, 4u};
+    if (port < 4u && bit < PORT_PINS[port]) {
+        return static_cast<uint16_t>((port << 3) | bit);
+    }
+    return FALLBACK[c];
+}
+
+static void timer2_trigger_capture(struct Mcu51Context* ctx, uint8_t c) {
+    if (c >= 4) return;
+    uint8_t tl2 = sfr(SFR_TL2);
+    uint8_t th2 = sfr(SFR_TH2);
+    if (c == 0) {
+        ctx->sfr_shadow[SFR_RLDL] = tl2;
+        ctx->sfr_shadow[SFR_RLDH] = th2;
+    } else if (c == 1) {
+        ctx->sfr_shadow[SFR_CCL1] = tl2;
+        ctx->sfr_shadow[SFR_CCH1] = th2;
+    } else if (c == 2) {
+        ctx->sfr_shadow[SFR_CCL2] = tl2;
+        ctx->sfr_shadow[SFR_CCH2] = th2;
+    } else if (c == 3) {
+        ctx->sfr_shadow[SFR_CCL3] = tl2;
+        ctx->sfr_shadow[SFR_CCH3] = th2;
+    }
+
+    sfr_set_bit(SFR_T2IF, c);
+
+    if ((sfr(SFR_T2IE) & (1u << c)) != 0) {
+        mcs51_raise_irq(IRQ_SOURCE_TIMER2);
+        wink_mcs51_clear_reti_suppress();
+        mcs51_irq_scan_and_dispatch();
+    }
 }
 
 void mcs51_timer_poll(struct Mcu51Context* ctx) {
@@ -778,6 +970,47 @@ void mcs51_timer_poll(struct Mcu51Context* ctx) {
             }
         }
     }
+
+    // Poll external clock pin T2 (default P1.6 = pin 14) via PS_T2 (0xF0C6)
+    if (ctx->timer.t2_running && timer2_mode() == 2u) {
+        uint16_t pin = resolve_timer2_pin(ctx);
+        uint8_t level = js_pal_gpio_read_state(pin);
+        if (level <= 1u) {
+            uint8_t last = ctx->timer.t2_last_pin_level;
+            ctx->timer.t2_last_pin_level = level;
+            if (last == 1u && level == 0u) {
+                wink_mcs51_timer_pulse(2);
+            }
+        }
+    }
+
+    // Poll Timer 2 Capture channels (CAP0~CAP3)
+    uint8_t ccen = ctx->sfr_shadow[SFR_CCEN];
+    if (ctx->timer.t2_running && ccen != 0) {
+        uint8_t t2con = ctx->sfr_shadow[SFR_T2CON];
+        for (uint8_t c = 0; c < 4; ++c) {
+            uint8_t mode = (ccen >> (c * 2)) & 0x03u;
+            // Mode 1 or 3 is capture mode (0x01 | Timer2CaptureMode)
+            if (mode == 1u || mode == 3u) {
+                uint16_t pin = resolve_cap_pin(ctx, c);
+                uint8_t level = js_pal_gpio_read_state(pin);
+                if (level <= 1u) {
+                    uint8_t last = ctx->timer.t2_cap_last_level[c];
+                    ctx->timer.t2_cap_last_level[c] = level;
+                    if (last <= 1u && last != level) {
+                        // For CC0: T2CON.I3FR (bit 6): 1 = rising, 0 = falling
+                        // For CC1~3: T2CON.CAPES (bit 5): 0 = rising, 1 = falling
+                        bool want_rising = (c == 0) ? ((t2con & (1u << 6)) != 0)
+                                                    : ((t2con & (1u << 5)) == 0);
+                        if ((want_rising && last == 0u && level == 1u) ||
+                            (!want_rising && last == 1u && level == 0u)) {
+                            timer2_trigger_capture(ctx, c);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 uint64_t mcs51_timer_next_event_us(struct Mcu51Context* ctx) {
@@ -794,6 +1027,13 @@ uint64_t mcs51_timer_next_event_us(struct Mcu51Context* ctx) {
     if (ctx->timer.t2_running && ctx->timer.t2_next_ovf_us != NO_OVERFLOW) {
         if (ctx->timer.t2_next_ovf_us < earliest) {
             earliest = ctx->timer.t2_next_ovf_us;
+        }
+    }
+    for (uint8_t c = 0; c < 4; ++c) {
+        if (ctx->timer.t2_running && ctx->timer.t2_next_cmp_us[c] != NO_OVERFLOW) {
+            if (ctx->timer.t2_next_cmp_us[c] < earliest) {
+                earliest = ctx->timer.t2_next_cmp_us[c];
+            }
         }
     }
     if (ctx->timer.t3_running && ctx->timer.t3_next_ovf_us != NO_OVERFLOW) {

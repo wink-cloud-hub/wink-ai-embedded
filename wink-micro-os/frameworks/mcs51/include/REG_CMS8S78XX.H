@@ -68,6 +68,13 @@ sfr EIP3   = 0xBB;
 sfr BUZDIV = 0xBE;  // Buzzer clock divider
 sfr BUZCON = 0xBF;  // Buzzer control
 
+sfr CCL1   = 0xC2;  // Timer 2 compare/capture 1 low
+sfr CCH1   = 0xC3;  // Timer 2 compare/capture 1 high
+sfr CCL2   = 0xC4;  // Timer 2 compare/capture 2 low
+sfr CCH2   = 0xC5;  // Timer 2 compare/capture 2 high
+sfr CCL3   = 0xC6;  // Timer 2 compare/capture 3 low
+sfr CCH3   = 0xC7;  // Timer 2 compare/capture 3 high
+
 sfr T2CON  = 0xC8;  // Timer 2 control
 sfr T2IF   = 0xC9;  // Timer 2 interrupt flags
 sfr RLDL   = 0xCA;  // Timer 2 reload low
@@ -117,6 +124,14 @@ sbit U0SM0 = 0x9F;  // SCON0.7
 // Timer 2 sbit aliases
 sbit ET2   = 0xAD;  // IE^5 (Timer 2 interrupt enable)
 sbit PT2   = 0xBD;  // IP^5 (Timer 2 interrupt priority)
+sbit T2I0  = 0xC8;  // T2CON.0
+sbit T2I1  = 0xC9;  // T2CON.1
+sbit T2CM  = 0xCA;  // T2CON.2 (Compare mode select)
+sbit T2R0  = 0xCB;  // T2CON.3
+sbit T2R1  = 0xCC;  // T2CON.4
+sbit CAPES = 0xCD;  // T2CON.5 (Capture edge select)
+sbit I3FR  = 0xCE;  // T2CON.6 (Capture/compare edge select)
+sbit T2PS  = 0xCF;  // T2CON.7 (Clock prescaler)
 
 // ── 2) XSFR proxies (MOVX space; wild-pointer-safe, see mcs51_xsfr.hpp) ────
 #if defined(__cplusplus) && __cplusplus >= 201703L
@@ -857,6 +872,191 @@ static inline void TMR2_Start(void) {
 
 static inline void TMR2_Stop(void) {
     T2CON &= ~(TMR_T2CON_T2In_Msk);
+}
+
+#define TMR_T2CON_CAPES_Pos  (5)
+#define TMR_T2CON_CAPES_Msk  (0x1 << TMR_T2CON_CAPES_Pos)
+#define TMR_T2CON_I3FR_Pos   (6)
+#define TMR_T2CON_I3FR_Msk   (0x1 << TMR_T2CON_I3FR_Pos)
+
+#define TMR_CCEN_CMn0_Pos    (0)
+#define TMR_CCEN_CMn0_Msk    (0x3 << TMR_CCEN_CMn0_Pos)
+#define TMR_CCEN_CMn1_Pos    (2)
+#define TMR_CCEN_CMn1_Msk    (0x3 << TMR_CCEN_CMn1_Pos)
+#define TMR_CCEN_CMn2_Pos    (4)
+#define TMR_CCEN_CMn2_Msk    (0x3 << TMR_CCEN_CMn2_Pos)
+#define TMR_CCEN_CMn3_Pos    (6)
+#define TMR_CCEN_CMn3_Msk    (0x3 << TMR_CCEN_CMn3_Pos)
+
+#define TMR2_CC0             (0x00)
+#define TMR2_CC1             (0x01)
+#define TMR2_CC2             (0x02)
+#define TMR2_CC3             (0x03)
+
+#define TMR2_CMP_MODE_0      (0x00)
+#define TMR2_CMP_MODE_1      (0x01)
+
+#define TMR2_CMP_INT_MODE0   (0x00)
+#define TMR2_CMP_INT_MODE1   (0x01 << TMR_T2CON_I3FR_Pos)
+
+#define TMR2_CAP_WRITE_REGISTER (0x03)
+#define TMR2_CAP_EDGE_FALLING   (0x00)
+#define TMR2_CAP_EDGE_RISING    (0x01)
+#define TMR2_CAP_EDGE_BOTH      (0x03)
+
+static inline void TMR2_EnableCompare(uint8_t Timer2CCn, uint8_t CompareMode) {
+    if (TMR2_CMP_MODE_0 == CompareMode) {
+        T2CM = 0;
+    }
+    if (TMR2_CMP_MODE_1 == CompareMode) {
+        T2CM = 1;
+    }
+    if (Timer2CCn == TMR2_CC0) {
+        uint8_t temp = CCEN;
+        temp &= ~(TMR_CCEN_CMn0_Msk);
+        temp |= (TMR2_MODE_COMPARE << TMR_CCEN_CMn0_Pos);
+        CCEN = temp;
+    }
+    if (Timer2CCn == TMR2_CC1) {
+        uint8_t temp = CCEN;
+        temp &= ~(TMR_CCEN_CMn1_Msk);
+        temp |= (TMR2_MODE_COMPARE << TMR_CCEN_CMn1_Pos);
+        CCEN = temp;
+    }
+    if (Timer2CCn == TMR2_CC2) {
+        uint8_t temp = CCEN;
+        temp &= ~(TMR_CCEN_CMn2_Msk);
+        temp |= (TMR2_MODE_COMPARE << TMR_CCEN_CMn2_Pos);
+        CCEN = temp;
+    }
+    if (Timer2CCn == TMR2_CC3) {
+        uint8_t temp = CCEN;
+        temp &= ~(TMR_CCEN_CMn3_Msk);
+        temp |= (TMR2_MODE_COMPARE << TMR_CCEN_CMn3_Pos);
+        CCEN = temp;
+    }
+}
+
+static inline void TMR2_DisableCompare(uint8_t Timer2CCn) {
+    if (Timer2CCn == TMR2_CC0) CCEN &= ~(TMR_CCEN_CMn0_Msk);
+    if (Timer2CCn == TMR2_CC1) CCEN &= ~(TMR_CCEN_CMn1_Msk);
+    if (Timer2CCn == TMR2_CC2) CCEN &= ~(TMR_CCEN_CMn2_Msk);
+    if (Timer2CCn == TMR2_CC3) CCEN &= ~(TMR_CCEN_CMn3_Msk);
+}
+
+static inline void TMR2_ConfigCompareValue(uint8_t Timer2CCn, uint16_t CompareValue) {
+    if (TMR2_CC0 == Timer2CCn) {
+        RLDL = (uint8_t)CompareValue;
+        RLDH = (uint8_t)(CompareValue >> 8);
+    }
+    if (TMR2_CC1 == Timer2CCn) {
+        CCL1 = (uint8_t)CompareValue;
+        CCH1 = (uint8_t)(CompareValue >> 8);
+    }
+    if (TMR2_CC2 == Timer2CCn) {
+        CCL2 = (uint8_t)CompareValue;
+        CCH2 = (uint8_t)(CompareValue >> 8);
+    }
+    if (TMR2_CC3 == Timer2CCn) {
+        CCL3 = (uint8_t)CompareValue;
+        CCH3 = (uint8_t)(CompareValue >> 8);
+    }
+}
+
+static inline void TMR2_ConfigCompareIntMode(uint8_t Timer2CompareIntMode) {
+    uint8_t temp = T2CON;
+    temp &= ~(TMR_T2CON_I3FR_Msk);
+    temp |= Timer2CompareIntMode;
+    T2CON = temp;
+}
+
+static inline void TMR2_EnableCompareInt(uint8_t Timer2CCn) {
+    T2IE |= (0x1 << Timer2CCn);
+}
+
+static inline void TMR2_DisableCompareInt(uint8_t Timer2CCn) {
+    T2IE &= ~(0x1 << Timer2CCn);
+}
+
+static inline uint8_t TMR2_GetCompareIntFlag(uint8_t Timer2CCn) {
+    return (uint8_t)((T2IF & (0x1 << Timer2CCn)) ? 1 : 0);
+}
+
+static inline void TMR2_ClearCompareIntFlag(uint8_t Timer2CCn) {
+    T2IF = (uint8_t)(0xFF & (~(0x1 << Timer2CCn)));
+}
+
+static inline void TMR2_EnableCapture(uint8_t Timer2CCn, uint8_t Timer2CaptureMode) {
+    uint8_t temp;
+    if (TMR2_CC0 == Timer2CCn) {
+        temp = T2CON;
+        temp &= ~(TMR_T2CON_I3FR_Msk);
+        temp |= ((0x1 & Timer2CaptureMode) << TMR_T2CON_I3FR_Pos);
+        T2CON = temp;
+        temp = CCEN;
+        temp &= ~(TMR_CCEN_CMn0_Msk);
+        temp |= ((0x1 | Timer2CaptureMode) << TMR_CCEN_CMn0_Pos);
+        CCEN = temp;
+    }
+    if (TMR2_CC1 == Timer2CCn) {
+        temp = T2CON;
+        temp &= ~(TMR_T2CON_CAPES_Msk);
+        if (TMR2_CAP_EDGE_FALLING == Timer2CaptureMode) {
+            temp |= (0x1 << TMR_T2CON_CAPES_Pos);
+        }
+        T2CON = temp;
+        temp = CCEN;
+        temp &= ~(TMR_CCEN_CMn1_Msk);
+        temp |= ((0x1 | Timer2CaptureMode) << TMR_CCEN_CMn1_Pos);
+        CCEN = temp;
+    }
+    if (TMR2_CC2 == Timer2CCn) {
+        temp = T2CON;
+        temp &= ~(TMR_T2CON_CAPES_Msk);
+        if (TMR2_CAP_EDGE_FALLING == Timer2CaptureMode) {
+            temp |= (0x1 << TMR_T2CON_CAPES_Pos);
+        }
+        T2CON = temp;
+        temp = CCEN;
+        temp &= ~(TMR_CCEN_CMn2_Msk);
+        temp |= ((0x1 | Timer2CaptureMode) << TMR_CCEN_CMn2_Pos);
+        CCEN = temp;
+    }
+    if (TMR2_CC3 == Timer2CCn) {
+        temp = T2CON;
+        temp &= ~(TMR_T2CON_CAPES_Msk);
+        if (TMR2_CAP_EDGE_FALLING == Timer2CaptureMode) {
+            temp |= (0x1 << TMR_T2CON_CAPES_Pos);
+        }
+        T2CON = temp;
+        temp = CCEN;
+        temp &= ~(TMR_CCEN_CMn3_Msk);
+        temp |= ((0x1 | Timer2CaptureMode) << TMR_CCEN_CMn3_Pos);
+        CCEN = temp;
+    }
+}
+
+static inline void TMR2_DisableCapture(uint8_t Timer2CCn) {
+    if (Timer2CCn == TMR2_CC0) CCEN &= ~(TMR_CCEN_CMn0_Msk);
+    if (Timer2CCn == TMR2_CC1) CCEN &= ~(TMR_CCEN_CMn1_Msk);
+    if (Timer2CCn == TMR2_CC2) CCEN &= ~(TMR_CCEN_CMn2_Msk);
+    if (Timer2CCn == TMR2_CC3) CCEN &= ~(TMR_CCEN_CMn3_Msk);
+}
+
+static inline void TMR2_EnableCaptureInt(uint8_t Timer2CCn) {
+    T2IE |= (0x1 << Timer2CCn);
+}
+
+static inline void TMR2_DisableCaptureInt(uint8_t Timer2CCn) {
+    T2IE &= ~(0x1 << Timer2CCn);
+}
+
+static inline uint8_t TMR2_GetCaptureIntFlag(uint8_t Timer2CCn) {
+    return (uint8_t)((T2IF & (0x1 << Timer2CCn)) ? 1 : 0);
+}
+
+static inline void TMR2_ClearCaptureIntFlag(uint8_t Timer2CCn) {
+    T2IF = (uint8_t)(0xFF & (~(0x1 << Timer2CCn)));
 }
 
 

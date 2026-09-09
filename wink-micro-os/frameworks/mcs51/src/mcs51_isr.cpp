@@ -184,7 +184,7 @@ void mcs51_raise_irq(mcs51_irq_source_t src) {
     }
     WINK_TRACE_MCS51_IRQ(src, entry.vector, prio, wink_mcs51_virtual_us(), MCS51_IRQ_EVT_RAISE);
 
-    if (entry.flag_sfr != 0xFFu && src != IRQ_SOURCE_UART0) {
+    if (entry.flag_sfr != 0xFFu && src != IRQ_SOURCE_UART0 && src != IRQ_SOURCE_TIMER2) {
         if (src == IRQ_SOURCE_INT0) {
             bool edge = (ctx->sfr_shadow[0x88] & (1u << 0)) != 0;
             if (edge) {
@@ -268,6 +268,10 @@ uint8_t mcs51_irq_scan_and_dispatch(void) {
             } else if (s == IRQ_SOURCE_INT1) {
                 bool edge = (ctx->sfr_shadow[0x88] & (1u << 2)) != 0;
                 flag_set = !edge || ((ctx->sfr_shadow[0x88] & (1u << 3)) != 0);
+            } else if (s == IRQ_SOURCE_TIMER2 && entry.flag_sfr == 0xC9u) {
+                // Timer 2 multi-flag check: T2F (bit 7), T2EXIF (bit 6), T2C3..0IF (bits 3:0).
+                // Active if any enabled flag in T2IE (0xCF) is set.
+                flag_set = ((ctx->sfr_shadow[0xC9u] & ctx->sfr_shadow[0xCFu]) != 0);
             } else {
                 flag_set = (ctx->sfr_shadow[entry.flag_sfr] & (1u << entry.flag_bit)) != 0;
             }

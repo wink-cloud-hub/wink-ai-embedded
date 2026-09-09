@@ -87,12 +87,14 @@ void mcs51_edge_queue_drain(struct Mcu51Context* ctx) {
         // Request immediate extint re-poll without throttle
         ctx->extint.sample_due = true;
 
-        // If this falling edge is on T0 (P3.4=pin 28) or T1 (P3.5=pin 29), trigger timer pulse
+        // If this falling edge is on T0 (P3.4=pin 28), T1 (P3.5=pin 29), or T2 (P1.6=pin 14), trigger timer pulse
         if (ev.level == 0) {
             if (ev.pin == 28u) {
                 wink_mcs51_timer_pulse(0);
             } else if (ev.pin == 29u) {
                 wink_mcs51_timer_pulse(1);
+            } else if (ev.pin == 14u) {
+                wink_mcs51_timer_pulse(2);
             }
         }
     }

@@ -37,6 +37,9 @@ typedef struct {
     bool     t2_running;
     uint64_t t2_next_ovf_us;
     uint8_t  t2_tr_prev;
+    uint8_t  t2_last_pin_level;
+    uint8_t  t2_cap_last_level[4];
+    uint64_t t2_next_cmp_us[4];
     bool     t3_running;
     uint64_t t3_next_ovf_us;
     uint8_t  t3_tr_prev;
