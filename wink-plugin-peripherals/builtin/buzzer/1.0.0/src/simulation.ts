@@ -44,7 +44,7 @@ export const BUZZER_PIN_VARIANTS: Record<
     pins: [
       {
         name: '1',
-        pinType: 'pwm',
+        pinType: 'digital_in',
         role: 'pwm',
         aliases: ['1', 'sig', 'signal', 'pwm', 'anode', 'pos'],
         required: true,
@@ -184,11 +184,10 @@ export class BuzzerPlugin extends BaseSimulationPlugin<BuzzerState, BuzzerProps>
   private signalPinName = '1';
   private signalMcuPin = -1;
 
-  // Pulse Train & Frequency Estimator states
-  private lastEdgeUs = 0n;
-  private recentIntervalsUs: number[] = [];
-  private watchdogGen = 0;
-  private lastTransitionAtUs = 0n;
+  // Quantum Edge & Frequency Estimator states
+  private edgeCountInQuantum = 0;
+  private currentPinActive = false;
+  private silenceQuantaCount = 0;
   private driveMode: 'quiet' | 'pwm' | 'gpio_dc' | 'gpio_pulse_train' = 'quiet';
 
   get type(): string {
@@ -209,21 +208,28 @@ export class BuzzerPlugin extends BaseSimulationPlugin<BuzzerState, BuzzerProps>
 
     this.signalPinName = rawPinName;
 
-    if (pinMapping && pinMapping[rawPinName] !== undefined) {
-      const p = pinMapping[rawPinName];
-      this.signalMcuPin = typeof p === 'number' ? p : parseInt(String(p), 10);
+    const mappedPin =
+      pinMapping?.['1'] ??
+      pinMapping?.['sig'] ??
+      pinMapping?.['signal'] ??
+      pinMapping?.['pwm'] ??
+      pinMapping?.[rawPinName];
+
+    if (mappedPin !== undefined) {
+      this.signalMcuPin = typeof mappedPin === 'number' ? mappedPin : parseInt(String(mappedPin), 10);
     } else {
       this.signalMcuPin = -1;
     }
+
+    console.log('[Buzzer Sim] onBound with pinMapping:', pinMapping, 'signalMcuPin:', this.signalMcuPin);
 
     this.hasSignal = false;
     this.frequency = 0;
     this.duty = 0;
     this.driveMode = 'quiet';
-    this.lastEdgeUs = 0n;
-    this.recentIntervalsUs = [];
-    this.watchdogGen = 0;
-    this.lastTransitionAtUs = 0n;
+    this.edgeCountInQuantum = 0;
+    this.currentPinActive = false;
+    this.silenceQuantaCount = 0;
 
     this.ctx?.publish('hasSignal', false);
     this.ctx?.publish('frequency', 0);
@@ -247,6 +253,7 @@ export class BuzzerPlugin extends BaseSimulationPlugin<BuzzerState, BuzzerProps>
     this.duty = duty;
 
     if (changed) {
+      console.log('[Buzzer Sim] State change -> hasSignal:', hasSignal, 'freq:', frequency, 'duty:', duty);
       this.ctx?.publish('hasSignal', this.hasSignal);
       this.ctx?.publish('frequency', this.frequency);
       this.ctx?.publish('duty', this.duty);
@@ -289,110 +296,54 @@ export class BuzzerPlugin extends BaseSimulationPlugin<BuzzerState, BuzzerProps>
       (level as unknown) === true;
 
     const activeHigh = this.properties?.activeHigh !== false;
-    const isLevelActive = activeHigh ? isHigh : !isHigh;
-
-    // 1. If this is a subsequent edge, inspect edge-to-edge interval
-    if (this.lastEdgeUs > 0n && atUs >= this.lastEdgeUs) {
-      const deltaUs = Number(atUs - this.lastEdgeUs);
-
-      // Half-period interval in audible square wave range:
-      // 25µs (20kHz half period) to 25,000µs (20Hz half period)
-      if (deltaUs >= 25 && deltaUs <= 25000) {
-        this.recentIntervalsUs.push(deltaUs);
-        if (this.recentIntervalsUs.length > 5) {
-          this.recentIntervalsUs.shift();
-        }
-
-        // Multi-edge confirmation: at least 3 consecutive edges
-        if (this.recentIntervalsUs.length >= 3) {
-          const sum = this.recentIntervalsUs.reduce((acc, v) => acc + v, 0);
-          const avgHalfPeriodUs = sum / this.recentIntervalsUs.length;
-
-          // Jitter check: all intervals must be within ±30% or ±10µs of average
-          const isPeriodic = this.recentIntervalsUs.every(
-            v => Math.abs(v - avgHalfPeriodUs) <= Math.max(10, avgHalfPeriodUs * 0.3),
-          );
-
-          if (isPeriodic && avgHalfPeriodUs > 0) {
-            const periodUs = avgHalfPeriodUs * 2;
-            const detectedFreq = Math.round(1_000_000 / periodUs);
-
-            this.driveMode = 'gpio_pulse_train';
-            this.updateSoundState(true, detectedFreq, 50);
-          }
-        }
-      } else if (deltaUs > 25000) {
-        // Gap is longer than 25ms -> treat as DC transition, reset periodic train
-        this.recentIntervalsUs = [];
-        if (isLevelActive) {
-          this.driveMode = 'gpio_dc';
-          this.updateSoundState(
-            true,
-            Number(this.properties?.defaultFreqHz ?? 2000),
-            100,
-          );
-        } else {
-          this.driveMode = 'quiet';
-          this.updateSoundState(false, 0, 0);
-        }
-      }
-    } else {
-      // First edge
-      this.recentIntervalsUs = [];
-      if (isLevelActive) {
-        this.driveMode = 'gpio_dc';
-        this.updateSoundState(
-          true,
-          Number(this.properties?.defaultFreqHz ?? 2000),
-          100,
-        );
-      } else {
-        this.driveMode = 'quiet';
-        this.updateSoundState(false, 0, 0);
-      }
-    }
-
-    this.lastEdgeUs = atUs;
-    this.lastTransitionAtUs = atUs;
-
-    // 2. Silence Watchdog for pulse train:
-    // If pulses stop arriving (e.g. BUZ_DisableBuzzer called), silence the buzzer!
-    if (this.driveMode === 'gpio_pulse_train') {
-      const currentGen = ++this.watchdogGen;
-      const lastInterval =
-        this.recentIntervalsUs.length > 0
-          ? this.recentIntervalsUs[this.recentIntervalsUs.length - 1]
-          : 50;
-      const timeoutUs = Math.max(25000, lastInterval * 4);
-
-      const ctxAny = this.ctx as any;
-      if (typeof ctxAny?.deferUs === 'function') {
-        ctxAny.deferUs(BigInt(timeoutUs), () => {
-          if (
-            this.watchdogGen === currentGen &&
-            this.driveMode === 'gpio_pulse_train'
-          ) {
-            this.driveMode = 'quiet';
-            this.recentIntervalsUs = [];
-            this.updateSoundState(false, 0, 0);
-          }
-        });
-      }
-    }
+    this.currentPinActive = activeHigh ? isHigh : !isHigh;
+    this.edgeCountInQuantum++;
   }
 
   /**
-   * Periodic step inspection: fallback watchdog silence guarantee
+   * Periodic step inspection: calculate frequency from quantum edge transitions,
+   * handle active DC level, or silence after quiet intervals
    */
-  onStep?(nowUs: bigint, _dtUs: bigint): void {
-    if (
-      this.driveMode === 'gpio_pulse_train' &&
-      this.lastTransitionAtUs > 0n &&
-      nowUs - this.lastTransitionAtUs > 35000n
-    ) {
-      this.driveMode = 'quiet';
-      this.recentIntervalsUs = [];
-      this.updateSoundState(false, 0, 0);
+  onStep?(nowUs: bigint, dtUs: bigint): void {
+    const edges = this.edgeCountInQuantum;
+    this.edgeCountInQuantum = 0;
+    const dtUsNum = Number(dtUs) > 0 ? Number(dtUs) : 1000;
+
+    if (edges >= 2) {
+      // Oscillating square wave in this quantum!
+      // Frequency = (edges / 2) / (dtUs in seconds) = (edges * 1,000,000) / (2 * dtUs)
+      const measuredFreq = Math.round((edges * 1_000_000) / (2 * dtUsNum));
+      this.driveMode = 'gpio_pulse_train';
+      this.silenceQuantaCount = 0;
+      this.updateSoundState(true, measuredFreq, 50);
+    } else if (edges === 1) {
+      // Single edge transition in this quantum
+      this.driveMode = 'gpio_pulse_train';
+      this.silenceQuantaCount = 0;
+      if (!this.hasSignal) {
+        this.updateSoundState(true, Number(this.properties?.defaultFreqHz ?? 2000), 50);
+      }
+    } else {
+      // edges === 0 (no transitions in this quantum)
+      if (this.driveMode === 'gpio_pulse_train') {
+        this.silenceQuantaCount++;
+        // Hold for 3 consecutive quiet quanta (~3ms) before silencing
+        if (this.silenceQuantaCount >= 3) {
+          console.log('[Buzzer Sim] Pulse train ended -> quiet');
+          this.driveMode = 'quiet';
+          this.updateSoundState(false, 0, 0);
+        }
+      } else if (this.driveMode === 'gpio_dc') {
+        if (!this.currentPinActive) {
+          this.driveMode = 'quiet';
+          this.updateSoundState(false, 0, 0);
+        }
+      } else if (this.driveMode === 'quiet') {
+        if (this.currentPinActive && resolveBuzzerVariant(this.properties?.variant) === 'active_gpio') {
+          this.driveMode = 'gpio_dc';
+          this.updateSoundState(true, Number(this.properties?.defaultFreqHz ?? 2000), 100);
+        }
+      }
     }
   }
 

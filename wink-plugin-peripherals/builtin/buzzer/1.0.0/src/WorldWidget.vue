@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onBeforeUnmount } from 'vue';
+import { ref, watch, onBeforeUnmount, onMounted } from 'vue';
 
 const props = withDefaults(
   defineProps<{
@@ -18,7 +18,8 @@ const props = withDefaults(
   },
 );
 
-const isAudioMuted = ref(true);
+// Default to unmuted
+const isAudioMuted = ref(false);
 
 let audioCtx: AudioContext | null = null;
 let oscillator: OscillatorNode | null = null;
@@ -45,7 +46,7 @@ function startSound(freq: number) {
   const ctx = ensureAudioContext();
   if (!ctx) return;
 
-  const validFreq = Math.max(20, Math.min(8000, freq > 0 ? freq : 2000));
+  const validFreq = Math.max(20, Math.min(20000, freq > 0 ? freq : 2000));
 
   if (!oscillator) {
     oscillator = ctx.createOscillator();
@@ -87,12 +88,26 @@ function stopSound() {
 
 function toggleAudio() {
   isAudioMuted.value = !isAudioMuted.value;
+  ensureAudioContext();
   if (isAudioMuted.value) {
     stopSound();
   } else if (props.hasSignal) {
     startSound(props.frequency);
   }
 }
+
+function unlockAudioOnInteraction() {
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(() => {});
+  }
+}
+
+onMounted(() => {
+  if (typeof window !== 'undefined') {
+    window.addEventListener('click', unlockAudioOnInteraction, { capture: true, passive: true });
+    window.addEventListener('keydown', unlockAudioOnInteraction, { capture: true, passive: true });
+  }
+});
 
 watch(
   () => [props.hasSignal, props.frequency, isAudioMuted.value] as const,
@@ -107,6 +122,10 @@ watch(
 );
 
 onBeforeUnmount(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('click', unlockAudioOnInteraction, { capture: true });
+    window.removeEventListener('keydown', unlockAudioOnInteraction, { capture: true });
+  }
   stopSound();
   if (audioCtx) {
     audioCtx.close().catch(() => {});
@@ -161,13 +180,13 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .buzzer-world-widget {
+  min-width: 170px;
   padding: 10px 12px;
   background: rgba(15, 23, 42, 0.88);
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 8px;
   color: #f8fafc;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  min-width: 170px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
   transition: all 0.2s ease;
 }
@@ -179,8 +198,8 @@ onBeforeUnmount(() => {
 
 .widget-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
   margin-bottom: 8px;
   gap: 8px;
 }
@@ -246,14 +265,14 @@ onBeforeUnmount(() => {
 .metric-val {
   font-size: 11px;
   font-weight: 600;
-  font-family: monospace;
   color: #f1f5f9;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 .metric-mode {
   font-size: 10px;
   color: #38bdf8;
-  font-family: monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 .audio-control {
@@ -263,18 +282,18 @@ onBeforeUnmount(() => {
 
 .sound-toggle-btn {
   width: 100%;
-  font-size: 10px;
-  font-weight: 500;
-  padding: 4px 8px;
-  border-radius: 4px;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  background: rgba(30, 41, 59, 0.8);
-  color: #94a3b8;
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 4px 8px;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 4px;
+  color: #94a3b8;
+  cursor: pointer;
   transition: all 0.15s ease;
 }
 
@@ -285,8 +304,8 @@ onBeforeUnmount(() => {
 
 .sound-toggle-btn.is-unmuted {
   background: rgba(245, 158, 11, 0.18);
-  color: #f59e0b;
   border-color: rgba(245, 158, 11, 0.5);
+  color: #f59e0b;
 }
 
 @keyframes pulse-border {

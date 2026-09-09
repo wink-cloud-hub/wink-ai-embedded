@@ -16,7 +16,13 @@ const identity = resolvePluginIdentity(import.meta.url, 'buzzer', '1.0.0', 'outp
 
 function resolveBuzzerChannel(comp: CircuitComponentInstance, ctx: SimViewContext) {
   const id = resolvePluginInstanceId(comp, identity.type);
-  return ctx.pluginChannels?.[id] || {};
+  const ch =
+    ctx.pluginChannels?.[comp.id] ??
+    ctx.pluginChannels?.[id] ??
+    ctx.pluginChannels?.[`${identity.type}:0`] ??
+    ctx.pluginChannels?.[identity.type] ??
+    {};
+  return ch;
 }
 
 const defaultTopology = BUZZER_TOPOLOGIES.passive_pwm;
