@@ -49,6 +49,16 @@ void mcs51_context_reset(Mcu51Context* ctx) {
     ctx->xdata_shadow[0xF0CC] = 0x7Fu; // PS_ADET
     ctx->xdata_shadow[0xF0C0] = 0x7Fu; // PS_INT0
     ctx->xdata_shadow[0xF0C1] = 0x7Fu; // PS_INT1
+    ctx->xdata_shadow[0xF0C2] = 0x7Fu; // PS_T0
+    ctx->xdata_shadow[0xF0C3] = 0x7Fu; // PS_T0G
+    ctx->xdata_shadow[0xF0C4] = 0x7Fu; // PS_T1
+    ctx->xdata_shadow[0xF0C5] = 0x7Fu; // PS_T1G
+    ctx->xdata_shadow[0xF0C6] = 0x7Fu; // PS_T2
+    ctx->xdata_shadow[0xF0C7] = 0x7Fu; // PS_T2EX
+    ctx->xdata_shadow[0xF0C8] = 0x7Fu; // PS_CAP0
+    ctx->xdata_shadow[0xF0C9] = 0x7Fu; // PS_CAP1
+    ctx->xdata_shadow[0xF0CA] = 0x7Fu; // PS_CAP2
+    ctx->xdata_shadow[0xF0CB] = 0x7Fu; // PS_CAP3
 
     // Initialize standard peripherals via descriptor table (Task R1)
     for (uint8_t i = 0; i < g_mcs51_num_peripherals; ++i) {
