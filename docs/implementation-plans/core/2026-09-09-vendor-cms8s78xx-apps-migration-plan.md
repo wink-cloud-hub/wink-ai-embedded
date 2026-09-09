@@ -12,7 +12,7 @@
 | **创建日期** | `2026-09-09` |
 | **目标平台/SoC** | `wasm` (Emscripten), `host`, MCS-51 仿真内核 |
 | **工具链/SDK版本**| Python 3.10+, Emscripten, CMake 3.15+ |
-| **计划状态** | 📋 草稿（待确认执行） |
+| **计划状态** | ✅ 已完成（2026-09-09） |
 | **优先级** | 🟡 P1（架构重构与分组治理） |
 | **计划版本** | `v1.0` |
 | **关联技术设计** | 无，已并入本计划 |
@@ -127,31 +127,31 @@ set(_MCS51_CLEANUP
 ## 4. 任务拆分与执行步骤
 
 ### Phase 1：准备与脚本化
-- [ ] **Task 1.1**：清理/暂存工作区内已有的未提交变更（特别是 `vendor_cms8s78xx_v202_buzzer` 资产）。
-- [ ] **Task 1.2**：在 `scripts/migrate_vendor_cms8s78xx_apps.py` 中编写并落地一键迁移脚本。
-- [ ] **Task 1.3**：执行 `--dry-run`，审查移动的路径树与即将修改的文件内容。
+- [x] **Task 1.1**：清理/暂存工作区内已有的未提交变更（特别是 `vendor_cms8s78xx_v202_buzzer` 资产）。
+- [x] **Task 1.2**：在 `scripts/migrate_vendor_cms8s78xx_apps.py` 中编写并落地一键迁移脚本。
+- [x] **Task 1.3**：执行 `--dry-run`，审查移动的路径树与即将修改的文件内容。
 
 ### Phase 2：执行迁移
-- [ ] **Task 2.1**：执行 `python scripts/migrate_vendor_cms8s78xx_apps.py --apply`。
+- [x] **Task 2.1**：执行 `python scripts/migrate_vendor_cms8s78xx_apps.py --apply`。
   - 通过 `git mv` 搬迁 19 个目录到 `wink-micro-app/vendor_cms8s78xx_v202/`；
   - 自动打补丁更新 19 个 `CMakeLists.txt`；
   - 自动更新 19 个 `wink-app.json` 的 `app_name`；
   - 自动更新 `app-consistency-runner.test.ts` 中的单测路径。
 
 ### Phase 3：构建与一致性验证
-- [ ] **Task 3.1**：验证 App 发现能力：`python packages/wink-tools/wink.py build wasm --all --dry-run` 检查 19 个新 ID。
-- [ ] **Task 3.2**：抽检关键外设应用 WASM 编译：
+- [x] **Task 3.1**：验证 App 发现能力：`python packages/wink-tools/wink.py build wasm --all --dry-run` 检查 19 个新 ID。
+- [x] **Task 3.2**：抽检关键外设应用 WASM 编译：
   - GPIO 外部中断：`wink build wasm --app gpio`
   - 蜂鸣器：`wink build wasm --app buzzer`
   - ADC/LDO：`wink build wasm --app adc_ldo`
   - 数码管动态扫描：`wink build wasm --app led_4com_8seg`
-- [ ] **Task 3.3**：执行 Unisim 一致性双轨测试：
+- [x] **Task 3.3**：执行 Unisim 一致性双轨测试：
   - `bun test unisim/simulation-runner/consistency`
-- [ ] **Task 3.4**：更新 `wink-micro-app/README.md` 文档中的路径与命令示例。
+- [x] **Task 3.4**：更新 `wink-micro-app/README.md` 文档中的路径与命令示例。
 
 ### Phase 4：提交与归档
-- [ ] **Task 4.1**：架构与 API 门禁核验：`python packages/wink-tools/wink.py lint arch --pack layering --pack api`。
-- [ ] **Task 4.2**：原子 Git 提交：`refactor(apps): migrate vendor_cms8s78xx_v202 apps into group folder (ADR-0079)`。
+- [x] **Task 4.1**：架构与 API 门禁核验：`python packages/wink-tools/wink.py lint --pack layering --pack api`。
+- [x] **Task 4.2**：原子 Git 提交：`refactor(apps): migrate vendor_cms8s78xx_v202 apps into group folder (ADR-0079)`。
 
 ---
 
