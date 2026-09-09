@@ -167,6 +167,26 @@ wink-micro-os/
 | **`board_config.c`** | Board Pin Router | **Board-level physical pin route overrides (Optional)**.<br>Provides strong routing overrides (e.g. `pal_pwm_pin_map`). | Board Support Package / Systems Engineer |
 | **`CMakeLists.txt`** | Build Description | **Defines compilation & linkage rules**.<br>Invokes Python scripts to parse `wink_app.json` and inject `wink_config.h`. | Build system template |
 
+#### Nested App Grouping (ADR-0079)
+
+Apps under `wink-micro-app/` may be nested **up to three levels deep**, allowing grouping by MCU family / vendor / project:
+
+```
+wink-micro-app/
+├── oled_dashboard/                 # depth 1 (flat legacy layout, still supported)
+│   └── wink-app.json
+├── mcs51/                          # depth 2: <group>/<app>
+│   └── button_led/wink-app.json
+└── vendor/cms8s78xx/gpio/          # depth 3: <g1>/<g2>/<app> (the cap)
+    └── wink-app.json
+```
+
+Discovery rules, applied identically by the Python wink-tools, unisim, and embedded-frontend scanners (see [ADR-0079](../../decisions/core/0079-micro-app-nested-app-discovery.md)):
+
+1. **Manifest is the boundary**: any directory containing `wink-app.json` is an app, and scanners **must never search inward past it** — everything beneath it (sources, docs, unisim-assets, temp artifacts) is private to that app.
+2. **Depth cap of 3**: manifest-less directories are only descended while depth < 3; a manifest deeper than the cap is a configuration error and is reported with a warning instead of being picked up.
+3. **App id = POSIX path relative to `wink-micro-app/`**: flat ids stay bare leaf names (`oled_dashboard`); nested ids are `mcs51/button_led`. The id is simultaneously the CLI argument, the `build/wasm/<id>` build directory, and the frontend cache key. A bare leaf name resolves as an alias when unique app-wide; on collisions the qualified id is required.
+
 ### 🛠️ Decoupling Principle: Compile-Time Target Static Routing
 1. **Code Unawareness**: Application logic (`app_callbacks.c`) contains zero target-specific `#ifdef` directives.
 2. **Build-Time Static Assembly**: CMake parses `wink_app.json` and orthogonally links `targets/<plat>/` with `osal/<variant>/` ([ADR-0041](../../decisions/core/0041-hal-osal-directory-orthogonality.md)).
