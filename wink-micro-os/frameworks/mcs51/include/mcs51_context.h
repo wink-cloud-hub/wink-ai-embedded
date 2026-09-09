@@ -37,6 +37,12 @@ typedef struct {
     bool     t2_running;
     uint64_t t2_next_ovf_us;
     uint8_t  t2_tr_prev;
+    bool     t3_running;
+    uint64_t t3_next_ovf_us;
+    uint8_t  t3_tr_prev;
+    bool     t4_running;
+    uint64_t t4_next_ovf_us;
+    uint8_t  t4_tr_prev;
 } Mcu51TimerState;
 
 // ── ExtInt State (Task R2 / R1) ────────────────────────────────────────────
