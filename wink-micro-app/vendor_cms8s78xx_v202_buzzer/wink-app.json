@@ -10,5 +10,14 @@
     "version": "V2.0.2",
     "source_dir": "docs/vendors/Cmsemicon/CMS8S78xx_DemoCode_V2.0.2/CMS8S78xx_Example/Example/Buzzer/code"
   },
-  "devices": {}
+  "devices": {
+    "buzzer0": {
+      "type": "buzzer",
+      "variant": "passive_pwm",
+      "pins": {
+        "1": "$board.headers.P03"
+      },
+      "label": "Buzzer"
+    }
+  }
 }

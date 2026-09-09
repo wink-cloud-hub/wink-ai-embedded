@@ -1,7 +1,19 @@
 {
   "appName": "vendor_cms8s78xx_v202_buzzer",
   "board": "cms8s78xx_devboard",
-  "devices": {},
+  "devices": {
+    "buzzer0": {
+      "id": "buzzer0",
+      "type": "buzzer",
+      "pinMapping": {
+        "1": 3
+      },
+      "properties": {
+        "variant": "passive_pwm",
+        "label": "Buzzer"
+      }
+    }
+  },
   "family": "mcs51",
   "core": "8051",
   "mcu": "cms8s78xx",
