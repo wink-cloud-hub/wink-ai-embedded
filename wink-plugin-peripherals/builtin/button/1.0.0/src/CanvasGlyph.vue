@@ -87,7 +87,7 @@ onBeforeUnmount(() => {
   >
     <wokwi-pushbutton
       :color="color"
-      :label="label"
+      :label="''"
       :xray="xray"
       :pressed="isPressed"
       style="pointer-events: none;"

@@ -113,7 +113,7 @@ var h = ["hasSignal"], g = { class: "buzzer-badge-area" }, _ = { class: "buzzer-
 		}), (t, r) => (d(), a("div", {
 			class: c(["buzzer-glyph-wrapper", { "is-active": e.hasSignal }]),
 			onClick: D
-		}, [o("wokwi-buzzer", { hasSignal: !!e.hasSignal }, null, 8, h), o("div", g, [o("div", _, [o("span", v, p(e.label || "Buzzer"), 1), o("button", {
+		}, [o("wokwi-buzzer", { hasSignal: !!e.hasSignal }, null, 8, h), o("div", g, [o("div", _, [o("button", {
 			type: "button",
 			class: "audio-toggle-btn",
 			title: n.value ? "点击开启声音" : "点击静音",

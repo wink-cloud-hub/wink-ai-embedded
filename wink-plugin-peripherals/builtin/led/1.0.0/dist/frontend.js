@@ -26,7 +26,7 @@ var s = [
 			color: e.color,
 			value: e.level,
 			brightness: e.brightness,
-			label: e.label,
+			label: "",
 			flip: e.flip
 		}, null, 8, s));
 	}
