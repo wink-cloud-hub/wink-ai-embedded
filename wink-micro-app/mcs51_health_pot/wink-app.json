@@ -8,6 +8,7 @@
     "display": {
       "type": "seg_display",
       "variant": "direct_gpio_4d",
+      "label": "水温/倒计时",
       "com0_pin": "$board.headers.P30",
       "com1_pin": "$board.headers.P31",
       "com2_pin": "$board.headers.P32",
@@ -27,37 +28,49 @@
       "pins": {
         "1": "$board.headers.P03"
       },
-      "label": "Buzzer"
+      "label": "蜂鸣器"
     },
     "heater_relay": {
       "type": "led",
       "gpio_pin": "$board.headers.P20",
-      "active_high": true
+      "active_high": true,
+      "color": "orange",
+      "label": "发热盘"
     },
     "led_heat": {
       "type": "led",
       "gpio_pin": "$board.headers.P01",
-      "active_high": false
+      "active_high": false,
+      "color": "red",
+      "label": "加热"
     },
     "led_warm": {
       "type": "led",
       "gpio_pin": "$board.headers.P02",
-      "active_high": false
+      "active_high": false,
+      "color": "green",
+      "label": "保温"
     },
     "led_fault": {
       "type": "led",
       "gpio_pin": "$board.headers.P06",
-      "active_high": false
+      "active_high": false,
+      "color": "yellow",
+      "label": "故障"
     },
     "btn_onoff": {
       "type": "button",
       "gpio_pin": "$board.headers.P04",
-      "active_low": true
+      "active_low": true,
+      "color": "red",
+      "label": "电源"
     },
     "btn_func": {
       "type": "button",
       "gpio_pin": "$board.headers.P05",
-      "active_low": true
+      "active_low": true,
+      "color": "blue",
+      "label": "功能/模式"
     }
   }
 }

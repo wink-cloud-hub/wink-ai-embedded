@@ -5,6 +5,7 @@
     "display": {
       "id": "display",
       "type": "seg_display",
+      "label": "水温/倒计时",
       "pinMapping": {
         "DIG1": 24,
         "DIG2": 25,
@@ -20,78 +21,98 @@
         "DP": 15
       },
       "properties": {
-        "variant": "direct_gpio_4d"
+        "variant": "direct_gpio_4d",
+        "label": "水温/倒计时"
       }
     },
     "buzzer": {
       "id": "buzzer",
       "type": "buzzer",
+      "label": "蜂鸣器",
       "pinMapping": {
         "1": 3
       },
       "properties": {
         "variant": "passive_pwm",
-        "label": "Buzzer"
+        "label": "蜂鸣器"
       }
     },
     "heater_relay": {
       "id": "heater_relay",
       "type": "led",
+      "label": "发热盘",
       "pinMapping": {
         "A": 16
       },
       "properties": {
-        "activeHigh": true
+        "activeHigh": true,
+        "color": "orange",
+        "label": "发热盘"
       }
     },
     "led_heat": {
       "id": "led_heat",
       "type": "led",
+      "label": "加热",
       "pinMapping": {
         "A": 1
       },
       "properties": {
-        "activeHigh": false
+        "activeHigh": false,
+        "color": "red",
+        "label": "加热"
       }
     },
     "led_warm": {
       "id": "led_warm",
       "type": "led",
+      "label": "保温",
       "pinMapping": {
         "A": 2
       },
       "properties": {
-        "activeHigh": false
+        "activeHigh": false,
+        "color": "green",
+        "label": "保温"
       }
     },
     "led_fault": {
       "id": "led_fault",
       "type": "led",
+      "label": "故障",
       "pinMapping": {
         "A": 6
       },
       "properties": {
-        "activeHigh": false
+        "activeHigh": false,
+        "color": "yellow",
+        "label": "故障"
       }
     },
     "btn_onoff": {
       "id": "btn_onoff",
       "type": "button",
+      "label": "电源",
       "pinMapping": {
         "1.l": 4
       },
       "properties": {
-        "activeLow": true
+        "activeLow": true,
+        "color": "red",
+        "label": "电源"
       }
     },
     "btn_func": {
       "id": "btn_func",
       "type": "button",
+      "label": "功能/模式",
       "pinMapping": {
         "1.l": 5
       },
       "properties": {
-        "activeLow": true
+        "activeLow": true,
+        "color": "blue",
+        "label": "功能/模式"
       }
     }
   },
