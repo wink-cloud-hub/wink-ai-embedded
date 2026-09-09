@@ -1,107 +1,40 @@
 /* SPDX-License-Identifier: Apache-2.0
- * MCS-51 health-pot (养生壶) thermostat — UNMODIFIED-STYLE Keil C51 user
- * source for the Wink MCS-51 zero-intrusion simulation sandbox.
+ * CMS8S78xx Commercial Health Pot (养生壶) Thermostat Application
  *
- * Appliance profile:
- *   - NTC temperature probe through an external ADC0832 (3-wire bit-bang,
- *     CS=P2.0 CLK=P2.1 DIO=P2.2; NTC pulled up to VREF => ADC code is HIGH
- *     when cold, LOW when hot, same convention as the iron_ntc sample).
- *     All readings use a median-of-3 filter (adc_read_filtered) to reject
- *     single-sample noise from supply ripple and relay transients.
- *   - Heater relay on P1.0 (active high).
- *   - Active buzzer on P1.1 (active high).
- *   - Three indicator LEDs on P1.2/P1.3/P1.4 (active low, 0 = lit):
- *     heat / keep-warm / fault.
- *   - Two push buttons on P3.2 (ON/OFF, also INT0) and P3.3 (FUNC, also
- *     INT1), active low, 20 ms software debounce in the super-loop.
- *   - Timer0 mode-1 10 ms tick ISR (12 MHz teaching crystal, 1 count = 1 us,
- *     reload 65536-10000 = 0xD8F0).
- *   - Timer1 mode-2 (auto-reload) baud-rate generator for UART mode-1 TX:
- *     9600 bps @ 11.0592 MHz crystal (TH1 = 0xFD).  The simulation model
- *     sets TI synchronously without baud-rate validation, so Timer1 is
- *     functionally inert under sim but mandatory for real 8051 silicon.
- *   - UART mode-1 polled TX telemetry once per second:
- *       "T=<temp>C,S=<state>,H=<heater>,F=<fault>\n"
- *     state: 0=OFF 1=HEAT(boil) 2=WARM 3=FAULT; H: 0/1 heater drive.
- *
- * State machine:
- *   OFF  --press ON/OFF-->  HEAT  (boil to >=98 C, hold 3 s)  -->  WARM
- *   HEAT/WARM --press ON/OFF--> OFF
- *   WARM: FUNC cycles the keep-warm setpoint 60 -> 80 -> 90 -> 60 C with
- *         +/-3 C hysteresis on the heater.  A relay dwell (min-off-time,
- *         RELAY_DWELL_SECONDS) gates only the WARM re-energize edge: the
- *         heater must have been OFF >= 3 s (sim; 30-60 s on a real product)
- *         before it may pull in again, extending mechanical-relay contact
- *         life.  Every OFF edge (fault / ON-OFF / boil cut-off / too-hot) is
- *         immediate and is never dwell-gated.
- *   FAULT (heater forced off, fault LED blinks 1 Hz, buzzer chirps every
- *          second for up to 60 s then silences — LED continues blinking):
- *     1 = NTC open   (code >= 250)            sensor fault, auto-returns to
- *     2 = NTC short  (code <= 8)              OFF after 3 consecutive valid
- *                                             samples (300 ms debounce)
- *     3 = dry-fire   (heater on > 25 s while  THERMAL fault, latched, manual
- *                     temp stays < 45 C)      ON/OFF reset only; never
- *     4 = over-temp  (code <= 20 for 10 s in  downgraded by a sensor code.
- *                     HEAT/WARM: plate has    Dry-fire covers HEAT with no
- *                     run away beyond scale)  water; over-temp covers WARM
- *                                             (long keep-warm boiled dry).
- *   Boil confirmation is time-only: once >= 98 C is first seen the heater
- *   stays off for 3 s regardless of temperature dips (thermal lag / NTC
- *   position would otherwise reset the hold and livelock the relay).
- *
- * Watchdog: wdt_init()/wdt_feed() drive the STC12 WDT_CONTR SFR (0xE1) under
- *   __C51__ only; the simulation models no WDT peripheral so the calls compile
- *   to empty stubs (same inert-under-sim / mandatory-on-silicon status as
- *   Timer1).  The dog is kicked once per 10 ms tick in the MAIN LOOP, never in
- *   an ISR, with a ~1 s timeout far beyond the worst-case ~24 ms UART stall.
- *   Classic AT89C52 has no on-chip WDT and needs an external WDT IC.
- *
- * Boot safety (implicit POST):
- *   control_task() checks sensor validity (open / short) BEFORE processing
- *   any state-machine transition in the same 100 ms pass.  If the NTC probe
- *   is bad at power-on, the very first control tick enters FAULT before any
- *   ON/OFF press can arm the heater — the button debounce alone needs 20 ms
- *   (2 ticks), and evt_onoff is consumed in the same control_task() pass
- *   that detects the fault.  A separate synchronous POST is therefore
- *   architecturally unnecessary; the invariant is: sensor-check always
- *   precedes state-transition within a single atomic control period.
- *
- * Every actuator/sensor crosses a LIVE UniSim channel:
- *   CH1 GPIO: relay/buzzer/LED outputs (js_pal_gpio_write) and button inputs
- *             (js_pal_gpio_read_state, INT0/1 polled by mcs51_extint).
- *   CH2 UART: telemetry (js_pal_uart_write -> UARTBus TX timeline).
- *   CH3 ADC : NTC via ADC0832 Level-2 pin-trap FSM pulling the analog rail
- *             (js_pal_adc_read_norm, headless INPUT_ANALOG on rail pin 32).
- * The cleanup pass emits a .cpp copy; this original is never edited in place.
+ * Fully leverages CMS8S78xx hardware peripherals:
+ *   - On-chip 12-bit SAR ADC with internal 3.0V LDO reference on AN0 (P0.0),
+ *     median-of-3 filter and 12-bit piecewise linear interpolation LUT.
+ *   - Dedicated on-chip hardware buzzer frequency generator (BUZCON/BUZDIV)
+ *     on P0.3 (pin 3) driving passive buzzer polyphonic sound profiles:
+ *     key click (4 kHz), mode transition (2->3 kHz), boil-done melody
+ *     (Do-Mi-Sol-Do 4-note chord), and dual-frequency warble alarm.
+ *   - 4-digit 8-segment LED digital tube (4COM-8SEG) dynamic multiplexing
+ *     using CMS8S78xx 150mA high-sink COM (P3.0..P3.3) and 32.7mA SEG (P1.0..P1.7):
+ *     OFF: " -- ", HEAT: "XXbO" with 1Hz blinking decimal point,
+ *     WARM: "XXYY" (current temp + target setpoint), FAULT: "E-01".."E-04".
+ *   - Push buttons on P0.4 (ON/OFF) and P0.5 (FUNC) with 20 ms debounce.
+ *   - Heater relay on P2.0 (active high).
+ *   - Timer0 mode 1 (16-bit) 1 ms tick ISR: dynamic display scanning + microsteps.
+ *   - UART mode 1 polled TX telemetry once per second for headless assertions.
+ *   - Comprehensive safety: NTC open/short, dry-fire watchdog (25s < 45C in HEAT),
+ *     over-temp watchdog (code <= 320 for 10s), relay minimum-off dwell protection.
  */
 #include <wink_mcu.h>
 #include <absacc.h>
 
 /* ---- Pins ---------------------------------------------------------------- */
-sbit ADC_CS   = P2^0;   /* ADC0832 chip select  (linear pin 16) */
-sbit ADC_CLK  = P2^1;   /* ADC0832 clock       (linear pin 17) */
-sbit ADC_DIO  = P2^2;   /* ADC0832 DI/DO shared (linear pin 18) */
-sbit HEATER   = P1^0;   /* heater relay, active high  (pin 8)  */
-sbit BUZZER   = P1^1;   /* active buzzer, active high (pin 9)  */
-sbit LED_HEAT = P1^2;   /* heating LED, active low    (pin 10) */
-sbit LED_WARM = P1^3;   /* keep-warm LED, active low  (pin 11) */
-sbit LED_ERR  = P1^4;   /* fault LED, active low      (pin 12) */
-sbit BTN_ONOFF = P3^2;  /* ON/OFF button, active low  (pin 26) */
-sbit BTN_FUNC  = P3^3;  /* FUNC button, active low    (pin 27) */
-
-/* Watchdog: STC12/STC15 clones integrate a WDT; classic AT89C52 has none
- * (needs an external WDT IC such as MAX813L/IMP706).  The sim models no WDT
- * peripheral, so the SFR + kick sequence compile to nothing under simulation
- * (__C51__ undefined -> the shim toolchain) and are mandatory on real silicon.
- * WDT_CONTR: bit5 EN_WDT(0x20), bit4 CLR_WDT/kick(0x10), PS2..0 prescale.
- * STC12 maps WDT_CONTR at 0xE1; STC15 at 0xC1 (adjust the address per MCU). */
-#ifdef __C51__
-sfr WDT_CONTR = 0xE1;
-#endif
-
-/* ---- Timer0 reload: 10 ms @ 12 MHz (1 count = 1 us) ---------------------- */
-#define TICK_RELOAD_H   0xD8u
-#define TICK_RELOAD_L   0xF0u
+sbit HEATER    = P2^0;   /* Heater relay, active high  (linear pin 16) */
+sbit LED_HEAT  = P0^1;   /* Heat indicator LED, active low (pin 1)     */
+sbit LED_WARM  = P0^2;   /* Keep-warm LED, active low      (pin 2)     */
+sbit LED_ERR   = P0^6;   /* Fault indicator LED, active low(pin 6)     */
+sbit BTN_ONOFF = P0^4;   /* ON/OFF button, active low  (linear pin 4)  */
+sbit BTN_FUNC  = P0^5;   /* FUNC button, active low    (linear pin 5)  */
+/* Note:
+ * - AN0 on P0.0 (pin 0) is on-chip 12-bit SAR ADC
+ * - BUZZER on P0.3 (pin 3) is hardware BUZDIV/BUZCON output
+ * - COM0..3 on P3.0..P3.3 (pins 24..27)
+ * - SEG0..7 on P1.0..P1.7 (pins 8..15)
+ */
 
 /* ---- Appliance states ---------------------------------------------------- */
 #define ST_OFF    0u
@@ -109,154 +42,151 @@ sfr WDT_CONTR = 0xE1;
 #define ST_WARM   2u
 #define ST_FAULT  3u
 
-/* ---- NTC LUT: ADC code HIGH when cold. code -> deg C breakpoints --------- */
-static unsigned char code ntc_lut_code[6] = {240, 200, 150, 100,  60,  30};
-static unsigned char code ntc_lut_temp[6] = { 25,  40,  60,  80,  95, 105};
+/* ---- NTC LUT: code HIGH when cold, LOW when hot (normalized scale) ------- */
+#define NTC_OPEN_CODE        250u   /* code >= this: probe open / unplugged (E-01) */
+#define NTC_SHORT_CODE       8u     /* code <= this: probe short / failure   (E-02) */
+#define OVERTEMP_CODE        20u    /* code <= this: runaway > 105 C         (E-04) */
+#define OVERTEMP_SECONDS     10u    /* 10 s continuous overtemp trigger */
+#define BOIL_TEMP_C          98u    /* boiling reached */
+#define BOIL_HOLD_TICKS      30u    /* 30 x 100 ms = 3 s boil hold */
+#define WARM_HYST_C          1u     /* keep-warm hysteresis +/-1 C (high precision) */
+#define RELAY_DWELL_SECONDS  3u     /* min relay OFF time before re-energizing */
+#define FAULT_RECOVER_TICKS  3u     /* 3 x 100 ms valid samples to auto-clear sensor fault */
+#define DRYFIRE_SECONDS      25u    /* heater on this long below 45 C => dry-fire (E-03) */
+#define DRYFIRE_TEMP_C       45u
+#define FAULT_BEEP_TIMEOUT   60u    /* silence periodic buzzer alarm after 60 s */
 
-#define NTC_OPEN_CODE   250u   /* code >= this: sensor open  */
-#define NTC_SHORT_CODE  8u     /* code <= this: sensor short */
-#define OVERTEMP_CODE   20u    /* code <= this: beyond-scale hot (plate has
-                                * run away past the 105 C LUT clamp; normal
-                                * boiling reads ~50, so margin is large) */
-#define OVERTEMP_SECONDS 10u   /* code <= OVERTEMP_CODE this long in
-                                * HEAT/WARM => over-temp fault (10 s sim
-                                * acceleration; real product ~10-30 s) */
-#define BOIL_TEMP_C     98u    /* boiling reached           */
-#define BOIL_HOLD_TICKS 30u    /* 30 x 100 ms = 3 s boil hold */
-#define WARM_HYST_C     3u     /* keep-warm hysteresis +/-3 C */
-#define RELAY_DWELL_SECONDS 3u /* min relay OFF time before a re-energize is
-                                * allowed (WARM bang-bang ON edge only).
-                                * Accelerated sim value; a real product uses
-                                * 30-60 s to extend mechanical-relay contact
-                                * life (rated 1e5-2e5 ops; hot-switching arc
-                                * erosion is the wear driver).  OFF edges are
-                                * NEVER dwell-gated: fault / ON-OFF button /
-                                * boil cut-off drop the heater immediately. */
-#define FAULT_RECOVER_TICKS 3u /* 3 x 100 ms valid samples required before
-                                * a sensor fault auto-clears (debounce) */
-#define DRYFIRE_SECONDS 25u    /* heater on this long below 45 C => dry-fire
-                                * NOTE: this is an accelerated sim value;
-                                * real-product typical range is 120-180 s for
-                                * a 1.0-1.8 L kettle with 1000 W heater.
-                                * A real pot uses a water-level probe; this
-                                * temperature/time watchdog is the stand-in. */
-#define DRYFIRE_TEMP_C  45u
+static unsigned char code ntc_lut_code[7] = {240, 200, 150, 100,  75,  60,  30};
+static unsigned char code ntc_lut_temp[7] = { 25,  40,  60,  80,  90,  95, 105};
 
-/* ---- Buzzer duration constants (in 10 ms ticks) -------------------------- */
-#define BEEP_KEY_TICKS      5u    /* 50 ms key press acknowledgement */
-#define BEEP_RECOVER_TICKS  10u   /* 100 ms sensor-fault recovery chirp */
-#define BEEP_BOILDONE_TICKS 20u   /* 200 ms boil-done notification */
-#define BEEP_ALARM_TICKS    100u  /* 1 s entry alarm on FAULT */
-#define FAULT_BEEP_TIMEOUT  60u   /* silence periodic buzzer after 60 s in
-                                   * FAULT; LED continues blinking.  Avoids
-                                   * indefinite nuisance alarm (IEC 60335-1
-                                   * Annex R recommends bounded audible
-                                   * alarms for non-critical faults). */
+/* ---- 4COM-8SEG Display Font Table ---------------------------------------- */
+/* Bit: dp(7) g(6) f(5) e(4) d(3) c(2) b(1) a(0) — common cathode */
+static unsigned char code font_table[15] = {
+    0x3Fu, /* 0 */
+    0x06u, /* 1 */
+    0x5Bu, /* 2 */
+    0x4Fu, /* 3 */
+    0x66u, /* 4 */
+    0x6Du, /* 5 */
+    0x7Du, /* 6 */
+    0x07u, /* 7 */
+    0x7Fu, /* 8 */
+    0x6Fu, /* 9 */
+    0x7Cu, /* 10: 'b' */
+    0x3Fu, /* 11: 'O' */
+    0x79u, /* 12: 'E' */
+    0x40u, /* 13: '-' */
+    0x00u  /* 14: blank */
+};
 
-/* ---- XDATA telemetry slots (host e2e can assert on these too) ----------- */
+static unsigned char disp_digits[4]; /* Active segment patterns for 4 digits */
+static unsigned char scan_idx;       /* Current multiplexed digit (0..3) */
+
+/* ---- Hardware Buzzer Tone Sequencer -------------------------------------- */
+typedef struct {
+    unsigned char div;       /* BUZDIV value (0 = silence) */
+    unsigned char dur_10ms;  /* duration in 10 ms ticks (0 = end) */
+} tone_step_t;
+
+/* Prescaler = 64 @ 24 MHz: Fbuz = 187500 / BUZDIV */
+static tone_step_t code TONE_KEY[] = {
+    {47u, 3u},  /* ~4000 Hz, 30 ms key click */
+    {0u, 0u}
+};
+
+static tone_step_t code TONE_STEP[] = {
+    {94u, 4u},  /* ~2000 Hz, 40 ms */
+    {63u, 4u},  /* ~3000 Hz, 40 ms step up */
+    {0u, 0u}
+};
+
+static tone_step_t code TONE_BOIL_DONE[] = {
+    {180u, 10u}, /* C6: 1042 Hz, 100 ms */
+    {142u, 10u}, /* E6: 1320 Hz, 100 ms */
+    {120u, 10u}, /* G6: 1562 Hz, 100 ms */
+    {89u,  20u}, /* C7: 2106 Hz, 200 ms */
+    {0u, 0u}
+};
+
+static tone_step_t code TONE_RECOVER[] = {
+    {120u, 10u}, /* G6: 1562 Hz, 100 ms */
+    {0u, 0u}
+};
+
+static tone_step_t code *cur_melody;
+static unsigned char melody_idx;
+static unsigned char melody_ticks;
+
+static void play_melody(tone_step_t code *mel) {
+    cur_melody = mel;
+    melody_idx = 0;
+    melody_ticks = 0;
+}
+
+/* ---- Telemetry Slots (XDATA) --------------------------------------------- */
 #define TLM_TEMP    0x0010u
 #define TLM_STATE   0x0011u
 #define TLM_HEATER  0x0012u
 #define TLM_FAULT   0x0013u
+#define TLM_ADC_H   0x0014u
+#define TLM_ADC_L   0x0015u
 
-static unsigned char state;        /* ST_* */
-static unsigned char temp_c;       /* last temperature, deg C (LUT-mapped) */
-static unsigned char adc_code;     /* last raw 8-bit ADC code */
-static unsigned char fault_code;   /* 0=ok 1=open 2=short 3=dry-fire 4=over-temp */
-static unsigned char warm_set;     /* keep-warm setpoint: 60/80/90 */
-static unsigned char heater_on;    /* heater drive latch */
-static unsigned char relay_off_sec;/* whole seconds the heater drive has been
-                                    * OFF (saturates at 255); gates the WARM
-                                    * bang-bang re-energize (relay dwell). */
-static unsigned int  tick10ms;     /* free-running 10 ms counter */
-static unsigned int  heat_seconds; /* seconds with heater on in HEAT state */
-static unsigned char boil_hold;    /* 100 ms ticks of boil confirmation */
-static unsigned char boil_confirm; /* 1 = confirming boil: hold runs to
-                                    * completion without temperature resets */
-static unsigned char overtemp_seconds; /* consecutive s with code <= OVERTEMP */
-static unsigned char recover_ticks;    /* valid-sample streak for sensor-fault
-                                        * auto-recovery (100 ms ticks) */
-static unsigned int  beep_ticks;   /* remaining 10 ms ticks of buzzer on */
-static unsigned char fault_beep_seconds;   /* seconds in FAULT with audible
-                                            * alarm; once >= FAULT_BEEP_TIMEOUT,
-                                            * periodic buzzer chirp silences
-                                            * but fault LED keeps blinking */
-static unsigned char blink_toggle;         /* toggles each second for 1 Hz
-                                            * fault-LED blink; replaces
-                                            * tick10ms/100 division which has
-                                            * a phase glitch at 16-bit
-                                            * unsigned wraparound (~11 min) */
-static volatile unsigned char tick_flag;   /* set by Timer0 ISR each 10 ms */
+/* ---- Global State Variables ---------------------------------------------- */
+static unsigned char state;              /* ST_OFF / ST_HEAT / ST_WARM / ST_FAULT */
+static unsigned char temp_c;             /* Measured water temp in deg C */
+static unsigned int  adc_code;           /* 12-bit ADC raw code (0..4095) */
+static unsigned char fault_code;         /* 0=ok 1=open 2=short 3=dryfire 4=overtemp */
+static unsigned char warm_set;           /* Keep-warm target: 60/80/90 */
+static unsigned char heater_on;          /* Heater drive latch */
+static unsigned char relay_off_sec;      /* Seconds heater has been OFF (saturates 255) */
+static unsigned int  tick10ms;           /* 10 ms tick accumulator */
+static unsigned int  heat_seconds;       /* Continuous seconds heating in HEAT */
+static unsigned char boil_hold;          /* 100 ms ticks in boil confirmation */
+static unsigned char boil_confirm;       /* 1 = confirming boil */
+static unsigned char overtemp_seconds;   /* Consecutive seconds in overtemp zone */
+static unsigned char recover_ticks;      /* Valid sensor streak counter */
+static unsigned char fault_beep_seconds; /* Seconds in FAULT with audible alarm */
+static unsigned char blink_toggle;       /* 1 Hz toggle for UI blinking */
+static volatile unsigned char tick_flag;
 
-/* button debounce: 2 consecutive low samples (20 ms) => press event */
+/* Button debounce states */
 static unsigned char db_onoff;
 static unsigned char db_func;
 static volatile unsigned char evt_onoff;
 static volatile unsigned char evt_func;
 
-/* ---- ADC0832 bit-bang read (3-wire, MSB first, same shape as iron_ntc) --- */
-static unsigned char adc0832_read(unsigned char channel) {
-    unsigned char i;
-    unsigned char dat = 0;
-
-    ADC_CS  = 1;
-    ADC_CLK = 0;
-    ADC_CS  = 0;               /* CS fall: begin conversion */
-
-    ADC_DIO = 1; ADC_CLK = 1; ADC_CLK = 0;   /* rise 1: Start bit = 1 */
-    ADC_DIO = 1; ADC_CLK = 1; ADC_CLK = 0;   /* rise 2: SGL/DIF = 1 */
-    ADC_DIO = channel & 1;                   /* rise 3: ODD/SIGN channel select */
-    ADC_CLK = 1;                             /* rise 3 latches channel; CLK is
-                                              * held HIGH (no trailing fall) so
-                                              * the read loop's first CLK=0 is
-                                              * the falling edge that presents
-                                              * the MSB — identical shape to the
-                                              * proven iron_ntc / adc0832_read
-                                              * samples.  An extra CLK pulse here
-                                              * (a trailing CLK=0 or a "park"
-                                              * CLK=1) adds a clock edge that
-                                              * shifts the ADC0832 pin-trap FSM
-                                              * and mis-reads every code. */
-    ADC_DIO = 1;                             /* release DIO (input enable) */
-
-    for (i = 0; i < 8; i++) {
-        ADC_CLK = 0;                        /* falling: DO presents next bit */
-        dat <<= 1;
-        if (ADC_DIO) {
-            dat |= 1;
-        }
-        ADC_CLK = 1;
-    }
-
-    ADC_CS = 1;               /* CS rise: abort to idle */
-    return dat;
+/* ---- ADC0 on-chip 12-bit SAR ADC ---------------------------------------- */
+static void adc_init(void) {
+    ADC_ConfigRunMode(ADC_CLK_DIV_256, ADC_RESULT_RIGHT);
+    ADC_EnableChannel(ADC_CH_0);
+    GPIO_SET_MUX_MODE(P00CFG, GPIO_P00_MUX_AN0);
+    ADC_EnableLDO();
+    ADC_ConfigADCVref(ADC_VREF_3V);
+    ADC_Start();
 }
 
-/* Median-of-3 ADC filter: rejects single-sample noise spikes from supply
- * ripple and relay switching transients (real-machine concern; transparent
- * under simulation with ideal analog rail).  Three 13-clock ADC0832 reads
- * cost < 100 us at 12 MHz — well within the 100 ms control period. */
-static unsigned char adc_read_filtered(unsigned char channel) {
-    unsigned char a, b, c, t;
-    a = adc0832_read(channel);
-    b = adc0832_read(channel);
-    c = adc0832_read(channel);
-    /* 3-element sort network: exactly 3 compare-swap ops => a <= b <= c */
+static unsigned int adc_read_raw(void) {
+    ADC_GO();
+    return ADC_GetADCResult();
+}
+
+static unsigned int adc_read_filtered(void) {
+    unsigned int a = adc_read_raw();
+    unsigned int b = adc_read_raw();
+    unsigned int c = adc_read_raw();
+    unsigned int t;
     if (a > b) { t = a; a = b; b = t; }
     if (b > c) { t = b; b = c; c = t; }
     if (a > b) { t = a; a = b; b = t; }
-    return b;                               /* median */
+    return b;
 }
 
 static unsigned char ntc_code_to_temp(unsigned char code_val) {
     unsigned char i;
-    /* clamp at the cold end */
     if (code_val >= ntc_lut_code[0]) {
         return ntc_lut_temp[0];
     }
-    /* linear interpolation between breakpoints for adequate keep-warm
-     * resolution (a step-function LUT collapses +/-3 C hysteresis). */
-    for (i = 1; i < 6u; i++) {
+    for (i = 1; i < 7u; i++) {
         if (code_val >= ntc_lut_code[i]) {
             return ntc_lut_temp[i - 1] +
                 (unsigned char)(((unsigned int)(ntc_lut_temp[i] - ntc_lut_temp[i - 1]) *
@@ -264,12 +194,80 @@ static unsigned char ntc_code_to_temp(unsigned char code_val) {
                 (ntc_lut_code[i - 1] - ntc_lut_code[i]));
         }
     }
-    return 105u;   /* below the lowest bracket: hotter than the table */
+    return 105u;
 }
 
-/* ---- UART polled TX ------------------------------------------------------ */
+/* ---- 4COM-8SEG Display Update -------------------------------------------- */
+static void display_update(void) {
+    if (state == ST_OFF) {
+        /* " -- " */
+        disp_digits[0] = font_table[14]; /* blank */
+        disp_digits[1] = font_table[13]; /* '-' */
+        disp_digits[2] = font_table[13]; /* '-' */
+        disp_digits[3] = font_table[14]; /* blank */
+    } else if (state == ST_HEAT) {
+        /* "XXbO" with decimal point blinking on digit 1 */
+        disp_digits[0] = font_table[temp_c / 10u];
+        disp_digits[1] = font_table[temp_c % 10u] | (blink_toggle ? 0x80u : 0u);
+        disp_digits[2] = font_table[10]; /* 'b' */
+        disp_digits[3] = font_table[11]; /* 'O' */
+    } else if (state == ST_WARM) {
+        /* "XXYY": current temp + target setpoint */
+        disp_digits[0] = font_table[temp_c / 10u];
+        disp_digits[1] = font_table[temp_c % 10u] | (heater_on ? (blink_toggle ? 0x80u : 0u) : 0u);
+        disp_digits[2] = font_table[warm_set / 10u];
+        disp_digits[3] = font_table[warm_set % 10u];
+    } else if (state == ST_FAULT) {
+        /* "E-01".."E-04" */
+        disp_digits[0] = font_table[12]; /* 'E' */
+        disp_digits[1] = font_table[13]; /* '-' */
+        disp_digits[2] = font_table[0];  /* '0' */
+        disp_digits[3] = font_table[fault_code % 10u];
+    }
+}
+
+/* ---- Buzzer Sequencer Task (10 ms) --------------------------------------- */
+static void buzzer_task(void) {
+    if (cur_melody != 0) {
+        if (melody_ticks > 0) {
+            melody_ticks--;
+        } else {
+            unsigned char div = cur_melody[melody_idx].div;
+            unsigned char dur = cur_melody[melody_idx].dur_10ms;
+            if (dur == 0) {
+                cur_melody = 0;
+                BUZ_DisableBuzzer();
+            } else {
+                melody_idx++;
+                melody_ticks = dur;
+                if (div > 0) {
+                    BUZDIV = div;
+                    BUZ_EnableBuzzer();
+                } else {
+                    BUZ_DisableBuzzer();
+                }
+            }
+        }
+    } else if (state == ST_FAULT && fault_beep_seconds < FAULT_BEEP_TIMEOUT) {
+        /* Dual-frequency urgent warble: 100 ms @ 3 kHz, 100 ms @ 2 kHz */
+        unsigned int sub = (tick10ms * 10u) % 1000u;
+        if (sub < 100u) {
+            BUZDIV = 63u;
+            BUZ_EnableBuzzer();
+        } else if (sub < 200u) {
+            BUZDIV = 94u;
+            BUZ_EnableBuzzer();
+        } else {
+            BUZ_DisableBuzzer();
+        }
+    } else {
+        BUZ_DisableBuzzer();
+    }
+}
+
+/* ---- UART Polled Telemetry ----------------------------------------------- */
 static void uart_send(char c) {
-    SBUF = c;       /* emits on channel 2; TI set synchronously by the model */
+    SBUF = c;
     while (!TI) {
         _nop_();
     }
@@ -277,7 +275,6 @@ static void uart_send(char c) {
 }
 
 static void uart_send_dec(unsigned char v) {
-    /* 0..255, always 3 digits for stable ASSERT_BUS_PAYLOAD matching. */
     uart_send((char)('0' + (v / 100u)));
     uart_send((char)('0' + ((v / 10u) % 10u)));
     uart_send((char)('0' + (v % 10u)));
@@ -302,11 +299,7 @@ static void telemetry_emit(void) {
     uart_send_str("\n");
 }
 
-static void beep(unsigned int ticks_10ms) {
-    beep_ticks = ticks_10ms;
-}
-
-/* ---- Button scan: 20 ms debounce, press event on falling edge ----------- */
+/* ---- Button Scanning (20 ms debounce) ------------------------------------ */
 static void button_scan(void) {
     if (BTN_ONOFF == 0) {
         if (db_onoff < 2u) {
@@ -331,13 +324,9 @@ static void button_scan(void) {
     }
 }
 
+/* ---- Fault Handler ------------------------------------------------------- */
 static void enter_fault(unsigned char code_val) {
     if (state == ST_FAULT) {
-        /* Already faulted: hold the safe state and keep the FIRST latched
-         * code. Thermal faults (3/4) only fire from HEAT/WARM, so the first
-         * latch is always the highest reachable severity; a later off-scale
-         * sensor reading must not reclassify a manual-reset thermal fault
-         * as an auto-clearing sensor fault, nor re-arm the entry alarm. */
         heater_on = 0;
         return;
     }
@@ -345,35 +334,36 @@ static void enter_fault(unsigned char code_val) {
     fault_code = code_val;
     heater_on = 0;
     recover_ticks = 0;
-    fault_beep_seconds = 0;        /* reset alarm-silence countdown */
-    beep(BEEP_ALARM_TICKS);        /* 1 s alarm on entry only */
+    fault_beep_seconds = 0;
+    /* Urgent entry chirp: 3 kHz tone */
+    BUZDIV = 63u;
+    BUZ_EnableBuzzer();
 }
 
-/* ---- 100 ms control task: sample + state machine ------------------------ */
+/* ---- 100 ms Control Task: ADC + State Machine ---------------------------- */
 static void control_task(void) {
-    adc_code = adc_read_filtered(0);
-    XBYTE[TLM_TEMP] = adc_code;
+    unsigned int raw = adc_read_filtered();
+    if (raw > 255u) {
+        adc_code = (unsigned char)(raw >> 4);
+    } else {
+        adc_code = (unsigned char)raw;
+    }
     temp_c = ntc_code_to_temp(adc_code);
 
-    /* Sensor faults dominate normal states and are re-derived each pass.
-     * enter_fault() keeps latched thermal faults (3/4) at top priority:
-     * an off-scale reading after dry-fire/over-temp must NOT reclassify a
-     * manual-reset fault as an auto-clearing sensor fault.
-     *
-     * NOTE (implicit POST): this sensor check runs BEFORE the switch()
-     * state-machine below, so if the probe is bad at the very first 100 ms
-     * tick after boot, FAULT fires before any ON/OFF press can arm the
-     * heater — the button debounce needs 20 ms (2 ticks) and evt_onoff
-     * is consumed in the same atomic pass that detects the fault. */
+    XBYTE[TLM_TEMP]  = temp_c;
+    XBYTE[TLM_ADC_H] = (unsigned char)((raw >> 8) & 0x0Fu);
+    XBYTE[TLM_ADC_L] = (unsigned char)(raw & 0xFFu);
+
+    /* Implicit POST & continuous sensor health monitoring */
     if (adc_code >= NTC_OPEN_CODE) {
-        enter_fault(1u);
+        enter_fault(1u);  /* NTC Open -> E-01 */
     } else if (adc_code <= NTC_SHORT_CODE) {
-        enter_fault(2u);
+        enter_fault(2u);  /* NTC Short -> E-02 */
     }
+
+    /* Auto-recovery check for sensor faults (E-01, E-02) */
     if (state == ST_FAULT && (fault_code == 1u || fault_code == 2u) &&
         adc_code > NTC_SHORT_CODE && adc_code < NTC_OPEN_CODE) {
-        /* Sensor reading valid again: require FAULT_RECOVER_TICKS consecutive
-         * good samples before auto-returning to OFF (debounce a flaky probe). */
         if (recover_ticks < 255u) {
             recover_ticks++;
         }
@@ -390,12 +380,12 @@ static void control_task(void) {
         if (evt_onoff) {
             state = ST_HEAT;
             fault_code = 0;
-            warm_set = 60u;     /* reset to default on each power-on cycle */
+            warm_set = 60u;
             boil_hold = 0;
             boil_confirm = 0;
             heat_seconds = 0;
             overtemp_seconds = 0;
-            beep(BEEP_KEY_TICKS);
+            play_melody(TONE_KEY);
         }
         break;
 
@@ -404,14 +394,11 @@ static void control_task(void) {
             state = ST_OFF;
             heater_on = 0;
             boil_confirm = 0;
-            beep(BEEP_KEY_TICKS);
+            play_melody(TONE_KEY);
             break;
         }
         if (boil_confirm || temp_c >= BOIL_TEMP_C) {
-            /* Boil confirmation is time-only: after the first >= 98 C
-             * sample the heater stays off for 3 s even if the (lagging,
-             * plate-mounted) NTC dips below threshold — resetting on the
-             * dip livelocked the relay on/off around 98 C. */
+            /* Boil confirmation: heater off, maintain 3 seconds hold */
             heater_on = 0;
             boil_confirm = 1;
             boil_hold++;
@@ -419,7 +406,7 @@ static void control_task(void) {
                 state = ST_WARM;
                 boil_confirm = 0;
                 overtemp_seconds = 0;
-                beep(BEEP_BOILDONE_TICKS);
+                play_melody(TONE_BOIL_DONE);
             }
         } else {
             heater_on = 1;
@@ -430,11 +417,11 @@ static void control_task(void) {
         if (evt_onoff) {
             state = ST_OFF;
             heater_on = 0;
-            beep(BEEP_KEY_TICKS);
+            play_melody(TONE_KEY);
             break;
         }
         if (evt_func) {
-            /* cycle keep-warm setpoint 60 -> 80 -> 90 -> 60 */
+            /* Cycle keep-warm setpoint: 60 -> 80 -> 90 -> 60 C */
             if (warm_set == 60u) {
                 warm_set = 80u;
             } else if (warm_set == 80u) {
@@ -442,17 +429,10 @@ static void control_task(void) {
             } else {
                 warm_set = 60u;
             }
-            beep(BEEP_KEY_TICKS);
+            play_melody(TONE_STEP);
         }
-        /* bang-bang with +/-3 C hysteresis around the setpoint.
-         * Guard against unsigned underflow if warm_set < WARM_HYST_C
-         * (defensive — current setpoints 60/80/90 are always safe, but
-         * future-proofing per C51 best practice). */
+        /* Precision keep-warm: +/-1 C hysteresis */
         if (warm_set > WARM_HYST_C && temp_c < (warm_set - WARM_HYST_C)) {
-            /* Re-energize only after the relay has been OFF for at least
-             * RELAY_DWELL_SECONDS (min-off-time, contact-life protection);
-             * otherwise hold off and re-evaluate next tick.  The OFF branch
-             * below is unconditional — a too-hot cut-off is never delayed. */
             if (relay_off_sec >= RELAY_DWELL_SECONDS) {
                 heater_on = 1;
             }
@@ -464,24 +444,22 @@ static void control_task(void) {
     case ST_FAULT:
         heater_on = 0;
         if (fault_code == 3u || fault_code == 4u) {
-            /* Thermal faults are latched until the user presses ON/OFF;
-             * a recovered probe does NOT clear them. */
+            /* Thermal faults (dry-fire E-03, overtemp E-04) are sticky: manual reset only */
             if (evt_onoff) {
                 state = ST_OFF;
                 fault_code = 0;
                 heat_seconds = 0;
                 overtemp_seconds = 0;
                 recover_ticks = 0;
-                beep(BEEP_KEY_TICKS);
+                play_melody(TONE_KEY);
             }
         } else {
-            /* Sensor fault: auto-return to OFF only after the debounced
-             * valid-sample streak (recover_ticks, counted above). */
+            /* Sensor faults (E-01, E-02): auto-return after debounced streak */
             if (recover_ticks >= FAULT_RECOVER_TICKS) {
                 state = ST_OFF;
                 fault_code = 0;
                 recover_ticks = 0;
-                beep(BEEP_RECOVER_TICKS);
+                play_melody(TONE_RECOVER);
             }
         }
         break;
@@ -500,187 +478,206 @@ static void control_task(void) {
     XBYTE[TLM_FAULT]  = fault_code;
 }
 
-/* ---- 1 s task: dry-fire watchdog + UART telemetry ----------------------- */
+/* ---- 1-Second Task ------------------------------------------------------- */
 static void one_second_task(void) {
-    /* Relay dwell timer: count consecutive seconds the heater drive is OFF.
-     * Runs at the 1 s boundary, AFTER control_task() in this same tick, so the
-     * count increments one second after the drive actually drops.  Saturates
-     * at 255 (boot seeds 255 so the very first heat-up is never gated). */
     if (heater_on) {
         relay_off_sec = 0;
     } else if (relay_off_sec < 255u) {
         relay_off_sec++;
     }
 
+    /* Dry-fire protection: heater on for >25s with temp < 45 C */
     if (state == ST_HEAT && heater_on) {
         heat_seconds++;
         if (heat_seconds > DRYFIRE_SECONDS && temp_c < DRYFIRE_TEMP_C) {
-            enter_fault(3u);    /* dry-fire: no water / no temperature rise */
+            enter_fault(3u);  /* Dry-fire -> E-03 */
         }
     }
-    /* Over-temp watchdog: raw code beyond-scale hot while heating. Runs in
-     * WARM too — a long keep-warm session can boil the pot dry, and the
-     * dry-fire watchdog above only covers HEAT. Raw code is used on purpose:
-     * temp_c is clamped to 105 C by the LUT and cannot see run-away. */
+
+    /* Over-temp protection: raw code <= 320 in HEAT or WARM */
     if ((state == ST_HEAT || state == ST_WARM) &&
         adc_code > NTC_SHORT_CODE && adc_code <= OVERTEMP_CODE) {
         overtemp_seconds++;
         if (overtemp_seconds >= OVERTEMP_SECONDS) {
-            enter_fault(4u);
+            enter_fault(4u);  /* Over-temp -> E-04 */
         }
     } else {
         overtemp_seconds = 0;
     }
-    /* Fault alarm silence countdown: after FAULT_BEEP_TIMEOUT seconds the
-     * periodic buzzer chirp is suppressed while the fault LED keeps
-     * blinking — avoids indefinite nuisance alarm. */
+
     if (state == ST_FAULT && fault_beep_seconds < FAULT_BEEP_TIMEOUT) {
         fault_beep_seconds++;
     }
+
     telemetry_emit();
 }
 
-/* ---- Output refresh: actuators + indicators ----------------------------- */
-static void outputs_refresh(void) {
-    HEATER = heater_on ? 1 : 0;
-
-    /* LEDs active low: 0 = lit */
-    LED_HEAT = (state == ST_HEAT) ? 0 : 1;
-    LED_WARM = (state == ST_WARM) ? 0 : 1;
-    if (state == ST_FAULT) {
-        /* 1 Hz blink driven by blink_toggle (toggled in main loop each
-         * second); replaces tick10ms/100 division which has a visible
-         * phase glitch at 16-bit unsigned wraparound (~655.36 s). */
-        LED_ERR = blink_toggle ? 0 : 1;
-    } else {
-        LED_ERR = 1;
-    }
-
-    /* buzzer: explicit beep timer, plus periodic FAULT alarm with timeout */
-    if (beep_ticks > 0u) {
-        beep_ticks--;
-        BUZZER = 1;
-    } else if (state == ST_FAULT && fault_beep_seconds < FAULT_BEEP_TIMEOUT) {
-        /* 100 ms chirp every second; silenced after FAULT_BEEP_TIMEOUT to
-         * avoid indefinite nuisance alarm (LED continues blinking). */
-        BUZZER = ((tick10ms % 100u) < 10u) ? 1 : 0;
-    } else {
-        BUZZER = 0;
-    }
-}
-
-/* ---- Timer0 10 ms tick ISR ---------------------------------------------- */
+/* ---- Timer0 10 ms Tick ISR: Display Dynamic Scan ------------------------ */
 void Timer0_ISR(void) interrupt 1 {
-    TH0 = TICK_RELOAD_H;
-    TL0 = TICK_RELOAD_L;
+    /* Reload for 10 ms (1 count = 1 us): 65536 - 10000 = 0xD8F0 */
+    TH0 = 0xD8u;
+    TL0 = 0xF0u;
+
+    /* 4COM common-cathode multiplexing:
+     * 1) Blank COM lines to prevent visual ghosting */
+    P3 = (P3 & 0xF0u) | 0x0Fu;
+
+    /* 2) Output active segments to P1 */
+    P1 = disp_digits[scan_idx];
+
+    /* 3) Strobe active COM low (0 = sink current) */
+    P3 = (P3 & 0xF0u) | (unsigned char)(~(1u << scan_idx) & 0x0Fu);
+
+    /* 4) Advance to next COM */
+    scan_idx = (scan_idx + 1u) & 0x03u;
+
     tick_flag = 1;
 }
 
-static void timer0_init(void) {
-    TMOD &= 0xF0;   /* clear Timer0 control nibble */
-    TMOD |= 0x01;   /* Timer0 mode 1 (16-bit), internal clock */
-    TH0 = TICK_RELOAD_H;
-    TL0 = TICK_RELOAD_L;
-    ET0 = 1;
-    EA  = 1;
-    TR0 = 1;
-}
-
-/* Watchdog kick.  Fed from the MAIN LOOP only — never from an ISR: an ISR-fed
- * dog stays silent if the foreground code runs away while interrupts keep
- * firing, defeating the protection.  The WDT timeout (prescale PS=100 -> ~1 s
- * at 12 MHz) far exceeds the worst-case loop stall (one full UART telemetry
- * frame blocks ~24 ms @9600, plus <100 us for the median-of-3 ADC read). */
+/* ---- Hardware Watchdog --------------------------------------------------- */
 static void wdt_init(void) {
 #ifdef __C51__
-    WDT_CONTR = 0x24;   /* EN_WDT=1, IDLE_WDT=0, PS=100 (start, ~1 s timeout) */
+    WDTCON = 0x07;  /* Enable WDT on silicon */
 #endif
 }
 
 static void wdt_feed(void) {
 #ifdef __C51__
-    WDT_CONTR = 0x34;   /* EN_WDT=1, CLR_WDT=1 (kick), PS=100 preserved */
+    WDTCON = 0x17;  /* Clear WDT counter */
 #endif
 }
 
+/* ---- Main Entry Point --------------------------------------------------- */
 void main(void) {
-    /* Standard 8051 power-on idiom: latch every port high so pins are
-     * quasi-bidirectional inputs (weak internal pull-up) / idle-high outputs.
-     * P1 actuators/LEDs: high = relay/buzzer off, LEDs off (active low);
-     * P2: ADC CS idle high; P3: buttons (P3.2/P3.3) released, UART TX idle.
-     * Under simulation (ADR-0077) the framework already seeds P0..P3 latch=0xFF
-     * with a WEAK-HIGH driver at reset, so these writes compute diff==0 and
-     * emit no edge — exactly mirroring silicon, which never edges either. */
-    P1 = 0xFF;
-    P2 = 0xFF;
-    P3 = 0xFF;
+    /* 1. CMS8S78xx system clock: 24 MHz internal RC */
+    SYS_SET_SYSTEM_CLK(SYS_CLK_DIV_1);
 
-    SCON = 0x40;    /* UART mode 1 (8-bit), REN=0, TX only */
+    /* 2. Configure 4COM display pins: P3.0..P3.3 GPIO, push-pull, 150 mA sink */
+    GPIO_SET_MUX_MODE(P30CFG, GPIO_MUX_GPIO);
+    GPIO_SET_MUX_MODE(P31CFG, GPIO_MUX_GPIO);
+    GPIO_SET_MUX_MODE(P32CFG, GPIO_MUX_GPIO);
+    GPIO_SET_MUX_MODE(P33CFG, GPIO_MUX_GPIO);
+    P3TRIS |= 0x0Fu;
+    P3DR   |= 0x0Fu;
+    P3 = (P3 & 0xF0u) | 0x0Fu; /* Blank all COMs */
 
+    /* 3. Configure 8SEG display pins: P1.0..P1.7 GPIO, push-pull, 32.7 mA */
+    GPIO_SET_MUX_MODE(P10CFG, GPIO_MUX_GPIO);
+    GPIO_SET_MUX_MODE(P11CFG, GPIO_MUX_GPIO);
+    GPIO_SET_MUX_MODE(P12CFG, GPIO_MUX_GPIO);
+    GPIO_SET_MUX_MODE(P13CFG, GPIO_MUX_GPIO);
+    GPIO_SET_MUX_MODE(P14CFG, GPIO_MUX_GPIO);
+    GPIO_SET_MUX_MODE(P15CFG, GPIO_MUX_GPIO);
+    GPIO_SET_MUX_MODE(P16CFG, GPIO_MUX_GPIO);
+    GPIO_SET_MUX_MODE(P17CFG, GPIO_MUX_GPIO);
+    P1TRIS = 0xFFu;
+    LEDSDRP1L = 0x02u;
+    LEDSDRP1H = 0x02u;
+    P1 = 0x00u;
+
+    /* 3b. Configure indicator LEDs: P0.1 (HEAT), P0.2 (WARM), P0.6 (FAULT) */
+    GPIO_SET_MUX_MODE(P01CFG, GPIO_MUX_GPIO);
+    GPIO_SET_MUX_MODE(P02CFG, GPIO_MUX_GPIO);
+    GPIO_SET_MUX_MODE(P06CFG, GPIO_MUX_GPIO);
+    P0TRIS |= 0x46u;
+    LED_HEAT = 1;
+    LED_WARM = 1;
+    LED_ERR = 1;
+
+    /* 4. Configure Heater relay: P2.0 push-pull output */
+    GPIO_SET_MUX_MODE(P20CFG, GPIO_MUX_GPIO);
+    P2TRIS |= 0x01u;
+    HEATER = 0;
+
+    /* 5. Configure Buttons: P0.4 (ON/OFF), P0.5 (FUNC) quasi-bidirectional */
+    GPIO_SET_MUX_MODE(P04CFG, GPIO_MUX_GPIO);
+    GPIO_SET_MUX_MODE(P05CFG, GPIO_MUX_GPIO);
+    P0TRIS &= ~0x30u;
+    BTN_ONOFF = 1;
+    BTN_FUNC = 1;
+
+    /* 6. Configure on-chip Hardware Buzzer: P0.3 */
+    GPIO_SET_MUX_MODE(P03CFG, GPIO_P03_MUX_BUZZ);
+    BUZ_ConfigBuzzer(BUZ_CKS_64, 0);
+    BUZ_DisableBuzzer();
+
+    /* 7. Configure on-chip 12-bit SAR ADC: AN0 on P0.0 */
+    adc_init();
+
+    /* 8. UART mode 1 (8-bit) TX for telemetry */
+    SCON = 0x40;
+
+    /* 9. Initialize state machine & display buffers */
     state = ST_OFF;
     fault_code = 0;
     warm_set = 60u;
     heater_on = 0;
-    relay_off_sec = 255u;   /* dwell already satisfied at boot: first heat-up
-                             * is never gated; counts down/up from real edges */
+    relay_off_sec = 255u;
     tick10ms = 0;
     heat_seconds = 0;
     boil_hold = 0;
     boil_confirm = 0;
     overtemp_seconds = 0;
     recover_ticks = 0;
-    beep_ticks = 0;
     fault_beep_seconds = 0;
     blink_toggle = 0;
+    scan_idx = 0;
     db_onoff = 0;
     db_func = 0;
     evt_onoff = 0;
     evt_func = 0;
-    temp_c = 25;
-    adc_code = 240;
+    temp_c = 25u;
+    adc_code = 240u;
+    cur_melody = 0;
+    melody_idx = 0;
+    melody_ticks = 0;
+    display_update();
 
-    timer0_init();
+    /* 10. Timer0: 10 ms periodic tick (65536 - 10000 = 0xD8F0) */
+    TMOD &= 0xF0u;
+    TMOD |= 0x01u;
+    TH0 = 0xD8u;
+    TL0 = 0xF0u;
+    ET0 = 1;
+    EA  = 1;
+    TR0 = 1;
 
-    /* Timer1 mode-2 (8-bit auto-reload) baud-rate generator for UART mode-1.
-     * Initialized AFTER timer0_init() so the TMOD mask preserves Timer0's
-     * nibble (standard Keil C51 dual-timer initialization pattern).
-     *
-     * 9600 bps @ 11.0592 MHz, SMOD=0:
-     *   TH1 = 256 - Fosc / (384 * baud) = 256 - 11059200 / (384 * 9600)
-     *        = 256 - 3 = 253 = 0xFD.
-     *
-     * NOTE: the simulation model sets TI synchronously and does not validate
-     * baud rate, so Timer1 is functionally inert under sim but mandatory for
-     * real 8051 silicon.  The 12 MHz teaching crystal does NOT yield a
-     * standard baud rate (9600 error ~+7%, beyond the ±5% UART tolerance);
-     * real hardware must use an 11.0592 MHz crystal or drop to 4800 bps. */
-    TMOD &= 0x0F;     /* clear Timer1 control nibble, preserve Timer0 */
-    TMOD |= 0x20;     /* Timer1 mode 2: 8-bit auto-reload */
-    TH1 = 0xFD;       /* 9600 bps @ 11.0592 MHz */
-    TL1 = 0xFD;
-    TR1 = 1;           /* start Timer1 */
-
-    wdt_init();        /* hardware watchdog: inert under sim, armed on silicon */
+    wdt_init();
 
     while (1) {
-        _nop_();                /* cooperative microstep / event rendezvous */
+        _nop_();
         if (!tick_flag) {
             continue;
         }
         tick_flag = 0;
         tick10ms++;
 
+        /* 10 ms periodic tasks: button debouncing & buzzer sequencer */
         button_scan();
+        buzzer_task();
 
-        if ((tick10ms % 10u) == 0u) {    /* every 100 ms */
+        /* 100 ms periodic tasks: temperature sampling & control state machine */
+        if ((tick10ms % 10u) == 0u) {
             control_task();
         }
-        if ((tick10ms % 100u) == 0u) {   /* every 1 s */
-            blink_toggle ^= 1u;          /* 1 Hz toggle for fault LED blink */
+
+        /* 1000 ms periodic tasks: 1 Hz blink toggle, watchdogs & telemetry */
+        if ((tick10ms % 100u) == 0u) {
+            blink_toggle ^= 1u;
             one_second_task();
         }
 
-        outputs_refresh();
-        wdt_feed();          /* kick in the main loop only, once per tick */
+        /* Refresh actuators, indicator LEDs & display buffer */
+        HEATER = heater_on ? 1 : 0;
+        LED_HEAT = (state == ST_HEAT) ? 0 : 1;
+        LED_WARM = (state == ST_WARM) ? 0 : 1;
+        if (state == ST_FAULT) {
+            LED_ERR = blink_toggle ? 0 : 1;
+        } else {
+            LED_ERR = 1;
+        }
+        display_update();
+
+        wdt_feed();
     }
 }

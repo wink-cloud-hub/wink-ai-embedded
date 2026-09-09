@@ -1,22 +1,44 @@
 {
   "appName": "mcs51_health_pot",
-  "board": "stc89c52_devboard",
+  "board": "cms8s78xx_devboard",
   "devices": {
-    "heater_relay": {
-      "id": "heater_relay",
-      "type": "led",
+    "display": {
+      "id": "display",
+      "type": "seg_display",
       "pinMapping": {
-        "A": 8
+        "DIG1": 24,
+        "DIG2": 25,
+        "DIG3": 26,
+        "DIG4": 27,
+        "A": 8,
+        "B": 9,
+        "C": 10,
+        "D": 11,
+        "E": 12,
+        "F": 13,
+        "G": 14,
+        "DP": 15
       },
       "properties": {
-        "activeHigh": true
+        "variant": "direct_gpio_4d"
       }
     },
     "buzzer": {
       "id": "buzzer",
+      "type": "buzzer",
+      "pinMapping": {
+        "1": 3
+      },
+      "properties": {
+        "variant": "passive_pwm",
+        "label": "Buzzer"
+      }
+    },
+    "heater_relay": {
+      "id": "heater_relay",
       "type": "led",
       "pinMapping": {
-        "A": 9
+        "A": 16
       },
       "properties": {
         "activeHigh": true
@@ -26,7 +48,7 @@
       "id": "led_heat",
       "type": "led",
       "pinMapping": {
-        "A": 10
+        "A": 1
       },
       "properties": {
         "activeHigh": false
@@ -36,7 +58,7 @@
       "id": "led_warm",
       "type": "led",
       "pinMapping": {
-        "A": 11
+        "A": 2
       },
       "properties": {
         "activeHigh": false
@@ -46,7 +68,7 @@
       "id": "led_fault",
       "type": "led",
       "pinMapping": {
-        "A": 12
+        "A": 6
       },
       "properties": {
         "activeHigh": false
@@ -56,7 +78,7 @@
       "id": "btn_onoff",
       "type": "button",
       "pinMapping": {
-        "1.l": 26
+        "1.l": 4
       },
       "properties": {
         "activeLow": true
@@ -66,7 +88,7 @@
       "id": "btn_func",
       "type": "button",
       "pinMapping": {
-        "1.l": 27
+        "1.l": 5
       },
       "properties": {
         "activeLow": true
@@ -75,6 +97,6 @@
   },
   "family": "mcs51",
   "core": "8051",
-  "mcu": "at89c52",
-  "vendor": "stc"
+  "mcu": "cms8s78xx",
+  "vendor": "cmsemicon"
 }
