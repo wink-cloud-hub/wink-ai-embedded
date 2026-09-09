@@ -10,8 +10,13 @@ import {
 } from '@wink-ai/unisim-ui';
 import { resolvePluginIdentity } from '@wink-ai/unisim';
 
+/** Display frame buffer resolution */
 const OLED_WIDTH = 128;
 const OLED_HEIGHT = 64;
+
+/** Physical module PCB package dimensions (Adafruit SSD1306 breakout, 150x116px) */
+const OLED_MODULE_WIDTH = 150;
+const OLED_MODULE_HEIGHT = 116;
 
 import CanvasGlyph from './CanvasGlyph.vue';
 import WorldWidget from './WorldWidget.vue';
@@ -35,7 +40,7 @@ const PLUGIN_ID_KEYS = [
 const PLUGIN_INDEX_KEYS = ['displayIndex', 'pluginIndex', 'instanceIndex'] as const;
 
 function isOledFrame(frame: DisplayFrame): boolean {
-  return (frame as any).kind ? OLED_FRAME_KINDS.has((frame as any).kind) : true;
+  return frame.kind ? OLED_FRAME_KINDS.has(frame.kind) : true;
 }
 
 function pluginTypeForComponentType(type: string): string {
@@ -93,7 +98,7 @@ export function pickDisplayFrame(
 
 function pickOledFrame(ctx: SimViewContext, target?: DisplayFrameTarget): Uint8Array | null {
   const frame = pickDisplayFrame(ctx, target);
-  return frame?.fb ?? null;
+  return frame?.fb ?? frame?.framebuffer ?? ctx.displayFb ?? null;
 }
 
 const DEFAULT_VARIANT = 'ssd1306_i2c' as const;
@@ -128,7 +133,7 @@ const oledPinsOverlay = defaultTopology.pinsOverlay;
 
 export const oledDefinition: PeripheralDefinition = definePeripheral({
   type: identity.type,
-  size: { width: OLED_WIDTH, height: OLED_HEIGHT },
+  size: { width: OLED_MODULE_WIDTH, height: OLED_MODULE_HEIGHT },
   wireColor: '#a855f7',
   rotationPolicy: 'fixed',
   pinsOverlay: oledPinsOverlay,
