@@ -46,7 +46,7 @@
 
 | 目录前缀 / 命名模式 | 所属模式 | 技术分类与定位 | 典型特征与代码形态 | 示例代表 |
 | :--- | :--- | :--- | :--- | :--- |
-| **`vendor_{chip}_{ver}_{demo}`** | 模式 2 | **原厂官方例程回归套件** | 芯片厂商官方源码零侵入，带 `upstream` SSOT 溯源，CI 强校验 Diff 门禁 | `vendor_cms8s78xx_v202_led_4com_8seg` |
+| **`vendor_{chip}_{ver}_{demo}`** | 模式 2 | **原厂官方例程回归套件** | 芯片厂商官方源码零侵入，带 `upstream` SSOT 溯源，CI 强校验 Diff 门禁 | `vendor_cms8s78xx_v202/led_4com_8seg` |
 | **`mcs51_{module}_{feature}`** | 模式 2 | **MCS-51 架构兼容生态** | 标准 C51 源码（含 SFR、中断、延时），仿真端 Wasm C++ Proxy 拦截 | `mcs51_health_pot` (养生壶), `mcs51_button_led` |
 | **`arduino_{demo}`** | 模式 2 | **开源 Arduino 生态平移** | 标准 `setup()` / `loop()` 语法与库，基于 ArduinoCore-API 兼容层拦截 | `arduino_blink_demo` |
 | **`pdk_{demo}`** | 模式 2 | **专有 8 位 OTP 芯片生态** | 极低成本单片机原生二进制/汇编，UniSim 内置 ISA 解释器仿真 | `pdk_button_led` |
@@ -133,7 +133,7 @@ void app_on_event(const wink_event_t *event) {
 所有原厂示例必须在 `wink-app.json` 中声明 `upstream` 作为单一事实来源（SSOT）：
 ```json
 {
-  "app_name": "vendor_cms8s78xx_v202_led_4com_8seg",
+  "app_name": "vendor_cms8s78xx_v202/led_4com_8seg",
   "display_name": "CMS8S78xx V2.0.2 - LED 4COM_8SEG_LED",
   "board": "cms8s78xx_devboard",
   "category": "vendor_example",
@@ -168,7 +168,7 @@ void app_on_event(const wink_event_t *event) {
 ### 1. Wasm 仿真构建
 ```bash
 # 构建指定的 App 并在 build/wasm/<app_name> 产出仿真二进制
-python packages/wink-tools/wink.py build wasm --app wink-micro-app/vendor_cms8s78xx_v202_led_4com_8seg
+python packages/wink-tools/wink.py build wasm --app wink-micro-app/vendor_cms8s78xx_v202/led_4com_8seg
 
 # 构建原生 AI-Native 应用
 python packages/wink-tools/wink.py build wasm --app wink-micro-app/oled_dashboard
