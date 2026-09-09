@@ -1,0 +1,31 @@
+{
+  "app_name": "led_4com_8seg",
+  "display_name": "CMS8S78xx V2.0.2 - LED 4COM_8SEG_LED",
+  "board": "cms8s78xx_devboard",
+  "category": "vendor_example",
+  "mcu": "cms8s78xx",
+  "tick_ms": 1,
+  "upstream": {
+    "vendor": "Cmsemicon",
+    "version": "V2.0.2",
+    "source_dir": "docs/vendors/Cmsemicon/CMS8S78xx_DemoCode_V2.0.2/CMS8S78xx_Example/Example/LED/4COM_8SEG_LED/code"
+  },
+  "devices": {
+    "display": {
+      "type": "seg_display",
+      "variant": "direct_gpio_4d",
+      "com0_pin": "$board.headers.P30",
+      "com1_pin": "$board.headers.P31",
+      "com2_pin": "$board.headers.P32",
+      "com3_pin": "$board.headers.P33",
+      "a_pin": "$board.headers.P10",
+      "b_pin": "$board.headers.P11",
+      "c_pin": "$board.headers.P12",
+      "d_pin": "$board.headers.P13",
+      "e_pin": "$board.headers.P14",
+      "f_pin": "$board.headers.P15",
+      "g_pin": "$board.headers.P16",
+      "dp_pin": "$board.headers.P17"
+    }
+  }
+}
