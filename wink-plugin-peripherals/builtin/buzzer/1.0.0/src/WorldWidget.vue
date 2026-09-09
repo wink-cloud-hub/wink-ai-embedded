@@ -18,12 +18,17 @@ const props = withDefaults(
   },
 );
 
-// Default to unmuted
-const isAudioMuted = ref(false);
+// Default to muted in World Widget to avoid duplicate audio playback with CanvasGlyph
+const isAudioMuted = ref(true);
 
 let audioCtx: AudioContext | null = null;
-let oscillator: OscillatorNode | null = null;
-let gainNode: GainNode | null = null;
+let mainOsc: OscillatorNode | null = null;
+let mainGain: GainNode | null = null;
+let cavityOsc: OscillatorNode | null = null;
+let cavityGain: GainNode | null = null;
+let masterGain: GainNode | null = null;
+let stopTimer: ReturnType<typeof setTimeout> | null = null;
+let currentFreq = 0;
 
 function ensureAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
@@ -46,43 +51,105 @@ function startSound(freq: number) {
   const ctx = ensureAudioContext();
   if (!ctx) return;
 
+  if (stopTimer) {
+    clearTimeout(stopTimer);
+    stopTimer = null;
+  }
+
   const validFreq = Math.max(20, Math.min(20000, freq > 0 ? freq : 2000));
+  const now = ctx.currentTime;
 
-  if (!oscillator) {
-    oscillator = ctx.createOscillator();
-    gainNode = ctx.createGain();
+  if (!mainOsc || !mainGain || !masterGain) {
+    try {
+      mainOsc = ctx.createOscillator();
+      mainGain = ctx.createGain();
+      masterGain = ctx.createGain();
 
-    oscillator.type = 'square';
-    oscillator.frequency.setValueAtTime(validFreq, ctx.currentTime);
+      cavityOsc = ctx.createOscillator();
+      cavityGain = ctx.createGain();
 
-    // Safe low gain to prevent ear fatigue
-    gainNode.gain.setValueAtTime(0.04, ctx.currentTime);
+      if (validFreq >= 3000) {
+        // High frequency acoustic model:
+        mainOsc.type = 'sine';
+        mainOsc.frequency.setValueAtTime(validFreq, now);
+        mainGain.gain.setValueAtTime(0.24, now);
 
-    oscillator.connect(gainNode);
-    gainNode.connect(ctx.destination);
-    oscillator.start();
+        // Helmholtz cavity resonance component:
+        cavityOsc.type = 'sine';
+        cavityOsc.frequency.setValueAtTime(2400, now);
+        cavityGain.gain.setValueAtTime(0.035, now);
+      } else {
+        mainOsc.type = 'square';
+        mainOsc.frequency.setValueAtTime(validFreq, now);
+        mainGain.gain.setValueAtTime(0.12, now);
+
+        cavityGain.gain.setValueAtTime(0, now);
+      }
+
+      masterGain.gain.setValueAtTime(1.0, now);
+
+      mainOsc.connect(mainGain).connect(masterGain);
+      cavityOsc.connect(cavityGain).connect(masterGain);
+      masterGain.connect(ctx.destination);
+
+      mainOsc.start();
+      cavityOsc.start();
+      currentFreq = validFreq;
+    } catch {
+      // ignore
+    }
   } else {
-    oscillator.frequency.setValueAtTime(validFreq, ctx.currentTime);
+    if (Math.abs(currentFreq - validFreq) > 5) {
+      if (validFreq >= 3000) {
+        mainOsc.type = 'sine';
+        mainOsc.frequency.setValueAtTime(validFreq, now);
+        mainGain.gain.setValueAtTime(0.24, now);
+
+        cavityOsc.frequency.setValueAtTime(2400, now);
+        cavityGain.gain.setValueAtTime(0.035, now);
+      } else {
+        mainOsc.type = 'square';
+        mainOsc.frequency.setValueAtTime(validFreq, now);
+        mainGain.gain.setValueAtTime(0.12, now);
+
+        cavityGain.gain.setValueAtTime(0, now);
+      }
+      currentFreq = validFreq;
+    }
+    masterGain.gain.setValueAtTime(1.0, now);
   }
 }
 
 function stopSound() {
-  if (oscillator) {
-    try {
-      oscillator.stop();
-      oscillator.disconnect();
-    } catch {
-      // ignore
-    }
-    oscillator = null;
-  }
-  if (gainNode) {
-    try {
-      gainNode.disconnect();
-    } catch {
-      // ignore
-    }
-    gainNode = null;
+  if (masterGain && audioCtx) {
+    const now = audioCtx.currentTime;
+    masterGain.gain.setValueAtTime(0, now);
+
+    if (stopTimer) clearTimeout(stopTimer);
+    stopTimer = setTimeout(() => {
+      if (mainOsc) {
+        try { mainOsc.stop(); mainOsc.disconnect(); } catch {}
+        mainOsc = null;
+      }
+      if (cavityOsc) {
+        try { cavityOsc.stop(); cavityOsc.disconnect(); } catch {}
+        cavityOsc = null;
+      }
+      if (mainGain) {
+        try { mainGain.disconnect(); } catch {}
+        mainGain = null;
+      }
+      if (cavityGain) {
+        try { cavityGain.disconnect(); } catch {}
+        cavityGain = null;
+      }
+      if (masterGain) {
+        try { masterGain.disconnect(); } catch {}
+        masterGain = null;
+      }
+      currentFreq = 0;
+      stopTimer = null;
+    }, 50);
   }
 }
 
@@ -106,8 +173,18 @@ onMounted(() => {
   if (typeof window !== 'undefined') {
     window.addEventListener('click', unlockAudioOnInteraction, { capture: true, passive: true });
     window.addEventListener('keydown', unlockAudioOnInteraction, { capture: true, passive: true });
+    document.addEventListener('visibilitychange', onVisibilityChange);
   }
 });
+
+function onVisibilityChange() {
+  if (typeof document === 'undefined') return;
+  if (document.hidden) {
+    stopSound();
+  } else if (props.hasSignal && !isAudioMuted.value) {
+    startSound(props.frequency);
+  }
+}
 
 watch(
   () => [props.hasSignal, props.frequency, isAudioMuted.value] as const,
@@ -125,6 +202,7 @@ onBeforeUnmount(() => {
   if (typeof window !== 'undefined') {
     window.removeEventListener('click', unlockAudioOnInteraction, { capture: true });
     window.removeEventListener('keydown', unlockAudioOnInteraction, { capture: true });
+    document.removeEventListener('visibilitychange', onVisibilityChange);
   }
   stopSound();
   if (audioCtx) {

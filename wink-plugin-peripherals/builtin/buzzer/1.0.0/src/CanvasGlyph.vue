@@ -16,8 +16,13 @@ const props = defineProps<{
 const isAudioMuted = ref(false);
 
 let audioCtx: AudioContext | null = null;
-let oscillator: OscillatorNode | null = null;
-let gainNode: GainNode | null = null;
+let mainOsc: OscillatorNode | null = null;
+let mainGain: GainNode | null = null;
+let cavityOsc: OscillatorNode | null = null;
+let cavityGain: GainNode | null = null;
+let masterGain: GainNode | null = null;
+let stopTimer: ReturnType<typeof setTimeout> | null = null;
+let currentFreq = 0;
 
 function ensureAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
@@ -37,67 +42,124 @@ function ensureAudioContext(): AudioContext | null {
     audioCtx.resume().then(() => {
       console.log('[Buzzer Glyph] AudioContext resumed, state:', audioCtx?.state);
     }).catch(err => {
-      console.warn('[Buzzer Glyph] AudioContext resume failed (waiting for user gesture):', err);
+      console.warn('[Buzzer Glyph] AudioContext resume waiting for user interaction:', err);
     });
   }
   return audioCtx;
 }
 
 function startSound(freq: number) {
-  console.log('[Buzzer Glyph] startSound called with freq:', freq, 'isMuted:', isAudioMuted.value);
   if (isAudioMuted.value) return;
   const ctx = ensureAudioContext();
   if (!ctx) return;
 
+  if (stopTimer) {
+    clearTimeout(stopTimer);
+    stopTimer = null;
+  }
+
   // Support audible frequency range up to 20kHz (CMS8S78xx buzzer is 10kHz)
   const validFreq = Math.max(20, Math.min(20000, freq > 0 ? freq : 2000));
+  const now = ctx.currentTime;
 
-  if (!oscillator) {
+  if (!mainOsc || !mainGain || !masterGain) {
     try {
-      oscillator = ctx.createOscillator();
-      gainNode = ctx.createGain();
+      mainOsc = ctx.createOscillator();
+      mainGain = ctx.createGain();
+      masterGain = ctx.createGain();
 
-      oscillator.type = 'square';
-      oscillator.frequency.setValueAtTime(validFreq, ctx.currentTime);
+      cavityOsc = ctx.createOscillator();
+      cavityGain = ctx.createGain();
 
-      // Safe moderate volume (0.06) to prevent clipping/ear fatigue
-      gainNode.gain.setValueAtTime(0.06, ctx.currentTime);
+      if (validFreq >= 3000) {
+        // High-frequency physical acoustic model (e.g. 10kHz on CMS8S78xx):
+        // 1. Primary fundamental tone: pure sine wave with ISO 226 equal-loudness boost (0.24)
+        //    to overcome laptop/monitor micro-speaker roll-off and human high-frequency threshold,
+        //    with ZERO Nyquist aliasing foldover ("no TV static sizzle").
+        mainOsc.type = 'sine';
+        mainOsc.frequency.setValueAtTime(validFreq, now);
+        mainGain.gain.setValueAtTime(0.24, now);
 
-      oscillator.connect(gainNode);
-      gainNode.connect(ctx.destination);
-      oscillator.start();
-      console.log('[Buzzer Glyph] Oscillator started at', validFreq, 'Hz, audioCtx state:', ctx.state);
+        // 2. Physical Helmholtz cavity resonance component (~2400 Hz, -18dB):
+        //    Simulates the mechanical acoustic resonance excited by step edges on a physical piezo buzzer.
+        cavityOsc.type = 'sine';
+        cavityOsc.frequency.setValueAtTime(2400, now);
+        cavityGain.gain.setValueAtTime(0.035, now);
+      } else {
+        // Standard frequency (< 3000 Hz, e.g. 1kHz ~ 2.7kHz):
+        mainOsc.type = 'square';
+        mainOsc.frequency.setValueAtTime(validFreq, now);
+        mainGain.gain.setValueAtTime(0.12, now);
+
+        cavityGain.gain.setValueAtTime(0, now);
+      }
+
+      masterGain.gain.setValueAtTime(1.0, now);
+
+      mainOsc.connect(mainGain).connect(masterGain);
+      cavityOsc.connect(cavityGain).connect(masterGain);
+      masterGain.connect(ctx.destination);
+
+      mainOsc.start();
+      cavityOsc.start();
+      currentFreq = validFreq;
+      console.log('[Buzzer Glyph] High-fidelity acoustic engine started at', validFreq, 'Hz');
     } catch (err) {
-      console.error('[Buzzer Glyph] Failed to start oscillator:', err);
+      console.error('[Buzzer Glyph] Failed to start audio graph:', err);
     }
   } else {
-    try {
-      oscillator.frequency.setValueAtTime(validFreq, ctx.currentTime);
-      console.log('[Buzzer Glyph] Oscillator frequency updated to', validFreq, 'Hz');
-    } catch (err) {
-      console.warn('[Buzzer Glyph] Failed to update oscillator frequency:', err);
+    // Smooth frequency update
+    if (Math.abs(currentFreq - validFreq) > 5) {
+      if (validFreq >= 3000) {
+        mainOsc.type = 'sine';
+        mainOsc.frequency.setValueAtTime(validFreq, now);
+        mainGain.gain.setValueAtTime(0.24, now);
+
+        cavityOsc.frequency.setValueAtTime(2400, now);
+        cavityGain.gain.setValueAtTime(0.035, now);
+      } else {
+        mainOsc.type = 'square';
+        mainOsc.frequency.setValueAtTime(validFreq, now);
+        mainGain.gain.setValueAtTime(0.12, now);
+
+        cavityGain.gain.setValueAtTime(0, now);
+      }
+      currentFreq = validFreq;
     }
+    masterGain.gain.setValueAtTime(1.0, now);
   }
 }
 
 function stopSound() {
-  if (oscillator) {
-    console.log('[Buzzer Glyph] stopSound called');
-    try {
-      oscillator.stop();
-      oscillator.disconnect();
-    } catch {
-      // ignore
-    }
-    oscillator = null;
-  }
-  if (gainNode) {
-    try {
-      gainNode.disconnect();
-    } catch {
-      // ignore
-    }
-    gainNode = null;
+  if (masterGain && audioCtx) {
+    const now = audioCtx.currentTime;
+    masterGain.gain.setValueAtTime(0, now);
+
+    if (stopTimer) clearTimeout(stopTimer);
+    stopTimer = setTimeout(() => {
+      if (mainOsc) {
+        try { mainOsc.stop(); mainOsc.disconnect(); } catch {}
+        mainOsc = null;
+      }
+      if (cavityOsc) {
+        try { cavityOsc.stop(); cavityOsc.disconnect(); } catch {}
+        cavityOsc = null;
+      }
+      if (mainGain) {
+        try { mainGain.disconnect(); } catch {}
+        mainGain = null;
+      }
+      if (cavityGain) {
+        try { cavityGain.disconnect(); } catch {}
+        cavityGain = null;
+      }
+      if (masterGain) {
+        try { masterGain.disconnect(); } catch {}
+        masterGain = null;
+      }
+      currentFreq = 0;
+      stopTimer = null;
+    }, 50);
   }
 }
 
@@ -126,8 +188,19 @@ onMounted(() => {
   if (typeof window !== 'undefined') {
     window.addEventListener('click', unlockAudioOnInteraction, { capture: true, passive: true });
     window.addEventListener('keydown', unlockAudioOnInteraction, { capture: true, passive: true });
+    window.addEventListener('pointerdown', unlockAudioOnInteraction, { capture: true, passive: true });
+    document.addEventListener('visibilitychange', onVisibilityChange);
   }
 });
+
+function onVisibilityChange() {
+  if (typeof document === 'undefined') return;
+  if (document.hidden) {
+    stopSound();
+  } else if (props.hasSignal && !isAudioMuted.value) {
+    startSound(props.frequency ?? 0);
+  }
+}
 
 watch(
   () => [props.hasSignal, props.frequency, isAudioMuted.value] as const,
@@ -146,6 +219,8 @@ onBeforeUnmount(() => {
   if (typeof window !== 'undefined') {
     window.removeEventListener('click', unlockAudioOnInteraction, { capture: true });
     window.removeEventListener('keydown', unlockAudioOnInteraction, { capture: true });
+    window.removeEventListener('pointerdown', unlockAudioOnInteraction, { capture: true });
+    document.removeEventListener('visibilitychange', onVisibilityChange);
   }
   stopSound();
   if (audioCtx) {

@@ -74,9 +74,10 @@ export const buzzerDefinition: PeripheralDefinition = definePeripheral({
   ui: {
     canvasProps: (comp, ctx) => {
       const ch = resolveBuzzerChannel(comp, ctx);
+      const isRunning = ctx.isRunning !== false;
       return {
         id: comp.id,
-        hasSignal: Boolean(ch.hasSignal),
+        hasSignal: isRunning && Boolean(ch.hasSignal),
         frequency: typeof ch.frequency === 'number' ? ch.frequency : 0,
         duty: typeof ch.duty === 'number' ? ch.duty : 0,
         label: comp.props?.label ?? 'Buzzer',
@@ -85,9 +86,10 @@ export const buzzerDefinition: PeripheralDefinition = definePeripheral({
     },
     worldProps: (comp, ctx) => {
       const ch = resolveBuzzerChannel(comp, ctx);
+      const isRunning = ctx.isRunning !== false;
       return {
         id: comp.id,
-        hasSignal: Boolean(ch.hasSignal),
+        hasSignal: isRunning && Boolean(ch.hasSignal),
         frequency: typeof ch.frequency === 'number' ? ch.frequency : 0,
         duty: typeof ch.duty === 'number' ? ch.duty : 0,
         label: comp.props?.label ?? 'Buzzer',
