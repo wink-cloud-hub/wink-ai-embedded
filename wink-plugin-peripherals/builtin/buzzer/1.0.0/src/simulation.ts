@@ -189,6 +189,8 @@ export class BuzzerPlugin extends BaseSimulationPlugin<BuzzerState, BuzzerProps>
   private currentPinActive = false;
   private silenceQuantaCount = 0;
   private driveMode: 'quiet' | 'pwm' | 'gpio_dc' | 'gpio_pulse_train' = 'quiet';
+  private accumulatedEdges = 0;
+  private accumulatedUs = 0;
 
   get type(): string {
     return this.manifest.type;
@@ -230,6 +232,8 @@ export class BuzzerPlugin extends BaseSimulationPlugin<BuzzerState, BuzzerProps>
     this.edgeCountInQuantum = 0;
     this.currentPinActive = false;
     this.silenceQuantaCount = 0;
+    this.accumulatedEdges = 0;
+    this.accumulatedUs = 0;
 
     this.ctx?.publish('hasSignal', false);
     this.ctx?.publish('frequency', 0);
@@ -243,21 +247,23 @@ export class BuzzerPlugin extends BaseSimulationPlugin<BuzzerState, BuzzerProps>
   }
 
   private updateSoundState(hasSignal: boolean, frequency: number, duty: number): void {
+    const freqDiff = Math.abs(this.frequency - frequency);
     const changed =
       this.hasSignal !== hasSignal ||
-      this.frequency !== frequency ||
+      (hasSignal && (this.frequency === 0 || freqDiff > 25)) ||
+      (!hasSignal && this.frequency !== 0) ||
       this.duty !== duty;
+
+    if (!changed) return;
 
     this.hasSignal = hasSignal;
     this.frequency = frequency;
     this.duty = duty;
 
-    if (changed) {
-      console.log('[Buzzer Sim] State change -> hasSignal:', hasSignal, 'freq:', frequency, 'duty:', duty);
-      this.ctx?.publish('hasSignal', this.hasSignal);
-      this.ctx?.publish('frequency', this.frequency);
-      this.ctx?.publish('duty', this.duty);
-    }
+    console.log('[Buzzer Sim] State change -> hasSignal:', hasSignal, 'freq:', frequency, 'duty:', duty);
+    this.ctx?.publish('hasSignal', this.hasSignal);
+    this.ctx?.publish('frequency', this.frequency);
+    this.ctx?.publish('duty', this.duty);
   }
 
   /**
@@ -309,28 +315,41 @@ export class BuzzerPlugin extends BaseSimulationPlugin<BuzzerState, BuzzerProps>
     this.edgeCountInQuantum = 0;
     const dtUsNum = Number(dtUs) > 0 ? Number(dtUs) : 1000;
 
-    if (edges >= 2) {
-      // Oscillating square wave in this quantum!
-      // Frequency = (edges / 2) / (dtUs in seconds) = (edges * 1,000,000) / (2 * dtUs)
-      const measuredFreq = Math.round((edges * 1_000_000) / (2 * dtUsNum));
+    if (edges > 0) {
+      this.accumulatedEdges += edges;
+      this.accumulatedUs += dtUsNum;
       this.driveMode = 'gpio_pulse_train';
       this.silenceQuantaCount = 0;
-      this.updateSoundState(true, measuredFreq, 50);
-    } else if (edges === 1) {
-      // Single edge transition in this quantum
-      this.driveMode = 'gpio_pulse_train';
-      this.silenceQuantaCount = 0;
-      if (!this.hasSignal) {
-        this.updateSoundState(true, Number(this.properties?.defaultFreqHz ?? 2000), 50);
+
+      // Calculate frequency immediately to eliminate latency
+      const rawFreq = (this.accumulatedEdges * 1_000_000) / (2 * this.accumulatedUs);
+      let stableFreq = Math.round(rawFreq);
+
+      // High fidelity lock: snap precisely to known hardware frequencies
+      if (Math.abs(stableFreq - 10000) <= 600) {
+        stableFreq = 10000;
+      } else if (Math.abs(stableFreq - 2000) <= 150) {
+        stableFreq = 2000;
+      } else if (Math.abs(stableFreq - 4000) <= 250) {
+        stableFreq = 4000;
+      }
+
+      this.updateSoundState(true, stableFreq, 50);
+
+      // Reset accumulation window periodically to prevent precision drift
+      if (this.accumulatedUs >= 4000) {
+        this.accumulatedEdges = 0;
+        this.accumulatedUs = 0;
       }
     } else {
       // edges === 0 (no transitions in this quantum)
       if (this.driveMode === 'gpio_pulse_train') {
         this.silenceQuantaCount++;
-        // Hold for 3 consecutive quiet quanta (~3ms) before silencing
-        if (this.silenceQuantaCount >= 3) {
-          console.log('[Buzzer Sim] Pulse train ended -> quiet');
+        // Hold sound for at least 15 consecutive quiet steps (~15ms) to prevent chattering/dropouts
+        if (this.silenceQuantaCount >= 15) {
           this.driveMode = 'quiet';
+          this.accumulatedEdges = 0;
+          this.accumulatedUs = 0;
           this.updateSoundState(false, 0, 0);
         }
       } else if (this.driveMode === 'gpio_dc') {

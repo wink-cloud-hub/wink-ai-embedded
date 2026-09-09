@@ -42,11 +42,11 @@
   "x-wink-pins": [
     {
       "name": "1",
-      "direction": "source",
-      "signal": "analog",
+      "direction": "sink",
+      "signal": "digital",
       "required": true,
       "simRole": "pwm",
-      "catalogType": "pwm",
+      "catalogType": "gpio",
       "aliases": [
         "1",
         "sig",

@@ -1628,11 +1628,7 @@ async function createWasm() {
           return 2; /* HiZ default */
       }
 
-  var _gpio_p3_writes = 0;
   function _js_pal_gpio_write(pin, level, strength) {
-          if (pin === 3 && (_gpio_p3_writes++ < 5 || _gpio_p3_writes % 500 === 0)) {
-              console.log('[WASM GPIO Write] pin=3 level=' + level + ' count=' + _gpio_p3_writes);
-          }
           if (typeof Module !== 'undefined' && typeof Module['js_pal_gpio_write'] === 'function' && Module['js_pal_gpio_write'] !== _js_pal_gpio_write) {
               return Module['js_pal_gpio_write'](pin, level, strength);
           }
