@@ -235,7 +235,6 @@ onBeforeUnmount(() => {
     <wokwi-buzzer :hasSignal="Boolean(hasSignal)" />
     <div class="buzzer-badge-area">
       <div class="buzzer-info-row">
-        <span class="buzzer-label">{{ label || 'Buzzer' }}</span>
         <button
           type="button"
           class="audio-toggle-btn"

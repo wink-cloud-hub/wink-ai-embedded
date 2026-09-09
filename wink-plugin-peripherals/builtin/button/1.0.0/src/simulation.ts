@@ -59,6 +59,7 @@ export function createButtonManifest(variantName: ButtonVariant = 'default'): Pe
         default: 'red',
         enum: ['red', 'green', 'blue', 'yellow', 'white', 'black'],
       },
+      label: { type: 'string', default: '' },
       activeLow: { type: 'boolean', default: true },
       autoPollMs: { type: 'number', default: 10, min: 0, max: 10000, unit: 'ms' },
       debounceMs: { type: 'number', default: 20, min: 0, max: 1000, unit: 'ms' },

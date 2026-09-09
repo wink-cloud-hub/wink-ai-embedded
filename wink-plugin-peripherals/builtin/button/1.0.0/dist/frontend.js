@@ -53,7 +53,7 @@ var f = [
 			onContextmenu: n[2] ||= d(() => {}, ["prevent"])
 		}, [a("wokwi-pushbutton", {
 			color: e.color,
-			label: e.label,
+			label: "",
 			xray: e.xray,
 			pressed: o.value,
 			style: { "pointer-events": "none" }

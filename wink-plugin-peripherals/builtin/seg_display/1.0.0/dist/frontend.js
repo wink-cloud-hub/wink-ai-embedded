@@ -72,7 +72,7 @@ var h = [
 			color: e.color || "red",
 			values: i.value,
 			pins: "top"
-		}, null, 8, h), e.label ? (d(), s("span", g, p(e.label), 1)) : o("", !0)], 4));
+		}, null, 8, h), o("", !0)], 4));
 	}
 }), v = (e, t) => {
 	let n = e.__vccOpts || e;

@@ -108,7 +108,6 @@ watchEffect(() => {
       :values="segmentValues"
       pins="top"
     />
-    <span v-if="label" class="display-label">{{ label }}</span>
   </div>
 </template>
 

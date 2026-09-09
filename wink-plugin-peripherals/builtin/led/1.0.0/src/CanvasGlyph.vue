@@ -18,7 +18,7 @@ defineProps<{
     :color="color"
     :value="level"
     :brightness="brightness"
-    :label="label"
+    :label="''"
     :flip="flip"
   />
 </template>

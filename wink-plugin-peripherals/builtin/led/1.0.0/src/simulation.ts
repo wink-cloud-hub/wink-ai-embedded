@@ -58,6 +58,7 @@ export function createLedManifest(variantName: LedVariant = 'default'): Peripher
         enum: ['red', 'green', 'blue', 'yellow', 'white', 'orange', 'purple'],
       },
       brightness: { type: 'number', default: 1.0, min: 0.0, max: 1.0 },
+      label: { type: 'string', default: '' },
       activeHigh: { type: 'boolean', default: true },
     },
     stateChannels: {
