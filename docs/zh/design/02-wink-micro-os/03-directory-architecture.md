@@ -200,6 +200,26 @@ wink-micro-os/
 | **`board_config.c`** | 开发板引脚路由 | **开发板物理引脚强覆盖映射（可选）**。<br>为特定硬件板卡提供底层引脚路由的强定义（如覆盖 `pal_pwm_pin_map`、`pal_i2c_pin_map`），解耦通用外设与具体硬件的映射。 | 🛠️ 板卡级固件包/系统工程师提供 |
 | **`CMakeLists.txt`** | 构建描述文件 | **定义应用的编译与链接规则**。<br>指示 CMake 调用 Python 脚本解析 `wink_app.json` 并生成 `wink_config.h`（注入 Tick 配置），然后将应用代码与微内核运行时链接。 | 📋 构建系统静态模板 |
 
+#### App 目录的嵌套分组（ADR-0079）
+
+`wink-micro-app/` 下的 app 支持**最多三级嵌套**，便于按芯片家族 / 厂商 / 项目分组：
+
+```
+wink-micro-app/
+├── oled_dashboard/                 # 深度 1（平铺，存量形态，继续支持）
+│   └── wink-app.json
+├── mcs51/                          # 深度 2：<分组>/<app>
+│   └── button_led/wink-app.json
+└── vendor/cms8s78xx/gpio/          # 深度 3：<g1>/<g2>/<app>（上限）
+    └── wink-app.json
+```
+
+发现规则（Python wink-tools、unisim、embedded-frontend 三处扫描器语义一致，详见 [ADR-0079](../../decisions/core/0079-micro-app-nested-app-discovery.md)）：
+
+1. **清单即边界**：目录一旦包含 `wink-app.json` 即认定为 app，**禁止再向内搜索**——app 目录内的一切（源码、docs、unisim-assets、临时产物）都是该 app 的私有内容。
+2. **最深 3 级**：无清单目录仅在深度 < 3 时继续下钻；深度 >3 出现的清单是配置错误，工具链告警且不纳入。
+3. **app id = 相对 `wink-micro-app/` 的 POSIX 路径**：平铺 id 仍是裸叶子名（`oled_dashboard`），嵌套 id 为 `mcs51/button_led`；它同时是 CLI 参数、`build/wasm/<id>` 构建目录与前端缓存键。裸叶子名在全树唯一时可作为别名引用，重名时必须使用全 id 消歧。
+
 ### 🛠️ 应用层与底层平台的解耦原理 (Compile-time Target Static Routing)
 Wink-AI 保证应用层代码在物理平台（裸机、各类 RTOS、Wasm）之间 **100% 同源且零感知编译**：
 1.  **代码零感知**：应用层逻辑（`app_callbacks.c`）绝不包含任何平台的 `#ifdef` 条件宏，仅面向统一的 `pal_osal.h` 和 `dal` 公共 API。
