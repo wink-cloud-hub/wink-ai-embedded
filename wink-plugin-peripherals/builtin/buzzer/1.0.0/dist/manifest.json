@@ -1,0 +1,117 @@
+{
+  "_generated": "DO NOT EDIT — generated from src/simulation.ts by build-peripheral",
+  "type": "buzzer",
+  "version": "1.0.0",
+  "category": "output",
+  "displayName": "Passive Piezo Buzzer (PWM)",
+  "description": "Acoustic buzzer component supporting passive PWM, active GPIO, and auto-detecting periodic square wave tone synthesis",
+  "timingModel": "event-driven",
+  "pins": [
+    {
+      "name": "1",
+      "direction": "source",
+      "signal": "analog",
+      "required": true,
+      "simRole": "pwm",
+      "catalogType": "pwm",
+      "aliases": [
+        "1",
+        "sig",
+        "signal",
+        "pwm",
+        "anode",
+        "pos"
+      ]
+    },
+    {
+      "name": "2",
+      "direction": "ground",
+      "signal": "power",
+      "required": false,
+      "simRole": "gnd",
+      "catalogType": "power",
+      "aliases": [
+        "2",
+        "gnd",
+        "ground",
+        "cathode",
+        "neg"
+      ]
+    }
+  ],
+  "properties": {
+    "variant": {
+      "type": "string",
+      "default": "passive_pwm",
+      "enum": [
+        "passive_pwm",
+        "active_gpio"
+      ]
+    },
+    "defaultFreqHz": {
+      "type": "number",
+      "default": 2000,
+      "min": 20,
+      "max": 8000,
+      "unit": "Hz"
+    },
+    "pwmChannel": {
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 15
+    },
+    "activeHigh": {
+      "type": "boolean",
+      "default": true
+    },
+    "label": {
+      "type": "string",
+      "default": "Buzzer"
+    }
+  },
+  "stateChannels": {
+    "hasSignal": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether buzzer is currently buzzing or receiving driving signal"
+    },
+    "frequency": {
+      "type": "number",
+      "default": 0,
+      "unit": "Hz",
+      "description": "Current sound frequency in Hz (0 = quiet)"
+    },
+    "duty": {
+      "type": "number",
+      "default": 0,
+      "unit": "%",
+      "description": "Current PWM duty cycle percentage"
+    }
+  },
+  "events": {
+    "PLAY_TONE": {
+      "description": "Play tone at specified frequency in Hz",
+      "params": {
+        "freqHz": {
+          "type": "number",
+          "required": false,
+          "unit": "Hz"
+        }
+      }
+    },
+    "STOP_TONE": {
+      "description": "Stop tone and silence buzzer",
+      "params": {}
+    },
+    "SET_SIGNAL": {
+      "description": "Set buzzer sounding state",
+      "params": {
+        "hasSignal": {
+          "type": "boolean",
+          "required": true
+        }
+      }
+    }
+  }
+}
