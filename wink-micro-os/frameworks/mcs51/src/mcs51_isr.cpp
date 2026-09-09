@@ -31,6 +31,8 @@ const mcs51_irq_map_entry_t s_default_irq_map[IRQ_SOURCE__COUNT] = {
     /* IRQ_SOURCE_PWM */    { 18u, 0xAAu, 3u, 0xFFu, 0u, 0xB9u, 3u, MCS51_IRQ_SW_CLEAR },
     /* IRQ_SOURCE_I2C */    { 20u, 0xAAu, 5u, 0xFFu, 0u, 0xB9u, 5u, MCS51_IRQ_SW_CLEAR },
     /* IRQ_SOURCE_SPI */    { 21u, 0xAAu, 6u, 0xFFu, 0u, 0xB9u, 6u, MCS51_IRQ_SW_CLEAR },
+    /* IRQ_SOURCE_TIMER3 */ { 15u, 0xAAu, 0u, 0xB2u, 0u, 0xBAu, 0u, MCS51_IRQ_HW_AUTO_CLEAR }, // EIE2.ET3IE, EIF2.TF3, EIP2.PT3
+    /* IRQ_SOURCE_TIMER4 */ { 16u, 0xAAu, 1u, 0xB2u, 1u, 0xBAu, 1u, MCS51_IRQ_HW_AUTO_CLEAR }, // EIE2.ET4IE, EIF2.TF4, EIP2.PT4
 };
 
 mcs51_irq_map_entry_t s_irq_map[IRQ_SOURCE__COUNT];

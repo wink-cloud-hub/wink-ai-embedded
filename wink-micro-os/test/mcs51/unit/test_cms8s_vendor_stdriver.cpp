@@ -33,6 +33,7 @@
 // own main(), so drop the remap and provide the empty fiber entry the bridge
 // references.
 #undef main
+#undef printf
 extern "C" void wink_mcs51_user_main(void) {}
 
 namespace {

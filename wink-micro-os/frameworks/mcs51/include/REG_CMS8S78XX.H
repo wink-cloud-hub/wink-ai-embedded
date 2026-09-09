@@ -40,10 +40,9 @@
 
 // ── 1) CMS8S78xx extended SFR bytes (addresses per vendor cms8s78xx.h) ──────
 // All are non-GPIO addresses (port index 0xFF) → SFR hook path only.
-sfr TA     = 0x86;  // Time Access protection register
+sfr TA     = 0x96;  // Time Access protection register
 sfr CKCON  = 0x8E;  // Clock control (timer prescaler)
 sfr FUNCCR = 0x91;  // Function control (UART0 clock source)
-sfr T34MOD = 0x96;  // Timer 3/4 mode
 sfr CLKDIV = 0x97;  // Clock divider
 sfr SCON0  = 0x98;  // UART0 control
 sfr SBUF0  = 0x99;  // UART0 data buffer
@@ -52,13 +51,13 @@ sfr P1TRIS = 0xA1;
 sfr P2TRIS = 0xA2;
 sfr P3TRIS = 0xA3;
 sfr EIE1   = 0xA9;  // extended interrupt enable 1
-sfr EIE2   = 0xAA;  // extended interrupt enable 2 (bit4 = ADCIE)
+sfr EIE2   = 0xAA;  // extended interrupt enable 2 (bit4 = ADCIE, bit1 = ET4IE, bit0 = ET3IE)
 sfr P0EXTIE = 0xAC; // P0 pin interrupt enable
 sfr P1EXTIE = 0xAD; // P1 pin interrupt enable
 sfr P2EXTIE = 0xAE; // P2 pin interrupt enable
 sfr P3EXTIE = 0xAF; // P3 pin interrupt enable
 
-sfr EIF2   = 0xB2;  // extended interrupt flag 2   (bit4 = ADCIF)
+sfr EIF2   = 0xB2;  // extended interrupt flag 2   (bit4 = ADCIF, bit1 = TF4, bit0 = TF3)
 sfr P0EXTIF = 0xB4; // P0 pin interrupt flag
 sfr P1EXTIF = 0xB5; // P1 pin interrupt flag
 sfr P2EXTIF = 0xB6; // P2 pin interrupt flag
@@ -79,14 +78,19 @@ sfr CCEN   = 0xCE;  // Timer 2 compare/capture enable
 sfr T2IE   = 0xCF;  // Timer 2 interrupt enable
 
 sfr ADCMPC = 0xD1;  // ADC compare control
+sfr T34MOD = 0xD2;  // Timer 3/4 mode
 sfr ADDLYL = 0xD3;  // hardware-trigger delay low
 sfr ADCMPL = 0xD4;  // compare value low
 sfr ADCMPH = 0xD5;  // compare value high
 sfr ADCCHS = 0xD9;  // channel select
+sfr TL3    = 0xDA;  // Timer 3 counter low
+sfr TH3    = 0xDB;  // Timer 3 counter high
 sfr ADRESL = 0xDC;  // result low  (read-only; loaded by the model)
 sfr ADRESH = 0xDD;  // result high (read-only; loaded by the model)
 sfr ADCON1 = 0xDE;  // bit7 ADEN, bits6:4 ADCKS clock divider
 sfr ADCON0 = 0xDF;  // bit6 ADFM, bit1 ADGO
+sfr TL4    = 0xE2;  // Timer 4 counter low
+sfr TH4    = 0xE3;  // Timer 4 counter high
 sfr ADCON2 = 0xE9;  // trigger config
 
 // ── 1.1) Port pin sbit aliases (CMS8S78xx vendor convention: P00 instead of P0_0) ──
@@ -605,6 +609,29 @@ typedef enum {
 #define TMR_TIM_AUTO_8BIT                    (0x02)
 #define TMR_TIM_TWO_INDEPENDENT_8BIT         (0x03)
 
+#define TMR_T34MOD_TR4_Pos                   (7)
+#define TMR_T34MOD_TR4_Msk                   (0x1 << TMR_T34MOD_TR4_Pos)
+#define TMR_T34MOD_T4M_Pos                   (6)
+#define TMR_T34MOD_T4M_Msk                   (0x1 << TMR_T34MOD_T4M_Pos)
+#define TMR_T34MOD_T4Mn_Pos                  (4)
+#define TMR_T34MOD_T4Mn_Msk                  (0x3 << TMR_T34MOD_T4Mn_Pos)
+#define TMR_T34MOD_TR3_Pos                   (3)
+#define TMR_T34MOD_TR3_Msk                   (0x1 << TMR_T34MOD_TR3_Pos)
+#define TMR_T34MOD_T3M_Pos                   (2)
+#define TMR_T34MOD_T3M_Msk                   (0x1 << TMR_T34MOD_T3M_Pos)
+#define TMR_T34MOD_T3Mn_Pos                  (0)
+#define TMR_T34MOD_T3Mn_Msk                  (0x3 << TMR_T34MOD_T3Mn_Pos)
+
+#define IRQ_EIE2_ET4IE_Pos                   (1)
+#define IRQ_EIE2_ET4IE_Msk                   (0x1 << IRQ_EIE2_ET4IE_Pos)
+#define IRQ_EIE2_ET3IE_Pos                   (0)
+#define IRQ_EIE2_ET3IE_Msk                   (0x1 << IRQ_EIE2_ET3IE_Pos)
+
+#define IRQ_EIF2_TF4_Pos                     (1)
+#define IRQ_EIF2_TF4_Msk                     (0x1 << IRQ_EIF2_TF4_Pos)
+#define IRQ_EIF2_TF3_Pos                     (0)
+#define IRQ_EIF2_TF3_Msk                     (0x1 << IRQ_EIF2_TF3_Pos)
+
 #define TMR0_SET_PERIOD(TimerPeriodH, TimerPeriodL) do{ \
     TH0 = (uint8_t)(TimerPeriodH); \
     TL0 = (uint8_t)(TimerPeriodL); \
@@ -615,17 +642,49 @@ typedef enum {
     TL1 = (uint8_t)(TimerPeriodL); \
 }while(0)
 
+#define TMR3_SET_PERIOD(TimerPeriodH, TimerPeriodL) do{ \
+    TH3 = (uint8_t)(TimerPeriodH); \
+    TL3 = (uint8_t)(TimerPeriodL); \
+}while(0)
+
+#define TMR4_SET_PERIOD(TimerPeriodH, TimerPeriodL) do{ \
+    TH4 = (uint8_t)(TimerPeriodH); \
+    TL4 = (uint8_t)(TimerPeriodL); \
+}while(0)
+
 static inline void TMR_ConfigRunMode(uint8_t Timern, uint8_t TimerMode, uint8_t TimerModeBranch) {
     if (Timern == 0) {
         TMOD = (TMOD & 0xF0) | ((TimerMode & 0x01) << 2) | (TimerModeBranch & 0x03);
     } else if (Timern == 1) {
         TMOD = (TMOD & 0x0F) | ((((TimerMode & 0x01) << 2) | (TimerModeBranch & 0x03)) << 4);
+    } else if (Timern == 3) {
+        uint8_t temp = T34MOD;
+        temp &= ~TMR_T34MOD_T3Mn_Msk;
+        temp |= (TimerModeBranch & 0x03);
+        T34MOD = temp;
+    } else if (Timern == 4) {
+        uint8_t temp = T34MOD;
+        temp &= ~TMR_T34MOD_T4Mn_Msk;
+        temp |= ((TimerModeBranch & 0x03) << TMR_T34MOD_T4Mn_Pos);
+        T34MOD = temp;
     }
 }
 
 static inline void TMR_ConfigTimerClk(uint8_t Timern, uint8_t TimerClkDiv) {
-    (void)Timern;
-    (void)TimerClkDiv;
+    if (Timern == 0 || Timern == 1) {
+        (void)Timern;
+        (void)TimerClkDiv;
+    } else if (Timern == 3) {
+        uint8_t temp = T34MOD;
+        temp &= ~TMR_T34MOD_T3M_Msk;
+        temp |= ((TimerClkDiv & 0x01) << TMR_T34MOD_T3M_Pos);
+        T34MOD = temp;
+    } else if (Timern == 4) {
+        uint8_t temp = T34MOD;
+        temp &= ~TMR_T34MOD_T4M_Msk;
+        temp |= ((TimerClkDiv & 0x01) << TMR_T34MOD_T4M_Pos);
+        T34MOD = temp;
+    }
 }
 
 static inline void TMR_ConfigTimerPeriod(uint8_t Timern, uint16_t TimerPeriodH, uint16_t TimerPeriodL) {
@@ -635,6 +694,12 @@ static inline void TMR_ConfigTimerPeriod(uint8_t Timern, uint16_t TimerPeriodH, 
     } else if (Timern == 1) {
         TH1 = (uint8_t)TimerPeriodH;
         TL1 = (uint8_t)TimerPeriodL;
+    } else if (Timern == 3) {
+        TH3 = (uint8_t)TimerPeriodH;
+        TL3 = (uint8_t)TimerPeriodL;
+    } else if (Timern == 4) {
+        TH4 = (uint8_t)TimerPeriodH;
+        TL4 = (uint8_t)TimerPeriodL;
     }
 }
 
@@ -643,6 +708,10 @@ static inline void TMR_EnableOverflowInt(uint8_t Timern) {
         ET0 = 1;
     } else if (Timern == 1) {
         ET1 = 1;
+    } else if (Timern == 3) {
+        EIE2 |= IRQ_EIE2_ET3IE_Msk;
+    } else if (Timern == 4) {
+        EIE2 |= IRQ_EIE2_ET4IE_Msk;
     }
 }
 
@@ -651,6 +720,10 @@ static inline void TMR_DisableOverflowInt(uint8_t Timern) {
         ET0 = 0;
     } else if (Timern == 1) {
         ET1 = 0;
+    } else if (Timern == 3) {
+        EIE2 &= ~IRQ_EIE2_ET3IE_Msk;
+    } else if (Timern == 4) {
+        EIE2 &= ~IRQ_EIE2_ET4IE_Msk;
     }
 }
 
@@ -659,6 +732,10 @@ static inline void TMR_Start(uint8_t Timern) {
         TR0 = 1;
     } else if (Timern == 1) {
         TR1 = 1;
+    } else if (Timern == 3) {
+        T34MOD |= TMR_T34MOD_TR3_Msk;
+    } else if (Timern == 4) {
+        T34MOD |= TMR_T34MOD_TR4_Msk;
     }
 }
 
@@ -667,6 +744,35 @@ static inline void TMR_Stop(uint8_t Timern) {
         TR0 = 0;
     } else if (Timern == 1) {
         TR1 = 0;
+    } else if (Timern == 3) {
+        T34MOD &= ~TMR_T34MOD_TR3_Msk;
+    } else if (Timern == 4) {
+        T34MOD &= ~TMR_T34MOD_TR4_Msk;
+    }
+}
+
+static inline uint8_t TMR_GetOverflowIntFlag(uint8_t Timern) {
+    if (Timern == 0) {
+        return (TCON & (1u << 5)) ? 1 : 0;
+    } else if (Timern == 1) {
+        return (TCON & (1u << 7)) ? 1 : 0;
+    } else if (Timern == 3) {
+        return (EIF2 & IRQ_EIF2_TF3_Msk) ? 1 : 0;
+    } else if (Timern == 4) {
+        return (EIF2 & IRQ_EIF2_TF4_Msk) ? 1 : 0;
+    }
+    return 0;
+}
+
+static inline void TMR_ClearOverflowIntFlag(uint8_t Timern) {
+    if (Timern == 0) {
+        TF0 = 0;
+    } else if (Timern == 1) {
+        TF1 = 0;
+    } else if (Timern == 3) {
+        EIF2 = (uint8_t)(0xFF & (~IRQ_EIF2_TF3_Msk));
+    } else if (Timern == 4) {
+        EIF2 = (uint8_t)(0xFF & (~IRQ_EIF2_TF4_Msk));
     }
 }
 
