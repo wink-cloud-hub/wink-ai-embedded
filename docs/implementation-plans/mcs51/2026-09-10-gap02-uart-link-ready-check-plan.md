@@ -8,7 +8,7 @@
 | **创建日期** | `2026-09-10` |
 | **目标平台/SoC** | `host` / `wasm`（mcs51 仿真；与 ESP target 无关，`frameworks/mcs51` 在 ESP_PLATFORM 直接 return） |
 | **工具链/SDK版本** | host `GCC/MSVC C++17` / `Emscripten`（随现有构建）；真机对照 `Keil C51`（仅文档，不在本计划构建） |
-| **计划状态** | 🔄 执行中（Task 1/2 已完成并合入前验证通过，Task 3 host 回归通过、wasm 待 sister repo 重建） |
+| **计划状态** | ✅ Task 1/2/3 完成（2026-09-11 wasm 22 场景全绿；附带发现 2 个功能级 carrier 真缺波特率配置，处置待定） |
 | **优先级** | 🔴 P0（GAP 清单唯一剩余 P0 模型项；GAP-07 WDT 建模的前置依赖） |
 | **计划版本** | `v1.2` |
 | **关联技术设计** | 无，已并入本计划（小规模模型补强，不单独立 Layer-②；涉及时钟语义的波特率记账项明确 deferred，见 Task 4） |
@@ -185,7 +185,7 @@ Task 1 → Task 2 → Task 3；Task 4 为 deferred（另立 ADR，不在本计�
 
 ---
 
-### Task 3：回归 + 文档 `[ 状态: 🔄 执行中（host 部分完成，wasm 待 sister repo） ]`
+### Task 3：回归 + 文档 `[ 状态: ✅ 完成（wasm 22 场景 2026-09-11 验证） ]`
 
 | 字段 | 内容 |
 |------|------|
@@ -199,8 +199,16 @@ Task 1 → Task 2 → Task 3；Task 4 为 deferred（另立 ADR，不在本计�
 #### 详细步骤
 
 - [x] **Step 1**：host 回归绿——35/35 mcs51 host 测试通过（含新增 2 个）。3 个排除项为预存 break（`test_mcs51_port_extint`/`test_mcs51_wink_mcu` 的 `putchar(char)` 链接失败经干净树验证与本变更无关；`test_pal_nonblocking_strict` 的 PAL 弃用告警同理）。
-- [ ] **Step 2**：sister repo 重建生产 wasm，8 应用 22 场景全绿（含 `health-pot-uart-telemetry`、`uart0_printf`、`uart0_rxtx`）。（本仓无法执行，需 sister repo 侧跑）
+- [x] **Step 2**：sister repo 重建生产 wasm，8 应用 22 场景全绿（2026-09-11 执行）。明细：health_pot 15/15、5 carrier 各 1/1、vendor uart0_printf/uart0_rxtx 各 1/1，step 级 0 失败、进程退出码全 0。
 - [x] **Step 3**：红线手册 §4.6 补「UART 仿真校验边界」条目；GAP-02 首个验收 checkbox 打勾（第二个待 wasm）。
+
+#### wasm 回归附带发现（门禁真阳性，R-001 路径 A 命中）
+
+`mcs51_uart_hello`、`mcs51_uart_echo` 在 Release 下各产生 **1 条** not-ready 告警：`[MCS51] UART TX link not ready: baud source not running/unmodeled`（t=0）。核对源码确认**是应用真缺配置而非检查过严**：两个 carrier 均为功能级证明程序，从未配置 TMOD/TH1/TR1（文件头注释自述 "At the functional level there is no baud/timer model"），硅片上模式 1 UART 无波特率时钟、TI 永不会置位——正是本门禁要抓的"仿真绿/真机挂"。对照：health_pot（完整 T1 配置）与两个 vendor 例程（BRT/完整初始化）**0 告警**，反向证明谓词没有误伤。
+
+**处置（待定，建议方案 B）**：
+- 方案 A：保留功能级定位，在 GAP-10 runner 判决中对这两个应用加 not-ready 白名单（语义：功能证明，非硅片可用）。
+- 方案 B（推荐）：给两个 carrier 补 T1 波特率初始化（TMOD mode2 + TH1 重载 + TR1=1，如 9600bps@24MHz 的 TH1=217 路径或经典 11.0592MHz 值），使其同时是功能证明与硅片可用固件；补 SDCC 门禁（GAP-03 已绿）双重背书。
 
 ---
 
