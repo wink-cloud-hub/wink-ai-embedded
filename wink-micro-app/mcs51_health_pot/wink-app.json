@@ -71,6 +71,19 @@
       "active_low": true,
       "color": "blue",
       "label": "功能/模式"
+    },
+    "temp_sensor": {
+      "type": "ntc",
+      "pins": {
+        "OUT": "$board.headers.P00"
+      },
+      "label": "水温探头",
+      "properties": {
+        "temperature": 25,
+        "r25": 10000,
+        "bValue": 3950,
+        "pullUpResistor": 10000
+      }
     }
   }
 }
