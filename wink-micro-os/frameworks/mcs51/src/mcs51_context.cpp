@@ -8,7 +8,49 @@
 static Mcu51Context s_default_mcu_context = {};
 Mcu51Context* g_active_mcu_context = &s_default_mcu_context;
 
+namespace {
+
+// Compile-time family default (production wasm builds define WINK_MCU_*
+// directory-scoped; host tests override through mcs51_context_set_family).
+uint8_t s_mcu_family =
+#if defined(WINK_MCU_CMS8S78XX)
+    MCS51_FAMILY_CMS8S78XX;
+#else
+    MCS51_FAMILY_CLASSIC;
+#endif
+
+// Family-specific silicon seeds applied AFTER memset + peripheral
+// init/reset (GAP-04 CKCON reset value, GAP-13 power-on Fosc).
+void apply_silicon_seeds(Mcu51Context* ctx) {
+    if (s_mcu_family == MCS51_FAMILY_CMS8S78XX) {
+        // Ref manual §8.2.2: CKCON reset = 0x07 (WTS=000, T1M=T0M=1,
+        // Timer0/1 clock Fsys/4 out of reset).
+        ctx->sfr_shadow[0x8E] = 0x07u;
+        // CMS8S78xx power-on internal RC = 24 MHz (datasheet ±1%). Set the
+        // field on the reset context directly (reset may target a context
+        // other than the active one). The SFR-access billing quantum stays
+        // on its 12 MHz-calibrated budget deliberately (ADR-0072).
+        ctx->clock_hz = 24000000u;
+    } else {
+        // Classic 8052 has no CKCON SFR; timers are fixed at Fsys/12.
+        // Shadow stays 0 (counts_to_us picks the /12 divider). Leave
+        // clock_hz at 0 so the 12 MHz family defaults remain in effect.
+        ctx->sfr_shadow[0x8E] = 0x00u;
+    }
+}
+
+}  // namespace
+
 extern "C" {
+
+void mcs51_context_set_family(uint8_t family) {
+    s_mcu_family = family;
+    apply_silicon_seeds(mcs51_get_context());
+}
+
+uint8_t mcs51_context_get_family(void) {
+    return s_mcu_family;
+}
 
 void mcs51_context_reset(Mcu51Context* ctx) {
     if (ctx == nullptr) {
@@ -73,6 +115,10 @@ void mcs51_context_reset(Mcu51Context* ctx) {
             g_mcs51_peripherals[i].reset(ctx);
         }
     }
+
+    // Family-specific silicon seeds last: CKCON reset value / power-on Fosc
+    // must not be disturbed by peripheral resets (GAP-04/GAP-13).
+    apply_silicon_seeds(ctx);
 }
 
 } // extern "C"
