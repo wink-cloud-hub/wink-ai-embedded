@@ -574,3 +574,10 @@ health_pot 的 10ms tick（T0 重载 0xB1E0）与 9600bps（TH1=217）都按 24M
 2. **wasm 无头回归已完成（2026-09-10，sister repo wink.py 自动重建生产 wasm）**：health_pot **15/15** 场景 PASS（含干烧/超温/继电器 dwell/遥测，验证 GAP-13 生产路径：CMS8S 种子 CKCON=0x07+24MHz 与应用显式重配置共存）；5 个经典 carrier 各 1/1（uart_hello/uart_echo/analog_threshold/button_led/button_led_int，at89c52 家族路径无回归）；GAP-01 活体验证——厂商未修改例程 **uart0_printf、uart0_rxtx 各 1/1 PASS**（两者都写 `P13CFG=GPIO_P13_MUX_RXD`，现在落 0x03）。合计 8 应用 22 场景全绿。
 3. 工作区有 1 个非内容改动：`mcs51_health_pot/unisim-assets/device-tree.json` 与厂商 2 例的 device-tree.json 仅 CRLF 规范化差异（configure/资产提取触发），提交时排除或还原。无头运行重建了 7 个应用的 `wink_simulator.{js,wasm}` 资产——属于 tracked 构建产物（参照历史 commit `rebuild wasm simulator asset`），随框架改动一并重新生成，提交时确认 diff 仅为重建内容。
 4. GAP-22 的家族门控（at89 构建不应注册 CMS8S 专属模型 hook）只完成了种子层，外设表门控待阶段 3。
+
+### 10.2 第二轮执行：GAP-22 修正 + GAP-03 Task 0（2026-09-10，已提交）
+
+- **GAP-22 优先级位修正（commit 7a8479e）**：SDCC 试点用原厂头机械转译时发现 v1 修复的 EIP 位公式错误——原厂 `IRQ_SET_PRIORITY` 按**优先级模块编号**（扩展模块=向量+1）而非 vector−16。正确映射：T3→EIP2.0、T4→EIP2.1、PWM→EIP2.3、ADC→EIP2.4。审计脚本升级为 vector+priority 全字段硬比对并通过变异测试；31 host 测试全绿。
+- **GAP-03 Task 0 落地（SDCC Tier-S 门禁工具链）**：`mcs51_sdcc_devhdr.py`（原厂 Keil 头→SDCC 机械转译，杜绝手写占位漂移）、`sdcc_gate/` 头树（家族 wink_mcu.h、intrins/absacc/经典名别名）、`mcs51_sdcc_gate.py`（按应用 cleanup→编译→**链接**→`--code/iram/xram-size` 预算判决→`.mem` 报告；CMS8S 自动链接全套厂商 StdDriver）；cleanup 新增用户 `sbit` 声明 SDCC 改写与 GB18030 回退。
+- **门禁实测**：**8/8 应用通过**（6 官方 carrier + 厂商 uart0_printf/uart0_rxtx 多 TU 例程）；未定义符号负向样例正确红灯；health_pot CODE=10923B/16KB、栈余 184B（CMS8S CODE 含整套 StdDriver 偏保守，Tier-K 为最终准）。
+- 评审修正已并入两份实施计划：GAP-02 v1.1（默认引脚 P3.1/P3.0 非必需 CFG、家族门控、位掩码计数器、STRICT 独立构建目标）；GAP-03 v1.1（弃用 `--std-c89`、预算需链接+容量参数、转译器替代占位头、Task 0 状态）。
