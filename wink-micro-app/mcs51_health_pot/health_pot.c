@@ -16,8 +16,13 @@
  *   - Heater relay on P2.0 (active high).
  *   - Timer0 mode 1 (16-bit) 10 ms tick ISR: 4COM dynamic display scanning.
  *   - UART mode 1 polled TX telemetry once per second for headless assertions.
- *   - Comprehensive safety: NTC open/short, dry-fire watchdog (25s < 45C in HEAT),
- *     over-temp watchdog (12-bit raw <= 16 / >105 C for 10s), relay minimum-off dwell.
+ *   - Comprehensive safety: NTC open/short, two-stage dry-fire watchdog
+ *     (25s < 45C, or 60s without reaching boil in HEAT), over-temp watchdog
+ *     (12-bit raw <= 16 / >105 C for 10s; beyond-scale codes also block a
+ *     false boil-complete and force the contact open), relay minimum-off
+ *     dwell on EVERY re-energize path, and a manual ON/OFF fault acknowledge
+ *     (muted standby: the power key is always safe to press; heating cannot
+ *     restart until the probe reads healthy).
  */
 #include <wink_mcu.h>
 #include <absacc.h>
@@ -57,6 +62,8 @@ sbit BTN_FUNC  = P0^5;   /* FUNC button, active low    (linear pin 5)  */
 #define FAULT_RECOVER_TICKS  3u     /* 3 x 100 ms valid samples to auto-clear sensor fault */
 #define DRYFIRE_SECONDS      25u    /* heater on this long below 45 C => dry-fire (E-03) */
 #define DRYFIRE_TEMP_C       45u
+#define BOIL_TIMEOUT_SECONDS 60u    /* heater on this long without reaching 98 C => dry-fire (E-03);
+                                     * accelerated sim value, real product calibrate 600~900 s */
 #define FAULT_BEEP_TIMEOUT   60u    /* silence periodic buzzer alarm after 60 s */
 
 static unsigned int code ntc_lut_raw[11]  = {571, 458, 298, 241, 131,  89,  63,  32,  24,  19,  16};
@@ -116,6 +123,12 @@ static tone_step_t code TONE_RECOVER[] = {
     {0u, 0u}
 };
 
+/* Low short blip: key recognised but action unavailable in this state */
+static tone_step_t code TONE_BUSY[] = {
+    {235u, 3u}, /* ~800 Hz, 30 ms denial/acknowledge blip */
+    {0u, 0u}
+};
+
 static tone_step_t code *cur_melody;
 static unsigned char melody_idx;
 static unsigned char melody_ticks;
@@ -142,7 +155,6 @@ static unsigned char fault_code;         /* 0=ok 1=open 2=short 3=dryfire 4=over
 static unsigned char warm_set;           /* Keep-warm target: 60/80/90 */
 static unsigned char heater_on;          /* Heater drive latch */
 static unsigned char relay_off_sec;      /* Seconds heater has been OFF (saturates 255) */
-static unsigned int  tick10ms;           /* 10 ms tick accumulator */
 static unsigned int  heat_seconds;       /* Continuous seconds heating in HEAT */
 static unsigned char boil_hold;          /* 100 ms ticks in boil confirmation */
 static unsigned char boil_confirm;       /* 1 = confirming boil */
@@ -150,6 +162,12 @@ static unsigned char overtemp_seconds;   /* Consecutive seconds in overtemp zone
 static unsigned char recover_ticks;      /* Valid sensor streak counter */
 static unsigned char fault_beep_seconds; /* Seconds in FAULT with audible alarm */
 static unsigned char blink_toggle;       /* 1 Hz toggle for UI blinking */
+static unsigned char sensor_muted;       /* 1 = sensor fault manually acknowledged:
+                                          * stay in silent safe standby while probe bad */
+static unsigned char div_100ms;          /* Super-loop prescaler: 10 ms -> 100 ms */
+static unsigned char div_500ms;          /* Super-loop prescaler: 10 ms -> 500 ms */
+static unsigned char div_1000ms;         /* Super-loop prescaler: 10 ms -> 1 s */
+static unsigned char warble_phase;       /* 0..99 x 10 ms phase for the fault warble */
 static volatile unsigned char tick_flag;
 
 /* Button debounce states */
@@ -263,8 +281,9 @@ static void buzzer_task(void) {
             }
         }
     } else if (state == ST_FAULT && fault_beep_seconds < FAULT_BEEP_TIMEOUT) {
-        /* Dual-frequency urgent warble: 100 ms @ 3 kHz, 100 ms @ 2 kHz */
-        unsigned int sub = (tick10ms * 10u) % 1000u;
+        /* Dual-frequency urgent warble: 100 ms @ 3 kHz, 100 ms @ 2 kHz.
+         * warble_phase is a 0..99 x 10 ms sawtooth with a clean 1 s period. */
+        unsigned int sub = (unsigned int)warble_phase * 10u;
         if (sub < 100u) {
             BUZDIV = 63u;
             BUZ_EnableBuzzer();
@@ -342,6 +361,13 @@ static void button_scan(void) {
 static void enter_fault(unsigned char code_val) {
     if (state == ST_FAULT) {
         heater_on = 0;
+        /* A latched thermal fault (E-03/E-04) has top priority and is never
+         * downgraded to a self-clearing sensor fault. Within the sensor class
+         * the code still refreshes (open <-> short) so the display and the
+         * telemetry frame match the actual probe reading. */
+        if (fault_code != 3u && fault_code != 4u) {
+            fault_code = code_val;
+        }
         return;
     }
     state = ST_FAULT;
@@ -349,9 +375,9 @@ static void enter_fault(unsigned char code_val) {
     heater_on = 0;
     recover_ticks = 0;
     fault_beep_seconds = 0;
-    /* Urgent entry chirp: 3 kHz tone */
-    BUZDIV = 63u;
-    BUZ_EnableBuzzer();
+    /* Cut any key/melody tone so the urgent warble starts at the next 10 ms
+     * buzzer tick instead of being masked for the melody's remaining time. */
+    cur_melody = 0;
 }
 
 /* ---- 100 ms Control Task: ADC + State Machine ---------------------------- */
@@ -364,16 +390,30 @@ static void control_task(void) {
     XBYTE[TLM_ADC_H] = (unsigned char)((raw >> 8) & 0x0Fu);
     XBYTE[TLM_ADC_L] = (unsigned char)(raw & 0xFFu);
 
-    /* Implicit POST & continuous sensor health monitoring */
+    /* Implicit POST & continuous sensor health monitoring, evaluated BEFORE
+     * the state machine so a bad probe can never be acted upon. A sensor
+     * fault that the user has manually acknowledged stays in a silent "muted
+     * standby" instead of re-alarming every tick: the contact stays open and
+     * the fault is remembered (telemetry F) until the probe reads healthy. */
     if (adc_code >= NTC_OPEN_RAW) {
-        enter_fault(1u);  /* NTC Open -> E-01 */
+        if (state == ST_OFF && sensor_muted) {
+            fault_code = 1u;  /* NTC open, acknowledged standby */
+        } else {
+            enter_fault(1u);  /* NTC Open -> E-01 */
+        }
     } else if (adc_code <= NTC_SHORT_RAW) {
-        enter_fault(2u);  /* NTC Short -> E-02 */
+        if (state == ST_OFF && sensor_muted) {
+            fault_code = 2u;  /* NTC short, acknowledged standby */
+        } else {
+            enter_fault(2u);  /* NTC Short -> E-02 */
+        }
     }
 
-    /* Auto-recovery check for sensor faults (E-01, E-02) */
-    if (state == ST_FAULT && (fault_code == 1u || fault_code == 2u) &&
-        adc_code > NTC_SHORT_RAW && adc_code < NTC_OPEN_RAW) {
+    /* Valid-reading streak for sensor faults (E-01, E-02): covers both the
+     * audible FAULT state and the acknowledged muted-standby state */
+    if (adc_code > NTC_SHORT_RAW && adc_code < NTC_OPEN_RAW &&
+        ((state == ST_FAULT && (fault_code == 1u || fault_code == 2u)) ||
+         (state == ST_OFF && sensor_muted))) {
         if (recover_ticks < 255u) {
             recover_ticks++;
         }
@@ -387,15 +427,35 @@ static void control_task(void) {
         boil_hold = 0;
         boil_confirm = 0;
         heat_seconds = 0;
+        overtemp_seconds = 0;
+        if (sensor_muted && recover_ticks >= FAULT_RECOVER_TICKS) {
+            /* Probe healthy again after a manual fault acknowledge */
+            sensor_muted = 0u;
+            fault_code = 0u;
+            recover_ticks = 0u;
+            play_melody(TONE_RECOVER);
+        }
         if (evt_onoff) {
-            state = ST_HEAT;
-            fault_code = 0;
-            warm_set = 60u;
-            boil_hold = 0;
-            boil_confirm = 0;
-            heat_seconds = 0;
-            overtemp_seconds = 0;
-            play_melody(TONE_KEY);
+            if (adc_code >= NTC_OPEN_RAW || adc_code <= NTC_SHORT_RAW) {
+                /* Probe still unhealthy: refuse to start and surface the
+                 * fault again instead of entering a blind heating cycle */
+                sensor_muted = 0u;
+                enter_fault((adc_code >= NTC_OPEN_RAW) ? 1u : 2u);
+            } else {
+                state = ST_HEAT;
+                fault_code = 0u;
+                sensor_muted = 0u;
+                warm_set = 60u;
+                boil_hold = 0u;
+                boil_confirm = 0u;
+                heat_seconds = 0u;
+                overtemp_seconds = 0u;
+                play_melody(TONE_KEY);
+            }
+        }
+        if (evt_func) {
+            /* FUNC has no function in standby: acknowledge with a low blip */
+            play_melody(TONE_BUSY);
         }
         break;
 
@@ -404,10 +464,21 @@ static void control_task(void) {
             state = ST_OFF;
             heater_on = 0;
             boil_confirm = 0;
+            boil_hold = 0;
+            heat_seconds = 0;
+            overtemp_seconds = 0;
             play_melody(TONE_KEY);
             break;
         }
-        if (boil_confirm || temp_c >= BOIL_TEMP_C) {
+        if (evt_func) {
+            /* Setpoint selection belongs to WARM; acknowledge the press */
+            play_melody(TONE_BUSY);
+        }
+        /* Beyond-scale raw (<=16, >105 C) must not be mistaken for boil:
+         * block the 3 s confirmation while the over-temp watchdog qualifies.
+         * If the probe returns into a plausible boiling band the hold simply
+         * resumes, so genuine 98 C operation is unaffected. */
+        if ((boil_confirm || temp_c >= BOIL_TEMP_C) && adc_code > OVERTEMP_RAW) {
             /* Boil confirmation: heater off, maintain 3 seconds hold */
             heater_on = 0;
             boil_confirm = 1;
@@ -419,7 +490,11 @@ static void control_task(void) {
                 play_melody(TONE_BOIL_DONE);
             }
         } else {
-            heater_on = 1;
+            /* Dwell-gated like every re-energize path: a rapid OFF->ON power
+             * toggle cannot reclose the contact with zero off-time */
+            if (relay_off_sec >= RELAY_DWELL_SECONDS) {
+                heater_on = 1;
+            }
         }
         break;
 
@@ -427,6 +502,10 @@ static void control_task(void) {
         if (evt_onoff) {
             state = ST_OFF;
             heater_on = 0;
+            boil_confirm = 0;
+            boil_hold = 0;
+            heat_seconds = 0;
+            overtemp_seconds = 0;
             play_melody(TONE_KEY);
             break;
         }
@@ -458,16 +537,27 @@ static void control_task(void) {
             if (evt_onoff) {
                 state = ST_OFF;
                 fault_code = 0;
+                sensor_muted = 0u;
                 heat_seconds = 0;
                 overtemp_seconds = 0;
                 recover_ticks = 0;
                 play_melody(TONE_KEY);
             }
         } else {
-            /* Sensor faults (E-01, E-02): auto-return after debounced streak */
-            if (recover_ticks >= FAULT_RECOVER_TICKS) {
+            if (evt_onoff) {
+                /* Sensor faults (E-01, E-02): ON/OFF is always honoured.
+                 * Acknowledge into a silent muted standby with the contact
+                 * locked out; the probe recovery streak keeps running so the
+                 * fault clears itself once readings are healthy again. */
+                state = ST_OFF;
+                sensor_muted = 1u;
+                heater_on = 0;
+                play_melody(TONE_KEY);
+            } else if (recover_ticks >= FAULT_RECOVER_TICKS) {
+                /* Auto-return after the debounced valid-reading streak */
                 state = ST_OFF;
                 fault_code = 0;
+                sensor_muted = 0u;
                 recover_ticks = 0;
                 play_melody(TONE_RECOVER);
             }
@@ -478,6 +568,13 @@ static void control_task(void) {
         state = ST_OFF;
         heater_on = 0;
         break;
+    }
+
+    /* Beyond-scale codes in an active thermal cycle force the contact open
+     * while the over-temp watchdog qualifies (>105 C band), regardless of
+     * what the state branches above requested. */
+    if ((state == ST_HEAT || state == ST_WARM) && adc_code <= OVERTEMP_RAW) {
+        heater_on = 0;
     }
 
     evt_onoff = 0;
@@ -496,10 +593,16 @@ static void one_second_task(void) {
         relay_off_sec++;
     }
 
-    /* Dry-fire protection: heater on for >25s with temp < 45 C */
+    /* Two-stage dry-fire protection, counted only while the contact is
+     * actually closed in HEAT:
+     *  1) no heat-up past 45 C within DRYFIRE_SECONDS (empty pot / bad coupling)
+     *  2) warm-up stalls and never reaches boil within BOIL_TIMEOUT_SECONDS
+     *     (lid off / cold draught / low mains voltage / small load that has
+     *     already crossed 45 C so stage 1 can no longer catch it) */
     if (state == ST_HEAT && heater_on) {
         heat_seconds++;
-        if (heat_seconds > DRYFIRE_SECONDS && temp_c < DRYFIRE_TEMP_C) {
+        if ((heat_seconds > DRYFIRE_SECONDS && temp_c < DRYFIRE_TEMP_C) ||
+            (heat_seconds > BOIL_TIMEOUT_SECONDS && temp_c < BOIL_TEMP_C)) {
             enter_fault(3u);  /* Dry-fire -> E-03 */
         }
     }
@@ -662,7 +765,6 @@ void main(void) {
     warm_set = 60u;
     heater_on = 0;
     relay_off_sec = 255u;
-    tick10ms = 0;
     heat_seconds = 0;
     boil_hold = 0;
     boil_confirm = 0;
@@ -670,6 +772,11 @@ void main(void) {
     recover_ticks = 0;
     fault_beep_seconds = 0;
     blink_toggle = 0;
+    sensor_muted = 0;
+    div_100ms = 0;
+    div_500ms = 0;
+    div_1000ms = 0;
+    warble_phase = 0;
     scan_idx = 0;
     db_onoff = 0;
     db_func = 0;
@@ -703,24 +810,33 @@ void main(void) {
             continue;
         }
         tick_flag = 0;
-        tick10ms++;
 
         /* 10 ms periodic tasks: button debouncing & buzzer sequencer */
         button_scan();
         buzzer_task();
+        if (warble_phase < 99u) {
+            warble_phase++;
+        } else {
+            warble_phase = 0u;
+        }
 
-        /* 100 ms periodic tasks: temperature sampling & control state machine */
-        if ((tick10ms % 10u) == 0u) {
+        /* Independent byte prescalers: fixed 100 ms / 500 ms / 1 s phases
+         * with no 16-bit tick counter that can wrap and shorten a second */
+        if (++div_100ms >= 10u) {
+            div_100ms = 0u;
+            /* 100 ms periodic tasks: temperature sampling & control state machine */
             control_task();
         }
 
-        /* 500 ms periodic tasks: 1 Hz blink toggle (dp & fault LED) */
-        if ((tick10ms % 50u) == 0u) {
+        if (++div_500ms >= 50u) {
+            div_500ms = 0u;
+            /* 1 Hz blink toggle (dp & fault LED) */
             blink_toggle ^= 1u;
         }
 
-        /* 1000 ms periodic tasks: watchdogs & telemetry */
-        if ((tick10ms % 100u) == 0u) {
+        if (++div_1000ms >= 100u) {
+            div_1000ms = 0u;
+            /* 1 s periodic tasks: watchdogs & telemetry */
             one_second_task();
         }
 
