@@ -30,6 +30,9 @@ void cms8s_buzzer_reset(struct Mcu51Context* ctx);
 void cms8s_buzzer_poll(struct Mcu51Context* ctx);
 uint64_t cms8s_buzzer_next_event_us(struct Mcu51Context* ctx);
 
+void cms8s_sys_init(struct Mcu51Context* ctx);
+void cms8s_sys_reset(struct Mcu51Context* ctx);
+
 const mcs51_peripheral_desc_t g_mcs51_peripherals[] = {
     {
         "timer",
@@ -69,6 +72,14 @@ const mcs51_peripheral_desc_t g_mcs51_peripherals[] = {
         cms8s_buzzer_reset,
         cms8s_buzzer_poll,
         cms8s_buzzer_next_event_us,
+        MCS51_PHASE_CLOCK
+    },
+    {
+        "cms8s_sys",
+        cms8s_sys_init,
+        cms8s_sys_reset,
+        nullptr,
+        nullptr,
         MCS51_PHASE_CLOCK
     }
 };

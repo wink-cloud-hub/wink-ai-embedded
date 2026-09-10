@@ -46,6 +46,7 @@ extern "C" {
 // Task F3: Dynamic microstep quantum calibration from clock_hz
 uint32_t wink_mcs51_calc_microstep_us(uint32_t clock_hz);
 void     wink_mcs51_set_clock_hz(uint32_t clock_hz);
+void     wink_mcs51_set_hardware_clock_hz(uint32_t clock_hz);
 uint32_t wink_mcs51_get_clock_hz(void);
 uint32_t wink_mcs51_get_microstep_us(void);
 
