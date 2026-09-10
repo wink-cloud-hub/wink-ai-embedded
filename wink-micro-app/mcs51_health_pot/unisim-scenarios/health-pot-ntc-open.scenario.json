@@ -6,7 +6,9 @@
     "accuracyMode": "behavioral",
     "timeoutUs": "8000000",
     "failurePolicy": "fail-fast",
-    "determinism": { "prngSeed": 42 }
+    "determinism": {
+      "prngSeed": 42
+    }
   },
   "steps": [
     {
@@ -14,21 +16,25 @@
       "timeUs": "30ms",
       "adcChannel": 32,
       "valueNorm": 0.0586,
-      "description": "Cold water present before first control tick: 8-bit code ~240 -> 25 C (valueNorm = code/4095, low-byte rail convention)"
+      "description": "Cold water present before first control tick: 12-bit raw ~240 -> 25 C (valueNorm = raw/4096)"
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "400ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true }
+      "params": {
+        "pressed": true
+      }
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "700ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": false }
+      "params": {
+        "pressed": false
+      }
     },
     {
       "type": "ASSERT_POINT",
@@ -39,7 +45,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["900ms", "1500ms"],
+      "windowUs": [
+        "900ms",
+        "1500ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -51,8 +60,8 @@
       "type": "INPUT_ANALOG",
       "timeUs": "2000ms",
       "adcChannel": 32,
-      "valueNorm": 0.0623,
-      "description": "NTC probe opens: rail -> 8-bit code 255 >= NTC_OPEN_CODE(250) => sensor-open fault F=1. valueNorm = 255/4095 ~= 0.0623"
+      "valueNorm": 1.0,
+      "description": "NTC probe opens: divider rail pulls to full scale -> 12-bit raw 4095 >= NTC_OPEN_RAW(3900) => sensor-open fault F=1. valueNorm = 1.0"
     },
     {
       "type": "ASSERT_POINT",
@@ -63,7 +72,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["2500ms", "3500ms"],
+      "windowUs": [
+        "2500ms",
+        "3500ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -80,7 +92,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["4800ms", "6300ms"],
+      "windowUs": [
+        "4800ms",
+        "6300ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",

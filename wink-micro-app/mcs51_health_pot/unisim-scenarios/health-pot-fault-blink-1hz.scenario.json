@@ -1,0 +1,78 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51_health_pot fault LED blinks at 1 Hz (500 ms half-period)",
+    "templateId": "mcs51_health_pot",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "6000000",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "30ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0586,
+      "description": "Cold water present before first control tick: raw ~240 -> 25 C"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "400ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "600ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "1000ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0,
+      "description": "NTC probe shorts: rail 0 -> raw 0 <= NTC_SHORT_RAW(8) => E-02 fault"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Fault forces heater off"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "plugin:display/text",
+      "matcher": "E-02",
+      "description": "Fault code displayed"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2050ms",
+      "target": "plugin:led_fault/on",
+      "matcher": false,
+      "description": "Fault LED OFF at 2.05 s (toggle phase even)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2550ms",
+      "target": "plugin:led_fault/on",
+      "matcher": true,
+      "description": "Fault LED ON 500 ms later: half-period is 500 ms = 1 Hz blink (the old 1 s toggle / 0.5 Hz firmware fails this sample, LED would still be OFF)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "3050ms",
+      "target": "plugin:led_fault/on",
+      "matcher": false,
+      "description": "Fault LED OFF after a full second (samples 1 s apart are opposite phases at 1 Hz, identical at 0.5 Hz)"
+    }
+  ]
+}

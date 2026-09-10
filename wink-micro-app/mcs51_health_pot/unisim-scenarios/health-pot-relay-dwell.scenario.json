@@ -6,7 +6,9 @@
     "accuracyMode": "behavioral",
     "timeoutUs": "12500ms",
     "failurePolicy": "fail-fast",
-    "determinism": { "prngSeed": 42 }
+    "determinism": {
+      "prngSeed": 42
+    }
   },
   "steps": [
     {
@@ -21,21 +23,25 @@
       "timeUs": "30ms",
       "adcChannel": 32,
       "valueNorm": 0.0586,
-      "description": "Cold water BEFORE first 100 ms control tick: ADC0832 code ~240 -> 25 C (valueNorm = 240/4095, low-byte rail convention)"
+      "description": "Cold water BEFORE first 100 ms control tick: 12-bit raw ~240 -> 25 C (valueNorm = 240/4096)"
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "400ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true }
+      "params": {
+        "pressed": true
+      }
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "700ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": false }
+      "params": {
+        "pressed": false
+      }
     },
     {
       "type": "ASSERT_POINT",
@@ -46,7 +52,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["900ms", "1500ms"],
+      "windowUs": [
+        "900ms",
+        "1500ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -58,8 +67,8 @@
       "type": "INPUT_ANALOG",
       "timeUs": "1600ms",
       "adcChannel": 32,
-      "valueNorm": 0.0122,
-      "description": "Water reaches boil: code ~50 -> ~98 C (>= 98 C threshold); heater cuts at ~1.7 s, 3 s boil hold follows"
+      "valueNorm": 0.0047,
+      "description": "Water reaches boil: 12-bit raw ~19 -> 98 C (>= 98 C threshold); heater cuts at ~1.7 s, 3 s boil hold follows"
     },
     {
       "type": "ASSERT_POINT",
@@ -79,8 +88,8 @@
       "type": "INPUT_ANALOG",
       "timeUs": "5900ms",
       "adcChannel": 32,
-      "valueNorm": 0.0427,
-      "description": "Water cools to ~50 C (code ~175; LUT interp 40+(60-40)*(200-175)/(200-150)=50 C; 175/4095=0.0427). 50 < 60-3 => bang-bang requests heat. Relay has been off since ~1.7 s (> 3 s dwell) so re-energize is allowed"
+      "valueNorm": 0.022,
+      "description": "Water cools to ~50 C (12-bit raw ~90; LUT interp 40+(50-40)*(131-90)/(131-89)~=50 C; 90/4096=0.0220). 50 < 60-3 => bang-bang requests heat. Relay has been off since ~1.7 s (> 3 s dwell) so re-energize is allowed"
     },
     {
       "type": "ASSERT_POINT",
@@ -93,8 +102,8 @@
       "type": "INPUT_ANALOG",
       "timeUs": "7050ms",
       "adcChannel": 32,
-      "valueNorm": 0.0122,
-      "description": "Water heats back to ~98 C (code ~50; > 60+3): bang-bang requests OFF. Injected just after the 7.0 s tick so the cut-off lands at the 7.1 s control tick, making the dwell window deterministic"
+      "valueNorm": 0.0047,
+      "description": "Water heats back to ~98 C (12-bit raw ~19; > 60+3): bang-bang requests OFF. Injected just after the 7.0 s tick so the cut-off lands at the 7.1 s control tick, making the dwell window deterministic"
     },
     {
       "type": "ASSERT_POINT",
@@ -107,8 +116,8 @@
       "type": "INPUT_ANALOG",
       "timeUs": "7550ms",
       "adcChannel": 32,
-      "valueNorm": 0.0427,
-      "description": "Water immediately cools to ~50 C again (code ~175): bang-bang requests heat, but the relay has been off only ~0.5 s (< 3 s RELAY_DWELL_SECONDS) so re-energize must be withheld"
+      "valueNorm": 0.022,
+      "description": "Water immediately cools to ~50 C again (12-bit raw ~90): bang-bang requests heat, but the relay has been off only ~0.5 s (< 3 s RELAY_DWELL_SECONDS) so re-energize must be withheld"
     },
     {
       "type": "ASSERT_POINT",
@@ -119,7 +128,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["8500ms", "10500ms"],
+      "windowUs": [
+        "8500ms",
+        "10500ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -136,7 +148,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["10800ms", "11900ms"],
+      "windowUs": [
+        "10800ms",
+        "11900ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
