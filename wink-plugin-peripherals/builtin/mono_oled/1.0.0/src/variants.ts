@@ -10,87 +10,48 @@ export const MONO_OLED_TOPOLOGY_EQUIVALENCE: Readonly<
   ssd1306_spi: [],
 });
 
+import { MONO_OLED_AUTOGEN_OVERLAY, MONO_OLED_AUTOGEN_SIZE } from './variants.generated';
+
+export const MONO_OLED_SIZE = MONO_OLED_AUTOGEN_SIZE;
+export const MONO_OLED_OVERLAY = MONO_OLED_AUTOGEN_OVERLAY;
+
 const I2C_OVERLAY: Readonly<PinsOverlayMap> = Object.freeze({
   DATA: Object.freeze({
-    relX: 40,
-    relY: 75,
-    wireNet: 'primary' as const,
+    ...MONO_OLED_AUTOGEN_OVERLAY.DATA,
     defaultConnection: 21 as const,
-    required: true,
   }),
   CLK: Object.freeze({
-    relX: 50,
-    relY: 75,
-    wireNet: 'secondary' as const,
+    ...MONO_OLED_AUTOGEN_OVERLAY.CLK,
     defaultConnection: 22 as const,
     required: true,
   }),
-  '3V3': Object.freeze({
-    relX: 90,
-    relY: 75,
-    wireNet: 'vcc' as const,
-    defaultConnection: '3V3' as const,
-    required: false,
-  }),
-  GND: Object.freeze({
-    relX: 110,
-    relY: 75,
-    wireNet: 'gnd' as const,
-    defaultConnection: 'GND' as const,
-    required: false,
-  }),
+  '3V3': MONO_OLED_AUTOGEN_OVERLAY['3V3'],
+  GND: MONO_OLED_AUTOGEN_OVERLAY.GND,
 });
 
 const SPI_OVERLAY: Readonly<PinsOverlayMap> = Object.freeze({
   CLK: Object.freeze({
-    relX: 30,
-    relY: 75,
-    wireNet: 'secondary' as const,
+    ...MONO_OLED_AUTOGEN_OVERLAY.CLK,
     defaultConnection: 18 as const,
-    required: true,
   }),
   DIN: Object.freeze({
-    relX: 45,
-    relY: 75,
-    wireNet: 'primary' as const,
+    ...MONO_OLED_AUTOGEN_OVERLAY.DATA,
     defaultConnection: 23 as const,
-    required: true,
   }),
   CS: Object.freeze({
-    relX: 60,
-    relY: 75,
-    wireNet: 'secondary' as const,
+    ...MONO_OLED_AUTOGEN_OVERLAY.CS,
     defaultConnection: 5 as const,
-    required: false,
   }),
   DC: Object.freeze({
-    relX: 75,
-    relY: 75,
-    wireNet: 'secondary' as const,
+    ...MONO_OLED_AUTOGEN_OVERLAY.DC,
     defaultConnection: 17 as const,
-    required: true,
   }),
   RES: Object.freeze({
-    relX: 90,
-    relY: 75,
-    wireNet: 'secondary' as const,
+    ...MONO_OLED_AUTOGEN_OVERLAY.RST,
     defaultConnection: 16 as const,
-    required: false,
   }),
-  '3V3': Object.freeze({
-    relX: 105,
-    relY: 75,
-    wireNet: 'vcc' as const,
-    defaultConnection: '3V3' as const,
-    required: false,
-  }),
-  GND: Object.freeze({
-    relX: 120,
-    relY: 75,
-    wireNet: 'gnd' as const,
-    defaultConnection: 'GND' as const,
-    required: false,
-  }),
+  '3V3': MONO_OLED_AUTOGEN_OVERLAY['3V3'],
+  GND: MONO_OLED_AUTOGEN_OVERLAY.GND,
 });
 
 export const MONO_OLED_TOPOLOGIES: Readonly<

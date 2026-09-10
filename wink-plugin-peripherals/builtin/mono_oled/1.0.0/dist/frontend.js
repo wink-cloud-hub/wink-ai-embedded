@@ -62,101 +62,117 @@ var p = /* @__PURE__ */ i({
 			ref: n
 		}, null, 512));
 	}
+}), h = Object.freeze({
+	width: 150,
+	height: 116
+}), g = Object.freeze({
+	DATA: Object.freeze({
+		relX: 37,
+		relY: 13,
+		wireNet: "primary",
+		defaultConnection: null,
+		required: !0
+	}),
+	CLK: Object.freeze({
+		relX: 46,
+		relY: 13,
+		wireNet: "secondary",
+		defaultConnection: null,
+		required: !1
+	}),
+	DC: Object.freeze({
+		relX: 55,
+		relY: 13,
+		wireNet: "secondary",
+		defaultConnection: null,
+		required: !1
+	}),
+	RST: Object.freeze({
+		relX: 65,
+		relY: 13,
+		wireNet: "secondary",
+		defaultConnection: null,
+		required: !1
+	}),
+	CS: Object.freeze({
+		relX: 75,
+		relY: 13,
+		wireNet: "secondary",
+		defaultConnection: null,
+		required: !1
+	}),
+	"3V3": Object.freeze({
+		relX: 84,
+		relY: 13,
+		wireNet: "vcc",
+		defaultConnection: "3V3",
+		required: !1
+	}),
+	VIN: Object.freeze({
+		relX: 94,
+		relY: 13,
+		wireNet: "vcc",
+		defaultConnection: "VCC",
+		required: !1
+	}),
+	GND: Object.freeze({
+		relX: 104,
+		relY: 12,
+		wireNet: "gnd",
+		defaultConnection: "GND",
+		required: !1
+	})
 });
 Object.freeze({
 	ssd1306_i2c: [],
 	ssd1306_spi: []
 });
-var h = Object.freeze({
+var _ = h, v = Object.freeze({
 	DATA: Object.freeze({
-		relX: 40,
-		relY: 75,
-		wireNet: "primary",
-		defaultConnection: 21,
-		required: !0
+		...g.DATA,
+		defaultConnection: 21
 	}),
 	CLK: Object.freeze({
-		relX: 50,
-		relY: 75,
-		wireNet: "secondary",
+		...g.CLK,
 		defaultConnection: 22,
 		required: !0
 	}),
-	"3V3": Object.freeze({
-		relX: 90,
-		relY: 75,
-		wireNet: "vcc",
-		defaultConnection: "3V3",
-		required: !1
-	}),
-	GND: Object.freeze({
-		relX: 110,
-		relY: 75,
-		wireNet: "gnd",
-		defaultConnection: "GND",
-		required: !1
-	})
-}), g = Object.freeze({
+	"3V3": g["3V3"],
+	GND: g.GND
+}), y = Object.freeze({
 	CLK: Object.freeze({
-		relX: 30,
-		relY: 75,
-		wireNet: "secondary",
-		defaultConnection: 18,
-		required: !0
+		...g.CLK,
+		defaultConnection: 18
 	}),
 	DIN: Object.freeze({
-		relX: 45,
-		relY: 75,
-		wireNet: "primary",
-		defaultConnection: 23,
-		required: !0
+		...g.DATA,
+		defaultConnection: 23
 	}),
 	CS: Object.freeze({
-		relX: 60,
-		relY: 75,
-		wireNet: "secondary",
-		defaultConnection: 5,
-		required: !1
+		...g.CS,
+		defaultConnection: 5
 	}),
 	DC: Object.freeze({
-		relX: 75,
-		relY: 75,
-		wireNet: "secondary",
-		defaultConnection: 17,
-		required: !0
+		...g.DC,
+		defaultConnection: 17
 	}),
 	RES: Object.freeze({
-		relX: 90,
-		relY: 75,
-		wireNet: "secondary",
-		defaultConnection: 16,
-		required: !1
+		...g.RST,
+		defaultConnection: 16
 	}),
-	"3V3": Object.freeze({
-		relX: 105,
-		relY: 75,
-		wireNet: "vcc",
-		defaultConnection: "3V3",
-		required: !1
-	}),
-	GND: Object.freeze({
-		relX: 120,
-		relY: 75,
-		wireNet: "gnd",
-		defaultConnection: "GND",
-		required: !1
-	})
-}), _ = Object.freeze({
+	"3V3": g["3V3"],
+	GND: g.GND
+}), b = Object.freeze({
 	ssd1306_i2c: Object.freeze({
 		variant: "ssd1306_i2c",
 		getPins: () => t("mono_oled", "ssd1306_i2c"),
-		pinsOverlay: h,
+		pinsOverlay: v,
 		defaultAppearanceId: "mono_oled_ssd1306_i2c"
 	}),
 	ssd1306_spi: Object.freeze({
 		variant: "ssd1306_spi",
 		getPins: () => t("mono_oled", "ssd1306_spi"),
-		pinsOverlay: g,
+		pinsOverlay: y,
 		defaultAppearanceId: "mono_oled_ssd1306_spi"
 	})
 });
@@ -184,31 +200,31 @@ Object.freeze({
 });
 //#endregion
 //#region builtin/mono_oled/1.0.0/src/definition.ts
-var v = 128, y = 64, b = n(import.meta.url, "mono_oled", "1.0.0", "display"), x = /* @__PURE__ */ new Set(["ssd1306_fb", "framebuffer"]), S = [
+var x = n(import.meta.url, "mono_oled", "1.0.0", "display"), S = /* @__PURE__ */ new Set(["ssd1306_fb", "framebuffer"]), C = [
 	"displayFrameInstanceId",
 	"pluginInstanceId",
 	"runtimeInstanceId",
 	"simulationInstanceId",
 	"pluginId"
-], C = [
+], w = [
 	"displayIndex",
 	"pluginIndex",
 	"instanceIndex"
 ];
-function w(e) {
-	return !e.kind || x.has(e.kind);
-}
 function T(e) {
+	return !e.kind || S.has(e.kind);
+}
+function E(e) {
 	return e || "mono_oled";
 }
-function E(e, t) {
+function D(e, t) {
 	for (let n of t) {
 		let t = e[n];
 		if (typeof t == "string" && t.trim()) return t;
 	}
 	return null;
 }
-function D(e, t) {
+function O(e, t) {
 	for (let n of t) {
 		let t = e[n];
 		if (typeof t == "number" && Number.isInteger(t) && t >= 0) return t;
@@ -216,30 +232,31 @@ function D(e, t) {
 	}
 	return null;
 }
-function O(e) {
+function k(e) {
 	if (!e) return [];
 	if (typeof e == "string") return [e];
-	let t = [], n = e.props || {}, r = E(n, S);
+	let t = [], n = e.props || {}, r = D(n, C);
 	r && t.push(r);
-	let i = D(n, C);
-	return i !== null && t.push(`${T(e.type)}:${i}`), t.push(e.id), Array.from(new Set(t));
+	let i = O(n, w);
+	return i !== null && t.push(`${E(e.type)}:${i}`), t.push(e.id), Array.from(new Set(t));
 }
-function k(e, t) {
-	let n = e.displayFrames ?? [], r = O(t);
+function A(e, t) {
+	let n = e.displayFrames ?? [], r = k(t);
 	for (let t of r) {
 		let r = e.getDisplayFrame?.(t) ?? n.find((e) => e.instanceId === t) ?? null;
 		if (r) return r;
 	}
-	let i = n.filter(w);
+	let i = n.filter(T);
 	return !t || r.length === 0 ? i[0] ?? n[0] ?? null : i.length === 1 ? i[0] : null;
 }
-function A(e, t) {
-	return k(e, t)?.fb ?? null;
+function j(e, t) {
+	let n = A(e, t);
+	return n?.fb ?? n?.framebuffer ?? e.displayFb ?? null;
 }
-var j = "ssd1306_i2c", M = _[j], N = {
+var M = "ssd1306_i2c", N = b[M], P = {
 	variant: {
 		type: "string",
-		default: j,
+		default: M,
 		description: "OLED topology variant (ssd1306_i2c | ssd1306_spi)"
 	},
 	panel_ic: {
@@ -259,32 +276,29 @@ var j = "ssd1306_i2c", M = _[j], N = {
 		description: "Simulation plugin instance index; -1 means unspecified",
 		advanced: !0
 	}
-}, P = M.pinsOverlay, F = e({
-	type: b.type,
-	size: {
-		width: v,
-		height: y
-	},
+}, F = N.pinsOverlay, I = e({
+	type: x.type,
+	size: _,
 	wireColor: "#a855f7",
 	rotationPolicy: "fixed",
-	pinsOverlay: P,
-	props: N,
+	pinsOverlay: F,
+	props: P,
 	canvas: p,
 	world: m,
 	ui: {
 		canvasProps: (e, t) => ({
-			displayFrame: k(t, e),
-			framebuffer: A(t, e)
+			displayFrame: A(t, e),
+			framebuffer: j(t, e)
 		}),
 		worldProps: (e, t) => {
-			let n = k(t, e);
+			let n = A(t, e);
 			return {
 				pinConnections: e.pinConnections,
 				displayFrame: n,
-				framebuffer: A(t, e)
+				framebuffer: j(t, e)
 			};
 		}
 	}
 });
 //#endregion
-export { F as default, F as oledDefinition, k as pickDisplayFrame };
+export { I as default, I as oledDefinition, A as pickDisplayFrame };

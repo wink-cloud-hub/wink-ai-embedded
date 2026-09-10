@@ -6,29 +6,13 @@ export type RcServoVariantKey = 'sg90';
 export const RC_SERVO_TOPOLOGY_EQUIVALENCE: Readonly<Record<string, readonly string[]>> =
   Object.freeze({});
 
-const SG90_OVERLAY: Readonly<PinsOverlayMap> = Object.freeze({
-  PWM: Object.freeze({
-    relX: -5,
-    relY: 50,
-    wireNet: 'primary' as const,
-    defaultConnection: null,
-    required: true,
-  }),
-  VCC: Object.freeze({
-    relX: -5,
-    relY: 60,
-    wireNet: 'vcc' as const,
-    defaultConnection: 'VCC' as const,
-    required: false,
-  }),
-  GND: Object.freeze({
-    relX: -5,
-    relY: 70,
-    wireNet: 'gnd' as const,
-    defaultConnection: 'GND' as const,
-    required: false,
-  }),
-});
+import {
+  RC_SERVO_AUTOGEN_OVERLAY,
+  RC_SERVO_AUTOGEN_SIZE,
+} from './variants.generated';
+
+export const SG90_OVERLAY = RC_SERVO_AUTOGEN_OVERLAY;
+export const SG90_SIZE = RC_SERVO_AUTOGEN_SIZE;
 
 export const RC_SERVO_TOPOLOGIES = Object.freeze({
   sg90: Object.freeze({

@@ -5,22 +5,10 @@ export type BuzzerVariantKey = 'passive_pwm' | 'active_gpio';
 
 export const BUZZER_TOPOLOGY_EQUIVALENCE: Readonly<Record<string, readonly string[]>> = Object.freeze({});
 
-const BUZZER_OVERLAY: Readonly<PinsOverlayMap> = Object.freeze({
-  '1': Object.freeze({
-    relX: 30,
-    relY: 82,
-    wireNet: 'primary' as const,
-    defaultConnection: null,
-    required: true,
-  }),
-  '2': Object.freeze({
-    relX: 34,
-    relY: 82,
-    wireNet: 'gnd' as const,
-    defaultConnection: 'GND' as const,
-    required: false,
-  }),
-});
+import { BUZZER_AUTOGEN_OVERLAY, BUZZER_AUTOGEN_SIZE } from './variants.generated';
+
+export const BUZZER_OVERLAY = BUZZER_AUTOGEN_OVERLAY;
+export const BUZZER_SIZE = BUZZER_AUTOGEN_SIZE;
 
 const BUZZER_PASSIVE_FALLBACK_PINS: readonly GeneratedBinderPin[] = Object.freeze([
   {

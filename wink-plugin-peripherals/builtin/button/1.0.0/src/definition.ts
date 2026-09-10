@@ -7,7 +7,7 @@ import { resolvePluginIdentity } from '@wink-ai/unisim';
 
 import CanvasGlyph from './CanvasGlyph.vue';
 import WorldWidget from './WorldWidget.vue';
-import { BUTTON_TOPOLOGIES } from './variants';
+import { BUTTON_TOPOLOGIES, BUTTON_SIZE } from './variants';
 
 const identity = resolvePluginIdentity(import.meta.url, 'button', '1.0.0', 'input');
 
@@ -49,7 +49,7 @@ const buttonProps: PeripheralPropsSchema = {
 
 export const buttonDefinition: PeripheralDefinition = definePeripheral({
   type: identity.type,
-  size: { width: 80, height: 60 },
+  size: BUTTON_SIZE,
   wireColor: '#38bdf8',
   pinsOverlay: defaultTopology.pinsOverlay,
   props: buttonProps,

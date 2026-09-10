@@ -20,7 +20,7 @@ const OLED_MODULE_HEIGHT = 116;
 
 import CanvasGlyph from './CanvasGlyph.vue';
 import WorldWidget from './WorldWidget.vue';
-import { MONO_OLED_TOPOLOGIES } from './variants';
+import { MONO_OLED_TOPOLOGIES, MONO_OLED_SIZE } from './variants';
 
 const identity = resolvePluginIdentity(import.meta.url, 'mono_oled', '1.0.0', 'display');
 
@@ -133,7 +133,7 @@ const oledPinsOverlay = defaultTopology.pinsOverlay;
 
 export const oledDefinition: PeripheralDefinition = definePeripheral({
   type: identity.type,
-  size: { width: OLED_MODULE_WIDTH, height: OLED_MODULE_HEIGHT },
+  size: MONO_OLED_SIZE,
   wireColor: '#a855f7',
   rotationPolicy: 'fixed',
   pinsOverlay: oledPinsOverlay,

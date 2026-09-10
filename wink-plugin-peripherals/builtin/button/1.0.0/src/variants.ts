@@ -6,17 +6,10 @@ export type ButtonVariantKey = 'default';
 export const BUTTON_TOPOLOGY_EQUIVALENCE: Readonly<Record<string, readonly string[]>> =
   Object.freeze({});
 
-const BUTTON_OVERLAY: Readonly<PinsOverlayMap> = Object.freeze({
-  '1.l': Object.freeze({ relX: -5, relY: 20, wireNet: 'primary' as const }),
-  '2.l': Object.freeze({
-    relX: -5,
-    relY: 40,
-    wireNet: 'gnd' as const,
-    defaultConnection: 'GND' as const,
-  }),
-  '1.r': Object.freeze({ relX: 75, relY: 13, wireNet: 'primary' as const }),
-  '2.r': Object.freeze({ relX: 75, relY: 33, wireNet: 'gnd' as const }),
-});
+import { BUTTON_AUTOGEN_OVERLAY, BUTTON_AUTOGEN_SIZE } from './variants.generated';
+
+export const BUTTON_OVERLAY = BUTTON_AUTOGEN_OVERLAY;
+export const BUTTON_SIZE = BUTTON_AUTOGEN_SIZE;
 
 export const BUTTON_TOPOLOGIES = Object.freeze({
   default: Object.freeze({

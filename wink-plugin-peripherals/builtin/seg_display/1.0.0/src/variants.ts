@@ -37,20 +37,18 @@ export const SEG_TOPOLOGY_EQUIVALENCE: Readonly<Record<string, readonly string[]
   '1d': Object.freeze(['direct_gpio_1d'] as const),
 });
 
-const SEGMENT_NAMES = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'DP'] as const;
-const SEGMENT_X_COORDS = [23, 47, 70, 93, 117, 140, 163, 187] as const;
+import { SEG_DISPLAY_AUTOGEN_OVERLAY, SEG_DISPLAY_AUTOGEN_SIZE } from './variants.generated';
 
-function createSegmentOverlay(): Record<string, { relX: number; relY: number; wireNet: 'primary'; required: false }> {
-  const overlay: Record<string, { relX: number; relY: number; wireNet: 'primary'; required: false }> = {};
-  for (let i = 0; i < SEGMENT_NAMES.length; i++) {
-    overlay[SEGMENT_NAMES[i]] = Object.freeze({
-      relX: SEGMENT_X_COORDS[i],
-      relY: 96,
-      wireNet: 'primary' as const,
-      required: false,
-    });
-  }
-  return overlay;
+export const SEG_DISPLAY_SIZE = SEG_DISPLAY_AUTOGEN_SIZE;
+export const SEG_DISPLAY_OVERLAY = SEG_DISPLAY_AUTOGEN_OVERLAY;
+
+const SEGMENT_NAMES = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'DP'] as const;
+const SEGMENT_X_COORDS: readonly number[] = Object.freeze(
+  SEGMENT_NAMES.map(name => SEG_DISPLAY_AUTOGEN_OVERLAY[name]?.relX ?? 0),
+);
+
+function createSegmentOverlay(): Readonly<PinsOverlayMap> {
+  return SEG_DISPLAY_AUTOGEN_OVERLAY;
 }
 
 function pinsFromOverlay(overlay: Readonly<PinsOverlayMap>): readonly GeneratedBinderPin[] {

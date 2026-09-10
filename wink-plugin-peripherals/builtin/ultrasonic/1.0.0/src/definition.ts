@@ -3,7 +3,7 @@ import { resolvePluginIdentity } from '@wink-ai/unisim';
 
 import CanvasGlyph from './CanvasGlyph.vue';
 import WorldWidget from './WorldWidget.vue';
-import { ultrasonicPinsOverlay } from './variants';
+import { ultrasonicPinsOverlay, ULTRASONIC_SIZE } from './variants';
 
 const identity = resolvePluginIdentity(import.meta.url, 'ultrasonic', '1.0.0', 'sensor');
 
@@ -30,7 +30,7 @@ const ultrasonicProps: PeripheralPropsSchema = {
 export const ultrasonicDefinition = definePeripheral({
   type: identity.type,
   catalog: { id: identity.type, worldCoupling: 'required' },
-  size: { width: 180, height: 100 },
+  size: ULTRASONIC_SIZE,
   wireColor: '#eab308',
   pinsOverlay: ultrasonicPinsOverlay,
   props: ultrasonicProps,

@@ -3,32 +3,11 @@ import { pinsFromBinderVariant } from '@wink-ai/unisim-ui';
 
 export type UltrasonicVariantKey = 'hcsr04' | 'single_pin_ping' | 'uart_stream' | 'i2c';
 
-const HCSR04_OVERLAY: Readonly<PinsOverlayMap> = Object.freeze({
-  TRIG: Object.freeze({
-    relX: 82,
-    relY: 95,
-    wireNet: 'secondary' as const,
-    defaultConnection: 12 as const,
-  }),
-  ECHO: Object.freeze({
-    relX: 92,
-    relY: 95,
-    wireNet: 'primary' as const,
-    defaultConnection: 13 as const,
-  }),
-  VCC: Object.freeze({
-    relX: 72,
-    relY: 95,
-    wireNet: 'vcc' as const,
-    defaultConnection: 'VCC' as const,
-  }),
-  GND: Object.freeze({
-    relX: 102,
-    relY: 95,
-    wireNet: 'gnd' as const,
-    defaultConnection: 'GND' as const,
-  }),
-});
+import { ULTRASONIC_AUTOGEN_OVERLAY, ULTRASONIC_AUTOGEN_SIZE } from './variants.generated';
+
+export const ULTRASONIC_OVERLAY = ULTRASONIC_AUTOGEN_OVERLAY;
+export const ULTRASONIC_SIZE = ULTRASONIC_AUTOGEN_SIZE;
+const HCSR04_OVERLAY = ULTRASONIC_AUTOGEN_OVERLAY;
 
 const PING_OVERLAY: Readonly<PinsOverlayMap> = Object.freeze({
   SIG: Object.freeze({

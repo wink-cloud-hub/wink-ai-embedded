@@ -3,10 +3,10 @@ import { resolvePluginIdentity as r } from "@wink-ai/unisim";
 import { createCommentVNode as i, createElementBlock as a, createElementVNode as o, defineComponent as s, normalizeClass as c, onBeforeUnmount as l, onMounted as u, openBlock as d, ref as f, toDisplayString as p, watch as m } from "vue";
 import "@wokwi/elements";
 //#region builtin/buzzer/1.0.0/src/CanvasGlyph.vue?vue&type=script&setup=true&lang.ts
-var h = ["hasSignal"], g = { class: "buzzer-badge-area" }, _ = { class: "buzzer-info-row" }, v = { class: "buzzer-label" }, y = ["title"], b = {
+var h = ["hasSignal"], g = { class: "buzzer-badge-area" }, _ = { class: "buzzer-info-row" }, v = ["title"], y = {
 	key: 0,
 	class: "freq-tag"
-}, x = /*@__PURE__*/ s({
+}, b = /*@__PURE__*/ s({
 	__name: "CanvasGlyph",
 	props: {
 		id: {},
@@ -17,8 +17,8 @@ var h = ["hasSignal"], g = { class: "buzzer-badge-area" }, _ = { class: "buzzer-
 		pinConnections: {}
 	},
 	setup(e) {
-		let t = e, n = f(!1), r = null, s = null, x = null, S = null, C = null, w = null, T = null, E = 0;
-		function D() {
+		let t = e, n = f(!1), r = null, s = null, b = null, x = null, S = null, C = null, w = null, T = 0;
+		function E() {
 			if (typeof window > "u") return null;
 			let e = window.AudioContext || window.webkitAudioContext;
 			return e ? (r || (r = new e(), console.log("[Buzzer Glyph] AudioContext created, initial state:", r.state)), r.state === "suspended" && r.resume().then(() => {
@@ -27,40 +27,46 @@ var h = ["hasSignal"], g = { class: "buzzer-badge-area" }, _ = { class: "buzzer-
 				console.warn("[Buzzer Glyph] AudioContext resume waiting for user interaction:", e);
 			}), r) : (console.warn("[Buzzer Glyph] Web Audio API not supported in this browser environment"), null);
 		}
-		function O(e) {
+		function D(e) {
 			if (n.value) return;
-			let t = D();
+			let t = E();
 			if (!t) return;
-			T &&= (clearTimeout(T), null);
+			w &&= (clearTimeout(w), null);
 			let r = Math.max(20, Math.min(2e4, e > 0 ? e : 2e3)), i = t.currentTime;
-			if (!s || !x || !w) try {
-				s = t.createOscillator(), x = t.createGain(), w = t.createGain(), S = t.createOscillator(), C = t.createGain(), r >= 3e3 ? (s.type = "sine", s.frequency.setValueAtTime(r, i), x.gain.setValueAtTime(.24, i), S.type = "sine", S.frequency.setValueAtTime(2400, i), C.gain.setValueAtTime(.035, i)) : (s.type = "square", s.frequency.setValueAtTime(r, i), x.gain.setValueAtTime(.12, i), C.gain.setValueAtTime(0, i)), w.gain.setValueAtTime(1, i), s.connect(x).connect(w), S.connect(C).connect(w), w.connect(t.destination), s.start(), S.start(), E = r, console.log("[Buzzer Glyph] High-fidelity acoustic engine started at", r, "Hz");
+			if (!s || !b || !C) try {
+				s = t.createOscillator(), b = t.createGain(), C = t.createGain(), x = t.createOscillator(), S = t.createGain(), r >= 3e3 ? (s.type = "sine", s.frequency.setValueAtTime(r, i), b.gain.setValueAtTime(.24, i), x.type = "sine", x.frequency.setValueAtTime(2400, i), S.gain.setValueAtTime(.035, i)) : (s.type = "square", s.frequency.setValueAtTime(r, i), b.gain.setValueAtTime(.12, i), S.gain.setValueAtTime(0, i)), C.gain.setValueAtTime(1, i), s.connect(b).connect(C), x.connect(S).connect(C), C.connect(t.destination), s.start(), x.start(), T = r, console.log("[Buzzer Glyph] High-fidelity acoustic engine started at", r, "Hz");
 			} catch (e) {
 				console.error("[Buzzer Glyph] Failed to start audio graph:", e);
 			}
-			else Math.abs(E - r) > 5 && (r >= 3e3 ? (s.type = "sine", s.frequency.setValueAtTime(r, i), x.gain.setValueAtTime(.24, i), S.frequency.setValueAtTime(2400, i), C.gain.setValueAtTime(.035, i)) : (s.type = "square", s.frequency.setValueAtTime(r, i), x.gain.setValueAtTime(.12, i), C.gain.setValueAtTime(0, i)), E = r), w.gain.setValueAtTime(1, i);
+			else Math.abs(T - r) > 5 && (r >= 3e3 ? (s.type = "sine", s.frequency.setValueAtTime(r, i), b.gain.setValueAtTime(.24, i), x.frequency.setValueAtTime(2400, i), S.gain.setValueAtTime(.035, i)) : (s.type = "square", s.frequency.setValueAtTime(r, i), b.gain.setValueAtTime(.12, i), S.gain.setValueAtTime(0, i)), T = r), C.gain.setValueAtTime(1, i);
 		}
-		function k() {
-			if (w && r) {
+		function O() {
+			if (C && r) {
 				let e = r.currentTime;
-				w.gain.setValueAtTime(0, e), T && clearTimeout(T), T = setTimeout(() => {
+				C.gain.setValueAtTime(0, e), w && clearTimeout(w), w = setTimeout(() => {
 					if (s) {
 						try {
 							s.stop(), s.disconnect();
 						} catch {}
 						s = null;
 					}
-					if (S) {
-						try {
-							S.stop(), S.disconnect();
-						} catch {}
-						S = null;
-					}
 					if (x) {
 						try {
-							x.disconnect();
+							x.stop(), x.disconnect();
 						} catch {}
 						x = null;
+					}
+					if (b) {
+						try {
+							b.disconnect();
+						} catch {}
+						b = null;
+					}
+					if (S) {
+						try {
+							S.disconnect();
+						} catch {}
+						S = null;
 					}
 					if (C) {
 						try {
@@ -68,36 +74,34 @@ var h = ["hasSignal"], g = { class: "buzzer-badge-area" }, _ = { class: "buzzer-
 						} catch {}
 						C = null;
 					}
-					if (w) {
-						try {
-							w.disconnect();
-						} catch {}
-						w = null;
-					}
-					E = 0, T = null;
+					T = 0, w = null;
 				}, 50);
 			}
 		}
-		function A(e) {
-			e && e.stopPropagation(), n.value = !n.value, console.log("[Buzzer Glyph] Audio mute toggled to:", n.value), D(), n.value ? k() : t.hasSignal && O(t.frequency ?? 0);
+		function k(e) {
+			e && e.stopPropagation(), n.value = !n.value, console.log("[Buzzer Glyph] Audio mute toggled to:", n.value), E(), n.value ? O() : t.hasSignal && D(t.frequency ?? 0);
 		}
-		function j() {
+		function A() {
 			r && r.state === "suspended" && r.resume().then(() => {
 				console.log("[Buzzer Glyph] AudioContext unlocked by interaction, state:", r?.state);
 			}).catch(() => {});
 		}
-		return u(() => {
-			console.log("[Buzzer Glyph] mounted. props:", t), typeof window < "u" && (window.addEventListener("click", j, {
+		u(() => {
+			console.log("[Buzzer Glyph] mounted. props:", t), typeof window < "u" && (window.addEventListener("click", A, {
 				capture: !0,
 				passive: !0
-			}), window.addEventListener("keydown", j, {
+			}), window.addEventListener("keydown", A, {
 				capture: !0,
 				passive: !0
-			}), window.addEventListener("pointerdown", j, {
+			}), window.addEventListener("pointerdown", A, {
 				capture: !0,
 				passive: !0
-			}));
-		}), m(() => [
+			}), document.addEventListener("visibilitychange", j));
+		});
+		function j() {
+			typeof document > "u" || (document.hidden ? O() : t.hasSignal && !n.value && D(t.frequency ?? 0));
+		}
+		return m(() => [
 			t.hasSignal,
 			t.frequency,
 			n.value
@@ -107,24 +111,24 @@ var h = ["hasSignal"], g = { class: "buzzer-badge-area" }, _ = { class: "buzzer-
 				hasSignal: e,
 				freq: n,
 				muted: r
-			}), e && !r ? O(n ?? 0) : k();
+			}), e && !r ? D(n ?? 0) : O();
 		}, { immediate: !0 }), l(() => {
-			typeof window < "u" && (window.removeEventListener("click", j, { capture: !0 }), window.removeEventListener("keydown", j, { capture: !0 })), k(), r &&= (r.close().catch(() => {}), null);
+			typeof window < "u" && (window.removeEventListener("click", A, { capture: !0 }), window.removeEventListener("keydown", A, { capture: !0 }), window.removeEventListener("pointerdown", A, { capture: !0 }), document.removeEventListener("visibilitychange", j)), O(), r &&= (r.close().catch(() => {}), null);
 		}), (t, r) => (d(), a("div", {
 			class: c(["buzzer-glyph-wrapper", { "is-active": e.hasSignal }]),
-			onClick: D
+			onClick: E
 		}, [o("wokwi-buzzer", { hasSignal: !!e.hasSignal }, null, 8, h), o("div", g, [o("div", _, [o("button", {
 			type: "button",
 			class: "audio-toggle-btn",
 			title: n.value ? "点击开启声音" : "点击静音",
-			onClick: A
-		}, p(n.value ? "🔇" : "🔊"), 9, y)]), e.hasSignal && e.frequency ? (d(), a("span", b, p(Math.round(e.frequency)) + "Hz ", 1)) : i("", !0)])], 2));
+			onClick: k
+		}, p(n.value ? "🔇" : "🔊"), 9, v)]), e.hasSignal && e.frequency ? (d(), a("span", y, p(Math.round(e.frequency)) + "Hz ", 1)) : i("", !0)])], 2));
 	}
-}), S = (e, t) => {
+}), x = (e, t) => {
 	let n = e.__vccOpts || e;
 	for (let [e, r] of t) n[e] = r;
 	return n;
-}, C = /*#__PURE__*/ S(x, [["__scopeId", "data-v-e63c540c"]]), w = { class: "widget-header" }, T = { class: "widget-title" }, E = { class: "metrics-grid" }, D = { class: "metric-item" }, O = { class: "metric-val" }, k = { class: "metric-item" }, A = { class: "metric-val" }, j = { class: "metric-item full-width" }, M = { class: "metric-mode" }, N = { class: "audio-control" }, P = /*#__PURE__*/ S(/* @__PURE__ */ s({
+}, S = /*#__PURE__*/ x(b, [["__scopeId", "data-v-818734d4"]]), C = { class: "widget-header" }, w = { class: "widget-title" }, T = { class: "metrics-grid" }, E = { class: "metric-item" }, D = { class: "metric-val" }, O = { class: "metric-item" }, k = { class: "metric-val" }, A = { class: "metric-item full-width" }, j = { class: "metric-mode" }, M = { class: "audio-control" }, N = /*#__PURE__*/ x(/* @__PURE__ */ s({
 	__name: "WorldWidget",
 	props: {
 		id: {},
@@ -193,60 +197,67 @@ var h = ["hasSignal"], g = { class: "buzzer-badge-area" }, _ = { class: "buzzer-
 				}, 50);
 			}
 		}
-		function C() {
+		function N() {
 			n.value = !n.value, b(), n.value ? S() : t.hasSignal && x(t.frequency);
 		}
 		function P() {
 			r && r.state === "suspended" && r.resume().catch(() => {});
 		}
-		return u(() => {
+		u(() => {
 			typeof window < "u" && (window.addEventListener("click", P, {
 				capture: !0,
 				passive: !0
 			}), window.addEventListener("keydown", P, {
 				capture: !0,
 				passive: !0
-			}));
-		}), m(() => [
+			}), document.addEventListener("visibilitychange", F));
+		});
+		function F() {
+			typeof document > "u" || (document.hidden ? S() : t.hasSignal && !n.value && x(t.frequency));
+		}
+		return m(() => [
 			t.hasSignal,
 			t.frequency,
 			n.value
 		], ([e, t, n]) => {
 			e && !n ? x(t) : S();
 		}, { immediate: !0 }), l(() => {
-			typeof window < "u" && (window.removeEventListener("click", P, { capture: !0 }), window.removeEventListener("keydown", P, { capture: !0 })), S(), r &&= (r.close().catch(() => {}), null);
+			typeof window < "u" && (window.removeEventListener("click", P, { capture: !0 }), window.removeEventListener("keydown", P, { capture: !0 }), document.removeEventListener("visibilitychange", F)), S(), r &&= (r.close().catch(() => {}), null);
 		}), (t, r) => (d(), a("div", { class: c(["buzzer-world-widget", { "is-active": e.hasSignal }]) }, [
-			o("div", w, [o("div", T, [r[0] ||= o("span", { class: "icon" }, "🔔", -1), o("span", null, p(e.label || "Buzzer"), 1)]), o("span", { class: c(["state-pill", e.hasSignal ? "state-on" : "state-off"]) }, p(e.hasSignal ? "SOUNDING" : "QUIET"), 3)]),
-			o("div", E, [
-				o("div", D, [r[1] ||= o("span", { class: "metric-label" }, "Frequency", -1), o("span", O, p(e.hasSignal && e.frequency ? `${Math.round(e.frequency)} Hz` : "0 Hz"), 1)]),
-				o("div", k, [r[2] ||= o("span", { class: "metric-label" }, "Duty", -1), o("span", A, p(e.hasSignal ? `${Math.round(e.duty)}%` : "0%"), 1)]),
-				o("div", j, [r[3] ||= o("span", { class: "metric-label" }, "Mode", -1), o("span", M, p(e.variant), 1)])
+			o("div", C, [o("div", w, [r[0] ||= o("span", { class: "icon" }, "🔔", -1), o("span", null, p(e.label || "Buzzer"), 1)]), o("span", { class: c(["state-pill", e.hasSignal ? "state-on" : "state-off"]) }, p(e.hasSignal ? "SOUNDING" : "QUIET"), 3)]),
+			o("div", T, [
+				o("div", E, [r[1] ||= o("span", { class: "metric-label" }, "Frequency", -1), o("span", D, p(e.hasSignal && e.frequency ? `${Math.round(e.frequency)} Hz` : "0 Hz"), 1)]),
+				o("div", O, [r[2] ||= o("span", { class: "metric-label" }, "Duty", -1), o("span", k, p(e.hasSignal ? `${Math.round(e.duty)}%` : "0%"), 1)]),
+				o("div", A, [r[3] ||= o("span", { class: "metric-label" }, "Mode", -1), o("span", j, p(e.variant), 1)])
 			]),
-			o("div", N, [o("button", {
+			o("div", M, [o("button", {
 				class: c(["sound-toggle-btn", { "is-unmuted": !n.value }]),
 				type: "button",
-				onClick: C
+				onClick: N
 			}, [o("span", null, p(n.value ? "🔇 Audio Muted" : "🔊 Audio Active"), 1)], 2)])
 		], 2));
 	}
-}), [["__scopeId", "data-v-13f5b533"]]);
-Object.freeze({});
-var F = Object.freeze({
+}), [["__scopeId", "data-v-54c22c23"]]), P = Object.freeze({
+	width: 75,
+	height: 90
+}), F = Object.freeze({
 	1: Object.freeze({
-		relX: 30,
-		relY: 82,
+		relX: 27,
+		relY: 84,
 		wireNet: "primary",
 		defaultConnection: null,
 		required: !0
 	}),
 	2: Object.freeze({
-		relX: 34,
-		relY: 82,
+		relX: 37,
+		relY: 84,
 		wireNet: "gnd",
 		defaultConnection: "GND",
 		required: !1
 	})
-}), I = Object.freeze([{
+});
+Object.freeze({});
+var I = F, L = P, R = Object.freeze([{
 	name: "1",
 	direction: "sink",
 	signal: "analog",
@@ -275,7 +286,7 @@ var F = Object.freeze({
 		"neg"
 	],
 	required: !1
-}]), L = Object.freeze([{
+}]), z = Object.freeze([{
 	name: "1",
 	direction: "sink",
 	signal: "digital",
@@ -305,24 +316,24 @@ var F = Object.freeze({
 	],
 	required: !1
 }]);
-function R(e) {
+function B(e) {
 	try {
 		let n = t("buzzer", e);
 		if (n && n.length > 0) return n;
 	} catch {}
-	return e === "active_gpio" ? L : I;
+	return e === "active_gpio" ? z : R;
 }
-var z = Object.freeze({
+var V = Object.freeze({
 	passive_pwm: Object.freeze({
 		variant: "passive_pwm",
-		getPins: () => R("passive_pwm"),
-		pinsOverlay: F,
+		getPins: () => B("passive_pwm"),
+		pinsOverlay: I,
 		defaultAppearanceId: "buzzer_passive"
 	}),
 	active_gpio: Object.freeze({
 		variant: "active_gpio",
-		getPins: () => R("active_gpio"),
-		pinsOverlay: F,
+		getPins: () => B("active_gpio"),
+		pinsOverlay: I,
 		defaultAppearanceId: "buzzer_active"
 	})
 });
@@ -357,19 +368,16 @@ Object.freeze({
 });
 //#endregion
 //#region builtin/buzzer/1.0.0/src/definition.ts
-var B = r(import.meta.url, "buzzer", "1.0.0", "output");
-function V(e, t) {
-	let r = n(e, B.type);
-	return t.pluginChannels?.[e.id] ?? t.pluginChannels?.[r] ?? t.pluginChannels?.[`${B.type}:0`] ?? t.pluginChannels?.[B.type] ?? {};
+var H = r(import.meta.url, "buzzer", "1.0.0", "output");
+function U(e, t) {
+	let r = n(e, H.type);
+	return t.pluginChannels?.[e.id] ?? t.pluginChannels?.[r] ?? t.pluginChannels?.[`${H.type}:0`] ?? t.pluginChannels?.[H.type] ?? {};
 }
-var H = z.passive_pwm, U = e({
-	type: B.type,
-	size: {
-		width: 75,
-		height: 85
-	},
+var W = V.passive_pwm, G = e({
+	type: H.type,
+	size: L,
 	wireColor: "#f59e0b",
-	pinsOverlay: H.pinsOverlay,
+	pinsOverlay: W.pinsOverlay,
 	props: {
 		variant: {
 			type: "string",
@@ -413,14 +421,14 @@ var H = z.passive_pwm, U = e({
 			description: "Label text"
 		}
 	},
-	canvas: C,
-	world: P,
+	canvas: S,
+	world: N,
 	ui: {
 		canvasProps: (e, t) => {
-			let n = V(e, t);
+			let n = U(e, t), r = t.isRunning !== !1;
 			return {
 				id: e.id,
-				hasSignal: t.isRunning !== !1 && !!n.hasSignal,
+				hasSignal: r && !!n.hasSignal,
 				frequency: typeof n.frequency == "number" ? n.frequency : 0,
 				duty: typeof n.duty == "number" ? n.duty : 0,
 				label: e.props?.label ?? "Buzzer",
@@ -428,10 +436,10 @@ var H = z.passive_pwm, U = e({
 			};
 		},
 		worldProps: (e, t) => {
-			let n = V(e, t);
+			let n = U(e, t), r = t.isRunning !== !1;
 			return {
 				id: e.id,
-				hasSignal: t.isRunning !== !1 && !!n.hasSignal,
+				hasSignal: r && !!n.hasSignal,
 				frequency: typeof n.frequency == "number" ? n.frequency : 0,
 				duty: typeof n.duty == "number" ? n.duty : 0,
 				label: e.props?.label ?? "Buzzer",
@@ -441,4 +449,4 @@ var H = z.passive_pwm, U = e({
 	}
 });
 //#endregion
-export { U as buzzerDefinition, U as default };
+export { G as buzzerDefinition, G as default };

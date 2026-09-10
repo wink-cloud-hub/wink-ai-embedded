@@ -7,10 +7,7 @@ var h = [
 	"digits",
 	"color",
 	"values"
-], g = {
-	key: 0,
-	class: "display-label"
-}, _ = /*@__PURE__*/ l({
+], g = /*@__PURE__*/ l({
 	__name: "CanvasGlyph",
 	props: {
 		pinConnections: {},
@@ -72,20 +69,20 @@ var h = [
 			color: e.color || "red",
 			values: i.value,
 			pins: "top"
-		}, null, 8, h), o("", !0)], 4));
+		}, null, 8, h)], 4));
 	}
-}), v = (e, t) => {
+}), _ = (e, t) => {
 	let n = e.__vccOpts || e;
 	for (let [e, r] of t) n[e] = r;
 	return n;
-}, y = /*#__PURE__*/ v(_, [["__scopeId", "data-v-1a3bb5a1"]]), b = { class: "seg-display-world-widget" }, x = [
+}, v = /*#__PURE__*/ _(g, [["__scopeId", "data-v-c86f8a56"]]), y = { class: "seg-display-world-widget" }, b = [
 	"digits",
 	"color",
 	"values"
-], S = {
+], x = {
 	key: 0,
 	class: "display-label"
-}, C = /*#__PURE__*/ v(/* @__PURE__ */ l({
+}, S = /*#__PURE__*/ _(/* @__PURE__ */ l({
 	__name: "WorldWidget",
 	props: {
 		pinConnections: {},
@@ -129,36 +126,96 @@ var h = [
 		});
 		return m(() => {
 			n.value && (n.value.values = i.value);
-		}), (t, a) => (d(), s("div", b, [c("wokwi-7segment", {
+		}), (t, a) => (d(), s("div", y, [c("wokwi-7segment", {
 			ref_key: "segEl",
 			ref: n,
 			digits: r.value,
 			color: e.color || "red",
 			values: i.value,
 			pins: "none"
-		}, null, 8, x), e.label ? (d(), s("div", S, p(e.label), 1)) : o("", !0)]));
+		}, null, 8, b), e.label ? (d(), s("div", x, p(e.label), 1)) : o("", !0)]));
 	}
-}), [["__scopeId", "data-v-de5254b3"]]), w = Object.freeze([
+}), [["__scopeId", "data-v-de5254b3"]]), C = Object.freeze({
+	width: 210,
+	height: 96
+}), w = Object.freeze({
+	A: Object.freeze({
+		relX: 23,
+		relY: 96,
+		wireNet: "primary",
+		defaultConnection: null,
+		required: !1
+	}),
+	B: Object.freeze({
+		relX: 47,
+		relY: 96,
+		wireNet: "primary",
+		defaultConnection: null,
+		required: !1
+	}),
+	C: Object.freeze({
+		relX: 70,
+		relY: 96,
+		wireNet: "primary",
+		defaultConnection: null,
+		required: !1
+	}),
+	D: Object.freeze({
+		relX: 93,
+		relY: 96,
+		wireNet: "primary",
+		defaultConnection: null,
+		required: !1
+	}),
+	E: Object.freeze({
+		relX: 117,
+		relY: 96,
+		wireNet: "primary",
+		defaultConnection: null,
+		required: !1
+	}),
+	F: Object.freeze({
+		relX: 140,
+		relY: 96,
+		wireNet: "primary",
+		defaultConnection: null,
+		required: !1
+	}),
+	G: Object.freeze({
+		relX: 163,
+		relY: 96,
+		wireNet: "primary",
+		defaultConnection: null,
+		required: !1
+	}),
+	DP: Object.freeze({
+		relX: 187,
+		relY: 96,
+		wireNet: "primary",
+		defaultConnection: null,
+		required: !1
+	})
+}), T = Object.freeze([
 	"direct_gpio_8d",
 	"direct_gpio_4d",
 	"direct_gpio_2d",
 	"direct_gpio_1d"
-]), T = Object.freeze({
+]), E = Object.freeze({
 	direct_gpio_8d: 8,
 	direct_gpio_4d: 4,
 	direct_gpio_2d: 2,
 	direct_gpio_1d: 1
 });
-function E(e) {
+function D(e) {
 	let t = r(e);
-	return t && t in T ? t : "direct_gpio_8d";
+	return t && t in E ? t : "direct_gpio_8d";
 }
-var D = Object.freeze({
+var O = Object.freeze({
 	"8d": Object.freeze(["direct_gpio_8d"]),
 	"4d": Object.freeze(["direct_gpio_4d"]),
 	"2d": Object.freeze(["direct_gpio_2d"]),
 	"1d": Object.freeze(["direct_gpio_1d"])
-}), O = [
+}), k = C, A = w, j = Object.freeze([
 	"A",
 	"B",
 	"C",
@@ -167,27 +224,11 @@ var D = Object.freeze({
 	"F",
 	"G",
 	"DP"
-], k = [
-	23,
-	47,
-	70,
-	93,
-	117,
-	140,
-	163,
-	187
-];
-function A() {
-	let e = {};
-	for (let t = 0; t < O.length; t++) e[O[t]] = Object.freeze({
-		relX: k[t],
-		relY: 96,
-		wireNet: "primary",
-		required: !1
-	});
-	return e;
+].map((e) => w[e]?.relX ?? 0));
+function M() {
+	return w;
 }
-function j(e) {
+function N(e) {
 	return Object.freeze(Object.entries(e).map(([e]) => ({
 		name: e,
 		direction: "sink",
@@ -196,10 +237,10 @@ function j(e) {
 		required: !1
 	})));
 }
-function M(e) {
-	let t = A(), n = {}, r = T[e];
+function P(e) {
+	let t = M(), n = {}, r = E[e];
 	if (r === 8) for (let e = 0; e < 8; e++) n[`DIG${e + 1}`] = Object.freeze({
-		relX: k[e],
+		relX: j[e],
 		relY: 0,
 		wireNet: "secondary",
 		required: !1
@@ -236,44 +277,44 @@ function M(e) {
 		...n
 	});
 }
-var N = Object.freeze({
+var F = Object.freeze({
 	direct_gpio_8d: Object.freeze({
 		variant: "direct_gpio_8d",
 		getPins: () => {
 			let e = t("seg_display", "direct_gpio_8d");
-			return e.length > 0 ? e : j(M("direct_gpio_8d"));
+			return e.length > 0 ? e : N(P("direct_gpio_8d"));
 		},
-		pinsOverlay: M("direct_gpio_8d"),
+		pinsOverlay: P("direct_gpio_8d"),
 		defaultAppearanceId: "seg_display_8"
 	}),
 	direct_gpio_4d: Object.freeze({
 		variant: "direct_gpio_4d",
 		getPins: () => {
 			let e = t("seg_display", "direct_gpio_4d");
-			return e.length > 0 ? e : j(M("direct_gpio_4d"));
+			return e.length > 0 ? e : N(P("direct_gpio_4d"));
 		},
-		pinsOverlay: M("direct_gpio_4d"),
+		pinsOverlay: P("direct_gpio_4d"),
 		defaultAppearanceId: "seg_display_4"
 	}),
 	direct_gpio_2d: Object.freeze({
 		variant: "direct_gpio_2d",
 		getPins: () => {
 			let e = t("seg_display", "direct_gpio_2d");
-			return e.length > 0 ? e : j(M("direct_gpio_2d"));
+			return e.length > 0 ? e : N(P("direct_gpio_2d"));
 		},
-		pinsOverlay: M("direct_gpio_2d"),
+		pinsOverlay: P("direct_gpio_2d"),
 		defaultAppearanceId: "seg_display_2"
 	}),
 	direct_gpio_1d: Object.freeze({
 		variant: "direct_gpio_1d",
 		getPins: () => {
 			let e = t("seg_display", "direct_gpio_1d");
-			return e.length > 0 ? e : j(M("direct_gpio_1d"));
+			return e.length > 0 ? e : N(P("direct_gpio_1d"));
 		},
-		pinsOverlay: M("direct_gpio_1d"),
+		pinsOverlay: P("direct_gpio_1d"),
 		defaultAppearanceId: "seg_display_1"
 	})
-}), P = Object.freeze({
+}), I = Object.freeze({
 	seg_display_8: Object.freeze({
 		appearanceId: "seg_display_8",
 		variant: "direct_gpio_8d",
@@ -322,17 +363,17 @@ var N = Object.freeze({
 			"digital tube"
 		])
 	})
-}), F = N, I = P, L = D, R = "direct_gpio_8d", z = i(import.meta.url, "seg_display", "1.0.0", "display");
-function B(e, t, r) {
-	let i = n(e, z.type);
-	return t.pluginChannels?.[e.id]?.[r] ?? t.pluginChannels?.[i]?.[r] ?? t.pluginChannels?.[`${z.type}:0`]?.[r] ?? t.pluginChannels?.[z.type]?.[r];
+}), L = F, R = I, z = O, B = "direct_gpio_8d", V = i(import.meta.url, "seg_display", "1.0.0", "display");
+function H(e, t, r) {
+	let i = n(e, V.type);
+	return t.pluginChannels?.[e.id]?.[r] ?? t.pluginChannels?.[i]?.[r] ?? t.pluginChannels?.[`${V.type}:0`]?.[r] ?? t.pluginChannels?.[V.type]?.[r];
 }
-function V(e, t) {
-	let n = B(e, t, "bright");
+function U(e, t) {
+	let n = H(e, t, "bright");
 	return n instanceof Uint8Array ? n : Array.isArray(n) ? new Uint8Array(n) : n && typeof n == "object" ? new Uint8Array(Object.values(n)) : null;
 }
-function H(e, t) {
-	let n = B(e, t, "segMask");
+function W(e, t) {
+	let n = H(e, t, "segMask");
 	if (Array.isArray(n)) return n;
 	if (typeof n == "string") try {
 		let e = JSON.parse(n);
@@ -340,15 +381,15 @@ function H(e, t) {
 	} catch {}
 	return [];
 }
-function U(e, t) {
-	let n = B(e, t, "text");
+function G(e, t) {
+	let n = H(e, t, "text");
 	return typeof n == "string" ? n : "";
 }
-function W(e) {
-	return T[E(e.props?.variant)] ?? 8;
+function K(e) {
+	return E[D(e.props?.variant)] ?? 8;
 }
-function G(e, t) {
-	let n = W(e), r = n * 8, i = V(e, t);
+function q(e, t) {
+	let n = K(e), r = n * 8, i = U(e, t);
 	if (i && i.length > 0) {
 		let e = [];
 		for (let t = 0; t < r; t++) {
@@ -357,7 +398,7 @@ function G(e, t) {
 		}
 		return e;
 	}
-	let a = H(e, t);
+	let a = W(e, t);
 	if (a && a.length > 0) {
 		let e = [];
 		for (let t = 0; t < n; t++) {
@@ -368,7 +409,7 @@ function G(e, t) {
 	}
 	return Array(r).fill(0);
 }
-var K = N.direct_gpio_8d, q = {
+var J = F.direct_gpio_8d, Y = {
 	variant: {
 		type: "string",
 		default: "direct_gpio_8d",
@@ -436,17 +477,14 @@ var K = N.direct_gpio_8d, q = {
 		default: !1,
 		description: "Flip orientation"
 	}
-}, J = e({
-	type: z.type,
-	size: {
-		width: 210,
-		height: 96
-	},
+}, X = e({
+	type: V.type,
+	size: k,
 	wireColor: "#ff0055",
-	pinsOverlay: K.pinsOverlay,
-	props: q,
-	canvas: y,
-	world: C,
+	pinsOverlay: J.pinsOverlay,
+	props: Y,
+	canvas: v,
+	world: S,
 	ui: {
 		canvasProps: (e, t) => ({
 			pinConnections: e.pinConnections,
@@ -456,11 +494,11 @@ var K = N.direct_gpio_8d, q = {
 			glow: e.props.glow,
 			label: e.props.label,
 			flip: e.props.flip,
-			bright: V(e, t),
-			segMask: H(e, t),
-			text: U(e, t),
-			nDigits: W(e),
-			values: G(e, t)
+			bright: U(e, t),
+			segMask: W(e, t),
+			text: G(e, t),
+			nDigits: K(e),
+			values: q(e, t)
 		}),
 		worldProps: (e, t) => ({
 			pinConnections: e.pinConnections,
@@ -468,13 +506,13 @@ var K = N.direct_gpio_8d, q = {
 			color: e.props.color,
 			brightness: e.props.brightness,
 			label: e.props.label,
-			text: U(e, t),
-			bright: V(e, t),
-			segMask: H(e, t),
-			nDigits: W(e),
-			values: G(e, t)
+			text: G(e, t),
+			bright: U(e, t),
+			segMask: W(e, t),
+			nDigits: K(e),
+			values: q(e, t)
 		})
 	}
 });
 //#endregion
-export { P as SEG_APPEARANCES, N as SEG_TOPOLOGIES, D as SEG_TOPOLOGY_EQUIVALENCE, w as SEG_VARIANTS, T as SEG_VARIANT_DIGITS, I as appearances, J as default, J as segDisplayDefinition, R as defaultVariant, L as equivalence, E as resolveSegVariant, q as segDisplayProps, F as topologies };
+export { I as SEG_APPEARANCES, A as SEG_DISPLAY_OVERLAY, k as SEG_DISPLAY_SIZE, F as SEG_TOPOLOGIES, O as SEG_TOPOLOGY_EQUIVALENCE, T as SEG_VARIANTS, E as SEG_VARIANT_DIGITS, R as appearances, X as default, X as segDisplayDefinition, B as defaultVariant, z as equivalence, D as resolveSegVariant, Y as segDisplayProps, L as topologies };

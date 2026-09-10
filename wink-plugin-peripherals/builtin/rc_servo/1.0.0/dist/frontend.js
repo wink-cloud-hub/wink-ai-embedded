@@ -49,34 +49,37 @@ var f = {
 			style: l(r.value)
 		}, d(e.label || e.id) + " (" + d(Math.round(e.angle)) + "°) ", 7)]));
 	}
-}), [["__scopeId", "data-v-8d19946d"]]);
-Object.freeze({});
-var h = Object.freeze({
-	PWM: Object.freeze({
-		relX: -5,
+}), [["__scopeId", "data-v-8d19946d"]]), h = Object.freeze({
+	width: 171,
+	height: 120
+}), g = Object.freeze({
+	GND: Object.freeze({
+		relX: 0,
 		relY: 50,
-		wireNet: "primary",
-		defaultConnection: null,
-		required: !0
+		wireNet: "gnd",
+		defaultConnection: "GND",
+		required: !1
 	}),
 	VCC: Object.freeze({
-		relX: -5,
+		relX: 0,
 		relY: 60,
 		wireNet: "vcc",
 		defaultConnection: "VCC",
 		required: !1
 	}),
-	GND: Object.freeze({
-		relX: -5,
-		relY: 70,
-		wireNet: "gnd",
-		defaultConnection: "GND",
-		required: !1
+	PWM: Object.freeze({
+		relX: 0,
+		relY: 69,
+		wireNet: "primary",
+		defaultConnection: null,
+		required: !0
 	})
-}), g = Object.freeze({ sg90: Object.freeze({
+});
+Object.freeze({});
+var _ = g, v = h, y = Object.freeze({ sg90: Object.freeze({
 	variant: "sg90",
 	getPins: () => t("rc_servo", "sg90"),
-	pinsOverlay: h,
+	pinsOverlay: _,
 	defaultAppearanceId: "rc_servo_sg90"
 }) });
 Object.freeze({ rc_servo_sg90: Object.freeze({
@@ -91,14 +94,11 @@ Object.freeze({ rc_servo_sg90: Object.freeze({
 }) });
 //#endregion
 //#region builtin/rc_servo/1.0.0/src/definition.ts
-var _ = r(import.meta.url, "rc_servo", "1.0.0", "actuator"), v = g.sg90, y = e({
-	type: _.type,
-	size: {
-		width: 80,
-		height: 60
-	},
+var b = r(import.meta.url, "rc_servo", "1.0.0", "actuator"), x = y.sg90, S = e({
+	type: b.type,
+	size: v,
 	wireColor: "#3b82f6",
-	pinsOverlay: v.pinsOverlay,
+	pinsOverlay: x.pinsOverlay,
 	props: {
 		variant: {
 			type: "string",
@@ -169,4 +169,4 @@ var _ = r(import.meta.url, "rc_servo", "1.0.0", "actuator"), v = g.sg90, y = e({
 	} }
 });
 //#endregion
-export { y as default, y as servoDefinition };
+export { S as default, S as servoDefinition };

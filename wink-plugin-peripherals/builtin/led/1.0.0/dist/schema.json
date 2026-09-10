@@ -29,6 +29,10 @@
       "minimum": 0,
       "maximum": 1
     },
+    "label": {
+      "type": "string",
+      "default": ""
+    },
     "activeHigh": {
       "type": "boolean",
       "default": true

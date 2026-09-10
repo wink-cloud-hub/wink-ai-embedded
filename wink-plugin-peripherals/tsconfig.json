@@ -25,8 +25,12 @@
         "./node_modules/@wink-ai/unisim-ui"
       ],
       "@wink-ai/unisim-ui/vite": [
-        "./node_modules/@wink-ai/unisim-ui/src/vite/index.ts",
-        "./node_modules/@wink-ai/unisim-ui"
+        "./node_modules/@wink-ai/unisim-ui/dist/vite.d.ts",
+        "./node_modules/@wink-ai/unisim-ui/src/vite/index.ts"
+      ],
+      "@wink-ai/unisim-ui/generator": [
+        "./node_modules/@wink-ai/unisim-ui/dist/generator.d.ts",
+        "./node_modules/@wink-ai/unisim-ui/src/generator/index.ts"
       ],
       "@wink-ai/unisim-ui/*": [
         "./node_modules/@wink-ai/unisim-ui/*"
