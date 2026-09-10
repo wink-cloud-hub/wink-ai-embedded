@@ -1,0 +1,73 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51_health_pot UART telemetry: baud generator initialised, periodic frames never wedge",
+    "templateId": "mcs51_health_pot",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "6000000",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "30ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0586,
+      "description": "Cold water present before first control tick: 12-bit raw ~240 -> 25 C"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["700ms", "1400ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "T=025C,S=0,H=0,F=0",
+      "minPackets": 1,
+      "description": "Standby frame at ~1 s: telemetry flows before any key press. On real silicon this byte stream requires the Timer1/SMOD baud generator (TH1=0xD9, T1M=1, 9600 bps) — without it uart_send() busy-waits on TI forever and the main loop wedges at the first frame."
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "1500ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "1700ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2100ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "HEAT entered after ON/OFF press"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["1800ms", "2700ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "T=025C,S=1,H=1,F=0",
+      "minPackets": 1,
+      "description": "Heating frame at ~2 s: S=1 HEAT, H=1 heater energised"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["2800ms", "3700ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "T=025C,S=1,H=1,F=0",
+      "minPackets": 1,
+      "description": "Next second still streaming identical HEAT frames: polled-TI TX keeps returning and the loop never wedges (periodic cadence intact)"
+    }
+  ]
+}

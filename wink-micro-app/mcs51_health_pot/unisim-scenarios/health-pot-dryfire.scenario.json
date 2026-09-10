@@ -23,7 +23,7 @@
       "timeUs": "30ms",
       "adcChannel": 32,
       "valueNorm": 0.0586,
-      "description": "Cold water present before first control tick: 8-bit code ~240 -> 25 C (valueNorm = code/4095, low-byte rail convention)"
+      "description": "Cold water present before first control tick: 12-bit raw ~240 -> 25 C (valueNorm = raw/4096)"
     },
     {
       "type": "INPUT_PLUGIN_EVENT",

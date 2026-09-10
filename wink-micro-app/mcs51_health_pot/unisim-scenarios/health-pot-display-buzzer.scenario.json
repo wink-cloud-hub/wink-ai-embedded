@@ -6,7 +6,9 @@
     "accuracyMode": "behavioral",
     "timeoutUs": "8000000",
     "failurePolicy": "fail-fast",
-    "determinism": { "prngSeed": 42 }
+    "determinism": {
+      "prngSeed": 42
+    }
   },
   "steps": [
     {
@@ -28,14 +30,18 @@
       "timeUs": "400ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true }
+      "params": {
+        "pressed": true
+      }
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "600ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": false }
+      "params": {
+        "pressed": false
+      }
     },
     {
       "type": "ASSERT_POINT",
@@ -55,7 +61,7 @@
       "type": "INPUT_ANALOG",
       "timeUs": "1600ms",
       "adcChannel": 32,
-      "valueNorm": 0.0122,
+      "valueNorm": 0.0047,
       "description": "Water heats to boil (98 C)"
     },
     {

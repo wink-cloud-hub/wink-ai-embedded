@@ -6,7 +6,9 @@
     "accuracyMode": "behavioral",
     "timeoutUs": "10000000",
     "failurePolicy": "fail-fast",
-    "determinism": { "prngSeed": 42 }
+    "determinism": {
+      "prngSeed": 42
+    }
   },
   "steps": [
     {
@@ -21,21 +23,25 @@
       "timeUs": "30ms",
       "adcChannel": 32,
       "valueNorm": 0.0586,
-      "description": "Cold water present BEFORE the first 100 ms control tick (rail default 0 would read as NTC short): ADC0832 8-bit code ~240 -> 25 C. Rail note: the ADC0832 shim reads the low byte of the 12-bit rail, so valueNorm = code/4095 (240/4095 ~= 0.0586)"
+      "description": "Cold water present BEFORE the first 100 ms control tick (rail default 0 would read as NTC short): 12-bit raw ~240 -> 25 C; valueNorm = raw/4096 (240/4096 ~= 0.0586)"
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "400ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true }
+      "params": {
+        "pressed": true
+      }
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "700ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": false }
+      "params": {
+        "pressed": false
+      }
     },
     {
       "type": "ASSERT_POINT",
@@ -53,7 +59,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["900ms", "1500ms"],
+      "windowUs": [
+        "900ms",
+        "1500ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -65,8 +74,8 @@
       "type": "INPUT_ANALOG",
       "timeUs": "1600ms",
       "adcChannel": 32,
-      "valueNorm": 0.0122,
-      "description": "Water reaches boil: 8-bit code ~50 -> ~105 C (>= 98 C boil threshold); valueNorm = 50/4095 ~= 0.0122 (low-byte rail convention)"
+      "valueNorm": 0.0047,
+      "description": "Water reaches boil: 12-bit raw ~19 -> 98 C (>= 98 C boil threshold); valueNorm = 19/4096 ~= 0.0047"
     },
     {
       "type": "ASSERT_POINT",
@@ -84,7 +93,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["5500ms", "6500ms"],
+      "windowUs": [
+        "5500ms",
+        "6500ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -97,21 +109,25 @@
       "timeUs": "5800ms",
       "targetPluginId": "btn_func",
       "action": "SET_PRESSED",
-      "params": { "pressed": true }
+      "params": {
+        "pressed": true
+      }
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "6100ms",
       "targetPluginId": "btn_func",
       "action": "SET_PRESSED",
-      "params": { "pressed": false }
+      "params": {
+        "pressed": false
+      }
     },
     {
       "type": "INPUT_ANALOG",
       "timeUs": "6800ms",
       "adcChannel": 32,
-      "valueNorm": 0.0366,
-      "description": "Water cools to ~60 C (8-bit code ~150); FUNC cycled warm setpoint to 80 C, so 60 < 80-3 => heat (valueNorm = 150/4095)"
+      "valueNorm": 0.0154,
+      "description": "Water cools to ~60 C (12-bit raw ~63); FUNC cycled warm setpoint to 80 C, so 60 < 80-3 => heat (valueNorm = 63/4096)"
     },
     {
       "type": "ASSERT_POINT",
@@ -125,14 +141,18 @@
       "timeUs": "8400ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true }
+      "params": {
+        "pressed": true
+      }
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "8700ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": false }
+      "params": {
+        "pressed": false
+      }
     },
     {
       "type": "ASSERT_POINT",

@@ -14,7 +14,7 @@
       "timeUs": "30ms",
       "adcChannel": 32,
       "valueNorm": 0.0586,
-      "description": "Cold water present before first control tick: 8-bit code ~240 -> 25 C (valueNorm = code/4095, low-byte rail convention)"
+      "description": "Cold water present before first control tick: 12-bit raw ~240 -> 25 C (valueNorm = raw/4096)"
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
@@ -52,7 +52,7 @@
       "timeUs": "2000ms",
       "adcChannel": 32,
       "valueNorm": 0.0,
-      "description": "NTC probe shorts: rail 0 -> 8-bit code 0 <= NTC_SHORT_CODE(8) => sensor-short fault"
+      "description": "NTC probe shorts: rail 0 -> 12-bit raw 0 <= NTC_SHORT_RAW(8) => sensor-short fault"
     },
     {
       "type": "ASSERT_POINT",

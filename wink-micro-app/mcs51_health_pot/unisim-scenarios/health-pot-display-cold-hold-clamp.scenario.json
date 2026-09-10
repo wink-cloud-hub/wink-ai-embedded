@@ -1,0 +1,99 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51_health_pot display calibration: cold anchor 5C, dp-off in boil confirmation, >99C clamp",
+    "templateId": "mcs51_health_pot",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "10000000",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "30ms",
+      "adcChannel": 32,
+      "valueNorm": 0.1394,
+      "description": "Cold tap water: 12-bit raw ~571 -> 5 C cold-end LUT anchor (no longer clamped to 25 C)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "400ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "600ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1200ms",
+      "target": "plugin:display/text",
+      "matcher": "05b0",
+      "description": "Cold water below room temperature still renders a real reading, '05b0' (5 C + boil mode)"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "1600ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0047,
+      "description": "Water reaches boil: raw ~19 -> 98 C"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "3500ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Boil confirmation window (mid-hold): heater off"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "3500ms",
+      "target": "plugin:display/text",
+      "matcher": "98b0",
+      "description": "Boil confirmation display"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "3500ms",
+      "target": "plugin:display/segMask",
+      "matcher": "[111,127,124,63]",
+      "description": "Digit 2 '8' segment mask is 127 (0x7F): decimal point stays OFF mid-hold (dp breathes only while heating); chosen at 3.5 s where the old 1 s blink phase has dp ON, so this assertion also guards the regression. '9'=111, 'b'=124, 'O'=63"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "5200ms",
+      "target": "plugin:display/text",
+      "matcher": "9860",
+      "description": "After the 3 s boil hold: WARM entered, '9860' (98 C current, 60 C target)"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "5500ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0039,
+      "description": "Temperature runs beyond scale: raw ~16 -> 105 C (>105 C over-temp band, but 10 s latch has not elapsed)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "8000ms",
+      "target": "plugin:display/text",
+      "matcher": "9960",
+      "description": "105 C is clamped to '99' on the temperature digits instead of indexing non-digit font slots (previously showed 'b560'); target 60 C digits unchanged"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "8000ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "No heating in the over-temperature band while the E-04 10 s timer runs"
+    }
+  ]
+}

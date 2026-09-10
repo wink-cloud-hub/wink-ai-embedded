@@ -6,7 +6,9 @@
     "accuracyMode": "behavioral",
     "timeoutUs": "25000000",
     "failurePolicy": "fail-fast",
-    "determinism": { "prngSeed": 42 }
+    "determinism": {
+      "prngSeed": 42
+    }
   },
   "steps": [
     {
@@ -21,21 +23,25 @@
       "timeUs": "30ms",
       "adcChannel": 32,
       "valueNorm": 0.0586,
-      "description": "Cold water before first control tick: code ~240 -> 25 C (valueNorm = code/4095)"
+      "description": "Cold water before first control tick: 12-bit raw ~240 -> 25 C (valueNorm = raw/4096)"
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "400ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true }
+      "params": {
+        "pressed": true
+      }
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "700ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": false }
+      "params": {
+        "pressed": false
+      }
     },
     {
       "type": "ASSERT_POINT",
@@ -48,8 +54,8 @@
       "type": "INPUT_ANALOG",
       "timeUs": "1600ms",
       "adcChannel": 32,
-      "valueNorm": 0.0122,
-      "description": "Water reaches boil: code ~50 -> ~105 C (>= 98 C); normal boiling reads ~50, above the over-temp band (<=20)"
+      "valueNorm": 0.0047,
+      "description": "Water reaches boil: 12-bit raw ~19 -> 98 C (>= 98 C); boiling reads ~19, above the over-temp band (<=16)"
     },
     {
       "type": "ASSERT_POINT",
@@ -70,7 +76,7 @@
       "timeUs": "5500ms",
       "adcChannel": 32,
       "valueNorm": 0.0037,
-      "description": "Keep-warm session has boiled the pot dry: plate runs away beyond scale, code ~15 (9..20 = hotter-than-table band, distinct from short <=8). valueNorm = 15/4095 ~= 0.0037"
+      "description": "Keep-warm session has boiled the pot dry: plate runs away beyond scale, raw ~15 (<= OVERTEMP_RAW 16 band, distinct from short <=8). valueNorm = 15/4096 ~= 0.0037"
     },
     {
       "type": "ASSERT_POINT",
@@ -81,7 +87,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["14500ms", "16500ms"],
+      "windowUs": [
+        "14500ms",
+        "16500ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -98,7 +107,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["18500ms", "20500ms"],
+      "windowUs": [
+        "18500ms",
+        "20500ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -111,18 +123,25 @@
       "timeUs": "21000ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true }
+      "params": {
+        "pressed": true
+      }
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "21300ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": false }
+      "params": {
+        "pressed": false
+      }
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["21500ms", "23500ms"],
+      "windowUs": [
+        "21500ms",
+        "23500ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
