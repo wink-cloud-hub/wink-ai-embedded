@@ -8,7 +8,7 @@
 | **状态** | **Draft / 待评审**（todolist，执行前需迁移为 Layer-② 技术设计或 Layer-③ 实施计划，重大项补 ADR）。2026-09-10 已合并第二轮外部评审（见 §8）与第三轮自查（见 §9）。**阶段 1 热修已落地（2026-09-10，未提交）：GAP-01/22/04/13 + §9.5 审计脚本，31 个 mcs51 host 测试全绿 + 8 应用 22 个无头场景全绿（生产 wasm 重建），见 §10** |
 | **审计基线** | master @ e473f35；对照 `docs/vendors/Cmsemicon/CMS8S78xx_DemoCode_V2.0.2`（原厂头文件/StdDriver）、CMS8S78xx 数据手册 V1.0.7、参考手册 V1.1.1 |
 | **关联决策** | ADR-0012（契约诚实）、ADR-0070（C++ 拦截层）、ADR-0071（数据面代理）、ADR-0072（双时钟域）、ADR-0073（CMS8S ADC 真实寄存器图）、ADR-0076（Native/ISS 双后端）、ADR-0077（准双向口） |
-| **关联文档** | [仿真与硅片保真度及测试方法论](../zh/tech-designs/mcs51/2026-09-08-mcs51-simulation-vs-silicon-fidelity-and-test-limits.md)、[用户代码限制手册](../zh/tech-designs/mcs51/2026-08-27-mcs51-user-code-compatibility-and-limitations-guide.md) |
+| **关联文档** | [仿真与硅片保真度及测试方法论](../zh/tech-designs/mcs51/2026-09-08-mcs51-simulation-vs-silicon-fidelity-and-test-limits.md)、[用户代码限制手册](../zh/tech-designs/mcs51/2026-08-27-mcs51-user-code-compatibility-and-limitations-guide.md)、[后端责任划分（C++ Proxy / ISS / 永解不了）](./2026-09-10-mcs51-sim-backend-responsibility-classification.md) |
 | **目标受众** | mcs51 框架维护者、仿真引擎开发者、CI/HIL 工程师、AI 代码生成 Agent 维护者 |
 
 ---
@@ -30,31 +30,33 @@
 
 ## 1. 问题总表
 
-| 编号 | 优先级 | 标题 | 真机后果 | 影响 health_pot？ |
-| :--- | :--- | :--- | :--- | :--- |
-| [GAP-01](#gap-01p0shim-常量错误gpiop13_mux_rxd-0x02--原厂-0x03) | **P0** | shim 常量错误：`GPIO_P13_MUX_RXD` 0x02 ≠ 原厂 0x03 | 用该宏的 RXD 应用收不到串口 | 否（硬编码 0x03，仅 TX） |
-| [GAP-02](#gap-02p0uart-tx-链路零校验) | **P0** | UART TX 链路零校验（TR1/波特率/TXD mux/SCON 全不看） | 波特率错/无 TXD 复用 → 无输出或乱码，仿真照发 | 是（前提性风险，见 §5） |
-| [GAP-03](#gap-03p0缺少-8051-工具链编译门禁) | **P0** | 缺少 8051 工具链编译门禁（用户源码从未被 C51 编译器编译） | C90 方言/容量超限真机编译失败，仿真无感 | 是（未验证） |
-| [GAP-04](#gap-04p1ckcon-复位种子错误0x07--0x003-倍定时器偏差) | **P1** | CKCON 复位种子错误（硅片 0x07，模型 0x00，3 倍偏差） | 不显式清 T0M/T1M 的应用时序/波特率全错 | 否（应用显式配置） |
-| [GAP-05](#gap-05p1adc-参考电压链模拟复用完全不建模) | **P1** | ADC 参考电压链 / 模拟 mux / LDO 不参与码值 | NTC 上拉轨≠3.0V 时全温区系统性测温偏差 | **是（前提性风险）** |
-| [GAP-06](#gap-06p1config-选项字节不在仿真世界fosc-硬编码-24mhz) | **P1** | CONFIG 选项字节不建模，Fosc 硬编码 24MHz | 芯片 CONFIG 非 24MHz 路径时 tick 与波特率同比错 | **是（前提性风险）** |
-| [GAP-07](#gap-07p1wdt-只验证-ta-序列不验证超时复位ta-窗口过宽容) | **P1** | WDT 不模拟超时复位；TA 窗口无超时/不被打断 | 真机喂狗不及时复位循环；错误 TA 用法虚假通过 | 低（喂狗周期 10ms，余量充足） |
-| [GAP-08](#gap-08p1gpio-方向上下拉驱动强度寄存器不参与行为) | **P1** | TRIS/UP/OD/DR/LEDSDR 不参与引脚行为 | 忘配输出方向/上拉 → 继电器不吸合、按键乱触发 | 否（应用配置完整） |
-| [GAP-09](#gap-09p2xram-合法窗口-8kb--硅片-1kb) | P2 | XRAM 合法窗口 8KB ≠ CMS8S78xx 实际 1KB | 0x0400~0x1FFF 访问仿真合法、真机落入 XSFR | 否（仅用 0x10~0x15） |
-| [GAP-10](#gap-10p2生产-wasm-非-strict无头 runner-不按-warning-判失败) | P2 | 生产 wasm 非 STRICT，无头 runner 不消费 warning/OOB 计数 | 场景绿色掩盖越界访问与未建模特性调用 | 间接 |
-| [GAP-11](#gap-11p2c51-16-位-int--unsigned-char-语义差异未入红线手册) | P2 | C51 16 位 int / unsigned char 语义差异未文档化 | 依赖回绕/符号/移位的代码两端分叉 | 否（已人工核对） |
-| [GAP-12](#gap-12p2杂项-t234-时钟公式重复向量静默覆盖cleanup-注入面过宽w0c-缺口) | P2 | T2/3/4 周期不跟 clock_hz；重复向量静默覆盖；cleanup 注入面过宽；P0EXTIF W0C 缺口 | 多类边角行为分叉（详见正文） | 否（仅用 T0） |
-| [GAP-13](#gap-13p1第二轮评审复位后硬件时钟未种子化12mhz-兜底与-ckcon-叠加最多-6-倍) | **P1** | 复位后硬件时钟未种子化（12MHz 兜底，与 CKCON 叠加最多 6 倍）；buzzer 同源问题并入 | 不写 CLKDIV 就起定时器的固件时序错 | 否（main 首句即配时钟） |
-| [GAP-14](#gap-14p2第二轮评审timer0-mode1-软件重载延迟不建模) | P2 | Timer0 Mode1 软件重载延迟（每 tick 数 µs 漂移）不建模 | 高精度时间戳/频率测量应用系统性漂移 | 可忽略（最细 100ms） |
-| [GAP-15](#gap-15p2第二轮评审整端口写的逐位通知非原子) | P2 | 整端口写被拆成 8 个逐位 gpio_write 通知（当前同步不可观测，属隐式假设） | 未来异步插件/总线型外设可能读到中间态 | 否（同步执行） |
-| [GAP-17'](#gap-17p2第二轮评审修正stoppd-唤醒源不完整) | P2 | STOP 唤醒源模型不完整（仅 INT0/1；缺 GPIO 端口中断/WUT/LSE/LVD/SWE） | 低功耗代码仿真不醒/真机行为不一致 | 否（未用低功耗） |
-| [GAP-19](#gap-19p1第二轮评审结构性风险-a场景绿--可烧录的物理前提未显式呈现) | **P1** | 结构：场景报告/AI 提示词不呈现"绿色不保证的物理前提" | 用户/AI 误把仿真绿当可烧录背书 | 间接 |
-| [GAP-20](#gap-20p2第二轮评审结构性风险-ccleanup-副本溯源与门禁状态不可见) | P2 | 结构：被测的是 cleanup 副本，C51 编译状态不在报告中 | 改写器缺陷导致"测的不是真机跑的" | 间接 |
-| [GAP-21](#gap-21p2第二轮评审结构性风险-bwasm-每场景重建的生命周期假设无回归钉防) | P2 | 结构：跨场景污染当前靠"每场景新 wasm 实例"兜住，无测试钉防 | 未来 runner 复用实例即成 P0 | 否 |
-| [GAP-22](#gap-22p1第三轮自查中断语义映射表的休眠错误种子) | **P1** | 中断语义映射表 3 处向量错（UART1/I2C/SPI 撞车）+ ADC 优先级 EIP 寄存器错 | 当前无模型 raise 故零信号，将来一做就跳错向量 | 否 |
-| [GAP-23](#gap-23p1第三轮自查未建模-sfrxsfr-静默影子无-tripwire实测覆盖-77101-sfr93204-xsfr) | **P1** | 未建模 SFR/XSFR 静默落影子、无 unsupported 计数（SFR 77/101、XSFR 93/204） | 用 EPWM/I2C/SPI/ACMP/WUT/Flash 的固件仿真"正常"真机无功能 | 否（health_pot 只用已建模寄存器） |
-| [GAP-24](#gap-24p2第三轮自查经典-51-movx-外部总线与-iap-非易失区未建模) | P2 | 经典 51 的 MOVX 外部总线占用 P0/P2/P3.6/7；IAP 非易失区不持久 | 把 XBYTE 搬到 at89 carrier 会与 GPIO 冲突假通过 | 否（CMS8S 内部 XRAM） |
-| [GAP-25](#gap-25p2第三轮自查合集模拟脚数字读sbuf-重写递归c51-库与栈深) | P2 | 模拟脚仍可数字读；SBUF 发送中重写不报错；递归仿真安全真机踩 overlay；Keil 库/栈面未验证 | 多类 AI 生成代码假通过 | 否（已人工核对） |
+| 编号 | 优先级 | 后端归属（定义见[后端责任划分](./2026-09-10-mcs51-sim-backend-responsibility-classification.md)） | 标题 | 真机后果 | 影响 health_pot？ |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| [GAP-01](#gap-01p0shim-常量错误gpiop13_mux_rxd-0x02--原厂-0x03) | **P0** | A-07 | shim 常量错误：`GPIO_P13_MUX_RXD` 0x02 ≠ 原厂 0x03 | 用该宏的 RXD 应用收不到串口 | 否（硬编码 0x03，仅 TX） |
+| [GAP-02](#gap-02p0uart-tx-链路零校验) | **P0** | A-01 + A-03 | UART TX 链路零校验（TR1/波特率/TXD mux/SCON 全不看） | 波特率错/无 TXD 复用 → 无输出或乱码，仿真照发 | 是（前提性风险，见 §5） |
+| [GAP-03](#gap-03p0缺少-8051-工具链编译门禁) | **P0** | A-07 | 缺少 8051 工具链编译门禁（用户源码从未被 C51 编译器编译） | C90 方言/容量超限真机编译失败，仿真无感 | 是（未验证） |
+| [GAP-04](#gap-04p1ckcon-复位种子错误0x07--0x003-倍定时器偏差) | **P1** | A-06 | CKCON 复位种子错误（硅片 0x07，模型 0x00，3 倍偏差） | 不显式清 T0M/T1M 的应用时序/波特率全错 | 否（应用显式配置） |
+| [GAP-05](#gap-05p1adc-参考电压链模拟复用完全不建模) | **P1** | A-02 | ADC 参考电压链 / 模拟 mux / LDO 不参与码值 | NTC 上拉轨≠3.0V 时全温区系统性测温偏差 | **是（前提性风险）** |
+| [GAP-06](#gap-06p1config-选项字节不在仿真世界fosc-硬编码-24mhz) | **P1** | A-06 + C-03 | CONFIG 选项字节不建模，Fosc 硬编码 24MHz | 芯片 CONFIG 非 24MHz 路径时 tick 与波特率同比错 | **是（前提性风险）** |
+| [GAP-07](#gap-07p1wdt-只验证-ta-序列不验证超时复位ta-窗口过宽容) | **P1** | A-04（依赖 A-03 先行） | WDT 不模拟超时复位；TA 窗口无超时/不被打断 | 真机喂狗不及时复位循环；错误 TA 用法虚假通过 | 低（喂狗周期 10ms，余量充足） |
+| [GAP-08](#gap-08p1gpio-方向上下拉驱动强度寄存器不参与行为) | **P1** | A-05 | TRIS/UP/OD/DR/LEDSDR 不参与引脚行为 | 忘配输出方向/上拉 → 继电器不吸合、按键乱触发 | 否（应用配置完整） |
+| [GAP-09](#gap-09p2xram-合法窗口-8kb--硅片-1kb) | P2 | A-06 | XRAM 合法窗口 8KB ≠ CMS8S78xx 实际 1KB | 0x0400~0x1FFF 访问仿真合法、真机落入 XSFR | 否（仅用 0x10~0x15） |
+| [GAP-10](#gap-10p2生产-wasm-非-strict无头 runner-不按-warning-判失败) | P2 | A-07 | 生产 wasm 非 STRICT，无头 runner 不消费 warning/OOB 计数 | 场景绿色掩盖越界访问与未建模特性调用 | 间接 |
+| [GAP-11](#gap-11p2c51-16-位-int--unsigned-char-语义差异未入红线手册) | P2 | A-07（文档）+ B-04（语义根治） | C51 16 位 int / unsigned char 语义差异未文档化 | 依赖回绕/符号/移位的代码两端分叉 | 否（已人工核对） |
+| [GAP-12](#gap-12p2杂项-t234-时钟公式重复向量静默覆盖cleanup-注入面过宽w0c-缺口) | P2 | A-08 | T2/3/4 周期不跟 clock_hz；重复向量静默覆盖；cleanup 注入面过宽；P0EXTIF W0C 缺口 | 多类边角行为分叉（详见正文） | 否（仅用 T0） |
+| [GAP-13](#gap-13p1第二轮评审复位后硬件时钟未种子化12mhz-兜底与-ckcon-叠加最多-6-倍) | **P1** | A-06 | 复位后硬件时钟未种子化（12MHz 兜底，与 CKCON 叠加最多 6 倍）；buzzer 同源问题并入 | 不写 CLKDIV 就起定时器的固件时序错 | 否（main 首句即配时钟） |
+| [GAP-14](#gap-14p2第二轮评审timer0-mode1-软件重载延迟不建模) | P2 | A-08（粗补/文档）+ B-03（精确根治） | Timer0 Mode1 软件重载延迟（每 tick 数 µs 漂移）不建模 | 高精度时间戳/频率测量应用系统性漂移 | 可忽略（最细 100ms） |
+| [GAP-15](#gap-15p2第二轮评审整端口写的逐位通知非原子) | P2 | A-08 | 整端口写被拆成 8 个逐位 gpio_write 通知（当前同步不可观测，属隐式假设） | 未来异步插件/总线型外设可能读到中间态 | 否（同步执行） |
+| [GAP-17'](#gap-17p2第二轮评审修正stoppd-唤醒源不完整) | P2 | A-08 | STOP 唤醒源模型不完整（仅 INT0/1；缺 GPIO 端口中断/WUT/LSE/LVD/SWE） | 低功耗代码仿真不醒/真机行为不一致 | 否（未用低功耗） |
+| [GAP-19](#gap-19p1第二轮评审结构性风险-a场景绿--可烧录的物理前提未显式呈现) | **P1** | A-07 | 结构：场景报告/AI 提示词不呈现"绿色不保证的物理前提" | 用户/AI 误把仿真绿当可烧录背书 | 间接 |
+| [GAP-20](#gap-20p2第二轮评审结构性风险-ccleanup-副本溯源与门禁状态不可见) | P2 | A-07 | 结构：被测的是 cleanup 副本，C51 编译状态不在报告中 | 改写器缺陷导致"测的不是真机跑的" | 间接 |
+| [GAP-21](#gap-21p2第二轮评审结构性风险-bwasm-每场景重建的生命周期假设无回归钉防) | P2 | A-07 | 结构：跨场景污染当前靠"每场景新 wasm 实例"兜住，无测试钉防 | 未来 runner 复用实例即成 P0 | 否 |
+| [GAP-22](#gap-22p1第三轮自查中断语义映射表的休眠错误种子) | **P1** | A-06（含家族门控） | 中断语义映射表 3 处向量错（UART1/I2C/SPI 撞车）+ ADC 优先级 EIP 寄存器错 | 当前无模型 raise 故零信号，将来一做就跳错向量 | 否 |
+| [GAP-23](#gap-23p1第三轮自查未建模-sfrxsfr-静默影子无-tripwire实测覆盖-77101-sfr93204-xsfr) | **P1** | A-07 | 未建模 SFR/XSFR 静默落影子、无 unsupported 计数（SFR 77/101、XSFR 93/204） | 用 EPWM/I2C/SPI/ACMP/WUT/Flash 的固件仿真"正常"真机无功能 | 否（health_pot 只用已建模寄存器） |
+| [GAP-24](#gap-24p2第三轮自查经典-51-movx-外部总线与-iap-非易失区未建模) | P2 | A-08 | 经典 51 的 MOVX 外部总线占用 P0/P2/P3.6/7；IAP 非易失区不持久 | 把 XBYTE 搬到 at89 carrier 会与 GPIO 冲突假通过 | 否（CMS8S 内部 XRAM） |
+| [GAP-25](#gap-25p2第三轮自查合集模拟脚数字读sbuf-重写递归c51-库与栈深) | P2 | A-05 + A-08 + B-04 | 模拟脚仍可数字读；SBUF 发送中重写不报错；递归仿真安全真机踩 overlay；Keil 库/栈面未验证 | 多类 AI 生成代码假通过 | 否（已人工核对） |
+
+> 后端标签定义见[后端责任划分](./2026-09-10-mcs51-sim-backend-responsibility-classification.md)：A=C++ Proxy 可解（同步记账+校验+门禁），B=必须 ISS，C=仿真永解不了（HIL/量产兜底）。各条修复方案首行标签以本表为准，正文不重复展开。 |
 
 ---
 
@@ -368,14 +370,14 @@ health_pot 的 10ms tick（T0 重载 0xB1E0）与 9600bps（TH1=217）都按 24M
 
 ## 6. 整改路线建议
 
-| 阶段 | 内容 | 关联条目 | 建议产出 |
-| :--- | :--- | :--- | :--- |
-| **阶段 1（热修，1~2 天）** | 修 RXD 宏；**修 IRQ 语义映射表（GAP-22）**；CKCON 复位种子 + **per-MCU reset seed 描述符（含 Fosc 种子，一并消除 GAP-13/16）**；T2/3/4 公式参数化；重复向量告警；P0EXTIF W0C | GAP-01/22/04/13/12 | 直接 PR + 单测，无需 ADR |
-| **阶段 1.5（脚本化门禁，2~3 天）** | **`mcs51_shim_audit.py`：SFR/XSFR 地址、向量表、mux/掩码宏对原厂头文件全量 diff；未建模寄存器白名单生成（GAP-23 tripwire 的输入）；复位值 YAML 比对框架** | §9.5/GAP-23 | CI 脚本 + 首份 diff 基线报告 |
-| **阶段 2（门禁，3~5 天）** | SDCC `--target=sdcc` 接入 CI 编译门禁（注意核实 SDCC 对扩展向量 19/15/16 的 `__interrupt` 改写覆盖）；STRICT 场景矩阵或 runner 计数判决（**含未建模 XSFR tripwire 计数**）；XRAM aperture 按型号收窄；**每场景实例独立性的回归钉防** | GAP-03/10/09/21/23 | Layer-③ 实施计划 + CI 改动 |
-| **阶段 3（模型保真，1~2 周）** | UART 配置就绪校验（4 种波特率源全枚举）+ 可选波特率记账（**必须先于 GAP-07**）；ADC 基准/外电路/mux 模型（**含模拟脚数字读屏蔽**）；GPIO 方向与上下拉；WDT 超时与 TA 窗口收窄；Fosc/CONFIG 声明接线；**STOP 唤醒源补全**；经典 51 MOVX 总线占用；SBUF 重写/递归等 lint | GAP-02/05/08/07/06/17'/24/25 | Layer-② 技术设计，涉及时钟语义的补 ADR 并回写设计规范 |
-| **阶段 4（文档/lint/呈现，持续）** | 红线手册补 int/char 语义、CONFIG、基准链、UART 前提、Mode1 重载漂移、滤波不可证伪；cleanup lint/注入面收窄与 manifest；**场景报告"物理前提"固定区块 + AI 提示词注入 + 门禁状态上报告** | GAP-11/12/14/19/20 | 文档 PR + cleanup 测试 + sister repo runner 改动 |
-| **阶段 5（HIL 兜底，视硬件条件）** | 廉价真机冒烟：利用 health_pot 既有 UART 遥测，真机上电校验帧节奏/按键/加热时序，作为 GAP-02/05/06 类物理前提的最终背书 | GAP-02/05/06 | HIL 场景规范（同源 scenario 在真机台运行） |
+| 阶段 | 内容 | 关联条目 | 后端映射（定义见[后端责任划分](./2026-09-10-mcs51-sim-backend-responsibility-classification.md)） | 建议产出 |
+| :--- | :--- | :--- | :--- | :--- |
+| **阶段 1（热修，1~2 天）** | 修 RXD 宏；**修 IRQ 语义映射表（GAP-22）**；CKCON 复位种子 + **per-MCU reset seed 描述符（含 Fosc 种子，一并消除 GAP-13/16）**；T2/3/4 公式参数化；重复向量告警；P0EXTIF W0C | GAP-01/22/04/13/12 | A-07、A-06、A-08 | 直接 PR + 单测，无需 ADR |
+| **阶段 1.5（脚本化门禁，2~3 天）** | **`mcs51_shim_audit.py`：SFR/XSFR 地址、向量表、mux/掩码宏对原厂头文件全量 diff；未建模寄存器白名单生成（GAP-23 tripwire 的输入）；复位值 YAML 比对框架** | §9.5/GAP-23 | A-07 | CI 脚本 + 首份 diff 基线报告 |
+| **阶段 2（门禁，3~5 天）** | SDCC `--target=sdcc` 接入 CI 编译门禁（注意核实 SDCC 对扩展向量 19/15/16 的 `__interrupt` 改写覆盖）；STRICT 场景矩阵或 runner 计数判决（**含未建模 XSFR tripwire 计数**）；XRAM aperture 按型号收窄；**每场景实例独立性的回归钉防** | GAP-03/10/09/21/23 | A-07、A-06 | Layer-③ 实施计划 + CI 改动 |
+| **阶段 3（模型保真，1~2 周）** | UART 配置就绪校验（4 种波特率源全枚举）+ 可选波特率记账（**必须先于 GAP-07**）；ADC 基准/外电路/mux 模型（**含模拟脚数字读屏蔽**）；GPIO 方向与上下拉；WDT 超时与 TA 窗口收窄；Fosc/CONFIG 声明接线；**STOP 唤醒源补全**；经典 51 MOVX 总线占用；SBUF 重写/递归等 lint | GAP-02/05/08/07/06/17'/24/25 | A-01、A-02、A-03、A-04、A-05、A-06、A-08 | Layer-② 技术设计，涉及时钟语义的补 ADR 并回写设计规范 |
+| **阶段 4（文档/lint/呈现，持续）** | 红线手册补 int/char 语义、CONFIG、基准链、UART 前提、Mode1 重载漂移、滤波不可证伪；cleanup lint/注入面收窄与 manifest；**场景报告"物理前提"固定区块 + AI 提示词注入 + 门禁状态上报告** | GAP-11/12/14/19/20 | A-07、A-08、B-03/B-04（文档声明部分） | 文档 PR + cleanup 测试 + sister repo runner 改动 |
+| **阶段 5（HIL 兜底，视硬件条件）** | 廉价真机冒烟：利用 health_pot 既有 UART 遥测，真机上电校验帧节奏/按键/加热时序，作为 GAP-02/05/06 类物理前提的最终背书 | GAP-02/05/06 | C-01、C-02、C-03 | HIL 场景规范（同源 scenario 在真机台运行） |
 
 > 流程提醒：按仓库文档流转规则，本 todolist 中的阶段 2/3 执行前应迁移为 `docs/implementation-plans/mcs51/` 下的正式实施计划；涉及时钟/中断语义变更的决定先写 ADR，Accepted 后回写 Layer-① 设计规范与现行技术规格 §保真度边界。
 
@@ -556,7 +558,7 @@ health_pot 的 10ms tick（T0 重载 0xB1E0）与 9600bps（TH1=217）都按 24M
 
 ## 10. 执行记录
 
-### 10.1 阶段 1 + 1.5 热修（2026-09-10，已完成，待提交）
+### 10.1 阶段 1 + 1.5 热修（2026-09-10，已完成，已提交）
 
 | 条目 | 改动 | 验证 |
 | :--- | :--- | :--- |
@@ -567,8 +569,8 @@ health_pot 的 10ms tick（T0 重载 0xB1E0）与 9600bps（TH1=217）都按 24M
 
 回归：31 个 mcs51/cms8s host 测试全部 rc=0（含 irq_arbitration、cms8s_adc、cms8s_buzzer、vendor StdDriver、low_power、timer_ext_clk、uart 全套）。全量 host 构建中唯一失败目标 `app_oled_dashboard_e2e` 为预存环境问题（缺 sister repo 的 app_codegen.py），与本次改动无关。
 
-遗留说明：
-1. **未提交**（等待显式指令）；建议按 4 个逻辑原子分提交：GAP-01、GAP-22、GAP-04/13、审计脚本+测试（跨 2 文件时可合并）。
+提交记录（2026-09-10 当日已落库，不再是"未提交"）：
+1. `a1f2afd fix(mcs51): correct IRQ semantic map vectors/priority SFRs (GAP-22)`；`6bcbf79 fix(mcs51): per-family silicon reset seeds for CKCON and power-on Fosc (GAP-04/13)`；`b9df7b3 test(mcs51): add shim-vs-vendor audit script and silicon seed/IRQ map test`；`4a55404 docs(mcs51): sim-vs-silicon gap audit todolist (GAP-01..25)`；`877da61 chore(mcs51): rebuild wasm simulator assets after GAP-01/22/04/13 fixes`。
 2. **wasm 无头回归已完成（2026-09-10，sister repo wink.py 自动重建生产 wasm）**：health_pot **15/15** 场景 PASS（含干烧/超温/继电器 dwell/遥测，验证 GAP-13 生产路径：CMS8S 种子 CKCON=0x07+24MHz 与应用显式重配置共存）；5 个经典 carrier 各 1/1（uart_hello/uart_echo/analog_threshold/button_led/button_led_int，at89c52 家族路径无回归）；GAP-01 活体验证——厂商未修改例程 **uart0_printf、uart0_rxtx 各 1/1 PASS**（两者都写 `P13CFG=GPIO_P13_MUX_RXD`，现在落 0x03）。合计 8 应用 22 场景全绿。
 3. 工作区有 1 个非内容改动：`mcs51_health_pot/unisim-assets/device-tree.json` 与厂商 2 例的 device-tree.json 仅 CRLF 规范化差异（configure/资产提取触发），提交时排除或还原。无头运行重建了 7 个应用的 `wink_simulator.{js,wasm}` 资产——属于 tracked 构建产物（参照历史 commit `rebuild wasm simulator asset`），随框架改动一并重新生成，提交时确认 diff 仅为重建内容。
 4. GAP-22 的家族门控（at89 构建不应注册 CMS8S 专属模型 hook）只完成了种子层，外设表门控待阶段 3。
