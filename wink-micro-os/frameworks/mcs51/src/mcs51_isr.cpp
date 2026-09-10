@@ -19,11 +19,14 @@ constexpr uint8_t SFR_SCON = 0x98u;
 constexpr uint8_t IE_EA    = 7u;
 
 // Default mapping table for standard 8051 + CMS8S78xx.
-// GAP-22 fix (2026-09-10): vectors/enable/priority bits re-verified against
-// cms8s78xx.h vector table + EIE2/EIF2/EIP1/EIP2 bit positions and ref manual
-// §10/§19/§20. Vendor priority rule: EIP1 bit = vector-8 (vectors 8..15),
-// EIP2 bit = vector-16 (vectors 16..23) — note ADC (vector 19) is EIP2.3,
-// NOT EIP1.4/EIP2.4. CMS8S78xx has no UART1 (vector 17 reserved).
+// GAP-22 fix (2026-09-10, corrected same day after SDCC-header pilot):
+// vectors/enable/flag bits verified against cms8s78xx.h; PRIORITY bits use
+// the vendor IRQ_SET_PRIORITY macro rule with the en_Priority_Module enum
+// (module numbers 0..27): IP bit=module (<8), EIP1 bit=module-8 (8..15),
+// EIP2 bit=module-16 (16..23), EIP3 bit=module-24 (24..31). Extended
+// module = vector+1, so e.g. ADC vector 19 -> module 20 -> EIP2.4 (NOT
+// vector-16; the first-cut fix used that wrong formula). CMS8S78xx has no
+// UART1 (vector 17 reserved).
 const mcs51_irq_map_entry_t s_default_irq_map[IRQ_SOURCE__COUNT] = {
     /* IRQ_SOURCE_INT0 */   { 0u,  0xA8u, 0u, 0x88u, 1u, 0xB8u, 0u, MCS51_IRQ_HW_AUTO_CLEAR }, // IE.EX0, TCON.IE0, IP.PX0
     /* IRQ_SOURCE_TIMER0 */ { 1u,  0xA8u, 1u, 0x88u, 5u, 0xB8u, 1u, MCS51_IRQ_HW_AUTO_CLEAR }, // IE.ET0, TCON.TF0, IP.PT0
@@ -31,13 +34,13 @@ const mcs51_irq_map_entry_t s_default_irq_map[IRQ_SOURCE__COUNT] = {
     /* IRQ_SOURCE_TIMER1 */ { 3u,  0xA8u, 3u, 0x88u, 7u, 0xB8u, 3u, MCS51_IRQ_HW_AUTO_CLEAR }, // IE.ET1, TCON.TF1, IP.PT1
     /* IRQ_SOURCE_UART0 */  { 4u,  0xA8u, 4u, 0x98u, 0u, 0xB8u, 4u, MCS51_IRQ_SW_CLEAR },      // IE.ES0, SCON.RI/TI, IP.PS0
     /* IRQ_SOURCE_TIMER2 */ { 5u,  0xA8u, 5u, 0xC9u, 7u, 0xB8u, 5u, MCS51_IRQ_SW_CLEAR },      // IE.ET2, T2IF.T2F, IP.PT2
-    /* IRQ_SOURCE_ADC */    { 19u, 0xAAu, 4u, 0xB2u, 4u, 0xBAu, 3u, MCS51_IRQ_SW_CLEAR },      // EIE2.ADCIE, EIF2.ADCIF, EIP2.ADCIP (19-16=3)
+    /* IRQ_SOURCE_ADC */    { 19u, 0xAAu, 4u, 0xB2u, 4u, 0xBAu, 4u, MCS51_IRQ_SW_CLEAR },      // EIE2.ADCIE, EIF2.ADCIF, EIP2 module20->bit4
     /* IRQ_SOURCE_UART1 */  { 0xFFu, 0xFFu, 0u, 0xFFu, 0u, 0xFFu, 0u, MCS51_IRQ_SW_CLEAR },    // no UART1 on CMS8S78xx: unmapped (0xFF vector never dispatches)
-    /* IRQ_SOURCE_PWM */    { 18u, 0xAAu, 3u, 0xB2u, 3u, 0xBAu, 2u, MCS51_IRQ_SW_CLEAR },      // EIE2.PWMIE(3), EIF2.PWMIF(3), EIP2(18-16=2)
-    /* IRQ_SOURCE_I2C */    { 21u, 0xAAu, 6u, 0xB2u, 6u, 0xBAu, 5u, MCS51_IRQ_SW_CLEAR },      // EIE2.I2CIE(6), EIF2.I2CIF(6), EIP2(21-16=5)
-    /* IRQ_SOURCE_SPI */    { 22u, 0xAAu, 7u, 0xB2u, 7u, 0xBAu, 6u, MCS51_IRQ_SW_CLEAR },      // EIE2.SPIIE(7), EIF2.SPIIF(7), EIP2(22-16=6)
-    /* IRQ_SOURCE_TIMER3 */ { 15u, 0xAAu, 0u, 0xB2u, 0u, 0xB9u, 7u, MCS51_IRQ_HW_AUTO_CLEAR }, // EIE2.ET3IE, EIF2.TF3, EIP1(15-8=7)
-    /* IRQ_SOURCE_TIMER4 */ { 16u, 0xAAu, 1u, 0xB2u, 1u, 0xBAu, 0u, MCS51_IRQ_HW_AUTO_CLEAR }, // EIE2.ET4IE, EIF2.TF4, EIP2(16-16=0)
+    /* IRQ_SOURCE_PWM */    { 18u, 0xAAu, 3u, 0xB2u, 3u, 0xBAu, 3u, MCS51_IRQ_SW_CLEAR },      // EIE2.PWMIE(3), EIF2.PWMIF(3), EIP2 module19->bit3
+    /* IRQ_SOURCE_I2C */    { 21u, 0xAAu, 6u, 0xB2u, 6u, 0xBAu, 6u, MCS51_IRQ_SW_CLEAR },      // EIE2.I2CIE(6), EIF2.I2CIF(6), EIP2 module22->bit6
+    /* IRQ_SOURCE_SPI */    { 22u, 0xAAu, 7u, 0xB2u, 7u, 0xBAu, 7u, MCS51_IRQ_SW_CLEAR },      // EIE2.SPIIE(7), EIF2.SPIIF(7), EIP2 module23->bit7
+    /* IRQ_SOURCE_TIMER3 */ { 15u, 0xAAu, 0u, 0xB2u, 0u, 0xBAu, 0u, MCS51_IRQ_HW_AUTO_CLEAR }, // EIE2.ET3IE, EIF2.TF3, EIP2 module16->bit0
+    /* IRQ_SOURCE_TIMER4 */ { 16u, 0xAAu, 1u, 0xB2u, 1u, 0xBAu, 1u, MCS51_IRQ_HW_AUTO_CLEAR }, // EIE2.ET4IE, EIF2.TF4, EIP2 module17->bit1
 };
 
 mcs51_irq_map_entry_t s_irq_map[IRQ_SOURCE__COUNT];
