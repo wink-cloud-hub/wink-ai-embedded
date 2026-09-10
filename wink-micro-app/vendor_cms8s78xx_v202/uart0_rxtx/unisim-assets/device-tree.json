@@ -1,5 +1,5 @@
 {
-  "appName": "vendor_cms8s78xx_v202_uart0_rxtx",
+  "appName": "uart0_rxtx",
   "board": "cms8s78xx_devboard",
   "devices": {},
   "family": "mcs51",
