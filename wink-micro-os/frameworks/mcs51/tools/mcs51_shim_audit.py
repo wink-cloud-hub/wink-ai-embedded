@@ -1,0 +1,194 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+"""
+mcs51_shim_audit.py — shim ↔ vendor silicon definition drift gate (GAP-01/22/23).
+
+The MCS-51 zero-intrusion simulation layer substitutes C++ proxies for the
+vendor Keil device header. This script mechanically diffs the committed shim
+against the vendor fixtures so an incorrect constant fails CI instead of
+producing "scenario green, silicon broken":
+
+  1. Direct SFR addresses (sfr NAME = 0xNN)
+  2. XSFR MOVX addresses (#define NAME *(volatile unsigned char xdata *)0xNNNN)
+  3. GPIO pin-mux macro values (#define GPIO_P.._MUX_.. (0x..))
+  4. Vendor interrupt vector numbers vs the framework semantic map
+     (s_default_irq_map in mcs51_isr.cpp)
+
+Exit code 0 = no hard mismatch (address collisions / wrong macro / wrong
+vector). Vendor registers absent from the shim are COVERAGE information, not
+errors: they are the input for the GAP-23 unmodeled-register whitelist.
+
+Usage:
+    python mcs51_shim_audit.py [--json] [--root EMBEDDED_ROOT]
+"""
+import argparse
+import json
+import re
+import sys
+from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+DEFAULT_ROOT = SCRIPT_DIR.parents[3]  # .../wink-micro-os/frameworks/mcs51/tools -> repo root
+
+VENDOR_REL = ("docs/vendors/Cmsemicon/CMS8S78xx_DemoCode_V2.0.2/"
+              "CMS8S78xx_Demo/Libary")
+FW_DIR = SCRIPT_DIR.parent
+
+
+def parse_sfrs(text):
+    """sfr NAME = 0xNN;  (also tolerates extra whitespace)."""
+    return {m.group(1): int(m.group(2), 16)
+            for m in re.finditer(r'\bsfr\s+([A-Za-z0-9_]+)\s*=\s*0x([0-9A-Fa-f]+)\s*;', text)}
+
+
+def parse_xsfrs(text):
+    """#define NAME *(volatile unsigned char xdata *) 0xNNNN (vendor form)."""
+    return {m.group(1): int(m.group(2), 16)
+            for m in re.finditer(
+                r'#define\s+([A-Za-z0-9_]+)\s*\*\(volatile\s+unsigned\s+char\s+xdata\s*\*\)\s*0x([0-9A-Fa-f]{4})',
+                text)}
+
+
+def parse_shim_xsfrs(text):
+    """xsfr NAME(0xNNNN) — multiple declarations per line supported."""
+    return {m.group(1): int(m.group(2), 16)
+            for m in re.finditer(r'\bxsfr\s+([A-Za-z0-9_]+)\s*\(\s*0x([0-9A-Fa-f]{4})\s*\)', text)}
+
+
+def parse_int_macros(text, prefix):
+    out = {}
+    pat = re.compile(r'#define\s+(' + prefix + r'[A-Za-z0-9_]*)\s+\(?\s*(0x[0-9A-Fa-f]+|\d+)\s*\)?')
+    for m in pat.finditer(text):
+        v = m.group(2)
+        out[m.group(1)] = int(v, 16) if v.lower().startswith("0x") else int(v)
+    return out
+
+
+def parse_vendor_vectors(text):
+    """#define ADC_VECTOR 19 style table."""
+    out = {}
+    for m in re.finditer(r'#define\s+([A-Za-z0-9_]+_VECTOR)\s+(\d+)', text):
+        out[m.group(1)] = int(m.group(2))
+    return out
+
+
+def parse_framework_map(isr_h, isr_cpp):
+    """Parse the ordered s_default_irq_map initializer in mcs51_isr.cpp.
+
+    Enum order lives in wink_mcs51_isr.h; it defines which source each row
+    belongs to. Returns {source_name: first-brace vector value}."""
+    enum_src = re.search(r'typedef\s+enum\s*\{(.*?)\}\s*mcs51_irq_source_t',
+                         isr_h, re.S)
+    if not enum_src:
+        return None
+    sources = [m for m in re.findall(r'IRQ_SOURCE_+([A-Z0-9_]+)', enum_src.group(1))
+               if m != "COUNT"]
+    table = re.search(r's_default_irq_map\[.*?\]\s*=\s*\{(.*?)\};', isr_cpp, re.S)
+    if not table:
+        return None
+    rows = re.findall(r'\{\s*(?:(\d+)|0x([0-9A-Fa-f]+))u?\s*,', table.group(1))
+    vectors = [int(a, 10) if a else int(b, 16) for a, b in rows]
+    if len(vectors) != len(sources):
+        return {"__parse_error__": f"{len(vectors)} rows vs {len(sources)} sources"}
+    return dict(zip(sources, vectors))
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--root", default=str(DEFAULT_ROOT),
+                    help="embedded repo root (default: inferred)")
+    ap.add_argument("--json", action="store_true", help="machine-readable report")
+    args = ap.parse_args()
+
+    root = Path(args.root)
+    vendor_dev = root / VENDOR_REL / "Device/CMS8S78xx/Include/cms8s78xx.h"
+    vendor_gpio = root / VENDOR_REL / "StdDriver/inc/gpio.h"
+    shim_cms = FW_DIR / "include/REG_CMS8S78XX.H"
+    shim_52 = FW_DIR / "include/REGX52.H"
+    fw_isr = FW_DIR / "src/mcs51_isr.cpp"
+    fw_isr_h = FW_DIR / "include/wink_mcs51_isr.h"
+    for p in (vendor_dev, vendor_gpio, shim_cms, shim_52, fw_isr, fw_isr_h):
+        if not p.exists():
+            print(f"error: required file missing: {p}", file=sys.stderr)
+            return 2
+
+    vh = vendor_dev.read_text(encoding="utf-8", errors="replace")
+    gpioh = vendor_gpio.read_text(encoding="utf-8", errors="replace")
+    sh = shim_cms.read_text(encoding="utf-8") + "\n" + shim_52.read_text(encoding="utf-8")
+    isr_cpp = fw_isr.read_text(encoding="utf-8")
+    isr_h = fw_isr_h.read_text(encoding="utf-8")
+
+    report = {"hard_mismatches": [], "coverage": {}}
+    hard = report["hard_mismatches"]
+
+    # ── 1/2. SFR + XSFR address maps ────────────────────────────────────────
+    v_sfr, s_sfr = parse_sfrs(vh), parse_sfrs(sh)
+    v_xsfr, s_xsfr = parse_xsfrs(vh), parse_shim_xsfrs(sh)
+    for name, va in v_sfr.items():
+        if name in s_sfr and s_sfr[name] != va:
+            hard.append(f"SFR address mismatch: {name} vendor=0x{va:02X} shim=0x{s_sfr[name]:02X}")
+    for name, va in v_xsfr.items():
+        if name in s_xsfr and s_xsfr[name] != va:
+            hard.append(f"XSFR address mismatch: {name} vendor=0x{va:04X} shim=0x{s_xsfr[name]:04X}")
+    report["coverage"]["sfr"] = {
+        "vendor": len(v_sfr), "shim": len(s_sfr),
+        "vendor_not_in_shim": sorted(set(v_sfr) - set(s_sfr))}
+    report["coverage"]["xsfr"] = {
+        "vendor": len(v_xsfr), "shim": len(s_xsfr),
+        "vendor_not_in_shim": sorted(set(v_xsfr) - set(s_xsfr))}
+    report["coverage"]["shim_only_xsfr"] = sorted(set(s_xsfr) - set(v_xsfr))
+
+    # ── 3. GPIO mux macro values ────────────────────────────────────────────
+    v_mux = parse_int_macros(gpioh, r"GPIO_")
+    s_mux = parse_int_macros(sh, r"GPIO_")
+    for name, vv in v_mux.items():
+        if name in s_mux and s_mux[name] != vv:
+            hard.append(f"GPIO macro mismatch: {name} vendor=0x{vv:02X} shim=0x{s_mux[name]:02X}")
+
+    # ── 4. Interrupt vectors vs framework semantic map ──────────────────────
+    vectors = parse_vendor_vectors(vh)
+    fw_map = parse_framework_map(isr_h, isr_cpp)
+    expected = {  # semantic source -> vendor vector symbol (0xFF = intentionally unmapped)
+        "INT0": ("INT0_VECTOR", None), "TIMER0": ("TMR0_VECTOR", None),
+        "INT1": ("INT1_VECTOR", None), "TIMER1": ("TMR1_VECTOR", None),
+        "UART0": ("UART0_VECTOR", None), "TIMER2": ("TMR2_VECTOR", None),
+        "ADC": ("ADC_VECTOR", None), "PWM": ("EPWM_VECTOR", None),
+        "I2C": ("I2C_VECTOR", None), "SPI": ("SPI_VECTOR", None),
+        "TIMER3": ("TMR3_VECTOR", None), "TIMER4": ("TMR4_VECTOR", None)}
+    if isinstance(fw_map, dict) and "__parse_error__" not in fw_map:
+        for src, (sym, _) in expected.items():
+            want = vectors[sym]
+            got = fw_map.get(src)
+            if got is None:
+                hard.append(f"IRQ map missing source: {src}")
+            elif got != want:
+                hard.append(f"IRQ vector mismatch: IRQ_SOURCE_{src} map={got} vendor {sym}={want}")
+        if fw_map.get("UART1", 0xFF) != 0xFF:
+            hard.append("IRQ_SOURCE_UART1 must be unmapped (0xFF): CMS8S78xx has no UART1")
+    else:
+        hard.append("could not parse s_default_irq_map: " +
+                    str(fw_map.get("__parse_error__") if fw_map else "table not found"))
+
+    # ── Output ──────────────────────────────────────────────────────────────
+    if args.json:
+        print(json.dumps(report, indent=2, ensure_ascii=False))
+    else:
+        c = report["coverage"]
+        print(f"SFR : vendor {c['sfr']['vendor']:3d} / shim {c['sfr']['shim']:3d} / "
+              f"vendor-not-in-shim {len(c['sfr']['vendor_not_in_shim'])}")
+        print(f"XSFR: vendor {c['xsfr']['vendor']:3d} / shim {c['xsfr']['shim']:3d} / "
+              f"vendor-not-in-shim {len(c['xsfr']['vendor_not_in_shim'])} "
+              f"(GAP-23 unmodeled whitelist input)")
+        if c["shim_only_xsfr"]:
+            print(f"shim-only XSFR (review): {', '.join(c['shim_only_xsfr'])}")
+        if hard:
+            print(f"\nHARD MISMATCHES ({len(hard)}):")
+            for h in hard:
+                print("  FAIL:", h)
+        else:
+            print("\nNo hard mismatches.")
+    return 1 if hard else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
