@@ -1,0 +1,152 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51_health_pot safety: sensor fault is manually acknowledgeable - ON/OFF always returns to a safe muted standby, start refused until probe recovers",
+    "templateId": "mcs51_health_pot",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "10000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "30ms",
+      "adcChannel": 32,
+      "valueNorm": 0.9766,
+      "description": "Prove already open at power-up: 12-bit raw ~4000 >= NTC_OPEN_RAW(3900), POST must latch E-01 at the first control tick (valueNorm = 4000/4096)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "300ms",
+      "target": "plugin:display/text",
+      "matcher": "E-01",
+      "description": "POST open probe: display shows fault code E-01"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "300ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Heater forced off while the probe is open"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "700ms",
+      "target": "plugin:led_fault/on",
+      "matcher": true,
+      "description": "Fault LED 1 Hz blink - sampled in the ON phase (500..1000 ms) with the audible alarm"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "1200ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "1500ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1900ms",
+      "target": "plugin:display/text",
+      "matcher": " -- ",
+      "description": "ON/OFF is honoured even inside a sensor fault: acknowledged muted standby shows ' -- ' instead of trapping the user in E-01"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1900ms",
+      "target": "plugin:led_fault/on",
+      "matcher": false,
+      "description": "Fault LED and the warble stop after the manual acknowledge"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["1800ms", "2500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=0,H=0,F=1",
+      "minPackets": 1,
+      "description": "Muted standby keeps the fault remembered in telemetry (F=1) while the contact stays open (H=0)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "3000ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "3300ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "3700ms",
+      "target": "plugin:display/text",
+      "matcher": "E-01",
+      "description": "Starting with the probe still open is refused: the fault is surfaced again instead of entering a blind heating cycle"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "3700ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Refused start keeps the heater off"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "5000ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0586,
+      "description": "Probe replaced/recovered: code back to ~240 (25 C, valid range)"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["5500ms", "6500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=0,H=0,F=0",
+      "minPackets": 1,
+      "description": "After the 3x100 ms valid-reading streak the latch clears automatically to plain standby (F=0)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "7000ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "7300ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "7800ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "With a healthy probe the next ON/OFF starts heating normally"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "7800ms",
+      "target": "plugin:display/text",
+      "matcher": "25b0",
+      "description": "Normal HEAT display after the recovered start"
+    }
+  ]
+}
