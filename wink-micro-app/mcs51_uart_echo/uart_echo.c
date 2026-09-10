@@ -41,6 +41,15 @@ void main(void) {
     /* Enable the UART interrupt source before REN so the first received byte
      * is already gated into the ISR (hardware-valid init order). */
     echo_pending = 0;
+    /* Baud-rate generator: Timer1 in mode 2 (8-bit auto-reload), 9600 bps
+     * on the textbook 11.0592 MHz crystal (TH1=0xFD, 0.0% error). Without
+     * this the UART TX-link readiness gate reports "baud source not
+     * running" and silicon never sets TI (GAP-02 plan B). */
+    TMOD &= 0x0F;
+    TMOD |= 0x20;
+    TH1 = 0xFD;
+    TL1 = 0xFD;
+    TR1 = 1;
     EA = 1;
     ES = 1;
     SCON = 0x50;            /* mode 1 (8-bit UART), REN enabled; TI=RI=0 */

@@ -206,9 +206,7 @@ Task 1 → Task 2 → Task 3；Task 4 为 deferred（另立 ADR，不在本计�
 
 `mcs51_uart_hello`、`mcs51_uart_echo` 在 Release 下各产生 **1 条** not-ready 告警：`[MCS51] UART TX link not ready: baud source not running/unmodeled`（t=0）。核对源码确认**是应用真缺配置而非检查过严**：两个 carrier 均为功能级证明程序，从未配置 TMOD/TH1/TR1（文件头注释自述 "At the functional level there is no baud/timer model"），硅片上模式 1 UART 无波特率时钟、TI 永不会置位——正是本门禁要抓的"仿真绿/真机挂"。对照：health_pot（完整 T1 配置）与两个 vendor 例程（BRT/完整初始化）**0 告警**，反向证明谓词没有误伤。
 
-**处置（待定，建议方案 B）**：
-- 方案 A：保留功能级定位，在 GAP-10 runner 判决中对这两个应用加 not-ready 白名单（语义：功能证明，非硅片可用）。
-- 方案 B（推荐）：给两个 carrier 补 T1 波特率初始化（TMOD mode2 + TH1 重载 + TR1=1，如 9600bps@24MHz 的 TH1=217 路径或经典 11.0592MHz 值），使其同时是功能证明与硅片可用固件；补 SDCC 门禁（GAP-03 已绿）双重背书。
+**处置：✅ 已按方案 B 执行（2026-09-11）**：两个 carrier 的 main 补上教科书式 T1 波特率初始化（TMOD mode2 + TH1/TL1=0xFD + TR1=1，11.0592MHz→9600bps），重建 wasm 后 2 场景 PASS 且 not-ready 告警归零；SDCC 门禁同步绿（hello CODE=405B、echo CODE=360B）。8 应用 22 场景现为全绿 + **0 not-ready**。
 
 ---
 

@@ -36,6 +36,15 @@ static void uart_send_str(const char *s) {
 }
 
 void main(void) {
+    /* Baud-rate generator: Timer1 in mode 2 (8-bit auto-reload), 9600 bps
+     * on the textbook 11.0592 MHz crystal (TH1=0xFD, 0.0% error). Without
+     * this the UART TX-link readiness gate reports "baud source not
+     * running" and silicon never sets TI (GAP-02 plan B). */
+    TMOD &= 0x0F;
+    TMOD |= 0x20;
+    TH1 = 0xFD;
+    TL1 = 0xFD;
+    TR1 = 1;
     SCON = 0x40;    /* UART mode 1 (8-bit UART), REN=0 (TX only), TI=RI=0 */
     while (1) {
         uart_send_str(HELLO);
