@@ -78,12 +78,10 @@
         "OUT": "$board.headers.P00"
       },
       "label": "水温探头",
-      "properties": {
-        "temperature": 25,
-        "r25": 10000,
-        "bValue": 3950,
-        "pullUpResistor": 10000
-      }
+      "temperature": 25,
+      "r25": 10000,
+      "bValue": 3950,
+      "pullUpResistor": 160000
     }
   }
 }

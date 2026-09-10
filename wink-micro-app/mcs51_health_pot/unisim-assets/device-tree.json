@@ -120,14 +120,14 @@
       "type": "ntc",
       "label": "水温探头",
       "pinMapping": {
-        "OUT": 32
+        "OUT": 0
       },
       "properties": {
         "label": "水温探头",
         "temperature": 25,
         "r25": 10000,
         "bValue": 3950,
-        "pullUpResistor": 10000
+        "pullUpResistor": 160000
       }
     }
   },
