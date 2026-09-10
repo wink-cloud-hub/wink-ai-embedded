@@ -72,25 +72,43 @@ def parse_vendor_vectors(text):
     return out
 
 
-def parse_framework_map(isr_h, isr_cpp):
+def parse_priority_modules(text):
+    """en_Priority_Module enum: IRQ_ADC = 20 style module numbers."""
+    out = {}
+    for m in re.finditer(r'(IRQ_[A-Z0-9_]+)\s*=\s*(\d+)', text):
+        out[m.group(1)] = int(m.group(2))
+    return out
+
+
+def parse_framework_map(isr_h_text, isr_cpp_text):
     """Parse the ordered s_default_irq_map initializer in mcs51_isr.cpp.
 
     Enum order lives in wink_mcs51_isr.h; it defines which source each row
-    belongs to. Returns {source_name: first-brace vector value}."""
+    belongs to. Returns {source_name: (vector, prio_sfr, prio_bit)}.
+    Unmapped rows use vector 0xFF."""
     enum_src = re.search(r'typedef\s+enum\s*\{(.*?)\}\s*mcs51_irq_source_t',
-                         isr_h, re.S)
+                         isr_h_text, re.S)
     if not enum_src:
         return None
     sources = [m for m in re.findall(r'IRQ_SOURCE_+([A-Z0-9_]+)', enum_src.group(1))
                if m != "COUNT"]
-    table = re.search(r's_default_irq_map\[.*?\]\s*=\s*\{(.*?)\};', isr_cpp, re.S)
+    table = re.search(r's_default_irq_map\[.*?\]\s*=\s*\{(.*?)\};', isr_cpp_text, re.S)
     if not table:
-        return None
-    rows = re.findall(r'\{\s*(?:(\d+)|0x([0-9A-Fa-f]+))u?\s*,', table.group(1))
-    vectors = [int(a, 10) if a else int(b, 16) for a, b in rows]
-    if len(vectors) != len(sources):
-        return {"__parse_error__": f"{len(vectors)} rows vs {len(sources)} sources"}
-    return dict(zip(sources, vectors))
+        return {"__parse_error__": "table not found"}
+    # Each row: { vec, ie_sfr, ie_bit, flag_sfr, flag_bit, prio_sfr, prio_bit, clear }
+    rows = re.findall(
+        r'\{\s*(?:(\d+)|0x([0-9A-Fa-f]+))u?\s*,\s*'
+        r'(?:(\d+)|0x([0-9A-Fa-f]+))u?\s*,\s*(\d+)u?\s*,\s*'
+        r'(?:(\d+)|0x([0-9A-Fa-f]+))u?\s*,\s*(\d+)u?\s*,\s*'
+        r'(?:(\d+)|0x([0-9A-Fa-f]+))u?\s*,\s*(\d+)u?',
+        table.group(1))
+    def val(a, b):
+        return int(a, 10) if a else int(b, 16)
+    # Row field order: vector, ie_sfr/bit, flag_sfr/bit, prio_sfr/bit, clear.
+    parsed = [(val(r[0], r[1]), val(r[8], r[9]), int(r[10])) for r in rows]
+    if len(parsed) != len(sources):
+        return {"__parse_error__": f"{len(parsed)} rows vs {len(sources)} sources"}
+    return dict(zip(sources, parsed))
 
 
 def main():
@@ -117,7 +135,6 @@ def main():
     sh = shim_cms.read_text(encoding="utf-8") + "\n" + shim_52.read_text(encoding="utf-8")
     isr_cpp = fw_isr.read_text(encoding="utf-8")
     isr_h = fw_isr_h.read_text(encoding="utf-8")
-
     report = {"hard_mismatches": [], "coverage": {}}
     hard = report["hard_mismatches"]
 
@@ -145,25 +162,43 @@ def main():
         if name in s_mux and s_mux[name] != vv:
             hard.append(f"GPIO macro mismatch: {name} vendor=0x{vv:02X} shim=0x{s_mux[name]:02X}")
 
-    # ── 4. Interrupt vectors vs framework semantic map ──────────────────────
+    # ── 4. Interrupt vectors + priority SFR/bit vs vendor rules ────────────
     vectors = parse_vendor_vectors(vh)
+    modules = parse_priority_modules(vh)
     fw_map = parse_framework_map(isr_h, isr_cpp)
-    expected = {  # semantic source -> vendor vector symbol (0xFF = intentionally unmapped)
-        "INT0": ("INT0_VECTOR", None), "TIMER0": ("TMR0_VECTOR", None),
-        "INT1": ("INT1_VECTOR", None), "TIMER1": ("TMR1_VECTOR", None),
-        "UART0": ("UART0_VECTOR", None), "TIMER2": ("TMR2_VECTOR", None),
-        "ADC": ("ADC_VECTOR", None), "PWM": ("EPWM_VECTOR", None),
-        "I2C": ("I2C_VECTOR", None), "SPI": ("SPI_VECTOR", None),
-        "TIMER3": ("TMR3_VECTOR", None), "TIMER4": ("TMR4_VECTOR", None)}
+    expected = {  # semantic source -> (vendor vector symbol, priority module enum)
+        "INT0": ("INT0_VECTOR", "IRQ_INT0"), "TIMER0": ("TMR0_VECTOR", "IRQ_TMR0"),
+        "INT1": ("INT1_VECTOR", "IRQ_INT1"), "TIMER1": ("TMR1_VECTOR", "IRQ_TMR1"),
+        "UART0": ("UART0_VECTOR", "IRQ_UART0"), "TIMER2": ("TMR2_VECTOR", "IRQ_TMR2"),
+        "ADC": ("ADC_VECTOR", "IRQ_ADC"), "PWM": ("EPWM_VECTOR", "IRQ_EPWM"),
+        "I2C": ("I2C_VECTOR", "IRQ_I2C"), "SPI": ("SPI_VECTOR", "IRQ_SPI"),
+        "TIMER3": ("TMR3_VECTOR", "IRQ_TMR3"), "TIMER4": ("TMR4_VECTOR", "IRQ_TMR4")}
     if isinstance(fw_map, dict) and "__parse_error__" not in fw_map:
-        for src, (sym, _) in expected.items():
+        for src, (sym, mod_sym) in expected.items():
             want = vectors[sym]
-            got = fw_map.get(src)
-            if got is None:
+            entry = fw_map.get(src)
+            if entry is None:
                 hard.append(f"IRQ map missing source: {src}")
-            elif got != want:
-                hard.append(f"IRQ vector mismatch: IRQ_SOURCE_{src} map={got} vendor {sym}={want}")
-        if fw_map.get("UART1", 0xFF) != 0xFF:
+                continue
+            got_vec, got_prio_sfr, got_prio_bit = entry
+            if got_vec != want:
+                hard.append(f"IRQ vector mismatch: IRQ_SOURCE_{src} map={got_vec} vendor {sym}={want}")
+            # Priority rule from vendor IRQ_SET_PRIORITY macro:
+            # module<8 -> IP(0xB8) bit=module; <16 -> EIP1(0xB9) bit=m-8;
+            # <24 -> EIP2(0xBA) bit=m-16.
+            mod = modules.get(mod_sym)
+            if mod is not None:
+                if mod < 8:
+                    want_prio = (0xB8, mod)
+                elif mod < 16:
+                    want_prio = (0xB9, mod - 8)
+                else:
+                    want_prio = (0xBA, mod - 16)
+                if (got_prio_sfr, got_prio_bit) != want_prio:
+                    hard.append(
+                        f"IRQ priority mismatch: IRQ_SOURCE_{src} map=0x{got_prio_sfr:02X}.{got_prio_bit} "
+                        f"vendor {mod_sym}({mod}) -> 0x{want_prio[0]:02X}.{want_prio[1]}")
+        if fw_map.get("UART1", (0xFF,))[0] != 0xFF:
             hard.append("IRQ_SOURCE_UART1 must be unmapped (0xFF): CMS8S78xx has no UART1")
     else:
         hard.append("could not parse s_default_irq_map: " +

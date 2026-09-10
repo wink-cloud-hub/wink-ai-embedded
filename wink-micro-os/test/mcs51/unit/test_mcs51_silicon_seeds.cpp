@@ -88,14 +88,16 @@ int main(void) {
           "Classic 51 effective hardware clock fallback 12 MHz");
 
     // ── 3) IRQ profile mapping (GAP-22) ────────────────────────────────────
+    // Priority bits follow the vendor IRQ_SET_PRIORITY macro + module enum:
+    // EIP1 bit=module-8, EIP2 bit=module-16 (extended module = vector+1).
     check_irq(IRQ_SOURCE_UART0,  4u,  0xA8, 4u, 0x98, 0u, 0xB8, 4u, "UART0");
     check_irq(IRQ_SOURCE_TIMER2, 5u,  0xA8, 5u, 0xC9, 7u, 0xB8, 5u, "TIMER2");
-    check_irq(IRQ_SOURCE_ADC,    19u, 0xAA, 4u, 0xB2, 4u, 0xBA, 3u, "ADC");
-    check_irq(IRQ_SOURCE_PWM,    18u, 0xAA, 3u, 0xB2, 3u, 0xBA, 2u, "PWM");
-    check_irq(IRQ_SOURCE_I2C,    21u, 0xAA, 6u, 0xB2, 6u, 0xBA, 5u, "I2C");
-    check_irq(IRQ_SOURCE_SPI,    22u, 0xAA, 7u, 0xB2, 7u, 0xBA, 6u, "SPI");
-    check_irq(IRQ_SOURCE_TIMER3, 15u, 0xAA, 0u, 0xB2, 0u, 0xB9, 7u, "TIMER3");
-    check_irq(IRQ_SOURCE_TIMER4, 16u, 0xAA, 1u, 0xB2, 1u, 0xBA, 0u, "TIMER4");
+    check_irq(IRQ_SOURCE_ADC,    19u, 0xAA, 4u, 0xB2, 4u, 0xBA, 4u, "ADC");
+    check_irq(IRQ_SOURCE_PWM,    18u, 0xAA, 3u, 0xB2, 3u, 0xBA, 3u, "PWM");
+    check_irq(IRQ_SOURCE_I2C,    21u, 0xAA, 6u, 0xB2, 6u, 0xBA, 6u, "I2C");
+    check_irq(IRQ_SOURCE_SPI,    22u, 0xAA, 7u, 0xB2, 7u, 0xBA, 7u, "SPI");
+    check_irq(IRQ_SOURCE_TIMER3, 15u, 0xAA, 0u, 0xB2, 0u, 0xBA, 0u, "TIMER3");
+    check_irq(IRQ_SOURCE_TIMER4, 16u, 0xAA, 1u, 0xB2, 1u, 0xBA, 1u, "TIMER4");
     {
         const mcs51_irq_map_entry_t* u1 =
             wink_mcs51_get_irq_map_entry(IRQ_SOURCE_UART1);
