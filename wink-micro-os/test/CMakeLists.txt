@@ -602,6 +602,11 @@ if(TARGET wink_mcs51_compat)
     add_mcs51_host_test(test_mcs51_irq_arbitration
         mcs51/unit/test_mcs51_irq_arbitration.cpp)
 
+    # GAP-01/04/13/22: per-family silicon reset seeds (CKCON/Fosc) and the
+# vendor-verified IRQ source->vector/profile mapping table
+    add_mcs51_host_test(test_mcs51_silicon_seeds
+        mcs51/unit/test_mcs51_silicon_seeds.cpp)
+
     # Task R0 / ADR-0077: GPIO dual read path (Read-Pin vs Read-Latch) & arbitration
     add_mcs51_host_test(test_mcs51_gpio_dual_path
         mcs51/unit/test_mcs51_gpio_dual_path.cpp)
