@@ -1,0 +1,131 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51_health_pot relay dwell: rapid OFF->ON power cycle also gated by 3 s min-off-time, cut-off edges stay immediate",
+    "templateId": "mcs51_health_pot",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "8000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "30ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0586,
+      "description": "Cold water before first control tick: 12-bit raw ~240 -> 25 C"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "100ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Boot: heater relay off"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "400ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "700ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1200ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "Cold start energises immediately (relay_off_sec seeded 255)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "2000ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "2300ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2700ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Power off during HEAT: cut-off is immediate (OFF edges never dwell-gated)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2700ms",
+      "target": "plugin:display/text",
+      "matcher": " -- ",
+      "description": "Power off returns to standby display"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "3500ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "3800ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "4200ms",
+      "target": "plugin:display/text",
+      "matcher": "25b0",
+      "description": "Back in HEAT state, but the contact is withheld during the dwell window"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "4600ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Only ~2.5 s off at this point (< 3 s RELAY_DWELL_SECONDS): heater stays off despite HEAT requesting power"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["4600ms", "5500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=1,H=0",
+      "minPackets": 1,
+      "description": "5 s telemetry frame: HEAT state but heater held off by dwell (off at ~2.1 s -> 3 s=1, 4 s=2, 5 s=3; control at 5.0 s runs before the second counter)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "5700ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "After the 5.0 s tick counts relay_off_sec=3, the 5.1 s control tick finally re-energises the contact"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["5800ms", "6800ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=1,H=1",
+      "minPackets": 1,
+      "description": "6 s telemetry frame: HEAT with heater on again"
+    }
+  ]
+}

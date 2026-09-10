@@ -1,0 +1,113 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51_health_pot safety: warm-up stalls above 45 C (lid off / low voltage) trips stage-2 dry-fire E-03",
+    "templateId": "mcs51_health_pot",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "70000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "30ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0586,
+      "description": "Cold water before first control tick: raw ~240 -> 25 C"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "400ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "700ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1200ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "Heating starts normally"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "1500ms",
+      "adcChannel": 32,
+      "valueNorm": 0.0186,
+      "description": "Temperature plateaus at ~55 C (12-bit raw ~76): above the stage-1 45 C gate so the 25 s watchdog can never trip; simulates lid-off heat loss / low mains voltage / half load"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "20000ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "Stage-1 watchdog (25 s below 45 C) correctly does NOT trip at 55 C"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["54000ms", "56000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=1,H=1,F=0",
+      "minPackets": 1,
+      "description": "Still heating at 55 s: stage-2 boil timeout is 60 s, not tripped yet"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "62500ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Stage-2 dry-fire: heater energised >60 s without reaching 98 C trips E-03 at the ~61 s tick; heater forced off"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "62500ms",
+      "target": "plugin:display/text",
+      "matcher": "E-03",
+      "description": "Dry-fire fault code latched on the display"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["61500ms", "64000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=3,H=0,F=3",
+      "minPackets": 1,
+      "description": "Telemetry: FAULT (S=3), heater off (H=0), dry-fire F=3 - thermal fault, manual reset only"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "66000ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "66300ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["66500ms", "69000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=0,H=0,F=0",
+      "minPackets": 1,
+      "description": "Manual ON/OFF clears the stage-2 latch back to standby"
+    }
+  ]
+}
