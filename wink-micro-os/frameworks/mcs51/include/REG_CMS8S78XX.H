@@ -43,7 +43,8 @@
 sfr TA     = 0x96;  // Time Access protection register
 sfr CKCON  = 0x8E;  // Clock control (timer prescaler)
 sfr FUNCCR = 0x91;  // Function control (UART0 clock source)
-sfr CLKDIV = 0x97;  // Clock divider
+sfr CLKDIV = 0x8F;  // Clock divider (TA-protected)
+sfr WDCON  = 0x97;  // Watchdog control (TA-protected; shares bit-addr space with P1.7)
 sfr SCON0  = 0x98;  // UART0 control
 sfr SBUF0  = 0x99;  // UART0 data buffer
 sfr P0TRIS = 0x9A;  // P0 direction (TRIS register, vendor GPIO driver)
@@ -168,9 +169,9 @@ xsfr LEDSDRP2L(0xF714); xsfr LEDSDRP2H(0xF715);
 xsfr LEDSDRP3L(0xF716);
 
 // Open-drain / Pull-up / Pull-down
-xsfr P0OD(0xF008); xsfr P1OD(0xF018); xsfr P2OD(0xF028); xsfr P3OD(0xF038);
-xsfr P0UP(0xF009); xsfr P1UP(0xF019); xsfr P2UP(0xF029); xsfr P3UP(0xF039);
-xsfr P0RD(0xF00A); xsfr P1RD(0xF01A); xsfr P2RD(0xF02A); xsfr P3RD(0xF03A);
+xsfr P0OD(0xF009); xsfr P1OD(0xF019); xsfr P2OD(0xF029); xsfr P3OD(0xF039);
+xsfr P0UP(0xF00A); xsfr P1UP(0xF01A); xsfr P2UP(0xF02A); xsfr P3UP(0xF03A);
+xsfr P0RD(0xF00B); xsfr P1RD(0xF01B); xsfr P2RD(0xF02B); xsfr P3RD(0xF03B);
 
 // Pin Share function selectors (ref manual §7.2.3; MOVX/xdata space).
 // PS_XX<6:0> = 0xPN selects port P + pin N for the peripheral function;
@@ -543,7 +544,10 @@ static inline void EXTINT_ClearIntFlag(uint8_t Extintn) {
 }
 
 // ── 6) Vendor System clock macros (verbatim from StdDriver inc/system.h) ───
-#define SYS_SET_SYSTEM_CLK(SystemClkDiv)     do{ CLKDIV = (SystemClkDiv); }while(0)
+#define SYS_SET_SYSTEM_CLK(SystemClkDiv)     do{ \
+    if (EA == 1) { EA = 0; _nop_(); TA = 0xAA; TA = 0x55; CLKDIV = (SystemClkDiv); EA = 1; } \
+    else          { TA = 0xAA; TA = 0x55; CLKDIV = (SystemClkDiv); } \
+}while(0)
 #define SYS_CLK_DIV_1                        (0x00)
 #define SYS_CLK_DIV_2                        (0x01)
 #define SYS_CLK_DIV_4                        (0x02)

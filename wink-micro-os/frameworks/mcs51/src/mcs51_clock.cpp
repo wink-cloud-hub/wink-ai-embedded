@@ -118,6 +118,17 @@ void wink_mcs51_set_clock_hz(uint32_t clock_hz) {
     ctx->microstep_us = wink_mcs51_calc_microstep_us(clock_hz);
 }
 
+void wink_mcs51_set_hardware_clock_hz(uint32_t clock_hz) {
+    // Hardware-rate clock only (timers/buzzer/baud math). The SFR-access
+    // billing quantum intentionally stays on the 12 MHz-calibrated
+    // interception-point budget (ADR-0072): the count of SFR interceptions in
+    // a firmware tick is Fsys-independent, and re-scaling the quantum would
+    // desynchronize the firmware fiber from the headless master clock.
+    // Used by silicon SFR notifications (e.g. CMS8S78xx CLKDIV writes).
+    Mcu51Context* ctx = mcs51_get_context();
+    ctx->clock_hz = clock_hz;
+}
+
 uint32_t wink_mcs51_get_clock_hz(void) {
     Mcu51Context* ctx = mcs51_get_context();
     return ctx->clock_hz != 0 ? ctx->clock_hz : WINK_MCS51_DEFAULT_CLOCK_HZ;

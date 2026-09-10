@@ -16,6 +16,9 @@ namespace {
 
 constexpr uint8_t  SFR_TCON = 0x88;
 constexpr uint8_t  SFR_TMOD = 0x89;
+constexpr uint8_t  SFR_CKCON = 0x8E;
+constexpr uint8_t  CKCON_T0M = 3u;
+constexpr uint8_t  CKCON_T1M = 4u;
 constexpr uint8_t  SFR_TL0  = 0x8A;
 constexpr uint8_t  SFR_TL1  = 0x8B;
 constexpr uint8_t  SFR_TH0  = 0x8C;
@@ -99,7 +102,7 @@ uint32_t timer_max_count(uint8_t mode) {
     return 65536u;  // mode 1
 }
 
-uint32_t reload_period(uint8_t t, uint8_t mode) {
+uint32_t reload_counts(uint8_t t, uint8_t mode) {
     if (mode == 2) {
         uint8_t th = sfr(t == 0 ? SFR_TH0 : SFR_TH1);
         return static_cast<uint32_t>(256u - th);
@@ -114,6 +117,24 @@ uint32_t reload_period(uint8_t t, uint8_t mode) {
     }
     uint32_t period = timer_max_count(mode) - base;
     return period == 0u ? timer_max_count(mode) : period;
+}
+
+// CMS8S78xx Timer0/1 input clock (ref manual 9.2.7 CKCON.T0M/T1M):
+//   TnM = 0 -> Fsys/12 (classic 12T), TnM = 1 -> Fsys/4 (1T/4).
+// us = counts * divider * 1e6 / Fsys. With the 12 MHz framework default and
+// 12T this yields the historical 1 count = 1 us mapping (classic STC/AT89).
+uint64_t counts_to_us(uint8_t t, uint32_t counts) {
+    const uint8_t ckcon = sfr(SFR_CKCON);
+    const uint8_t bit = t == 0 ? CKCON_T0M : CKCON_T1M;
+    const uint32_t divider = (ckcon & (1u << bit)) ? 4u : 12u;
+    const uint32_t fsys = wink_mcs51_get_clock_hz();
+    uint64_t us = (static_cast<uint64_t>(counts) * static_cast<uint64_t>(divider) *
+                   1000000ull) / static_cast<uint64_t>(fsys);
+    return us == 0ull ? 1ull : us;
+}
+
+uint64_t reload_period_us(uint8_t t, uint8_t mode) {
+    return counts_to_us(t, reload_counts(t, mode));
 }
 
 void schedule_from_reload(uint8_t t, uint64_t from_us) {
@@ -133,12 +154,7 @@ void schedule_from_reload(uint8_t t, uint64_t from_us) {
         return;
     }
 
-    uint32_t period = reload_period(t, tm.mode);
-    if (period == 0u) {
-        tm.next_ovf_us = NO_OVERFLOW;
-    } else {
-        tm.next_ovf_us = from_us + period;
-    }
+    tm.next_ovf_us = from_us + reload_period_us(t, tm.mode);
 }
 
 void timer_start(uint8_t t, uint64_t now_us) {
@@ -172,12 +188,7 @@ void on_overflow(uint8_t t, uint64_t at_us) {
         uint8_t th_addr = (t == 0) ? SFR_TH0 : SFR_TH1;
         uint8_t tl_addr = (t == 0) ? SFR_TL0 : SFR_TL1;
         mcs51_get_context()->sfr_shadow[tl_addr] = sfr(th_addr);
-        uint32_t period = reload_period(t, 2);
-        if (period == 0u) {
-            tm.next_ovf_us = NO_OVERFLOW;
-        } else {
-            tm.next_ovf_us = at_us + period;
-        }
+        tm.next_ovf_us = at_us + reload_period_us(t, 2);
     } else {
         schedule_from_reload(t, at_us);
     }
@@ -744,6 +755,16 @@ void wink_mcs51_timer_on_write(uint8_t addr) {
     }
 
     if (addr == SFR_TMOD) {
+        for (uint8_t t = 0; t < 2; ++t) {
+            if (get_tm(t).running) {
+                schedule_from_reload(t, now);
+            }
+        }
+        return;
+    }
+
+    if (addr == SFR_CKCON) {
+        // T0M/T1M (or WTS WDT coeff) changed: reschedule live timers
         for (uint8_t t = 0; t < 2; ++t) {
             if (get_tm(t).running) {
                 schedule_from_reload(t, now);
