@@ -135,8 +135,9 @@ health_pot 的遥测场景描述文字已经意识到此风险（`health-pot-uar
 
 **验收标准**
 
-- [ ] 新增 STRICT 测试：TR1=0 时写 SBUF 触发断言；TXD mux 缺失触发断言；模式 0 触发断言。
-- [ ] health_pot 现有遥测场景在开启校验后仍通过（证明其配置完整）。
+- [x] 新增 STRICT/Release 测试（`test_mcs51_uart_tx_ready` + `_strict`，2026-09-10 落地）：TR1=0 写 SBUF 触发断言/BAUD 计数；模式 0 触发断言/MODE 计数；REN+`PS_RXD`=0x13 指向未复用引脚触发断言/RXD 计数；BRT/TMR2/TMR4 运行位与保留 CKS 全覆盖；health_pot 等价配置零触发（35/35 host 全绿）。
+  注：原计划的"TXD mux 缺失触发断言"用例在实施中被修正——P3.1 为硬连线默认脚（手册 §21.2 + 原厂 gpio.h 核实），TXD 在功能层恒就绪，该原因位保留供 GAP-08（TRIS）细化；覆盖改用 RXD 选择器失配用例，见计划 v1.2。
+- [ ] health_pot 现有遥测场景在开启校验后仍通过（证明其配置完整）。（待 sister repo 重建生产 wasm 后验证，host 侧等价序列已零触发）
 
 ---
 

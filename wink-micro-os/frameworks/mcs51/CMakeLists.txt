@@ -24,7 +24,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Host/wasm standalone target. EXCLUDE_FROM_ALL: only built when an app/test
 # links it (mirrors wink_arduino_compat).
-add_library(wink_mcs51_compat STATIC EXCLUDE_FROM_ALL
+set(_MCS51_COMPAT_SRCS
     src/mcs51_context.cpp
     src/mcs51_peripheral.cpp
     src/mcs51_sfr.cpp
@@ -48,12 +48,17 @@ add_library(wink_mcs51_compat STATIC EXCLUDE_FROM_ALL
     src/mcs51_bridge.cpp
 )
 
+add_library(wink_mcs51_compat STATIC EXCLUDE_FROM_ALL ${_MCS51_COMPAT_SRCS})
+# GAP-02: STRICT twin of the compat library. STRICT is a compile-time macro,
+# so tests that assert the abort policy need a separately-built library;
+# the release twin above is untouched. EXCLUDE_FROM_ALL: only built when a
+# STRICT test links it. Never ship STRICT (debug/test configuration only).
+add_library(wink_mcs51_compat_strict STATIC EXCLUDE_FROM_ALL ${_MCS51_COMPAT_SRCS})
+
 # ── M3 configurable knobs (cache options) ────────────────────────────────────
 # Legal XDATA aperture for XBYTE/XWORD (bytes); spec band 4–16 KB, default 8 KB.
 set(WINK_MCS51_XDATA_SIZE 8192 CACHE STRING
     "MCS-51 sim: legal XDATA aperture size in bytes (XBYTE/XWORD; 4096..16384)")
-target_compile_definitions(wink_mcs51_compat PUBLIC
-    WINK_MCS51_XDATA_SIZE=${WINK_MCS51_XDATA_SIZE})
 
 # STRICT dual-mode unsupported-feature mechanism (plan prose: WINK_SIM_STRICT).
 # OFF (default): unmodeled features log one pal_log_w warning and continue.
@@ -64,41 +69,51 @@ option(WINK_MCS51_STRICT
 if(WINK_MCS51_STRICT)
     target_compile_definitions(wink_mcs51_compat PUBLIC WINK_MCS51_STRICT=1)
 endif()
+# The STRICT twin always carries the macro (PUBLIC so STRICT test TUs see it
+# too); the release twin above is unaffected.
+target_compile_definitions(wink_mcs51_compat_strict PUBLIC WINK_MCS51_STRICT=1)
 
-target_include_directories(wink_mcs51_compat
+foreach(_mcs51_tgt wink_mcs51_compat wink_mcs51_compat_strict)
+target_compile_definitions(${_mcs51_tgt} PUBLIC
+    WINK_MCS51_XDATA_SIZE=${WINK_MCS51_XDATA_SIZE})
+
+target_include_directories(${_mcs51_tgt}
     PUBLIC include
     # wink_event.h, wink_app.h (callback binding and Mcu51Context wake event).
     PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../../runtime/include
     # wink_sim_scheduler.h (fiber-context detection in the clock engine).
     PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../../targets/common/include
 )
+endforeach()
 
 # Per-compiler flag chain — proven on GCC 14.2 / MSVC 14.40 / emcc 4.0.5 in
 # Spike-S2 (docs/tech-designs/mcs51/spikes/S2-compiler-dialect-chain.md §3).
 #   - Cleanup emits .cpp, so NO -x c++ (GCC) / LANGUAGE CXX (MSVC) is needed.
 #   - NO -fpermissive anywhere (would let host false-pass).
 #   - NO -Wno-pointer-sign (C-only flag, warns under C++).
+foreach(_mcs51_tgt wink_mcs51_compat wink_mcs51_compat_strict)
 if(MSVC)
-    target_compile_options(wink_mcs51_compat PRIVATE
+    target_compile_options(${_mcs51_tgt} PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:/std:c++17 /utf-8 /W3 /wd4101>
     )
     # Erase GCC-style attributes the sandbox headers may reference.
-    target_compile_definitions(wink_mcs51_compat PRIVATE "__attribute__(x)=")
+    target_compile_definitions(${_mcs51_tgt} PRIVATE "__attribute__(x)=")
 else()
-    target_compile_options(wink_mcs51_compat PRIVATE
+    target_compile_options(${_mcs51_tgt} PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:-std=c++17 -Wno-write-strings>
     )
 endif()
 
 # Sandbox .cpp follows the no-exceptions/no-RTTI subset policy (ADR-0036).
 if(NOT MSVC)
-    target_compile_options(wink_mcs51_compat PRIVATE
+    target_compile_options(${_mcs51_tgt} PRIVATE
         $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions -fno-rtti -fno-threadsafe-statics>
     )
 endif()
 
 # Cooperative yield uses the PAL sleep bridge (same primitive Arduino uses);
 # M2 adds the virtual-microsecond quota + timer catch-up on top.
-target_link_libraries(wink_mcs51_compat PUBLIC pal)
+target_link_libraries(${_mcs51_tgt} PUBLIC pal)
+endforeach()
 
 message(STATUS "Configured wink_mcs51_compat target (MCS-51 sim interception, C++17)")

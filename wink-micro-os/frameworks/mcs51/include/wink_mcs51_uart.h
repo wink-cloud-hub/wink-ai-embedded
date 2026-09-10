@@ -73,6 +73,28 @@ void wink_mcs51_uart_rx_drain(void);
 // while RI was still set — the 8051 has no hardware RX FIFO).
 uint32_t wink_mcs51_uart_rx_dropped(void);
 
+// ── TX-link readiness gate (GAP-02, A-01; C ABI) ─────────────────────────────
+// A write to SBUF only produces a physical waveform when the TX link is
+// ready: a running baud source, an async SCON mode, and a connected TXD pin
+// (RXD path when REN=1). The predicate below reports the NOT-ready reasons
+// as a bitmask; it checks readiness (necessary conditions), never rate
+// accuracy (sufficient conditions such as the exact TH1/BRT reload value).
+// Policy on a non-zero mask: STRICT builds assert+abort; release builds log
+// one warning per reason, count every occurrence, and still send the byte
+// (observable scenarios stay green while the misconfiguration is visible).
+#define WINK_MCS51_UART_NOTREADY_BAUD (1u << 0)  // baud source not running / unmodeled
+#define WINK_MCS51_UART_NOTREADY_MODE (1u << 1)  // SCON not async mode 1/3
+#define WINK_MCS51_UART_NOTREADY_TXD  (1u << 2)  // TXD pin not connected
+#define WINK_MCS51_UART_NOTREADY_RXD  (1u << 3)  // RXD path not connected (REN=1 only)
+// Evaluate the readiness predicate against the current SFR/XSFR shadows.
+// Pure: no warnings, no counters, no abort (safe in STRICT builds).
+// Returns 0 when the link is ready, otherwise the OR of the bits above.
+uint32_t wink_mcs51_uart_notready_mask(void);
+// Number of SBUF writes since reset that exhibited the given reason bit
+// (saturating; STRICT builds abort instead of counting, so this stays 0).
+// Unknown reason bits read as 0.
+uint32_t wink_mcs51_uart_notready_count(uint32_t reason_bit);
+
 // ── Test observability (C ABI) ──────────────────────────────────────────────
 // Number of bytes captured since reset (capped at the buffer capacity).
 uint32_t wink_mcs51_uart_byte_count(void);

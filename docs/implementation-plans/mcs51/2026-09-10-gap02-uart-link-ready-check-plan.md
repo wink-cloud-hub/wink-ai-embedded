@@ -8,9 +8,9 @@
 | **创建日期** | `2026-09-10` |
 | **目标平台/SoC** | `host` / `wasm`（mcs51 仿真；与 ESP target 无关，`frameworks/mcs51` 在 ESP_PLATFORM 直接 return） |
 | **工具链/SDK版本** | host `GCC/MSVC C++17` / `Emscripten`（随现有构建）；真机对照 `Keil C51`（仅文档，不在本计划构建） |
-| **计划状态** | 📋 草稿（待评审确认后执行） |
+| **计划状态** | 🔄 执行中（Task 1/2 已完成并合入前验证通过，Task 3 host 回归通过、wasm 待 sister repo 重建） |
 | **优先级** | 🔴 P0（GAP 清单唯一剩余 P0 模型项；GAP-07 WDT 建模的前置依赖） |
-| **计划版本** | `v1.0` |
+| **计划版本** | `v1.2` |
 | **关联技术设计** | 无，已并入本计划（小规模模型补强，不单独立 Layer-②；涉及时钟语义的波特率记账项明确 deferred，见 Task 4） |
 | **关联设计规范** | `docs/todolist/2026-09-10-mcs51-sim-vs-silicon-gap-todolist.md`（GAP-02）、`docs/todolist/2026-09-10-mcs51-sim-backend-responsibility-classification.md`（A-01 + A-03） |
 | **关联评审记录** | 无 |
@@ -127,7 +127,7 @@ Task 1 → Task 2 → Task 3；Task 4 为 deferred（另立 ADR，不在本计�
 
 > Task 完成统一 DoD：代码合规 + 单测 + host 全绿 + 文档同步 + 提交合入。
 
-### Task 1：TX/RX 就绪检查实现 `[ 状态: ⏳ 待开始 ]`
+### Task 1：TX/RX 就绪检查实现 `[ 状态: ✅ 已完成 ]`
 
 | 字段 | 内容 |
 |------|------|
@@ -140,16 +140,16 @@ Task 1 → Task 2 → Task 3；Task 4 为 deferred（另立 ADR，不在本计�
 
 #### 详细步骤
 
-- [ ] **Step 1**：在 `mcs51_uart.cpp` 匿名空间新增 `uart_tx_ready()`：
+- [x] **Step 1**：在 `mcs51_uart.cpp` 匿名空间新增 `uart_tx_ready()`（实为 `uart_notready_mask_impl()` + `uart_notready_policy()` 纯谓词/策略分离，2026-09-10 落地）：
   - **先按家族分流**（`mcs51_context_get_family()`）：CMS8S 读 FUNCCR 选源；经典 51 只认 Timer1。
   - CMS8S 按 `FUNCCR` 选源校验：Timer1（TR1=1 且 mode 2 + TH1 已配）/ BRT（BRTCON.BRTEN + BRTDL/H）/ TMR2 / TMR4；未建模源被选中 → 返回"未就绪（源未建模）"。
   - 校验 SCON 模式 ∈ {1,3}（异步）；模式 0 → 未就绪。
   - 校验 TXD 引脚：默认 P3.1 无需 CFG；仅当使用备选脚时要求对应 CFG=0x03（P14/P22）。
   - RX 侧：REN=1 时校验 RXD（默认 P3.0；备选 P13CFG=0x03+PS_RXD=0x13 或 P21CFG=0x03+PS_RXD=0x21）。
   - 返回**未就绪原因位掩码**（NO_BAUD_SRC / BAD_MODE / NO_TXD_MUX / NO_RXD_MUX 分列）。
-- [ ] **Step 2**：`on_sbuf_write` 入口调用检查；未就绪时 STRICT 断言，Release `pal_log_w` 按原因单次告警 + 分原因计数器 +1（发送行为保持，保证 Release 场景可观测）。
-- [ ] **Step 3**：STRICT/Release 语义与 `mcs51_unsupported.cpp` 现有模式对齐（`assert` vs warn-once）；计数器读取 API 供 GAP-10 runner ccall。
-- [ ] **Step 4（零回归硬断言）**：新增 host e2e，跑 health_pot/uart carrier 等价初始化序列后断言各原因计数器均为 0——零回归不能只依赖"Release 只 warn、场景碰巧绿"。
+- [x] **Step 2**：`on_sbuf_write` 入口调用检查；未就绪时 STRICT 断言中止，Release `pal_log_w` 按原因单次告警 + 分原因饱和计数器 +1（发送行为保持，保证 Release 场景可观测）。
+- [x] **Step 3**：STRICT/Release 语义与 `mcs51_unsupported.cpp` 现有模式对齐（`assert`+`abort` vs warn-once）；`wink_mcs51_uart_notready_mask()`（纯谓词）+ `wink_mcs51_uart_notready_count(reason_bit)`（C ABI，供 GAP-10 runner ccall）。
+- [x] **Step 4（零回归硬断言）**：`test_mcs51_uart_tx_ready` Release 组 A 跑 health_pot 等价初始化序列后断言掩码为 0 且 4 计数器全 0——零回归不依赖"Release 只 warn、场景碰巧绿"。
 
 #### 验证步骤
 
@@ -161,7 +161,7 @@ Task 1 → Task 2 → Task 3；Task 4 为 deferred（另立 ADR，不在本计�
 
 ---
 
-### Task 2：STRICT 单测 `[ 状态: ⏳ 待开始 ]`
+### Task 2：STRICT 单测 `[ 状态: ✅ 已完成 ]`
 
 | 字段 | 内容 |
 |------|------|
@@ -174,9 +174,9 @@ Task 1 → Task 2 → Task 3；Task 4 为 deferred（另立 ADR，不在本计�
 
 #### 详细步骤
 
-- [ ] **Step 1**：用例 1——TR1=0 时写 SBUF，STRICT 断言触发。
-- [ ] **Step 2**：用例 2——TXD mux 未配（CFG≠0x03）写 SBUF，断言触发。
-- [ ] **Step 3**：用例 3——SCON=模式 0 写 SBUF，断言触发；另加正向用例：`health_pot` 等价配置（TR1=1/mode2/TH1=217/SCON=0x50/mux 完整）不断言。
+- [x] **Step 1**：用例 1——TR1=0 时写 SBUF，STRICT 断言触发（子进程死亡）/ Release BAUD 计数。
+- [x] **Step 2**：用例 2——原"TXD mux 未配断言"在实施中被修正为 REN+`PS_RXD`=0x13 指向未复用引脚（RXD 失配），STRICT 断言触发 / Release RXD 计数。修正理由：P3.1 为硬连线默认脚，TXD 在功能层恒就绪（见 v1.2 changelog），TXD 位保留供 GAP-08 细化。
+- [x] **Step 3**：用例 3——SCON=模式 0 写 SBUF，断言触发 / MODE 计数；正向用例：`health_pot` 等价配置（TR1=1/mode2/TH1=217/SCON=0x40/P22CFG=0x03）不断言且计数全 0。另覆盖 BRT/TMR4/TMR2 运行位、保留 CKS、经典家族 FUNCCR 忽略、未知原因位读 0（Release 组 A–H）。
 
 #### 验证步骤
 
@@ -185,7 +185,7 @@ Task 1 → Task 2 → Task 3；Task 4 为 deferred（另立 ADR，不在本计�
 
 ---
 
-### Task 3：回归 + 文档 `[ 状态: ⏳ 待开始 ]`
+### Task 3：回归 + 文档 `[ 状态: 🔄 执行中（host 部分完成，wasm 待 sister repo） ]`
 
 | 字段 | 内容 |
 |------|------|
@@ -198,9 +198,9 @@ Task 1 → Task 2 → Task 3；Task 4 为 deferred（另立 ADR，不在本计�
 
 #### 详细步骤
 
-- [ ] **Step 1**：host 全量测试绿。
-- [ ] **Step 2**：sister repo 重建生产 wasm，8 应用 22 场景全绿（含 `health-pot-uart-telemetry`、`uart0_printf`、`uart0_rxtx`）。
-- [ ] **Step 3**：红线手册 §4.6 补「UART 仿真校验边界」条目；GAP-02 验收 checkbox 打勾。
+- [x] **Step 1**：host 回归绿——35/35 mcs51 host 测试通过（含新增 2 个）。3 个排除项为预存 break（`test_mcs51_port_extint`/`test_mcs51_wink_mcu` 的 `putchar(char)` 链接失败经干净树验证与本变更无关；`test_pal_nonblocking_strict` 的 PAL 弃用告警同理）。
+- [ ] **Step 2**：sister repo 重建生产 wasm，8 应用 22 场景全绿（含 `health-pot-uart-telemetry`、`uart0_printf`、`uart0_rxtx`）。（本仓无法执行，需 sister repo 侧跑）
+- [x] **Step 3**：红线手册 §4.6 补「UART 仿真校验边界」条目；GAP-02 首个验收 checkbox 打勾（第二个待 wasm）。
 
 ---
 
@@ -271,3 +271,4 @@ Task 1 → Task 2 → Task 3；Task 4 为 deferred（另立 ADR，不在本计�
 |------|------|----------|--------|
 | v1.0 | 2026-09-10 | 初始版本（待评审） | — |
 | v1.1 | 2026-09-10 | 评审修正：TXD/RXD 默认脚为 P3.1/P3.0（CFG 非必需）；检查按 MCU 家族分流（FUNCCR 仅 CMS8S）；未就绪原因改位掩码计数器；STRICT 需独立编译目标；新增计数器零回归 e2e；PS_RXD 复位值实施前先查手册 | — |
+| v1.2 | 2026-09-10 | 实施修正：① TXD 谓词恒真——P3.1 硬连线默认使 TXD 在功能层不可断，TXD 原因位保留（ABI 对称 + GAP-08 细化钩子），Task 2 用例 2 改用 RXD 选择器失配；② PS_RXD 复位值不查手册亦可——默认 P3.0 路径绕过选择器，谓词对未播种的复位值免疫，未来加种子不改变判决（已在代码注释）；③ T2 运行定义复用 timer 模型（T2CON T2I≠0），T4 用 TR4；④ BRT 就绪只看 BRTEN（重载值只影响速率） | — |
