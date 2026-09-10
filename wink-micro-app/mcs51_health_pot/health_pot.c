@@ -14,10 +14,10 @@
  *     WARM: "XXYY" (current temp + target setpoint), FAULT: "E-01".."E-04".
  *   - Push buttons on P0.4 (ON/OFF) and P0.5 (FUNC) with 20 ms debounce.
  *   - Heater relay on P2.0 (active high).
- *   - Timer0 mode 1 (16-bit) 1 ms tick ISR: dynamic display scanning + microsteps.
+ *   - Timer0 mode 1 (16-bit) 10 ms tick ISR: 4COM dynamic display scanning.
  *   - UART mode 1 polled TX telemetry once per second for headless assertions.
  *   - Comprehensive safety: NTC open/short, dry-fire watchdog (25s < 45C in HEAT),
- *     over-temp watchdog (code <= 320 for 10s), relay minimum-off dwell protection.
+ *     over-temp watchdog (12-bit raw <= 16 / >105 C for 10s), relay minimum-off dwell.
  */
 #include <wink_mcu.h>
 #include <absacc.h>
@@ -42,10 +42,13 @@ sbit BTN_FUNC  = P0^5;   /* FUNC button, active low    (linear pin 5)  */
 #define ST_WARM   2u
 #define ST_FAULT  3u
 
-/* ---- NTC LUT: code HIGH when cold, LOW when hot (normalized scale) ------- */
-#define NTC_OPEN_CODE        250u   /* code >= this: probe open / unplugged (E-01) */
-#define NTC_SHORT_CODE       8u     /* code <= this: probe short / failure   (E-02) */
-#define OVERTEMP_CODE        20u    /* code <= this: runaway > 105 C         (E-04) */
+/* ---- NTC LUT: 12-bit ADC raw code, HIGH when cold, LOW when hot --------- *
+ * Matches the device-tree NTC plugin physics: R25 = 10 kOhm, B = 3950,
+ * divider Vout/Vcc = Rntc / (Rntc + 160 kOhm pull-up), raw = ratio * 4096.
+ * Recompute anchors with: R(T)=R25*exp(B*(1/(T+273.15)-1/298.15)). */
+#define NTC_OPEN_RAW         3900u  /* raw >= this: probe open / unplugged (E-01) */
+#define NTC_SHORT_RAW        8u     /* raw <= this: probe short / failure   (E-02) */
+#define OVERTEMP_RAW         16u    /* raw <= this: runaway > 105 C         (E-04) */
 #define OVERTEMP_SECONDS     10u    /* 10 s continuous overtemp trigger */
 #define BOIL_TEMP_C          98u    /* boiling reached */
 #define BOIL_HOLD_TICKS      30u    /* 30 x 100 ms = 3 s boil hold */
@@ -56,8 +59,8 @@ sbit BTN_FUNC  = P0^5;   /* FUNC button, active low    (linear pin 5)  */
 #define DRYFIRE_TEMP_C       45u
 #define FAULT_BEEP_TIMEOUT   60u    /* silence periodic buzzer alarm after 60 s */
 
-static unsigned char code ntc_lut_code[7] = {240, 200, 150, 100,  75,  60,  30};
-static unsigned char code ntc_lut_temp[7] = { 25,  40,  60,  80,  90,  95, 105};
+static unsigned int code ntc_lut_raw[11]  = {571, 458, 298, 241, 131,  89,  63,  32,  24,  19,  16};
+static unsigned char code ntc_lut_temp[11] = {  5,  10,  20,  25,  40,  50,  60,  80,  90,  98, 105};
 
 /* ---- 4COM-8SEG Display Font Table ---------------------------------------- */
 /* Bit: dp(7) g(6) f(5) e(4) d(3) c(2) b(1) a(0) — common cathode */
@@ -167,6 +170,12 @@ static void adc_init(void) {
 
 static unsigned int adc_read_raw(void) {
     ADC_GO();
+    /* Vendor mandatory poll (ADC_IS_BUSY = ADGO bit): conversion takes
+     * ~150 us at ADC_CLK_DIV_256. In the wasm model the SFR trap completes
+     * synchronously, so the loop body never executes. */
+    while (ADC_IS_BUSY) {
+        _nop_();
+    }
     return ADC_GetADCResult();
 }
 
@@ -181,17 +190,17 @@ static unsigned int adc_read_filtered(void) {
     return b;
 }
 
-static unsigned char ntc_code_to_temp(unsigned char code_val) {
+static unsigned char ntc_code_to_temp(unsigned int code_val) {
     unsigned char i;
-    if (code_val >= ntc_lut_code[0]) {
+    if (code_val >= ntc_lut_raw[0]) {
         return ntc_lut_temp[0];
     }
-    for (i = 1; i < 7u; i++) {
-        if (code_val >= ntc_lut_code[i]) {
+    for (i = 1; i < 11u; i++) {
+        if (code_val >= ntc_lut_raw[i]) {
             return ntc_lut_temp[i - 1] +
                 (unsigned char)(((unsigned int)(ntc_lut_temp[i] - ntc_lut_temp[i - 1]) *
-                (ntc_lut_code[i - 1] - code_val)) /
-                (ntc_lut_code[i - 1] - ntc_lut_code[i]));
+                (ntc_lut_raw[i - 1] - code_val)) /
+                (ntc_lut_raw[i - 1] - ntc_lut_raw[i]));
         }
     }
     return 105u;
@@ -199,6 +208,9 @@ static unsigned char ntc_code_to_temp(unsigned char code_val) {
 
 /* ---- 4COM-8SEG Display Update -------------------------------------------- */
 static void display_update(void) {
+    /* Font table has no glyph above digit 9; clamp water temperature display
+     * at 99 C until the over-temperature fault takes over (>105 C, 10 s). */
+    unsigned char disp_temp = (temp_c > 99u) ? 99u : temp_c;
     if (state == ST_OFF) {
         /* " -- " */
         disp_digits[0] = font_table[14]; /* blank */
@@ -206,15 +218,17 @@ static void display_update(void) {
         disp_digits[2] = font_table[13]; /* '-' */
         disp_digits[3] = font_table[14]; /* blank */
     } else if (state == ST_HEAT) {
-        /* "XXbO" with decimal point blinking on digit 1 */
-        disp_digits[0] = font_table[temp_c / 10u];
-        disp_digits[1] = font_table[temp_c % 10u] | (blink_toggle ? 0x80u : 0u);
+        /* "XXbO"; dp breathes only while the heater is actually energised
+         * and stays OFF during the 3 s boil-confirmation window */
+        disp_digits[0] = font_table[disp_temp / 10u];
+        disp_digits[1] = font_table[disp_temp % 10u] |
+                         ((heater_on && blink_toggle) ? 0x80u : 0u);
         disp_digits[2] = font_table[10]; /* 'b' */
         disp_digits[3] = font_table[11]; /* 'O' */
     } else if (state == ST_WARM) {
         /* "XXYY": current temp + target setpoint */
-        disp_digits[0] = font_table[temp_c / 10u];
-        disp_digits[1] = font_table[temp_c % 10u] | (heater_on ? (blink_toggle ? 0x80u : 0u) : 0u);
+        disp_digits[0] = font_table[disp_temp / 10u];
+        disp_digits[1] = font_table[disp_temp % 10u] | (heater_on ? (blink_toggle ? 0x80u : 0u) : 0u);
         disp_digits[2] = font_table[warm_set / 10u];
         disp_digits[3] = font_table[warm_set % 10u];
     } else if (state == ST_FAULT) {
@@ -343,11 +357,7 @@ static void enter_fault(unsigned char code_val) {
 /* ---- 100 ms Control Task: ADC + State Machine ---------------------------- */
 static void control_task(void) {
     unsigned int raw = adc_read_filtered();
-    if (raw > 255u) {
-        adc_code = (unsigned char)(raw >> 4);
-    } else {
-        adc_code = (unsigned char)raw;
-    }
+    adc_code = raw;
     temp_c = ntc_code_to_temp(adc_code);
 
     XBYTE[TLM_TEMP]  = temp_c;
@@ -355,15 +365,15 @@ static void control_task(void) {
     XBYTE[TLM_ADC_L] = (unsigned char)(raw & 0xFFu);
 
     /* Implicit POST & continuous sensor health monitoring */
-    if (adc_code >= NTC_OPEN_CODE) {
+    if (adc_code >= NTC_OPEN_RAW) {
         enter_fault(1u);  /* NTC Open -> E-01 */
-    } else if (adc_code <= NTC_SHORT_CODE) {
+    } else if (adc_code <= NTC_SHORT_RAW) {
         enter_fault(2u);  /* NTC Short -> E-02 */
     }
 
     /* Auto-recovery check for sensor faults (E-01, E-02) */
     if (state == ST_FAULT && (fault_code == 1u || fault_code == 2u) &&
-        adc_code > NTC_SHORT_CODE && adc_code < NTC_OPEN_CODE) {
+        adc_code > NTC_SHORT_RAW && adc_code < NTC_OPEN_RAW) {
         if (recover_ticks < 255u) {
             recover_ticks++;
         }
@@ -494,9 +504,9 @@ static void one_second_task(void) {
         }
     }
 
-    /* Over-temp protection: raw code <= 320 in HEAT or WARM */
+    /* Over-temp protection: raw <= 16 (~>105 C) in HEAT or WARM */
     if ((state == ST_HEAT || state == ST_WARM) &&
-        adc_code > NTC_SHORT_CODE && adc_code <= OVERTEMP_CODE) {
+        adc_code > NTC_SHORT_RAW && adc_code <= OVERTEMP_RAW) {
         overtemp_seconds++;
         if (overtemp_seconds >= OVERTEMP_SECONDS) {
             enter_fault(4u);  /* Over-temp -> E-04 */
@@ -514,9 +524,9 @@ static void one_second_task(void) {
 
 /* ---- Timer0 10 ms Tick ISR: Display Dynamic Scan ------------------------ */
 void Timer0_ISR(void) interrupt 1 {
-    /* Reload for 10 ms (1 count = 1 us): 65536 - 10000 = 0xD8F0 */
-    TH0 = 0xD8u;
-    TL0 = 0xF0u;
+    /* Reload for 10 ms @ Fsys/12, 24 MHz (0.5 us/count, 20000 counts) */
+    TH0 = 0xB1u;
+    TL0 = 0xE0u;
 
     /* 4COM common-cathode multiplexing:
      * 1) Blank COM lines to prevent visual ghosting */
@@ -534,17 +544,36 @@ void Timer0_ISR(void) interrupt 1 {
     tick_flag = 1;
 }
 
-/* ---- Hardware Watchdog --------------------------------------------------- */
+/* ---- Hardware Watchdog (CMS8S78xx, TA-protected) ------------------------- */
+#define WDT_WDTRE 0x02u  /* WDCON.1: watchdog reset enable */
+#define WDT_WDTCLR 0x01u /* WDCON.0: watchdog clear */
+#define WDT_WTS_BITS 0x06u /* CKCON WTS<2:0> = 2^24 Tsys (~0.70 s @ 24 MHz) */
+
 static void wdt_init(void) {
-#ifdef __C51__
-    WDTCON = 0x07;  /* Enable WDT on silicon */
-#endif
+    /* Overflow interval = 2^24 / Fsys = 16.78M / 24 MHz ~= 0.70 s.
+     * Must exceed the longest blocking section: UART telemetry TX
+     * (22 bytes @ 9600 bps ~= 23 ms). */
+    CKCON = (CKCON & 0x1Fu) | (WDT_WTS_BITS << 5u);
+    /* WDTRE is a TA-protected bit (ref manual 4.2) */
+    {
+        unsigned char ea_save = EA;
+        EA = 0;
+        _nop_();
+        TA = 0xAAu;
+        TA = 0x55u;
+        WDCON |= WDT_WDTRE;
+        EA = ea_save;
+    }
 }
 
 static void wdt_feed(void) {
-#ifdef __C51__
-    WDTCON = 0x17;  /* Clear WDT counter */
-#endif
+    unsigned char ea_save = EA;
+    EA = 0;
+    _nop_();
+    TA = 0xAAu;
+    TA = 0x55u;
+    WDCON |= WDT_WDTCLR;
+    EA = ea_save;
 }
 
 /* ---- Main Entry Point --------------------------------------------------- */
@@ -589,10 +618,13 @@ void main(void) {
     P2TRIS |= 0x01u;
     HEATER = 0;
 
-    /* 5. Configure Buttons: P0.4 (ON/OFF), P0.5 (FUNC) quasi-bidirectional */
+    /* 5. Configure Buttons: P0.4 (ON/OFF), P0.5 (FUNC) plain input
+     *    with the internal ~32 kOhm pull-ups enabled (P0UP); buttons
+     *    short to GND, so a released pin must not float. */
     GPIO_SET_MUX_MODE(P04CFG, GPIO_MUX_GPIO);
     GPIO_SET_MUX_MODE(P05CFG, GPIO_MUX_GPIO);
     P0TRIS &= ~0x30u;
+    P0UP |= 0x30u;
     BTN_ONOFF = 1;
     BTN_FUNC = 1;
 
@@ -604,8 +636,25 @@ void main(void) {
     /* 7. Configure on-chip 12-bit SAR ADC: AN0 on P0.0 */
     adc_init();
 
-    /* 8. UART mode 1 (8-bit) TX for telemetry */
-    SCON = 0x40;
+    /* 8. UART0 mode 1 (8-bit async, 9600 bps @ 24 MHz) polled TX telemetry.
+     *    Baud generator: Timer1 mode 2 (8-bit auto-reload), T1M = 1 selects
+     *    Fosc/4 timer clock (CKCON.4), SMOD0 = 1 double baud (PCON.7):
+     *      reload = 256 - Fosc * 2 / 32 / 4 / 9600 = 217 (0xD9)
+     *      actual baud = 24 MHz / 4 / (256-217) / 16 = 9615 bps (0.16 % err).
+     *    UART pins are remapped off the 150 mA LED COM port: TXD -> P2.2,
+     *    RXD -> P2.1 (CFG mux 0x03 + PS_RXD port select), leaving P3.0/P3.1
+     *    dedicated to 4COM digit drive. */
+    GPIO_SET_MUX_MODE(P22CFG, 0x03u); /* P2.2 = UART0 TXD */
+    GPIO_SET_MUX_MODE(P21CFG, 0x03u); /* P2.1 = UART0 RXD */
+    XBYTE[0xF69Fu] = 0x21u;           /* PS_RXD select: GPIO port P2.1 */
+    FUNCCR &= 0xF8u;                  /* UART0 baud clock source = Timer1 */
+    SCON = 0x40u;                     /* mode 1: 8-bit async, TX only */
+    PCON |= 0x80u;                    /* SMOD0 = 1 (double baud rate) */
+    CKCON |= 0x10u;                   /* T1M = 1: Timer1 clock = Fosc/4 */
+    TMOD = (TMOD & 0x0Fu) | 0x20u;    /* Timer1 mode 2 (8-bit auto-reload) */
+    TH1 = 217u;                       /* 0xD9 -> 9600 bps */
+    TL1 = 217u;
+    TR1 = 1;                          /* Start baud generator */
 
     /* 9. Initialize state machine & display buffers */
     state = ST_OFF;
@@ -627,17 +676,21 @@ void main(void) {
     evt_onoff = 0;
     evt_func = 0;
     temp_c = 25u;
-    adc_code = 240u;
+    adc_code = 241u;
     cur_melody = 0;
     melody_idx = 0;
     melody_ticks = 0;
     display_update();
 
-    /* 10. Timer0: 10 ms periodic tick (65536 - 10000 = 0xD8F0) */
+    /* 10. Timer0: 10 ms periodic tick at Fsys/12 (24 MHz / 12 = 2 MHz,
+     *     0.5 us/count -> 20000 counts = 10 ms, reload 65536-20000=0xB1E0).
+     *     CKCON.T0M is cleared explicitly so timing does not depend on the
+     *     silicon reset default (T0M=1, Fsys/4). */
+    CKCON &= ~0x08u;
     TMOD &= 0xF0u;
     TMOD |= 0x01u;
-    TH0 = 0xD8u;
-    TL0 = 0xF0u;
+    TH0 = 0xB1u;
+    TL0 = 0xE0u;
     ET0 = 1;
     EA  = 1;
     TR0 = 1;
@@ -661,9 +714,13 @@ void main(void) {
             control_task();
         }
 
-        /* 1000 ms periodic tasks: 1 Hz blink toggle, watchdogs & telemetry */
-        if ((tick10ms % 100u) == 0u) {
+        /* 500 ms periodic tasks: 1 Hz blink toggle (dp & fault LED) */
+        if ((tick10ms % 50u) == 0u) {
             blink_toggle ^= 1u;
+        }
+
+        /* 1000 ms periodic tasks: watchdogs & telemetry */
+        if ((tick10ms % 100u) == 0u) {
             one_second_task();
         }
 
