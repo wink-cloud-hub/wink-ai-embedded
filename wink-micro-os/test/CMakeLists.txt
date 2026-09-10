@@ -598,6 +598,34 @@ if(TARGET wink_mcs51_compat)
     add_mcs51_host_test(test_mcs51_uart_isr
         mcs51/unit/test_uart_isr_dispatch.cpp)
 
+    # GAP-02: UART TX-link readiness gate — Release: predicate mask +
+    # per-reason counters incl. health_pot-equivalent zero-regression e2e.
+    add_mcs51_host_test(test_mcs51_uart_tx_ready
+        mcs51/unit/test_mcs51_uart_tx_ready.cpp)
+
+    # GAP-02 STRICT twin: same TU, STRICT-built compat lib for the abort
+    # policy (death tests via child re-execution). Cannot reuse
+    # add_mcs51_host_test: it links the release compat lib, which would
+    # duplicate every model symbol. Body mirrors that function exactly with
+    # the library swapped (WINK_MCS51_STRICT reaches the TU via the strict
+    # lib's PUBLIC definition).
+    add_wink_host_test(test_mcs51_uart_tx_ready_strict
+        mcs51/unit/test_mcs51_uart_tx_ready.cpp)
+    target_link_libraries(test_mcs51_uart_tx_ready_strict PRIVATE wink_mcs51_compat_strict wink_runtime)
+    target_compile_definitions(test_mcs51_uart_tx_ready_strict PRIVATE SIMULATION=1 WINK_MCU_AT89C52=1)
+    if(NOT MSVC)
+        target_compile_options(test_mcs51_uart_tx_ready_strict PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:-std=c++17 -Wno-write-strings
+                -fno-exceptions -fno-rtti -fno-threadsafe-statics>)
+    else()
+        target_compile_options(test_mcs51_uart_tx_ready_strict PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:/std:c++17 /utf-8 /wd4101 /wd4245>)
+    endif()
+    target_include_directories(test_mcs51_uart_tx_ready_strict PRIVATE ${_MCS51_FW_DIR}/include)
+    if(TARGET generate_config)
+        add_dependencies(test_mcs51_uart_tx_ready_strict generate_config)
+    endif()
+
     # Task R3 / ADR-0078: Two-phase IRQ, in-service priority masking & call stack isolation
     add_mcs51_host_test(test_mcs51_irq_arbitration
         mcs51/unit/test_mcs51_irq_arbitration.cpp)
