@@ -114,6 +114,21 @@
         "color": "blue",
         "label": "功能/模式"
       }
+    },
+    "temp_sensor": {
+      "id": "temp_sensor",
+      "type": "ntc",
+      "label": "水温探头",
+      "pinMapping": {
+        "OUT": 32
+      },
+      "properties": {
+        "label": "水温探头",
+        "temperature": 25,
+        "r25": 10000,
+        "bValue": 3950,
+        "pullUpResistor": 10000
+      }
     }
   },
   "family": "mcs51",
