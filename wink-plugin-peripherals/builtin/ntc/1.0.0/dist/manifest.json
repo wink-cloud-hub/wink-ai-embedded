@@ -1,0 +1,103 @@
+{
+  "_generated": "DO NOT EDIT — generated from src/simulation.ts by build-peripheral",
+  "type": "ntc",
+  "version": "1.0.0",
+  "category": "sensor",
+  "displayName": "NTC Temperature Sensor",
+  "description": "NTC thermistor analog temperature sensor module with pull-up divider network",
+  "timingModel": "event-driven",
+  "pins": [
+    {
+      "name": "OUT",
+      "direction": "source",
+      "signal": "analog",
+      "required": true,
+      "simRole": "signal",
+      "aliases": [
+        "out",
+        "AO",
+        "ao",
+        "SIG",
+        "sig"
+      ]
+    },
+    {
+      "name": "VCC",
+      "direction": "power",
+      "signal": "power",
+      "required": false,
+      "simRole": "power",
+      "catalogType": "power",
+      "aliases": [
+        "5v",
+        "vcc"
+      ]
+    },
+    {
+      "name": "GND",
+      "direction": "ground",
+      "signal": "power",
+      "required": false,
+      "simRole": "ground",
+      "catalogType": "power",
+      "aliases": [
+        "gnd"
+      ]
+    }
+  ],
+  "properties": {
+    "temperature": {
+      "type": "number",
+      "default": 25,
+      "min": -40,
+      "max": 200
+    },
+    "r25": {
+      "type": "number",
+      "default": 10000
+    },
+    "bValue": {
+      "type": "number",
+      "default": 3950
+    },
+    "pullUpResistor": {
+      "type": "number",
+      "default": 10000
+    },
+    "variant": {
+      "type": "string",
+      "default": "default"
+    }
+  },
+  "stateChannels": {
+    "temperature": {
+      "type": "number",
+      "default": 25,
+      "min": -40,
+      "max": 200
+    },
+    "voltageRatio": {
+      "type": "number",
+      "default": 0.5,
+      "min": 0,
+      "max": 1
+    },
+    "resistanceOhm": {
+      "type": "number",
+      "default": 10000
+    }
+  },
+  "events": {
+    "SET_TEMPERATURE": {
+      "params": {
+        "temperature": {
+          "type": "number",
+          "default": 25,
+          "min": -40,
+          "max": 200,
+          "unit": "°C"
+        }
+      }
+    }
+  }
+}
