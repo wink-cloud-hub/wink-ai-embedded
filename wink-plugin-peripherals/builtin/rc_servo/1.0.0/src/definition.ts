@@ -6,7 +6,7 @@ import {
 import { resolvePluginIdentity } from '@wink-ai/unisim';
 
 import CanvasGlyph from './CanvasGlyph.vue';
-import { RC_SERVO_TOPOLOGIES } from './variants';
+import { RC_SERVO_TOPOLOGIES, SG90_SIZE } from './variants';
 
 const identity = resolvePluginIdentity(import.meta.url, 'rc_servo', '1.0.0', 'actuator');
 
@@ -14,7 +14,7 @@ const defaultTopology = RC_SERVO_TOPOLOGIES.sg90;
 
 export const servoDefinition: PeripheralDefinition = definePeripheral({
   type: identity.type,
-  size: { width: 80, height: 60 },
+  size: SG90_SIZE,
   wireColor: '#3b82f6',
   pinsOverlay: defaultTopology.pinsOverlay,
   props: {

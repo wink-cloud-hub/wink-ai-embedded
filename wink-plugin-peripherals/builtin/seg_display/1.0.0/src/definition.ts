@@ -12,6 +12,7 @@ import CanvasGlyph from './CanvasGlyph.vue';
 import WorldWidget from './WorldWidget.vue';
 import {
   SEG_TOPOLOGIES,
+  SEG_DISPLAY_SIZE,
   resolveSegVariant,
   SEG_VARIANT_DIGITS,
   type SegVariantKey,
@@ -150,7 +151,7 @@ export const segDisplayProps: PeripheralPropsSchema = {
 
 export const segDisplayDefinition: PeripheralDefinition = definePeripheral({
   type: identity.type,
-  size: { width: 210, height: 96 },
+  size: SEG_DISPLAY_SIZE,
   wireColor: '#ff0055',
   pinsOverlay: defaultTopology.pinsOverlay,
   props: segDisplayProps,

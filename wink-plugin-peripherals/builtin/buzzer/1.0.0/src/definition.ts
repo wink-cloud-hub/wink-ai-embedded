@@ -10,7 +10,7 @@ import { resolvePluginIdentity } from '@wink-ai/unisim';
 
 import CanvasGlyph from './CanvasGlyph.vue';
 import WorldWidget from './WorldWidget.vue';
-import { BUZZER_TOPOLOGIES } from './variants';
+import { BUZZER_TOPOLOGIES, BUZZER_SIZE } from './variants';
 
 const identity = resolvePluginIdentity(import.meta.url, 'buzzer', '1.0.0', 'output');
 
@@ -65,7 +65,7 @@ const buzzerProps: PeripheralPropsSchema = {
 
 export const buzzerDefinition: PeripheralDefinition = definePeripheral({
   type: identity.type,
-  size: { width: 75, height: 85 },
+  size: BUZZER_SIZE,
   wireColor: '#f59e0b',
   pinsOverlay: defaultTopology.pinsOverlay,
   props: buzzerProps,

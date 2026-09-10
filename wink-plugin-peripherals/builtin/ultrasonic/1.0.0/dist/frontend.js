@@ -23,31 +23,38 @@ var s = /* @__PURE__ */ a({
 		return (e, t) => (o(), r("div", c, [...t[0] ||= [i("wokwi-hc-sr04", null, null, -1)]]));
 	}
 }), [["__scopeId", "data-v-20a560f2"]]), u = Object.freeze({
-	TRIG: Object.freeze({
-		relX: 82,
-		relY: 95,
-		wireNet: "secondary",
-		defaultConnection: 12
-	}),
-	ECHO: Object.freeze({
-		relX: 92,
-		relY: 95,
-		wireNet: "primary",
-		defaultConnection: 13
-	}),
+	width: 171,
+	height: 95
+}), d = Object.freeze({
 	VCC: Object.freeze({
-		relX: 72,
+		relX: 71,
 		relY: 95,
 		wireNet: "vcc",
-		defaultConnection: "VCC"
+		defaultConnection: "VCC",
+		required: !1
+	}),
+	TRIG: Object.freeze({
+		relX: 81,
+		relY: 95,
+		wireNet: "primary",
+		defaultConnection: null,
+		required: !0
+	}),
+	ECHO: Object.freeze({
+		relX: 91,
+		relY: 95,
+		wireNet: "secondary",
+		defaultConnection: null,
+		required: !1
 	}),
 	GND: Object.freeze({
-		relX: 102,
+		relX: 101,
 		relY: 95,
 		wireNet: "gnd",
-		defaultConnection: "GND"
+		defaultConnection: "GND",
+		required: !1
 	})
-}), d = Object.freeze({
+}), f = u, p = d, m = Object.freeze({
 	SIG: Object.freeze({
 		relX: 87,
 		relY: 95,
@@ -66,7 +73,7 @@ var s = /* @__PURE__ */ a({
 		wireNet: "gnd",
 		defaultConnection: "GND"
 	})
-}), f = Object.freeze({
+}), h = Object.freeze({
 	TX: Object.freeze({
 		relX: 82,
 		relY: 95,
@@ -91,7 +98,7 @@ var s = /* @__PURE__ */ a({
 		wireNet: "gnd",
 		defaultConnection: "GND"
 	})
-}), p = Object.freeze({
+}), g = Object.freeze({
 	SDA: Object.freeze({
 		relX: 82,
 		relY: 95,
@@ -116,30 +123,30 @@ var s = /* @__PURE__ */ a({
 		wireNet: "gnd",
 		defaultConnection: "GND"
 	})
-}), m = u;
+}), _ = p;
 Object.freeze({
 	hcsr04: Object.freeze({
 		variant: "hcsr04",
 		getPins: () => t("ultrasonic", "hcsr04"),
-		pinsOverlay: u,
+		pinsOverlay: p,
 		defaultAppearanceId: "ultrasonic_hcsr04"
 	}),
 	single_pin_ping: Object.freeze({
 		variant: "single_pin_ping",
 		getPins: () => t("ultrasonic", "single_pin_ping"),
-		pinsOverlay: d,
+		pinsOverlay: m,
 		defaultAppearanceId: "ultrasonic_ping"
 	}),
 	uart_stream: Object.freeze({
 		variant: "uart_stream",
 		getPins: () => t("ultrasonic", "uart_stream"),
-		pinsOverlay: f,
+		pinsOverlay: h,
 		defaultAppearanceId: "ultrasonic_uart"
 	}),
 	i2c: Object.freeze({
 		variant: "i2c",
 		getPins: () => t("ultrasonic", "i2c"),
-		pinsOverlay: p,
+		pinsOverlay: g,
 		defaultAppearanceId: "ultrasonic_i2c"
 	})
 }), Object.freeze({
@@ -170,18 +177,15 @@ Object.freeze({
 });
 //#endregion
 //#region builtin/ultrasonic/1.0.0/src/definition.ts
-var h = n(import.meta.url, "ultrasonic", "1.0.0", "sensor"), g = e({
-	type: h.type,
+var v = n(import.meta.url, "ultrasonic", "1.0.0", "sensor"), y = e({
+	type: v.type,
 	catalog: {
-		id: h.type,
+		id: v.type,
 		worldCoupling: "required"
 	},
-	size: {
-		width: 180,
-		height: 100
-	},
+	size: f,
 	wireColor: "#eab308",
-	pinsOverlay: m,
+	pinsOverlay: _,
 	props: {
 		variant: {
 			type: "string",
@@ -217,4 +221,4 @@ var h = n(import.meta.url, "ultrasonic", "1.0.0", "sensor"), g = e({
 	}) }
 });
 //#endregion
-export { g as default, g as ultrasonicDefinition };
+export { y as default, y as ultrasonicDefinition };

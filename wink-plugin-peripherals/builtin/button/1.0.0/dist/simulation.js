@@ -59,6 +59,10 @@ function s(e = "default") {
 					"black"
 				]
 			},
+			label: {
+				type: "string",
+				default: ""
+			},
 			activeLow: {
 				type: "boolean",
 				default: !0

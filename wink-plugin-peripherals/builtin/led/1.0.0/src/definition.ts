@@ -10,7 +10,7 @@ import { resolvePluginIdentity } from '@wink-ai/unisim';
 
 import CanvasGlyph from './CanvasGlyph.vue';
 import WorldWidget from './WorldWidget.vue';
-import { LED_TOPOLOGIES } from './variants';
+import { LED_TOPOLOGIES, LED_SIZE } from './variants';
 
 const identity = resolvePluginIdentity(import.meta.url, 'led', '1.0.0', 'output');
 
@@ -57,7 +57,7 @@ const ledProps: PeripheralPropsSchema = {
 
 export const ledDefinition: PeripheralDefinition = definePeripheral({
   type: identity.type,
-  size: { width: 50, height: 60 },
+  size: LED_SIZE,
   wireColor: '#00ff88',
   pinsOverlay: defaultTopology.pinsOverlay,
   props: ledProps,

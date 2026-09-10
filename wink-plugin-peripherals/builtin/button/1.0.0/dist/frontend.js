@@ -5,7 +5,6 @@ import "@wokwi/elements";
 //#region builtin/button/1.0.0/src/CanvasGlyph.vue?vue&type=script&setup=true&lang.ts
 var f = [
 	"color",
-	"label",
 	"xray",
 	"pressed"
 ], p = /*@__PURE__*/ o({
@@ -63,7 +62,7 @@ var f = [
 	let n = e.__vccOpts || e;
 	for (let [e, r] of t) n[e] = r;
 	return n;
-}, h = /*#__PURE__*/ m(p, [["__scopeId", "data-v-a720bf4d"]]), g = { class: "virtual-button" }, _ = { class: "component-label" }, v = [
+}, h = /*#__PURE__*/ m(p, [["__scopeId", "data-v-3951f7d3"]]), g = { class: "virtual-button" }, _ = { class: "component-label" }, v = [
 	"color",
 	"label",
 	"xray",
@@ -118,34 +117,44 @@ var f = [
 			style: { "pointer-events": "none" }
 		}, null, 8, v)], 32)]));
 	}
-}), [["__scopeId", "data-v-1debaa6a"]]);
-Object.freeze({});
-var b = Object.freeze({
+}), [["__scopeId", "data-v-1debaa6a"]]), b = Object.freeze({
+	width: 69,
+	height: 46
+}), x = Object.freeze({
 	"1.l": Object.freeze({
-		relX: -5,
-		relY: 20,
-		wireNet: "primary"
+		relX: 2,
+		relY: 9,
+		wireNet: "primary",
+		defaultConnection: null,
+		required: !0
 	}),
 	"2.l": Object.freeze({
-		relX: -5,
-		relY: 40,
+		relX: 2,
+		relY: 36,
 		wireNet: "gnd",
-		defaultConnection: "GND"
+		defaultConnection: "GND",
+		required: !1
 	}),
 	"1.r": Object.freeze({
-		relX: 75,
-		relY: 13,
-		wireNet: "primary"
+		relX: 65,
+		relY: 9,
+		wireNet: "primary",
+		defaultConnection: null,
+		required: !1
 	}),
 	"2.r": Object.freeze({
-		relX: 75,
-		relY: 33,
-		wireNet: "gnd"
+		relX: 65,
+		relY: 36,
+		wireNet: "gnd",
+		defaultConnection: null,
+		required: !1
 	})
-}), x = Object.freeze({ default: Object.freeze({
+});
+Object.freeze({});
+var S = x, C = b, w = Object.freeze({ default: Object.freeze({
 	variant: "default",
 	getPins: () => t("button", "default"),
-	pinsOverlay: b,
+	pinsOverlay: S,
 	defaultAppearanceId: "button_default"
 }) });
 Object.freeze({ button_default: Object.freeze({
@@ -162,14 +171,11 @@ Object.freeze({ button_default: Object.freeze({
 }) });
 //#endregion
 //#region builtin/button/1.0.0/src/definition.ts
-var S = n(import.meta.url, "button", "1.0.0", "input"), C = x.default, w = e({
-	type: S.type,
-	size: {
-		width: 80,
-		height: 60
-	},
+var T = n(import.meta.url, "button", "1.0.0", "input"), E = w.default, D = e({
+	type: T.type,
+	size: C,
 	wireColor: "#38bdf8",
-	pinsOverlay: C.pinsOverlay,
+	pinsOverlay: E.pinsOverlay,
 	props: {
 		variant: {
 			type: "string",
@@ -230,4 +236,4 @@ var S = n(import.meta.url, "button", "1.0.0", "input"), C = x.default, w = e({
 	}
 });
 //#endregion
-export { w as buttonDefinition, w as default };
+export { D as buttonDefinition, D as default };

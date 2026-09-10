@@ -8,7 +8,6 @@ var s = [
 	"color",
 	"value",
 	"brightness",
-	"label",
 	"flip"
 ], c = /* @__PURE__ */ a({
 	__name: "CanvasGlyph",
@@ -57,27 +56,30 @@ var s = [
 			flip: e.flip
 		}, null, 8, l));
 	}
-});
-Object.freeze({});
-var d = Object.freeze({
+}), d = Object.freeze({
+	width: 40,
+	height: 50
+}), f = Object.freeze({
 	A: Object.freeze({
-		relX: 30,
-		relY: 50,
+		relX: 24,
+		relY: 42,
 		wireNet: "primary",
-		defaultConnection: 13,
+		defaultConnection: null,
 		required: !0
 	}),
 	C: Object.freeze({
-		relX: 10,
-		relY: 50,
+		relX: 16,
+		relY: 42,
 		wireNet: "gnd",
 		defaultConnection: "GND",
 		required: !1
 	})
-}), f = Object.freeze({ default: Object.freeze({
+});
+Object.freeze({});
+var p = f, m = d, h = Object.freeze({ default: Object.freeze({
 	variant: "default",
 	getPins: () => t("led", "default"),
-	pinsOverlay: d,
+	pinsOverlay: p,
 	defaultAppearanceId: "led_default"
 }) });
 Object.freeze({ led_default: Object.freeze({
@@ -93,19 +95,16 @@ Object.freeze({ led_default: Object.freeze({
 }) });
 //#endregion
 //#region builtin/led/1.0.0/src/definition.ts
-var p = r(import.meta.url, "led", "1.0.0", "output");
-function m(e, t) {
-	let r = n(e, p.type);
+var g = r(import.meta.url, "led", "1.0.0", "output");
+function _(e, t) {
+	let r = n(e, g.type);
 	return t.pluginChannels?.[r]?.on === !0;
 }
-var h = f.default, g = e({
-	type: p.type,
-	size: {
-		width: 50,
-		height: 60
-	},
+var v = h.default, y = e({
+	type: g.type,
+	size: m,
 	wireColor: "#00ff88",
-	pinsOverlay: h.pinsOverlay,
+	pinsOverlay: v.pinsOverlay,
 	props: {
 		variant: {
 			type: "string",
@@ -156,12 +155,12 @@ var h = f.default, g = e({
 			brightness: e.props.brightness,
 			label: e.props.label,
 			flip: e.props.flip,
-			level: m(e, t)
+			level: _(e, t)
 		}),
 		worldProps: (e, t) => ({
 			pinConnections: e.pinConnections,
 			color: e.props.color,
-			level: m(e, t),
+			level: _(e, t),
 			brightness: e.props.brightness,
 			label: e.props.label,
 			flip: e.props.flip
@@ -169,4 +168,4 @@ var h = f.default, g = e({
 	}
 });
 //#endregion
-export { g as default, g as ledDefinition };
+export { y as default, y as ledDefinition };

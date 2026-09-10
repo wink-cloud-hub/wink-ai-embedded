@@ -55,6 +55,10 @@ function s(e = "default") {
 				min: 0,
 				max: 1
 			},
+			label: {
+				type: "string",
+				default: ""
+			},
 			activeHigh: {
 				type: "boolean",
 				default: !0

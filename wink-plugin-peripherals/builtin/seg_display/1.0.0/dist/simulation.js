@@ -20,21 +20,83 @@ function u(e, t) {
 	let i = (o(e, t)?.pins ?? []).map(l), a = Object.freeze(i);
 	return s.set(n, a), a;
 }
+Object.freeze({
+	width: 210,
+	height: 96
+});
+var d = Object.freeze({
+	A: Object.freeze({
+		relX: 23,
+		relY: 96,
+		wireNet: "primary",
+		defaultConnection: null,
+		required: !1
+	}),
+	B: Object.freeze({
+		relX: 47,
+		relY: 96,
+		wireNet: "primary",
+		defaultConnection: null,
+		required: !1
+	}),
+	C: Object.freeze({
+		relX: 70,
+		relY: 96,
+		wireNet: "primary",
+		defaultConnection: null,
+		required: !1
+	}),
+	D: Object.freeze({
+		relX: 93,
+		relY: 96,
+		wireNet: "primary",
+		defaultConnection: null,
+		required: !1
+	}),
+	E: Object.freeze({
+		relX: 117,
+		relY: 96,
+		wireNet: "primary",
+		defaultConnection: null,
+		required: !1
+	}),
+	F: Object.freeze({
+		relX: 140,
+		relY: 96,
+		wireNet: "primary",
+		defaultConnection: null,
+		required: !1
+	}),
+	G: Object.freeze({
+		relX: 163,
+		relY: 96,
+		wireNet: "primary",
+		defaultConnection: null,
+		required: !1
+	}),
+	DP: Object.freeze({
+		relX: 187,
+		relY: 96,
+		wireNet: "primary",
+		defaultConnection: null,
+		required: !1
+	})
+});
 Object.freeze([
 	"direct_gpio_8d",
 	"direct_gpio_4d",
 	"direct_gpio_2d",
 	"direct_gpio_1d"
 ]);
-var d = Object.freeze({
+var f = Object.freeze({
 	direct_gpio_8d: 8,
 	direct_gpio_4d: 4,
 	direct_gpio_2d: 2,
 	direct_gpio_1d: 1
 });
-function f(e) {
+function p(e) {
 	let t = i(e);
-	return t && t in d ? t : "direct_gpio_8d";
+	return t && t in f ? t : "direct_gpio_8d";
 }
 Object.freeze({
 	"8d": Object.freeze(["direct_gpio_8d"]),
@@ -42,7 +104,7 @@ Object.freeze({
 	"2d": Object.freeze(["direct_gpio_2d"]),
 	"1d": Object.freeze(["direct_gpio_1d"])
 });
-var p = [
+var m = Object.freeze([
 	"A",
 	"B",
 	"C",
@@ -51,25 +113,9 @@ var p = [
 	"F",
 	"G",
 	"DP"
-], m = [
-	23,
-	47,
-	70,
-	93,
-	117,
-	140,
-	163,
-	187
-];
+].map((e) => d[e]?.relX ?? 0));
 function h() {
-	let e = {};
-	for (let t = 0; t < p.length; t++) e[p[t]] = Object.freeze({
-		relX: m[t],
-		relY: 96,
-		wireNet: "primary",
-		required: !1
-	});
-	return e;
+	return d;
 }
 function g(e) {
 	return Object.freeze(Object.entries(e).map(([e]) => ({
@@ -81,7 +127,7 @@ function g(e) {
 	})));
 }
 function _(e) {
-	let t = h(), n = {}, r = d[e];
+	let t = h(), n = {}, r = f[e];
 	if (r === 8) for (let e = 0; e < 8; e++) n[`DIG${e + 1}`] = Object.freeze({
 		relX: m[e],
 		relY: 0,
@@ -281,7 +327,7 @@ var x = a(import.meta.url, "seg_display", "1.0.0", "display"), S = [
 	"DP"
 ];
 function C(e) {
-	let t = d[e] ?? 8, n = [];
+	let t = f[e] ?? 8, n = [];
 	for (let e of S) n.push({
 		name: e,
 		pinType: "digital_in",
@@ -306,12 +352,12 @@ function C(e) {
 	return n;
 }
 function w(e = "direct_gpio_8d") {
-	let t = f(e), n = C(t);
+	let t = p(e), n = C(t);
 	return r({
 		type: x.type,
 		version: x.version,
 		category: x.category,
-		displayName: `${d[t]}-Digit 7-Segment Display`,
+		displayName: `${f[t]}-Digit 7-Segment Display`,
 		description: "Multiplexed 7-segment digital LED display with duty-cycle brightness simulation",
 		timingModel: "event-driven",
 		pins: n,
@@ -328,7 +374,7 @@ function w(e = "direct_gpio_8d") {
 			},
 			appearanceId: {
 				type: "string",
-				default: `seg_display_${d[t]}`
+				default: `seg_display_${f[t]}`
 			},
 			segActiveLevel: {
 				type: "string",
@@ -401,7 +447,7 @@ function w(e = "direct_gpio_8d") {
 		events: {}
 	});
 }
-var T = w("direct_gpio_8d"), E = (e) => w(f(e)), D = 80000n, O = 255 / 2e3, k = 50, A = 40, j = 16000n, M = 100000n, N = class extends e {
+var T = w("direct_gpio_8d"), E = (e) => w(p(e)), D = 80000n, O = 255 / 2e3, k = 50, A = 40, j = 16000n, M = 100000n, N = class extends e {
 	manifest = T;
 	static manifest = T;
 	nDigits = 8;
@@ -432,8 +478,8 @@ var T = w("direct_gpio_8d"), E = (e) => w(f(e)), D = 80000n, O = 255 / 2e3, k = 
 		this.rawProperties = n, super.onBind(e, t, n);
 	}
 	onBound(e, n, r) {
-		let i = f(r.variant);
-		this.nDigits = d[i] ?? 8;
+		let i = p(r.variant);
+		this.nDigits = f[i] ?? 8;
 		let a = this.rawProperties ?? {};
 		this.segActiveHigh = a.segActiveLevel === void 0 ? a.commonAnode === void 0 ? r.segActiveLevel === "high" : !a.commonAnode : a.segActiveLevel === "high", this.digActiveHigh = a.digitActiveLevel === void 0 ? a.commonAnode === void 0 ? r.digitActiveLevel === "high" : !!a.commonAnode : a.digitActiveLevel === "high", this.segLevel.fill(t.HI_Z), this.digLevel = new Uint8Array(this.nDigits), this.digLevel.fill(t.HI_Z), this.bright = new Uint8Array(this.nDigits * 8), this.segMask = new Uint8Array(this.nDigits), this.segPinOf.clear(), this.digPinOf.clear();
 		for (let e = 0; e < S.length; e++) {

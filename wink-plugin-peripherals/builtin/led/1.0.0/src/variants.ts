@@ -7,22 +7,10 @@ export const LED_TOPOLOGY_EQUIVALENCE: Readonly<Record<string, readonly string[]
   {},
 );
 
-const LED_OVERLAY: Readonly<PinsOverlayMap> = Object.freeze({
-  A: Object.freeze({
-    relX: 30,
-    relY: 50,
-    wireNet: 'primary' as const,
-    defaultConnection: 13 as const,
-    required: true,
-  }),
-  C: Object.freeze({
-    relX: 10,
-    relY: 50,
-    wireNet: 'gnd' as const,
-    defaultConnection: 'GND' as const,
-    required: false,
-  }),
-});
+import { LED_AUTOGEN_OVERLAY, LED_AUTOGEN_SIZE } from './variants.generated';
+
+export const LED_OVERLAY = LED_AUTOGEN_OVERLAY;
+export const LED_SIZE = LED_AUTOGEN_SIZE;
 
 export const LED_TOPOLOGIES = Object.freeze({
   default: Object.freeze({
