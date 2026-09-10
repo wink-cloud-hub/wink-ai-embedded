@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ntc DeviceTree Config",
+  "type": "object",
+  "properties": {
+    "type": {
+      "const": "ntc"
+    },
+    "temperature": {
+      "type": "number",
+      "default": 25,
+      "minimum": -40,
+      "maximum": 200
+    },
+    "r25": {
+      "type": "number",
+      "default": 10000
+    },
+    "bValue": {
+      "type": "number",
+      "default": 3950
+    },
+    "pullUpResistor": {
+      "type": "number",
+      "default": 10000
+    },
+    "variant": {
+      "type": "string",
+      "default": "default"
+    }
+  },
+  "required": [
+    "type"
+  ],
+  "additionalProperties": false,
+  "x-wink-pins": [
+    {
+      "name": "OUT",
+      "direction": "source",
+      "signal": "analog",
+      "required": true,
+      "simRole": "signal",
+      "aliases": [
+        "out",
+        "AO",
+        "ao",
+        "SIG",
+        "sig"
+      ]
+    },
+    {
+      "name": "VCC",
+      "direction": "power",
+      "signal": "power",
+      "required": false,
+      "simRole": "power",
+      "catalogType": "power",
+      "aliases": [
+        "5v",
+        "vcc"
+      ]
+    },
+    {
+      "name": "GND",
+      "direction": "ground",
+      "signal": "power",
+      "required": false,
+      "simRole": "ground",
+      "catalogType": "power",
+      "aliases": [
+        "gnd"
+      ]
+    }
+  ]
+}
