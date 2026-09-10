@@ -153,6 +153,7 @@ export const segDisplayDefinition: PeripheralDefinition = definePeripheral({
   type: identity.type,
   size: SEG_DISPLAY_SIZE,
   wireColor: '#ff0055',
+  rotationPolicy: 'fixed',
   pinsOverlay: defaultTopology.pinsOverlay,
   props: segDisplayProps,
   canvas: CanvasGlyph,

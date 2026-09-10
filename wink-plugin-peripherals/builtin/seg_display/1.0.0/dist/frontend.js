@@ -481,6 +481,7 @@ var J = F.direct_gpio_8d, Y = {
 	type: V.type,
 	size: k,
 	wireColor: "#ff0055",
+	rotationPolicy: "fixed",
 	pinsOverlay: J.pinsOverlay,
 	props: Y,
 	canvas: v,
