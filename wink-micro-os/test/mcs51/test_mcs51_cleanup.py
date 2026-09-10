@@ -125,6 +125,27 @@ void main(void) {
         self.assertEqual(counts["isr"], 1)
         self.assertEqual(counts["sdcc"], 2)
 
+    def test_sdcc_sbit_rewrite(self):
+        # GAP-03: user sbit declarations must become absolute __sbit at().
+        source = """
+sbit HEATER = P2^0;
+sbit TF1    = TCON^7;
+sbit LED    = 0x90;
+void main(void) { HEATER = 0; }
+"""
+        cleaned, counts = mcs51_cleanup.cleanup(source, target="sdcc")
+        self.assertIn("__sbit __at(0xA0) HEATER;", cleaned)   # P2 base 0xA0 + 0
+        self.assertIn("__sbit __at(0x8F) TF1;", cleaned)      # TCON 0x88 + 7
+        self.assertIn("__sbit __at(0x90) LED;", cleaned)      # absolute kept
+        self.assertEqual(counts["sbit_unresolved"], 0)
+
+    def test_sdcc_sbit_unresolved_reg(self):
+        # Unknown SFR in a relative sbit is left untouched and counted.
+        source = "sbit X = NO_SUCH_REG^3;\n"
+        cleaned, counts = mcs51_cleanup.cleanup(source, target="sdcc")
+        self.assertIn("sbit X = NO_SUCH_REG^3;", cleaned)
+        self.assertEqual(counts["sbit_unresolved"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

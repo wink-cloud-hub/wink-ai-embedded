@@ -36,7 +36,13 @@ def read_source(path: str) -> str:
     try:
         return data.decode("utf-8")
     except UnicodeDecodeError:
-        return data.decode("gbk")
+        # GB18030 is a superset of GBK and decodes every vendor fixture
+        # byte sequence encountered (plain GBK rejects some extension chars
+        # found in vendor extint.c/spi.c).
+        try:
+            return data.decode("gb18030")
+        except UnicodeDecodeError:
+            return data.decode("gbk", errors="replace")
 
 
 # Strict Keil ISR signature: [static] void name( void | () ) interrupt N [using M].
@@ -284,12 +290,29 @@ def build_code_mask(source: str) -> str:
     return "".join(mask)
 
 
+# sbit declarations (SDCC target only — native keeps the C++ WinkSbit proxy):
+#   sbit NAME = 0x90;            (absolute bit address)
+#   sbit NAME = P2^0;            (relative to a bit-addressable SFR)
+# SDCC form: __sbit __at(bitaddr) NAME;  (bitaddr = SFR_base + bit)
+SDCC_SBIT_ABS_RE = re.compile(r'\bsbit\s+([A-Za-z_]\w*)\s*=\s*(0x[0-9A-Fa-f]+|\d+)\s*;')
+SDCC_SBIT_REL_RE = re.compile(r'\bsbit\s+([A-Za-z_]\w*)\s*=\s*([A-Za-z_]\w*)\s*\^\s*(\d)\s*;')
+
+# Base SFR addresses of the bit-addressable SFRs (bit-address space base).
+# Standard 8052 + CMS8S alias names used in carrier sources.
+BIT_ADDRESSABLE_SFR = {
+    "P0": 0x80, "TCON": 0x88, "P1": 0x90, "SCON": 0x98, "SCON0": 0x98,
+    "P2": 0xA0, "IE": 0xA8, "P3": 0xB0, "IP": 0xB8, "T2CON": 0xC8,
+    "PSW": 0xD0, "ACC": 0xE0, "B": 0xF0,
+}
+
+
 def cleanup(source: str, target: str = "native") -> tuple[str, dict[str, int]]:
     """Clean source code according to the chosen target ('native' or 'sdcc').
     Returns (cleaned_source, counts_dict)."""
     mask = build_code_mask(source)
     regions: list[tuple[int, int, str, str]] = []
-    counts = {"isr": 0, "header": 0, "loop": 0, "delay": 0, "sdcc": 0}
+    counts = {"isr": 0, "header": 0, "loop": 0, "delay": 0, "sdcc": 0,
+              "sbit_unresolved": 0}
 
     if target == "sdcc":
         # ── SDCC Target Mode (Tier 3 ISS) ───────────────────────────────────
@@ -313,6 +336,24 @@ def cleanup(source: str, target: str = "native") -> tuple[str, dict[str, int]]:
         for m in SDCC_AT_RE.finditer(mask):
             addr = m.group(1)
             regions.append((m.start(), m.end(), f"__at({addr})", "sdcc"))
+
+        # 4. sbit declarations:
+        #    relative form `sbit N = REG^b;` resolves REG's SFR base from
+        #    the bit-addressable table; unknown REG is left untouched and
+        #    counted as sbit_unresolved (gate headers may extend the table).
+        for m in SDCC_SBIT_REL_RE.finditer(mask):
+            name, reg, bit = m.group(1), m.group(2), int(m.group(3))
+            base = BIT_ADDRESSABLE_SFR.get(reg)
+            if base is not None:
+                repl = f"__sbit __at(0x{base + bit:02X}) {name};"
+                regions.append((m.start(), m.end(), repl, "sdcc"))
+            else:
+                counts["sbit_unresolved"] = counts.get("sbit_unresolved", 0) + 1
+        #    absolute form `sbit N = 0xNN;`
+        for m in SDCC_SBIT_ABS_RE.finditer(mask):
+            name, addr = m.group(1), m.group(2)
+            regions.append((m.start(), m.end(),
+                            f"__sbit __at({addr}) {name};", "sdcc"))
 
     else:
         # ── Native Target Mode (Tier 2 C++ Sandbox) ────────────────────────
