@@ -15,6 +15,11 @@ extern "C" {
 #define MCS51_TIMING_NATIVE_0CYCLE 0u
 #define MCS51_TIMING_ISS_SCHEDULED 1u
 
+// MCU family ids for silicon reset seeds (GAP-04/GAP-13). mcs51_context_reset
+// applies family-specific seeds (CKCON reset value, power-on Fosc).
+#define MCS51_FAMILY_CLASSIC   0u  // AT89C52/STC89 and other classic 12T parts
+#define MCS51_FAMILY_CMS8S78XX 1u  // Cmsemicon CMS8S78xx
+
 // ── Task F1: Timed edge injection event ────────────────────────────────────
 typedef struct {
     uint64_t fire_us;
@@ -147,8 +152,15 @@ static inline void mcs51_set_active_context(Mcu51Context* ctx) {
 }
 
 // Reset MCU context to silicon seeds (P0..P3=0xFF, SP=0x07, PS_ADET=0x7F, etc.).
-// Preserves registered ISRs in isr_table.
+// Preserves registered ISRs in isr_table. Family-specific seeds (CKCON/Fosc,
+// GAP-04/GAP-13) are applied at the end per the selected MCU family.
 void mcs51_context_reset(Mcu51Context* ctx);
+
+// Select MCU family at runtime and apply that family's silicon seeds
+// immediately (test seam; production builds get the compile-time default
+// from the WINK_MCU_* define).
+void mcs51_context_set_family(uint8_t family);
+uint8_t mcs51_context_get_family(void);
 
 #ifdef __cplusplus
 }
