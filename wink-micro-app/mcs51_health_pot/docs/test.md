@@ -10,7 +10,7 @@
 
 ## 一、 程序做了什么（产品逻辑与原理全景）
 
-本应用是基于 **CMS8S78xx** 芯片深度打造的商业级多功能养生壶（智能电热水壶）固件。通过充分挖掘 CMS8S78xx 的片内硬件外设（12-bit 高精 SAR ADC、硬件无源蜂鸣器发生器 BUZCON/BUZDIV、大电流驱动 COM 端口），构建了一个兼具高精度温控、多模态视听交互与四级安全闭环的小家电控制系统。
+本应用是基于 **CMS8S78xx** 芯片深度打造的商业级多功能养生壶（智能电热水壶）固件。通过充分挖掘 CMS8S78xx 的片内硬件外设（12-bit 高精 SAR ADC、硬件无源蜂鸣器发生器 BUZCON/BUZDIV、大电流驱动 COM 端口），构建了一个兼具高精度温控、多模态视听交互与五级安全闭环的小家电控制系统。
 
 ### 1. 核心控制逻辑与状态机
 
@@ -20,10 +20,11 @@
 stateDiagram-v2
     [*] --> OFF : 上电初始化（发热盘切断）
 
-    OFF --> HEAT : ON/OFF 按下 / 切换为 XXb0
+    OFF --> HEAT : ON/OFF 按下且探头有效 / 切换为 XXb0
     OFF --> FAULT : 探头开路(E-01) / 短路(E-02)
+    OFF --> FAULT : 静音待机下按 ON/OFF 但探头仍故障（拒绝启动）
 
-    HEAT --> OFF : ON/OFF 按下 / 发热盘切断
+    HEAT --> OFF : ON/OFF 按下 / 发热盘切断（清零热计时）
     HEAT --> WARM : 首次达到 98℃ 并保持 3s / 转入保温 XXYY
     HEAT --> FAULT : 探头异常 / 干烧(E-03) / 超温(E-04)
 
@@ -37,11 +38,14 @@ stateDiagram-v2
         ±1℃ 窄带迟滞控制：
         T 低于 set-1 开启加热（受 dwell 门控）
         T 高于 set+1 关闭加热
+        待机/HEAT 下 FUNC：~800Hz 否定音
     end note
 
+    FAULT --> OFF : 探头故障按 ON/OFF (人工确认→静音待机)
     FAULT --> OFF : 探头故障 (连续 300ms 采样有效自动恢复)
     FAULT --> OFF : 热故障 (必须人工按 ON/OFF 键解除)
     FAULT --> FAULT : 故障保持 (发热盘强制断开 / 急促警报)
+    OFF --> OFF : 静音待机读数连续 300ms 有效 → 清除 F 码
 ```
 
 ### 2. 外设与引脚硬件映射
@@ -57,8 +61,9 @@ stateDiagram-v2
 | **P0.6** | 6 | 推挽输出 | **低有效** | 故障指示灯 LED_ERR（故障态 1 Hz 闪烁） |
 | **P1.0..P1.7** | 8..15 | 推挽输出 | **高有效** | 4COM-8SEG 数码管段码 a, b, c, d, e, f, g, dp |
 | **P2.0** | 16 | 推挽输出 | **高有效** | 发热盘加热继电器 HEATER（1 = 吸合加热） |
-| **P3.0..P3.3** | 24..27 | 高灌电流 | **低有效** | 4COM-8SEG 数码管位选 COM0, COM1, COM2, COM3 |
-| **P3.1 / TXD** | 25 | 复用输出 | TTL | 串口遥测输出（9600 bps，每秒一帧） |
+| **P3.0..P3.3** | 24..27 | 高灌电流 | **低有效** | 4COM-8SEG 数码管位选 COM0, COM1, COM2, COM3（专用，不再与 UART 复用） |
+| **P2.1 / RXD** | 17 | 数字复用 | TTL | UART0 接收（引脚重映射，9600 bps） |
+| **P2.2 / TXD** | 18 | 数字复用 | TTL | 串口遥测输出（引脚重映射，9600 bps，每秒一帧）；P3.0/P3.1 全部留给数码管 COM 驱动 |
 
 ---
 
@@ -69,13 +74,14 @@ stateDiagram-v2
 | 工作状态 | 4COM-8SEG 数码管 | 硬件蜂鸣器声学反馈 | 加热灯 (P0.1) | 保温灯 (P0.2) | 故障灯 (P0.6) | 继电器 (P2.0) |
 |---|---|---|---|---|---|---|
 | **OFF（待机态）** | `" -- "`（居中横杠） | 静音（按键时 4000 Hz / 30 ms 机械按键音） | 灭 | 灭 | 灭 | **断开 (0)** |
+| **OFF（静音待机，探头故障已确认）** | `" -- "` | 报警停止；读数恢复播 G6 单音；再按 ON/OFF 被拒时重新报警 | 灭 | 灭 | 灭 | **锁定断开 (0)**（遥测 S=0,F=1/2） |
 | **HEAT（全速烧水中）** | `"25b0"`（当前温 + b0，dp 点 1Hz 闪烁） | 4000 Hz 开机音 | **常亮 (0)** | 灭 | 灭 | **吸合 (1)** |
 | **HEAT（沸腾确认 3s）** | `"98b0"`（dp 熄灭指示加热关断） | 3s 倒计时期间静音 | **常亮 (0)** | 灭 | 灭 | **断开 (0)** |
 | **WARM（保温降温中）** | `"9860"`（前 2 位实际温，后 2 位目标温） | 转换瞬间播放 C6-E6-G6-C7 和弦旋律 | 灭 | **常亮 (0)** | 灭 | **断开 (0)** |
 | **WARM（保温再加热）** | `"5960"`（T < 目标 - 1℃） | FUNC 切换播放 2kHz→3kHz 升调音 | 灭 | **常亮 (0)** | 灭 | **吸合 (1)**（受 3s Dwell 保护） |
 | **FAULT: E-01** | `"E-01"`（NTC 探头开路/拔脱） | 3kHz/2kHz 急促交替双音报警（60s 超时静音） | 灭 | 灭 | **1 Hz 闪烁** | **强制切断 (0)** |
 | **FAULT: E-02** | `"E-02"`（NTC 探头短路/击穿） | 3kHz/2kHz 急促交替双音报警（60s 超时静音） | 灭 | 灭 | **1 Hz 闪烁** | **强制切断 (0)** |
-| **FAULT: E-03** | `"E-03"`（干烧报警：加热 25s 无温升） | 3kHz/2kHz 急促交替双音报警（Sticky 锁存） | 灭 | 灭 | **1 Hz 闪烁** | **强制切断 (0)** |
+| **FAULT: E-03** | `"E-03"`（干烧报警：25s 未过 45℃，或 60s 未沸腾） | 3kHz/2kHz 急促交替双音报警（Sticky 锁存） | 灭 | 灭 | **1 Hz 闪烁** | **强制切断 (0)** |
 | **FAULT: E-04** | `"E-04"`（超温报警：连续 10s > 105℃） | 3kHz/2kHz 急促交替双音报警（Sticky 锁存） | 灭 | 灭 | **1 Hz 闪烁** | **强制切断 (0)** |
 
 ---
@@ -91,14 +97,14 @@ stateDiagram-v2
                              │   • P0.3 BUZCON/BUZDIV 硬件定时器产生的方波调频         │
                              │   • P2.0 继电器开关脉冲与 Dwell 触点保护防抖              │
                              │   • AN0 模拟轨连续电压采样 (12-bit SAR ADC)             │
-                             │   • P3.1 UART SBUF 字节流 (9600 bps)                   │
+                             │   • P2.2 UART SBUF 字节流 (9600 bps，Timer1 波特率)    │
                              └───────────────────────────┬────────────────────────────┘
                                                          │
                         ┌────────────────────────────────┴───────────────────────────────┐
                         ▼                                                                ▼
       【维度 A: 升维至 Level 1/2 直观视听】                          【维度 B: 确定性自动化 CI 门禁】
      UniSim 虚拟外设与插件支持:                                      `unisim-scenarios/*.scenario.json`
-     • 4COM-8SEG: POV 视觉暂留解码算法直接输出文本                   • 8 大自动化测试场景全面覆盖
+     • 4COM-8SEG: POV 视觉暂留解码算法直接输出文本                   • 15 大自动化测试场景全面覆盖
        （`ASSERT_POINT target: "plugin:display/text"`）              • 纳秒/微秒级确定性时钟推进
      • 硬件蜂鸣器: 转换为实时音频合成与频率/占空比观测                 • 继电器开关、温度边界、热故障锁存断言
      • UART 遥测: `BusAnalyzer` 自动分帧与结构化断言                 • 彻底杜绝软硬件回归缺陷
@@ -142,7 +148,7 @@ python packages/wink-tools/wink.py sim run --app mcs51_health_pot
 
 ### 3. 一键运行全自动化 Headless 测试套件
 
-在终端以无头（Headless）批处理模式运行全部 8 个自动化测试场景：
+在终端以无头（Headless）批处理模式运行全部 15 个自动化测试场景：
 
 ```powershell
 python packages/wink-tools/wink.py sim run `
@@ -180,17 +186,24 @@ python packages/wink-tools/wink.py sim run `
 
 #### 测试用例 3：探头故障（开路/短路）与自动恢复
 1. **探头拔脱（开路）**：
-   * 在加热过程中，将 NTC 模拟输入拉至最大值（开路代码 255 / 1.0）；
+   * 在加热过程中，将 NTC 模拟输入拉至满量程（开路：12-bit 原始码 4095 / valueNorm 1.0）；
    * **现象**：发热继电器**在 100 ms 内瞬时强制切断**；红色故障灯 `led_fault` 以 1 Hz 频率闪烁；数码管显示国际家电故障码 `"E-01"`；蜂鸣器发出 3000 Hz / 2000 Hz 急促交替报警音。
 2. **探头恢复（滤波去抖）**：
    * 将模拟输入重新调整回正常室温（如 25 ℃）；
    * **现象**：系统经过 300 ms 滤波确认后，报警音停止并播放 G6 短促提示音；故障灯熄灭；数码管显示回退到待机状态 `" -- "`；**安全保证：加热器绝不会自动重新通电加热**。
+3. **人工确认静音待机（任何状态电源键都安全）**：
+   * 在 E-01/E-02 报警中按一次 `btn_onoff`；
+   * **现象**：报警音立即停止、故障灯熄灭、数码管回到 `" -- "`，继电器保持断开（遥测为 `S=0,F=1/2`）；此时再按 `btn_onoff` 试图开机，会被**拒绝**并重新弹出 `E-01/E-02` 报警（防盲加热），伴随 ~800 Hz 否定音；探头修好（读数恢复正常）后约 300 ms 自动清除 F 码并播 G6 提示音，之后可正常开机。
+4. **待机/加热态按 FUNC 的反馈**：在 OFF 或 HEAT 态按 `btn_func` 不切档（档位只在保温态有效），但蜂鸣器播放 ~800 Hz / 30 ms 否定音，明确提示"按键已识别但当前无效"。
 
-#### 测试用例 4：干烧保护（Dry-fire）与 Sticky 锁存
-1. **注入干烧工况**：
+#### 测试用例 4：干烧保护（Dry-fire，两级看门狗）与 Sticky 锁存
+1. **注入干烧工况（一级）**：
    * 开机启动加热，保持输入温度持续低于 45 ℃ 长达 25 秒（模拟壶中无水导致探头感温失败）；
    * **现象**：计时满 25 秒瞬间，继电器立即切断；数码管锁死显示 `"E-03"`；故障灯 1 Hz 闪烁，报警音持续鸣响。
-2. **验证 Sticky 锁存（热故障优先级最高）**：
+2. **二级（沸腾超时）盲区验证**：
+   * 将温度稳定在 45 ℃ 以上但始终到不了 98 ℃（如保持 55 ℃，模拟敞盖散热/低电压/半壶水）；
+   * **现象**：一级看门狗因温度 ≥ 45 ℃ 不触发，但加热器持续通电满 60 秒仍未沸腾时，二级看门狗以同一个 `"E-03"` 锁断（真机二级阈值需标定为 600~900 s）。
+3. **验证 Sticky 锁存（热故障优先级最高）**：
    * 此时无论注入何种温度（包括探头短路 0V），故障码始终锁定为 `"E-03"`，绝不降级，也不自动消除；
    * 故障蜂鸣器在持续报警 60 秒后自动静音（防扰民保护），但故障灯与数码管持续警告；
    * **解除故障**：必须由人工点击 `btn_onoff` 键，系统才安全复位回到待机 `" -- "`。
@@ -199,18 +212,25 @@ python packages/wink-tools/wink.py sim run `
 
 ### 2. 方式 B：Headless 确定性场景自动化测试矩阵（CI 门禁）
 
-工程内置 **8 大标准场景脚本**（位于 [`unisim-scenarios/`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios) 目录下），全面覆盖各种功能分支与安全临界点：
+工程内置 **15 大标准场景脚本**（位于 [`unisim-scenarios/`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios) 目录下），全面覆盖各种功能分支与安全临界点：
 
 | # | 场景脚本文件名 | 核心验证内容与覆盖路径 | 关键断言点 |
 |:---:|---|---|---|
 | 1 | [`health-pot-display-buzzer.scenario.json`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-display-buzzer.scenario.json) | **CMS8S 专属外设验证**：待机 `" -- "` → 加热 `"25b0"` → 沸腾 `"98b0"` → 保温 `"9860"` → 故障 `"E-02"` 字符解码断言 | `plugin:display/text` 全流程文本匹配、继电器联动 |
 | 2 | [`health-pot-boil-warm.scenario.json`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-boil-warm.scenario.json) | **标准业务全流程（Happy Path）**：开机加热 → 98℃ 沸腾 → 3s 确认期 → 转入保温 → FUNC 循环切档 → 关机 | 加热继电器吸合/断开、指示灯电平、UART 遥测帧 `S=1` / `S=2` |
-| 3 | [`health-pot-boil-confirm-dip.scenario.json`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-boil-confirm-dip.scenario.json) | **沸腾确认期温度回落抗扰**：达到 98℃ 后温度回落至 92℃，验证继电器不提前重热，必须满 3s 进保温 | `plugin:heater_relay/on: false`、计时不被清零 |
+| 3 | [`health-pot-boil-confirm-dip.scenario.json`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-boil-confirm-dip.scenario.json) | **沸腾确认期温度回落抗扰**：达到 98℃ 后温度回落至 60℃，验证继电器不提前重热，必须满 3s 进保温 | `plugin:heater_relay/on: false`、计时不被清零 |
 | 4 | [`health-pot-fault-guard.scenario.json`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-fault-guard.scenario.json) | **NTC 探头短路保护与自动恢复**：加热中注入短路码 → FAULT（继电器即时断开）→ 探头恢复 300ms 去抖 → 回 OFF | 继电器切断、遥测 `S=3,F=2`、恢复后 `S=0,F=0` 且不自加热 |
-| 5 | [`health-pot-ntc-open.scenario.json`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-ntc-open.scenario.json) | **NTC 探头开路保护**：加热中注入拔脱码 255 → FAULT → 探头恢复 300ms 去抖 → 自动回待机 | 遥测 `S=3,F=1`、继电器强制关断 |
+| 5 | [`health-pot-ntc-open.scenario.json`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-ntc-open.scenario.json) | **NTC 探头开路保护**：加热中注入满量程拔脱码（原始码 4095）→ FAULT → 探头恢复 300ms 去抖 → 自动回待机 | 遥测 `S=3,F=1`、继电器强制关断 |
 | 6 | [`health-pot-dryfire.scenario.json`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-dryfire.scenario.json) | **干烧保护 Sticky 锁存**：持续加热 25s <45℃ 触发 F=3 → 注入短路不降级 → 恢复探头不自除 → 手动解除 | 遥测 `S=3,H=0,F=3` 稳定锁存、按键后复位 `S=0,F=0` |
 | 7 | [`health-pot-overtemp.scenario.json`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-overtemp.scenario.json) | **保温超温保护（Thermal Runaway）**：保温状态下注入过热码持续 10s → 触发 F=4 保护锁存 | 遥测 `S=3,H=0,F=4`、必须手动按键清除 |
 | 8 | [`health-pot-relay-dwell.scenario.json`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-relay-dwell.scenario.json) | **继电器 Dwell 触点保护**：断开边沿 0 延迟即时生效；再吸合边沿严格受满 3 秒最小断开间隔门控 | 频繁温度振荡下继电器吸合受时钟门控，抑制频繁跳火 |
+| 9 | [`health-pot-uart-telemetry.scenario.json`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-uart-telemetry.scenario.json) | **UART 遥测链路**：待机态首帧 `T=025C,S=0,H=0,F=0`、加热态连续周期帧 `S=1,H=1` | `ASSERT_BUS_PAYLOAD` 帧内容与周期连续性（真机对应 Timer1 波特率初始化，防首帧死等 TI 死锁） |
+| 10 | [`health-pot-display-cold-hold-clamp.scenario.json`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-display-cold-hold-clamp.scenario.json) | **显示标定边界**：5℃ 冷水显示 `"05b0"`（冷端锚点）、沸腾确认期 dp 熄灭（`segMask=[111,127,124,63]`）、105℃ 钳位 `"9960"` 不乱码 | `plugin:display/text` + `segMask` 段码精确断言 |
+| 11 | [`health-pot-fault-blink-1hz.scenario.json`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-fault-blink-1hz.scenario.json) | **故障灯 1Hz 闪烁**：E-02 后 2.05s 灭 / 2.55s 亮 / 3.05s 灭（半周期 500ms） | 三点位 `led_fault/on` 相位采样，可区分 1Hz 与旧版 0.5Hz |
+| 12 | [`health-pot-sensor-fault-powermute.scenario.json`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-sensor-fault-powermute.scenario.json) | **传感器故障电源可确认**：开机即开路 E-01 → ON/OFF 进静音待机 → 探头未恢复再按 ON/OFF 拒绝开机 → 恢复 300ms 自动清除 → 正常加热 | 任意状态电源键安全；`S=0,F=1` 静音遥测；拒绝盲加热 |
+| 13 | [`health-pot-power-cycle-dwell.scenario.json`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-power-cycle-dwell.scenario.json) | **快速重启 Dwell**：HEAT 关机立即重开，断开 0 延迟、再吸合仍须等满 3s | 再吸合路径统一 dwell 门控，无零间隔拉弧 |
+| 14 | [`health-pot-dryfire-stall.scenario.json`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-dryfire-stall.scenario.json) | **二级干烧**：水温停滞 55℃（越过一级 45℃ 盲区）持续加热 60s 未沸腾 → E-03 | `S=3,F=3` 锁存、手动解除 |
+| 15 | [`health-pot-overtemp-heat.scenario.json`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-overtemp-heat.scenario.json) | **加热越界不假沸腾**：HEAT 中 raw≈15 期间继电器强制断开且不转 WARM，10s 后 E-04 | 无沸腾旋律误播；`S=3,F=4` 手动解除 |
 
 #### 深度解析：专属数码管与蜂鸣器场景时序表（`health-pot-display-buzzer`）
 
@@ -222,7 +242,7 @@ python packages/wink-tools/wink.py sim run `
 | 4 | `600ms` | `INPUT_PLUGIN_EVENT` -> `btn_onoff` | `SET_PRESSED: false` | 释放 ON/OFF 电源键（完成有效按键脉冲） |
 | 5 | `1200ms` | `ASSERT_POINT` -> `plugin:display/text` | `"25b0"` | **加热显示断言**：验证开机后显示温度 25 与沸腾加热标识 `b0` |
 | 6 | `1200ms` | `ASSERT_POINT` -> `plugin:heater_relay/on` | `true` | **加热器吸合断言**：验证继电器闭合开始加热 |
-| 7 | `1600ms` | `INPUT_ANALOG` -> 通道 32 | `valueNorm: 0.0122` | 注入沸腾水温 98 ℃ |
+| 7 | `1600ms` | `INPUT_ANALOG` -> 通道 32 | `valueNorm: 0.0047`（原始码 ≈19） | 注入沸腾水温 98 ℃ |
 | 8 | `2000ms` | `ASSERT_POINT` -> `plugin:display/text` | `"98b0"` | **沸腾显示断言**：数码管显示当前水温 98 ℃ |
 | 9 | `5200ms` | `ASSERT_POINT` -> `plugin:display/text` | `"9860"` | **保温显示断言**：3s 沸腾确认完成后转入保温，前两位水温 98，后两位目标 60 |
 | 10 | `5500ms` | `INPUT_ANALOG` -> 通道 32 | `valueNorm: 0.0` | 注入 NTC 探头短路故障 |
@@ -233,7 +253,7 @@ python packages/wink-tools/wink.py sim run `
 
 ### 3. 方式 C：串口 UART 遥测分析与产测监听
 
-固件集成了全自动串口遥测功能（TXD 复用 P3.1，9600 bps，每秒发送一帧），数据帧格式如下：
+固件集成了全自动串口遥测功能（UART0 重映射到 **P2.2(TXD)/P2.1(RXD)**，Timer1 模式 2 自动重装 + T1M(Fosc/4) + SMOD 倍频，TH1=0xD9 → 实测 9615 bps，误差 0.16%；每秒发送一帧），数据帧格式如下：
 
 ```
 T=025C,S=1,H=1,F=0\n
@@ -244,9 +264,9 @@ T=025C,S=1,H=1,F=0\n
 | `T=` | 固定 3 位数字 | 当前水温（摄氏度） | `000` ~ `105` ℃ |
 | `S=` | 1 位数字 | 主状态机运行状态 | `0`: OFF（待机） · `1`: HEAT（加热） · `2`: WARM（保温） · `3`: FAULT（故障） |
 | `H=` | 1 位数字 | 加热继电器驱动电平 | `0`: 断开停止加热 · `1`: 吸合通电加热 |
-| `F=` | 1 位数字 | 故障代码 | `0`: 正常 · `1`: 探头开路 · `2`: 探头短路 · `3`: 干烧保护 · `4`: 保温超温 |
+| `F=` | 1 位数字 | 故障代码 | `0`: 正常 · `1`: 探头开路 · `2`: 探头短路 · `3`: 干烧保护（25s/60s 两级） · `4`: 超温保护。注：静音待机下允许 `S=0,F=1/2`（故障已人工确认、继电器锁定断开） |
 
-> 💡 **产测提示**：自动化产测机床或上位机工装只需通过 USB 转 TTL 串口连接 P3.1 与 GND，即可直接读取该字符串完成整机功能自动化检验，无需拆开外壳。
+> 💡 **产测提示**：自动化产测机床或上位机工装只需通过 USB 转 TTL 串口连接 **P2.2（TXD）** 与 GND，即可直接读取该字符串完成整机功能自动化检验，无需拆开外壳。
 
 ---
 
@@ -271,7 +291,7 @@ T=025C,S=1,H=1,F=0\n
 [数码管 SEG a..dp] <───│ P1.0..P1.7 (32.7mA 推挽输出) │ ──> 4 位 8 段共阴数码管
 [发热盘继电器驱动] <───│ P2.0 (接 NPN/NMOS 驱动线圈)   │ ──> 220V 1000W 发热盘
 [数码管 COM0..3]  <───│ P3.0..P3.3 (150mA 高灌电流口) │ ──> 数码管阴极选通
-[串口遥测 TXD] ───────>│ P3.1 (9600 bps TXD 信号)     │ ──> 上位机 / 产测工装
+[串口遥测 TXD] ───────>│ P2.2 (9600 bps TXD, 重映射)  │ ──> 上位机 / 产测工装
                        └──────────────────────────────┘
 ```
 
@@ -305,3 +325,6 @@ T=025C,S=1,H=1,F=0\n
 
 ### Q4: 故障报警声持续响了一分钟后为什么自动停止了？
 > **解答**：根据国际标准 IEC 60335-1 对家用电器扰民控制的要求，固件内置了 `FAULT_BEEP_TIMEOUT = 60s` 超时静音机制。报警 60 秒后硬件蜂鸣器自动关闭，但红色故障灯将继续保持 1 Hz 闪烁，数码管持续显示故障码，兼顾安全性与人机舒适性。
+
+### Q5: 探头故障报警（E-01/E-02）响个不停时，按电源键能关机吗？
+> **解答**：能，而且任何状态下电源键都是安全的。传感器故障时按一次 ON/OFF 会**人工确认故障**：停止声光报警、显示回 `" -- "`、继电器锁定断开（遥测仍为 `S=0,F=1/2`，便于售后读取）。此状态下若再次按 ON/OFF 试图开机，固件会拒绝并重新弹出故障，避免在无法测温时盲加热；探头恢复正常约 300 ms 后故障码自动清除（播 G6 提示音），随后即可正常开机。热故障 E-03/E-04 仍保持 Sticky，必须人工按 ON/OFF 解锁。
