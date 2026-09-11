@@ -141,6 +141,8 @@ typedef struct {
 // baseline + 8 caps_cache + 96 rail-64 - 80 scheme-A split; 64 KB is XDATA).
 // S3-2 adds the 8 B sfr_write_notify slot with ZERO net growth (absorbed by
 // existing alignment padding; still 75672, locked by the budget test below).
+// S4-1/S4-2 move port sampling (-72) and T3/T4/capture (-72) to the chip
+// pool and add uart_hooks (+8): 75536 B measured, ceiling unchanged.
 // Locked by test_mcs51_context_budget (print + ceiling); see stage2 §4 table.
 // Allocation MUST be in BSS or heap — NEVER on fiber/stack.
 typedef struct Mcu51Context {
