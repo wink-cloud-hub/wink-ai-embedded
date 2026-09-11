@@ -44,8 +44,11 @@ inline Adc0832State& adc_state() {
     Mcu51Context* ctx = mcs51_get_context();
     // Indexing clamps, never asserts (same rule as the chip binder: the
     // loud fuse lives in mcs51_context_reset).
-    const uint8_t idx = (ctx->instance_index < MCS51_MAX_INSTANCES)
-                            ? ctx->instance_index
+    // Review hardening: null-active (no active context at all) clamps safely
+    // to slot 0 instead of dereferencing nullptr.
+    const uint8_t raw_idx = (ctx != nullptr) ? ctx->instance_index : 0u;
+    const uint8_t idx = (raw_idx < MCS51_MAX_INSTANCES)
+                            ? raw_idx
                             : (MCS51_MAX_INSTANCES - 1u);
     return s_adc0832_pool[idx];
 }

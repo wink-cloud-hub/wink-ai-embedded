@@ -20,6 +20,7 @@ float js_pal_adc_read_norm(uint16_t pin);
 // mcs51_adc_reset() clears the ACTIVE context's rail between runs.
 void mcs51_adc_reset(void) {
     Mcu51Context* ctx = mcs51_get_context();
+    if (!ctx) return;
     for (unsigned key = 0; key < MCS51_ADC_MAX_RAIL_KEYS; ++key) {
         ctx->adc_inject_flag[key] = 0u;
         ctx->adc_injected[key] = 0u;
@@ -29,19 +30,27 @@ void mcs51_adc_reset(void) {
 }
 
 void mcs51_adc_set_vref_mv(uint16_t mv) {
-    mcs51_get_context()->adc_vref_mv = (mv != 0u) ? mv : 3000u;
+    Mcu51Context* ctx = mcs51_get_context();
+    if (ctx) {
+        ctx->adc_vref_mv = (mv != 0u) ? mv : 3000u;
+    }
 }
 
 void mcs51_adc_set_vrail_mv(uint16_t mv) {
-    mcs51_get_context()->adc_vrail_mv = (mv != 0u) ? mv : 3000u;
+    Mcu51Context* ctx = mcs51_get_context();
+    if (ctx) {
+        ctx->adc_vrail_mv = (mv != 0u) ? mv : 3000u;
+    }
 }
 
 uint16_t mcs51_adc_get_vref_mv(void) {
-    return mcs51_get_context()->adc_vref_mv;
+    Mcu51Context* ctx = mcs51_get_context();
+    return ctx ? ctx->adc_vref_mv : 3000u;
 }
 
 uint16_t mcs51_adc_get_vrail_mv(void) {
-    return mcs51_get_context()->adc_vrail_mv;
+    Mcu51Context* ctx = mcs51_get_context();
+    return ctx ? ctx->adc_vrail_mv : 3000u;
 }
 
 void mcs51_adc_set_value(uint8_t key, uint16_t raw) {
@@ -49,6 +58,7 @@ void mcs51_adc_set_value(uint8_t key, uint16_t raw) {
         return;
     }
     Mcu51Context* ctx = mcs51_get_context();
+    if (!ctx) return;
     if (raw == MCS51_ADC_RAIL_INJECT_NONE) {
         ctx->adc_inject_flag[key] = 0u;  // explicit clear back to Pull mode
         return;
@@ -62,7 +72,7 @@ uint16_t mcs51_adc_get_value(uint8_t key) {
         return 0;
     }
     Mcu51Context* ctx = mcs51_get_context();
-    if (ctx->adc_inject_flag[key] != 0u) {
+    if (ctx && ctx->adc_inject_flag[key] != 0u) {
         return ctx->adc_injected[key];
     }
     // Production Pull track: instant rail-key sample → 12-bit code value
@@ -78,8 +88,8 @@ uint16_t mcs51_adc_get_value(uint8_t key) {
     } else if (norm > 1.0f) {
         norm = 1.0f;
     }
-    const uint32_t vref = (ctx->adc_vref_mv != 0u) ? ctx->adc_vref_mv : 3000u;
-    const uint32_t vrail = (ctx->adc_vrail_mv != 0u) ? ctx->adc_vrail_mv : 3000u;
+    const uint32_t vref = (ctx && ctx->adc_vref_mv != 0u) ? ctx->adc_vref_mv : 3000u;
+    const uint32_t vrail = (ctx && ctx->adc_vrail_mv != 0u) ? ctx->adc_vrail_mv : 3000u;
     uint32_t raw = (uint32_t)(norm * 4095.0f + 0.5f);
     raw = (raw * vrail) / vref;
     if (raw > 4095u) {
