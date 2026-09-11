@@ -17,7 +17,7 @@
 #include "absacc.h"
 #include "mcs51_context.h"
 #include "mcs51_proxy.hpp"
-#include "wink_mcs51_classic_bus.h"
+#include "wink_mcs51_ext_bus.h"
 #include "wink_mcs51_strict.h"
 
 #ifdef _MSC_VER
@@ -133,7 +133,7 @@ int main(void) {
         P3 = 0xFFu;
         P0 = 0x00u;
         P2 = 0x00u;
-        CHECK(wink_mcs51_classic_bus_conflict_total() == 0u,
+        CHECK(wink_mcs51_ext_bus_conflict_total() == 0u,
               "CMS8S XBYTE+GPIO must stay silent");
         CHECK(xread(0x0010ull) == 0xA5u, "CMS8S XRAM must round-trip");
     }
@@ -142,11 +142,11 @@ int main(void) {
     {
         init_ctx(MCS51_FAMILY_CLASSIC);
         xwrite(0x1234ull, 0x5Au);
-        CHECK(wink_mcs51_classic_bus_conflict_total() == 0u,
+        CHECK(wink_mcs51_ext_bus_conflict_total() == 0u,
               "bus use alone must not count");
         WinkSbit p37 = P3 ^ 7;
         p37 = 1u;
-        CHECK(wink_mcs51_classic_bus_conflict_total() == 1u,
+        CHECK(wink_mcs51_ext_bus_conflict_total() == 1u,
               "P3.7 after XBYTE must count");
     }
 
@@ -155,14 +155,14 @@ int main(void) {
         init_ctx(MCS51_FAMILY_CLASSIC);
         xwrite(0x0000ull, 0x01u);
         P0 = 0x55u;
-        CHECK(wink_mcs51_classic_bus_conflict_total() == 1u,
+        CHECK(wink_mcs51_ext_bus_conflict_total() == 1u,
               "P0 after XBYTE must count");
         WinkSbit p25 = P2 ^ 5;
         p25 = 1u;
-        CHECK(wink_mcs51_classic_bus_conflict_total() == 2u,
+        CHECK(wink_mcs51_ext_bus_conflict_total() == 2u,
               "P2 after XBYTE must count");
         P1 = 0xAAu;
-        CHECK(wink_mcs51_classic_bus_conflict_total() == 2u,
+        CHECK(wink_mcs51_ext_bus_conflict_total() == 2u,
               "P1 must stay exempt");
     }
 
@@ -171,10 +171,10 @@ int main(void) {
         init_ctx(MCS51_FAMILY_CLASSIC);
         WinkSbit p36 = P3 ^ 6;
         p36 = 0u;
-        CHECK(wink_mcs51_classic_bus_conflict_total() == 0u,
+        CHECK(wink_mcs51_ext_bus_conflict_total() == 0u,
               "GPIO use alone must not count");
         (void)xread(0x1000ull);  // inside the 8 KB classic aperture
-        CHECK(wink_mcs51_classic_bus_conflict_total() == 1u,
+        CHECK(wink_mcs51_ext_bus_conflict_total() == 1u,
               "XBYTE read after GPIO must count");
         CHECK(xread(0x1000ull) == 0x00u, "classic XBYTE must still serve");
     }

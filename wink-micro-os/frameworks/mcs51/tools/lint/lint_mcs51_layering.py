@@ -49,7 +49,7 @@ BASELINE: list[tuple[str, str, str, str]] = [
      r"CMS8S78xx|Mcs51Cms8s|cms8sAdc|cms8s_|CMS8S78XX|CMS8S extended-SFR",
      "stage2"),
     ("include/mcs51_context.h", "xsfr_addr", r"0xF000u", "stage2"),
-    ("include/mcs51_context.h", "adcldo", r"ADCLDO", "stage2"),
+    # S2-1 done: ADCLDO token gone from context.h (generic rail params).
     ("include/mcs51_context.h", "ps_sel", r"PS_ADET", "stage2"),
     # mcs51_family.h: family-id rows + schema docs are BY DESIGN (the
     # descriptor table is the single place allowed to name families).
@@ -95,7 +95,7 @@ BASELINE: list[tuple[str, str, str, str]] = [
      r"WINK_MCU_CMS8S78XX|MCS51_FAMILY_CMS8S78XX|CMS8S 24 MHz", "by-design"),
     ("src/mcs51_context.cpp", "familynam",
      r"WINK_MCU_AT89C52|CLASSIC", "by-design"),
-    ("src/mcs51_context.cpp", "adcldo", r"ADCLDO", "stage2"),
+    # S2-1 done: A-02 seeding lines (ADCLDO comment + 3000/3000) removed.
     ("src/mcs51_context.cpp", "ps_sel", r"PS_", "stage2"),
     # src/mcs51_extint.cpp EICFG tables + hook comment -> stage4
     ("src/mcs51_extint.cpp", "xsfr_addr", r"0xF08|0xF09", "stage4"),
@@ -106,17 +106,10 @@ BASELINE: list[tuple[str, str, str, str]] = [
     ("src/mcs51_family.cpp", "cms8s", r".*", "by-design"),
     ("src/mcs51_family.cpp", "xsfr_addr", r".*", "by-design"),
     ("src/mcs51_family.cpp", "familynam", r".*", "by-design"),
-    # extbus rename (stage2): family-named symbols in generic code.
-    ("include/mcs51_context.h", "familynam",
-     r"classicBus|Mcs51ClassicBusState", "stage2"),
-    ("include/wink_mcs51_classic_bus.h", "familynam", r".*", "stage2"),
-    ("src/mcs51_xdata.cpp", "familynam",
-     r"classicBus|classic_external_bus|Mcs51ClassicBusState|"
-     r"mcs51_classic_bus_|wink_mcs51_classic_bus", "stage2"),
+    # extbus rename (stage2, S2-1 done): family-named symbols in generic
+    # code are gone; the two prose waivers below stay (prose is allowed).
     ("src/mcs51_xdata.cpp", "familynam",
      r"classic AT89C52", "prose"),
-    ("src/mcs51_gpio.cpp", "familynam",
-     r"mcs51_classic_bus_notify_gpio|wink_mcs51_classic_bus", "stage2"),
     ("src/mcs51_timer.cpp", "familynam",
      r"classic STC/AT89", "prose"),
     # src/mcs51_gpio.cpp TRIS/OD/CFG tables + has_cms8s_io -> stage4

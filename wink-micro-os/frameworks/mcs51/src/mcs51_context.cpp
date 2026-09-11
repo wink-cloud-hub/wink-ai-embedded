@@ -4,6 +4,7 @@
 #include "mcs51_peripheral.h"
 #include "mcs51_sfr_map.h"
 
+#include <cassert>
 #include <cstring>
 
 static Mcu51Context s_default_mcu_context = {};
@@ -47,6 +48,11 @@ extern "C" {
 
 void mcs51_context_set_family(uint8_t family) {
     s_mcu_family = family;
+    // S2-1: unbind the old chip slot on family switch (stale pool data must
+    // never leak across families). The new slot is memset + bound by the
+    // first chip init (self-binding; core names no chip symbols). Classic
+    // binds nullptr explicitly — zero extension, pure core.
+    mcs51_get_context()->soc_priv = nullptr;
     apply_silicon_seeds(mcs51_get_context());
 }
 
@@ -54,10 +60,23 @@ uint8_t mcs51_context_get_family(void) {
     return s_mcu_family;
 }
 
+void mcs51_context_init(Mcu51Context* ctx, uint8_t idx) {
+    if (ctx == nullptr) {
+        return;
+    }
+    // S2-1: out-of-range clamps to the last slot (unit-tested); reset
+    // asserts the invariant as backstop against hand-built contexts.
+    ctx->instance_index =
+        (idx < MCS51_MAX_INSTANCES) ? idx : (MCS51_MAX_INSTANCES - 1u);
+}
+
 void mcs51_context_reset(Mcu51Context* ctx) {
     if (ctx == nullptr) {
         return;
     }
+    // S2-1: slot fuse — a hand-built context with a wild index must fail
+    // loudly, never alias another instance's pool slot.
+    assert(ctx->instance_index < MCS51_MAX_INSTANCES);
 
     // Preserve registered ISR table, external pin baseline and interrupt trigger mode across hardware reset (world state, ADR-0076)
     void (*saved_isrs[28])(void);
@@ -69,9 +88,19 @@ void mcs51_context_reset(Mcu51Context* ctx) {
     std::memcpy(saved_port_pins, ctx->extint.port_pins, sizeof(saved_port_pins));
     uint8_t saved_tcon_it = ctx->sfr_shadow[0x88] & ((1u << 0) | (1u << 2));
 
+    // S2-1 memset ordering iron rule: stash instance_index before the wipe,
+    // restore immediately after (same idiom as saved_isrs above).
+    const uint8_t saved_idx = ctx->instance_index;
+
     // Zero entire context memory (also clears family + §8 model states,
     // which are per-instance fields since M2 — no file-static to clean).
     std::memset(ctx, 0, sizeof(Mcu51Context));
+
+    // Slot restore + explicit classic bind (nullptr = zero extension).
+    // Chip slots are memset + bound by the first chip init below
+    // (self-binding; core names no chip symbols, §3.1 one-way rule).
+    ctx->instance_index = saved_idx;
+    ctx->soc_priv = nullptr;
 
     // Restore ISR table and external pin baseline
     std::memcpy(ctx->isr_table, saved_isrs, sizeof(saved_isrs));
@@ -90,11 +119,9 @@ void mcs51_context_reset(Mcu51Context* ctx) {
     ctx->sfr_shadow[0x81] = 0x07u; // SP = 0x07
     ctx->sfr_shadow[0x87] = 0x00u; // PCON = 0x00
 
-    // A-02 ADC reference rail defaults (GAP-05): 3.0V/3.0V (ratio 1.0).
-    // Vref is overwritten per conversion from ADCLDO.VSEL; Vrail is
-    // overwritten by the board declaration / test seam when present.
-    ctx->adc_vref_mv = 3000u;
-    ctx->adc_vrail_mv = 3000u;
+    // S2-1: reference-rail defaults are NOT seeded here anymore (CPL-19).
+    // mcs51_adc_reset() clears only the injection table; the 3000/3000
+    // defaults are injected by chip reset via the generic rail parameters.
 
     // XSFR pin share selector seeds (MCS51_XSFR_PS_RESET = no pin connected).
     // Addresses from mcs51_sfr_map.h (M5 single source).

@@ -10,7 +10,7 @@
 #include "mcs51_family.h"
 #include "mcs51_trap.h"
 #include "mcs51_context.h"
-#include "wink_mcs51_classic_bus.h"
+#include "wink_mcs51_ext_bus.h"
 
 #ifndef WINK_MCS51_STRICT
 #include "pal_log.h"
@@ -241,7 +241,7 @@ void mcs51_gpio_bit_write(uint8_t port, uint8_t bit, uint8_t level) {
     Mcu51Context* mcu = mcs51_get_context();
     // GAP-24: any firmware use of a bus pin counts toward the classic
     // MOVX/GPIO conflict verdict (idempotent writes included).
-    mcs51_classic_bus_notify_gpio(mcu, port, static_cast<uint8_t>(1u << bit));
+    mcs51_ext_bus_notify_gpio(mcu, port, static_cast<uint8_t>(1u << bit));
     const uint8_t addr = static_cast<uint8_t>(0x80u + (port * 0x10u));
     const uint8_t old_val = mcu->sfr_shadow[addr];
     const uint8_t old_bit = static_cast<uint8_t>((old_val >> bit) & 1u);
@@ -274,7 +274,7 @@ void mcs51_gpio_sfr_write(uint8_t port, uint8_t new_val) {
     }
     Mcu51Context* mcu = mcs51_get_context();
     // GAP-24: whole-port write touches all 8 pins (see bit path above).
-    mcs51_classic_bus_notify_gpio(mcu, port, 0xFFu);
+    mcs51_ext_bus_notify_gpio(mcu, port, 0xFFu);
     const uint8_t addr = static_cast<uint8_t>(0x80u + (port * 0x10u));
     const uint8_t old_val = mcu->sfr_shadow[addr];
     mcu->sfr_shadow[addr] = new_val;

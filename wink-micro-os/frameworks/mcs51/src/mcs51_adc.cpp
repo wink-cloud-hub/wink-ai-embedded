@@ -24,8 +24,8 @@ void mcs51_adc_reset(void) {
         ctx->adc_inject_flag[key] = 0u;
         ctx->adc_injected[key] = 0u;
     }
-    ctx->adc_vref_mv = 3000u;
-    ctx->adc_vrail_mv = 3000u;
+    // S2-1: clears the injection table ONLY (CPL-19). Reference defaults
+    // live with the chip layer (injected by chip reset); classic has none.
 }
 
 void mcs51_adc_set_vref_mv(uint16_t mv) {

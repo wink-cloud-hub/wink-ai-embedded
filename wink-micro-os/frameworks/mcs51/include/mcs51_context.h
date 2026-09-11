@@ -104,69 +104,17 @@ typedef struct {
     bool     rx_have_delivered;
 } Mcu51UartState;
 
-// ── Per-instance model states (maintainability M2) ─────────────────────────
+// ── Per-instance model states (maintainability M2, purified S2-1) ──────────
 // These POD states were file-static globals (one instance per process);
-// they now live in Mcu51Context so two contexts / two families never share
-// silicon state. Owner model noted per struct. Process-level *diagnostic*
-// counters (OOB/unmodeled-XSFR/UART-notready/unsupported/duplicate-vector)
-// deliberately stay file-static: they are build-time diagnostics, not silicon.
-
-// Owner: mcs51_adc0832.cpp (external ADC0832 trap state machine).
-typedef struct {
-    uint8_t cs_port, cs_bit;
-    uint8_t clk_port, clk_bit;
-    uint8_t di_port, di_bit;
-    uint8_t do_port, do_bit;
-    bool    is_dio_shared;
-    uint8_t phase;         // 0=IDLE, 1=INPUT, 2=OUTPUT
-    uint8_t rise_count;    // CLK rising edges since CS fall
-    uint8_t fall_count;    // CLK falling edges in OUTPUT phase
-    uint8_t channel_cfg;   // [1]=SGL/DIF, [0]=ODD/SIGN
-    uint8_t shift_data;    // 8-bit conversion result, MSB first
-    uint8_t out_bit;       // current DO drive level (1 = released/high)
-} Mcs51Adc0832State;
-
-// Owner: cms8s_sys.cpp (TA protection window + WDT coarse model).
-typedef struct {
-    // 0 = waiting 0xAA, 1 = got 0xAA waiting 0x55, 2 = unlocked (next
-    // protected write passes and consumes the window).
-    uint8_t ta_phase;
-    // virtual_us when 0xAA was accepted (TA window timeout, GAP-07 coarse).
-    uint64_t ta_aa_us;
-    // virtual_us of the last WDT start/feed (WDTRE 0->1 or WDTCLR strobe).
-    uint64_t wdt_last_feed_us;
-    // Overflow already counted for the current arming (one count per
-    // episode until the next feed; Release warn-once latch lives with the
-    // file-static diagnostic counter).
-    uint8_t wdt_overflow_latched;
-} Mcs51SysProtState;
-
-// Owner: cms8s_buzzer.cpp.
-typedef struct {
-    bool     running;
-    uint8_t  pin_level;
-    uint32_t half_period_us;
-    uint64_t next_toggle_us;
-    uint32_t toggle_count;
-} Mcs51BuzzerState;
-
-// Owner: cms8s_adc.cpp (on-chip 12-bit ADC + ADET trigger).
-typedef struct {
-    uint32_t conversion_count;
-    uint8_t  last_channel;
-} Mcs51Cms8sAdcState;
-
-typedef struct {
-    uint16_t last_pin;
-    uint8_t  last_level;
-    bool     have_sample;
-} Mcs51AdetPinState;
-
-typedef struct {
-    Mcs51Cms8sAdcState adc;
-    Mcs51AdetPinState  adet;
-    bool               in_poll;
-} Mcs51Cms8sAdcPriv;
+// M2 moved them into Mcu51Context, S2-1 moves them OUT again into per-owner
+// BSS pools keyed by ctx->instance_index (CPL-11/12, scheme A):
+//   * chip states (sys/buzzer/adc) -> chip priv pool (bound via soc_priv
+//     by self-binding chip inits; the zero-extension family binds nullptr);
+//   * board-device state -> device-owned pool (migrates to devices/ in
+//     stage3 with its TU).
+// Process-level *diagnostic* counters (OOB/unmodeled-XSFR/UART-notready/
+// unsupported/duplicate-vector) deliberately stay file-static: they are
+// build-time diagnostics, not silicon.
 
 // Owner: mcs51_pwm_meter.cpp (host-side soft-PWM measurement).
 typedef struct {
@@ -178,8 +126,12 @@ typedef struct {
     uint32_t transitions;
 } Mcs51PwmMeter;
 
-// Owner: mcs51_xdata.cpp + mcs51_gpio.cpp (classic external MOVX bus,
-// GAP-24). Parts without on-chip XRAM drive P0 (AD0-7), P2 (A8-15),
+// Owner: mcs51_xdata.cpp + mcs51_gpio.cpp (external MOVX bus, GAP-24).
+// This is a GENERIC 8051 concept (any part without on-chip XRAM drives the
+// external bus on MOVX; gated by descriptor xram_size == 0), so it keeps a
+// generic name and stays in core — S2-1 renames the family-named predecessor
+// to extbus without touching the logic.
+// Parts without on-chip XRAM drive P0 (AD0-7), P2 (A8-15),
 // P3.6 (/WR) and P3.7 (/RD) on every MOVX access, so firmware that mixes
 // XBYTE traffic with GPIO use of those pins is in silicon conflict.
 // xbus_used latches "MOVX seen"; gpio_bus_mask latches which bus pins were
@@ -189,11 +141,11 @@ typedef struct {
 typedef struct {
     uint8_t  xbus_used;
     uint32_t gpio_bus_mask;
-} Mcs51ClassicBusState;
+} Mcs51ExtBusState;
 
 // ── Standard Core MCU Context Container ────────────────────────────────────
-// sizeof(Mcu51Context) = 75752 B post-stage1 (MinGW GCC-measured, S2-0 probe:
-// 75648 master baseline + 8 caps_cache + 96 rail-64; 64 KB is XDATA shadow).
+// sizeof(Mcu51Context) = 75672 B post-S2-1 (MinGW GCC-measured: 75648 master
+// baseline + 8 caps_cache + 96 rail-64 - 80 scheme-A split; 64 KB is XDATA).
 // Locked by test_mcs51_context_budget (print + ceiling); see stage2 §4 table.
 // Allocation MUST be in BSS or heap — NEVER on fiber/stack.
 typedef struct Mcu51Context {
@@ -227,6 +179,8 @@ typedef struct Mcu51Context {
     Mcu51TimerState    timer;
     Mcu51ExtIntState   extint;
     Mcu51UartState     uart;
+    // Chip-private block (S2-1, scheme A): opaque to core, bound per
+    // instance by self-binding chip inits; classic binds nullptr.
     void*              soc_priv;
 
     // 6. Timed edge queue (Task F1)
@@ -237,31 +191,37 @@ typedef struct Mcu51Context {
     // 7. Low power OSAL wake event (Task R6)
     wink_event_t wake_event;
 
-    // 8. MCU family + per-instance model states (M1/M2). `family` is loaded
-    // from the process selector at reset; mechanism files branch on the
-    // family *descriptor* (mcs51_family.h), never on an id comparison.
+    // 8. MCU family + instance slot (M1/M2, purified S2-1). `family` is
+    // loaded from the process selector at reset; mechanism files branch on
+    // the family *descriptor* (mcs51_family.h), never on an id comparison.
     // Stage0 (v2 schema): `caps_cache` snapshots desc->capabilities at
     // reset/set_family; hot paths read ONLY this cache (ADR-0004 static
     // dispatch, zero function-pointer cost on standard parts).
     uint8_t            family;
+    // S2-1: per-instance slot selecting the owner's BSS pool entry
+    // (chip priv pool, device pool). BSS-zero default 0 = today's single
+    // context; multi-instance callers assign via mcs51_context_init.
+    // Packs with `family` (zero struct growth).
+    uint8_t            instance_index;
     uint32_t           caps_cache;
-    Mcs51Adc0832State  adc0832;
-    Mcs51SysProtState  sysProt;
-    Mcs51BuzzerState   buzzer;
-    Mcs51Cms8sAdcPriv  cms8sAdc;
+    // S2-1: GPIO Trait hooks (may_drive/is_analog/pullup), per-context by
+    // value. Declaration only here, mounted by chip init in stage4; memset
+    // zero = unhooked standard quasi-bidirectional behavior (zero behavior
+    // change this stage).
+    Mcs51GpioHooks     gpio_hooks;
     uint16_t           adc_injected[MCS51_ADC_MAX_RAIL_KEYS];
     uint8_t            adc_inject_flag[MCS51_ADC_MAX_RAIL_KEYS];
     // A-02 ADC reference rail (GAP-05): Vref/Vrail in mV, set by the chip
     // layer through the generic mcs51_adc_set_vref/vrail_mv rail parameters
-    // (core holds no ADCLDO knowledge). Ratio Vrail/Vref scales the
-    // Pull-track norm->raw conversion. Defaults 3000/3000 (ratio 1.0,
-    // zero regression) are seeded on context reset.
+    // (core holds no reference-source knowledge). Ratio Vrail/Vref scales
+    // the Pull-track norm->raw conversion. Defaults 3000/3000 (ratio 1.0,
+    // zero regression) are injected by chip reset, not seeded here.
     uint16_t           adc_vref_mv;
     uint16_t           adc_vrail_mv;
     Mcs51PwmMeter      pwm_meters[32];
-    // GAP-24 classic external MOVX bus occupancy (per-instance silicon
+    // GAP-24 external MOVX bus occupancy (per-instance silicon
     // state; zeroed by context reset via memset).
-    Mcs51ClassicBusState classicBus;
+    Mcs51ExtBusState extbus;
 } Mcu51Context;
 
 // ── Active context pointer and accessors ───────────────────────────────────
@@ -275,10 +235,26 @@ static inline void mcs51_set_active_context(Mcu51Context* ctx) {
     g_active_mcu_context = ctx;
 }
 
+// Max simultaneous context instances (S2-1, scheme A): owner BSS pools
+// (chip priv, device states) are dimensioned by this. 4 = dual-context
+// tests + simultaneous instances of both families + spare; pool cost per
+// spare slot is ~100 B BSS (not counted in the context budget).
+#define MCS51_MAX_INSTANCES 4u
+#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
+_Static_assert(MCS51_MAX_INSTANCES >= 2u, "need >= 2 slots for dual-context");
+#endif
+
 // Reset MCU context to silicon seeds (P0..P3=0xFF, SP=0x07, PS_ADET=0x7F, etc.).
 // Preserves registered ISRs in isr_table. Family-specific seeds (CKCON/Fosc,
 // GAP-04/GAP-13) are applied at the end per the selected MCU family.
+// Uses ctx->instance_index (assign via mcs51_context_init for instances
+// beyond the BSS-zero default 0); asserts idx < MCS51_MAX_INSTANCES.
 void mcs51_context_reset(Mcu51Context* ctx);
+
+// Assign a context to an instance slot (S2-1): selects the owner's BSS pool
+// entry used after the next reset. Out-of-range idx clamps to the last slot
+// (clamp is unit-tested; reset asserts the invariant as backstop).
+void mcs51_context_init(Mcu51Context* ctx, uint8_t idx);
 
 // Select MCU family at runtime and apply that family's silicon seeds
 // immediately (test seam; production builds get the compile-time default
