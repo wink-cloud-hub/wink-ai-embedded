@@ -192,7 +192,9 @@ typedef struct {
 } Mcs51ClassicBusState;
 
 // ── Standard Core MCU Context Container ────────────────────────────────────
-// sizeof(Mcu51Context) ~ 68 KB (with 64 KB XDATA shadow).
+// sizeof(Mcu51Context) = 75752 B post-stage1 (MinGW GCC-measured, S2-0 probe:
+// 75648 master baseline + 8 caps_cache + 96 rail-64; 64 KB is XDATA shadow).
+// Locked by test_mcs51_context_budget (print + ceiling); see stage2 §4 table.
 // Allocation MUST be in BSS or heap — NEVER on fiber/stack.
 typedef struct Mcu51Context {
     // 1. Memory and SFR shadows
