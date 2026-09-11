@@ -12,7 +12,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "ADC0832.H"
+#include "adc0832.h"
 #include "mcs51_adc.h"
 #include "mcs51_context.h"
 #include "mcs51_proxy.hpp"

@@ -31,7 +31,7 @@ set(_MCS51_COMPAT_SRCS
     src/mcs51_sfr.cpp
     src/mcs51_uni_bridge.cpp
     src/mcs51_adc.cpp
-    src/mcs51_adc0832.cpp
+    devices/adc0832/src/mcs51_adc0832.cpp
     src/cms8s_adc.cpp
     src/cms8s_buzzer.cpp
     src/cms8s_sys.cpp
@@ -87,6 +87,9 @@ target_include_directories(${_mcs51_tgt}
     # (still under src/ until stage6 physical homing) need the type.
     PRIVATE ${CMAKE_CURRENT_LIST_DIR}/chips/cms8s78xx/include
     PRIVATE ${CMAKE_CURRENT_LIST_DIR}/chips/at89c52/include
+    # S3-2: board-device public headers (adc0832 attach API for boards and
+    # tests; stage6 target split re-scopes this to the device target).
+    PUBLIC ${CMAKE_CURRENT_LIST_DIR}/devices/adc0832/include
     # wink_event.h, wink_app.h (callback binding and Mcu51Context wake event).
     PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../../runtime/include
     # wink_sim_scheduler.h (fiber-context detection in the clock engine).

@@ -366,8 +366,8 @@ sourceMap 用于：
 - 生成器 `wink-tools/tools/codegen/generators/mcs51_board_config.py`（模板 `templates/mcs51_board_config.h.j2`，板图 `boards/mcs51_devboard.json`）；输入 `wink-app.json`（`board` + `devices`），输出 `mcs51_board_config.h`。
 - 引脚引用经板 headers 解析：`"$board.headers.P2.0"` → 线性 index = `port*8 + bit`（P0.0…P3.7 → 0…31；SFR 口地址 `0x80 + port*0x10`）。
 - **只**固化固件静态常量：ADC0832 的 CS/CLK/DI/DO port+bit、通道、VREF；`thermal_heater_plate` 的 drive port+bit、NTC 通道、设定点（`SETPOINT_C_X100` 定点）。热动力学参数（tau/watts/beta/R25）属运行期 device-tree.properties，**不**编入固件（spike-S3 C4）。
-- 消费缝：`frameworks/mcs51/src/mcs51_bridge.cpp` 编译期 `#if __has_include("mcs51_board_config.h")` → 定义 `MCS51_HAS_ADC0832` 并在 framework init 以头文件常量调 `mcs51_adc0832_init(...)` 自动绑定，零运行期 JSON。头文件目录须在编译 bridge.cpp 的 **`wink_mcs51_compat` 库** include 路径上（CMake 以生成器 `EXISTS` 夹具门控，缺失则跳过 iron_ntc 测试）。
-- 闭环样例 `iron_ntc`（NTC 温控 + 开路/短路安全态）验证该缝：e2e 驱动不调 `mcs51_adc0832_init`，仅经 post-init hook 注入码值。
+- 消费缝（Stage3 起）：板/ harness 在自己的 post-init hook 里以头文件常量调 `adc0832_device_attach(...)` 绑定，通用桥不再自动绑定，零运行期 JSON。头文件目录须在**绑定方 TU**（测试 exe / 板胶）的 include 路径上（CMake 以生成器 `EXISTS` 夹具门控，缺失则跳过 iron_ntc 测试）。
+- 闭环样例 `iron_ntc`（NTC 温控 + 开路/短路安全态）验证该缝：e2e 驱动在 post-init hook 里先绑定 codegen 引脚、再注入码值。
 
 ---
 

@@ -23,10 +23,13 @@
 //     the chip layer (e.g. CMS8S AN0 -> Pin 0 via AN_TO_PIN); core owns no
 //     mapping knowledge and performs no mapping.
 //   * `32~63` = Board fabric channel: owned by device-tree/fronted,
-//     consumed by `devices/` (e.g. ADC0832 CHx keeps its `32+ch` key,
-//     made explicit by the caller); core passes it through untouched.
+//     consumed by `devices/` through each device's own net-id mapping
+//     (see devices/adc0832/include/adc0832.h); core passes keys through
+//     untouched.
 // What Stage1 abolishes is the OLD on-chip misuse (passing an AN channel
 // number where a synth key was expected), not the board space itself.
+// (Stage3 S3-2: the `mcs51_adc0832_*` channel shims moved to the device
+// header with the mapping; this core header is mapping-free.)
 #pragma once
 
 #include <stdint.h>
@@ -68,16 +71,6 @@ void mcs51_adc_set_vref_mv(uint16_t mv);
 void mcs51_adc_set_vrail_mv(uint16_t mv);
 uint16_t mcs51_adc_get_vref_mv(void);
 uint16_t mcs51_adc_get_vrail_mv(void);
-
-// Forward-compat shims: the external 8-bit ADC0832 lives in the board
-// fabric space, so its CH number is made explicit as rail key `32+ch`
-// here (umbrella SSOT §3.4). Semantics unchanged, CH API unchanged.
-static inline void mcs51_adc0832_set_value(uint8_t ch, uint8_t val) {
-    mcs51_adc_set_value((uint8_t)(32u + ch), (uint16_t)val);
-}
-static inline uint8_t mcs51_adc0832_get_value(uint8_t ch) {
-    return (uint8_t)(mcs51_adc_get_value((uint8_t)(32u + ch)) & 0xFFu);
-}
 
 #ifdef __cplusplus
 }
