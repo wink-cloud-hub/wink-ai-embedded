@@ -672,6 +672,11 @@ if(TARGET wink_mcs51_compat)
     add_mcs51_host_test(test_mcs51_silicon_seeds
         mcs51/unit/test_mcs51_silicon_seeds.cpp)
 
+    # Stage0 (PLAN-20260911-MCS51-S0): v2 schema freeze + caps_cache
+    # snapshot + STRICT stable-number locks (zero behavior change).
+    add_mcs51_host_test(test_mcs51_family_schema
+        mcs51/unit/test_mcs51_family_schema.cpp)
+
     # GAP-23 freshness gate: the checked-in XSFR tripwire allowlist must
     # match what the audit script emits from REG_CMS8S78XX.H (catches a
     # stale allowlist after a pin-mux register is added/removed).

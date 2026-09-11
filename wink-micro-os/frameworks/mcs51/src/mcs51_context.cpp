@@ -26,6 +26,8 @@ uint8_t s_mcu_family =
 void apply_silicon_seeds(Mcu51Context* ctx) {
     const mcs51_family_desc_t* d = mcs51_family_desc(s_mcu_family);
     ctx->family = s_mcu_family;
+    // Stage0: snapshot capabilities once; hot paths read ctx->caps_cache.
+    ctx->caps_cache = d->capabilities;
     ctx->sfr_shadow[MCS51_SFR_CKCON] = d->ckcon_reset;
     if (d->fosc_hz != 0u) {
         // Fixed on-chip RC (e.g. CMS8S 24 MHz ±1%). Set the field on the
