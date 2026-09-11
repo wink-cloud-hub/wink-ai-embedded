@@ -53,6 +53,6 @@
    - M5：新增 `mcs51_sfr_map.h`（EXTIF/T34MOD/T2CON/EIE2/EIF2/CKCON/PS_xx 单源）；timer/uart/adc/extint/context 改别名引用，用点零改；模型私有地址保留本地。
    - M7：bridge PCON 注册改走 `mcs51_trap_register_sfr_write`。
    - 验证：40/40 全绿、shim audit 无硬失配、cleanup 自测 OK。
-3. M4 + M6 文档化（随手）：头注释 + GAP 清单回写。
+3. M4 + M6 文档化（随手）：头注释 + GAP 清单回写。**✅ 已执行（2026-09-11）**：`mcs51_trap.h` 新增 shadow/hook 写时序规则（M6）+ diagnosis-by-counter 契约（M4）+ hook 定义 C-linkage 要求（M3 配对）。40/40 全绿。
 
 > 流程提醒：按仓库规则，阶段 1/2 执行前建议先确认本清单范围；涉及时钟/中断语义的改动补 ADR。
