@@ -49,23 +49,25 @@
 - [ ] **Step 3**：通用 reset 删 `PS_*=0x7F` 与 `3000/3000` 播种；`MCS51_XRAM_SIZE_CMS8S78XX` 与 `MCS51_XRAM_WINDOW_BASE` 一并下沉（后者此前遗漏）。
 - [ ] **Step 4**：timer 与 extint 引脚合法性双向改读 `port_pin_masks`（timer 修 classic P3.4/P3.5 可用；extint 收紧 CMS8S P2.6-7/P3.4-7 非法引脚 + 收紧侧单测）。
 
-### Task S2-0：`sizeof` 基线测量与分家族预算 `[状态: ⏳ 待开始]`
+### Task S2-0：`sizeof` 基线测量与分家族预算 `[状态: ✅ 已完成（2026-09-11）]`
 
-- [ ] **Step 1**：基线测量并记录（迁移前唯一一次）：`static_assert` + 单测打印 `sizeof(Mcu51Context)` 及主要成员偏移（`timer/extint/uart/isr_table/xdata_shadow`），写入本计划 §4 预算表（当前约 68KB，实测为准）。
-- [ ] **Step 2**：冻结预算：classic 实例与 CMS8S 实例拆分后各自 `sizeof` 不得超过基线；`xdata_shadow`/`isr_table` 若保留超配必须在 §4 写明理由 + 上限。
+- [x] **Step 1**：基线测量并记录（迁移前唯一一次）：`static_assert` + 单测打印 `sizeof(Mcu51Context)` 及主要成员偏移（`timer/extint/uart/isr_table/xdata_shadow`），写入本计划 §4 预算表（当前约 68KB，实测为准）。——执行注记：三版真值 75648 / 75656 / 75752（见 §4）；"约 68KB"预估偏低，以 73.9KB 实测为准，`mcs51_context.h` 注释已同步修正。
+- [x] **Step 2**：冻结预算：classic 实例与 CMS8S 实例拆分后各自 `sizeof` 不得超过基线；`xdata_shadow`/`isr_table` 若保留超配必须在 §4 写明理由 + 上限。——执行注记：`test_mcs51_context_budget` 已注册（ceiling 75752+1024，含跨工具链 slack）。
 
 ## 4. 预算表（§4，实测填数）
 
+实测工具链：MinGW GCC 16.2（与计划 GCC 14.2 同 LLP64 ABI，POD 布局一致；MSVC 以单测内 +1KB slack 覆盖漂移）。探针：`sizeof_probe` 直编新旧头文件三版真值（`5a91356^` / `5a91356` / 现树），非推算。永久锁：`test/core/test_mcs51_context_budget.cpp`（打印 + ceiling `75752+1024`，stage5 +104B 时显式上调）。
+
 | 行 | 说明 | `sizeof` | 备注 |
 |----|------|----------|------|
-| 基线（master，stage0 前） | 迁移前唯一实测 | 待填 | 含约 64KB `xdata_shadow` + 28 项 `isr_table` |
-| stage0 后（`caps_cache` 入账） | +数个字节（含对齐，以实测为准），相对 68KB 可忽略 | 待填 | 总纲 §8 已批预算内增量 |
-| stage1 后（rail 64 槽入账） | +96B（32 槽 ×（2B injected + 1B flag）） | 待填 | 双空间分区必需容量 |
-| stage5 后（irq map 入 ctx 入账） | +104B（13 项 × 8B profile） | 待填 | 绝缘必需；诊断计数器留 file-static 不计入 |
-| cms8s priv 池/实例 | 待测（sys+buzzer+adc+T3T4/采样，stage2 落数） | 待填 | BSS 池按实例，"context 外"内存，另行列表不与上表混算 |
+| 基线（master，stage0 前） | 迁移前实测（`5a91356^` 头文件探针） | **75648** | 含 65536 `xdata_shadow` + 28 项 `isr_table`（112+112B）；计划预估"约 68KB"偏低，以实测 73.9KB 为准 |
+| stage0 后（`caps_cache` 入账） | 实测（`5a91356` 头文件探针） | **75656** | +8（`family u8` + `caps_cache u32` 对齐尾）；总纲 §8 已批预算内增量 |
+| stage1 后（rail 64 槽入账） | 实测（现树探针） | **75752** | +96（32 槽 ×（2B injected + 1B flag）），与计划预测分毫不差 |
+| stage5 后（irq map 入 ctx 入账） | 待测（stage5 落数，届时同步上调单测 ceiling） | 待填 | +104B（13 项 × 8B profile）；诊断计数器留 file-static 不计入 |
+| cms8s priv 池/实例 | 组成实测：adc0832 15 + sysProt 32 + buzzer 24 + cms8sAdc 16 = 87B（对齐后待 S2-1 落数） | 待填 | BSS 池按实例，"context 外"内存，另行列表不与上表混算 |
 | 注册表上限 | 8（3 core + 3 cms8s + 2 余量，stage4 `static_assert` 锁死，namespace 为"项"非字节） | 待填 | 超限编译期失败，逼新外设走 chips 拆分而非 core 堆料 |
-| 拆分后 classic | ≤ 基线 | 待填 | extbus 状态（~8B）留 core，已计入 |
-| 拆分后 CMS8S | ≤ 基线 | 待填 | soc_priv 池外计（BSS 池按实例，另行列表） |
+| 拆分后 classic | ≤ 基线（S2-1 后实测回填） | 待填 | extbus 状态（~8B）留 core，已计入 |
+| 拆分后 CMS8S | ≤ 基线（S2-1 后实测回填） | 待填 | soc_priv 池外计（BSS 池按实例，另行列表） |
 
 ## 4. 验收
 
