@@ -27,12 +27,25 @@
 
 #include <cstdint>
 
+// Stage4 CPL-10: family-selected chip registration (total §3.1b-3).
+// Production glue (generated mcs51_family_select.h, stage6 codegen) defines
+// MCS51_FAMILY_SELECT_REGISTER() as the family's register call; tests use
+// mcs51_test_harness.h instead. Without the generated header (pre-stage6)
+// no registration happens: core models run, chip models stay out.
+#if defined(__has_include) && __has_include("mcs51_family_select.h")
+#include "mcs51_family_select.h"
+#define MCS51_HAVE_FAMILY_SELECT 1
+#endif
+
 extern "C" void wink_mcs51_user_main(void);
 
 namespace {
 
 void mcs51_framework_init(void) {
     Mcu51Context* ctx = mcs51_get_context();
+#if defined(MCS51_HAVE_FAMILY_SELECT)
+    MCS51_FAMILY_SELECT_REGISTER();
+#endif
     mcs51_context_reset(ctx);
 
     (void)wink_event_queue_init(WINK_EVENT_QUEUE_DEFAULT_CAPACITY);

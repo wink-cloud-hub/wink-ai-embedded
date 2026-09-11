@@ -31,7 +31,7 @@ typedef struct {
     mcs51_poll_phase_t phase;
     // Families this model exists on, as MCS51_FAMILY_MASK_* bits (M1).
     // init/reset/poll/next_event loops skip non-matching families, so a
-    // series model (e.g. cms8s_*) never installs hooks on another family.
+    // chip-family model never installs hooks on another family.
     uint8_t            family_mask;
 } mcs51_peripheral_desc_t;
 

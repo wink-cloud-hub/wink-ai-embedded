@@ -26,23 +26,10 @@ void mcs51_extint_reset(struct Mcu51Context* ctx);
 void mcs51_extint_poll(struct Mcu51Context* ctx);
 uint64_t mcs51_extint_next_event_us(struct Mcu51Context* ctx);
 
-void cms8s_adc_init(struct Mcu51Context* ctx);
-void cms8s_adc_model_reset(struct Mcu51Context* ctx);
-void cms8s_adc_poll(struct Mcu51Context* ctx);
-uint64_t cms8s_adc_next_event_us(struct Mcu51Context* ctx);
-
-void cms8s_buzzer_init(struct Mcu51Context* ctx);
-void cms8s_buzzer_reset(struct Mcu51Context* ctx);
-void cms8s_buzzer_poll(struct Mcu51Context* ctx);
-uint64_t cms8s_buzzer_next_event_us(struct Mcu51Context* ctx);
-
-void cms8s_sys_init(struct Mcu51Context* ctx);
-void cms8s_sys_reset(struct Mcu51Context* ctx);
-void cms8s_sys_poll(struct Mcu51Context* ctx);
-uint64_t cms8s_sys_next_event_us(struct Mcu51Context* ctx);
-
-// M1: core 8051 models run on every family; cms8s_* models only where the
-// silicon exists. Loops (init/reset/poll/next_event) filter on family_mask.
+// M1: core 8051 models run on every family. Chip models (e.g. on-chip ADC,
+// hardware signal generator, system protection) are NOT listed here —
+// stage4 CPL-10 moved them to chip-package self-registration (the
+// chips/*/src/*_register.cpp entries); loops cover core table + registry.
 const mcs51_peripheral_desc_t g_mcs51_peripherals[] = {
     {
         "timer",
@@ -70,33 +57,6 @@ const mcs51_peripheral_desc_t g_mcs51_peripherals[] = {
         mcs51_extint_next_event_us,
         MCS51_PHASE_EXTINT,
         MCS51_FAMILY_MASK_ALL
-    },
-    {
-        "cms8s_adc",
-        cms8s_adc_init,
-        cms8s_adc_model_reset,
-        cms8s_adc_poll,
-        cms8s_adc_next_event_us,
-        MCS51_PHASE_ADC,
-        MCS51_FAMILY_MASK_CMS8S78XX
-    },
-    {
-        "cms8s_buzzer",
-        cms8s_buzzer_init,
-        cms8s_buzzer_reset,
-        cms8s_buzzer_poll,
-        cms8s_buzzer_next_event_us,
-        MCS51_PHASE_CLOCK,
-        MCS51_FAMILY_MASK_CMS8S78XX
-    },
-    {
-        "cms8s_sys",
-        cms8s_sys_init,
-        cms8s_sys_reset,
-        cms8s_sys_poll,
-        cms8s_sys_next_event_us,
-        MCS51_PHASE_CLOCK,
-        MCS51_FAMILY_MASK_CMS8S78XX
     }
 };
 

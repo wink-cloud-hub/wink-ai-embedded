@@ -257,35 +257,12 @@ extern "C" void on_iap_read(Mcu51Context* ctx, uint8_t addr) {
 
 }  // namespace
 
-// S2-1 chip BSS pool (scheme A): one Cms8sPriv slot per context instance.
-// Owned by the chip package (lives here, migrates to chips/ in stage6 with
-// this TU). Core never names it (§3.1 one-way rule); binding is self-service
-// through cms8s_soc_bind below.
-static Cms8sPriv s_cms8s_priv_pool[MCS51_MAX_INSTANCES];
-
 extern "C" {
 
 // S3-2: pre-dispatch notify lives below (same TU); forward-declared for the
 // init install. The wink_mcs51_wdt.h hard export is gone (CPL-14) — this TU
 // is the only referrer.
 void cms8s_sys_notify_sfr_write(struct Mcu51Context* ctx, uint8_t addr);
-
-void cms8s_soc_bind(struct Mcu51Context* ctx) {
-    if (!ctx) ctx = mcs51_get_context();
-    if (!ctx) return;  // review hardening: null-active never crashes
-    // Indexing clamps, never asserts (review finding): the loud fuse lives
-    // in mcs51_context_reset; here NDEBUG-proof containment wins — worst
-    // case aliases the last slot deterministically, never OOB.
-    const uint8_t idx = (ctx->instance_index < MCS51_MAX_INSTANCES)
-                            ? ctx->instance_index
-                            : (MCS51_MAX_INSTANCES - 1u);
-    Cms8sPriv* slot = &s_cms8s_priv_pool[idx];
-    if (ctx->soc_priv == slot) {
-        return;  // idempotent: already bound (later inits in the same reset)
-    }
-    std::memset(slot, 0, sizeof(*slot));
-    ctx->soc_priv = slot;
-}
 
 void cms8s_sys_reset(struct Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
