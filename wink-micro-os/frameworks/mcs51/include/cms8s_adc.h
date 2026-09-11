@@ -1,47 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-// CMS8S78xx on-chip 12-bit ADC — instant-conversion model (M5, ADR-0073).
+// Stage3 forwarding shim (PLAN-20260911-MCS51-S3, S3-1 Step 1): the real
+// on-chip ADC model header moved to chips/cms8s78xx/include/cms8s_adc.h.
+// Survives one stage (deleted in stage7). See S3-D1 for why this uses
+// `#pragma message` instead of `#warning`.
+// TODO(stage7): delete this forwarding shim with the stage7 close-out.
 #pragma once
-
-#include <stdint.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-struct Mcu51Context;
-
-// Register the ADCON0 write hook (called once per framework run from descriptor init).
-void cms8s_adc_init(struct Mcu51Context* ctx);
-
-// Reset ADET hardware trigger edge baseline and seed PS_ADET selector to 0x7F.
-void cms8s_adc_model_reset(struct Mcu51Context* ctx);
-
-// Poll ADET hardware trigger pin and dispatch conversion on configured edge.
-void cms8s_adc_poll(struct Mcu51Context* ctx);
-
-// Next scheduled internal event timestamp
-uint64_t cms8s_adc_next_event_us(struct Mcu51Context* ctx);
-
-// Test observability: completed conversions since init, and the channel
-// (ADCCHS value) of the most recent one.
-uint32_t cms8s_adc_conversion_count(void);
-uint8_t  cms8s_adc_last_channel(void);
-
-// Stage1 compat (S1-2 Step 2, deleted in stage7): dual-read switch for the
-// on-chip path's `32+ch` v1 misuse (default ON this stage) + observable
-// redirect counter for the compat unit test. Board-space `32+ch` pulls by
-// devices/ are permanently legal and never counted here.
-extern bool cms8s_adc_dual_read_synth;
-extern uint32_t cms8s_adc_synth_redirect_count;
-
-// A-02 ADC readiness gate (GAP-05): reason-bit mask + per-reason counters
-// (GAP-10 runner pattern, mirrors mcs51_uart notready). Bits:
-#define WINK_MCS51_ADC_NOTREADY_LDO  (1u << 0)
-#define WINK_MCS51_ADC_NOTREADY_MUX  (1u << 1)
-uint32_t cms8s_adc_notready_mask(void);
-uint32_t cms8s_adc_notready_count(uint32_t reason_bit);
-uint32_t cms8s_adc_notready_total(void);
-
-#ifdef __cplusplus
-}
-#endif
+#pragma message("mcs51 stage3: <cms8s_adc.h> moved to chips/cms8s78xx/include/; include the new path")
+#include "../chips/cms8s78xx/include/cms8s_adc.h"
