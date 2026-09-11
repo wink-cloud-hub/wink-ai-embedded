@@ -6,20 +6,18 @@
 
 #include "absacc.h"
 #include "mcs51_context.h"
+#include "mcs51_sfr_map.h"
 #include "mcs51_trap.h"
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_isr.h"
 
-// Port-pin interrupt flags P0..P3EXTIF (direct SFR 0xB4..0xB7).
-constexpr uint8_t EXT_SFR_P0EXTIF = 0xB4;
-constexpr uint8_t EXT_SFR_P1EXTIF = 0xB5;
-constexpr uint8_t EXT_SFR_P2EXTIF = 0xB6;
-constexpr uint8_t EXT_SFR_P3EXTIF = 0xB7;
+// Port-pin interrupt flags P0..P3EXTIF: MCS51_SFR_PxEXTIF (mcs51_sfr_map.h).
 
 // Write-0-to-clear (W0C), same semantics as T2IF/EIF2: writing 0 clears the
 // bit, writing 1 leaves it unchanged (GAP-12). Without this, an `|=` clear
 // or a multi-pin clear would wipe still-pending flags from other pins.
-void sfr_write_hook_port_extif(struct Mcu51Context* ctx, uint8_t addr,
+// M3: C language linkage for the C-ABI hook table (see cms8s_sys.cpp).
+extern "C" void sfr_write_hook_port_extif(struct Mcu51Context* ctx, uint8_t addr,
                                uint8_t old_val, uint8_t new_val) {
     (void)addr;
     if (ctx) {
@@ -56,8 +54,8 @@ constexpr uint8_t EXT_HIGH = 1u;
 
 constexpr uint64_t SAMPLE_PERIOD_US = 10000ull;
 
-constexpr uint8_t SFR_P0EXTIE = 0xACu;
-constexpr uint8_t SFR_P0EXTIF = 0xB4u;
+constexpr uint8_t SFR_P0EXTIE = 0xACu;  // extint-local (enable block P0..P3EXTIE)
+// Flag base: MCS51_SFR_P0EXTIF + p (mcs51_sfr_map.h, shared).
 
 constexpr uint8_t PORT_PINS[4] = {8u, 8u, 8u, 8u};
 constexpr uint8_t PORT_VECTORS[4] = {7u, 8u, 9u, 10u};
@@ -69,9 +67,10 @@ constexpr uint16_t PORT_EICFG_BASE[4] = {
     0xF098u,  // P3EICFG0 @ 0xF098..0xF09B
 };
 
-constexpr uint16_t XSFR_PS_INT0 = 0xF0C0u;
-constexpr uint16_t XSFR_PS_INT1 = 0xF0C1u;
-constexpr uint8_t  PS_RESET     = 0x7Fu;
+// M5: shared selectors alias the single source (mcs51_sfr_map.h).
+constexpr uint16_t XSFR_PS_INT0 = MCS51_XSFR_PS_INT0;
+constexpr uint16_t XSFR_PS_INT1 = MCS51_XSFR_PS_INT1;
+constexpr uint8_t  PS_RESET     = MCS51_XSFR_PS_RESET;
 
 uint16_t resolve_int_pin(Mcu51Context* ctx, uint16_t ps_addr, uint16_t fallback_pin) {
     uint8_t sel  = ctx->xdata_shadow[ps_addr];
@@ -133,7 +132,7 @@ void poll_port_ints(Mcu51Context* ctx, bool force, uint64_t now) {
 
     for (uint8_t p = 0; p < 4u; ++p) {
         uint8_t extie = ctx->sfr_shadow[SFR_P0EXTIE + p];
-        uint8_t extif = ctx->sfr_shadow[SFR_P0EXTIF + p];
+        uint8_t extif = ctx->sfr_shadow[MCS51_SFR_P0EXTIF + p];
         uint8_t npins = PORT_PINS[p];
 
         for (uint8_t b = 0; b < npins; ++b) {
@@ -160,7 +159,7 @@ void poll_port_ints(Mcu51Context* ctx, bool force, uint64_t now) {
                 }
                 if (match) {
                     extif |= static_cast<uint8_t>(1u << b);
-                    ctx->sfr_shadow[SFR_P0EXTIF + p] = extif;
+                    ctx->sfr_shadow[MCS51_SFR_P0EXTIF + p] = extif;
                 }
             }
         }
@@ -211,10 +210,10 @@ void mcs51_extint_init(struct Mcu51Context* ctx) {
     ctx->extint.port_last_sample_us = 0;
 
     // GAP-12: port interrupt flags are write-0-to-clear.
-    mcs51_trap_register_sfr_write(EXT_SFR_P0EXTIF, sfr_write_hook_port_extif);
-    mcs51_trap_register_sfr_write(EXT_SFR_P1EXTIF, sfr_write_hook_port_extif);
-    mcs51_trap_register_sfr_write(EXT_SFR_P2EXTIF, sfr_write_hook_port_extif);
-    mcs51_trap_register_sfr_write(EXT_SFR_P3EXTIF, sfr_write_hook_port_extif);
+    mcs51_trap_register_sfr_write(MCS51_SFR_P0EXTIF, sfr_write_hook_port_extif);
+    mcs51_trap_register_sfr_write(MCS51_SFR_P1EXTIF, sfr_write_hook_port_extif);
+    mcs51_trap_register_sfr_write(MCS51_SFR_P2EXTIF, sfr_write_hook_port_extif);
+    mcs51_trap_register_sfr_write(MCS51_SFR_P3EXTIF, sfr_write_hook_port_extif);
 }
 
 void mcs51_extint_reset(struct Mcu51Context* ctx) {
@@ -232,7 +231,7 @@ void mcs51_extint_reset(struct Mcu51Context* ctx) {
     wink_mcs51_clear_irq(IRQ_SOURCE_INT0);
     wink_mcs51_clear_irq(IRQ_SOURCE_INT1);
     for (uint8_t p = 0; p < 4u; ++p) {
-        ctx->sfr_shadow[SFR_P0EXTIF + p] = 0;
+        ctx->sfr_shadow[MCS51_SFR_P0EXTIF + p] = 0;
     }
     ctx->xdata_shadow[XSFR_PS_INT0] = PS_RESET;
     ctx->xdata_shadow[XSFR_PS_INT1] = PS_RESET;

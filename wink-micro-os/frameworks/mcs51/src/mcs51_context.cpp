@@ -2,6 +2,7 @@
 // Task R2: Mcu51Context container instance and silicon reset implementation.
 #include "mcs51_context.h"
 #include "mcs51_peripheral.h"
+#include "mcs51_sfr_map.h"
 
 #include <cstring>
 
@@ -25,7 +26,7 @@ uint8_t s_mcu_family =
 void apply_silicon_seeds(Mcu51Context* ctx) {
     const mcs51_family_desc_t* d = mcs51_family_desc(s_mcu_family);
     ctx->family = s_mcu_family;
-    ctx->sfr_shadow[0x8E] = d->ckcon_reset;
+    ctx->sfr_shadow[MCS51_SFR_CKCON] = d->ckcon_reset;
     if (d->fosc_hz != 0u) {
         // Fixed on-chip RC (e.g. CMS8S 24 MHz ±1%). Set the field on the
         // reset context directly (reset may target a context other than
@@ -87,20 +88,21 @@ void mcs51_context_reset(Mcu51Context* ctx) {
     ctx->sfr_shadow[0x81] = 0x07u; // SP = 0x07
     ctx->sfr_shadow[0x87] = 0x00u; // PCON = 0x00
 
-    // XSFR pin share selector seeds (0x7F = no pin connected)
-    ctx->xdata_shadow[0xF0CC] = 0x7Fu; // PS_ADET
-    ctx->xdata_shadow[0xF0C0] = 0x7Fu; // PS_INT0
-    ctx->xdata_shadow[0xF0C1] = 0x7Fu; // PS_INT1
-    ctx->xdata_shadow[0xF0C2] = 0x7Fu; // PS_T0
-    ctx->xdata_shadow[0xF0C3] = 0x7Fu; // PS_T0G
-    ctx->xdata_shadow[0xF0C4] = 0x7Fu; // PS_T1
-    ctx->xdata_shadow[0xF0C5] = 0x7Fu; // PS_T1G
-    ctx->xdata_shadow[0xF0C6] = 0x7Fu; // PS_T2
-    ctx->xdata_shadow[0xF0C7] = 0x7Fu; // PS_T2EX
-    ctx->xdata_shadow[0xF0C8] = 0x7Fu; // PS_CAP0
-    ctx->xdata_shadow[0xF0C9] = 0x7Fu; // PS_CAP1
-    ctx->xdata_shadow[0xF0CA] = 0x7Fu; // PS_CAP2
-    ctx->xdata_shadow[0xF0CB] = 0x7Fu; // PS_CAP3
+    // XSFR pin share selector seeds (MCS51_XSFR_PS_RESET = no pin connected).
+    // Addresses from mcs51_sfr_map.h (M5 single source).
+    ctx->xdata_shadow[MCS51_XSFR_PS_ADET] = MCS51_XSFR_PS_RESET;
+    ctx->xdata_shadow[MCS51_XSFR_PS_INT0] = MCS51_XSFR_PS_RESET;
+    ctx->xdata_shadow[MCS51_XSFR_PS_INT1] = MCS51_XSFR_PS_RESET;
+    ctx->xdata_shadow[MCS51_XSFR_PS_T0] = MCS51_XSFR_PS_RESET;
+    ctx->xdata_shadow[MCS51_XSFR_PS_T0G] = MCS51_XSFR_PS_RESET;
+    ctx->xdata_shadow[MCS51_XSFR_PS_T1] = MCS51_XSFR_PS_RESET;
+    ctx->xdata_shadow[MCS51_XSFR_PS_T1G] = MCS51_XSFR_PS_RESET;
+    ctx->xdata_shadow[MCS51_XSFR_PS_T2] = MCS51_XSFR_PS_RESET;
+    ctx->xdata_shadow[MCS51_XSFR_PS_T2EX] = MCS51_XSFR_PS_RESET;
+    ctx->xdata_shadow[MCS51_XSFR_PS_CAP0] = MCS51_XSFR_PS_RESET;
+    ctx->xdata_shadow[MCS51_XSFR_PS_CAP1] = MCS51_XSFR_PS_RESET;
+    ctx->xdata_shadow[MCS51_XSFR_PS_CAP2] = MCS51_XSFR_PS_RESET;
+    ctx->xdata_shadow[MCS51_XSFR_PS_CAP3] = MCS51_XSFR_PS_RESET;
 
     // Record the family on the context BEFORE peripheral init so models
     // observe a consistent family for the whole reset.

@@ -7,6 +7,7 @@
 #include "mcs51_adc.h"
 #include "mcs51_trap.h"
 #include "mcs51_context.h"
+#include "mcs51_sfr_map.h"
 #include "wink_mcs51_isr.h"
 
 extern "C" {
@@ -21,9 +22,10 @@ constexpr uint8_t SFR_ADCON2 = 0xE9;
 constexpr uint8_t SFR_ADCCHS = 0xD9;
 constexpr uint8_t SFR_ADRESH = 0xDD;
 constexpr uint8_t SFR_ADRESL = 0xDC;
-constexpr uint8_t SFR_EIE2   = 0xAA;
-constexpr uint8_t SFR_EIF2   = 0xB2;
-constexpr uint16_t XSFR_PS_ADET = 0xF0CCu;
+// M5: shared addresses alias the single source (mcs51_sfr_map.h).
+constexpr uint8_t SFR_EIE2   = MCS51_SFR_EIE2;
+constexpr uint8_t SFR_EIF2   = MCS51_SFR_EIF2;
+constexpr uint16_t XSFR_PS_ADET = MCS51_XSFR_PS_ADET;
 
 constexpr uint8_t ADCON0_ADGO = 0x02u;  // bit1
 constexpr uint8_t ADCON0_ADFM = 0x40u;  // bit6
@@ -99,7 +101,8 @@ void do_adc_conversion(Mcu51Context* ctx) {
 
 // ADCON0 write hook. `new_val` is the value the WinkSfr proxy has ALREADY
 // stored into the shadow; hook mutations to the shadow persist.
-void on_adcon0_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val, uint8_t new_val) {
+// M3: C language linkage for the C-ABI hook table (see cms8s_sys.cpp).
+extern "C" void on_adcon0_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val, uint8_t new_val) {
     (void)addr;
     (void)old_val;
 

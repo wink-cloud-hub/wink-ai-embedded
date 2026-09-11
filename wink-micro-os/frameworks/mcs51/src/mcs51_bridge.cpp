@@ -56,7 +56,9 @@ void mcs51_framework_init(void) {
 
     mcs51_framework_run_post_init_hook();
 
-    ctx->sfr_write_hooks[0x87] = mcs51_on_pcon_write;
+    // M7: register through the trap API like every other model (direct
+    // table assignment bypasses nothing today, but keeps one path).
+    mcs51_trap_register_sfr_write(0x87, mcs51_on_pcon_write);
 
     wink_mcs51_set_catchup_hook(wink_mcs51_timers_step_to);
     wink_mcs51_isr_enable();

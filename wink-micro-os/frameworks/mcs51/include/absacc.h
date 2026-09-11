@@ -52,7 +52,9 @@ static_assert(WINK_MCS51_XDATA_SIZE <= 65536u &&
               "WINK_MCS51_XDATA_SIZE must be <= 65536 and even");
 #endif
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 
 // Bounds-checked byte access (boundary ③ C ABI; microstep charging, OOB
 // handling and the future M4 peripheral write hook live in mcs51_xdata.cpp,
