@@ -46,14 +46,13 @@ typedef struct {
     uint64_t t2_next_ovf_us;
     uint8_t  t2_tr_prev;
     uint8_t  t2_last_pin_level;
-    uint8_t  t2_cap_last_level[4];
-    uint64_t t2_next_cmp_us[4];
-    bool     t3_running;
-    uint64_t t3_next_ovf_us;
-    uint8_t  t3_tr_prev;
-    bool     t4_running;
-    uint64_t t4_next_ovf_us;
-    uint8_t  t4_tr_prev;
+    // Generic pin-selector slots for external-clock inputs (stage4 S4-2
+    // Step 2, extint SELECTOR_NONE precedent): none = hardwired fallback
+    // pins (T0=P3.4, T1=P3.5, T2=P1.6 model defaults); the owning chip init
+    // patches its selector addresses, the core only reads the VALUE.
+    uint16_t t0_ps_addr;
+    uint16_t t1_ps_addr;
+    uint16_t t2_ps_addr;
 } Mcu51TimerState;
 
 // ── ExtInt State (Task R2 / R1) ────────────────────────────────────────────

@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-// MCS-51 Timer0/Timer1 functional model (M2, AD-2 / ADR-0072).
+// MCS-51 Timer0/Timer1 + standard Timer2 skeleton (M2, AD-2 / ADR-0072).
 #include "wink_mcs51_timer.h"
 
 #include "mcs51_proxy.hpp"
 #include "mcs51_context.h"
+#include "mcs51_family.h"
 #include "mcs51_sfr_map.h"
-#include "cms8s_sfr_map.h"  // S3-1 transition: EIE2/EIF2/T34MOD/PS_* moved
-                             // here with CMS8S_ prefixes; this TU includes the
-                             // chip map until its code moves to chips/ in stage4.
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_isr.h"
 #include "wink_mcs51_strict.h"
@@ -20,9 +18,11 @@ namespace {
 
 constexpr uint8_t  SFR_TCON = 0x88;
 constexpr uint8_t  SFR_TMOD = 0x89;
-// M5: shared addresses alias the single source (mcs51_sfr_map.h for the
-// standard/generic ones, cms8s_sfr_map.h for the CMS8S-only ones, S3-1);
-// timer-private addresses keep literals below.
+// M5: shared addresses alias the single generic source;
+// timer-private standard addresses keep literals below. Stage4 CPL-05:
+// T3/T4, capture/compare and flag registers live in the chip package —
+// this TU keeps only numeric standard-skeleton addresses (T2CON/TL2/TH2/
+// RCAP pair, T2 flag/enable bytes) plus the CKCON divider address.
 constexpr uint8_t  SFR_CKCON = MCS51_SFR_CKCON;
 constexpr uint8_t  CKCON_T0M = 3u;
 constexpr uint8_t  CKCON_T1M = 4u;
@@ -30,40 +30,20 @@ constexpr uint8_t  SFR_TL0  = 0x8A;
 constexpr uint8_t  SFR_TL1  = 0x8B;
 constexpr uint8_t  SFR_TH0  = 0x8C;
 constexpr uint8_t  SFR_TH1  = 0x8D;
-constexpr uint8_t  SFR_CCL1  = 0xC2;
-constexpr uint8_t  SFR_CCH1  = 0xC3;
-constexpr uint8_t  SFR_CCL2  = 0xC4;
-constexpr uint8_t  SFR_CCH2  = 0xC5;
-constexpr uint8_t  SFR_CCL3  = 0xC6;
-constexpr uint8_t  SFR_CCH3  = 0xC7;
 constexpr uint8_t  SFR_T2CON = MCS51_SFR_T2CON;
-constexpr uint8_t  SFR_T2IF  = 0xC9;
-constexpr uint8_t  SFR_RLDL  = 0xCA;
-constexpr uint8_t  SFR_RLDH  = 0xCB;
+constexpr uint8_t  SFR_T2IF  = 0xC9;  // S4-D4: overflow flag byte, chip-owned
+constexpr uint8_t  SFR_RLDL  = 0xCA;  // RCAP2L / reload low (shared semantics)
+constexpr uint8_t  SFR_RLDH  = 0xCB;  // RCAP2H / reload high (shared semantics)
 constexpr uint8_t  SFR_TL2   = 0xCC;
 constexpr uint8_t  SFR_TH2   = 0xCD;
-constexpr uint8_t  SFR_CCEN  = 0xCE;
-constexpr uint8_t  SFR_T2IE  = 0xCF;
-constexpr uint8_t  SFR_EIE2  = CMS8S_SFR_EIE2;
-constexpr uint8_t  SFR_EIF2  = CMS8S_SFR_EIF2;
-constexpr uint8_t  SFR_T34MOD = CMS8S_SFR_T34MOD;
-constexpr uint8_t  SFR_TL3   = 0xDA;
-constexpr uint8_t  SFR_TH3   = 0xDB;
-constexpr uint8_t  SFR_TL4   = 0xE2;
-constexpr uint8_t  SFR_TH4   = 0xE3;
+constexpr uint8_t  SFR_T2IE  = 0xCF;  // S4-D4: T2 interrupt-enable byte
 
 constexpr uint8_t  T2IF_T2F    = 7u;
 constexpr uint8_t  T2IE_T2OVIE = 7u;
 
-constexpr uint8_t  T34MOD_TR3 = 3u;
-constexpr uint8_t  T34MOD_T3M = 2u;
-constexpr uint8_t  T34MOD_TR4 = 7u;
-constexpr uint8_t  T34MOD_T4M = 6u;
-
-constexpr uint8_t  EIF2_TF3   = 0u;
-constexpr uint8_t  EIF2_TF4   = 1u;
-constexpr uint8_t  EIE2_ET3IE = 0u;
-constexpr uint8_t  EIE2_ET4IE = 1u;
+// No pin-share selector: the ext-clk input is bond-fixed to its fallback
+// pin. Chip inits patch real selector addresses (extint precedent).
+constexpr uint16_t SELECTOR_NONE = 0xFFFFu;
 
 constexpr uint8_t  TCON_TR0 = 4u;
 constexpr uint8_t  TCON_TF0 = 5u;
@@ -126,10 +106,9 @@ uint32_t reload_counts(uint8_t t, uint8_t mode) {
     return period == 0u ? timer_max_count(mode) : period;
 }
 
-// CMS8S78xx Timer0/1 input clock (ref manual 9.2.7 CKCON.T0M/T1M):
-//   TnM = 0 -> Fsys/12 (classic 12T), TnM = 1 -> Fsys/4 (1T/4).
+// Clock-control divider register (TnM = 0 -> Fsys/12, TnM = 1 -> Fsys/4):
 // us = counts * divider * 1e6 / Fsys. With the 12 MHz framework default and
-// 12T this yields the historical 1 count = 1 us mapping (classic STC/AT89).
+// 12T this yields the historical 1 count = 1 us mapping.
 uint64_t counts_to_us(uint8_t t, uint32_t counts) {
     const uint8_t ckcon = sfr(SFR_CKCON);
     const uint8_t bit = t == 0 ? CKCON_T0M : CKCON_T1M;
@@ -150,15 +129,10 @@ uint32_t ext_counts_to_us(uint32_t counts, uint32_t divider) {
     return static_cast<uint32_t>(us == 0ull ? 1ull : us);
 }
 
-// T2 counter clock (ref manual): T2PS=0 -> Fsys/12, T2PS=1 -> Fsys/24.
+// T2 counter clock: T2PS=0 -> Fsys/12, T2PS=1 -> Fsys/24 (S4-D4: prescale
+// bit retained numerically in the T2 skeleton).
 uint32_t timer2_counts_to_us(uint32_t counts) {
     const uint32_t divider = (sfr(SFR_T2CON) & 0x80u) ? 24u : 12u;
-    return ext_counts_to_us(counts, divider);
-}
-
-// T3/T4 counter clock (T34MOD): TnM=0 -> Fsys/12, TnM=1 -> Fsys/4.
-uint32_t timer34_counts_to_us(uint32_t counts, uint8_t select_bit) {
-    const uint32_t divider = (sfr(SFR_T34MOD) & (1u << select_bit)) ? 4u : 12u;
     return ext_counts_to_us(counts, divider);
 }
 
@@ -272,48 +246,12 @@ inline uint8_t timer2_mode(void) {
     return sfr(SFR_T2CON) & 0x03u;
 }
 
-static uint16_t timer2_compare_value(uint8_t c) {
-    if (c == 0) {
-        return (static_cast<uint16_t>(sfr(SFR_RLDH)) << 8) | sfr(SFR_RLDL);
-    } else if (c == 1) {
-        return (static_cast<uint16_t>(sfr(SFR_CCH1)) << 8) | sfr(SFR_CCL1);
-    } else if (c == 2) {
-        return (static_cast<uint16_t>(sfr(SFR_CCH2)) << 8) | sfr(SFR_CCL2);
-    } else if (c == 3) {
-        return (static_cast<uint16_t>(sfr(SFR_CCH3)) << 8) | sfr(SFR_CCL3);
-    }
-    return 0u;
-}
-
 void timer2_schedule_from_now(uint64_t from_us) {
+    // Stage4 CPL-05: compare scheduling moved to the chip package (driven
+    // by its shadow fingerprint); the core schedules the overflow only.
     Mcu51TimerState& tm = mcs51_get_context()->timer;
     uint32_t period = timer2_current_period();
     tm.t2_next_ovf_us = from_us + period;
-
-    uint8_t th2 = sfr(SFR_TH2);
-    uint8_t tl2 = sfr(SFR_TL2);
-    uint16_t cur_val = (static_cast<uint16_t>(th2) << 8) | tl2;
-    uint8_t ccen = sfr(SFR_CCEN);
-    uint8_t t2con = sfr(SFR_T2CON);
-    bool div24 = (t2con & 0x80u) != 0;
-
-    for (uint8_t c = 0; c < 4; ++c) {
-        uint8_t mode = (ccen >> (c * 2)) & 0x03u;
-        // Mode 2 is compare mode (TMR2_MODE_COMPARE = 0x02)
-        if (mode == 2u) {
-            uint16_t cmp_val = timer2_compare_value(c);
-            if (cmp_val > cur_val) {
-                uint32_t diff = cmp_val - cur_val;
-                uint32_t delay_us = div24 ? diff : (diff / 2u);
-                if (delay_us == 0u) delay_us = 1u;
-                tm.t2_next_cmp_us[c] = from_us + delay_us;
-            } else {
-                tm.t2_next_cmp_us[c] = NO_OVERFLOW;
-            }
-        } else {
-            tm.t2_next_cmp_us[c] = NO_OVERFLOW;
-        }
-    }
 }
 
 void timer2_start(uint64_t now_us) {
@@ -323,9 +261,6 @@ void timer2_start(uint64_t now_us) {
         timer2_schedule_from_now(now_us);
     } else {
         tm.t2_next_ovf_us = NO_OVERFLOW;
-        for (uint8_t c = 0; c < 4; ++c) {
-            tm.t2_next_cmp_us[c] = NO_OVERFLOW;
-        }
     }
 }
 
@@ -333,9 +268,7 @@ void timer2_stop(void) {
     Mcu51TimerState& tm = mcs51_get_context()->timer;
     tm.t2_running = false;
     tm.t2_next_ovf_us = NO_OVERFLOW;
-    for (uint8_t c = 0; c < 4; ++c) {
-        tm.t2_next_cmp_us[c] = NO_OVERFLOW;
-    }
+    // Compare disarm follows in the chip sync (running bit is fingerprinted).
 }
 
 void on_timer2_overflow(uint64_t at_us) {
@@ -377,34 +310,11 @@ void on_timer2_overflow(uint64_t at_us) {
     }
 }
 
-static void on_timer2_compare_match(uint8_t c) {
-    Mcu51Context* ctx = mcs51_get_context();
-    Mcu51TimerState& tm = ctx->timer;
-    tm.t2_next_cmp_us[c] = NO_OVERFLOW;
-
-    sfr_set_bit(SFR_T2IF, c);
-
-    if ((sfr(SFR_T2IE) & (1u << c)) != 0) {
-        mcs51_raise_irq(IRQ_SOURCE_TIMER2);
-        wink_mcs51_clear_reti_suppress();
-        mcs51_irq_scan_and_dispatch();
-    }
-}
-
 void step_timer2(uint64_t now_us) {
+    // Stage4 CPL-05: compare-match expiry moved to the chip package.
     Mcu51TimerState& tm = mcs51_get_context()->timer;
     if (!tm.t2_running) {
         return;
-    }
-
-    // Process compare match events first
-    for (uint8_t c = 0; c < 4; ++c) {
-        if (tm.t2_next_cmp_us[c] != NO_OVERFLOW && now_us >= tm.t2_next_cmp_us[c]) {
-            on_timer2_compare_match(c);
-            if (!tm.t2_running) {
-                return;
-            }
-        }
     }
 
     // Process overflow events
@@ -425,228 +335,21 @@ void step_timer2(uint64_t now_us) {
     }
 }
 
-inline uint8_t timer3_mode(void) {
-    return sfr(SFR_T34MOD) & 0x03u;
-}
-
-inline uint8_t timer4_mode(void) {
-    return (sfr(SFR_T34MOD) >> 4) & 0x03u;
-}
-
-uint32_t timer3_reload_period(void) {
-    uint8_t mode = timer3_mode();
-    uint32_t counts;
-    if (mode == 2) {
-        uint8_t th = sfr(SFR_TH3);
-        counts = static_cast<uint32_t>(256u - th);
-    } else if (mode == 1) {
-        uint16_t val = (static_cast<uint16_t>(sfr(SFR_TH3)) << 8) | sfr(SFR_TL3);
-        counts = 65536u - val;
-    } else if (mode == 0) {
-        uint16_t val = (static_cast<uint16_t>(sfr(SFR_TH3) & 0x1Fu) << 8) | sfr(SFR_TL3);
-        counts = 8192u - val;
-    } else {
-        counts = 256u - sfr(SFR_TL3);
-    }
-    if (counts == 0u) counts = (mode == 2 ? 256u : (mode == 1 ? 65536u : 8192u));
-    return timer34_counts_to_us(counts, T34MOD_T3M);
-}
-
-uint32_t timer3_current_period(void) {
-    uint8_t mode = timer3_mode();
-    uint32_t counts;
-    if (mode == 2) {
-        uint8_t tl = sfr(SFR_TL3);
-        counts = static_cast<uint32_t>(256u - tl);
-    } else if (mode == 1) {
-        uint16_t val = (static_cast<uint16_t>(sfr(SFR_TH3)) << 8) | sfr(SFR_TL3);
-        counts = 65536u - val;
-    } else if (mode == 0) {
-        uint16_t val = (static_cast<uint16_t>(sfr(SFR_TH3) & 0x1Fu) << 8) | sfr(SFR_TL3);
-        counts = 8192u - val;
-    } else {
-        counts = 256u - sfr(SFR_TL3);
-    }
-    if (counts == 0u) counts = (mode == 2 ? 256u : (mode == 1 ? 65536u : 8192u));
-    return timer34_counts_to_us(counts, T34MOD_T3M);
-}
-
-void timer3_schedule_from_now(uint64_t from_us) {
-    Mcu51TimerState& tm = mcs51_get_context()->timer;
-    uint32_t period = timer3_current_period();
-    tm.t3_next_ovf_us = from_us + period;
-}
-
-void timer3_start(uint64_t now_us) {
-    Mcu51TimerState& tm = mcs51_get_context()->timer;
-    tm.t3_running = true;
-    timer3_schedule_from_now(now_us);
-}
-
-void timer3_stop(void) {
-    Mcu51TimerState& tm = mcs51_get_context()->timer;
-    tm.t3_running = false;
-    tm.t3_next_ovf_us = NO_OVERFLOW;
-}
-
-void on_timer3_overflow(uint64_t at_us) {
-    Mcu51TimerState& tm = mcs51_get_context()->timer;
-    sfr_set_bit(SFR_EIF2, EIF2_TF3);
-
-    uint8_t mode = timer3_mode();
-    if (mode == 2) {
-        mcs51_get_context()->sfr_shadow[SFR_TL3] = sfr(SFR_TH3);
-    }
-
-    if (!tm.t3_running) {
-        tm.t3_next_ovf_us = NO_OVERFLOW;
-        return;
-    }
-
-    uint32_t period = timer3_reload_period();
-    tm.t3_next_ovf_us = at_us + period;
-
-    if ((sfr(SFR_EIE2) & (1u << EIE2_ET3IE)) != 0) {
-        mcs51_raise_irq(IRQ_SOURCE_TIMER3);
-        wink_mcs51_clear_reti_suppress();
-        mcs51_irq_scan_and_dispatch();
-    }
-}
-
-void step_timer3(uint64_t now_us) {
-    Mcu51TimerState& tm = mcs51_get_context()->timer;
-    if (!tm.t3_running || tm.t3_next_ovf_us == NO_OVERFLOW) {
-        return;
-    }
-    uint32_t fired = 0;
-    while (tm.t3_next_ovf_us != NO_OVERFLOW && now_us >= tm.t3_next_ovf_us) {
-        uint64_t at = tm.t3_next_ovf_us;
-        on_timer3_overflow(at);
-        if (++fired >= MAX_OVERFLOWS_PER_STEP) {
-            timer3_stop();
-            break;
-        }
-        if (!tm.t3_running) {
-            break;
-        }
-    }
-}
-
-uint32_t timer4_reload_period(void) {
-    uint8_t mode = timer4_mode();
-    uint32_t counts;
-    if (mode == 2) {
-        uint8_t th = sfr(SFR_TH4);
-        counts = static_cast<uint32_t>(256u - th);
-    } else if (mode == 1) {
-        uint16_t val = (static_cast<uint16_t>(sfr(SFR_TH4)) << 8) | sfr(SFR_TL4);
-        counts = 65536u - val;
-    } else if (mode == 0) {
-        uint16_t val = (static_cast<uint16_t>(sfr(SFR_TH4) & 0x1Fu) << 8) | sfr(SFR_TL4);
-        counts = 8192u - val;
-    } else {
-        counts = 256u - sfr(SFR_TL4);
-    }
-    if (counts == 0u) counts = (mode == 2 ? 256u : (mode == 1 ? 65536u : 8192u));
-    return timer34_counts_to_us(counts, T34MOD_T4M);
-}
-
-uint32_t timer4_current_period(void) {
-    uint8_t mode = timer4_mode();
-    uint32_t counts;
-    if (mode == 2) {
-        uint8_t tl = sfr(SFR_TL4);
-        counts = static_cast<uint32_t>(256u - tl);
-    } else if (mode == 1) {
-        uint16_t val = (static_cast<uint16_t>(sfr(SFR_TH4)) << 8) | sfr(SFR_TL4);
-        counts = 65536u - val;
-    } else if (mode == 0) {
-        uint16_t val = (static_cast<uint16_t>(sfr(SFR_TH4) & 0x1Fu) << 8) | sfr(SFR_TL4);
-        counts = 8192u - val;
-    } else {
-        counts = 256u - sfr(SFR_TL4);
-    }
-    if (counts == 0u) counts = (mode == 2 ? 256u : (mode == 1 ? 65536u : 8192u));
-    return timer34_counts_to_us(counts, T34MOD_T4M);
-}
-
-void timer4_schedule_from_now(uint64_t from_us) {
-    Mcu51TimerState& tm = mcs51_get_context()->timer;
-    uint32_t period = timer4_current_period();
-    tm.t4_next_ovf_us = from_us + period;
-}
-
-void timer4_start(uint64_t now_us) {
-    Mcu51TimerState& tm = mcs51_get_context()->timer;
-    tm.t4_running = true;
-    timer4_schedule_from_now(now_us);
-}
-
-void timer4_stop(void) {
-    Mcu51TimerState& tm = mcs51_get_context()->timer;
-    tm.t4_running = false;
-    tm.t4_next_ovf_us = NO_OVERFLOW;
-}
-
-void on_timer4_overflow(uint64_t at_us) {
-    Mcu51TimerState& tm = mcs51_get_context()->timer;
-    sfr_set_bit(SFR_EIF2, EIF2_TF4);
-
-    uint8_t mode = timer4_mode();
-    if (mode == 2) {
-        mcs51_get_context()->sfr_shadow[SFR_TL4] = sfr(SFR_TH4);
-    }
-
-    if (!tm.t4_running) {
-        tm.t4_next_ovf_us = NO_OVERFLOW;
-        return;
-    }
-
-    uint32_t period = timer4_reload_period();
-    tm.t4_next_ovf_us = at_us + period;
-
-    if ((sfr(SFR_EIE2) & (1u << EIE2_ET4IE)) != 0) {
-        mcs51_raise_irq(IRQ_SOURCE_TIMER4);
-        wink_mcs51_clear_reti_suppress();
-        mcs51_irq_scan_and_dispatch();
-    }
-}
-
-void step_timer4(uint64_t now_us) {
-    Mcu51TimerState& tm = mcs51_get_context()->timer;
-    if (!tm.t4_running || tm.t4_next_ovf_us == NO_OVERFLOW) {
-        return;
-    }
-    uint32_t fired = 0;
-    while (tm.t4_next_ovf_us != NO_OVERFLOW && now_us >= tm.t4_next_ovf_us) {
-        uint64_t at = tm.t4_next_ovf_us;
-        on_timer4_overflow(at);
-        if (++fired >= MAX_OVERFLOWS_PER_STEP) {
-            timer4_stop();
-            break;
-        }
-        if (!tm.t4_running) {
-            break;
-        }
-    }
-}
-
 }  // namespace
 
 extern "C" {
 
-// GAP-12 white-box test surface: Fsys-parameterized reload periods for
-// T2/T3/T4 (the calculators are file-local in the anonymous namespace).
+// GAP-12 white-box test surface: Fsys-parameterized reload period for T2
+// (the calculator is file-local in the anonymous namespace; T3/T4 twins
+// live in the chip package under the same C-ABI names).
 uint32_t wink_mcs51_test_timer2_reload_period(void) { return timer2_reload_period(); }
-uint32_t wink_mcs51_test_timer3_reload_period(void) { return timer3_reload_period(); }
-uint32_t wink_mcs51_test_timer4_reload_period(void) { return timer4_reload_period(); }
 
 void wink_mcs51_timers_step_to(uint64_t now_us) {
+    // Stage4 CPL-05: T3/T4 + T2-compare stepping moved to the chip package
+    // (chip poll/step entry points); the core advances T0/T1/standard-T2.
     step_timer(0, now_us);
     step_timer(1, now_us);
     step_timer2(now_us);
-    step_timer3(now_us);
-    step_timer4(now_us);
 }
 
 void wink_mcs51_timer_pulse(uint8_t t) {
@@ -719,36 +422,18 @@ void mcs51_timer_reset(struct Mcu51Context* ctx) {
     ctx->timer.t2_next_ovf_us = NO_OVERFLOW;
     ctx->timer.t2_tr_prev = 0;
     ctx->timer.t2_last_pin_level = 0xFFu;
-    for (uint8_t c = 0; c < 4; ++c) {
-        ctx->timer.t2_cap_last_level[c] = 0xFFu;
-        ctx->timer.t2_next_cmp_us[c] = NO_OVERFLOW;
-    }
-
-    ctx->timer.t3_running = false;
-    ctx->timer.t3_next_ovf_us = NO_OVERFLOW;
-    ctx->timer.t3_tr_prev = 0;
-
-    ctx->timer.t4_running = false;
-    ctx->timer.t4_next_ovf_us = NO_OVERFLOW;
-    ctx->timer.t4_tr_prev = 0;
-
-    // S2-2: pin-share selector seeds live with the owning model (moved out
-    // of generic context reset, CPL-19). 0x7F = unmapped; resolve_* then
-    // falls back to the classic pins. Matches the old core-reset values.
-    ctx->xdata_shadow[CMS8S_XSFR_PS_T0] = CMS8S_XSFR_PS_RESET;
-    ctx->xdata_shadow[CMS8S_XSFR_PS_T0G] = CMS8S_XSFR_PS_RESET;
-    ctx->xdata_shadow[CMS8S_XSFR_PS_T1] = CMS8S_XSFR_PS_RESET;
-    ctx->xdata_shadow[CMS8S_XSFR_PS_T1G] = CMS8S_XSFR_PS_RESET;
-    ctx->xdata_shadow[CMS8S_XSFR_PS_T2] = CMS8S_XSFR_PS_RESET;
-    ctx->xdata_shadow[CMS8S_XSFR_PS_T2EX] = CMS8S_XSFR_PS_RESET;
-    ctx->xdata_shadow[CMS8S_XSFR_PS_CAP0] = CMS8S_XSFR_PS_RESET;
-    ctx->xdata_shadow[CMS8S_XSFR_PS_CAP1] = CMS8S_XSFR_PS_RESET;
-    ctx->xdata_shadow[CMS8S_XSFR_PS_CAP2] = CMS8S_XSFR_PS_RESET;
-    ctx->xdata_shadow[CMS8S_XSFR_PS_CAP3] = CMS8S_XSFR_PS_RESET;
+    // Generic ext-clk selector slots: none = hardwired fallback pins. The
+    // owning chip init patches its selector addresses (extint precedent);
+    // chip-owned PS seeds live in the chip reset (stage4 CPL-05).
+    ctx->timer.t0_ps_addr = SELECTOR_NONE;
+    ctx->timer.t1_ps_addr = SELECTOR_NONE;
+    ctx->timer.t2_ps_addr = SELECTOR_NONE;
 }
 
 void wink_mcs51_timer_on_read(uint8_t addr) {
-    if (addr == SFR_TCON || addr == SFR_T2IF || addr == SFR_EIF2 || addr == SFR_T34MOD) {
+    // Stage4 CPL-05: flag/control-block reads (T2IF/EIF2/T34MOD) step the
+    // chip timers through the chip read hooks; the core steps T0/T1/T2 here.
+    if (addr == SFR_TCON) {
         wink_mcs51_timers_step_to(wink_mcs51_virtual_us());
     }
 }
@@ -816,57 +501,12 @@ void wink_mcs51_timer_on_write(uint8_t addr) {
         return;
     }
 
-    if (addr == SFR_TL2 || addr == SFR_TH2 || addr == SFR_RLDL || addr == SFR_RLDH ||
-        addr == SFR_CCEN || (addr >= SFR_CCL1 && addr <= SFR_CCH3)) {
+    if (addr == SFR_TL2 || addr == SFR_TH2 || addr == SFR_RLDL || addr == SFR_RLDH) {
+        // Stage4 CPL-05: compare re-arm on these writes is derived by the
+        // chip fingerprint; the core reschedules the overflow only.
         Mcu51TimerState& tm = mcs51_get_context()->timer;
         if (tm.t2_running && timer2_mode() == 1u) {
             timer2_schedule_from_now(now);
-        }
-        return;
-    }
-
-    if (addr == SFR_T34MOD) {
-        uint8_t t34mod = sfr(SFR_T34MOD);
-        uint8_t tr3 = (t34mod >> T34MOD_TR3) & 1u;
-        uint8_t tr4 = (t34mod >> T34MOD_TR4) & 1u;
-        Mcu51TimerState& tm = mcs51_get_context()->timer;
-
-        if (tr3 != tm.t3_tr_prev) {
-            tm.t3_tr_prev = tr3;
-            if (tr3) {
-                timer3_start(now);
-            } else {
-                timer3_stop();
-            }
-        } else if (tm.t3_running) {
-            timer3_schedule_from_now(now);
-        }
-
-        if (tr4 != tm.t4_tr_prev) {
-            tm.t4_tr_prev = tr4;
-            if (tr4) {
-                timer4_start(now);
-            } else {
-                timer4_stop();
-            }
-        } else if (tm.t4_running) {
-            timer4_schedule_from_now(now);
-        }
-        return;
-    }
-
-    if (addr == SFR_TL3 || addr == SFR_TH3) {
-        Mcu51TimerState& tm = mcs51_get_context()->timer;
-        if (tm.t3_running) {
-            timer3_schedule_from_now(now);
-        }
-        return;
-    }
-
-    if (addr == SFR_TL4 || addr == SFR_TH4) {
-        Mcu51TimerState& tm = mcs51_get_context()->timer;
-        if (tm.t4_running) {
-            timer4_schedule_from_now(now);
         }
         return;
     }
@@ -879,18 +519,16 @@ static void sfr_read_hook_timer(struct Mcu51Context* ctx, uint8_t addr) {
 
 static void sfr_write_hook_timer(struct Mcu51Context* ctx, uint8_t addr,
                                  uint8_t old_val, uint8_t new_val) {
-    if (addr == SFR_T2IF || addr == SFR_EIF2) {
-        // CMS8S78xx interrupt flag registers are write-0-to-clear (W0C):
-        // writing 0 clears that bit; writing 1 leaves that bit unchanged.
-        if (ctx) {
-            ctx->sfr_shadow[addr] = old_val & new_val;
-        }
-        return;
-    }
+    // Stage4 CPL-05: flag W0C interception moved to the chip package.
+    (void)ctx;
+    (void)old_val;
+    (void)new_val;
     wink_mcs51_timer_on_write(addr);
 }
 
 void mcs51_timer_init(struct Mcu51Context* ctx) {
+    // Stage4 CPL-05: T2IF/EIF2/T34MOD/TL3/TH3/TL4/TH4/CCEN/CCLx/CCHx hook
+    // registrations moved WITH the code to the chip package (S4-2 Step 2).
     mcs51_timer_reset(ctx);
     mcs51_trap_register_sfr_read(SFR_TCON, sfr_read_hook_timer);
     mcs51_trap_register_sfr_write(SFR_TCON, sfr_write_hook_timer);
@@ -899,33 +537,22 @@ void mcs51_timer_init(struct Mcu51Context* ctx) {
     mcs51_trap_register_sfr_write(SFR_TL1, sfr_write_hook_timer);
     mcs51_trap_register_sfr_write(SFR_TH0, sfr_write_hook_timer);
     mcs51_trap_register_sfr_write(SFR_TH1, sfr_write_hook_timer);
-    mcs51_trap_register_sfr_read(SFR_T2IF, sfr_read_hook_timer);
-    mcs51_trap_register_sfr_write(SFR_T2IF, sfr_write_hook_timer);
     mcs51_trap_register_sfr_write(SFR_T2CON, sfr_write_hook_timer);
     mcs51_trap_register_sfr_write(SFR_TL2, sfr_write_hook_timer);
     mcs51_trap_register_sfr_write(SFR_TH2, sfr_write_hook_timer);
     mcs51_trap_register_sfr_write(SFR_RLDL, sfr_write_hook_timer);
     mcs51_trap_register_sfr_write(SFR_RLDH, sfr_write_hook_timer);
-    mcs51_trap_register_sfr_read(SFR_EIF2, sfr_read_hook_timer);
-    mcs51_trap_register_sfr_write(SFR_EIF2, sfr_write_hook_timer);
-    mcs51_trap_register_sfr_read(SFR_T34MOD, sfr_read_hook_timer);
-    mcs51_trap_register_sfr_write(SFR_T34MOD, sfr_write_hook_timer);
-    mcs51_trap_register_sfr_write(SFR_TL3, sfr_write_hook_timer);
-    mcs51_trap_register_sfr_write(SFR_TH3, sfr_write_hook_timer);
-    mcs51_trap_register_sfr_write(SFR_TL4, sfr_write_hook_timer);
-    mcs51_trap_register_sfr_write(SFR_TH4, sfr_write_hook_timer);
-    mcs51_trap_register_sfr_write(SFR_CCEN, sfr_write_hook_timer);
-    mcs51_trap_register_sfr_write(SFR_CCL1, sfr_write_hook_timer);
-    mcs51_trap_register_sfr_write(SFR_CCH1, sfr_write_hook_timer);
-    mcs51_trap_register_sfr_write(SFR_CCL2, sfr_write_hook_timer);
-    mcs51_trap_register_sfr_write(SFR_CCH2, sfr_write_hook_timer);
-    mcs51_trap_register_sfr_write(SFR_CCL3, sfr_write_hook_timer);
-    mcs51_trap_register_sfr_write(SFR_CCH3, sfr_write_hook_timer);
 }
 
 static uint16_t resolve_timer_pin(struct Mcu51Context* ctx, uint8_t t) {
+    // Model defaults retained (P3.4/P3.5); the selector slot is patched by
+    // the owning chip init, none (= hardwired) on classic parts.
     uint16_t fallback = (t == 0) ? 28u : 29u;
-    uint16_t ps_addr = (t == 0) ? CMS8S_XSFR_PS_T0 : CMS8S_XSFR_PS_T1;
+    if (!ctx) return fallback;
+    uint16_t ps_addr = (t == 0) ? ctx->timer.t0_ps_addr : ctx->timer.t1_ps_addr;
+    if (ps_addr == SELECTOR_NONE) {
+        return fallback;
+    }
     uint8_t sel = ctx->xdata_shadow[ps_addr];
     uint8_t port = (sel >> 4) & 0x07u;
     uint8_t bit = sel & 0x0Fu;
@@ -940,9 +567,12 @@ static uint16_t resolve_timer_pin(struct Mcu51Context* ctx, uint8_t t) {
 }
 
 static uint16_t resolve_timer2_pin(struct Mcu51Context* ctx) {
-    uint16_t fallback = 14u; // P1.6 (CMS8S78xx default T2 external input)
+    uint16_t fallback = 14u;  // model default T2 external input
     if (!ctx) return fallback;
-    uint8_t sel = ctx->xdata_shadow[CMS8S_XSFR_PS_T2];
+    if (ctx->timer.t2_ps_addr == SELECTOR_NONE) {
+        return fallback;
+    }
+    uint8_t sel = ctx->xdata_shadow[ctx->timer.t2_ps_addr];
     uint8_t port = (sel >> 4) & 0x07u;
     uint8_t bit = sel & 0x0Fu;
     // S2-2: descriptor-driven legality (see resolve_timer_pin).
@@ -953,54 +583,12 @@ static uint16_t resolve_timer2_pin(struct Mcu51Context* ctx) {
     return fallback;
 }
 
-static uint16_t resolve_cap_pin(struct Mcu51Context* ctx, uint8_t c) {
-    constexpr uint16_t FALLBACK[4] = {0u, 1u, 13u, 12u}; // P0.0, P0.1, P1.5, P1.4
-    if (c >= 4) return 0u;
-    if (!ctx) return FALLBACK[c];
-    uint8_t sel = ctx->xdata_shadow[CMS8S_XSFR_PS_CAP0 + c];
-    uint8_t port = (sel >> 4) & 0x07u;
-    uint8_t bit = sel & 0x0Fu;
-    // S2-2: descriptor-driven legality (see resolve_timer_pin).
-    const uint8_t* pin_masks = mcs51_family_desc(ctx->family)->port_pin_masks;
-    if (port < 4u && bit < pin_masks[port]) {
-        return static_cast<uint16_t>((port << 3) | bit);
-    }
-    return FALLBACK[c];
-}
-
-static void timer2_trigger_capture(struct Mcu51Context* ctx, uint8_t c) {
-    if (c >= 4) return;
-    uint8_t tl2 = sfr(SFR_TL2);
-    uint8_t th2 = sfr(SFR_TH2);
-    if (c == 0) {
-        ctx->sfr_shadow[SFR_RLDL] = tl2;
-        ctx->sfr_shadow[SFR_RLDH] = th2;
-    } else if (c == 1) {
-        ctx->sfr_shadow[SFR_CCL1] = tl2;
-        ctx->sfr_shadow[SFR_CCH1] = th2;
-    } else if (c == 2) {
-        ctx->sfr_shadow[SFR_CCL2] = tl2;
-        ctx->sfr_shadow[SFR_CCH2] = th2;
-    } else if (c == 3) {
-        ctx->sfr_shadow[SFR_CCL3] = tl2;
-        ctx->sfr_shadow[SFR_CCH3] = th2;
-    }
-
-    sfr_set_bit(SFR_T2IF, c);
-
-    if ((sfr(SFR_T2IE) & (1u << c)) != 0) {
-        mcs51_raise_irq(IRQ_SOURCE_TIMER2);
-        wink_mcs51_clear_reti_suppress();
-        mcs51_irq_scan_and_dispatch();
-    }
-}
-
 void mcs51_timer_poll(struct Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
     wink_mcs51_timers_step_to(ctx->virtual_us);
 
-    // Poll external clock pins T0 (default P3.4 = pin 28) and T1 (default P3.5 = pin 29),
-    // or port-selected pin via PS_T0 / PS_T1 (CMS8S78xx).
+    // Poll external clock pins T0 (default pin 28) and T1 (default pin 29),
+    // or the chip-selected pin when a selector is patched.
     for (uint8_t t = 0; t < 2; ++t) {
         Mcu51TimerChannel& tm = ctx->timer.channels[t];
         if (tm.running && tm.external_clk) {
@@ -1016,7 +604,7 @@ void mcs51_timer_poll(struct Mcu51Context* ctx) {
         }
     }
 
-    // Poll external clock pin T2 (default P1.6 = pin 14) via PS_T2 (0xF0C6)
+    // Poll external clock pin T2 (default pin 14) or the chip-selected pin.
     if (ctx->timer.t2_running && timer2_mode() == 2u) {
         uint16_t pin = resolve_timer2_pin(ctx);
         uint8_t level = js_pal_gpio_read_state(pin);
@@ -1029,33 +617,7 @@ void mcs51_timer_poll(struct Mcu51Context* ctx) {
         }
     }
 
-    // Poll Timer 2 Capture channels (CAP0~CAP3)
-    uint8_t ccen = ctx->sfr_shadow[SFR_CCEN];
-    if (ctx->timer.t2_running && ccen != 0) {
-        uint8_t t2con = ctx->sfr_shadow[SFR_T2CON];
-        for (uint8_t c = 0; c < 4; ++c) {
-            uint8_t mode = (ccen >> (c * 2)) & 0x03u;
-            // Mode 1 or 3 is capture mode (0x01 | Timer2CaptureMode)
-            if (mode == 1u || mode == 3u) {
-                uint16_t pin = resolve_cap_pin(ctx, c);
-                uint8_t level = js_pal_gpio_read_state(pin);
-                if (level <= 1u) {
-                    uint8_t last = ctx->timer.t2_cap_last_level[c];
-                    ctx->timer.t2_cap_last_level[c] = level;
-                    if (last <= 1u && last != level) {
-                        // For CC0: T2CON.I3FR (bit 6): 1 = rising, 0 = falling
-                        // For CC1~3: T2CON.CAPES (bit 5): 0 = rising, 1 = falling
-                        bool want_rising = (c == 0) ? ((t2con & (1u << 6)) != 0)
-                                                    : ((t2con & (1u << 5)) == 0);
-                        if ((want_rising && last == 0u && level == 1u) ||
-                            (!want_rising && last == 1u && level == 0u)) {
-                            timer2_trigger_capture(ctx, c);
-                        }
-                    }
-                }
-            }
-        }
-    }
+    // Stage4 CPL-05: T2 capture/compare sampling moved to the chip package.
 }
 
 uint64_t mcs51_timer_next_event_us(struct Mcu51Context* ctx) {
@@ -1074,23 +636,7 @@ uint64_t mcs51_timer_next_event_us(struct Mcu51Context* ctx) {
             earliest = ctx->timer.t2_next_ovf_us;
         }
     }
-    for (uint8_t c = 0; c < 4; ++c) {
-        if (ctx->timer.t2_running && ctx->timer.t2_next_cmp_us[c] != NO_OVERFLOW) {
-            if (ctx->timer.t2_next_cmp_us[c] < earliest) {
-                earliest = ctx->timer.t2_next_cmp_us[c];
-            }
-        }
-    }
-    if (ctx->timer.t3_running && ctx->timer.t3_next_ovf_us != NO_OVERFLOW) {
-        if (ctx->timer.t3_next_ovf_us < earliest) {
-            earliest = ctx->timer.t3_next_ovf_us;
-        }
-    }
-    if (ctx->timer.t4_running && ctx->timer.t4_next_ovf_us != NO_OVERFLOW) {
-        if (ctx->timer.t4_next_ovf_us < earliest) {
-            earliest = ctx->timer.t4_next_ovf_us;
-        }
-    }
+    // Stage4 CPL-05: compare + T3/T4 next-events advertised by the chip.
     return earliest;
 }
 

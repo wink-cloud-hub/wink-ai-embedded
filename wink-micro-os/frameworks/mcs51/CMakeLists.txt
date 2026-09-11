@@ -57,6 +57,8 @@ set(_MCS51_COMPAT_SRCS
     chips/cms8s78xx/src/cms8s_extint.cpp
     # Stage4 S4-2 Step 1: UART source selection (CPL-04).
     chips/cms8s78xx/src/cms8s_uart.cpp
+    # Stage4 S4-2 Step 2: T3/T4 + capture/compare (CPL-05).
+    chips/cms8s78xx/src/cms8s_timer.cpp
 )
 
 add_library(wink_mcs51_compat STATIC EXCLUDE_FROM_ALL ${_MCS51_COMPAT_SRCS})

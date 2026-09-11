@@ -48,6 +48,11 @@ uint64_t cms8s_port_extint_next_event_us(struct Mcu51Context* ctx);
 void cms8s_uart_init(struct Mcu51Context* ctx);
 void cms8s_uart_reset(struct Mcu51Context* ctx);
 
+void cms8s_timer_init(struct Mcu51Context* ctx);
+void cms8s_timer_reset(struct Mcu51Context* ctx);
+void cms8s_timer_poll(struct Mcu51Context* ctx);
+uint64_t cms8s_timer_next_event_us(struct Mcu51Context* ctx);
+
 }  // extern "C"
 
 namespace {
@@ -112,6 +117,16 @@ const mcs51_peripheral_desc_t kCms8sDescs[] = {
         nullptr,
         nullptr,
         MCS51_PHASE_RX_DRAIN,
+        MCS51_FAMILY_MASK_CMS8S78XX
+    },
+    {
+        // S4-2 Step 2: T3/T4 + T2 capture/compare + flag interception.
+        "cms8s_timer",
+        cms8s_timer_init,
+        cms8s_timer_reset,
+        cms8s_timer_poll,
+        cms8s_timer_next_event_us,
+        MCS51_PHASE_CLOCK,
         MCS51_FAMILY_MASK_CMS8S78XX
     },
 };
