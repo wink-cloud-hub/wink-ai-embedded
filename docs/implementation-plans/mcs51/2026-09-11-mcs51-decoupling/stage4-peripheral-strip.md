@@ -74,10 +74,17 @@
 - **测试资产修正（CPL-22 纵深）**：`gap12` (5) 迁出 core（`test_mcs51_extif_w0c.cpp`，harness 为装载性依赖）；`uart_charge`/`uart_tx_ready` 的 `init_ctx` 由 reset-first 纠为 register→set→reset（静态表时代无感，注册表时代缺装 hooks——STRICT child 3 为证）；STRICT 五双生补 `test/` include；`timer_ext_clk` T5/T6 补 chip init/poll/step 调用；`port_extint`/`extint_model`/`low_power` 补 chip 调用点。详见附录 A。
 - **Safety review**：Risk level 中（GPIO 热路径 + 外设定时/串口 + 分发循环 + 池迁移）；Checklist phases run 1、2、3、4、10、12；Findings 无（注册表有界 BSS + 断言 + 幂等；池迁移逐字；bridge 胶 pre-stage6 为 no-op；钩子 per-context；emcc 全绿；66/66）；Fixed 两处（wasm harness include 目录；STRICT 双生 include 目录）；Assumptions 沿用 active-ctx 惯例（chip init 显式 ctx；`cms8s_timer_step_to` 以 active 为目标，与 core `step_to` 同约）；Commands run 见 Check 3。
 
-## 附录 A：S4-2 Step 5 测试 sweep 清单（✅ 执行完毕，2026-09-12）
-- **harness 头**：`test/mcs51_test_harness.h`（`mcs51_test_register_family` 注册专用 + `mcs51_test_use_family` 注册并切 active 上下文；声明 `cms8s78xx_register`/`at89c52_register`）。
+## 附录 A：S4-2 Step 5 测试 sweep 清单（✅ 执行完毕，2026-09-12）- **harness 头**：`test/mcs51_test_harness.h`（`mcs51_test_register_family` 注册专用 + `mcs51_test_use_family` 注册并切 active 上下文；声明 `cms8s78xx_register`/`at89c52_register`）。
 - **22 文件 set_family 前插 register**（零语义变更插入，保持原 reset 顺序）：`test_cms8s_buzzer`、`test_cms8s_vendor_stdriver`、`test_cms8s_adc_instant`、`test_extint_model`、`test_mcs51_adc_refchain`、`test_mcs51_cms8s_adc_e2e.c`、`test_mcs51_gpio_dir`（classic+cms8s 双点）、`test_mcs51_port_extint`、`test_mcs51_t234_fsys`、`test_mcs51_uart_charge`、`test_mcs51_uart_tx_ready`、`test_mcs51_wdt_ta`（双点）、`test_mcs51_wink_mcu`、`test_mcs51_xsfr_tripwire`、`test_mcs51_ext_bus`（param）、`test_mcs51_family_schema`（3 点）、`test_mcs51_low_power`、`test_mcs51_silicon_seeds`（双点）、`test_mcs51_soc_priv_isolation`（3 点）、`test_mcs51_timer_ext_clk`、`test_mcs51_xram_aperture`（param）、`test_sfr_operators_coverage`。
 - **3 直接挂载**（不走 `context_reset` 的模型直驱测试）：`port_extint` + `extint_model` 显式调 `cms8s_extint_init/reset`；`timer_ext_clk` T5/T6 在 core init 后补 `cms8s_timer_init`（后注册者赢槽位）+ capture/compare 调用点补 chip poll/step。
 - **2 顺序修正**：`uart_charge`/`uart_tx_ready` 的 `init_ctx` 改 register→set→reset（STRICT child 3 缺 abort 为证）。
 - **1 拆分**：`gap12` (5) 迁 `test_mcs51_extif_w0c.cpp`（+1 用例，65→66）。
 - **构建 wiring**：`wink-micro-os/test/CMakeLists.txt`（`add_mcs51_host_test` 加 `test/` include；STRICT 五双生同加；注册 `test_mcs51_extif_w0c`）+ wasm cmake（6 芯片 TU + `test/` include）。
+
+## 附录 B：Stage4 评审加固追记（S4-D5 / S4-H1~H3，2026-09-12）
+- **事由**：stage4 关闭后的资深架构复审确认了三项真问题（两项生命周期、一项产线窗口），本追记在进 stage5 前一次性关闭（S3-H1~H7 先例）。
+- **S4-D5 产线过渡默认（P0，`633093b`）**：`mcs51_family_select.h` 全仓不存在 → pre-stage6 产线构建 registry 恒空 → CMS8S 产线仿真无芯片模型（片上 ADC 应用直接挂，E-02 产线复活；T3/T4/端口中断/捕获比较挂；其余 permissive 失真）。bridge 加 `#elif defined(WINK_MCU_CMS8S78XX)` 默认调 `cms8s78xx_register()` + stage6 到期 lint waiver（S3-D2 先例）。Classic 构建宏分支消除（`nm` 抽查 bridge 对象无芯片未定义符号）；host 测试 AT89 宏 + harness 双重注册幂等。stage6 codegen 落地即删本分支。
+- **S4-H1 上下文钉扎（`92fb063`）**：`mcs51_trap_register_*` 全员解析 active ctx，而 `mcs51_context_reset(ctx)` 从不切换——非 active reset 会把钩子 bleed 到别的实例。reset 双循环前后 save/restore active（无异常代码，直存直取，与 `saved_idx` 同惯用法）。
+- **S4-H2 重装统一（`92fb063`）**：新契约——**任何 reset 必须能独立于 init 重建全部运行时注册**，init 只负责首次绑定。core timer/uart 注册块下移 reset（init 转调）；芯片 adc/buzzer 同理；sys/extint/timer 提 `install_*_hooks()` 双调（sys 含 `sfr_write_notify`，此前 standalone reset 会丢 TA 窗口）。
+- **S4-H3 harness 排序纪律（`92fb063`）**：`mcs51_trap_reset()` 清全部已装钩子——必须在 harness 之前调，之后调则芯片钩子静默丢失。已注记于 harness 头（全仓现调用点顺序皆合规）。
+- **终验**：lint PASS｜mcs51 66/66｜wasm 13/13｜host 全量非 mcs51 失败集与 stage3 基线一致｜`nm` 双抽查（bridge 对象、at89 对象）通过。
