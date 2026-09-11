@@ -48,12 +48,12 @@ void convert_an0_right(void) {
 bool hook_a_called = false;
 bool hook_b_called = false;
 
-bool hook_a(struct Mcu51Context *, uint16_t) {
+bool hook_a(struct Mcu51Context *, uint16_t, uint8_t) {
     hook_a_called = true;
     return true;
 }
 
-bool hook_b(struct Mcu51Context *, uint16_t) {
+bool hook_b(struct Mcu51Context *, uint16_t, uint8_t) {
     hook_b_called = true;
     return true;
 }

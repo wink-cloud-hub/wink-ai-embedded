@@ -95,6 +95,9 @@ endif()
 
 set(_WASM_MCS51_INCLUDES
     -I${_SDK_ROOT}/frameworks/mcs51/include
+    # Stage4 S4-2 Step 5: test-only family harness (shared host/wasm e2e
+    # drivers include it; the hand list itself is deleted by stage6).
+    -I${_SDK_ROOT}/frameworks/mcs51/test
     # S2-1: chip-private headers (stage6 target split deletes this hand list)
     -I${_SDK_ROOT}/frameworks/mcs51/chips/cms8s78xx/include
     -I${_SDK_ROOT}/frameworks/mcs51/chips/at89c52/include
@@ -178,6 +181,8 @@ function(add_wink_wasm_mcs51_test test_name sample_name driver_c)
         # Stage4 CPL-10: chip register entries (same sync rule).
         ${_SDK_ROOT}/frameworks/mcs51/chips/cms8s78xx/src/cms8s_register.cpp
         ${_SDK_ROOT}/frameworks/mcs51/chips/at89c52/src/at89_register.cpp
+        # Stage4 S4-1 Step 1: enhanced GPIO model (CPL-03, same sync rule).
+        ${_SDK_ROOT}/frameworks/mcs51/chips/cms8s78xx/src/cms8s_gpio.cpp
         ${_SDK_ROOT}/runtime/src/wink_runtime.c
         ${_SDK_ROOT}/runtime/src/wink_runtime_tasks.c
         ${_SDK_ROOT}/runtime/src/wink_actuator_registry.c

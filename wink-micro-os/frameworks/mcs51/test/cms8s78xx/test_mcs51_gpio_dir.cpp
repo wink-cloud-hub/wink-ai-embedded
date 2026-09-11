@@ -23,6 +23,31 @@ int g_fails = 0;
 
 uint32_t g_host_notifies_before(void);
 
+uint32_t g_hook_may_drive = 0u;
+uint32_t g_hook_is_analog = 0u;
+uint32_t g_hook_pullup = 0u;
+
+bool count_may_drive(struct Mcu51Context*, uint16_t, uint8_t) {
+    ++g_hook_may_drive;
+    return true;
+}
+
+bool count_is_analog(struct Mcu51Context*, uint16_t) {
+    ++g_hook_is_analog;
+    return false;
+}
+
+uint8_t count_pullup(struct Mcu51Context*, uint16_t) {
+    ++g_hook_pullup;
+    return 0u;
+}
+
+void hook_counts_reset(void) {
+    g_hook_may_drive = 0u;
+    g_hook_is_analog = 0u;
+    g_hook_pullup = 0u;
+}
+
 }  // namespace
 
 extern "C" void wink_mcs51_user_main(void) {}
@@ -136,6 +161,44 @@ int main(void) {
         CHECK(mcs51_gpio_bit_read_pin(0, 4) == 0u, "T5: button low must read 0");
         CHECK(wink_mcs51_gpio_analog_read_count() == 0u,
               "T5: health_pot config must not trip analog mask");
+    }
+
+    // ── 6) L1: standard parts pay zero hook indirection (caps short-circuit)
+    {
+        mcs51_test_register_family(MCS51_FAMILY_CLASSIC);
+        mcs51_context_set_family(MCS51_FAMILY_CLASSIC);
+        mcs51_context_reset(mcs51_get_context());
+        Mcu51Context* ctx = mcs51_get_context();
+        ctx->gpio_hooks.may_drive = count_may_drive;
+        ctx->gpio_hooks.is_analog = count_is_analog;
+        ctx->gpio_hooks.pullup = count_pullup;
+        hook_counts_reset();
+        mcs51_gpio_sfr_write(1, 0xFEu);
+        mcs51_gpio_bit_write(1, 0, 1u);
+        (void)mcs51_gpio_read_pin(1);
+        (void)mcs51_gpio_bit_read_pin(1, 0);
+        CHECK(g_hook_may_drive == 0u, "T6: classic must not call may_drive");
+        CHECK(g_hook_is_analog == 0u, "T6: classic must not call is_analog");
+        CHECK(g_hook_pullup == 0u, "T6: classic must not call pullup");
+    }
+
+    // ── 7) Enhanced parts route through the hooks ──────────────────────────
+    {
+        mcs51_test_register_family(MCS51_FAMILY_CMS8S78XX);
+        mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
+        mcs51_context_reset(mcs51_get_context());
+        Mcu51Context* ctx = mcs51_get_context();
+        ctx->gpio_hooks.may_drive = count_may_drive;
+        ctx->gpio_hooks.is_analog = count_is_analog;
+        ctx->gpio_hooks.pullup = count_pullup;
+        hook_counts_reset();
+        mcs51_gpio_sfr_write(1, 0xFEu);
+        mcs51_gpio_bit_write(1, 0, 1u);
+        (void)mcs51_gpio_read_pin(1);
+        (void)mcs51_gpio_bit_read_pin(1, 0);
+        CHECK(g_hook_may_drive > 0u, "T7: enhanced must call may_drive");
+        CHECK(g_hook_is_analog > 0u, "T7: enhanced must call is_analog");
+        CHECK(g_hook_pullup > 0u, "T7: enhanced must call pullup");
     }
 
     if (g_fails) {

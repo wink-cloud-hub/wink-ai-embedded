@@ -130,10 +130,8 @@ BASELINE: list[tuple[str, str, str, str]] = [
      r"classic AT89C52", "prose"),
     ("src/mcs51_timer.cpp", "familynam",
      r"classic STC/AT89", "prose"),
-    # src/mcs51_gpio.cpp TRIS/OD/CFG tables + has_cms8s_io -> stage4
-    ("src/mcs51_gpio.cpp", "xsfr_addr", r"0xF0|0xF00", "stage4"),
-    ("src/mcs51_gpio.cpp", "cms8s",
-     r"mcs51_has_cms8s_io|CMS8S|cms8s", "stage4"),
+    # src/mcs51_gpio.cpp TRIS/OD/CFG tables + hooks dispatch: S4-1 pruned
+    # (tables live in the chip model now; re-adding one must fail).
     # src/mcs51_isr.cpp default map + comments -> stage5
     ("src/mcs51_isr.cpp", "cms8s",
      r"CMS8S78xx|cms8s78xx", "stage5"),
