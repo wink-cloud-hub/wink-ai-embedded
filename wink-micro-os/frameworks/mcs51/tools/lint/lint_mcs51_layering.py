@@ -85,7 +85,7 @@ BASELINE: list[tuple[str, str, str, str]] = [
     ("include/wink_mcs51_isr.h", "cms8s", r"CMS8S78xx", "stage5"),
     # wink_mcs51_strict.h: S3-H6 pruned (grouping-note residue scrubbed;
     # numbers frozen, schema checks below still lock IAP_FLASH=11).
-    ("include/wink_mcs51_uart.h", "funccr", r"FUNCCR", "stage4"),
+    # wink_mcs51_uart.h source-select docs: S4-2 scrubbed to generic wording.
     # wink_mcs51_wdt.h: S3-H6 pruned (hard export removed, file zero-residue).
     # src/mcs51_adc.cpp comment -> stage1
     ("src/mcs51_adc.cpp", "cms8s", r"CMS8S78xx", "stage1"),
@@ -107,8 +107,8 @@ BASELINE: list[tuple[str, str, str, str]] = [
     # chip-map usage; re-adding either must fail, not be waived.
     ("src/mcs51_timer.cpp", "cms8s",
      r"CMS8S_|cms8s_sfr_map", "stage4"),
-    ("src/mcs51_uart.cpp", "cms8s",
-     r"CMS8S_|cms8s_sfr_map", "stage4"),
+    # S3-1 transition expired in S4-2: uart code moved to chips/ WITH its
+    # chip-map usage (no xsfr/funccr/ps rows left: the generic TU is clean).
     # (No ps_sel row: the generic sentinel is named SELECTOR_NONE.)
     # src/mcs51_family.cpp descriptor rows + refs -> by-design
     ("src/mcs51_family.cpp", "cms8s", r".*", "by-design"),
@@ -131,11 +131,8 @@ BASELINE: list[tuple[str, str, str, str]] = [
     ("src/mcs51_timer.cpp", "cms8s", r"CMS8S78xx", "stage4"),
     ("src/mcs51_timer.cpp", "xsfr_addr", r"0xF0C6", "stage4"),
     ("src/mcs51_timer.cpp", "ps_sel", r"PS_T", "stage4"),
-    # src/mcs51_uart.cpp FUNCCR/remap block -> stage4
-    ("src/mcs51_uart.cpp", "xsfr_addr", r"0xF01|0xF02", "stage4"),
-    ("src/mcs51_uart.cpp", "cms8s", r"CMS8S78xx", "stage4"),
-    ("src/mcs51_uart.cpp", "funccr", r"FUNCCR|SFR_FUNCCR", "stage4"),
-    ("src/mcs51_uart.cpp", "ps_sel", r"PS_RXD", "stage4"),
+    # src/mcs51_uart.cpp source-select block: S4-2 pruned (lives in the chip
+    # model now; re-adding must fail, not be waived).
     # src/mcs51_xdata.cpp XSFR window model + comments -> stage5
     ("src/mcs51_xdata.cpp", "cms8s",
      r"CMS8S78xx|REG_CMS8S78XX", "stage5"),

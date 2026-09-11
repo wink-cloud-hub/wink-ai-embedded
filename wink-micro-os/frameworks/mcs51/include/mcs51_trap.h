@@ -97,6 +97,21 @@ typedef struct {
     mcs51_gpio_pullup_fn_t    pullup;
 } Mcs51GpioHooks;
 
+// ── UART readiness/baud hooks (Stage4 S4-2 Step 1 mounts, S4-D3) ───────────
+// Same static-dispatch discipline as the GPIO hooks: the core owns the TX
+// engine (SBUF hook, capture, TI/IRQ, charge application) while the chip
+// package owns source selection (clock-select register + pin-remap).
+// Per-context table (stored BY VALUE in Mcu51Context::uart_hooks, memset
+// zero = standard Timer1 path). Standard parts take the caps_cache fast
+// path (UART_REMAP) and never pay an indirection.
+typedef uint32_t (*mcs51_uart_notready_mask_fn_t)(struct Mcu51Context* ctx);
+typedef uint32_t (*mcs51_uart_baud_hz_fn_t)(struct Mcu51Context* ctx);
+
+typedef struct {
+    mcs51_uart_notready_mask_fn_t notready_mask;
+    mcs51_uart_baud_hz_fn_t       baud_hz;
+} Mcs51UartHooks;
+
 // Registration API (idempotent; operates on active Mcu51Context).
 // port 0..3 = P0..P3; out-of-range port/bit is ignored.
 void mcs51_trap_register_write(uint8_t port, uint8_t bit,
