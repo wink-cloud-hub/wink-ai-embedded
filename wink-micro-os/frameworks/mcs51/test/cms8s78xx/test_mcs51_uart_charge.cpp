@@ -48,9 +48,11 @@ Mcu51Context s_ctx;
 
 void init_ctx(uint8_t family) {
     mcs51_set_active_context(&s_ctx);
-    mcs51_context_reset(&s_ctx);
+    // Stage4: register + select BEFORE reset so the reset loop installs the
+    // family's models (the old reset-first order predates registration).
     mcs51_test_register_family(family);
     mcs51_context_set_family(family);
+    mcs51_context_reset(&s_ctx);
     wink_mcs51_uart_reset();
     wink_mcs51_clock_reset();
     wink_mcs51_isr_enable();
