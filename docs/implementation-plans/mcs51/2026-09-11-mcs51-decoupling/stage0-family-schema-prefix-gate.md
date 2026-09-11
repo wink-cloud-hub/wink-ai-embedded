@@ -56,7 +56,7 @@
 - [ ] **Step 2**：STRICT 枚举分组注释（通用 vs `CMS8S_FEAT_*` vs `BOARD_FEAT_*`），保持数值稳定不 renumber。
 - [ ] **Step 3**：`WINK_MCS51_XDATA_SIZE` 标记为待下沉（本阶段只加 `TODO(stage6)` 注释，不搬）。
 
-验证：`python wink-tools/wink.py lint arch --pack layering --pack api`（或等效 lint 入口）通过；故意放一个越权前缀能 fail。
+验证（仓库根目录）：`python wink-micro-os/frameworks/mcs51/tools/lint/lint_mcs51_layering.py` 通过（本仓可执行入口；外仓 `wink.py lint arch` 接入后以 stage6 为准）；故意放一个越权前缀能 fail。
 
 ## 4. 验收（L0-L4 精简）
 
@@ -69,3 +69,9 @@
 
 - R：STRICT 重命名误改数值 → 缓解：数值 `static_assert` 锁死。
 - 回滚：`git revert <S0-commit>`；lint 规则文件独立提交，可单独 revert。
+
+## 6. 阶段自审自我检验清单（Self-Audit Checkpoint）
+- [ ] **目录与架构落位**：无非法文件创建，所有修改严格限定在 `mcs51_family.*`、`mcs51_context.*` 与 `tools/lint/`。
+- [ ] **门禁自审**：故意在通用头制造越权包含可被 lint 准确拦截，正常构建 lint 全绿。
+- [ ] **零行为变更**：除 descriptor 与 caps 快照字段外，现有业务逻辑行为 diff 为 0。
+- [ ] **双轨状态**：双平台构建通过，40/40 测试通过。

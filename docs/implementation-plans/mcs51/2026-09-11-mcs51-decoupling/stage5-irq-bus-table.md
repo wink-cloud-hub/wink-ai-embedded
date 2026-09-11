@@ -13,28 +13,32 @@
 
 ## 1. 目标
 
-- ✅ 通用 ISR 仅标准 0~5 向量仲裁，其余从 `irq_vector_table + irq_count` 装载；AT89 模式下 CMS8S 中断物理绝缘。
-- ✅ `mcs51_xdata.cpp` 去 `mcs51_xsfr_allowlist.h` 强包含，按 `xsfr_base/size` + 芯片校验分发；经典无窗口。
+- ✅ 通用 ISR 默认表缩水为标准 0~5；扩展 profile 由芯片包在 reset 中经既有 `wink_mcs51_set_irq_map_entry` 逐项装载；描述符 `irq_vector_table` 仅做绝缘白名单判定（stage0 已冻结为向量号表，本阶段不改其类型）；AT89 模式下 CMS8S 中断物理绝缘。
+- ✅ `mcs51_xdata.cpp` 去 `mcs51_xsfr_allowlist.h` 强包含：tripwire 先判窗口存在（`xsfr_size!=0`，经典直接走外部 RAM 语义），再调芯片侧 allowlist 校验；经典无窗口。
 
 ## 2. 变更范围
 
 | 文件 | 变更 | 说明 |
 |------|------|------|
-| `src/mcs51_isr.cpp` | ✏️ | 标准仲裁 + 描述符装载 |
-| `src/mcs51_xdata.cpp` | ✏️ | 窗口参数化，删 allowlist 包含 |
-| `chips/cms8s78xx/` | ✏️ | 向量表行 + XSFR 校验归位 |
+| `src/mcs51_isr.cpp` | ✏️ | 默认表缩水 0~5；仲裁逻辑不动 |
+| `src/mcs51_xdata.cpp` | ✏️ | 窗口门控 + 芯片校验回调，删 allowlist 包含 |
+| `chips/cms8s78xx/` | ✏️ | 扩展 profile 装载（reset 中逐项） + XSFR 校验归位（含 allowlist 文件） |
+| `include/mcs51_xsfr.hpp` | ✏️ | 类留 core（通用机制），注释去厂商味（ADCLDO/0xF692 例改为示意地址表述） |
+| `tools/mcs51_shim_audit.py` + freshness 门禁 | ✏️ | isr 交叉校验家族化（默认表只剩 0~5，扩展项校验移入芯片侧）；REG 路径已在 stage3 同步 |
 
 ## 3. 任务拆分
 
 ### Task S5-1：向量表驱动 `[状态: ⏳ 待开始]`
 
-- [ ] **Step 1**：通用 ISR 删 `s_default_irq_map` 中 ADC/PWM/I2C/SPI/UART1 硬编码，改读描述符。
-- [ ] **Step 2**：AT89 模式断言扩展向量不可达 + XSFR 窗口关闭的绝缘单测。
+- [ ] **Step 1**：通用 ISR 删 `s_default_irq_map` 中 ADC/PWM/I2C/SPI/UART1 硬编码（缩水为 0~5）；`cms8s` reset 中经 `wink_mcs51_set_irq_map_entry` 逐项装载扩展 profile（复用既有 API，不新增机制）。
+- [ ] **Step 1b（仲裁特判抽离，P0 阻断项）**：`mcs51_isr.cpp:309-312` 的 T2 `0xC9u/0xCFu` 多标志特判抽为 per-context flag-predicate hook（默认 = 标准单 bit 判定即现 `else` 分支；CMS8S reset 安装多标志版；UART0/INT0/INT1 特判为标准语义，留内联）。仲裁循环本身不动。
+- [ ] **Step 1c（映射表入 ctx，P0 隔离项）**：file-static `s_irq_map[13]` 迁入 `Mcu51Context`（+104B，记 stage2 §4 预算表；诊断计数器等 M4 项留 file-static）；`reset` 按家族装载（core 默认 0~5 + 芯片扩展 overlay），`set/get/reset_irq_map` 三 API 改操作 active ctx（签名不变）；`ensure` 全局 once 语义删除。否则 CMS8S 装载后切 classic，扩展向量借尸还魂，直接击穿 L1 绝缘验收。
+- [ ] **Step 2**：AT89 模式断言扩展向量不可达 + XSFR 窗口关闭的绝缘单测（含双 context 分属异家族并存：一方装载扩展后另一方仍绝缘）；`mcs51_shim_audit.py` 的 isr 交叉校验同步家族化（freshness 门禁同改；默认表/芯片表新位置同步更新脚本；验证命令见 stage3 Step 4，校验对象改为家族化后的两表位置）。
 
 ### Task S5-2：XSFR 参数化 `[状态: ⏳ 待开始]`
 
-- [ ] **Step 1**：`KIND_XSFR` 改为按 `xsfr_size!=0` 判定；allowlist 头下沉芯片包，通用零包含。
-- [ ] **Step 2**：未建模 XSFR tripwire 归芯片模型所有，通用只做窗口分发。
+- [ ] **Step 1**：tripwire 先判窗口存在（`xsfr_size!=0`），再查芯片侧 allowlist；allowlist 头下沉芯片包（`cms8s_xsfr_allowlist.h`，生成器目标路径同步），通用零包含。注：`KIND_XSFR` 是代理协议 tag，不动。
+- [ ] **Step 2**：未建模 XSFR tripwire 归芯片模型所有，通用只做窗口分发；`mcs51_xsfr.hpp` 注释去厂商味。
 
 ## 4. 验收
 
@@ -66,3 +70,9 @@
 ## 5. 风险与回滚
 
 - R：向量号漂移致 ISR 错配 → 缓解：向量表 `static_assert` + dispatch 计数单测；回滚 `git revert <S5-commit>`。
+
+## 6. 阶段自审自我检验清单（Self-Audit Checkpoint）
+- [ ] **目录落位**：`chips/cms8s78xx/include/cms8s_xsfr_allowlist.h` 完全归位芯片目录。
+- [ ] **通用纯净度**：`src/mcs51_isr.cpp` 仅包含 0~5 标准向量；`src/mcs51_xdata.cpp` 零厂商 allowlist 头包含。
+- [ ] **物理绝缘自审**：AT89 模式下 CMS8S 扩展中断与 XSFR 窗口绝缘单测通过。
+- [ ] **双轨状态**：双平台构建全绿，中断调度单测全绿。
