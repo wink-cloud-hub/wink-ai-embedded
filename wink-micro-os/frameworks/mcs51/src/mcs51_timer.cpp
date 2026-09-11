@@ -727,6 +727,20 @@ void mcs51_timer_reset(struct Mcu51Context* ctx) {
     ctx->timer.t4_running = false;
     ctx->timer.t4_next_ovf_us = NO_OVERFLOW;
     ctx->timer.t4_tr_prev = 0;
+
+    // S2-2: pin-share selector seeds live with the owning model (moved out
+    // of generic context reset, CPL-19). 0x7F = unmapped; resolve_* then
+    // falls back to the classic pins. Matches the old core-reset values.
+    ctx->xdata_shadow[MCS51_XSFR_PS_T0] = MCS51_XSFR_PS_RESET;
+    ctx->xdata_shadow[MCS51_XSFR_PS_T0G] = MCS51_XSFR_PS_RESET;
+    ctx->xdata_shadow[MCS51_XSFR_PS_T1] = MCS51_XSFR_PS_RESET;
+    ctx->xdata_shadow[MCS51_XSFR_PS_T1G] = MCS51_XSFR_PS_RESET;
+    ctx->xdata_shadow[MCS51_XSFR_PS_T2] = MCS51_XSFR_PS_RESET;
+    ctx->xdata_shadow[MCS51_XSFR_PS_T2EX] = MCS51_XSFR_PS_RESET;
+    ctx->xdata_shadow[MCS51_XSFR_PS_CAP0] = MCS51_XSFR_PS_RESET;
+    ctx->xdata_shadow[MCS51_XSFR_PS_CAP1] = MCS51_XSFR_PS_RESET;
+    ctx->xdata_shadow[MCS51_XSFR_PS_CAP2] = MCS51_XSFR_PS_RESET;
+    ctx->xdata_shadow[MCS51_XSFR_PS_CAP3] = MCS51_XSFR_PS_RESET;
 }
 
 void wink_mcs51_timer_on_read(uint8_t addr) {
@@ -911,8 +925,11 @@ static uint16_t resolve_timer_pin(struct Mcu51Context* ctx, uint8_t t) {
     uint8_t sel = ctx->xdata_shadow[ps_addr];
     uint8_t port = (sel >> 4) & 0x07u;
     uint8_t bit = sel & 0x0Fu;
-    constexpr uint8_t PORT_PINS[4] = {8u, 8u, 6u, 4u};
-    if (port < 4u && bit < PORT_PINS[port]) {
+    // S2-2: legality from the family descriptor — the full-pin family opens
+    // P3.4/P3.5 ext-clk (pins 28/29, previously mis-rejected); the reduced
+    // family keeps its masks. No hardcoded table (was PORT_PINS).
+    const uint8_t* pin_masks = mcs51_family_desc(ctx->family)->port_pin_masks;
+    if (port < 4u && bit < pin_masks[port]) {
         return static_cast<uint16_t>((port << 3) | bit);
     }
     return fallback;
@@ -924,8 +941,9 @@ static uint16_t resolve_timer2_pin(struct Mcu51Context* ctx) {
     uint8_t sel = ctx->xdata_shadow[MCS51_XSFR_PS_T2];
     uint8_t port = (sel >> 4) & 0x07u;
     uint8_t bit = sel & 0x0Fu;
-    constexpr uint8_t PORT_PINS[4] = {8u, 8u, 6u, 4u};
-    if (port < 4u && bit < PORT_PINS[port]) {
+    // S2-2: descriptor-driven legality (see resolve_timer_pin).
+    const uint8_t* pin_masks = mcs51_family_desc(ctx->family)->port_pin_masks;
+    if (port < 4u && bit < pin_masks[port]) {
         return static_cast<uint16_t>((port << 3) | bit);
     }
     return fallback;
@@ -938,8 +956,9 @@ static uint16_t resolve_cap_pin(struct Mcu51Context* ctx, uint8_t c) {
     uint8_t sel = ctx->xdata_shadow[MCS51_XSFR_PS_CAP0 + c];
     uint8_t port = (sel >> 4) & 0x07u;
     uint8_t bit = sel & 0x0Fu;
-    constexpr uint8_t PORT_PINS[4] = {8u, 8u, 6u, 4u};
-    if (port < 4u && bit < PORT_PINS[port]) {
+    // S2-2: descriptor-driven legality (see resolve_timer_pin).
+    const uint8_t* pin_masks = mcs51_family_desc(ctx->family)->port_pin_masks;
+    if (port < 4u && bit < pin_masks[port]) {
         return static_cast<uint16_t>((port << 3) | bit);
     }
     return FALLBACK[c];

@@ -44,12 +44,10 @@ BASELINE: list[tuple[str, str, str, str]] = [
     # mcs51_adc.h -> stage1 (physical-pin rail + ADCLDO sink)
     ("include/mcs51_adc.h", "cms8s", r"CMS8S", "stage1"),
     ("include/mcs51_adc.h", "adcldo", r"ADCLDO", "stage1"),
-    # mcs51_context.h -> stage2 (context purify; soc_priv + macro sink)
-    ("include/mcs51_context.h", "cms8s",
-     r"CMS8S78xx|Mcs51Cms8s|cms8sAdc|cms8s_|CMS8S78XX|CMS8S extended-SFR",
-     "stage2"),
-    ("include/mcs51_context.h", "xsfr_addr", r"0xF000u", "stage2"),
-    # S2-1 done: ADCLDO token gone from context.h (generic rail params).
+    # mcs51_context.h -> stage2 (context purify; soc_priv + macro sink).
+    # S2-1/S2-2 done: only the XRAM comment row + PS_ADET doc row below
+    # remain by content (XRAM block + PS seeds sunk); entries pruned with
+    # the lines.
     ("include/mcs51_context.h", "ps_sel", r"PS_ADET", "stage2"),
     # mcs51_family.h: family-id rows + schema docs are BY DESIGN (the
     # descriptor table is the single place allowed to name families).

@@ -125,6 +125,9 @@ extern "C" void tearDown(void) {}
 int main(void) {
     int fails = 0;
 
+    // S2-2: this file lives in cms8s78xx/ — pin the family so the
+    // descriptor masks ({8,8,6,4}) apply to every section below.
+    mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
     wink_mcs51_isr_enable();
     wink_mcs51_extint_reset();
     wink_mcs51_host_ext_pins_reset();
@@ -293,12 +296,37 @@ int main(void) {
     CHECK(g_isr0_hits == 1,
           "I: reset PS 0x7F restores classic P3.2 as the INT0 pin");
 
+    // ── J: S2-2 illegal-pin tightening (descriptor {8,8,6,4}) ─────────────
+    // P2.6 (sel 0x26) and P3.7 (sel 0x37) have no pin on CMS8S: the mux
+    // must fall back to classic P3.2 instead of sampling a ghost pin.
+    g_isr0_hits = 0;
+    ie0_config(/*it0=*/true, /*ex0=*/true, /*ea=*/true);
+    ext_set(PIN_INT0, EXT_HIGH);  // fallback baseline high
+    ext_set(22, EXT_HIGH);        // P2.6 released
+    mcs51_get_context()->xdata_shadow[XSFR_PS_INT0] = 0x26u;
+    next_slice();
+    poll();  // illegal mux -> fresh baseline on fallback, no edge
+    CHECK(g_isr0_hits == 0,
+          "J: illegal P2.6 mux re-baselines on fallback, no edge");
+    next_slice();
+    ext_set(22, EXT_LOW);  // falling edge on a nonexistent pin — ignored
+    poll();
+    CHECK(g_isr0_hits == 0, "J: edge on illegal P2.6 must not vector INT0");
+    CHECK(ie0_bit() == 0, "J: no IE0 latch from illegal pin");
+    mcs51_get_context()->xdata_shadow[XSFR_PS_INT0] = 0x37u;  // P3.7, illegal
+    next_slice();
+    poll();
+    ext_set(31, EXT_LOW);
+    poll();
+    CHECK(g_isr0_hits == 0, "J: edge on illegal P3.7 must not vector INT0");
+
     if (fails) {
         return 1;
     }
     printf("[mcs51-ext] PASS: INT0/INT1 model — edge latch+auto-clear, pending "
            "through disable, level-mode per-slice re-request, 10 ms throttle, "
            "HiZ ignore, PS pin-share mux (INT0->P3.0) + reset fallback, "
+           "illegal-pin tightening (P2.6/P3.7), "
            "reset flag/baseline semantics\n");
     return 0;
 }
