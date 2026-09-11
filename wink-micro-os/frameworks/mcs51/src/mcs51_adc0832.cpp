@@ -16,7 +16,9 @@
 // on_read trap instead (WinkSfr::operator uint8_t per-bit reconstruction).
 #include "ADC0832.H"
 
-#include <stdint.h>
+#include <cassert>
+#include <cstdint>
+#include <cstring>
 
 #include "mcs51_adc.h"
 #include "mcs51_context.h"
@@ -27,12 +29,22 @@ namespace {
 
 enum AdcPhase { PHASE_IDLE = 0, PHASE_INPUT, PHASE_OUTPUT };
 
-// M2: state lives in Mcu51Context::adc0832 (was file-static s_adc).
-// Pin-trap callbacks are registered with a null cookie, so they resolve
-// the active context (single-context simulation model, same as the CMS8S
-// models' mcs51_get_context() fallback).
-inline Mcs51Adc0832State& adc_state() {
-    return mcs51_get_context()->adc0832;
+// S2-1 device BSS pool (scheme A): one Adc0832State slot per context
+// instance, owned by the device (migrates to devices/adc0832/ in stage3
+// with this TU). Indexed by ctx->instance_index — the same key as the chip
+// pool, but a separate array: board devices are orthogonal to families
+// (classic + ADC0832 is the live iron_ntc combo), so they must not share
+// the chip's soc_priv slot.
+static Adc0832State s_adc0832_pool[MCS51_MAX_INSTANCES];
+
+// M2: state lives per-instance (was Mcu51Context::adc0832, was file-static
+// s_adc before that). Pin-trap callbacks are registered with a null cookie,
+// so they resolve the active context (single-context simulation model, same
+// as the CMS8S models' mcs51_get_context() fallback).
+inline Adc0832State& adc_state() {
+    Mcu51Context* ctx = mcs51_get_context();
+    assert(ctx->instance_index < MCS51_MAX_INSTANCES);
+    return s_adc0832_pool[ctx->instance_index];
 }
 
 inline uint8_t sfr_addr_for(uint8_t port) {
@@ -141,6 +153,9 @@ extern "C" void mcs51_adc0832_init(uint8_t cs_port,  uint8_t cs_bit,
                                    uint8_t clk_port, uint8_t clk_bit,
                                    uint8_t di_port,  uint8_t di_bit,
                                    uint8_t do_port,  uint8_t do_bit) {
+    // S2-1: own the pool slot (devices have no reset-loop entry; init is
+    // the lifecycle point — re-binding memsets, matching old re-init).
+    std::memset(&adc_state(), 0, sizeof(Adc0832State));
     adc_state().cs_port = cs_port;   adc_state().cs_bit = cs_bit;
     adc_state().clk_port = clk_port; adc_state().clk_bit = clk_bit;
     adc_state().di_port = di_port;   adc_state().di_bit = di_bit;

@@ -95,6 +95,9 @@ endif()
 
 set(_WASM_MCS51_INCLUDES
     -I${_SDK_ROOT}/frameworks/mcs51/include
+    # S2-1: chip-private headers (stage6 target split deletes this hand list)
+    -I${_SDK_ROOT}/frameworks/mcs51/chips/cms8s78xx/include
+    -I${_SDK_ROOT}/frameworks/mcs51/chips/at89c52/include
     -I${_SDK_ROOT}/pal/include
     -I${_SDK_ROOT}/pal/include/osal
     -I${_SDK_ROOT}/pal/include/hal

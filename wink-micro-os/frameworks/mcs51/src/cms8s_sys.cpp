@@ -26,10 +26,12 @@
 #include "wink_mcs51_strict.h"
 #include "wink_mcs51_timer.h"
 #include "wink_mcs51_wdt.h"
+#include "cms8s_priv.h"
 
 #include <cassert>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 
 #ifndef WINK_MCS51_STRICT
 #include "pal_log.h"
@@ -96,14 +98,15 @@ inline bool wdt_enabled(const Mcu51Context* ctx) {
     return (ctx->sfr_shadow[SFR_WDCON] & WDCON_WDTRE) != 0u;
 }
 
-// M2: TA phase lives in Mcu51Context::sysProt (was file-static s_sys).
-// Hooks already carry ctx; reset_state takes it explicitly.
+// M2: TA phase lives in the chip pool (was Mcu51Context::sysProt, was
+// file-static s_sys before that). Hooks already carry ctx; reset_state
+// takes it explicitly.
 void reset_state(Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
-    ctx->sysProt.ta_phase = 0;
-    ctx->sysProt.ta_aa_us = 0;
-    ctx->sysProt.wdt_last_feed_us = 0;
-    ctx->sysProt.wdt_overflow_latched = 0;
+    cms8s_priv(ctx)->sys.ta_phase = 0;
+    cms8s_priv(ctx)->sys.ta_aa_us = 0;
+    cms8s_priv(ctx)->sys.wdt_last_feed_us = 0;
+    cms8s_priv(ctx)->sys.wdt_overflow_latched = 0;
     s_wdt_triggered = 0u;
 #ifndef WINK_MCS51_STRICT
     s_wdt_warned = false;
@@ -112,8 +115,8 @@ void reset_state(Mcu51Context* ctx) {
 
 // Returns true exactly once after a well-formed TA unlock sequence.
 bool consume_unlock(Mcu51Context* ctx) {
-    const bool ok = (ctx->sysProt.ta_phase == 2u);
-    ctx->sysProt.ta_phase = 0u;
+    const bool ok = (cms8s_priv(ctx)->sys.ta_phase == 2u);
+    cms8s_priv(ctx)->sys.ta_phase = 0u;
     return ok;
 }
 
@@ -149,7 +152,7 @@ void wdt_check_impl(Mcu51Context* ctx) {
     if (!has_wdt(ctx) || !wdt_enabled(ctx)) {
         return;
     }
-    if (ctx->sysProt.wdt_overflow_latched != 0u) {
+    if (cms8s_priv(ctx)->sys.wdt_overflow_latched != 0u) {
         return;  // one count per arming episode until the next feed
     }
     const uint64_t interval = wdt_interval_us_impl(ctx);
@@ -157,11 +160,11 @@ void wdt_check_impl(Mcu51Context* ctx) {
         return;
     }
     const uint64_t now = ctx->virtual_us;
-    if (now < ctx->sysProt.wdt_last_feed_us) {
+    if (now < cms8s_priv(ctx)->sys.wdt_last_feed_us) {
         return;  // clock reset race: never report a negative age
     }
-    if (now - ctx->sysProt.wdt_last_feed_us >= interval) {
-        ctx->sysProt.wdt_overflow_latched = 1u;
+    if (now - cms8s_priv(ctx)->sys.wdt_last_feed_us >= interval) {
+        cms8s_priv(ctx)->sys.wdt_overflow_latched = 1u;
         wdt_overflow_policy();
     }
 }
@@ -171,25 +174,28 @@ void wdt_check_impl(Mcu51Context* ctx) {
 // anonymous namespace is kept).
 extern "C" void on_ta_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val, uint8_t new_val) {
     if (!ctx) ctx = mcs51_get_context();
+    if (!cms8s_hook_armed(ctx)) return;  // S2-1: stale hook on another family
     (void)addr;
     (void)old_val;
     // Stale half-open window expires before judging the new key.
-    if (ctx->sysProt.ta_phase == 1u &&
-        ctx->virtual_us - ctx->sysProt.ta_aa_us > kTaWindowUs) {
-        ctx->sysProt.ta_phase = 0u;
+    if (cms8s_priv(ctx)->sys.ta_phase == 1u &&
+        ctx->virtual_us - cms8s_priv(ctx)->sys.ta_aa_us > kTaWindowUs) {
+        cms8s_priv(ctx)->sys.ta_phase = 0u;
     }
-    if (ctx->sysProt.ta_phase == 0u && new_val == TA_KEY1) {
-        ctx->sysProt.ta_phase = 1u;
-        ctx->sysProt.ta_aa_us = ctx->virtual_us;
-    } else if (ctx->sysProt.ta_phase == 1u && new_val == TA_KEY2) {
-        ctx->sysProt.ta_phase = 2u;
+    if (cms8s_priv(ctx)->sys.ta_phase == 0u && new_val == TA_KEY1) {
+        cms8s_priv(ctx)->sys.ta_phase = 1u;
+        cms8s_priv(ctx)->sys.ta_aa_us = ctx->virtual_us;
+    } else if (cms8s_priv(ctx)->sys.ta_phase == 1u && new_val == TA_KEY2) {
+        cms8s_priv(ctx)->sys.ta_phase = 2u;
     } else {
         // Any wrong/extra TA write aborts the sequence.
-        ctx->sysProt.ta_phase = 0u;
+        cms8s_priv(ctx)->sys.ta_phase = 0u;
     }
 }
 
 extern "C" void on_clkdiv_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val, uint8_t new_val) {
+    if (!ctx) ctx = mcs51_get_context();
+    if (!cms8s_hook_armed(ctx)) return;  // S2-1: stale hook on another family
     if (!consume_unlock(ctx)) {
         // Locked write is ignored by silicon: restore the previous value.
         ctx->sfr_shadow[addr] = old_val;
@@ -206,6 +212,8 @@ extern "C" void on_clkdiv_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val
 }
 
 extern "C" void on_wdcon_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val, uint8_t new_val) {
+    if (!ctx) ctx = mcs51_get_context();
+    if (!cms8s_hook_armed(ctx)) return;  // S2-1: stale hook on another family
     if (!consume_unlock(ctx)) {
         ctx->sfr_shadow[addr] = old_val;
         return;
@@ -215,12 +223,12 @@ extern "C" void on_wdcon_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val,
     const bool was_re = (old_val & WDCON_WDTRE) != 0u;
     const bool now_re = (new_val & WDCON_WDTRE) != 0u;
     if (!was_re && now_re) {
-        ctx->sysProt.wdt_last_feed_us = ctx->virtual_us;
-        ctx->sysProt.wdt_overflow_latched = 0u;
+        cms8s_priv(ctx)->sys.wdt_last_feed_us = ctx->virtual_us;
+        cms8s_priv(ctx)->sys.wdt_overflow_latched = 0u;
     }
     if ((new_val & WDCON_WDTCLR) != 0u) {
-        ctx->sysProt.wdt_last_feed_us = ctx->virtual_us;
-        ctx->sysProt.wdt_overflow_latched = 0u;
+        cms8s_priv(ctx)->sys.wdt_last_feed_us = ctx->virtual_us;
+        cms8s_priv(ctx)->sys.wdt_overflow_latched = 0u;
     }
 }
 
@@ -229,7 +237,8 @@ extern "C" void on_wdcon_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val,
 // or power-loss model, so every firmware-issued access is reported instead
 // of succeeding silently. STRICT aborts; Release counts per access.
 extern "C" void on_iap_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val, uint8_t new_val) {
-    (void)ctx;
+    if (!ctx) ctx = mcs51_get_context();
+    if (!cms8s_hook_armed(ctx)) return;  // S2-1: classic has no IAP block
     (void)addr;
     (void)old_val;
     (void)new_val;
@@ -237,20 +246,40 @@ extern "C" void on_iap_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val, u
 }
 
 extern "C" void on_iap_read(Mcu51Context* ctx, uint8_t addr) {
-    (void)ctx;
+    if (!ctx) ctx = mcs51_get_context();
+    if (!cms8s_hook_armed(ctx)) return;  // S2-1: classic has no IAP block
     (void)addr;
     wink_mcs51_unsupported(MCS51_FEAT_IAP_FLASH, "IAP/Flash status poll (MCTRL/MDATA/MADR/MLOCK/PCRCD)");
 }
 
 }  // namespace
 
+// S2-1 chip BSS pool (scheme A): one Cms8sPriv slot per context instance.
+// Owned by the chip package (lives here, migrates to chips/ in stage6 with
+// this TU). Core never names it (§3.1 one-way rule); binding is self-service
+// through cms8s_soc_bind below.
+static Cms8sPriv s_cms8s_priv_pool[MCS51_MAX_INSTANCES];
+
 extern "C" {
 
+void cms8s_soc_bind(struct Mcu51Context* ctx) {
+    if (!ctx) ctx = mcs51_get_context();
+    assert(ctx->instance_index < MCS51_MAX_INSTANCES);
+    Cms8sPriv* slot = &s_cms8s_priv_pool[ctx->instance_index];
+    if (ctx->soc_priv == slot) {
+        return;  // idempotent: already bound (later inits in the same reset)
+    }
+    std::memset(slot, 0, sizeof(*slot));
+    ctx->soc_priv = slot;
+}
+
 void cms8s_sys_reset(struct Mcu51Context* ctx) {
+    cms8s_soc_bind(ctx);  // defensive: standalone resets bind too (no-op if bound)
     reset_state(ctx);
 }
 
 void cms8s_sys_init(struct Mcu51Context* ctx) {
+    cms8s_soc_bind(ctx);  // bind BEFORE any pool deref (ordering invariant)
     reset_state(ctx);
     mcs51_trap_register_sfr_write(SFR_TA, on_ta_write);
     mcs51_trap_register_sfr_write(SFR_CLKDIV, on_clkdiv_write);
@@ -273,14 +302,14 @@ uint64_t cms8s_sys_next_event_us(struct Mcu51Context* ctx) {
     if (!has_wdt(ctx) || !wdt_enabled(ctx)) {
         return UINT64_MAX;
     }
-    if (ctx->sysProt.wdt_overflow_latched != 0u) {
+    if (cms8s_priv(ctx)->sys.wdt_overflow_latched != 0u) {
         return UINT64_MAX;
     }
     const uint64_t interval = wdt_interval_us_impl(ctx);
     if (interval == 0u) {
         return UINT64_MAX;
     }
-    return ctx->sysProt.wdt_last_feed_us + interval;
+    return cms8s_priv(ctx)->sys.wdt_last_feed_us + interval;
 }
 
 uint64_t wink_mcs51_wdt_interval_us(void) {
@@ -296,18 +325,18 @@ uint64_t wink_mcs51_wdt_next_event_us(struct Mcu51Context* ctx) {
     if (!has_wdt(ctx) || !wdt_enabled(ctx)) {
         return UINT64_MAX;
     }
-    if (ctx->sysProt.wdt_overflow_latched != 0u) {
+    if (cms8s_priv(ctx)->sys.wdt_overflow_latched != 0u) {
         return UINT64_MAX;
     }
     const uint64_t interval = wdt_interval_us_impl(ctx);
     if (interval == 0u) {
         return UINT64_MAX;
     }
-    return ctx->sysProt.wdt_last_feed_us + interval;
+    return cms8s_priv(ctx)->sys.wdt_last_feed_us + interval;
 }
 
 uint64_t wink_mcs51_wdt_last_feed_us(void) {
-    return mcs51_get_context()->sysProt.wdt_last_feed_us;
+    return cms8s_priv(nullptr)->sys.wdt_last_feed_us;
 }
 
 #ifdef __EMSCRIPTEN__
@@ -325,11 +354,11 @@ void cms8s_sys_notify_sfr_write(struct Mcu51Context* ctx, uint8_t addr) {
     if (addr == SFR_TA || addr == SFR_CLKDIV || addr == SFR_WDCON) {
         return;  // sequence keys + the consuming protected write itself
     }
-    if (ctx->sysProt.ta_phase != 0u) {
+    if (cms8s_priv(ctx)->sys.ta_phase != 0u) {
         // Silicon drops the half-open window when any other SFR access
         // slips between the keys (GAP-07): the pending protected write
         // then arrives locked and rolls back in its own hook.
-        ctx->sysProt.ta_phase = 0u;
+        cms8s_priv(ctx)->sys.ta_phase = 0u;
     }
 }
 

@@ -30,11 +30,30 @@
 // read-after-falling (8 reads after falls #3..#10) — with no off-by-one.
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// Per-instance trap state machine (S2-1, scheme A): lives in the device
+// BSS pool (mcs51_adc0832.cpp, indexed by instance_index), NOT in the
+// generic context (board devices are orthogonal to chip families).
+// Migrates to devices/adc0832/include/adc0832.h in stage3 with its TU.
+typedef struct {
+    uint8_t cs_port, cs_bit;
+    uint8_t clk_port, clk_bit;
+    uint8_t di_port, di_bit;
+    uint8_t do_port, do_bit;
+    bool    is_dio_shared;
+    uint8_t phase;         // 0=IDLE, 1=INPUT, 2=OUTPUT
+    uint8_t rise_count;    // CLK rising edges since CS fall
+    uint8_t fall_count;    // CLK falling edges in OUTPUT phase
+    uint8_t channel_cfg;   // [1]=SGL/DIF, [0]=ODD/SIGN
+    uint8_t shift_data;    // 8-bit conversion result, MSB first
+    uint8_t out_bit;       // current DO drive level (1 = released/high)
+} Adc0832State;
 
 // Bind an ADC0832 instance to MCU pins and register its Level-2 traps.
 // port: 0=P0 … 3=P3; bit: 0..7. Out-of-range pins are ignored. Re-calling

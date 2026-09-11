@@ -23,10 +23,14 @@ void check(bool cond, const char *msg) {
     }
 }
 
-// Pre-decoupling baseline (S2-0 probe, MinGW GCC): 75648 B master,
+// Pre-decoupling baseline (S2-0 probe, MinGW GCC i686): 75648 B master,
 // 75656 B post-stage0 (caps_cache +8), 75752 B post-stage1 (rail 64 +96).
-// Ceiling = current + 1 KB slack for cross-toolchain packing drift.
-constexpr unsigned kBudgetBytes = 75752u + 1024u;
+// S2-1 purifying (scheme A) measured 75672 B (-80 split; +24 vs baseline =
+// caps_cache 8 [approved] + gpio_hooks 12 [planned stage4 infra] + 4 align,
+// booked per 00-README §8; S2-2 shaves ~120 more via T3/T4/port sampling).
+// Ceiling = current + 1 KB slack (covers x64-MSVC pointer growth vs the
+// i686-measured truth; per-toolchain exact numbers live in stage2 §4).
+constexpr unsigned kBudgetBytes = 75672u + 1024u;
 static_assert(sizeof(Mcu51Context) <= kBudgetBytes,
               "Mcu51Context exceeded the RAM budget (see stage2 §4 table)");
 
@@ -44,10 +48,10 @@ int main(void) {
            (unsigned)sizeof(z->xdata_shadow), (unsigned)sizeof(z->isr_table),
            (unsigned)sizeof(z->isr_dispatch_count), (unsigned)sizeof(z->timer),
            (unsigned)sizeof(z->extint), (unsigned)sizeof(z->uart));
-    printf("[budget] adc0832=%u sysProt=%u buzzer=%u cms8sAdc=%u rail=%u+%u\n",
-           (unsigned)sizeof(z->adc0832), (unsigned)sizeof(z->sysProt),
-           (unsigned)sizeof(z->buzzer), (unsigned)sizeof(z->cms8sAdc),
-           (unsigned)sizeof(z->adc_injected), (unsigned)sizeof(z->adc_inject_flag));
+    printf("[budget] rail=%u+%u soc_priv=%u idx=%u hooks=%u extbus=%u\n",
+           (unsigned)sizeof(z->adc_injected), (unsigned)sizeof(z->adc_inject_flag),
+           (unsigned)sizeof(z->soc_priv), (unsigned)sizeof(z->instance_index),
+           (unsigned)sizeof(z->gpio_hooks), (unsigned)sizeof(z->extbus));
     check(sizeof(z->xdata_shadow) == 65536u, "xdata_shadow must stay 64KB");
     check(sizeof(Mcu51Context) <= kBudgetBytes, "budget ceiling breached");
     if (g_fails) {

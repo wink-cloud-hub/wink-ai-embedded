@@ -682,6 +682,11 @@ if(TARGET wink_mcs51_compat)
     add_mcs51_host_test(test_mcs51_context_budget
         ../frameworks/mcs51/test/core/test_mcs51_context_budget.cpp)
 
+    # Stage2 S2-1 (PLAN-20260911-MCS51-S2): soc_priv scheme-A isolation
+    # (dual-context pool split, idx clamp, hooks isolation, classic null).
+    add_mcs51_host_test(test_mcs51_soc_priv_isolation
+        ../frameworks/mcs51/test/core/test_mcs51_soc_priv_isolation.cpp)
+
     # GAP-23 freshness gate: the checked-in XSFR tripwire allowlist must
     # match what the audit script emits from REG_CMS8S78XX.H (catches a
     # stale allowlist after a pin-mux register is added/removed).
@@ -873,13 +878,16 @@ if(TARGET wink_mcs51_compat)
 
     # Stage 3 A-08 (GAP-24): classic external MOVX bus conflict + IAP trap —
     # XBYTE/GPIO both orders, P1 exemption, CMS8S zero-regression, IAP block.
+    # S2-1: TU renamed classic_bus -> ext_bus (generic concept); the ctest
+    # NAME stays test_mcs51_classic_bus so the migration baseline
+    # (--compare name set) is untouched.
     add_mcs51_host_test(test_mcs51_classic_bus
-        ../frameworks/mcs51/test/core/test_mcs51_classic_bus.cpp)
+        ../frameworks/mcs51/test/core/test_mcs51_ext_bus.cpp)
 
     # GAP-24 STRICT twin: same TU, STRICT-built compat lib (conflict + IAP
     # abort via child re-execution). Mirrors the wdt_ta_strict block.
     add_wink_host_test(test_mcs51_classic_bus_strict
-        ../frameworks/mcs51/test/core/test_mcs51_classic_bus.cpp)
+        ../frameworks/mcs51/test/core/test_mcs51_ext_bus.cpp)
     target_link_libraries(test_mcs51_classic_bus_strict PRIVATE wink_mcs51_compat_strict wink_runtime)
     target_compile_definitions(test_mcs51_classic_bus_strict PRIVATE SIMULATION=1 WINK_MCU_AT89C52=1)
     if(NOT MSVC)

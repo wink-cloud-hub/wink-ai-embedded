@@ -10,6 +10,7 @@
 #include "mcs51_trap.h"
 #include "mcs51_context.h"
 #include "mcs51_sfr_map.h"
+#include "cms8s_priv.h"
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_isr.h"
 
@@ -170,14 +171,11 @@ constexpr uint8_t PORT_PINS[4] = {8u, 8u, 8u, 8u};
 constexpr uint8_t EXT_LOW  = 0u;
 constexpr uint8_t EXT_HIGH = 1u;
 
-// M2: Cms8sAdcState/AdetPinState/Cms8sAdcPriv now live in mcs51_context.h
-// (Mcs51Cms8sAdcState/Mcs51AdetPinState/Mcs51Cms8sAdcPriv) as
-// Mcu51Context::cms8sAdc. The old file-static default object aliased ONE
-// priv into EVERY context via soc_priv — two contexts shared conversions.
-
-inline Mcs51Cms8sAdcPriv* get_adc_priv(Mcu51Context* ctx) {
-    if (!ctx) ctx = mcs51_get_context();
-    return &ctx->cms8sAdc;
+// M2: Cms8sAdcState/AdetPinState now live in the chip pool (was
+// Mcu51Context::cms8sAdc, was file-static before that). get_adc_priv keeps
+// its name so call sites are untouched; only the storage moved.
+inline Cms8sPriv* get_adc_priv(Mcu51Context* ctx) {
+    return cms8s_priv(ctx);
 }
 
 // Performs one 12-bit ADC conversion synchronously: readiness gates
@@ -185,7 +183,7 @@ inline Mcs51Cms8sAdcPriv* get_adc_priv(Mcu51Context* ctx) {
 // per ADFM, latches ADCIF, and dispatches vector 19 if enabled.
 void do_adc_conversion(Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
-    Mcs51Cms8sAdcPriv* priv = get_adc_priv(ctx);
+    Cms8sPriv* priv = get_adc_priv(ctx);
     const uint8_t ch = static_cast<uint8_t>(ctx->sfr_shadow[SFR_ADCCHS] & 0x3Fu);
 
     // Gate 0: LDO must be enabled; Vref follows VSEL (A-02, GAP-05).
@@ -288,6 +286,7 @@ extern "C" void on_adcon0_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val
     (void)old_val;
 
     if (!ctx) ctx = mcs51_get_context();
+    if (!cms8s_hook_armed(ctx)) return;  // S2-1: stale hook on another family
 
     // Conversion starts only on an ADGO write with the module enabled.
     if ((new_val & ADCON0_ADGO) == 0u) {
@@ -310,8 +309,9 @@ bool cms8s_adc_dual_read_synth = true;
 uint32_t cms8s_adc_synth_redirect_count = 0u;
 
 void cms8s_adc_model_reset(struct Mcu51Context* ctx) {
+    cms8s_soc_bind(ctx);  // defensive: standalone resets bind too (no-op if bound)
     if (!ctx) ctx = mcs51_get_context();
-    Mcs51Cms8sAdcPriv* priv = get_adc_priv(ctx);
+    Cms8sPriv* priv = get_adc_priv(ctx);
     priv->in_poll = false;
     priv->adet.last_pin = 0xFFFFu;
     priv->adet.last_level = 0xFFu;
@@ -337,8 +337,9 @@ void cms8s_adc_model_reset(struct Mcu51Context* ctx) {
 }
 
 void cms8s_adc_init(struct Mcu51Context* ctx) {
+    cms8s_soc_bind(ctx);  // bind BEFORE any pool deref (ordering invariant)
     if (!ctx) ctx = mcs51_get_context();
-    Mcs51Cms8sAdcPriv* priv = get_adc_priv(ctx);
+    Cms8sPriv* priv = get_adc_priv(ctx);
     priv->adc.conversion_count = 0u;
     priv->adc.last_channel = 0xFFu;
     cms8s_adc_model_reset(ctx);
@@ -347,7 +348,7 @@ void cms8s_adc_init(struct Mcu51Context* ctx) {
 
 void cms8s_adc_poll(struct Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
-    Mcs51Cms8sAdcPriv* priv = get_adc_priv(ctx);
+    Cms8sPriv* priv = get_adc_priv(ctx);
     if (priv->in_poll) {
         return;
     }

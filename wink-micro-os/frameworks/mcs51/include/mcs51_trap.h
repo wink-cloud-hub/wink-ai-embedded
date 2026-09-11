@@ -32,6 +32,7 @@
 // PER-CONTEXT (Mcu51Context fields, cleared by mcs51_context_reset).
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -60,6 +61,27 @@ typedef struct {
 typedef void (*mcs51_sfr_write_hook_t)(struct Mcu51Context* ctx, uint8_t addr,
                                        uint8_t old_val, uint8_t new_val);
 typedef void (*mcs51_sfr_read_hook_t)(struct Mcu51Context* ctx, uint8_t addr);
+
+// ── GPIO Trait hooks (Stage2 S2-1 declares, stage4 mounts) ─────────────────
+// Per-context function table (stored BY VALUE in Mcu51Context::gpio_hooks,
+// memset zero = unhooked). Lets enhanced families override pin behavior
+// without branching generic code: may_drive (pin can drive / isn't
+// analog-claimed), is_analog (pin muxed to analog, digital reads HiZ),
+// pullup (effective weak pull-up level for input reads). Standard parts
+// take the caps_cache fast path and never pay an indirection (S2-1: pure
+// declaration, zero call sites, zero behavior change).
+typedef bool (*mcs51_gpio_may_drive_fn_t)(struct Mcu51Context* ctx,
+                                          uint16_t pin);
+typedef bool (*mcs51_gpio_is_analog_fn_t)(struct Mcu51Context* ctx,
+                                          uint16_t pin);
+typedef uint8_t (*mcs51_gpio_pullup_fn_t)(struct Mcu51Context* ctx,
+                                          uint16_t pin);
+
+typedef struct {
+    mcs51_gpio_may_drive_fn_t may_drive;
+    mcs51_gpio_is_analog_fn_t is_analog;
+    mcs51_gpio_pullup_fn_t    pullup;
+} Mcs51GpioHooks;
 
 // Registration API (idempotent; operates on active Mcu51Context).
 // port 0..3 = P0..P3; out-of-range port/bit is ignored.

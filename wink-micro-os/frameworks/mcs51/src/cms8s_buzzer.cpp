@@ -2,6 +2,7 @@
 // CMS8S78xx on-chip Buzzer peripheral model (ADR-0004 static dispatch).
 #include "cms8s_buzzer.h"
 
+#include "cms8s_priv.h"
 #include "mcs51_context.h"
 #include "mcs51_trap.h"
 #include "wink_mcs51_gpio.h"
@@ -18,7 +19,8 @@ constexpr uint16_t BUZZER_PIN = 3u; // P0.3: (0 << 3) | 3
 constexpr uint8_t BUZCON_BUZEN_MASK = 0x80u;
 constexpr uint8_t BUZCON_BUZCKS_MASK = 0x03u;
 
-// M2: run state lives in Mcu51Context::buzzer (was file-static s_buzzer).
+// M2: run state lives in the chip pool (was Mcu51Context::buzzer, was
+// file-static s_buzzer before that).
 
 void update_buzzer_state(Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
@@ -36,19 +38,19 @@ void update_buzzer_state(Mcu51Context* ctx) {
         const uint32_t clk_hz = ctx->clock_hz ? ctx->clock_hz : 24000000u;
         uint64_t half_us = (static_cast<uint64_t>(prescaler) * buzdiv * 1000000ull) / clk_hz;
         if (half_us == 0) half_us = 1;
-        ctx->buzzer.half_period_us = static_cast<uint32_t>(half_us);
+        cms8s_priv(ctx)->buzzer.half_period_us = static_cast<uint32_t>(half_us);
 
-        if (!ctx->buzzer.running) {
-            ctx->buzzer.running = true;
-            ctx->buzzer.pin_level = 1u;
+        if (!cms8s_priv(ctx)->buzzer.running) {
+            cms8s_priv(ctx)->buzzer.running = true;
+            cms8s_priv(ctx)->buzzer.pin_level = 1u;
             js_pal_gpio_write(BUZZER_PIN, true, MCS51_DRIVE_SUPPLY);
-            ctx->buzzer.next_toggle_us = ctx->virtual_us + ctx->buzzer.half_period_us;
+            cms8s_priv(ctx)->buzzer.next_toggle_us = ctx->virtual_us + cms8s_priv(ctx)->buzzer.half_period_us;
         }
     } else {
-        if (ctx->buzzer.running) {
-            ctx->buzzer.running = false;
-            ctx->buzzer.next_toggle_us = UINT64_MAX;
-            ctx->buzzer.pin_level = 0u;
+        if (cms8s_priv(ctx)->buzzer.running) {
+            cms8s_priv(ctx)->buzzer.running = false;
+            cms8s_priv(ctx)->buzzer.next_toggle_us = UINT64_MAX;
+            cms8s_priv(ctx)->buzzer.pin_level = 0u;
             js_pal_gpio_write(BUZZER_PIN, false, MCS51_DRIVE_SUPPLY);
         }
     }
@@ -59,6 +61,8 @@ extern "C" void on_buzzer_sfr_write(Mcu51Context* ctx, uint8_t addr, uint8_t old
     (void)addr;
     (void)old_val;
     (void)new_val;
+    if (!ctx) ctx = mcs51_get_context();
+    if (!cms8s_hook_armed(ctx)) return;  // S2-1: stale hook on another family
     update_buzzer_state(ctx);
 }
 
@@ -67,15 +71,17 @@ extern "C" void on_buzzer_sfr_write(Mcu51Context* ctx, uint8_t addr, uint8_t old
 extern "C" {
 
 void cms8s_buzzer_reset(struct Mcu51Context* ctx) {
+    cms8s_soc_bind(ctx);  // defensive: standalone resets bind too (no-op if bound)
     if (!ctx) ctx = mcs51_get_context();
-    ctx->buzzer.running = false;
-    ctx->buzzer.pin_level = 0u;
-    ctx->buzzer.half_period_us = 0u;
-    ctx->buzzer.next_toggle_us = UINT64_MAX;
-    ctx->buzzer.toggle_count = 0u;
+    cms8s_priv(ctx)->buzzer.running = false;
+    cms8s_priv(ctx)->buzzer.pin_level = 0u;
+    cms8s_priv(ctx)->buzzer.half_period_us = 0u;
+    cms8s_priv(ctx)->buzzer.next_toggle_us = UINT64_MAX;
+    cms8s_priv(ctx)->buzzer.toggle_count = 0u;
 }
 
 void cms8s_buzzer_init(struct Mcu51Context* ctx) {
+    cms8s_soc_bind(ctx);  // bind BEFORE any pool deref (ordering invariant)
     cms8s_buzzer_reset(ctx);
     mcs51_trap_register_sfr_write(SFR_BUZCON, on_buzzer_sfr_write);
     mcs51_trap_register_sfr_write(SFR_BUZDIV, on_buzzer_sfr_write);
@@ -86,20 +92,20 @@ void cms8s_buzzer_poll(struct Mcu51Context* ctx) {
 
     update_buzzer_state(ctx);
 
-    if (!ctx->buzzer.running || ctx->buzzer.next_toggle_us == UINT64_MAX) {
+    if (!cms8s_priv(ctx)->buzzer.running || cms8s_priv(ctx)->buzzer.next_toggle_us == UINT64_MAX) {
         return;
     }
 
     constexpr uint32_t MAX_TOGGLES_PER_POLL = 1000u;
     uint32_t toggles = 0u;
-    while (ctx->buzzer.running && ctx->virtual_us >= ctx->buzzer.next_toggle_us) {
-        ctx->buzzer.pin_level ^= 1u;
-        js_pal_gpio_write(BUZZER_PIN, ctx->buzzer.pin_level != 0, MCS51_DRIVE_SUPPLY);
-        ctx->buzzer.toggle_count++;
-        ctx->buzzer.next_toggle_us += ctx->buzzer.half_period_us;
+    while (cms8s_priv(ctx)->buzzer.running && ctx->virtual_us >= cms8s_priv(ctx)->buzzer.next_toggle_us) {
+        cms8s_priv(ctx)->buzzer.pin_level ^= 1u;
+        js_pal_gpio_write(BUZZER_PIN, cms8s_priv(ctx)->buzzer.pin_level != 0, MCS51_DRIVE_SUPPLY);
+        cms8s_priv(ctx)->buzzer.toggle_count++;
+        cms8s_priv(ctx)->buzzer.next_toggle_us += cms8s_priv(ctx)->buzzer.half_period_us;
         if (++toggles >= MAX_TOGGLES_PER_POLL) {
-            if (ctx->virtual_us >= ctx->buzzer.next_toggle_us) {
-                ctx->buzzer.next_toggle_us = ctx->virtual_us + ctx->buzzer.half_period_us;
+            if (ctx->virtual_us >= cms8s_priv(ctx)->buzzer.next_toggle_us) {
+                cms8s_priv(ctx)->buzzer.next_toggle_us = ctx->virtual_us + cms8s_priv(ctx)->buzzer.half_period_us;
             }
             break;
         }
@@ -108,8 +114,8 @@ void cms8s_buzzer_poll(struct Mcu51Context* ctx) {
 
 uint64_t cms8s_buzzer_next_event_us(struct Mcu51Context* ctx) {
     (void)ctx;
-    if (ctx->buzzer.running && ctx->buzzer.next_toggle_us != UINT64_MAX) {
-        return ctx->buzzer.next_toggle_us;
+    if (cms8s_priv(ctx)->buzzer.running && cms8s_priv(ctx)->buzzer.next_toggle_us != UINT64_MAX) {
+        return cms8s_priv(ctx)->buzzer.next_toggle_us;
     }
     return UINT64_MAX;
 }
@@ -117,15 +123,15 @@ uint64_t cms8s_buzzer_next_event_us(struct Mcu51Context* ctx) {
 // Test observability without a ctx parameter: reads the active context
 // (was the shared file-static; now per-instance via the active context).
 bool cms8s_buzzer_is_running(void) {
-    return mcs51_get_context()->buzzer.running;
+    return cms8s_priv(nullptr)->buzzer.running;
 }
 
 uint32_t cms8s_buzzer_toggle_count(void) {
-    return mcs51_get_context()->buzzer.toggle_count;
+    return cms8s_priv(nullptr)->buzzer.toggle_count;
 }
 
 uint32_t cms8s_buzzer_half_period_us(void) {
-    return mcs51_get_context()->buzzer.half_period_us;
+    return cms8s_priv(nullptr)->buzzer.half_period_us;
 }
 
 }  // extern "C"

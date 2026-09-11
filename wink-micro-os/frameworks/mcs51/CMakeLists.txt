@@ -82,6 +82,11 @@ target_compile_definitions(${_mcs51_tgt} PUBLIC
 
 target_include_directories(${_mcs51_tgt}
     PUBLIC include
+    # S2-1: chip-private headers (cms8s_priv.h/at89_priv.h). PRIVATE:
+    # generic core TUs never include them (layering gate); chip TUs
+    # (still under src/ until stage6 physical homing) need the type.
+    PRIVATE ${CMAKE_CURRENT_LIST_DIR}/chips/cms8s78xx/include
+    PRIVATE ${CMAKE_CURRENT_LIST_DIR}/chips/at89c52/include
     # wink_event.h, wink_app.h (callback binding and Mcu51Context wake event).
     PUBLIC ${CMAKE_CURRENT_LIST_DIR}/../../runtime/include
     # wink_sim_scheduler.h (fiber-context detection in the clock engine).
