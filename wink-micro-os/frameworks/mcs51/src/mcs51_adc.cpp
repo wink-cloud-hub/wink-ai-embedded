@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-// MCS-51 analog channel-3 rail implementation (boundary ④, AD-8 / ADR-0057).
-// See mcs51_adc.h for the dual-track data path and the synthetic-pin routing
-// convention (js_pal_adc_read_norm(32 + ch)).
+// MCS-51 analog rail-key implementation (boundary ④, AD-8 / ADR-0057).
+// See mcs51_adc.h for the dual-track data path and the dual-space key
+// partition (Stage1: MCU pins 0~31, board channels 32~63, no mapping here).
 #include "mcs51_adc.h"
 #include "mcs51_context.h"
 
@@ -20,9 +20,9 @@ float js_pal_adc_read_norm(uint16_t pin);
 // mcs51_adc_reset() clears the ACTIVE context's rail between runs.
 void mcs51_adc_reset(void) {
     Mcu51Context* ctx = mcs51_get_context();
-    for (unsigned ch = 0; ch < MCS51_ADC_MAX_CHANNELS; ++ch) {
-        ctx->adc_inject_flag[ch] = 0u;
-        ctx->adc_injected[ch] = 0u;
+    for (unsigned key = 0; key < MCS51_ADC_MAX_RAIL_KEYS; ++key) {
+        ctx->adc_inject_flag[key] = 0u;
+        ctx->adc_injected[key] = 0u;
     }
     ctx->adc_vref_mv = 3000u;
     ctx->adc_vrail_mv = 3000u;
@@ -44,33 +44,35 @@ uint16_t mcs51_adc_get_vrail_mv(void) {
     return mcs51_get_context()->adc_vrail_mv;
 }
 
-void mcs51_adc_set_value(uint8_t ch, uint16_t raw) {
-    if (ch >= MCS51_ADC_MAX_CHANNELS) {
+void mcs51_adc_set_value(uint8_t key, uint16_t raw) {
+    if (key >= MCS51_ADC_MAX_RAIL_KEYS) {
         return;
     }
     Mcu51Context* ctx = mcs51_get_context();
     if (raw == MCS51_ADC_RAIL_INJECT_NONE) {
-        ctx->adc_inject_flag[ch] = 0u;  // explicit clear back to Pull mode
+        ctx->adc_inject_flag[key] = 0u;  // explicit clear back to Pull mode
         return;
     }
-    ctx->adc_injected[ch] = raw;
-    ctx->adc_inject_flag[ch] = 1u;
+    ctx->adc_injected[key] = raw;
+    ctx->adc_inject_flag[key] = 1u;
 }
 
-uint16_t mcs51_adc_get_value(uint8_t ch) {
-    if (ch >= MCS51_ADC_MAX_CHANNELS) {
+uint16_t mcs51_adc_get_value(uint8_t key) {
+    if (key >= MCS51_ADC_MAX_RAIL_KEYS) {
         return 0;
     }
     Mcu51Context* ctx = mcs51_get_context();
-    if (ctx->adc_inject_flag[ch] != 0u) {
-        return ctx->adc_injected[ch];
+    if (ctx->adc_inject_flag[key] != 0u) {
+        return ctx->adc_injected[key];
     }
-    // Production Pull track: instant channel-3 sample → 12-bit code value
+    // Production Pull track: instant rail-key sample → 12-bit code value
     // (CMS8S78xx native width; the 8-bit ADC0832 masks the low byte in its
-    // own shim). A-02 (GAP-05): scale by Vrail/Vref so a VDD-railed NTC
-    // divider reads higher than a VREF-railed one at the same ratio.
+    // own shim). The key passes through untouched: 0~31 reads the MCU
+    // physical pin, 32~63 the board channel. A-02 (GAP-05): scale by
+    // Vrail/Vref so a VDD-railed NTC divider reads higher than a
+    // VREF-railed one at the same ratio.
     // Injection rail bypasses scaling (deterministic test codes).
-    float norm = js_pal_adc_read_norm((uint16_t)(32u + ch));
+    float norm = js_pal_adc_read_norm((uint16_t)key);
     if (norm < 0.0f) {
         norm = 0.0f;
     } else if (norm > 1.0f) {

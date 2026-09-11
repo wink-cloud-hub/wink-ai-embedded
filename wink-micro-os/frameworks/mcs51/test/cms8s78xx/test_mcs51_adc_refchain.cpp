@@ -75,7 +75,8 @@ int main(void) {
     {
         const uint32_t c0 = cms8s_adc_conversion_count();
         mcs51_adc_set_value(0, MCS51_ADC_RAIL_INJECT_NONE);
-        wink_mcs51_host_set_analog_norm(32u, 0.5f);
+        // Stage1: AN0 pulls physical Pin 0 (was v1 synth key 32+0).
+        wink_mcs51_host_set_analog_norm(0u, 0.5f);
         convert(0, true, 7u);
         check(mcs51_adc_get_vref_mv() == 3000u, "VSEL=3V must parse to 3000mV");
         check(cms8s_adc_conversion_count() == c0 + 1u, "conversion must run");
@@ -86,7 +87,7 @@ int main(void) {
     // ── 2) Vrail scaling: same ratio, Vrail=3.3V -> higher code ────────────
     {
         mcs51_adc_set_vrail_mv(3300u);
-        wink_mcs51_host_set_analog_norm(32u, 0.5f);
+        wink_mcs51_host_set_analog_norm(0u, 0.5f);
         convert(0, true, 7u);
         // 2048 * 3300 / 3000 = 2252.8 -> 2252 (integer truncation).
         check(result_right() == 2252u, "0.5 norm @3V/3.3V must read 2252");
@@ -144,7 +145,7 @@ int main(void) {
         mcs51_get_context()->xdata_shadow[0xF692u] = 0xE0u;
         mcs51_get_context()->xdata_shadow[0xF000u] = 0x01u;
         mcs51_adc_set_vrail_mv(3000u);
-        wink_mcs51_host_set_analog_norm(32u, 0.25f);
+        wink_mcs51_host_set_analog_norm(0u, 0.25f);
         convert(0, true, 7u);
         check(cms8s_adc_notready_total() == 0u, "health_pot config must be clean");
         check(result_right() == 1024u, "0.25 norm must read 1024");

@@ -17,12 +17,16 @@
 //     override that wins over the pull, giving deterministic high-speed tests
 //     without any JS environment.
 //
-// Routing convention: the 8051 has no analog pins of its own, so ADC channels
-// are addressed through SYNTHETIC pin ids `32 + ch` — the physical MCU pin
-// space is only 0..31 (P0.0..P3.7, linear map port*8+bit). PinArbiter routes
-// analog sources (NTC, knob, LDR) onto these synthetic ids via the runtime
-// device-tree; the firmware-time mcs51_board_config.h is not involved (S3-C4:
-// thermal parameters and analog routing stay runtime-side).
+// Routing convention (Stage1 dual-space partition, PLAN-20260911-MCS51-S1):
+// the rail is keyed by a 6-bit rail key, NOT by AN channel number.
+//   * `0~31`  = MCU fabric physical Pin: on-chip peripherals map to it in
+//     the chip layer (e.g. CMS8S AN0 -> Pin 0 via AN_TO_PIN); core owns no
+//     mapping knowledge and performs no mapping.
+//   * `32~63` = Board fabric channel: owned by device-tree/fronted,
+//     consumed by `devices/` (e.g. ADC0832 CHx keeps its `32+ch` key,
+//     made explicit by the caller); core passes it through untouched.
+// What Stage1 abolishes is the OLD on-chip misuse (passing an AN channel
+// number where a synth key was expected), not the board space itself.
 #pragma once
 
 #include <stdint.h>
@@ -33,8 +37,9 @@ extern "C" {
 
 // ADC0832 has 2 multiplexed inputs (CH0/CH1 single-ended, or differential
 // pairs); the CMS8S78xx on-chip ADC exposes AN0..AN25 (26 external channels,
-// plus internal AN63). The rail keeps a 32-entry BSS table covering both.
-#define MCS51_ADC_MAX_CHANNELS 32u
+// plus internal AN63). The rail keeps a 64-entry BSS table covering the full
+// dual-space key range (0~31 MCU pins + 32~63 board channels).
+#define MCS51_ADC_MAX_RAIL_KEYS 64u
 
 // Full-scale code of the unified rail: 12-bit (CMS8S78xx native width). The
 // 8-bit ADC0832 shims mask the low byte.
@@ -43,33 +48,35 @@ extern "C" {
 // Sentinel: no test value injected on this channel → pull from PinArbiter.
 #define MCS51_ADC_RAIL_INJECT_NONE 0xFFFFu
 
-// Pull the current code value (12-bit, 0..4095) for analog channel `ch`.
-// Injection rail wins; otherwise js_pal_adc_read_norm(32 + ch) scaled.
-// Out-of-range channels read 0.
-uint16_t mcs51_adc_get_value(uint8_t ch);
+// Pull the current code value (12-bit, 0..4095) for rail `key` (0~63,
+// dual-space partition above). Injection rail wins; otherwise
+// js_pal_adc_read_norm(key) scaled. Out-of-range keys read 0.
+uint16_t mcs51_adc_get_value(uint8_t key);
 
 // Test/CI injection override (boundary ④ physical injection rail).
 // raw = MCS51_ADC_RAIL_INJECT_NONE clears the override back to Pull mode.
-void mcs51_adc_set_value(uint8_t ch, uint16_t raw);
+void mcs51_adc_set_value(uint8_t key, uint16_t raw);
 
 // Framework init: clear all injection overrides.
 void mcs51_adc_reset(void);
 
-// A-02 reference rail (GAP-05): Vref from ADCLDO.VSEL (mV), Vrail from
-// board declaration / test seam (mV). Pull-track conversion scales
-// norm->raw by Vrail/Vref; injection rail bypasses scaling (deterministic).
+// A-02 reference rail (GAP-05): Vref/Vrail in mV, set by the chip layer
+// through these generic rail parameters (no ADCLDO knowledge in core).
+// Pull-track conversion scales norm->raw by Vrail/Vref; injection rail
+// bypasses scaling (deterministic).
 void mcs51_adc_set_vref_mv(uint16_t mv);
 void mcs51_adc_set_vrail_mv(uint16_t mv);
 uint16_t mcs51_adc_get_vref_mv(void);
 uint16_t mcs51_adc_get_vrail_mv(void);
 
-// Forward-compat shims: the external 8-bit ADC0832 maps straight onto the
-// unified rail (umbrella SSOT §3.4).
+// Forward-compat shims: the external 8-bit ADC0832 lives in the board
+// fabric space, so its CH number is made explicit as rail key `32+ch`
+// here (umbrella SSOT §3.4). Semantics unchanged, CH API unchanged.
 static inline void mcs51_adc0832_set_value(uint8_t ch, uint8_t val) {
-    mcs51_adc_set_value(ch, (uint16_t)val);
+    mcs51_adc_set_value((uint8_t)(32u + ch), (uint16_t)val);
 }
 static inline uint8_t mcs51_adc0832_get_value(uint8_t ch) {
-    return (uint8_t)(mcs51_adc_get_value(ch) & 0xFFu);
+    return (uint8_t)(mcs51_adc_get_value((uint8_t)(32u + ch)) & 0xFFu);
 }
 
 #ifdef __cplusplus
