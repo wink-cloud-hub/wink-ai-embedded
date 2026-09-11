@@ -70,11 +70,11 @@
 - [x] **Step 3**：ADCLDO.VSEL 基准计算迁入芯片层。——执行注记：早已在芯片层（`do_adc_conversion` Gate 0），本阶段仅将结构体直写改为 setter 调用 + 通用头去 ADCLDO 注释，无行为差。
 - **回滚粒度偏离说明**：计划要求双读开关单独提交；实际 S1-1/S1-2 同文件交织（`cms8s_adc.cpp` 查表与双读同函数），拆 hunk 风险大于收益，故单 commit `2ee4e93` 落地。独立回滚能力由运行时开关等效提供（`cms8s_adc_dual_read_synth=false` 即回 v1 语义，§14(c) 已覆盖），stage7 删整块逻辑不变。
 
-### Task S1-3：契约升版 + 测试双轨 `[状态: ⏳ 待开始]`
+### Task S1-3：契约升版 + 测试双轨 `[状态: ⏳ 部分完成（Step 2/3 ✅，Step 1 待 board 编号确认，见附录 B）]`
 
-- [ ] **Step 1**：C-ABI 引脚语义升版记录（版本号/发版顺序/回滚步骤）+ rail 双空间分区表归档。分区表 board 区编号以向前端口头确认值为准：执行前先确认 iron_ntc NTC→32+0 绑定（当前契约注释值）；若不一致，以确认值为准调整 board 区编号并同步 ADC0832 key 常量——本仓无法验证外仓行为，禁止假设。
-- [ ] **Step 2**：测试按 `core`（物理 Pin、标准向量）与 `cms8s`（AN 映射、扩展向量）分组，双绿。其中 `test_mcs51_cms8s_adc_e2e.c:34-36` 注入点由通道号 0/1/25 改为 rail key（Pin）0/1/27；ADC0832 相关用例（`test_adc0832_dio_shared.cpp`、`test_mcs51_adc0832_e2e.c`、`test_mcs51_iron_ntc_e2e.c`）保持 32+ch key 不变；另 `test_mcs51_adc_refchain.cpp:78,89,147` 系全仓唯一 pull 轨测试（`host_set_analog_norm(32u,…)`），按其断言的 AN 通道换算为 Pin key 后驱动（规则同 cms8s e2e；`grep host_set_analog_norm` 全仓仅此一文件，边界闭合）。
-- [ ] **Step 3**：host 回退数组随版本双轨。
+- [ ] **Step 1**：C-ABI 引脚语义升版记录（版本号/发版顺序/回滚步骤）+ rail 双空间分区表归档。分区表 board 区编号以向前端口头确认值为准：执行前先确认 iron_ntc NTC→32+0 绑定（当前契约注释值）；若不一致，以确认值为准调整 board 区编号并同步 ADC0832 key 常量——本仓无法验证外仓行为，禁止假设。——执行注记（2026-09-11）：除 board 编号外的全部记录已落附录 B（版本/MCU 区/开关/发版顺序/回滚/L3 关闭条件）；board 区保持 TBD，确认即转正打勾。
+- [x] **Step 2**：测试按 `core`（物理 Pin、标准向量）与 `cms8s`（AN 映射、扩展向量）分组，双绿。其中 `test_mcs51_cms8s_adc_e2e.c:34-36` 注入点由通道号 0/1/25 改为 rail key（Pin）0/1/27；ADC0832 相关用例（`test_adc0832_dio_shared.cpp`、`test_mcs51_adc0832_e2e.c`、`test_mcs51_iron_ntc_e2e.c`）保持 32+ch key 不变；另 `test_mcs51_adc_refchain.cpp:78,89,147` 系全仓唯一 pull 轨测试（`host_set_analog_norm(32u,…)`），按其断言的 AN 通道换算为 Pin key 后驱动（规则同 cms8s e2e；`grep host_set_analog_norm` 全仓仅此一文件，边界闭合）。——执行注记：物理分组由 S1-0 落地，键位切换由 S1-1/S1-2 落地（`2ee4e93`），最新全量 52/54（2 基线例外）+ `wasm_` 11/11。
+- [x] **Step 3**：host 回退数组随版本双轨。——执行注记：`[64]` 本就分区（S1-1 落语义注释），`[32]` 纯物理（ext_pin 数字轨）；pull 轨版本行为由 `test_mcs51_adc_refchain`（Pin 0 驱动：2048/2252/1024）锁定，无版本分支残留。
 
 ## 4. 验收
 
@@ -92,8 +92,8 @@
 | 文件 | 归位依据 |
 |------|---------|
 | `test_cms8s_adc_instant.cpp` / `test_cms8s_buzzer.cpp` / `test_cms8s_vendor_stdriver.cpp` | `#include cms8s_*`，片上外设专属 |
-| `test_mcs51_adc_refchain.cpp` | `#include cms8s_adc.h` + LDO/VSEL/AN0（S1-3 Step 2 待改 Pin key 者） |
-| `test_mcs51_cms8s_adc_e2e.c` | AN0/1/25 通道语义（S1-3 Step 2 待改 Pin key 者） |
+| `test_mcs51_adc_refchain.cpp` | `#include cms8s_adc.h` + LDO/VSEL/AN0（S1-1/S1-2 已改 Pin key：pull 0u 驱动） |
+| `test_mcs51_cms8s_adc_e2e.c` | AN0/1/25 通道语义（S1-1/S1-2 已改注入 Pin key 0/1/27） |
 | `test_extint_model.cpp` | 驱动 `XSFR_PS_INT*` 引脚复用 |
 | `test_mcs51_gpio_dir.cpp` | 直写 `0xF00A`（P0UP）/`0xF000`（P00CFG=AN0，GAP-25 模拟子项） |
 | `test_mcs51_irq_arbitration.cpp` | `#include cms8s_adc.h` + EIE2/EIF2 扩展向量 |
@@ -117,13 +117,27 @@ e2e 11：`test_mcs51_blinky_host.c`、`test_mcs51_timer0.c`、`test_mcs51_uart.c
 - `frameworks/mcs51/test/wasm/add_wink_wasm_mcs51_test.cmake`：`${_SDK_ROOT}/test/mcs51/`→`${_SDK_ROOT}/frameworks/mcs51/test/`；`_SDK_ROOT` 由 `../../..` 改为 `../../../..`（helper 加深一级）；e2e 驱动按 A.1/A.2 分组。
 - 验证：`--compare` → `BASELINE MATCH`（140=140）；host mcs51 50/52（2 项 S1-0c 已知例外）；`wasm_` 11/11；cleanup 自测 8/8。
 
+## 附录 B：引脚语义升版 interim 记录（S1-3 Step 1，板区编号 TBD）
+
+- **版本**：`v1`（片上路径误用合成区：以 `32+ch` 传 AN 通道，废弃中）→ `v2`（双空间分区）。`SimTraceSpecV2` 主版本不动。
+- **MCU 区（冻结，本阶段生效）**：`0~31` 物理 Pin；CMS8S 经 `AN_TO_PIN[26]` 映射（`{0..7, 8..15, 16..21, 24..27}` + `static_assert`）；classic 直通；core 不拥有映射知识。
+- **Board 区（TBD，阻塞项）**：`32~63`，编号归属 device-tree/前端。当前契约注释值（iron_ntc NTC→`32+0`）未经外仓确认，**禁止假设**——本表 board 区编号在确认前保持 TBD；确认后落盘并同步 ADC0832 key 常量（若与 32+0 不一致）。
+- **双读开关**：`cms8s_adc_dual_read_synth`（默认 ON，本阶段；stage7 删除整块）+ 可观测计数 `cms8s_adc_synth_redirect_count`；仅覆盖片上路径误用，板级 `32+ch` 永久合法不告警。
+- **发版顺序**：仿真后端 → 前端插件 → stub/文档。
+- **回滚**：运行时 `cms8s_adc_dual_read_synth=false` 即回 `v1` 语义（§14(c) 覆盖）；或 `git revert 2ee4e93`（S1-1/S1-2 原子 commit）。
+- **L3 关闭条件**：board 编号确认落盘 → 本附录转正，S1-3 Step 1 打勾，stage1 全关。
+
 ## 5. 风险与回滚
 
 - R-01（版本错配）：双读 + 发版顺序缓解；回滚：关闭双读重定向回旧语义（开关单独提交）；Git revert 本阶段 commit。
 
 ## 6. 阶段自审自我检验清单（Self-Audit Checkpoint）
-- [ ] **目录与接口落位**：`mcs51_adc.cpp` 收 rail key 直透，无合成计算残留；`mcs51_adc0832.cpp` + shim 仅 key 显式化，无语义变更。
-- [ ] **E-02 闭环自审**：养生壶冷启动场景室温阻值正常，数码管假短路告警 E-02 彻底消除。
-- [ ] **iron_ntc 无回归**：ADC0832 路径（32+ch 板级 key）读数与基线一致，线上 pull 链路不断。
-- [ ] **兼容双读验证**：片上旧用例以 32+ch 传 AN 时触发告警且计数正确自增；板级 32+ch 用例不告警。
-- [ ] **双轨状态**：`core-tests` 与 `cms8s-tests` 均全绿。
+- [x] **目录与接口落位**：`mcs51_adc.cpp` 收 rail key 直透，无合成计算残留；`mcs51_adc0832.cpp` + shim 仅 key 显式化，无语义变更。（L4 grep 实测：core 合成零命中；3 处 `32u+ch` 全为调用方显式板级 key。）
+- [x] **E-02 闭环自审**：养生壶冷启动场景室温阻值正常，数码管假短路告警 E-02 彻底消除。（机制证明：pull 轨 AN0→Pin 0 由 `refchain` 2048/2252/1024 锁定 + e2e Pin key 注入全绿；字面养生壶 app 冷启动跨仓真链路留 stage7 headless 门，与 S1-1 Step 3 注记一致。）
+- [x] **iron_ntc 无回归**：ADC0832 路径（32+ch 板级 key）读数与基线一致，线上 pull 链路不断。（host + wasm e2e 全绿。）
+- [x] **兼容双读验证**：片上旧用例以 32+ch 传 AN 时触发告警且计数正确自增；板级 32+ch 用例不告警。（§14 四组全绿；板级不告警由检测点位结构保证。）
+- [x] **双轨状态**：`core-tests` 与 `cms8s-tests` 均全绿。（52/54 + 11/11；2 项为 S1-0c 基线例外；`--compare` 142=142。）
+
+## 7. 自审签署（2026-09-11，S1-3 Step 1 除外）
+- **Check 1–5**：全部通过（证据见上）。S1-0/S1-1/S1-2/S1-3-Step2/Step3 关闭。
+- **唯一开口**：S1-3 Step 1 的 board 区编号（待外仓确认，附录 B interim 记录已就位，L3 关闭条件明确）。stage1 状态为"除一步外全关"，不得标 ✅；stage3+ 可并行推进（无文件冲突：stage1 剩余仅文档落盘），但 stage7 关闭前必须回填此口。
