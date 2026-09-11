@@ -35,7 +35,7 @@ extern "C" {
 // numbers are FROZEN (never renumber; append new ids at the end; locked by
 // test_mcs51_family_schema stable-number assertions).
 //   * Generic 8051 (core): all ids except the two below.
-//   * Chip-family scope (stage3+ splits to CMS8S_FEAT_*): IAP_FLASH (=11).
+//   * Chip-family scope: IAP_FLASH (=11).
 //   * Board-scheme scope (stage3+ splits to BOARD_FEAT_*): RC_THERMAL (=5,
 //     number frozen in place).
 enum {
@@ -69,8 +69,8 @@ enum {
     // Timer external C/T pin counting (TMOD C/T == 1): no external pulse time
     // source at functional level; the timer stays idle.
     MCS51_FEAT_TIMER_EXT_CLK     = 10,
-    // ── Chip-family scope (CMS8S; future CMS8S_FEAT_* alias) ──────────────
-    // In-Application-Programming Flash access (CMS8S78xx MCTRL/MDATA/MADR/
+    // ── Chip-family scope ─────────────────────────────────────────────────
+    // In-Application-Programming Flash access (on-chip MCTRL/MDATA/MADR/
     // MLOCK/PCRCD @ 0xF9..0xFF, GAP-24): no NVS persistence or program/
     // erase timing model; any firmware-issued access traps here instead of
     // silently landing in the SFR shadow.
