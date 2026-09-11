@@ -80,12 +80,8 @@ BASELINE: list[tuple[str, str, str, str]] = [
     # wink_mcs51_* public headers -> stage3 (WDT hard export, UART remap
     # docs, extint mux docs, ISR width docs, clock/strict grouping notes)
     # wink_mcs51_clock.h: S3-H6 pruned (doc residue scrubbed in stage3).
-    # wink_mcs51_extint.h mux docs describe live stage3 behavior; they move
-    # with the code in stage4 (S3-D4) — retagged, NOT deleted (deleting a
-    # live row turns the gate red).
-    ("include/wink_mcs51_extint.h", "cms8s", r"CMS8S78xx", "stage4"),
-    ("include/wink_mcs51_extint.h", "xsfr_addr", r"0xF0C[01]", "stage4"),
-    ("include/wink_mcs51_extint.h", "ps_sel", r"PS_INT", "stage4"),
+    # wink_mcs51_extint.h mux docs: S4-1 moved with the code (S3-D4 discharge;
+    # header is lines-only now).
     ("include/wink_mcs51_isr.h", "cms8s", r"CMS8S78xx", "stage5"),
     # wink_mcs51_strict.h: S3-H6 pruned (grouping-note residue scrubbed;
     # numbers frozen, schema checks below still lock IAP_FLASH=11).
@@ -107,19 +103,13 @@ BASELINE: list[tuple[str, str, str, str]] = [
     # S2-1 done: A-02 seeding lines (ADCLDO comment + 3000/3000) removed.
     # S3-H6: the PS_ row below is pruned too (no \bPS_ word left in the file;
     # the "caps_cache" substring has no word boundary and never matched).
-    # S3-1 transition (expires stage4): extint/timer/uart code still lives in
-    # core but reads the sunk CMS8S_ addresses; the usages leave core WITH
-    # the code when stage4 strips the models to chips/.
-    ("src/mcs51_extint.cpp", "cms8s",
-     r"CMS8S_|cms8s_sfr_map", "stage4"),
+    # S3-1 transition expired in S4-1: extint code moved to chips/ WITH its
+    # chip-map usage; re-adding either must fail, not be waived.
     ("src/mcs51_timer.cpp", "cms8s",
      r"CMS8S_|cms8s_sfr_map", "stage4"),
     ("src/mcs51_uart.cpp", "cms8s",
      r"CMS8S_|cms8s_sfr_map", "stage4"),
-    ("src/mcs51_extint.cpp", "xsfr_addr", r"0xF08|0xF09", "stage4"),
-    ("src/mcs51_extint.cpp", "cms8s", r"cms8s_sys", "stage4"),
-    ("src/mcs51_extint.cpp", "ps_sel", r"PS_RESET|XSFR_PS_|MCS51_XSFR_PS_",
-     "stage4"),
+    # (No ps_sel row: the generic sentinel is named SELECTOR_NONE.)
     # src/mcs51_family.cpp descriptor rows + refs -> by-design
     ("src/mcs51_family.cpp", "cms8s", r".*", "by-design"),
     ("src/mcs51_family.cpp", "xsfr_addr", r".*", "by-design"),

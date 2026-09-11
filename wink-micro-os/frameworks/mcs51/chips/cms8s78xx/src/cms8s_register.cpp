@@ -40,6 +40,11 @@ uint64_t cms8s_sys_next_event_us(struct Mcu51Context* ctx);
 void cms8s_gpio_init(struct Mcu51Context* ctx);
 void cms8s_gpio_reset(struct Mcu51Context* ctx);
 
+void cms8s_extint_init(struct Mcu51Context* ctx);
+void cms8s_extint_reset(struct Mcu51Context* ctx);
+void cms8s_port_extint_poll(struct Mcu51Context* ctx);
+uint64_t cms8s_port_extint_next_event_us(struct Mcu51Context* ctx);
+
 }  // extern "C"
 
 namespace {
@@ -83,6 +88,16 @@ const mcs51_peripheral_desc_t kCms8sDescs[] = {
         nullptr,
         nullptr,
         MCS51_PHASE_CLOCK,
+        MCS51_FAMILY_MASK_CMS8S78XX
+    },
+    {
+        // S4-1 Step 2: full-port interrupts + INT line selector patching.
+        "cms8s_extint",
+        cms8s_extint_init,
+        cms8s_extint_reset,
+        cms8s_port_extint_poll,
+        cms8s_port_extint_next_event_us,
+        MCS51_PHASE_EXTINT,
         MCS51_FAMILY_MASK_CMS8S78XX
     },
 };

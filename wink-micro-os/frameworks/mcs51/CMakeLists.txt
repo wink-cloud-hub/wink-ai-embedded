@@ -53,6 +53,8 @@ set(_MCS51_COMPAT_SRCS
     chips/at89c52/src/at89_register.cpp
     # Stage4 S4-1 Step 1: enhanced GPIO model (CPL-03).
     chips/cms8s78xx/src/cms8s_gpio.cpp
+    # Stage4 S4-1 Step 2: port-interrupt model (CPL-07).
+    chips/cms8s78xx/src/cms8s_extint.cpp
 )
 
 add_library(wink_mcs51_compat STATIC EXCLUDE_FROM_ALL ${_MCS51_COMPAT_SRCS})

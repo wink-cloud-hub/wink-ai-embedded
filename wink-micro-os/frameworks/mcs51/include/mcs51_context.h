@@ -75,10 +75,10 @@ typedef struct {
     bool    have_sample;
 } Mcu51PortPinState;
 
+// Standard INT0/INT1 line state only (stage4 S4-1 Step 2: full-port sampling
+// moved to the chip pool; S4-D2 drops its cross-reset preserve).
 typedef struct {
     Mcu51ExtIntLine   lines[2];
-    Mcu51PortPinState port_pins[4][8];
-    uint64_t          port_last_sample_us;
     bool              sample_due;
     bool              in_poll;
 } Mcu51ExtIntState;

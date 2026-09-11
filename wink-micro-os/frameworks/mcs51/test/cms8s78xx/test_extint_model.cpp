@@ -60,6 +60,10 @@ uint32_t g_isr1_hits = 0;
 // this model-direct test (host-only, like test_uart_rx_model.cpp).
 extern "C" void wink_mcs51_host_set_ext_pin(uint16_t pin, uint8_t state);
 extern "C" void wink_mcs51_host_ext_pins_reset(void);
+// Chip INT selector patching (stage4 split: no context_reset in this TU,
+// so the chip init is mounted explicitly for the PS-mux sections).
+extern "C" void cms8s_extint_init(struct Mcu51Context* ctx);
+extern "C" void cms8s_extint_reset(struct Mcu51Context* ctx);
 
 void ext_set(uint16_t pin, uint8_t state) {
     wink_mcs51_host_set_ext_pin(pin, state);
@@ -132,6 +136,8 @@ int main(void) {
     mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
     wink_mcs51_isr_enable();
     wink_mcs51_extint_reset();
+    cms8s_extint_init(nullptr);
+    cms8s_extint_reset(nullptr);
     wink_mcs51_host_ext_pins_reset();
     g_isr0_hits = 0;
     g_isr1_hits = 0;

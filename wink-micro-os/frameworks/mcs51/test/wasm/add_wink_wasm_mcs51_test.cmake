@@ -183,6 +183,8 @@ function(add_wink_wasm_mcs51_test test_name sample_name driver_c)
         ${_SDK_ROOT}/frameworks/mcs51/chips/at89c52/src/at89_register.cpp
         # Stage4 S4-1 Step 1: enhanced GPIO model (CPL-03, same sync rule).
         ${_SDK_ROOT}/frameworks/mcs51/chips/cms8s78xx/src/cms8s_gpio.cpp
+        # Stage4 S4-1 Step 2: port-interrupt model (CPL-07, same sync rule).
+        ${_SDK_ROOT}/frameworks/mcs51/chips/cms8s78xx/src/cms8s_extint.cpp
         ${_SDK_ROOT}/runtime/src/wink_runtime.c
         ${_SDK_ROOT}/runtime/src/wink_runtime_tasks.c
         ${_SDK_ROOT}/runtime/src/wink_actuator_registry.c

@@ -43,6 +43,8 @@ extern "C" void tearDown(void) {}
 extern "C" void wink_mcs51_host_set_ext_pin(uint16_t pin, uint8_t state);
 extern "C" void wink_mcs51_host_ext_pins_reset(void);
 extern "C" void wink_mcs51_extint_poll(void);
+// Chip port-interrupt poll (stage4 split: Test 3 drives port silicon).
+extern "C" void cms8s_port_extint_poll(struct Mcu51Context* ctx);
 
 int main(void) {
     Mcu51Context* ctx = mcs51_get_context();
@@ -112,10 +114,12 @@ int main(void) {
     ctx->xdata_shadow[0xF08Au] = 0x02u;  // P1EICFG2 = falling edge
     wink_mcs51_host_set_ext_pin(10u, 1u);  // P1.2 idle high
     wink_mcs51_extint_poll();              // prime sample (have_sample)
+    cms8s_port_extint_poll(nullptr);
     ctx->sfr_shadow[0x87] = 0x02u;    // enter PD (direct shadow: no block)
     wink_mcs51_test_advance_virtual_us(10000u);  // pass 10 ms sample throttle
     wink_mcs51_host_set_ext_pin(10u, 0u);  // falling edge
     wink_mcs51_extint_poll();
+    cms8s_port_extint_poll(nullptr);
 
     check((ctx->sfr_shadow[0xB5] & 0x04u) != 0u, "P1EXTIF.2 flag must be set");
     {
@@ -130,9 +134,11 @@ int main(void) {
     wink_mcs51_host_set_ext_pin(10u, 1u);
     wink_mcs51_test_advance_virtual_us(10000u);
     wink_mcs51_extint_poll();              // re-prime high
+    cms8s_port_extint_poll(nullptr);
     wink_mcs51_host_set_ext_pin(10u, 0u);
     wink_mcs51_test_advance_virtual_us(10000u);
     wink_mcs51_extint_poll();
+    cms8s_port_extint_poll(nullptr);
     check((ctx->sfr_shadow[0xB5] & 0x04u) != 0u, "flag must set even with EA=0");
     {
         wink_event_t evt;

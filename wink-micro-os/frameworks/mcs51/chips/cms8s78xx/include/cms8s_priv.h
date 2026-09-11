@@ -60,14 +60,29 @@ typedef struct {
     bool     have_sample;
 } Cms8sAdetState;
 
+// Full-port level-change interrupt sampling (owner: cms8s_extint.cpp,
+// stage4 S4-1 Step 2). Moved out of the generic Mcu51ExtIntState (S2-2 D6
+// handover): reduced-package pin validity still comes from the family
+// descriptor, but the storage is chip-private. S4-D2: the sampling baseline
+// is NOT preserved across context resets (pool rebind wipes it); the next
+// poll re-baselines without synthesizing an edge (have_sample gate), which
+// matches fresh-boot silicon.
+typedef struct {
+    Mcu51PortPinState port_pins[4][8];
+    uint64_t          port_last_sample_us;
+    bool              sample_due;
+    bool              in_poll;
+} Cms8sPortExtIntState;
+
 // Aggregate chip block: ONE pool slot per context instance (BSS pool in
-// cms8s_sys.cpp, indexed by ctx->instance_index). T3/T4 + capture/compare +
-// port sampling join this struct in S2-2 Step 1.
+// the register TU, indexed by ctx->instance_index). Timer T3/T4 +
+// capture/compare + port sampling join in stage4 (S2-2 D6 handover).
 typedef struct {
     Cms8sSysState   sys;
     Cms8sBuzzerState buzzer;
     Cms8sAdcState   adc;
     Cms8sAdetState  adet;
+    Cms8sPortExtIntState port_extint;
     bool            in_poll;
 } Cms8sPriv;
 
