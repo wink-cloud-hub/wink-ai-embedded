@@ -83,9 +83,15 @@ void cms8s_soc_bind(struct Mcu51Context *ctx);
 // e.g. SFR-operator tests that only set_family) heals to a zeroed slot —
 // exactly the old inline-zero semantics. Other families never bind here
 // (callers gate on family first); a null return means "no chip state".
+// Null-ACTIVE (no active context at all) returns NULL as well: no setter
+// in the tree produces it, but the funnel never crashes (review hardening;
+// downstream observers null-check, commands gate on armed below).
 static inline Cms8sPriv *cms8s_priv(struct Mcu51Context *ctx) {
     if (!ctx) {
         ctx = mcs51_get_context();
+    }
+    if (!ctx) {
+        return 0;
     }
     if (!ctx->soc_priv && ctx->family == MCS51_FAMILY_CMS8S78XX) {
         cms8s_soc_bind(ctx);
@@ -101,6 +107,9 @@ static inline Cms8sPriv *cms8s_priv(struct Mcu51Context *ctx) {
 static inline bool cms8s_hook_armed(struct Mcu51Context *ctx) {
     if (!ctx) {
         ctx = mcs51_get_context();
+    }
+    if (!ctx) {
+        return false;
     }
     return ctx->family == MCS51_FAMILY_CMS8S78XX && ctx->soc_priv != 0;
 }

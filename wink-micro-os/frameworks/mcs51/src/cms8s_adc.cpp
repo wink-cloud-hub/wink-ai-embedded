@@ -167,9 +167,11 @@ inline uint16_t adc_channel_cfg_addr(uint8_t ch) {
     return 0xFFFFu;
 }
 
-constexpr uint8_t PORT_PINS[4] = {8u, 8u, 8u, 8u};
 constexpr uint8_t EXT_LOW  = 0u;
 constexpr uint8_t EXT_HIGH = 1u;
+// (Review fix: the PORT_PINS {8,8,8,8} table that stood here wrongly
+// accepted P2.6+/P3.4+ on reduced families — ADET resolve below now reads
+// the family descriptor like timer/extint.)
 
 // M2: Cms8sAdcState/AdetPinState now live in the chip pool (was
 // Mcu51Context::cms8sAdc, was file-static before that). get_adc_priv keeps
@@ -309,8 +311,9 @@ bool cms8s_adc_dual_read_synth = true;
 uint32_t cms8s_adc_synth_redirect_count = 0u;
 
 void cms8s_adc_model_reset(struct Mcu51Context* ctx) {
-    cms8s_soc_bind(ctx);  // defensive: standalone resets bind too (no-op if bound)
     if (!ctx) ctx = mcs51_get_context();
+    if (!ctx) return;
+    cms8s_soc_bind(ctx);  // defensive: standalone resets bind too (no-op if bound)
     Cms8sPriv* priv = get_adc_priv(ctx);
     priv->in_poll = false;
     priv->adet.last_pin = 0xFFFFu;
@@ -337,8 +340,9 @@ void cms8s_adc_model_reset(struct Mcu51Context* ctx) {
 }
 
 void cms8s_adc_init(struct Mcu51Context* ctx) {
-    cms8s_soc_bind(ctx);  // bind BEFORE any pool deref (ordering invariant)
     if (!ctx) ctx = mcs51_get_context();
+    if (!ctx) return;
+    cms8s_soc_bind(ctx);  // bind BEFORE any pool deref (ordering invariant)
     Cms8sPriv* priv = get_adc_priv(ctx);
     priv->adc.conversion_count = 0u;
     priv->adc.last_channel = 0xFFu;
@@ -370,11 +374,14 @@ void cms8s_adc_poll(struct Mcu51Context* ctx) {
         return;
     }
 
-    // Resolve pin from XSFR PS_ADET (0xF0CC, format 0xPN)
+    // Resolve pin from XSFR PS_ADET (0xF0CC, format 0xPN). Legality from
+    // the family descriptor (review fix: was hardcoded {8,8,8,8}, accepting
+    // ghost pins P2.6+/P3.4+ on reduced families).
     const uint8_t sel = ctx->xdata_shadow[XSFR_PS_ADET];
     const uint8_t port = (sel >> 4) & 0x07u;
     const uint8_t bit  = sel & 0x0Fu;
-    if (port >= 4u || bit >= PORT_PINS[port]) {
+    const uint8_t* pin_masks = mcs51_family_desc(ctx->family)->port_pin_masks;
+    if (port >= 4u || bit >= pin_masks[port]) {
         return;  // unmapped or out of range
     }
     const uint16_t pin = static_cast<uint16_t>((port << 3) | bit);

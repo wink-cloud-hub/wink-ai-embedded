@@ -9,6 +9,7 @@
 #include <stdio.h>
 
 #include "cms8s_adc.h"
+#include "cms8s_buzzer.h"
 #include "mcs51_adc.h"
 #include "mcs51_context.h"
 #include "mcs51_proxy.hpp"
@@ -133,6 +134,19 @@ int main(void) {
     (void)hook_b_called;
     check(s_ctx_a.gpio_hooks.may_drive != s_ctx_b.gpio_hooks.may_drive,
           "hooks are per-context, never shared");
+
+    // ── review lock-in: classic-context foreign poll/observer neutrality ─
+    // Chip polls on an unbound classic context must bail silently (no bind,
+    // no crash); observers report neutral. Guards cms8s_hook_armed against
+    // future accidental deletion. (Merely reaching here proves no crash.)
+    cms8s_adc_poll(&s_ctx_b);
+    cms8s_buzzer_poll(&s_ctx_b);
+    check(s_ctx_b.soc_priv == nullptr,
+          "classic must remain unbound after foreign polls");
+    check(!cms8s_buzzer_is_running(),
+          "classic-context buzzer must report not running");
+    check(cms8s_adc_conversion_count() == 0u,
+          "unbound observer must report neutral zero");
 
     mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);  // leave clean
     if (g_fails) {

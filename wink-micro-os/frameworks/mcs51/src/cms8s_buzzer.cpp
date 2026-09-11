@@ -71,8 +71,9 @@ extern "C" void on_buzzer_sfr_write(Mcu51Context* ctx, uint8_t addr, uint8_t old
 extern "C" {
 
 void cms8s_buzzer_reset(struct Mcu51Context* ctx) {
-    cms8s_soc_bind(ctx);  // defensive: standalone resets bind too (no-op if bound)
     if (!ctx) ctx = mcs51_get_context();
+    if (!ctx) return;
+    cms8s_soc_bind(ctx);  // defensive: standalone resets bind too (no-op if bound)
     cms8s_priv(ctx)->buzzer.running = false;
     cms8s_priv(ctx)->buzzer.pin_level = 0u;
     cms8s_priv(ctx)->buzzer.half_period_us = 0u;
@@ -81,6 +82,8 @@ void cms8s_buzzer_reset(struct Mcu51Context* ctx) {
 }
 
 void cms8s_buzzer_init(struct Mcu51Context* ctx) {
+    if (!ctx) ctx = mcs51_get_context();
+    if (!ctx) return;
     cms8s_soc_bind(ctx);  // bind BEFORE any pool deref (ordering invariant)
     cms8s_buzzer_reset(ctx);
     mcs51_trap_register_sfr_write(SFR_BUZCON, on_buzzer_sfr_write);
