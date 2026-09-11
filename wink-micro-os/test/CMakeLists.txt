@@ -429,9 +429,9 @@ if(TARGET wink_mcs51_compat)
             COMMAND ${CMAKE_COMMAND} -E make_directory ${_MCS51_GEN_DIR}
             COMMAND ${Python3_EXECUTABLE}
                 ${_MCS51_FW_DIR}/tools/mcs51_cleanup.py
-                ${CMAKE_CURRENT_SOURCE_DIR}/mcs51/samples/${sample_name}.c
+                ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/mcs51/test/samples/${sample_name}.c
                 ${_cpp}
-            DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/mcs51/samples/${sample_name}.c
+            DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/mcs51/test/samples/${sample_name}.c
                     ${_MCS51_FW_DIR}/tools/mcs51_cleanup.py
             COMMENT "mcs51 cleanup: ${sample_name}.c -> ${sample_name}.cpp"
             VERBATIM)
@@ -462,7 +462,7 @@ if(TARGET wink_mcs51_compat)
     set(_MCS51_BOARD_CONFIG_GENERATOR
         "${WINK_TOOLS_ROOT}/tools/codegen/generators/mcs51_board_config.py")
     set(_MCS51_IRON_NTC_APP
-        "${CMAKE_CURRENT_SOURCE_DIR}/mcs51/apps/iron_ntc/wink-app.json")
+        "${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/mcs51/test/apps/iron_ntc/wink-app.json")
     if(WINK_TOOLS_ROOT AND EXISTS "${_MCS51_BOARD_CONFIG_GENERATOR}"
             AND EXISTS "${_MCS51_IRON_NTC_APP}")
         set(_MCS51_BOARD_CONFIG_H "${_MCS51_GEN_DIR}/mcs51_board_config.h")
@@ -539,33 +539,33 @@ if(TARGET wink_mcs51_compat)
 
     # M1: polling blinky (SFR proxies + cooperative yield, no ISR dispatch).
     add_mcs51_host_test(test_mcs51_blinky_host
-        mcs51/test_mcs51_blinky_host.c
+        ../frameworks/mcs51/test/core/test_mcs51_blinky_host.c
         ${_MCS51_blinky_CPP}
         ${_MCS51_RUNTIME_SRCS})
 
     # M2: Timer0 mode-1 50 ms overflow drives the ISR via catch-up (D1~D3).
     add_mcs51_host_test(test_mcs51_timer0_host
-        mcs51/test_mcs51_timer0.c
+        ../frameworks/mcs51/test/core/test_mcs51_timer0.c
         ${_MCS51_blinky_timer0_CPP}
         ${_MCS51_RUNTIME_SRCS})
 
     # M3: UART SBUF write emits to console + capture buffer; TI set synchronously.
     add_mcs51_host_test(test_mcs51_uart_host
-        mcs51/test_mcs51_uart.c
+        ../frameworks/mcs51/test/core/test_mcs51_uart.c
         ${_MCS51_uart_printf_CPP}
         ${_MCS51_RUNTIME_SRCS})
 
     # Stage 2 T2: RX injection -> ISR mailbox -> polled TX echo through the live
     # channel-2 route (host recording fallback asserts the echoed bytes).
     add_mcs51_host_test(test_mcs51_uart_echo
-        mcs51/test_mcs51_uart_echo_e2e.c
+        ../frameworks/mcs51/test/core/test_mcs51_uart_echo_e2e.c
         ${_MCS51_uart_echo_CPP}
         ${_MCS51_RUNTIME_SRCS})
 
     # M3: GPIO in->out sync — P3.2 key (latch-injected) drives P1.0 LED across
     # three repeated runtime runs (released -> pressed -> released).
     add_mcs51_host_test(test_mcs51_gpio_host
-        mcs51/test_mcs51_gpio.c
+        ../frameworks/mcs51/test/core/test_mcs51_gpio.c
         ${_MCS51_gpio_in_out_CPP}
         ${_MCS51_RUNTIME_SRCS})
 
@@ -573,7 +573,7 @@ if(TARGET wink_mcs51_compat)
     # but the button is driven as a real external driver via js_pal_gpio_read_state
     # (host fallback in mcs51_uni_bridge.cpp), not by writing the P3 latch.
     add_mcs51_host_test(test_mcs51_gpio_external
-        mcs51/test_mcs51_gpio_external_e2e.c
+        ../frameworks/mcs51/test/core/test_mcs51_gpio_external_e2e.c
         ${_MCS51_gpio_in_out_CPP}
         ${_MCS51_RUNTIME_SRCS})
 
@@ -583,25 +583,25 @@ if(TARGET wink_mcs51_compat)
     # external falling edge via channel-1 read and vectored (host + wasm/Node
     # share the driver).
     add_mcs51_host_test(test_mcs51_int0
-        mcs51/test_mcs51_int0_e2e.c
+        ../frameworks/mcs51/test/core/test_mcs51_int0_e2e.c
         ${_MCS51_int0_button_CPP}
         ${_MCS51_RUNTIME_SRCS})
 
     # Part 2: 8-digit 7-segment display dynamic scanning e2e test (P0=segments, P2=digits)
     add_mcs51_host_test(test_mcs51_seg_display_e2e
-        mcs51/test_mcs51_seg_display_e2e.c
+        ../frameworks/mcs51/test/core/test_mcs51_seg_display_e2e.c
         ${_MCS51_seg_display_scan_CPP}
         ${_MCS51_RUNTIME_SRCS})
 
     # M3 review: UART vector-4 EA+ES gated ISR dispatch + TI-not-auto-cleared
     # (host-only framework unit test; drives the model hook directly).
     add_mcs51_host_test(test_mcs51_uart_isr
-        mcs51/unit/test_uart_isr_dispatch.cpp)
+        ../frameworks/mcs51/test/core/test_uart_isr_dispatch.cpp)
 
     # GAP-02: UART TX-link readiness gate — Release: predicate mask +
     # per-reason counters incl. health_pot-equivalent zero-regression e2e.
     add_mcs51_host_test(test_mcs51_uart_tx_ready
-        mcs51/unit/test_mcs51_uart_tx_ready.cpp)
+        ../frameworks/mcs51/test/cms8s78xx/test_mcs51_uart_tx_ready.cpp)
 
     # GAP-02 STRICT twin: same TU, STRICT-built compat lib for the abort
     # policy (death tests via child re-execution). Cannot reuse
@@ -610,7 +610,7 @@ if(TARGET wink_mcs51_compat)
     # the library swapped (WINK_MCS51_STRICT reaches the TU via the strict
     # lib's PUBLIC definition).
     add_wink_host_test(test_mcs51_uart_tx_ready_strict
-        mcs51/unit/test_mcs51_uart_tx_ready.cpp)
+        ../frameworks/mcs51/test/cms8s78xx/test_mcs51_uart_tx_ready.cpp)
     target_link_libraries(test_mcs51_uart_tx_ready_strict PRIVATE wink_mcs51_compat_strict wink_runtime)
     target_compile_definitions(test_mcs51_uart_tx_ready_strict PRIVATE SIMULATION=1 WINK_MCU_AT89C52=1)
     if(NOT MSVC)
@@ -629,25 +629,25 @@ if(TARGET wink_mcs51_compat)
     # GAP-23: unmodeled-XSFR tripwire — Release: counters + first-offender
     # addresses + health_pot zero-regression e2e.
     add_mcs51_host_test(test_mcs51_xsfr_tripwire
-        mcs51/unit/test_mcs51_xsfr_tripwire.cpp)
+        ../frameworks/mcs51/test/cms8s78xx/test_mcs51_xsfr_tripwire.cpp)
 
     # GAP-09: family-gated XDATA aperture (CMS8S 1KB XRAM + CMS8S-only
     # XSFR window; classic 8052 configurable external aperture).
     add_mcs51_host_test(test_mcs51_xram_aperture
-        mcs51/unit/test_mcs51_xram_aperture.cpp)
+        ../frameworks/mcs51/test/core/test_mcs51_xram_aperture.cpp)
 
     # GAP-12: T2/3/4 period formulas follow Fsys.
     add_mcs51_host_test(test_mcs51_t234_fsys
-        mcs51/unit/test_mcs51_t234_fsys.cpp)
+        ../frameworks/mcs51/test/cms8s78xx/test_mcs51_t234_fsys.cpp)
 
     # GAP-12: duplicate ISR vector guard + P0..P3EXTIF write-0-to-clear.
     add_mcs51_host_test(test_mcs51_gap12
-        mcs51/unit/test_mcs51_gap12.cpp)
+        ../frameworks/mcs51/test/core/test_mcs51_gap12.cpp)
 
     # GAP-23 STRICT twin: same TU, STRICT-built compat lib (death tests via
     # child re-execution). Mirrors the uart_tx_ready_strict block above.
     add_wink_host_test(test_mcs51_xsfr_tripwire_strict
-        mcs51/unit/test_mcs51_xsfr_tripwire.cpp)
+        ../frameworks/mcs51/test/cms8s78xx/test_mcs51_xsfr_tripwire.cpp)
     target_link_libraries(test_mcs51_xsfr_tripwire_strict PRIVATE wink_mcs51_compat_strict wink_runtime)
     target_compile_definitions(test_mcs51_xsfr_tripwire_strict PRIVATE SIMULATION=1 WINK_MCU_AT89C52=1)
     if(NOT MSVC)
@@ -665,17 +665,17 @@ if(TARGET wink_mcs51_compat)
 
     # Task R3 / ADR-0078: Two-phase IRQ, in-service priority masking & call stack isolation
     add_mcs51_host_test(test_mcs51_irq_arbitration
-        mcs51/unit/test_mcs51_irq_arbitration.cpp)
+        ../frameworks/mcs51/test/cms8s78xx/test_mcs51_irq_arbitration.cpp)
 
     # GAP-01/04/13/22: per-family silicon reset seeds (CKCON/Fosc) and the
 # vendor-verified IRQ source->vector/profile mapping table
     add_mcs51_host_test(test_mcs51_silicon_seeds
-        mcs51/unit/test_mcs51_silicon_seeds.cpp)
+        ../frameworks/mcs51/test/core/test_mcs51_silicon_seeds.cpp)
 
     # Stage0 (PLAN-20260911-MCS51-S0): v2 schema freeze + caps_cache
     # snapshot + STRICT stable-number locks (zero behavior change).
     add_mcs51_host_test(test_mcs51_family_schema
-        mcs51/unit/test_mcs51_family_schema.cpp)
+        ../frameworks/mcs51/test/core/test_mcs51_family_schema.cpp)
 
     # GAP-23 freshness gate: the checked-in XSFR tripwire allowlist must
     # match what the audit script emits from REG_CMS8S78XX.H (catches a
@@ -691,101 +691,101 @@ if(TARGET wink_mcs51_compat)
 
     # Task R0 / ADR-0077: GPIO dual read path (Read-Pin vs Read-Latch) & arbitration
     add_mcs51_host_test(test_mcs51_gpio_dual_path
-        mcs51/unit/test_mcs51_gpio_dual_path.cpp)
+        ../frameworks/mcs51/test/core/test_mcs51_gpio_dual_path.cpp)
 
     # Task R6: PCON IDL/PD low power dual-mode scheduling
     add_mcs51_host_test(test_mcs51_low_power
-        mcs51/unit/test_mcs51_low_power.cpp)
+        ../frameworks/mcs51/test/core/test_mcs51_low_power.cpp)
 
     # Task F1: Timed edge event injection queue
     add_mcs51_host_test(test_mcs51_edge_queue
-        mcs51/unit/test_mcs51_edge_queue.cpp)
+        ../frameworks/mcs51/test/core/test_mcs51_edge_queue.cpp)
 
     # Task F2: TMOD C/T=1 external pulse counter modeling
     add_mcs51_host_test(test_mcs51_timer_ext_clk
-        mcs51/unit/test_mcs51_timer_ext_clk.cpp)
+        ../frameworks/mcs51/test/core/test_mcs51_timer_ext_clk.cpp)
 
     # Task F3: Dynamic microstep quantum calibration
     add_mcs51_host_test(test_mcs51_clock_quantum
-        mcs51/unit/test_mcs51_clock_quantum.cpp)
+        ../frameworks/mcs51/test/core/test_mcs51_clock_quantum.cpp)
 
     # Task F4: Channel 1b Soft PWM duty cycle measurement (< 2% error)
     add_mcs51_host_test(test_mcs51_soft_pwm
-        mcs51/unit/test_mcs51_soft_pwm.cpp)
+        ../frameworks/mcs51/test/core/test_mcs51_soft_pwm.cpp)
 
     # Stage 2 T2: UART RX model — pending FIFO drained at microstep points,
     # REN gate, RI latch + vector 4, no-FIFO drop on RI pending, TX/RX shadow
     # interleave (host-only framework unit test; drives the model directly).
     add_mcs51_host_test(test_mcs51_uart_rx
-        mcs51/unit/test_uart_rx_model.cpp)
+        ../frameworks/mcs51/test/core/test_uart_rx_model.cpp)
 
     # Stage 2 T3: INT0/INT1 external interrupt model — edge-mode falling latch
     # + vector 0/2 with hardware auto-clear, pending-through-disable, level-mode
     # per-slice re-request, 10 ms sample throttle, HiZ ignore, reset semantics
     # (host-only framework unit test; drives the model directly).
     add_mcs51_host_test(test_mcs51_extint
-        mcs51/unit/test_extint_model.cpp)
+        ../frameworks/mcs51/test/cms8s78xx/test_extint_model.cpp)
 
     # CMS8S78xx port external interrupt model (P0EI..P3EI vectors 7..10)
     add_mcs51_host_test(test_mcs51_port_extint
-        mcs51/unit/test_mcs51_port_extint.cpp)
+        ../frameworks/mcs51/test/cms8s78xx/test_mcs51_port_extint.cpp)
 
     # M2: 100 ms virtual delay == 10 master ticks, 1:1 clock conservation.
     add_mcs51_host_test(test_mcs51_clock_mapping
-        mcs51/unit/test_unisim_clock_mapping.cpp
-        mcs51/unit/mcs51_clock_user.cpp
+        ../frameworks/mcs51/test/core/test_unisim_clock_mapping.cpp
+        ../frameworks/mcs51/test/core/mcs51_clock_user.cpp
         ${_MCS51_RUNTIME_SRCS})
 
     # M2: 3-TU static-init ISR registration + execution-phase gate (D5).
     add_mcs51_host_test(test_mcs51_static_init
-        mcs51/unit/test_static_init_safety.cpp
-        mcs51/unit/mcs51_static_tu_a.cpp
-        mcs51/unit/mcs51_static_tu_b.cpp
-        mcs51/unit/mcs51_static_tu_c.cpp
+        ../frameworks/mcs51/test/core/test_static_init_safety.cpp
+        ../frameworks/mcs51/test/core/mcs51_static_tu_a.cpp
+        ../frameworks/mcs51/test/core/mcs51_static_tu_b.cpp
+        ../frameworks/mcs51/test/core/mcs51_static_tu_c.cpp
         ${_MCS51_RUNTIME_SRCS})
 
     # M3: intrins _crol_/_cror_/_testbit_ shims, absacc XBYTE/XWORD linear
     # XDATA shadow (aperture + R-008 OOB semantics), and the WINK_MCS51_STRICT
     # dual-mode unsupported-feature latch (release warn-once path).
     add_mcs51_host_test(test_mcs51_shims
-        mcs51/unit/test_mcs51_shims.cpp)
+        ../frameworks/mcs51/test/core/test_mcs51_shims.cpp)
 
     # MCU facade: wink_mcu.h routing to REG_CMS8S78XX.H / REGX52.H
     add_mcs51_host_test(test_mcs51_wink_mcu
-        mcs51/unit/test_mcs51_wink_mcu.cpp)
+        ../frameworks/mcs51/test/cms8s78xx/test_mcs51_wink_mcu.cpp)
 
     # M4: data plane — RMW Read-Latch integrity (external-low pin never
     # written back into the latch, whole-port + sbit RMW).
     add_mcs51_host_test(test_mcs51_sfr_rmw_latch
-        mcs51/unit/test_sfr_rmw_latch_integrity.cpp)
+        ../frameworks/mcs51/test/core/test_sfr_rmw_latch_integrity.cpp)
 
     # M4: diff = old^val edge dispatch accuracy (Zero False-Trigger across
     # DI/CLK/CS-style pins) + linear pin map (port<<3)|bit via host sink log.
     add_mcs51_host_test(test_mcs51_sfr_edge
-        mcs51/unit/test_sfr_edge_dispatch_accuracy.cpp)
+        ../frameworks/mcs51/test/core/test_sfr_edge_dispatch_accuracy.cpp)
 
     # M4: full operator algebra |= &= ^= += -= <<= >>=, pre/post ++/--, sbit
     # ops, copy assignment, absolute-form sbit, vendor non-GPIO SFR.
     add_mcs51_host_test(test_mcs51_sfr_operators
-        mcs51/unit/test_sfr_operators_coverage.cpp)
+        ../frameworks/mcs51/test/core/test_sfr_operators_coverage.cpp)
 
     # M4: ADC0832 3-wire DIO instant state machine — sbit vs whole-port RMW
     # drive parity, CH0/CH1 mux, null-bit alignment, bus-release absorption.
     add_mcs51_host_test(test_mcs51_adc0832
-        mcs51/unit/test_adc0832_dio_shared.cpp)
+        ../frameworks/mcs51/test/core/test_adc0832_dio_shared.cpp)
 
     # M4: Zero False-Trigger acceptance (data-plane SSOT §4.3) — unmodified
     # Keil sample exercises the four RMW isolation vectors; the C driver binds
     # per-pin edge traps + a Read-Pin button trap and asserts XDATA snapshots.
     add_mcs51_host_test(test_mcs51_rmw_isolation
-        mcs51/test_mcs51_sfr_rmw_isolation.c
+        ../frameworks/mcs51/test/core/test_mcs51_sfr_rmw_isolation.c
         ${_MCS51_sfr_rmw_isolation_test_CPP}
         ${_MCS51_RUNTIME_SRCS})
 
     # M4: ADC0832 3-wire DIO end-to-end through an unmodified Keil bit-bang
     # sample (CH0/CH1 read via instant trap FSM + channel-3 injection rail).
     add_mcs51_host_test(test_mcs51_adc0832_e2e
-        mcs51/test_mcs51_adc0832_e2e.c
+        ../frameworks/mcs51/test/core/test_mcs51_adc0832_e2e.c
         ${_MCS51_adc0832_read_CPP}
         ${_MCS51_RUNTIME_SRCS})
 
@@ -793,41 +793,41 @@ if(TARGET wink_mcs51_compat)
     # right/left ADRESH/ADRESL packing, ADCIE/EA vector-19 gating, ADEN gate,
     # AN25/AN63 channels, XSFR proxy window + OOB trap.
     add_mcs51_host_test(test_mcs51_cms8s_adc
-        mcs51/unit/test_cms8s_adc_instant.cpp)
+        ../frameworks/mcs51/test/cms8s78xx/test_cms8s_adc_instant.cpp)
     target_compile_definitions(test_mcs51_cms8s_adc PRIVATE WINK_MCU_CMS8S78XX=1)
 
     # M5: CMS8S78xx ADC end-to-end through an unmodified Keil polled sample
     # (real register map; AN0 right / AN1 left / AN25 right via 12-bit rail).
     add_mcs51_host_test(test_mcs51_cms8s_adc_e2e
-        mcs51/test_mcs51_cms8s_adc_e2e.c
+        ../frameworks/mcs51/test/cms8s78xx/test_mcs51_cms8s_adc_e2e.c
         ${_MCS51_cms8s_adc_test_CPP}
         ${_MCS51_RUNTIME_SRCS})
     target_compile_definitions(test_mcs51_cms8s_adc_e2e PRIVATE WINK_MCU_CMS8S78XX=1)
 
     # CMS8S78xx on-chip Buzzer peripheral model test
     add_mcs51_host_test(test_mcs51_cms8s_buzzer
-        mcs51/unit/test_cms8s_buzzer.cpp)
+        ../frameworks/mcs51/test/cms8s78xx/test_cms8s_buzzer.cpp)
     target_compile_definitions(test_mcs51_cms8s_buzzer PRIVATE WINK_MCU_CMS8S78XX=1)
 
     # Stage 3 A-02: ADC reference chain — VSEL/Vrail scaling (Pull track),
     # LDO/mux readiness gates + counters, DIV-sensitive charge_us.
     add_mcs51_host_test(test_mcs51_adc_refchain
-        mcs51/unit/test_mcs51_adc_refchain.cpp)
+        ../frameworks/mcs51/test/cms8s78xx/test_mcs51_adc_refchain.cpp)
     target_compile_definitions(test_mcs51_adc_refchain PRIVATE WINK_MCU_CMS8S78XX=1)
 
     # Stage 3 A-05: GPIO direction modeling — TRIS-gated suppression,
     # pull-up HiZ default, analog digital-read mask (classic passthrough).
     add_mcs51_host_test(test_mcs51_gpio_dir
-        mcs51/unit/test_mcs51_gpio_dir.cpp)
+        ../frameworks/mcs51/test/cms8s78xx/test_mcs51_gpio_dir.cpp)
 
     # Stage 3 A-03 (ADR-0081): UART TX per-byte synchronous charge — baud
     # anchors per source, frame widths, 22B scale, no-charge paths.
     add_mcs51_host_test(test_mcs51_uart_charge
-        mcs51/unit/test_mcs51_uart_charge.cpp)
+        ../frameworks/mcs51/test/cms8s78xx/test_mcs51_uart_charge.cpp)
     # A-03 STRICT twin: same TU, STRICT-built compat lib (death test for the
     # uncomputable-source abort). Mirrors the uart_tx_ready_strict block.
     add_wink_host_test(test_mcs51_uart_charge_strict
-        mcs51/unit/test_mcs51_uart_charge.cpp)
+        ../frameworks/mcs51/test/cms8s78xx/test_mcs51_uart_charge.cpp)
     target_link_libraries(test_mcs51_uart_charge_strict PRIVATE wink_mcs51_compat_strict wink_runtime)
     target_compile_definitions(test_mcs51_uart_charge_strict PRIVATE SIMULATION=1 WINK_MCU_AT89C52=1)
     if(NOT MSVC)
@@ -846,11 +846,11 @@ if(TARGET wink_mcs51_compat)
     # Stage 3 A-04 (GAP-07): WDT coarse model + TA narrowing — WTS intervals,
     # arming/feed lifecycle, health_pot scale, interleave/timeout rollback.
     add_mcs51_host_test(test_mcs51_wdt_ta
-        mcs51/unit/test_mcs51_wdt_ta.cpp)
+        ../frameworks/mcs51/test/cms8s78xx/test_mcs51_wdt_ta.cpp)
 
     # A-04 STRICT twin: same TU, STRICT-built compat lib (overflow abort).
     add_wink_host_test(test_mcs51_wdt_ta_strict
-        mcs51/unit/test_mcs51_wdt_ta.cpp)
+        ../frameworks/mcs51/test/cms8s78xx/test_mcs51_wdt_ta.cpp)
     target_link_libraries(test_mcs51_wdt_ta_strict PRIVATE wink_mcs51_compat_strict wink_runtime)
     target_compile_definitions(test_mcs51_wdt_ta_strict PRIVATE SIMULATION=1 WINK_MCU_AT89C52=1)
     if(NOT MSVC)
@@ -869,12 +869,12 @@ if(TARGET wink_mcs51_compat)
     # Stage 3 A-08 (GAP-24): classic external MOVX bus conflict + IAP trap —
     # XBYTE/GPIO both orders, P1 exemption, CMS8S zero-regression, IAP block.
     add_mcs51_host_test(test_mcs51_classic_bus
-        mcs51/unit/test_mcs51_classic_bus.cpp)
+        ../frameworks/mcs51/test/core/test_mcs51_classic_bus.cpp)
 
     # GAP-24 STRICT twin: same TU, STRICT-built compat lib (conflict + IAP
     # abort via child re-execution). Mirrors the wdt_ta_strict block.
     add_wink_host_test(test_mcs51_classic_bus_strict
-        mcs51/unit/test_mcs51_classic_bus.cpp)
+        ../frameworks/mcs51/test/core/test_mcs51_classic_bus.cpp)
     target_link_libraries(test_mcs51_classic_bus_strict PRIVATE wink_mcs51_compat_strict wink_runtime)
     target_compile_definitions(test_mcs51_classic_bus_strict PRIVATE SIMULATION=1 WINK_MCU_AT89C52=1)
     if(NOT MSVC)
@@ -897,7 +897,7 @@ if(TARGET wink_mcs51_compat)
     # setpoint and open/short safe states (acceptance #4). Gated on codegen.
     if(_MCS51_HAS_BOARD_CONFIG)
         add_mcs51_host_test(test_mcs51_iron_ntc_e2e
-            mcs51/test_mcs51_iron_ntc_e2e.c
+            ../frameworks/mcs51/test/core/test_mcs51_iron_ntc_e2e.c
             ${_MCS51_iron_ntc_CPP}
             ${_MCS51_RUNTIME_SRCS})
     endif()
@@ -943,7 +943,7 @@ if(TARGET wink_mcs51_compat)
         # no fiber super-loop); the wasm harness already covers the same model
         # via the cms8s_adc e2e sample.
         add_mcs51_host_test(test_mcs51_cms8s_vendor
-            mcs51/unit/test_cms8s_vendor_stdriver.cpp
+            ../frameworks/mcs51/test/cms8s78xx/test_cms8s_vendor_stdriver.cpp
             ${_MCS51_VENDOR_ADC_CPP})
         # SYSTEM: the transcoded vendor adc.h is third-party code we must not
         # edit (its banner block-comments re-open "/*" inside a comment, and it
@@ -980,4 +980,4 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/wasm/pal_adc/add_wink_wasm_adc_test.cmake)
 
 # MCS-51/8051 interception wasm test (emcc + ASYNCIFY fibers + Node).
 # Gracefully skips when emcc/node absent.
-include(${CMAKE_CURRENT_SOURCE_DIR}/mcs51/wasm/add_wink_wasm_mcs51_test.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/mcs51/test/wasm/add_wink_wasm_mcs51_test.cmake)
