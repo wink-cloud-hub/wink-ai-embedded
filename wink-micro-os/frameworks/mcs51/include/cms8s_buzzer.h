@@ -1,26 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-// CMS8S78xx on-chip Buzzer functional model.
+// Stage3 forwarding shim (PLAN-20260911-MCS51-S3, S3-1 Step 1): the real
+// buzzer model header moved to chips/cms8s78xx/include/cms8s_buzzer.h.
+// Survives one stage (deleted in stage7). See S3-D1 for why this uses
+// `#pragma message` instead of `#warning`.
+// TODO(stage7): delete this forwarding shim with the stage7 close-out.
 #pragma once
-
-#include <stdint.h>
-#include <stdbool.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-struct Mcu51Context;
-
-void cms8s_buzzer_init(struct Mcu51Context* ctx);
-void cms8s_buzzer_reset(struct Mcu51Context* ctx);
-void cms8s_buzzer_poll(struct Mcu51Context* ctx);
-uint64_t cms8s_buzzer_next_event_us(struct Mcu51Context* ctx);
-
-// Test observability
-bool     cms8s_buzzer_is_running(void);
-uint32_t cms8s_buzzer_toggle_count(void);
-uint32_t cms8s_buzzer_half_period_us(void);
-
-#ifdef __cplusplus
-}
-#endif
+#pragma message("mcs51 stage3: <cms8s_buzzer.h> moved to chips/cms8s78xx/include/; include the new path")
+#include "../chips/cms8s78xx/include/cms8s_buzzer.h"
