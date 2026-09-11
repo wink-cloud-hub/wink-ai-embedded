@@ -52,22 +52,23 @@
 - [x] **Step 0c**：后续 S1-1~S1-3 的"分组"即在此物理目录上操作，不再另建逻辑分组。"不丢"（集合相等）与"全绿"（结果门禁）是两个门：全绿看 verdict，已知例外（`wasm_mcs51_iron_ntc` 构建断链待 Step 0a、`test_mcs51_port_extint`/`test_mcs51_wink_mcu` MinGW 链接失败，均 master 基线复现）不计入搬迁回归。——执行注记：Step 0a 已消除 `wasm_mcs51_iron_ntc` 例外；剩余 2 项 MinGW 例外维持。
 - [x] **Step 0c**：后续 S1-1~S1-3 的"分组"即在此物理目录上操作，不再另建逻辑分组。
 
-### Task S1-1：通用 rail 收 key 化 `[状态: ⏳ 待开始]`
+### Task S1-1：通用 rail 收 key 化 `[状态: ✅ 已完成（2026-09-11，`2ee4e93`，与 S1-2 连体落地）]`
 
-- [ ] **Step 1**：`mcs51_adc_get_value` 改为收 rail key；`js_pal_adc_read_norm(key)` 直透；删 `32u + ch` 合成计算。ADC0832 侧做等效 key 显式化（模型 pull 点与 `mcs51_adc0832_*` 注入 shim 加 `32+`，语义不变，对外 CH API 不变）。
-- [ ] **Step 1b（rail 容量扩容，P0 阻断项）**：`MCS51_ADC_MAX_CHANNELS (32u)` 扩容并改名 `MCS51_ADC_MAX_RAIL_KEYS = 64u`（5 处同改：`mcs51_adc.h` 定义、`mcs51_adc.cpp` ×3 越界检查、`mcs51_context.h` ×2 数组）；`adc_injected`/`adc_inject_flag` 同步 64 槽（+96B，记 stage2 §4 预算表；host 回退 `[64]` 本就分区，一致）。不扩则板级 key 32/33 被越界拦截直接返 0，iron_ntc 全红。
-- [ ] **Step 2**：`mcs51_adc_set_vref/vrail` 转为芯片层调用的通用 rail 参数（通用头去 ADCLDO 注释）。
-- [ ] **Step 3**：验证养生壶冷启动 NTC 室温读数，E-02 消失；同步验证 iron_ntc 板（ADC0832 路径）读数无回归。
+- [x] **Step 1**：`mcs51_adc_get_value` 改为收 rail key；`js_pal_adc_read_norm(key)` 直透；删 `32u + ch` 合成计算。ADC0832 侧做等效 key 显式化（模型 pull 点与 `mcs51_adc0832_*` 注入 shim 加 `32+`，语义不变，对外 CH API 不变）。
+- [x] **Step 1b（rail 容量扩容，P0 阻断项）**：`MCS51_ADC_MAX_CHANNELS (32u)` 扩容并改名 `MCS51_ADC_MAX_RAIL_KEYS = 64u`（6 处同改：`mcs51_adc.h` 定义、`mcs51_adc.cpp` ×3 越界检查、`mcs51_context.h` ×2 数组）；`adc_injected`/`adc_inject_flag` 同步 64 槽（+96B，记 stage2 §4 预算表；host 回退 `[64]` 本就分区，一致）。不扩则板级 key 32/33 被越界拦截直接返 0，iron_ntc 全红。
+- [x] **Step 2**：`mcs51_adc_set_vref/vrail` 转为芯片层调用的通用 rail 参数（通用头去 ADCLDO 注释）。——执行注记：`do_adc_conversion` 与 `cms8s_adc_model_reset` 的直接结构体写入改为 setter 调用。
+- [x] **Step 3**：验证养生壶冷启动 NTC 室温读数，E-02 消失；同步验证 iron_ntc 板（ADC0832 路径）读数无回归。——执行注记：`test_mcs51_adc_refchain`（pull 轨 AN0→Pin 0：2048/2252/1024）+ `test_mcs51_cms8s_adc_e2e`（Pin key 注入）+ `test_mcs51_iron_ntc_e2e`（板级 32+ch 零回归）全绿；跨仓真链路终证留待 stage7 headless 门。
 
-### Task S1-2：CMS8S 闭环 + 双读兼容 `[状态: ⏳ 待开始]`
+### Task S1-2：CMS8S 闭环 + 双读兼容 `[状态: ✅ 已完成（2026-09-11，`2ee4e93`，与 S1-1 连体落地）]`
 
-- [ ] **Step 1**：新增 `AN_TO_PIN[26] = {0..7, 8..15, 16..21, 24..27}` + 越界钳位 + `static_assert(AN_TO_PIN[22]==24)`。
-- [ ] **Step 2**：片上合成通道误用（旧前端/旧用例以 32+ch 传 AN）在芯片层兼容一版，判定与重定向发生在芯片层（rail 本身无告警、无重定向）。探测规则（`do_adc_conversion` 内，pull 原值上判定，钳位/缩放前；注入轨直通不受影响）：
+- [x] **Step 1**：新增 `AN_TO_PIN[26] = {0..7, 8..15, 16..21, 24..27}` + 越界钳位 + `static_assert(AN_TO_PIN[22]==24)`。——执行注记：`do_adc_conversion` 经表取 Pin key；`adc_channel_cfg_addr`（XSFR 地址域，非引脚域）保留；另修正 `instant` §8 注释 `P3.1`→`P3.3`=Pin 27（原注释与 `0xF033` 布设矛盾）。
+- [x] **Step 2**：片上合成通道误用（旧前端/旧用例以 32+ch 传 AN）在芯片层兼容一版，判定与重定向发生在芯片层（rail 本身无告警、无重定向）。探测规则（`do_adc_conversion` 内，pull 原值上判定，钳位/缩放前；注入轨直通不受影响）：
   1. 主读 Pin key：`pin_val = pull(AN_TO_PIN[ch])`；
   2. 启发式回退（仅兼容开关 ON 时）：若 `pin_val == 0.0f`（旧前端未驱动物理 Pin）**且** `synth_val = pull(32u + ch) > 0.0f`，则判定旧前端误用，采纳 `synth_val` + 告警 + 计数。单纯 `raw == 0` 禁止作为回退依据——真实 0V（短路故障的真值）必须原样上报，否则掩盖真短路；
   3. 已知残留风险（接受项）：CMS8S 板上 ANx 浮空 **且** ADC0832 同名合成 key 被驱动时可能误重定向；缓解 = 兼容开关 + 告警计数可观测 + 仅存活一版（stage7 删除）。
-- [ ] **Step 2b（兼容单测）**：注入合成 key（模拟旧前端驱动）→ 断言重定向值 + 告警 + 计数自增；注入 0 值合成 key → 断言不重定向（真 0V 保护）；板级 32+ch 正常 pull → 不告警不计数。板级 32+ch 走 ADC0832 正常 pull，不在双读之列（永久合法）。
-- [ ] **Step 3**：ADCLDO.VSEL 基准计算迁入芯片层。
+- [x] **Step 2b（兼容单测）**：注入合成 key（模拟旧前端驱动）→ 断言重定向值 + 告警 + 计数自增；注入 0 值合成 key → 断言不重定向（真 0V 保护）；板级 32+ch 正常 pull → 不告警不计数。板级 32+ch 走 ADC0832 正常 pull，不在双读之列（永久合法）。——执行注记：落 `test_cms8s_adc_instant.cpp` §14 四组（重定向 2048+计数 1 / 真 0V 不计数 / 开关 OFF 不重定向 / Pin 注入直通不计数）；板级不告警由检测点位（仅片上路径）结构保证 + ADC0832 用例全绿。
+- [x] **Step 3**：ADCLDO.VSEL 基准计算迁入芯片层。——执行注记：早已在芯片层（`do_adc_conversion` Gate 0），本阶段仅将结构体直写改为 setter 调用 + 通用头去 ADCLDO 注释，无行为差。
+- **回滚粒度偏离说明**：计划要求双读开关单独提交；实际 S1-1/S1-2 同文件交织（`cms8s_adc.cpp` 查表与双读同函数），拆 hunk 风险大于收益，故单 commit `2ee4e93` 落地。独立回滚能力由运行时开关等效提供（`cms8s_adc_dual_read_synth=false` 即回 v1 语义，§14(c) 已覆盖），stage7 删整块逻辑不变。
 
 ### Task S1-3：契约升版 + 测试双轨 `[状态: ⏳ 待开始]`
 
