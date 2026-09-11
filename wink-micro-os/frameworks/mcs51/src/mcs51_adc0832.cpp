@@ -19,6 +19,7 @@
 #include <stdint.h>
 
 #include "mcs51_adc.h"
+#include "mcs51_context.h"
 #include "mcs51_trap.h"
 #include "wink_mcs51_gpio.h"
 
@@ -26,22 +27,13 @@ namespace {
 
 enum AdcPhase { PHASE_IDLE = 0, PHASE_INPUT, PHASE_OUTPUT };
 
-struct Adc0832State {
-    uint8_t cs_port, cs_bit;
-    uint8_t clk_port, clk_bit;
-    uint8_t di_port, di_bit;
-    uint8_t do_port, do_bit;
-    bool is_dio_shared;
-
-    uint8_t phase;         // AdcPhase
-    uint8_t rise_count;    // CLK rising edges since CS fall
-    uint8_t fall_count;    // CLK falling edges in PHASE_OUTPUT
-    uint8_t channel_cfg;   // [1]=SGL/DIF, [0]=ODD/SIGN
-    uint8_t shift_data;    // 8-bit conversion result, MSB first
-    uint8_t out_bit;       // current DO drive level (1 = released/high)
-};
-
-Adc0832State s_adc;
+// M2: state lives in Mcu51Context::adc0832 (was file-static s_adc).
+// Pin-trap callbacks are registered with a null cookie, so they resolve
+// the active context (single-context simulation model, same as the CMS8S
+// models' mcs51_get_context() fallback).
+inline Mcs51Adc0832State& adc_state() {
+    return mcs51_get_context()->adc0832;
+}
 
 inline uint8_t sfr_addr_for(uint8_t port) {
     return (uint8_t)(0x80u + (port << 4));  // P0=0x80 … P3=0xB0
@@ -51,66 +43,66 @@ inline uint8_t sfr_addr_for(uint8_t port) {
 void on_cs_write(void *ctx, uint8_t level) {
     (void)ctx;
     if (level == 0u) {
-        s_adc.phase = PHASE_INPUT;
-        s_adc.rise_count = 0u;
-        s_adc.fall_count = 0u;
-        s_adc.channel_cfg = 0u;
-        s_adc.shift_data = 0u;
-        s_adc.out_bit = 1u;  // DO released (bus high) during config input
+        adc_state().phase = PHASE_INPUT;
+        adc_state().rise_count = 0u;
+        adc_state().fall_count = 0u;
+        adc_state().channel_cfg = 0u;
+        adc_state().shift_data = 0u;
+        adc_state().out_bit = 1u;  // DO released (bus high) during config input
     } else {
-        s_adc.phase = PHASE_IDLE;
-        s_adc.out_bit = 1u;
+        adc_state().phase = PHASE_IDLE;
+        adc_state().out_bit = 1u;
     }
 }
 
 // CLK edge: the sole state-machine clock.
 void on_clk_write(void *ctx, uint8_t level) {
     (void)ctx;
-    if (s_adc.phase == PHASE_IDLE) {
+    if (adc_state().phase == PHASE_IDLE) {
         return;
     }
 
     if (level == 1u) {
         // ── CLK rising edge ──────────────────────────────────────────────
-        if (s_adc.phase != PHASE_INPUT) {
+        if (adc_state().phase != PHASE_INPUT) {
             return;  // output-phase rising edges: MCU samples DO, nothing to do
         }
         // DI is sampled from the MCU's LATCH (config phase: MCU drives DIO).
-        const uint8_t di_val = mcs51_gpio_bit_read_latch(s_adc.di_port, s_adc.di_bit);
-        ++s_adc.rise_count;
+        const uint8_t di_val = mcs51_gpio_bit_read_latch(adc_state().di_port, adc_state().di_bit);
+        ++adc_state().rise_count;
 
-        if (s_adc.rise_count == 1u) {
+        if (adc_state().rise_count == 1u) {
             // Start bit must be 1; anything else is a protocol abort.
             if (di_val != 1u) {
-                s_adc.phase = PHASE_IDLE;
+                adc_state().phase = PHASE_IDLE;
             }
-        } else if (s_adc.rise_count == 2u) {
-            s_adc.channel_cfg = (uint8_t)(di_val << 1);  // SGL/DIF
-        } else if (s_adc.rise_count == 3u) {
-            s_adc.channel_cfg |= di_val;                 // ODD/SIGN
+        } else if (adc_state().rise_count == 2u) {
+            adc_state().channel_cfg = (uint8_t)(di_val << 1);  // SGL/DIF
+        } else if (adc_state().rise_count == 3u) {
+            adc_state().channel_cfg |= di_val;                 // ODD/SIGN
             // Channel locked (single-ended: ODD/SIGN selects CH0/CH1).
-            const uint8_t ch = (uint8_t)(s_adc.channel_cfg & 0x01u);
+            const uint8_t ch = (uint8_t)(adc_state().channel_cfg & 0x01u);
             // 0 us instant conversion: pull the 8-bit code value right now.
-            s_adc.shift_data = (uint8_t)(mcs51_adc_get_value(ch) & 0xFFu);
-            s_adc.phase = PHASE_OUTPUT;
-            s_adc.fall_count = 0u;
+            adc_state().shift_data = (uint8_t)(mcs51_adc_get_value(ch) & 0xFFu);
+            adc_state().phase = PHASE_OUTPUT;
+            adc_state().fall_count = 0u;
             // Leading Null bit window: DO drives 0 until the 3rd falling edge.
             // (In 3-wire mode the MCU is still driving DIO itself here, so this
             // level is only observable in 4-wire mode or on DO-read races.)
-            s_adc.out_bit = 0u;
+            adc_state().out_bit = 0u;
         }
     } else {
         // ── CLK falling edge: DO presents the next bit BEFORE the MCU reads ─
-        if (s_adc.phase != PHASE_OUTPUT) {
+        if (adc_state().phase != PHASE_OUTPUT) {
             return;
         }
-        ++s_adc.fall_count;
-        if (s_adc.fall_count <= 8u) {
+        ++adc_state().fall_count;
+        if (adc_state().fall_count <= 8u) {
             // Fall #1 (overall #3) -> MSB (bit7) … fall #8 -> bit0.
-            s_adc.out_bit =
-                (uint8_t)((s_adc.shift_data >> (8u - s_adc.fall_count)) & 1u);
+            adc_state().out_bit =
+                (uint8_t)((adc_state().shift_data >> (8u - adc_state().fall_count)) & 1u);
         } else {
-            s_adc.out_bit = 1u;  // all 8 bits shifted: release bus (high)
+            adc_state().out_bit = 1u;  // all 8 bits shifted: release bus (high)
         }
     }
 }
@@ -128,13 +120,13 @@ void on_di_write(void *ctx, uint8_t level) {
 // DO/DIO read: external pin level reconstruction (Read-Pin).
 uint8_t on_do_read(void *ctx) {
     (void)ctx;
-    if (s_adc.phase == PHASE_OUTPUT) {
-        return s_adc.out_bit;  // chip drives the converted bit
+    if (adc_state().phase == PHASE_OUTPUT) {
+        return adc_state().out_bit;  // chip drives the converted bit
     }
-    if (s_adc.phase == PHASE_INPUT && s_adc.is_dio_shared) {
+    if (adc_state().phase == PHASE_INPUT && adc_state().is_dio_shared) {
         // 3-wire mode: the MCU itself drives DIO with the config bits, so a
         // read-back sees the driven latch level.
-        return mcs51_gpio_bit_read_latch(s_adc.do_port, s_adc.do_bit);
+        return mcs51_gpio_bit_read_latch(adc_state().do_port, adc_state().do_bit);
     }
     return 1u;  // IDLE, or 4-wire DO: chip high-Z, bus pulled high
 }
@@ -145,17 +137,17 @@ extern "C" void mcs51_adc0832_init(uint8_t cs_port,  uint8_t cs_bit,
                                    uint8_t clk_port, uint8_t clk_bit,
                                    uint8_t di_port,  uint8_t di_bit,
                                    uint8_t do_port,  uint8_t do_bit) {
-    s_adc.cs_port = cs_port;   s_adc.cs_bit = cs_bit;
-    s_adc.clk_port = clk_port; s_adc.clk_bit = clk_bit;
-    s_adc.di_port = di_port;   s_adc.di_bit = di_bit;
-    s_adc.do_port = do_port;   s_adc.do_bit = do_bit;
-    s_adc.is_dio_shared = (di_port == do_port && di_bit == do_bit);
-    s_adc.phase = PHASE_IDLE;
-    s_adc.rise_count = 0u;
-    s_adc.fall_count = 0u;
-    s_adc.channel_cfg = 0u;
-    s_adc.shift_data = 0u;
-    s_adc.out_bit = 1u;
+    adc_state().cs_port = cs_port;   adc_state().cs_bit = cs_bit;
+    adc_state().clk_port = clk_port; adc_state().clk_bit = clk_bit;
+    adc_state().di_port = di_port;   adc_state().di_bit = di_bit;
+    adc_state().do_port = do_port;   adc_state().do_bit = do_bit;
+    adc_state().is_dio_shared = (di_port == do_port && di_bit == do_bit);
+    adc_state().phase = PHASE_IDLE;
+    adc_state().rise_count = 0u;
+    adc_state().fall_count = 0u;
+    adc_state().channel_cfg = 0u;
+    adc_state().shift_data = 0u;
+    adc_state().out_bit = 1u;
 
     mcs51_trap_register_write(cs_port, cs_bit, &on_cs_write, nullptr);
     mcs51_trap_register_write(clk_port, clk_bit, &on_clk_write, nullptr);

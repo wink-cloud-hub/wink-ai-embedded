@@ -20,23 +20,22 @@ uint8_t s_mcu_family =
 #endif
 
 // Family-specific silicon seeds applied AFTER memset + peripheral
-// init/reset (GAP-04 CKCON reset value, GAP-13 power-on Fosc).
+// init/reset (GAP-04 CKCON reset value, GAP-13 power-on Fosc). Facts come
+// from the family descriptor (M1); no per-series branch here.
 void apply_silicon_seeds(Mcu51Context* ctx) {
-    if (s_mcu_family == MCS51_FAMILY_CMS8S78XX) {
-        // Ref manual §8.2.2: CKCON reset = 0x07 (WTS=000, T1M=T0M=1,
-        // Timer0/1 clock Fsys/4 out of reset).
-        ctx->sfr_shadow[0x8E] = 0x07u;
-        // CMS8S78xx power-on internal RC = 24 MHz (datasheet ±1%). Set the
-        // field on the reset context directly (reset may target a context
-        // other than the active one). The SFR-access billing quantum stays
-        // on its 12 MHz-calibrated budget deliberately (ADR-0072).
-        ctx->clock_hz = 24000000u;
-    } else {
-        // Classic 8052 has no CKCON SFR; timers are fixed at Fsys/12.
-        // Shadow stays 0 (counts_to_us picks the /12 divider). Leave
-        // clock_hz at 0 so the 12 MHz family defaults remain in effect.
-        ctx->sfr_shadow[0x8E] = 0x00u;
+    const mcs51_family_desc_t* d = mcs51_family_desc(s_mcu_family);
+    ctx->family = s_mcu_family;
+    ctx->sfr_shadow[0x8E] = d->ckcon_reset;
+    if (d->fosc_hz != 0u) {
+        // Fixed on-chip RC (e.g. CMS8S 24 MHz ±1%). Set the field on the
+        // reset context directly (reset may target a context other than
+        // the active one). The SFR-access billing quantum stays on its
+        // 12 MHz-calibrated budget deliberately (ADR-0072).
+        ctx->clock_hz = d->fosc_hz;
     }
+    // Else (classic: board crystal): leave clock_hz at 0 so the 12 MHz
+    // family default remains in effect; CKCON shadow stays 0x00
+    // (counts_to_us picks the /12 divider — no CKCON on classic 8052).
 }
 
 }  // namespace
@@ -67,7 +66,8 @@ void mcs51_context_reset(Mcu51Context* ctx) {
     std::memcpy(saved_port_pins, ctx->extint.port_pins, sizeof(saved_port_pins));
     uint8_t saved_tcon_it = ctx->sfr_shadow[0x88] & ((1u << 0) | (1u << 2));
 
-    // Zero entire context memory
+    // Zero entire context memory (also clears family + §8 model states,
+    // which are per-instance fields since M2 — no file-static to clean).
     std::memset(ctx, 0, sizeof(Mcu51Context));
 
     // Restore ISR table and external pin baseline
@@ -102,15 +102,26 @@ void mcs51_context_reset(Mcu51Context* ctx) {
     ctx->xdata_shadow[0xF0CA] = 0x7Fu; // PS_CAP2
     ctx->xdata_shadow[0xF0CB] = 0x7Fu; // PS_CAP3
 
-    // Initialize standard peripherals via descriptor table (Task R1)
+    // Record the family on the context BEFORE peripheral init so models
+    // observe a consistent family for the whole reset.
+    ctx->family = s_mcu_family;
+
+    // Initialize peripherals via descriptor table (Task R1), filtered by
+    // family (M1): series models never install hooks on another family.
     for (uint8_t i = 0; i < g_mcs51_num_peripherals; ++i) {
+        if (!mcs51_peripheral_active_for(&g_mcs51_peripherals[i], ctx->family)) {
+            continue;
+        }
         if (g_mcs51_peripherals[i].init != nullptr) {
             g_mcs51_peripherals[i].init(ctx);
         }
     }
 
-    // Reset standard peripherals via descriptor table (Task R1)
+    // Reset peripherals via descriptor table (Task R1), same filter.
     for (uint8_t i = 0; i < g_mcs51_num_peripherals; ++i) {
+        if (!mcs51_peripheral_active_for(&g_mcs51_peripherals[i], ctx->family)) {
+            continue;
+        }
         if (g_mcs51_peripherals[i].reset != nullptr) {
             g_mcs51_peripherals[i].reset(ctx);
         }

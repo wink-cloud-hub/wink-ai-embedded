@@ -73,6 +73,8 @@ extern "C" void setUp(void) {}
 extern "C" void tearDown(void) {}
 
 int main(void) {
+    // M1: vendor StdDriver ADC drives CMS8S-only silicon — select family.
+    mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
     wink_mcs51_isr_enable();
     wink_mcs51_xdata_reset();
     mcs51_adc_reset();

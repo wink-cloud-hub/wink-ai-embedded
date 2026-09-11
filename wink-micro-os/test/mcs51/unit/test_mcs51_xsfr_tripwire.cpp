@@ -27,6 +27,9 @@ Mcu51Context s_ctx;
 
 void init_ctx(void) {
     mcs51_set_active_context(&s_ctx);
+    // M1: the XSFR window/tripwire exists on XSFR families only — this test
+    // is a CMS8S-window test, select the family explicitly.
+    mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
     mcs51_context_reset(&s_ctx);
     wink_mcs51_xdata_reset();
 }

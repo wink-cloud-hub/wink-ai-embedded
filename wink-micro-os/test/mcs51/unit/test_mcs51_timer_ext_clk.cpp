@@ -44,6 +44,9 @@ extern "C" void mcs51_timer_poll(struct Mcu51Context* ctx);
 extern "C" void wink_mcs51_host_set_ext_pin(uint16_t pin, uint8_t state);
 
 int main(void) {
+    /* M1: Test 6 uses CMS8S-only Timer2 compare channels (CCEN/CCLx) with a
+     * 24 MHz period assumption — select the family explicitly. */
+    mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
     Mcu51Context* ctx = mcs51_get_context();
     mcs51_context_reset(ctx);
     wink_mcs51_isr_enable();

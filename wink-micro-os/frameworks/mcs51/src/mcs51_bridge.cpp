@@ -72,6 +72,9 @@ void wink_mcs51_microstep(void) {
     Mcu51Context* ctx = mcs51_get_context();
     mcs51_edge_queue_drain(ctx);
     for (uint8_t i = 0; i < g_mcs51_num_peripherals; ++i) {
+        if (!mcs51_peripheral_active_for(&g_mcs51_peripherals[i], ctx->family)) {
+            continue;
+        }
         if (g_mcs51_peripherals[i].poll != nullptr) {
             g_mcs51_peripherals[i].poll(ctx);
         }

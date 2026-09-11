@@ -27,60 +27,57 @@ constexpr uint8_t SFR_WDCON  = 0x97;
 constexpr uint8_t TA_KEY1 = 0xAAu;
 constexpr uint8_t TA_KEY2 = 0x55u;
 
-// CMS8S78xx power-on internal RC oscillator (datasheet: 24 MHz ±1%).
-constexpr uint32_t CMS8S_FOSC_HZ = 24000000u;
+// Power-on Fosc comes from the family descriptor (single source of truth
+// with mcs51_context.cpp seeds); the 24 MHz ±1% datasheet value lives in
+// the CMS8S78xx descriptor row.
 
-struct SysProtState {
-    // 0 = waiting 0xAA, 1 = got 0xAA waiting 0x55, 2 = unlocked (next
-    // protected write passes and consumes the window).
-    uint8_t ta_phase;
-};
-
-SysProtState s_sys = {};
-
-void reset_state() {
-    s_sys.ta_phase = 0;
+// M2: TA phase lives in Mcu51Context::sysProt (was file-static s_sys).
+// Hooks already carry ctx; reset_state takes it explicitly.
+void reset_state(Mcu51Context* ctx) {
+    if (!ctx) ctx = mcs51_get_context();
+    ctx->sysProt.ta_phase = 0;
 }
 
 // Returns true exactly once after a well-formed TA unlock sequence.
-bool consume_unlock() {
-    const bool ok = (s_sys.ta_phase == 2u);
-    s_sys.ta_phase = 0u;
+bool consume_unlock(Mcu51Context* ctx) {
+    const bool ok = (ctx->sysProt.ta_phase == 2u);
+    ctx->sysProt.ta_phase = 0u;
     return ok;
 }
 
 void on_ta_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val, uint8_t new_val) {
-    (void)ctx;
+    if (!ctx) ctx = mcs51_get_context();
     (void)addr;
     (void)old_val;
-    if (s_sys.ta_phase == 0u && new_val == TA_KEY1) {
-        s_sys.ta_phase = 1u;
-    } else if (s_sys.ta_phase == 1u && new_val == TA_KEY2) {
-        s_sys.ta_phase = 2u;
+    if (ctx->sysProt.ta_phase == 0u && new_val == TA_KEY1) {
+        ctx->sysProt.ta_phase = 1u;
+    } else if (ctx->sysProt.ta_phase == 1u && new_val == TA_KEY2) {
+        ctx->sysProt.ta_phase = 2u;
     } else {
         // Any wrong/extra TA write aborts the sequence.
-        s_sys.ta_phase = 0u;
+        ctx->sysProt.ta_phase = 0u;
     }
 }
 
 void on_clkdiv_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val, uint8_t new_val) {
-    if (!consume_unlock()) {
+    if (!consume_unlock(ctx)) {
         // Locked write is ignored by silicon: restore the previous value.
         ctx->sfr_shadow[addr] = old_val;
         return;
     }
     // Ref manual §4.2.1: div=0 -> Fsys = Fosc; otherwise Fsys = Fosc/(2*div).
+    const uint32_t fosc = mcs51_family_desc(ctx->family)->fosc_hz;
     const uint32_t fsys = (new_val == 0u)
-        ? CMS8S_FOSC_HZ
-        : CMS8S_FOSC_HZ / (2u * static_cast<uint32_t>(new_val));
-    wink_mcs51_set_hardware_clock_hz(fsys != 0u ? fsys : CMS8S_FOSC_HZ);
+        ? fosc
+        : fosc / (2u * static_cast<uint32_t>(new_val));
+    wink_mcs51_set_hardware_clock_hz(fsys != 0u ? fsys : fosc);
     // Timers already pending at the old rate must be re-based immediately.
     wink_mcs51_timers_step_to(ctx->virtual_us);
 }
 
 void on_wdcon_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val, uint8_t new_val) {
     (void)new_val;
-    if (!consume_unlock()) {
+    if (!consume_unlock(ctx)) {
         ctx->sfr_shadow[addr] = old_val;
     }
     // WDT reset timing is not modelled: accepted (unlocked) writes simply
@@ -92,13 +89,11 @@ void on_wdcon_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val, uint8_t ne
 extern "C" {
 
 void cms8s_sys_reset(struct Mcu51Context* ctx) {
-    (void)ctx;
-    reset_state();
+    reset_state(ctx);
 }
 
 void cms8s_sys_init(struct Mcu51Context* ctx) {
-    (void)ctx;
-    reset_state();
+    reset_state(ctx);
     mcs51_trap_register_sfr_write(SFR_TA, on_ta_write);
     mcs51_trap_register_sfr_write(SFR_CLKDIV, on_clkdiv_write);
     mcs51_trap_register_sfr_write(SFR_WDCON, on_wdcon_write);

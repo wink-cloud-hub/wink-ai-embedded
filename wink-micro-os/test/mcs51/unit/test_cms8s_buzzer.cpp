@@ -49,6 +49,8 @@ uint8_t get_last_pin3_level(void) {
 int main(void) {
     printf("[mcs51_buzzer] Starting CMS8S78xx Buzzer unit tests...\n");
 
+    // M1: buzzer is CMS8S-only silicon — select the family explicitly.
+    mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
     Mcu51Context* ctx = mcs51_get_context();
     mcs51_context_reset(ctx);
     ctx->clock_hz = 24000000u;

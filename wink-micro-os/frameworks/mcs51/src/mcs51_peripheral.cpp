@@ -33,6 +33,8 @@ uint64_t cms8s_buzzer_next_event_us(struct Mcu51Context* ctx);
 void cms8s_sys_init(struct Mcu51Context* ctx);
 void cms8s_sys_reset(struct Mcu51Context* ctx);
 
+// M1: core 8051 models run on every family; cms8s_* models only where the
+// silicon exists. Loops (init/reset/poll/next_event) filter on family_mask.
 const mcs51_peripheral_desc_t g_mcs51_peripherals[] = {
     {
         "timer",
@@ -40,7 +42,8 @@ const mcs51_peripheral_desc_t g_mcs51_peripherals[] = {
         mcs51_timer_reset,
         mcs51_timer_poll,
         mcs51_timer_next_event_us,
-        MCS51_PHASE_CLOCK
+        MCS51_PHASE_CLOCK,
+        MCS51_FAMILY_MASK_ALL
     },
     {
         "uart",
@@ -48,7 +51,8 @@ const mcs51_peripheral_desc_t g_mcs51_peripherals[] = {
         mcs51_uart_reset,
         mcs51_uart_poll,
         mcs51_uart_next_event_us,
-        MCS51_PHASE_RX_DRAIN
+        MCS51_PHASE_RX_DRAIN,
+        MCS51_FAMILY_MASK_ALL
     },
     {
         "extint",
@@ -56,7 +60,8 @@ const mcs51_peripheral_desc_t g_mcs51_peripherals[] = {
         mcs51_extint_reset,
         mcs51_extint_poll,
         mcs51_extint_next_event_us,
-        MCS51_PHASE_EXTINT
+        MCS51_PHASE_EXTINT,
+        MCS51_FAMILY_MASK_ALL
     },
     {
         "cms8s_adc",
@@ -64,7 +69,8 @@ const mcs51_peripheral_desc_t g_mcs51_peripherals[] = {
         cms8s_adc_model_reset,
         cms8s_adc_poll,
         cms8s_adc_next_event_us,
-        MCS51_PHASE_ADC
+        MCS51_PHASE_ADC,
+        MCS51_FAMILY_MASK_CMS8S78XX
     },
     {
         "cms8s_buzzer",
@@ -72,7 +78,8 @@ const mcs51_peripheral_desc_t g_mcs51_peripherals[] = {
         cms8s_buzzer_reset,
         cms8s_buzzer_poll,
         cms8s_buzzer_next_event_us,
-        MCS51_PHASE_CLOCK
+        MCS51_PHASE_CLOCK,
+        MCS51_FAMILY_MASK_CMS8S78XX
     },
     {
         "cms8s_sys",
@@ -80,7 +87,8 @@ const mcs51_peripheral_desc_t g_mcs51_peripherals[] = {
         cms8s_sys_reset,
         nullptr,
         nullptr,
-        MCS51_PHASE_CLOCK
+        MCS51_PHASE_CLOCK,
+        MCS51_FAMILY_MASK_CMS8S78XX
     }
 };
 
