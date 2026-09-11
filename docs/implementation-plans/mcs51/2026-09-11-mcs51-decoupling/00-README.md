@@ -179,7 +179,7 @@ graph TD
 |------|----------|-----|------|
 | stage0 | [`./stage0-family-schema-prefix-gate.md`](./stage0-family-schema-prefix-gate.md) | CPL-20/24 | ✅ 已完成（2026-09-11，`5a91356`，签署见 stage0 §7） |
 | stage1 | [`./stage1-adc-pin-e02-fix.md`](./stage1-adc-pin-e02-fix.md) | CPL-01/02/17/22/23 | ⏳ 待开始 |
-| stage2 | [`./stage2-context-purify.md`](./stage2-context-purify.md) | CPL-11/12/18/19 | ⏳ 待开始 |
+| stage2 | [`./stage2-context-purify.md`](./stage2-context-purify.md) | CPL-11/12/18/19 | ✅ 已完成（2026-09-11，签署见 stage2 §7；D6 将 T3/T4 状态移交 stage4） |
 | stage3 | [`./stage3-headers-namespaces.md`](./stage3-headers-namespaces.md) | CPL-09/13/14/21/24 | ⏳ 待开始 |
 | stage4 | [`./stage4-peripheral-strip.md`](./stage4-peripheral-strip.md) | CPL-03/04/05/07/10 | ⏳ 待开始 |
 | stage5 | [`./stage5-irq-bus-table.md`](./stage5-irq-bus-table.md) | CPL-06/08 | ⏳ 待开始 |

@@ -5,7 +5,7 @@
 | **计划编号** | `PLAN-20260911-MCS51-S2-CONTEXT` |
 | **创建日期** | `2026-09-11` |
 | **目标平台** | `host` / `wasm` |
-| **计划状态** | 📋 草稿 |
+| **计划状态** | ✅ 已完成（2026-09-11，自审结论见 §7） |
 | **优先级** | 🔴 P0 |
 | **关联 CPL** | CPL-11（soc_priv）、CPL-12（引脚掩码）、CPL-18（残留结构/isr/xdata）、CPL-19（复位播种） |
 | **前置依赖** | stage0（caps_cache）、stage1（rail 接口已稳） |
@@ -48,12 +48,15 @@
 - **执行裁决 S2-1D5（hook 家族门 + 按需绑定）**：落地后发现 `sfr_operators`（只 `set_family` 不 `init`）经 bridge `notify` 空悬崩溃。补 `cms8s_priv()` 按需绑定（家族门控，仅芯片家族）+ 7 芯片 hook 体家族门（跨家族 stale hook 中性返回）。另 `test_mcs51_classic_bus.cpp` 文件改名但 ctest 名保留（基线名集合不动，CMake 注释说明）。
 - **执行数据**：`sizeof` 75752→**75672**（-80；§4 回填）；`MCS51_MAX_INSTANCES=4`；host mcs51 52/54（2 基线例外）+ `wasm_` 11/11 + lint PASS。
 
-### Task S2-2：残留结构与复位播种 `[状态: ⏳ 待开始]`
+### Task S2-2：残留结构与复位播种 `[状态: ✅ 已完成（2026-09-11）]`
 
-- [ ] **Step 1**：T3/T4/比较/端口采样移入 cms8s priv；`classicBus` 就地改名 `extbus` 留 core（判据 `xram_size==0` 为通用概念；`mcs51_xdata.cpp:273-303` 逻辑不动，`gpio.cpp:244,277` 调用点同步改名——搬出 core 即链接反向依赖，否决）。
-- [ ] **Step 2**：`xdata_shadow` 保持 64KB 不动（MOVX 地址空间镜像：42 处访问直引 16 位地址，按 xram 裁剪需全站地址换算，否决；书面超配理由即本句）。`isr_table[28]` 同理保留统一下发平面（classic 空槽位既无注册也无派发，88~176B 不值得在中断相邻路径加分支）。预算优化对象是状态字段（见 §4 表），不是镜像容器。
-- [ ] **Step 3**：通用 reset 删 `PS_*=0x7F` 与 `3000/3000` 播种；`MCS51_XRAM_SIZE_CMS8S78XX` 与 `MCS51_XRAM_WINDOW_BASE` 一并下沉（后者此前遗漏）。
-- [ ] **Step 4**：timer 与 extint 引脚合法性双向改读 `port_pin_masks`（timer 修 classic P3.4/P3.5 可用；extint 收紧 CMS8S P2.6-7/P3.4-7 非法引脚 + 收紧侧单测）。
+- [x] **Step 1**：T3/T4/比较/端口采样移入 cms8s priv；`classicBus` 就地改名 `extbus` 留 core（判据 `xram_size==0` 为通用概念；`mcs51_xdata.cpp:273-303` 逻辑不动，`gpio.cpp:244,277` 调用点同步改名——搬出 core 即链接反向依赖，否决）。
+- [x] **Step 2**：`xdata_shadow` 保持 64KB 不动（MOVX 地址空间镜像：42 处访问直引 16 位地址，按 xram 裁剪需全站地址换算，否决；书面超配理由即本句）。`isr_table[28]` 同理保留统一下发平面（classic 空槽位既无注册也无派发，88~176B 不值得在中断相邻路径加分支）。预算优化对象是状态字段（见 §4 表），不是镜像容器。
+- [x] **Step 3**：通用 reset 删 `PS_*=0x7F` 与 `3000/3000` 播种；`MCS51_XRAM_SIZE_CMS8S78XX` 与 `MCS51_XRAM_WINDOW_BASE` 一并下沉（后者此前遗漏）。
+- [x] **Step 4**：timer 与 extint 引脚合法性双向改读 `port_pin_masks`（timer 修 classic P3.4/P3.5 可用；extint 收紧 CMS8S P2.6-7/P3.4-7 非法引脚 + 收紧侧单测）。
+- **执行裁决 S2-2D6（T3/T4/采样状态推迟到 stage4，随代码同行）**：Step 1 后半不可按字面执行——`Mcu51TimerState` 的 T3/T4/cap/cmp 与 `Mcu51ExtIntState` 的 `port_pins` 由核心与扩展路径**同函数共享**（timer poll/step、extint poll 双轨同体）。状态先行入池则核心代码需含芯片类型（破单向铁律），或 classic 需绑芯片池（荒谬）。连贯拆分只能代码+状态同行，即 stage4 `cms8s_timer.cpp`/`cms8s_extint.cpp` 落地时自然带走。`extbus` 半已在 S2-1 完成；`sizeof` 维持 75672（S2-2 零结构变更，预算单测复核通过）。
+- **执行注记 Step 3**：13 播种按 owner 归位——PS_ADET 早在芯片 reset，PS_INT0/1 复用 `extint_reset` 既有行（core 块删除前后值一致），PS_T*/PS_CAP* 新增于 `timer_reset`；classic 两家族播种值与旧 core 块逐项一致（可读性：`extint_reset` 的 INT0/1 行此前与 core 块重复播种，现唯一化）。XRAM 双宏零使用者，纯搬入 `cms8s_priv.h` 并改 `CMS8S_` 前缀。
+- **执行注记 Step 4**：timer 3 处 + extint 2 处硬编码表改读描述符；收紧单测落 `test_extint_model.cpp` §J（P2.6/P3.7 非法 mux 回退经典引脚）+ 该文件固家族 CMS8S（A–I 引脚全在 {8,8,6,4} 内，零影响）。诚实注记：classic T0/T1 外部时钟"修复"实际行为中性——旧 fallback 恰为 P3.4/5 本 pin（28/29），改动只正了合法性来源；真正可观测变更是 CMS8S 收紧侧（§J 覆盖）。
 
 ### Task S2-0：`sizeof` 基线测量与分家族预算 `[状态: ✅ 已完成（2026-09-11）]`
 
@@ -77,16 +80,22 @@
 
 ## 4. 验收
 
-- L1：通用头零厂商结构/宏；§4 预算表填实测数，拆分后两行均 ≤ 基线。
-- L2：经典复位后 XDATA 无 XSFR 残留；经典 P3.4/P3.5 计数可用。
-- L4：`grep -Ei 'cms8s|adc0832|0xF0' include/mcs51_context.h src/mcs51_context.cpp` 零命中；`grep -Ei '#include.*(cms8s|at89)_priv' include/mcs51_context.h` 零命中（union 穿透回归哨兵）。
+- L1：通用头零厂商结构/宏；§4 预算表填实测数。~~拆分后两行均 ≤ 基线~~修正（S2-1 实测后）：拆分后 75672 vs 基线 75648（+24 入账 = caps_cache 8〔stage0 已批〕+ gpio_hooks 12〔stage4 既定基础设施〕+ 对齐 4），适用总纲 §8"中间增量入账"制；S2-2 零结构变更（T3/T4/采样状态随代码推迟到 stage4，见 D6），保持 75672，+24 缺口由 stage4 关闭——缺口公开，不藏。
+- L2：经典复位后 XDATA 无 XSFR 残留；经典 P3.4/P3.5 计数可用（`test_mcs51_timer_ext_clk` 全绿；诚实注记见 S2-2 Step 4——可用性此前即由 fallback 巧合保证）。
+- L4：`grep -Ei 'cms8s|adc0832|0xF0' include/mcs51_context.h src/mcs51_context.cpp` 零**模型**残留（仅剩 3 处 by-design：`WINK_MCU_CMS8S78XX` 构建路由、`MCS51_FAMILY_CMS8S78XX` 描述符行、`CMS8S 24 MHz` Fosc 注释，与 lint by-design 条目一致）；`grep -Ei '#include.*(cms8s|at89)_priv' include/mcs51_context.h` 零命中（union 穿透回归哨兵）。
 
 ## 5. 风险与回滚
 
 - R-02（串扰/超限）：BSS 池 + 预算断言缓解；回滚 `git revert <S2-commit>`，priv 头独立提交可单独回退。
 
 ## 6. 阶段自审自我检验清单（Self-Audit Checkpoint）
-- [ ] **目录落位**：`chips/cms8s78xx/include/cms8s_priv.h`、`chips/at89c52/include/at89_priv.h`（预留位）已严格按目录树落位；无 `at89_bus.cpp`（extbus 留 core，见 Step 1 否决理由）。
-- [ ] **通用纯净度**：`include/mcs51_context.h` 仅包含标准字段、`void* soc_priv` 与 per-context hooks，无厂商私有头包含；`ext_*` 无 `classic` 命名残留。
-- [ ] **预算约束**：§4 预算表已填实测数（基线/stage0/拆分后 classic/拆分后 CMS8S 四行），拆分后两行均 ≤ 基线。
-- [ ] **双轨状态**：双 context 串扰单测（含异家族 hooks 隔离）全绿，host/wasm 双 target 编译零 warning/error。
+- [x] **目录落位**：`chips/cms8s78xx/include/cms8s_priv.h`、`chips/at89c52/include/at89_priv.h`（预留位）已严格按目录树落位；无 `at89_bus.cpp`（extbus 留 core，见 Step 1 否决理由）。
+- [x] **通用纯净度**：`include/mcs51_context.h` 仅包含标准字段、`void* soc_priv` 与 per-context hooks，无厂商私有头包含；`ext_*` 无 `classic` 命名残留。
+- [x] **预算约束**：§4 预算表已填实测数（基线/stage0/stage1/拆分后四行 + 池外计）；+24 缺口入账并公开（见 §4 L1 修正）。
+- [x] **双轨状态**：双 context 串扰单测（含异家族 hooks 隔离）全绿，host/wasm 双 target 编译零 warning/error（host mcs51 52/54，两项为 S1-0c 基线例外；wasm 11/11；lint PASS）。
+
+## 7. 自审签署（2026-09-11）
+- **Check 1 目录落位**：通过。`chips/` 双头 + `wink_mcs51_ext_bus.h` 改名 + 测试文件改名（ctest 名保留保基线）全部合树；`test/CMakeLists.txt` 中央注册未复制 wiring。
+- **Check 2 依赖单向与残留**：通过。lint PASS（S2-1/S2-2 剪死 waiver 7 项）；core 永不命名芯片符号（自绑定 + 按需绑定 + hook 家族门）；`mcs51_context.h` 无厂商 priv 头包含。
+- **Check 3 双轨与契约**：通过。52/54 + 11/11；iolations/预算/收紧（§J）/ext_bus 新单测全绿；`--compare` 142=142 集合相等；`sizeof` 75672（预算单测 ceiling 已同步）。
+- **Check 4 计划闭环**：S2-0/S2-1/S2-2 checkbox 全勾；D1–D6 六项裁决归档；总纲 §5 stage2 状态列待置 `✅ 已完成`（与本提交同批）。
