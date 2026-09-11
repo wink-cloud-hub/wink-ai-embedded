@@ -124,7 +124,7 @@ void wink_mcs51_set_hardware_clock_hz(uint32_t clock_hz) {
     // interception-point budget (ADR-0072): the count of SFR interceptions in
     // a firmware tick is Fsys-independent, and re-scaling the quantum would
     // desynchronize the firmware fiber from the headless master clock.
-    // Used by silicon SFR notifications (e.g. CMS8S78xx CLKDIV writes).
+    // Used by silicon SFR notifications (e.g. guarded clock-divider writes).
     Mcu51Context* ctx = mcs51_get_context();
     ctx->clock_hz = clock_hz;
 }

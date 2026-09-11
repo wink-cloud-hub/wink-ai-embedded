@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // MCS-51 Level-2 instant-trap C ABI (boundary ③, ADR-0071 D1, AD-13).
 //
-// Peripheral models (ADC0832, CMS8S ADC, future bit-banged I2C/SPI) register
+// Peripheral models (board devices, on-chip converters, future bit-banged
+// I2C/SPI) register
 // POD function pointers here; the SFR proxy (mcs51_proxy.hpp) invokes them
 // synchronously inside the very pin write/read statement, on the user fiber
 // and in the same interception point. Static dispatch only (ADR-0004): no
@@ -57,7 +58,7 @@ typedef struct {
 // M3: hook DEFINITIONS must carry C language linkage (extern "C") to match
 // these C-ABI typedefs — even when file-local (anonymous namespace gives the
 // internal linkage; do NOT add `static` inside a linkage specification,
-// GCC rejects it). See cms8s_sys.cpp for the pattern.
+// GCC rejects it). See a chip system model for the pattern.
 typedef void (*mcs51_sfr_write_hook_t)(struct Mcu51Context* ctx, uint8_t addr,
                                         uint8_t old_val, uint8_t new_val);
 typedef void (*mcs51_sfr_read_hook_t)(struct Mcu51Context* ctx, uint8_t addr);
@@ -67,7 +68,7 @@ typedef void (*mcs51_sfr_read_hook_t)(struct Mcu51Context* ctx, uint8_t addr);
 // zero = none). The bridge invokes it BEFORE the per-address hook dispatch,
 // so a half-open TA window observes the intervening firmware write first and
 // the pending protected write arrives locked and rolls back. Installed by
-// the owning chip init (cms8s_sys_init) with the explicit ctx pointer — no
+// the owning chip init with the explicit ctx pointer — no
 // active-context dependence; cleared by context reset / trap reset like
 // every hook. File-static globals are rejected here: two contexts of
 // different families would cross-talk (total §3.1b-4).

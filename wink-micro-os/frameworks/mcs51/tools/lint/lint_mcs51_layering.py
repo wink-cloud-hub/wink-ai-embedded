@@ -66,12 +66,14 @@ BASELINE: list[tuple[str, str, str, str]] = [
     # shim headers — mirrors the mcs51_family.h descriptor treatment).
     ("include/mcs51_family_route.h", "cms8s", r".*", "by-design"),
     ("include/mcs51_family_route.h", "familynam", r".*", "by-design"),
-    ("include/mcs51_peripheral.h", "cms8s", r"cms8s_\*", "stage4"),
+    # S4-C (CPL-10 cutover): peripheral core table is chip-free; the two
+    # stage4 rows below are pruned with the lines (re-adding a chip row
+    # must fail, not be waived).
     # mcs51_sfr_map.h: S3-H6 pruned (stage3 shrunk it to standard-only; the
     # three stage3 rows below are gone with the lines — re-adding a vendor
     # address must fail, not be waived).
-    # mcs51_trap.h doc comments -> stage4
-    ("include/mcs51_trap.h", "cms8s", r"CMS8S|cms8s_sys", "stage4"),
+    # mcs51_trap.h doc comments: S4-C scrubbed (no vendor names left in the
+    # file; re-adding one must fail, not be waived).
     # mcs51_xsfr_allowlist.h whole file -> stage5 (XSFR parametrize)
     ("include/mcs51_xsfr_allowlist.h", "cms8s", r".*", "stage5"),
     ("include/mcs51_xsfr_allowlist.h", "xsfr_addr", r"0xF", "stage5"),
@@ -95,8 +97,7 @@ BASELINE: list[tuple[str, str, str, str]] = [
     # gate's src/ scope — the row can never match again).
     # src/mcs51_bridge.cpp: S3-H6 pruned (bare includes + hard call gone;
     # re-adding either must fail, not be waived).
-    # src/mcs51_clock.cpp comment -> stage4
-    ("src/mcs51_clock.cpp", "cms8s", r"CMS8S78xx", "stage4"),
+    # src/mcs51_clock.cpp comment: S4-C scrubbed (generic wording now).
     # src/mcs51_context.cpp: WINK_MCU_* build routing is by-design;
     # ADCLDO seeding + PS_* seeds -> stage2.
     ("src/mcs51_context.cpp", "cms8s",
@@ -136,9 +137,8 @@ BASELINE: list[tuple[str, str, str, str]] = [
     # src/mcs51_isr.cpp default map + comments -> stage5
     ("src/mcs51_isr.cpp", "cms8s",
      r"CMS8S78xx|cms8s78xx", "stage5"),
-    # src/mcs51_peripheral.cpp cms8s_* table -> stage4
-    ("src/mcs51_peripheral.cpp", "cms8s",
-     r"cms8s|MCS51_FAMILY_MASK_CMS8S78XX", "stage4"),
+    # src/mcs51_peripheral.cpp chip table: S4-C pruned (rows live in the
+    # chip register TU now; re-adding one must fail, not be waived).
     # src/mcs51_timer.cpp CKCON/W0C/PS_* -> stage4
     ("src/mcs51_timer.cpp", "cms8s", r"CMS8S78xx", "stage4"),
     ("src/mcs51_timer.cpp", "xsfr_addr", r"0xF0C6", "stage4"),
