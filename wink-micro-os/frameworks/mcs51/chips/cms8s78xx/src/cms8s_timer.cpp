@@ -487,6 +487,43 @@ void step_chip_timers(Mcu51Context* ctx, uint64_t now_us) {
     step_timer4(ctx, now_us);
 }
 
+// S4-H2 (reset-rebuilds-registration contract): shared by init and reset
+// (trap_register overwrites the same slots — idempotent).
+extern "C" void sfr_read_hook_cms8s_timer(struct Mcu51Context* ctx,
+                                          uint8_t addr);
+extern "C" void sfr_write_hook_cms8s_timer(struct Mcu51Context* ctx,
+                                           uint8_t addr, uint8_t old_val,
+                                           uint8_t new_val);
+extern "C" void sfr_write_hook_cms8s_timer_t2(struct Mcu51Context* ctx,
+                                              uint8_t addr, uint8_t old_val,
+                                              uint8_t new_val);
+void install_trap_hooks(void) {
+    mcs51_trap_register_sfr_read(SFR_T2IF, sfr_read_hook_cms8s_timer);
+    mcs51_trap_register_sfr_write(SFR_T2IF, sfr_write_hook_cms8s_timer);
+    mcs51_trap_register_sfr_read(SFR_EIF2, sfr_read_hook_cms8s_timer);
+    mcs51_trap_register_sfr_write(SFR_EIF2, sfr_write_hook_cms8s_timer);
+    mcs51_trap_register_sfr_read(SFR_T34MOD, sfr_read_hook_cms8s_timer);
+    mcs51_trap_register_sfr_write(SFR_T34MOD, sfr_write_hook_cms8s_timer);
+    mcs51_trap_register_sfr_write(SFR_TL3, sfr_write_hook_cms8s_timer);
+    mcs51_trap_register_sfr_write(SFR_TH3, sfr_write_hook_cms8s_timer);
+    mcs51_trap_register_sfr_write(SFR_TL4, sfr_write_hook_cms8s_timer);
+    mcs51_trap_register_sfr_write(SFR_TH4, sfr_write_hook_cms8s_timer);
+    // Chained T2 hooks (S4-D4): displace the core slots registered by the
+    // core init earlier in the reset loop; each chains the core handler.
+    mcs51_trap_register_sfr_write(SFR_T2CON, sfr_write_hook_cms8s_timer_t2);
+    mcs51_trap_register_sfr_write(SFR_TL2, sfr_write_hook_cms8s_timer_t2);
+    mcs51_trap_register_sfr_write(SFR_TH2, sfr_write_hook_cms8s_timer_t2);
+    mcs51_trap_register_sfr_write(SFR_RLDL, sfr_write_hook_cms8s_timer_t2);
+    mcs51_trap_register_sfr_write(SFR_RLDH, sfr_write_hook_cms8s_timer_t2);
+    mcs51_trap_register_sfr_write(SFR_CCEN, sfr_write_hook_cms8s_timer_t2);
+    mcs51_trap_register_sfr_write(SFR_CCL1, sfr_write_hook_cms8s_timer_t2);
+    mcs51_trap_register_sfr_write(SFR_CCH1, sfr_write_hook_cms8s_timer_t2);
+    mcs51_trap_register_sfr_write(SFR_CCL2, sfr_write_hook_cms8s_timer_t2);
+    mcs51_trap_register_sfr_write(SFR_CCH2, sfr_write_hook_cms8s_timer_t2);
+    mcs51_trap_register_sfr_write(SFR_CCL3, sfr_write_hook_cms8s_timer_t2);
+    mcs51_trap_register_sfr_write(SFR_CCH3, sfr_write_hook_cms8s_timer_t2);
+}
+
 // M3: C language linkage for the C-ABI hook table.
 extern "C" void sfr_write_hook_cms8s_timer(struct Mcu51Context* ctx, uint8_t addr,
                                 uint8_t old_val, uint8_t new_val) {
@@ -603,30 +640,7 @@ void cms8s_timer_init(struct Mcu51Context* ctx) {
         tm.t2_cap_last_level[c] = 0xFFu;
         tm.t2_next_cmp_us[c] = NO_OVERFLOW;
     }
-    mcs51_trap_register_sfr_read(SFR_T2IF, sfr_read_hook_cms8s_timer);
-    mcs51_trap_register_sfr_write(SFR_T2IF, sfr_write_hook_cms8s_timer);
-    mcs51_trap_register_sfr_read(SFR_EIF2, sfr_read_hook_cms8s_timer);
-    mcs51_trap_register_sfr_write(SFR_EIF2, sfr_write_hook_cms8s_timer);
-    mcs51_trap_register_sfr_read(SFR_T34MOD, sfr_read_hook_cms8s_timer);
-    mcs51_trap_register_sfr_write(SFR_T34MOD, sfr_write_hook_cms8s_timer);
-    mcs51_trap_register_sfr_write(SFR_TL3, sfr_write_hook_cms8s_timer);
-    mcs51_trap_register_sfr_write(SFR_TH3, sfr_write_hook_cms8s_timer);
-    mcs51_trap_register_sfr_write(SFR_TL4, sfr_write_hook_cms8s_timer);
-    mcs51_trap_register_sfr_write(SFR_TH4, sfr_write_hook_cms8s_timer);
-    // Chained T2 hooks (S4-D4): displace the core slots registered by the
-    // core init earlier in the reset loop; each chains the core handler.
-    mcs51_trap_register_sfr_write(SFR_T2CON, sfr_write_hook_cms8s_timer_t2);
-    mcs51_trap_register_sfr_write(SFR_TL2, sfr_write_hook_cms8s_timer_t2);
-    mcs51_trap_register_sfr_write(SFR_TH2, sfr_write_hook_cms8s_timer_t2);
-    mcs51_trap_register_sfr_write(SFR_RLDL, sfr_write_hook_cms8s_timer_t2);
-    mcs51_trap_register_sfr_write(SFR_RLDH, sfr_write_hook_cms8s_timer_t2);
-    mcs51_trap_register_sfr_write(SFR_CCEN, sfr_write_hook_cms8s_timer_t2);
-    mcs51_trap_register_sfr_write(SFR_CCL1, sfr_write_hook_cms8s_timer_t2);
-    mcs51_trap_register_sfr_write(SFR_CCH1, sfr_write_hook_cms8s_timer_t2);
-    mcs51_trap_register_sfr_write(SFR_CCL2, sfr_write_hook_cms8s_timer_t2);
-    mcs51_trap_register_sfr_write(SFR_CCH2, sfr_write_hook_cms8s_timer_t2);
-    mcs51_trap_register_sfr_write(SFR_CCL3, sfr_write_hook_cms8s_timer_t2);
-    mcs51_trap_register_sfr_write(SFR_CCH3, sfr_write_hook_cms8s_timer_t2);
+    install_trap_hooks();
 }
 
 void cms8s_timer_reset(struct Mcu51Context* ctx) {
@@ -661,8 +675,9 @@ void cms8s_timer_reset(struct Mcu51Context* ctx) {
         tm.t2_cap_last_level[c] = 0xFFu;
         tm.t2_next_cmp_us[c] = NO_OVERFLOW;
     }
-    // NOTE: hook registration lives in init only (mirrors the core init).
-    // Reset re-arms state; the slots survive (same addresses, same hooks).
+    // NOTE: hook registration lives in install_trap_hooks (called by init);
+    // reset re-arms state AND reinstalls the slots (S4-H2).
+    install_trap_hooks();
 }
 
 void cms8s_timer_poll(struct Mcu51Context* ctx) {

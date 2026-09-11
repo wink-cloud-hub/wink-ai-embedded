@@ -23,6 +23,15 @@ extern "C" {
 void cms8s78xx_register(void);
 void at89c52_register(void);
 
+// Ordering discipline (S4-H3): mcs51_trap_reset() wipes every installed
+// hook on the active context. Call it BEFORE use/register/select below —
+// never between them and the test body — or chip hooks silently vanish.
+// Reset loops always run init() before reset(), and every model reset
+// rebuilds its own registrations (S4-H2), so a post-harness trap_reset is
+// the only way to lose them.
+void cms8s78xx_register(void);
+void at89c52_register(void);
+
 // Register the chip models for `family` without touching any context.
 // Insert before legacy set_family lines to keep their exact reset order
 // (zero behavior change); use_family below for new code.

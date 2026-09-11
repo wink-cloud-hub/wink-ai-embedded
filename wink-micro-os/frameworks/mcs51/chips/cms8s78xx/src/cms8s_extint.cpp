@@ -69,6 +69,16 @@ void patch_line_selectors(Mcu51Context* ctx) {
     ctx->extint.lines[1].ps_addr = XSFR_PS_INT1;
 }
 
+// S4-H2 (reset-rebuilds-registration contract): shared by init and reset
+// (trap_register overwrites the same slots — idempotent).
+void install_trap_hooks(void) {
+    // GAP-12: port interrupt flags are write-0-to-clear.
+    mcs51_trap_register_sfr_write(CMS8S_SFR_P0EXTIF, sfr_write_hook_port_extif);
+    mcs51_trap_register_sfr_write(CMS8S_SFR_P1EXTIF, sfr_write_hook_port_extif);
+    mcs51_trap_register_sfr_write(CMS8S_SFR_P2EXTIF, sfr_write_hook_port_extif);
+    mcs51_trap_register_sfr_write(CMS8S_SFR_P3EXTIF, sfr_write_hook_port_extif);
+}
+
 void poll_port_ints(Mcu51Context* ctx, bool force, uint64_t now) {
     Cms8sPortExtIntState& port = cms8s_priv(ctx)->port_extint;
     if (!force && (now - port.port_last_sample_us) < SAMPLE_PERIOD_US) {
@@ -156,11 +166,7 @@ void cms8s_extint_init(struct Mcu51Context* ctx) {
     cms8s_priv(ctx)->port_extint.in_poll = false;
     cms8s_priv(ctx)->port_extint.port_last_sample_us = 0;
 
-    // GAP-12: port interrupt flags are write-0-to-clear.
-    mcs51_trap_register_sfr_write(CMS8S_SFR_P0EXTIF, sfr_write_hook_port_extif);
-    mcs51_trap_register_sfr_write(CMS8S_SFR_P1EXTIF, sfr_write_hook_port_extif);
-    mcs51_trap_register_sfr_write(CMS8S_SFR_P2EXTIF, sfr_write_hook_port_extif);
-    mcs51_trap_register_sfr_write(CMS8S_SFR_P3EXTIF, sfr_write_hook_port_extif);
+    install_trap_hooks();
 }
 
 void cms8s_extint_reset(struct Mcu51Context* ctx) {
@@ -178,6 +184,7 @@ void cms8s_extint_reset(struct Mcu51Context* ctx) {
     ctx->xdata_shadow[XSFR_PS_INT1] = PS_RESET;
     cms8s_priv(ctx)->port_extint.port_last_sample_us = 0;
     cms8s_priv(ctx)->port_extint.sample_due = true;
+    install_trap_hooks();
 }
 
 void cms8s_port_extint_poll(struct Mcu51Context* ctx) {

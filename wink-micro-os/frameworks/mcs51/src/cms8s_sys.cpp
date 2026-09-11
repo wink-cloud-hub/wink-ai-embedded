@@ -260,22 +260,14 @@ extern "C" void on_iap_read(Mcu51Context* ctx, uint8_t addr) {
 extern "C" {
 
 // S3-2: pre-dispatch notify lives below (same TU); forward-declared for the
-// init install. The wink_mcs51_wdt.h hard export is gone (CPL-14) — this TU
+// install helper. The wink_mcs51_wdt.h hard export is gone (CPL-14) — this TU
 // is the only referrer.
 void cms8s_sys_notify_sfr_write(struct Mcu51Context* ctx, uint8_t addr);
 
-void cms8s_sys_reset(struct Mcu51Context* ctx) {
-    if (!ctx) ctx = mcs51_get_context();
-    if (!ctx) return;
-    cms8s_soc_bind(ctx);  // defensive: standalone resets bind too (no-op if bound)
-    reset_state(ctx);
-}
-
-void cms8s_sys_init(struct Mcu51Context* ctx) {
-    if (!ctx) ctx = mcs51_get_context();
-    if (!ctx) return;
-    cms8s_soc_bind(ctx);  // bind BEFORE any pool deref (ordering invariant)
-    reset_state(ctx);
+// S4-H2 (reset-rebuilds-registration contract): TA/WDCON/IAP dispatch
+// installation shared by init and reset (trap_register overwrites the same
+// slots — idempotent; the on_* hooks resolve via the file namespace).
+static void install_dispatch(struct Mcu51Context* ctx) {
     // S3-2: install the pre-dispatch notify with the explicit ctx pointer
     // (per-context by construction, no active-context dependence). The bridge
     // runs this before the per-address hooks below (GAP-07 ordering: TA
@@ -290,6 +282,22 @@ void cms8s_sys_init(struct Mcu51Context* ctx) {
         mcs51_trap_register_sfr_write(addr, on_iap_write);
         mcs51_trap_register_sfr_read(addr, on_iap_read);
     }
+}
+
+void cms8s_sys_reset(struct Mcu51Context* ctx) {
+    if (!ctx) ctx = mcs51_get_context();
+    if (!ctx) return;
+    cms8s_soc_bind(ctx);  // defensive: standalone resets bind too (no-op if bound)
+    reset_state(ctx);
+    install_dispatch(ctx);
+}
+
+void cms8s_sys_init(struct Mcu51Context* ctx) {
+    if (!ctx) ctx = mcs51_get_context();
+    if (!ctx) return;
+    cms8s_soc_bind(ctx);  // bind BEFORE any pool deref (ordering invariant)
+    reset_state(ctx);
+    install_dispatch(ctx);
 }
 
 void cms8s_sys_poll(struct Mcu51Context* ctx) {

@@ -79,6 +79,10 @@ void cms8s_buzzer_reset(struct Mcu51Context* ctx) {
     cms8s_priv(ctx)->buzzer.half_period_us = 0u;
     cms8s_priv(ctx)->buzzer.next_toggle_us = UINT64_MAX;
     cms8s_priv(ctx)->buzzer.toggle_count = 0u;
+    // S4-H2 (reset-rebuilds-registration contract): hooks live here, not in
+    // init — init delegates to reset, so both paths install them.
+    mcs51_trap_register_sfr_write(SFR_BUZCON, on_buzzer_sfr_write);
+    mcs51_trap_register_sfr_write(SFR_BUZDIV, on_buzzer_sfr_write);
 }
 
 void cms8s_buzzer_init(struct Mcu51Context* ctx) {
@@ -86,8 +90,6 @@ void cms8s_buzzer_init(struct Mcu51Context* ctx) {
     if (!ctx) return;
     cms8s_soc_bind(ctx);  // bind BEFORE any pool deref (ordering invariant)
     cms8s_buzzer_reset(ctx);
-    mcs51_trap_register_sfr_write(SFR_BUZCON, on_buzzer_sfr_write);
-    mcs51_trap_register_sfr_write(SFR_BUZDIV, on_buzzer_sfr_write);
 }
 
 void cms8s_buzzer_poll(struct Mcu51Context* ctx) {

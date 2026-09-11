@@ -131,6 +131,14 @@ void mcs51_context_reset(Mcu51Context* ctx) {
     // observe a consistent family for the whole reset.
     ctx->family = s_mcu_family;
 
+    // S4-H1 (review hardening): trap/hook registration resolves the ACTIVE
+    // context, not this argument — pin it across both dispatch loops so a
+    // reset targeting a non-active instance cannot bleed registrations into
+    // another instance. Plain save/restore (no-exception codebase, same
+    // idiom as saved_idx/saved_isrs above).
+    Mcu51Context* saved_active = mcs51_get_context();
+    mcs51_set_active_context(ctx);
+
     // Initialize peripherals via descriptor table (Task R1), filtered by
     // family (M1): series models never install hooks on another family.
     // Stage4 CPL-10: core table first, then the chip registry (same filter).
@@ -170,6 +178,8 @@ void mcs51_context_reset(Mcu51Context* ctx) {
             d->reset(ctx);
         }
     }
+
+    mcs51_set_active_context(saved_active);
 
     // Family-specific silicon seeds last: CKCON reset value / power-on Fosc
     // must not be disturbed by peripheral resets (GAP-04/GAP-13).
