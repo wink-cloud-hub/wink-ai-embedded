@@ -623,7 +623,8 @@ if(TARGET wink_mcs51_compat)
         target_compile_options(test_mcs51_uart_tx_ready_strict PRIVATE
             $<$<COMPILE_LANGUAGE:CXX>:/std:c++17 /utf-8 /wd4101 /wd4245>)
     endif()
-    target_include_directories(test_mcs51_uart_tx_ready_strict PRIVATE ${_MCS51_FW_DIR}/include)
+        target_include_directories(test_mcs51_uart_tx_ready_strict PRIVATE ${_MCS51_FW_DIR}/include)
+        target_include_directories(test_mcs51_uart_tx_ready_strict PRIVATE ${_MCS51_FW_DIR}/test)
     if(TARGET generate_config)
         add_dependencies(test_mcs51_uart_tx_ready_strict generate_config)
     endif()
@@ -646,6 +647,10 @@ if(TARGET wink_mcs51_compat)
     add_mcs51_host_test(test_mcs51_gap12
         ../frameworks/mcs51/test/core/test_mcs51_gap12.cpp)
 
+    # Stage4 S4-1 (CPL-07/CPL-22): EXTIF W0C is chip silicon — chip suite.
+    add_mcs51_host_test(test_mcs51_extif_w0c
+        ../frameworks/mcs51/test/cms8s78xx/test_mcs51_extif_w0c.cpp)
+
     # GAP-23 STRICT twin: same TU, STRICT-built compat lib (death tests via
     # child re-execution). Mirrors the uart_tx_ready_strict block above.
     add_wink_host_test(test_mcs51_xsfr_tripwire_strict
@@ -660,7 +665,8 @@ if(TARGET wink_mcs51_compat)
         target_compile_options(test_mcs51_xsfr_tripwire_strict PRIVATE
             $<$<COMPILE_LANGUAGE:CXX>:/std:c++17 /utf-8 /wd4101 /wd4245>)
     endif()
-    target_include_directories(test_mcs51_xsfr_tripwire_strict PRIVATE ${_MCS51_FW_DIR}/include)
+        target_include_directories(test_mcs51_xsfr_tripwire_strict PRIVATE ${_MCS51_FW_DIR}/include)
+        target_include_directories(test_mcs51_xsfr_tripwire_strict PRIVATE ${_MCS51_FW_DIR}/test)
     if(TARGET generate_config)
         add_dependencies(test_mcs51_xsfr_tripwire_strict generate_config)
     endif()
@@ -858,7 +864,8 @@ if(TARGET wink_mcs51_compat)
         target_compile_options(test_mcs51_uart_charge_strict PRIVATE
             $<$<COMPILE_LANGUAGE:CXX>:/std:c++17 /utf-8 /wd4101 /wd4245>)
     endif()
-    target_include_directories(test_mcs51_uart_charge_strict PRIVATE ${_MCS51_FW_DIR}/include)
+        target_include_directories(test_mcs51_uart_charge_strict PRIVATE ${_MCS51_FW_DIR}/include)
+        target_include_directories(test_mcs51_uart_charge_strict PRIVATE ${_MCS51_FW_DIR}/test)
     if(TARGET generate_config)
         add_dependencies(test_mcs51_uart_charge_strict generate_config)
     endif()
@@ -881,7 +888,8 @@ if(TARGET wink_mcs51_compat)
         target_compile_options(test_mcs51_wdt_ta_strict PRIVATE
             $<$<COMPILE_LANGUAGE:CXX>:/std:c++17 /utf-8 /wd4101 /wd4245>)
     endif()
-    target_include_directories(test_mcs51_wdt_ta_strict PRIVATE ${_MCS51_FW_DIR}/include)
+        target_include_directories(test_mcs51_wdt_ta_strict PRIVATE ${_MCS51_FW_DIR}/include)
+        target_include_directories(test_mcs51_wdt_ta_strict PRIVATE ${_MCS51_FW_DIR}/test)
     if(TARGET generate_config)
         add_dependencies(test_mcs51_wdt_ta_strict generate_config)
     endif()
@@ -908,7 +916,8 @@ if(TARGET wink_mcs51_compat)
         target_compile_options(test_mcs51_classic_bus_strict PRIVATE
             $<$<COMPILE_LANGUAGE:CXX>:/std:c++17 /utf-8 /wd4101 /wd4245>)
     endif()
-    target_include_directories(test_mcs51_classic_bus_strict PRIVATE ${_MCS51_FW_DIR}/include)
+        target_include_directories(test_mcs51_classic_bus_strict PRIVATE ${_MCS51_FW_DIR}/include)
+        target_include_directories(test_mcs51_classic_bus_strict PRIVATE ${_MCS51_FW_DIR}/test)
     if(TARGET generate_config)
         add_dependencies(test_mcs51_classic_bus_strict generate_config)
     endif()
