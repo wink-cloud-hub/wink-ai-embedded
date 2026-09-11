@@ -65,6 +65,13 @@ typedef struct {
     uint32_t     capabilities;   // MCS51_CAP_* bitmask (see caps_cache).
     uint8_t      port_pin_masks[4];  // Valid-pin counts P0..P3 (classic
                                // {8,8,8,8}; CMS8S78xx TSSOP-20 {8,8,6,4}).
+                               // NAME NOTE (review finding): despite "masks",
+                               // these are contiguous-prefix COUNTS compared
+                               // as `bit < count` — correct for all current
+                               // parts (contiguous pins). Non-contiguous
+                               // packages (unbound middle pins) need a true
+                               // bitmask field; migrate on the first such
+                               // family (schema change, stage0 thaw), not now.
     const uint8_t* irq_vector_table;  // Supported vector numbers (stage5
                                // switches ISR to load extended vectors
                                // from here; stage0 only publishes).

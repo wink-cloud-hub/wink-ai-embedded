@@ -348,6 +348,7 @@ void cms8s_adc_init(struct Mcu51Context* ctx) {
 
 void cms8s_adc_poll(struct Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
+    if (!cms8s_hook_armed(ctx)) return;  // review hardening: unbound/classic
     Cms8sPriv* priv = get_adc_priv(ctx);
     if (priv->in_poll) {
         return;
@@ -422,11 +423,13 @@ uint64_t cms8s_adc_next_event_us(struct Mcu51Context* ctx) {
 }
 
 uint32_t cms8s_adc_conversion_count(void) {
-    return get_adc_priv(nullptr)->adc.conversion_count;
+    Cms8sPriv* priv = get_adc_priv(nullptr);
+    return (priv != nullptr) ? priv->adc.conversion_count : 0u;
 }
 
 uint8_t cms8s_adc_last_channel(void) {
-    return get_adc_priv(nullptr)->adc.last_channel;
+    Cms8sPriv* priv = get_adc_priv(nullptr);
+    return (priv != nullptr) ? priv->adc.last_channel : 0xFFu;
 }
 
 uint32_t cms8s_adc_notready_mask(void) {

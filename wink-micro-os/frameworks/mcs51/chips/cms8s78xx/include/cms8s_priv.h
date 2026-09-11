@@ -93,10 +93,11 @@ static inline Cms8sPriv *cms8s_priv(struct Mcu51Context *ctx) {
     return (Cms8sPriv *)ctx->soc_priv;
 }
 
-// Family gate for chip hook bodies (S2-1): hooks stay installed across a
-// family switch (reset only overwrites same-address slots), so a stale chip
-// hook firing on another family must bail neutrally instead of touching
-// no chip state. Returns true when hooks may proceed.
+// Family gate for chip entry points (S2-1 hooks, S2-2 review: polls and
+// observers too): hooks stay installed across a family switch (reset only
+// overwrites same-address slots), and polls/observers are directly callable,
+// so any chip entry on an unbound context must bail neutrally instead of
+// touching no chip state. Returns true when the entry may proceed.
 static inline bool cms8s_hook_armed(struct Mcu51Context *ctx) {
     if (!ctx) {
         ctx = mcs51_get_context();

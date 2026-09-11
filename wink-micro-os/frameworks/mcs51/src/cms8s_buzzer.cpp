@@ -89,23 +89,27 @@ void cms8s_buzzer_init(struct Mcu51Context* ctx) {
 
 void cms8s_buzzer_poll(struct Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
+    if (!cms8s_hook_armed(ctx)) return;  // review hardening: unbound/classic
 
     update_buzzer_state(ctx);
 
-    if (!cms8s_priv(ctx)->buzzer.running || cms8s_priv(ctx)->buzzer.next_toggle_us == UINT64_MAX) {
+    // Review fix: hoist the pool pointer out of the toggle loop (S2-1 had
+    // turned every field touch into accessor call + branch).
+    Cms8sBuzzerState* b = &cms8s_priv(ctx)->buzzer;
+    if (!b->running || b->next_toggle_us == UINT64_MAX) {
         return;
     }
 
     constexpr uint32_t MAX_TOGGLES_PER_POLL = 1000u;
     uint32_t toggles = 0u;
-    while (cms8s_priv(ctx)->buzzer.running && ctx->virtual_us >= cms8s_priv(ctx)->buzzer.next_toggle_us) {
-        cms8s_priv(ctx)->buzzer.pin_level ^= 1u;
-        js_pal_gpio_write(BUZZER_PIN, cms8s_priv(ctx)->buzzer.pin_level != 0, MCS51_DRIVE_SUPPLY);
-        cms8s_priv(ctx)->buzzer.toggle_count++;
-        cms8s_priv(ctx)->buzzer.next_toggle_us += cms8s_priv(ctx)->buzzer.half_period_us;
+    while (b->running && ctx->virtual_us >= b->next_toggle_us) {
+        b->pin_level ^= 1u;
+        js_pal_gpio_write(BUZZER_PIN, b->pin_level != 0, MCS51_DRIVE_SUPPLY);
+        b->toggle_count++;
+        b->next_toggle_us += b->half_period_us;
         if (++toggles >= MAX_TOGGLES_PER_POLL) {
-            if (ctx->virtual_us >= cms8s_priv(ctx)->buzzer.next_toggle_us) {
-                cms8s_priv(ctx)->buzzer.next_toggle_us = ctx->virtual_us + cms8s_priv(ctx)->buzzer.half_period_us;
+            if (ctx->virtual_us >= b->next_toggle_us) {
+                b->next_toggle_us = ctx->virtual_us + b->half_period_us;
             }
             break;
         }
@@ -113,25 +117,33 @@ void cms8s_buzzer_poll(struct Mcu51Context* ctx) {
 }
 
 uint64_t cms8s_buzzer_next_event_us(struct Mcu51Context* ctx) {
-    (void)ctx;
-    if (cms8s_priv(ctx)->buzzer.running && cms8s_priv(ctx)->buzzer.next_toggle_us != UINT64_MAX) {
-        return cms8s_priv(ctx)->buzzer.next_toggle_us;
+    // Review hardening: never crash on an unbound context (neutral = idle).
+    Cms8sBuzzerState* b = nullptr;
+    if (ctx != nullptr && cms8s_hook_armed(ctx)) {
+        b = &cms8s_priv(ctx)->buzzer;
+    }
+    if (b != nullptr && b->running && b->next_toggle_us != UINT64_MAX) {
+        return b->next_toggle_us;
     }
     return UINT64_MAX;
 }
 
 // Test observability without a ctx parameter: reads the active context
 // (was the shared file-static; now per-instance via the active context).
+// Review hardening: neutral on unbound (never crash).
 bool cms8s_buzzer_is_running(void) {
-    return cms8s_priv(nullptr)->buzzer.running;
+    Cms8sPriv* priv = cms8s_priv(nullptr);
+    return (priv != nullptr) ? priv->buzzer.running : false;
 }
 
 uint32_t cms8s_buzzer_toggle_count(void) {
-    return cms8s_priv(nullptr)->buzzer.toggle_count;
+    Cms8sPriv* priv = cms8s_priv(nullptr);
+    return (priv != nullptr) ? priv->buzzer.toggle_count : 0u;
 }
 
 uint32_t cms8s_buzzer_half_period_us(void) {
-    return cms8s_priv(nullptr)->buzzer.half_period_us;
+    Cms8sPriv* priv = cms8s_priv(nullptr);
+    return (priv != nullptr) ? priv->buzzer.half_period_us : 0u;
 }
 
 }  // extern "C"
