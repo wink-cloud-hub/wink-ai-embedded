@@ -26,6 +26,19 @@ uint64_t mcs51_calc_next_event_us(struct Mcu51Context* ctx, bool is_pd) {
                 }
             }
         }
+        // Stage4 CPL-10: chip registry next-events join the same minimum.
+        for (uint8_t i = 0; i < mcs51_peripheral_registered_count(); ++i) {
+            const mcs51_peripheral_desc_t* d = mcs51_peripheral_registered(i);
+            if (!mcs51_peripheral_active_for(d, ctx->family)) {
+                continue;
+            }
+            if (d->next_event_us != nullptr) {
+                uint64_t t = d->next_event_us(ctx);
+                if (t < earliest) {
+                    earliest = t;
+                }
+            }
+        }
     }
 
     if (ctx->edge_head != ctx->edge_tail) {

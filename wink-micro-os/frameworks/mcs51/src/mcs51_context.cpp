@@ -135,12 +135,22 @@ void mcs51_context_reset(Mcu51Context* ctx) {
 
     // Initialize peripherals via descriptor table (Task R1), filtered by
     // family (M1): series models never install hooks on another family.
+    // Stage4 CPL-10: core table first, then the chip registry (same filter).
     for (uint8_t i = 0; i < g_mcs51_num_peripherals; ++i) {
         if (!mcs51_peripheral_active_for(&g_mcs51_peripherals[i], ctx->family)) {
             continue;
         }
         if (g_mcs51_peripherals[i].init != nullptr) {
             g_mcs51_peripherals[i].init(ctx);
+        }
+    }
+    for (uint8_t i = 0; i < mcs51_peripheral_registered_count(); ++i) {
+        const mcs51_peripheral_desc_t* d = mcs51_peripheral_registered(i);
+        if (!mcs51_peripheral_active_for(d, ctx->family)) {
+            continue;
+        }
+        if (d->init != nullptr) {
+            d->init(ctx);
         }
     }
 
@@ -151,6 +161,15 @@ void mcs51_context_reset(Mcu51Context* ctx) {
         }
         if (g_mcs51_peripherals[i].reset != nullptr) {
             g_mcs51_peripherals[i].reset(ctx);
+        }
+    }
+    for (uint8_t i = 0; i < mcs51_peripheral_registered_count(); ++i) {
+        const mcs51_peripheral_desc_t* d = mcs51_peripheral_registered(i);
+        if (!mcs51_peripheral_active_for(d, ctx->family)) {
+            continue;
+        }
+        if (d->reset != nullptr) {
+            d->reset(ctx);
         }
     }
 
