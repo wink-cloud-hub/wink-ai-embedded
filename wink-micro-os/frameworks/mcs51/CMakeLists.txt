@@ -47,6 +47,10 @@ set(_MCS51_COMPAT_SRCS
     src/mcs51_edge_queue.cpp
     src/mcs51_pwm_meter.cpp
     src/mcs51_bridge.cpp
+    # Stage4 (PLAN-20260911-MCS51-S4, CPL-10): chip register entries
+    # (self-registration protocol, total §3.1b; stage6 re-homes the rest).
+    chips/cms8s78xx/src/cms8s_register.cpp
+    chips/at89c52/src/at89_register.cpp
 )
 
 add_library(wink_mcs51_compat STATIC EXCLUDE_FROM_ALL ${_MCS51_COMPAT_SRCS})

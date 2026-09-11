@@ -71,6 +71,17 @@ void wink_mcs51_microstep(void) {
             g_mcs51_peripherals[i].poll(ctx);
         }
     }
+    // Stage4 CPL-10: chip registry polls after the core table (same filter;
+    // phases order within each table, core phases before chip phases).
+    for (uint8_t i = 0; i < mcs51_peripheral_registered_count(); ++i) {
+        const mcs51_peripheral_desc_t* d = mcs51_peripheral_registered(i);
+        if (!mcs51_peripheral_active_for(d, ctx->family)) {
+            continue;
+        }
+        if (d->poll != nullptr) {
+            d->poll(ctx);
+        }
+    }
     mcs51_irq_scan_and_dispatch();
 }
 

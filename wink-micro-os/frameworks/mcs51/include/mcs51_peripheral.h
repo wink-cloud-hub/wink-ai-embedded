@@ -45,6 +45,25 @@ static inline bool mcs51_peripheral_active_for(const mcs51_peripheral_desc_t* d,
 extern const mcs51_peripheral_desc_t g_mcs51_peripherals[];
 extern const uint8_t g_mcs51_num_peripherals;
 
+// ── Stage4 (PLAN-20260911-MCS51-S4, CPL-10): chip self-registration ──────────
+// Core-owned bounded BSS registry (static dispatch, ADR-0004: no weak
+// symbols, no malloc, no exceptions). Chip packages append their descriptors
+// through their family register entry (the chips/*/src/*_register.cpp TUs);
+// the three dispatch loops (context init/reset, bridge microstep poll,
+// pcon next-event) traverse the core table first, then this registry,
+// applying the same family_mask filter to both. Registration is idempotent
+// (same pointer or same name registers once); the table never shrinks
+// except through the test seam below.
+#ifndef MCS51_MAX_PERIPHERALS
+#define MCS51_MAX_PERIPHERALS 12u
+#endif
+void mcs51_peripheral_register(const mcs51_peripheral_desc_t* desc);
+uint8_t mcs51_peripheral_registered_count(void);
+const mcs51_peripheral_desc_t* mcs51_peripheral_registered(uint8_t i);
+// Test seam only (production never calls it): drop every registered entry
+// so family harnesses start from a clean slate. Core table untouched.
+void mcs51_peripheral_registry_reset(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -532,6 +532,8 @@ if(TARGET wink_mcs51_compat)
                 $<$<COMPILE_LANGUAGE:CXX>:/std:c++17 /utf-8 /wd4101 /wd4245>)
         endif()
         target_include_directories(${name} PRIVATE ${_MCS51_FW_DIR}/include)
+        # Stage4 S4-2 Step 5: test-only family harness (mcs51_test_harness.h).
+        target_include_directories(${name} PRIVATE ${_MCS51_FW_DIR}/test)
         if(TARGET generate_config)
             add_dependencies(${name} generate_config)
         endif()
