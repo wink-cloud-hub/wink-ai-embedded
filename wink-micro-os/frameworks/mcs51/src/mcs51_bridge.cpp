@@ -19,6 +19,7 @@
 #include "wink_mcs51_strict.h"
 #include "wink_mcs51_timer.h"
 #include "wink_mcs51_uart.h"
+#include "wink_mcs51_wdt.h"
 #include "mcs51_pcon.h"
 #include "wink_mcs51_edge_queue.h"
 
@@ -95,6 +96,10 @@ void wink_mcs51_on_sfr_read(uint8_t addr) {
 
 void wink_mcs51_on_sfr_write(uint8_t addr, uint8_t old_val, uint8_t new_val) {
     Mcu51Context* ctx = mcs51_get_context();
+    // GAP-07: an intervening firmware SFR write aborts a half-open TA
+    // window before the per-address hook runs, so the pending protected
+    // write arrives locked and rolls back.
+    cms8s_sys_notify_sfr_write(ctx, addr);
     mcs51_sfr_write_hook_t hook = ctx->sfr_write_hooks[addr];
     if (hook != nullptr) {
         hook(ctx, addr, old_val, new_val);

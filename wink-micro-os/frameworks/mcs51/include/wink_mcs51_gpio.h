@@ -37,6 +37,16 @@ uint8_t mcs51_gpio_bit_read_pin(uint8_t port, uint8_t bit);
 uint8_t mcs51_gpio_read_latch(uint8_t port);
 uint8_t mcs51_gpio_bit_read_latch(uint8_t port, uint8_t bit);
 
+// A-05 GPIO direction modeling (GAP-08 + GAP-25 analog sub-item):
+//   TRIS-gated output suppression counter (input latch writes that produce
+//   no external drive) + analog-pin digital-read counter. STRICT aborts on
+//   analog digital-read; TRIS-suppressed writes count + warn-once (legal
+//   latch writes, no drive). Counters feed the GAP-10 runner verdict.
+uint32_t wink_mcs51_gpio_output_suppressed_count(void);
+uint32_t wink_mcs51_gpio_analog_read_count(void);
+uint32_t wink_mcs51_gpio_diag_total(void);
+void wink_mcs51_gpio_diag_reset(void);
+
 #ifdef __cplusplus
 }
 #endif

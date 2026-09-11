@@ -11,6 +11,7 @@ deployment::
     MCS51-BARE-ASM            (error)    #pragma asm without #ifdef __C51__
     MCS51-RAW-SFR-PTR         (error)    raw pointer into SFR range
     MCS51-UNSUPPORTED-KEYWORD (error)    bdata / sfr16 dialect keywords
+    MCS51-RECURSION           (error)    direct or mutual recursion (Keil overlay)
 
 ``*`` REENTRANT ships as warning first (precision acceptance rule) and will
 tighten to error after 1-2 feedback rounds.
@@ -235,6 +236,7 @@ class _Analyzer:
         self.check_bare_inline_assembly()
         self.check_raw_sfr_pointer_access()
         self.check_unsupported_keywords()
+        self.check_recursion()
         self.check_isr_concurrency_and_reentrancy()
         return self.findings
 
@@ -367,6 +369,63 @@ class _Analyzer:
             visited.add(curr)
             queue.extend(n for n in call_graph[curr] if n not in visited)
         return visited
+
+    def check_recursion(self) -> None:
+        """MCS51-RECURSION (error, GAP-25): Keil C51 compiles non-reentrant
+        functions into a static overlay — a recursive call overwrites its own
+        locals/parameters, while the host/wasm sim runs it fine on the native
+        stack. Both direct self-calls and mutual/indirect cycles are fatal.
+        Keil C has no methods, overloads, or namespaces, so a same-name call
+        inside the function body is unambiguous (comments/strings are
+        already stripped from clean_source)."""
+        functions = self.extract_functions()
+        if not functions:
+            return
+        names = set(functions)
+        calls: dict[str, set[str]] = {}
+        for name, info in functions.items():
+            targets = set()
+            for target in names:
+                if re.search(rf"\b{re.escape(target)}\s*\(", info["body"]):
+                    targets.add(target)
+            calls[name] = targets
+        for name in sorted(names):
+            if name in calls[name]:
+                self.emit(
+                    functions[name]["line"], "MCS51-RECURSION", "error",
+                    f"Recursive function '{name}' calls itself: Keil overlay "
+                    f"corrupts its own locals (use iteration).",
+                    "Rewrite without recursion; add 'reentrant' only if the "
+                    "stack budget (SDCC gate) proves it fits — never by default.",
+                )
+                continue
+            path = self._cycle_path(name, calls)
+            # One finding per cycle: every member finds the same node set,
+            # so only the lexicographically smallest member reports it.
+            if path is not None and name == min(path):
+                self.emit(
+                    functions[name]["line"], "MCS51-RECURSION", "error",
+                    f"Mutual recursion cycle {' -> '.join(path)}: Keil overlay "
+                    f"corrupts locals (use iteration).",
+                    "Break the cycle (inline one leg or hoist shared logic "
+                    "into a leaf function).",
+                )
+
+    @staticmethod
+    def _cycle_path(root: str, calls: dict[str, set[str]]) -> list[str] | None:
+        """Shortest call path from root back to root, or None when acyclic."""
+        queue: list[list[str]] = [[root]]
+        seen: set[str] = set()
+        while queue:
+            path = queue.pop(0)
+            curr = path[-1]
+            for nxt in sorted(calls.get(curr, ())):
+                if nxt == root and len(path) >= 1:
+                    return path + [root]
+                if nxt not in seen and nxt not in path:
+                    seen.add(nxt)
+                    queue.append(path + [nxt])
+        return None
 
     def check_isr_concurrency_and_reentrancy(self) -> None:
         functions = self.extract_functions()

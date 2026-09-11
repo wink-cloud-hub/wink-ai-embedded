@@ -308,6 +308,14 @@ uint16_t Read_ADC_Channel(uint8_t ch) {
 
 ---
 
+### 4.8 经典 51 外部 MOVX 总线占用（GAP-24，仅 AT89C52 类无片内 XRAM 型号）
+
+* **硅片事实**：无片内 XRAM 的经典 51 执行任何 `XBYTE[]` 访问时，`P0`（地址/数据复用）、`P2`（高地址）、`P3.6`（`/WR`）、`P3.7`（`/RD`）被总线占用，同一引脚不能再当 GPIO 用；CMS8S78xx 有 1KB 片内 XRAM，不受此限。
+* **仿真行为**：任一方向（先 `XBYTE` 后 GPIO，或先 GPIO 后 `XBYTE`）混用总线引脚即触发总线冲突 verdict——STRICT 断言，Release 计数（`wink_mcs51_classic_bus_conflict_total`，场景判决消费）+ 单次告警，访问本身仍落影子；`P1` 与 `P3.0~3.5` 永不参与。
+* **业务习惯**：把 `XBYTE` 槽位用法搬到 AT89 载体前，先确认 `P0/P2/P3.6/7` 无 GPIO 复用；外接 RAM/IO 的合法独占用法零告警。
+
+---
+
 ### 4.6 UART 串行通信模型与时序语义（ADR-0065 / ADR-0076）
 
 * **发送端模型**：
@@ -320,13 +328,16 @@ uint16_t Read_ADC_Channel(uint8_t ch) {
 * **TX 链路就绪校验（GAP-02，2026-09-10 起）**：每次写 `SBUF` 前模型按下述必要条件做就绪检查，只验就绪不验速率（`TH1`/BRT 重载值的正确性不在检查范围）——
   波特率源运行中（CMS8S 按 `FUNCCR` 的 4 种源枚举：Timer1 需 `TR1=1` 且 `TMOD` mode 2、TMR4 需 `TR4`、TMR2 需运行中、`BRT` 需 `BRTEN`，保留值一律判未就绪；经典 51 只认 Timer1）、`SCON` 为异步模式 1/3（`SM1=1`）、TXD 引脚连通（P3.1 为硬连线默认脚，无需 CFG；P1.4/P2.2 为附加备选）、`REN=1` 时 RXD 选择器指向已复用引脚。
   未就绪时 STRICT 构建断言中止，Release 构建按原因记一次告警并累积计数（`wink_mcs51_uart_notready_count()`，供无头 runner 判决），字节照发以保证既有场景可观测。真机 checklist：启动波特率发生器后再发首字节（否则真机永远卡在 `while(!TI)`，而仿真以前会静默通过）。
+* **发送中重写与波特率记账（GAP-25 / A-03，2026-09-11 起）**：每次写 `SBUF` 按当前波特率同步记账（`9600bps` 下约 `1040µs`/字节，22 字节遥测约占 `23ms` 虚拟时间）；`TI` 仍在同一调用内同步置位。若上字节的 `TI` 尚未被软件清零就写新字节，真机移位寄存器被破坏——模型报 SBUF 复写 verdict（STRICT 断言 / Release 计数 `wink_mcs51_uart_overwrite_total()`），字节照发。Keil 正确习语始终是 `SBUF=c; while(!TI); TI=0;`。
 
 ### 4.7 未建模外设与模式清单
 
 根据契约诚实原则，以下硬件特性在功能仿真层未予建模，代码中涉及应注意避坑：
 1. **Timer2**：`REGX52.H` 中未声明 `T2CON`、`RCAP2L`、`RCAP2H`、`TL2`、`TH2`，全框架未提供 Timer2 计数模型。请统一使用 Timer0 或 Timer1；
 2. **Timer0 Mode 3（双 8 位独立分拆模式）**：Timer0 在 Mode 3 下保持空闲，STRICT 模式下触发 `MCS51_FEAT_TIMER_MODE3` 断言；
-3. **Timer 外部 C/T 引脚脉冲计数**：`TMOD` 中配置 `C/T = 1` 时无外部脉冲源，定时器保持空闲，STRICT 模式下触发 `MCS51_FEAT_TIMER_EXT_CLK` 断言。
+3. **Timer 外部 C/T 引脚脉冲计数**：`TMOD` 中配置 `C/T = 1` 时无外部脉冲源，定时器保持空闲，STRICT 模式下触发 `MCS51_FEAT_TIMER_EXT_CLK` 断言；
+4. **STOP（Power-Down）唤醒源（GAP-17'）**：仿真支持的唤醒源为 `INT0/INT1`（需 `EA=1`）与 GPIO 端口中断 `P0EI~P3EI`（需对应 `PnEXTIE` 使能 + `EA=1`，每边沿唤醒一次）；`WUT`（LSI 唤醒定时器）、`LSE`、`SWE/UART0-RXD`、`LVD` 尚无模型，**不能唤醒 STOP**——低功耗代码若依赖这些源，仿真将停在 `PCON.1` 处，属预期内的诚实阻塞而非挂死，真机行为以手册为准。
+5. **IAP/Flash 在应用编程（GAP-24）**：CMS8S78xx 的 `MCTRL/MDATA/MADR/MLOCK/PCRCD`（`0xF9~0xFF`）无 NVS 持久化与编程/擦除时序模型；任何固件访问触发 `MCS51_FEAT_IAP_FLASH`（STRICT 断言 / Release 计数），影子值会话内保持但掉电语义未模拟，量产须以真机标定为准。
 
 ---
 
@@ -431,6 +442,10 @@ EA = 0;
 main_crc = CalcCRC(main_buf, 16); // 保证执行期间绝不被 ISR 抢占
 EA = 1;
 ```
+
+> **规则红线（续，GAP-25）**：
+> 3. **绝对禁止递归（直接与间接/互递归）**：Keil overlay 下递归调用必然覆写自身的静态局部区，真机必死；宿主原生栈却让递归正常跑通，属仿真永不可见的假通过。lint 包以 `MCS51-RECURSION`（error）拦截直接自调用与调用环，SDCC 门禁以 `--stack-min` 守 32B 栈余量底线——递归只能改迭代，`reentrant` 修饰不是递归的出路（它只解决重入，不解决无界栈深）。
+> 4. **库函数重入清单**：仿真链接宿主 libc（`printf` 浮点/`%bd` 语义与 Keil C51 不同），16/32 位乘除库函数非重入；`printf` 系只允许在主循环调用，严禁在 ISR 内调用；`IDATA` 栈上限 248B——SDCC 门禁报告 `stack free`，低于 32B 直接红灯，Keil `.map` 的 STACK 余量以 Tier-K 为准。
 
 ---
 

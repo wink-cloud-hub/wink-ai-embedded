@@ -91,6 +91,11 @@ int main(void) {
     wink_mcs51_xdata_reset();      // clean XDATA shadow + OOB counters
     mcs51_adc_reset();             // clear injection rail
     cms8s_adc_init(mcs51_get_context());  // register ADCON0 write hook, zero counters
+    // A-02 gates (GAP-05): LDO on + VSEL=3V, analog mux for exercised channels.
+    mcs51_get_context()->xdata_shadow[0xF692u] = 0xE0u;  // ADCLDO LDOEN+VSEL_3V
+    mcs51_get_context()->xdata_shadow[0xF000u] = 0x01u;  // P00CFG=AN0 (ch0)
+    mcs51_get_context()->xdata_shadow[0xF001u] = 0x01u;  // P01CFG=AN1 (ch1)
+    mcs51_get_context()->xdata_shadow[0xF033u] = 0x01u;  // P33CFG=AN25 (ch25)
 
     // ── 1) 0-cycle passthrough: ADGO self-clears inside the write ───────────
     mcs51_adc_set_value(0, 0x0ABCu);

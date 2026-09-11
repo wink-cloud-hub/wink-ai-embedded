@@ -61,6 +61,11 @@ enum {
     // Timer external C/T pin counting (TMOD C/T == 1): no external pulse time
     // source at functional level; the timer stays idle.
     MCS51_FEAT_TIMER_EXT_CLK     = 10,
+    // In-Application-Programming Flash access (CMS8S78xx MCTRL/MDATA/MADR/
+    // MLOCK/PCRCD @ 0xF9..0xFF, GAP-24): no NVS persistence or program/
+    // erase timing model; any firmware-issued access traps here instead of
+    // silently landing in the SFR shadow.
+    MCS51_FEAT_IAP_FLASH         = 11,
 };
 
 // Record use of an unsupported 8051 feature. STRICT: assert (debug/test).

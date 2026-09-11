@@ -6,7 +6,7 @@
 > - 技术设计：[`docs/tech-designs/mcs51/`](../../tech-designs/mcs51/)（总纲 + 数据面 + 时序面 + 用户手册 + [物理一致性与测试方法论](../../tech-designs/mcs51/2026-09-08-mcs51-simulation-vs-silicon-fidelity-and-test-limits.md) + 总方案）
 > - 实施计划：[`2026-08-27-mcs51-zero-code-simulation-plan.md`](../../implementation-plans/core/2026-08-27-mcs51-zero-code-simulation-plan.md)
 > - 评审记录：[`2026-08-29-mcs51-simulation-layer-review.md`](../../reviews/core/2026-08-29-mcs51-simulation-layer-review.md)（Layer-④）
-> - 路线决策：[ADR-0076](../../decisions/core/0076-mcs51-sim-backends-native-vs-iss-channel-roadmap.md)（双后端 native vs ISS + 通道对接路线 + 小家电域频率，**Accepted 2026-08-30**；见 §2.5）、[ADR-0077](../../decisions/core/0077-gpio-write-drive-strength-axis.md)（准双向口驱动强度模型，**Accepted 2026-09-01**；见 §2.6）、[ADR-0078](../../decisions/core/0078-mcs51-two-phase-irq-and-in-service-masking.md)（中断两阶段挂起、语义中断源映射与在服务屏蔽，**Accepted 2026-09-08**；见 §2.7）
+> - 路线决策：[ADR-0076](../../decisions/core/0076-mcs51-sim-backends-native-vs-iss-channel-roadmap.md)（双后端 native vs ISS + 通道对接路线 + 小家电域频率，**Accepted 2026-08-30**；见 §2.5）、[ADR-0077](../../decisions/core/0077-gpio-write-drive-strength-axis.md)（准双向口驱动强度模型，**Accepted 2026-09-01**；见 §2.6）、[ADR-0078](../../decisions/core/0078-mcs51-two-phase-irq-and-in-service-masking.md)（中断两阶段挂起、语义中断源映射与在服务屏蔽，**Accepted 2026-09-08**；见 §2.7）、[ADR-0081](../../decisions/core/0081-uart-tx-per-byte-synchronous-charge.md)（UART TX 整字节同步记账，**Accepted 2026-09-11**；见 §2.8）
 
 ## 0. 进度看板（SSOT 索引）
 
@@ -21,7 +21,7 @@
 | SFR/sbit 代理 + diff 边沿 + Read-Latch/Pin + RMW 红线 | ✅ | ADR-0071/0074，M4 ctest |
 | 虚拟钟 + fiber 协程 + 配额 catch-up（功能 µs） | ✅ | ADR-0072，M2 |
 | Timer0/Timer1 功能模型（lazy 溢出、ISR 向量 1/3、mode 0/1/2） | ✅ | blinky_timer0 |
-| UART **TX**（SBUF→putchar/console、置 TI、向量 4） | ✅（出 console + 活通道见 ②） | uart_printf、mcs51_uart_hello |
+| UART **TX**（SBUF→putchar/console、整字节同步记账后置 TI、向量 4） | ✅（出 console + 活通道见 ②） | uart_printf、mcs51_uart_hello、ADR-0081 §2.8 |
 | **外部中断 INT0/1 模型**（P3.2/P3.3 外部边沿→ITx 边沿/电平→锁 IE0/IE1→派向量 0/2、10ms 采样节流、fiber rendezvous、未驱动线 idle-HIGH、重入保护） | ✅ | ADR-0076 T3，test_mcs51_extint（模型直测 7 例）/int0 e2e |
 | **UART RX 模型**（fiber 上下文 drain 注入字节→锁 SBUF 影子+置 RI+派向量 4） | ✅（host+wasm ctest 闭环；活通道见 ② ✅） | ADR-0076 T2/T2.3，uart_echo |
 | **ADC0832** 外置 bit-bang 从机（3 线 FSM、`on_read` 回注 DO） | ✅ | adc0832_read、iron_ntc |
@@ -211,6 +211,16 @@ native 功能级后端的虚拟钟（ADR-0072）：`s_virtual_us` 只在拦截�
   - 彻底淘汰简单的 `s_in_isr` 标志，以 `in_service_depth > 0` 作为唯一真值源。
 - **单指令执行抑制（Single-Instruction Suppression）**：RETI 或写 IE/IP 后，硬件置位 `reti_suppress_one`，强制主程序至少推进一个微步周期才允许响应下一 pending 中断，杜绝主循环饥饿。
 - **标志清除契约**：区分 `MCS51_IRQ_HW_AUTO_CLEAR`（硬件响应自清）与 `MCS51_IRQ_SW_CLEAR`（固件显式清零；未清零则退出 ISR 后重新触发）。
+
+### 2.8 UART TX 整字节同步记账（ADR-0081 Accepted）
+
+`on_sbuf_write` 原语义（A-01 门控通过后无条件出总线 + 同调用栈即时置 TI）使字节在虚拟时间上花费 0µs：health_pot 22 字节遥测帧仿真约 110µs，硅片 9600bps 下约 23ms——WDT/调度风险永久隐身。修复为**整字节同步记账后置 TI**（A-03，仍属 A 类）：
+
+- **操作序**（`mcs51_uart.cpp on_sbuf_write`，固定）：① A-01 就绪门控 → ② 按当前波特率算 `byte_us` 并 `charge_us` → ③ 出总线（`putchar`/capture/`js_pal_uart_write` 顺序不变）→ ④ 置 TI + raise IRQ。**TI 仍在触发写的同一调用栈同步置位**，只是 `virtual_us` 已前进——`while(!TI)` 从"零时间成功"变为"耗时但成功"，永不变为"等待未来事件"（异步延迟-TI 方案已否决：违反保真度 §3.1，属 B 类手段）。
+- **波特率公式**（原厂 StdDriver `uart.c UART_ConfigBaudRate` 求逆，Fsys 取 `wink_mcs51_get_clock_hz()`）：`Baud = Fsys·SMOD/(32·K·T·(N−reload))`，四源全枚举（TMR1/TMR4：N=256,K=4,T=TnM?1:3；TMR2：N=65536,K=12,T=T2PS?2:1，重载 RCAP2；BRT：N=65536,K=1<<BRTCKDIV，重载 BRTD；SMOD=PCON.SMOD0?2:1）；经典家族仅 TMR1 且 T=3。帧位宽模式 1 计 10 位、模式 3 计 11 位；模式 2 仍在 A-01 MODE-unready 桶（范围外）。算不出速率的就绪源 STRICT 中止（不编数字假装成功）。
+- **未就绪不记账**：A-01 掩码非零时 Release 即时发出且不 charge（错误已被计数）；STRICT 在记账前中止。
+- **配额/yield/ISR**（ADR-0072 复用）：主循环长帧跨配额片协作 yield + 定时器 catch-up（预期：硅片 TX 忙等本就不 block Timer ISR）；ISR 内写 SBUF 只推进钟不 yield。RX 1ms 起搏不动（与 9600bps 字节时间自洽）。
+- **后果**：解锁 GAP-07 WDT 验证（Task 4 前置）；UART 场景虚拟时间膨胀 `bytes·byte_us`；应用 DESIGN.md 须写"最长阻塞段（含帧长/波特率）< WTS 间隔"硬约束。完整比选见 [ADR-0081](../../decisions/core/0081-uart-tx-per-byte-synchronous-charge.md)。
 
 ## 3. 目录树、API 面、构建与测试矩阵（活规范）
 

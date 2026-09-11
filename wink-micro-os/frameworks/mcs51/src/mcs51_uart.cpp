@@ -30,10 +30,16 @@ constexpr uint8_t SFR_SBUF = 0x99;
 constexpr uint8_t SFR_IE   = 0xA8;
 constexpr uint8_t SFR_TCON = 0x88;
 constexpr uint8_t SFR_TMOD = 0x89;
+constexpr uint8_t SFR_PCON = 0x87;
+constexpr uint8_t SFR_TH1  = 0x8D;
+constexpr uint8_t SFR_RLDL = 0xCA;
+constexpr uint8_t SFR_RLDH = 0xCB;
+constexpr uint8_t SFR_TH4  = 0xE3;
 constexpr uint8_t SFR_FUNCCR = 0x91;   // CMS8S78xx only: UART0 clock source
 // M5: shared with the timer model — alias the single source.
 constexpr uint8_t SFR_T2CON = MCS51_SFR_T2CON;
 constexpr uint8_t SFR_T34MOD = MCS51_SFR_T34MOD;
+constexpr uint8_t SFR_CKCON = MCS51_SFR_CKCON;
 
 // XSFR (MOVX window, read via xdata_shadow): pin mux + BRT + RXD selector.
 constexpr uint16_t XSFR_P13CFG = 0xF013u;
@@ -41,12 +47,19 @@ constexpr uint16_t XSFR_P14CFG = 0xF014u;
 constexpr uint16_t XSFR_P21CFG = 0xF021u;
 constexpr uint16_t XSFR_P22CFG = 0xF022u;
 constexpr uint16_t XSFR_BRT_CON = 0xF5C0u;
+constexpr uint16_t XSFR_BRTDL = 0xF5C1u;
+constexpr uint16_t XSFR_BRTDH = 0xF5C2u;
 constexpr uint16_t XSFR_PS_RXD = 0xF69Fu;
 
 constexpr uint8_t SCON_TI = 1u;   // SCON.1 transmit-complete flag
 constexpr uint8_t SCON_RI = 0u;   // SCON.0 receive-complete flag
 constexpr uint8_t SCON_REN = 4u;  // SCON.4 receive enable
+constexpr uint8_t SCON_SM0 = 7u;  // SCON.7: mode 3 (11-bit) iff set
 constexpr uint8_t SCON_SM1 = 6u;  // SCON.6: async modes 1/3 iff set
+constexpr uint8_t PCON_SMOD0 = 7u;  // PCON.7: baud doubler
+constexpr uint8_t CKCON_T1M = 4u;   // CKCON.4: Timer1 1T select
+constexpr uint8_t T34MOD_T4M = 6u;  // T34MOD.6: Timer4 1T select
+constexpr uint8_t T2CON_T2PS = 7u;  // T2CON.7: Timer2 prescale select
 constexpr uint8_t IE_ES   = 4u;   // IE.4 UART interrupt enable
 constexpr uint8_t IE_EA   = 7u;   // IE.7 global interrupt enable
 constexpr uint8_t TCON_TR1 = 6u;  // TCON.6 Timer1 run control
@@ -68,6 +81,13 @@ constexpr uint64_t RX_BYTE_SPACING_US = 1000ull;
 uint32_t s_notready_triggered[4] = {};
 #ifndef WINK_MCS51_STRICT
 bool     s_notready_warned[4] = {};
+#endif
+
+// GAP-25 SBUF overwrite (separate counter, M4): TI still set from the
+// previous byte when a new write lands. STRICT aborts before counting.
+uint32_t s_overwrite_triggered = 0u;
+#ifndef WINK_MCS51_STRICT
+bool s_overwrite_warned = false;
 #endif
 
 constexpr const char* kNotreadyNames[4] = {
@@ -178,6 +198,26 @@ uint32_t uart_notready_mask_impl(const Mcu51Context* ctx) {
     return mask;
 }
 
+// GAP-25 SBUF-overwrite policy. Keil idiom clears TI before the next
+// write (`while(!TI); TI=0;`); a write landing with TI still set means the
+// previous frame was never consumed — on silicon the shift register is
+// corrupted. Independent of the A-01 readiness gate below.
+void uart_overwrite_policy(void) {
+#ifdef WINK_MCS51_STRICT
+    assert(0 && "UART SBUF rewritten with TI still set (WINK_MCS51_STRICT)");
+    std::abort();
+#else
+    if (s_overwrite_triggered < 0xFFFFFFFFu) {
+        ++s_overwrite_triggered;
+    }
+    if (!s_overwrite_warned) {
+        s_overwrite_warned = true;
+        pal_log_w("MCS51", "UART SBUF rewritten with TI still set: "
+                           "previous frame unconsumed (GAP-25)");
+    }
+#endif
+}
+
 // Policy on a non-zero readiness mask. STRICT: fail loudly at the exact
 // misconfiguration (assert + unconditional abort, mirroring
 // mcs51_unsupported.cpp so NDEBUG STRICT builds still trap). Release: warn
@@ -214,15 +254,115 @@ inline void sfr_set_bit(uint8_t addr, uint8_t bit) {
         static_cast<uint8_t>(mcs51_get_context()->sfr_shadow[addr] | (1u << bit));
 }
 
+// ADR-0081 D2: baud rate in Hz from the selected source (vendor
+// UART_ConfigBaudRate inverted: Baud = Fsys*SMOD/(32*K*T*(N-reload))).
+// Returns 0 when uncomputable (reserved CKS, non-autoreload T4 mode,
+// zero divisor). Callers map 0 to the BAUD-notready policy (D2/D4).
+uint32_t s_last_baud_hz = 0u;
+
+uint32_t uart_baud_hz_impl(const Mcu51Context* ctx) {
+    const uint32_t fsys = wink_mcs51_get_clock_hz();
+    if (fsys == 0u) {
+        return 0u;
+    }
+    const uint32_t smod =
+        (((ctx->sfr_shadow[SFR_PCON] >> PCON_SMOD0) & 1u) != 0u) ? 2u : 1u;
+    const bool has_xsfr =
+        mcs51_family_has_xsfr(mcs51_family_desc(ctx->family));
+    uint8_t cks = CKS_TMR1;
+    if (has_xsfr) {
+        cks = ctx->sfr_shadow[SFR_FUNCCR] & 0x07u;
+    }
+    switch (cks) {
+        case CKS_TMR1: {
+            // A-01 guarantees TMOD mode 2 + TR1; classic parts have no
+            // T1M (12T semantics, T=3).
+            uint32_t t = 3u;
+            if (has_xsfr &&
+                (((ctx->sfr_shadow[SFR_CKCON] >> CKCON_T1M) & 1u) != 0u)) {
+                t = 1u;
+            }
+            const uint32_t n = 256u - ctx->sfr_shadow[SFR_TH1];
+            if (n == 0u) {
+                return 0u;
+            }
+            return (fsys * smod) / (128u * t * n);  // 32*K, K=4
+        }
+        case CKS_TMR4: {
+            // Vendor formula assumes 8-bit auto-reload (T4 mode 2).
+            if (((ctx->sfr_shadow[SFR_T34MOD] >> 4u) & 0x03u) != 0x02u) {
+                return 0u;
+            }
+            const uint32_t t =
+                (((ctx->sfr_shadow[SFR_T34MOD] >> T34MOD_T4M) & 1u) != 0u)
+                    ? 1u
+                    : 3u;
+            const uint32_t n = 256u - ctx->sfr_shadow[SFR_TH4];
+            if (n == 0u) {
+                return 0u;
+            }
+            return (fsys * smod) / (128u * t * n);
+        }
+        case CKS_TMR2: {
+            const uint32_t t =
+                (((ctx->sfr_shadow[SFR_T2CON] >> T2CON_T2PS) & 1u) != 0u)
+                    ? 2u
+                    : 1u;
+            const uint32_t reload =
+                (static_cast<uint32_t>(ctx->sfr_shadow[SFR_RLDH]) << 8) |
+                ctx->sfr_shadow[SFR_RLDL];
+            const uint32_t n = 65536u - reload;
+            if (n == 0u) {
+                return 0u;
+            }
+            return (fsys * smod) / (384u * t * n);  // 32*K, K=12
+        }
+        case CKS_BRT: {
+            const uint32_t div =
+                1u << (ctx->xdata_shadow[XSFR_BRT_CON] & 0x07u);
+            const uint32_t reload =
+                (static_cast<uint32_t>(ctx->xdata_shadow[XSFR_BRTDH]) << 8) |
+                ctx->xdata_shadow[XSFR_BRTDL];
+            const uint32_t n = 65536u - reload;
+            if (n == 0u) {
+                return 0u;
+            }
+            return (fsys * smod) / (32u * div * n);
+        }
+        default:
+            return 0u;
+    }
+}
+
 // Emits one byte to the host recording buffer and js_pal_uart_write.
 void on_sbuf_write(void) {
+    Mcu51Context* ctx = mcs51_get_context();
+    // GAP-25: TI still set from the previous byte — the new write would
+    // corrupt the in-flight frame on silicon. Counted/aborted here; the
+    // byte is still sent below so the failure stays observable.
+    if ((ctx->sfr_shadow[SFR_SCON] & (1u << SCON_TI)) != 0u) {
+        uart_overwrite_policy();
+    }
     // GAP-02 TX-link readiness gate (A-01): a misconfigured link (baud
     // source stopped, wrong SCON mode, unconnected RXD path) must never be
     // silent. The byte is still sent afterwards (release) so existing
     // scenarios keep running while the misconfiguration is visible.
-    const uint32_t notready = uart_notready_mask_impl(mcs51_get_context());
+    const uint32_t notready = uart_notready_mask_impl(ctx);
     if (notready != 0u) {
         uart_notready_policy(notready);
+    } else {
+        // ADR-0081 D1/D4: synchronous per-byte charge before TI. TI is
+        // still set synchronously below, so while(!TI) always terminates.
+        const uint32_t baud = uart_baud_hz_impl(ctx);
+        s_last_baud_hz = baud;
+        if (baud == 0u) {
+            uart_notready_policy(WINK_MCS51_UART_NOTREADY_BAUD);
+        } else {
+            const uint8_t scon = ctx->sfr_shadow[SFR_SCON];
+            const uint32_t frame_bits =
+                (((scon >> SCON_SM0) & 1u) != 0u) ? 11u : 10u;
+            wink_mcs51_charge_us(frame_bits * 1000000u / baud);
+        }
     }
 
     Mcu51UartState& uart = get_uart();
@@ -350,6 +490,20 @@ uint32_t wink_mcs51_uart_notready_total(void) {
            s_notready_triggered[2] + s_notready_triggered[3];
 }
 
+#ifdef __EMSCRIPTEN__
+EMSCRIPTEN_KEEPALIVE
+#endif
+uint32_t wink_mcs51_uart_overwrite_total(void) {
+    // GAP-25 SBUF rewrite with TI still set (GAP-10 runner verdict).
+    return s_overwrite_triggered;
+}
+
+// ADR-0081 test observability: baud (Hz) used for the most recent charged
+// byte; 0 when the last write was unready/uncomputable or none yet.
+uint32_t wink_mcs51_uart_last_baud_hz(void) {
+    return s_last_baud_hz;
+}
+
 void wink_mcs51_uart_on_write(uint8_t addr) {
     if (addr == SFR_SBUF) {
         on_sbuf_write();
@@ -360,12 +514,15 @@ void wink_mcs51_uart_on_read(uint8_t /*addr*/) {}
 
 void mcs51_uart_reset(struct Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
-    for (uint8_t i = 0; i < 4; ++i) {
-        s_notready_triggered[i] = 0;
+    for (uint8_t i = 0; i < 4; ++i) {        s_notready_triggered[i] = 0;
 #ifndef WINK_MCS51_STRICT
         s_notready_warned[i] = false;
 #endif
     }
+    s_overwrite_triggered = 0u;
+#ifndef WINK_MCS51_STRICT
+    s_overwrite_warned = false;
+#endif
     ctx->uart.count = 0;
     ctx->uart.capture[0] = 0;
     ctx->sfr_shadow[SFR_SCON] &=
@@ -375,6 +532,7 @@ void mcs51_uart_reset(struct Mcu51Context* ctx) {
     ctx->uart.rx_dropped = 0;
     ctx->uart.rx_have_delivered = false;
     ctx->uart.rx_last_deliver_us = 0;
+    s_last_baud_hz = 0u;
 }
 
 void wink_mcs51_uart_reset(void) {

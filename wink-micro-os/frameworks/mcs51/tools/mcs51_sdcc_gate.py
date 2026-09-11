@@ -43,6 +43,11 @@ BUDGETS = {
     "cms8s78xx": {"code": 16384, "iram": 256, "xram": 1024},
     "at89c52":   {"code": 8192,  "iram": 256, "xram": None},  # external MOVX, part-agnostic
 }
+# GAP-25 coarse stack headroom: SDCC .mem "bytes available" (free internal
+# RAM for the stack) must clear this floor. 32 B covers one ISR frame
+# (ACC/PSW/B/DPL/DPH + a few locals) with margin; it is a tripwire, not a
+# WCET proof — Keil overlay/IDATA packing (Tier-K) remains authoritative.
+STACK_MIN_FREE = 32
 FAMILY_BY_MCU = {
     "cms8s78xx": "cms8s78xx",
     "at89c52": "at89c52",
@@ -91,7 +96,7 @@ def parse_mem(mem_path):
     return rom, free_i
 
 
-def gate_app(app_dir, sdcc):
+def gate_app(app_dir, sdcc, stack_min):
     fam, mcu = app_family(app_dir)
     sources = sorted(f for f in os.listdir(app_dir) if f.endswith(".c"))
     if not sources:
@@ -155,6 +160,8 @@ def gate_app(app_dir, sdcc):
                  f"(limit {budget['code']}), stack free={free_i}B"
         if rom is not None and rom > budget["code"]:
             return False, f"CODE over budget: {detail}"
+        if free_i is not None and free_i < stack_min:
+            return False, f"stack headroom {free_i}B < {stack_min}B floor: {detail}"
         return True, detail
     finally:
         shutil.rmtree(work, ignore_errors=True)
@@ -164,11 +171,14 @@ def main(argv):
     ap = argparse.ArgumentParser()
     ap.add_argument("apps", nargs="+")
     ap.add_argument("--sdcc", default=shutil.which("sdcc") or "sdcc")
+    ap.add_argument("--stack-min", type=int, default=STACK_MIN_FREE,
+                    help="minimum free internal-RAM bytes for the stack "
+                         f"(default {STACK_MIN_FREE}; GAP-25 coarse floor)")
     args = ap.parse_args(argv[1:])
 
     failures = 0
     for app in args.apps:
-        ok, detail = gate_app(os.path.abspath(app), args.sdcc)
+        ok, detail = gate_app(os.path.abspath(app), args.sdcc, args.stack_min)
         fam, mcu = app_family(os.path.abspath(app))
         tag = "PASS" if ok else "FAIL"
         print(f"[{tag}] {os.path.basename(app)} ({mcu}): {detail}")

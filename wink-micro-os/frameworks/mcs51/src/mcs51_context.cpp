@@ -88,6 +88,12 @@ void mcs51_context_reset(Mcu51Context* ctx) {
     ctx->sfr_shadow[0x81] = 0x07u; // SP = 0x07
     ctx->sfr_shadow[0x87] = 0x00u; // PCON = 0x00
 
+    // A-02 ADC reference rail defaults (GAP-05): 3.0V/3.0V (ratio 1.0).
+    // Vref is overwritten per conversion from ADCLDO.VSEL; Vrail is
+    // overwritten by the board declaration / test seam when present.
+    ctx->adc_vref_mv = 3000u;
+    ctx->adc_vrail_mv = 3000u;
+
     // XSFR pin share selector seeds (MCS51_XSFR_PS_RESET = no pin connected).
     // Addresses from mcs51_sfr_map.h (M5 single source).
     ctx->xdata_shadow[MCS51_XSFR_PS_ADET] = MCS51_XSFR_PS_RESET;

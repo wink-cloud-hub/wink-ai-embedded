@@ -17,7 +17,9 @@
 // before the shadow store, trapping writes to externally-mapped addresses.
 #include "absacc.h"
 #include "mcs51_context.h"
+#include "mcs51_family.h"
 #include "mcs51_xsfr_allowlist.h"
+#include "wink_mcs51_classic_bus.h"
 #include "wink_mcs51_clock.h"
 
 #ifdef __EMSCRIPTEN__
@@ -104,6 +106,60 @@ bool xsfr_allowlisted(uint64_t addr) {
     return std::binary_search(first, first + kMcs51XsfrAllowlistCount, a);
 }
 
+// GAP-24 classic external-bus conflict (process-level counter, M4).
+// STRICT aborts before counting, so the counter stays 0 there by design.
+uint32_t s_bus_conflict = 0u;
+#ifndef WINK_MCS51_STRICT
+bool s_bus_conflict_warned = false;
+#endif
+
+// External MOVX bus iff the part has no on-chip XRAM (classic AT89C52:
+// descriptor xram_size == 0; CMS8S78xx has 1 KB internal XRAM and never
+// touches pins for XBYTE). Branches on the descriptor, never a family id.
+bool classic_external_bus(const Mcu51Context* ctx) {
+    return mcs51_family_desc(ctx->family)->xram_size == 0u;
+}
+
+// Bus-pin bit allocation in Mcs51ClassicBusState::gpio_bus_mask:
+// P0: bits 0-7, P2: bits 8-15, P3.6/7: bits 16-17.
+uint32_t gpio_bus_bits(uint8_t port, uint8_t bitmask) {
+    if (port == 0u) {
+        return bitmask;
+    }
+    if (port == 2u) {
+        return static_cast<uint32_t>(bitmask) << 8u;
+    }
+    if (port == 3u) {
+        uint32_t bits = 0u;
+        if ((bitmask & 0x40u) != 0u) {
+            bits |= (1u << 16u);
+        }
+        if ((bitmask & 0x80u) != 0u) {
+            bits |= (1u << 17u);
+        }
+        return bits;
+    }
+    return 0u;
+}
+
+void bus_conflict_policy(void) {
+#ifdef WINK_MCS51_STRICT
+    assert(0 && "classic MOVX bus conflict with GPIO use (WINK_MCS51_STRICT)");
+    std::abort();
+#else
+    if (s_bus_conflict < 0xFFFFFFFFu) {
+        ++s_bus_conflict;
+    }
+    if (!s_bus_conflict_warned) {
+        s_bus_conflict_warned = true;
+        pal_log_w("MCS51",
+                  "classic MOVX bus conflict: XBYTE traffic shares "
+                  "P0/P2/P3.6-7 with GPIO use (GAP-24); on silicon the "
+                  "bus wins and GPIO is lost");
+    }
+#endif
+}
+
 void unmodeled_xsfr_trap(uint64_t addr, bool is_write) {
     if (s_unmodeled_count < 0xFFFFFFFFu) {
         ++s_unmodeled_count;
@@ -185,6 +241,8 @@ uint8_t wink_mcs51_xdata_read(uint64_t addr, uint8_t kind) {
         if (xsfr_addr_in_window(addr) && !xsfr_allowlisted(addr)) {
             unmodeled_xsfr_trap(addr, false);
         }
+        // GAP-24: a legal classic-family MOVX read drives /RD + P0/P2.
+        mcs51_classic_bus_notify_xbyte(mcs51_get_context());
         return mcs51_get_context()->xdata_shadow[addr];
     }
     oob_trap(addr, kind, false);
@@ -197,6 +255,8 @@ void wink_mcs51_xdata_write(uint64_t addr, uint8_t value, uint8_t kind) {
         if (xsfr_addr_in_window(addr) && !xsfr_allowlisted(addr)) {
             unmodeled_xsfr_trap(addr, true);
         }
+        // GAP-24: a legal classic-family MOVX write drives /WR + P0/P2.
+        mcs51_classic_bus_notify_xbyte(mcs51_get_context());
         mcs51_get_context()->xdata_shadow[addr] = value;
         return;
     }
@@ -208,6 +268,40 @@ EMSCRIPTEN_KEEPALIVE
 #endif
 uint32_t wink_mcs51_xdata_oob_count(void) {
     return s_oob_count;
+}
+
+void mcs51_classic_bus_notify_xbyte(struct Mcu51Context* ctx) {
+    if (!ctx) ctx = mcs51_get_context();
+    if (!classic_external_bus(ctx)) {
+        return;  // on-chip XRAM: MOVX never reaches pins
+    }
+    if (ctx->classicBus.gpio_bus_mask != 0u) {
+        bus_conflict_policy();
+    }
+    ctx->classicBus.xbus_used = 1u;
+}
+
+void mcs51_classic_bus_notify_gpio(struct Mcu51Context* ctx, uint8_t port,
+                                   uint8_t bitmask) {
+    if (!ctx) ctx = mcs51_get_context();
+    const uint32_t bits = gpio_bus_bits(port, bitmask);
+    if (bits == 0u) {
+        return;  // P1 / P3.0-5 are never bus pins
+    }
+    if (!classic_external_bus(ctx)) {
+        return;  // on-chip XRAM: GPIO never fights the bus
+    }
+    if (ctx->classicBus.xbus_used != 0u) {
+        bus_conflict_policy();
+    }
+    ctx->classicBus.gpio_bus_mask |= bits;
+}
+
+#ifdef __EMSCRIPTEN__
+EMSCRIPTEN_KEEPALIVE
+#endif
+uint32_t wink_mcs51_classic_bus_conflict_total(void) {
+    return s_bus_conflict;
 }
 
 #ifdef __EMSCRIPTEN__
@@ -227,6 +321,7 @@ uint16_t wink_mcs51_xsfr_unmodeled_addr(uint32_t i) {
 void wink_mcs51_xdata_reset(void) {
     std::memset(mcs51_get_context()->xdata_shadow, 0, sizeof(mcs51_get_context()->xdata_shadow));
     s_oob_count = 0;
+    s_bus_conflict = 0u;
     for (uint8_t k = 0; k <= KIND_XSFR; ++k) {
         s_oob_warned[k] = false;
     }
@@ -234,6 +329,7 @@ void wink_mcs51_xdata_reset(void) {
     s_unmodeled_first_n = 0;
 #ifndef WINK_MCS51_STRICT
     s_unmodeled_warned = false;
+    s_bus_conflict_warned = false;
 #endif
 }
 

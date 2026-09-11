@@ -32,6 +32,8 @@ uint64_t cms8s_buzzer_next_event_us(struct Mcu51Context* ctx);
 
 void cms8s_sys_init(struct Mcu51Context* ctx);
 void cms8s_sys_reset(struct Mcu51Context* ctx);
+void cms8s_sys_poll(struct Mcu51Context* ctx);
+uint64_t cms8s_sys_next_event_us(struct Mcu51Context* ctx);
 
 // M1: core 8051 models run on every family; cms8s_* models only where the
 // silicon exists. Loops (init/reset/poll/next_event) filter on family_mask.
@@ -85,8 +87,8 @@ const mcs51_peripheral_desc_t g_mcs51_peripherals[] = {
         "cms8s_sys",
         cms8s_sys_init,
         cms8s_sys_reset,
-        nullptr,
-        nullptr,
+        cms8s_sys_poll,
+        cms8s_sys_next_event_us,
         MCS51_PHASE_CLOCK,
         MCS51_FAMILY_MASK_CMS8S78XX
     }

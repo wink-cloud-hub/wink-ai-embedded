@@ -110,6 +110,10 @@ int child_main(int case_id) {
             ctx->xdata_shadow[XSFR_PS_RXD] = 0x13u;
             ctx->xdata_shadow[XSFR_P13CFG] = 0x00u;
             break;
+        case 4:  // GAP-25: second write with TI still set (frame overwrite)
+            health_pot_uart_init();
+            tx_write('U');
+            break;
         case 9:  // good config: must survive
             health_pot_uart_init();
             break;
@@ -145,11 +149,12 @@ int main(int argc, char** argv) {
     fails += run_child(argv[0], 1, true);
     fails += run_child(argv[0], 2, true);
     fails += run_child(argv[0], 3, true);
+    fails += run_child(argv[0], 4, true);
     fails += run_child(argv[0], 9, false);
     if (fails) {
         return 1;
     }
-    printf("[mcs51-txready] PASS (STRICT): 3 misconfigs abort, good config survives\n");
+    printf("[mcs51-txready] PASS (STRICT): 3 misconfigs + overwrite abort, good config survives\n");
     return 0;
 }
 
@@ -188,6 +193,8 @@ int main(void) {
           "B: no MODE trigger");
     CHECK(wink_mcs51_uart_byte_count() == 2u,
           "B: release still sends (scenarios stay green)");
+    CHECK(wink_mcs51_uart_overwrite_total() == 1u,
+          "B: second write without TI clear counts overwrite");
 
     // ── C: SCON mode 0 → MODE (REN=0 keeps RXD out of scope) ────────────────
     init_ctx(MCS51_FAMILY_CMS8S78XX);
@@ -261,10 +268,25 @@ int main(void) {
     CHECK(wink_mcs51_uart_notready_count(0x10u) == 0u,
           "H: unknown reason bit reads 0");
 
+    // ── I: GAP-25 SBUF overwrite — TI still set from the previous byte ─────
+    init_ctx(MCS51_FAMILY_CMS8S78XX);
+    health_pot_uart_init();
+    tx_write('U');
+    CHECK(wink_mcs51_uart_overwrite_total() == 0u, "I: first write clean");
+    tx_write('U');  // TI never cleared: previous frame unconsumed
+    CHECK(wink_mcs51_uart_overwrite_total() == 1u, "I: rewrite counted");
+    CHECK(wink_mcs51_uart_byte_count() == 2u,
+          "I: release still sends (scenarios stay green)");
+    mcs51_get_context()->sfr_shadow[SFR_SCON] &=
+        static_cast<uint8_t>(~(1u << 1));  // Keil idiom: TI = 0
+    tx_write('U');
+    CHECK(wink_mcs51_uart_overwrite_total() == 1u,
+          "I: TI-cleared write stays clean");
+
     if (fails) {
         return 1;
     }
-    printf("[mcs51-txready] PASS: TX-link readiness mask + counters (A-H)\n");
+    printf("[mcs51-txready] PASS: TX-link readiness mask + counters (A-I)\n");
     return 0;
 }
 

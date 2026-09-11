@@ -27,11 +27,17 @@ extern const wink_app_callbacks_t *wink_app_get_callbacks(void);
 #define RUN_TICKS 20u
 
 /* Runs AFTER framework init (mcs51_trap_reset + mcs51_adc_reset), so the
- * injections survive. */
+ * injections survive. Also performs the board-level ADC init that real
+ * firmware does (health_pot adc_init): LDO on + VSEL=3V + AN mux for the
+ * exercised channels — the A-02 readiness gates (GAP-05) require them. */
 static void inject_cms8s_channels(void) {
     mcs51_adc_set_value(0,  0x0ABCu);
     mcs51_adc_set_value(1,  0x0801u);
     mcs51_adc_set_value(25, 0x0FFFu);
+    mcs51_get_context()->xdata_shadow[0xF692u] = 0xE0u;  /* ADCLDO LDOEN+VSEL_3V */
+    mcs51_get_context()->xdata_shadow[0xF000u] = 0x01u;  /* P00CFG=AN0 */
+    mcs51_get_context()->xdata_shadow[0xF001u] = 0x01u;  /* P01CFG=AN1 */
+    mcs51_get_context()->xdata_shadow[0xF033u] = 0x01u;  /* P33CFG=AN25 */
 }
 
 static int check_pair(uint16_t addr, uint16_t want, const char *tag) {

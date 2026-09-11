@@ -2,13 +2,20 @@
 // CMS8S78xx on-chip 12-bit ADC — instant-conversion model (M5, ADR-0073).
 #include "cms8s_adc.h"
 
+#include <cassert>
 #include <cstdint>
+#include <cstdlib>
 
 #include "mcs51_adc.h"
 #include "mcs51_trap.h"
 #include "mcs51_context.h"
 #include "mcs51_sfr_map.h"
+#include "wink_mcs51_clock.h"
 #include "wink_mcs51_isr.h"
+
+#ifndef WINK_MCS51_STRICT
+#include "pal_log.h"
+#endif
 
 extern "C" {
 uint8_t js_pal_gpio_read_state(uint16_t pin);
@@ -47,6 +54,77 @@ constexpr uint8_t EIF2_ADCIF  = 0x10u;  // bit4
 constexpr uint8_t ADC_CH_MAX_EXTERNAL = 25u;
 constexpr uint8_t ADC_CH_INTERNAL     = 0x3Fu;
 
+constexpr uint16_t XSFR_ADCLDO = 0xF692u;
+constexpr uint8_t ADCLDO_LDOEN = 0x80u;
+constexpr uint8_t ADCLDO_VSEL_Msk = 0x60u;
+constexpr uint8_t ADCLDO_VSEL_Pos = 5u;
+
+// ADCON1 ADCKS (bits6:4) -> divider (vendor ADC_CLK_DIV_2..256).
+constexpr uint32_t ADC_DIV_TABLE[8] = {2u, 4u, 8u, 16u, 32u, 64u, 128u, 256u};
+// VSEL -> Vref in mV (vendor ADC_VREF_1P2V/2V/2P4V/3V).
+constexpr uint16_t ADC_VREF_MV[4] = {1200u, 2000u, 2400u, 3000u};
+
+// A-02 readiness counters (diagnostic, file-static like uart_notready).
+// STRICT builds abort before counting, so counters stay 0 there by design.
+uint32_t s_adc_notready[2] = {};
+#ifndef WINK_MCS51_STRICT
+bool s_adc_notready_warned[2] = {};
+#endif
+
+constexpr const char* kAdcNotreadyNames[2] = {
+    "LDO not enabled (ADCLDO.LDOEN=0)",
+    "analog mux not selected (PxxCFG != AN)",
+};
+
+inline uint8_t adc_reason_index(uint32_t reason_bit) {
+    switch (reason_bit) {
+        case WINK_MCS51_ADC_NOTREADY_LDO: return 0u;
+        case WINK_MCS51_ADC_NOTREADY_MUX: return 1u;
+        default: return 0xFFu;
+    }
+}
+
+void adc_notready_policy(uint32_t mask) {
+#ifdef WINK_MCS51_STRICT
+    (void)mask;
+    assert(0 && "ADC conversion not ready (WINK_MCS51_STRICT)");
+    std::abort();
+#else
+    for (uint8_t i = 0; i < 2; ++i) {
+        const uint32_t bit = (1u << i);
+        if ((mask & bit) == 0) {
+            continue;
+        }
+        if (s_adc_notready[i] < 0xFFFFFFFFu) {
+            ++s_adc_notready[i];
+        }
+        if (!s_adc_notready_warned[i]) {
+            s_adc_notready_warned[i] = true;
+            pal_log_w("MCS51", "ADC conversion not ready: %s", kAdcNotreadyNames[i]);
+        }
+    }
+#endif
+}
+
+// AN channel -> pin CFG XSFR address. Assumed mapping (ref manual ADC chapter
+// + pin counts 8+8+6+4=26): AN0-7=P0.0-7, AN8-15=P1.0-7, AN16-21=P2.0-5,
+// AN22-25=P3.0-3. Returns 0xFFFF for internal/unmapped.
+inline uint16_t adc_channel_cfg_addr(uint8_t ch) {
+    if (ch <= 7u) {
+        return static_cast<uint16_t>(0xF000u + ch);
+    }
+    if (ch <= 15u) {
+        return static_cast<uint16_t>(0xF010u + (ch - 8u));
+    }
+    if (ch <= 21u) {
+        return static_cast<uint16_t>(0xF020u + (ch - 16u));
+    }
+    if (ch <= 25u) {
+        return static_cast<uint16_t>(0xF030u + (ch - 22u));
+    }
+    return 0xFFFFu;
+}
+
 constexpr uint8_t PORT_PINS[4] = {8u, 8u, 8u, 8u};
 constexpr uint8_t EXT_LOW  = 0u;
 constexpr uint8_t EXT_HIGH = 1u;
@@ -61,12 +139,52 @@ inline Mcs51Cms8sAdcPriv* get_adc_priv(Mcu51Context* ctx) {
     return &ctx->cms8sAdc;
 }
 
-// Performs one 12-bit ADC conversion synchronously: pulls analog rail,
-// packs ADRESH/ADRESL per ADFM, latches ADCIF, and dispatches vector 19 if enabled.
+// Performs one 12-bit ADC conversion synchronously: readiness gates
+// (LDO/mux), DIV-sensitive charge_us, analog rail pull, packs ADRESH/ADRESL
+// per ADFM, latches ADCIF, and dispatches vector 19 if enabled.
 void do_adc_conversion(Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
     Mcs51Cms8sAdcPriv* priv = get_adc_priv(ctx);
     const uint8_t ch = static_cast<uint8_t>(ctx->sfr_shadow[SFR_ADCCHS] & 0x3Fu);
+
+    // Gate 0: LDO must be enabled; Vref follows VSEL (A-02, GAP-05).
+    const uint8_t adcldo = ctx->xdata_shadow[XSFR_ADCLDO];
+    const uint16_t vref_mv =
+        ADC_VREF_MV[(adcldo & ADCLDO_VSEL_Msk) >> ADCLDO_VSEL_Pos];
+    ctx->adc_vref_mv = vref_mv;
+    if ((adcldo & ADCLDO_LDOEN) == 0u) {
+        adc_notready_policy(WINK_MCS51_ADC_NOTREADY_LDO);
+        ctx->sfr_shadow[SFR_ADCON0] =
+            static_cast<uint8_t>(ctx->sfr_shadow[SFR_ADCON0] & ~ADCON0_ADGO);
+        return;
+    }
+
+    // Gate 1: channel pin must select analog mux (PxxCFG == 0x01).
+    if (ch <= ADC_CH_MAX_EXTERNAL) {
+        const uint16_t cfg = adc_channel_cfg_addr(ch);
+        if (cfg == 0xFFFFu || ctx->xdata_shadow[cfg] != 0x01u) {
+            adc_notready_policy(WINK_MCS51_ADC_NOTREADY_MUX);
+            ctx->sfr_shadow[SFR_ADCON0] =
+                static_cast<uint8_t>(ctx->sfr_shadow[SFR_ADCON0] & ~ADCON0_ADGO);
+            return;
+        }
+    }
+
+    // DIV-sensitive synchronous accounting (A-02): 16 SAR clocks at
+    // Fsys/DIV, charged before the synchronous completion (no async timer,
+    // no §3.1 deadlock). health_pot DIV_256 @24MHz ≈ 170µs.
+    const uint8_t adcks =
+        static_cast<uint8_t>((ctx->sfr_shadow[SFR_ADCON1] >> 4u) & 0x07u);
+    const uint32_t div = ADC_DIV_TABLE[adcks];
+    const uint32_t fsys = wink_mcs51_get_clock_hz();
+    if (fsys != 0u) {
+        const uint32_t conv_us =
+            static_cast<uint32_t>((16ull * div * 1000000ull) / fsys);
+        if (conv_us != 0u) {
+            wink_mcs51_charge_us(conv_us);
+        }
+    }
+
     uint16_t raw;
     if (ch <= ADC_CH_MAX_EXTERNAL) {
         raw = static_cast<uint16_t>(mcs51_adc_get_value(ch) & 0x0FFFu);
@@ -132,6 +250,14 @@ void cms8s_adc_model_reset(struct Mcu51Context* ctx) {
     priv->adet.have_sample = false;
     // PS_ADET selector resets to 0x7F ("no pin connected", ref manual §7.2.3)
     ctx->xdata_shadow[XSFR_PS_ADET] = 0x7Fu;
+    for (uint8_t i = 0; i < 2; ++i) {
+        s_adc_notready[i] = 0;
+#ifndef WINK_MCS51_STRICT
+        s_adc_notready_warned[i] = false;
+#endif
+    }
+    ctx->adc_vref_mv = 3000u;
+    ctx->adc_vrail_mv = 3000u;
 }
 
 void cms8s_adc_init(struct Mcu51Context* ctx) {
@@ -224,6 +350,31 @@ uint32_t cms8s_adc_conversion_count(void) {
 
 uint8_t cms8s_adc_last_channel(void) {
     return get_adc_priv(nullptr)->adc.last_channel;
+}
+
+uint32_t cms8s_adc_notready_mask(void) {
+    Mcu51Context* ctx = mcs51_get_context();
+    uint32_t mask = 0u;
+    if ((ctx->xdata_shadow[XSFR_ADCLDO] & ADCLDO_LDOEN) == 0u) {
+        mask |= WINK_MCS51_ADC_NOTREADY_LDO;
+    }
+    const uint8_t ch = static_cast<uint8_t>(ctx->sfr_shadow[SFR_ADCCHS] & 0x3Fu);
+    if (ch <= ADC_CH_MAX_EXTERNAL) {
+        const uint16_t cfg = adc_channel_cfg_addr(ch);
+        if (cfg == 0xFFFFu || ctx->xdata_shadow[cfg] != 0x01u) {
+            mask |= WINK_MCS51_ADC_NOTREADY_MUX;
+        }
+    }
+    return mask;
+}
+
+uint32_t cms8s_adc_notready_count(uint32_t reason_bit) {
+    const uint8_t idx = adc_reason_index(reason_bit);
+    return (idx < 2u) ? s_adc_notready[idx] : 0u;
+}
+
+uint32_t cms8s_adc_notready_total(void) {
+    return s_adc_notready[0] + s_adc_notready[1];
 }
 
 }  // extern "C"
