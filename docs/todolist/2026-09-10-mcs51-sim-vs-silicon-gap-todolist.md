@@ -525,7 +525,9 @@ health_pot 的 10ms tick（T0 重载 0xB1E0）与 9600bps（TH1=217）都按 24M
 > 落点：`mcs51_shim_audit.py --emit-xsfr-allowlist/--check-xsfr-allowlist`（CI 新鲜度门禁）→ check-in 生成表 `include/mcs51_xsfr_allowlist.h`（93 地址）→ `mcs51_xdata.cpp` 读写单点判（`absacc.h` 新增 `wink_mcs51_xsfr_unmodeled_count/addr` C ABI，首 8 首犯地址，饱和计数，STRICT 中止/Release 单次告警，复位清零）。
 > - [x] `XBYTE[0xF120]` 写/读触发 STRICT 中止（子进程死亡用例）/ Release 计数 + 首犯地址归因（`test_mcs51_xsfr_tripwire[_strict]` 全过）。
 > - [x] health_pot 等价 XSFR 写集（P00/P30~33/P10~17/P01/02/06/P20/P04/P22CFG + LEDSDRP1L/H）零触发；37/37 host 全绿。
-> - [ ] 无头 22 场景 warn 模式零触发验证（待 sister repo；host 侧等价序列已零触发）。红线 §4.7 脚本清单替换仍待办（原修复项 3）。
+> - [x] 无头 22 场景零触发验证（2026-09-11 sister repo：8 应用 xsfrUnmodeled 计数全 0）。红线 §4.7 脚本清单替换仍待办（原修复项 3）。
+>
+> **审阅补强（2026-09-11）**：GAP-23 落地后审阅发现 4 点，已修 3 点——① runner 接入第 4 类计数：unisim schema/runner 增加 `xsfrUnmodeled`（`wink_mcs51_xsfr_unmodeled_count`），端到端验证负向探针（XBYTE[0xF120] PWMCON）step 绿但整体 FAIL、`allow:["xsfrUnmodeled"]` 逃生转绿；② 修正单测 C 组错址（0xF010 是 P10CFG 白名单内，本意 0x10 XRAM 槽）；③ 新鲜度门禁接 CTest（`test_mcs51_xsfr_allowlist_fresh`，变异验证过期即红）。④ 家族门控（XSFR 窗口是 CMS8S 概念，经典 51 高地址 MOVX 会误判）留待与 GAP-09 aperture 按型号收窄一并处理，列为已知边界。
 
 ### GAP-24（P2，第三轮自查）经典 51 MOVX 外部总线与 IAP 非易失区未建模
 
