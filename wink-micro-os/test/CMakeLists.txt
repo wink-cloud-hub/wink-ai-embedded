@@ -636,6 +636,14 @@ if(TARGET wink_mcs51_compat)
     add_mcs51_host_test(test_mcs51_xram_aperture
         mcs51/unit/test_mcs51_xram_aperture.cpp)
 
+    # GAP-12: T2/3/4 period formulas follow Fsys.
+    add_mcs51_host_test(test_mcs51_t234_fsys
+        mcs51/unit/test_mcs51_t234_fsys.cpp)
+
+    # GAP-12: duplicate ISR vector guard + P0..P3EXTIF write-0-to-clear.
+    add_mcs51_host_test(test_mcs51_gap12
+        mcs51/unit/test_mcs51_gap12.cpp)
+
     # GAP-23 STRICT twin: same TU, STRICT-built compat lib (death tests via
     # child re-execution). Mirrors the uart_tx_ready_strict block above.
     add_wink_host_test(test_mcs51_xsfr_tripwire_strict

@@ -107,6 +107,11 @@ void wink_mcs51_reset_irq_state(void);
 // mcs51_isr.cpp.
 void wink_mcs51_set_isr(uint8_t vector_num, void (*isr_fn)(void));
 
+// GAP-12: count of ISR registrations onto an already-occupied vector
+// (link error on Keil/SDCC; release warns instead of failing). Build-time
+// diagnostic; deliberately NOT cleared by reset (registration is static).
+uint32_t wink_mcs51_duplicate_vector_count(void);
+
 // Fetch the registered ISR for a vector, or NULL if none.
 void (*wink_mcs51_get_isr(uint8_t vector_num))(void);
 
