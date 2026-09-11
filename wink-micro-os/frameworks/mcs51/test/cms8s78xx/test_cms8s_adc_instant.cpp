@@ -330,12 +330,31 @@ int main(void) {
               "injected pin key must not count a redirect");
     }
 
+    // ── 15) Review fix: illegal ADET pin (P2.6) never triggers ─────────────
+    // PS_ADET = 0x26 has no pin on reduced families ({8,8,6,4} descriptor):
+    // the resolve must reject before sampling, so no edge/conversion/ISR.
+    {
+        ADCON2 = 0x80u | (0x03u << 4) | (0x00u << 2);  // ADCEX=1, ADET, FALLING
+        WinkXsfr ps_adet_illegal(0xF0CCu);
+        ps_adet_illegal = 0x26u;  // P2.6: nonexistent
+        wink_mcs51_host_set_ext_pin(22, 1);
+        cms8s_adc_poll(mcs51_get_context());
+        const uint32_t count_ill_start = cms8s_adc_conversion_count();
+        const uint32_t isr_ill_start = g_adc_isr_hits;
+        wink_mcs51_host_set_ext_pin(22, 0);  // falling edge on a ghost pin
+        cms8s_adc_poll(mcs51_get_context());
+        check(cms8s_adc_conversion_count() == count_ill_start,
+              "illegal ADET pin must not trigger conversion");
+        check(g_adc_isr_hits == isr_ill_start,
+              "illegal ADET pin must not dispatch vector 19");
+    }
+
     if (g_fails) {
         return 1;
     }
     printf("[mcs51] PASS: CMS8S78xx ADC 0-cycle model — ADGO self-clear, "
            "right/left packing, ADCIE/EA vector-19 gating, ADEN gate, "
            "AN25/AN63 channels, XSFR window + OOB trap, ADET hardware trigger (falling & rising), "
-           "Stage1 synth-key dual-read compat\n");
+           "Stage1 synth-key dual-read compat, illegal-ADET-pin reject\n");
     return 0;
 }

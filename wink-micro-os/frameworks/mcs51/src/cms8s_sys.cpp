@@ -264,6 +264,7 @@ extern "C" {
 
 void cms8s_soc_bind(struct Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
+    if (!ctx) return;  // review hardening: null-active never crashes
     // Indexing clamps, never asserts (review finding): the loud fuse lives
     // in mcs51_context_reset; here NDEBUG-proof containment wins — worst
     // case aliases the last slot deterministically, never OOB.
@@ -279,11 +280,15 @@ void cms8s_soc_bind(struct Mcu51Context* ctx) {
 }
 
 void cms8s_sys_reset(struct Mcu51Context* ctx) {
+    if (!ctx) ctx = mcs51_get_context();
+    if (!ctx) return;
     cms8s_soc_bind(ctx);  // defensive: standalone resets bind too (no-op if bound)
     reset_state(ctx);
 }
 
 void cms8s_sys_init(struct Mcu51Context* ctx) {
+    if (!ctx) ctx = mcs51_get_context();
+    if (!ctx) return;
     cms8s_soc_bind(ctx);  // bind BEFORE any pool deref (ordering invariant)
     reset_state(ctx);
     mcs51_trap_register_sfr_write(SFR_TA, on_ta_write);
@@ -358,6 +363,7 @@ uint32_t wink_mcs51_wdt_overflow_total(void) {
 
 void cms8s_sys_notify_sfr_write(struct Mcu51Context* ctx, uint8_t addr) {
     if (!ctx) ctx = mcs51_get_context();
+    if (!ctx) return;  // review hardening: null-active never crashes
     if (!has_wdt(ctx)) {
         return;  // classic parts have no TA window at all
     }
