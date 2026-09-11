@@ -78,6 +78,17 @@
 - **执行裁决 S3-D6（L4 无头条款释义 + app 绑定缺口）**：L4"公共 include/ 无 REG"指无实质内容（一版转发 shim 存活至 stage7）；`mcs51_health_pot` 等外管线 app 在本仓构建图外，其中央桥自绑定缺口由 stage6 codegen 胶（family_select 系）认领，stage7 headless 真链路为终证——本阶段在仓 e2e 代理（iron）已迁 harness 自绑定。
 - **Safety review**：Risk level 中（桥派发热路径 + 外设 init + ctx 结构）；Checklist phases run 1、2、3、4、10、12；Findings 无（保序与旧硬调用一致；attach/ch_key 空安全；零堆；trap 纪律不变；emcc 全绿；64+13 全绿）；Fixed 无；Assumptions 沿用 active-ctx 注册惯例（TA 安装用显式 ctx 更强）；Commands run 见 Check 3。
 
+## 8. Stage3 强化补丁追记（S3-H1~H7，2026-09-11，评审复核）
+- **事由**：stage3 关闭后的人工架构复审挖出 4 隐患 + 3 规范项（复审结论：6 条采纳、lint 清理名单修正 2 处），本补丁在进 stage4 前一次性关闭。
+- **H1 attach 显式 ctx 直挂**：`adc0832_device_attach` 改向传入 `ctx->pin_traps` 直接挂载（含 trap API 同款 OOR 静默忽略守卫），消除 `ctx != active` 时状态与 trap 分家漂移；`cms8s_sys_init` 同构写法为老代码，留 stage4 `xxx_register` 统一转显式 ctx。
+- **H2 net-id 零值钳位**：`ch0/ch1_net_id == 0` 逐字段回退默认 32/33（key 0 = MCU P0.0，板器件永不该碰）；与既有 unbound 回退形成纵深。
+- **H3 头自包含**：`cms8s_adc.h` 补 `<stdbool.h>`（纯 C 首包含不再爆 `bool`）。
+- **H4 SSOT 回归**：`has_wdt()` 改读描述符 `wdt_present`（与 `has_xsfr` 同值、行为中性；`has_xsfr` 另 4 处窗口语义使用者不动；`desc` 永不空故无空检查，与现行 deref 风格一致）。
+- **H5 信息隐藏**：`Adc0832State` 移入 TU 私有（公共头仅剩 attach/config API；TU 显式 `#include <stdbool.h>` 自包含）。
+- **H6 门禁保鲜**：删 8 个已死 waiver 行（sfr_map×3、clock、strict、wdt、bridge、出域 adc0832.cpp、context.cpp stage2 `ps_sel`）、extint×3 改 tag→stage4、BASELINE 头部加 hygiene 铁律注释；删后 lint 仍 PASS（反证无活行被误删）。
+- **H7 契约闭环**：新增 `test/core/test_adc0832_attach_net_id.cpp`（自定义 40/41 端到端读回 + 未绑定回退 + 零值钳位）并注册；基线重采 142→143，`--compare` MATCH。
+- **终验**：lint PASS｜host mcs51 65/65｜wasm 13/13｜`sizeof` 75672 不变｜17 项非 mcs51 存量失败不变。
+
 ## 附录 A：S3-2 Step 4 板级模拟空间日落决策记录（✅ 方案 B 定案，2026-09-11）
 
 - **决策结论**：正式采纳 **方案 (B)**（设备私有 pull，board net id 进 `adc0832_device_attach` 参数，通用 rail 回归纯 Pin）。
