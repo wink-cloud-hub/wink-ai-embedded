@@ -210,6 +210,10 @@ typedef struct Mcu51Context {
     // zero = unhooked standard quasi-bidirectional behavior (zero behavior
     // change this stage).
     Mcs51GpioHooks     gpio_hooks;
+    // S4-2 Step 1 (S4-D3): UART source-selection hooks, per-context by
+    // value. Memset zero = standard Timer1 path (zero behavior change
+    // this stage for standard parts; enhanced families mount in stage4).
+    Mcs51UartHooks     uart_hooks;
     uint16_t           adc_injected[MCS51_ADC_MAX_RAIL_KEYS];
     uint8_t            adc_inject_flag[MCS51_ADC_MAX_RAIL_KEYS];
     // A-02 ADC reference rail (GAP-05): Vref/Vrail in mV, set by the chip

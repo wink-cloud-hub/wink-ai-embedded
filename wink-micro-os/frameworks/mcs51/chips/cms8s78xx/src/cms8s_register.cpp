@@ -45,6 +45,9 @@ void cms8s_extint_reset(struct Mcu51Context* ctx);
 void cms8s_port_extint_poll(struct Mcu51Context* ctx);
 uint64_t cms8s_port_extint_next_event_us(struct Mcu51Context* ctx);
 
+void cms8s_uart_init(struct Mcu51Context* ctx);
+void cms8s_uart_reset(struct Mcu51Context* ctx);
+
 }  // extern "C"
 
 namespace {
@@ -98,6 +101,17 @@ const mcs51_peripheral_desc_t kCms8sDescs[] = {
         cms8s_port_extint_poll,
         cms8s_port_extint_next_event_us,
         MCS51_PHASE_EXTINT,
+        MCS51_FAMILY_MASK_CMS8S78XX
+    },
+    {
+        // S4-2 Step 1: UART source selection = hook installer (the TX
+        // engine stays core; NULL poll/next-event are skipped).
+        "cms8s_uart",
+        cms8s_uart_init,
+        cms8s_uart_reset,
+        nullptr,
+        nullptr,
+        MCS51_PHASE_RX_DRAIN,
         MCS51_FAMILY_MASK_CMS8S78XX
     },
 };
