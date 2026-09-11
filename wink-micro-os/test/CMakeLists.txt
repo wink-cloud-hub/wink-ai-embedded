@@ -760,7 +760,9 @@ if(TARGET wink_mcs51_compat)
     add_mcs51_host_test(test_mcs51_shims
         ../frameworks/mcs51/test/core/test_mcs51_shims.cpp)
 
-    # MCU facade: wink_mcu.h routing to REG_CMS8S78XX.H / REGX52.H
+    # 51 family routing: mcs51_family_route.h routes to REG_CMS8S78XX.H /
+    # REGX52.H (Stage3: slimmed from the wink_mcu.h facade, now up at
+    # runtime/include/wink_mcu.h).
     add_mcs51_host_test(test_mcs51_wink_mcu
         ../frameworks/mcs51/test/cms8s78xx/test_mcs51_wink_mcu.cpp)
 

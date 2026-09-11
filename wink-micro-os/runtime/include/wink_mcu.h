@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // wink_mcu.h — Unified MCU facade header for Wink Micro OS.
 //
+// Stage3 S3-1 Step 3: moved up from frameworks/mcs51/include/ to this
+// platform-neutral home. 51-framework-internal code uses the slimmed
+// 51-only route (frameworks/mcs51/include/mcs51_family_route.h) instead;
+// applications keep including <wink_mcu.h> unchanged.
+//
 // Automatically routes to the concrete microcontroller register definitions
 // and dialect proxies based on the "mcu" field in wink-app.json (injected via
 // -DWINK_MCU_* compile definitions or wink_config.h).

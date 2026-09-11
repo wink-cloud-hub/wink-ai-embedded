@@ -56,7 +56,11 @@ BASELINE: list[tuple[str, str, str, str]] = [
     ("include/mcs51_family.h", "cms8s", r".*", "by-design"),
     ("include/mcs51_family.h", "funccr", r"FUNCCR", "by-design"),
     ("include/mcs51_family.h", "ps_sel", r"PS_", "by-design"),
-    # mcs51_peripheral.h comment -> stage4 (self-registration)
+    # mcs51_family_route.h: 51-only routing table is BY DESIGN (the single
+    # place inside frameworks/mcs51/ allowed to name families + vendor
+    # shim headers — mirrors the mcs51_family.h descriptor treatment).
+    ("include/mcs51_family_route.h", "cms8s", r".*", "by-design"),
+    ("include/mcs51_family_route.h", "familynam", r".*", "by-design"),
     ("include/mcs51_peripheral.h", "cms8s", r"cms8s_\*", "stage4"),
     # mcs51_sfr_map.h vendor block -> stage3 (header homing)
     ("include/mcs51_sfr_map.h", "xsfr_addr", r"0xF0", "stage3"),
