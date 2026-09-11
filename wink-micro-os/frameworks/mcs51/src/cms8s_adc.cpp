@@ -10,6 +10,7 @@
 #include "mcs51_trap.h"
 #include "mcs51_context.h"
 #include "mcs51_sfr_map.h"
+#include "cms8s_sfr_map.h"
 #include "cms8s_priv.h"
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_isr.h"
@@ -34,10 +35,10 @@ constexpr uint8_t SFR_ADCON2 = 0xE9;
 constexpr uint8_t SFR_ADCCHS = 0xD9;
 constexpr uint8_t SFR_ADRESH = 0xDD;
 constexpr uint8_t SFR_ADRESL = 0xDC;
-// M5: shared addresses alias the single source (mcs51_sfr_map.h).
-constexpr uint8_t SFR_EIE2   = MCS51_SFR_EIE2;
-constexpr uint8_t SFR_EIF2   = MCS51_SFR_EIF2;
-constexpr uint16_t XSFR_PS_ADET = MCS51_XSFR_PS_ADET;
+// M5: shared addresses alias the single source (cms8s_sfr_map.h, S3-1).
+constexpr uint8_t SFR_EIE2   = CMS8S_SFR_EIE2;
+constexpr uint8_t SFR_EIF2   = CMS8S_SFR_EIF2;
+constexpr uint16_t XSFR_PS_ADET = CMS8S_XSFR_PS_ADET;
 
 constexpr uint8_t ADCON0_ADGO = 0x02u;  // bit1
 constexpr uint8_t ADCON0_ADFM = 0x40u;  // bit6

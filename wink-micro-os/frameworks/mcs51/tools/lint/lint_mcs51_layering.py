@@ -95,7 +95,15 @@ BASELINE: list[tuple[str, str, str, str]] = [
      r"WINK_MCU_AT89C52|CLASSIC", "by-design"),
     # S2-1 done: A-02 seeding lines (ADCLDO comment + 3000/3000) removed.
     ("src/mcs51_context.cpp", "ps_sel", r"PS_", "stage2"),
-    # src/mcs51_extint.cpp EICFG tables + hook comment -> stage4
+    # S3-1 transition (expires stage4): extint/timer/uart code still lives in
+    # core but reads the sunk CMS8S_ addresses; the usages leave core WITH
+    # the code when stage4 strips the models to chips/.
+    ("src/mcs51_extint.cpp", "cms8s",
+     r"CMS8S_|cms8s_sfr_map", "stage4"),
+    ("src/mcs51_timer.cpp", "cms8s",
+     r"CMS8S_|cms8s_sfr_map", "stage4"),
+    ("src/mcs51_uart.cpp", "cms8s",
+     r"CMS8S_|cms8s_sfr_map", "stage4"),
     ("src/mcs51_extint.cpp", "xsfr_addr", r"0xF08|0xF09", "stage4"),
     ("src/mcs51_extint.cpp", "cms8s", r"cms8s_sys", "stage4"),
     ("src/mcs51_extint.cpp", "ps_sel", r"PS_RESET|XSFR_PS_|MCS51_XSFR_PS_",
