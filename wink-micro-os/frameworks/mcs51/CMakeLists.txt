@@ -26,6 +26,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # links it (mirrors wink_arduino_compat).
 set(_MCS51_COMPAT_SRCS
     src/mcs51_context.cpp
+    src/mcs51_family.cpp
     src/mcs51_peripheral.cpp
     src/mcs51_sfr.cpp
     src/mcs51_uni_bridge.cpp

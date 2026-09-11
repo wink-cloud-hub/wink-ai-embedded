@@ -40,37 +40,46 @@ constexpr uint8_t KIND_BYTE = 0u;  // XBYTE accessor
 constexpr uint8_t KIND_WORD = 1u;  // XWORD accessor
 constexpr uint8_t KIND_XSFR = 2u;  // XSFR proxy (WinkXsfr / REG_CMS8S78XX.H)
 
-// CMS8S78xx extended-SFR window (MOVX @DPTR, manual §2.2): pin config
-// PxxCFG @ 0xF000..0xF033, ADC LDO ADCLDO @ 0xF692, …
+// Extended-SFR window facts (base/size) come from the family descriptor
+// (M1): pin config PxxCFG @ 0xF000..0xF033, ADC LDO ADCLDO @ 0xF692, …
 // GAP-09/GAP-23 family gating: the XSFR window and the unmodeled-XSFR
-// tripwire exist ONLY on the enhanced CMS8S family; on a classic 8052 the
-// same MOVX addresses are ordinary external RAM/IO space.
-constexpr uint64_t XSFR_WINDOW_BASE = MCS51_XRAM_WINDOW_BASE;
+// tripwire exist ONLY on families exposing the window; on a classic 8052
+// the same MOVX addresses are ordinary external RAM/IO space.
+const mcs51_family_desc_t* active_family_desc() {
+    return mcs51_family_desc(mcs51_get_context()->family);
+}
 
 bool     s_oob_warned[3] = {};   // once-per-kind warning latch
 uint32_t s_oob_count = 0;
 
 // Legal XDATA aperture for the active family (GAP-09):
-//  - CMS8S78xx: 1 KB on-chip XRAM, then a hole, then the 0xF000 XSFR window.
-//  - Classic:   the configurable WINK_MCS51_XDATA_SIZE external aperture;
-//               no XSFR window.
+//  - on-chip XRAM families: descriptor xram_size, then a hole, then the
+//    XSFR window;
+//  - classic: the configurable WINK_MCS51_XDATA_SIZE external aperture;
+//    no XSFR window.
 bool xsfr_window_present() {
-    return mcs51_context_get_family() == MCS51_FAMILY_CMS8S78XX;
+    return mcs51_family_has_xsfr(active_family_desc());
 }
 
 uint64_t xram_aperture_size() {
-    return xsfr_window_present()
-             ? static_cast<uint64_t>(MCS51_XRAM_SIZE_CMS8S78XX)
-             : static_cast<uint64_t>(WINK_MCS51_XDATA_SIZE);
+    const uint32_t onchip = active_family_desc()->xram_size;
+    return (onchip != 0u) ? static_cast<uint64_t>(onchip)
+                          : static_cast<uint64_t>(WINK_MCS51_XDATA_SIZE);
 }
 
-// Legal xdata: ordinary XRAM aperture OR (CMS8S only) the XSFR window.
+// XSFR window range for the active family (empty when no window).
+bool xsfr_addr_in_window(uint64_t addr) {
+    const mcs51_family_desc_t* d = active_family_desc();
+    return (d->xsfr_size != 0u) && (addr >= d->xsfr_base) &&
+           (addr < (uint64_t)d->xsfr_base + (uint64_t)d->xsfr_size);
+}
+
+// Legal xdata: ordinary XRAM aperture OR the family XSFR window.
 bool xdata_addr_legal(uint64_t addr) {
     if (addr < xram_aperture_size()) {
         return true;
     }
-    return xsfr_window_present() &&
-           (addr >= XSFR_WINDOW_BASE && addr < 0x10000ull);
+    return xsfr_addr_in_window(addr);
 }
 
 // GAP-23 unmodeled-XSFR tripwire state (plain POD BSS, same policy pattern
@@ -173,7 +182,7 @@ uint8_t wink_mcs51_xdata_read(uint64_t addr, uint8_t kind) {
         // status register is as silent as configuring one. Gated on the
         // address, not the accessor kind, so raw XBYTE and WinkXsfr proxies
         // are covered identically.
-        if (addr >= XSFR_WINDOW_BASE && !xsfr_allowlisted(addr)) {
+        if (xsfr_addr_in_window(addr) && !xsfr_allowlisted(addr)) {
             unmodeled_xsfr_trap(addr, false);
         }
         return mcs51_get_context()->xdata_shadow[addr];
@@ -185,7 +194,7 @@ uint8_t wink_mcs51_xdata_read(uint64_t addr, uint8_t kind) {
 void wink_mcs51_xdata_write(uint64_t addr, uint8_t value, uint8_t kind) {
     wink_mcs51_microstep();
     if (xdata_addr_legal(addr)) {
-        if (addr >= XSFR_WINDOW_BASE && !xsfr_allowlisted(addr)) {
+        if (xsfr_addr_in_window(addr) && !xsfr_allowlisted(addr)) {
             unmodeled_xsfr_trap(addr, true);
         }
         mcs51_get_context()->xdata_shadow[addr] = value;

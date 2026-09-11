@@ -106,9 +106,11 @@ uint32_t uart_notready_mask_impl(const Mcu51Context* ctx) {
         mask |= WINK_MCS51_UART_NOTREADY_MODE;
     }
 
-    const bool is_cms8s =
-        (mcs51_context_get_family() == MCS51_FAMILY_CMS8S78XX);
-    if (is_cms8s) {
+    // M1: FUNCCR/CFG/PS_RXD exist only on families exposing the XSFR
+    // window. Branch on the capability, never on a family id comparison.
+    const bool has_xsfr =
+        mcs51_family_has_xsfr(mcs51_family_desc(ctx->family));
+    if (has_xsfr) {
         bool baud_ok = false;
         switch (ctx->sfr_shadow[SFR_FUNCCR] & 0x07u) {
             case CKS_TMR1:

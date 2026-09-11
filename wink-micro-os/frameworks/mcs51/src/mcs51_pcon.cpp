@@ -16,6 +16,9 @@ uint64_t mcs51_calc_next_event_us(struct Mcu51Context* ctx, bool is_pd) {
 
     if (!is_pd) {
         for (uint8_t i = 0; i < g_mcs51_num_peripherals; ++i) {
+            if (!mcs51_peripheral_active_for(&g_mcs51_peripherals[i], ctx->family)) {
+                continue;
+            }
             if (g_mcs51_peripherals[i].next_event_us != nullptr) {
                 uint64_t t = g_mcs51_peripherals[i].next_event_us(ctx);
                 if (t < earliest) {

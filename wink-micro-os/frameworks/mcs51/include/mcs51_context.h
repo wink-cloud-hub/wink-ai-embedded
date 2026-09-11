@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "wink_event.h"
+#include "mcs51_adc.h"
+#include "mcs51_family.h"
 #include "mcs51_trap.h"
 
 #ifdef __cplusplus
@@ -15,10 +17,9 @@ extern "C" {
 #define MCS51_TIMING_NATIVE_0CYCLE 0u
 #define MCS51_TIMING_ISS_SCHEDULED 1u
 
-// MCU family ids for silicon reset seeds (GAP-04/GAP-13). mcs51_context_reset
-// applies family-specific seeds (CKCON reset value, power-on Fosc).
-#define MCS51_FAMILY_CLASSIC   0u  // AT89C52/STC89 and other classic 12T parts
-#define MCS51_FAMILY_CMS8S78XX 1u  // Cmsemicon CMS8S78xx
+// MCU family ids + silicon facts (MCS51_FAMILY_*, family descriptors) live
+// in mcs51_family.h (maintainability M1). mcs51_context_reset applies the
+// active family's seeds (CKCON reset value, power-on Fosc).
 
 // On-chip XDATA aperture by family (GAP-09, datasheet §2.2.3):
 //  - CMS8S78xx: 1 KB internal XRAM (0x0000..0x03FF).
@@ -103,8 +104,74 @@ typedef struct {
     bool     rx_have_delivered;
 } Mcu51UartState;
 
+// ── Per-instance model states (maintainability M2) ─────────────────────────
+// These POD states were file-static globals (one instance per process);
+// they now live in Mcu51Context so two contexts / two families never share
+// silicon state. Owner model noted per struct. Process-level *diagnostic*
+// counters (OOB/unmodeled-XSFR/UART-notready/unsupported/duplicate-vector)
+// deliberately stay file-static: they are build-time diagnostics, not silicon.
+
+// Owner: mcs51_adc0832.cpp (external ADC0832 trap state machine).
+typedef struct {
+    uint8_t cs_port, cs_bit;
+    uint8_t clk_port, clk_bit;
+    uint8_t di_port, di_bit;
+    uint8_t do_port, do_bit;
+    bool    is_dio_shared;
+    uint8_t phase;         // 0=IDLE, 1=INPUT, 2=OUTPUT
+    uint8_t rise_count;    // CLK rising edges since CS fall
+    uint8_t fall_count;    // CLK falling edges in OUTPUT phase
+    uint8_t channel_cfg;   // [1]=SGL/DIF, [0]=ODD/SIGN
+    uint8_t shift_data;    // 8-bit conversion result, MSB first
+    uint8_t out_bit;       // current DO drive level (1 = released/high)
+} Mcs51Adc0832State;
+
+// Owner: cms8s_sys.cpp (TA protection window).
+typedef struct {
+    // 0 = waiting 0xAA, 1 = got 0xAA waiting 0x55, 2 = unlocked (next
+    // protected write passes and consumes the window).
+    uint8_t ta_phase;
+} Mcs51SysProtState;
+
+// Owner: cms8s_buzzer.cpp.
+typedef struct {
+    bool     running;
+    uint8_t  pin_level;
+    uint32_t half_period_us;
+    uint64_t next_toggle_us;
+    uint32_t toggle_count;
+} Mcs51BuzzerState;
+
+// Owner: cms8s_adc.cpp (on-chip 12-bit ADC + ADET trigger).
+typedef struct {
+    uint32_t conversion_count;
+    uint8_t  last_channel;
+} Mcs51Cms8sAdcState;
+
+typedef struct {
+    uint16_t last_pin;
+    uint8_t  last_level;
+    bool     have_sample;
+} Mcs51AdetPinState;
+
+typedef struct {
+    Mcs51Cms8sAdcState adc;
+    Mcs51AdetPinState  adet;
+    bool               in_poll;
+} Mcs51Cms8sAdcPriv;
+
+// Owner: mcs51_pwm_meter.cpp (host-side soft-PWM measurement).
+typedef struct {
+    bool     active;
+    uint8_t  current_level;
+    uint64_t last_flip_us;
+    uint64_t high_time_us;
+    uint64_t low_time_us;
+    uint32_t transitions;
+} Mcs51PwmMeter;
+
 // ── Standard Core MCU Context Container ────────────────────────────────────
-// sizeof(Mcu51Context) ~ 66 KB (with 64 KB XDATA shadow).
+// sizeof(Mcu51Context) ~ 68 KB (with 64 KB XDATA shadow).
 // Allocation MUST be in BSS or heap — NEVER on fiber/stack.
 typedef struct Mcu51Context {
     // 1. Memory and SFR shadows
@@ -146,6 +213,18 @@ typedef struct Mcu51Context {
 
     // 7. Low power OSAL wake event (Task R6)
     wink_event_t wake_event;
+
+    // 8. MCU family + per-instance model states (M1/M2). `family` is loaded
+    // from the process selector at reset; mechanism files branch on the
+    // family *descriptor* (mcs51_family.h), never on an id comparison.
+    uint8_t            family;
+    Mcs51Adc0832State  adc0832;
+    Mcs51SysProtState  sysProt;
+    Mcs51BuzzerState   buzzer;
+    Mcs51Cms8sAdcPriv  cms8sAdc;
+    uint16_t           adc_injected[MCS51_ADC_MAX_CHANNELS];
+    uint8_t            adc_inject_flag[MCS51_ADC_MAX_CHANNELS];
+    Mcs51PwmMeter      pwm_meters[32];
 } Mcu51Context;
 
 // ── Active context pointer and accessors ───────────────────────────────────

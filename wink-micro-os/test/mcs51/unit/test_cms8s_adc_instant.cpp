@@ -84,6 +84,9 @@ extern "C" void setUp(void) {}
 extern "C" void tearDown(void) {}
 
 int main(void) {
+    // M1: this test drives CMS8S-only silicon (ADCON0/XSFR window) — select
+    // the family explicitly (the compat lib defaults to classic).
+    mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
     wink_mcs51_isr_enable();       // open the execution-phase dispatch gate
     wink_mcs51_xdata_reset();      // clean XDATA shadow + OOB counters
     mcs51_adc_reset();             // clear injection rail

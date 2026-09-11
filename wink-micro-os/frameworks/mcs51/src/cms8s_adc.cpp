@@ -49,38 +49,21 @@ constexpr uint8_t PORT_PINS[4] = {8u, 8u, 8u, 8u};
 constexpr uint8_t EXT_LOW  = 0u;
 constexpr uint8_t EXT_HIGH = 1u;
 
-struct Cms8sAdcState {
-    uint32_t conversion_count;
-    uint8_t  last_channel;
-};
+// M2: Cms8sAdcState/AdetPinState/Cms8sAdcPriv now live in mcs51_context.h
+// (Mcs51Cms8sAdcState/Mcs51AdetPinState/Mcs51Cms8sAdcPriv) as
+// Mcu51Context::cms8sAdc. The old file-static default object aliased ONE
+// priv into EVERY context via soc_priv — two contexts shared conversions.
 
-struct AdetPinState {
-    uint16_t last_pin;
-    uint8_t  last_level;
-    bool     have_sample;
-};
-
-struct Cms8sAdcPriv {
-    Cms8sAdcState adc;
-    AdetPinState  adet;
-    bool          in_poll;
-};
-
-static Cms8sAdcPriv s_default_cms8s_adc_priv = {};
-
-inline Cms8sAdcPriv* get_adc_priv(Mcu51Context* ctx) {
+inline Mcs51Cms8sAdcPriv* get_adc_priv(Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
-    if (ctx->soc_priv == nullptr) {
-        ctx->soc_priv = &s_default_cms8s_adc_priv;
-    }
-    return static_cast<Cms8sAdcPriv*>(ctx->soc_priv);
+    return &ctx->cms8sAdc;
 }
 
 // Performs one 12-bit ADC conversion synchronously: pulls analog rail,
 // packs ADRESH/ADRESL per ADFM, latches ADCIF, and dispatches vector 19 if enabled.
 void do_adc_conversion(Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
-    Cms8sAdcPriv* priv = get_adc_priv(ctx);
+    Mcs51Cms8sAdcPriv* priv = get_adc_priv(ctx);
     const uint8_t ch = static_cast<uint8_t>(ctx->sfr_shadow[SFR_ADCCHS] & 0x3Fu);
     uint16_t raw;
     if (ch <= ADC_CH_MAX_EXTERNAL) {
@@ -139,7 +122,7 @@ extern "C" {
 
 void cms8s_adc_model_reset(struct Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
-    Cms8sAdcPriv* priv = get_adc_priv(ctx);
+    Mcs51Cms8sAdcPriv* priv = get_adc_priv(ctx);
     priv->in_poll = false;
     priv->adet.last_pin = 0xFFFFu;
     priv->adet.last_level = 0xFFu;
@@ -150,7 +133,7 @@ void cms8s_adc_model_reset(struct Mcu51Context* ctx) {
 
 void cms8s_adc_init(struct Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
-    Cms8sAdcPriv* priv = get_adc_priv(ctx);
+    Mcs51Cms8sAdcPriv* priv = get_adc_priv(ctx);
     priv->adc.conversion_count = 0u;
     priv->adc.last_channel = 0xFFu;
     cms8s_adc_model_reset(ctx);
@@ -159,7 +142,7 @@ void cms8s_adc_init(struct Mcu51Context* ctx) {
 
 void cms8s_adc_poll(struct Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
-    Cms8sAdcPriv* priv = get_adc_priv(ctx);
+    Mcs51Cms8sAdcPriv* priv = get_adc_priv(ctx);
     if (priv->in_poll) {
         return;
     }

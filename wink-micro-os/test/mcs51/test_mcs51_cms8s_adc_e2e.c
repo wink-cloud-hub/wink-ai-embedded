@@ -55,6 +55,10 @@ int main(void) {
         return 1;
     }
 
+    /* M1: on-chip ADC is CMS8S-only silicon — select the family so the
+     * framework init (reset,seeds,hooks) targets CMS8S78xx. */
+    mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
+
     mcs51_framework_set_post_init_hook(inject_cms8s_channels);
 
     wink_status_t st = wink_runtime_run(cb, RUN_TICKS);
