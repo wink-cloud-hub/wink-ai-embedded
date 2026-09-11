@@ -319,13 +319,28 @@ uint32_t wink_mcs51_uart_rx_dropped(void) {
     return get_uart().rx_dropped;
 }
 
+#ifdef __EMSCRIPTEN__
+EMSCRIPTEN_KEEPALIVE
+#endif
 uint32_t wink_mcs51_uart_notready_mask(void) {
     return uart_notready_mask_impl(mcs51_get_context());
 }
 
+#ifdef __EMSCRIPTEN__
+EMSCRIPTEN_KEEPALIVE
+#endif
 uint32_t wink_mcs51_uart_notready_count(uint32_t reason_bit) {
     const uint8_t idx = reason_index(reason_bit);
     return (idx < 4u) ? s_notready_triggered[idx] : 0u;
+}
+
+#ifdef __EMSCRIPTEN__
+EMSCRIPTEN_KEEPALIVE
+#endif
+uint32_t wink_mcs51_uart_notready_total(void) {
+    // Aggregate across all reason buckets (GAP-10 runner verdict).
+    return s_notready_triggered[0] + s_notready_triggered[1] +
+           s_notready_triggered[2] + s_notready_triggered[3];
 }
 
 void wink_mcs51_uart_on_write(uint8_t addr) {

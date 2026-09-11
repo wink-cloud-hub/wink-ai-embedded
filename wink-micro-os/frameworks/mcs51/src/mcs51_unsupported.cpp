@@ -8,6 +8,10 @@
 // compiled out) still traps instead of silently continuing.
 #include "wink_mcs51_strict.h"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 #include <cassert>
 #include <cstdint>
 #include <cstdlib>
@@ -63,6 +67,9 @@ void wink_mcs51_unsupported(uint32_t feature_id, const char* feature_name) {
 #endif
 }
 
+#ifdef __EMSCRIPTEN__
+EMSCRIPTEN_KEEPALIVE
+#endif
 uint32_t wink_mcs51_unsupported_warning_count(void) {
     return s_warn_count;
 }

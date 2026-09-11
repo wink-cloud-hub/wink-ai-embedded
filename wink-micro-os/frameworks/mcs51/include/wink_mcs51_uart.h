@@ -94,6 +94,8 @@ uint32_t wink_mcs51_uart_notready_mask(void);
 // (saturating; STRICT builds abort instead of counting, so this stays 0).
 // Unknown reason bits read as 0.
 uint32_t wink_mcs51_uart_notready_count(uint32_t reason_bit);
+// Aggregate count across all reason buckets (GAP-10 runner verdict).
+uint32_t wink_mcs51_uart_notready_total(void);
 
 // ── Test observability (C ABI) ──────────────────────────────────────────────
 // Number of bytes captured since reset (capped at the buffer capacity).
