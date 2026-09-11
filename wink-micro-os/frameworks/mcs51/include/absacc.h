@@ -64,6 +64,14 @@ uint8_t  wink_mcs51_xdata_read(uint64_t addr, uint8_t kind);
 void     wink_mcs51_xdata_write(uint64_t addr, uint8_t value, uint8_t kind);
 // Test observability: OOB access count since framework reset.
 uint32_t wink_mcs51_xdata_oob_count(void);
+// GAP-23 unmodeled-XSFR tripwire (C ABI): total XSFR-window accesses since
+// reset targeting an address no framework model owns (saturating; STRICT
+// builds abort on the first such access instead of counting). The access
+// still lands in the shadow — tripwire is visibility, not blocking.
+uint32_t wink_mcs51_xsfr_unmodeled_count(void);
+// The i-th first-offender XSFR address (0-based, up to 8 recorded, in
+// encounter order); out-of-range indices read as 0xFFFF.
+uint16_t wink_mcs51_xsfr_unmodeled_addr(uint32_t i);
 // Framework lifecycle: zero the aperture + counters (test isolation).
 void     wink_mcs51_xdata_reset(void);
 

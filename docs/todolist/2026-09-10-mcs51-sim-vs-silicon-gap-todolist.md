@@ -137,7 +137,7 @@ health_pot 的遥测场景描述文字已经意识到此风险（`health-pot-uar
 
 - [x] 新增 STRICT/Release 测试（`test_mcs51_uart_tx_ready` + `_strict`，2026-09-10 落地）：TR1=0 写 SBUF 触发断言/BAUD 计数；模式 0 触发断言/MODE 计数；REN+`PS_RXD`=0x13 指向未复用引脚触发断言/RXD 计数；BRT/TMR2/TMR4 运行位与保留 CKS 全覆盖；health_pot 等价配置零触发（35/35 host 全绿）。
   注：原计划的"TXD mux 缺失触发断言"用例在实施中被修正——P3.1 为硬连线默认脚（手册 §21.2 + 原厂 gpio.h 核实），TXD 在功能层恒就绪，该原因位保留供 GAP-08（TRIS）细化；覆盖改用 RXD 选择器失配用例，见计划 v1.2。
-- [ ] health_pot 现有遥测场景在开启校验后仍通过（证明其配置完整）。（待 sister repo 重建生产 wasm 后验证，host 侧等价序列已零触发）
+- [x] health_pot 现有遥测场景在开启校验后仍通过（证明其配置完整）。（2026-09-11 sister repo 验证：8 应用 22 场景全绿；hello/echo 曾报真阳性 BAUD 告警，已按方案 B 补 T1 初始化后归零，见计划 Task 3 附带发现）
 
 ---
 
@@ -515,11 +515,17 @@ health_pot 的 10ms tick（T0 重载 0xB1E0）与 9600bps（TH1=217）都按 24M
 3. 厂商源码自带的 `#define PWMCON *(volatile unsigned char xdata *)0xF120`：cleanup 抹掉 `xdata` 后是宿主野指针，崩在编译/运行（不优雅但不假通过）。
 
 **修复**：
-1. 在 XDATA 影子写路径增加 **XSFR 地址 tripwire**：0xF000~0xFFFF 中未被任何模型注册的地址，首次写/读计入新计数器 `wink_mcs51_unmodeled_xsfr_*`（STRICT 断言，Release warn-once），取代静默；按地址段给出外设名提示（EPWM/I2C/SPI/ACMP/IAP/WUT…）。
+1. 在 XDATA 影子读写路径增加 **XSFR 地址 tripwire**：0xF000~0xFFFF 中未被任何模型注册的地址，首次写/读计入新计数器 `wink_mcs51_unmodeled_xsfr_*`（STRICT 断言，Release warn-once），取代静默；按地址段给出外设名提示（EPWM/I2C/SPI/ACMP/IAP/WUT…）。
 2. 用 §9.5 diff 自动产出"未建模寄存器清单"作为 STRICT 白名单输入：已声明模型拥有的地址放行，其余报警。
 3. 红线手册 §4.7 的"未建模清单"从手写 3 条替换为脚本生成的完整列表。
 
 **验收**：写 `XBYTE[0xF120]`（PWMCON）触发 STRICT 断言/Release 计数 +1；health_pot 全部既有 XSFR 访问（PxxCFG/LEDSDR/ADCLDO/PS_RXD）不产生计数。
+
+> **落地记录（2026-09-11，`feat(mcs51): GAP-23 XSFR tripwire`）**：按"审计派生白名单"方案实施，与原修复项有两处有据修正——① 白名单取 **shim 已声明集（93）** 而非"模型读消费集"：TRIS/LEDSDR 等是正确固件必需的硅片配置，判未建模会误伤 health_pot（其实测写 `P0/1/2/3TRIS`、`LEDSDRP1L/H`），该行为缺口归 GAP-08 建模而非本 tripwire 处罚；② 读写同判（轮询未建模状态寄存器同属静默挂死向量），访问仍落影子（可见性，不阻断）。
+> 落点：`mcs51_shim_audit.py --emit-xsfr-allowlist/--check-xsfr-allowlist`（CI 新鲜度门禁）→ check-in 生成表 `include/mcs51_xsfr_allowlist.h`（93 地址）→ `mcs51_xdata.cpp` 读写单点判（`absacc.h` 新增 `wink_mcs51_xsfr_unmodeled_count/addr` C ABI，首 8 首犯地址，饱和计数，STRICT 中止/Release 单次告警，复位清零）。
+> - [x] `XBYTE[0xF120]` 写/读触发 STRICT 中止（子进程死亡用例）/ Release 计数 + 首犯地址归因（`test_mcs51_xsfr_tripwire[_strict]` 全过）。
+> - [x] health_pot 等价 XSFR 写集（P00/P30~33/P10~17/P01/02/06/P20/P04/P22CFG + LEDSDRP1L/H）零触发；37/37 host 全绿。
+> - [ ] 无头 22 场景 warn 模式零触发验证（待 sister repo；host 侧等价序列已零触发）。红线 §4.7 脚本清单替换仍待办（原修复项 3）。
 
 ### GAP-24（P2，第三轮自查）经典 51 MOVX 外部总线与 IAP 非易失区未建模
 
@@ -582,3 +588,12 @@ health_pot 的 10ms tick（T0 重载 0xB1E0）与 9600bps（TH1=217）都按 24M
 - **GAP-03 Task 0 落地（SDCC Tier-S 门禁工具链）**：`mcs51_sdcc_devhdr.py`（原厂 Keil 头→SDCC 机械转译，杜绝手写占位漂移）、`sdcc_gate/` 头树（家族 wink_mcu.h、intrins/absacc/经典名别名）、`mcs51_sdcc_gate.py`（按应用 cleanup→编译→**链接**→`--code/iram/xram-size` 预算判决→`.mem` 报告；CMS8S 自动链接全套厂商 StdDriver）；cleanup 新增用户 `sbit` 声明 SDCC 改写与 GB18030 回退。
 - **门禁实测**：**8/8 应用通过**（6 官方 carrier + 厂商 uart0_printf/uart0_rxtx 多 TU 例程）；未定义符号负向样例正确红灯；health_pot CODE=10923B/16KB、栈余 184B（CMS8S CODE 含整套 StdDriver 偏保守，Tier-K 为最终准）。
 - 评审修正已并入两份实施计划：GAP-02 v1.1（默认引脚 P3.1/P3.0 非必需 CFG、家族门控、位掩码计数器、STRICT 独立构建目标）；GAP-03 v1.1（弃用 `--std-c89`、预算需链接+容量参数、转译器替代占位头、Task 0 状态）。
+
+### 10.3 阶段 2 收口（2026-09-11，GAP-10 完成）
+
+**GAP-10 固件健康计数判决（框架 + sister repo 双仓提交）**：
+- 框架侧（embedded）：三类饱和计数以 `EMSCRIPTEN_KEEPALIVE` 导出——新增 `wink_mcs51_uart_notready_total()`（4 原因桶聚合）、`wink_mcs51_xdata_oob_count`、`wink_mcs51_unsupported_warning_count`；host 行为不变。
+- runner 侧（unisim，分支 fix/unisim-stimulus-uart-tx）：场景跑完读固件导出，**任一非零即判 FAIL，即使所有 step 全绿**；ESP32 wasm 无导出视为 N/A。新增可选 `header.firmwareDiagnostics { enforce, allow[] }`（默认强制；可按类白名单逃生）。
+- 验证：8 应用 22 场景全绿且 0 FW_DIAG；负向探针（配 SCON 但不启 T1）唯一 payload step PASSED 而整体 FAIL，加 `allow:["uartNotReady"]` 后恢复 PASS（正向/负向/逃生三路验证）。
+- host 35 mcs51 测试全绿；unisim tsc 对改动文件零新增错误（仓库基线 32 个预存类型错误）。
+- **意义**：GAP-02 及后续所有"静默警告类"检查从此有强制力；GAP-23/05/08 的计数器一接上即自动被判决，不再依赖人工翻日志。
