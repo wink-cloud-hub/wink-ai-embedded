@@ -338,6 +338,9 @@ void cms8s_adc_model_reset(struct Mcu51Context* ctx) {
 #ifndef WINK_MCS51_STRICT
     s_synth_redirect_warned = false;
 #endif
+    // S4-H2 (reset-rebuilds-registration contract): the ADCON0 hook lives
+    // here, not in init — init delegates to model_reset, so both install it.
+    mcs51_trap_register_sfr_write(SFR_ADCON0, on_adcon0_write);
 }
 
 void cms8s_adc_init(struct Mcu51Context* ctx) {
@@ -348,7 +351,6 @@ void cms8s_adc_init(struct Mcu51Context* ctx) {
     priv->adc.conversion_count = 0u;
     priv->adc.last_channel = 0xFFu;
     cms8s_adc_model_reset(ctx);
-    mcs51_trap_register_sfr_write(SFR_ADCON0, on_adcon0_write);
 }
 
 void cms8s_adc_poll(struct Mcu51Context* ctx) {

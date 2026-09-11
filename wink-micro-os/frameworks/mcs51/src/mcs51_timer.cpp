@@ -339,6 +339,13 @@ void step_timer2(uint64_t now_us) {
 
 extern "C" {
 
+// S4-H2: hook implementations live below; reset registers them, so forward
+// declarations precede it (same static-in-extern-"C" pattern as the
+// definitions — proven on all three toolchains).
+static void sfr_read_hook_timer(struct Mcu51Context* ctx, uint8_t addr);
+static void sfr_write_hook_timer(struct Mcu51Context* ctx, uint8_t addr,
+                                 uint8_t old_val, uint8_t new_val);
+
 // GAP-12 white-box test surface: Fsys-parameterized reload period for T2
 // (the calculator is file-local in the anonymous namespace; T3/T4 twins
 // live in the chip package under the same C-ABI names).
@@ -428,6 +435,19 @@ void mcs51_timer_reset(struct Mcu51Context* ctx) {
     ctx->timer.t0_ps_addr = SELECTOR_NONE;
     ctx->timer.t1_ps_addr = SELECTOR_NONE;
     ctx->timer.t2_ps_addr = SELECTOR_NONE;
+    // S4-H2: registration lives here (init delegates above).
+    mcs51_trap_register_sfr_read(SFR_TCON, sfr_read_hook_timer);
+    mcs51_trap_register_sfr_write(SFR_TCON, sfr_write_hook_timer);
+    mcs51_trap_register_sfr_write(SFR_TMOD, sfr_write_hook_timer);
+    mcs51_trap_register_sfr_write(SFR_TL0, sfr_write_hook_timer);
+    mcs51_trap_register_sfr_write(SFR_TL1, sfr_write_hook_timer);
+    mcs51_trap_register_sfr_write(SFR_TH0, sfr_write_hook_timer);
+    mcs51_trap_register_sfr_write(SFR_TH1, sfr_write_hook_timer);
+    mcs51_trap_register_sfr_write(SFR_T2CON, sfr_write_hook_timer);
+    mcs51_trap_register_sfr_write(SFR_TL2, sfr_write_hook_timer);
+    mcs51_trap_register_sfr_write(SFR_TH2, sfr_write_hook_timer);
+    mcs51_trap_register_sfr_write(SFR_RLDL, sfr_write_hook_timer);
+    mcs51_trap_register_sfr_write(SFR_RLDH, sfr_write_hook_timer);
 }
 
 void wink_mcs51_timer_on_read(uint8_t addr) {
@@ -527,21 +547,11 @@ static void sfr_write_hook_timer(struct Mcu51Context* ctx, uint8_t addr,
 }
 
 void mcs51_timer_init(struct Mcu51Context* ctx) {
-    // Stage4 CPL-05: T2IF/EIF2/T34MOD/TL3/TH3/TL4/TH4/CCEN/CCLx/CCHx hook
-    // registrations moved WITH the code to the chip package (S4-2 Step 2).
+    // S4-H2 (reset-rebuilds-registration contract): hook registration lives
+    // in reset below — init delegates, so both paths install the slots.
+    // (T2IF/EIF2/T34MOD/TL3/TH3/TL4/TH4/CCEN/CCLx/CCHx slots belong to the
+    // chip package, stage4 CPL-05.)
     mcs51_timer_reset(ctx);
-    mcs51_trap_register_sfr_read(SFR_TCON, sfr_read_hook_timer);
-    mcs51_trap_register_sfr_write(SFR_TCON, sfr_write_hook_timer);
-    mcs51_trap_register_sfr_write(SFR_TMOD, sfr_write_hook_timer);
-    mcs51_trap_register_sfr_write(SFR_TL0, sfr_write_hook_timer);
-    mcs51_trap_register_sfr_write(SFR_TL1, sfr_write_hook_timer);
-    mcs51_trap_register_sfr_write(SFR_TH0, sfr_write_hook_timer);
-    mcs51_trap_register_sfr_write(SFR_TH1, sfr_write_hook_timer);
-    mcs51_trap_register_sfr_write(SFR_T2CON, sfr_write_hook_timer);
-    mcs51_trap_register_sfr_write(SFR_TL2, sfr_write_hook_timer);
-    mcs51_trap_register_sfr_write(SFR_TH2, sfr_write_hook_timer);
-    mcs51_trap_register_sfr_write(SFR_RLDL, sfr_write_hook_timer);
-    mcs51_trap_register_sfr_write(SFR_RLDH, sfr_write_hook_timer);
 }
 
 static uint16_t resolve_timer_pin(struct Mcu51Context* ctx, uint8_t t) {

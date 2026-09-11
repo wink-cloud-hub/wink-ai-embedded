@@ -419,6 +419,9 @@ void mcs51_uart_reset(struct Mcu51Context* ctx) {
     ctx->uart.rx_have_delivered = false;
     ctx->uart.rx_last_deliver_us = 0;
     s_last_baud_hz = 0u;
+    // S4-H2 (reset-rebuilds-registration contract): the SBUF hook lives
+    // here, not in init — init delegates to reset, so both paths install it.
+    mcs51_trap_register_sfr_write(SFR_SBUF, sfr_write_hook_uart);
 }
 
 void wink_mcs51_uart_reset(void) {
@@ -427,7 +430,6 @@ void wink_mcs51_uart_reset(void) {
 
 void mcs51_uart_init(struct Mcu51Context* ctx) {
     mcs51_uart_reset(ctx);
-    mcs51_trap_register_sfr_write(SFR_SBUF, sfr_write_hook_uart);
 }
 
 void mcs51_uart_poll(struct Mcu51Context* ctx) {
