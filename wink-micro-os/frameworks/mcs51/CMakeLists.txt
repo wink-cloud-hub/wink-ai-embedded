@@ -58,6 +58,8 @@ add_library(wink_mcs51_compat_strict STATIC EXCLUDE_FROM_ALL ${_MCS51_COMPAT_SRC
 
 # ── M3 configurable knobs (cache options) ────────────────────────────────────
 # Legal XDATA aperture for XBYTE/XWORD (bytes); spec band 4–16 KB, default 8 KB.
+# TODO(stage6): sink WINK_MCS51_XDATA_SIZE to board scope (per-app define);
+# framework-level cache stays one version only (CPL-24, no 2x2 lib split).
 set(WINK_MCS51_XDATA_SIZE 8192 CACHE STRING
     "MCS-51 sim: legal XDATA aperture size in bytes (XBYTE/XWORD; 4096..16384)")
 

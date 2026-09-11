@@ -238,7 +238,11 @@ typedef struct Mcu51Context {
     // 8. MCU family + per-instance model states (M1/M2). `family` is loaded
     // from the process selector at reset; mechanism files branch on the
     // family *descriptor* (mcs51_family.h), never on an id comparison.
+    // Stage0 (v2 schema): `caps_cache` snapshots desc->capabilities at
+    // reset/set_family; hot paths read ONLY this cache (ADR-0004 static
+    // dispatch, zero function-pointer cost on standard parts).
     uint8_t            family;
+    uint32_t           caps_cache;
     Mcs51Adc0832State  adc0832;
     Mcs51SysProtState  sysProt;
     Mcs51BuzzerState   buzzer;

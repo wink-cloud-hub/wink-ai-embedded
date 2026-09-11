@@ -31,7 +31,15 @@ extern "C" {
 #endif
 
 // ── Unsupported feature ids (§3.8 list; stable numbers) ──────────────────────
+// Stage0 (PLAN-20260911-MCS51-S0, CPL-24): ids are grouped by scope but
+// numbers are FROZEN (never renumber; append new ids at the end; locked by
+// test_mcs51_family_schema stable-number assertions).
+//   * Generic 8051 (core): all ids except the two below.
+//   * Chip-family scope (stage3+ splits to CMS8S_FEAT_*): IAP_FLASH (=11).
+//   * Board-scheme scope (stage3+ splits to BOARD_FEAT_*): RC_THERMAL (=5,
+//     number frozen in place).
 enum {
+    // ── Generic scope (core) ─────────────────────────────────────────────
     // Arithmetic that depends on PSW flags CY/AC/OV/P: the shadow SFRs cannot
     // emulate ALU flag side effects (multi-precision libraries only).
     MCS51_FEAT_PSW_FLAGS         = 1,
@@ -61,11 +69,15 @@ enum {
     // Timer external C/T pin counting (TMOD C/T == 1): no external pulse time
     // source at functional level; the timer stays idle.
     MCS51_FEAT_TIMER_EXT_CLK     = 10,
+    // ── Chip-family scope (CMS8S; future CMS8S_FEAT_* alias) ──────────────
     // In-Application-Programming Flash access (CMS8S78xx MCTRL/MDATA/MADR/
     // MLOCK/PCRCD @ 0xF9..0xFF, GAP-24): no NVS persistence or program/
     // erase timing model; any firmware-issued access traps here instead of
     // silently landing in the SFR shadow.
     MCS51_FEAT_IAP_FLASH         = 11,
+    // ── Board-scheme scope (future BOARD_FEAT_* alias) ────────────────────
+    // NOTE: MCS51_FEAT_RC_THERMAL (=5, above) belongs to this scope;
+    // it stays at its frozen number; only the grouping comment moves it.
 };
 
 // Record use of an unsupported 8051 feature. STRICT: assert (debug/test).
