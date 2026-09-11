@@ -46,9 +46,14 @@
 - [ ] **Step 3**：通用 reset 删 `PS_*=0x7F` 与 `3000/3000` 播种；`MCS51_XRAM_SIZE_CMS8S78XX` 下沉。
 - [ ] **Step 4**：timer 引脚合法性读 `port_pin_masks`，经典 P3.4/P3.5 可用。
 
+### Task S2-0：`sizeof` 基线测量与分家族预算 `[状态: ⏳ 待开始]`
+
+- [ ] **Step 1**：基线测量并记录（迁移前唯一一次）：`static_assert` + 单测打印 `sizeof(Mcu51Context)` 及主要成员偏移（`timer/extint/uart/isr_table/xdata_shadow`），写入本计划 §4 预算表（当前约 68KB，实测为准）。
+- [ ] **Step 2**：冻结预算：classic 实例与 CMS8S 实例拆分后各自 `sizeof` 不得超过基线；`xdata_shadow`/`isr_table` 若保留超配必须在 §4 写明理由 + 上限。
+
 ## 4. 验收
 
-- L1：通用头零厂商结构/宏；`sizeof` 对比表（classic/CMS8S 双行）不净增。
+- L1：通用头零厂商结构/宏；预算表已填实测数（基线/拆分后 classic/拆分后 CMS8S 三行），拆分后两行均 ≤ 基线。
 - L2：经典复位后 XDATA 无 XSFR 残留；经典 P3.4/P3.5 计数可用。
 - L4：`grep -Ei 'cms8s|adc0832|0xF0' include/mcs51_context.h src/mcs51_context.cpp` 零命中；`grep -Ei '#include.*(cms8s|at89)_priv' include/mcs51_context.h` 零命中（union 穿透回归哨兵）。
 
