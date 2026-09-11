@@ -133,6 +133,28 @@ uint64_t counts_to_us(uint8_t t, uint32_t counts) {
     return us == 0ull ? 1ull : us;
 }
 
+// GAP-12: Fsys-parameterized period for T2/T3/T4 (the old code hardcoded
+// the 24 MHz reciprocals counts/2 and counts/6). divider is the counter
+// clock's Fsys divisor; clamp to 1 us to keep the scheduler advancing.
+uint32_t ext_counts_to_us(uint32_t counts, uint32_t divider) {
+    const uint32_t fsys = wink_mcs51_get_clock_hz();
+    uint64_t us = (static_cast<uint64_t>(counts) * static_cast<uint64_t>(divider) *
+                   1000000ull) / static_cast<uint64_t>(fsys);
+    return static_cast<uint32_t>(us == 0ull ? 1ull : us);
+}
+
+// T2 counter clock (ref manual): T2PS=0 -> Fsys/12, T2PS=1 -> Fsys/24.
+uint32_t timer2_counts_to_us(uint32_t counts) {
+    const uint32_t divider = (sfr(SFR_T2CON) & 0x80u) ? 24u : 12u;
+    return ext_counts_to_us(counts, divider);
+}
+
+// T3/T4 counter clock (T34MOD): TnM=0 -> Fsys/12, TnM=1 -> Fsys/4.
+uint32_t timer34_counts_to_us(uint32_t counts, uint8_t select_bit) {
+    const uint32_t divider = (sfr(SFR_T34MOD) & (1u << select_bit)) ? 4u : 12u;
+    return ext_counts_to_us(counts, divider);
+}
+
 uint64_t reload_period_us(uint8_t t, uint8_t mode) {
     return counts_to_us(t, reload_counts(t, mode));
 }
@@ -223,8 +245,7 @@ uint32_t timer2_reload_period(void) {
     if ((t2con & 0x80u) != 0) {
         return counts;
     }
-    uint32_t us = counts / 2u;
-    return us == 0u ? 1u : us;
+    return timer2_counts_to_us(counts);
 }
 
 uint32_t timer2_current_period(void) {
@@ -237,8 +258,7 @@ uint32_t timer2_current_period(void) {
     if ((t2con & 0x80u) != 0) {
         return counts;
     }
-    uint32_t us = counts / 2u;
-    return us == 0u ? 1u : us;
+    return timer2_counts_to_us(counts);
 }
 
 inline uint8_t timer2_mode(void) {
@@ -422,14 +442,7 @@ uint32_t timer3_reload_period(void) {
         counts = 256u - sfr(SFR_TL3);
     }
     if (counts == 0u) counts = (mode == 2 ? 256u : (mode == 1 ? 65536u : 8192u));
-    uint8_t t3m = (sfr(SFR_T34MOD) >> T34MOD_T3M) & 0x01u;
-    if (t3m == 0) {
-        uint32_t us = counts / 2u;
-        return us == 0u ? 1u : us;
-    } else {
-        uint32_t us = counts / 6u;
-        return us == 0u ? 1u : us;
-    }
+    return timer34_counts_to_us(counts, T34MOD_T3M);
 }
 
 uint32_t timer3_current_period(void) {
@@ -448,14 +461,7 @@ uint32_t timer3_current_period(void) {
         counts = 256u - sfr(SFR_TL3);
     }
     if (counts == 0u) counts = (mode == 2 ? 256u : (mode == 1 ? 65536u : 8192u));
-    uint8_t t3m = (sfr(SFR_T34MOD) >> T34MOD_T3M) & 0x01u;
-    if (t3m == 0) {
-        uint32_t us = counts / 2u;
-        return us == 0u ? 1u : us;
-    } else {
-        uint32_t us = counts / 6u;
-        return us == 0u ? 1u : us;
-    }
+    return timer34_counts_to_us(counts, T34MOD_T3M);
 }
 
 void timer3_schedule_from_now(uint64_t from_us) {
@@ -535,14 +541,7 @@ uint32_t timer4_reload_period(void) {
         counts = 256u - sfr(SFR_TL4);
     }
     if (counts == 0u) counts = (mode == 2 ? 256u : (mode == 1 ? 65536u : 8192u));
-    uint8_t t4m = (sfr(SFR_T34MOD) >> T34MOD_T4M) & 0x01u;
-    if (t4m == 0) {
-        uint32_t us = counts / 2u;
-        return us == 0u ? 1u : us;
-    } else {
-        uint32_t us = counts / 6u;
-        return us == 0u ? 1u : us;
-    }
+    return timer34_counts_to_us(counts, T34MOD_T4M);
 }
 
 uint32_t timer4_current_period(void) {
@@ -561,14 +560,7 @@ uint32_t timer4_current_period(void) {
         counts = 256u - sfr(SFR_TL4);
     }
     if (counts == 0u) counts = (mode == 2 ? 256u : (mode == 1 ? 65536u : 8192u));
-    uint8_t t4m = (sfr(SFR_T34MOD) >> T34MOD_T4M) & 0x01u;
-    if (t4m == 0) {
-        uint32_t us = counts / 2u;
-        return us == 0u ? 1u : us;
-    } else {
-        uint32_t us = counts / 6u;
-        return us == 0u ? 1u : us;
-    }
+    return timer34_counts_to_us(counts, T34MOD_T4M);
 }
 
 void timer4_schedule_from_now(uint64_t from_us) {
@@ -635,6 +627,12 @@ void step_timer4(uint64_t now_us) {
 }  // namespace
 
 extern "C" {
+
+// GAP-12 white-box test surface: Fsys-parameterized reload periods for
+// T2/T3/T4 (the calculators are file-local in the anonymous namespace).
+uint32_t wink_mcs51_test_timer2_reload_period(void) { return timer2_reload_period(); }
+uint32_t wink_mcs51_test_timer3_reload_period(void) { return timer3_reload_period(); }
+uint32_t wink_mcs51_test_timer4_reload_period(void) { return timer4_reload_period(); }
 
 void wink_mcs51_timers_step_to(uint64_t now_us) {
     step_timer(0, now_us);

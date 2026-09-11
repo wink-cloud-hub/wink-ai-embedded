@@ -2,8 +2,14 @@
 // MCS-51 interrupt vector table + two-phase dispatch (C linkage, boundary ②).
 #include "wink_mcs51_isr.h"
 
+#include <cassert>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
+
+#ifndef WINK_MCS51_STRICT
+#include "pal_log.h"
+#endif
 
 #include "mcs51_trap.h"
 #include "mcs51_context.h"
@@ -55,12 +61,36 @@ void ensure_irq_map(void) {
 
 }  // namespace
 
+// GAP-12: duplicate-vector registration. Keil/SDCC reject two ISRs on the
+// same vector at link time; the sim used to silently overwrite the table
+// entry. STRICT aborts, release warns once and counts (runner-visible).
+static uint32_t s_duplicate_vector_count = 0;
+
 extern "C" {
 
 void wink_mcs51_set_isr(uint8_t vector_num, void (*isr_fn)(void)) {
     if (vector_num < WINK_MCS51_NUM_VECTORS) {
+        if (mcs51_get_context()->isr_table[vector_num] != nullptr) {
+#ifdef WINK_MCS51_STRICT
+            assert(0 && "duplicate ISR registration on one vector "
+                        "(link error on Keil/SDCC; WINK_MCS51_STRICT)");
+            std::abort();
+#else
+            if (s_duplicate_vector_count == 0) {
+                pal_log_w("MCS51",
+                          "duplicate ISR registration on vector %u: previous "
+                          "handler silently overwritten (GAP-12)",
+                          static_cast<unsigned>(vector_num));
+            }
+            ++s_duplicate_vector_count;
+#endif
+        }
         mcs51_get_context()->isr_table[vector_num] = reinterpret_cast<isr_fn_t>(isr_fn);
     }
+}
+
+uint32_t wink_mcs51_duplicate_vector_count(void) {
+    return s_duplicate_vector_count;
 }
 
 void (*wink_mcs51_get_isr(uint8_t vector_num))(void) {

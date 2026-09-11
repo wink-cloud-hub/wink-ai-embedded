@@ -6,8 +6,26 @@
 
 #include "absacc.h"
 #include "mcs51_context.h"
+#include "mcs51_trap.h"
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_isr.h"
+
+// Port-pin interrupt flags P0..P3EXTIF (direct SFR 0xB4..0xB7).
+constexpr uint8_t EXT_SFR_P0EXTIF = 0xB4;
+constexpr uint8_t EXT_SFR_P1EXTIF = 0xB5;
+constexpr uint8_t EXT_SFR_P2EXTIF = 0xB6;
+constexpr uint8_t EXT_SFR_P3EXTIF = 0xB7;
+
+// Write-0-to-clear (W0C), same semantics as T2IF/EIF2: writing 0 clears the
+// bit, writing 1 leaves it unchanged (GAP-12). Without this, an `|=` clear
+// or a multi-pin clear would wipe still-pending flags from other pins.
+void sfr_write_hook_port_extif(struct Mcu51Context* ctx, uint8_t addr,
+                               uint8_t old_val, uint8_t new_val) {
+    (void)addr;
+    if (ctx) {
+        ctx->sfr_shadow[addr] = old_val & new_val;
+    }
+}
 
 extern "C" {
 uint8_t js_pal_gpio_read_state(uint16_t pin);
@@ -191,6 +209,12 @@ void mcs51_extint_init(struct Mcu51Context* ctx) {
     ctx->extint.sample_due = true;
     ctx->extint.in_poll = false;
     ctx->extint.port_last_sample_us = 0;
+
+    // GAP-12: port interrupt flags are write-0-to-clear.
+    mcs51_trap_register_sfr_write(EXT_SFR_P0EXTIF, sfr_write_hook_port_extif);
+    mcs51_trap_register_sfr_write(EXT_SFR_P1EXTIF, sfr_write_hook_port_extif);
+    mcs51_trap_register_sfr_write(EXT_SFR_P2EXTIF, sfr_write_hook_port_extif);
+    mcs51_trap_register_sfr_write(EXT_SFR_P3EXTIF, sfr_write_hook_port_extif);
 }
 
 void mcs51_extint_reset(struct Mcu51Context* ctx) {

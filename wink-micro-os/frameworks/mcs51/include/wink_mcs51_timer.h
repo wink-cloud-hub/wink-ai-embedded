@@ -41,6 +41,12 @@ void wink_mcs51_timer_pulse(uint8_t timer_idx);
 // Reset timer state (test isolation).
 void wink_mcs51_timers_reset(void);
 
+// Test observability (GAP-12 white-box): reload period in us for T2/T3/T4
+// from the current SFR shadows and active Fsys.
+uint32_t wink_mcs51_test_timer2_reload_period(void);
+uint32_t wink_mcs51_test_timer3_reload_period(void);
+uint32_t wink_mcs51_test_timer4_reload_period(void);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif
