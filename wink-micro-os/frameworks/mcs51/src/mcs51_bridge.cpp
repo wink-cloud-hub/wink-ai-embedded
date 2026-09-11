@@ -5,9 +5,10 @@
 #include "pal_osal.h"
 #include "wink_app.h"
 
-#include "ADC0832.H"
+// S3-2 (CPL-09): zero chip/device includes — the bridge only speaks generic
+// core headers. Chip notify (TA window) arrives via the per-context
+// sfr_write_notify slot; board devices bind through the post-init hook.
 #include "absacc.h"
-#include "cms8s_adc.h"
 #include "mcs51_adc.h"
 #include "mcs51_proxy.hpp"
 #include "mcs51_trap.h"
@@ -19,7 +20,6 @@
 #include "wink_mcs51_strict.h"
 #include "wink_mcs51_timer.h"
 #include "wink_mcs51_uart.h"
-#include "wink_mcs51_wdt.h"
 #include "mcs51_pcon.h"
 #include "wink_mcs51_edge_queue.h"
 
@@ -48,13 +48,9 @@ void mcs51_framework_init(void) {
         js_pal_gpio_write(pin, true, MCS51_DRIVE_WEAK);
     }
 
-#ifdef MCS51_HAS_ADC0832
-    mcs51_adc0832_init(MCS51_PIN_ADC0832_CS_PORT,  MCS51_PIN_ADC0832_CS_BIT,
-                       MCS51_PIN_ADC0832_CLK_PORT, MCS51_PIN_ADC0832_CLK_BIT,
-                       MCS51_PIN_ADC0832_DI_PORT,  MCS51_PIN_ADC0832_DI_BIT,
-                       MCS51_PIN_ADC0832_DO_PORT,  MCS51_PIN_ADC0832_DO_BIT);
-#endif
-
+    // S3-2: no device auto-bind here (CPL-21). Boards carrying an ADC0832
+    // bind it in their own post-init hook via adc0832_device_attach(); the
+    // hook below runs after framework init on every runtime run.
     mcs51_framework_run_post_init_hook();
 
     // M7: register through the trap API like every other model (direct
@@ -96,10 +92,14 @@ void wink_mcs51_on_sfr_read(uint8_t addr) {
 
 void wink_mcs51_on_sfr_write(uint8_t addr, uint8_t old_val, uint8_t new_val) {
     Mcu51Context* ctx = mcs51_get_context();
-    // GAP-07: an intervening firmware SFR write aborts a half-open TA
-    // window before the per-address hook runs, so the pending protected
-    // write arrives locked and rolls back.
-    cms8s_sys_notify_sfr_write(ctx, addr);
+    // GAP-07: the registered pre-dispatch notify (chip TA window) runs
+    // BEFORE the per-address hook, so an intervening firmware SFR write
+    // aborts a half-open window first and the pending protected write
+    // arrives locked and rolls back. S3-2: hookized, no chip hard call.
+    mcs51_sfr_write_notify_fn_t notify = ctx->sfr_write_notify;
+    if (notify != nullptr) {
+        notify(ctx, addr);
+    }
     mcs51_sfr_write_hook_t hook = ctx->sfr_write_hooks[addr];
     if (hook != nullptr) {
         hook(ctx, addr, old_val, new_val);

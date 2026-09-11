@@ -71,6 +71,10 @@ void mcs51_trap_reset(void) {
         mcu->sfr_write_hooks[a] = nullptr;
         mcu->sfr_read_hooks[a] = nullptr;
     }
+    // S3-2: the pre-dispatch notify is hook-class registration: test
+    // isolation wipes it like every hook (context reset reinstalls it via
+    // the owning chip init).
+    mcu->sfr_write_notify = nullptr;
 }
 
 }  // extern "C"
