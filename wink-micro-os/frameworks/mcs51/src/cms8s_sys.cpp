@@ -262,6 +262,11 @@ static Cms8sPriv s_cms8s_priv_pool[MCS51_MAX_INSTANCES];
 
 extern "C" {
 
+// S3-2: pre-dispatch notify lives below (same TU); forward-declared for the
+// init install. The wink_mcs51_wdt.h hard export is gone (CPL-14) — this TU
+// is the only referrer.
+void cms8s_sys_notify_sfr_write(struct Mcu51Context* ctx, uint8_t addr);
+
 void cms8s_soc_bind(struct Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
     if (!ctx) return;  // review hardening: null-active never crashes
@@ -291,6 +296,11 @@ void cms8s_sys_init(struct Mcu51Context* ctx) {
     if (!ctx) return;
     cms8s_soc_bind(ctx);  // bind BEFORE any pool deref (ordering invariant)
     reset_state(ctx);
+    // S3-2: install the pre-dispatch notify with the explicit ctx pointer
+    // (per-context by construction, no active-context dependence). The bridge
+    // runs this before the per-address hooks below (GAP-07 ordering: TA
+    // half-open windows abort on intervening firmware writes first).
+    ctx->sfr_write_notify = cms8s_sys_notify_sfr_write;
     mcs51_trap_register_sfr_write(SFR_TA, on_ta_write);
     mcs51_trap_register_sfr_write(SFR_CLKDIV, on_clkdiv_write);
     mcs51_trap_register_sfr_write(SFR_WDCON, on_wdcon_write);

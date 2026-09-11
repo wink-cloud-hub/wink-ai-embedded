@@ -59,8 +59,20 @@ typedef struct {
 // internal linkage; do NOT add `static` inside a linkage specification,
 // GCC rejects it). See cms8s_sys.cpp for the pattern.
 typedef void (*mcs51_sfr_write_hook_t)(struct Mcu51Context* ctx, uint8_t addr,
-                                       uint8_t old_val, uint8_t new_val);
+                                        uint8_t old_val, uint8_t new_val);
 typedef void (*mcs51_sfr_read_hook_t)(struct Mcu51Context* ctx, uint8_t addr);
+
+// ── Pre-dispatch SFR-write notify (Stage3 S3-2: TA hook, GAP-07) ───────────
+// Single per-context slot (stored in Mcu51Context::sfr_write_notify, memset
+// zero = none). The bridge invokes it BEFORE the per-address hook dispatch,
+// so a half-open TA window observes the intervening firmware write first and
+// the pending protected write arrives locked and rolls back. Installed by
+// the owning chip init (cms8s_sys_init) with the explicit ctx pointer — no
+// active-context dependence; cleared by context reset / trap reset like
+// every hook. File-static globals are rejected here: two contexts of
+// different families would cross-talk (total §3.1b-4).
+typedef void (*mcs51_sfr_write_notify_fn_t)(struct Mcu51Context* ctx,
+                                            uint8_t addr);
 
 // ── GPIO Trait hooks (Stage2 S2-1 declares, stage4 mounts) ─────────────────
 // Per-context function table (stored BY VALUE in Mcu51Context::gpio_hooks,

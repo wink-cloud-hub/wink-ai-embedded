@@ -151,6 +151,11 @@ typedef struct Mcu51Context {
     mcs51_pin_trap_t        pin_traps[4][8];
     mcs51_sfr_read_hook_t   sfr_read_hooks[256];
     mcs51_sfr_write_hook_t  sfr_write_hooks[256];
+    // S3-2: pre-dispatch SFR-write notify (chip TA window, GAP-07). The
+    // bridge runs this BEFORE the per-address hook above; nullptr on
+    // families without one. Installed by the owning chip init, cleared by
+    // reset memset / trap reset. Per-context by construction (no file-static).
+    mcs51_sfr_write_notify_fn_t sfr_write_notify;
 
     // 3. Interrupt subsystem state (SSOT: in_service_depth > 0)
     void (*isr_table[28])(void);
