@@ -14,7 +14,8 @@
 extern "C" void wink_mcs51_user_main(void) {}
 extern "C" void setUp(void) {}
 extern "C" void tearDown(void) {}
-char putchar(char ch) { return (char)fputc(ch, stdout); }
+// (Baseline-exception fix: the local `char putchar(char)` shim moved to the
+// sim library single definition point in mcs51_uart.cpp.)
 
 extern "C" {
 uint32_t wink_mcs51_host_gpio_notify_count(void);

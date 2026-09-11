@@ -91,6 +91,10 @@ extern "C" void tearDown(void) {}
 int main(void) {
     int fails = 0;
 
+    // Baseline-exception fix: port interrupts are CMS8S-only silicon (XSFR
+    // EICFG/PxxCFG writes are dropped without the XSFR window) — select the
+    // family at runtime like every sibling cms8s test.
+    mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
     wink_mcs51_isr_enable();
     wink_mcs51_extint_reset();
     wink_mcs51_host_ext_pins_reset();

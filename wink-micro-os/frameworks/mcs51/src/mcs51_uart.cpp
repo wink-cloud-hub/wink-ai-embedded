@@ -23,6 +23,14 @@
 
 extern "C" void js_pal_uart_write(uint8_t port, const uint8_t* buf, uint32_t len);
 
+// Keil C51 printf bridge sink (baseline-exception fix): the vendor shim
+// header redirects printf through `char putchar(char)`, but the only
+// definition lived in one test TU, so every other TU using the hijacked
+// printf failed to link on MinGW. Single definition point in the sim
+// library (host/wasm console); the test-local shim is removed to avoid
+// a duplicate symbol.
+char putchar(char ch) { return static_cast<char>(fputc(ch, stdout)); }
+
 namespace {
 
 constexpr uint8_t SFR_SCON = 0x98;
