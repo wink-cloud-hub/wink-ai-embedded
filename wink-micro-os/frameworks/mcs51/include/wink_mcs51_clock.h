@@ -23,7 +23,7 @@
 //     so tight idle polls never freeze simulation and virtual time is
 //     conserved 1:1 with master ticks (Catch-Up rule, AD-17 / D3).
 //
-// Instantaneous peripheral traps (ADC0832, CMS8S ADC) cost 0us: they are
+// Instantaneous peripheral traps (board ADC0832, on-chip ADC) cost 0us: they are
 // state transitions, not waits (AD-2 functional level, D1).
 #pragma once
 
