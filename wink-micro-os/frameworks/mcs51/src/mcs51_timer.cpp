@@ -5,6 +5,9 @@
 #include "mcs51_proxy.hpp"
 #include "mcs51_context.h"
 #include "mcs51_sfr_map.h"
+#include "cms8s_sfr_map.h"  // S3-1 transition: EIE2/EIF2/T34MOD/PS_* moved
+                             // here with CMS8S_ prefixes; this TU includes the
+                             // chip map until its code moves to chips/ in stage4.
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_isr.h"
 #include "wink_mcs51_strict.h"
@@ -17,7 +20,8 @@ namespace {
 
 constexpr uint8_t  SFR_TCON = 0x88;
 constexpr uint8_t  SFR_TMOD = 0x89;
-// M5: shared addresses alias the single source (mcs51_sfr_map.h);
+// M5: shared addresses alias the single source (mcs51_sfr_map.h for the
+// standard/generic ones, cms8s_sfr_map.h for the CMS8S-only ones, S3-1);
 // timer-private addresses keep literals below.
 constexpr uint8_t  SFR_CKCON = MCS51_SFR_CKCON;
 constexpr uint8_t  CKCON_T0M = 3u;
@@ -40,9 +44,9 @@ constexpr uint8_t  SFR_TL2   = 0xCC;
 constexpr uint8_t  SFR_TH2   = 0xCD;
 constexpr uint8_t  SFR_CCEN  = 0xCE;
 constexpr uint8_t  SFR_T2IE  = 0xCF;
-constexpr uint8_t  SFR_EIE2  = MCS51_SFR_EIE2;
-constexpr uint8_t  SFR_EIF2  = MCS51_SFR_EIF2;
-constexpr uint8_t  SFR_T34MOD = MCS51_SFR_T34MOD;
+constexpr uint8_t  SFR_EIE2  = CMS8S_SFR_EIE2;
+constexpr uint8_t  SFR_EIF2  = CMS8S_SFR_EIF2;
+constexpr uint8_t  SFR_T34MOD = CMS8S_SFR_T34MOD;
 constexpr uint8_t  SFR_TL3   = 0xDA;
 constexpr uint8_t  SFR_TH3   = 0xDB;
 constexpr uint8_t  SFR_TL4   = 0xE2;
@@ -731,16 +735,16 @@ void mcs51_timer_reset(struct Mcu51Context* ctx) {
     // S2-2: pin-share selector seeds live with the owning model (moved out
     // of generic context reset, CPL-19). 0x7F = unmapped; resolve_* then
     // falls back to the classic pins. Matches the old core-reset values.
-    ctx->xdata_shadow[MCS51_XSFR_PS_T0] = MCS51_XSFR_PS_RESET;
-    ctx->xdata_shadow[MCS51_XSFR_PS_T0G] = MCS51_XSFR_PS_RESET;
-    ctx->xdata_shadow[MCS51_XSFR_PS_T1] = MCS51_XSFR_PS_RESET;
-    ctx->xdata_shadow[MCS51_XSFR_PS_T1G] = MCS51_XSFR_PS_RESET;
-    ctx->xdata_shadow[MCS51_XSFR_PS_T2] = MCS51_XSFR_PS_RESET;
-    ctx->xdata_shadow[MCS51_XSFR_PS_T2EX] = MCS51_XSFR_PS_RESET;
-    ctx->xdata_shadow[MCS51_XSFR_PS_CAP0] = MCS51_XSFR_PS_RESET;
-    ctx->xdata_shadow[MCS51_XSFR_PS_CAP1] = MCS51_XSFR_PS_RESET;
-    ctx->xdata_shadow[MCS51_XSFR_PS_CAP2] = MCS51_XSFR_PS_RESET;
-    ctx->xdata_shadow[MCS51_XSFR_PS_CAP3] = MCS51_XSFR_PS_RESET;
+    ctx->xdata_shadow[CMS8S_XSFR_PS_T0] = CMS8S_XSFR_PS_RESET;
+    ctx->xdata_shadow[CMS8S_XSFR_PS_T0G] = CMS8S_XSFR_PS_RESET;
+    ctx->xdata_shadow[CMS8S_XSFR_PS_T1] = CMS8S_XSFR_PS_RESET;
+    ctx->xdata_shadow[CMS8S_XSFR_PS_T1G] = CMS8S_XSFR_PS_RESET;
+    ctx->xdata_shadow[CMS8S_XSFR_PS_T2] = CMS8S_XSFR_PS_RESET;
+    ctx->xdata_shadow[CMS8S_XSFR_PS_T2EX] = CMS8S_XSFR_PS_RESET;
+    ctx->xdata_shadow[CMS8S_XSFR_PS_CAP0] = CMS8S_XSFR_PS_RESET;
+    ctx->xdata_shadow[CMS8S_XSFR_PS_CAP1] = CMS8S_XSFR_PS_RESET;
+    ctx->xdata_shadow[CMS8S_XSFR_PS_CAP2] = CMS8S_XSFR_PS_RESET;
+    ctx->xdata_shadow[CMS8S_XSFR_PS_CAP3] = CMS8S_XSFR_PS_RESET;
 }
 
 void wink_mcs51_timer_on_read(uint8_t addr) {
@@ -921,7 +925,7 @@ void mcs51_timer_init(struct Mcu51Context* ctx) {
 
 static uint16_t resolve_timer_pin(struct Mcu51Context* ctx, uint8_t t) {
     uint16_t fallback = (t == 0) ? 28u : 29u;
-    uint16_t ps_addr = (t == 0) ? MCS51_XSFR_PS_T0 : MCS51_XSFR_PS_T1;
+    uint16_t ps_addr = (t == 0) ? CMS8S_XSFR_PS_T0 : CMS8S_XSFR_PS_T1;
     uint8_t sel = ctx->xdata_shadow[ps_addr];
     uint8_t port = (sel >> 4) & 0x07u;
     uint8_t bit = sel & 0x0Fu;
@@ -938,7 +942,7 @@ static uint16_t resolve_timer_pin(struct Mcu51Context* ctx, uint8_t t) {
 static uint16_t resolve_timer2_pin(struct Mcu51Context* ctx) {
     uint16_t fallback = 14u; // P1.6 (CMS8S78xx default T2 external input)
     if (!ctx) return fallback;
-    uint8_t sel = ctx->xdata_shadow[MCS51_XSFR_PS_T2];
+    uint8_t sel = ctx->xdata_shadow[CMS8S_XSFR_PS_T2];
     uint8_t port = (sel >> 4) & 0x07u;
     uint8_t bit = sel & 0x0Fu;
     // S2-2: descriptor-driven legality (see resolve_timer_pin).
@@ -953,7 +957,7 @@ static uint16_t resolve_cap_pin(struct Mcu51Context* ctx, uint8_t c) {
     constexpr uint16_t FALLBACK[4] = {0u, 1u, 13u, 12u}; // P0.0, P0.1, P1.5, P1.4
     if (c >= 4) return 0u;
     if (!ctx) return FALLBACK[c];
-    uint8_t sel = ctx->xdata_shadow[MCS51_XSFR_PS_CAP0 + c];
+    uint8_t sel = ctx->xdata_shadow[CMS8S_XSFR_PS_CAP0 + c];
     uint8_t port = (sel >> 4) & 0x07u;
     uint8_t bit = sel & 0x0Fu;
     // S2-2: descriptor-driven legality (see resolve_timer_pin).

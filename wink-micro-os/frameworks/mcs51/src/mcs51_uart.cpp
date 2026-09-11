@@ -5,6 +5,9 @@
 #include "mcs51_proxy.hpp"
 #include "mcs51_context.h"
 #include "mcs51_sfr_map.h"
+#include "cms8s_sfr_map.h"  // S3-1 transition: T34MOD moved here with CMS8S_
+// prefix; this TU includes the chip map until its code moves to chips/
+// in stage4 (T2CON/CKCON stay generic in mcs51_sfr_map.h).
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_isr.h"
 
@@ -46,7 +49,7 @@ constexpr uint8_t SFR_TH4  = 0xE3;
 constexpr uint8_t SFR_FUNCCR = 0x91;   // CMS8S78xx only: UART0 clock source
 // M5: shared with the timer model — alias the single source.
 constexpr uint8_t SFR_T2CON = MCS51_SFR_T2CON;
-constexpr uint8_t SFR_T34MOD = MCS51_SFR_T34MOD;
+constexpr uint8_t SFR_T34MOD = CMS8S_SFR_T34MOD;
 constexpr uint8_t SFR_CKCON = MCS51_SFR_CKCON;
 
 // XSFR (MOVX window, read via xdata_shadow): pin mux + BRT + RXD selector.
