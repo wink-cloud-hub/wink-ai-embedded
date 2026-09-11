@@ -51,6 +51,8 @@ set(_MCS51_COMPAT_SRCS
     # (self-registration protocol, total §3.1b; stage6 re-homes the rest).
     chips/cms8s78xx/src/cms8s_register.cpp
     chips/at89c52/src/at89_register.cpp
+    # Stage4 S4-1 Step 1: enhanced GPIO model (CPL-03).
+    chips/cms8s78xx/src/cms8s_gpio.cpp
 )
 
 add_library(wink_mcs51_compat STATIC EXCLUDE_FROM_ALL ${_MCS51_COMPAT_SRCS})

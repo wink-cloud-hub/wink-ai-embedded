@@ -78,13 +78,14 @@ typedef void (*mcs51_sfr_write_notify_fn_t)(struct Mcu51Context* ctx,
 // ── GPIO Trait hooks (Stage2 S2-1 declares, stage4 mounts) ─────────────────
 // Per-context function table (stored BY VALUE in Mcu51Context::gpio_hooks,
 // memset zero = unhooked). Lets enhanced families override pin behavior
-// without branching generic code: may_drive (pin can drive / isn't
-// analog-claimed), is_analog (pin muxed to analog, digital reads HiZ),
-// pullup (effective weak pull-up level for input reads). Standard parts
-// take the caps_cache fast path and never pay an indirection (S2-1: pure
-// declaration, zero call sites, zero behavior change).
+// without branching generic code: may_drive (pin can drive the given level;
+// open-drain release suppresses high drive only, so the level travels with
+// the query — S4-D1), is_analog (pin muxed to analog, digital reads HiZ),
+// pullup (effective weak pull-up level for input reads: nonzero = pulls
+// high). Standard parts take the caps_cache fast path and never pay an
+// indirection (S2-1: pure declaration; S4-D1 widened may_drive with level).
 typedef bool (*mcs51_gpio_may_drive_fn_t)(struct Mcu51Context* ctx,
-                                          uint16_t pin);
+                                           uint16_t pin, uint8_t level);
 typedef bool (*mcs51_gpio_is_analog_fn_t)(struct Mcu51Context* ctx,
                                           uint16_t pin);
 typedef uint8_t (*mcs51_gpio_pullup_fn_t)(struct Mcu51Context* ctx,

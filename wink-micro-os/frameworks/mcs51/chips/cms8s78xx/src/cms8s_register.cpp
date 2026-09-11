@@ -37,6 +37,9 @@ void cms8s_sys_reset(struct Mcu51Context* ctx);
 void cms8s_sys_poll(struct Mcu51Context* ctx);
 uint64_t cms8s_sys_next_event_us(struct Mcu51Context* ctx);
 
+void cms8s_gpio_init(struct Mcu51Context* ctx);
+void cms8s_gpio_reset(struct Mcu51Context* ctx);
+
 }  // extern "C"
 
 namespace {
@@ -68,6 +71,17 @@ const mcs51_peripheral_desc_t kCms8sDescs[] = {
         cms8s_sys_reset,
         cms8s_sys_poll,
         cms8s_sys_next_event_us,
+        MCS51_PHASE_CLOCK,
+        MCS51_FAMILY_MASK_CMS8S78XX
+    },
+    {
+        // S4-1 Step 1: enhanced GPIO = hook installer (no poll/next-event;
+        // NULL entries are skipped by the dispatch loops).
+        "cms8s_gpio",
+        cms8s_gpio_init,
+        cms8s_gpio_reset,
+        nullptr,
+        nullptr,
         MCS51_PHASE_CLOCK,
         MCS51_FAMILY_MASK_CMS8S78XX
     },

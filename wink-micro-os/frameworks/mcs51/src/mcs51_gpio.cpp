@@ -29,46 +29,51 @@ inline int mcs51_ext_pin_level(uint8_t port, uint8_t bit) {
     return st == 1u ? 1 : (st == 0u ? 0 : -1);
 }
 
-// A-05 TRIS polarity (vendor gpio.h): TRIS bit 1 = OUTPUT, 0 = INPUT.
-inline uint8_t mcs51_tris_addr(uint8_t port) {
-    switch (port) {
-        case 0: return 0x9Au;
-        case 1: return 0xA1u;
-        case 2: return 0xA2u;
-        case 3: return 0xA3u;
-        default: return 0xFFu;
-    }
+inline uint16_t gpio_pin_key(uint8_t port, uint8_t bit) {
+    return static_cast<uint16_t>(
+        (static_cast<uint16_t>(port) << 3) | bit);
 }
 
-inline uint16_t mcs51_up_addr(uint8_t port) {
-    switch (port) {
-        case 0: return 0xF00Au;
-        case 1: return 0xF01Au;
-        case 2: return 0xF02Au;
-        case 3: return 0xF03Au;
-        default: return 0xFFFFu;
+// Stage4 CPL-03: enhanced-IO behavior (direction/open-drain/analog/pull-up)
+// lives in the chip package behind per-context hooks. Standard parts take
+// the caps_cache fast path (ADR-0004: zero indirection); unhooked enhanced
+// contexts (pre-stage6 production without family glue) degrade permissively
+// to classic quasi-bidirectional behavior, never suppress.
+inline bool gpio_may_drive(Mcu51Context* mcu, uint8_t port, uint8_t bit,
+                           uint8_t level) {
+    if (mcu == nullptr ||
+        (mcu->caps_cache & MCS51_CAP_ENHANCED_IO) == 0u) {
+        return true;
     }
+    const mcs51_gpio_may_drive_fn_t fn = mcu->gpio_hooks.may_drive;
+    if (fn == nullptr) {
+        return true;
+    }
+    return fn(mcu, gpio_pin_key(port, bit), level);
 }
 
-inline uint16_t mcs51_od_addr(uint8_t port) {
-    switch (port) {
-        case 0: return 0xF009u;
-        case 1: return 0xF019u;
-        case 2: return 0xF029u;
-        case 3: return 0xF039u;
-        default: return 0xFFFFu;
+inline bool gpio_is_analog(Mcu51Context* mcu, uint8_t port, uint8_t bit) {
+    if (mcu == nullptr ||
+        (mcu->caps_cache & MCS51_CAP_ENHANCED_IO) == 0u) {
+        return false;
     }
+    const mcs51_gpio_is_analog_fn_t fn = mcu->gpio_hooks.is_analog;
+    if (fn == nullptr) {
+        return false;
+    }
+    return fn(mcu, gpio_pin_key(port, bit));
 }
 
-inline uint16_t mcs51_cfg_addr(uint8_t port, uint8_t bit) {
-    if (port >= 4u || bit >= 8u) {
-        return 0xFFFFu;
+inline bool gpio_pullup_active(Mcu51Context* mcu, uint8_t port, uint8_t bit) {
+    if (mcu == nullptr ||
+        (mcu->caps_cache & MCS51_CAP_ENHANCED_IO) == 0u) {
+        return false;
     }
-    return static_cast<uint16_t>(0xF000u + (port * 0x10u) + bit);
-}
-
-inline bool mcs51_has_cms8s_io(const Mcu51Context* ctx) {
-    return mcs51_family_has_xsfr(mcs51_family_desc(ctx->family));
+    const mcs51_gpio_pullup_fn_t fn = mcu->gpio_hooks.pullup;
+    if (fn == nullptr) {
+        return false;
+    }
+    return fn(mcu, gpio_pin_key(port, bit)) != 0u;
 }
 
 // Diagnostic counters (file-static, GAP-10 pattern). STRICT aborts on
@@ -112,33 +117,12 @@ inline void gpio_analog_read_policy(void) {
 #endif
 }
 
-// True when an output latch edge may drive the external pin. CMS8S only;
-// classic parts have no TRIS/OD gating (legacy unconditional drive).
-inline bool gpio_may_drive(const Mcu51Context* mcu, uint8_t port, uint8_t bit,
-                           uint8_t level) {
-    if (!mcs51_has_cms8s_io(mcu)) {
-        return true;
-    }
-    const uint8_t tris = mcu->sfr_shadow[mcs51_tris_addr(port)];
-    if (((tris >> bit) & 1u) == 0u) {
-        return false;  // INPUT direction: latch holds, no drive
-    }
-    const uint16_t od = mcs51_od_addr(port);
-    if (od != 0xFFFFu && ((mcu->xdata_shadow[od] >> bit) & 1u) != 0u &&
-        level != 0u) {
-        return false;  // open-drain release: HiZ, no drive
-    }
-    return true;
-}
-
-// True when the pin is analog-configured (PxxCFG == 0x01). CMS8S only.
-inline bool gpio_is_analog(const Mcu51Context* mcu, uint8_t port, uint8_t bit) {
-    if (!mcs51_has_cms8s_io(mcu)) {
-        return false;
-    }
-    const uint16_t cfg = mcs51_cfg_addr(port, bit);
-    return cfg != 0xFFFFu && mcu->xdata_shadow[cfg] == 0x01u;
-}
+// True when an output latch edge may drive the external pin. Enhanced
+// families decide through the may_drive hook; classic parts (and unhooked
+// contexts) drive unconditionally (legacy quasi-bidirectional).
+//
+// NOTE: the pre-stage4 TRIS/OD gating implementation moved verbatim to the
+// chip package (enhanced-GPIO model); this dispatcher carries no addresses.
 
 }  // namespace
 
@@ -179,14 +163,9 @@ uint8_t mcs51_gpio_bit_read_pin(uint8_t port, uint8_t bit) {
     if (ext >= 0) {
         return static_cast<uint8_t>(ext);
     }
-    // A-05: HiZ input with internal pull-up defaults to 1 (CMS8S only).
-    if (mcs51_has_cms8s_io(mcu)) {
-        const uint8_t tris = mcu->sfr_shadow[mcs51_tris_addr(port)];
-        const uint16_t up = mcs51_up_addr(port);
-        if (((tris >> bit) & 1u) == 0u && up != 0xFFFFu &&
-            ((mcu->xdata_shadow[up] >> bit) & 1u) != 0u) {
-            return 1u;
-        }
+    // A-05: HiZ input with internal pull-up defaults to 1 (hook decides).
+    if (gpio_pullup_active(mcu, port, bit)) {
+        return 1u;
     }
     // Priority 3: HiZ / Conflict fallback to port latch shadow
     return mcs51_gpio_bit_read_latch(port, bit);
@@ -211,16 +190,9 @@ uint8_t mcs51_gpio_read_pin(uint8_t port) {
         } else {
             const int ext = mcs51_ext_pin_level(port, b);
             if (ext < 0) {
-                // A-05: HiZ + pull-up defaults to 1 (CMS8S only).
-                if (mcs51_has_cms8s_io(mcu)) {
-                    const uint8_t tris = mcu->sfr_shadow[mcs51_tris_addr(port)];
-                    const uint16_t up = mcs51_up_addr(port);
-                    if (((tris >> b) & 1u) == 0u && up != 0xFFFFu &&
-                        ((mcu->xdata_shadow[up] >> b) & 1u) != 0u) {
-                        pin_level = 1u;
-                    } else {
-                        continue;  // HiZ/conflict: keep the latch bit
-                    }
+                // A-05: HiZ + pull-up defaults to 1 (hook decides).
+                if (gpio_pullup_active(mcu, port, b)) {
+                    pin_level = 1u;
                 } else {
                     continue;  // HiZ/conflict: keep the latch bit
                 }
