@@ -42,7 +42,7 @@
 
 - [ ] **Step 1**：`cms8s_uart.cpp` 承接 FUNCCR/重映射 + TMR4/TMR2/BRT 波特分支（含 T34MOD/T2CON-baud 交叉读，与 timer 拆分同阶段协同）；通用 UART 固定引脚 + Timer1（+标准 T2）波特。
 - [ ] **Step 2**：`cms8s_timer.cpp` 承接 T3/T4/捕获/W0C + T2-CMS8S 扩展，hook 注册点（原 `mcs51_timer_init:884-905` 的 T2IF/EIF2/T34MOD/TL3/CCLx 注册）整体跟搬；通用保留 Timer0/1/标准 T2。
-- [ ] **Step 3**：peripheral 改自注册（总纲 §3.1b 协议）：core 表删 cms8s 三件套行，加 BSS 注册表 + `mcs51_peripheral_register()` + 测试缝；新增 `cms8s_register.cpp`/`at89_register.cpp`（空实现）；三处循环（reset/microstep/next-event）改遍历"core 表 + 注册表"；`has_wdt` 切 `wdt_present`。
+- [ ] **Step 3**：peripheral 改自注册（总纲 §3.1b 协议）：core 表删 cms8s 三件套行，加 BSS 注册表 + `mcs51_peripheral_register()` + 测试缝；新增 `cms8s_register.cpp`/`at89_register.cpp`（空实现）；三处循环（reset/microstep/next-event）改遍历"core 表 + 注册表"；`has_wdt` 切 `wdt_present`。附带（评审纠正包）：`s_cms8s_priv_pool` + `cms8s_soc_bind` 自 `cms8s_sys.cpp` 迁入 `cms8s_register.cpp`（芯片主控入口收敛池归属，消 adc/buzzer 对 sys.cpp 的横向依赖）；T3/T4/捕获/端口采样状态随 `cms8s_timer.cpp`/`cms8s_extint.cpp` 落地同步入池（S2-2D6 移交）；`caps_cache` 调用点迁移清单本阶段认领（S0 铺设、零生产读者——GPIO/ADC 热路径断言 caps 短路覆盖率，UART/Timer 同理）。
 - [ ] **Step 4（双列表同步，防 stage4~6 窗口 wasm 二次断链）**：新增 4 个芯片 `.cpp` 同时追加单体库 `_MCS51_COMPAT_SRCS` 与 wasm 手写源列表（注明 stage6 删后者）；总纲 §6.1-7 为常设规则。
 - [ ] **Step 5（测试注册脚手架，P0 防断裂项）**：新增测试专用 `frameworks/mcs51/test/mcs51_test_harness.h`（仅测试链接，禁入生产库）：幂等 `mcs51_test_use_family(family)` = 注册表复位 + `xxx_register()`；逐个更新 cms8s 单测与 e2e 入口（含走 bridge 的 e2e——测试构建无 generated glue，必须显式调），classic 侧不受影响； sweep 清单落本计划附录（当前约 15+ 文件，执行时以 `grep -l cms8s_.*init\|mcs51_context_reset` 为准）。无此脚手架则静态表摘除后 cms8s 单测集中挂掉。
 
