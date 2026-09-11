@@ -9,6 +9,7 @@
 
 #include "absacc.h"
 #include "mcs51_context.h"
+#include "mcs51_test_harness.h"
 
 namespace {
 
@@ -17,6 +18,7 @@ int fails = 0;
 
 void reset_with_family(uint8_t family) {
     mcs51_set_active_context(&s_ctx);
+    mcs51_test_register_family(family);
     mcs51_context_set_family(family);
     mcs51_context_reset(&s_ctx);
     wink_mcs51_xdata_reset();

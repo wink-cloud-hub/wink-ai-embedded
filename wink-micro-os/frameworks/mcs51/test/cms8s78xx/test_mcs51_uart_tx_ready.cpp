@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include "mcs51_context.h"
+#include "mcs51_test_harness.h"
 #include "wink_mcs51_isr.h"
 #include "wink_mcs51_uart.h"
 
@@ -45,6 +46,7 @@ Mcu51Context s_ctx;
 void init_ctx(uint8_t family) {
     mcs51_set_active_context(&s_ctx);
     mcs51_context_reset(&s_ctx);
+    mcs51_test_register_family(family);
     mcs51_context_set_family(family);
     wink_mcs51_uart_reset();
     wink_mcs51_isr_enable();

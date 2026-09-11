@@ -14,6 +14,7 @@
 
 #include "absacc.h"
 #include "mcs51_context.h"
+#include "mcs51_test_harness.h"
 #include "cms8s78xx.h"
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_extint.h"
@@ -94,6 +95,7 @@ int main(void) {
     // Baseline-exception fix: port interrupts are CMS8S-only silicon (XSFR
     // EICFG/PxxCFG writes are dropped without the XSFR window) — select the
     // family at runtime like every sibling cms8s test.
+    mcs51_test_register_family(MCS51_FAMILY_CMS8S78XX);
     mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
     wink_mcs51_isr_enable();
     wink_mcs51_extint_reset();

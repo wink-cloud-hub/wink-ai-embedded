@@ -21,6 +21,7 @@
 #include "mcs51_adc.h"
 #include "mcs51_trap.h"
 #include "mcs51_context.h"
+#include "mcs51_test_harness.h"
 
 extern const wink_app_callbacks_t *wink_app_get_callbacks(void);
 
@@ -65,6 +66,7 @@ int main(void) {
 
     /* M1: on-chip ADC is CMS8S-only silicon — select the family so the
      * framework init (reset,seeds,hooks) targets CMS8S78xx. */
+    mcs51_test_register_family(MCS51_FAMILY_CMS8S78XX);
     mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
 
     mcs51_framework_set_post_init_hook(inject_cms8s_channels);

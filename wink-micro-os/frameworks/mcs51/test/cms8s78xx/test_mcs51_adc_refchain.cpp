@@ -7,6 +7,7 @@
 #include "cms8s_adc.h"
 #include "mcs51_adc.h"
 #include "mcs51_context.h"
+#include "mcs51_test_harness.h"
 #include "mcs51_proxy.hpp"
 #include "mcs51_xsfr.hpp"
 #include "wink_mcs51_clock.h"
@@ -58,6 +59,7 @@ extern "C" void setUp(void) {}
 extern "C" void tearDown(void) {}
 
 int main(void) {
+    mcs51_test_register_family(MCS51_FAMILY_CMS8S78XX);
     mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
     wink_mcs51_xdata_reset();
     mcs51_adc_reset();

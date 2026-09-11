@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 #include "mcs51_context.h"
+#include "mcs51_test_harness.h"
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_timer.h"
 
@@ -23,6 +24,7 @@ void check(bool cond, const char* what) {
 
 void begin(uint32_t fsys_hz) {
     mcs51_set_active_context(&s_ctx);
+    mcs51_test_register_family(MCS51_FAMILY_CMS8S78XX);
     mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
     mcs51_context_reset(&s_ctx);
     wink_mcs51_set_hardware_clock_hz(fsys_hz);

@@ -10,6 +10,7 @@
 
 #include "mcs51_family_route.h"
 #include "mcs51_context.h"
+#include "mcs51_test_harness.h"
 #include "reg51.h"
 
 // Undefine the Keil dialect main remap so the test runner main() can link
@@ -27,6 +28,7 @@ int main(void) {
     // cms8s test. The compile-time WINK_MCU_CMS8S78XX above only routes the
     // headers; without this line the XSFR writes are dropped on classic
     // (no window) and the readback asserts below fail.
+    mcs51_test_register_family(MCS51_FAMILY_CMS8S78XX);
     mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
     // 1. Verify that CMS8S78xx SFRs are defined and proxied correctly
     ADCCHS = 0x05;

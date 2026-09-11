@@ -16,6 +16,7 @@
 #include <stdio.h>
 
 #include "mcs51_context.h"
+#include "mcs51_test_harness.h"
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_isr.h"
 
@@ -60,6 +61,7 @@ void check_irq(mcs51_irq_source_t src, uint8_t vector,
 
 int main(void) {
     // ── 1) CMS8S78xx silicon reset seeds ───────────────────────────────────
+    mcs51_test_register_family(MCS51_FAMILY_CMS8S78XX);
     mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
     Mcu51Context* ctx = mcs51_get_context();
     mcs51_context_reset(ctx);
@@ -78,6 +80,7 @@ int main(void) {
           "PS_ADET/PS_INT0 reset seeds must remain 0x7F");
 
     // ── 2) Classic AT89C52 reset seeds ─────────────────────────────────────
+    mcs51_test_register_family(MCS51_FAMILY_CLASSIC);
     mcs51_context_set_family(MCS51_FAMILY_CLASSIC);
     mcs51_context_reset(ctx);
     check(ctx->sfr_shadow[0x8E] == 0x00u,

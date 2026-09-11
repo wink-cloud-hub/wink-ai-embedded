@@ -9,6 +9,7 @@
 
 #include "mcs51_proxy.hpp"
 #include "mcs51_context.h"
+#include "mcs51_test_harness.h"
 #include "mcs51_xsfr.hpp"
 #include "absacc.h"
 
@@ -161,6 +162,7 @@ extern "C" void tearDown(void) {}
 int main(void) {
     /* M1: the xsfr operator section targets the CMS8S XSFR window — select
      * the family explicitly (classic has no XSFR window). */
+    mcs51_test_register_family(MCS51_FAMILY_CMS8S78XX);
     mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
     test_compound_assignments();
     test_increment_decrement();

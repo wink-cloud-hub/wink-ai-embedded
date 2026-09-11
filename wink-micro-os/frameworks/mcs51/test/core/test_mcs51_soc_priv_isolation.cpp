@@ -12,6 +12,7 @@
 #include "cms8s_buzzer.h"
 #include "mcs51_adc.h"
 #include "mcs51_context.h"
+#include "mcs51_test_harness.h"
 #include "mcs51_proxy.hpp"
 
 namespace {
@@ -69,6 +70,7 @@ extern "C" void tearDown(void) {}
 extern "C" void cms8s_soc_bind(struct Mcu51Context *ctx);
 
 int main(void) {
+    mcs51_test_register_family(MCS51_FAMILY_CMS8S78XX);
     mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
 
     // ── instance slots: 0/1 + out-of-range clamp ─────────────────────────
@@ -121,6 +123,7 @@ int main(void) {
 
     // ── per-context hooks isolated across families ───────────────────────
     s_ctx_a.gpio_hooks.may_drive = hook_a;
+    mcs51_test_register_family(MCS51_FAMILY_CLASSIC);
     mcs51_context_set_family(MCS51_FAMILY_CLASSIC);
     mcs51_set_active_context(&s_ctx_b);
     mcs51_context_reset(&s_ctx_b);  // classic: binds nullptr, zeroes hooks
@@ -148,6 +151,7 @@ int main(void) {
     check(cms8s_adc_conversion_count() == 0u,
           "unbound observer must report neutral zero");
 
+    mcs51_test_register_family(MCS51_FAMILY_CMS8S78XX);  // leave clean
     mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);  // leave clean
     if (g_fails) {
         return 1;

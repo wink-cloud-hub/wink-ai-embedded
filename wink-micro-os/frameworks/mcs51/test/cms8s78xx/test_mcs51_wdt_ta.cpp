@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include "mcs51_context.h"
+#include "mcs51_test_harness.h"
 #include "mcs51_proxy.hpp"
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_wdt.h"
@@ -37,6 +38,7 @@ Mcu51Context s_ctx;
 
 void init_ctx(void) {
     mcs51_set_active_context(&s_ctx);
+    mcs51_test_register_family(MCS51_FAMILY_CMS8S78XX);
     mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
     mcs51_context_reset(&s_ctx);
     wink_mcs51_clock_reset();
@@ -210,6 +212,7 @@ int main(void) {
     // ── 9) Classic family: TA/WDT hooks absent, writes plain ───────────────
     {
         mcs51_set_active_context(&s_ctx);
+        mcs51_test_register_family(MCS51_FAMILY_CLASSIC);
         mcs51_context_set_family(MCS51_FAMILY_CLASSIC);
         mcs51_context_reset(&s_ctx);
         wink_mcs51_clock_reset();
