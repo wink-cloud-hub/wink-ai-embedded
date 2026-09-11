@@ -195,5 +195,16 @@ The following C++ flags are globally enforced for C++ compilation and cannot be 
 *   **Mutex Protection**: Shared buses (I2C, SPI) accessed by the Arduino Task and the Wink Event Loop must be protected by PAL-level mutexes (e.g., `pal_i2c_lock`/`unlock`).
 *   **Locking Hierarchy**: Arduino class overrides (like `TwoWire` transactions) must obtain the corresponding PAL bus lock and release it on transmission completion. Both native DAL drivers and Arduino compatibility drivers must block on the same locks to serialize requests and prevent hardware line collisions.
 
+---
+
+## 6. MCS-51 Lint 门禁（wink lint 统一入口）
+
+> 决策：[ADR-0080](../../decisions/core/0080-external-lint-pack-discovery-and-mcs51-guard-sinking.md)。
+
+1. **唯一入口**：所有 51 检查经 `wink lint --pack mcs51_all`（`mcs51_safety` + `mcs51_sim_compat`）触发；禁止散落执行单体脚本（`wink test` 经 `run_lint()` API 内调）。
+2. **规则位置**：`wink-micro-os/frameworks/mcs51/tools/lint/lint_*.py`（组 `mcs51_all`，默认关闭）；`mcs51_isolation` 留守 `wink-tools` 核心 `layering` 组常开。
+3. **精度契约**：纯 RAM 轮询仅在“无 SFR、无超时退出、无本地赋值、无调用、ISR 跨文件写”全满足时告警（`MCS51-SIM-POLL-DEADLOCK`，首版 warning）；`while(!TI)` / `while(ADCON0 & 0x02)` 类 SFR 轮询永不告警；宿主单测线束（`test_*`、`*/unit/*`、Catch2）不在 scope 内。
+4. **样例卫生**：`test/mcs51/samples/*.c` 须通过门禁（ISR 共享变量一律 `volatile`，以生产应用为准）。
+
 
 
