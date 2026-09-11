@@ -35,6 +35,20 @@
 
 ### Task S6-2：工具链 manifest 化 `[状态: ⏳ 待开始]`
 
+- [ ] **Step 0**：冻结 manifest schema 骨架（`tools/manifests/chips/schema.json`），字段只含四组，多一个不加：
+  ```yaml
+  family: cms8s78xx            # 与 McuFamilyDescriptor.id 对应
+  headers:                     # 清洗 pass 与 lint 的头文件事实源
+    vendor_include_dir: chips/cms8s78xx/include
+    allow_regex: ["REG_CMS8S78XX\\.H", "cms8s_.*\\.h"]
+    forbid_in_core_regex: ["cms8s", "0xF0", "ADCLDO", "FUNCCR"]
+  memory:                      # SDCC 门禁事实源
+    xram_bytes: 1024
+    xsfr_window: [0xF000, 0x1000]   # base + size，无窗口填 null
+  sdcc_gate:                   # 编译门禁事实源
+    mem_limits: { xdata_max: 1024 }
+    stddriver_link: ["cms8s78xx_stddriver"]   # 占位名，执行时以仓库实有为准
+  ```
 - [ ] **Step 1**：manifest schema 定头正则/内存上限/SDCC 规则字段；gate/cleanup/lint 只读 manifest。
 - [ ] **Step 2**：删 Python 内 `MEM_LIMITS`、`cms8s` 硬编码正则、`REG_CMS8S78XX.H` 强绑定，加缺 manifest 的 fail-fast。
 
