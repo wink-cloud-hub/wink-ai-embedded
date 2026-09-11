@@ -688,15 +688,15 @@ if(TARGET wink_mcs51_compat)
         ../frameworks/mcs51/test/core/test_mcs51_soc_priv_isolation.cpp)
 
     # GAP-23 freshness gate: the checked-in XSFR tripwire allowlist must
-    # match what the audit script emits from REG_CMS8S78XX.H (catches a
-    # stale allowlist after a pin-mux register is added/removed).
+    # match what the audit script emits from the chips REG_CMS8S78XX.H
+    # (catches a stale allowlist after a pin-mux register is added/removed).
     find_package(Python3 COMPONENTS Interpreter QUIET)
     if(Python3_Interpreter_FOUND)
         add_test(NAME test_mcs51_xsfr_allowlist_fresh
             COMMAND ${Python3_EXECUTABLE}
                     ${_MCS51_FW_DIR}/tools/mcs51_shim_audit.py
                     --check-xsfr-allowlist
-                    ${_MCS51_FW_DIR}/include/mcs51_xsfr_allowlist.h)
+                    ${_MCS51_FW_DIR}/chips/cms8s78xx/include/cms8s_xsfr_allowlist.h)
     endif()
 
     # Task R0 / ADR-0077: GPIO dual read path (Read-Pin vs Read-Latch) & arbitration
