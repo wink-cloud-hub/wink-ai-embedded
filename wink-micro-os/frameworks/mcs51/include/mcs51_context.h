@@ -20,6 +20,14 @@ extern "C" {
 #define MCS51_FAMILY_CLASSIC   0u  // AT89C52/STC89 and other classic 12T parts
 #define MCS51_FAMILY_CMS8S78XX 1u  // Cmsemicon CMS8S78xx
 
+// On-chip XDATA aperture by family (GAP-09, datasheet §2.2.3):
+//  - CMS8S78xx: 1 KB internal XRAM (0x0000..0x03FF).
+//  - Classic 8052: no on-chip XRAM; external MOVX RAM size is board-specific
+//    and declared per app, so the sim keeps the configurable
+//    WINK_MCS51_XDATA_SIZE aperture (8 KB default) for that family.
+#define MCS51_XRAM_SIZE_CMS8S78XX 1024u
+#define MCS51_XRAM_WINDOW_BASE     0xF000u  // CMS8S extended-SFR MOVX window
+
 // ── Task F1: Timed edge injection event ────────────────────────────────────
 typedef struct {
     uint64_t fire_us;
