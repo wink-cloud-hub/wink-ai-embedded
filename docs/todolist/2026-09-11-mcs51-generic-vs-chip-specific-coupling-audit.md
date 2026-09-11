@@ -5,10 +5,11 @@
 | **文档编号** | MCS51-COUPLING-2026-09-11 |
 | **创建日期** | 2026-09-11 |
 | **所属模块** | `wink-micro-os/frameworks/mcs51/`（通用 8051 仿真内核与 CMS8S78xx 芯片模型） |
-| **状态** | **Draft / 待执行迁移核对清单** |
+| **状态** | **Superseded / 发现 SSOT（只读）——执行以实施计划系列为准：`docs/implementation-plans/mcs51/2026-09-11-mcs51-decoupling/00-README.md`** |
 | **审计基线** | master @ e0bce2b + 工作区已落地补丁；对照 CMS8S78xx 原厂手册与标准 8051/8052 规范 |
 | **关联文档** | [可维护性审查清单](./2026-09-11-mcs51-maintainability-todolist.md)（M1~M7）、[缝隙审计与整改任务清单](./2026-09-10-mcs51-sim-vs-silicon-gap-todolist.md)、[后端责任划分](./2026-09-10-mcs51-sim-backend-responsibility-classification.md) |
 | **目标受众** | 框架维护者、内核架构师、后续迁移执行者 |
+| **执行系列** | [`docs/implementation-plans/mcs51/2026-09-11-mcs51-decoupling/00-README.md`](../implementation-plans/mcs51/2026-09-11-mcs51-decoupling/00-README.md)（总纲 + stage0~7；本文 24 项 CPL 为发现证据源，任务状态以系列文档为准） |
 
 ---
 
