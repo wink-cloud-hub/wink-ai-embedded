@@ -22,6 +22,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <stdbool.h>  // S3-H5: Adc0832State.is_dio_shared names bool here
 
 #include "mcs51_adc.h"
 #include "mcs51_context.h"
@@ -32,12 +33,33 @@ namespace {
 
 enum AdcPhase { PHASE_IDLE = 0, PHASE_INPUT, PHASE_OUTPUT };
 
+// S3-H5: internal run state, TU-private (no external TU names this type;
+// the public header only declares the attach/config API). POD, BSS-pooled.
+typedef struct {
+    uint8_t cs_port, cs_bit;
+    uint8_t clk_port, clk_bit;
+    uint8_t di_port, di_bit;
+    uint8_t do_port, do_bit;
+    bool    is_dio_shared;
+    uint8_t phase;         // 0=IDLE, 1=INPUT, 2=OUTPUT
+    uint8_t rise_count;    // CLK rising edges since CS fall
+    uint8_t fall_count;    // CLK falling edges in OUTPUT phase
+    uint8_t channel_cfg;   // [1]=SGL/DIF, [0]=ODD/SIGN
+    uint8_t shift_data;    // 8-bit conversion result, MSB first
+    uint8_t out_bit;       // current DO drive level (1 = released/high)
+    // Decision B (stage3 sunset): device-private board-channel mapping.
+    // Conversion pulls the rail key owned by THIS device instead of a
+    // hardcoded 32+ch, so future 48/64-pin MCUs can never collide with the
+    // board space. net_bound = 0 (never attached) falls back to defaults.
+    uint8_t ch_net_id[2];  // rail key per channel (CH0/CH1)
+    uint8_t net_bound;     // nonzero once attached
+} Adc0832State;
+
 // S2-1 device BSS pool (scheme A): one Adc0832State slot per context
-// instance, owned by the device (migrates to devices/adc0832/ in stage3
-// with this TU). Indexed by ctx->instance_index — the same key as the chip
-// pool, but a separate array: board devices are orthogonal to families
-// (classic + ADC0832 is the live iron_ntc combo), so they must not share
-// the chip's soc_priv slot.
+// instance, owned by the device. Indexed by ctx->instance_index — the same
+// key as the chip pool, but a separate array: board devices are orthogonal
+// to families (classic + ADC0832 is the live iron_ntc combo), so they must
+// not share the chip's soc_priv slot.
 static Adc0832State s_adc0832_pool[MCS51_MAX_INSTANCES];
 
 // M2: state lives per-instance (was Mcu51Context::adc0832, was file-static
@@ -206,14 +228,35 @@ extern "C" void adc0832_device_attach(struct Mcu51Context* ctx,
                         cfg->di_bit == cfg->do_bit);
     st.phase = PHASE_IDLE;
     st.out_bit = 1u;
-    st.ch_net_id[0] = cfg->ch0_net_id;
-    st.ch_net_id[1] = cfg->ch1_net_id;
+    // S3-H2: zero is NOT a legal board key (key 0 = MCU physical P0.0) —
+    // an all-zero / partially-specified config falls back per-field to the
+    // historical defaults instead of silently aliasing a physical pin.
+    st.ch_net_id[0] = (cfg->ch0_net_id != 0u) ? cfg->ch0_net_id
+                                              : ADC0832_DEFAULT_CH0_NET_ID;
+    st.ch_net_id[1] = (cfg->ch1_net_id != 0u) ? cfg->ch1_net_id
+                                              : ADC0832_DEFAULT_CH1_NET_ID;
     st.net_bound = 1u;
 
-    mcs51_trap_register_write(cfg->cs_port, cfg->cs_bit, &on_cs_write, nullptr);
-    mcs51_trap_register_write(cfg->clk_port, cfg->clk_bit, &on_clk_write, nullptr);
-    mcs51_trap_register_write(cfg->di_port, cfg->di_bit, &on_di_write, nullptr);
-    mcs51_trap_register_read(cfg->do_port, cfg->do_bit, &on_do_read, nullptr);
+    // S3-H1: mount traps on the EXPLICIT ctx — state lives in ctx's pool
+    // slot, so must the traps. Registering on the global active context
+    // here would diverge when ctx != active (multi-instance). Bounds mirror
+    // the trap API's silent-ignore contract (port 0..3, bit 0..7).
+    if (cfg->cs_port < 4u && cfg->cs_bit < 8u) {
+        ctx->pin_traps[cfg->cs_port][cfg->cs_bit].on_write = &on_cs_write;
+        ctx->pin_traps[cfg->cs_port][cfg->cs_bit].write_ctx = nullptr;
+    }
+    if (cfg->clk_port < 4u && cfg->clk_bit < 8u) {
+        ctx->pin_traps[cfg->clk_port][cfg->clk_bit].on_write = &on_clk_write;
+        ctx->pin_traps[cfg->clk_port][cfg->clk_bit].write_ctx = nullptr;
+    }
+    if (cfg->di_port < 4u && cfg->di_bit < 8u) {
+        ctx->pin_traps[cfg->di_port][cfg->di_bit].on_write = &on_di_write;
+        ctx->pin_traps[cfg->di_port][cfg->di_bit].write_ctx = nullptr;
+    }
+    if (cfg->do_port < 4u && cfg->do_bit < 8u) {
+        ctx->pin_traps[cfg->do_port][cfg->do_bit].on_read = &on_do_read;
+        ctx->pin_traps[cfg->do_port][cfg->do_bit].read_ctx = nullptr;
+    }
 }
 
 extern "C" void mcs51_adc0832_init(uint8_t cs_port,  uint8_t cs_bit,

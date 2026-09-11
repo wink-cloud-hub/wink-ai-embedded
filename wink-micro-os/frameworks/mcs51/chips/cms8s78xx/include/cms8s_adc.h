@@ -2,6 +2,7 @@
 // CMS8S78xx on-chip 12-bit ADC — instant-conversion model (M5, ADR-0073).
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #ifdef __cplusplus

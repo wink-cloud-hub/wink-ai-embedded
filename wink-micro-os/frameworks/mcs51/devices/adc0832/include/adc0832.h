@@ -33,7 +33,6 @@
 // read-after-falling (8 reads after falls #3..#10) — with no off-by-one.
 #pragma once
 
-#include <stdbool.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -49,28 +48,10 @@ struct Mcu51Context;
 #define ADC0832_DEFAULT_CH0_NET_ID 32u
 #define ADC0832_DEFAULT_CH1_NET_ID 33u
 
-// Per-instance trap state machine (S2-1, scheme A): lives in the device
-// BSS pool (mcs51_adc0832.cpp, indexed by instance_index), NOT in the
-// generic context (board devices are orthogonal to chip families).
-typedef struct {
-    uint8_t cs_port, cs_bit;
-    uint8_t clk_port, clk_bit;
-    uint8_t di_port, di_bit;
-    uint8_t do_port, do_bit;
-    bool    is_dio_shared;
-    uint8_t phase;         // 0=IDLE, 1=INPUT, 2=OUTPUT
-    uint8_t rise_count;    // CLK rising edges since CS fall
-    uint8_t fall_count;    // CLK falling edges in OUTPUT phase
-    uint8_t channel_cfg;   // [1]=SGL/DIF, [0]=ODD/SIGN
-    uint8_t shift_data;    // 8-bit conversion result, MSB first
-    uint8_t out_bit;       // current DO drive level (1 = released/high)
-    // Decision B (stage3 sunset): device-private board-channel mapping.
-    // Conversion pulls the rail key owned by THIS device instead of a
-    // hardcoded 32+ch, so future 48/64-pin MCUs can never collide with the
-    // board space. net_bound = 0 (never attached) falls back to defaults.
-    uint8_t ch_net_id[2];  // rail key per channel (CH0/CH1)
-    uint8_t net_bound;     // nonzero once attached
-} Adc0832State;
+// Per-instance trap state machine (S2-1, scheme A) lives in the device TU
+// (mcs51_adc0832.cpp, BSS pool indexed by instance_index) — S3-H5: internal
+// run state is hidden from this public header (interface segregation; no
+// external TU names it). The pool slot layout is a TU-private detail.
 
 // Attach configuration (POD, passed by pointer — keeps the API at 2 params).
 typedef struct {

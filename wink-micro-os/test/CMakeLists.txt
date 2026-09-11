@@ -786,6 +786,12 @@ if(TARGET wink_mcs51_compat)
     add_mcs51_host_test(test_mcs51_adc0832
         ../frameworks/mcs51/test/core/test_adc0832_dio_shared.cpp)
 
+    # Stage3-H7 decision-B contract: adc0832_device_attach() with explicit
+    # ch0/ch1_net_id (custom 40/41 end-to-end, unbound 32/33 fallback,
+    # zero-net clamp). The default-key path stays with the suites above.
+    add_mcs51_host_test(test_mcs51_adc0832_attach
+        ../frameworks/mcs51/test/core/test_adc0832_attach_net_id.cpp)
+
     # M4: Zero False-Trigger acceptance (data-plane SSOT §4.3) — unmodified
     # Keil sample exercises the four RMW isolation vectors; the C driver binds
     # per-pin edge traps + a Read-Pin button trap and asserts XDATA snapshots.

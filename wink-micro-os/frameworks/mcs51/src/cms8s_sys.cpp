@@ -91,7 +91,10 @@ bool s_wdt_warned = false;
 #endif
 
 inline bool has_wdt(const Mcu51Context* ctx) {
-    return mcs51_family_has_xsfr(mcs51_family_desc(ctx->family));
+    // S3-H4: WDT presence reads the v2 descriptor SSOT (wdt_present) — never
+    // inferred from the XSFR window (the window answers addressing, not
+    // features; see mcs51_family_has_xsfr's remaining window users).
+    return mcs51_family_desc(ctx->family)->wdt_present;
 }
 
 inline bool wdt_enabled(const Mcu51Context* ctx) {

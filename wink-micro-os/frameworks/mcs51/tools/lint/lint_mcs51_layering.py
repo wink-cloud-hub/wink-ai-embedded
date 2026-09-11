@@ -40,6 +40,11 @@ PATTERNS = {
 
 # (file-rel, pattern-key, line-regex, removal-stage)
 # Line-regexes pin the KNOWN pre-stage0 constructs; any new construct fails.
+# HYGIENE IRON RULE (S3-H6): prune a row the moment its lines are gone;
+# retag (never delete) rows whose lines roll to a later stage with the code.
+# A stale row silently re-admits the exact regression the gate exists to
+# catch; deleting a live row turns the gate red. Verify dead/alive with the
+# PATTERNS regexes above (word boundaries matter), not substrings.
 BASELINE: list[tuple[str, str, str, str]] = [
     # mcs51_adc.h -> stage1 (physical-pin rail + ADCLDO sink)
     ("include/mcs51_adc.h", "cms8s", r"CMS8S", "stage1"),
@@ -62,10 +67,9 @@ BASELINE: list[tuple[str, str, str, str]] = [
     ("include/mcs51_family_route.h", "cms8s", r".*", "by-design"),
     ("include/mcs51_family_route.h", "familynam", r".*", "by-design"),
     ("include/mcs51_peripheral.h", "cms8s", r"cms8s_\*", "stage4"),
-    # mcs51_sfr_map.h vendor block -> stage3 (header homing)
-    ("include/mcs51_sfr_map.h", "xsfr_addr", r"0xF0", "stage3"),
-    ("include/mcs51_sfr_map.h", "ps_sel", r"PS_", "stage3"),
-    ("include/mcs51_sfr_map.h", "cms8s", r"cms8s", "stage3"),
+    # mcs51_sfr_map.h: S3-H6 pruned (stage3 shrunk it to standard-only; the
+    # three stage3 rows below are gone with the lines — re-adding a vendor
+    # address must fail, not be waived).
     # mcs51_trap.h doc comments -> stage4
     ("include/mcs51_trap.h", "cms8s", r"CMS8S|cms8s_sys", "stage4"),
     # mcs51_xsfr_allowlist.h whole file -> stage5 (XSFR parametrize)
@@ -73,22 +77,24 @@ BASELINE: list[tuple[str, str, str, str]] = [
     ("include/mcs51_xsfr_allowlist.h", "xsfr_addr", r"0xF", "stage5"),
     # wink_mcs51_* public headers -> stage3 (WDT hard export, UART remap
     # docs, extint mux docs, ISR width docs, clock/strict grouping notes)
-    ("include/wink_mcs51_clock.h", "cms8s", r"CMS8S", "stage3"),
-    ("include/wink_mcs51_extint.h", "cms8s", r"CMS8S78xx", "stage3"),
-    ("include/wink_mcs51_extint.h", "xsfr_addr", r"0xF0C[01]", "stage3"),
-    ("include/wink_mcs51_extint.h", "ps_sel", r"PS_INT", "stage3"),
+    # wink_mcs51_clock.h: S3-H6 pruned (doc residue scrubbed in stage3).
+    # wink_mcs51_extint.h mux docs describe live stage3 behavior; they move
+    # with the code in stage4 (S3-D4) — retagged, NOT deleted (deleting a
+    # live row turns the gate red).
+    ("include/wink_mcs51_extint.h", "cms8s", r"CMS8S78xx", "stage4"),
+    ("include/wink_mcs51_extint.h", "xsfr_addr", r"0xF0C[01]", "stage4"),
+    ("include/wink_mcs51_extint.h", "ps_sel", r"PS_INT", "stage4"),
     ("include/wink_mcs51_isr.h", "cms8s", r"CMS8S78xx", "stage5"),
-    ("include/wink_mcs51_strict.h", "cms8s", r"CMS8S", "stage3"),
+    # wink_mcs51_strict.h: S3-H6 pruned (grouping-note residue scrubbed;
+    # numbers frozen, schema checks below still lock IAP_FLASH=11).
     ("include/wink_mcs51_uart.h", "funccr", r"FUNCCR", "stage4"),
-    ("include/wink_mcs51_wdt.h", "cms8s",
-     r"CMS8S78xx|cms8s_sys", "stage3"),
+    # wink_mcs51_wdt.h: S3-H6 pruned (hard export removed, file zero-residue).
     # src/mcs51_adc.cpp comment -> stage1
     ("src/mcs51_adc.cpp", "cms8s", r"CMS8S78xx", "stage1"),
-    # src/mcs51_adc0832.cpp comment -> stage3 (devices/ sink)
-    ("src/mcs51_adc0832.cpp", "cms8s", r"CMS8S", "stage3"),
-    # src/mcs51_bridge.cpp hard include + hard call -> stage3
-    ("src/mcs51_bridge.cpp", "cms8s",
-     r'#include "cms8s_adc\.h"|cms8s_sys_notify_sfr_write', "stage3"),
+    # src/mcs51_adc0832.cpp: S3-H6 pruned (TU moved to devices/, out of the
+    # gate's src/ scope — the row can never match again).
+    # src/mcs51_bridge.cpp: S3-H6 pruned (bare includes + hard call gone;
+    # re-adding either must fail, not be waived).
     # src/mcs51_clock.cpp comment -> stage4
     ("src/mcs51_clock.cpp", "cms8s", r"CMS8S78xx", "stage4"),
     # src/mcs51_context.cpp: WINK_MCU_* build routing is by-design;
@@ -98,7 +104,8 @@ BASELINE: list[tuple[str, str, str, str]] = [
     ("src/mcs51_context.cpp", "familynam",
      r"WINK_MCU_AT89C52|CLASSIC", "by-design"),
     # S2-1 done: A-02 seeding lines (ADCLDO comment + 3000/3000) removed.
-    ("src/mcs51_context.cpp", "ps_sel", r"PS_", "stage2"),
+    # S3-H6: the PS_ row below is pruned too (no \bPS_ word left in the file;
+    # the "caps_cache" substring has no word boundary and never matched).
     # S3-1 transition (expires stage4): extint/timer/uart code still lives in
     # core but reads the sunk CMS8S_ addresses; the usages leave core WITH
     # the code when stage4 strips the models to chips/.
