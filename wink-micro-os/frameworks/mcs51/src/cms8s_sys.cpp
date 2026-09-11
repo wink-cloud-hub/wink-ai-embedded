@@ -264,8 +264,13 @@ extern "C" {
 
 void cms8s_soc_bind(struct Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
-    assert(ctx->instance_index < MCS51_MAX_INSTANCES);
-    Cms8sPriv* slot = &s_cms8s_priv_pool[ctx->instance_index];
+    // Indexing clamps, never asserts (review finding): the loud fuse lives
+    // in mcs51_context_reset; here NDEBUG-proof containment wins — worst
+    // case aliases the last slot deterministically, never OOB.
+    const uint8_t idx = (ctx->instance_index < MCS51_MAX_INSTANCES)
+                            ? ctx->instance_index
+                            : (MCS51_MAX_INSTANCES - 1u);
+    Cms8sPriv* slot = &s_cms8s_priv_pool[idx];
     if (ctx->soc_priv == slot) {
         return;  // idempotent: already bound (later inits in the same reset)
     }
@@ -294,6 +299,7 @@ void cms8s_sys_init(struct Mcu51Context* ctx) {
 
 void cms8s_sys_poll(struct Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
+    if (!cms8s_hook_armed(ctx)) return;  // review hardening: unbound/classic
     wdt_check_impl(ctx);
 }
 
@@ -317,7 +323,9 @@ uint64_t wink_mcs51_wdt_interval_us(void) {
 }
 
 void wink_mcs51_wdt_check(void) {
-    wdt_check_impl(mcs51_get_context());
+    Mcu51Context* ctx = mcs51_get_context();
+    if (!cms8s_hook_armed(ctx)) return;  // review hardening: unbound/classic
+    wdt_check_impl(ctx);
 }
 
 uint64_t wink_mcs51_wdt_next_event_us(struct Mcu51Context* ctx) {
@@ -336,7 +344,9 @@ uint64_t wink_mcs51_wdt_next_event_us(struct Mcu51Context* ctx) {
 }
 
 uint64_t wink_mcs51_wdt_last_feed_us(void) {
-    return cms8s_priv(nullptr)->sys.wdt_last_feed_us;
+    // Review hardening: neutral on unbound (never crash).
+    Cms8sPriv* priv = cms8s_priv(nullptr);
+    return (priv != nullptr) ? priv->sys.wdt_last_feed_us : 0u;
 }
 
 #ifdef __EMSCRIPTEN__

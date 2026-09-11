@@ -16,7 +16,6 @@
 // on_read trap instead (WinkSfr::operator uint8_t per-bit reconstruction).
 #include "ADC0832.H"
 
-#include <cassert>
 #include <cstdint>
 #include <cstring>
 
@@ -43,8 +42,12 @@ static Adc0832State s_adc0832_pool[MCS51_MAX_INSTANCES];
 // as the CMS8S models' mcs51_get_context() fallback).
 inline Adc0832State& adc_state() {
     Mcu51Context* ctx = mcs51_get_context();
-    assert(ctx->instance_index < MCS51_MAX_INSTANCES);
-    return s_adc0832_pool[ctx->instance_index];
+    // Indexing clamps, never asserts (same rule as the chip binder: the
+    // loud fuse lives in mcs51_context_reset).
+    const uint8_t idx = (ctx->instance_index < MCS51_MAX_INSTANCES)
+                            ? ctx->instance_index
+                            : (MCS51_MAX_INSTANCES - 1u);
+    return s_adc0832_pool[idx];
 }
 
 inline uint8_t sfr_addr_for(uint8_t port) {

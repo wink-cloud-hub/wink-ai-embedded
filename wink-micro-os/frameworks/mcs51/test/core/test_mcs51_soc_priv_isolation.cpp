@@ -65,6 +65,7 @@ static Mcu51Context s_ctx_clamp = {};
 extern "C" void wink_mcs51_user_main(void) {}
 extern "C" void setUp(void) {}
 extern "C" void tearDown(void) {}
+extern "C" void cms8s_soc_bind(struct Mcu51Context *ctx);
 
 int main(void) {
     mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
@@ -78,6 +79,17 @@ int main(void) {
     check(s_ctx_clamp.instance_index == MCS51_MAX_INSTANCES - 1u,
           "out-of-range idx must clamp to last slot");
     mcs51_context_reset(&s_ctx_clamp);  // clamped slot resets cleanly
+
+    // ── review hardening: wild index never escapes the pool ─────────────
+    // A hand-built context bypassing init (idx 99, NDEBUG-proof path):
+    // bind must contain it to the last slot — functional, no OOB.
+    static Mcu51Context s_ctx_wild = {};
+    s_ctx_wild.instance_index = 99u;
+    mcs51_set_active_context(&s_ctx_wild);
+    cms8s_soc_bind(&s_ctx_wild);
+    check(s_ctx_wild.soc_priv != nullptr, "wild idx must bind, not crash");
+    check(s_ctx_wild.soc_priv == s_ctx_clamp.soc_priv,
+          "wild idx must alias the clamped last slot deterministically");
 
     // ── per-instance reset binds distinct pool slots ─────────────────────
     mcs51_set_active_context(&s_ctx_a);
