@@ -145,10 +145,17 @@ function(add_wink_wasm_mcs51_test test_name sample_name driver_c)
     set(_test_sources
         ${driver_c}
         ${_sample_cpp}
+        # Stage1 Step 0a: keep in sync with frameworks/mcs51 _MCS51_COMPAT_SRCS
+        # (mcs51_uni_bridge.cpp excluded — host-side UniSim glue, not wasm).
+        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_context.cpp
+        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_family.cpp
+        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_peripheral.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_sfr.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_adc.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_adc0832.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/cms8s_adc.cpp
+        ${_SDK_ROOT}/frameworks/mcs51/src/cms8s_buzzer.cpp
+        ${_SDK_ROOT}/frameworks/mcs51/src/cms8s_sys.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_isr.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_clock.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_timer.cpp
@@ -156,6 +163,10 @@ function(add_wink_wasm_mcs51_test test_name sample_name driver_c)
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_extint.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_xdata.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_unsupported.cpp
+        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_gpio.cpp
+        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_pcon.cpp
+        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_edge_queue.cpp
+        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_pwm_meter.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_bridge.cpp
         ${_SDK_ROOT}/runtime/src/wink_runtime.c
         ${_SDK_ROOT}/runtime/src/wink_runtime_tasks.c
