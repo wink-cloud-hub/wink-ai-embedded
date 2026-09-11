@@ -27,13 +27,6 @@
 
 #include <cstdint>
 
-#if defined(__has_include)
-#  if __has_include("mcs51_board_config.h")
-#    include "mcs51_board_config.h"
-#    define MCS51_BOARD_CONFIG_PRESENT 1
-#  endif
-#endif
-
 extern "C" void wink_mcs51_user_main(void);
 
 namespace {

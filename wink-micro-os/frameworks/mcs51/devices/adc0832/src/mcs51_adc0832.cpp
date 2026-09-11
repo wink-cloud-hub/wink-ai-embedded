@@ -14,7 +14,11 @@
 // (they would corrupt RMW instructions on the DIO pin and double-fire
 // js_pal_gpio_write). Whole-port reads reconstruct the DO level through the
 // on_read trap instead (WinkSfr::operator uint8_t per-bit reconstruction).
-#include "ADC0832.H"
+//
+// Stage3 S3-2 (devices/ home, decision B): this TU moved verbatim from
+// src/; the conversion pull now routes through this device's net-id mapping
+// (adc0832_ch_key) instead of a hardcoded board key.
+#include "adc0832.h"
 
 #include <cstdint>
 #include <cstring>
@@ -103,9 +107,11 @@ extern "C" void on_clk_write(void *ctx, uint8_t level) {
             // Channel locked (single-ended: ODD/SIGN selects CH0/CH1).
             const uint8_t ch = (uint8_t)(adc_state().channel_cfg & 0x01u);
             // 0 us instant conversion: pull the 8-bit code value right now.
-            // Stage1: the board-fabric key is explicit (`32+ch`, permanent);
-            // only the key expression changed, CH API and semantics unchanged.
-            adc_state().shift_data = (uint8_t)(mcs51_adc_get_value((uint8_t)(32u + ch)) & 0xFFu);
+            // Stage3 decision B: the board-fabric key is device-private
+            // (adc0832_ch_key over this instance's net ids, defaults 32+ch);
+            // CH API and conversion semantics unchanged.
+            adc_state().shift_data = (uint8_t)(mcs51_adc_get_value(
+                adc0832_ch_key(mcs51_get_context(), ch)) & 0xFFu);
             adc_state().phase = PHASE_OUTPUT;
             adc_state().fall_count = 0u;
             // Leading Null bit window: DO drives 0 until the 3rd falling edge.
@@ -155,27 +161,81 @@ extern "C" uint8_t on_do_read(void *ctx) {
 
 }  // namespace
 
+extern "C" uint8_t adc0832_ch_key(struct Mcu51Context* ctx, uint8_t ch) {
+    if (ctx == nullptr) {
+        ctx = mcs51_get_context();
+    }
+    const uint8_t raw_idx =
+        (ctx != nullptr) ? ctx->instance_index : 0u;
+    const uint8_t idx = (raw_idx < MCS51_MAX_INSTANCES)
+                            ? raw_idx
+                            : (MCS51_MAX_INSTANCES - 1u);
+    const Adc0832State& st = s_adc0832_pool[idx];
+    const uint8_t sel = (uint8_t)(ch & 0x01u);
+    if (st.net_bound == 0u) {
+        // Never attached: historical default keys (frontend/tests unchanged).
+        return (uint8_t)((sel == 0u) ? ADC0832_DEFAULT_CH0_NET_ID
+                                     : ADC0832_DEFAULT_CH1_NET_ID);
+    }
+    return st.ch_net_id[sel];
+}
+
+extern "C" void adc0832_device_attach(struct Mcu51Context* ctx,
+                                      const Adc0832Config* cfg) {
+    if (cfg == nullptr) {
+        return;
+    }
+    if (ctx == nullptr) {
+        ctx = mcs51_get_context();
+    }
+    if (ctx == nullptr) {
+        return;
+    }
+    // S2-1: own the pool slot (devices have no reset-loop entry; attach is
+    // the lifecycle point — re-binding memsets, matching old re-init).
+    const uint8_t idx = (ctx->instance_index < MCS51_MAX_INSTANCES)
+                            ? ctx->instance_index
+                            : (MCS51_MAX_INSTANCES - 1u);
+    Adc0832State& st = s_adc0832_pool[idx];
+    std::memset(&st, 0, sizeof(Adc0832State));
+    st.cs_port = cfg->cs_port;   st.cs_bit = cfg->cs_bit;
+    st.clk_port = cfg->clk_port; st.clk_bit = cfg->clk_bit;
+    st.di_port = cfg->di_port;   st.di_bit = cfg->di_bit;
+    st.do_port = cfg->do_port;   st.do_bit = cfg->do_bit;
+    st.is_dio_shared = (cfg->di_port == cfg->do_port &&
+                        cfg->di_bit == cfg->do_bit);
+    st.phase = PHASE_IDLE;
+    st.out_bit = 1u;
+    st.ch_net_id[0] = cfg->ch0_net_id;
+    st.ch_net_id[1] = cfg->ch1_net_id;
+    st.net_bound = 1u;
+
+    mcs51_trap_register_write(cfg->cs_port, cfg->cs_bit, &on_cs_write, nullptr);
+    mcs51_trap_register_write(cfg->clk_port, cfg->clk_bit, &on_clk_write, nullptr);
+    mcs51_trap_register_write(cfg->di_port, cfg->di_bit, &on_di_write, nullptr);
+    mcs51_trap_register_read(cfg->do_port, cfg->do_bit, &on_do_read, nullptr);
+}
+
 extern "C" void mcs51_adc0832_init(uint8_t cs_port,  uint8_t cs_bit,
                                    uint8_t clk_port, uint8_t clk_bit,
                                    uint8_t di_port,  uint8_t di_bit,
                                    uint8_t do_port,  uint8_t do_bit) {
-    // S2-1: own the pool slot (devices have no reset-loop entry; init is
-    // the lifecycle point — re-binding memsets, matching old re-init).
-    std::memset(&adc_state(), 0, sizeof(Adc0832State));
-    adc_state().cs_port = cs_port;   adc_state().cs_bit = cs_bit;
-    adc_state().clk_port = clk_port; adc_state().clk_bit = clk_bit;
-    adc_state().di_port = di_port;   adc_state().di_bit = di_bit;
-    adc_state().do_port = do_port;   adc_state().do_bit = do_bit;
-    adc_state().is_dio_shared = (di_port == do_port && di_bit == do_bit);
-    adc_state().phase = PHASE_IDLE;
-    adc_state().rise_count = 0u;
-    adc_state().fall_count = 0u;
-    adc_state().channel_cfg = 0u;
-    adc_state().shift_data = 0u;
-    adc_state().out_bit = 1u;
+    // Decision-B compatibility wrapper: pins-only signature, channels keep
+    // the historical default board keys (32/33).
+    const Adc0832Config cfg = {
+        cs_port, cs_bit, clk_port, clk_bit,
+        di_port, di_bit, do_port, do_bit,
+        ADC0832_DEFAULT_CH0_NET_ID, ADC0832_DEFAULT_CH1_NET_ID,
+    };
+    adc0832_device_attach(mcs51_get_context(), &cfg);
+}
 
-    mcs51_trap_register_write(cs_port, cs_bit, &on_cs_write, nullptr);
-    mcs51_trap_register_write(clk_port, clk_bit, &on_clk_write, nullptr);
-    mcs51_trap_register_write(di_port, di_bit, &on_di_write, nullptr);
-    mcs51_trap_register_read(do_port, do_bit, &on_do_read, nullptr);
+extern "C" void mcs51_adc0832_set_value(uint8_t ch, uint8_t val) {
+    mcs51_adc_set_value(adc0832_ch_key(mcs51_get_context(), ch),
+                        (uint16_t)val);
+}
+
+extern "C" uint8_t mcs51_adc0832_get_value(uint8_t ch) {
+    return (uint8_t)(mcs51_adc_get_value(
+        adc0832_ch_key(mcs51_get_context(), ch)) & 0xFFu);
 }

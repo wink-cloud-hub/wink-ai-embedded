@@ -17,7 +17,7 @@
 #include "wink_runtime.h"
 #include "wink_app.h"
 #include "wink_status.h"
-#include "ADC0832.H"
+#include "adc0832.h"
 #include "mcs51_adc.h"
 #include "mcs51_trap.h"
 #include "mcs51_context.h"

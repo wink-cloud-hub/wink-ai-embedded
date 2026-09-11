@@ -451,14 +451,14 @@ if(TARGET wink_mcs51_compat)
     mcs51_cleanup_sample(seg_display_scan)
 
     # ── M6: board-config codegen seam (wink-app.json -> mcs51_board_config.h) ──
-    # The framework bridge (mcs51_bridge.cpp) does __has_include("mcs51_board_config.h")
-    # at COMPILE time and, when present, auto-binds the codegen-described ADC0832
-    # during framework init (MCS51_HAS_ADC0832). Because bridge.cpp is compiled
-    # into the wink_mcs51_compat static library, the generated header's directory
-    # must be on THAT target's include path (not just the test exe's) and the
-    # library must depend on the generation target. Gate on the generator existing
-    # so plain-C/CI checkouts without the wink-tools source configure cleanly and
-    # just skip the iron_ntc codegen test (mirrors the tier-b fixture gate).
+    # Stage3 (CPL-09/CPL-21): the framework bridge no longer auto-binds the
+    # codegen-described ADC0832. Boards/harnesses bind it in their own
+    # post-init hook (adc0832_device_attach); the generated header's
+    # directory must be on the BINDING TU's include path. The compat library
+    # keeps the gen dir for its __has_include probe. Gate on the generator
+    # existing so plain-C/CI checkouts without the wink-tools source
+    # configure cleanly and just skip the iron_ntc codegen test (mirrors
+    # the tier-b fixture gate).
     set(_MCS51_BOARD_CONFIG_GENERATOR
         "${WINK_TOOLS_ROOT}/tools/codegen/generators/mcs51_board_config.py")
     set(_MCS51_IRON_NTC_APP
@@ -906,15 +906,17 @@ if(TARGET wink_mcs51_compat)
     endif()
 
     # M6: NTC closed-loop thermostat through the board-codegen ADC0832 seam.
-    # The driver does NOT call mcs51_adc0832_init — the bridge auto-binds the
-    # codegen pins (CS=P2.0/CLK=P2.1/DIO=P2.2) from mcs51_board_config.h; the
-    # post-init hook only injects NTC codes. Asserts heater latch toggle at the
+    # Stage3: the driver binds the codegen pins itself in its post-init hook
+    # (adc0832 compat init from mcs51_board_config.h — the bridge no longer
+    # auto-binds) and injects NTC codes. Asserts heater latch toggle at the
     # setpoint and open/short safe states (acceptance #4). Gated on codegen.
     if(_MCS51_HAS_BOARD_CONFIG)
         add_mcs51_host_test(test_mcs51_iron_ntc_e2e
             ../frameworks/mcs51/test/core/test_mcs51_iron_ntc_e2e.c
             ${_MCS51_iron_ntc_CPP}
             ${_MCS51_RUNTIME_SRCS})
+        target_include_directories(test_mcs51_iron_ntc_e2e PRIVATE ${_MCS51_GEN_DIR})
+        add_dependencies(test_mcs51_iron_ntc_e2e generate_mcs51_board_config)
     endif()
 
     # ── M5 tier-b harvest: compile+RUN the UNMODIFIED vendor StdDriver adc.c ──

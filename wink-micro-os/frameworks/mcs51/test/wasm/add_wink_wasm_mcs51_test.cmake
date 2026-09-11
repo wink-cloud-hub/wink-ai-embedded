@@ -56,10 +56,10 @@ add_custom_command(
     VERBATIM)
 
 # ── M6: board-config codegen (wink-app.json -> mcs51_board_config.h) ──────────
-# The framework bridge __has_include()s this at compile time; the gen dir is
-# already in _WASM_MCS51_INCLUDES (-I.../gen). When present the bridge auto-binds
-# the codegen ADC0832, so the iron_ntc driver never calls mcs51_adc0832_init.
-# Gated on the generator (skips gracefully when wink-tools source is absent).
+# The board/harness binds the codegen-described ADC0832 in its own post-init
+# hook (adc0832_device_attach); the bridge no longer auto-binds (stage3).
+# The gen dir is already in _WASM_MCS51_INCLUDES (-I.../gen). Gated on the
+# generator (skips gracefully when wink-tools source is absent).
 set(_MCS51_BOARD_CONFIG_H "")
 set(_MCS51_BOARD_CONFIG_GENERATOR
     "${WINK_TOOLS_ROOT}/tools/codegen/generators/mcs51_board_config.py")
@@ -98,6 +98,9 @@ set(_WASM_MCS51_INCLUDES
     # S2-1: chip-private headers (stage6 target split deletes this hand list)
     -I${_SDK_ROOT}/frameworks/mcs51/chips/cms8s78xx/include
     -I${_SDK_ROOT}/frameworks/mcs51/chips/at89c52/include
+    # S3-2: board-device public headers (adc0832 attach API; the hand list
+    # itself is deleted by the stage6 target split)
+    -I${_SDK_ROOT}/frameworks/mcs51/devices/adc0832/include
     -I${_SDK_ROOT}/pal/include
     -I${_SDK_ROOT}/pal/include/osal
     -I${_SDK_ROOT}/pal/include/hal
@@ -150,12 +153,13 @@ function(add_wink_wasm_mcs51_test test_name sample_name driver_c)
         ${_sample_cpp}
         # Stage1 Step 0a: keep in sync with frameworks/mcs51 _MCS51_COMPAT_SRCS
         # (mcs51_uni_bridge.cpp excluded — host-side UniSim glue, not wasm).
+        # S3-2: the adc0832 TU lives under devices/ (same sync rule).
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_context.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_family.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_peripheral.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_sfr.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_adc.cpp
-        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_adc0832.cpp
+        ${_SDK_ROOT}/frameworks/mcs51/devices/adc0832/src/mcs51_adc0832.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/cms8s_adc.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/cms8s_buzzer.cpp
         ${_SDK_ROOT}/frameworks/mcs51/src/cms8s_sys.cpp
@@ -296,9 +300,9 @@ add_wink_wasm_mcs51_test(
     ${_SDK_ROOT}/frameworks/mcs51/test/cms8s78xx/test_mcs51_cms8s_adc_e2e.c)
 
 # M6: NTC closed-loop thermostat through the board-codegen ADC0832 seam —
-# the shared host/wasm C driver injects cold/hot/open/short codes via the
-# post-init hook (no mcs51_adc0832_init in the driver: the bridge auto-binds
-# the codegen pins) and asserts heater toggle + open/short safe states.
+# the shared host/wasm C driver binds the codegen pins in its post-init hook
+# (adc0832 compat init) and injects cold/hot/open/short codes, then asserts
+# heater toggle + open/short safe states.
 if(_MCS51_BOARD_CONFIG_H)
     add_wink_wasm_mcs51_test(
         wasm_mcs51_iron_ntc_test

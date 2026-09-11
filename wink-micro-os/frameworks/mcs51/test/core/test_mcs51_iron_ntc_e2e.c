@@ -4,12 +4,11 @@
  * board-codegen seam and drives a heater/relay on P1.0, with open/short
  * sensor safety states.
  *
- * This driver proves the codegen seam end to end: it does NOT call
- * mcs51_adc0832_init() itself. The framework bridge (mcs51_bridge.cpp) binds
- * the ADC0832 to the codegen-generated pins (CS=P2.0, CLK=P2.1, DIO=P2.2 from
- * mcs51_board_config.h -> MCS51_HAS_ADC0832) during framework init. The
- * post-init hook — which runs AFTER that binding and after mcs51_adc_reset —
- * only injects the NTC code onto the channel-3 rail. If the seam were not
+ * This driver proves the codegen seam end to end: it binds the ADC0832 to
+ * the codegen-generated pins (CS=P2.0, CLK=P2.1, DIO=P2.2 from
+ * mcs51_board_config.h -> MCS51_HAS_ADC0832) in its own post-init hook
+ * (Stage3: the framework bridge no longer auto-binds board devices) and
+ * injects the NTC code onto the channel-3 rail. If the seam were not
  * wired, every read would return 0 (short) and the cold phase would fail.
  *
  * Four phases across four repeated runtime runs:
@@ -24,9 +23,10 @@
 #include "wink_runtime.h"
 #include "wink_app.h"
 #include "wink_status.h"
-#include "mcs51_adc.h"
+#include "adc0832.h"
 #include "mcs51_trap.h"
 #include "mcs51_context.h"
+#include "mcs51_board_config.h"
 
 extern const wink_app_callbacks_t *wink_app_get_callbacks(void);
 
@@ -42,10 +42,18 @@ extern const wink_app_callbacks_t *wink_app_get_callbacks(void);
 /* NTC code to inject for the current run; read by the post-init hook. */
 static volatile uint8_t s_inject_code = 0u;
 
-/* Runs on EVERY wink_runtime_run(), after framework init binds the codegen
- * ADC0832 and after mcs51_adc_reset() wipes the rail — so the injection
- * survives into the super-loop. */
+/* Runs on EVERY wink_runtime_run(), after framework init (which does
+ * mcs51_trap_reset + mcs51_adc_reset) — so the binding survives and the
+ * injection is not wiped. Re-binding every run matches the old bridge
+ * rhythm (the bridge bound once per framework init, which also runs
+ * every runtime run). */
 static void inject_ntc(void) {
+#ifdef MCS51_HAS_ADC0832
+    mcs51_adc0832_init(MCS51_PIN_ADC0832_CS_PORT,  MCS51_PIN_ADC0832_CS_BIT,
+                       MCS51_PIN_ADC0832_CLK_PORT, MCS51_PIN_ADC0832_CLK_BIT,
+                       MCS51_PIN_ADC0832_DI_PORT,  MCS51_PIN_ADC0832_DI_BIT,
+                       MCS51_PIN_ADC0832_DO_PORT,  MCS51_PIN_ADC0832_DO_BIT);
+#endif
     mcs51_adc0832_set_value(0, s_inject_code);
 }
 
