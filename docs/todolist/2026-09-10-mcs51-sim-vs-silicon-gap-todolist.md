@@ -40,7 +40,7 @@
 | [GAP-06](#gap-06p1config-选项字节不在仿真世界fosc-硬编码-24mhz) | ⬜ 未开始 | **P1** | A-06 + C-03 | CONFIG 选项字节不建模，Fosc 硬编码 24MHz | 芯片 CONFIG 非 24MHz 路径时 tick 与波特率同比错 | **是（前提性风险）** |
 | [GAP-07](#gap-07p1wdt-只验证-ta-序列不验证超时复位ta-窗口过宽容) | ⬜ 未开始（依赖 GAP-02 Task4） | **P1** | A-04（依赖 A-03 先行） | WDT 不模拟超时复位；TA 窗口无超时/不被打断 | 真机喂狗不及时复位循环；错误 TA 用法虚假通过 | 低（喂狗周期 10ms，余量充足） |
 | [GAP-08](#gap-08p1gpio-方向上下拉驱动强度寄存器不参与行为) | ⬜ 未开始 | **P1** | A-05 | TRIS/UP/OD/DR/LEDSDR 不参与引脚行为 | 忘配输出方向/上拉 → 继电器不吸合、按键乱触发 | 否（应用配置完整） |
-| [GAP-09](#gap-09p2xram-合法窗口-8kb--硅片-1kb) | ⬜ 未开始（含 GAP-23 家族门控遗留） | P2 | A-06 | XRAM 合法窗口 8KB ≠ CMS8S78xx 实际 1KB | 0x0400~0x1FFF 访问仿真合法、真机落入 XSFR | 否（仅用 0x10~0x15） |
+| [GAP-09](#gap-09p2xram-合法窗口-8kb--硅片-1kb) | ✅ 完成 | P2 | A-06 | XRAM 合法窗口 8KB ≠ CMS8S78xx 实际 1KB | 0x0400~0x1FFF 访问仿真合法、真机落入 XSFR | 否（仅用 0x10~0x15） |
 | [GAP-10](#gap-10p2生产-wasm-非-strict无头 runner-不按-warning-判失败) | ✅ 完成 | P2 | A-07 | 生产 wasm 非 STRICT，无头 runner 不消费 warning/OOB 计数 | 场景绿色掩盖越界访问与未建模特性调用 | 间接 |
 | [GAP-11](#gap-11p2c51-16-位-int--unsigned-char-语义差异未入红线手册) | ⬜ 未开始 | P2 | A-07（文档）+ B-04（语义根治） | C51 16 位 int / unsigned char 语义差异未文档化 | 依赖回绕/符号/移位的代码两端分叉 | 否（已人工核对） |
 | [GAP-12](#gap-12p2杂项-t234-时钟公式重复向量静默覆盖cleanup-注入面过宽w0c-缺口) | 🔧 部分（T2/3/4 公式参数化待做） | P2 | A-08 | T2/3/4 周期不跟 clock_hz；重复向量静默覆盖；cleanup 注入面过宽；P0EXTIF W0C 缺口 | 多类边角行为分叉（详见正文） | 否（仅用 T0） |
@@ -326,6 +326,8 @@ health_pot 的 10ms tick（T0 重载 0xB1E0）与 9600bps（TH1=217）都按 24M
 - **后果**：应用 XBYTE 访问 0x0400~0xEFFF 在仿真合法（静默落影子），真机落在未映射区/XSFR 行为未定义。红线手册 §3.5 只给了 4~16KB 通用口径，未按器件收窄。
 - **修复**：aperture 改为按 MCU 型号配置（CMS8S78xx=1024，AT89C52 无内部 XRAM 则按外接声明），从 board/wink-app.json 注入 CMake；XRAM 与 XSFR 窗口间的空洞访问应判 OOB。
 - **验收**：CMS8S 配置下访问 XBYTE[0x0400] 触发 STRICT 断言。
+- **落地（2026-09-11）**：`xdata_addr_legal()` 按运行时家族分流——CMS8S 内部 XRAM 收窄为 1KB（`MCS51_XRAM_SIZE_CMS8S78XX`），0x0400~0xEFFF 空洞判 OOB，0xF000 XSFR 窗口仅 CMS8S 家族存在；经典 8052 保留可配置 `WINK_MCS51_XDATA_SIZE`（默认 8KB）外部 aperture 且**无 XSFR 窗口**（同时收口 GAP-23 审阅遗留的家族门控：经典家族访问 0xF000 计 OOB、不触发 unmodeled-XSFR）。OOB 告警文案按家族区分。单测 `test_mcs51_xram_aperture`（CMS8S 0x03FF 合法/0x0400 OOB/0xF000 合法、经典 0xF000 OOB 且 XSFR 计数不动）；host 全绿 + 8 应用 22 场景零诊断。
+  - 与原计划偏差：aperture 未走 CMake 按型号注入（8KB cache 值保留为经典家族旋钮），改为 C++ 运行时按 `mcs51_context_get_family()` 选择，因家族信息已在 GAP-13 落地，运行时分流比构建期多目标更简单且两家族可同测；STRICT 断言已由既有 OOB STRICT 路径覆盖（同 `oob_trap`）。
 
 ### GAP-10（P2）生产 wasm 非 STRICT，无头 runner 不按 warning 判失败
 

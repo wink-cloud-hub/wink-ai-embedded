@@ -631,6 +631,11 @@ if(TARGET wink_mcs51_compat)
     add_mcs51_host_test(test_mcs51_xsfr_tripwire
         mcs51/unit/test_mcs51_xsfr_tripwire.cpp)
 
+    # GAP-09: family-gated XDATA aperture (CMS8S 1KB XRAM + CMS8S-only
+    # XSFR window; classic 8052 configurable external aperture).
+    add_mcs51_host_test(test_mcs51_xram_aperture
+        mcs51/unit/test_mcs51_xram_aperture.cpp)
+
     # GAP-23 STRICT twin: same TU, STRICT-built compat lib (death tests via
     # child re-execution). Mirrors the uart_tx_ready_strict block above.
     add_wink_host_test(test_mcs51_xsfr_tripwire_strict

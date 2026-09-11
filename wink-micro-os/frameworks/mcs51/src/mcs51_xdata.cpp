@@ -42,10 +42,36 @@ constexpr uint8_t KIND_XSFR = 2u;  // XSFR proxy (WinkXsfr / REG_CMS8S78XX.H)
 
 // CMS8S78xx extended-SFR window (MOVX @DPTR, manual §2.2): pin config
 // PxxCFG @ 0xF000..0xF033, ADC LDO ADCLDO @ 0xF692, …
-constexpr uint64_t XSFR_WINDOW_BASE = 0xF000ull;
+// GAP-09/GAP-23 family gating: the XSFR window and the unmodeled-XSFR
+// tripwire exist ONLY on the enhanced CMS8S family; on a classic 8052 the
+// same MOVX addresses are ordinary external RAM/IO space.
+constexpr uint64_t XSFR_WINDOW_BASE = MCS51_XRAM_WINDOW_BASE;
 
 bool     s_oob_warned[3] = {};   // once-per-kind warning latch
 uint32_t s_oob_count = 0;
+
+// Legal XDATA aperture for the active family (GAP-09):
+//  - CMS8S78xx: 1 KB on-chip XRAM, then a hole, then the 0xF000 XSFR window.
+//  - Classic:   the configurable WINK_MCS51_XDATA_SIZE external aperture;
+//               no XSFR window.
+bool xsfr_window_present() {
+    return mcs51_context_get_family() == MCS51_FAMILY_CMS8S78XX;
+}
+
+uint64_t xram_aperture_size() {
+    return xsfr_window_present()
+             ? static_cast<uint64_t>(MCS51_XRAM_SIZE_CMS8S78XX)
+             : static_cast<uint64_t>(WINK_MCS51_XDATA_SIZE);
+}
+
+// Legal xdata: ordinary XRAM aperture OR (CMS8S only) the XSFR window.
+bool xdata_addr_legal(uint64_t addr) {
+    if (addr < xram_aperture_size()) {
+        return true;
+    }
+    return xsfr_window_present() &&
+           (addr >= XSFR_WINDOW_BASE && addr < 0x10000ull);
+}
 
 // GAP-23 unmodeled-XSFR tripwire state (plain POD BSS, same policy pattern
 // as the UART TX-link gate and mcs51_unsupported.cpp). STRICT builds abort
@@ -98,12 +124,6 @@ void unmodeled_xsfr_trap(uint64_t addr, bool is_write) {
 #endif
 }
 
-// Legal xdata: ordinary XRAM aperture OR the XSFR window.
-bool xdata_addr_legal(uint64_t addr) {
-    return addr < (uint64_t)WINK_MCS51_XDATA_SIZE ||
-           (addr >= XSFR_WINDOW_BASE && addr < 0x10000ull);
-}
-
 void oob_trap(uint64_t addr, uint8_t kind, bool is_write) {
     ++s_oob_count;
 #ifdef WINK_MCS51_STRICT
@@ -121,13 +141,23 @@ void oob_trap(uint64_t addr, uint8_t kind, bool is_write) {
         s_oob_warned[kind] = true;
         const char *what = kind == KIND_WORD ? "XWORD"
                          : kind == KIND_XSFR ? "XSFR" : "XBYTE";
-        pal_log_w("MCS51",
-                  "XDATA %s %s out of bounds (addr=0x%04llX, legal: [0,%u) and "
-                  "[0xF000,0x10000)): %s",
-                  what,
-                  is_write ? "write" : "read",
-                  (unsigned long long)addr, (unsigned)WINK_MCS51_XDATA_SIZE,
-                  is_write ? "write dropped" : "returning 0xFF");
+        const unsigned aperture = static_cast<unsigned>(xram_aperture_size());
+        if (xsfr_window_present()) {
+            pal_log_w("MCS51",
+                      "XDATA %s %s out of bounds (addr=0x%04llX, legal: "
+                      "[0,%u) XRAM and [0xF000,0x10000) XSFR): %s",
+                      what, is_write ? "write" : "read",
+                      (unsigned long long)addr, aperture,
+                      is_write ? "write dropped" : "returning 0xFF");
+        } else {
+            pal_log_w("MCS51",
+                      "XDATA %s %s out of bounds (addr=0x%04llX, legal: "
+                      "[0,%u) external XDATA; classic family has no XSFR "
+                      "window): %s",
+                      what, is_write ? "write" : "read",
+                      (unsigned long long)addr, aperture,
+                      is_write ? "write dropped" : "returning 0xFF");
+        }
     }
 #endif
 }
