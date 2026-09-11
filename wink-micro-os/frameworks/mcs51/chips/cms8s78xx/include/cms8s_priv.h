@@ -74,6 +74,21 @@ typedef struct {
     bool              in_poll;
 } Cms8sPortExtIntState;
 
+// Timer3/Timer4 + T2 capture/compare state (owner: cms8s_timer.cpp,
+// stage4 S4-2 Step 2, S2-2 D6 handover). Compare re-arm on shared T2
+// addresses arrives through chained hooks (S4-D4), so no schedule
+// fingerprint is stored here.
+typedef struct {
+    bool     t3_running;
+    uint64_t t3_next_ovf_us;
+    uint8_t  t3_tr_prev;
+    bool     t4_running;
+    uint64_t t4_next_ovf_us;
+    uint8_t  t4_tr_prev;
+    uint8_t  t2_cap_last_level[4];
+    uint64_t t2_next_cmp_us[4];
+} Cms8sTimerState;
+
 // Aggregate chip block: ONE pool slot per context instance (BSS pool in
 // the register TU, indexed by ctx->instance_index). Timer T3/T4 +
 // capture/compare + port sampling join in stage4 (S2-2 D6 handover).
@@ -83,6 +98,7 @@ typedef struct {
     Cms8sAdcState   adc;
     Cms8sAdetState  adet;
     Cms8sPortExtIntState port_extint;
+    Cms8sTimerState timer;
     bool            in_poll;
 } Cms8sPriv;
 

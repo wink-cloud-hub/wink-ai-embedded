@@ -42,6 +42,11 @@ extern "C" void setUp(void) {}
 extern "C" void tearDown(void) {}
 extern "C" void mcs51_timer_init(struct Mcu51Context* ctx);
 extern "C" void mcs51_timer_poll(struct Mcu51Context* ctx);
+// Chip extended-timer model (stage4 split: T3/T4 + capture/compare live in
+// the chip package; Test 5/6 drive that silicon directly).
+extern "C" void cms8s_timer_init(struct Mcu51Context* ctx);
+extern "C" void cms8s_timer_poll(struct Mcu51Context* ctx);
+extern "C" void cms8s_timer_step_to(uint64_t now_us);
 extern "C" void wink_mcs51_host_set_ext_pin(uint16_t pin, uint8_t state);
 
 int main(void) {
@@ -167,6 +172,7 @@ int main(void) {
     // Reset context & timer
     mcs51_context_reset(ctx);
     mcs51_timer_init(ctx);
+    cms8s_timer_init(ctx);  // re-install chained hooks after the core re-init
     wink_mcs51_isr_enable();
     g_t2_hits = 0;
 
@@ -204,9 +210,11 @@ int main(void) {
     // Baseline LOW (0)
     wink_mcs51_host_set_ext_pin(0, 0);
     mcs51_timer_poll(ctx);
+    cms8s_timer_poll(ctx);
     // Transition to HIGH (1)
     wink_mcs51_host_set_ext_pin(0, 1);
     mcs51_timer_poll(ctx);
+    cms8s_timer_poll(ctx);
 
     check((ctx->sfr_shadow[0xC9] & 0x01u) != 0, "T2IF.T2C0IF must be set on CAP0 rising edge");
     check(ctx->sfr_shadow[0xCA] == 0x34u, "RLDL must capture TL2 value (0x34)");
@@ -216,6 +224,7 @@ int main(void) {
     // ── Test 6: Timer 2 Compare Mode & Periodic Stepping ─────────────────────
     mcs51_context_reset(ctx);
     mcs51_timer_init(ctx);
+    cms8s_timer_init(ctx);  // re-install chained hooks after the core re-init
     wink_mcs51_isr_enable();
 
     static int s_ovf_count = 0;
@@ -284,10 +293,11 @@ int main(void) {
     ctx->sfr_write_hooks[0xCC](ctx, 0xCC, 0, (uint8_t)(65536 - 2000));
     ctx->sfr_write_hooks[0xCD](ctx, 0xCD, 0, (uint8_t)((65536 - 2000) >> 8));
 
-    // Step through 20ms in 100us intervals
+    // Step through 20ms in 100us intervals (core overflow + chip compares).
     for (uint64_t t = 100; t <= 20000; t += 100) {
         ctx->virtual_us = t;
         wink_mcs51_timers_step_to(t);
+        cms8s_timer_step_to(t);
     }
 
     check(s_ovf_count == 20, "Timer 2 compare mode: exactly 20 overflows in 20ms (1ms period)");

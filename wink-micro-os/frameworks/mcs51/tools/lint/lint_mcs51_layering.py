@@ -103,12 +103,8 @@ BASELINE: list[tuple[str, str, str, str]] = [
     # S2-1 done: A-02 seeding lines (ADCLDO comment + 3000/3000) removed.
     # S3-H6: the PS_ row below is pruned too (no \bPS_ word left in the file;
     # the "caps_cache" substring has no word boundary and never matched).
-    # S3-1 transition expired in S4-1: extint code moved to chips/ WITH its
-    # chip-map usage; re-adding either must fail, not be waived.
-    ("src/mcs51_timer.cpp", "cms8s",
-     r"CMS8S_|cms8s_sfr_map", "stage4"),
-    # S3-1 transition expired in S4-2: uart code moved to chips/ WITH its
-    # chip-map usage (no xsfr/funccr/ps rows left: the generic TU is clean).
+    # S3-1 transition expired in S4-2: timer+uart code moved to chips/ WITH
+    # their chip-map usage; re-adding either must fail, not be waived.
     # (No ps_sel row: the generic sentinel is named SELECTOR_NONE.)
     # src/mcs51_family.cpp descriptor rows + refs -> by-design
     ("src/mcs51_family.cpp", "cms8s", r".*", "by-design"),
@@ -127,10 +123,8 @@ BASELINE: list[tuple[str, str, str, str]] = [
      r"CMS8S78xx|cms8s78xx", "stage5"),
     # src/mcs51_peripheral.cpp chip table: S4-C pruned (rows live in the
     # chip register TU now; re-adding one must fail, not be waived).
-    # src/mcs51_timer.cpp CKCON/W0C/PS_* -> stage4
-    ("src/mcs51_timer.cpp", "cms8s", r"CMS8S78xx", "stage4"),
-    ("src/mcs51_timer.cpp", "xsfr_addr", r"0xF0C6", "stage4"),
-    ("src/mcs51_timer.cpp", "ps_sel", r"PS_T", "stage4"),
+    # src/mcs51_timer.cpp T3/T4/capture/selector block: S4-2 pruned (lives in
+    # the chip model now; re-adding must fail, not be waived).
     # src/mcs51_uart.cpp source-select block: S4-2 pruned (lives in the chip
     # model now; re-adding must fail, not be waived).
     # src/mcs51_xdata.cpp XSFR window model + comments -> stage5
