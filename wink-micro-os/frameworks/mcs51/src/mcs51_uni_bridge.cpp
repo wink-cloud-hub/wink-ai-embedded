@@ -39,8 +39,11 @@ void js_pal_gpio_write(uint16_t pin, bool level, uint8_t strength) {
     wink_mcs51_pwm_meter_update(pin, level ? 1u : 0u, wink_mcs51_virtual_us());
 }
 
-// Channel-3 analog pull override (A-02 host test seam): per synthetic-pin
-// norm override; has-flag false = no override (returns 0.0, legacy).
+// Channel-3 analog pull override (A-02 host test seam): per rail-key norm
+// override (Stage1 dual-space partition, see mcs51_adc.h: keys 0~31 are MCU
+// physical pins, 32~63 board channels; this [64] table already covers both,
+// it is the partitioned space itself). has-flag false = no override
+// (returns 0.0, legacy).
 static float s_host_analog_norm[64];
 static bool s_host_analog_has[64];
 

@@ -31,9 +31,11 @@ extern const wink_app_callbacks_t *wink_app_get_callbacks(void);
  * firmware does (health_pot adc_init): LDO on + VSEL=3V + AN mux for the
  * exercised channels — the A-02 readiness gates (GAP-05) require them. */
 static void inject_cms8s_channels(void) {
+    // Stage1 (S1-1/S1-2): injection keys are rail keys — AN0->Pin 0,
+    // AN1->Pin 1, AN25->Pin 27 (AN_TO_PIN); ADCCHS channels unchanged.
     mcs51_adc_set_value(0,  0x0ABCu);
     mcs51_adc_set_value(1,  0x0801u);
-    mcs51_adc_set_value(25, 0x0FFFu);
+    mcs51_adc_set_value(27, 0x0FFFu);
     mcs51_get_context()->xdata_shadow[0xF692u] = 0xE0u;  /* ADCLDO LDOEN+VSEL_3V */
     mcs51_get_context()->xdata_shadow[0xF000u] = 0x01u;  /* P00CFG=AN0 */
     mcs51_get_context()->xdata_shadow[0xF001u] = 0x01u;  /* P01CFG=AN1 */

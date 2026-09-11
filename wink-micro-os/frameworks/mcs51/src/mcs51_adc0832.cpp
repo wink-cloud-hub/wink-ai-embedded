@@ -85,7 +85,9 @@ extern "C" void on_clk_write(void *ctx, uint8_t level) {
             // Channel locked (single-ended: ODD/SIGN selects CH0/CH1).
             const uint8_t ch = (uint8_t)(adc_state().channel_cfg & 0x01u);
             // 0 us instant conversion: pull the 8-bit code value right now.
-            adc_state().shift_data = (uint8_t)(mcs51_adc_get_value(ch) & 0xFFu);
+            // Stage1: the board-fabric key is explicit (`32+ch`, permanent);
+            // only the key expression changed, CH API and semantics unchanged.
+            adc_state().shift_data = (uint8_t)(mcs51_adc_get_value((uint8_t)(32u + ch)) & 0xFFu);
             adc_state().phase = PHASE_OUTPUT;
             adc_state().fall_count = 0u;
             // Leading Null bit window: DO drives 0 until the 3rd falling edge.

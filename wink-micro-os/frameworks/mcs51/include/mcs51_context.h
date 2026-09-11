@@ -247,12 +247,13 @@ typedef struct Mcu51Context {
     Mcs51SysProtState  sysProt;
     Mcs51BuzzerState   buzzer;
     Mcs51Cms8sAdcPriv  cms8sAdc;
-    uint16_t           adc_injected[MCS51_ADC_MAX_CHANNELS];
-    uint8_t            adc_inject_flag[MCS51_ADC_MAX_CHANNELS];
-    // A-02 ADC reference rail (GAP-05): Vref from ADCLDO.VSEL (mV),
-    // Vrail from board declaration / test seam (mV). Ratio Vrail/Vref
-    // scales the Pull-track norm->raw conversion. Defaults 3000/3000
-    // (ratio 1.0, zero regression) are seeded on context reset.
+    uint16_t           adc_injected[MCS51_ADC_MAX_RAIL_KEYS];
+    uint8_t            adc_inject_flag[MCS51_ADC_MAX_RAIL_KEYS];
+    // A-02 ADC reference rail (GAP-05): Vref/Vrail in mV, set by the chip
+    // layer through the generic mcs51_adc_set_vref/vrail_mv rail parameters
+    // (core holds no ADCLDO knowledge). Ratio Vrail/Vref scales the
+    // Pull-track norm->raw conversion. Defaults 3000/3000 (ratio 1.0,
+    // zero regression) are seeded on context reset.
     uint16_t           adc_vref_mv;
     uint16_t           adc_vrail_mv;
     Mcs51PwmMeter      pwm_meters[32];

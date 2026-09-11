@@ -19,6 +19,10 @@
 
 extern "C" {
 uint8_t js_pal_gpio_read_state(uint16_t pin);
+// Stage1 (S1-2): raw pull primitive for the dual-read heuristic below.
+// The value path keeps using mcs51_adc_get_value (injection-aware); only
+// the heuristic probes raw pulls so injected keys never misroute.
+float js_pal_adc_read_norm(uint16_t pin);
 }
 
 namespace {
@@ -106,6 +110,43 @@ void adc_notready_policy(uint32_t mask) {
 #endif
 }
 
+// AN channel -> MCU fabric physical Pin key (Stage1 S1-2, PLAN-20260911-MCS51-S1).
+// Explicit table, NO linear formula: the P3 segment is 24~27 (P3.0-3), so a
+// formula would misroute AN22-25. Locked by static_assert below.
+constexpr uint8_t AN_TO_PIN[26] = {
+    0u, 1u, 2u, 3u, 4u, 5u, 6u, 7u,          // AN0-7   -> P0.0-7
+    8u, 9u, 10u, 11u, 12u, 13u, 14u, 15u,    // AN8-15  -> P1.0-7
+    16u, 17u, 18u, 19u, 20u, 21u,            // AN16-21 -> P2.0-5
+    24u, 25u, 26u, 27u                       // AN22-25 -> P3.0-3
+};
+static_assert(AN_TO_PIN[22] == 24u, "AN22 must map to physical Pin 24 (P3.0)");
+static_assert(sizeof(AN_TO_PIN) == 26u, "AN_TO_PIN must cover AN0..AN25");
+
+// Stage1 compat (S1-2 Step 2, deleted in stage7): old frontends/tests drive
+// the SYNTH key `32+ch` for on-chip channels on the pull track (v1 misuse).
+// Switch + counter live in the bottom extern "C" block (external linkage,
+// test-observable); board-space `32+ch` pulls by devices/ stay legal and
+// are never warned (detection lives on the on-chip path only).
+#ifndef WINK_MCS51_STRICT
+bool s_synth_redirect_warned = false;
+#endif
+
+inline void synth_redirect_policy(void) {
+#ifdef WINK_MCS51_STRICT
+    assert(0 && "on-chip ADC read via synth key (WINK_MCS51_STRICT)");
+    std::abort();
+#else
+    if (cms8s_adc_synth_redirect_count < 0xFFFFFFFFu) {
+        ++cms8s_adc_synth_redirect_count;
+    }
+    if (!s_synth_redirect_warned) {
+        s_synth_redirect_warned = true;
+        pal_log_w("MCS51", "ADC on-chip channel pulled via synth key 32+ch "
+                           "(v1 misuse); redirected to physical pin, "
+                           "migrate frontend to pin keys");
+    }
+#endif
+}
 // AN channel -> pin CFG XSFR address. Assumed mapping (ref manual ADC chapter
 // + pin counts 8+8+6+4=26): AN0-7=P0.0-7, AN8-15=P1.0-7, AN16-21=P2.0-5,
 // AN22-25=P3.0-3. Returns 0xFFFF for internal/unmapped.
@@ -148,10 +189,12 @@ void do_adc_conversion(Mcu51Context* ctx) {
     const uint8_t ch = static_cast<uint8_t>(ctx->sfr_shadow[SFR_ADCCHS] & 0x3Fu);
 
     // Gate 0: LDO must be enabled; Vref follows VSEL (A-02, GAP-05).
+    // Stage1: ADCLDO baseline lives in the chip layer and reaches core
+    // only through the generic rail parameter (no ADCLDO in core).
     const uint8_t adcldo = ctx->xdata_shadow[XSFR_ADCLDO];
     const uint16_t vref_mv =
         ADC_VREF_MV[(adcldo & ADCLDO_VSEL_Msk) >> ADCLDO_VSEL_Pos];
-    ctx->adc_vref_mv = vref_mv;
+    mcs51_adc_set_vref_mv(vref_mv);
     if ((adcldo & ADCLDO_LDOEN) == 0u) {
         adc_notready_policy(WINK_MCS51_ADC_NOTREADY_LDO);
         ctx->sfr_shadow[SFR_ADCON0] =
@@ -187,7 +230,27 @@ void do_adc_conversion(Mcu51Context* ctx) {
 
     uint16_t raw;
     if (ch <= ADC_CH_MAX_EXTERNAL) {
-        raw = static_cast<uint16_t>(mcs51_adc_get_value(ch) & 0x0FFFu);
+        // Stage1 (S1-2): AN channel -> physical Pin key via explicit table.
+        // Core performs no mapping; the old `32+ch` synth misuse is gone.
+        const uint8_t pin_key = AN_TO_PIN[ch];
+        raw = static_cast<uint16_t>(mcs51_adc_get_value(pin_key) & 0x0FFFu);
+        // Stage1 compat (deleted stage7): old pull-track drivers that still
+        // feed the synth key `32+ch`. Redirect ONLY when the physical pin
+        // pulls a true 0.0 AND the synth key pulls > 0 — a bare `raw == 0`
+        // never qualifies (a real 0V short must report as-is), and an
+        // explicitly injected pin key never reroutes either.
+        if (cms8s_adc_dual_read_synth && raw == 0u &&
+            ctx->adc_inject_flag[pin_key] == 0u) {
+            const float pin_pull = js_pal_adc_read_norm(pin_key);
+            const float synth_pull =
+                js_pal_adc_read_norm(static_cast<uint16_t>(32u + ch));
+            if (pin_pull == 0.0f && synth_pull > 0.0f) {
+                raw = static_cast<uint16_t>(
+                    mcs51_adc_get_value(static_cast<uint8_t>(32u + ch)) &
+                    0x0FFFu);
+                synth_redirect_policy();
+            }
+        }
     } else {
         raw = 0u;  // AN63 (BGR/temp/VDD) not modeled in v1.
         (void)ADC_CH_INTERNAL;
@@ -241,6 +304,11 @@ extern "C" void on_adcon0_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val
 
 extern "C" {
 
+// Stage1 dual-read compat knobs (S1-2, deleted stage7): external linkage so
+// tests observe them; default ON. See cms8s_adc.h.
+bool cms8s_adc_dual_read_synth = true;
+uint32_t cms8s_adc_synth_redirect_count = 0u;
+
 void cms8s_adc_model_reset(struct Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
     Mcs51Cms8sAdcPriv* priv = get_adc_priv(ctx);
@@ -256,8 +324,16 @@ void cms8s_adc_model_reset(struct Mcu51Context* ctx) {
         s_adc_notready_warned[i] = false;
 #endif
     }
-    ctx->adc_vref_mv = 3000u;
-    ctx->adc_vrail_mv = 3000u;
+    // Stage1: reference defaults via the generic rail parameters (core API),
+    // not struct pokes — same values, chip-owned call path.
+    mcs51_adc_set_vref_mv(3000u);
+    mcs51_adc_set_vrail_mv(3000u);
+    // Stage1 compat counters reset per run (test isolation; the ON/OFF
+    // switch itself is sticky across resets by design).
+    cms8s_adc_synth_redirect_count = 0u;
+#ifndef WINK_MCS51_STRICT
+    s_synth_redirect_warned = false;
+#endif
 }
 
 void cms8s_adc_init(struct Mcu51Context* ctx) {

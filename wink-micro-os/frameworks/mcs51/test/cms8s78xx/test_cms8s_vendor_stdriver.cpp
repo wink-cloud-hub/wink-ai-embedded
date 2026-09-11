@@ -104,7 +104,8 @@ int main(void) {
     r = vendor_convert(ADC_CH_1);
     check(r == 0x0801u, "vendor API AN1 right: want 0x801");
 
-    mcs51_adc_set_value(25, 0x0FFFu);
+    // Stage1: injection keys are rail keys (AN25->Pin 27); ADCCHS stays AN.
+    mcs51_adc_set_value(27, 0x0FFFu);
     r = vendor_convert(ADC_CH_25);
     check(r == 0x0FFFu, "vendor API AN25 right: want 0xFFF");
     check(cms8s_adc_last_channel() == 25u, "vendor API last channel != AN25");

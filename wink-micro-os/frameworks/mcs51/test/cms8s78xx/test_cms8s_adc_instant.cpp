@@ -79,6 +79,8 @@ WINK_ISR(19) {
 // directly, so an empty definition closes the link.
 extern "C" void wink_mcs51_user_main(void) {}
 extern "C" void wink_mcs51_host_set_ext_pin(uint16_t pin, uint8_t state);
+extern "C" void wink_mcs51_host_set_analog_norm(uint16_t pin, float norm);
+extern "C" void wink_mcs51_host_analog_reset(void);
 
 extern "C" void setUp(void) {}
 extern "C" void tearDown(void) {}
@@ -176,8 +178,8 @@ int main(void) {
     check(cms8s_adc_conversion_count() == count_now,
           "conversion ran with ADEN clear");
 
-    // ── 8) Channel 25 (AN25 = P3.1) passes through the 32-entry rail ────────
-    mcs51_adc_set_value(25, 0x0FFFu);
+    // ── 8) Channel 25 (AN25 = P3.3 = Pin 27) passes through the 64-entry rail ─
+    mcs51_adc_set_value(27, 0x0FFFu);
     convert(25, true);
     check((uint8_t)ADRESH == 0x0Fu && (uint8_t)ADRESL == 0xFFu,
           "AN25 right 0xFFF -> want 0x0F/0xFF");
@@ -283,11 +285,57 @@ int main(void) {
     check(g_adc_isr_hits == isr_rising_start + 1u,
           "vector 19 not dispatched on rising edge trigger EOC");
 
+    // ── 14) Stage1 dual-read compat (deleted stage7) ──────────────────────
+    // Old pull-track drivers feed the synth key 32+ch for AN0 while the
+    // physical Pin 0 pulls 0.0: expect redirect value + count. Then: synth
+    // 0.0 must NOT redirect (true 0V protection); an injected pin key must
+    // win outright without rerouting (injection rail unaffected).
+    {
+        cms8s_adc_model_reset(mcs51_get_context());  // redirect count -> 0
+        wink_mcs51_host_analog_reset();
+        mcs51_adc_reset();
+        mcs51_get_context()->xdata_shadow[0xF692u] = 0xE0u;  // LDOEN+VSEL_3V
+        mcs51_get_context()->xdata_shadow[0xF000u] = 0x01u;  // P00CFG=AN0
+        mcs51_adc_set_vrail_mv(3000u);
+        // (a) synth-key pull redirects: 0.5 norm -> 2048 right-justified.
+        wink_mcs51_host_set_analog_norm(32u, 0.5f);  // v1 misuse: AN0 via 32+0
+        convert(0, true);
+        check((uint8_t)ADRESH == 0x08u && (uint8_t)ADRESL == 0x00u,
+              "synth-key pull must redirect to 2048 (0x0800)");
+        check(cms8s_adc_synth_redirect_count == 1u,
+              "synth redirect must count exactly once");
+        // (b) true 0V: synth pulls 0.0 too -> no redirect, raw stays 0.
+        wink_mcs51_host_analog_reset();
+        convert(0, true);
+        check((uint8_t)ADRESH == 0x00u && (uint8_t)ADRESL == 0x00u,
+              "true 0V short must report 0, never redirect");
+        check(cms8s_adc_synth_redirect_count == 1u,
+              "true 0V must not count a redirect");
+        // (c) switch OFF kills the redirect even with synth driven.
+        cms8s_adc_dual_read_synth = false;
+        wink_mcs51_host_set_analog_norm(32u, 0.5f);
+        convert(0, true);
+        check((uint8_t)ADRESH == 0x00u && (uint8_t)ADRESL == 0x00u,
+              "dual-read OFF must not redirect");
+        check(cms8s_adc_synth_redirect_count == 1u,
+              "dual-read OFF must not count");
+        cms8s_adc_dual_read_synth = true;
+        // (d) injected pin key wins without rerouting.
+        wink_mcs51_host_analog_reset();
+        mcs51_adc_set_value(0, 0x0123u);
+        convert(0, true);
+        check((uint8_t)ADRESH == 0x01u && (uint8_t)ADRESL == 0x23u,
+              "injected pin key must win outright (0x123)");
+        check(cms8s_adc_synth_redirect_count == 1u,
+              "injected pin key must not count a redirect");
+    }
+
     if (g_fails) {
         return 1;
     }
     printf("[mcs51] PASS: CMS8S78xx ADC 0-cycle model — ADGO self-clear, "
            "right/left packing, ADCIE/EA vector-19 gating, ADEN gate, "
-           "AN25/AN63 channels, XSFR window + OOB trap, ADET hardware trigger (falling & rising)\n");
+           "AN25/AN63 channels, XSFR window + OOB trap, ADET hardware trigger (falling & rising), "
+           "Stage1 synth-key dual-read compat\n");
     return 0;
 }

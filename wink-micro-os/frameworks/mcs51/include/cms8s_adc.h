@@ -27,6 +27,13 @@ uint64_t cms8s_adc_next_event_us(struct Mcu51Context* ctx);
 uint32_t cms8s_adc_conversion_count(void);
 uint8_t  cms8s_adc_last_channel(void);
 
+// Stage1 compat (S1-2 Step 2, deleted in stage7): dual-read switch for the
+// on-chip path's `32+ch` v1 misuse (default ON this stage) + observable
+// redirect counter for the compat unit test. Board-space `32+ch` pulls by
+// devices/ are permanently legal and never counted here.
+extern bool cms8s_adc_dual_read_synth;
+extern uint32_t cms8s_adc_synth_redirect_count;
+
 // A-02 ADC readiness gate (GAP-05): reason-bit mask + per-reason counters
 // (GAP-10 runner pattern, mirrors mcs51_uart notready). Bits:
 #define WINK_MCS51_ADC_NOTREADY_LDO  (1u << 0)
