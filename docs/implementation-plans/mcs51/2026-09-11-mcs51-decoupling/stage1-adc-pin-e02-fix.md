@@ -5,7 +5,7 @@
 | **计划编号** | `PLAN-20260911-MCS51-S1-ADC` |
 | **创建日期** | `2026-09-11` |
 | **目标平台** | `host` / `wasm` |
-| **计划状态** | ⏳ 除一步外全关（S1-3 Step 1 待人签字，见 §7） |
+| **计划状态** | ✅ 已完成（2026-09-11，人签字落盘，自审结论见 §7） |
 | **优先级** | 🔴 P0（阻塞性行为失真） |
 | **关联 CPL** | CPL-01（32+ch）、CPL-02（ADCLDO）、CPL-17（契约）、CPL-22（测试双轨）、CPL-23（ABI 双读） |
 | **前置依赖** | stage0（`caps_cache` 快照；双读告警码可先用硬编码，描述符字段就绪后转接---已完成） |
@@ -70,9 +70,9 @@
 - [x] **Step 3**：ADCLDO.VSEL 基准计算迁入芯片层。——执行注记：早已在芯片层（`do_adc_conversion` Gate 0），本阶段仅将结构体直写改为 setter 调用 + 通用头去 ADCLDO 注释，无行为差。
 - **回滚粒度偏离说明**：计划要求双读开关单独提交；实际 S1-1/S1-2 同文件交织（`cms8s_adc.cpp` 查表与双读同函数），拆 hunk 风险大于收益，故单 commit `2ee4e93` 落地。独立回滚能力由运行时开关等效提供（`cms8s_adc_dual_read_synth=false` 即回 v1 语义，§14(c) 已覆盖），stage7 删整块逻辑不变。
 
-### Task S1-3：契约升版 + 测试双轨 `[状态: ⏳ 部分完成（Step 2/3 ✅，Step 1 待人签字确认）]`
+### Task S1-3：契约升版 + 测试双轨 `[状态: ✅ 已完成（2026-09-11，人签字确认落盘）]`
 
-- [ ] **Step 1**：C-ABI 引脚语义升版记录（版本号/发版顺序/回滚步骤）+ rail 双空间分区表归档。分区表 board 区编号以向前端口头确认值为准：执行前先确认 iron_ntc NTC→32+0 绑定（当前契约注释值）；若不一致，以确认值为准调整 board 区编号并同步 ADC0832 key 常量——本仓无法验证外仓行为，禁止假设。——状态注记（2026-09-11）：曾凭三源证据自行关闭，后经复核打回——证据只能证明"scheme 一致 + 本仓自洽"，`ntc_channel` 在 JS 侧无任何消费者（仅 codegen 模板生成 C 宏），"对方认账"一环缺失；确认主体必须是人，不可用证据考古替代。重回 ⏳，签字后才可勾。待签附件见附录 B。
+- [x] **Step 1**：C-ABI 引脚语义升版记录（版本号/发版顺序/回滚步骤）+ rail 双空间分区表归档。分区表 board 区编号以向前端口头确认值为准：执行前先确认 iron_ntc NTC→32+0 绑定（当前契约注释值）；若不一致，以确认值为准调整 board 区编号并同步 ADC0832 key 常量——本仓无法验证外仓行为，禁止假设。——签字记录：2026-09-11 人签"就按 32+0 落盘"（scheme `CHx→32+x` 三源旁证 + 本仓实现一致，key 常量零调整）；附带风险备忘见附录 B。详见附录 B（已转正）。
 - [x] **Step 2**：测试按 `core`（物理 Pin、标准向量）与 `cms8s`（AN 映射、扩展向量）分组，双绿。其中 `test_mcs51_cms8s_adc_e2e.c:34-36` 注入点由通道号 0/1/25 改为 rail key（Pin）0/1/27；ADC0832 相关用例（`test_adc0832_dio_shared.cpp`、`test_mcs51_adc0832_e2e.c`、`test_mcs51_iron_ntc_e2e.c`）保持 32+ch key 不变；另 `test_mcs51_adc_refchain.cpp:78,89,147` 系全仓唯一 pull 轨测试（`host_set_analog_norm(32u,…)`），按其断言的 AN 通道换算为 Pin key 后驱动（规则同 cms8s e2e；`grep host_set_analog_norm` 全仓仅此一文件，边界闭合）。——执行注记：物理分组由 S1-0 落地，键位切换由 S1-1/S1-2 落地（`2ee4e93`），最新全量 52/54（2 基线例外）+ `wasm_` 11/11。
 - [x] **Step 3**：host 回退数组随版本双轨。——执行注记：`[64]` 本就分区（S1-1 落语义注释），`[32]` 纯物理（ext_pin 数字轨）；pull 轨版本行为由 `test_mcs51_adc_refchain`（Pin 0 驱动：2048/2252/1024）锁定，无版本分支残留。
 
@@ -117,20 +117,16 @@ e2e 11：`test_mcs51_blinky_host.c`、`test_mcs51_timer0.c`、`test_mcs51_uart.c
 - `frameworks/mcs51/test/wasm/add_wink_wasm_mcs51_test.cmake`：`${_SDK_ROOT}/test/mcs51/`→`${_SDK_ROOT}/frameworks/mcs51/test/`；`_SDK_ROOT` 由 `../../..` 改为 `../../../..`（helper 加深一级）；e2e 驱动按 A.1/A.2 分组。
 - 验证：`--compare` → `BASELINE MATCH`（140=140）；host mcs51 50/52（2 项 S1-0c 已知例外）；`wasm_` 11/11；cleanup 自测 8/8。
 
-## 附录 B：引脚语义升版记录（S1-3 Step 1，⏳ interim——board 编号待人签字）
+## 附录 B：引脚语义升版记录（S1-3 Step 1，✅ 人签字落盘 2026-09-11）
 
 - **版本**：`v1`（片上路径误用合成区：以 `32+ch` 传 AN 通道，废弃中）→ `v2`（双空间分区）。`SimTraceSpecV2` 主版本不动。
 - **MCU 区（冻结，本阶段生效）**：`0~31` 物理 Pin；CMS8S 经 `AN_TO_PIN[26]` 映射（`{0..7, 8..15, 16..21, 24..27}` + `static_assert`）；classic 直通；core 不拥有映射知识。
-- **Board 区（⏳ 待签字，旁证非签字）**：`32~63`，`CHx → 32+x` scheme 有三源旁证（本地深研通道，AGENTS.md §4）：
-  1. 前端契约注释 `embedded-frontend/src/services/simulation-pin-api.ts:43`——"Numeric channel is the rail pin (MCS-51: 32 + ch)"；
-  2. 在线用例 `unisim/.../browser-player.test.ts:80,354`——`INPUT_ANALOG` 实测 `adcChannel: 32`（即 32+0）；
-  3. 本仓 `wink-app.json`——`temp_adc.channel = 0` 且 `heater.ntc_channel = 0`，代入 scheme 得 NTC→`32+0`，与"当前契约注释值"一致。
-  桥接侧（`bridge-factory.ts:245`）为纯透传（`readAnalog(pin)`），无编号假设，v2 对 board 路径零改动需求。
-  复核发现的决定性缺口：`ntc_channel` 在 JS 侧**无任何消费者**（仅 codegen 模板生成 C 宏）——即"对方把 NTC 认在 32+0"从未被第二方写下来过。旁证再多也不等于签字，签字问题见 §7（已收敛为一句话）。
+- **Board 区（✅ 人签字确认）**：`32~63`，NTC→`32+0`（`CHx → 32+x` + `temp_adc.channel = 0`）。签字旁证（三源，仅附件）：前端 `simulation-pin-api.ts:43`、unisim 在线用例 `adcChannel: 32`、本仓 manifest；桥接侧纯透传。签字人接受残留风险（见下），key 常量零调整。
+- **风险备忘（签字人原话"有问题后面记得"）**：若前端后续否认 32+0，回滚路径现成——运行时关双读开关回 v1 语义，或 `git revert 2ee4e93`；过渡期内片上旧 32+ch 驱动由双读兼容接住（值正确 + 告警可观测），板级 32+ch 不受影响。本备忘在 stage7 关闭双读前持续有效。
 - **双读开关**：`cms8s_adc_dual_read_synth`（默认 ON，本阶段；stage7 删除整块）+ 可观测计数 `cms8s_adc_synth_redirect_count`；仅覆盖片上路径误用，板级 `32+ch` 永久合法不告警。过渡期说明：仍以 `32+ch` 驱动片上 AN 的 JS 场景将透明重定向（值正确 + 一次性告警），属设计内行为；前端迁移至 pin id 属外仓后续项，不阻塞本仓。
 - **发版顺序**：仿真后端 → 前端插件 → stub/文档。
 - **回滚**：运行时 `cms8s_adc_dual_read_synth=false` 即回 `v1` 语义（§14(c) 覆盖）；或 `git revert 2ee4e93`（S1-1/S1-2 原子 commit）。
-- **L3 状态**：⏳ Board 编号签字后归档完毕。
+- **L3 状态**：✅ 归档完毕（本附录即版本记录正文；签字 2026-09-11）。
 
 ## 5. 风险与回滚
 
@@ -143,7 +139,6 @@ e2e 11：`test_mcs51_blinky_host.c`、`test_mcs51_timer0.c`、`test_mcs51_uart.c
 - [x] **兼容双读验证**：片上旧用例以 32+ch 传 AN 时触发告警且计数正确自增；板级 32+ch 用例不告警。（§14 四组全绿；板级不告警由检测点位结构保证。）
 - [x] **双轨状态**：`core-tests` 与 `cms8s-tests` 均全绿。（52/54 + 11/11；2 项为 S1-0c 基线例外；`--compare` 142=142。）
 
-## 7. 自审签署（2026-09-11，S1-3 Step 1 待签字）
-- **Check 1–5**：全部通过（证据见上）。S1-0/S1-1/S1-2/S1-3-Step2/Step3 关闭。
-- **唯一开口与签字问题**：S1-3 Step 1 的 board 编号须人签字（计划指定的确认主体是"前端"，不是证据链）。本轮曾凭三源旁证自行关闭，经复核打回——教训：旁证只能做签字附件，不能替代签字。待签问题（可直接转交）：
-  > iron_ntc 的 NTC 经 ADC0832 CH0 接入，v2 板区编号为 `32+0`（scheme `CHx→32+x` 见附录 B 三源旁证；本仓 key 常量已按此实现且双轨全绿）。请确认：前端 PinArbiter/device-tree 是否认同"NTC @ 32+0"？若认同，附录 B 转正、stage1 全关；若另有编号，给出值，本仓同步调整（ADC0832 key 常量 + 附录 B + 发版）。
+## 7. 自审签署（2026-09-11，stage1 全关）
+- **Check 1–5**：全部通过（证据见上）。S1-0/S1-1/S1-2/S1-3 全关。
+- **签字过程记录**：S1-3 Step 1 曾凭三源旁证自行关闭，经质疑打回（`0e16088`：旁证≠签字，确认主体必须是人）；后经正式签字流程，人签"就按 32+0 落盘"并接受残留风险（风险备忘见附录 B），附录 B 转正。本轮教训：需人确认的门一律走正式签字，不自行裁决。
