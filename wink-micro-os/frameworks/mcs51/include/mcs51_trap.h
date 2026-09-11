@@ -11,6 +11,25 @@
 // delay/blocking call, (2) never yield the fiber, (3) be pure state machines
 // touching only model state + the SFR shadow, and (4) never advance virtual
 // time. Instant peripherals complete in 0 us (ADR-0072 D1).
+//
+// Shadow/hook write ordering (M6): the SFR proxy ALWAYS stores the new value
+// into sfr_shadow first, then invokes the write hook with (old, new). A hook
+// that needs non-trivial semantics (e.g. write-0-to-clear: shadow = old &
+// new) OVERWRITES the shadow; a hook that only observes (timer re-arm) must
+// leave it alone. Model-internal poll/step code writes the shadow DIRECTLY
+// without going through the bridge (no microstep is charged there) — hooks
+// must therefore never assume they observe every shadow mutation, only
+// firmware-issued writes via the proxy.
+//
+// Diagnosis-by-counter contract (M4): this framework reports fallible
+// conditions via monotonic counters + warn-once logs, NOT via wink_status_t.
+// Rationale: interception points (SFR/XDATA access, ISR registration) cannot
+// propagate errors into unmodified Keil firmware. Consumers (GAP-10 runner,
+// headless scenario verdicts) poll the counters: xdata OOB, unmodeled-XSFR,
+// UART-notready, unsupported-feature, duplicate-vector. STRICT builds abort
+// at the offending site instead of counting. Diagnostic counters are
+// PROCESS-level (file-static, shared across contexts); silicon state is
+// PER-CONTEXT (Mcu51Context fields, cleared by mcs51_context_reset).
 #pragma once
 
 #include <stdint.h>
@@ -34,6 +53,10 @@ typedef struct {
 
 // ── Internal-peripheral SFR hooks (port_idx 0xFF: TCON/SCON/ADCON/PCON) ────
 // Hook signatures explicitly carry struct Mcu51Context* ctx (Task R2 / R6).
+// M3: hook DEFINITIONS must carry C language linkage (extern "C") to match
+// these C-ABI typedefs — even when file-local (anonymous namespace gives the
+// internal linkage; do NOT add `static` inside a linkage specification,
+// GCC rejects it). See cms8s_sys.cpp for the pattern.
 typedef void (*mcs51_sfr_write_hook_t)(struct Mcu51Context* ctx, uint8_t addr,
                                        uint8_t old_val, uint8_t new_val);
 typedef void (*mcs51_sfr_read_hook_t)(struct Mcu51Context* ctx, uint8_t addr);
