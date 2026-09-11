@@ -93,6 +93,11 @@ BASELINE: list[tuple[str, str, str, str]] = [
     # gate's src/ scope — the row can never match again).
     # src/mcs51_bridge.cpp: S3-H6 pruned (bare includes + hard call gone;
     # re-adding either must fail, not be waived).
+    # S4-D5 transition (expires stage6): pre-codegen production default
+    # names the chip register entry under a family-macro guard (classic
+    # builds compile it out; the generated header replaces it in stage6).
+    ("src/mcs51_bridge.cpp", "cms8s",
+     r"cms8s78xx_register|WINK_MCU_CMS8S78XX", "stage6"),
     # src/mcs51_clock.cpp comment: S4-C scrubbed (generic wording now).
     # src/mcs51_context.cpp: WINK_MCU_* build routing is by-design;
     # ADCLDO seeding + PS_* seeds -> stage2.
