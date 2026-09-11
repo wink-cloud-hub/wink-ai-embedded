@@ -126,11 +126,19 @@ typedef struct {
     uint8_t out_bit;       // current DO drive level (1 = released/high)
 } Mcs51Adc0832State;
 
-// Owner: cms8s_sys.cpp (TA protection window).
+// Owner: cms8s_sys.cpp (TA protection window + WDT coarse model).
 typedef struct {
     // 0 = waiting 0xAA, 1 = got 0xAA waiting 0x55, 2 = unlocked (next
     // protected write passes and consumes the window).
     uint8_t ta_phase;
+    // virtual_us when 0xAA was accepted (TA window timeout, GAP-07 coarse).
+    uint64_t ta_aa_us;
+    // virtual_us of the last WDT start/feed (WDTRE 0->1 or WDTCLR strobe).
+    uint64_t wdt_last_feed_us;
+    // Overflow already counted for the current arming (one count per
+    // episode until the next feed; Release warn-once latch lives with the
+    // file-static diagnostic counter).
+    uint8_t wdt_overflow_latched;
 } Mcs51SysProtState;
 
 // Owner: cms8s_buzzer.cpp.
@@ -169,6 +177,19 @@ typedef struct {
     uint64_t low_time_us;
     uint32_t transitions;
 } Mcs51PwmMeter;
+
+// Owner: mcs51_xdata.cpp + mcs51_gpio.cpp (classic external MOVX bus,
+// GAP-24). Parts without on-chip XRAM drive P0 (AD0-7), P2 (A8-15),
+// P3.6 (/WR) and P3.7 (/RD) on every MOVX access, so firmware that mixes
+// XBYTE traffic with GPIO use of those pins is in silicon conflict.
+// xbus_used latches "MOVX seen"; gpio_bus_mask latches which bus pins were
+// touched as GPIO (P0: bits 0-7, P2: bits 8-15, P3.6/7: bits 16-17).
+// Cleared by context reset (memset); conflict counting is process-level
+// (file-static, M4) in mcs51_xdata.cpp.
+typedef struct {
+    uint8_t  xbus_used;
+    uint32_t gpio_bus_mask;
+} Mcs51ClassicBusState;
 
 // ── Standard Core MCU Context Container ────────────────────────────────────
 // sizeof(Mcu51Context) ~ 68 KB (with 64 KB XDATA shadow).
@@ -224,7 +245,16 @@ typedef struct Mcu51Context {
     Mcs51Cms8sAdcPriv  cms8sAdc;
     uint16_t           adc_injected[MCS51_ADC_MAX_CHANNELS];
     uint8_t            adc_inject_flag[MCS51_ADC_MAX_CHANNELS];
+    // A-02 ADC reference rail (GAP-05): Vref from ADCLDO.VSEL (mV),
+    // Vrail from board declaration / test seam (mV). Ratio Vrail/Vref
+    // scales the Pull-track norm->raw conversion. Defaults 3000/3000
+    // (ratio 1.0, zero regression) are seeded on context reset.
+    uint16_t           adc_vref_mv;
+    uint16_t           adc_vrail_mv;
     Mcs51PwmMeter      pwm_meters[32];
+    // GAP-24 classic external MOVX bus occupancy (per-instance silicon
+    // state; zeroed by context reset via memset).
+    Mcs51ClassicBusState classicBus;
 } Mcu51Context;
 
 // ── Active context pointer and accessors ───────────────────────────────────

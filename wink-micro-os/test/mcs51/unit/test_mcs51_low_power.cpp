@@ -39,6 +39,9 @@ WINK_ISR(0) {
 extern "C" void wink_mcs51_user_main(void) {}
 extern "C" void setUp(void) {}
 extern "C" void tearDown(void) {}
+extern "C" void wink_mcs51_host_set_ext_pin(uint16_t pin, uint8_t state);
+extern "C" void wink_mcs51_host_ext_pins_reset(void);
+extern "C" void wink_mcs51_extint_poll(void);
 
 int main(void) {
     Mcu51Context* ctx = mcs51_get_context();
@@ -89,6 +92,50 @@ int main(void) {
     mcs51_raise_irq(IRQ_SOURCE_INT0);
     mcs51_irq_scan_and_dispatch();
     check(g_int0_hits == 1, "INT0 ISR must be dispatched when raised");
+
+    wink_event_queue_deinit();
+
+    // ── Test 3: PD wake via GPIO port interrupt (GAP-17') ───────────────────
+    // Port interrupts are a CMS8S78xx STOP wake source (ref manual §5.4.1);
+    // the model posts one wake event per matched edge (EA + PD gated).
+    mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
+    mcs51_context_reset(ctx);
+    wink_mcs51_isr_enable();
+    st = wink_event_queue_init(16);
+    (void)st;
+    wink_mcs51_host_ext_pins_reset();
+
+    ctx->sfr_shadow[0xA8] = 0x80u;    // EA = 1
+    ctx->sfr_shadow[0xAD] = 0x04u;    // P1EXTIE.2 enable
+    ctx->xdata_shadow[0xF08Au] = 0x02u;  // P1EICFG2 = falling edge
+    wink_mcs51_host_set_ext_pin(10u, 1u);  // P1.2 idle high
+    wink_mcs51_extint_poll();              // prime sample (have_sample)
+    ctx->sfr_shadow[0x87] = 0x02u;    // enter PD (direct shadow: no block)
+    wink_mcs51_test_advance_virtual_us(10000u);  // pass 10 ms sample throttle
+    wink_mcs51_host_set_ext_pin(10u, 0u);  // falling edge
+    wink_mcs51_extint_poll();
+
+    check((ctx->sfr_shadow[0xB5] & 0x04u) != 0u, "P1EXTIF.2 flag must be set");
+    {
+        wink_event_t evt;
+        check(wink_event_pend(&evt, 0u) == 0, "port edge in PD must post wake");
+        check(wink_event_pend(&evt, 0u) != 0, "held level must not re-post");
+    }
+
+    // EA = 0 gate: flag still records, CPU must not wake.
+    ctx->sfr_shadow[0xB5] = 0x00u;    // clear flag (test seam)
+    ctx->sfr_shadow[0xA8] = 0x00u;    // EA = 0
+    wink_mcs51_host_set_ext_pin(10u, 1u);
+    wink_mcs51_test_advance_virtual_us(10000u);
+    wink_mcs51_extint_poll();              // re-prime high
+    wink_mcs51_host_set_ext_pin(10u, 0u);
+    wink_mcs51_test_advance_virtual_us(10000u);
+    wink_mcs51_extint_poll();
+    check((ctx->sfr_shadow[0xB5] & 0x04u) != 0u, "flag must set even with EA=0");
+    {
+        wink_event_t evt;
+        check(wink_event_pend(&evt, 0u) != 0, "EA=0 must not post PD wake");
+    }
 
     wink_event_queue_deinit();
 

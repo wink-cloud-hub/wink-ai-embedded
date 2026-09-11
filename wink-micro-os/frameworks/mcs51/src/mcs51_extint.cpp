@@ -8,6 +8,7 @@
 #include "mcs51_context.h"
 #include "mcs51_sfr_map.h"
 #include "mcs51_trap.h"
+#include "wink_event.h"
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_isr.h"
 
@@ -33,6 +34,7 @@ namespace {
 
 constexpr uint8_t SFR_TCON = 0x88;
 constexpr uint8_t SFR_IE   = 0xA8;
+constexpr uint8_t SFR_PCON = 0x87;  // PCON.1 = Power-Down (GAP-17' wake gate)
 
 constexpr uint8_t TCON_IT0 = 0u;  // TCON.0: 0=low level, 1=falling edge
 constexpr uint8_t TCON_IE0 = 1u;  // TCON.1: INT0 edge flag
@@ -160,6 +162,17 @@ void poll_port_ints(Mcu51Context* ctx, bool force, uint64_t now) {
                 if (match) {
                     extif |= static_cast<uint8_t>(1u << b);
                     ctx->sfr_shadow[MCS51_SFR_P0EXTIF + p] = extif;
+                    // GAP-17': STOP (Power-Down) wake via GPIO port
+                    // interrupt (ref manual §5.4.1). Mirrors the INT0/INT1
+                    // PD clause in mcs51_raise_irq: EA-gated, PD-bit-gated,
+                    // one post per edge (match fires once per transition,
+                    // so a held level cannot flood the event queue).
+                    // WUT/LSE/SWE/LVD have no model and stay unwakeable
+                    // (redline §4.7).
+                    if (ea && (ctx->sfr_shadow[SFR_PCON] & 0x02u) != 0u) {
+                        wink_event_t evt = {0};
+                        (void)wink_event_post(&evt);
+                    }
                 }
             }
         }

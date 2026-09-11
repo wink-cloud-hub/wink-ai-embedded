@@ -55,6 +55,14 @@ void mcs51_adc_set_value(uint8_t ch, uint16_t raw);
 // Framework init: clear all injection overrides.
 void mcs51_adc_reset(void);
 
+// A-02 reference rail (GAP-05): Vref from ADCLDO.VSEL (mV), Vrail from
+// board declaration / test seam (mV). Pull-track conversion scales
+// norm->raw by Vrail/Vref; injection rail bypasses scaling (deterministic).
+void mcs51_adc_set_vref_mv(uint16_t mv);
+void mcs51_adc_set_vrail_mv(uint16_t mv);
+uint16_t mcs51_adc_get_vref_mv(void);
+uint16_t mcs51_adc_get_vrail_mv(void);
+
 // Forward-compat shims: the external 8-bit ADC0832 maps straight onto the
 // unified rail (umbrella SSOT §3.4).
 static inline void mcs51_adc0832_set_value(uint8_t ch, uint8_t val) {

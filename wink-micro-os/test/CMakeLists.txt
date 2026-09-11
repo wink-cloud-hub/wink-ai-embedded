@@ -804,6 +804,87 @@ if(TARGET wink_mcs51_compat)
         mcs51/unit/test_cms8s_buzzer.cpp)
     target_compile_definitions(test_mcs51_cms8s_buzzer PRIVATE WINK_MCU_CMS8S78XX=1)
 
+    # Stage 3 A-02: ADC reference chain — VSEL/Vrail scaling (Pull track),
+    # LDO/mux readiness gates + counters, DIV-sensitive charge_us.
+    add_mcs51_host_test(test_mcs51_adc_refchain
+        mcs51/unit/test_mcs51_adc_refchain.cpp)
+    target_compile_definitions(test_mcs51_adc_refchain PRIVATE WINK_MCU_CMS8S78XX=1)
+
+    # Stage 3 A-05: GPIO direction modeling — TRIS-gated suppression,
+    # pull-up HiZ default, analog digital-read mask (classic passthrough).
+    add_mcs51_host_test(test_mcs51_gpio_dir
+        mcs51/unit/test_mcs51_gpio_dir.cpp)
+
+    # Stage 3 A-03 (ADR-0081): UART TX per-byte synchronous charge — baud
+    # anchors per source, frame widths, 22B scale, no-charge paths.
+    add_mcs51_host_test(test_mcs51_uart_charge
+        mcs51/unit/test_mcs51_uart_charge.cpp)
+    # A-03 STRICT twin: same TU, STRICT-built compat lib (death test for the
+    # uncomputable-source abort). Mirrors the uart_tx_ready_strict block.
+    add_wink_host_test(test_mcs51_uart_charge_strict
+        mcs51/unit/test_mcs51_uart_charge.cpp)
+    target_link_libraries(test_mcs51_uart_charge_strict PRIVATE wink_mcs51_compat_strict wink_runtime)
+    target_compile_definitions(test_mcs51_uart_charge_strict PRIVATE SIMULATION=1 WINK_MCU_AT89C52=1)
+    if(NOT MSVC)
+        target_compile_options(test_mcs51_uart_charge_strict PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:-std=c++17 -Wno-write-strings
+                -fno-exceptions -fno-rtti -fno-threadsafe-statics>)
+    else()
+        target_compile_options(test_mcs51_uart_charge_strict PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:/std:c++17 /utf-8 /wd4101 /wd4245>)
+    endif()
+    target_include_directories(test_mcs51_uart_charge_strict PRIVATE ${_MCS51_FW_DIR}/include)
+    if(TARGET generate_config)
+        add_dependencies(test_mcs51_uart_charge_strict generate_config)
+    endif()
+
+    # Stage 3 A-04 (GAP-07): WDT coarse model + TA narrowing — WTS intervals,
+    # arming/feed lifecycle, health_pot scale, interleave/timeout rollback.
+    add_mcs51_host_test(test_mcs51_wdt_ta
+        mcs51/unit/test_mcs51_wdt_ta.cpp)
+
+    # A-04 STRICT twin: same TU, STRICT-built compat lib (overflow abort).
+    add_wink_host_test(test_mcs51_wdt_ta_strict
+        mcs51/unit/test_mcs51_wdt_ta.cpp)
+    target_link_libraries(test_mcs51_wdt_ta_strict PRIVATE wink_mcs51_compat_strict wink_runtime)
+    target_compile_definitions(test_mcs51_wdt_ta_strict PRIVATE SIMULATION=1 WINK_MCU_AT89C52=1)
+    if(NOT MSVC)
+        target_compile_options(test_mcs51_wdt_ta_strict PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:-std=c++17 -Wno-write-strings
+                -fno-exceptions -fno-rtti -fno-threadsafe-statics>)
+    else()
+        target_compile_options(test_mcs51_wdt_ta_strict PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:/std:c++17 /utf-8 /wd4101 /wd4245>)
+    endif()
+    target_include_directories(test_mcs51_wdt_ta_strict PRIVATE ${_MCS51_FW_DIR}/include)
+    if(TARGET generate_config)
+        add_dependencies(test_mcs51_wdt_ta_strict generate_config)
+    endif()
+
+    # Stage 3 A-08 (GAP-24): classic external MOVX bus conflict + IAP trap —
+    # XBYTE/GPIO both orders, P1 exemption, CMS8S zero-regression, IAP block.
+    add_mcs51_host_test(test_mcs51_classic_bus
+        mcs51/unit/test_mcs51_classic_bus.cpp)
+
+    # GAP-24 STRICT twin: same TU, STRICT-built compat lib (conflict + IAP
+    # abort via child re-execution). Mirrors the wdt_ta_strict block.
+    add_wink_host_test(test_mcs51_classic_bus_strict
+        mcs51/unit/test_mcs51_classic_bus.cpp)
+    target_link_libraries(test_mcs51_classic_bus_strict PRIVATE wink_mcs51_compat_strict wink_runtime)
+    target_compile_definitions(test_mcs51_classic_bus_strict PRIVATE SIMULATION=1 WINK_MCU_AT89C52=1)
+    if(NOT MSVC)
+        target_compile_options(test_mcs51_classic_bus_strict PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:-std=c++17 -Wno-write-strings
+                -fno-exceptions -fno-rtti -fno-threadsafe-statics>)
+    else()
+        target_compile_options(test_mcs51_classic_bus_strict PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:/std:c++17 /utf-8 /wd4101 /wd4245>)
+    endif()
+    target_include_directories(test_mcs51_classic_bus_strict PRIVATE ${_MCS51_FW_DIR}/include)
+    if(TARGET generate_config)
+        add_dependencies(test_mcs51_classic_bus_strict generate_config)
+    endif()
+
     # M6: NTC closed-loop thermostat through the board-codegen ADC0832 seam.
     # The driver does NOT call mcs51_adc0832_init — the bridge auto-binds the
     # codegen pins (CS=P2.0/CLK=P2.1/DIO=P2.2) from mcs51_board_config.h; the

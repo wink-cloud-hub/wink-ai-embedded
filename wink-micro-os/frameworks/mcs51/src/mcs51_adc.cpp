@@ -24,6 +24,24 @@ void mcs51_adc_reset(void) {
         ctx->adc_inject_flag[ch] = 0u;
         ctx->adc_injected[ch] = 0u;
     }
+    ctx->adc_vref_mv = 3000u;
+    ctx->adc_vrail_mv = 3000u;
+}
+
+void mcs51_adc_set_vref_mv(uint16_t mv) {
+    mcs51_get_context()->adc_vref_mv = (mv != 0u) ? mv : 3000u;
+}
+
+void mcs51_adc_set_vrail_mv(uint16_t mv) {
+    mcs51_get_context()->adc_vrail_mv = (mv != 0u) ? mv : 3000u;
+}
+
+uint16_t mcs51_adc_get_vref_mv(void) {
+    return mcs51_get_context()->adc_vref_mv;
+}
+
+uint16_t mcs51_adc_get_vrail_mv(void) {
+    return mcs51_get_context()->adc_vrail_mv;
 }
 
 void mcs51_adc_set_value(uint8_t ch, uint16_t raw) {
@@ -49,14 +67,19 @@ uint16_t mcs51_adc_get_value(uint8_t ch) {
     }
     // Production Pull track: instant channel-3 sample → 12-bit code value
     // (CMS8S78xx native width; the 8-bit ADC0832 masks the low byte in its
-    // own shim).
+    // own shim). A-02 (GAP-05): scale by Vrail/Vref so a VDD-railed NTC
+    // divider reads higher than a VREF-railed one at the same ratio.
+    // Injection rail bypasses scaling (deterministic test codes).
     float norm = js_pal_adc_read_norm((uint16_t)(32u + ch));
     if (norm < 0.0f) {
         norm = 0.0f;
     } else if (norm > 1.0f) {
         norm = 1.0f;
     }
+    const uint32_t vref = (ctx->adc_vref_mv != 0u) ? ctx->adc_vref_mv : 3000u;
+    const uint32_t vrail = (ctx->adc_vrail_mv != 0u) ? ctx->adc_vrail_mv : 3000u;
     uint32_t raw = (uint32_t)(norm * 4095.0f + 0.5f);
+    raw = (raw * vrail) / vref;
     if (raw > 4095u) {
         raw = 4095u;
     }

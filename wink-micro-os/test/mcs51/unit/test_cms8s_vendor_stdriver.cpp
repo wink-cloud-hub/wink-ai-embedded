@@ -80,6 +80,16 @@ int main(void) {
     mcs51_adc_reset();
     cms8s_adc_init(mcs51_get_context());
 
+    // A-02 gates (GAP-05): board-level ADC init as real firmware does —
+    // LDO on + VSEL=3V + AN mux for every channel exercised below.
+    ADC_EnableLDO();
+    ADC_ConfigADCVref(ADC_VREF_3V);
+    mcs51_get_context()->xdata_shadow[0xF000u] = 0x01u;  // P00CFG=AN0
+    mcs51_get_context()->xdata_shadow[0xF001u] = 0x01u;  // P01CFG=AN1
+    mcs51_get_context()->xdata_shadow[0xF002u] = 0x01u;  // P02CFG=AN2
+    mcs51_get_context()->xdata_shadow[0xF003u] = 0x01u;  // P03CFG=AN3
+    mcs51_get_context()->xdata_shadow[0xF033u] = 0x01u;  // P33CFG=AN25
+
     // ── 1) Right-justify mode through the vendor config API ─────────────────
     // ADC_ConfigRunMode(div, ADC_RESULT_RIGHT) sets ADFM; ADCKS is accepted.
     ADC_ConfigRunMode(ADC_CLK_DIV_16, ADC_RESULT_RIGHT);
@@ -130,6 +140,8 @@ int main(void) {
     ADC_DisableInt();
 
     // ── 5) XSFR LDO through the vendor API (WinkXsfr window, no OOB) ───────
+    // Isolate the LDO API test from the §1 prologue init above.
+    ADCLDO = 0u;
     const uint32_t oob_before = wink_mcs51_xdata_oob_count();
     ADC_EnableLDO();                       // ADCLDO |= LDOEN (0x80)
     check((uint8_t)ADCLDO == 0x80u, "vendor ADC_EnableLDO: ADCLDO want 0x80");
@@ -145,6 +157,7 @@ int main(void) {
           "vendor ADC_DisableLDO did not clear LDOEN");
     check(wink_mcs51_xdata_oob_count() == oob_before,
           "vendor XSFR LDO access counted as OOB");
+    ADC_EnableLDO();  // re-enable: §6 AN63 conversion needs the LDO gate open
 
     // ── 6) Compare / trigger / AN63 config calls: smoke (accepted, no fault)
     ADC_ConfigCompareValue(0x800u);        // ADCMPL/ADCMPH

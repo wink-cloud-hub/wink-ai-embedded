@@ -39,9 +39,30 @@ void js_pal_gpio_write(uint16_t pin, bool level, uint8_t strength) {
     wink_mcs51_pwm_meter_update(pin, level ? 1u : 0u, wink_mcs51_virtual_us());
 }
 
+// Channel-3 analog pull override (A-02 host test seam): per synthetic-pin
+// norm override; has-flag false = no override (returns 0.0, legacy).
+static float s_host_analog_norm[64];
+static bool s_host_analog_has[64];
+
 float js_pal_adc_read_norm(uint16_t pin) {
-    (void)pin;
+    if (pin < 64u && s_host_analog_has[pin]) {
+        return s_host_analog_norm[pin];
+    }
     return 0.0f;
+}
+
+void wink_mcs51_host_set_analog_norm(uint16_t pin, float norm) {
+    if (pin < 64u) {
+        s_host_analog_norm[pin] = norm;
+        s_host_analog_has[pin] = true;
+    }
+}
+
+void wink_mcs51_host_analog_reset(void) {
+    for (uint32_t i = 0; i < 64u; ++i) {
+        s_host_analog_norm[i] = 0.0f;
+        s_host_analog_has[i] = false;
+    }
 }
 
 // Channel-2 UART TX (mirrors targets/wasm/wasm_bridge.h:

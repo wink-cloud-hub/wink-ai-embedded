@@ -27,6 +27,14 @@ uint64_t cms8s_adc_next_event_us(struct Mcu51Context* ctx);
 uint32_t cms8s_adc_conversion_count(void);
 uint8_t  cms8s_adc_last_channel(void);
 
+// A-02 ADC readiness gate (GAP-05): reason-bit mask + per-reason counters
+// (GAP-10 runner pattern, mirrors mcs51_uart notready). Bits:
+#define WINK_MCS51_ADC_NOTREADY_LDO  (1u << 0)
+#define WINK_MCS51_ADC_NOTREADY_MUX  (1u << 1)
+uint32_t cms8s_adc_notready_mask(void);
+uint32_t cms8s_adc_notready_count(uint32_t reason_bit);
+uint32_t cms8s_adc_notready_total(void);
+
 #ifdef __cplusplus
 }
 #endif

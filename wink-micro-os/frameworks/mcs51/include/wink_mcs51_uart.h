@@ -1,21 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
 // MCS-51 UART functional model (M3, AD-2).
 //
-// Functional-level 8051 serial port: a write to SBUF (SFR 0x99) emits the byte
-// to the simulated serial sink immediately (zero simulated transmission delay)
-// and sets the transmit-complete flag TI (SCON.1, bit address 0x99) in the same
-// call, BEFORE returning. This is the simplest correct semantics for the
-// universal Keil transmit idiom:
+// Functional-level 8051 serial port: a write to SBUF (SFR 0x99) charges one
+// byte-time of virtual time at the current baud rate (ADR-0081, A-03), emits
+// the byte to the simulated serial sink, and sets the transmit-complete flag
+// TI (SCON.1, bit address 0x99) in the same call, BEFORE returning. Keil idiom:
 //
-//     SBUF = c;          // -> byte emitted, TI set synchronously
+//     SBUF = c;          // -> charge byte_us, byte emitted, TI set synchronously
 //     while(!TI);        // first read of TI observes 1; loop closes at once
 //     TI = 0;            // software clears TI (bit write to SCON 0x98)
 //
-// There is NO UART timer/baud model (AD-2): the byte is not delayed, and the
-// model never yields/blocks. When EA+ES (IE.7 / IE.4) are enabled the write
-// vectors the UART ISR (vector 4); hardware does NOT auto-clear TI/RI on
-// vectoring, so TI stays set until software clears it (mirrors the timer
-// model's gating, not its auto-clear).
+// Baud comes from the FUNCCR-selected source (Timer1/BRT/TMR2/TMR4; classic
+// parts Timer1 only) via the vendor UART_ConfigBaudRate formulas; frame is
+// 10 bits (mode 1) or 11 bits (mode 3). Unready links (A-01 gate) send
+// instantly with no charge. TI is NEVER delayed to a future event (that
+// would be an async timer, forbidden by保真度 §3.1) — the model never
+// yields/blocks beyond the synchronous charge. When EA+ES (IE.7 / IE.4) are
+// enabled the write vectors the UART ISR (vector 4); hardware does NOT
+// auto-clear TI/RI on vectoring, so TI stays set until software clears it
+// (mirrors the timer model's gating, not its auto-clear).
 //
 // The byte goes to three sinks: the host/wasm console (plain putchar to
 // stdout; emscripten libc maps stdout to Node's fd 1), an in-memory capture
@@ -97,11 +100,21 @@ uint32_t wink_mcs51_uart_notready_count(uint32_t reason_bit);
 // Aggregate count across all reason buckets (GAP-10 runner verdict).
 uint32_t wink_mcs51_uart_notready_total(void);
 
+// ── SBUF overwrite gate (GAP-25; C ABI) ─────────────────────────────────────
+// A write landing while TI is still set from the previous byte corrupts the
+// in-flight shift register on silicon (correct firmware always clears TI
+// first). STRICT builds assert+abort; release builds log once, count every
+// occurrence (saturating), and still send the byte.
+uint32_t wink_mcs51_uart_overwrite_total(void);
+
 // ── Test observability (C ABI) ──────────────────────────────────────────────
 // Number of bytes captured since reset (capped at the buffer capacity).
 uint32_t wink_mcs51_uart_byte_count(void);
 // The i-th captured byte (0-based). Indices >= byte_count() read as 0.
 uint8_t wink_mcs51_uart_byte_at(uint32_t i);
+// Baud (Hz) used for the most recent charged byte; 0 when the last write
+// was unready/uncomputable or no byte has been written since reset.
+uint32_t wink_mcs51_uart_last_baud_hz(void);
 
 #ifdef __cplusplus
 }  // extern "C"
