@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 #include "mcs51_context.h"
+#include "mcs51_test_harness.h"
 #include "mcs51_family.h"
 #include "wink_mcs51_strict.h"
 
@@ -77,10 +78,12 @@ int main(void) {
 
     // ── 3) caps_cache snapshot on reset/set_family ───────────────────────
     Mcu51Context* ctx = mcs51_get_context();
+    mcs51_test_register_family(MCS51_FAMILY_CMS8S78XX);
     mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
     mcs51_context_reset(ctx);
     check(ctx->caps_cache == cms8s->capabilities,
           "caps_cache snapshots cms8s caps after reset");
+    mcs51_test_register_family(MCS51_FAMILY_CLASSIC);
     mcs51_context_set_family(MCS51_FAMILY_CLASSIC);
     check(ctx->caps_cache == classic->capabilities,
           "caps_cache snapshots classic caps after set_family");
@@ -88,6 +91,7 @@ int main(void) {
     check(ctx->caps_cache == classic->capabilities,
           "caps_cache survives classic reset");
     // Restore the suite default (classic) for later TUs in this process.
+    mcs51_test_register_family(MCS51_FAMILY_CLASSIC);
     mcs51_context_set_family(MCS51_FAMILY_CLASSIC);
 
     // ── 4) STRICT feature numbers frozen (never renumber) ───────────────

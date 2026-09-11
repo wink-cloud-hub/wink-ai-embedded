@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 #include "mcs51_context.h"
+#include "mcs51_test_harness.h"
 #include "mcs51_trap.h"
 #include "wink_mcs51_gpio.h"
 
@@ -46,6 +47,7 @@ int main(void) {
 
     // ── 1) Classic family: unconditional drive (legacy) ────────────────────
     {
+        mcs51_test_register_family(MCS51_FAMILY_CLASSIC);
         mcs51_context_set_family(MCS51_FAMILY_CLASSIC);
         mcs51_context_reset(mcs51_get_context());
         wink_mcs51_gpio_diag_reset();
@@ -61,6 +63,7 @@ int main(void) {
 
     // ── 2) CMS8S TRIS=input suppresses external notify, latch holds ───────
     {
+        mcs51_test_register_family(MCS51_FAMILY_CMS8S78XX);
         mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
         mcs51_context_reset(mcs51_get_context());
         wink_mcs51_gpio_diag_reset();

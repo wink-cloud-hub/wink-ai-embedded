@@ -23,17 +23,24 @@ extern "C" {
 void cms8s78xx_register(void);
 void at89c52_register(void);
 
-// Switch the (single, active) test context to `family` with its chip
-// models registered. Replaces raw set_family + context_reset pairs in
-// cms8s tests and e2e drivers (classic tests keep raw reset: the empty
-// at89 register is a no-op but documents the protocol).
-static inline void mcs51_test_use_family(uint8_t family) {
+// Register the chip models for `family` without touching any context.
+// Insert before legacy set_family lines to keep their exact reset order
+// (zero behavior change); use_family below for new code.
+static inline void mcs51_test_register_family(uint8_t family) {
     mcs51_peripheral_registry_reset();
     if (family == MCS51_FAMILY_CMS8S78XX) {
         cms8s78xx_register();
     } else {
         at89c52_register();
     }
+}
+
+// Switch the (single, active) test context to `family` with its chip
+// models registered. Replaces raw set_family + context_reset pairs in
+// cms8s tests and e2e drivers (classic tests keep raw reset: the empty
+// at89 register is a no-op but documents the protocol).
+static inline void mcs51_test_use_family(uint8_t family) {
+    mcs51_test_register_family(family);
     mcs51_context_set_family(family);
     mcs51_context_reset(mcs51_get_context());
 }

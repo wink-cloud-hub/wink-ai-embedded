@@ -6,6 +6,7 @@
 
 #include "absacc.h"
 #include "mcs51_context.h"
+#include "mcs51_test_harness.h"
 #include "mcs51_pcon.h"
 #include "mcs51_proxy.hpp"
 #include "wink_event.h"
@@ -98,6 +99,7 @@ int main(void) {
     // ── Test 3: PD wake via GPIO port interrupt (GAP-17') ───────────────────
     // Port interrupts are a CMS8S78xx STOP wake source (ref manual §5.4.1);
     // the model posts one wake event per matched edge (EA + PD gated).
+    mcs51_test_register_family(MCS51_FAMILY_CMS8S78XX);
     mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
     mcs51_context_reset(ctx);
     wink_mcs51_isr_enable();

@@ -6,6 +6,7 @@
 #include "cms8s_buzzer.h"
 #include "cms8s78xx.h"
 #include "mcs51_context.h"
+#include "mcs51_test_harness.h"
 #include "wink_mcs51_gpio.h"
 #include "wink_mcs51_clock.h"
 
@@ -51,6 +52,7 @@ int main(void) {
     printf("[mcs51_buzzer] Starting CMS8S78xx Buzzer unit tests...\n");
 
     // M1: buzzer is CMS8S-only silicon — select the family explicitly.
+    mcs51_test_register_family(MCS51_FAMILY_CMS8S78XX);
     mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
     Mcu51Context* ctx = mcs51_get_context();
     mcs51_context_reset(ctx);

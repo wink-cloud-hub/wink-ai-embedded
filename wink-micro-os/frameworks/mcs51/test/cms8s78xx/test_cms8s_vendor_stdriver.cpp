@@ -23,6 +23,7 @@
 #include "absacc.h"
 #include "cms8s_adc.h"
 #include "mcs51_context.h"
+#include "mcs51_test_harness.h"
 #include "mcs51_adc.h"
 #include "mcs51_proxy.hpp"
 #include "mcs51_xsfr.hpp"
@@ -74,6 +75,7 @@ extern "C" void tearDown(void) {}
 
 int main(void) {
     // M1: vendor StdDriver ADC drives CMS8S-only silicon — select family.
+    mcs51_test_register_family(MCS51_FAMILY_CMS8S78XX);
     mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
     wink_mcs51_isr_enable();
     wink_mcs51_xdata_reset();
