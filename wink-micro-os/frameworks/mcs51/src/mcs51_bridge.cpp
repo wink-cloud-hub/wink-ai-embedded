@@ -36,6 +36,12 @@
 #include "mcs51_family_select.h"
 #define MCS51_HAVE_FAMILY_SELECT 1
 #endif
+// S4-D5 (expires stage6): transitional default for pre-codegen builds of
+// this family — the generated select header does not exist yet, so the chip
+// package is registered explicitly to keep production silicon models alive.
+#if !defined(MCS51_HAVE_FAMILY_SELECT) && defined(WINK_MCU_CMS8S78XX)
+extern "C" void cms8s78xx_register(void);
+#endif
 
 extern "C" void wink_mcs51_user_main(void);
 
@@ -45,6 +51,8 @@ void mcs51_framework_init(void) {
     Mcu51Context* ctx = mcs51_get_context();
 #if defined(MCS51_HAVE_FAMILY_SELECT)
     MCS51_FAMILY_SELECT_REGISTER();
+#elif defined(WINK_MCU_CMS8S78XX)
+    cms8s78xx_register();  // S4-D5 transitional (expires stage6)
 #endif
     mcs51_context_reset(ctx);
 
