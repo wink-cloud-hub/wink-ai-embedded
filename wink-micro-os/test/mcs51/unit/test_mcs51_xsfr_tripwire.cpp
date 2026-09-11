@@ -166,7 +166,7 @@ int main(void) {
     xwrite(kP22Cfg, 0x03u);  // P22CFG = TXD
     xwrite(kLedsDrP1L, 0x02u);
     xwrite(0xF713u, 0x02u);  // LEDSDRP1H
-    xwrite(0xF010u, 0x10u);  // XRAM TLM slot (0x10): outside XSFR window
+    xwrite(0x0010u, 0x10u);  // XRAM TLM slot: below the XSFR window, never trips
     CHECK(wink_mcs51_xsfr_unmodeled_count() == 0u, "C: health_pot set silent");
 
     // ── D: reset clears ─────────────────────────────────────────────────────
