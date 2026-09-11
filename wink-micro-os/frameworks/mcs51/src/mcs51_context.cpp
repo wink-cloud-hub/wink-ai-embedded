@@ -83,9 +83,7 @@ void mcs51_context_reset(Mcu51Context* ctx) {
     std::memcpy(saved_isrs, ctx->isr_table, sizeof(saved_isrs));
 
     Mcu51ExtIntLine saved_lines[2];
-    Mcu51PortPinState saved_port_pins[4][8];
     std::memcpy(saved_lines, ctx->extint.lines, sizeof(saved_lines));
-    std::memcpy(saved_port_pins, ctx->extint.port_pins, sizeof(saved_port_pins));
     uint8_t saved_tcon_it = ctx->sfr_shadow[0x88] & ((1u << 0) | (1u << 2));
 
     // S2-1 memset ordering iron rule: stash instance_index before the wipe,
@@ -102,10 +100,10 @@ void mcs51_context_reset(Mcu51Context* ctx) {
     ctx->instance_index = saved_idx;
     ctx->soc_priv = nullptr;
 
-    // Restore ISR table and external pin baseline
+    // Restore ISR table and INT0/INT1 line baseline (port sampling
+    // re-baselines in the chip pool, S4-D2).
     std::memcpy(ctx->isr_table, saved_isrs, sizeof(saved_isrs));
     std::memcpy(ctx->extint.lines, saved_lines, sizeof(saved_lines));
-    std::memcpy(ctx->extint.port_pins, saved_port_pins, sizeof(saved_port_pins));
     ctx->sfr_shadow[0x88] |= saved_tcon_it;
 
     // ── Silicon Reset Seeds (Task R2) ────────────────────────────────────────

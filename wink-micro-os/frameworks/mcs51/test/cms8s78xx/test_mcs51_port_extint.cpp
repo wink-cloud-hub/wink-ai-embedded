@@ -45,12 +45,19 @@ uint8_t  g_p32_latch_val = 0;
 
 extern "C" void wink_mcs51_host_set_ext_pin(uint16_t pin, uint8_t state);
 extern "C" void wink_mcs51_host_ext_pins_reset(void);
+// Chip port-interrupt model (stage4 split: lines stay core, ports are chip).
+extern "C" void cms8s_port_extint_poll(struct Mcu51Context* ctx);
+extern "C" void cms8s_extint_init(struct Mcu51Context* ctx);
+extern "C" void cms8s_extint_reset(struct Mcu51Context* ctx);
 
 void ext_set(uint16_t pin, uint8_t state) {
     wink_mcs51_host_set_ext_pin(pin, state);
 }
 
-void poll(void) { wink_mcs51_extint_poll(); }
+void poll(void) {
+    wink_mcs51_extint_poll();
+    cms8s_port_extint_poll(nullptr);
+}
 void next_slice(void) { wink_mcs51_test_advance_virtual_us(SLICE_US); }
 
 }  // namespace
@@ -99,6 +106,10 @@ int main(void) {
     mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
     wink_mcs51_isr_enable();
     wink_mcs51_extint_reset();
+    // No context_reset in this TU: mount the chip model explicitly (hooks +
+    // selector seeds); context_reset-driven suites get it via the registry.
+    cms8s_extint_init(nullptr);
+    cms8s_extint_reset(nullptr);
     wink_mcs51_host_ext_pins_reset();
 
     // ── Test 1: P12 Falling Edge Interrupt (Official GPIO demo flow) ────
@@ -194,6 +205,7 @@ int main(void) {
 
     // Reset clears flags
     wink_mcs51_extint_reset();
+    cms8s_extint_reset(nullptr);
     for (uint8_t p = 0; p < 4; ++p) {
         CHECK(mcs51_get_context()->sfr_shadow[0xB4 + p] == 0, "T4.2: Reset clears EXTIF");
     }
