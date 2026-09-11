@@ -54,7 +54,8 @@ void update_buzzer_state(Mcu51Context* ctx) {
     }
 }
 
-void on_buzzer_sfr_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val, uint8_t new_val) {
+// M3: C language linkage for the C-ABI hook table (see cms8s_sys.cpp).
+extern "C" void on_buzzer_sfr_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val, uint8_t new_val) {
     (void)addr;
     (void)old_val;
     (void)new_val;

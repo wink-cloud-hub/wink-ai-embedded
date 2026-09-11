@@ -41,10 +41,14 @@
 // UART / future CMS8S models) and charge one microstep. GPIO port addresses
 // have no SFR hooks registered (their peripherals use pin traps), so for
 // P0..P3 these calls effect only the microstep charge.
+#ifdef __cplusplus
 extern "C" {
+#endif
 void wink_mcs51_on_sfr_read(uint8_t addr);
 void wink_mcs51_on_sfr_write(uint8_t addr, uint8_t old_val, uint8_t new_val);
+#ifdef __cplusplus
 }  // extern "C"
+#endif
 
 // Port index for an SFR address: P0=0x80…P3=0xB0 → 0..3; anything else 0xFF.
 constexpr uint8_t wink_mcs51_port_for(uint8_t addr) {

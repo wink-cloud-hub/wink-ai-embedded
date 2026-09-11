@@ -39,8 +39,10 @@ inline uint8_t sfr_addr_for(uint8_t port) {
     return (uint8_t)(0x80u + (port << 4));  // P0=0x80 … P3=0xB0
 }
 
+// M3: C language linkage — these addresses are stored in the C-ABI pin
+// trap table (mcs51_pin_write_fn_t / mcs51_pin_read_fn_t).
 // CS edge: fall (1->0) starts a conversion; rise (0->1) aborts to IDLE.
-void on_cs_write(void *ctx, uint8_t level) {
+extern "C" void on_cs_write(void *ctx, uint8_t level) {
     (void)ctx;
     if (level == 0u) {
         adc_state().phase = PHASE_INPUT;
@@ -56,7 +58,7 @@ void on_cs_write(void *ctx, uint8_t level) {
 }
 
 // CLK edge: the sole state-machine clock.
-void on_clk_write(void *ctx, uint8_t level) {
+extern "C" void on_clk_write(void *ctx, uint8_t level) {
     (void)ctx;
     if (adc_state().phase == PHASE_IDLE) {
         return;
@@ -108,7 +110,7 @@ void on_clk_write(void *ctx, uint8_t level) {
 }
 
 // DI/DIO write.
-void on_di_write(void *ctx, uint8_t level) {
+extern "C" void on_di_write(void *ctx, uint8_t level) {
     (void)ctx;
     (void)level;
     // PHASE_OUTPUT: the MCU writing DIO=1 is the quasi-bidirectional port's
@@ -118,7 +120,7 @@ void on_di_write(void *ctx, uint8_t level) {
 }
 
 // DO/DIO read: external pin level reconstruction (Read-Pin).
-uint8_t on_do_read(void *ctx) {
+extern "C" uint8_t on_do_read(void *ctx) {
     (void)ctx;
     if (adc_state().phase == PHASE_OUTPUT) {
         return adc_state().out_bit;  // chip drives the converted bit

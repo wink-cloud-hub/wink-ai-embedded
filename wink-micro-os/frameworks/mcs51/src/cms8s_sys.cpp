@@ -45,7 +45,10 @@ bool consume_unlock(Mcu51Context* ctx) {
     return ok;
 }
 
-void on_ta_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val, uint8_t new_val) {
+// M3: C language linkage — this address is stored in the C-ABI
+// mcs51_sfr_write_hook_t table (internal linkage via the enclosing
+// anonymous namespace is kept).
+extern "C" void on_ta_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val, uint8_t new_val) {
     if (!ctx) ctx = mcs51_get_context();
     (void)addr;
     (void)old_val;
@@ -59,7 +62,7 @@ void on_ta_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val, uint8_t new_v
     }
 }
 
-void on_clkdiv_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val, uint8_t new_val) {
+extern "C" void on_clkdiv_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val, uint8_t new_val) {
     if (!consume_unlock(ctx)) {
         // Locked write is ignored by silicon: restore the previous value.
         ctx->sfr_shadow[addr] = old_val;
@@ -75,7 +78,7 @@ void on_clkdiv_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val, uint8_t n
     wink_mcs51_timers_step_to(ctx->virtual_us);
 }
 
-void on_wdcon_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val, uint8_t new_val) {
+extern "C" void on_wdcon_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val, uint8_t new_val) {
     (void)new_val;
     if (!consume_unlock(ctx)) {
         ctx->sfr_shadow[addr] = old_val;

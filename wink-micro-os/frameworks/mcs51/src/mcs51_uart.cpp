@@ -4,6 +4,7 @@
 
 #include "mcs51_proxy.hpp"
 #include "mcs51_context.h"
+#include "mcs51_sfr_map.h"
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_isr.h"
 
@@ -30,8 +31,9 @@ constexpr uint8_t SFR_IE   = 0xA8;
 constexpr uint8_t SFR_TCON = 0x88;
 constexpr uint8_t SFR_TMOD = 0x89;
 constexpr uint8_t SFR_FUNCCR = 0x91;   // CMS8S78xx only: UART0 clock source
-constexpr uint8_t SFR_T2CON = 0xC8;
-constexpr uint8_t SFR_T34MOD = 0xD2;
+// M5: shared with the timer model — alias the single source.
+constexpr uint8_t SFR_T2CON = MCS51_SFR_T2CON;
+constexpr uint8_t SFR_T34MOD = MCS51_SFR_T34MOD;
 
 // XSFR (MOVX window, read via xdata_shadow): pin mux + BRT + RXD selector.
 constexpr uint16_t XSFR_P13CFG = 0xF013u;
@@ -272,7 +274,10 @@ bool rx_deliver_one(void) {
     return uart.rx_tail != uart.rx_head;
 }
 
-static void sfr_write_hook_uart(struct Mcu51Context* ctx, uint8_t addr,
+// M3: C language linkage for the C-ABI hook table (internal linkage comes
+// from the enclosing anonymous namespace; `static` must NOT be combined
+// with a linkage specification).
+extern "C" void sfr_write_hook_uart(struct Mcu51Context* ctx, uint8_t addr,
                                 uint8_t old_val, uint8_t new_val) {
     (void)ctx;
     (void)old_val;

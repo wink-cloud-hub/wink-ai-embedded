@@ -5,7 +5,7 @@
 | **文档编号** | MCS51-MAINT-2026-09-11 |
 | **创建日期** | 2026-09-11 |
 | **所属模块** | `wink-micro-os/frameworks/mcs51/`（src/ + include/ + tools/ + test/） |
-| **状态** | **执行中**：M1+M2 已落地（2026-09-11，工作区未提交），40/40 host 测试全绿；M3~M7 待定 |
+| **状态** | **执行中**：M1+M2、M3+M5+M7 均已落地（2026-09-11，工作区未提交），40/40 host 测试全绿；M4+M6 文档化待定 |
 | **审计基线** | master @ e0bce2b 之后工作区（含未提交 GAP-12：T2/3/4 参数化、重复向量计数、EXTIF W0C）；三路并行只读审计 + 双 target/内存/ISR 补查 |
 | **关联文档** | [仿真/真机缝隙清单](./2026-09-10-mcs51-sim-vs-silicon-gap-todolist.md)（GAP-09/12/22/23 相关）、[后端责任划分](./2026-09-10-mcs51-sim-backend-responsibility-classification.md) |
 
@@ -48,7 +48,11 @@
    - `mcs51_xdata.cpp`/`mcs51_uart.cpp`/`mcs51_context.cpp`/`cms8s_sys.cpp` 改查描述符；`cms8s_sys` 的 24MHz 改取 `fosc_hz` 单源。
    - 附带迁移（预期内）：7 个 CMS8S/XSFR 测试补 `mcs51_context_set_family(CMS8S78XX)`（此前窗口/hook 无条件存在，测试从不声明家族；库编译无 `WINK_MCU_*`，默认 classic）。`timer_ext_clk` Test 6 的 24MHz 隐含假设一并显式化。
    - 验证：40/40 mcs51 host 全绿、`mcs51_shim_audit.py` 无硬失配；`test_sim_scheduler` 1 项失败系预存 Unity 64 位环境问题、`oled_dashboard` 构建失败系预存缺 sister 文件，均与本次无关。
-2. M3 + M5 + M7（约半天）：linkage 包齐、寄存器地图单源、bridge 走 register。
+2. M3 + M5 + M7（约半天）：linkage 包齐、寄存器地图单源、bridge 走 register。**✅ 已执行（2026-09-11）**：
+   - M3：9 个 hook 定义加 `extern "C"`（sys×3、extint、uart、adc、buzzer、adc0832×4；pcon 本就在块内）；`mcs51_proxy.hpp`/`absacc.h` guard 配平。教训：匿名命名空间内 `extern "C" static` 被 GCC 拒（linkage-spec 不配 static），用裸 `extern "C"`（内链接来自匿名空间）。
+   - M5：新增 `mcs51_sfr_map.h`（EXTIF/T34MOD/T2CON/EIE2/EIF2/CKCON/PS_xx 单源）；timer/uart/adc/extint/context 改别名引用，用点零改；模型私有地址保留本地。
+   - M7：bridge PCON 注册改走 `mcs51_trap_register_sfr_write`。
+   - 验证：40/40 全绿、shim audit 无硬失配、cleanup 自测 OK。
 3. M4 + M6 文档化（随手）：头注释 + GAP 清单回写。
 
 > 流程提醒：按仓库规则，阶段 1/2 执行前建议先确认本清单范围；涉及时钟/中断语义的改动补 ADR。

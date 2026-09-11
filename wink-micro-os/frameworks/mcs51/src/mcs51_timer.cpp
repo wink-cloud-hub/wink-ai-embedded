@@ -4,6 +4,7 @@
 
 #include "mcs51_proxy.hpp"
 #include "mcs51_context.h"
+#include "mcs51_sfr_map.h"
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_isr.h"
 #include "wink_mcs51_strict.h"
@@ -16,7 +17,9 @@ namespace {
 
 constexpr uint8_t  SFR_TCON = 0x88;
 constexpr uint8_t  SFR_TMOD = 0x89;
-constexpr uint8_t  SFR_CKCON = 0x8E;
+// M5: shared addresses alias the single source (mcs51_sfr_map.h);
+// timer-private addresses keep literals below.
+constexpr uint8_t  SFR_CKCON = MCS51_SFR_CKCON;
 constexpr uint8_t  CKCON_T0M = 3u;
 constexpr uint8_t  CKCON_T1M = 4u;
 constexpr uint8_t  SFR_TL0  = 0x8A;
@@ -29,7 +32,7 @@ constexpr uint8_t  SFR_CCL2  = 0xC4;
 constexpr uint8_t  SFR_CCH2  = 0xC5;
 constexpr uint8_t  SFR_CCL3  = 0xC6;
 constexpr uint8_t  SFR_CCH3  = 0xC7;
-constexpr uint8_t  SFR_T2CON = 0xC8;
+constexpr uint8_t  SFR_T2CON = MCS51_SFR_T2CON;
 constexpr uint8_t  SFR_T2IF  = 0xC9;
 constexpr uint8_t  SFR_RLDL  = 0xCA;
 constexpr uint8_t  SFR_RLDH  = 0xCB;
@@ -37,9 +40,9 @@ constexpr uint8_t  SFR_TL2   = 0xCC;
 constexpr uint8_t  SFR_TH2   = 0xCD;
 constexpr uint8_t  SFR_CCEN  = 0xCE;
 constexpr uint8_t  SFR_T2IE  = 0xCF;
-constexpr uint8_t  SFR_EIE2  = 0xAA;
-constexpr uint8_t  SFR_EIF2  = 0xB2;
-constexpr uint8_t  SFR_T34MOD = 0xD2;
+constexpr uint8_t  SFR_EIE2  = MCS51_SFR_EIE2;
+constexpr uint8_t  SFR_EIF2  = MCS51_SFR_EIF2;
+constexpr uint8_t  SFR_T34MOD = MCS51_SFR_T34MOD;
 constexpr uint8_t  SFR_TL3   = 0xDA;
 constexpr uint8_t  SFR_TH3   = 0xDB;
 constexpr uint8_t  SFR_TL4   = 0xE2;
@@ -904,7 +907,7 @@ void mcs51_timer_init(struct Mcu51Context* ctx) {
 
 static uint16_t resolve_timer_pin(struct Mcu51Context* ctx, uint8_t t) {
     uint16_t fallback = (t == 0) ? 28u : 29u;
-    uint16_t ps_addr = (t == 0) ? 0xF0C2u : 0xF0C4u;
+    uint16_t ps_addr = (t == 0) ? MCS51_XSFR_PS_T0 : MCS51_XSFR_PS_T1;
     uint8_t sel = ctx->xdata_shadow[ps_addr];
     uint8_t port = (sel >> 4) & 0x07u;
     uint8_t bit = sel & 0x0Fu;
@@ -918,7 +921,7 @@ static uint16_t resolve_timer_pin(struct Mcu51Context* ctx, uint8_t t) {
 static uint16_t resolve_timer2_pin(struct Mcu51Context* ctx) {
     uint16_t fallback = 14u; // P1.6 (CMS8S78xx default T2 external input)
     if (!ctx) return fallback;
-    uint8_t sel = ctx->xdata_shadow[0xF0C6u]; // PS_T2
+    uint8_t sel = ctx->xdata_shadow[MCS51_XSFR_PS_T2];
     uint8_t port = (sel >> 4) & 0x07u;
     uint8_t bit = sel & 0x0Fu;
     constexpr uint8_t PORT_PINS[4] = {8u, 8u, 6u, 4u};
@@ -932,7 +935,7 @@ static uint16_t resolve_cap_pin(struct Mcu51Context* ctx, uint8_t c) {
     constexpr uint16_t FALLBACK[4] = {0u, 1u, 13u, 12u}; // P0.0, P0.1, P1.5, P1.4
     if (c >= 4) return 0u;
     if (!ctx) return FALLBACK[c];
-    uint8_t sel = ctx->xdata_shadow[0xF0C8u + c];
+    uint8_t sel = ctx->xdata_shadow[MCS51_XSFR_PS_CAP0 + c];
     uint8_t port = (sel >> 4) & 0x07u;
     uint8_t bit = sel & 0x0Fu;
     constexpr uint8_t PORT_PINS[4] = {8u, 8u, 6u, 4u};
