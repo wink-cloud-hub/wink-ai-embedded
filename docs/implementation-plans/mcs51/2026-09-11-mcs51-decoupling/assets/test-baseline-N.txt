@@ -5,9 +5,9 @@
 # generator: MinGW Makefiles
 # target_platform: host
 # cmake: cmake version 4.4.3
-# captured: 2026-09-11T17:48:24
-# head: 1516d44
-# dirty_files: 20
+# captured: 2026-09-11T19:01:35
+# head: f552b9e
+# dirty_files: 0
 # cats mcs51-host=47 mcs51-strict=5 mcs51-wasm=10 other=77 wasm-other=1
 test_actuator_registry
 test_arduino_core_compat
