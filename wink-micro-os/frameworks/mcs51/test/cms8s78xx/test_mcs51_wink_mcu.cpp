@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-// Unit test for wink_mcu.h MCU facade routing.
+// Unit test for the MCS-51 family routing (Stage3: mcs51_family_route.h,
+// slimmed from the wink_mcu.h facade which moved to runtime/include/).
 #include <stdint.h>
 #include <stdio.h>
 
@@ -7,7 +8,7 @@
 #define WINK_MCU_CMS8S78XX 1
 #endif
 
-#include "wink_mcu.h"
+#include "mcs51_family_route.h"
 #include "mcs51_context.h"
 #include "reg51.h"
 
@@ -49,6 +50,6 @@ int main(void) {
         return 1;
     }
 
-    printf("[mcs51] PASS: wink_mcu.h facade successfully routes to REG_CMS8S78XX.H\n");
+    printf("[mcs51] PASS: mcs51_family_route.h successfully routes to REG_CMS8S78XX.H\n");
     return 0;
 }
