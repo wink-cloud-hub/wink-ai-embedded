@@ -45,12 +45,12 @@
 
 ## 3. 任务拆分
 
-### Task S1-0：L0 前置——wasm 断链修复 + 测试物理搬迁 `[状态: ⏳ 待开始]`
+### Task S1-0：L0 前置——wasm 断链修复 + 测试物理搬迁 `[状态: ✅ 已完成（2026-09-11，`f552b9e` + `2cb4fdd` + `25f62f9`）]`
 
-- [ ] **Step 0a（wasm 断链修复，master 已断）**：`test/mcs51/wasm/add_wink_wasm_mcs51_test.cmake:145-177` 手写源列表漏 `mcs51_context/family/peripheral/gpio/pcon/edge_queue/pwm_meter`（`g_active_mcu_context` 未定义即源于此），按 `_MCS51_COMPAT_SRCS` 为准补齐（`uni_bridge` 除外）；验收 `wasm_mcs51_iron_ntc` 链过。stage6 改链分目标库后彻底删除该手写列表。
-- [ ] **Step 0b（测试物理搬迁，`git mv` 不丢项）**：整体搬 `wink-micro-os/test/mcs51/{unit,*.c,samples,wasm,apps}` → `frameworks/mcs51/test/{core,cms8s78xx}/`（`samples`/`wasm`/`apps` 为共享子目录随迁）；归位规则：含 `cms8s`/XSFR/扩展向量/WDT 的归 `cms8s78xx/`，其余归 `core/`（双家族文件如 `silicon_seeds` 整文件归 `core/`）；注册保留中央 `test/CMakeLists.txt`（只改路径前缀，不复制 wiring）；落文件→目录映射表于本计划附录；"不丢"验收不用人工数数（仓库根目录执行）：搬迁前 `python docs/implementation-plans/mcs51/2026-09-11-mcs51-decoupling/assets/test-baseline-check.py --capture --test-dir build-host/wink-micro-os/test` 刷新基线，搬迁后同命令换 `--compare` 做**集合相等**判定——总数相同但名字一增一减也算失败。注意基线在脏树上捕获，搬迁前先在干净 pre-move 树重跑 `--capture` 刷新，再执行搬迁。
-- [ ] **Step 0c**：后续 S1-1~S1-3 的"分组"即在此物理目录上操作，不再另建逻辑分组。"不丢"（集合相等）与"全绿"（结果门禁）是两个门：全绿看 verdict，已知例外（`wasm_mcs51_iron_ntc` 构建断链待 Step 0a、`test_mcs51_port_extint`/`test_mcs51_wink_mcu` MinGW 链接失败，均 master 基线复现）不计入搬迁回归。
-- [ ] **Step 0c**：后续 S1-1~S1-3 的"分组"即在此物理目录上操作，不再另建逻辑分组。
+- [x] **Step 0a（wasm 断链修复，master 已断）**：`test/mcs51/wasm/add_wink_wasm_mcs51_test.cmake:145-177` 手写源列表漏 `mcs51_context/family/peripheral/gpio/pcon/edge_queue/pwm_meter`（`g_active_mcu_context` 未定义即源于此），按 `_MCS51_COMPAT_SRCS` 为准补齐（`uni_bridge` 除外）；验收 `wasm_mcs51_iron_ntc` 链过。stage6 改链分目标库后彻底删除该手写列表。——执行注记：另补 `cms8s_buzzer/sys`（`mcs51_peripheral.cpp` 静态引用，缺则 undefined symbol）；`_SDK_ROOT` 由 `../../..` 改为 `../../../..`（helper 加深一级）；e2e 驱动按映射表分别进 `core/` 与 `cms8s78xx/`。验收：`wasm_` 11/11 全绿（含 `wasm_mcs51_iron_ntc`）。
+- [x] **Step 0b（测试物理搬迁，`git mv` 不丢项）**：整体搬 `wink-micro-os/test/mcs51/{unit,*.c,samples,wasm,apps}` → `frameworks/mcs51/test/{core,cms8s78xx}/`（`samples`/`wasm`/`apps` 为共享子目录随迁）；归位规则：含 `cms8s`/XSFR/扩展向量/WDT 的归 `cms8s78xx/`，其余归 `core/`（双家族文件如 `silicon_seeds` 整文件归 `core/`）；注册保留中央 `test/CMakeLists.txt`（只改路径前缀，不复制 wiring）；落文件→目录映射表于本计划附录；"不丢"验收不用人工数数（仓库根目录执行）：搬迁前 `python docs/implementation-plans/mcs51/2026-09-11-mcs51-decoupling/assets/test-baseline-check.py --capture --test-dir build-host/wink-micro-os/test` 刷新基线，搬迁后同命令换 `--compare` 做**集合相等**判定——总数相同但名字一增一减也算失败。注意基线在脏树上捕获，搬迁前先在干净 pre-move 树重跑 `--capture` 刷新，再执行搬迁。——执行注记：基线在干净树（`f552b9e`）刷新（`dirty_files: 0`，140 项集合与旧基线完全一致）；`--compare` → `BASELINE MATCH`；host mcs51 轨 50/52（2 项为 S1-0c 已知基线例外）；`test_mcs51_cleanup.py` 随迁 `core/` 并修 `sys.path`（`../../tools`，自测 8/8）。映射表见附录 A。
+- [x] **Step 0c**：后续 S1-1~S1-3 的"分组"即在此物理目录上操作，不再另建逻辑分组。"不丢"（集合相等）与"全绿"（结果门禁）是两个门：全绿看 verdict，已知例外（`wasm_mcs51_iron_ntc` 构建断链待 Step 0a、`test_mcs51_port_extint`/`test_mcs51_wink_mcu` MinGW 链接失败，均 master 基线复现）不计入搬迁回归。——执行注记：Step 0a 已消除 `wasm_mcs51_iron_ntc` 例外；剩余 2 项 MinGW 例外维持。
+- [x] **Step 0c**：后续 S1-1~S1-3 的"分组"即在此物理目录上操作，不再另建逻辑分组。
 
 ### Task S1-1：通用 rail 收 key 化 `[状态: ⏳ 待开始]`
 
@@ -81,6 +81,40 @@
 - L2：养生壶场景冷启动 NTC≈25℃，无 E-02；iron_ntc 板读数与基线一致。
 - L3：ABI 版本记录（含双空间分区表）归档。
 - L4：`mcs51_adc.*` 无 `32u +` 合成计算（key 由调用方显式传入）；`mcs51_adc0832.cpp` + `mcs51_adc0832_*` shim 的 diff 仅含 key 显式化（`32+`），无语义变更。
+
+## 附录 A：测试文件→目录映射表（S1-0b 执行记录，2026-09-11，commit `25f62f9`）
+
+源根 `wink-micro-os/test/mcs51/` → 目标根 `wink-micro-os/frameworks/mcs51/test/`。共享子目录整体随迁：`samples/`（11）、`wasm/`（7）、`apps/iron_ntc/wink-app.json`（1）。
+
+### A.1 `cms8s78xx/`（15：unit 14 + e2e 1）——含芯片头/AN 语义/扩展向量/XSFR/WDT 实质驱动
+
+| 文件 | 归位依据 |
+|------|---------|
+| `test_cms8s_adc_instant.cpp` / `test_cms8s_buzzer.cpp` / `test_cms8s_vendor_stdriver.cpp` | `#include cms8s_*`，片上外设专属 |
+| `test_mcs51_adc_refchain.cpp` | `#include cms8s_adc.h` + LDO/VSEL/AN0（S1-3 Step 2 待改 Pin key 者） |
+| `test_mcs51_cms8s_adc_e2e.c` | AN0/1/25 通道语义（S1-3 Step 2 待改 Pin key 者） |
+| `test_extint_model.cpp` | 驱动 `XSFR_PS_INT*` 引脚复用 |
+| `test_mcs51_gpio_dir.cpp` | 直写 `0xF00A`（P0UP）/`0xF000`（P00CFG=AN0，GAP-25 模拟子项） |
+| `test_mcs51_irq_arbitration.cpp` | `#include cms8s_adc.h` + EIE2/EIF2 扩展向量 |
+| `test_mcs51_port_extint.cpp` | `#include cms8s78xx.h`（P0EXTIE 端口中断） |
+| `test_mcs51_t234_fsys.cpp` | T3/T4 扩展定时器 |
+| `test_mcs51_uart_charge.cpp` | `XSFR_BRT_*` 波特率定时器 |
+| `test_mcs51_uart_tx_ready.cpp` | `XSFR_PS_RXD`/`P22CFG` 重映射 |
+| `test_mcs51_wdt_ta.cpp` | WDT/TA 保护 |
+| `test_mcs51_wink_mcu.cpp` | 定义 `WINK_MCU_CMS8S78XX` + ADCLDO XSFR 代理断言 |
+| `test_mcs51_xsfr_tripwire.cpp` | XSFR 窗口 tripwire（CMS8S 家族概念，classic 无窗口） |
+
+### A.2 `core/`（36：unit 24 + e2e 11 + py 1）——标准 8051 + 板级器件通用语义
+
+unit 24：`mcs51_clock_user.cpp`、`mcs51_static_tu_{a,b,c}.cpp`、`test_adc0832_dio_shared.cpp`（板级器件，S1-3 保持 32+ch）、`test_mcs51_classic_bus.cpp`、`test_mcs51_clock_quantum.cpp`、`test_mcs51_edge_queue.cpp`、`test_mcs51_family_schema.cpp`（双家族描述符断言，机制属 core）、`test_mcs51_gap12.cpp`、`test_mcs51_gpio_dual_path.cpp`（仅 0xFF 锁存值）、`test_mcs51_low_power.cpp`（主体 PCON 通用，仅 1 行 EICFG 附带）、`test_mcs51_shims.cpp`、`test_mcs51_silicon_seeds.cpp`（计划明示整文件归 core）、`test_mcs51_soft_pwm.cpp`、`test_mcs51_timer_ext_clk.cpp`、`test_sfr_edge_dispatch_accuracy.cpp`、`test_sfr_operators_coverage.cpp`、`test_sfr_rmw_latch_integrity.cpp`、`test_static_init_safety.cpp`、`test_uart_isr_dispatch.cpp`、`test_uart_rx_model.cpp`、`test_unisim_clock_mapping.cpp`、`test_mcs51_xram_aperture.cpp`。
+e2e 11：`test_mcs51_blinky_host.c`、`test_mcs51_timer0.c`、`test_mcs51_uart.c`、`test_mcs51_uart_echo_e2e.c`、`test_mcs51_gpio.c`、`test_mcs51_gpio_external_e2e.c`、`test_mcs51_int0_e2e.c`、`test_mcs51_seg_display_e2e.c`、`test_mcs51_sfr_rmw_isolation.c`、`test_mcs51_adc0832_e2e.c`、`test_mcs51_iron_ntc_e2e.c`（ADC0832 板级路径，S1-3 零回归锚点）。
+工具 1：`test_mcs51_cleanup.py`（通用清洗自测，随迁并修 `sys.path` 为 `../../tools`）。
+
+### A.3 构建接线变更（与搬迁同 commit，原子落地保绿）
+
+- 中央 `wink-micro-os/test/CMakeLists.txt`：仅改路径前缀（`mcs51/unit/`→`../frameworks/mcs51/test/{core,cms8s78xx}/` 等，不复制 wiring）。
+- `frameworks/mcs51/test/wasm/add_wink_wasm_mcs51_test.cmake`：`${_SDK_ROOT}/test/mcs51/`→`${_SDK_ROOT}/frameworks/mcs51/test/`；`_SDK_ROOT` 由 `../../..` 改为 `../../../..`（helper 加深一级）；e2e 驱动按 A.1/A.2 分组。
+- 验证：`--compare` → `BASELINE MATCH`（140=140）；host mcs51 50/52（2 项 S1-0c 已知例外）；`wasm_` 11/11；cleanup 自测 8/8。
 
 ## 5. 风险与回滚
 
