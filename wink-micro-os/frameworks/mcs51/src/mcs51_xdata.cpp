@@ -17,12 +17,14 @@
 // before the shadow store, trapping writes to externally-mapped addresses.
 #include "absacc.h"
 #include "mcs51_context.h"
+#include "mcs51_xsfr_allowlist.h"
 #include "wink_mcs51_clock.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <cstdlib>
@@ -44,6 +46,57 @@ constexpr uint64_t XSFR_WINDOW_BASE = 0xF000ull;
 
 bool     s_oob_warned[3] = {};   // once-per-kind warning latch
 uint32_t s_oob_count = 0;
+
+// GAP-23 unmodeled-XSFR tripwire state (plain POD BSS, same policy pattern
+// as the UART TX-link gate and mcs51_unsupported.cpp). STRICT builds abort
+// before counting, so the counters stay 0 there by design.
+uint32_t s_unmodeled_count = 0;
+uint16_t s_unmodeled_first[8] = {};  // first-offender addresses, in order
+uint8_t  s_unmodeled_first_n = 0;
+#ifndef WINK_MCS51_STRICT
+bool     s_unmodeled_warned = false;  // single category latch (not per address)
+#endif
+
+// Allowlist membership: the audit-generated DECLARED set
+// (mcs51_xsfr_allowlist.h). Sorted, so binary search.
+bool xsfr_allowlisted(uint64_t addr) {
+    if (addr > 0xFFFFull) {
+        return false;
+    }
+    const uint16_t a = static_cast<uint16_t>(addr);
+    // Raw-array pointer arithmetic (no <iterator> dependency for std::begin).
+    const uint16_t* first = kMcs51XsfrAllowlist;
+    return std::binary_search(first, first + kMcs51XsfrAllowlistCount, a);
+}
+
+void unmodeled_xsfr_trap(uint64_t addr, bool is_write) {
+    if (s_unmodeled_count < 0xFFFFFFFFu) {
+        ++s_unmodeled_count;
+    }
+    if (s_unmodeled_first_n < 8u) {
+        s_unmodeled_first[s_unmodeled_first_n++] =
+            static_cast<uint16_t>(addr & 0xFFFFull);
+    }
+#ifdef WINK_MCS51_STRICT
+    // Debug/test configuration: fail loudly at the offending access. assert
+    // gives the diagnostic in debug builds; std::abort is unconditional so a
+    // STRICT build compiled with NDEBUG still traps. The offending address
+    // is retained in s_unmodeled_first for post-mortem inspection.
+    (void)is_write;
+    assert(0 && "unmodeled XSFR access (WINK_MCS51_STRICT)");
+    std::abort();
+#else
+    if (!s_unmodeled_warned) {
+        s_unmodeled_warned = true;
+        pal_log_w("MCS51",
+                  "unmodeled XSFR %s at 0x%04X: no framework model owns this "
+                  "register (GAP-23); access lands in the shadow, behavior "
+                  "is NOT simulated",
+                  is_write ? "write" : "read",
+                  (unsigned)(addr & 0xFFFFull));
+    }
+#endif
+}
 
 // Legal xdata: ordinary XRAM aperture OR the XSFR window.
 bool xdata_addr_legal(uint64_t addr) {
@@ -86,6 +139,13 @@ extern "C" {
 uint8_t wink_mcs51_xdata_read(uint64_t addr, uint8_t kind) {
     wink_mcs51_microstep();
     if (xdata_addr_legal(addr)) {
+        // GAP-23: reads and writes share the check — polling an unmodeled
+        // status register is as silent as configuring one. Gated on the
+        // address, not the accessor kind, so raw XBYTE and WinkXsfr proxies
+        // are covered identically.
+        if (addr >= XSFR_WINDOW_BASE && !xsfr_allowlisted(addr)) {
+            unmodeled_xsfr_trap(addr, false);
+        }
         return mcs51_get_context()->xdata_shadow[addr];
     }
     oob_trap(addr, kind, false);
@@ -95,6 +155,9 @@ uint8_t wink_mcs51_xdata_read(uint64_t addr, uint8_t kind) {
 void wink_mcs51_xdata_write(uint64_t addr, uint8_t value, uint8_t kind) {
     wink_mcs51_microstep();
     if (xdata_addr_legal(addr)) {
+        if (addr >= XSFR_WINDOW_BASE && !xsfr_allowlisted(addr)) {
+            unmodeled_xsfr_trap(addr, true);
+        }
         mcs51_get_context()->xdata_shadow[addr] = value;
         return;
     }
@@ -108,12 +171,31 @@ uint32_t wink_mcs51_xdata_oob_count(void) {
     return s_oob_count;
 }
 
+#ifdef __EMSCRIPTEN__
+EMSCRIPTEN_KEEPALIVE
+#endif
+uint32_t wink_mcs51_xsfr_unmodeled_count(void) {
+    return s_unmodeled_count;
+}
+
+#ifdef __EMSCRIPTEN__
+EMSCRIPTEN_KEEPALIVE
+#endif
+uint16_t wink_mcs51_xsfr_unmodeled_addr(uint32_t i) {
+    return (i < s_unmodeled_first_n) ? s_unmodeled_first[i] : 0xFFFFu;
+}
+
 void wink_mcs51_xdata_reset(void) {
     std::memset(mcs51_get_context()->xdata_shadow, 0, sizeof(mcs51_get_context()->xdata_shadow));
     s_oob_count = 0;
     for (uint8_t k = 0; k <= KIND_XSFR; ++k) {
         s_oob_warned[k] = false;
     }
+    s_unmodeled_count = 0;
+    s_unmodeled_first_n = 0;
+#ifndef WINK_MCS51_STRICT
+    s_unmodeled_warned = false;
+#endif
 }
 
 }  // extern "C"

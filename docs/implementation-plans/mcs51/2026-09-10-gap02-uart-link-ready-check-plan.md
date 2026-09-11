@@ -200,7 +200,7 @@ Task 1 → Task 2 → Task 3；Task 4 为 deferred（另立 ADR，不在本计�
 
 - [x] **Step 1**：host 回归绿——35/35 mcs51 host 测试通过（含新增 2 个）。3 个排除项为预存 break（`test_mcs51_port_extint`/`test_mcs51_wink_mcu` 的 `putchar(char)` 链接失败经干净树验证与本变更无关；`test_pal_nonblocking_strict` 的 PAL 弃用告警同理）。
 - [x] **Step 2**：sister repo 重建生产 wasm，8 应用 22 场景全绿（2026-09-11 执行）。明细：health_pot 15/15、5 carrier 各 1/1、vendor uart0_printf/uart0_rxtx 各 1/1，step 级 0 失败、进程退出码全 0。
-- [x] **Step 3**：红线手册 §4.6 补「UART 仿真校验边界」条目；GAP-02 首个验收 checkbox 打勾（第二个待 wasm）。
+- [x] **Step 3**：红线手册 §4.6 补「UART 仿真校验边界」条目；GAP-02 两个验收 checkbox 均可打勾（wasm 侧见 Step 2，22/22 + 0 not-ready）。
 
 #### wasm 回归附带发现（门禁真阳性，R-001 路径 A 命中）
 

@@ -626,6 +626,30 @@ if(TARGET wink_mcs51_compat)
         add_dependencies(test_mcs51_uart_tx_ready_strict generate_config)
     endif()
 
+    # GAP-23: unmodeled-XSFR tripwire — Release: counters + first-offender
+    # addresses + health_pot zero-regression e2e.
+    add_mcs51_host_test(test_mcs51_xsfr_tripwire
+        mcs51/unit/test_mcs51_xsfr_tripwire.cpp)
+
+    # GAP-23 STRICT twin: same TU, STRICT-built compat lib (death tests via
+    # child re-execution). Mirrors the uart_tx_ready_strict block above.
+    add_wink_host_test(test_mcs51_xsfr_tripwire_strict
+        mcs51/unit/test_mcs51_xsfr_tripwire.cpp)
+    target_link_libraries(test_mcs51_xsfr_tripwire_strict PRIVATE wink_mcs51_compat_strict wink_runtime)
+    target_compile_definitions(test_mcs51_xsfr_tripwire_strict PRIVATE SIMULATION=1 WINK_MCU_AT89C52=1)
+    if(NOT MSVC)
+        target_compile_options(test_mcs51_xsfr_tripwire_strict PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:-std=c++17 -Wno-write-strings
+                -fno-exceptions -fno-rtti -fno-threadsafe-statics>)
+    else()
+        target_compile_options(test_mcs51_xsfr_tripwire_strict PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:/std:c++17 /utf-8 /wd4101 /wd4245>)
+    endif()
+    target_include_directories(test_mcs51_xsfr_tripwire_strict PRIVATE ${_MCS51_FW_DIR}/include)
+    if(TARGET generate_config)
+        add_dependencies(test_mcs51_xsfr_tripwire_strict generate_config)
+    endif()
+
     # Task R3 / ADR-0078: Two-phase IRQ, in-service priority masking & call stack isolation
     add_mcs51_host_test(test_mcs51_irq_arbitration
         mcs51/unit/test_mcs51_irq_arbitration.cpp)
