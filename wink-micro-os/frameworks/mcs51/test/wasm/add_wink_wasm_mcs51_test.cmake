@@ -27,9 +27,9 @@ if(NOT NODE_EXECUTABLE)
     return()
 endif()
 
-# helper lives at test/mcs51/wasm/ ; SDK root is four levels up.
+# helper lives at frameworks/mcs51/test/wasm/ ; SDK root is four levels up.
 set(_WASM_MCS51_HELPER_DIR "${CMAKE_CURRENT_LIST_DIR}")
-get_filename_component(_SDK_ROOT "${_WASM_MCS51_HELPER_DIR}/../../.." ABSOLUTE)
+get_filename_component(_SDK_ROOT "${_WASM_MCS51_HELPER_DIR}/../../../.." ABSOLUTE)
 
 set(_WASM_MCS51_DIR "${CMAKE_BINARY_DIR}/wasm-mcs51-test")
 file(MAKE_DIRECTORY ${_WASM_MCS51_DIR}/gen)
@@ -63,7 +63,7 @@ add_custom_command(
 set(_MCS51_BOARD_CONFIG_H "")
 set(_MCS51_BOARD_CONFIG_GENERATOR
     "${WINK_TOOLS_ROOT}/tools/codegen/generators/mcs51_board_config.py")
-set(_MCS51_IRON_NTC_APP "${_SDK_ROOT}/test/mcs51/apps/iron_ntc/wink-app.json")
+set(_MCS51_IRON_NTC_APP "${_SDK_ROOT}/frameworks/mcs51/test/apps/iron_ntc/wink-app.json")
 if(WINK_TOOLS_ROOT AND EXISTS "${_MCS51_BOARD_CONFIG_GENERATOR}"
         AND EXISTS "${_MCS51_IRON_NTC_APP}")
     set(_MCS51_BOARD_CONFIG_H "${_WASM_MCS51_DIR}/gen/mcs51_board_config.h")
@@ -135,9 +135,9 @@ function(add_wink_wasm_mcs51_test test_name sample_name driver_c)
         OUTPUT ${_sample_cpp}
         COMMAND ${Python3_EXECUTABLE}
             ${_SDK_ROOT}/frameworks/mcs51/tools/mcs51_cleanup.py
-            ${_SDK_ROOT}/test/mcs51/samples/${sample_name}.c
+            ${_SDK_ROOT}/frameworks/mcs51/test/samples/${sample_name}.c
             ${_sample_cpp}
-        DEPENDS ${_SDK_ROOT}/test/mcs51/samples/${sample_name}.c
+        DEPENDS ${_SDK_ROOT}/frameworks/mcs51/test/samples/${sample_name}.c
                 ${_SDK_ROOT}/frameworks/mcs51/tools/mcs51_cleanup.py
         COMMENT "mcs51 wasm cleanup: ${sample_name}.c -> ${sample_name}.cpp"
         VERBATIM)
@@ -184,7 +184,7 @@ function(add_wink_wasm_mcs51_test test_name sample_name driver_c)
         ${_SDK_ROOT}/osal/common/pal_osal_ringbuf.c
         ${_WASM_MCS51_PAL_WASM}
         ${_SDK_ROOT}/targets/wasm/pal_log_wasm.c
-        ${_SDK_ROOT}/test/mcs51/wasm/mcs51_wasm_link_stubs.c
+        ${_SDK_ROOT}/frameworks/mcs51/test/wasm/mcs51_wasm_link_stubs.c
     )
 
     if(sample_name MATCHES "cms8s")
@@ -211,7 +211,7 @@ function(add_wink_wasm_mcs51_test test_name sample_name driver_c)
             -sERROR_ON_UNDEFINED_SYMBOLS=1
             -sEXIT_RUNTIME=1
             -sEXPORTED_RUNTIME_METHODS=HEAPU8
-            --js-library=${_SDK_ROOT}/test/mcs51/wasm/mcs51_wasm_node_stub.js
+            --js-library=${_SDK_ROOT}/frameworks/mcs51/test/wasm/mcs51_wasm_node_stub.js
             ${_extra_emcc_flags}
             -o ${_out_js}
         DEPENDS
@@ -219,7 +219,7 @@ function(add_wink_wasm_mcs51_test test_name sample_name driver_c)
             ${_sample_cpp}
             ${_MCS51_CONFIG_H}
             ${_MCS51_BOARD_CONFIG_H}
-            ${_SDK_ROOT}/test/mcs51/wasm/mcs51_wasm_node_stub.js
+            ${_SDK_ROOT}/frameworks/mcs51/test/wasm/mcs51_wasm_node_stub.js
         COMMENT "Building ${test_name} (emcc + ASYNCIFY fibers)"
         VERBATIM)
 
@@ -240,13 +240,13 @@ endfunction()
 add_wink_wasm_mcs51_test(
     wasm_mcs51_test
     blinky
-    ${_SDK_ROOT}/test/mcs51/wasm/test_mcs51_blinky_wasm.c)
+    ${_SDK_ROOT}/frameworks/mcs51/test/wasm/test_mcs51_blinky_wasm.c)
 
 # M2: Timer0 50 ms overflow drives the ISR; tight super-loop does not freeze.
 add_wink_wasm_mcs51_test(
     wasm_mcs51_timer0_test
     blinky_timer0
-    ${_SDK_ROOT}/test/mcs51/wasm/test_mcs51_timer0_wasm.c)
+    ${_SDK_ROOT}/frameworks/mcs51/test/wasm/test_mcs51_timer0_wasm.c)
 
 # M3: UART SBUF write emits bytes to the Node console (stdout) and the C-ABI
 # capture buffer; TI is set synchronously so `while(!TI)` closes on first read.
@@ -255,7 +255,7 @@ add_wink_wasm_mcs51_test(
 add_wink_wasm_mcs51_test(
     wasm_mcs51_uart_test
     uart_printf
-    ${_SDK_ROOT}/test/mcs51/wasm/test_mcs51_uart_wasm.c
+    ${_SDK_ROOT}/frameworks/mcs51/test/wasm/test_mcs51_uart_wasm.c
     "-sEXPORTED_FUNCTIONS=_main,_mcs51_wasm_uart_accept_byte")
 
 # Stage 2 T2: UART echo — RX bytes pushed from the post-init hook drain at
@@ -265,7 +265,7 @@ add_wink_wasm_mcs51_test(
 add_wink_wasm_mcs51_test(
     wasm_mcs51_uart_echo_test
     uart_echo
-    ${_SDK_ROOT}/test/mcs51/test_mcs51_uart_echo_e2e.c
+    ${_SDK_ROOT}/frameworks/mcs51/test/core/test_mcs51_uart_echo_e2e.c
     "-sEXPORTED_FUNCTIONS=_main,_mcs51_wasm_uart_accept_byte")
 
 # M3: GPIO in->out sync — P3.2 key (latch-injected) drives P1.0 LED across
@@ -273,7 +273,7 @@ add_wink_wasm_mcs51_test(
 add_wink_wasm_mcs51_test(
     wasm_mcs51_gpio_test
     gpio_in_out
-    ${_SDK_ROOT}/test/mcs51/wasm/test_mcs51_gpio_wasm.c)
+    ${_SDK_ROOT}/frameworks/mcs51/test/wasm/test_mcs51_gpio_wasm.c)
 
 # M4: ADC0832 3-wire DIO end-to-end — the unmodified Keil bit-bang sample reads
 # CH0/CH1 through the instant Level-2 trap FSM; the shared host/wasm C driver
@@ -281,7 +281,7 @@ add_wink_wasm_mcs51_test(
 add_wink_wasm_mcs51_test(
     wasm_mcs51_adc0832_test
     adc0832_read
-    ${_SDK_ROOT}/test/mcs51/test_mcs51_adc0832_e2e.c)
+    ${_SDK_ROOT}/frameworks/mcs51/test/core/test_mcs51_adc0832_e2e.c)
 
 # M5: CMS8S78xx on-chip ADC end-to-end — the unmodified Keil polled sample
 # drives the real register map (ADCON0 ADGO/ADFM, ADRESH/ADRESL packing); the
@@ -290,7 +290,7 @@ add_wink_wasm_mcs51_test(
 add_wink_wasm_mcs51_test(
     wasm_mcs51_cms8s_adc_test
     cms8s_adc_test
-    ${_SDK_ROOT}/test/mcs51/test_mcs51_cms8s_adc_e2e.c)
+    ${_SDK_ROOT}/frameworks/mcs51/test/cms8s78xx/test_mcs51_cms8s_adc_e2e.c)
 
 # M6: NTC closed-loop thermostat through the board-codegen ADC0832 seam —
 # the shared host/wasm C driver injects cold/hot/open/short codes via the
@@ -300,7 +300,7 @@ if(_MCS51_BOARD_CONFIG_H)
     add_wink_wasm_mcs51_test(
         wasm_mcs51_iron_ntc_test
         iron_ntc
-        ${_SDK_ROOT}/test/mcs51/test_mcs51_iron_ntc_e2e.c)
+        ${_SDK_ROOT}/frameworks/mcs51/test/core/test_mcs51_iron_ntc_e2e.c)
 endif()
 
 # Channel-1 external Read-Pin seam: the gpio_in_out button->LED sample but the
@@ -310,7 +310,7 @@ endif()
 add_wink_wasm_mcs51_test(
     wasm_mcs51_gpio_external_test
     gpio_in_out
-    ${_SDK_ROOT}/test/mcs51/test_mcs51_gpio_external_e2e.c
+    ${_SDK_ROOT}/frameworks/mcs51/test/core/test_mcs51_gpio_external_e2e.c
     "-sEXPORTED_FUNCTIONS=_main,_mcs51_wasm_ext_pin_state")
 
 # Stage 2 T3: /INT0 external-interrupt e2e — the int0_button sample toggles
@@ -320,5 +320,5 @@ add_wink_wasm_mcs51_test(
 add_wink_wasm_mcs51_test(
     wasm_mcs51_int0_test
     int0_button
-    ${_SDK_ROOT}/test/mcs51/test_mcs51_int0_e2e.c
+    ${_SDK_ROOT}/frameworks/mcs51/test/core/test_mcs51_int0_e2e.c
     "-sEXPORTED_FUNCTIONS=_main,_mcs51_wasm_ext_pin_state")
