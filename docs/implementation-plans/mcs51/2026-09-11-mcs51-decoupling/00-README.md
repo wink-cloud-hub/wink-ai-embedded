@@ -6,7 +6,7 @@
 | **创建日期** | `2026-09-11` |
 | **目标平台** | `host` / `wasm`（mcs51 仿真拦截层为 host/wasm-only，`ESP_PLATFORM` 下零符号，见框架 `CMakeLists.txt` 守卫） |
 | **工具链版本** | `GCC 14.2` / `MSVC 14.40` / `Emscripten 4.0.5` / `C++17`（见框架编译方言链） |
-| **系列状态** | 🔄 执行中（stage0 已完成，stage1 待开始） |
+| **系列状态** | 🔄 执行中（stage0~stage2 已完成，stage3 待开始） |
 | **优先级** | 🔴 P0（E-02 在线仿真假短路为阻塞性行为失真；其余为架构阻塞） |
 | **系列版本** | `v1.0` |
 | **审计 SSOT（发现源）** | [`docs/todolist/2026-09-11-mcs51-generic-vs-chip-specific-coupling-audit.md`](../../../todolist/2026-09-11-mcs51-generic-vs-chip-specific-coupling-audit.md)（24 项 CPL 详情以此为准，本系列不复述证据） |
