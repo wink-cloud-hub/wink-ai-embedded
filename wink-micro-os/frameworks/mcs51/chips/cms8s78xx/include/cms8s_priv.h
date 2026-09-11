@@ -16,6 +16,14 @@
 extern "C" {
 #endif
 
+// On-chip XDATA aperture (GAP-09, datasheet §2.2.3 — sunk from generic
+// context.h in S2-2 Step 3, zero users elsewhere):
+//  - CMS8S78xx: 1 KB internal XRAM (0x0000..0x03FF).
+// Classic 8052 has no on-chip XRAM; external MOVX size stays the per-app
+// WINK_MCS51_XDATA_SIZE knob (8 KB default, stage6 sinks it to board scope).
+#define CMS8S_XRAM_SIZE 1024u
+#define CMS8S_XSFR_WINDOW_BASE 0xF000u  // extended-SFR MOVX window
+
 // TA protection window + WDT coarse model (owner: cms8s_sys.cpp).
 typedef struct {
     // 0 = waiting 0xAA, 1 = got 0xAA waiting 0x55, 2 = unlocked (next

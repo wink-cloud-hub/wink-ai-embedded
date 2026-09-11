@@ -20,14 +20,8 @@ extern "C" {
 // MCU family ids + silicon facts (MCS51_FAMILY_*, family descriptors) live
 // in mcs51_family.h (maintainability M1). mcs51_context_reset applies the
 // active family's seeds (CKCON reset value, power-on Fosc).
-
-// On-chip XDATA aperture by family (GAP-09, datasheet §2.2.3):
-//  - CMS8S78xx: 1 KB internal XRAM (0x0000..0x03FF).
-//  - Classic 8052: no on-chip XRAM; external MOVX RAM size is board-specific
-//    and declared per app, so the sim keeps the configurable
-//    WINK_MCS51_XDATA_SIZE aperture (8 KB default) for that family.
-#define MCS51_XRAM_SIZE_CMS8S78XX 1024u
-#define MCS51_XRAM_WINDOW_BASE     0xF000u  // CMS8S extended-SFR MOVX window
+// (S2-2: on-chip XRAM facts used to live here; sunk to the chip package
+// header — zero users elsewhere.)
 
 // ── Task F1: Timed edge injection event ────────────────────────────────────
 typedef struct {

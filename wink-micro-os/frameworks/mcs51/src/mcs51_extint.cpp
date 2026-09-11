@@ -58,8 +58,9 @@ constexpr uint64_t SAMPLE_PERIOD_US = 10000ull;
 
 constexpr uint8_t SFR_P0EXTIE = 0xACu;  // extint-local (enable block P0..P3EXTIE)
 // Flag base: MCS51_SFR_P0EXTIF + p (mcs51_sfr_map.h, shared).
-
-constexpr uint8_t PORT_PINS[4] = {8u, 8u, 8u, 8u};
+// (S2-2: no hardcoded pin-count table here anymore — legality reads the
+// family descriptor per call site, so reduced families tighten nonexistent
+// pins to fallback while full-pin families keep every pin.)
 constexpr uint8_t PORT_VECTORS[4] = {7u, 8u, 9u, 10u};
 
 constexpr uint16_t PORT_EICFG_BASE[4] = {
@@ -78,7 +79,8 @@ uint16_t resolve_int_pin(Mcu51Context* ctx, uint16_t ps_addr, uint16_t fallback_
     uint8_t sel  = ctx->xdata_shadow[ps_addr];
     uint8_t port = (sel >> 4) & 0x07u;
     uint8_t bit  = sel & 0x0Fu;
-    if (port < 4u && bit < PORT_PINS[port]) {
+    const uint8_t* pin_masks = mcs51_family_desc(ctx->family)->port_pin_masks;
+    if (port < 4u && bit < pin_masks[port]) {
         return static_cast<uint16_t>((port << 3) | bit);
     }
     return fallback_pin;
@@ -131,11 +133,14 @@ void poll_port_ints(Mcu51Context* ctx, bool force, uint64_t now) {
 
     uint8_t ie = ctx->sfr_shadow[SFR_IE];
     bool ea = (ie & (1u << IE_EA)) != 0;
+    // S2-2: loop bound from the descriptor (reduced families sample only
+    // existing pins, full-pin families all 32).
+    const uint8_t* pin_masks = mcs51_family_desc(ctx->family)->port_pin_masks;
 
     for (uint8_t p = 0; p < 4u; ++p) {
         uint8_t extie = ctx->sfr_shadow[SFR_P0EXTIE + p];
         uint8_t extif = ctx->sfr_shadow[MCS51_SFR_P0EXTIF + p];
-        uint8_t npins = PORT_PINS[p];
+        uint8_t npins = pin_masks[p];
 
         for (uint8_t b = 0; b < npins; ++b) {
             uint16_t pin = static_cast<uint16_t>((p << 3) | b);

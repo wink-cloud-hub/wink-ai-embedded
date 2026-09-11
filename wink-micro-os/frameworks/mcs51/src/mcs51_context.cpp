@@ -123,21 +123,11 @@ void mcs51_context_reset(Mcu51Context* ctx) {
     // mcs51_adc_reset() clears only the injection table; the 3000/3000
     // defaults are injected by chip reset via the generic rail parameters.
 
-    // XSFR pin share selector seeds (MCS51_XSFR_PS_RESET = no pin connected).
-    // Addresses from mcs51_sfr_map.h (M5 single source).
-    ctx->xdata_shadow[MCS51_XSFR_PS_ADET] = MCS51_XSFR_PS_RESET;
-    ctx->xdata_shadow[MCS51_XSFR_PS_INT0] = MCS51_XSFR_PS_RESET;
-    ctx->xdata_shadow[MCS51_XSFR_PS_INT1] = MCS51_XSFR_PS_RESET;
-    ctx->xdata_shadow[MCS51_XSFR_PS_T0] = MCS51_XSFR_PS_RESET;
-    ctx->xdata_shadow[MCS51_XSFR_PS_T0G] = MCS51_XSFR_PS_RESET;
-    ctx->xdata_shadow[MCS51_XSFR_PS_T1] = MCS51_XSFR_PS_RESET;
-    ctx->xdata_shadow[MCS51_XSFR_PS_T1G] = MCS51_XSFR_PS_RESET;
-    ctx->xdata_shadow[MCS51_XSFR_PS_T2] = MCS51_XSFR_PS_RESET;
-    ctx->xdata_shadow[MCS51_XSFR_PS_T2EX] = MCS51_XSFR_PS_RESET;
-    ctx->xdata_shadow[MCS51_XSFR_PS_CAP0] = MCS51_XSFR_PS_RESET;
-    ctx->xdata_shadow[MCS51_XSFR_PS_CAP1] = MCS51_XSFR_PS_RESET;
-    ctx->xdata_shadow[MCS51_XSFR_PS_CAP2] = MCS51_XSFR_PS_RESET;
-    ctx->xdata_shadow[MCS51_XSFR_PS_CAP3] = MCS51_XSFR_PS_RESET;
+    // S2-2: pin-share selector seeds (were a 13-entry 0x7F block here,
+    // CPL-19) now live with their owning models: the ADC selector in the
+    // ADC model reset, INT selectors in extint reset, timer/capture
+    // selectors in timer reset. Same values, same reset-loop order
+    // (peripheral loop runs below).
 
     // Record the family on the context BEFORE peripheral init so models
     // observe a consistent family for the whole reset.
