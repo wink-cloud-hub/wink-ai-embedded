@@ -158,7 +158,7 @@ def main():
     root = Path(args.root)
     vendor_dev = root / VENDOR_REL / "Device/CMS8S78xx/Include/cms8s78xx.h"
     vendor_gpio = root / VENDOR_REL / "StdDriver/inc/gpio.h"
-    shim_cms = FW_DIR / "include/REG_CMS8S78XX.H"
+    shim_cms = FW_DIR / "chips/cms8s78xx/include/REG_CMS8S78XX.H"
     shim_52 = FW_DIR / "include/REGX52.H"
     fw_isr = FW_DIR / "src/mcs51_isr.cpp"
     fw_isr_h = FW_DIR / "include/wink_mcs51_isr.h"
