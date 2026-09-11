@@ -2407,7 +2407,11 @@ var _pal_wasm_is_clock_warning_fired = Module['_pal_wasm_is_clock_warning_fired'
 var _free = Module['_free'] = makeInvalidEarlyAccess('_free');
 var _malloc = Module['_malloc'] = makeInvalidEarlyAccess('_malloc');
 var _wink_mcs51_uart_rx_push = Module['_wink_mcs51_uart_rx_push'] = makeInvalidEarlyAccess('_wink_mcs51_uart_rx_push');
+var _wink_mcs51_uart_notready_mask = Module['_wink_mcs51_uart_notready_mask'] = makeInvalidEarlyAccess('_wink_mcs51_uart_notready_mask');
+var _wink_mcs51_uart_notready_count = Module['_wink_mcs51_uart_notready_count'] = makeInvalidEarlyAccess('_wink_mcs51_uart_notready_count');
+var _wink_mcs51_uart_notready_total = Module['_wink_mcs51_uart_notready_total'] = makeInvalidEarlyAccess('_wink_mcs51_uart_notready_total');
 var _fflush = makeInvalidEarlyAccess('_fflush');
+var _wink_mcs51_unsupported_warning_count = Module['_wink_mcs51_unsupported_warning_count'] = makeInvalidEarlyAccess('_wink_mcs51_unsupported_warning_count');
 var _emscripten_stack_get_base = makeInvalidEarlyAccess('_emscripten_stack_get_base');
 var _emscripten_stack_get_end = makeInvalidEarlyAccess('_emscripten_stack_get_end');
 var _strerror = makeInvalidEarlyAccess('_strerror');
@@ -2496,7 +2500,11 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['free'] != 'undefined', 'missing Wasm export: free');
   assert(typeof wasmExports['malloc'] != 'undefined', 'missing Wasm export: malloc');
   assert(typeof wasmExports['wink_mcs51_uart_rx_push'] != 'undefined', 'missing Wasm export: wink_mcs51_uart_rx_push');
+  assert(typeof wasmExports['wink_mcs51_uart_notready_mask'] != 'undefined', 'missing Wasm export: wink_mcs51_uart_notready_mask');
+  assert(typeof wasmExports['wink_mcs51_uart_notready_count'] != 'undefined', 'missing Wasm export: wink_mcs51_uart_notready_count');
+  assert(typeof wasmExports['wink_mcs51_uart_notready_total'] != 'undefined', 'missing Wasm export: wink_mcs51_uart_notready_total');
   assert(typeof wasmExports['fflush'] != 'undefined', 'missing Wasm export: fflush');
+  assert(typeof wasmExports['wink_mcs51_unsupported_warning_count'] != 'undefined', 'missing Wasm export: wink_mcs51_unsupported_warning_count');
   assert(typeof wasmExports['emscripten_stack_get_base'] != 'undefined', 'missing Wasm export: emscripten_stack_get_base');
   assert(typeof wasmExports['emscripten_stack_get_end'] != 'undefined', 'missing Wasm export: emscripten_stack_get_end');
   assert(typeof wasmExports['strerror'] != 'undefined', 'missing Wasm export: strerror');
@@ -2582,7 +2590,11 @@ function assignWasmExports(wasmExports) {
   _free = Module['_free'] = createExportWrapper('free', wasmExports['free'], 1);
   _malloc = Module['_malloc'] = createExportWrapper('malloc', wasmExports['malloc'], 1);
   _wink_mcs51_uart_rx_push = Module['_wink_mcs51_uart_rx_push'] = createExportWrapper('wink_mcs51_uart_rx_push', wasmExports['wink_mcs51_uart_rx_push'], 1);
+  _wink_mcs51_uart_notready_mask = Module['_wink_mcs51_uart_notready_mask'] = createExportWrapper('wink_mcs51_uart_notready_mask', wasmExports['wink_mcs51_uart_notready_mask'], 0);
+  _wink_mcs51_uart_notready_count = Module['_wink_mcs51_uart_notready_count'] = createExportWrapper('wink_mcs51_uart_notready_count', wasmExports['wink_mcs51_uart_notready_count'], 1);
+  _wink_mcs51_uart_notready_total = Module['_wink_mcs51_uart_notready_total'] = createExportWrapper('wink_mcs51_uart_notready_total', wasmExports['wink_mcs51_uart_notready_total'], 0);
   _fflush = createExportWrapper('fflush', wasmExports['fflush'], 1);
+  _wink_mcs51_unsupported_warning_count = Module['_wink_mcs51_unsupported_warning_count'] = createExportWrapper('wink_mcs51_unsupported_warning_count', wasmExports['wink_mcs51_unsupported_warning_count'], 0);
   _emscripten_stack_get_base = wasmExports['emscripten_stack_get_base'];
   _emscripten_stack_get_end = wasmExports['emscripten_stack_get_end'];
   _strerror = createExportWrapper('strerror', wasmExports['strerror'], 1);
