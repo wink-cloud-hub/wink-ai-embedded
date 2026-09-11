@@ -6,7 +6,7 @@
 | **创建日期** | `2026-09-11` |
 | **目标平台** | `host` / `wasm`（mcs51 仿真拦截层为 host/wasm-only，`ESP_PLATFORM` 下零符号，见框架 `CMakeLists.txt` 守卫） |
 | **工具链版本** | `GCC 14.2` / `MSVC 14.40` / `Emscripten 4.0.5` / `C++17`（见框架编译方言链） |
-| **系列状态** | 📋 草稿 |
+| **系列状态** | 🔄 执行中（stage0 已完成，stage1 待开始） |
 | **优先级** | 🔴 P0（E-02 在线仿真假短路为阻塞性行为失真；其余为架构阻塞） |
 | **系列版本** | `v1.0` |
 | **审计 SSOT（发现源）** | [`docs/todolist/2026-09-11-mcs51-generic-vs-chip-specific-coupling-audit.md`](../../../todolist/2026-09-11-mcs51-generic-vs-chip-specific-coupling-audit.md)（24 项 CPL 详情以此为准，本系列不复述证据） |
@@ -177,7 +177,7 @@ graph TD
 
 | 阶段 | 计划文档 | CPL | 状态 |
 |------|----------|-----|------|
-| stage0 | [`./stage0-family-schema-prefix-gate.md`](./stage0-family-schema-prefix-gate.md) | CPL-20/24 | ⏳ 待开始 |
+| stage0 | [`./stage0-family-schema-prefix-gate.md`](./stage0-family-schema-prefix-gate.md) | CPL-20/24 | ✅ 已完成（2026-09-11，`5a91356`，签署见 stage0 §7） |
 | stage1 | [`./stage1-adc-pin-e02-fix.md`](./stage1-adc-pin-e02-fix.md) | CPL-01/02/17/22/23 | ⏳ 待开始 |
 | stage2 | [`./stage2-context-purify.md`](./stage2-context-purify.md) | CPL-11/12/18/19 | ⏳ 待开始 |
 | stage3 | [`./stage3-headers-namespaces.md`](./stage3-headers-namespaces.md) | CPL-09/13/14/21/24 | ⏳ 待开始 |

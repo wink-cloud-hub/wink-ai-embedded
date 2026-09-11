@@ -5,7 +5,7 @@
 | **计划编号** | `PLAN-20260911-MCS51-S0-SCHEMA` |
 | **创建日期** | `2026-09-11` |
 | **目标平台** | `host` / `wasm` |
-| **计划状态** | 📋 草稿 |
+| **计划状态** | ✅ 已完成（2026-09-11，commit `5a91356`，自审结论见 §6 尾签署） |
 | **优先级** | 🔴 P0（后续全部阶段的前置依赖） |
 | **关联 CPL** | CPL-20（schema）、CPL-24（前缀/枚举/knob 门禁） |
 | **前置依赖** | 无 |
@@ -32,29 +32,29 @@
 
 ## 3. 任务拆分
 
-### Task S0-1：冻结 v2 schema + 快照 `[状态: ⏳ 待开始]`
+### Task S0-1：冻结 v2 schema + 快照 `[状态: ✅ 已完成]`
 
 | 字段 | 内容 |
 |------|------|
 | **优先级** | 🔴 P0 |
 | **修改文件** | `mcs51_family.h`、`mcs51_context.h`、`mcs51_family.cpp`、`mcs51_context.cpp` |
 
-- [ ] **Step 1**：descriptor 加 `capabilities`、`port_pin_masks[4]`、`irq_vector_table` 指针 + `irq_count`、`wdt_present`、`iap_present`、`uart_count`、`timer_caps`；context 加 `caps_cache`。
-- [ ] **Step 2**：`mcs51_family.cpp` 补 classic/cms8s78xx 两行值（CMS8S：`{8,8,6,4}` 掩码、28 向量、WDT/IAP present；classic：全 8 脚、6 向量、WDT/IAP absent）。
-- [ ] **Step 3**：reset/set_family 快照 `caps_cache = desc->capabilities`；加单测断言快照一致。
+- [x] **Step 1**：descriptor 加 `capabilities`、`port_pin_masks[4]`、`irq_vector_table` 指针 + `irq_count`、`wdt_present`、`iap_present`、`uart_count`、`timer_caps`；context 加 `caps_cache`。
+- [x] **Step 2**：`mcs51_family.cpp` 补 classic/cms8s78xx 两行值（CMS8S：`{8,8,6,4}` 掩码、28 向量、WDT/IAP present；classic：全 8 脚、6 向量、WDT/IAP absent）。
+- [x] **Step 3**：reset/set_family 快照 `caps_cache = desc->capabilities`；加单测断言快照一致。
 
 验证：新增字段单测通过；`grep -n "caps_cache"` 仅 3 处（定义/快照/读取点位）。
 
-### Task S0-2：前缀 + STRICT 门禁 `[状态: ⏳ 待开始]`
+### Task S0-2：前缀 + STRICT 门禁 `[状态: ✅ 已完成]`
 
 | 字段 | 内容 |
 |------|------|
 | **优先级** | 🔴 P0 |
 | **前置依赖** | Task S0-1 |
 
-- [ ] **Step 1**：lint 新增规则：通用 `include/mcs51_*`、`wink_mcs51_*` 命中 `cms8s\|CMS8S\|0xF0\|ADCLDO\|FUNCCR\|PS_` 即 fail（白名单仅 schema 字段名）。
-- [ ] **Step 2**：STRICT 枚举分组注释（通用 vs `CMS8S_FEAT_*` vs `BOARD_FEAT_*`），保持数值稳定不 renumber。
-- [ ] **Step 3**：`WINK_MCS51_XDATA_SIZE` 标记为待下沉（本阶段只加 `TODO(stage6)` 注释，不搬）。
+- [x] **Step 1**：lint 新增规则：通用 `include/mcs51_*`、`wink_mcs51_*` 命中 `cms8s\|CMS8S\|0xF0\|ADCLDO\|FUNCCR\|PS_` 即 fail（白名单仅 schema 字段名）。
+- [x] **Step 2**：STRICT 枚举分组注释（通用 vs `CMS8S_FEAT_*` vs `BOARD_FEAT_*`），保持数值稳定不 renumber。
+- [x] **Step 3**：`WINK_MCS51_XDATA_SIZE` 标记为待下沉（本阶段只加 `TODO(stage6)` 注释，不搬）。
 
 验证（仓库根目录）：`python wink-micro-os/frameworks/mcs51/tools/lint/lint_mcs51_layering.py` 通过（本仓可执行入口；外仓 `wink.py lint arch` 接入后以 stage6 为准）；故意放一个越权前缀能 fail。
 
@@ -71,7 +71,13 @@
 - 回滚：`git revert <S0-commit>`；lint 规则文件独立提交，可单独 revert。
 
 ## 6. 阶段自审自我检验清单（Self-Audit Checkpoint）
-- [ ] **目录与架构落位**：无非法文件创建，所有修改严格限定在 `mcs51_family.*`、`mcs51_context.*` 与 `tools/lint/`。
-- [ ] **门禁自审**：故意在通用头制造越权包含可被 lint 准确拦截，正常构建 lint 全绿。
-- [ ] **零行为变更**：除 descriptor 与 caps 快照字段外，现有业务逻辑行为 diff 为 0。
-- [ ] **双轨状态**：双平台构建通过，40/40 测试通过。
+- [x] **目录与架构落位**：无非法文件创建，所有修改严格限定在 `mcs51_family.*`、`mcs51_context.*` 与 `tools/lint/`。
+- [x] **门禁自审**：故意在通用头制造越权包含可被 lint 准确拦截，正常构建 lint 全绿。
+- [x] **零行为变更**：除 descriptor 与 caps 快照字段外，现有业务逻辑行为 diff 为 0。
+- [x] **双轨状态**：双平台构建通过，40/40 测试通过。
+
+## 7. 自审签署（2026-09-11，复核 commit `5a91356`）
+- **Check 1 目录落位**：通过。9 文件变更全部落在计划 §2 范围（`mcs51_family.*`、`mcs51_context.*`、`wink_mcs51_strict.h` 分组注释、`tools/lint/lint_mcs51_layering.py` 新建、测试注册 + `test_mcs51_family_schema.cpp` 新建）；`CMakeLists.txt` 目标结构未动。
+- **Check 2 门禁**：通过。`python wink-micro-os/frameworks/mcs51/tools/lint/lint_mcs51_layering.py` → `LAYER-GATE PASS`（2026-09-11 实测）。
+- **Check 3 双轨与零行为变更**：附条件通过。host mcs51 轨 50/52 通过，`test_mcs51_family_schema` 新单测通过；2 项 Not Run（`test_mcs51_port_extint`、`test_mcs51_wink_mcu` MinGW 链接失败）为 stage1 S1-0c 已记录的 master 基线例外；`context.cpp` 行为 diff 仅 1 行快照赋值。wasm 轨受 stage1 Step 0a 已知断链（`g_active_mcu_context` 未定义）阻断，凭总纲 §6.2 基线豁免记录放行，修复责任移交 stage1 S1-0a。`test_pal_pcnt` 等 5 项非 mcs51 失败与本阶段零文件交集（`test/CMakeLists.txt` 改动仅注册新测试），判定为 master 先存问题，不列入本阶段门禁。
+- **Check 4 计划闭环**：本签署 + 总纲 §5 stage0 状态列置 `✅ 已完成`。
