@@ -677,6 +677,11 @@ if(TARGET wink_mcs51_compat)
     add_mcs51_host_test(test_mcs51_family_schema
         ../frameworks/mcs51/test/core/test_mcs51_family_schema.cpp)
 
+    # Stage2 S2-0 (PLAN-20260911-MCS51-S2): context RAM budget lock
+    # (sizeof print + no-growth ceiling; feeds stage2 §4 budget table).
+    add_mcs51_host_test(test_mcs51_context_budget
+        ../frameworks/mcs51/test/core/test_mcs51_context_budget.cpp)
+
     # GAP-23 freshness gate: the checked-in XSFR tripwire allowlist must
     # match what the audit script emits from REG_CMS8S78XX.H (catches a
     # stale allowlist after a pin-mux register is added/removed).

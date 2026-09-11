@@ -1,14 +1,14 @@
 # mcs51 migration test baseline: REGISTERED ctest list (names, sorted).
 # Criterion 'nothing lost' = set equality with this list after the move.
 # (Greenness is a separate gate with known exceptions; see stage1 S1-0b.)
-# total: 140
+# total: 141
 # generator: MinGW Makefiles
 # target_platform: host
 # cmake: cmake version 4.4.3
-# captured: 2026-09-11T19:01:35
-# head: f552b9e
-# dirty_files: 0
-# cats mcs51-host=47 mcs51-strict=5 mcs51-wasm=10 other=77 wasm-other=1
+# captured: 2026-09-11T20:51:08
+# head: 8d7e274
+# dirty_files: 3
+# cats mcs51-host=48 mcs51-strict=5 mcs51-wasm=10 other=77 wasm-other=1
 test_actuator_registry
 test_arduino_core_compat
 test_bal_chassis
@@ -55,6 +55,7 @@ test_mcs51_cms8s_adc
 test_mcs51_cms8s_adc_e2e
 test_mcs51_cms8s_buzzer
 test_mcs51_cms8s_vendor
+test_mcs51_context_budget
 test_mcs51_edge_queue
 test_mcs51_extint
 test_mcs51_family_schema
