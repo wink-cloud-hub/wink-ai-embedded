@@ -19,6 +19,10 @@
 #include "mcs51_context.h"
 #include "wink_mcs51_clock.h"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 #include <cassert>
 #include <cstdint>
 #include <cstdlib>
@@ -97,6 +101,9 @@ void wink_mcs51_xdata_write(uint64_t addr, uint8_t value, uint8_t kind) {
     oob_trap(addr, kind, true);
 }
 
+#ifdef __EMSCRIPTEN__
+EMSCRIPTEN_KEEPALIVE
+#endif
 uint32_t wink_mcs51_xdata_oob_count(void) {
     return s_oob_count;
 }
