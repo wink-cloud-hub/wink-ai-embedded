@@ -34,13 +34,19 @@
 
 ## 3. 任务拆分
 
-### Task S2-1：soc_priv 挂载（方案 A 锁定） `[状态: ⏳ 待开始]`
+### Task S2-1：soc_priv 挂载（方案 A 锁定） `[状态: ✅ 已完成（2026-09-11）]`
 
-- [ ] **Step 0**：通用头加 `uint8_t instance_index`（纯通用字段）+ `MCS51_MAX_INSTANCES` 上限常量；新增 `mcs51_context_init(ctx, idx)`（多实例显式分配，`idx` 越界编译期/运行期断言）；`mcs51_context_reset(ctx)` 签名不变（默认 `idx==0` 即今日单 context 行为，现网 ~40 处调用零改动），reset 内断言 `idx < MAX` 越界熔断；`reset`/`set_family` 按 index 重绑 `soc_priv` + `memset` 对应池槽，family 切换时先解绑旧槽再绑定新槽，classic 显式绑定 `nullptr`（禁残留悬空）。冲突域说明：池按芯片分数组，同家族同 index 才冲突；跨进程（各测试二进制独立进程）天然隔离，危险仅在同进程双 context——Step 3 的串扰单测必须经 `init` 分配不同 idx，否则测的是假阴性。**memset 保序铁律**：`reset` 必须在 `memset` 前把 `instance_index` 存局部变量、`memset` 后立即恢复（沿用现网 `saved_isrs` 惯用法），再绑定 `soc_priv`；绑定与池槽 `memset` 必须赶在任何 `g_mcs51_peripherals[i].init/reset` 调用之前（外设 init 立即解引用 `soc_priv`，否则野指针）。
-- [ ] **Step 1**：建 `cms8s_priv.h` / `at89_priv.h`；芯片源内定义 `static Priv s_priv_pool[MCS51_MAX_INSTANCES]`，按 `ctx->instance_index` 分配，`ctx->soc_priv = &pool[idx]`。
-- [ ] **Step 2**：通用体删 4 状态 + `adc_vref/vrail`（rail 默认改由芯片 reset 注入，通用 `mcs51_adc_reset` 仅清注入表）。
-- [ ] **Step 3**：双 context 串扰单测（互写 XSFR/ADC 状态不互相污染；`instance_index` 越界钳位单测；异家族双 context 各自 hooks 隔离）。
-- [ ] **Step 4**：定义 GPIO Trait 钩子结构（`mcs51_trap.h` 扩展注册 API + ctx 内 `gpio_hooks` 字段，纯声明零行为）；`extbus` 改名（头/状态/函数 + gpio/xdata 两处调用点同步改名，逻辑零改动）。
+- [x] **Step 0**：通用头加 `uint8_t instance_index`（纯通用字段）+ `MCS51_MAX_INSTANCES` 上限常量；新增 `mcs51_context_init(ctx, idx)`（多实例显式分配，`idx` 越界编译期/运行期断言）；`mcs51_context_reset(ctx)` 签名不变（默认 `idx==0` 即今日单 context 行为，现网 ~40 处调用零改动），reset 内断言 `idx < MAX` 越界熔断；`reset`/`set_family` 按 index 重绑 `soc_priv` + `memset` 对应池槽，family 切换时先解绑旧槽再绑定新槽，classic 显式绑定 `nullptr`（禁残留悬空）。冲突域说明：池按芯片分数组，同家族同 index 才冲突；跨进程（各测试二进制独立进程）天然隔离，危险仅在同进程双 context——Step 3 的串扰单测必须经 `init` 分配不同 idx，否则测的是假阴性。**memset 保序铁律**：`reset` 必须在 `memset` 前把 `instance_index` 存局部变量、`memset` 后立即恢复（沿用现网 `saved_isrs` 惯用法），再绑定 `soc_priv`；绑定与池槽 `memset` 必须赶在任何 `g_mcs51_peripherals[i].init/reset` 调用之前（外设 init 立即解引用 `soc_priv`，否则野指针）。
+- [x] **Step 1**：建 `cms8s_priv.h` / `at89_priv.h`；芯片源内定义 `static Priv s_priv_pool[MCS51_MAX_INSTANCES]`，按 `ctx->instance_index` 分配，`ctx->soc_priv = &pool[idx]`。
+- [x] **Step 2**：通用体删 4 状态 + `adc_vref/vrail`（rail 默认改由芯片 reset 注入，通用 `mcs51_adc_reset` 仅清注入表）。
+- [x] **Step 3**：双 context 串扰单测（互写 XSFR/ADC 状态不互相污染；`instance_index` 越界钳位单测；异家族双 context 各自 hooks 隔离）。
+- [x] **Step 4**：定义 GPIO Trait 钩子结构（`mcs51_trap.h` 扩展注册 API + ctx 内 `gpio_hooks` 字段，纯声明零行为）；`extbus` 改名（头/状态/函数 + gpio/xdata 两处调用点同步改名，逻辑零改动）。
+- **执行裁决 S2-1D1（自绑定替代 core 预绑定）**：计划要求 core 侧 `reset` 在外设 init 前统一绑定，但 core 引用芯片池符号违反总纲 §3.1 单向铁律。改 self-binding：各 `cms8s_*_init/reset` 首行幂等绑定（`soc_priv==slot` 则跳过），`set_family` 显式 NULL（解绑旧槽），core `reset` 显式 NULL（classic 绑定）。保序不变量不变（任一解引用前必已绑定：core init 不碰 `soc_priv`，首个芯片 init 先绑后用）。
+- **执行裁决 S2-1D2（adc0832 独立器件池）**：`soc_priv` 单指针无法同时挂芯片包与板级器件（iron_ntc = classic + ADC0832 活组合）。器件状态进独立 BSS 池（`s_adc0832_pool`，同 `instance_index` 键，`init` 时 memset 槽位），类型 `Adc0832State` 随 `ADC0832.H` 在 stage3 迁入 `devices/`。
+- **执行裁决 S2-1D3（`adc_vref/vrail` 删播种留字段）**：字面"删字段"会使 `mcs51_adc_get/set_vref/vrail` 通用 API 存储无着；按括号意图执行——删通用复位播种（`context_reset` + `mcs51_adc_reset` 的 3000/3000），字段与 API 保留（已是通用 rail 参数，无厂商语义，不破 L1/L4）。
+- **执行裁决 S2-1D4（`init` 钳位 + `reset` 断言）**：计划"钳位单测"与"越界熔断"并存——`init` 越界钳位到末槽（可测），`reset` 断言 `idx<MAX`（防手写结构体野 index），`_Static_assert(MAX>=2)` 编译期。
+- **执行裁决 S2-1D5（hook 家族门 + 按需绑定）**：落地后发现 `sfr_operators`（只 `set_family` 不 `init`）经 bridge `notify` 空悬崩溃。补 `cms8s_priv()` 按需绑定（家族门控，仅芯片家族）+ 7 芯片 hook 体家族门（跨家族 stale hook 中性返回）。另 `test_mcs51_classic_bus.cpp` 文件改名但 ctest 名保留（基线名集合不动，CMake 注释说明）。
+- **执行数据**：`sizeof` 75752→**75672**（-80；§4 回填）；`MCS51_MAX_INSTANCES=4`；host mcs51 52/54（2 基线例外）+ `wasm_` 11/11 + lint PASS。
 
 ### Task S2-2：残留结构与复位播种 `[状态: ⏳ 待开始]`
 
@@ -64,10 +70,10 @@
 | stage0 后（`caps_cache` 入账） | 实测（`5a91356` 头文件探针） | **75656** | +8（`family u8` + `caps_cache u32` 对齐尾）；总纲 §8 已批预算内增量 |
 | stage1 后（rail 64 槽入账） | 实测（现树探针） | **75752** | +96（32 槽 ×（2B injected + 1B flag）），与计划预测分毫不差 |
 | stage5 后（irq map 入 ctx 入账） | 待测（stage5 落数，届时同步上调单测 ceiling） | 待填 | +104B（13 项 × 8B profile）；诊断计数器留 file-static 不计入 |
-| cms8s priv 池/实例 | 组成实测：adc0832 15 + sysProt 32 + buzzer 24 + cms8sAdc 16 = 87B（对齐后待 S2-1 落数） | 待填 | BSS 池按实例，"context 外"内存，另行列表不与上表混算 |
+| cms8s priv 池/实例 | 实测 **72B**（sys 32 + buzzer 24 + adc 8 + adet 4 + in_poll 1，对齐后；×4 槽 = 288B BSS）+ 器件池 `Adc0832State` **15B**（×4 = 60B BSS，独立数组） | 72+15 | BSS 池按实例，"context 外"内存，另行列表不与上表混算 |
 | 注册表上限 | 8（3 core + 3 cms8s + 2 余量，stage4 `static_assert` 锁死，namespace 为"项"非字节） | 待填 | 超限编译期失败，逼新外设走 chips 拆分而非 core 堆料 |
-| 拆分后 classic | ≤ 基线（S2-1 后实测回填） | 待填 | extbus 状态（~8B）留 core，已计入 |
-| 拆分后 CMS8S | ≤ 基线（S2-1 后实测回填） | 待填 | soc_priv 池外计（BSS 池按实例，另行列表） |
+| 拆分后 classic | **75672**（S2-1 后实测；+24 vs 基线 = caps 8 + hooks 12 + 对齐 4，入账；S2-2 再削 ~120） | 75672 | extbus 状态（8B）留 core，已计入 |
+| 拆分后 CMS8S | **75672**（context 内尺寸与 classic 同构；priv 池外计 72B/实例） | 75672 | soc_priv 池外计（BSS 池按实例，另行列表） |
 
 ## 4. 验收
 
