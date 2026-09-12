@@ -21,7 +21,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "30ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0586,
       "description": "Cold water before first control tick: 12-bit raw ~240 -> 25 C (valueNorm = raw/4096)"
     },
@@ -53,7 +53,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "1600ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0047,
       "description": "Water reaches boil: 12-bit raw ~19 -> 98 C (>= 98 C); boiling reads ~19, above the over-temp band (<=16)"
     },
@@ -74,7 +74,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "5500ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0037,
       "description": "Keep-warm session has boiled the pot dry: plate runs away beyond scale, raw ~15 (<= OVERTEMP_RAW 16 band, distinct from short <=8). valueNorm = 15/4096 ~= 0.0037"
     },
@@ -101,7 +101,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "18000ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0586,
       "description": "Probe reads valid again (code ~240) with NO button press: thermal fault latches"
     },

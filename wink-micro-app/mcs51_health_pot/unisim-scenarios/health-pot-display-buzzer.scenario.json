@@ -14,7 +14,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "30ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0586,
       "description": "Cold water present at boot (25 C)"
     },
@@ -60,7 +60,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "1600ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0047,
       "description": "Water heats to boil (98 C)"
     },
@@ -81,7 +81,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "5500ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0,
       "description": "Inject NTC short fault"
     },

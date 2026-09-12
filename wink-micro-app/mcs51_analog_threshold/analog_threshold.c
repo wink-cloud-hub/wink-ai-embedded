@@ -9,17 +9,19 @@
  * on P1.0 whenever the AN0 level is at/above mid-scale (raw >= 0x0800, i.e.
  * normalized >= ~0.5). There is no injection: the only analog source is the
  * headless INPUT_ANALOG step, which drives the PinArbiter analog rail
- * (AdcDomainHandler.writeNorm -> arbiter.setAnalogDriver(32)); the sandbox ADC
- * model pulls it back through js_pal_adc_read_norm(32 + AN0).
+ * (AdcDomainHandler.writeNorm -> arbiter.setAnalogDriver(0)); the sandbox ADC
+ * model pulls it back through js_pal_adc_read_norm(0) after mapping AN0 to the
+ * physical pin 0 (v2 pin space, PLAN-20260911-MCS51-S1).
  *
  * The LED can ONLY change as a function of the live analog value, so headless
  * LED transitions across two different driven levels prove the analog value
  * crosses the bridge into firmware (and tracks changes, not a stuck rail):
  *   norm 0.2 -> raw ~0x333 <  mid -> LED off (P1.0 high)
  *   norm 0.8 -> raw ~0xCCC >= mid -> LED on  (P1.0 low)
- * Built as a real production app (cleanup -> .cpp -> links wink_mcs51_compat
- * -> wink_simulator.{js,wasm}); this original is never edited in place.
- * Linear pin (ADR-0074 D3): LED = P1.0 -> 8; analog rail pin = 32 + AN0 = 32.
+ * Built as a real production app (cleanup -> .cpp -> links the mcs51
+ * framework targets -> wink_simulator.{js,wasm}); this original is never
+ * edited in place. Linear pin (ADR-0074 D3): LED = P1.0 -> 8; AN0 physical
+ * pin = 0 (v2 rail key).
  */
 #include <wink_mcu.h>
 
@@ -40,6 +42,12 @@ static unsigned int adc_read_an0(void) {
 }
 
 void main(void) {
+    /* Vendor-standard ADC power-up (A-02 readiness gate models silicon):
+     * LDO on + Vref + P0.0 analog mux must be set before ADEN/ADGO. */
+    ADC_EnableLDO();
+    ADC_ConfigADCVref(ADC_VREF_3V);
+    GPIO_SET_MUX_MODE(P00CFG, GPIO_P00_MUX_AN0);
+    GPIO_ENABLE_OUTPUT(P1TRIS, 0);  /* P1.0 LED as output (TRIS=1) */
     LED = 1;                    /* initial: LED off */
     while (1) {
         unsigned int v = adc_read_an0();

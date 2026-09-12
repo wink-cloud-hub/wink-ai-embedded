@@ -12,9 +12,9 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "20ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.5,
-      "description": "Drive AN0 (analog rail pin 32 = 32 + AN0) to mid-scale so conversions sample a defined level"
+      "description": "Drive AN0 (physical pin 0, v2 rail key) to mid-scale so conversions sample a defined level"
     },
     {
       "type": "ASSERT_WAVEFORM",

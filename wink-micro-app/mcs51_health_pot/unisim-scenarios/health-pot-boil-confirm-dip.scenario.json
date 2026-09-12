@@ -14,7 +14,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "30ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0586,
       "description": "Cold water present before first control tick: 12-bit raw ~240 -> 25 C (valueNorm = raw/4096)"
     },
@@ -46,7 +46,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "1600ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0047,
       "description": "Water reaches boil: 12-bit raw ~19 -> 98 C (boil threshold); boil_confirm flag set, heater turns off, 3 s hold countdown begins"
     },
@@ -60,7 +60,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "2500ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0154,
       "description": "Temperature dips to ~60 C (12-bit raw ~63) during boil-hold confirmation — simulating NTC thermal lag or plate-mount reading lag. This is BELOW the 98 C boil threshold but the boil_confirm flag prevents the dip from restarting heating or resetting the 3 s hold counter."
     },

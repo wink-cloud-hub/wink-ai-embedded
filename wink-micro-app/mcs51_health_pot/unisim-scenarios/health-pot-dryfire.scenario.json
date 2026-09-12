@@ -21,7 +21,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "30ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0586,
       "description": "Cold water present before first control tick: 12-bit raw ~240 -> 25 C (valueNorm = raw/4096)"
     },
@@ -106,7 +106,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "32000ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0,
       "description": "Dry-fired plate runs the NTC off-scale: rail 0 -> code 0 (short band). A reclassifying firmware would downgrade F=3 to auto-clearing F=2; the latched thermal fault must keep F=3."
     },
@@ -126,7 +126,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "36000ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0586,
       "description": "Probe reads valid again (code ~240) with NO button press: thermal faults are not auto-cleared"
     },

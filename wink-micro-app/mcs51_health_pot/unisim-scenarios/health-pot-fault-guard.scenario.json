@@ -12,7 +12,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "30ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0586,
       "description": "Cold water present before first control tick: 12-bit raw ~240 -> 25 C (valueNorm = raw/4096)"
     },
@@ -50,7 +50,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "2000ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0,
       "description": "NTC probe shorts: rail 0 -> 12-bit raw 0 <= NTC_SHORT_RAW(8) => sensor-short fault"
     },
@@ -74,7 +74,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "4500ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0586,
       "description": "Probe recovered: code back to ~240 (valid range)"
     },

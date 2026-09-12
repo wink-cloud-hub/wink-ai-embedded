@@ -12,7 +12,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "30ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0586,
       "description": "Cold water before first control tick: raw ~240 -> 25 C"
     },
@@ -40,7 +40,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "2000ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0037,
       "description": "Plate runs beyond scale without ever passing through the 98 C boil band: raw ~15 (<= OVERTEMP_RAW 16, distinct from short <=8); valueNorm = 15/4096"
     },

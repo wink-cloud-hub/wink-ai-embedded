@@ -12,7 +12,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "30ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0586,
       "description": "Cold water before first control tick: raw ~240 -> 25 C"
     },
@@ -40,7 +40,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "1500ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0186,
       "description": "Temperature plateaus at ~55 C (12-bit raw ~76): above the stage-1 45 C gate so the 25 s watchdog can never trip; simulates lid-off heat loss / low mains voltage / half load"
     },
