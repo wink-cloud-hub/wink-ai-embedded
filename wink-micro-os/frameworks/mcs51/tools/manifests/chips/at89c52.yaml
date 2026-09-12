@@ -1,0 +1,28 @@
+# AT89C52 (classic 8051/8052) chip manifest (Stage6 S6-2,
+# PLAN-20260911-MCS51-S6, CPL-16). Filename stem == family key ==
+# chips/<family>/ directory name (total §3.1c).
+family: at89c52
+# SDCC gate precedent: stc89c52 devboards run the classic family.
+aliases:
+  - "stc89c52"
+headers:
+  vendor_include_dir: chips/at89c52/include
+  allow_regex:
+    - "REGX52\\.H"
+    - "at89_.*\\.h"
+  # Residue gate for generic core files. The classicBus->ext_bus rename guard
+  # (stage2 S2-1) lives here: family-named symbols in generic code fail.
+  forbid_in_core_regex:
+    - "classicBus|ClassicBus|CLASSIC_BUS|Mcs51ClassicBus|mcs51_classic_bus"
+    - "at89_|AT89|stc89|STC89"
+  cleanup_alias_regex:
+    - "stc"
+    - "stc\\d[a-z0-9]*"
+memory:
+  xram_bytes: null        # classic 8052 external MOVX; aperture is board scope
+  xsfr_window: null       # no extended-SFR window on classic
+sdcc_gate:
+  mem_limits: { code_max: 8192, iram_max: 256, xdata_max: null }
+  vendor_device_header: null
+  vendor_stddriver_dir: null
+  stddriver_link: []

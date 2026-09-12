@@ -30,10 +30,18 @@ Verdict order per loop (all must hold to report; FN preferred over FP):
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path
 
 from tools.lint.engine.base import LintContext, register_pack
 from tools.lint.engine.models import Finding
+
+# Stage6 S6-2 (CPL-16): header-name facts come from the chip manifests; no
+# vendor name is hardcoded in this pack.
+_TOOLS_DIR = Path(__file__).resolve().parents[1]
+if str(_TOOLS_DIR) not in sys.path:
+    sys.path.insert(0, str(_TOOLS_DIR))
+from mcs51_manifest import header_hint_patterns, load_chip_manifests  # noqa: E402
 
 _SOURCE_SUFFIXES = {".c", ".h", ".cc", ".cpp", ".hpp", ".cxx", ".hxx"}
 _SKIP_DIRS = {"build", ".git", "node_modules", "__pycache__", "unisim-assets"}
@@ -147,6 +155,9 @@ def _match_brace(text: str, open_pos: int) -> int:
     return -1
 
 
+_HEADER_HINT_RE = re.compile("|".join(header_hint_patterns()), re.IGNORECASE)
+
+
 def _is_mcs51_text(text: str, rel: str = "") -> bool:
     # Host test harnesses are out of scope (see lint_mcs51_safety).
     norm = rel.replace("\\", "/")
@@ -156,8 +167,8 @@ def _is_mcs51_text(text: str, rel: str = "") -> bool:
     if "catch_amalgamated.hpp" in text or "TEST_CASE(" in text:
         return False
     return bool(
-        re.search(r"REGX52\.H|REG_CMS8S78XX\.H|REG_CMS8S\.H|REG51\.H", text, re.IGNORECASE)
-        or re.search(r"reg5[12]\.h|wink_mcu\.h|absacc\.h", text)
+        _HEADER_HINT_RE.search(text)
+        or re.search(r"wink_mcu\.h|absacc\.h", text)
         or re.search(r"\bWINK_ISR\b|\binterrupt\b|\bsbit\b|\bsfr\b", text)
     )
 
@@ -225,14 +236,16 @@ def _read_text(abs_path: Path) -> str | None:
         return raw.decode("gbk", errors="replace")
 
 
-def _hw_unions(include_dir: Path | None) -> tuple[frozenset, frozenset]:
+def _hw_unions(include_dirs: list[Path]) -> tuple[frozenset, frozenset]:
     """(sfr_union, sbit_union): every REG header + core fallbacks, cached."""
-    key = str(include_dir) if include_dir else "<core>"
+    key = ";".join(str(d) for d in include_dirs) or "<core>"
     if key in _HW_CACHE:
         return _HW_CACHE[key]
     sfrs: set[str] = set(_CORE_SFR)
     sbits: set[str] = set(_CORE_SBIT)
-    if include_dir and include_dir.is_dir():
+    for include_dir in include_dirs:
+        if not include_dir.is_dir():
+            continue
         for header in sorted(include_dir.iterdir()):
             if header.is_file() and re.fullmatch(r"[Rr][Ee][Gg].*\.[Hh]", header.name):
                 try:
@@ -246,14 +259,25 @@ def _hw_unions(include_dir: Path | None) -> tuple[frozenset, frozenset]:
     return result
 
 
-def _resolve_include_dir() -> Path | None:
+def _resolve_include_dirs() -> list[Path]:
+    """Core include + manifest-declared chip include dirs (S6-2)."""
+    dirs: list[Path] = []
     try:
         from tools.paths import micro_os_root
 
-        cand = micro_os_root() / "frameworks" / "mcs51" / "include"
-        return cand if cand.is_dir() else None
+        root = micro_os_root()
     except Exception:
-        return None
+        root = None
+    if root is None:
+        return dirs
+    core = root / "frameworks" / "mcs51" / "include"
+    if core.is_dir():
+        dirs.append(core)
+    for manifest in load_chip_manifests().values():
+        cand = root / manifest["headers"]["vendor_include_dir"]
+        if cand.is_dir():
+            dirs.append(cand)
+    return dirs
 
 
 # ---------------------------------------------------------------------------
@@ -326,7 +350,7 @@ class _SimCompat:
     def __init__(self, ctx: LintContext):
         self.ctx = ctx
         self.findings: list[Finding] = []
-        sfrs, sbits = _hw_unions(_resolve_include_dir())
+        sfrs, sbits = _hw_unions(_resolve_include_dirs())
         self.sfr = sfrs | sbits  # any hardware name (poll verdicts)
         self.sbit = sbits  # bit-level names only (bit-bang verdicts)
 

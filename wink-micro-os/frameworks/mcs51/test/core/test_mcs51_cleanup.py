@@ -7,11 +7,14 @@
   - Delay call-site rewriting
 """
 import os
+import pathlib
 import sys
+import tempfile
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "tools"))
 import mcs51_cleanup
+import mcs51_manifest
 
 
 class TestMcs51Cleanup(unittest.TestCase):
@@ -145,6 +148,43 @@ void main(void) { HEATER = 0; }
         cleaned, counts = mcs51_cleanup.cleanup(source, target="sdcc")
         self.assertIn("sbit X = NO_SUCH_REG^3;", cleaned)
         self.assertEqual(counts["sbit_unresolved"], 1)
+
+    # ── Stage6 review S6-H4: manifest-driven MCU header rewrite ──────────────
+    def test_manifest_driven_mcu_header_rewrite(self):
+        # Both families' manifest patterns (cms8s78xx + stc89c52 alias) and the
+        # standard reg52 header normalize to <wink_mcu.h>; an unregistered
+        # vendor peripheral header stays untouched.
+        source = (
+            '#include <reg52.h>\n'
+            '#include <cms8s78xx.h>\n'
+            '#include "REG_CMS8S78XX.H"\n'
+            '#include <stc89c52.h>\n'
+            '#include <cms8s_flash.h>\n'
+            'void main(void) {}\n'
+        )
+        cleaned, counts = mcs51_cleanup.cleanup(source, target="native")
+        self.assertEqual(cleaned.count("#include <wink_mcu.h>"), 4)
+        self.assertNotIn("reg52.h", cleaned)
+        self.assertNotIn("cms8s78xx.h", cleaned)
+        self.assertNotIn("REG_CMS8S78XX.H", cleaned)
+        self.assertNotIn("stc89c52.h", cleaned)
+        # cms8s_flash.h is a peripheral driver, not a device header: untouched.
+        self.assertIn("#include <cms8s_flash.h>", cleaned)
+        self.assertEqual(counts["header"], 4)
+
+    def test_manifest_load_missing_dir_fails_fast(self):
+        # Stage6 S6-2 contract: no manifest -> no facts (no silent default).
+        old_dir = mcs51_manifest.CHIPS_DIR
+        old_cache = mcs51_manifest._CACHE
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                mcs51_manifest.CHIPS_DIR = pathlib.Path(tmp)
+                mcs51_manifest._CACHE = None
+                with self.assertRaises(mcs51_manifest.ManifestError):
+                    mcs51_manifest.load_chip_manifests()
+        finally:
+            mcs51_manifest.CHIPS_DIR = old_dir
+            mcs51_manifest._CACHE = old_cache
 
 
 if __name__ == "__main__":
