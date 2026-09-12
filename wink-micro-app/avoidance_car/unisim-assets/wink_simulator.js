@@ -1720,10 +1720,14 @@ async function createWasm() {
           return 0;
       }
 
-  function _js_pal_pwm_set_duty(channel, duty) {
-          if (typeof Module !== 'undefined' && typeof Module['js_pal_pwm_set_duty'] === 'function' && Module['js_pal_pwm_set_duty'] !== _js_pal_pwm_set_duty) {
-              return Module['js_pal_pwm_set_duty'](channel, duty);
+  function _js_pal_pwm_set_duty_bp(channel, bp) {
+          if (typeof Module !== 'undefined' && typeof Module['js_pal_pwm_set_duty_bp'] === 'function' && Module['js_pal_pwm_set_duty_bp'] !== _js_pal_pwm_set_duty_bp) {
+              return Module['js_pal_pwm_set_duty_bp'](channel, bp);
           }
+          // T2.4 floating-point fallback for cross-repo version skew (PLAN-20260912):
+          // older unisim hosts implement only js_pal_pwm_set_duty; forward bp/100
+          // so bp observations never silently break during C/TS rollout skew.
+          return _js_pal_pwm_set_duty(channel, bp / 100.0);
       }
 
 
@@ -2637,7 +2641,7 @@ var wasmImports = {
   /** @export */
   js_pal_poll_interrupt: _js_pal_poll_interrupt,
   /** @export */
-  js_pal_pwm_set_duty: _js_pal_pwm_set_duty
+  js_pal_pwm_set_duty_bp: _js_pal_pwm_set_duty_bp
 };
 
 
