@@ -1608,13 +1608,6 @@ async function createWasm() {
       return 0;
     };
 
-  function _js_pal_adc_read_norm(pin) {
-          if (typeof Module !== 'undefined' && typeof Module['js_pal_adc_read_norm'] === 'function' && Module['js_pal_adc_read_norm'] !== _js_pal_adc_read_norm) {
-              return Module['js_pal_adc_read_norm'](pin);
-          }
-          return 0.0;
-      }
-
   function _js_pal_gpio_drive_ideal(pin, level) {
           if (typeof Module !== 'undefined' && typeof Module['js_pal_gpio_drive_ideal'] === 'function' && Module['js_pal_gpio_drive_ideal'] !== _js_pal_gpio_drive_ideal) {
               return Module['js_pal_gpio_drive_ideal'](pin, level);
@@ -2410,7 +2403,12 @@ var _wink_mcs51_uart_rx_push = Module['_wink_mcs51_uart_rx_push'] = makeInvalidE
 var _wink_mcs51_uart_notready_mask = Module['_wink_mcs51_uart_notready_mask'] = makeInvalidEarlyAccess('_wink_mcs51_uart_notready_mask');
 var _wink_mcs51_uart_notready_count = Module['_wink_mcs51_uart_notready_count'] = makeInvalidEarlyAccess('_wink_mcs51_uart_notready_count');
 var _wink_mcs51_uart_notready_total = Module['_wink_mcs51_uart_notready_total'] = makeInvalidEarlyAccess('_wink_mcs51_uart_notready_total');
+var _wink_mcs51_uart_overwrite_total = Module['_wink_mcs51_uart_overwrite_total'] = makeInvalidEarlyAccess('_wink_mcs51_uart_overwrite_total');
 var _fflush = makeInvalidEarlyAccess('_fflush');
+var _wink_mcs51_xdata_oob_count = Module['_wink_mcs51_xdata_oob_count'] = makeInvalidEarlyAccess('_wink_mcs51_xdata_oob_count');
+var _wink_mcs51_ext_bus_conflict_total = Module['_wink_mcs51_ext_bus_conflict_total'] = makeInvalidEarlyAccess('_wink_mcs51_ext_bus_conflict_total');
+var _wink_mcs51_xsfr_unmodeled_count = Module['_wink_mcs51_xsfr_unmodeled_count'] = makeInvalidEarlyAccess('_wink_mcs51_xsfr_unmodeled_count');
+var _wink_mcs51_xsfr_unmodeled_addr = Module['_wink_mcs51_xsfr_unmodeled_addr'] = makeInvalidEarlyAccess('_wink_mcs51_xsfr_unmodeled_addr');
 var _wink_mcs51_unsupported_warning_count = Module['_wink_mcs51_unsupported_warning_count'] = makeInvalidEarlyAccess('_wink_mcs51_unsupported_warning_count');
 var _emscripten_stack_get_base = makeInvalidEarlyAccess('_emscripten_stack_get_base');
 var _emscripten_stack_get_end = makeInvalidEarlyAccess('_emscripten_stack_get_end');
@@ -2425,8 +2423,8 @@ var ___set_stack_limits = Module['___set_stack_limits'] = makeInvalidEarlyAccess
 var dynCall_vi = makeInvalidEarlyAccess('dynCall_vi');
 var dynCall_v = makeInvalidEarlyAccess('dynCall_v');
 var dynCall_ji = makeInvalidEarlyAccess('dynCall_ji');
-var dynCall_viiii = makeInvalidEarlyAccess('dynCall_viiii');
 var dynCall_vii = makeInvalidEarlyAccess('dynCall_vii');
+var dynCall_viiii = makeInvalidEarlyAccess('dynCall_viiii');
 var dynCall_vj = makeInvalidEarlyAccess('dynCall_vj');
 var dynCall_ii = makeInvalidEarlyAccess('dynCall_ii');
 var dynCall_iiii = makeInvalidEarlyAccess('dynCall_iiii');
@@ -2503,7 +2501,12 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['wink_mcs51_uart_notready_mask'] != 'undefined', 'missing Wasm export: wink_mcs51_uart_notready_mask');
   assert(typeof wasmExports['wink_mcs51_uart_notready_count'] != 'undefined', 'missing Wasm export: wink_mcs51_uart_notready_count');
   assert(typeof wasmExports['wink_mcs51_uart_notready_total'] != 'undefined', 'missing Wasm export: wink_mcs51_uart_notready_total');
+  assert(typeof wasmExports['wink_mcs51_uart_overwrite_total'] != 'undefined', 'missing Wasm export: wink_mcs51_uart_overwrite_total');
   assert(typeof wasmExports['fflush'] != 'undefined', 'missing Wasm export: fflush');
+  assert(typeof wasmExports['wink_mcs51_xdata_oob_count'] != 'undefined', 'missing Wasm export: wink_mcs51_xdata_oob_count');
+  assert(typeof wasmExports['wink_mcs51_ext_bus_conflict_total'] != 'undefined', 'missing Wasm export: wink_mcs51_ext_bus_conflict_total');
+  assert(typeof wasmExports['wink_mcs51_xsfr_unmodeled_count'] != 'undefined', 'missing Wasm export: wink_mcs51_xsfr_unmodeled_count');
+  assert(typeof wasmExports['wink_mcs51_xsfr_unmodeled_addr'] != 'undefined', 'missing Wasm export: wink_mcs51_xsfr_unmodeled_addr');
   assert(typeof wasmExports['wink_mcs51_unsupported_warning_count'] != 'undefined', 'missing Wasm export: wink_mcs51_unsupported_warning_count');
   assert(typeof wasmExports['emscripten_stack_get_base'] != 'undefined', 'missing Wasm export: emscripten_stack_get_base');
   assert(typeof wasmExports['emscripten_stack_get_end'] != 'undefined', 'missing Wasm export: emscripten_stack_get_end');
@@ -2518,8 +2521,8 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['dynCall_vi'] != 'undefined', 'missing Wasm export: dynCall_vi');
   assert(typeof wasmExports['dynCall_v'] != 'undefined', 'missing Wasm export: dynCall_v');
   assert(typeof wasmExports['dynCall_ji'] != 'undefined', 'missing Wasm export: dynCall_ji');
-  assert(typeof wasmExports['dynCall_viiii'] != 'undefined', 'missing Wasm export: dynCall_viiii');
   assert(typeof wasmExports['dynCall_vii'] != 'undefined', 'missing Wasm export: dynCall_vii');
+  assert(typeof wasmExports['dynCall_viiii'] != 'undefined', 'missing Wasm export: dynCall_viiii');
   assert(typeof wasmExports['dynCall_vj'] != 'undefined', 'missing Wasm export: dynCall_vj');
   assert(typeof wasmExports['dynCall_ii'] != 'undefined', 'missing Wasm export: dynCall_ii');
   assert(typeof wasmExports['dynCall_iiii'] != 'undefined', 'missing Wasm export: dynCall_iiii');
@@ -2593,7 +2596,12 @@ function assignWasmExports(wasmExports) {
   _wink_mcs51_uart_notready_mask = Module['_wink_mcs51_uart_notready_mask'] = createExportWrapper('wink_mcs51_uart_notready_mask', wasmExports['wink_mcs51_uart_notready_mask'], 0);
   _wink_mcs51_uart_notready_count = Module['_wink_mcs51_uart_notready_count'] = createExportWrapper('wink_mcs51_uart_notready_count', wasmExports['wink_mcs51_uart_notready_count'], 1);
   _wink_mcs51_uart_notready_total = Module['_wink_mcs51_uart_notready_total'] = createExportWrapper('wink_mcs51_uart_notready_total', wasmExports['wink_mcs51_uart_notready_total'], 0);
+  _wink_mcs51_uart_overwrite_total = Module['_wink_mcs51_uart_overwrite_total'] = createExportWrapper('wink_mcs51_uart_overwrite_total', wasmExports['wink_mcs51_uart_overwrite_total'], 0);
   _fflush = createExportWrapper('fflush', wasmExports['fflush'], 1);
+  _wink_mcs51_xdata_oob_count = Module['_wink_mcs51_xdata_oob_count'] = createExportWrapper('wink_mcs51_xdata_oob_count', wasmExports['wink_mcs51_xdata_oob_count'], 0);
+  _wink_mcs51_ext_bus_conflict_total = Module['_wink_mcs51_ext_bus_conflict_total'] = createExportWrapper('wink_mcs51_ext_bus_conflict_total', wasmExports['wink_mcs51_ext_bus_conflict_total'], 0);
+  _wink_mcs51_xsfr_unmodeled_count = Module['_wink_mcs51_xsfr_unmodeled_count'] = createExportWrapper('wink_mcs51_xsfr_unmodeled_count', wasmExports['wink_mcs51_xsfr_unmodeled_count'], 0);
+  _wink_mcs51_xsfr_unmodeled_addr = Module['_wink_mcs51_xsfr_unmodeled_addr'] = createExportWrapper('wink_mcs51_xsfr_unmodeled_addr', wasmExports['wink_mcs51_xsfr_unmodeled_addr'], 1);
   _wink_mcs51_unsupported_warning_count = Module['_wink_mcs51_unsupported_warning_count'] = createExportWrapper('wink_mcs51_unsupported_warning_count', wasmExports['wink_mcs51_unsupported_warning_count'], 0);
   _emscripten_stack_get_base = wasmExports['emscripten_stack_get_base'];
   _emscripten_stack_get_end = wasmExports['emscripten_stack_get_end'];
@@ -2608,8 +2616,8 @@ function assignWasmExports(wasmExports) {
   dynCall_vi = dynCalls['vi'] = createExportWrapper('dynCall_vi', wasmExports['dynCall_vi'], 2);
   dynCall_v = dynCalls['v'] = createExportWrapper('dynCall_v', wasmExports['dynCall_v'], 1);
   dynCall_ji = dynCalls['ji'] = createExportWrapper('dynCall_ji', wasmExports['dynCall_ji'], 2);
-  dynCall_viiii = dynCalls['viiii'] = createExportWrapper('dynCall_viiii', wasmExports['dynCall_viiii'], 5);
   dynCall_vii = dynCalls['vii'] = createExportWrapper('dynCall_vii', wasmExports['dynCall_vii'], 3);
+  dynCall_viiii = dynCalls['viiii'] = createExportWrapper('dynCall_viiii', wasmExports['dynCall_viiii'], 5);
   dynCall_vj = dynCalls['vj'] = createExportWrapper('dynCall_vj', wasmExports['dynCall_vj'], 2);
   dynCall_ii = dynCalls['ii'] = createExportWrapper('dynCall_ii', wasmExports['dynCall_ii'], 2);
   dynCall_iiii = dynCalls['iiii'] = createExportWrapper('dynCall_iiii', wasmExports['dynCall_iiii'], 4);
@@ -2646,8 +2654,6 @@ var wasmImports = {
   fd_seek: _fd_seek,
   /** @export */
   fd_write: _fd_write,
-  /** @export */
-  js_pal_adc_read_norm: _js_pal_adc_read_norm,
   /** @export */
   js_pal_gpio_drive_ideal: _js_pal_gpio_drive_ideal,
   /** @export */
