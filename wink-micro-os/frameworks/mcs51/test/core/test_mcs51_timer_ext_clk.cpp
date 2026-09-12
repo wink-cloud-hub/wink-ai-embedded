@@ -173,6 +173,12 @@ int main(void) {
     mcs51_context_reset(ctx);
     mcs51_timer_init(ctx);
     cms8s_timer_init(ctx);  // re-install chained hooks after the core re-init
+    // S4-H2 follow-up: standalone init seeds the selector defaults itself
+    // (dirty one first so only the init path can restore it).
+    ctx->xdata_shadow[0xF0C2u] = 0x00u;  // CMS8S_XSFR_PS_T0 dirtied
+    cms8s_timer_init(ctx);
+    check(ctx->xdata_shadow[0xF0C2u] == 0x7Fu,
+          "cms8s_timer_init must seed PS_T0 to CMS8S_XSFR_PS_RESET");
     wink_mcs51_isr_enable();
     g_t2_hits = 0;
 

@@ -45,7 +45,7 @@ static inline bool mcs51_peripheral_active_for(const mcs51_peripheral_desc_t* d,
 extern const mcs51_peripheral_desc_t g_mcs51_peripherals[];
 extern const uint8_t g_mcs51_num_peripherals;
 
-// ── Stage4 (PLAN-20260911-MCS51-S4, CPL-10): chip self-registration ──────────
+// ── Stage4 CPL-10: chip self-registration ─────────────────────────────────
 // Core-owned bounded BSS registry (static dispatch, ADR-0004: no weak
 // symbols, no malloc, no exceptions). Chip packages append their descriptors
 // through their family register entry (the chips/*/src/*_register.cpp TUs);
@@ -54,6 +54,12 @@ extern const uint8_t g_mcs51_num_peripherals;
 // applying the same family_mask filter to both. Registration is idempotent
 // (same pointer or same name registers once); the table never shrinks
 // except through the test seam below.
+//
+// Capacity rationale (stage4 review follow-up): core 3 + current chip
+// package 7 = 10 today; 12 leaves headroom for one more family. Overflow is
+// a build contract violation and ABORTS in every build (assert is
+// NDEBUG-compiled out; the unconditional abort is the real fuse) — never a
+// silent drop.
 #ifndef MCS51_MAX_PERIPHERALS
 #define MCS51_MAX_PERIPHERALS 12u
 #endif

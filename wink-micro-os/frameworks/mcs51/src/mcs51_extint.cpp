@@ -184,12 +184,27 @@ void wink_mcs51_extint_poll(void) {
 }
 
 uint64_t mcs51_extint_next_event_us(struct Mcu51Context* ctx) {
-    // Lines are level/edge-driven and sampled opportunistically every
-    // microstep (no advertised schedule); port sampling advertises through
-    // the chip descriptor. Reporting none keeps classic sleep behavior
-    // unchanged (the old port-based time was chip silicon anyway).
-    (void)ctx;
-    return UINT64_MAX;
+    if (!ctx) {
+        ctx = mcs51_get_context();
+    }
+    // INT0/INT1 are sampled once per SAMPLE_PERIOD_US slice (poll_line
+    // throttles on last_sample_us). Advertise the earliest next sample so
+    // IDLE (PCON.0) Mode A keeps step-pumping and microsteps keep polling
+    // the lines; returning UINT64_MAX here would drop a classic part into
+    // Mode B (event-queue wait) with no scheduled wake source when no timer
+    // is active. PD (PCON.1) ignores schedules by design and stays
+    // event-driven (mcs51_calc_next_event_us is_pd path).
+    uint64_t earliest = UINT64_MAX;
+    for (const Mcu51ExtIntLine& ln : ctx->extint.lines) {
+        const uint64_t next = ln.last_sample_us + SAMPLE_PERIOD_US;
+        if (next < earliest) {
+            earliest = next;
+        }
+    }
+    if (earliest == UINT64_MAX) {
+        return UINT64_MAX;
+    }
+    return (earliest > ctx->virtual_us) ? earliest : ctx->virtual_us;
 }
 
 }  // extern "C"

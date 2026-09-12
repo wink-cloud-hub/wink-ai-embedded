@@ -4,8 +4,11 @@
 #include "mcs51_context.h"
 
 #include <cassert>
+#include <cstdlib>
 #include <cstring>
 
+// Lower-bound sanity only: the exact worst case (core + chip package
+// descriptors) spans TUs and is enforced at registration time below.
 static_assert(MCS51_MAX_PERIPHERALS >= 6u,
               "registry must hold core + chip descriptors");
 
@@ -95,7 +98,11 @@ void mcs51_peripheral_register(const mcs51_peripheral_desc_t* desc) {
     }
     assert(s_registered_count < MCS51_MAX_PERIPHERALS);
     if (s_registered_count >= MCS51_MAX_PERIPHERALS) {
-        return;  // NDEBUG containment: never overflow, worst case drops
+        // Contract failure (ADR-0012 honesty): capacity is a build-time
+        // fact; NDEBUG compiles the assert out, so abort unconditionally. A
+        // silent drop would disable chip models with no trace.
+        assert(0 && "mcs51 peripheral registry overflow");
+        std::abort();
     }
     s_registered[s_registered_count] = *desc;  // POD copy, no heap
     ++s_registered_count;
