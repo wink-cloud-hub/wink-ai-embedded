@@ -19,6 +19,10 @@ extern "C" {
 // ── UniSim channel-1 GPIO imports ───────────────────────────────────────────
 void js_pal_gpio_write(uint16_t pin, bool level, uint8_t strength);
 uint8_t js_pal_gpio_read_state(uint16_t pin);
+// P3 (PLAN-20260912-MCS51-P3-TRIS): drop the MCU driver on a pin (TRIS 1->0
+// input switch, open-drain release, reset). Mirrors wasm_bridge.h; host gets
+// a recording fallback in mcs51_uni_bridge.cpp.
+void js_pal_gpio_release_mcu(uint16_t pin);
 
 // ── Write Path ──────────────────────────────────────────────────────────────
 void mcs51_gpio_sfr_write(uint8_t port, uint8_t new_val);

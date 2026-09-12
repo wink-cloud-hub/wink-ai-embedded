@@ -39,6 +39,21 @@ void js_pal_gpio_write(uint16_t pin, bool level, uint8_t strength) {
     wink_mcs51_pwm_meter_update(pin, level ? 1u : 0u, wink_mcs51_virtual_us());
 }
 
+// P3 (PLAN-20260912-MCS51-P3-TRIS): MCU-driver release records. Host has no
+// arbiter; the chip model's TRIS 1->0 / open-drain / reset releases land here
+// so tests can assert the exact pin was released.
+#define MCS51_HOST_RELEASE_LOG_SIZE 128u
+static uint32_t s_host_gpio_releases;
+static uint16_t s_release_pin[MCS51_HOST_RELEASE_LOG_SIZE];
+
+void js_pal_gpio_release_mcu(uint16_t pin) {
+    uint32_t i = s_host_gpio_releases;
+    if (i < MCS51_HOST_RELEASE_LOG_SIZE) {
+        s_release_pin[i] = pin;
+    }
+    ++s_host_gpio_releases;
+}
+
 // Channel-3 analog pull override (A-02 host test seam): per rail-key norm
 // override (Stage1 dual-space partition, see mcs51_adc.h: keys 0~31 are MCU
 // physical pins, 32~63 board channels; this [64] table already covers both,
@@ -158,6 +173,20 @@ uint8_t wink_mcs51_host_gpio_notify_level(uint32_t i) {
 }
 uint8_t wink_mcs51_host_gpio_notify_strength(uint32_t i) {
     return (i < MCS51_HOST_NOTIFY_LOG_SIZE) ? s_notify_strength[i] : 0u;
+}
+
+// P3: release-side observability (TRIS 1->0 / open-drain / reset).
+uint32_t wink_mcs51_host_gpio_release_count(void) {
+    return s_host_gpio_releases;
+}
+uint16_t wink_mcs51_host_gpio_release_pin(uint32_t i) {
+    return (i < MCS51_HOST_RELEASE_LOG_SIZE) ? s_release_pin[i] : 0xFFFFu;
+}
+void wink_mcs51_host_gpio_release_reset(void) {
+    s_host_gpio_releases = 0u;
+    for (uint32_t i = 0; i < MCS51_HOST_RELEASE_LOG_SIZE; ++i) {
+        s_release_pin[i] = 0u;
+    }
 }
 
 }  // extern "C"
