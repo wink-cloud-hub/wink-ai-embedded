@@ -31,6 +31,16 @@ extern "C" void js_pal_uart_write(uint8_t port, const uint8_t* buf, uint32_t len
 // printf failed to link on MinGW. Single definition point in the sim
 // library (host/wasm console); the test-local shim is removed to avoid
 // a duplicate symbol.
+//
+// Stage6 review S6-H7: the sink is WEAK so carrier apps that legitimately
+// define their own `char putchar(char)` (vendor uart0_printf/uart0_rxtx
+// route printf through SBUF) override it instead of colliding at link time.
+// GCC/Clang/emcc honor __attribute__((weak)); MSVC (where the framework flag
+// chain erases __attribute__) keeps the strong definition — no MSVC-built
+// carrier defines putchar.
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((weak))
+#endif
 char putchar(char ch) { return static_cast<char>(fputc(ch, stdout)); }
 
 namespace {
@@ -259,7 +269,9 @@ void on_sbuf_write(void) {
     Mcu51UartState& uart = get_uart();
     uint8_t b = mcs51_get_context()->sfr_shadow[SFR_SBUF];
 
-    putchar(static_cast<int>(b));
+    // Console mirror via fputc (NOT putchar): a carrier-overridden putchar
+    // writes SBUF, which would re-enter this handler (S6-H7).
+    fputc(b, stdout);
     if (b == '\n') {
         fflush(stdout);
     }
