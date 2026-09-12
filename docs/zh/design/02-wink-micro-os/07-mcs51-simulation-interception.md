@@ -38,7 +38,7 @@
 | ch1 数字**写**（MCU→插件，LED/继电器） | ✅ | headless 7/7（`js_pal_gpio_write`） |
 | ch1 写**驱动强度轴**（8051 准双向口弱上拉/强低） | ✅ | ADR-0077，`js_pal_gpio_write(pin,level,strength)`，上电 WEAK-HIGH 种子；health_pot 恢复 `P3=0xFF` |
 | ch1 数字**读**（插件→MCU，按键 Read-Pin 三路） | ✅ | headless 7/7（`js_pal_gpio_read_state`） |
-| ch3 模拟 **ADC** | ✅ C 侧缝（`js_pal_adc_read_norm(32+ch)`→12-bit）+ 跨仓活桥已接通：sister `wink-ai` `afc54d68`（桥 `js_pal_adc_read_norm` 改接 `arbiter.readAnalog(pin)`，无驱动返 0 零回归）+ `81b94565`（headless `AdcDomainHandler` 绑定共享 PinArbiter，此前写进断线 store）。headless `mcs51_analog_threshold`：`INPUT_ANALOG adcChannel:32` 0.8→0.2→0.8 → CMS8S 片内 12-bit ADC → 阈值翻 P1.0 LED，`ASSERT_POINT` **8/8**（T4） | ADR-0076 A 类（跨仓已落地） |
+| ch3 模拟 **ADC** | ✅ C 侧缝（`js_pal_adc_read_norm(pin)`→12-bit，v2 双空间 rail key：0~31 物理 Pin / 32~63 板级通道）+ 跨仓活桥已接通：sister `wink-ai` `afc54d68`（桥 `js_pal_adc_read_norm` 改接 `arbiter.readAnalog(pin)`，无驱动返 0 零回归）+ `81b94565`（headless `AdcDomainHandler` 绑定共享 PinArbiter，此前写进断线 store）。headless `mcs51_analog_threshold`：`INPUT_ANALOG adcChannel:0`（AN0→物理 Pin 0，v2 迁移）0.8→0.2→0.8 → CMS8S 片内 12-bit ADC → 阈值翻 P1.0 LED，`ASSERT_POINT` **8/8**（T4） | ADR-0076 A 类（跨仓已落地） |
 | ch2 UART **TX** | ✅ SBUF 写→`js_pal_uart_write`→UARTBus TX 时间线（置 TI、向量 4 同步）；headless `mcs51_uart_hello` `ASSERT_BUS_PAYLOAD` PASS（T1/T5） | ADR-0076 A 类 |
 | ch2 UART **RX** | ✅ 框架模型（fiber 上下文 drain 队列→锁 SBUF+置 RI+派向量 4，host+wasm ctest 闭环，T2）+ **活通道已跨仓接通**：sister `wink-ai` `cf19d412`——`UartBus.sendToFirmware` 优先解析 `wink_mcs51_uart_rx_push`（容忍 emscripten `_` 前缀），回落 `pal_wasm_push_uart_rx_byte(port,b)`；`BusDomainHandler.setWasmExportsFn` 解 headless 上下文先于 wasm 实例化的导出晚绑定。headless `mcs51_uart_echo`：`INPUT_BUS` 推 "A"/"BC" → 向量-4 ISR 收回 → polled TX 回声，`ASSERT_BUS_PAYLOAD` **4/4**（T2.3） | ADR-0076 A 类（跨仓已落地） |
 | ch2 bit-bang **I2C / SPI 从机** | ❌ 未建（ADC0832 = 现成 SPI 从机模板） | ADR-0076 A 类 |
@@ -88,7 +88,7 @@ MCU 兼容分两条正交轴：
 
 - **0 周期即时穿透**（ADR-0072 即时外设语义）：ADCON0 写钩子（`mcs51_trap_register_sfr_write(0xDF, …)`，`frameworks/mcs51/src/cms8s_adc.cpp`）在写语句内同步完成：门控 ADGO+ADEN → 取通道 → 从 12-bit 注入轨 `mcs51_adc_get_value()` 拉码值 → 按 ADFM 装载 ADRESH/ADRESL → 影子自清 ADGO → 按 ADCIE 锁存 ADCIF、按 EA 派发向量 19。
 - **码值装载**（与原厂 `ADC_GetADCResult` 互逆）：右对齐 `ADRESH=(raw>>8)&0x0F, ADRESL=raw&0xFF`（读取 `0x0FFF&((ADRESH<<8)|ADRESL)`）；左对齐 `ADRESH=(raw>>4)&0xFF, ADRESL=(raw&0x0F)<<4`（读取 `0x0FFF&((ADRESH<<4)|(ADRESL>>4))`）。
-- **基础设施**：ISR 表宽 `WINK_MCS51_NUM_VECTORS` = 28；通用 core 默认 profile 仅标准源 0~5，扩展源由芯片包在 context reset 中经 `wink_mcs51_set_irq_map_entry` 逐项装载（映射表 per-context，随 Mcu51Context 复位重建），描述符 `irq_vector_table` 做家族白名单绝缘（经典家族拒收扩展向量），T2 多标志判定经 per-context flag-predicate 钩子下放芯片包（PLAN-20260911-MCS51-S5 CPL-06）；xdata 合法孔径由家族描述符给出：XRAM `[0, xram_size)`（无片上 XRAM 时为板级 `WINK_MCS51_XDATA_SIZE`）∪ XSFR 窗口 `[xsfr_base, xsfr_base+xsfr_size)`，窗口内白名单校验经 per-context `xsfr_validate` 芯片钩子（经典无窗口；STRICT assert+abort / release 告警丢弃双态，CPL-08）；模拟注入轨统一 12-bit（0~4095，32 通道），ADC0832 消费点 `&0xFF` 掩码不受影响。
+- **基础设施**：ISR 表宽 `WINK_MCS51_NUM_VECTORS` = 28；通用 core 默认 profile 仅标准源 0~5，扩展源由芯片包在 context reset 中经 `wink_mcs51_set_irq_map_entry` 逐项装载（映射表 per-context，随 Mcu51Context 复位重建），描述符 `irq_vector_table` 做家族白名单绝缘（经典家族拒收扩展向量），T2 多标志判定经 per-context flag-predicate 钩子下放芯片包（PLAN-20260911-MCS51-S5 CPL-06）；xdata 合法孔径由家族描述符给出：XRAM `[0, xram_size)`（无片上 XRAM 时为板级 `WINK_MCS51_XDATA_SIZE`）∪ XSFR 窗口 `[xsfr_base, xsfr_base+xsfr_size)`，窗口内白名单校验经 per-context `xsfr_validate` 芯片钩子（经典无窗口；STRICT assert+abort / release 告警丢弃双态，CPL-08）；模拟注入轨统一 12-bit（0~4095，64 rail key 双空间：0~31 物理 Pin / 32~63 板级通道），ADC0832 消费点 `&0xFF` 掩码不受影响。
 - **原厂 StdDriver 未修改编译（tier-b，2026-08-29 收割，ADR-0073 D6）**：原厂 StdDriver `adc.c` 经 committed shim `frameworks/mcs51/chips/cms8s78xx/include/cms8s78xx.h`（Stage3 前位于 `frameworks/mcs51/include/`；置于 include 首位遮蔽原厂 Keil 设备头——其重定义 stdint/sfr、野指针 `ADCLDO`，仅 `#include "REG_CMS8S.H"`）+ GBK→UTF-8 transcode（`mcs51_cleanup.py` `read_source`/`--transcode`，构建树规范化、源只读不入库）+ C++17 `inline WinkSfr/WinkXsfr` ODR 安全多 TU 共享，在 host 编译运行（`test_mcs51_cms8s_vendor`）。REG_CMS8S.H 与原厂重名枚举宏采用原厂逐字 token 间距（GCC 无 `-Wmacro-redefined`，仅逐字一致静默；vendor 头目录标 SYSTEM include、MSVC `/wd4005`）；夹具缺失 CMake 优雅跳过。原厂夹具（`docs/vendors/`）参考只读、永不入库（E-003/license）。
 - **v1 收窄**：AN63 内部通道（BGR/温度/VDD）返回 0；ADCLDO VSEL 不影响满量程；完整 ADC_Ldo 例程（tier-c，需 system.h/gpio.h shim + 19 个 ISR 桩）延后 M6。
 - **即时外设与虚拟频率的断言语义边界**：ADC 模型是 0 周期即时转换（ADR-0073 D2 / ADR-0072 D1），连续转换在虚拟时钟量子与微步内折叠。实测 ~10.7kHz 是 Native 宿主 C 软件循环的微步累计节拍，而非真硅片 `ADC_CLK_DIV_256` 的物理转换率（真硅片在 24MHz 下物理转换率约为 3.3kHz）。EOC 场景断言（如 `adc-ldo.scenario.json`）证明的是“EOC 中断 vector 19 派发 → ISR 翻转 P32”这一中断服务链路与引脚翻转活性（Liveness）闭环，而非校验硬件物理振荡频率；场景断言采用活性宽容区间（`$between: [1000, 50000]`），避免将仿真软件循环微步假象误作为物理 Gold Reference。详见专用技术设计规格书：[`2026-09-08-mcs51-simulation-vs-silicon-fidelity-and-test-limits.md`](../../tech-designs/mcs51/2026-09-08-mcs51-simulation-vs-silicon-fidelity-and-test-limits.md)。
@@ -111,7 +111,7 @@ M0–M6 在**受限 ctest harness**（host fallback + node 桩）内验证；ADR
 - **框架拥有回调**：mcs51 app **不**含 `app_callbacks.c`/`device_tree.c`、**不**跑 `app_codegen.py`——`mcs51_bridge.cpp` 已强定义 `wink_app_get_callbacks()`（init/loop→Keil `main` fiber）。app 唯一源是 cleaned Keil `.cpp`（C++17）。生产链接**不得**带入 `mcs51_wasm_link_stubs.c`（通道 `*_reset` 与真实 `pal_wasm_ch*.c` 重复）。
 - **真实通道 PAL + 生产 js 库**：生产 wasm 链全部 `pal_wasm_ch*.c` + `wink_sim_js.js`（MODULARIZE `WasmSandbox`、ASYNCIFY、WASM_BIGINT）。mcs51 代理的 `js_pal_gpio_write`/`js_pal_gpio_read_state`/`js_pal_adc_read_norm` 与 esp32 app 走**同一 PinArbiter 桥**（`createUnisimImports`），故 headless 与 worker 装载同形。
 - **生产板级 codegen**：根 CMake 新增 `generate_mcs51_board_config` target，跑 `mcs51_board_config.py` 生成进 `${WINK_CONFIG_DIR}/mcs51_board_config.h`；gate 含"`wink-app.json` 的 `board` 字段匹配 mcs51"（`_wink_app_is_mcs51`，板名 regex 一次检出，兼作 DAL 绕开判据）。
-- **家族选择注入（Stage6 S6-1，CPL-15/24）**：芯片外设注册经 codegen 头 `mcs51_family_select.h`（与 board_config 同机制、同目录）解耦——`mcs51_bridge.cpp` 以 `__has_include` 纳入并在首次 `context_reset` 前调用 `MCS51_FAMILY_SELECT_REGISTER()`；外仓 wink-tools 生成器未就绪期间，测试用检入式 fixture（`test/fixtures/family_select/<family>/`）验证该分支，生产暂保留 `WINK_MCS51_CMS8S78XX` 过渡默认（S4-D5，deferred，stage7 删除）。`WINK_MCS51_XDATA_SIZE` 不再由框架 CMake cache 拥有：孔径属板级作用域，板/app 构建按需以编译定义下发，`absacc.h` 保留 8192 默认值。
+- **家族选择注入（Stage6 S6-1 → Stage7 S7-1 定稿，CPL-15/24）**：芯片外设注册为**链接期自注册**——每个 `chips/<family>/src/*_register.cpp` 携带静态初始化器，家族 register OBJECT 一旦被链接即向 core 注册表追加描述符（生产根构建与测试均经 manifest 解析链接唯一家族包）。`mcs51_bridge.cpp` 保持家族无关：无生成 glue 头、无 `__has_include` 探针、无芯片符号（S4-D5 过渡默认与 `mcs51_family_select.h` 生成缝随 stage7 删除；新家族仅需 chips 目录 + manifest，CMake 自动发现）。`WINK_MCS51_XDATA_SIZE` 不再由框架 CMake cache 拥有：孔径属板级作用域，板/app 构建按需以编译定义下发，`absacc.h` 保留 8192 默认值。
 - **板级配置作用域（Stage6 S6-3）**：`mcs51_board_config.h` 仅存在于绑定方 TU（测试 exe / 板胶）的 include 路径，**不再**加在框架静态库 include 路径上；框架库编译零 `MCS51_HAS_ADC0832` 污染。
 - **DAL 全关 + 空 stub 兜底**：mcs51 app 用零 DAL 驱动（button/led 是裸 pin + 前端插件）。检出 mcs51 板后不调 `wink_dal_apply_pruning()`/`app_codegen.py`，改为内联 `list_drivers.py` 把每个 `WINK_USE_<driver>` CACHE FORCE OFF，`dal`/`bal` 只编无条件 stub TU。`dal` 新增 `dal/src/wink_dal_stub.c`（空 TU 占位，镜像 `bal/src/wink_bal_stub.c`），保证全裁剪后 STATIC 目标仍有源。
 - **双消费者 SSOT**：mcs51 app 的 `wink-app.json` 同时供 ① C 构建（板名检出绕开 DAL 裁剪）与 ② 前端 device-tree（`winkcli sim run` 经 `runtime_device_tree.py` 生成 `unisim-assets/device-tree.json`）。button/led 用 `gpio_pin`（两 manifest 皆别名）+ `active_low`/`active_high`。`device-tree.json` 为生成物，不手写。
@@ -156,7 +156,7 @@ M0–M6 在**受限 ctest harness**（host fallback + node 桩）内验证；ADR
 | 2 SPI（bit-bang） | 软件 SPI → 传感器/屏 | 🔧 **可行** | **ADC0832 本质即 3 线 SPI 从机**（CLK/DI/DO/CS），MISO 回读已证 |
 | 2 UART TX | `SBUF=c; while(!TI)` printf | ✅ **已证**（Stage 2 T1） | SBUF 写钩子→`js_pal_uart_write`→UARTBus TX 时间线（置 TI、向量 4 同步）；固件只写 SBUF。headless `mcs51_uart_hello` `ASSERT_BUS_PAYLOAD` PASS |
 | 2 UART RX | 等 RI、读 SBUF、`interrupt 4` | ✅ **已证**（Stage 2 T2/T2.3） | 框架侧 fiber drain 队列→锁 SBUF 影子+置 RI+派向量 4，host+wasm ctest 闭环；**活通道跨仓已接通**（sister `cf19d412`：`UartBus.sendToFirmware` 优先 `wink_mcs51_uart_rx_push`、回落 `pal_wasm_push_uart_rx_byte`，`setWasmExportsFn` 晚绑定）。headless `mcs51_uart_echo` `INPUT_BUS` "A"/"BC" → 回声 `ASSERT_BUS_PAYLOAD` 4/4。用户标准 SBUF/RI/ISR 不变 |
-| 3 模拟 ADC | ADC0832 bit-bang / CMS8S 片内 | ✅ **已证**（Stage 2 T4） | C 侧链路通（`js_pal_adc_read_norm(32+ch)`→12-bit）；跨仓活桥已接（sister `afc54d68` 桥→`arbiter.readAnalog`、`81b94565` headless AdcDomainHandler 绑定共享 PinArbiter）。headless `mcs51_analog_threshold` `INPUT_ANALOG adcChannel:32` 0.8/0.2/0.8 → CMS8S 片内 ADC → 阈值翻 P1.0 LED，`ASSERT_POINT` 8/8。固件零改 |
+| 3 模拟 ADC | ADC0832 bit-bang / CMS8S 片内 | ✅ **已证**（Stage 2 T4） | C 侧链路通（`js_pal_adc_read_norm(pin)`→12-bit，v2 双空间 rail key，AN0→物理 Pin 0）；跨仓活桥已接（sister `afc54d68` 桥→`arbiter.readAnalog`、`81b94565` headless AdcDomainHandler 绑定共享 PinArbiter）。headless `mcs51_analog_threshold` `INPUT_ANALOG adcChannel:0` 0.8/0.2/0.8 → CMS8S 片内 ADC → 阈值翻 P1.0 LED，`ASSERT_POINT` 8/8。固件零改 |
 | 4 WS2812/摄像头 | 单脚 bit-bang，0.4µs NRZ 编码 | ❌ **当前保真度下不可行**【B 类→ISS cycle 后端，ADR-0076 D1；native 实验路径见 D4，非通用】 | 见下"周期时间编码墙"与 §2.5 |
 
 **唯一真正的墙——单脚周期时间编码协议**：WS2812 数据全编码在单脚脉冲宽度（T0H≈0.4µs / T1H≈0.8µs）。bare 8051 无帧缓冲/DMA，唯一信息源是**逐指令周期的翻转时序**；而功能级代理刻意不建模 12-T 指令周期（见 §2 不支持清单），微步只按 SFR 访问充"功能 µs"、无周期精度 → bitstream 无法还原。这不是通道没接，是**保真度天花板**：要仿 WS2812/摄像头需 `cycle` 精度模式（wasm 仿真轴标 Planned）。软 UART 波特率同理受限于功能时钟（硬件 UART 字节级不受影响）。
@@ -229,31 +229,45 @@ native 功能级后端的虚拟钟（ADR-0072）：`s_virtual_us` 只在拦截�
 ### 3.1 目录树（`wink-micro-os/`）
 
 ```
-frameworks/mcs51/
-  include/   REGX52.H（方言擦除 + WinkSfr/WinkSbit + main/ISR 重映射边界）
-             REG_CMS8S.H（CMS8S78xx SFR/XSFR 代理 + 原厂逐字掩码宏）
-             cms8s78xx.h（tier-b shim，遮蔽原厂 Keil 设备头）
-             mcs51_adc.h / ADC0832.H / mcs51_trap.h / mcs51_isr.h
-             absacc.h（XBYTE/XWORD WinkXByteProxy）、mcs51_xsfr.hpp
-  src/       mcs51_bridge.cpp（init/缝）、mcs51_sfr.cpp（影子+代理+边沿分发）
-             mcs51_adc.cpp（12-bit 注入轨）、mcs51_adc0832.cpp（3 线 FSM）
-             cms8s_adc.cpp（片内 ADC 0 周期模型）、mcs51_isr.cpp（28 向量表）
-             mcs51_clock.cpp / mcs51_timer.cpp / mcs51_uart.cpp
-             mcs51_xdata.cpp（XRAM + XSFR 窗口）、mcs51_unsupported.cpp（STRICT 双态）
-  tools/mcs51_cleanup.py（Keil .c → .cpp：ISR 重写、UTF-8/GBK 解码、--transcode）
-test/mcs51/
-  samples/   blinky、blinky_timer0、uart_printf、gpio_in_out、adc0832_read、
-             cms8s_adc_test、iron_ntc（未修改式 Keil 用户源码）
-  apps/iron_ntc/wink-app.json（板级 codegen SSOT 输入）
-  unit/      数据面/时钟/静态初始化/STRICT/CMS8S ADC 等框架单测
-  wasm/      add_wink_wasm_mcs51_test.cmake + node 桩 + wasm 专用驱动
-  test_mcs51_*_e2e.c（host+wasm 共用闭环驱动）
+frameworks/mcs51/                              # 沙箱层（ESP_PLATFORM 下整树不编入）
+  CMakeLists.txt   wink_mcs51_core/_cms8s/_at89/_adc0832（STATIC EXCLUDE_FROM_ALL）
+                   + STRICT 孪生（core/cms8s）+ 芯片包自动发现 + inject_<family>
+  include/         ★ 通用 core 公共头（零厂商名/零扩展 SFR）
+                   mcs51_context.h / mcs51_family.h / mcs51_peripheral.h /
+                   mcs51_trap.h / mcs51_sfr_map.h / mcs51_adc.h /
+                   wink_mcs51_{gpio,uart,timer,isr,extint,clock,edge_queue,
+                   wdt,pwm_meter,strict,ext_bus}.h / mcs51_pcon.h /
+                   mcs51_proxy.hpp / mcs51_xsfr.hpp / mcs51_family_route.h /
+                   reg51.h / REG52.H / REGX52.H / absacc.h / intrins.h
+  src/             mcs51_{context,family,peripheral,sfr,adc,isr,clock,timer,
+                   uart,extint,xdata,unsupported,gpio,pcon,edge_queue,
+                   pwm_meter,bridge,uni_bridge}.cpp
+  chips/cms8s78xx/ 编译为 wink_mcs51_cms8s（register TU 链接期自注册）
+    include/       cms8s_sfr_map.h / cms8s_xsfr_allowlist.h / REG_CMS8S78XX.H /
+                   cms8s78xx.h / cms8s_adc.h / cms8s_buzzer.h / cms8s_priv.h
+    src/           cms8s_{adc,buzzer,gpio,uart,timer,extint,sys,register}.cpp
+  chips/at89c52/   编译为 wink_mcs51_at89（classic = 零扩展纯净 core）
+    include/at89_priv.h（预留）; src/at89_register.cpp（空实现 + 自注册协议占位）
+  devices/adc0832/ 编译为 wink_mcs51_adc0832
+    include/adc0832.h（小写规范名）; src/mcs51_adc0832.cpp（经 Trap 注册接入）
+  tools/
+    manifests/chips/{at89c52,cms8s78xx}.yaml + schema.json（芯片事实源）
+    mcs51_cleanup.py / mcs51_sdcc_gate.py / mcs51_sdcc_devhdr.py /
+    mcs51_shim_audit.py / run_mcs51_headless_evidence.ps1 / sdcc_gate/<family>/
+    lint/lint_mcs51_layering.py（+ safety/sim_compat 休眠 pack）
+  test/
+    core/            标准 8051 + 板级器件通用测试（禁 AN 语义/扩展向量）
+    cms8s78xx/       AN 映射、扩展向量、XSFR 窗口、WDT/TA/CLKDIV 测试
+    samples/         Keil 样例源（host/wasm 双构建共用）
+    wasm/            add_wink_wasm_mcs51_test.cmake + Node 桩
+    apps/iron_ntc/   board_config 夹具（codegen SSOT 输入）
 ```
+> 测试注册保留 SDK 中央 `wink-micro-os/test/CMakeLists.txt`（不复制 unity/host-PAL/wasm wiring，只改路径前缀）；三工具链门禁见实施计划 `PLAN-20260911-MCS51-S6` 与 `-S7`。
 
 ### 3.2 API 面（C-ABI 契约）
 
 - 运行入口：Keil `main` → `wink_mcs51_user_main`（不返回，跑在协作 fiber 上，`SIMULATION=1`）；`_nop_()` → `wink_mcs51_microstep()` 让出（裸 `while(1){}` 冻结）。
-- 注入/观测：`mcs51_adc_set_value/get_value/reset`（12-bit、32 通道；ADC0832 消费点 `&0xFF`）；`mcs51_adc0832_set_value(ch,val)`、`mcs51_adc0832_init(...)`；`mcs51_framework_set_post_init_hook(fn)`（每次 `wink_runtime_run()` 的 framework init 末尾、`trap_reset/adc_reset` 之后运行，注入存活）。
+- 注入/观测：`mcs51_adc_set_value/get_value/reset`（12-bit、64 rail key 双空间：0~31 物理 Pin / 32~63 板级通道；ADC0832 消费点 `&0xFF`）；`mcs51_adc0832_set_value(ch,val)`、`mcs51_adc0832_init(...)`；`mcs51_framework_set_post_init_hook(fn)`（每次 `wink_runtime_run()` 的 framework init 末尾、`trap_reset/adc_reset` 之后运行，注入存活）。
 - 影子观测：`wink_mcs51_sfr_shadow[256]`（C 链接 BSS，跨 run **不**复位）、`wink_mcs51_xdata_shadow[65536]`（每 run 复位）。
 - 外设模型注册：`mcs51_trap_register_sfr_read/write(addr,hook)`、`mcs51_trap_register_read/write(port,bit,fn,ctx)`。
 - **通道数据面（UniSim channel，ADR-0074）**：
@@ -264,7 +278,7 @@ test/mcs51/
   - 外部中断（T3，`mcs51_extint.cpp`）：`wink_mcs51_extint_poll()` 在每个 microstep（fiber rendezvous）采样 INT0=P3.2(线性 26)/INT1=P3.3(27) 的 `js_pal_gpio_read_state`，10ms 虚拟片节流（`SAMPLE_PERIOD_US`，reset 后强制首采）；按 `IT0/IT1` 边沿/电平锁 `IE0/IE1`（TCON 0x88），`EA+EX0/EX1`（IE 0xA8）门控后 `wink_mcs51_dispatch_vector(0/2)`，边沿派发后硬件自清 IEx；HiZ/冲突按内部弱上拉解析为 idle-HIGH；`s_in_poll` 重入保护防 ISR 内 SFR 访问递归派发。`wink_mcs51_extint_reset()` 清节流/IE 标志但**保留**边沿基线（外部电平是 WORLD 态，跨 framework init 持续）。
   - UART TX（T1，`mcs51_uart.cpp`）：SBUF 写钩子→`js_pal_uart_write(port,buf,len)` 上 UARTBus（同步置 TI、向量 4）。
   - UART RX（T2 模型 + T2.3 活通道）：fiber 上下文 drain 注入字节队列→锁 SBUF 影子+置 RI+派向量 4；host 注入/观测 API + wasm node 桩闭环。**活喂字节跨仓已接通**（sister `cf19d412`）：emscripten 导出 `wink_mcs51_uart_rx_push(byte)`（单一 8051 UART，无 port 参数）喂 FIFO，microstep 每步按 `RX_BYTE_SPACING_US` 节奏 drain 一字节；`UartBus.sendToFirmware` 优先该导出（mcs51 wasm 同时链 esp32 PAL 对象，故不能走 `pal_wasm_push_uart_rx_byte`——其 ring 8051 固件不 drain）。见看板 ② ✅。
-  - 模拟 ADC 活桥（T4，跨仓）：固件经 `js_pal_adc_read_norm(32+ch)` 读（CMS8S on-chip 12-bit：norm×4095→raw）；sister 桥 `afc54d68`→`arbiter.readAnalog`、headless `81b94565` AdcDomainHandler 绑共享 PinArbiter；headless `INPUT_ANALOG adcChannel:32` → setAnalogDriver(32) → 桥读 arbiter → 固件 ADC 转换。见看板 ② ✅。
+  - 模拟 ADC 活桥（T4，跨仓）：固件经 `js_pal_adc_read_norm(pin)` 读（CMS8S on-chip 12-bit 经 AN_TO_PIN 映射：AN0→物理 Pin 0；norm×4095→raw）；sister 桥 `afc54d68`→`arbiter.readAnalog`、headless `81b94565` AdcDomainHandler 绑共享 PinArbiter；headless `INPUT_ANALOG adcChannel:0` → setAnalogDriver(0) → 桥读 arbiter → 固件 ADC 转换。见看板 ② ✅。
 
 ### 3.3 构建集成与三端
 
@@ -286,6 +300,8 @@ test/mcs51/
 - ✅ **跨仓活桥已收口（2026-08-30）**：ch3 模拟（sister `afc54d68`+`81b94565`）与 ch2 UART RX 活喂字节（sister `cf19d412`）均在 sister `wink-ai` **已提交**树落地并 headless 实证。
 - ✅ **数字引脚输入回归已修复（sister `8d06a4e8`，2026-08-30）**：根因非 mcs51 固件、亦非 `0c3a7609` 直接改坏，而是该重构首次把 `accuracyMode:'behavioral'` 传进 `PluginContext`（此前 ctor 默认 `'timing'`）。legacy `PluginContext.writePin/analogWrite` 的 behavioral 早退闸位于 `arbiter.setDriver` 之前，source 插件（按键）的按下电平永不落 arbiter，固件 `js_pal_gpio_read_state`→`arbiter.readPin` 恒读 idle HIGH。修复把闸位移到 arbiter 驱动**之后**（功能电平恒驱，仅 timing 波形边队列 behavioral 跳过），与 `GpioDomainHandler.write`/`AdcDomainHandler.writeNorm` 对齐。当前树 headless：`mcs51_button_led` 7/7、`mcs51_button_led_int` 10/10 全绿，五载体 PASS。
 - `wink lint --pack layering --pack api`：无发现。PR CI：host 矩阵（ubuntu+windows）+ 新增 wasm job（setup-emsdk + Node，`ctest -L wasm`）。
+
+- **Stage7 收尾验收（2026-09-12，PLAN-20260911-MCS51-S7）**：链接期芯片自注册定稿（删除 `mcs51_family_select.h` 生成缝与 S4-D5 过渡默认）；删除 Stage3 转发 shim 与旧单体别名；片上合成通道误用由“透明重定向”改为 STRICT abort / Release `0x0FFF` 哨兵 + 计数；本仓全部片上模拟场景迁物理 Pin key（AN0→0）。证据：host mcs51 ctest **59/59**、wasm/Node **10/10**、`wink lint --pack layering --pack api` 无发现；跨仓 headless 五载体 **5/5** + `mcs51_health_pot` **15/15**（E-02 无复发终证，`INPUT_ANALOG adcChannel:0`）。已知受控遗留：`vendor_cms8s78xx_v202/adc_ldo`、`adc_hardware_trigger` 的 EOC 波形断言在 A-05 方向模型下不绿（TRIS 由输入切输出时不重驱锁存，属既有模型缺口，非本系列回归；见 stage7 附录）。
 
 ### 3.5 回写清单（M6 轨 A 已完成项）
 
