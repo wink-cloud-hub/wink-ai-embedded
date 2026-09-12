@@ -11,8 +11,10 @@ producing "scenario green, silicon broken":
   1. Direct SFR addresses (sfr NAME = 0xNN)
   2. XSFR MOVX addresses (#define NAME *(volatile unsigned char xdata *)0xNNNN)
   3. GPIO pin-mux macro values (#define GPIO_P.._MUX_.. (0x..))
-  4. Vendor interrupt vector numbers vs the framework semantic map
-     (s_default_irq_map in mcs51_isr.cpp)
+  4. Vendor interrupt vector numbers vs the framework semantic maps
+     (stage5 CPL-06 family split: the core standard rows in mcs51_isr.cpp
+     must hold ONLY INT0..TIMER2 and leave every extended source unmapped;
+     the chip rows live in cms8s_sys.cpp kCms8sIrqExtensions)
 
 Exit code 0 = no hard mismatch (address collisions / wrong macro / wrong
 vector). Vendor registers absent from the shim are COVERAGE information, not
@@ -111,6 +113,30 @@ def parse_framework_map(isr_h_text, isr_cpp_text):
     return dict(zip(sources, parsed))
 
 
+def parse_chip_irq_extensions(text):
+    """Parse the chip extended profile table in cms8s_sys.cpp.
+
+    Rows are `{ IRQ_SOURCE_X, { vec, ie_sfr, ie_bit, flag_sfr, flag_bit,
+    prio_sfr, prio_bit, clear } },`. Returns {source_name: (vector,
+    prio_sfr, prio_bit)} or None when the table is not found."""
+    table = re.search(r'kCms8sIrqExtensions\[\]\s*=\s*\{(.*?)\};', text, re.S)
+    if not table:
+        return None
+    rows = re.findall(
+        r'\{\s*IRQ_SOURCE_([A-Z0-9_]+)\s*,\s*'
+        r'\{\s*(?:(\d+)|0x([0-9A-Fa-f]+))u?\s*,\s*'
+        r'(?:(\d+)|0x([0-9A-Fa-f]+))u?\s*,\s*(\d+)u?\s*,\s*'
+        r'(?:(\d+)|0x([0-9A-Fa-f]+))u?\s*,\s*(\d+)u?\s*,\s*'
+        r'(?:(\d+)|0x([0-9A-Fa-f]+))u?\s*,\s*(\d+)u?',
+        table.group(1))
+
+    def val(a, b):
+        return int(a, 10) if a else int(b, 16)
+
+    return {r[0]: (val(r[1], r[2]), val(r[9], r[10]), int(r[11]))
+            for r in rows}
+
+
 def render_xsfr_allowlist(s_xsfr):
     """C++ header body: sorted shim-declared XSFR address set (GAP-23).
 
@@ -162,7 +188,11 @@ def main():
     shim_52 = FW_DIR / "include/REGX52.H"
     fw_isr = FW_DIR / "src/mcs51_isr.cpp"
     fw_isr_h = FW_DIR / "include/wink_mcs51_isr.h"
-    for p in (vendor_dev, vendor_gpio, shim_cms, shim_52, fw_isr, fw_isr_h):
+    # Stage5 CPL-06: the CMS8S extended IRQ profile lives with the chip
+    # package (cms8s_sys.cpp today; stage6 re-homes the TU to chips/).
+    fw_chip_irq = FW_DIR / "src/cms8s_sys.cpp"
+    for p in (vendor_dev, vendor_gpio, shim_cms, shim_52, fw_isr, fw_isr_h,
+              fw_chip_irq):
         if not p.exists():
             print(f"error: required file missing: {p}", file=sys.stderr)
             return 2
@@ -172,6 +202,7 @@ def main():
     sh = shim_cms.read_text(encoding="utf-8") + "\n" + shim_52.read_text(encoding="utf-8")
     isr_cpp = fw_isr.read_text(encoding="utf-8")
     isr_h = fw_isr_h.read_text(encoding="utf-8")
+    chip_irq = fw_chip_irq.read_text(encoding="utf-8")
 
     # ── GAP-23 allowlist emit/check (no drift gate run needed) ───────────────
     if args.emit_xsfr_allowlist or args.check_xsfr_allowlist:
@@ -220,6 +251,9 @@ def main():
     vectors = parse_vendor_vectors(vh)
     modules = parse_priority_modules(vh)
     fw_map = parse_framework_map(isr_h, isr_cpp)
+    chip_map = parse_chip_irq_extensions(chip_irq)
+    core_sources = ("INT0", "TIMER0", "INT1", "TIMER1", "UART0", "TIMER2")
+    extended_sources = ("ADC", "PWM", "I2C", "SPI", "TIMER3", "TIMER4")
     expected = {  # semantic source -> (vendor vector symbol, priority module enum)
         "INT0": ("INT0_VECTOR", "IRQ_INT0"), "TIMER0": ("TMR0_VECTOR", "IRQ_TMR0"),
         "INT1": ("INT1_VECTOR", "IRQ_INT1"), "TIMER1": ("TMR1_VECTOR", "IRQ_TMR1"),
@@ -228,9 +262,25 @@ def main():
         "I2C": ("I2C_VECTOR", "IRQ_I2C"), "SPI": ("SPI_VECTOR", "IRQ_SPI"),
         "TIMER3": ("TMR3_VECTOR", "IRQ_TMR3"), "TIMER4": ("TMR4_VECTOR", "IRQ_TMR4")}
     if isinstance(fw_map, dict) and "__parse_error__" not in fw_map:
-        for src, (sym, mod_sym) in expected.items():
-            want = vectors[sym]
+        # Stage5 CPL-06: the core profile must stay standard-only — every
+        # extended source is chip territory and must be unmapped there.
+        for src in extended_sources + ("UART1",):
             entry = fw_map.get(src)
+            if entry is None:
+                hard.append(f"IRQ core map missing source: {src}")
+            elif entry[0] != 0xFF:
+                hard.append(
+                    f"core IRQ map must leave IRQ_SOURCE_{src} unmapped "
+                    f"(stage5 CPL-06), got vector {entry[0]}")
+        if chip_map is None:
+            hard.append("could not parse kCms8sIrqExtensions "
+                        "(chip IRQ profile table not found)")
+        for src, (sym, mod_sym) in expected.items():
+            home = fw_map if src in core_sources else chip_map
+            if home is None:
+                continue  # reported above
+            want = vectors[sym]
+            entry = home.get(src)
             if entry is None:
                 hard.append(f"IRQ map missing source: {src}")
                 continue
@@ -254,6 +304,9 @@ def main():
                         f"vendor {mod_sym}({mod}) -> 0x{want_prio[0]:02X}.{want_prio[1]}")
         if fw_map.get("UART1", (0xFF,))[0] != 0xFF:
             hard.append("IRQ_SOURCE_UART1 must be unmapped (0xFF): CMS8S78xx has no UART1")
+        if chip_map is not None and "UART1" in chip_map:
+            hard.append("IRQ_SOURCE_UART1 must stay absent from the chip profile "
+                        "(CMS8S78xx has no UART1)")
     else:
         hard.append("could not parse s_default_irq_map: " +
                     str(fw_map.get("__parse_error__") if fw_map else "table not found"))
