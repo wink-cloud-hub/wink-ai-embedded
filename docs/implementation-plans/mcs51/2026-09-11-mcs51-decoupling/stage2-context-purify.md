@@ -65,14 +65,14 @@
 
 ## 4. 预算表（§4，实测填数）
 
-实测工具链：MinGW GCC 16.2（与计划 GCC 14.2 同 LLP64 ABI，POD 布局一致；MSVC 以单测内 +1KB slack 覆盖漂移）。探针：`sizeof_probe` 直编新旧头文件三版真值（`5a91356^` / `5a91356` / 现树），非推算。永久锁：`test/core/test_mcs51_context_budget.cpp`（打印 + ceiling `75752+1024`，stage5 +104B 时显式上调）。
+实测工具链：MinGW GCC 16.2（与计划 GCC 14.2 同 LLP64 ABI，POD 布局一致；MSVC 以单测内 +1KB slack 覆盖漂移）。探针：`sizeof_probe` 直编新旧头文件三版真值（`5a91356^` / `5a91356` / 现树），非推算。永久锁：`test/core/test_mcs51_context_budget.cpp`（打印 + ceiling `75672+1024`；stage5 实测 75656，落在 ceiling 内，无需上调）。
 
 | 行 | 说明 | `sizeof` | 备注 |
 |----|------|----------|------|
 | 基线（master，stage0 前） | 迁移前实测（`5a91356^` 头文件探针） | **75648** | 含 65536 `xdata_shadow` + 28 项 `isr_table`（112+112B）；计划预估"约 68KB"偏低，以实测 73.9KB 为准 |
 | stage0 后（`caps_cache` 入账） | 实测（`5a91356` 头文件探针） | **75656** | +8（`family u8` + `caps_cache u32` 对齐尾）；总纲 §8 已批预算内增量 |
 | stage1 后（rail 64 槽入账） | 实测（现树探针） | **75752** | +96（32 槽 ×（2B injected + 1B flag）），与计划预测分毫不差 |
-| stage5 后（irq map 入 ctx 入账） | 待测（stage5 落数，届时同步上调单测 ceiling） | 待填 | +104B（13 项 × 8B profile）；诊断计数器留 file-static 不计入 |
+| stage5 后（irq map 入 ctx 入账） | 实测 **75656**（MinGW GCC i686；+120 = irq_map 104 + 三芯片钩子 12 + 对齐 4；ceiling 76696 不变，余 1040） | **75656** | +104B（13 项 × 8B profile）+12B（`irq_map_extend`/`irq_flag_predicate`/`xsfr_validate` per-context 钩子）+4B 对齐；诊断计数器留 file-static 不计入 |
 | cms8s priv 池/实例 | 实测 **72B**（sys 32 + buzzer 24 + adc 8 + adet 4 + in_poll 1，对齐后；×4 槽 = 288B BSS）+ 器件池 `Adc0832State` **15B**（×4 = 60B BSS，独立数组） | 72+15 | BSS 池按实例，"context 外"内存，另行列表不与上表混算 |
 | 注册表上限 | **12**（stage4 实装：3 core + 7 cms8s = 10，留 2 余量；~~8~~ 冻结值已由 stage4 复审复议，见 stage4 附录 C） | 待填 | 溢出在注册点无条件 abort（ADR-0012），不静默丢弃；倒逼新外设走 chips 拆分而非 core 堆料 |
 | 拆分后 classic | **75672**（S2-1 后实测；+24 vs 基线 = caps 8 + hooks 12 + 对齐 4，入账；S2-2 再削 ~120） | 75672 | extbus 状态（8B）留 core，已计入 |
