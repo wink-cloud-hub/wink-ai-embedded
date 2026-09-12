@@ -55,6 +55,15 @@ extern "C" void wink_mcs51_host_set_ext_pin(uint16_t pin, uint8_t state);
 extern "C" void wink_mcs51_host_ext_pins_reset(void);
 extern "C" uint32_t wink_mcs51_host_gpio_notify_count(void);
 extern "C" void wink_mcs51_host_gpio_notify_reset(void);
+extern "C" uint16_t wink_mcs51_host_gpio_notify_pin(uint32_t i);
+extern "C" uint8_t wink_mcs51_host_gpio_notify_level(uint32_t i);
+extern "C" uint8_t wink_mcs51_host_gpio_notify_strength(uint32_t i);
+// P3: direction-change seam (same entry the SFR proxy uses) + release log.
+extern "C" void wink_mcs51_on_sfr_write(uint8_t addr, uint8_t old_val,
+                                         uint8_t new_val);
+extern "C" uint32_t wink_mcs51_host_gpio_release_count(void);
+extern "C" uint16_t wink_mcs51_host_gpio_release_pin(uint32_t i);
+extern "C" void wink_mcs51_host_gpio_release_reset(void);
 extern "C" void setUp(void) {}
 extern "C" void tearDown(void) {}
 
@@ -93,6 +102,7 @@ int main(void) {
         mcs51_context_reset(mcs51_get_context());
         wink_mcs51_gpio_diag_reset();
         wink_mcs51_host_gpio_notify_reset();
+        wink_mcs51_host_gpio_release_reset();
         // TRIS reset is 0x00 (all input); latch write must not drive.
         // (Reset latch is 0xFF, so drive a 1->0 edge to observe gating.)
         const uint32_t n0 = g_host_notifies_before();
@@ -102,10 +112,17 @@ int main(void) {
               "T2: input-direction write must not notify");
         CHECK(wink_mcs51_gpio_output_suppressed_count() == 1u,
               "T2: suppression must count");
-        // Configure output (TRIS=1) -> notify resumes.
-        mcs51_get_context()->sfr_shadow[0xA2u] |= 0x01u;  // P2TRIS.0 = output
+        // Configure output through the SFR proxy seam (P3): the direction
+        // change itself re-drives the latched 0 onto the pad.
+        mcs51_get_context()->sfr_shadow[0xA2u] = 0x01u;  // P2TRIS.0 = output
+        wink_mcs51_on_sfr_write(0xA2u, 0x00u, 0x01u);
+        CHECK(wink_mcs51_host_gpio_notify_count() == n0 + 1u &&
+              wink_mcs51_host_gpio_notify_pin(n0) == 16u &&
+              wink_mcs51_host_gpio_notify_level(n0) == 0u &&
+              wink_mcs51_host_gpio_notify_strength(n0) == 3u,
+              "T2: 0->1 TRIS must re-drive the latched 0");
         mcs51_gpio_bit_write(2, 0, 1u);
-        CHECK(wink_mcs51_host_gpio_notify_count() == n0 + 1u,
+        CHECK(wink_mcs51_host_gpio_notify_count() == n0 + 2u,
               "T2: output-direction write must notify");
     }
 
@@ -199,6 +216,90 @@ int main(void) {
         CHECK(g_hook_may_drive > 0u, "T7: enhanced must call may_drive");
         CHECK(g_hook_is_analog > 0u, "T7: enhanced must call is_analog");
         CHECK(g_hook_pullup > 0u, "T7: enhanced must call pullup");
+    }
+
+    // ── 8) P3: TRIS input->output re-drives the latch ─────────────────────
+    {
+        mcs51_test_register_family(MCS51_FAMILY_CMS8S78XX);
+        mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
+        mcs51_context_reset(mcs51_get_context());
+        wink_mcs51_gpio_diag_reset();
+        wink_mcs51_host_gpio_notify_reset();
+        wink_mcs51_host_gpio_release_reset();
+        mcs51_gpio_bit_write(2, 3, 0u);  // latch 0 while input: suppressed
+        CHECK(wink_mcs51_host_gpio_notify_count() == 0u,
+              "T8: input latch write stays suppressed");
+        mcs51_get_context()->sfr_shadow[0xA2u] = 0x08u;  // P2TRIS.3 = output
+        wink_mcs51_on_sfr_write(0xA2u, 0x00u, 0x08u);
+        CHECK(wink_mcs51_host_gpio_notify_count() == 1u &&
+              wink_mcs51_host_gpio_notify_pin(0) == 19u &&
+              wink_mcs51_host_gpio_notify_level(0) == 0u &&
+              wink_mcs51_host_gpio_notify_strength(0) == 3u,
+              "T8: 0->1 TRIS must re-drive latch 0 as SUPPLY");
+        CHECK(wink_mcs51_host_gpio_release_count() == 0u,
+              "T8: re-drive is a write, not a release");
+    }
+
+    // ── 9) P3: TRIS output->input releases the MCU driver ─────────────────
+    {
+        mcs51_test_register_family(MCS51_FAMILY_CMS8S78XX);
+        mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
+        mcs51_context_reset(mcs51_get_context());
+        wink_mcs51_host_gpio_notify_reset();
+        wink_mcs51_host_gpio_release_reset();
+        // Reset latch is 1: enabling output re-drives WEAK-HIGH; switching
+        // back to input must release the driver (no stale self-drive).
+        mcs51_get_context()->sfr_shadow[0xA2u] = 0x08u;
+        wink_mcs51_on_sfr_write(0xA2u, 0x00u, 0x08u);
+        CHECK(wink_mcs51_host_gpio_notify_count() == 1u &&
+              wink_mcs51_host_gpio_notify_pin(0) == 19u &&
+              wink_mcs51_host_gpio_notify_level(0) == 1u,
+              "T9: 0->1 TRIS drives latch 1 weak");
+        mcs51_get_context()->sfr_shadow[0xA2u] = 0x00u;
+        wink_mcs51_on_sfr_write(0xA2u, 0x08u, 0x00u);
+        CHECK(wink_mcs51_host_gpio_release_count() == 1u &&
+              wink_mcs51_host_gpio_release_pin(0) == 19u,
+              "T9: 1->0 TRIS must release the MCU driver");
+    }
+
+    // ── 10) P3: open-drain release and analog pins never drive ────────────
+    {
+        mcs51_test_register_family(MCS51_FAMILY_CMS8S78XX);
+        mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
+        mcs51_context_reset(mcs51_get_context());
+        wink_mcs51_host_gpio_notify_reset();
+        wink_mcs51_host_gpio_release_reset();
+        Mcu51Context* ctx = mcs51_get_context();
+        // P2.3 open-drain + latch 1 (reset): enabling output is a HiZ release.
+        ctx->xdata_shadow[0xF029u] = 0x08u;  // P2OD.3
+        ctx->sfr_shadow[0xA2u] = 0x08u;
+        wink_mcs51_on_sfr_write(0xA2u, 0x00u, 0x08u);
+        CHECK(wink_mcs51_host_gpio_notify_count() == 0u &&
+              wink_mcs51_host_gpio_release_count() == 1u &&
+              wink_mcs51_host_gpio_release_pin(0) == 19u,
+              "T10: OD latch=1 enable releases instead of driving");
+        // P2.4 analog mux: enabling output must not drive at all.
+        ctx->xdata_shadow[0xF029u] = 0x00u;  // OD off
+        ctx->xdata_shadow[0xF024u] = 0x01u;  // P2CFG.4 = AN
+        ctx->sfr_shadow[0xA2u] = 0x18u;      // P2TRIS.4 = output
+        wink_mcs51_on_sfr_write(0xA2u, 0x08u, 0x18u);
+        CHECK(wink_mcs51_host_gpio_notify_count() == 0u &&
+              wink_mcs51_host_gpio_release_count() == 1u,
+              "T10: AN-configured pin gets no digital drive");
+    }
+
+    // ── 11) P3: classic family has no TRIS seam (zero regression) ─────────
+    {
+        mcs51_test_register_family(MCS51_FAMILY_CLASSIC);
+        mcs51_context_set_family(MCS51_FAMILY_CLASSIC);
+        mcs51_context_reset(mcs51_get_context());
+        wink_mcs51_host_gpio_notify_reset();
+        wink_mcs51_host_gpio_release_reset();
+        mcs51_get_context()->sfr_shadow[0xA2u] = 0x01u;
+        wink_mcs51_on_sfr_write(0xA2u, 0x00u, 0x01u);
+        CHECK(wink_mcs51_host_gpio_notify_count() == 0u &&
+              wink_mcs51_host_gpio_release_count() == 0u,
+              "T11: classic must not re-drive/release on TRIS writes");
     }
 
     if (g_fails) {

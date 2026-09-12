@@ -29,6 +29,9 @@ mergeInto(LibraryManager.library, {
   // pulls read 0.0 — bounded tests inject deterministically via the C rail
   // (mcs51_adc_set_value), so no JS-side analog source is needed.
   js_pal_gpio_write: function (pin, level, strength) {},
+  // P3: MCU-driver release (TRIS input / open-drain / reset) — no arbiter in
+  // the bounded node test, no-op like the write channel.
+  js_pal_gpio_release_mcu: function (pin) {},
   js_pal_adc_read_norm: function (pin) { return 0.0; },
   // Channel-2 UART TX (SBUF write -> UARTBus): copy the byte run off the
   // WASM heap into a Module log the Node driver can assert.
