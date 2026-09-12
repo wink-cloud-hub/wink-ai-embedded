@@ -56,9 +56,11 @@ typedef struct {
 // ── Internal-peripheral SFR hooks (port_idx 0xFF: TCON/SCON/ADCON/PCON) ────
 // Hook signatures explicitly carry struct Mcu51Context* ctx (Task R2 / R6).
 // M3: hook DEFINITIONS must carry C language linkage (extern "C") to match
-// these C-ABI typedefs — even when file-local (anonymous namespace gives the
-// internal linkage; do NOT add `static` inside a linkage specification,
-// GCC rejects it). See a chip system model for the pattern.
+// these C-ABI typedefs — even when file-local. The enclosing anonymous
+// namespace already gives internal linkage; a `static` specifier inside the
+// linkage specification is legal (all three toolchains accept it) but
+// redundant, so prefer the anonymous-namespace form. See a chip system
+// model for the pattern.
 typedef void (*mcs51_sfr_write_hook_t)(struct Mcu51Context* ctx, uint8_t addr,
                                         uint8_t old_val, uint8_t new_val);
 typedef void (*mcs51_sfr_read_hook_t)(struct Mcu51Context* ctx, uint8_t addr);
@@ -97,7 +99,7 @@ typedef struct {
     mcs51_gpio_pullup_fn_t    pullup;
 } Mcs51GpioHooks;
 
-// ── UART readiness/baud hooks (Stage4 S4-2 Step 1 mounts, S4-D3) ───────────
+// ── UART readiness/baud hooks (S4-D3) ─────────────────────────────────────
 // Same static-dispatch discipline as the GPIO hooks: the core owns the TX
 // engine (SBUF hook, capture, TI/IRQ, charge application) while the chip
 // package owns source selection (clock-select register + pin-remap).

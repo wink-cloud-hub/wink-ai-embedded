@@ -182,7 +182,7 @@ int main(void) {
         CHECK(g_hook_pullup == 0u, "T6: classic must not call pullup");
     }
 
-    // ── 7) Enhanced parts route through the hooks ──────────────────────────
+    // ── 7) Enhanced parts route through the hooks ──────────────────────
     {
         mcs51_test_register_family(MCS51_FAMILY_CMS8S78XX);
         mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);

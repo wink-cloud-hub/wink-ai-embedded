@@ -29,8 +29,6 @@ void at89c52_register(void);
 // Reset loops always run init() before reset(), and every model reset
 // rebuilds its own registrations (S4-H2), so a post-harness trap_reset is
 // the only way to lose them.
-void cms8s78xx_register(void);
-void at89c52_register(void);
 
 // Register the chip models for `family` without touching any context.
 // Insert before legacy set_family lines to keep their exact reset order

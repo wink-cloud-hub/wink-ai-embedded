@@ -64,8 +64,12 @@ inline void decode_pin(uint16_t pin, uint8_t* port, uint8_t* bit) {
 // M3: C language linkage for the C-ABI hook table (see the sys model).
 extern "C" bool cms8s_gpio_may_drive(struct Mcu51Context* ctx, uint16_t pin,
                                       uint8_t level) {
-    if (!ctx) ctx = mcs51_get_context();
-    if (!ctx) return true;
+    if (!ctx) {
+        ctx = mcs51_get_context();
+    }
+    if (!ctx) {
+        return true;
+    }
     uint8_t port = 0u;
     uint8_t bit = 0u;
     decode_pin(pin, &port, &bit);
@@ -85,8 +89,12 @@ extern "C" bool cms8s_gpio_may_drive(struct Mcu51Context* ctx, uint16_t pin,
 }
 
 extern "C" bool cms8s_gpio_is_analog(struct Mcu51Context* ctx, uint16_t pin) {
-    if (!ctx) ctx = mcs51_get_context();
-    if (!ctx) return false;
+    if (!ctx) {
+        ctx = mcs51_get_context();
+    }
+    if (!ctx) {
+        return false;
+    }
     uint8_t port = 0u;
     uint8_t bit = 0u;
     decode_pin(pin, &port, &bit);
@@ -95,8 +103,12 @@ extern "C" bool cms8s_gpio_is_analog(struct Mcu51Context* ctx, uint16_t pin) {
 }
 
 extern "C" uint8_t cms8s_gpio_pullup(struct Mcu51Context* ctx, uint16_t pin) {
-    if (!ctx) ctx = mcs51_get_context();
-    if (!ctx) return 0u;
+    if (!ctx) {
+        ctx = mcs51_get_context();
+    }
+    if (!ctx) {
+        return 0u;
+    }
     uint8_t port = 0u;
     uint8_t bit = 0u;
     decode_pin(pin, &port, &bit);
@@ -124,8 +136,12 @@ void install_hooks(struct Mcu51Context* ctx) {
 extern "C" {
 
 void cms8s_gpio_init(struct Mcu51Context* ctx) {
-    if (!ctx) ctx = mcs51_get_context();
-    if (!ctx) return;
+    if (!ctx) {
+        ctx = mcs51_get_context();
+    }
+    if (!ctx) {
+        return;
+    }
     if (ctx->family != MCS51_FAMILY_CMS8S78XX) {
         return;  // belt-and-braces: the registry mask already filters
     }
@@ -134,8 +150,12 @@ void cms8s_gpio_init(struct Mcu51Context* ctx) {
 }
 
 void cms8s_gpio_reset(struct Mcu51Context* ctx) {
-    if (!ctx) ctx = mcs51_get_context();
-    if (!ctx) return;
+    if (!ctx) {
+        ctx = mcs51_get_context();
+    }
+    if (!ctx) {
+        return;
+    }
     if (ctx->family != MCS51_FAMILY_CMS8S78XX) {
         return;
     }

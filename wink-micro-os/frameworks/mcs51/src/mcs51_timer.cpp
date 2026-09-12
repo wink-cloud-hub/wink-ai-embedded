@@ -521,7 +521,8 @@ void wink_mcs51_timer_on_write(uint8_t addr) {
         return;
     }
 
-    if (addr == SFR_TL2 || addr == SFR_TH2 || addr == SFR_RLDL || addr == SFR_RLDH) {
+    if (addr == SFR_TL2 || addr == SFR_TH2 ||
+        addr == SFR_RLDL || addr == SFR_RLDH) {
         // Stage4 CPL-05: compare re-arm on these writes is derived by the
         // chip fingerprint; the core reschedules the overflow only.
         Mcu51TimerState& tm = mcs51_get_context()->timer;
@@ -558,7 +559,9 @@ static uint16_t resolve_timer_pin(struct Mcu51Context* ctx, uint8_t t) {
     // Model defaults retained (P3.4/P3.5); the selector slot is patched by
     // the owning chip init, none (= hardwired) on classic parts.
     uint16_t fallback = (t == 0) ? 28u : 29u;
-    if (!ctx) return fallback;
+    if (!ctx) {
+        return fallback;
+    }
     uint16_t ps_addr = (t == 0) ? ctx->timer.t0_ps_addr : ctx->timer.t1_ps_addr;
     if (ps_addr == SELECTOR_NONE) {
         return fallback;
@@ -578,7 +581,9 @@ static uint16_t resolve_timer_pin(struct Mcu51Context* ctx, uint8_t t) {
 
 static uint16_t resolve_timer2_pin(struct Mcu51Context* ctx) {
     uint16_t fallback = 14u;  // model default T2 external input
-    if (!ctx) return fallback;
+    if (!ctx) {
+        return fallback;
+    }
     if (ctx->timer.t2_ps_addr == SELECTOR_NONE) {
         return fallback;
     }

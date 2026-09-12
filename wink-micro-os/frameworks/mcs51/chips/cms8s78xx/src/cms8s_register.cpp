@@ -141,8 +141,12 @@ static Cms8sPriv s_cms8s_priv_pool[MCS51_MAX_INSTANCES];
 extern "C" {
 
 void cms8s_soc_bind(struct Mcu51Context* ctx) {
-    if (!ctx) ctx = mcs51_get_context();
-    if (!ctx) return;  // review hardening: null-active never crashes
+    if (!ctx) {
+        ctx = mcs51_get_context();
+    }
+    if (!ctx) {
+        return;  // review hardening: null-active never crashes
+    }
     // Indexing clamps, never asserts (review finding): the loud fuse lives
     // in mcs51_context_reset; here NDEBUG-proof containment wins — worst
     // case aliases the last slot deterministically, never OOB.

@@ -11,10 +11,10 @@
 //     TI = 0;            // software clears TI (bit write to SCON 0x98)
 //
 // Baud comes from the family-selected source via the vendor
-// UART_ConfigBaudRate formulas; frame is
-// 10 bits (mode 1) or 11 bits (mode 3). Classic parts use Timer1 only;
-// enhanced families add sources through the chip package. Unready links (A-01 gate) send
-// instantly with no charge. TI is NEVER delayed to a future event (that
+// UART_ConfigBaudRate formulas; frame is 10 bits (mode 1) or 11 bits
+// (mode 3). Classic parts use Timer1 only; enhanced families add sources
+// through the chip package. Unready links (A-01 gate) send instantly with
+// no charge. TI is NEVER delayed to a future event (that
 // would be an async timer, forbidden by保真度 §3.1) — the model never
 // yields/blocks beyond the synchronous charge. When EA+ES (IE.7 / IE.4) are
 // enabled the write vectors the UART ISR (vector 4); hardware does NOT
