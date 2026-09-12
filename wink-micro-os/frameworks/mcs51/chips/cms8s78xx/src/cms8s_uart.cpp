@@ -37,9 +37,7 @@ constexpr uint8_t SFR_T34MOD = CMS8S_SFR_T34MOD;
 
 // XSFR (MOVX window, read via xdata_shadow): pin mux + BRT + RXD selector.
 constexpr uint16_t XSFR_P13CFG  = 0xF013u;
-constexpr uint16_t XSFR_P14CFG  = 0xF014u;
 constexpr uint16_t XSFR_P21CFG  = 0xF021u;
-constexpr uint16_t XSFR_P22CFG  = 0xF022u;
 constexpr uint16_t XSFR_BRT_CON = 0xF5C0u;
 constexpr uint16_t XSFR_BRTDL   = 0xF5C1u;
 constexpr uint16_t XSFR_BRTDH   = 0xF5C2u;
@@ -73,8 +71,12 @@ inline bool timer1_baud_ready(const Mcu51Context* ctx) {
 
 // M3: C language linkage for the C-ABI hook table.
 extern "C" uint32_t cms8s_uart_notready_mask(struct Mcu51Context* ctx) {
-    if (!ctx) ctx = mcs51_get_context();
-    if (!ctx) return 0u;
+    if (!ctx) {
+        ctx = mcs51_get_context();
+    }
+    if (!ctx) {
+        return 0u;
+    }
     uint32_t mask = 0u;
     const uint8_t scon = ctx->sfr_shadow[SFR_SCON];
     if (((scon >> SCON_SM1) & 1u) == 0) {
@@ -111,14 +113,9 @@ extern "C" uint32_t cms8s_uart_notready_mask(struct Mcu51Context* ctx) {
 
     // TXD: P3.1 is the hardwired default (no CFG needed); P1.4/P2.2 are
     // additive alternates (mux 0x03 each). Silicon drives P3.1
-    // unconditionally, so at functional level TXD cannot be disconnected;
-    // the predicate is kept for ABI symmetry and as the hook for a future
-    // TRIS-aware (GAP-08) refinement.
-    const bool txd_alt =
-        ctx->xdata_shadow[XSFR_P14CFG] == 0x03u ||
-        ctx->xdata_shadow[XSFR_P22CFG] == 0x03u;
-    (void)txd_alt;
-    // NOTE: no TXD bit is ever set (see above). The bit stays defined.
+    // unconditionally, so at functional level TXD cannot be disconnected —
+    // no TXD bit is ever set (the WINK_MCS51_UART_NOTREADY_TXD reason stays
+    // reserved for parts that can disable the pin).
 
     if (((scon >> SCON_REN) & 1u) != 0) {
         // RXD input selector: only an explicit alt selection can break
@@ -142,8 +139,12 @@ extern "C" uint32_t cms8s_uart_notready_mask(struct Mcu51Context* ctx) {
 }
 
 extern "C" uint32_t cms8s_uart_baud_hz(struct Mcu51Context* ctx) {
-    if (!ctx) ctx = mcs51_get_context();
-    if (!ctx) return 0u;
+    if (!ctx) {
+        ctx = mcs51_get_context();
+    }
+    if (!ctx) {
+        return 0u;
+    }
     const uint32_t fsys = wink_mcs51_get_clock_hz();
     if (fsys == 0u) {
         return 0u;
@@ -221,8 +222,12 @@ void install_hooks(struct Mcu51Context* ctx) {
 extern "C" {
 
 void cms8s_uart_init(struct Mcu51Context* ctx) {
-    if (!ctx) ctx = mcs51_get_context();
-    if (!ctx) return;
+    if (!ctx) {
+        ctx = mcs51_get_context();
+    }
+    if (!ctx) {
+        return;
+    }
     if (ctx->family != MCS51_FAMILY_CMS8S78XX) {
         return;  // belt-and-braces: the registry mask already filters
     }
@@ -231,8 +236,12 @@ void cms8s_uart_init(struct Mcu51Context* ctx) {
 }
 
 void cms8s_uart_reset(struct Mcu51Context* ctx) {
-    if (!ctx) ctx = mcs51_get_context();
-    if (!ctx) return;
+    if (!ctx) {
+        ctx = mcs51_get_context();
+    }
+    if (!ctx) {
+        return;
+    }
     if (ctx->family != MCS51_FAMILY_CMS8S78XX) {
         return;
     }

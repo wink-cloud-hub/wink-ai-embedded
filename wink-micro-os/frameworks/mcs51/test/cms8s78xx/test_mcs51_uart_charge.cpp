@@ -268,6 +268,13 @@ int main(void) {
         // Model Fsys=12MHz: 12M/(128*3*3) = 10416bps.
         CHECK(wink_mcs51_uart_last_baud_hz() == 10416u, "classic baud must be 10416");
         CHECK(wink_mcs51_uart_notready_total() == 0u, "classic config must be clean");
+        // Stray write to the undefined 0x8E SFR (classic has no CKCON/T1M)
+        // must not switch the divider (S4 review follow-up: has_xsfr guard).
+        ctx->sfr_shadow[SFR_SCON] &= ~0x02u;  // clear TI (no overwrite path)
+        ctx->sfr_shadow[SFR_CKCON] = 0x10u;   // CKCON.T1M would be set
+        tx_write(0x42u);
+        CHECK(wink_mcs51_uart_last_baud_hz() == 10416u,
+              "classic stray 0x8E write must not change baud");
     }
 
     if (fails) {

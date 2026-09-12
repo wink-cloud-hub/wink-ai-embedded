@@ -185,10 +185,12 @@ inline void sfr_set_bit(uint8_t addr, uint8_t bit) {
 }
 
 // ADR-0081 D2: STANDARD baud rate in Hz (Timer1 source only). Classic parts
-// have no T1M (fixed 12T semantics, T=3); enhanced families without the 1T
-// bit read the same 0 (CKCON shadow 0x00), so the divider select is safe to
-// evaluate unconditionally. Returns 0 when uncomputable (zero divisor).
-// Enhanced sources (TMR4/TMR2/BRT) live behind the uart_hooks (S4-D3).
+// have no T1M (fixed 12T semantics, T=3); the CKCON divider select applies
+// only to families exposing the XSFR window, where the register exists. On
+// classic parts 0x8E is an undefined SFR: a stray firmware write there must
+// not silently change the baud rate. Returns 0 when uncomputable (zero
+// divisor). Enhanced sources (TMR4/TMR2/BRT) live behind the uart_hooks
+// (S4-D3).
 // ADR-0081 test observability: baud (Hz) used for the most recent charged
 // byte; 0 when the last write was unready/uncomputable or none yet.
 uint32_t s_last_baud_hz = 0u;
@@ -202,7 +204,10 @@ uint32_t uart_baud_hz_std(const Mcu51Context* ctx) {
         (((ctx->sfr_shadow[SFR_PCON] >> PCON_SMOD0) & 1u) != 0u) ? 2u : 1u;
     // A-01 guarantees TMOD mode 2 + TR1.
     uint32_t t = 3u;
-    if ((((ctx->sfr_shadow[SFR_CKCON] >> CKCON_T1M) & 1u) != 0u)) {
+    const bool has_xsfr =
+        mcs51_family_has_xsfr(mcs51_family_desc(ctx->family));
+    if (has_xsfr &&
+        (((ctx->sfr_shadow[SFR_CKCON] >> CKCON_T1M) & 1u) != 0u)) {
         t = 1u;
     }
     const uint32_t n = 256u - ctx->sfr_shadow[SFR_TH1];

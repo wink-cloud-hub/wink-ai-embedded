@@ -137,6 +137,12 @@ int main(void) {
     wink_mcs51_isr_enable();
     wink_mcs51_extint_reset();
     cms8s_extint_init(nullptr);
+    // S4-H2 follow-up: standalone init seeds the selector defaults itself
+    // (dirty it first so only the init path can restore it).
+    mcs51_get_context()->xdata_shadow[XSFR_PS_INT0] = 0x00u;
+    cms8s_extint_init(nullptr);
+    CHECK(mcs51_get_context()->xdata_shadow[XSFR_PS_INT0] == PS_RESET_UNMAPPED,
+          "standalone init must seed PS_INT0 to the unmapped reset value");
     cms8s_extint_reset(nullptr);
     wink_mcs51_host_ext_pins_reset();
     g_isr0_hits = 0;

@@ -93,8 +93,9 @@ inline void flag_set(Mcu51Context* ctx, uint8_t addr, uint8_t bit) {
 // advancing).
 uint32_t ext_counts_to_us_at(uint32_t counts, uint32_t divider) {
     const uint32_t fsys = wink_mcs51_get_clock_hz();
-    uint64_t us = (static_cast<uint64_t>(counts) * static_cast<uint64_t>(divider) *
-                   1000000ull) / static_cast<uint64_t>(fsys);
+    const uint64_t scaled =
+        static_cast<uint64_t>(counts) * static_cast<uint64_t>(divider);
+    const uint64_t us = (scaled * 1000000ull) / static_cast<uint64_t>(fsys);
     return static_cast<uint32_t>(us == 0ull ? 1ull : us);
 }
 
@@ -132,7 +133,9 @@ uint32_t timer3_reload_period(Mcu51Context* ctx) {
     } else {
         counts = 256u - rd(ctx, SFR_TL3);
     }
-    if (counts == 0u) counts = (mode == 2 ? 256u : (mode == 1 ? 65536u : 8192u));
+    if (counts == 0u) {
+        counts = (mode == 2 ? 256u : (mode == 1 ? 65536u : 8192u));
+    }
     return timer34_counts_to_us(ctx, counts, T34MOD_T3M);
 }
 
@@ -154,7 +157,9 @@ uint32_t timer3_current_period(Mcu51Context* ctx) {
     } else {
         counts = 256u - rd(ctx, SFR_TL3);
     }
-    if (counts == 0u) counts = (mode == 2 ? 256u : (mode == 1 ? 65536u : 8192u));
+    if (counts == 0u) {
+        counts = (mode == 2 ? 256u : (mode == 1 ? 65536u : 8192u));
+    }
     return timer34_counts_to_us(ctx, counts, T34MOD_T3M);
 }
 
@@ -176,7 +181,9 @@ uint32_t timer4_reload_period(Mcu51Context* ctx) {
     } else {
         counts = 256u - rd(ctx, SFR_TL4);
     }
-    if (counts == 0u) counts = (mode == 2 ? 256u : (mode == 1 ? 65536u : 8192u));
+    if (counts == 0u) {
+        counts = (mode == 2 ? 256u : (mode == 1 ? 65536u : 8192u));
+    }
     return timer34_counts_to_us(ctx, counts, T34MOD_T4M);
 }
 
@@ -198,7 +205,9 @@ uint32_t timer4_current_period(Mcu51Context* ctx) {
     } else {
         counts = 256u - rd(ctx, SFR_TL4);
     }
-    if (counts == 0u) counts = (mode == 2 ? 256u : (mode == 1 ? 65536u : 8192u));
+    if (counts == 0u) {
+        counts = (mode == 2 ? 256u : (mode == 1 ? 65536u : 8192u));
+    }
     return timer34_counts_to_us(ctx, counts, T34MOD_T4M);
 }
 
@@ -318,15 +327,21 @@ void step_timer4(Mcu51Context* ctx, uint64_t now_us) {
     }
 }
 
+// 16-bit SFR pair read (H:L order as laid out on silicon).
+inline uint16_t rd16(Mcu51Context* ctx, uint8_t hi_addr, uint8_t lo_addr) {
+    const uint16_t hi = static_cast<uint16_t>(rd(ctx, hi_addr));
+    return static_cast<uint16_t>((hi << 8) | rd(ctx, lo_addr));
+}
+
 static uint16_t timer2_compare_value(Mcu51Context* ctx, uint8_t c) {
     if (c == 0) {
-        return (static_cast<uint16_t>(rd(ctx, SFR_RLDH)) << 8) | rd(ctx, SFR_RLDL);
+        return rd16(ctx, SFR_RLDH, SFR_RLDL);
     } else if (c == 1) {
-        return (static_cast<uint16_t>(rd(ctx, SFR_CCH1)) << 8) | rd(ctx, SFR_CCL1);
+        return rd16(ctx, SFR_CCH1, SFR_CCL1);
     } else if (c == 2) {
-        return (static_cast<uint16_t>(rd(ctx, SFR_CCH2)) << 8) | rd(ctx, SFR_CCL2);
+        return rd16(ctx, SFR_CCH2, SFR_CCL2);
     } else if (c == 3) {
-        return (static_cast<uint16_t>(rd(ctx, SFR_CCH3)) << 8) | rd(ctx, SFR_CCL3);
+        return rd16(ctx, SFR_CCH3, SFR_CCL3);
     }
     return 0u;
 }
@@ -363,7 +378,9 @@ void sync_compares(Mcu51Context* ctx, uint64_t from_us) {
             if (cmp_val > cur_val) {
                 uint32_t diff = cmp_val - cur_val;
                 uint32_t delay_us = div24 ? diff : (diff / 2u);
-                if (delay_us == 0u) delay_us = 1u;
+                if (delay_us == 0u) {
+                    delay_us = 1u;
+                }
                 tm.t2_next_cmp_us[c] = from_us + delay_us;
             } else {
                 tm.t2_next_cmp_us[c] = NO_OVERFLOW;
@@ -396,7 +413,8 @@ void fire_due_compares(Mcu51Context* ctx, uint64_t now_us) {
         return;
     }
     for (uint8_t c = 0; c < 4; ++c) {
-        if (tm.t2_next_cmp_us[c] != NO_OVERFLOW && now_us >= tm.t2_next_cmp_us[c]) {
+        if (tm.t2_next_cmp_us[c] != NO_OVERFLOW &&
+            now_us >= tm.t2_next_cmp_us[c]) {
             on_timer2_compare_match(ctx, c);
             if (!ctx->timer.t2_running) {
                 return;
@@ -406,7 +424,9 @@ void fire_due_compares(Mcu51Context* ctx, uint64_t now_us) {
 }
 
 void timer2_trigger_capture(Mcu51Context* ctx, uint8_t c) {
-    if (c >= 4) return;
+    if (c >= 4) {
+        return;
+    }
     uint8_t tl2 = ctx->sfr_shadow[SFR_TL2];
     uint8_t th2 = ctx->sfr_shadow[SFR_TH2];
     if (c == 0) {
@@ -433,9 +453,14 @@ void timer2_trigger_capture(Mcu51Context* ctx, uint8_t c) {
 }
 
 uint16_t resolve_cap_pin(Mcu51Context* ctx, uint8_t c) {
-    constexpr uint16_t FALLBACK[4] = {0u, 1u, 13u, 12u};  // P0.0, P0.1, P1.5, P1.4
-    if (c >= 4) return 0u;
-    if (!ctx) return FALLBACK[c];
+    // Capture-input fallback pins: P0.0, P0.1, P1.5, P1.4.
+    constexpr uint16_t FALLBACK[4] = {0u, 1u, 13u, 12u};
+    if (c >= 4) {
+        return 0u;
+    }
+    if (!ctx) {
+        return FALLBACK[c];
+    }
     uint8_t sel = ctx->xdata_shadow[XSFR_PS_CAP0 + c];
     uint8_t port = (sel >> 4) & 0x07u;
     uint8_t bit = sel & 0x0Fu;
@@ -525,8 +550,9 @@ void install_trap_hooks(void) {
 }
 
 // M3: C language linkage for the C-ABI hook table.
-extern "C" void sfr_write_hook_cms8s_timer(struct Mcu51Context* ctx, uint8_t addr,
-                                uint8_t old_val, uint8_t new_val) {
+extern "C" void sfr_write_hook_cms8s_timer(struct Mcu51Context* ctx,
+                                           uint8_t addr, uint8_t old_val,
+                                           uint8_t new_val) {
     if (addr == SFR_T2IF || addr == SFR_EIF2) {
         // Interrupt flag registers are write-0-to-clear (W0C): writing 0
         // clears that bit; writing 1 leaves that bit unchanged (GAP-12).
@@ -535,8 +561,12 @@ extern "C" void sfr_write_hook_cms8s_timer(struct Mcu51Context* ctx, uint8_t add
         }
         return;
     }
-    if (!ctx) ctx = mcs51_get_context();
-    if (!ctx) return;
+    if (!ctx) {
+        ctx = mcs51_get_context();
+    }
+    if (!ctx) {
+        return;
+    }
     const uint64_t now = wink_mcs51_virtual_us();
     if (addr == SFR_T34MOD) {
         uint8_t t34mod = rd(ctx, SFR_T34MOD);
@@ -594,16 +624,25 @@ extern "C" void sfr_write_hook_cms8s_timer_t2(struct Mcu51Context* ctx,
                                    uint8_t new_val) {
     (void)old_val;
     (void)new_val;
-    if (!ctx) ctx = mcs51_get_context();
-    if (!ctx) return;
+    if (!ctx) {
+        ctx = mcs51_get_context();
+    }
+    if (!ctx) {
+        return;
+    }
     wink_mcs51_timer_on_write(addr);  // core: overflow re-arm / start-stop
     sync_compares(ctx, wink_mcs51_virtual_us());
 }
 
-extern "C" void sfr_read_hook_cms8s_timer(struct Mcu51Context* ctx, uint8_t addr) {
+extern "C" void sfr_read_hook_cms8s_timer(struct Mcu51Context* ctx,
+                                          uint8_t addr) {
     (void)addr;
-    if (!ctx) ctx = mcs51_get_context();
-    if (!cms8s_hook_armed(ctx)) return;
+    if (!ctx) {
+        ctx = mcs51_get_context();
+    }
+    if (!cms8s_hook_armed(ctx)) {
+        return;
+    }
     fire_due_compares(ctx, ctx->virtual_us);
     step_timer3(ctx, ctx->virtual_us);
     step_timer4(ctx, ctx->virtual_us);
@@ -624,28 +663,23 @@ uint32_t wink_mcs51_test_timer4_reload_period(void) {
     return (ctx != nullptr) ? timer4_reload_period(ctx) : 0u;
 }
 
+// Forward: init delegates to reset below (S4-H2 follow-up).
+void cms8s_timer_reset(struct Mcu51Context* ctx);
+
 void cms8s_timer_init(struct Mcu51Context* ctx) {
-    if (!ctx) ctx = mcs51_get_context();
-    if (!ctx) return;
-    if (ctx->family != MCS51_FAMILY_CMS8S78XX) {
-        return;  // belt-and-braces: the registry mask already filters
-    }
-    cms8s_soc_bind(ctx);
-    // Patch the generic ext-clk selector slots (core falls back without).
-    ctx->timer.t0_ps_addr = XSFR_PS_T0;
-    ctx->timer.t1_ps_addr = XSFR_PS_T1;
-    ctx->timer.t2_ps_addr = XSFR_PS_T2;
-    Cms8sTimerState& tm = cms8s_priv(ctx)->timer;
-    for (uint8_t c = 0; c < 4; ++c) {
-        tm.t2_cap_last_level[c] = 0xFFu;
-        tm.t2_next_cmp_us[c] = NO_OVERFLOW;
-    }
-    install_trap_hooks();
+    // S4-H2 follow-up: init delegates to reset so a standalone init seeds the
+    // pin-share selectors and installs hooks on its own; the full context
+    // reset runs both passes (idempotent overwrite).
+    cms8s_timer_reset(ctx);
 }
 
 void cms8s_timer_reset(struct Mcu51Context* ctx) {
-    if (!ctx) ctx = mcs51_get_context();
-    if (!ctx) return;
+    if (!ctx) {
+        ctx = mcs51_get_context();
+    }
+    if (!ctx) {
+        return;
+    }
     if (ctx->family != MCS51_FAMILY_CMS8S78XX) {
         return;
     }
@@ -681,8 +715,12 @@ void cms8s_timer_reset(struct Mcu51Context* ctx) {
 }
 
 void cms8s_timer_poll(struct Mcu51Context* ctx) {
-    if (!ctx) ctx = mcs51_get_context();
-    if (!cms8s_hook_armed(ctx)) return;  // review hardening: unbound/classic
+    if (!ctx) {
+        ctx = mcs51_get_context();
+    }
+    if (!cms8s_hook_armed(ctx)) {
+        return;  // review hardening: unbound/classic
+    }
     step_chip_timers(ctx, ctx->virtual_us);
     sample_capture(ctx);
 }
@@ -691,16 +729,24 @@ void cms8s_timer_poll(struct Mcu51Context* ctx) {
 // wink_mcs51_timers_step_to split: event advancement only).
 void cms8s_timer_step_to(uint64_t now_us) {
     Mcu51Context* ctx = mcs51_get_context();
-    if (!cms8s_hook_armed(ctx)) return;
-    if (!ctx) return;
+    if (!cms8s_hook_armed(ctx)) {
+        return;
+    }
+    if (!ctx) {
+        return;
+    }
     // NOTE: step targets the ACTIVE context (test seam, like the core
     // step_to). Multi-context callers set the active context first.
     step_chip_timers(ctx, now_us);
 }
 
 uint64_t cms8s_timer_next_event_us(struct Mcu51Context* ctx) {
-    if (!ctx) ctx = mcs51_get_context();
-    if (!cms8s_hook_armed(ctx)) return UINT64_MAX;
+    if (!ctx) {
+        ctx = mcs51_get_context();
+    }
+    if (!cms8s_hook_armed(ctx)) {
+        return UINT64_MAX;
+    }
     Cms8sTimerState& tm = cms8s_priv(ctx)->timer;
     uint64_t earliest = UINT64_MAX;
     if (ctx->timer.t2_running) {

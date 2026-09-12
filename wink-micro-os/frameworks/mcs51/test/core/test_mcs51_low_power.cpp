@@ -43,6 +43,7 @@ extern "C" void tearDown(void) {}
 extern "C" void wink_mcs51_host_set_ext_pin(uint16_t pin, uint8_t state);
 extern "C" void wink_mcs51_host_ext_pins_reset(void);
 extern "C" void wink_mcs51_extint_poll(void);
+extern "C" uint64_t mcs51_extint_next_event_us(struct Mcu51Context* ctx);
 // Chip port-interrupt poll (stage4 split: Test 3 drives port silicon).
 extern "C" void cms8s_port_extint_poll(struct Mcu51Context* ctx);
 
@@ -146,6 +147,22 @@ int main(void) {
     }
 
     wink_event_queue_deinit();
+
+    // ── Test 4: classic IDLE keeps sampling INT0/INT1 (schedule advertised) ──
+    // The extint model must advertise its next line-sampling slot so IDLE
+    // Mode A keeps step-pumping and the microstep polls keep watching the
+    // lines; UINT64_MAX would drop a classic part into Mode B (event-queue
+    // wait) with no scheduled wake source when no timer is active.
+    mcs51_test_register_family(MCS51_FAMILY_CLASSIC);
+    mcs51_context_set_family(MCS51_FAMILY_CLASSIC);
+    mcs51_context_reset(ctx);
+    wink_mcs51_isr_enable();
+    wink_mcs51_extint_poll();  // prime the line-sample baseline at now
+    const uint64_t extint_next = mcs51_extint_next_event_us(ctx);
+    check(extint_next != UINT64_MAX,
+          "classic extint must advertise its next line sample");
+    check(extint_next > ctx->virtual_us,
+          "advertised sample must be in the future (IDLE Mode A)");
 
     if (g_fails != 0) {
         printf("[mcs51-lowpower] FAILED with %d errors\n", g_fails);

@@ -54,9 +54,9 @@ constexpr uint8_t  PS_RESET     = CMS8S_XSFR_PS_RESET;
 // bit, writing 1 leaves it unchanged (GAP-12). Without this, an `|=` clear
 // or a multi-pin clear would wipe still-pending flags from other pins.
 // M3: C language linkage for the C-ABI hook table.
-extern "C" void sfr_write_hook_port_extif(struct Mcu51Context* ctx, uint8_t addr,
-                               uint8_t old_val, uint8_t new_val) {
-    (void)addr;
+extern "C" void sfr_write_hook_port_extif(struct Mcu51Context* ctx,
+                                          uint8_t addr, uint8_t old_val,
+                                          uint8_t new_val) {
     if (ctx) {
         ctx->sfr_shadow[addr] = old_val & new_val;
     }
@@ -109,7 +109,8 @@ void poll_port_ints(Mcu51Context* ctx, bool force, uint64_t now) {
             ps.have_sample = true;
 
             if ((extie & (1u << b)) != 0 && have) {
-                uint16_t eicfg_addr = static_cast<uint16_t>(PORT_EICFG_BASE[p] + b);
+                const uint16_t eicfg_addr =
+                    static_cast<uint16_t>(PORT_EICFG_BASE[p] + b);
                 uint8_t mode = ctx->xdata_shadow[eicfg_addr] & 0x03u;
                 bool match = false;
                 if (mode == 1u) {
@@ -147,49 +148,48 @@ void poll_port_ints(Mcu51Context* ctx, bool force, uint64_t now) {
 
 extern "C" {
 
-void cms8s_extint_init(struct Mcu51Context* ctx) {
-    if (!ctx) ctx = mcs51_get_context();
-    if (!ctx) return;
-    if (ctx->family != MCS51_FAMILY_CMS8S78XX) {
-        return;  // belt-and-braces: the registry mask already filters
-    }
-    cms8s_soc_bind(ctx);
-    patch_line_selectors(ctx);
-    for (uint8_t p = 0; p < 4u; ++p) {
-        for (uint8_t b = 0; b < 8u; ++b) {
-            if (!cms8s_priv(ctx)->port_extint.port_pins[p][b].have_sample) {
-                cms8s_priv(ctx)->port_extint.port_pins[p][b].last_level = 0xFFu;
-            }
-        }
-    }
-    cms8s_priv(ctx)->port_extint.sample_due = true;
-    cms8s_priv(ctx)->port_extint.in_poll = false;
-    cms8s_priv(ctx)->port_extint.port_last_sample_us = 0;
+// Forward: init delegates to reset below (S4-H2 follow-up).
+void cms8s_extint_reset(struct Mcu51Context* ctx);
 
-    install_trap_hooks();
+void cms8s_extint_init(struct Mcu51Context* ctx) {
+    // S4-H2 follow-up: init delegates to reset so a standalone init (test
+    // harnesses, future chip add-ons) leaves a fully coherent context —
+    // selector seeds and hooks included. Full context reset runs both; the
+    // second pass overwrites the same slots (idempotent).
+    cms8s_extint_reset(ctx);
 }
 
 void cms8s_extint_reset(struct Mcu51Context* ctx) {
-    if (!ctx) ctx = mcs51_get_context();
-    if (!ctx) return;
+    if (!ctx) {
+        ctx = mcs51_get_context();
+    }
+    if (!ctx) {
+        return;
+    }
     if (ctx->family != MCS51_FAMILY_CMS8S78XX) {
         return;
     }
     cms8s_soc_bind(ctx);  // defensive: standalone resets bind too
     patch_line_selectors(ctx);
     for (uint8_t p = 0; p < 4u; ++p) {
-        ctx->sfr_shadow[CMS8S_SFR_P0EXTIF + p] = 0;
+        ctx->sfr_shadow[CMS8S_SFR_P0EXTIF + p] = 0u;
     }
     ctx->xdata_shadow[XSFR_PS_INT0] = PS_RESET;
     ctx->xdata_shadow[XSFR_PS_INT1] = PS_RESET;
-    cms8s_priv(ctx)->port_extint.port_last_sample_us = 0;
-    cms8s_priv(ctx)->port_extint.sample_due = true;
+    Cms8sPortExtIntState& port = cms8s_priv(ctx)->port_extint;
+    port.port_last_sample_us = 0;
+    port.sample_due = true;
+    port.in_poll = false;
     install_trap_hooks();
 }
 
 void cms8s_port_extint_poll(struct Mcu51Context* ctx) {
-    if (!ctx) ctx = mcs51_get_context();
-    if (!cms8s_hook_armed(ctx)) return;  // review hardening: unbound/classic
+    if (!ctx) {
+        ctx = mcs51_get_context();
+    }
+    if (!cms8s_hook_armed(ctx)) {
+        return;  // review hardening: unbound/classic
+    }
     Cms8sPortExtIntState& port = cms8s_priv(ctx)->port_extint;
     if (port.in_poll) {
         return;
@@ -202,8 +202,12 @@ void cms8s_port_extint_poll(struct Mcu51Context* ctx) {
 }
 
 uint64_t cms8s_port_extint_next_event_us(struct Mcu51Context* ctx) {
-    if (!ctx) ctx = mcs51_get_context();
-    if (!cms8s_hook_armed(ctx)) return UINT64_MAX;
+    if (!ctx) {
+        ctx = mcs51_get_context();
+    }
+    if (!cms8s_hook_armed(ctx)) {
+        return UINT64_MAX;
+    }
     uint64_t next =
         cms8s_priv(ctx)->port_extint.port_last_sample_us + SAMPLE_PERIOD_US;
     return (next > ctx->virtual_us) ? next : ctx->virtual_us;
