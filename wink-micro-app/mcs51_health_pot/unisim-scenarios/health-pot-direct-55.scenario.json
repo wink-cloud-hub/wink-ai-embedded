@@ -78,8 +78,8 @@
     {
       "type": "ASSERT_BUS_PAYLOAD",
       "windowUs": [
-        "1200ms",
-        "1800ms"
+        "900ms",
+        "1500ms"
       ],
       "busType": "uart",
       "busId": 0,
