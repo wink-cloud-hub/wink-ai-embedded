@@ -39,7 +39,7 @@ wink_status_t wink_selftest_rmt_self_loopback(wink_selftest_result_t *r)
 
     bool pwm_was_up = pal_pwm_router_channel_ready(RMT_PWM_CH);
     if (pwm_was_up) {
-        pal_pwm_deinit(RMT_PWM_CH);
+        WINK_IGNORE_RESULT(pal_pwm_deinit(RMT_PWM_CH));
     }
 
     wink_status_t st = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, RMT_TEST_PIN, "selftest_rmt");
@@ -120,7 +120,7 @@ release:
 restore_pwm:
     if (pwm_was_up) {
         if (pal_pwm_init(RMT_PWM_CH, 50u) == WINK_OK) {
-            WINK_IGNORE_RESULT(pal_pwm_set_duty(RMT_PWM_CH, 50.0f));
+            WINK_IGNORE_RESULT(pal_pwm_set_duty_bp(RMT_PWM_CH, PAL_PWM_DUTY_PCT(50)));
         }
     }
 

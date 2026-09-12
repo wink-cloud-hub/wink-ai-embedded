@@ -25,7 +25,7 @@ enum {
     NB_HAS_pal_gpio_read                 = sizeof(&pal_gpio_read),
     NB_HAS_pal_gpio_write                = sizeof(&pal_gpio_write),
     NB_HAS_pal_pwm_init                  = sizeof(&pal_pwm_init),
-    NB_HAS_pal_pwm_set_duty              = sizeof(&pal_pwm_set_duty),
+    NB_HAS_pal_pwm_set_duty_bp           = sizeof(&pal_pwm_set_duty_bp),
     NB_HAS_pal_pwm_deinit                = sizeof(&pal_pwm_deinit),
     NB_HAS_pal_pwm_channel_pin           = sizeof(&pal_pwm_channel_pin),
     NB_HAS_pal_i2c_port_pins             = sizeof(&pal_i2c_port_pins),

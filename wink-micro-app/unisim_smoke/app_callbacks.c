@@ -48,9 +48,9 @@ static wink_status_t app_init_status(void)
     bool level = false;
     (void)pal_gpio_read(SMOKE_LED_PIN, &level);
 
-    /* --- js_pal_pwm_set_duty --- */
+    /* --- js_pal_pwm_set_duty_bp (ADR-0066; float legacy retired) --- */
     if (!wink_status_is_error(pal_pwm_init(SMOKE_PWM_CHANNEL, SMOKE_PWM_FREQ_HZ))) {
-        (void)pal_pwm_set_duty(SMOKE_PWM_CHANNEL, 50.0f);
+        (void)pal_pwm_set_duty_bp(SMOKE_PWM_CHANNEL, PAL_PWM_DUTY_PCT(50));
     }
 
     /* --- js_pal_i2c_transfer --- */

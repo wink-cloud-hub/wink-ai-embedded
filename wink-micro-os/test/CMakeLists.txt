@@ -180,6 +180,7 @@ add_wink_host_test(test_pal_log_hardening
 
 add_wink_host_test(test_pal_pwm_router unit/pal/test_pal_pwm_router.c)
 add_wink_host_test(test_pal_pwm_config unit/pal/test_pal_pwm_config.c)
+add_wink_host_test(test_pal_pwm_bp_math unit/pal/test_pal_pwm_bp_math.c)
 add_wink_host_test(test_dev_config unit/dal/test_dev_config.c)
 add_wink_host_test(test_pal_storage unit/pal/test_pal_storage.c)
 add_wink_host_test(test_sim_physical unit/sim/test_sim_physical.c)

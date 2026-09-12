@@ -16,11 +16,11 @@
 
 #define WASM_PWM_MAX_CHANNELS PAL_PWM_CHANNEL_MAX
 
-static float s_pwm_duty_percent[WASM_PWM_MAX_CHANNELS] = {0.0f};
+static uint16_t s_pwm_duty_bp[WASM_PWM_MAX_CHANNELS] = {0};
 
 wink_status_t pal_pwm_init(uint8_t channel, uint32_t frequency_hz)
 {
-    pal_pwm_config_t cfg = { .freq_hz = frequency_hz };
+    pal_pwm_config_t cfg = { .freq_hz = frequency_hz, .pin = WINK_PIN_NC };
     return pal_pwm_init_ex(channel, &cfg);
 }
 
@@ -58,9 +58,8 @@ wink_status_t pal_pwm_set_duty_bp(uint8_t channel, uint16_t basis_points)
     if (!pal_pwm_router_channel_ready(channel)) {
         return WINK_ERR_INVALID_STATE;
     }
-    float duty_pct = (float)basis_points / 100.0f;
-    s_pwm_duty_percent[channel] = duty_pct;
-    js_pal_pwm_set_duty(channel, duty_pct);
+    s_pwm_duty_bp[channel] = basis_points;
+    js_pal_pwm_set_duty_bp(channel, basis_points);
     return WINK_OK;
 }
 
@@ -89,7 +88,7 @@ wink_status_t pal_pwm_deinit(uint8_t channel)
     if (channel >= WASM_PWM_MAX_CHANNELS) {
         return WINK_ERR_INVALID_ARG;
     }
-    s_pwm_duty_percent[channel] = 0.0f;
+    s_pwm_duty_bp[channel] = 0u;
     pal_pwm_router_release(channel);
     return WINK_OK;
 }
@@ -111,10 +110,10 @@ float pal_wasm_get_pwm_duty_percent(uint8_t channel)
     if (channel >= WASM_PWM_MAX_CHANNELS) {
         return 0.0f;
     }
-    return s_pwm_duty_percent[channel];
+    return (float)s_pwm_duty_bp[channel] / 100.0f;
 }
 
 void pal_wasm_ch1b_pwm_reset(void)
 {
-    memset(s_pwm_duty_percent, 0, sizeof(s_pwm_duty_percent));
+    memset(s_pwm_duty_bp, 0, sizeof(s_pwm_duty_bp));
 }

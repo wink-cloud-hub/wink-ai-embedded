@@ -18,7 +18,7 @@ static wink_pin_t s_host_pwm_pins[PAL_PWM_CHANNELS] = {
 };
 
 wink_status_t pal_pwm_init(uint8_t channel, uint32_t freq) {
-    pal_pwm_config_t cfg = { .freq_hz = freq };
+    pal_pwm_config_t cfg = { .freq_hz = freq, .pin = WINK_PIN_NC };
     return pal_pwm_init_ex(channel, &cfg);
 }
 

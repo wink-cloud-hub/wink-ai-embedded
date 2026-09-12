@@ -20,9 +20,9 @@ wink_status_t wink_selftest_pwm_router_freq_isolation(wink_selftest_result_t *r)
 {
     r->note = "50Hz vs 1kHz -> different timer";
 
-    pal_pwm_deinit(SMOKE_PWM_CH_LO);
-    pal_pwm_deinit(SMOKE_PWM_CH_HI);
-    pal_pwm_deinit(SMOKE_PWM_CH_SAME);
+    WINK_IGNORE_RESULT(pal_pwm_deinit(SMOKE_PWM_CH_LO));
+    WINK_IGNORE_RESULT(pal_pwm_deinit(SMOKE_PWM_CH_HI));
+    WINK_IGNORE_RESULT(pal_pwm_deinit(SMOKE_PWM_CH_SAME));
 
     wink_status_t st = pal_pwm_init(SMOKE_PWM_CH_LO, 50u);
     if (wink_status_is_error(st)) {
@@ -31,14 +31,14 @@ wink_status_t wink_selftest_pwm_router_freq_isolation(wink_selftest_result_t *r)
     }
     st = pal_pwm_init(SMOKE_PWM_CH_HI, 1000u);
     if (wink_status_is_error(st)) {
-        pal_pwm_deinit(SMOKE_PWM_CH_LO);
+        WINK_IGNORE_RESULT(pal_pwm_deinit(SMOKE_PWM_CH_LO));
         r->note = "pal_pwm_init(ch_hi) failed";
         return st;
     }
     st = pal_pwm_init(SMOKE_PWM_CH_SAME, 50u);
     if (wink_status_is_error(st)) {
-        pal_pwm_deinit(SMOKE_PWM_CH_HI);
-        pal_pwm_deinit(SMOKE_PWM_CH_LO);
+        WINK_IGNORE_RESULT(pal_pwm_deinit(SMOKE_PWM_CH_HI));
+        WINK_IGNORE_RESULT(pal_pwm_deinit(SMOKE_PWM_CH_LO));
         r->note = "pal_pwm_init(ch_same) failed";
         return st;
     }
@@ -47,8 +47,8 @@ wink_status_t wink_selftest_pwm_router_freq_isolation(wink_selftest_result_t *r)
     uint8_t t_hi   = pal_pwm_router_channel_timer(SMOKE_PWM_CH_HI);
     uint8_t t_same = pal_pwm_router_channel_timer(SMOKE_PWM_CH_SAME);
 
-    WINK_IGNORE_RESULT(pal_pwm_set_duty(SMOKE_PWM_CH_LO, 50.0f));
-    WINK_IGNORE_RESULT(pal_pwm_set_duty(SMOKE_PWM_CH_HI, 50.0f));
+    WINK_IGNORE_RESULT(pal_pwm_set_duty_bp(SMOKE_PWM_CH_LO, PAL_PWM_DUTY_PCT(50)));
+    WINK_IGNORE_RESULT(pal_pwm_set_duty_bp(SMOKE_PWM_CH_HI, PAL_PWM_DUTY_PCT(50)));
 
     r->metric = ((uint32_t)t_lo & 0xFu)
               | (((uint32_t)t_hi   & 0xFu) << 4)
@@ -59,7 +59,7 @@ wink_status_t wink_selftest_pwm_router_freq_isolation(wink_selftest_result_t *r)
     if (t_lo == t_hi)                             pass = false;
     if (t_lo != t_same)                           pass = false;
 
-    pal_pwm_deinit(SMOKE_PWM_CH_SAME);
+    WINK_IGNORE_RESULT(pal_pwm_deinit(SMOKE_PWM_CH_SAME));
 
     (void)pass;
     if (!pass) {

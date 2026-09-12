@@ -52,6 +52,7 @@ wink_status_t dal_buzzer_init(dal_buzzer_t *dev, const dal_buzzer_config_t *cfg)
         }
 
         pal_pwm_config_t pwm_cfg = {
+            .pin = WINK_PIN_NC,
             .freq_hz = dev->config.default_freq_hz,
             .resolution_bits = 0u,
             .clock_requirement = PAL_PWM_CLOCK_AUTO,
