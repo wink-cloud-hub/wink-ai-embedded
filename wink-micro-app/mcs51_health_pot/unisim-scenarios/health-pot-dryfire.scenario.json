@@ -68,27 +68,27 @@
       "timeUs": "20000ms",
       "target": "plugin:heater_relay/on",
       "matcher": true,
-      "description": "Still heating cold water at 20 s: dry-fire watchdog (25 s accelerated threshold) has not tripped yet"
+      "description": "Still heating cold water at 20 s: slope gate (20 heat-s + 16 valid-s below 45 C) has not armed yet"
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
       "windowUs": [
-        "19500ms",
-        "21500ms"
+        "17500ms",
+        "19500ms"
       ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
       "matcher": "S=1,H=1,F=0",
       "minPackets": 1,
-      "description": "Telemetry at ~20 s still HEAT"
+      "description": "Telemetry at ~18-19 s still HEAT (slope gate arms at the 20th tick-second)"
     },
     {
       "type": "ASSERT_POINT",
       "timeUs": "30000ms",
       "target": "plugin:heater_relay/on",
       "matcher": false,
-      "description": "Dry-fire tripped by ~29 s (heater on >25 s while temp stays <45 C; tick/frame phase set by the 400 ms button press): heater forced off"
+      "description": "Dry-fire tripped by the 20th tick-second (static 25 C input, ~21 s scenario time; 16 s window drop < 6 codes): heater forced off"
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
