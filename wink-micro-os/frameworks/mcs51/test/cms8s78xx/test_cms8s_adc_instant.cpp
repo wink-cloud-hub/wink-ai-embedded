@@ -290,49 +290,39 @@ int main(void) {
     check(g_adc_isr_hits == isr_rising_start + 1u,
           "vector 19 not dispatched on rising edge trigger EOC");
 
-    // ── 14) Stage1 dual-read compat (deleted stage7) ──────────────────────
-    // Old pull-track drivers feed the synth key 32+ch for AN0 while the
-    // physical Pin 0 pulls 0.0: expect redirect value + count. Then: synth
-    // 0.0 must NOT redirect (true 0V protection); an injected pin key must
-    // win outright without rerouting (injection rail unaffected).
+    // ── 14) Stage7: synth-key misuse is REJECTED, never redirected ─────────
+    // Old frontends feed the synth key 32+ch for AN0 while the physical Pin 0
+    // pulls 0.0: expect the full-scale sentinel + count. Then: synth 0.0 must
+    // stay a true 0 V short; an injected pin key must win outright.
     {
-        cms8s_adc_model_reset(mcs51_get_context());  // redirect count -> 0
+        cms8s_adc_model_reset(mcs51_get_context());  // misuse count -> 0
         wink_mcs51_host_analog_reset();
         mcs51_adc_reset();
         mcs51_get_context()->xdata_shadow[0xF692u] = 0xE0u;  // LDOEN+VSEL_3V
         mcs51_get_context()->xdata_shadow[0xF000u] = 0x01u;  // P00CFG=AN0
         mcs51_adc_set_vrail_mv(3000u);
-        // (a) synth-key pull redirects: 0.5 norm -> 2048 right-justified.
+        // (a) synth-key pull is rejected with the fail-safe sentinel.
         wink_mcs51_host_set_analog_norm(32u, 0.5f);  // v1 misuse: AN0 via 32+0
         convert(0, true);
-        check((uint8_t)ADRESH == 0x08u && (uint8_t)ADRESL == 0x00u,
-              "synth-key pull must redirect to 2048 (0x0800)");
-        check(cms8s_adc_synth_redirect_count == 1u,
-              "synth redirect must count exactly once");
-        // (b) true 0V: synth pulls 0.0 too -> no redirect, raw stays 0.
+        check((uint8_t)ADRESH == 0x0Fu && (uint8_t)ADRESL == 0xFFu,
+              "synth-key misuse must report the 0x0FFF sentinel");
+        check(cms8s_adc_synth_misuse_count == 1u,
+              "synth misuse must count exactly once");
+        // (b) true 0V: synth pulls 0.0 too -> stays 0, no rejection.
         wink_mcs51_host_analog_reset();
         convert(0, true);
         check((uint8_t)ADRESH == 0x00u && (uint8_t)ADRESL == 0x00u,
-              "true 0V short must report 0, never redirect");
-        check(cms8s_adc_synth_redirect_count == 1u,
-              "true 0V must not count a redirect");
-        // (c) switch OFF kills the redirect even with synth driven.
-        cms8s_adc_dual_read_synth = false;
-        wink_mcs51_host_set_analog_norm(32u, 0.5f);
-        convert(0, true);
-        check((uint8_t)ADRESH == 0x00u && (uint8_t)ADRESL == 0x00u,
-              "dual-read OFF must not redirect");
-        check(cms8s_adc_synth_redirect_count == 1u,
-              "dual-read OFF must not count");
-        cms8s_adc_dual_read_synth = true;
-        // (d) injected pin key wins without rerouting.
+              "true 0V short must report 0, never the sentinel");
+        check(cms8s_adc_synth_misuse_count == 1u,
+              "true 0V must not count a synth misuse");
+        // (c) injected pin key wins without rejection.
         wink_mcs51_host_analog_reset();
         mcs51_adc_set_value(0, 0x0123u);
         convert(0, true);
         check((uint8_t)ADRESH == 0x01u && (uint8_t)ADRESL == 0x23u,
               "injected pin key must win outright (0x123)");
-        check(cms8s_adc_synth_redirect_count == 1u,
-              "injected pin key must not count a redirect");
+        check(cms8s_adc_synth_misuse_count == 1u,
+              "injected pin key must not count a synth misuse");
     }
 
     // ── 15) Review fix: illegal ADET pin (P2.6) never triggers ─────────────
@@ -360,6 +350,6 @@ int main(void) {
     printf("[mcs51] PASS: CMS8S78xx ADC 0-cycle model — ADGO self-clear, "
            "right/left packing, ADCIE/EA vector-19 gating, ADEN gate, "
            "AN25/AN63 channels, XSFR window + OOB trap, ADET hardware trigger (falling & rising), "
-           "Stage1 synth-key dual-read compat, illegal-ADET-pin reject\n");
+           "Stage7 synth-key rejection (sentinel + count), illegal-ADET-pin reject\n");
     return 0;
 }
