@@ -150,18 +150,33 @@ add_custom_command(
 add_custom_target(generate_config DEPENDS ${WINK_CONFIG_H})
 message(STATUS "Configuration will be generated at: ${WINK_CONFIG_H}")
 
-# Detect an MCS-51 app from its wink-app.json "board" field, once. This gates
-# both the production board-config codegen below and the DAL pruning bypass
-# further down (ADR-0075). mcs51 apps link the wink_mcs51_compat framework and
-# use NO DAL drivers; their devices exist solely for the frontend unisim-plugin
-# device-tree (a separate codegen path). The framework link itself is driven by
-# the app's WINK_APP_MCS51 opt-in exported from add_subdirectory(app).
+# Detect an MCS-51 app from its wink-app.json "mcu" (fallback: "board"), once.
+# This gates both the production board-config codegen below and the DAL pruning
+# bypass further down (ADR-0075). mcs51 apps use NO DAL drivers; their devices
+# exist solely for the frontend unisim-plugin device-tree (a separate codegen
+# path). The framework link itself is driven by the app's WINK_APP_MCS51 opt-in
+# exported from add_subdirectory(app).
+#
+# Stage6 review S6-H1: family resolution is manifest-driven
+# (cmake/mcs51_families.cmake reads tools/manifests/chips/*.yaml) — no family
+# name is hardcoded here, so a new chips/<family>/ package + manifest is
+# detected and injected with zero root CMake edits.
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mcs51_families.cmake)
+
 set(_wink_app_is_mcs51 FALSE)
+set(_wink_app_mcu "")
+set(_wink_mcs51_family "")
 if(NOT WINK_APP_JSON STREQUAL "" AND EXISTS "${WINK_APP_JSON}")
     file(READ "${WINK_APP_JSON}" _wink_app_json_text LIMIT 4096)
-    if(_wink_app_json_text MATCHES "\"board\"[ \t\r\n]*:[ \t\r\n]*\"[^\"]*(mcs51|cms8s|stc)[^\"]*\""
-       OR _wink_app_json_text MATCHES "\"mcu\"[ \t\r\n]*:[ \t\r\n]*\"[^\"]*(mcs51|cms8s|stc|at89)[^\"]*\"")
-        set(_wink_app_is_mcs51 TRUE)
+    if(_wink_app_json_text MATCHES "\"mcu\"[ \t\r\n]*:[ \t\r\n]*\"([^\"]+)\"")
+        set(_wink_app_mcu "${CMAKE_MATCH_1}")
+    endif()
+    wink_mcs51_family_for_mcu("${_wink_app_mcu}"
+        _wink_mcs51_family _wink_app_is_mcs51)
+    if(NOT _wink_app_is_mcs51
+            AND _wink_app_json_text MATCHES "\"board\"[ \t\r\n]*:[ \t\r\n]*\"([^\"]+)\"")
+        wink_mcs51_family_for_board("${CMAKE_MATCH_1}"
+            _wink_mcs51_family _wink_app_is_mcs51)
     endif()
 endif()
 
@@ -403,27 +418,63 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
         target_link_libraries(wink_simulator PRIVATE wink_arduino_compat)
     endif()
 
-    # ADR-0075: MCS-51 interception framework is the second auto-linked
-    # production framework (mirrors the Arduino block above). A mcs51 app's
-    # CMakeLists opts in by exporting WINK_APP_MCS51=TRUE. The framework's
-    # mcs51_bridge.cpp strongly defines wink_app_get_callbacks(), so a mcs51
-    # app must NOT also compile app_callbacks.c (duplicate symbol). Linking the
-    # compat lib pulls the real channel PAL data plane (js_pal_gpio_* /
+    # ADR-0075 / Stage6 S6-1 (PLAN-20260911-MCS51-S6, CPL-15): MCS-51
+    # interception framework is the second auto-linked production framework
+    # (mirrors the Arduino block above). A mcs51 app's CMakeLists opts in by
+    # exporting WINK_APP_MCS51=TRUE. The framework's mcs51_bridge.cpp strongly
+    # defines wink_app_get_callbacks(), so a mcs51 app must NOT also compile
+    # app_callbacks.c (duplicate symbol). Linking the manifest-resolved family
+    # targets pulls the real channel PAL data plane (js_pal_gpio_* /
     # js_pal_adc_read_norm via wink_sim_js.js -> PinArbiter); the bounded mcs51
     # test's channel stubs are never part of this production link.
-    if(WINK_APP_MCS51 AND TARGET wink_mcs51_compat)
-        message(STATUS "[frameworks] MCS-51 interception enabled for App")
-        target_link_libraries(wink_simulator PRIVATE wink_mcs51_compat)
-        # The STATIC lib compiles mcs51_bridge.cpp independently of the exe;
-        # it includes wink_app.h -> wink_config.h (via pal's INTERFACE include
-        # of WINK_CONFIG_DIR) and __has_include("mcs51_board_config.h"). The
-        # include paths propagate from pal, but the generated FILES need an
-        # explicit build-order dependency (parallel builds otherwise race).
+    #
+    # Injection rule (total §4.4, review S6-H1): core + the manifest family's
+    # wink_mcs51_inject_<family> bundle + the conventional register object;
+    # board devices as declared. A generic-core app never links the cms8s
+    # package (L4). New chips need no edit here.
+    if(WINK_APP_MCS51 AND TARGET wink_mcs51_core)
+        message(STATUS
+            "[frameworks] MCS-51 interception enabled for App "
+            "(mcu=${_wink_app_mcu}, family=${_wink_mcs51_family})")
+        target_link_libraries(wink_simulator PRIVATE wink_mcs51_core)
+        if(TARGET "wink_mcs51_inject_${_wink_mcs51_family}")
+            target_link_libraries(wink_simulator PRIVATE
+                "wink_mcs51_inject_${_wink_mcs51_family}")
+        elseif(TARGET "wink_mcs51_${_wink_mcs51_family}_register")
+            message(STATUS
+                "mcs51 family '${_wink_mcs51_family}' is a register-only "
+                "shell (no model package yet) — linking core + register")
+        else()
+            message(WARNING
+                "mcs51 app '${WINK_APP_JSON}' mcu '${_wink_app_mcu}' resolves "
+                "to family '${_wink_mcs51_family}' but no "
+                "wink_mcs51_inject_* target exists (chips package missing?) "
+                "— linking core only")
+        endif()
+        # Chip register entry object (conventional name): object libraries do
+        # not propagate through INTERFACE bundles, so the executable links it
+        # directly; the bridge's forward reference then resolves.
+        if(TARGET "wink_mcs51_${_wink_mcs51_family}_register")
+            target_link_libraries(wink_simulator PRIVATE
+                "wink_mcs51_${_wink_mcs51_family}_register")
+        endif()
+        # Board-device injection is content-driven (no hardcoded app list).
+        if(NOT WINK_APP_JSON STREQUAL "" AND EXISTS "${WINK_APP_JSON}")
+            file(READ "${WINK_APP_JSON}" _wink_app_full_text)
+            if(_wink_app_full_text MATCHES "\"type\"[ \t\r\n]*:[ \t\r\n]*\"adc0832\"")
+                target_link_libraries(wink_simulator PRIVATE wink_mcs51_adc0832)
+            endif()
+        endif()
+        # The STATIC libs compile mcs51_bridge.cpp independently of the exe;
+        # they include wink_app.h -> wink_config.h (via pal's INTERFACE
+        # include of WINK_CONFIG_DIR). The include paths propagate from pal,
+        # but the generated FILES need an explicit build-order dependency
+        # (parallel builds otherwise race).
         if(TARGET generate_config)
-            add_dependencies(wink_mcs51_compat generate_config)
+            add_dependencies(wink_mcs51_core generate_config)
         endif()
         if(TARGET generate_mcs51_board_config)
-            add_dependencies(wink_mcs51_compat generate_mcs51_board_config)
+            add_dependencies(wink_mcs51_core generate_mcs51_board_config)
         endif()
     endif()
     target_include_directories(wink_simulator PRIVATE

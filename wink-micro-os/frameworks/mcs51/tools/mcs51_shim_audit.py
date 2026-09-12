@@ -189,8 +189,8 @@ def main():
     fw_isr = FW_DIR / "src/mcs51_isr.cpp"
     fw_isr_h = FW_DIR / "include/wink_mcs51_isr.h"
     # Stage5 CPL-06: the CMS8S extended IRQ profile lives with the chip
-    # package (cms8s_sys.cpp today; stage6 re-homes the TU to chips/).
-    fw_chip_irq = FW_DIR / "src/cms8s_sys.cpp"
+    # package; stage6 homed the TU to chips/cms8s78xx/src/.
+    fw_chip_irq = FW_DIR / "chips/cms8s78xx/src/cms8s_sys.cpp"
     for p in (vendor_dev, vendor_gpio, shim_cms, shim_52, fw_isr, fw_isr_h,
               fw_chip_irq):
         if not p.exists():
