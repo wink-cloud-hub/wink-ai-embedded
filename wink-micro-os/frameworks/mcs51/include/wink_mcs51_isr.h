@@ -26,11 +26,16 @@
 extern "C" {
 #endif
 
+struct Mcu51Context;
+
 // 8051 standard vectors: 0 external0, 1 timer0, 2 external1, 3 timer1,
-// 4 UART, (5..7 = 8052 extra / RFU). Enhanced-vendor parts (CMS8S78xx) add
-// extended vectors 8..27 — e.g. the on-chip ADC end-of-conversion ISR uses
-// Keil `interrupt 19` (vector address 0x9B). Table sized for 28 so extended
-// ISRs register and dispatch instead of being silently dropped (M5, ADR-0073).
+// 4 UART, 5 Timer2 (8052). Enhanced parts add extended vectors 6..27 — e.g.
+// an on-chip ADC end-of-conversion ISR reached via Keil `interrupt N`
+// (vector address 0x0003 + 8*N). Table sized for 28 so extended ISRs
+// register and dispatch instead of being silently dropped (M5, ADR-0073).
+// Whether a vector is REACHABLE is decided per family by the descriptor
+// `irq_vector_table` whitelist (stage5, CPL-06 insulation): a classic part
+// rejects an extended vector even when an ISR is registered for it.
 #define WINK_MCS51_NUM_VECTORS 28u
 
 // Architecture-neutral semantic interrupt sources (ADR-0078 D1)
@@ -66,6 +71,25 @@ typedef struct {
     uint8_t clear_mode;    // MCS51_IRQ_HW_AUTO_CLEAR / MCS51_IRQ_SW_CLEAR
 } mcs51_irq_map_entry_t;
 
+// ── Stage5 CPL-06: per-context chip extension hooks ────────────────────────
+// The core owns the standard profile (sources 0..5) and loads it into the
+// ACTIVE context's map on every context reset; enhanced families install
+// these two slots during their chip reset so extended rows follow the
+// CONTEXT — a family switch can never resurrect another family's vectors
+// (L1 insulation). Both slots live in Mcu51Context, memset zero = standard.
+//
+// irq_map_extend: invoked after the core profile rows are (re)written; the
+// chip package maps its extended sources through the existing
+// wink_mcs51_set_irq_map_entry API.
+// irq_flag_predicate: multi-bit flag validation for sources the core does
+// NOT special-case (UART0/INT0/INT1 keep their inline standard semantics);
+// the chip version must reproduce the standard single-bit check for any
+// source it does not own.
+typedef void (*mcs51_irq_map_extend_fn_t)(struct Mcu51Context* ctx);
+typedef bool (*mcs51_irq_flag_predicate_fn_t)(
+    struct Mcu51Context* ctx, mcs51_irq_source_t src,
+    const mcs51_irq_map_entry_t* entry);
+
 typedef enum {
     MCS51_IRQ_EVT_RAISE = 0,
     MCS51_IRQ_EVT_DISPATCH = 1,
@@ -82,9 +106,16 @@ void mcs51_raise_irq(mcs51_irq_source_t src);
 // Rendezvous arbitration & dispatch point (ADR-0078 D2, D3)
 uint8_t mcs51_irq_scan_and_dispatch(void);
 
-// Profile mapping table configuration & inspection
+// Profile mapping table configuration & inspection. The table is
+// PER-CONTEXT (stage5 CPL-06): all three APIs operate on the ACTIVE
+// context (signatures unchanged). mcs51_context_reset loads the core
+// standard profile then lets the chip package extend it; set/get may
+// override individual rows at runtime.
 void wink_mcs51_set_irq_map_entry(mcs51_irq_source_t src, const mcs51_irq_map_entry_t* entry);
 const mcs51_irq_map_entry_t* wink_mcs51_get_irq_map_entry(mcs51_irq_source_t src);
+// Restore the core standard profile (sources 0..5 mapped; 6..12 unmapped)
+// in the active context, then re-apply the chip package's irq_map_extend
+// hook so the family's extended rows are never lost by a state reset.
 void wink_mcs51_reset_irq_map(void);
 
 // RETI / write IE/IP single-instruction suppression (ADR-0078 D4)

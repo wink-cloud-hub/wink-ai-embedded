@@ -1,24 +1,27 @@
 // SPDX-License-Identifier: Apache-2.0
 // MCS-51 XSFR proxy (C++17) — extended-SFR registers reached via MOVX @DPTR.
 //
-// Enhanced 8051 vendors (CMS8S78xx) place extra peripheral registers in the
-// xdata/MOVX address space: pin mux PxxCFG @ 0xF000..0xF033, ADC LDO ADCLDO
-// @ 0xF692, … Vendor headers declare them as
+// Enhanced 8051 parts may place extra peripheral registers (pin/clock
+// configuration, trim, …) in the xdata/MOVX address space; the family
+// descriptor publishes the window range (xsfr_base/xsfr_size). Vendor
+// headers declare such registers as absolute xdata pointers, e.g.
 //
-//     #define ADCLDO *(volatile unsigned char xdata *) 0xF692
+//     #define SOME_CFG *(volatile unsigned char xdata *) 0xNNNN
 //
 // After the cleanup pass erases the Keil `xdata` keyword, that expression
-// becomes `*(volatile unsigned char *) 0xF692` — a WILD host-pointer
-// dereference (address 0xF692 in the host process). REG_CMS8S78XX.H therefore
-// replaces such macros with a WinkXsfr proxy bound to the same address. Every
-// load/store/RMW funnels through the bounds-checked C-ABI xdata path
-// (mcs51_xdata.cpp, kind = XSFR), so the access lands in the XSFR window of
-// the 64 KB shadow, charges one interception microstep, and keeps STRICT
-// out-of-bounds semantics — no host pointer is ever formed.
+// becomes `*(volatile unsigned char *) 0xNNNN` — a WILD host-pointer
+// dereference (address 0xNNNN in the host process). The chip's register
+// header therefore replaces such macros with a WinkXsfr proxy bound to the
+// same address. Every load/store/RMW funnels through the bounds-checked
+// C-ABI xdata path (mcs51_xdata.cpp, kind = XSFR), so the access lands in
+// the family XSFR window of the 64 KB shadow, charges one interception
+// microstep, and keeps STRICT out-of-bounds semantics — no host pointer is
+// ever formed.
 //
 // Static-init safety (铁律 2, ADR-0072 D5): the constructor is constexpr with
-// a constant address, so `inline WinkXsfr ADCLDO(0xF692);` gets constant
-// initialization at load — no dynamic ctor, no ordering hazard.
+// a constant address, so a file-scope `inline WinkXsfr SOME_CFG(0xNNNN);`
+// gets constant initialization at load — no dynamic ctor, no ordering
+// hazard.
 #pragma once
 
 #include <cstdint>
@@ -29,13 +32,13 @@ class WinkXsfr {
 public:
     constexpr explicit WinkXsfr(uint16_t addr) : addr_(addr) {}
 
-    // `ADCLDO = 0x80;`
+    // `REGCFG = 0x80;`
     WinkXsfr& operator=(unsigned v) {
         wink_mcs51_xdata_write(static_cast<uint64_t>(addr_),
                                static_cast<uint8_t>(v & 0xFFu), 2u);
         return *this;
     }
-    // `ADCLDO = P00CFG;` (proxy = proxy): read the rhs through its checked
+    // `REGCFG = OTHERCFG;` (proxy = proxy): read the rhs through its checked
     // path, store the value — never rebind (mirrors WinkXByteProxy::Ref).
     WinkXsfr& operator=(const WinkXsfr& rhs) {
         return *this = static_cast<unsigned>(static_cast<uint8_t>(rhs));
@@ -45,7 +48,7 @@ public:
         return wink_mcs51_xdata_read(static_cast<uint64_t>(addr_), 2u);
     }
 
-    // Bitwise RMW (`ADCLDO |= 0x80;`) and arithmetic RMW: checked read,
+    // Bitwise RMW (`REGCFG |= 0x80;`) and arithmetic RMW: checked read,
     // checked write via operator=.
     WinkXsfr& operator|=(unsigned v) {
         return *this = (static_cast<uint8_t>(*this) | v);

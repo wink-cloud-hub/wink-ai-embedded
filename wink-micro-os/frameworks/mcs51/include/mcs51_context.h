@@ -8,6 +8,7 @@
 #include "mcs51_adc.h"
 #include "mcs51_family.h"
 #include "mcs51_trap.h"
+#include "wink_mcs51_isr.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -142,7 +143,10 @@ typedef struct {
 // S3-2 adds the 8 B sfr_write_notify slot with ZERO net growth (absorbed by
 // existing alignment padding; still 75672, locked by the budget test below).
 // S4-1/S4-2 move port sampling (-72) and T3/T4/capture (-72) to the chip
-// pool and add uart_hooks (+8): 75536 B measured, ceiling unchanged.
+// pool and add uart_hooks (+8): 75536 B measured.
+// S5 (CPL-06/08) adds the per-context irq_map (104) + the
+// extend/flag-predicate/xsfr-validate hooks (12) + alignment (4): 75656 B
+// measured (MinGW i686), ceiling unchanged.
 // Locked by test_mcs51_context_budget (print + ceiling); see stage2 §4 table.
 // Allocation MUST be in BSS or heap — NEVER on fiber/stack.
 typedef struct Mcu51Context {
@@ -168,6 +172,18 @@ typedef struct Mcu51Context {
     bool     interrupts_enabled;
     bool     reti_suppress_one;
     uint32_t isr_dispatch_count[28];
+    // Stage5 CPL-06: per-context source->vector profile (13 rows x 8 B =
+    // 104 B; booked in stage2 §4). File-static before stage5; the map is
+    // family state, so a chip profile can never leak into a classic
+    // context (L1 insulation). mcs51_context_reset loads the core
+    // standard rows, then the chip package extends via the hook below.
+    mcs51_irq_map_entry_t irq_map[IRQ_SOURCE__COUNT];
+    // Stage5 CPL-06/08: per-context chip extension hooks, installed by the
+    // owning chip reset (memset zero = pure standard behavior). Debug
+    // counters stay file-static (M4) as designed.
+    mcs51_irq_map_extend_fn_t      irq_map_extend;
+    mcs51_irq_flag_predicate_fn_t  irq_flag_predicate;
+    mcs51_xsfr_validate_fn_t       xsfr_validate;
 
     // 4. Clock and scheduling state
     uint64_t virtual_us;

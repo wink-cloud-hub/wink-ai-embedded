@@ -2,10 +2,14 @@
 // MCS-51 XDATA shadow + bounds-checked absolute access (M3, R-008).
 //
 // See absacc.h. A 64 KB linear xdata shadow (BSS) backs XBYTE/XWORD. Two
-// apertures are legal (M5, CMS8S78xx XSFR):
-//   * [0, WINK_MCS51_XDATA_SIZE) — ordinary XRAM/XRAM aperture (R-008);
-//   * [0xF000, 0x10000) — extended-SFR window (pin mux PxxCFG @ 0xF000..,
-//     ADCLDO @ 0xF692, …), reached via MOVX @DPTR on enhanced 8051s.
+// apertures are legal:
+//   * [0, WINK_MCS51_XDATA_SIZE) — ordinary external XRAM aperture (R-008),
+//     or the descriptor xram_size when the part has on-chip XRAM;
+//   * [xsfr_base, xsfr_base + xsfr_size) — the extended-SFR MOVX window an
+//     enhanced family publishes in its descriptor, reached via MOVX @DPTR.
+//     Whether an in-window address is a DECLARED chip register is chip
+//     knowledge: the generic path asks the per-context xsfr_validate hook
+//     (stage5 CPL-08), and an unowned address feeds the unmodeled tripwire.
 // Each checked access charges one interception microstep — the same
 // interception rationale as the SFR proxy, so a tight `while(XBYTE[f] != x){}`
 // poll advances virtual time and yields the fiber. Out-of-bounds accesses
@@ -18,7 +22,6 @@
 #include "absacc.h"
 #include "mcs51_context.h"
 #include "mcs51_family.h"
-#include "mcs51_xsfr_allowlist.h"
 #include "wink_mcs51_ext_bus.h"
 #include "wink_mcs51_clock.h"
 
@@ -26,7 +29,6 @@
 #include <emscripten.h>
 #endif
 
-#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <cstdlib>
@@ -40,10 +42,11 @@ namespace {
 
 constexpr uint8_t KIND_BYTE = 0u;  // XBYTE accessor
 constexpr uint8_t KIND_WORD = 1u;  // XWORD accessor
-constexpr uint8_t KIND_XSFR = 2u;  // XSFR proxy (WinkXsfr / REG_CMS8S78XX.H)
+constexpr uint8_t KIND_XSFR = 2u;  // XSFR proxy protocol tag (WinkXsfr)
 
-// Extended-SFR window facts (base/size) come from the family descriptor
-// (M1): pin config PxxCFG @ 0xF000..0xF033, ADC LDO ADCLDO @ 0xF692, …
+// Extended-SFR window facts (base/size, plus which registers are declared)
+// are family territory (M1/stage5): the descriptor publishes the RANGE, the
+// chip package's per-context xsfr_validate hook answers MEMBERSHIP.
 // GAP-09/GAP-23 family gating: the XSFR window and the unmodeled-XSFR
 // tripwire exist ONLY on families exposing the window; on a classic 8052
 // the same MOVX addresses are ordinary external RAM/IO space.
@@ -94,16 +97,17 @@ uint8_t  s_unmodeled_first_n = 0;
 bool     s_unmodeled_warned = false;  // single category latch (not per address)
 #endif
 
-// Allowlist membership: the audit-generated DECLARED set
-// (mcs51_xsfr_allowlist.h). Sorted, so binary search.
+// Stage5 CPL-08: membership is chip knowledge, reached through the
+// per-context xsfr_validate hook (installed by the owning chip reset).
+// A window without a validator means "no declared register set published":
+// every in-window access is unmodeled (fail toward visibility, never
+// toward silently accepting an unmodeled write).
 bool xsfr_allowlisted(uint64_t addr) {
-    if (addr > 0xFFFFull) {
+    Mcu51Context* ctx = mcs51_get_context();
+    if (ctx == nullptr || ctx->xsfr_validate == nullptr) {
         return false;
     }
-    const uint16_t a = static_cast<uint16_t>(addr);
-    // Raw-array pointer arithmetic (no <iterator> dependency for std::begin).
-    const uint16_t* first = kMcs51XsfrAllowlist;
-    return std::binary_search(first, first + kMcs51XsfrAllowlistCount, a);
+    return ctx->xsfr_validate(ctx, addr);
 }
 
 // GAP-24 classic external-bus conflict (process-level counter, M4).
@@ -114,8 +118,8 @@ bool s_bus_conflict_warned = false;
 #endif
 
 // External MOVX bus iff the part has no on-chip XRAM (classic AT89C52:
-// descriptor xram_size == 0; CMS8S78xx has 1 KB internal XRAM and never
-// touches pins for XBYTE). Branches on the descriptor, never a family id.
+// descriptor xram_size == 0; parts with internal XRAM never touch pins for
+// XBYTE). Branches on the descriptor, never a family id.
 bool ext_bus_present(const Mcu51Context* ctx) {
     return mcs51_family_desc(ctx->family)->xram_size == 0u;
 }
@@ -207,17 +211,20 @@ void oob_trap(uint64_t addr, uint8_t kind, bool is_write) {
         const char *what = kind == KIND_WORD ? "XWORD"
                          : kind == KIND_XSFR ? "XSFR" : "XBYTE";
         const unsigned aperture = static_cast<unsigned>(xram_aperture_size());
+        const mcs51_family_desc_t* d = active_family_desc();
         if (xsfr_window_present()) {
             pal_log_w("MCS51",
                       "XDATA %s %s out of bounds (addr=0x%04llX, legal: "
-                      "[0,%u) XRAM and [0xF000,0x10000) XSFR): %s",
+                      "[0,%u) XRAM and [0x%04X,0x%04X) XSFR): %s",
                       what, is_write ? "write" : "read",
                       (unsigned long long)addr, aperture,
+                      static_cast<unsigned>(d->xsfr_base),
+                      static_cast<unsigned>(d->xsfr_base + d->xsfr_size),
                       is_write ? "write dropped" : "returning 0xFF");
         } else {
             pal_log_w("MCS51",
                       "XDATA %s %s out of bounds (addr=0x%04llX, legal: "
-                      "[0,%u) external XDATA; classic family has no XSFR "
+                      "[0,%u) external XDATA; this family has no XSFR "
                       "window): %s",
                       what, is_write ? "write" : "read",
                       (unsigned long long)addr, aperture,

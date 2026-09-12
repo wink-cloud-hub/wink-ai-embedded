@@ -21,7 +21,8 @@
 //     written back into the latch (quasi-bidirectional FET lock-up, data-plane
 //     SSOT §2.2).
 //   * Non-GPIO SFRs (port 0xFF: TCON/SCON/ADCON/…) route through the SFR
-//     read/write hook tables instead (timer lazy eval, UART, CMS8S ADC).
+//     read/write hook tables instead (timer lazy eval, UART, chip-owned
+//     peripherals registered by their packages).
 //
 // Static-init safety (铁律 2, ADR-0072 D5): all constructors are constexpr
 // with const-address arguments, so every `inline WinkSfr P1 = 0x90;` gets
@@ -38,7 +39,7 @@
 // ── C-ABI interception entries (defined in mcs51_bridge.cpp, boundary ③→④) ──
 // Read: run the SFR read-hook for this address (lazy timer evaluation) and
 // charge one interception microstep. Write: run the SFR write-hook (timer /
-// UART / future CMS8S models) and charge one microstep. GPIO port addresses
+// UART / chip-registered models) and charge one microstep. GPIO port addresses
 // have no SFR hooks registered (their peripherals use pin traps), so for
 // P0..P3 these calls effect only the microstep charge.
 #ifdef __cplusplus
@@ -199,8 +200,8 @@ struct WinkSfr {
         } else {
             mcs51_get_context()->sfr_shadow[addr] = nv;
         }
-        // Non-GPIO SFR write hook (timer/UART/CMS8S) + microstep; for GPIO
-        // ports the hook slot is empty (microstep charge only).
+        // Non-GPIO SFR write hook (timer/UART/chip models) + microstep; for
+        // GPIO ports the hook slot is empty (microstep charge only).
         wink_mcs51_on_sfr_write(addr, old_val, nv);
         return *this;
     }

@@ -4,8 +4,9 @@
 // Prints sizeof(Mcu51Context) + major member sizes (feeds stage2 §4 budget
 // table) and static_asserts the no-growth ceiling: post-split classic/CMS8S
 // instances must not exceed the pre-decoupling baseline (75648 B, MinGW
-// GCC-measured; +1 KB cross-toolchain slack). Planned stage5 +104 B (IRQ
-// map into ctx) raises this ceiling explicitly when it lands.
+// GCC-measured; +1 KB cross-toolchain slack). Stage5 landed the per-context
+// IRQ map (+104 B) plus its three chip hooks (+12 B, +4 B struct alignment):
+// 75656 B measured, ceiling unchanged (stage5 appendix C re-check).
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -28,7 +29,10 @@ void check(bool cond, const char *msg) {
 // S2-1 purifying (scheme A) measured 75672 B (-80 split; +24 vs baseline =
 // caps_cache 8 [approved] + gpio_hooks 12 [planned stage4 infra] + 4 align,
 // booked per 00-README §8; S2-2 shaves ~120 more via T3/T4/port sampling).
-// Ceiling = current + 1 KB slack (covers x64-MSVC pointer growth vs the
+// S4-1/S4-2 chip-pool moves measured 75536 B; stage5 CPL-06/08 adds the
+// per-context irq_map (104) + irq_map_extend/flag_predicate/xsfr_validate
+// hooks (12) + alignment (4): 75656 B.
+// Ceiling = S2-1 current + 1 KB slack (covers x64-MSVC pointer growth vs the
 // i686-measured truth; per-toolchain exact numbers live in stage2 §4).
 constexpr unsigned kBudgetBytes = 75672u + 1024u;
 static_assert(sizeof(Mcu51Context) <= kBudgetBytes,
@@ -52,7 +56,13 @@ int main(void) {
            (unsigned)sizeof(z->adc_injected), (unsigned)sizeof(z->adc_inject_flag),
            (unsigned)sizeof(z->soc_priv), (unsigned)sizeof(z->instance_index),
            (unsigned)sizeof(z->gpio_hooks), (unsigned)sizeof(z->extbus));
+    printf("[budget] irq_map=%u + extend/predicate/xsfr hooks=%u\n",
+           (unsigned)sizeof(z->irq_map),
+           (unsigned)(sizeof(z->irq_map_extend) +
+                      sizeof(z->irq_flag_predicate) +
+                      sizeof(z->xsfr_validate)));
     check(sizeof(z->xdata_shadow) == 65536u, "xdata_shadow must stay 64KB");
+    check(sizeof(z->irq_map) == 104u, "irq_map must be 13 x 8 B (stage2 §4)");
     check(sizeof(Mcu51Context) <= kBudgetBytes, "budget ceiling breached");
     if (g_fails) {
         return 1;

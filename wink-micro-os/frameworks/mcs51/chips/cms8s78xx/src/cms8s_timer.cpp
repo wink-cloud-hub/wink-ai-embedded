@@ -35,7 +35,7 @@ uint8_t js_pal_gpio_read_state(uint16_t pin);
 namespace {
 
 constexpr uint8_t  SFR_T2CON = MCS51_SFR_T2CON;
-constexpr uint8_t  SFR_T2IF  = 0xC9;
+constexpr uint8_t  SFR_T2IF  = CMS8S_SFR_T2IF;
 constexpr uint8_t  SFR_RLDL  = 0xCA;
 constexpr uint8_t  SFR_RLDH  = 0xCB;
 constexpr uint8_t  SFR_TL2   = 0xCC;
@@ -47,7 +47,7 @@ constexpr uint8_t  SFR_CCL2  = 0xC4;
 constexpr uint8_t  SFR_CCH2  = 0xC5;
 constexpr uint8_t  SFR_CCL3  = 0xC6;
 constexpr uint8_t  SFR_CCH3  = 0xC7;
-constexpr uint8_t  SFR_T2IE  = 0xCF;
+constexpr uint8_t  SFR_T2IE  = CMS8S_SFR_T2IE;
 constexpr uint8_t  SFR_EIE2  = CMS8S_SFR_EIE2;
 constexpr uint8_t  SFR_EIF2  = CMS8S_SFR_EIF2;
 constexpr uint8_t  SFR_T34MOD = CMS8S_SFR_T34MOD;

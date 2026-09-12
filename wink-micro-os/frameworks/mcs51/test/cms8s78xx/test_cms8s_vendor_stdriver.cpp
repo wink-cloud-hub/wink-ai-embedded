@@ -77,6 +77,9 @@ int main(void) {
     // M1: vendor StdDriver ADC drives CMS8S-only silicon — select family.
     mcs51_test_register_family(MCS51_FAMILY_CMS8S78XX);
     mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
+    // Stage5: the chip reset installs the extended IRQ profile (vector 19)
+    // + XSFR validator per context; there is no lazy map initialization.
+    mcs51_context_reset(mcs51_get_context());
     wink_mcs51_isr_enable();
     wink_mcs51_xdata_reset();
     mcs51_adc_reset();
