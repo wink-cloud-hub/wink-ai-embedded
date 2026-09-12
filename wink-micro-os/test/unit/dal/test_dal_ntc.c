@@ -13,6 +13,14 @@
 #  pragma warning(disable: 4996)
 #endif
 
+#if defined(__GNUC__) || defined(__clang__)
+/* W-4 third-layer止血 (PLAN-20260912 T4.2/D6): 13 处 dal_ntc_read_degc/ddegc
+ * 旧阻塞接口彻底迁移需状态机重构，已登记 Backlog B-4；本计划仅文件级局部
+ * 豁免 -Wdeprecated-declarations，耗时锁定 <0.5d，杜绝工期扩散。 */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 #include "unity.h"
 #include "wink_status.h"
 #include "sensor/dal_ntc.h"
@@ -275,6 +283,10 @@ int main(void) {
     RUN_TEST(test_ntc_clear_faults_recovery);
     return UNITY_END();
 }
+
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 #if defined(_MSC_VER)
 #  pragma warning(pop)

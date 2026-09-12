@@ -8,7 +8,7 @@
 #include <string.h>
 
 void setUp(void) {
-    pal_deferred_init(0);
+    WINK_IGNORE_RESULT(pal_deferred_init(0));
 }
 
 void tearDown(void) {

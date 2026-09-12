@@ -26,13 +26,13 @@ void test_bus_init_rejects_invalid_port(void) {
                           pal_i2c_bus_init(PAL_I2C_PORTS, 21, 22, 100000));
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_i2c_bus_init(0, 21, 22, 100000));
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_i2c_bus_init(0, 21, 22, 100000));
-    pal_i2c_bus_deinit(0);
+    WINK_IGNORE_RESULT(pal_i2c_bus_deinit(0));
 }
 
 void test_bus_deinit_idempotent_on_uninited_port(void) {
-    pal_i2c_bus_deinit(1);
-    pal_i2c_bus_deinit(1);
-    pal_i2c_bus_deinit(PAL_I2C_PORTS);
+    WINK_IGNORE_RESULT(pal_i2c_bus_deinit(1));
+    WINK_IGNORE_RESULT(pal_i2c_bus_deinit(1));
+    WINK_IGNORE_RESULT(pal_i2c_bus_deinit(PAL_I2C_PORTS));
     TEST_PASS();
 }
 
@@ -41,15 +41,15 @@ void test_bus_init_enables_transfer(void) {
     uint8_t w = 0x00;
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_i2c_transfer(0, 0x3C, &w, 1, NULL, 0));
     TEST_ASSERT_EQUAL_INT(0x3C, sim_last_i2c_addr());
-    pal_i2c_bus_deinit(0);
+    WINK_IGNORE_RESULT(pal_i2c_bus_deinit(0));
 }
 
 void test_transfer_after_deinit_lazy_reinits_as_transitional_behavior(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_i2c_bus_init(0, 21, 22, 100000));
-    pal_i2c_bus_deinit(0);
+    WINK_IGNORE_RESULT(pal_i2c_bus_deinit(0));
     uint8_t w = 0xAE;
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_i2c_transfer(0, 0x3C, &w, 1, NULL, 0));
-    pal_i2c_bus_deinit(0);
+    WINK_IGNORE_RESULT(pal_i2c_bus_deinit(0));
 }
 
 void test_bus_ports_are_independent(void) {
@@ -58,9 +58,9 @@ void test_bus_ports_are_independent(void) {
     uint8_t w = 0x00;
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_i2c_transfer(0, 0x3C, &w, 1, NULL, 0));
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_i2c_transfer(1, 0x50, &w, 1, NULL, 0));
-    pal_i2c_bus_deinit(0);
+    WINK_IGNORE_RESULT(pal_i2c_bus_deinit(0));
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_i2c_transfer(1, 0x50, &w, 1, NULL, 0));
-    pal_i2c_bus_deinit(1);
+    WINK_IGNORE_RESULT(pal_i2c_bus_deinit(1));
 }
 
 int main(void) {
