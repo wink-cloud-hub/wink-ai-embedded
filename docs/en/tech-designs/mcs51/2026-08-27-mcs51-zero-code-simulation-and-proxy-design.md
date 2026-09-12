@@ -655,7 +655,7 @@ ADC0832 是经典 8 位分辨率 A/D 转换芯片，其典型时序与状态机�
 
 掩码/枚举宏在 `frameworks/mcs51/include/REG_CMS8S.H` 中按原厂**逐字命名**提供（`ADC_ADCON0_ADFM_Msk=0x40`、`ADC_ADCON0_ADGO_Msk=0x02`、`ADC_ADCON1_ADEN_Msk=0x80`、`ADC_ADCLDO_LDOEN_Msk=0x80`、`IRQ_EIE2_ADCIE_Msk=0x10`、`IRQ_EIF2_ADCIF_Msk=0x10`、`ADC_CH_0..25`、`ADC_CH_63`、`ADC_RESULT_LEFT/RIGHT`、`ADC_VREF_*`、`ADC_IS_BUSY`、`ADC_GO()` 等）。与原厂 `adc.h` 重名的枚举宏**采用原厂逐字 token 间距**（如 `(0x03<<ADC_ADCLDO_VSEL_Pos)`）：GCC 无 `-Wmacro-redefined`（Clang flag 被忽略），仅当两定义 token 流含空白完全一致才静默接受重定义。
 
-> **tier-b 收割（2026-08-29，ADR-0073 D6）**：原厂 StdDriver `adc.c` 已**未修改**编译并运行（`test_mcs51_cms8s_vendor`）。committed shim `frameworks/mcs51/include/cms8s78xx.h` 置于 include 路径首位遮蔽原厂 Keil 设备头（重定义 stdint/sfr、野指针 `ADCLDO`），仅 `#include "REG_CMS8S.H"`；原厂 GBK `adc.c/adc.h` 经 `mcs51_cleanup.py`（UTF-8 优先/GBK 回退 + `--transcode`）在构建树规范化为 UTF-8（源只读、不入库）；多 TU 经 C++17 `inline WinkSfr/WinkXsfr` ODR 安全共享；vendor 头目录标 SYSTEM include（`-isystem` 抑制第三方告警，自家 TU 仍 `-Werror`），MSVC `/wd4005`；夹具缺失 CMake 优雅跳过。
+> **tier-b 收割（2026-08-29，ADR-0073 D6）**：原厂 StdDriver `adc.c` 已**未修改**编译并运行（`test_mcs51_cms8s_vendor`）。committed shim `frameworks/mcs51/include/cms8s78xx.h` 置于 include 路径首位遮蔽原厂 Keil 设备头（重定义 stdint/sfr、野指针 `ADCLDO`），仅 `#include "REG_CMS8S.H"`；原厂 GBK `adc.c/adc.h` 经 `transpile_app_keil_c51.py`（UTF-8 优先/GBK 回退 + `--transcode`）在构建树规范化为 UTF-8（源只读、不入库）；多 TU 经 C++17 `inline WinkSfr/WinkXsfr` ODR 安全共享；vendor 头目录标 SYSTEM include（`-isystem` 抑制第三方告警，自家 TU 仍 `-Werror`），MSVC `/wd4005`；夹具缺失 CMake 优雅跳过。
 
 ---
 

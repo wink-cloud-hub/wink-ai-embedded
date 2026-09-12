@@ -3,7 +3,7 @@
 > 平台：WinkMicroOS · CMS8S78xx 1T 8051 硬件全特性平台（Axis-B，ADR-0070~0078）  
 > MCU 模型：中微半导体 CMS8S78xx 1T 高速 8051 内核（Flash 16KB, SRAM 1KB, 片内 12-bit SAR ADC, 硬件蜂鸣器发生器 BUZCON/BUZDIV, 150mA 高驱动 COM 口）  
 > 仿真通道：CH1 GPIO（4COM-8SEG 动态扫描、按键、双冗余 LED、加热继电器）· CH2 UART（遥测）· CH3 模拟量（NTC→片内 12-bit ADC）· BUZCON 硬件无源蜂鸣器 PWM  
-> 固件：`health_pot.c`（Keil C51 风格，经 `mcs51_cleanup.py` 清洗为 C++17 原生/wasm 编译，支持双 target 同源编译）  
+> 固件：`health_pot.c`（Keil C51 风格，经 `transpile_app_keil_c51.py` 转译为 C++17 原生/wasm 编译，支持双 target 同源编译）  
 
 ---
 
