@@ -12,12 +12,15 @@
  *     using CMS8S78xx 150mA high-sink COM (P3.0..P3.3) and 32.7mA SEG (P1.0..P1.7):
  *     OFF: " -- ", HEAT: "XXbO" with 1Hz blinking decimal point,
  *     WARM: "XXYY" (current temp + target setpoint), FAULT: "E-01".."E-04".
- *   - Push buttons on P0.4 (ON/OFF) and P0.5 (FUNC) with 20 ms debounce.
+ *   - Push buttons on P0.4 (ON/OFF) and P0.5 (FUNC) with 20 ms bidirectional
+ *     debounce inside the 10 ms tick plus POST stuck-key suppression.
  *   - Heater relay on P2.0 (active high).
  *   - Timer0 mode 1 (16-bit) 10 ms tick ISR: 4COM dynamic display scanning.
  *   - UART mode 1 polled TX telemetry once per second for headless assertions.
- *   - Comprehensive safety: NTC open/short, two-stage dry-fire watchdog
- *     (25s < 45C, or 60s without reaching boil in HEAT), over-temp watchdog
+ *   - Comprehensive safety: NTC open/short, ADC-code-domain 16 s slope dry-fire
+ *     watchdog with cold-water single-edge guard and valid-sample gate
+ *     (heat >= 20 s, valid >= 16 s, temp < 45 C => E-03), two-stage timeout
+ *     backstop (650 s < 45 C, or 550 s without reaching boil in HEAT), over-temp watchdog
  *     (12-bit raw <= 16 / >105 C for 10s; beyond-scale codes also block a
  *     false boil-complete and force the contact open), relay minimum-off
  *     dwell on EVERY re-energize path, and a manual ON/OFF fault acknowledge
@@ -65,13 +68,18 @@ sbit BTN_FUNC  = P0^5;   /* FUNC button, active low    (linear pin 5)  */
 #define OVERTEMP_SECONDS     10u    /* 10 s continuous overtemp trigger */
 #define BOIL_TEMP_C          98u    /* boiling reached */
 #define BOIL_HOLD_TICKS      30u    /* 30 x 100 ms = 3 s boil hold */
-#define WARM_HYST_C          1u     /* keep-warm hysteresis +/-1 C (high precision) */
+#define WARM_HYST_C          2u     /* keep-warm hysteresis +/-2 C (relay life) */
 #define RELAY_DWELL_SECONDS  3u     /* min relay OFF time before re-energizing */
 #define FAULT_RECOVER_TICKS  3u     /* 3 x 100 ms valid samples to auto-clear sensor fault */
-#define DRYFIRE_SECONDS      25u    /* heater on this long below 45 C => dry-fire (E-03) */
+#define DRYFIRE_SECONDS      650u   /* stage-1 hard backstop below 45 C => E-03 (single-image) */
 #define DRYFIRE_TEMP_C       45u
-#define BOIL_TIMEOUT_SECONDS 60u    /* heater on this long without reaching 98 C => dry-fire (E-03);
-                                     * accelerated sim value, real product calibrate 600~900 s */
+#define BOIL_TIMEOUT_SECONDS 550u   /* stage-2 hard backstop without reaching 98 C => E-03;
+                                      * single-image nominal tolerant limit, never JSON-tunable */
+#define SLOPE_WINDOW_SEC     16u    /* 16-slot ADC ring span (seconds) */
+#define SLOPE_MIN_DELTA      6u     /* 16 s ADC drop below this => dry-fire (code domain) */
+#define SLOPE_ARM_HEAT_SEC   20u    /* total heating seconds before slope gate may arm */
+#define COLDWATER_JUMP       40u    /* single-tick upward code jump => cold-water/probe event */
+#define GLITCH_TRIP_COUNT    3u     /* 3 consecutive upward jumps => E-01 open-class fault */
 #define FAULT_BEEP_TIMEOUT   60u    /* silence periodic buzzer alarm after 60 s */
 
 static unsigned int code ntc_lut_raw[11]  = {571, 458, 298, 241, 131,  89,  63,  32,  24,  19,  16};
@@ -179,11 +187,22 @@ static unsigned char div_1000ms;         /* Super-loop prescaler: 10 ms -> 1 s *
 static unsigned char warble_phase;       /* 0..99 x 10 ms phase for the fault warble */
 static volatile unsigned char tick_flag;
 
-/* Button debounce states */
-static unsigned char db_onoff;
-static unsigned char db_func;
+/* Button debounce & hold latch states (XDATA: keep DSEG <= 96 B) */
+static xdata unsigned char btn_onoff_held;
+static xdata unsigned char btn_func_held;
+static xdata unsigned char db_onoff_press;
+static xdata unsigned char db_onoff_release;
+static xdata unsigned char db_func_press;
+static xdata unsigned char db_func_release;
 static volatile unsigned char evt_onoff;
 static volatile unsigned char evt_func;
+
+/* Dry-fire slope detector state (XDATA: 16-slot ring lives off-chip) */
+static xdata unsigned int  adc_hist_16s[16];
+static xdata unsigned char adc_hist_idx;
+static xdata unsigned int  adc_prev_1s;
+static xdata unsigned char glitch_cnt;
+static xdata unsigned char slope_valid_sec;
 
 /* ---- ADC0 on-chip 12-bit SAR ADC ---------------------------------------- */
 static void adc_init(void) {
@@ -371,28 +390,44 @@ static void telemetry_emit(void) {
     uart_send_str("\n");
 }
 
-/* ---- Button Scanning (20 ms debounce) ------------------------------------ */
-static void button_scan(void) {
-    if (BTN_ONOFF == 0) {
-        if (db_onoff < 2u) {
-            db_onoff++;
-            if (db_onoff == 2u) {
-                evt_onoff = 1;
-            }
-        }
-    } else {
-        db_onoff = 0;
-    }
+/* ---- Button Scanning (10 ms tick, bidirectional 20 ms debounce + POST) -- */
+/* POST stuck-key suppression: a key held at power-up is latched as held so no
+ * phantom press event is generated until a full release+press cycle occurs. */
+void button_init_post(void) {
+    btn_onoff_held = (BTN_ONOFF == 0) ? 1u : 0u;
+    btn_func_held  = (BTN_FUNC == 0)  ? 1u : 0u;
+    db_onoff_press = 0u; db_onoff_release = 0u;
+    db_func_press  = 0u; db_func_release  = 0u;
+}
 
-    if (BTN_FUNC == 0) {
-        if (db_func < 2u) {
-            db_func++;
-            if (db_func == 2u) {
-                evt_func = 1;
-            }
+/* Strictly called inside main() if (tick_flag): each pass equals one 10 ms
+ * physical time base. Two consecutive identical samples confirm press/release. */
+static void button_scan_10ms(void) {
+    /* ---- ON/OFF key (active low) ---- */
+    if (BTN_ONOFF == 0) {
+        db_onoff_release = 0u;
+        if (!btn_onoff_held && ++db_onoff_press >= 2u) {
+            btn_onoff_held = 1u;
+            evt_onoff = 1u;
         }
     } else {
-        db_func = 0;
+        db_onoff_press = 0u;
+        if (btn_onoff_held && ++db_onoff_release >= 2u) {
+            btn_onoff_held = 0u;
+        }
+    }
+    /* ---- FUNC key (fully symmetric) ---- */
+    if (BTN_FUNC == 0) {
+        db_func_release = 0u;
+        if (!btn_func_held && ++db_func_press >= 2u) {
+            btn_func_held = 1u;
+            evt_func = 1u;
+        }
+    } else {
+        db_func_press = 0u;
+        if (btn_func_held && ++db_func_release >= 2u) {
+            btn_func_held = 0u;
+        }
     }
 }
 
@@ -419,7 +454,79 @@ static void enter_fault(unsigned char code_val) {
     cur_melody = 0;
 }
 
-/* ---- Instant Button Processing Task (10 ms tick) ------------------------ */
+/* ---- Dry-fire slope detector (8051 fixed-point, ADC code domain) --------- */
+/* Full-ring prefill + baseline refill on ST_HEAT entry or cold-water upset.
+ * Timing iron rule: cold-water clears slope_valid_sec (re-closes slope gate)
+ * but never touches heat_seconds (monotonic hard backstop, tamper-proof).
+ * glitch_cnt is cleared only at the three HEAT entries and on clean samples. */
+void heat_slope_reset(void) {
+    unsigned char i;
+    for (i = 0; i < 16u; i++) {
+        adc_hist_16s[i] = adc_code;
+    }
+    adc_hist_idx = 0u;
+    adc_prev_1s = adc_code;
+    slope_valid_sec = 0u;
+}
+
+/* Strict order in the 1 s task: run BEFORE telemetry_emit() for zero-delay
+ * fault frames. Gated to ST_HEAT with the contact closed only. */
+void heat_slope_task_1s(void) {
+    unsigned int adc_old;
+
+    if (state != ST_HEAT || !heater_on) {
+        return;
+    }
+
+    /* 1. Single-direction cold-water guard: NTC code rises when water cools.
+     * Upward jump (adc_code > adc_prev_1s) beyond threshold => cold-water or
+     * probe fretting. Downward edges (normal heating, incl. fast-boil and
+     * winter 64 code/s cold starts) pass through untouched, never E-01. */
+    if (adc_code > adc_prev_1s && (adc_code - adc_prev_1s) > COLDWATER_JUMP) {
+        if (++glitch_cnt >= GLITCH_TRIP_COUNT) {
+            enter_fault(1u);
+            return;
+        }
+        heat_slope_reset();
+        return;
+    }
+    glitch_cnt = 0u;
+    adc_prev_1s = adc_code;
+
+    /* Single-cycle shift of the 16-slot ring (true 16 s span). */
+    adc_hist_idx = (adc_hist_idx + 1u) & 0x0Fu;
+    adc_old = adc_hist_16s[adc_hist_idx];
+    adc_hist_16s[adc_hist_idx] = adc_code;
+
+    /* 2. Accumulators: heat_seconds is the ONLY increment site in firmware;
+     * slope_valid_sec accumulates clean samples only, saturating at 255. */
+    heat_seconds++;
+    if (slope_valid_sec < 255u) {
+        slope_valid_sec++;
+    }
+
+    /* 3. Slope verdict: total heating >= 20 s, clean samples >= 16 s, and
+     * water still below DRYFIRE_TEMP_C. Normal heating drops the code so the
+     * difference is positive; a drop below 6 codes in 16 s means dry-fire. */
+    if (heat_seconds >= SLOPE_ARM_HEAT_SEC && slope_valid_sec >= SLOPE_WINDOW_SEC
+            && temp_c < DRYFIRE_TEMP_C) {
+        if (adc_old <= adc_code || (adc_old - adc_code) < SLOPE_MIN_DELTA) {
+            enter_fault(3u);
+            return;
+        }
+    }
+
+    /* Two-stage timeout backstop (single-image firmware constants). */
+    if (heat_seconds > DRYFIRE_SECONDS && temp_c < DRYFIRE_TEMP_C) {
+        enter_fault(3u);
+    }
+    if (heat_mode == MODE_BOIL_100 && heat_seconds > BOIL_TIMEOUT_SECONDS
+            && temp_c < BOIL_TEMP_C) {
+        enter_fault(3u);
+    }
+}
+
+/* ---- Tick-guarded Button Processing Task (10 ms tick) ------------------- */
 static void handle_buttons(void) {
     if (evt_func) {
         evt_func = 0;
@@ -464,22 +571,40 @@ static void handle_buttons(void) {
                 heat_mode = MODE_BOIL_100;
                 play_melody(TONE_STEP);
             }
-            /* Reset heat_seconds when switching modes so test clicking won't trip dry-fire */
+            /* Reset heat window when switching modes; refill slope ring and
+             * reopen the valid-sample gate at this HEAT entry point */
             heat_seconds = 0;
+            glitch_cnt = 0u;
+            heat_slope_reset();
             display_update();
         } else if (state == ST_WARM) {
-            /* Cycle keep-warm setpoint: 55 -> 60 -> 80 -> 90 -> 55 */
+            /* Cycle keep-warm setpoint: 55 -> 60 -> 80 -> 90 -> 100 (re-boil) -> 55 */
             if (warm_set == 55u) {
                 warm_set = 60u;
+                play_melody(TONE_STEP);
             } else if (warm_set == 60u) {
                 warm_set = 80u;
+                play_melody(TONE_STEP);
             } else if (warm_set == 80u) {
                 warm_set = 90u;
+                play_melody(TONE_STEP);
             } else {
-                warm_set = 55u;
+                /* From 90 C, cycle back to 100 C re-boil (re-enter ST_HEAT) */
+                state = ST_HEAT;
+                heat_mode = MODE_BOIL_100;
+                warm_set = 60u;
+                heat_seconds = 0;
+                boil_confirm = 0;
+                boil_hold = 0;
+                overtemp_seconds = 0;
+                glitch_cnt = 0u;
+                heat_slope_reset();
+                play_melody(TONE_STEP);
             }
-            play_melody(TONE_STEP);
             display_update();
+        } else if (state == ST_FAULT) {
+            /* Key recognized but locked out: give audible denial blip instead of silence */
+            play_melody(TONE_BUSY);
         }
     }
 
@@ -504,6 +629,8 @@ static void handle_buttons(void) {
                 boil_confirm = 0u;
                 heat_seconds = 0u;
                 overtemp_seconds = 0u;
+                glitch_cnt = 0u;
+                heat_slope_reset();
                 play_melody(TONE_KEY);
             }
             display_update();
@@ -514,6 +641,7 @@ static void handle_buttons(void) {
             boil_hold = 0;
             heat_seconds = 0;
             overtemp_seconds = 0;
+            heat_mode = MODE_BOIL_100;
             play_melody(TONE_KEY);
             display_update();
         } else if (state == ST_FAULT) {
@@ -524,11 +652,13 @@ static void handle_buttons(void) {
                 heat_seconds = 0;
                 overtemp_seconds = 0;
                 recover_ticks = 0;
+                heat_mode = MODE_BOIL_100;
                 play_melody(TONE_KEY);
             } else {
                 state = ST_OFF;
                 sensor_muted = 1u;
                 heater_on = 0;
+                heat_mode = MODE_BOIL_100;
                 play_melody(TONE_KEY);
             }
             display_update();
@@ -653,7 +783,7 @@ static void control_task(void) {
         break;
 
     case ST_WARM:
-        /* Precision keep-warm: +/-1 C hysteresis */
+        /* Relay-life keep-warm: +/-2 C hysteresis */
         if (warm_set > WARM_HYST_C && temp_c < (warm_set - WARM_HYST_C)) {
             if (relay_off_sec >= RELAY_DWELL_SECONDS) {
                 heater_on = 1;
@@ -703,20 +833,8 @@ static void one_second_task(void) {
         relay_off_sec++;
     }
 
-    /* Two-stage dry-fire protection, counted only while the contact is
-     * actually closed in HEAT:
-     *  1) no heat-up past 45 C within DRYFIRE_SECONDS (empty pot / bad coupling)
-     *  2) warm-up stalls and never reaches boil within BOIL_TIMEOUT_SECONDS
-     *     (lid off / cold draught / low mains voltage / small load that has
-     *     already crossed 45 C so stage 1 can no longer catch it) */
-    if (state == ST_HEAT && heater_on) {
-        heat_seconds++;
-        if ((heat_seconds > DRYFIRE_SECONDS && temp_c < DRYFIRE_TEMP_C) ||
-            (heat_mode == MODE_BOIL_100 && heat_seconds > BOIL_TIMEOUT_SECONDS && temp_c < BOIL_TEMP_C)) {
-            enter_fault(3u);  /* Dry-fire -> E-03 */
-        }
-    }
-
+    /* Dry-fire logic lives solely in heat_slope_task_1s (single increment
+     * site for heat_seconds). This task only tracks relay off-time here. */
     /* Over-temp protection: raw <= 16 (~>105 C) in HEAT or WARM */
     if ((state == ST_HEAT || state == ST_WARM) &&
         adc_code > NTC_SHORT_RAW && adc_code <= OVERTEMP_RAW) {
@@ -732,6 +850,8 @@ static void one_second_task(void) {
         fault_beep_seconds++;
     }
 
+    /* Slope watchdog runs strictly before telemetry for zero-delay faults */
+    heat_slope_task_1s();
     telemetry_emit();
 }
 
@@ -889,12 +1009,14 @@ void main(void) {
     div_1000ms = 0;
     warble_phase = 0;
     scan_idx = 0;
-    db_onoff = 0;
-    db_func = 0;
-    evt_onoff = 0;
-    evt_func = 0;
     temp_c = 25u;
     adc_code = 241u;
+    evt_onoff = 0;
+    evt_func = 0;
+    /* POST stuck-key suppression + slope ring prefill at boot */
+    button_init_post();
+    glitch_cnt = 0u;
+    heat_slope_reset();
     cur_melody = 0;
     melody_idx = 0;
     melody_ticks = 0;
@@ -917,13 +1039,14 @@ void main(void) {
 
     while (1) {
         _nop_();
+
         if (!tick_flag) {
             continue;
         }
         tick_flag = 0;
 
-        /* 10 ms periodic tasks: button debouncing, instant handling & buzzer sequencer */
-        button_scan();
+        /* 10 ms periodic tasks: tick-guarded debounce, handling & buzzer */
+        button_scan_10ms();
         handle_buttons();
         buzzer_task();
         if (warble_phase < 99u) {
