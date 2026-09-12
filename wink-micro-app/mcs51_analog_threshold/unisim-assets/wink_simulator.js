@@ -1628,6 +1628,12 @@ async function createWasm() {
           return 2; /* HiZ default */
       }
 
+  function _js_pal_gpio_release_mcu(pin) {
+          if (typeof Module !== 'undefined' && typeof Module['js_pal_gpio_release_mcu'] === 'function' && Module['js_pal_gpio_release_mcu'] !== _js_pal_gpio_release_mcu) {
+              return Module['js_pal_gpio_release_mcu'](pin);
+          }
+      }
+
   function _js_pal_gpio_write(pin, level, strength) {
           if (typeof Module !== 'undefined' && typeof Module['js_pal_gpio_write'] === 'function' && Module['js_pal_gpio_write'] !== _js_pal_gpio_write) {
               return Module['js_pal_gpio_write'](pin, level, strength);
@@ -2676,6 +2682,8 @@ var wasmImports = {
   js_pal_gpio_drive_ideal: _js_pal_gpio_drive_ideal,
   /** @export */
   js_pal_gpio_read_state: _js_pal_gpio_read_state,
+  /** @export */
+  js_pal_gpio_release_mcu: _js_pal_gpio_release_mcu,
   /** @export */
   js_pal_gpio_write: _js_pal_gpio_write,
   /** @export */
