@@ -74,15 +74,17 @@ BASELINE: list[tuple[str, str, str, str]] = [
     # address must fail, not be waived).
     # mcs51_trap.h doc comments: S4-C scrubbed (no vendor names left in the
     # file; re-adding one must fail, not be waived).
-    # mcs51_xsfr_allowlist.h whole file -> stage5 (XSFR parametrize)
-    ("include/mcs51_xsfr_allowlist.h", "cms8s", r".*", "stage5"),
-    ("include/mcs51_xsfr_allowlist.h", "xsfr_addr", r"0xF", "stage5"),
+    # mcs51_xsfr_allowlist.h forwarding shim -> stage7 (stage5 removed its
+    # last consumer; the shim file itself survives until the stage7 sweep).
+    ("include/mcs51_xsfr_allowlist.h", "cms8s", r".*", "stage7"),
+    ("include/mcs51_xsfr_allowlist.h", "xsfr_addr", r"0xF", "stage7"),
     # wink_mcs51_* public headers -> stage3 (WDT hard export, UART remap
     # docs, extint mux docs, ISR width docs, clock/strict grouping notes)
     # wink_mcs51_clock.h: S3-H6 pruned (doc residue scrubbed in stage3).
     # wink_mcs51_extint.h mux docs: S4-1 moved with the code (S3-D4 discharge;
     # header is lines-only now).
-    ("include/wink_mcs51_isr.h", "cms8s", r"CMS8S78xx", "stage5"),
+    # wink_mcs51_isr.h: S5-1 scrubbed (extended-vector docs now generic; the
+    # profile table is per-context with chip rows package-owned).
     # wink_mcs51_strict.h: S3-H6 pruned (grouping-note residue scrubbed;
     # numbers frozen, schema checks below still lock IAP_FLASH=11).
     # wink_mcs51_uart.h source-select docs: S4-2 scrubbed to generic wording.
@@ -123,21 +125,16 @@ BASELINE: list[tuple[str, str, str, str]] = [
      r"classic STC/AT89", "prose"),
     # src/mcs51_gpio.cpp TRIS/OD/CFG tables + hooks dispatch: S4-1 pruned
     # (tables live in the chip model now; re-adding one must fail).
-    # src/mcs51_isr.cpp default map + comments -> stage5
-    ("src/mcs51_isr.cpp", "cms8s",
-     r"CMS8S78xx|cms8s78xx", "stage5"),
+    # src/mcs51_isr.cpp: S5-1 scrubbed (core profile is standard-only; the
+    # chip rows live in cms8s_sys.cpp, outside this gate's core scope).
     # src/mcs51_peripheral.cpp chip table: S4-C pruned (rows live in the
     # chip register TU now; re-adding one must fail, not be waived).
     # src/mcs51_timer.cpp T3/T4/capture/selector block: S4-2 pruned (lives in
     # the chip model now; re-adding must fail, not be waived).
     # src/mcs51_uart.cpp source-select block: S4-2 pruned (lives in the chip
     # model now; re-adding must fail, not be waived).
-    # src/mcs51_xdata.cpp XSFR window model + comments -> stage5
-    ("src/mcs51_xdata.cpp", "cms8s",
-     r"CMS8S78xx|REG_CMS8S78XX", "stage5"),
-    ("src/mcs51_xdata.cpp", "xsfr_addr",
-     r"0xF000|0xF692", "stage5"),
-    ("src/mcs51_xdata.cpp", "adcldo", r"ADCLDO", "stage5"),
+    # src/mcs51_xdata.cpp: S5-2 scrubbed (window is descriptor-driven; the
+    # allowlist validator is a per-context chip hook — zero vendor residue).
 ]
 
 # Schema-freeze assertions (name, file, regex).
@@ -186,8 +183,13 @@ SCHEMA_CHECKS = [
 
 
 def core_files() -> list[Path]:
+    # Stage5 review follow-up (S5-H1): the gate must cover EVERY generic
+    # include surface. The original glob skipped C++ proxy headers (*.hpp)
+    # and the ABSACC shim, so vendor comment residue could hide there and
+    # "delete waiver -> PASS" proved nothing for those files.
     files: list[Path] = []
-    for pat in ("mcs51_*.h", "wink_mcs51_*.h"):
+    for pat in ("mcs51_*.h", "mcs51_*.hpp",
+                "wink_mcs51_*.h", "wink_mcs51_*.hpp", "absacc.h"):
         files += sorted(INC.glob(pat))
     files += sorted(SRC.glob("mcs51_*.cpp"))
     return files
