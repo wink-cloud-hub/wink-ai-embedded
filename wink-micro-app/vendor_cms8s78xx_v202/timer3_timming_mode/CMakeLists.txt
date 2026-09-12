@@ -1,7 +1,7 @@
 # vendor_cms8s78xx_v202_timer3_timming_mode — production MCS-51 (CMS8S78xx) wasm-sim app:
 # Official Timer3 TimmingMode example: 8-bit auto-reload timer (100us period)
 # triggering Timer3_IRQHandler (vector 15) to toggle P32 (pin 26) producing 5kHz square wave.
-# Compiled UNMODIFIED ("一行不改") via mcs51_cleanup.py and backed by the
+# Compiled UNMODIFIED ("一行不改") via transpile_app_keil_c51.py and backed by the
 # frameworks/mcs51 SFR/XSFR proxies and the cooperative fiber scheduler.
 
 if(DEFINED wink-micro-os_SOURCE_DIR)
@@ -12,8 +12,8 @@ else()
     get_filename_component(_MCS51_APP_OS_ROOT
         "${CMAKE_CURRENT_SOURCE_DIR}/../../../wink-micro-os" ABSOLUTE)
 endif()
-set(_MCS51_CLEANUP
-    "${_MCS51_APP_OS_ROOT}/frameworks/mcs51/tools/mcs51_cleanup.py")
+set(_MCS51_TRANSPILE
+    "${_MCS51_APP_OS_ROOT}/frameworks/mcs51/tools/transpile_app_keil_c51.py")
 
 set(GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
 file(MAKE_DIRECTORY "${GEN_DIR}")
@@ -27,9 +27,9 @@ foreach(_src IN LISTS _SRC_FILES)
     set(_c "${CMAKE_CURRENT_SOURCE_DIR}/${_src}")
     add_custom_command(
         OUTPUT ${_cpp}
-        COMMAND ${Python3_EXECUTABLE} ${_MCS51_CLEANUP} ${_c} ${_cpp}
-        DEPENDS ${_c} ${_MCS51_CLEANUP}
-        COMMENT "vendor_cms8s78xx_v202_timer3_timming_mode cleanup: ${_src} -> ${_name}.cpp"
+        COMMAND ${Python3_EXECUTABLE} ${_MCS51_TRANSPILE} ${_c} ${_cpp}
+        DEPENDS ${_c} ${_MCS51_TRANSPILE}
+        COMMENT "vendor_cms8s78xx_v202_timer3_timming_mode transpile: ${_src} -> ${_name}.cpp"
         VERBATIM
     )
     set_source_files_properties(${_cpp} PROPERTIES COMPILE_OPTIONS "-std=c++17")
@@ -37,11 +37,11 @@ foreach(_src IN LISTS _SRC_FILES)
 
     if(EMSCRIPTEN)
         execute_process(
-            COMMAND ${Python3_EXECUTABLE} ${_MCS51_CLEANUP} ${_c} ${_cpp}
+            COMMAND ${Python3_EXECUTABLE} ${_MCS51_TRANSPILE} ${_c} ${_cpp}
             RESULT_VARIABLE _rc
         )
         if(NOT _rc EQUAL 0)
-            message(FATAL_ERROR "vendor_cms8s78xx_v202_timer3_timming_mode cleanup failed for ${_src}")
+            message(FATAL_ERROR "vendor_cms8s78xx_v202_timer3_timming_mode transpile failed for ${_src}")
         endif()
     endif()
 endforeach()

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-"""Comprehensive test suite for Task R4 & R5 mcs51_cleanup.py enhancements:
+"""Comprehensive test suite for Task R4 & R5 transpile_app_keil_c51.py enhancements:
   - Preprocessor conditional branch tracking (#if 0 masking)
   - Target gating: Native vs SDCC
   - Local definition guard for delay functions
@@ -13,11 +13,11 @@ import tempfile
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "tools"))
-import mcs51_cleanup
+import transpile_app_keil_c51
 import mcs51_manifest
 
 
-class TestMcs51Cleanup(unittest.TestCase):
+class TestTranspileAppKeilC51(unittest.TestCase):
     def test_if0_masks_dead_isr(self):
         source = """
 #include <reg52.h>
@@ -36,7 +36,7 @@ void main(void) {
     while(1);
 }
 """
-        cleaned, counts = mcs51_cleanup.cleanup(source, target="native")
+        cleaned, counts = transpile_app_keil_c51.cleanup(source, target="native")
         self.assertIn("void dead_isr(void) interrupt 1", cleaned)
         self.assertNotIn("WINK_ISR(1)", cleaned)
         self.assertIn("WINK_ISR(0)", cleaned)
@@ -50,7 +50,7 @@ void isr0(void) interrupt 0 {}
 void isr1(void) interrupt 1 {}
 #endif
 """
-        cleaned, counts = mcs51_cleanup.cleanup(source, target="native")
+        cleaned, counts = transpile_app_keil_c51.cleanup(source, target="native")
         self.assertIn("void isr0(void) interrupt 0", cleaned)
         self.assertIn("WINK_ISR(1)", cleaned)
         self.assertEqual(counts["isr"], 1)
@@ -64,7 +64,7 @@ void isr1(void) interrupt 1 {}
 #endif
 void isr3(void) interrupt 3 {}
 """
-        cleaned, counts = mcs51_cleanup.cleanup(source, target="native")
+        cleaned, counts = transpile_app_keil_c51.cleanup(source, target="native")
         self.assertIn("void isr2(void) interrupt 2", cleaned)
         self.assertNotIn("WINK_ISR(2)", cleaned)
         self.assertIn("WINK_ISR(3)", cleaned)
@@ -82,7 +82,7 @@ void main(void) {
     delay_ms(100);
 }
 """
-        cleaned, counts = mcs51_cleanup.cleanup(source, target="native")
+        cleaned, counts = transpile_app_keil_c51.cleanup(source, target="native")
         self.assertIn("delay_ms(100)", cleaned)
         self.assertNotIn("wink_mcs51_delay_ms", cleaned)
         self.assertEqual(counts["delay"], 0)
@@ -96,7 +96,7 @@ void main(void) {
     delay_us(10);
 }
 """
-        cleaned, counts = mcs51_cleanup.cleanup(source, target="native")
+        cleaned, counts = transpile_app_keil_c51.cleanup(source, target="native")
         self.assertIn("wink_mcs51_delay_ms(50)", cleaned)
         self.assertIn("wink_delay_us(10)", cleaned)
         self.assertEqual(counts["delay"], 2)
@@ -117,7 +117,7 @@ void main(void) {
     while(1);
 }
 """
-        cleaned, counts = mcs51_cleanup.cleanup(source, target="sdcc")
+        cleaned, counts = transpile_app_keil_c51.cleanup(source, target="sdcc")
         self.assertIn("__code", cleaned)
         self.assertIn("__at(0x20)", cleaned)
         self.assertIn("void timer_isr(void) __interrupt(1) __using(2)", cleaned)
@@ -136,7 +136,7 @@ sbit TF1    = TCON^7;
 sbit LED    = 0x90;
 void main(void) { HEATER = 0; }
 """
-        cleaned, counts = mcs51_cleanup.cleanup(source, target="sdcc")
+        cleaned, counts = transpile_app_keil_c51.cleanup(source, target="sdcc")
         self.assertIn("__sbit __at(0xA0) HEATER;", cleaned)   # P2 base 0xA0 + 0
         self.assertIn("__sbit __at(0x8F) TF1;", cleaned)      # TCON 0x88 + 7
         self.assertIn("__sbit __at(0x90) LED;", cleaned)      # absolute kept
@@ -145,7 +145,7 @@ void main(void) { HEATER = 0; }
     def test_sdcc_sbit_unresolved_reg(self):
         # Unknown SFR in a relative sbit is left untouched and counted.
         source = "sbit X = NO_SUCH_REG^3;\n"
-        cleaned, counts = mcs51_cleanup.cleanup(source, target="sdcc")
+        cleaned, counts = transpile_app_keil_c51.cleanup(source, target="sdcc")
         self.assertIn("sbit X = NO_SUCH_REG^3;", cleaned)
         self.assertEqual(counts["sbit_unresolved"], 1)
 
@@ -162,7 +162,7 @@ void main(void) { HEATER = 0; }
             '#include <cms8s_flash.h>\n'
             'void main(void) {}\n'
         )
-        cleaned, counts = mcs51_cleanup.cleanup(source, target="native")
+        cleaned, counts = transpile_app_keil_c51.cleanup(source, target="native")
         self.assertEqual(cleaned.count("#include <wink_mcu.h>"), 4)
         self.assertNotIn("reg52.h", cleaned)
         self.assertNotIn("cms8s78xx.h", cleaned)

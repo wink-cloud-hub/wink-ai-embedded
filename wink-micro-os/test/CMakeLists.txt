@@ -420,35 +420,35 @@ if(TARGET wink_mcs51_core)
     set(_MCS51_FW_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/mcs51)
     set(_MCS51_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/mcs51_generated)
 
-    # Cleanup pass: UNMODIFIED Keil .c sample -> .cpp copy in the build tree.
+    # Transpile pass: UNMODIFIED Keil .c sample -> .cpp copy in the build tree.
     # The source is never edited in place (Spike-S2 §6).
-    function(mcs51_cleanup_sample sample_name)
+    function(mcs51_transpile_sample sample_name)
         set(_cpp ${_MCS51_GEN_DIR}/${sample_name}.cpp)
         add_custom_command(
             OUTPUT ${_cpp}
             COMMAND ${CMAKE_COMMAND} -E make_directory ${_MCS51_GEN_DIR}
             COMMAND ${Python3_EXECUTABLE}
-                ${_MCS51_FW_DIR}/tools/mcs51_cleanup.py
+                ${_MCS51_FW_DIR}/tools/transpile_app_keil_c51.py
                 ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/mcs51/test/samples/${sample_name}.c
                 ${_cpp}
             DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/mcs51/test/samples/${sample_name}.c
-                    ${_MCS51_FW_DIR}/tools/mcs51_cleanup.py
-            COMMENT "mcs51 cleanup: ${sample_name}.c -> ${sample_name}.cpp"
+                    ${_MCS51_FW_DIR}/tools/transpile_app_keil_c51.py
+            COMMENT "mcs51 transpile: ${sample_name}.c -> ${sample_name}.cpp"
             VERBATIM)
         set(_MCS51_${sample_name}_CPP ${_cpp} PARENT_SCOPE)
     endfunction()
 
-    mcs51_cleanup_sample(blinky)
-    mcs51_cleanup_sample(blinky_timer0)
-    mcs51_cleanup_sample(uart_printf)
-    mcs51_cleanup_sample(uart_echo)
-    mcs51_cleanup_sample(gpio_in_out)
-    mcs51_cleanup_sample(int0_button)
-    mcs51_cleanup_sample(sfr_rmw_isolation_test)
-    mcs51_cleanup_sample(adc0832_read)
-    mcs51_cleanup_sample(cms8s_adc_test)
-    mcs51_cleanup_sample(iron_ntc)
-    mcs51_cleanup_sample(seg_display_scan)
+    mcs51_transpile_sample(blinky)
+    mcs51_transpile_sample(blinky_timer0)
+    mcs51_transpile_sample(uart_printf)
+    mcs51_transpile_sample(uart_echo)
+    mcs51_transpile_sample(gpio_in_out)
+    mcs51_transpile_sample(int0_button)
+    mcs51_transpile_sample(sfr_rmw_isolation_test)
+    mcs51_transpile_sample(adc0832_read)
+    mcs51_transpile_sample(cms8s_adc_test)
+    mcs51_transpile_sample(iron_ntc)
+    mcs51_transpile_sample(seg_display_scan)
 
     # ── M6: board-config codegen seam (wink-app.json -> mcs51_board_config.h) ──
     # Stage3 (CPL-09/CPL-21): the framework bridge no longer auto-binds the
@@ -764,22 +764,22 @@ if(TARGET wink_mcs51_core)
                     --check-xsfr-allowlist
                     ${_MCS51_FW_DIR}/chips/cms8s78xx/include/cms8s_xsfr_allowlist.h)
 
-        # Stage6 S6-2 CI assessment: the Keil-dialect cleanup unit suite was
+        # Stage6 S6-2 CI assessment: the Keil-dialect transpile unit suite was
         # manual; it is hermetic (stdlib unittest + checked-in manifests) so
         # it moves into the host ctest set. Verdict-parity for the SDCC gate
         # stays manual (needs SDCC + the uncommitted docs/vendors tree) and
         # the headless evidence script stays Win-only/manual — both are
         # written exemptions recorded in stage6 §6.
-        add_test(NAME test_mcs51_cleanup_unit
+        add_test(NAME test_transpile_app_keil_c51_unit
             COMMAND ${Python3_EXECUTABLE} -m unittest
                     discover -s ${_MCS51_FW_DIR}/test/core
-                    -p test_mcs51_cleanup.py)
+                    -p test_transpile_app_keil_c51.py)
 
         # Stage6 review S6-H5: the manifest-driven layering/residue gate is
         # hermetic stdlib — run it in the host ctest set too (was manual).
-        add_test(NAME test_mcs51_layering_gate
+        add_test(NAME test_fw_core_isolation_gate
             COMMAND ${Python3_EXECUTABLE}
-                    ${_MCS51_FW_DIR}/tools/lint/lint_mcs51_layering.py)
+                    ${_MCS51_FW_DIR}/tools/lint/lint_fw_core_isolation.py)
     endif()
 
     # Task R0 / ADR-0077: GPIO dual read path (Read-Pin vs Read-Latch) & arbitration
@@ -1042,10 +1042,10 @@ if(TARGET wink_mcs51_core)
             OUTPUT ${_MCS51_VENDOR_ADC_H}
             COMMAND ${CMAKE_COMMAND} -E make_directory ${_MCS51_VENDOR_INC_DIR}
             COMMAND ${Python3_EXECUTABLE}
-                ${_MCS51_FW_DIR}/tools/mcs51_cleanup.py --transcode
+                ${_MCS51_FW_DIR}/tools/transpile_app_keil_c51.py --transcode
                 ${_MCS51_VENDOR_STD}/inc/adc.h ${_MCS51_VENDOR_ADC_H}
             DEPENDS ${_MCS51_VENDOR_STD}/inc/adc.h
-                    ${_MCS51_FW_DIR}/tools/mcs51_cleanup.py
+                    ${_MCS51_FW_DIR}/tools/transpile_app_keil_c51.py
             COMMENT "mcs51 vendor: transcode StdDriver/inc/adc.h (GBK->UTF-8)"
             VERBATIM)
 
@@ -1053,11 +1053,11 @@ if(TARGET wink_mcs51_core)
         add_custom_command(
             OUTPUT ${_MCS51_VENDOR_ADC_CPP}
             COMMAND ${Python3_EXECUTABLE}
-                ${_MCS51_FW_DIR}/tools/mcs51_cleanup.py
+                ${_MCS51_FW_DIR}/tools/transpile_app_keil_c51.py
                 ${_MCS51_VENDOR_ADC_C} ${_MCS51_VENDOR_ADC_CPP}
             DEPENDS ${_MCS51_VENDOR_ADC_C} ${_MCS51_VENDOR_ADC_H}
-                    ${_MCS51_FW_DIR}/tools/mcs51_cleanup.py
-            COMMENT "mcs51 vendor cleanup: StdDriver/src/adc.c -> vendor_adc.cpp"
+                    ${_MCS51_FW_DIR}/tools/transpile_app_keil_c51.py
+            COMMENT "mcs51 vendor transpile: StdDriver/src/adc.c -> vendor_adc.cpp"
             VERBATIM)
 
         # Host-only: the tier-b driver is a direct model unit test (own main,

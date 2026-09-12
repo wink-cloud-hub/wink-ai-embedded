@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Stage0 (PLAN-20260911-MCS51-S0, CPL-24): core/vendor layering gate.
+# Renamed from lint_mcs51_layering.py (2026-09 canonical gate naming).
 #
 # Standalone equivalent of the `wink lint arch` layering pack (the wink.py
 # engine wiring lands in stage6 with the tooling manifests; this script is

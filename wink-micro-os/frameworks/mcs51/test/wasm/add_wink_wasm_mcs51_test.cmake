@@ -149,16 +149,16 @@ function(add_wink_wasm_mcs51_test test_name sample_name driver_c)
     set(_sample_cpp "${_WASM_MCS51_DIR}/${sample_name}.cpp")
     set(_out_js     "${_WASM_MCS51_DIR}/${test_name}.js")
 
-    # Keil dialect cleanup: <sample>.c -> <sample>.cpp (source never edited).
+    # Keil dialect transpile: <sample>.c -> <sample>.cpp (source never edited).
     add_custom_command(
         OUTPUT ${_sample_cpp}
         COMMAND ${Python3_EXECUTABLE}
-            ${_SDK_ROOT}/frameworks/mcs51/tools/mcs51_cleanup.py
+            ${_SDK_ROOT}/frameworks/mcs51/tools/transpile_app_keil_c51.py
             ${_SDK_ROOT}/frameworks/mcs51/test/samples/${sample_name}.c
             ${_sample_cpp}
         DEPENDS ${_SDK_ROOT}/frameworks/mcs51/test/samples/${sample_name}.c
-                ${_SDK_ROOT}/frameworks/mcs51/tools/mcs51_cleanup.py
-        COMMENT "mcs51 wasm cleanup: ${sample_name}.c -> ${sample_name}.cpp"
+                ${_SDK_ROOT}/frameworks/mcs51/tools/transpile_app_keil_c51.py
+        COMMENT "mcs51 wasm transpile: ${sample_name}.c -> ${sample_name}.cpp"
         VERBATIM)
 
     if(sample_name MATCHES "cms8s")

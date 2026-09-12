@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
-"""MCS-51 Keil C51 dialect cleanup pass (Axis B, ADR-0070 / Task R4).
+"""MCS-51 Keil C51 dialect transpile pass (Axis B, ADR-0070 / Task R4).
+# Renamed from mcs51_cleanup.py (2026-09 canonical gate naming).
 
 Transforms an UNMODIFIED Keil C51 user source (``.c``) into a C++ translation
 unit (``.cpp``) for Tier 2 native simulation, or an SDCC C source for Tier 3 ISS.
@@ -23,7 +24,7 @@ Features:
   * UTF-8 with GBK fallback decoding (transcode mode supported).
 
 Usage:
-    python mcs51_cleanup.py [--transcode] [--target=native|sdcc] <input.c> <output.cpp>
+    python transpile_app_keil_c51.py [--transcode] [--target=native|sdcc] <input.c> <output.cpp>
 """
 import os
 import re
@@ -416,7 +417,7 @@ def cleanup(source: str, target: str = "native") -> tuple[str, dict[str, int]]:
         for m in LOCAL_DELAY_DEF_RE.finditer(mask):
             func_name = m.group(1)
             local_delays.add(func_name)
-            print(f"[mcs51_cleanup] Skipped locally-defined delay function: {func_name}")
+            print(f"[transpile_app_keil_c51] Skipped locally-defined delay function: {func_name}")
 
         for m in DELAY_CALL_RE.finditer(mask):
             func_name = m.group(1)
@@ -464,7 +465,7 @@ def main(argv: list[str]) -> int:
             args.append(a)
 
     if len(args) != 2:
-        sys.stderr.write("usage: mcs51_cleanup.py [--transcode] [--target=native|sdcc] <input> <output>\n")
+        sys.stderr.write("usage: transpile_app_keil_c51.py [--transcode] [--target=native|sdcc] <input> <output>\n")
         return 2
 
     inp, outp = args
@@ -479,7 +480,7 @@ def main(argv: list[str]) -> int:
         f.write(cleaned)
 
     if transcode:
-        print(f"[mcs51_cleanup] {inp} -> {outp}: transcoded to UTF-8")
+        print(f"[transpile_app_keil_c51] {inp} -> {outp}: transcoded to UTF-8")
     else:
         info = [f"{counts['isr']} ISR"]
         if target == "native":
@@ -490,7 +491,7 @@ def main(argv: list[str]) -> int:
             ])
         else:
             info.append(f"{counts['sdcc']} SDCC dialect rewrite(s)")
-        print(f"[mcs51_cleanup] {inp} -> {outp} ({target}): {', '.join(info)} rewritten")
+        print(f"[transpile_app_keil_c51] {inp} -> {outp} ({target}): {', '.join(info)} rewritten")
     return 0
 
 
