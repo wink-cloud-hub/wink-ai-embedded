@@ -134,21 +134,10 @@ file(GLOB _WASM_MCS51_PAL_WASM
     "${_SDK_ROOT}/targets/wasm/pal_wasm_*.c")
 list(FILTER _WASM_MCS51_PAL_WASM EXCLUDE REGEX "_ch[0-9]")
 
-# ── Stage6 S6-1 Step 2: per-sample family-select fixture ─────────────────────
-# Production generates mcs51_family_select.h per app (external wink-tools
-# generator; not ready yet — stage6 prerequisite). Each wasm test copies the
-# checked-in fixture for its family into a per-test include dir so
-# mcs51_bridge.cpp takes its __has_include branch and registers the chip
-# package before the first context reset. Per-test dirs avoid a parallel
-# build race between cms8s and classic tests.
-function(mcs51_wasm_family_select_dir test_name family_dir)
-    set(_fs_dir "${_WASM_MCS51_DIR}/${test_name}_gen")
-    file(MAKE_DIRECTORY "${_fs_dir}")
-    file(COPY
-        "${_SDK_ROOT}/frameworks/mcs51/test/fixtures/family_select/${family_dir}/mcs51_family_select.h"
-        DESTINATION "${_fs_dir}")
-    set(_MCS51_WASM_FAMILY_SELECT_DIR "${_fs_dir}" PARENT_SCOPE)
-endfunction()
+# Stage7 S7-1: chip packages self-register at link time (their register TUs
+# are part of MCS51_CMS8S_SOURCES / MCS51_AT89_SOURCES below and carry static
+# initializers), so there is no per-sample family-select fixture to inject.
+# mcs51_bridge.cpp is family-agnostic; the MCU macro only routes headers.
 
 # add_wink_wasm_mcs51_test(<test_name> <sample_name> <driver_c> [extra_emcc_flags]):
 #   cleanup <sample_name>.c -> <sample_name>.cpp, compile with the framework
@@ -174,14 +163,11 @@ function(add_wink_wasm_mcs51_test test_name sample_name driver_c)
 
     if(sample_name MATCHES "cms8s")
         set(_mcu_def "-DWINK_MCU_CMS8S78XX=1")
-        mcs51_wasm_family_select_dir(${test_name} cms8s78xx)
     else()
         set(_mcu_def "-DWINK_MCU_AT89C52=1")
-        mcs51_wasm_family_select_dir(${test_name} at89c52)
     endif()
 
-    # Stage6: framework payload from the shared source lists (step 4) plus the
-    # per-sample fixture include dir (step 2).
+    # Stage6: framework payload from the shared source lists (step 4).
     set(_test_sources
         ${driver_c}
         ${_sample_cpp}
@@ -212,7 +198,6 @@ function(add_wink_wasm_mcs51_test test_name sample_name driver_c)
         OUTPUT ${_out_js}
         COMMAND ${EMCC_EXECUTABLE}
             ${_WASM_MCS51_INCLUDES}
-            -I${_MCS51_WASM_FAMILY_SELECT_DIR}
             ${_test_sources}
             -O1
             -DSIMULATION=1

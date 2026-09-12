@@ -27,23 +27,13 @@
 
 #include <cstdint>
 
-// Stage4 CPL-10: family-selected chip registration (total §3.1b-3).
-// Production glue (generated mcs51_family_select.h) defines
-// MCS51_FAMILY_SELECT_REGISTER() as the family's register call; host tests
-// inject a checked-in fixture (test/fixtures/family_select/) and the wasm
-// harness copies the per-sample fixture (stage6 S6-D3), while direct unit
-// tests use mcs51_test_harness.h. Without the generated header the
-// transitional fallback below keeps production silicon models alive.
-#if defined(__has_include) && __has_include("mcs51_family_select.h")
-#include "mcs51_family_select.h"
-#define MCS51_HAVE_FAMILY_SELECT 1
-#endif
-// S4-D5 transitional default (deferred to stage7 by S6-D3): the external
-// mcs51_family_select.h generator is not in the toolchain yet, so pre-codegen
-// production builds of this family register the chip package explicitly.
-#if !defined(MCS51_HAVE_FAMILY_SELECT) && defined(WINK_MCU_CMS8S78XX)
-extern "C" void cms8s78xx_register(void);
-#endif
+// Stage4 CPL-10 / Stage7 S7-1: chip package registration is LINK-TIME
+// self-registration. Each chips/<family>/src/<family>_register.cpp carries a
+// static initializer that appends its descriptors to the core-owned registry
+// when the package's register OBJECT is linked; production root and tests
+// link exactly one family through the manifest-resolved inject bundle plus
+// the conventional register object. The bridge stays family-agnostic: no
+// generated glue header, no chip symbols, no silent no-registration path.
 
 extern "C" void wink_mcs51_user_main(void);
 
@@ -51,11 +41,6 @@ namespace {
 
 void mcs51_framework_init(void) {
     Mcu51Context* ctx = mcs51_get_context();
-#if defined(MCS51_HAVE_FAMILY_SELECT)
-    MCS51_FAMILY_SELECT_REGISTER();
-#elif defined(WINK_MCU_CMS8S78XX)
-    cms8s78xx_register();  // S4-D5 transitional (deferred to stage7, S6-D3)
-#endif
     mcs51_context_reset(ctx);
 
     (void)wink_event_queue_init(WINK_EVENT_QUEUE_DEFAULT_CAPACITY);

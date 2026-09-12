@@ -4,9 +4,10 @@
 // TEST LINKAGE ONLY — never into production libraries (lives under test/,
 // no CMake target references it outside host tests). Idempotent family
 // switch: registry reset + family register + set_family + reset, so every
-// cms8s unit test and bridge-driven e2e gets its chip models explicitly
-// (production gets them through the generated mcs51_family_select.h glue,
-// stage6; pre-glue production keeps the static rows until Commit C).
+// cms8s unit test and bridge-driven e2e gets its chip models explicitly.
+// Production registers the same packages at link time (Stage7 S7-1: the
+// register TU's static initializer runs when the package OBJECT is linked);
+// this harness only pins the order for tests that also reset the seam.
 #pragma once
 
 #include <stdint.h>
