@@ -47,6 +47,11 @@ sbit BTN_FUNC  = P0^5;   /* FUNC button, active low    (linear pin 5)  */
 #define ST_WARM   2u
 #define ST_FAULT  3u
 
+/* ---- Heating target modes ------------------------------------------------ */
+#define MODE_BOIL_100    0u  /* Boil to 98 C with 3 s hold, then keep-warm */
+#define MODE_DIRECT_55   1u  /* Direct heat to 55 C, then 55 C keep-warm   */
+#define DIRECT_55_TEMP_C 55u /* 55 C direct heating target                 */
+
 /* ---- NTC LUT: 12-bit ADC raw code, HIGH when cold, LOW when hot --------- *
  * Matches the device-tree NTC plugin physics: R25 = 10 kOhm, B = 3950,
  * divider Vout/Vcc = Rntc / (Rntc + 160 kOhm pull-up), raw = ratio * 4096.
@@ -152,7 +157,8 @@ static unsigned char state;              /* ST_OFF / ST_HEAT / ST_WARM / ST_FAUL
 static unsigned char temp_c;             /* Measured water temp in deg C */
 static unsigned int  adc_code;           /* 12-bit ADC raw code (0..4095) */
 static unsigned char fault_code;         /* 0=ok 1=open 2=short 3=dryfire 4=overtemp */
-static unsigned char warm_set;           /* Keep-warm target: 60/80/90 */
+static unsigned char warm_set;           /* Keep-warm target: 55/60/80/90 */
+static unsigned char heat_mode;          /* Heating target mode: MODE_BOIL_100 / MODE_DIRECT_55 */
 static unsigned char heater_on;          /* Heater drive latch */
 static unsigned char relay_off_sec;      /* Seconds heater has been OFF (saturates 255) */
 static unsigned int  heat_seconds;       /* Continuous seconds heating in HEAT */
@@ -230,19 +236,36 @@ static void display_update(void) {
      * at 99 C until the over-temperature fault takes over (>105 C, 10 s). */
     unsigned char disp_temp = (temp_c > 99u) ? 99u : temp_c;
     if (state == ST_OFF) {
-        /* " -- " */
-        disp_digits[0] = font_table[14]; /* blank */
-        disp_digits[1] = font_table[13]; /* '-' */
-        disp_digits[2] = font_table[13]; /* '-' */
-        disp_digits[3] = font_table[14]; /* blank */
+        if (heat_mode == MODE_DIRECT_55) {
+            /* "-55-" */
+            disp_digits[0] = font_table[13]; /* '-' */
+            disp_digits[1] = font_table[5];  /* '5' */
+            disp_digits[2] = font_table[5];  /* '5' */
+            disp_digits[3] = font_table[13]; /* '-' */
+        } else {
+            /* " -- " */
+            disp_digits[0] = font_table[14]; /* blank */
+            disp_digits[1] = font_table[13]; /* '-' */
+            disp_digits[2] = font_table[13]; /* '-' */
+            disp_digits[3] = font_table[14]; /* blank */
+        }
     } else if (state == ST_HEAT) {
-        /* "XXbO"; dp breathes only while the heater is actually energised
-         * and stays OFF during the 3 s boil-confirmation window */
-        disp_digits[0] = font_table[disp_temp / 10u];
-        disp_digits[1] = font_table[disp_temp % 10u] |
-                         ((heater_on && blink_toggle) ? 0x80u : 0u);
-        disp_digits[2] = font_table[10]; /* 'b' */
-        disp_digits[3] = font_table[11]; /* 'O' */
+        if (heat_mode == MODE_DIRECT_55) {
+            /* "XX55": current temp + target 55; dp breathes while heating */
+            disp_digits[0] = font_table[disp_temp / 10u];
+            disp_digits[1] = font_table[disp_temp % 10u] |
+                             ((heater_on && blink_toggle) ? 0x80u : 0u);
+            disp_digits[2] = font_table[5];  /* '5' */
+            disp_digits[3] = font_table[5];  /* '5' */
+        } else {
+            /* "XXbO"; dp breathes only while the heater is actually energised
+             * and stays OFF during the 3 s boil-confirmation window */
+            disp_digits[0] = font_table[disp_temp / 10u];
+            disp_digits[1] = font_table[disp_temp % 10u] |
+                             ((heater_on && blink_toggle) ? 0x80u : 0u);
+            disp_digits[2] = font_table[10]; /* 'b' */
+            disp_digits[3] = font_table[11]; /* 'O' */
+        }
     } else if (state == ST_WARM) {
         /* "XXYY": current temp + target setpoint */
         disp_digits[0] = font_table[disp_temp / 10u];
@@ -445,7 +468,11 @@ static void control_task(void) {
                 state = ST_HEAT;
                 fault_code = 0u;
                 sensor_muted = 0u;
-                warm_set = 60u;
+                if (heat_mode == MODE_DIRECT_55) {
+                    warm_set = 55u;
+                } else {
+                    warm_set = 60u;
+                }
                 boil_hold = 0u;
                 boil_confirm = 0u;
                 heat_seconds = 0u;
@@ -454,8 +481,13 @@ static void control_task(void) {
             }
         }
         if (evt_func) {
-            /* FUNC has no function in standby: acknowledge with a low blip */
-            play_melody(TONE_BUSY);
+            /* In standby: toggle heating mode between 100 C boil and 55 C direct */
+            if (heat_mode == MODE_BOIL_100) {
+                heat_mode = MODE_DIRECT_55;
+            } else {
+                heat_mode = MODE_BOIL_100;
+            }
+            play_melody(TONE_STEP);
         }
         break;
 
@@ -471,29 +503,65 @@ static void control_task(void) {
             break;
         }
         if (evt_func) {
-            /* Setpoint selection belongs to WARM; acknowledge the press */
-            play_melody(TONE_BUSY);
+            /* Strategy 1: Dynamic mode change during heating! */
+            if (heat_mode == MODE_BOIL_100) {
+                heat_mode = MODE_DIRECT_55;
+                warm_set = 55u;
+                play_melody(TONE_STEP);
+                /* If water has already reached or exceeded 55 C, immediately cut heater and enter WARM */
+                if (temp_c >= DIRECT_55_TEMP_C) {
+                    heater_on = 0;
+                    state = ST_WARM;
+                    boil_confirm = 0;
+                    boil_hold = 0;
+                    overtemp_seconds = 0;
+                    play_melody(TONE_BOIL_DONE);
+                    break;
+                }
+            } else {
+                heat_mode = MODE_BOIL_100;
+                play_melody(TONE_STEP);
+            }
         }
-        /* Beyond-scale raw (<=16, >105 C) must not be mistaken for boil:
-         * block the 3 s confirmation while the over-temp watchdog qualifies.
-         * If the probe returns into a plausible boiling band the hold simply
-         * resumes, so genuine 98 C operation is unaffected. */
-        if ((boil_confirm || temp_c >= BOIL_TEMP_C) && adc_code > OVERTEMP_RAW) {
-            /* Boil confirmation: heater off, maintain 3 seconds hold */
-            heater_on = 0;
-            boil_confirm = 1;
-            boil_hold++;
-            if (boil_hold >= BOIL_HOLD_TICKS) {
+
+        if (heat_mode == MODE_DIRECT_55) {
+            if (temp_c >= DIRECT_55_TEMP_C) {
+                /* Direct 55 C target reached: turn off heater and enter WARM */
+                heater_on = 0;
                 state = ST_WARM;
+                warm_set = 55u;
                 boil_confirm = 0;
+                boil_hold = 0;
                 overtemp_seconds = 0;
                 play_melody(TONE_BOIL_DONE);
+            } else {
+                /* Dwell-gated like every re-energize path */
+                if (relay_off_sec >= RELAY_DWELL_SECONDS) {
+                    heater_on = 1;
+                }
             }
         } else {
-            /* Dwell-gated like every re-energize path: a rapid OFF->ON power
-             * toggle cannot reclose the contact with zero off-time */
-            if (relay_off_sec >= RELAY_DWELL_SECONDS) {
-                heater_on = 1;
+            /* Beyond-scale raw (<=16, >105 C) must not be mistaken for boil:
+             * block the 3 s confirmation while the over-temp watchdog qualifies.
+             * If the probe returns into a plausible boiling band the hold simply
+             * resumes, so genuine 98 C operation is unaffected. */
+            if ((boil_confirm || temp_c >= BOIL_TEMP_C) && adc_code > OVERTEMP_RAW) {
+                /* Boil confirmation: heater off, maintain 3 seconds hold */
+                heater_on = 0;
+                boil_confirm = 1;
+                boil_hold++;
+                if (boil_hold >= BOIL_HOLD_TICKS) {
+                    state = ST_WARM;
+                    boil_confirm = 0;
+                    overtemp_seconds = 0;
+                    play_melody(TONE_BOIL_DONE);
+                }
+            } else {
+                /* Dwell-gated like every re-energize path: a rapid OFF->ON power
+                 * toggle cannot reclose the contact with zero off-time */
+                if (relay_off_sec >= RELAY_DWELL_SECONDS) {
+                    heater_on = 1;
+                }
             }
         }
         break;
@@ -510,13 +578,15 @@ static void control_task(void) {
             break;
         }
         if (evt_func) {
-            /* Cycle keep-warm setpoint: 60 -> 80 -> 90 -> 60 C */
-            if (warm_set == 60u) {
+            /* Cycle keep-warm setpoint: 55 -> 60 -> 80 -> 90 -> 55 C */
+            if (warm_set == 55u) {
+                warm_set = 60u;
+            } else if (warm_set == 60u) {
                 warm_set = 80u;
             } else if (warm_set == 80u) {
                 warm_set = 90u;
             } else {
-                warm_set = 60u;
+                warm_set = 55u;
             }
             play_melody(TONE_STEP);
         }
@@ -602,7 +672,7 @@ static void one_second_task(void) {
     if (state == ST_HEAT && heater_on) {
         heat_seconds++;
         if ((heat_seconds > DRYFIRE_SECONDS && temp_c < DRYFIRE_TEMP_C) ||
-            (heat_seconds > BOIL_TIMEOUT_SECONDS && temp_c < BOIL_TEMP_C)) {
+            (heat_mode == MODE_BOIL_100 && heat_seconds > BOIL_TIMEOUT_SECONDS && temp_c < BOIL_TEMP_C)) {
             enter_fault(3u);  /* Dry-fire -> E-03 */
         }
     }
@@ -763,6 +833,7 @@ void main(void) {
     state = ST_OFF;
     fault_code = 0;
     warm_set = 60u;
+    heat_mode = MODE_BOIL_100;
     heater_on = 0;
     relay_off_sec = 255u;
     heat_seconds = 0;

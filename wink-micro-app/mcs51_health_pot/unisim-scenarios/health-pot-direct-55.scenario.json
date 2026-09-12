@@ -1,0 +1,151 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51_health_pot direct 55 C mode: standby pre-select -> heat to 55 C -> keep-warm",
+    "templateId": "mcs51_health_pot",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "8000000",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "100ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Boot: state OFF, heater relay off"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "30ms",
+      "adcChannel": 0,
+      "valueNorm": 0.0586,
+      "description": "Cold water present: raw ~240 -> 25 C (240/4096 ~= 0.0586)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "300ms",
+      "targetPluginId": "btn_func",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": true
+      }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "500ms",
+      "targetPluginId": "btn_func",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": false
+      }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "800ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": true
+      }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "1000ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": false
+      }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1400ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "Direct 55 C heating starts: heater relay on"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1400ms",
+      "target": "plugin:led_heat/on",
+      "matcher": true,
+      "description": "Heating indicator lit"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "1200ms",
+        "1800ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=1,H=1",
+      "minPackets": 1,
+      "description": "Telemetry reports HEAT state (S=1, H=1)"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "2000ms",
+      "adcChannel": 0,
+      "valueNorm": 0.0185,
+      "description": "Water reaches 55 C: 12-bit raw ~76 -> 55 C (76/4096 ~= 0.0185)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2400ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "55 C reached: heater cuts off immediately (no boil-hold needed)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2400ms",
+      "target": "plugin:led_warm/on",
+      "matcher": true,
+      "description": "Immediately transitions to WARM state (55 C keep-warm)"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "2500ms",
+        "3500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=2,H=0",
+      "minPackets": 1,
+      "description": "Telemetry reports WARM state (S=2, H=0)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "4000ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": true
+      }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "4200ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": false
+      }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "4600ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "ON/OFF emergency stop pressed: back to OFF, heater safe"
+    }
+  ]
+}
