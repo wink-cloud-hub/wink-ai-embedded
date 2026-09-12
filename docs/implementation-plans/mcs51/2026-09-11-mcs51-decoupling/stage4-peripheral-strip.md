@@ -15,7 +15,7 @@
 
 - ✅ `cms8s_gpio/uart/timer/extint.cpp` 承接全部专有逻辑，通用文件经 `caps_cache` + per-context 钩子外包（钩子结构 stage2 已定义，本阶段只做挂载）。
 - ✅ T2 按语义拆分：标准骨架（T2CON/TL2/TH2/RCAP）留 core，CMS8S 扩展（T2IF W0C/T2PS/捕获解释/CCEN 系/T34MOD）下沉（注意 `0xCA` 既是 RCAP2L 又是 RLDL，按语义拆，地址留 core）。
-- ✅ UART 与 Timer 协同拆分：TMR4/TMR2/BRT 波特分支随 FUNCCR 同迁 `cms8s_uart.cpp`；通用 UART 固定引脚 + Timer1（+标准 T2）波特。
+- ✅ UART 与 Timer 协同拆分：TMR4/TMR2/BRT 波特分支随 FUNCCR 同迁 `cms8s_uart.cpp`；通用 UART 固定引脚 + Timer1 波特（标准 8052 的 RCLK/TCLK T2 波特历来未建模，非本阶段回归；文案已修，见附录 C，实现列入 stage5 附录 B）。
 - ✅ `mcs51_peripheral.cpp` 仅 core 三件套 + BSS 注册表；芯片包经 `xxx_register()` 自注册（总纲 §3.1b 协议）；`has_wdt` 判据切换为描述符 `wdt_present`。
 
 ## 2. 变更范围
@@ -28,7 +28,7 @@
 | `chips/cms8s78xx/src/cms8s_extint.cpp` | 🆕 | 端口中断 + 引脚选择 |
 | `src/mcs51_gpio/uart/timer/extint.cpp` | ✏️ | 标准模型 + 快路径短路 |
 | `src/mcs51_peripheral.cpp` | ✏️ | core 表 + BSS 注册表 + `mcs51_peripheral_register()`；cms8s 三件套行删除（改走注册） |
-| `chips/cms8s78xx/src/cms8s_register.cpp` | 🆕 | `cms8s78xx_register()`（追加三件套描述符；幂等去重）；`at89c52_register()` 空实现同 commit |
+| `chips/cms8s78xx/src/cms8s_register.cpp` | 🆕 | `cms8s78xx_register()`（追加芯片包描述符：本阶段终态 7 条 = adc/buzzer/sys + gpio/extint/uart/timer；幂等去重）；`at89c52_register()` 空实现同 commit |
 | `src/cms8s_sys.cpp` | ✅ pre-completed | ~~`has_wdt` 改读描述符 `wdt_present`（一行）~~ —— S3-H4 已提前完成（`eb6e8db`，行为中性，wdt 双模测试锁定），stage4 无需重复 |
 
 ## 3. 任务拆分
@@ -88,3 +88,16 @@
 - **S4-H2 重装统一（`92fb063`）**：新契约——**任何 reset 必须能独立于 init 重建全部运行时注册**，init 只负责首次绑定。core timer/uart 注册块下移 reset（init 转调）；芯片 adc/buzzer 同理；sys/extint/timer 提 `install_*_hooks()` 双调（sys 含 `sfr_write_notify`，此前 standalone reset 会丢 TA 窗口）。
 - **S4-H3 harness 排序纪律（`92fb063`）**：`mcs51_trap_reset()` 清全部已装钩子——必须在 harness 之前调，之后调则芯片钩子静默丢失。已注记于 harness 头（全仓现调用点顺序皆合规）。
 - **终验**：lint PASS｜mcs51 66/66｜wasm 13/13｜host 全量非 mcs51 失败集与 stage3 基线一致｜`nm` 双抽查（bridge 对象、at89 对象）通过。
+
+## 附录 C：Stage4 复审整改执行记录（S4-H4 清理包，2026-09-12）
+- **事由**：stage4 关闭后的两轴复审（Standards / Spec，diff `eb6e8db...HEAD`）确认行为/鲁棒性真问题 4 项 + 卫生项若干；按"立即修 / 对齐 / 验证后记"三档执行（S4-D5/H1-H3 先例）。
+- **行为修复（A 档）**：
+  - A1 `cms8s_uart.cpp`：删除 `txd_alt` 死代码（`(void)` 占位 + 两个仅此使用的 CFG 常量），TXD 语义改为注释说明。
+  - A2 `mcs51_uart.cpp` `uart_baud_hz_std`：恢复 `has_xsfr` 守卫——classic 的 0x8E 是未定义 SFR，杂散写不得改变波特分频；`test_mcs51_uart_charge` §9 新增 stray-write 断言锁定。
+  - A3 `cms8s_timer_init` / `cms8s_extint_init` 改为委托对应 `_reset`（S4-H2 契约延伸）：独立 init 也能播种 PS_* 选择器并重装钩子；新增 timer（`test_mcs51_timer_ext_clk` T5 先脏后 init）与 extint（`test_mcs51_extint` setup）断言。
+  - C（由"验证后记"升级为修复）`mcs51_extint_next_event_us`：恢复按 `last_sample_us + SAMPLE_PERIOD_US` 通告 INT0/INT1 采样计划。旧 core 对所有家族通告；新代码返 `UINT64_MAX` 会让无定时器的 classic 在 IDLE 落到 Mode B（无周期采样、无调度唤醒，附带注释"经典行为不变"与事实不符）。`test_mcs51_low_power` 新增 Test 4 锁定。
+- **B 档对齐**：注册表容量依据（3 core + 7 chip = 10，上限 12 留余量）写入 `mcs51_peripheral.h`；溢出由"NDEBUG 静默丢弃"改为无条件 `abort`（ADR-0012 契约诚实）；stage2 §4 预算表行与 stage4 §2 注册条目文案同步（"三件套"→本阶段终态 7 条）。
+- **C 档验证后记（不改码）**：`mcs51_trap.h` M3 注释修正（`extern "C"` 内 `static` 合法且三工具链实测通过，原"GCC rejects"为误）；timer3/4 孪生与 test harness 重复声明按"静态分发可读性优先"保留（后者已去重）；CMakeLists 缩进 churn 留 stage6 重写；`<string.h>` vs `<cstring>` 风格差异不动。
+- **B6 文案**：stage4 §1"（+标准 T2）"为历史文案误差（T2 RCLK/TCLK 波特在 stage4 前亦未实现，非本阶段回归）；实现列入 stage5 附录 B（与 S5-1 Step 1b 同批评估）。
+- **A4 风格清理**：stage4 新增行的 BARR-C #1 大括号（50+ 处）与 >80 列行全部修复；`lint_mcs51_layering.py` PASS（首轮曾因新增注释含厂商名被门禁拦下，已改写）。
+- **终验（2026-09-12）**：lint PASS｜L4 五文件 `cms8s|0xF0` 零命中｜host mcs51 66/66｜wasm 13/13｜host 全量失败 17 项 = stage3 基线（零新增，均非 mcs51）｜新增行 >80 列 0 处｜注册表溢出路径改为 abort（容量 12 > 实需 10，未触发）。

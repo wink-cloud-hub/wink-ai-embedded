@@ -71,6 +71,9 @@
 
 - R：向量号漂移致 ISR 错配 → 缓解：向量表 `static_assert` + dispatch 计数单测；回滚 `git revert <S5-commit>`。
 
+## 附录 B：stage4 复审移入项（2026-09-12）
+- [ ] **标准 8052 T2 波特（RCLK/TCLK）补建模（P2，择机）**：core UART 标准路径目前仅 Timer1（`mcs51_uart.cpp` `uart_baud_hz_std`）；8052 的 `T2CON.RCLK/TCLK` 由 Timer2 溢出驱动收/发波特这一机制从未实现（stage4 计划原文"（+标准 T2）"为文案误差，已修，非 stage4 回归）。实现需 core timer 溢出与 core UART 联动（非芯片包），建议与本阶段 S5-1 Step 1b 的 T2 多标志特判抽离同批评估，避免两次改动 T2 路径。
+
 ## 6. 阶段自审自我检验清单（Self-Audit Checkpoint）
 - [ ] **目录落位**：`chips/cms8s78xx/include/cms8s_xsfr_allowlist.h` 完全归位芯片目录。
 - [ ] **通用纯净度**：`src/mcs51_isr.cpp` 仅包含 0~5 标准向量；`src/mcs51_xdata.cpp` 零厂商 allowlist 头包含。
