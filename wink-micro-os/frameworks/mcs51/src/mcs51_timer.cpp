@@ -572,8 +572,7 @@ static uint16_t resolve_timer_pin(struct Mcu51Context* ctx, uint8_t t) {
     // S2-2: legality from the family descriptor — the full-pin family opens
     // P3.4/P3.5 ext-clk (pins 28/29, previously mis-rejected); the reduced
     // family keeps its masks. No hardcoded table (was PORT_PINS).
-    const uint8_t* pin_masks = mcs51_family_desc(ctx->family)->port_pin_masks;
-    if (port < 4u && bit < pin_masks[port]) {
+    if (mcs51_family_pin_valid(mcs51_family_desc(ctx->family), port, bit)) {
         return static_cast<uint16_t>((port << 3) | bit);
     }
     return fallback;
@@ -591,8 +590,7 @@ static uint16_t resolve_timer2_pin(struct Mcu51Context* ctx) {
     uint8_t port = (sel >> 4) & 0x07u;
     uint8_t bit = sel & 0x0Fu;
     // S2-2: descriptor-driven legality (see resolve_timer_pin).
-    const uint8_t* pin_masks = mcs51_family_desc(ctx->family)->port_pin_masks;
-    if (port < 4u && bit < pin_masks[port]) {
+    if (mcs51_family_pin_valid(mcs51_family_desc(ctx->family), port, bit)) {
         return static_cast<uint16_t>((port << 3) | bit);
     }
     return fallback;

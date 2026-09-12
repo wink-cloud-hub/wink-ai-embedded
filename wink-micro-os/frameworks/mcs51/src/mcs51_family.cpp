@@ -49,7 +49,8 @@ const mcs51_family_desc_t kFamilyDescs[] = {
         0x1000u,     // xsfr_size: [0xF000, 0x10000)
         (uint32_t)(MCS51_CAP_ENHANCED_IO | MCS51_CAP_TIMER34 |
                    MCS51_CAP_TIMER_CAPTURE | MCS51_CAP_W0C_FLAGS |
-                   MCS51_CAP_PORT_EXTINT | MCS51_CAP_UART_REMAP),
+                   MCS51_CAP_PORT_EXTINT | MCS51_CAP_UART_REMAP |
+                   MCS51_CAP_CHIP_MODELS),
         { 8u, 8u, 6u, 4u },  // port_pin_masks: TSSOP-20 (P2 6, P3 4)
         kIrqVectorsCms8s,  // irq_vector_table: full 28-vector width
         28u,         // irq_count

@@ -59,8 +59,7 @@ uint16_t resolve_int_pin(Mcu51Context* ctx, uint16_t ps_addr, uint16_t fallback_
     uint8_t sel  = ctx->xdata_shadow[ps_addr];
     uint8_t port = (sel >> 4) & 0x07u;
     uint8_t bit  = sel & 0x0Fu;
-    const uint8_t* pin_masks = mcs51_family_desc(ctx->family)->port_pin_masks;
-    if (port < 4u && bit < pin_masks[port]) {
+    if (mcs51_family_pin_valid(mcs51_family_desc(ctx->family), port, bit)) {
         return static_cast<uint16_t>((port << 3) | bit);
     }
     return fallback_pin;

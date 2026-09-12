@@ -90,12 +90,12 @@ void poll_port_ints(Mcu51Context* ctx, bool force, uint64_t now) {
     bool ea = (ie & (1u << IE_EA)) != 0;
     // Loop bound from the descriptor (reduced families sample only
     // existing pins, full-pin families all 32).
-    const uint8_t* pin_masks = mcs51_family_desc(ctx->family)->port_pin_masks;
+    const mcs51_family_desc_t* fam = mcs51_family_desc(ctx->family);
 
     for (uint8_t p = 0; p < 4u; ++p) {
         uint8_t extie = ctx->sfr_shadow[SFR_P0EXTIE + p];
         uint8_t extif = ctx->sfr_shadow[CMS8S_SFR_P0EXTIF + p];
-        uint8_t npins = pin_masks[p];
+        uint8_t npins = mcs51_family_port_pin_count(fam, p);
 
         for (uint8_t b = 0; b < npins; ++b) {
             uint16_t pin = static_cast<uint16_t>((p << 3) | b);

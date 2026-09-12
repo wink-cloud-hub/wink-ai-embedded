@@ -5,7 +5,12 @@
 #include "mcs51_sfr_map.h"
 
 #include <cassert>
+#include <cstdlib>
 #include <cstring>
+
+#ifndef WINK_MCS51_STRICT
+#include "pal_log.h"
+#endif
 
 static Mcu51Context s_default_mcu_context = {};
 Mcu51Context* g_active_mcu_context = &s_default_mcu_context;
@@ -40,6 +45,46 @@ void apply_silicon_seeds(Mcu51Context* ctx) {
     // Else (classic: board crystal): leave clock_hz at 0 so the 12 MHz
     // family default remains in effect; CKCON shadow stays 0x00
     // (counts_to_us picks the /12 divider — no CKCON on classic 8052).
+}
+
+// Review hardening (link fuse): link-time self-registration only works when
+// the chip register OBJECT rides the link line — a hand-written link that
+// pulls just the family archive silently loses every chip model (a
+// constructor-only archive member is never pulled by the symbol scan). Fuse
+// instead of bare-core degradation: STRICT aborts, release warns once and
+// counts every detection for diagnostics.
+uint32_t s_chip_models_missing = 0u;
+#ifndef WINK_MCS51_STRICT
+bool s_chip_models_missing_warned = false;
+#endif
+
+void verify_chip_models_registered(Mcu51Context* ctx) {
+    const mcs51_family_desc_t* d = mcs51_family_desc(ctx->family);
+    if ((d->capabilities & MCS51_CAP_CHIP_MODELS) == 0u) {
+        return;  // pure-core family: an empty registry is the contract
+    }
+    for (uint8_t i = 0u; i < mcs51_peripheral_registered_count(); ++i) {
+        if (mcs51_peripheral_active_for(mcs51_peripheral_registered(i),
+                                        ctx->family)) {
+            return;  // chip package present: healthy link
+        }
+    }
+    if (s_chip_models_missing < 0xFFFFFFFFu) {
+        ++s_chip_models_missing;
+    }
+#ifdef WINK_MCS51_STRICT
+    assert(0 && "chip family selected but no peripheral registered at "
+                "link-time (WINK_MCS51_STRICT)");
+    std::abort();
+#else
+    if (!s_chip_models_missing_warned) {
+        s_chip_models_missing_warned = true;
+        pal_log_w("MCS51",
+                  "family '%s' selected but no peripheral is registered at "
+                  "link-time (chip register OBJECT missing?) - bare core",
+                  d->name);
+    }
+#endif
 }
 
 }  // namespace
@@ -191,6 +236,14 @@ void mcs51_context_reset(Mcu51Context* ctx) {
     // Family-specific silicon seeds last: CKCON reset value / power-on Fosc
     // must not be disturbed by peripheral resets (GAP-04/GAP-13).
     apply_silicon_seeds(ctx);
+
+    // Post-reset link fuse: a chip family without any registered chip model
+    // means the register OBJECT never got linked (review hardening).
+    verify_chip_models_registered(ctx);
+}
+
+uint32_t wink_mcs51_chip_models_missing_count(void) {
+    return s_chip_models_missing;
 }
 
 } // extern "C"

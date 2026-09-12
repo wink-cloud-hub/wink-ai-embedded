@@ -381,8 +381,7 @@ void cms8s_adc_poll(struct Mcu51Context* ctx) {
     const uint8_t sel = ctx->xdata_shadow[XSFR_PS_ADET];
     const uint8_t port = (sel >> 4) & 0x07u;
     const uint8_t bit  = sel & 0x0Fu;
-    const uint8_t* pin_masks = mcs51_family_desc(ctx->family)->port_pin_masks;
-    if (port >= 4u || bit >= pin_masks[port]) {
+    if (!mcs51_family_pin_valid(mcs51_family_desc(ctx->family), port, bit)) {
         return;  // unmapped or out of range
     }
     const uint16_t pin = static_cast<uint16_t>((port << 3) | bit);
