@@ -368,7 +368,7 @@ sourceMap 用于：
 - **只**固化固件静态常量：ADC0832 的 CS/CLK/DI/DO port+bit、通道、VREF；`thermal_heater_plate` 的 drive port+bit、NTC 通道、设定点（`SETPOINT_C_X100` 定点）。热动力学参数（tau/watts/beta/R25）属运行期 device-tree.properties，**不**编入固件（spike-S3 C4）。
 - 消费缝（Stage3 起）：板/ harness 在自己的 post-init hook 里以头文件常量调 `adc0832_device_attach(...)` 绑定，通用桥不再自动绑定，零运行期 JSON。头文件目录须在**绑定方 TU**（测试 exe / 板胶）的 include 路径上（CMake 以生成器 `EXISTS` 夹具门控，缺失则跳过 iron_ntc 测试）；Stage6 起该作用域进一步收窄——板配置头**不**进框架库 include 路径。
 - 闭环样例 `iron_ntc`（NTC 温控 + 开路/短路安全态）验证该缝：e2e 驱动在 post-init hook 里先绑定 codegen 引脚、再注入码值。
-- **家族选择头 `mcs51_family_select.h`（Stage6 S6-1，CPL-15）**：与板配置同机制、同生成目录，按 `wink-app.json` 的 `mcu` 选择芯片包注册入口（`MCS51_FAMILY_SELECT_REGISTER()` → `cms8s78xx_register()` / `at89c52_register()`），由 `mcs51_bridge.cpp` 在首次 context reset 前调用。外仓生成器就绪前：测试用检入式 fixture 头顶替，生产注入链路标 deferred（S4-D5 过渡默认保留至 stage7）。
+- **家族选择协议（Stage6 S6-1 → Stage7 S7-1 定稿，CPL-15）**：芯片包注册**不再需要 codegen glue 头**——`chips/<family>/src/*_register.cpp` 以链接期自注册（静态初始化器向 core 注册表追加描述符）接入，生产根构建按 `wink-app.json` 的 `mcu` 经 manifest 解析链接唯一家族包（`wink_mcs51_core + wink_mcs51_inject_<family>` + 家族 register OBJECT），`mcs51_bridge.cpp` 家族无关。原 `mcs51_family_select.h` 生成缝与 S4-D5 过渡默认随 stage7 删除；新家族仅需 chips 目录 + manifest（CMake 自动发现）。
 
 ---
 

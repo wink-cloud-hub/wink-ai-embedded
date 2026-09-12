@@ -175,10 +175,10 @@ wink-micro-os/
 │       ├── chips/              #   厂商芯片自治包（cms8s78xx/、at89c52/；依赖方向 chips → core 单向）
 │       ├── devices/            #   板级外挂器件包（adc0832/，经 trap 注册接入）
 │       ├── tools/              #   清洗/门禁脚本 + manifests/chips/*.yaml（芯片事实唯一源，stage6 S6-2）
-│       ├── test/               #   测试分层（core/、cms8s78xx/、samples/、wasm/、fixtures/）
+│       ├── test/               #   测试分层（core/、cms8s78xx/、samples/、wasm/）
 │       └── CMakeLists.txt      #   wink_mcs51_core / _cms8s / _at89 / _adc0832（STATIC EXCLUDE_FROM_ALL）
 │                               #   + per-target STRICT 孪生（_core_strict/_cms8s_strict，CPL-24）
-│                               #   + 旧单体名 wink_mcs51_compat(_strict) 一版 INTERFACE 别名（R-04 回滚）
+│                               #   + 链接期芯片自注册 / inject_<family> 注入包（stage7 S7-1 删除旧单体别名）
 │
 ├── test/                       # host 测试（PC gcc + Unity）；link pal+dal+runtime+trace+targets/host
 │   ├── CMakeLists.txt          #   中央注册：unity/host-PAL/wasm wiring + frameworks/mcs51/test 路径前缀

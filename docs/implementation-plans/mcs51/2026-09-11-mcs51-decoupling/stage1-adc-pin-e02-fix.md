@@ -129,6 +129,8 @@ e2e 11：`test_mcs51_blinky_host.c`、`test_mcs51_timer0.c`、`test_mcs51_uart.c
 - **回滚**：运行时 `cms8s_adc_dual_read_synth=false` 即回 `v1` 语义（§14(c) 覆盖）；或 `git revert 2ee4e93`（S1-1/S1-2 原子 commit）。
 - **L3 状态**：✅ 归档完毕（本附录即版本记录正文；签字 2026-09-11）。
 
+- **Stage7 关闭记录（2026-09-12）**：双读兼容整块已按计划删除（`cms8s_adc_dual_read_synth` 与重定向逻辑移除；误用改为 STRICT abort / Release `0x0FFF` 哨兵 + `cms8s_adc_synth_misuse_count`）。本仓全部片上模拟场景已迁物理 Pin key（AN0→0，含 health_pot 15 场景与 analog_threshold）；跨仓 headless 五载体 5/5、`mcs51_health_pot` 15/15（E-02 无复发终证）。“先按 32+0 落盘”的前端 key 约定随之退役：板级 32+ch 仍永久合法，片上路径以物理 Pin 为唯一 v2 契约；回滚路径 = `git revert <S7-commit>` 恢复双读。本附录风险备忘注销。
+
 ## 5. 风险与回滚
 
 - R-01（版本错配）：双读 + 发版顺序缓解；回滚：关闭双读重定向回旧语义（开关单独提交）；Git revert 本阶段 commit。

@@ -6,7 +6,7 @@
 | **创建日期** | `2026-09-11` |
 | **目标平台** | `host` / `wasm`（mcs51 仿真拦截层为 host/wasm-only，`ESP_PLATFORM` 下零符号，见框架 `CMakeLists.txt` 守卫） |
 | **工具链版本** | `GCC 14.2` / `MSVC 14.40` / `Emscripten 4.0.5` / `C++17`（见框架编译方言链） |
-| **系列状态** | 🔄 执行中（stage0~stage6 已完成，stage7 待开始） |
+| **系列状态** | ✅ 已完成（stage0~stage7 全关；stage7 签署见 §5 与 stage7 §7） |
 | **优先级** | 🔴 P0（E-02 在线仿真假短路为阻塞性行为失真；其余为架构阻塞） |
 | **系列版本** | `v1.0` |
 | **审计 SSOT（发现源）** | [`docs/todolist/2026-09-11-mcs51-generic-vs-chip-specific-coupling-audit.md`](../../../todolist/2026-09-11-mcs51-generic-vs-chip-specific-coupling-audit.md)（24 项 CPL 详情以此为准，本系列不复述证据） |
@@ -64,7 +64,7 @@ core 内三处循环（`mcs51_context.cpp` init/reset、`mcs51_bridge.cpp` micro
 
 1. **数据结构**：core 自有有界 BSS 注册表（上限 `MCS51_MAX_PERIPHERALS`，静态断言锁死）+ `mcs51_peripheral_register(desc)`（按名指针去重、幂等）；配套测试缝 `mcs51_peripheral_registry_reset()`（仅测试用，生产路径不用）。
 2. **芯片侧**：每家族提供 `xxx_register()`（如 `cms8s78xx_register()` 向注册表追加其描述符；`at89c52_register()` 为空实现——classic 即"零扩展纯净 core"，无操作本身就是协议的一部分，保持各家族协议统一）。
-3. **调用点（`wink-micro-app` 用户代码零改前提）**：沿用 board_config 先例——codegen 按 `wink-app.json mcu` 生成 `mcs51_family_select.h`（与 `mcs51_board_config.h` 同目录、同机制），bridge 以 `__has_include` 纳入并在首次 `context_reset` 前调用其命名的 register 函数；测试 harness 在 setup 中显式调用（测试代码可改，用户代码不动）。
+3. **调用点（`wink-micro-app` 用户代码零改前提）**：芯片包经**链接期自注册**接入——`chips/<family>/src/<family>_register.cpp` 的静态初始化器在 register OBJECT 被链接时向 core 注册表追加描述符；生产根构建按 manifest 解析链接唯一家族包（stage7 S7-1 定稿，删除 S4-D5 过渡默认与 `mcs51_family_select.h` 生成缝）。测试 harness 在 setup 中显式调用（测试代码可改，用户代码不动）。
 4. **Hook 生命周期**：GPIO Trait 钩子（may_drive/is_analog/pullup）以 **per-context** 函数指针存于 `Mcu51Context`（file-static 全局指针在双 context 分属不同家族时必串扰，否决），由芯片 `init/reset`（持有 ctx）逐次重装——与现有 trap 注册生命周期一致；`caps_cache` 短路标准路径，file-static 仅允许 M4 诊断计数器。
 5. **TA 保序**：TA 半开窗口通知必须先于逐地址 hook 派发（`mcs51_bridge.cpp` GAP-07 约束），stage3 钩子化时保留该顺序（TA hook 首注册）。
 
@@ -129,7 +129,7 @@ wink-micro-os/frameworks/mcs51/                # 模块根目录
 │
 ├── devices/                                   # ★ 板级外挂器件（独立编译 Target）
 │   └── adc0832/                               #   编译为 wink_mcs51_adc0832
-│       ├── include/adc0832.h                  #   由 `ADC0832.H` 大小写改名而来（Linux CI 大小写敏感，`git mv -f`；原路径留 `#warning` shim，stage3）
+│       ├── include/adc0832.h                  # 由 `ADC0832.H` 大小写改名而来（Linux CI 大小写敏感，`git mv -f`；旧路径 shim 已随 stage7 删除）
 │       └── src/mcs51_adc0832.cpp              #   经 Trap 注册接入
 │
 ├── tools/                                     # ★ 工具链配置化事实源
@@ -184,7 +184,7 @@ graph TD
 | stage4 | [`./stage4-peripheral-strip.md`](./stage4-peripheral-strip.md) | CPL-03/04/05/07/10 | ✅ 已完成（2026-09-12，S4-D1~D4 四项裁决，签署见 §7） |
 | stage5 | [`./stage5-irq-bus-table.md`](./stage5-irq-bus-table.md) | CPL-06/08 | ✅ 已完成（2026-09-12，S5-D1~D4 四项裁决 + S5-H1/H2 复审闭环；D-1 T2 标准语义专设立项，见附录 D，签署见 §7） |
 | stage6 | [`./stage6-build-toolchain.md`](./stage6-build-toolchain.md) | CPL-15/16/24 | ✅ 已完成（2026-09-12，S6-D1~D9 九项裁决 + S6-H1~H7 复审闭环，签署见 §7/附录 B） |
-| stage7 | [`./stage7-test-contract-close.md`](./stage7-test-contract-close.md) | CPL-22/23 | ⏳ 待开始 |
+| stage7 | [`./stage7-test-contract-close.md`](./stage7-test-contract-close.md) | CPL-22/23 | ✅ 已完成（2026-09-12，S7-D1~D3 裁决，签署见 stage7 §7） |
 
 跨阶段文件冲突矩阵：`mcs51_context.h/.cpp`（stage0→stage2 严格串行）、`mcs51_adc.h/.cpp + cms8s_adc.cpp`（stage1 独占，stage2 只动 rail 默认播种部分需串在 stage1 后）、`CMakeLists.txt`（stage6 独占**目标划分与链接关系**；之前阶段允许增删源文件列表与 include 目录——stage3 头文件搬迁与 stage4 新文件编译必需，不算动目标结构）。
 
