@@ -3,9 +3,12 @@
 // PLAN-20260911-MCS51-S4, CPL-10).
 //
 // The single place that names cms8s_* peripheral symbols: core dispatch
-// loops never reference them (total §3.1 one-way rule); production glue
-// (generated mcs51_family_select.h, stage6) and the test harness call
-// cms8s78xx_register() explicitly. Idempotent (registry dedups by name).
+// loops never reference them (total §3.1 one-way rule). Registration is
+// link-time self-registration (Stage7 S7-1): linking the conventional
+// register OBJECT target (wink_mcs51_cms8s_register) runs the static
+// initializer below, so production and tests register the package by the
+// mere act of linking it — no generated family-select glue. Idempotent
+// (registry dedups by name), safe to combine with the test harness calls.
 //
 // This TU also owns the chip BSS pool (scheme A, audit §3 criterion 1):
 // one Cms8sPriv slot per context instance, bound through soc_priv by
@@ -169,3 +172,14 @@ void cms8s78xx_register(void) {
 }
 
 }  // extern "C"
+
+namespace {
+
+// Stage7 S7-1: link-time self-registration. The registry is core-owned BSS
+// (zero-initialized before any static ctor) and mcs51_peripheral_register()
+// is idempotent, so this runs safely before main / wasm ctors regardless of
+// TU order. Test harnesses may still reset the registry seam and re-register.
+[[maybe_unused]] const bool s_cms8s_register_at_link =
+    (cms8s78xx_register(), true);
+
+}  // namespace
