@@ -1,5 +1,5 @@
 {
-  "appName": "vendor_cms8s78xx_v202_adc_hardware_trigger",
+  "appName": "adc_hardware_trigger",
   "board": "cms8s78xx_devboard",
   "devices": {
     "btn": {

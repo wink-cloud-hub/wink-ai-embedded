@@ -1628,6 +1628,12 @@ async function createWasm() {
           return 2; /* HiZ default */
       }
 
+  function _js_pal_gpio_release_mcu(pin) {
+          if (typeof Module !== 'undefined' && typeof Module['js_pal_gpio_release_mcu'] === 'function' && Module['js_pal_gpio_release_mcu'] !== _js_pal_gpio_release_mcu) {
+              return Module['js_pal_gpio_release_mcu'](pin);
+          }
+      }
+
   function _js_pal_gpio_write(pin, level, strength) {
           if (typeof Module !== 'undefined' && typeof Module['js_pal_gpio_write'] === 'function' && Module['js_pal_gpio_write'] !== _js_pal_gpio_write) {
               return Module['js_pal_gpio_write'](pin, level, strength);
@@ -2407,7 +2413,17 @@ var _pal_wasm_is_clock_warning_fired = Module['_pal_wasm_is_clock_warning_fired'
 var _free = Module['_free'] = makeInvalidEarlyAccess('_free');
 var _malloc = Module['_malloc'] = makeInvalidEarlyAccess('_malloc');
 var _wink_mcs51_uart_rx_push = Module['_wink_mcs51_uart_rx_push'] = makeInvalidEarlyAccess('_wink_mcs51_uart_rx_push');
+var _wink_mcs51_uart_notready_mask = Module['_wink_mcs51_uart_notready_mask'] = makeInvalidEarlyAccess('_wink_mcs51_uart_notready_mask');
+var _wink_mcs51_uart_notready_count = Module['_wink_mcs51_uart_notready_count'] = makeInvalidEarlyAccess('_wink_mcs51_uart_notready_count');
+var _wink_mcs51_uart_notready_total = Module['_wink_mcs51_uart_notready_total'] = makeInvalidEarlyAccess('_wink_mcs51_uart_notready_total');
+var _wink_mcs51_uart_overwrite_total = Module['_wink_mcs51_uart_overwrite_total'] = makeInvalidEarlyAccess('_wink_mcs51_uart_overwrite_total');
 var _fflush = makeInvalidEarlyAccess('_fflush');
+var _wink_mcs51_xdata_oob_count = Module['_wink_mcs51_xdata_oob_count'] = makeInvalidEarlyAccess('_wink_mcs51_xdata_oob_count');
+var _wink_mcs51_ext_bus_conflict_total = Module['_wink_mcs51_ext_bus_conflict_total'] = makeInvalidEarlyAccess('_wink_mcs51_ext_bus_conflict_total');
+var _wink_mcs51_xsfr_unmodeled_count = Module['_wink_mcs51_xsfr_unmodeled_count'] = makeInvalidEarlyAccess('_wink_mcs51_xsfr_unmodeled_count');
+var _wink_mcs51_xsfr_unmodeled_addr = Module['_wink_mcs51_xsfr_unmodeled_addr'] = makeInvalidEarlyAccess('_wink_mcs51_xsfr_unmodeled_addr');
+var _wink_mcs51_unsupported_warning_count = Module['_wink_mcs51_unsupported_warning_count'] = makeInvalidEarlyAccess('_wink_mcs51_unsupported_warning_count');
+var _wink_mcs51_wdt_overflow_total = Module['_wink_mcs51_wdt_overflow_total'] = makeInvalidEarlyAccess('_wink_mcs51_wdt_overflow_total');
 var _emscripten_stack_get_base = makeInvalidEarlyAccess('_emscripten_stack_get_base');
 var _emscripten_stack_get_end = makeInvalidEarlyAccess('_emscripten_stack_get_end');
 var _strerror = makeInvalidEarlyAccess('_strerror');
@@ -2420,13 +2436,16 @@ var _emscripten_stack_get_current = makeInvalidEarlyAccess('_emscripten_stack_ge
 var ___set_stack_limits = Module['___set_stack_limits'] = makeInvalidEarlyAccess('___set_stack_limits');
 var dynCall_vi = makeInvalidEarlyAccess('dynCall_vi');
 var dynCall_v = makeInvalidEarlyAccess('dynCall_v');
-var dynCall_viii = makeInvalidEarlyAccess('dynCall_viii');
+var dynCall_ji = makeInvalidEarlyAccess('dynCall_ji');
+var dynCall_vii = makeInvalidEarlyAccess('dynCall_vii');
+var dynCall_viiii = makeInvalidEarlyAccess('dynCall_viiii');
 var dynCall_vj = makeInvalidEarlyAccess('dynCall_vj');
-var dynCall_ii = makeInvalidEarlyAccess('dynCall_ii');
 var dynCall_iiii = makeInvalidEarlyAccess('dynCall_iiii');
+var dynCall_iii = makeInvalidEarlyAccess('dynCall_iii');
+var dynCall_ii = makeInvalidEarlyAccess('dynCall_ii');
+var dynCall_iij = makeInvalidEarlyAccess('dynCall_iij');
 var dynCall_jiji = makeInvalidEarlyAccess('dynCall_jiji');
 var dynCall_iidiiiii = makeInvalidEarlyAccess('dynCall_iidiiiii');
-var dynCall_vii = makeInvalidEarlyAccess('dynCall_vii');
 var _asyncify_start_unwind = makeInvalidEarlyAccess('_asyncify_start_unwind');
 var _asyncify_stop_unwind = makeInvalidEarlyAccess('_asyncify_stop_unwind');
 var _asyncify_start_rewind = makeInvalidEarlyAccess('_asyncify_start_rewind');
@@ -2495,7 +2514,17 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['free'] != 'undefined', 'missing Wasm export: free');
   assert(typeof wasmExports['malloc'] != 'undefined', 'missing Wasm export: malloc');
   assert(typeof wasmExports['wink_mcs51_uart_rx_push'] != 'undefined', 'missing Wasm export: wink_mcs51_uart_rx_push');
+  assert(typeof wasmExports['wink_mcs51_uart_notready_mask'] != 'undefined', 'missing Wasm export: wink_mcs51_uart_notready_mask');
+  assert(typeof wasmExports['wink_mcs51_uart_notready_count'] != 'undefined', 'missing Wasm export: wink_mcs51_uart_notready_count');
+  assert(typeof wasmExports['wink_mcs51_uart_notready_total'] != 'undefined', 'missing Wasm export: wink_mcs51_uart_notready_total');
+  assert(typeof wasmExports['wink_mcs51_uart_overwrite_total'] != 'undefined', 'missing Wasm export: wink_mcs51_uart_overwrite_total');
   assert(typeof wasmExports['fflush'] != 'undefined', 'missing Wasm export: fflush');
+  assert(typeof wasmExports['wink_mcs51_xdata_oob_count'] != 'undefined', 'missing Wasm export: wink_mcs51_xdata_oob_count');
+  assert(typeof wasmExports['wink_mcs51_ext_bus_conflict_total'] != 'undefined', 'missing Wasm export: wink_mcs51_ext_bus_conflict_total');
+  assert(typeof wasmExports['wink_mcs51_xsfr_unmodeled_count'] != 'undefined', 'missing Wasm export: wink_mcs51_xsfr_unmodeled_count');
+  assert(typeof wasmExports['wink_mcs51_xsfr_unmodeled_addr'] != 'undefined', 'missing Wasm export: wink_mcs51_xsfr_unmodeled_addr');
+  assert(typeof wasmExports['wink_mcs51_unsupported_warning_count'] != 'undefined', 'missing Wasm export: wink_mcs51_unsupported_warning_count');
+  assert(typeof wasmExports['wink_mcs51_wdt_overflow_total'] != 'undefined', 'missing Wasm export: wink_mcs51_wdt_overflow_total');
   assert(typeof wasmExports['emscripten_stack_get_base'] != 'undefined', 'missing Wasm export: emscripten_stack_get_base');
   assert(typeof wasmExports['emscripten_stack_get_end'] != 'undefined', 'missing Wasm export: emscripten_stack_get_end');
   assert(typeof wasmExports['strerror'] != 'undefined', 'missing Wasm export: strerror');
@@ -2508,13 +2537,16 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['__set_stack_limits'] != 'undefined', 'missing Wasm export: __set_stack_limits');
   assert(typeof wasmExports['dynCall_vi'] != 'undefined', 'missing Wasm export: dynCall_vi');
   assert(typeof wasmExports['dynCall_v'] != 'undefined', 'missing Wasm export: dynCall_v');
-  assert(typeof wasmExports['dynCall_viii'] != 'undefined', 'missing Wasm export: dynCall_viii');
+  assert(typeof wasmExports['dynCall_ji'] != 'undefined', 'missing Wasm export: dynCall_ji');
+  assert(typeof wasmExports['dynCall_vii'] != 'undefined', 'missing Wasm export: dynCall_vii');
+  assert(typeof wasmExports['dynCall_viiii'] != 'undefined', 'missing Wasm export: dynCall_viiii');
   assert(typeof wasmExports['dynCall_vj'] != 'undefined', 'missing Wasm export: dynCall_vj');
-  assert(typeof wasmExports['dynCall_ii'] != 'undefined', 'missing Wasm export: dynCall_ii');
   assert(typeof wasmExports['dynCall_iiii'] != 'undefined', 'missing Wasm export: dynCall_iiii');
+  assert(typeof wasmExports['dynCall_iii'] != 'undefined', 'missing Wasm export: dynCall_iii');
+  assert(typeof wasmExports['dynCall_ii'] != 'undefined', 'missing Wasm export: dynCall_ii');
+  assert(typeof wasmExports['dynCall_iij'] != 'undefined', 'missing Wasm export: dynCall_iij');
   assert(typeof wasmExports['dynCall_jiji'] != 'undefined', 'missing Wasm export: dynCall_jiji');
   assert(typeof wasmExports['dynCall_iidiiiii'] != 'undefined', 'missing Wasm export: dynCall_iidiiiii');
-  assert(typeof wasmExports['dynCall_vii'] != 'undefined', 'missing Wasm export: dynCall_vii');
   assert(typeof wasmExports['asyncify_start_unwind'] != 'undefined', 'missing Wasm export: asyncify_start_unwind');
   assert(typeof wasmExports['asyncify_stop_unwind'] != 'undefined', 'missing Wasm export: asyncify_stop_unwind');
   assert(typeof wasmExports['asyncify_start_rewind'] != 'undefined', 'missing Wasm export: asyncify_start_rewind');
@@ -2580,7 +2612,17 @@ function assignWasmExports(wasmExports) {
   _free = Module['_free'] = createExportWrapper('free', wasmExports['free'], 1);
   _malloc = Module['_malloc'] = createExportWrapper('malloc', wasmExports['malloc'], 1);
   _wink_mcs51_uart_rx_push = Module['_wink_mcs51_uart_rx_push'] = createExportWrapper('wink_mcs51_uart_rx_push', wasmExports['wink_mcs51_uart_rx_push'], 1);
+  _wink_mcs51_uart_notready_mask = Module['_wink_mcs51_uart_notready_mask'] = createExportWrapper('wink_mcs51_uart_notready_mask', wasmExports['wink_mcs51_uart_notready_mask'], 0);
+  _wink_mcs51_uart_notready_count = Module['_wink_mcs51_uart_notready_count'] = createExportWrapper('wink_mcs51_uart_notready_count', wasmExports['wink_mcs51_uart_notready_count'], 1);
+  _wink_mcs51_uart_notready_total = Module['_wink_mcs51_uart_notready_total'] = createExportWrapper('wink_mcs51_uart_notready_total', wasmExports['wink_mcs51_uart_notready_total'], 0);
+  _wink_mcs51_uart_overwrite_total = Module['_wink_mcs51_uart_overwrite_total'] = createExportWrapper('wink_mcs51_uart_overwrite_total', wasmExports['wink_mcs51_uart_overwrite_total'], 0);
   _fflush = createExportWrapper('fflush', wasmExports['fflush'], 1);
+  _wink_mcs51_xdata_oob_count = Module['_wink_mcs51_xdata_oob_count'] = createExportWrapper('wink_mcs51_xdata_oob_count', wasmExports['wink_mcs51_xdata_oob_count'], 0);
+  _wink_mcs51_ext_bus_conflict_total = Module['_wink_mcs51_ext_bus_conflict_total'] = createExportWrapper('wink_mcs51_ext_bus_conflict_total', wasmExports['wink_mcs51_ext_bus_conflict_total'], 0);
+  _wink_mcs51_xsfr_unmodeled_count = Module['_wink_mcs51_xsfr_unmodeled_count'] = createExportWrapper('wink_mcs51_xsfr_unmodeled_count', wasmExports['wink_mcs51_xsfr_unmodeled_count'], 0);
+  _wink_mcs51_xsfr_unmodeled_addr = Module['_wink_mcs51_xsfr_unmodeled_addr'] = createExportWrapper('wink_mcs51_xsfr_unmodeled_addr', wasmExports['wink_mcs51_xsfr_unmodeled_addr'], 1);
+  _wink_mcs51_unsupported_warning_count = Module['_wink_mcs51_unsupported_warning_count'] = createExportWrapper('wink_mcs51_unsupported_warning_count', wasmExports['wink_mcs51_unsupported_warning_count'], 0);
+  _wink_mcs51_wdt_overflow_total = Module['_wink_mcs51_wdt_overflow_total'] = createExportWrapper('wink_mcs51_wdt_overflow_total', wasmExports['wink_mcs51_wdt_overflow_total'], 0);
   _emscripten_stack_get_base = wasmExports['emscripten_stack_get_base'];
   _emscripten_stack_get_end = wasmExports['emscripten_stack_get_end'];
   _strerror = createExportWrapper('strerror', wasmExports['strerror'], 1);
@@ -2593,13 +2635,16 @@ function assignWasmExports(wasmExports) {
   ___set_stack_limits = Module['___set_stack_limits'] = createExportWrapper('__set_stack_limits', wasmExports['__set_stack_limits'], 2);
   dynCall_vi = dynCalls['vi'] = createExportWrapper('dynCall_vi', wasmExports['dynCall_vi'], 2);
   dynCall_v = dynCalls['v'] = createExportWrapper('dynCall_v', wasmExports['dynCall_v'], 1);
-  dynCall_viii = dynCalls['viii'] = createExportWrapper('dynCall_viii', wasmExports['dynCall_viii'], 4);
+  dynCall_ji = dynCalls['ji'] = createExportWrapper('dynCall_ji', wasmExports['dynCall_ji'], 2);
+  dynCall_vii = dynCalls['vii'] = createExportWrapper('dynCall_vii', wasmExports['dynCall_vii'], 3);
+  dynCall_viiii = dynCalls['viiii'] = createExportWrapper('dynCall_viiii', wasmExports['dynCall_viiii'], 5);
   dynCall_vj = dynCalls['vj'] = createExportWrapper('dynCall_vj', wasmExports['dynCall_vj'], 2);
-  dynCall_ii = dynCalls['ii'] = createExportWrapper('dynCall_ii', wasmExports['dynCall_ii'], 2);
   dynCall_iiii = dynCalls['iiii'] = createExportWrapper('dynCall_iiii', wasmExports['dynCall_iiii'], 4);
+  dynCall_iii = dynCalls['iii'] = createExportWrapper('dynCall_iii', wasmExports['dynCall_iii'], 3);
+  dynCall_ii = dynCalls['ii'] = createExportWrapper('dynCall_ii', wasmExports['dynCall_ii'], 2);
+  dynCall_iij = dynCalls['iij'] = createExportWrapper('dynCall_iij', wasmExports['dynCall_iij'], 3);
   dynCall_jiji = dynCalls['jiji'] = createExportWrapper('dynCall_jiji', wasmExports['dynCall_jiji'], 4);
   dynCall_iidiiiii = dynCalls['iidiiiii'] = createExportWrapper('dynCall_iidiiiii', wasmExports['dynCall_iidiiiii'], 8);
-  dynCall_vii = dynCalls['vii'] = createExportWrapper('dynCall_vii', wasmExports['dynCall_vii'], 3);
   _asyncify_start_unwind = createExportWrapper('asyncify_start_unwind', wasmExports['asyncify_start_unwind'], 1);
   _asyncify_stop_unwind = createExportWrapper('asyncify_stop_unwind', wasmExports['asyncify_stop_unwind'], 0);
   _asyncify_start_rewind = createExportWrapper('asyncify_start_rewind', wasmExports['asyncify_start_rewind'], 1);
@@ -2637,6 +2682,8 @@ var wasmImports = {
   js_pal_gpio_drive_ideal: _js_pal_gpio_drive_ideal,
   /** @export */
   js_pal_gpio_read_state: _js_pal_gpio_read_state,
+  /** @export */
+  js_pal_gpio_release_mcu: _js_pal_gpio_release_mcu,
   /** @export */
   js_pal_gpio_write: _js_pal_gpio_write,
   /** @export */
