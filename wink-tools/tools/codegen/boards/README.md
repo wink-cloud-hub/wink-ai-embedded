@@ -204,20 +204,18 @@ add_compile_definitions(WINK_MCU_${_wink_app_mcu_upper}=1)
 
 #### 3. C/C++ 固件层：原厂寄存器统一门面 (`wink_mcu.h`)
 在轻量 MCU（如 8051、Padauk）开发中，寄存器头文件千差万别（标准 8051 用 `REGX52.H`，中微用 `REG_CMS8S78XX.H`，应广用 `pfs154.h`）。
-Wink Micro OS 设计了统一的门面头文件 `wink_mcu.h`（`frameworks/mcs51/include/wink_mcu.h`），依据此宏进行安全路由：
+Wink Micro OS 设计了统一的门面头文件 `wink_mcu.h`（`wink-micro-os/runtime/include/wink_mcu.h`）：门面按此宏转发到各平台路由头，51 家族由 `frameworks/mcs51/include/mcs51_family_route.h` 逐家族路由（Stage7 收尾后 Keil 寄存器包含只存在于沙箱路由头，不再进入可移植门面）：
 ```c
-// frameworks/mcs51/include/wink_mcu.h
-#if defined(WINK_MCU_CMS8S78XX) || defined(CMS8S78XX)
-    #include "REG_CMS8S78XX.H"   // 中微特有 SFR 寄存器与 ADC 扩展定义
+// wink-micro-os/runtime/include/wink_mcu.h（可移植门面，节选）
+#if defined(WINK_MCU_CMS8S78XX) || defined(WINK_MCU_AT89C52) || ...
+    #include "mcs51_family_route.h"   // 由 frameworks/mcs51/ 提供
+
+// wink-micro-os/frameworks/mcs51/include/mcs51_family_route.h（沙箱路由，节选）
+#if defined(WINK_MCU_CMS8S78XX)
+    #include "REG_CMS8S78XX.H"       // 中微特有 SFR 寄存器与 ADC 扩展定义
 #elif defined(WINK_MCU_AT89C52) || defined(WINK_MCU_MCS51)
-    #include "REGX52.H"          // 标准 8051 经典 SFR
-#elif defined(WINK_MCU_PFS154) || defined(PFS154)
-    #include <pfs154.h>          // 应广 PDK14 寄存器
-#elif defined(WINK_MCU_PMS150C) || defined(PMS150C)
-    #include <pms150c.h>         // 应广 PDK13 寄存器
-#else
-    #error "[wink_mcu.h] No valid MCU target defined! Please specify 'mcu' in wink-app.json or board.json"
-#endif
+    #include "REGX52.H"              // 标准 8051 经典 SFR
+#elif ...
 ```
 **开发者编写应用时只需统一 `#include "wink_mcu.h"`**，换芯片时只需在配置中修改 `mcu`，无需更改业务代码中的头文件包含。
 

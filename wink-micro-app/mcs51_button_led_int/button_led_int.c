@@ -15,7 +15,7 @@
  * the LED exactly once; RELEASING the button does nothing (rising edge is not
  * an interrupt request in edge mode), so the LED stays on until the NEXT press
  * toggles it off. Built as a real production app (cleanup -> .cpp -> links
- * wink_mcs51_compat -> wink_simulator.{js,wasm}); this original is never
+ * the mcs51 framework targets -> wink_simulator.{js,wasm}); this original is never
  * edited in place. Linear pins (ADR-0074 D3): KEY = P3.2 -> 26, LED =
  * P1.0 -> 8.
  */

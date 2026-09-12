@@ -18,7 +18,7 @@
  * timeline, so an ASSERT_BUS_PAYLOAD on the echo proves the live RX byte
  * crossed into firmware and came back out (ctest previously proved this only
  * via direct host injection). Built as a real production app (cleanup -> .cpp
- * -> links wink_mcs51_compat -> wink_simulator.{js,wasm}); this original is
+ * -> links the mcs51 framework targets -> wink_simulator.{js,wasm}); this original is
  * never edited in place.
  */
 #include <wink_mcu.h>

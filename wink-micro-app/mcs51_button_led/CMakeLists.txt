@@ -2,7 +2,7 @@
 #
 # Unlike the esp32-style apps (avoidance_car etc.) this app does NOT run
 # app_codegen.py and does NOT provide app_callbacks.c / device_tree.c: the
-# mcs51 interception framework (wink_mcs51_compat) strongly supplies
+# mcs51 interception framework (wink_mcs51_core/_cms8s/...) strongly supplies
 # wink_app_get_callbacks() (init = mcs51_framework_init, loop -> the Keil main
 # fiber). The ONLY app source is the unmodified Keil .c rewritten to a .cpp by
 # mcs51_cleanup.py. The app opts into the framework auto-link by exporting
