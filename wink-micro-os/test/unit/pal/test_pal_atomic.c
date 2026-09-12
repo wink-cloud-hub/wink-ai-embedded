@@ -45,6 +45,10 @@ void test_atomic_u64_ops(void) {
     prev = (uint64_t)PAL_ATOMIC_XCHG(&val, 0x8888888888888888ULL, PAL_ACQ_REL);
     TEST_ASSERT_EQUAL_UINT64(0x100000100ULL, prev);
     TEST_ASSERT_EQUAL_UINT64(0x8888888888888888ULL, PAL_ATOMIC_LOAD(&val, PAL_ACQ));
+    /* Layer-2 trivial warning fix (PLAN-20260912 W-4): assert final state so
+     * `prev` stays used under -Werror=unused-but-set-variable. */
+    TEST_ASSERT_EQUAL_UINT64(0x8888888888888888ULL, PAL_ATOMIC_LOAD(&val, PAL_ACQ));
+    (void)prev;
 }
 
 void test_atomic_fences(void) {

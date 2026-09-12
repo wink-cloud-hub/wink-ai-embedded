@@ -86,7 +86,7 @@ void test_load_cell_already_initialized_returns_error(void) {
     };
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_load_cell_init(&dev, &cfg));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_ALREADY_INITIALIZED, dal_load_cell_init(&dev, &cfg));
-    dal_load_cell_deinit(&dev);
+    WINK_IGNORE_RESULT(dal_load_cell_deinit(&dev));
 }
 
 void test_load_cell_set_calibration_factor_and_weight_calc(void) {
@@ -108,7 +108,7 @@ void test_load_cell_set_calibration_factor_and_weight_calc(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, dal_load_cell_get_cached_weight_g(&dev, &weight));
     TEST_ASSERT_FLOAT_WITHIN(0.01f, 11.0f, weight);
 
-    dal_load_cell_deinit(&dev);
+    WINK_IGNORE_RESULT(dal_load_cell_deinit(&dev));
 }
 
 void test_load_cell_deinit_clears_initialized_flag(void) {

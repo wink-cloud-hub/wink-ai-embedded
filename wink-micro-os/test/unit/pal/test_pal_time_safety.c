@@ -18,6 +18,9 @@ void test_uint64_subtraction_across_32bit_boundary(void) {
 
     uint64_t elapsed_us = now_us - start_us;
     TEST_ASSERT_EQUAL_UINT64(301ULL, elapsed_us);
+    /* Layer-2 trivial warning fix (PLAN-20260912 W-4): keep symbol used when
+     * Unity 64-bit asserts compile out on 32-bit hosts. */
+    (void)elapsed_us;
 
     uint64_t timeout_us = 300ULL;
     TEST_ASSERT_TRUE(now_us - start_us > timeout_us);

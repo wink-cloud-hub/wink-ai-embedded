@@ -68,6 +68,10 @@ void test_sim_scheduler_headless_jump(void) {
 
     uint64_t elapsed_virtual_ms = (end_virtual_us - start_virtual_us) / 1000;
     uint64_t elapsed_wall_ms = (end_wall_us - start_wall_us) / 1000;
+    /* Layer-2 trivial warning fix (PLAN-20260912 W-4): keep symbols used when
+     * Unity 64-bit asserts compile out on 32-bit hosts. */
+    (void)elapsed_virtual_ms;
+    (void)elapsed_wall_ms;
 
     // Verify virtual time has advanced by at least 3 seconds
     TEST_ASSERT_GREATER_OR_EQUAL_UINT64(3000, elapsed_virtual_ms);
