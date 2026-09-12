@@ -14,7 +14,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "30ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.1394,
       "description": "Cold tap water: 12-bit raw ~571 -> 5 C cold-end LUT anchor (no longer clamped to 25 C)"
     },
@@ -42,7 +42,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "1600ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0047,
       "description": "Water reaches boil: raw ~19 -> 98 C"
     },
@@ -77,7 +77,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "5500ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0039,
       "description": "Temperature runs beyond scale: raw ~16 -> 105 C (>105 C over-temp band, but 10 s latch has not elapsed)"
     },

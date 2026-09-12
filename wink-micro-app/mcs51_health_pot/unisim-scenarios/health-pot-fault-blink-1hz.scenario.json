@@ -14,7 +14,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "30ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0586,
       "description": "Cold water present before first control tick: raw ~240 -> 25 C"
     },
@@ -35,7 +35,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "1000ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0,
       "description": "NTC probe shorts: rail 0 -> raw 0 <= NTC_SHORT_RAW(8) => E-02 fault"
     },

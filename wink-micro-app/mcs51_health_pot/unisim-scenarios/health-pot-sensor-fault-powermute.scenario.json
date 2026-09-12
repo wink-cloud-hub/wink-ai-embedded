@@ -12,7 +12,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "30ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.9766,
       "description": "Prove already open at power-up: 12-bit raw ~4000 >= NTC_OPEN_RAW(3900), POST must latch E-01 at the first control tick (valueNorm = 4000/4096)"
     },
@@ -106,7 +106,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "5000ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0586,
       "description": "Probe replaced/recovered: code back to ~240 (25 C, valid range)"
     },

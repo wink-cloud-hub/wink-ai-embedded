@@ -21,7 +21,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "30ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0586,
       "description": "Cold water present BEFORE the first 100 ms control tick (rail default 0 would read as NTC short): 12-bit raw ~240 -> 25 C; valueNorm = raw/4096 (240/4096 ~= 0.0586)"
     },
@@ -73,7 +73,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "1600ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0047,
       "description": "Water reaches boil: 12-bit raw ~19 -> 98 C (>= 98 C boil threshold); valueNorm = 19/4096 ~= 0.0047"
     },
@@ -125,7 +125,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "6800ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0154,
       "description": "Water cools to ~60 C (12-bit raw ~63); FUNC cycled warm setpoint to 80 C, so 60 < 80-3 => heat (valueNorm = 63/4096)"
     },

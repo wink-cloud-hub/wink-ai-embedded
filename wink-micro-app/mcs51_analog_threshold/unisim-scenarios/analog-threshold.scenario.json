@@ -19,9 +19,9 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "200ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.8,
-      "description": "Drive AN0 (analog rail pin 32 = 32 + AN0) to 80% (raw ~0xCCC)"
+      "description": "Drive AN0 (physical pin 0, v2 rail key) to 80% (raw ~0xCCC)"
     },
     {
       "type": "ASSERT_POINT",
@@ -40,7 +40,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "800ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.2,
       "description": "Drive AN0 back down to 20% (raw ~0x333)"
     },
@@ -54,7 +54,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "1400ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.8,
       "description": "Drive AN0 high again to 80%"
     },

@@ -14,7 +14,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "30ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0586,
       "description": "Cold water present before first control tick: 12-bit raw ~240 -> 25 C (valueNorm = raw/4096)"
     },
@@ -59,7 +59,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "2000ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 1.0,
       "description": "NTC probe opens: divider rail pulls to full scale -> 12-bit raw 4095 >= NTC_OPEN_RAW(3900) => sensor-open fault F=1. valueNorm = 1.0"
     },
@@ -86,7 +86,7 @@
     {
       "type": "INPUT_ANALOG",
       "timeUs": "4500ms",
-      "adcChannel": 32,
+      "adcChannel": 0,
       "valueNorm": 0.0586,
       "description": "Probe recovered: code back to ~240 (valid range)"
     },
