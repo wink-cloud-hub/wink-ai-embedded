@@ -723,6 +723,36 @@ if(TARGET wink_mcs51_core)
     add_mcs51_host_test(test_mcs51_family_insulation
         ../frameworks/mcs51/test/core/test_mcs51_family_insulation.cpp)
 
+    # Review hardening: link-time self-registration under-registration fuse —
+    # an emptied registry on a chip-model family counts a miss (release warns
+    # once), classic stays silent, a registered package heals the link.
+    add_mcs51_host_test(test_mcs51_link_fuse
+        ../frameworks/mcs51/test/core/test_mcs51_link_fuse.cpp)
+
+    # STRICT twin: same TU, STRICT-built core/cms8s (missing register OBJECT
+    # abort via child re-execution). Mirrors the uart_tx_ready_strict block.
+    add_wink_host_test(test_mcs51_link_fuse_strict
+        ../frameworks/mcs51/test/core/test_mcs51_link_fuse.cpp)
+    target_link_libraries(test_mcs51_link_fuse_strict PRIVATE wink_mcs51_core_strict wink_mcs51_cms8s_strict wink_mcs51_at89 wink_mcs51_adc0832 wink_runtime
+        wink_mcs51_cms8s_register)
+    target_compile_definitions(test_mcs51_link_fuse_strict PRIVATE SIMULATION=1 WINK_MCU_AT89C52=1)
+    if(NOT MSVC)
+        target_compile_options(test_mcs51_link_fuse_strict PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:-std=c++17 -Wno-write-strings
+                -fno-exceptions -fno-rtti -fno-threadsafe-statics>)
+    else()
+        target_compile_options(test_mcs51_link_fuse_strict PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:/std:c++17 /utf-8 /wd4101 /wd4245>)
+    endif()
+    target_include_directories(test_mcs51_link_fuse_strict PRIVATE ${_MCS51_FW_DIR}/include)
+    target_include_directories(test_mcs51_link_fuse_strict PRIVATE
+        ${_MCS51_FW_DIR}/chips/cms8s78xx/include
+        ${_MCS51_FW_DIR}/chips/at89c52/include)
+    target_include_directories(test_mcs51_link_fuse_strict PRIVATE ${_MCS51_FW_DIR}/test)
+    if(TARGET generate_config)
+        add_dependencies(test_mcs51_link_fuse_strict generate_config)
+    endif()
+
     # GAP-23 freshness gate: the checked-in XSFR tripwire allowlist must
     # match what the audit script emits from the chips REG_CMS8S78XX.H
     # (catches a stale allowlist after a pin-mux register is added/removed).

@@ -284,6 +284,12 @@ void mcs51_context_init(Mcu51Context* ctx, uint8_t idx);
 void mcs51_context_set_family(uint8_t family);
 uint8_t mcs51_context_get_family(void);
 
+// Review hardening (link fuse): number of resets that detected a chip-model
+// family (MCS51_CAP_CHIP_MODELS) with no registered chip peripheral — the
+// chip register OBJECT is missing from the link (bare-core firmware). STRICT
+// builds abort at detection; release builds warn once. Process-wide counter.
+uint32_t wink_mcs51_chip_models_missing_count(void);
+
 #ifdef __cplusplus
 }
 #endif

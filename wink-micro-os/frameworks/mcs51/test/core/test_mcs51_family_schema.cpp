@@ -36,6 +36,11 @@ int main(void) {
           classic->port_pin_masks[1] == 8u &&
           classic->port_pin_masks[2] == 8u &&
           classic->port_pin_masks[3] == 8u, "classic pins {8,8,8,8}");
+    check(mcs51_family_port_pin_count(classic, 0u) == 8u &&
+          mcs51_family_pin_valid(classic, 3u, 7u) &&
+          !mcs51_family_pin_valid(classic, 4u, 0u) &&
+          !mcs51_family_pin_valid(classic, 0u, 8u),
+          "classic pin accessors (full ports, bounds closed)");
     check(classic->irq_count == 6u, "classic irq_count 6");
     for (uint8_t i = 0; i < classic->irq_count; ++i) {
         char msg[64];
@@ -61,10 +66,18 @@ int main(void) {
           "cms8s caps PORT_EXTINT");
     check((cms8s->capabilities & MCS51_CAP_UART_REMAP) != 0u,
           "cms8s caps UART_REMAP");
+    check((cms8s->capabilities & MCS51_CAP_CHIP_MODELS) != 0u,
+          "cms8s caps CHIP_MODELS");
     check(cms8s->port_pin_masks[0] == 8u &&
           cms8s->port_pin_masks[1] == 8u &&
           cms8s->port_pin_masks[2] == 6u &&
           cms8s->port_pin_masks[3] == 4u, "cms8s pins {8,8,6,4}");
+    check(mcs51_family_port_pin_count(cms8s, 2u) == 6u &&
+          mcs51_family_port_pin_count(cms8s, 3u) == 4u &&
+          mcs51_family_pin_valid(cms8s, 2u, 5u) &&
+          !mcs51_family_pin_valid(cms8s, 2u, 6u) &&
+          !mcs51_family_pin_valid(cms8s, 3u, 4u),
+          "cms8s pin accessors (P2 6 / P3 4, ghosts rejected)");
     check(cms8s->irq_count == 28u, "cms8s irq_count 28");
     check(cms8s->wdt_present, "cms8s wdt present");
     check(cms8s->iap_present, "cms8s iap present");

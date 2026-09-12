@@ -37,6 +37,11 @@ extern "C" {
 #define MCS51_CAP_W0C_FLAGS    (1u << 3)  // T2IF/EIF2 write-0-to-clear flags
 #define MCS51_CAP_PORT_EXTINT  (1u << 4)  // full-port level-change extint
 #define MCS51_CAP_UART_REMAP   (1u << 5)  // FUNCCR clock sel + PS_RXD remap
+#define MCS51_CAP_CHIP_MODELS  (1u << 6)  // family has chip-package models:
+                                          // the link-time register OBJECT is
+                                          // mandatory, and context reset
+                                          // fuses on an empty registry
+                                          // (bare-core link detection).
 
 // ── Stage0 (v2 schema): timer capability bits ────────────────────────────────
 // Bit per timer/capture unit present on the silicon. Standard 8052 =
@@ -66,12 +71,14 @@ typedef struct {
     uint8_t      port_pin_masks[4];  // Valid-pin counts P0..P3 (classic
                                // {8,8,8,8}; CMS8S78xx TSSOP-20 {8,8,6,4}).
                                // NAME NOTE (review finding): despite "masks",
-                               // these are contiguous-prefix COUNTS compared
-                               // as `bit < count` — correct for all current
-                               // parts (contiguous pins). Non-contiguous
-                               // packages (unbound middle pins) need a true
-                               // bitmask field; migrate on the first such
-                               // family (schema change, stage0 thaw), not now.
+                               // these are contiguous-prefix COUNTS — correct
+                               // for all current parts (contiguous pins).
+                               // Consumers must go through the accessors
+                               // below, never index this field directly, so a
+                               // non-contiguous package (unbound middle pins)
+                               // migrates storage + accessors to a true
+                               // bitmask without touching call sites
+                               // (schema change, stage0 thaw then).
     const uint8_t* irq_vector_table;  // Supported vector numbers (stage5
                                // switches ISR to load extended vectors
                                // from here; stage0 only publishes).
@@ -94,6 +101,20 @@ uint8_t mcs51_family_count(void);
 // never on a family id comparison.
 static inline bool mcs51_family_has_xsfr(const mcs51_family_desc_t* d) {
     return (d != NULL) && (d->xsfr_size != 0u);
+}
+
+// Pin legality accessors (review finding): pin facts are contiguous-prefix
+// COUNTS today, but call sites must never compare against port_pin_masks
+// directly. When a non-contiguous package lands, only the storage and these
+// two functions change (counts -> true bitmask); the six consumers stay put.
+static inline uint8_t mcs51_family_port_pin_count(
+    const mcs51_family_desc_t* d, uint8_t port) {
+    return ((d != NULL) && (port < 4u)) ? d->port_pin_masks[port] : 0u;
+}
+
+static inline bool mcs51_family_pin_valid(const mcs51_family_desc_t* d,
+                                          uint8_t port, uint8_t bit) {
+    return (bit < mcs51_family_port_pin_count(d, port));
 }
 
 #ifdef __cplusplus
