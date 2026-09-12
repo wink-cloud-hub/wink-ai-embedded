@@ -28,17 +28,19 @@
 #include <cstdint>
 
 // Stage4 CPL-10: family-selected chip registration (total §3.1b-3).
-// Production glue (generated mcs51_family_select.h, stage6 codegen) defines
-// MCS51_FAMILY_SELECT_REGISTER() as the family's register call; tests use
-// mcs51_test_harness.h instead. Without the generated header (pre-stage6)
-// no registration happens: core models run, chip models stay out.
+// Production glue (generated mcs51_family_select.h) defines
+// MCS51_FAMILY_SELECT_REGISTER() as the family's register call; host tests
+// inject a checked-in fixture (test/fixtures/family_select/) and the wasm
+// harness copies the per-sample fixture (stage6 S6-D3), while direct unit
+// tests use mcs51_test_harness.h. Without the generated header the
+// transitional fallback below keeps production silicon models alive.
 #if defined(__has_include) && __has_include("mcs51_family_select.h")
 #include "mcs51_family_select.h"
 #define MCS51_HAVE_FAMILY_SELECT 1
 #endif
-// S4-D5 (expires stage6): transitional default for pre-codegen builds of
-// this family — the generated select header does not exist yet, so the chip
-// package is registered explicitly to keep production silicon models alive.
+// S4-D5 transitional default (deferred to stage7 by S6-D3): the external
+// mcs51_family_select.h generator is not in the toolchain yet, so pre-codegen
+// production builds of this family register the chip package explicitly.
 #if !defined(MCS51_HAVE_FAMILY_SELECT) && defined(WINK_MCU_CMS8S78XX)
 extern "C" void cms8s78xx_register(void);
 #endif
@@ -52,7 +54,7 @@ void mcs51_framework_init(void) {
 #if defined(MCS51_HAVE_FAMILY_SELECT)
     MCS51_FAMILY_SELECT_REGISTER();
 #elif defined(WINK_MCU_CMS8S78XX)
-    cms8s78xx_register();  // S4-D5 transitional (expires stage6)
+    cms8s78xx_register();  // S4-D5 transitional (deferred to stage7, S6-D3)
 #endif
     mcs51_context_reset(ctx);
 

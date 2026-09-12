@@ -11,6 +11,11 @@
 # drag in the full GPIO/I2C/UART/ADC js_ data plane; pal_wasm_degradation.c's
 # channel *_reset() hooks are satisfied by mcs51_wasm_link_stubs.c no-ops.
 #
+# Stage6 S6-1 Step 4 (PLAN-20260911-MCS51-S6, CPL-15): the hand-written
+# mcs51 source list is GONE. The emcc payload comes from the same
+# mcs51_sources.cmake the framework library targets use, so a target split or
+# a new chip compiles here without a second edit.
+#
 # Skips gracefully when emcc or node is missing — plain-C developers without
 # the JS/emsdk toolchain still get host-only tests. Mirrors
 # test/wasm/pal_adc/add_wink_wasm_adc_test.cmake.
@@ -30,6 +35,9 @@ endif()
 # helper lives at frameworks/mcs51/test/wasm/ ; SDK root is four levels up.
 set(_WASM_MCS51_HELPER_DIR "${CMAKE_CURRENT_LIST_DIR}")
 get_filename_component(_SDK_ROOT "${_WASM_MCS51_HELPER_DIR}/../../../.." ABSOLUTE)
+
+# Stage6: shared framework source lists + include surface (single truth).
+include(${_SDK_ROOT}/frameworks/mcs51/mcs51_sources.cmake)
 
 set(_WASM_MCS51_DIR "${CMAKE_BINARY_DIR}/wasm-mcs51-test")
 file(MAKE_DIRECTORY ${_WASM_MCS51_DIR}/gen)
@@ -93,17 +101,14 @@ else()
         "found — skipping wasm_mcs51_iron_ntc_test")
 endif()
 
+# Framework include surface (from mcs51_sources.cmake) + the rest of the SDK.
+set(_WASM_MCS51_FW_INCLUDES "")
+foreach(_mcs51_inc IN LISTS MCS51_WASM_INCLUDE_DIRS)
+    list(APPEND _WASM_MCS51_FW_INCLUDES -I${_mcs51_inc})
+endforeach()
+
 set(_WASM_MCS51_INCLUDES
-    -I${_SDK_ROOT}/frameworks/mcs51/include
-    # Stage4 S4-2 Step 5: test-only family harness (shared host/wasm e2e
-    # drivers include it; the hand list itself is deleted by stage6).
-    -I${_SDK_ROOT}/frameworks/mcs51/test
-    # S2-1: chip-private headers (stage6 target split deletes this hand list)
-    -I${_SDK_ROOT}/frameworks/mcs51/chips/cms8s78xx/include
-    -I${_SDK_ROOT}/frameworks/mcs51/chips/at89c52/include
-    # S3-2: board-device public headers (adc0832 attach API; the hand list
-    # itself is deleted by the stage6 target split)
-    -I${_SDK_ROOT}/frameworks/mcs51/devices/adc0832/include
+    ${_WASM_MCS51_FW_INCLUDES}
     -I${_SDK_ROOT}/pal/include
     -I${_SDK_ROOT}/pal/include/osal
     -I${_SDK_ROOT}/pal/include/hal
@@ -129,6 +134,22 @@ file(GLOB _WASM_MCS51_PAL_WASM
     "${_SDK_ROOT}/targets/wasm/pal_wasm_*.c")
 list(FILTER _WASM_MCS51_PAL_WASM EXCLUDE REGEX "_ch[0-9]")
 
+# ── Stage6 S6-1 Step 2: per-sample family-select fixture ─────────────────────
+# Production generates mcs51_family_select.h per app (external wink-tools
+# generator; not ready yet — stage6 prerequisite). Each wasm test copies the
+# checked-in fixture for its family into a per-test include dir so
+# mcs51_bridge.cpp takes its __has_include branch and registers the chip
+# package before the first context reset. Per-test dirs avoid a parallel
+# build race between cms8s and classic tests.
+function(mcs51_wasm_family_select_dir test_name family_dir)
+    set(_fs_dir "${_WASM_MCS51_DIR}/${test_name}_gen")
+    file(MAKE_DIRECTORY "${_fs_dir}")
+    file(COPY
+        "${_SDK_ROOT}/frameworks/mcs51/test/fixtures/family_select/${family_dir}/mcs51_family_select.h"
+        DESTINATION "${_fs_dir}")
+    set(_MCS51_WASM_FAMILY_SELECT_DIR "${_fs_dir}" PARENT_SCOPE)
+endfunction()
+
 # add_wink_wasm_mcs51_test(<test_name> <sample_name> <driver_c> [extra_emcc_flags]):
 #   cleanup <sample_name>.c -> <sample_name>.cpp, compile with the framework
 #   under emcc + ASYNCIFY, register a ctest under node. The optional 4th arg is
@@ -151,44 +172,23 @@ function(add_wink_wasm_mcs51_test test_name sample_name driver_c)
         COMMENT "mcs51 wasm cleanup: ${sample_name}.c -> ${sample_name}.cpp"
         VERBATIM)
 
+    if(sample_name MATCHES "cms8s")
+        set(_mcu_def "-DWINK_MCU_CMS8S78XX=1")
+        mcs51_wasm_family_select_dir(${test_name} cms8s78xx)
+    else()
+        set(_mcu_def "-DWINK_MCU_AT89C52=1")
+        mcs51_wasm_family_select_dir(${test_name} at89c52)
+    endif()
+
+    # Stage6: framework payload from the shared source lists (step 4) plus the
+    # per-sample fixture include dir (step 2).
     set(_test_sources
         ${driver_c}
         ${_sample_cpp}
-        # Stage1 Step 0a: keep in sync with frameworks/mcs51 _MCS51_COMPAT_SRCS
-        # (mcs51_uni_bridge.cpp excluded — host-side UniSim glue, not wasm).
-        # S3-2: the adc0832 TU lives under devices/ (same sync rule).
-        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_context.cpp
-        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_family.cpp
-        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_peripheral.cpp
-        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_sfr.cpp
-        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_adc.cpp
-        ${_SDK_ROOT}/frameworks/mcs51/devices/adc0832/src/mcs51_adc0832.cpp
-        ${_SDK_ROOT}/frameworks/mcs51/src/cms8s_adc.cpp
-        ${_SDK_ROOT}/frameworks/mcs51/src/cms8s_buzzer.cpp
-        ${_SDK_ROOT}/frameworks/mcs51/src/cms8s_sys.cpp
-        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_isr.cpp
-        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_clock.cpp
-        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_timer.cpp
-        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_uart.cpp
-        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_extint.cpp
-        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_xdata.cpp
-        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_unsupported.cpp
-        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_gpio.cpp
-        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_pcon.cpp
-        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_edge_queue.cpp
-        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_pwm_meter.cpp
-        ${_SDK_ROOT}/frameworks/mcs51/src/mcs51_bridge.cpp
-        # Stage4 CPL-10: chip register entries (same sync rule).
-        ${_SDK_ROOT}/frameworks/mcs51/chips/cms8s78xx/src/cms8s_register.cpp
-        ${_SDK_ROOT}/frameworks/mcs51/chips/at89c52/src/at89_register.cpp
-        # Stage4 S4-1 Step 1: enhanced GPIO model (CPL-03, same sync rule).
-        ${_SDK_ROOT}/frameworks/mcs51/chips/cms8s78xx/src/cms8s_gpio.cpp
-        # Stage4 S4-1 Step 2: port-interrupt model (CPL-07, same sync rule).
-        ${_SDK_ROOT}/frameworks/mcs51/chips/cms8s78xx/src/cms8s_extint.cpp
-        # Stage4 S4-2 Step 1: UART source selection (CPL-04, same sync rule).
-        ${_SDK_ROOT}/frameworks/mcs51/chips/cms8s78xx/src/cms8s_uart.cpp
-        # Stage4 S4-2 Step 2: T3/T4 + capture/compare (CPL-05, same sync rule).
-        ${_SDK_ROOT}/frameworks/mcs51/chips/cms8s78xx/src/cms8s_timer.cpp
+        ${MCS51_CORE_WASM_SOURCES}
+        ${MCS51_CMS8S_SOURCES}
+        ${MCS51_AT89_SOURCES}
+        ${MCS51_ADC0832_SOURCES}
         ${_SDK_ROOT}/runtime/src/wink_runtime.c
         ${_SDK_ROOT}/runtime/src/wink_runtime_tasks.c
         ${_SDK_ROOT}/runtime/src/wink_actuator_registry.c
@@ -208,16 +208,11 @@ function(add_wink_wasm_mcs51_test test_name sample_name driver_c)
         ${_SDK_ROOT}/frameworks/mcs51/test/wasm/mcs51_wasm_link_stubs.c
     )
 
-    if(sample_name MATCHES "cms8s")
-        set(_mcu_def "-DWINK_MCU_CMS8S78XX=1")
-    else()
-        set(_mcu_def "-DWINK_MCU_AT89C52=1")
-    endif()
-
     add_custom_command(
         OUTPUT ${_out_js}
         COMMAND ${EMCC_EXECUTABLE}
             ${_WASM_MCS51_INCLUDES}
+            -I${_MCS51_WASM_FAMILY_SELECT_DIR}
             ${_test_sources}
             -O1
             -DSIMULATION=1

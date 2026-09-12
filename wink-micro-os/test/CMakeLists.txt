@@ -454,8 +454,9 @@ if(TARGET wink_mcs51_compat)
     # Stage3 (CPL-09/CPL-21): the framework bridge no longer auto-binds the
     # codegen-described ADC0832. Boards/harnesses bind it in their own
     # post-init hook (adc0832_device_attach); the generated header's
-    # directory must be on the BINDING TU's include path. The compat library
-    # keeps the gen dir for its __has_include probe. Gate on the generator
+    # directory must be on the BINDING TU's include path (test_mcs51_iron_ntc_e2e
+    # adds it below). Stage6 S6-3 (CPL-15): the header is board/app scope ONLY —
+    # it is not on any framework library include path. Gate on the generator
     # existing so plain-C/CI checkouts without the wink-tools source
     # configure cleanly and just skip the iron_ntc codegen test (mirrors
     # the tier-b fixture gate).
@@ -490,16 +491,22 @@ if(TARGET wink_mcs51_compat)
             COMMENT "mcs51 codegen: iron_ntc wink-app.json -> mcs51_board_config.h"
             VERBATIM)
         add_custom_target(generate_mcs51_board_config DEPENDS ${_MCS51_BOARD_CONFIG_H})
-
-        # bridge.cpp's __has_include is evaluated while compiling the LIBRARY.
-        target_include_directories(wink_mcs51_compat PRIVATE ${_MCS51_GEN_DIR})
-        add_dependencies(wink_mcs51_compat generate_mcs51_board_config)
         set(_MCS51_HAS_BOARD_CONFIG TRUE)
     else()
         message(STATUS "mcs51 M6: mcs51_board_config generator or iron_ntc app "
             "not found — skipping codegen board-config + iron_ntc e2e")
         set(_MCS51_HAS_BOARD_CONFIG FALSE)
     endif()
+
+    # ── Stage6 S6-1 Step 2: family-select injection seam ──────────────────────
+    # Production generates mcs51_family_select.h per app (wink-app.json mcu;
+    # external wink-tools generator, see wink-micro-os/CMakeLists.txt). The
+    # external generator is not ready yet (stage6 prerequisite), so the host
+    # test build compiles the bridge against this checked-in fixture to
+    # exercise the __has_include("mcs51_family_select.h") branch and its
+    # pre-reset register call. The wasm harness does the same per sample.
+    target_include_directories(wink_mcs51_core PRIVATE
+        ${_MCS51_FW_DIR}/test/fixtures/family_select/cms8s78xx)
 
     # Runtime sources every mcs51 host test links (fiber scheduler path).
     set(_MCS51_RUNTIME_SRCS
@@ -514,7 +521,8 @@ if(TARGET wink_mcs51_compat)
     # dialect for the cleaned/hand-written C++ TUs, mcs51 framework include.
     function(add_mcs51_host_test name)
         add_wink_host_test(${name} ${ARGN})
-        target_link_libraries(${name} PRIVATE wink_mcs51_compat wink_runtime)
+        target_link_libraries(${name} PRIVATE wink_mcs51_compat wink_runtime
+            wink_mcs51_cms8s_register)
         # The Keil super-loop (wink_mcs51_user_main) never returns, so it MUST
         # run on the cooperative fiber scheduler (pal_sim_scheduler_run), not
         # the host direct-call tick path. SIMULATION selects that path in
@@ -613,7 +621,8 @@ if(TARGET wink_mcs51_compat)
     # lib's PUBLIC definition).
     add_wink_host_test(test_mcs51_uart_tx_ready_strict
         ../frameworks/mcs51/test/cms8s78xx/test_mcs51_uart_tx_ready.cpp)
-    target_link_libraries(test_mcs51_uart_tx_ready_strict PRIVATE wink_mcs51_compat_strict wink_runtime)
+    target_link_libraries(test_mcs51_uart_tx_ready_strict PRIVATE wink_mcs51_compat_strict wink_runtime
+        wink_mcs51_cms8s_register)
     target_compile_definitions(test_mcs51_uart_tx_ready_strict PRIVATE SIMULATION=1 WINK_MCU_AT89C52=1)
     if(NOT MSVC)
         target_compile_options(test_mcs51_uart_tx_ready_strict PRIVATE
@@ -655,7 +664,8 @@ if(TARGET wink_mcs51_compat)
     # child re-execution). Mirrors the uart_tx_ready_strict block above.
     add_wink_host_test(test_mcs51_xsfr_tripwire_strict
         ../frameworks/mcs51/test/cms8s78xx/test_mcs51_xsfr_tripwire.cpp)
-    target_link_libraries(test_mcs51_xsfr_tripwire_strict PRIVATE wink_mcs51_compat_strict wink_runtime)
+    target_link_libraries(test_mcs51_xsfr_tripwire_strict PRIVATE wink_mcs51_compat_strict wink_runtime
+        wink_mcs51_cms8s_register)
     target_compile_definitions(test_mcs51_xsfr_tripwire_strict PRIVATE SIMULATION=1 WINK_MCU_AT89C52=1)
     if(NOT MSVC)
         target_compile_options(test_mcs51_xsfr_tripwire_strict PRIVATE
@@ -711,6 +721,23 @@ if(TARGET wink_mcs51_compat)
                     ${_MCS51_FW_DIR}/tools/mcs51_shim_audit.py
                     --check-xsfr-allowlist
                     ${_MCS51_FW_DIR}/chips/cms8s78xx/include/cms8s_xsfr_allowlist.h)
+
+        # Stage6 S6-2 CI assessment: the Keil-dialect cleanup unit suite was
+        # manual; it is hermetic (stdlib unittest + checked-in manifests) so
+        # it moves into the host ctest set. Verdict-parity for the SDCC gate
+        # stays manual (needs SDCC + the uncommitted docs/vendors tree) and
+        # the headless evidence script stays Win-only/manual — both are
+        # written exemptions recorded in stage6 §6.
+        add_test(NAME test_mcs51_cleanup_unit
+            COMMAND ${Python3_EXECUTABLE} -m unittest
+                    discover -s ${_MCS51_FW_DIR}/test/core
+                    -p test_mcs51_cleanup.py)
+
+        # Stage6 review S6-H5: the manifest-driven layering/residue gate is
+        # hermetic stdlib — run it in the host ctest set too (was manual).
+        add_test(NAME test_mcs51_layering_gate
+            COMMAND ${Python3_EXECUTABLE}
+                    ${_MCS51_FW_DIR}/tools/lint/lint_mcs51_layering.py)
     endif()
 
     # Task R0 / ADR-0077: GPIO dual read path (Read-Pin vs Read-Latch) & arbitration
@@ -860,7 +887,8 @@ if(TARGET wink_mcs51_compat)
     # uncomputable-source abort). Mirrors the uart_tx_ready_strict block.
     add_wink_host_test(test_mcs51_uart_charge_strict
         ../frameworks/mcs51/test/cms8s78xx/test_mcs51_uart_charge.cpp)
-    target_link_libraries(test_mcs51_uart_charge_strict PRIVATE wink_mcs51_compat_strict wink_runtime)
+    target_link_libraries(test_mcs51_uart_charge_strict PRIVATE wink_mcs51_compat_strict wink_runtime
+        wink_mcs51_cms8s_register)
     target_compile_definitions(test_mcs51_uart_charge_strict PRIVATE SIMULATION=1 WINK_MCU_AT89C52=1)
     if(NOT MSVC)
         target_compile_options(test_mcs51_uart_charge_strict PRIVATE
@@ -884,7 +912,8 @@ if(TARGET wink_mcs51_compat)
     # A-04 STRICT twin: same TU, STRICT-built compat lib (overflow abort).
     add_wink_host_test(test_mcs51_wdt_ta_strict
         ../frameworks/mcs51/test/cms8s78xx/test_mcs51_wdt_ta.cpp)
-    target_link_libraries(test_mcs51_wdt_ta_strict PRIVATE wink_mcs51_compat_strict wink_runtime)
+    target_link_libraries(test_mcs51_wdt_ta_strict PRIVATE wink_mcs51_compat_strict wink_runtime
+        wink_mcs51_cms8s_register)
     target_compile_definitions(test_mcs51_wdt_ta_strict PRIVATE SIMULATION=1 WINK_MCU_AT89C52=1)
     if(NOT MSVC)
         target_compile_options(test_mcs51_wdt_ta_strict PRIVATE
@@ -912,7 +941,8 @@ if(TARGET wink_mcs51_compat)
     # abort via child re-execution). Mirrors the wdt_ta_strict block.
     add_wink_host_test(test_mcs51_classic_bus_strict
         ../frameworks/mcs51/test/core/test_mcs51_ext_bus.cpp)
-    target_link_libraries(test_mcs51_classic_bus_strict PRIVATE wink_mcs51_compat_strict wink_runtime)
+    target_link_libraries(test_mcs51_classic_bus_strict PRIVATE wink_mcs51_compat_strict wink_runtime
+        wink_mcs51_cms8s_register)
     target_compile_definitions(test_mcs51_classic_bus_strict PRIVATE SIMULATION=1 WINK_MCU_AT89C52=1)
     if(NOT MSVC)
         target_compile_options(test_mcs51_classic_bus_strict PRIVATE
