@@ -67,17 +67,12 @@ BASELINE: list[tuple[str, str, str]] = [
     ("include/mcs51_family_route.h", r".*", "by-design"),
     # sfr_map/trap/core-header scrubs (S3-H6/S4-C) are pruned with the lines:
     # re-adding a vendor name must fail, not be waived.
-    # mcs51_xsfr_allowlist.h forwarding shim -> stage7 (stage5 removed its
-    # last consumer; the shim file itself survives until the stage7 sweep).
-    ("include/mcs51_xsfr_allowlist.h", r".*", "stage7"),
+    # (stage7 pruned the mcs51_xsfr_allowlist.h shim waiver with the file.)
     # src/mcs51_adc.cpp comment -> stage1
     ("src/mcs51_adc.cpp", r"CMS8S78xx", "stage1"),
-    # src/mcs51_bridge.cpp: bare includes + hard call removed in stage3.
-    # S4-D5 transition (deferred per S6 prerequisite): pre-codegen production
-    # default names the chip register entry under a family-macro guard until
-    # the external mcs51_family_select generator lands (stage7).
-    ("src/mcs51_bridge.cpp",
-     r"cms8s78xx_register|WINK_MCU_CMS8S78XX", "stage7"),
+    # src/mcs51_bridge.cpp: the S4-D5 transitional family-register call was
+    # removed in stage7 (link-time self-registration); the row is pruned with
+    # the lines, so a vendor symbol must never reappear in the bridge.
     # src/mcs51_context.cpp: WINK_MCU_* build routing + sentinel tables are
     # by-design (seed values sunk in stage2: ADCLDO/PS_ rows pruned).
     ("src/mcs51_context.cpp",

@@ -22,11 +22,17 @@
 #endif
 
 // ── 1) MCS-51 Family ────────────────────────────────────────────────────────
-#if defined(WINK_MCU_CMS8S78XX) || defined(WINK_MCU_CMS8S) || defined(__CMS8S78XX__) || defined(CMS8S78XX)
-    #include "REG_CMS8S78XX.H"
-
-#elif defined(WINK_MCU_AT89C52) || defined(WINK_MCU_STC89C52) || defined(WINK_MCU_MCS51) || defined(WINK_MCU_8051) || defined(__AT89C52__)
-    #include "REGX52.H"
+// Stage7 S7-1 (facade slimming): the concrete 51 register includes live in
+// the sandbox route header (mcs51_family_route.h). This portable facade must
+// not name Keil register headers (wink lint arch --pack layering,
+// MCS51-ISOLATION); the route header resolves REG_CMS8S78XX.H from the linked
+// chip package, or the standard REGX52.H, by the same WINK_MCU_* macros.
+#if defined(WINK_MCU_CMS8S78XX) || defined(WINK_MCU_CMS8S) || \
+    defined(__CMS8S78XX__) || defined(CMS8S78XX) || \
+    defined(WINK_MCU_AT89C52) || defined(WINK_MCU_STC89C52) || \
+    defined(WINK_MCU_MCS51) || defined(WINK_MCU_8051) || \
+    defined(__AT89C52__)
+    #include "mcs51_family_route.h"
 
 // ── 2) Padauk (PDK) Family ──────────────────────────────────────────────────
 #elif defined(WINK_MCU_PFS154) || defined(PFS154)

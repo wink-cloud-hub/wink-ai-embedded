@@ -183,8 +183,8 @@ endif()
 # MCS-51 board-config codegen (ADR-0075): production mcs51 apps need
 # mcs51_board_config.h alongside wink_config.h. The framework bridge
 # (frameworks/mcs51/src/mcs51_bridge.cpp) __has_include()s it; emitting into
-# WINK_CONFIG_DIR puts it on the pal INTERFACE include path that
-# wink_mcs51_compat sees transitively. Only wired for wasm source builds of an
+# WINK_CONFIG_DIR puts it on the pal INTERFACE include path that the mcs51
+# framework sees transitively. Only wired for wasm source builds of an
 # mcs51 app (esp32-style apps never include the bridge's board-config path).
 set(_MCS51_BOARD_CONFIG_GENERATOR
     "${WINK_TOOLS_ROOT}/tools/codegen/generators/mcs51_board_config.py")
