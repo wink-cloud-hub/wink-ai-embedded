@@ -2,7 +2,7 @@
 # (Stage 2 T1/T5 headless proof).
 #
 # Same framework auto-link contract as mcs51_button_led (ADR-0075 D1/D2): no
-# app_codegen.py, no app_callbacks.c / device_tree.c — wink_mcs51_compat
+# app_codegen.py, no app_callbacks.c / device_tree.c — the mcs51 framework targets
 # strongly supplies wink_app_get_callbacks(). The ONLY app source is the
 # unmodified Keil .c rewritten to a .cpp by mcs51_cleanup.py; the app opts in
 # via WINK_APP_MCS51=TRUE. Wasn-sim only: host/esp32 export no sources (the mcs51

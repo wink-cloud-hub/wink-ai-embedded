@@ -33,7 +33,7 @@
 | # | 器件名称 | 型号 / 规格 | 硬件功能 | CMS8S78xx 硬件外设 | 仿真映射机制 |
 |---|---|---|---|---|---|
 | 1 | **主控 MCU** | **CMS8S78xx**（LQFP48 / TSSOP28） | 核心控制 | 1T 8051 内核，24 MHz，16KB Flash，1KB SRAM | `cms8s78xx_devboard` + `mcu: "cms8s78xx"` |
-| 2 | **温度采样** | NTC 热敏电阻（10kΩ @ 25℃，B=3950） | 水温检测 | 片内 12-bit SAR ADC + 片内 3.0V LDO 基准 | CH3 模拟量轨 pin 32（AN0），内部寄存器 `ADCON0/1` 拦截 |
+| 2 | **温度采样** | NTC 热敏电阻（10kΩ @ 25℃，B=3950） | 水温检测 | 片内 12-bit SAR ADC + 片内 3.0V LDO 基准 | CH3 模拟量轨物理 Pin 0（AN0，v2 rail key），内部寄存器 `ADCON0/1` 拦截 |
 | 3 | **数码显示** | 4 位 8 段共阴数码管（0.36 英寸） | 温度与状态显示 | P3.0..P3.3（高灌电流 COM0..3）+ P1.0..P1.7（SEG a..dp） | `seg_display` 插件（`direct_gpio_4d`，含视觉暂留 POV 解码） |
 | 4 | **声音单元** | 压电式无源蜂鸣器（Passive Buzzer） | 多音调按键/旋律/警报 | 片内专用硬件蜂鸣器发生器（`BUZCON` + `BUZDIV`，输出脚 P0.3） | `buzzer` 插件（`passive_pwm`，频率/占空比动态分析） |
 | 5 | **发热执行** | 发热盘（1000W）+ 机械继电器 / 固态 SSR | 煮水与保温执行 | GPIO P2.0 推挽输出（高电平吸合） | `led` 插件（`heater_relay`，`active_high: true`） |
@@ -229,7 +229,7 @@ $$F_{buz} = \frac{187500}{\text{BUZDIV}} \text{ Hz}$$
 | **发热继电器** | CH1 GPIO 输出 | P2.0 输出电平变化 | `ASSERT_POINT target: "plugin:heater_relay/on"` |
 | **状态指示灯** | CH1 GPIO 输出 | P0.1 / P0.2 / P0.6 低有效驱动 | `ASSERT_POINT target: "plugin:led_heat/on"` 等 |
 | **按键输入** | CH1 GPIO 输入 | P0.4 / P0.5 准双向弱上拉输入 | `INPUT_PLUGIN_EVENT targetPluginId: "btn_onoff" action: "SET_PRESSED"` |
-| **NTC 测温** | CH3 模拟量输入 | 片内 ADC AN0（模拟轨 pin 32）采样 | `INPUT_ANALOG adcChannel: 32 valueNorm: <0.0~1.0>` |
+| **NTC 测温** | CH3 模拟量输入 | 片内 ADC AN0（物理 Pin 0，v2 rail key）采样 | `INPUT_ANALOG adcChannel: 0 valueNorm: <0.0~1.0>` |
 | **UART 遥测** | CH2 串口总线 | 片内 SBUF 发送拦截 → `js_pal_uart_write` | `ASSERT_BUS_PAYLOAD target: "bus:0:tx" matcher: "S=1,H=1"` |
 
 ---
@@ -270,7 +270,7 @@ python D:\workspaces\ai-coding\wink-ai\wink-ai\packages\wink-tools\wink.py sim r
 ```
 wink-micro-app/mcs51_health_pot/
 ├── health_pot.c                       # 核心商用固件（CMS8S78xx 专用，全外设集成驱动）
-├── CMakeLists.txt                     # 跨 target 构建配置，链入 wink_mcs51_compat
+├── CMakeLists.txt                     # 跨 target 构建配置，链入 wink_mcs51_core
 ├── wink-app.json                      # CMS8S78xx 硬件设备清单（4COM-8SEG、buzzer、继电器、LED、按键）
 ├── DESIGN.md                          # 本设计文档
 ├── unisim-assets/

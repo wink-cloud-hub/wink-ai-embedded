@@ -13,7 +13,7 @@
  * scenario asserts the bus payload with an ASSERT_BUS_PAYLOAD step (the bus
  * spy = UARTBus timeline + BusAnalyzer), proving real firmware output reaches
  * the simulated serial bus with no test-injection API. Built as a real
- * production app (cleanup -> .cpp -> links wink_mcs51_compat ->
+ * production app (cleanup -> .cpp -> links the mcs51 framework targets ->
  * wink_simulator.{js,wasm}); this original is never edited in place.
  */
 #include <wink_mcu.h>
