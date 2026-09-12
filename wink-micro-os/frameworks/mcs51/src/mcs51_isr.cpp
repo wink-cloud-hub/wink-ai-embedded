@@ -13,6 +13,7 @@
 
 #include "mcs51_trap.h"
 #include "mcs51_context.h"
+#include "mcs51_family.h"
 #include "wink_event.h"
 #include "wink_mcs51_clock.h"
 
@@ -24,15 +25,13 @@ constexpr uint8_t SFR_IP   = 0xB8u;
 constexpr uint8_t SFR_SCON = 0x98u;
 constexpr uint8_t IE_EA    = 7u;
 
-// Default mapping table for standard 8051 + CMS8S78xx.
-// GAP-22 fix (2026-09-10, corrected same day after SDCC-header pilot):
-// vectors/enable/flag bits verified against cms8s78xx.h; PRIORITY bits use
-// the vendor IRQ_SET_PRIORITY macro rule with the en_Priority_Module enum
-// (module numbers 0..27): IP bit=module (<8), EIP1 bit=module-8 (8..15),
-// EIP2 bit=module-16 (16..23), EIP3 bit=module-24 (24..31). Extended
-// module = vector+1, so e.g. ADC vector 19 -> module 20 -> EIP2.4 (NOT
-// vector-16; the first-cut fix used that wrong formula). CMS8S78xx has no
-// UART1 (vector 17 reserved).
+// Core standard profile (stage5 CPL-06): semantic sources 0..5 only.
+// INT0 0, TIMER0 1, INT1 2, TIMER1 3, UART0 4, TIMER2 5 (8052); enable/
+// flag/priority fields are Intel-standard SFR positions. Every other
+// source stays UNMAPPED here (0xFF sentinels: vector 0xFF never dispatches
+// and mcs51_raise_irq drops the source before pending latches) and is
+// loaded by the owning chip package through the per-context
+// irq_map_extend hook — the generic ISR never names a vendor vector.
 const mcs51_irq_map_entry_t s_default_irq_map[IRQ_SOURCE__COUNT] = {
     /* IRQ_SOURCE_INT0 */   { 0u,  0xA8u, 0u, 0x88u, 1u, 0xB8u, 0u, MCS51_IRQ_HW_AUTO_CLEAR }, // IE.EX0, TCON.IE0, IP.PX0
     /* IRQ_SOURCE_TIMER0 */ { 1u,  0xA8u, 1u, 0x88u, 5u, 0xB8u, 1u, MCS51_IRQ_HW_AUTO_CLEAR }, // IE.ET0, TCON.TF0, IP.PT0
@@ -40,23 +39,29 @@ const mcs51_irq_map_entry_t s_default_irq_map[IRQ_SOURCE__COUNT] = {
     /* IRQ_SOURCE_TIMER1 */ { 3u,  0xA8u, 3u, 0x88u, 7u, 0xB8u, 3u, MCS51_IRQ_HW_AUTO_CLEAR }, // IE.ET1, TCON.TF1, IP.PT1
     /* IRQ_SOURCE_UART0 */  { 4u,  0xA8u, 4u, 0x98u, 0u, 0xB8u, 4u, MCS51_IRQ_SW_CLEAR },      // IE.ES0, SCON.RI/TI, IP.PS0
     /* IRQ_SOURCE_TIMER2 */ { 5u,  0xA8u, 5u, 0xC9u, 7u, 0xB8u, 5u, MCS51_IRQ_SW_CLEAR },      // IE.ET2, T2IF.T2F, IP.PT2
-    /* IRQ_SOURCE_ADC */    { 19u, 0xAAu, 4u, 0xB2u, 4u, 0xBAu, 4u, MCS51_IRQ_SW_CLEAR },      // EIE2.ADCIE, EIF2.ADCIF, EIP2 module20->bit4
-    /* IRQ_SOURCE_UART1 */  { 0xFFu, 0xFFu, 0u, 0xFFu, 0u, 0xFFu, 0u, MCS51_IRQ_SW_CLEAR },    // no UART1 on CMS8S78xx: unmapped (0xFF vector never dispatches)
-    /* IRQ_SOURCE_PWM */    { 18u, 0xAAu, 3u, 0xB2u, 3u, 0xBAu, 3u, MCS51_IRQ_SW_CLEAR },      // EIE2.PWMIE(3), EIF2.PWMIF(3), EIP2 module19->bit3
-    /* IRQ_SOURCE_I2C */    { 21u, 0xAAu, 6u, 0xB2u, 6u, 0xBAu, 6u, MCS51_IRQ_SW_CLEAR },      // EIE2.I2CIE(6), EIF2.I2CIF(6), EIP2 module22->bit6
-    /* IRQ_SOURCE_SPI */    { 22u, 0xAAu, 7u, 0xB2u, 7u, 0xBAu, 7u, MCS51_IRQ_SW_CLEAR },      // EIE2.SPIIE(7), EIF2.SPIIF(7), EIP2 module23->bit7
-    /* IRQ_SOURCE_TIMER3 */ { 15u, 0xAAu, 0u, 0xB2u, 0u, 0xBAu, 0u, MCS51_IRQ_HW_AUTO_CLEAR }, // EIE2.ET3IE, EIF2.TF3, EIP2 module16->bit0
-    /* IRQ_SOURCE_TIMER4 */ { 16u, 0xAAu, 1u, 0xB2u, 1u, 0xBAu, 1u, MCS51_IRQ_HW_AUTO_CLEAR }, // EIE2.ET4IE, EIF2.TF4, EIP2 module17->bit1
+    /* IRQ_SOURCE_ADC */    { 0xFFu, 0xFFu, 0u, 0xFFu, 0u, 0xFFu, 0u, MCS51_IRQ_SW_CLEAR },
+    /* IRQ_SOURCE_UART1 */  { 0xFFu, 0xFFu, 0u, 0xFFu, 0u, 0xFFu, 0u, MCS51_IRQ_SW_CLEAR },
+    /* IRQ_SOURCE_PWM */    { 0xFFu, 0xFFu, 0u, 0xFFu, 0u, 0xFFu, 0u, MCS51_IRQ_SW_CLEAR },
+    /* IRQ_SOURCE_I2C */    { 0xFFu, 0xFFu, 0u, 0xFFu, 0u, 0xFFu, 0u, MCS51_IRQ_SW_CLEAR },
+    /* IRQ_SOURCE_SPI */    { 0xFFu, 0xFFu, 0u, 0xFFu, 0u, 0xFFu, 0u, MCS51_IRQ_SW_CLEAR },
+    /* IRQ_SOURCE_TIMER3 */ { 0xFFu, 0xFFu, 0u, 0xFFu, 0u, 0xFFu, 0u, MCS51_IRQ_SW_CLEAR },
+    /* IRQ_SOURCE_TIMER4 */ { 0xFFu, 0xFFu, 0u, 0xFFu, 0u, 0xFFu, 0u, MCS51_IRQ_SW_CLEAR },
 };
 
-mcs51_irq_map_entry_t s_irq_map[IRQ_SOURCE__COUNT];
-bool                  s_irq_map_initialized = false;
-
-void ensure_irq_map(void) {
-    if (!s_irq_map_initialized) {
-        std::memcpy(s_irq_map, s_default_irq_map, sizeof(s_default_irq_map));
-        s_irq_map_initialized = true;
+// Stage5 CPL-06 insulation: a vector is reachable only when the ACTIVE
+// context's family descriptor whitelists it (classic 8052: vectors 0..5).
+// Unmapped rows (vector 0xFF) are never reachable by construction.
+bool family_vector_reachable(const Mcu51Context* ctx, uint8_t vector) {
+    if (vector >= WINK_MCS51_NUM_VECTORS) {
+        return false;
     }
+    const mcs51_family_desc_t* d = mcs51_family_desc(ctx->family);
+    for (uint8_t i = 0; i < d->irq_count; ++i) {
+        if (d->irq_vector_table[i] == vector) {
+            return true;
+        }
+    }
+    return false;
 }
 
 }  // namespace
@@ -110,6 +115,11 @@ uint8_t wink_mcs51_dispatch_vector(uint8_t vector_num) {
     if (!ctx->interrupts_enabled || vector_num >= WINK_MCS51_NUM_VECTORS) {
         return 0;
     }
+    // Stage5 CPL-06 insulation: an ISR registered for an extended vector is
+    // unreachable on a family whose descriptor does not whitelist it.
+    if (!family_vector_reachable(ctx, vector_num)) {
+        return 0;
+    }
     isr_fn_t fn = ctx->isr_table[vector_num];
     if (fn == nullptr) {
         return 0;
@@ -160,23 +170,32 @@ void wink_mcs51_reset_isrs(void) {
 }
 
 void wink_mcs51_set_irq_map_entry(mcs51_irq_source_t src, const mcs51_irq_map_entry_t* entry) {
-    ensure_irq_map();
-    if (src < IRQ_SOURCE__COUNT && entry != nullptr) {
-        s_irq_map[src] = *entry;
+    Mcu51Context* ctx = mcs51_get_context();
+    if (ctx != nullptr && src < IRQ_SOURCE__COUNT && entry != nullptr) {
+        ctx->irq_map[src] = *entry;
     }
 }
 
 const mcs51_irq_map_entry_t* wink_mcs51_get_irq_map_entry(mcs51_irq_source_t src) {
-    ensure_irq_map();
-    if (src < IRQ_SOURCE__COUNT) {
-        return &s_irq_map[src];
+    Mcu51Context* ctx = mcs51_get_context();
+    if (ctx != nullptr && src < IRQ_SOURCE__COUNT) {
+        return &ctx->irq_map[src];
     }
     return nullptr;
 }
 
 void wink_mcs51_reset_irq_map(void) {
-    std::memcpy(s_irq_map, s_default_irq_map, sizeof(s_default_irq_map));
-    s_irq_map_initialized = true;
+    Mcu51Context* ctx = mcs51_get_context();
+    if (ctx == nullptr) {
+        return;
+    }
+    // Core standard rows first, then the chip package re-applies its
+    // extended rows (stage5 CPL-06): a state reset must never silently
+    // demote a chip-family context to the bare standard profile.
+    std::memcpy(ctx->irq_map, s_default_irq_map, sizeof(s_default_irq_map));
+    if (ctx->irq_map_extend != nullptr) {
+        ctx->irq_map_extend(ctx);
+    }
 }
 
 void wink_mcs51_suppress_next_irq(void) {
@@ -213,9 +232,16 @@ void mcs51_raise_irq(mcs51_irq_source_t src) {
     if (src >= IRQ_SOURCE__COUNT) {
         return;
     }
-    ensure_irq_map();
     Mcu51Context* ctx = mcs51_get_context();
-    const mcs51_irq_map_entry_t& entry = s_irq_map[src];
+    if (ctx == nullptr) {
+        return;
+    }
+    const mcs51_irq_map_entry_t& entry = ctx->irq_map[src];
+    // Stage5 CPL-06 insulation: an extended source on a family without the
+    // vector (e.g. an ADC request on classic) never latches pending.
+    if (!family_vector_reachable(ctx, entry.vector)) {
+        return;
+    }
     uint8_t prio = 0;
     if (entry.prio_sfr != 0xFFu) {
         prio = (ctx->sfr_shadow[entry.prio_sfr] >> entry.prio_bit) & 1u;
@@ -270,8 +296,6 @@ uint8_t mcs51_irq_scan_and_dispatch(void) {
         return 0;
     }
 
-    ensure_irq_map();
-
     // Determine current running priority (-1 if not in ISR)
     int current_prio = -1;
     if (ctx->in_service_depth > 0) {
@@ -286,7 +310,14 @@ uint8_t mcs51_irq_scan_and_dispatch(void) {
         if ((ctx->pending_interrupts & (1u << s)) == 0) {
             continue;
         }
-        const mcs51_irq_map_entry_t& entry = s_irq_map[s];
+        const mcs51_irq_map_entry_t& entry = ctx->irq_map[s];
+
+        // Stage5 CPL-06: unmapped / non-whitelisted vectors never dispatch
+        // (defense in depth behind the raise-time family drop).
+        if (!family_vector_reachable(ctx, entry.vector)) {
+            ctx->pending_interrupts &= ~(1u << s);
+            continue;
+        }
 
         // Check individual IE
         if (entry.ie_sfr != 0xFFu) {
@@ -306,10 +337,14 @@ uint8_t mcs51_irq_scan_and_dispatch(void) {
             } else if (s == IRQ_SOURCE_INT1) {
                 bool edge = (ctx->sfr_shadow[0x88] & (1u << 2)) != 0;
                 flag_set = !edge || ((ctx->sfr_shadow[0x88] & (1u << 3)) != 0);
-            } else if (s == IRQ_SOURCE_TIMER2 && entry.flag_sfr == 0xC9u) {
-                // Timer 2 multi-flag check: T2F (bit 7), T2EXIF (bit 6), T2C3..0IF (bits 3:0).
-                // Active if any enabled flag in T2IE (0xCF) is set.
-                flag_set = ((ctx->sfr_shadow[0xC9u] & ctx->sfr_shadow[0xCFu]) != 0);
+            } else if (ctx->irq_flag_predicate != nullptr) {
+                // Stage5 CPL-06 (S5-1 Step 1b): chip-owned multi-flag
+                // semantics (e.g. a capture/compare flag set while T2F=0).
+                // The chip hook must reproduce the standard single-bit
+                // check for every source it does not own; standard parts
+                // (null slot) take the plain single-bit path below.
+                flag_set = ctx->irq_flag_predicate(
+                    ctx, static_cast<mcs51_irq_source_t>(s), &entry);
             } else {
                 flag_set = (ctx->sfr_shadow[entry.flag_sfr] & (1u << entry.flag_bit)) != 0;
             }
@@ -344,7 +379,7 @@ uint8_t mcs51_irq_scan_and_dispatch(void) {
     }
 
     // Best candidate found
-    const mcs51_irq_map_entry_t& entry = s_irq_map[best_src];
+    const mcs51_irq_map_entry_t& entry = ctx->irq_map[best_src];
     ctx->pending_interrupts &= ~(1u << best_src);
 
     // Auto-clear hardware flag

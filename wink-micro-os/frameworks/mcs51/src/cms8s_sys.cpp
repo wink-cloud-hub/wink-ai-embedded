@@ -11,6 +11,9 @@
 //     window, so sloppy TA sequences fail instead of passing.
 //   - CLKDIV write hook: derives the simulated system clock from the
 //     CMS8S78xx 24 MHz internal RC (Fsys = Fosc for div=0, else Fosc/(2*div)).
+//   - Stage5 CPL-06/08 chip-wide glue: extended IRQ profile extension +
+//     Timer2 multi-flag predicate + declared-XSFR allowlist validation,
+//     installed per context by init/reset (see the glue section below).
 //   - WDCON register exists (TA-protected) so WDT enable/feed sequences are
 //     exercisable; Stage 3 Task 4 (A-04) adds the coarse overflow model:
 //     CKCON.WTS interval (vendor wdt.h counts) vs virtual time since the
@@ -23,11 +26,15 @@
 #include "mcs51_family.h"
 #include "mcs51_trap.h"
 #include "wink_mcs51_clock.h"
+#include "wink_mcs51_isr.h"
 #include "wink_mcs51_strict.h"
 #include "wink_mcs51_timer.h"
 #include "wink_mcs51_wdt.h"
 #include "cms8s_priv.h"
+#include "cms8s_sfr_map.h"
+#include "cms8s_xsfr_allowlist.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <cstdlib>
@@ -255,6 +262,93 @@ extern "C" void on_iap_read(Mcu51Context* ctx, uint8_t addr) {
     wink_mcs51_unsupported(MCS51_FEAT_IAP_FLASH, "IAP/Flash status poll (MCTRL/MDATA/MADR/MLOCK/PCRCD)");
 }
 
+// ── Stage5 CPL-06/08: chip-wide IRQ profile + XSFR window validation ───────
+// The generic core keeps only the standard 0..5 sources plus a family-gated
+// MOVX window; the proprietary knowledge is owned here:
+//   * extended source->vector rows, loaded through the existing
+//     wink_mcs51_set_irq_map_entry API and re-applied on every state reset
+//     via ctx->irq_map_extend;
+//   * the Timer2 multi-flag predicate (CCxIF/T2EXIF can be set while T2F is
+//     0 — the S4-2 timer model raises the shared TIMER2 source);
+//   * the GAP-23 declared-XSFR allowlist the core's unmodeled tripwire
+//     consults through ctx->xsfr_validate.
+// Installed by cms8s_sys init/reset (the chip descriptor every context
+// reset runs), so the profile follows the CONTEXT — a classic context can
+// never inherit it (L1 insulation).
+struct Cms8sIrqExtension {
+    mcs51_irq_source_t    src;
+    mcs51_irq_map_entry_t entry;
+};
+
+// Priority bits follow the vendor IRQ_SET_PRIORITY macro with the
+// en_Priority_Module enum (module = vector + 1): IP bit=module (<8),
+// EIP1 bit=module-8 (8..15), EIP2 bit=module-16 (16..23), EIP3
+// bit=module-24 (24..31). UART1 is absent by silicon (no UART1 here).
+const Cms8sIrqExtension kCms8sIrqExtensions[] = {
+    { IRQ_SOURCE_ADC,    { 19u, 0xAAu, 4u, 0xB2u, 4u, 0xBAu, 4u, MCS51_IRQ_SW_CLEAR } },
+    { IRQ_SOURCE_PWM,    { 18u, 0xAAu, 3u, 0xB2u, 3u, 0xBAu, 3u, MCS51_IRQ_SW_CLEAR } },
+    { IRQ_SOURCE_I2C,    { 21u, 0xAAu, 6u, 0xB2u, 6u, 0xBAu, 6u, MCS51_IRQ_SW_CLEAR } },
+    { IRQ_SOURCE_SPI,    { 22u, 0xAAu, 7u, 0xB2u, 7u, 0xBAu, 7u, MCS51_IRQ_SW_CLEAR } },
+    { IRQ_SOURCE_TIMER3, { 15u, 0xAAu, 0u, 0xB2u, 0u, 0xBAu, 0u, MCS51_IRQ_HW_AUTO_CLEAR } },
+    { IRQ_SOURCE_TIMER4, { 16u, 0xAAu, 1u, 0xB2u, 1u, 0xBAu, 1u, MCS51_IRQ_HW_AUTO_CLEAR } },
+};
+
+// Loaded by the glue installer below and re-invoked by
+// wink_mcs51_reset_irq_map on every state reset (mcs51_isr.cpp calls this
+// through ctx->irq_map_extend). Rows are written DIRECTLY into the passed
+// ctx (S5-H2 review): wink_mcs51_set_irq_map_entry is active-context-bound,
+// so using it here would bleed a background context's profile into the
+// active one; the public API remains the runtime override surface.
+extern "C" void cms8s_irq_map_extend(struct Mcu51Context* ctx) {
+    if (ctx == nullptr) {
+        ctx = mcs51_get_context();
+    }
+    if (ctx == nullptr) {
+        return;
+    }
+    const size_t n = sizeof(kCms8sIrqExtensions) /
+                     sizeof(kCms8sIrqExtensions[0]);
+    for (size_t i = 0; i < n; ++i) {
+        ctx->irq_map[kCms8sIrqExtensions[i].src] =
+            kCms8sIrqExtensions[i].entry;
+    }
+}
+
+// S5-1 Step 1b: Timer2 multi-flag validity — active when ANY flag enabled
+// in T2IE is set (T2F bit7, T2EXIF bit6, T2C3..0IF bits 3:0). Every other
+// source keeps the standard single-bit flag check.
+extern "C" bool cms8s_irq_flag_predicate(struct Mcu51Context* ctx,
+                                         mcs51_irq_source_t src,
+                                         const mcs51_irq_map_entry_t* entry) {
+    if (ctx == nullptr) {
+        ctx = mcs51_get_context();
+    }
+    if (ctx == nullptr || entry == nullptr) {
+        return false;
+    }
+    if (src == IRQ_SOURCE_TIMER2 && entry->flag_sfr == CMS8S_SFR_T2IF) {
+        return ((ctx->sfr_shadow[CMS8S_SFR_T2IF] &
+                 ctx->sfr_shadow[CMS8S_SFR_T2IE]) != 0);
+    }
+    return (ctx->sfr_shadow[entry->flag_sfr] &
+            (1u << entry->flag_bit)) != 0;
+}
+
+// GAP-23 declared-XSFR membership (moved from the generic xdata TU in
+// stage5 CPL-08): binary search over the audit-generated allowlist. The
+// ctx parameter is part of the hook ABI (S5-H2 review); this part has a
+// static declared set, so it carries no per-context state.
+extern "C" bool cms8s_xsfr_allowlisted(struct Mcu51Context* ctx,
+                                       uint64_t addr) {
+    (void)ctx;
+    if (addr > 0xFFFFull) {
+        return false;
+    }
+    const uint16_t a = static_cast<uint16_t>(addr);
+    const uint16_t* first = kMcs51XsfrAllowlist;
+    return std::binary_search(first, first + kMcs51XsfrAllowlistCount, a);
+}
+
 }  // namespace
 
 extern "C" {
@@ -284,12 +378,26 @@ static void install_dispatch(struct Mcu51Context* ctx) {
     }
 }
 
+// Stage5 CPL-06/08 (S4-H2 discipline: reset rebuilds every registration):
+// chip-wide IRQ profile extension + XSFR validation hooks, per-context by
+// construction (memset zero on classic/foreign contexts = standard path).
+static void install_irq_bus_glue(struct Mcu51Context* ctx) {
+    if (ctx->family != MCS51_FAMILY_CMS8S78XX) {
+        return;  // defensive: standalone call on a foreign context
+    }
+    ctx->irq_map_extend = cms8s_irq_map_extend;
+    ctx->irq_flag_predicate = cms8s_irq_flag_predicate;
+    ctx->xsfr_validate = cms8s_xsfr_allowlisted;
+    cms8s_irq_map_extend(ctx);  // load now; state resets re-apply via hook
+}
+
 void cms8s_sys_reset(struct Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
     if (!ctx) return;
     cms8s_soc_bind(ctx);  // defensive: standalone resets bind too (no-op if bound)
     reset_state(ctx);
     install_dispatch(ctx);
+    install_irq_bus_glue(ctx);
 }
 
 void cms8s_sys_init(struct Mcu51Context* ctx) {
@@ -298,6 +406,7 @@ void cms8s_sys_init(struct Mcu51Context* ctx) {
     cms8s_soc_bind(ctx);  // bind BEFORE any pool deref (ordering invariant)
     reset_state(ctx);
     install_dispatch(ctx);
+    install_irq_bus_glue(ctx);
 }
 
 void cms8s_sys_poll(struct Mcu51Context* ctx) {

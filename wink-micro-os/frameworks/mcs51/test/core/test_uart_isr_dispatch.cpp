@@ -54,6 +54,10 @@ int main(void) {
     // Open the execution-phase interrupt gate (static registration already
     // happened at load; dispatch is suppressed until enabled).
     wink_mcs51_isr_enable();
+    // Stage5: the source->vector map is per-context and no longer lazily
+    // initialized — this test drives the model directly, so load the core
+    // standard profile explicitly (classic family default).
+    wink_mcs51_reset_irq_map();
     wink_mcs51_uart_reset();  // start with TI=0 and empty capture
 
     // ── Gated: EA+ES enabled → SBUF write vectors UART ISR (4) ──────────────

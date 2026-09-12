@@ -89,6 +89,9 @@ int main(void) {
     int fails = 0;
 
     wink_mcs51_isr_enable();
+    // Stage5: per-context map, no lazy init — this direct-drive test loads
+    // the core standard profile explicitly (classic family default).
+    wink_mcs51_reset_irq_map();
     wink_mcs51_uart_reset();  // TI=RI=0, FIFO flushed
     g_isr_hits = 0;
     g_rx_count = 0;

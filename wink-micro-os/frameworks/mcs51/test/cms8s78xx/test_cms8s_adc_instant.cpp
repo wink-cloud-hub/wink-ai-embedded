@@ -91,6 +91,9 @@ int main(void) {
     // the family explicitly (the compat lib defaults to classic).
     mcs51_test_register_family(MCS51_FAMILY_CMS8S78XX);
     mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
+    // Stage5: chip reset installs the extended IRQ profile + XSFR validator
+    // (per context, no lazy init); the reset runs the chip descriptors.
+    mcs51_context_reset(mcs51_get_context());
     wink_mcs51_isr_enable();       // open the execution-phase dispatch gate
     wink_mcs51_xdata_reset();      // clean XDATA shadow + OOB counters
     mcs51_adc_reset();             // clear injection rail

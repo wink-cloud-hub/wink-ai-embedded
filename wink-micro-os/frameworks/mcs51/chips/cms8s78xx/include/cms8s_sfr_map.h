@@ -23,6 +23,10 @@
 #define CMS8S_SFR_T34MOD 0xD2u  // T34MOD (timer T3/T4 + UART TMR4 baud check)
 #define CMS8S_SFR_EIE2 0xAAu  // EIE2 (timer + UART + IRQ map)
 #define CMS8S_SFR_EIF2 0xB2u  // EIF2 (timer + UART + IRQ map)
+// Timer2 flag/enable pair (stage5 S5-1): shared by the timer model and the
+// chip IRQ glue (multi-flag predicate), single definition point.
+#define CMS8S_SFR_T2IF 0xC9u
+#define CMS8S_SFR_T2IE 0xCFu
 
 // ── XSFR: pin-share selectors ──────────────────────────────────────────────
 // Reset value 0x7F = no pin connected (ref manual).

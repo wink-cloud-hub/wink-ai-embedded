@@ -77,6 +77,22 @@ typedef void (*mcs51_sfr_read_hook_t)(struct Mcu51Context* ctx, uint8_t addr);
 typedef void (*mcs51_sfr_write_notify_fn_t)(struct Mcu51Context* ctx,
                                             uint8_t addr);
 
+// ── XDATA/XSFR window validation hook (Stage5 CPL-08) ──────────────────────
+// Per-context single slot (Mcu51Context::xsfr_validate, memset zero = none).
+// When the ACTIVE family publishes an extended-SFR MOVX window
+// (descriptor xsfr_base/xsfr_size), the generic xdata path asks the chip
+// package whether an in-window address is a DECLARED chip register; an
+// address the chip does not own feeds the GAP-23 unmodeled tripwire. The
+// generic window test runs FIRST, so classic parts (no window) never reach
+// this hook. File-static globals are rejected here (dual-context
+// cross-talk, total §3.1b-4): the chip installs the slot on its context
+// reset. Returns true when the address is chip-declared.
+// The explicit ctx parameter follows the hook convention above (S5-H2):
+// a static-declaration chip ignores it, but banked/paged XSFR windows can
+// resolve per-context state without an ABI change.
+typedef bool (*mcs51_xsfr_validate_fn_t)(struct Mcu51Context* ctx,
+                                         uint64_t addr);
+
 // ── GPIO Trait hooks (Stage2 S2-1 declares, stage4 mounts) ─────────────────
 // Per-context function table (stored BY VALUE in Mcu51Context::gpio_hooks,
 // memset zero = unhooked). Lets enhanced families override pin behavior

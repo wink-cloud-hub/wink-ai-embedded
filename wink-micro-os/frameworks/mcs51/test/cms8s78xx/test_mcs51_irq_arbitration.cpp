@@ -14,6 +14,7 @@
 #include "cms8s_adc.h"
 #include "mcs51_context.h"
 #include "mcs51_proxy.hpp"
+#include "mcs51_test_harness.h"
 #include "mcs51_trap.h"
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_isr.h"
@@ -117,6 +118,12 @@ extern "C" void tearDown(void) {}
 
 int main(void) {
     printf("[mcs51-irq] Starting Task R3 characterization tests...\n");
+
+    // Stage5 S5-1: the extended profile (ADC vector 19) is chip-owned and
+    // loaded per context — select the family so the chip reset installs it.
+    // This test lives in the chip suite; the classic path is covered by the
+    // family-insulation test instead.
+    mcs51_test_use_family(MCS51_FAMILY_CMS8S78XX);
 
     // ── Test 1: In-service masking & call stack isolation (ADC ISR writes SBUF) ──
     {

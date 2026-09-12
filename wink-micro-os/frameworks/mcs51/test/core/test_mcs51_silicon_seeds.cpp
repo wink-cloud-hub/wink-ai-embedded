@@ -79,18 +79,9 @@ int main(void) {
           ctx->xdata_shadow[0xF0C0] == 0x7Fu,
           "PS_ADET/PS_INT0 reset seeds must remain 0x7F");
 
-    // ── 2) Classic AT89C52 reset seeds ─────────────────────────────────────
-    mcs51_test_register_family(MCS51_FAMILY_CLASSIC);
-    mcs51_context_set_family(MCS51_FAMILY_CLASSIC);
-    mcs51_context_reset(ctx);
-    check(ctx->sfr_shadow[0x8E] == 0x00u,
-          "Classic 51 CKCON shadow must be 0 (fixed Fsys/12)");
-    check(ctx->clock_hz == 0u,
-          "Classic 51 leaves clock_hz unset (12 MHz family fallback)");
-    check(wink_mcs51_get_clock_hz() == 12000000u,
-          "Classic 51 effective hardware clock fallback 12 MHz");
-
-    // ── 3) IRQ profile mapping (GAP-22) ────────────────────────────────────
+    // ── 2) IRQ profile mapping (GAP-22 / stage5 CPL-06) ────────────────────
+    // Core standard rows + the chip package extension (loaded per context by
+    // the cms8s_sys reset glue; stage5 moved the extended rows out of core).
     // Priority bits follow the vendor IRQ_SET_PRIORITY macro + module enum:
     // EIP1 bit=module-8, EIP2 bit=module-16 (extended module = vector+1).
     check_irq(IRQ_SOURCE_UART0,  4u,  0xA8, 4u, 0x98, 0u, 0xB8, 4u, "UART0");
@@ -108,6 +99,59 @@ int main(void) {
                                 u1->vector >= WINK_MCS51_NUM_VECTORS),
               "UART1 must be unmapped on CMS8S78xx (no UART1 peripheral)");
     }
+    // Stage5 CPL-06/08: the chip glue must be per-context installed.
+    check(ctx->irq_map_extend != nullptr,
+          "CMS8S reset must install the IRQ map extension hook");
+    check(ctx->irq_flag_predicate != nullptr,
+          "CMS8S reset must install the flag-predicate hook");
+    check(ctx->xsfr_validate != nullptr,
+          "CMS8S reset must install the XSFR validation hook");
+    // S5-1 Step 1b: the T2 predicate accepts any enabled T2IF flag
+    // (CC1IF here, T2F clear) and rejects flags disabled in T2IE.
+    {
+        const mcs51_irq_map_entry_t* t2 =
+            wink_mcs51_get_irq_map_entry(IRQ_SOURCE_TIMER2);
+        ctx->sfr_shadow[0xC9] = (1u << 1);
+        ctx->sfr_shadow[0xCF] = (1u << 1);
+        check(ctx->irq_flag_predicate(ctx, IRQ_SOURCE_TIMER2, t2),
+              "CMS8S T2 predicate must accept any enabled T2IF flag");
+        ctx->sfr_shadow[0xCF] = 0u;
+        check(!ctx->irq_flag_predicate(ctx, IRQ_SOURCE_TIMER2, t2),
+              "CMS8S T2 predicate must reject flags disabled in T2IE");
+        ctx->sfr_shadow[0xC9] = 0u;
+    }
+    // A state reset (pending/RETI clear) re-applies the chip profile.
+    wink_mcs51_reset_irq_state();
+    check_irq(IRQ_SOURCE_ADC, 19u, 0xAA, 4u, 0xB2, 4u, 0xBA, 4u,
+              "ADC after reset_irq_state");
+
+    // ── 3) Classic AT89C52 reset seeds + family insulation ─────────────────
+    mcs51_test_register_family(MCS51_FAMILY_CLASSIC);
+    mcs51_context_set_family(MCS51_FAMILY_CLASSIC);
+    mcs51_context_reset(ctx);
+    check(ctx->sfr_shadow[0x8E] == 0x00u,
+          "Classic 51 CKCON shadow must be 0 (fixed Fsys/12)");
+    check(ctx->clock_hz == 0u,
+          "Classic 51 leaves clock_hz unset (12 MHz family fallback)");
+    check(wink_mcs51_get_clock_hz() == 12000000u,
+          "Classic 51 effective hardware clock fallback 12 MHz");
+    // Stage5 CPL-06 L1: switching family must clear every chip hook and
+    // unmaps the extended sources (no "resurrection" via the old profile).
+    check(ctx->irq_map_extend == nullptr && ctx->irq_flag_predicate == nullptr &&
+          ctx->xsfr_validate == nullptr,
+          "classic reset must clear all chip IRQ/XSFR hooks");
+    {
+        const mcs51_irq_map_entry_t* adc =
+            wink_mcs51_get_irq_map_entry(IRQ_SOURCE_ADC);
+        check(adc != nullptr && adc->vector == 0xFFu,
+              "classic ADC source must be unmapped");
+    }
+    wink_mcs51_isr_enable();
+    mcs51_raise_irq(IRQ_SOURCE_ADC);
+    check((wink_mcs51_get_pending_interrupts() & (1u << IRQ_SOURCE_ADC)) == 0u,
+          "classic must drop an extended IRQ at raise time");
+    check(wink_mcs51_dispatch_vector(19u) == 0u,
+          "classic extended vector must be unreachable");
 
     // ── 4) GAP-01 note ────────────────────────────────────────────────────
     // The vendor mux macro (GPIO_P13_MUX_RXD == 0x03) is enforced by

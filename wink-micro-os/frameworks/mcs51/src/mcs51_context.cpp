@@ -139,6 +139,13 @@ void mcs51_context_reset(Mcu51Context* ctx) {
     Mcu51Context* saved_active = mcs51_get_context();
     mcs51_set_active_context(ctx);
 
+    // Stage5 CPL-06: (re)load the per-context source->vector profile. The
+    // core standard rows are written here; chip packages re-apply their
+    // extended rows in the descriptor loops below (their reset installs
+    // irq_map_extend, but the memset above cleared it, so this call sees a
+    // pure core profile first).
+    wink_mcs51_reset_irq_map();
+
     // Initialize peripherals via descriptor table (Task R1), filtered by
     // family (M1): series models never install hooks on another family.
     // Stage4 CPL-10: core table first, then the chip registry (same filter).

@@ -134,6 +134,9 @@ int main(void) {
     // descriptor masks ({8,8,6,4}) apply to every section below.
     mcs51_test_register_family(MCS51_FAMILY_CMS8S78XX);
     mcs51_context_set_family(MCS51_FAMILY_CMS8S78XX);
+    // Stage5: chip reset installs the extended IRQ profile + hooks
+    // (per-context, no lazy init) before the standalone model calls below.
+    mcs51_context_reset(mcs51_get_context());
     wink_mcs51_isr_enable();
     wink_mcs51_extint_reset();
     cms8s_extint_init(nullptr);

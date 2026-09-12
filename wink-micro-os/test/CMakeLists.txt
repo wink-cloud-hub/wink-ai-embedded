@@ -695,6 +695,12 @@ if(TARGET wink_mcs51_compat)
     add_mcs51_host_test(test_mcs51_soc_priv_isolation
         ../frameworks/mcs51/test/core/test_mcs51_soc_priv_isolation.cpp)
 
+    # Stage5 S5-1 Step 2 (PLAN-20260911-MCS51-S5): family insulation —
+    # classic extended vectors/raise blocked + XSFR window closed, dual
+    # contexts of different families coexist without profile bleed.
+    add_mcs51_host_test(test_mcs51_family_insulation
+        ../frameworks/mcs51/test/core/test_mcs51_family_insulation.cpp)
+
     # GAP-23 freshness gate: the checked-in XSFR tripwire allowlist must
     # match what the audit script emits from the chips REG_CMS8S78XX.H
     # (catches a stale allowlist after a pin-mux register is added/removed).
