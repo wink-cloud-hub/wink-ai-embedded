@@ -124,28 +124,30 @@ constexpr uint8_t AN_TO_PIN[26] = {
 static_assert(AN_TO_PIN[22] == 24u, "AN22 must map to physical Pin 24 (P3.0)");
 static_assert(sizeof(AN_TO_PIN) == 26u, "AN_TO_PIN must cover AN0..AN25");
 
-// Stage1 compat (S1-2 Step 2, deleted in stage7): old frontends/tests drive
-// the SYNTH key `32+ch` for on-chip channels on the pull track (v1 misuse).
-// Switch + counter live in the bottom extern "C" block (external linkage,
-// test-observable); board-space `32+ch` pulls by devices/ stay legal and
-// are never warned (detection lives on the on-chip path only).
+// Stage7 S7-1 (closes Stage1 S1-2): old frontends/tests that drive the
+// on-chip path through the SYNTH key `32+ch` (v1 misuse) are no longer
+// redirected to the physical pin: the read is REJECTED — STRICT aborts,
+// release reports the full-scale sentinel (fail-safe for heater control
+// instead of a silent fake 0 V short, the original E-02) and counts the
+// misuse. Board-space `32+ch` pulls by devices/ stay legal and are never
+// probed (detection lives on the on-chip path only).
 #ifndef WINK_MCS51_STRICT
-bool s_synth_redirect_warned = false;
+bool s_synth_misuse_warned = false;
 #endif
 
-inline void synth_redirect_policy(void) {
+inline void synth_misuse_policy(void) {
 #ifdef WINK_MCS51_STRICT
     assert(0 && "on-chip ADC read via synth key (WINK_MCS51_STRICT)");
     std::abort();
 #else
-    if (cms8s_adc_synth_redirect_count < 0xFFFFFFFFu) {
-        ++cms8s_adc_synth_redirect_count;
+    if (cms8s_adc_synth_misuse_count < 0xFFFFFFFFu) {
+        ++cms8s_adc_synth_misuse_count;
     }
-    if (!s_synth_redirect_warned) {
-        s_synth_redirect_warned = true;
-        pal_log_w("MCS51", "ADC on-chip channel pulled via synth key 32+ch "
-                           "(v1 misuse); redirected to physical pin, "
-                           "migrate frontend to pin keys");
+    if (!s_synth_misuse_warned) {
+        s_synth_misuse_warned = true;
+        pal_log_w("MCS51", "ADC on-chip channel driven via synth key 32+ch "
+                           "(v1 misuse); rejected, migrate frontend to "
+                           "physical pin keys");
     }
 #endif
 }
@@ -235,21 +237,18 @@ void do_adc_conversion(Mcu51Context* ctx) {
         // Core performs no mapping; the old `32+ch` synth misuse is gone.
         const uint8_t pin_key = AN_TO_PIN[ch];
         raw = static_cast<uint16_t>(mcs51_adc_get_value(pin_key) & 0x0FFFu);
-        // Stage1 compat (deleted stage7): old pull-track drivers that still
-        // feed the synth key `32+ch`. Redirect ONLY when the physical pin
-        // pulls a true 0.0 AND the synth key pulls > 0 — a bare `raw == 0`
-        // never qualifies (a real 0V short must report as-is), and an
-        // explicitly injected pin key never reroutes either.
-        if (cms8s_adc_dual_read_synth && raw == 0u &&
-            ctx->adc_inject_flag[pin_key] == 0u) {
+        // Stage7 (was stage1 dual-read compat): reject the old pull-track
+        // synth-key misuse. Detection ONLY when the physical pin is a true
+        // pull-0 with no injection AND the synth key still pulls > 0 — a
+        // bare `raw == 0` never qualifies (a real 0 V short must report
+        // as-is), and an explicitly injected pin key never reroutes either.
+        if (raw == 0u && ctx->adc_inject_flag[pin_key] == 0u) {
             const float pin_pull = js_pal_adc_read_norm(pin_key);
             const float synth_pull =
                 js_pal_adc_read_norm(static_cast<uint16_t>(32u + ch));
             if (pin_pull == 0.0f && synth_pull > 0.0f) {
-                raw = static_cast<uint16_t>(
-                    mcs51_adc_get_value(static_cast<uint8_t>(32u + ch)) &
-                    0x0FFFu);
-                synth_redirect_policy();
+                synth_misuse_policy();
+                raw = CMS8S_ADC_SYNTH_REJECT_SENTINEL;
             }
         }
     } else {
@@ -306,10 +305,9 @@ extern "C" void on_adcon0_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val
 
 extern "C" {
 
-// Stage1 dual-read compat knobs (S1-2, deleted stage7): external linkage so
-// tests observe them; default ON. See cms8s_adc.h.
-bool cms8s_adc_dual_read_synth = true;
-uint32_t cms8s_adc_synth_redirect_count = 0u;
+// Stage7 S7-1: synth-key misuse counter (was stage1 redirect counter),
+// external linkage so tests observe it. See cms8s_adc.h.
+uint32_t cms8s_adc_synth_misuse_count = 0u;
 
 void cms8s_adc_model_reset(struct Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
@@ -332,11 +330,11 @@ void cms8s_adc_model_reset(struct Mcu51Context* ctx) {
     // not struct pokes — same values, chip-owned call path.
     mcs51_adc_set_vref_mv(3000u);
     mcs51_adc_set_vrail_mv(3000u);
-    // Stage1 compat counters reset per run (test isolation; the ON/OFF
-    // switch itself is sticky across resets by design).
-    cms8s_adc_synth_redirect_count = 0u;
+    // Stage7: synth misuses are counted per run (test isolation); the
+    // warn-once latch is sticky across resets by design.
+    cms8s_adc_synth_misuse_count = 0u;
 #ifndef WINK_MCS51_STRICT
-    s_synth_redirect_warned = false;
+    s_synth_misuse_warned = false;
 #endif
     // S4-H2 (reset-rebuilds-registration contract): the ADCON0 hook lives
     // here, not in init — init delegates to model_reset, so both install it.

@@ -28,12 +28,14 @@ uint64_t cms8s_adc_next_event_us(struct Mcu51Context* ctx);
 uint32_t cms8s_adc_conversion_count(void);
 uint8_t  cms8s_adc_last_channel(void);
 
-// Stage1 compat (S1-2 Step 2, deleted in stage7): dual-read switch for the
-// on-chip path's `32+ch` v1 misuse (default ON this stage) + observable
-// redirect counter for the compat unit test. Board-space `32+ch` pulls by
-// devices/ are permanently legal and never counted here.
-extern bool cms8s_adc_dual_read_synth;
-extern uint32_t cms8s_adc_synth_redirect_count;
+// Stage7 S7-1 (closes Stage1 S1-2 dual-read): old frontends driving the
+// on-chip path through the synthetic key `32+ch` are REJECTED, never
+// redirected. Physical pin keys (AN_TO_PIN) are the v2 contract. STRICT
+// builds abort; release builds report the full-scale sentinel below, count
+// the misuse, and warn once. Board-space `32+ch` pulls by devices/ stay
+// permanently legal and are never probed here.
+#define CMS8S_ADC_SYNTH_REJECT_SENTINEL 0x0FFFu
+extern uint32_t cms8s_adc_synth_misuse_count;
 
 // A-02 ADC readiness gate (GAP-05): reason-bit mask + per-reason counters
 // (GAP-10 runner pattern, mirrors mcs51_uart notready). Bits:
