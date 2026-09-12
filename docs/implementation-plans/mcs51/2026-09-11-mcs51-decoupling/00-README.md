@@ -6,7 +6,7 @@
 | **创建日期** | `2026-09-11` |
 | **目标平台** | `host` / `wasm`（mcs51 仿真拦截层为 host/wasm-only，`ESP_PLATFORM` 下零符号，见框架 `CMakeLists.txt` 守卫） |
 | **工具链版本** | `GCC 14.2` / `MSVC 14.40` / `Emscripten 4.0.5` / `C++17`（见框架编译方言链） |
-| **系列状态** | 🔄 执行中（stage0~stage5 已完成，stage6 待开始） |
+| **系列状态** | 🔄 执行中（stage0~stage6 已完成，stage7 待开始） |
 | **优先级** | 🔴 P0（E-02 在线仿真假短路为阻塞性行为失真；其余为架构阻塞） |
 | **系列版本** | `v1.0` |
 | **审计 SSOT（发现源）** | [`docs/todolist/2026-09-11-mcs51-generic-vs-chip-specific-coupling-audit.md`](../../../todolist/2026-09-11-mcs51-generic-vs-chip-specific-coupling-audit.md)（24 项 CPL 详情以此为准，本系列不复述证据） |
@@ -183,7 +183,7 @@ graph TD
 | stage3 | [`./stage3-headers-namespaces.md`](./stage3-headers-namespaces.md) | CPL-09/13/14/21/24 | ✅ 已完成（2026-09-11，S3-D1~D6 六项裁决，签署见 stage3 §7） |
 | stage4 | [`./stage4-peripheral-strip.md`](./stage4-peripheral-strip.md) | CPL-03/04/05/07/10 | ✅ 已完成（2026-09-12，S4-D1~D4 四项裁决，签署见 §7） |
 | stage5 | [`./stage5-irq-bus-table.md`](./stage5-irq-bus-table.md) | CPL-06/08 | ✅ 已完成（2026-09-12，S5-D1~D4 四项裁决 + S5-H1/H2 复审闭环；D-1 T2 标准语义专设立项，见附录 D，签署见 §7） |
-| stage6 | [`./stage6-build-toolchain.md`](./stage6-build-toolchain.md) | CPL-15/16/24 | ⏳ 待开始 |
+| stage6 | [`./stage6-build-toolchain.md`](./stage6-build-toolchain.md) | CPL-15/16/24 | ✅ 已完成（2026-09-12，S6-D1~D9 九项裁决 + S6-H1~H7 复审闭环，签署见 §7/附录 B） |
 | stage7 | [`./stage7-test-contract-close.md`](./stage7-test-contract-close.md) | CPL-22/23 | ⏳ 待开始 |
 
 跨阶段文件冲突矩阵：`mcs51_context.h/.cpp`（stage0→stage2 严格串行）、`mcs51_adc.h/.cpp + cms8s_adc.cpp`（stage1 独占，stage2 只动 rail 默认播种部分需串在 stage1 后）、`CMakeLists.txt`（stage6 独占**目标划分与链接关系**；之前阶段允许增删源文件列表与 include 目录——stage3 头文件搬迁与 stage4 新文件编译必需，不算动目标结构）。

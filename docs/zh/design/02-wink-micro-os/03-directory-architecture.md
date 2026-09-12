@@ -170,14 +170,18 @@ wink-micro-os/
 │
 ├── frameworks/                 # 【仿真拦截层 / 外国生态兼容，Axis B；仅 host/wasm 编译】
 │   └── mcs51/                  #   8051/Keil C51 零侵入仿真（ADR-0070；ESP_PLATFORM 下 return()，真机零增量）
-│       ├── include/            #   REGX52.H / REG_CMS8S.H / cms8s78xx.h / mcs51_adc.h / ADC0832.H / mcs51_trap.h / absacc.h …
-│       ├── src/                #   mcs51_bridge.cpp（codegen 缝 + init）、mcs51_sfr.cpp、mcs51_adc0832.cpp、cms8s_adc.cpp …
-│       ├── tools/mcs51_cleanup.py  # Keil .c → 构建树 .cpp（ISR 重写、UTF-8/GBK、--transcode）
-│       └── CMakeLists.txt      #   wink_mcs51_compat 静态库（EXCLUDE_FROM_ALL，test 链接）
+│       ├── include/            #   通用 core 头（REGX52.H / mcs51_adc.h / mcs51_trap.h / absacc.h …）；厂商头见 chips/
+│       ├── src/                #   仅通用 core 实现（mcs51_bridge.cpp、mcs51_sfr.cpp、mcs51_gpio.cpp …）
+│       ├── chips/              #   厂商芯片自治包（cms8s78xx/、at89c52/；依赖方向 chips → core 单向）
+│       ├── devices/            #   板级外挂器件包（adc0832/，经 trap 注册接入）
+│       ├── tools/              #   清洗/门禁脚本 + manifests/chips/*.yaml（芯片事实唯一源，stage6 S6-2）
+│       ├── test/               #   测试分层（core/、cms8s78xx/、samples/、wasm/、fixtures/）
+│       └── CMakeLists.txt      #   wink_mcs51_core / _cms8s / _at89 / _adc0832（STATIC EXCLUDE_FROM_ALL）
+│                               #   + per-target STRICT 孪生（_core_strict/_cms8s_strict，CPL-24）
+│                               #   + 旧单体名 wink_mcs51_compat(_strict) 一版 INTERFACE 别名（R-04 回滚）
 │
 ├── test/                       # host 测试（PC gcc + Unity）；link pal+dal+runtime+trace+targets/host
-│   ├── CMakeLists.txt
-│   ├── mcs51/                  #   8051 拦截层测试：samples/（未修改 Keil 源码）、unit/、wasm/、apps/iron_ntc/wink-app.json
+│   ├── CMakeLists.txt          #   中央注册：unity/host-PAL/wasm wiring + frameworks/mcs51/test 路径前缀
 │   ├── unity/                  #   vendor（from chigo-micro）
 │   ├── stubs/                  #   仅留测试专用注入控制 API + js_sim 桩
 │   │   ├── host_test_ctrl.{c,h}    #   sim_set_echo_timing / sim_last_pwm_duty（驱动 targets/host）
