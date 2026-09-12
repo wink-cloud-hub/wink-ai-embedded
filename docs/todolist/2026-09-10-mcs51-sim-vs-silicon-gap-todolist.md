@@ -39,7 +39,7 @@
 | [GAP-05](#gap-05p1adc-参考电压链模拟复用完全不建模) | 🔧 部分（A 半落地 2026-09-11：VSEL/LDO/mux 门控 + DIV 记账 + Vrail/Vref 换算，host 全绿；device-tree 外电路声明 + 红线 §4.4 待办） | **P1** | A-02 | ADC 参考电压链 / 模拟 mux / LDO 不参与码值 | NTC 上拉轨≠3.0V 时全温区系统性测温偏差 | **是（前提性风险）** |
 | [GAP-06](#gap-06p1config-选项字节不在仿真世界fosc-硬编码-24mhz) | ⬜ 未开始 | **P1** | A-06 + C-03 | CONFIG 选项字节不建模，Fosc 硬编码 24MHz | 芯片 CONFIG 非 24MHz 路径时 tick 与波特率同比错 | **是（前提性风险）** |
 | [GAP-07](#gap-07p1wdt-只验证-ta-序列不验证超时复位ta-窗口过宽容) | 🔧 部分（2026-09-11：WDT 粗模型 + TA 收窄 + 双构建单测全绿，host 零回归；整机复位/wasm 回归/runner 接线待办） | **P1** | A-04（依赖 A-03 先行） | WDT 不模拟超时复位；TA 窗口无超时/不被打断 | 真机喂狗不及时复位循环；错误 TA 用法虚假通过 | 低（喂狗周期 10ms，余量充足） |
-| [GAP-08](#gap-08p1gpio-方向上下拉驱动强度寄存器不参与行为) | 🔧 部分（2026-09-11：TRIS/UP/OD 门控 + AN 数字读屏蔽 + 计数器，host 全绿；DR/LEDSDR 强度携带→契约提案，独立审计扫描待办） | **P1** | A-05 | TRIS/UP/OD/DR/LEDSDR 不参与引脚行为 | 忘配输出方向/上拉 → 继电器不吸合、按键乱触发 | 否（应用配置完整） |
+| [GAP-08](#gap-08p1gpio-方向上下拉驱动强度寄存器不参与行为) | 🔧 部分（2026-09-11：TRIS/UP/OD 门控 + AN 数字读屏蔽 + 计数器，host 全绿；2026-09-12：TRIS 方向切换重驱/释放落地（PLAN-20260912-MCS51-P3-TRIS），vendor EOC 两场景复绿、五载体 + health_pot 无回归；DR/LEDSDR 强度携带→契约提案，独立审计扫描待办） | **P1** | A-05 | TRIS/UP/OD/DR/LEDSDR 不参与引脚行为 | 忘配输出方向/上拉 → 继电器不吸合、按键乱触发 | 否（应用配置完整） |
 | [GAP-09](#gap-09p2xram-合法窗口-8kb--硅片-1kb) | ✅ 完成 | P2 | A-06 | XRAM 合法窗口 8KB ≠ CMS8S78xx 实际 1KB | 0x0400~0x1FFF 访问仿真合法、真机落入 XSFR | 否（仅用 0x10~0x15） |
 | [GAP-10](#gap-10p2生产-wasm-非-strict无头 runner-不按-warning-判失败) | ✅ 完成 | P2 | A-07 | 生产 wasm 非 STRICT，无头 runner 不消费 warning/OOB 计数 | 场景绿色掩盖越界访问与未建模特性调用 | 间接 |
 | [GAP-11](#gap-11p2c51-16-位-int--unsigned-char-语义差异未入红线手册) | ⬜ 未开始 | P2 | A-07（文档）+ B-04（语义根治） | C51 16 位 int / unsigned char 语义差异未文档化 | 依赖回绕/符号/移位的代码两端分叉 | 否（已人工核对） |
