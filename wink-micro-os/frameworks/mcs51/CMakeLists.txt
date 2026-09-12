@@ -16,9 +16,10 @@ cmake_minimum_required(VERSION 3.15)
 #   wink_mcs51_core / _cms8s / _at89 / _adc0832
 # plus per-family STRICT twins (WINK_MCS51_STRICT is a per-target compile
 # definition, never a framework-wide cache knob — no 2xN library matrix).
-# The legacy monolithic names survive one version as INTERFACE aliases for
-# rollback (R-04) and stage7 removal. Source lists live in mcs51_sources.cmake
-# so the emcc+Node test harness compiles the exact same set.
+# Stage7 S7-1 removed the one-version legacy INTERFACE aliases
+# (wink_mcs51_compat / _strict); consumers name the four targets directly.
+# Source lists live in mcs51_sources.cmake so the emcc+Node test harness
+# compiles the exact same set.
 # ─────────────────────────────────────────────────────────────────────────────
 
 if(ESP_PLATFORM)
@@ -34,12 +35,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(${CMAKE_CURRENT_LIST_DIR}/mcs51_sources.cmake)
 
 # The chip register entry is built as an OBJECT library, linked directly by
-# the final executable (tests / production app). Reason: mcs51_bridge.cpp
-# (core) calls the chosen family register entry (generated
-# mcs51_family_select.h), while the register entry and chip models call back
-# into core — an object-level cycle that a single-pass static-archive scan
-# cannot resolve. Objects are placed on the link line ahead of the archives,
-# so the forward reference resolves without whole-archive or link-group flags
+# the final executable (tests / production app). Reason: Stage7 S7-1 makes
+# chip registration link-time self-registration — the register TU's static
+# initializer appends the family descriptors to the core registry, and a
+# constructor-only archive member is never pulled by the static linker's
+# symbol scan. Placing the object on the link line ahead of the archives both
+# guarantees the constructor runs and resolves the register entry <->
+# core-model callback cycle without whole-archive or link-group flags
 # (portable down to CMake 3.15 / MSVC). Object libraries are not transitive
 # through INTERFACE_LINK_LIBRARIES, so consumers list it explicitly.
 set(_MCS51_CMS8S_LIB_SOURCES ${MCS51_CMS8S_SOURCES})
@@ -66,20 +68,10 @@ add_library(wink_mcs51_cms8s_strict STATIC EXCLUDE_FROM_ALL ${_MCS51_CMS8S_LIB_S
 target_compile_definitions(wink_mcs51_core_strict  PUBLIC WINK_MCS51_STRICT=1)
 target_compile_definitions(wink_mcs51_cms8s_strict PUBLIC WINK_MCS51_STRICT=1)
 
-# Legacy monolithic names, alias-only for one version (R-04 rollback path).
-# The aliases bundle the STATIC libraries only: CMake does not propagate
-# OBJECT-library objects through INTERFACE_LINK_LIBRARIES, so the chip
-# register object (wink_mcs51_<family>_register) must be linked by the final
-# executable that needs chip registration (tests do this explicitly). Both
-# aliases are symmetric (core/family/at89/adc0832); production injection uses
-# the per-family wink_mcs51_inject_<family> bundles below.
-add_library(wink_mcs51_compat INTERFACE)
-target_link_libraries(wink_mcs51_compat INTERFACE
-    wink_mcs51_core wink_mcs51_cms8s wink_mcs51_at89 wink_mcs51_adc0832)
-add_library(wink_mcs51_compat_strict INTERFACE)
-target_link_libraries(wink_mcs51_compat_strict INTERFACE
-    wink_mcs51_core_strict wink_mcs51_cms8s_strict wink_mcs51_at89
-    wink_mcs51_adc0832)
+# Stage7 S7-1: the legacy monolithic INTERFACE aliases are gone. Production
+# injection uses the per-family wink_mcs51_inject_<family> bundles below; the
+# chip register object is linked explicitly by the final executable because
+# CMake does not propagate OBJECT-library objects through INTERFACE targets.
 
 # Stage6 review S6-H1: per-family production injection bundle. The root build
 # resolves wink-app.json mcu -> manifest family and links
@@ -145,11 +137,14 @@ foreach(_mcs51_core_tgt wink_mcs51_core wink_mcs51_core_strict)
 endforeach()
 
 # Chip packages: own private headers only; public sandbox headers come from
-# core. STRICT twins link their STRICT core twin so a strict test binary never
+# core. The include surface is PUBLIC (Stage7 S7-1) because application TUs
+# include <wink_mcu.h> -> mcs51_family_route.h -> the family register header
+# (e.g. REG_CMS8S78XX.H), resolved from the chip package the manifest picked.
+# STRICT twins link their STRICT core twin so a strict test binary never
 # carries two core copies (duplicate symbols).
 foreach(_mcs51_cms8s_tgt wink_mcs51_cms8s wink_mcs51_cms8s_strict)
     target_include_directories(${_mcs51_cms8s_tgt}
-        PRIVATE ${CMAKE_CURRENT_LIST_DIR}/chips/cms8s78xx/include
+        PUBLIC ${CMAKE_CURRENT_LIST_DIR}/chips/cms8s78xx/include
     )
 endforeach()
 target_link_libraries(wink_mcs51_cms8s        PUBLIC wink_mcs51_core)
@@ -220,8 +215,10 @@ foreach(_mcs51_chip_dir IN LISTS _mcs51_chip_dirs)
         target_include_directories(${_mcs51_chip_tgt}
             PRIVATE ${CMAKE_CURRENT_LIST_DIR}/include)
         if(IS_DIRECTORY "${_mcs51_chip_dir}/include")
+            # PUBLIC: applications include <wink_mcu.h>, which routes to this
+            # package's register header (same contract as cms8s).
             target_include_directories(${_mcs51_chip_tgt}
-                PRIVATE "${_mcs51_chip_dir}/include")
+                PUBLIC "${_mcs51_chip_dir}/include")
         endif()
         target_link_libraries(${_mcs51_chip_tgt} PUBLIC wink_mcs51_core)
         add_library("wink_mcs51_inject_${_mcs51_family}" INTERFACE)
