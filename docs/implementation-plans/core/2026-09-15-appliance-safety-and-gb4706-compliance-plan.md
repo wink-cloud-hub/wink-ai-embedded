@@ -1,0 +1,198 @@
+# 【实施计划】小家电功能安全与 GB4706/IEC60335 安规合规专项计划 (v2.1 - 工业级安规定稿版)
+
+> 📋 **计划说明**：本计划作为 [`PLAN-20260912-SIM-FIDELITY`](./2026-09-12-high-fidelity-simulation-system-hardening-plan.md) 的后续长效演进专项，专注于小家电商业级功能安全（Functional Safety）与认证级安规标准（GB 4706.19 / GB 4706.1 / IEC 60335-2-15）的落地与仿真验证。重点实现**掉电热态防重开 60s 冷却锁定**、字模扩展、安规故障注入矩阵、去 PAL 化裸机断言以及微波炉/烤箱安全模型扩展。
+>
+> 🎯 **关联规范**：`docs/zh/design/04-wasm-simulation/04-assurance/01-consistency-spec.md` (C1.3, C11.1, C23)
+> 📚 **管理 ADR**：ADR-0001, ADR-0003, ADR-0009（物理行为与故障注入）, ADR-0067（小家电动力学 Profile 保持 Proposed 至本专项合入）
+> 🔗 **前置依赖计划**：[`PLAN-20260912-SIM-FIDELITY`](./2026-09-12-high-fidelity-simulation-system-hardening-plan.md)（仿真高保真底座与固件基础去抖/斜率硬化）
+
+---
+
+## 1. 元数据表（🔴 必选）
+
+| 字段 | 内容 |
+|------|------|
+| **计划编号** | `PLAN-20260915-APPLIANCE-SAFETY-AND-GB4706` |
+| **创建日期** | 2026-09-12 |
+| **计划执行日期**| 2026-09-15（待前置基线计划 Phase-A 交付后立即启动） |
+| **目标平台/SoC** | `mcs51` (CMS8S78xx) / `wasm` (UniSim 3.0) / `host` |
+| **工具链/SDK版本**| `SDCC 4.x` / `Keil-C51 Transpiler` / `Emscripten 3.1.x` / `Node.js v20+` |
+| **计划状态** | 📋 规划定稿 / 待前置 Phase-A 完成 |
+| **优先级** | 🟡 P1（商业量产合规专项） |
+| **计划版本** | `v2.1`（冷却门控先消费后拦截、场景 2/3 降级 L1＋D-005、场景超时与掩模规则、符号与行号 legends） |
+| **关联前置计划** | [`PLAN-20260912-SIM-FIDELITY`](./2026-09-12-high-fidelity-simulation-system-hardening-plan.md) |
+| **关联技术设计** | [`docs/zh/design/07-platform-governance/02-error-fault-model.md`](../../zh/design/07-platform-governance/02-error-fault-model.md) |
+| **关联设计规范** | [`docs/zh/design/04-wasm-simulation/04-assurance/01-consistency-spec.md`](../../zh/design/04-wasm-simulation/04-assurance/01-consistency-spec.md) |
+| **计划负责人** | 小家电安规与质量验证组 |
+| **所需子代理技能** | `embedded-best-practice` |
+
+---
+
+## 2. 背景与立项目标（🔴 必选）
+
+### 2.1 商业小家电量产安规背景
+
+在前置基线计划 [`PLAN-20260912-SIM-FIDELITY`](./2026-09-12-high-fidelity-simulation-system-hardening-plan.md) 中，我们解决了仿真底座保真度与基础控制律问题。但在真实商业量产与安规认证（GB 4706.19、GB 4706.1、IEC 60335-2-15）中，固件必须具备工业级安全防御能力：
+
+1. **强热余温掉电重开漏洞（Power-Cycle Bypass Loophole）**：
+   若单纯在 RAM 中维护 `cooldown_seconds`，用户发生干烧（E-03）或超温（E-04）后，拔掉电源插头再重新插上，RAM 清零，用户可立即开机加热。此时发热盘物理余温仍在 200°C~300°C，二次叠加蓄热极易引发熔毁起火。**必须在无 NVS 硬件下，以“上电热态侦测”封堵该漏洞**。
+2. **纯裸机 8051 无 PAL 抽象的断言真理**：
+   `mcs51_health_pot` 是无 OSAL、无 PAL 的轻量裸机固件。安规保护的成功出口绝非高级的 `WINK_ERR_BUSY` 错误码，而是物理级三件套：**状态锁在 ST_OFF、数码管打出 COOL、P2.0 继电器引脚硬件电平实测为 0**。
+3. **真实硬件边界的诚实划分**：
+   本控制板无电流互感器回路，继电器物理烧结触点粘连在仿真中无法自闭环感知，诚实列为 **HIL 独占（依靠双金属片和不可逆 TCO 熔断器硬件物理兜底）**，软件专注于能测可防的安规闭环。
+
+### 2.2 技术/业务目标
+
+- ✅ **目标 1（强热余温 60s 冷却锁定 + 上电热态防重开）**：干烧/超温后锁定 60s 物理冷却；拔插掉电重开时，若采得上电温度 $T \ge 45^\circ\text{C}$，强制续锁 60s 冷却，彻底消除掉电绕过漏洞。
+- ✅ **目标 2（数码管 COOL 字模与声音交互）**：将 `font_table` 扩充至 17 字节加入 'C' 与 'L'；确立 `FAULT > COOL > NORMAL` 明确显示优先级；被拒开机时复用 `TONE_BUSY`（800Hz 短促否定音）。
+- ✅ **目标 3（GB 4706 认证级故障注入矩阵与 Oracle 分级）**：建立 5 组认证级自动化场景，区分“仿真可测”与“HIL 独占”预言，断言纯裸机物理三件套。
+- ✅ **目标 4（跨品类安全模型与规范修订）**：ADR-0067 保持 Proposed 吸收微波炉三重门联锁（GB 4706.21）与烤箱风机联锁（GB 4706.22）安全动力学。
+
+---
+
+## 3. 详细任务拆分与执行说明（🔴 必选）
+
+---
+
+### Task 1：强热余温 60s 冷却锁定、上电热态拦截与 UI 交互 `[ 状态: ⏳ 待开始 ]`
+
+| 字段 | 内容 |
+|------|------|
+| **负责人** | 嵌入式安全组 |
+| **预估工时** | 6 小时 |
+| **前置依赖** | `PLAN-20260912-SIM-FIDELITY` Phase-A 完成 |
+| **修改文件** | `wink-micro-app/mcs51_health_pot/health_pot.c`, `docs/DESIGN.md` |
+
+#### 详细步骤
+- [ ] **Step 1：字模扩充与防误解双相显示交互（UX 友好型冷却指示）**
+  在 `health_pot.c:82` 中将 `font_table[15]` 扩充为 17 字节：
+  - 添加 `'C' = 0x39u`, `'L' = 0x38u`；
+  - 确立显存渲染优先级：`FAULT (E-0x) > COOL (交替实测水温) > NORMAL`；
+  - **双相交替防误解设计**：在 60s 冷却期内，数码管采用 1 秒显示 `COOL`、1 秒交替显示当前实测水温（如 `75`）的双相刷新机制，直观告知用户“壶身过热，系统正在主动安全散热”，杜绝黑屏死机误解；自动化测试断言放宽为“2 秒滑动窗口内交替包含 `COOL` 与温度”。
+- [ ] **Step 2：双模 60s 冷却锁定（运行时触发 + 启动时序陷阱消除）**
+  - **倒计时归属顶层与防死锁设计（核心实现规约）**：
+    `cooldown_seconds` 必须在 `one_second_task()` 顶层无条件执行路径递减（与 `relay_off_sec` 并列）；**严禁塞进新斜率任务函数 `heat_slope_task_1s`**（因新函数包含 `state != ST_HEAT` 守卫，冷却期永远 early-return，会导致倒计时永久冻结死锁！）；
+  - **热故障重入刷新**：在 `FAULT` 报警中或 60s 冷却期间，若再次触发干烧（E-03）或超温（E-04），`cooldown_seconds` 无条件刷新重置为 60s；清除故障后继续递减至 0 才能开机；
+  - **启动时序链（Boot-time Sequence Pipeline）**：
+    `main:914-915` 静态初值 `temp_c=25u` 会短路热态检测。必须严格按照以下不可调换的时序链排布启动代码：
+    1. ADC 硬件初始化（`adc_init()`）；
+    2. 主动执行同步阻塞式采样与转换（`adc_code = adc_read_filtered(); temp_c = ntc_code_to_temp(adc_code);`，耗时 $<0.5\text{ms}$，无 WDT 风险）；
+    3. 热态判定：若 `temp_c >= DRYFIRE_TEMP_C (45u)`，立即强制预置 `cooldown_seconds = 60u`，彻底消灭拔插头重开 300°C 余热盘的火灾隐患；
+    4. 按键 POST 卡键状态捕捉（`button_init_post()`）；
+    5. 启动 Timer0 并开启总中断（`ET0=1; EA=1; TR0=1;`）。确保首个 tick 的控制逻辑具备真实温度初态；
+  - **双重软件安全纵深防御（Defense-in-Depth）落点**：
+    - **决策点门控（先消费、后门控时序铁律）**：在 `handle_buttons()` 的 `ST_OFF -> ST_HEAT` 入口（506 行）与 `ST_WARM -> ST_HEAT` 重煮入口（483 行）检查冷却；必须先执行 `evt_xxx = 0` 事件消费，再查 `cooldown_seconds`，拒绝路径播 `play_melody(TONE_BUSY)` 后正常落空——严禁在清标志之前 `return`，否则残留事件将在 60 秒冷却到期后幽灵自启动（行号以 Phase-A 施工前为准，施工后按符号重锚定）；
+    - **输出级物理钳制**：在主循环引脚驱动处（977 行 `HEATER = heater_on;`，源码 sbit 名以此为准）执行终极硬钳位：`HEATER = (cooldown_seconds > 0) ? 0 : heater_on;`。
+- [ ] **Step 3：被拒开机声音反馈与遥测协议界定**
+  - 冷却锁定期用户按 ON 键，触发 `play_melody(TONE_BUSY)`（API 严格对齐 `health_pot.c:144`），发出标准操作否定音（800Hz / 30ms）；
+  - **遥测协议拍板（方案 a）**：现有 6 字节串口遥测协议不变，冷却期保持 `TLM_STATE = ST_OFF`；冷却锁定属于 UI 与底层驱动安全门控行为，由数码管双相显示、否定音和 P2.0 引脚电平提供完整可观测性。
+
+#### 验证步骤（裸机物理三件套与无死锁证明）
+1. **死锁自由度证明（Deadlock-Freedom）**：60s 冷却期内发热盘常关，`relay_off_sec` 必然连续累加至 60s，远超继电器防拉弧 dwell 门限（`RELAY_DWELL_SECONDS = 3u`，源码实测值；量产若需加大需另立变更并重写 dwell 三场景）；冷却到期放行瞬间 dwell 互锁条件恒满足，绝对不存在“冷却放行、dwell 再锁”的二次等待死锁。
+2. 触发 E-03 后短延时按开关机，断言：`state == ST_OFF`、数码管 2 秒内交替呈现 `COOL` 与温度、`HEATER (P2.0) == 0`。
+3. 模拟掉电并保持探头在 50°C，重新上电，断言立即进入 60s `COOL` 锁定，继电器输出电平恒为 0。
+
+---
+
+### Task 2：掉电默认安全态与启动安规不变量 `[ 状态: ⏳ 待开始 ]`
+
+| 字段 | 内容 |
+|------|------|
+| **负责人** | 嵌入式安全组 |
+| **预估工时** | 4 小时 |
+| **修改文件** | `wink-micro-app/mcs51_health_pot/health_pot.c` |
+
+#### 详细步骤
+- [ ] **Step 1：固化掉电默认关机安全不变量（GB 4706 通用要求）**
+  器具掉电再通电后，严禁恢复加热，`main` 初始化无条件锁死进入 `ST_OFF`。
+- [ ] **Step 2：出厂保温默认设定值**
+  系统复位后，默认保温设定值严格重置为符合卫生安全的 `WARM_DEFAULT_C = 60u`；仅替换三处默认 60u 字面量（init 默认、OFF→HEAT BOIL 入口、WARM 重煮入口），保温档位值（55/80/90）与模式切换赋值保持字面量不动。
+
+---
+
+### Task 3：GB 4706 认证级自动化故障注入场景矩阵 `[ 状态: ⏳ 待开始 ]`
+
+| 字段 | 内容 |
+|------|------|
+| **负责人** | 质量与验证组 |
+| **预估工时** | 8 小时 |
+| **修改文件** | `unisim-scenarios/safety/` |
+| **前置依赖** | 场景 2、3 headless 版依赖 D-005（外仓 runner：RESET 步＋t=0 初始条件）；场景 1、4 与 L1 单测无外部阻塞 |
+
+#### 详细步骤与 Oracle 分级（含超时与阶段解耦）
+- [ ] **场景 1：`safety-cooldown-lock.scenario.json`（仿真可验，Phase-B 闭环）**
+  配置 `timeoutUs: 95000000`（95s：21s 干烧＋确认延时＋60s 锁定＋解锁断言裕量）；触发干烧后短延时按开机，验证锁定期 P2.0 恒为 0 且数码管 `COOL`/温度双相交替；冷却到期后一次开机进入 HEAT 即收尾——严禁拖入 ~105s 第二次斜率 E-03 窗口（fail-fast 下未断言 fault 会掀翻成绩）。
+- [ ] **场景 2：上电热态拦截（核心断言 L1 host 单测先行，headless 版待 D-005）**
+  host 单测打桩 `adc_read_filtered()` 返回 55°C 等效码并走完整启动时序链，断言 `cooldown_seconds == 60` 且首 tick 前无加热输出；headless 版 `safety-power-cycle-hot-reboot.scenario.json`（`timeoutUs: 100000000`）待外仓 runner 支持 RESET 步＋t=0 初始条件（新需求 D-005）后补齐。原因：现行 runner 仅 4 种 step（`ASSERT_BUS_PAYLOAD / ASSERT_POINT / INPUT_ANALOG / INPUT_PLUGIN_EVENT`），表达不出“复位＋t=0 预置”，硬写只会空过。
+- [ ] **场景 3：`safety-post-jammed`（核心断言 L1 host 单测先行，headless 版待 D-005）**
+  host 单测在 `button_init_post()` 前将按键 GPIO 打桩为低，断言 `held` 预置且 100ms 内无 `evt`、加热不启动；headless 版（`timeoutUs: 15000000`）同样待 D-005 的 t=0 按键预置能力。在 runner 能力确认前禁止落地 headless 版，避免假阳性。
+- [ ] **场景 4：`safety-cold-water-injection.scenario.json`（仿真可验，🟢 Phase-A 即可提前闭环）**
+  配置 `timeoutUs: 60000000`（60s 虚拟时间）；加热中途注入冷水（ADC 突变跳变），覆盖注入后继续加热 20s+，断言对称扰动守卫生效不误报干烧；脚本 authoring 约束：45°C 以下爬坡段必须保证任意 16 秒窗口下跌 ≥6 码，否则 slope 中途触发属于脚本违规（掩模规则），不得记为固件 bug。
+- [ ] **场景 5：`safety-relay-weld-protection.scenario.json`（HIL 独占声明）**
+  标注为 `Oracle: HIL-Exclusive (TCO/Bimetal Hardware Fallback)`，仿真侧记录事件日志。
+
+---
+
+### Task 4：跨品类安规模型扩展与 ADR-0067 流程合规 `[ 状态: ⏳ 待开始 ]`
+
+| 字段 | 内容 |
+|------|------|
+| **负责人** | 系统架构组 |
+| **预估工时** | 6 小时 |
+| **修改文件** | `docs/decisions/unisim/0067-appliance-plant-profile-architecture.md` |
+
+#### 详细步骤
+- [ ] **Step 1：规范流程管理**
+  ADR-0067 保持 **Proposed** 状态，直至本专项将微波炉三重门开关互锁（GB 4706.21）与便携式烤箱过热防护（GB 4706.14）安规条目并入后，统一签发为 **Accepted**。
+- [ ] **Step 2：定义 Plant Override 与 Resume 恢复契约**
+  在 ADR-0067 中明确契约：当测试脚本临时覆写 ADC 码值（模拟冷水注入或探头扰动）并释放后，Plant 热力学演算核心基于当前实测温度平滑恢复微分求解，严禁产生滞后冲击鬼影。
+
+---
+
+## 4. 测试策略与验收门禁（🔴 必选）
+
+### L0 编译门禁
+- [ ] `python wink-tools/wink.py build --app mcs51_health_pot --target wasm` 零错误零警告
+- [ ] 架构与内存门禁：`font_table` 扩充且直接寻址区 `DSEG` $\le 96$ 字节，调用栈预留充分
+- [ ] 安全单测：`python wink-tools/wink.py test --app mcs51_health_pot --target host` 100% 通过
+
+### L1 单元测试（去 PAL 化物理三件套）
+- [ ] **冷却锁定断言**：E-03 触发后 60s 内，任何调用按键事件均保持 `state == ST_OFF`、`display == "COOL"`（host 单测固定显存相位；场景断言用 2 秒滑动窗口）、`P2.0 == 0`。
+- [ ] **掉电热态断言（host 单测）**：打桩 ADC 返回 ≥45°C 等效码并走完整启动时序链，确认 `cooldown_seconds == 60` 且首 tick 前无加热输出（headless 版待 D-005）。
+- [ ] **POST 卡键断言（host 单测）**：`button_init_post()` 前 GPIO 打桩为低，确认 `held` 预置、100ms 内无 `evt`、加热不启动（headless 版待 D-005）。
+
+### L2 集成仿真测试（回归全绿）
+- [ ] **基线 15 个场景全量回归**：`health-pot-dryfire`、`health-pot-boil-warm` 等既有 15 个场景必须 **100% 全绿**通过。
+- [ ] **安规场景自动化验证**：headless 可验集（场景 1、场景 4）100% 通过；场景 5 为 HIL 独占声明（CI 以排除标签跳过，不计入通过率）；场景 2、3 的 headless 版待 D-005，核心断言已由 L1 覆盖。
+
+---
+
+## 5. 小家电安规条款映射表（标准条目标题）
+
+| 软件与硬件安全防护 | 物理硬件双保险 | 对应安规标准与条款标题（需第三方认证签核） | 仿真测试验证方式 |
+|---|---|---|---|
+| **E-03 斜率干烧切断** | 壶底双金属片突跳器（115°C 机械断开） | **GB 4706.19 / IEC 60335-2-15**<br>第 19 章非正常工作（19.101 无水通电，待签核） | `health-pot-dryfire` (21s 报警) |
+| **E-04 软件超温保护** | 不可逆热熔断体 TCO（130°C~150°C 熔断） | **GB 4706.1 / IEC 60335-1**<br>第 19 章非正常工作（19.11 保护电子线路评估） | `health-pot-overtemp` (105°C 停机) |
+| **60s 强热余温冷却锁定** | 继电器防拉弧延寿、防止干烧二次升温 | **GB 4706.1 / IEC 60335-1**<br>第 19 章非正常工作与防二次复热要求 | `safety-cooldown-lock` (COOL 锁定) |
+| **上电热态防重开锁定** | 防止拔插插头绕过余热冷却锁定 | **GB 4706.1 / IEC 60335-1**<br>第 19 章非正常工作与电源中断后重新通电 | `safety-power-cycle-hot-reboot` |
+| **上电 POST 按键抑制** | 防止汤汁渗透致微动开关短路自加热 | **GB 4706.1 / IEC 60335-1**<br>第 19 章保护电子线路（元器件单点故障分析） | `safety-post-jammed` |
+| **微波炉三重门联锁** | 门监控开关直接短路高压变压器初级 | **GB 4706.21 / IEC 60335-2-25**<br>微波泄漏联锁保护 | ADR-0067 跨品类安规模型 |
+| **烤箱发热与风机联锁** | 炉腔超温热保护熔断器 | **GB 4706.14 / IEC 60335-2-9**<br>烘烤器具表面温度与过热防护（台式便携） | ADR-0067 跨品类安规模型 |
+
+---
+
+## 6. 工业级量产演进路线图（P2 阶段储备与认证背书）
+
+为使本系统从“实验级仿真”迈向“工业级量产”，在 Phase-B 之后规划以下 4 项储备技术：
+
+1. **可制造性与出厂修调（Factory Trim Spike）**：
+   - 排期调研 CMS8S78xx 的 Data-Flash / EEPROM，用于固化出厂 NTC 单点校准阻值（消除 $\pm 1\%$ 上拉与分压漂移）、故障历史黑匣子以及继电器吸合次数累计（10 万次触点寿命预警）；
+   - **传感器容差分段模型**：针对 NTC 在 98°C 沸腾段斜率平缓、1 LSB 对应近 1°C 的物理事实，将高温段公差优化为码域绝对容差（$\pm 3\text{ LSB}$），避免全温区单一 $\pm 5\%$ 导致沸腾误判。
+2. **四角极值工况验证矩阵（Four-Corner Stress Matrix）**：
+   在 ADR-0067 物理模型中引入 `lid_state`（开盖/闭盖换热系数 $h$ 与潜热蒸发差异，对齐 GB 4706.19 第 19.4 条）与电压降额参数，组合出“满水量 $\times$ 冬季低温 5°C $\times$ 市电 -10%（实际 648W） $\times$ 开盖”极限工况，检验温控算法鲁棒性。
+3. **IEC 60730 Class B 软件安全自愈与无死锁论证（Safety Case for Certification）**：
+   - **Table H.1 Item 4（CPU 寄存器与数据流动态刷新）**：固件 `heater_on` 在 `health_pot.c` 中每 100ms 由状态机根据实测条件无状态重算，无粘性全局锁存。即使在强 EMI/ESD 干扰或单粒子翻转（SEU）下引脚被强行置高，系统在 100ms 内确定性自愈关断，满足家电安全控制器认证规范；
+   - **Table H.1 Item 5（模拟量输入单点故障防御）**：结合单秒 40 码对称扰动守卫与 16 拍滑动时域一致性检验，消除传感器跳变与微动断续误触发；
+   - **死锁自由度严格形式证明（Deadlock-Freedom Proof）**：60s 冷却锁定期内发热盘恒关，`relay_off_sec` 在秒任务中无条件自增至 60s（远超继电器防拉弧 dwell 门限），冷却解锁放行瞬间 dwell 互锁条件恒满足，形式化证明系统绝对无二次等待死锁。
+4. **烧录选项字安全审计门禁（Option-Byte Audit Gate）**：
+   在 L0 门禁中增加对烧录配置文件（如 LVR 低压复位使能、硬件看门狗硬使能、内部 24MHz 高精度振荡器选择）的静态文本扫描，防止固件逻辑正确但因单片机选项字配置失误导致裸跑死机。
