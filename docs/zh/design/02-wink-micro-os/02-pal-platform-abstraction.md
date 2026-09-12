@@ -174,13 +174,15 @@ typedef enum {
 } pal_pwm_clock_requirement_t;
 
 typedef struct {
+    uint32_t                    struct_size;       /* 前向 ABI 兼容 */
+    wink_pin_t                  pin;               /* WINK_PIN_NC = 使用通道默认 */
     uint32_t                    freq_hz;          /* >0 */
     uint8_t                     resolution_bits;  /* 0 = AUTO → ESP32 默认 13 */
     pal_pwm_clock_requirement_t clock_requirement;
 } pal_pwm_config_t;
 
 /**
- * @brief 初始化指定通道的 PWM（兼容薄包装，≡ init_ex with AUTO/13-bit）
+ * @brief 初始化指定通道的 PWM（兼容薄包装，≡ init_ex with AUTO/13-bit + NC pin）
  */
 WINK_WARN_UNUSED_RESULT wink_status_t pal_pwm_init(uint8_t channel, uint32_t frequency_hz);
 
@@ -191,13 +193,45 @@ WINK_WARN_UNUSED_RESULT wink_status_t pal_pwm_init(uint8_t channel, uint32_t fre
 WINK_WARN_UNUSED_RESULT wink_status_t pal_pwm_init_ex(uint8_t channel, const pal_pwm_config_t *cfg);
 
 /**
- * @brief 设置指定通道的 PWM 占空比
+ * @brief 设置指定通道的 PWM 占空比（Basis Points，唯一推荐路径，ADR-0066）
  * @param channel 逻辑 PWM 通道号
- * @param duty_cycle_percent 占空比百分比 (0.0f 到 100.0f) —— **跨 target 公共语义始终为百分比**
- * @note ESP32 按该 channel 所属 timer 的 effective resolution 换算 raw duty；
- *       host/wasm 保持百分比观测（不改 sim_last_pwm_duty / JS bridge）。
+ * @param basis_points 万分比占空比 [0,10000] = 0.00%..100.00%
+ * @note 四舍五入语义：counter = (bp*top + 5000)/10000（见 pal_pwm_calc_duty_counter）；
+ *       bp==0/top==0 返回 0；bp 全量程直返 top。helper 层钳位，API 层对
+ *       bp > 10000u 严格返回 WINK_ERR_INVALID_ARG（ADR-0012 合约诚实）。
+ * @note ESP32 按该 channel 所属 timer 的 effective resolution 经 helper 换算 raw duty；
+ *       host 保持 float 百分比观测（host_record_pwm/sim_last_pwm_duty 不动，D3）；
+ *       wasm 以 bp 为源经 js_pal_pwm_set_duty_bp 上报，pal_wasm_get_pwm_duty_percent 由 bp 派生。
  */
+WINK_WARN_UNUSED_RESULT wink_status_t pal_pwm_set_duty_bp(uint8_t channel, uint16_t basis_points);
+
+#ifndef PAL_PWM_HIDE_FLOAT_API
+/**
+ * @brief 遗留浮点占空比设置（已弃用，v3.0 下线，ADR-0066）
+ * @deprecated 使用 pal_pwm_set_duty_bp 消除软浮点库膨胀。
+ */
+WINK_DEPRECATED_MSG("Use pal_pwm_set_duty_bp instead to eliminate soft-fp library overhead")
 WINK_WARN_UNUSED_RESULT wink_status_t pal_pwm_set_duty(uint8_t channel, float duty_cycle_percent);
+#endif
+
+/* --- 2.1.1 PWM bp 定点算法分级与防手抖契约（ADR-0066 实现细化，PLAN-20260912 W-1） ---
+ *
+ * SSOT 落位 `pal_pwm.h` static inline（单 SSOT，host 单测可直接打靶）：
+ *
+ * - 安全阈值 `PAL_PWM_TOP_32BIT_MAX (429496u)`：(9999*429496+5000) <= UINT32_MAX，
+ *   消除裸魔法数字，明确数学推导依据。
+ * - 编译期上限 `PAL_PWM_DUTY_TOP_LIMIT`（默认 0xFFFFFFFFu 全范围）：
+ *   `<= PAL_PWM_TOP_32BIT_MAX` 时仅编译 32 位分支（纯 32 位乘除，
+ *   MCS51/Cortex-M0 编译期剔除 `__udivdi3`），否则 runtime 快速路径 + uint64 满范围路径；
+ *   target 可完全覆写 helper（D2）。
+ * - 8/16 位 target 接入约束：必须定义 `PAL_PWM_DUTY_TOP_LIMIT`（mcs51 不得走 uint64 路径）；
+ *   8 位 PWM（top<=255）可用 32 位分支或 256 项 LUT（Backlog B-2）。
+ * - 防手抖双轨：常量表达式宏 `PAL_PWM_DUTY_PCT(p)` / `PAL_PWM_DUTY_PERMILLE(pm)` /
+ *   `PAL_PWM_DUTY_OFF/HALF/FULL`（满足 C99 静态结构体初值初始化）+ 运行时
+ *   `pal_pwm_duty_pct()` / `pal_pwm_duty_permille()`（类型约束与钳位）。
+ * - 小数百分比规范：`_PCT` 仅整数百分比；7.5% 等必须用 `PAL_PWM_DUTY_PERMILLE(75)`
+ *   或 `750u`，严禁 `_PCT(7.5)`（截断为 700bp，约 9 度舵机偏差）。
+ */
 
 
 /* --- 3. I2C 串行总线抽象 --- */
