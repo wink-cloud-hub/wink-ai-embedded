@@ -1,0 +1,36 @@
+# CMS8S78xx chip manifest (Stage6 S6-2, PLAN-20260911-MCS51-S6, CPL-16).
+# Filename stem == family key == chips/<family>/ directory name (total §3.1c).
+# Single fact source for header/lint facts, memory limits and SDCC gate rules;
+# toolchain scripts must not hardcode any of these values.
+family: cms8s78xx
+aliases: []
+headers:
+  vendor_include_dir: chips/cms8s78xx/include
+  allow_regex:
+    - "REG_CMS8S78XX\\.H"
+    - "REG_CMS8S\\.H"
+    - "cms8s_.*\\.h"
+  # Residue gate for generic core files (include/mcs51_*.h, src/mcs51_*.cpp).
+  # (?i) keeps the historical case-insensitive family-name match.
+  forbid_in_core_regex:
+    - "(?i)cms8s"
+    - "0xF0[0-9A-Fa-f]{2}"
+    - "ADCLDO"
+    - "FUNCCR"
+    - "\\bPS_[A-Z0-9]+\\b"
+  # Keil device-header names this family's user sources may include; the
+  # cleanup pass normalizes them to <wink_mcu.h> (standard reg51/reg52/regx52
+  # set stays in code).
+  cleanup_alias_regex:
+    - "cms8s"
+    - "cms8s\\d[a-z0-9]*"
+    - "reg_cms\\d*[a-z0-9]*"
+memory:
+  xram_bytes: 1024
+  xsfr_window: [0xF000, 0x1000]   # base + size; MOVX extended-SFR window
+sdcc_gate:
+  mem_limits: { code_max: 16384, iram_max: 256, xdata_max: 1024 }
+  vendor_device_header: "docs/vendors/Cmsemicon/CMS8S78xx_DemoCode_V2.0.2/CMS8S78xx_Demo/Libary/Device/CMS8S78xx/Include/cms8s78xx.h"
+  vendor_stddriver_dir: "docs/vendors/Cmsemicon/CMS8S78xx_DemoCode_V2.0.2/CMS8S78xx_Demo/Libary/StdDriver"
+  stddriver_link:
+    - "cms8s78xx_stdriver"

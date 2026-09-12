@@ -29,14 +29,32 @@ False-positive fixes vs the original script (precision plan L2):
 from __future__ import annotations
 
 import re
+import sys
+from pathlib import Path
 
 from tools.lint.engine.base import LintContext, register_pack
 from tools.lint.engine.models import Finding
 
-# Path hints are intentionally broad (vendor trees like
-# vendor_cms8s78xx_v202/ carry no mcs51/c51 in path); the content gate
-# inside run_on_file is the real filter.
-_PATH_HINT_RE = re.compile(r"mcs51|c51|cms8s|8051|89c52|keil", re.IGNORECASE)
+# Stage6 S6-2 (CPL-16): family names + header facts come from the chip
+# manifests; this pack hardcodes neither.
+_TOOLS_DIR = Path(__file__).resolve().parents[1]
+if str(_TOOLS_DIR) not in sys.path:
+    sys.path.insert(0, str(_TOOLS_DIR))
+from mcs51_manifest import header_hint_patterns, load_chip_manifests  # noqa: E402
+
+
+def _family_hint_names() -> str:
+    names: list[str] = []
+    for family, manifest in load_chip_manifests().items():
+        names.append(family)
+        names.extend(manifest["aliases"])
+    return "|".join(re.escape(n) for n in names)
+
+
+# Path hints are intentionally broad (vendor trees carry no mcs51/c51 in
+# path); the content gate inside run_on_file is the real filter.
+_PATH_HINT_RE = re.compile(
+    r"mcs51|c51|8051|keil|" + _family_hint_names(), re.IGNORECASE)
 
 
 def _applies_to_path(rel: str) -> bool:
@@ -46,7 +64,7 @@ def _applies_to_path(rel: str) -> bool:
 # Content gate: word boundaries on alpha indicators so that e.g. "transfer"
 # does not match "sfr".
 _SOURCE_INDICATOR_RES = (
-    re.compile(r"REGX52\.H|REG_CMS8S78XX\.H|REG_CMS8S\.H|REG51\.H", re.IGNORECASE),
+    re.compile("|".join(header_hint_patterns()), re.IGNORECASE),
     re.compile(r"reg5[12]\.h"),
     re.compile(r"wink_mcu\.h|absacc\.h"),
     re.compile(r"\bWINK_ISR\b|\binterrupt\b|\bsbit\b|\bsfr\b"),

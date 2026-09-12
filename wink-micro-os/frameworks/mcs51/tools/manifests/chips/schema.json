@@ -1,0 +1,96 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://wink.ai/schemas/mcs51/chip-manifest.schema.json",
+  "title": "Wink MCS-51 chip manifest",
+  "description": "Stage6 S6-2 (PLAN-20260911-MCS51-S6, CPL-16): the single fact source for MCS-51 chip-family header facts, memory limits and SDCC gate rules. Filename stem MUST equal the `family` key (total §3.1c); the manifest is the only place a toolchain script learns family facts. Exactly five top-level groups — do not add a sixth.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["family", "aliases", "headers", "memory", "sdcc_gate"],
+  "properties": {
+    "family": {
+      "type": "string",
+      "description": "Family key = manifest filename stem = chips/<family>/ directory name.",
+      "pattern": "^[a-z0-9_]+$"
+    },
+    "aliases": {
+      "type": "array",
+      "description": "MCU alias names accepted by the build/toolchain selection (e.g. stc89c52 -> at89c52).",
+      "items": {"type": "string"},
+      "uniqueItems": true
+    },
+    "headers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["vendor_include_dir", "allow_regex", "forbid_in_core_regex", "cleanup_alias_regex"],
+      "properties": {
+        "vendor_include_dir": {
+          "type": "string",
+          "description": "Chip-package include directory holding the family's vendor headers (repo-relative)."
+        },
+        "allow_regex": {
+          "type": "array",
+          "description": "Header-name regexes that may legitimately exist in vendor/chip scope (lint header facts).",
+          "items": {"type": "string"}
+        },
+        "forbid_in_core_regex": {
+          "type": "array",
+          "description": "Regexes that must never appear in generic core files (layering residue gate). Inline (?i) is honoured.",
+          "items": {"type": "string"}
+        },
+        "cleanup_alias_regex": {
+          "type": "array",
+          "description": "Additional Keil device-header name patterns the cleanup pass normalizes to <wink_mcu.h>, on top of the standard reg51/reg52/regx52 set.",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "memory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["xram_bytes", "xsfr_window"],
+      "properties": {
+        "xram_bytes": {
+          "type": ["integer", "null"],
+          "description": "On-chip XRAM size in bytes; null when the part has none (external MOVX aperture, board-scoped)."
+        },
+        "xsfr_window": {
+          "type": ["array", "null"],
+          "description": "Extended-SFR MOVX window as [base, size]; null when the family has no such window.",
+          "items": {"type": "integer"},
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "sdcc_gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mem_limits", "vendor_device_header", "vendor_stddriver_dir", "stddriver_link"],
+      "properties": {
+        "mem_limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code_max", "iram_max", "xdata_max"],
+          "properties": {
+            "code_max": {"type": "integer"},
+            "iram_max": {"type": "integer"},
+            "xdata_max": {"type": ["integer", "null"]}
+          }
+        },
+        "vendor_device_header": {
+          "type": ["string", "null"],
+          "description": "Repo-relative vendor device header path transpiled for the SDCC gate; null when none."
+        },
+        "vendor_stddriver_dir": {
+          "type": ["string", "null"],
+          "description": "Repo-relative vendor StdDriver directory compiled+linked by the SDCC gate; null when none."
+        },
+        "stddriver_link": {
+          "type": "array",
+          "description": "Named vendor StdDriver link units the gate links (empty for pure-core families).",
+          "items": {"type": "string"}
+        }
+      }
+    }
+  }
+}

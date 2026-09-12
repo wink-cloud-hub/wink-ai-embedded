@@ -25,8 +25,12 @@ Features:
 Usage:
     python mcs51_cleanup.py [--transcode] [--target=native|sdcc] <input.c> <output.cpp>
 """
+import os
 import re
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from mcs51_manifest import cleanup_header_patterns  # noqa: E402  (stage6 S6-2)
 
 
 def read_source(path: str) -> str:
@@ -79,9 +83,15 @@ KNOWN_VECTORS = {
 
 # Legacy Keil C51 MCU register headers to normalize to <wink_mcu.h>.
 # Supports optional relative paths (e.g. `inc/cms8s78xx.h`, `../reg52.h`).
-# Restricts model matching so peripheral drivers (e.g. `cms8s_flash.h`, `stcuart.h`) are NOT touched.
+# Restricts model matching so peripheral drivers (e.g. `cms8s_flash.h`,
+# `stcuart.h`) are NOT touched.
+# Stage6 S6-2 (CPL-16): the vendor-name alternation comes from
+# tools/manifests/chips/*.yaml (headers.cleanup_alias_regex) — no family name
+# is hardcoded here; only the standard Intel reg51/reg52/regx52 dialect stays.
 MCU_HEADER_RE = re.compile(
-    r'#\s*include\s*[<"](?:[^\r\n<">]*[/\\])?(?:regx?5[12]|cms8s|cms8s\d[a-z0-9]*|reg_cms\d*[a-z0-9]*|stc|stc\d[a-z0-9]*)\.h[>"]',
+    r'#\s*include\s*[<"](?:[^\r\n<">]*[/\\])?(?:'
+    + "|".join(cleanup_header_patterns())
+    + r')\.h[>"]',
     re.IGNORECASE,
 )
 
