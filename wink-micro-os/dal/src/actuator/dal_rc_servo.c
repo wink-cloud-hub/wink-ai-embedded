@@ -34,6 +34,7 @@ static wink_status_t servo_map_pwm_config(const dal_rc_servo_config_t *servo_cfg
         return WINK_ERR_INVALID_ARG;
     }
 
+    out_pwm_cfg->pin = WINK_PIN_NC;
     out_pwm_cfg->freq_hz = SERVO_PWM_FREQ_HZ;
     out_pwm_cfg->resolution_bits = servo_cfg->resolution_bits; /* 0 = AUTO */
     if (servo_cfg->clock_requirement == DAL_RC_SERVO_CLOCK_STABLE_REQUIRED) {
@@ -54,7 +55,7 @@ wink_status_t dal_rc_servo_init(dal_rc_servo_t *dev, const dal_rc_servo_config_t
     uint16_t min_pulse = (cfg->min_pulse_us > 0) ? cfg->min_pulse_us : SERVO_DEFAULT_MIN_PULSE_US;
     uint16_t max_pulse = (cfg->max_pulse_us > min_pulse) ? cfg->max_pulse_us : SERVO_DEFAULT_MAX_PULSE_US;
 
-    pal_pwm_config_t pwm_cfg;
+    pal_pwm_config_t pwm_cfg = {0};
     wink_status_t map_st = servo_map_pwm_config(cfg, &pwm_cfg);
     if (wink_status_is_error(map_st)) { return map_st; }
 

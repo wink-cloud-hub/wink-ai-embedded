@@ -108,6 +108,10 @@ addToLibrary({
         if (typeof Module !== 'undefined' && typeof Module['js_pal_pwm_set_duty_bp'] === 'function' && Module['js_pal_pwm_set_duty_bp'] !== _js_pal_pwm_set_duty_bp) {
             return Module['js_pal_pwm_set_duty_bp'](channel, bp);
         }
+        // T2.4 floating-point fallback for cross-repo version skew (PLAN-20260912):
+        // older unisim hosts implement only js_pal_pwm_set_duty; forward bp/100
+        // so bp observations never silently break during C/TS rollout skew.
+        return _js_pal_pwm_set_duty(channel, bp / 100.0);
     },
     js_pal_i2c_transfer: function (port, addr, wbuf, wlen, rbuf, rlen) {
         if (typeof Module !== 'undefined' && typeof Module['js_pal_i2c_transfer'] === 'function' && Module['js_pal_i2c_transfer'] !== _js_pal_i2c_transfer) {

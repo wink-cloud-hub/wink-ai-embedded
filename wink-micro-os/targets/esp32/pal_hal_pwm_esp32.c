@@ -40,7 +40,7 @@ static bool pwm_map_ledc_bits(uint8_t bits, ledc_timer_bit_t *out)
 
 wink_status_t pal_pwm_init(uint8_t channel, uint32_t freq_hz)
 {
-    pal_pwm_config_t cfg = { .freq_hz = freq_hz };
+    pal_pwm_config_t cfg = { .freq_hz = freq_hz, .pin = WINK_PIN_NC };
     return pal_pwm_init_ex(channel, &cfg);
 }
 
@@ -134,8 +134,7 @@ wink_status_t pal_pwm_set_duty_bp(uint8_t channel, uint16_t basis_points) {
     if (basis_points > 10000u) { return WINK_ERR_INVALID_ARG; }
 
     uint32_t top = (1u << s_ch_bits[channel]) - 1u;
-    uint32_t duty = (uint32_t)(((uint64_t)basis_points * (uint64_t)top + 5000ull) / 10000ull);
-    if (duty > top) { duty = top; }
+    uint32_t duty = pal_pwm_calc_duty_counter(basis_points, top);
 
     esp_err_t err = ledc_set_duty(LEDC_LOW_SPEED_MODE, (ledc_channel_t)channel, duty);
     if (err != ESP_OK) { return WINK_ERR_HARDWARE; }

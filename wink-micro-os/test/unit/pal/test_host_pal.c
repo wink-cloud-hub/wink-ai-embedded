@@ -12,7 +12,6 @@
 #include "host_test_ctrl.h"
 
 #include "compat/wink_test_compat.h"
-WINK_TEST_ALLOW_DEPRECATED
 
 void setUp(void) {
     sim_reset_time();
@@ -31,17 +30,30 @@ void test_delay_advances_virtual_time(void) {
 
 void test_pwm_duty_recorded(void) {
     extern wink_status_t pal_pwm_init(uint8_t, uint32_t);
+    extern wink_status_t pal_pwm_set_duty_bp(uint8_t, uint16_t);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_pwm_init(2, 50));
+    /* 7.5% RC-servo mid must use permille/demo 750u (never _PCT(7.5)). */
+    wink_status_t st = pal_pwm_set_duty_bp(2, PAL_PWM_DUTY_PERMILLE(75));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, st);
+    TEST_ASSERT_EQUAL_FLOAT(7.5f, sim_last_pwm_duty(2));
+}
+
+void test_pwm_legacy_float_compat(void) {
+    /* Compatibility cover: single legacy float call retained (PLAN-20260912 D5). */
+    extern wink_status_t pal_pwm_init(uint8_t, uint32_t);
     extern wink_status_t pal_pwm_set_duty(uint8_t, float);
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_pwm_init(2, 50));
+    WINK_TEST_ALLOW_DEPRECATED_BEGIN
     wink_status_t st = pal_pwm_set_duty(2, 7.5f);
+    WINK_TEST_ALLOW_DEPRECATED_END
     TEST_ASSERT_EQUAL_INT(WINK_OK, st);
     TEST_ASSERT_EQUAL_FLOAT(7.5f, sim_last_pwm_duty(2));
 }
 
 void test_pwm_set_duty_rejects_invalid_channel(void) {
-    extern wink_status_t pal_pwm_set_duty(uint8_t channel, float duty);
+    extern wink_status_t pal_pwm_set_duty_bp(uint8_t channel, uint16_t basis_points);
     extern wink_status_t pal_pwm_init(uint8_t channel, uint32_t frequency_hz);
-    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, pal_pwm_set_duty(8, 7.5f));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, pal_pwm_set_duty_bp(8, PAL_PWM_DUTY_PERMILLE(75)));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_INVALID_ARG, pal_pwm_init(8, 50));
 }
 
@@ -51,7 +63,10 @@ void test_pulse_in_reads_echo_width(void) {
     sim_set_echo_pin(5);
     sim_set_echo_timing(100, 5882);
     uint32_t pulse = 0;
+    /* Blocking pulse_in under test: local deprecation exemption (not a new PWM float call). */
+    WINK_TEST_ALLOW_DEPRECATED_BEGIN
     wink_status_t st = pal_gpio_pulse_in(5, true, 30000u, &pulse);
+    WINK_TEST_ALLOW_DEPRECATED_END
     TEST_ASSERT_EQUAL_INT(WINK_OK, st);
     TEST_ASSERT_EQUAL_UINT32(5882u, pulse);
 }
@@ -62,7 +77,9 @@ void test_pulse_in_timeout_when_echo_late(void) {
     sim_set_echo_pin(5);
     sim_set_echo_timing(100000, 1000);
     uint32_t pulse = 0;
+    WINK_TEST_ALLOW_DEPRECATED_BEGIN
     wink_status_t st = pal_gpio_pulse_in(5, true, 30000u, &pulse);
+    WINK_TEST_ALLOW_DEPRECATED_END
     TEST_ASSERT_EQUAL_INT(WINK_ERR_TIMEOUT, st);
 }
 
@@ -78,13 +95,13 @@ void test_echo_timing_stored(void) {
 
 void test_pwm_deinit_then_reinit(void) {
     extern wink_status_t pal_pwm_init(uint8_t, uint32_t);
-    extern wink_status_t pal_pwm_set_duty(uint8_t, float);
+    extern wink_status_t pal_pwm_set_duty_bp(uint8_t, uint16_t);
     extern wink_status_t pal_pwm_deinit(uint8_t);
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_pwm_init(3, 1000));
-    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_pwm_set_duty(3, 50.0f));
-    pal_pwm_deinit(3);
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_pwm_set_duty_bp(3, PAL_PWM_DUTY_PCT(50)));
+    WINK_IGNORE_RESULT(pal_pwm_deinit(3));
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_pwm_init(3, 2000));
-    pal_pwm_deinit(3);
+    WINK_IGNORE_RESULT(pal_pwm_deinit(3));
 }
 
 void test_pwm_reinit_different_freq_returns_busy(void) {
@@ -92,12 +109,12 @@ void test_pwm_reinit_different_freq_returns_busy(void) {
     extern wink_status_t pal_pwm_deinit(uint8_t);
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_pwm_init(0, 50));
     TEST_ASSERT_EQUAL_INT(WINK_ERR_BUSY, pal_pwm_init(0, 1000));
-    pal_pwm_deinit(0);
+    WINK_IGNORE_RESULT(pal_pwm_deinit(0));
 }
 
 void test_pwm_deinit_uninit_is_noop(void) {
     extern wink_status_t pal_pwm_deinit(uint8_t);
-    pal_pwm_deinit(5);
+    WINK_IGNORE_RESULT(pal_pwm_deinit(5));
     TEST_PASS();
 }
 
@@ -155,14 +172,16 @@ void test_pal_gpio_loopback_pulse(void) {
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_test_enable_hardware_loopback(4, 5));
 
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_pwm_init(1, 50));
-    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_pwm_set_duty(1, 7.5f));
+    TEST_ASSERT_EQUAL_INT(WINK_OK, pal_pwm_set_duty_bp(1, PAL_PWM_DUTY_PERMILLE(75)));
 
     uint32_t pulse_us = 0;
+    WINK_TEST_ALLOW_DEPRECATED_BEGIN
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_gpio_pulse_in(5, true, 30000u, &pulse_us));
+    WINK_TEST_ALLOW_DEPRECATED_END
     TEST_ASSERT_UINT32_WITHIN(10, 1500, pulse_us);
 
     TEST_ASSERT_EQUAL_INT(WINK_OK, pal_test_disable_hardware_loopback(4, 5));
-    pal_pwm_deinit(1);
+    WINK_IGNORE_RESULT(pal_pwm_deinit(1));
 }
 
 void test_pal_gpio_loopback_invalid_args(void) {
@@ -175,6 +194,7 @@ int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_delay_advances_virtual_time);
     RUN_TEST(test_pwm_duty_recorded);
+    RUN_TEST(test_pwm_legacy_float_compat);
     RUN_TEST(test_pwm_set_duty_rejects_invalid_channel);
     RUN_TEST(test_pulse_in_reads_echo_width);
     RUN_TEST(test_pulse_in_timeout_when_echo_late);
