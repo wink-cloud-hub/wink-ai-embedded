@@ -80,7 +80,7 @@ frameworks/mcs51/
              cms8s_adc.cpp (on-chip ADC 0-cycle model), mcs51_isr.cpp (28-vector table)
              mcs51_clock.cpp / mcs51_timer.cpp / mcs51_uart.cpp
              mcs51_xdata.cpp (XRAM + XSFR aperture), mcs51_unsupported.cpp
-  tools/mcs51_cleanup.py (Keil .c → .cpp sanitizer: ISR rewriting, UTF-8/GBK)
+  tools/transpile_app_keil_c51.py (Keil .c → .cpp sanitizer: ISR rewriting, UTF-8/GBK)
 test/mcs51/
   samples/   blinky, blinky_timer0, uart_printf, gpio_in_out, adc0832_read,
              cms8s_adc_test, iron_ntc (unmodified Keil user source)

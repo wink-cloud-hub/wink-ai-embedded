@@ -97,7 +97,7 @@ void InitTimer0(void) { /* ... */ }
 
 ### 2.4 Keil 原生内联汇编隔离规范 (Fatal)
 
-* **受限原因**：Keil 的 `#pragma asm ... #pragma endasm` 内嵌的是针对 Intel MCS-51 8 位核心的专有汇编助记符（`MOV`, `SJMP`, `CJNE` 等）。宿主 x86/x64/Wasm 编译器无法解析该机器码指令。预处理清理脚本（`mcs51_cleanup.py`）不剥除汇编块，直接送入宿主编译器将报错中断。
+* **受限原因**：Keil 的 `#pragma asm ... #pragma endasm` 内嵌的是针对 Intel MCS-51 8 位核心的专有汇编助记符（`MOV`, `SJMP`, `CJNE` 等）。宿主 x86/x64/Wasm 编译器无法解析该机器码指令。预处理转译脚本（`transpile_app_keil_c51.py`）不剥除汇编块，直接送入宿主编译器将报错中断。
 * **规则约束**：业务逻辑必须使用纯 C 实现。若特定驱动必须保留汇编供 Keil 真机编译，必须使用 Keil 预定义宏 `__C51__` 进行物理隔离。
 
 ```c
@@ -141,8 +141,8 @@ void UART_SendString(const char *str);
 
 * **受限原因**：国内 8051 教学与工程源码历史上有大量文件采用 Windows ANSI (GBK / GB2312) 编码。GBK 的部分汉字（如“续”、“功”、“筹”等）次字节编码恰好是 `0x5C`（ASCII 中的反斜杠 `\`）。若单行注释以该字结尾：`// 执行延时状态持续\`，现代编译器按字符拼接预处理时会将下一行代码吃掉。
 * **框架自愈与工具支持**：
-  1. `mcs51_cleanup.py` 内部实现了 **UTF-8 优先、GBK 回退** 的自动解码转码管道（`read_source()`），生成给沙箱编译的 `.cpp` 副本始终规范化为 UTF-8；
-  2. 针对供应商 GBK 头文件，工具提供 `--transcode` 模式进行无损编码转换：`python mcs51_cleanup.py --transcode <input.h> <output.h>`。
+  1. `transpile_app_keil_c51.py` 内部实现了 **UTF-8 优先、GBK 回退** 的自动解码转码管道（`read_source()`），生成给沙箱编译的 `.cpp` 副本始终规范化为 UTF-8；
+  2. 针对供应商 GBK 头文件，工具提供 `--transcode` 模式进行无损编码转换：`python transpile_app_keil_c51.py --transcode <input.h> <output.h>`。
 * **编写建议**：建议用户源文件统一保存为 UTF-8 编码，或在中文注释末尾追加空格/句号。
 
 ---
@@ -346,7 +346,7 @@ uint16_t Read_ADC_Channel(uint8_t ch) {
 ### 5.1 ISR 语法转换与自动注册
 
 * **Keil 原生 ISR 语法**：`void Timer0_ISR(void) interrupt 1 [using 1]`
-* **转换机制**：构建工具 `mcs51_cleanup.py` 在编译前自动将用户函数头重写为 `WINK_ISR(N)`，`using M` 寄存器 Bank 切换语法被正则安全剥除；
+* **转换机制**：构建工具 `transpile_app_keil_c51.py` 在编译前自动将用户函数头重写为 `WINK_ISR(N)`，`using M` 寄存器 Bank 切换语法被正则安全剥除；
 * **C++ 自动注册宏**：宏 `WINK_ISR(N)` 在全局静态初始化期自动向向量表注册函数指针，POD 表在 BSS 段清零，不受静态初始化顺序（Static Initialization Order Fiasco）影响；
 * **向量容量**：框架向量表支持 **28 项中断向量**（[wink_mcs51_isr.h](file:///d:/MyWorkSpace_program/lowcode-nocode/ai-app/wink-ai-embedded/wink-micro-os/frameworks/mcs51/include/wink_mcs51_isr.h)），完全覆盖标准 8051 向量（0=外部中断0, 1=Timer0, 2=外部中断1, 3=Timer1, 4=UART）以及中微 CMS8S 等增强向量（如 interrupt 19 = ADC 转换完成中断）。
 

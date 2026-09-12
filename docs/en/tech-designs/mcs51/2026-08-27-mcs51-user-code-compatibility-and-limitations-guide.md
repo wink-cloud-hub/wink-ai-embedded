@@ -97,7 +97,7 @@ void InitTimer0(void) { /* ... */ }
 
 ### 2.4 Keil Native Inline Assembly Isolation (Fatal)
 
-* **Reason**: Keil `#pragma asm ... #pragma endasm` blocks contain 8051 assembly mnemonics (`MOV`, `CJNE`, etc.) that host x86/x64/Wasm compilers cannot process. The preprocessing pass (`mcs51_cleanup.py`) does not strip asm blocks.
+* **Reason**: Keil `#pragma asm ... #pragma endasm` blocks contain 8051 assembly mnemonics (`MOV`, `CJNE`, etc.) that host x86/x64/Wasm compilers cannot process. The preprocessing pass (`transpile_app_keil_c51.py`) does not strip asm blocks.
 * **Rule**: Business logic should use pure C. Assembly blocks necessary for hardware Keil targets must be isolated using the predefined Keil macro `__C51__`.
 
 ```c
@@ -141,8 +141,8 @@ void UART_SendString(const char *str);
 
 * **Reason**: In legacy GBK-encoded files, trailing characters whose second byte is `0x5C` (`\`) can cause comment line-continuations that swallow the following line of code.
 * **Framework Support**:
-  1. `mcs51_cleanup.py` automatically attempts UTF-8 decode first with seamless GBK fallback, producing normalized UTF-8 `.cpp` files;
-  2. For vendor headers, the `--transcode` CLI mode provides lossless transcoding: `python mcs51_cleanup.py --transcode <in.h> <out.h>`.
+  1. `transpile_app_keil_c51.py` automatically attempts UTF-8 decode first with seamless GBK fallback, producing normalized UTF-8 `.cpp` files;
+  2. For vendor headers, the `--transcode` CLI mode provides lossless transcoding: `python transpile_app_keil_c51.py --transcode <in.h> <out.h>`.
 
 ---
 
@@ -278,7 +278,7 @@ uint16_t Read_ADC_Channel(uint8_t ch) {
 
 ### 5.1 ISR Translation & Vector Capacity
 
-* **Syntax**: `void Timer0_ISR(void) interrupt 1 [using 1]` is automatically rewritten by `mcs51_cleanup.py` to `WINK_ISR(N)` (stripping `using M`).
+* **Syntax**: `void Timer0_ISR(void) interrupt 1 [using 1]` is automatically rewritten by `transpile_app_keil_c51.py` to `WINK_ISR(N)` (stripping `using M`).
 * **Vector Table**: Supports **28 interrupt vectors** ([wink_mcs51_isr.h](file:///d:/MyWorkSpace_program/lowcode-nocode/ai-app/wink-ai-embedded/wink-micro-os/frameworks/mcs51/include/wink_mcs51_isr.h)), covering standard vectors 0~4 and enhanced vectors like CMS8S ADC (vector 19).
 
 ---

@@ -7,7 +7,7 @@
  * off. There is no ISR and no peripheral setup.
  *
  * This is the same logic as test/mcs51/samples/gpio_in_out.c, but built as a
- * real production app: the cleanup pass (mcs51_cleanup.py) emits a .cpp copy in
+ * real production app: the transpile pass (transpile_app_keil_c51.py) emits a .cpp copy in
  * the build tree that links against the mcs51 framework targets, and the resulting
  * wink_simulator.{js,wasm} is driven headlessly by UniSim with a real
  * PinArbiter + button/led plugins. This original is never edited in place.

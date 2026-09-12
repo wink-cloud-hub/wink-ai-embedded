@@ -148,7 +148,7 @@ health_pot 的遥测场景描述文字已经意识到此风险（`health-pot-uar
 **证据**
 
 - `wink-micro-app/mcs51_health_pot/CMakeLists.txt:40-62`：非 Emscripten 直接 `set(WINK_APP_SOURCES "")`，不出任何 target；`frameworks/mcs51/CMakeLists.txt:15-20` 在 ESP_PLATFORM 直接 return。
-- `mcs51_cleanup.py --target=sdcc` 的代码路径存在（SDCC 方言改写），但全仓库无任何构建/CI 消费其产物（grep 仅命中 wasm 目标的 `--target wasm`，与 mcs51 无关）。
+- `transpile_app_keil_c51.py --target=sdcc` 的代码路径存在（SDCC 方言改写），但全仓库无任何构建/CI 消费其产物（grep 仅命中 wasm 目标的 `--target wasm`，与 mcs51 无关）。
 - 结论：`health_pot.c`（及全部 carrier 用户源码）**有史以来只被 C++17 编译过，从未被任何 8051 C 编译器编译过**。
 
 **真机后果**
@@ -159,7 +159,7 @@ health_pot 的遥测场景描述文字已经意识到此风险（`health-pot-uar
 
 **修复方案（建议单独立 Layer-③ 实施计划）**
 
-1. **Tier-S（SDCC 编译门禁，先行，低成本）**：CI 中对每个 mcs51 carrier 执行 `mcs51_cleanup.py --target=sdcc` → `sdcc -mmcs51 --std-c89 -c`（只编译不链接，或使用 CMS8S 器件本地头占位）。目标是兜住 C 方言、明显的类型/声明问题；SDCC 与 Keil 方言差异（`__interrupt`/`__code`/`__at`）已在 cleanup 中处理。
+1. **Tier-S（SDCC 编译门禁，先行，低成本）**：CI 中对每个 mcs51 carrier 执行 `transpile_app_keil_c51.py --target=sdcc` → `sdcc -mmcs51 --std-c89 -c`（只编译不链接，或使用 CMS8S 器件本地头占位）。目标是兜住 C 方言、明显的类型/声明问题；SDCC 与 Keil 方言差异（`__interrupt`/`__code`/`__at`）已在 cleanup 中处理。
 2. **Tier-K（Keil 门禁，条件具备时）**：Windows CI/本地安装 C51 工具链时，对原厂 Keil 工程与 carrier 执行 `C51.exe + BL51.exe`，解析 `.m51`/`.map` 输出，自动断言 DATA/IDATA/XDATA/CODE 预算并产出报告。
 3. 将工具链门禁结果挂到 `wink.py sim run` 的前置检查或独立 `wink.py mcs51 gate` 子命令，场景测试报告同时展示「编译门禁」与「行为场景」两列结果。
 4. SDCC 路径下发现的 cleanup 改写缺陷（参见 GAP-12 的 delay 劫持等）一并修复。
@@ -354,8 +354,8 @@ health_pot 的 10ms tick（T0 重载 0xB1E0）与 9600bps（TH1=217）都按 24M
 | :--- | :--- | :--- |
 | **T2/3/4 周期公式不跟 clock_hz** | `mcs51_timer.cpp:216-242,409-459,522-572`：us 折算写死 `/2`、`/6`，不乘 1e6/Fsys；T0/T1 公式（126-134 行）则正确使用 Fsys。**第二轮评审后经参考手册复核（T2CON/T34MOD 章），分频语义本身正确**：T2PS `0=Fsys/12、1=Fsys/24`，24MHz 下即每计数 0.5µs（counts/2）/1µs（counts）；T3M/T4M `0=Fsys/12、1=Fsys/4`，24MHz 下即 counts/2 与 **counts/6（=Fsys/4=6MHz 的倒数，并非错误分频）**。缺陷性质明确为「24MHz 硬编码倒数」，随 GAP-13 一并参数化 | 执行 SYS_SET_SYSTEM_CLK 分频后 T2/3/4 时序错误。修复：统一走 counts_to_us 形式，补 T2PS/T3M/T4M 四组合单测 |
 | **重复中断向量静默覆盖** | `mcs51_isr.cpp:52-56` 后注册者直接覆盖表项，无告警 | Keil/SDCC 链接期即报重复向量；仿真静默。修复：重复注册时 STRICT 断言/警告并计数 |
-| **cleanup 空 superloop 注入面过宽** | `mcs51_cleanup.py:89-91,357-361` 对任意位置（含 ISR 体内）的 `while(1);` 注入 `_nop_()` | 改变的是仿真副本语义（真机 ISR 内死等直接卡死整个系统）；修复：注入仅限函数顶层 main 循环，ISR 内空死循环改为告警 |
-| **cleanup delay 本地定义守卫可漏判** | `mcs51_cleanup.py:98-100,364-382`：定义正则只认单行开括号与固定返回类型表，跨行 K&R 花括号、`static void delay_ms(void)` 以外签名会漏判，随后调用点被劫持为 `wink_mcs51_delay_ms` | 仿真跑的不是用户延时实现。修复：改用括号配平的函数体扫描，识别全部合法 C 定义形式 |
+| **cleanup 空 superloop 注入面过宽** | `transpile_app_keil_c51.py:89-91,357-361` 对任意位置（含 ISR 体内）的 `while(1);` 注入 `_nop_()` | 改变的是仿真副本语义（真机 ISR 内死等直接卡死整个系统）；修复：注入仅限函数顶层 main 循环，ISR 内空死循环改为告警 |
+| **cleanup delay 本地定义守卫可漏判** | `transpile_app_keil_c51.py:98-100,364-382`：定义正则只认单行开括号与固定返回类型表，跨行 K&R 花括号、`static void delay_ms(void)` 以外签名会漏判，随后调用点被劫持为 `wink_mcs51_delay_ms` | 仿真跑的不是用户延时实现。修复：改用括号配平的函数体扫描，识别全部合法 C 定义形式 |
 | **P0~P3EXTIF W0C 语义缺口** | W0C hook 只注册了 T2IF/EIF2（`mcs51_timer.cpp:883-891`）；端口中断标志寄存器 0xB4~0xB7 走普通存储，`GPIO_ClearIntFlag` 的 `P0EXTIF = 0xFF & ~bit` 在模型中是直接赋值（恰好语义对），但 ISR 用 `|=` 写其他位会误清标志 | 多引脚同时挂起时清标志行为与硅片不一致。修复：0xB4~0xB7 注册同款 W0C hook |
 | **TA 窗口内 `_nop_` 数量不校验** | 同 GAP-07 | 与 GAP-07 合并处理 |
 
@@ -464,7 +464,7 @@ health_pot 的 10ms tick（T0 重载 0xB1E0）与 9600bps（TH1=217）都按 24M
 
 ### GAP-20（P2，第二轮评审结构风险 C）cleanup 副本溯源与门禁状态上报告
 
-被测物是 `mcs51_cleanup.py` 的改写副本而非原文件；改写器一旦漏判（见 GAP-12 的跨行 delay 定义），仿真与真机执行的就是不同代码。**处置**：① cleanup 每次产出 transform manifest（ISR/header/main/loop/delay 改写计数与片段定位），写入构建产物；② 场景报告头部标注「测试基于 cleanup 副本；C51 工具链编译：通过 / 未执行（见 GAP-03）」；③ ③ tier-b vendor 对编译测试与本门禁的职责边界在红线手册 §6 写明。
+被测物是 `transpile_app_keil_c51.py` 的改写副本而非原文件；改写器一旦漏判（见 GAP-12 的跨行 delay 定义），仿真与真机执行的就是不同代码。**处置**：① cleanup 每次产出 transform manifest（ISR/header/main/loop/delay 改写计数与片段定位），写入构建产物；② 场景报告头部标注「测试基于 cleanup 副本；C51 工具链编译：通过 / 未执行（见 GAP-03）」；③ ③ tier-b vendor 对编译测试与本门禁的职责边界在红线手册 §6 写明。
 
 ### GAP-21（P2，第二轮评审结构风险 B）wasm 每场景重建的生命周期假设需回归钉防
 
@@ -591,7 +591,7 @@ health_pot 的 10ms tick（T0 重载 0xB1E0）与 9600bps（TH1=217）都按 24M
 ### 10.2 第二轮执行：GAP-22 修正 + GAP-03 Task 0（2026-09-10，已提交）
 
 - **GAP-22 优先级位修正（commit 7a8479e）**：SDCC 试点用原厂头机械转译时发现 v1 修复的 EIP 位公式错误——原厂 `IRQ_SET_PRIORITY` 按**优先级模块编号**（扩展模块=向量+1）而非 vector−16。正确映射：T3→EIP2.0、T4→EIP2.1、PWM→EIP2.3、ADC→EIP2.4。审计脚本升级为 vector+priority 全字段硬比对并通过变异测试；31 host 测试全绿。
-- **GAP-03 Task 0 落地（SDCC Tier-S 门禁工具链）**：`mcs51_sdcc_devhdr.py`（原厂 Keil 头→SDCC 机械转译，杜绝手写占位漂移）、`sdcc_gate/` 头树（家族 wink_mcu.h、intrins/absacc/经典名别名）、`mcs51_sdcc_gate.py`（按应用 cleanup→编译→**链接**→`--code/iram/xram-size` 预算判决→`.mem` 报告；CMS8S 自动链接全套厂商 StdDriver）；cleanup 新增用户 `sbit` 声明 SDCC 改写与 GB18030 回退。
+- **GAP-03 Task 0 落地（SDCC Tier-S 门禁工具链）**：`mcs51_sdcc_devhdr.py`（原厂 Keil 头→SDCC 机械转译，杜绝手写占位漂移）、`sdcc_gate/` 头树（家族 wink_mcu.h、intrins/absacc/经典名别名）、`gate_app_hardware_capacity.py`（按应用 cleanup→编译→**链接**→`--code/iram/xram-size` 预算判决→`.mem` 报告；CMS8S 自动链接全套厂商 StdDriver）；cleanup 新增用户 `sbit` 声明 SDCC 改写与 GB18030 回退。
 - **门禁实测**：**8/8 应用通过**（6 官方 carrier + 厂商 uart0_printf/uart0_rxtx 多 TU 例程）；未定义符号负向样例正确红灯；health_pot CODE=10923B/16KB、栈余 184B（CMS8S CODE 含整套 StdDriver 偏保守，Tier-K 为最终准）。
 - 评审修正已并入两份实施计划：GAP-02 v1.1（默认引脚 P3.1/P3.0 非必需 CFG、家族门控、位掩码计数器、STRICT 独立构建目标）；GAP-03 v1.1（弃用 `--std-c89`、预算需链接+容量参数、转译器替代占位头、Task 0 状态）。
 

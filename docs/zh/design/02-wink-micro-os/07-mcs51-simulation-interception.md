@@ -89,7 +89,7 @@ MCU 兼容分两条正交轴：
 - **0 周期即时穿透**（ADR-0072 即时外设语义）：ADCON0 写钩子（`mcs51_trap_register_sfr_write(0xDF, …)`，`frameworks/mcs51/src/cms8s_adc.cpp`）在写语句内同步完成：门控 ADGO+ADEN → 取通道 → 从 12-bit 注入轨 `mcs51_adc_get_value()` 拉码值 → 按 ADFM 装载 ADRESH/ADRESL → 影子自清 ADGO → 按 ADCIE 锁存 ADCIF、按 EA 派发向量 19。
 - **码值装载**（与原厂 `ADC_GetADCResult` 互逆）：右对齐 `ADRESH=(raw>>8)&0x0F, ADRESL=raw&0xFF`（读取 `0x0FFF&((ADRESH<<8)|ADRESL)`）；左对齐 `ADRESH=(raw>>4)&0xFF, ADRESL=(raw&0x0F)<<4`（读取 `0x0FFF&((ADRESH<<4)|(ADRESL>>4))`）。
 - **基础设施**：ISR 表宽 `WINK_MCS51_NUM_VECTORS` = 28；通用 core 默认 profile 仅标准源 0~5，扩展源由芯片包在 context reset 中经 `wink_mcs51_set_irq_map_entry` 逐项装载（映射表 per-context，随 Mcu51Context 复位重建），描述符 `irq_vector_table` 做家族白名单绝缘（经典家族拒收扩展向量），T2 多标志判定经 per-context flag-predicate 钩子下放芯片包（PLAN-20260911-MCS51-S5 CPL-06）；xdata 合法孔径由家族描述符给出：XRAM `[0, xram_size)`（无片上 XRAM 时为板级 `WINK_MCS51_XDATA_SIZE`）∪ XSFR 窗口 `[xsfr_base, xsfr_base+xsfr_size)`，窗口内白名单校验经 per-context `xsfr_validate` 芯片钩子（经典无窗口；STRICT assert+abort / release 告警丢弃双态，CPL-08）；模拟注入轨统一 12-bit（0~4095，64 rail key 双空间：0~31 物理 Pin / 32~63 板级通道），ADC0832 消费点 `&0xFF` 掩码不受影响。
-- **原厂 StdDriver 未修改编译（tier-b，2026-08-29 收割，ADR-0073 D6）**：原厂 StdDriver `adc.c` 经 committed shim `frameworks/mcs51/chips/cms8s78xx/include/cms8s78xx.h`（Stage3 前位于 `frameworks/mcs51/include/`；置于 include 首位遮蔽原厂 Keil 设备头——其重定义 stdint/sfr、野指针 `ADCLDO`，仅 `#include "REG_CMS8S.H"`）+ GBK→UTF-8 transcode（`mcs51_cleanup.py` `read_source`/`--transcode`，构建树规范化、源只读不入库）+ C++17 `inline WinkSfr/WinkXsfr` ODR 安全多 TU 共享，在 host 编译运行（`test_mcs51_cms8s_vendor`）。REG_CMS8S.H 与原厂重名枚举宏采用原厂逐字 token 间距（GCC 无 `-Wmacro-redefined`，仅逐字一致静默；vendor 头目录标 SYSTEM include、MSVC `/wd4005`）；夹具缺失 CMake 优雅跳过。原厂夹具（`docs/vendors/`）参考只读、永不入库（E-003/license）。
+- **原厂 StdDriver 未修改编译（tier-b，2026-08-29 收割，ADR-0073 D6）**：原厂 StdDriver `adc.c` 经 committed shim `frameworks/mcs51/chips/cms8s78xx/include/cms8s78xx.h`（Stage3 前位于 `frameworks/mcs51/include/`；置于 include 首位遮蔽原厂 Keil 设备头——其重定义 stdint/sfr、野指针 `ADCLDO`，仅 `#include "REG_CMS8S.H"`）+ GBK→UTF-8 transcode（`transpile_app_keil_c51.py` `read_source`/`--transcode`，构建树规范化、源只读不入库）+ C++17 `inline WinkSfr/WinkXsfr` ODR 安全多 TU 共享，在 host 编译运行（`test_mcs51_cms8s_vendor`）。REG_CMS8S.H 与原厂重名枚举宏采用原厂逐字 token 间距（GCC 无 `-Wmacro-redefined`，仅逐字一致静默；vendor 头目录标 SYSTEM include、MSVC `/wd4005`）；夹具缺失 CMake 优雅跳过。原厂夹具（`docs/vendors/`）参考只读、永不入库（E-003/license）。
 - **v1 收窄**：AN63 内部通道（BGR/温度/VDD）返回 0；ADCLDO VSEL 不影响满量程；完整 ADC_Ldo 例程（tier-c，需 system.h/gpio.h shim + 19 个 ISR 桩）延后 M6。
 - **即时外设与虚拟频率的断言语义边界**：ADC 模型是 0 周期即时转换（ADR-0073 D2 / ADR-0072 D1），连续转换在虚拟时钟量子与微步内折叠。实测 ~10.7kHz 是 Native 宿主 C 软件循环的微步累计节拍，而非真硅片 `ADC_CLK_DIV_256` 的物理转换率（真硅片在 24MHz 下物理转换率约为 3.3kHz）。EOC 场景断言（如 `adc-ldo.scenario.json`）证明的是“EOC 中断 vector 19 派发 → ISR 翻转 P32”这一中断服务链路与引脚翻转活性（Liveness）闭环，而非校验硬件物理振荡频率；场景断言采用活性宽容区间（`$between: [1000, 50000]`），避免将仿真软件循环微步假象误作为物理 Gold Reference。详见专用技术设计规格书：[`2026-09-08-mcs51-simulation-vs-silicon-fidelity-and-test-limits.md`](../../tech-designs/mcs51/2026-09-08-mcs51-simulation-vs-silicon-fidelity-and-test-limits.md)。
 - 证据：M5 host（MSVC/MinGW）mcs51 ctest 16/16、wasm/Node 6/6、STRICT 抽测、arch lint 无发现；tier-b 收割后 MSVC 23/23（17 host 含 `test_mcs51_cms8s_vendor` + 6 wasm）、MinGW host 17/17、arch lint 无发现。
@@ -253,9 +253,9 @@ frameworks/mcs51/                              # 沙箱层（ESP_PLATFORM 下整
     include/adc0832.h（小写规范名）; src/mcs51_adc0832.cpp（经 Trap 注册接入）
   tools/
     manifests/chips/{at89c52,cms8s78xx}.yaml + schema.json（芯片事实源）
-    mcs51_cleanup.py / mcs51_sdcc_gate.py / mcs51_sdcc_devhdr.py /
+    transpile_app_keil_c51.py / gate_app_hardware_capacity.py / mcs51_sdcc_devhdr.py /
     mcs51_shim_audit.py / run_mcs51_headless_evidence.ps1 / sdcc_gate/<family>/
-    lint/lint_mcs51_layering.py（+ safety/sim_compat 休眠 pack）
+    lint/lint_fw_core_isolation.py（+ safety/sim_compat 休眠 pack）
   test/
     core/            标准 8051 + 板级器件通用测试（禁 AN 语义/扩展向量）
     cms8s78xx/       AN 映射、扩展向量、XSFR 窗口、WDT/TA/CLKDIV 测试
@@ -283,7 +283,7 @@ frameworks/mcs51/                              # 沙箱层（ESP_PLATFORM 下整
 
 ### 3.3 构建集成与三端
 
-- 未修改 Keil `.c` 经 `mcs51_cleanup.py` 正则清洗为构建树 `.cpp`（源只读不入库），以 C++17 编入 host（MSVC/MinGW）与 emcc/wasm（ASYNCIFY fiber）；**无 `-fpermissive`、无硬编码 GBK 输入字符集**（源 UTF-8；GBK 仅用于读 vendor 夹具到 UTF-8 构建副本）。
+- 未修改 Keil `.c` 经 `transpile_app_keil_c51.py` 正则清洗为构建树 `.cpp`（源只读不入库），以 C++17 编入 host（MSVC/MinGW）与 emcc/wasm（ASYNCIFY fiber）；**无 `-fpermissive`、无硬编码 GBK 输入字符集**（源 UTF-8；GBK 仅用于读 vendor 夹具到 UTF-8 构建副本）。
 - ESP32：`frameworks/mcs51/CMakeLists.txt` 顶部 `if(ESP_PLATFORM) return()`，真机固件**零** mcs51 符号/增量。
 - 运行：`wink_runtime_run(cb, max_ticks)`，tick=10ms；宿主 100Hz 主时钟 / 虚拟 µs 从时钟 1:1。
 
