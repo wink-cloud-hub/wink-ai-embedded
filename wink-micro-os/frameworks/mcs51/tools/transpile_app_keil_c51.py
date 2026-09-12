@@ -109,6 +109,7 @@ EMPTY_SUPERLOOP_RE = re.compile(
 
 # SDCC dialect mappings (Task R4)
 SDCC_CODE_RE = re.compile(r"\bcode\b")
+SDCC_XDATA_RE = re.compile(r"\bxdata\b")
 SDCC_AT_RE = re.compile(r"\b_at_\s+((?:0x[0-9a-fA-F]+|\d+))\b")
 
 # Delay function definitions and call sites (Task R4 & Task R5)
@@ -342,6 +343,12 @@ def cleanup(source: str, target: str = "native") -> tuple[str, dict[str, int]]:
         # 2. code -> __code
         for m in SDCC_CODE_RE.finditer(mask):
             regions.append((m.start(), m.end(), "__code", "sdcc"))
+
+        # 2b. xdata -> __xdata (PLAN-20260912-SIM-FIDELITY: app-level XDATA
+        # placement for the 16-slot slope ring and debounce state; the native
+        # target erases xdata via REGX52.H, SDCC needs its __xdata spelling)
+        for m in SDCC_XDATA_RE.finditer(mask):
+            regions.append((m.start(), m.end(), "__xdata", "sdcc"))
 
         # 3. _at_ 0xNN -> __at(0xNN)
         for m in SDCC_AT_RE.finditer(mask):
