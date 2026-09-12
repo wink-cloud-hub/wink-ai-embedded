@@ -74,7 +74,7 @@
 | stage1 后（rail 64 槽入账） | 实测（现树探针） | **75752** | +96（32 槽 ×（2B injected + 1B flag）），与计划预测分毫不差 |
 | stage5 后（irq map 入 ctx 入账） | 待测（stage5 落数，届时同步上调单测 ceiling） | 待填 | +104B（13 项 × 8B profile）；诊断计数器留 file-static 不计入 |
 | cms8s priv 池/实例 | 实测 **72B**（sys 32 + buzzer 24 + adc 8 + adet 4 + in_poll 1，对齐后；×4 槽 = 288B BSS）+ 器件池 `Adc0832State` **15B**（×4 = 60B BSS，独立数组） | 72+15 | BSS 池按实例，"context 外"内存，另行列表不与上表混算 |
-| 注册表上限 | 8（3 core + 3 cms8s + 2 余量，stage4 `static_assert` 锁死，namespace 为"项"非字节） | 待填 | 超限编译期失败，逼新外设走 chips 拆分而非 core 堆料 |
+| 注册表上限 | **12**（stage4 实装：3 core + 7 cms8s = 10，留 2 余量；~~8~~ 冻结值已由 stage4 复审复议，见 stage4 附录 C） | 待填 | 溢出在注册点无条件 abort（ADR-0012），不静默丢弃；倒逼新外设走 chips 拆分而非 core 堆料 |
 | 拆分后 classic | **75672**（S2-1 后实测；+24 vs 基线 = caps 8 + hooks 12 + 对齐 4，入账；S2-2 再削 ~120） | 75672 | extbus 状态（8B）留 core，已计入 |
 | 拆分后 CMS8S | **75672**（context 内尺寸与 classic 同构；priv 池外计 72B/实例） | 75672 | soc_priv 池外计（BSS 池按实例，另行列表） |
 
