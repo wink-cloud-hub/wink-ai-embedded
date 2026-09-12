@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 """
-mcs51_sdcc_gate.py — Tier-S SDCC compile gate for mcs51 carrier sources
+gate_app_hardware_capacity.py — Tier-S SDCC compile gate for mcs51 carrier sources
+# Renamed from mcs51_sdcc_gate.py (2026-09 canonical gate naming).
 (GAP-03 implementation plan PLAN-20260910-GAP03-SDCC-GATE, Task 0/1).
 
 For each application directory:
   1. reads wink-app.json and resolves the MCU family through the chip
      manifests (tools/manifests/chips/*.yaml; stage6 S6-2, CPL-16)
-  2. runs mcs51_cleanup.py --target=sdcc on every top-level .c source
+  2. runs transpile_app_keil_c51.py --target=sdcc on every top-level .c source
      (multi-TU vendor examples supported)
   3. transpiles the family's vendor Keil device header when the manifest
      declares one (vendor_device_header)
@@ -26,7 +27,7 @@ omitted mcu still resolves to the historical at89c52 board default, through
 its manifest).
 
 Usage:
-    python mcs51_sdcc_gate.py APP_DIR [APP_DIR ...] [--sdcc PATH]
+    python gate_app_hardware_capacity.py APP_DIR [APP_DIR ...] [--sdcc PATH]
 """
 import argparse
 import json
@@ -147,10 +148,10 @@ def gate_app(app_dir, sdcc, stack_min):
                 out_base = f"vendor_{idx}_{src.replace('.c', '_sdcc.c')}"
             cleaned = os.path.join(work, out_base)
             r = run([sys.executable,
-                     os.path.join(HERE, "mcs51_cleanup.py"), "--target=sdcc",
+                     os.path.join(HERE, "transpile_app_keil_c51.py"), "--target=sdcc",
                      src_path, cleaned])
             if r.returncode != 0:
-                return False, f"cleanup failed for {src}: {r.stderr or r.stdout}"
+                return False, f"transpile failed for {src}: {r.stderr or r.stdout}"
             obj = out_base.replace(".c", ".rel")
             cmd = [sdcc, "-mmcs51"] + [f"-I{os.path.abspath(p)}" for p in includes] + \
                   ["-c", out_base, "-o", obj]

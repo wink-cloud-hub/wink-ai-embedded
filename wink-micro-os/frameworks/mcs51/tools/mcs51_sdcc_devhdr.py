@@ -17,7 +17,7 @@ vendor header fixtures:
   trailing comma in vendor enum   -> removed (SDCC rejects it)
 
 The SFR name->address table collected here is also the source of truth for
-mcs51_cleanup.py's `sbit N = REG^b;` rewrite on the SDCC target.
+transpile_app_keil_c51.py's `sbit N = REG^b;` rewrite on the SDCC target.
 
 Usage:
     python mcs51_sdcc_devhdr.py VENDOR_HEADER OUTPUT_HEADER
