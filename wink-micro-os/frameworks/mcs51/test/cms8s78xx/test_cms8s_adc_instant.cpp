@@ -195,6 +195,16 @@ int main(void) {
     check((uint8_t)ADRESH == 0x00u && (uint8_t)ADRESL == 0x00u,
           "AN63 internal conversion should read 0 in v1");
 
+    // ── 9b) AN63 TS (0x3F + ANACH=4 + TS_REG enabled) ───────────────────────
+    WinkXsfr ts_reg(0xF693u);
+    ts_reg = 0xC8u;  // enable + trim=8 (nominal 1365 LSB)
+    ADCON0 = static_cast<unsigned>((uint8_t)ADCON0 | (4u << 2u));  // ANACH = 4
+    convert(0x3Fu, true);  // right-justified
+    const uint16_t ts_raw = (uint16_t)(((uint8_t)ADRESH << 8) | (uint8_t)ADRESL);
+    check(ts_raw == 1365u, "AN63 TS nominal trim 8 should convert to 1365 LSB");
+    ADCON0 = static_cast<unsigned>((uint8_t)ADCON0 & ~(0x0Fu << 2u));  // clear ANACH
+    ts_reg = 0x00u;
+
     // ── 10) XSFR proxy: ADCLDO @ 0xF692 lives in the legal window ───────────
     WinkXsfr adcldo(0xF692u);
     const uint32_t oob_before = wink_mcs51_xdata_oob_count();

@@ -197,6 +197,7 @@ xsfr BRTDL(0xF5C1);    // Baud Rate Timer reload low
 xsfr BRTDH(0xF5C2);    // Baud Rate Timer reload high
 
 xsfr ADCLDO(0xF692);  // ADC LDO control (bit7 LDOEN, bits6:5 VSEL, bit4 OUTEN)
+xsfr TS_REG(0xF693);  // Temperature sensor control & trim register
 
 // Analog Comparator (ACMP0/ACMP1, 0xF500..0xF50D)
 xsfr C0CON0(0xF500);   // ACMP0 control 0
@@ -1298,6 +1299,13 @@ static inline void ADC_ConfigHardwareTrig(uint8_t ADCTGSource, uint8_t TGMode) {
     temp &= ~(ADC_ADCON2_ADTGS_Msk | ADC_ADCON2_ADEGS_Msk);
     temp |= (uint8_t)((ADCTGSource << ADC_ADCON2_ADTGS_Pos) | (TGMode << ADC_ADCON2_ADEGS_Pos));
     ADCON2 = temp;
+}
+static inline void ADC_ConfigAN63(uint8_t An63Channel) {
+    uint8_t temp;
+    temp = ADCON0;
+    temp &= ~(ADC_ADCON0_ANACH_Msk);
+    temp |= (uint8_t)(An63Channel << ADC_ADCON0_ANACH_Pos);
+    ADCON0 = temp;
 }
 #endif  // WINK_CMS8S_VENDOR_ADC
 

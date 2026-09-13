@@ -60,7 +60,12 @@ constexpr uint8_t EIF2_ADCIF  = 0x10u;  // bit4
 constexpr uint8_t ADC_CH_MAX_EXTERNAL = 25u;
 constexpr uint8_t ADC_CH_INTERNAL     = 0x3Fu;
 
+constexpr uint8_t ADCON0_ANACH_Pos = 2u;
+constexpr uint8_t ADCON0_ANACH_Msk = 0x3Cu;  // bits 5:2
+constexpr uint8_t ADC_CH_63_TS     = 0x04u;
+
 constexpr uint16_t XSFR_ADCLDO = 0xF692u;
+constexpr uint16_t XSFR_TS_REG = 0xF693u;
 constexpr uint8_t ADCLDO_LDOEN = 0x80u;
 constexpr uint8_t ADCLDO_VSEL_Msk = 0x60u;
 constexpr uint8_t ADCLDO_VSEL_Pos = 5u;
@@ -232,6 +237,7 @@ void do_adc_conversion(Mcu51Context* ctx) {
     }
 
     uint16_t raw;
+    const uint8_t adcon0 = ctx->sfr_shadow[SFR_ADCON0];
     if (ch <= ADC_CH_MAX_EXTERNAL) {
         // Stage1 (S1-2): AN channel -> physical Pin key via explicit table.
         // Core performs no mapping; the old `32+ch` synth misuse is gone.
@@ -251,12 +257,27 @@ void do_adc_conversion(Mcu51Context* ctx) {
                 raw = CMS8S_ADC_SYNTH_REJECT_SENTINEL;
             }
         }
+    } else if (ch == ADC_CH_INTERNAL) {
+        const uint8_t anach = static_cast<uint8_t>((adcon0 & ADCON0_ANACH_Msk) >> ADCON0_ANACH_Pos);
+        if (anach == ADC_CH_63_TS) {
+            const uint8_t ts_reg = ctx->xdata_shadow[XSFR_TS_REG];
+            if ((ts_reg & 0xC0u) == 0xC0u) {
+                const uint8_t trim = static_cast<uint8_t>(ts_reg & 0x0Fu);
+                // 25℃ 1.00V @ 3.0V VREF corresponds to 1365 LSB.
+                // Nominal trim code is 8 (Count0=8). Each step is ~7 LSB (~0.005V).
+                int32_t val = 1365 + (static_cast<int32_t>(trim) - 8) * 7;
+                if (val < 0) val = 0;
+                if (val > 4095) val = 4095;
+                raw = static_cast<uint16_t>(val);
+            } else {
+                raw = 0u;
+            }
+        } else {
+            raw = 0u;
+        }
     } else {
-        raw = 0u;  // AN63 (BGR/temp/VDD) not modeled in v1.
-        (void)ADC_CH_INTERNAL;
+        raw = 0u;
     }
-
-    const uint8_t adcon0 = ctx->sfr_shadow[SFR_ADCON0];
     if ((adcon0 & ADCON0_ADFM) != 0u) {
         ctx->sfr_shadow[SFR_ADRESH] = static_cast<uint8_t>((raw >> 8) & 0x0Fu);
         ctx->sfr_shadow[SFR_ADRESL] = static_cast<uint8_t>(raw & 0xFFu);
@@ -320,6 +341,7 @@ void cms8s_adc_model_reset(struct Mcu51Context* ctx) {
     priv->adet.have_sample = false;
     // PS_ADET selector resets to 0x7F ("no pin connected", ref manual §7.2.3)
     ctx->xdata_shadow[XSFR_PS_ADET] = 0x7Fu;
+    ctx->xdata_shadow[XSFR_TS_REG] = 0x00u;
     for (uint8_t i = 0; i < 2; ++i) {
         s_adc_notready[i] = 0;
 #ifndef WINK_MCS51_STRICT
