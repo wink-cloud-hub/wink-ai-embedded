@@ -253,6 +253,38 @@ xsfr C1HYS(0xF50D);    // ACMP1 hysteresis control
 #define BUZZER_BUZCON_BUZCKS_Pos (0)
 #define BUZZER_BUZCON_BUZCKS_Msk (0x3 << BUZZER_BUZCON_BUZCKS_Pos)
 
+// WDCON
+#define WDT_WDCON_SWRST_Pos      (7)
+#define WDT_WDCON_SWRST_Msk      (0x1 << WDT_WDCON_SWRST_Pos)
+#define WDT_WDCON_PORF_Pos       (6)
+#define WDT_WDCON_PORF_Msk       (0x1 << WDT_WDCON_PORF_Pos)
+#define WDT_WDCON_WDTIF_Pos      (3)
+#define WDT_WDCON_WDTIF_Msk      (0x1 << WDT_WDCON_WDTIF_Pos)
+#define WDT_WDCON_WDTRF_Pos      (2)
+#define WDT_WDCON_WDTRF_Msk      (0x1 << WDT_WDCON_WDTRF_Pos)
+#define WDT_WDCON_WDTRE_Pos      (1)
+#define WDT_WDCON_WDTRE_Msk      (0x1 << WDT_WDCON_WDTRE_Pos)
+#define WDT_WDCON_WDTCLR_Pos     (0)
+#define WDT_WDCON_WDTCLR_Msk     (0x1 << WDT_WDCON_WDTCLR_Pos)
+
+// CKCON (WDT prescaler)
+#define SYS_CKCON_WTS_Pos        (5)
+#define SYS_CKCON_WTS_Msk        (0x7 << SYS_CKCON_WTS_Pos)
+
+// EIE2 (WDT interrupt enable)
+#define IRQ_EIE2_WDTIE_Pos       (5)
+#define IRQ_EIE2_WDTIE_Msk       (0x1 << IRQ_EIE2_WDTIE_Pos)
+
+// WDT Prescaler / Clock counts (from wdt.h)
+#define WDT_CLK_131072           (0x00)
+#define WDT_CLK_262144           (0x01)
+#define WDT_CLK_524288           (0x02)
+#define WDT_CLK_1048576          (0x03)
+#define WDT_CLK_2097152          (0x04)
+#define WDT_CLK_4194304          (0x05)
+#define WDT_CLK_16777216         (0x06)
+#define WDT_CLK_67108864         (0x07)
+
 // UART modes & baud timers (from StdDriver inc/uart.h)
 #define UART_MOD_SYN             (0x00)
 #define UART_MOD_ASY_8BIT        (0x01)
@@ -741,13 +773,13 @@ typedef enum {
     IRQ_ACMP    = 15,
     IRQ_TMR3    = 16,
     IRQ_TMR4    = 17,
-    IRQ_EPWM    = 18,
-    IRQ_ADC     = 19,
-    IRQ_WDT     = 20,
-    IRQ_I2C     = 21,
-    IRQ_SPI     = 22,
-    IRQ_LSE_SCM = 25,
-    IRQ_LVD     = 26
+    IRQ_EPWM    = 19,
+    IRQ_ADC     = 20,
+    IRQ_WDT     = 21,
+    IRQ_I2C     = 22,
+    IRQ_SPI     = 23,
+    IRQ_LSE_SCM = 26,
+    IRQ_LVD     = 27
 } en_Priority_Module_t;
 
 #define INT0_VECTOR                          0
@@ -1638,6 +1670,77 @@ static inline void ACMP_ConfigOffsetAdj(uint8_t ACMPn, uint8_t OffsetAdjMode, ui
 }
 
 #endif  // WINK_CMS8S_VENDOR_ACMP
+
+// ── 12) Vendor WDT & System Reset driver shims (verbatim from StdDriver wdt.c & system.c) ──
+#ifndef WINK_CMS8S_VENDOR_WDT
+static inline void WDT_ConfigOverflowTime(uint8_t TsysCoefficient) {
+    uint8_t temp = CKCON;
+    temp &= ~SYS_CKCON_WTS_Msk;
+    temp |= (uint8_t)(TsysCoefficient << SYS_CKCON_WTS_Pos);
+    CKCON = temp;
+}
+
+static inline void WDT_ClearWDT(void) {
+    uint8_t ea = EA;
+    EA = 0;
+    TA = 0xAA;
+    TA = 0x55;
+    WDCON |= WDT_WDCON_WDTCLR_Msk;
+    EA = ea;
+}
+
+static inline void WDT_EnableOverflowInt(void) {
+    EIE2 |= IRQ_EIE2_WDTIE_Msk;
+}
+
+static inline void WDT_DisableOverflowInt(void) {
+    EIE2 &= ~IRQ_EIE2_WDTIE_Msk;
+}
+
+static inline uint8_t WDT_GetOverflowIntFlag(void) {
+    return (WDCON & WDT_WDCON_WDTIF_Msk) ? 1 : 0;
+}
+
+static inline void WDT_ClearOverflowIntFlag(void) {
+    uint8_t ea = EA;
+    EA = 0;
+    TA = 0xAA;
+    TA = 0x55;
+    WDCON &= ~WDT_WDCON_WDTIF_Msk;
+    EA = ea;
+}
+
+static inline void SYS_EnableWDTReset(void) {
+    uint8_t ea = EA;
+    EA = 0;
+    TA = 0xAA;
+    TA = 0x55;
+    WDCON |= WDT_WDCON_WDTRE_Msk;
+    EA = ea;
+}
+
+static inline void SYS_DisableWDTReset(void) {
+    uint8_t ea = EA;
+    EA = 0;
+    TA = 0xAA;
+    TA = 0x55;
+    WDCON &= ~WDT_WDCON_WDTRE_Msk;
+    EA = ea;
+}
+
+static inline uint8_t SYS_GetWDTResetFlag(void) {
+    return (WDCON & WDT_WDCON_WDTRF_Msk) ? 1 : 0;
+}
+
+static inline void SYS_ClearWDTResetFlag(void) {
+    uint8_t ea = EA;
+    EA = 0;
+    TA = 0xAA;
+    TA = 0x55;
+    WDCON &= ~WDT_WDCON_WDTRF_Msk;
+    EA = ea;
+}
+#endif  // WINK_CMS8S_VENDOR_WDT
 
 // ── 11) Keil C51 printf & putchar bridge ───────────────────────────────────────
 // In Keil C51, printf formats strings and emits each character via user-defined
