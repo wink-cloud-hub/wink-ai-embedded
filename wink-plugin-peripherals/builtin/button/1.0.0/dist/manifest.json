@@ -104,11 +104,33 @@
   },
   "events": {
     "SET_PRESSED": {
-      "description": "Set button pressed state",
+      "description": "Set button pressed state (atomic press/release waveform pair in timing mode)",
       "params": {
         "pressed": {
           "type": "boolean",
           "required": true
+        },
+        "pressDurationUs": {
+          "type": "number",
+          "default": 0,
+          "min": 0,
+          "max": 60000000,
+          "unit": "us",
+          "description": "Explicit nominal pulse width; when > 0 the press/release atomic pair is injected at press time (ADR-0068, min 30ms). 0 keeps the event-driven release"
+        },
+        "bounceUs": {
+          "type": "number",
+          "default": 0,
+          "min": 0,
+          "max": 10000,
+          "unit": "us",
+          "description": "Contact bounce window at the leading edge (0 = clean press)"
+        },
+        "bounceCount": {
+          "type": "number",
+          "default": 6,
+          "min": 0,
+          "max": 64
         }
       }
     },
