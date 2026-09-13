@@ -105,8 +105,7 @@ wink_status_t sim_scheduler_register(void (*func)(void*), void* arg,
     t->id = s_task_id_counter++;
     t->ctx = ctx;
     
-    strncpy(t->name, name, sizeof(t->name) - 1);
-    t->name[sizeof(t->name) - 1] = '\0';
+    snprintf(t->name, sizeof(t->name), "%s", name);
     
     if (out_id) {
         *out_id = slot;
