@@ -1,0 +1,72 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51_health_pot L1: NTC measurement tolerance stays inside the +/-5% production band",
+    "templateId": "mcs51_health_pot",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "6000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "30ms",
+      "targetPluginId": "temp_sensor",
+      "action": "SET_TEMPERATURE",
+      "params": { "temperature": 25 },
+      "description": "Sensor plugin drives the AN0 rail with the NTC B-parameter divider (no raw ADC freezing)"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["900ms", "1200ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "T=025C,S=0,H=0,F=0",
+      "minPackets": 1,
+      "description": "25 C anchor decoded exactly through the firmware LUT"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "1500ms",
+      "targetPluginId": "temp_sensor",
+      "action": "SET_TEMPERATURE",
+      "params": { "temperature": 55 }
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["1900ms", "2200ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": { "$regex": "T=05[3-7]C,S=0,H=0,F=0" },
+      "minPackets": 1,
+      "description": "55 C measured within +/-5% (52.25..57.75 => 53..57)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "3500ms",
+      "targetPluginId": "temp_sensor",
+      "action": "SET_TEMPERATURE",
+      "params": { "temperature": 80 }
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["3900ms", "4200ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": { "$regex": "T=0(7[6-9]|8[0-4])C,S=0,H=0,F=0" },
+      "minPackets": 1,
+      "description": "80 C measured within +/-5% (76..84)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "4500ms",
+      "target": "plugin:temp_sensor/temperature",
+      "matcher": { "$near": { "target": 80, "tolerance": 0.5 } },
+      "description": "Sensor model itself sits at the injected setpoint (loop wiring proof)"
+    }
+  ]
+}

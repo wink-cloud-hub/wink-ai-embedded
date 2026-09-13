@@ -1,0 +1,112 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51_health_pot fast-boil: plant-excited 0.3 L / 1000 W boils in ~94 s then latches keep-warm (Phase-B)",
+    "templateId": "mcs51_health_pot",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "150000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "PLANT_LOOP",
+      "windowUs": ["0", "146s"],
+      "sampleIntervalUs": "10ms",
+      "model": {
+        "kind": "first_order_thermal",
+        "thermalCapacity": 1256,
+        "thermalResistance": 1.5,
+        "ambientTempC": 25,
+        "ratedPowerW": 1000
+      },
+      "inputsFromFirmware": ["gpio:16"],
+      "outputsToSensors": ["plugin:temp_sensor/temperature"],
+      "description": "Physical environment only (0.30 kg water, 1000 W plate, 1.5 K/W loss). Scenario injects NO temperature trajectory (ADR-0067 stimulus-source exclusion)."
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "400ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true },
+      "description": "Power on (300 ms atomic pulse, ADR-0068)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "700ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "Relay closed, plant begins absorbing 1000 W at ~25 C"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["29000ms", "32000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=1,H=1,F=0",
+      "minPackets": 1,
+      "description": "0.79 C/s ramp: no dry-fire false trip while water heats normally"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "60000ms",
+      "target": "plugin:temp_sensor/temperature",
+      "matcher": { "$between": [71, 74] },
+      "description": "Plant self-excited temperature at 60 s: 25 + P/C * t (validates closed-loop integration, not frozen injection)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "92000ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "Still heating just before the ~94 s boil point"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "92000ms",
+      "target": "plugin:temp_sensor/temperature",
+      "matcher": { "$between": [94, 97] },
+      "description": "Plant temperature approaching boil with ADR-0055-grade tolerance band"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "99000ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Boil reached (98 C): plate cut off around 94-95 s"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["100000ms", "103000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=2,H=0,F=0",
+      "minPackets": 1,
+      "description": "3 s boil hold completed: WARM latched, no fault"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "102000ms",
+      "target": "plugin:display/text",
+      "matcher": { "$regex": "^9[68]60$" },
+      "description": "4COM display: measured 96-98 C (raw 19<->20 LUT boundary at ~96.8 C actual) + keep-warm setpoint 60 C"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "120000ms",
+      "target": "plugin:temp_sensor/temperature",
+      "matcher": { "$between": [95, 99] },
+      "description": "Slow ambient decay after cut-off (tau = 1884 s), no re-heat needed above setpoint+2 C"
+    }
+  ]
+}

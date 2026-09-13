@@ -1,0 +1,76 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51_health_pot display latency: 4COM POV frame settles within 50 ms of button recognition",
+    "templateId": "mcs51_health_pot",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "30ms",
+      "adcChannel": 0,
+      "valueNorm": 0.0586,
+      "description": "Cold water before first control tick: raw ~240 -> 25 C"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "400ms",
+      "targetPluginId": "btn_func",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "700ms",
+      "targetPluginId": "btn_func",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "420ms",
+      "target": "plugin:display/text",
+      "matcher": " -- ",
+      "description": "Before the debounced event is processed the frame still shows standby"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "470ms",
+      "target": "plugin:display/text",
+      "matcher": "-55-",
+      "description": "Gate: stable 4COM frame <= 50 ms after the 20 ms debounce confirms the FUNC event"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "1000ms",
+      "targetPluginId": "btn_func",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "1300ms",
+      "targetPluginId": "btn_func",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1140ms",
+      "target": "plugin:display/text",
+      "matcher": "-80-",
+      "description": "Second transition (55 -> 80): additive digits settle fast; removed segments ghost-decay with the 80 ms POV tau, frame stable by ~120 ms after recognition"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "plugin:display/text",
+      "matcher": "-80-",
+      "description": "Frame stays stable (no flicker back to older digits)"
+    }
+  ]
+}

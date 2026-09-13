@@ -1,0 +1,92 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51_health_pot L1: cold-water upset re-closes the slope gate for 16 clean samples (no instant E-03)",
+    "templateId": "mcs51_health_pot",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "26000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "30ms",
+      "adcChannel": 0,
+      "valueNorm": 0.0586,
+      "description": "Static 25 C plateau (dry-fire-prone basin, code ~240)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "400ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "700ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "Heating normally"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "4500ms",
+      "adcChannel": 0,
+      "valueNorm": 0.0708,
+      "description": "Cold-water upset: +50 codes (240 -> 290) upward step; guard resets the ring and re-closes slope_valid_sec"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["5900ms", "6200ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=1,H=1,F=0",
+      "minPackets": 1,
+      "description": "First 1 s task after the upset does not self-kill (old ring would see the step as dry-fire)"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["15900ms", "18200ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=1,H=1,F=0",
+      "minPackets": 1,
+      "description": "Through the 16 clean-sample relearn window the watchdog stays quiet"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "20000ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "Gate still closed at 20 s (16 samples complete at ~21 s)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "22500ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Once the gate reopens with stagnant samples the slope verdict fires E-03 (bounded detection <= 36 s per risk R-007)"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["22000ms", "23500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=3,H=0,F=3",
+      "minPackets": 1,
+      "description": "Dry-fire E-03 latched after the valid window re-arms"
+    }
+  ]
+}
