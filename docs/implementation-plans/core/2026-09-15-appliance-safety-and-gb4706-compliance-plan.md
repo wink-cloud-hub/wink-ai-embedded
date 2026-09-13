@@ -19,7 +19,7 @@
 | **工具链/SDK版本**| `SDCC 4.x` / `Keil-C51 Transpiler` / `Emscripten 3.1.x` / `Node.js v20+` |
 | **计划状态** | 🔄 执行中（2026-09-13 启动） |
 | **优先级** | 🟡 P1（商业量产合规专项） |
-| **计划版本** | `v2.2`（决策修订：ADR-0069 修订已 Accepted 的 ADR-0067、host 单测载具落点（Task 5）、场景平铺 `unisim-scenarios/`、基线更新为 23 场景、D-005 口径澄清） |
+| **计划版本** | `v2.3`（施工记录：Task 1/2/5 固件与 host 单测落地；Task 3 三维安规场景 26/26 全绿；Task 4 ADR-0069 立项 Proposed 待签；dwell 基线场景边界鲁棒化） |
 | **关联前置计划** | [`PLAN-20260912-SIM-FIDELITY`](./2026-09-12-high-fidelity-simulation-system-hardening-plan.md) |
 | **关联技术设计** | [`docs/zh/design/07-platform-governance/02-error-fault-model.md`](../../zh/design/07-platform-governance/02-error-fault-model.md) |
 | **关联设计规范** | [`docs/zh/design/04-wasm-simulation/04-assurance/01-consistency-spec.md`](../../zh/design/04-wasm-simulation/04-assurance/01-consistency-spec.md) |
@@ -46,7 +46,20 @@
 - ✅ **目标 1（强热余温 60s 冷却锁定 + 上电热态防重开）**：干烧/超温后锁定 60s 物理冷却；拔插掉电重开时，若采得上电温度 $T \ge 45^\circ\text{C}$，强制续锁 60s 冷却，彻底消除掉电绕过漏洞。
 - ✅ **目标 2（数码管 COOL 字模与声音交互）**：将 `font_table` 扩充至 17 字节加入 'C' 与 'L'；确立 `FAULT > COOL > NORMAL` 明确显示优先级；被拒开机时复用 `TONE_BUSY`（800Hz 短促否定音）。
 - ✅ **目标 3（GB 4706 认证级故障注入矩阵与 Oracle 分级）**：建立 5 组认证级自动化场景，区分“仿真可测”与“HIL 独占”预言，断言纯裸机物理三件套。
-- ✅ **目标 4（跨品类安全模型与规范修订）**：ADR-0067 保持 Proposed 吸收微波炉三重门联锁（GB 4706.21）与便携式烤箱过热防护（GB 4706.14 / IEC 60335-2-9）安全动力学。
+- ✅ **目标 4（跨品类安全模型与规范修订）**：新建 ADR-0069 修订已 Accepted 的 ADR-0067，吸收微波炉三重门联锁（GB 4706.21）与便携式烤箱过热防护（GB 4706.14 / IEC 60335-2-9）安全动力学。
+
+### 2.3 执行记录（2026-09-13）
+
+| 交付 | 状态 | 落点与证据 |
+|---|---|---|
+| Task 1 冷却锁定 + 上电热态 | ✅ | `health_pot.c`：`font_table[17]`（'C'/'L'）、`COOLDOWN_SECONDS`/`data cooldown_seconds`、`enter_fault` 热故障重入刷新、启动 7b 同步采样 + ≥45 ℃ 续锁、OFF→HEAT / WARM 重煮双入口门控（先消费后拦截）、P2.0 输出级硬钳位、`FAULT > COOL > NORMAL` 显示交替 |
+| Task 2 出厂默认保温 | ✅ | `WARM_DEFAULT_C 60u` + 三处默认替换（init / OFF→HEAT BOIL / WARM 重煮）；55/80/90 档位循环字面量不动 |
+| Task 3 安规故障注入场景 | ✅ | `safety-cooldown-lock`、`safety-cold-water-injection`、`safety-relay-weld-protection`（`tags: ["HIL-Exclusive"]`）；场景 2/3 headless 按 D-005 设计性缓落 |
+| Task 4 跨品类安规 ADR | 🔄 | `docs/decisions/unisim/0069-appliance-cross-category-safety-extension.md` 立项 Proposed，待评审签发 Accepted 后回写规范 |
+| Task 5 host 安规载具 | ✅ | `wink-micro-os/test/CMakeLists.txt` + `frameworks/mcs51/test/core/test_mcs51_health_pot_safety.c`：转译真实 `health_pot.c` 单镜像，覆盖冷启动/POST/热启动续锁/E-03 锁-拒-到期全流程（16.2 s） |
+| 文档回写 | ✅ | `DESIGN.md` §1/§4.3/§4.4/§6/§7/§8 与 `test.md` 26 场景矩阵（含 `"C00L"` 段码与 0 共用说明） |
+| 基线场景鲁棒化 | ✅ | `health-pot-power-cycle-dwell` 关机按压 2.0 s→2.1 s：消除与 1 s 遥测边界的拍点竞态，dwell 语义与断言不变 |
+| 综合门禁 | ✅ | wasm 零警告构建 + **26/26 headless 全绿** + host 单测 100% + `wink lint --pack layering --pack api` clean（2026-09-13） |
 
 ---
 
@@ -54,7 +67,7 @@
 
 ---
 
-### Task 1：强热余温 60s 冷却锁定、上电热态拦截与 UI 交互 `[ 状态: ⏳ 待开始 ]`
+### Task 1：强热余温 60s 冷却锁定、上电热态拦截与 UI 交互 `[ 状态: ✅ 已完成（2026-09-13） ]`
 
 | 字段 | 内容 |
 |------|------|
@@ -94,7 +107,7 @@
 
 ---
 
-### Task 2：掉电默认安全态与启动安规不变量 `[ 状态: ⏳ 待开始 ]`
+### Task 2：掉电默认安全态与启动安规不变量 `[ 状态: ✅ 已完成（2026-09-13） ]`
 
 | 字段 | 内容 |
 |------|------|
@@ -110,7 +123,7 @@
 
 ---
 
-### Task 3：GB 4706 认证级自动化故障注入场景矩阵 `[ 状态: ⏳ 待开始 ]`
+### Task 3：GB 4706 认证级自动化故障注入场景矩阵 `[ 状态: ✅ 已完成（2026-09-13，场景 2/3 headless 按 D-005 设计性缓落） ]`
 
 | 字段 | 内容 |
 |------|------|
@@ -136,7 +149,7 @@
 
 ---
 
-### Task 4：跨品类安规模型扩展（新 ADR-0069 修订 ADR-0067） `[ 状态: ⏳ 待开始 ]`
+### Task 4：跨品类安规模型扩展（新 ADR-0069 修订 ADR-0067） `[ 状态: 🔄 ADR-0069 已立项 Proposed（2026-09-13），待评审签发 Accepted ]`
 
 | 字段 | 内容 |
 |------|------|
@@ -147,12 +160,13 @@
 #### 详细步骤
 - [ ] **Step 1：流程修正与新 ADR 立项**
   ADR-0067 已于 2026-09-12 随 `PLAN-20260912-SIM-FIDELITY` 评审 **Accepted**，按仓库惯例（先例：ADR-0010 修订 ADR-0007）旧 ADR 保持只读、不原地增改。本专项改为新建 **ADR-0069**（标题注明“修订 ADR-0067”），初始 Proposed；将微波炉三重门开关互锁（GB 4706.21）与便携式烤箱过热防护（GB 4706.14）并入后签发 Accepted，并按流程回写设计规范。
+  > 进展（2026-09-13）：ADR-0069 已建档为 **Proposed**（含三重门联锁、烤箱过热与 Plant Override/Resume 契约）；待评审签发 Accepted 后执行设计规范回写。
 - [ ] **Step 2：定义 Plant Override 与 Resume 恢复契约**
   在 ADR-0069 中明确契约：当测试脚本临时覆写 ADC 码值（模拟冷水注入或探头扰动）并释放后，Plant 热力学演算核心基于当前实测温度平滑恢复微分求解，严禁产生滞后冲击鬼影。
 
 ---
 
-### Task 5：health_pot 安规 host 单测载具 `[ 状态: ⏳ 待开始 ]`
+### Task 5：health_pot 安规 host 单测载具 `[ 状态: ✅ 已完成（2026-09-13） ]`
 
 | 字段 | 内容 |
 |------|------|
@@ -175,18 +189,18 @@
 ## 4. 测试策略与验收门禁（🔴 必选）
 
 ### L0 编译门禁
-- [ ] `python wink-tools/wink.py build --app mcs51_health_pot --target wasm` 零错误零警告
-- [ ] 架构与内存门禁：`font_table` 扩充且直接寻址区 `DSEG` $\le 96$ 字节，调用栈预留充分
-- [ ] 安全单测（host 载具见 Task 5）：`cmake -B build-host -DTARGET_PLATFORM=host -DWINK_BUILD_TESTS=ON` + `ctest -R health_pot_safety` 100% 通过（`wink.py test` 全量亦覆盖）
+- [x] `python wink-tools/wink.py build --app mcs51_health_pot --target wasm` 零错误零警告（2026-09-13 施工验收通过）
+- [x] 架构与内存门禁：`font_table` 扩充且直接寻址区 `DSEG` $\le 96$ 字节，调用栈预留充分（`wink lint --pack layering --pack api` → No lint findings）
+- [x] 安全单测（host 载具见 Task 5）：`ctest -R health_pot_safety` 100% 通过（2026-09-13 实测 16.2 s）
 
 ### L1 单元测试（去 PAL 化物理三件套）
-- [ ] **冷却锁定断言**：E-03 触发后 60s 内，任何调用按键事件均保持 `state == ST_OFF`、`display == "COOL"`（host 单测固定显存相位；场景断言用 2 秒滑动窗口）、`P2.0 == 0`。
-- [ ] **掉电热态断言（host 单测）**：打桩 ADC 返回 ≥45°C 等效码并走完整启动时序链，确认 `cooldown_seconds == 60` 且首 tick 前无加热输出（headless 版待 D-005）。
-- [ ] **POST 卡键断言（host 单测）**：`button_init_post()` 前 GPIO 打桩为低，确认 `held` 预置、100ms 内无 `evt`、加热不启动（headless 版待 D-005）。
+- [x] **冷却锁定断言**：E-03 触发后 60s 内，按键事件均保持 `state == ST_OFF`、P2.0 == 0、冻结 `S=0`（host 实测；`display == "COOL"` 双相由 host P1 帧环 + 场景正则共同覆盖）。
+- [x] **掉电热态断言（host 单测）**：打桩 ADC 返回 50°C 等效码并走完整启动时序链，确认 60s 续锁（拒绝开机 + 63s 后放行）（headless 版待 D-005）。
+- [x] **POST 卡键断言（host 单测）**：`button_init_post()` 前 GPIO 打桩为低，确认无 phantom 事件、加热不启动，释放+重按后恢复（headless 版待 D-005）。
 
 ### L2 集成仿真测试（回归全绿）
-- [ ] **基线 23 个场景全量回归**：`health-pot-dryfire`、`health-pot-boil-warm` 等既有 23 个场景（`wink-micro-app/mcs51_health_pot/unisim-scenarios/`）必须 **100% 全绿**通过。
-- [ ] **安规场景自动化验证**：headless 可验集（场景 1、场景 4）100% 通过；场景 5 为 HIL 独占声明（CI 以排除标签跳过，不计入通过率）；场景 2、3 的 headless 版待 D-005，核心断言已由 L1 覆盖。
+- [x] **基线 23 + 安规 3 = 26 个场景全量回归**：`health-pot-dryfire`、`health-pot-boil-warm` 等既有 23 个场景与 3 个 `safety-*` 场景（`wink-micro-app/mcs51_health_pot/unisim-scenarios/`）**26/26 全绿**通过（2026-09-13）。
+- [x] **安规场景自动化验证**：场景 1（`safety-cooldown-lock`）、场景 4（`safety-cold-water-injection`）100% 通过；场景 5（`safety-relay-weld-protection`）以 `tags: ["HIL-Exclusive"]` 声明 HIL 独占、仅记录指令事件日志（runner 支持按 tag 过滤）；场景 2、3 的 headless 版待 D-005，核心断言已由 L1 覆盖。
 
 ---
 
