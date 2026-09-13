@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import {
   ButtonPlugin as ButtonGpioPlugin,
   buttonManifest as buttonGpioManifest,
+  buildPressEdges,
 } from '../simulation';
 
 test('manifest type is button and declares activeLow property', () => {
@@ -146,5 +147,116 @@ test('repeated presses produce clean alternating level transitions', () => {
   for (let i = 0; i < 10; i++) {
     expect(pinWrites[i].level).toBe(i % 2 === 0 ? false : true);
   }
+});
+
+test('buildPressEdges emits a deterministic glitch train settling at the press level', () => {
+  const edges = buildPressEdges(1_000_000n, 8_000n, 8, 1, 0);
+  expect(edges[edges.length - 1]).toEqual({ tUs: 1_008_000n, level: 0 });
+  // Strictly monotonic offsets and alternating idle/press levels
+  for (let i = 1; i < edges.length; i++) {
+    expect(edges[i].tUs > edges[i - 1].tUs).toBe(true);
+  }
+  expect(edges[0].level).toBe(1);
+  expect(edges[1].level).toBe(0);
+  // Deterministic across calls (no RNG)
+  expect(buildPressEdges(1_000_000n, 8_000n, 8, 1, 0)).toEqual(edges);
+});
+
+test('buildPressEdges without bounce is a single immediate press edge', () => {
+  expect(buildPressEdges(500n, 0n, 8, 1, 0)).toEqual([{ tUs: 500n, level: 0 }]);
+});
+
+test('timing mode press injects one atomic pair with the scheduled release', () => {
+  const plugin = new ButtonGpioPlugin();
+  const injected: Array<{ pin: string; waveform: any }> = [];
+  const ctx = {
+    publish: () => {},
+    writePin: () => {},
+    nowUs: () => 1_000_000n,
+    accuracyMode: 'timing',
+    injectWaveform: (pin: string, waveform: any) => injected.push({ pin, waveform }),
+  } as any;
+
+  plugin.onBind(ctx, {}, { activeLow: true });
+  plugin._pressed({ pressed: true, bounceUs: 8000, bounceCount: 8, pressDurationUs: 300000 });
+
+  expect(injected.length).toBe(1);
+  expect(injected[0].pin).toBe('1.l');
+  const edges = injected[0].waveform.edges;
+  expect(edges[edges.length - 1]).toEqual({ tUs: 1_308_000n, level: 1 });
+  expect(injected[0].waveform.generation).toBe(1);
+});
+
+test('early release re-injects a single release edge above the 30 ms debounce floor', () => {
+  const plugin = new ButtonGpioPlugin();
+  const injected: Array<{ pin: string; waveform: any }> = [];
+  let nowUs = 1_000_000n;
+  const ctx = {
+    publish: () => {},
+    writePin: () => {},
+    nowUs: () => nowUs,
+    accuracyMode: 'timing',
+    injectWaveform: (pin: string, waveform: any) => injected.push({ pin, waveform }),
+  } as any;
+
+  plugin.onBind(ctx, {}, { activeLow: true });
+  plugin._pressed({ pressed: true, pressDurationUs: 300000 });
+  // Release after only 5 ms: must be clamped to press + 30 ms
+  nowUs = 1_005_000n;
+  plugin._release();
+
+  expect(injected.length).toBe(2);
+  expect(injected[1].waveform.edges).toEqual([{ tUs: 1_030_000n, level: 1 }]);
+  expect(injected[1].waveform.generation).toBe(2);
+});
+
+test('release after the scheduled pair does not inject a second waveform', () => {
+  const plugin = new ButtonGpioPlugin();
+  const injected: Array<{ pin: string; waveform: any }> = [];
+  let nowUs = 2_000_000n;
+  const ctx = {
+    publish: () => {},
+    writePin: () => {},
+    nowUs: () => nowUs,
+    accuracyMode: 'timing',
+    injectWaveform: (pin: string, waveform: any) => injected.push({ pin, waveform }),
+  } as any;
+
+  plugin.onBind(ctx, {}, { activeLow: true });
+  plugin._pressed({ pressed: true, pressDurationUs: 300000 });
+  nowUs = 2_400_000n; // after the scheduled release at 2.3 s
+  plugin._release();
+  expect(injected.length).toBe(1);
+});
+
+test('manifest declares the atomic-pair parameters for SET_PRESSED', () => {
+  const params = buttonGpioManifest.events.SET_PRESSED.params;
+  expect(params.pressed.required).toBe(true);
+  expect(params.pressDurationUs.default).toBe(0);
+  expect(params.bounceUs.default).toBe(0);
+});
+
+test('press without an explicit duration injects the press edge only (hold semantics)', () => {
+  const plugin = new ButtonGpioPlugin();
+  const injected: Array<{ pin: string; waveform: any }> = [];
+  let nowUs = 1_000_000n;
+  const ctx = {
+    publish: () => {},
+    writePin: () => {},
+    nowUs: () => nowUs,
+    accuracyMode: 'timing',
+    injectWaveform: (pin: string, waveform: any) => injected.push({ pin, waveform }),
+  } as any;
+
+  plugin.onBind(ctx, {}, { activeLow: true });
+  plugin._pressed(true);
+  expect(injected.length).toBe(1);
+  expect(injected[0].waveform.edges).toEqual([{ tUs: 1_000_000n, level: 0 }]);
+
+  // Held forever: no scheduled release edge is emitted.
+  nowUs = 5_000_000n;
+  plugin._pressed(false);
+  expect(injected.length).toBe(2);
+  expect(injected[1].waveform.edges).toEqual([{ tUs: 5_000_000n, level: 1 }]);
 });
 

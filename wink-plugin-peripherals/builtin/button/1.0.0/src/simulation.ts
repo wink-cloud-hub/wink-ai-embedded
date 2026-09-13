@@ -71,9 +71,27 @@ export function createButtonManifest(variantName: ButtonVariant = 'default'): Pe
     },
     events: {
       SET_PRESSED: {
-        description: 'Set button pressed state',
+        description: 'Set button pressed state (atomic press/release waveform pair in timing mode)',
         params: {
           pressed: { type: 'boolean', required: true },
+          pressDurationUs: {
+            type: 'number',
+            default: 0,
+            min: 0,
+            max: 60000000,
+            unit: 'us',
+            description:
+              'Explicit nominal pulse width; when > 0 the press/release atomic pair is injected at press time (ADR-0068, min 30ms). 0 keeps the event-driven release',
+          },
+          bounceUs: {
+            type: 'number',
+            default: 0,
+            min: 0,
+            max: 10000,
+            unit: 'us',
+            description: 'Contact bounce window at the leading edge (0 = clean press)',
+          },
+          bounceCount: { type: 'number', default: 6, min: 0, max: 64 },
         },
       },
       PRESS: {
@@ -97,9 +115,16 @@ export class ButtonPlugin extends SimpleGpioPlugin {
   readonly manifest = buttonManifest;
   static readonly manifest = buttonManifest;
 
+  /** ADR-0068: minimum effective pulse width that survives the 20 ms firmware debounce. */
+  private static readonly MIN_PRESS_US = 30_000n;
+  private static readonly DEFAULT_BOUNCE_COUNT = 6;
+
   private _pressedState = false;
   private _activeLow = true;
   private _signalPinName = '1.l';
+  private _waveGeneration = 0;
+  private _pressStartUs = 0n;
+  private _scheduledReleaseUs = 0n;
 
   protected override onBound(
     ctx: any,
@@ -120,13 +145,38 @@ export class ButtonPlugin extends SimpleGpioPlugin {
     return { ...(initialOutputs ?? {}), pressed: false };
   }
 
-  _pressed(arg?: boolean | { pressed?: boolean }): void {
-    const pressed =
-      typeof arg === 'object' && arg !== null ? Boolean(arg.pressed) : Boolean(arg ?? true);
-    this._pressedState = pressed;
-    this.ctx?.publish('pressed', pressed);
-    const pinLevel = this._activeLow ? !pressed : pressed;
-    this.ctx?.writePin(this._signalPinName, pinLevel);
+  override onReset(): void {
+    // Cancel any pending atomic pair so a reset cannot leave a dangling release.
+    this._waveGeneration++;
+    const ctx: any = this.ctx;
+    if (typeof ctx?.cancelWaveform === 'function') {
+      ctx.cancelWaveform(this._signalPinName, this._waveGeneration - 1);
+    }
+    this._pressedState = false;
+    this._pressStartUs = 0n;
+    this._scheduledReleaseUs = 0n;
+  }
+
+  _pressed(
+    arg?:
+      | boolean
+      | {
+          pressed?: boolean;
+          pressDurationUs?: number | string;
+          bounceUs?: number | string;
+          bounceCount?: number;
+        },
+  ): void {
+    const obj = typeof arg === 'object' && arg !== null ? arg : null;
+    const pressed = obj ? Boolean(obj.pressed) : Boolean(arg ?? true);
+    this._setState(pressed, {
+      pressDurationUs: toBigUs(obj?.pressDurationUs),
+      bounceUs: toBigUs(obj?.bounceUs),
+      bounceCount:
+        typeof obj?.bounceCount === 'number'
+          ? obj.bounceCount
+          : ButtonPlugin.DEFAULT_BOUNCE_COUNT,
+    });
   }
 
   _press(): void {
@@ -135,6 +185,118 @@ export class ButtonPlugin extends SimpleGpioPlugin {
 
   _release(): void {
     this._pressed(false);
+  }
+
+  private _setState(
+    pressed: boolean,
+    options: { pressDurationUs?: bigint; bounceUs?: bigint; bounceCount: number },
+  ): void {
+    this._pressedState = pressed;
+    this.ctx?.publish('pressed', pressed);
+
+    const idleLogical = this._activeLow;
+    const pressedLogical = !idleLogical;
+    const pinLevel = pressed ? pressedLogical : idleLogical;
+    const idleLevel = idleLogical ? 1 : 0;
+    const pressLevel = pressedLogical ? 1 : 0;
+
+    const ctx: any = this.ctx;
+    const canInject =
+      ctx &&
+      typeof ctx.injectWaveform === 'function' &&
+      typeof ctx.nowUs === 'function' &&
+      ctx.accuracyMode !== 'behavioral';
+
+    if (!canInject) {
+      ctx?.writePin?.(this._signalPinName, pinLevel);
+      return;
+    }
+
+    if (pressed) {
+      const nowUs: bigint = ctx.nowUs();
+      const bounceUs = options.bounceUs && options.bounceUs > 0n ? options.bounceUs : 0n;
+      const pressDurationUs = options.pressDurationUs;
+      this._pressStartUs = nowUs;
+      this._waveGeneration++;
+
+      if (pressDurationUs !== undefined || bounceUs > 0n) {
+        // Explicit pulse: one atomic press/release pair (optionally with a
+        // deterministic chatter train inside the leading edge).
+        const edges = buildPressEdges(
+          nowUs,
+          bounceUs,
+          options.bounceCount,
+          idleLevel,
+          pressLevel,
+        );
+        this._scheduledReleaseUs = nowUs + bounceUs + (pressDurationUs ?? 0n);
+        edges.push({ tUs: this._scheduledReleaseUs, level: idleLevel });
+        ctx.injectWaveform(this._signalPinName, {
+          edges,
+          generation: this._waveGeneration,
+        });
+      } else {
+        // Event-driven hold: inject the press edge only; the release event
+        // arrives later and is clamped to the 30 ms debounce floor.
+        this._scheduledReleaseUs = 0n;
+        ctx.injectWaveform(this._signalPinName, {
+          edges: [{ tUs: nowUs, level: pressLevel }],
+          generation: this._waveGeneration,
+        });
+      }
+    } else {
+      // Release: re-open the atomic pair early when needed, or deliver the
+      // event-driven release. Never shorter than the 30 ms debounce floor.
+      const minReleaseUs = this._pressStartUs + ButtonPlugin.MIN_PRESS_US;
+      const releaseUs = ctx.nowUs() > minReleaseUs ? ctx.nowUs() : minReleaseUs;
+      if (this._scheduledReleaseUs === 0n || releaseUs < this._scheduledReleaseUs) {
+        this._waveGeneration++;
+        ctx.injectWaveform(this._signalPinName, {
+          edges: [{ tUs: releaseUs, level: idleLevel }],
+          generation: this._waveGeneration,
+        });
+      }
+    }
+  }
+}
+
+/**
+ * Deterministic contact-bounce glitch sequence inside the atomic press pair
+ * (ADR-0068): idle -> press -> idle -> ... -> press, settling at `bounceUs`.
+ * No RNG, no wall clock: reproducible across hosts.
+ */
+export function buildPressEdges(
+  startUs: bigint,
+  bounceUs: bigint,
+  count: number,
+  idleLevel: number,
+  pressLevel: number,
+): Array<{ tUs: bigint; level: number }> {
+  const edges: Array<{ tUs: bigint; level: number }> = [];
+  if (bounceUs <= 0n) {
+    edges.push({ tUs: startUs, level: pressLevel });
+    return edges;
+  }
+  const n = Math.max(1, Math.min(64, Math.floor(count)));
+  for (let i = 1; i <= n; i++) {
+    const tUs = startUs + (bounceUs * BigInt(i)) / BigInt(n + 1);
+    const level = i % 2 === 1 ? idleLevel : pressLevel;
+    edges.push({ tUs, level });
+  }
+  edges.push({ tUs: startUs + bounceUs, level: pressLevel });
+  return edges;
+}
+
+function toBigUs(value: number | string | undefined): bigint | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value === 'number') {
+    return Number.isFinite(value) && value > 0 ? BigInt(Math.floor(value)) : undefined;
+  }
+  try {
+    const parsed = BigInt(value);
+    return parsed > 0n ? parsed : undefined;
+  } catch {
+    return undefined;
   }
 }
 
