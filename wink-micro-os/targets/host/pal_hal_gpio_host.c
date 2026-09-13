@@ -282,8 +282,12 @@ wink_status_t pal_gpio_enable_interrupt_ex(wink_pin_t pin, pal_gpio_intr_t intr_
     if (!s_gpio_service_initialized) {
         s_gpio_service_prio        = prio;
         s_gpio_service_initialized = true;
-    } else if (prio > s_gpio_service_prio) {
-        s_gpio_service_prio = prio;
+    } else if (prio != s_gpio_service_prio) {
+        /* pal_gpio.h contract: the global GPIO service priority tier is
+         * locked on first registration and never released (not even by
+         * disable); a mismatching tier is rejected, not upgraded. */
+        HOST_GPIO_SERVICE_UNLOCK();
+        return WINK_ERR_INVALID_ARG;
     }
     HOST_GPIO_SERVICE_UNLOCK();
 
@@ -438,6 +442,12 @@ void pal_host_reset_all_gpio_interrupts(void)
 void pal_host_reset_isr_stats(void)
 {
     pal_host_reset_all_gpio_interrupts();
+    /* Test seam: production never releases the GPIO service priority tier
+     * (pal_gpio.h contract), but each test case needs a fresh lock state. */
+    HOST_GPIO_SERVICE_LOCK();
+    s_gpio_service_initialized = false;
+    s_gpio_service_prio        = PAL_IRQ_PRIO_NORMAL;
+    HOST_GPIO_SERVICE_UNLOCK();
 }
 
 uint32_t pal_irq_save(void)
