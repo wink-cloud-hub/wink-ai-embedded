@@ -1,9 +1,9 @@
-# 【实施计划】小家电功能安全与 GB4706/IEC60335 安规合规专项计划 (v2.1 - 工业级安规定稿版)
+# 【实施计划】小家电功能安全与 GB4706/IEC60335 安规合规专项计划 (v2.2 - 工业级安规定稿版)
 
 > 📋 **计划说明**：本计划作为 [`PLAN-20260912-SIM-FIDELITY`](./2026-09-12-high-fidelity-simulation-system-hardening-plan.md) 的后续长效演进专项，专注于小家电商业级功能安全（Functional Safety）与认证级安规标准（GB 4706.19 / GB 4706.1 / IEC 60335-2-15）的落地与仿真验证。重点实现**掉电热态防重开 60s 冷却锁定**、字模扩展、安规故障注入矩阵、去 PAL 化裸机断言以及微波炉/烤箱安全模型扩展。
 >
 > 🎯 **关联规范**：`docs/zh/design/04-wasm-simulation/04-assurance/01-consistency-spec.md` (C1.3, C11.1, C23)
-> 📚 **管理 ADR**：ADR-0001, ADR-0003, ADR-0009（物理行为与故障注入）, ADR-0067（小家电动力学 Profile 保持 Proposed 至本专项合入）
+> 📚 **管理 ADR**：ADR-0001, ADR-0003, ADR-0009（物理行为与故障注入）, ADR-0067（小家电动力学 Profile，已 Accepted）, 本专项新增 ADR-0069 修订扩展（跨品类安规模型）
 > 🔗 **前置依赖计划**：[`PLAN-20260912-SIM-FIDELITY`](./2026-09-12-high-fidelity-simulation-system-hardening-plan.md)（仿真高保真底座与固件基础去抖/斜率硬化）
 
 ---
@@ -14,12 +14,12 @@
 |------|------|
 | **计划编号** | `PLAN-20260915-APPLIANCE-SAFETY-AND-GB4706` |
 | **创建日期** | 2026-09-12 |
-| **计划执行日期**| 2026-09-15（待前置基线计划 Phase-A 交付后立即启动） |
+| **计划执行日期**| 2026-09-13（前置基线计划已于 2026-09-13 结项验收通过，提前启动执行） |
 | **目标平台/SoC** | `mcs51` (CMS8S78xx) / `wasm` (UniSim 3.0) / `host` |
 | **工具链/SDK版本**| `SDCC 4.x` / `Keil-C51 Transpiler` / `Emscripten 3.1.x` / `Node.js v20+` |
-| **计划状态** | 📋 规划定稿 / 待前置 Phase-A 完成 |
+| **计划状态** | 🔄 执行中（2026-09-13 启动） |
 | **优先级** | 🟡 P1（商业量产合规专项） |
-| **计划版本** | `v2.1`（冷却门控先消费后拦截、场景 2/3 降级 L1＋D-005、场景超时与掩模规则、符号与行号 legends） |
+| **计划版本** | `v2.2`（决策修订：ADR-0069 修订已 Accepted 的 ADR-0067、host 单测载具落点（Task 5）、场景平铺 `unisim-scenarios/`、基线更新为 23 场景、D-005 口径澄清） |
 | **关联前置计划** | [`PLAN-20260912-SIM-FIDELITY`](./2026-09-12-high-fidelity-simulation-system-hardening-plan.md) |
 | **关联技术设计** | [`docs/zh/design/07-platform-governance/02-error-fault-model.md`](../../zh/design/07-platform-governance/02-error-fault-model.md) |
 | **关联设计规范** | [`docs/zh/design/04-wasm-simulation/04-assurance/01-consistency-spec.md`](../../zh/design/04-wasm-simulation/04-assurance/01-consistency-spec.md) |
@@ -61,11 +61,11 @@
 | **负责人** | 嵌入式安全组 |
 | **预估工时** | 6 小时 |
 | **前置依赖** | `PLAN-20260912-SIM-FIDELITY` Phase-A 完成 |
-| **修改文件** | `wink-micro-app/mcs51_health_pot/health_pot.c`, `docs/DESIGN.md` |
+| **修改文件** | `wink-micro-app/mcs51_health_pot/health_pot.c`, `wink-micro-app/mcs51_health_pot/docs/DESIGN.md` |
 
 #### 详细步骤
 - [ ] **Step 1：字模扩充与防误解双相显示交互（UX 友好型冷却指示）**
-  在 `health_pot.c:82` 中将 `font_table[15]` 扩充为 17 字节：
+  在 `health_pot.c:90`（当前 HEAD 实测；Phase-A 施工前旧行号为 82）中将 `font_table[15]` 扩充为 17 字节：
   - 添加 `'C' = 0x39u`, `'L' = 0x38u`；
   - 确立显存渲染优先级：`FAULT (E-0x) > COOL (交替实测水温) > NORMAL`；
   - **双相交替防误解设计**：在 60s 冷却期内，数码管采用 1 秒显示 `COOL`、1 秒交替显示当前实测水温（如 `75`）的双相刷新机制，直观告知用户“壶身过热，系统正在主动安全散热”，杜绝黑屏死机误解；自动化测试断言放宽为“2 秒滑动窗口内交替包含 `COOL` 与温度”。
@@ -106,7 +106,7 @@
 - [ ] **Step 1：固化掉电默认关机安全不变量（GB 4706 通用要求）**
   器具掉电再通电后，严禁恢复加热，`main` 初始化无条件锁死进入 `ST_OFF`。
 - [ ] **Step 2：出厂保温默认设定值**
-  系统复位后，默认保温设定值严格重置为符合卫生安全的 `WARM_DEFAULT_C = 60u`；仅替换三处默认 60u 字面量（init 默认、OFF→HEAT BOIL 入口、WARM 重煮入口），保温档位值（55/80/90）与模式切换赋值保持字面量不动。
+  新增单点宏 `#define WARM_DEFAULT_C 60u`（置于 `health_pot.c` 现有 `WARM_HYST_C` 附近），仅替换三处默认 60u 字面量：init 默认（`health_pot.c:995`）、OFF→HEAT BOIL 入口（`:626`）、WARM 重煮入口（`:595`）；保温档位循环赋值（`:583`/`:585`）与直热目标（55/80）保持字面量不动。
 
 ---
 
@@ -116,15 +116,18 @@
 |------|------|
 | **负责人** | 质量与验证组 |
 | **预估工时** | 8 小时 |
-| **修改文件** | `unisim-scenarios/safety/` |
-| **前置依赖** | 场景 2、3 headless 版依赖 D-005（外仓 runner：RESET 步＋t=0 初始条件）；场景 1、4 与 L1 单测无外部阻塞 |
+| **修改文件** | `wink-micro-app/mcs51_health_pot/unisim-scenarios/`（5 个 JSON 平铺，以 `safety-` 名前缀区分，不设 `safety/` 子目录） |
+| **前置依赖** | 场景 2、3 headless 版依赖 D-005（外仓 runner：中途复位语义＋t=0 初始条件）；核心断言由 Task 5 host 单测先行承载；场景 1、4 与 L1 单测无外部阻塞 |
 
 #### 详细步骤与 Oracle 分级（含超时与阶段解耦）
+
+> **D-005 口径（外仓 runner 能力需求）**：场景 2/3 需要“中途 MCU 复位/掉电重上电”与“t=0 预置（热态 ADC 值、按键按住电平）”两类能力；现有 runner 的输入/断言 step 只能表达运行中激励与观测，无法表达复位与首 tick 前的初值。本计划处置：核心断言先由 Task 5 host 单测承载；D-005 作为外仓契约需求挂起，验收标准为两个 headless 场景可在 CI 断言上电热态拒绝阻断与 POST 卡键抑制；D-005 落地前严禁落地这两个 JSON（硬写只会空过/假阳性）。
+
 - [ ] **场景 1：`safety-cooldown-lock.scenario.json`（仿真可验，Phase-B 闭环）**
   配置 `timeoutUs: 95000000`（95s：21s 干烧＋确认延时＋60s 锁定＋解锁断言裕量）；触发干烧后短延时按开机，验证锁定期 P2.0 恒为 0 且数码管 `COOL`/温度双相交替；冷却到期后一次开机进入 HEAT 即收尾——严禁拖入 ~105s 第二次斜率 E-03 窗口（fail-fast 下未断言 fault 会掀翻成绩）。
 - [ ] **场景 2：上电热态拦截（核心断言 L1 host 单测先行，headless 版待 D-005）**
-  host 单测打桩 `adc_read_filtered()` 返回 55°C 等效码并走完整启动时序链，断言 `cooldown_seconds == 60` 且首 tick 前无加热输出；headless 版 `safety-power-cycle-hot-reboot.scenario.json`（`timeoutUs: 100000000`）待外仓 runner 支持 RESET 步＋t=0 初始条件（新需求 D-005）后补齐。原因：现行 runner 仅 4 种 step（`ASSERT_BUS_PAYLOAD / ASSERT_POINT / INPUT_ANALOG / INPUT_PLUGIN_EVENT`），表达不出“复位＋t=0 预置”，硬写只会空过。
-- [ ] **场景 3：`safety-post-jammed`（核心断言 L1 host 单测先行，headless 版待 D-005）**
+  host 单测打桩 `adc_read_filtered()` 返回 55°C 等效码并走完整启动时序链，断言 `cooldown_seconds == 60` 且首 tick 前无加热输出（host 载具见 Task 5）；headless 版 `safety-power-cycle-hot-reboot.scenario.json`（`timeoutUs: 100000000`）待外仓 runner 支持中途复位语义＋t=0 初始条件（新需求 D-005）后补齐。原因：现行 runner 的输入/断言表达能力不足以建模“中途复位＋t=0 预置”，硬写只会空过（口径见上方 D-005 说明）。
+- [ ] **场景 3：`safety-post-jammed.scenario.json`（核心断言 L1 host 单测先行，headless 版待 D-005）**
   host 单测在 `button_init_post()` 前将按键 GPIO 打桩为低，断言 `held` 预置且 100ms 内无 `evt`、加热不启动；headless 版（`timeoutUs: 15000000`）同样待 D-005 的 t=0 按键预置能力。在 runner 能力确认前禁止落地 headless 版，避免假阳性。
 - [ ] **场景 4：`safety-cold-water-injection.scenario.json`（仿真可验，🟢 Phase-A 即可提前闭环）**
   配置 `timeoutUs: 60000000`（60s 虚拟时间）；加热中途注入冷水（ADC 突变跳变），覆盖注入后继续加热 20s+，断言单向加冷水上升沿守卫生效不误报干烧；脚本 authoring 约束：注入后脚本必须按掩模规则复温爬坡（若保持平坦＝合法干烧，跳闸算固件对，非固件缺陷），45°C 以下爬坡段必须保证任意 16 秒窗口下跌 ≥6 码，否则 slope 中途触发属于脚本违规（掩模规则）。
@@ -133,19 +136,39 @@
 
 ---
 
-### Task 4：跨品类安规模型扩展与 ADR-0067 流程合规 `[ 状态: ⏳ 待开始 ]`
+### Task 4：跨品类安规模型扩展（新 ADR-0069 修订 ADR-0067） `[ 状态: ⏳ 待开始 ]`
 
 | 字段 | 内容 |
 |------|------|
 | **负责人** | 系统架构组 |
 | **预估工时** | 6 小时 |
-| **修改文件** | `docs/decisions/unisim/0067-appliance-plant-profile-architecture.md` |
+| **修改文件** | `docs/decisions/unisim/0069-appliance-cross-category-safety-extension.md`（新建）, `docs/zh/design/`（Accepted 后按流程回写） |
 
 #### 详细步骤
-- [ ] **Step 1：规范流程管理**
-  ADR-0067 保持 **Proposed** 状态，直至本专项将微波炉三重门开关互锁（GB 4706.21）与便携式烤箱过热防护（GB 4706.14）安规条目并入后，统一签发为 **Accepted**。
+- [ ] **Step 1：流程修正与新 ADR 立项**
+  ADR-0067 已于 2026-09-12 随 `PLAN-20260912-SIM-FIDELITY` 评审 **Accepted**，按仓库惯例（先例：ADR-0010 修订 ADR-0007）旧 ADR 保持只读、不原地增改。本专项改为新建 **ADR-0069**（标题注明“修订 ADR-0067”），初始 Proposed；将微波炉三重门开关互锁（GB 4706.21）与便携式烤箱过热防护（GB 4706.14）并入后签发 Accepted，并按流程回写设计规范。
 - [ ] **Step 2：定义 Plant Override 与 Resume 恢复契约**
-  在 ADR-0067 中明确契约：当测试脚本临时覆写 ADC 码值（模拟冷水注入或探头扰动）并释放后，Plant 热力学演算核心基于当前实测温度平滑恢复微分求解，严禁产生滞后冲击鬼影。
+  在 ADR-0069 中明确契约：当测试脚本临时覆写 ADC 码值（模拟冷水注入或探头扰动）并释放后，Plant 热力学演算核心基于当前实测温度平滑恢复微分求解，严禁产生滞后冲击鬼影。
+
+---
+
+### Task 5：health_pot 安规 host 单测载具 `[ 状态: ⏳ 待开始 ]`
+
+| 字段 | 内容 |
+|------|------|
+| **负责人** | 质量与验证组 |
+| **预估工时** | 6 小时 |
+| **前置依赖** | 无外部阻塞；断言随 Task 1/2 实现增量追加 |
+| **修改文件** | `wink-micro-os/frameworks/mcs51/test/core/test_mcs51_health_pot_safety.c`（新增）, `wink-micro-os/test/CMakeLists.txt` |
+
+#### 背景（决策）
+`mcs51_health_pot` 为 `wasm-sim only`（`wink-micro-app/mcs51_health_pot/CMakeLists.txt:60-62` 不产出 host target），计划原 L0 的 `wink.py test --app mcs51_health_pot --target host` 无落点。采用仓库既有载具（先例：`test_mcs51_iron_ntc_e2e`）：`wink-micro-os/test/CMakeLists.txt` 的 `add_mcs51_host_test()` + `transpile_app_keil_c51.py` 转译应用源码；应用源码不复制、不 fork，单一镜像直接引用 `wink-micro-app/mcs51_health_pot/health_pot.c`。
+
+#### 详细步骤
+- [ ] **Step 1：转译与注册**：在 OS 测试 CMake 增设应用源码转译规则（参照现有 `mcs51_transpile_sample`，源路径指向 app 内 `health_pot.c`），并以 `add_mcs51_host_test(test_mcs51_health_pot_safety ...)` 注册。运行入口：`cmake -B build-host -DTARGET_PLATFORM=host -DWINK_BUILD_TESTS=ON` + `ctest -R health_pot_safety`（`wink.py test` 全量亦覆盖）。
+- [ ] **Step 2：掉电热态拦截（场景 2 核心断言）**：post-init hook 在首 tick/首条控制逻辑前预置片上 ADC 等效码（≥45°C）与按键电平，`wink_runtime_run()` 走完启动时序链，断言 `cooldown_seconds == 60`（静态变量经只读访问钩子或行为等价断言观测）且首秒内无加热输出。
+- [ ] **Step 3：POST 卡键（场景 3 核心断言）**：`button_init_post()` 前将按键 GPIO 打桩为低，断言 held 预置、100ms 内无 `evt`、加热不启动；松开＋重按后事件恢复正常。
+- [ ] **Step 4：冷却锁定（场景 1 补强）**：E-03 触发后 60s 内注入按键事件，断言拒绝、`P2.0 == 0`、遥测保持 `S=0`；冷却到期后一次开机进入 HEAT。
 
 ---
 
@@ -154,7 +177,7 @@
 ### L0 编译门禁
 - [ ] `python wink-tools/wink.py build --app mcs51_health_pot --target wasm` 零错误零警告
 - [ ] 架构与内存门禁：`font_table` 扩充且直接寻址区 `DSEG` $\le 96$ 字节，调用栈预留充分
-- [ ] 安全单测：`python wink-tools/wink.py test --app mcs51_health_pot --target host` 100% 通过
+- [ ] 安全单测（host 载具见 Task 5）：`cmake -B build-host -DTARGET_PLATFORM=host -DWINK_BUILD_TESTS=ON` + `ctest -R health_pot_safety` 100% 通过（`wink.py test` 全量亦覆盖）
 
 ### L1 单元测试（去 PAL 化物理三件套）
 - [ ] **冷却锁定断言**：E-03 触发后 60s 内，任何调用按键事件均保持 `state == ST_OFF`、`display == "COOL"`（host 单测固定显存相位；场景断言用 2 秒滑动窗口）、`P2.0 == 0`。
@@ -162,7 +185,7 @@
 - [ ] **POST 卡键断言（host 单测）**：`button_init_post()` 前 GPIO 打桩为低，确认 `held` 预置、100ms 内无 `evt`、加热不启动（headless 版待 D-005）。
 
 ### L2 集成仿真测试（回归全绿）
-- [ ] **基线 16 个场景全量回归**：`health-pot-dryfire`、`health-pot-boil-warm` 等既有 16 个场景必须 **100% 全绿**通过。
+- [ ] **基线 23 个场景全量回归**：`health-pot-dryfire`、`health-pot-boil-warm` 等既有 23 个场景（`wink-micro-app/mcs51_health_pot/unisim-scenarios/`）必须 **100% 全绿**通过。
 - [ ] **安规场景自动化验证**：headless 可验集（场景 1、场景 4）100% 通过；场景 5 为 HIL 独占声明（CI 以排除标签跳过，不计入通过率）；场景 2、3 的 headless 版待 D-005，核心断言已由 L1 覆盖。
 
 ---
@@ -176,8 +199,8 @@
 | **60s 强热余温冷却锁定** | 继电器防拉弧延寿、防止干烧二次升温 | **GB 4706.1 / IEC 60335-1**<br>第 19 章非正常工作与防二次复热要求 | `safety-cooldown-lock` (COOL 锁定) |
 | **上电热态防重开锁定** | 防止拔插插头绕过余热冷却锁定 | **GB 4706.1 / IEC 60335-1**<br>第 19 章非正常工作与电源中断后重新通电 | `safety-power-cycle-hot-reboot` |
 | **上电 POST 按键抑制** | 防止汤汁渗透致微动开关短路自加热 | **GB 4706.1 / IEC 60335-1**<br>第 19 章保护电子线路（元器件单点故障分析） | `safety-post-jammed` |
-| **微波炉三重门联锁** | 门监控开关直接短路高压变压器初级 | **GB 4706.21 / IEC 60335-2-25**<br>微波泄漏联锁保护 | ADR-0067 跨品类安规模型 |
-| **烤箱发热与风机联锁** | 炉腔超温热保护熔断器 | **GB 4706.14 / IEC 60335-2-9**<br>烘烤器具表面温度与过热防护（台式便携） | ADR-0067 跨品类安规模型 |
+| **微波炉三重门联锁** | 门监控开关直接短路高压变压器初级 | **GB 4706.21 / IEC 60335-2-25**<br>微波泄漏联锁保护 | ADR-0069 跨品类安规模型（修订 ADR-0067） |
+| **烤箱发热与风机联锁** | 炉腔超温热保护熔断器 | **GB 4706.14 / IEC 60335-2-9**<br>烘烤器具表面温度与过热防护（台式便携） | ADR-0069 跨品类安规模型（修订 ADR-0067） |
 
 ---
 
