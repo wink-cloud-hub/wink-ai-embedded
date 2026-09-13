@@ -69,6 +69,7 @@ if (isMainThread) {
         'js_pal_gpio_release_ideal',
         'js_pal_gpio_release_mcu',
         'js_pal_gpio_on_write',
+        'js_pal_notify_pin_edge',
         'js_pal_pwm_set_duty',
         'js_pal_pwm_set_duty_bp',
         'js_pal_i2c_transfer',
