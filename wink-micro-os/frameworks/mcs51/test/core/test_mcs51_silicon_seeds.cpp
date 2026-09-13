@@ -92,6 +92,7 @@ int main(void) {
     check_irq(IRQ_SOURCE_SPI,    22u, 0xAA, 7u, 0xB2, 7u, 0xBA, 7u, "SPI");
     check_irq(IRQ_SOURCE_TIMER3, 15u, 0xAA, 0u, 0xB2, 0u, 0xBA, 0u, "TIMER3");
     check_irq(IRQ_SOURCE_TIMER4, 16u, 0xAA, 1u, 0xB2, 1u, 0xBA, 1u, "TIMER4");
+    check_irq(IRQ_SOURCE_WDT,    20u, 0xAA, 5u, 0x97, 3u, 0xBA, 5u, "WDT");
     {
         const mcs51_irq_map_entry_t* u1 =
             wink_mcs51_get_irq_map_entry(IRQ_SOURCE_UART1);
@@ -124,6 +125,8 @@ int main(void) {
     wink_mcs51_reset_irq_state();
     check_irq(IRQ_SOURCE_ADC, 19u, 0xAA, 4u, 0xB2, 4u, 0xBA, 4u,
               "ADC after reset_irq_state");
+    check_irq(IRQ_SOURCE_WDT, 20u, 0xAA, 5u, 0x97, 3u, 0xBA, 5u,
+              "WDT after reset_irq_state");
 
     // ── 3) Classic AT89C52 reset seeds + family insulation ─────────────────
     mcs51_test_register_family(MCS51_FAMILY_CLASSIC);
