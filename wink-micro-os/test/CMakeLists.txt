@@ -20,6 +20,10 @@ set(HOST_PAL_OBJECT $<TARGET_OBJECTS:pal_host>)
 # Unity vendor compile flags
 set_source_files_properties(${UNITY_DIR}/unity.c PROPERTIES COMPILE_FLAGS "-w")
 
+# 64-bit assertion support (time_us counters, 64-bit hashes): Unity refuses
+# 64-bit asserts unless this macro is defined at BOTH unity.c and the test TU.
+add_compile_definitions(UNITY_SUPPORT_64=1)
+
 # Function to register a plain host unit test
 function(add_wink_test name src)
     add_executable(${name}
