@@ -71,6 +71,11 @@ ExternalProject_Add(wasm_unisim_smoke_build
         -DTARGET_PLATFORM=wasm
         -DWINK_APP_DIR=../wink-micro-app/unisim_smoke
         -DCMAKE_BUILD_TYPE=Debug
+        # The unisim_smoke fixture is a test shim whose only job is to reach
+        # every blocking-only js_* import once (sync I2C transfer, pulse_in,
+        # sleep_ms). It is not production app code, so it opts out of the
+        # global strict-nonblocking compile definition.
+        -DWINK_STRICT_NONBLOCKING=0
     INSTALL_COMMAND     ""
     TEST_COMMAND        ""
     BUILD_ALWAYS        ON
