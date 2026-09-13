@@ -219,7 +219,7 @@ python packages/wink-tools/wink.py sim run `
 
 ### 2. 方式 B：Headless 确定性场景自动化测试矩阵（CI 门禁）
 
-工程内置 **23 个标准场景脚本**（位于 [`unisim-scenarios/`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios) 目录下），全面覆盖各种功能分支与安全临界点：
+工程内置 **26 个标准场景脚本**（位于 [`unisim-scenarios/`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios) 目录下），全面覆盖各种功能分支与安全临界点：
 
 | # | 场景脚本文件名 | 核心验证内容与覆盖路径 | 关键断言点 |
 |:---:|---|---|---|
@@ -246,6 +246,11 @@ python packages/wink-tools/wink.py sim run `
 | 21 | [`health-pot-ntc-glitch-e01.scenario.json`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-ntc-glitch-e01.scenario.json) | **L1 三连正跳 E-01**：连续 3 次单向 +50 码判定探头接触不良，瞬态类故障 300ms 有效读数后安全自愈 | 显示 `E-01`、遥测 `S=3,F=1` → 回到 `S=0,H=0` |
 | 22 | [`health-pot-coldstart-passthrough.scenario.json`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-coldstart-passthrough.scenario.json) | **L1 下降沿穿透**：冬季冷启动 64 码/s 急速升温不触发扰动守卫，绝不误报 E-01 | 全程 `F=0`，遥测 LUT 跟到 ~39℃ |
 | 23 | [`health-pot-ntc-tolerance.scenario.json`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-ntc-tolerance.scenario.json) | **L1 测温 ±5% 公差带**：NTC 插件物理模型驱动 ADC，25/55/80℃ 三点经固件 LUT 解码落在量产公差内 | `ASSERT_BUS_PAYLOAD` 正则带宽断言（52.25~57.75 / 76~84） |
+| 24 | [`safety-cooldown-lock.scenario.json`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios/safety-cooldown-lock.scenario.json) | **60 s 余温冷却锁定（GB 4706.1）**：E-03 锁存 → 人工确认回 OFF → 60 s 内再按开机被拒（`S=0`、P2.0=0、显示 `"C00L"`/`"-25-"` 交替）→ ~81 s 到期后一次开机转入 HEAT | 锁定期拒绝且无幽灵自启动；到期 `S=1,H=1,F=0` |
+| 25 | [`safety-cold-water-injection.scenario.json`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios/safety-cold-water-injection.scenario.json) | **冷水注入不误报干烧（掩模规则）**：加热 5 s 后 +50 码冷水跳变重置斜率门，按"任意 16 s 降 ≥6 码"复温爬坡，post-injection 持续加热 53 s | 全程 `S=1,H=1,F=0`（无假 E-03） |
+| 26 | [`safety-relay-weld-protection.scenario.json`](file:///D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-app/mcs51_health_pot/unisim-scenarios/safety-relay-weld-protection.scenario.json) | **HIL 独占声明**：触点烧结无自闭环感知，焊接预言交 HIL（双金属片 + TCO 硬件兜底）；仿真仅记录指令事件日志，`tags: ["HIL-Exclusive"]` | ⚪ 不作为仿真放行依据 |
+
+> **安规 host 单测**：上电热态续锁（探头 ≥45 ℃）、POST 卡键抑制/恢复、E-03 冷却锁全流程由 `wink-micro-os` 侧 host 单测 `test_mcs51_health_pot_safety` 承载（`ctest -R health_pot_safety`；直接转译本目录 `health_pot.c` 单一镜像）。对应的 headless 场景 2/3 依赖外仓 runner 的「中途复位 + t=0 初始条件」能力（D-005），暂缓落地避免假阳性。
 
 #### 深度解析：专属数码管与蜂鸣器场景时序表（`health-pot-display-buzzer`）
 
