@@ -295,8 +295,13 @@ else()
             message(FATAL_ERROR "mcs51: list_drivers.py failed (rc=${_mcs51_drv_rc})")
         endif()
         include("${_mcs51_drv_gen}")
+        # Directory-scope (NOT `CACHE ... FORCE`) OFF switches: they inherit
+        # into dal/bal and shadow the per-driver cache options (CMP0077 NEW),
+        # while leaving the cache untouched. A later reconfigure with a
+        # non-mcs51 app therefore returns to the cached driver defaults
+        # automatically instead of staying silently pruned-off.
         foreach(_wink_mcs51_drv IN LISTS WINK_KNOWN_DRIVERS)
-            set(WINK_USE_${_wink_mcs51_drv} OFF CACHE BOOL "" FORCE)
+            set(WINK_USE_${_wink_mcs51_drv} OFF)
         endforeach()
     endif()
     if(_wink_dal_do_prune
