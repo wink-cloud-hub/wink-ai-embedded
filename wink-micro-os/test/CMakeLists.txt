@@ -451,6 +451,29 @@ if(TARGET wink_mcs51_core)
     mcs51_transpile_sample(iron_ntc)
     mcs51_transpile_sample(seg_display_scan)
 
+    # PLAN-20260915 Task 5: app-source transpile for host safety tests. The
+    # shipped Keil .c is never copied or forked — the same app source that the
+    # wasm build transpiles is cleaned into this build tree and linked beside
+    # the safety driver.
+    function(mcs51_transpile_app app_dir app_src)
+        set(_app_c
+            ${CMAKE_CURRENT_SOURCE_DIR}/../../wink-micro-app/${app_dir}/${app_src}.c)
+        set(_cpp ${_MCS51_GEN_DIR}/${app_dir}_${app_src}.cpp)
+        add_custom_command(
+            OUTPUT ${_cpp}
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${_MCS51_GEN_DIR}
+            COMMAND ${Python3_EXECUTABLE}
+                ${_MCS51_FW_DIR}/tools/transpile_app_keil_c51.py
+                ${_app_c} ${_cpp}
+            DEPENDS ${_app_c}
+                    ${_MCS51_FW_DIR}/tools/transpile_app_keil_c51.py
+            COMMENT "mcs51 app transpile: ${app_dir}/${app_src}.c -> ${app_dir}_${app_src}.cpp"
+            VERBATIM)
+        set(_MCS51_${app_dir}_${app_src}_CPP ${_cpp} PARENT_SCOPE)
+    endfunction()
+
+    mcs51_transpile_app(mcs51_health_pot health_pot)
+
     # ── M6: board-config codegen seam (wink-app.json -> mcs51_board_config.h) ──
     # Stage3 (CPL-09/CPL-21): the framework bridge no longer auto-binds the
     # codegen-described ADC0832. Boards/harnesses bind it in their own
@@ -905,6 +928,18 @@ if(TARGET wink_mcs51_core)
         ${_MCS51_cms8s_adc_test_CPP}
         ${_MCS51_RUNTIME_SRCS})
     target_compile_definitions(test_mcs51_cms8s_adc_e2e PRIVATE WINK_MCU_CMS8S78XX=1)
+
+    # PLAN-20260915 Task 5: mcs51_health_pot appliance safety host vehicle.
+    # The app is wasm-only, so this links the transpiled real app source into
+    # the fiber runtime and asserts the physical safety triplet (P2.0 relay
+    # latch, state/fault telemetry) plus the boot hot-probe latch, POST
+    # stuck-key suppression and the 60 s cooldown gate.
+    add_mcs51_host_test(test_mcs51_health_pot_safety
+        ../frameworks/mcs51/test/core/test_mcs51_health_pot_safety.c
+        ${_MCS51_mcs51_health_pot_health_pot_CPP}
+        ${_MCS51_RUNTIME_SRCS})
+    target_compile_definitions(test_mcs51_health_pot_safety PRIVATE
+        WINK_MCU_CMS8S78XX=1)
 
     # CMS8S78xx on-chip Buzzer peripheral model test
     add_mcs51_host_test(test_mcs51_cms8s_buzzer
