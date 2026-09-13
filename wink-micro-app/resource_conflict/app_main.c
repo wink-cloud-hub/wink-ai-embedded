@@ -93,13 +93,18 @@ static void case_i2c_addr_conflict(void)
 static void case_stub_honesty(void)
 {
     WINK_INIT_BLOCKING_REGION_BEGIN
+#if !defined(WINK_USE_GPS) || !WINK_USE_GPS
     dal_gps_t gps = {0};
     const dal_gps_config_t gps_cfg = {
         .owner = "test_gps", .uart_port = 1, .baudrate = 9600, .rx_buffer_size = 256
     };
     ASSERT_EQ(WINK_ERR_UNSUPPORTED, dal_gps_init(&gps, &gps_cfg),
               "Stub honesty: dal_gps_init must return NOT_SUPPORTED (no fake success)");
+#else
+    LOG_I("stub honesty: gps driver enabled in this build - pruned-stub check skipped");
+#endif
 
+#if !defined(WINK_USE_EEPROM) || !WINK_USE_EEPROM
     dal_eeprom_t ee = {0};
     const dal_eeprom_config_t ee_cfg = {
         .owner = "test_eeprom", .i2c_port = 0, .i2c_addr = 0x50,
@@ -107,8 +112,11 @@ static void case_stub_honesty(void)
     };
     ASSERT_EQ(WINK_ERR_UNSUPPORTED, dal_eeprom_init(&ee, &ee_cfg),
               "Stub honesty: dal_eeprom_init must return NOT_SUPPORTED (no fake success)");
+#else
+    LOG_I("stub honesty: eeprom driver enabled in this build - pruned-stub check skipped");
+#endif
     WINK_INIT_BLOCKING_REGION_END
-    LOG_I("stub honesty (ADR-0012): unimplemented DALs return NOT_SUPPORTED, not fake WINK_OK");
+    LOG_I("stub honesty (ADR-0012): pruned DALs return NOT_SUPPORTED, not fake WINK_OK");
 }
 
 int main(void)
