@@ -11,7 +11,8 @@
  *   - 4-digit 8-segment LED digital tube (4COM-8SEG) dynamic multiplexing
  *     using CMS8S78xx 150mA high-sink COM (P3.0..P3.3) and 32.7mA SEG (P1.0..P1.7):
  *     OFF: " -- ", HEAT: "XXbO" with 1Hz blinking decimal point,
- *     WARM: "XXYY" (current temp + target setpoint), FAULT: "E-01".."E-04".
+ *     WARM: "XXYY" (current temp + target setpoint), FAULT: "E-01".."E-04",
+ *     COOL lock: "COOL" alternating 1 s with the live "-XX-" temperature.
  *   - Push buttons on P0.4 (ON/OFF) and P0.5 (FUNC) with 20 ms bidirectional
  *     debounce inside the 10 ms tick plus POST stuck-key suppression.
  *   - Heater relay on P2.0 (active high).
@@ -26,6 +27,10 @@
  *     dwell on EVERY re-energize path, and a manual ON/OFF fault acknowledge
  *     (muted standby: the power key is always safe to press; heating cannot
  *     restart until the probe reads healthy).
+ *   - 60 s thermal cooling lock (GB 4706.1 19.x): E-03/E-04 latch a full-
+ *     minute cooldown; both HEAT entry points and the P2.0 output stage are
+ *     gated, and a hot probe at power-up (>= 45 C) re-latches the lock so
+ *     unplug/replug can never re-energise a hot element.
  */
 #include <wink_mcu.h>
 #include <absacc.h>
@@ -69,6 +74,7 @@ sbit BTN_FUNC  = P0^5;   /* FUNC button, active low    (linear pin 5)  */
 #define BOIL_TEMP_C          98u    /* boiling reached */
 #define BOIL_HOLD_TICKS      30u    /* 30 x 100 ms = 3 s boil hold */
 #define WARM_HYST_C          2u     /* keep-warm hysteresis +/-2 C (relay life) */
+#define WARM_DEFAULT_C       60u    /* factory-default keep-warm setpoint        */
 #define RELAY_DWELL_SECONDS  3u     /* min relay OFF time before re-energizing */
 #define FAULT_RECOVER_TICKS  3u     /* 3 x 100 ms valid samples to auto-clear sensor fault */
 #define DRYFIRE_SECONDS      650u   /* stage-1 hard backstop below 45 C => E-03 (single-image) */
@@ -81,13 +87,14 @@ sbit BTN_FUNC  = P0^5;   /* FUNC button, active low    (linear pin 5)  */
 #define COLDWATER_JUMP       40u    /* single-tick upward code jump => cold-water/probe event */
 #define GLITCH_TRIP_COUNT    3u     /* 3 consecutive upward jumps => E-01 open-class fault */
 #define FAULT_BEEP_TIMEOUT   60u    /* silence periodic buzzer alarm after 60 s */
+#define COOLDOWN_SECONDS     60u    /* post-thermal-fault cooling lock (power-cycle safe) */
 
 static unsigned int code ntc_lut_raw[11]  = {571, 458, 298, 241, 131,  89,  63,  32,  24,  19,  16};
 static unsigned char code ntc_lut_temp[11] = {  5,  10,  20,  25,  40,  50,  60,  80,  90,  98, 105};
 
 /* ---- 4COM-8SEG Display Font Table ---------------------------------------- */
 /* Bit: dp(7) g(6) f(5) e(4) d(3) c(2) b(1) a(0) — common cathode */
-static unsigned char code font_table[15] = {
+static unsigned char code font_table[17] = {
     0x3Fu, /* 0 */
     0x06u, /* 1 */
     0x5Bu, /* 2 */
@@ -102,7 +109,9 @@ static unsigned char code font_table[15] = {
     0x3Fu, /* 11: 'O' */
     0x79u, /* 12: 'E' */
     0x40u, /* 13: '-' */
-    0x00u  /* 14: blank */
+    0x00u, /* 14: blank */
+    0x39u, /* 15: 'C' */
+    0x38u  /* 16: 'L' */
 };
 
 static unsigned char disp_digits[4]; /* Active segment patterns for 4 digits */
@@ -172,6 +181,7 @@ static unsigned char warm_set;           /* Keep-warm target: 55/60/80/90 */
 static unsigned char heat_mode;          /* Heating target mode: MODE_BOIL_100 / MODE_DIRECT_55 */
 static unsigned char heater_on;          /* Heater drive latch */
 static unsigned char relay_off_sec;      /* Seconds heater has been OFF (saturates 255) */
+static unsigned char data cooldown_seconds; /* Thermal-fault cooling lock (0 = free) */
 static unsigned int  heat_seconds;       /* Continuous seconds heating in HEAT */
 static unsigned char boil_hold;          /* 100 ms ticks in boil confirmation */
 static unsigned char boil_confirm;       /* 1 = confirming boil */
@@ -253,11 +263,35 @@ static unsigned char ntc_code_to_temp(unsigned int code_val) {
 }
 
 /* ---- 4COM-8SEG Display Update -------------------------------------------- */
+/* Priority: FAULT (E-0x) > COOL (cooldown latch) > state display. During the
+ * 60 s thermal cooldown the tube alternates once per second between "COOL"
+ * and the live water temperature so the lock is never mistaken for a hang;
+ * the phase follows the countdown LSB (deterministic, no extra state). */
 static void display_update(void) {
     /* Font table has no glyph above digit 9; clamp water temperature display
      * at 99 C until the over-temperature fault takes over (>105 C, 10 s). */
     unsigned char disp_temp = (temp_c > 99u) ? 99u : temp_c;
-    if (state == ST_OFF) {
+    if (state == ST_FAULT) {
+        /* "E-01".."E-04" */
+        disp_digits[0] = font_table[12]; /* 'E' */
+        disp_digits[1] = font_table[13]; /* '-' */
+        disp_digits[2] = font_table[0];  /* '0' */
+        disp_digits[3] = font_table[fault_code % 10u];
+    } else if (cooldown_seconds > 0u) {
+        if ((cooldown_seconds & 0x01u) != 0u) {
+            /* "COOL" */
+            disp_digits[0] = font_table[15]; /* 'C' */
+            disp_digits[1] = font_table[11]; /* 'O' */
+            disp_digits[2] = font_table[11]; /* 'O' */
+            disp_digits[3] = font_table[16]; /* 'L' */
+        } else {
+            /* "-XX-": live water temperature between the Cool phases */
+            disp_digits[0] = font_table[13]; /* '-' */
+            disp_digits[1] = font_table[disp_temp / 10u];
+            disp_digits[2] = font_table[disp_temp % 10u];
+            disp_digits[3] = font_table[13]; /* '-' */
+        }
+    } else if (state == ST_OFF) {
         if (heat_mode == MODE_DIRECT_55) {
             /* "-55-" */
             disp_digits[0] = font_table[13]; /* '-' */
@@ -307,12 +341,6 @@ static void display_update(void) {
         disp_digits[1] = font_table[disp_temp % 10u] | (heater_on ? (blink_toggle ? 0x80u : 0u) : 0u);
         disp_digits[2] = font_table[warm_set / 10u];
         disp_digits[3] = font_table[warm_set % 10u];
-    } else if (state == ST_FAULT) {
-        /* "E-01".."E-04" */
-        disp_digits[0] = font_table[12]; /* 'E' */
-        disp_digits[1] = font_table[13]; /* '-' */
-        disp_digits[2] = font_table[0];  /* '0' */
-        disp_digits[3] = font_table[fault_code % 10u];
     }
 }
 
@@ -433,6 +461,12 @@ static void button_scan_10ms(void) {
 
 /* ---- Fault Handler ------------------------------------------------------- */
 static void enter_fault(unsigned char code_val) {
+    /* Thermal faults latch the 60 s cooling lock; every re-trigger refreshes
+     * it, so a hot plate can never be re-energised until the countdown (kept
+     * in RAM, not NVS) really expires. Sensor faults (E-01/E-02) do not. */
+    if (code_val == 3u || code_val == 4u) {
+        cooldown_seconds = COOLDOWN_SECONDS;
+    }
     if (state == ST_FAULT) {
         heater_on = 0;
         /* A latched thermal fault (E-03/E-04) has top priority and is never
@@ -589,17 +623,22 @@ static void handle_buttons(void) {
                 warm_set = 90u;
                 play_melody(TONE_STEP);
             } else {
-                /* From 90 C, cycle back to 100 C re-boil (re-enter ST_HEAT) */
-                state = ST_HEAT;
-                heat_mode = MODE_BOIL_100;
-                warm_set = 60u;
-                heat_seconds = 0;
-                boil_confirm = 0;
-                boil_hold = 0;
-                overtemp_seconds = 0;
-                glitch_cnt = 0u;
-                heat_slope_reset();
-                play_melody(TONE_STEP);
+                /* From 90 C, cycle back to 100 C re-boil (re-enter ST_HEAT).
+                 * The cooling lock gates this second HEAT entry point too. */
+                if (cooldown_seconds > 0u) {
+                    play_melody(TONE_BUSY);
+                } else {
+                    state = ST_HEAT;
+                    heat_mode = MODE_BOIL_100;
+                    warm_set = WARM_DEFAULT_C;
+                    heat_seconds = 0;
+                    boil_confirm = 0;
+                    boil_hold = 0;
+                    overtemp_seconds = 0;
+                    glitch_cnt = 0u;
+                    heat_slope_reset();
+                    play_melody(TONE_STEP);
+                }
             }
             display_update();
         } else if (state == ST_FAULT) {
@@ -609,9 +648,14 @@ static void handle_buttons(void) {
     }
 
     if (evt_onoff) {
-        evt_onoff = 0;
+        evt_onoff = 0;                       /* consume FIRST (iron rule) */
         if (state == ST_OFF) {
-            if (adc_code >= NTC_OPEN_RAW || adc_code <= NTC_SHORT_RAW) {
+            if (cooldown_seconds > 0u) {
+                /* Thermal cooling lock: refuse start with a denial blip.
+                 * The event is already consumed above, so nothing can ghost-
+                 * restart when the countdown later expires. */
+                play_melody(TONE_BUSY);
+            } else if (adc_code >= NTC_OPEN_RAW || adc_code <= NTC_SHORT_RAW) {
                 sensor_muted = 0u;
                 enter_fault((adc_code >= NTC_OPEN_RAW) ? 1u : 2u);
             } else {
@@ -623,7 +667,7 @@ static void handle_buttons(void) {
                 } else if (heat_mode == MODE_DIRECT_80) {
                     warm_set = 80u;
                 } else {
-                    warm_set = 60u;
+                    warm_set = WARM_DEFAULT_C;
                 }
                 boil_hold = 0u;
                 boil_confirm = 0u;
@@ -833,6 +877,13 @@ static void one_second_task(void) {
         relay_off_sec++;
     }
 
+    /* Cooling-lock countdown: top-level unconditional path. It must never
+     * live inside heat_slope_task_1s (whose ST_HEAT guard early-returns during
+     * the lock and would freeze the countdown into a deadlock). */
+    if (cooldown_seconds > 0u) {
+        cooldown_seconds--;
+    }
+
     /* Dry-fire logic lives solely in heat_slope_task_1s (single increment
      * site for heat_seconds). This task only tracks relay off-time here. */
     /* Over-temp protection: raw <= 16 (~>105 C) in HEAT or WARM */
@@ -969,6 +1020,19 @@ void main(void) {
     /* 7. Configure on-chip 12-bit SAR ADC: AN0 on P0.0 */
     adc_init();
 
+    /* 7b. Boot-time thermal-state pipeline (PLAN-20260915 Task 1): sample the
+     *     probe synchronously BEFORE the first tick, then latch the 60 s
+     *     cooling lock when the plate is still hot. This closes the power-
+     *     cycle bypass: unplugging a dry-fired unit and replugging it can no
+     *     longer re-energise a 200-300 C heater element. The sample takes
+     *     < 0.5 ms (three polled conversions), far below the WDT window. */
+    cooldown_seconds = 0u;
+    adc_code = adc_read_filtered();
+    temp_c = ntc_code_to_temp(adc_code);
+    if (temp_c >= DRYFIRE_TEMP_C) {
+        cooldown_seconds = COOLDOWN_SECONDS;
+    }
+
     /* 8. UART0 mode 1 (8-bit async, 9600 bps @ 24 MHz) polled TX telemetry.
      *    Baud generator: Timer1 mode 2 (8-bit auto-reload), T1M = 1 selects
      *    Fosc/4 timer clock (CKCON.4), SMOD0 = 1 double baud (PCON.7):
@@ -992,7 +1056,7 @@ void main(void) {
     /* 9. Initialize state machine & display buffers */
     state = ST_OFF;
     fault_code = 0;
-    warm_set = 60u;
+    warm_set = WARM_DEFAULT_C;
     heat_mode = MODE_BOIL_100;
     heater_on = 0;
     relay_off_sec = 255u;
@@ -1009,8 +1073,8 @@ void main(void) {
     div_1000ms = 0;
     warble_phase = 0;
     scan_idx = 0;
-    temp_c = 25u;
-    adc_code = 241u;
+    /* temp_c / adc_code already hold the 7b boot sample; the cooling latch
+     * set there must survive this block. */
     evt_onoff = 0;
     evt_func = 0;
     /* POST stuck-key suppression + slope ring prefill at boot */
@@ -1075,8 +1139,10 @@ void main(void) {
             one_second_task();
         }
 
-        /* Refresh actuators, indicator LEDs & display buffer */
-        HEATER = heater_on ? 1 : 0;
+        /* Refresh actuators, indicator LEDs & display buffer.
+         * The 60 s cooling lock is clamped at the output stage itself, the
+         * last line of defense independent of any state-machine latch. */
+        HEATER = (cooldown_seconds > 0u) ? 0 : (heater_on ? 1 : 0);
         LED_HEAT = (state == ST_HEAT) ? 0 : 1;
         LED_WARM = (state == ST_WARM) ? 0 : 1;
         if (state == ST_FAULT) {
