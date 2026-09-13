@@ -1,0 +1,55 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "CMS8S78xx WDT overflow interrupt headless proof",
+    "templateId": "vendor_cms8s78xx_v202_wdt",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "800000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "gpio:26",
+      "matcher": 0,
+      "description": "[初始状态] P3.2 (pin 26) 初始为低电平 0 (WDT 计数中，未溢出)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "220ms",
+      "target": "gpio:26",
+      "matcher": 1,
+      "description": "[第 1 次溢出] 跨过 174.76ms，WDT 溢出触发 WDT_IRQHandler，P3.2 翻转为高电平 1"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "300ms",
+      "target": "gpio:26",
+      "matcher": 1,
+      "description": "[周期保持] 周期内 P3.2 保持高电平 1"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "400ms",
+      "target": "gpio:26",
+      "matcher": 0,
+      "description": "[第 2 次溢出] 跨过 349.5ms，WDT 再次溢出触发 WDT_IRQHandler，P3.2 翻转回低电平 0"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "gpio:26",
+      "matcher": 0,
+      "description": "[周期保持] 周期内 P3.2 保持低电平 0"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "600ms",
+      "target": "gpio:26",
+      "matcher": 1,
+      "description": "[第 3 次溢出] 跨过 524.3ms，WDT 第三次溢出触发 WDT_IRQHandler，P3.2 再次翻转为高电平 1"
+    }
+  ]
+}
