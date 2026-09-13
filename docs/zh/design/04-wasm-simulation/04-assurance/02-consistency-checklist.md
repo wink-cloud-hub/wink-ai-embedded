@@ -248,7 +248,7 @@
 | C14.2 快进跨越边沿/半窗 debounce | 🟡 | 全局最小事件时间待固化 | 待补 | [01 §C14.2](./01-consistency-spec.md#c14.2) |
 | C14.3 Plant↔OS 锁步漂移 | 🟡 | 禁墙钟 plant；门禁待补 | 待补 | [01 §C14.3](./01-consistency-spec.md#c14.3) |
 | C14.4 Pin Event Queue 溢出/丢失 | 🟡 | Fail-Loud 待强化 | 待补 | [01 §C14.4](./01-consistency-spec.md#c14.4) |
-| C14.5 观测与注入竞态 | 🟡 | 序契约测试待补 | 待补 | [01 §C14.5](./01-consistency-spec.md#c14.5) |
+| C14.5 观测与注入竞态 | 🟡 | 序契约测试待补；跨品类激励源互斥与 Override/Resume 连续性已立契约（ADR-0067/0069），连续性断言待补 | 待补 | [01 §C14.5](./01-consistency-spec.md#c14.5) |
 
 <a id="c15"></a>
 

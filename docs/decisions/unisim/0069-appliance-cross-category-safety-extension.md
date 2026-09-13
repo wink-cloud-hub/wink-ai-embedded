@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 状态 | **Proposed（提议中，待评审签发）** |
+| 状态 | **Accepted（已采纳，2026-09-13）** |
 | 日期 | 2026-09-13（提议） |
 | 触发 | `PLAN-20260915-APPLIANCE-SAFETY-AND-GB4706` Task 4：小家电商业级安规（GB 4706.21 / GB 4706.14 / IEC 60335-2-25 / IEC 60335-2-9）跨品类落地，需在 ADR-0067 已 Accepted 的 Plant Profile 架构上扩展安全动力学契约 |
 | 影响范围 | 跨品类 Plant Profile 契约（微波炉/便携烤箱档）、未来场景矩阵、`docs/zh/design/04-wasm-simulation/` 回写、HIL 清单 |
@@ -36,11 +36,11 @@ ADR-0067 固化了电器 Plant Profile 架构的三条铁律：**激励源二选
 - 养生壶（`mcs51_health_pot`）现有行为与场景**零变更**；本 ADR 只固化契约层，不含 TS 侧实现承诺。
 - 微波炉/烤箱的应用与 Plant Profile 实现须在本契约下另立技术设计与实施计划；机械联锁、高压短路、熔断器等物理行为进入 HIL 清单。
 - 新增场景继续遵守 ADR-0055 数值公差带；覆写释放连续性需有场景或单测断言（无鬼影）。
-- 本文 Proposed → Accepted 需评审签发；Accepted 后按仓库流程回写设计规范。
+- 本 ADR 已 Accepted 并完成设计规范回写（C14.5 扩展 + 清单行更新）。
 
 ## 遵循与后续（Compliance & Follow-up）
 
-- Accepted 后回写：`docs/zh/design/04-wasm-simulation/`（轴 A 激励源分类、轴 F 故障与观测）与 ADR-0067 关联段落。
+- 已回写：[`04-assurance/01-consistency-spec.md`](../../zh/design/04-wasm-simulation/04-assurance/01-consistency-spec.md) §C14.5（跨品类激励源互斥、Override/Resume 连续性、HIL 边界）与 [`02-consistency-checklist.md`](../../zh/design/04-wasm-simulation/04-assurance/02-consistency-checklist.md) C14.5 行；ADR-0067 原文保持只读，其关联关系已由本 ADR 元数据注明（修订关系，不回改）。
 - 场景侧：微波炉/烤箱场景建立前，必须先补一致性规范（C-spec 五字段）再进入清单。
 - 本仓无跨品类固件代码改动；`PLAN-20260915` 的养生壶安规实现（60 s 冷却锁定、上电热态拦截）不受本 ADR 状态阻塞。
 
@@ -48,3 +48,4 @@ ADR-0067 固化了电器 Plant Profile 架构的三条铁律：**激励源二选
 
 *本 ADR 状态变更请在此记录：*
 - 2026-09-13：Proposed（随 `PLAN-20260915-APPLIANCE-SAFETY-AND-GB4706` Task 4 提出）
+- 2026-09-13：Accepted（随 `PLAN-20260915` Task 4 "继续" 评审签发，并完成 C14.5 规范回写）
