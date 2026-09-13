@@ -1,0 +1,74 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51_health_pot HIL-EXCLUSIVE: relay contact weld oracle (TCO / bimetal hardware fallback)",
+    "templateId": "mcs51_health_pot",
+    "description": "PLAN-20260915 Task 3 scene 5. Relay contact welding has no self-sensing path on this board (no current transformer loop), so weld detection is an HIL-exclusive oracle backed by the bimetal snap disc and the non-resettable thermal fuse. The simulation only records the commanded relay sequence as an event log; it MUST NOT be used as weld-protection release evidence.",
+    "tags": ["HIL-Exclusive"],
+    "accuracyMode": "behavioral",
+    "timeoutUs": "8000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "30ms",
+      "adcChannel": 0,
+      "valueNorm": 0.0586,
+      "description": "25 C water (code ~240)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "400ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "700ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "Firmware commands the contact closed (event-log evidence only; not weld detection)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "2000ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "2300ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2600ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Firmware commands the contact open: OFF edges are immediate"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["2600ms", "3800ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=0,H=0,F=0",
+      "minPackets": 1,
+      "description": "Safe standby telemetry after the commanded OFF (contact-stuck scenario is HIL-only)"
+    }
+  ]
+}
