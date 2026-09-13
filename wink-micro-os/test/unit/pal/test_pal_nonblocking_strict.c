@@ -47,13 +47,22 @@ enum {
     NB_HAS_pal_rmt_pulse_capture_deinit    = sizeof(&pal_rmt_pulse_capture_deinit),
     NB_HAS_pal_rmt_pulse_capture_is_active = sizeof(&pal_rmt_pulse_capture_is_active),
 
+    /* Pruned drivers degrade to compile-time `unavailable` stubs (DAL-P-002),
+     * so their symbols only exist when the build config enables them; probing
+     * them with the driver disabled is itself a compile error by design. */
+#if defined(WINK_USE_ULTRASONIC) && WINK_USE_ULTRASONIC
     NB_HAS_dal_ultrasonic_init             = sizeof(&dal_ultrasonic_init),
     NB_HAS_dal_ultrasonic_get_cached       = sizeof(&dal_ultrasonic_get_cached_distance),
     NB_HAS_dal_ultrasonic_apply_override   = sizeof(&dal_ultrasonic_apply_override),
+#endif
+#if defined(WINK_USE_GPS) && WINK_USE_GPS
     NB_HAS_dal_gps_poll                    = sizeof(&dal_gps_poll),
     NB_HAS_dal_gps_get_position            = sizeof(&dal_gps_get_position),
+#endif
+#if defined(WINK_USE_LOAD_CELL) && WINK_USE_LOAD_CELL
     NB_HAS_dal_load_cell_request_read      = sizeof(&dal_load_cell_request_read),
     NB_HAS_dal_load_cell_get_cached_weight = sizeof(&dal_load_cell_get_cached_weight_g),
+#endif
 };
 
 int main(void) { return 0; }
