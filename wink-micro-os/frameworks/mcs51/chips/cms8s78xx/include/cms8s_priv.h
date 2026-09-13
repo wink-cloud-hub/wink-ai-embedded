@@ -89,6 +89,15 @@ typedef struct {
     uint64_t t2_next_cmp_us[4];
 } Cms8sTimerState;
 
+// Analog comparator state (owner: cms8s_acmp.cpp).
+typedef struct {
+    uint8_t  last_c0out;
+    uint8_t  last_c1out;
+    bool     c0_initialized;
+    bool     c1_initialized;
+    uint64_t last_poll_us;
+} Cms8sAcmpState;
+
 // Aggregate chip block: ONE pool slot per context instance (BSS pool in
 // the register TU, indexed by ctx->instance_index). Timer T3/T4 +
 // capture/compare + port sampling join in stage4 (S2-2 D6 handover).
@@ -99,6 +108,7 @@ typedef struct {
     Cms8sAdetState  adet;
     Cms8sPortExtIntState port_extint;
     Cms8sTimerState timer;
+    Cms8sAcmpState  acmp;
     bool            in_poll;
 } Cms8sPriv;
 

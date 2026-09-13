@@ -291,6 +291,7 @@ const Cms8sIrqExtension kCms8sIrqExtensions[] = {
     { IRQ_SOURCE_SPI,    { 22u, 0xAAu, 7u, 0xB2u, 7u, 0xBAu, 7u, MCS51_IRQ_SW_CLEAR } },
     { IRQ_SOURCE_TIMER3, { 15u, 0xAAu, 0u, 0xB2u, 0u, 0xBAu, 0u, MCS51_IRQ_HW_AUTO_CLEAR } },
     { IRQ_SOURCE_TIMER4, { 16u, 0xAAu, 1u, 0xB2u, 1u, 0xBAu, 1u, MCS51_IRQ_HW_AUTO_CLEAR } },
+    { IRQ_SOURCE_ACMP,   { 14u, 0xFFu, 0u, 0xFFu, 0u, 0xB9u, 7u, MCS51_IRQ_SW_CLEAR } },
 };
 
 // Loaded by the glue installer below and re-invoked by
@@ -329,6 +330,9 @@ extern "C" bool cms8s_irq_flag_predicate(struct Mcu51Context* ctx,
     if (src == IRQ_SOURCE_TIMER2 && entry->flag_sfr == CMS8S_SFR_T2IF) {
         return ((ctx->sfr_shadow[CMS8S_SFR_T2IF] &
                  ctx->sfr_shadow[CMS8S_SFR_T2IE]) != 0);
+    }
+    if (entry->flag_sfr == 0xFFu) {
+        return true;
     }
     return (ctx->sfr_shadow[entry->flag_sfr] &
             (1u << entry->flag_bit)) != 0;
