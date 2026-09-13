@@ -73,6 +73,7 @@ void cms8s_acmp_init(struct Mcu51Context* ctx) {
     if (priv) {
         priv->acmp.last_c0out = 0u;
         priv->acmp.last_c1out = 0u;
+        priv->acmp.cnif = 0u;
         priv->acmp.c0_initialized = false;
         priv->acmp.c1_initialized = false;
         priv->acmp.last_poll_us = 0u;
@@ -89,6 +90,12 @@ void cms8s_acmp_poll(struct Mcu51Context* ctx) {
 
     Cms8sPriv* priv = cms8s_priv(ctx);
     if (!priv) return;
+
+    // CNIF is write-0-to-clear (W0C): firmware stores ~mask to clear a bit
+    // and 1-bits preserve. Settle any pending firmware write first (zeroes
+    // clear, ones preserve), run edge detection, then publish the effective
+    // flag byte back to the shadow.
+    priv->acmp.cnif &= ctx->xdata_shadow[XSFR_CNIF];
 
     // ── ACMP0 ──
     const uint8_t c0con0 = ctx->xdata_shadow[XSFR_C0CON0];
@@ -130,7 +137,7 @@ void cms8s_acmp_poll(struct Mcu51Context* ctx) {
             priv->acmp.last_c0out = out;
             const uint8_t cnie = ctx->xdata_shadow[XSFR_CNIE];
             if ((cnie & 0x01u) != 0u) {
-                ctx->xdata_shadow[XSFR_CNIF] |= 0x01u;
+                priv->acmp.cnif |= 0x01u;
                 mcs51_raise_irq(IRQ_SOURCE_ACMP);
             }
         } else {
@@ -187,7 +194,7 @@ void cms8s_acmp_poll(struct Mcu51Context* ctx) {
             priv->acmp.last_c1out = out;
             const uint8_t cnie = ctx->xdata_shadow[XSFR_CNIE];
             if ((cnie & 0x02u) != 0u) {
-                ctx->xdata_shadow[XSFR_CNIF] |= 0x02u;
+                priv->acmp.cnif |= 0x02u;
                 mcs51_raise_irq(IRQ_SOURCE_ACMP);
             }
         } else {
@@ -198,6 +205,8 @@ void cms8s_acmp_poll(struct Mcu51Context* ctx) {
         ctx->xdata_shadow[XSFR_C1CON1] &= ~0x80u;
     }
 
+    // Publish the settled W0C flag byte (pending clears + new edges).
+    ctx->xdata_shadow[XSFR_CNIF] = priv->acmp.cnif;
 }
 
 uint64_t cms8s_acmp_next_event_us(struct Mcu51Context* ctx) {
