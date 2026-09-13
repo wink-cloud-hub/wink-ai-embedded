@@ -196,10 +196,15 @@ int main(void) {
           "AN63 internal conversion should read 0 in v1");
 
     // ── 9b) AN63 TS (0x3F + ANACH=4 + TS_REG enabled) ───────────────────────
+    // ANACH lives in ADCON0, so it must be programmed in the SAME full write
+    // as ADFM immediately before ADGO — the convert() helper's ADCON0 reset
+    // would otherwise wipe it before the conversion hook sees it.
     WinkXsfr ts_reg(0xF693u);
     ts_reg = 0xC8u;  // enable + trim=8 (nominal 1365 LSB)
-    ADCON0 = static_cast<unsigned>((uint8_t)ADCON0 | (4u << 2u));  // ANACH = 4
-    convert(0x3Fu, true);  // right-justified
+    ADCCHS = 0x3Fu;
+    ADCON1 = ADCON1_ADEN;
+    ADCON0 = static_cast<unsigned>(ADCON0_ADFM | (4u << 2u));  // right justify + ANACH=4
+    ADCON0 = static_cast<unsigned>((uint8_t)ADCON0 | ADCON0_ADGO);
     const uint16_t ts_raw = (uint16_t)(((uint8_t)ADRESH << 8) | (uint8_t)ADRESL);
     check(ts_raw == 1365u, "AN63 TS nominal trim 8 should convert to 1365 LSB");
     ADCON0 = static_cast<unsigned>((uint8_t)ADCON0 & ~(0x0Fu << 2u));  // clear ANACH
