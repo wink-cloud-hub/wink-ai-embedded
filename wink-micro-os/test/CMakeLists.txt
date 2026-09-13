@@ -44,6 +44,11 @@ function(add_wink_test name src)
             -Wno-missing-field-initializers
             -Wno-error=stack-usage=)
     endif()
+    # DAL/PAL headers may include the generated wink_config.h; make sure it
+    # exists before this TU compiles (fresh dirs / app switches).
+    if(TARGET generate_config)
+        add_dependencies(${name} generate_config)
+    endif()
     add_test(NAME ${name} COMMAND ${name})
 endfunction()
 
@@ -89,6 +94,11 @@ function(add_wink_host_test name src)
         target_compile_options(${name} PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter
             -Wno-missing-field-initializers
             -Wno-error=stack-usage=)
+    endif()
+    # DAL/PAL headers may include the generated wink_config.h; make sure it
+    # exists before this TU compiles (fresh dirs / app switches).
+    if(TARGET generate_config)
+        add_dependencies(${name} generate_config)
     endif()
     add_test(NAME ${name} COMMAND ${name})
 endfunction()
