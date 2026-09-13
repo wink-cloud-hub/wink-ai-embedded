@@ -1,0 +1,20 @@
+{
+  "appName": "wdt",
+  "board": "cms8s78xx_devboard",
+  "devices": {
+    "led": {
+      "id": "led",
+      "type": "led",
+      "pinMapping": {
+        "A": 26
+      },
+      "properties": {
+        "activeHigh": true
+      }
+    }
+  },
+  "family": "mcs51",
+  "core": "8051",
+  "mcu": "cms8s78xx",
+  "vendor": "cmsemicon"
+}
