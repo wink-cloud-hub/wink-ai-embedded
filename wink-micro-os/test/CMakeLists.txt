@@ -24,6 +24,42 @@ set_source_files_properties(${UNITY_DIR}/unity.c PROPERTIES COMPILE_FLAGS "-w")
 # 64-bit asserts unless this macro is defined at BOTH unity.c and the test TU.
 add_compile_definitions(UNITY_SUPPORT_64=1)
 
+# UAC installer detection exempts manifested images. A few host test names
+# accidentally contain installer keywords as substrings (e.g. "disPATCH",
+# "upDATE", "inSTALL"), which makes a non-elevated CreateProcess fail with
+# ERROR_ELEVATION_REQUIRED (740) — ctest reports BAD_COMMAND. Embed a minimal
+# asInvoker manifest into every host test executable (MinGW/windres; MSVC
+# toolchains embed .rc manifests natively, so this is a no-op there).
+set(WINK_TEST_MANIFEST_OBJ "")
+set(WINK_TEST_MANIFEST_TARGET "")
+if(WIN32 AND NOT MSVC)
+    find_program(WINDRES_EXECUTABLE windres)
+    if(WINDRES_EXECUTABLE)
+        configure_file(${CMAKE_CURRENT_SOURCE_DIR}/win/asinvoker.manifest
+                       ${CMAKE_CURRENT_BINARY_DIR}/asinvoker.manifest COPYONLY)
+        set(_wink_test_manifest_rc ${CMAKE_CURRENT_BINARY_DIR}/asinvoker.rc)
+        file(WRITE ${_wink_test_manifest_rc} "1 24 \"asinvoker.manifest\"\n")
+        set(WINK_TEST_MANIFEST_OBJ ${CMAKE_CURRENT_BINARY_DIR}/asinvoker_res.o)
+        add_custom_command(
+            OUTPUT ${WINK_TEST_MANIFEST_OBJ}
+            COMMAND ${WINDRES_EXECUTABLE} ${_wink_test_manifest_rc}
+                    ${WINK_TEST_MANIFEST_OBJ}
+            DEPENDS ${_wink_test_manifest_rc}
+                    ${CMAKE_CURRENT_BINARY_DIR}/asinvoker.manifest
+            COMMENT "Embedding asInvoker manifest resource for host tests"
+            VERBATIM)
+        add_custom_target(wink_test_manifest DEPENDS ${WINK_TEST_MANIFEST_OBJ})
+        set(WINK_TEST_MANIFEST_TARGET wink_test_manifest)
+    endif()
+endif()
+
+function(wink_test_attach_manifest name)
+    if(WINK_TEST_MANIFEST_OBJ)
+        target_sources(${name} PRIVATE ${WINK_TEST_MANIFEST_OBJ})
+        add_dependencies(${name} ${WINK_TEST_MANIFEST_TARGET})
+    endif()
+endfunction()
+
 # Function to register a plain host unit test
 function(add_wink_test name src)
     add_executable(${name}
@@ -53,6 +89,7 @@ function(add_wink_test name src)
     if(TARGET generate_config)
         add_dependencies(${name} generate_config)
     endif()
+    wink_test_attach_manifest(${name})
     add_test(NAME ${name} COMMAND ${name})
 endfunction()
 
@@ -104,6 +141,7 @@ function(add_wink_host_test name src)
     if(TARGET generate_config)
         add_dependencies(${name} generate_config)
     endif()
+    wink_test_attach_manifest(${name})
     add_test(NAME ${name} COMMAND ${name})
 endfunction()
 
@@ -589,6 +627,7 @@ if(TARGET wink_mcs51_core)
         if(TARGET generate_config)
             add_dependencies(${name} generate_config)
         endif()
+        wink_test_attach_manifest(${name})
     endfunction()
 
     # M1: polling blinky (SFR proxies + cooperative yield, no ISR dispatch).
