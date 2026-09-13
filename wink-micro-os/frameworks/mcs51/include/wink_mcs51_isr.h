@@ -53,6 +53,7 @@ typedef enum {
     IRQ_SOURCE_SPI,
     IRQ_SOURCE_TIMER3,
     IRQ_SOURCE_TIMER4,
+    IRQ_SOURCE_ACMP,
     IRQ_SOURCE__COUNT
 } mcs51_irq_source_t;
 

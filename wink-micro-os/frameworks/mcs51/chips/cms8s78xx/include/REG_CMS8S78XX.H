@@ -198,6 +198,22 @@ xsfr BRTDH(0xF5C2);    // Baud Rate Timer reload high
 
 xsfr ADCLDO(0xF692);  // ADC LDO control (bit7 LDOEN, bits6:5 VSEL, bit4 OUTEN)
 
+// Analog Comparator (ACMP0/ACMP1, 0xF500..0xF50D)
+xsfr C0CON0(0xF500);   // ACMP0 control 0
+xsfr C0CON1(0xF501);   // ACMP0 control 1
+xsfr C0CON2(0xF502);   // ACMP0 control 2
+xsfr C1CON0(0xF503);   // ACMP1 control 0
+xsfr C1CON1(0xF504);   // ACMP1 control 1
+xsfr C1CON2(0xF505);   // ACMP1 control 2
+xsfr CNVRCON(0xF506);  // ACMP reference voltage control
+xsfr CNFBCON(0xF507);  // ACMP feedback control
+xsfr CNIE(0xF508);     // ACMP interrupt enable (bit 0: ACMP0, bit 1: ACMP1)
+xsfr CNIF(0xF509);     // ACMP interrupt flag (W0C, bit 0: ACMP0, bit 1: ACMP1)
+xsfr C0ADJE(0xF50A);   // ACMP0 offset adjustment enable
+xsfr C1ADJE(0xF50B);   // ACMP1 offset adjustment enable
+xsfr C0HYS(0xF50C);    // ACMP0 hysteresis control
+xsfr C1HYS(0xF50D);    // ACMP1 hysteresis control
+
 // ── 3) Vendor bit-position / mask macros (names verbatim from cms8s78xx.h,
 //       so the vendor StdDriver adc.c can compile against this shim) ────────
 // FUNCCR
@@ -383,6 +399,136 @@ xsfr ADCLDO(0xF692);  // ADC LDO control (bit7 LDOEN, bits6:5 VSEL, bit4 OUTEN)
 #define ADC_IS_BUSY  (ADCON0 & ADC_ADCON0_ADGO_Msk)
 #define ADC_GO()     do{ ADCON0 |= ADC_ADCON0_ADGO_Msk; }while(0)
 
+// ── 4b) ACMP bit positions, masks, and macros (verbatim from cms8s78xx.h & StdDriver inc/acmp.h) ───
+#define ACMP0                                (0x00)
+#define ACMP1                                (0x01)
+
+#define ACMP_NFCLK_1_TSYS                    (0x00)
+#define ACMP_NFCLK_2_TSYS                    (0x01)
+#define ACMP_NFCLK_3_TSYS                    (0x02)
+#define ACMP_NGCLK_5_TSYS                    (0x03)
+#define ACMP_NFCLK_9_TSYS                    (0x04)
+#define ACMP_NFCLK_17_TSYS                   (0x05)
+#define ACMP_NFCLK_33_TSYS                   (0x06)
+#define ACMP_NGCLK_65_TSYS                   (0x07)
+#define ACMP_NFCLK_129_TSYS                  (0x08)
+#define ACMP_NFCLK_257_TSYS                  (0x09)
+#define ACMP_NFCLK_513_TSYS                  (0x0a)
+
+#define ACMP_POSSEL_P0                       (0x00)
+#define ACMP_POSSEL_P1                       (0x01)
+#define ACMP_POSSEL_P2                       (0x02)
+#define ACMP_POSSEL_P3                       (0x03)
+
+#define ACMP_NEGSEL_VREF_VDD                 (0x03)
+#define ACMP_NEGSEL_VREF_BG                  (0x02)
+#define ACMP_NEGSEL_BG                       (0x01)
+#define ACMP_NEGSEL_CN                       (0x00)
+
+#define ACMP_HYS_SEL_P                       (0x01)
+#define ACMP_HYS_SEL_N                       (0x02)
+#define ACMP_HYS_SEL_BOUTH                   (0x03)
+
+#define ACMP_HYS_10                          (0x01)
+#define ACMP_HYS_20                          (0x02)
+#define ACMP_HYS_60                          (0x03)
+
+#define ACMP_ADJ_POS_IN                      (0x00)
+#define ACMP_ADJ_NAG_IN                      (0x01)
+#define ACMP_ADJ_GND                         (0x02)
+
+#define ACMP_OFFSET_CONFIG                   (0x00)
+#define ACMP_OFFSET_ACMPDJ                   (0xAA)
+
+typedef enum Vref_K {
+    Vref_K_167_10000 = 0x0,
+    Vref_K_333_10000 = 0x1,
+    Vref_K_500_10000 = 0x2,
+    Vref_K_667_10000 = 0x3,
+    Vref_K_833_10000 = 0x4,
+    Vref_K_1000_10000 = 0x5,
+    Vref_K_1167_10000 = 0x6,
+    Vref_K_1333_10000 = 0x7,
+    Vref_K_1500_10000 = 0x8,
+    Vref_K_1667_10000 = 0x9,
+    Vref_K_1833_10000 = 0xa,
+    Vref_K_2000_10000 = 0xb,
+    Vref_K_2167_10000 = 0xc,
+    Vref_K_2333_10000 = 0xd,
+    Vref_K_2500_10000 = 0xe,
+    Vref_K_2667_10000 = 0xf,
+    Vref_K_5000_10000 = 0x10,
+    Vref_K_7500_10000 = 0x20,
+    Vref_K_10000_10000 = 0x30,
+} Vref_K_T;
+
+#define ACMP_C0CON0_C0EN_Pos                 (7)
+#define ACMP_C0CON0_C0EN_Msk                 (0x1 << ACMP_C0CON0_C0EN_Pos)
+#define ACMP_C0CON0_C0COFM_Pos               (6)
+#define ACMP_C0CON0_C0COFM_Msk               (0x1 << ACMP_C0CON0_C0COFM_Pos)
+#define ACMP_C0CON0_C0N2G_Pos                (5)
+#define ACMP_C0CON0_C0N2G_Msk                (0x1 << ACMP_C0CON0_C0N2G_Pos)
+#define ACMP_C0CON0_C0NS_Pos                 (3)
+#define ACMP_C0CON0_C0NS_Msk                 (0x3 << ACMP_C0CON0_C0NS_Pos)
+#define ACMP_C0CON0_C0PS_Pos                 (0)
+#define ACMP_C0CON0_C0PS_Msk                 (0x7 << ACMP_C0CON0_C0PS_Pos)
+
+#define ACMP_C0CON1_C0OUT_Pos                (7)
+#define ACMP_C0CON1_C0OUT_Msk                (0x1 << ACMP_C0CON1_C0OUT_Pos)
+#define ACMP_C0CON1_C0CRS_Pos                (5)
+#define ACMP_C0CON1_C0CRS_Msk                (0x3 << ACMP_C0CON1_C0CRS_Pos)
+#define ACMP_C0CON1_C0ADJ_Pos                (0)
+#define ACMP_C0CON1_C0ADJ_Msk                (0x1F << ACMP_C0CON1_C0ADJ_Pos)
+
+#define ACMP_C0CON2_C0POS_Pos                (5)
+#define ACMP_C0CON2_C0POS_Msk                (0x1 << ACMP_C0CON2_C0POS_Pos)
+#define ACMP_C0CON2_C0FE_Pos                 (4)
+#define ACMP_C0CON2_C0FE_Msk                 (0x1 << ACMP_C0CON2_C0FE_Pos)
+#define ACMP_C0CON2_C0FS_Pos                 (0)
+#define ACMP_C0CON2_C0FS_Msk                 (0xF << ACMP_C0CON2_C0FS_Pos)
+
+#define ACMP_C1CON0_C1EN_Pos                 (7)
+#define ACMP_C1CON0_C1EN_Msk                 (0x1 << ACMP_C1CON0_C1EN_Pos)
+#define ACMP_C1CON0_C1COFM_Pos               (6)
+#define ACMP_C1CON0_C1COFM_Msk               (0x1 << ACMP_C1CON0_C1COFM_Pos)
+#define ACMP_C1CON0_C1N2G_Pos                (5)
+#define ACMP_C1CON0_C1N2G_Msk                (0x1 << ACMP_C1CON0_C1N2G_Pos)
+#define ACMP_C1CON0_C1NS_Pos                 (3)
+#define ACMP_C1CON0_C1NS_Msk                 (0x3 << ACMP_C1CON0_C1NS_Pos)
+#define ACMP_C1CON0_C1PS_Pos                 (0)
+#define ACMP_C1CON0_C1PS_Msk                 (0x7 << ACMP_C1CON0_C1PS_Pos)
+
+#define ACMP_C1CON1_C1OUT_Pos                (7)
+#define ACMP_C1CON1_C1OUT_Msk                (0x1 << ACMP_C1CON1_C1OUT_Pos)
+#define ACMP_C1CON1_C1CRS_Pos                (5)
+#define ACMP_C1CON1_C1CRS_Msk                (0x3 << ACMP_C1CON1_C1CRS_Pos)
+#define ACMP_C1CON1_C1ADJ_Pos                (0)
+#define ACMP_C1CON1_C1ADJ_Msk                (0x1F << ACMP_C1CON1_C1ADJ_Pos)
+
+#define ACMP_C1CON2_C1POS_Pos                (5)
+#define ACMP_C1CON2_C1POS_Msk                (0x1 << ACMP_C1CON2_C1POS_Pos)
+#define ACMP_C1CON2_C1FE_Pos                 (4)
+#define ACMP_C1CON2_C1FE_Msk                 (0x1 << ACMP_C1CON2_C1FE_Pos)
+#define ACMP_C1CON2_C1FS_Pos                 (0)
+#define ACMP_C1CON2_C1FS_Msk                 (0xF << ACMP_C1CON2_C1FS_Pos)
+
+#define ACMP_CNVRCON_CNDIVS_Pos              (7)
+#define ACMP_CNVRCON_CNDIVS_Msk              (0x1 << ACMP_CNVRCON_CNDIVS_Pos)
+#define ACMP_CNVRCON_CNSVR_Pos               (6)
+#define ACMP_CNVRCON_CNSVR_Msk               (0x1 << ACMP_CNVRCON_CNSVR_Pos)
+#define ACMP_CNVRCON_CNSVS_Pos               (0)
+#define ACMP_CNVRCON_CNSVS_Msk               (0x3F << ACMP_CNVRCON_CNSVS_Pos)
+
+#define ACMP_C0HYS_PNS_Pos                   (6)
+#define ACMP_C0HYS_PNS_Msk                   (0x3 << ACMP_C0HYS_PNS_Pos)
+#define ACMP_C0HYS_S_Pos                     (0)
+#define ACMP_C0HYS_S_Msk                     (0x3 << ACMP_C0HYS_S_Pos)
+
+#define ACMP_C1HYS_PNS_Pos                   (6)
+#define ACMP_C1HYS_PNS_Msk                   (0x3 << ACMP_C1HYS_PNS_Pos)
+#define ACMP_C1HYS_S_Pos                     (0)
+#define ACMP_C1HYS_S_Msk                     (0x3 << ACMP_C1HYS_S_Pos)
+
 // ── 5) Vendor GPIO driver macros (verbatim from StdDriver inc/gpio.h) ──────
 #define GPIO_SET_MUX_MODE(PortCFG, PinMode)  (PortCFG = PinMode)
 #define GPIO_MUX_GPIO                        (0x00)
@@ -422,6 +568,19 @@ xsfr ADCLDO(0xF692);  // ADC LDO control (bit7 LDOEN, bits6:5 VSEL, bit4 OUTEN)
 #define GPIO_P14_MUX_TXD                     (0x03)  // P1.4 as UART TXD
 #define GPIO_P13_MUX_RXD                     (0x03)  // P1.3 as UART RXD (GAP-01: vendor gpio.h=0x03; was incorrectly 0x02)
 #define GPIO_P13                             (0x13)  // PS_RXD <- P1.3
+
+// ACMP pin mux selectors (verbatim from StdDriver inc/gpio.h)
+#define GPIO_P10_MUX_C0O                     (0x05)  // P1.0 as ACMP0 Output
+#define GPIO_P11_MUX_C0P0                    (0x01)  // P1.1 as ACMP0 Positive input 0
+#define GPIO_P12_MUX_C0N                     (0x01)  // P1.2 as ACMP0 Negative input
+#define GPIO_P02_MUX_C1O                     (0x05)  // P0.2 as ACMP1 Output
+#define GPIO_P20_MUX_C1O                     (0x05)  // P2.0 as ACMP1 Output
+#define GPIO_P24_MUX_C1O                     (0x05)  // P2.4 as ACMP1 Output
+#define GPIO_P21_MUX_C1P0                    (0x01)  // P2.1 as ACMP1 Positive input 0
+#define GPIO_P23_MUX_C1P1                    (0x01)  // P2.3 as ACMP1 Positive input 1
+#define GPIO_P00_MUX_C1P2                    (0x01)  // P0.0 as ACMP1 Positive input 2
+#define GPIO_P06_MUX_C1P3                    (0x01)  // P0.6 as ACMP1 Positive input 3
+#define GPIO_P22_MUX_C1N                     (0x01)  // P2.2 as ACMP1 Negative input
 
 #define GPIO_PIN_0_MSK                       (0x01)
 #define GPIO_PIN_1_MSK                       (0x02)
@@ -1277,6 +1436,200 @@ static inline void BUZ_ConfigBuzzer(uint8_t BuzCKS, uint8_t CLKDiv) {
 }
 
 #endif  // WINK_CMS8S_VENDOR_BUZZER
+
+// ── 10c) Vendor ACMP driver macros & shims (verbatim from StdDriver inc/acmp.h + src/acmp.c) ───
+#ifndef WINK_CMS8S_VENDOR_ACMP
+#define WINK_CMS8S_VENDOR_ACMP
+
+static inline void ACMP_ConfigPositive(uint8_t ACMPn, uint8_t PositiveSource) {
+    uint8_t temp;
+    if (ACMP0 == ACMPn) {
+        temp = C0CON0;
+        temp &= ~(ACMP_C0CON0_C0PS_Msk);
+        temp |= PositiveSource;
+        C0CON0 = temp;
+    }
+    if (ACMP1 == ACMPn) {
+        temp = C1CON0;
+        temp &= ~(ACMP_C1CON0_C1PS_Msk);
+        temp |= PositiveSource;
+        C1CON0 = temp;
+    }
+}
+
+static inline void ACMP_ConfigNegative(uint8_t ACMPn, uint8_t NegativeSource, uint8_t Vref_k) {
+    uint8_t temp;
+    if (ACMP0 == ACMPn) {
+        temp = C0CON0;
+        temp &= ~(ACMP_C0CON0_C0NS_Msk);
+        if ((ACMP_NEGSEL_BG == NegativeSource) || (ACMP_NEGSEL_VREF_BG == NegativeSource) || (ACMP_NEGSEL_VREF_VDD == NegativeSource)) {
+            temp |= (1 << ACMP_C0CON0_C0NS_Pos);
+        }
+        C0CON0 = temp;
+    }
+    if (ACMP1 == ACMPn) {
+        temp = C1CON0;
+        temp &= ~(ACMP_C1CON0_C1NS_Msk);
+        if ((ACMP_NEGSEL_BG == NegativeSource) || (ACMP_NEGSEL_VREF_BG == NegativeSource) || (ACMP_NEGSEL_VREF_VDD == NegativeSource)) {
+            temp |= (1 << ACMP_C1CON0_C1NS_Pos);
+        }
+        C1CON0 = temp;
+    }
+
+    if (ACMP_NEGSEL_BG == NegativeSource) {
+        CNVRCON &= ~(ACMP_CNVRCON_CNSVR_Msk);
+    }
+    if (ACMP_NEGSEL_VREF_BG == NegativeSource) {
+        temp = 0x00;
+        temp |= (uint8_t)(ACMP_CNVRCON_CNDIVS_Msk | ACMP_CNVRCON_CNSVR_Msk | Vref_k);
+        CNVRCON = temp;
+    }
+    if (ACMP_NEGSEL_VREF_VDD == NegativeSource) {
+        temp = 0x00;
+        temp |= (uint8_t)(ACMP_CNVRCON_CNSVR_Msk | Vref_k);
+        CNVRCON = temp;
+    }
+}
+
+static inline void ACMP_EnableReverseOutput(uint8_t ACMPn) {
+    if (ACMP0 == ACMPn) {
+        C0CON2 |= (ACMP_C0CON2_C0POS_Msk);
+    }
+    if (ACMP1 == ACMPn) {
+        C1CON2 |= (ACMP_C1CON2_C1POS_Msk);
+    }
+}
+
+static inline void ACMP_DisableReverseOutput(uint8_t ACMPn) {
+    if (ACMP0 == ACMPn) {
+        C0CON2 &= ~(ACMP_C0CON2_C0POS_Msk);
+    }
+    if (ACMP1 == ACMPn) {
+        C1CON2 &= ~(ACMP_C1CON2_C1POS_Msk);
+    }
+}
+
+static inline void ACMP_EnableFilter(uint8_t ACMPn, uint8_t FilterTime) {
+    uint8_t temp;
+    if (ACMP0 == ACMPn) {
+        temp = C0CON2;
+        temp &= ~(ACMP_C0CON2_C0FS_Msk);
+        temp |= (uint8_t)((ACMP_C0CON2_C0FE_Msk) | FilterTime);
+        C0CON2 = temp;
+    }
+    if (ACMP1 == ACMPn) {
+        temp = C1CON2;
+        temp &= ~(ACMP_C1CON2_C1FS_Msk);
+        temp |= (uint8_t)((ACMP_C1CON2_C1FE_Msk) | FilterTime);
+        C1CON2 = temp;
+    }
+}
+
+static inline void ACMP_DisableFilter(uint8_t ACMPn) {
+    if (ACMP0 == ACMPn) {
+        C0CON2 &= ~(ACMP_C0CON2_C0FE_Msk);
+    }
+    if (ACMP1 == ACMPn) {
+        C1CON2 &= ~(ACMP_C1CON2_C1FE_Msk);
+    }
+}
+
+static inline void ACMP_EnableInt(uint8_t ACMPn) {
+    CNIE |= (1 << ACMPn);
+}
+
+static inline void ACMP_DisableInt(uint8_t ACMPn) {
+    CNIE &= ~(1 << ACMPn);
+}
+
+static inline uint8_t ACMP_GetIntFlag(uint8_t ACMPn) {
+    return (uint8_t)(CNIF & (1 << ACMPn));
+}
+
+static inline void ACMP_ClearIntFlag(uint8_t ACMPn) {
+    CNIF = (uint8_t)(0xFF & (~(1 << ACMPn)));
+}
+
+static inline void ACMP_Start(uint8_t ACMPn) {
+    if (ACMP0 == ACMPn) {
+        C0CON0 |= (ACMP_C0CON0_C0EN_Msk);
+    }
+    if (ACMP1 == ACMPn) {
+        C1CON0 |= (ACMP_C1CON0_C1EN_Msk);
+    }
+}
+
+static inline void ACMP_Stop(uint8_t ACMPn) {
+    if (ACMP0 == ACMPn) {
+        C0CON0 &= ~(ACMP_C0CON0_C0EN_Msk);
+    }
+    if (ACMP1 == ACMPn) {
+        C1CON0 &= ~(ACMP_C1CON0_C1EN_Msk);
+    }
+}
+
+static inline uint8_t ACMP_GetResult(uint8_t ACMPn) {
+    if (ACMP0 == ACMPn) {
+        return (C0CON1 & ACMP_C0CON1_C0OUT_Msk) ? 1 : 0;
+    }
+    if (ACMP1 == ACMPn) {
+        return (C1CON1 & ACMP_C1CON1_C1OUT_Msk) ? 1 : 0;
+    }
+    return 0;
+}
+
+static inline void ACMP_EnableHYS(uint8_t ACMPn, uint8_t HYSSelect, uint8_t HYSValue) {
+    uint8_t temp;
+    if (ACMP0 == ACMPn) {
+        temp = C0HYS;
+        temp &= ~(ACMP_C0HYS_PNS_Msk | ACMP_C0HYS_S_Msk);
+        temp |= (uint8_t)((HYSSelect << ACMP_C0HYS_PNS_Pos) | HYSValue);
+        C0HYS = temp;
+    }
+    if (ACMP1 == ACMPn) {
+        temp = C1HYS;
+        temp &= ~(ACMP_C1HYS_PNS_Msk | ACMP_C1HYS_S_Msk);
+        temp |= (uint8_t)((HYSSelect << ACMP_C1HYS_PNS_Pos) | HYSValue);
+        C1HYS = temp;
+    }
+}
+
+static inline void ACMP_DisableHYS(uint8_t ACMPn) {
+    if (ACMP0 == ACMPn) {
+        C0HYS &= ~ACMP_C0HYS_S_Msk;
+    }
+    if (ACMP1 == ACMPn) {
+        C1HYS &= ~ACMP_C1HYS_S_Msk;
+    }
+}
+
+static inline void ACMP_ConfigOffsetAdj(uint8_t ACMPn, uint8_t OffsetAdjMode, uint8_t AdjVlue) {
+    uint8_t temp;
+    if (ACMP0 == ACMPn) {
+        if (ACMP_OFFSET_ACMPDJ == OffsetAdjMode) {
+            temp = C0CON1;
+            temp &= ~(ACMP_C0CON1_C0ADJ_Msk);
+            temp |= AdjVlue;
+            C0CON1 = temp;
+            C0ADJE = ACMP_OFFSET_ACMPDJ;
+        } else {
+            C0ADJE = ACMP_OFFSET_CONFIG;
+        }
+    }
+    if (ACMP1 == ACMPn) {
+        if (ACMP_OFFSET_ACMPDJ == OffsetAdjMode) {
+            temp = C1CON1;
+            temp &= ~(ACMP_C1CON1_C1ADJ_Msk);
+            temp |= AdjVlue;
+            C1CON1 = temp;
+            C1ADJE = ACMP_OFFSET_ACMPDJ;
+        } else {
+            C1ADJE = ACMP_OFFSET_CONFIG;
+        }
+    }
+}
+
+#endif  // WINK_CMS8S_VENDOR_ACMP
 
 // ── 11) Keil C51 printf & putchar bridge ───────────────────────────────────────
 // In Keil C51, printf formats strings and emits each character via user-defined

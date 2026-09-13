@@ -41,6 +41,7 @@ set(MCS51_CMS8S_SOURCES
     "${MCS51_FW_DIR}/chips/cms8s78xx/src/cms8s_uart.cpp"
     "${MCS51_FW_DIR}/chips/cms8s78xx/src/cms8s_timer.cpp"
     "${MCS51_FW_DIR}/chips/cms8s78xx/src/cms8s_adc.cpp"
+    "${MCS51_FW_DIR}/chips/cms8s78xx/src/cms8s_acmp.cpp"
     "${MCS51_FW_DIR}/chips/cms8s78xx/src/cms8s_buzzer.cpp"
     "${MCS51_FW_DIR}/chips/cms8s78xx/src/cms8s_sys.cpp"
 )
