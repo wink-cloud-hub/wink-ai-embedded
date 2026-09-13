@@ -19,7 +19,7 @@
 | **工具链/SDK版本**| `SDCC 4.x` / `Keil-C51 Transpiler` / `Emscripten 3.1.x` / `Node.js v20+` |
 | **计划状态** | 🔄 执行中（2026-09-13 启动） |
 | **优先级** | 🟡 P1（商业量产合规专项） |
-| **计划版本** | `v2.3`（施工记录：Task 1/2/5 固件与 host 单测落地；Task 3 三维安规场景 26/26 全绿；Task 4 ADR-0069 立项 Proposed 待签；dwell 基线场景边界鲁棒化） |
+| **计划版本** | `v2.3`（施工记录：Task 1/2/5 固件与 host 单测落地；Task 3 三维安规场景 26/26 全绿；Task 4 ADR-0069 Accepted 并回写 C14.5；dwell 基线场景边界鲁棒化） |
 | **关联前置计划** | [`PLAN-20260912-SIM-FIDELITY`](./2026-09-12-high-fidelity-simulation-system-hardening-plan.md) |
 | **关联技术设计** | [`docs/zh/design/07-platform-governance/02-error-fault-model.md`](../../zh/design/07-platform-governance/02-error-fault-model.md) |
 | **关联设计规范** | [`docs/zh/design/04-wasm-simulation/04-assurance/01-consistency-spec.md`](../../zh/design/04-wasm-simulation/04-assurance/01-consistency-spec.md) |
@@ -55,7 +55,7 @@
 | Task 1 冷却锁定 + 上电热态 | ✅ | `health_pot.c`：`font_table[17]`（'C'/'L'）、`COOLDOWN_SECONDS`/`data cooldown_seconds`、`enter_fault` 热故障重入刷新、启动 7b 同步采样 + ≥45 ℃ 续锁、OFF→HEAT / WARM 重煮双入口门控（先消费后拦截）、P2.0 输出级硬钳位、`FAULT > COOL > NORMAL` 显示交替 |
 | Task 2 出厂默认保温 | ✅ | `WARM_DEFAULT_C 60u` + 三处默认替换（init / OFF→HEAT BOIL / WARM 重煮）；55/80/90 档位循环字面量不动 |
 | Task 3 安规故障注入场景 | ✅ | `safety-cooldown-lock`、`safety-cold-water-injection`、`safety-relay-weld-protection`（`tags: ["HIL-Exclusive"]`）；场景 2/3 headless 按 D-005 设计性缓落 |
-| Task 4 跨品类安规 ADR | 🔄 | `docs/decisions/unisim/0069-appliance-cross-category-safety-extension.md` 立项 Proposed，待评审签发 Accepted 后回写规范 |
+| Task 4 跨品类安规 ADR | ✅ | `docs/decisions/unisim/0069-appliance-cross-category-safety-extension.md` **Accepted**（修订 ADR-0067）；C14.5 规范与清单行回写完成 |
 | Task 5 host 安规载具 | ✅ | `wink-micro-os/test/CMakeLists.txt` + `frameworks/mcs51/test/core/test_mcs51_health_pot_safety.c`：转译真实 `health_pot.c` 单镜像，覆盖冷启动/POST/热启动续锁/E-03 锁-拒-到期全流程（16.2 s） |
 | 文档回写 | ✅ | `DESIGN.md` §1/§4.3/§4.4/§6/§7/§8 与 `test.md` 26 场景矩阵（含 `"C00L"` 段码与 0 共用说明） |
 | 基线场景鲁棒化 | ✅ | `health-pot-power-cycle-dwell` 关机按压 2.0 s→2.1 s：消除与 1 s 遥测边界的拍点竞态，dwell 语义与断言不变 |
@@ -149,7 +149,7 @@
 
 ---
 
-### Task 4：跨品类安规模型扩展（新 ADR-0069 修订 ADR-0067） `[ 状态: 🔄 ADR-0069 已立项 Proposed（2026-09-13），待评审签发 Accepted ]`
+### Task 4：跨品类安规模型扩展（新 ADR-0069 修订 ADR-0067） `[ 状态: ✅ 已完成（2026-09-13，ADR-0069 已 Accepted 并回写 C14.5） ]`
 
 | 字段 | 内容 |
 |------|------|
@@ -160,7 +160,7 @@
 #### 详细步骤
 - [ ] **Step 1：流程修正与新 ADR 立项**
   ADR-0067 已于 2026-09-12 随 `PLAN-20260912-SIM-FIDELITY` 评审 **Accepted**，按仓库惯例（先例：ADR-0010 修订 ADR-0007）旧 ADR 保持只读、不原地增改。本专项改为新建 **ADR-0069**（标题注明“修订 ADR-0067”），初始 Proposed；将微波炉三重门开关互锁（GB 4706.21）与便携式烤箱过热防护（GB 4706.14）并入后签发 Accepted，并按流程回写设计规范。
-  > 进展（2026-09-13）：ADR-0069 已建档为 **Proposed**（含三重门联锁、烤箱过热与 Plant Override/Resume 契约）；待评审签发 Accepted 后执行设计规范回写。
+  > 完成（2026-09-13）：ADR-0069 已签发 **Accepted**；跨品类条款已回写 `04-assurance/01-consistency-spec.md` §C14.5 与 `02-consistency-checklist.md` C14.5 行；ADR-0067 保持只读，由 ADR-0069 元数据注明修订关系。
 - [ ] **Step 2：定义 Plant Override 与 Resume 恢复契约**
   在 ADR-0069 中明确契约：当测试脚本临时覆写 ADC 码值（模拟冷水注入或探头扰动）并释放后，Plant 热力学演算核心基于当前实测温度平滑恢复微分求解，严禁产生滞后冲击鬼影。
 
