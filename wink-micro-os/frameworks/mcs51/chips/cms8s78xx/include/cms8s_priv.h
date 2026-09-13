@@ -93,6 +93,7 @@ typedef struct {
 typedef struct {
     uint8_t  last_c0out;
     uint8_t  last_c1out;
+    uint8_t  cnif;           // effective CNIF flags (W0C settled in poll)
     bool     c0_initialized;
     bool     c1_initialized;
     uint64_t last_poll_us;
