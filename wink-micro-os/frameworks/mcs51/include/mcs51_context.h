@@ -144,9 +144,9 @@ typedef struct {
 // existing alignment padding; still 75672, locked by the budget test below).
 // S4-1/S4-2 move port sampling (-72) and T3/T4/capture (-72) to the chip
 // pool and add uart_hooks (+8): 75536 B measured.
-// S5 (CPL-06/08) adds the per-context irq_map (104) + the
-// extend/flag-predicate/xsfr-validate hooks (12) + alignment (4): 75656 B
-// measured (MinGW i686), ceiling unchanged.
+// S5 (CPL-06/08) adds the per-context irq_map (14 rows x 8 B = 112 incl.
+// ACMP) + the extend/flag-predicate/xsfr-validate hooks (12) + alignment (4):
+// 75664 B measured (MinGW i686), ceiling unchanged.
 // Locked by test_mcs51_context_budget (print + ceiling); see stage2 §4 table.
 // Allocation MUST be in BSS or heap — NEVER on fiber/stack.
 typedef struct Mcu51Context {
@@ -172,8 +172,8 @@ typedef struct Mcu51Context {
     bool     interrupts_enabled;
     bool     reti_suppress_one;
     uint32_t isr_dispatch_count[28];
-    // Stage5 CPL-06: per-context source->vector profile (13 rows x 8 B =
-    // 104 B; booked in stage2 §4). File-static before stage5; the map is
+    // Stage5 CPL-06: per-context source->vector profile (14 rows x 8 B =
+    // 112 B; booked in stage2 §4). File-static before stage5; the map is
     // family state, so a chip profile can never leak into a classic
     // context (L1 insulation). mcs51_context_reset loads the core
     // standard rows, then the chip package extends via the hook below.

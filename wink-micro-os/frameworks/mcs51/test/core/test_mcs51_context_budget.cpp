@@ -30,8 +30,9 @@ void check(bool cond, const char *msg) {
 // caps_cache 8 [approved] + gpio_hooks 12 [planned stage4 infra] + 4 align,
 // booked per 00-README §8; S2-2 shaves ~120 more via T3/T4/port sampling).
 // S4-1/S4-2 chip-pool moves measured 75536 B; stage5 CPL-06/08 adds the
-// per-context irq_map (104) + irq_map_extend/flag_predicate/xsfr_validate
-// hooks (12) + alignment (4): 75656 B.
+// per-context irq_map (14 rows x 8 B = 112, ACMP row included) +
+// irq_map_extend/flag_predicate/xsfr_validate hooks (12) + alignment (4):
+// 75664 B.
 // Ceiling = S2-1 current + 1 KB slack (covers x64-MSVC pointer growth vs the
 // i686-measured truth; per-toolchain exact numbers live in stage2 §4).
 constexpr unsigned kBudgetBytes = 75672u + 1024u;
@@ -62,7 +63,7 @@ int main(void) {
                       sizeof(z->irq_flag_predicate) +
                       sizeof(z->xsfr_validate)));
     check(sizeof(z->xdata_shadow) == 65536u, "xdata_shadow must stay 64KB");
-    check(sizeof(z->irq_map) == 104u, "irq_map must be 13 x 8 B (stage2 §4)");
+    check(sizeof(z->irq_map) == 120u, "irq_map must be 15 x 8 B incl. ACMP+WDT (stage2 §4)");
     check(sizeof(Mcu51Context) <= kBudgetBytes, "budget ceiling breached");
     if (g_fails) {
         return 1;
