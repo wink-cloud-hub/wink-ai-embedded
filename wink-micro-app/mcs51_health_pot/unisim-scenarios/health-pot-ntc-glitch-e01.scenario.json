@@ -1,0 +1,96 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51_health_pot L1: three consecutive +50 code jumps classify as probe open-class E-01",
+    "templateId": "mcs51_health_pot",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "9000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "30ms",
+      "adcChannel": 0,
+      "valueNorm": 0.0586,
+      "description": "Static 25 C (code ~240), heating"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "400ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "700ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "Heating normally"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "4500ms",
+      "adcChannel": 0,
+      "valueNorm": 0.0708,
+      "description": "Unidirectional +50 code jump #1 (240 -> 290)"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "5500ms",
+      "adcChannel": 0,
+      "valueNorm": 0.083,
+      "description": "Unidirectional +50 code jump #2 (290 -> 340)"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "6500ms",
+      "adcChannel": 0,
+      "valueNorm": 0.0952,
+      "description": "Unidirectional +50 code jump #3 (340 -> 390): glitch counter reaches 3 => E-01 open-class"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "7300ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Contact forced open when the third jump confirms E-01"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "7300ms",
+      "target": "plugin:display/text",
+      "matcher": "E-01",
+      "description": "Open-class code latched on the 4COM display (transient class auto-clears after 300 ms of valid readings)"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["6900ms", "7100ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=3,H=0,F=1",
+      "minPackets": 1,
+      "description": "Telemetry confirms E-01 (not E-03) on the fault frame"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["7900ms", "8200ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=0,H=0,F=0",
+      "minPackets": 1,
+      "description": "Sensor fault auto-recovers after 300 ms of valid readings and returns to safe standby (heater stays off)"
+    }
+  ]
+}
