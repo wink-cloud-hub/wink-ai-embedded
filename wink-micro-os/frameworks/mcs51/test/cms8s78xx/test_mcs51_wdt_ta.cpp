@@ -223,10 +223,34 @@ int main(void) {
         CHECK(wink_mcs51_wdt_overflow_total() == 0u, "classic must never count");
     }
 
+    // ── 10) WDTIE interrupt enable + WDTIF flag + IRQ_SOURCE_WDT trigger ───
+    {
+        init_ctx();
+        set_wts(0u);  // 5461us
+        // Enable WDTIE in EIE2 (0xAA, bit 5)
+        WinkSfr EIE2(0xAA);
+        EIE2 = static_cast<unsigned>((uint8_t)EIE2 | (1u << 5));
+        wink_mcs51_isr_enable();
+
+        CHECK((wink_mcs51_get_pending_interrupts() & (1u << IRQ_SOURCE_WDT)) == 0u,
+              "WDT IRQ must not be pending initially");
+
+        wink_mcs51_test_advance_virtual_us(6000u);
+        wink_mcs51_wdt_check();
+
+        CHECK(((uint8_t)WDCON & 0x08u) != 0u, "WDTIF flag must be set on overflow");
+        CHECK((wink_mcs51_get_pending_interrupts() & (1u << IRQ_SOURCE_WDT)) != 0u,
+              "WDT IRQ must be raised on overflow when WDTIE is set");
+
+        ta_unlock();
+        WDCON = static_cast<unsigned>((uint8_t)WDCON & ~0x08u);
+        CHECK(((uint8_t)WDCON & 0x08u) == 0u, "WDTIF flag must be cleared after TA unlock");
+    }
+
     if (fails != 0) {
         return 1;
     }
-    printf("[wdt-ta] PASS: intervals, arming, health_pot scale, TA narrowing\n");
+    printf("[wdt-ta] PASS: intervals, arming, health_pot scale, TA narrowing, IRQ trigger\n");
     return 0;
 }
 
