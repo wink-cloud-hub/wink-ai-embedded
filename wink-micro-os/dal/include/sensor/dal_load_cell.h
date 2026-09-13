@@ -16,24 +16,6 @@
 extern "C" {
 #endif
 
-#if !defined(WINK_USE_LOAD_CELL) || !WINK_USE_LOAD_CELL
-
-/* --- 编译期裁剪 fallback 桩段 --- */
-#define WINK_LOAD_CELL_UNAVAILABLE WINK_UNAVAILABLE_MSG("DAL load_cell driver is disabled in build config")
-
-static inline wink_status_t dal_load_cell_init(void *dev, const void *config) { (void)dev; (void)config; return WINK_LOAD_CELL_UNAVAILABLE; }
-static inline wink_status_t dal_load_cell_deinit(void *dev) { (void)dev; return WINK_LOAD_CELL_UNAVAILABLE; }
-static inline wink_status_t dal_load_cell_is_data_ready(const void *dev, bool *out_ready) { (void)dev; (void)out_ready; return WINK_LOAD_CELL_UNAVAILABLE; }
-static inline wink_status_t dal_load_cell_request_read(void *dev) { (void)dev; return WINK_LOAD_CELL_UNAVAILABLE; }
-static inline wink_status_t dal_load_cell_get_cached_raw(const void *dev, int32_t *out_raw) { (void)dev; (void)out_raw; return WINK_LOAD_CELL_UNAVAILABLE; }
-static inline wink_status_t dal_load_cell_get_cached_weight_g(const void *dev, float *out_g) { (void)dev; (void)out_g; return WINK_LOAD_CELL_UNAVAILABLE; }
-static inline wink_status_t dal_load_cell_read_weight_g(void *dev, float *out_g) { (void)dev; (void)out_g; return WINK_LOAD_CELL_UNAVAILABLE; }
-static inline wink_status_t dal_load_cell_tare(void *dev) { (void)dev; return WINK_LOAD_CELL_UNAVAILABLE; }
-static inline wink_status_t dal_load_cell_set_calibration_factor(void *dev, float factor) { (void)dev; (void)factor; return WINK_LOAD_CELL_UNAVAILABLE; }
-static inline wink_status_t dal_load_cell_apply_override(void *dev, const uint8_t *params, uint16_t len) { (void)dev; (void)params; (void)len; return WINK_LOAD_CELL_UNAVAILABLE; }
-
-#else
-
 /**
  * @brief Load cell AFE hardware interface variant (affects_pins: true)
  */
@@ -103,6 +85,37 @@ _Static_assert(sizeof(dal_load_cell_config_t) == 56, "ABI break: config size cha
 _Static_assert(offsetof(dal_load_cell_t, initialized) == 68, "ABI break: initialized offset changed on 64-bit host");
 _Static_assert(sizeof(dal_load_cell_t) == 72, "ABI break: handle size changed on 64-bit host");
 #endif
+
+#if !defined(WINK_USE_LOAD_CELL) || !WINK_USE_LOAD_CELL
+
+/* --- 编译期裁剪 fallback 桩段（DAL-P-002：声明带 unavailable 标注） --- */
+#define WINK_LOAD_CELL_DISABLED_MSG \
+    "Load cell driver not enabled; add a \"load_cell\" device to wink-app.json " \
+    "(or set -DWINK_USE_LOAD_CELL=ON)."
+WINK_UNAVAILABLE_MSG(WINK_LOAD_CELL_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_load_cell_init(dal_load_cell_t *dev, const dal_load_cell_config_t *config);
+WINK_UNAVAILABLE_MSG(WINK_LOAD_CELL_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_load_cell_deinit(dal_load_cell_t *dev);
+WINK_UNAVAILABLE_MSG(WINK_LOAD_CELL_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_load_cell_is_data_ready(const dal_load_cell_t *dev, bool *out_ready);
+WINK_UNAVAILABLE_MSG(WINK_LOAD_CELL_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_load_cell_request_read(dal_load_cell_t *dev);
+WINK_UNAVAILABLE_MSG(WINK_LOAD_CELL_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_load_cell_get_cached_raw(const dal_load_cell_t *dev, int32_t *out_raw);
+WINK_UNAVAILABLE_MSG(WINK_LOAD_CELL_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_load_cell_get_cached_weight_g(const dal_load_cell_t *dev, float *out_g);
+#ifndef WINK_STRICT_NONBLOCKING
+WINK_UNAVAILABLE_MSG(WINK_LOAD_CELL_DISABLED_MSG) WINK_BLOCKING WINK_WARN_UNUSED_RESULT
+wink_status_t dal_load_cell_read_weight_g(dal_load_cell_t *dev, float *out_g);
+#endif
+WINK_UNAVAILABLE_MSG(WINK_LOAD_CELL_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_load_cell_tare(dal_load_cell_t *dev);
+WINK_UNAVAILABLE_MSG(WINK_LOAD_CELL_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_load_cell_set_calibration_factor(dal_load_cell_t *dev, float factor);
+WINK_UNAVAILABLE_MSG(WINK_LOAD_CELL_DISABLED_MSG) WINK_WARN_UNUSED_RESULT
+wink_status_t dal_load_cell_apply_override(void *dev, const uint8_t *params, uint16_t len);
+
+#else
 
 /* --- API 函数声明 --- */
 WINK_WARN_UNUSED_RESULT wink_status_t dal_load_cell_init(dal_load_cell_t *dev, const dal_load_cell_config_t *config);
