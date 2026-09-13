@@ -1,0 +1,174 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51_health_pot safety: 60 s thermal cooldown lock - E-03 latch, denial, COOL display, expiry",
+    "templateId": "mcs51_health_pot",
+    "description": "PLAN-20260915 Task 3 scene 1. Dry-fire latches E-03; the manual acknowledge returns to ST_OFF but the 60 s cooling lock refuses any restart (P2.0 stays 0, telemetry stays S=0) and the tube alternates between COOL and the live -25- temperature. After the lock expires a single ON press re-enters HEAT, and the scenario closes before the second 20 s slope window (timeout 95 s).",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "95000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "30ms",
+      "adcChannel": 0,
+      "valueNorm": 0.0586,
+      "description": "Static 25 C basin before the first control tick (code ~240, dry-fire-prone)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "400ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "700ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "ON pressed: HEAT, relay energised"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["17500ms", "19500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=1,H=1,F=0",
+      "minPackets": 1,
+      "description": "Still heating at ~18-19 s (slope gate arms at the 20th tick-second)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "22500ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "E-03 latched: relay forced open"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["22000ms", "23500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=3,H=0,F=3",
+      "minPackets": 1,
+      "description": "Thermal fault frame S=3,H=0,F=3 (dry-fire), cooling lock latched"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "23500ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "23800ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["24000ms", "25000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=0,H=0,F=0",
+      "minPackets": 1,
+      "description": "Manual acknowledge clears the fault latch to a safe standby"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "25200ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "25500ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "26200ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Restart denied inside the 60 s lock: relay stays open"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["26000ms", "27500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=0,H=0,F=0",
+      "minPackets": 1,
+      "description": "Denied restart keeps the silently safe ST_OFF telemetry (never S=1)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "27500ms",
+      "target": "plugin:display/text",
+      "matcher": { "$regex": "^(C00L|-25-)$" },
+      "description": "Lock display is either COOL or the live temperature (never a blank/E-0x); alternation is proven by the host P1-frame test"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "28500ms",
+      "target": "plugin:display/text",
+      "matcher": { "$regex": "^(C00L|-25-)$" }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "29500ms",
+      "target": "plugin:display/text",
+      "matcher": { "$regex": "^(C00L|-25-)$" }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "83000ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "83300ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "85000ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "After the lock expires (~81 s) a single ON press re-enters HEAT and energises"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["84000ms", "87000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=1,H=1,F=0",
+      "minPackets": 1,
+      "description": "Unlocked HEAT frame; scenario ends before the second 20 s slope window"
+    }
+  ]
+}

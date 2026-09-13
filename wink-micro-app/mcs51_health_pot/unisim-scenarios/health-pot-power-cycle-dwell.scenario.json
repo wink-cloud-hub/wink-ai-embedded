@@ -46,14 +46,15 @@
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
-      "timeUs": "2000ms",
+      "timeUs": "2100ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true }
+      "params": { "pressed": true },
+      "description": "Power off during HEAT (100 ms off the 2.0 s telemetry boundary so the frame/event ordering is not phase-knife-edge)"
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
-      "timeUs": "2300ms",
+      "timeUs": "2400ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
       "params": { "pressed": false }
@@ -108,7 +109,7 @@
       "direction": "tx",
       "matcher": "S=1,H=0",
       "minPackets": 1,
-      "description": "5 s telemetry frame: HEAT state but heater held off by dwell (off at ~2.1 s -> 3 s=1, 4 s=2, 5 s=3; control at 5.0 s runs before the second counter)"
+      "description": "5 s telemetry frame: HEAT state but heater held off by dwell (off at ~2.1 s -> 3 s=1, 4 s=2, 5 s=3; control at 5.1 s keeps the 5.0 s frame at H=0)"
     },
     {
       "type": "ASSERT_POINT",
