@@ -253,14 +253,15 @@ def main():
     fw_map = parse_framework_map(isr_h, isr_cpp)
     chip_map = parse_chip_irq_extensions(chip_irq)
     core_sources = ("INT0", "TIMER0", "INT1", "TIMER1", "UART0", "TIMER2")
-    extended_sources = ("ADC", "PWM", "I2C", "SPI", "TIMER3", "TIMER4")
+    extended_sources = ("ADC", "PWM", "I2C", "SPI", "TIMER3", "TIMER4", "WDT")
     expected = {  # semantic source -> (vendor vector symbol, priority module enum)
         "INT0": ("INT0_VECTOR", "IRQ_INT0"), "TIMER0": ("TMR0_VECTOR", "IRQ_TMR0"),
         "INT1": ("INT1_VECTOR", "IRQ_INT1"), "TIMER1": ("TMR1_VECTOR", "IRQ_TMR1"),
         "UART0": ("UART0_VECTOR", "IRQ_UART0"), "TIMER2": ("TMR2_VECTOR", "IRQ_TMR2"),
         "ADC": ("ADC_VECTOR", "IRQ_ADC"), "PWM": ("EPWM_VECTOR", "IRQ_EPWM"),
         "I2C": ("I2C_VECTOR", "IRQ_I2C"), "SPI": ("SPI_VECTOR", "IRQ_SPI"),
-        "TIMER3": ("TMR3_VECTOR", "IRQ_TMR3"), "TIMER4": ("TMR4_VECTOR", "IRQ_TMR4")}
+        "TIMER3": ("TMR3_VECTOR", "IRQ_TMR3"), "TIMER4": ("TMR4_VECTOR", "IRQ_TMR4"),
+        "WDT": ("WDT_VECTOR", "IRQ_WDT")}
     if isinstance(fw_map, dict) and "__parse_error__" not in fw_map:
         # Stage5 CPL-06: the core profile must stay standard-only — every
         # extended source is chip territory and must be unmapped there.
