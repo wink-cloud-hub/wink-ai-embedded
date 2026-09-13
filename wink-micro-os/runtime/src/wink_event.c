@@ -104,6 +104,16 @@ wink_status_t wink_event_post(const wink_event_t *event) {
         }
     }
 
+    /* The ring buffer rounds its byte size up to a power of two, so the
+     * push-level FULL check alone can admit more events than the logical
+     * capacity requested at init. Enforce the documented event-count
+     * ceiling explicitly (capacity = max events, wink_event.h). */
+    if (pal_os_ringbuf_used(s_queue.ringbuf) >=
+        s_queue.capacity * (uint32_t)sizeof(wink_event_t)) {
+        LOG_W("post: event queue full");
+        return WINK_ERR_RESOURCE_EXHAUSTED;
+    }
+
     /* Push event copy into ringbuffer */
     wink_status_t st = pal_os_ringbuf_push(s_queue.ringbuf, event, sizeof(wink_event_t));
     if (st == WINK_ERR_FULL) {
