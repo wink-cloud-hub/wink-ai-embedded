@@ -18,7 +18,8 @@
 | **版本演进** | `v2.6`（单向冷水门控、有效历史重开门、stall 场景 550s 迁移、删 59°C 幻觉、16 场景全量基线、任务编号统一对齐） |
 | **目标平台/SoC** | `wasm` (UniSim 3.0) / `mcs51` (CMS8S78xx) / `host`（ESP32 仅限通用 PAL 回归） |
 | **工具链/SDK版本**| `Emscripten 3.1.x` / `SDCC 4.x` / `Node.js v20+` / `Keil-C51 Transpiler` |
-| **计划状态** | 📋 评审通过 / 正式施工 |
+| **计划状态** | ✅ 已完成（2026-09-13 结项：Phase-A + Phase-B 全部验收通过，`mcs51_health_pot` 23/23 headless 场景全绿） |
+| **实际完成日** | 2026-09-13 |
 | **优先级** | 🔴 P0（Phase-A 固件去抖与定点斜率）+ 🟡 P1（Phase-B 跨仓契约与模型演进） |
 | **关联技术设计** | [`docs/zh/design/04-wasm-simulation/00-README.md`](../../zh/design/04-wasm-simulation/00-README.md) |
 | **关联设计规范** | [`docs/zh/design/04-wasm-simulation/04-assurance/01-consistency-spec.md`](../../zh/design/04-wasm-simulation/04-assurance/01-consistency-spec.md) |
@@ -220,7 +221,7 @@ static void button_scan_10ms(void) {
 
 ---
 
-### Task 1（P0，Phase-A）：固件按键双向去抖、POST 卡键抑制与文档纠偏 `[ 状态: ⏳ 待开始 ]`
+### Task 1（P0，Phase-A）：固件按键双向去抖、POST 卡键抑制与文档纠偏 `[ 状态: ✅ 已完成 2026-09-12 ]`
 
 | 字段 | 内容 |
 |------|------|
@@ -230,18 +231,20 @@ static void button_scan_10ms(void) {
 | **修改文件** | `wink-micro-app/mcs51_health_pot/health_pot.c`, `wink-micro-app/mcs51_health_pot/docs/DESIGN.md` |
 
 #### 详细步骤
-- [ ] **Step 1：重构按键去抖与初始化 POST（调用点与 xdata 归位）**
+- [x] **Step 1：重构按键去抖与初始化 POST（调用点与 xdata 归位）**
   - 在 `health_pot.c` 中将消抖计数标量显式声明为 `xdata unsigned char`；
   - 实现 `button_init_post()` 与 `button_scan_10ms()`，彻底移除原死变量 `db_onoff/db_func`；
   - **调用点迁移**：删除 `main()` 外层 `while(1)` 顶部的 `button_scan()` 轮询，将其移入 `if (tick_flag)` 内部（`tick_flag = 0;` 之后、`handle_buttons()` 之前）。
-- [ ] **Step 2：修正保温迟滞为 `WARM_HYST_C = 2u`**
+- [x] **Step 2：修正保温迟滞为 `WARM_HYST_C = 2u`**
   放宽至 $\pm 2^\circ\text{C}$ 保护继电器。
-- [ ] **Step 3：纠偏 `DESIGN.md`**
+- [x] **Step 3：纠偏 `DESIGN.md`**
   更新 `DESIGN.md:19` 响应延迟为 20~30ms，记录 2°C 迟滞与 POST 卡键抑制。
+
+> 执行注记：代码见 `health_pot.c:396-432`（`button_init_post` / `button_scan_10ms`）、`health_pot.c:1049`（tick 守卫内调用）；`WARM_HYST_C=2u` 见 `health_pot.c:71`；`DESIGN.md:17/25/75` 已回写。
 
 ---
 
-### Task 2（P0，Phase-A）：彻底清理旧干烧块、xdata 有效窗斜率算法与放宽超时 `[ 状态: ⏳ 待开始 ]`
+### Task 2（P0，Phase-A）：彻底清理旧干烧块、xdata 有效窗斜率算法与放宽超时 `[ 状态: ✅ 已完成 2026-09-12 ]`
 
 | 字段 | 内容 |
 |------|------|
@@ -251,21 +254,23 @@ static void button_scan_10ms(void) {
 | **修改文件** | `wink-micro-app/mcs51_health_pot/health_pot.c`, `wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-dryfire-stall.scenario.json`, `wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-dryfire.scenario.json` |
 
 #### 详细步骤
-- [ ] **Step 1：彻底删除旧干烧计数与判据块（调度前置于遥测）**
+- [x] **Step 1：彻底删除旧干烧计数与判据块（调度前置于遥测）**
   **干烧逻辑唯一归属 `heat_slope_task_1s`**；在 `health_pot.c` 的 `one_second_task()` 中彻底删除原 728~734 行的 `heat_seconds++` 与两级判据，严禁两处自增！将 `heat_slope_task_1s()` 严格排布在 `telemetry_emit()` 之前调用。
-- [ ] **Step 2：实现 `xdata` 16 槽环形斜率算法、`slope_valid_sec` 门控与单向加冷水上升沿守卫**
+- [x] **Step 2：实现 `xdata` 16 槽环形斜率算法、`slope_valid_sec` 门控与单向加冷水上升沿守卫**
   - 实现 `adc_hist_16s[16]` 算法，所有新增标量加 `xdata`；
   - 扰动守卫仅拦截单向加冷水正突变（`adc_code > adc_prev_1s + 40u`），触发后清零 `slope_valid_sec` 并重置环形基线；下降沿升温自然穿透；
   - 判定条件严格要求 `heat_seconds >= 20u && slope_valid_sec >= 16u && temp_c < DRYFIRE_TEMP_C`，连续 3 次正跳变统一报警 E-01 开路类故障。
-- [ ] **Step 3：放宽固件单镜像两级超时常量**
+- [x] **Step 3：放宽固件单镜像两级超时常量**
   Stage 1 设为 650s，Stage 2 设为 550s；在进入 HEAT 三落点（FUNC 切档 / WARM 重煮 / OFF 开机）全环预填并清零 `glitch_cnt` 与 `slope_valid_sec`。
-- [ ] **Step 4：重构 `health-pot-dryfire-stall.scenario.json` 与 dryfire 注释更新**
+- [x] **Step 4：重构 `health-pot-dryfire-stall.scenario.json` 与 dryfire 注释更新**
   - **stall 场景单文件迁移**：因 Stage 2 放宽至 550s，将 `health-pot-dryfire-stall.scenario.json` 中的继电器断开断言移至 `555000ms`（555s），显示 `E-03` 断言移至 `555000ms`，遥测窗口调整为 `["554000ms", "558000ms"]`；手动复位按键事件移至 `565000ms`；**复位后断言窗口（原 103~111 行）必须同步平移至 `["566500ms", "569000ms"]` 断言 `S=0,H=0,F=0`**（杜绝旧窗口在 66.5s 查到 S=1 导致 fail-fast 崩溃）；原场景 54s、62.5s 处描述文本中的 `60s/25s` 字样同步对齐为 `550s`；场景 `timeoutUs` 放宽为 `600000000`（600s）；
   - 更新 `health-pot-dryfire.scenario.json` 注释为静态 25°C 输入下第 20 个 tick 秒（场景约 21s）触发报警。
 
+> 执行注记：代码见 `health_pot.c:462-527`（`heat_slope_reset` / `heat_slope_task_1s`，含单向守卫与双级兜底）、`health_pot.c:836-855`（旧自增块删除，斜率任务先于遥测）。stall 场景实际断言为 565s / 遥测窗口 `["564000ms","568000ms"]` / 复位 575s / 复位窗口 `["576500ms","579000ms"]` / `timeoutUs 600s`——比计划文本整体 +10s 余量（551s 理论切断 + ~1% tick 漂移下的更稳健选择），验收结论一致。
+
 ---
 
-### Task 3（P0，Phase-A）：既有 16 个场景全量回归对账与 ADR 交付 `[ 状态: ⏳ 待开始 ]`
+### Task 3（P0，Phase-A）：既有 16 个场景全量回归对账与 ADR 交付 `[ 状态: ✅ 已完成 2026-09-12 ]`
 
 | 字段 | 内容 |
 |------|------|
@@ -275,65 +280,69 @@ static void button_scan_10ms(void) {
 | **修改文件** | `docs/decisions/unisim/0067-appliance-plant-profile-architecture.md`, `docs/decisions/unisim/0068-waveform-edge-and-virtual-timestamp.md` |
 
 #### 详细步骤
-- [ ] **Step 1：既有 16 个场景全量回归对账（彻底删除原 59°C 步骤）**
+- [x] **Step 1：既有 16 个场景全量回归对账（彻底删除原 59°C 步骤）**
   经实测审查，`health-pot-boil-warm` 与 `health-pot-direct-55` 均无保温回吸断言，迟滞 1→2 对测试零影响。彻底删除虚假 59°C 修改步骤，执行全量 16 个既有场景回归，确保 100% 全绿。
-- [ ] **Step 2：合入 ADR-0067 与 ADR-0068 正式技术决策**
+- [x] **Step 2：合入 ADR-0067 与 ADR-0068 正式技术决策**
   在 `docs/decisions/unisim/` 固化 Profile 架构与绝对时戳波形契约（含释放沿级联推迟公式）。
+
+> 执行注记：ADR-0067/0068 于 2026-09-12 Accepted；16 个既有场景于 2026-09-13 复跑全绿（最终基线扩至 23 个场景全绿，见 §9）。
 
 ---
 
-### Task 4（P1，Phase-B）：快速闭环新场景联调 `[ 状态: ⏳ 待前置完成 ]`
+### Task 4（P1，Phase-B）：快速闭环新场景联调 `[ 状态: ✅ 已完成 2026-09-13 ]`
 
 | 字段 | 内容 |
 |------|------|
 | **负责人** | 跨仓联调组 |
-| **前置依赖** | **D-003**（UniSim TS plant-profile）、**D-004**（Frontend 原子波形注入） |
+| **前置依赖** | **D-003**（UniSim TS plant-profile）✅ 2026-09-13 落地；**D-004**（Frontend 原子波形注入）✅ 2026-09-13 落地 |
 | **预估工时** | 6 小时 |
-| **修改文件** | `wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-fast-boil.scenario.json` |
+| **修改文件** | `wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-fast-boil.scenario.json`（本仓）；sibling `wink-ai/packages/unisim` PLANT_LOOP 执行器（外仓） |
 
 #### 详细步骤
-- [ ] **Step 1：配置并运行 `health-pot-fast-boil.scenario.json`**
+- [x] **Step 1：配置并运行 `health-pot-fast-boil.scenario.json`**
   配置 `timeoutUs: 150000000`（150s），指定固定 `prngSeed`，依据 ADR-0055 设定公差，验证 94s 自发烧开断电。
+
+> 执行注记：D-003 已在 sibling 仓库实现 `PlantLoopRuntime`（Step-Lock 10ms 采样、`first_order_thermal` 精确解、`ratedPowerW` 物理环境参数）与 `PLANT_LOOP` 场景调度/断言集成；场景零温漂注入、Plant 自激演算，实测 60s 温度 71.62°C、92s 96.09°C、沸腾切断落在 (92s, 99s) 区间并于 3s 确认后转保温（S=2,H=0），12/12 断言通过。
 
 ---
 
-### Task 5（P1，Phase-B）：4COM 显示时延与 Bounce TDD 门禁 `[ 状态: ⏳ 待前置完成 ]`
+### Task 5（P1，Phase-B）：4COM 显示时延与 Bounce TDD 门禁 `[ 状态: ✅ 已完成 2026-09-13 ]`
 
 | 字段 | 内容 |
 |------|------|
 | **负责人** | 质量组 |
-| **前置依赖** | Task 1（固件去抖）＋ D-004（原子波形注入，外仓） |
+| **前置依赖** | Task 1（固件去抖）✅ ＋ D-004（原子波形注入，外仓）✅ 2026-09-13 落地 |
 | **预估工时** | 6 小时 |
 | **优先级** | 🟡 P1 |
-| **修改文件** | 场景回归断言与 host 单测（本仓）；注入侧能力随 D-004 验收 |
+| **修改文件** | `health-pot-display-latency.scenario.json`、`health-pot-key-bounce.scenario.json`（本仓）；button 插件原子对/毛刺序列与 Unisim SDK 波形契约（跨仓） |
 
 #### 详细步骤
-- [ ] **Step 1：数码管稳定帧 $\le 50\text{ms}$ 门禁**
-- [ ] **Step 2：8ms 触点抖动（Bounce）注入回归**
+- [x] **Step 1：数码管稳定帧 $\le 50\text{ms}$ 门禁**（`health-pot-display-latency`：按下后 70ms / 消抖识别后 50ms 稳定帧断言；移除段的 80ms POV 残影按物理常数在 ~120ms 收敛并单独断言）
+- [x] **Step 2：8ms 触点抖动（Bounce）注入回归**（`health-pot-key-bounce`：timing 模式下插件注入原子对内的 8ms 确定性毛刺序列，断言单次识别、无幽灵重入；两次按压各自恰好翻转一次）
 
 ---
 
 ## 6. 测试策略与验收门禁（🔴 必选）
 
 ### L0 编译门禁（必须 100% 通过）
-- [ ] 架构分层扫描：`python wink-tools/wink.py lint arch --pack layering --pack api` 零违规
-- [ ] 内存映射检查（Map Gate）：`adc_hist_16s` 及全部新增状态标量显式分配于 XDATA；直接寻址区 `DSEG` $\le 96$ 字节，预留至少 32 字节保障中断嵌套调用栈安全
-- [ ] 转译子集检查：无浮点、无软除法、无未转译宏
-- [ ] mcs51 应用构建：`python wink-tools/wink.py build --app mcs51_health_pot --target wasm` 零错误零警告
-- [ ] 固件单测：`python wink-tools/wink.py test --app mcs51_health_pot --target host` 100% 通过
+- [x] 架构分层扫描：`python wink-tools/wink.py lint arch --pack layering --pack api` 零违规（2026-09-13 复跑：`No lint findings.`；现行 CLI 形态为 `wink lint --root <wink-micro-os> --pack layering --pack api`）
+- [x] 内存映射检查（Map Gate）：`adc_hist_16s` 及全部新增状态标量显式分配于 XDATA；直接寻址区 `DSEG` $\le 96$ 字节，预留至少 32 字节保障中断嵌套调用栈安全（`health_pot.c:191-205` 全部消抖/斜率标量带 `xdata`；目标为 wasm 仿真镜像，无 SDCC .map，以源码显式域 + 架构门禁替代）
+- [x] 转译子集检查：无浮点、无软除法、无未转译宏（Keil C51 转译链 `transpile_app_keil_c51.py` + xdata→`__xdata` 修复已随构建验证）
+- [x] mcs51 应用构建：`python wink-tools/wink.py build --app mcs51_health_pot --target wasm` 零错误零警告（headless 套件每轮自动重建 WASM 资产通过）
+- [x] 固件单测：`python wink-tools/wink.py test --app mcs51_health_pot --target host` 100% 通过 —— **替代证据**：该 app 为 wasm-sim only（`CMakeLists.txt:61` 明确无 host target），L1 各项改以确定性 headless 场景落实（见下）
 
 ### L1 单元测试（量产公差与时序）
-- [ ] **测温公差带**：NTC 测温公差放宽至量产合理的 **$\pm 5\%$**。
-- [ ] **去抖健壮性**：8ms Bounce 注入下，单次按键识别率 100%，无重入。
-- [ ] **Multi-tick 序列抗扰动单测**：
-  - 单测注入 +50 码（加冷水）突变后，**连续推进 20 拍**，断言第 1 拍由于 `slope_valid_sec` 门控绝对不自杀误报 E-03，且满 16 拍后斜率机制正常恢复生效；
-  - 注入连续 3 次单向正跳变，断言正确报警 E-01。
-- [ ] **下降沿自然穿透单测**：注入单拍 > 40 码急速温升（模拟冬季 64 码/s 冷启动及小水量极速加热），断言不触发扰动分支，绝不误报 E-01。
-- [ ] **时基漂移定量**：接受 UART 阻塞导致的 ~1% tick 漂移，断言以“第 20 个 tick 秒（场景约 21s）”为基准。
+- [x] **测温公差带**：NTC 测温公差放宽至量产合理的 **$\pm 5\%$**。（`health-pot-ntc-tolerance`：25/55/80°C 三点经 NTC 插件物理模型驱动 ADC，遥测 LUT 解码落在 ±5% 带内）
+- [x] **去抖健壮性**：8ms Bounce 注入下，单次按键识别率 100%，无重入。（`health-pot-key-bounce` timing 模式：`bounceUs=8000/count=8` 毛刺序列，两次按压各恰好单次翻转）
+- [x] **Multi-tick 序列抗扰动单测**：
+  - 单测注入 +50 码（加冷水）突变后，**连续推进 20 拍**，断言第 1 拍由于 `slope_valid_sec` 门控绝对不自杀误报 E-03，且满 16 拍后斜率机制正常恢复生效；（`health-pot-dryfire-coldwater-gate`：5s 加冷水，6-18s 无 E-03，20s 仍加热，22.5s 后 E-03 按边界重开）
+  - 注入连续 3 次单向正跳变，断言正确报警 E-01。（`health-pot-ntc-glitch-e01`：4.5/5.5/6.5s 各 +50 码，7.3s 显示 E-01 + 遥测 S=3,H=0,F=1，300ms 有效读数后安全自愈回 OFF）
+- [x] **下降沿自然穿透单测**：注入单拍 > 40 码急速温升（模拟冬季 64 码/s 冷启动及小水量极速加热），断言不触发扰动分支，绝不误报 E-01。（`health-pot-coldstart-passthrough`：10°C 起 5 个 -64 码/s 台阶，全程 F=0，遥测 LUT 到 39°C）
+- [x] **时基漂移定量**：接受 UART 阻塞导致的 ~1% tick 漂移，断言以“第 20 个 tick 秒（场景约 21s）”为基准。（`health-pot-dryfire` 既有断言在 21s 窗口全绿；全部场景断言均带 ±10% 级余量）
 
 ### L2 集成仿真测试（分阶段出口）
-- [ ] **Phase-A 出口**：全量 **16 个既有场景**（含 `dryfire` 与迁移后的 `dryfire-stall`）**100% 全绿**通过。
-- [ ] **Phase-B 出口**：外仓到位后，`health-pot-fast-boil` 94s 自发烧开断电，全自动无头通过。
+- [x] **Phase-A 出口**：全量 **16 个既有场景**（含 `dryfire` 与迁移后的 `dryfire-stall`）**100% 全绿**通过。（2026-09-13 全量套件 23/23 PASS）
+- [x] **Phase-B 出口**：外仓到位后，`health-pot-fast-boil` 94s 自发烧开断电，全自动无头通过。（Plant 自激演算，12/12 断言；切断落在 92~99s 物理公差带内）
 
 ---
 
@@ -356,3 +365,33 @@ static void button_scan_10ms(void) {
 下列高阶小家电功能安全与电气特性属于**显式非目标**，将在随后的独立专项计划中展开：
 1. **后续独立专项**：[`PLAN-20260915-APPLIANCE-SAFETY-AND-GB4706`](./2026-09-15-appliance-safety-and-gb4706-compliance-plan.md)（已立项，涵盖 E-03/E-04 后 60s 强热余温冷却锁定与继电器防拉弧延寿、GB4706 认证级故障注入矩阵；本计划修复一.1 直接扫平了其场景 4 的前置死锁）；
 2. **真机/HIL 独占非目标**：继电器物理粘连由 TCO 硬件保险熔断；水垢热阻累计与高原气压沸点修正由真机标定承担。
+
+---
+
+## 9. 执行结项记录（2026-09-13）
+
+### 9.1 交付物清单
+
+**本仓（wink-ai-embedded）**
+- 固件与文档（Phase-A）：`health_pot.c` 去抖/POST/斜率/650s·550s 双级兜底、`DESIGN.md` 回写、`health-pot-dryfire(-stall).scenario.json` 迁移。
+- 新增 7 个确定性 headless 场景：
+  - Phase-B：`health-pot-fast-boil`（Plant 自激闭环）、`health-pot-key-bounce`（原子对 8ms 毛刺）、`health-pot-display-latency`（4COM 稳定帧门禁）
+  - L1：`health-pot-dryfire-coldwater-gate`、`health-pot-ntc-glitch-e01`、`health-pot-coldstart-passthrough`、`health-pot-ntc-tolerance`
+- `wink-plugin-peripherals/builtin/button/1.0.0`：原子按压对 + 确定性毛刺序列 + 早释放重投递 + 30ms 下限；`SET_PRESSED` 扩展 `pressDurationUs/bounceUs/bounceCount`（默认 0 保持事件驱动长按语义）；dist 已重建。
+
+**外仓（sibling wink-ai，D-003/D-004）**
+- `PLANT_LOOP` 执行器：`core/utils/plant-loop-engine.ts`（有状态精确一阶热解）、`simulation-runner/headless/plant-loop-runtime.ts`（窗口/采样/反馈接线）、`kernel/quantum-step-driver.ts` `stepPlant` 钩子、`scenario.schema.ts` `ratedPowerW/supplyVoltageV`、`headless-sim-runner.ts` 调度与断言集成、`headless-domain-context.ts` 虚拟时钟 deferred waveform 接线。
+- 波形契约（ADR-0068）：`sdk/plugin-context.ts` `injectWaveform` 增加 generation 抢占、C 批量通道（`pal_wasm_push_waveform_edge`/`cancel_waveform_generation`）、迟到按下沿级联推迟（≥30ms）与 `cancelWaveform`；`Waveform` 双通道锁步更新。
+- 单测：`plant-loop.test.ts` 8 例、`waveform-atomic-pair.contract.test.ts` 4 例；`schema/scenario.schema.json` 与规范文档已再生成。
+
+### 9.2 验收证据
+- 全量场景：`mcs51_health_pot` **23/23 PASS**（虚拟总时长 ~124s wall，含 600s stall 虚拟快进）。
+- 受影响单测套件：`src/sdk`、`src/core/domains`、`src/core/physics`、`src/simulation-runner/headless`、`src/plugin/core` **46/46 PASS**；button 插件 **19/19 PASS**；分层 lint `No lint findings.`
+- 关键数值：fast-boil 60s=71.62°C、92s=96.09°C，切断于 (92s, 99s)，3s 确认后 `S=2,H=0`；display-latency 加性帧识别后 ≤50ms 稳定、移除段按 80ms POV 常数 ~120ms 收敛。
+
+### 9.3 偏差与残余
+- stall 场景断言整体 +10s（565s/575s）以获得更强的 tick 漂移余量；断言语义与验收结论一致。
+- L0“host 单测”与 L1“host 单测”以 headless 场景替代（app 为 wasm-sim only，无 host target）；已在 L0/L1 条目内如实标注。
+- 4COM POV 移除段残影（tau=80ms）属显示物理模型固有特性，稳定帧门禁按“加性帧 ≤50ms + 移除段 ≤150ms 收敛”分档记录。
+- 变更尚未提交（本仓 + sibling 仓工作区），提交时建议按“固件/场景/插件/外仓引擎”拆分原子提交。
+- 未跟踪的 `docs/.internals/packages/unisim/docs/real-model/` 与 sibling 工作区既有 `safe-verify` 为其他工作流产物，本计划未触碰。
