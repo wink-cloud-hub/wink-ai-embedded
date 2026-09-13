@@ -67,6 +67,8 @@ constexpr uint8_t SFR_IAP_LAST  = 0xFFu;
 constexpr uint8_t TA_KEY1 = 0xAAu;
 constexpr uint8_t TA_KEY2 = 0x55u;
 
+constexpr uint8_t WDCON_WDTIF  = 0x08u;  // WDCON.3: watchdog interrupt flag
+constexpr uint8_t WDCON_WDTRF  = 0x04u;  // WDCON.2: watchdog reset flag
 constexpr uint8_t WDCON_WDTRE  = 0x02u;  // WDCON.1: watchdog reset enable
 constexpr uint8_t WDCON_WDTCLR = 0x01u;  // WDCON.0: watchdog clear (feed)
 
@@ -106,6 +108,11 @@ inline bool has_wdt(const Mcu51Context* ctx) {
 
 inline bool wdt_enabled(const Mcu51Context* ctx) {
     return (ctx->sfr_shadow[SFR_WDCON] & WDCON_WDTRE) != 0u;
+}
+
+inline bool wdt_counting(const Mcu51Context* ctx) {
+    return ((ctx->sfr_shadow[SFR_WDCON] & WDCON_WDTRE) != 0u) ||
+           ((ctx->sfr_shadow[CMS8S_SFR_EIE2] & (1u << 5)) != 0u);
 }
 
 // M2: TA phase lives in the chip pool (was Mcu51Context::sysProt, was
@@ -159,11 +166,8 @@ void wdt_overflow_policy(void) {
 }
 
 void wdt_check_impl(Mcu51Context* ctx) {
-    if (!has_wdt(ctx) || !wdt_enabled(ctx)) {
+    if (!has_wdt(ctx) || !wdt_counting(ctx)) {
         return;
-    }
-    if (cms8s_priv(ctx)->sys.wdt_overflow_latched != 0u) {
-        return;  // one count per arming episode until the next feed
     }
     const uint64_t interval = wdt_interval_us_impl(ctx);
     if (interval == 0u) {
@@ -174,8 +178,23 @@ void wdt_check_impl(Mcu51Context* ctx) {
         return;  // clock reset race: never report a negative age
     }
     if (now - cms8s_priv(ctx)->sys.wdt_last_feed_us >= interval) {
-        cms8s_priv(ctx)->sys.wdt_overflow_latched = 1u;
-        wdt_overflow_policy();
+        const bool ie_enabled = (ctx->sfr_shadow[CMS8S_SFR_EIE2] & (1u << 5)) != 0u;
+        const bool re_enabled = (ctx->sfr_shadow[SFR_WDCON] & WDCON_WDTRE) != 0u;
+
+        if (ie_enabled) {
+            ctx->sfr_shadow[SFR_WDCON] |= WDCON_WDTIF;
+            mcs51_raise_irq(IRQ_SOURCE_WDT);
+            const uint64_t elapsed = now - cms8s_priv(ctx)->sys.wdt_last_feed_us;
+            const uint64_t periods = elapsed / interval;
+            cms8s_priv(ctx)->sys.wdt_last_feed_us += periods * interval;
+        }
+
+        if (re_enabled) {
+            if (cms8s_priv(ctx)->sys.wdt_overflow_latched == 0u) {
+                cms8s_priv(ctx)->sys.wdt_overflow_latched = 1u;
+                wdt_overflow_policy();
+            }
+        }
     }
 }
 
@@ -239,6 +258,7 @@ extern "C" void on_wdcon_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val,
     if ((new_val & WDCON_WDTCLR) != 0u) {
         cms8s_priv(ctx)->sys.wdt_last_feed_us = ctx->virtual_us;
         cms8s_priv(ctx)->sys.wdt_overflow_latched = 0u;
+        ctx->sfr_shadow[addr] &= ~WDCON_WDTCLR;
     }
 }
 
@@ -292,6 +312,7 @@ const Cms8sIrqExtension kCms8sIrqExtensions[] = {
     { IRQ_SOURCE_TIMER3, { 15u, 0xAAu, 0u, 0xB2u, 0u, 0xBAu, 0u, MCS51_IRQ_HW_AUTO_CLEAR } },
     { IRQ_SOURCE_TIMER4, { 16u, 0xAAu, 1u, 0xB2u, 1u, 0xBAu, 1u, MCS51_IRQ_HW_AUTO_CLEAR } },
     { IRQ_SOURCE_ACMP,   { 14u, 0xFFu, 0u, 0xFFu, 0u, 0xB9u, 7u, MCS51_IRQ_SW_CLEAR } },
+    { IRQ_SOURCE_WDT,    { 20u, 0xAAu, 5u, 0x97u, 3u, 0xBAu, 5u, MCS51_IRQ_SW_CLEAR } },
 };
 
 // Loaded by the glue installer below and re-invoked by
@@ -421,10 +442,12 @@ void cms8s_sys_poll(struct Mcu51Context* ctx) {
 
 uint64_t cms8s_sys_next_event_us(struct Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
-    if (!has_wdt(ctx) || !wdt_enabled(ctx)) {
+    if (!has_wdt(ctx) || !wdt_counting(ctx)) {
         return UINT64_MAX;
     }
-    if (cms8s_priv(ctx)->sys.wdt_overflow_latched != 0u) {
+    const bool ie_enabled = (ctx->sfr_shadow[CMS8S_SFR_EIE2] & (1u << 5)) != 0u;
+    const bool re_enabled = (ctx->sfr_shadow[SFR_WDCON] & WDCON_WDTRE) != 0u;
+    if (re_enabled && !ie_enabled && cms8s_priv(ctx)->sys.wdt_overflow_latched != 0u) {
         return UINT64_MAX;
     }
     const uint64_t interval = wdt_interval_us_impl(ctx);
@@ -446,10 +469,12 @@ void wink_mcs51_wdt_check(void) {
 
 uint64_t wink_mcs51_wdt_next_event_us(struct Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
-    if (!has_wdt(ctx) || !wdt_enabled(ctx)) {
+    if (!has_wdt(ctx) || !wdt_counting(ctx)) {
         return UINT64_MAX;
     }
-    if (cms8s_priv(ctx)->sys.wdt_overflow_latched != 0u) {
+    const bool ie_enabled = (ctx->sfr_shadow[CMS8S_SFR_EIE2] & (1u << 5)) != 0u;
+    const bool re_enabled = (ctx->sfr_shadow[SFR_WDCON] & WDCON_WDTRE) != 0u;
+    if (re_enabled && !ie_enabled && cms8s_priv(ctx)->sys.wdt_overflow_latched != 0u) {
         return UINT64_MAX;
     }
     const uint64_t interval = wdt_interval_us_impl(ctx);
