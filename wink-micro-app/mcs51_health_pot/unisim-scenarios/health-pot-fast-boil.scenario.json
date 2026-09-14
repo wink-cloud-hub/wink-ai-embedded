@@ -11,6 +11,7 @@
   "steps": [
     {
       "type": "PLANT_LOOP",
+      "id": "pot_thermal",
       "windowUs": ["0", "146s"],
       "sampleIntervalUs": "10ms",
       "model": {
@@ -20,8 +21,9 @@
         "ambientTempC": 25,
         "ratedPowerW": 1000
       },
-      "inputsFromFirmware": ["gpio:16"],
-      "outputsToSensors": ["plugin:temp_sensor/temperature"],
+      "inputPorts": { "power": { "from": "gpio:16" } },
+      "outputPorts": { "temperature_c": { "to": "plugin:temp_sensor/temperature" } },
+      "probes": [{ "port": "temperature_c", "as": "buffer:pot/water_temp_c" }],
       "description": "Physical environment only (0.30 kg water, 1000 W plate, 1.5 K/W loss). Scenario injects NO temperature trajectory (ADR-0067 stimulus-source exclusion)."
     },
     {
@@ -96,7 +98,7 @@
     },
     {
       "type": "ASSERT_POINT",
-      "timeUs": "102000ms",
+      "timeUs": "103000ms",
       "target": "plugin:display/text",
       "matcher": { "$regex": "^9[68]60$" },
       "description": "4COM display: measured 96-98 C (raw 19<->20 LUT boundary at ~96.8 C actual) + keep-warm setpoint 60 C"
