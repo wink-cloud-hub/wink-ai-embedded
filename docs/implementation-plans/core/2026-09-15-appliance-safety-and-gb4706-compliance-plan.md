@@ -19,7 +19,7 @@
 | **工具链/SDK版本**| `SDCC 4.x` / `Keil-C51 Transpiler` / `Emscripten 3.1.x` / `Node.js v20+` |
 | **计划状态** | 🔄 执行中（2026-09-13 启动） |
 | **优先级** | 🟡 P1（商业量产合规专项） |
-| **计划版本** | `v2.4`（D-005 拆分 a/b 并立项 ADR-0070（Proposed，含反特化门禁）；其余同 v2.3：Task 1/2/5 固件与 host 单测、Task 3 三维安规场景 26/26 全绿、Task 4 ADR-0069 Accepted 回写 C14.5） |
+| **计划版本** | `v2.5`（2026-09-15：ADR-0070 经 unisim Q6/T7 评审签发 **Accepted**，Plant 侧 t=0 初值与 `HARD_RESET` 保植物已落地并回写 C14.6；通用输入面与场景 2/3 CI 验收、第二应用复用证明在 D-005a 跟踪。其余同 v2.4：D-005 拆分 a/b、反特化门禁，Task 1/2/5 固件与 host 单测、Task 3 三维安规场景 26/26 全绿、Task 4 ADR-0069 Accepted 回写 C14.5） |
 | **关联前置计划** | [`PLAN-20260912-SIM-FIDELITY`](./2026-09-12-high-fidelity-simulation-system-hardening-plan.md) |
 | **关联技术设计** | [`docs/zh/design/07-platform-governance/02-error-fault-model.md`](../../zh/design/07-platform-governance/02-error-fault-model.md) |
 | **关联设计规范** | [`docs/zh/design/04-wasm-simulation/04-assurance/01-consistency-spec.md`](../../zh/design/04-wasm-simulation/04-assurance/01-consistency-spec.md) |
@@ -55,7 +55,7 @@
 | Task 1 冷却锁定 + 上电热态 | ✅ | `health_pot.c`：`font_table[17]`（'C'/'L'）、`COOLDOWN_SECONDS`/`data cooldown_seconds`、`enter_fault` 热故障重入刷新、启动 7b 同步采样 + ≥45 ℃ 续锁、OFF→HEAT / WARM 重煮双入口门控（先消费后拦截）、P2.0 输出级硬钳位、`FAULT > COOL > NORMAL` 显示交替 |
 | Task 2 出厂默认保温 | ✅ | `WARM_DEFAULT_C 60u` + 三处默认替换（init / OFF→HEAT BOIL / WARM 重煮）；55/80/90 档位循环字面量不动 |
 | Task 3 安规故障注入场景 | ✅ | `safety-cooldown-lock`、`safety-cold-water-injection`、`safety-relay-weld-protection`（`tags: ["HIL-Exclusive"]`）；场景 2/3 headless 按 D-005a 设计性缓落（ADR-0070 Proposed） |
-| D-005 契约提案 | 🔄 | [`ADR-0070`](../../decisions/unisim/0070-scenario-power-cycle-and-t0-initial-conditions.md) **Proposed**：D-005a t=0 物理环境预置（必需）/ D-005b 复位语义（可选）；含通用性硬约束与"第二应用复用证明"反特化门禁 |
+| D-005 契约提案 | ✅ 契约 / 🔄 实现 | [`ADR-0070`](../../decisions/unisim/0070-scenario-power-cycle-and-t0-initial-conditions.md) 2026-09-15 **Accepted**（unisim Q6/T7 签发，C14.6 回写）：Plant 侧 t=0 初值 + `HARD_RESET` 保植物已落地（unisim，双跑 12/12 保持）；D-005a 通用输入面（通道/引脚/插件态 boot 前预置）与场景 2/3 CI 验收、第二应用复用证明仍 🔄；D-005b 复位语义（可选）排期 Phase 4.2 |
 | Task 4 跨品类安规 ADR | ✅ | `docs/decisions/unisim/0069-appliance-cross-category-safety-extension.md` **Accepted**（修订 ADR-0067）；C14.5 规范与清单行回写完成 |
 | Task 5 host 安规载具 | ✅ | `wink-micro-os/test/CMakeLists.txt` + `frameworks/mcs51/test/core/test_mcs51_health_pot_safety.c`：转译真实 `health_pot.c` 单镜像，覆盖冷启动/POST/热启动续锁/E-03 锁-拒-到期全流程（16.2 s） |
 | 文档回写 | ✅ | `DESIGN.md` §1/§4.3/§4.4/§6/§7/§8 与 `test.md` 26 场景矩阵（含 `"C00L"` 段码与 0 共用说明） |
@@ -124,28 +124,29 @@
 
 ---
 
-### Task 3：GB 4706 认证级自动化故障注入场景矩阵 `[ 状态: ✅ 已完成（2026-09-13，场景 2/3 headless 按 D-005 设计性缓落） ]`
+### Task 3：GB 4706 认证级自动化故障注入场景矩阵 `[ 状态: ✅ 已完成（2026-09-13，场景 2/3 headless 按 D-005 设计性缓落）；🔄 2026-09-15 更新：ADR-0070 已 Accepted，Plant 侧能力落地，场景 2/3 待 D-005a 通用输入面（或 Plant boot 前初值输出发布）解锁 ]`
 
 | 字段 | 内容 |
 |------|------|
 | **负责人** | 质量与验证组 |
 | **预估工时** | 8 小时 |
 | **修改文件** | `wink-micro-app/mcs51_health_pot/unisim-scenarios/`（5 个 JSON 平铺，以 `safety-` 名前缀区分，不设 `safety/` 子目录） |
-| **前置依赖** | D-005a（外仓 runner：t=0 物理环境预置）为场景 2/3 必需；D-005b（中途复位语义）可选；契约见 ADR-0070（Proposed）。核心断言由 Task 5 host 单测先行承载；场景 1、4 与 L1 单测无外部阻塞 |
+| **前置依赖** | D-005a（外仓 runner：t=0 物理环境预置）为场景 2/3 必需；D-005b（中途复位语义）可选；契约见 ADR-0070（**Accepted 2026-09-15**）。unisim 已交付 Plant 侧 t=0 初值 + `HARD_RESET` 保植物；场景 2/3 仍待通用输入面（通道/引脚/插件态 boot 前预置）或 Plant boot 前初值输出发布（见 unisim 应用面清单）。核心断言由 Task 5 host 单测先行承载；场景 1、4 与 L1 单测无外部阻塞 |
 
 #### 详细步骤与 Oracle 分级（含超时与阶段解耦）
 
-> **D-005 口径（外仓 runner 能力需求，已拆分为 D-005a/b，契约提案：[ADR-0070](../../decisions/unisim/0070-scenario-power-cycle-and-t0-initial-conditions.md) Proposed）**：
+> **D-005 口径（外仓 runner 能力需求，已拆分为 D-005a/b，契约：[ADR-0070](../../decisions/unisim/0070-scenario-power-cycle-and-t0-initial-conditions.md) Accepted 2026-09-15）**：
 > - **D-005a（必需）**：**t=0 物理环境预置**——在固件启动前应用模拟通道初值/引脚初值/插件输入态，时序为"校验 → 应用初值 → 复位/启动 MCU → 时间轴起跑"。养生壶只是首个消费者，能力必须对所有应用通用（禁止应用专属字段/引擎业务知识）。场景 2（热初值续锁）与场景 3（t=0 卡键）都只需这一项即可闭环。
-> - **D-005b（可选）**：中途 **HARD_RESET/SOFT_RESET** 语义（当前 headless 为空实现）；仅"运行→掉电重上电"单场景全序列需要，不阻塞场景 2/3。
+> - **D-005a 现状（2026-09-15）**：unisim 已落地 Plant 侧（`header.initialConditions.plants.<id>.{parameters,inputs}` + `HARD_RESET` 保植物 + 报告回显）；通用输入面（通道/引脚/插件态 boot 前预置）与两个场景 CI 断言、第二无关应用复用证明仍待补；场景 2 亦可选 Plant boot 前初值输出发布路径（二选一，见 unisim `docs/review/artifacts/2026-09-15-adr-0070-application-surface.md`）。
+> - **D-005b（可选）**：中途 **HARD_RESET/SOFT_RESET** 语义（当前 headless 为空实现，Plant 状态保留已由 T7 契约测试覆盖）；仅"运行→掉电重上电"单场景全序列需要，不阻塞场景 2/3。
 > - 本计划处置：核心断言先由 Task 5 host 单测承载；D-005a 落地（含 runner 单测 + 第二个无关应用的复用证明）后再补两个 JSON；落地前严禁硬写（硬写只会空过/假阳性）。
 
 - [ ] **场景 1：`safety-cooldown-lock.scenario.json`（仿真可验，Phase-B 闭环）**
   配置 `timeoutUs: 95000000`（95s：21s 干烧＋确认延时＋60s 锁定＋解锁断言裕量）；触发干烧后短延时按开机，验证锁定期 P2.0 恒为 0 且数码管 `COOL`/温度双相交替；冷却到期后一次开机进入 HEAT 即收尾——严禁拖入 ~105s 第二次斜率 E-03 窗口（fail-fast 下未断言 fault 会掀翻成绩）。
 - [ ] **场景 2：上电热态拦截（核心断言 L1 host 单测先行，headless 版待 D-005）**
-  host 单测打桩 `adc_read_filtered()` 返回 55°C 等效码并走完整启动时序链，断言 `cooldown_seconds == 60` 且首 tick 前无加热输出（host 载具见 Task 5）；headless 版 `safety-power-cycle-hot-reboot.scenario.json`（`timeoutUs: 100000000`）待 **D-005a**（t=0 物理环境预置）落地后补齐。原因：现行 runner 的输入/断言表达能力不足以在 boot 前预置初值，硬写只会空过（口径见上方 D-005a/b 说明）。
+  host 单测打桩 `adc_read_filtered()` 返回 55°C 等效码并走完整启动时序链，断言 `cooldown_seconds == 60` 且首 tick 前无加热输出（host 载具见 Task 5）；headless 版 `safety-power-cycle-hot-reboot.scenario.json`（`timeoutUs: 100000000`）待 **D-005a** 落地后补齐（unisim 推荐形态：Plant 热态初值 + boot 前初值输出发布；备选：插件/通道初值——见 unisim 应用面清单）。原因：现行 runner 的输入/断言表达能力不足以在 boot 前预置初值，硬写只会空过（口径见上方 D-005a/b 说明）。
 - [ ] **场景 3：`safety-post-jammed.scenario.json`（核心断言 L1 host 单测先行，headless 版待 D-005）**
-  host 单测在 `button_init_post()` 前将按键 GPIO 打桩为低，断言 `held` 预置且 100ms 内无 `evt`、加热不启动；headless 版（`timeoutUs: 15000000`）同样待 **D-005a** 的 t=0 引脚预置能力。在 runner 能力确认前禁止落地 headless 版，避免假阳性。
+  host 单测在 `button_init_post()` 前将按键 GPIO 打桩为低，断言 `held` 预置且 100ms 内无 `evt`、加热不启动；headless 版（`timeoutUs: 15000000`）待 **D-005a** 的 t=0 引脚/插件输入态预置能力（通用输入面）。在 runner 能力确认前禁止落地 headless 版，避免假阳性。
 - [ ] **场景 4：`safety-cold-water-injection.scenario.json`（仿真可验，🟢 Phase-A 即可提前闭环）**
   配置 `timeoutUs: 60000000`（60s 虚拟时间）；加热中途注入冷水（ADC 突变跳变），覆盖注入后继续加热 20s+，断言单向加冷水上升沿守卫生效不误报干烧；脚本 authoring 约束：注入后脚本必须按掩模规则复温爬坡（若保持平坦＝合法干烧，跳闸算固件对，非固件缺陷），45°C 以下爬坡段必须保证任意 16 秒窗口下跌 ≥6 码，否则 slope 中途触发属于脚本违规（掩模规则）。
 - [ ] **场景 5：`safety-relay-weld-protection.scenario.json`（HIL 独占声明）**

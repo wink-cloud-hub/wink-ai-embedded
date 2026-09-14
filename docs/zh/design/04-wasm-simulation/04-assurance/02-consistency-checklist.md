@@ -249,6 +249,7 @@
 | C14.3 Plant↔OS 锁步漂移 | 🟡 | 禁墙钟 plant；门禁待补 | 待补 | [01 §C14.3](./01-consistency-spec.md#c14.3) |
 | C14.4 Pin Event Queue 溢出/丢失 | 🟡 | Fail-Loud 待强化 | 待补 | [01 §C14.4](./01-consistency-spec.md#c14.4) |
 | C14.5 观测与注入竞态 | 🟡 | 序契约测试待补；跨品类激励源互斥与 Override/Resume 连续性已立契约（ADR-0067/0069），连续性断言待补 | 待补 | [01 §C14.5](./01-consistency-spec.md#c14.5) |
+| C14.6 t=0 预置与复位语义 | 🟡 | ADR-0070 Accepted（契约）；Plant 侧初值 + `HARD_RESET` 保植物已落地（unisim T7）；通用输入面（通道/引脚/插件态 boot 前预置）、场景 2/3 CI 断言与第二应用复用证明待补 | 待补 | [01 §C14.6](./01-consistency-spec.md#c14.6) |
 
 <a id="c15"></a>
 

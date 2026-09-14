@@ -705,6 +705,15 @@
 - **验收预言**：破坏顺序的测试夹具失败或被 API 禁止；覆写释放后的温度/码值轨迹无阶跃回弹（恢复连续性断言）。
 - **边界**：并行 Worker 多 plant 需额外屏障约定；各品类安全硬常数分别标定、不得互用；机械联锁（微波炉三重门/烤箱熔断器等）HIL 独占（ADR-0069）。
 
+<a id="c14.6"></a>
+
+#### C14.6 t=0 预置与复位语义
+- **问题**：固件在首个 tick 前采样物理环境（上电热态检测）或读取引脚（POST 卡键抑制）时，运行中注入与之存在竞态；`HARD_RESET`/`SOFT_RESET` 在 headless 中此前为空实现，供电循环语义无契约。
+- **真机 vs 仿真**：真机上电即物理环境真实存在；仿真缺"固件启动前"输入阶段，用 30 ms `INPUT_ANALOG` 近似与 boot 采样竞态（`safety-power-cycle-hot-reboot`/`safety-post-jammed` 设计性缓落根因）。
+- **保障方案**：**B** 可选 `header.initialConditions` 阶段：校验 → 应用初值 → 复位/启动 MCU → t=0 起跑；初值只能写通用输入面（模拟通道值/引脚电气/插件输入态），禁止设备/业务名与固件安全常数；Plant 侧映射 `model.parameters`/端口初值；后写者赢（时间轴步骤可覆盖）；初值进 trace/报告（[ADR-0070](../../../decisions/unisim/0070-scenario-power-cycle-and-t0-initial-conditions.md)）。供电循环：`HARD_RESET` 复位 MCU/外设/固件内存，**物理环境（插件值、引脚外部驱动、虚拟时钟、Plant 状态/参数）保留**；`SOFT_RESET` 仅复位程序运行状态；两者幂等。
+- **验收预言**：热初值续锁被拒（`safety-power-cycle-hot-reboot`）与 t=0 卡键抑制（`safety-post-jammed`）两场景在 CI 可断言；复位前后 Plant 状态/参数不变量成立；第二无关应用复用同一能力跑通（反特化证明）。
+- **边界**：只定义输入侧与阶段语义，`SimTraceSpecV2` 不变；D-005b 完整 headless 复位基础设施按需排期；Plant boot 前初值输出发布为场景 2 备选实现（二选一），落地前场景 2/3 不得硬写。
+
 ---
 
 <a id="c15"></a>
