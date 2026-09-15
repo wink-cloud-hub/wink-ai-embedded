@@ -1071,6 +1071,35 @@ if(TARGET wink_mcs51_core)
         add_dependencies(test_mcs51_wdt_ta_strict generate_config)
     endif()
 
+    # ADR-0082 / PLAN-20260915-MCS51-RESET-FIDELITY: Reset Controller & WDT Fidelity
+    add_mcs51_host_test(test_mcs51_reset_controller
+        ../frameworks/mcs51/test/cms8s78xx/test_mcs51_reset_controller.cpp)
+    target_compile_definitions(test_mcs51_reset_controller PRIVATE WINK_MCU_CMS8S78XX=1)
+
+    # Reset Controller STRICT twin: WDT overflow abort
+    add_wink_host_test(test_mcs51_reset_controller_strict
+        ../frameworks/mcs51/test/cms8s78xx/test_mcs51_reset_controller.cpp)
+    target_link_libraries(test_mcs51_reset_controller_strict PRIVATE wink_mcs51_core_strict wink_mcs51_cms8s_strict wink_mcs51_at89 wink_mcs51_adc0832 wink_runtime
+        wink_mcs51_cms8s_register)
+    target_compile_definitions(test_mcs51_reset_controller_strict PRIVATE SIMULATION=1 WINK_MCU_CMS8S78XX=1)
+    if(NOT MSVC)
+        target_compile_options(test_mcs51_reset_controller_strict PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:-std=c++17 -Wno-write-strings
+                -fno-exceptions -fno-rtti -fno-threadsafe-statics>)
+    else()
+        target_compile_options(test_mcs51_reset_controller_strict PRIVATE
+            $<$<COMPILE_LANGUAGE:CXX>:/std:c++17 /utf-8 /wd4101 /wd4245>)
+    endif()
+    target_include_directories(test_mcs51_reset_controller_strict PRIVATE ${_MCS51_FW_DIR}/include)
+    target_include_directories(test_mcs51_reset_controller_strict PRIVATE
+        ${_MCS51_FW_DIR}/chips/cms8s78xx/include
+        ${_MCS51_FW_DIR}/chips/at89c52/include)
+    target_include_directories(test_mcs51_reset_controller_strict PRIVATE ${_MCS51_FW_DIR}/test)
+    if(TARGET generate_config)
+        add_dependencies(test_mcs51_reset_controller_strict generate_config)
+    endif()
+
+
     # Stage 3 A-08 (GAP-24): classic external MOVX bus conflict + IAP trap —
     # XBYTE/GPIO both orders, P1 exemption, CMS8S zero-regression, IAP block.
     # S2-1: TU renamed classic_bus -> ext_bus (generic concept); the ctest
