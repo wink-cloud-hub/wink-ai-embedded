@@ -206,5 +206,16 @@ The following C++ flags are globally enforced for C++ compilation and cannot be 
 3. **精度契约**：纯 RAM 轮询仅在“无 SFR、无超时退出、无本地赋值、无调用、ISR 跨文件写”全满足时告警（`MCS51-SIM-POLL-DEADLOCK`，首版 warning）；`while(!TI)` / `while(ADCON0 & 0x02)` 类 SFR 轮询永不告警；宿主单测线束（`test_*`、`*/unit/*`、Catch2）不在 scope 内。
 4. **样例卫生**：`test/mcs51/samples/*.c` 须通过门禁（ISR 共享变量一律 `volatile`，以生产应用为准）。
 
+---
+
+## 7. 开源许可与 SPDX Header（ADR-0083）
+
+> 决策：[ADR-0083](../../decisions/core/0083-adopt-gpl-3.0-only-license-policy.md)。
+
+1. **自有代码许可**：根 `LICENSE` 为 GPLv3 全文；全部自有源文件（C/C++/Python/模板/资产）首行统一 `SPDX-License-Identifier: GPL-3.0-only`，禁止再注入 Apache-2.0 头；代码生成器（`wink-tools` codegen 模板）同步此值。
+2. **第三方边界**：`third_party/ArduinoCore-API`（LGPL-2.1-or-later，随附许可证全文）、`test/unity`（MIT，随附许可证全文）保持原许可与版权头；其余工具链依赖（ESP-IDF/Emscripten/Wokwi 等）保留归属，登记于 `wink-micro-os/NOTICE`。
+3. **兼容性红线**：GPL-2.0-only 组件与 GPL-3.0-only 不兼容，严禁合入或裁剪进分发物；新增第三方依赖须先比照 ADR-0083 §3 矩阵并登记 NOTICE。
+4. **厂商夹具纪律（E-003）**：原厂 SDK、私有工程夹具仅存本地 `docs/vendors/`（gitignore，永不入库）；新增示例须以 clean-room shim 或本地 fixture 形式接入，不得把原厂源码副本入库。
+
 
 

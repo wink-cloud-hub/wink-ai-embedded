@@ -83,3 +83,13 @@ Wink-AI 嵌入式运行时及仿真系统（**WinkMicroOS**）：面向 AI 生�
 - `simulator/`: Wasm 仿真器及运行时支撑
 - `embedded-frontend/`: 嵌入式可视化工作台与仿真视窗
 - `docs/`: 完整双语 SSOT 规范、架构决策记录 (ADR) 与实施计划
+
+---
+
+## 📜 开源协议 (License)
+
+本项目自有代码采用 [GNU General Public License v3.0 (GPLv3, SPDX: `GPL-3.0-only`)](./LICENSE) 开源协议。
+This project's own code is licensed under the [GNU General Public License v3.0 (GPLv3)](./LICENSE).
+
+第三方组件（ArduinoCore-API = LGPL-2.1-or-later、Unity = MIT、ESP-IDF = Apache-2.0 等）保留其原始许可，详见 [wink-micro-os/NOTICE](./wink-micro-os/NOTICE)。
+Third-party components retain their original licenses; see [wink-micro-os/NOTICE](./wink-micro-os/NOTICE) for details.
