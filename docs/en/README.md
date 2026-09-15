@@ -40,3 +40,12 @@ Welcome to the **Wink-AI Embedded Development & Simulation System (WinkMicroOS)*
 
 ## 📊 Product & Market Research
 - [UniSim Embedded Online Simulation Platform Commercial & Market Analysis](./product/market-analysis.md)
+
+---
+
+## 🛠️ Toolchain Manual (Wink Tools)
+
+Single source of truth for `winkcli` usage documentation (installation / command reference / codegen / lint / SDK packaging):
+
+- [Wink Tools English Manual](../../wink-tools/docs/en/01-cli-reference.md)
+- [Wink Tools 中文手册](../../wink-tools/docs/zh/01-cli-reference.md)
