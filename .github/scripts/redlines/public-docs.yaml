@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Redline rules for the public winkcli toolchain surface.
+# Scanned by .github/scripts/check_winkcli_docs.py over:
+#   wink-tools/docs/**, wink-tools/README*.md, wink-tools/tools/**
+version: 1
+
+# Regex patterns that must never appear in the public surface.
+# Internal module/implementation names, internal paths, release/credential machinery.
+patterns:
+  - "app_codegen\\.py"
+  - "\\bloader\\.py\\b"
+  - "\\broots\\.py\\b"
+  - "\\bwink\\.py\\b"
+  - "\\brelease\\.py\\b"
+  - "build_exe"
+  - "\\btools/cli\\b"
+  - "tools/codegen/(?!boards/)"
+  - "board-json-loader"
+  - "chip-deducer"
+  - "runtime_device_tree"
+  - "config_h\\.py"
+  - "\\bPinArbiter\\b"
+  - "packages/unisim"
+  - "packages/embedded-frontend"
+  - "PLAN-2026"
+  - "ailuhaosi"
+  - "\\.internals"
+  - "\\bentitlement\\b"
+  - "\\bvault\\b"
+
+# Additional patterns allowed by explicit review (public contract paths / repo names).
+allowlist:
+  - "wink-tools/tools/codegen/boards/"
+  - "wink-tools/tools/lint/rules/"
+  - "embedded-frontend"
+
+# ADR references are validated dynamically: a reference is valid only when the
+# number exists in docs/decisions/** of this public repository.
+adr:
+  enabled: true

@@ -5,6 +5,10 @@ on:
     - cron: '0 2 * * *' # Run at 02:00 UTC daily
   workflow_dispatch:
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   esp32-idf-build:
     runs-on: ubuntu-latest
@@ -31,3 +35,111 @@ jobs:
           cmake -B build_stress -S wink-micro-os -DTARGET_PLATFORM=host -DWINK_APP_DIR=wink-micro-app/unisim_smoke
           cmake --build build_stress
           ctest --test-dir build_stress -R "test_pal_lockfree_pipeline|test_sim_scheduler" --output-on-failure
+
+  winkcli-docs-drift:
+    # Runs the released winkcli binary, so it must be a Windows runner.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch latest winkcli release metadata
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view --repo wink-cloud-hub/wink-ai-embedded --json tagName,publishedAt,assets > release.json 2>/dev/null; then
+            echo "::warning::No winkcli release published yet; skipping drift check."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          python - <<'PY'
+          import json, os
+          data = json.load(open("release.json", encoding="utf-8"))
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write("published_at=" + data["publishedAt"] + "\n")
+              out.write("tag=" + data["tagName"] + "\n")
+          PY
+
+      - name: Download released winkcli
+        if: steps.release.outputs.skip != 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p dist-cli
+          gh release download "${{ steps.release.outputs.tag }}" \
+            --repo wink-cloud-hub/wink-ai-embedded \
+            --pattern "winkcli-*.zip" --dir dist-cli --clobber
+          python - <<'PY'
+          import glob, zipfile
+          for archive in glob.glob("dist-cli/winkcli-*.zip"):
+              zipfile.ZipFile(archive).extractall("dist-cli")
+          PY
+
+      - name: Compare live help tree with pinned snapshot
+        if: steps.release.outputs.skip != 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PYTHONUTF8: "1"
+          PUBLISHED_AT: ${{ steps.release.outputs.published_at }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          ./dist-cli/winkcli.exe help-tree > live-help-tree.json
+          python - <<'PY'
+          import datetime, json, os, subprocess, sys
+
+          live = json.load(open("live-help-tree.json", encoding="utf-8"))
+          pinned = json.load(open("wink-tools/docs/cli-help-tree.json", encoding="utf-8"))
+          live.pop("generated_at", None)
+          pinned.pop("generated_at", None)
+
+          if live == pinned:
+              print("help tree in sync")
+              sys.exit(0)
+
+          live_cmds = {c["name"] for c in live["commands"]}
+          pinned_cmds = {c["name"] for c in pinned["commands"]}
+          detail = "\n".join([
+              f"- live winkcli: v{live.get('winkcli_version')} ({len(live_cmds)} commands)",
+              f"- pinned snapshot: v{pinned.get('winkcli_version')} ({len(pinned_cmds)} commands)",
+              f"- added: {sorted(live_cmds - pinned_cmds)}",
+              f"- removed: {sorted(pinned_cmds - live_cmds)}",
+          ])
+
+          published = datetime.datetime.fromisoformat(os.environ["PUBLISHED_AT"].replace("Z", "+00:00"))
+          age_h = (datetime.datetime.now(datetime.timezone.utc) - published).total_seconds() / 3600
+          repo = "wink-cloud-hub/wink-ai-embedded"
+
+          if age_h < 48:
+              print(f"::warning::Release {os.environ['TAG']} is ahead of docs within the 48h grace window ({age_h:.1f}h).")
+              print(detail)
+              sys.exit(0)
+
+          title = f"docs drift: winkcli {os.environ['TAG']} ahead of pinned snapshot"
+          body = f"Automated docs drift detected by nightly (beyond the 48h grace window).\n\n{detail}\n\nFix: run the release docs sync (release.py dual-track) and merge the snapshot update."
+          existing = subprocess.run(
+              ["gh", "issue", "list", "--repo", repo, "--label", "docs-drift",
+               "--state", "open", "--json", "number", "--jq", ".[0].number"],
+              capture_output=True, text=True,
+          ).stdout.strip()
+          if existing:
+              subprocess.run(["gh", "issue", "comment", existing, "--repo", repo, "--body", body], check=True)
+              print(f"::error::Docs drift persists beyond 48h; commented on issue #{existing}.")
+          else:
+              created = subprocess.run(
+                  ["gh", "issue", "create", "--repo", repo, "--label", "docs-drift",
+                   "--title", title, "--body", body],
+                  capture_output=True, text=True,
+              )
+              if created.returncode != 0:
+                  # Label may not exist yet; retry without it.
+                  subprocess.run(
+                      ["gh", "issue", "create", "--repo", repo, "--title", title, "--body", body],
+                      check=True,
+                  )
+              print("::error::Docs drift detected; opened a new issue.")
+          sys.exit(1)
+          PY
