@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * CMS8S78xx Commercial Health Pot (养生壶) Thermostat Application
  *
  * Fully leverages CMS8S78xx hardware peripherals:
