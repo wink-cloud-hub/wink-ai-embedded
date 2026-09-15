@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 codegen_schema: "1.1"
 type: mock_sensor_legacy
 category: sensor

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Role contract SSOT (machine-readable). Human-readable SSOT:
 # docs/dal-development-guide/dal-role-architecture-spec.md
 codegen_schema: "1.1"

@@ -1,8 +1,14 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # WinkMicroOS Codegen Extension Root
 
 User-editable driver and role descriptions for `wink-tools` codegen. The tools
 engine scans these YAML files read-only; you do not need to modify closed-source
 tools to add or override a DAL type.
+
+> **License (ADR-0084):** everything under `codegen/` — driver/role YAML,
+> templates and the files they generate — is Apache-2.0. Generated files carry
+> `SPDX-License-Identifier: Apache-2.0`; your application code stays yours and
+> may be licensed as you wish. The rest of `wink-micro-os/` is LGPL-3.0-only.
 
 ## Layout
 

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Role contract SSOT (machine-readable). Human-readable SSOT:
 # docs/design/03-app-codegen/01-app-business-logic.md § Role Interface
 # BAL-backed distance events (enable/disable) are stable surface (ADR-0033).
