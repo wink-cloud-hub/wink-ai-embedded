@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "comment": "Layered license map (ADR-0083 / ADR-0084). First matching rule wins; keep specific paths before wildcards.",
+  "must_have_ext": [".c", ".h", ".cpp", ".hpp", ".cc", ".py"],
+  "skip_ext": [".json", ".wasm", ".hex", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".pdf", ".zip", ".gz", ".bin", ".o", ".a", ".lib", ".exe", ".dll", ".so", ".lock", ".gitkeep"],
+  "forbidden_license_prefixes": ["GPL-1.0", "GPL-2.0", "LGPL-2.0", "AGPL", "SSPL", "BUSL", "Proprietary", "UNLICENSED"],
+  "rules": [
+    {
+      "path": "wink-micro-os/third_party/ArduinoCore-API/**",
+      "mode": "text",
+      "license": "LGPL-2.1-or-later",
+      "contains": ["GNU Lesser General Public", "version 2.1 of the License"],
+      "except": [
+        "wink-micro-os/third_party/ArduinoCore-API/api/Udp.h",
+        "wink-micro-os/third_party/ArduinoCore-API/api/deprecated-avr-comp/avr/pgmspace.h"
+      ],
+      "require_files": ["wink-micro-os/third_party/ArduinoCore-API/LICENSE"]
+    },
+    {
+      "path": "wink-micro-os/test/unity/**",
+      "mode": "enforce",
+      "license": "MIT",
+      "must_have": true,
+      "require_files": ["wink-micro-os/test/unity/LICENSE"]
+    },
+    {
+      "path": "wink-micro-os/codegen/**",
+      "mode": "enforce",
+      "license": "Apache-2.0",
+      "must_have": true,
+      "must_have_ext": [".yaml", ".yml", ".j2", ".md"]
+    },
+    {
+      "path": "wink-micro-os/frameworks/mcs51/tools/sdcc_gate/**",
+      "mode": "enforce",
+      "license": "LGPL-3.0-only",
+      "must_have": true
+    },
+    {
+      "path": "wink-micro-os/frameworks/mcs51/tools/**",
+      "mode": "enforce",
+      "license": "GPL-3.0-only",
+      "must_have": true,
+      "must_have_ext": [".py"]
+    },
+    {
+      "path": "wink-micro-os/frameworks/mcs51/test/**",
+      "mode": "enforce",
+      "license": "GPL-3.0-only",
+      "must_have": true
+    },
+    {
+      "path": "wink-micro-os/test/**",
+      "mode": "enforce",
+      "license": "GPL-3.0-only",
+      "must_have": true
+    },
+    {
+      "path": "wink-micro-os/**",
+      "mode": "enforce",
+      "license": "LGPL-3.0-only",
+      "must_have": true
+    },
+    {
+      "path": "wink-firmware-carriers/**",
+      "mode": "enforce",
+      "license": "LGPL-3.0-only",
+      "must_have": true
+    },
+    {
+      "path": "wink-micro-app/vendor_cms8s78xx_v202/**",
+      "mode": "skip"
+    },
+    {
+      "path": "wink-micro-app/**",
+      "mode": "enforce",
+      "license": "Apache-2.0",
+      "must_have": true
+    },
+    {
+      "path": "wink-tools/tools/codegen/boards/**",
+      "mode": "dir-license",
+      "license": "Apache-2.0",
+      "require_files": ["wink-tools/tools/codegen/boards/LICENSE"]
+    },
+    {
+      "path": "wink-tools/**",
+      "mode": "enforce",
+      "license": "GPL-3.0-only"
+    },
+    {
+      "path": "wink-plugin-peripherals/**",
+      "mode": "enforce",
+      "license": "GPL-3.0-only"
+    },
+    {
+      "path": ".github/scripts/**",
+      "mode": "enforce",
+      "license": "GPL-3.0-only",
+      "must_have": true,
+      "must_have_ext": [".py"]
+    },
+    {
+      "path": "**",
+      "mode": "skip"
+    }
+  ]
+}
