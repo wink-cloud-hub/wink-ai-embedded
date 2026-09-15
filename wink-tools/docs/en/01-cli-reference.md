@@ -116,7 +116,7 @@ See [05 · SDK Packaging Guide](./05-sdk-packaging.md).
 <!-- BEGIN AUTO-GENERATED: CLI-TREE -->
 ## Appendix A - Full Command Reference (auto-generated, do not edit)
 
-> winkcli `v0.1.0` · snapshot schema 1 · generated 2026-09-15T06:13:16Z
+> winkcli `v0.1.0` · snapshot schema 1 · generated 2026-09-15T07:14:44Z
 
 ### Global flags
 
