@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Apache-2.0 */
 /**
  * @file device_tree.h
  * @brief Static device tree for the unisim_smoke wasm fixture.

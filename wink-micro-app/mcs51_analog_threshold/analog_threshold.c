@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-3.0-only
+/* SPDX-License-Identifier: Apache-2.0
  * MCS-51 CMS8S78xx on-chip ADC threshold drives LED — UNMODIFIED Keil C51 user
  * source (Stage 2 T4 headless proof).
  *

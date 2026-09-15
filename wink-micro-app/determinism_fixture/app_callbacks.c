@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file app_callbacks.c
  * @brief determinism_fixture WASM app — exercises GPIO, ADC, PWM, UART & faults.

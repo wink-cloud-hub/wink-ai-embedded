@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # PDK_BUTTON_LED Device Tree & API Specification
 
 This document defines the hardware mapping and component bindings for `pdk_button_led`.

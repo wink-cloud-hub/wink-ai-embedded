@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-only
+# SPDX-License-Identifier: Apache-2.0
 cmake_minimum_required(VERSION 3.16)
 project(determinism_fixture C CXX)
 

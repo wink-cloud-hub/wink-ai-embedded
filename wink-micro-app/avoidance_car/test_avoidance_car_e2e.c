@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file test_avoidance_car_e2e.c
  * @brief Host e2e: distance events → servo angle (ADR-0033 L1 path).

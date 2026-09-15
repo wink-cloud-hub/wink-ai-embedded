@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Apache-2.0 */
 #ifndef DEVICE_TREE_H
 #define DEVICE_TREE_H
 

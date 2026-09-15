@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Apache-2.0 */
 #include "device_tree.h"
 
 dal_led_t        board_led = {0};

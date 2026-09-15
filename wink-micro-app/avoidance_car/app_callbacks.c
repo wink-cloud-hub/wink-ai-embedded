@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file app_callbacks.c
  * @brief Avoidance car — L1 sample (Role API + distance events, ADR-0033).

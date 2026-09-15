@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Apache-2.0 */
 #include "device_tree.h"
 #include "wink_dev_config.h"
 #include "pal_storage.h"
