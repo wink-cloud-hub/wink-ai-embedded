@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * MCS-51 UART RX/TX echo — UNMODIFIED Keil C51 user source (Stage 2 T2.3
  * live-RX headless proof).
  *

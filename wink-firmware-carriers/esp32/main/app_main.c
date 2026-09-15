@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file app_main.c
  * @brief ESP32 hardware entry point: initializes FreeRTOS tasks and starts wink runtime.

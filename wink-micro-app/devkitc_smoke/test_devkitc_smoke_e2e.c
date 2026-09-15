@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file test_devkitc_smoke_e2e.c
  * @brief DevKitC smoke test host E2E runner.
