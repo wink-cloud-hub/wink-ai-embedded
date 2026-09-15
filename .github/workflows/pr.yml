@@ -2,9 +2,9 @@ name: Pull Request Fast CI
 
 on:
   pull_request:
-    branches: [ main, develop ]
+    branches: [ master, main, develop ]
   push:
-    branches: [ main, develop ]
+    branches: [ master, main, develop ]
 
 jobs:
   host-build-and-test:
@@ -31,13 +31,23 @@ jobs:
         run: |
           choco install ninja cmake --no-progress
 
-      - name: Install winkcli Toolchain
+      - name: Install Toolchain Python Dependencies
+        shell: bash
         run: |
-          pip install winkcli pytest || pip install pyyaml jinja2 rich pytest
+          # NOTE: winkcli ships via GitHub Releases (+ thin PyPI launcher, pending publication).
+          # Do NOT `pip install winkcli` until the official package is live — name-squatting risk.
+          pip install pytest pyyaml jinja2 rich
 
       - name: Run Architecture & Safety Linter (Unified Guards)
+        shell: bash
         run: |
-          python wink-micro-os/tools/run_lint.py --pack isr_safety --pack wasm_parity --pack layering --pack api --pack dal --baseline .github/lint-baseline.json
+          if command -v winkcli >/dev/null 2>&1; then
+            winkcli lint --pack isr_safety --pack wasm_parity --pack layering --pack api --pack dal --baseline .github/lint-baseline.json
+          elif [ -f wink-micro-os/tools/run_lint.py ]; then
+            python wink-micro-os/tools/run_lint.py --pack isr_safety --pack wasm_parity --pack layering --pack api --pack dal --baseline .github/lint-baseline.json
+          else
+            echo "::warning::Arch lint runner unavailable in public CI (wink-tools engine not public). Gate runs in the local/release pipeline."
+          fi
 
       - name: Configure CMake (Host)
         run: |
@@ -76,9 +86,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build
 
-      - name: Install winkcli Toolchain
+      - name: Install Toolchain Python Dependencies
+        shell: bash
         run: |
-          pip install winkcli pytest || pip install pyyaml jinja2 rich pytest
+          # NOTE: winkcli ships via GitHub Releases (+ thin PyPI launcher, pending publication).
+          # Do NOT `pip install winkcli` until the official package is live — name-squatting risk.
+          pip install pytest pyyaml jinja2 rich
 
       - name: Configure CMake (Host tree hosts the emcc wasm tests)
         run: |
@@ -91,3 +104,22 @@ jobs:
 
       - name: Run wasm/Node tests (label "wasm")
         run: ctest --test-dir build_host -L wasm --output-on-failure
+
+  docs-guards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install "PyYAML>=6"
+
+      - name: wink-tools docs i18n pairing
+        run: python docs/scripts/check_wink_tools_i18n.py
+
+      - name: winkcli docs gate (command parity + appendix + redlines)
+        run: python .github/scripts/check_winkcli_docs.py

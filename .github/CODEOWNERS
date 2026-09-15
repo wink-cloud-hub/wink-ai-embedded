@@ -1,0 +1,9 @@
+# Default owner for everything in this repository
+*                       @wink-cloud-hub
+
+# Public toolchain surface: docs, contracts and rule set (docs parity gate applies)
+/wink-tools/            @wink-cloud-hub
+
+# Generated artifacts: change only via the release-time docs sync
+/wink-tools/docs/cli-help-tree.json     @wink-cloud-hub
+/wink-tools/docs/*/01-cli-reference.md  @wink-cloud-hub
