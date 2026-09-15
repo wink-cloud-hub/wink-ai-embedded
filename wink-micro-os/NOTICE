@@ -1,4 +1,37 @@
-Wink Micro OS — Source SDK distribution
+Wink Micro OS (WinkMicroOS) — NOTICE
+Copyright (C) 2026 Wink AI Project
 
-Commercial Binary SDK (no implementation sources) is a separate artifact (Phase 2+).
-This Source package includes implementation sources for internal / licensed use.
+This project is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License, version 3 (SPDX: GPL-3.0-only).
+See the LICENSE file at the repository root for the full license text.
+
+--------------------------------------------------------------------------------
+Third-party components bundled or linked with this distribution
+--------------------------------------------------------------------------------
+
+1) ArduinoCore-API (API version 1.5.2) — LGPL-2.1-or-later
+   Copyright (c) Arduino LLC and contributors.
+   Source:   https://github.com/arduino/ArduinoCore-API
+   Vendored: wink-micro-os/third_party/ArduinoCore-API/ (unmodified)
+   License:  wink-micro-os/third_party/ArduinoCore-API/LICENSE
+   Notes:    Statically linked into the Wink Arduino compatibility layer.
+             Combination with GPL-3.0-only code is permitted by LGPL-2.1
+             section 3 (relicensing to a later GNU GPL version).
+             Portions of the vendored tree (api/Udp.h) are MIT-licensed:
+             Copyright (c) 2008 Bjoern Hartmann; notice retained in-file.
+
+2) Unity test framework 2.6.3 — MIT
+   Copyright (c) 2007-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+   Source:   https://github.com/ThrowTheSwitch/Unity
+   Vendored: wink-micro-os/test/unity/ (LICENSE alongside this notice)
+
+3) ESP-IDF (Apache-2.0) — provided by the build toolchain, not bundled here.
+   Source:   https://github.com/espressif/esp-idf
+
+4) Emscripten runtime (MIT/UIUC) — provided by the wasm toolchain, not
+   bundled here.
+   Source:   https://github.com/emscripten-core/emscripten
+
+5) @wokwi/elements (MIT) — front-end peripheral elements declared as a
+   dependency by wink-plugin-peripherals; not vendored.
+   Source:   https://github.com/wokwi/wokwi-elements
