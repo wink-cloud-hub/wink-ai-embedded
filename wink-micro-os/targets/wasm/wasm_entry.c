@@ -41,6 +41,24 @@ EMSCRIPTEN_KEEPALIVE void pal_wasm_reset_app_state(void) {
     pal_wasm_sim_reset_all_devices();
 }
 
+// ADR-0082 / Task 2: Exported reset query interface for Unisim TS Runner
+__attribute__((weak)) bool pal_wasm_target_has_pending_reset(void) { return false; }
+__attribute__((weak)) int pal_wasm_target_get_reset_reason(void) { return 0; }
+__attribute__((weak)) void pal_wasm_target_clear_pending_reset(void) {}
+
+EMSCRIPTEN_KEEPALIVE int pal_wasm_has_pending_reset(void) {
+    return pal_wasm_target_has_pending_reset() ? 1 : 0;
+}
+
+EMSCRIPTEN_KEEPALIVE int pal_wasm_get_reset_reason(void) {
+    return pal_wasm_target_get_reset_reason();
+}
+
+EMSCRIPTEN_KEEPALIVE void pal_wasm_clear_pending_reset(void) {
+    pal_wasm_target_clear_pending_reset();
+}
+
 int main(void) {
     return pal_wasm_app_init();
 }
+

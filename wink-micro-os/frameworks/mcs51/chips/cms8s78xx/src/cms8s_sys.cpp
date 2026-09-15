@@ -67,6 +67,8 @@ constexpr uint8_t SFR_IAP_LAST  = 0xFFu;
 constexpr uint8_t TA_KEY1 = 0xAAu;
 constexpr uint8_t TA_KEY2 = 0x55u;
 
+constexpr uint8_t WDCON_SWRST  = 0x80u;  // WDCON.7: software reset
+constexpr uint8_t WDCON_PORF   = 0x40u;  // WDCON.6: power-on reset flag
 constexpr uint8_t WDCON_WDTIF  = 0x08u;  // WDCON.3: watchdog interrupt flag
 constexpr uint8_t WDCON_WDTRF  = 0x04u;  // WDCON.2: watchdog reset flag
 constexpr uint8_t WDCON_WDTRE  = 0x02u;  // WDCON.1: watchdog reset enable
@@ -181,19 +183,19 @@ void wdt_check_impl(Mcu51Context* ctx) {
         const bool ie_enabled = (ctx->sfr_shadow[CMS8S_SFR_EIE2] & (1u << 5)) != 0u;
         const bool re_enabled = (ctx->sfr_shadow[SFR_WDCON] & WDCON_WDTRE) != 0u;
 
-        if (ie_enabled) {
+        if (re_enabled) {
+            // ADR-0082 D4: Reset has highest priority over IRQ, suppresses Vector 20 dispatch
+            if (cms8s_priv(ctx)->sys.wdt_overflow_latched == 0u) {
+                cms8s_priv(ctx)->sys.wdt_overflow_latched = 1u;
+                wdt_overflow_policy();
+                wink_mcs51_trigger_reset(MCS51_RESET_REASON_WDT);
+            }
+        } else if (ie_enabled) {
             ctx->sfr_shadow[SFR_WDCON] |= WDCON_WDTIF;
             mcs51_raise_irq(IRQ_SOURCE_WDT);
             const uint64_t elapsed = now - cms8s_priv(ctx)->sys.wdt_last_feed_us;
             const uint64_t periods = elapsed / interval;
             cms8s_priv(ctx)->sys.wdt_last_feed_us += periods * interval;
-        }
-
-        if (re_enabled) {
-            if (cms8s_priv(ctx)->sys.wdt_overflow_latched == 0u) {
-                cms8s_priv(ctx)->sys.wdt_overflow_latched = 1u;
-                wdt_overflow_policy();
-            }
         }
     }
 }
@@ -243,23 +245,56 @@ extern "C" void on_clkdiv_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val
 extern "C" void on_wdcon_write(Mcu51Context* ctx, uint8_t addr, uint8_t old_val, uint8_t new_val) {
     if (!ctx) ctx = mcs51_get_context();
     if (!cms8s_hook_armed(ctx)) return;  // S2-1: stale hook on another family
-    if (!consume_unlock(ctx)) {
-        ctx->sfr_shadow[addr] = old_val;
-        return;
+
+    const bool unlocked = consume_unlock(ctx);
+    uint8_t effective_val = old_val;
+
+    // ADR-0082 D3 / P06: Bit 6 (PORF) requires NO TA. Firmware write 0 clears; write 1 is ignored.
+    if ((new_val & WDCON_PORF) == 0u) {
+        effective_val &= ~WDCON_PORF;
     }
-    // WDT reset timing is a coarse poll model (see wdt_check_impl); accepted
-    // (unlocked) writes persist in the shadow register and arm/feed here.
-    const bool was_re = (old_val & WDCON_WDTRE) != 0u;
-    const bool now_re = (new_val & WDCON_WDTRE) != 0u;
-    if (!was_re && now_re) {
-        cms8s_priv(ctx)->sys.wdt_last_feed_us = ctx->virtual_us;
-        cms8s_priv(ctx)->sys.wdt_overflow_latched = 0u;
+
+    if (unlocked) {
+        // Bit 7: SWRST (TA-protected) — 0->1 edge triggers software reset, self-clears to 0.
+        if ((old_val & WDCON_SWRST) == 0u && (new_val & WDCON_SWRST) != 0u) {
+            effective_val &= ~WDCON_SWRST;
+            wink_mcs51_trigger_reset(MCS51_RESET_REASON_SOFTWARE);
+        } else if ((new_val & WDCON_SWRST) == 0u) {
+            effective_val &= ~WDCON_SWRST;
+        }
+
+        // Bit 3: WDTIF (TA-protected) — write 0 clears; write 1 cannot set.
+        if ((new_val & WDCON_WDTIF) == 0u) {
+            effective_val &= ~WDCON_WDTIF;
+        }
+
+        // Bit 2: WDTRF (TA-protected) — write 0 clears; write 1 cannot set.
+        if ((new_val & WDCON_WDTRF) == 0u) {
+            effective_val &= ~WDCON_WDTRF;
+        }
+
+        // Bit 1: WDTRE (TA-protected) — R/W. 0->1 re-arms feed timestamp.
+        const bool was_re = (old_val & WDCON_WDTRE) != 0u;
+        const bool now_re = (new_val & WDCON_WDTRE) != 0u;
+        if (now_re) {
+            effective_val |= WDCON_WDTRE;
+            if (!was_re) {
+                cms8s_priv(ctx)->sys.wdt_last_feed_us = ctx->virtual_us;
+                cms8s_priv(ctx)->sys.wdt_overflow_latched = 0u;
+            }
+        } else {
+            effective_val &= ~WDCON_WDTRE;
+        }
+
+        // Bit 0: WDTCLR (TA-protected) — write 1 feeds and self-clears to 0.
+        if ((new_val & WDCON_WDTCLR) != 0u) {
+            cms8s_priv(ctx)->sys.wdt_last_feed_us = ctx->virtual_us;
+            cms8s_priv(ctx)->sys.wdt_overflow_latched = 0u;
+            effective_val &= ~WDCON_WDTCLR;
+        }
     }
-    if ((new_val & WDCON_WDTCLR) != 0u) {
-        cms8s_priv(ctx)->sys.wdt_last_feed_us = ctx->virtual_us;
-        cms8s_priv(ctx)->sys.wdt_overflow_latched = 0u;
-        ctx->sfr_shadow[addr] &= ~WDCON_WDTCLR;
-    }
+
+    ctx->sfr_shadow[addr] = effective_val;
 }
 
 // GAP-24 IAP/Flash trap (MCS51_FEAT_IAP_FLASH): the shadow keeps the value

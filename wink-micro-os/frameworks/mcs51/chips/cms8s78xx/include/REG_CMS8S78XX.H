@@ -1764,4 +1764,39 @@ static inline int wink_mcs51_printf(const char* fmt, ...) {
 }
 #define printf wink_mcs51_printf
 
+// ── 12) System Reset Management (from vendor system.c, ADR-0082) ────────────────
+
+#ifndef WINK_CMS8S_VENDOR_SYS_RESET
+#define WINK_CMS8S_VENDOR_SYS_RESET 1
+
+static inline void SYS_EnableSoftwareReset(void) {
+    uint8_t ea = EA;
+    EA = 0;
+    _nop_();
+    TA = 0xAA;
+    TA = 0x55;
+    WDCON |= WDT_WDCON_SWRST_Msk;
+    EA = ea;
+}
+
+static inline void SYS_DisableSoftwareReset(void) {
+    uint8_t ea = EA;
+    EA = 0;
+    _nop_();
+    TA = 0xAA;
+    TA = 0x55;
+    WDCON &= ~WDT_WDCON_SWRST_Msk;
+    EA = ea;
+}
+
+static inline uint8_t SYS_GetPowerOnResetFlag(void) {
+    return (WDCON & WDT_WDCON_PORF_Msk) ? 1 : 0;
+}
+
+static inline void SYS_ClearPowerOnResetFlag(void) {
+    WDCON &= ~WDT_WDCON_PORF_Msk;
+}
+#endif  // WINK_CMS8S_VENDOR_SYS_RESET
+
 #endif  // __C51__
+

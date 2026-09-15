@@ -3,6 +3,7 @@
 #include "mcs51_context.h"
 #include "mcs51_peripheral.h"
 #include "mcs51_sfr_map.h"
+#include "wink_mcs51_wdt.h"
 
 #include <cassert>
 #include <cstdlib>
@@ -135,6 +136,18 @@ void mcs51_context_reset(Mcu51Context* ctx) {
     // restore immediately after (same idiom as saved_isrs above).
     const uint8_t saved_idx = ctx->instance_index;
 
+    // ADR-0082 D3: Preserve reset reason and sticky PORF bit across memset
+    const uint8_t reason = ctx->reset_reason ? ctx->reset_reason : ctx->last_reset_reason;
+    const uint8_t saved_porf = ctx->sfr_shadow[0x97] & 0x40u;
+
+    // ADR-0072: Slave virtual clock is monotonic across warm resets (SWRST/WDT/EXT);
+    // only a cold power-on reset (POR) re-seeds virtual time to 0.
+    const bool is_warm_reset = (reason != MCS51_RESET_REASON_POR && reason != MCS51_RESET_REASON_NONE);
+    const uint64_t saved_virtual_us = is_warm_reset ? ctx->virtual_us : 0u;
+    const uint64_t saved_slice_start_us = is_warm_reset ? ctx->slice_start_us : 0u;
+    const uint32_t saved_quota_yields = is_warm_reset ? ctx->quota_yields : 0u;
+    const uint32_t saved_step_count = is_warm_reset ? ctx->step_count : 0u;
+
     // Zero entire context memory (also clears family + §8 model states,
     // which are per-instance fields since M2 — no file-static to clean).
     std::memset(ctx, 0, sizeof(Mcu51Context));
@@ -144,6 +157,11 @@ void mcs51_context_reset(Mcu51Context* ctx) {
     // (self-binding; core names no chip symbols, §3.1 one-way rule).
     ctx->instance_index = saved_idx;
     ctx->soc_priv = nullptr;
+    ctx->last_reset_reason = reason;
+    ctx->virtual_us = saved_virtual_us;
+    ctx->slice_start_us = saved_slice_start_us;
+    ctx->quota_yields = saved_quota_yields;
+    ctx->step_count = saved_step_count;
 
     // Restore ISR table and INT0/INT1 line baseline (port sampling
     // re-baselines in the chip pool, S4-D2).
@@ -237,9 +255,64 @@ void mcs51_context_reset(Mcu51Context* ctx) {
     // must not be disturbed by peripheral resets (GAP-04/GAP-13).
     apply_silicon_seeds(ctx);
 
+    // ADR-0082 D3: WDCON reset seeds and sticky flag application
+    if (ctx->family == MCS51_FAMILY_CMS8S78XX) {
+        if (reason == MCS51_RESET_REASON_POR || reason == MCS51_RESET_REASON_NONE) {
+            // Cold power-on reset: PORF forced 1, WDTRF 0
+            ctx->sfr_shadow[0x97] |= 0x40u;
+            ctx->sfr_shadow[0x97] &= ~0x04u;
+        } else {
+            // Warm reset (SWRST, WDT, EXT): restore sticky PORF
+            ctx->sfr_shadow[0x97] = (ctx->sfr_shadow[0x97] & ~0x40u) | saved_porf;
+            if (reason == MCS51_RESET_REASON_WDT) {
+                ctx->sfr_shadow[0x97] |= 0x04u;  // WDTRF set
+            } else {
+                ctx->sfr_shadow[0x97] &= ~0x04u; // WDTRF 0
+            }
+        }
+        // SWRST and WDTCLR always reset to 0
+        ctx->sfr_shadow[0x97] &= ~(0x80u | 0x01u);
+    }
+
     // Post-reset link fuse: a chip family without any registered chip model
     // means the register OBJECT never got linked (review hardening).
     verify_chip_models_registered(ctx);
+}
+
+void wink_mcs51_trigger_reset(mcs51_reset_reason_t reason) {
+    Mcu51Context* ctx = mcs51_get_context();
+    if (!ctx) return;
+    if (ctx->reset_guard) {
+        return;
+    }
+    if (ctx->reset_pending) {
+        return;
+    }
+    ctx->reset_pending = 1u;
+    ctx->reset_reason = static_cast<uint8_t>(reason);
+}
+
+bool wink_mcs51_has_pending_reset(void) {
+    Mcu51Context* ctx = mcs51_get_context();
+    return ctx ? (ctx->reset_pending != 0u) : false;
+}
+
+mcs51_reset_reason_t wink_mcs51_get_pending_reset_reason(void) {
+    Mcu51Context* ctx = mcs51_get_context();
+    return ctx ? static_cast<mcs51_reset_reason_t>(ctx->reset_reason) : MCS51_RESET_REASON_NONE;
+}
+
+mcs51_reset_reason_t wink_mcs51_get_last_reset_reason(void) {
+    Mcu51Context* ctx = mcs51_get_context();
+    return ctx ? static_cast<mcs51_reset_reason_t>(ctx->last_reset_reason) : MCS51_RESET_REASON_NONE;
+}
+
+void wink_mcs51_clear_pending_reset(void) {
+    Mcu51Context* ctx = mcs51_get_context();
+    if (ctx) {
+        ctx->reset_pending = 0u;
+        ctx->reset_reason = 0u;
+    }
 }
 
 uint32_t wink_mcs51_chip_models_missing_count(void) {

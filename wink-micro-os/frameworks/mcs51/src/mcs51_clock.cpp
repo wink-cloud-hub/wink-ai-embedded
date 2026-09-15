@@ -24,7 +24,7 @@ void do_catchup(void) {
     }
 }
 
-void cooperative_yield(void) {
+extern "C" void wink_mcs51_cooperative_yield(void) {
 #if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -38,6 +38,10 @@ void cooperative_yield(void) {
 #elif defined(_MSC_VER)
 #pragma warning(pop)
 #endif
+}
+
+void cooperative_yield(void) {
+    wink_mcs51_cooperative_yield();
 }
 
 void bill_master(uint32_t us) {

@@ -244,6 +244,11 @@ typedef struct Mcu51Context {
     // GAP-24 external MOVX bus occupancy (per-instance silicon
     // state; zeroed by context reset via memset).
     Mcs51ExtBusState extbus;
+    // ADR-0082 Reset Controller tracking fields
+    uint8_t            reset_pending;
+    uint8_t            reset_reason;
+    uint8_t            last_reset_reason;
+    uint8_t            reset_guard;
 } Mcu51Context;
 
 // ── Active context pointer and accessors ───────────────────────────────────
