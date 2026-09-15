@@ -1,0 +1,30 @@
+{
+  "appName": "reset_wdt",
+  "board": "cms8s78xx_devboard",
+  "devices": {
+    "led_p32": {
+      "id": "led_p32",
+      "type": "led",
+      "pinMapping": {
+        "A": 26
+      },
+      "properties": {
+        "activeHigh": true
+      }
+    },
+    "led_p33": {
+      "id": "led_p33",
+      "type": "led",
+      "pinMapping": {
+        "A": 27
+      },
+      "properties": {
+        "activeHigh": true
+      }
+    }
+  },
+  "family": "mcs51",
+  "core": "8051",
+  "mcu": "cms8s78xx",
+  "vendor": "cmsemicon"
+}
