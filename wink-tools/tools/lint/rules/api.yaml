@@ -1,0 +1,122 @@
+version: 1
+id: api
+metadata:
+  owner: 'wink-arch'
+  adr: ['ADR-0004', 'ADR-0043']
+
+layers: {}
+
+include_rules: []
+path_rules: []
+
+api_rules:
+  - id: NO-OPS-VTABLE
+    in: [bal_public, bal_math, bal_src, dal_public, dal_src]
+    deny_regex:
+      - pattern: '\b\w+_ops\s*\{'
+      - pattern: '\bcontainer_of\s*\('
+    context:
+      strip_comments: true
+      strip_strings: true
+      scope_by_kind:
+        public_header: declarations_only
+        private_header: full
+        source: full
+    except_regex: []
+    message: >-
+      Forbidden runtime ops/vtable / container_of (ADR-0004 static dispatch).
+    severity: error
+    immutable: true
+    refs: ['ADR-0004']
+
+  - id: NO-MALLOC-HOTPATH
+    in: [bal_src, dal_src, runtime_src]
+    deny_regex:
+      - pattern: '\b(malloc|calloc|realloc|free)\s*\('
+    context:
+      strip_comments: true
+      strip_strings: true
+      scope_by_kind:
+        source: full
+        public_header: full
+        private_header: full
+    except_regex:
+      - '\bfree_slot\s*\('
+      - '\bfree_\w+_slot\s*\('
+    message: >-
+      Hot-path malloc/free detected (warning for first ship; may promote to error).
+    severity: warning
+    immutable: false
+    refs: ['ADR-0043']
+
+  - id: NO-MALLOC-APP
+    in: [app_src]
+    deny_regex:
+      - pattern: '\b(malloc|calloc|realloc)\s*\('
+    context:
+      strip_comments: true
+      strip_strings: true
+      scope_by_kind:
+        source: full
+    except_regex: []
+    message: >-
+      Forbidden dynamic memory allocation in application layer (ADR-0045). Use static pools or framework allocation primitives.
+    severity: error
+    immutable: true
+    refs: ['ADR-0045']
+
+  - id: STATUS-NOT-BOOL-PUBLIC
+    in: [dal_public]
+    deny_regex:
+      - pattern: '^(?:__\w+\([^)]*\)\s*)*\bbool\s+dal_\w+\s*\('
+    context:
+      strip_comments: true
+      strip_strings: true
+      scope_by_kind:
+        public_header: declarations_only
+    except_regex: []
+    message: >-
+      Public DAL APIs should return wink_status_t, not bool
+      (known miss: complex multi-line signatures may evade v1 matcher).
+    severity: warning
+    immutable: false
+    refs: ['ADR-0001']
+
+  - id: NO-FLOAT-PWM-NEW
+    in: [bal_src, dal_src, app_src, runtime_src]
+    deny_regex:
+      - pattern: '\bpal_pwm_set_duty\s*\('
+    context:
+      strip_comments: true
+      strip_strings: true
+      scope_by_kind:
+        source: full
+    except_regex:
+      - 'pal_pwm_set_duty_bp\s*\('
+    message: >-
+      Forbidden float pal_pwm_set_duty() (ADR-0066): use pal_pwm_set_duty_bp()
+      with PAL_PWM_DUTY_PCT()/PERMILLE(). Legacy float wrappers live in
+      targets/* (out of scope); tests are out of scope. No in-scope exemptions.
+    severity: error
+    immutable: false
+    refs: ['ADR-0066']
+
+  - id: PWM-BP-LITERAL-SUSPECT
+    in: [bal_src, dal_src, app_src]
+    deny_regex:
+      - pattern: 'pal_pwm_set_duty_bp\s*\([^,]+,\s*([1-9]|[1-9][0-9]|100)\s*\)'
+    context:
+      strip_comments: true
+      strip_strings: true
+      scope_by_kind:
+        source: full
+    except_regex: []
+    message: >-
+      Suspect bp literal 1..100 (Did you mean PAL_PWM_DUTY_PCT(val)?).
+      Bare 0 (off) is allowed; 10000 = full. Decimals like 7.5% must use
+      PAL_PWM_DUTY_PERMILLE(75) or 750u, never _PCT(7.5).
+    severity: warning
+    immutable: false
+    refs: ['ADR-0066']
+
+ignore: []

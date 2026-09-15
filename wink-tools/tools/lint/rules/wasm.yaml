@@ -1,0 +1,34 @@
+version: 1
+id: wasm_parity
+metadata:
+  description: WebAssembly simulation ABI hash invariance and stub symbol coverage guards.
+  source: sdk
+wasm_rules:
+  - id: WASM-ABI-HASH-MATCH
+    severity: error
+    immutable: true
+    refs:
+      - ADR-0003
+      - ADR-0012
+    message: "PAL_WASM_ABI_HASH in pal_wasm_degradation.c must match normalized SHA256[0:8] hash of wasm_bridge.h."
+    help: "Recompute PAL_WASM_ABI_HASH from wasm_bridge.h extern declarations when modifying ABI contract."
+
+  - id: WASM-STUB-COVERAGE
+    severity: error
+    immutable: true
+    refs:
+      - ADR-0003
+    message: "All js_pal_* extern functions declared in wasm_bridge.h must have matching implementations or stubs in JS."
+    help: "Add missing js_pal_* symbol to wink_sim_stub.js or wink_sim_js.js."
+
+  - id: WASM-ABI-CATALOG
+    severity: error
+    immutable: false
+    refs:
+      - ADR-0003
+      - ADR-0042
+      - ADR-0054
+      - ADR-0057
+      - ADR-0066
+    message: "wasm_bridge.h <-> simulation ABI catalog <-> KEEPALIVE <-> TS declarations must stay in parity; generated Markdown must be fresh."
+    help: "Register the symbol in the simulation ABI catalog and regenerate the catalog after ABI changes. For known drift, mark the entry needs-fix with a review_ref."

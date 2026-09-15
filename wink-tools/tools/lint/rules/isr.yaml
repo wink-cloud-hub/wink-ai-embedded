@@ -1,0 +1,62 @@
+version: 1
+id: isr_rules
+metadata:
+  description: Interrupt Service Routine (ISR) and IRAM execution safety rules (ADR-0047).
+  source: sdk
+isr_rules:
+  - id: ISR-NO-FLASH-CALL
+    severity: error
+    immutable: true
+    refs:
+      - ADR-0047
+    target_roots:
+      - pal
+      - targets
+      - dal
+      - runtime
+    deny_calls:
+      - malloc
+      - calloc
+      - realloc
+      - free
+      - printf
+      - vsnprintf
+      - sprintf
+      - snprintf
+      - LOG_E
+      - LOG_W
+      - LOG_I
+      - LOG_D
+      - pal_os_sleep_ms
+      - vTaskDelay
+      - xQueueSend
+      - xQueueReceive
+      - xSemaphoreTake
+      - xSemaphoreGive
+      - abort
+      - assert
+    match_macros:
+      - PAL_ISR
+      - IRAM_ATTR
+      - PAL_IRAM_TEXT
+      - PAL_DEFINE_ISR
+    except_files:
+      - "pal_log_*.c"
+    context:
+      strip_comments: true
+      strip_strings: true
+    message: "ISR / IRAM functions must not invoke heap allocation, logging, blocking APIs, or non-FromISR FreeRTOS calls."
+    help: "Remove heap allocations and blocking delays from ISR. Use ring buffers or FreeRTOS *FromISR equivalents."
+
+  - id: ISR-IRAM-FLAG-REQUIRED
+    severity: error
+    immutable: true
+    refs:
+      - ADR-0047
+    target_roots:
+      - targets/esp32
+    deny_alloc_without_flag:
+      func: esp_intr_alloc
+      required_flag: ESP_INTR_FLAG_IRAM
+    message: "ESP32 hardware interrupt allocation must specify ESP_INTR_FLAG_IRAM."
+    help: "Add ESP_INTR_FLAG_IRAM to esp_intr_alloc() flags to prevent cache-disabled crashes."

@@ -1,0 +1,26 @@
+version: 1
+id: dal
+metadata:
+  owner: 'wink-arch'
+  adr: ['ADR-0004', 'ADR-0043', 'ADR-0046', 'ADR-0056']
+
+layers:
+  dal_public:
+    roots: ['dal/include']
+    kind: public_header
+  dal_src:
+    roots: ['dal/src']
+    kind: source
+  codegen_drivers:
+    roots: ['codegen/drivers']
+    kind: source
+  codegen_roles:
+    roots: ['codegen/roles']
+    kind: source
+
+include_rules: []
+api_rules: []
+path_rules: []
+user_surface_rules: []
+
+ignore: []

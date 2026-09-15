@@ -50,7 +50,7 @@ boards/
 | `metadata.vendor` | `string` | 否 | 芯片原厂供应商（如 `espressif`, `generic-8051`, `padauk`）。 |
 | `metadata.memory.sim_heap_quota_kb` | `integer` | **是** | 仿真与 WASM 运行期的堆内存配额基线（KB），作为内存配置的兜底参考。 |
 | **`onboard_devices`** | `object` | 否 | 板载出厂硬连线外设清单（如焊死在板上的 LED、按键、蜂鸣器）。 |
-| `onboard_devices.<name>.type` | `string` | **是** | 外设类型，必须匹配 `tools/codegen/drivers/` 中的已知驱动类型（如 `led`, `button`）。 |
+| `onboard_devices.<name>.type` | `string` | **是** | 外设类型，必须匹配 `wink-micro-os/codegen/drivers/` 中的已知驱动类型（如 `led`, `button`）。 |
 | `onboard_devices.<name>.gpio_pin` | `integer` | **是** | 外设硬连线对应的物理 GPIO 引脚编号。 |
 | `onboard_devices.<name>.active_high` | `boolean` | 否 | **有效电平极性**：`true` 表示高电平点亮/有效（拉电流驱动）；默认通常为 `true`。 |
 | `onboard_devices.<name>.active_low` | `boolean` | 否 | **有效电平极性**：`true` 表示低电平点亮/触发（灌电流驱动或内部上拉按键）。 |
@@ -64,7 +64,7 @@ boards/
 | `adc.pins.<gpio>.wifi_conflict` | `boolean` | 否 | **射频硬件冲突标记**：`true` 表示该引脚归属 ADC2，与片上 Wi-Fi/BLE 射频前端互斥。 |
 | `adc.default_full_scale_mv` | `integer` | 否 | 默认满量程参考电压（毫伏），如衰减 11dB 典型为 3100mV，供前端将原始采样值折算为电压。 |
 | `adc.default_resolution_bits` | `integer` | 否 | 模数转换精度（位），如 12bit (0~4095) 或 10bit (0~1023)。 |
-| **`headers`** | `object` | **是** | 外部排针丝印/别名到物理引脚或线性端口编号的映射字典。服务三条消费链路：codegen 期 `$board.headers.<KEY>` 符号解析、前端画布丝印与走线端点派生、仿真 PinArbiter 通道号约定。**注意：headers 标签本身不会在固件中生成具名 C 常量**（Arduino 引脚常量由专门的 `wink_board_pins.h` 生成契约承担），详见 [§3.3](#33-headers-排针映射与三方消费链路) 与 [§3.5](#35-wink_board_pinsh-板级引脚常量生成契约arduino)。 |
+| **`headers`** | `object` | **是** | 外部排针丝印/别名到物理引脚或线性端口编号的映射字典。服务三条消费链路：codegen 期 `$board.headers.<KEY>` 符号解析、前端画布丝印与走线端点派生、仿真器引脚通道号约定。**注意：headers 标签本身不会在固件中生成具名 C 常量**（Arduino 引脚常量由专门的 `wink_board_pins.h` 生成契约承担），详见 [§3.3](#33-headers-排针映射与三方消费链路) 与 [§3.5](#35-wink_board_pinsh-板级引脚常量生成契约arduino)。 |
 | `headers.<label>` | `integer` | **是** | 排针引脚名映射到的物理引脚或线性端口编号。 |
 
 ---
@@ -91,8 +91,8 @@ boards/
 * **ADC2**：GPIO 0, 2, 4, 12 ~ 15, 25 ~ 27。**ADC2 的控制器与 Wi-Fi / BLE 射频基带共享逻辑前端**。
 一旦底层激活了 Wi-Fi 栈（调用 `esp_wifi_start()`），Wi-Fi 驱动将周期性抢占 SAR ADC2 采样模块用于发射功率校准。此时应用程序若读取 ADC2 引脚，驱动会返回 `ESP_ERR_TIMEOUT`，严重时引发系统死锁。
 
-#### Codegen 静态门禁实现：
-在 `app_codegen.py` 的 `_validate_adc_gate()` 中：
+#### 生成期静态门禁：
+代码生成阶段会执行以下检查：
 1. 校验使用 `analog_input` 角色的 GPIO 是否在 `adc.pins` 列表中；
 2. 当 `wink-app.json` 中配置了 `system.connectivity.wifi: true` 或 `ble: true` 时，若引脚标记了 `wifi_conflict: true`，**在编译期直接报错终止**：
    ```text
@@ -114,11 +114,11 @@ boards/
       ┌─────────────────────────────┼─────────────────────────────┐
       ▼                             ▼                             ▼
 ① codegen 符号解析（构建期）   ② 前端画布与走线（UI 运行期）  ③ 仿真通道号约定（固件↔仿真器）
-wink-app.json 中               embedded-frontend:            线性编号 port*8+bit 是
-"$board.headers.P3.2" → 26     board-json-loader.ts:         PinArbiter 的电平投递地址；
-写入 generated/device_tree.c   丝印规范名去重、排针几何、    mcs51_board_config.h 的
-与 device-tree.json，仅存整数  走线 LEFT/RIGHT 吸附端点      MCS51_PIN_IDX_PORT/BIT 宏
-                               均由 headers 派生             与此约定 MUST match
+wink-app.json 中               前端画布从 headers 派生：      线性编号 port*8+bit 是
+"$board.headers.P3.2" → 26     丝印规范名去重、排针几何、     仿真引脚通道号；
+写入 generated/device_tree.c   走线 LEFT/RIGHT 吸附端点       mcs51_board_config.h 的
+与 device-tree.json，仅存整数  均由 headers 派生              MCS51_PIN_IDX_PORT/BIT 宏
+                                                              与此约定 MUST match
 ```
 
 #### 1. 链路一：codegen 期符号解析（标签不进入固件）
@@ -141,7 +141,7 @@ wink-app.json 中               embedded-frontend:            线性编号 port*
 
 #### 2. 链路二：前端画布丝印与走线端点
 
-前端仿真器（`embedded-frontend/boards/board-json-loader.ts`）直接加载板级 JSON：
+在线仿真器的画布直接加载板级 JSON：
 
 * `Object.values(headers)` 去重排序 → 板上可布线引脚集合（`gpioPins` / `routablePins`）；
 * **规范丝印名**：多个别名指向同一 GPIO 时（如 `D2` 与 `GPIO2` 同为 2），按芯片家族优先级只保留一个画布标签——esp32 优先 `IO#/GPIO#`（避免与板载 SPI Flash 的 D0~D3 丝印混淆），avr 优先 `D#/A#`，mcs51 为 `P#.#`，pdk 为 `PA.#/PB.#`；
@@ -162,14 +162,14 @@ $$\text{linear\_index} = (\text{port} \times 8) + \text{bit}$$
 }
 ```
 
-该投影同时是**固件侧与仿真侧的共同编号约定**：固件生成头 `mcs51_board_config.h` 提供 `MCS51_PIN_IDX_PORT(idx) = (idx >> 3) & 0x3` 与 `MCS51_PIN_IDX_BIT(idx) = idx & 0x7` 两个通用宏，其头注释明确要求 *"Pin index convention (MUST match boards/\<board\>.json headers)"*——board.json 是 SSOT，固件宏与 PinArbiter 通道号都是消费方，codegen 不为每个排针标签生成常量。
+该投影同时是**固件侧与仿真侧的共同编号约定**：固件生成头 `mcs51_board_config.h` 提供 `MCS51_PIN_IDX_PORT(idx) = (idx >> 3) & 0x3` 与 `MCS51_PIN_IDX_BIT(idx) = idx & 0x7` 两个通用宏，其头注释明确要求 *"Pin index convention (MUST match boards/\<board\>.json headers)"*——board.json 是 SSOT，固件宏与仿真通道号都是消费方，codegen 不为每个排针标签生成常量。
 
 **实战闭环链路（以按键点灯 `mcs51_button_led` 为例）**：
 
 1. 用户原生 C 源码：`sbit KEY = P3^2;`（端口 3，位 2）；
 2. `headers` 数学投影：`P3.2` 对应通道 $(3 \times 8) + 2 = \mathbf{26}$；
 3. `wink-app.json` / 设备树：按钮外设配置 `"gpio_pin": 26`（或 `"$board.headers.P3.2"`）；
-4. UniSim 虚拟外设：当用户在界面按下按钮，虚拟引脚仲裁器（PinArbiter）将电平注入通道 26；
+4. 在线仿真器：当用户在界面按下按钮，虚拟外设将电平注入通道 26；
 5. 仿真桥解码：mcs51 框架用 `idx >> 3` / `idx & 0x7` 将通道 26 分解回 (P3, 位 2)，写入虚拟 SFR 位；原生固件中 `sbit KEY = P3^2` 读取的正是该 SFR 位。
 
 #### 4. 原生源码“零修改”的真实机制
@@ -194,7 +194,7 @@ add_compile_definitions(WINK_MCU_${_wink_app_mcu_upper}=1)
 ```
 * 例如：`"mcu": "cms8s78xx"` $\to$ 注入 `-DWINK_MCU_CMS8S78XX=1`。
 
-#### 2. `config_h.py`：头文件级宏保护
+#### 2. 生成配置头：宏定义保护
 在生成 `wink_config.h` 时，也会生成带防重定义的宏开关：
 ```c
 #ifndef WINK_MCU_ESP32
@@ -204,7 +204,7 @@ add_compile_definitions(WINK_MCU_${_wink_app_mcu_upper}=1)
 
 #### 3. C/C++ 固件层：原厂寄存器统一门面 (`wink_mcu.h`)
 在轻量 MCU（如 8051、Padauk）开发中，寄存器头文件千差万别（标准 8051 用 `REGX52.H`，中微用 `REG_CMS8S78XX.H`，应广用 `pfs154.h`）。
-Wink Micro OS 设计了统一的门面头文件 `wink_mcu.h`（`wink-micro-os/runtime/include/wink_mcu.h`）：门面按此宏转发到各平台路由头，51 家族由 `frameworks/mcs51/include/mcs51_family_route.h` 逐家族路由（Stage7 收尾后 Keil 寄存器包含只存在于沙箱路由头，不再进入可移植门面）：
+Wink Micro OS 设计了统一的门面头文件 `wink_mcu.h`（`wink-micro-os/runtime/include/wink_mcu.h`）：门面按此宏转发到各平台路由头，51 家族由 `frameworks/mcs51/include/mcs51_family_route.h` 逐家族路由（Keil 寄存器包含只存在于路由头，不进入可移植门面）：
 ```c
 // wink-micro-os/runtime/include/wink_mcu.h（可移植门面，节选）
 #if defined(WINK_MCU_CMS8S78XX) || defined(WINK_MCU_AT89C52) || ...
@@ -220,7 +220,7 @@ Wink Micro OS 设计了统一的门面头文件 `wink_mcu.h`（`wink-micro-os/ru
 **开发者编写应用时只需统一 `#include "wink_mcu.h"`**，换芯片时只需在配置中修改 `mcu`，无需更改业务代码中的头文件包含。
 
 #### 4. 前端与 Web 仿真器：仿真架构等级推导 (ADR-0064)
-`runtime_device_tree.py` 将 `mcu` 发射到 `device_tree.json` 供前端推导（`chip-deducer.ts`），决定仿真器架构及画布外观：
+生成流水线将 `mcu` 写入 `device_tree.json` 供前端推导，决定仿真器架构及画布外观：
 * **Tier 1 (AI-Native OS, 如 `esp32`, `stm32`)**：全功能 WASM 运行时，模拟调度器与多任务；
 * **Tier 2 (C51 Proxy, 如 `at89c52`, `cms8s78xx`)**：8051 固件指令拦截与 SFR 虚拟仿真网关；
 * **Tier 3 (1:1 ISA VM, 如 `pfs154`, `pms150c`)**：周期精确级硬件指令集虚拟机。
@@ -258,9 +258,9 @@ Wink Micro OS 设计了统一的门面头文件 `wink_mcu.h`（`wink-micro-os/ru
 
 ---
 
-## 4. 工具链统一加载机制 (`loader.py`)
+## 4. 板卡定义加载机制
 
-在 Phase 2 重构后，工具链彻底弃用了硬编码平铺路径，全部收敛至集中式模块 `tools.codegen.boards.loader`（[`loader.py`](./loader.py)）。
+工具链通过统一的加载器检索板卡定义（按下列形式与优先级），不依赖硬编码路径。
 
 ### 4.1 检索支持的形式
 当 `wink-app.json` 声明 `"board"` 时，支持以下 2 种规范形式：
@@ -268,10 +268,10 @@ Wink Micro OS 设计了统一的门面头文件 `wink_mcu.h`（`wink-micro-os/ru
 2. **带家族的命名空间名**：如 `"board": "mcs51/stc89c52_devboard"` 或 `"board": "esp32/esp32_devkitc_v4"`。
 
 ### 4.2 目录搜索优先级
-加载器在内存建立高速哈希索引，按以下顺序检索候选根目录下的 `boards/<family>/<board_name>.json`：
+加载器按以下顺序检索候选根目录下的 `boards/<family>/<board_name>.json`：
 1. **App 局部优先**：`<app_dir>/boards/*/<board_name>.json` 或 `<app_dir>/<board_name>.json`；
 2. **SDK / 外部源码树**：环境变量 `$WINK_AI_EMBEDDED_DIR/.../boards/*/<board_name>.json`；
-3. **工具链内置默认**：`packages/wink-tools/tools/codegen/boards/*/<board_name>.json`。
+3. **本仓库注册表（默认）**：`wink-tools/tools/codegen/boards/*/<board_name>.json`。
 
 ---
 
@@ -283,5 +283,5 @@ Wink Micro OS 设计了统一的门面头文件 `wink_mcu.h`（`wink-micro-os/ru
 4. 若芯片带硬件总线（I2C/SPI），定义 `buses` 的默认引脚；
 5. 在任意 App 的 `wink-app.json` 中配置 `"board": "<board_name>"`，运行生成验证：
    ```bash
-   winkcli gen app --app <your_app_name>
+   winkcli gen app-schema --app <your_app_name>
    ```
