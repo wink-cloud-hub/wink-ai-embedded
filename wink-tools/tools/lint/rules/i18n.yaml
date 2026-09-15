@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: GPL-3.0-only
+version: 1
+id: i18n
+metadata:
+  owner: 'wink-arch'
+
+include_rules: []
+api_rules: []
+path_rules: []
+user_surface_rules: []
+ignore: []

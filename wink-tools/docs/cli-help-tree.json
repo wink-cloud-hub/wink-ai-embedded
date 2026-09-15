@@ -1,0 +1,1850 @@
+{
+  "schema": 1,
+  "winkcli_version": "0.1.0",
+  "generated_at": "2026-09-15T06:15:44Z",
+  "global_flags": [
+    {
+      "flags": [
+        "--skip-toolchain-check"
+      ],
+      "dest": "skip_toolchain_check",
+      "metavar": null,
+      "type": null,
+      "default": false,
+      "required": false,
+      "nargs": 0,
+      "choices": null,
+      "help": "Bypass toolchain gating (emergency escape hatch; prints WARN)."
+    },
+    {
+      "flags": [
+        "--json"
+      ],
+      "dest": "json",
+      "metavar": null,
+      "type": null,
+      "default": false,
+      "required": false,
+      "nargs": 0,
+      "choices": null,
+      "help": "Output structured JSON telemetry envelope to stdout."
+    }
+  ],
+  "commands": [
+    {
+      "name": "auth",
+      "aliases": [],
+      "help": "Inspect authentication status and account mode",
+      "flags": [],
+      "subcommands": [
+        {
+          "name": "login",
+          "aliases": [],
+          "help": "Log in to Wink Cloud (reserved for cloud release)",
+          "flags": [],
+          "subcommands": []
+        },
+        {
+          "name": "logout",
+          "aliases": [],
+          "help": "Log out of Wink Cloud account",
+          "flags": [],
+          "subcommands": []
+        },
+        {
+          "name": "status",
+          "aliases": [],
+          "help": "Show current authentication mode and entitlements",
+          "flags": [],
+          "subcommands": []
+        }
+      ]
+    },
+    {
+      "name": "build",
+      "aliases": [],
+      "help": "Build Host or WASM simulators",
+      "flags": [],
+      "subcommands": [
+        {
+          "name": "host",
+          "aliases": [],
+          "help": "Build host simulator binary for an app",
+          "flags": [
+            {
+              "flags": [
+                "--app"
+              ],
+              "dest": "app",
+              "metavar": null,
+              "type": null,
+              "default": "oled_dashboard",
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "App name in samples/ or path to app directory"
+            },
+            {
+              "flags": [
+                "--clean"
+              ],
+              "dest": "clean",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Clean the build directory before building"
+            },
+            {
+              "flags": [
+                "--sdk-mode"
+              ],
+              "dest": "sdk_mode",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": [
+                "source",
+                "binary"
+              ],
+              "help": "SDK mode: 'source' (build from source) or 'binary' (use precompiled .a)."
+            }
+          ],
+          "subcommands": []
+        },
+        {
+          "name": "sim",
+          "aliases": [],
+          "help": "Build full unisim simulation assets (device-tree.json + wasm bundle)",
+          "flags": [
+            {
+              "flags": [
+                "--app"
+              ],
+              "dest": "app",
+              "metavar": null,
+              "type": null,
+              "default": "oled_dashboard",
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "App name in samples/ or path to app directory"
+            },
+            {
+              "flags": [
+                "--all"
+              ],
+              "dest": "all",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Build simulation assets for all discovered apps"
+            },
+            {
+              "flags": [
+                "--out"
+              ],
+              "dest": "out",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Destination directory (default: <app_dir>/unisim-assets)"
+            },
+            {
+              "flags": [
+                "--clean"
+              ],
+              "dest": "clean",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Clean the build directory before building"
+            },
+            {
+              "flags": [
+                "--sdk-mode"
+              ],
+              "dest": "sdk_mode",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": [
+                "source",
+                "binary"
+              ],
+              "help": "SDK mode: 'source' (build from source) or 'binary' (use precompiled .a)."
+            }
+          ],
+          "subcommands": []
+        },
+        {
+          "name": "sim-assets",
+          "aliases": [],
+          "help": "Build full unisim simulation assets (device-tree.json + wasm bundle)",
+          "flags": [
+            {
+              "flags": [
+                "--app"
+              ],
+              "dest": "app",
+              "metavar": null,
+              "type": null,
+              "default": "oled_dashboard",
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "App name in samples/ or path to app directory"
+            },
+            {
+              "flags": [
+                "--all"
+              ],
+              "dest": "all",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Build simulation assets for all discovered apps"
+            },
+            {
+              "flags": [
+                "--out"
+              ],
+              "dest": "out",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Destination directory (default: <app_dir>/unisim-assets)"
+            },
+            {
+              "flags": [
+                "--clean"
+              ],
+              "dest": "clean",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Clean the build directory before building"
+            },
+            {
+              "flags": [
+                "--sdk-mode"
+              ],
+              "dest": "sdk_mode",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": [
+                "source",
+                "binary"
+              ],
+              "help": "SDK mode: 'source' (build from source) or 'binary' (use precompiled .a)."
+            }
+          ],
+          "subcommands": []
+        },
+        {
+          "name": "unisim-plugin",
+          "aliases": [],
+          "help": "Pre-bundle a peripheral plugin (simulation.js + frontend.js)",
+          "flags": [
+            {
+              "flags": [
+                "--path"
+              ],
+              "dest": "path",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": true,
+              "nargs": null,
+              "choices": null,
+              "help": "Peripheral project root"
+            },
+            {
+              "flags": [
+                "--out"
+              ],
+              "dest": "out",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Output directory"
+            },
+            {
+              "flags": [
+                "--mode"
+              ],
+              "dest": "mode",
+              "metavar": null,
+              "type": null,
+              "default": "production",
+              "required": false,
+              "nargs": null,
+              "choices": [
+                "production",
+                "development"
+              ],
+              "help": "NODE_ENV forwarded to Vite"
+            }
+          ],
+          "subcommands": []
+        },
+        {
+          "name": "wasm",
+          "aliases": [],
+          "help": "Build WASM simulator binary for an app",
+          "flags": [
+            {
+              "flags": [
+                "--app"
+              ],
+              "dest": "app",
+              "metavar": null,
+              "type": null,
+              "default": "oled_dashboard",
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "App name in samples/ or path to app directory"
+            },
+            {
+              "flags": [
+                "--clean"
+              ],
+              "dest": "clean",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Clean the build directory before building"
+            },
+            {
+              "flags": [
+                "--sdk-mode"
+              ],
+              "dest": "sdk_mode",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": [
+                "source",
+                "binary"
+              ],
+              "help": "SDK mode: 'source' (build from source) or 'binary' (use precompiled .a)."
+            }
+          ],
+          "subcommands": []
+        }
+      ]
+    },
+    {
+      "name": "completion",
+      "aliases": [],
+      "help": "Generate Shell autocompletion script",
+      "flags": [
+        {
+          "flags": [],
+          "dest": "shell",
+          "metavar": null,
+          "type": null,
+          "default": null,
+          "required": true,
+          "nargs": null,
+          "choices": [
+            "bash",
+            "powershell",
+            "zsh"
+          ],
+          "help": "Shell type for completion script generation"
+        }
+      ],
+      "subcommands": []
+    },
+    {
+      "name": "create",
+      "aliases": [],
+      "help": "Create C language DAL driver or App scaffolding",
+      "flags": [],
+      "subcommands": [
+        {
+          "name": "app",
+          "aliases": [],
+          "help": "Scaffold a new Wink Micro App directory",
+          "flags": [
+            {
+              "flags": [],
+              "dest": "app_name",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": true,
+              "nargs": null,
+              "choices": null,
+              "help": "Name of application directory"
+            }
+          ],
+          "subcommands": []
+        },
+        {
+          "name": "dal",
+          "aliases": [],
+          "help": "Scaffold DAL .h/.c + codegen driver plugin",
+          "flags": [
+            {
+              "flags": [],
+              "dest": "type",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": true,
+              "nargs": null,
+              "choices": null,
+              "help": "Driver type identifier (e.g., hmc5883l)"
+            },
+            {
+              "flags": [
+                "--category"
+              ],
+              "dest": "category",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": true,
+              "nargs": null,
+              "choices": [
+                "sensor",
+                "actuator",
+                "display",
+                "storage",
+                "comm",
+                "input",
+                "output"
+              ],
+              "help": "DAL subcategory directory under dal/include/ and dal/src/"
+            },
+            {
+              "flags": [
+                "--actuator",
+                "--is-actuator"
+              ],
+              "dest": "actuator",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Driver represents an actuator (safe_off_fn required)"
+            },
+            {
+              "flags": [
+                "--role"
+              ],
+              "dest": "role",
+              "metavar": null,
+              "type": null,
+              "default": "",
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Optional default_role; also scaffolds roles/<role>.yaml"
+            },
+            {
+              "flags": [
+                "--pin-field"
+              ],
+              "dest": "pin_fields",
+              "metavar": null,
+              "type": null,
+              "default": [],
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Config pin field name (repeatable; default: gpio_pin)"
+            },
+            {
+              "flags": [
+                "--force"
+              ],
+              "dest": "force",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Overwrite existing scaffold files"
+            }
+          ],
+          "subcommands": []
+        }
+      ]
+    },
+    {
+      "name": "dev",
+      "aliases": [],
+      "help": "Watch + HMR broadcast for peripheral plugins (Phase 2)",
+      "flags": [],
+      "subcommands": [
+        {
+          "name": "unisim-plugin",
+          "aliases": [],
+          "help": "Watch + HMR broadcast for a peripheral plugin (Phase 2)",
+          "flags": [
+            {
+              "flags": [
+                "--path"
+              ],
+              "dest": "path",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": true,
+              "nargs": null,
+              "choices": null,
+              "help": "Peripheral project root"
+            },
+            {
+              "flags": [
+                "--port"
+              ],
+              "dest": "port",
+              "metavar": null,
+              "type": "int",
+              "default": 5173,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Vite HMR port"
+            }
+          ],
+          "subcommands": []
+        }
+      ]
+    },
+    {
+      "name": "doctor",
+      "aliases": [],
+      "help": "Probe every registered toolchain capability",
+      "flags": [],
+      "subcommands": []
+    },
+    {
+      "name": "esp32",
+      "aliases": [],
+      "help": "Build, flash, or monitor ESP32 firmware",
+      "flags": [
+        {
+          "flags": [
+            "--app"
+          ],
+          "dest": "app",
+          "metavar": null,
+          "type": null,
+          "default": "devkitc_smoke",
+          "required": false,
+          "nargs": null,
+          "choices": null,
+          "help": "App name in samples/ or path to app directory"
+        },
+        {
+          "flags": [],
+          "dest": "idf_args",
+          "metavar": null,
+          "type": null,
+          "default": [
+            "build"
+          ],
+          "required": false,
+          "nargs": "*",
+          "choices": null,
+          "help": "Arguments forwarded to idf.py"
+        }
+      ],
+      "subcommands": []
+    },
+    {
+      "name": "gen",
+      "aliases": [],
+      "help": "Run device tree & config macro codegen",
+      "flags": [
+        {
+          "flags": [
+            "--app"
+          ],
+          "dest": "app",
+          "metavar": null,
+          "type": null,
+          "default": "oled_dashboard",
+          "required": false,
+          "nargs": null,
+          "choices": null,
+          "help": "App name in samples/ or path to app directory"
+        }
+      ],
+      "subcommands": [
+        {
+          "name": "app-schema",
+          "aliases": [],
+          "help": "Export micro-app DeviceTree JSON for frontend simulation",
+          "flags": [
+            {
+              "flags": [
+                "--app"
+              ],
+              "dest": "app",
+              "metavar": null,
+              "type": null,
+              "default": "oled_dashboard",
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "App name in samples/ or path to app directory"
+            },
+            {
+              "flags": [
+                "--out"
+              ],
+              "dest": "out",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Output file path (default: stdout)"
+            },
+            {
+              "flags": [
+                "--peripherals-dir"
+              ],
+              "dest": "peripherals_dir",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Path to peripherals directory to dynamically scan manifests"
+            },
+            {
+              "flags": [
+                "--manifest-index"
+              ],
+              "dest": "manifest_index",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Optional path to static manifest_index.json"
+            }
+          ],
+          "subcommands": []
+        },
+        {
+          "name": "unisim-plugin-schema",
+          "aliases": [],
+          "help": "Regenerate schema.json from manifest.json for peripheral plugin",
+          "flags": [
+            {
+              "flags": [
+                "--path"
+              ],
+              "dest": "path",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": true,
+              "nargs": null,
+              "choices": null,
+              "help": "Peripheral project root"
+            },
+            {
+              "flags": [
+                "--out"
+              ],
+              "dest": "out",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Output schema.json path"
+            },
+            {
+              "flags": [
+                "--no-overwrite"
+              ],
+              "dest": "no_overwrite",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Fail if schema.json already exists"
+            }
+          ],
+          "subcommands": []
+        },
+        {
+          "name": "wasm-export",
+          "aliases": [],
+          "help": "Generate CMake WASM export configuration header",
+          "flags": [
+            {
+              "flags": [
+                "--input"
+              ],
+              "dest": "input",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": true,
+              "nargs": null,
+              "choices": null,
+              "help": "Input exported_runtime_functions.json"
+            },
+            {
+              "flags": [
+                "--output"
+              ],
+              "dest": "output",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": true,
+              "nargs": null,
+              "choices": null,
+              "help": "Output .cmake header path"
+            }
+          ],
+          "subcommands": []
+        }
+      ]
+    },
+    {
+      "name": "i18n",
+      "aliases": [],
+      "help": "Scan repository for unextracted i18n Chinese text strings",
+      "flags": [],
+      "subcommands": [
+        {
+          "name": "scan",
+          "aliases": [],
+          "help": "Scan C/C++/TS/YAML files for raw i18n strings",
+          "flags": [
+            {
+              "flags": [
+                "--path"
+              ],
+              "dest": "path",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Specific directory to scan"
+            },
+            {
+              "flags": [
+                "--strict"
+              ],
+              "dest": "strict",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Fail with non-zero exit code if unextracted strings found"
+            },
+            {
+              "flags": [
+                "--all"
+              ],
+              "dest": "all",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Run all checks except logic invariant"
+            }
+          ],
+          "subcommands": []
+        }
+      ]
+    },
+    {
+      "name": "lint",
+      "aliases": [],
+      "help": "Run YAML layer/API/Arduino lints (ADR-0043)",
+      "flags": [
+        {
+          "flags": [
+            "--root"
+          ],
+          "dest": "root",
+          "metavar": null,
+          "type": null,
+          "default": null,
+          "required": false,
+          "nargs": null,
+          "choices": null,
+          "help": "SDK root to scan (default: wink-micro-os/)"
+        },
+        {
+          "flags": [
+            "--config"
+          ],
+          "dest": "config",
+          "metavar": null,
+          "type": null,
+          "default": [],
+          "required": false,
+          "nargs": null,
+          "choices": null,
+          "help": "Extra YAML config path (repeatable)"
+        },
+        {
+          "flags": [
+            "--pack"
+          ],
+          "dest": "pack",
+          "metavar": null,
+          "type": null,
+          "default": null,
+          "required": false,
+          "nargs": null,
+          "choices": null,
+          "help": "Rule pack id to run"
+        },
+        {
+          "flags": [
+            "--lint-paths"
+          ],
+          "dest": "lint_paths",
+          "metavar": null,
+          "type": null,
+          "default": [],
+          "required": false,
+          "nargs": null,
+          "choices": null,
+          "help": "Extra external lint pack directory (repeatable)"
+        },
+        {
+          "flags": [
+            "--rule"
+          ],
+          "dest": "rule",
+          "metavar": null,
+          "type": null,
+          "default": null,
+          "required": false,
+          "nargs": null,
+          "choices": null,
+          "help": "Only report findings for this rule id"
+        },
+        {
+          "flags": [
+            "--paths"
+          ],
+          "dest": "paths",
+          "metavar": null,
+          "type": null,
+          "default": null,
+          "required": false,
+          "nargs": "*",
+          "choices": null,
+          "help": "Incremental scan: only these files"
+        },
+        {
+          "flags": [
+            "--changed"
+          ],
+          "dest": "changed",
+          "metavar": null,
+          "type": null,
+          "default": null,
+          "required": false,
+          "nargs": "?",
+          "choices": null,
+          "help": "Derive --paths from git diff"
+        },
+        {
+          "flags": [
+            "--format"
+          ],
+          "dest": "format",
+          "metavar": null,
+          "type": null,
+          "default": "text",
+          "required": false,
+          "nargs": null,
+          "choices": [
+            "text",
+            "json",
+            "sarif"
+          ],
+          "help": "Output format"
+        },
+        {
+          "flags": [
+            "--output"
+          ],
+          "dest": "output",
+          "metavar": null,
+          "type": null,
+          "default": null,
+          "required": false,
+          "nargs": null,
+          "choices": null,
+          "help": "Write report to FILE instead of stdout"
+        },
+        {
+          "flags": [
+            "--strict"
+          ],
+          "dest": "strict",
+          "metavar": null,
+          "type": null,
+          "default": false,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "help": "Treat warnings as failures"
+        },
+        {
+          "flags": [
+            "--explain"
+          ],
+          "dest": "explain",
+          "metavar": "RULE_ID",
+          "type": null,
+          "default": null,
+          "required": false,
+          "nargs": null,
+          "choices": null,
+          "help": "Print rule explanation and exit 0"
+        },
+        {
+          "flags": [
+            "--report-allowlist"
+          ],
+          "dest": "report_allowlist",
+          "metavar": null,
+          "type": null,
+          "default": false,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "help": "Report allowlisted / expiring allow_paths entries"
+        },
+        {
+          "flags": [
+            "--baseline"
+          ],
+          "dest": "baseline",
+          "metavar": null,
+          "type": null,
+          "default": null,
+          "required": false,
+          "nargs": null,
+          "choices": null,
+          "help": "Optional baseline file for fingerprint diff. Known issues in baseline are suppressed. (Do NOT pass --baseline when generating/updating a baseline file)"
+        },
+        {
+          "flags": [
+            "--today"
+          ],
+          "dest": "today",
+          "metavar": null,
+          "type": null,
+          "default": null,
+          "required": false,
+          "nargs": null,
+          "choices": null,
+          "help": "Override today for until expiry (YYYY-MM-DD)"
+        }
+      ],
+      "subcommands": []
+    },
+    {
+      "name": "pack",
+      "aliases": [],
+      "help": "Package Wink Micro OS SDK (source or binary)",
+      "flags": [],
+      "subcommands": [
+        {
+          "name": "binary",
+          "aliases": [],
+          "help": "Pack precompiled binary SDK release",
+          "flags": [
+            {
+              "flags": [
+                "--out"
+              ],
+              "dest": "out",
+              "metavar": null,
+              "type": null,
+              "default": "build/dist",
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Output directory for binary SDK"
+            },
+            {
+              "flags": [
+                "--target"
+              ],
+              "dest": "target",
+              "metavar": null,
+              "type": null,
+              "default": "host",
+              "required": false,
+              "nargs": null,
+              "choices": [
+                "host",
+                "wasm",
+                "esp32",
+                "all"
+              ],
+              "help": "Target platform(s) to include"
+            },
+            {
+              "flags": [
+                "--skip-build"
+              ],
+              "dest": "skip_build",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Skip cmake configure/build (use existing build-dirs)"
+            }
+          ],
+          "subcommands": []
+        },
+        {
+          "name": "source",
+          "aliases": [],
+          "help": "Pack source SDK release tarball",
+          "flags": [
+            {
+              "flags": [
+                "--out"
+              ],
+              "dest": "out",
+              "metavar": null,
+              "type": null,
+              "default": "build/dist",
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Output directory for tarball"
+            }
+          ],
+          "subcommands": []
+        }
+      ]
+    },
+    {
+      "name": "schema",
+      "aliases": [],
+      "help": "Manage and migrate driver YAML schemas",
+      "flags": [],
+      "subcommands": [
+        {
+          "name": "migrate",
+          "aliases": [],
+          "help": "Write *.migrated.yaml sidecar for Schema 1.1",
+          "flags": [
+            {
+              "flags": [],
+              "dest": "paths",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": true,
+              "nargs": "+",
+              "choices": null,
+              "help": "Driver or role YAML files to migrate (writes *.migrated.yaml)"
+            },
+            {
+              "flags": [
+                "--force"
+              ],
+              "dest": "force",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Overwrite existing *.migrated.yaml sidecars"
+            }
+          ],
+          "subcommands": []
+        }
+      ]
+    },
+    {
+      "name": "setup",
+      "aliases": [],
+      "help": "Inspect or edit ~/.wink/tools.json",
+      "flags": [
+        {
+          "flags": [
+            "--init",
+            "--clone"
+          ],
+          "dest": "do_init",
+          "metavar": null,
+          "type": null,
+          "default": false,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "help": "Auto-clone the official wink-ai-embedded SDK suite to standard location."
+        },
+        {
+          "flags": [
+            "--git-url"
+          ],
+          "dest": "git_url",
+          "metavar": "URL",
+          "type": null,
+          "default": "https://github.com/wink-ai/wink-ai-embedded.git",
+          "required": false,
+          "nargs": null,
+          "choices": null,
+          "help": "Git repository URL for SDK clone (default: https://github.com/wink-ai/wink-ai-embedded.git)."
+        },
+        {
+          "flags": [
+            "--embedded-dir"
+          ],
+          "dest": "embedded_dir",
+          "metavar": "PATH",
+          "type": null,
+          "default": null,
+          "required": false,
+          "nargs": null,
+          "choices": null,
+          "help": "Link to an existing local wink-ai-embedded directory."
+        },
+        {
+          "flags": [
+            "--wizard"
+          ],
+          "dest": "wizard",
+          "metavar": null,
+          "type": null,
+          "default": false,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "help": "Launch interactive setup wizard."
+        },
+        {
+          "flags": [
+            "--non-interactive"
+          ],
+          "dest": "non_interactive",
+          "metavar": null,
+          "type": null,
+          "default": false,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "help": "Run non-interactively (requires --init or --embedded-dir)."
+        },
+        {
+          "flags": [
+            "--set"
+          ],
+          "dest": "set_kv",
+          "metavar": "KEY=VALUE",
+          "type": null,
+          "default": null,
+          "required": false,
+          "nargs": null,
+          "choices": null,
+          "help": "Validate and write paths[KEY]=VALUE."
+        },
+        {
+          "flags": [
+            "--workspace"
+          ],
+          "dest": "workspace",
+          "metavar": null,
+          "type": null,
+          "default": false,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "help": "With --set, write to <workspace>/.wink/tools.json instead of user config."
+        }
+      ],
+      "subcommands": []
+    },
+    {
+      "name": "sim",
+      "aliases": [],
+      "help": "Manage, build, and run the Wink Unified Simulation Engine (winksim)",
+      "flags": [],
+      "subcommands": [
+        {
+          "name": "consistency",
+          "aliases": [],
+          "help": "Verify dual-run consistency across Headless Direct and Worker Twin engines",
+          "flags": [
+            {
+              "flags": [
+                "--app"
+              ],
+              "dest": "app",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Target application path or name (e.g. vendor_cms8s78xx_v202_led_4com_8seg)"
+            },
+            {
+              "flags": [
+                "--all"
+              ],
+              "dest": "all",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Batch verify consistency across all micro-apps in workspace"
+            },
+            {
+              "flags": [
+                "--filter"
+              ],
+              "dest": "filter",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Filter pattern for app names when running with --all (e.g. mcs51_*)"
+            },
+            {
+              "flags": [
+                "--scenario"
+              ],
+              "dest": "scenario",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Explicit path to a .scenario.json file"
+            },
+            {
+              "flags": [
+                "--no-build"
+              ],
+              "dest": "build_if_missing",
+              "metavar": null,
+              "type": null,
+              "default": true,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Do not auto-build simulation assets if missing"
+            },
+            {
+              "flags": [
+                "-v",
+                "--verbose"
+              ],
+              "dest": "verbose",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Print detailed execution logs"
+            }
+          ],
+          "subcommands": []
+        },
+        {
+          "name": "doctor",
+          "aliases": [],
+          "help": "Check simulation engine, JS runtime, and plugins health",
+          "flags": [],
+          "subcommands": []
+        },
+        {
+          "name": "install",
+          "aliases": [],
+          "help": "Install or reinstall compatible winksim engine into ~/.wink/sim/",
+          "flags": [],
+          "subcommands": []
+        },
+        {
+          "name": "run",
+          "aliases": [],
+          "help": "Auto-build WASM simulation assets and launch simulation",
+          "flags": [
+            {
+              "flags": [
+                "--app"
+              ],
+              "dest": "app",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Target application path or name (default: oled_dashboard)"
+            },
+            {
+              "flags": [
+                "--mode"
+              ],
+              "dest": "mode",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": [
+                "headless",
+                "browser"
+              ],
+              "help": "Simulation mode: headless (default) or browser"
+            },
+            {
+              "flags": [
+                "--record"
+              ],
+              "dest": "record",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Record WebM video & animated GIF (automatically switches to browser mode)"
+            },
+            {
+              "flags": [
+                "--headed"
+              ],
+              "dest": "headed",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Run browser simulator with visible Chromium window"
+            },
+            {
+              "flags": [
+                "--scenarios"
+              ],
+              "dest": "scenarios",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Scenario directory or spec file path"
+            },
+            {
+              "flags": [
+                "--artifacts"
+              ],
+              "dest": "artifacts",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Artifacts output directory (default: ./artifacts)"
+            },
+            {
+              "flags": [
+                "--filter"
+              ],
+              "dest": "filter",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Filter scenarios by filename keyword"
+            },
+            {
+              "flags": [
+                "--grep"
+              ],
+              "dest": "grep",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Filter scenarios by glob pattern"
+            },
+            {
+              "flags": [
+                "--tags"
+              ],
+              "dest": "tags",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Filter scenarios by comma-separated tags"
+            },
+            {
+              "flags": [
+                "--reporter"
+              ],
+              "dest": "reporter",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": [
+                "spec",
+                "json",
+                "junit"
+              ],
+              "help": "Report format: spec (default), json, or junit"
+            },
+            {
+              "flags": [
+                "-v",
+                "--verbose"
+              ],
+              "dest": "verbose",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Print detailed execution logs"
+            },
+            {
+              "flags": [
+                "--out"
+              ],
+              "dest": "out",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Custom output directory for simulation assets"
+            },
+            {
+              "flags": [
+                "--wasm-dir"
+              ],
+              "dest": "wasm_dir",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Custom WASM build directory search path"
+            },
+            {
+              "flags": [
+                "--url"
+              ],
+              "dest": "url",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Browser target page URL (default: http://localhost:5173 or http://127.0.0.1:5174)"
+            },
+            {
+              "flags": [
+                "--cdp"
+              ],
+              "dest": "cdp",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Connect to existing browser / Tauri window via CDP URL (e.g. http://127.0.0.1:9222)"
+            },
+            {
+              "flags": [
+                "--channel"
+              ],
+              "dest": "channel",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Browser channel for browser simulation (e.g. chrome, msedge, chromium)"
+            }
+          ],
+          "subcommands": []
+        },
+        {
+          "name": "update",
+          "aliases": [],
+          "help": "Update winksim simulation engine to latest version",
+          "flags": [],
+          "subcommands": []
+        }
+      ]
+    },
+    {
+      "name": "test",
+      "aliases": [],
+      "help": "Run Python, C unit tests, sanitizer pass matrix, and lints",
+      "flags": [
+        {
+          "flags": [
+            "--clean"
+          ],
+          "dest": "clean",
+          "metavar": null,
+          "type": null,
+          "default": false,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "help": "Clean test build directories before running tests"
+        },
+        {
+          "flags": [
+            "--detailed"
+          ],
+          "dest": "detailed",
+          "metavar": null,
+          "type": null,
+          "default": false,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "help": "Print verbose ctest output (-V)"
+        },
+        {
+          "flags": [
+            "--sanitize"
+          ],
+          "dest": "sanitize",
+          "metavar": null,
+          "type": null,
+          "default": false,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "help": "Enable UBSan sanitize matrix pass"
+        },
+        {
+          "flags": [
+            "--asan"
+          ],
+          "dest": "asan",
+          "metavar": null,
+          "type": null,
+          "default": false,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "help": "Enable ASan matrix pass"
+        },
+        {
+          "flags": [
+            "--full"
+          ],
+          "dest": "full",
+          "metavar": null,
+          "type": null,
+          "default": false,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "help": "Run full test matrix"
+        },
+        {
+          "flags": [
+            "--with-wasm"
+          ],
+          "dest": "with_wasm",
+          "metavar": null,
+          "type": null,
+          "default": false,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "help": "Run optional WASM compilation check"
+        }
+      ],
+      "subcommands": []
+    },
+    {
+      "name": "update",
+      "aliases": [],
+      "help": "Alias for 'winkcli upgrade'",
+      "flags": [
+        {
+          "flags": [
+            "--check"
+          ],
+          "dest": "check",
+          "metavar": null,
+          "type": null,
+          "default": false,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "help": "Only check for available updates without installing"
+        },
+        {
+          "flags": [
+            "--winget"
+          ],
+          "dest": "winget",
+          "metavar": null,
+          "type": null,
+          "default": false,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "help": "Force update via Windows Package Manager (winget upgrade WinkAI.WinkCLI)"
+        },
+        {
+          "flags": [
+            "--pip"
+          ],
+          "dest": "pip",
+          "metavar": null,
+          "type": null,
+          "default": false,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "help": "Force update via Python Pip (pip install --upgrade winkcli)"
+        },
+        {
+          "flags": [
+            "--direct"
+          ],
+          "dest": "direct",
+          "metavar": null,
+          "type": null,
+          "default": false,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "help": "Force direct download from GitHub Releases"
+        }
+      ],
+      "subcommands": []
+    },
+    {
+      "name": "upgrade",
+      "aliases": [],
+      "help": "Self-update and upgrade winkcli to the latest version",
+      "flags": [
+        {
+          "flags": [
+            "--check"
+          ],
+          "dest": "check",
+          "metavar": null,
+          "type": null,
+          "default": false,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "help": "Only check for available updates without installing"
+        },
+        {
+          "flags": [
+            "--winget"
+          ],
+          "dest": "winget",
+          "metavar": null,
+          "type": null,
+          "default": false,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "help": "Force update via Windows Package Manager (winget upgrade WinkAI.WinkCLI)"
+        },
+        {
+          "flags": [
+            "--pip"
+          ],
+          "dest": "pip",
+          "metavar": null,
+          "type": null,
+          "default": false,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "help": "Force update via Python Pip (pip install --upgrade winkcli)"
+        },
+        {
+          "flags": [
+            "--direct"
+          ],
+          "dest": "direct",
+          "metavar": null,
+          "type": null,
+          "default": false,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "help": "Force direct download from GitHub Releases"
+        }
+      ],
+      "subcommands": []
+    },
+    {
+      "name": "usage",
+      "aliases": [],
+      "help": "View simulation usage quotas and security storage status",
+      "flags": [],
+      "subcommands": [
+        {
+          "name": "history",
+          "aliases": [],
+          "help": "View usage history and events",
+          "flags": [
+            {
+              "flags": [
+                "--days"
+              ],
+              "dest": "days",
+              "metavar": null,
+              "type": "int",
+              "default": 14,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Number of days to inspect (default: 14)"
+            }
+          ],
+          "subcommands": []
+        },
+        {
+          "name": "reset",
+          "aliases": [],
+          "help": "Emergency reset of usage counters",
+          "flags": [
+            {
+              "flags": [
+                "--yes"
+              ],
+              "dest": "yes",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Confirm emergency reset without interactive prompt"
+            }
+          ],
+          "subcommands": []
+        }
+      ]
+    },
+    {
+      "name": "web",
+      "aliases": [],
+      "help": "Start Vue Vite frontend web server",
+      "flags": [
+        {
+          "flags": [
+            "--port"
+          ],
+          "dest": "port",
+          "metavar": null,
+          "type": "int",
+          "default": 5173,
+          "required": false,
+          "nargs": null,
+          "choices": null,
+          "help": "Vite server port (default: 5173)"
+        }
+      ],
+      "subcommands": []
+    }
+  ]
+}

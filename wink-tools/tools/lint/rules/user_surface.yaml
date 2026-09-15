@@ -1,0 +1,56 @@
+version: 1
+id: user_surface
+metadata:
+  owner: 'wink-arch'
+  adr: ['ADR-0043', 'ADR-0046']
+
+layers: {}
+include_rules: []
+api_rules: []
+path_rules: []
+
+user_surface_rules:
+  - id: APP-NO-DAL-CALL
+    message: >-
+      App layer should call Role verbs ({name}_{verb}) from device_tree.h,
+      not dal_* directly. Escape hatch: // wink-lint: allow(APP-NO-DAL-CALL) reason=...
+    severity: warning
+    immutable: false
+    refs: ['user-surface-insulation-design']
+    allow_paths:
+      - path: 'wink-micro-app/resource_conflict/**'
+        reason: 'counter-example sample intentionally calls dal_* for pal_resource wiring tests'
+      - path: 'wink-micro-app/dual_task_demo/**'
+        reason: 'L2 expert sample: hand-written device_tree, actuator registry, Flash override — dal_* escape hatch by design'
+
+  - id: EXPERIMENTAL-TYPE
+    message: >-
+      Device type is marked experimental (stub / not user-stable surface).
+    severity: warning
+    immutable: false
+    refs: ['user-surface-insulation-design']
+
+  - id: DEVICE-REQUIRES-ROLE
+    message: >-
+      Non-experimental device type must have default_role in the driver plugin
+      or an explicit role field in wink-app.json.
+    severity: error
+    immutable: false
+    refs: ['ADR-0046', 'user-surface-insulation-design']
+
+  - id: DEPRECATED-TYPE-ALIAS
+    message: >-
+      Device type alias is deprecated; use the canonical type name instead.
+    severity: warning
+    immutable: false
+    refs: ['ADR-0048']
+
+  - id: STABLE-FIELD-DOC
+    message: >-
+      Production driver should expose stable/advanced field tiers (derived from
+      fields: or legacy tables) for user-surface UI folding.
+    severity: warning
+    immutable: false
+    refs: ['user-surface-insulation-design']
+
+ignore: []
