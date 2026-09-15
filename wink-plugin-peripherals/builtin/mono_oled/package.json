@@ -1,5 +1,6 @@
 {
   "name": "@wink-peripheral/mono-oled",
+  "license": "GPL-3.0-only",
   "private": true,
   "type": "module",
   "dependencies": {
