@@ -58,10 +58,11 @@
 
 ## 遵循与后续（Compliance & Follow-up）
 
-- 已回写（2026-09-15）：`docs/zh/design/04-wasm-simulation/04-assurance/01-consistency-spec.md` §C14.6「t=0 预置与复位语义」（五字段条款）与 checklist C14.6 行。
+- 已回写（2026-09-15）：[01-consistency-spec.md](../../zh/design/04-wasm-simulation/04-assurance/01-consistency-spec.md) §C14.6「t=0 预置与复位语义」（五字段条款）与 checklist C14.6 行。
 - **unisim 评审结论（2026-09-15，Plant 侧）**：
-  - 已落地：`header.initialConditions.plants.<id>.{parameters,inputs}`（Plant 侧映射 `model.parameters`/端口初值，unisim design §5.6）；`HARD_RESET` 不调用 `driver.reset()`（Plant 状态/参数跨复位保留）；初值应用进运行报告；契约测试与热态起步断言见 unisim `src/core/plant/__tests__/`（orchestrator / host-binding），`health-pot-fast-boil` 双跑一致性保持 12/12；
-  - 应用面清单：unisim `docs/review/artifacts/2026-09-15-adr-0070-application-surface.md`（决策：安规场景 1/4/5 保持静态注入/HIL；场景 2/3 需通用输入面之 boot 前预置，或 Plant boot 前初值输出发布——二选一）；
+  - 已落地：`header.initialConditions.plants.<id>.{parameters,inputs}`（Plant 侧映射 `model.parameters`/端口初值，unisim design §5.6）；`HARD_RESET` 保留 Plant 物理状态与参数（不重建 Plant 实例）；初值应用进运行报告；契约测试与热态起步断言已在 unisim 侧取证，`health-pot-fast-boil` 双跑一致性保持 12/12；
+  - **应用面补充（2026-09-15 复审）**：决策 2 所列"通用输入面（通道 / 引脚 / 插件输入态）"在 Plant 语境下即第四应用面 `header.initialConditions.plants.<id>.{parameters,inputs}`，属决策 1 阶段模型的同阶段映射（见 C14.6），非设备/业务专属字段；D-005a 余项仍指**固件侧**通用输入面之 boot 前预置；
+  - 应用面清单：unisim 评审产物 `2026-09-15-adr-0070-application-surface`（决策：安规场景 1/4/5 保持静态注入/HIL；场景 2/3 需通用输入面之 boot 前预置，或 Plant boot 前初值输出发布——二选一）；
   - 仍待补（D-005a 实现余项，不阻塞本 ADR 契约）：通用输入面（模拟通道/引脚/插件输入态）之 boot 前预置；`safety-power-cycle-hot-reboot`、`safety-post-jammed` 两场景 CI 断言；§5 第二无关应用复用证明。
 - 场景侧：`PLAN-20260915` 场景 2/3 在 D-005a 交付后补齐；验收必须包含跨应用复用场景与 runner 单测。
 - 与 ADR-0067/0069 的关系：本 ADR 只定义**输入侧通用能力**，激励源互斥与安全硬常数隔离条款不变。
@@ -71,3 +72,4 @@
 *本 ADR 状态变更请在此记录：*
 - 2026-09-13：Proposed（随 `PLAN-20260915` D-005a/b 拆分提出）
 - 2026-09-15：Accepted（unisim Q6/T7 评审签发；Plant 侧语义已实现并取证，通用输入面与场景验收在 `PLAN-20260915` D-005a 跟踪；C14.6 与 checklist 回写完成）
+- 2026-09-15：复审补充（不改决策语义）：回写链接改为可解析 Markdown 链接；应用面澄清 `plants.<id>.{parameters,inputs}` 属决策 1 同阶段映射（见 §遵循与后续）

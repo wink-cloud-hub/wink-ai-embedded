@@ -54,7 +54,7 @@
 |---|---|---|
 | Task 1 冷却锁定 + 上电热态 | ✅ | `health_pot.c`：`font_table[17]`（'C'/'L'）、`COOLDOWN_SECONDS`/`data cooldown_seconds`、`enter_fault` 热故障重入刷新、启动 7b 同步采样 + ≥45 ℃ 续锁、OFF→HEAT / WARM 重煮双入口门控（先消费后拦截）、P2.0 输出级硬钳位、`FAULT > COOL > NORMAL` 显示交替 |
 | Task 2 出厂默认保温 | ✅ | `WARM_DEFAULT_C 60u` + 三处默认替换（init / OFF→HEAT BOIL / WARM 重煮）；55/80/90 档位循环字面量不动 |
-| Task 3 安规故障注入场景 | ✅ | `safety-cooldown-lock`、`safety-cold-water-injection`、`safety-relay-weld-protection`（`tags: ["HIL-Exclusive"]`）；场景 2/3 headless 按 D-005a 设计性缓落（ADR-0070 Proposed） |
+| Task 3 安规故障注入场景 | ✅ | `safety-cooldown-lock`、`safety-cold-water-injection`、`safety-relay-weld-protection`（`tags: ["HIL-Exclusive"]`）；场景 2/3 headless 按 D-005a 设计性缓落（ADR-0070 Accepted 2026-09-15，Plant 侧已落地，通用输入面待补） |
 | D-005 契约提案 | ✅ 契约 / 🔄 实现 | [`ADR-0070`](../../decisions/unisim/0070-scenario-power-cycle-and-t0-initial-conditions.md) 2026-09-15 **Accepted**（unisim Q6/T7 签发，C14.6 回写）：Plant 侧 t=0 初值 + `HARD_RESET` 保植物已落地（unisim，双跑 12/12 保持）；D-005a 通用输入面（通道/引脚/插件态 boot 前预置）与场景 2/3 CI 验收、第二应用复用证明仍 🔄；D-005b 复位语义（可选）排期 Phase 4.2 |
 | Task 4 跨品类安规 ADR | ✅ | `docs/decisions/unisim/0069-appliance-cross-category-safety-extension.md` **Accepted**（修订 ADR-0067）；C14.5 规范与清单行回写完成 |
 | Task 5 host 安规载具 | ✅ | `wink-micro-os/test/CMakeLists.txt` + `frameworks/mcs51/test/core/test_mcs51_health_pot_safety.c`：转译真实 `health_pot.c` 单镜像，覆盖冷启动/POST/热启动续锁/E-03 锁-拒-到期全流程（16.2 s） |
