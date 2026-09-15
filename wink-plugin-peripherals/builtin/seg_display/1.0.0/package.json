@@ -1,5 +1,6 @@
 {
   "name": "@wink-peripheral/seg-display-v1",
+  "license": "GPL-3.0-only",
   "version": "1.0.0",
   "private": true,
   "type": "module",

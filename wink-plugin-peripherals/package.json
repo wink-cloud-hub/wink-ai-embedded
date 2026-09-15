@@ -1,5 +1,6 @@
 {
   "name": "@wink-ai-embedded/wink-plugin-peripherals",
+  "license": "GPL-3.0-only",
   "version": "0.1.0",
   "private": false,
   "description": "Wink-AI Peripheral Plugins Suite",
