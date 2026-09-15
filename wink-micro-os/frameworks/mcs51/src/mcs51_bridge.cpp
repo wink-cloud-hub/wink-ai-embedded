@@ -24,7 +24,9 @@
 #include "wink_mcs51_edge_queue.h"
 
 #include "wink_event.h"
+#include "wink_mcs51_wdt.h"
 
+#include <csetjmp>
 #include <cstdint>
 
 // Stage4 CPL-10 / Stage7 S7-1: chip package registration is LINK-TIME
@@ -38,6 +40,51 @@
 extern "C" void wink_mcs51_user_main(void);
 
 namespace {
+
+std::jmp_buf s_reset_jmp_buf;
+bool s_reentry_active = false;
+
+void mcs51_perform_reset_sanitization(Mcu51Context* ctx) {
+    ctx->reset_guard = 1u;
+    ctx->reset_pending = 0u;
+
+    // 1. Deinit event queue to flush old boot events (P13 / ADR-0082 D5)
+    wink_event_queue_deinit();
+
+    // 2. Clear edge queue
+    ctx->edge_head = 0u;
+    ctx->edge_tail = 0u;
+
+    // 3. Clear interrupt nesting stack and suppress flag
+    ctx->in_service_depth = 0u;
+    ctx->reti_suppress_one = false;
+
+    // 4. Full hardware context reset and seed recovery (including sticky PORF)
+    mcs51_context_reset(ctx);
+
+    // 5. Reinitialize fresh event queue
+    (void)wink_event_queue_init(WINK_EVENT_QUEUE_DEFAULT_CAPACITY);
+
+    // 6. Reset pins to weak pull-up high (0xFF)
+    for (uint16_t pin = 0u; pin < 32u; ++pin) {
+        js_pal_gpio_write(pin, true, MCS51_DRIVE_WEAK);
+    }
+
+    // 7. Re-run post-init hook, trap registrations, and ISR enable
+    mcs51_framework_run_post_init_hook();
+    mcs51_trap_register_sfr_write(0x87, mcs51_on_pcon_write);
+    wink_mcs51_set_catchup_hook(wink_mcs51_timers_step_to);
+    wink_mcs51_isr_enable();
+
+    // 8. Bill any unbilled virtual time to master clock (ADR-0072 D1/D3)
+    uint32_t unbilled = static_cast<uint32_t>(ctx->virtual_us - ctx->slice_start_us);
+    if (unbilled > 0) {
+        pal_os_busy_wait_us(unbilled);
+        ctx->slice_start_us = ctx->virtual_us;
+    }
+
+    ctx->reset_guard = 0u;
+}
 
 void mcs51_framework_init(void) {
     Mcu51Context* ctx = mcs51_get_context();
@@ -67,9 +114,18 @@ void mcs51_framework_init(void) {
 extern "C" {
 
 void wink_mcs51_microstep(void) {
+    Mcu51Context* ctx = mcs51_get_context();
+    // ADR-0082 D1 / P01: Safety interception point for reset
+    if (ctx && ctx->reset_pending && !ctx->reset_guard) {
+        mcs51_perform_reset_sanitization(ctx);
+        if (s_reentry_active) {
+            std::longjmp(s_reset_jmp_buf, 1);
+        }
+        return;
+    }
+
     wink_mcs51_clear_reti_suppress();
     wink_mcs51_charge_us(wink_mcs51_get_microstep_us());
-    Mcu51Context* ctx = mcs51_get_context();
     mcs51_edge_queue_drain(ctx);
     for (uint8_t i = 0; i < g_mcs51_num_peripherals; ++i) {
         if (!mcs51_peripheral_active_for(&g_mcs51_peripherals[i], ctx->family)) {
@@ -91,6 +147,14 @@ void wink_mcs51_microstep(void) {
         }
     }
     mcs51_irq_scan_and_dispatch();
+
+    // Check again after peripheral poll in case WDT check latched reset
+    if (ctx && ctx->reset_pending && !ctx->reset_guard) {
+        mcs51_perform_reset_sanitization(ctx);
+        if (s_reentry_active) {
+            std::longjmp(s_reset_jmp_buf, 1);
+        }
+    }
 }
 
 void wink_mcs51_on_sfr_read(uint8_t addr) {
@@ -123,11 +187,37 @@ void wink_mcs51_on_sfr_write(uint8_t addr, uint8_t old_val, uint8_t new_val) {
 
 namespace {
 void mcs51_app_loop(void) {
-    wink_mcs51_user_main();
+    s_reentry_active = true;
+    while (true) {
+        if (setjmp(s_reset_jmp_buf) != 0) {
+            // Returned from longjmp (reset occurred).
+            // A reset is a major hardware transition: yield cooperatively to the
+            // simulator scheduler so that other fibers/sim events execute and time advances.
+            wink_mcs51_cooperative_yield();
+        }
+        wink_mcs51_user_main();
+        break;
+    }
+    s_reentry_active = false;
 }
 }  // namespace
 
-extern "C" const wink_app_callbacks_t* wink_app_get_callbacks(void)
+extern "C" {
+
+void wink_mcs51_test_run_reentry_loop(void (*fn)(void), uint32_t max_boots) {
+    s_reentry_active = true;
+    uint32_t boots = 0;
+    while (boots < max_boots) {
+        boots++;
+        if (setjmp(s_reset_jmp_buf) == 0) {
+            if (fn) fn();
+            break;
+        }
+    }
+    s_reentry_active = false;
+}
+
+const wink_app_callbacks_t* wink_app_get_callbacks(void)
 {
     static const wink_app_callbacks_t s_mcs51_callbacks = {
         mcs51_framework_init,
@@ -140,3 +230,18 @@ extern "C" const wink_app_callbacks_t* wink_app_get_callbacks(void)
     };
     return &s_mcs51_callbacks;
 }
+
+// Overrides for targets/wasm/wasm_entry.c weak hooks without leaking wink_mcs51 naming into targets/
+bool pal_wasm_target_has_pending_reset(void) {
+    return wink_mcs51_has_pending_reset();
+}
+
+int pal_wasm_target_get_reset_reason(void) {
+    return wink_mcs51_get_pending_reset_reason();
+}
+
+void pal_wasm_target_clear_pending_reset(void) {
+    wink_mcs51_clear_pending_reset();
+}
+
+}  // extern "C"

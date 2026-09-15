@@ -96,6 +96,9 @@ uint64_t wink_mcs51_virtual_us(void);
 uint32_t wink_mcs51_quota_yield_count(void);
 uint32_t wink_mcs51_master_tick_count(void);
 
+// Cooperatively yield the running MCS-51 fiber to the simulation scheduler (ADR-0072).
+void wink_mcs51_cooperative_yield(void);
+
 // Test seam: advance the slave clock directly (no master billing, no yield),
 // for framework unit tests that drive models outside a fiber context (the
 // virtual clock otherwise only moves through charge_us, which no-ops without
