@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file wink_bal_stub.c
  * @brief Stage 1 placeholder — empty translation unit so wink_bal links.

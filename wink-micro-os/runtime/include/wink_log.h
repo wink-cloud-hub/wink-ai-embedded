@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 #ifndef WINK_LOG_H
 #define WINK_LOG_H
 

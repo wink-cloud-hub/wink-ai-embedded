@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // MCS-51 WINK_SIM_STRICT dual-mode unsupported-feature mechanism (M3,
 // mcu-compat-plan.md §3.8 / acceptance #7).
 //

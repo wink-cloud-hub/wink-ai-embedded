@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 #include "dal_mono_oled_font_internal.h"
 
 /* Minimal subset: space, 0-9, A/D/E/H/I/L/O/P/R/S/T/W, ! (24 glyphs) */

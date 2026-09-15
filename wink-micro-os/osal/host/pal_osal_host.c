@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file pal_osal_host.c
  * @brief Host first-class target PAL OSAL implementation + virtual time state machine + host_test_ctrl implementation.

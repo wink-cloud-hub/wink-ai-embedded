@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // CMS8S78xx on-chip Buzzer peripheral model (ADR-0004 static dispatch).
 #include "cms8s_buzzer.h"
 

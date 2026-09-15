@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file pal_osal_ringbuf.c
  * @brief PAL OSAL ring buffer — shared WASM / host implementation (single-threaded lock-free in-memory ring buffer).

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file pal_hal_adc_esp32.c
  * @brief ESP32 target PAL ADC subsystem implementation (ESP-IDF v6.0.1 adc_oneshot + adc_cali).

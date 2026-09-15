@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 #ifndef WINK_FAULT_H
 #define WINK_FAULT_H
 

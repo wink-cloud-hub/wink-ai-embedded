@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file pal_spi.h
  * @brief PAL SPI master subsystem interface with asynchronous DMA engine.

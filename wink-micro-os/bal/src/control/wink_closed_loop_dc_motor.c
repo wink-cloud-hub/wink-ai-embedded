@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 #define LOG_TAG "bal.cl_dc_motor"
 
 #include "control/wink_closed_loop_dc_motor.h"

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // Task F4: Channel 1b Soft PWM duty cycle measurement meter for MCS-51 simulation.
 #pragma once
 

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // MCS-51 PCON low-power modes (IDLE / Power-Down) dual-mode scheduling (Task R6).
 #pragma once
 

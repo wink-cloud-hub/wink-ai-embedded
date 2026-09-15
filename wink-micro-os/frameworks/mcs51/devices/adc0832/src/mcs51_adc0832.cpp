@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // ADC0832 external 8-bit ADC — instant Level-2 trap state machine (AD-15).
 //
 // Instruction-edge driven (NOT time driven): every state transition happens

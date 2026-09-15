@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file wink_init_ctor.h
  * @brief Cross-platform "run before main()" constructor macro.

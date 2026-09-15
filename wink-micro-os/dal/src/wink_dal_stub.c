@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file wink_dal_stub.c
  * @brief Empty translation unit so the `dal` static library always links.

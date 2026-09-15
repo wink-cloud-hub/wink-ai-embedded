@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file wink_runtime.c
  * @brief Cooperative main loop + fail-safe / boot safe-lock implementation.

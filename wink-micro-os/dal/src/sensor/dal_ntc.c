@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 #include "sensor/dal_ntc.h"
 #include "hal/pal_adc.h"
 #include "pal_resource.h"

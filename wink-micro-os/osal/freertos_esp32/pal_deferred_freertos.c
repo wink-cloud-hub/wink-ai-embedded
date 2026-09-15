@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file pal_deferred_freertos.c
  * @brief FreeRTOS ESP32 implementation of PAL Deferred-Call Worker subsystem.

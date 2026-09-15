@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // Task R1: MCS-51 const peripheral descriptor table (ADR-0004).
 #pragma once
 

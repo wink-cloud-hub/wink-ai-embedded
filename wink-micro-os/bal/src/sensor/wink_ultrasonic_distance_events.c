@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file wink_ultrasonic_distance_events.c
  * @brief BAL ultrasonic distance events — periodic measure + DISTANCE_READY post.

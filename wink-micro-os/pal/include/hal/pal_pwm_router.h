@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file pal_pwm_router.h
  * @brief PAL PWM Hardware Timer Router & Allocation Manager (ADR-0034).

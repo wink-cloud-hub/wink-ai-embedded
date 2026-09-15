@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 #include "dal_gps.h"
 #include "hal/pal_uart.h"
 #include "pal_resource.h"

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file pal_wasm_ch2_uart.c
  * @brief Wasm target Axis A (CH2u) UART RX SPSC asynchronous ring buffer & lifecycle implementation.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file wink_ultrasonic_distance_events.h
  * @brief BAL B-class API — ultrasonic distance completion → wink_event queue

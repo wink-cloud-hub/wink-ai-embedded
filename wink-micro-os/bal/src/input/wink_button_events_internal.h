@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file wink_button_events_internal.h
  * @brief BAL-private header shared between wink_button_events.c and

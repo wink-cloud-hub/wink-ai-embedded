@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file wink_telemetry_default.h
  * @brief BAL: fire-and-forget 2s telemetry task that prints runtime

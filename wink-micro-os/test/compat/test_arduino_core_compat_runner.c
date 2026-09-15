@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 extern int run_arduino_compat_tests(void);
 
 int main(void) {

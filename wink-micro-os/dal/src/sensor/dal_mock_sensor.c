@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 #include "dal_mock_sensor.h"
 #include "pal_hal.h"
 #include "pal_resource.h"

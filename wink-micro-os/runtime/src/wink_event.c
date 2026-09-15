@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file wink_event.c
  * @brief OS Event Queue / mbox asynchronous primitives implementation.

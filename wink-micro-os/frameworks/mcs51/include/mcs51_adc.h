@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // MCS-51 analog channel-3 rail (boundary ④, AD-8 / ADR-0057).
 //
 // Virtual peripherals that need an analog input (the external ADC0832 today,

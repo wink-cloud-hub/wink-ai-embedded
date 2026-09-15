@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-only
+# SPDX-License-Identifier: LGPL-3.0-only
 # mcs51_sources.cmake — single source of truth for MCS-51 framework target
 # composition (Stage6 S6-1 Step 2/4, PLAN-20260911-MCS51-S6, CPL-15).
 #

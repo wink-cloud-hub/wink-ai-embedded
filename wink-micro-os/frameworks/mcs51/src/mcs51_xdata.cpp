@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // MCS-51 XDATA shadow + bounds-checked absolute access (M3, R-008).
 //
 // See absacc.h. A 64 KB linear xdata shadow (BSS) backs XBYTE/XWORD. Two

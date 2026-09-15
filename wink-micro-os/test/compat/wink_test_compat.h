@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 /* wink_test_compat.h
  * Test compatibility macros for contract-guard tests calling deprecated
  * blocking APIs (e.g. pal_os_sleep_ms, pal_os_mutex_lock).

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file dal_buzzer.c
  * @brief DAL buzzer driver implementation (PASSIVE_PWM & ACTIVE_GPIO variants).

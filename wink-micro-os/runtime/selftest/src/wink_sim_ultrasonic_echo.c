@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file wink_sim_ultrasonic_echo.c
  * @brief Ultrasonic echo-pulse simulator (S10 shadow task) — wraps the

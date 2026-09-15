@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 #include "Arduino.h"
 #include <stdlib.h>
 #include "pal_resource.h"

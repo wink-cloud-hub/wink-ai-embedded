@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // MCS-51 shared STANDARD SFR address map (maintainability M5, purified S3-1).
 //
 // Addresses used by TWO OR MORE translation units live HERE (single source).

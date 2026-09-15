@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file wink_rc_servo_sweep.c
  * @brief BAL servo helper ??sweep and set angles for DAL servos.

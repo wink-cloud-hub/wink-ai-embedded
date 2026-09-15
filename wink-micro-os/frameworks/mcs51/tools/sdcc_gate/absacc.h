@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-3.0-only
+/* SPDX-License-Identifier: LGPL-3.0-only
  * SDCC compile-gate absacc adapter (GAP-03, Tier-S).
  *
  * Must be pointer casts (NOT dereferenced): user code indexes them as

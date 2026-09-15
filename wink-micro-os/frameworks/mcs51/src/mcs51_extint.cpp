@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // MCS-51 External Interrupt (INT0/INT1) standard model.
 #include "wink_mcs51_extint.h"
 

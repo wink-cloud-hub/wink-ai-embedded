@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // Task F1: MCS-51 timed edge queue implementation.
 #include "wink_mcs51_edge_queue.h"
 

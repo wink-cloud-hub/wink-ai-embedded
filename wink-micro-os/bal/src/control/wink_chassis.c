@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 #define LOG_TAG "bal.chassis"
 
 #include "control/wink_chassis.h"

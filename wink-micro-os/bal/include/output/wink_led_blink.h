@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file wink_led_blink.h
  * @brief BAL: blink a DAL LED via the runtime periodic scheduler.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 #include "math/wink_diff_drive_kinematics.h"
 #include <stddef.h>
 

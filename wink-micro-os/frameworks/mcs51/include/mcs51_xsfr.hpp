@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // MCS-51 XSFR proxy (C++17) — extended-SFR registers reached via MOVX @DPTR.
 //
 // Enhanced 8051 parts may place extra peripheral registers (pin/clock

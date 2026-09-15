@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file pal_hal_mcpwm_esp32.c
  * @brief ESP32 target PAL MCPWM hardware driver using ESP-IDF 5.4+ mcpwm_prelude driver.

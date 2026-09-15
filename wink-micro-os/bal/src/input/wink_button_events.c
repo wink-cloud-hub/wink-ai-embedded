@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file wink_button_events.c
  * @brief BAL button event stream — soft-poll implementation + IRQ dispatch shim (S3).

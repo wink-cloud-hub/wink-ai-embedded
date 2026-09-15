@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-3.0-only
+/* SPDX-License-Identifier: LGPL-3.0-only
  * Keil C51 REG52.H alias — real projects include <REG52.H> or <reg52.h> in
  * place of <REGX52.H>. All three spellings funnel into the single proxy
  * header so the Keil dialect erasure and SFR/sbit declarations live in one

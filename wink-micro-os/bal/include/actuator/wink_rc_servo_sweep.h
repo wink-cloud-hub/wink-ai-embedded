@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file wink_rc_servo_sweep.h
  * @brief BAL: sweep and control a DAL servo via the runtime scheduler.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file pal_hal_uart_host.c
  * @brief Host first-class target PAL UART implementation with event callback simulation and injection stub.

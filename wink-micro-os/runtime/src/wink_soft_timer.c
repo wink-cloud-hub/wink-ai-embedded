@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file wink_soft_timer.c
  * @brief Software timer scheduler implementation (static array + tick alignment).

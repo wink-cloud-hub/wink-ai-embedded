@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // Host-side fallback for the UniSim channel imports (ADR-0071 D3 / AD-8).
 //
 // Under emscripten these two symbols are JS imports (wink_sim_js.js in

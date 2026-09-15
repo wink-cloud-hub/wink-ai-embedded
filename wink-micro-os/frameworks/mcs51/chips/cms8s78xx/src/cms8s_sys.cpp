@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // CMS8S78xx system-protection model:
 //   - TA (Time Access) protection window for CLKDIV / WDCON writes. The
 //     silicon ignores writes to protected SFRs unless immediately preceded

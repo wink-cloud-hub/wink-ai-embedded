@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file pal_hal_internal_esp32.h
  * @brief ESP32 target-private cross-TU declarations.

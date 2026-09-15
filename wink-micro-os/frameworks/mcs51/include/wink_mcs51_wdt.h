@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // Generic watchdog coarse model + timed-access (TA) window narrowing + Reset Controller (ADR-0082).
 //
 // WDT: overflow interval from the clock-control WTS field against the

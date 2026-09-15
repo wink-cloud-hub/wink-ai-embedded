@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file wink_sim_ultrasonic_echo.h
  * @brief Bringup selftest helper: one-line ultrasonic echo simulator (S10 shadow task).
