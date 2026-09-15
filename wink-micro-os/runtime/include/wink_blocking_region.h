@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 #ifndef WINK_BLOCKING_REGION_H
 #define WINK_BLOCKING_REGION_H
 

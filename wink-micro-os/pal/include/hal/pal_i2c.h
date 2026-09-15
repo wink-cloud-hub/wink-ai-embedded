@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file pal_i2c.h
  * @brief PAL I2C Bus Lifecycle, Transfer Timeout, and Bus Recovery API (ADR-0067).

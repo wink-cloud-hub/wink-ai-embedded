@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 #ifndef DAL_BUTTON_BAL_H
 #define DAL_BUTTON_BAL_H
 

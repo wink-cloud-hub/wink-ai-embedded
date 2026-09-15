@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file pal_hal_i2c_esp32.c
  * @brief ESP32 target PAL HAL I2C subsystem implementation.

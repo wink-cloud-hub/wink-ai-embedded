@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file pal_irq_advanced.h
  * @brief PAL Advanced System-Level Interrupt APIs.

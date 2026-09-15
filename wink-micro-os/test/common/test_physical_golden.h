@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file test_physical_golden.h
  * @brief ADR-0009 Wave 2 SSOT golden vectors — host + wasm shared.

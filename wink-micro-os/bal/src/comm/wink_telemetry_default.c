@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file wink_telemetry_default.c
  * @brief BAL default telemetry helper ??prints runtime stats + optional

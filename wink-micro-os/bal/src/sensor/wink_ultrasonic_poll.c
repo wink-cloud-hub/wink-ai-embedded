@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file wink_ultrasonic_poll.c
  * @brief BAL ultrasonic poll ? periodically triggers distance measurements

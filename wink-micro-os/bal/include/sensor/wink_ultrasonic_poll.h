@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file wink_ultrasonic_poll.h
  * @brief BAL: automatic periodic ultrasonic distance measurement via runtime periodic task.

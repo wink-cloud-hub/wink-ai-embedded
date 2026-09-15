@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // MCS-51 UART functional model (M3, AD-2).
 //
 // Functional-level 8051 serial port: a write to SBUF (SFR 0x99) charges one

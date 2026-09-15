@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file pal_target_caps.h
  * @brief PAL Target Hardware Capabilities & Capacity Limits SSOT Header (ADR-0064).

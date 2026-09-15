@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // MCS-51 GPIO dual-read path and pin arbitration implementation (Task R0).
 #include "wink_mcs51_gpio.h"
 

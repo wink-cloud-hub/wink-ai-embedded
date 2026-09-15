@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // MCS-51 <absacc.h> shim — absolute XDATA access (Keil XBYTE/XWORD).
 //
 // Keil C51 exposes the external 64 KB data space as absolute-access arrays:

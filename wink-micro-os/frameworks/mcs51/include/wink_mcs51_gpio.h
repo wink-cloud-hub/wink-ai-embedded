@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // MCS-51 GPIO dual-read path and pin arbitration services (Task R0, ADR-0077).
 //
 // Separates Read-Pin (external pin level 3-way arbitration for MOV A, Pn / MOV C, bit)

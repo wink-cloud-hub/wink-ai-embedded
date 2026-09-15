@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // CMS8S78xx on-chip Analog Comparator (ACMP0/ACMP1) peripheral model.
 #include "cms8s_acmp.h"
 

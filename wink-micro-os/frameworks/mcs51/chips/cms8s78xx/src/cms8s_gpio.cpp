@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // CMS8S78xx enhanced GPIO model (Stage4 S4-1 Step 1, PLAN-20260911-MCS51-S4,
 // CPL-03).
 //

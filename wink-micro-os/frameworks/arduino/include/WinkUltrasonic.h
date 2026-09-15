@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 #pragma once
 #include "dal_ultrasonic.h"
 #include "pal_log.h"

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file pal_atomic_esp32.h
  * @brief ESP32 target-private atomic helpers shared between pal_hal_gpio_esp32.c

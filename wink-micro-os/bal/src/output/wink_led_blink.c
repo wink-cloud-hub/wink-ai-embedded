@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file wink_led_blink.c
  * @brief BAL LED blink helper — toggles a DAL LED at 50% duty via the

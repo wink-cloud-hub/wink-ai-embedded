@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // MCS-51 virtual slave clock + cooperative quota engine (ADR-0072 D1~D3).
 //
 // The 51 user program assumes it owns the CPU: `while(!TF0);` is a bare-metal

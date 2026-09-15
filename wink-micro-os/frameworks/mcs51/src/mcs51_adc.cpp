@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // MCS-51 analog rail-key implementation (boundary ④, AD-8 / ADR-0057).
 // See mcs51_adc.h for the dual-track data path and the dual-space key
 // partition (Stage1: MCU pins 0~31, board channels 32~63, no mapping here).

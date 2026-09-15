@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 #ifndef PAL_TEST_LOOPBACK_H
 #define PAL_TEST_LOOPBACK_H
 

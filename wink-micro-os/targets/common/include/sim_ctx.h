@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file sim_ctx.h
  * @brief Fiber / coroutine context switching abstractions for simulator targets.

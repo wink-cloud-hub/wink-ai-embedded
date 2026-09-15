@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file pal_osal_freertos_esp32.c
  * @brief ESP32 physical target PAL OSAL implementation (FreeRTOS + ESP-IDF).

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 #ifndef WINK_DEV_CONFIG_H
 #define WINK_DEV_CONFIG_H
 

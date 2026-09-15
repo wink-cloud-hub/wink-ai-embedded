@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file wink_actuator_registry.h
  * @brief Actuator Safe-Off Registry interface (static table, zero dynamic allocation).

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 /**
  * @file wink_button_events_irq.c
  * @brief BAL button GPIO-IRQ backend (S3, ADR-0031).

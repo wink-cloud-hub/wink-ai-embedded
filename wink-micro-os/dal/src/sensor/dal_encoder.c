@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 #define LOG_TAG "dal_encoder"
 #include "sensor/dal_encoder.h"
 #include "hal/pal_gpio.h"

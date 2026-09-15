@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 #ifndef DAL_MOCK_SENSOR_LEGACY_H
 #define DAL_MOCK_SENSOR_LEGACY_H
 

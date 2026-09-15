@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // MCS-51 standard external interrupts: INT0 (vector 0) and INT1 (vector 2) —
 // Stage 2 T3 (ADR-0076 A-class).
 //

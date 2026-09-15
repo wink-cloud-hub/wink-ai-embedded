@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-3.0-only
+/* SPDX-License-Identifier: LGPL-3.0-only
  * SDCC compile-gate <wink_mcu.h> for CMS8S78xx-family apps (GAP-03).
  *
  * Uses the transpiled vendor device header + the UNMODIFIED vendor

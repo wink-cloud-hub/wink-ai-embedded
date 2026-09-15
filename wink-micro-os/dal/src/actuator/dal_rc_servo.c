@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 #define LOG_TAG "dal_rc_servo"
 #include "actuator/dal_rc_servo.h"
 #include "hal/pal_gpio.h"

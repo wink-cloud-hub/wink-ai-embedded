@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-3.0-only
 #include "pal_hal.h"
 #include "hal/pal_rmt.h"
 #include "hal/pal_dma.h"

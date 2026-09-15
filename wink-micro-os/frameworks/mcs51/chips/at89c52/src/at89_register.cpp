@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // AT89C52 classic-family register entry (Stage4 S4-2 Step 3,
 // PLAN-20260911-MCS51-S4, CPL-10).
 //

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // REG_CMS8S78XX.H — CMS8S78xx (Cmsemicon) SFR dialect shim for the host/wasm
 // sandbox.
 //

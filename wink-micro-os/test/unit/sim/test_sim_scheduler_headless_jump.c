@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 #include "unity.h"
 #include "pal_osal.h"
 #include "wink_sim_scheduler.h"

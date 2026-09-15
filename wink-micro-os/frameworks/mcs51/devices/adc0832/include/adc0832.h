@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // ADC0832 external 8-bit SAR ADC — virtual instant peripheral (AD-15).
 //
 // Board-level device package (Stage3 S3-2 Step 3, decision B): fully

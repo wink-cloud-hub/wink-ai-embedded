@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: LGPL-3.0-only
 // MCS-51 Level-2 instant-trap C ABI (boundary ③, ADR-0071 D1, AD-13).
 //
 // Peripheral models (board devices, on-chip converters, future bit-banged
