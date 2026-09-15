@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Closed-source `wink-tools` release checklist
 
 Owner sign-off gate before shipping a closed-source or restricted `wink-tools` build.
