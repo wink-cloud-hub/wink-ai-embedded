@@ -29,7 +29,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Detect wink toolchain
+        id: toolchain
+        shell: bash
+        run: |
+          if command -v winkcli >/dev/null 2>&1 \
+             || [ -f ../wink-tools/tools/codegen/scripts/list_drivers.py ] \
+             || [ -f ../packages/wink-tools/tools/codegen/scripts/list_drivers.py ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::wink toolchain is not distributed yet; stress simulation is skipped (roadmap: cross-platform winkcli distribution)."
+          fi
+
       - name: Build & Run 30-min Stress Simulation
+        if: steps.toolchain.outputs.available == 'true'
         run: |
           sudo apt-get update && sudo apt-get install -y cmake ninja-build
           cmake -B build_stress -S wink-micro-os -DTARGET_PLATFORM=host -DWINK_APP_DIR=wink-micro-app/unisim_smoke

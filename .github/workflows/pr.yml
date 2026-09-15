@@ -38,6 +38,19 @@ jobs:
           # Do NOT `pip install winkcli` until the official package is live — name-squatting risk.
           pip install pytest pyyaml jinja2 rich
 
+      - name: Detect wink toolchain
+        id: toolchain
+        shell: bash
+        run: |
+          if command -v winkcli >/dev/null 2>&1 \
+             || [ -f ../wink-tools/tools/codegen/scripts/list_drivers.py ] \
+             || [ -f ../packages/wink-tools/tools/codegen/scripts/list_drivers.py ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::wink toolchain is not distributed yet; firmware build/test steps are skipped (roadmap: cross-platform winkcli distribution)."
+          fi
+
       - name: Run Architecture & Safety Linter (Unified Guards)
         shell: bash
         run: |
@@ -50,15 +63,18 @@ jobs:
           fi
 
       - name: Configure CMake (Host)
+        if: steps.toolchain.outputs.available == 'true'
         run: |
           cmake -B build_host -S wink-micro-os -G Ninja \
             -DTARGET_PLATFORM=host \
             -DWINK_APP_DIR=wink-micro-app/unisim_smoke
 
       - name: Build Host Binaries
+        if: steps.toolchain.outputs.available == 'true'
         run: cmake --build build_host
 
       - name: Run PAL & DAL Unit Tests
+        if: steps.toolchain.outputs.available == 'true'
         run: ctest --test-dir build_host --output-on-failure
 
   wasm-build-and-test:
@@ -93,16 +109,32 @@ jobs:
           # Do NOT `pip install winkcli` until the official package is live — name-squatting risk.
           pip install pytest pyyaml jinja2 rich
 
+      - name: Detect wink toolchain
+        id: toolchain
+        shell: bash
+        run: |
+          if command -v winkcli >/dev/null 2>&1 \
+             || [ -f ../wink-tools/tools/codegen/scripts/list_drivers.py ] \
+             || [ -f ../packages/wink-tools/tools/codegen/scripts/list_drivers.py ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::wink toolchain is not distributed yet; wasm build/test steps are skipped (roadmap: cross-platform winkcli distribution)."
+          fi
+
       - name: Configure CMake (Host tree hosts the emcc wasm tests)
+        if: steps.toolchain.outputs.available == 'true'
         run: |
           cmake -B build_host -S wink-micro-os -G Ninja \
             -DTARGET_PLATFORM=host \
             -DWINK_APP_DIR=wink-micro-app/unisim_smoke
 
       - name: Build (emcc wasm test targets are ALL)
+        if: steps.toolchain.outputs.available == 'true'
         run: cmake --build build_host
 
       - name: Run wasm/Node tests (label "wasm")
+        if: steps.toolchain.outputs.available == 'true'
         run: ctest --test-dir build_host -L wasm --output-on-failure
 
   docs-guards:
