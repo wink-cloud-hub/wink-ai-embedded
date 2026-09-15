@@ -100,6 +100,7 @@ jobs:
           PYTHONUTF8: "1"
           PUBLISHED_AT: ${{ steps.release.outputs.published_at }}
           TAG: ${{ steps.release.outputs.tag }}
+          WINK_AI_EMBEDDED_DIR: ${{ github.workspace }}
         run: |
           ./dist-cli/winkcli.exe help-tree > live-help-tree.json
           python - <<'PY'
