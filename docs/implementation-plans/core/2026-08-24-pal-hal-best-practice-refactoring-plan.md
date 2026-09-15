@@ -130,7 +130,7 @@ graph TD
 
 #### 1. `pal_target_caps.h`（SSOT 平台容量能力头）
 ```c
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 #ifndef PAL_TARGET_CAPS_H
 #define PAL_TARGET_CAPS_H
 
@@ -160,7 +160,7 @@ graph TD
 
 #### 2. `pal_gpio.h`（防毛刺、硬件锁定、一站式注销、SMP 屏障）
 ```c
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 #ifndef PAL_GPIO_H
 #define PAL_GPIO_H
 
@@ -288,7 +288,7 @@ wink_status_t pal_gpio_pulse_in(wink_pin_t pin, bool level, uint32_t timeout_us,
 
 #### 3. `pal_pwm.h`（动态引脚、基点万分比、防溢出、浮点下线开关）
 ```c
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 #ifndef PAL_PWM_H
 #define PAL_PWM_H
 
@@ -356,7 +356,7 @@ wink_status_t pal_pwm_deinit(uint8_t channel);
 
 #### 4. `pal_i2c.h`（统一内聚、超时支持、总线死锁恢复）
 ```c
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 #ifndef PAL_I2C_H
 #define PAL_I2C_H
 
@@ -430,7 +430,7 @@ wink_status_t pal_i2c_scan(uint8_t port, uint8_t start_addr, uint8_t end_addr,
 
 #### 5. `pal_hal.h`（Umbrella 聚合头文件）
 ```c
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file pal_hal.h
  * @brief PAL HAL Umbrella Header (Aggregates GPIO, PWM, and I2C interfaces).

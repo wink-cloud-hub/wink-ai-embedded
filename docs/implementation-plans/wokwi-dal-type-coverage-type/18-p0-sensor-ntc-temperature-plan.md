@@ -88,7 +88,7 @@
 遵循 `dal-api-consistency-spec.md` 及 `DAL-S-001/006/011/014/020`，并包含 ADR-0017 阻塞 API 严格隔离守卫：
 
 ```c
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 #ifndef DAL_NTC_H
 #define DAL_NTC_H
 

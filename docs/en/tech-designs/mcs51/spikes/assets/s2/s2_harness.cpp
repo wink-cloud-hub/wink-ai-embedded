@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // Spike-S2 link/compile harness (throwaway). Provides the symbols the cleaned
 // user TU references, and proves the ISR vector + renamed main exported with C
 // linkage. Does NOT call wink_mcs51_user_main (it is an infinite bare-metal

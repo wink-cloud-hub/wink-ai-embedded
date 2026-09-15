@@ -39,7 +39,7 @@ $$\text{MCU / 开发板} \xleftrightarrow[\text{4Pin/6Pin/UART}]{\text{数字控
 #### (1) 头文件标准骨架与裁剪桩
 ```c
 /*
- * SPDX-License-Identifier: MIT
+ * SPDX-License-Identifier: GPL-3.0-only
  * Copyright (c) 2026 Wink AI Project
  */
 

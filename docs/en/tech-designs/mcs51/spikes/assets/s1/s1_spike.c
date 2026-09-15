@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /*
  * Spike-S1 PoC: cooperative-fiber yield for MCS-51 tight-poll loops.
  * Throwaway validation code (NOT production). Proves on both host (Win32

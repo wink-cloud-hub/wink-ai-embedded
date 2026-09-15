@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-only
 # Spike-S3 PoC (throwaway): prove the EXISTING unisim runtime device-tree
 # emitter (wink-tools/tools/frontend/runtime_device_tree.py) flattens 8051
 # P0.0~P3.7 -> pin index 0..31 and accepts an adc0832 + thermal_heater_plate
