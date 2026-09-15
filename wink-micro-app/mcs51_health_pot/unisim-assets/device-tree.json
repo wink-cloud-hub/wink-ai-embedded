@@ -134,5 +134,28 @@
   "family": "mcs51",
   "core": "8051",
   "mcu": "cms8s78xx",
-  "vendor": "cmsemicon"
+  "vendor": "cmsemicon",
+  "plantProfiles": [
+    {
+      "id": "pot_default",
+      "sampleIntervalUs": "10000",
+      "model": {
+        "kind": "first_order_thermal",
+        "thermalCapacity": 1256,
+        "thermalResistance": 1.5,
+        "ambientTempC": 25,
+        "ratedPowerW": 1000
+      },
+      "inputPorts": {
+        "power": {
+          "from": "gpio:16"
+        }
+      },
+      "outputPorts": {
+        "temperature_c": {
+          "to": "plugin:temp_sensor/temperature"
+        }
+      }
+    }
+  ]
 }
