@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file pal_hal_mcpwm_host.c
  * @brief Host first-class target PAL MCPWM simulation driver.

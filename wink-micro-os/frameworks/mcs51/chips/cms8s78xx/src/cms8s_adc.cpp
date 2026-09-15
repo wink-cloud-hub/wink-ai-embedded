@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // CMS8S78xx on-chip 12-bit ADC — instant-conversion model (M5, ADR-0073).
 #include "cms8s_adc.h"
 

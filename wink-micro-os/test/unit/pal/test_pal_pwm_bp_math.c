@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file test_pal_pwm_bp_math.c
  * @brief PAL PWM basis-points math matrix (ADR-0066, PLAN-20260912 W-3).

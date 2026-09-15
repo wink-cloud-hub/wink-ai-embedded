@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // Task R1: MCS-51 strong peripheral descriptor table definition (ADR-0004).
 #include "mcs51_peripheral.h"
 #include "mcs51_context.h"

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file wink_selftest_internal.h
  * @brief Internal declarations for OS selftest suite.

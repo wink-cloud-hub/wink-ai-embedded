@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // GAP-02 UART TX-link readiness gate (A-01) — host tests.
 //
 // Release build (no WINK_MCS51_STRICT): the readiness predicate mask and the

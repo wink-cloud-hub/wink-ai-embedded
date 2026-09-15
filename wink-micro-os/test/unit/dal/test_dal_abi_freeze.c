@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file test_dal_abi_freeze.c
  * @brief DAL struct layout ABI freeze and static assertion unit tests.

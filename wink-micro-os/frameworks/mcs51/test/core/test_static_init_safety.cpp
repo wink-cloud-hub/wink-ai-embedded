@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // M2 static-init safety test (clock SSOT §6.3 / ADR-0072 D5): three separate
 // TUs (mcs51_static_tu_a/b/c.cpp) each register an ISR vector via a static
 // C++ constructor (WINK_ISR) and touch an SFR proxy during dynamic init.

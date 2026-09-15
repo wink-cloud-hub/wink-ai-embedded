@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // Unit test for the MCS-51 family routing (Stage3: mcs51_family_route.h,
 // slimmed from the wink_mcu.h facade which moved to runtime/include/).
 #include <stdint.h>

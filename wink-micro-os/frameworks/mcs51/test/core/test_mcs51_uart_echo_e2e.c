@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * Stage 2 T2 e2e (host + wasm/Node): UART RX -> ISR mailbox -> polled TX echo.
  *
  * The unmodified Keil sample (uart_echo.c) enables REN + EA + ES; its vector-4

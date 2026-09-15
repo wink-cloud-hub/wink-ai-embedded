@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file pal_uart_stub.h
  * @brief Host target testing stub hooks for UART event and byte stream injection.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file pal_spi_stub.h
  * @brief Host target testing stub hooks for SPI injection and verification.

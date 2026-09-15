@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file pal_hal_uart_esp32.c
  * @brief ESP32 target PAL HAL UART asynchronous event subsystem implementation.

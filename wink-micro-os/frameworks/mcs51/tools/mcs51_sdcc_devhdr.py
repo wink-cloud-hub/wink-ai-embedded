@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-only
 """
 mcs51_sdcc_devhdr.py — transpile the vendor Keil device header (cms8s78xx.h)
 into an SDCC-compatible device header for the Tier-S compile gate (GAP-03).

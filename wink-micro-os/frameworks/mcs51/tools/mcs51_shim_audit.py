@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-only
 """
 mcs51_shim_audit.py — shim ↔ vendor silicon definition drift gate (GAP-01/22/23).
 

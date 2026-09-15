@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * MCS-51 blinky — UNMODIFIED Keil C51 user source (Timer0 ISR edition, M2).
  *
  * Classic 89C52 Timer0 periodic interrupt: mode-1 (16-bit), 12 MHz teaching

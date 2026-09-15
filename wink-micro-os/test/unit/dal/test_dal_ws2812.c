@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file test_dal_ws2812.c
  * @brief Unit tests for DAL WS2812 / SK6812 RGB LED driver.

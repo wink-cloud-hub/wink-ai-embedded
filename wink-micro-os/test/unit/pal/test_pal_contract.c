@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file test_pal_contract.c
  * @brief PAL contract integrity compilation probe and unit tests.

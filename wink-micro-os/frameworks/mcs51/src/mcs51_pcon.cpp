@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // MCS-51 PCON low-power modes (IDLE / Power-Down) dual-mode scheduling (Task R6).
 #include "mcs51_pcon.h"
 

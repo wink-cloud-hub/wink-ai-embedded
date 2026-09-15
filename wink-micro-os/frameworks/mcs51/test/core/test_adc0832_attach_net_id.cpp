@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // Stage3-H7 decision-B contract test: ADC0832 custom board-channel net ids.
 //
 // The default-key path (32/33) is covered by the dio/e2e/iron suites. This

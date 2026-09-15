@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // GAP-12: duplicate ISR vector registration is no longer silent.
 // (Stage4 S4-1: the P0..P3EXTIF write-0-to-clear half moved to the cms8s
 // suite — EXTIF registers are chip silicon, their W0C hooks exist on chip

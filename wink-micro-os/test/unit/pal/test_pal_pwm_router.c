@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file test_pal_pwm_router.c
  * @brief PAL PWM router timer allocation and sharing unit tests.

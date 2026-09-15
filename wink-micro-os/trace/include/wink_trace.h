@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file wink_trace.h
  * @brief Golden Trace - Fault and event logging subsystem.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // Unit tests for CMS8S78xx on-chip Buzzer peripheral model.
 #include <stdint.h>
 #include <stdio.h>

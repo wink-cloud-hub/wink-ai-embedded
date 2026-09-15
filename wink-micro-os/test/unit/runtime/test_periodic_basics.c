@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file test_periodic_basics.c
  * @brief Unit tests for wink_periodic lifecycle + active_count +

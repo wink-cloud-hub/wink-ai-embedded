@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // ADR-0082 / PLAN-20260915-MCS51-RESET-FIDELITY: CMS8S78xx Reset Controller unit test.
 //
 // Release:

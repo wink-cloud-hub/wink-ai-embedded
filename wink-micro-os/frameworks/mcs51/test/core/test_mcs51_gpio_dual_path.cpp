@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // Task R0: Characterization test for GPIO dual read path (Read-Pin vs Read-Latch)
 // and pin arbitration services (ADR-0077).
 #include <cstdio>

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file test_pal_log_sys_fallback.c
  * @brief Companion translation unit for test_pal_log_hardening without LOG_TAG.

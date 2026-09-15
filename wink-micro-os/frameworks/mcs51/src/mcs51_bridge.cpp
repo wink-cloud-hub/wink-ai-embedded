@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // MCS-51 simulation bridge (boundary ④): binds the cleaned Keil user program
 // into the Wink cooperative runtime and wires the interception points to the
 // virtual clock and peripheral models.

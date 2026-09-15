@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 #include "dal_gps.h"
 #include "hal/pal_uart.h"
 #include "pal_resource.h"

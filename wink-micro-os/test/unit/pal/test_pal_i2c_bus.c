@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file test_pal_i2c_bus.c
  * @brief Host target PAL I2C bus lifecycle unit tests.

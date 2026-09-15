@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // MCS-51 interrupt vector table + two-phase dispatch (C linkage, boundary ②).
 #include "wink_mcs51_isr.h"
 

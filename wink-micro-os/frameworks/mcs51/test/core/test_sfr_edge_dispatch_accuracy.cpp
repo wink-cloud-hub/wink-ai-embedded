@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // M4 data-plane unit test 2: diff edge-dispatch accuracy (data-plane SSOT
 // §7.2) and the linear pin map global_pin = (port<<3)|bit (§4.4).
 //

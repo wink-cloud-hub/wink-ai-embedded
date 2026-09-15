@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-only
 """
 gate_app_hardware_capacity.py — Tier-S SDCC compile gate for mcs51 carrier sources
 # Renamed from mcs51_sdcc_gate.py (2026-09 canonical gate naming).

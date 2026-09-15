@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file test_button_debounce_e2e_wasm.c
  * @brief End-to-end button debounce WASM simulation unit tests.

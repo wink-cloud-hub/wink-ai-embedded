@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file pal_wasm_ch1_gpio.c
  * @brief Wasm target Axis A (CH1) GPIO digital read/write, edge events, & mode management.

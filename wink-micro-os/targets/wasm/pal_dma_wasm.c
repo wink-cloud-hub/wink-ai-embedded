@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file pal_dma_wasm.c
  * @brief Wasm implementation of PAL DMA cache operations.

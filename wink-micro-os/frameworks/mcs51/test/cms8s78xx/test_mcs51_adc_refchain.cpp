@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // A-02 ADC reference chain unit test (GAP-05): VSEL/Vrail scaling on the
 // Pull track, LDO/mux readiness gates, DIV-sensitive charge_us.
 #include <stdint.h>

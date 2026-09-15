@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // M2 test user TU: a hand-written cleaned-style program (no Keil dialect, so no
 // cleanup pass needed) that sleeps a virtual 100 ms then idles. Used by
 // test_unisim_clock_mapping to verify the 1:1 master/slave clock mapping.

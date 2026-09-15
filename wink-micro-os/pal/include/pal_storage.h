@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file pal_storage.h
  * @brief Key-Value Non-Volatile Storage Abstraction (ADR-0008).

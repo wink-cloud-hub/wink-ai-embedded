@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // GAP-12: T2/T3/T4 period formulas must follow Fsys (the old code hardcoded
 // the 24 MHz reciprocals counts/2 and counts/6). Uses the public test
 // wrappers wink_mcs51_test_timer{2,3,4}_reload_period.

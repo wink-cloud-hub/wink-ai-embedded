@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // MCS-51 Timer0/Timer1 functional model (M2, AD-2 / ADR-0072).
 //
 // Functional-level timing: the standard teaching convention of a 12 MHz

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file test_dal_ws2812_sim.c
  * @brief Unit tests for Wasm Target Channel 4 WS2812 Framebuffer simulation path.

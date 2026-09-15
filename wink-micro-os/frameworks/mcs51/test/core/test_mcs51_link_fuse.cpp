@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // Review hardening: link-time self-registration under-registration fuse.
 //
 // Release build (no WINK_MCS51_STRICT): a chip-model family

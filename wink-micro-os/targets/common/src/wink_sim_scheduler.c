@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 #include "wink_sim_scheduler.h"
 #include <string.h>
 #include <stdlib.h>

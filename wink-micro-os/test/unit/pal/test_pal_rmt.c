@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file test_pal_rmt.c
  * @brief PAL RMT multi-channel pulse transceiver unit tests.

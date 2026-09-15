@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // Task R3 / ADR-0078 Characterization test:
 //   1. Two-phase IRQ: peripheral raise -> rendezvous dispatch
 //   2. In-service priority masking (same prio does NOT preempt)

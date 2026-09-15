@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 #include "input/dal_analog_knob.h"
 #include "hal/pal_adc.h"
 #include "hal/pal_gpio.h"

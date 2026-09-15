@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file test_pal_log_hardening.c
  * @brief Host target PAL log hardening and ISR safety unit tests.

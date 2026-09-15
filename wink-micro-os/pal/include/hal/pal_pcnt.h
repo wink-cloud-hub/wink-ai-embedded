@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file pal_pcnt.h
  * @brief PAL PCNT (Pulse Counter) quadrature encoder hardware subsystem interface.

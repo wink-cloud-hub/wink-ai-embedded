@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file test_wasm_devices_sim.c
  * @brief Unit tests for WASM target channel simulation models & ABI compatibility.

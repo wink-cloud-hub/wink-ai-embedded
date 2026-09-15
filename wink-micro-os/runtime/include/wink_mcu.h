@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // wink_mcu.h — Unified MCU facade header for Wink Micro OS.
 //
 // Stage3 S3-1 Step 3: moved up from frameworks/mcs51/include/ to this

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * MCS-51 M3 wasm test: GPIO in->out synchronisation under emscripten fibers
  * (ASYNCIFY), mirroring test/mcs51/test_mcs51_gpio.c. The unmodified Keil
  * sample polls a push button on P3.2 (/INT0, active-low) and drives an LED on

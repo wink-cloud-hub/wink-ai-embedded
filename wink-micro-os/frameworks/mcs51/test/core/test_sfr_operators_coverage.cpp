@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // M4 data-plane unit test 3: full WinkSfr/WinkSbit operator algebra coverage
 // (data-plane SSOT §7.3). Every compound assignment / increment / shift a Keil
 // program can emit (ORL/ANL/XRL/INC/DEC/RL/RR-class) must compile, read the

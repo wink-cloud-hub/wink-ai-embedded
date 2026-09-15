@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // Task F4: Channel 1b Soft PWM duty cycle measurement meter implementation.
 #include "wink_mcs51_pwm_meter.h"
 

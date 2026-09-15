@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 #ifndef WINK_BLOCKING_REGION_H
 #define WINK_BLOCKING_REGION_H
 

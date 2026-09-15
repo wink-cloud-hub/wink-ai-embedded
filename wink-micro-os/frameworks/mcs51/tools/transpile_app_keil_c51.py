@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-only
 """MCS-51 Keil C51 dialect transpile pass (Axis B, ADR-0070 / Task R4).
 # Renamed from mcs51_cleanup.py (2026-09 canonical gate naming).
 

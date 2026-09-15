@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file pal_wasm_ch4_buffer.c
  * @brief Wasm target Axis A (CH4) Buffer Payload / WS2812 Framebuffer implementation.

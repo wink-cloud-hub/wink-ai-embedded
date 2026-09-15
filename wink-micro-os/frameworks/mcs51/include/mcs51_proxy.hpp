@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // MCS-51 SFR proxy (C++17). Models the 8051 Special Function Register file so
 // unmodified Keil C51 code (`sfr P1 = 0x90; sbit LED = P1^0; P1 |= 0x01;`)
 // compiles and runs in the host/wasm sandbox behind named POD types (ADR-0004

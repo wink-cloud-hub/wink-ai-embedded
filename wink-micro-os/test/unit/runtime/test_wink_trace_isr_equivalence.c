@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file test_wink_trace_isr_equivalence.c
  * @brief Unit tests verifying equivalence between task and ISR trace recording functions.

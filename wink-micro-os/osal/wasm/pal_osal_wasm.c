@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file pal_osal_wasm.c
  * @brief WASM simulation target PAL OSAL adapter (delay/tick/mutex).

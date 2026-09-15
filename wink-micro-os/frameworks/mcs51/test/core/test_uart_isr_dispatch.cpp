@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // M3 UART review test: the EA+ES-gated UART ISR path (vector 4).
 //
 // The uart_printf sample is polled (it never sets EA/ES), so the vector-4

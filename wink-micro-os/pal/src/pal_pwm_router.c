@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file pal_pwm_router.c
  * @brief Target-agnostic PWM timer allocation state machine.

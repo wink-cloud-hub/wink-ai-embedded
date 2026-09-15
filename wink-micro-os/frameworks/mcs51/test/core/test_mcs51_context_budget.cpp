@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // Stage2 S2-0 (PLAN-20260911-MCS51-S2): Mcu51Context RAM budget lock.
 //
 // Prints sizeof(Mcu51Context) + major member sizes (feeds stage2 §4 budget

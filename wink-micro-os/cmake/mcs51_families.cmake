@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-only
 # mcs51_families.cmake — resolve MCS-51 chip families from the manifest SSOT
 # (Stage6 S6-2 / review S6-H1, PLAN-20260911-MCS51-S6).
 #

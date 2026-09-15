@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-only
 """MCS-51 Wasm simulation-compat pack (external lint pack, group ``mcs51_all``).
 
 Single :class:`GlobalPack` with two passes inside ``run_on_root`` (the runner

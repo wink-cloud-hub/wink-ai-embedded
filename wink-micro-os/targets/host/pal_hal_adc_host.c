@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file pal_hal_adc_host.c
  * @brief Host platform PAL ADC subsystem implementation and test injection API.

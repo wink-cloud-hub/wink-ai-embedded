@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * MCS-51 RMW isolation — UNMODIFIED Keil C51 user source (M4, data-plane
  * SSOT §4.3 Zero False-Trigger Test Vectors).
  *

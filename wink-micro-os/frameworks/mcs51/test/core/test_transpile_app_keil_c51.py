@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-only
 """Comprehensive test suite for Task R4 & R5 transpile_app_keil_c51.py enhancements:
   - Preprocessor conditional branch tracking (#if 0 masking)
   - Target gating: Native vs SDCC

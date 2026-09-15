@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file test_dev_config.c
  * @brief Device configuration blob parser and CRC32 unit tests.

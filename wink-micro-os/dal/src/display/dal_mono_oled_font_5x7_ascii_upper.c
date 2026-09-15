@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 #include "dal_mono_oled_font_internal.h"
 
 /* 5x7 compact font: space, digits 0-9, uppercase A-Z, exclamation mark (38 glyphs) */

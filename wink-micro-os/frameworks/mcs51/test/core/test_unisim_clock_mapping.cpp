@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // M2 timing test (clock SSOT §6.2 / ADR-0072 D1~D3): the 51 virtual slave
 // clock maps 1:1 to master physical time.
 //

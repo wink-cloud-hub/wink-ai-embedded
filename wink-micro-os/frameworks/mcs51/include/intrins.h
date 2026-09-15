@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // MCS-51 <intrins.h> shim — Keil intrinsic functions.
 //
 // M1 scope: `_nop_()` is the natural interception point for tight polling

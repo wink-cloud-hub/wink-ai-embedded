@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 #define LOG_TAG "dal_encoder"
 #include "sensor/dal_encoder.h"
 #include "hal/pal_gpio.h"

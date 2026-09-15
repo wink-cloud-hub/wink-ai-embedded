@@ -10,7 +10,7 @@ description: "Wink Micro OS - Lightweight runtime for AI-generated embedded appl
 url: "https://github.com/wink-ai/wink-micro-os"
 maintainers:
   - "Wink AI Team"
-license: "Apache-2.0"
+license: "GPL-3.0-only"
 
 targets:
   - esp32

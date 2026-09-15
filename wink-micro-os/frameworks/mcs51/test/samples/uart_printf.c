@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * MCS-51 UART — UNMODIFIED Keil C51 user source (M3).
  *
  * Classic 89C52 polled serial transmit: SCON mode 1 (8-bit UART), then the

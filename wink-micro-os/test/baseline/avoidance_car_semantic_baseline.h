@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file avoidance_car_semantic_baseline.h
  * @brief Avoidance car semantic baseline constants.

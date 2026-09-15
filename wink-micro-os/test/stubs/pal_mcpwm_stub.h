@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file pal_mcpwm_stub.h
  * @brief Host testing stub hooks for motor control PWM simulation.

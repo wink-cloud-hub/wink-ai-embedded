@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // Stage 2 S2-1: external MOVX bus occupancy (renamed from classic_bus:
 // "classic" is a family name, the bus concept is generic — any part without
 // on-chip XRAM, gated by descriptor xram_size == 0).

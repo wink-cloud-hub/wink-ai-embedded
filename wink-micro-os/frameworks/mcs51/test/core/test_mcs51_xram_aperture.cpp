@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // GAP-09 family-gated XDATA aperture — host tests.
 //
 // CMS8S78xx has 1 KB on-chip XRAM (0x0000..0x03FF) then a hole until the

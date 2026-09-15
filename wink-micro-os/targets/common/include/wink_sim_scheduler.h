@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file wink_sim_scheduler.h
  * @brief Single-virtual-core cooperative task scheduler for simulation targets (ADR-0014).

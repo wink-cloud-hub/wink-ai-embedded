@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file pal_hal.h
  * @brief PAL HAL Umbrella Header (Aggregates GPIO, PWM, and I2C interfaces).

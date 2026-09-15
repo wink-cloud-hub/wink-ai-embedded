@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // Stage 2 T2 (ADR-0076 A-class): UART RX model — external bytes pushed via
 // wink_mcs51_uart_rx_push() queue in the pending FIFO and are delivered by
 // wink_mcs51_uart_rx_drain() (called from the microstep interception point on

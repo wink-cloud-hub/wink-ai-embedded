@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file adc_wasm_link_stubs.c
  * @brief Minimal stubs for test_pal_adc_wasm: virtual clock, fault config,

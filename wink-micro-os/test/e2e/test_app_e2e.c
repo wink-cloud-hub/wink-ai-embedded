@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file test_app_e2e.c
  * @brief PAL->DAL->runtime->App end-to-end integration test.

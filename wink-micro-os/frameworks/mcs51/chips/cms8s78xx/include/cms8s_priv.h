@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // CMS8S78xx chip-private state (Stage2 S2-1, PLAN-20260911-MCS51-S2).
 //
 // Aggregate per-instance private block bound through Mcu51Context::soc_priv.

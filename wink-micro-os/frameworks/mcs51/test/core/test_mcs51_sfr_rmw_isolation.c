@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * MCS-51 M4 host test: whole-port RMW vs Level-2 pin-trap strong isolation
  * (data-plane SSOT §4.3, Zero False-Trigger Test Vectors; acceptance #3).
  *

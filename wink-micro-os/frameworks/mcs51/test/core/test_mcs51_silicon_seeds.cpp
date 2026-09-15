@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // GAP-04/GAP-13/GAP-22 regression: per-family silicon reset seeds and the
 // IRQ source->vector/profile mapping table.
 //

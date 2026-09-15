@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * MCS-51 CMS8S78xx on-chip ADC read — UNMODIFIED Keil C51 user source (M5).
  *
  * Vendor-style polled driver for the CMS8S78xx 12-bit ADC (real register map:

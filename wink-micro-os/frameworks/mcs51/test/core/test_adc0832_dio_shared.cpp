@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // M4 ADC0832 unit test (timing SSOT §6.1, B1 / AD-15): 3-wire DIO shared
 // state machine, leading-null alignment, bus-release absorption, and the
 // requirement that BOTH Keil drive styles — sbit toggles and whole-port RMW

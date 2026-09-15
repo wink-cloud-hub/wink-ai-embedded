@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * MCS-51 M4 end-to-end test (shared host + wasm/Node driver): a real Keil
  * bit-bang program (samples/adc0832_read.c) drives the 3-wire DIO ADC0832
  * (CS=P1.2, CLK=P1.1, DIO=P1.0) through the Level-2 instant trap state

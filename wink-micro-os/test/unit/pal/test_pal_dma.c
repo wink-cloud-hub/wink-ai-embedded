@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file test_pal_dma.c
  * @brief Unit tests for PAL DMA cache operations and buffer alignment contracts.

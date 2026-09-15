@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // MCS-51 interrupt-service-routine registration + dispatch (boundary ②).
 //
 // Keil C51 attaches an ISR with `void f(void) interrupt N [using M]`. The

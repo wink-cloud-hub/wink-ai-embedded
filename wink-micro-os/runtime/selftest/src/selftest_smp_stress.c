@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file selftest_smp_stress.c
  * @brief PAL resource claim/release concurrency stress selftest.
