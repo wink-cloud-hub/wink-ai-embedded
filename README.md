@@ -1,106 +1,299 @@
-# Wink-AI Embedded Platform (WinkMicroOS)
+# WinkMicroOS
 
-> 🌐 **Documentation Center / 文档中心**: 
-> [📖 Global Hub](./docs/README.md) | [🇨🇳 简体中文文档](./docs/zh/README.md) | [🇺🇸 English Docs](./docs/en/README.md)
+**AI can already write, run, test and fix software on its own. Embedded is the exception — firmware only proves itself on silicon, and silicon sits behind a human hand.**
 
-Wink-AI 嵌入式运行时及仿真系统（**WinkMicroOS**）：面向 AI 生成嵌入式应用的低代码开发平台。实现可视化/AI 生成的业务逻辑在浏览器 Wasm 仿真（行为级高保真）与物理硬件上的同源编译与执行。
+WinkMicroOS is the deterministic digital lab that closes that loop: the same C source runs in a browser Wasm sandbox and on real MCUs — from ESP32 down to sub-$1 8-bit industrial chips — and every run leaves reviewable PASS evidence behind. *Built for agents, not just humans.*
+
+[![CI](https://github.com/wink-cloud-hub/wink-ai-embedded/actions/workflows/pr.yml/badge.svg)](https://github.com/wink-cloud-hub/wink-ai-embedded/actions/workflows/pr.yml)
+[![Nightly](https://github.com/wink-cloud-hub/wink-ai-embedded/actions/workflows/nightly.yml/badge.svg)](https://github.com/wink-cloud-hub/wink-ai-embedded/actions/workflows/nightly.yml)
+[![License Gate](https://github.com/wink-cloud-hub/wink-ai-embedded/actions/workflows/license-gate.yml/badge.svg)](https://github.com/wink-cloud-hub/wink-ai-embedded/actions/workflows/license-gate.yml)
+[![Release](https://img.shields.io/github/v/release/wink-cloud-hub/wink-ai-embedded?label=release)](https://github.com/wink-cloud-hub/wink-ai-embedded/releases/latest)
+[![License](https://img.shields.io/badge/license-LGPL--3.0--only%20runtime-blue)](./.github/license-map.json)
+![Platform](https://img.shields.io/badge/targets-wasm%20%7C%20esp32%20%7C%208051%20%7C%20avr%20%7C%20pdk-informational)
+![Docs](https://img.shields.io/badge/docs-English%20%7C%20%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-success)
+
+**English** | [简体中文](./README.zh-CN.md)
+&nbsp;·&nbsp; [▶ Try it online](http://www.wink-cloud.com/simulator/index.html) &nbsp;·&nbsp; [5-min guide](./docs/en/design/00-quick-start/01-5min-getting-started.md) &nbsp;·&nbsp; [Docs hub](./docs/en/README.md) &nbsp;·&nbsp; [Roadmap](./docs/en/design/01-system-overall/02-mvp-roadmap.md)
+
+**Status:** v0.1.0 released · public CI green · 35 host test executables (see [`wink-micro-os/TESTING.md`](./wink-micro-os/TESTING.md))
+
+<!-- TODO(asset): add a 15-second hero GIF — import repo → run the `button-led` scenario → press the virtual button → LED lights up with the live waveform. A workbench screenshot works too. -->
 
 ---
 
-## 💡 为什么不是“重复造轮子”？核心产业价值与破局之道
+## The loop that never closed
 
-> 很多嵌入式工程师会提出一个经典质疑：  
-> *“我们平时用开发板、示波器调代码跑了几十年，为什么还需要网页在线仿真？市面上不是早就有 Proteus、Wokwi、QEMU 了吗？”*  
-> 📖 深度商业与技术论证详见白皮书：[嵌入式在线仿真平台商业分析报告](./docs/zh/product/market-analysis.md)。
-
-全球现有的嵌入式仿真工具普遍聚焦于欧美主流 32/64 位 MCU（ARM/RISC-V）或开源教学硬件，**集体忽视了年出货量以百亿计、作为中国实体制造业支柱但缺乏现代工具链的国产低成本 8/16 位工业芯片（中微 Cmsemicon、应广 Padauk、松翰 Sonix、合泰 Holtek、宏晶 STC、芯海等）**。
-
-在**义乌玩具、澄海数码、顺德小家电、深圳消费电子**等万亿级产业集群中，WinkMicroOS 与 UniSim 并不是对现有通用仿真器的平庸模仿。**正如当年 Microsoft Office 终结了纸质公文、Figma 终结了离线设计稿传输，本平台的本质是开启嵌入式研发的“全面数字化转型”**——将原本依赖实物开发板、抽屉样品盒与手工飞线测试的旧模式，彻底跃升为可在线协同、秒级分享、AI 自愈闭环的云端数字孪生新范式：
+AI coding is already a closed loop in pure software. In embedded it never closed — because the loop runs through a human body:
 
 ```text
-┌────────────────────────────────┬────────────────────────────────┬───────────────────────────────┐
-│ 评估维度                       │ 传统模式 (实物开发板 + 示波器) │ 本平台新范式 (WinkMicroOS)     │
-├────────────────────────────────┼────────────────────────────────┼───────────────────────────────┤
-│ **商业决策与需求对齐**          │ 7~15 天物理打样寄件，反复返工  │ 10 秒分享 Web 交互声光孪生链接│
-│ **国产几毛钱低成本芯片排障**   │ OTP 黑盒死机盲猜 2~3 天，缺ICE │ 指令级白盒透明仿真，断点秒级定位│
-│ **外设原型验证准备**           │ 面包板接线半天，排查虚焊断线   │ Web 画布 1 分钟拖拽直连        │
-│ **破坏性/高危极端工况验证**    │ 容易炸机冒烟、烧电机、干烧起火 │ 虚拟环境无损注入千度高温与故障 │
-│ **AI 研发与自愈闭环**          │ 物理台架伪闭环 (依赖人工按键)  │ 纯软件沙箱全自动激励，超实时自愈│
-│ **芯片生态覆盖**               │ 偏向欧美大厂或通用 32 位核     │ 深度覆盖国产小家电/玩具工业主力│
-└────────────────────────────────┴────────────────────────────────┴───────────────────────────────┘
+Pure software today — CLOSED
+  generate → run → test → fix → ↻
+
+Embedded today — OPEN (a human in the middle)
+  generate ─▶ [human: flash] ─▶ [human: press keys] ─▶ [human: read scope] ─▶ [human: paste logs] ─▶ ↻
+
+"Automated" bench rigs — STILL OPEN (a fake loop)
+  generate → auto-flash → logic analyzer → [human: interpret & decide] ─▶ ↻
+
+WinkMicroOS — CLOSED
+  generate → hardware-as-code (device tree + scenario JSON)
+           → deterministic run (host / wasm)
+           → structured trace + PASS evidence
+           → fix → ↻
 ```
 
-### 🌟 五大核心价值维度
+Auto-flashing a real board and capturing waveforms automates the *tools*, not the *loop*: the physical world still needs a human to press the button, rewire the board, and reproduce the edge case. The loop only closes when hardware itself becomes code — reproducible, seedable, scriptable, and free of physical time.
 
-#### 1. 跨越商业鸿沟：从“示波器量波形”到“10秒分享 Web 交互孪生”
-* **产业痛点**：工程师接示波器量出完美的 PWM 占空比与 I2C 时序，外贸买手与产品经理却完全看不懂；买方只在乎“呼吸灯节拍对不对、按键反馈是否灵动、提示音是否刺耳”。传统打样寄件（国内 2~3 天、海外 7~15 天），客户一句“感觉不对”就导致两周打样工时和物料全部报废。
-* **破局价值**：提供高保真 2D/3D 动态声光与物理交互孪生，一键生成 URL 链接，客户在手机浏览器秒开试玩、在线实时确认，消灭反复打样返工泥潭。
+That is the design premise of WinkMicroOS.
 
-#### 2. 破局低成本芯片荒漠：深耕“学术界冷门、工业界主流”的国产工业芯片蓝海
-* **产业痛点**：几毛钱到一两块钱的低成本芯片（如应广 PDK、中微 CMS8S、STC 51）没有 SWD/JTAG 硬件调试接口，原厂硬件仿真盒（ICE）售价昂贵且极其稀缺，OTP 芯片死机只能靠翻转 IO 盲加打点，偶发 Bug 排障耗时数天。
-* **破局价值**：避开欧美高端 32 位红海，深度攻坚国产工业主力芯片指令集虚拟机与外设代理，提供零硬件成本的指令级白盒透明仿真，断点、寄存器与堆栈一览无余。
+## Why WinkMicroOS
 
-#### 3. 告别“电工式”内耗：嵌入式研发的“Office 数字化转型时刻”
-* **产业痛点**：传统嵌入式研发仍深陷**“手工作坊与纸质档案时代”**——为了验证几行控制逻辑，工程师先当半天电工插杜邦线、排查虚焊；多案子并行桌面洞洞板堆积如山，抽屉里塞满接线混乱的样板；人员离职后物理接线散落，前人项目彻底沦为无法复原的“硬件黑洞”。
-* **破局价值（类比 Office 的数字化飞跃）**：正如 Office / 云文档将“纸质公文与文件柜”终结并跃升为“可检索、可协作、秒级分享的数字资产”，本平台将脆弱杂乱的物理外设与飞线工装彻底**数字化、资产化为轻量标准的云端工程（电路拓扑 + 固件 + 场景脚本）**。任何团队成员只需打开一个 URL 链接，1 秒内完整克隆并还原软硬件现场，实现嵌入式研发资产从“物理抽屉堆叠”向“数字资产云端协同”的划时代跨越。
+- **Where the volume actually is.** Wokwi, QEMU and friends serve ARM/RISC-V dev boards. Most industrial volume ships as 8/16-bit parts (MCS-51/STC, Cmsemicon, Padauk, Holtek, Sonix…) with no SWD/JTAG and no affordable ICE — debug-by-OTP only. WinkMicroOS simulates them instruction-level, with breakpoints, registers and stack in the browser.
+- **Same source, everywhere.** One C codebase compiles for `host` (tests), `wasm32` (browser/headless simulator) and `targets/esp32`; unmodified Keil C51 sources ([ADR-0075](./docs/decisions/core/0075-mcs51-production-wasm-target-headless.md)) and unmodified Arduino sketches ([ADR-0035](./docs/decisions/core/0035-arduino-compat-polymorphism-sandbox.md)) run in simulation without a porting layer.
+- **Deterministic by construction.** Virtual-clock ticking, seeded PRNG, headless scenario scripts with declared assertions. Failures are reproducible — no "works on my bench".
+- **Hardware is code.** Board topology lives in JSON (`wink-app.json` + board registry), test stimulus lives in scenario JSON. No breadboard, no jumper wires, CI-friendly.
+- **Shareable behavior, not oscilloscope traces.** A run produces a shareable online simulation session — customers and PMs feel the LED breathing pattern in a browser instead of squinting at waveform captures.
+- **Break it on purpose.** Power dips, sensor dropouts, motor stall, thermal runaway: destructive conditions are injected with zero risk and replayed exactly.
+- **Evidence you can ship on.** Every run emits a structured, replayable PASS/FAIL record with a deterministic trace (`SimTraceSpecV2`) — so AI-authored firmware can be reviewed without reading every line, and merged without a leap of faith.
+- **Designed for AI agents.** Every input and output of the loop is text, documented for machine consumption ([AGENTS.md](./AGENTS.md)) — agents can scaffold a driver, run the scenario suite, and read structured failures to self-correct.
 
-#### 4. 零损耗开展极端破坏性与高危工况验证
-* **产业痛点**：电机驱动 PWM 死区配置失误极易引发 MOS 管直通炸机；电热水壶/暖风机温控状态机缺陷会导致发热盘持续干烧引燃外壳，在物理实物上验证存在严重安全隐患与硬件报损。
-* **破局价值**：纯软件环境以纳秒级精度监控时序违规，零风险、零成本注入发热盘 1000℃ 极端高温、NTC 传感器瞬间断线、电机突发堵转，在 PCB 打样前消灭 90% 的安全隐患。
+## Built for agents, not just humans
 
-#### 5. 构建真正的 AI-in-the-Loop 自主研发与自愈闭环：彻底挣脱物理硬件枷锁
-* **传统物理台架的伪闭环局限**：目前业界即便能让 AI 结合脚本实现“自动编译烧录 + 逻辑分析仪抓波形”，但**物理世界的刚性约束依然让闭环严重受阻**：
-  1. **物理交互仍需“人在回路”**：按键长短按、双键微秒级并发差值、旋钮旋转，仍需测试人员坐在台前手动按键操作（或搭建极其笨重脆弱的机械臂/电磁铁治具）；
-  2. **边缘与破坏性工况极难安全复现**：温湿度突变、电源微小跌落毛刺、接触不良、传感器断线或千度干烧，在实物台架上不仅极难稳定构造与复现，而且极易造成短路炸机损坏器件；
-  3. **物理时间与硬件损耗制约**：实物测试受制于真实世界 1 秒等于 1 秒的时间刚性（遍历万次循环需耗时数小时），且低成本 OTP/Flash 芯片擦写寿命脆弱极易报废；
-  4. **拓扑变更改线成本高**：更换引脚定义或增减外设依然需要人工重新走线。
-* **破局价值（“硬件即代码”的纯软件超实时数字沙箱）**：
-  将电路拓扑与外设交互彻底**软件化与代码化（Hardware as Code）**，为 AI Agent 提供无需任何人手干预的“全自主进化沙箱”：
-  - **全自动注入交互激励**：场景脚本精确模拟按键机械弹跳、双键微秒级并发时间差与滑动阻尼，彻底替代人工按键；
-  - **超实时极速遍历（Hyper-Real-Time）**：虚拟时钟 Tick 驱动，物理世界 1 小时的测试用例 **3~5 秒瞬间跑完**，轻松支撑数万次 Fuzzing 模糊测试；
-  - **极端工况与纳秒级确定性**：无损注入千度高温、掉电断线与时序冲突，且 100% 确定性可复现（Zero Flakiness）；
-  - **AI 全闭环纠错自愈**：断言失败自动捕获精确 PC 指针、调用栈与 RAM 内存快照，AI 自主反思修改源码并即时复测，使 AI 生成嵌入式代码的可用率从不足 30% 跃升至 **95% 以上**。
+Existing simulators are good tools — for a person sitting at a keyboard. An agent needs different properties: everything text-defined, headless by default, deterministic, and producing structured evidence.
 
----
+| Tool | Great at | Why it doesn't close the agent loop |
+|---|---|---|
+| Proteus | Circuit-level SPICE simulation, a classroom classic | Desktop, licensed, heavyweight; chip library centered on legacy 51/AVR/PIC; no machine-readable evidence output |
+| Wokwi | Web Arduino/ESP32 simulator with excellent UX | Maker & education scope; no industrial test framework; no coverage of the low-cost industrial MCUs that ship by the billion |
+| QEMU | Open-source instruction-level / system virtualization | Built for OS-level targets, not MCU microsecond peripheral timing; heavy to put inside a firmware CI loop |
+| Renode | Multi-node IoT system simulation (Cortex-M / RISC-V) | Powerful but workflow-heavy; aimed at advanced 32-bit scenarios, not the sub-$1 8-bit ecosystem |
 
-## 📚 快速文档导航 (Documentation Index)
+WinkMicroOS is not a better mousetrap for the same user. It is a different user: the agent itself. Hardware as code, deterministic scenarios, headless evidence — all of it text, all of it scriptable.
 
-| 入口 | 说明 | 快速链接 |
-| :--- | :--- | :--- |
-| **🌐 全局文档中心** | 全局文档拓扑图、i18n 多语言架构与工具链 | [docs/README.md](./docs/README.md) |
-| **🇨🇳 中文文档中心** | 7 大系统设计规范 (SSOT)、RFC 技术方案、市场分析 | [docs/zh/README.md](./docs/zh/README.md) |
-| **🇺🇸 English Docs Hub** | System Design SSOT Specifications & Technical RFCs | [docs/en/README.md](./docs/en/README.md) |
-| **⚡ 5分钟快速上手** | 浏览器免安装在线仿真与极速上手教程 | [5min Getting Started](./docs/zh/design/00-quick-start/01-5min-getting-started.md) |
-| **📊 商业分析白皮书** | 传统研发困境、AI 闭环与国产低成本芯片产业分析 | [Market Analysis](./docs/zh/product/market-analysis.md) |
+> **Scope, honestly.** Simulation left-shifts risk; it does not replace the bench. Electrical characteristics, EMC, thermal and mechanical behavior still need real hardware. The goal is to make hardware validation the last confirmation — not the first iteration.
 
----
+## See it
 
-## 🏛️ 项目核心模块
+### 1 · Describe the hardware
 
-- `wink-micro-os/`: C 语言嵌入式运行时内核（PAL 硬件抽象层 / DAL 器件抽象层 / BAL 业务抽象层）
-- `wink-micro-app/`: 嵌入式应用工程中心（AI-Native 原生业务、原厂回归套件、MCS-51/Arduino/PDK 兼容生态）
-- `wink-tools/`: 统一嵌入式 CLI 与开发工具链（代码生成、多端构建、烧录与测试）
-- `simulator/`: Wasm 仿真器及运行时支撑
-- `embedded-frontend/`: 嵌入式可视化工作台与仿真视窗
-- `docs/`: 完整双语 SSOT 规范、架构决策记录 (ADR) 与实施计划
+```json
+// wink-micro-app/mcs51_button_led/wink-app.json
+{
+  "app_name": "mcs51_button_led",
+  "board": "stc89c52_devboard",
+  "mcu": "at89c52",
+  "devices": {
+    "btn": { "type": "button", "gpio_pin": 26, "active_low": true },
+    "led": { "type": "led",    "gpio_pin": 8,  "active_high": false }
+  }
+}
+```
 
----
+### 2 · Write the logic — unmodified vendor code or WinkMicroOS APIs
 
-## 📜 开源协议 (License)
+Unmodified Keil C51, straight from the vendor's IDE — `sbit`, SFRs and all (build-time transpile emits the simulator artifact; the original file is never edited):
 
-本项目采用**分层许可（License Map）**：核心运行时 LGPL-3.0-only（用户固件可闭源），其余默认 GPL-3.0-only。
-This project uses a **layered license map**: the runtime core is LGPL-3.0-only (user firmware may stay proprietary); everything else defaults to GPL-3.0-only.
+```c
+// wink-micro-app/mcs51_button_led/button_led.c  (SPDX: Apache-2.0)
+#include <wink_mcu.h>
 
-| 范围 / Scope | 许可 / License |
+sbit KEY = P3^2;    /* push button on P3.2 / INT0, active-low */
+sbit LED = P1^0;    /* LED on P1.0, low-drive-on */
+
+void main(void) {
+    LED = 1;
+    while (1) {
+        LED = (KEY == 0) ? 0 : 1;
+        _nop_();    /* microstep / cooperative yield point */
+    }
+}
+```
+
+…or the modern event-driven style, which is identical on host, Wasm and ESP32:
+
+```c
+// wink-micro-app/avoidance_car/app_callbacks.c  (SPDX: Apache-2.0)
+static void app_on_event(const wink_event_t *evt)
+{
+    if (evt->device != &front_radar || evt->type != WINK_EVENT_DISTANCE_READY) {
+        return;
+    }
+    float cm = (float)evt->param / 10.0f;
+    neck_servo_set_angle(cm < 20.0f ? 1800 : 900);  /* 0.1° units */
+}
+```
+
+### 3 · Prove it headlessly
+
+Scenarios are deterministic, self-asserting and run without a browser ([SimTraceSpecV2](./docs/en/design/04-wasm-simulation/00-README.md)):
+
+```json
+// wink-micro-app/mcs51_button_led/unisim-scenarios/button-led.scenario.json (excerpt)
+{
+  "header": { "accuracyMode": "behavioral", "failurePolicy": "fail-fast",
+              "determinism": { "prngSeed": 42 } },
+  "steps": [
+    { "type": "INPUT_PLUGIN_EVENT", "timeUs": "200ms", "targetPluginId": "btn",
+      "action": "SET_PRESSED", "params": { "pressed": true } },
+    { "type": "ASSERT_POINT", "timeUs": "800ms", "target": "plugin:led/on", "matcher": true },
+    { "type": "ASSERT_POINT", "timeUs": "800ms", "target": "gpio:8", "matcher": 0 }
+  ]
+}
+```
+
+Run the equivalent of this on your machine in one command — no hardware, no browser:
+
+```console
+$ winkcli test                            # host build + full test suite (35 executables as of 2026-07)
+[PASS] All tests passed
+```
+
+## Supported targets
+
+Board definitions are the hardware SSOT: [`wink-tools/tools/codegen/boards/`](./wink-tools/tools/codegen/boards/README.md).
+
+| Family | Board in registry | Simulation tier | Upstream compatibility |
+|---|---|---|---|
+| ESP32 (Xtensa) | `esp32_devkitc_v4` | Tier 1 — full Wasm runtime, scheduler & multitasking | Native WinkMicroOS apps (BAL / DAL) |
+| MCS-51 / 8051 | `stc89c52_devboard`, `cms8s78xx_devboard` | Tier 2 — instruction interception + virtual SFR gateway | **Unmodified Keil C51** sources (`sbit`, `REGX52.H`, vendor SFRs) |
+| AVR | `arduino_uno_r3` | Arduino compatibility layer | **Unmodified Arduino sketches** (`Serial`, `String`, `millis`) |
+| Padauk PDK | `padauk_pfs154_devboard` | Tier 3 — 1:1 ISA virtual machine | Vendor PDK sources ([ADR-0064](./docs/decisions/unisim/0064-chip-simulation-four-tier-taxonomy.md)) |
+
+## Architecture
+
+```text
+┌───────────────────────────────────────────────────────────────────────────┐
+│  Your firmware (C)                                                        │
+│    wink-micro-app/<app>/     business logic · L1 Role API / L2 dal_*      │
+└──────────────┬────────────────────────────────────────────────────────────┘
+               │  device_tree.h  (generated from wink-app.json)
+┌──────────────▼────────────────────────────────────────────────────────────┐
+│  wink-micro-os runtime — static dispatch · no malloc · cooperative loop   │
+│    BAL   business abstraction   events · closed-loop control              │
+│    DAL   device abstraction     servo · ultrasonic · button · LED · OLED  │
+│    PAL   platform abstraction   gpio · pwm · i2c · uart · timers · irq    │
+│    runtime / trace / fault registry                                       │
+└──────────────┬────────────────────────────────────────────────────────────┘
+       ┌───────┼──────────────────┬────────────────────┐
+       ▼       ▼                  ▼                    ▼
+  targets/host  targets/wasm    targets/esp32    frameworks/mcs51 · avr · pdk
+  unit tests    UniSim (browser   ESP-IDF carrier  8/16-bit MCU families
+                & headless CI)
+```
+
+## Repository layout
+
+| Path | What it is | License |
+|---|---|---|
+| [`wink-micro-os/`](./wink-micro-os/) | The C runtime: PAL / DAL / BAL, runtime, trace, targets (`host`, `wasm`, `esp32`), MCS-51 framework, host test suite | **LGPL-3.0-only** (links into your firmware — it can stay proprietary) |
+| [`wink-micro-app/`](./wink-micro-app/) | Example & regression apps (MCS-51, PDK, Arduino, ESP32), each with device tree, scenarios and prebuilt Wasm | Apache-2.0 |
+| [`wink-firmware-carriers/`](./wink-firmware-carriers/) | Flashable carrier projects (ESP-IDF) for real boards | LGPL-3.0-only |
+| [`wink-tools/tools/codegen/boards/`](./wink-tools/tools/codegen/boards/) | Board registry — the hardware single source of truth consumed by the WinkCli toolchain | Apache-2.0 |
+| [`wink-plugin-peripherals/`](./wink-plugin-peripherals/) | Simulator peripheral plugins (TypeScript): ultrasonic, WS2812, … | GPL-3.0-only |
+| [`docs/`](./docs/README.md) | Bilingual SSOT design specs, ADRs, tech designs, plans, reviews | GPL-3.0-only |
+
+## Design principles
+
+| Rule | Why | Reference |
+|---|---|---|
+| Negative error codes: `0` = OK, `< 0` = error | Uniform failure handling across all layers | [ADR-0001](./docs/decisions/core/0001-error-code-sign-convention.md) |
+| Compile-time static dispatch (POD + named APIs, no vtables / `container_of`) | Predictable code size & stack on 8-bit MCUs | [ADR-0004](./docs/decisions/core/0004-static-dispatch-vs-runtime-ops.md) |
+| Dual-target same source: wasm32 + xtensa from one C codebase | Simulated behavior must equal shipped behavior | [ADR-0002](./docs/decisions/unisim/0002-dual-target-compilation.md) |
+| No dynamic allocation; cooperative loop execution | No heap fragmentation, bounded RAM on tiny parts | [ADR-0007](./docs/decisions/core/0007-cooperative-loop-execution-model.md) |
+| PWM duty in basis points (`PAL_PWM_DUTY_PCT/PERMILLE`), floats banned for duty | Deterministic, unit-safe actuator control | [ADR-0066](./docs/decisions/core/0066-pwm-basis-points-and-float-deprecation.md) |
+| Layering & API shape enforced by YAML rules in CI | Keeps App/BAL/DAL/PAL boundaries honest | [ADR-0043](./docs/decisions/tools/0043-yaml-layer-lint.md) |
+
+## Quick start
+
+### 1 · Zero install — run a demo in your browser
+
+1. Open the online simulator: **<http://www.wink-cloud.com/simulator/index.html>**
+2. Import this repository (or just the `wink-micro-app/mcs51_button_led/` folder)
+3. Run the `button-led` scenario, press the virtual button, watch the LED and the live pin waveform
+
+### 2 · Install WinkCli (one-time)
+
+The build / simulate / flash commands below are driven by **WinkCli**, the WinkMicroOS toolchain. Install it once:
+
+```powershell
+# Option 1 - winget (recommended on Windows)
+winget install WinkAI.WinkCli
+
+# Option 2 - GitHub Releases (offline / no package manager):
+#   download winkcli-v<version>-windows-x86_64.zip from
+#   https://github.com/wink-cloud-hub/wink-ai-embedded/releases
+#   and add winkcli.exe to your PATH
+```
+
+> Full install & environment guide: [`wink-tools/docs/en/00-install.md`](./wink-tools/docs/en/00-install.md).
+
+### 3 · Local build & test — no hardware required
+
+```bash
+git clone https://github.com/wink-cloud-hub/wink-ai-embedded.git
+cd wink-ai-embedded
+winkcli test            # everyday gate: host build + full suite
+winkcli test --clean    # clean rebuild when CMake or caches are suspect
+```
+
+> The underlying flow is plain CMake + CTest: `cmake -B build-host -DTARGET_PLATFORM=host && cmake --build build-host && ctest --test-dir build-host --output-on-failure`.
+> Test tiers, fidelity guarantees and the MSVC second-chain: [`wink-micro-os/TESTING.md`](./wink-micro-os/TESTING.md).
+
+### 4 · Real hardware — flash an ESP32
+
+```powershell
+winkcli esp32 --app devkitc_smoke                       # build
+winkcli esp32 --app devkitc_smoke -- -p COM3 flash monitor
+```
+
+> Requires ESP-IDF v6.x via Espressif IDE Manager. Details: [`wink-firmware-carriers/esp32/README.md`](./wink-firmware-carriers/esp32/README.md).
+
+## Built for AI-in-the-loop development
+
+- **Machine-readable hardware**: device tree and board registry are JSON schemas, not schematic PDFs.
+- **Deterministic stimulus**: scenario scripts inject button bounce, timing races, sensor dropouts and fault conditions — seeded and replayable.
+- **Structured failures & evidence**: fault codes plus the trace ring buffer (`SimTraceSpecV2`) point at root cause — and every run leaves a replayable PASS/FAIL record instead of a photo of a dead board.
+- **Agent guide included**: [`AGENTS.md`](./AGENTS.md) and [`.agents/skills/`](./.agents/skills/) describe the repo's conventions, gates and safe editing rules for coding agents.
+
+<!-- TODO: if/when a public MCP server or agent CLI exists, add a "Connect your agent" snippet here. Do not promise integrations that are not shipped. -->
+
+## Documentation
+
+| Hub | Contents |
 |---|---|
-| `wink-micro-os/**` 运行时（pal / dal / bal / osal / runtime / trace / targets / frameworks） | **LGPL-3.0-only** |
-| `wink-micro-os/codegen/**`（driver / role 描述与模板，生成物归用户） | Apache-2.0 |
-| `wink-micro-os/frameworks/mcs51/tools/*.py`、`wink-micro-os/**/test/**` | GPL-3.0-only |
-| `wink-micro-os/third_party/**`（ArduinoCore-API / Unity） | LGPL-2.1-or-later / MIT |
-| `wink-firmware-carriers/**` | LGPL-3.0-only |
-| `wink-micro-app/**`（示例，可直接复制进自有工程） | Apache-2.0 |
-| `wink-tools` / `wink-plugin-peripherals` / `unisim` / 前端平台 | GPL-3.0-only |
-| 其余（`docs/`、根目录） | GPL-3.0-only |
+| [Global docs hub](./docs/README.md) | Topology, governance, CLI query tools |
+| [English docs](./docs/en/README.md) · [简体中文](./docs/zh/README.md) | Bilingual SSOT (design specs 01–07) |
+| [Wasm simulation (UniSim)](./docs/en/design/04-wasm-simulation/00-README.md) | Mechanisms, fidelity axes, assurance |
+| [Decisions (ADR)](./docs/decisions/) | Architecture decision records, by domain |
+| [Implementation plans](./docs/implementation-plans/) · [Reviews](./docs/reviews/) | Execution stream & verification records |
 
-第三方组件归属详见 [wink-micro-os/NOTICE](./wink-micro-os/NOTICE)；许可地图以 [`.github/license-map.json`](./.github/license-map.json) 为单一事实来源，由 CI 门禁校验。
-Third-party attributions: [wink-micro-os/NOTICE](./wink-micro-os/NOTICE); the license map is enforced by CI ([`.github/license-map.json`](./.github/license-map.json)).
+## Roadmap
+
+- Cross-platform winkcli distribution (Linux/macOS binaries) so public CI can build firmware end-to-end
+- Wider 8/16-bit MCU coverage (more Padauk / Holtek / Sonix parts) and board-registry growth
+- Scenario library expansion: fault injection, bus timing races, long-run soak tests
+
+Current milestones and scope: [`docs/en/design/01-system-overall/02-mvp-roadmap.md`](./docs/en/design/01-system-overall/02-mvp-roadmap.md).
+
+## Contributing
+
+Contributions are welcome. For anything beyond a small fix, open an issue first so we can agree on the design. New here? Look for `good first issue` labels, or start with a board definition or a device driver under `wink-micro-app/`.
+
+Using an AI coding agent? Point it at [`AGENTS.md`](./AGENTS.md) before it edits anything.
+
+<!-- TODO(P2): add CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md and issue templates. -->
+
+## License
+
+Layered license map — the runtime is **LGPL-3.0-only** (your firmware may stay proprietary); the platform and docs default to **GPL-3.0-only**:
+
+| Scope | License |
+|---|---|
+| `wink-micro-os/**` runtime (pal / dal / bal / runtime / trace / osal / targets / frameworks) | LGPL-3.0-only |
+| `wink-micro-os/codegen/**` (driver / role descriptions & templates; outputs belong to you) | Apache-2.0 |
+| `wink-micro-app/**` samples · `wink-tools/tools/codegen/boards/**` | Apache-2.0 |
+| `wink-firmware-carriers/**` | LGPL-3.0-only |
+| `wink-tools/**` (otherwise) · `wink-plugin-peripherals/**` · platform & docs | GPL-3.0-only |
+| `wink-micro-os/third_party/**` (ArduinoCore-API, Unity) | LGPL-2.1-or-later / MIT |
+
+Single source of truth: [`.github/license-map.json`](./.github/license-map.json), enforced by CI. Third-party attributions: [`wink-micro-os/NOTICE`](./wink-micro-os/NOTICE).
