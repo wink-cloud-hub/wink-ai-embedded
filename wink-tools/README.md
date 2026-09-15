@@ -6,7 +6,8 @@ winkcli-version: ">=0.1.0"
 
 `winkcli` is the unified build & simulation CLI for WinkMicroOS: it hides the differences between CMake / Emscripten / ESP-IDF / cross-compilers and gives one consistent entry point for **Host simulation**, **browser Wasm simulation** and **ESP32 hardware**.
 
-- Installation: **TODO (install method pending)**
+- Install (winget): `winget install WinkAI.WinkCli`
+- Install (GitHub Releases): download `winkcli-v<version>-windows-x86_64.zip` from [Releases](https://github.com/wink-cloud-hub/wink-ai-embedded/releases) and add `winkcli.exe` to `PATH`
 - Online simulator (zero install): <http://www.wink-cloud.com/simulator/index.html>
 - Full documentation: [`docs/en/`](./docs/en/)
 - Release notes: [GitHub Releases](https://github.com/wink-cloud-hub/wink-ai-embedded/releases)
