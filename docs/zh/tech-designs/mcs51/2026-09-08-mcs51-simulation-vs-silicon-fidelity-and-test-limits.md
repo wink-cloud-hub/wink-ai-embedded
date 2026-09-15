@@ -3,7 +3,7 @@
 | 属性 | 内容 |
 | :--- | :--- |
 | **文档状态** | Formal Standard - 现行技术设计规格 (Layer-②) |
-| **基线版本与 ADR** | [ADR-0012](../../decisions/core/0012-contract-honesty-over-silent-degradation.md) (契约诚实), [ADR-0070](../../decisions/core/0070-mcs51-zero-code-simulation-interception-layer.md) (C++拦截), [ADR-0071](../../decisions/core/0071-sfr-proxy-rmw-edge-data-plane.md) (数据面代理), [ADR-0072](../../decisions/core/0072-dual-clock-domain-and-quota-catchup.md) (双时钟域与 Trap 红线), [ADR-0073](../../decisions/core/0073-cms8s-adc-real-register-map-supersedes-ssot.md) (CMS8S ADC 真实图与 0 周期即时), [ADR-0076](../../decisions/core/0076-mcs51-sim-backends-native-vs-iss-channel-roadmap.md) (双后端路线与 A/B 类缺口) |
+| **基线版本与 ADR** | [ADR-0012](../../decisions/core/0012-contract-honesty-over-silent-degradation.md) (契约诚实), [ADR-0070](../../decisions/core/0070-mcs51-zero-code-simulation-interception-layer.md) (C++拦截), [ADR-0071](../../decisions/core/0071-sfr-proxy-rmw-edge-data-plane.md) (数据面代理), [ADR-0072](../../decisions/core/0072-dual-clock-domain-and-quota-catchup.md) (双时钟域与 Trap 红线), [ADR-0073](../../decisions/core/0073-cms8s-adc-real-register-map-supersedes-ssot.md) (CMS8S ADC 真实图与 0 周期即时), [ADR-0076](../../decisions/core/0076-mcs51-sim-backends-native-vs-iss-channel-roadmap.md) (双后端路线与 A/B 类缺口), [ADR-0082](../../decisions/core/0082-mcs51-reset-semantics-fiber-exit-and-reentry.md) (复位语义与微步重入) |
 | **创建日期** | 2026-09-08 |
 | **适用对象** | 仿真引擎架构师、系统设计者、CI/HIL 自动化测试工程师、嵌入式固件高级开发者 |
 | **所属模块** | `wink-micro-os` / `frameworks/mcs51/` / `UniSim` / `unisim-scenarios` |
@@ -85,6 +85,20 @@ while (1) {
   用户 C 代码被编译为宿主原生指令（x86 或 Wasm），底层**没有 8051 指令流水线**。
   从时钟 `s_virtual_us` 仅在**明确的拦截点**进行离散记账（每访问一次 SFR 或调用一次 `_nop_()` 充 `WINK_MCS51_MICROSTEP_US = 5µs`）。
   纯寄存器/内存运算（如 `int i; i++;`）在虚拟世界中**消耗 0µs 时间**。
+
+---
+
+### 2.4 复位体系与重入：硬件全局重置 vs. 虚拟微步退栈重入 (ADR-0082)
+
+看门狗超时（WDT Overflow）与软件复位（SWRST）是嵌入式系统自愈与容错的关键机制：
+
+| 维度 | 物理硅片 (CMS8S78xx Silicon) | Native 仿真模型 (ADR-0082 / mcs51_bridge.cpp) |
+| :--- | :--- | :--- |
+| **复位源** | 内部复位总线拉低，硬件重置除复位标志位外全部 SFR/RAM | 拦截微步边界，触发整机复位控制器 |
+| **执行流跳转** | 硬件强置 PC = 0x0000，硬件调用栈直接丢弃 | 微步通过 `longjmp` 强制退栈展开深层 C++ 调用栈，外层 `setjmp` 重启 `main()` |
+| **系统清洗** | 模拟/数字逻辑全电气重置 | `mcs51_perform_reset_sanitization()`：清退/重置事件队列、中断在服深度归零、重置上拉驱动与 PCON Trap |
+| **复位标志粘滞** | 上电复位置位 `WDCON.PORF=1`；热复位（WDT/SWRST）保持 PORF 原值，置位相应标志 | 仿真通过 `Mcu51Context` 暂存器保留粘滞位（PORF 跨热复位保留），且 PORF 清零允许无 TA 解锁 |
+| **C 静态变量** | 真机上未显式初始化的变量可能处于随机态或由 startup 零初始化 | 原生 Native 进程环境下 `static` 变量在进程生命周期内不会重新初值化，固件必须遵循规范显式初始化 |
 
 ---
 
@@ -209,6 +223,22 @@ CMS8S78xx 的 `ADCON1` 允许配置 `ADC_CLK_DIV_2` 到 `ADC_CLK_DIV_256`（相�
   │ 证明无死锁、持续翻转│        │ 落在 [2000, 2100] │        │ 无中断重入/标志挂死│
   └───────────────────┘        └───────────────────┘        └───────────────────┘
 ```
+
+---
+
+### 4.3 看门狗与复位测试方法论：正向重入捕获与负向看门狗守卫
+
+针对系统复位与看门狗例程编写场景断言时，应遵守以下测试原则：
+
+1. **软件复位 (SWRST) 捕获**：
+   - 官方例程通常在复位前发出特征信号（如 P3.2 闪烁 250 次），复位后重新进入 `main()` 重复该过程。
+   - 场景断言应跨越复位前后的时间窗口（例如在 250ms 前观察首轮脉冲，在 250ms~500ms 观察 SWRST 重启后的第二轮脉冲），通过持续脉冲波形证明系统未被挂死且完成了微步退栈重入。
+2. **看门狗喂狗负向守卫**：
+   - 官方例程通常以远低于超时阈值的周期规律喂狗（例如 ~1.3ms 喂狗一次，远小于 174.76ms 超时）。
+   - 场景断言应采用**双引脚正反守卫**：
+     - **运行指示引脚（如 P3.2）**：断言持续翻转（证实主循环按预期健康运转）；
+     - **复位标志引脚（如 P3.3）**：保持弱上拉高电平（若系统发生异常复位，开机初始化会将引脚重配为推挽低电平；恒高证实未发生异常复位）；
+     - 结合遥测诊断断言系统复位计数值恒为 0。
 
 ---
 

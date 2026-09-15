@@ -38,7 +38,7 @@
 | [GAP-04](#gap-04p1ckcon-复位种子错误0x07--0x003-倍定时器偏差) | ✅ 完成 | **P1** | A-06 | CKCON 复位种子错误（硅片 0x07，模型 0x00，3 倍偏差） | 不显式清 T0M/T1M 的应用时序/波特率全错 | 否（应用显式配置） |
 | [GAP-05](#gap-05p1adc-参考电压链模拟复用完全不建模) | 🔧 部分（A 半落地 2026-09-11：VSEL/LDO/mux 门控 + DIV 记账 + Vrail/Vref 换算，host 全绿；device-tree 外电路声明 + 红线 §4.4 待办） | **P1** | A-02 | ADC 参考电压链 / 模拟 mux / LDO 不参与码值 | NTC 上拉轨≠3.0V 时全温区系统性测温偏差 | **是（前提性风险）** |
 | [GAP-06](#gap-06p1config-选项字节不在仿真世界fosc-硬编码-24mhz) | ⬜ 未开始 | **P1** | A-06 + C-03 | CONFIG 选项字节不建模，Fosc 硬编码 24MHz | 芯片 CONFIG 非 24MHz 路径时 tick 与波特率同比错 | **是（前提性风险）** |
-| [GAP-07](#gap-07p1wdt-只验证-ta-序列不验证超时复位ta-窗口过宽容) | 🔧 部分（2026-09-11：WDT 粗模型 + TA 收窄 + 双构建单测全绿，host 零回归；整机复位/wasm 回归/runner 接线待办） | **P1** | A-04（依赖 A-03 先行） | WDT 不模拟超时复位；TA 窗口无超时/不被打断 | 真机喂狗不及时复位循环；错误 TA 用法虚假通过 | 低（喂狗周期 10ms，余量充足） |
+| [GAP-07](#gap-07p1wdt-只验证-ta-序列不验证超时复位ta-窗口过宽容) | 🔧 部分（2026-09-15：ADR-0082 + PLAN-20260915-MCS51-RESET-FIDELITY，整机复位控制器、微步 longjmp 退栈、main() 重新入、PORF/WDTRF/SWRST 状态机与底层 CTest 单测全绿；厂商例程 33/34 阶段一镜像就绪，待阶段二/三 Wasm 构建与 Headless 实证） | **P1** | A-04（依赖 A-03 先行） | WDT 不模拟超时复位；TA 窗口无超时/不被打断 | 真机喂狗不及时复位循环；错误 TA 用法虚假通过 | 低（喂狗周期 10ms，余量充足） |
 | [GAP-08](#gap-08p1gpio-方向上下拉驱动强度寄存器不参与行为) | 🔧 部分（2026-09-11：TRIS/UP/OD 门控 + AN 数字读屏蔽 + 计数器，host 全绿；2026-09-12：TRIS 方向切换重驱/释放落地（PLAN-20260912-MCS51-P3-TRIS），vendor EOC 两场景复绿、五载体 + health_pot 无回归；DR/LEDSDR 强度携带→契约提案，独立审计扫描待办） | **P1** | A-05 | TRIS/UP/OD/DR/LEDSDR 不参与引脚行为 | 忘配输出方向/上拉 → 继电器不吸合、按键乱触发 | 否（应用配置完整） |
 | [GAP-09](#gap-09p2xram-合法窗口-8kb--硅片-1kb) | ✅ 完成 | P2 | A-06 | XRAM 合法窗口 8KB ≠ CMS8S78xx 实际 1KB | 0x0400~0x1FFF 访问仿真合法、真机落入 XSFR | 否（仅用 0x10~0x15） |
 | [GAP-10](#gap-10p2生产-wasm-非-strict无头 runner-不按-warning-判失败) | ✅ 完成 | P2 | A-07 | 生产 wasm 非 STRICT，无头 runner 不消费 warning/OOB 计数 | 场景绿色掩盖越界访问与未建模特性调用 | 间接 |
@@ -286,8 +286,10 @@ health_pot 的 10ms tick（T0 重载 0xB1E0）与 9600bps（TH1=217）都按 24M
 
 **验收标准**
 
-- [ ] 喂狗间隔超过 WTS 间隔的测试固件在仿真中被复位/断言；health_pot（10ms 喂狗、最长阻塞 ~23ms 遥测）不触发。
-- [ ] 两条 TA 之间插入无关 SFR 写时，受保护寄存器写入被回滚。
+- [x] 喂狗间隔超过 WTS 间隔的测试固件在仿真中被复位/断言；health_pot（10ms 喂狗、最长阻塞 ~23ms 遥测）不触发。（ADR-0082、test_mcs51_reset_controller Section 4/5 验证）
+- [x] 两条 TA 之间插入无关 SFR 写时，受保护寄存器写入被回滚。（test_mcs51_wdt 验证）
+- [x] 整机复位控制器与 main() 重入闭环：setjmp/longjmp 退栈、微步拦截、PORF 粘滞保留、SWRST 硬件自清零、事件队列与外设干净重置。（test_mcs51_reset_controller Section 6/7 验证）
+- [ ] 厂商例程 33 ResetBySoftware、34 ResetByWDT 依 Playbook 输出 unisim-assets 三件套并通过 Headless 场景实证。（阶段一代码与场景已就绪，阶段二/三构建测试待跑）
 
 ---
 
@@ -603,3 +605,20 @@ health_pot 的 10ms tick（T0 重载 0xB1E0）与 9600bps（TH1=217）都按 24M
 - 验证：8 应用 22 场景全绿且 0 FW_DIAG；负向探针（配 SCON 但不启 T1）唯一 payload step PASSED 而整体 FAIL，加 `allow:["uartNotReady"]` 后恢复 PASS（正向/负向/逃生三路验证）。
 - host 35 mcs51 测试全绿；unisim tsc 对改动文件零新增错误（仓库基线 32 个预存类型错误）。
 - **意义**：GAP-02 及后续所有"静默警告类"检查从此有强制力；GAP-23/05/08 的计数器一接上即自动被判决，不再依赖人工翻日志。
+
+### 10.4 阶段 4：GAP-07 WDT 与整机复位高保真闭环（2026-09-15，ADR-0082，已落地）
+
+**整机复位控制器与微步重入机制（ADR-0082 / PLAN-20260915-MCS51-RESET-FIDELITY）**：
+- **ADR-0082 架构决策接受**：确立微步拦截与 `setjmp`/`longjmp` 退栈、PORF 粘滞跨热复位保持、WDTRE 优先屏蔽 Vector 20 中断、整机资源清洗序列（事件队列清退/再初始化、弱上拉重置、PCON Trap 重注册、中断嵌套深度归零）。
+- **寄存器语义修正**：
+  - `cms8s_sys.cpp` 重构 `on_wdcon_write`：修正 PORF 清零无需 TA 保护的重大缺陷（原厂 `system.c` P06 实锤）；修正 SWRST 0->1 上升沿触发且硬件瞬时自清零（P03 实锤）；严格实现 W0C 与 WDTRE 0->1 单向装载。
+  - `REG_CMS8S78XX.H` 补齐 Section 12 复位管理内联 shims（`SYS_EnableSoftwareReset`, `SYS_DisableSoftwareReset`, `SYS_GetPowerOnResetFlag`, `SYS_ClearPowerOnResetFlag`）。
+- **重入调度与微步退栈**：
+  - `mcs51_bridge.cpp` 实现 `mcs51_perform_reset_sanitization()` 与微步边界拦截。`mcs51_app_loop()` 及 `wink_mcs51_test_run_reentry_loop()` 建立 `setjmp` 引导环路，支持多周期复位重入。
+  - `wasm_entry.c` 导出 3 个 C-ABI 复位查询接口（`pal_wasm_has_pending_reset`, `pal_wasm_get_reset_reason`, `pal_wasm_clear_pending_reset`），登记至 `exported_runtime_functions.json`。
+- **单元测试与厂商例程验证**：
+  - `test_mcs51_reset_controller.cpp` 覆盖 PORF 无 TA 清零、WDTRF 需 TA、SWRST 边沿自清零、PORF 跨热复位保留、WDTRE 优先级压制、重入防抖门锁以及多周期重入（双构建 Release/STRICT 全绿）。
+  - 官方示例 33 `ResetBySoftware`：建立 `wink-micro-app/vendor_cms8s78xx_v202/reset_software`，源码一行不改，场景 `reset_software.scenario.json` 证实 SWRST 触发后 P3.2 在 250ms 后持续输出第二轮 250 次脉冲。
+  - 官方示例 34 `ResetByWDT`：建立 `wink-micro-app/vendor_cms8s78xx_v202/reset_wdt`，源码一行不改，场景 `reset_wdt.scenario.json` 双引脚负向实证：每 ~1.3ms 规律喂狗，P3.2 翻转不息，P3.3 保持弱上拉恒高（零复位重启）；正向复位由单测闭环。
+  - 官方示例 35 `ResetByExtReset`：标注 `deferred`（依赖 GAP-06 CONFIG 选项字节与物理 NRST 引脚模型），复位控制器软重入单测已提供测试缝覆盖。
+
