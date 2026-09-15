@@ -208,14 +208,27 @@ The following C++ flags are globally enforced for C++ compilation and cannot be 
 
 ---
 
-## 7. 开源许可与 SPDX Header（ADR-0083）
+## 7. 开源许可地图与 SPDX Header（ADR-0083 / ADR-0084）
 
-> 决策：[ADR-0083](../../decisions/core/0083-adopt-gpl-3.0-only-license-policy.md)。
+> 决策：[ADR-0083](../../decisions/core/0083-adopt-gpl-3.0-only-license-policy.md)、[ADR-0084](../../decisions/core/0084-layered-license-map-lgpl-runtime.md)（修订运行时许可策略）。
 
-1. **自有代码许可**：根 `LICENSE` 为 GPLv3 全文；全部自有源文件（C/C++/Python/模板/资产）首行统一 `SPDX-License-Identifier: GPL-3.0-only`，禁止再注入 Apache-2.0 头；代码生成器（`wink-tools` codegen 模板）同步此值。
-2. **第三方边界**：`third_party/ArduinoCore-API`（LGPL-2.1-or-later，随附许可证全文）、`test/unity`（MIT，随附许可证全文）保持原许可与版权头；其余工具链依赖（ESP-IDF/Emscripten/Wokwi 等）保留归属，登记于 `wink-micro-os/NOTICE`。
-3. **兼容性红线**：GPL-2.0-only 组件与 GPL-3.0-only 不兼容，严禁合入或裁剪进分发物；新增第三方依赖须先比照 ADR-0083 §3 矩阵并登记 NOTICE。
-4. **厂商夹具纪律（E-003）**：原厂 SDK、私有工程夹具仅存本地 `docs/vendors/`（gitignore，永不入库）；新增示例须以 clean-room shim 或本地 fixture 形式接入，不得把原厂源码副本入库。
+1. **许可地图（单一事实来源：`.github/license-map.json`）**：
+
+   | 范围 | 许可 |
+   |---|---|
+   | `wink-micro-os/**` 运行时（pal/dal/bal/osal/runtime/trace/targets/frameworks） | `LGPL-3.0-only` |
+   | `wink-micro-os/codegen/**`（driver/role YAML、模板） | `Apache-2.0` |
+   | `wink-micro-os/frameworks/mcs51/tools/*.py`、`wink-micro-os/**/test/**` | `GPL-3.0-only` |
+   | `wink-micro-os/third_party/**` | `LGPL-2.1-or-later`（Arduino）/ `MIT`（Unity） |
+   | `wink-firmware-carriers/**` | `LGPL-3.0-only` |
+   | `wink-micro-app/**`（示例） | `Apache-2.0` |
+   | `wink-tools` / `wink-plugin-peripherals` / `unisim` / 前端平台 | `GPL-3.0-only` |
+   | 其余（`docs/`、根） | `GPL-3.0-only` 默认 |
+
+2. **生成物纪律**：codegen 模板与生成文件只允许 `Apache-2.0`，禁止向生成文件注入 GPL/LGPL SPDX；纯转换工具（transpiler/lint）输出归用户，不随工具许可。
+3. **第三方边界**：新增第三方依赖须核对兼容矩阵并在 `wink-micro-os/NOTICE` 登记；`GPL-2.0-only` 组件与所有分层均不兼容，严禁合入或进入分发物。
+4. **门禁**：`python .github/scripts/check_license_map.py`（CI `license-gate`，push/PR 触发）；改目录许可必须同步更新 `.github/license-map.json` 与本节。
+5. **厂商夹具纪律（E-003）**：原厂 SDK、私有工程夹具仅存本地 `docs/vendors/`（gitignore，永不入库）；新增示例须以 clean-room shim 或本地 fixture 形式接入。
 
 
 

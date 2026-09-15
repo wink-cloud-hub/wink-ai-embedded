@@ -88,8 +88,19 @@ Wink-AI 嵌入式运行时及仿真系统（**WinkMicroOS**）：面向 AI 生�
 
 ## 📜 开源协议 (License)
 
-本项目自有代码采用 [GNU General Public License v3.0 (GPLv3, SPDX: `GPL-3.0-only`)](./LICENSE) 开源协议。
-This project's own code is licensed under the [GNU General Public License v3.0 (GPLv3)](./LICENSE).
+本项目采用**分层许可（License Map）**：核心运行时 LGPL-3.0-only（用户固件可闭源），其余默认 GPL-3.0-only。
+This project uses a **layered license map**: the runtime core is LGPL-3.0-only (user firmware may stay proprietary); everything else defaults to GPL-3.0-only.
 
-第三方组件（ArduinoCore-API = LGPL-2.1-or-later、Unity = MIT、ESP-IDF = Apache-2.0 等）保留其原始许可，详见 [wink-micro-os/NOTICE](./wink-micro-os/NOTICE)。
-Third-party components retain their original licenses; see [wink-micro-os/NOTICE](./wink-micro-os/NOTICE) for details.
+| 范围 / Scope | 许可 / License |
+|---|---|
+| `wink-micro-os/**` 运行时（pal / dal / bal / osal / runtime / trace / targets / frameworks） | **LGPL-3.0-only** |
+| `wink-micro-os/codegen/**`（driver / role 描述与模板，生成物归用户） | Apache-2.0 |
+| `wink-micro-os/frameworks/mcs51/tools/*.py`、`wink-micro-os/**/test/**` | GPL-3.0-only |
+| `wink-micro-os/third_party/**`（ArduinoCore-API / Unity） | LGPL-2.1-or-later / MIT |
+| `wink-firmware-carriers/**` | LGPL-3.0-only |
+| `wink-micro-app/**`（示例，可直接复制进自有工程） | Apache-2.0 |
+| `wink-tools` / `wink-plugin-peripherals` / `unisim` / 前端平台 | GPL-3.0-only |
+| 其余（`docs/`、根目录） | GPL-3.0-only |
+
+第三方组件归属详见 [wink-micro-os/NOTICE](./wink-micro-os/NOTICE)；许可地图以 [`.github/license-map.json`](./.github/license-map.json) 为单一事实来源，由 CI 门禁校验。
+Third-party attributions: [wink-micro-os/NOTICE](./wink-micro-os/NOTICE); the license map is enforced by CI ([`.github/license-map.json`](./.github/license-map.json)).

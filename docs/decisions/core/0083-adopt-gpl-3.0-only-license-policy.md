@@ -70,3 +70,4 @@
 *该 ADR 状态变更记录：*
 - 2026-09-15：Proposed & Accepted（许可合规审计后随代码变更同步落地）。
 - 2026-09-15：D5 修订——归档文档（含 `docs/reviews/`）一并刷新，消除过期许可指引（Owner 决定）。
+- 2026-09-15：D1/D2 适用范围由 [ADR-0084](0084-layered-license-map-lgpl-runtime.md) 修订（运行时 LGPL-3.0-only、生成物 Apache-2.0、MCS-51 工具与测试保留 GPL-3.0-only），本 ADR 其余决策继续有效。
