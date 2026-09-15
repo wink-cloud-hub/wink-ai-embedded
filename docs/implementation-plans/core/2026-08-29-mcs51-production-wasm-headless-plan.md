@@ -28,7 +28,7 @@
 - **配套**：新增 `dal/src/wink_dal_stub.c`（空 TU 占位，镜像 `bal/src/wink_bal_stub.c`），`dal/CMakeLists.txt` 改为 `add_library(dal STATIC src/wink_dal_stub.c)`——修复全裁剪后 `No SOURCES given to target: dal`。
 
 ### T2 — 新生产 app `wink-micro-app/mcs51_button_led/` ✅
-- `button_led.c`：自有样例（可提交，非 vendor 夹具），`#include <REGX52.H>`，`sbit KEY=P3^2; sbit LED=P1^0;`，`void main(void){ LED=1; while(1){ if(KEY==0) LED=0; else LED=1; _nop_(); } }`（SPDX Apache-2.0，注明 ADR-0075）。
+- `button_led.c`：自有样例（可提交，非 vendor 夹具），`#include <REGX52.H>`，`sbit KEY=P3^2; sbit LED=P1^0;`，`void main(void){ LED=1; while(1){ if(KEY==0) LED=0; else LED=1; _nop_(); } }`（SPDX GPL-3.0-only，注明 ADR-0075）。
 - `wink-app.json`：`board: mcs51_devboard`、`tick_ms: 10`；devices `btn`（button, gpio_pin 26, active_low true）、`led`（led, gpio_pin 8, active_high false）——C 构建与前端 device-tree 的双消费者 SSOT。
 - `CMakeLists.txt`：`mcs51_cleanup.py button_led.c → <gen>/button_led.cpp`（UTF-8，无 `--transcode`），强制 C++17；EMSCRIPTEN 分支导出 `WINK_APP_SOURCES`/`WINK_APP_INCLUDE_DIRS`/`WINK_APP_MCS51=TRUE` 后 `return()`；**不**跑 app_codegen、**不**提供 app_callbacks/device_tree；非 EMSCRIPTEN 导出空源 + wasm-sim-only STATUS。
 

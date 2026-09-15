@@ -46,7 +46,7 @@ WinkMicroOS 定位为面向 AI 生成嵌入式应用的低代码、高保真仿�
 - ✅ **目标 1（术语基线）**：建立 authoritative 中英文术语字典 `docs/i18n/GLOSSARY.md` + 机器可读 `glossary.yaml`（canonical 形式与别名），锁定 PAL/DAL/BAL/OSAL/HAL/UniSim/同源编译等术语的标准英文写法。
 - ✅ **目标 2（防遗漏扫描器）**：实现 `i18n_scanner.py`，分类检测注释 / 字符串字面量 / 标识符中的 CJK 字符与 Non-ASCII 标点/emoji，并校验文档双语配对与链接。
 - ✅ **目标 3（门禁分阶段落地）**：Phase 1 期间以 `--report`（非阻断）模式运行，翻译完成验收后切换为 blocking，集成 `wink lint --pack i18n`。
-- ✅ **目标 4（代码注释英文化 & SPDX 开源 Header）**：`wink-micro-os` 与 `wink-tools`（含 Codegen C 代码模版）的注释/Docstring 全部英文化，同步注入标准 `SPDX-License-Identifier: Apache-2.0`，**仅改注释不改逻辑**，并以"剥离注释后 token 等价"自动化校验兜底。
+- ✅ **目标 4（代码注释英文化 & SPDX 开源 Header）**：`wink-micro-os` 与 `wink-tools`（含 Codegen C 代码模版）的注释/Docstring 全部英文化，同步注入标准 `SPDX-License-Identifier: GPL-3.0-only`，**仅改注释不改逻辑**，并以"剥离注释后 token 等价"自动化校验兜底。
 - ✅ **目标 5（对外门面双语化）**：仓库入口文档英文 canonical、中文镜像；第 ① 层活设计规范不强求 1:1 全量镜像，采用"英文摘要 + 稳定模块择优翻译"；只读归档的 ADR 全量双语。
 - ✅ **目标 6（文件编码与质量校验）**：源码与 Markdown 文件强制 `UTF-8 NO BOM` 编码；增加 Doxygen 标签格式完整性与英文文档相对链接有效性自动校验。
 
@@ -118,7 +118,7 @@ WinkMicroOS 定位为面向 AI 生成嵌入式应用的低代码、高保真仿�
 > 1. **零代码逻辑变更**：仅翻译注释/Docstring，禁止改动任何可执行代码、宏、函数名、变量名；以 §4.4 的逻辑不变校验自动兜底。
 > 2. **术语严格对齐**：专有缩写（PAL/DAL/BAL/OSAL/HAL/UniSim 等）与架构术语必须遵循 `GLOSSARY.md` 的 canonical 形式，禁止直译或大小写漂移。
 > 3. **Doxygen 结构保留**：`@brief/@param/@return/@retval/@note/@code` 等标签原样保留，只译自然语言部分，参数名必须与 C 签名完全一致。
-> 4. **SPDX Header 标准化**：在清洗 C/Python 文件头注释时，文件第一行统一注入 `// SPDX-License-Identifier: Apache-2.0`（C/C++）或 `# SPDX-License-Identifier: Apache-2.0`（Python）。
+> 4. **SPDX Header 标准化**：在清洗 C/Python 文件头注释时，文件第一行统一注入 `// SPDX-License-Identifier: GPL-3.0-only`（C/C++）或 `# SPDX-License-Identifier: GPL-3.0-only`（Python）。
 > 5. **文件编码强制 UTF-8 NO BOM**：防止 Windows 编辑器隐式插入 BOM 造成 GCC/Clang/Emscripten 交叉编译告警。
 > 6. **门禁单向收敛**：blocking 模式启用后，新增 CJK 注释/禁用术语一律阻断 PR，不允许临时放宽（允许路径级、有时效的 allowlist，但需 issue 跟踪）。
 
@@ -218,7 +218,7 @@ forbidden:
 1. **Pass 1 — Term Locking**：提取文本，依据 `glossary.yaml` 将术语/缩写占位锁定，避免机翻误译。
 2. **Pass 2 — Contextual Idiomatic Phrasing & SPDX Header**：
    - 采用 Doxygen 风格与祈使句（`@brief Initializes ...` 而非 `This function is used to init ...`），保留所有标签结构。
-   - 文件最顶行注入标准 `SPDX-License-Identifier: Apache-2.0`。
+   - 文件最顶行注入标准 `SPDX-License-Identifier: GPL-3.0-only`。
 3. **Pass 3 — Glossary Lint**：落盘前运行 `i18n_scanner.py --check-glossary`，校验 canonical 形式、禁用词、大小写一致性（不是抓中文错别字）。
 
 ---
@@ -275,7 +275,7 @@ forbidden:
 |------|------|---------|-------|
 | **Step 1** | 术语库 + 扫描器 + report 门禁 | ① 写 `GLOSSARY.md`/`glossary.yaml`<br>② 写 `i18n_scanner.py`（含 CJK/BOM/Doxygen/Link 校验）<br>③ 新增 `packs/i18n.py`+`rules/i18n.yaml`，注册 `runner.py`<br>④ 以 **report 模式**跑全量，输出 inventory（CI artifact，不入库） | `docs/i18n/*`、`wink-tools/tools/i18n_scanner.py`、lint pack |
 | **Step 2** | C 内核注释英文化 + SPDX（分批） | 每批一个模块、独立 PR（同步注入 SPDX Header）：<br>2a `pal/`<br>2b `dal/`<br>2c `bal/` + `osal/` + `runtime/` + `trace/`<br>2d `targets/`(host/wasm/esp32)<br>2e `test/`<br>每批过 Doxygen 标签校验 + 逻辑不变校验 + 三端构建 | 全量英文注释与 SPDX Header 的 C 代码库 |
-| **Step 3** | Python 工具链与 Codegen 模版英文化 | ① `tools/codegen/` Docstring、注释及内置 C 模版/字符串模版注释英文化<br>② `tools/lint/` & `tools/cli/`<br>③ 注入 `# SPDX-License-Identifier: Apache-2.0`<br>④ 用 `tokenize` 校验逻辑不变 | 全量英文 Docstring 的 Python 工具链 |
+| **Step 3** | Python 工具链与 Codegen 模版英文化 | ① `tools/codegen/` Docstring、注释及内置 C 模版/字符串模版注释英文化<br>② `tools/lint/` & `tools/cli/`<br>③ 注入 `# SPDX-License-Identifier: GPL-3.0-only`<br>④ 用 `tokenize` 校验逻辑不变 | 全量英文 Docstring 的 Python 工具链 |
 | **Step 4** | 对外门面双语 | ① `README.md` 英文 canonical + `README.zh-CN.md`<br>② `CLAUDE.md` 同理<br>③ 英文 `CONTRIBUTING.md`/`GETTING_STARTED.md`（中文镜像可延后） | 仓库入口英文文档 |
 | **Step 5** | 活文档英文摘要 + 稳定模块镜像 | ① 为 `01~07` 每篇规范加顶部英文摘要块<br>② 从 `translate-targets.yaml` 选定稳定模块（建议先 01-overall、02-pal、04-wasm-simulation overview）译 `.en.md`<br>③ 运行 `--check-links` 验证跳转无死链 | 可被全球开发者导航的活文档 |
 | **Step 6** | 门禁切换与验收 | ① 全量 CJK 归零 & BOM 清零<br>② 门禁由 report 切 **blocking**<br>③ 跑 §6 验收清单<br>④ 抽样人工复核（§6.3） | blocking i18n 门禁 + 验收记录 |
@@ -365,7 +365,7 @@ ESP32 构建验收口径：项目自有代码 0 error、0 相对基线新增 war
 
 - **v1.2（2026-08-05）**
   - 补充 Codegen 代码生成器模版（`tools/codegen/` 内置 C 代码片段字符串模版）注释英文化要求（Step 3）。
-  - 引入 SPDX License Header 标准化规范（`// SPDX-License-Identifier: Apache-2.0`），重构文件头注释时一并注入。
+  - 引入 SPDX License Header 标准化规范（`// SPDX-License-Identifier: GPL-3.0-only`），重构文件头注释时一并注入。
   - 增加 Doxygen 标签格式完整性与参数名匹配校验（`--check-doxygen`）。
   - 增加英文文档相对链接有效性检测（`--check-links`），规避 404 挂死。
   - 增加文件 UTF-8 NO BOM 编码强制检测（`--check-encoding`），消除跨平台编译告警。

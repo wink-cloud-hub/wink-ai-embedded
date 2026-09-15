@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // Spike-S2 MINIMAL REGX52.H (throwaway). Eats Keil C51 dialect so unchanged
 // user .c compiles as C++17 on GCC/MSVC/emcc.
 #pragma once

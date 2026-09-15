@@ -1,5 +1,5 @@
 /*
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: GPL-3.0-only
  * DRAFT for M4 (spike-S3 artifact, not wired into codegen yet).
  * mcs51_board_config.h — firmware-time static constants for the MCS-51 sim
  * sandbox. Auto-generated from wink-app.json by wink-tools codegen, mirroring

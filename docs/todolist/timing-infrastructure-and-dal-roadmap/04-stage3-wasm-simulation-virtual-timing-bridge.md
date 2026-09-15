@@ -55,7 +55,7 @@
 **交付**：新建 `wink-micro-os/targets/wasm/pal_wasm_ch2_spi.c`
 
 ```c
-/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 #include "hal/pal_spi.h"
 #include "wasm_bridge.h"
 #include "pal_wasm_completion.h"   /* T3.2 新增 */

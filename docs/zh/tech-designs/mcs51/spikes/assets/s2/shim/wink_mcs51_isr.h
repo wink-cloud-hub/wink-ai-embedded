@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // Spike-S2 MINIMAL WINK_ISR (throwaway). Standard C++ static-struct auto
 // registration (no __attribute__((constructor)) so MSVC behaves identically).
 #pragma once

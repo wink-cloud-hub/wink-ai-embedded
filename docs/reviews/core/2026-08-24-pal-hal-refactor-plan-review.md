@@ -477,7 +477,7 @@ Safety review:
 
 ### F6. SPDX 与头文件风格
 
-示例加了 `SPDX-License-Identifier: Apache-2.0`。先确认现有 `pal_spi.h` / `pal_uart.h` 是否同风格；不要新头一种、老头另一种。
+示例加了 `SPDX-License-Identifier: GPL-3.0-only`。先确认现有 `pal_spi.h` / `pal_uart.h` 是否同风格；不要新头一种、老头另一种。
 
 ### F7. `pal_hal.h` deprecation 策略
 

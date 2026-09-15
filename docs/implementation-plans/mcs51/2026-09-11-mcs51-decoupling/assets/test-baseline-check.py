@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-only
 # S1-0b "测试不丢"基线工具：ctest 注册列表的捕获与比对（标准库 only）。
 #
 # 为什么必须是脚本 + 为什么只数总数不够：

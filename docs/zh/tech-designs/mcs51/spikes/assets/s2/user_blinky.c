@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-License-Identifier: GPL-3.0-only */
 /*
  * Spike-S2 fixture: UNMODIFIED Keil C51 user source. This file must compile
  * as-is (after the CMake regex cleanup of `interrupt N`) on GCC / MSVC / emcc
