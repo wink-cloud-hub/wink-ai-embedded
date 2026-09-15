@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * MCS-51 iron_ntc — UNMODIFIED-style Keil C51 user source (M6, closed-loop).
  *
  * A soldering-iron / hot-plate NTC thermostat built on the same 3-wire

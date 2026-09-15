@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * MCS-51 8-digit multiplexed 7-segment display scanner.
  * UNMODIFIED Keil C51 user source (Part 2 validation firmware).
  *

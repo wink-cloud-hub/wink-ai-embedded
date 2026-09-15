@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file esp32_entry.c
  * @brief ESP32 entry skeleton placeholder (actual main located in esp32_firmware/main/app_main.c).

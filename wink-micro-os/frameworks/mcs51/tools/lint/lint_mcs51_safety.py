@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-only
 """MCS-51 / Keil C51 static safety pack (external lint pack, group ``mcs51_all``).
 
 Migrated from ``wink-tools/tools/lint/check_mcs51_safety.py`` into a standard

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // Task F3: Dynamic microstep quantum calibration from clock_hz test.
 #include <stdint.h>
 #include <stdio.h>

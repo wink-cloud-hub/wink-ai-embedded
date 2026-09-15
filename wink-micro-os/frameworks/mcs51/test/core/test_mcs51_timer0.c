@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * MCS-51 M2 host/wasm test: Timer0 mode-1 overflow drives the ISR through
  * virtual-time catch-up (ADR-0072). The unmodified Keil sample configures a
  * 50 ms Timer0 interrupt; the ISR toggles P1.0 and reloads TH0/TL0.

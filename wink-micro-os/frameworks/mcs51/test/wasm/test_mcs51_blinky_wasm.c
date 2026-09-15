@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * MCS-51 M1 wasm test: drive the cleaned blinky through the cooperative
  * runtime under emscripten fibers (ASYNCIFY) and assert ISR registration plus
  * SFR proxy writes, mirroring the host test. Built by the emcc+Node harness

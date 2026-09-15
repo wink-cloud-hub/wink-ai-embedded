@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file dal_audio.h
  * @brief DAL Audio / I2S driver interface placeholder (Class 6 Isochronous Audio).

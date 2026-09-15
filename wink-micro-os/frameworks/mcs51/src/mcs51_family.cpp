@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // MCS-51 MCU family descriptor table (maintainability M1).
 // Each row is one series' silicon facts; see mcs51_family.h.
 // Ref: CMS8S78xx datasheet V1.0.7 (§2.2.3 XRAM 1KB), ref manual V1.1.1

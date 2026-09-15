@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * MCS-51 ADC0832 read — UNMODIFIED Keil C51 user source (M4, AD-15).
  *
  * Classic 3-wire (DI/DO shared on DIO) ADC0832 bit-bang driver: CS=P1.2,

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // M3 shim unit test: intrins.h (_crol_/_cror_/_testbit_) + absacc.h
 // (XBYTE/XWORD linear XDATA shadow, aperture OOB semantics R-008) + the
 // WINK_MCS51_STRICT dual-mode unsupported-feature mechanism (release path:

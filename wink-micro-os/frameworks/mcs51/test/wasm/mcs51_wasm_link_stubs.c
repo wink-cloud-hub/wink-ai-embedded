@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file mcs51_wasm_link_stubs.c
  * @brief Link stubs for the M1 mcs51 wasm blinky test.

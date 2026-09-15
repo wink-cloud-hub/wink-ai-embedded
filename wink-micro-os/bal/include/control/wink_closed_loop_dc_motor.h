@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 #ifndef WINK_CLOSED_LOOP_DC_MOTOR_H
 #define WINK_CLOSED_LOOP_DC_MOTOR_H
 

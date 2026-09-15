@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // mcs51_family_route.h — MCS-51-family-only register routing (Stage3 S3-1
 // Step 3, PLAN-20260911-MCS51-S3).
 //

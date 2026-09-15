@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * SDCC compile-gate intrins adapter (GAP-03, Tier-S).
  *
  * SDCC's mcs51 port does not ship Keil's <intrins.h>. The vendor StdDriver

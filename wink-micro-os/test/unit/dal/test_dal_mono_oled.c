@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file test_dal_mono_oled.c
  * @brief DAL monochrome OLED display driver unit tests.

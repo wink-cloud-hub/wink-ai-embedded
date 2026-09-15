@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file wink_runtime.h
  * @brief OS main loop entry point + app-facing fault/task helpers.

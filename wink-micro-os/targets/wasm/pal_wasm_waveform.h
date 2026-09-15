@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file pal_wasm_waveform.h
  * @brief Sub-step high-fidelity waveform event queue & SSOT C-driven notification.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // GAP-12 (5): P0..P3EXTIF are write-0-to-clear like T2IF/EIF2.
 //
 // Split out of the generic gap12 test in stage4 S4-1 (CPL-07/CPL-22):

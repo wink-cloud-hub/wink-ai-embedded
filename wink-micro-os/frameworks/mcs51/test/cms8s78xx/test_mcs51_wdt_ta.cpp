@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // Stage 3 Task 4 (A-04, GAP-07): WDT coarse model + TA window narrowing.
 //
 // Release: WTS interval math per source, enable/feed lifecycle, overflow

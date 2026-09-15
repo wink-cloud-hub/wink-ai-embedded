@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file test_blink_helper.c
  * @brief Unit tests for BAL wink_led_blink (host, virtual time).

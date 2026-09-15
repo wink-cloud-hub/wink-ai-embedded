@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file wink_app.h
  * @brief Application lifecycle callback contract + Protothread coroutine macros.

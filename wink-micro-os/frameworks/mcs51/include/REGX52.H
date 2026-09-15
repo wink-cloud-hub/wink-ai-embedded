@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // REGX52.H — Keil C51 <REGx52.H> dialect shim for the host/wasm sandbox.
 //
 // Unmodified Keil user sources `#include <REGX52.H>` and use the 8051 dialect

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // CMS8S78xx full-port level-change interrupt model (Stage4 S4-1 Step 2,
 // PLAN-20260911-MCS51-S4, CPL-07).
 //

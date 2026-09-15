@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file pal_wasm_fault_types.h
  * @brief Wasm simulation fault types, event structures, and guard macros.

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * MCS-51 channel-1 external Read-Pin end-to-end test (shared host + wasm/Node
  * driver): the UNMODIFIED Keil button->LED sample (samples/gpio_in_out.c) polls
  * a push button on P3.2 (/INT0, active-low) and drives an LED on P1.0.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // Task R2: MCS-51 Mcu51Context runtime core container.
 #pragma once
 

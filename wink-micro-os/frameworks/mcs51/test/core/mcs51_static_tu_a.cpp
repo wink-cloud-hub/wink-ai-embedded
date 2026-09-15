@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // M2 static-init safety TU A (clock SSOT §6.3): registers vector 2 via a
 // static constructor and touches an SFR proxy during dynamic init. The SFR
 // shadow is POD BSS and the WinkSfr instance is constant-initialized, so this

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file pal_irq_advanced.h
  * @brief PAL Advanced System-Level Interrupt APIs.

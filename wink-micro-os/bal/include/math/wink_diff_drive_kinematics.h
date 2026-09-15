@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 #ifndef WINK_DIFF_DRIVE_KINEMATICS_H
 #define WINK_DIFF_DRIVE_KINEMATICS_H
 

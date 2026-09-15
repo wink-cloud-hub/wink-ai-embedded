@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-only
 """MCS-51 chip-manifest loader (Stage6 S6-2, PLAN-20260911-MCS51-S6, CPL-16).
 
 Single access point for `tools/manifests/chips/*.yaml`: the gate / cleanup /

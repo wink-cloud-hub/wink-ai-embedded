@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * MCS-51 /INT0 external-interrupt end-to-end test (shared host + wasm/Node
  * driver, Stage 2 T3): the UNMODIFIED Keil interrupt-driven button->LED sample
  * (samples/int0_button.c) configures IT0=1/EX0=1/EA=1 and toggles the P1.0 LED

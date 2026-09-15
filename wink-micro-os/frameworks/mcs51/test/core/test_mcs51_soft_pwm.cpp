@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // Task F4: Channel 1b Soft PWM duty cycle measurement test (< 2% error).
 #include <stdint.h>
 #include <stdio.h>

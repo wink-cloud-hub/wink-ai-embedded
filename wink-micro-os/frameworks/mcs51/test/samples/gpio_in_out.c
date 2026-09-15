@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * MCS-51 GPIO in->out — UNMODIFIED Keil C51 user source (M3).
  *
  * Classic 89C52 button-drives-LED poll loop (mcu-compat-plan §3.10 item 3:

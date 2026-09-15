@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * PLAN-20260915-APPLIANCE-SAFETY-AND-GB4706 Task 5: appliance safety host
  * vehicle for the production mcs51_health_pot firmware.
  *

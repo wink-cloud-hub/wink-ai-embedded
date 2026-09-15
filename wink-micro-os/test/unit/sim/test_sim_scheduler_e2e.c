@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file test_sim_scheduler_e2e.c
  * @brief End-to-end unit tests for dual-task ringbuffer using simulation scheduler.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file selftest_pwm_router.c
  * @brief PWM router frequency isolation and timer reuse selftest.

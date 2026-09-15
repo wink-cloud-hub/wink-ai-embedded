@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * MCS-51 M6 end-to-end test (shared host + wasm/Node driver): a closed-loop
  * NTC thermostat (samples/iron_ntc.c) reads an external ADC0832 through the
  * board-codegen seam and drives a heater/relay on P1.0, with open/short

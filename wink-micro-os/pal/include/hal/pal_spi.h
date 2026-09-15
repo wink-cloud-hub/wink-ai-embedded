@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file pal_spi.h
  * @brief PAL SPI master subsystem interface with asynchronous DMA engine.

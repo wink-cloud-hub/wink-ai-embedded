@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file pal_wasm_ch2_spi.c
  * @brief Wasm target PAL SPI channel implementation with pull-model async completion.

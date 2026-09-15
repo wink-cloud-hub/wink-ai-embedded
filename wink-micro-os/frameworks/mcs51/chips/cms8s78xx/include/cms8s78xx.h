@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // cms8s78xx.h — SANDBOX device header for the Cmsemicon CMS8S78xx part.
 //
 // The vendor SDK ships its own device header (Libary/Device/CMS8S78xx/Include/

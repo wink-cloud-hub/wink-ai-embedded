@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * MCS-51 M3 host test: UART SBUF write emits bytes to the console sink and the
  * C-ABI capture buffer, with TI set synchronously so the classic Keil idiom
  * `SBUF = c; while(!TI); TI = 0;` closes on the first TI read (AD-2).

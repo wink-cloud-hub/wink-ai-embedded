@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * Classic 8052 SFR-name aliases for portable carriers compiled against the
  * CMS8S78xx device header (GAP-03, Tier-S gate). CMS8S names the UART SFRs
  * SBUF0/SCON0/TI0/RI0; textbook/portable code uses the classic names. */

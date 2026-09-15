@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file test_pal_deferred.c
  * @brief Unit tests for PAL Deferred-Call Worker (ISR Bottom-Half) subsystem.

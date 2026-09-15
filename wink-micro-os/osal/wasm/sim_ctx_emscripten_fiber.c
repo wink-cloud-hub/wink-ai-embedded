@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file sim_ctx_emscripten_fiber.c
  * @brief Emscripten Fiber based simulation context implementation for WASM target.

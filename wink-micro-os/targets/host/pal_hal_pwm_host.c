@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file pal_hal_pwm_host.c
  * @brief Host target PAL HAL PWM subsystem implementation (LEDC simulation).

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // Stage2 S2-1 (PLAN-20260911-MCS51-S2): soc_priv scheme-A isolation.
 //
 // Two contexts on different instance slots must never share chip-private

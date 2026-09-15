@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // Stage 2 T3 (ADR-0076 A-class): external interrupt model — INT0 (P3.2,
 // linear pin 26, vector 0) and INT1 (P3.3, pin 27, vector 2). External levels
 // are driven through the channel-1 read seam (js_pal_gpio_read_state; on host

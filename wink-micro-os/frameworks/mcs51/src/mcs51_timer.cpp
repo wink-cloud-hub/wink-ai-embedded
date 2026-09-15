@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // MCS-51 Timer0/Timer1 + standard Timer2 skeleton (M2, AD-2 / ADR-0072).
 #include "wink_mcs51_timer.h"
 

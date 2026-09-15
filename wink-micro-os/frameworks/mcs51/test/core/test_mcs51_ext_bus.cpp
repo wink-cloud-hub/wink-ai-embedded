@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // Stage 3 Task 5 (A-08, GAP-24): classic external MOVX bus conflict + IAP.
 //
 // Release: CMS8S zero-regression (internal XRAM never fights GPIO); classic

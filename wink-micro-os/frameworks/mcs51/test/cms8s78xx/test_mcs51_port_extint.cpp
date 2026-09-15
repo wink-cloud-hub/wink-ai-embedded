@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // CMS8S78xx port external interrupt model unit test (P0EI..P3EI: vectors 7..10).
 // Verifies:
 //   1. P12 falling edge triggers P1EI (vector 8), flag is readable via GPIO_GetIntFlag

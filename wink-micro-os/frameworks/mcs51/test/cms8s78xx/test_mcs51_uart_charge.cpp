@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // A-03 UART TX per-byte synchronous charge (ADR-0081) — host tests.
 //
 // Release build: baud anchors per source (Timer1/BRT/TMR2/TMR4), frame-bit

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * MCS-51 M3 host test: GPIO in->out synchronisation (mcu-compat-plan §3.10
  * item 3: "P3 按键输入 -> P1 LED 输出，验证 sync").
  *

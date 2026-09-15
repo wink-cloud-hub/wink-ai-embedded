@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file test_single_task_semantic_regression.c
  * @brief Single-task business field semantic regression unit tests.

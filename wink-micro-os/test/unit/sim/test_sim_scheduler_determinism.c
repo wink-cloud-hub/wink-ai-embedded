@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file test_sim_scheduler_determinism.c
  * @brief Unit tests for simulation scheduler determinism.

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // GAP-23 unmodeled-XSFR tripwire (A-07) — host tests.
 //
 // Release build (no WINK_MCS51_STRICT): unlisted XSFR-window accesses count

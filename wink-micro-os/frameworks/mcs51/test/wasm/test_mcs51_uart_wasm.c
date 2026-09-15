@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * MCS-51 M3 wasm test: UART SBUF write under emscripten fibers (ASYNCIFY),
  * mirroring test/mcs51/test_mcs51_uart.c. The unmodified Keil sample sends
  * "MCS51-UART-OK\r\n" three times via the polled SBUF/TI idiom.

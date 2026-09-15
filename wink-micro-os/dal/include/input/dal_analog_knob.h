@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 #ifndef DAL_ANALOG_KNOB_H
 #define DAL_ANALOG_KNOB_H
 

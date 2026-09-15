@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // MCS-51 virtual slave clock + cooperative quota engine (ADR-0072).
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_isr.h"

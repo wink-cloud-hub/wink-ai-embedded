@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // AT89C52 classic-family private state (Stage2 S2-1, PLAN-20260911-MCS51-S2).
 //
 // Placeholder: classic is the zero-extension pure core — it currently owns

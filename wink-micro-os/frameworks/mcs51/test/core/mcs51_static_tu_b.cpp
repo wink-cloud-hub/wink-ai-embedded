@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // M2 static-init safety TU B: registers vector 3 + SFR touch during dynamic
 // init (see mcs51_static_tu_a.cpp).
 #include <stdint.h>

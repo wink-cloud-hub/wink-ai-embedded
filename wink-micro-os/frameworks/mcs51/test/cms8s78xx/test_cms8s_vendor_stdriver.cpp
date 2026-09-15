@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // M5 tier-b harvest: compile and RUN the UNMODIFIED vendor StdDriver ADC API.
 //
 // The vendor source is docs/vendors/.../StdDriver/src/adc.c (reference-only,

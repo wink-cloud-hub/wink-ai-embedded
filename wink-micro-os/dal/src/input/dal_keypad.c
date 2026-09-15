@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 #include "input/dal_keypad.h"
 #include "hal/pal_gpio.h"
 #include "pal_resource.h"

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * SDCC compile-gate <wink_mcu.h> for classic 8052-family apps (AT89C52,
  * STC89...). SDCC ships the vendor header; the gate only adapts intrins
  * and absacc (GAP-03, Tier-S). */

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // MCS-51 Level-2 trap table operations (boundary ③).
 // Operates on Mcu51Context (Task R2).
 #include "mcs51_trap.h"

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * MCS-51 M2 wasm test: Timer0 mode-1 overflow drives the ISR through
  * virtual-time catch-up under emscripten fibers (ASYNCIFY), mirroring the host
  * driver test/mcs51/test_mcs51_timer0.c. The unmodified Keil sample configures

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // Task R2: Mcu51Context container instance and silicon reset implementation.
 #include "mcs51_context.h"
 #include "mcs51_peripheral.h"

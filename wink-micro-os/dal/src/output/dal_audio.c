@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file dal_audio.c
  * @brief DAL Audio placeholder implementation (ADR-0012 honest contract).

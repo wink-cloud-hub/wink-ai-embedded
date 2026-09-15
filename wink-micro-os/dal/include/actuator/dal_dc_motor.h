@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 #ifndef DAL_DC_MOTOR_H
 #define DAL_DC_MOTOR_H
 

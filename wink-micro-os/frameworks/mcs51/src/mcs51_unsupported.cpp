@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // MCS-51 unsupported-feature mechanism (M3): see wink_mcs51_strict.h.
 //
 // All state is plain POD (zero-init BSS latch + counters) — static-init safe

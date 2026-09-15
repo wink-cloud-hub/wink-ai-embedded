@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file pal_lockfree_pipeline.h
  * @brief Lock-free SPSC double-buffered fast/slow control loop communication pipeline.

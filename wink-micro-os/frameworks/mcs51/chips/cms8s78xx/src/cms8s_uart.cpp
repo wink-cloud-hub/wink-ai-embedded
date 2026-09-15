@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // CMS8S78xx UART source-selection model (Stage4 S4-2 Step 1,
 // PLAN-20260911-MCS51-S4, CPL-04).
 //

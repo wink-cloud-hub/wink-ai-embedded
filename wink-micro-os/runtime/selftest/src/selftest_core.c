@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file selftest_core.c
  * @brief Selftest framework: X-macro registry + glob matching + batch execution.

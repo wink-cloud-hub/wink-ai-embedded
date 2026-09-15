@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // Stage5 S5-1 Step 2 (PLAN-20260911-MCS51-S5, CPL-06/08): family insulation.
 //
 //  * A classic context rejects extended vectors even with an ISR registered

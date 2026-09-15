@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * MCS-51 M5 end-to-end test (shared host + wasm/Node driver): a vendor-style
  * Keil polled program (samples/cms8s_adc_test.c) drives the CMS8S78xx
  * on-chip 12-bit ADC through the REAL register map (ADCON0/ADCON1/ADCCHS/

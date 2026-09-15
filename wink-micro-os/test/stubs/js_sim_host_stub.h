@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file js_sim_host_stub.h
  * @brief Host simulation js_sim_* stubs header.

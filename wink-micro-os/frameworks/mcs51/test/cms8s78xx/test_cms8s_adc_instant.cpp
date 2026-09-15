@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // M5 CMS8S78xx on-chip ADC unit test: the 0-cycle instant-conversion model.
 //
 // Drives the model through the REAL proxy path (WinkSfr stores the shadow

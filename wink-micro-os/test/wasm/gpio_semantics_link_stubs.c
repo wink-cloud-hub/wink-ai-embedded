@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file gpio_semantics_link_stubs.c
  * @brief Minimal stubs so pal_hal_wasm.c links under a focused emcc test build.

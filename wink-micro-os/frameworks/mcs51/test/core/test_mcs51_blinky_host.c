@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-License-Identifier: GPL-3.0-only
  * MCS-51 M1 host test: drive the cleaned blinky sample through the real
  * cooperative runtime and assert (a) the Timer0 ISR auto-registered via
  * WINK_ISR, and (b) the SFR proxy reflects the user program's writes while the

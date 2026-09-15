@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file pal_wasm_fault_domain.c
  * @brief Wasm simulation fault domain isolation framework and power model stubs.

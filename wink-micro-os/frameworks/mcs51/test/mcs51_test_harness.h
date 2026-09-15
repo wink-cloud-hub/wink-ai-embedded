@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 // Stage4 test-only family harness (PLAN-20260911-MCS51-S4 S4-2 Step 5).
 //
 // TEST LINKAGE ONLY — never into production libraries (lives under test/,

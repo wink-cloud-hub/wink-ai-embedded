@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0-only
 /**
  * @file pal_atomic.h
  * @brief Portable atomic memory operations and fences across Host, Wasm, and ESP32.
