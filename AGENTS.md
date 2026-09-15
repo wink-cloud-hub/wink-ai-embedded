@@ -44,7 +44,7 @@ Wink-AI 嵌入式运行时及仿真系统（**WinkMicroOS**）：面向 AI 生�
 - **双 target 同源编译**: 编写的 C 代码必须同时兼容 Emscripten/wasm32 与 ESP-IDF/xtensa 编译（详见 [ADR-0002](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/docs/design/decisions/0002-dual-target-compilation.md)）。
 - **分层门禁：`wink lint arch`（ADR-0043）**: App/BAL/DAL/PAL 边界与 API 形态由 `wink-tools/tools/lint/rules/*.yaml` 驱动；生成或修改 C 代码后应运行 `python wink-tools/wink.py lint arch --pack layering --pack api`。
 - **PWM 占空比定点（ADR-0066）**: 新代码必须用 `pal_pwm_set_duty_bp()` + `PAL_PWM_DUTY_PCT()/PERMILLE()`（小数如 7.5% 用 `PERMILLE(75)`），禁止浮点 `pal_pwm_set_duty()` 与裸 `1..100` 字面量（关断允许裸 `0`）。
-- **开源许可（ADR-0083）**: 本仓自有代码（含生成模板注入）统一 `SPDX-License-Identifier: GPL-3.0-only`；第三方组件保留原许可并登记 `wink-micro-os/NOTICE`（ArduinoCore-API = LGPL-2.1-or-later，Unity = MIT）；GPL-2.0-only 组件禁止合入；厂商 SDK 与 `docs/vendors/`、`docs/.internals/` 永不入库（E-003）。
+- **开源许可（ADR-0083 / ADR-0084 分层地图）**: `wink-micro-os/` 运行时（pal/dal/bal/osal/runtime/targets/frameworks）= `LGPL-3.0-only`（用户固件可闭源）；`wink-micro-os/codegen/` = `Apache-2.0`（生成物归用户，禁止注入 GPL/LGPL SPDX）；`frameworks/mcs51/tools/*.py` 与 `**/test/**` = `GPL-3.0-only`；`wink-firmware-carriers/` = `LGPL-3.0-only`；`wink-micro-app/` 示例 = `Apache-2.0`；其余（含 `wink-tools`/平台）默认 `GPL-3.0-only`。第三方保留原许可（Arduino=LGPL-2.1-or-later、Unity=MIT）并登记 `wink-micro-os/NOTICE`；GPL-2.0-only 组件禁止合入；厂商 SDK 与 `docs/vendors/`、`docs/.internals/` 永不入库（E-003）。改代码后跑许可门禁：`python .github/scripts/check_license_map.py`。
 
 ## Git Commit Rules
 - 保持提交的原子性。推荐对修改过的文件分别提交（每次 commit 按一个独立逻辑模块聚合）。
