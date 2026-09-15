@@ -10,7 +10,20 @@ winkcli-version: ">=0.1.0"
 
 ## 1. 安装 WinkCli
 
-> 🚧 **TODO（安装方式待提供）**：winget / GitHub Releases / 其他渠道的最终安装命令将在此补充。
+支持双通道安装：
+
+**方式一：winget（Windows 推荐）**
+
+```powershell
+winget install WinkAI.WinkCli
+```
+
+> 该包正在 winget-pkgs 收录审核中（[PR #434970](https://github.com/microsoft/winget-pkgs/pull/434970)）；若 `winget` 暂未检索到，请使用方式二。
+
+**方式二：GitHub Releases（离线分发 / 免包管理器）**
+
+1. 从 [Releases](https://github.com/wink-cloud-hub/wink-ai-embedded/releases) 下载 `winkcli-v<version>-windows-x86_64.zip`；
+2. 解压后将 `winkcli.exe` 所在目录加入 `PATH`。
 
 安装完成后先跑一次环境诊断，确认 `winkcli` 可用：
 

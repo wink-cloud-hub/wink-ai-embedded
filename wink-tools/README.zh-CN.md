@@ -6,7 +6,8 @@ winkcli-version: ">=0.1.0"
 
 `winkcli` 是 WinkMicroOS 的统一构建与仿真调度命令行工具：屏蔽 CMake / Emscripten / ESP-IDF / 交叉编译的底层差异，为 **Host 仿真**、**浏览器 Wasm 仿真**与 **ESP32 真机**提供一致的开发入口。
 
-- 安装：**TODO（安装方式待提供）**
+- 安装（winget）：`winget install WinkAI.WinkCli`
+- 安装（GitHub Releases）：从 [Releases](https://github.com/wink-cloud-hub/wink-ai-embedded/releases) 下载 `winkcli-v<version>-windows-x86_64.zip`，解压后将 `winkcli.exe` 加入 `PATH`
 - 在线仿真（零安装）：<http://www.wink-cloud.com/simulator/index.html>
 - 完整文档：[`docs/zh/`](./docs/zh/)
 - 发行说明：由 [GitHub Releases](https://github.com/wink-cloud-hub/wink-ai-embedded/releases) 承载

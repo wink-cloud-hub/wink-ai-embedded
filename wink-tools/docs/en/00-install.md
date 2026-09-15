@@ -15,7 +15,20 @@ sync-status: up-to-date
 
 ## 1. Install WinkCli
 
-> 🚧 **TODO (installation method pending)**: the final install commands (winget / GitHub Releases / other channels) will be added here.
+Two install channels are supported:
+
+**Option 1 - winget (recommended on Windows)**
+
+```powershell
+winget install WinkAI.WinkCli
+```
+
+> The package is being onboarded to winget-pkgs ([PR #434970](https://github.com/microsoft/winget-pkgs/pull/434970)); if `winget` cannot find it yet, use Option 2.
+
+**Option 2 - GitHub Releases (offline / no package manager)**
+
+1. Download `winkcli-v<version>-windows-x86_64.zip` from [Releases](https://github.com/wink-cloud-hub/wink-ai-embedded/releases);
+2. Extract it and add the folder containing `winkcli.exe` to `PATH`.
 
 After installing, verify the toolchain is reachable:
 
