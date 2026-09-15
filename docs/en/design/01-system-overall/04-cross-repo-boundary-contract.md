@@ -36,7 +36,7 @@ Wink-AI Cross-Repo Component Topology & Black-Box Contract Boundaries:
     └── Interface Contracts: wasm_bridge.h C-ABI, SimTraceSpecV2 Spec
 
 [ In-Repo Components: wink-ai-embedded ] (Contains kernel Code-Mapping)
-├── wink-tools/                             # Cross-Repo Pillar 3: Unified CLI Toolchain (wink CLI)
+├── wink-tools/                             # Cross-Repo Pillar 3: Unified CLI Toolchain (winkcli; usage docs SSOT: wink-tools/docs/{zh,en}/)
 ├── wink-micro-os/                          # Cross-Repo Pillar 4: C-Language SDK Kernel (PAL/DAL/BAL, Code-Mapping SSOT)
 └── wink-micro-app/                         # Cross-Repo Pillar 5: Embedded Application Project Template
 ```
@@ -66,7 +66,7 @@ Wink-AI Cross-Repo Component Topology & Black-Box Contract Boundaries:
 ```
 
 - **`embedded-frontend` Responsibility**: Handles visual topology editing, property configuration, and serialization to `wink-app.json`.
-- **`wink-tools` Responsibility**: Parses `wink-app.json` and invokes `wink gen` to output `app_main.c` and `device_tree.c`.
+- **`wink-tools` Responsibility**: Parses `wink-app.json` and invokes `winkcli` to generate `device_tree.c` and related code (usage docs SSOT: [wink-tools/docs/](../../../../wink-tools/docs/en/01-cli-reference.md)).
 - **`wink-micro-os` Responsibility**: Compiles and executes the generated C code.
 
 ### 3.2 Contract 2: Wasm Simulation Bridge C-ABI (`wasm_bridge.h`)
@@ -81,12 +81,12 @@ When `wink-micro-os` is compiled for the `wasm32` target, it exports a stable C-
 Used for Headless automated testing, frontend timeline visualization, and virtual-physical consistency comparisons:
 
 - **Format**: JSONL / JSON structured envelope containing microsecond timestamps, device IDs, event types (`GPIO_SET` / `I2C_TRANSFER` / `FAULT_INJECT`), and state payloads.
-- **Consumers**: Displayed in the `embedded-frontend` Trace Console and asserted in CI via `wink test` CLI.
+- **Consumers**: Displayed in the `embedded-frontend` Trace Console and asserted in CI via `winkcli test`.
 
 ---
 
 ## 4. Dependency Safety & Quality Gate Policies
 
 1. **Unidirectional Dependency**: The `wink-micro-os` C kernel never depends on any Node.js/TS packages; `unisim` and `embedded-frontend` only depend on compiled Wasm artifacts and public C struct headers exported by `wink-micro-os`.
-2. **Build Isolation**: `wink build` executes inside isolated container sandboxes; build scripts must not invoke private master-repo APIs.
+2. **Build Isolation**: `winkcli build` executes inside isolated container sandboxes; build scripts must not invoke private master-repo APIs.
 3. **Version Locking**: Manifest `schemaVersion` and `SimTraceSpecV2` must maintain backward compatibility and pass version migration validation (`manifest-migration.ts`).

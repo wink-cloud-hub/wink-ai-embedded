@@ -32,3 +32,12 @@
 
 ## 📊 产品与市场
 - [UniSim 嵌入式在线仿真平台商业与市场分析报告](./product/market-analysis.md)
+
+---
+
+## 🛠️ 工具链使用手册 (Wink Tools)
+
+`winkcli` 使用文档（安装 / 命令参考 / 代码生成 / 架构检查 / SDK 打包）的单一事实来源：
+
+- [Wink Tools 中文手册](../../wink-tools/docs/zh/01-cli-reference.md)
+- [Wink Tools English Manual](../../wink-tools/docs/en/01-cli-reference.md)

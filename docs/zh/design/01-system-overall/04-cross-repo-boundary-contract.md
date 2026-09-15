@@ -28,7 +28,7 @@ Wink-AI 跨仓组件分布与黑盒契约边界:
     └── 契约接口：wasm_bridge.h C-ABI, SimTraceSpecV2 Spec
 
 [ 本仓组件: wink-ai-embedded ] (包含内核 Code-Mapping)
-├── wink-tools/                             # 跨仓组件 3：统一 CLI 工具链 (wink CLI)
+├── wink-tools/                             # 跨仓组件 3：统一 CLI 工具链 (winkcli；使用文档 SSOT: wink-tools/docs/{zh,en}/)
 ├── wink-micro-os/                          # 跨仓组件 4：C 语言 SDK 内核 (PAL/DAL/BAL，Code-Mapping SSOT)
 └── wink-micro-app/                         # 跨仓组件 5：嵌入式应用工程规范
 ```
@@ -58,7 +58,7 @@ Wink-AI 跨仓组件分布与黑盒契约边界:
 ```
 
 - **`embedded-frontend` 职责**：负责可视化编辑、属性配置并序列化导出 `wink-app.json`。
-- **`wink-tools` 职责**：读取 `wink-app.json` 并调用 `wink gen` 输出 `app_main.c` 和 `device_tree.c`。
+- **`wink-tools` 职责**：读取 `wink-app.json` 并调用 `winkcli` 生成 `device_tree.c` 等代码（使用文档 SSOT：[wink-tools/docs/](../../../../wink-tools/docs/zh/01-cli-reference.md)）。
 - **`wink-micro-os` 职责**：编译并运行导出的 C 代码。
 
 ### 3.2 契约二：Wasm 仿真桥接 C-ABI (`wasm_bridge.h`)
@@ -73,12 +73,12 @@ Wink-AI 跨仓组件分布与黑盒契约边界:
 用于 Headless 自动化测试、前端时间线渲染以及虚实一致性比对：
 
 - **格式**：JSONL / JSON 结构化 Envelope，包含微秒级时间戳、器件 ID、事件类型（`GPIO_SET` / `I2C_TRANSFER` / `FAULT_INJECT`）及状态负载。
-- **消费方**：`embedded-frontend` Trace 控制台展示，`wink test` CLI 用于 CI 断言。
+- **消费方**：`embedded-frontend` Trace 控制台展示，`winkcli test` 用于 CI 断言。
 
 ---
 
 ## 4. 依赖安全与门禁策略
 
 1. **单向依赖**：`wink-micro-os` C 内核绝对不依赖任何 Node.js/TS 包；`unisim` 与 `embedded-frontend` 仅依赖 `wink-micro-os` 导出的 Wasm 产物与公共 C 结构体头。
-2. **构建隔离**：`wink build` 运行于独立的沙箱容器中，编译脚本不得直接调用主仓私有 API。
+2. **构建隔离**：`winkcli build` 运行于独立的沙箱容器中，编译脚本不得直接调用主仓私有 API。
 3. **版本锁定**：Manifest `schemaVersion` 与 `SimTraceSpecV2` 必须保持前向兼容与版本升级迁移校验 (`manifest-migration.ts`)。

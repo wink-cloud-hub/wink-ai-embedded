@@ -22,7 +22,7 @@ paths:
 | **静态分发架构与设计模式** | `embedded-best-practice/references/static-dispatch/patterns.md` |
 | **DAL/PAL 分层架构** | `embedded-best-practice/references/static-dispatch/architecture.md` |
 | **PWM 占空比定点（bp）** | `pal/include/hal/pal_pwm.h` + ADR-0066（见下 §PWM 占空比规则） |
-| **分层门禁（生成前自查）** | 修改/生成 C 代码后运行：`python wink-tools/wink.py lint --pack layering --pack api`（ADR-0043） |
+| **分层门禁（生成前自查）** | 修改/生成 C 代码后运行：`winkcli lint --pack layering --pack api`（见 `wink-tools/docs/zh/04-lint-guide.md`）（ADR-0043） |
 
 ---
 
