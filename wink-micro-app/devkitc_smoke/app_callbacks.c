@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file app_callbacks.c
  * @brief DevKitC smoke-test firmware (P0-1 slim): device tree centralized,

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-3.0-only
+/* SPDX-License-Identifier: Apache-2.0
  * PDK Button-drives-LED — Standard Padauk (PFS154 / PMS150C) user source.
  *
  * Production wasm-sim app:

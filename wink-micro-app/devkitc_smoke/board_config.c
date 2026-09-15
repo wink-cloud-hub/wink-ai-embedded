@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file board_config.c
  * @brief DevKitC board hardware routing (overriding esp32 target weak default pal_pwm_pin_map).

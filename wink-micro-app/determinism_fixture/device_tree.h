@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Apache-2.0 */
 #ifndef DETERMINISM_FIXTURE_DEVICE_TREE_H
 #define DETERMINISM_FIXTURE_DEVICE_TREE_H
 

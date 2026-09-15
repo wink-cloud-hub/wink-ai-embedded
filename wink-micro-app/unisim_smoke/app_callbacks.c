@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * @file app_callbacks.c
  * @brief unisim_smoke wasm fixture — reaches all 13 js_* imports.

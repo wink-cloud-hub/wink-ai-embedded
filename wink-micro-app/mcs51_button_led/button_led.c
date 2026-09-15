@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-3.0-only
+/* SPDX-License-Identifier: Apache-2.0
  * MCS-51 button-drives-LED — UNMODIFIED Keil C51 user source (ADR-0075).
  *
  * Production wasm-sim app: the classic 89C52 poll loop. A push button on
