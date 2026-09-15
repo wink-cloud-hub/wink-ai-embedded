@@ -44,6 +44,7 @@ Wink-AI 嵌入式运行时及仿真系统（**WinkMicroOS**）：面向 AI 生�
 - **双 target 同源编译**: 编写的 C 代码必须同时兼容 Emscripten/wasm32 与 ESP-IDF/xtensa 编译（详见 [ADR-0002](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/docs/design/decisions/0002-dual-target-compilation.md)）。
 - **分层门禁：`wink lint arch`（ADR-0043）**: App/BAL/DAL/PAL 边界与 API 形态由 `wink-tools/tools/lint/rules/*.yaml` 驱动；生成或修改 C 代码后应运行 `python wink-tools/wink.py lint arch --pack layering --pack api`。
 - **PWM 占空比定点（ADR-0066）**: 新代码必须用 `pal_pwm_set_duty_bp()` + `PAL_PWM_DUTY_PCT()/PERMILLE()`（小数如 7.5% 用 `PERMILLE(75)`），禁止浮点 `pal_pwm_set_duty()` 与裸 `1..100` 字面量（关断允许裸 `0`）。
+- **开源许可（ADR-0083）**: 本仓自有代码（含生成模板注入）统一 `SPDX-License-Identifier: GPL-3.0-only`；第三方组件保留原许可并登记 `wink-micro-os/NOTICE`（ArduinoCore-API = LGPL-2.1-or-later，Unity = MIT）；GPL-2.0-only 组件禁止合入；厂商 SDK 与 `docs/vendors/`、`docs/.internals/` 永不入库（E-003）。
 
 ## Git Commit Rules
 - 保持提交的原子性。推荐对修改过的文件分别提交（每次 commit 按一个独立逻辑模块聚合）。
