@@ -1,15 +1,19 @@
 import { definePeripheral as e, pinsFromBinderVariant as t, resolvePluginInstanceId as n } from "@wink-ai/unisim-ui";
 import { resolvePluginIdentity as r } from "@wink-ai/unisim";
-import { createElementBlock as i, defineComponent as a, openBlock as o } from "vue";
+import { computed as i, createElementBlock as a, createElementVNode as o, defineComponent as s, normalizeStyle as c, openBlock as l } from "vue";
 import "@wokwi/elements";
 //#region builtin/led/1.0.0/src/CanvasGlyph.vue?vue&type=script&setup=true&lang.ts
-var s = [
+var u = [
 	"pin",
 	"color",
 	"value",
 	"brightness",
 	"flip"
-], c = /* @__PURE__ */ a({
+], d = /*#__PURE__*/ ((e, t) => {
+	let n = e.__vccOpts || e;
+	for (let [e, r] of t) n[e] = r;
+	return n;
+})(/* @__PURE__ */ s({
 	__name: "CanvasGlyph",
 	props: {
 		pinConnections: {},
@@ -20,23 +24,27 @@ var s = [
 		level: { type: Boolean }
 	},
 	setup(e) {
-		return (t, n) => (o(), i("wokwi-led", {
+		let t = e, n = i(() => t.level ? { filter: `drop-shadow(0 0 9px ${t.color}) drop-shadow(0 0 3px ${t.color})` } : void 0);
+		return (t, r) => (l(), a("div", {
+			class: "led-glyph",
+			style: c(n.value)
+		}, [o("wokwi-led", {
 			pin: typeof e.pinConnections?.A == "number" ? e.pinConnections.A : 1,
 			color: e.color,
 			value: e.level,
 			brightness: e.brightness,
 			label: "",
 			flip: e.flip
-		}, null, 8, s));
+		}, null, 8, u)], 4));
 	}
-}), l = [
+}), [["__scopeId", "data-v-fb3834d1"]]), f = [
 	"pin",
 	"color",
 	"value",
 	"brightness",
 	"label",
 	"flip"
-], u = /* @__PURE__ */ a({
+], p = /* @__PURE__ */ s({
 	__name: "WorldWidget",
 	props: {
 		pinConnections: {},
@@ -47,19 +55,19 @@ var s = [
 		level: { type: Boolean }
 	},
 	setup(e) {
-		return (t, n) => (o(), i("wokwi-led", {
+		return (t, n) => (l(), a("wokwi-led", {
 			pin: typeof e.pinConnections?.A == "number" ? e.pinConnections.A : 1,
 			color: e.color,
 			value: e.level,
 			brightness: e.brightness,
 			label: e.label,
 			flip: e.flip
-		}, null, 8, l));
+		}, null, 8, f));
 	}
-}), d = Object.freeze({
+}), m = Object.freeze({
 	width: 40,
 	height: 50
-}), f = Object.freeze({
+}), h = Object.freeze({
 	A: Object.freeze({
 		relX: 24,
 		relY: 42,
@@ -76,10 +84,10 @@ var s = [
 	})
 });
 Object.freeze({});
-var p = f, m = d, h = Object.freeze({ default: Object.freeze({
+var g = h, _ = m, v = Object.freeze({ default: Object.freeze({
 	variant: "default",
 	getPins: () => t("led", "default"),
-	pinsOverlay: p,
+	pinsOverlay: g,
 	defaultAppearanceId: "led_default"
 }) });
 Object.freeze({ led_default: Object.freeze({
@@ -95,16 +103,16 @@ Object.freeze({ led_default: Object.freeze({
 }) });
 //#endregion
 //#region builtin/led/1.0.0/src/definition.ts
-var g = r(import.meta.url, "led", "1.0.0", "output");
-function _(e, t) {
-	let r = n(e, g.type);
+var y = r(import.meta.url, "led", "1.0.0", "output");
+function b(e, t) {
+	let r = n(e, y.type);
 	return t.pluginChannels?.[r]?.on === !0;
 }
-var v = h.default, y = e({
-	type: g.type,
-	size: m,
+var x = v.default, S = e({
+	type: y.type,
+	size: _,
 	wireColor: "#00ff88",
-	pinsOverlay: v.pinsOverlay,
+	pinsOverlay: x.pinsOverlay,
 	props: {
 		variant: {
 			type: "string",
@@ -146,8 +154,8 @@ var v = h.default, y = e({
 			description: "Flip orientation"
 		}
 	},
-	canvas: c,
-	world: u,
+	canvas: d,
+	world: p,
 	ui: {
 		canvasProps: (e, t) => ({
 			pinConnections: e.pinConnections,
@@ -155,12 +163,12 @@ var v = h.default, y = e({
 			brightness: e.props.brightness,
 			label: e.props.label,
 			flip: e.props.flip,
-			level: _(e, t)
+			level: b(e, t)
 		}),
 		worldProps: (e, t) => ({
 			pinConnections: e.pinConnections,
 			color: e.props.color,
-			level: _(e, t),
+			level: b(e, t),
 			brightness: e.props.brightness,
 			label: e.props.label,
 			flip: e.props.flip
@@ -168,4 +176,4 @@ var v = h.default, y = e({
 	}
 });
 //#endregion
-export { y as default, y as ledDefinition };
+export { S as default, S as ledDefinition };
