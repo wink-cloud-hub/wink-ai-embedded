@@ -27,6 +27,13 @@
       "description": "Physical environment only (0.30 kg water, 1000 W plate, 1.5 K/W loss). Scenario injects NO temperature trajectory (ADR-0067 stimulus-source exclusion)."
     },
     {
+      "type": "ASSERT_POINT",
+      "timeUs": "300ms",
+      "target": "plugin:temp_sensor/voltageRatio",
+      "matcher": { "$between": [0.058, 0.0596] },
+      "description": "NTC transducer anchor (P2): 25.0 C ambient -> R=10k/160k divider ratio 0.0588 -> firmware raw = ratio*4096 = 241 (health_pot.c cold anchor)"
+    },
+    {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "400ms",
       "targetPluginId": "btn_onoff",
@@ -78,6 +85,13 @@
       "target": "plugin:temp_sensor/temperature",
       "matcher": { "$between": [94, 97] },
       "description": "Plant temperature approaching boil with ADR-0055-grade tolerance band"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "92000ms",
+      "target": "plugin:temp_sensor/voltageRatio",
+      "matcher": { "$between": [0.0045, 0.0054] },
+      "description": "NTC transducer anchor (P2): 94-97 C -> divider ratio 0.0047-0.0052 -> firmware raw = ratio*4096 = 19-21 (health_pot.c hot anchor, 98 C -> 19)"
     },
     {
       "type": "ASSERT_POINT",
