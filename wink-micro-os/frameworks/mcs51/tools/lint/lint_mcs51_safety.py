@@ -58,7 +58,10 @@ _PATH_HINT_RE = re.compile(
 
 
 def _applies_to_path(rel: str) -> bool:
-    return bool(_PATH_HINT_RE.search(rel.replace("\\", "/")))
+    norm = rel.replace("\\", "/")
+    if norm.startswith("docs/") or "/docs/" in norm:
+        return False
+    return bool(_PATH_HINT_RE.search(norm))
 
 
 # Content gate: word boundaries on alpha indicators so that e.g. "transfer"
@@ -82,6 +85,8 @@ def is_mcs51_source(source: str, rel: str = "") -> bool:
     flagging them would be FP-by-scope.
     """
     norm = rel.replace("\\", "/")
+    if norm.startswith("docs/") or "/docs/" in norm:
+        return False
     base = norm.rsplit("/", 1)[-1]
     if base.startswith("test_") or "/unit/" in norm:
         return False

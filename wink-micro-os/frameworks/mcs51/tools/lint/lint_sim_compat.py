@@ -29,6 +29,7 @@ Verdict order per loop (all must hold to report; FN preferred over FP):
 """
 from __future__ import annotations
 
+import os
 import re
 import sys
 from pathlib import Path
@@ -44,7 +45,7 @@ if str(_TOOLS_DIR) not in sys.path:
 from mcs51_manifest import header_hint_patterns, load_chip_manifests  # noqa: E402
 
 _SOURCE_SUFFIXES = {".c", ".h", ".cc", ".cpp", ".hpp", ".cxx", ".hxx"}
-_SKIP_DIRS = {"build", ".git", "node_modules", "__pycache__", "unisim-assets"}
+_SKIP_DIRS = {"build", ".git", "node_modules", "__pycache__", "unisim-assets", ".internals", ".venv", "venv", ".idea", ".vscode", "dist", "out"}
 
 # Fallback when no REG header can be parsed (standard 8051 core sets).
 _CORE_SFR = frozenset({
@@ -203,25 +204,27 @@ def _iter_scope_files(ctx: LintContext) -> list[tuple[str, Path]]:
     seen: set[Path] = set()
     out = []
     for base in roots:
-        for abs_p in base.rglob("*"):
-            if not abs_p.is_file() or abs_p.suffix.lower() not in _SOURCE_SUFFIXES:
-                continue
-            try:
-                parts = set(abs_p.relative_to(base).parts)
-            except ValueError:
-                continue
-            if parts & _SKIP_DIRS:
-                continue
-            resolved = abs_p.resolve()
-            if resolved in seen:
-                continue
-            seen.add(resolved)
-            anchor = ctx.root if base == ctx.root else base
-            try:
-                rel = abs_p.relative_to(anchor).as_posix()
-            except ValueError:
-                rel = abs_p.as_posix()
-            out.append((rel, abs_p))
+        for dirpath, dirnames, filenames in os.walk(base):
+            dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS and not d.startswith(".")]
+            dp = Path(dirpath)
+            for fname in filenames:
+                ext = os.path.splitext(fname)[1].lower()
+                if ext not in _SOURCE_SUFFIXES:
+                    continue
+                abs_p = dp / fname
+                try:
+                    resolved = abs_p.resolve()
+                except OSError:
+                    continue
+                if resolved in seen:
+                    continue
+                seen.add(resolved)
+                anchor = ctx.root if base == ctx.root else base
+                try:
+                    rel = abs_p.relative_to(anchor).as_posix()
+                except ValueError:
+                    rel = abs_p.as_posix()
+                out.append((rel, abs_p))
     return out
 
 
