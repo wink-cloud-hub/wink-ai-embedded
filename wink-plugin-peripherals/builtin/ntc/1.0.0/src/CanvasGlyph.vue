@@ -54,7 +54,9 @@ const heatColor = computed(() => {
   position: absolute;
   top: -9px;
   left: 50%;
-  transform: translateX(-50%);
+  /* Counter-rotate against the canvas wrapper (`--rot`), so the reading stays
+     upright while the peripheral (and the badge anchor) rotates with wiring. */
+  transform: translateX(-50%) rotate(calc(-1 * var(--rot, 0deg)));
   padding: 0 4px;
   border: 1px solid currentColor;
   border-radius: 8px;
