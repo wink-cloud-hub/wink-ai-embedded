@@ -8,7 +8,12 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "wink_config.h"
+#include <stddef.h>
+#if defined(__has_include)
+#  if __has_include("wink_config.h")
+#    include "wink_config.h"
+#  endif
+#endif
 #include "wink_status.h"
 #include "hal/pal_pin_types.h"
 

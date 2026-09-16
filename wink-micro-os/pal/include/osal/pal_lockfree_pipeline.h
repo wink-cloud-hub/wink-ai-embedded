@@ -12,6 +12,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include "osal/pal_atomic.h"
 
 #ifdef __cplusplus
@@ -59,10 +60,20 @@ static inline void foc_pipeline_init(foc_pipeline_t *p) {
     if (p == NULL) return;
     p->cmd_idx = 0;
     p->stat_idx = 0;
-    p->cmd_slot[0] = (foc_slow_to_fast_cmd_t){0};
-    p->cmd_slot[1] = (foc_slow_to_fast_cmd_t){0};
-    p->stat_slot[0] = (foc_fast_to_slow_status_t){0};
-    p->stat_slot[1] = (foc_fast_to_slow_status_t){0};
+    p->cmd_slot[0].target_speed_q15 = 0;
+    p->cmd_slot[0].target_angle_q15 = 0;
+    p->cmd_slot[0].seq_id = 0;
+    p->cmd_slot[1].target_speed_q15 = 0;
+    p->cmd_slot[1].target_angle_q15 = 0;
+    p->cmd_slot[1].seq_id = 0;
+    p->stat_slot[0].actual_current_q15 = 0;
+    p->stat_slot[0].actual_velocity_q15 = 0;
+    p->stat_slot[0].fault_flags = 0;
+    p->stat_slot[0].seq_id = 0;
+    p->stat_slot[1].actual_current_q15 = 0;
+    p->stat_slot[1].actual_velocity_q15 = 0;
+    p->stat_slot[1].fault_flags = 0;
+    p->stat_slot[1].seq_id = 0;
 }
 
 /**
@@ -70,7 +81,9 @@ static inline void foc_pipeline_init(foc_pipeline_t *p) {
  */
 static inline void foc_publish_cmd(foc_pipeline_t *p, const foc_slow_to_fast_cmd_t *cmd) {
     uint8_t w = 1u - (uint8_t)PAL_ATOMIC_LOAD(&p->cmd_idx, PAL_ACQ);
-    p->cmd_slot[w] = *cmd;
+    p->cmd_slot[w].target_speed_q15 = cmd->target_speed_q15;
+    p->cmd_slot[w].target_angle_q15 = cmd->target_angle_q15;
+    p->cmd_slot[w].seq_id = cmd->seq_id;
     PAL_ATOMIC_STORE(&p->cmd_idx, w, PAL_REL);
 }
 
@@ -79,7 +92,11 @@ static inline void foc_publish_cmd(foc_pipeline_t *p, const foc_slow_to_fast_cmd
  */
 static inline foc_slow_to_fast_cmd_t foc_consume_cmd(const foc_pipeline_t *p) {
     uint8_t i = (uint8_t)PAL_ATOMIC_LOAD(&p->cmd_idx, PAL_ACQ);
-    return p->cmd_slot[i];
+    foc_slow_to_fast_cmd_t res;
+    res.target_speed_q15 = p->cmd_slot[i].target_speed_q15;
+    res.target_angle_q15 = p->cmd_slot[i].target_angle_q15;
+    res.seq_id = p->cmd_slot[i].seq_id;
+    return res;
 }
 
 /**
@@ -87,7 +104,10 @@ static inline foc_slow_to_fast_cmd_t foc_consume_cmd(const foc_pipeline_t *p) {
  */
 static inline void foc_publish_status(foc_pipeline_t *p, const foc_fast_to_slow_status_t *st) {
     uint8_t w = 1u - (uint8_t)PAL_ATOMIC_LOAD(&p->stat_idx, PAL_ACQ);
-    p->stat_slot[w] = *st;
+    p->stat_slot[w].actual_current_q15 = st->actual_current_q15;
+    p->stat_slot[w].actual_velocity_q15 = st->actual_velocity_q15;
+    p->stat_slot[w].fault_flags = st->fault_flags;
+    p->stat_slot[w].seq_id = st->seq_id;
     PAL_ATOMIC_STORE(&p->stat_idx, w, PAL_REL);
 }
 
@@ -96,7 +116,12 @@ static inline void foc_publish_status(foc_pipeline_t *p, const foc_fast_to_slow_
  */
 static inline foc_fast_to_slow_status_t foc_consume_status(const foc_pipeline_t *p) {
     uint8_t i = (uint8_t)PAL_ATOMIC_LOAD(&p->stat_idx, PAL_ACQ);
-    return p->stat_slot[i];
+    foc_fast_to_slow_status_t res;
+    res.actual_current_q15 = p->stat_slot[i].actual_current_q15;
+    res.actual_velocity_q15 = p->stat_slot[i].actual_velocity_q15;
+    res.fault_flags = p->stat_slot[i].fault_flags;
+    res.seq_id = p->stat_slot[i].seq_id;
+    return res;
 }
 
 #ifdef __cplusplus
