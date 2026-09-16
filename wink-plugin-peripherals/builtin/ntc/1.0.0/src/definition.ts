@@ -61,13 +61,21 @@ export const ntcDefinition = definePeripheral({
   canvas: CanvasGlyph,
   world: WorldWidget,
   ui: {
-    // M2-T9-U: live temperature badge — prefer the plugin's published channel
-    // (fed by the plant closed loop), fall back to the design-time prop.
-    canvasProps: (comp, ctx: SimViewContext) => {
+    // M2-T9-U: live temperature metric chip rendered by the HOST inside the
+    // silkscreen badge row (screen-space bottom, upright, compact). Prefer the
+    // plugin's published channel (fed by the plant closed loop), fall back to
+    // the design-time prop; accent hue cools blue → heats red.
+    canvasBadge: (comp, ctx: SimViewContext) => {
       const id = resolvePluginInstanceId(comp, identity.type);
       const live = ctx.pluginChannels?.[id]?.temperature;
+      const temperature = typeof live === 'number' ? live : Number(comp.props.temperature ?? 25);
+      if (!Number.isFinite(temperature)) return null;
+      const clamped = Math.min(120, Math.max(-20, temperature));
+      const hue = Math.round(210 - ((clamped + 20) / 140) * 210);
       return {
-        temperature: typeof live === 'number' ? live : comp.props.temperature,
+        text: `${temperature.toFixed(1)}°C`,
+        title: 'NTC',
+        accent: `hsl(${hue}, 85%, 60%)`,
       };
     },
     worldProps: comp => ({
