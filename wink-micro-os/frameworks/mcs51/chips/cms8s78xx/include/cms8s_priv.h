@@ -99,6 +99,18 @@ typedef struct {
     uint64_t last_poll_us;
 } Cms8sAcmpState;
 
+// Enhanced PWM state (owner: cms8s_epwm.cpp).
+typedef struct {
+    uint16_t counter[4];      // current counter per channel (0..3)
+    uint8_t  direction[4];    // 0: up, 1: down
+    uint64_t last_poll_us;
+    uint8_t  pwmoe_prev;
+    uint8_t  pwmcnte_prev;
+    uint8_t  pwmcon_prev;
+    bool     brake_latched;
+    uint16_t brake_delay_cnt;
+} Cms8sEpwmState;
+
 // Aggregate chip block: ONE pool slot per context instance (BSS pool in
 // the register TU, indexed by ctx->instance_index). Timer T3/T4 +
 // capture/compare + port sampling join in stage4 (S2-2 D6 handover).
@@ -110,6 +122,7 @@ typedef struct {
     Cms8sPortExtIntState port_extint;
     Cms8sTimerState timer;
     Cms8sAcmpState  acmp;
+    Cms8sEpwmState  epwm;
     bool            in_poll;
 } Cms8sPriv;
 

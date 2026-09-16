@@ -28,6 +28,7 @@
 | **CMS8S78xx 片内 ADC** 真实寄存器图（0 周期、向量 19、原厂 adc.c 未修改编译） | ✅ | ADR-0073，tier-b |
 | XDATA/XSFR 窗口、ABSACC、方言擦除（REGX52/REG_CMS8S）、28 向量表 | ✅ | §3.1 ctest |
 | **iron_ntc 热闭环**（ADC0832 测温 + NTC LUT + 继电器 bang-bang + 开/短路安全态） | ✅ | M6 e2e |
+| **CMS8S78xx EPWM & 硬件刹车**（递减/增减中心对称计数、4通道时基、过零/周期中断向量 18、4种刹车模式、FB0/1 动态引脚输入与片内 ACMP 模拟比较器直连刹车） | ✅ | PLAN-20260916-CMS8S78XX-EPWM-FIDELITY，test_mcs51_cms8s_epwm（9 例）/ 8 个原厂微应用实证 |
 | 板级 codegen `mcs51_board_config.h` + 生产 wasm 自动链接 | ✅ | ADR-0075 |
 | Timer 外部计数 C/T、Timer0 mode3 | ❌（现 idle + STRICT 告警） | ADR-0076 D2（A 类） |
 

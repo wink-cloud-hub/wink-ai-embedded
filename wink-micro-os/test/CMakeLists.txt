@@ -1004,6 +1004,11 @@ if(TARGET wink_mcs51_core)
         ../frameworks/mcs51/test/cms8s78xx/test_mcs51_cms8s_acmp.cpp)
     target_compile_definitions(test_mcs51_cms8s_acmp PRIVATE WINK_MCU_CMS8S78XX=1)
 
+    # CMS8S78xx on-chip EPWM peripheral model test
+    add_mcs51_host_test(test_mcs51_cms8s_epwm
+        ../frameworks/mcs51/test/cms8s78xx/test_mcs51_cms8s_epwm.cpp)
+    target_compile_definitions(test_mcs51_cms8s_epwm PRIVATE WINK_MCU_CMS8S78XX=1)
+
     # Stage 3 A-02: ADC reference chain — VSEL/Vrail scaling (Pull track),
     # LDO/mux readiness gates + counters, DIV-sensitive charge_us.
     add_mcs51_host_test(test_mcs51_adc_refchain
