@@ -1,4 +1,9 @@
-import { definePeripheral, type PeripheralPropsSchema } from '@wink-ai/unisim-ui';
+import {
+  definePeripheral,
+  resolvePluginInstanceId,
+  type PeripheralPropsSchema,
+  type SimViewContext,
+} from '@wink-ai/unisim-ui';
 import { resolvePluginIdentity } from '@wink-ai/unisim';
 
 import CanvasGlyph from './CanvasGlyph.vue';
@@ -56,6 +61,15 @@ export const ntcDefinition = definePeripheral({
   canvas: CanvasGlyph,
   world: WorldWidget,
   ui: {
+    // M2-T9-U: live temperature badge — prefer the plugin's published channel
+    // (fed by the plant closed loop), fall back to the design-time prop.
+    canvasProps: (comp, ctx: SimViewContext) => {
+      const id = resolvePluginInstanceId(comp, identity.type);
+      const live = ctx.pluginChannels?.[id]?.temperature;
+      return {
+        temperature: typeof live === 'number' ? live : comp.props.temperature,
+      };
+    },
     worldProps: comp => ({
       pinConnections: comp.pinConnections,
       temperature: Number(comp.props.temperature ?? 25),
