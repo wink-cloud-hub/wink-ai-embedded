@@ -190,6 +190,8 @@ xsfr PS_CAP1(0xF0C9);  // Timer 2 capture channel 1 input pin selector
 xsfr PS_CAP2(0xF0CA);  // Timer 2 capture channel 2 input pin selector
 xsfr PS_CAP3(0xF0CB);  // Timer 2 capture channel 3 input pin selector
 xsfr PS_ADET(0xF0CC);  // ADET hardware trigger input pin selector
+xsfr PS_FB0(0xF0CD);   // EPWM fault brake 0 input pin selector
+xsfr PS_FB1(0xF0CE);   // EPWM fault brake 1 input pin selector
 xsfr PS_RXD(0xF69F);   // RXD input pin selector
 
 xsfr BRTCON(0xF5C0);   // Baud Rate Timer control
@@ -214,6 +216,51 @@ xsfr C0ADJE(0xF50A);   // ACMP0 offset adjustment enable
 xsfr C1ADJE(0xF50B);   // ACMP1 offset adjustment enable
 xsfr C0HYS(0xF50C);    // ACMP0 hysteresis control
 xsfr C1HYS(0xF50D);    // ACMP1 hysteresis control
+
+// Enhanced PWM (EPWM, 0xF120..0xF16F)
+xsfr PWMCON(0xF120);     // PWM Control (run, count mode, wfg mode)
+xsfr PWMOE(0xF121);      // PWM Output Enable (bits 0..5)
+xsfr PWMPINV(0xF122);    // PWM Polarity Invert
+xsfr PWM01PSC(0xF123);   // PWM 0/1 Prescaler
+xsfr PWM23PSC(0xF124);   // PWM 2/3 Prescaler
+xsfr PWMCNTE(0xF126);    // PWM Counter Enable (bits 0..3)
+xsfr PWMCNTM(0xF127);    // PWM Counter Mode
+xsfr PWMCNTCLR(0xF128);  // PWM Counter Clear
+xsfr PWMLOADEN(0xF129);  // PWM Auto-load Enable (bits 0..3)
+xsfr PWM0DIV(0xF12A);    // PWM0 Clock Divider
+xsfr PWM1DIV(0xF12B);    // PWM1 Clock Divider
+xsfr PWM2DIV(0xF12C);    // PWM2 Clock Divider
+xsfr PWM3DIV(0xF12D);    // PWM3 Clock Divider
+xsfr PWMP0L(0xF130); xsfr PWMP0H(0xF131); // PWM0 Period
+xsfr PWMP1L(0xF132); xsfr PWMP1H(0xF133); // PWM1 Period
+xsfr PWMP2L(0xF134); xsfr PWMP2H(0xF135); // PWM2 Period
+xsfr PWMP3L(0xF136); xsfr PWMP3H(0xF137); // PWM3 Period
+xsfr PWMD0L(0xF140); xsfr PWMD0H(0xF141); // PWM0 Duty
+xsfr PWMD1L(0xF142); xsfr PWMD1H(0xF143); // PWM1 Duty
+xsfr PWMD2L(0xF144); xsfr PWMD2H(0xF145); // PWM2 Duty
+xsfr PWMD3L(0xF146); xsfr PWMD3H(0xF147); // PWM3 Duty
+xsfr PWMDD0L(0xF150); xsfr PWMDD0H(0xF151); // PWM0 Asymmetric Duty
+xsfr PWMDD1L(0xF152); xsfr PWMDD1H(0xF153); // PWM1 Asymmetric Duty
+xsfr PWMDD2L(0xF154); xsfr PWMDD2H(0xF155); // PWM2 Asymmetric Duty
+xsfr PWMDD3L(0xF156); xsfr PWMDD3H(0xF157); // PWM3 Asymmetric Duty
+xsfr PWMBRKC(0xF15C);    // PWM Brake Control
+xsfr PWMBRKRDTL(0xF15D); // PWM Brake Recovery Delay Low
+xsfr PWMBRKRDTH(0xF15E); // PWM Brake Recovery Delay High
+xsfr PWMDTE(0xF160);     // PWM Dead-time Enable
+xsfr PWM01DT(0xF161);    // PWM 0/1 Dead-time
+xsfr PWM23DT(0xF162);    // PWM 2/3 Dead-time
+xsfr PWMMASKE(0xF164);   // PWM Mask Enable
+xsfr PWMMASKD(0xF165);   // PWM Mask Data
+xsfr PWMFBKC(0xF166);    // PWM Fault Brake Control
+xsfr PWMFBKD(0xF167);    // PWM Fault Brake Data
+xsfr PWMPIE(0xF168);     // PWM Period Match Interrupt Enable
+xsfr PWMZIE(0xF169);     // PWM Zero Match Interrupt Enable
+xsfr PWMUIE(0xF16A);     // PWM Up Match Interrupt Enable
+xsfr PWMDIE(0xF16B);     // PWM Down Match Interrupt Enable
+xsfr PWMPIF(0xF16C);     // PWM Period Match Interrupt Flag
+xsfr PWMZIF(0xF16D);     // PWM Zero Match Interrupt Flag (W0C)
+xsfr PWMUIF(0xF16E);     // PWM Up Match Interrupt Flag
+xsfr PWMDIF(0xF16F);     // PWM Down Match Interrupt Flag
 
 // ── 3) Vendor bit-position / mask macros (names verbatim from cms8s78xx.h,
 //       so the vendor StdDriver adc.c can compile against this shim) ────────
@@ -274,6 +321,16 @@ xsfr C1HYS(0xF50D);    // ACMP1 hysteresis control
 // EIE2 (WDT interrupt enable)
 #define IRQ_EIE2_WDTIE_Pos       (5)
 #define IRQ_EIE2_WDTIE_Msk       (0x1 << IRQ_EIE2_WDTIE_Pos)
+
+// PWMCON
+#define EPWM_PWMCON_PWMRUN_Pos   (7)
+#define EPWM_PWMCON_PWMRUN_Msk   (0x1 << EPWM_PWMCON_PWMRUN_Pos)
+
+// EIE2 / EIF2 (EPWM interrupt)
+#define IRQ_EIE2_PWMIE_Pos       (3)
+#define IRQ_EIE2_PWMIE_Msk       (0x1 << IRQ_EIE2_PWMIE_Pos)
+#define IRQ_EIF2_PWMIF_Pos       (3)
+#define IRQ_EIF2_PWMIF_Msk       (0x1 << IRQ_EIF2_PWMIF_Pos)
 
 // WDT Prescaler / Clock counts (from wdt.h)
 #define WDT_CLK_131072           (0x00)
@@ -601,6 +658,45 @@ typedef enum Vref_K {
 #define GPIO_P14_MUX_TXD                     (0x03)  // P1.4 as UART TXD
 #define GPIO_P13_MUX_RXD                     (0x03)  // P1.3 as UART RXD (GAP-01: vendor gpio.h=0x03; was incorrectly 0x02)
 #define GPIO_P13                             (0x13)  // PS_RXD <- P1.3
+
+// Fault Brake pin mux selectors (verbatim from StdDriver inc/gpio.h)
+#define GPIO_P06_MUX_FB0                     (0x04)  // P0.6 as FB0
+#define GPIO_P11_MUX_FB0                     (0x04)  // P1.1 as FB0
+#define GPIO_P07_MUX_FB1                     (0x04)  // P0.7 as FB1
+#define GPIO_P12_MUX_FB1                     (0x04)  // P1.2 as FB1
+
+// GPIO Pin Numbers for Pin Share selectors
+#define GPIO_P00                             (0x00)
+#define GPIO_P01                             (0x01)
+#define GPIO_P02                             (0x02)
+#define GPIO_P03                             (0x03)
+#define GPIO_P04                             (0x04)
+#define GPIO_P05                             (0x05)
+#define GPIO_P06                             (0x06)
+#define GPIO_P07                             (0x07)
+#define GPIO_P10                             (0x10)
+#define GPIO_P11                             (0x11)
+#define GPIO_P12                             (0x12)
+#define GPIO_P14                             (0x14)
+#define GPIO_P15                             (0x15)
+#define GPIO_P16                             (0x16)
+#define GPIO_P17                             (0x17)
+#define GPIO_P20                             (0x20)
+#define GPIO_P21                             (0x21)
+#define GPIO_P22                             (0x22)
+#define GPIO_P23                             (0x23)
+#define GPIO_P24                             (0x24)
+#define GPIO_P25                             (0x25)
+#define GPIO_P26                             (0x26)
+#define GPIO_P27                             (0x27)
+#define GPIO_P30                             (0x30)
+#define GPIO_P31                             (0x31)
+#define GPIO_P32                             (0x32)
+#define GPIO_P33                             (0x33)
+#define GPIO_P34                             (0x34)
+#define GPIO_P35                             (0x35)
+#define GPIO_P36                             (0x36)
+#define GPIO_P37                             (0x37)
 
 // ACMP pin mux selectors (verbatim from StdDriver inc/gpio.h)
 #define GPIO_P10_MUX_C0O                     (0x05)  // P1.0 as ACMP0 Output
@@ -1797,6 +1893,334 @@ static inline void SYS_ClearPowerOnResetFlag(void) {
     WDCON &= ~WDT_WDCON_PORF_Msk;
 }
 #endif  // WINK_CMS8S_VENDOR_SYS_RESET
+
+// ── 13) EPWM Driver Macros & Inline APIs (from StdDriver epwm.h / epwm.c) ───────
+#define EPWM_CHANNEL_NUM                     (4)
+#define EPWM0                                (0x00)
+#define EPWM1                                (0x01)
+#define EPWM2                                (0x02)
+#define EPWM3                                (0x03)
+#define EPWM4                                (0x04)
+#define EPWM5                                (0x05)
+
+#define EPWM_CH_0_MSK                        (0x01)
+#define EPWM_CH_1_MSK                        (0x02)
+#define EPWM_CH_2_MSK                        (0x04)
+#define EPWM_CH_3_MSK                        (0x08)
+#define EPWM_CH_4_MSK                        (0x10)
+#define EPWM_CH_5_MSK                        (0x20)
+
+#define EPWM_COUNT_DOWN                      (0x00)
+#define EPWM_COUNT_UP_DOWN                   (0x02)
+
+#define EPWM_OCU_SYMMETRIC                   (0x00)
+#define EPWM_OCU_ASYMMETRIC                  (0x04)
+
+#define EPWM_WFG_INDEPENDENT                 (0x00)
+#define EPWM_WFG_COMPLEMENTARY               (0x10)
+#define EPWM_WFG_SYNCHRONIZED                (0x20)
+
+#define EPWM_OC_INDEPENDENT                  (0x00)
+#define EPWM_OC_GROUP                        (0x08)
+
+#define EPWM_BRK_SOFTWARE                    (0x00)
+#define EPWM_BRK_FB0                         (0x01)
+#define EPWM_BRK_FB1                         (0x02)
+#define EPWM_BRK_ACMP0                       (0x03)
+#define EPWM_BRK_ACMP1                       (0x04)
+#define EPWM_BRK_ADC                         (0x05)
+
+#define EPWM_BRK_FB_LOW                      (0x00)
+#define EPWM_BRK_FB_HIGH                     (0x01)
+
+#define EPWM_BRK_ACMP_LOW                    (0x00)
+#define EPWM_BRK_ACMP_HIGH                   (0x01)
+#define EPWM_BRK_ACMP_RISING                 (0x00)
+#define EPWM_BRK_ACMP_FALLING                (0x01)
+
+#define EPWM_BRK_STOP                        (0x00)
+#define EPWM_BRK_SUSPEND                     (0x01)
+#define EPWM_BRK_RECOVER                     (0x02)
+#define EPWM_BRK_DELAY_RECOVER               (0x03)
+
+#define EPWM_PWMBRKC_BRKOSF_Pos              (7)
+#define EPWM_PWMBRKC_BRKOSF_Msk              (0x1 << EPWM_PWMBRKC_BRKOSF_Pos)
+#define EPWM_PWMBRKC_BRKRCS_Pos              (4)
+#define EPWM_PWMBRKC_BRKRCS_Msk              (0x7 << EPWM_PWMBRKC_BRKRCS_Pos)
+#define EPWM_PWMBRKC_BRKRCLR_Pos             (3)
+#define EPWM_PWMBRKC_BRKRCLR_Msk             (0x1 << EPWM_PWMBRKC_BRKRCLR_Pos)
+#define EPWM_PWMBRKC_BRKEN_Pos               (2)
+#define EPWM_PWMBRKC_BRKEN_Msk               (0x1 << EPWM_PWMBRKC_BRKEN_Pos)
+#define EPWM_PWMBRKC_BRKMS_Pos               (0)
+#define EPWM_PWMBRKC_BRKMS_Msk               (0x3 << EPWM_PWMBRKC_BRKMS_Pos)
+
+#define EPWM_BRK_LOAD_EPWM0                  (0x00)
+#define EPWM_BRK_LOAD_EPWM1                  (0x01 << EPWM_PWMBRKC_BRKRCS_Pos)
+#define EPWM_BRK_LOAD_EPWM2                  (0x02 << EPWM_PWMBRKC_BRKRCS_Pos)
+#define EPWM_BRK_LOAD_EPWM3                  (0x03 << EPWM_PWMBRKC_BRKRCS_Pos)
+
+#define EPWM_PWMFBKC_PWMFBIE_Pos             (7)
+#define EPWM_PWMFBKC_PWMFBIE_Msk             (0x1 << EPWM_PWMFBKC_PWMFBIE_Pos)
+#define EPWM_PWMFBKC_PWMFBF_Pos              (6)
+#define EPWM_PWMFBKC_PWMFBF_Msk              (0x1 << EPWM_PWMFBKC_PWMFBF_Pos)
+#define EPWM_PWMFBKC_BRKAF_Pos               (5)
+#define EPWM_PWMFBKC_BRKAF_Msk               (0x1 << EPWM_PWMFBKC_BRKAF_Pos)
+#define EPWM_PWMFBKC_PWMFBKSW_Pos            (4)
+#define EPWM_PWMFBKC_PWMFBKSW_Msk            (0x1 << EPWM_PWMFBKC_PWMFBKSW_Pos)
+#define EPWM_PWMFBKC_PWMFB1ES_Pos            (3)
+#define EPWM_PWMFBKC_PWMFB1ES_Msk            (0x1 << EPWM_PWMFBKC_PWMFB1ES_Pos)
+#define EPWM_PWMFBKC_PWMFB0ES_Pos            (2)
+#define EPWM_PWMFBKC_PWMFB0ES_Msk            (0x1 << EPWM_PWMFBKC_PWMFB0ES_Pos)
+#define EPWM_PWMFBKC_PWMFB1EN_Pos            (1)
+#define EPWM_PWMFBKC_PWMFB1EN_Msk            (0x1 << EPWM_PWMFBKC_PWMFB1EN_Pos)
+#define EPWM_PWMFBKC_PWMFB0EN_Pos            (0)
+#define EPWM_PWMFBKC_PWMFB0EN_Msk            (0x1 << EPWM_PWMFBKC_PWMFB0EN_Pos)
+
+#define ACMP_CNFBCON_C1FBPEN_Pos             (7)
+#define ACMP_CNFBCON_C1FBPEN_Msk             (0x1 << ACMP_CNFBCON_C1FBPEN_Pos)
+#define ACMP_CNFBCON_C0FBPEN_Pos             (6)
+#define ACMP_CNFBCON_C0FBPEN_Msk             (0x1 << ACMP_CNFBCON_C0FBPEN_Pos)
+#define ACMP_CNFBCON_C1FBPS_Pos              (5)
+#define ACMP_CNFBCON_C1FBPS_Msk              (0x1 << ACMP_CNFBCON_C1FBPS_Pos)
+#define ACMP_CNFBCON_C0FBPS_Pos              (4)
+#define ACMP_CNFBCON_C0FBPS_Msk              (0x1 << ACMP_CNFBCON_C0FBPS_Pos)
+#define ACMP_CNFBCON_C1FBEEN_Pos             (3)
+#define ACMP_CNFBCON_C1FBEEN_Msk             (0x1 << ACMP_CNFBCON_C1FBEEN_Pos)
+#define ACMP_CNFBCON_C0FBEEN_Pos             (2)
+#define ACMP_CNFBCON_C0FBEEN_Msk             (0x1 << ACMP_CNFBCON_C0FBEEN_Pos)
+#define ACMP_CNFBCON_C1FBES_Pos              (1)
+#define ACMP_CNFBCON_C1FBES_Msk              (0x1 << ACMP_CNFBCON_C1FBES_Pos)
+#define ACMP_CNFBCON_C0FBES_Pos              (0)
+#define ACMP_CNFBCON_C0FBES_Msk              (0x1 << ACMP_CNFBCON_C0FBES_Pos)
+
+#define EPWM_CLK_DIV_1                       (0xff)
+#define EPWM_CLK_DIV_2                       (0x04)
+#define EPWM_CLK_DIV_4                       (0x00)
+#define EPWM_CLK_DIV_8                       (0x01)
+#define EPWM_CLK_DIV_16                      (0x02)
+#define EPWM_CLK_DIV_32                      (0x03)
+
+#define EPWM_ENABLE_LOAD(ChannelMask)        (PWMLOADEN |= (ChannelMask))
+#define EPWM_ENABLE_COUNT(ChannelMask)       (PWMCNTE |= (ChannelMask))
+#define EPWM_DISABLE_COUNT(ChannelMask)      (PWMCNTE &= ~(ChannelMask))
+#define EPWM_ENABLE_OUTPUT(ChannelMask)      (PWMOE |= (ChannelMask))
+#define EPWM_DISABLE_OUTPUT(ChannelMask)     (PWMOE &= ~(ChannelMask))
+
+// EPWM Pin Mux Constants (from gpio.h)
+#ifndef GPIO_P20_MUX_PG0
+#define GPIO_P00_MUX_PG0                     (0x04)
+#define GPIO_P17_MUX_PG0                     (0x04)
+#define GPIO_P20_MUX_PG0                     (0x04)
+#define GPIO_P01_MUX_PG1                     (0x04)
+#define GPIO_P16_MUX_PG1                     (0x04)
+#define GPIO_P21_MUX_PG1                     (0x04)
+#define GPIO_P02_MUX_PG2                     (0x04)
+#define GPIO_P15_MUX_PG2                     (0x04)
+#define GPIO_P22_MUX_PG2                     (0x04)
+#define GPIO_P03_MUX_PG3                     (0x04)
+#define GPIO_P14_MUX_PG3                     (0x04)
+#define GPIO_P23_MUX_PG3                     (0x04)
+#define GPIO_P04_MUX_PG4                     (0x04)
+#define GPIO_P24_MUX_PG4                     (0x04)
+#define GPIO_P05_MUX_PG5                     (0x04)
+#define GPIO_P25_MUX_PG5                     (0x04)
+#endif
+
+#ifndef WINK_CMS8S_VENDOR_EPWM_SHIMS
+#define WINK_CMS8S_VENDOR_EPWM_SHIMS 1
+
+static inline void EPWM_ConfigRunMode(uint8_t mode) {
+    PWMCON = mode;
+}
+
+static inline void EPWM_ConfigChannelClk(uint8_t ch, uint8_t div) {
+    if (ch == EPWM0) PWM0DIV = div;
+    else if (ch == EPWM1) PWM1DIV = div;
+    else if (ch == EPWM2) PWM2DIV = div;
+    else if (ch == EPWM3) PWM3DIV = div;
+}
+
+static inline void EPWM_ConfigChannelPeriod(uint8_t ch, uint16_t period) {
+    if (ch == EPWM0) { PWMP0L = period & 0xFF; PWMP0H = (period >> 8) & 0xFF; }
+    else if (ch == EPWM1) { PWMP1L = period & 0xFF; PWMP1H = (period >> 8) & 0xFF; }
+    else if (ch == EPWM2) { PWMP2L = period & 0xFF; PWMP2H = (period >> 8) & 0xFF; }
+    else if (ch == EPWM3) { PWMP3L = period & 0xFF; PWMP3H = (period >> 8) & 0xFF; }
+}
+
+static inline void EPWM_ConfigChannelSymDuty(uint8_t ch, uint16_t duty) {
+    if (ch == EPWM0) { PWMD0L = duty & 0xFF; PWMD0H = (duty >> 8) & 0xFF; }
+    else if (ch == EPWM1) { PWMD1L = duty & 0xFF; PWMD1H = (duty >> 8) & 0xFF; }
+    else if (ch == EPWM2) { PWMD2L = duty & 0xFF; PWMD2H = (duty >> 8) & 0xFF; }
+    else if (ch == EPWM3) { PWMD3L = duty & 0xFF; PWMD3H = (duty >> 8) & 0xFF; }
+}
+
+static inline void EPWM_EnableAutoLoadMode(uint8_t mask) {
+    PWMLOADEN |= mask;
+}
+
+static inline void EPWM_DisableReverseOutput(uint8_t mask) {
+    PWMPINV &= ~mask;
+}
+
+static inline void EPWM_EnableOutput(uint8_t mask) {
+    PWMOE |= mask;
+}
+
+static inline void EPWM_DisableDeadZone(uint8_t ch) {
+    if (ch == EPWM0) PWMDTE &= ~0x01;
+    else if (ch == EPWM2) PWMDTE &= ~0x02;
+}
+
+static inline void EPWM_EnableZeroInt(uint8_t mask) {
+    PWMZIE |= mask;
+}
+
+static inline void EPWM_AllIntEnable(void) {
+    EIE2 |= IRQ_EIE2_PWMIE_Msk;
+}
+
+static inline void EPWM_Start(uint8_t mask) {
+    PWMCNTE |= mask;
+    PWMCON |= EPWM_PWMCON_PWMRUN_Msk;
+}
+
+static inline uint8_t EPWM_GetZeroIntFlag(uint8_t ch) {
+    return (PWMZIF & (1u << ch)) ? 1 : 0;
+}
+
+static inline void EPWM_ClearZeroIntFlag(uint8_t ch) {
+    PWMZIF = 0xFF & (~(1u << ch));
+}
+
+static inline void EPWM_ConfigBrakeMode(uint8_t BrakeMode, uint8_t Reload) {
+    uint8_t temp = PWMBRKC;
+    temp &= ~(EPWM_PWMBRKC_BRKRCS_Msk | EPWM_PWMBRKC_BRKMS_Msk);
+    temp |= (BrakeMode | Reload);
+    PWMBRKC = temp;
+}
+
+static inline void EPWM_ConfigBrakeRecoverDelay(uint16_t time) {
+    PWMBRKRDTH = 0x03 & (time >> 8);
+    PWMBRKRDTL = 0xFF & time;
+}
+
+static inline void EPWM_EnableFaultBrake(void) {
+    PWMBRKC |= EPWM_PWMBRKC_BRKEN_Msk;
+}
+
+static inline void EPWM_DisableFaultBrake(void) {
+    PWMBRKC &= ~(EPWM_PWMBRKC_BRKEN_Msk);
+}
+
+static inline void EPWM_ConfigChannelBrakeLevel(uint8_t ChannelMask, uint8_t BrakeLevel) {
+    if (BrakeLevel) {
+        PWMFBKD |= ChannelMask;
+    } else {
+        PWMFBKD &= ~(ChannelMask);
+    }
+}
+
+static inline void EPWM_EnableFaultBrakeInt(void) {
+    PWMFBKC |= EPWM_PWMFBKC_PWMFBIE_Msk;
+}
+
+static inline void EPWM_DisableFaultBrakeInt(void) {
+    PWMFBKC &= ~(EPWM_PWMFBKC_PWMFBIE_Msk);
+}
+
+static inline uint8_t EPWM_GetFaultBrakeIntFlag(void) {
+    return (PWMFBKC & EPWM_PWMFBKC_PWMFBF_Msk) ? 1 : 0;
+}
+
+static inline void EPWM_ClearFaultBrakeIntFlag(void) {
+    PWMFBKC &= ~(EPWM_PWMFBKC_PWMFBF_Msk);
+}
+
+static inline void EPWM_TrigSoftwareBrake(void) {
+    PWMFBKC |= EPWM_PWMFBKC_PWMFBKSW_Msk;
+}
+
+static inline void EPWM_DisableSoftwareBrake(void) {
+    PWMFBKC &= ~(EPWM_PWMFBKC_PWMFBKSW_Msk);
+}
+
+static inline uint8_t EPWM_GetBrakeActiveFlag(void) {
+    return (PWMFBKC & EPWM_PWMFBKC_BRKAF_Msk) ? 1 : 0;
+}
+
+static inline uint8_t EPWM_GetBrakeOutputStatus(void) {
+    return (PWMBRKC & EPWM_PWMBRKC_BRKOSF_Msk) ? 1 : 0;
+}
+
+static inline void EPWM_ClearFaultBrake(void) {
+    PWMBRKC |= EPWM_PWMBRKC_BRKRCLR_Msk;
+}
+
+static inline void EPWM_EnableFBBrake(uint8_t FBSource, uint8_t FBBrakeMode) {
+    uint8_t temp = PWMFBKC;
+    if (FBSource == EPWM_BRK_FB0) {
+        temp &= ~EPWM_PWMFBKC_PWMFB0ES_Msk;
+        temp |= (FBBrakeMode << EPWM_PWMFBKC_PWMFB0ES_Pos) | EPWM_PWMFBKC_PWMFB0EN_Msk;
+    } else if (FBSource == EPWM_BRK_FB1) {
+        temp &= ~EPWM_PWMFBKC_PWMFB1ES_Msk;
+        temp |= (FBBrakeMode << EPWM_PWMFBKC_PWMFB1ES_Pos) | EPWM_PWMFBKC_PWMFB1EN_Msk;
+    }
+    PWMFBKC = temp;
+}
+
+static inline void EPWM_DisableFBBrake(uint8_t FBSource) {
+    if (FBSource == EPWM_BRK_FB0) {
+        PWMFBKC &= ~EPWM_PWMFBKC_PWMFB0EN_Msk;
+    } else if (FBSource == EPWM_BRK_FB1) {
+        PWMFBKC &= ~EPWM_PWMFBKC_PWMFB1EN_Msk;
+    }
+}
+
+static inline void EPWM_EnableACMPEEBrake(uint8_t ACMPSource, uint8_t BrakeMode) {
+    if (ACMPSource == EPWM_BRK_ACMP0) {
+        uint8_t temp = CNFBCON;
+        temp &= ~ACMP_CNFBCON_C0FBES_Msk;
+        temp |= (BrakeMode << ACMP_CNFBCON_C0FBES_Pos) | ACMP_CNFBCON_C0FBEEN_Msk;
+        CNFBCON = temp;
+    } else if (ACMPSource == EPWM_BRK_ACMP1) {
+        uint8_t temp = CNFBCON;
+        temp &= ~ACMP_CNFBCON_C1FBES_Msk;
+        temp |= (BrakeMode << ACMP_CNFBCON_C1FBES_Pos) | ACMP_CNFBCON_C1FBEEN_Msk;
+        CNFBCON = temp;
+    }
+}
+
+static inline void EPWM_DisableACMPEEBrake(uint8_t ACMPSource) {
+    if (ACMPSource == EPWM_BRK_ACMP0) {
+        CNFBCON &= ~ACMP_CNFBCON_C0FBEEN_Msk;
+    } else if (ACMPSource == EPWM_BRK_ACMP1) {
+        CNFBCON &= ~ACMP_CNFBCON_C1FBEEN_Msk;
+    }
+}
+
+static inline void EPWM_EnableACMPLEBrake(uint8_t ACMPSource, uint8_t BrakeMode) {
+    if (ACMPSource == EPWM_BRK_ACMP0) {
+        uint8_t temp = CNFBCON;
+        temp &= ~ACMP_CNFBCON_C0FBPS_Msk;
+        temp |= (BrakeMode << ACMP_CNFBCON_C0FBPS_Pos) | ACMP_CNFBCON_C0FBPEN_Msk;
+        CNFBCON = temp;
+    } else if (ACMPSource == EPWM_BRK_ACMP1) {
+        uint8_t temp = CNFBCON;
+        temp &= ~ACMP_CNFBCON_C1FBPS_Msk;
+        temp |= (BrakeMode << ACMP_CNFBCON_C1FBPS_Pos) | ACMP_CNFBCON_C1FBPEN_Msk;
+        CNFBCON = temp;
+    }
+}
+
+static inline void EPWM_DisableACMPLEBrake(uint8_t ACMPSource) {
+    if (ACMPSource == EPWM_BRK_ACMP0) {
+        CNFBCON &= ~ACMP_CNFBCON_C0FBPEN_Msk;
+    } else if (ACMPSource == EPWM_BRK_ACMP1) {
+        CNFBCON &= ~ACMP_CNFBCON_C1FBPEN_Msk;
+    }
+}
+
+#endif  // WINK_CMS8S_VENDOR_EPWM_SHIMS
 
 #endif  // __C51__
 

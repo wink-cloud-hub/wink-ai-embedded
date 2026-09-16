@@ -36,9 +36,9 @@ void init_ctx(void) {
     wink_mcs51_xdata_reset();
 }
 
-// EPWM PWMCON: vendor XSFR (0xF120) with no framework model — the canonical
-// "silently succeeding" unmodeled register from the GAP-23 audit.
-constexpr uint64_t kUnmodeledPwmcon = 0xF120ull;
+// Unmodeled XSFR (0xF200) with no framework model in the XSFR window
+// (0xF000..0xF7FF) — canonical test target for GAP-23 audit (0xF120 is now modeled by EPWM).
+constexpr uint64_t kUnmodeledPwmcon = 0xF200ull;
 // Declared XSFR addresses (audited allowlist members).
 constexpr uint64_t kP00Cfg = 0xF000ull;
 constexpr uint64_t kP22Cfg = 0xF022ull;
@@ -135,14 +135,14 @@ int main(void) {
     init_ctx();
     xwrite(kUnmodeledPwmcon, 0xABu);
     CHECK(wink_mcs51_xsfr_unmodeled_count() == 1u, "A: write counted");
-    CHECK(wink_mcs51_xsfr_unmodeled_addr(0) == 0xF120u, "A: address recorded");
+    CHECK(wink_mcs51_xsfr_unmodeled_addr(0) == static_cast<uint16_t>(kUnmodeledPwmcon), "A: address recorded");
     CHECK(xread(kUnmodeledPwmcon) == 0xABu, "A: access still lands in shadow");
     // Reads trip too: polling an unmodeled status register is as silent as
-    // configuring one. 0xF121 is likewise unlisted.
+    // configuring one.
     CHECK(xread(kUnmodeledPwmcon + 1u) == 0x00u, "A: unlisted read returns shadow");
     CHECK(wink_mcs51_xsfr_unmodeled_count() == 3u, "A: R+R/W counted");
-    CHECK(wink_mcs51_xsfr_unmodeled_addr(1) == 0xF120u, "A: 2nd record (read)");
-    CHECK(wink_mcs51_xsfr_unmodeled_addr(2) == 0xF121u, "A: 3rd record");
+    CHECK(wink_mcs51_xsfr_unmodeled_addr(1) == static_cast<uint16_t>(kUnmodeledPwmcon), "A: 2nd record (read)");
+    CHECK(wink_mcs51_xsfr_unmodeled_addr(2) == static_cast<uint16_t>(kUnmodeledPwmcon + 1u), "A: 3rd record");
     CHECK(wink_mcs51_xsfr_unmodeled_addr(8) == 0xFFFFu, "A: OOB index reads 0xFFFF");
 
     // ── B: declared addresses stay silent ───────────────────────────────────

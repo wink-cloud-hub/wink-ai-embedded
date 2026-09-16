@@ -387,6 +387,23 @@ extern "C" bool cms8s_irq_flag_predicate(struct Mcu51Context* ctx,
         return ((ctx->sfr_shadow[CMS8S_SFR_T2IF] &
                  ctx->sfr_shadow[CMS8S_SFR_T2IE]) != 0);
     }
+    if (src == IRQ_SOURCE_PWM) {
+        constexpr uint16_t XSFR_PWMZIF = 0xF16Du;
+        constexpr uint16_t XSFR_PWMZIE = 0xF169u;
+        constexpr uint16_t XSFR_PWMPIF = 0xF16Cu;
+        constexpr uint16_t XSFR_PWMPIE = 0xF168u;
+        constexpr uint16_t XSFR_PWMUIF = 0xF16Eu;
+        constexpr uint16_t XSFR_PWMUIE  = 0xF16Au;
+        constexpr uint16_t XSFR_PWMDIF  = 0xF16Fu;
+        constexpr uint16_t XSFR_PWMDIE  = 0xF16Bu;
+        constexpr uint16_t XSFR_PWMFBKC = 0xF166u;
+        uint8_t z = ctx->xdata_shadow[XSFR_PWMZIF] & ctx->xdata_shadow[XSFR_PWMZIE];
+        uint8_t p = ctx->xdata_shadow[XSFR_PWMPIF] & ctx->xdata_shadow[XSFR_PWMPIE];
+        uint8_t u = ctx->xdata_shadow[XSFR_PWMUIF] & ctx->xdata_shadow[XSFR_PWMUIE];
+        uint8_t d = ctx->xdata_shadow[XSFR_PWMDIF] & ctx->xdata_shadow[XSFR_PWMDIE];
+        uint8_t fb = ((ctx->xdata_shadow[XSFR_PWMFBKC] & 0x40u) && (ctx->xdata_shadow[XSFR_PWMFBKC] & 0x80u)) ? 1u : 0u;
+        return (z | p | u | d | fb) != 0;
+    }
     if (entry->flag_sfr == 0xFFu) {
         return true;
     }
