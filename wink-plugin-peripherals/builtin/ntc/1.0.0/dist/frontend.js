@@ -27,7 +27,7 @@ var f = { class: "ntc-glyph" }, p = ["title"], m = /*@__PURE__*/ o({
 	let n = e.__vccOpts || e;
 	for (let [e, r] of t) n[e] = r;
 	return n;
-}, g = /*#__PURE__*/ h(m, [["__scopeId", "data-v-7b54d211"]]), _ = { class: "ntc-widget" }, v = { class: "temp-control" }, y = { class: "temp-label" }, b = [
+}, g = /*#__PURE__*/ h(m, [["__scopeId", "data-v-aeff69cb"]]), _ = { class: "ntc-widget" }, v = { class: "temp-control" }, y = { class: "temp-label" }, b = [
 	"min",
 	"max",
 	"value"
