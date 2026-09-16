@@ -1,37 +1,23 @@
 import { definePeripheral as e, resolvePluginInstanceId as t } from "@wink-ai/unisim-ui";
 import { resolvePluginIdentity as n } from "@wink-ai/unisim";
-import { computed as r, createElementBlock as i, createElementVNode as a, defineComponent as o, normalizeStyle as s, openBlock as c, ref as l, toDisplayString as u, watch as d } from "vue";
+import { createElementBlock as r, createElementVNode as i, defineComponent as a, openBlock as o, ref as s, toDisplayString as c, watch as l } from "vue";
 import "@wokwi/elements";
-//#region builtin/ntc/1.0.0/src/CanvasGlyph.vue?vue&type=script&setup=true&lang.ts
-var f = { class: "ntc-glyph" }, p = ["title"], m = /*@__PURE__*/ o({
+//#endregion
+//#region builtin/ntc/1.0.0/src/CanvasGlyph.vue
+var u = /* @__PURE__ */ a({
 	__name: "CanvasGlyph",
-	props: {
-		temperature: { default: 25 },
-		label: { default: "" }
-	},
 	setup(e) {
-		let t = e, n = r(() => Number.isFinite(Number(t.temperature)) ? Number(t.temperature) : 25), o = r(() => `${n.value.toFixed(1)}°C`), l = r(() => {
-			let e = (Math.min(120, Math.max(-20, n.value)) + 20) / 140;
-			return `hsl(${Math.round(210 - e * 210)}, 85%, 55%)`;
-		});
-		return (t, n) => (c(), i("div", f, [n[0] ||= a("wokwi-ntc-temperature-sensor", null, null, -1), a("span", {
-			class: "ntc-badge",
-			style: s({
-				borderColor: l.value,
-				color: l.value
-			}),
-			title: e.label || "NTC"
-		}, u(o.value), 13, p)]));
+		return (e, t) => (o(), r("wokwi-ntc-temperature-sensor"));
 	}
-}), h = (e, t) => {
-	let n = e.__vccOpts || e;
-	for (let [e, r] of t) n[e] = r;
-	return n;
-}, g = /*#__PURE__*/ h(m, [["__scopeId", "data-v-aeff69cb"]]), _ = { class: "ntc-widget" }, v = { class: "temp-control" }, y = { class: "temp-label" }, b = [
+}), d = { class: "ntc-widget" }, f = { class: "temp-control" }, p = { class: "temp-label" }, m = [
 	"min",
 	"max",
 	"value"
-], x = /*#__PURE__*/ h(/* @__PURE__ */ o({
+], h = /*#__PURE__*/ ((e, t) => {
+	let n = e.__vccOpts || e;
+	for (let [e, r] of t) n[e] = r;
+	return n;
+})(/* @__PURE__ */ a({
 	__name: "WorldWidget",
 	props: {
 		pluginInstanceId: {},
@@ -42,28 +28,28 @@ var f = { class: "ntc-glyph" }, p = ["title"], m = /*@__PURE__*/ o({
 	},
 	emits: ["update:temperature", "prop-change"],
 	setup(e, { emit: t }) {
-		let n = e, r = t, o = l(n.temperature);
-		d(() => n.temperature, (e) => {
-			e !== void 0 && e !== o.value && (o.value = e);
+		let n = e, a = t, u = s(n.temperature);
+		l(() => n.temperature, (e) => {
+			e !== void 0 && e !== u.value && (u.value = e);
 		});
-		function s(e) {
+		function h(e) {
 			let t = e.target, n = Number(t.value);
-			o.value = n, r("update:temperature", n), r("prop-change", "temperature", n);
+			u.value = n, a("update:temperature", n), a("prop-change", "temperature", n);
 		}
-		return (t, n) => (c(), i("div", _, [n[0] ||= a("wokwi-ntc-temperature-sensor", null, null, -1), a("div", v, [a("div", y, u(o.value) + " °C", 1), a("input", {
+		return (t, n) => (o(), r("div", d, [n[0] ||= i("wokwi-ntc-temperature-sensor", null, null, -1), i("div", f, [i("div", p, c(u.value) + " °C", 1), i("input", {
 			type: "range",
 			class: "temp-slider",
 			min: e.minTemp,
 			max: e.maxTemp,
 			step: "1",
-			value: o.value,
-			onInput: s
-		}, null, 40, b)])]));
+			value: u.value,
+			onInput: h
+		}, null, 40, m)])]));
 	}
-}), [["__scopeId", "data-v-699e702e"]]), S = Object.freeze({
+}), [["__scopeId", "data-v-699e702e"]]), g = Object.freeze({
 	width: 135,
 	height: 72
-}), C = Object.freeze({
+}), _ = Object.freeze({
 	GND: Object.freeze({
 		relX: 135,
 		relY: 26,
@@ -85,7 +71,7 @@ var f = { class: "ntc-glyph" }, p = ["title"], m = /*@__PURE__*/ o({
 		defaultConnection: null,
 		required: !0
 	})
-}), w = S, T = Object.freeze([
+}), v = g, y = Object.freeze([
 	{
 		name: "OUT",
 		direction: "source",
@@ -126,8 +112,8 @@ var f = { class: "ntc-glyph" }, p = ["title"], m = /*@__PURE__*/ o({
 ]);
 Object.freeze({ default: Object.freeze({
 	variant: "default",
-	getPins: () => T,
-	pinsOverlay: C,
+	getPins: () => y,
+	pinsOverlay: _,
 	defaultAppearanceId: "ntc_default"
 }) }), Object.freeze({ ntc_default: Object.freeze({
 	appearanceId: "ntc_default",
@@ -144,15 +130,15 @@ Object.freeze({ default: Object.freeze({
 }) });
 //#endregion
 //#region builtin/ntc/1.0.0/src/definition.ts
-var E = n(import.meta.url, "ntc", "1.0.0", "sensor"), D = e({
-	type: E.type,
+var b = n(import.meta.url, "ntc", "1.0.0", "sensor"), x = e({
+	type: b.type,
 	catalog: {
-		id: E.type,
+		id: b.type,
 		worldCoupling: "optional"
 	},
-	size: w,
+	size: v,
 	wireColor: "#38bdf8",
-	pinsOverlay: C,
+	pinsOverlay: _,
 	props: {
 		variant: {
 			type: "string",
@@ -195,12 +181,18 @@ var E = n(import.meta.url, "ntc", "1.0.0", "sensor"), D = e({
 			description: "Max slider temperature in °C"
 		}
 	},
-	canvas: g,
-	world: x,
+	canvas: u,
+	world: h,
 	ui: {
-		canvasProps: (e, n) => {
-			let r = t(e, E.type), i = n.pluginChannels?.[r]?.temperature;
-			return { temperature: typeof i == "number" ? i : e.props.temperature };
+		canvasBadge: (e, n) => {
+			let r = t(e, b.type), i = n.pluginChannels?.[r]?.temperature, a = typeof i == "number" ? i : Number(e.props.temperature ?? 25);
+			if (!Number.isFinite(a)) return null;
+			let o = Math.round(210 - (Math.min(120, Math.max(-20, a)) + 20) / 140 * 210);
+			return {
+				text: `${a.toFixed(1)}°C`,
+				title: "NTC",
+				accent: `hsl(${o}, 85%, 60%)`
+			};
 		},
 		worldProps: (e) => ({
 			pinConnections: e.pinConnections,
@@ -212,4 +204,4 @@ var E = n(import.meta.url, "ntc", "1.0.0", "sensor"), D = e({
 	}
 });
 //#endregion
-export { D as default, D as ntcDefinition };
+export { x as default, x as ntcDefinition };
