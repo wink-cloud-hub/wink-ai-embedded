@@ -15,7 +15,7 @@ WinkMicroOS is the deterministic digital lab that closes that loop: the same C s
 **English** | [简体中文](./README.zh-CN.md)
 &nbsp;·&nbsp; [▶ Try it online](http://www.wink-cloud.com/simulator/index.html) &nbsp;·&nbsp; [5-min guide](./docs/en/design/00-quick-start/01-5min-getting-started.md) &nbsp;·&nbsp; [Docs hub](./docs/en/README.md) &nbsp;·&nbsp; [Roadmap](./docs/en/design/01-system-overall/02-mvp-roadmap.md)
 
-**Status:** v0.1.0 released · public CI green · 35 host test executables (see [`wink-micro-os/TESTING.md`](./wink-micro-os/TESTING.md))
+**Status:** released · public CI green · test executables (see [`wink-micro-os/TESTING.md`](./wink-micro-os/TESTING.md))
 
 <!-- TODO(asset): add a 15-second hero GIF — import repo → run the `button-led` scenario → press the virtual button → LED lights up with the live waveform. A workbench screenshot works too. -->
 

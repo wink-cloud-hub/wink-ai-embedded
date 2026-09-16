@@ -15,7 +15,7 @@ WinkMicroOS 是闭合这个环的确定性数字实验室：同一份 C 源码�
 [English](./README.md) | **简体中文**
 &nbsp;·&nbsp; [▶ 在线试玩](http://www.wink-cloud.com/simulator/index.html) &nbsp;·&nbsp; [5 分钟上手](./docs/zh/design/00-quick-start/01-5min-getting-started.md) &nbsp;·&nbsp; [文档中心](./docs/zh/README.md) &nbsp;·&nbsp; [路线图](./docs/zh/design/01-system-overall/02-mvp-roadmap.md)
 
-**状态：** v0.1.0 已发布 · 公共 CI 绿色 · 35 个 host 测试可执行（见 [`wink-micro-os/TESTING.md`](./wink-micro-os/TESTING.md)）
+**状态：**  已发布 · 公共 CI 绿色 · host 测试可执行（见 [`wink-micro-os/TESTING.md`](./wink-micro-os/TESTING.md)）
 
 <!-- TODO(素材)：补充 15 秒首屏 GIF（导入仓库 → 运行 button-led 场景 → 按下虚拟按键 → LED 点亮 + 实时波形）。 -->
 
