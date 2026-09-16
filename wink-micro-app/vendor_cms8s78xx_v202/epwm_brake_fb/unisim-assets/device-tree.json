@@ -1,0 +1,9 @@
+{
+  "appName": "vendor_cms8s78xx_v202_epwm_brake_fb",
+  "board": "cms8s78xx_devboard",
+  "devices": {},
+  "family": "mcs51",
+  "core": "8051",
+  "mcu": "cms8s78xx",
+  "vendor": "cmsemicon"
+}

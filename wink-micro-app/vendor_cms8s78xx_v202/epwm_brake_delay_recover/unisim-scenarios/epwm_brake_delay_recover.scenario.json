@@ -1,0 +1,27 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "CMS8S78xx EPWM Brake Delay Recover Mode headless proof",
+    "templateId": "vendor_cms8s78xx_v202_epwm_brake_delay_recover",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "100000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_PIN",
+      "timeUs": "10ms",
+      "pin": 26,
+      "expected": 0,
+      "description": "P3.2 (pin 26) initially low or toggling with EPWM zero interrupt"
+    },
+    {
+      "type": "ASSERT_PIN",
+      "timeUs": "10ms",
+      "pin": 27,
+      "expected": 0,
+      "description": "P3.3 (pin 27) initialized low before brake trigger"
+    }
+  ]
+}

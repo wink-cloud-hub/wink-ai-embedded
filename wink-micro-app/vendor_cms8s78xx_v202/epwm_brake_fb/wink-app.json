@@ -1,0 +1,8 @@
+{
+  "name": "vendor_cms8s78xx_v202_epwm_brake_fb",
+  "version": "1.0.0",
+  "description": "CMS8S78xx EPWM Hardware Fault Brake 0/1 Pin Mode headless proof app",
+  "target": "mcs51",
+  "framework": "mcs51",
+  "chip": "cms8s78xx"
+}
