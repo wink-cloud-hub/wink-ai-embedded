@@ -46,7 +46,7 @@
       "signal": "digital",
       "required": true,
       "simRole": "pwm",
-      "catalogType": "gpio",
+      "catalogType": "pwm",
       "aliases": [
         "1",
         "sig",
