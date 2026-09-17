@@ -3,7 +3,7 @@ visibility: public
 winkcli-version: ">=0.1.0"
 i18n-meta
 source: wink-tools/docs/zh/00-install.md
-translated: 2026-09-15
+translated: 2026-09-17
 translator: AI-assisted
 sync-status: up-to-date
 -->
@@ -66,6 +66,7 @@ winkcli doctor
 | Tool | Purpose | Notes |
 |---|---|---|
 | **Emscripten SDK (emsdk)** | Provides `emcmake` / `emcc` | ≥ 3.1.50, must be activated |
+| **Node.js ≥ 18 or Bun** | Runs the UniSim engine runtime | Bun recommended; `winkcli` never installs a JS runtime for you |
 
 ```bash
 git clone https://github.com/emscripten-core/emsdk.git
@@ -76,6 +77,42 @@ cd emsdk
 # Bind emsdk to winkcli
 winkcli setup --set emsdk=/path/to/emsdk
 ```
+
+### 2.2.1 UniSim engine runtime (`winkcli sim`)
+
+The UniSim engine ships **inside winkcli** as a signed, obfuscated runtime — there is no npm
+install step and no registry account required. On the first `winkcli sim run` (or an explicit
+`winkcli sim install`) winkcli prepares the runtime **offline** into `~/.wink/sim/`:
+
+- engine tarball + SDK tarball + dependency closure are bundled with the wheel / `winkcli.exe`;
+- the install is verified against `winkcli.build.json` sha256 hashes, staged and swapped
+  atomically, protected by a lock, and keeps `.previous/` for rollback;
+- the EULA is shown on first use and acceptance is recorded (`~/.wink/sim/eula-accepted.json`,
+  audit trail in `~/.wink/sim/audit.jsonl`).
+
+```bash
+winkcli sim install              # prepare/reinstall the embedded runtime (offline)
+winkcli sim update               # signed online channel (falls back to the embedded floor)
+winkcli sim update --offline     # force the bundled floor
+winkcli sim versions             # list installed runtime versions + active one
+winkcli sim rollback             # switch back to the previous runtime
+winkcli sim doctor               # runtime, hash, EULA and channel diagnostics
+winkcli sim verify-embed --json  # verify the embedded payload hashes (distribution gate)
+```
+
+| Environment variable | Purpose |
+|---|---|
+| `WINK_NO_AUTO_INSTALL=1` | Never auto-prepare the runtime; only report the missing engine |
+| `WINK_ACCEPT_EULA=1` / `=0` | Pre-consent / decline the engine EULA (CI, enterprise) |
+| `WINK_UNISIM_TARBALL=<path.tgz>` | Dev override: install a locally packed engine tarball |
+| `WINK_UNISIM_URL=<base>` | Enterprise mirror override (directory or URL with `manifest.json`) |
+| `WINK_UNISIM_MIRRORS=<base,...>` | Additional mirror candidates (probed for availability) |
+| `WINK_UNISIM_PUBKEY=<hex>` | Override the release-signing public key (enterprise channels) |
+| `WINK_QUIET=1` | Suppress runtime preparation notices (same as `--quiet`) |
+
+> Online updates are verified with an offline Ed25519 release key and per-file sha256; a
+> tampered manifest or asset is rejected. Until the public release key is provisioned in a
+> winkcli build, online updates fail closed and the embedded offline floor is used.
 
 ### 2.3 ESP32 hardware (`esp32`)
 
@@ -115,7 +152,7 @@ A workspace descriptor `wink-workspace.json` (`sdk_dir` / `frontend_dir` / `esp3
 | `setup` | Python |
 | `gen app-schema` | Python + Jinja2 |
 | `build host` / `test` (host part) | Python + Jinja2 + gcc + cmake + make/ninja |
-| `build wasm` / `sim run` | Host base + activated emsdk |
+| `build wasm` / `sim run` | Host base + activated emsdk + Node ≥ 18 / Bun |
 | `esp32` | ESP-IDF v6.x (user installed) |
 | `build unisim-plugin` / `dev unisim-plugin` | Node / npm + `embedded-frontend` |
 | `lint` | Python + PyYAML |

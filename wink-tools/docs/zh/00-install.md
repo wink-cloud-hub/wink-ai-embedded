@@ -61,6 +61,7 @@ winkcli doctor
 | 工具 | 作用 | 约定 |
 |---|---|---|
 | **Emscripten SDK (emsdk)** | 提供 `emcmake` / `emcc` | ≥ 3.1.50，必须已激活 |
+| **Node.js ≥ 18 或 Bun** | 运行 UniSim 引擎运行时 | 推荐 Bun；`winkcli` 不会代装 JS 运行时 |
 
 ```bash
 git clone https://github.com/emscripten-core/emsdk.git
@@ -71,6 +72,38 @@ cd emsdk
 # 将 emsdk 路径绑定给 winkcli
 winkcli setup --set emsdk=/path/to/emsdk
 ```
+
+### 2.2.1 UniSim 引擎运行时（`winkcli sim`）
+
+UniSim 引擎以**签名混淆运行时**的形式内嵌在 `winkcli` 中——无需 npm 安装，也不需要 registry 账号。
+首次 `winkcli sim run`（或显式 `winkcli sim install`）时，winkcli 会**离线**把运行时准备到 `~/.wink/sim/`：
+
+- 引擎 tarball + SDK tarball + 依赖闭包随 wheel / `winkcli.exe` 一起分发；
+- 安装按 `winkcli.build.json` 的 sha256 逐项校验，staging + 原子替换 + `.lock` 防并发，并保留 `.previous/` 用于回滚；
+- 首次使用展示 EULA；接受记录写在 `~/.wink/sim/eula-accepted.json`，安装审计写在 `~/.wink/sim/audit.jsonl`。
+
+```bash
+winkcli sim install              # 准备/重装内置运行时（离线）
+winkcli sim update               # 走签名在线通道（失败时回退内置 floor）
+winkcli sim update --offline     # 强制使用内置 floor
+winkcli sim versions             # 列出已安装运行时版本与当前生效版本
+winkcli sim rollback             # 回滚到上一个运行时
+winkcli sim doctor               # 运行时、hash、EULA 与通道诊断
+winkcli sim verify-embed --json  # 校验内置产物 hash（分发包门禁）
+```
+
+| 环境变量 | 作用 |
+|---|---|
+| `WINK_NO_AUTO_INSTALL=1` | 禁止自动准备运行时，仅报告引擎缺失 |
+| `WINK_ACCEPT_EULA=1` / `=0` | 预同意 / 拒绝引擎 EULA（CI、企业） |
+| `WINK_UNISIM_TARBALL=<path.tgz>` | 开发覆盖：安装本地打包的引擎 tarball |
+| `WINK_UNISIM_URL=<base>` | 企业镜像覆盖（目录或 URL，含 `manifest.json`） |
+| `WINK_UNISIM_MIRRORS=<base,...>` | 追加镜像候选（按可用性探测排序） |
+| `WINK_UNISIM_PUBKEY=<hex>` | 覆盖发布签名公钥（企业自有通道） |
+| `WINK_QUIET=1` | 抑制运行时准备提示（等价 `--quiet`） |
+
+> 在线更新使用离线 Ed25519 发布密钥验签 + 逐文件 sha256；manifest 或资产被篡改一律拒绝安装。
+> 在公钥指纹内置到 winkcli 之前，在线更新会 fail-closed 并回退内置离线 floor。
 
 ### 2.3 ESP32 真机（`esp32`）
 
@@ -110,7 +143,7 @@ winkcli setup --set gcc=D:/toolchains/mingw64/bin --workspace
 | `setup` | Python |
 | `gen app-schema` | Python + Jinja2 |
 | `build host` / `test`（host 部分） | Python + Jinja2 + gcc + cmake + make/ninja |
-| `build wasm` / `sim run` | Host 基础 + 已激活的 emsdk |
+| `build wasm` / `sim run` | Host 基础 + 已激活的 emsdk + Node ≥ 18 / Bun |
 | `esp32` | ESP-IDF v6.x（用户自装） |
 | `build unisim-plugin` / `dev unisim-plugin` | Node / npm + `embedded-frontend` |
 | `lint` | Python + PyYAML |
