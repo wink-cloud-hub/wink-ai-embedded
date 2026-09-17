@@ -1,6 +1,6 @@
 import { BaseSimulationPlugin as e, LogicStates as t, defaultRolePinName as n, normalizeManifest as r, normalizeVariantKey as i, resolveMappedRolePinName as a, resolvePluginIdentity as o } from "@wink-ai/unisim-sdk";
 //#region builtin/buzzer/1.0.0/src/simulation.ts
-var s = o(import.meta.url, "buzzer", "1.0.0", "output"), c = {
+var s = o(import.meta.url, "buzzer", "1.0.0", "output"), c = 15, l = {
 	passive_pwm: {
 		displayName: "Passive Piezo Buzzer (PWM)",
 		pins: [{
@@ -61,12 +61,12 @@ var s = o(import.meta.url, "buzzer", "1.0.0", "output"), c = {
 		}]
 	}
 };
-function l(e) {
+function u(e) {
 	let t = i(e);
-	return t && t in c ? t : "passive_pwm";
+	return t && t in l ? t : "passive_pwm";
 }
-function u(e = "passive_pwm") {
-	let t = l(e), n = c[t] ?? c.passive_pwm;
+function d(e = "passive_pwm") {
+	let t = u(e), n = l[t] ?? l.passive_pwm;
 	return r({
 		type: s.type,
 		version: s.version,
@@ -145,9 +145,9 @@ function u(e = "passive_pwm") {
 		}
 	});
 }
-var d = u("passive_pwm"), f = (e) => u(l(e)), p = class extends e {
-	manifest = d;
-	static manifest = d;
+var f = d("passive_pwm"), p = (e) => d(u(e)), m = class extends e {
+	manifest = f;
+	static manifest = f;
 	hasSignal = !1;
 	frequency = 0;
 	duty = 0;
@@ -177,7 +177,7 @@ var d = u("passive_pwm"), f = (e) => u(l(e)), p = class extends e {
 		(this.hasSignal !== e || e && (this.frequency === 0 || r > 25) || !e && this.frequency !== 0 || this.duty !== n) && (this.hasSignal = e, this.frequency = t, this.duty = n, console.log("[Buzzer Sim] State change -> hasSignal:", e, "freq:", t, "duty:", n), this.ctx?.publish("hasSignal", this.hasSignal), this.ctx?.publish("frequency", this.frequency), this.ctx?.publish("duty", this.duty));
 	}
 	onDutyChange(e, t) {
-		l(this.properties?.variant) === "passive_pwm" && e === Number(this.properties?.pwmChannel ?? 0) && (t > 0 ? (this.driveMode = "pwm", this.updateSoundState(!0, Number(this.properties?.defaultFreqHz ?? 2e3), t)) : (this.driveMode = "quiet", this.updateSoundState(!1, 0, 0)));
+		u(this.properties?.variant) === "passive_pwm" && e === Number(this.properties?.pwmChannel ?? 0) && (t > 0 ? (this.driveMode = "pwm", this.updateSoundState(!0, Number(this.properties?.defaultFreqHz ?? 2e3), t)) : (this.driveMode = "quiet", this.updateSoundState(!1, 0, 0)));
 	}
 	onPinChange(e, n, r) {
 		if (this.signalMcuPin >= 0 && e !== this.signalMcuPin) return;
@@ -187,20 +187,17 @@ var d = u("passive_pwm"), f = (e) => u(l(e)), p = class extends e {
 	onStep(e, t) {
 		let n = this.edgeCountInQuantum;
 		this.edgeCountInQuantum = 0;
-		let r = Number(t) > 0 ? Number(t) : 1e3;
+		let r = Number(t) > 0 ? Number(t) : 1e3, i = u(this.properties?.variant) === "active_gpio";
 		if (this.driveMode === "gpio_dc" && !this.currentPinActive) {
 			this.driveMode = "quiet", this.accumulatedEdges = 0, this.accumulatedUs = 0, this.silenceQuantaCount = 0, this.updateSoundState(!1, 0, 0);
 			return;
 		}
-		if (n === 1 && this.driveMode === "quiet" && this.currentPinActive && l(this.properties?.variant) === "active_gpio") {
-			this.driveMode = "gpio_dc", this.accumulatedEdges = 0, this.accumulatedUs = 0, this.silenceQuantaCount = 0, this.updateSoundState(!0, Number(this.properties?.defaultFreqHz ?? 2e3), 100);
-			return;
-		}
 		if (n > 0) {
-			this.accumulatedEdges += n, this.accumulatedUs += r, this.driveMode = "gpio_pulse_train", this.silenceQuantaCount = 0;
-			let e = this.accumulatedEdges * 1e6 / (2 * this.accumulatedUs), t = Math.round(e);
-			Math.abs(t - 1e4) <= 600 ? t = 1e4 : Math.abs(t - 2e3) <= 150 ? t = 2e3 : Math.abs(t - 4e3) <= 250 && (t = 4e3), this.updateSoundState(!0, t, 50), this.accumulatedUs >= 4e3 && (this.accumulatedEdges = 0, this.accumulatedUs = 0);
-		} else this.driveMode === "gpio_pulse_train" ? (this.silenceQuantaCount++, this.silenceQuantaCount >= 15 && (this.driveMode = "quiet", this.accumulatedEdges = 0, this.accumulatedUs = 0, this.updateSoundState(!1, 0, 0))) : this.driveMode === "gpio_dc" ? this.currentPinActive || (this.driveMode = "quiet", this.updateSoundState(!1, 0, 0)) : this.driveMode === "quiet" && this.currentPinActive && l(this.properties?.variant) === "active_gpio" && (this.driveMode = "gpio_dc", this.updateSoundState(!0, Number(this.properties?.defaultFreqHz ?? 2e3), 100));
+			let e = this.driveMode === "quiet";
+			if (this.accumulatedEdges += n, this.accumulatedUs += r, this.driveMode = "gpio_pulse_train", this.silenceQuantaCount = 0, e && n === 1 && this.currentPinActive && i) return;
+			let t = this.accumulatedEdges * 1e6 / (2 * this.accumulatedUs), a = Math.round(t);
+			Math.abs(a - 1e4) <= 600 ? a = 1e4 : Math.abs(a - 2e3) <= 150 ? a = 2e3 : Math.abs(a - 4e3) <= 250 && (a = 4e3), this.updateSoundState(!0, a, 50), this.accumulatedUs >= 4e3 && (this.accumulatedEdges = 0, this.accumulatedUs = 0);
+		} else this.driveMode === "gpio_pulse_train" ? i && this.currentPinActive ? (this.driveMode = "gpio_dc", this.accumulatedEdges = 0, this.accumulatedUs = 0, this.silenceQuantaCount = 0, this.updateSoundState(!0, Number(this.properties?.defaultFreqHz ?? 2e3), 100)) : (this.silenceQuantaCount++, this.silenceQuantaCount >= 15 && (this.driveMode = "quiet", this.accumulatedEdges = 0, this.accumulatedUs = 0, this.updateSoundState(!1, 0, 0))) : this.driveMode === "gpio_dc" ? this.currentPinActive || (this.driveMode = "quiet", this.updateSoundState(!1, 0, 0)) : this.driveMode === "quiet" && this.currentPinActive && i && (this.driveMode = "gpio_dc", this.updateSoundState(!0, Number(this.properties?.defaultFreqHz ?? 2e3), 100));
 	}
 	_playTone(e) {
 		let t = 0;
@@ -216,10 +213,10 @@ var d = u("passive_pwm"), f = (e) => u(l(e)), p = class extends e {
 	onDestroy() {
 		this.ctx?.gpio ? this.ctx.gpio.releasePin(this.signalPinName) : this.ctx?.releasePin(this.signalPinName), super.onDestroy();
 	}
-}, m = {
-	manifest: d,
-	manifestFactory: f,
-	PluginClass: p
+}, h = {
+	manifest: f,
+	manifestFactory: p,
+	PluginClass: m
 };
 //#endregion
-export { c as BUZZER_PIN_VARIANTS, p as BuzzerPlugin, d as buzzerManifest, f as buzzerManifestFactory, u as createBuzzerManifest, m as default };
+export { l as BUZZER_PIN_VARIANTS, m as BuzzerPlugin, c as SILENCE_QUANTA, f as buzzerManifest, p as buzzerManifestFactory, d as createBuzzerManifest, h as default };
