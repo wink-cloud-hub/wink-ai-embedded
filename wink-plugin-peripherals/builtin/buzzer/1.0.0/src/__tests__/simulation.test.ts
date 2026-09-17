@@ -4,6 +4,7 @@ import {
   buzzerManifest,
   createBuzzerManifest,
   buzzerManifestFactory,
+  SILENCE_QUANTA,
 } from '../simulation';
 import { LogicStates } from '@wink-ai/unisim-sdk';
 
@@ -104,9 +105,9 @@ test('active_gpio: periodic square wave (10kHz CMS8S78xx style) auto-detects 100
   expect(hasSignalEvents.length).toBeGreaterThan(0);
   expect(freqEvents.length).toBeGreaterThan(0);
 
-  // Verify watchdog silence when pulses stop (15 consecutive quiet quanta)
+  // Verify watchdog silence when pulses stop (SILENCE_QUANTA quiet quanta)
   publishes.length = 0;
-  for (let i = 0; i < 15; i++) {
+  for (let i = 0; i < SILENCE_QUANTA; i++) {
     plugin.onStep!(BigInt(2000 + i * 1000), 1000n);
   }
 
@@ -137,8 +138,8 @@ test('onStep fallback silence watchdog works when edge train stops', () => {
   expect(publishes).toContainEqual({ ch: 'frequency', v: 5000 });
   publishes.length = 0;
 
-  // After 15 quiet steps (~15ms without pulses), onStep should silence buzzer
-  for (let i = 0; i < 15; i++) {
+  // After SILENCE_QUANTA quiet steps (~15ms without pulses), onStep should silence buzzer
+  for (let i = 0; i < SILENCE_QUANTA; i++) {
     plugin.onStep!(BigInt(2000 + i * 1000), 1000n);
   }
   expect(publishes).toContainEqual({ ch: 'hasSignal', v: false });
@@ -155,9 +156,12 @@ test('active_gpio: DC on/off works with active-high polarity', () => {
   plugin.onBind(ctx, { '1': 18 }, { variant: 'active_gpio', defaultFreqHz: 2000, activeHigh: true });
   publishes.length = 0;
 
-  // Pin 18 goes HIGH at t=0
+  // Pin 18 goes HIGH at t=0. The first edge on a held level is ambiguous
+  // (DC vs pulse train), so DC is confirmed one edge-free quantum later.
   plugin.onPinChange!(18, LogicStates.HIGH, 0n);
   plugin.onStep!(1000n, 1000n);
+  expect(publishes.filter(p => p.ch === 'frequency' && p.v === 2000)).toHaveLength(0);
+  plugin.onStep!(2000n, 1000n);
   expect(publishes).toContainEqual({ ch: 'hasSignal', v: true });
   expect(publishes).toContainEqual({ ch: 'frequency', v: 2000 });
 
@@ -168,6 +172,37 @@ test('active_gpio: DC on/off works with active-high polarity', () => {
   plugin.onStep!(51000n, 1000n);
   expect(publishes).toContainEqual({ ch: 'hasSignal', v: false });
   expect(publishes).toContainEqual({ ch: 'frequency', v: 0 });
+});
+
+test('active_gpio: slow pulse train (< 1 edge/quantum) is not misclassified as DC', () => {
+  const plugin = new BuzzerPlugin();
+  const publishes: Array<{ ch: string; v: unknown }> = [];
+  const ctx = {
+    publish: (ch: string, v: unknown) => publishes.push({ ch, v }),
+  } as any;
+
+  plugin.onBind(ctx, { '1': 9 }, { variant: 'active_gpio', defaultFreqHz: 2000, activeHigh: true });
+  publishes.length = 0;
+
+  // 500Hz square wave toggled every 1000µs: each 1ms quantum carries exactly
+  // one edge, so per-quantum edge counting alone cannot distinguish it from a
+  // DC latch. The plugin must resolve the real frequency instead of sticking
+  // to `defaultFreqHz`.
+  let t = 0n;
+  for (let i = 0; i < 8; i++) {
+    t += 1000n;
+    plugin.onPinChange!(9, i % 2 === 0 ? LogicStates.HIGH : LogicStates.LOW, t);
+    plugin.onStep!(t, 1000n);
+  }
+
+  const positiveFreqs = publishes
+    .filter(p => p.ch === 'frequency' && typeof p.v === 'number' && (p.v as number) > 0)
+    .map(p => p.v as number);
+  expect(positiveFreqs.length).toBeGreaterThan(0);
+  expect(positiveFreqs[positiveFreqs.length - 1]).toBeGreaterThanOrEqual(450);
+  expect(positiveFreqs[positiveFreqs.length - 1]).toBeLessThanOrEqual(550);
+  // Never stuck on the DC default frequency.
+  expect(positiveFreqs).not.toContain(2000);
 });
 
 test('event methods: _playTone, _stopTone, and _signal', () => {

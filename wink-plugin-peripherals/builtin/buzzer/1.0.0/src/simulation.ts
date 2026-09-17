@@ -19,6 +19,12 @@ declare const __PLUGIN_CATEGORY__: string | undefined;
 
 const identity = resolvePluginIdentity(import.meta.url, 'buzzer', '1.0.0', 'output');
 
+/**
+ * Number of consecutive edge-free quanta after which a `gpio_pulse_train`
+ * drive is considered silent (watchdog for stopped PWM trains).
+ */
+export const SILENCE_QUANTA = 15;
+
 export type BuzzerVariant = 'passive_pwm' | 'active_gpio';
 
 export interface BuzzerProps {
@@ -315,6 +321,8 @@ export class BuzzerPlugin extends BaseSimulationPlugin<BuzzerState, BuzzerProps>
     const edges = this.edgeCountInQuantum;
     this.edgeCountInQuantum = 0;
     const dtUsNum = Number(dtUs) > 0 ? Number(dtUs) : 1000;
+    const isActiveGpio = resolveBuzzerVariant(this.properties?.variant) === 'active_gpio';
+
     if (this.driveMode === 'gpio_dc' && !this.currentPinActive) {
       this.driveMode = 'quiet';
       this.accumulatedEdges = 0;
@@ -324,25 +332,22 @@ export class BuzzerPlugin extends BaseSimulationPlugin<BuzzerState, BuzzerProps>
       return;
     }
 
-    if (
-      edges === 1 &&
-      this.driveMode === 'quiet' &&
-      this.currentPinActive &&
-      resolveBuzzerVariant(this.properties?.variant) === 'active_gpio'
-    ) {
-      this.driveMode = 'gpio_dc';
-      this.accumulatedEdges = 0;
-      this.accumulatedUs = 0;
-      this.silenceQuantaCount = 0;
-      this.updateSoundState(true, Number(this.properties?.defaultFreqHz ?? 2000), 100);
-      return;
-    }
-
     if (edges > 0) {
+      const wasQuiet = this.driveMode === 'quiet';
       this.accumulatedEdges += edges;
       this.accumulatedUs += dtUsNum;
       this.driveMode = 'gpio_pulse_train';
       this.silenceQuantaCount = 0;
+
+      // Ambiguity guard: a single edge on a held level can be either the first
+      // half-cycle of a pulse train or a DC turn-on (active buzzer). Hold the
+      // publish for this quantum; the next edge-free quantum confirms DC
+      // (see the `edges === 0` branch below), otherwise the accumulation
+      // resolves into a real frequency. Latching DC on a single edge used to
+      // misclassify slow pulse trains (< 1 edge/quantum) permanently.
+      if (wasQuiet && edges === 1 && this.currentPinActive && isActiveGpio) {
+        return;
+      }
 
       // Calculate frequency immediately to eliminate latency
       const rawFreq = (this.accumulatedEdges * 1_000_000) / (2 * this.accumulatedUs);
@@ -367,13 +372,24 @@ export class BuzzerPlugin extends BaseSimulationPlugin<BuzzerState, BuzzerProps>
     } else {
       // edges === 0 (no transitions in this quantum)
       if (this.driveMode === 'gpio_pulse_train') {
-        this.silenceQuantaCount++;
-        // Hold sound for at least 15 consecutive quiet steps (~15ms) to prevent chattering/dropouts
-        if (this.silenceQuantaCount >= 15) {
-          this.driveMode = 'quiet';
+        if (isActiveGpio && this.currentPinActive) {
+          // The level is held active without any transitions: this is a DC
+          // drive, not a tone. One confirming quantum is enough.
+          this.driveMode = 'gpio_dc';
           this.accumulatedEdges = 0;
           this.accumulatedUs = 0;
-          this.updateSoundState(false, 0, 0);
+          this.silenceQuantaCount = 0;
+          this.updateSoundState(true, Number(this.properties?.defaultFreqHz ?? 2000), 100);
+        } else {
+          this.silenceQuantaCount++;
+          // Hold sound for SILENCE_QUANTA consecutive quiet steps to prevent
+          // chattering/dropouts when a PWM train pauses.
+          if (this.silenceQuantaCount >= SILENCE_QUANTA) {
+            this.driveMode = 'quiet';
+            this.accumulatedEdges = 0;
+            this.accumulatedUs = 0;
+            this.updateSoundState(false, 0, 0);
+          }
         }
       } else if (this.driveMode === 'gpio_dc') {
         if (!this.currentPinActive) {
@@ -381,7 +397,7 @@ export class BuzzerPlugin extends BaseSimulationPlugin<BuzzerState, BuzzerProps>
           this.updateSoundState(false, 0, 0);
         }
       } else if (this.driveMode === 'quiet') {
-        if (this.currentPinActive && resolveBuzzerVariant(this.properties?.variant) === 'active_gpio') {
+        if (this.currentPinActive && isActiveGpio) {
           this.driveMode = 'gpio_dc';
           this.updateSoundState(true, Number(this.properties?.defaultFreqHz ?? 2000), 100);
         }
