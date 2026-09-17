@@ -1,0 +1,28 @@
+name: Docs Contract Gate
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ master, main, develop ]
+
+jobs:
+  docs-blackbox-gate:
+    name: Whole-Domain Documentation Black-Box & Contract Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify Whole-Domain Doc Contracts & Black-Box Insulation
+        run: |
+          if [ -f .github/doc-contract-baseline.json ]; then
+            python docs/scripts/verify_doc_contracts.py --baseline .github/doc-contract-baseline.json --strict
+          else
+            python docs/scripts/verify_doc_contracts.py --strict
+          fi
