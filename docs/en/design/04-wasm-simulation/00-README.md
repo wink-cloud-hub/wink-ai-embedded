@@ -17,7 +17,7 @@ sync-status: up-to-date
 | Associated Code (Overview) | `wink-micro-os/osal/wasm/`, `wink-micro-os/targets/{wasm,common}/`, `@wink-ai/unisim` (**UniSim Simulation Engine Core**; standalone TS SDK package contract, governed per module definition. Module rules in §4.1) |
 | Last Audit | 2026-08-11 Amend (Embedded architecture review patch: PWM Channel 1b reclassification, degradation non-loss rule, IRQ/DMA/Timer control plane completion) |
 
-> **Active Entry Point**: UniSim 3.0 was switched to **Active** on 2026-08-02 via §7 quality gates, serving as the active SSOT reading entry for Wasm simulation design. On 2026-08-11, **Amend** revisions were added based on `review.md`: corrected PWM channel classification (Channel 1b), declared that "Behavioral degradation must not destroy pulse width/distance measurement information semantics", and completed the control plane triad (IRQ/DMA/Timer). Corresponding TS-side design is in `unisim/docs/design/unified-peripheral-channel-architecture.md`.
+> **Active Entry Point**: UniSim 3.0 was switched to **Active** on 2026-08-02 via §7 quality gates, serving as the active SSOT reading entry for Wasm simulation design. On 2026-08-11, **Amend** revisions were added based on `review.md`: corrected PWM channel classification (Channel 1b), declared that "Behavioral degradation must not destroy pulse width/distance measurement information semantics", and completed the control plane triad (IRQ/DMA/Timer). Corresponding TS-side design aligns with the UniSim 3.0 unified peripheral channel specification.
 
 ---
 

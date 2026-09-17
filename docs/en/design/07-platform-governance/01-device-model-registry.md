@@ -305,11 +305,11 @@ dal_ultrasonic_t front_radar = {
 
 ## 9. Frontend Catalog SSOT Mapping (`embedded-frontend`)
 
-| Registry Layer | Directory | Aggregate Facade | Consumer |
+| Registry Layer | Logical Namespace | Aggregate Facade | Consumer |
 |---|---|---|---|
-| Circuit Peripherals | `embedded-frontend/src/peripherals/` | `deviceCatalog.listDevices()` | Asset library, Manifest canvas, binding validation |
-| Dev Boards | `embedded-frontend/src/boards/` | `deviceCatalog.getBoard()` / `listBoards()` | Pin resolution, Board canvas layout |
-| Mechanical / World | `embedded-frontend/src/world-assets/` | `listMechanicalModels()` / `listEnvironmentModels()` | Bindings panel, templates |
+| Circuit Peripherals | `embedded-frontend:peripherals` | `deviceCatalog.listDevices()` | Asset library, Manifest canvas, binding validation |
+| Dev Boards | `embedded-frontend:boards` | `deviceCatalog.getBoard()` / `listBoards()` | Pin resolution, Board canvas layout |
+| Mechanical / World | `embedded-frontend:world-assets` | `listMechanicalModels()` / `listEnvironmentModels()` | Bindings panel, templates |
 | Mapping Types | `types/mapping-registry.ts` | — | Cross-validation |
 | Binding Instances | Manifest `bindings.*` | — | Simulation gating, Worker bridge |
 
