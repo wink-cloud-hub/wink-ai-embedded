@@ -7,6 +7,7 @@ import { resolvePluginIdentity } from '@wink-ai/unisim-sdk';
 
 import CanvasGlyph from './CanvasGlyph.vue';
 import { RC_SERVO_TOPOLOGIES, SG90_SIZE } from './variants';
+import { createRcServoManifest } from './simulation';
 
 const identity = resolvePluginIdentity(import.meta.url, 'rc_servo', '1.0.0', 'actuator');
 
@@ -14,10 +15,24 @@ const defaultTopology = RC_SERVO_TOPOLOGIES.sg90;
 
 export const servoDefinition: PeripheralDefinition = definePeripheral({
   type: identity.type,
+  displayName: 'RC Servo Motor',
+  category: 'actuator',
+  manifest: createRcServoManifest(),
   size: SG90_SIZE,
   wireColor: '#3b82f6',
   pinsOverlay: defaultTopology.pinsOverlay,
   props: {
+    angle: {
+      type: 'number',
+      default: 90,
+      description: 'Current Angle (degrees)',
+      range: { min: 0, max: 180, step: 1 },
+    },
+    invert: {
+      type: 'boolean',
+      default: false,
+      description: 'Invert direction',
+    },
     variant: {
       type: 'string',
       default: 'sg90',
