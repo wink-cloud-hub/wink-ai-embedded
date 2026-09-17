@@ -1,0 +1,131 @@
+{
+  "header": {
+    "version": "2.0",
+    "name": "mcs51_health_pot safety: plant-excited dry kettle runs beyond NTC scale in ~1 s, E-04 latches after the 10 s qualification",
+    "templateId": "mcs51_health_pot",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "18000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "PLANT_LOOP",
+      "id": "pot_thermal",
+      "windowUs": ["0", "17s"],
+      "sampleIntervalUs": "10ms",
+      "model": {
+        "kind": "first_order_thermal",
+        "thermalCapacity": 10,
+        "thermalResistance": 300,
+        "ambientTempC": 25,
+        "ratedPowerW": 1000
+      },
+      "inputPorts": { "power": { "from": "gpio:16" } },
+      "outputPorts": { "temperature_c": { "to": "plugin:temp_sensor/temperature" } },
+      "probes": [{ "port": "temperature_c", "as": "buffer:pot/water_temp_c" }],
+      "description": "Equivalent dry kettle (no water load): C=10 J/K vs golden 1256 J/K for 0.3 L water (~100 C/s initial rise), with an insulated dry plate R=300 K/W so the >105 C beyond-scale plateau outlives the firmware 10 s over-temp qualification (with the water-tuned R=1.5 K/W the plate would drop back into scale within ~1 s, which makes the E-04 qualification window physically unreachable). Scenario injects NO temperature trajectory (ADR-0067 stimulus-source exclusion) - the plate temperature is plant-excited only."
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "300ms",
+      "target": "plugin:temp_sensor/voltageRatio",
+      "matcher": { "$between": [0.058, 0.0596] },
+      "description": "NTC transducer anchor (P2): 25.0 C ambient -> raw 241 before heating"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "400ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true },
+      "description": "Power on (300 ms atomic pulse, ADR-0068)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "700ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2000ms",
+      "target": "plugin:temp_sensor/temperature",
+      "matcher": { "$between": [100, 130] },
+      "description": "Fast dry-kettle rise: plate crosses the ~105 C beyond-scale boundary roughly 1 s after the relay closes (>= +75 C while powered)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2000ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Extreme-cut protection: beyond-scale band forces the contact open while E-04 qualifies"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["5800ms", "6200ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=1,H=0,F=0",
+      "minPackets": 1,
+      "description": "Qualification window: HEAT state, heater off, no fault latched yet"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "10000ms",
+      "target": "plugin:temp_sensor/temperature",
+      "matcher": { "$between": [100, 130] },
+      "description": "Sustained beyond-scale plateau: the plate stays above the qualification threshold for the full 10 s window"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "12500ms",
+      "target": "plugin:display/text",
+      "matcher": "E-04",
+      "description": "10 continuous seconds beyond scale latch over-temp E-04"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["12800ms", "14200ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=3,H=0,F=4",
+      "minPackets": 1,
+      "description": "Telemetry: FAULT over-temp (S=3,H=0,F=4), manual reset required"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "15000ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": true }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "15300ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": { "pressed": false }
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["15800ms", "16200ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=0,H=0,F=0",
+      "minPackets": 1,
+      "description": "Manual ON/OFF clears the E-04 latch back to standby"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "16000ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Heater remains off after manual reset"
+    }
+  ]
+}
