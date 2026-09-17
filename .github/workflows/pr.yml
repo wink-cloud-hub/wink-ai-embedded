@@ -157,7 +157,9 @@ jobs:
           SANDBOX="${{ runner.temp }}/wink-sandbox/wink-ai-embedded/wink-plugin-peripherals"
           mkdir -p "$(dirname "$SANDBOX")"
           cp -r wink-plugin-peripherals "$SANDBOX"
-          rm -rf "$SANDBOX/node_modules" "$SANDBOX/builtin"/*/1.0.0/dist
+          # Keep the committed dist bundles: the load smoke needs them; typecheck
+          # reads sources only and never touches dist.
+          rm -rf "$SANDBOX/node_modules"
           echo "SANDBOX=$SANDBOX" >> "$GITHUB_ENV"
 
       - name: Install registry deps (SDK + UI only)
@@ -175,6 +177,10 @@ jobs:
 
       - name: Sandbox typecheck (tsc --noEmit, no engine)
         run: bun run typecheck
+        working-directory: ${{ env.SANDBOX }}
+
+      - name: Bundle load smoke (12 builtins, SDK identity)
+        run: bun run test:bundles
         working-directory: ${{ env.SANDBOX }}
 
       - name: Migrated stub-host unit tests
