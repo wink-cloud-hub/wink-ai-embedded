@@ -1,4 +1,4 @@
-import { BaseSimulationPlugin as e, LogicStates as t, defaultRolePinName as n, normalizeManifest as r, normalizeVariantKey as i, resolveMappedRolePinName as a, resolvePluginIdentity as o } from "@wink-ai/unisim";
+import { BaseSimulationPlugin as e, LogicStates as t, defaultRolePinName as n, normalizeManifest as r, normalizeVariantKey as i, resolveMappedRolePinName as a, resolvePluginIdentity as o } from "@wink-ai/unisim-sdk";
 //#region builtin/buzzer/1.0.0/src/simulation.ts
 var s = o(import.meta.url, "buzzer", "1.0.0", "output"), c = {
 	passive_pwm: {

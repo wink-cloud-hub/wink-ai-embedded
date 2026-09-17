@@ -1,6 +1,6 @@
 import type { PinsOverlayMap, GeneratedBinderPin } from '@wink-ai/unisim-ui';
 import { pinsFromBinderVariant } from '@wink-ai/unisim-ui';
-import { normalizeVariantKey } from '@wink-ai/unisim';
+import { normalizeVariantKey } from '@wink-ai/unisim-sdk';
 
 export type SegVariantKey =
   | 'direct_gpio_8d'

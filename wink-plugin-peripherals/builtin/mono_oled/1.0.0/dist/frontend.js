@@ -1,5 +1,5 @@
 import { definePeripheral as e, pinsFromBinderVariant as t } from "@wink-ai/unisim-ui";
-import { resolvePluginIdentity as n } from "@wink-ai/unisim";
+import { resolvePluginIdentity as n } from "@wink-ai/unisim-sdk";
 import { createElementBlock as r, defineComponent as i, openBlock as a, ref as o, watch as s } from "vue";
 import "@wokwi/elements";
 //#region builtin/mono_oled/1.0.0/src/paintFramebuffer.ts

@@ -1,4 +1,4 @@
-import { SimpleGpioPlugin as e, normalizeManifest as t, normalizeVariantKey as n, resolvePluginIdentity as r } from "@wink-ai/unisim";
+import { SimpleGpioPlugin as e, normalizeManifest as t, normalizeVariantKey as n, resolvePluginIdentity as r } from "@wink-ai/unisim-sdk";
 //#region builtin/led/1.0.0/src/simulation.ts
 var i = { default: {
 	displayName: "GPIO LED",

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { createPluginTestHost } from '@wink-ai/unisim/sdk';
+import { createPluginStubHost } from '@wink-ai/unisim-sdk';
 
 import { MonoOledPlugin } from '../simulation';
 
@@ -9,7 +9,7 @@ import { MonoOledPlugin } from '../simulation';
  * (those subpaths are not part of the public exports map).
  */
 function createPlugin() {
-  const host = createPluginTestHost();
+  const host = createPluginStubHost();
   const binding = host.bind(MonoOledPlugin, { instanceId: 'mono_oled:0' });
   return { host, plugin: binding.instance };
 }

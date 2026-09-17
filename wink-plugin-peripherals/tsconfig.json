@@ -35,16 +35,17 @@
       "@wink-ai/unisim-ui/*": [
         "./node_modules/@wink-ai/unisim-ui/*"
       ],
-      "@wink-ai/unisim": [
-        "./node_modules/@wink-ai/unisim"
+      "@wink-ai/unisim-sdk": [
+        "./node_modules/@wink-ai/unisim-sdk"
       ],
-      "@wink-ai/unisim/*": [
-        "./node_modules/@wink-ai/unisim/*"
+      "@wink-ai/unisim-sdk/*": [
+        "./node_modules/@wink-ai/unisim-sdk/*"
       ]
     }
   },
   "include": [
     "builtin/**/src/**/*",
+    "builtin/**/*.d.ts",
     "builtin/**/vite.config.*.ts"
   ]
 }

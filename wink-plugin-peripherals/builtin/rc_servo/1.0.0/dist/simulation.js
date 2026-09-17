@@ -1,4 +1,4 @@
-import { BaseSimulationPlugin as e, defaultRolePinName as t, normalizeManifest as n, normalizeVariantKey as r, resolveMappedRolePinName as i, resolvePluginIdentity as a } from "@wink-ai/unisim";
+import { BaseSimulationPlugin as e, defaultRolePinName as t, normalizeManifest as n, normalizeVariantKey as r, resolveMappedRolePinName as i, resolvePluginIdentity as a } from "@wink-ai/unisim-sdk";
 //#region builtin/rc_servo/1.0.0/src/physics/pwm-angle-duty.ts
 function o(e, t) {
 	let n = t.maxAngle - t.minAngle || 1, r = Math.min(1, Math.max(0, (e - t.minAngle) / n)), i = t.minPulseMs + r * (t.maxPulseMs - t.minPulseMs), a = t.framePeriodMs || 20;

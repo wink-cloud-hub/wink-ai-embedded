@@ -1,30 +1,34 @@
-import { BaseSimulationPlugin as e, LogicStates as t, createThrottlePublish as n, normalizeManifest as r, normalizeVariantKey as i, resolvePluginIdentity as a } from "@wink-ai/unisim";
-import { getBuiltinManifest as o } from "@wink-ai/unisim/sdk";
-//#region node_modules/@wink-ai/unisim-ui/dist/index.js
-var s = /* @__PURE__ */ new Map();
-function c(e) {
+import { BaseSimulationPlugin as e, LogicStates as t, createThrottlePublish as n, normalizeManifest as r, normalizeVariantKey as i, resolvePluginIdentity as a } from "@wink-ai/unisim-sdk";
+//#region unisim-ui/dist/index.js
+var o = 0;
+function s() {
+	return o;
+}
+var c = /* @__PURE__ */ new Map();
+function l(e) {
 	return e.catalogType ? e.catalogType : e.direction === "power" || e.direction === "ground" ? "power" : e.busGroup?.startsWith("i2c") ? "i2c" : e.simRole === "pwm" || e.signal === "analog" && e.direction === "source" ? "pwm" : "gpio";
 }
-function l(e) {
+function u(e) {
 	let t = {
 		name: e.name,
 		direction: e.direction,
 		signal: e.signal,
-		catalogType: c(e)
+		catalogType: l(e)
 	};
 	return e.simRole && (t.simRole = e.simRole), e.description && (t.description = e.description), e.busGroup && (t.busGroup = e.busGroup), e.aliases?.length && (t.aliases = [...e.aliases]), e.required !== void 0 && (t.required = e.required), e.voltage && (t.voltage = e.voltage), t;
 }
-function u(e, t) {
-	let n = `${e}:${t ?? ""}`, r = s.get(n);
-	if (r) return r;
-	let i = (o(e, t)?.pins ?? []).map(l), a = Object.freeze(i);
-	return s.set(n, a), a;
+function d(e, t, n) {
+	if (n) return Object.freeze((n.pins ?? []).map(u));
+	let r = `${e}:${t ?? ""}:${s()}`, i = c.get(r);
+	if (i) return i;
+	let a = [].map(u), o = Object.freeze(a);
+	return c.set(r, o), o;
 }
 Object.freeze({
 	width: 210,
 	height: 96
 });
-var d = Object.freeze({
+var f = Object.freeze({
 	A: Object.freeze({
 		relX: 23,
 		relY: 96,
@@ -88,15 +92,15 @@ Object.freeze([
 	"direct_gpio_2d",
 	"direct_gpio_1d"
 ]);
-var f = Object.freeze({
+var p = Object.freeze({
 	direct_gpio_8d: 8,
 	direct_gpio_4d: 4,
 	direct_gpio_2d: 2,
 	direct_gpio_1d: 1
 });
-function p(e) {
+function m(e) {
 	let t = i(e);
-	return t && t in f ? t : "direct_gpio_8d";
+	return t && t in p ? t : "direct_gpio_8d";
 }
 Object.freeze({
 	"8d": Object.freeze(["direct_gpio_8d"]),
@@ -104,7 +108,7 @@ Object.freeze({
 	"2d": Object.freeze(["direct_gpio_2d"]),
 	"1d": Object.freeze(["direct_gpio_1d"])
 });
-var m = Object.freeze([
+var h = Object.freeze([
 	"A",
 	"B",
 	"C",
@@ -113,11 +117,11 @@ var m = Object.freeze([
 	"F",
 	"G",
 	"DP"
-].map((e) => d[e]?.relX ?? 0));
-function h() {
-	return d;
+].map((e) => f[e]?.relX ?? 0));
+function g() {
+	return f;
 }
-function g(e) {
+function _(e) {
 	return Object.freeze(Object.entries(e).map(([e]) => ({
 		name: e,
 		direction: "sink",
@@ -126,10 +130,10 @@ function g(e) {
 		required: !1
 	})));
 }
-function _(e) {
-	let t = h(), n = {}, r = f[e];
+function v(e) {
+	let t = g(), n = {}, r = p[e];
 	if (r === 8) for (let e = 0; e < 8; e++) n[`DIG${e + 1}`] = Object.freeze({
-		relX: m[e],
+		relX: h[e],
 		relY: 0,
 		wireNet: "secondary",
 		required: !1
@@ -170,37 +174,37 @@ Object.freeze({
 	direct_gpio_8d: Object.freeze({
 		variant: "direct_gpio_8d",
 		getPins: () => {
-			let e = u("seg_display", "direct_gpio_8d");
-			return e.length > 0 ? e : g(_("direct_gpio_8d"));
+			let e = d("seg_display", "direct_gpio_8d");
+			return e.length > 0 ? e : _(v("direct_gpio_8d"));
 		},
-		pinsOverlay: _("direct_gpio_8d"),
+		pinsOverlay: v("direct_gpio_8d"),
 		defaultAppearanceId: "seg_display_8"
 	}),
 	direct_gpio_4d: Object.freeze({
 		variant: "direct_gpio_4d",
 		getPins: () => {
-			let e = u("seg_display", "direct_gpio_4d");
-			return e.length > 0 ? e : g(_("direct_gpio_4d"));
+			let e = d("seg_display", "direct_gpio_4d");
+			return e.length > 0 ? e : _(v("direct_gpio_4d"));
 		},
-		pinsOverlay: _("direct_gpio_4d"),
+		pinsOverlay: v("direct_gpio_4d"),
 		defaultAppearanceId: "seg_display_4"
 	}),
 	direct_gpio_2d: Object.freeze({
 		variant: "direct_gpio_2d",
 		getPins: () => {
-			let e = u("seg_display", "direct_gpio_2d");
-			return e.length > 0 ? e : g(_("direct_gpio_2d"));
+			let e = d("seg_display", "direct_gpio_2d");
+			return e.length > 0 ? e : _(v("direct_gpio_2d"));
 		},
-		pinsOverlay: _("direct_gpio_2d"),
+		pinsOverlay: v("direct_gpio_2d"),
 		defaultAppearanceId: "seg_display_2"
 	}),
 	direct_gpio_1d: Object.freeze({
 		variant: "direct_gpio_1d",
 		getPins: () => {
-			let e = u("seg_display", "direct_gpio_1d");
-			return e.length > 0 ? e : g(_("direct_gpio_1d"));
+			let e = d("seg_display", "direct_gpio_1d");
+			return e.length > 0 ? e : _(v("direct_gpio_1d"));
 		},
-		pinsOverlay: _("direct_gpio_1d"),
+		pinsOverlay: v("direct_gpio_1d"),
 		defaultAppearanceId: "seg_display_1"
 	})
 }), Object.freeze({
@@ -255,7 +259,7 @@ Object.freeze({
 });
 //#endregion
 //#region builtin/seg_display/1.0.0/src/seg-font.ts
-var v = Object.freeze({
+var y = Object.freeze({
 	A: 1,
 	B: 2,
 	C: 4,
@@ -266,57 +270,57 @@ var v = Object.freeze({
 	DP: 128
 });
 Object.freeze({
-	0: v.A | v.B | v.C | v.D | v.E | v.F,
-	1: v.B | v.C,
-	2: v.A | v.B | v.D | v.E | v.G,
-	3: v.A | v.B | v.C | v.D | v.G,
-	4: v.B | v.C | v.F | v.G,
-	5: v.A | v.C | v.D | v.F | v.G,
-	6: v.A | v.C | v.D | v.E | v.F | v.G,
-	7: v.A | v.B | v.C,
-	8: v.A | v.B | v.C | v.D | v.E | v.F | v.G,
-	9: v.A | v.B | v.C | v.D | v.F | v.G,
-	A: v.A | v.B | v.C | v.E | v.F | v.G,
-	a: v.A | v.B | v.C | v.E | v.F | v.G,
-	B: v.C | v.D | v.E | v.F | v.G,
-	b: v.C | v.D | v.E | v.F | v.G,
-	C: v.A | v.D | v.E | v.F,
-	c: v.D | v.E | v.G,
-	D: v.B | v.C | v.D | v.E | v.G,
-	d: v.B | v.C | v.D | v.E | v.G,
-	E: v.A | v.D | v.E | v.F | v.G,
-	e: v.A | v.D | v.E | v.F | v.G,
-	F: v.A | v.E | v.F | v.G,
-	f: v.A | v.E | v.F | v.G,
-	H: v.B | v.C | v.E | v.F | v.G,
-	h: v.C | v.E | v.F | v.G,
-	L: v.D | v.E | v.F,
-	l: v.D | v.E | v.F,
-	n: v.C | v.E | v.G,
-	N: v.A | v.B | v.C | v.E | v.F,
-	O: v.A | v.B | v.C | v.D | v.E | v.F,
-	o: v.C | v.D | v.E | v.G,
-	P: v.A | v.B | v.E | v.F | v.G,
-	p: v.A | v.B | v.E | v.F | v.G,
-	r: v.E | v.G,
-	R: v.E | v.G,
-	t: v.D | v.E | v.F | v.G,
-	T: v.D | v.E | v.F | v.G,
-	U: v.B | v.C | v.D | v.E | v.F,
-	u: v.C | v.D | v.E,
-	"-": v.G,
-	_: v.D,
+	0: y.A | y.B | y.C | y.D | y.E | y.F,
+	1: y.B | y.C,
+	2: y.A | y.B | y.D | y.E | y.G,
+	3: y.A | y.B | y.C | y.D | y.G,
+	4: y.B | y.C | y.F | y.G,
+	5: y.A | y.C | y.D | y.F | y.G,
+	6: y.A | y.C | y.D | y.E | y.F | y.G,
+	7: y.A | y.B | y.C,
+	8: y.A | y.B | y.C | y.D | y.E | y.F | y.G,
+	9: y.A | y.B | y.C | y.D | y.F | y.G,
+	A: y.A | y.B | y.C | y.E | y.F | y.G,
+	a: y.A | y.B | y.C | y.E | y.F | y.G,
+	B: y.C | y.D | y.E | y.F | y.G,
+	b: y.C | y.D | y.E | y.F | y.G,
+	C: y.A | y.D | y.E | y.F,
+	c: y.D | y.E | y.G,
+	D: y.B | y.C | y.D | y.E | y.G,
+	d: y.B | y.C | y.D | y.E | y.G,
+	E: y.A | y.D | y.E | y.F | y.G,
+	e: y.A | y.D | y.E | y.F | y.G,
+	F: y.A | y.E | y.F | y.G,
+	f: y.A | y.E | y.F | y.G,
+	H: y.B | y.C | y.E | y.F | y.G,
+	h: y.C | y.E | y.F | y.G,
+	L: y.D | y.E | y.F,
+	l: y.D | y.E | y.F,
+	n: y.C | y.E | y.G,
+	N: y.A | y.B | y.C | y.E | y.F,
+	O: y.A | y.B | y.C | y.D | y.E | y.F,
+	o: y.C | y.D | y.E | y.G,
+	P: y.A | y.B | y.E | y.F | y.G,
+	p: y.A | y.B | y.E | y.F | y.G,
+	r: y.E | y.G,
+	R: y.E | y.G,
+	t: y.D | y.E | y.F | y.G,
+	T: y.D | y.E | y.F | y.G,
+	U: y.B | y.C | y.D | y.E | y.F,
+	u: y.C | y.D | y.E,
+	"-": y.G,
+	_: y.D,
 	" ": 0
 });
-var y = /* @__PURE__ */ new Map();
-y.set(0, " "), y.set(63, "0"), y.set(6, "1"), y.set(91, "2"), y.set(79, "3"), y.set(102, "4"), y.set(109, "5"), y.set(125, "6"), y.set(7, "7"), y.set(127, "8"), y.set(111, "9"), y.set(119, "A"), y.set(124, "b"), y.set(57, "C"), y.set(88, "c"), y.set(94, "d"), y.set(121, "E"), y.set(113, "F"), y.set(118, "H"), y.set(116, "h"), y.set(56, "L"), y.set(84, "n"), y.set(92, "o"), y.set(115, "P"), y.set(80, "r"), y.set(120, "t"), y.set(62, "U"), y.set(28, "u"), y.set(64, "-"), y.set(8, "_");
-function b(e) {
+var b = /* @__PURE__ */ new Map();
+b.set(0, " "), b.set(63, "0"), b.set(6, "1"), b.set(91, "2"), b.set(79, "3"), b.set(102, "4"), b.set(109, "5"), b.set(125, "6"), b.set(7, "7"), b.set(127, "8"), b.set(111, "9"), b.set(119, "A"), b.set(124, "b"), b.set(57, "C"), b.set(88, "c"), b.set(94, "d"), b.set(121, "E"), b.set(113, "F"), b.set(118, "H"), b.set(116, "h"), b.set(56, "L"), b.set(84, "n"), b.set(92, "o"), b.set(115, "P"), b.set(80, "r"), b.set(120, "t"), b.set(62, "U"), b.set(28, "u"), b.set(64, "-"), b.set(8, "_");
+function x(e) {
 	let t = e & 127;
-	return y.get(t) ?? "?";
+	return b.get(t) ?? "?";
 }
 //#endregion
 //#region builtin/seg_display/1.0.0/src/simulation.ts
-var x = a(import.meta.url, "seg_display", "1.0.0", "display"), S = [
+var S = a(import.meta.url, "seg_display", "1.0.0", "display"), C = [
 	"A",
 	"B",
 	"C",
@@ -326,9 +330,9 @@ var x = a(import.meta.url, "seg_display", "1.0.0", "display"), S = [
 	"G",
 	"DP"
 ];
-function C(e) {
-	let t = f[e] ?? 8, n = [];
-	for (let e of S) n.push({
+function w(e) {
+	let t = p[e] ?? 8, n = [];
+	for (let e of C) n.push({
 		name: e,
 		pinType: "digital_in",
 		role: `seg_${e.toLowerCase()}`,
@@ -351,13 +355,13 @@ function C(e) {
 	}
 	return n;
 }
-function w(e = "direct_gpio_8d") {
-	let t = p(e), n = C(t);
+function T(e = "direct_gpio_8d") {
+	let t = m(e), n = w(t);
 	return r({
-		type: x.type,
-		version: x.version,
-		category: x.category,
-		displayName: `${f[t]}-Digit 7-Segment Display`,
+		type: S.type,
+		version: S.version,
+		category: S.category,
+		displayName: `${p[t]}-Digit 7-Segment Display`,
 		description: "Multiplexed 7-segment digital LED display with duty-cycle brightness simulation",
 		timingModel: "event-driven",
 		pins: n,
@@ -374,7 +378,7 @@ function w(e = "direct_gpio_8d") {
 			},
 			appearanceId: {
 				type: "string",
-				default: `seg_display_${f[t]}`
+				default: `seg_display_${p[t]}`
 			},
 			segActiveLevel: {
 				type: "string",
@@ -447,9 +451,9 @@ function w(e = "direct_gpio_8d") {
 		events: {}
 	});
 }
-var T = w("direct_gpio_8d"), E = (e) => w(p(e)), D = 80000n, O = 255 / 2e3, k = 50, A = 40, j = 16000n, M = 100000n, N = class extends e {
-	manifest = T;
-	static manifest = T;
+var E = T("direct_gpio_8d"), D = (e) => T(m(e)), O = 80000n, k = 255 / 2e3, A = 50, j = 40, M = 16000n, N = 100000n, P = class extends e {
+	manifest = E;
+	static manifest = E;
 	nDigits = 8;
 	segPinOf = /* @__PURE__ */ new Map();
 	digPinOf = /* @__PURE__ */ new Map();
@@ -471,19 +475,19 @@ var T = w("direct_gpio_8d"), E = (e) => w(p(e)), D = 80000n, O = 255 / 2e3, k = 
 	rawProperties;
 	throttle = n({
 		ctx: () => this.ctx,
-		intervalUs: j,
+		intervalUs: M,
 		publish: (e) => this.publishFrame(e)
 	});
 	onBind(e, t, n) {
 		this.rawProperties = n, super.onBind(e, t, n);
 	}
 	onBound(e, n, r) {
-		let i = p(r.variant);
-		this.nDigits = f[i] ?? 8;
+		let i = m(r.variant);
+		this.nDigits = p[i] ?? 8;
 		let a = this.rawProperties ?? {};
 		this.segActiveHigh = a.segActiveLevel === void 0 ? a.commonAnode === void 0 ? r.segActiveLevel === "high" : !a.commonAnode : a.segActiveLevel === "high", this.digActiveHigh = a.digitActiveLevel === void 0 ? a.commonAnode === void 0 ? r.digitActiveLevel === "high" : !!a.commonAnode : a.digitActiveLevel === "high", this.segLevel.fill(t.HI_Z), this.digLevel = new Uint8Array(this.nDigits), this.digLevel.fill(t.HI_Z), this.bright = new Uint8Array(this.nDigits * 8), this.segMask = new Uint8Array(this.nDigits), this.segPinOf.clear(), this.digPinOf.clear();
-		for (let e = 0; e < S.length; e++) {
-			let t = S[e], r = n[t] ?? n[t.toLowerCase()] ?? n[`seg_${t.toLowerCase()}`];
+		for (let e = 0; e < C.length; e++) {
+			let t = C[e], r = n[t] ?? n[t.toLowerCase()] ?? n[`seg_${t.toLowerCase()}`];
 			r !== void 0 && this.segPinOf.set(r, e);
 		}
 		for (let e = 0; e < this.nDigits; e++) {
@@ -522,13 +526,13 @@ var T = w("direct_gpio_8d"), E = (e) => w(p(e)), D = 80000n, O = 255 / 2e3, k = 
 		let t = this.getActiveDigitsCount();
 		if (t > this.maxActiveDigitsInWindow && (this.maxActiveDigitsInWindow = t), t > 1 && e - this.lastConflictWarnUs >= 100000n && (this.lastConflictWarnUs = e, this.ctx?.system?.log?.warn?.(`[seg_display] multiple digits driven simultaneously (${t})`)), e <= this.lastEdgeUs) return;
 		let n = e - this.lastEdgeUs;
-		n > 100000n && (n = M);
+		n > 100000n && (n = N);
 		let r = Number(n);
 		if (r <= 0) {
 			this.lastEdgeUs = e;
 			return;
 		}
-		let i = Math.exp(-r / Number(D)), a = r * O;
+		let i = Math.exp(-r / Number(O)), a = r * k;
 		for (let e = 0; e < this.nDigits; e++) {
 			let t = this.isDigitActive(e), n = e * 8;
 			for (let e = 0; e < 8; e++) {
@@ -567,7 +571,7 @@ var T = w("direct_gpio_8d"), E = (e) => w(p(e)), D = 80000n, O = 255 / 2e3, k = 
 		for (let e = 0; e < this.nDigits; e++) {
 			let t = 0, n = e * 8;
 			for (let e = 0; e < 8; e++) this.bright[n + e] >= 50 && (t |= 1 << e);
-			this.segMask[e] = t, r += b(t);
+			this.segMask[e] = t, r += x(t);
 		}
 		this.ctx && (this.ctx.publish("bright", this.bright), this.ctx.publish("segMask", JSON.stringify(Array.from(this.segMask))), this.ctx.publish("text", r), this.ctx.publish("scanHz", this.scanHz), this.ctx.publish("activeDigits", n)), this.maxActiveDigitsInWindow = t;
 		let i = !1;
@@ -581,10 +585,10 @@ var T = w("direct_gpio_8d"), E = (e) => w(p(e)), D = 80000n, O = 255 / 2e3, k = 
 		if (this.tailPending || this.throttle.isPending()) return;
 		this.tailPending = !0;
 		let t = ++this.tailGen, n = this.ctx;
-		typeof n?.deferUs == "function" ? n.deferUs(j, () => {
+		typeof n?.deferUs == "function" ? n.deferUs(M, () => {
 			if (t !== this.tailGen) return;
 			this.tailPending = !1;
-			let n = this.getNowUs(), r = n > e ? n : e + j;
+			let n = this.getNowUs(), r = n > e ? n : e + M;
 			this.publishFrame(r);
 		}) : this.tailPending = !1;
 	}
@@ -626,10 +630,10 @@ var T = w("direct_gpio_8d"), E = (e) => w(p(e)), D = 80000n, O = 255 / 2e3, k = 
 	onDestroy() {
 		this.throttle.reset(), this.tailGen++, this.tailPending = !1, super.onDestroy();
 	}
-}, P = {
-	manifest: T,
-	manifestFactory: E,
-	PluginClass: N
+}, F = {
+	manifest: E,
+	manifestFactory: D,
+	PluginClass: P
 };
 //#endregion
-export { O as CHARGE_RATE, D as DECAY_TAU_US, A as GHOST_MAX_BRIGHT, k as LOGIC_THRESHOLD, M as MAX_DT_US, j as PUBLISH_INTERVAL_US, N as SegDisplayPlugin, w as createSegDisplayManifest, C as createSegDisplayPins, P as default, T as segDisplayManifest, E as segDisplayManifestFactory };
+export { k as CHARGE_RATE, O as DECAY_TAU_US, j as GHOST_MAX_BRIGHT, A as LOGIC_THRESHOLD, N as MAX_DT_US, M as PUBLISH_INTERVAL_US, P as SegDisplayPlugin, T as createSegDisplayManifest, w as createSegDisplayPins, F as default, E as segDisplayManifest, D as segDisplayManifestFactory };

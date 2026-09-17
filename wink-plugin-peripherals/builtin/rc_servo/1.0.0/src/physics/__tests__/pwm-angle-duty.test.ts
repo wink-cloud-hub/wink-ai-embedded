@@ -1,3 +1,4 @@
+import { describe, expect, test } from 'bun:test';
 import { angleToPwmDuty, pwmDutyToAngle } from '../pwm-angle-duty';
 
 describe('pwm-angle-duty', () => {

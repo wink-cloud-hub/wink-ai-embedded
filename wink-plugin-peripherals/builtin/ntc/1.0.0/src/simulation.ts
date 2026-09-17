@@ -4,7 +4,7 @@ import {
   BaseSimulationPlugin,
   type PeripheralManifest,
   type ManifestFactory,
-} from '@wink-ai/unisim';
+} from '@wink-ai/unisim-sdk';
 
 declare const __PLUGIN_TYPE__: string | undefined;
 declare const __PLUGIN_VERSION__: string | undefined;

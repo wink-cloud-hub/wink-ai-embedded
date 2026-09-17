@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { LedPlugin as LedGpioPlugin, ledManifest as ledGpioManifest } from '../simulation';
-import { LogicStates } from '@wink-ai/unisim';
+import { LogicStates } from '@wink-ai/unisim-sdk';
 
 test('manifest type is led and declares activeHigh property', () => {
   expect(ledGpioManifest.type).toBe('led');

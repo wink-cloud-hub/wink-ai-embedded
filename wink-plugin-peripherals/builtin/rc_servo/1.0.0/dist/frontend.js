@@ -1,5 +1,5 @@
 import { definePeripheral as e, pinsFromBinderVariant as t, resolvePluginInstanceId as n } from "@wink-ai/unisim-ui";
-import { resolvePluginIdentity as r } from "@wink-ai/unisim";
+import { resolvePluginIdentity as r } from "@wink-ai/unisim-sdk";
 import { computed as i, createElementBlock as a, createElementVNode as o, defineComponent as s, normalizeClass as c, normalizeStyle as l, openBlock as u, toDisplayString as d } from "vue";
 import "@wokwi/elements";
 //#region builtin/rc_servo/1.0.0/src/CanvasGlyph.vue?vue&type=script&setup=true&lang.ts

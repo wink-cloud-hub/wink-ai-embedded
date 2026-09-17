@@ -5,25 +5,38 @@ param(
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 
+function Test-IsJunction([string]$path) {
+    if (-not (Test-Path $path)) { return $false }
+    $item = Get-Item $path -Force
+    return [bool]($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint)
+}
+
 function Ensure-PeripheralEnvironment {
     param()
 
     $NodeModulesDir = Join-Path $ScriptDir "node_modules"
     $WinkAiDir = Join-Path $NodeModulesDir "@wink-ai"
 
-    # 1. Probe for local wink-ai source packages
+    # 1. Probe for local wink-ai source packages.
+    #    The suite depends ONLY on the open SDK + UI library — never on the
+    #    closed engine (plan §0.5 invariant #2). The probe therefore requires
+    #    unisim-sdk + unisim-ui; a local `unisim` (engine) checkout is not
+    #    consulted on purpose.
     $LocalPackagesDir = $null
+    # NOTE: no trailing commas — inside @(...) they turn the separate Join-Path
+    # calls into one command with an Object[] ChildPath argument, which failed
+    # silently and left the probe (and all junction setup) disabled.
     $CandidateRoots = @(
-        Join-Path $ScriptDir "..\..\wink-ai\packages",
-        Join-Path $ScriptDir "..\wink-ai\packages",
-        Join-Path $ScriptDir "..\packages"
+        (Join-Path $ScriptDir "..\..\wink-ai\packages")
+        (Join-Path $ScriptDir "..\wink-ai\packages")
+        (Join-Path $ScriptDir "..\packages")
     )
     if ($env:WINK_AI_ROOT) {
-        $CandidateRoots = @(Join-Path $env:WINK_AI_ROOT "packages") + $CandidateRoots
+        $CandidateRoots = @((Join-Path $env:WINK_AI_ROOT "packages")) + $CandidateRoots
     }
 
     foreach ($cand in $CandidateRoots) {
-        if ($cand -and (Test-Path (Join-Path $cand "unisim-ui")) -and (Test-Path (Join-Path $cand "unisim"))) {
+        if ($cand -and (Test-Path (Join-Path $cand "unisim-sdk")) -and (Test-Path (Join-Path $cand "unisim-ui"))) {
             $LocalPackagesDir = (Get-Item $cand).FullName
             break
         }
@@ -76,16 +89,20 @@ function Ensure-PeripheralEnvironment {
             }
         }
 
-        # 4. Link @wink-ai/unisim and @wink-ai/unisim-ui
+        # 4. Link @wink-ai/unisim-sdk and @wink-ai/unisim-ui (SOURCE mode only).
+        #    The engine (@wink-ai/unisim) must NEVER be linked into this package:
+        #    the suite is SDK-only (plan §0.5 invariant #2). A stale engine
+        #    junction from older checkouts is removed defensively.
         if (-not (Test-Path $WinkAiDir)) {
             New-Item -ItemType Directory -Path $WinkAiDir -Force | Out-Null
         }
 
-        $SrcUnisim = Join-Path $LocalPackagesDir "unisim"
+        $SrcUnisimSdk = Join-Path $LocalPackagesDir "unisim-sdk"
         $SrcUnisimUi = Join-Path $LocalPackagesDir "unisim-ui"
 
-        $LinkUnisim = Join-Path $WinkAiDir "unisim"
+        $LinkUnisimSdk = Join-Path $WinkAiDir "unisim-sdk"
         $LinkUnisimUi = Join-Path $WinkAiDir "unisim-ui"
+        $StaleEngineLink = Join-Path $WinkAiDir "unisim"
 
         function Setup-ModuleJunction([string]$target, [string]$link) {
             if (Test-Path $link) {
@@ -104,23 +121,29 @@ function Ensure-PeripheralEnvironment {
             }
         }
 
-        Setup-ModuleJunction $SrcUnisim $LinkUnisim
+        Setup-ModuleJunction $SrcUnisimSdk $LinkUnisimSdk
         Setup-ModuleJunction $SrcUnisimUi $LinkUnisimUi
+
+        if (Test-IsJunction $StaleEngineLink) {
+            Write-Host "[SETUP] Removing stale closed-engine junction (SDK-only suite): $StaleEngineLink" -ForegroundColor Yellow
+            # Directory.Delete on a reparse point removes the link only; -Recurse
+            # with Remove-Item can follow the junction and delete the target tree.
+            [System.IO.Directory]::Delete($StaleEngineLink, $false)
+        }
     }
 }
 
 Ensure-PeripheralEnvironment
 
-# 1. Detect Dependency Mode (SOURCE_LINKED vs NPM_SEMVER)
+# 1. Detect Dependency Mode (SOURCE_LINKED vs NPM_SEMVER).
+#    SOURCE_LINKED is decided by the SDK + UI junctions (never the engine).
 $NodeModulesDir = Join-Path $ScriptDir "node_modules\@wink-ai"
-$UnisimLink = Join-Path $NodeModulesDir "unisim"
+$UnisimSdkLink = Join-Path $NodeModulesDir "unisim-sdk"
+$UnisimUiLink = Join-Path $NodeModulesDir "unisim-ui"
 $ModeStr = "NPM_SEMVER"
 
-if (Test-Path $UnisimLink) {
-    $item = Get-Item $UnisimLink -Force
-    if ($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
-        $ModeStr = "SOURCE_LINKED"
-    }
+if ((Test-IsJunction $UnisimSdkLink) -and (Test-IsJunction $UnisimUiLink)) {
+    $ModeStr = "SOURCE_LINKED"
 }
 if ($Mode -eq "source" -or $Mode -eq "link") { $ModeStr = "SOURCE_LINKED" }
 if ($Mode -eq "npm" -or $Mode -eq "unlink") { $ModeStr = "NPM_SEMVER" }
@@ -211,6 +234,18 @@ if ($Watch) {
 }
 Write-Host ""
 
+# JS runtime used to launch the local vite CLI for simulation-only plugins.
+# Prefer node (vite's native runtime); bun can run the same bin script.
+$JsRuntimeCmd = $null
+if (Get-Command "node" -ErrorAction SilentlyContinue) {
+    $JsRuntimeCmd = "node"
+} elseif (Get-Command "bun" -ErrorAction SilentlyContinue) {
+    $JsRuntimeCmd = "bun"
+} else {
+    Write-Host "[WARN] Neither node nor bun found; simulation-only plugins cannot be built." -ForegroundColor Yellow
+}
+$ViteBin = Join-Path $ScriptDir "node_modules\vite\bin\vite.js"
+
 $BuiltinDir = Join-Path $ScriptDir "builtin"
 if (-not (Test-Path $BuiltinDir)) {
     Write-Host "[ERROR] Builtin directory not found: $BuiltinDir" -ForegroundColor Red
@@ -219,23 +254,54 @@ if (-not (Test-Path $BuiltinDir)) {
 
 function Build-AllPeripherals {
     $Simulations = Get-ChildItem -Path $BuiltinDir -Filter "simulation.ts" -Recurse | Where-Object {
-        $_.FullName -notmatch "[\\/](dist|node_modules)($|[\\/])" -and (Test-Path (Join-Path $_.Directory "definition.ts"))
+        $_.FullName -notmatch "[\\/](dist|node_modules)($|[\\/])"
     }
 
     $BuildCount = 0
     $script:FailCount = 0
 
     foreach ($sim in $Simulations) {
-        $PluginDir = $sim.Directory.Parent.FullName
-        $OutDir = Join-Path $PluginDir "dist"
+        $VersionDir = $sim.Directory.Parent.FullName
+        $HasDefinition = Test-Path (Join-Path $sim.Directory.FullName "definition.ts")
+        $SimOnlyConfig = Join-Path $VersionDir "vite.config.sim.ts"
+
+        if (-not $HasDefinition -and -not (Test-Path $SimOnlyConfig)) {
+            Write-Host "--------------------------------------------------------" -ForegroundColor Yellow
+            Write-Host "[SKIP] Neither definition.ts nor vite.config.sim.ts present in: $VersionDir" -ForegroundColor Yellow
+            continue
+        }
+
+        $OutDir = Join-Path $VersionDir "dist"
         $BuildCount++
 
-        Write-Host "--------------------------------------------------------" -ForegroundColor Yellow
-        Write-Host "Building plugin in: $PluginDir" -ForegroundColor Yellow
-        Write-Host "Output dir:        $OutDir"
+        if ($HasDefinition) {
+            Write-Host "--------------------------------------------------------" -ForegroundColor Yellow
+            Write-Host "Building plugin in: $VersionDir" -ForegroundColor Yellow
+            Write-Host "Output dir:        $OutDir"
 
-        $BuildArgs = $PrefixArgs + @("--skip-toolchain-check", "build", "unisim-plugin", "--path", "$PluginDir", "--out", "$OutDir")
-        & $ExeCmd @BuildArgs
+            $BuildArgs = $PrefixArgs + @("--skip-toolchain-check", "build", "unisim-plugin", "--path", "$VersionDir", "--out", "$OutDir")
+            & $ExeCmd @BuildArgs
+        } else {
+            # Simulation-only peripheral (no UI definition): build simulation.js
+            # with its own vite.config.sim.ts (SDK externals come from the
+            # unisim-ui preset; the host resolves them via SIM_VENDOR_MAP).
+            Write-Host "--------------------------------------------------------" -ForegroundColor Yellow
+            Write-Host "Building simulation-only plugin in: $VersionDir" -ForegroundColor Yellow
+            Write-Host "Output dir:        $OutDir"
+
+            Push-Location $VersionDir
+            try {
+                if (-not $JsRuntimeCmd -or -not (Test-Path $ViteBin)) {
+                    Write-Host "[ERROR] vite runtime unavailable (node/bun or local vite missing)." -ForegroundColor Red
+                    $script:FailCount++
+                    continue
+                }
+                & $JsRuntimeCmd $ViteBin "build" "--config" "vite.config.sim.ts"
+            } finally {
+                Pop-Location
+            }
+        }
+
         if ($LASTEXITCODE -eq 0) {
             Write-Host "[SUCCESS] Built successfully." -ForegroundColor Green
         } else {

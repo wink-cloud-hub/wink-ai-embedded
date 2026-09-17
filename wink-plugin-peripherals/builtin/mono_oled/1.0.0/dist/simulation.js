@@ -1,4 +1,4 @@
-import { I2cPeripheralPlugin as e, createThrottlePublish as t, normalizeManifest as n, normalizeVariantKey as r, resolvePluginIdentity as i } from "@wink-ai/unisim";
+import { I2cPeripheralPlugin as e, createThrottlePublish as t, normalizeManifest as n, normalizeVariantKey as r, resolvePluginIdentity as i } from "@wink-ai/unisim-sdk";
 //#region builtin/mono_oled/1.0.0/src/simulation.ts
 var a = i(import.meta.url, "mono_oled", "1.0.0", "display"), o = 128, s = 64, c = 1024, l = 16000n, u = {
 	ssd1306_i2c: {
@@ -165,13 +165,10 @@ function f(e = "ssd1306_i2c") {
 	});
 }
 var p = f("ssd1306_i2c"), m = (e) => f(d(e)), h = class extends e {
-	_manifest = p;
 	static manifest = p;
-	get manifest() {
-		return this._manifest;
-	}
+	manifest = p;
 	applyManifest(e) {
-		this._manifest = e;
+		this.manifest = e;
 	}
 	framebuffer = new Uint8Array(c);
 	height = s;
