@@ -77,11 +77,9 @@ test('passive_pwm: onDutyChange updates hasSignal, duty, and frequency', () => {
 test('active_gpio: periodic square wave (10kHz CMS8S78xx style) auto-detects 10000Hz frequency', () => {
   const plugin = new BuzzerPlugin();
   const publishes: Array<{ ch: string; v: unknown }> = [];
-  const scheduledDefers: Array<{ us: bigint; cb: () => void }> = [];
 
   const ctx = {
     publish: (ch: string, v: unknown) => publishes.push({ ch, v }),
-    deferUs: (us: bigint, cb: () => void) => scheduledDefers.push({ us, cb }),
   } as any;
 
   plugin.onBind(ctx, { '1': 3 }, { variant: 'active_gpio', defaultFreqHz: 2000 });
@@ -97,18 +95,20 @@ test('active_gpio: periodic square wave (10kHz CMS8S78xx style) auto-detects 100
   // Edge 3: at 1150µs, LOW
   plugin.onPinChange!(3, LogicStates.LOW, 1150n);
 
-  // Multi-edge confirmation should detect 10000Hz!
+  // Quantum step calculates frequency: (4 * 1_000_000) / (2 * 200) = 10000Hz
+  plugin.onStep!(1200n, 200n);
+
+  // Multi-edge confirmation detects 10000Hz
   const hasSignalEvents = publishes.filter(p => p.ch === 'hasSignal' && p.v === true);
   const freqEvents = publishes.filter(p => p.ch === 'frequency' && p.v === 10000);
   expect(hasSignalEvents.length).toBeGreaterThan(0);
   expect(freqEvents.length).toBeGreaterThan(0);
 
-  // Verify watchdog silence when pulses stop
+  // Verify watchdog silence when pulses stop (15 consecutive quiet quanta)
   publishes.length = 0;
-  expect(scheduledDefers.length).toBeGreaterThan(0);
-  // Fire the latest silence watchdog callback
-  const latestWatchdog = scheduledDefers[scheduledDefers.length - 1];
-  latestWatchdog.cb();
+  for (let i = 0; i < 15; i++) {
+    plugin.onStep!(BigInt(2000 + i * 1000), 1000n);
+  }
 
   expect(publishes).toContainEqual({ ch: 'hasSignal', v: false });
   expect(publishes).toContainEqual({ ch: 'frequency', v: 0 });
@@ -131,11 +131,16 @@ test('onStep fallback silence watchdog works when edge train stops', () => {
   plugin.onPinChange!(3, LogicStates.HIGH, 1200n);
   plugin.onPinChange!(3, LogicStates.LOW, 1300n);
 
+  // Trigger quantum calculation (4 edges in 400µs = 5000Hz)
+  plugin.onStep!(1400n, 400n);
+
   expect(publishes).toContainEqual({ ch: 'frequency', v: 5000 });
   publishes.length = 0;
 
-  // After 40ms without pulses, onStep should silence buzzer
-  plugin.onStep!(45000n, 1000n);
+  // After 15 quiet steps (~15ms without pulses), onStep should silence buzzer
+  for (let i = 0; i < 15; i++) {
+    plugin.onStep!(BigInt(2000 + i * 1000), 1000n);
+  }
   expect(publishes).toContainEqual({ ch: 'hasSignal', v: false });
   expect(publishes).toContainEqual({ ch: 'frequency', v: 0 });
 });
@@ -152,6 +157,7 @@ test('active_gpio: DC on/off works with active-high polarity', () => {
 
   // Pin 18 goes HIGH at t=0
   plugin.onPinChange!(18, LogicStates.HIGH, 0n);
+  plugin.onStep!(1000n, 1000n);
   expect(publishes).toContainEqual({ ch: 'hasSignal', v: true });
   expect(publishes).toContainEqual({ ch: 'frequency', v: 2000 });
 
@@ -159,6 +165,7 @@ test('active_gpio: DC on/off works with active-high polarity', () => {
 
   // Pin 18 goes LOW after 50ms (DC transition, not audio pulse train)
   plugin.onPinChange!(18, LogicStates.LOW, 50000n);
+  plugin.onStep!(51000n, 1000n);
   expect(publishes).toContainEqual({ ch: 'hasSignal', v: false });
   expect(publishes).toContainEqual({ ch: 'frequency', v: 0 });
 });

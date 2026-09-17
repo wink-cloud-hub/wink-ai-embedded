@@ -6,6 +6,7 @@ var s = o(import.meta.url, "buzzer", "1.0.0", "output"), c = {
 		pins: [{
 			name: "1",
 			pinType: "digital_in",
+			catalogType: "pwm",
 			role: "pwm",
 			aliases: [
 				"1",
@@ -187,6 +188,14 @@ var d = u("passive_pwm"), f = (e) => u(l(e)), p = class extends e {
 		let n = this.edgeCountInQuantum;
 		this.edgeCountInQuantum = 0;
 		let r = Number(t) > 0 ? Number(t) : 1e3;
+		if (this.driveMode === "gpio_dc" && !this.currentPinActive) {
+			this.driveMode = "quiet", this.accumulatedEdges = 0, this.accumulatedUs = 0, this.silenceQuantaCount = 0, this.updateSoundState(!1, 0, 0);
+			return;
+		}
+		if (n === 1 && this.driveMode === "quiet" && this.currentPinActive && l(this.properties?.variant) === "active_gpio") {
+			this.driveMode = "gpio_dc", this.accumulatedEdges = 0, this.accumulatedUs = 0, this.silenceQuantaCount = 0, this.updateSoundState(!0, Number(this.properties?.defaultFreqHz ?? 2e3), 100);
+			return;
+		}
 		if (n > 0) {
 			this.accumulatedEdges += n, this.accumulatedUs += r, this.driveMode = "gpio_pulse_train", this.silenceQuantaCount = 0;
 			let e = this.accumulatedEdges * 1e6 / (2 * this.accumulatedUs), t = Math.round(e);

@@ -45,6 +45,7 @@ export const BUZZER_PIN_VARIANTS: Record<
       {
         name: '1',
         pinType: 'digital_in',
+        catalogType: 'pwm',
         role: 'pwm',
         aliases: ['1', 'sig', 'signal', 'pwm', 'anode', 'pos'],
         required: true,
@@ -314,6 +315,28 @@ export class BuzzerPlugin extends BaseSimulationPlugin<BuzzerState, BuzzerProps>
     const edges = this.edgeCountInQuantum;
     this.edgeCountInQuantum = 0;
     const dtUsNum = Number(dtUs) > 0 ? Number(dtUs) : 1000;
+    if (this.driveMode === 'gpio_dc' && !this.currentPinActive) {
+      this.driveMode = 'quiet';
+      this.accumulatedEdges = 0;
+      this.accumulatedUs = 0;
+      this.silenceQuantaCount = 0;
+      this.updateSoundState(false, 0, 0);
+      return;
+    }
+
+    if (
+      edges === 1 &&
+      this.driveMode === 'quiet' &&
+      this.currentPinActive &&
+      resolveBuzzerVariant(this.properties?.variant) === 'active_gpio'
+    ) {
+      this.driveMode = 'gpio_dc';
+      this.accumulatedEdges = 0;
+      this.accumulatedUs = 0;
+      this.silenceQuantaCount = 0;
+      this.updateSoundState(true, Number(this.properties?.defaultFreqHz ?? 2000), 100);
+      return;
+    }
 
     if (edges > 0) {
       this.accumulatedEdges += edges;
