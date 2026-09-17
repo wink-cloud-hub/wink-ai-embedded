@@ -186,10 +186,10 @@ describe('Part 2: 8051 Bare-Metal Firmware End-to-End Simulation Suite', () => {
       }
     }
 
-    // Assert scan frequency is ~1000Hz (1ms period)
+    // Assert frame scan frequency is ~125Hz (8 digits scanned at 1ms each = 8ms frame period)
     const scanHz = ctx.getLatestPublish('scanHz') as number;
-    expect(scanHz).toBeGreaterThanOrEqual(800);
-    expect(scanHz).toBeLessThanOrEqual(1200);
+    expect(scanHz).toBeGreaterThanOrEqual(110);
+    expect(scanHz).toBeLessThanOrEqual(140);
   });
 
   test('E2E-2: teaching fault: omitting blanking injects measurable ghosting', () => {
@@ -291,8 +291,9 @@ describe('Part 2: 8051 Bare-Metal Firmware End-to-End Simulation Suite', () => {
     expect(ctx.getLatestPublish('text')).toBe('12345678');
 
     // Phase 2: 8051 code dynamically changes buffer to "87654321"
+    // Run 20 frames (160ms = 2 * tau_POV) so old segment retinal persistence decays below LOGIC_THRESHOLD (50)
     displayBuf = [8, 7, 6, 5, 4, 3, 2, 1];
-    for (let frame = 0; frame < 8; frame++) {
+    for (let frame = 0; frame < 20; frame++) {
       for (let d = 0; d < 8; d++) {
         drive8051Port(plugin, 16, p2, 0xff, tUs);
         p2 = 0xff;

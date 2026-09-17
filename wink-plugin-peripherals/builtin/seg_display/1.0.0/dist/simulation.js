@@ -136,7 +136,7 @@ function v(e) {
 		relX: h[e],
 		relY: 0,
 		wireNet: "secondary",
-		required: !1
+		required: !0
 	});
 	else if (r === 4) {
 		let e = [
@@ -149,7 +149,7 @@ function v(e) {
 			relX: e[t],
 			relY: 0,
 			wireNet: "secondary",
-			required: !1
+			required: !0
 		});
 	} else if (r === 2) {
 		let e = [70, 140];
@@ -157,7 +157,7 @@ function v(e) {
 			relX: e[t],
 			relY: 0,
 			wireNet: "secondary",
-			required: !1
+			required: !0
 		});
 	} else n.DIG1 = Object.freeze({
 		relX: 105,
@@ -339,6 +339,7 @@ function w(e) {
 		aliases: [e.toLowerCase(), `seg_${e.toLowerCase()}`],
 		required: !1
 	});
+	let r = t > 1;
 	for (let e = 0; e < t; e++) {
 		let t = e + 1;
 		n.push({
@@ -350,7 +351,7 @@ function w(e) {
 				`digit${t}`,
 				`com${e}`
 			],
-			required: !1
+			required: r
 		});
 	}
 	return n;
@@ -441,7 +442,8 @@ function T(e = "direct_gpio_8d") {
 			},
 			scanHz: {
 				type: "number",
-				default: 0
+				default: 0,
+				description: "Display frame refresh rate in Hz (full cycle of all active digits)"
 			},
 			activeDigits: {
 				type: "number",
@@ -496,7 +498,7 @@ var E = T("direct_gpio_8d"), D = (e) => T(m(e)), O = 80000n, k = 255 / 2e3, A = 
 		}
 		this.staticDrive = this.nDigits === 1 && this.digPinOf.size === 0;
 		let o = this.getNowUs();
-		return this.lastEdgeUs = o, this.tailGen = 0, this.tailPending = !1, this.scanHz = 0, this.lastDig0ActiveUs = 0n, this.dig0HistoryUs = [], this.maxActiveDigitsInWindow = 0, this.lastConflictWarnUs = 0n, {
+		return this.lastEdgeUs = o, this.tailGen = 0, this.tailPending = !1, this.scanHz = 0, this.lastDig0ActiveUs = 0n, this.dig0HistoryUs = [], this.maxActiveDigitsInWindow = 0, this.lastConflictWarnUs = -100000n, {
 			bright: this.bright,
 			segMask: JSON.stringify(Array.from(this.segMask)),
 			text: "".padStart(this.nDigits, " "),
@@ -537,7 +539,12 @@ var E = T("direct_gpio_8d"), D = (e) => T(m(e)), O = 80000n, k = 255 / 2e3, A = 
 			let t = this.isDigitActive(e), n = e * 8;
 			for (let e = 0; e < 8; e++) {
 				let r = this.isSegActive(e), o = t && r, s = n + e, c = this.bright[s];
-				o && (c = Math.min(255, c + a)), c = Math.max(0, c * i), this.bright[s] = Math.round(c);
+				if (o) c = Math.min(255, c + a), this.bright[s] = Math.round(c);
+				else {
+					c = Math.max(0, c * i);
+					let e = Math.round(c);
+					e >= this.bright[s] && this.bright[s] > 0 && (e = this.bright[s] - 1), this.bright[s] = e;
+				}
 			}
 		}
 		this.lastEdgeUs = e;
