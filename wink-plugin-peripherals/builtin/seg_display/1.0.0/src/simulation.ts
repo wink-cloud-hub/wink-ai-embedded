@@ -58,6 +58,7 @@ export function createSegDisplayPins(variantName: SegVariantKey): PeripheralMani
     });
   }
 
+  const isMultiDigit = nDigits > 1;
   for (let d = 0; d < nDigits; d++) {
     const num = d + 1;
     pins.push({
@@ -65,7 +66,7 @@ export function createSegDisplayPins(variantName: SegVariantKey): PeripheralMani
       pinType: 'digital_in',
       role: `dig_${num}`,
       aliases: [`dig${num}`, `digit${num}`, `com${d}`],
-      required: false,
+      required: isMultiDigit,
     });
   }
 
@@ -136,7 +137,11 @@ export function createSegDisplayManifest(variantName: SegVariantKey = 'direct_gp
       bright: { type: 'string', default: '' },
       segMask: { type: 'string', default: '[]' },
       text: { type: 'string', default: '' },
-      scanHz: { type: 'number', default: 0 },
+      scanHz: {
+        type: 'number',
+        default: 0,
+        description: 'Display frame refresh rate in Hz (full cycle of all active digits)',
+      },
       activeDigits: { type: 'number', default: 0 },
     },
     events: {},
@@ -268,7 +273,7 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
     this.lastDig0ActiveUs = 0n;
     this.dig0HistoryUs = [];
     this.maxActiveDigitsInWindow = 0;
-    this.lastConflictWarnUs = 0n;
+    this.lastConflictWarnUs = -100_000n;
 
     return {
       bright: this.bright,
@@ -351,9 +356,15 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
         let b = this.bright[k];
         if (lit) {
           b = Math.min(255, b + chargeDelta);
+          this.bright[k] = Math.round(b);
+        } else {
+          b = Math.max(0, b * decayFactor);
+          let nextB = Math.round(b);
+          if (nextB >= this.bright[k] && this.bright[k] > 0) {
+            nextB = this.bright[k] - 1;
+          }
+          this.bright[k] = nextB;
         }
-        b = Math.max(0, b * decayFactor);
-        this.bright[k] = Math.round(b);
       }
     }
 

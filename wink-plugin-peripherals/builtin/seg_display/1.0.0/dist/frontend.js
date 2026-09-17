@@ -243,7 +243,7 @@ function P(e) {
 		relX: j[e],
 		relY: 0,
 		wireNet: "secondary",
-		required: !1
+		required: !0
 	});
 	else if (r === 4) {
 		let e = [
@@ -256,7 +256,7 @@ function P(e) {
 			relX: e[t],
 			relY: 0,
 			wireNet: "secondary",
-			required: !1
+			required: !0
 		});
 	} else if (r === 2) {
 		let e = [70, 140];
@@ -264,7 +264,7 @@ function P(e) {
 			relX: e[t],
 			relY: 0,
 			wireNet: "secondary",
-			required: !1
+			required: !0
 		});
 	} else n.DIG1 = Object.freeze({
 		relX: 105,

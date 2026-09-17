@@ -74,7 +74,7 @@ function createOverlay(variant: SegVariantKey): Readonly<PinsOverlayMap> {
         relX: SEGMENT_X_COORDS[d],
         relY: 0,
         wireNet: 'secondary' as const,
-        required: false,
+        required: true,
       });
     }
   } else if (nDigits === 4) {
@@ -84,7 +84,7 @@ function createOverlay(variant: SegVariantKey): Readonly<PinsOverlayMap> {
         relX: xCoords[d],
         relY: 0,
         wireNet: 'secondary' as const,
-        required: false,
+        required: true,
       });
     }
   } else if (nDigits === 2) {
@@ -94,7 +94,7 @@ function createOverlay(variant: SegVariantKey): Readonly<PinsOverlayMap> {
         relX: xCoords[d],
         relY: 0,
         wireNet: 'secondary' as const,
-        required: false,
+        required: true,
       });
     }
   } else {

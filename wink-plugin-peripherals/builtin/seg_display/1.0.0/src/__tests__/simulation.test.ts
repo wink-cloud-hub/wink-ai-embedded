@@ -162,19 +162,19 @@ describe('seg_display simulation & contract test suite', () => {
     plugin.onPinChange(pinMap.DIG1, LogicStates.LOW, 0n);
     plugin.onPinChange(pinMap.A, LogicStates.HIGH, 0n);
 
-    // Advance 5ms (5000us)
-    ctx.advanceTime(5000n);
-    plugin.onPinChange(pinMap.A, LogicStates.HIGH, 5000n);
+    // Advance 20ms (20000us) to pass 16ms publish throttle
+    ctx.advanceTime(20_000n);
+    plugin.onPinChange(pinMap.A, LogicStates.HIGH, 20_000n);
 
     let bright = ctx.getLatestPublish('bright') as Uint8Array;
     expect(bright[0]).toBeGreaterThanOrEqual(200);
 
     // Inactive DIG1 (set to HIGH)
     ctx.advanceTime(1000n);
-    plugin.onPinChange(pinMap.DIG1, LogicStates.HIGH, 6000n);
+    plugin.onPinChange(pinMap.DIG1, LogicStates.HIGH, 21_000n);
 
-    // Advance 100ms so it decays
-    ctx.advanceTime(100_000n);
+    // Advance 600ms so it decays completely (> 7.5 tau with tau = 80ms)
+    ctx.advanceTime(600_000n);
     bright = ctx.getLatestPublish('bright') as Uint8Array;
     expect(bright[0]).toBe(0);
   });
@@ -206,8 +206,8 @@ describe('seg_display simulation & contract test suite', () => {
         plugin.onPinChange(pinMap[seg], c.segLevel, 0n);
       }
 
-      ctx.advanceTime(5000n);
-      plugin.onPinChange(pinMap.DIG1, c.digLevel, 5000n);
+      ctx.advanceTime(20_000n);
+      plugin.onPinChange(pinMap.DIG1, c.digLevel, 20_000n);
 
       const text = (ctx.getLatestPublish('text') as string).trim();
       expect(text).toBe('8');
@@ -229,8 +229,8 @@ describe('seg_display simulation & contract test suite', () => {
     // seg=low, dig=high should be active
     plugin1.onPinChange(pinMap.DIG1, LogicStates.HIGH, 0n);
     plugin1.onPinChange(pinMap.A, LogicStates.LOW, 0n);
-    ctx1.advanceTime(5000n);
-    plugin1.onPinChange(pinMap.DIG1, LogicStates.HIGH, 5000n);
+    ctx1.advanceTime(20_000n);
+    plugin1.onPinChange(pinMap.DIG1, LogicStates.HIGH, 20_000n);
 
     let bright = ctx1.getLatestPublish('bright') as Uint8Array;
     expect(bright[0]).toBeGreaterThanOrEqual(200);
@@ -247,8 +247,8 @@ describe('seg_display simulation & contract test suite', () => {
     // Now seg needs HIGH to be active
     plugin2.onPinChange(pinMap.DIG1, LogicStates.HIGH, 0n);
     plugin2.onPinChange(pinMap.A, LogicStates.HIGH, 0n);
-    ctx2.advanceTime(5000n);
-    plugin2.onPinChange(pinMap.DIG1, LogicStates.HIGH, 5000n);
+    ctx2.advanceTime(20_000n);
+    plugin2.onPinChange(pinMap.DIG1, LogicStates.HIGH, 20_000n);
 
     bright = ctx2.getLatestPublish('bright') as Uint8Array;
     expect(bright[0]).toBeGreaterThanOrEqual(200);
@@ -267,8 +267,8 @@ describe('seg_display simulation & contract test suite', () => {
     });
 
     plugin.onPinChange(pinMap.A, LogicStates.HIGH, 0n);
-    ctx.advanceTime(5000n);
-    plugin.onPinChange(pinMap.A, LogicStates.HIGH, 5000n);
+    ctx.advanceTime(20_000n);
+    plugin.onPinChange(pinMap.A, LogicStates.HIGH, 20_000n);
 
     const bright = ctx.getLatestPublish('bright') as Uint8Array;
     expect(bright[0]).toBeGreaterThanOrEqual(200);
@@ -435,6 +435,9 @@ describe('seg_display simulation & contract test suite', () => {
     ctx.advanceTime(2000n);
     plugin.onPinChange(pinMap.DIG1, LogicStates.HIGH, 2000n);
 
+    // Advance past 16ms throttle to flush activeDigits publication
+    ctx.advanceTime(20_000n);
+
     const activeDigits = ctx.getLatestPublish('activeDigits');
     expect(activeDigits).toBeGreaterThanOrEqual(2);
     expect(ctx.warnings.some((w) => w.includes('multiple digits driven simultaneously'))).toBe(true);
@@ -469,17 +472,17 @@ describe('seg_display simulation & contract test suite', () => {
 
     plugin.onPinChange(pinMap.DIG1, LogicStates.LOW, 0n);
     plugin.onPinChange(pinMap.A, LogicStates.HIGH, 0n);
-    ctx.advanceTime(5000n);
-    plugin.onPinChange(pinMap.DIG1, LogicStates.LOW, 5000n);
+    ctx.advanceTime(20_000n);
+    plugin.onPinChange(pinMap.DIG1, LogicStates.LOW, 20_000n);
 
     let bright = ctx.getLatestPublish('bright') as Uint8Array;
     expect(bright[0]).toBeGreaterThan(100);
 
     // Stop feeding edges and turn off inputs
-    plugin.onPinChange(pinMap.A, LogicStates.LOW, 6000n);
+    plugin.onPinChange(pinMap.A, LogicStates.LOW, 21_000n);
 
-    // Advance virtual time by 300ms through tail defer chain
-    ctx.advanceTime(300_000n);
+    // Advance virtual time by 600ms through tail defer chain (> 7.5 tau with tau=80ms)
+    ctx.advanceTime(600_000n);
 
     bright = ctx.getLatestPublish('bright') as Uint8Array;
     expect(bright[0]).toBe(0);
@@ -499,13 +502,16 @@ describe('seg_display simulation & contract test suite', () => {
     // HI_Z on segment pin
     plugin.onPinChange(pinMap.DIG1, LogicStates.LOW, 0n);
     plugin.onPinChange(pinMap.A, LogicStates.HI_Z, 0n);
-    ctx.advanceTime(5000n);
+    ctx.advanceTime(20_000n);
 
     let bright = ctx.getLatestPublish('bright') as Uint8Array;
     expect(bright[0]).toBe(0);
 
+    // Advance time past 100ms bus conflict debounce window
+    ctx.advanceTime(100_000n);
+
     // CONFLICT on pin
-    plugin.onPinChange(pinMap.A, LogicStates.CONFLICT, 6000n);
+    plugin.onPinChange(pinMap.A, LogicStates.CONFLICT, 120_000n);
     expect(ctx.warnings.some((w) => w.includes('bus conflict'))).toBe(true);
   });
 
@@ -540,8 +546,8 @@ describe('seg_display simulation & contract test suite', () => {
 
     plugin.onPinChange(pinMap.DIG1, LogicStates.LOW, 0n);
     plugin.onPinChange(pinMap.A, LogicStates.HIGH, 0n);
-    ctx.advanceTime(5000n);
-    plugin.onPinChange(pinMap.DIG1, LogicStates.LOW, 5000n);
+    ctx.advanceTime(20_000n);
+    plugin.onPinChange(pinMap.DIG1, LogicStates.LOW, 20_000n);
 
     const snapshot = plugin.serializeState();
     expect(snapshot.bright).toBeDefined();
@@ -551,8 +557,8 @@ describe('seg_display simulation & contract test suite', () => {
     plugin2.onBind(ctx2 as any, pinMap, { variant: 'direct_gpio_1d' });
     plugin2.deserializeState(snapshot);
 
-    ctx2.advanceTime(100n);
-    plugin2.onPinChange(pinMap.A, LogicStates.HIGH, 100n);
+    ctx2.advanceTime(20_000n);
+    plugin2.onPinChange(pinMap.A, LogicStates.HIGH, 20_000n);
 
     const bright2 = ctx2.getLatestPublish('bright') as Uint8Array;
     expect(bright2[0]).toBeGreaterThan(150);
@@ -573,8 +579,8 @@ describe('seg_display simulation & contract test suite', () => {
 
     plugin.onPinChange(pinMap.DIG1, LogicStates.LOW, 0n);
     plugin.onPinChange(pinMap.A, LogicStates.LOW, 0n);
-    ctx.advanceTime(5000n);
-    plugin.onPinChange(pinMap.DIG1, LogicStates.LOW, 5000n);
+    ctx.advanceTime(20_000n);
+    plugin.onPinChange(pinMap.DIG1, LogicStates.LOW, 20_000n);
 
     const bright = ctx.getLatestPublish('bright') as Uint8Array;
     expect(bright[0]).toBeGreaterThan(150);
