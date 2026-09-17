@@ -10,6 +10,7 @@
     "build:watch": "powershell -File build-peripherals.ps1 -Watch",
     "create": "bun scripts/create-peripheral.mjs",
     "test": "bun test",
+    "test:bundles": "node scripts/check-builtin-bundles.mjs",
     "lint": "oxlint builtin",
     "lint:fix": "oxlint --fix builtin",
     "format": "oxfmt --write builtin",
