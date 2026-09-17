@@ -6,7 +6,7 @@
 | 归属系统 | `wink-tools`（引擎） + `wink-micro-os/frameworks/mcs51`（规则） |
 | 状态 | **Accepted** |
 | 关联 | ADR-0004（静态分发）、ADR-0043（分层门禁）、ADR-0070（mcs51 隔离） |
-| 实施计划 | `wink-ai/packages/wink-tools/docs/plans/2026-09-11-dynamic-lint-pack-discovery-and-mcs51-guard-plan.md` |
+| 实施计划 | 工具链内部计划（`dynamic-lint-pack-discovery-and-mcs51-guard-plan`） |
 
 ---
 
