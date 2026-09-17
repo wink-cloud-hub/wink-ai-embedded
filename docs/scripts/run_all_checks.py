@@ -18,6 +18,7 @@ import subprocess
 import argparse
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+WORKSPACE_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))
 
 def main():
     parser = argparse.ArgumentParser(description="Run all documentation & i18n governance checks")
@@ -29,8 +30,15 @@ def main():
     print(" 🚀 Running WinkMicroOS Comprehensive Documentation & i18n Suite")
     print("=" * 90)
 
+    baseline_file = os.path.join(WORKSPACE_ROOT, ".github", "doc-contract-baseline.json")
+    verify_args = []
+    if os.path.exists(baseline_file):
+        verify_args += ["--baseline", baseline_file]
+    if args.strict:
+        verify_args += ["--strict"]
+
     checks = [
-        ("Black-box & Contract Verification", ["verify_doc_contracts.py"]),
+        ("Black-box & Contract Verification", ["verify_doc_contracts.py"] + verify_args),
         ("ADR SSOT Back-write Synchronization", ["check_ssot_sync.py"]),
         ("i18n Terminology Linter", ["lint_i18n_glossary.py"]),
         ("i18n 1:1 Tree & Structural Alignment", ["verify_i18n_alignment.py"] + (["--check-content"] if args.check_content else []) + (["--strict"] if args.strict else [])),
