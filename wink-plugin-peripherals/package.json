@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@wink-ai/unisim-sdk": "^1.0.1",
-    "@wink-ai/unisim-ui": "^1.1.1"
+    "@wink-ai/unisim-ui": "^1.1.2"
   },
   "devDependencies": {
     "@types/bun": "^1.3.14",
