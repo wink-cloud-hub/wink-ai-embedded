@@ -63,7 +63,7 @@ export default definePeripheralUiConfig({ type: 'my_sensor' });
 - **前端 Bundle**：自动外部化 `vue`、`@wink-ai/unisim-ui`、`@wokwi/elements`。
 
 ### 3.5 源码链接自动探测 (Source Linking Probe)
-当在本地多仓联动开发时，构建工具会自动探测本地是否存在 `wink-ai/packages/unisim` 与 `unisim-ui` 源码，若存在则自动通过 Vite Alias 建立软链接，免除反复 `npm pack` 的调试负担。
+当在本地多仓联动开发时，构建工具会自动探测本地是否存在 `@wink-ai/unisim` 与 `@wink-ai/unisim-ui` 源码开发通道，若存在则自动通过 Vite Alias 建立软链接，免除反复 `npm pack` 的调试负担。
 
 ---
 

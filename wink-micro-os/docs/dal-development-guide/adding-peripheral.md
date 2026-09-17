@@ -2,7 +2,7 @@
 
 > **路径**：原 `wink-micro-os/docs/adding-peripheral-guide.md` 已迁入本手册目录。旧路径保留跳转 stub。
 
-与仿真侧 [ADDING_PERIPHERAL.md](file:///d:/workspaces/ai-coding/wink-ai/wink-ai/packages/unisim/docs/ADDING_PERIPHERAL.md) 配套。设备 `type` 字符串**两侧必须完全一致**。
+与 UniSim 仿真侧外设接入规范配套。设备 `type` 字符串在嵌入式驱动与仿真外设模型**两侧必须完全一致**。
 
 设计依据：[peripheral-onboarding tech-design](../../../docs/design/tech-designs/2026-07-27-peripheral-onboarding-optimization-design.md)、[ADR-0046](../../../docs/design/decisions/0046-dal-driver-registry-ssot.md)、[ADR-0051](../../../docs/design/decisions/0051-scannable-codegen-extension-roots.md)（**Accepted**）、[扩展根 tech-design](../../../docs/design/tech-designs/2026-07-28-scannable-codegen-extension-roots-design.md)。
 

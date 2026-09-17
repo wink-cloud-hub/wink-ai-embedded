@@ -21,14 +21,13 @@ UniSim 4.0 的外设系统遵循 **“微内核 + 独立自包含插件 (Microke
 
 ## 🏛️ 平台核心架构指南导航 (Core Architecture References)
 
-如需深入理解 UniSim 4.0 内核级架构、WASM C ABI 桥接、时钟调度与动态加载，请参阅平台核心文档（位于 `wink-ai/packages/unisim/docs/architecture/`）：
+如需深入理解外设插件架构、WASM C ABI 桥接、时钟调度与动态加载，请参阅本仓核心规范体系：
 
-- 📐 **[UniSim 4.0 完整架构文档](../../wink-ai/packages/unisim/docs/architecture/overview.md)**：分层规范、SSOT 代码生成流与设计决策全景。
-- 🎛️ **[外设通道与 C ABI 双向对接指南](../../wink-ai/packages/unisim/docs/architecture/hardware-channel-c-abi-guide.md)**：五大硬件通道与 `wink-micro-os` WASM C ABI 映射。
-- ⏱️ **[外设生命周期与事件系统架构指南](../../wink-ai/packages/unisim/docs/architecture/plugin-lifecycle-and-events-guide.md)**：12 大生命周期 Hook、微秒级时钟调度与世代令牌防抖。
-- 🎨 **[前端 UI 渲染与画布数据绑定指南](../../wink-ai/packages/unisim/docs/architecture/frontend-ui-and-canvas-guide.md)**：2D 画布外观、Web Component 集成与 `ui.canvasProps` 映射。
-- 🎚️ **[外设事件与控制面板映射规范](../../wink-ai/packages/unisim/docs/architecture/peripheral-events-and-control-mapping-guide.md)**：语义事件 SSOT、控制面板推导与 `mapEventToMethod` 映射规则。
-- 📦 **[外置插件动态加载架构](../../wink-ai/packages/unisim/docs/architecture/external-plugin-loading.md)**：Hono 后端多版本分发、前端动态 import 与 Hydration 机制。
+- 📐 **[Wasm 仿真设计规范 (UniSim 3.0 SSOT)](../../docs/zh/design/04-wasm-simulation/00-README.md)**：分层规范、六轴保真度与虚拟时基架构。
+- 🎛️ **[Wasm-JS Bridge C ABI 契约](../../wink-micro-os/targets/wasm/wasm_bridge.h)**：外设通道与 `wink-micro-os` WASM 跨语言调用 SSOT。
+- ⏱️ **[高保真波形时序指南](./03-HIGH_FIDELITY_WAVEFORM_GUIDE.md)**：边缘注入队列、世代令牌管理与物理降级算法。
+- 🎨 **[外设元数据与 Manifest 规范](./02-MANIFEST_AND_METADATA_SPEC.md)**：引脚布局、双视图契约与事件状态通道。
+- 📦 **[外设构建与打包工具链](./04-BUILD_AND_PACKAGING_TOOLCHAIN.md)**：双 Vite 预设、动态加载与 Headless 测试。
 
 ---
 

@@ -2,7 +2,7 @@
 
 > **目标**：指导开发者如何使用底层硬件 API 与波形注入机制，实现微秒级高保真仿真与 100% 确定性。  
 > **面向对象**：编写高精度时序外设、物理传感器、协议总线外设及 Display 设备的插件开发者。  
-> **入口索引**：[README.md](./README.md) | **底层 SSOT 规范**：[hardware-channel-c-abi-guide.md](../../wink-ai/packages/unisim/docs/architecture/hardware-channel-c-abi-guide.md)
+> **入口索引**：[README.md](./README.md) | **底层 SSOT 规范**：[`wasm_bridge.h`](../../wink-micro-os/targets/wasm/wasm_bridge.h)
 
 ---
 
