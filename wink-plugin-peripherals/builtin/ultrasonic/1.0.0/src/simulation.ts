@@ -9,7 +9,7 @@ import {
   type PeripheralManifestPinInput,
   type ManifestFactory,
   type LogicState,
-} from '@wink-ai/unisim';
+} from '@wink-ai/unisim-sdk';
 import { distanceCmToEchoUs } from './physics/distance-echo-us';
 
 declare const __PLUGIN_TYPE__: string | undefined;

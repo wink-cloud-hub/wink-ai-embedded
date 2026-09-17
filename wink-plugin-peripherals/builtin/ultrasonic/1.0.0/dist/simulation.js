@@ -1,4 +1,4 @@
-import { BaseSimulationPlugin as e, LogicStates as t, normalizeManifest as n, normalizeVariantKey as r, resolvePluginIdentity as i } from "@wink-ai/unisim";
+import { BaseSimulationPlugin as e, LogicStates as t, normalizeManifest as n, normalizeVariantKey as r, resolvePluginIdentity as i } from "@wink-ai/unisim-sdk";
 //#region builtin/ultrasonic/1.0.0/src/physics/distance-echo-us.ts
 function a(e, t) {
 	let n = t || 343;

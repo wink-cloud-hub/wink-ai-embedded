@@ -5,7 +5,7 @@ import {
   createBuzzerManifest,
   buzzerManifestFactory,
 } from '../simulation';
-import { LogicStates } from '@wink-ai/unisim';
+import { LogicStates } from '@wink-ai/unisim-sdk';
 
 test('manifest type is buzzer, category is output, has defaultFreqHz and variant', () => {
   expect(buzzerManifest.type).toBe('buzzer');

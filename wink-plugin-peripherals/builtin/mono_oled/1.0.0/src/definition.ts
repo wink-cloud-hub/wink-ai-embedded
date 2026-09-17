@@ -8,7 +8,7 @@ import {
   type PeripheralPropsSchema,
   type SimViewContext,
 } from '@wink-ai/unisim-ui';
-import { resolvePluginIdentity } from '@wink-ai/unisim';
+import { resolvePluginIdentity } from '@wink-ai/unisim-sdk';
 
 /** Display frame buffer resolution */
 const OLED_WIDTH = 128;

@@ -17,7 +17,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@wink-ai/unisim": "^1.0.0",
+    "@wink-ai/unisim-sdk": "^1.0.0",
     "@wink-ai/unisim-ui": "^1.0.1"
   },
   "devDependencies": {

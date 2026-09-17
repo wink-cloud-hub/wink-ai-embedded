@@ -137,6 +137,53 @@ jobs:
         if: steps.toolchain.outputs.available == 'true'
         run: ctest --test-dir build_host -L wasm --output-on-failure
 
+  peripherals-sdk-sandbox:
+    # SDK-only dependency tree (plan 2026-09-17 §0.5 invariant #2): the peripheral
+    # suite must typecheck and its migrated unit tests must pass with just the
+    # published @wink-ai/unisim-sdk + @wink-ai/unisim-ui — never the closed engine.
+    # The full 12-plugin build half of the sandbox gate runs in the wink-ai CI
+    # (`peripherals-sandbox` job), where the winkcli toolchain source is available.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Stage sandbox copy
+        run: |
+          SANDBOX="${{ runner.temp }}/wink-sandbox/wink-ai-embedded/wink-plugin-peripherals"
+          mkdir -p "$(dirname "$SANDBOX")"
+          cp -r wink-plugin-peripherals "$SANDBOX"
+          rm -rf "$SANDBOX/node_modules" "$SANDBOX/builtin"/*/1.0.0/dist
+          echo "SANDBOX=$SANDBOX" >> "$GITHUB_ENV"
+
+      - name: Install registry deps (SDK + UI only)
+        run: bun install
+        working-directory: ${{ env.SANDBOX }}
+
+      - name: Assert the closed engine is absent
+        run: |
+          if [ -e node_modules/@wink-ai/unisim ]; then
+            echo "::error::@wink-ai/unisim leaked into the peripheral dependency tree"
+            exit 1
+          fi
+          ls node_modules/@wink-ai
+        working-directory: ${{ env.SANDBOX }}
+
+      - name: Sandbox typecheck (tsc --noEmit, no engine)
+        run: bun run typecheck
+        working-directory: ${{ env.SANDBOX }}
+
+      - name: Migrated stub-host unit tests
+        run: |
+          bun test \
+            builtin/mono_oled/1.0.0/src/__tests__/simulation.test.ts \
+            builtin/rc_servo/1.0.0/src/__tests__/simulation.test.ts
+        working-directory: ${{ env.SANDBOX }}
+
   docs-guards:
     runs-on: ubuntu-latest
     steps:

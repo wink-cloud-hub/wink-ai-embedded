@@ -51,7 +51,7 @@ describe('seg_display variants & topology test suite', () => {
     ]);
 
     for (const [id, app] of Object.entries(SEG_APPEARANCES)) {
-      expect(app.appearanceId).toBe(id);
+      expect(app.appearanceId as string).toBe(id);
       expect(SEG_VARIANTS).toContain(app.variant);
       expect(app.searchAliases.length).toBeGreaterThan(0);
       expect(app.searchAliases).toContain('seg');

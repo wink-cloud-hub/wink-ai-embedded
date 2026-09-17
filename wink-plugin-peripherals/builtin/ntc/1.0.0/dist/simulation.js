@@ -1,4 +1,4 @@
-import { BaseSimulationPlugin as e, normalizeManifest as t, resolvePluginIdentity as n } from "@wink-ai/unisim";
+import { BaseSimulationPlugin as e, normalizeManifest as t, resolvePluginIdentity as n } from "@wink-ai/unisim-sdk";
 //#region builtin/ntc/1.0.0/src/simulation.ts
 var r = n(import.meta.url, "ntc", "1.0.0", "sensor");
 function i(e = "default") {

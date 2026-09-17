@@ -1,5 +1,5 @@
 import { expect, test, describe } from 'bun:test';
-import { LogicStates } from '@wink-ai/unisim';
+import { LogicStates } from '@wink-ai/unisim-sdk';
 
 import {
   SegDisplayPlugin,

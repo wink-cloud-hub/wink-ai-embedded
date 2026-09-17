@@ -10,7 +10,7 @@ import {
   type ManifestFactory,
   type PluginContext,
   type ThrottlePublishHandle,
-} from '@wink-ai/unisim';
+} from '@wink-ai/unisim-sdk';
 
 import {
   SEG_VARIANT_DIGITS,

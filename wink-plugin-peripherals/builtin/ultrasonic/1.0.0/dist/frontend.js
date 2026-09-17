@@ -1,5 +1,5 @@
 import { definePeripheral as e, pinsFromBinderVariant as t } from "@wink-ai/unisim-ui";
-import { resolvePluginIdentity as n } from "@wink-ai/unisim";
+import { resolvePluginIdentity as n } from "@wink-ai/unisim-sdk";
 import { createElementBlock as r, createElementVNode as i, defineComponent as a, openBlock as o } from "vue";
 import "@wokwi/elements";
 //#endregion

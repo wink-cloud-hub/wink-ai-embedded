@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
 import { RcServoPlugin, rcServoManifest } from '../simulation';
-import { createPluginTestHost, type PluginTestHost } from '@wink-ai/unisim/sdk';
+import { createPluginStubHost, type PluginStubHost } from '@wink-ai/unisim-sdk';
 
 describe('SG90 Servo analog duty pathway', () => {
-  let host: PluginTestHost;
+  let host: PluginStubHost;
   let plugin: RcServoPlugin;
 
   beforeEach(() => {
     // Sanctioned harness: virtual clock + arbiter + buses wired like headless,
     // no imports from @wink-ai/unisim/core or /host (both unexported).
-    host = createPluginTestHost();
+    host = createPluginStubHost();
     plugin = host.bind(RcServoPlugin, {
       instanceId: 'rc_servo:0',
       pinMapping: { PWM: 5 },

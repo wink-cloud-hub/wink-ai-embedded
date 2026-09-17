@@ -3,7 +3,7 @@ import {
   resolvePluginInstanceId,
   type PeripheralDefinition,
 } from '@wink-ai/unisim-ui';
-import { resolvePluginIdentity } from '@wink-ai/unisim';
+import { resolvePluginIdentity } from '@wink-ai/unisim-sdk';
 
 import CanvasGlyph from './CanvasGlyph.vue';
 import { RC_SERVO_TOPOLOGIES, SG90_SIZE } from './variants';

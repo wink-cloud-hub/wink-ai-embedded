@@ -9,7 +9,7 @@ import {
   type PeripheralManifest,
   type PeripheralManifestPinInput,
   type I2CTransferResult,
-} from '@wink-ai/unisim';
+} from '@wink-ai/unisim-sdk';
 
 declare const __PLUGIN_TYPE__: string | undefined;
 declare const __PLUGIN_VERSION__: string | undefined;
@@ -169,15 +169,15 @@ export const monoOledManifestFactory: ManifestFactory = (variant: string) =>
   createMonoOledManifest(resolveMonoOledVariant(variant));
 
 export class MonoOledPlugin extends I2cPeripheralPlugin {
-  private _manifest = monoOledManifest;
   static readonly manifest = monoOledManifest;
 
-  get manifest(): PeripheralManifest {
-    return this._manifest;
-  }
+  // Instance manifest as a plain property (base class contract): the previous
+  // accessor override tripped TS2611 against BaseSimulationPlugin's property
+  // declaration.
+  manifest: PeripheralManifest = monoOledManifest;
 
   applyManifest(m: PeripheralManifest): void {
-    this._manifest = m;
+    this.manifest = m;
   }
 
   private readonly framebuffer = new Uint8Array(FRAMEBUFFER_SIZE);

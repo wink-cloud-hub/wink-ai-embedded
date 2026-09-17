@@ -1,5 +1,5 @@
 import { definePeripheral as e, pinsFromBinderVariant as t, resolvePluginInstanceId as n } from "@wink-ai/unisim-ui";
-import { resolvePluginIdentity as r } from "@wink-ai/unisim";
+import { resolvePluginIdentity as r } from "@wink-ai/unisim-sdk";
 import { createCommentVNode as i, createElementBlock as a, createElementVNode as o, defineComponent as s, normalizeClass as c, onBeforeUnmount as l, onMounted as u, openBlock as d, ref as f, toDisplayString as p, watch as m } from "vue";
 import "@wokwi/elements";
 //#region builtin/buzzer/1.0.0/src/CanvasGlyph.vue?vue&type=script&setup=true&lang.ts
@@ -99,7 +99,7 @@ var h = ["hasSignal"], g = { class: "buzzer-badge-area" }, _ = { class: "buzzer-
 			}), document.addEventListener("visibilitychange", j));
 		});
 		function j() {
-			typeof document > "u" || (document.hidden ? O() : t.hasSignal && !n.value && D(t.frequency ?? 0));
+			typeof document < "u" && (document.hidden ? O() : t.hasSignal && !n.value && D(t.frequency ?? 0));
 		}
 		return m(() => [
 			t.hasSignal,
@@ -213,7 +213,7 @@ var h = ["hasSignal"], g = { class: "buzzer-badge-area" }, _ = { class: "buzzer-
 			}), document.addEventListener("visibilitychange", F));
 		});
 		function F() {
-			typeof document > "u" || (document.hidden ? S() : t.hasSignal && !n.value && x(t.frequency));
+			typeof document < "u" && (document.hidden ? S() : t.hasSignal && !n.value && x(t.frequency));
 		}
 		return m(() => [
 			t.hasSignal,

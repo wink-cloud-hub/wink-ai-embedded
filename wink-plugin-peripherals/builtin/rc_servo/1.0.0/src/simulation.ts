@@ -36,7 +36,7 @@ import {
   type ManifestFactory,
   type PeripheralManifest,
   type PeripheralManifestPinInput,
-} from '@wink-ai/unisim';
+} from '@wink-ai/unisim-sdk';
 import { angleToPwmDuty, pwmDutyToAngle } from './physics/pwm-angle-duty';
 
 declare const __PLUGIN_TYPE__: string | undefined;

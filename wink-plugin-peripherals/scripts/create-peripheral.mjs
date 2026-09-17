@@ -38,6 +38,8 @@ const pascalCaseName = type
   .map(w => w.charAt(0).toUpperCase() + w.slice(1))
   .join('');
 
+const upperSnakeName = type.toUpperCase();
+
 const displayName = type
   .split('_')
   .filter(Boolean)
@@ -93,7 +95,7 @@ fs.writeFileSync(
   type PluginContext,
   type PeripheralManifest,
   type ManifestFactory,
-} from '@wink-ai/unisim';
+} from '@wink-ai/unisim-sdk';
 
 const identity = resolvePluginIdentity(import.meta.url, '${type}', '${version}', '${category}');
 
@@ -180,7 +182,68 @@ export default {
   'utf8'
 );
 
-// 6. src/CanvasGlyph.vue
+// 6. src/variants.ts
+// The build layout gate (`tools/peripheral/_layout.py`) requires this file; it
+// also gives authors the standard topology/appearance extension point used by
+// the builtin peripherals (copy -> edit -> build workflow).
+fs.writeFileSync(
+  path.join(srcDir, 'variants.ts'),
+  `import type { PinsOverlayMap, GeneratedBinderPin } from '@wink-ai/unisim-ui';
+
+export type ${pascalCaseName}VariantKey = 'default';
+
+const ${upperSnakeName}_FALLBACK_PINS: readonly GeneratedBinderPin[] = Object.freeze([
+  {
+    name: 'SIG',
+    direction: 'out',
+    signal: 'digital',
+    catalogType: 'digital',
+    simRole: 'signal',
+    aliases: ['sig', 'SIG', 'signal'],
+    required: true,
+  },
+  {
+    name: 'VCC',
+    direction: 'power',
+    signal: 'power',
+    catalogType: 'power',
+    simRole: 'vcc',
+    aliases: ['vcc', 'VCC', '5v', '3v3'],
+    required: false,
+  },
+  {
+    name: 'GND',
+    direction: 'ground',
+    signal: 'power',
+    catalogType: 'power',
+    simRole: 'gnd',
+    aliases: ['gnd', 'GND', 'ground'],
+    required: false,
+  },
+]);
+
+export const ${upperSnakeName}_TOPOLOGIES = Object.freeze({
+  default: Object.freeze({
+    variant: 'default' as const,
+    getPins: (): readonly GeneratedBinderPin[] => ${upperSnakeName}_FALLBACK_PINS,
+    pinsOverlay: Object.freeze({}) as Readonly<PinsOverlayMap>,
+    defaultAppearanceId: '${type}_default',
+  }),
+});
+
+export const ${upperSnakeName}_APPEARANCES = Object.freeze({
+  ${type}_default: Object.freeze({
+    appearanceId: '${type}_default',
+    variant: 'default' as const,
+    displayName: '${displayName}',
+    searchAliases: Object.freeze(['${type}', 'default'] as const),
+  }),
+});
+`,
+  'utf8'
+);
+
+// 7. src/CanvasGlyph.vue
 fs.writeFileSync(
   path.join(srcDir, 'CanvasGlyph.vue'),
   `<script setup lang="ts">
@@ -237,7 +300,7 @@ defineProps<{
   'utf8'
 );
 
-// 7. src/WorldWidget.vue
+// 8. src/WorldWidget.vue
 fs.writeFileSync(
   path.join(srcDir, 'WorldWidget.vue'),
   `<script setup lang="ts">
@@ -277,7 +340,7 @@ defineProps<{
   'utf8'
 );
 
-// 8. src/definition.ts
+// 9. src/definition.ts
 fs.writeFileSync(
   path.join(srcDir, 'definition.ts'),
   `import {
@@ -285,7 +348,7 @@ fs.writeFileSync(
   type PeripheralDefinition,
   type PeripheralPropsSchema,
 } from '@wink-ai/unisim-ui';
-import { resolvePluginIdentity } from '@wink-ai/unisim';
+import { resolvePluginIdentity } from '@wink-ai/unisim-sdk';
 
 import CanvasGlyph from './CanvasGlyph.vue';
 import WorldWidget from './WorldWidget.vue';
@@ -343,6 +406,7 @@ console.log('  - vite.config.ui.ts');
 console.log('  - tsconfig.json');
 console.log('  - README.md');
 console.log('  - src/simulation.ts');
+console.log('  - src/variants.ts');
 console.log('  - src/definition.ts');
 console.log('  - src/CanvasGlyph.vue');
 console.log('  - src/WorldWidget.vue');

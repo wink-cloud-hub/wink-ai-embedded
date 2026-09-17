@@ -6,7 +6,7 @@ import {
   type PeripheralManifest,
   type PeripheralManifestPinInput,
   type ManifestFactory,
-} from '@wink-ai/unisim';
+} from '@wink-ai/unisim-sdk';
 
 export type LedVariant = 'default';
 
