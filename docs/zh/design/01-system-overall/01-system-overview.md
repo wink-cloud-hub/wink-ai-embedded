@@ -77,6 +77,7 @@ Wink-AI 的系统级破局之道：
 4. **外设与环境交互的物理模型 (Plant & Environment Physics Model)**：
    * **职责**：解决**元器件与外部物理世界法则（力、热、光、电、声、几何空间）交互**的数学函数化。
    * **实现**：集成于前端 3D 产品世界（ProductWorld）与物理仿真插件（Simulation Plugins）。包括避障小车的两轮差速运动学方程、超声波发射在三维障碍物空间的飞行时间（ToF）射线检测、摩擦力与接触阻抗。这一层赋予了嵌入式控制代码真实的“物理环境反馈闭环”。
+   * **设计规范归口**：规划归口于专属模块 `05-plant-and-environment/`（实施计划详见 [PLAN-20260919-PLANT-ENV-DOCS](../../implementation-plans/core/2026-09-19-plant-and-environment-design-docs-plan.md)）。
 
 **物理世界因果驱动链**：
 $$\text{芯片时钟与控制指令} \xrightarrow{\text{通道信号传输}} \text{外设机电动作} \xrightarrow{\text{物理法则作用}} \text{环境状态演化} \xrightarrow{\text{物理感知反馈}} \text{传感器采样} \xrightarrow{\text{通道数据回传}} \text{芯片中断与控制决策}$$
