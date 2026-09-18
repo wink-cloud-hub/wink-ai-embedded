@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "winkcli_version": "0.1.0",
-  "generated_at": "2026-09-15T06:15:44Z",
+  "generated_at": "2026-09-18T14:10:39Z",
   "global_flags": [
     {
       "flags": [
@@ -1332,8 +1332,56 @@
         {
           "name": "install",
           "aliases": [],
-          "help": "Install or reinstall compatible winksim engine into ~/.wink/sim/",
-          "flags": [],
+          "help": "Install or reinstall the embedded winksim engine into ~/.wink/sim/",
+          "flags": [
+            {
+              "flags": [
+                "--from-registry"
+              ],
+              "dest": "from_registry",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Legacy path: install @wink-ai/unisim from the configured registry instead of the embedded runtime"
+            },
+            {
+              "flags": [
+                "--quiet"
+              ],
+              "dest": "quiet",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Suppress notices"
+            }
+          ],
+          "subcommands": []
+        },
+        {
+          "name": "rollback",
+          "aliases": [],
+          "help": "Switch back to the previous simulation runtime",
+          "flags": [
+            {
+              "flags": [
+                "--quiet"
+              ],
+              "dest": "quiet",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Suppress notices"
+            }
+          ],
           "subcommands": []
         },
         {
@@ -1556,6 +1604,19 @@
               "nargs": null,
               "choices": null,
               "help": "Browser channel for browser simulation (e.g. chrome, msedge, chromium)"
+            },
+            {
+              "flags": [
+                "--quiet"
+              ],
+              "dest": "quiet",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Suppress runtime preparation notices (also honors WINK_QUIET=1)"
             }
           ],
           "subcommands": []
@@ -1563,7 +1624,61 @@
         {
           "name": "update",
           "aliases": [],
-          "help": "Update winksim simulation engine to latest version",
+          "help": "Update winksim via the signed release channel (falls back to embedded floor)",
+          "flags": [
+            {
+              "flags": [
+                "--version"
+              ],
+              "dest": "version",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Pin a specific engine version to install from the channel"
+            },
+            {
+              "flags": [
+                "--offline"
+              ],
+              "dest": "offline",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Skip the online channel and reinstall the embedded floor"
+            },
+            {
+              "flags": [
+                "--quiet"
+              ],
+              "dest": "quiet",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Suppress notices"
+            }
+          ],
+          "subcommands": []
+        },
+        {
+          "name": "verify-embed",
+          "aliases": [],
+          "help": "Verify the embedded runtime payload (hashes + content redlines)",
+          "flags": [],
+          "subcommands": []
+        },
+        {
+          "name": "versions",
+          "aliases": [],
+          "help": "List installed simulation runtime versions and the active one",
           "flags": [],
           "subcommands": []
         }
