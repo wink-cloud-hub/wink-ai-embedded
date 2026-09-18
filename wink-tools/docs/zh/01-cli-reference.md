@@ -111,7 +111,7 @@ winkcli pack binary --target host --out dist/wink-sdk-host
 <!-- BEGIN AUTO-GENERATED: CLI-TREE -->
 ## Appendix A - Full Command Reference (auto-generated, do not edit)
 
-> winkcli `v0.1.0` · snapshot schema 1 · generated 2026-09-15T06:13:16Z
+> winkcli `v0.1.0` · snapshot schema 1 · generated 2026-09-18T14:11:23Z
 
 ### Global flags
 
@@ -354,7 +354,16 @@ Check simulation engine, JS runtime, and plugins health
 
 #### `winkcli sim install`
 
-Install or reinstall compatible winksim engine into ~/.wink/sim/
+Install or reinstall the embedded winksim engine into ~/.wink/sim/
+
+- `--from-registry` · Legacy path: install @wink-ai/unisim from the configured registry instead of the embedded runtime
+- `--quiet` · Suppress notices
+
+#### `winkcli sim rollback`
+
+Switch back to the previous simulation runtime
+
+- `--quiet` · Suppress notices
 
 #### `winkcli sim run`
 
@@ -376,10 +385,23 @@ Auto-build WASM simulation assets and launch simulation
 - `--url` · Browser target page URL (default: http://localhost:5173 or http://127.0.0.1:5174)
 - `--cdp` · Connect to existing browser / Tauri window via CDP URL (e.g. http://127.0.0.1:9222)
 - `--channel` · Browser channel for browser simulation (e.g. chrome, msedge, chromium)
+- `--quiet` · Suppress runtime preparation notices (also honors WINK_QUIET=1)
 
 #### `winkcli sim update`
 
-Update winksim simulation engine to latest version
+Update winksim via the signed release channel (falls back to embedded floor)
+
+- `--version` · Pin a specific engine version to install from the channel
+- `--offline` · Skip the online channel and reinstall the embedded floor
+- `--quiet` · Suppress notices
+
+#### `winkcli sim verify-embed`
+
+Verify the embedded runtime payload (hashes + content redlines)
+
+#### `winkcli sim versions`
+
+List installed simulation runtime versions and the active one
 
 ### `winkcli test`
 

@@ -111,8 +111,8 @@ winkcli sim verify-embed --json  # verify the embedded payload hashes (distribut
 | `WINK_QUIET=1` | Suppress runtime preparation notices (same as `--quiet`) |
 
 > Online updates are verified with an offline Ed25519 release key and per-file sha256; a
-> tampered manifest or asset is rejected. Until the public release key is provisioned in a
-> winkcli build, online updates fail closed and the embedded offline floor is used.
+> tampered manifest or asset is rejected. Until the public release key is provisioned in the
+> shipped build, online updates fail closed and the embedded offline floor is used.
 
 ### 2.3 ESP32 hardware (`esp32`)
 
