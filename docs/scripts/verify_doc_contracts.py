@@ -94,7 +94,7 @@ REDLINE_RULES: List[RedlineRule] = [
         severity="FATAL",
         name="兄弟 Monorepo 物理包相对路径泄露",
         pattern=re.compile(
-            r"(?:\.\./)+|\bwink-ai/packages/",
+            r"(?:\.\./)+wink-ai/packages/|\bwink-ai/packages/",
             re.IGNORECASE,
         ),
         remediation="禁止暴露跨仓物理相对路径。请使用标准黑盒包名或契约规范代替物理文件路径。",
