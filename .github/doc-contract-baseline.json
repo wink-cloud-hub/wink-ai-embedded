@@ -1,20 +1,11 @@
 {
   "version": 1,
   "description": "Baseline of historical documentation contract violations for gradual remediation.",
-  "exempt_files_count": 12,
+  "exempt_files_count": 3,
   "exempt_files": [
-    "docs/decisions/core/0077-gpio-write-drive-strength-axis.md",
-    "docs/implementation-plans/core/2026-07-10-peripheral-plugin-registry-plan.md",
     "docs/implementation-plans/core/2026-07-11-avoidance-car-phase1-servo-observe-plan.md",
     "docs/implementation-plans/core/2026-07-11-catalog-ssot-convergence-plan.md",
-    "docs/implementation-plans/core/2026-09-09-vendor-cms8s78xx-apps-migration-plan.md",
-    "docs/implementation-plans/core/2026-09-12-high-fidelity-simulation-system-hardening-plan.md",
-    "docs/implementation-plans/core/2026-09-12-pal-pwm-bp-migration-and-hardening-plan.md",
-    "docs/reviews/core/2026-07-12-avoidance-car-phase1-servo-observe-review.md",
-    "docs/todolist/timing-infrastructure-and-dal-roadmap/10-review-2026-08-23-code-audit.md",
-    "docs/todolist/timing-infrastructure-and-dal-roadmap/12-wink-tools-embedded-guard-integration-plan.md",
-    "docs/zh/design/01-system-overall/01-system-overview.md",
-    "docs/zh/design/07-platform-governance/01-device-model-registry.md"
+    "docs/reviews/core/2026-07-12-avoidance-car-phase1-servo-observe-review.md"
   ],
   "fingerprints": []
 }

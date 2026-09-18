@@ -23,7 +23,7 @@
 | **优先级** | 🔴 P0（Phase-A 固件去抖与定点斜率）+ 🟡 P1（Phase-B 跨仓契约与模型演进） |
 | **关联技术设计** | [`docs/zh/design/04-wasm-simulation/00-README.md`](../../zh/design/04-wasm-simulation/00-README.md) |
 | **关联设计规范** | [`docs/zh/design/04-wasm-simulation/04-assurance/01-consistency-spec.md`](../../zh/design/04-wasm-simulation/04-assurance/01-consistency-spec.md) |
-| **关联评审记录** | [`packages/unisim/docs/roadmap/design/high-fidelity-simulation-architecture.review.md`](file:///d:/workspaces/ai-coding/wink-ai/unisim/docs/roadmap/design/high-fidelity-simulation-architecture.review.md) |
+| **关联评审记录** | UniSim 引擎仓高保真仿真架构评审（内部文档） |
 | **前置依赖计划** | 无，本仓 Phase-A 零外部阻塞 |
 | **后续演进计划** | [`PLAN-20260915-APPLIANCE-SAFETY-AND-GB4706`](./2026-09-15-appliance-safety-and-gb4706-compliance-plan.md) |
 | **替代/废弃** | 替代 `v1.0` ~ `v2.5` 草案 |
@@ -296,7 +296,7 @@ static void button_scan_10ms(void) {
 | **负责人** | 跨仓联调组 |
 | **前置依赖** | **D-003**（UniSim TS plant-profile）✅ 2026-09-13 落地；**D-004**（Frontend 原子波形注入）✅ 2026-09-13 落地 |
 | **预估工时** | 6 小时 |
-| **修改文件** | `wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-fast-boil.scenario.json`（本仓）；sibling `unisim` PLANT_LOOP 执行器（外仓） |
+| **修改文件** | `wink-micro-app/mcs51_health_pot/unisim-scenarios/health-pot-fast-boil.scenario.json`（本仓）；UniSim 引擎侧 PLANT_LOOP 执行器（外仓） |
 
 #### 详细步骤
 - [x] **Step 1：配置并运行 `health-pot-fast-boil.scenario.json`**
