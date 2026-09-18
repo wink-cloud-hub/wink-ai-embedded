@@ -9,7 +9,7 @@
 | 关联代码（总览） | `wink-micro-os/osal/wasm/`、`wink-micro-os/targets/{wasm,common}/`、`@wink-ai/unisim`（**UniSim 仿真引擎底座**；独立 TS SDK 包契约，以模块级定义为准。逐模块规则见 §4.1） |
 | 上次核对 | 2026-08-11 Amend（基于 `review.md` 嵌入式架构评审修补：PWM 通道 1b 重分类、降级不丢信息量硬铁律、控制面 IRQ/DMA/Timer 补齐） |
 
-> **现行入口**：3.0 已于 2026-08-02 通过 §7 门禁切换为 **Active**，是 Wasm 仿真设计的现行 SSOT 阅读入口。2026-08-11 依据 `review.md` 评审补充 **Amend**：修正 PWM 通道分类（通道 1b）、声明“Behavioral 降级不得破坏脉宽/测距信息语义”、补充控制面三线（IRQ/DMA/Timer）。TS 侧配套设计见 `wink-ai/packages/unisim/docs/design/unified-peripheral-channel-architecture.md`。
+> **现行入口**：3.0 已于 2026-08-02 通过 §7 门禁切换为 **Active**，是 Wasm 仿真设计的现行 SSOT 阅读入口。2026-08-11 依据 `review.md` 评审补充 **Amend**：修正 PWM 通道分类（通道 1b）、声明“Behavioral 降级不得破坏脉宽/测距信息语义”、补充控制面三线（IRQ/DMA/Timer）。TS 侧配套设计由 UniSim 引擎仓维护（统一外设通道架构篇）。
 
 ---
 

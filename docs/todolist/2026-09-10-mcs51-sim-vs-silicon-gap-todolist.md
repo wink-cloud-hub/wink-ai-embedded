@@ -4,7 +4,7 @@
 | :--- | :--- |
 | **文档编号** | MCS51-GAP-2026-09-10 |
 | **创建日期** | 2026-09-10 |
-| **所属模块** | `wink-micro-os/frameworks/mcs51/`、`wink-micro-app/mcs51_*`、UniSim 无头执行链（sister repo `wink-ai/packages/unisim`） |
+| **所属模块** | `wink-micro-os/frameworks/mcs51/`、`wink-micro-app/mcs51_*`、UniSim 无头执行链 |
 | **状态** | **Draft / 待评审**（todolist，执行前需迁移为 Layer-② 技术设计或 Layer-③ 实施计划，重大项补 ADR）。2026-09-10 已合并第二轮外部评审（见 §8）与第三轮自查（见 §9）。**阶段 1 热修已落地（2026-09-10，未提交）：GAP-01/22/04/13 + §9.5 审计脚本，31 个 mcs51 host 测试全绿 + 8 应用 22 个无头场景全绿（生产 wasm 重建），见 §10** |
 | **审计基线** | master @ e473f35；对照 `docs/vendors/Cmsemicon/CMS8S78xx_DemoCode_V2.0.2`（原厂头文件/StdDriver）、CMS8S78xx 数据手册 V1.0.7、参考手册 V1.1.1 |
 | **关联决策** | ADR-0012（契约诚实）、ADR-0070（C++ 拦截层）、ADR-0071（数据面代理）、ADR-0072（双时钟域）、ADR-0073（CMS8S ADC 真实寄存器图）、ADR-0076（Native/ISS 双后端）、ADR-0077（准双向口） |

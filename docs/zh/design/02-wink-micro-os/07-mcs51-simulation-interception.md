@@ -118,7 +118,7 @@ M0–M6 在**受限 ctest harness**（host fallback + node 桩）内验证；ADR
 - **双消费者 SSOT**：mcs51 app 的 `wink-app.json` 同时供 ① C 构建（板名检出绕开 DAL 裁剪）与 ② 前端 device-tree（`winkcli sim run` 经 `runtime_device_tree.py` 生成 `unisim-assets/device-tree.json`）。button/led 用 `gpio_pin`（两 manifest 皆别名）+ `active_low`/`active_high`。`device-tree.json` 为生成物，不手写。
 - **headless 证据规范（统一约定）**：所有证据 scenario 必须放在 `<app>/unisim-scenarios/*.scenario.json`（与 `pdk_button_led`/`oled_dashboard` 一致；前端 workspace-scanner 只发现 `unisim-scenarios/` 或 `scenarios/` 目录，散在 app 根目录的 scenario 发现不到），且统一经跨仓 CLI headless 目录形式调用（`--scenarios` 传**目录**则自动跑该目录下全部 `*.scenario.json`；自动构建 WASM + 生成 device-tree + 抽资产，再用真实 PinArbiter + 真实插件）：
   ```
-  cd <sister>/wink-ai/packages/wink-tools
+  cd <winkcli 工具链根目录>
   WINK_DEV=1 python wink.py sim run --app "<abs app dir>" --mode headless \
             --scenarios "<abs app dir>/unisim-scenarios" --reporter spec
   ```
@@ -196,7 +196,7 @@ native 功能级后端的虚拟钟（ADR-0072）：`s_virtual_us` 只在拦截�
 - **esp32 PAL**（`pal_wasm_ch1_gpio.c` init 初始电平 + 运行写两处）：恒传 `WINK_DRIVE_SUPPLY`——push-pull 高/低皆强驱动，**电气结果逐位不变**（仅意图显式化）。
 - **8051 proxy 边沿分发**（`mcs51_proxy.hpp` sbit 与 whole-port 两处 diff 边沿）：上升锁存沿 → `MCS51_DRIVE_WEAK`（1），下降锁存沿 → `MCS51_DRIVE_SUPPLY`（3）；proxy 不区分输入/输出方向（规则对两者一致）。
 - **8051 上电种子**（`mcs51_bridge.cpp mcs51_framework_init()`，`trap_reset()` 之后）：**同时** ① 置 P0–P3 `wink_mcs51_sfr_shadow[0x80/0x90/0xA0/0xB0] = 0xFF`（锁存器真实上电态），② 对 32 脚（P0.0–P3.7）调 `js_pal_gpio_write(pin, true, WEAK)` 登记弱高驱动。两者缺一不可：仅置影子则固件首条 `LED=1` 无 diff 边沿、host 端无任何 MCU 驱动注册（曾使 `mcs51_analog_threshold` 启动 LED-off 断言回归）；仅登记驱动不置影子，则固件 `Pn=0xFF` 仍产生 0→1 伪边沿。种子后固件标准 `Pn = 0xFF` 与影子同值 → diff=0、无边沿、不重复注册，**精确镜像硅片（上电从不跳变）**。
-- **host 桥**（wink-ai `unisim-bridge-factory.ts`）：强度恒等映射进 `arbiter.setDriver`，非 1/2/3/缺省兜底 SUPPLY（`strength ?? SUPPLY`）——旧 wasm 配新 host 退回 esp32 行为不炸；新 wasm 配旧 host 时 JS 忽略多余实参、强度丢失（mcs51 退回强驱动、旧 bug 复现）但不崩。ABI SSOT 见 abi-catalog `js_pal_gpio_write` 条目（strength 参数 `desc` 编码枚举，挂 ADR-0077）。
+- **host 桥**（UniSim 宿主引脚桥）：强度恒等映射进 `arbiter.setDriver`，非 1/2/3/缺省兜底 SUPPLY（`strength ?? SUPPLY`）——旧 wasm 配新 host 退回 esp32 行为不炸；新 wasm 配旧 host 时 JS 忽略多余实参、强度丢失（mcs51 退回强驱动、旧 bug 复现）但不崩。ABI SSOT 见 abi-catalog `js_pal_gpio_write` 条目（strength 参数 `desc` 编码枚举，挂 ADR-0077）。
 - **仲裁自洽**：按键 P3.2 锁存 1 = WEAK-HIGH 上拉，按下插件 SUPPLY-LOW → SUPPLY 胜、读 LOW，释放仅剩 WEAK-HIGH → HIGH；WEAK vs SUPPLY 异态**不**触发 CONFLICT（不同强度）。未修改 Keil 例程的标准 `Pn=0xFF` 初始化即可工作——health_pot 已删除「不写输入口」workaround、恢复 `P3 = 0xFF`。
 - Read-Pin 三路解析序（ADR-0074）与 RMW 只读锁存红线（ADR-0071）**不变**；本决策仅改「写边沿上报的强度」。证据：mcs51 ctest host 23 + wasm/Node 10 全绿（含新增 WEAK/SUPPLY 强度断言）、5 carrier + health_pot 2/2 headless、esp32 emcc/Node GPIO 语义 9/9（SUPPLY 路径不变）。
 - **P3 方向切换重驱/释放（2026-09-12，PLAN-20260912-MCS51-P3-TRIS）**：`PxTRIS`（SFR 0x9A/0xA1-A3）经 SFR 代理写钩子（`mcs51_trap_register_sfr_write`）触发芯片包 `on_tris_write`——0→1 且非 AN 时按锁存立即重驱（latch=0 → SUPPLY 强低；latch=1 → OD 则 `js_pal_gpio_release_mcu`，否则 WEAK 弱高），1→0 时 `js_pal_gpio_release_mcu(pin)`（HiZ，自驱不残留）；`cms8s_gpio_reset` 复位释放全 32 脚（bridge 上电种子在 reset 之后重放，净基线不变）。host 无 arbiter，release 面记录为 `wink_mcs51_host_gpio_release_{count,pin,reset}()` 供单测断言；真值由跨仓 headless 实证。证据：`test_mcs51_gpio_dir` T2/T8-T11、wasm/Node `gpio`/`cms8s_adc`、五载体 5/5 + health_pot 15/15 无回归，`vendor_cms8s78xx_v202/adc_ldo`/`adc_hardware_trigger` EOC `ASSERT_WAVEFORM` 复绿。

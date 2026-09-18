@@ -1,32 +1,20 @@
 {
   "version": 1,
   "description": "Baseline of historical documentation contract violations for gradual remediation.",
-  "exempt_files_count": 24,
+  "exempt_files_count": 12,
   "exempt_files": [
     "docs/decisions/core/0077-gpio-write-drive-strength-axis.md",
-    "docs/decisions/core/0079-micro-app-nested-app-discovery.md",
     "docs/implementation-plans/core/2026-07-10-peripheral-plugin-registry-plan.md",
     "docs/implementation-plans/core/2026-07-11-avoidance-car-phase1-servo-observe-plan.md",
     "docs/implementation-plans/core/2026-07-11-catalog-ssot-convergence-plan.md",
-    "docs/implementation-plans/core/2026-08-30-mcs51-stage2-live-channels-plan.md",
-    "docs/implementation-plans/core/2026-09-09-micro-app-nested-discovery-plan.md",
     "docs/implementation-plans/core/2026-09-09-vendor-cms8s78xx-apps-migration-plan.md",
     "docs/implementation-plans/core/2026-09-12-high-fidelity-simulation-system-hardening-plan.md",
     "docs/implementation-plans/core/2026-09-12-pal-pwm-bp-migration-and-hardening-plan.md",
-    "docs/implementation-plans/wokwi-dal-type-coverage-type/00.5-pal-adc-subsystem-plan.md",
-    "docs/implementation-plans/wokwi-dal-type-coverage-type/17-p2-sensor-load-cell-plan.md",
-    "docs/implementation-plans/wokwi-dal-type-coverage-type/18-p0-sensor-ntc-temperature-plan.md",
     "docs/reviews/core/2026-07-12-avoidance-car-phase1-servo-observe-review.md",
-    "docs/reviews/core/2026-09-13-high-fidelity-simulation-plan-closure.md",
-    "docs/todolist/2026-09-10-mcs51-sim-vs-silicon-gap-todolist.md",
     "docs/todolist/timing-infrastructure-and-dal-roadmap/10-review-2026-08-23-code-audit.md",
     "docs/todolist/timing-infrastructure-and-dal-roadmap/12-wink-tools-embedded-guard-integration-plan.md",
     "docs/zh/design/01-system-overall/01-system-overview.md",
-    "docs/zh/design/02-wink-micro-os/03-directory-architecture.md",
-    "docs/zh/design/02-wink-micro-os/07-mcs51-simulation-interception.md",
-    "docs/zh/design/04-wasm-simulation/00-README.md",
-    "docs/zh/design/07-platform-governance/01-device-model-registry.md",
-    "docs/zh/tech-designs/core/2026-07-30-dal-variant-unified-field-design.md"
+    "docs/zh/design/07-platform-governance/01-device-model-registry.md"
   ],
   "fingerprints": []
 }

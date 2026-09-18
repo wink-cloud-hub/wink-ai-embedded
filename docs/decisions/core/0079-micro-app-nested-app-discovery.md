@@ -5,7 +5,7 @@
 | 状态 | **Accepted（已采纳，2026-09-09 拍板）** |
 | 日期 | 2026-09-09 |
 | 触发 | `wink-micro-app/` 长期平铺，app 数量增长（MCS-51 厂商示例、vendor 示例、业务 demo 混放）后缺乏分组能力；而各处 app 发现逻辑（Python wink-tools、unisim 批量一致性扫描、embedded-frontend 工作区扫描）均写死「只枚举一级子目录」，无法演进为分组结构。 |
-| 影响范围 | `wink-ai/packages/wink-tools`（新增 `tools/app_discovery.py`；`cli/_shared.py`、`cli/commands/build/sim.py`、`cli/commands/sim/__init__.py`、`cli/bootstrap.py`、`cli/commands/create/__init__.py`、`esp32/generate_app_sources.py`、`lint/packs/user_surface.py`）；`wink-ai/packages/unisim`（新增 `src/discovery/micro-app-discovery.ts`；`embedded-workspace-resolver.ts`、`simulation-runner/consistency/batch-consistency-scanner.ts`、`simulation-runner/browser/browser-runner-node.mjs`）；`wink-ai/packages/embedded-frontend`（`workspace-scanner.ts`、`types.ts`）；CMake 侧经 `WINK_APP_DIR` 路径直通，无需修改。 |
+| 影响范围 | 三处 app 发现器：① winkcli 工具链（新增共享发现组件，并改接 build-sim / sim / create / bootstrap / esp32 源生成 / user-surface lint 等调用点）；② UniSim 引擎（新增共享 walker，改接工作区解析器、批量一致性扫描器与浏览器 runner）；③ 前端工作台工作区扫描器。CMake 侧经 `WINK_APP_DIR` 路径直通，无需修改。 |
 | 决策者 | 嵌入式系统架构团队 |
 | 关联 ADR | 无直接前置；目录约定见 [02-wink-micro-os/03-directory-architecture](../../zh/design/02-wink-micro-os/03-directory-architecture.md)。 |
 | 关联计划 | [`docs/implementation-plans/core/2026-09-09-micro-app-nested-discovery-plan.md`](../../implementation-plans/core/2026-09-09-micro-app-nested-discovery-plan.md) |

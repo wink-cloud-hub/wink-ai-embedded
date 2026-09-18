@@ -9,7 +9,7 @@
 | **Codegen 描述** | `wink-micro-os/codegen/drivers/ntc.yaml`（**Schema 1.1 强校验规范**） |
 | **新建 Role 描述** | `wink-micro-os/codegen/roles/temperature_sensor.yaml`（前置新增 Role 资产） |
 | **新建 Init 模板** | `wink-micro-os/codegen/drivers/templates/ntc_init.c.j2`（设备树初始化模板，内嵌 per-instance LUT） |
-| **LUT 生成脚本（跨仓）** | `wink-ai/packages/wink-tools/tools/codegen/scripts/ntc_lut_gen.py`（CLI + 可 import 库，与 `list_drivers.py` 同级）；codegen 生成器集成位于 `wink-tools/tools/codegen/generators/` |
+| **LUT 生成脚本（跨仓）** | winkcli 工具链 codegen 脚本区的 `ntc_lut_gen.py`（CLI + 可 import 库，与驱动清单脚本同级）；codegen 生成器集成位于工具链 codegen generators 区 |
 | **LUT 产物** | 由 codegen 按每个 NTC 实例材料参数离线生成，渲染进 embedded 仓 `build/generated/<app>/...`（gitignore，**不提交**，无 committed `.inc`/内置表） |
 | **单测文件路径** | `wink-micro-os/test/unit/dal/test_dal_ntc.c`（Unity C 测试套件，路径已校准） |
 | **关联规范** | [ADR-0069](../../decisions/core/0069-sensor-ntc-independent-type-and-safety-contract.md)（NTC 独立 Type 与安规裁决）、[`00.1-category-type-variant-wokwi-ssot.md`](./00.1-category-type-variant-wokwi-ssot.md) (v2.5.0)、[`dal-api-consistency-spec.md`](../../../../../wink-micro-os/docs/dal-development-guide/dal-api-consistency-spec.md)、[ADR-0017](../../decisions/core/0017-blocking-api-hard-isolation.md) (严格非阻塞隔离)、[ADR-0056](../../decisions/core/0056-cross-profile-quantity-ab-class-and-scaled-integers.md) (B 类传感器量纲 `_ddegc`)、[ADR-0057](../../decisions/core/0057-pal-adc-subsystem-and-channel-3-analog-contract.md) (PAL ADC 资源治理) |
@@ -607,10 +607,10 @@ verbs:
 > Full Profile 若只使用 `read_degc` 浮点路径、不需要定点 API，codegen 可在配置里加 `no_lut: true` 跳过 LUT 数组并令 `.lut_table = NULL`（Phase 2 可选增强；Phase 1 统一生成 LUT，保证两路径均可用）。
 
 ### 5.3 新建离线定点 LUT 生成工具 (跨仓 `wink-tools`)
-路径：`wink-ai/packages/wink-tools/tools/codegen/scripts/ntc_lut_gen.py`（与 `list_drivers.py` 同级，属 codegen 工具链，非驱动运行时）。双重用途：
+路径：winkcli 工具链 codegen 脚本区的 `ntc_lut_gen.py`（与驱动清单脚本同级，属 codegen 工具链，非驱动运行时）。双重用途：
 
 1. **CLI**：供人工审查/调试，stdout 或 `--output` 输出 C 数组；
-2. **可 import 库** `generate_ntc_lut(r25, b, r_pull, is_pullup) -> list[int]`：由 codegen 生成器在渲染 `ntc_init.c.j2` 前调用，把 33 项格式化为 `lut_array` 注入 j2 上下文（集成点：`wink-tools/tools/codegen/generators/`，渲染 `type==ntc` 实例模板前以 alias 展开后的材料参数调用）。
+2. **可 import 库** `generate_ntc_lut(r25, b, r_pull, is_pullup) -> list[int]`：由 codegen 生成器在渲染 `ntc_init.c.j2` 前调用，把 33 项格式化为 `lut_array` 注入 j2 上下文（集成点：工具链 codegen generators 区，渲染 `type==ntc` 实例模板前以 alias 展开后的材料参数调用）。
 
 生成产物随设备树实例代码渲染进 embedded 仓 `build/generated/<app>/...`（与现有 codegen 实例代码同处，gitignore），**不产生任何 committed 的 `.inc`/内置表文件**。
 
