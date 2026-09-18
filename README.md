@@ -161,56 +161,87 @@ Board definitions are the hardware SSOT: [`wink-tools/tools/codegen/boards/`](./
 
 ## Architecture
 
-The platform adopts a **"Dual-Wheel Architecture"**: on the left is the **Embedded Firmware Stack** (100% dual-target C code running inside MCU or Wasm), and on the right is the **Digital Twin Harness Stack** (a 4-layer holographic digitization of chip, channel, peripheral, and environmental physics inside the browser and CI containers). Both are driven and assembled from a single source of truth, `wink-app.json`, via the unified `winkcli` toolchain.
+The platform adopts a **"Dual-Wheel Architecture"**. To allow AI-generated firmware to safely and reliably bridge the virtual-physical divide, WinkMicroOS establishes a deterministic closed-loop across both a **macro engineering pipeline** and a **micro runtime co-simulation mechanism**.
+
+### 1 · Macro Workflow & Closed-Loop Delivery
+
+Driven by a single source of truth (`wink-app.json`), the unified `winkcli` toolchain orchestrates code generation, layered linting gates, and dual-target compilation. A complete Sim-to-Real loop is achieved by asserting telemetry traces streamed back from both virtual and physical targets:
 
 ```mermaid
 graph TD
-    classDef input fill:#e0f2fe,stroke:#0284c7,stroke-width:1.5px;
-    classDef tool fill:#fef3c7,stroke:#d97706,stroke-width:1.5px;
-    classDef fw fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px;
-    classDef sim fill:#f3e8ff,stroke:#9333ea,stroke-width:1.5px;
-    classDef target fill:#fee2e2,stroke:#dc2626,stroke-width:1.5px;
+    classDef input fill:#e0f2fe,stroke:#0284c7,stroke-width:1.5px,color:#0369a1;
+    classDef tool fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#92400e;
+    classDef core fill:#f1f5f9,stroke:#475569,stroke-width:1.5px,color:#1e293b;
+    classDef target fill:#fee2e2,stroke:#dc2626,stroke-width:1.5px,color:#b91c1c;
+    classDef verify fill:#f0fdf4,stroke:#16a34a,stroke-width:1.5px,color:#15803d;
 
-    Manifest["Application Manifest: wink-app.json (AI / Low-Code Generated)"]:::input
-    Manifest --> CLI["Unified CLI Toolchain: winkcli (wink-tools)<br>• wink gen codegen  • wink lint layering gates  • wink test sim assertions  • wink build/flash compilation"]:::tool
+    Manifest["Application Manifest (SSOT)<br><code>wink-app.json</code> (AI / Low-Code Topology)"]:::input
+    CLI["Unified Toolchain <code>winkcli</code><br>• Codegen (gen)  • Lint Gates (lint)  • Sim Assertions (test)  • Build & Flash (build)"]:::tool
 
-    CLI -->|Generates device_tree & App template| FW
-    CLI -->|Configures virtual peripherals & topology| SIM
+    DualWheel["<b>Dual-Wheel Co-Simulation Engine</b><br>100% Dual-Target C Source ⟷ UniSim Digital Twin<br>(Microsecond Virtual Clock · Behavioral High-Fidelity)"]:::core
 
-    subgraph DualWheel ["Dual-Wheel Dual-Target Co-Simulation Architecture"]
-        subgraph FW ["Embedded Firmware Stack (C Runtime)"]
-            App["App Layer (State Machine / Intent Orchestration)"]:::fw
-            BAL["BAL Business Abstraction (Events / Pure Math / Closed-Loop)"]:::fw
-            DAL["DAL Device Abstraction (Servo / Ultrasonic / OLED APIs)"]:::fw
-            PAL["PAL Platform Abstraction (GPIO / PWM / I2C / Timers / IRQ)"]:::fw
-            App --> BAL --> DAL --> PAL
-        end
+    WasmTarget["In-Browser / CI Behavioral Simulation<br>(UniSim Engine + 2D/3D Digital Harness)"]:::target
+    RealTarget["Physical MCU Board Deployment<br>(ESP32 · MCS-51 · Arduino · PDK)"]:::target
 
-        subgraph SIM ["Digital Twin Harness Stack (UniSim Sandbox)"]
-            Plant["4. Plant & Environment Physics (Kinematics / Space / ToF)"]:::sim
-            PeriphSim["3. Peripheral Device Model (Electromechanical / Fault Injection)"]:::sim
-            ChanSim["2. Channel & Interconnect Model (PinArbiter / 5-Channel Bypass)"]:::sim
-            ChipSim["1. Chip & Core Model (VirtualClock / Wasm / ISA Emulation)"]:::sim
-            Plant <--> PeriphSim <--> ChanSim <--> ChipSim
-        end
+    TraceCheck["Sim-to-Real Trace Comparison & Calibration<br><b>Golden Trace ⟷ UART Real Trace Regression Loop</b>"]:::verify
 
-        PAL <===>|Wasm-Bridge ABI / PAL Platform Bypass| ChanSim
-    end
+    Manifest -->|"Parse Board Topology"| CLI
+    CLI -->|"Drive Codegen & Sandbox Setup"| DualWheel
 
-    FW -.->|emcmake build| WasmTarget["In-Browser High-Fidelity Simulation<br>(UniSim Engine + 2D/3D Viewports)"]:::target
-    FW -.->|Cross-toolchain build| RealTarget["Physical MCU Board Deployment<br>(ESP32 · MCS-51 · Arduino · PDK)"]:::target
+    DualWheel -->|"emcmake wasm Build"| WasmTarget
+    DualWheel -->|"Cross-Compiler Toolchain"| RealTarget
 
-    SIM -.->|Golden Trace Consistency Assertion| TraceCheck["Sim-to-Real Trace Comparison & Calibration"]
-    RealTarget -.->|UART Real Trace Streaming| TraceCheck
+    WasmTarget -->|"Virtual Golden Trace"| TraceCheck
+    RealTarget -->|"Physical Board UART Trace"| TraceCheck
 ```
 
-### Core Architectural Pillars
+### 2 · Micro Dual-Wheel Runtime Co-Simulation
+
+Inside the core execution engine, the **Embedded C Firmware Stack** (left) mirrors the **UniSim Digital Twin Harness Stack** (right) layer by layer. They lock-step via the unified `Wasm-Bridge ABI` for microsecond-precise execution and seamless peripheral bypassing:
+
+```mermaid
+graph LR
+    classDef fw fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px,color:#15803d;
+    classDef sim fill:#f3e8ff,stroke:#9333ea,stroke-width:1.5px,color:#7e22ce;
+    classDef bridge fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#92400e;
+
+    subgraph FW ["Embedded Firmware Stack (C Runtime · 100% Dual-Target)"]
+        direction TB
+        App["<b>App Business Logic</b><br>State Machines · Intent Orchestration"]:::fw
+        BAL["<b>BAL Business Abstraction</b><br>Control Algorithms · Event Streams · Closed-Loop"]:::fw
+        DAL["<b>DAL Device Abstraction</b><br>Servo · Ultrasonic · OLED Semantic APIs"]:::fw
+        PAL["<b>PAL Platform Abstraction</b><br>GPIO · PWM · I2C · Timers · Interrupts"]:::fw
+        App --> BAL --> DAL --> PAL
+    end
+
+    subgraph BridgeZone ["Runtime Bridge Hub"]
+        direction TB
+        Bridge["<b>Wasm-Bridge ABI</b><br>─────────────────────<br>• Microsecond Step-Lock (VirtualClock)<br>• Virtual Pin & Bus Routing (PinArbiter)<br>• Physical Perception Injection (ADC/Echo)<br>• Destructive Fault Injection (Cut/Stall/Drop)"]:::bridge
+    end
+
+    subgraph SIM ["Digital Twin Harness Stack (UniSim Sandbox)"]
+        direction TB
+        Plant["<b>4. Plant & Environment Physics</b><br>Spatial Geometry · Kinematics · Obstacles"]:::sim
+        PeriphSim["<b>3. Peripheral Electromechanics</b><br>Inertia · Sensor Physical Characteristics · Aging"]:::sim
+        ChanSim["<b>2. Interconnect & Channel Model</b><br>PinArbiter · 5-Channel Bus Bypass Proxies"]:::sim
+        ChipSim["<b>1. Chip Core Sandbox</b><br>VirtualClock Advances · Heterogeneous ISA VMs"]:::sim
+        Plant <--> PeriphSim <--> ChanSim <--> ChipSim
+    end
+
+    PAL <===>|"PAL Platform Bypass Proxy"| Bridge
+    Bridge <===>|"Pin & Bus Bidirectional Event Streaming"| ChanSim
+    Bridge <===>|"Deterministic Timebase Stepping"| ChipSim
+
+    App -.->|"Closed-Loop Sensory & Actuation Feedback"| Plant
+```
+
+### 3 · Core Architectural Pillars
 
 1. **Unified SSOT Driving Engine**: A single source of truth, `wink-app.json`, defines hardware topology and configuration. `winkcli` orchestrates C code generation, architectural linting, headless testing, and firmware builds.
 2. **Dual-Wheel System**:
    * **Embedded Firmware Stack** (`App ➔ BAL ➔ DAL ➔ PAL`): 100% dual-target C code, compile-time static dispatch, zero malloc, microsecond hard real-time determinism.
    * **Digital Twin Harness Stack** (`Chip ➔ Channel ➔ Peripheral ➔ Physics`): 4-layer electromechanical and spatiotemporal digitization providing microsecond virtual clocks and physical causal closed-loops.
-3. **Closed-Loop Dual Delivery**: A single codebase can be compiled into WebAssembly for zero-hardware interactive testing and fault injection in the browser, or flashed unmodified onto real MCU hardware.
+3. **Closed-Loop Dual Delivery (Sim-to-Real)**: A single codebase can be compiled into WebAssembly for zero-hardware interactive testing and fault injection in the browser/CI, or flashed unmodified onto real MCU hardware, with UART trace streaming back for automated model calibration.
 
 ## Repository layout
 

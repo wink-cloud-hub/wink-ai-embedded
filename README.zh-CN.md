@@ -161,56 +161,87 @@ $ winkcli test                            # host 构建 + 全量测试（截至 
 
 ## 系统架构
 
-平台采用**“对偶双轮架构 (Dual-Wheel Architecture)”**：左侧为运行在 MCU 或 Wasm 内部的**嵌入式固件栈**（100% 虚实同源 C 源码），右侧为运行在浏览器及 CI 容器内的**数字实验台栈**（芯片/通道/外设/物理环境四层全息建模）。二者通过单一事实源 `wink-app.json` 由工具链 `winkcli` 统一驱动与组装。
+平台采用**“对偶双轮架构 (Dual-Wheel Architecture)”**。为了让 AI 生成的固件安全可靠地跨越虚实边界，系统从**宏观研发交付流水线**与**微观运行时咬合机制**两个维度构建了完整的确定性闭环体系。
+
+### 1 · 宏观研发与交付闭环 (Macro Workflow)
+
+平台以单一事实源 `wink-app.json` 为起点，由统一工具链 `winkcli` 驱动代码生成、分层门禁检测与双端同源编译，最终通过虚实 Trace 回传完成自动比对与模型标定：
 
 ```mermaid
 graph TD
-    classDef input fill:#e0f2fe,stroke:#0284c7,stroke-width:1.5px;
-    classDef tool fill:#fef3c7,stroke:#d97706,stroke-width:1.5px;
-    classDef fw fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px;
-    classDef sim fill:#f3e8ff,stroke:#9333ea,stroke-width:1.5px;
-    classDef target fill:#fee2e2,stroke:#dc2626,stroke-width:1.5px;
+    classDef input fill:#e0f2fe,stroke:#0284c7,stroke-width:1.5px,color:#0369a1;
+    classDef tool fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#92400e;
+    classDef core fill:#f1f5f9,stroke:#475569,stroke-width:1.5px,color:#1e293b;
+    classDef target fill:#fee2e2,stroke:#dc2626,stroke-width:1.5px,color:#b91c1c;
+    classDef verify fill:#f0fdf4,stroke:#16a34a,stroke-width:1.5px,color:#15803d;
 
-    Manifest["应用清单契约：wink-app.json (AI / 低代码生成)"]:::input
-    Manifest --> CLI["统一嵌入式工具链：winkcli (wink-tools)<br>• wink gen 代码生成  • wink lint 架构门禁  • wink test 仿真断言  • wink build/esp32 编译烧录"]:::tool
+    Manifest["应用清单契约 (SSOT)<br><code>wink-app.json</code> (AI / 低代码拓扑定义)"]:::input
+    CLI["统一嵌入式工具链 <code>winkcli</code><br>• 代码生成 (gen)  • 架构门禁 (lint)  • 仿真断言 (test)  • 编译烧录 (build)"]:::tool
 
-    CLI -->|生成 device_tree 与 App 模板| FW
-    CLI -->|配置虚拟外设与拓扑映射| SIM
+    DualWheel["<b>虚实同源对偶引擎 (Dual-Wheel Engine)</b><br>100% 虚实同源 C 源码 ⟷ UniSim 数字实验台<br>(微秒级确定性虚拟时钟 · 行为级高保真)"]:::core
 
-    subgraph DualWheel ["虚实同源对偶双轮体系"]
-        subgraph FW ["嵌入式固件栈 (C Runtime)"]
-            App["App 业务层 (状态机 / 意图编排)"]:::fw
-            BAL["BAL 业务抽象层 (事件 / 纯算法 / 闭环控制)"]:::fw
-            DAL["DAL 器件抽象层 (舵机 / 超声波 / OLED 语义 API)"]:::fw
-            PAL["PAL 平台抽象层 (GPIO / PWM / I2C / 定时器 / 中断)"]:::fw
-            App --> BAL --> DAL --> PAL
-        end
+    WasmTarget["浏览器 / CI 行为级仿真<br>(UniSim 引擎 + 2D/3D 数字实验台)"]:::target
+    RealTarget["真实物理芯片硬件部署<br>(ESP32 · MCS-51 · Arduino · PDK)"]:::target
 
-        subgraph SIM ["数字实验台栈 (UniSim 物理沙箱)"]
-            Plant["4. 物理环境交互模型 (运动学 / 空间几何 / ToF)"]:::sim
-            PeriphSim["3. 外设模型 (机电特性 / 故障注入)"]:::sim
-            ChanSim["2. 外设通道模型 (PinArbiter / 5 通道旁路)"]:::sim
-            ChipSim["1. 芯片模型 (VirtualClock / Wasm / 指令解释)"]:::sim
-            Plant <--> PeriphSim <--> ChanSim <--> ChipSim
-        end
+    TraceCheck["Sim-to-Real 虚实一致性断言与标定<br><b>Golden Trace ⟷ UART Trace 自动比对闭环</b>"]:::verify
 
-        PAL <===>|Wasm-Bridge ABI / PAL 平台层旁路| ChanSim
-    end
+    Manifest -->|"解析板级拓扑"| CLI
+    CLI -->|"驱动生成与配置装配"| DualWheel
 
-    FW -.->|emcmake 构建| WasmTarget["浏览器行为级高保真仿真<br>(UniSim 引擎 + 2D/3D 画布)"]:::target
-    FW -.->|交叉工具链构建| RealTarget["真实物理芯片部署<br>(ESP32 · MCS-51 · Arduino · PDK)"]:::target
+    DualWheel -->|"emcmake wasm 构建"| WasmTarget
+    DualWheel -->|"交叉工具链构建"| RealTarget
 
-    SIM -.->|Golden Trace 一致性断言| TraceCheck["Sim-to-Real 虚实对比与模型标定"]
-    RealTarget -.->|UART 真实 Trace 回传| TraceCheck
+    WasmTarget -->|"虚拟运行 Golden Trace"| TraceCheck
+    RealTarget -->|"物理板卡 UART Trace"| TraceCheck
 ```
 
-### 架构核心支柱
+### 2 · 微观对偶双轮运行时 (Micro Dual-Wheel Engine)
 
-1. **统一中枢驱动**：单一事实源 `wink-app.json` 定义硬件拓扑与配置，`winkcli` 全程驱动 C 代码生成、分层 Lint 门禁、无头测试与固件构建。
-2. **对偶双轮体系**：
+在核心执行引擎内部，**左侧的嵌入式 C 固件栈**与**右侧的 UniSim 数字实验台栈**以 1:1 的层次精密镜像对偶，通过中间的 `Wasm-Bridge ABI` 实现微秒级确定的锁步交互与无缝旁路代理：
+
+```mermaid
+graph LR
+    classDef fw fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px,color:#15803d;
+    classDef sim fill:#f3e8ff,stroke:#9333ea,stroke-width:1.5px,color:#7e22ce;
+    classDef bridge fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#92400e;
+
+    subgraph FW ["嵌入式固件栈 (C Runtime · 100% 虚实同源)"]
+        direction TB
+        App["<b>App 业务编排</b><br>状态机 · 意图编排 · 交互逻辑"]:::fw
+        BAL["<b>BAL 业务抽象层</b><br>纯控制算法 · 事件流 · 闭环控制"]:::fw
+        DAL["<b>DAL 器件抽象层</b><br>舵机 · 超声波 · OLED 语义 API"]:::fw
+        PAL["<b>PAL 平台抽象层</b><br>GPIO · PWM · I2C · 中断 · 定时器"]:::fw
+        App --> BAL --> DAL --> PAL
+    end
+
+    subgraph BridgeZone ["运行时咬合中枢 (Runtime Bridge)"]
+        direction TB
+        Bridge["<b>Wasm-Bridge ABI</b><br>─────────────────────<br>• 微秒级虚拟时钟锁步 (VirtualClock)<br>• 虚拟引脚 / 5 通道总线路由 (PinArbiter)<br>• 物理感知量注入 (ADC / ECHO / 姿态)<br>• 破坏性故障注入 (断线 / 堵转 / 跌落)"]:::bridge
+    end
+
+    subgraph SIM ["数字实验台栈 (UniSim 物理沙箱)"]
+        direction TB
+        Plant["<b>4. 物理环境交互模型</b><br>空间几何 · 运动学 · ToF 空间障碍"]:::sim
+        PeriphSim["<b>3. 外设机电模型</b><br>机电惯量 · 传感器物理特性 · 损耗模型"]:::sim
+        ChanSim["<b>2. 外设通道模型</b><br>PinArbiter 引脚仲裁 · 总线旁路代理"]:::sim
+        ChipSim["<b>1. 芯片内核沙箱</b><br>VirtualClock 推进 · 异构 ISA 指令解释"]:::sim
+        Plant <--> PeriphSim <--> ChanSim <--> ChipSim
+    end
+
+    PAL <===>|"硬件抽象层旁路代理"| Bridge
+    Bridge <===>|"管脚/总线双向事件交换"| ChanSim
+    Bridge <===>|"确定性时钟源推进"| ChipSim
+
+    App -.->|"业务层形成闭环感知与物理世界反馈"| Plant
+```
+
+### 3 · 架构核心支柱
+
+1. **统一中枢驱动（SSOT）**：单一事实源 `wink-app.json` 定义硬件拓扑与配置，`winkcli` 全程驱动 C 代码生成、分层 Lint 门禁、无头测试与固件构建。
+2. **对偶双轮体系（Dual-Wheel）**：
    * **嵌入式固件栈**（`App ➔ BAL ➔ DAL ➔ PAL`）：100% 虚实同源 C 代码，编译期静态分发，零 malloc，微秒级硬实时。
    * **数字实验台栈**（`芯片 ➔ 通道 ➔ 外设 ➔ 物理环境`）：四层机电与时空全息数字化，为固件提供微秒级确定性虚拟时钟与闭环激励。
-3. **闭环双端交付**：同一套业务源码，既可一键导出 WebAssembly 在浏览器中零硬件成本验证与故障注入，亦可无修改直烧真实 MCU 开发板。
+3. **闭环双端交付（Sim-to-Real）**：同一套业务源码，既可一键导出 WebAssembly 在浏览器与无头 CI 中零硬件成本验证与故障注入，亦可无修改直烧真实 MCU 开发板，并通过 UART Trace 回传完成实测标定。
 
 ## 仓库布局
 
