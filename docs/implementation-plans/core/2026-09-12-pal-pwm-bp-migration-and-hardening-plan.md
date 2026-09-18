@@ -25,7 +25,7 @@ ADR-0066 已将 `pal_pwm_set_duty(float)` 标记弃用，引入 `pal_pwm_set_dut
 |---|------|------|
 | P1 | 契约不完整 | ADR 定义的 `pal_pwm_calc_duty_counter()` 仅存在于 ADR 文档；无防手抖 helper（`pal_pwm.h:69` 只有裸 API） |
 | P2 | 实现不一致 | esp32 内联 `uint64_t` 公式（`targets/esp32/pal_hal_pwm_esp32.c:132-146`）；host 转 float 记录（`targets/host/pal_hal_pwm_host.c:54-62`）；wasm 转 float 走 float JS import（`targets/wasm/pal_wasm_ch1b_pwm.c:50-64`） |
-| P3 | wasm ABI 断链 | `js_pal_pwm_set_duty_bp` 已声明（`wasm_bridge.h:95`）且 JS shim 存在（`wink_sim_js.js:107`），但**无 C 调用者、TS `WasmImports` 未声明**（`packages/unisim/src/types/wasm/imports.ts:19` 仅 float）；unisim ABI catalog 已标 needs-fix |
+| P3 | wasm ABI 断链 | `js_pal_pwm_set_duty_bp` 已声明（`wasm_bridge.h:95`）且 JS shim 存在（`wink_sim_js.js:107`），但**无 C 调用者、TS `WasmImports` 未声明**（契约仅 float 签名）；unisim ABI catalog 已标 needs-fix |
 | P4 | 调用点残留 | `unisim_smoke/app_callbacks.c:53`、`selftest_pwm_router.c:50-51`、`selftest_rmt_loopback.c:123`、`test/unit/pal/test_host_pal.c:36,44,84,158`、`test_pal_nonblocking_strict.c:28` |
 | P5 | 测试缺口 | 仅 1 条 bp 用例（`test_pal_pwm_config.c:41`：3750→37.5%），无边界/舍入/溢出/分级分支覆盖 |
 | P6 | 构建红 | `build-host` 有 11 个测试目标因 `-Werror` 失败（PWM 弃用 + `dal_ntc_read_*` 弃用 + ignoring-return + unused，见附录 A） |
@@ -135,10 +135,10 @@ ADR-0066 已将 `pal_pwm_set_duty(float)` 标记弃用，引入 `pal_pwm_set_dut
 
 ### W-5 跨仓 ABI 接线（wink-ai）
 
-- **T5.1** `packages/unisim/src/types/wasm/imports.ts:19` 邻域新增 `js_pal_pwm_set_duty_bp(channel: number, basisPoints: number): void`（注释范围 `[0,10000]`，ADR-0066）。
-- **T5.2** `packages/unisim/src/core/bridge/unisim-bridge-factory.ts:124,258`：实现 bp 导入并转百分比后喂既有 `pwmSink`（`pluginHost.notifyDutyChange` 契约不变）。
-- **T5.3** `packages/embedded-frontend/src/simulation-kernel/workers/wasm-simulation.worker.ts:225`：类型/注释核对（pwmSink 保持 `duty: percent`）。
-- **T5.4** `packages/unisim/scripts/abi-catalog/abi-catalog.yaml:520-525` 状态 needs-fix → implemented；重跑 catalog/parity 校验（0 needs-fix）。
+- **T5.1** 在 Wasm 导入契约中新增 `js_pal_pwm_set_duty_bp(channel: number, basisPoints: number): void`（注释范围 `[0,10000]`，ADR-0066）。
+- **T5.2** 宿主引脚桥：实现 bp 导入并转百分比后喂既有 `pwmSink`（`pluginHost.notifyDutyChange` 契约不变）。
+- **T5.3** 宿主工作台仿真 worker：类型/注释核对（pwmSink 保持 `duty: percent`）。
+- **T5.4** ABI Catalog 条目状态 needs-fix → implemented；重跑 catalog/parity 校验（0 needs-fix）。
 - **T5.5** ABI hash：本计划无符号增删 → `PAL_WASM_ABI_HASH`（`pal_wasm_degradation.c:80`）与 `wasm-physical-bridge.ts:111` 的 `EXPECTED_ABI_HASH` **均不改**；若评审选 D4-B 删声明，则必须双端同步 bump。
 - 验收（wink-ai 仓内命令 + 头less 场景）：固件调 `_bp` 时 TS 侧 `pwmSink` 收到对应 duty；`verifyAbiHash` 通过。
 
@@ -172,10 +172,10 @@ ADR-0066 已将 `pal_pwm_set_duty(float)` 标记弃用，引入 `pal_pwm_set_dut
 | embedded | `test/unit/pal/test_host_pal.c` / `test_pal_nonblocking_strict.c` | 改 | W-3 |
 | embedded | W-4 清单（附录 A 对应文件，~9 文件） | 改 | W-4 |
 | embedded | `docs/zh/design/02-wink-micro-os/02-pal-platform-abstraction.md` | 改 | W-6 |
-| wink-ai | `packages/unisim/src/types/wasm/imports.ts` | 改 | W-5 |
-| wink-ai | `packages/unisim/src/core/bridge/unisim-bridge-factory.ts` | 改 | W-5 |
-| wink-ai | `packages/embedded-frontend/src/simulation-kernel/workers/wasm-simulation.worker.ts` | 核对/注释 | W-5 |
-| wink-ai | `packages/unisim/scripts/abi-catalog/abi-catalog.yaml` | 改（状态） | W-5 |
+| wink-ai | Wasm 导入契约（`WasmImports`） | 改 | W-5 |
+| wink-ai | 宿主引脚桥（驱动导入） | 改 | W-5 |
+| wink-ai | 宿主工作台仿真 worker | 核对/注释 | W-5 |
+| wink-ai | ABI Catalog（机器可读 SSOT） | 改（状态） | W-5 |
 
 ## 6. 验收标准
 

@@ -5,9 +5,9 @@
 > **创建日期**：2026-08-24
 > **修订**：2026-08-24（架构评审后 v2：修正事实错配、补 P0 分发阻断、重设计 Pack 抽象、阶段重排）
 > **演进结构**：P0 分发阻断 → P1.0 基线修复 → P1.1 Lint 内核插件化（零行为变更）→ P1.2/P1.3 ISR/Wasm 守卫 → P1.4 双模分发与 CI 灰度 → P1.5 清理；Priority 2（CLI 现代化）拆至独立 roadmap
-> **责任领域**：`wink-tools`（工具链平台，位于兄弟仓 `wink-ai/packages/wink-tools/`）+ `wink-micro-os`（嵌入式固件，本仓）
+> **责任领域**：`wink-tools`（工具链平台，位于兄弟闭源仓）+ `wink-micro-os`（嵌入式固件，本仓）
 
-> **路径约定**：下文 `<wink-tools>/` 指 wink-tools 检出根（当前事实路径 `../wink-ai/packages/wink-tools/`，分发模式落地后可能为 site-packages 或 submodule）。本开源仓 `wink-ai-embedded/` 内 **不存在** `wink-tools/` 目录，所有工具链路径均为 `<wink-tools>/tools/...`。
+> **路径约定**：下文 `<wink-tools>/` 指 wink-tools 检出根（当前为兄弟闭源仓检出，分发模式落地后可能为 site-packages 或 submodule）。本开源仓 `wink-ai-embedded/` 内 **不存在** `wink-tools/` 目录，所有工具链路径均为 `<wink-tools>/tools/...`。
 
 ---
 
@@ -55,7 +55,7 @@ graph TD
 - 本仓 `.github/workflows/pr.yml` 仅安装 `cmake ninja-build python3`，直接跑 `wink-micro-os/scripts/check_*.py` 四个本地脚本，**不触碰 wink-tools**。
 - `.github/workflows/clang-tidy.yml:39-48` 引用 `wink-tools/requirements-lint-dal.txt` 与 `../wink-tools/wink.py lint --strict`，但本仓无 `wink-tools/` 目录，**该 workflow 当前已坏**。
 - `wink-micro-os/cmake/wink_tools.cmake:19` 以 `list_drivers.py` 存在性校验 `WINK_TOOLS_ROOT`，缺失即 `FATAL_ERROR`。
-- wink-tools 真实代码在兄弟仓 `../wink-ai/packages/wink-tools/`；根 `pyproject.toml` 仅含 `[tool.pyrefly]`，**无 `[project]`、无 `[project.scripts]`、无 CLI entry point**。
+- wink-tools 真实代码在兄弟闭源仓检出；根 `pyproject.toml` 仅含 `[tool.pyrefly]`，**无 `[project]`、无 `[project.scripts]`、无 CLI entry point**。
 - 二进制名在文档/脚本中混用 `wink`、`winkcli`、`wink.py`，未定。
 - ADR-0051 已声明 wink-tools 计划为闭源/受限分发产物。
 
@@ -366,7 +366,7 @@ include_rules, api_rules, path_rules, user_surface_rules, ignore
 
 解析顺序：
 1. `$WINK_TOOLS_ROOT` 指向源码 → 调 `python -m tools.lint.cli`；
-2. 兄弟目录 `../wink-ai/packages/wink-tools/` 存在 → 同上；
+2. 兄弟仓 wink-tools 检出存在 → 同上；
 3. 否则回退全局 `winkcli`（P0 安装产物）。
 
 脚本输出与 `winkcli lint` 完全一致（text/json/sarif），参数透传 `--pack`、`--strict`、`--baseline`、`--format`。

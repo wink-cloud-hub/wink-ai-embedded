@@ -698,6 +698,6 @@ SSOT（`docs/implementation-plans/wokwi-dal-type-coverage-type/00.1-category-typ
 **构建 / CI / lint**
 - `wink-micro-os/CMakeLists.txt`
 - `.github/workflows/clang-tidy.yml`
-- `wink-ai/packages/wink-tools/tools/lint/rules/layering.yaml`
-- `wink-ai/packages/wink-tools/tools/lint/rules/api.yaml`
-- `wink-ai/packages/wink-tools/tools/lint/rules/dal.yaml`
+- winkcli 工具链 lint 规则 `layering.yaml`
+- winkcli 工具链 lint 规则 `api.yaml`
+- winkcli 工具链 lint 规则 `dal.yaml`

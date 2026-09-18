@@ -5,7 +5,7 @@
 | 状态 | **Accepted（已采纳，2026-09-01 落地并全绿）** |
 | 日期 | 2026-09-01 |
 | 触发 | `mcs51_thermos` 闭环应用接入时暴露：8051 准双向口固件按惯例写 `P3 = 0xFF` 使能输入，拦截层 SFR shadow 为 BSS（初值 0），该写对每一引脚产生 0→1 diff 边沿 → `js_pal_gpio_write(pin,1)` → host PinArbiter 把 MCU 登记为 **SUPPLY 强高驱动者**；它与 button 插件的强低驱动同强度异态 → 仲裁为 CONFLICT → 8051 Read-Pin 回退锁存值 → **按键永远读高（失效）**。根因：GPIO 写 ABI 只有 `(pin, level)`，**无驱动强度维度**，host 把一切 MCU 写当 push-pull 强驱动（esp32 语义），无法表达 8051「锁存 1=弱上拉、锁存 0=强灌低」。 |
-| 影响范围 | **跨仓 ABI 变更**。embedded：`wink-micro-os/targets/wasm/wasm_bridge.h`、`pal_wasm_ch1_gpio.c`、`wink_sim_js.js`、`wink_sim_stub.js`；`frameworks/mcs51/include/mcs51_proxy.hpp`、`src/mcs51_uni_bridge.cpp`、`src/mcs51_bridge.cpp`；测试 `test/wasm/test_pal_gpio_read_wasm_semantics.c`、`test/mcs51/unit/test_sfr_edge_dispatch_accuracy.cpp`。wink-ai：`packages/unisim/src/types/wasm/imports.ts`（手写契约，非 codegen）、`src/core/bridge/unisim-bridge-factory.ts`、**ABI SSOT `packages/unisim/scripts/abi-catalog/abi-catalog.yaml` + 重生成 `hardware-channel-abi-catalog.md`**（见 §5.4）。 |
+| 影响范围 | **跨仓 ABI 变更**。embedded：`wink-micro-os/targets/wasm/wasm_bridge.h`、`pal_wasm_ch1_gpio.c`、`wink_sim_js.js`、`wink_sim_stub.js`；`frameworks/mcs51/include/mcs51_proxy.hpp`、`src/mcs51_uni_bridge.cpp`、`src/mcs51_bridge.cpp`；测试 `test/wasm/test_pal_gpio_read_wasm_semantics.c`、`test/mcs51/unit/test_sfr_edge_dispatch_accuracy.cpp`。wink-ai：Wasm 导入契约（手写，非 codegen）、宿主引脚桥接层、**ABI Catalog（机器可读 SSOT）及其重生成的 ABI 文档**（见 §5.4）。 |
 | 决策者 | 项目 Owner |
 | 关联 ADR | [ADR-0074](0074-mcs51-channel1-external-read-pin.md)（Read-Pin 三路解析/HiZ 回退锁存）、[ADR-0071](0071-sfr-proxy-rmw-edge-data-plane.md)（准双向口 RMW 红线）、[ADR-0070](0070-mcs51-zero-code-simulation-interception-layer.md)（umbrella）、[ADR-0076](0076-mcs51-sim-backends-native-vs-iss-channel-roadmap.md)（通道分类路线图） |
 | 关联计划 | [`docs/implementation-plans/core/2026-09-01-gpio-drive-strength-axis-plan.md`](../../implementation-plans/core/2026-09-01-gpio-drive-strength-axis-plan.md) |
@@ -14,7 +14,7 @@
 
 ## 1. 背景（Context）
 
-通道-1 写方向现状：固件写脚 → `js_pal_gpio_write(uint16_t pin, bool level)` → host `unisim-bridge-factory.ts` 内
+通道-1 写方向现状：固件写脚 → `js_pal_gpio_write(uint16_t pin, bool level)` → host 引脚桥（UniSim 宿主）内
 
 ```ts
 js_pal_gpio_write(pin, level) {
@@ -68,7 +68,7 @@ extern void js_pal_gpio_write(uint16_t pin, bool level, uint8_t strength);
 
 ### D3. host 侧映射 + 版本偏斜兜底
 - `imports.ts`：签名加 `strength: number`。
-- `unisim-bridge-factory.ts`：`arbiter.setDriver(pin, { id:'mcu:gpio'+pin, state, strength: strength ?? DriveStrength.SUPPLY })`。`strength` 缺省（旧 wasm 配新 host）兜底 SUPPLY → esp32 行为不变；新 wasm 配旧 host 时 JS 忽略多余实参，强度丢失（mcs51 退回强驱动、旧 bug 复现）但**不崩**——偏斜只降保真不炸。
+- 宿主引脚桥：`arbiter.setDriver(pin, { id:'mcu:gpio'+pin, state, strength: strength ?? DriveStrength.SUPPLY })`。`strength` 缺省（旧 wasm 配新 host）兜底 SUPPLY → esp32 行为不变；新 wasm 配旧 host 时 JS 忽略多余实参，强度丢失（mcs51 退回强驱动、旧 bug 复现）但**不崩**——偏斜只降保真不炸。
 
 ### D4. 仲裁自洽性核验（thermos 全场景）
 - 按键 P3.2：锁存 1 → WEAK-HIGH 上拉；按下 button 插件 SUPPLY-LOW → SUPPLY 胜 → Read-Pin 读 LOW；释放 → 仅剩 WEAK-HIGH → HIGH。**标准 `P3=0xFF` 初始化即工作。**
@@ -80,7 +80,7 @@ extern void js_pal_gpio_write(uint16_t pin, bool level, uint8_t strength);
 
 | 正面效益 | 约束与代价 |
 |---|---|
-| 8051 准双向口电气语义首次正确建模；未修改 Keil 例程的标准 `Pn=0xFF` 初始化可工作，移除 thermos 「不写输入口」workaround | 跨仓 ABI 破坏性变更：embedded（C/JS glue/stub/测试）与 wink-ai（imports.ts/bridge）须**同一次原子改齐**，否则 emscripten 链接/实例化报错（wasm 从源码重建，无长期存活二进制，窗口小） |
+| 8051 准双向口电气语义首次正确建模；未修改 Keil 例程的标准 `Pn=0xFF` 初始化可工作，移除 thermos 「不写输入口」workaround | 跨仓 ABI 破坏性变更：embedded（C/JS glue/stub/测试）与 wink-ai（Wasm 导入契约/宿主桥）须**同一次原子改齐**，否则 emscripten 链接/实例化报错（wasm 从源码重建，无长期存活二进制，窗口小） |
 | 强度进通用 ABI，未来 PDK 开漏、I2C 释放、外部上拉等复用同一词表，host 零特判 | host 须保留 `strength ?? SUPPLY` 兜底以容忍版本偏斜 |
 | esp32 push-pull 路径电气零变化（显式 SUPPLY） | 高边 active-high 执行器在 8051 上报 WEAK-HIGH，依赖「无竞争读高」——与真实硬件一致，但断言/插件需知晓弱高语义 |
 | Read-Pin 三路解析序（ADR-0074）与 RMW 只读锁存红线（ADR-0071）**不变**；本决策仅改「写边沿上报的强度」 | 上电 WEAK-HIGH 种子须与 shadow latch=0xFF 一同设置，避免固件初始化再产生 diff 边沿 |
@@ -94,8 +94,8 @@ extern void js_pal_gpio_write(uint16_t pin, bool level, uint8_t strength);
    - wink-ai：unisim TS 测试套件（pin-arbiter / bridge / gpio domain）。
 3. Accepted 后回写：`docs/design/02-wink-micro-os/07-mcs51-simulation-interception.md`（准双向口强度模型）；`mcs51_thermos/DESIGN.md` §8 第 5 项标记落地、移除「不写输入口」规避说明。
 4. **ABI catalog SSOT 同步（wink-ai 仓，CI 门禁 `check:abi-catalog`，挂 `test:gates`）**：实施改签名后必须——
-   - 编辑 `packages/unisim/scripts/abi-catalog/abi-catalog.yaml` 的 `js_pal_gpio_write` 条目：`signature` 改为 `void js_pal_gpio_write(uint16_t pin, bool level, uint8_t strength)`；`params` 增 `- { name: strength, type: uint8_t, desc: "1=WEAK 弱上拉/开漏释放, 2=PULL 电阻上下拉, 3=SUPPLY push-pull/强驱动（数值对齐 host DriveStrength；缺省=3）" }`（schema 无 enum 字段，枚举编码惯例写在参数 `desc`，同 `js_pal_gpio_read_state` 返回值先例）；`adr: ["0077"]`；更新 `c_header_line`/`ts_decl_line` 行号。
-   - 运行 `bun run gen:abi-catalog`（=`python scripts/abi-catalog/generate-abi-catalog-md.py`）重生成 `hardware-channel-abi-catalog.md`，使 `--check` gate 转绿。
+   - 编辑 ABI Catalog 源文件中的 `js_pal_gpio_write` 条目：`signature` 改为 `void js_pal_gpio_write(uint16_t pin, bool level, uint8_t strength)`；`params` 增 `- { name: strength, type: uint8_t, desc: "1=WEAK 弱上拉/开漏释放, 2=PULL 电阻上下拉, 3=SUPPLY push-pull/强驱动（数值对齐 host DriveStrength；缺省=3）" }`（schema 无 enum 字段，枚举编码惯例写在参数 `desc`，同 `js_pal_gpio_read_state` 返回值先例）；`adr: ["0077"]`；更新 `c_header_line`/`ts_decl_line` 行号。
+   - 运行 `bun run gen:abi-catalog` 重生成 ABI 文档，使 `--check` gate 转绿。
    - 注意：catalog 描述**已实现** ABI，**不得在代码落地前**先改 yaml（否则文档化不存在的签名）；此步与代码同 PR。
 5. thermos 固件可在落地后恢复标准 `P3 = 0xFF` 初始化（验证 zero-intrusion 惯例可用）。
 
@@ -108,7 +108,7 @@ extern void js_pal_gpio_write(uint16_t pin, bool level, uint8_t strength);
 - 2026-09-01：**Accepted**（D1–D3 两仓原子落地，实施计划 `2026-09-01-gpio-drive-strength-axis-plan.md`；Owner 批准开工）。落地内容与回归证据：
   - **embedded**：`wasm_bridge.h` 增 `wink_drive_t`（WEAK=1/PULL=2/SUPPLY=3）+ `js_pal_gpio_write(pin,level,strength)`；`pal_wasm_ch1_gpio.c` 两处（init 初始电平 + 运行写）显式传 `WINK_DRIVE_SUPPLY`；`wink_sim_js.js` 转发第三参；`mcs51_proxy.hpp` 声明 + `MCS51_DRIVE_WEAK/SUPPLY` 常量，sbit 与 whole-port 两处 diff 边沿按 `new_bit?WEAK:SUPPLY` 上报；`mcs51_uni_bridge.cpp` host fallback 记录强度（0→3 兜底）并新增测试观测口 `wink_mcs51_host_gpio_notify_strength`；`mcs51_bridge.cpp mcs51_framework_init()` 在 `trap_reset()` 之后**同时**置 P0–P3 shadow=0xFF 并对 32 脚登记 WEAK-HIGH 驱动（两者缺一不可：仅 shadow 则 host 无 MCU 驱动注册）。ABI hash 重算 → `PAL_WASM_ABI_HASH = 0x20149EFCu`。
   - **测试修复**：M3 遗留 `test_mcs51_gpio_host` 依赖「shadow 跨 framework-init 不重置」做按键注入，上电种子现在正确把 P3 复位为 0xFF——改为经 post-init hook（在复位种子之后）注入锁存电平，与 M4 外部注入测试同模式；`test_sfr_edge_dispatch_accuracy.cpp` 增 WEAK/SUPPLY 强度断言（上升沿=1、下降沿=3，whole-port 混合沿按位序）；emcc/Node 独立脚本补 `js_pal_gpio_write` 第三参及两个链接 stub（ultrasonic trigger、waveform edge）。
-  - **wink-ai**：`imports.ts` 签名加 `strength?: number`；`unisim-bridge-factory.ts` 强度恒等映射 + 非 1/2/3 兜底 SUPPLY；abi-catalog SSOT `js_pal_gpio_write` 条目签名/strength `desc`/`adr:[ADR-0077]`/行号同步并重生成 catalog MD，`check:abi-catalog` 绿。
+  - **wink-ai**：Wasm 导入契约签名加 `strength?: number`；宿主引脚桥做强度恒等映射 + 非 1/2/3 兜底 SUPPLY；ABI Catalog SSOT 的 `js_pal_gpio_write` 条目签名/strength `desc`/`adr:[ADR-0077]`/行号同步并重生成 catalog MD，`check:abi-catalog` 绿。
   - **thermos**：固件恢复标准 `P3 = 0xFF` 初始化（删除「不写输入口」workaround），两场景全绿——zero-intrusion 惯例验证通过。
   - **回归（全绿）**：mcs51 ctest **33/33**（host 23 + wasm/Node 10）；headless **5/5 既有 carrier + thermos 2/2**；esp32 SUPPLY 路径经 emcc/Node `test_pal_gpio_read_wasm_semantics` **9/9**（esp32 恒传 3 → host 映射 SUPPLY，电气逐位不变）；unisim `bun test src/` **164 pass / 32 fail（全为既有 manifest/sg90 SSOT 基线，与本次无关）**；`wink lint arch --pack layering --pack api` 无发现；`tsc --noEmit` 触碰文件零错误（151 行为既有基线）。
   - 回写：`docs/zh/design/02-wink-micro-os/07-mcs51-simulation-interception.md` 准双向口强度模型；`mcs51_thermos/DESIGN.md` §8 第 5 项标记落地。
