@@ -50,7 +50,7 @@ export default definePeripheralUiConfig({ type: 'my_sensor' });
 
 ### 3.1 架构边界防御守卫 (Architecture Guardrails)
 - **仿真端防御**：严禁在 `simulation.ts` 中引入 Vue 视图包或 `@wink-ai/unisim-ui`，防止把 DOM 相关代码打入无头 Worker 内核；
-- **宿主隔离防御**：严禁在外设代码中通过 `@/` 引用主工程私有路径。只能引入 `@wink-ai/unisim`、`@wink-ai/unisim-ui`、`vue` 或本地相对路径。
+- **宿主隔离防御**：严禁在外设代码中通过 `@/` 引用主工程私有路径。只能引入 `@wink-ai/unisim-sdk`、`@wink-ai/unisim-ui`、`vue` 或本地相对路径。
 
 ### 3.2 样式作用域自动隔离 (PostCSS Prefix Selector)
 前端 UI 视图在编译 CSS 时，会自动通过 PostCSS 为所有样式选择器注入 `.wink-peripheral-${pluginType}` 命名空间前缀，并独立产出 `dist/wink-ai.css`，防止不同外设的 CSS 样式污染宿主画布。
@@ -59,11 +59,11 @@ export default definePeripheralUiConfig({ type: 'my_sensor' });
 内置注入 `@vitejs/plugin-vue`，并将 `wokwi-*` 自动声明为 Custom Element。同时将 `@wokwi/elements` 声明为 `external`，交由宿主应用统一加载，避免重复注册抛出 `NotSupportedError`。
 
 ### 3.4 统一外部化依赖 (Externals)
-- **仿真 Bundle**：自动外部化 `@wink-ai/unisim` 及其子路径，保持 Bundle 极致轻量；
+- **仿真 Bundle**：自动外部化 `@wink-ai/unisim-sdk` 及其子路径，保持 Bundle 极致轻量；
 - **前端 Bundle**：自动外部化 `vue`、`@wink-ai/unisim-ui`、`@wokwi/elements`。
 
 ### 3.5 源码链接自动探测 (Source Linking Probe)
-当在本地多仓联动开发时，构建工具会自动探测本地是否存在 `@wink-ai/unisim` 与 `@wink-ai/unisim-ui` 源码开发通道，若存在则自动通过 Vite Alias 建立软链接，免除反复 `npm pack` 的调试负担。
+当在本地多仓联动开发时，构建工具会自动探测本地是否存在 `@wink-ai/unisim-sdk` 与 `@wink-ai/unisim-ui` 源码开发通道，若存在则自动通过 Vite Alias 建立软链接，免除反复 `npm pack` 的调试负担。
 
 ---
 
