@@ -13,7 +13,7 @@
 | `wink-micro-os/` | SDK 平台内核 | 库开发者 | 加新硬件、修驱动 bug 时 | 操作系统核心代码：PAL/DAL/BAL/runtime/trace，所有芯片通用 |
 | `wink-micro-app/` | 业务应用代码 | 用户开发者 | 每次写新功能 | 你的业务逻辑：避障小车、OLED 仪表盘等 |
 | `esp32_firmware/` | ESP32 编译打包器 | 双方都很少改 | 改芯片配置、编译参数时 | 把 wink-micro-os 编译成能烧到 ESP32 的 .bin 固件 |
-| `@wink-ai/unisim` | 浏览器仿真引擎 | 双方都很少改 | 改仿真逻辑时 | `unisim/`，把 wink-micro-os 编译为在浏览器跑的 .wasm |
+| `@wink-ai/unisim` | 浏览器仿真引擎 | 双方都很少改 | 改仿真逻辑时 | 把 wink-micro-os 编译为在浏览器跑的 .wasm（引擎实现不在本仓） |
 | `test/` | 单元测试 | 库开发者 | 加新功能补测试时 | PC 上跑自动化测试，验证逻辑正确 |
 
 ---

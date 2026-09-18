@@ -106,7 +106,7 @@
 1. **检查方法命名**：确认 Manifest 事件名（如 `SET_DISTANCE_CM`）在插件中对应的方法名为 **`_distanceCm`**（去除 `set_` 前缀），而不是 `_setDistanceCm`。
 2. **检查参数定义**：确认 Manifest 中声明的参数名（如 `params: { cm: { type: 'number' } }`）与传递的参数结构一致。
 
-### Q2: 外设编译报错 `Cannot find module '@wink-ai/unisim'`？
+### Q2: 外设编译报错 `Cannot find module '@wink-ai/unisim-sdk'`？
 1. 确认在 `wink-plugin-peripherals` 目录下执行了依赖链接或安装；
 2. 推荐使用 `build-peripherals.ps1` 编译，该脚本会自动侦测本地 SDK 源码路径并创建软链接。
 

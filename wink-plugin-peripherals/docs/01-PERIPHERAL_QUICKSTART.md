@@ -78,7 +78,7 @@ import {
   type PluginContext,
   type PeripheralManifest,
   type ManifestFactory,
-} from '@wink-ai/unisim';
+} from '@wink-ai/unisim-sdk';
 
 const identity = resolvePluginIdentity(import.meta.url, 'my_sensor', '1.0.0', 'sensor');
 
@@ -237,7 +237,7 @@ import {
   type PeripheralDefinition,
   type PeripheralPropsSchema,
 } from '@wink-ai/unisim-ui';
-import { resolvePluginIdentity } from '@wink-ai/unisim';
+import { resolvePluginIdentity } from '@wink-ai/unisim-sdk';
 import CanvasGlyph from './CanvasGlyph.vue';
 import WorldWidget from './WorldWidget.vue';
 

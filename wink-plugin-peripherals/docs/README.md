@@ -13,7 +13,7 @@
 UniSim 4.0 的外设系统遵循 **“微内核 + 独立自包含插件 (Microkernel + Self-Contained Plugins)”** 架构原则：
 
 1. **Web-First 跨端一致**：外设包含独立的仿真逻辑 (`simulation.js`) 与前端视图控件 (`frontend.js` + `wink-ai.css`)，在 Web 网页端与 Tauri 桌面端 100% 保持行为与视效一致。
-2. **完全解耦与独立仓库维护**：外设源码独立托管在 `wink-plugin-peripherals` 仓库，具备自包含的依赖环境（基于 `@wink-ai/unisim` 与 `@wink-ai/unisim-ui`），脱离主框架依赖包袱，支持单外设独立开发、编译与发布。
+2. **完全解耦与独立仓库维护**：外设源码独立托管在 `wink-plugin-peripherals` 仓库，具备自包含的依赖环境（基于 `@wink-ai/unisim-sdk` 与 `@wink-ai/unisim-ui`），脱离主框架依赖包袱，支持单外设独立开发、编译与发布。
 3. **分层物理通道与高保真 (Axis A~F)**：基于 UniSim 4.0 物理通道分类（GPIO 波形、PWM 定时调制、I2C/SPI/UART 总线、模拟量 ADC/DAC、Buffer/DMA 帧载荷），提供微秒级确定性 (`VirtualClock`)、四态电气仲裁 (`PinArbiter`) 与 C 固件 WASM ABI 紧密对齐。
 4. **统一 UI 契约与双视图模型**：前端定义基于 `@wink-ai/unisim-ui` 的 `definePeripheral`，提供电路画布视图 (`CanvasGlyph`) 与虚拟现实视图 (`WorldWidget`) 双呈现模式，并通过 `pinsOverlay` 精确支持前端布线引擎的自动吸附。
 

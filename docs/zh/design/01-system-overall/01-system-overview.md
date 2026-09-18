@@ -198,8 +198,8 @@ graph TD
 
 | 模块名称 | 物理归属与路径 | 黑盒核心作用 | 典型使用场景与调用方式 | 接口与契约形式 | 商业与代码隔离边界 |
 |---|---|---|---|---|---|
-| **`embedded-frontend`** | Monorepo<br>`embedded-frontend/` | 嵌入式 Web 工作台 UI：2D 电路拓扑画布 (HCTR)、3D 产品世界机械/物理渲染、Pinia 状态树、构建烧录向导 | 开发者浏览器操作，或由 Wink-AI 主项目通过 iframe / 路由挂载消费 | `wink-app.json` Manifest、`SimTraceSpecV2`、WebSocket / Wasm 消息 DTO | 黑盒契约：定义 UI 交互与 Manifest DTO，隐藏私有渲染优化与商业编辑器逻辑 |
-| **`unisim`** | Monorepo<br>`unisim/` | 统一 WebAssembly 行为级高保真仿真引擎：微秒级 `VirtualClock`、4 值逻辑仲裁 (0/1/Z/X)、中断/PWM/故障注入 Worker | 被 `embedded-frontend` 在 Web Worker 中加载，或由 `wink test` CLI 以 Headless 模式运行 | `SimWorker` 通信协议、Wasm-JS Bridge C-ABI (`wasm_bridge.h`) | 黑盒契约：定义引擎运行接口与 ABI 规范，隐藏内部高效状态机与转码优化实现 |
+| **`embedded-frontend`** | 闭源 Monorepo | 嵌入式 Web 工作台 UI：2D 电路拓扑画布 (HCTR)、3D 产品世界机械/物理渲染、Pinia 状态树、构建烧录向导 | 开发者浏览器操作，或由 Wink-AI 主项目通过 iframe / 路由挂载消费 | `wink-app.json` Manifest、`SimTraceSpecV2`、WebSocket / Wasm 消息 DTO | 黑盒契约：定义 UI 交互与 Manifest DTO，隐藏私有渲染优化与商业编辑器逻辑 |
+| **`unisim`** | 闭源 Monorepo | 统一 WebAssembly 行为级高保真仿真引擎：微秒级 `VirtualClock`、4 值逻辑仲裁 (0/1/Z/X)、中断/PWM/故障注入 Worker | 被 `embedded-frontend` 在 Web Worker 中加载，或由 `wink test` CLI 以 Headless 模式运行 | `SimWorker` 通信协议、Wasm-JS Bridge C-ABI (`wasm_bridge.h`) | 黑盒契约：定义引擎运行接口与 ABI 规范，隐藏内部高效状态机与转码优化实现 |
 | **`wink-tools`** | 本仓<br>`wink-ai-embedded/wink-tools/` | 统一嵌入式 CLI 与开发工具链：涵盖代码生成 (`wink gen`)、静态 Lint (`wink lint`)、Headless 仿真测试 (`wink test`)、多端构建 (`wink build`)、打包烧录 (`wink pack`/`wink esp32`) | 开发者终端执行、CI/CD 自动化流水线、Web 后端构建 Worker 管道调用 | `wink <verb>` 动词指令集、JSON Telemetry Structured Envelope | 本仓开源/核心 CLI 工具链，公开完整 Python 实现与驱动描述 YAML 根 |
 | **`wink-micro-os`** | 本仓<br>`wink-ai-embedded/wink-micro-os/` | C 语言轻量级嵌入式 SDK 内核：PAL/DAL/BAL 三层抽象、协作式 runtime 调度器、`wink_status_t`、Golden Trace 运行时 | 供 `wink-micro-app` 链接，经 `wink build` 构建为 ESP32/STM32 固件或 Wasm 仿真字节码 | C 公开头文件面 (`pal.h`/`dal_*.h`/`wink_bal_opts.h`)、CMake Targets | 本仓开源/核心 C SDK 内核，公开完整底层驱动抽象与调度主循环 |
 | **`wink-micro-app`** | 本仓<br>`wink-ai-embedded/wink-micro-app/` | 嵌入式应用工程规范：Manifest (`wink-app.json`)、手写/AI 生成的 App C 代码 (`app_main.c`) 与生成的设备树 (`device_tree.c`) | 应用开发者或 AI 工具创建的逻辑工程，作为编译与仿真的顶层输入 | `wink-app.json` Schema v1/v2、`app_init` / `app_loop` 回调契约 | 本仓开源/工程模板，公开 App 生命周期规范与标准 Sample 库 |
@@ -211,7 +211,7 @@ graph TD
 #### 1. `embedded-frontend` (前端工作台)
 * **作用**：提供专业级嵌入式 IDE 体验，支持 2D 电路连线、3D 机械物理联动渲染、属性编辑、AI 助手交互及一键编译烧录向导。
 * **怎么用**：
-  - 独立开发模式：在 `embedded-frontend/` 下运行 `bun run dev` 拉起 Vite 调试服务。
+  - 独立开发模式：在闭源工作台仓检出根运行 `bun run dev` 拉起 Vite 调试服务。
   - 宿主集成模式：通过 `<iframe src="/simulator/?projectId=xxx">` 嵌入主项目，通过 `window.postMessage` 交换 Project Manifest 数据。
 
 #### 2. `unisim` (Wasm 仿真引擎)
