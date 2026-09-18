@@ -139,7 +139,7 @@ health_pot 的遥测场景描述文字已经意识到此风险（`health-pot-uar
 
 - [x] 新增 STRICT/Release 测试（`test_mcs51_uart_tx_ready` + `_strict`，2026-09-10 落地）：TR1=0 写 SBUF 触发断言/BAUD 计数；模式 0 触发断言/MODE 计数；REN+`PS_RXD`=0x13 指向未复用引脚触发断言/RXD 计数；BRT/TMR2/TMR4 运行位与保留 CKS 全覆盖；health_pot 等价配置零触发（35/35 host 全绿）。
   注：原计划的"TXD mux 缺失触发断言"用例在实施中被修正——P3.1 为硬连线默认脚（手册 §21.2 + 原厂 gpio.h 核实），TXD 在功能层恒就绪，该原因位保留供 GAP-08（TRIS）细化；覆盖改用 RXD 选择器失配用例，见计划 v1.2。
-- [x] health_pot 现有遥测场景在开启校验后仍通过（证明其配置完整）。（2026-09-11 sister repo 验证：8 应用 22 场景全绿；hello/echo 曾报真阳性 BAUD 告警，已按方案 B 补 T1 初始化后归零，见计划 Task 3 附带发现）
+- [x] health_pot 现有遥测场景在开启校验后仍通过（证明其配置完整）。（2026-09-11 验证：8 应用 22 场景全绿；hello/echo 曾报真阳性 BAUD 告警，已按方案 B 补 T1 初始化后归零，见计划 Task 3 附带发现）
 
 ---
 
@@ -333,7 +333,7 @@ health_pot 的 10ms tick（T0 重载 0xB1E0）与 9600bps（TH1=217）都按 24M
 
 ### GAP-10（P2）生产 wasm 非 STRICT，无头 runner 不按 warning 判失败
 
-- **证据**：`WINK_MCS51_STRICT` 默认 OFF（`CMakeLists.txt:61-66`）；OOB 与未建模特性在 Release 仅 warn-once（`mcs51_xdata.cpp:62-75`、`mcs51_unsupported.cpp:49-63`）；计数器 `wink_mcs51_unsupported_warning_count()` / `wink_mcs51_xdata_oob_count()` 存在但 sister repo `unisim` 无头 runner 不消费（grep `headless-sim-runner.ts` 仅 UART 路由引用）。
+- **证据**：`WINK_MCS51_STRICT` 默认 OFF（`CMakeLists.txt:61-66`）；OOB 与未建模特性在 Release 仅 warn-once（`mcs51_xdata.cpp:62-75`、`mcs51_unsupported.cpp:49-63`）；计数器 `wink_mcs51_unsupported_warning_count()` / `wink_mcs51_xdata_oob_count()` 存在但 宿主无头场景运行器尚未消费。
 - **后果**：场景绿色可能掩盖「应用用了未建模外设/越界访问」——对 AI 生成代码流水线尤其危险。
 - **修复**（两条任选其一或并行）：
   1. CI 场景矩阵增加一份 STRICT wasm 构建（同一批场景跑两遍：Release + STRICT）；
@@ -383,7 +383,7 @@ health_pot 的 10ms tick（T0 重载 0xB1E0）与 9600bps（TH1=217）都按 24M
 | **阶段 1.5（脚本化门禁，2~3 天）** | **`mcs51_shim_audit.py`：SFR/XSFR 地址、向量表、mux/掩码宏对原厂头文件全量 diff；未建模寄存器白名单生成（GAP-23 tripwire 的输入）；复位值 YAML 比对框架** | §9.5/GAP-23 | A-07 | CI 脚本 + 首份 diff 基线报告 |
 | **阶段 2（门禁，3~5 天）** | SDCC `--target=sdcc` 接入 CI 编译门禁（注意核实 SDCC 对扩展向量 19/15/16 的 `__interrupt` 改写覆盖）；STRICT 场景矩阵或 runner 计数判决（**含未建模 XSFR tripwire 计数**）；XRAM aperture 按型号收窄；**每场景实例独立性的回归钉防** | GAP-03/10/09/21/23 | A-07、A-06 | Layer-③ 实施计划 + CI 改动 |
 | **阶段 3（模型保真，1~2 周）** | UART 配置就绪校验（4 种波特率源全枚举）+ 可选波特率记账（**必须先于 GAP-07**）；ADC 基准/外电路/mux 模型（**含模拟脚数字读屏蔽**）；GPIO 方向与上下拉；WDT 超时与 TA 窗口收窄；Fosc/CONFIG 声明接线；**STOP 唤醒源补全**；经典 51 MOVX 总线占用；SBUF 重写/递归等 lint | GAP-02/05/08/07/06/17'/24/25 | A-01、A-02、A-03、A-04、A-05、A-06、A-08 | Layer-② 技术设计，涉及时钟语义的补 ADR 并回写设计规范 |
-| **阶段 4（文档/lint/呈现，持续）** | 红线手册补 int/char 语义、CONFIG、基准链、UART 前提、Mode1 重载漂移、滤波不可证伪；cleanup lint/注入面收窄与 manifest；**场景报告"物理前提"固定区块 + AI 提示词注入 + 门禁状态上报告** | GAP-11/12/14/19/20 | A-07、A-08、B-03/B-04（文档声明部分） | 文档 PR + cleanup 测试 + sister repo runner 改动 |
+| **阶段 4（文档/lint/呈现，持续）** | 红线手册补 int/char 语义、CONFIG、基准链、UART 前提、Mode1 重载漂移、滤波不可证伪；cleanup lint/注入面收窄与 manifest；**场景报告"物理前提"固定区块 + AI 提示词注入 + 门禁状态上报告** | GAP-11/12/14/19/20 | A-07、A-08、B-03/B-04（文档声明部分） | 文档 PR + cleanup 测试 + 无头 runner 改动 |
 | **阶段 5（HIL 兜底，视硬件条件）** | 廉价真机冒烟：利用 health_pot 既有 UART 遥测，真机上电校验帧节奏/按键/加热时序，作为 GAP-02/05/06 类物理前提的最终背书 | GAP-02/05/06 | C-01、C-02、C-03 | HIL 场景规范（同源 scenario 在真机台运行） |
 
 > 流程提醒：按仓库文档流转规则，本 todolist 中的阶段 2/3 执行前应迁移为 `docs/implementation-plans/mcs51/` 下的正式实施计划；涉及时钟/中断语义变更的决定先写 ADR，Accepted 后回写 Layer-① 设计规范与现行技术规格 §保真度边界。
@@ -461,7 +461,7 @@ health_pot 的 10ms tick（T0 重载 0xB1E0）与 9600bps（TH1=217）都按 24M
 **落地三件套**：
 
 1. **场景报告固定区块**：runner 在每个场景摘要下输出「🔇 本结果不覆盖的真机前提」，条目由应用 `wink-app.json` 使用的外设自动生成（如：UART 波特率/引脚配置、ADC 基准与外电路电源轨、CONFIG 时钟、WDT 节奏、RAM/CODE 预算），对应 GAP 编号可追溯。
-2. **AI 生成链路注入同一份清单**：代码生成 Agent 的系统提示词/脚手架输出必须包含该应用类型的真机前提 checklist（sister repo frontend/codegen 改动）。
+2. **AI 生成链路注入同一份清单**：代码生成 Agent 的系统提示词/脚手架输出必须包含该应用类型的真机前提 checklist（代码生成工具链与前端脚手架改动）。
 3. **应用模板 README**：mcs51 carrier 模板自带「烧录前确认」段（CONFIG、电源轨、工具链编译、map 预算）。
 
 ### GAP-20（P2，第二轮评审结构风险 C）cleanup 副本溯源与门禁状态上报告
@@ -470,7 +470,7 @@ health_pot 的 10ms tick（T0 重载 0xB1E0）与 9600bps（TH1=217）都按 24M
 
 ### GAP-21（P2，第二轮评审结构风险 B）wasm 每场景重建的生命周期假设需回归钉防
 
-经核实当前链路**安全**：CLI 对每个 spec 重新调用 `runSimulationScenario`（`run.command.ts:223`），内部重新 `loadWasmModuleInNode`/instantiate（`headless-sim-runner.ts:276-330`），每场景独立实例 → 静态构造重跑、线性内存全新，ISR 表/BSS 不跨场景继承；`mcs51_context_reset` 保留 ISR 表的设计在该生命周期下正确。**处置**：加一条 runner 级回归测试（连续两场：场 A 注册并派发向量 N，场 B 断言 `isr_dispatch_count==0` 且无场 A 残留引脚电平），把"禁止复用 wasm 实例跑多场景"写成 runner 契约注释；未来若做实例池化，该测试强制先解决 reset 语义。
+经核实当前链路**安全**：CLI 对每个 spec 独立调用仿真场景执行，内部重新实例化 Wasm 模块，每场景独立实例 → 静态构造重跑、线性内存全新，ISR 表/BSS 不跨场景继承；`mcs51_context_reset` 保留 ISR 表的设计在该生命周期下正确。**处置**：加一条 runner 级回归测试（连续两场：场 A 注册并派发向量 N，场 B 断言 `isr_dispatch_count==0` 且无场 A 残留引脚电平），把"禁止复用 wasm 实例跑多场景"写成 runner 契约注释；未来若做实例池化，该测试强制先解决 reset 语义。
 
 ### 8.2 评审未覆盖、审计方追加的两条
 
@@ -531,9 +531,9 @@ health_pot 的 10ms tick（T0 重载 0xB1E0）与 9600bps（TH1=217）都按 24M
 > 落点：`mcs51_shim_audit.py --emit-xsfr-allowlist/--check-xsfr-allowlist`（CI 新鲜度门禁）→ check-in 生成表 `include/mcs51_xsfr_allowlist.h`（93 地址）→ `mcs51_xdata.cpp` 读写单点判（`absacc.h` 新增 `wink_mcs51_xsfr_unmodeled_count/addr` C ABI，首 8 首犯地址，饱和计数，STRICT 中止/Release 单次告警，复位清零）。
 > - [x] `XBYTE[0xF120]` 写/读触发 STRICT 中止（子进程死亡用例）/ Release 计数 + 首犯地址归因（`test_mcs51_xsfr_tripwire[_strict]` 全过）。
 > - [x] health_pot 等价 XSFR 写集（P00/P30~33/P10~17/P01/02/06/P20/P04/P22CFG + LEDSDRP1L/H）零触发；37/37 host 全绿。
-> - [x] 无头 22 场景零触发验证（2026-09-11 sister repo：8 应用 xsfrUnmodeled 计数全 0）。红线 §4.7 脚本清单替换仍待办（原修复项 3）。
+> - [x] 无头 22 场景零触发验证（2026-09-11 验证：8 应用 xsfrUnmodeled 计数全 0）。红线 §4.7 脚本清单替换仍待办（原修复项 3）。
 >
-> **审阅补强（2026-09-11）**：GAP-23 落地后审阅发现 4 点，已修 3 点——① runner 接入第 4 类计数：unisim schema/runner 增加 `xsfrUnmodeled`（`wink_mcs51_xsfr_unmodeled_count`），端到端验证负向探针（XBYTE[0xF120] PWMCON）step 绿但整体 FAIL、`allow:["xsfrUnmodeled"]` 逃生转绿；② 修正单测 C 组错址（0xF010 是 P10CFG 白名单内，本意 0x10 XRAM 槽）；③ 新鲜度门禁接 CTest（`test_mcs51_xsfr_allowlist_fresh`，变异验证过期即红）。④ 家族门控（XSFR 窗口是 CMS8S 概念，经典 51 高地址 MOVX 会误判）留待与 GAP-09 aperture 按型号收窄一并处理，列为已知边界。
+> **审阅补强（2026-09-11）**：GAP-23 落地后审阅发现 4 点，已修 3 点——① runner 接入第 4 类计数：无头场景 schema/runner 增加 `xsfrUnmodeled`（`wink_mcs51_xsfr_unmodeled_count`），端到端验证负向探针（XBYTE[0xF120] PWMCON）step 绿但整体 FAIL、`allow:["xsfrUnmodeled"]` 逃生转绿；② 修正单测 C 组错址（0xF010 是 P10CFG 白名单内，本意 0x10 XRAM 槽）；③ 新鲜度门禁接 CTest（`test_mcs51_xsfr_allowlist_fresh`，变异验证过期即红）。④ 家族门控（XSFR 窗口是 CMS8S 概念，经典 51 高地址 MOVX 会误判）留待与 GAP-09 aperture 按型号收窄一并处理，列为已知边界。
 
 ### GAP-24（P2，第三轮自查）经典 51 MOVX 外部总线与 IAP 非易失区未建模
 
@@ -582,11 +582,11 @@ health_pot 的 10ms tick（T0 重载 0xB1E0）与 9600bps（TH1=217）都按 24M
 | GAP-04/13 | `mcs51_context.h/.cpp`：新增 `mcs51_context_set_family()` 与编译期家族默认；reset 末尾按家族种子化（CMS8S：CKCON=0x07 + Fosc=24MHz；经典 51：CKCON=0 + 12MHz 回退不变） | `test_mcs51_silicon_seeds`：两家族种子 + 端口/PS 种子保持 |
 | §9.5 | 新增 `frameworks/mcs51/tools/mcs51_shim_audit.py`：SFR/XSFR 地址、GPIO mux 宏、IRQ 向量四面对原厂硬比对；输出未建模寄存器清单（GAP-23 白名单输入，当前 SFR 29、XSFR 111） | 脚本退出码 0："No hard mismatches" |
 
-回归：31 个 mcs51/cms8s host 测试全部 rc=0（含 irq_arbitration、cms8s_adc、cms8s_buzzer、vendor StdDriver、low_power、timer_ext_clk、uart 全套）。全量 host 构建中唯一失败目标 `app_oled_dashboard_e2e` 为预存环境问题（缺 sister repo 的 app_codegen.py），与本次改动无关。
+回归：31 个 mcs51/cms8s host 测试全部 rc=0（含 irq_arbitration、cms8s_adc、cms8s_buzzer、vendor StdDriver、low_power、timer_ext_clk、uart 全套）。全量 host 构建中唯一失败目标 `app_oled_dashboard_e2e` 为预存环境问题（缺本地工作流 app_codegen.py），与本次改动无关。
 
 提交记录（2026-09-10 当日已落库，不再是"未提交"）：
 1. `a1f2afd fix(mcs51): correct IRQ semantic map vectors/priority SFRs (GAP-22)`；`6bcbf79 fix(mcs51): per-family silicon reset seeds for CKCON and power-on Fosc (GAP-04/13)`；`b9df7b3 test(mcs51): add shim-vs-vendor audit script and silicon seed/IRQ map test`；`4a55404 docs(mcs51): sim-vs-silicon gap audit todolist (GAP-01..25)`；`877da61 chore(mcs51): rebuild wasm simulator assets after GAP-01/22/04/13 fixes`。
-2. **wasm 无头回归已完成（2026-09-10，sister repo wink.py 自动重建生产 wasm）**：health_pot **15/15** 场景 PASS（含干烧/超温/继电器 dwell/遥测，验证 GAP-13 生产路径：CMS8S 种子 CKCON=0x07+24MHz 与应用显式重配置共存）；5 个经典 carrier 各 1/1（uart_hello/uart_echo/analog_threshold/button_led/button_led_int，at89c52 家族路径无回归）；GAP-01 活体验证——厂商未修改例程 **uart0_printf、uart0_rxtx 各 1/1 PASS**（两者都写 `P13CFG=GPIO_P13_MUX_RXD`，现在落 0x03）。合计 8 应用 22 场景全绿。
+2. **wasm 无头回归已完成（2026-09-10，构建工具自动重建生产 wasm）**：health_pot **15/15** 场景 PASS（含干烧/超温/继电器 dwell/遥测，验证 GAP-13 生产路径：CMS8S 种子 CKCON=0x07+24MHz 与应用显式重配置共存）；5 个经典 carrier 各 1/1（uart_hello/uart_echo/analog_threshold/button_led/button_led_int，at89c52 家族路径无回归）；GAP-01 活体验证——厂商未修改例程 **uart0_printf、uart0_rxtx 各 1/1 PASS**（两者都写 `P13CFG=GPIO_P13_MUX_RXD`，现在落 0x03）。合计 8 应用 22 场景全绿。
 3. 工作区有 1 个非内容改动：`mcs51_health_pot/unisim-assets/device-tree.json` 与厂商 2 例的 device-tree.json 仅 CRLF 规范化差异（configure/资产提取触发），提交时排除或还原。无头运行重建了 7 个应用的 `wink_simulator.{js,wasm}` 资产——属于 tracked 构建产物（参照历史 commit `rebuild wasm simulator asset`），随框架改动一并重新生成，提交时确认 diff 仅为重建内容。
 4. GAP-22 的家族门控（at89 构建不应注册 CMS8S 专属模型 hook）只完成了种子层，外设表门控待阶段 3。
 
@@ -599,11 +599,11 @@ health_pot 的 10ms tick（T0 重载 0xB1E0）与 9600bps（TH1=217）都按 24M
 
 ### 10.3 阶段 2 收口（2026-09-11，GAP-10 完成）
 
-**GAP-10 固件健康计数判决（框架 + sister repo 双仓提交）**：
+**GAP-10 固件健康计数判决（框架 + 仿真运行器联动）**：
 - 框架侧（embedded）：三类饱和计数以 `EMSCRIPTEN_KEEPALIVE` 导出——新增 `wink_mcs51_uart_notready_total()`（4 原因桶聚合）、`wink_mcs51_xdata_oob_count`、`wink_mcs51_unsupported_warning_count`；host 行为不变。
-- runner 侧（unisim，分支 fix/unisim-stimulus-uart-tx）：场景跑完读固件导出，**任一非零即判 FAIL，即使所有 step 全绿**；ESP32 wasm 无导出视为 N/A。新增可选 `header.firmwareDiagnostics { enforce, allow[] }`（默认强制；可按类白名单逃生）。
+- 运行器侧：场景跑完读取固件导出，**任一非零即判 FAIL，即使所有 step 全绿**；ESP32 wasm 无导出视为 N/A。新增可选 `header.firmwareDiagnostics { enforce, allow[] }`（默认强制；可按类白名单逃生）。
 - 验证：8 应用 22 场景全绿且 0 FW_DIAG；负向探针（配 SCON 但不启 T1）唯一 payload step PASSED 而整体 FAIL，加 `allow:["uartNotReady"]` 后恢复 PASS（正向/负向/逃生三路验证）。
-- host 35 mcs51 测试全绿；unisim tsc 对改动文件零新增错误（仓库基线 32 个预存类型错误）。
+- host 35 mcs51 测试全绿；仿真运行器对改动文件零新增类型错误。
 - **意义**：GAP-02 及后续所有"静默警告类"检查从此有强制力；GAP-23/05/08 的计数器一接上即自动被判决，不再依赖人工翻日志。
 
 ### 10.4 阶段 4：GAP-07 WDT 与整机复位高保真闭环（2026-09-15，ADR-0082，已落地）

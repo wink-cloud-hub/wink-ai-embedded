@@ -3,7 +3,7 @@
 > **状态**：评审完成（2026-07-12），综合评分 **8.5 / 10 — 优秀**
 > **归档说明**：本报告含私有仓实现路径与代码级细节，已按文档密级策略整篇移入本地私有通道；
 > 本文件仅保留结论与公开契约面。
-> **全量正文（仅本地）**：`docs/.internals/packages/unisim/docs/internals/embedded-archive/reviews/2026-07-12-avoidance-car-phase1-servo-observe-review.md`
+> **归档说明**：本评审记录含内部实现路径与调试细节，已归档存档；本文件保留评审结论与契约面。
 
 ## 评审对象
 

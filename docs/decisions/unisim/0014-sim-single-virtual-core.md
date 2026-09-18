@@ -6,10 +6,8 @@
 | 归属系统 | `unisim` |
 | 状态 | **Accepted** |
 
-> 💡 **本地 AI 开发者导航**：
-> 本决策的完整背景、方案比选、权衡论证与历史上下文位于私有通道：
-> [`docs/.internals/packages/unisim/docs/internals/decisions/0014-sim-single-virtual-core.md`](../../.internals/packages/unisim/docs/internals/decisions/0014-sim-single-virtual-core.md)
-
+> 💡 **架构说明**：
+> 本架构决策界定仿真引擎与嵌入式运行时的技术边界，具体实施方案由各子系统遵循标准 C-ABI 头文件对接落地。
 ---
 
 ## 结论摘要 (Decision Summary)

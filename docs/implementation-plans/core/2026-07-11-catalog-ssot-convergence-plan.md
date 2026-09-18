@@ -3,7 +3,7 @@
 > **状态**：✅ 已完成（2026-07-11）
 > **归档说明**：本计划正文含私有仓实现路径与内部文件名，已按文档密级策略整篇移入本地私有通道；
 > 本文件仅保留机制概览与公开契约面。
-> **全量正文（仅本地）**：`docs/.internals/packages/unisim/docs/internals/embedded-archive/implementation-plans/2026-07-11-catalog-ssot-convergence-plan.md`
+> **归档说明**：本计划正文含内部实现路径与调试细节，已归档存档；本文件保留机制概览与公开契约面。
 
 ## 目标
 

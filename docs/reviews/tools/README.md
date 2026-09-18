@@ -2,6 +2,4 @@
 
 Wink-Tools 工具链与 CLI 的详细白盒审查与重构报告由私有包独立维护。
 
-> 💡 **本地 AI 开发者导航**：
-> 完整审查报告位于私有通道：
-> [`docs/.internals/packages/wink-tools/docs/internals/reviews/`](../../.internals/packages/wink-tools/docs/internals/reviews)
+> 内部工具链的详细审查与重构报告由工具链团队独立归档维护。

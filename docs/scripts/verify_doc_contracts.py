@@ -163,8 +163,11 @@ def collect_markdown_files(root: Path) -> List[Path]:
 
     # 1. 检查根目录关键文档
     for root_doc in DEFAULT_ROOT_DOCS:
-        if root_doc.is_file():
-            md_files.append(root_doc)
+        try:
+            if root_doc.is_file():
+                md_files.append(root_doc)
+        except OSError:
+            pass
 
     # 2. 遍历扫描目标目录
     for scan_dir in DEFAULT_SCAN_DIRS:

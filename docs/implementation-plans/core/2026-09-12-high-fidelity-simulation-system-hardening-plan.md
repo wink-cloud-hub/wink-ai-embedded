@@ -380,7 +380,7 @@ static void button_scan_10ms(void) {
 - `wink-plugin-peripherals/builtin/button/1.0.0`：原子按压对 + 确定性毛刺序列 + 早释放重投递 + 30ms 下限；`SET_PRESSED` 扩展 `pressDurationUs/bounceUs/bounceCount`（默认 0 保持事件驱动长按语义）；dist 已重建。
 
 **外仓（sibling wink-ai，D-003/D-004）**
-- `PLANT_LOOP` 执行器：`core/utils/plant-loop-engine.ts`（有状态精确一阶热解）、`simulation-runner/headless/plant-loop-runtime.ts`（窗口/采样/反馈接线）、`kernel/quantum-step-driver.ts` `stepPlant` 钩子、`scenario.schema.ts` `ratedPowerW/supplyVoltageV`、`headless-sim-runner.ts` 调度与断言集成、`headless-domain-context.ts` 虚拟时钟 deferred waveform 接线。
+- `PLANT_LOOP` 执行器：一阶热解状态机、窗口采样反馈接线、量子步进调度钩子、ratedPowerW/supplyVoltageV 参数解析、无头运行器调度断言集成与虚拟时钟延迟波形接线。
 - 波形契约（ADR-0068）：`sdk/plugin-context.ts` `injectWaveform` 增加 generation 抢占、C 批量通道（`pal_wasm_push_waveform_edge`/`cancel_waveform_generation`）、迟到按下沿级联推迟（≥30ms）与 `cancelWaveform`；`Waveform` 双通道锁步更新。
 - 单测：`plant-loop.test.ts` 8 例、`waveform-atomic-pair.contract.test.ts` 4 例；`schema/scenario.schema.json` 与规范文档已再生成。
 
@@ -394,4 +394,4 @@ static void button_scan_10ms(void) {
 - L0“host 单测”与 L1“host 单测”以 headless 场景替代（app 为 wasm-sim only，无 host target）；已在 L0/L1 条目内如实标注。
 - 4COM POV 移除段残影（tau=80ms）属显示物理模型固有特性，稳定帧门禁按“加性帧 ≤50ms + 移除段 ≤150ms 收敛”分档记录。
 - 变更尚未提交（本仓 + sibling 仓工作区），提交时建议按“固件/场景/插件/外仓引擎”拆分原子提交。
-- 未跟踪的 `docs/.internals/packages/unisim/docs/real-model/` 与 sibling 工作区既有 `safe-verify` 为其他工作流产物，本计划未触碰。
+- 未跟踪的外部验证脚本为其他独立工作流产物，本计划未触碰。

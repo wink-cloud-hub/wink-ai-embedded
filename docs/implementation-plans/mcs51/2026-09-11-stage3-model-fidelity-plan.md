@@ -8,7 +8,7 @@
 | **创建日期** | `2026-09-11` |
 | **目标平台/SoC** | `host` / `wasm`（mcs51 仿真；`frameworks/mcs51` 在 ESP_PLATFORM 直接 return） |
 | **工具链/SDK版本** | host `GCC/MSVC C++17` / `Emscripten`；真机对照 `Keil C51`（仅文档与 checklist） |
-| **计划状态** | `Task 1/2/3/4 完成，Task 5 进行中（GAP-17'/GAP-24 落地；host -R mcs51 59/61，另 2 项为预存 MinGW putchar 链接失败，已在干净 HEAD 树复现；wasm 22 场景回归待 sister repo）` |
+| **计划状态** | `Task 1/2/3/4 完成，Task 5 进行中（GAP-17'/GAP-24 落地；host -R mcs51 59/61，另 2 项为预存 MinGW putchar 链接失败，已在干净 HEAD 树复现；wasm 22 场景回归待运行器支持）` |
 | **优先级** | 🔴 P1 主体（A-02 + A-05 打头；A-03/A-04 跟上但有前置 ADR；A-08 粗补） |
 | **计划版本** | `v1.0` |
 | **关联技术设计** | 无（本计划即 Layer-③；A-03 时钟语义另立 ADR，见 Task 3） |
@@ -58,7 +58,7 @@ A-01（UART 就绪校验）已在 GAP-02 计划 Task 1~3 落地，不在本计�
 | 指标 | 通过标准 | 验证方法 |
 |------|----------|----------|
 | 主机单元测试 | 全量 mcs51 host 测试 rc=0，含各 Task 新增用例 | `python wink-tools/wink.py test`（STRICT 目标参照 GAP-02 模式） |
-| 既有场景 | 8 应用 22 场景全绿且新增计数器全 0 | sister repo headless + FW_DIAG 判决 |
+| 既有场景 | 8 应用 22 场景全绿且新增计数器全 0 | 无头 runner + FW_DIAG 判决 |
 | 文档 | GAP-05/08/07/06 对应验收 checkbox 可打勾；红线手册对应章节补齐 | 文档 diff |
 | 架构 | 无异步定时器；所有新增时间手段均为 hook 内同步记账 | 代码评审（ADR-0072/保真度 §3.1） |
 
@@ -185,7 +185,7 @@ Task 1 → Task 2 →（ADR）→ Task 3 → Task 4 → Task 5；Task 1/2 可并
 ### Task 4：WDT/TA A-04 `[ 状态: ✅ 已完成（host；wasm 回归待补） ]`
 
 - [x] **Step 1**：WDT 粗模型：记录最近 WDTCLR 虚拟时间 + WTS 档位，microstep/catch-up 检查溢出 → 仿真复位（或 STRICT 断言 + 计数器）。
-  - **落地（2026-09-11）**：`cms8s_sys.cpp`：WTS→计数表按原厂 `wdt.h`（`2^17..2^22,2^24,2^26`，注意 `0x06=2^24/0x07=2^26` 非连续），`interval=counts·1e6/Fsys`（`WTS=6@24MHz=699050us`）；使能（`WDTRE 0→1`）与喂狗（`WDTCLR` 置位）均经 TA 解锁写记录 `wdt_last_feed_us`；`cms8s_sys_poll` 接入外设表（每 microstep 检查）+ `wink_mcs51_wdt_check()` 显式缝隙；STRICT 首溢中止 / Release 每轮计数一次（`wdt_overflow_latched` 防轮询刷屏）+ warn-once，`wink_mcs51_wdt_overflow_total()` 以 `KEEPALIVE` 导出供 GAP-10 判决（runner 接线待 sister repo）。整机复位（context reset + main 重入）明确 deferred：验收的安全属性是"最长阻塞 < WDT 间隔"，计数器已可判决。
+  - **落地（2026-09-11）**：`cms8s_sys.cpp`：WTS→计数表按原厂 `wdt.h`（`2^17..2^22,2^24,2^26`，注意 `0x06=2^24/0x07=2^26` 非连续），`interval=counts·1e6/Fsys`（`WTS=6@24MHz=699050us`）；使能（`WDTRE 0→1`）与喂狗（`WDTCLR` 置位）均经 TA 解锁写记录 `wdt_last_feed_us`；`cms8s_sys_poll` 接入外设表（每 microstep 检查）+ `wink_mcs51_wdt_check()` 显式缝隙；STRICT 首溢中止 / Release 每轮计数一次（`wdt_overflow_latched` 防轮询刷屏）+ warn-once，`wink_mcs51_wdt_overflow_total()` 以 `KEEPALIVE` 导出供 GAP-10 判决（runner 接线待运行器集成）。整机复位（context reset + main 重入）明确 deferred：验收的安全属性是"最长阻塞 < WDT 间隔"，计数器已可判决。
 - [x] **Step 2**：TA 收窄：记录 0xAA 时间戳，超窗口归零；两 TA 间出现特定 SFR 写即失效；受保护写被回滚。
   - **落地**：`ta_aa_us` + 粗窗口 `100us`（背靠背 `AA/55/保护写` 约 2 microstep ≈ 10us 通过，`delay_ms` 级 sloppy 必 fail，文档化为 tripwire 非周期模型）；`cms8s_sys_notify_sfr_write()` 在 bridge 分发前清半开窗口（`CLKDIV/WDCON/TA` 自身除外；经典家族无 TA 直接 no-op）；既有"锁定写回滚"保留。
 - [x] **Step 3**：单测：喂狗超 WTS 间隔被复位/断言；health_pot（10ms 喂狗、最长阻塞遥测）不触发；TA 间插无关 SFR 写回滚；DESIGN.md 写入"最长阻塞段（含帧长/波特率）< WTS 间隔"硬约束。
@@ -261,6 +261,6 @@ Task 1 → Task 2 →（ADR）→ Task 3 → Task 4 → Task 5；Task 1/2 可并
 | 版本 | 日期 | 变更内容 | 变更人 |
 |------|------|----------|--------|
 | v1.0 | 2026-09-11 | 初始版本（待确认）：按 A-02/A-05 打头、A-03（ADR）→A-04、A-08 收尾拆分；GAP-05 C 半与 A-03 前置依赖显式标注 | — |
-| v1.1 | 2026-09-11 | Task 1/2 落地：host 43/43 全绿 + STRICT 孪生通过；记录 3 处实施偏差（device-tree 接线→Task 5、DR 强度→契约提案、审计扫描→Task 5）；wasm 22 场景回归待 sister repo | — |
+| v1.1 | 2026-09-11 | Task 1/2 落地：host 43/43 全绿 + STRICT 孪生通过；记录 3 处实施偏差（device-tree 接线→Task 5、DR 强度→契约提案、审计扫描→Task 5）；wasm 22 场景回归待运行器支持 | — |
 | v1.2 | 2026-09-11 | ADR-0081 Accepted + 回写 Layer-① §2.8；Task 3 落地：host 45/45 全绿 + 3 路 STRICT 孪生通过；Task 4（WDT）解锁 | — |
 | v1.3 | 2026-09-11 | Task 4 落地：WDT 粗模型（WTS 表/喂狗记账/poll+显式检查/每轮一次计数+KEEPALIVE 导出）+ TA 收窄（AA 时间戳 100us 窗口/bridge 干预失效）；`test_mcs51_wdt_ta` 双构建通过；`-R mcs51 57/59`（2 预存 putchar 链接失败，干净树复现）；DESIGN 硬约束落；wasm/runner 接线待办 | — |

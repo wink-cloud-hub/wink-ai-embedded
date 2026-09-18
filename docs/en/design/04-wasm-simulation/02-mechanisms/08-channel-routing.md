@@ -6,11 +6,9 @@
 | Status | **Active** (Open Source Specification; Aligned with UniSim 3.0 SSOT) |
 | C-ABI SSOT | [`wink-micro-os/targets/wasm/wasm_bridge.h`](../../../../../wink-micro-os/targets/wasm/wasm_bridge.h) |
 
-> 💡 **AI Agent Navigation / Local Deep Development**:
-> - The full private TypeScript implementation source code and engineering details for this mechanism are located in the workspace private channel:
->   [`docs/.internals/packages/unisim/docs/internals/mechanisms/en/08-channel-routing.md`](../../../../.internals/packages/unisim/docs/internals/mechanisms/en/08-channel-routing.md)
-> - The C runtime (WinkMicroOS) interacts with this mechanism via the standard ABI header file.
-
+> 💡 **Architectural Contract & Scope**:
+> - This specification serves as the public architectural standard and functional contract;
+> - The C runtime (WinkMicroOS) decouples from the simulation environment via standard ABI headers; high-fidelity simulation scheduling engines and calibrated device models are delivered via proprietary UniSim editions.
 ---
 
 ## 1. Mechanism Overview

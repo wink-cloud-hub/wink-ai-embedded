@@ -6,11 +6,9 @@
 | 状态 | **Active**（开源规范版；对齐 UniSim 3.0 SSOT） |
 | 关联 C-ABI | [`wink-micro-os/targets/wasm/wasm_bridge.h`](../../../../../wink-micro-os/targets/wasm/wasm_bridge.h) |
 
-> 💡 **AI 智能体开发导航 / Local AI Navigation**：
-> - 本机制在浏览器 / Node 端 TypeScript 仿真引擎的**全量私有实现源码与工程细节**，位于工作区私有通道：
->   [`docs/.internals/packages/unisim/docs/internals/mechanisms/07-peripheral-registry.md`](../../../../.internals/packages/unisim/docs/internals/mechanisms/07-peripheral-registry.md)
-> - C 语言嵌入式运行时（WinkMicroOS）通过标准 ABI 头文件与此机制解耦对接。
-
+> 💡 **架构契约与分工说明**：
+> - 本机制规范作为公开架构标准与功能契约；
+> - C 语言嵌入式运行时（WinkMicroOS）通过标准 ABI 头文件与仿真环境解耦对接。高保真仿真调度引擎与物理标定资产由 UniSim 商业引擎闭源交付。
 ---
 
 ## 1. 机制概述

@@ -233,7 +233,7 @@ def patch_wink_app_json(json_path: Path, leaf_name: str, dry_run: bool = False) 
 
 
 def patch_unisim_tests(workspace_root: Path, dry_run: bool = False):
-    test_file = workspace_root / "docs" / ".internals" / "engine" / "app-consistency-runner.test.ts"
+    test_file = workspace_root / "test" / "fixtures" / "app-consistency-runner.test.ts"
     if not test_file.is_file():
         return
     content = test_file.read_text(encoding="utf-8")

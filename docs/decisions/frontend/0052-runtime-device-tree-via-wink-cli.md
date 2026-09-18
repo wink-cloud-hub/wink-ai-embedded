@@ -6,10 +6,8 @@
 | 归属系统 | `embedded-frontend` |
 | 状态 | **Accepted** |
 
-> 💡 **本地 AI 开发者导航**：
-> 本决策的完整背景、方案比选、权衡论证与历史上下文位于私有通道：
-> [`docs/.internals/packages/embedded-frontend/docs/internals/decisions/0052-runtime-device-tree-via-wink-cli.md`](../../.internals/packages/embedded-frontend/docs/internals/decisions/0052-runtime-device-tree-via-wink-cli.md)
-
+> 💡 **架构说明**：
+> 本架构决策界定外部系统与嵌入式运行时的技术边界，具体实施方案由各子系统遵循标准 C-ABI 与接口规范对接落地。
 ---
 
 ## 结论摘要 (Decision Summary)
