@@ -1,51 +1,132 @@
 # 01. 通用低代码 AI 嵌入式开发平台：平台系统级总体架构设计
 
-> **核心愿景**：Wink-AI 是一个面向 AI 生成嵌入式应用的低代码开发、行为级仿真与真机部署平台。用户通过拖拽可视化组件或 AI 生成业务逻辑，在浏览器中基于 WebAssembly 进行安全沙箱验证、故障注入测试和 Golden Trace 一致性追踪；验证通过后，再通过云端隔离编译与 WebSerial/WebUSB 用户授权烧录到真实开发板。
+> **核心愿景**：Wink-AI 是一个面向 AI 生成嵌入式应用的低代码开发、行为级高保真仿真与真机部署平台。通过将嵌入式研发全流程 Workflow 与物理环境全息数字化，构建高保真数字实验室（Digital Laboratory / Harness），使嵌入式软硬件研发流程接近 100% 脱离物理硬件环境。用户与 AI Agent 在浏览器中基于 WebAssembly 进行确定性沙箱验证、故障注入测试与 Golden Trace 一致性比对；验证通过后，通过云端隔离编译与 WebSerial/WebUSB 用户授权烧录到真实硬件，并通过虚实差异反馈迭代不断消除 Sim-to-Real 鸿沟，实现真正闭环的 AI 自主嵌入式研发。
 
 ---
 
-## 1. 平台核心痛点与解决之道
+## 1. 技术哲学与系统愿景：从垂直领域数字化到 AI 闭环研发
 
-传统嵌入式开发存在以下瓶颈：
+### 1.1 AI 工业落地的本质与物理世界数字化 Harness
 
+当前人工智能与大模型技术正在经历从“信息交互”向“实体生产力”的历史性跃迁：
+* **AI (LLM) 的本质**：是对人类**智力与认知能力（IQ/EQ）**的数字化、参数化与函数化。
+* **具身智能 (Embodied AI) 的本质**：是对人类**五感感知输入与身体物理动作输出**完整工作流（Workflow）的数字化、参数化与函数化。
+* **千行百业的数字化演进**：未来千行百业都必然经历各自领域研发 Workflow 与作业环境的全栈数字化。**因为只有将垂直领域的物理环境与作业流程彻底数字化，AI 才能真正成为生产力，而不是停留在聊天框里的玩具**。通过 AI Agent 与专用测试执行工程（Harness Engineering）的紧密咬合，垂直领域的工作流才能形成可自愈、可验证的生产力闭环。
+
+**嵌入式研发的核心困境与突破口**：
+* 纯软件（如 Web、后端）领域 AI 之所以能快速自闭环编程，是因为拥有完备的数字化沙箱（编译器报错、单元测试容器、CI 管道、运行时日志）。
+* 传统嵌入式研发强依赖物理硬件：硬件不可逆、易损坏、缺少微观可观测性、无法高并发与快进运行（Fast-Forward），且物理激励获取成本极高。AI 生成的代码如同“盲人摸象”，无法得到确定性的物理因果反馈。
+* **Wink-AI 的破局解法**：为嵌入式系统研发构建一个**全参数化、高保真、可快进、可注入异常的数字实验室（Digital Harness）**。让 AI 生成的固件在此虚拟沙箱中经历百万次迭代演进，最终让仿真与研发流程接近 100% 脱离物理硬件环境。通过构建“虚拟仿真 ➔ 证据链断言 ➔ 故障注入 ➔ 真机标定 (Model Calibration)”的反向反馈闭环，不断缩小 Sim-to-Real 差异，最终赋能 AI 真正实现嵌入式软硬件的自主研发闭环。
+
+### 1.2 传统嵌入式开发瓶颈与 Wink-AI 解法
+
+传统嵌入式开发存在以下五大核心瓶颈：
 1. **硬件依赖重，开发门槛高**：开发者或 AI 生成器必须理解寄存器、引脚复用、电气时序和平台 SDK，导致业务逻辑难复用、难验证。
 2. **AI 生成代码存在安全风险**：AI 生成 C 代码可能包含死循环、空指针、越界、错误状态机或危险控制逻辑，直接烧录真机风险极高。
-3. **Web 端微观仿真性能低**：逐周期模拟 GPIO、I2C、UART 等波形会造成高频 JS/Wasm 通信，浏览器性能不可接受。
-4. **虚实一致缺少证据链**：仅凭视觉仿真无法证明真机行为与仿真一致，需要结构化 trace、回放和对比。
-5. **工具链与烧录割裂**：用户需要安装 ESP-IDF、ARM GCC、驱动、烧录工具，阻碍低门槛使用。
+3. **Web 端微观仿真性能低**：逐周期模拟 GPIO、I2C、UART 等高频波形会造成海量 JS/Wasm 跨端通信开销，浏览器性能不可接受。
+4. **虚实一致缺少证据链**：仅凭视觉仿真无法证明真机行为与仿真一致，需要结构化 trace、输入回放和微秒级差异对比。
+5. **工具链与烧录割裂**：用户需要安装不同芯片厂商的交叉工具链（ESP-IDF、ARM GCC）、驱动程序与专用烧录器，门槛极高。
 
-Wink-AI 的解法：
-
+Wink-AI 的系统级破局之道：
 * **App/BAL/DAL/PAL 四层解耦**：用户业务逻辑、可复用算法库、器件语义和平台能力分离。
 * **Device Model Registry 单一事实源**：统一外设模型、属性、引脚、DAL API、仿真策略、真机约束和代码生成。
 * **数据面五通道旁路 (Channel-routed Bypass)**：Pin-level (通道1)、PWM Modulation (通道1b)、Protocol Bus (通道2)、Analog Signal (通道3)、Buffer Payload (通道4) 按场景分流；旁路全沉至 PAL 平台层，DAL/App 维持 100% 虚实同源代码。
 * **安全沙箱链路**：App Safe Codegen、静态检查、Wasm Worker watchdog、隔离编译容器和固件 manifest。
+* **Golden Trace 一致性验证与真机标定**：记录仿真与真机关键语义事件，支持回放、对比、CI 回归与模型参数校准。
 
 > **术语澄清**：
 > - ✅ **App 层**：用户代码/AI 生成的一次性业务逻辑（`app_init/app_loop/app_on_fault`）
 > - ✅ **BAL 层**：Business Abstraction Layer（业务抽象层），包含 **物理增强**（`input` / `output` / `sensor` / `actuator` / `display` / `comm`）、**`math` 纯算法**、**`control` 闭环编排** 三大域，为 `wink-micro-os` 内核的核心组件库 (`wink-micro-os/bal/`)
 > - ⚠️ **历史用法**：早期文档中的 "DAL Bypass / DAL 直通" 指早期整层 `#ifdef SIMULATION` 替换 DAL 驱动的行为；现已淘汰。现行 UniSim 3.0 规定 **旁路必须下沉至 PAL 平台层 (PAL Physical Source Bypass)**，DAL/App 100% 虚实同源。
-* **Golden Trace 一致性验证**：记录仿真与真机关键语义事件，支持回放、对比和 CI 回归。
 
 ---
 
-## 2. 系统总体分层架构
+## 2. 宏观四层系统数字化模型 (The 4-Layer Digital Twin Hierarchy)
+
+为了让嵌入式研发完整脱离硬件依赖，平台将真实物理世界的机电与时序因果链全息映射为**四大核心数字化模型**：
+
+```text
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                              系统宏观四层数字化模型 (Digital Twin Hierarchy)             │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│  1. 芯片模型 (Chip & Core Model)                                                       │
+│     - 数字化算力与时序基准：虚拟微秒时钟 (VirtualClock)、指令/沙箱执行、寄存器与中断 NVIC   │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│  2. 外设通道模型 (Peripheral Channel & Interconnect Model)                             │
+│     - 数字化信号传输与电气时序：4 值逻辑仲裁 (PinArbiter 0/1/Z/X)、数据面五通道旁路分流    │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│  3. 外设模型 (Peripheral Device Model)                                                 │
+│     - 数字化元器件机电转换规律：传感器采样与电气限位、执行器驱动特性、故障注入状态机   │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│  4. 外设与环境交互的物理模型 (Plant & Environment Physics Model)                       │
+│     - 数字化物理世界法则与几何拓扑：运动学/动力学、声光热空间传播、碰撞检测、物理退化噪声  │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 2.1 四层数字化模型的内涵与因果链
+
+1. **芯片模型 (Chip & Core Model)**：
+   * **职责**：解决**算力、时钟基准与内核时序**的确定性数字化。
+   * **实现**：包括 UniSim 微秒级虚拟时钟（`VirtualClock`）、Wasm 沙箱/Asyncify 挂起机制、中断分发器与指令级虚拟机（ADR-0064 Tier 1~4）。它保障在仿真世界中，代码的执行推进完全受虚拟时间轴绝对控制，消除跨宿主机的墙钟抖动。
+2. **外设通道模型 (Peripheral Channel & Interconnect Model)**：
+   * **职责**：解决**信号传输介质、总线协议与电气逻辑仲裁**的数字化。
+   * **实现**：由 `PinArbiter` 提供支持 0/1/Z/X（高阻/未知）的电气逻辑模拟，以及数据面五通道旁路（Pin 电平、PWM 调制占空比、I2C/SPI/UART 协议总线、ADC 模拟量、Buffer 图像帧）。将高频硬件波形解析为轻量级语义事件，是连接虚拟芯片与虚拟外设的高速神经。
+3. **外设模型 (Peripheral Device Model)**：
+   * **职责**：解决**传感器、执行器等元器件内部机电转换特性**的参数化。
+   * **实现**：统一定义于 [Device Model Registry](../07-platform-governance/01-device-model-registry.md)。数字化每个外设的电气约束、采样周期、舵机脉宽/转角转换方程、超声波发声盲区、按键机械抖动，以及断线/超时/漂移等可编程故障注入状态机。
+4. **外设与环境交互的物理模型 (Plant & Environment Physics Model)**：
+   * **职责**：解决**元器件与外部物理世界法则（力、热、光、电、声、几何空间）交互**的数学函数化。
+   * **实现**：集成于前端 3D 产品世界（ProductWorld）与物理仿真插件（Simulation Plugins）。包括避障小车的两轮差速运动学方程、超声波发射在三维障碍物空间的飞行时间（ToF）射线检测、摩擦力与接触阻抗。这一层赋予了嵌入式控制代码真实的“物理环境反馈闭环”。
+
+**物理世界因果驱动链**：
+$$\text{芯片时钟与控制指令} \xrightarrow{\text{通道信号传输}} \text{外设机电动作} \xrightarrow{\text{物理法则作用}} \text{环境状态演化} \xrightarrow{\text{物理感知反馈}} \text{传感器采样} \xrightarrow{\text{通道数据回传}} \text{芯片中断与控制决策}$$
+
+---
+
+## 3. 系统总体分层与对偶双轮架构 (Dual-Wheel Architecture)
+
+平台架构由**“嵌入式固件栈（运行于 MCU / Wasm 内部）”**与**“数字实验台栈（外部物理世界孪生）”**构成镜像对偶的双轮驱动体系：
+
+```text
+┌──────────────────────────────────────────────┐        ┌──────────────────────────────────────────────┐
+│       嵌入式固件栈 (Embedded Firmware Stack)    │        │   数字实验台栈 (Harness Stack - 物理孪生沙箱)   │
+│          运行于 Wasm / ESP32 内部             │        │            运行于 UniSim / 前端引擎           │
+├──────────────────────────────────────────────┤        ├──────────────────────────────────────────────┤
+│  App 层  (业务状态机、意图编排、决策回调)         │ ◄────► │  4. 物理环境交互模型 (运动学、空间几何、ToF)  │
+│  BAL 层  (纯算法 math、闭环控制 control)     │ ◄────► │  3. 外设模型 (传感器/执行器机电特性、故障机)   │
+│  DAL 层  (器件语义 API: dal_ultrasonic_read) │ ◄────► │  2. 外设通道模型 (数据面 5 通道、Pin 仲裁器)  │
+│  PAL 层  (平台 HAL / OSAL: pal_gpio/timer)   │ ◄────► │  1. 芯片模型 (虚拟时钟、Wasm沙箱、中断/调度)  │
+└──────────────────────────────────────────────┘        └──────────────────────────────────────────────┘
+                        ▲                                                       ▲
+                        └─────────────────── 虚实同源桥梁 ───────────────────────┘
+                                   (Wasm-Bridge ABI / Device Registry)
+```
+
+### 3.1 跨栈协同与数据闭环
+* **嵌入式固件栈（代码态）**：由 `App -> BAL -> DAL -> PAL` 构成，严格遵循虚实同源 C 源码规范。App 仅面向业务语义编排，芯片寄存器和总线细节下沉屏蔽。
+* **实验台栈（孪生沙箱态）**：由 `芯片模型 -> 外设通道模型 -> 外设模型 -> 物理环境交互模型` 构成，为控制栈提供微秒级高保真虚拟环境与确定性激励。
+* **握手与切换边界**：两栈在 **PAL (平台抽象层) 与 Wasm Bridge / Channel Arbiter** 处握手。
+  - **仿真运行**：PAL 路由至 Wasm 平台层旁路，直接驱动外设通道模型与物理环境，生成微秒级 Golden Trace。
+  - **真机运行**：PAL 静态绑定到物理芯片硬件驱动（ESP-IDF / STM32 HAL），控制真实物理世界，并通过 UART 吐出相同格式的 Trace。
+  - **Sim-to-Real 模型标定 (Model Calibration)**：通过比对真机与仿真的 Trace 差异，反向微调外设模型与环境模型的参数（如传感器延迟漂移、电机真实死区），使数字实验室持续逼近物理真相。
+
+### 3.2 总体系统交互架构全景
 
 ```mermaid
 graph TD
     Input[AI / Low-Code 输入] --> SafeCodegen[wink CLI Codegen / 静态检查]
     SafeCodegen --> App[应用逻辑层 App]
 
-    Registry[Device Model Registry] --> SafeCodegen
+    Registry[Device Model Registry<br>统一器件元数据] --> SafeCodegen
     Registry --> DeviceTree[device_tree 生成]
     Registry --> WebSchema[SchemaForm / 画布校验]
-    Registry --> SimModel[仿真模型 / 故障模型]
+    Registry --> SimModel[外设仿真与故障模型]
 
     App -->|调用业务抽象| BAL[业务抽象层 BAL]
     BAL -->|器件语义 API| DAL[器件抽象层 DAL]
     DeviceTree --> DAL
 
-    subgraph WinkMicroOS[WinkMicroOS Runtime (虚实同源 C 代码)]
+    subgraph WinkMicroOS[WinkMicroOS Runtime (虚实同源 C 代码栈)]
         BAL
         DAL -->|总线与系统 API| PAL[平台抽象层 PAL]
         Trace[Golden Trace Runtime]
@@ -54,26 +135,29 @@ graph TD
     PAL -.->|PAL Wasm Target / Channel Bypass| WasmBridge[Wasm-JS Bridge]
     PAL -.->|真机静态绑定| Target[Target PAL: ESP32 / STM32]
 
-    subgraph Monorepo[Wink-AI Monorepo Frontend & Sim]
+    subgraph DigitalLab[UniSim 高保真数字实验室 (数字孪生栈)]
         WasmBridge --> Worker[@wink-ai/unisim Worker]
-        Worker --> Watchdog[Watchdog / Resource Limit]
-        Worker --> UniSim[UniSim Virtual Peripherals]
-        UniSim --> UI[@wink-ai/embedded-frontend Canvas]
+        Worker --> ChipSim[芯片模型: VirtualClock / 沙箱]
+        Worker --> ChannelSim[通道模型: PinArbiter / 5 通道]
+        ChannelSim --> PeripheralSim[外设模型: 虚拟外设 / 故障注入]
+        PeripheralSim --> PlantPhysics[物理环境交互模型: 运动学 / 空间几何]
+        PlantPhysics --> UI[@wink-ai/embedded-frontend 画布与 3D 世界]
     end
 
-    subgraph CloudBuild[wink CLI / Cloud Build]
+    subgraph CloudBuild[wink CLI / Cloud Build 隔离构建]
         BuildContainer[Isolated Build Environment] --> Firmware[Firmware + Manifest + sha256]
     end
 
-    Target --> Hardware[Physical MCU]
+    Target --> Hardware[物理 MCU 硬件]
     Firmware --> Flash[WebSerial / WebUSB Flash]
     Flash --> Hardware
-    Trace --> Compare[Trace Replay / Compare]
+    Trace --> Compare[Trace Replay / Sim-to-Real 差异比对与模型标定]
+    Hardware -.->|真机 Trace 回灌| Compare
 ```
 
 ---
 
-### 2.1 异构芯片仿真四层兼容体系 (Heterogeneous MCU Simulation Matrix)
+### 3.3 异构芯片仿真四层兼容体系 (Heterogeneous MCU Simulation Matrix)
 
 为了同时兼顾 **AI 代码跨芯片生成**、**既有开源生态（Arduino/C51）零修改迁移** 与 **国产工业级极致低成本 8 位 OTP 芯片（义乌玩具、余慈小家电）** 的深度落地，平台将嵌入式仿真原理划分为四大演进层级（架构决议详见 [ADR-0064](../../decisions/unisim/0064-chip-simulation-four-tier-taxonomy.md)）：
 
@@ -106,11 +190,11 @@ graph TD
 
 ---
 
-## 3. 跨仓五大核心模块全景卡片 (Cross-Repository 5-Core Pillars)
+## 4. 跨仓五大核心模块全景卡片 (Cross-Repository 5-Core Pillars)
 
 根据平台商业机密隔离规范与 Monorepo 物理拆分架构，系统由 5 个核心模块协同联动。非本仓外部模块（如 `embedded-frontend` 与 `unisim`）严格遵循**黑盒契约原则 (Black-Box Contract Insulation)**：**仅描述模块功能作用、使用场景、对外 API / DTO / CLI 契约与输入输出产物，不暴露主仓私有算法与商业实现细节**。
 
-### 3.1 跨仓五大模块速查矩阵
+### 4.1 跨仓五大模块速查矩阵
 
 | 模块名称 | 物理归属与路径 | 黑盒核心作用 | 典型使用场景与调用方式 | 接口与契约形式 | 商业与代码隔离边界 |
 |---|---|---|---|---|---|
@@ -122,7 +206,7 @@ graph TD
 
 ---
 
-### 3.2 模块详细使用与集成指南
+### 4.2 模块详细使用与集成指南
 
 #### 1. `embedded-frontend` (前端工作台)
 * **作用**：提供专业级嵌入式 IDE 体验，支持 2D 电路连线、3D 机械物理联动渲染、属性编辑、AI 助手交互及一键编译烧录向导。
@@ -160,7 +244,7 @@ graph TD
 
 ---
 
-## 4. 分层职责
+## 5. 分层职责 (Layer Responsibilities)
 
 | 分层 | 核心职责 | 主要产物 | 受众 |
 |---|---|---|---|
@@ -176,7 +260,7 @@ graph TD
 | Cloud Build | 隔离编译、缓存、产物签名、manifest | `.bin/.hex`, build log | DevOps/平台工程师 |
 | Trace System | 记录、回放、对比仿真和真机行为 | Golden Trace | 测试工程师 |
 
-### 3.1 与经典嵌入式四层架构（ops 表多态）的映射
+### 5.1 与经典嵌入式四层架构（ops 表多态）的映射
 
 > 本节澄清 App/BAL/DAL/PAL 四层与 `embedded-best-practice` 经典四层架构（应用层 / 抽象层 ops 表 / 实现层 / 注册层 + Platform 层）的关系。本平台是**范式重构而非一一对应**，特此声明，避免实现者按"全新四层 ops 架构"误解。
 >
@@ -197,9 +281,9 @@ PAL 采用 CMake 静态直调（符合 Platform 层惯例）；DAL 放弃运行�
 
 ---
 
-## 5. 虚实双模运行核心机制
+## 6. 虚实双模运行核心机制
 
-### 4.1 网页端仿真模式
+### 6.1 网页端仿真模式
 
 1. 用户生成 App 和拓扑后，平台先执行 App 静态安全检查。
 2. Device Model Registry 生成 `device_tree.c/h`、SchemaForm 属性、仿真注册信息和故障模型。
@@ -209,7 +293,7 @@ PAL 采用 CMake 静态直调（符合 Platform 层惯例）；DAL 放弃运行�
 6. UniSim 通过数据面五通道（Pin / PWM / Protocol Bus / Analog / Buffer）及 PAL 平台层旁路与 Wasm 交互。
 7. 仿真过程写入 Golden Trace，可用于回放、故障测试和 CI 回归。
 
-### 4.2 真机部署模式
+### 6.2 真机部署模式
 
 1. 仿真和必要故障测试通过后，用户选择目标板卡。
 2. 云端编译服务在隔离容器中拉起对应 toolchain。
@@ -220,7 +304,7 @@ PAL 采用 CMake 静态直调（符合 Platform 层惯例）；DAL 放弃运行�
 
 ---
 
-## 6. 仿真精度边界
+## 7. 仿真精度边界
 
 Wink-AI 的主目标是**行为级高保真仿真**，不是全电气级仿真。
 
@@ -238,7 +322,7 @@ Wink-AI 的主目标是**行为级高保真仿真**，不是全电气级仿真�
 
 ---
 
-## 7. 安全与可信链路
+## 8. 安全与可信链路
 
 ```text
 S0 未检查代码
@@ -263,7 +347,7 @@ S4 已验证配置
 
 ---
 
-## 8. 核心商业与技术价值
+## 9. 核心商业与技术价值
 
 1. **降低嵌入式原型试错成本**：用户先在浏览器中验证控制逻辑和外设交互，再进入硬件阶段。
 2. **让 AI 生成代码可控可审计**：静态检查、沙箱、故障注入和 trace 让 AI 代码从“能生成”升级为“可验证”。
@@ -273,7 +357,7 @@ S4 已验证配置
 
 ---
 
-## 9. MVP 聚焦范围
+## 10. MVP 聚焦范围
 
 第一阶段建议聚焦：
 
@@ -288,83 +372,6 @@ S4 已验证配置
 | 验证 | Golden Trace 基础事件、故障注入 timeout/disconnect |
 
 暂缓 STM32/RP2040、多板通信、复杂 3D 机械臂、ngspice 电气仿真和完整 WebUSB DFU。
-
----
-
-## 10. 复杂智能硬件下的 AI-MCU 协同架构 (大脑与小脑模式)
-
-为了支持复杂的智能嵌入式产品，平台将“上层 AI 决策算法”与“底层实时控制逻辑”进行物理与逻辑的双重解耦，采取分布式异构协同架构。
-
-### 10.1 大脑与小脑的分工原则
-
-- **上层 AI 决策层 (大脑 - Cerebrum)**：运行于高性能边缘计算芯片 (如 Linux/Cortex-A/NPU) 或云端，负责视觉识别、自然语言处理、大模型 Agent 规划、SLAM 路径构建等高算力、非确定性、高延迟的任务。
-- **底层控制层 (小脑 - Cerebellum / WinkMicroOS)**：运行于实时 MCU (Cortex-M/ESP32)，负责电机驱动闭环 (PID)、实时传感器更新、本地安全策略以及看门狗。它保证微秒/毫秒级的硬实时确定性与物理安全。
-
-### 10.2 虚实融合四层架构 (Virtual-Physical Hybrid Four-Layer Architecture)
-
-在分布式异构协同的基础上，系统通过“虚实融合四层架构”实现应用逻辑与硬件、平台以及仿真环境的彻底解耦：
-
-```text
-+-----------------------------------------------------------------------------------+
-|  1. 智能决策与 AI 算法层 (AI & Decision Layer - 大脑)                               |
-|     - 运行位置：主控芯片 (Linux/Cortex-A/NPU) 或 云端                                  |
-|     - 职责：视觉目标检测 (YOLO)、语音识别、路径规划 (SLAM)、LLM Agent 状态决策              |
-+-----------------------------------------------------------------------------------+
-                                       │
-                                       │ 协议通信 (Protobuf / JSON over UART/SPI/WiFi)
-                                       ▼
-+-----------------------------------------------------------------------------------+
-|  2. 应用业务控制层 (WinkOS App Layer - 小脑)                                        |
-|     - 运行位置：实时控制 MCU (WinkOS Core)                                          |
-|     - 职责：接收 AI 层的决策指令，根据本地状态机执行物理安全逻辑（如：避障降速、安全防夹） |
-|     - 特点：对 AI Agent 友好，双端同源编译 (Wasm/MCU)                                |
-+-----------------------------------------------------------------------------------+
-                                       │
-                                       ▼
-+-----------------------------------------------------------------------------------+
-|  3. 业务算法层 (WinkOS BAL Layer - 胶水/协处理器)                                  |
-|     - 职责：协调 DAL 硬件与 Runtime 任务，如自动采样、数据滤波、状态广播、AI 桥接      |
-+-----------------------------------------------------------------------------------+
-                                       │
-                                       ▼
-+-----------------------------------------------------------------------------------+
-|  4. 设备与平台抽象层 (WinkOS DAL / PAL Layer - 底盘)                                |
-|     - 职责：屏蔽具体芯片和外设差异，提供标准物理 API (如：电机转速、超声波距离值)     |
-+-----------------------------------------------------------------------------------+
-```
-
-1.  **AI & Decision Layer (大脑)**：
-    *   独立于实时 MCU 运行。通过非阻塞协议与底层的 WinkMicroOS 进行通信。
-    *   在网页仿真中，此层可以通过 Mock 的 AI 服务节点或本地 JS 模型进行仿真。
-2.  **WinkOS App Layer (小脑)**：
-    *   这是 WinkMicroOS 直接调度的业务层，提供 `app_init`、`app_loop`、`app_on_fault` 等生命周期回调。
-    *   在真机上编译为二进制裸跑，在 Web 上通过 Wasm 沙箱运行，确保两端行为 100% 一致。
-3.  **WinkOS BAL Layer**：
-    *   作为 App 层与 DAL/PAL 的桥梁，封装诸如 PID 闭环控制、传感器滤波等不需要上层 AI 介入的硬实时边缘计算。
-4.  **WinkOS DAL/PAL Layer**：
-    *   底层的驱动和系统服务抽象。在仿真时通过 Wasm-JS Bridge 直通旁路输出给前端 3D 物理引擎；在真机时通过静态绑定与 ESP32/STM32 物理外设交互。
-
-### 10.3 接口与边界 (BAL 的定位)
-
-> **现行细则 SSOT**：[02-wink-micro-os/06-bal-layer.md](../02-wink-micro-os/06-bal-layer.md)（三域、命名、CI）。决策：[ADR-0037](../../decisions/core/0037-bal-domain-partition-and-closed-loop-motor.md)、[ADR-0038](../../decisions/core/0038-bal-naming-hard-cut-and-layer-ssot.md)。
-
-- **业务算法层 (BAL) 保持轻量**：BAL 仅包含与底层硬件直接相关的实时算法 (如卡尔曼滤波、滑动平均、PID 控制) 与器件增强/闭环组件，不得集成重型神经网络或复杂的宏观决策，以防止低端 MCU 的运行时过载与代码膨胀。
-- **三域**：物理增强（单 DAL）· `math/`（纯算法）· `control/`（跨器件闭环/编排）。详见 06-bal-layer。
-- **通信桥梁**：BAL 中可引入通信协议适配器 (如遥测 default 服务)，通过标准协议向上层 AI 广播实时状态数据，并接收上层下发的控制指令。
-- **Fail-Safe 安全降级机制**：一旦上层 AI 出现内存溢出、死机或网络异常，底层 WinkMicroOS App 层状态机在检测到通信超时后，能够自主接管，执行本地安全刹车、回航或报警，实现系统级容错。闭环控制另须反馈失效脱扣（ADR-0037）。
-
-### 10.4 意图控制与数据契约 (Intent Command & Data Contract)
-
-在整个异构协同设计中，App 层最重要的职责是**对智能决策层提供“意图指令”的封装与隔离**，避免直接物理引脚读写的反模式（Anti-Pattern）：
-
-1.  **意图控制指令封装 (Control Commands)**：
-    *   App 层明确定义控制语义（如“设置底盘目标速度 `0.5m/s`”、“机械臂移至坐标 `(X,Y,Z)`”）。
-    *   指令入参必须采用标准的物理单位（如米/秒、角度、毫米），绝对不向决策层暴露物理引脚号、PWM 占空比等底层时序细节。
-    *   这为 AI Agent 提供了天然的 Function-Calling Schema，极易生成与验证。
-2.  **语义遥测数据输出 (Semantic Telemetry)**：
-    *   底层传感器数据经 BAL 处理（数据滤波、状态融合）后，由 App 层以语义化形式推送给决策层（如“当前电量百分比”、“前方障碍物距离”），过滤掉底层的 ADC 原始读数和引脚波动。
-3.  **本地硬实时闭环与执行否决权 (Local Real-Time Override)**：
-    *   WinkMicroOS App 层根据当前本地物理约束（如：底盘超声波防撞、限位开关触发），对上层决策指令拥有最终执行否决权。即使上层 AI 产生决策幻觉或发送了危险指令，App 层亦能根据安全边界本地拦截，保障物理实体安全。
 
 
 

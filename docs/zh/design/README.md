@@ -30,7 +30,7 @@
 ### 1. 总体设计与产品规划 (System Level Design & Product Roadmap)
 
 * **[01-system-overall/01-system-overview.md](./01-system-overall/01-system-overview.md) - 平台系统级总体架构设计与跨仓五大模块指南**
-  * 阐述平台愿景、分层架构、解耦执行流、**跨仓 5 大核心模块全景卡片 (embedded-frontend, unisim, wink-tools, wink-micro-os, wink-micro-app)** 及其黑盒接口指南。
+  * 阐述技术哲学（垂直领域数字化与数字实验室 Harness）、宏观四层数字化模型（芯片/通道/外设/物理环境）、对偶双轮架构、跨仓 5 大核心模块及其黑盒接口指南。
 * **[01-system-overall/02-mvp-roadmap.md](./01-system-overall/02-mvp-roadmap.md) - 产品路线、硬件矩阵与阶段性交付规划**
   * 收敛硬件矩阵到 ESP32/STM32、Wasm 仿真、故障测试、云编译和 WebSerial/WebUSB 烧录闭环。
 * **[01-system-overall/03-product-user-journey.md](./01-system-overall/03-product-user-journey.md) - 产品用户旅程、双视窗 (2D/3D) 体验与 IDE 信息架构**
@@ -124,7 +124,11 @@
 
 ---
 
-## 核心理念：安全的虚实融合 (Safe Dual-Mode Harmony)
+## 核心理念：从垂直领域数字化到高保真数字实验室 (Digital Laboratory Harness)
+
+* **AI 工业落地的本质**：AI (LLM) 是智力与认知能力（IQ/EQ）的数字化、参数化与函数化；具身智能是人类五感感知与物理动作输出整个 Workflow 的数字化、参数化与函数化。
+* **数字实验室使命**：千行百业必须把垂直领域的 Workflow 和物理环境全息数字化，AI 才能通过 Agent 与专用测试执行工程（Harness Engineering）脱离“聊天玩具”成为实体生产力。Wink-AI 构建微秒级高保真数字实验室，使嵌入式研发流程接近 100% 脱离物理硬件环境。
+* **宏观四层数字化模型**：`芯片模型 (时钟/算力) ➔ 外设通道模型 (信号/协议) ➔ 外设模型 (机电特性) ➔ 物理环境交互模型 (运动学/空间几何)`，与代码控制栈（`App -> BAL -> DAL -> PAL`）镜像对偶协同。
 
 ```text
 [ AI / Low-Code 输入 ]
@@ -133,25 +137,25 @@
 [ App DSL / 状态机 AST + Project Manifest ]
         │
         ▼
-[ App Safe Codegen + 静态检查 ]
+[ App Safe Codegen + 静态语法检查 ]
         │
         ▼
-[ Device Model Registry + Registry Lock ] ──► [ device_tree / SchemaForm / DAL / Sim ]
+[ Device Model Registry (统一器件元数据) ] ──► [ device_tree / DAL / 虚拟外设 / 故障注入 ]
         │
         ▼
-[ Wasm Worker 仿真 + Fault Injection + Golden Trace ]
+[ UniSim 高保真数字实验室 (芯片/通道/外设/物理环境) + 故障注入 + Golden Trace ]
         │
         ▼
-[ 云端隔离编译 + Firmware Manifest ]
+[ 云端隔离交叉编译 + Firmware Manifest + sha256 验签 ]
         │
         ▼
-[ WebSerial/WebUSB 用户授权烧录 ]
+[ WebSerial / WebUSB 用户授权烧录 ]
         │
         ▼
-[ 真机 Runtime + Trace Compare ]
+[ 物理 MCU 硬件运行 + Golden Trace 比对 ➔ Sim-to-Real 模型标定反馈闭环 ]
 ```
 
-平台不追求替代 SPICE、示波器或真实硬件验证，而是聚焦于 **AI 生成嵌入式业务逻辑的安全生成、行为级仿真、异常路径验证和真机部署闭环**。
+平台不追求替代 SPICE 电气级仿真，而是聚焦于 **AI 嵌入式软硬件全生命周期的数字化建模、行为级高保真仿真、异常注入自愈与真机部署自闭环**。
 
 
 ## 项目代码规范
