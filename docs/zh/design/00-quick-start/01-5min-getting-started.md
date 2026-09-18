@@ -7,7 +7,7 @@
 ## 操作步骤
 操作视频
 ### 1. 访问仿真设计器官网
-http://www.wink-cloud.com/simulator/index.html
+http://www.wink-ai.com/simulator/index.html
 
 按操作提示从git中下载 wink-micro-embedded 仓库
 
