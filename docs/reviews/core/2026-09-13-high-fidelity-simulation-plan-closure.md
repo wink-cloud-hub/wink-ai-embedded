@@ -5,7 +5,7 @@
 **评审视角**：资深嵌入式与仿真架构师（静态分发范式、ADR-0004；单镜像安全硬边界、ADR-0067；波形原子对契约、ADR-0068）
 **关联决策**：ADR-0067（Plant Profile 架构）、ADR-0068（波形边沿与虚拟时戳契约）、ADR-0001/0002/0042/0047/0053/0055
 **关联设计**：[Wasm 仿真现行入口](../../zh/design/04-wasm-simulation/00-README.md)、[一致性规范](../../zh/design/04-wasm-simulation/04-assurance/01-consistency-spec.md)
-**跨仓交付**：sibling `wink-ai/packages/unisim`（D-003 plant-loop 执行器；D-004 SDK 波形契约）
+**跨仓交付**：商业仿真引擎 UniSim 侧（D-003 plant-loop 执行器；D-004 SDK 波形契约）
 
 ---
 

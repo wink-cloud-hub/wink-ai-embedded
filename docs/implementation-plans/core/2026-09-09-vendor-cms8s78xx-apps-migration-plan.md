@@ -47,7 +47,7 @@ get_filename_component(_MCS51_APP_OS_ROOT
 |------|----------|----------|
 | **多级应用发现** | 19 个应用被正确发现为 `vendor_cms8s78xx_v202/<leaf>` | `wink build-sim --all --dry-run` 或 Python 单测 |
 | **WASM 编译通过** | 抽检与全量应用生成 `.cpp` 并在 wasm 下编译成功 | `wink build-sim --app gpio` / `buzzer` / `led_4com_8seg` |
-| **全量单测通过** | unisim 双轨一致性测试与扫描单测全部通过 | `bun test packages/unisim/src/simulation-runner/consistency` |
+| **全量单测通过** | unisim 双轨一致性测试与扫描单测全部通过 | 引擎侧一致性测试套件（双轨 + 扫描单测） |
 | **架构门禁** | 0 违规，符合分层与 API 规范 | `wink lint arch --pack layering --pack api` |
 
 ---
@@ -118,7 +118,7 @@ set(_MCS51_CLEANUP
    - 将 `"app_name": "vendor_cms8s78xx_v202_<leaf>"` 同步修改为 `"app_name": "<leaf>"`。
    - `upstream.source_dir` 为基于 Workspace Root 的相对路径，保持不变。
 2. **Unisim 单测更新**：
-   - [`packages/unisim/src/simulation-runner/consistency/__tests__/app-consistency-runner.test.ts`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/docs/.internals/packages/unisim/src/simulation-runner/consistency/__tests__/app-consistency-runner.test.ts#L20)：
+   - 引擎侧一致性运行器单测（夹具经本地私有通道访问）：
      将 `wink-micro-app/vendor_cms8s78xx_v202_led_4com_8seg` 路径更新为：
      `wink-micro-app/vendor_cms8s78xx_v202/led_4com_8seg`。
 
@@ -146,7 +146,7 @@ set(_MCS51_CLEANUP
   - ADC/LDO：`wink build wasm --app adc_ldo`
   - 数码管动态扫描：`wink build wasm --app led_4com_8seg`
 - [x] **Task 3.3**：执行 Unisim 一致性双轨测试：
-  - `bun test packages/unisim/src/simulation-runner/consistency`
+  - 引擎侧一致性测试套件
 - [x] **Task 3.4**：更新 `wink-micro-app/README.md` 文档中的路径与命令示例。
 
 ### Phase 4：提交与归档
@@ -233,7 +233,7 @@ def patch_wink_app_json(json_path: Path, leaf_name: str, dry_run: bool = False) 
 
 
 def patch_unisim_tests(workspace_root: Path, dry_run: bool = False):
-    test_file = workspace_root / "docs/.internals/packages/unisim/src/simulation-runner/consistency/__tests__/app-consistency-runner.test.ts"
+    test_file = workspace_root / "docs" / ".internals" / "engine" / "app-consistency-runner.test.ts"
     if not test_file.is_file():
         return
     content = test_file.read_text(encoding="utf-8")

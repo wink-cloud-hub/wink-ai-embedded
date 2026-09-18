@@ -26,3 +26,6 @@ jobs:
           else
             python docs/scripts/verify_doc_contracts.py --strict
           fi
+
+      - name: Scan tracked files for secrets and internal hosts
+        run: python docs/scripts/scan_secrets.py --worktree

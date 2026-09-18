@@ -88,14 +88,14 @@ describe('Ultrasonic Physics Model', () => {
 
 ## ⚡ 4. 第二部分：插件仿真逻辑单测 (Plugin State Machine Testing)
 
-通过 Mock 轻量级的 `PluginContext`，可对外设插件的生命周期（`onBound`）、事件处理（`_distanceCm`）与引脚读写逻辑进行端到端隔离测试。
+通过 SDK 官方测试宿主 `createPluginStubHost()`（来自 `@wink-ai/unisim-sdk`）或最小 `PluginContext` Mock，可对外设插件的生命周期（`onBound`）、事件处理（`_distanceCm`）与引脚读写逻辑进行端到端隔离测试。官方推荐优先使用 `createPluginStubHost()`（行为与引擎一致、随 SDK 维护）；下方示例展示最小手工 Mock 形态，便于理解契约面。
 
 ### 4.1 仿真插件单测示例 (`src/__tests__/simulation.test.ts`)
 
 ```typescript
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { UltrasonicPlugin, createUltrasonicManifest } from '../simulation';
-import type { PluginContext } from '@wink-ai/unisim';
+import type { PluginContext } from '@wink-ai/unisim-sdk';
 
 describe('UltrasonicPlugin Headless Lifecycle', () => {
   let plugin: UltrasonicPlugin;

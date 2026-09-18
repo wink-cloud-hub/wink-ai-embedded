@@ -313,9 +313,9 @@ dal_ultrasonic_t front_radar = {
 
 | Registry 层 | 目录 | 聚合 Facade | 消费方 |
 |-------------|------|-------------|--------|
-| 电路外设 | `../../../../wink-ai/packages/embedded-frontend/src/peripherals/` | `deviceCatalog.listDevices()` | 资产库、Manifest→画布、binding 校验 |
-| 开发板 | `../../../../wink-ai/packages/embedded-frontend/src/boards/` | `deviceCatalog.getBoard()` / `listBoards()` | 引脚解析、Board 画布布局 |
-| 机械/环境 | `../../../../wink-ai/packages/embedded-frontend/src/world-assets/` | `listMechanicalModels()` / `listEnvironmentModels()` | Bindings 面板、模板 |
+| 电路外设 | 宿主工作台前端外设目录（`src/peripherals/`） | `deviceCatalog.listDevices()` | 资产库、Manifest→画布、binding 校验 |
+| 开发板 | 宿主工作台前端开发板目录（`src/boards/`） | `deviceCatalog.getBoard()` / `listBoards()` | 引脚解析、Board 画布布局 |
+| 机械/环境 | 宿主工作台前端世界资产目录（`src/world-assets/`） | `listMechanicalModels()` / `listEnvironmentModels()` | Bindings 面板、模板 |
 | 映射类型 | `types/mapping-registry.ts` | — | `allowed*Mappings` 交叉校验 |
 | Binding 实例 | Manifest `bindings.*` | — | simulate 门禁、W3c Worker 桥 |
 

@@ -15,7 +15,7 @@
 
 ## 2. 任务拆分与执行记录
 
-### 2.1 Python wink-tools（SSOT：`wink-ai/packages/wink-tools`）
+### 2.1 Python wink-tools（winkcli 工具链）
 
 - [x] 新增 `tools/app_discovery.py`：`MAX_APP_DEPTH=3`、`DiscoveredApp`、`discover_apps`（受控 DFS + 剪枝）、`find_app`（精确 id → 唯一叶子别名 → `AmbiguousAppRef`）、`find_app_dir`（容忍无清单半成品）、`find_overshoot_manifests`、`app_id_for`、`normalize_ref`。
 - [x] `cli/_shared.py`：新增 `_candidate_app_roots`（workspace/samples/向上遍历同级仓库，resolved 去重）、`try_resolve_app_dir`（非致命），`resolve_app_dir` 改为薄包装输出可操作错误。

@@ -65,7 +65,7 @@ src/peripherals/registry.ts   # +1 行 register(servo)
 ## 4. 目标结构
 
 ```
-../../../../wink-ai/packages/embedded-frontend/src/peripherals/
+src/peripherals/                  # 宿主工作台前端外设模块（逻辑结构）
 ├── types.ts                      # PeripheralDefinition + PeripheralPropDef 契约
 ├── registry.ts                   # 显式注册 + 查询 API（禁止隐式 glob 自动发现）
 ├── context.ts                    # 可选：provide/inject（pinStates / oledFb / 事件）
@@ -331,7 +331,7 @@ simulation: {
 }
 ```
 
-**`simulation-client.ts` 主路径改造后：**
+**仿真客户端主路径改造后：**
 
 ```ts
 // observePins 主路径不再硬编码 type === 'oled' / 'ultrasonic'
