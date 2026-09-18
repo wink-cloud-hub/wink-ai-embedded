@@ -279,7 +279,7 @@ ic_aliases:
 ### 2.4 跨仓前端与 WASM 协议仿真模型 (TS & Unisim Axis A Bridge)
 
 #### 1. 前端 TS 外设包交付边界
-前端 TS 外设包代码位于外部 monorepo `embedded-frontend/` 下的 `peripherals/builtin/load_cell/v1/`，由前端框架独立渲染 `wokwi-hx711` UI。
+前端 TS 外设包代码位于宿主工作台仓的 `peripherals/builtin/load_cell/v1/`，由前端框架独立渲染 `wokwi-hx711` UI。
 
 #### 2. WASM HX711 协议行为模型 (`targets/wasm/pal_wasm_gpio_sim.c`)
 C 驱动在 WASM Target 下会真实对 GPIO 进行 bit-bang 移位。为了保证仿真连贯性，在 WASM 物理桥接层搭建 HX711 协议行为模型：

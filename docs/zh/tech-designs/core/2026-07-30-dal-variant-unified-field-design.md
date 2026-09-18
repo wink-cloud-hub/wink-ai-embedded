@@ -8,7 +8,7 @@
 | 关联 ADR | [ADR-0004](../../decisions/core/0004-static-dispatch-vs-runtime-ops.md)（静态分发）；[ADR-0034](../../decisions/core/0034-dal-progressive-config-disclosure.md)（Zero-as-Default）；[ADR-0046](../../decisions/core/0046-dal-driver-registry-ssot.md) / [ADR-0051](../../decisions/tools/0051-scannable-codegen-extension-roots.md)（YAML SSOT）；[ADR-0048](../../decisions/core/0048-actuator-control-semantic-naming.md) |
 | 关联活规范 | [01-dal-device-abstraction.md](../../design/02-wink-micro-os/01-dal-device-abstraction.md) § 机制一（语义不变 + 拓扑枚举） |
 | 关联手册 | [`dal-best-practices.md`](../../../wink-micro-os/docs/dal-development-guide/dal-best-practices.md) §3.0；[`wink-app-json-guide.md`](../../../wink-micro-os/docs/wink-app-json-guide.md) |
-| 关联评审 | [2026-07-30-dal-type-semantic-and-function-sufficiency-review.md](../../reviews/core/2026-07-30-dal-type-semantic-and-function-sufficiency-review.md)；UniSim [dal-type-unified-refactoring-design-review](unisim/docs/review/2026-07-30-dal-type-unified-refactoring-design-review.md) P0-1 |
+| 关联评审 | [2026-07-30-dal-type-semantic-and-function-sufficiency-review.md](../../reviews/core/2026-07-30-dal-type-semantic-and-function-sufficiency-review.md)；UniSim 侧 DAL 类型统一重构设计评审（引擎仓内部文档）P0-1 |
 | 范围 | 跨 type 统一「同族变体」JSON/C 字段名为 `variant`；枚举定义位置；codegen 直写；迁移与文档心法回写 |
 | 非范围 | 实现新拓扑分支（如 `phase_enable` 真接线）；SPI OLED；跨 type 共用单一枚举类型；YAML 生成 C 枚举头；运行时动态换驱动 `.c` |
 
