@@ -13,7 +13,7 @@ WinkMicroOS is the deterministic digital lab that closes that loop: the same C s
 ![Docs](https://img.shields.io/badge/docs-English%20%7C%20%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-success)
 
 **English** | [简体中文](./README.zh-CN.md)
-&nbsp;·&nbsp; [▶ Try it online](http://www.wink-cloud.com/simulator/index.html) &nbsp;·&nbsp; [5-min guide](./docs/en/design/00-quick-start/01-5min-getting-started.md) &nbsp;·&nbsp; [Docs hub](./docs/en/README.md) &nbsp;·&nbsp; [Roadmap](./docs/en/design/01-system-overall/02-mvp-roadmap.md)
+&nbsp;·&nbsp; [▶ Try it online](http://www.wink-ai.com/simulator/index.html) &nbsp;·&nbsp; [5-min guide](./docs/en/design/00-quick-start/01-5min-getting-started.md) &nbsp;·&nbsp; [Docs hub](./docs/en/README.md) &nbsp;·&nbsp; [Roadmap](./docs/en/design/01-system-overall/02-mvp-roadmap.md)
 
 **Status:** released · public CI green · test executables (see [`wink-micro-os/TESTING.md`](./wink-micro-os/TESTING.md))
 
@@ -161,25 +161,56 @@ Board definitions are the hardware SSOT: [`wink-tools/tools/codegen/boards/`](./
 
 ## Architecture
 
-```text
-┌───────────────────────────────────────────────────────────────────────────┐
-│  Your firmware (C)                                                        │
-│    wink-micro-app/<app>/     business logic · L1 Role API / L2 dal_*      │
-└──────────────┬────────────────────────────────────────────────────────────┘
-               │  device_tree.h  (generated from wink-app.json)
-┌──────────────▼────────────────────────────────────────────────────────────┐
-│  wink-micro-os runtime — static dispatch · no malloc · cooperative loop   │
-│    BAL   business abstraction   events · closed-loop control              │
-│    DAL   device abstraction     servo · ultrasonic · button · LED · OLED  │
-│    PAL   platform abstraction   gpio · pwm · i2c · uart · timers · irq    │
-│    runtime / trace / fault registry                                       │
-└──────────────┬────────────────────────────────────────────────────────────┘
-       ┌───────┼──────────────────┬────────────────────┐
-       ▼       ▼                  ▼                    ▼
-  targets/host  targets/wasm    targets/esp32    frameworks/mcs51 · avr · pdk
-  unit tests    UniSim (browser   ESP-IDF carrier  8/16-bit MCU families
-                & headless CI)
+The platform adopts a **"Dual-Wheel Architecture"**: on the left is the **Embedded Firmware Stack** (100% dual-target C code running inside MCU or Wasm), and on the right is the **Digital Twin Harness Stack** (a 4-layer holographic digitization of chip, channel, peripheral, and environmental physics inside the browser and CI containers). Both are driven and assembled from a single source of truth, `wink-app.json`, via the unified `winkcli` toolchain.
+
+```mermaid
+graph TD
+    classDef input fill:#e0f2fe,stroke:#0284c7,stroke-width:1.5px;
+    classDef tool fill:#fef3c7,stroke:#d97706,stroke-width:1.5px;
+    classDef fw fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px;
+    classDef sim fill:#f3e8ff,stroke:#9333ea,stroke-width:1.5px;
+    classDef target fill:#fee2e2,stroke:#dc2626,stroke-width:1.5px;
+
+    Manifest["Application Manifest: wink-app.json (AI / Low-Code Generated)"]:::input
+    Manifest --> CLI["Unified CLI Toolchain: winkcli (wink-tools)<br>• wink gen codegen  • wink lint layering gates  • wink test sim assertions  • wink build/flash compilation"]:::tool
+
+    CLI -->|Generates device_tree & App template| FW
+    CLI -->|Configures virtual peripherals & topology| SIM
+
+    subgraph DualWheel ["Dual-Wheel Dual-Target Co-Simulation Architecture"]
+        subgraph FW ["Embedded Firmware Stack (C Runtime)"]
+            App["App Layer (State Machine / Intent Orchestration)"]:::fw
+            BAL["BAL Business Abstraction (Events / Pure Math / Closed-Loop)"]:::fw
+            DAL["DAL Device Abstraction (Servo / Ultrasonic / OLED APIs)"]:::fw
+            PAL["PAL Platform Abstraction (GPIO / PWM / I2C / Timers / IRQ)"]:::fw
+            App --> BAL --> DAL --> PAL
+        end
+
+        subgraph SIM ["Digital Twin Harness Stack (UniSim Sandbox)"]
+            Plant["4. Plant & Environment Physics (Kinematics / Space / ToF)"]:::sim
+            PeriphSim["3. Peripheral Device Model (Electromechanical / Fault Injection)"]:::sim
+            ChanSim["2. Channel & Interconnect Model (PinArbiter / 5-Channel Bypass)"]:::sim
+            ChipSim["1. Chip & Core Model (VirtualClock / Wasm / ISA Emulation)"]:::sim
+            Plant <--> PeriphSim <--> ChanSim <--> ChipSim
+        end
+
+        PAL <===>|Wasm-Bridge ABI / PAL Platform Bypass| ChanSim
+    end
+
+    FW -.->|emcmake build| WasmTarget["In-Browser High-Fidelity Simulation<br>(UniSim Engine + 2D/3D Viewports)"]:::target
+    FW -.->|Cross-toolchain build| RealTarget["Physical MCU Board Deployment<br>(ESP32 · MCS-51 · Arduino · PDK)"]:::target
+
+    SIM -.->|Golden Trace Consistency Assertion| TraceCheck["Sim-to-Real Trace Comparison & Calibration"]
+    RealTarget -.->|UART Real Trace Streaming| TraceCheck
 ```
+
+### Core Architectural Pillars
+
+1. **Unified SSOT Driving Engine**: A single source of truth, `wink-app.json`, defines hardware topology and configuration. `winkcli` orchestrates C code generation, architectural linting, headless testing, and firmware builds.
+2. **Dual-Wheel System**:
+   * **Embedded Firmware Stack** (`App ➔ BAL ➔ DAL ➔ PAL`): 100% dual-target C code, compile-time static dispatch, zero malloc, microsecond hard real-time determinism.
+   * **Digital Twin Harness Stack** (`Chip ➔ Channel ➔ Peripheral ➔ Physics`): 4-layer electromechanical and spatiotemporal digitization providing microsecond virtual clocks and physical causal closed-loops.
+3. **Closed-Loop Dual Delivery**: A single codebase can be compiled into WebAssembly for zero-hardware interactive testing and fault injection in the browser, or flashed unmodified onto real MCU hardware.
 
 ## Repository layout
 
@@ -207,7 +238,7 @@ Board definitions are the hardware SSOT: [`wink-tools/tools/codegen/boards/`](./
 
 ### 1 · Zero install — run a demo in your browser
 
-1. Open the online simulator: **<http://www.wink-cloud.com/simulator/index.html>**
+1. Open the online simulator: **<http://www.wink-ai.com/simulator/index.html>**
 2. Import this repository (or just the `wink-micro-app/mcs51_button_led/` folder)
 3. Run the `button-led` scenario, press the virtual button, watch the LED and the live pin waveform
 

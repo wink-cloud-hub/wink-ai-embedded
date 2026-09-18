@@ -13,7 +13,7 @@ WinkMicroOS 是闭合这个环的确定性数字实验室：同一份 C 源码�
 ![Docs](https://img.shields.io/badge/docs-English%20%7C%20%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-success)
 
 [English](./README.md) | **简体中文**
-&nbsp;·&nbsp; [▶ 在线试玩](http://www.wink-cloud.com/simulator/index.html) &nbsp;·&nbsp; [5 分钟上手](./docs/zh/design/00-quick-start/01-5min-getting-started.md) &nbsp;·&nbsp; [文档中心](./docs/zh/README.md) &nbsp;·&nbsp; [路线图](./docs/zh/design/01-system-overall/02-mvp-roadmap.md)
+&nbsp;·&nbsp; [▶ 在线试玩](http://www.wink-ai.com/simulator/index.html) &nbsp;·&nbsp; [5 分钟上手](./docs/zh/design/00-quick-start/01-5min-getting-started.md) &nbsp;·&nbsp; [文档中心](./docs/zh/README.md) &nbsp;·&nbsp; [路线图](./docs/zh/design/01-system-overall/02-mvp-roadmap.md)
 
 **状态：**  已发布 · 公共 CI 绿色 · host 测试可执行（见 [`wink-micro-os/TESTING.md`](./wink-micro-os/TESTING.md)）
 
@@ -161,22 +161,56 @@ $ winkcli test                            # host 构建 + 全量测试（截至 
 
 ## 系统架构
 
-```text
-wink-micro-app/<app>/   你的固件（C）：L1 Role API / L2 dal_* 实例
-        │
-        │  device_tree.h（由 wink-app.json 生成）
-        ▼
-wink-micro-os 运行时 —— 静态分发 · 无 malloc · 协作式循环
-        BAL  业务抽象层   事件 · 闭环控制
-        DAL  器件抽象层   舵机 · 超声波 · 按键 · LED · OLED
-        PAL  平台抽象层   gpio · pwm · i2c · uart · 定时器 · 中断
-        runtime / trace / 故障注册表
-        │
-        ├── targets/host    单元测试
-        ├── targets/wasm    UniSim（浏览器 / 无头 CI）
-        ├── targets/esp32   ESP-IDF 固件载体（真机）
-        └── frameworks/     mcs51 · avr · pdk 8/16 位 MCU 家族
+平台采用**“对偶双轮架构 (Dual-Wheel Architecture)”**：左侧为运行在 MCU 或 Wasm 内部的**嵌入式固件栈**（100% 虚实同源 C 源码），右侧为运行在浏览器及 CI 容器内的**数字实验台栈**（芯片/通道/外设/物理环境四层全息建模）。二者通过单一事实源 `wink-app.json` 由工具链 `winkcli` 统一驱动与组装。
+
+```mermaid
+graph TD
+    classDef input fill:#e0f2fe,stroke:#0284c7,stroke-width:1.5px;
+    classDef tool fill:#fef3c7,stroke:#d97706,stroke-width:1.5px;
+    classDef fw fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px;
+    classDef sim fill:#f3e8ff,stroke:#9333ea,stroke-width:1.5px;
+    classDef target fill:#fee2e2,stroke:#dc2626,stroke-width:1.5px;
+
+    Manifest["应用清单契约：wink-app.json (AI / 低代码生成)"]:::input
+    Manifest --> CLI["统一嵌入式工具链：winkcli (wink-tools)<br>• wink gen 代码生成  • wink lint 架构门禁  • wink test 仿真断言  • wink build/esp32 编译烧录"]:::tool
+
+    CLI -->|生成 device_tree 与 App 模板| FW
+    CLI -->|配置虚拟外设与拓扑映射| SIM
+
+    subgraph DualWheel ["虚实同源对偶双轮体系"]
+        subgraph FW ["嵌入式固件栈 (C Runtime)"]
+            App["App 业务层 (状态机 / 意图编排)"]:::fw
+            BAL["BAL 业务抽象层 (事件 / 纯算法 / 闭环控制)"]:::fw
+            DAL["DAL 器件抽象层 (舵机 / 超声波 / OLED 语义 API)"]:::fw
+            PAL["PAL 平台抽象层 (GPIO / PWM / I2C / 定时器 / 中断)"]:::fw
+            App --> BAL --> DAL --> PAL
+        end
+
+        subgraph SIM ["数字实验台栈 (UniSim 物理沙箱)"]
+            Plant["4. 物理环境交互模型 (运动学 / 空间几何 / ToF)"]:::sim
+            PeriphSim["3. 外设模型 (机电特性 / 故障注入)"]:::sim
+            ChanSim["2. 外设通道模型 (PinArbiter / 5 通道旁路)"]:::sim
+            ChipSim["1. 芯片模型 (VirtualClock / Wasm / 指令解释)"]:::sim
+            Plant <--> PeriphSim <--> ChanSim <--> ChipSim
+        end
+
+        PAL <===>|Wasm-Bridge ABI / PAL 平台层旁路| ChanSim
+    end
+
+    FW -.->|emcmake 构建| WasmTarget["浏览器行为级高保真仿真<br>(UniSim 引擎 + 2D/3D 画布)"]:::target
+    FW -.->|交叉工具链构建| RealTarget["真实物理芯片部署<br>(ESP32 · MCS-51 · Arduino · PDK)"]:::target
+
+    SIM -.->|Golden Trace 一致性断言| TraceCheck["Sim-to-Real 虚实对比与模型标定"]
+    RealTarget -.->|UART 真实 Trace 回传| TraceCheck
 ```
+
+### 架构核心支柱
+
+1. **统一中枢驱动**：单一事实源 `wink-app.json` 定义硬件拓扑与配置，`winkcli` 全程驱动 C 代码生成、分层 Lint 门禁、无头测试与固件构建。
+2. **对偶双轮体系**：
+   * **嵌入式固件栈**（`App ➔ BAL ➔ DAL ➔ PAL`）：100% 虚实同源 C 代码，编译期静态分发，零 malloc，微秒级硬实时。
+   * **数字实验台栈**（`芯片 ➔ 通道 ➔ 外设 ➔ 物理环境`）：四层机电与时空全息数字化，为固件提供微秒级确定性虚拟时钟与闭环激励。
+3. **闭环双端交付**：同一套业务源码，既可一键导出 WebAssembly 在浏览器中零硬件成本验证与故障注入，亦可无修改直烧真实 MCU 开发板。
 
 ## 仓库布局
 
@@ -204,7 +238,7 @@ wink-micro-os 运行时 —— 静态分发 · 无 malloc · 协作式循环
 
 ### 1 · 零安装 —— 在浏览器里跑一个演示
 
-1. 打开在线仿真器：**<http://www.wink-cloud.com/simulator/index.html>**
+1. 打开在线仿真器：**<http://www.wink-ai.com/simulator/index.html>**
 2. 导入本仓库（或仅导入 `wink-micro-app/mcs51_button_led/` 目录）
 3. 运行 `button-led` 场景，按下虚拟按键，观察 LED 与实时引脚波形
 
