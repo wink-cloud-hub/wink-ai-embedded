@@ -22,6 +22,17 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Dict, Set, Tuple, Optional
 
+# Windows GBK 控制台兼容：emoji/生僻字符输出不应导致 UnicodeEncodeError
+for _stream in (getattr(sys, "stdout", None), getattr(sys, "stderr", None)):
+    if _stream is not None and hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(errors="replace")
+        except Exception:
+            pass
+
+# 零宽/不可见字符：可能被用于撕碎路径字符串以规避黑盒匹配
+INVISIBLE_CHARS = re.compile(r"[\u200B-\u200F\u2060\uFEFF\u00AD\u180E]")
+
 # 根目录推导
 SCRIPT_PATH = Path(__file__).resolve()
 WORKSPACE_DIR = SCRIPT_PATH.parents[2]
@@ -73,7 +84,7 @@ REDLINE_RULES: List[RedlineRule] = [
         severity="FATAL",
         name="私有包内部源码路径泄露 (src/ escape)",
         pattern=re.compile(
-            r"packages/(?:unisim|embedded-frontend|toy-studio|x-studio(?:-[a-z]+)?|shared)/src/",
+            r"packages/(?:unisim|embedded-frontend|toy-studio|x-studio(?:-[a-z]+)?|shared)/src(?![A-Za-z0-9_-])",
             re.IGNORECASE,
         ),
         remediation="禁止在公开文档中直接引用外部闭源包的内部源码路径。请用逻辑模块名代替，如 `@wink-ai/unisim (PinArbiter)`。",
@@ -117,6 +128,15 @@ REDLINE_RULES: List[RedlineRule] = [
             re.IGNORECASE,
         ),
         remediation="严禁泄露内部未开源的工具链私有模块源码路径。",
+    ),
+    RedlineRule(
+        rule_id="RULE-06-INVISIBLE-CHARS",
+        severity="HIGH",
+        name="零宽/不可见字符混入词或路径 (invisible character evasion)",
+        pattern=re.compile(
+            r"[A-Za-z0-9_@/.\-][\u200B-\u200D\u2060\uFEFF\u00AD\u180E]+[A-Za-z0-9_@/.\-]"
+        ),
+        remediation="移除词或路径中的零宽字符/软连字符等不可见字符；它们会破坏黑盒路径匹配，并可能被用于规避门禁。",
     ),
 ]
 
@@ -167,15 +187,18 @@ def collect_markdown_files(root: Path) -> List[Path]:
 
 
 def scan_file_for_violations(filepath: Path, base_dir: Path) -> List[Finding]:
-    """对单文件按红线矩阵执行逐行扫描"""
+    """对单文件按红线矩阵执行逐行扫描（含零宽字符归一化，防止匹配规避）"""
     findings: List[Finding] = []
     rel_path = filepath.relative_to(base_dir).as_posix()
 
     try:
         with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
             for line_idx, line in enumerate(f, start=1):
+                normalized = INVISIBLE_CHARS.sub("", line)
                 for rule in REDLINE_RULES:
-                    if rule.pattern.search(line):
+                    if rule.pattern.search(line) or (
+                        normalized != line and rule.pattern.search(normalized)
+                    ):
                         fp = compute_fingerprint(rel_path, rule.rule_id, line)
                         findings.append(
                             Finding(
