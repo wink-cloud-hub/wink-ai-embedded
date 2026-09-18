@@ -8,7 +8,7 @@ winkcli-version: ">=0.1.0"
 
 - Install (winget): `winget install WinkAI.WinkCli`
 - Install (GitHub Releases): download `winkcli-v<version>-windows-x86_64.zip` from [Releases](https://github.com/wink-cloud-hub/wink-ai-embedded/releases) and add `winkcli.exe` to `PATH`
-- Online simulator (zero install): <http://www.wink-cloud.com/simulator/index.html>
+- Online simulator (zero install): <http://www.wink-ai.com/simulator/index.html>
 - Full documentation: [`docs/en/`](./docs/en/)
 - Release notes: [GitHub Releases](https://github.com/wink-cloud-hub/wink-ai-embedded/releases)
 
