@@ -36,14 +36,16 @@
 | `wink-micro-app/mcs51_thermos/thermos.c` | 恢复标准 `P3 = 0xFF`（删 workaround 注释） |
 | `wink-micro-app/mcs51_thermos/DESIGN.md` | §8 第 5 项标记落地、移除「不写输入口」规避说明 |
 
-### 仓 B：wink-ai
+### 仓 B：wink-ai（商业引擎闭源侧）
 
-| 文件 | 改动 |
+> 按跨仓黑盒隔离约定，本节仅描述契约面改动，不列私有仓实现路径与行号。
+
+| 契约面 | 改动 |
 |---|---|
-| `unisim/types/wasm/imports.ts` | L6 `js_pal_gpio_write(pin, level, strength: number)` |
-| `unisim/core/bridge/bridge-factory.ts` | L208 setDriver 用 `strength ?? DriveStrength.SUPPLY` 映射（1/2/3 恒等） |
-| `packages/unisim/scripts/abi-catalog/abi-catalog.yaml` | `js_pal_gpio_write` signature + strength 参数 desc（枚举编码入 desc）+ `adr: ["0077"]` + 行号 |
-| `packages/unisim/docs/architecture/hardware-channel-abi-catalog.md` | 由 `bun run gen:abi-catalog` 重生成（`check:abi-catalog` gate） |
+| UniSim Wasm 导入契约（`WasmImports`） | `js_pal_gpio_write(pin, level, strength: number)` 增加第三参 |
+| UniSim 宿主引脚桥（PinArbiter 驱动注入） | setDriver 采用 `strength ?? SUPPLY` 兜底映射（1/2/3 恒等） |
+| UniSim ABI Catalog（机器可读 SSOT） | `js_pal_gpio_write` signature + strength 参数说明（枚举编码）+ `adr: ["0077"]` |
+| 生成式 ABI 文档 | 由 `bun run gen:abi-catalog` 重生成，`check:abi-catalog` gate 保持绿 |
 
 ## 3. 执行顺序（两仓原子，本地一次性改齐后再分别提交）
 
@@ -51,8 +53,8 @@
 2. **embedded mcs51**：mcs51_proxy.hpp 边沿强度；mcs51_uni_bridge.cpp host fallback 签名+strength 记录；mcs51_bridge.cpp 上电种子。
 3. **embedded 测试**：EM_JS / node stub 签名；test_sfr_edge_dispatch_accuracy 加强度断言。
 4. **重算 ABI hash**：`python wink-micro-os/tools/update_wasm_abi_hash.py`。
-5. **wink-ai host**：imports.ts + bridge factory 强度映射。
-6. **wink-ai abi-catalog**：改 yaml → `bun run gen:abi-catalog` → `check:abi-catalog` 转绿。
+5. **wink-ai host**：Wasm 导入契约 + 引脚驱动强度映射。
+6. **wink-ai abi-catalog**：更新 catalog → `bun run gen:abi-catalog` → `check:abi-catalog` 转绿。
 7. **thermos 去 workaround**：恢复 `P3 = 0xFF`、更新 DESIGN。
 8. **全量回归**（见 §4）。
 9. **ADR-0077 置 Accepted + 回写**设计规范 `07-mcs51-simulation-interception.md`。
