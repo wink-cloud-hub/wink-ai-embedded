@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "2.0",
+    "version": "3.0",
     "name": "mcs51_health_pot key bounce: 8 ms contact chatter is debounced to exactly one press event",
     "templateId": "mcs51_health_pot",
     "accuracyMode": "timing",

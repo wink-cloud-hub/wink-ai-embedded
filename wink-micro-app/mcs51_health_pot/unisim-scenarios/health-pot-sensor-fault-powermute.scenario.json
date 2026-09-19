@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "2.0",
+    "version": "3.0",
     "name": "mcs51_health_pot safety: sensor fault is manually acknowledgeable - ON/OFF always returns to a safe muted standby, start refused until probe recovers",
     "templateId": "mcs51_health_pot",
     "accuracyMode": "behavioral",

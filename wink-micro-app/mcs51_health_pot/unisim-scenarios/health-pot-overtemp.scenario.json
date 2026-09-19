@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "2.0",
+    "version": "3.0",
     "name": "mcs51_health_pot safety: keep-warm over-temp (F=4) — plate runs beyond scale in WARM, latched manual reset",
     "templateId": "mcs51_health_pot",
     "accuracyMode": "behavioral",

@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "2.0",
+    "version": "3.0",
     "name": "mcs51_health_pot boil-confirm: temperature dip during 3 s hold does NOT restart heating",
     "templateId": "mcs51_health_pot",
     "accuracyMode": "behavioral",

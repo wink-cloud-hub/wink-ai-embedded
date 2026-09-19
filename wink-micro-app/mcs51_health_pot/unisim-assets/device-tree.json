@@ -148,14 +148,21 @@
       },
       "inputPorts": {
         "power": {
-          "from": "gpio:16"
+          "from": "gpio:16",
+          "invert": false
         }
       },
       "outputPorts": {
         "temperature_c": {
           "to": "plugin:temp_sensor/temperature"
         }
-      }
+      },
+      "probes": [
+        {
+          "port": "temperature_c",
+          "as": "buffer:pot/water_temp_c"
+        }
+      ]
     }
   ]
 }

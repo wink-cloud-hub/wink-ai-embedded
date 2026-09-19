@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "2.0",
+    "version": "3.0",
     "name": "mcs51_health_pot safety: beyond-scale code during HEAT never fakes boil completion, E-04 latches after 10 s",
     "templateId": "mcs51_health_pot",
     "accuracyMode": "behavioral",

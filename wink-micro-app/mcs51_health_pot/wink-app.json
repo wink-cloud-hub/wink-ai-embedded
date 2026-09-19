@@ -96,11 +96,14 @@
         "ratedPowerW": 1000
       },
       "inputPorts": {
-        "power": { "from": "$board.headers.P20" }
+        "power": { "from": "device:heater_relay" }
       },
       "outputPorts": {
         "temperature_c": { "to": "plugin:temp_sensor/temperature" }
-      }
+      },
+      "probes": [
+        { "port": "temperature_c", "as": "buffer:pot/water_temp_c" }
+      ]
     }
   ]
 }

@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "2.0",
+    "version": "3.0",
     "name": "mcs51_health_pot fast-boil: plant-excited 0.3 L / 1000 W boils in ~94 s then latches keep-warm (Phase-B)",
     "templateId": "mcs51_health_pot",
     "accuracyMode": "behavioral",
@@ -8,24 +8,12 @@
     "failurePolicy": "fail-fast",
     "determinism": { "prngSeed": 42 }
   },
+  "plantConditions": {
+    "pot_default": {
+      "description": "标准 0.3L 加水工况，直接继承 wink-app.json 默认物理参数 (C=1256, R=1.5)"
+    }
+  },
   "steps": [
-    {
-      "type": "PLANT_LOOP",
-      "id": "pot_thermal",
-      "windowUs": ["0", "146s"],
-      "sampleIntervalUs": "10ms",
-      "model": {
-        "kind": "first_order_thermal",
-        "thermalCapacity": 1256,
-        "thermalResistance": 1.5,
-        "ambientTempC": 25,
-        "ratedPowerW": 1000
-      },
-      "inputPorts": { "power": { "from": "gpio:16" } },
-      "outputPorts": { "temperature_c": { "to": "plugin:temp_sensor/temperature" } },
-      "probes": [{ "port": "temperature_c", "as": "buffer:pot/water_temp_c" }],
-      "description": "Physical environment only (0.30 kg water, 1000 W plate, 1.5 K/W loss). Scenario injects NO temperature trajectory (ADR-0067 stimulus-source exclusion)."
-    },
     {
       "type": "ASSERT_POINT",
       "timeUs": "300ms",

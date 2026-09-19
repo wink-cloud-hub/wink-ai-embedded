@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "2.0",
+    "version": "3.0",
     "name": "mcs51_health_pot relay dwell: WARM re-energize gated by min-off-time, OFF edges immediate",
     "templateId": "mcs51_health_pot",
     "accuracyMode": "behavioral",

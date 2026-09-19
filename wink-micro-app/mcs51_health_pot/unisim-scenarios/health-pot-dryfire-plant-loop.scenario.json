@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "2.0",
+    "version": "3.0",
     "name": "mcs51_health_pot safety: plant-excited dry kettle runs beyond NTC scale in ~1 s, E-04 latches after the 10 s qualification",
     "templateId": "mcs51_health_pot",
     "accuracyMode": "behavioral",
@@ -8,24 +8,16 @@
     "failurePolicy": "fail-fast",
     "determinism": { "prngSeed": 42 }
   },
-  "steps": [
-    {
-      "type": "PLANT_LOOP",
-      "id": "pot_thermal",
-      "windowUs": ["0", "17s"],
-      "sampleIntervalUs": "10ms",
-      "model": {
-        "kind": "first_order_thermal",
+  "plantConditions": {
+    "pot_default": {
+      "parameters": {
         "thermalCapacity": 10,
-        "thermalResistance": 300,
-        "ambientTempC": 25,
-        "ratedPowerW": 1000
+        "thermalResistance": 300
       },
-      "inputPorts": { "power": { "from": "gpio:16" } },
-      "outputPorts": { "temperature_c": { "to": "plugin:temp_sensor/temperature" } },
-      "probes": [{ "port": "temperature_c", "as": "buffer:pot/water_temp_c" }],
-      "description": "Equivalent dry kettle (no water load): C=10 J/K vs golden 1256 J/K for 0.3 L water (~100 C/s initial rise), with an insulated dry plate R=300 K/W so the >105 C beyond-scale plateau outlives the firmware 10 s over-temp qualification (with the water-tuned R=1.5 K/W the plate would drop back into scale within ~1 s, which makes the E-04 qualification window physically unreachable). Scenario injects NO temperature trajectory (ADR-0067 stimulus-source exclusion) - the plate temperature is plant-excited only."
-    },
+      "description": "等效空壶绝热干烧工况 (C=10 J/K, R=300 K/W)"
+    }
+  },
+  "steps": [
     {
       "type": "ASSERT_POINT",
       "timeUs": "300ms",

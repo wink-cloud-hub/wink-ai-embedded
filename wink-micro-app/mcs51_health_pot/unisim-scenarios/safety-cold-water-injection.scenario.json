@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "2.0",
+    "version": "3.0",
     "name": "mcs51_health_pot safety: cold-water injection mid-heat never fakes a dry-fire (single-edge guard + re-warm ramp)",
     "templateId": "mcs51_health_pot",
     "description": "PLAN-20260915 Task 3 scene 4. A +50-code cold-water step at 5 s re-closes the slope gate; the scripted re-warm ramp then drops the code domain by >=6 codes per 16 s window so the slope verdict stays legitimately satisfied and E-03 never fires. Authoring rule: holding the code flat below 45 C would be a legal dry-fire and a trip would be correct firmware behavior.",

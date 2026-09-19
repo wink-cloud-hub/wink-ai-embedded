@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "2.0",
+    "version": "3.0",
     "name": "mcs51_health_pot L1: cold-water upset re-closes the slope gate for 16 clean samples (no instant E-03)",
     "templateId": "mcs51_health_pot",
     "accuracyMode": "behavioral",
