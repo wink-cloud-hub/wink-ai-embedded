@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "2.0",
+    "version": "3.0",
     "name": "mcs51 CMS8S78xx GPIO P12 external interrupt & long-press headless proof",
     "templateId": "vendor_cms8s78xx_v202_gpio",
     "accuracyMode": "behavioral",

@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "2.0",
+    "version": "3.0",
     "name": "CMS8S78xx Software Reset (SWRST) re-entry headless proof",
     "templateId": "vendor_cms8s78xx_v202_reset_software",
     "accuracyMode": "behavioral",

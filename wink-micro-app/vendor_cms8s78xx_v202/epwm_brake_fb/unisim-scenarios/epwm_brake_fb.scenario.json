@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "2.0",
+    "version": "3.0",
     "name": "CMS8S78xx EPWM Hardware Fault Brake 0 Pin Mode headless proof",
     "templateId": "vendor_cms8s78xx_v202_epwm_brake_fb",
     "accuracyMode": "behavioral",

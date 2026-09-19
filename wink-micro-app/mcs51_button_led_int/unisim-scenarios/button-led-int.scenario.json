@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "2.0",
+    "version": "3.0",
     "name": "mcs51 /INT0 interrupt button->led headless proof (Stage 2 T3)",
     "templateId": "mcs51_button_led_int",
     "accuracyMode": "behavioral",

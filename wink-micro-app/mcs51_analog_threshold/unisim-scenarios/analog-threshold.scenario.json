@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "2.0",
+    "version": "3.0",
     "name": "mcs51 live analog threshold->led headless proof (Stage 2 T4)",
     "templateId": "mcs51_analog_threshold",
     "accuracyMode": "behavioral",

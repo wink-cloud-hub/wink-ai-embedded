@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "2.0",
+    "version": "3.0",
     "name": "pdk button->led headless simulation proof",
     "templateId": "pdk_button_led",
     "accuracyMode": "timing",

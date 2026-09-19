@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "2.0",
+    "version": "3.0",
     "name": "mcs51 button->led headless proof (ADR-0075)",
     "templateId": "mcs51_button_led",
     "accuracyMode": "behavioral",

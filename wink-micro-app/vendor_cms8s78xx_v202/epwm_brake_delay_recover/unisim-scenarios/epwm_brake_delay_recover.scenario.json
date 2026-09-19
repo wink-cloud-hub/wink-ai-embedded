@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "2.0",
+    "version": "3.0",
     "name": "CMS8S78xx EPWM Brake Delay Recover Mode headless proof",
     "templateId": "vendor_cms8s78xx_v202_epwm_brake_delay_recover",
     "accuracyMode": "behavioral",

@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "2.0",
+    "version": "3.0",
     "name": "mcs51 CMS8S78xx ACMP1 threshold comparison (P2.1 vs 20% Bandgap 0.24V -> P3.2 toggle) headless proof",
     "templateId": "vendor_cms8s78xx_v202_acmp1",
     "accuracyMode": "behavioral",
