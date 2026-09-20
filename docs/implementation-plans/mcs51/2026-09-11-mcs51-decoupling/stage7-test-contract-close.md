@@ -11,6 +11,9 @@
 | **前置依赖** | stage1（双读/双轨已开）、stage6（目标已拆） |
 | **总纲** | [`./00-README.md`](./00-README.md) |
 
+> [!NOTE]
+> **SUPERSEDED by ADR-0073 / ADR-0077**：附录 B/C 提及的历史 `wink-app.json schemaVersion: 2` 与 `SimTraceSpecV2` 遗留称呼已被 Day-0 V1.0.0 收敛方案取代，统一规范为 `wink-app-config@1.0.0` 与 `SimTraceSpec`（`traceVersion: 1`）。
+
 ## 1. 目标
 
 - ✅ 删除合成通道双读兼容层、转发 shim、旧单体别名，无告警残留。

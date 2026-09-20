@@ -322,7 +322,7 @@ winkcli esp32 --app devkitc_smoke -- -p COM3 flash monitor
 
 - **硬件可被机器读取**：设备树与板卡注册表是 JSON Schema，而不是原理图 PDF。
 - **确定性激励**：场景脚本可注入按键弹跳、时序竞争、传感器断线与故障工况——固定种子、可回放。
-- **结构化失败与证据**：故障码 + 环形 trace 缓冲（`SimTraceSpecV2`）直接指向根因，且每次运行均产出结构化可回放的 PASS/FAIL 证据链——彻底告别传统实物黑盒调试排障困难与难以复现的硬件损坏。
+- **结构化失败与证据**：故障码 + 环形 trace 缓冲（`SimTraceSpec`，`traceVersion: 1`）直接指向根因，且每次运行均产出结构化可回放的 PASS/FAIL 证据链——彻底告别传统实物黑盒调试排障困难与难以复现的硬件损坏。
 - **内置 Agent 指南**：[`AGENTS.md`](./AGENTS.md) 与 [`.agents/skills/`](./.agents/skills/) 描述了仓库约定、质量门禁与安全编辑规则，供 AI 编码助手遵循。
 
 <!-- TODO: 若后续推出公开的 MCP Server 或 Agent CLI，在此补充"接入你的 Agent"代码段。不要承诺尚未交付的集成能力。 -->

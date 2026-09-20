@@ -1,6 +1,7 @@
-﻿# Catalog / 外设元数据 SSOT 收敛 Implementation Plan（已归档）
+# Catalog / 外设元数据 SSOT 收敛 Implementation Plan（已归档）
 
 > **状态**：✅ 已完成（2026-07-11）
+> **SUPERSEDED by ADR-0073 / ADR-0077**：文中涉及的历史 Manifest `schemaVersion: 2` 描述已被 Day-0 V1.0.0 收敛方案取代，正式基线为 `embedded-manifest@1.0.0` 与 `wink-app-config@1.0.0`。
 > **归档说明**：本计划正文含私有仓实现路径与内部文件名，已按文档密级策略整篇移入本地私有通道；
 > 本文件仅保留机制概览与公开契约面。
 > **归档说明**：本计划正文含内部实现路径与调试细节，已归档存档；本文件保留机制概览与公开契约面。

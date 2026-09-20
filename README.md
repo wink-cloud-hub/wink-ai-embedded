@@ -323,7 +323,7 @@ winkcli esp32 --app devkitc_smoke -- -p COM3 flash monitor
 
 - **Machine-readable hardware**: device tree and board registry are JSON schemas, not schematic PDFs.
 - **Deterministic stimulus**: scenario scripts inject button bounce, timing races, sensor dropouts and fault conditions — seeded and replayable.
-- **Structured failures & evidence**: fault codes plus the trace ring buffer (`SimTraceSpecV2`) point directly to root causes, and every run emits a structured, replayable PASS/FAIL evidence chain — completely eliminating physical black-box debugging and hardware damage.
+- **Structured failures & evidence**: fault codes plus the trace ring buffer (`SimTraceSpec`, `traceVersion: 1`) point directly to root causes, and every run emits a structured, replayable PASS/FAIL evidence chain — completely eliminating physical black-box debugging and hardware damage.
 - **Agent guide included**: [`AGENTS.md`](./AGENTS.md) and [`.agents/skills/`](./.agents/skills/) describe the repo's conventions, gates and safe editing rules for coding agents.
 
 <!-- TODO: if/when a public MCP server or agent CLI exists, add a "Connect your agent" snippet here. Do not promise integrations that are not shipped. -->

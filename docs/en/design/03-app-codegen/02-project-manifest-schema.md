@@ -51,9 +51,15 @@ embedded-project/
 
 ## 3. Project Manifest Top-Level Schema
 
+> 💡 **Contract Decoupling & Versioning Note (ADR-0073 / Q7)**:
+> 1. **Conceptual Decoupling**: Clearly distinguish between two distinct configuration manifests:
+>    - `wink-app-config@1.0.0`: The `wink-app.json` inside each micro-app directory, serving as SSOT for firmware compilation and device-tree codegen; top-level field is `"schema_version": "1.0.0"`.
+>    - `embedded-manifest@1.0.0`: Frontend workbench project & canvas manifest (`wink-project.json` / Workbench Manifest); top-level field is `"schemaVersion": "1.0.0"` (with backward compatibility for integer 1/2/3).
+> 2. **Reserved Extension Fields (Q7)**: Metadata version fields declared in this schema (such as `projectVersion`, `boardVersion`, `runtimeVersion`, `modelVersion`, `codegenVersion`, `rulesetVersion`, `registryVersion`) are strictly designated as **[Architectural Design Reservation: Unimplemented in Current Runtime]**.
+
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": "1.0.0",
   "projectVersion": "0.1.0",
   "projectType": "wink-embedded",
   "id": "proj_distance_alarm",

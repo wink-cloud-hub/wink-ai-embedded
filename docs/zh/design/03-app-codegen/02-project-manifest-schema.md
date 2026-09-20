@@ -43,9 +43,15 @@ embedded-project/
 
 ## 3. Project Manifest 顶层结构
 
+> 💡 **契约解耦与版本说明（ADR-0073 / Q7）**：
+> 1. **概念解耦**：请明确区分两类不同的配置清单：
+>    - `wink-app-config@1.0.0`：位于各微应用目录下的 `wink-app.json`，是固件编译构建与设备树代码生成的 SSOT，顶层字段为 `"schema_version": "1.0.0"`。
+>    - `embedded-manifest@1.0.0`：前端工作台的项目与画布清单（`wink-project.json` / Workbench Manifest），顶层字段为 `"schemaVersion": "1.0.0"`（代码层自动兼容历史整型 1/2/3）。
+> 2. **幽灵字段声明（Q7）**：本规范顶层与各子对象中定义的元数据版本字段（如 `projectVersion`、`boardVersion`、`runtimeVersion`、`modelVersion`、`codegenVersion`、`rulesetVersion`、`registryVersion` 等）属于【设计预留扩展位，当前代码暂未实现】。
+
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": "1.0.0",
   "projectVersion": "0.1.0",
   "projectType": "wink-embedded",
   "id": "proj_distance_alarm",

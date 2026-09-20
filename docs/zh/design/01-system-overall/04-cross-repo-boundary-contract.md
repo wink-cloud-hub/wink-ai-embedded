@@ -10,7 +10,7 @@
 
 1. **黑盒边界**：归属于 `wink-ai` 主仓的外部组件（如 `embedded-frontend` UI 编辑器、`unisim` 仿真引擎等），本仓设计文档**仅定义其功能作用 (Function)、使用场景 (Usage)、公开 API / DTO / CLI 契约以及输入输出产物**。
 2. **禁止泄露内部实现**：严禁在本仓文档中记录主仓私有渲染优化、商业版编辑器业务逻辑、后端鉴权与云端调度算法细节。
-3. **接口契约即真相**：两仓交互完全依赖机读契约文件（`wink-app.json` Schema、`SimTraceSpecV2`、`wasm_bridge.h` ABI），只要接口契约不变，两仓均可独立迭代演进。
+3. **接口契约即真相**：两仓交互完全依赖机读契约文件（`wink-app.json` Schema、`SimTraceSpec`、`wasm_bridge.h` ABI），只要接口契约不变，两仓均可独立迭代演进。
 
 ---
 
@@ -25,7 +25,8 @@ Wink-AI 跨仓组件分布与黑盒契约边界:
 ├── embedded-frontend                       # 跨仓组件 1：嵌入式 Web 工作台 UI (黑盒包)
 │   └── 契约接口：wink-app.json Manifest, Dual-Viewport State Sync DTO
 └── unisim                                  # 跨仓组件 2：UniSim Wasm 仿真引擎 (黑盒包)
-    └── 契约接口：wasm_bridge.h C-ABI, SimTraceSpecV2 Spec
+    └── 契约接口：wasm_bridge.h C-ABI, SimTraceSpec (traceVersion: 1)
+```
 
 [ 本仓组件: wink-ai-embedded ] (包含内核 Code-Mapping)
 ├── wink-tools/                             # 跨仓组件 3：统一 CLI 工具链 (winkcli；使用文档 SSOT: wink-tools/docs/{zh,en}/)
@@ -39,11 +40,11 @@ Wink-AI 跨仓组件分布与黑盒契约边界:
 
 ### 3.1 契约一：项目单一事实源 (`wink-app.json` Manifest)
 
-`wink-app.json` 是 `embedded-frontend`、`wink-tools` 与 `wink-micro-os` 三者间唯一交换的项目定义文档：
+`wink-app.json` 是 `embedded-frontend`、`wink-tools` 与 `wink-micro-os` 三者间唯一交换的项目定义文档（遵从 Day-0 V1.0.0 基线与 ADR-0073/ADR-0077）：
 
 ```json
 {
-  "schemaVersion": 2,
+  "schema_version": "1.0.0",
   "name": "distance_alarm",
   "target_board": "esp32_devkitc",
   "tick_ms": 10,
@@ -57,8 +58,8 @@ Wink-AI 跨仓组件分布与黑盒契约边界:
 }
 ```
 
-- **`embedded-frontend` 职责**：负责可视化编辑、属性配置并序列化导出 `wink-app.json`。
-- **`wink-tools` 职责**：读取 `wink-app.json` 并调用 `winkcli` 生成 `device_tree.c` 等代码（使用文档 SSOT：[wink-tools/docs/](../../../../wink-tools/docs/zh/01-cli-reference.md)）。
+- **`embedded-frontend` 职责**：负责可视化编辑、属性配置并序列化导出 `wink-app.json`（工作台 Manifest 统一为 `"schemaVersion": "1.0.0"`，自动吸收兼容历史版本）。
+- **`wink-tools` 职责**：读取 `wink-app.json` 并调用 `winkcli` 生成 `device_tree.c` 等代码（使用文档 SSOT：[wink-tools/docs/](../../../../wink-tools/docs/zh/01-cli-reference.md)；强制顶层 `schema_version == "1.0.0"` 门禁校验）。
 - **`wink-micro-os` 职责**：编译并运行导出的 C 代码。
 
 ### 3.2 契约二：Wasm 仿真桥接 C-ABI (`wasm_bridge.h`)
@@ -68,11 +69,11 @@ Wink-AI 跨仓组件分布与黑盒契约边界:
 - **导出入口**：`wink_wasm_init()`、`wink_wasm_step(microseconds)`、`wink_wasm_get_trace_buffer()`。
 - **导入桩**：由 `unisim` 注入虚拟外设读写挂钩 (`unisim_gpio_write` / `unisim_i2c_transfer`)。
 
-### 3.3 契约三：仿真与真机事件追溯协议 (`SimTraceSpecV2`)
+### 3.3 契约三：仿真与真机事件追溯协议 (`SimTraceSpec`)
 
 用于 Headless 自动化测试、前端时间线渲染以及虚实一致性比对：
 
-- **格式**：JSONL / JSON 结构化 Envelope，包含微秒级时间戳、器件 ID、事件类型（`GPIO_SET` / `I2C_TRANSFER` / `FAULT_INJECT`）及状态负载。
+- **格式**：JSONL / JSON 结构化 Envelope（`traceVersion: 1`），包含微秒级时间戳、器件 ID、事件类型（`GPIO_SET` / `I2C_TRANSFER` / `FAULT_INJECT`）及状态负载。
 - **消费方**：`embedded-frontend` Trace 控制台展示，`winkcli test` 用于 CI 断言。
 
 ---
@@ -81,4 +82,4 @@ Wink-AI 跨仓组件分布与黑盒契约边界:
 
 1. **单向依赖**：`wink-micro-os` C 内核绝对不依赖任何 Node.js/TS 包；`unisim` 与 `embedded-frontend` 仅依赖 `wink-micro-os` 导出的 Wasm 产物与公共 C 结构体头。
 2. **构建隔离**：`winkcli build` 运行于独立的沙箱容器中，编译脚本不得直接调用主仓私有 API。
-3. **版本锁定**：Manifest `schemaVersion` 与 `SimTraceSpecV2` 必须保持前向兼容与版本升级迁移校验 (`manifest-migration.ts`)。
+3. **版本锁定**：Manifest `schema_version` 与 `SimTraceSpec` 必须保持前向兼容与版本升级迁移校验 (`manifest-migration.ts`)。
