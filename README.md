@@ -54,7 +54,7 @@ That is the design premise of WinkMicroOS.
 - **Hardware is code.** Board topology lives in JSON (`wink-app.json` + board registry), test stimulus lives in scenario JSON. No breadboard, no jumper wires, CI-friendly.
 - **Shareable behavior, not oscilloscope traces.** A run produces a shareable online simulation session — cross-functional teams can experience real device behavior and interaction cadence directly in the browser, leaving static oscilloscope screenshots behind.
 - **Deterministic fault injection.** Power dips, sensor dropouts, motor stalls, and thermal runaway: destructive and edge-case faults are injected with zero hardware risk and replayed with microsecond precision.
-- **Evidence you can ship on.** Every run emits a structured, replayable PASS/FAIL record with a deterministic trace (`SimTraceSpecV2`) — enabling AI-generated firmware to be vetted through verifiable PASS evidence chains and merged with high confidence.
+- **Evidence you can ship on.** Every run emits a structured, replayable PASS/FAIL record with a deterministic trace (`SimTraceSpec`, `traceVersion: 1`) — enabling AI-generated firmware to be vetted through verifiable PASS evidence chains and merged with high confidence.
 - **Designed for AI agents.** Every input and output of the loop is text, documented for machine consumption ([AGENTS.md](./AGENTS.md)) — agents can scaffold a driver, run the scenario suite, and read structured failures to self-correct.
 
 ## Built for agents, not just humans
@@ -125,7 +125,7 @@ static void app_on_event(const wink_event_t *evt)
 
 ### 3 · Prove it headlessly
 
-Scenarios are deterministic, self-asserting and run without a browser ([SimTraceSpecV2](./docs/en/design/04-wasm-simulation/00-README.md)):
+Scenarios are deterministic, self-asserting and run without a browser ([SimTraceSpec](./docs/en/design/04-wasm-simulation/00-README.md)):
 
 ```json
 // wink-micro-app/mcs51_button_led/unisim-scenarios/button-led.scenario.json (excerpt)

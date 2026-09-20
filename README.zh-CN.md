@@ -54,7 +54,7 @@ WinkMicroOS —— 闭环
 - **硬件即代码。** 板级拓扑存 JSON（`wink-app.json` + 板卡注册表），测试激励存场景 JSON。没有面包板、没有杜邦线，天然适配 CI。
 - **可分享的行为，而不是示波器截图。** 一次运行即可生成可分享的在线仿真会话——跨职能团队可在浏览器中直观检验真实器件行为与交互节拍，告别晦涩静态的示波器截图。
 - **破坏性工况确定性注入。** 掉电跌落、传感器断线、电机堵转、干烧过热：极端与破坏性故障零硬件损坏风险注入，支持微秒级精准重放。
-- **可交付的证据链。** 每次运行都产出结构化、可回放的 PASS/FAIL 记录与确定性 trace（`SimTraceSpecV2`）——AI 生成的固件无需完全依赖逐行人工通读，依托确定性 PASS 证据链即可高置信度合并。
+- **可交付的证据链。** 每次运行都产出结构化、可回放的 PASS/FAIL 记录与确定性 trace（`SimTraceSpec`，`traceVersion: 1`）——AI 生成的固件无需完全依赖逐行人工通读，依托确定性 PASS 证据链即可高置信度合并。
 - **为 AI Agent 而设计。** 研发闭环中的每一份输入输出都是文本，并提供面向机器阅读的约定（[AGENTS.md](./AGENTS.md)）——Agent 可以生成驱动、运行场景、读取结构化失败并自我修正。
 
 ## 为 Agent 而建，不只为人类
@@ -125,7 +125,7 @@ static void app_on_event(const wink_event_t *evt)
 
 ### 3 · 无头验证
 
-场景是确定性的、自带断言，且无需浏览器（[SimTraceSpecV2](./docs/zh/design/04-wasm-simulation/00-README.md)）：
+场景是确定性的、自带断言，且无需浏览器（[SimTraceSpec](./docs/zh/design/04-wasm-simulation/00-README.md)）：
 
 ```json
 // wink-micro-app/mcs51_button_led/unisim-scenarios/button-led.scenario.json (excerpt)
