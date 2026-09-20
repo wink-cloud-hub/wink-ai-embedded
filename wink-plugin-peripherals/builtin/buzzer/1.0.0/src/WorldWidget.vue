@@ -105,14 +105,14 @@ function startSound(freq: number) {
         mainOsc.frequency.setValueAtTime(validFreq, now);
         mainGain.gain.setValueAtTime(0.24, now);
 
-        cavityOsc.frequency.setValueAtTime(2400, now);
-        cavityGain.gain.setValueAtTime(0.035, now);
+        cavityOsc?.frequency.setValueAtTime(2400, now);
+        cavityGain?.gain.setValueAtTime(0.035, now);
       } else {
         mainOsc.type = 'square';
         mainOsc.frequency.setValueAtTime(validFreq, now);
         mainGain.gain.setValueAtTime(0.12, now);
 
-        cavityGain.gain.setValueAtTime(0, now);
+        cavityGain?.gain.setValueAtTime(0, now);
       }
       currentFreq = validFreq;
     }
