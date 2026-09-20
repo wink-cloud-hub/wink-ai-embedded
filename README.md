@@ -2,7 +2,7 @@
 
 **AI can already write, run, test and fix software on its own. Embedded is the exception — firmware only proves itself on silicon, and silicon sits behind a human hand.**
 
-WinkMicroOS is the deterministic digital lab that closes that loop: the same C source runs in a browser Wasm sandbox and on real MCUs — from ESP32 down to sub-$1 8-bit industrial chips — and every run leaves reviewable PASS evidence behind. *Built for agents, not just humans.*
+WinkMicroOS is the deterministic digital lab that closes that loop: the same C source runs in a browser Wasm sandbox and on real MCUs — from ESP32 down to cost-optimized 8-bit industrial microcontrollers — and every run leaves reviewable PASS evidence behind. *Built for agents, not just humans.*
 
 [![CI](https://github.com/wink-cloud-hub/wink-ai-embedded/actions/workflows/pr.yml/badge.svg)](https://github.com/wink-cloud-hub/wink-ai-embedded/actions/workflows/pr.yml)
 [![Nightly](https://github.com/wink-cloud-hub/wink-ai-embedded/actions/workflows/nightly.yml/badge.svg)](https://github.com/wink-cloud-hub/wink-ai-embedded/actions/workflows/nightly.yml)
@@ -21,16 +21,16 @@ WinkMicroOS is the deterministic digital lab that closes that loop: the same C s
 
 ---
 
-## The loop that never closed
+## Bridging the Embedded Closed-Loop Divide
 
-AI coding is already a closed loop in pure software. In embedded it never closed — because the loop runs through a human body:
+AI programming has achieved automated closed-loop velocity in pure software. In embedded systems, the loop remains stubbornly open due to physical hardware in the loop:
 
 ```text
 Pure software today — CLOSED
   generate → run → test → fix → ↻
 
 Embedded today — OPEN (a human in the middle)
-  generate ─▶ [human: flash] ─▶ [human: press keys] ─▶ [human: read scope] ─▶ [human: paste logs] ─▶ ↻
+  generate ─▶ [human: flash] ─▶ [human: press keys] ─▶ [human: read scope] ─▶ [human: extract logs] ─▶ ↻
 
 "Automated" bench rigs — STILL OPEN (a fake loop)
   generate → auto-flash → logic analyzer → [human: interpret & decide] ─▶ ↻
@@ -42,19 +42,19 @@ WinkMicroOS — CLOSED
            → fix → ↻
 ```
 
-Auto-flashing a real board and capturing waveforms automates the *tools*, not the *loop*: the physical world still needs a human to press the button, rewire the board, and reproduce the edge case. The loop only closes when hardware itself becomes code — reproducible, seedable, scriptable, and free of physical time.
+Automating flashing and capturing waveforms automates individual tools, not the engineering loop: physical benches still require manual button presses, wiring rework, and hardware edge-case reproduction. The loop only closes when hardware itself is fully abstracted as code (Hardware-as-Code) — reproducible, seeded, fully scriptable, and free of physical time constraints.
 
 That is the design premise of WinkMicroOS.
 
 ## Why WinkMicroOS
 
-- **Where the volume actually is.** Wokwi, QEMU and friends serve ARM/RISC-V dev boards. Most industrial volume ships as 8/16-bit parts (MCS-51/STC, Cmsemicon, Padauk, Holtek, Sonix…) with no SWD/JTAG and no affordable ICE — debug-by-OTP only. WinkMicroOS simulates them instruction-level, with breakpoints, registers and stack in the browser.
+- **Where the volume actually is.** Wokwi, QEMU and friends serve ARM/RISC-V dev boards. Most industrial volume ships as 8/16-bit parts (MCS-51/STC, Cmsemicon, Padauk, Holtek, Sonix…) with no SWD/JTAG and no affordable ICE — debugging often reduces to painful blind guesswork. WinkMicroOS simulates them instruction-level, with breakpoints, registers and stack fully inspectable in browsers and headless environments.
 - **Same source, everywhere.** One C codebase compiles for `host` (tests), `wasm32` (browser/headless simulator) and `targets/esp32`; unmodified Keil C51 sources ([ADR-0075](./docs/decisions/core/0075-mcs51-production-wasm-target-headless.md)) and unmodified Arduino sketches ([ADR-0035](./docs/decisions/core/0035-arduino-compat-polymorphism-sandbox.md)) run in simulation without a porting layer.
-- **Deterministic by construction.** Virtual-clock ticking, seeded PRNG, headless scenario scripts with declared assertions. Failures are reproducible — no "works on my bench".
+- **Deterministic by construction.** Virtual-clock ticking, seeded PRNG, headless scenario scripts with declared assertions. Failures are deterministically reproducible — eliminating intermittent bugs caused by bench environment variations.
 - **Hardware is code.** Board topology lives in JSON (`wink-app.json` + board registry), test stimulus lives in scenario JSON. No breadboard, no jumper wires, CI-friendly.
-- **Shareable behavior, not oscilloscope traces.** A run produces a shareable online simulation session — customers and PMs feel the LED breathing pattern in a browser instead of squinting at waveform captures.
-- **Break it on purpose.** Power dips, sensor dropouts, motor stall, thermal runaway: destructive conditions are injected with zero risk and replayed exactly.
-- **Evidence you can ship on.** Every run emits a structured, replayable PASS/FAIL record with a deterministic trace (`SimTraceSpecV2`) — so AI-authored firmware can be reviewed without reading every line, and merged without a leap of faith.
+- **Shareable behavior, not oscilloscope traces.** A run produces a shareable online simulation session — cross-functional teams can experience real device behavior and interaction cadence directly in the browser, leaving static oscilloscope screenshots behind.
+- **Deterministic fault injection.** Power dips, sensor dropouts, motor stalls, and thermal runaway: destructive and edge-case faults are injected with zero hardware risk and replayed with microsecond precision.
+- **Evidence you can ship on.** Every run emits a structured, replayable PASS/FAIL record with a deterministic trace (`SimTraceSpecV2`) — enabling AI-generated firmware to be vetted through verifiable PASS evidence chains and merged with high confidence.
 - **Designed for AI agents.** Every input and output of the loop is text, documented for machine consumption ([AGENTS.md](./AGENTS.md)) — agents can scaffold a driver, run the scenario suite, and read structured failures to self-correct.
 
 ## Built for agents, not just humans
@@ -66,13 +66,13 @@ Existing simulators are good tools — for a person sitting at a keyboard. An ag
 | Proteus | Circuit-level SPICE simulation, a classroom classic | Desktop, licensed, heavyweight; chip library centered on legacy 51/AVR/PIC; no machine-readable evidence output |
 | Wokwi | Web Arduino/ESP32 simulator with excellent UX | Maker & education scope; no industrial test framework; no coverage of the low-cost industrial MCUs that ship by the billion |
 | QEMU | Open-source instruction-level / system virtualization | Built for OS-level targets, not MCU microsecond peripheral timing; heavy to put inside a firmware CI loop |
-| Renode | Multi-node IoT system simulation (Cortex-M / RISC-V) | Powerful but workflow-heavy; aimed at advanced 32-bit scenarios, not the sub-$1 8-bit ecosystem |
+| Renode | Multi-node IoT system simulation (Cortex-M / RISC-V) | Powerful but workflow-heavy; aimed at advanced 32-bit scenarios, not the cost-optimized 8-bit ecosystem |
 
-WinkMicroOS is not a better mousetrap for the same user. It is a different user: the agent itself. Hardware as code, deterministic scenarios, headless evidence — all of it text, all of it scriptable.
+WinkMicroOS is not an incremental patch on legacy desktop tools. It is native infrastructure designed for a new primary developer: AI Agents. Hardware-as-code, deterministic scenarios, structured evidence — fully text-defined, fully programmatically orchestrable.
 
-> **Scope, honestly.** Simulation left-shifts risk; it does not replace the bench. Electrical characteristics, EMC, thermal and mechanical behavior still need real hardware. The goal is to make hardware validation the last confirmation — not the first iteration.
+> **Engineering Boundaries:** Simulation does not replace physical hardware; it shifts architectural risks leftward. High-frequency electrical characteristics, EMC, fine thermal dynamics, and mechanical wear still require real bench verification — our goal is to compress bench testing into the final sign-off step, rather than an agonizing first iteration.
 
-## See it
+## End-to-End Walkthrough
 
 ### 1 · Describe the hardware
 
@@ -109,7 +109,7 @@ void main(void) {
 }
 ```
 
-…or the modern event-driven style, which is identical on host, Wasm and ESP32:
+WinkMicroOS also provides a modern event-driven style, maintaining strict behavioral parity across host, Wasm, and ESP32:
 
 ```c
 // wink-micro-app/avoidance_car/app_callbacks.c  (SPDX: Apache-2.0)
@@ -141,7 +141,7 @@ Scenarios are deterministic, self-asserting and run without a browser ([SimTrace
 }
 ```
 
-Run the equivalent of this on your machine in one command — no hardware, no browser:
+Validate this workflow locally with a single command — without hardware connections or launching a browser:
 
 ```console
 $ winkcli test                            # host build + full test suite (35 executables as of 2026-07)
@@ -161,7 +161,7 @@ Board definitions are the hardware SSOT: [`wink-tools/tools/codegen/boards/`](./
 
 ## Architecture
 
-The platform adopts a **"Dual-Wheel Architecture"**. To allow AI-generated firmware to safely and reliably bridge the virtual-physical divide, WinkMicroOS establishes a deterministic closed-loop across both a **macro engineering pipeline** and a **micro runtime co-simulation mechanism**.
+The platform is built around the **"Sim-to-Real Simulation Kernel"**. To allow AI-generated firmware to safely and reliably bridge the virtual-physical divide, WinkMicroOS establishes a deterministic closed loop across both a **macro engineering delivery pipeline** and a **micro tri-stack co-simulation system**.
 
 ### 1 · Macro Workflow & Closed-Loop Delivery
 
@@ -178,7 +178,7 @@ graph TD
     Manifest["Application Manifest (SSOT)<br><code>wink-app.json</code> (AI / Low-Code Topology)"]:::input
     CLI["Unified Toolchain <code>winkcli</code><br>• Codegen (gen)  • Lint Gates (lint)  • Sim Assertions (test)  • Build & Flash (build)"]:::tool
 
-    DualWheel["<b>Dual-Wheel Co-Simulation Engine</b><br>100% Dual-Target C Source ⟷ UniSim Digital Twin<br>(Microsecond Virtual Clock · Behavioral High-Fidelity)"]:::core
+    SimKernel["<b>Sim-to-Real Simulation Kernel</b><br>100% Dual-Target C Source ⟷ UniSim Digital Twin<br>(Microsecond Virtual Clock · Behavioral High-Fidelity)"]:::core
 
     WasmTarget["In-Browser / CI Behavioral Simulation<br>(UniSim Engine + 2D/3D Digital Harness)"]:::target
     RealTarget["Physical MCU Board Deployment<br>(ESP32 · MCS-51 · Arduino · PDK)"]:::target
@@ -186,61 +186,68 @@ graph TD
     TraceCheck["Sim-to-Real Trace Comparison & Calibration<br><b>Golden Trace ⟷ UART Real Trace Regression Loop</b>"]:::verify
 
     Manifest -->|"Parse Board Topology"| CLI
-    CLI -->|"Drive Codegen & Sandbox Setup"| DualWheel
+    CLI -->|"Drive Codegen & Sandbox Setup"| SimKernel
 
-    DualWheel -->|"emcmake wasm Build"| WasmTarget
-    DualWheel -->|"Cross-Compiler Toolchain"| RealTarget
+    SimKernel -->|"emcmake wasm Build"| WasmTarget
+    SimKernel -->|"Cross-Compiler Toolchain"| RealTarget
 
     WasmTarget -->|"Virtual Golden Trace"| TraceCheck
     RealTarget -->|"Physical Board UART Trace"| TraceCheck
 ```
 
-### 2 · Micro Dual-Wheel Runtime Co-Simulation
+### 2 · Micro Runtime Architecture: Tri-Stack Co-Simulation & Causal Closed-Loop
 
-Inside the core execution engine, the **Embedded C Firmware Stack** (left) mirrors the **UniSim Digital Twin Harness Stack** (right) layer by layer. They lock-step via the unified `Wasm-Bridge ABI` for microsecond-precise execution and seamless peripheral bypassing:
+To balance microsecond execution fidelity with system-engineering clarity, the core runtime is orthogonally decoupled into **three distinct technology stacks**. Each stack is highly cohesive and interlocks via standard abstraction boundaries to form a deterministic closed loop:
 
 ```mermaid
 graph LR
     classDef fw fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px,color:#15803d;
-    classDef sim fill:#f3e8ff,stroke:#9333ea,stroke-width:1.5px,color:#7e22ce;
-    classDef bridge fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#92400e;
+    classDef unisim fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#92400e;
+    classDef bench fill:#f3e8ff,stroke:#9333ea,stroke-width:1.5px,color:#7e22ce;
 
-    subgraph FW ["Embedded Firmware Stack (C Runtime · 100% Dual-Target)"]
-        direction TB
-        App["<b>App Business Logic</b><br>State Machines · Intent Orchestration"]:::fw
-        BAL["<b>BAL Business Abstraction</b><br>Control Algorithms · Event Streams · Closed-Loop"]:::fw
-        DAL["<b>DAL Device Abstraction</b><br>Servo · Ultrasonic · OLED Semantic APIs"]:::fw
-        PAL["<b>PAL Platform Abstraction</b><br>GPIO · PWM · I2C · Timers · Interrupts"]:::fw
-        App --> BAL --> DAL --> PAL
-    end
+    FW["<b>1. Embedded Firmware Stack</b><br>(wink-micro-os)<br>──────────────<br>Pure C Control & Business Logic<br>100% Dual-Target"]:::fw
 
-    subgraph BridgeZone ["Runtime Bridge Hub"]
-        direction TB
-        Bridge["<b>Wasm-Bridge ABI</b><br>─────────────────────<br>• Microsecond Step-Lock (VirtualClock)<br>• Virtual Pin & Bus Routing (PinArbiter)<br>• Physical Perception Injection (ADC/Echo)<br>• Destructive Fault Injection (Cut/Stall/Drop)"]:::bridge
-    end
+    UniSim["<b>2. Simulation Runtime</b><br>(UniSim Base)<br>──────────────<br>Microsecond VirtualClock · Sandboxes<br>PinArbiter · 5-Channel Bus Proxies"]:::unisim
 
-    subgraph SIM ["Digital Twin Harness Stack (UniSim Sandbox)"]
-        direction TB
-        Plant["<b>4. Plant & Environment Physics</b><br>Spatial Geometry · Kinematics · Obstacles"]:::sim
-        PeriphSim["<b>3. Peripheral Electromechanics</b><br>Inertia · Sensor Physical Characteristics · Aging"]:::sim
-        ChanSim["<b>2. Interconnect & Channel Model</b><br>PinArbiter · 5-Channel Bus Bypass Proxies"]:::sim
-        ChipSim["<b>1. Chip Core Sandbox</b><br>VirtualClock Advances · Heterogeneous ISA VMs"]:::sim
-        Plant <--> PeriphSim <--> ChanSim <--> ChipSim
-    end
+    Bench["<b>3. Digital Workbench Stack</b><br>(Digital Workbench)<br>──────────────<br>Transducers · Continuous Physics ODEs<br>Deterministic Scenarios · Twin Viewport"]:::bench
 
-    PAL <===>|"PAL Platform Bypass Proxy"| Bridge
-    Bridge <===>|"Pin & Bus Bidirectional Event Streaming"| ChanSim
-    Bridge <===>|"Deterministic Timebase Stepping"| ChipSim
-
-    App -.->|"Closed-Loop Sensory & Actuation Feedback"| Plant
+    FW <===>|"PAL Platform Bypass / Wasm-Bridge ABI"| UniSim
+    UniSim <===>|"Micro-Step Stepping / Signal-to-Physics Transduction"| Bench
 ```
+
+#### 2.1 Micro Architecture of the Three Stacks
+
+```mermaid
+graph LR
+    classDef fw fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px,color:#15803d;
+    classDef unisim fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#92400e;
+    classDef bench fill:#f3e8ff,stroke:#9333ea,stroke-width:1.5px,color:#7e22ce;
+
+    Stack1["<b>① Embedded Firmware Stack (wink-micro-os) · Control Domain</b><br>────────────────────────────────────────────<br><b>App Business Logic</b><br>State Machines · Intent Orchestration<br>↓<br><b>BAL Business Abstraction</b><br>Control Algorithms (PID/Filtering) · Math<br>↓<br><b>DAL Device Abstraction</b><br>Servo · Ultrasonic · OLED Semantic APIs<br>↓<br><b>PAL Platform Abstraction</b><br>GPIO · PWM · I2C · SPI · UART · Timers"]:::fw
+
+    Stack2["<b>② Simulation Runtime (UniSim) · Electrical & Clock Domain</b><br>────────────────────────────────────────────<br><b>Wasm-Bridge ABI</b><br>Cross-Language Calling Gate · Asyncify Suspension<br>↓<br><b>VirtualClock & Scheduler</b><br>Single-Gate Microsecond Advance · Zero Wall-Clock Leak<br>↓<br><b>PinArbiter & 5-Channel Bus Proxies</b><br>GPIO / PWM / I2C / SPI / UART / IRQ<br>↓<br><b>Chip Sandbox & Fault Matrix</b><br>Tier 1~4 Heterogeneous ISA VMs · Fault Injection"]:::unisim
+
+    Stack3["<b>③ Digital Workbench Stack (Digital Workbench) · Physics & UX Domain</b><br>────────────────────────────────────────────<br><b>Digital Twin UX & Scenario Harness</b><br>2D/3D Canvas · scenes.json Deterministic Stimuli<br>↓<br><b>Plant & Environment Physics (Layer 4)</b><br>Thermodynamic ODEs · Kinematics & Raycasting<br>↓<br><b>Peripheral Electromechanics (Layer 3)</b><br>Physics-to-Electrical Transducers · Jitter & Inertia<br>↓<br><b>Closed-Loop Test Harness</b><br>Golden Trace Recording · Sim-to-Real Calibration"]:::bench
+
+    Stack1 <--> Stack2 <--> Stack3
+```
+
+#### 2.2 End-to-End Causal Closed-Loop & Sim-to-Real Calibration
+
+The system ties the three stacks together via an unbroken causal chain, eliminating open-loop false animations detached from physical reality:
+
+1. **Actuation Flow (Left ➔ Middle ➔ Right)**: The firmware App outputs control signals through BAL/DAL to PAL ➔ UniSim's PinArbiter and bus routing capture electrical events ➔ Digital Workbench peripheral models transduce levels/PWM into mechanical forces or thermal power, driving continuous differential equation physics steps.
+2. **Perception Flow (Right ➔ Middle ➔ Left)**: Environmental physics computes updated continuous states (displacement/temperature/ToF acoustics) ➔ Transducers convert physical states into continuous voltages/resistances ➔ UniSim injects raw ADC codes or edge interrupts ➔ Firmware PAL samples incoming events, driving the state machine closed loop.
+3. **Sim-to-Real Calibration**: The exact same firmware source runs alongside UniSim in browsers/CI to produce high-fidelity `Golden Traces`, or flashes directly to real MCU hardware (ESP32/MCS-51) streaming back `UART Traces`. Automatic trace diffing calibrates plant physics parameters, ensuring digital twins continuously converge toward physical reality.
 
 ### 3 · Core Architectural Pillars
 
 1. **Unified SSOT Driving Engine**: A single source of truth, `wink-app.json`, defines hardware topology and configuration. `winkcli` orchestrates C code generation, architectural linting, headless testing, and firmware builds.
-2. **Dual-Wheel System**:
+2. **Sim-to-Real Simulation Kernel**:
+   Coordinated across three cohesive technology stacks:
    * **Embedded Firmware Stack** (`App ➔ BAL ➔ DAL ➔ PAL`): 100% dual-target C code, compile-time static dispatch, zero malloc, microsecond hard real-time determinism.
-   * **Digital Twin Harness Stack** (`Chip ➔ Channel ➔ Peripheral ➔ Physics`): 4-layer electromechanical and spatiotemporal digitization providing microsecond virtual clocks and physical causal closed-loops.
+   * **Simulation Runtime** (`ABI ➔ VirtualClock ➔ Bus Channels ➔ Chip Sandbox`): Microsecond deterministic electrical base, zero wall-clock dependency, zero business physics in kernel.
+   * **Digital Workbench Stack** (`Twin Viewport ➔ Plant Physics ➔ Electromechanical Transducers`): Continuous physics ODE solving and automated testbench, eliminating open-loop false animations.
 3. **Closed-Loop Dual Delivery (Sim-to-Real)**: A single codebase can be compiled into WebAssembly for zero-hardware interactive testing and fault injection in the browser/CI, or flashed unmodified onto real MCU hardware, with UART trace streaming back for automated model calibration.
 
 ## Repository layout
@@ -267,10 +274,12 @@ graph LR
 
 ## Quick start
 
+> 💡 **Getting Started Guide**: This section provides a condensed walkthrough. For a detailed step-by-step tutorial, scenario demos, and troubleshooting instructions, see the [**5-Minute Getting Started Guide**](./docs/en/design/00-quick-start/01-5min-getting-started.md).
+
 ### 1 · Zero install — run a demo in your browser
 
 1. Open the online simulator: **<http://www.wink-ai.com/simulator/index.html>**
-2. Import this repository (or just the `wink-micro-app/mcs51_button_led/` folder)
+2. Clone in your Local and import this repository
 3. Run the `button-led` scenario, press the virtual button, watch the LED and the live pin waveform
 
 ### 2 · Install WinkCli (one-time)
@@ -314,7 +323,7 @@ winkcli esp32 --app devkitc_smoke -- -p COM3 flash monitor
 
 - **Machine-readable hardware**: device tree and board registry are JSON schemas, not schematic PDFs.
 - **Deterministic stimulus**: scenario scripts inject button bounce, timing races, sensor dropouts and fault conditions — seeded and replayable.
-- **Structured failures & evidence**: fault codes plus the trace ring buffer (`SimTraceSpecV2`) point at root cause — and every run leaves a replayable PASS/FAIL record instead of a photo of a dead board.
+- **Structured failures & evidence**: fault codes plus the trace ring buffer (`SimTraceSpecV2`) point directly to root causes, and every run emits a structured, replayable PASS/FAIL evidence chain — completely eliminating physical black-box debugging and hardware damage.
 - **Agent guide included**: [`AGENTS.md`](./AGENTS.md) and [`.agents/skills/`](./.agents/skills/) describe the repo's conventions, gates and safe editing rules for coding agents.
 
 <!-- TODO: if/when a public MCP server or agent CLI exists, add a "Connect your agent" snippet here. Do not promise integrations that are not shipped. -->
@@ -339,9 +348,9 @@ Current milestones and scope: [`docs/en/design/01-system-overall/02-mvp-roadmap.
 
 ## Contributing
 
-Contributions are welcome. For anything beyond a small fix, open an issue first so we can agree on the design. New here? Look for `good first issue` labels, or start with a board definition or a device driver under `wink-micro-app/`.
+Contributions are welcome. For anything beyond a small fix, open an issue first so we can agree on the design. First-time contributors can start with `good first issue` labels, or start with a board definition or a device driver under `wink-micro-app/`.
 
-Using an AI coding agent? Point it at [`AGENTS.md`](./AGENTS.md) before it edits anything.
+When using an AI coding agent (e.g., Claude Code or Antigravity), direct it to review [`AGENTS.md`](./AGENTS.md) first to ensure adherence to repository architecture and quality gates.
 
 <!-- TODO(P2): add CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md and issue templates. -->
 
