@@ -20,7 +20,9 @@
 
 ```json
 {
+  "schema_version": "1.0.0",         // 配置规范契约版本（推荐显式声明，缺省时回退 "1.0.0"）
   "app_name": "oled_dashboard",      // 应用唯一标识（必须与目录名一致）
+  "app_version": "1.0.0",            // 可选：应用业务版本（SemVer 字符串）
   "board": "esp32_devkitc",          // 目标开发板型号
   "system": {                        // 可选：系统级能力声明（见 §1.4）
     "connectivity": { "wifi": false, "ble": false }
@@ -34,6 +36,11 @@
 }
 ```
 
+> **版本门禁（`wink-app-config@1.0.0`）**：
+> - `schema_version`（可选，推荐显式声明）：配置契约规范版本。当前基线恒为严格字符串 `"1.0.0"`。缺省时回退为 `"1.0.0"`。若声明为非 `"1.0.0"`（如 `"2.0.0"`、数值或布尔类型），`app_codegen.py` 将直接报错终止。
+> - `app_version`（可选）：应用业务版本号（如 `"0.1.0"`、`"1.0.0"`），由业务开发者按需定义，不参与平台 codegen 契约门禁。
+> - *注*：硬件载体验证证明（如 `wink-firmware-carriers/attestation/**/wink-app.json`）与根目录元数据不含 `app_name`，不属于应用配置门禁范围。
+>
 > **字段分层**：跨外设必填的只有 `type`（控制语义族 / DAL 绑定）。可选 `role` 为 **App 侧 Role Interface**（缺省 `default_role`，生成 `{name}_{verb}`）——**不是 BAL**，也不是产品级「左轮/云台」意图。`variant` / `enable_pin` / `driver_ic` **不是**全局通用字段。摘要见 [dal-best-practices §3.0](./dal-development-guide/dal-best-practices.md)；**如何挂 Role** 见 [role-interface-codegen.md](./dal-development-guide/role-interface-codegen.md)。
 >
 > **稳定面 vs 驱动面（Phase 1）**：**无板卡模板**——每个 App 在本文件写全 `type` 与引脚/总线（接线灵活）。`stable` 字段（如 `role`、`max_angle`、`long_press_ms`）影响业务语义；`advanced` 字段（如 `variant`、`enable_pin`、`*_pin`）为驱动/接线面。改 advanced 引脚是正常操作，不是「破坏用户面」。
