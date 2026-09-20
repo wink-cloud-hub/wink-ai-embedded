@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "3.0",
+    "version": "1.0.0",
     "name": "CMS8S78xx Buzzer 10kHz headless proof",
     "templateId": "vendor_cms8s78xx_v202_buzzer",
     "accuracyMode": "behavioral",

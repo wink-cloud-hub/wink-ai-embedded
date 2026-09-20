@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "3.0",
+    "version": "1.0.0",
     "name": "mcs51_health_pot safety: dry-fire (F=3) latches, survives later off-scale/short readings, manual ON/OFF reset only",
     "templateId": "mcs51_health_pot",
     "accuracyMode": "behavioral",

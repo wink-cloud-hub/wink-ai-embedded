@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "3.0",
+    "version": "1.0.0",
     "name": "mcs51_health_pot safety: 60 s thermal cooldown lock - E-03 latch, denial, COOL display, expiry",
     "templateId": "mcs51_health_pot",
     "description": "PLAN-20260915 Task 3 scene 1. Dry-fire latches E-03; the manual acknowledge returns to ST_OFF but the 60 s cooling lock refuses any restart (P2.0 stays 0, telemetry stays S=0) and the tube alternates between COOL and the live -25- temperature. After the lock expires a single ON press re-enters HEAT, and the scenario closes before the second 20 s slope window (timeout 95 s).",

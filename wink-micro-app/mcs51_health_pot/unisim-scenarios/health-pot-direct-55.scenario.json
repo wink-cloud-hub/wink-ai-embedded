@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "3.0",
+    "version": "1.0.0",
     "name": "mcs51_health_pot direct 55 C mode: standby pre-select -> heat to 55 C -> keep-warm",
     "templateId": "mcs51_health_pot",
     "accuracyMode": "behavioral",

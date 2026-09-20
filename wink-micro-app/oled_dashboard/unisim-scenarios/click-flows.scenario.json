@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "3.0",
+    "version": "1.0.0",
     "name": "OLED Dashboard Hardware Reaction Scenario",
     "templateId": "tpl_oled_dashboard",
     "description": "Verifies user_button PRESS -> C WASM firmware drives status_led (GPIO 2) HIGH",

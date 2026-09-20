@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "3.0",
+    "version": "1.0.0",
     "name": "mcs51_health_pot HIL-EXCLUSIVE: relay contact weld oracle (TCO / bimetal hardware fallback)",
     "templateId": "mcs51_health_pot",
     "description": "PLAN-20260915 Task 3 scene 5. Relay contact welding has no self-sensing path on this board (no current transformer loop), so weld detection is an HIL-exclusive oracle backed by the bimetal snap disc and the non-resettable thermal fuse. The simulation only records the commanded relay sequence as an event log; it MUST NOT be used as weld-protection release evidence.",

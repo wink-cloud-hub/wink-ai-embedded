@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "3.0",
+    "version": "1.0.0",
     "name": "mcs51 CMS8S78xx ADC HardwareTrigger (P0.5 ADET falling -> AN0 ADC -> P3.2 toggle) headless proof",
     "templateId": "vendor_cms8s78xx_v202_adc_hardware_trigger",
     "accuracyMode": "behavioral",

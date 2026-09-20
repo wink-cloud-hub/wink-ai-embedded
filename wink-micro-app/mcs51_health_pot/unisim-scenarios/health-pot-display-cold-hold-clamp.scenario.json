@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "3.0",
+    "version": "1.0.0",
     "name": "mcs51_health_pot display calibration: cold anchor 5C, dp-off in boil confirmation, >99C clamp",
     "templateId": "mcs51_health_pot",
     "accuracyMode": "behavioral",

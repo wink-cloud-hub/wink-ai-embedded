@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "3.0",
+    "version": "1.0.0",
     "name": "mcs51_health_pot CMS8S78xx 4COM-8SEG display and hardware buzzer proof",
     "templateId": "mcs51_health_pot",
     "accuracyMode": "behavioral",

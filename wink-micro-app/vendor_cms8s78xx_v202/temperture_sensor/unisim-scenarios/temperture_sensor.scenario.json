@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "3.0",
+    "version": "1.0.0",
     "name": "mcs51 CMS8S78xx on-chip temperature sensor calibration and sampling headless proof",
     "templateId": "vendor_cms8s78xx_v202_temperture_sensor",
     "accuracyMode": "behavioral",

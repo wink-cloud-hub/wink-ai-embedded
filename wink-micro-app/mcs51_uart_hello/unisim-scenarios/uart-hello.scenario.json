@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "3.0",
+    "version": "1.0.0",
     "name": "mcs51 UART HELLO beacon headless proof (Stage 2 T1)",
     "templateId": "mcs51_uart_hello",
     "accuracyMode": "behavioral",

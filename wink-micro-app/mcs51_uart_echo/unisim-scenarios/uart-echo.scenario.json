@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "3.0",
+    "version": "1.0.0",
     "name": "mcs51 live UART RX echo headless proof (Stage 2 T2.3)",
     "templateId": "mcs51_uart_echo",
     "accuracyMode": "behavioral",

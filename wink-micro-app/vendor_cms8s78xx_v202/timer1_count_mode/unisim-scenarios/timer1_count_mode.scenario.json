@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "3.0",
+    "version": "1.0.0",
     "name": "CMS8S78xx Timer1 CountMode (P2.4 5-pulse counter -> P3.2 toggle) headless proof",
     "templateId": "vendor_cms8s78xx_v202_timer1_count_mode",
     "accuracyMode": "behavioral",

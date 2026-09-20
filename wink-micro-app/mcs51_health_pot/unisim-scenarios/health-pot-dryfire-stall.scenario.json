@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "3.0",
+    "version": "1.0.0",
     "name": "mcs51_health_pot safety: warm-up stalls above 45 C (lid off / low voltage) trips stage-2 dry-fire E-03",
     "templateId": "mcs51_health_pot",
     "accuracyMode": "behavioral",

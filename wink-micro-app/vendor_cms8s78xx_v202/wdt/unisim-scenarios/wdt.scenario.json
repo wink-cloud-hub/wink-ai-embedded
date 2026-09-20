@@ -1,6 +1,6 @@
 {
   "header": {
-    "version": "3.0",
+    "version": "1.0.0",
     "name": "CMS8S78xx WDT overflow interrupt headless proof",
     "templateId": "vendor_cms8s78xx_v202_wdt",
     "accuracyMode": "behavioral",
