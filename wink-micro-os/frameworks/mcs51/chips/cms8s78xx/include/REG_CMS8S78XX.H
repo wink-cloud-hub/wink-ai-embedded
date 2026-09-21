@@ -884,18 +884,24 @@ typedef enum {
 #define TMR1_VECTOR                          3
 #define UART0_VECTOR                         4
 #define TMR2_VECTOR                          5
+#define INT2_VECTOR                          6  /**< EXT INT2 (gap in official header; inferred from 28-vector table) */
 #define P0EI_VECTOR                          7
 #define P1EI_VECTOR                          8
 #define P2EI_VECTOR                          9
 #define P3EI_VECTOR                          10
+#define INT3_VECTOR                          11 /**< EXT INT3 (gap in official header) */
+#define INT4_VECTOR                          12 /**< EXT INT4 (gap in official header) */
+#define UART1_VECTOR                         13 /**< UART1 (gap in official header) */
 #define ACMP_VECTOR                          14
 #define TMR3_VECTOR                          15
 #define TMR4_VECTOR                          16
+#define UART2_VECTOR                         17 /**< UART2 (gap in official header) */
 #define EPWM_VECTOR                          18
 #define ADC_VECTOR                           19
 #define WDT_VECTOR                           20
 #define I2C_VECTOR                           21
 #define SPI_VECTOR                           22
+#define SPI_I2C_VECTOR                       23 /**< Combined SPI/I2C legacy vector (gap in official header) */
 #define LSE_SCM_VECTOR                       25
 #define LVD_VECTOR                           26
 
