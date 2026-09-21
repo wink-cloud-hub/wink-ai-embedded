@@ -245,7 +245,7 @@ The system ties the three stacks together via an unbroken causal chain, eliminat
 1. **Unified SSOT Driving Engine**: A single source of truth, `wink-app.json`, defines hardware topology and configuration. `winkcli` orchestrates C code generation, architectural linting, headless testing, and firmware builds.
 2. **Sim-to-Real Simulation Kernel**:
    Coordinated across three cohesive technology stacks:
-   * **Embedded Firmware Stack** (`App ➔ BAL ➔ DAL ➔ PAL`): 100% dual-target C code, compile-time static dispatch, zero malloc, microsecond hard real-time determinism.
+   * **Embedded Firmware Stack** (`App ➔ BAL ➔ DAL ➔ PAL`): 100% dual-target C code, compile-time static dispatch, zero runtime dynamic allocation, deterministic timing control.
    * **Simulation Runtime** (`ABI ➔ VirtualClock ➔ Bus Channels ➔ Chip Sandbox`): Microsecond deterministic electrical base, zero wall-clock dependency, zero business physics in kernel.
    * **Digital Workbench Stack** (`Twin Viewport ➔ Plant Physics ➔ Electromechanical Transducers`): Continuous physics ODE solving and automated testbench, eliminating open-loop false animations.
 3. **Closed-Loop Dual Delivery (Sim-to-Real)**: A single codebase can be compiled into WebAssembly for zero-hardware interactive testing and fault injection in the browser/CI, or flashed unmodified onto real MCU hardware, with UART trace streaming back for automated model calibration.
