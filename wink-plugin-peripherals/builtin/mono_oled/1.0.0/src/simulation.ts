@@ -5,7 +5,7 @@ import {
   createThrottlePublish,
   normalizeVariantKey,
   type ManifestFactory,
-  type PluginContext,
+  type IPluginContext,
   type PeripheralManifest,
   type PeripheralManifestPinInput,
   type I2CTransferResult,
@@ -201,7 +201,7 @@ export class MonoOledPlugin extends I2cPeripheralPlugin {
     super.onDestroy();
   }
 
-  protected onI2cBound(_ctx: PluginContext, _props: Record<string, unknown>): void {
+  protected onI2cBound(_ctx: IPluginContext, _props: Record<string, unknown>): void {
     this.publishInitialState();
   }
 

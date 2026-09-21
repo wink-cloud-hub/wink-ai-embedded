@@ -8,7 +8,7 @@ import {
   type PeripheralManifest,
   type PeripheralManifestPinInput,
   type ManifestFactory,
-  type PluginContext,
+  type IPluginContext,
   type ThrottlePublishHandle,
 } from '@wink-ai/unisim-sdk';
 
@@ -194,7 +194,7 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
   });
 
   override onBind(
-    ctx: PluginContext<any>,
+    ctx: IPluginContext<any>,
     pinMapping: Record<string, number>,
     properties: Record<string, unknown>,
   ): void {
@@ -203,7 +203,7 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
   }
 
   protected override onBound(
-    _ctx: PluginContext<any>,
+    _ctx: IPluginContext<any>,
     pinMapping: Record<string, number>,
     props: SegDisplayProps,
   ): Partial<SegDisplayState> {
@@ -581,7 +581,7 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
     }
   }
 
-  override async onPowerOn(_ctx: PluginContext<any>): Promise<void> {
+  override async onPowerOn(_ctx: IPluginContext<any>): Promise<void> {
     this.onReset();
   }
 

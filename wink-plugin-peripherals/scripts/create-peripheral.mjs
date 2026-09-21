@@ -92,7 +92,7 @@ fs.writeFileSync(
   normalizeManifest,
   resolvePluginIdentity,
   BaseSimulationPlugin,
-  type PluginContext,
+  type IPluginContext,
   type PeripheralManifest,
   type ManifestFactory,
 } from '@wink-ai/unisim-sdk';
@@ -146,7 +146,7 @@ export class ${pascalCaseName}Plugin extends BaseSimulationPlugin<${pascalCaseNa
   private value = 0;
 
   protected override onBound(
-    _ctx: PluginContext<${pascalCaseName}State>,
+    _ctx: IPluginContext<${pascalCaseName}State>,
     _pinMapping: Record<string, number>,
     _props: ${pascalCaseName}Props,
   ): Partial<${pascalCaseName}State> {

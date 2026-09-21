@@ -9,7 +9,7 @@ import {
   type PeripheralManifest,
   type PeripheralManifestPinInput,
   type ManifestFactory,
-  type PluginContext,
+  type IPluginContext,
   type LogicState,
 } from '@wink-ai/unisim-sdk';
 
@@ -204,7 +204,7 @@ export class BuzzerPlugin extends BaseSimulationPlugin<BuzzerState, BuzzerProps>
   }
 
   protected override onBound(
-    _ctx: PluginContext<BuzzerState>,
+    _ctx: IPluginContext<BuzzerState>,
     pinMapping: Record<string, number>,
     _props: BuzzerProps,
   ): Partial<BuzzerState> {

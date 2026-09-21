@@ -32,7 +32,7 @@ import {
   defaultRolePinName,
   resolveMappedRolePinName,
   normalizeVariantKey,
-  type PluginContext,
+  type IPluginContext,
   type ManifestFactory,
   type PeripheralManifest,
   type PeripheralManifestPinInput,
@@ -141,7 +141,7 @@ export class RcServoPlugin extends BaseSimulationPlugin<Sg90State, Sg90Props> {
   private pwmPinName = 'PWM';
 
   protected onBound(
-    _ctx: PluginContext<Sg90State>,
+    _ctx: IPluginContext<Sg90State>,
     pinMapping: Record<string, number>,
     _props: Sg90Props,
   ): void {

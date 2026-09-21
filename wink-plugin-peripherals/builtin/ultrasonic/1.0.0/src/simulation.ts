@@ -4,7 +4,7 @@ import {
   BaseSimulationPlugin,
   normalizeVariantKey,
   LogicStates,
-  type PluginContext,
+  type IPluginContext,
   type PeripheralManifest,
   type PeripheralManifestPinInput,
   type ManifestFactory,
@@ -119,7 +119,7 @@ export class UltrasonicPlugin extends BaseSimulationPlugin<UltrasonicState, Ultr
   private alive = true;
 
   protected override onBound(
-    _ctx: PluginContext<UltrasonicState>,
+    _ctx: IPluginContext<UltrasonicState>,
     pinMapping: Record<string, number>,
     props: UltrasonicProps,
   ): Partial<UltrasonicState> {
