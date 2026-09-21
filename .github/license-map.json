@@ -68,7 +68,7 @@
       "must_have": true
     },
     {
-      "path": "wink-micro-app/vendor_cms8s78xx_v202/**",
+      "path": "wink-micro-app/vendor/**",
       "mode": "skip"
     },
     {
