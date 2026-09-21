@@ -16,6 +16,20 @@ const identity = resolvePluginIdentity(import.meta.url, 'button', '1.0.0', 'inpu
 
 export type ButtonVariant = 'default';
 
+export type BounceModel = 'deterministic_train' | 'stochastic_fretting';
+
+export interface ButtonPressOptions {
+  pressed?: boolean;
+  pressDurationUs?: number | string;
+  bounceUs?: number | string;
+  bounceCount?: number;
+  bounceModel?: BounceModel;
+  chatterDurationRangeUs?: [number, number] | number[];
+  contactResistanceRangeOhm?: [number, number] | number[];
+  pullupResistanceOhm?: number;
+  seed?: number;
+}
+
 export const BUTTON_PIN_VARIANTS: Record<
   ButtonVariant,
   { displayName: string; pins: PeripheralManifestPinInput[] }
@@ -92,6 +106,29 @@ export function createButtonManifest(variantName: ButtonVariant = 'default'): Pe
             description: 'Contact bounce window at the leading edge (0 = clean press)',
           },
           bounceCount: { type: 'number', default: 6, min: 0, max: 64 },
+          bounceModel: {
+            type: 'string',
+            default: 'deterministic_train',
+            enum: ['deterministic_train', 'stochastic_fretting'],
+            description: 'Contact bounce dynamics model',
+          },
+          chatterDurationRangeUs: {
+            type: 'array',
+            description: '[minUs, maxUs] range for non-symmetric chatter duration',
+          },
+          contactResistanceRangeOhm: {
+            type: 'array',
+            description: '[minOhm, maxOhm] range for dynamic contact resistance',
+          },
+          pullupResistanceOhm: {
+            type: 'number',
+            default: 32000,
+            description: 'MCU internal weak pull-up resistance in Ohms',
+          },
+          seed: {
+            type: 'number',
+            description: 'Deterministic PRNG seed for chatter generation',
+          },
         },
       },
       PRESS: {
@@ -157,16 +194,7 @@ export class ButtonPlugin extends SimpleGpioPlugin {
     this._scheduledReleaseUs = 0n;
   }
 
-  _pressed(
-    arg?:
-      | boolean
-      | {
-          pressed?: boolean;
-          pressDurationUs?: number | string;
-          bounceUs?: number | string;
-          bounceCount?: number;
-        },
-  ): void {
+  _pressed(arg?: boolean | ButtonPressOptions): void {
     const obj = typeof arg === 'object' && arg !== null ? arg : null;
     const pressed = obj ? Boolean(obj.pressed) : Boolean(arg ?? true);
     this._setState(pressed, {
@@ -176,6 +204,18 @@ export class ButtonPlugin extends SimpleGpioPlugin {
         typeof obj?.bounceCount === 'number'
           ? obj.bounceCount
           : ButtonPlugin.DEFAULT_BOUNCE_COUNT,
+      bounceModel: obj?.bounceModel,
+      chatterDurationRangeUs:
+        Array.isArray(obj?.chatterDurationRangeUs) && obj.chatterDurationRangeUs.length >= 2
+          ? [Number(obj.chatterDurationRangeUs[0]), Number(obj.chatterDurationRangeUs[1])]
+          : undefined,
+      contactResistanceRangeOhm:
+        Array.isArray(obj?.contactResistanceRangeOhm) && obj.contactResistanceRangeOhm.length >= 2
+          ? [Number(obj.contactResistanceRangeOhm[0]), Number(obj.contactResistanceRangeOhm[1])]
+          : undefined,
+      pullupResistanceOhm:
+        typeof obj?.pullupResistanceOhm === 'number' ? obj.pullupResistanceOhm : 32000,
+      seed: typeof obj?.seed === 'number' ? obj.seed : undefined,
     });
   }
 
@@ -189,7 +229,16 @@ export class ButtonPlugin extends SimpleGpioPlugin {
 
   private _setState(
     pressed: boolean,
-    options: { pressDurationUs?: bigint; bounceUs?: bigint; bounceCount: number },
+    options: {
+      pressDurationUs?: bigint;
+      bounceUs?: bigint;
+      bounceCount: number;
+      bounceModel?: BounceModel;
+      chatterDurationRangeUs?: [number, number];
+      contactResistanceRangeOhm?: [number, number];
+      pullupResistanceOhm: number;
+      seed?: number;
+    },
   ): void {
     this._pressedState = pressed;
     this.ctx?.publish('pressed', pressed);
@@ -219,7 +268,48 @@ export class ButtonPlugin extends SimpleGpioPlugin {
       this._pressStartUs = nowUs;
       this._waveGeneration++;
 
-      if (pressDurationUs !== undefined || bounceUs > 0n) {
+      if (options.bounceModel === 'stochastic_fretting') {
+        const seed = options.seed ?? Number((nowUs ^ 0x5a5a5a5an) & 0xffffffffn);
+        const prng = createMulberry32(seed);
+        const makeRange = options.chatterDurationRangeUs ?? [2000, 8000];
+        const chatterUs = BigInt(
+          Math.max(500, Math.floor(makeRange[0] + prng() * (makeRange[1] - makeRange[0]))),
+        );
+        const edges = buildStochasticFrettingEdges(
+          nowUs,
+          chatterUs,
+          prng,
+          idleLevel,
+          pressLevel,
+          true,
+          options.contactResistanceRangeOhm,
+          options.pullupResistanceOhm,
+        );
+        if (pressDurationUs !== undefined) {
+          this._scheduledReleaseUs = nowUs + chatterUs + pressDurationUs;
+          const breakRange = options.chatterDurationRangeUs ?? [5000, 18000];
+          const releaseChatterUs = BigInt(
+            Math.max(500, Math.floor(breakRange[0] + prng() * (breakRange[1] - breakRange[0]))),
+          );
+          const releaseEdges = buildStochasticFrettingEdges(
+            this._scheduledReleaseUs,
+            releaseChatterUs,
+            prng,
+            idleLevel,
+            pressLevel,
+            false,
+            options.contactResistanceRangeOhm,
+            options.pullupResistanceOhm,
+          );
+          edges.push(...releaseEdges);
+        } else {
+          this._scheduledReleaseUs = 0n;
+        }
+        ctx.injectWaveform(this._signalPinName, {
+          edges,
+          generation: this._waveGeneration,
+        });
+      } else if (pressDurationUs !== undefined || bounceUs > 0n) {
         // Explicit pulse: one atomic press/release pair (optionally with a
         // deterministic chatter train inside the leading edge).
         const edges = buildPressEdges(
@@ -251,13 +341,127 @@ export class ButtonPlugin extends SimpleGpioPlugin {
       const releaseUs = ctx.nowUs() > minReleaseUs ? ctx.nowUs() : minReleaseUs;
       if (this._scheduledReleaseUs === 0n || releaseUs < this._scheduledReleaseUs) {
         this._waveGeneration++;
-        ctx.injectWaveform(this._signalPinName, {
-          edges: [{ tUs: releaseUs, level: idleLevel }],
-          generation: this._waveGeneration,
-        });
+        if (options.bounceModel === 'stochastic_fretting') {
+          const seed = options.seed ?? Number((releaseUs ^ 0xa5a5a5a5n) & 0xffffffffn);
+          const prng = createMulberry32(seed);
+          const breakRange = options.chatterDurationRangeUs ?? [5000, 18000];
+          const releaseChatterUs = BigInt(
+            Math.max(500, Math.floor(breakRange[0] + prng() * (breakRange[1] - breakRange[0]))),
+          );
+          const edges = buildStochasticFrettingEdges(
+            releaseUs,
+            releaseChatterUs,
+            prng,
+            idleLevel,
+            pressLevel,
+            false,
+            options.contactResistanceRangeOhm,
+            options.pullupResistanceOhm,
+          );
+          ctx.injectWaveform(this._signalPinName, {
+            edges,
+            generation: this._waveGeneration,
+          });
+        } else {
+          ctx.injectWaveform(this._signalPinName, {
+            edges: [{ tUs: releaseUs, level: idleLevel }],
+            generation: this._waveGeneration,
+          });
+        }
       }
     }
   }
+}
+
+/**
+ * Mulberry32 32-bit deterministic pseudo-random number generator.
+ * Yields uniform pseudo-random floats in [0, 1).
+ */
+export function createMulberry32(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * Physical contact bounce & fretting dynamics waveform builder.
+ * Generates asymmetric micro-chatter pulses with dynamic contact resistance
+ * and Schmitt trigger hysteresis (VIL <= 0.3 * VDD, VIH >= 0.7 * VDD).
+ */
+export function buildStochasticFrettingEdges(
+  startUs: bigint,
+  chatterDurationUs: bigint,
+  prng: () => number,
+  idleLevel: number,
+  pressLevel: number,
+  isPress: boolean,
+  contactResistanceRange: [number, number] = [500, 5000],
+  pullupResistanceOhm: number = 32000,
+): Array<{ tUs: bigint; level: number }> {
+  const edges: Array<{ tUs: bigint; level: number }> = [];
+  const targetLevel = isPress ? pressLevel : idleLevel;
+  const initialLevel = isPress ? idleLevel : pressLevel;
+
+  if (chatterDurationUs <= 0n) {
+    edges.push({ tUs: startUs, level: targetLevel });
+    return edges;
+  }
+
+  // Generate 6 to 14 micro-bounces
+  const numBounces = 6 + Math.floor(prng() * 9);
+  const rawWeights: number[] = [];
+  for (let i = 0; i < numBounces; i++) {
+    rawWeights.push(0.2 + prng() * 1.8);
+  }
+  const sumWeight = rawWeights.reduce((a, b) => a + b, 0);
+
+  let currentLevel = initialLevel;
+  let accumulatedUs = 0n;
+  const totalDuration = Number(chatterDurationUs);
+
+  for (let i = 0; i < numBounces - 1; i++) {
+    const fraction = rawWeights[i] / sumWeight;
+    const deltaUs = BigInt(Math.max(20, Math.floor(fraction * totalDuration)));
+    accumulatedUs += deltaUs;
+    if (accumulatedUs >= chatterDurationUs) break;
+
+    const tUs = startUs + accumulatedUs;
+
+    // Alternating make and break phases with stochastic fretting resistance
+    const isContactMake = i % 2 === (isPress ? 0 : 1);
+    let nextLevel = currentLevel;
+
+    if (isContactMake) {
+      const [rMin, rMax] = contactResistanceRange;
+      const rContact = rMin + prng() * (rMax - rMin);
+      const vPinRatio = rContact / (rContact + pullupResistanceOhm);
+      // Schmitt trigger: VIL threshold = 0.3 * VDD, VIH threshold = 0.7 * VDD
+      if (vPinRatio <= 0.3) {
+        nextLevel = pressLevel;
+      } else if (vPinRatio >= 0.7) {
+        nextLevel = idleLevel;
+      }
+    } else {
+      nextLevel = idleLevel;
+    }
+
+    if (nextLevel !== currentLevel) {
+      edges.push({ tUs, level: nextLevel });
+      currentLevel = nextLevel;
+    }
+  }
+
+  // Final edge: settle firmly at target level at the end of chatter window
+  const settleUs = startUs + chatterDurationUs;
+  if (currentLevel !== targetLevel || edges.length === 0) {
+    edges.push({ tUs: settleUs, level: targetLevel });
+  }
+
+  return edges;
 }
 
 /**

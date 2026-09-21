@@ -260,3 +260,59 @@ test('press without an explicit duration injects the press edge only (hold seman
   expect(injected[1].waveform.edges).toEqual([{ tUs: 5_000_000n, level: 1 }]);
 });
 
+test('createMulberry32 produces reproducible deterministic float stream', () => {
+  const { createMulberry32 } = require('../simulation');
+  const rng1 = createMulberry32(12345);
+  const rng2 = createMulberry32(12345);
+  for (let i = 0; i < 20; i++) {
+    const v1 = rng1();
+    const v2 = rng2();
+    expect(v1).toBe(v2);
+    expect(v1 >= 0 && v1 < 1).toBe(true);
+  }
+});
+
+test('buildStochasticFrettingEdges emits monotonic chatter edges settling at target level', () => {
+  const { createMulberry32, buildStochasticFrettingEdges } = require('../simulation');
+  const prng = createMulberry32(42);
+  const startUs = 100_000n;
+  const chatterUs = 6_000n;
+  const edges = buildStochasticFrettingEdges(startUs, chatterUs, prng, 1, 0, true, [500, 5000], 32000);
+
+  expect(edges.length).toBeGreaterThanOrEqual(2);
+  // Monotonic timestamps
+  for (let i = 1; i < edges.length; i++) {
+    expect(edges[i].tUs >= edges[i - 1].tUs).toBe(true);
+  }
+  // Settles at pressLevel (0)
+  expect(edges[edges.length - 1]).toEqual({ tUs: startUs + chatterUs, level: 0 });
+});
+
+test('stochastic_fretting injects waveform with non-symmetric chatter and scheduled release', () => {
+  const plugin = new ButtonGpioPlugin();
+  const injected: Array<{ pin: string; waveform: any }> = [];
+  const nowUs = 2_000_000n;
+  const ctx = {
+    publish: () => {},
+    writePin: () => {},
+    nowUs: () => nowUs,
+    accuracyMode: 'timing',
+    injectWaveform: (pin: string, waveform: any) => injected.push({ pin, waveform }),
+  } as any;
+
+  plugin.onBind(ctx, {}, { activeLow: true });
+  plugin._pressed({
+    pressed: true,
+    bounceModel: 'stochastic_fretting',
+    chatterDurationRangeUs: [2000, 8000],
+    pressDurationUs: 50000,
+    seed: 9999,
+  });
+
+  expect(injected.length).toBe(1);
+  const edges = injected[0].waveform.edges;
+  expect(edges.length).toBeGreaterThan(3);
+  // Final edge of release must settle at idleLevel (1)
+  expect(edges[edges.length - 1].level).toBe(1);
+});
+
