@@ -1,0 +1,6 @@
+{
+  "app_name": "blink",
+  "board": "esp32_devkitc_v4",
+  "category": "demo",
+  "devices": {}
+}

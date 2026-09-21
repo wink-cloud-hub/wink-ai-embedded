@@ -69,7 +69,7 @@ ExternalProject_Add(wasm_unisim_smoke_build
     CMAKE_ARGS
         -DCMAKE_MAKE_PROGRAM=${_WASM_SMOKE_MAKE_PROGRAM}
         -DTARGET_PLATFORM=wasm
-        -DWINK_APP_DIR=../wink-micro-app/unisim_smoke
+        -DWINK_APP_DIR=../wink-micro-app/fixtures/unisim_smoke
         -DCMAKE_BUILD_TYPE=Debug
         # The unisim_smoke fixture is a test shim whose only job is to reach
         # every blocking-only js_* import once (sync I2C transfer, pulse_in,

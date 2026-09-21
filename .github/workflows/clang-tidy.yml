@@ -47,7 +47,7 @@ jobs:
         run: |
           cmake -B build_host -S wink-micro-os -G Ninja \
             -DTARGET_PLATFORM=host \
-            -DWINK_APP_DIR=wink-micro-app/unisim_smoke \
+            -DWINK_APP_DIR=wink-micro-app/fixtures/unisim_smoke \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
       - name: Run Clang-Tidy

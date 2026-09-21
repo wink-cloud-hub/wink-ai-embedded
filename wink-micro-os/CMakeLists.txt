@@ -24,7 +24,7 @@ endif()
 
 # Application configuration path resolution
 if(NOT DEFINED WINK_APP_DIR OR WINK_APP_DIR STREQUAL "")
-    set(WINK_APP_DIR "wink-micro-app/avoidance_car"
+    set(WINK_APP_DIR "wink-micro-app/native/avoidance_car"
         CACHE PATH "Path to App directory containing wink-app.json")
 endif()
 get_filename_component(_WINK_WORKSPACE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
@@ -554,16 +554,17 @@ if(NOT TARGET_PLATFORM STREQUAL "wasm")
             get_filename_component(_abs_sample_dir "${CMAKE_CURRENT_SOURCE_DIR}/../wink-micro-app/${name}" ABSOLUTE)
             if(EXISTS "${_abs_sample_dir}")
                 if(NOT "${WINK_APP_DIR}" STREQUAL "${_abs_sample_dir}")
-                    add_subdirectory("${_abs_sample_dir}" "${CMAKE_BINARY_DIR}/${name}_build")
+                    string(REPLACE "/" "_" _build_tag "${name}")
+                    add_subdirectory("${_abs_sample_dir}" "${CMAKE_BINARY_DIR}/${_build_tag}_build")
                 endif()
             endif()
         endmacro()
 
-        wink_add_sample_subdirectory(oled_dashboard)
-        wink_add_sample_subdirectory(devkitc_smoke)
-        wink_add_sample_subdirectory(resource_conflict)
-        wink_add_sample_subdirectory(dual_task_demo)
-        wink_add_sample_subdirectory(arduino_blink_demo)
+        wink_add_sample_subdirectory(native/oled_dashboard)
+        wink_add_sample_subdirectory(fixtures/devkitc_smoke)
+        wink_add_sample_subdirectory(fixtures/resource_conflict)
+        wink_add_sample_subdirectory(native/dual_task_demo)
+        wink_add_sample_subdirectory(arduino/blink)
     endif()
 
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test/CMakeLists.txt")

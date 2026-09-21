@@ -67,7 +67,7 @@ jobs:
         run: |
           cmake -B build_host -S wink-micro-os -G Ninja \
             -DTARGET_PLATFORM=host \
-            -DWINK_APP_DIR=wink-micro-app/unisim_smoke
+            -DWINK_APP_DIR=wink-micro-app/fixtures/unisim_smoke
 
       - name: Build Host Binaries
         if: steps.toolchain.outputs.available == 'true'
@@ -127,7 +127,7 @@ jobs:
         run: |
           cmake -B build_host -S wink-micro-os -G Ninja \
             -DTARGET_PLATFORM=host \
-            -DWINK_APP_DIR=wink-micro-app/unisim_smoke
+            -DWINK_APP_DIR=wink-micro-app/fixtures/unisim_smoke
 
       - name: Build (emcc wasm test targets are ALL)
         if: steps.toolchain.outputs.available == 'true'

@@ -508,9 +508,10 @@ if(TARGET wink_mcs51_core)
     # wasm build transpiles is cleaned into this build tree and linked beside
     # the safety driver.
     function(mcs51_transpile_app app_dir app_src)
+        string(REPLACE "/" "_" _app_tag "${app_dir}")
         set(_app_c
             ${CMAKE_CURRENT_SOURCE_DIR}/../../wink-micro-app/${app_dir}/${app_src}.c)
-        set(_cpp ${_MCS51_GEN_DIR}/${app_dir}_${app_src}.cpp)
+        set(_cpp ${_MCS51_GEN_DIR}/${_app_tag}_${app_src}.cpp)
         add_custom_command(
             OUTPUT ${_cpp}
             COMMAND ${CMAKE_COMMAND} -E make_directory ${_MCS51_GEN_DIR}
@@ -519,12 +520,14 @@ if(TARGET wink_mcs51_core)
                 ${_app_c} ${_cpp}
             DEPENDS ${_app_c}
                     ${_MCS51_FW_DIR}/tools/transpile_app_keil_c51.py
-            COMMENT "mcs51 app transpile: ${app_dir}/${app_src}.c -> ${app_dir}_${app_src}.cpp"
+            COMMENT "mcs51 app transpile: ${app_dir}/${app_src}.c -> ${_app_tag}_${app_src}.cpp"
             VERBATIM)
-        set(_MCS51_${app_dir}_${app_src}_CPP ${_cpp} PARENT_SCOPE)
+        set(_MCS51_${_app_tag}_${app_src}_CPP ${_cpp} PARENT_SCOPE)
+        # Backward-compatible variable alias for legacy test targets
+        set(_MCS51_mcs51_health_pot_health_pot_CPP ${_cpp} PARENT_SCOPE)
     endfunction()
 
-    mcs51_transpile_app(mcs51_health_pot health_pot)
+    mcs51_transpile_app(appliances/health_pot health_pot)
 
     # ── M6: board-config codegen seam (wink-app.json -> mcs51_board_config.h) ──
     # Stage3 (CPL-09/CPL-21): the framework bridge no longer auto-binds the

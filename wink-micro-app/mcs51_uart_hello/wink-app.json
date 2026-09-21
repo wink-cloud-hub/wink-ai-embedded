@@ -1,8 +1,0 @@
-{
-  "app_name": "mcs51_uart_hello",
-  "board": "stc89c52_devboard",
-  "mcu": "at89c52",
-  "category": "demo",
-  "tick_ms": 10,
-  "devices": {}
-}
