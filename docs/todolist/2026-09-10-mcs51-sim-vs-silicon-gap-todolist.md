@@ -77,7 +77,7 @@
   #define  GPIO_P13_MUX_RXD	(0x03)
   ```
 - 其余同类宏（P00_MUX_AN0=0x01、P03_MUX_BUZZ=0x05、P14_MUX_TXD=0x03、P22_MUX_TXD=0x03、P21_MUX_RXD=0x03、INT 沿配置 0x01/0x02/0x03）逐一 diff **均一致，仅此一处错误**。
-- 受影响的未修改原厂例程（仿真 carrier）：`wink-micro-app/vendor_cms8s78xx_v202/uart0_printf/demo_uart.c:106,140,173,208`、`uart0_rxtx/demo_uart.c:98` 均调用 `GPIO_SET_MUX_MODE(P13CFG, GPIO_P13_MUX_RXD)`。
+- 受影响的未修改原厂例程（仿真 carrier）：`wink-micro-app/vendor/cms8s78xx/uart0_printf/demo_uart.c:106,140,173,208`、`uart0_rxtx/demo_uart.c:98` 均调用 `GPIO_SET_MUX_MODE(P13CFG, GPIO_P13_MUX_RXD)`。
 
 **真机后果（仿真为何发现不了）**
 
@@ -91,7 +91,7 @@
 
 **验收标准**
 
-- [ ] `GPIO_P13_MUX_RXD == 0x03`，`vendor_cms8s78xx_v202/uart0_*` 仿真中 P13CFG 影子值为 0x03。
+- [ ] `GPIO_P13_MUX_RXD == 0x03`，`vendor/cms8s78xx/uart0_*` 仿真中 P13CFG 影子值为 0x03。
 - [ ] 新增的宏值比对测试在 CI 运行，人为篡改任一 mux 宏能使测试失败。
 
 ---
@@ -166,7 +166,7 @@ health_pot 的遥测场景描述文字已经意识到此风险（`health-pot-uar
 
 **验收标准**
 
-- [ ] 5 个现有 carrier + health_pot + vendor_cms8s78xx_v202 全部通过 SDCC `-std-c89` 编译（或每个失败项有显式 issue 编号）。
+- [ ] 5 个现有 carrier + health_pot + vendor/cms8s78xx 全部通过 SDCC `-std-c89` 编译（或每个失败项有显式 issue 编号）。
 - [ ] CI 产物含每个应用的 DATA/XDATA/CODE 用量（SDCC `.mem`/map）与器件预算的对比。
 - [ ] 故意引入 C99 中位声明的样例应用能被门禁拦下。
 
@@ -618,7 +618,7 @@ health_pot 的 10ms tick（T0 重载 0xB1E0）与 9600bps（TH1=217）都按 24M
   - `wasm_entry.c` 导出 3 个 C-ABI 复位查询接口（`pal_wasm_has_pending_reset`, `pal_wasm_get_reset_reason`, `pal_wasm_clear_pending_reset`），登记至 `exported_runtime_functions.json`。
 - **单元测试与厂商例程验证**：
   - `test_mcs51_reset_controller.cpp` 覆盖 PORF 无 TA 清零、WDTRF 需 TA、SWRST 边沿自清零、PORF 跨热复位保留、WDTRE 优先级压制、重入防抖门锁以及多周期重入（双构建 Release/STRICT 全绿）。
-  - 官方示例 33 `ResetBySoftware`：建立 `wink-micro-app/vendor_cms8s78xx_v202/reset_software`，源码一行不改，场景 `reset_software.scenario.json` 证实 SWRST 触发后 P3.2 在 250ms 后持续输出第二轮 250 次脉冲。
-  - 官方示例 34 `ResetByWDT`：建立 `wink-micro-app/vendor_cms8s78xx_v202/reset_wdt`，源码一行不改，场景 `reset_wdt.scenario.json` 双引脚负向实证：每 ~1.3ms 规律喂狗，P3.2 翻转不息，P3.3 保持弱上拉恒高（零复位重启）；正向复位由单测闭环。
+  - 官方示例 33 `ResetBySoftware`：建立 `wink-micro-app/vendor/cms8s78xx/reset_software`，源码一行不改，场景 `reset_software.scenario.json` 证实 SWRST 触发后 P3.2 在 250ms 后持续输出第二轮 250 次脉冲。
+  - 官方示例 34 `ResetByWDT`：建立 `wink-micro-app/vendor/cms8s78xx/reset_wdt`，源码一行不改，场景 `reset_wdt.scenario.json` 双引脚负向实证：每 ~1.3ms 规律喂狗，P3.2 翻转不息，P3.3 保持弱上拉恒高（零复位重启）；正向复位由单测闭环。
   - 官方示例 35 `ResetByExtReset`：标注 `deferred`（依赖 GAP-06 CONFIG 选项字节与物理 NRST 引脚模型），复位控制器软重入单测已提供测试缝覆盖。
 

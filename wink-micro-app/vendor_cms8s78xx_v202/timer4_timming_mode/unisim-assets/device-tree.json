@@ -1,9 +1,0 @@
-{
-  "appName": "vendor_cms8s78xx_v202_timer4_timming_mode",
-  "board": "cms8s78xx_devboard",
-  "devices": {},
-  "family": "mcs51",
-  "core": "8051",
-  "mcu": "cms8s78xx",
-  "vendor": "cmsemicon"
-}

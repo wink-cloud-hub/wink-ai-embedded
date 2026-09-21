@@ -1,0 +1,17 @@
+{
+  "appName": "vendor_cms8s78xx_timer2_compare_mode",
+  "board": "cms8s78xx_devboard",
+  "devices": {
+    "led": {
+      "id": "led",
+      "type": "led",
+      "properties": {
+        "activeHigh": true
+      }
+    }
+  },
+  "family": "mcs51",
+  "core": "8051",
+  "mcu": "cms8s78xx",
+  "vendor": "cmsemicon"
+}

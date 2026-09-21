@@ -46,12 +46,13 @@
 
 | 目录前缀 / 命名模式 | 所属模式 | 技术分类与定位 | 典型特征与代码形态 | 示例代表 |
 | :--- | :--- | :--- | :--- | :--- |
-| **`vendor_{chip}_{ver}_{demo}`** | 模式 2 | **原厂官方例程回归套件** | 芯片厂商官方源码零侵入，带 `upstream` SSOT 溯源，CI 强校验 Diff 门禁 | `vendor_cms8s78xx_v202/led_4com_8seg` |
-| **`mcs51_{module}_{feature}`** | 模式 2 | **MCS-51 架构兼容生态** | 标准 C51 源码（含 SFR、中断、延时），仿真端 Wasm C++ Proxy 拦截 | `mcs51_health_pot` (养生壶), `mcs51_button_led` |
-| **`arduino_{demo}`** | 模式 2 | **开源 Arduino 生态平移** | 标准 `setup()` / `loop()` 语法与库，基于 ArduinoCore-API 兼容层拦截 | `arduino_blink_demo` |
-| **`pdk_{demo}`** | 模式 2 | **专有 8 位 OTP 芯片生态** | 极低成本单片机原生二进制/汇编，UniSim 内置 ISA 解释器仿真 | `pdk_button_led` |
-| **`{feature_name}` (如 oled/car)** | 模式 1 | **Wink 原生 AI-Native 业务** | 深度使用 `wink-micro-os/dal`，Role API 事件驱动或 L2 专家双任务 | `oled_dashboard`, `avoidance_car`, `dual_task_demo` |
-| **`*_smoke` / `*_fixture`** | 系统支撑 | **平台 CI 与确定性测试夹具** | 硬件板级 Bring-up 自检、Wasm JS 胶水测试、微秒级时钟步进确定性验证 | `devkitc_smoke`, `unisim_smoke`, `determinism_fixture` |
+| **`vendor/{chip}/{demo}`** | 模式 2 | **原厂官方例程回归套件** | 芯片厂商官方源码零侵入，带 `upstream` SSOT 溯源，CI 强校验 Diff 门禁 | `vendor/cms8s78xx/led_4com_8seg` |
+| **`appliances/{product}`** | 模式 2 | **商用智能家电业务** | 结合国标 GB 4706 与 UniSim Plant Profile 虚拟热力学系统闭环仿真 | `appliances/health_pot` (养生壶) |
+| **`mcs51/{demo}`** | 模式 2 | **MCS-51 架构兼容生态** | 标准 C51 源码（含 SFR、中断、延时），仿真端 Wasm C++ Proxy 拦截 | `mcs51/button_led`, `mcs51/uart_echo` |
+| **`arduino/{demo}`** | 模式 2 | **开源 Arduino 生态平移** | 标准 `setup()` / `loop()` 语法与库，基于 ArduinoCore-API 兼容层拦截 | `arduino/blink` |
+| **`pdk/{demo}`** | 模式 2 | **专有 8 位 OTP 芯片生态** | 极低成本单片机原生二进制/汇编，UniSim 内置 ISA 解释器仿真 | `pdk/button_led` |
+| **`native/{feature}`** | 模式 1 | **Wink 原生 AI-Native 业务** | 深度使用 `wink-micro-os/dal`，Role API 事件驱动或 L2 专家双任务 | `native/oled_dashboard`, `native/avoidance_car` |
+| **`fixtures/{smoke}`** | 系统支撑 | **平台 CI 与确定性测试夹具** | 硬件板级 Bring-up 自检、Wasm JS 胶水测试、微秒级时钟步进确定性验证 | `fixtures/devkitc_smoke`, `fixtures/determinism_fixture` |
 
 ### 目录嵌套约定（ADR-0079）
 
@@ -123,17 +124,17 @@ void app_on_event(const wink_event_t *event) {
 
 面向半导体厂商（中微、乐鑫、意法、沁恒等）的原厂参考代码，遵循以下接入规范：
 
-### 1. 目录命名（全小写蛇形命名）
-格式：`vendor_{chip}_{version}_{module_name}`
+### 1. 目录命名与层级（ADR-0079 三级嵌套）
+格式：`vendor/{chip}/{demo}`
+* **三级嵌套归类**：第 1 级统一为 `vendor/`，第 2 级为芯片家族/原厂标识（如 `cms8s78xx`），第 3 级为具体例程名（如 `gpio`、`led_4com_8seg`）；
 * **全小写 + 下划线**：避免跨操作系统（Windows 与 Linux CI）大小写敏感冲突；
-* **版本号去点号**：如 `v202`（代表 V2.0.2），避免路径与 CMake Target 命名解析异常；
-* **`vendor_` 前缀**：便于 CI 脚本一键通过 `glob("vendor_*")` 批量发现与一键回归。
+* **发现与剪枝**：由工具链（`winkcli`、UniSim）自动进行最多 3 级深度发现，带 `wink-app.json` 清单目录自动作为应用边界进行剪枝。
 
 ### 2. 上游元数据标准（`wink-app.json`）
 所有原厂示例必须在 `wink-app.json` 中声明 `upstream` 作为单一事实来源（SSOT）：
 ```json
 {
-  "app_name": "vendor_cms8s78xx_v202/led_4com_8seg",
+  "app_name": "led_4com_8seg",
   "display_name": "CMS8S78xx V2.0.2 - LED 4COM_8SEG_LED",
   "board": "cms8s78xx_devboard",
   "category": "vendor_example",
@@ -168,7 +169,7 @@ void app_on_event(const wink_event_t *event) {
 ### 1. Wasm 仿真构建
 ```bash
 # 构建指定的 App 并在 build/wasm/<app_name> 产出仿真二进制
-python packages/wink-tools/wink.py build wasm --app wink-micro-app/vendor_cms8s78xx_v202/led_4com_8seg
+python packages/wink-tools/wink.py build wasm --app wink-micro-app/vendor/cms8s78xx/led_4com_8seg
 
 # 构建原生 AI-Native 应用
 python packages/wink-tools/wink.py build wasm --app wink-micro-app/oled_dashboard

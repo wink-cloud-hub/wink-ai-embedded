@@ -220,7 +220,7 @@ WDCON (0x97, TA-protected):
 * **验收**：V-01（含多轮重入断言）、V-04（host 行为）、V-11（wasm 专项）。
 
 ### Task 3: 官方示例 33 `ResetBySoftware` 适配与验证
-* **创建应用**：`wink-micro-app/vendor_cms8s78xx_v202/reset_software`（原厂源码一行不改；依赖 Task 1 的 shim）
+* **创建应用**：`wink-micro-app/vendor/cms8s78xx/reset_software`（原厂源码一行不改；依赖 Task 1 的 shim）
 * **业务逻辑**：P3.2 闪烁 250 轮（仿真虚拟时间约 1.25ms）→ `SYS_DisableSoftwareReset()` → `SYS_EnableSoftwareReset()`（沿触发）→ `while(1){;}`。
 * **场景**：`unisim-scenarios/reset_software.scenario.json`
   - 判别性设计：取首轮闪烁窗口后，断言 P3.2 **继续**输出脉冲串（复位重入的绝对证据；无复位实现会死在 `while(1)` 保持电平不变）；
@@ -228,7 +228,7 @@ WDCON (0x97, TA-protected):
 * **验收**：V-03、V-04。
 
 ### Task 4: 官方示例 34 `ResetByWDT` 负例与正例重设计
-* **创建应用**：`wink-micro-app/vendor_cms8s78xx_v202/reset_wdt`（原厂源码一行不改）
+* **创建应用**：`wink-micro-app/vendor/cms8s78xx/reset_wdt`（原厂源码一行不改）
 * **正确验收口径（双引脚负例判决）**：
   `main.c:92-100` 每轮喂狗（约 1.3ms ≪ 174.76ms）→ **双引脚断言：「全程不复位、P3.2 持续正常闪烁；且 P3.3 始终保持高电平，证明 WDT 中断未触发、复位未发生」**。
 * **WDT 复位正例**：用**专用测试固件**（`test_mcs51_reset_controller.cpp` 内联 fixture，非载体）验证：不喂狗 → 溢出 → latch → 重入 main → `SYS_GetWDTResetFlag()==1`；验证 RE+IE 双使能下复位压制 IRQ。
@@ -252,8 +252,8 @@ WDCON (0x97, TA-protected):
 |:---:|---|---|---|
 | **V-01** | 复位控制器单元测试 | `test_mcs51_reset_controller`（+STRICT 孪生） | 复位源×标志矩阵、**PORF 粘性保持**、SWRST 沿/自清、**事件队列清污**、**ISR 中断栈归零**、WDT 仲裁 100% PASS |
 | **V-02** | 既有 mcs51 测试回归 | `python packages/wink-tools/wink.py test` | 全部 host 测试通过、0 回归；`test_mcs51_wdt_ta` 契约更新后通过 |
-| **V-03** | 示例 33 资产构建 | SOP：`python packages/wink-tools/wink.py build sim --app vendor_cms8s78xx_v202_reset_software` | `unisim-assets/` 三件套完整、wasm 有效（150~300KB） |
-| **V-04** | 示例 33 场景断言（判别性） | SOP headless：`python packages/wink-tools/wink.py sim run --app vendor_cms8s78xx_v202_reset_software --mode headless --scenarios .../reset_software.scenario.json` | P3.2 在首轮闪烁后**继续输出脉冲串**；负向对照（禁用 SWRST）场景断言失败 |
+| **V-03** | 示例 33 资产构建 | SOP：`python packages/wink-tools/wink.py build sim --app vendor_cms8s78xx_reset_software` | `unisim-assets/` 三件套完整、wasm 有效（150~300KB） |
+| **V-04** | 示例 33 场景断言（判别性） | SOP headless：`python packages/wink-tools/wink.py sim run --app vendor_cms8s78xx_reset_software --mode headless --scenarios .../reset_software.scenario.json` | P3.2 在首轮闪烁后**继续输出脉冲串**；负向对照（禁用 SWRST）场景断言失败 |
 | **V-05** | 示例 34 资产构建与双引脚负例断言 | 同上针对 `reset_wdt` | ≥250ms 窗口内不复位、**P3.2 正常闪烁、P3.3 保持恒高、复位计数为 0** |
 | **V-06** | WDT 复位正例（专用固件） | `test_mcs51_reset_controller` fixture | 不喂狗 → 复位 → main 重入 → `WDTRF=1`；IE+RE 仲裁符合 ADR |
 | **V-07** | 示例 35（条件项） | 就绪：`reset_extreset` 构建+`INPUT_PIN` 场景；未就绪：单测 seam + Checklist deferred | latch + 重入发生；或 Checklist 显式 deferred 无虚标 |

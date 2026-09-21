@@ -346,7 +346,7 @@ Manage, build, and run the Wink Unified Simulation Engine (winksim)
 
 Verify dual-run consistency across Headless Direct and Worker Twin engines
 
-- `--app` · Target application path or name (e.g. vendor_cms8s78xx_v202_led_4com_8seg)
+- `--app` · Target application path or name (e.g. vendor_cms8s78xx_led_4com_8seg)
 - `--all` · Batch verify consistency across all micro-apps in workspace
 - `--filter` · Filter pattern for app names when running with --all (e.g. mcs51_*)
 - `--scenario` · Explicit path to a .scenario.json file

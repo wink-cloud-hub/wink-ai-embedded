@@ -25,7 +25,7 @@
 ## 2. 背景与目标
 
 ### 2.1 现状与痛点
-在 2026-09-09 实施的 [ADR-0079 阶段一](./2026-09-09-vendor-cms8s78xx-apps-migration-plan.md) 中，工具链（Python `wink-tools`、TS `unisim`、Vue `embedded-frontend`）已经全线具备了 1~3 级受控嵌套发现、清单边界剪枝与全树唯一别名解析能力，并将 33 个原厂外设示例收拢至 `vendor_cms8s78xx_v202/` 组下。
+在 2026-09-09 实施的 [ADR-0079 阶段一](./2026-09-09-vendor-cms8s78xx-apps-migration-plan.md) 中，工具链（Python `wink-tools`、TS `unisim`、Vue `embedded-frontend`）已经全线具备了 1~3 级受控嵌套发现、清单边界剪枝与全树唯一别名解析能力，并将 33 个原厂外设示例收拢至 `vendor/cms8s78xx/` 组下。
 
 然而，`wink-micro-app/` 根目录下仍平铺了 14 个异构应用与测试夹具：
 1. **模式 1 核心标杆被淹没**：WinkMicroOS 原生的 AI-Native / Role-Action 应用（`avoidance_car`、`oled_dashboard`、`dual_task_demo`）直接混杂在外部生态用例中，缺乏主舞台展示效应。
@@ -43,7 +43,7 @@
    - `arduino/`：归拢并规范为 `arduino/blink`；
    - `pdk/`：归拢并规范为 `pdk/button_led`；
    - `fixtures/`：剥离 4 个平台冒烟与自检夹具，隔离核心应用区；
-   - `vendor_cms8s78xx_v202/`：保持深度 2 原厂回归套件不变。
+   - `vendor/cms8s78xx/`：保持深度 2 原厂回归套件不变。
 2. **CMake 深度解耦（终结硬编码相对路径断裂）**：
    - 改造各 App 的 `CMakeLists.txt`，支持深度自适应加载 `sample_common.cmake`；
    - 引用 `wink-tools` 与 `wink-micro-os` 根路径时优先消费 CMake 变量，消除深度变动引发的构建中断。
@@ -86,7 +86,7 @@
 | `determinism_fixture` | `fixtures/determinism_fixture`| `fixtures/determinism_fixture`| 系统基础设施 | 微秒级确定性虚拟时间回归夹具 |
 | `resource_conflict` | `fixtures/resource_conflict` | `fixtures/resource_conflict` | 系统基础设施 | 硬件引脚冲突与负向治理测试 (C 源码夹具) |
 
-*(注：`vendor_cms8s78xx_v202/` 保持原状，`common/` 保持在 `wink-micro-app/common` 作为根级公共库。)*
+*(注：`vendor/cms8s78xx/` 保持原状，`common/` 保持在 `wink-micro-app/common` 作为根级公共库。)*
 
 ---
 

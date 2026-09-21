@@ -1,0 +1,24 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "CMS8S78xx Software Reset (SWRST) re-entry headless proof",
+    "templateId": "vendor_cms8s78xx_reset_software",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "500000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "300ms",
+      "windowUs": ["50ms", "300ms"],
+      "pin": 26,
+      "expected": {
+        "kind": "frequencyHz",
+        "value": { "$between": [100, 200000] }
+      },
+      "description": "[软复位重入判决] 经历 SYS_EnableSoftwareReset 复位后，main() 重新执行并重复 250 次 P3.2 翻转闪烁，窗口内 P3.2 保持方波活性（若复位失效则死在 while(1) 频率恒为 0 失败）"
+    }
+  ]
+}

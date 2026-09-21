@@ -66,7 +66,7 @@
 
 - R：删兼容层后旧前端版本断裂 → 缓解：发版顺序 + 版本号卡死，不兼容旧大版本属预期（见附录 B）。
 - 回滚：stage7 变更按逻辑模块独立提交（① 自注册 `234a7c5` ② 双读→哨兵 `f264154` ③ shim+别名+门面 `ec7896c` ④ 场景+ demo `a0c2d9f` ⑤ app 注释 `05b84e2` ⑥ 本收尾提交 + 资产 chore），`git revert <hash>` 可独立回退任一模块；恢复双读只需回退 `f264154`（哨兵逻辑回退后 `cms8s_adc_dual_read_synth` 语义恢复）。
-- 受控遗留（不阻塞关闭）：`vendor_cms8s78xx_v202/adc_ldo`、`adc_hardware_trigger` 的 EOC 波形断言不绿，根因为 A-05 方向模型在 TRIS 输入→输出切换时不重驱锁存（既有模型缺口，`0f3e426` 起，非本系列回归）；两个 vendor 场景已按 v2 key 迁移（`adcChannel:0`），恢复绿需独立模型增强 + 场景重跑，另立任务跟踪（附录 E）。
+- 受控遗留（不阻塞关闭）：`vendor/cms8s78xx/adc_ldo`、`adc_hardware_trigger` 的 EOC 波形断言不绿，根因为 A-05 方向模型在 TRIS 输入→输出切换时不重驱锁存（既有模型缺口，`0f3e426` 起，非本系列回归）；两个 vendor 场景已按 v2 key 迁移（`adcChannel:0`），恢复绿需独立模型增强 + 场景重跑，另立任务跟踪（附录 E）。
 
 ## 6. 阶段自审自我检验清单（Self-Audit Checkpoint）
 
@@ -118,9 +118,9 @@
 
 ## 附录 E：受控遗留项（非本系列回归）
 
-- **现象**：`vendor_cms8s78xx_v202/adc_ldo`、`adc_hardware_trigger` headless 的 `ASSERT_WAVEFORM`（EOC ISR 翻转 P3.2 频率）为 0。
+- **现象**：`vendor/cms8s78xx/adc_ldo`、`adc_hardware_trigger` headless 的 `ASSERT_WAVEFORM`（EOC ISR 翻转 P3.2 频率）为 0。
 - **根因（已定位到行）**：A-05 方向模型下，`GPIO_ENABLE_OUTPUT(P3TRIS,2)` 之前的 `P32=0` 写因输入方向被抑制（锁存=0，arbiter 仅存 bridge 上电种子 WEAK-HIGH）；随后 ISR `P32=~P32` 的 Read-Pin 回读命中 MCU 自身弱高驱动 → `~1=0` 与锁存同值 → 无 diff 边沿（`mcs51_gpio_bit_write` 短路）。硅片语义应在 TRIS 输入→输出切换时按锁存重驱（当前模型缺口）。
 - **定性**：A-05 属 stage3（`0f3e426`，2026-09-11）引入的既有缺口；与 stage7 的注册方式/双读删除/场景迁移无关（场景迁移为契约必须，保留）。
 - **处置**：另立模型增强任务（TRIS 方向切换重驱 + 自驱回读消歧），完成前两个 vendor EOC 场景不列入绿集；其余 vendor 场景按需重建资产。
-- **✅ 关闭记录（2026-09-12，PLAN-20260912-MCS51-P3-TRIS）**：已修复（P3-A）。`PxTRIS` 是 SFR（0x9A/0xA1-A3），复用 SFR 代理写钩子实现方向切换语义：0→1 且非 AN 按锁存重驱（0 → SUPPLY / 1 → OD 则释放否则 WEAK）、1→0 `js_pal_gpio_release_mcu` 释放、OD latch=1 使能走释放、reset 释放全 32 脚。`vendor_cms8s78xx_v202/adc_ldo`、`adc_hardware_trigger` headless `ASSERT_WAVEFORM` 转 **PASS**；五载体 5/5、`mcs51_health_pot` 15/15 无回归；host `test_mcs51_gpio_dir` T2/T8-T11 + wasm/Node 4/4。资产已随修复机械刷新（两 app `unisim-assets` 的 device-tree/js/wasm 更新）。自驱回读消歧降级为条件项（P3-B），以 P3-A 后不再有真实失真为由暂不排期。
+- **✅ 关闭记录（2026-09-12，PLAN-20260912-MCS51-P3-TRIS）**：已修复（P3-A）。`PxTRIS` 是 SFR（0x9A/0xA1-A3），复用 SFR 代理写钩子实现方向切换语义：0→1 且非 AN 按锁存重驱（0 → SUPPLY / 1 → OD 则释放否则 WEAK）、1→0 `js_pal_gpio_release_mcu` 释放、OD latch=1 使能走释放、reset 释放全 32 脚。`vendor/cms8s78xx/adc_ldo`、`adc_hardware_trigger` headless `ASSERT_WAVEFORM` 转 **PASS**；五载体 5/5、`mcs51_health_pot` 15/15 无回归；host `test_mcs51_gpio_dir` T2/T8-T11 + wasm/Node 4/4。资产已随修复机械刷新（两 app `unisim-assets` 的 device-tree/js/wasm 更新）。自驱回读消歧降级为条件项（P3-B），以 P3-A 后不再有真实失真为由暂不排期。
 - **资产刷新范围**：本阶段重建了五载体 + `mcs51_health_pot` + `mcs51_analog_threshold` 的 `unisim-assets`；vendor 演示资产（含 adc_ldo/adc_hardware_trigger）保持陈旧，属机械刷新，随模型增强任务一并处理（已在 P3-A 关闭记录中随修复刷新）。

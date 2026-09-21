@@ -1,0 +1,45 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "CMS8S78xx Reset By WDT negative dual-pin proof",
+    "templateId": "vendor_cms8s78xx_reset_wdt",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "500000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "gpio:27",
+      "matcher": 1,
+      "description": "[双使能仲裁负例] P3.3 (pin 27) 保持初始高电平 (WDT 定时喂狗未发生溢出，中断未派发)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "200ms",
+      "target": "gpio:27",
+      "matcher": 1,
+      "description": "[跨周期确证] 跨过 174.76ms 溢出周期后 P3.3 依然恒高 (证明看门狗正常喂狗，未触发复位或中断)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "300ms",
+      "target": "gpio:27",
+      "matcher": 1,
+      "description": "[负例确证] P3.3 全程恒高 1"
+    },
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "300ms",
+      "windowUs": ["50ms", "300ms"],
+      "pin": 26,
+      "expected": {
+        "kind": "frequencyHz",
+        "value": { "$between": [100, 200000] }
+      },
+      "description": "[常规喂狗指示] 主循环持续规律喂狗并翻转 P3.2 (pin 26)，窗口内保持方波活性，程序无死锁"
+    }
+  ]
+}

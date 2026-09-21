@@ -184,16 +184,16 @@ struct Cms8sEpwmState {
 - [x] **Task 1.2**：实现过零点（Zero）与周期（Period）中断标志置位及 Vector 18 派发逻辑；
 - [x] **Task 1.3**：在 `chips/cms8s78xx/src/cms8s_register.cpp` 绑定 EPWM 的 init / reset / poll / next_event_us 钩子；
 - [x] **Task 1.4**：编写 CTest 单元测试 `test_mcs51_cms8s_epwm.cpp`（覆盖 DownCount 与 UpDownCount 模式）；
-- [ ] **Task 1.5**：构建微应用 `vendor_cms8s78xx_v202_epwm_down_count` 与 `vendor_cms8s78xx_v202_epwm_updown_count`（代码与场景已镜像，待执行 `winkcli build/test` 实证）。
+- [ ] **Task 1.5**：构建微应用 `vendor_cms8s78xx_epwm_down_count` 与 `vendor_cms8s78xx_epwm_updown_count`（代码与场景已镜像，待执行 `winkcli build/test` 实证）。
 
 ### Phase 2: 第二批次 —— 基础硬件刹车与保护恢复（编号 26 ~ 29）（耗时估算：1天）
 - [x] **Task 2.1**：在 `cms8s_epwm.cpp` 中实现 `PWMBRKC` 刹车控制逻辑及 4 种刹车模式状态机；
 - [x] **Task 2.2**：实现延时恢复计数器（`PWMBRKRDTL/H`）；
 - [ ] **Task 2.3**：微应用构建与场景实证（代码与场景已镜像，待执行 `winkcli build/test` 实证）：
-  - `vendor_cms8s78xx_v202_epwm_brake_recover`
-  - `vendor_cms8s78xx_v202_epwm_brake_delay_recover`
-  - `vendor_cms8s78xx_v202_epwm_brake_stop`
-  - `vendor_cms8s78xx_v202_epwm_brake_suspend`
+  - `vendor_cms8s78xx_epwm_brake_recover`
+  - `vendor_cms8s78xx_epwm_brake_delay_recover`
+  - `vendor_cms8s78xx_epwm_brake_stop`
+  - `vendor_cms8s78xx_epwm_brake_suspend`
 - [ ] **Task 2.4**：断言刹车信号触发时 PWM 引脚瞬态封锁电平及恢复时序（待 Headless 运行）。
 
 ### Phase 3: 第三批次 —— 高级片内外设联动刹车（编号 30 & 31）（耗时估算：1天）
@@ -201,8 +201,8 @@ struct Cms8sEpwmState {
 - [x] **Task 3.2**：打通片内 `cms8s_acmp` 与 `cms8s_epwm` 内部事件直通桥：
   - 当 ACMP 比较器正向翻转且配置了 `EPWM_BRK_ACMP0/1` 时，内部硬件级打入 EPWM 刹车态；
 - [ ] **Task 3.3**：微应用构建与场景实证（代码与场景已镜像，待执行 `winkcli build/test` 实证）：
-  - `vendor_cms8s78xx_v202_epwm_brake_fb`
-  - `vendor_cms8s78xx_v202_epwm_brake_acmp`
+  - `vendor_cms8s78xx_epwm_brake_fb`
+  - `vendor_cms8s78xx_epwm_brake_acmp`
 - [ ] **Task 3.4**：双外设联动全链路断言（外部模拟电压调变 ➔ ACMP 翻转 ➔ EPWM 刹车 ➔ P32 状态响应，待 Headless 运行）。
 
 ### Phase 4: 门禁复核、全量回归与文档闭环（耗时估算：半天）

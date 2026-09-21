@@ -1,0 +1,29 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "CMS8S78xx EPWM UpDownCountMode headless proof",
+    "templateId": "vendor_cms8s78xx_epwm_updown_count",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "100000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "60ms",
+      "windowUs": ["10ms", "60ms"],
+      "pin": 26,
+      "expected": {
+        "kind": "frequencyHz",
+        "value": {
+          "$near": {
+            "target": 1250,
+            "tolerance": 100
+          }
+        }
+      },
+      "description": "CMS8S78xx EPWM UpDownCountMode zero-match IRQ toggles P3.2 (pin 26) producing 1250 Hz square wave"
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "CMS8S78xx UART0 RxTx Echo headless proof",
+    "templateId": "vendor_cms8s78xx_uart0_rxtx",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000000",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "CMS8S78xx Test........",
+      "minPackets": 1,
+      "description": "Official startup banner reaches UARTBus 0 TX timeline"
+    },
+    {
+      "type": "INPUT_BUS",
+      "timeUs": "200ms",
+      "busType": "uart",
+      "busId": 0,
+      "payload": "A",
+      "description": "Host sends byte A to MCU over UART0",
+      "mode": "stream"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "150ms",
+        "1000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "A",
+      "minPackets": 1,
+      "description": "UART0_IRQHandler echoes single byte A back out on TX"
+    },
+    {
+      "type": "INPUT_BUS",
+      "timeUs": "1200ms",
+      "busType": "uart",
+      "busId": 0,
+      "payload": "Wink",
+      "description": "Host sends multi-byte stream Wink to MCU over UART0",
+      "mode": "stream"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "1150ms",
+        "2500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Wink",
+      "minPackets": 1,
+      "description": "UART0_IRQHandler echoes multi-byte stream Wink back out on TX"
+    }
+  ]
+}

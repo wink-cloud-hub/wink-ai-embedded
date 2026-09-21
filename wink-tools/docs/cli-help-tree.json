@@ -1251,7 +1251,7 @@
               "required": false,
               "nargs": null,
               "choices": null,
-              "help": "Target application path or name (e.g. vendor_cms8s78xx_v202_led_4com_8seg)"
+              "help": "Target application path or name (e.g. vendor_cms8s78xx_led_4com_8seg)"
             },
             {
               "flags": [
