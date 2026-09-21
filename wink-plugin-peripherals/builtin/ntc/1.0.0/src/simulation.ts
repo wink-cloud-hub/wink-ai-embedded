@@ -146,8 +146,14 @@ export class NtcPlugin extends BaseSimulationPlugin {
    * Event handler for SET_TEMPERATURE dispatched from PeripheralControlPanel slider.
    * Method name resolved by mapEventToMethod('SET_TEMPERATURE') → '_temperature'.
    */
-  _temperature(val: number): void {
-    this.updateTemperature(Number(val));
+  _temperature(val: unknown): void {
+    const num =
+      typeof val === 'object' && val !== null
+        ? ((val as Record<string, unknown>).temperature ??
+          (val as Record<string, unknown>).value ??
+          (val as Record<string, unknown>).temp)
+        : val;
+    this.updateTemperature(Number(num));
   }
 
   onPropsUpdated(props: any): void {
