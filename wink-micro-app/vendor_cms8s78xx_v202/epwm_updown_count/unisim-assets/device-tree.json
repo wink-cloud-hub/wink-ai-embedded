@@ -1,5 +1,5 @@
 {
-  "appName": "vendor_cms8s78xx_v202_epwm_updown_count",
+  "appName": "epwm_updown_count",
   "board": "cms8s78xx_devboard",
   "devices": {},
   "family": "mcs51",

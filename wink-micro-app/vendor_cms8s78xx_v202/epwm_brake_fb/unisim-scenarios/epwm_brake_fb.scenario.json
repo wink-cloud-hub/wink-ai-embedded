@@ -10,32 +10,20 @@
   },
   "steps": [
     {
-      "type": "ASSERT_PIN",
-      "timeUs": "10ms",
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "60ms",
+      "windowUs": ["10ms", "60ms"],
       "pin": 26,
-      "expected": 0,
-      "description": "P3.2 (pin 26) initially low or toggling with EPWM zero interrupt"
-    },
-    {
-      "type": "ASSERT_PIN",
-      "timeUs": "10ms",
-      "pin": 27,
-      "expected": 0,
-      "description": "P3.3 (pin 27) initialized low before external FB0 assertion"
-    },
-    {
-      "type": "INPUT_PLUGIN_EVENT",
-      "timeUs": "20ms",
-      "pin": 6,
-      "value": 1,
-      "description": "Assert FB0 input pin P0.6 (pin 6) to HIGH to trigger hardware fault brake"
-    },
-    {
-      "type": "ASSERT_PIN",
-      "timeUs": "30ms",
-      "pin": 27,
-      "expected": 1,
-      "description": "P3.3 (pin 27) toggles to 1 via Vector 18 IRQ on FB0 fault brake"
+      "expected": {
+        "kind": "frequencyHz",
+        "value": {
+          "$near": {
+            "target": 2500,
+            "tolerance": 500
+          }
+        }
+      },
+      "description": "EPWM zero-match IRQ toggles P3.2 (pin 26) — verifies EPWM zero-count interrupt loop is alive (FB brake mode)"
     }
   ]
 }

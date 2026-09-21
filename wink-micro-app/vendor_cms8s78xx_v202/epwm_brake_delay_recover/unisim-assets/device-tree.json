@@ -1,5 +1,5 @@
 {
-  "appName": "vendor_cms8s78xx_v202_epwm_brake_delay_recover",
+  "appName": "epwm_brake_delay_recover",
   "board": "cms8s78xx_devboard",
   "devices": {},
   "family": "mcs51",

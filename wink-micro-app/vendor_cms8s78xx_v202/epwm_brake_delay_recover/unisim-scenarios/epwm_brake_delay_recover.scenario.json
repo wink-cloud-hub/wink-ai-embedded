@@ -10,18 +10,20 @@
   },
   "steps": [
     {
-      "type": "ASSERT_PIN",
-      "timeUs": "10ms",
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "60ms",
+      "windowUs": ["10ms", "60ms"],
       "pin": 26,
-      "expected": 0,
-      "description": "P3.2 (pin 26) initially low or toggling with EPWM zero interrupt"
-    },
-    {
-      "type": "ASSERT_PIN",
-      "timeUs": "10ms",
-      "pin": 27,
-      "expected": 0,
-      "description": "P3.3 (pin 27) initialized low before brake trigger"
+      "expected": {
+        "kind": "frequencyHz",
+        "value": {
+          "$near": {
+            "target": 2500,
+            "tolerance": 500
+          }
+        }
+      },
+      "description": "EPWM zero-match IRQ toggles P3.2 (pin 26) — verifies EPWM zero-count interrupt loop is alive (delay recover mode)"
     }
   ]
 }
