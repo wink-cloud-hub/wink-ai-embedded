@@ -42,6 +42,29 @@
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "1800ms",
+      "targetPluginId": "heater_relay",
+      "action": "INJECT_FAULT",
+      "params": {
+        "faultType": "CONTACT_WELDED"
+      }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1900ms",
+      "target": "plugin:heater_relay/welded",
+      "matcher": true,
+      "description": "Relay mechanical contact welded fault injected"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1900ms",
+      "target": "plugin:heater_relay/contactClosed",
+      "matcher": true,
+      "description": "Physical contact is closed due to weld"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "2000ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
@@ -63,7 +86,21 @@
       "timeUs": "2600ms",
       "target": "plugin:heater_relay/on",
       "matcher": false,
-      "description": "Firmware commands the contact open: OFF edges are immediate"
+      "description": "Firmware commands the contact open: MCU GPIO drive is LOW"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2600ms",
+      "target": "plugin:heater_relay/welded",
+      "matcher": true,
+      "description": "Relay remains welded despite MCU commanding OFF"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2600ms",
+      "target": "plugin:heater_relay/contactClosed",
+      "matcher": true,
+      "description": "Physical contact remains closed despite MCU commanding OFF"
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
@@ -77,6 +114,27 @@
       "matcher": "S=0,H=0,F=0",
       "minPackets": 1,
       "description": "Safe standby telemetry after the commanded OFF (contact-stuck scenario is HIL-only)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "4000ms",
+      "targetPluginId": "heater_relay",
+      "action": "CLEAR_FAULT",
+      "params": {}
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "4100ms",
+      "target": "plugin:heater_relay/welded",
+      "matcher": false,
+      "description": "Relay contact weld fault cleared"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "4100ms",
+      "target": "plugin:heater_relay/contactClosed",
+      "matcher": false,
+      "description": "Physical contact returns to open state matching MCU drive"
     }
   ]
 }

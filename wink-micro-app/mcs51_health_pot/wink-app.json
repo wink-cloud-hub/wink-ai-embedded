@@ -81,7 +81,8 @@
       "temperature": 25,
       "r25": 10000,
       "bValue": 3950,
-      "pullUpResistor": 160000
+      "pullUpResistor": 160000,
+      "vref": 3.0
     }
   },
   "plant_profiles": [
