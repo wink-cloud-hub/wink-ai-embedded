@@ -47,7 +47,8 @@
       "properties": {
         "activeHigh": true,
         "color": "orange",
-        "label": "发热盘"
+        "label": "发热盘",
+        "pullDownResistor": 4700
       }
     },
     "led_heat": {

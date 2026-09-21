@@ -35,7 +35,8 @@
       "gpio_pin": "$board.headers.P20",
       "active_high": true,
       "color": "orange",
-      "label": "发热盘"
+      "label": "发热盘",
+      "pullDownResistor": 4700
     },
     "led_heat": {
       "type": "led",
