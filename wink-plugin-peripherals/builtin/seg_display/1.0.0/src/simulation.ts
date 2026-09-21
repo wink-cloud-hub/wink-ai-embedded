@@ -30,6 +30,8 @@ export interface SegDisplayProps {
   brightness: number;
   label: string;
   flip: boolean;
+  deadbandCheck?: boolean;
+  decayTauUs?: number;
 }
 
 export interface SegDisplayState {
@@ -38,6 +40,8 @@ export interface SegDisplayState {
   text: string;
   scanHz: number;
   activeDigits: number;
+  ghostingDetected: boolean;
+  deadbandViolations: number;
 }
 
 const identity = resolvePluginIdentity(import.meta.url, 'seg_display', '1.0.0', 'display');
@@ -132,6 +136,16 @@ export function createSegDisplayManifest(variantName: SegVariantKey = 'direct_gp
         type: 'boolean',
         default: false,
       },
+      deadbandCheck: {
+        type: 'boolean',
+        default: true,
+      },
+      decayTauUs: {
+        type: 'number',
+        default: 80000,
+        min: 1000,
+        max: 500000,
+      },
     },
     stateChannels: {
       bright: { type: 'string', default: '' },
@@ -143,6 +157,16 @@ export function createSegDisplayManifest(variantName: SegVariantKey = 'direct_gp
         description: 'Display frame refresh rate in Hz (full cycle of all active digits)',
       },
       activeDigits: { type: 'number', default: 0 },
+      ghostingDetected: {
+        type: 'boolean',
+        default: false,
+        description: 'Flag indicating whether visual ghosting was detected due to unblanked segment change',
+      },
+      deadbandViolations: {
+        type: 'number',
+        default: 0,
+        description: 'Cumulative count of deadband and commutation timing violations',
+      },
     },
     events: {},
   });
@@ -186,6 +210,14 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
   private maxActiveDigitsInWindow = 0;
   private lastConflictWarnUs = 0n;
   private rawProperties?: Record<string, unknown>;
+
+  private deadbandCheck = true;
+  private decayTauUs = DECAY_TAU_US;
+  private ghostingDetected = false;
+  private deadbandViolations = 0;
+  private lastActiveDigitIndex = -1;
+  private blankedAtUs = -1n;
+  private blankedAtNs?: bigint;
 
   private throttle: ThrottlePublishHandle = createThrottlePublish({
     ctx: () => this.ctx,
@@ -265,6 +297,27 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
     // 1-digit variant static drive when DIG1 pin is unmapped
     this.staticDrive = this.nDigits === 1 && this.digPinOf.size === 0;
 
+    if (raw.deadbandCheck !== undefined) {
+      this.deadbandCheck = Boolean(raw.deadbandCheck);
+    } else if (props.deadbandCheck !== undefined) {
+      this.deadbandCheck = Boolean(props.deadbandCheck);
+    } else {
+      this.deadbandCheck = true;
+    }
+
+    const tauVal = raw.decayTauUs ?? props.decayTauUs;
+    if (typeof tauVal === 'number' && tauVal > 0) {
+      this.decayTauUs = BigInt(Math.round(tauVal));
+    } else {
+      this.decayTauUs = DECAY_TAU_US;
+    }
+
+    this.ghostingDetected = false;
+    this.deadbandViolations = 0;
+    this.lastActiveDigitIndex = -1;
+    this.blankedAtUs = -1n;
+    this.blankedAtNs = undefined;
+
     const initialNow = this.getNowUs();
     this.lastEdgeUs = initialNow;
     this.tailGen = 0;
@@ -281,6 +334,8 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
       text: ''.padStart(this.nDigits, ' '),
       scanHz: 0,
       activeDigits: 0,
+      ghostingDetected: false,
+      deadbandViolations: 0,
     };
   }
 
@@ -343,7 +398,7 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
       return;
     }
 
-    const decayFactor = Math.exp(-dtUs / Number(DECAY_TAU_US));
+    const decayFactor = Math.exp(-dtUs / Number(this.decayTauUs));
     const chargeDelta = dtUs * CHARGE_RATE;
 
     for (let d = 0; d < this.nDigits; d++) {
@@ -378,9 +433,14 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
       typeof eventOrPin === 'object' && eventOrPin !== null
         ? (eventOrPin.atUs ?? eventOrPin.tUs)
         : atUs;
+    const timeNsVal =
+      typeof eventOrPin === 'object' && eventOrPin !== null
+        ? (eventOrPin.atNs ?? eventOrPin.tNs)
+        : undefined;
 
     const pinNum = typeof pin === 'number' ? pin : parseInt(String(pin), 10);
     const nowUs = timeVal !== undefined ? BigInt(timeVal) : this.getNowUs();
+    const nowNs = timeNsVal !== undefined ? BigInt(timeNsVal) : undefined;
 
     // 1. Integrate elapsed virtual time using existing pin states
     this.integrateTo(nowUs);
@@ -390,6 +450,20 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
     const segIndex = this.segPinOf.get(pinNum);
     if (segIndex !== undefined) {
       if (this.segLevel[segIndex] !== state) {
+        // Ghosting check: segment pin changed while any digit COM is actively driven
+        if (this.deadbandCheck && !this.staticDrive) {
+          const activeCount = this.getActiveDigitsCount();
+          if (activeCount > 0) {
+            this.ghostingDetected = true;
+            this.deadbandViolations++;
+            this.ctx?.publish?.('ghostingDetected', true);
+            this.ctx?.publish?.('deadbandViolations', this.deadbandViolations);
+            (this.ctx as any)?.system?.log?.warn?.(
+              `[seg_display] ghosting detected: segment ${SEGMENT_NAMES[segIndex]} changed while digit COM active (${activeCount} active)`,
+            );
+          }
+        }
+
         this.segLevel[segIndex] = state ?? LogicStates.HI_Z;
         changed = true;
       }
@@ -403,6 +477,50 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
         changed = true;
       }
       const isActiveNow = this.isDigitActive(digIndex);
+
+      if (wasActive && !isActiveNow) {
+        // Digit deactivated
+        if (this.getActiveDigitsCount() === 0) {
+          this.lastActiveDigitIndex = digIndex;
+          this.blankedAtUs = nowUs;
+          this.blankedAtNs = nowNs;
+        }
+      } else if (!wasActive && isActiveNow) {
+        // Digit activated
+        if (this.deadbandCheck && !this.staticDrive) {
+          // Check 1: Multiple digits active simultaneously (digit overlap)
+          let otherActive = 0;
+          for (let d = 0; d < this.nDigits; d++) {
+            if (d !== digIndex && this.isDigitActive(d)) {
+              otherActive++;
+            }
+          }
+          if (otherActive > 0) {
+            this.deadbandViolations++;
+            this.ctx?.publish?.('deadbandViolations', this.deadbandViolations);
+            (this.ctx as any)?.system?.log?.warn?.(
+              `[seg_display] deadband violation: digit ${digIndex + 1} activated while ${otherActive} other digit(s) active`,
+            );
+          }
+
+          // Check 2: Nanosecond switching deadband check (if ns timestamps are present)
+          if (
+            nowNs !== undefined &&
+            this.blankedAtNs !== undefined &&
+            this.lastActiveDigitIndex !== -1 &&
+            this.lastActiveDigitIndex !== digIndex
+          ) {
+            const deadbandNs = nowNs - this.blankedAtNs;
+            if (deadbandNs >= 0n && deadbandNs < 100n) {
+              this.deadbandViolations++;
+              this.ctx?.publish?.('deadbandViolations', this.deadbandViolations);
+              (this.ctx as any)?.system?.log?.warn?.(
+                `[seg_display] deadband violation: switching deadband between DIG${this.lastActiveDigitIndex + 1} and DIG${digIndex + 1} too short (${deadbandNs}ns < 100ns)`,
+              );
+            }
+          }
+        }
+      }
 
       // Track frame scan frequency on rising active edge of DIG1
       if (digIndex === 0 && isActiveNow && !wasActive) {
@@ -470,6 +588,8 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
       this.ctx.publish('text', textStr);
       this.ctx.publish('scanHz', this.scanHz);
       this.ctx.publish('activeDigits', activeToPublish);
+      this.ctx.publish('ghostingDetected', this.ghostingDetected);
+      this.ctx.publish('deadbandViolations', this.deadbandViolations);
     }
 
     this.maxActiveDigitsInWindow = currentActive;
@@ -520,6 +640,11 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
     this.lastDig0ActiveUs = 0n;
     this.dig0HistoryUs = [];
     this.maxActiveDigitsInWindow = 0;
+    this.ghostingDetected = false;
+    this.deadbandViolations = 0;
+    this.lastActiveDigitIndex = -1;
+    this.blankedAtUs = -1n;
+    this.blankedAtNs = undefined;
     this.lastEdgeUs = this.getNowUs();
     this.publishFrame(this.lastEdgeUs);
   }
@@ -533,6 +658,10 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
       staticDrive: this.staticDrive,
       segActiveHigh: this.segActiveHigh,
       digActiveHigh: this.digActiveHigh,
+      ghostingDetected: this.ghostingDetected,
+      deadbandViolations: this.deadbandViolations,
+      decayTauUs: Number(this.decayTauUs),
+      deadbandCheck: this.deadbandCheck,
     };
   }
 
@@ -558,6 +687,18 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
     if (typeof snapshot.digActiveHigh === 'boolean') {
       this.digActiveHigh = snapshot.digActiveHigh;
     }
+    if (typeof snapshot.ghostingDetected === 'boolean') {
+      this.ghostingDetected = snapshot.ghostingDetected;
+    }
+    if (typeof snapshot.deadbandViolations === 'number') {
+      this.deadbandViolations = snapshot.deadbandViolations;
+    }
+    if (typeof snapshot.decayTauUs === 'number' && snapshot.decayTauUs > 0) {
+      this.decayTauUs = BigInt(Math.round(snapshot.decayTauUs));
+    }
+    if (typeof snapshot.deadbandCheck === 'boolean') {
+      this.deadbandCheck = snapshot.deadbandCheck;
+    }
 
     // Reset lastEdgeUs to current time to avoid large jump decay on restore
     this.lastEdgeUs = this.getNowUs();
@@ -578,6 +719,13 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
       const ca = Boolean(newVal);
       this.segActiveHigh = !ca;
       this.digActiveHigh = ca;
+    } else if (key === 'deadbandCheck') {
+      this.deadbandCheck = Boolean(newVal);
+    } else if (key === 'decayTauUs') {
+      const val = Number(newVal);
+      if (Number.isFinite(val) && val > 0) {
+        this.decayTauUs = BigInt(Math.round(val));
+      }
     }
   }
 

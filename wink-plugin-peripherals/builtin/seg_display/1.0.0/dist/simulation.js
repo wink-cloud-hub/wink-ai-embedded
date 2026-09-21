@@ -425,6 +425,16 @@ function T(e = "direct_gpio_8d") {
 			flip: {
 				type: "boolean",
 				default: !1
+			},
+			deadbandCheck: {
+				type: "boolean",
+				default: !0
+			},
+			decayTauUs: {
+				type: "number",
+				default: 8e4,
+				min: 1e3,
+				max: 5e5
 			}
 		},
 		stateChannels: {
@@ -448,6 +458,16 @@ function T(e = "direct_gpio_8d") {
 			activeDigits: {
 				type: "number",
 				default: 0
+			},
+			ghostingDetected: {
+				type: "boolean",
+				default: !1,
+				description: "Flag indicating whether visual ghosting was detected due to unblanked segment change"
+			},
+			deadbandViolations: {
+				type: "number",
+				default: 0,
+				description: "Cumulative count of deadband and commutation timing violations"
 			}
 		},
 		events: {}
@@ -475,6 +495,13 @@ var E = T("direct_gpio_8d"), D = (e) => T(m(e)), O = 80000n, k = 255 / 2e3, A = 
 	maxActiveDigitsInWindow = 0;
 	lastConflictWarnUs = 0n;
 	rawProperties;
+	deadbandCheck = !0;
+	decayTauUs = O;
+	ghostingDetected = !1;
+	deadbandViolations = 0;
+	lastActiveDigitIndex = -1;
+	blankedAtUs = -1n;
+	blankedAtNs;
 	throttle = n({
 		ctx: () => this.ctx,
 		intervalUs: M,
@@ -496,14 +523,18 @@ var E = T("direct_gpio_8d"), D = (e) => T(m(e)), O = 80000n, k = 255 / 2e3, A = 
 			let t = `DIG${e + 1}`, r = n[t] ?? n[t.toLowerCase()] ?? n[`digit${e + 1}`] ?? n[`dig_${e + 1}`];
 			r !== void 0 && this.digPinOf.set(r, e);
 		}
-		this.staticDrive = this.nDigits === 1 && this.digPinOf.size === 0;
-		let o = this.getNowUs();
-		return this.lastEdgeUs = o, this.tailGen = 0, this.tailPending = !1, this.scanHz = 0, this.lastDig0ActiveUs = 0n, this.dig0HistoryUs = [], this.maxActiveDigitsInWindow = 0, this.lastConflictWarnUs = -100000n, {
+		this.staticDrive = this.nDigits === 1 && this.digPinOf.size === 0, this.deadbandCheck = a.deadbandCheck === void 0 ? r.deadbandCheck === void 0 || !!r.deadbandCheck : !!a.deadbandCheck;
+		let o = a.decayTauUs ?? r.decayTauUs;
+		this.decayTauUs = typeof o == "number" && o > 0 ? BigInt(Math.round(o)) : O, this.ghostingDetected = !1, this.deadbandViolations = 0, this.lastActiveDigitIndex = -1, this.blankedAtUs = -1n, this.blankedAtNs = void 0;
+		let s = this.getNowUs();
+		return this.lastEdgeUs = s, this.tailGen = 0, this.tailPending = !1, this.scanHz = 0, this.lastDig0ActiveUs = 0n, this.dig0HistoryUs = [], this.maxActiveDigitsInWindow = 0, this.lastConflictWarnUs = -100000n, {
 			bright: this.bright,
 			segMask: JSON.stringify(Array.from(this.segMask)),
 			text: "".padStart(this.nDigits, " "),
 			scanHz: 0,
-			activeDigits: 0
+			activeDigits: 0,
+			ghostingDetected: !1,
+			deadbandViolations: 0
 		};
 	}
 	getNowUs() {
@@ -534,7 +565,7 @@ var E = T("direct_gpio_8d"), D = (e) => T(m(e)), O = 80000n, k = 255 / 2e3, A = 
 			this.lastEdgeUs = e;
 			return;
 		}
-		let i = Math.exp(-r / Number(O)), a = r * k;
+		let i = Math.exp(-r / Number(this.decayTauUs)), a = r * k;
 		for (let e = 0; e < this.nDigits; e++) {
 			let t = this.isDigitActive(e), n = e * 8;
 			for (let e = 0; e < 8; e++) {
@@ -550,27 +581,42 @@ var E = T("direct_gpio_8d"), D = (e) => T(m(e)), O = 80000n, k = 255 / 2e3, A = 
 		this.lastEdgeUs = e;
 	}
 	onPinChange(e, n, r) {
-		let i = typeof e == "object" && e ? e.pin : e, a = typeof e == "object" && e ? e.state : n, o = typeof e == "object" && e ? e.atUs ?? e.tUs : r, s = typeof i == "number" ? i : parseInt(String(i), 10), c = o === void 0 ? this.getNowUs() : BigInt(o);
-		this.integrateTo(c);
-		let l = !1, u = this.segPinOf.get(s);
-		u !== void 0 && this.segLevel[u] !== a && (this.segLevel[u] = a ?? t.HI_Z, l = !0);
-		let d = this.digPinOf.get(s);
-		if (d !== void 0) {
-			let e = this.isDigitActive(d);
-			this.digLevel[d] !== a && (this.digLevel[d] = a ?? t.HI_Z, l = !0);
-			let n = this.isDigitActive(d);
-			if (d === 0 && n && !e) {
-				if (this.dig0HistoryUs.length > 0 && c - this.dig0HistoryUs[this.dig0HistoryUs.length - 1] > 500000n && (this.dig0HistoryUs = []), this.dig0HistoryUs.push(c), this.dig0HistoryUs.length > 3 && this.dig0HistoryUs.shift(), this.dig0HistoryUs.length >= 2) {
-					let e = this.dig0HistoryUs.length - 1, t = c - this.dig0HistoryUs[0];
+		let i = typeof e == "object" && e ? e.pin : e, a = typeof e == "object" && e ? e.state : n, o = typeof e == "object" && e ? e.atUs ?? e.tUs : r, s = typeof e == "object" && e ? e.atNs ?? e.tNs : void 0, c = typeof i == "number" ? i : parseInt(String(i), 10), l = o === void 0 ? this.getNowUs() : BigInt(o), u = s === void 0 ? void 0 : BigInt(s);
+		this.integrateTo(l);
+		let d = !1, f = this.segPinOf.get(c);
+		if (f !== void 0 && this.segLevel[f] !== a) {
+			if (this.deadbandCheck && !this.staticDrive) {
+				let e = this.getActiveDigitsCount();
+				e > 0 && (this.ghostingDetected = !0, this.deadbandViolations++, this.ctx?.publish?.("ghostingDetected", !0), this.ctx?.publish?.("deadbandViolations", this.deadbandViolations), this.ctx?.system?.log?.warn?.(`[seg_display] ghosting detected: segment ${C[f]} changed while digit COM active (${e} active)`));
+			}
+			this.segLevel[f] = a ?? t.HI_Z, d = !0;
+		}
+		let p = this.digPinOf.get(c);
+		if (p !== void 0) {
+			let e = this.isDigitActive(p);
+			this.digLevel[p] !== a && (this.digLevel[p] = a ?? t.HI_Z, d = !0);
+			let n = this.isDigitActive(p);
+			if (e && !n) this.getActiveDigitsCount() === 0 && (this.lastActiveDigitIndex = p, this.blankedAtUs = l, this.blankedAtNs = u);
+			else if (!e && n && this.deadbandCheck && !this.staticDrive) {
+				let e = 0;
+				for (let t = 0; t < this.nDigits; t++) t !== p && this.isDigitActive(t) && e++;
+				if (e > 0 && (this.deadbandViolations++, this.ctx?.publish?.("deadbandViolations", this.deadbandViolations), this.ctx?.system?.log?.warn?.(`[seg_display] deadband violation: digit ${p + 1} activated while ${e} other digit(s) active`)), u !== void 0 && this.blankedAtNs !== void 0 && this.lastActiveDigitIndex !== -1 && this.lastActiveDigitIndex !== p) {
+					let e = u - this.blankedAtNs;
+					e >= 0n && e < 100n && (this.deadbandViolations++, this.ctx?.publish?.("deadbandViolations", this.deadbandViolations), this.ctx?.system?.log?.warn?.(`[seg_display] deadband violation: switching deadband between DIG${this.lastActiveDigitIndex + 1} and DIG${p + 1} too short (${e}ns < 100ns)`));
+				}
+			}
+			if (p === 0 && n && !e) {
+				if (this.dig0HistoryUs.length > 0 && l - this.dig0HistoryUs[this.dig0HistoryUs.length - 1] > 500000n && (this.dig0HistoryUs = []), this.dig0HistoryUs.push(l), this.dig0HistoryUs.length > 3 && this.dig0HistoryUs.shift(), this.dig0HistoryUs.length >= 2) {
+					let e = this.dig0HistoryUs.length - 1, t = l - this.dig0HistoryUs[0];
 					if (t > 0n) {
 						let n = t / BigInt(e);
 						n > 0n && (this.scanHz = Math.round(1e6 / Number(n)), this.ctx?.publish?.("scanHz", this.scanHz));
 					}
 				}
-				this.lastDig0ActiveUs = c;
+				this.lastDig0ActiveUs = l;
 			}
 		}
-		a === t.CONFLICT && c - this.lastConflictWarnUs >= 100000n && (this.lastConflictWarnUs = c, this.ctx?.system?.log?.warn?.(`[seg_display] bus conflict on MCU pin ${s}`)), l && this.throttle.request();
+		a === t.CONFLICT && l - this.lastConflictWarnUs >= 100000n && (this.lastConflictWarnUs = l, this.ctx?.system?.log?.warn?.(`[seg_display] bus conflict on MCU pin ${c}`)), d && this.throttle.request();
 	}
 	publishFrame(e = this.getNowUs()) {
 		this.integrateTo(e);
@@ -580,7 +626,7 @@ var E = T("direct_gpio_8d"), D = (e) => T(m(e)), O = 80000n, k = 255 / 2e3, A = 
 			for (let e = 0; e < 8; e++) this.bright[n + e] >= 50 && (t |= 1 << e);
 			this.segMask[e] = t, r += x(t);
 		}
-		this.ctx && (this.ctx.publish("bright", this.bright), this.ctx.publish("segMask", JSON.stringify(Array.from(this.segMask))), this.ctx.publish("text", r), this.ctx.publish("scanHz", this.scanHz), this.ctx.publish("activeDigits", n)), this.maxActiveDigitsInWindow = t;
+		this.ctx && (this.ctx.publish("bright", this.bright), this.ctx.publish("segMask", JSON.stringify(Array.from(this.segMask))), this.ctx.publish("text", r), this.ctx.publish("scanHz", this.scanHz), this.ctx.publish("activeDigits", n), this.ctx.publish("ghostingDetected", this.ghostingDetected), this.ctx.publish("deadbandViolations", this.deadbandViolations)), this.maxActiveDigitsInWindow = t;
 		let i = !1;
 		for (let e = 0; e < this.bright.length; e++) if (this.bright[e] > 0) {
 			i = !0;
@@ -600,7 +646,7 @@ var E = T("direct_gpio_8d"), D = (e) => T(m(e)), O = 80000n, k = 255 / 2e3, A = 
 		}) : this.tailPending = !1;
 	}
 	onReset() {
-		this.segLevel.fill(t.HI_Z), this.digLevel.fill(t.HI_Z), this.bright.fill(0), this.segMask.fill(0), this.throttle.reset(), this.tailGen++, this.tailPending = !1, this.scanHz = 0, this.lastDig0ActiveUs = 0n, this.dig0HistoryUs = [], this.maxActiveDigitsInWindow = 0, this.lastEdgeUs = this.getNowUs(), this.publishFrame(this.lastEdgeUs);
+		this.segLevel.fill(t.HI_Z), this.digLevel.fill(t.HI_Z), this.bright.fill(0), this.segMask.fill(0), this.throttle.reset(), this.tailGen++, this.tailPending = !1, this.scanHz = 0, this.lastDig0ActiveUs = 0n, this.dig0HistoryUs = [], this.maxActiveDigitsInWindow = 0, this.ghostingDetected = !1, this.deadbandViolations = 0, this.lastActiveDigitIndex = -1, this.blankedAtUs = -1n, this.blankedAtNs = void 0, this.lastEdgeUs = this.getNowUs(), this.publishFrame(this.lastEdgeUs);
 	}
 	serializeState() {
 		return {
@@ -610,11 +656,15 @@ var E = T("direct_gpio_8d"), D = (e) => T(m(e)), O = 80000n, k = 255 / 2e3, A = 
 			segMask: Array.from(this.segMask),
 			staticDrive: this.staticDrive,
 			segActiveHigh: this.segActiveHigh,
-			digActiveHigh: this.digActiveHigh
+			digActiveHigh: this.digActiveHigh,
+			ghostingDetected: this.ghostingDetected,
+			deadbandViolations: this.deadbandViolations,
+			decayTauUs: Number(this.decayTauUs),
+			deadbandCheck: this.deadbandCheck
 		};
 	}
 	deserializeState(e) {
-		Array.isArray(e.bright) && this.bright.set(e.bright), Array.isArray(e.segLevel) && this.segLevel.set(e.segLevel), Array.isArray(e.digLevel) && this.digLevel.set(e.digLevel), Array.isArray(e.segMask) && this.segMask.set(e.segMask), typeof e.staticDrive == "boolean" && (this.staticDrive = e.staticDrive), typeof e.segActiveHigh == "boolean" && (this.segActiveHigh = e.segActiveHigh), typeof e.digActiveHigh == "boolean" && (this.digActiveHigh = e.digActiveHigh), this.lastEdgeUs = this.getNowUs();
+		Array.isArray(e.bright) && this.bright.set(e.bright), Array.isArray(e.segLevel) && this.segLevel.set(e.segLevel), Array.isArray(e.digLevel) && this.digLevel.set(e.digLevel), Array.isArray(e.segMask) && this.segMask.set(e.segMask), typeof e.staticDrive == "boolean" && (this.staticDrive = e.staticDrive), typeof e.segActiveHigh == "boolean" && (this.segActiveHigh = e.segActiveHigh), typeof e.digActiveHigh == "boolean" && (this.digActiveHigh = e.digActiveHigh), typeof e.ghostingDetected == "boolean" && (this.ghostingDetected = e.ghostingDetected), typeof e.deadbandViolations == "number" && (this.deadbandViolations = e.deadbandViolations), typeof e.decayTauUs == "number" && e.decayTauUs > 0 && (this.decayTauUs = BigInt(Math.round(e.decayTauUs))), typeof e.deadbandCheck == "boolean" && (this.deadbandCheck = e.deadbandCheck), this.lastEdgeUs = this.getNowUs();
 	}
 	onPropertyChange(e, t, n) {
 		if (e === "variant") {
@@ -626,6 +676,10 @@ var E = T("direct_gpio_8d"), D = (e) => T(m(e)), O = 80000n, k = 255 / 2e3, A = 
 		else if (e === "commonAnode") {
 			let e = !!n;
 			this.segActiveHigh = !e, this.digActiveHigh = e;
+		} else if (e === "deadbandCheck") this.deadbandCheck = !!n;
+		else if (e === "decayTauUs") {
+			let e = Number(n);
+			Number.isFinite(e) && e > 0 && (this.decayTauUs = BigInt(Math.round(e)));
 		}
 	}
 	async onPowerOn(e) {

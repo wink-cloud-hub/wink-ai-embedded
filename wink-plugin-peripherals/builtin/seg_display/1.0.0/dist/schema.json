@@ -70,6 +70,16 @@
     "flip": {
       "type": "boolean",
       "default": false
+    },
+    "deadbandCheck": {
+      "type": "boolean",
+      "default": true
+    },
+    "decayTauUs": {
+      "type": "number",
+      "default": 80000,
+      "minimum": 1000,
+      "maximum": 500000
     }
   },
   "required": [

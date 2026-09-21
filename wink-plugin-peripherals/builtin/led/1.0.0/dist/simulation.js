@@ -73,6 +73,11 @@ function s(e = "default") {
 				default: "NONE",
 				enum: ["NONE", "CONTACT_WELDED"],
 				description: "Fault injection type"
+			},
+			pullDownResistor: {
+				type: "number",
+				default: 0,
+				description: "External pull-down resistor in ohms (e.g. 4700 for MCS-51 reset clamping)"
 			}
 		},
 		stateChannels: {

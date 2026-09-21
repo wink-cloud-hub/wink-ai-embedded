@@ -147,6 +147,16 @@ export const segDisplayProps: PeripheralPropsSchema = {
     default: false,
     description: 'Flip orientation',
   },
+  deadbandCheck: {
+    type: 'boolean',
+    default: true,
+    description: 'Enable commutation deadband and ghosting linting',
+  },
+  decayTauUs: {
+    type: 'number',
+    default: 80000,
+    description: 'Persistence of vision (POV) exponential decay time constant in microseconds',
+  },
 };
 
 export const segDisplayDefinition: PeripheralDefinition = definePeripheral({

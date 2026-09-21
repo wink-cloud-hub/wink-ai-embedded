@@ -58,6 +58,11 @@ const ledProps: PeripheralPropsSchema = {
     default: false,
     description: 'Contact welded fault state',
   },
+  pullDownResistor: {
+    type: 'number',
+    default: 0,
+    description: 'External pull-down resistor in ohms (e.g. 4700 for MCS-51 reset clamping)',
+  },
 };
 
 export const ledDefinition: PeripheralDefinition = definePeripheral({

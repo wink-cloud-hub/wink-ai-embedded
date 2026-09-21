@@ -273,6 +273,16 @@
     "flip": {
       "type": "boolean",
       "default": false
+    },
+    "deadbandCheck": {
+      "type": "boolean",
+      "default": true
+    },
+    "decayTauUs": {
+      "type": "number",
+      "default": 80000,
+      "min": 1000,
+      "max": 500000
     }
   },
   "stateChannels": {
@@ -296,6 +306,16 @@
     "activeDigits": {
       "type": "number",
       "default": 0
+    },
+    "ghostingDetected": {
+      "type": "boolean",
+      "default": false,
+      "description": "Flag indicating whether visual ghosting was detected due to unblanked segment change"
+    },
+    "deadbandViolations": {
+      "type": "number",
+      "default": 0,
+      "description": "Cumulative count of deadband and commutation timing violations"
     }
   },
   "events": {}

@@ -476,6 +476,16 @@ var J = F.direct_gpio_8d, Y = {
 		type: "boolean",
 		default: !1,
 		description: "Flip orientation"
+	},
+	deadbandCheck: {
+		type: "boolean",
+		default: !0,
+		description: "Enable commutation deadband and ghosting linting"
+	},
+	decayTauUs: {
+		type: "number",
+		default: 8e4,
+		description: "Persistence of vision (POV) exponential decay time constant in microseconds"
 	}
 }, X = e({
 	type: V.type,

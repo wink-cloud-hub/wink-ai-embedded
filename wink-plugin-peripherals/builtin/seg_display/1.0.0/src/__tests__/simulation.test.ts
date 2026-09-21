@@ -615,4 +615,178 @@ describe('seg_display simulation & contract test suite', () => {
       }
     }
   });
+
+  // Test 21: Canonical blanking scanning has 0 ghosting and 0 violations
+  test('21. deadband linter: canonical blanking sequence yields 0 ghosting and 0 violations', () => {
+    const plugin = new SegDisplayPlugin();
+    const ctx = createMockCtx();
+    const pinMap = createPinMapping(4);
+
+    plugin.onBind(ctx as any, pinMap, {
+      variant: 'direct_gpio_4d',
+      deadbandCheck: true,
+    });
+
+    let tUs = 0n;
+    // Canonical sequence: Blank COM -> Update SEG -> Activate new COM
+    for (let frame = 0; frame < 5; frame++) {
+      for (let d = 0; d < 4; d++) {
+        const digPin = pinMap[`DIG${d + 1}`];
+
+        // 1) Blank: ensure all digits are inactive (HIGH for CC)
+        for (let i = 0; i < 4; i++) {
+          plugin.onPinChange(pinMap[`DIG${i + 1}`], LogicStates.HIGH, tUs);
+        }
+
+        // 2) Update SEG while COM is blanked
+        plugin.onPinChange(pinMap.A, LogicStates.HIGH, tUs);
+        plugin.onPinChange(pinMap.B, LogicStates.HIGH, tUs);
+
+        // 3) Strobe active COM low
+        plugin.onPinChange(digPin, LogicStates.LOW, tUs);
+
+        tUs += 2500n;
+        ctx.advanceTime(2500n);
+
+        // 4) Deactivate COM before advancing
+        plugin.onPinChange(digPin, LogicStates.HIGH, tUs);
+      }
+    }
+
+    expect(ctx.getLatestPublish('ghostingDetected')).toBe(false);
+    expect(ctx.getLatestPublish('deadbandViolations')).toBe(0);
+  });
+
+  // Test 22: Unblanked SEG change triggers ghosting detection
+  test('22. deadband linter: segment change while digit COM active triggers ghosting', () => {
+    const plugin = new SegDisplayPlugin();
+    const ctx = createMockCtx();
+    const pinMap = createPinMapping(4);
+
+    plugin.onBind(ctx as any, pinMap, {
+      variant: 'direct_gpio_4d',
+      deadbandCheck: true,
+    });
+
+    let tUs = 0n;
+    // Activate DIG1
+    plugin.onPinChange(pinMap.DIG1, LogicStates.LOW, tUs);
+    plugin.onPinChange(pinMap.A, LogicStates.HIGH, tUs);
+
+    tUs += 1000n;
+    ctx.advanceTime(1000n);
+
+    // Fault: Change segment B while DIG1 is STILL active (unblanked)
+    plugin.onPinChange(pinMap.B, LogicStates.HIGH, tUs);
+
+    expect(ctx.getLatestPublish('ghostingDetected')).toBe(true);
+    expect(ctx.getLatestPublish('deadbandViolations')).toBeGreaterThanOrEqual(1);
+    expect(ctx.warnings.some((w) => w.includes('ghosting detected'))).toBe(true);
+  });
+
+  // Test 23: Digit overlap triggers deadband violation
+  test('23. deadband linter: activating new COM before deactivating old COM triggers deadband violation', () => {
+    const plugin = new SegDisplayPlugin();
+    const ctx = createMockCtx();
+    const pinMap = createPinMapping(4);
+
+    plugin.onBind(ctx as any, pinMap, {
+      variant: 'direct_gpio_4d',
+      deadbandCheck: true,
+    });
+
+    let tUs = 0n;
+    // Activate DIG1
+    plugin.onPinChange(pinMap.DIG1, LogicStates.LOW, tUs);
+
+    tUs += 1000n;
+    ctx.advanceTime(1000n);
+
+    // Fault: Activate DIG2 without turning off DIG1
+    plugin.onPinChange(pinMap.DIG2, LogicStates.LOW, tUs);
+
+    expect(ctx.getLatestPublish('deadbandViolations')).toBeGreaterThanOrEqual(1);
+    expect(ctx.warnings.some((w) => w.includes('deadband violation: digit 2 activated while 1 other digit(s) active'))).toBe(true);
+  });
+
+  // Test 24: Nanosecond switching deadband validation
+  test('24. deadband linter: switching deadband < 100ns violates MOSFET turn-off time, >= 100ns passes', () => {
+    const plugin = new SegDisplayPlugin();
+    const ctx = createMockCtx();
+    const pinMap = createPinMapping(4);
+
+    plugin.onBind(ctx as any, pinMap, {
+      variant: 'direct_gpio_4d',
+      deadbandCheck: true,
+    });
+
+    // Subtest A: Deactivate DIG1 at 1000ns, activate DIG2 at 1050ns (50ns deadband < 100ns)
+    plugin.onPinChange({ pin: pinMap.DIG1, state: LogicStates.LOW, atUs: 0n, atNs: 0n });
+    plugin.onPinChange({ pin: pinMap.DIG1, state: LogicStates.HIGH, atUs: 1n, atNs: 1000n });
+    plugin.onPinChange({ pin: pinMap.DIG2, state: LogicStates.LOW, atUs: 1n, atNs: 1050n });
+
+    expect(ctx.getLatestPublish('deadbandViolations')).toBe(1);
+    expect(ctx.warnings.some((w) => w.includes('50ns < 100ns'))).toBe(true);
+
+    // Subtest B: Reset and test valid deadband: Deactivate DIG1 at 1000ns, activate DIG2 at 1250ns (250ns in [100ns, 500ns])
+    plugin.onReset();
+    ctx.warnings.length = 0;
+
+    plugin.onPinChange({ pin: pinMap.DIG1, state: LogicStates.LOW, atUs: 0n, atNs: 0n });
+    plugin.onPinChange({ pin: pinMap.DIG1, state: LogicStates.HIGH, atUs: 1n, atNs: 1000n });
+    plugin.onPinChange({ pin: pinMap.DIG2, state: LogicStates.LOW, atUs: 1n, atNs: 1250n });
+
+    expect(ctx.getLatestPublish('deadbandViolations')).toBe(0);
+  });
+
+  // Test 25: Configurable decayTauUs parameterization
+  test('25. decayTauUs parameterization alters exponential POV retinal decay rate', () => {
+    const pluginFast = new SegDisplayPlugin();
+    const ctxFast = createMockCtx();
+    const pinMap = createPinMapping(1);
+
+    // Fast decay tau = 10ms (10000us)
+    pluginFast.onBind(ctxFast as any, pinMap, {
+      variant: 'direct_gpio_1d',
+      decayTauUs: 10000,
+    });
+
+    const pluginSlow = new SegDisplayPlugin();
+    const ctxSlow = createMockCtx();
+    // Slow decay tau = 100ms (100000us)
+    pluginSlow.onBind(ctxSlow as any, pinMap, {
+      variant: 'direct_gpio_1d',
+      decayTauUs: 100000,
+    });
+
+    // Charge both to saturation
+    pluginFast.onPinChange(pinMap.DIG1, LogicStates.LOW, 0n);
+    pluginFast.onPinChange(pinMap.A, LogicStates.HIGH, 0n);
+    pluginSlow.onPinChange(pinMap.DIG1, LogicStates.LOW, 0n);
+    pluginSlow.onPinChange(pinMap.A, LogicStates.HIGH, 0n);
+
+    ctxFast.advanceTime(2000n);
+    ctxSlow.advanceTime(2000n);
+    pluginFast.onPinChange(pinMap.DIG1, LogicStates.LOW, 2000n);
+    pluginSlow.onPinChange(pinMap.DIG1, LogicStates.LOW, 2000n);
+
+    // Turn off A
+    pluginFast.onPinChange(pinMap.A, LogicStates.LOW, 2000n);
+    pluginSlow.onPinChange(pinMap.A, LogicStates.LOW, 2000n);
+
+    // Advance 20ms (20000us)
+    ctxFast.advanceTime(20000n);
+    ctxSlow.advanceTime(20000n);
+    pluginFast.onPinChange(pinMap.DIG1, LogicStates.LOW, 22000n);
+    pluginSlow.onPinChange(pinMap.DIG1, LogicStates.LOW, 22000n);
+
+    const bFast = (ctxFast.getLatestPublish('bright') as Uint8Array)[0];
+    const bSlow = (ctxSlow.getLatestPublish('bright') as Uint8Array)[0];
+
+    // Fast tau decayed 2 tau -> e^-2 ~ 0.135 -> ~34
+    // Slow tau decayed 0.2 tau -> e^-0.2 ~ 0.818 -> ~209
+    expect(bFast).toBeLessThan(bSlow);
+    expect(bSlow).toBeGreaterThan(150);
+    expect(bFast).toBeLessThan(50);
+  });
 });

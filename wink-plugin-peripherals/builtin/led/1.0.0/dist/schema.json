@@ -48,6 +48,10 @@
         "NONE",
         "CONTACT_WELDED"
       ]
+    },
+    "pullDownResistor": {
+      "type": "number",
+      "default": 0
     }
   },
   "required": [
