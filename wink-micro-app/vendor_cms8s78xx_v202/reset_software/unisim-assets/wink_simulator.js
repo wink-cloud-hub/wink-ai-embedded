@@ -2712,8 +2712,6 @@ var wasmImports = {
   /** @export */
   invoke_v,
   /** @export */
-  invoke_vi,
-  /** @export */
   js_pal_adc_read_norm: _js_pal_adc_read_norm,
   /** @export */
   js_pal_gpio_drive_ideal: _js_pal_gpio_drive_ideal,
@@ -2745,17 +2743,6 @@ function invoke_v(index) {
   var sp = stackSave();
   try {
     dynCall_v(index);
-  } catch(e) {
-    stackRestore(sp);
-    if (!(e instanceof EmscriptenEH)) throw e;
-    _setThrew(1, 0);
-  }
-}
-
-function invoke_vi(index,a1) {
-  var sp = stackSave();
-  try {
-    dynCall_vi(index,a1);
   } catch(e) {
     stackRestore(sp);
     if (!(e instanceof EmscriptenEH)) throw e;

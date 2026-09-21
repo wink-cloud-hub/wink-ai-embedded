@@ -922,6 +922,10 @@ async function createWasm() {
   var __abort_js = () =>
       abort('native code called abort()');
 
+  var __emscripten_throw_longjmp = () => {
+      throw new EmscriptenSjLj;
+    };
+
   var runAndAbortIfError = (func) => {
       try {
         return func();
@@ -1735,6 +1739,20 @@ async function createWasm() {
 
 
 
+  var wasmTableMirror = [];
+  
+  
+  var getWasmTableEntry = (funcPtr) => {
+      var func = wasmTableMirror[funcPtr];
+      if (!func) {
+        /** @suppress {checkTypes} */
+        wasmTableMirror[funcPtr] = func = wasmTable.get(funcPtr);
+      }
+      /** @suppress {checkTypes} */
+      assert(wasmTable.get(funcPtr) == func, 'table mirror is out of date');
+      return func;
+    };
+
 
   var getCFunc = (ident) => {
       var func = Module['_' + ident]; // closure exported function
@@ -2406,6 +2424,9 @@ var _pal_wasm_get_total_energy_mj = Module['_pal_wasm_get_total_energy_mj'] = ma
 var _pal_wasm_app_init = Module['_pal_wasm_app_init'] = makeInvalidEarlyAccess('_pal_wasm_app_init');
 var _pal_wasm_app_tick = Module['_pal_wasm_app_tick'] = makeInvalidEarlyAccess('_pal_wasm_app_tick');
 var _pal_wasm_reset_app_state = Module['_pal_wasm_reset_app_state'] = makeInvalidEarlyAccess('_pal_wasm_reset_app_state');
+var _pal_wasm_has_pending_reset = Module['_pal_wasm_has_pending_reset'] = makeInvalidEarlyAccess('_pal_wasm_has_pending_reset');
+var _pal_wasm_get_reset_reason = Module['_pal_wasm_get_reset_reason'] = makeInvalidEarlyAccess('_pal_wasm_get_reset_reason');
+var _pal_wasm_clear_pending_reset = Module['_pal_wasm_clear_pending_reset'] = makeInvalidEarlyAccess('_pal_wasm_clear_pending_reset');
 var _main = Module['_main'] = makeInvalidEarlyAccess('_main');
 var _pal_wasm_set_sim_mode = Module['_pal_wasm_set_sim_mode'] = makeInvalidEarlyAccess('_pal_wasm_set_sim_mode');
 var _pal_wasm_get_sim_mode = Module['_pal_wasm_get_sim_mode'] = makeInvalidEarlyAccess('_pal_wasm_get_sim_mode');
@@ -2427,6 +2448,7 @@ var _wink_mcs51_wdt_overflow_total = Module['_wink_mcs51_wdt_overflow_total'] = 
 var _emscripten_stack_get_base = makeInvalidEarlyAccess('_emscripten_stack_get_base');
 var _emscripten_stack_get_end = makeInvalidEarlyAccess('_emscripten_stack_get_end');
 var _strerror = makeInvalidEarlyAccess('_strerror');
+var _setThrew = makeInvalidEarlyAccess('_setThrew');
 var _emscripten_stack_init = makeInvalidEarlyAccess('_emscripten_stack_init');
 var _emscripten_stack_set_limits = makeInvalidEarlyAccess('_emscripten_stack_set_limits');
 var _emscripten_stack_get_free = makeInvalidEarlyAccess('_emscripten_stack_get_free');
@@ -2453,6 +2475,7 @@ var _asyncify_stop_rewind = makeInvalidEarlyAccess('_asyncify_stop_rewind');
 var memory = makeInvalidEarlyAccess('memory');
 var __indirect_function_table = makeInvalidEarlyAccess('__indirect_function_table');
 var wasmMemory = makeInvalidEarlyAccess('wasmMemory');
+var wasmTable = makeInvalidEarlyAccess('wasmTable');
 
 function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['pal_os_get_us'] != 'undefined', 'missing Wasm export: pal_os_get_us');
@@ -2507,6 +2530,9 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['pal_wasm_app_init'] != 'undefined', 'missing Wasm export: pal_wasm_app_init');
   assert(typeof wasmExports['pal_wasm_app_tick'] != 'undefined', 'missing Wasm export: pal_wasm_app_tick');
   assert(typeof wasmExports['pal_wasm_reset_app_state'] != 'undefined', 'missing Wasm export: pal_wasm_reset_app_state');
+  assert(typeof wasmExports['pal_wasm_has_pending_reset'] != 'undefined', 'missing Wasm export: pal_wasm_has_pending_reset');
+  assert(typeof wasmExports['pal_wasm_get_reset_reason'] != 'undefined', 'missing Wasm export: pal_wasm_get_reset_reason');
+  assert(typeof wasmExports['pal_wasm_clear_pending_reset'] != 'undefined', 'missing Wasm export: pal_wasm_clear_pending_reset');
   assert(typeof wasmExports['main'] != 'undefined', 'missing Wasm export: main');
   assert(typeof wasmExports['pal_wasm_set_sim_mode'] != 'undefined', 'missing Wasm export: pal_wasm_set_sim_mode');
   assert(typeof wasmExports['pal_wasm_get_sim_mode'] != 'undefined', 'missing Wasm export: pal_wasm_get_sim_mode');
@@ -2528,6 +2554,7 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['emscripten_stack_get_base'] != 'undefined', 'missing Wasm export: emscripten_stack_get_base');
   assert(typeof wasmExports['emscripten_stack_get_end'] != 'undefined', 'missing Wasm export: emscripten_stack_get_end');
   assert(typeof wasmExports['strerror'] != 'undefined', 'missing Wasm export: strerror');
+  assert(typeof wasmExports['setThrew'] != 'undefined', 'missing Wasm export: setThrew');
   assert(typeof wasmExports['emscripten_stack_init'] != 'undefined', 'missing Wasm export: emscripten_stack_init');
   assert(typeof wasmExports['emscripten_stack_set_limits'] != 'undefined', 'missing Wasm export: emscripten_stack_set_limits');
   assert(typeof wasmExports['emscripten_stack_get_free'] != 'undefined', 'missing Wasm export: emscripten_stack_get_free');
@@ -2605,6 +2632,9 @@ function assignWasmExports(wasmExports) {
   _pal_wasm_app_init = Module['_pal_wasm_app_init'] = createExportWrapper('pal_wasm_app_init', wasmExports['pal_wasm_app_init'], 0);
   _pal_wasm_app_tick = Module['_pal_wasm_app_tick'] = createExportWrapper('pal_wasm_app_tick', wasmExports['pal_wasm_app_tick'], 0);
   _pal_wasm_reset_app_state = Module['_pal_wasm_reset_app_state'] = createExportWrapper('pal_wasm_reset_app_state', wasmExports['pal_wasm_reset_app_state'], 0);
+  _pal_wasm_has_pending_reset = Module['_pal_wasm_has_pending_reset'] = createExportWrapper('pal_wasm_has_pending_reset', wasmExports['pal_wasm_has_pending_reset'], 0);
+  _pal_wasm_get_reset_reason = Module['_pal_wasm_get_reset_reason'] = createExportWrapper('pal_wasm_get_reset_reason', wasmExports['pal_wasm_get_reset_reason'], 0);
+  _pal_wasm_clear_pending_reset = Module['_pal_wasm_clear_pending_reset'] = createExportWrapper('pal_wasm_clear_pending_reset', wasmExports['pal_wasm_clear_pending_reset'], 0);
   _main = Module['_main'] = createExportWrapper('main', wasmExports['main'], 2);
   _pal_wasm_set_sim_mode = Module['_pal_wasm_set_sim_mode'] = createExportWrapper('pal_wasm_set_sim_mode', wasmExports['pal_wasm_set_sim_mode'], 1);
   _pal_wasm_get_sim_mode = Module['_pal_wasm_get_sim_mode'] = createExportWrapper('pal_wasm_get_sim_mode', wasmExports['pal_wasm_get_sim_mode'], 0);
@@ -2626,6 +2656,7 @@ function assignWasmExports(wasmExports) {
   _emscripten_stack_get_base = wasmExports['emscripten_stack_get_base'];
   _emscripten_stack_get_end = wasmExports['emscripten_stack_get_end'];
   _strerror = createExportWrapper('strerror', wasmExports['strerror'], 1);
+  _setThrew = createExportWrapper('setThrew', wasmExports['setThrew'], 2);
   _emscripten_stack_init = wasmExports['emscripten_stack_init'];
   _emscripten_stack_set_limits = wasmExports['emscripten_stack_set_limits'];
   _emscripten_stack_get_free = wasmExports['emscripten_stack_get_free'];
@@ -2650,7 +2681,7 @@ function assignWasmExports(wasmExports) {
   _asyncify_start_rewind = createExportWrapper('asyncify_start_rewind', wasmExports['asyncify_start_rewind'], 1);
   _asyncify_stop_rewind = createExportWrapper('asyncify_stop_rewind', wasmExports['asyncify_stop_rewind'], 0);
   memory = wasmMemory = wasmExports['memory'];
-  __indirect_function_table = wasmExports['__indirect_function_table'];
+  __indirect_function_table = wasmTable = wasmExports['__indirect_function_table'];
 }
 
 var wasmImports = {
@@ -2660,6 +2691,8 @@ var wasmImports = {
   __handle_stack_overflow: ___handle_stack_overflow,
   /** @export */
   _abort_js: __abort_js,
+  /** @export */
+  _emscripten_throw_longjmp: __emscripten_throw_longjmp,
   /** @export */
   emscripten_fiber_swap: _emscripten_fiber_swap,
   /** @export */
@@ -2676,6 +2709,8 @@ var wasmImports = {
   fd_seek: _fd_seek,
   /** @export */
   fd_write: _fd_write,
+  /** @export */
+  invoke_v,
   /** @export */
   js_pal_adc_read_norm: _js_pal_adc_read_norm,
   /** @export */
@@ -2703,6 +2738,17 @@ var wasmImports = {
   /** @export */
   wink_ultrasonic_distance_events_trigger_now_by_trig_pin: _wink_ultrasonic_distance_events_trigger_now_by_trig_pin
 };
+
+function invoke_v(index) {
+  var sp = stackSave();
+  try {
+    dynCall_v(index);
+  } catch(e) {
+    stackRestore(sp);
+    if (!(e instanceof EmscriptenEH)) throw e;
+    _setThrew(1, 0);
+  }
+}
 
 
 // include: postamble.js
