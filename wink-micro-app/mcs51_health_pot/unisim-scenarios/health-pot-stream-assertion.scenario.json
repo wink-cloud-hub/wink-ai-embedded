@@ -1,0 +1,91 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "mcs51_health_pot packet stream: continuous telemetry stream without drop and causal first-packet validation",
+    "templateId": "mcs51_health_pot",
+    "accuracyMode": "timing",
+    "timeoutUs": "6000000",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "400ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": true,
+        "pressDurationUs": 300000
+      },
+      "description": "Press ON/OFF to activate heating"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "1000ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": false
+      }
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "trigger": "ON_NEXT_PACKET",
+      "afterTimeUs": "400ms",
+      "maxLatencyUs": 700000,
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=1,H=1,F=0",
+      "description": "Causal first packet reflects heating state on next telemetry tick"
+    },
+    {
+      "type": "ASSERT_PACKET_STREAM",
+      "windowUs": [
+        "1000ms",
+        "4000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=1,H=1,F=0",
+      "expectedCount": 3,
+      "allowDrop": false,
+      "description": "Verify continuous 1 Hz telemetry stream across 3-second window without drops"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "4200ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": true,
+        "pressDurationUs": 300000
+      },
+      "description": "Press ON/OFF to return to standby"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "4800ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": false
+      }
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "trigger": "ON_NEXT_PACKET",
+      "afterTimeUs": "4200ms",
+      "maxLatencyUs": 900000,
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=0,H=0,F=0",
+      "description": "Causal first packet reflects standby state on next telemetry tick"
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "mcs51_health_pot fretting bounce: non-symmetric contact chatter and fretting resistance are cleanly debounced",
+    "templateId": "mcs51_health_pot",
+    "accuracyMode": "timing",
+    "timeoutUs": "6000000",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "400ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": true,
+        "bounceModel": "stochastic_fretting",
+        "chatterDurationRangeUs": [2000, 8000],
+        "contactResistanceRangeOhm": [500, 5000],
+        "pullupResistanceOhm": 32000,
+        "pressDurationUs": 300000,
+        "seed": 12345
+      },
+      "description": "Atomic press pair with stochastic fretting chatter and dynamic contact resistance"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "1000ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": false
+      },
+      "description": "Explicit release (past pair duration)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "Fretting chatter debounced cleanly to single press: heating activated"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "trigger": "ON_NEXT_PACKET",
+      "afterTimeUs": "400ms",
+      "maxLatencyUs": 700000,
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=1,H=1,F=0",
+      "description": "Causal first-packet assertion confirms transition to heating on next telemetry tick"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "3500ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": true,
+        "bounceModel": "stochastic_fretting",
+        "chatterDurationRangeUs": [2000, 8000],
+        "contactResistanceRangeOhm": [500, 5000],
+        "pullupResistanceOhm": 32000,
+        "pressDurationUs": 300000,
+        "seed": 54321
+      },
+      "description": "Second stochastic fretting press: toggle OFF"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "4100ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": false
+      }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "4600ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Single toggle to standby, contact forced open"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "trigger": "ON_NEXT_PACKET",
+      "afterTimeUs": "3500ms",
+      "maxLatencyUs": 600000,
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=0,H=0,F=0",
+      "description": "Causal first-packet assertion confirms transition to standby holds"
+    }
+  ]
+}
