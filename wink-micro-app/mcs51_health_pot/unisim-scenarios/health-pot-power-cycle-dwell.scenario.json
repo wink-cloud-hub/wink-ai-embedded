@@ -6,16 +6,11 @@
     "accuracyMode": "behavioral",
     "timeoutUs": "8000000",
     "failurePolicy": "fail-fast",
-    "determinism": { "prngSeed": 42 }
+    "determinism": {
+      "prngSeed": 42
+    }
   },
   "steps": [
-    {
-      "type": "INPUT_ANALOG",
-      "timeUs": "30ms",
-      "adcChannel": 0,
-      "valueNorm": 0.0586,
-      "description": "Cold water before first control tick: 12-bit raw ~240 -> 25 C"
-    },
     {
       "type": "ASSERT_POINT",
       "timeUs": "100ms",
@@ -28,14 +23,18 @@
       "timeUs": "400ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true }
+      "params": {
+        "pressed": true
+      }
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "700ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": false }
+      "params": {
+        "pressed": false
+      }
     },
     {
       "type": "ASSERT_POINT",
@@ -49,7 +48,9 @@
       "timeUs": "2100ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true },
+      "params": {
+        "pressed": true
+      },
       "description": "Power off during HEAT (100 ms off the 2.0 s telemetry boundary so the frame/event ordering is not phase-knife-edge)"
     },
     {
@@ -57,7 +58,9 @@
       "timeUs": "2400ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": false }
+      "params": {
+        "pressed": false
+      }
     },
     {
       "type": "ASSERT_POINT",
@@ -78,14 +81,18 @@
       "timeUs": "3500ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true }
+      "params": {
+        "pressed": true
+      }
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "3800ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": false }
+      "params": {
+        "pressed": false
+      }
     },
     {
       "type": "ASSERT_POINT",
@@ -103,7 +110,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["4600ms", "5500ms"],
+      "windowUs": [
+        "4600ms",
+        "5500ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -120,7 +130,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["5800ms", "6800ms"],
+      "windowUs": [
+        "5800ms",
+        "6800ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",

@@ -6,29 +6,28 @@
     "accuracyMode": "behavioral",
     "timeoutUs": "8000000",
     "failurePolicy": "fail-fast",
-    "determinism": { "prngSeed": 42 }
+    "determinism": {
+      "prngSeed": 42
+    }
   },
   "steps": [
-    {
-      "type": "INPUT_ANALOG",
-      "timeUs": "30ms",
-      "adcChannel": 0,
-      "valueNorm": 0.0586,
-      "description": "Cold water present before first control tick: 12-bit raw ~240 -> 25 C (valueNorm = raw/4096)"
-    },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "400ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true }
+      "params": {
+        "pressed": true
+      }
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "700ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": false }
+      "params": {
+        "pressed": false
+      }
     },
     {
       "type": "ASSERT_POINT",
@@ -39,7 +38,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["900ms", "1500ms"],
+      "windowUs": [
+        "900ms",
+        "1500ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -51,7 +53,7 @@
       "type": "INPUT_ANALOG",
       "timeUs": "2000ms",
       "adcChannel": 0,
-      "valueNorm": 0.0,
+      "valueNorm": 0,
       "description": "NTC probe shorts: rail 0 -> 12-bit raw 0 <= NTC_SHORT_RAW(8) => sensor-short fault"
     },
     {
@@ -63,7 +65,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["2500ms", "3500ms"],
+      "windowUs": [
+        "2500ms",
+        "3500ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -80,7 +85,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["4800ms", "6300ms"],
+      "windowUs": [
+        "4800ms",
+        "6300ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",

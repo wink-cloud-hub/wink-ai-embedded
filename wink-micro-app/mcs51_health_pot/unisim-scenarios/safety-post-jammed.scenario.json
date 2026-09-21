@@ -1,0 +1,95 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "mcs51_health_pot safety: POST jammed / stuck power key suppression and clean recovery",
+    "templateId": "mcs51_health_pot",
+    "description": "GB 4706.1 safety requirement: power key held down during power-on / POST must be suppressed as held to prevent unintended unattended phantom start. Only after releasing the key and pressing again will start be honoured.",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "5000000",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    },
+    "initialConditions": {
+      "btn_onoff": {
+        "pressed": true
+      }
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "300ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "POST jammed key: heater remains off, no phantom power-on"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "500ms",
+        "1200ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=0,H=0,F=0",
+      "minPackets": 1,
+      "description": "Unit stays in safe standby (S=0,H=0,F=0) despite power button held from boot"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "1500ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": false
+      }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2000ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Releasing jammed key: heater still off"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "2500ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": true
+      }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "2800ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": false
+      }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "3500ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "Subsequent fresh ON press after release is honoured: heater energises"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "3200ms",
+        "4500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=1,H=1,F=0",
+      "minPackets": 1,
+      "description": "Enters heating mode (S=1,H=1,F=0)"
+    }
+  ]
+}

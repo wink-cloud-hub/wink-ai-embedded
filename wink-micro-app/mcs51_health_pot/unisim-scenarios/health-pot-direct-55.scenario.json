@@ -19,13 +19,6 @@
       "description": "Boot: state OFF, heater relay off"
     },
     {
-      "type": "INPUT_ANALOG",
-      "timeUs": "30ms",
-      "adcChannel": 0,
-      "valueNorm": 0.0586,
-      "description": "Cold water present: raw ~240 -> 25 C (240/4096 ~= 0.0586)"
-    },
-    {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "300ms",
       "targetPluginId": "btn_func",

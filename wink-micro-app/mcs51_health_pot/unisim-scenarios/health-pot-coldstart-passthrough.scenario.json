@@ -6,29 +6,28 @@
     "accuracyMode": "behavioral",
     "timeoutUs": "8500000",
     "failurePolicy": "fail-fast",
-    "determinism": { "prngSeed": 42 }
+    "determinism": {
+      "prngSeed": 42
+    }
   },
   "steps": [
-    {
-      "type": "INPUT_ANALOG",
-      "timeUs": "30ms",
-      "adcChannel": 0,
-      "valueNorm": 0.1118,
-      "description": "Winter tap water ~10 C (raw ~458) before first control tick"
-    },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "400ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true }
+      "params": {
+        "pressed": true
+      }
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "700ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": false }
+      "params": {
+        "pressed": false
+      }
     },
     {
       "type": "ASSERT_POINT",
@@ -74,7 +73,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["2900ms", "3200ms"],
+      "windowUs": [
+        "2900ms",
+        "3200ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -84,7 +86,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["5900ms", "6200ms"],
+      "windowUs": [
+        "5900ms",
+        "6200ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -94,11 +99,16 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["6900ms", "7200ms"],
+      "windowUs": [
+        "6900ms",
+        "7200ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
-      "matcher": { "$regex": "T=0(3[6-9]|4[0-2])C,S=1,H=1,F=0" },
+      "matcher": {
+        "$regex": "T=0(3[6-9]|4[0-2])C,S=1,H=1,F=0"
+      },
       "minPackets": 1,
       "description": "Firmware-measured temperature follows the downward code ramp into the high-30s (LUT ~39 C)"
     }

@@ -6,29 +6,28 @@
     "accuracyMode": "behavioral",
     "timeoutUs": "9000000",
     "failurePolicy": "fail-fast",
-    "determinism": { "prngSeed": 42 }
+    "determinism": {
+      "prngSeed": 42
+    }
   },
   "steps": [
-    {
-      "type": "INPUT_ANALOG",
-      "timeUs": "30ms",
-      "adcChannel": 0,
-      "valueNorm": 0.0586,
-      "description": "Static 25 C (code ~240), heating"
-    },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "400ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true }
+      "params": {
+        "pressed": true
+      }
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "700ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": false }
+      "params": {
+        "pressed": false
+      }
     },
     {
       "type": "ASSERT_POINT",
@@ -74,7 +73,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["6900ms", "7100ms"],
+      "windowUs": [
+        "6900ms",
+        "7100ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -84,7 +86,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["7900ms", "8200ms"],
+      "windowUs": [
+        "7900ms",
+        "8200ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",

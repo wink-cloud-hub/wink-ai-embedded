@@ -6,22 +6,22 @@
     "accuracyMode": "timing",
     "timeoutUs": "6000000",
     "failurePolicy": "fail-fast",
-    "determinism": { "prngSeed": 42 }
+    "determinism": {
+      "prngSeed": 42
+    }
   },
   "steps": [
-    {
-      "type": "INPUT_ANALOG",
-      "timeUs": "30ms",
-      "adcChannel": 0,
-      "valueNorm": 0.0586,
-      "description": "Cold water before first control tick: raw ~240 -> 25 C"
-    },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "400ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true, "bounceUs": 8000, "bounceCount": 8, "pressDurationUs": 300000 },
+      "params": {
+        "pressed": true,
+        "bounceUs": 8000,
+        "bounceCount": 8,
+        "pressDurationUs": 300000
+      },
       "description": "Atomic press pair (ADR-0068) with 8 ms deterministic contact chatter inside the leading edge"
     },
     {
@@ -29,7 +29,9 @@
       "timeUs": "1000ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": false },
+      "params": {
+        "pressed": false
+      },
       "description": "Explicit release (already past the scheduled pair release at ~708 ms)"
     },
     {
@@ -41,7 +43,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["1900ms", "2200ms"],
+      "windowUs": [
+        "1900ms",
+        "2200ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -54,7 +59,12 @@
       "timeUs": "3500ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true, "bounceUs": 8000, "bounceCount": 8, "pressDurationUs": 300000 },
+      "params": {
+        "pressed": true,
+        "bounceUs": 8000,
+        "bounceCount": 8,
+        "pressDurationUs": 300000
+      },
       "description": "Second bounced press: must toggle OFF exactly once"
     },
     {
@@ -62,7 +72,9 @@
       "timeUs": "4100ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": false }
+      "params": {
+        "pressed": false
+      }
     },
     {
       "type": "ASSERT_POINT",
@@ -73,7 +85,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["4900ms", "5200ms"],
+      "windowUs": [
+        "4900ms",
+        "5200ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",

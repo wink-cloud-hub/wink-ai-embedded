@@ -19,13 +19,6 @@
       "description": "Boot: state OFF, heater relay off"
     },
     {
-      "type": "INPUT_ANALOG",
-      "timeUs": "30ms",
-      "adcChannel": 0,
-      "valueNorm": 0.0586,
-      "description": "Cold water present before first control tick: 12-bit raw ~240 -> 25 C (valueNorm = raw/4096)"
-    },
-    {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "400ms",
       "targetPluginId": "btn_onoff",
@@ -107,7 +100,7 @@
       "type": "INPUT_ANALOG",
       "timeUs": "32000ms",
       "adcChannel": 0,
-      "valueNorm": 0.0,
+      "valueNorm": 0,
       "description": "Dry-fired plate runs the NTC off-scale: rail 0 -> code 0 (short band). A reclassifying firmware would downgrade F=3 to auto-clearing F=2; the latched thermal fault must keep F=3."
     },
     {

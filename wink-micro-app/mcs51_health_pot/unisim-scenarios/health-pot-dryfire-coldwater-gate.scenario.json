@@ -6,29 +6,28 @@
     "accuracyMode": "behavioral",
     "timeoutUs": "26000000",
     "failurePolicy": "fail-fast",
-    "determinism": { "prngSeed": 42 }
+    "determinism": {
+      "prngSeed": 42
+    }
   },
   "steps": [
-    {
-      "type": "INPUT_ANALOG",
-      "timeUs": "30ms",
-      "adcChannel": 0,
-      "valueNorm": 0.0586,
-      "description": "Static 25 C plateau (dry-fire-prone basin, code ~240)"
-    },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "400ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true }
+      "params": {
+        "pressed": true
+      }
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "700ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": false }
+      "params": {
+        "pressed": false
+      }
     },
     {
       "type": "ASSERT_POINT",
@@ -46,7 +45,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["5900ms", "6200ms"],
+      "windowUs": [
+        "5900ms",
+        "6200ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -56,7 +58,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["15900ms", "18200ms"],
+      "windowUs": [
+        "15900ms",
+        "18200ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -80,7 +85,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["22000ms", "23500ms"],
+      "windowUs": [
+        "22000ms",
+        "23500ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",

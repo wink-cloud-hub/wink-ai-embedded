@@ -12,15 +12,11 @@
   },
   "steps": [
     {
-      "type": "INPUT_ANALOG",
-      "timeUs": "30ms",
-      "adcChannel": 0,
-      "valueNorm": 0.0586,
-      "description": "Cold water present before first control tick: 12-bit raw ~240 -> 25 C"
-    },
-    {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["700ms", "1400ms"],
+      "windowUs": [
+        "700ms",
+        "1400ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -33,14 +29,18 @@
       "timeUs": "1500ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true }
+      "params": {
+        "pressed": true
+      }
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "1700ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": false }
+      "params": {
+        "pressed": false
+      }
     },
     {
       "type": "ASSERT_POINT",
@@ -51,7 +51,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["1800ms", "2700ms"],
+      "windowUs": [
+        "1800ms",
+        "2700ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -61,7 +64,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["2800ms", "3700ms"],
+      "windowUs": [
+        "2800ms",
+        "3700ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",

@@ -89,8 +89,27 @@ sbit BTN_FUNC  = P0^5;   /* FUNC button, active low    (linear pin 5)  */
 #define FAULT_BEEP_TIMEOUT   60u    /* silence periodic buzzer alarm after 60 s */
 #define COOLDOWN_SECONDS     60u    /* post-thermal-fault cooling lock (power-cycle safe) */
 
-static unsigned int code ntc_lut_raw[11]  = {571, 458, 298, 241, 131,  89,  63,  32,  24,  19,  16};
-static unsigned char code ntc_lut_temp[11] = {  5,  10,  20,  25,  40,  50,  60,  80,  90,  98, 105};
+/* 48-point Non-Uniform NTC LUT (PLAN-20260921 Task 1 / Item 03):
+ * - 5 C ~ 40 C: 5 C step (room & pre-heat band)
+ * - 40 C ~ 65 C: 1 C step (dense keep-warm band: truncation error <= +/-0.3 C)
+ * - 65 C ~ 85 C: 3~5 C step (transition band)
+ * - 85 C ~ 105 C: 1~2 C step down to 160k pull-up physical LSB limit (~2.33 C/LSB) */
+static unsigned int code ntc_lut_raw[48] = {
+    571, 458, 369, 298, 241, 196, 160, 131,
+    126, 122, 117, 113, 108, 104, 100,  97,
+     93,  89,  86,  83,  80,  78,  76,  73,
+     70,  67,  65,  63,  61,  58,  56,  54,
+     52,  48,  43,  39,  35,  32,  30,  28,
+     26,  25,  24,  22,  21,  20,  19,  16
+};
+static unsigned char code ntc_lut_temp[48] = {
+      5,  10,  15,  20,  25,  30,  35,  40,
+     41,  42,  43,  44,  45,  46,  47,  48,
+     49,  50,  51,  52,  53,  54,  55,  56,
+     57,  58,  59,  60,  61,  62,  63,  64,
+     65,  68,  71,  74,  77,  80,  82,  85,
+     87,  88,  90,  92,  94,  96,  98, 105
+};
 
 /* ---- 4COM-8SEG Display Font Table ---------------------------------------- */
 /* Bit: dp(7) g(6) f(5) e(4) d(3) c(2) b(1) a(0) — common cathode */
@@ -251,7 +270,7 @@ static unsigned char ntc_code_to_temp(unsigned int code_val) {
     if (code_val >= ntc_lut_raw[0]) {
         return ntc_lut_temp[0];
     }
-    for (i = 1; i < 11u; i++) {
+    for (i = 1; i < 48u; i++) {
         if (code_val >= ntc_lut_raw[i]) {
             return ntc_lut_temp[i - 1] +
                 (unsigned char)(((unsigned int)(ntc_lut_temp[i] - ntc_lut_temp[i - 1]) *

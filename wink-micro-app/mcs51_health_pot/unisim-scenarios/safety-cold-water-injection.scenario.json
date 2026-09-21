@@ -7,29 +7,28 @@
     "accuracyMode": "behavioral",
     "timeoutUs": "60000000",
     "failurePolicy": "fail-fast",
-    "determinism": { "prngSeed": 42 }
+    "determinism": {
+      "prngSeed": 42
+    }
   },
   "steps": [
-    {
-      "type": "INPUT_ANALOG",
-      "timeUs": "30ms",
-      "adcChannel": 0,
-      "valueNorm": 0.0586,
-      "description": "Static 25 C water before the first control tick (code ~240)"
-    },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "400ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true }
+      "params": {
+        "pressed": true
+      }
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "700ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": false }
+      "params": {
+        "pressed": false
+      }
     },
     {
       "type": "ASSERT_POINT",
@@ -70,19 +69,22 @@
       "type": "INPUT_ANALOG",
       "timeUs": "45000ms",
       "adcChannel": 0,
-      "valueNorm": 0.0630,
+      "valueNorm": 0.063,
       "description": "Re-warm ramp: 258 (~24.2 C)"
     },
     {
       "type": "INPUT_ANALOG",
       "timeUs": "55000ms",
       "adcChannel": 0,
-      "valueNorm": 0.0610,
+      "valueNorm": 0.061,
       "description": "Re-warm ramp: 250 (~25 C); every 16 s window drops >=8 codes"
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["20500ms", "23500ms"],
+      "windowUs": [
+        "20500ms",
+        "23500ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -99,7 +101,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["44000ms", "47000ms"],
+      "windowUs": [
+        "44000ms",
+        "47000ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -116,7 +121,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["57500ms", "59500ms"],
+      "windowUs": [
+        "57500ms",
+        "59500ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",

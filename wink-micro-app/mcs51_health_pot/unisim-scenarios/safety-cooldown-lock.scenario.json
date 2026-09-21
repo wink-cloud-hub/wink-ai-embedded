@@ -7,29 +7,28 @@
     "accuracyMode": "behavioral",
     "timeoutUs": "95000000",
     "failurePolicy": "fail-fast",
-    "determinism": { "prngSeed": 42 }
+    "determinism": {
+      "prngSeed": 42
+    }
   },
   "steps": [
-    {
-      "type": "INPUT_ANALOG",
-      "timeUs": "30ms",
-      "adcChannel": 0,
-      "valueNorm": 0.0586,
-      "description": "Static 25 C basin before the first control tick (code ~240, dry-fire-prone)"
-    },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "400ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true }
+      "params": {
+        "pressed": true
+      }
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "700ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": false }
+      "params": {
+        "pressed": false
+      }
     },
     {
       "type": "ASSERT_POINT",
@@ -40,7 +39,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["17500ms", "19500ms"],
+      "windowUs": [
+        "17500ms",
+        "19500ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -57,7 +59,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["22000ms", "23500ms"],
+      "windowUs": [
+        "22000ms",
+        "23500ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -70,18 +75,25 @@
       "timeUs": "23500ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true }
+      "params": {
+        "pressed": true
+      }
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "23800ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": false }
+      "params": {
+        "pressed": false
+      }
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["24000ms", "25000ms"],
+      "windowUs": [
+        "24000ms",
+        "25000ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -94,14 +106,18 @@
       "timeUs": "25200ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true }
+      "params": {
+        "pressed": true
+      }
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "25500ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": false }
+      "params": {
+        "pressed": false
+      }
     },
     {
       "type": "ASSERT_POINT",
@@ -112,7 +128,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["26000ms", "27500ms"],
+      "windowUs": [
+        "26000ms",
+        "27500ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -124,34 +143,44 @@
       "type": "ASSERT_POINT",
       "timeUs": "27500ms",
       "target": "plugin:display/text",
-      "matcher": { "$regex": "^(C00L|-25-)$" },
+      "matcher": {
+        "$regex": "^(C00L|-25-)$"
+      },
       "description": "Lock display is either COOL or the live temperature (never a blank/E-0x); alternation is proven by the host P1-frame test"
     },
     {
       "type": "ASSERT_POINT",
       "timeUs": "28500ms",
       "target": "plugin:display/text",
-      "matcher": { "$regex": "^(C00L|-25-)$" }
+      "matcher": {
+        "$regex": "^(C00L|-25-)$"
+      }
     },
     {
       "type": "ASSERT_POINT",
       "timeUs": "29500ms",
       "target": "plugin:display/text",
-      "matcher": { "$regex": "^(C00L|-25-)$" }
+      "matcher": {
+        "$regex": "^(C00L|-25-)$"
+      }
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "83000ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true }
+      "params": {
+        "pressed": true
+      }
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "83300ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": false }
+      "params": {
+        "pressed": false
+      }
     },
     {
       "type": "ASSERT_POINT",
@@ -162,7 +191,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["84000ms", "87000ms"],
+      "windowUs": [
+        "84000ms",
+        "87000ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",

@@ -6,16 +6,16 @@
     "accuracyMode": "behavioral",
     "timeoutUs": "10000000",
     "failurePolicy": "fail-fast",
-    "determinism": { "prngSeed": 42 }
+    "determinism": {
+      "prngSeed": 42
+    },
+    "initialConditions": {
+      "pins": {
+        "0": 0.9766
+      }
+    }
   },
   "steps": [
-    {
-      "type": "INPUT_ANALOG",
-      "timeUs": "30ms",
-      "adcChannel": 0,
-      "valueNorm": 0.9766,
-      "description": "Prove already open at power-up: 12-bit raw ~4000 >= NTC_OPEN_RAW(3900), POST must latch E-01 at the first control tick (valueNorm = 4000/4096)"
-    },
     {
       "type": "ASSERT_POINT",
       "timeUs": "300ms",
@@ -42,14 +42,18 @@
       "timeUs": "1200ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true }
+      "params": {
+        "pressed": true
+      }
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "1500ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": false }
+      "params": {
+        "pressed": false
+      }
     },
     {
       "type": "ASSERT_POINT",
@@ -67,7 +71,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["1800ms", "2500ms"],
+      "windowUs": [
+        "1800ms",
+        "2500ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -80,14 +87,18 @@
       "timeUs": "3000ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true }
+      "params": {
+        "pressed": true
+      }
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "3300ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": false }
+      "params": {
+        "pressed": false
+      }
     },
     {
       "type": "ASSERT_POINT",
@@ -112,7 +123,10 @@
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["5500ms", "6500ms"],
+      "windowUs": [
+        "5500ms",
+        "6500ms"
+      ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
@@ -125,14 +139,18 @@
       "timeUs": "7000ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": true }
+      "params": {
+        "pressed": true
+      }
     },
     {
       "type": "INPUT_PLUGIN_EVENT",
       "timeUs": "7300ms",
       "targetPluginId": "btn_onoff",
       "action": "SET_PRESSED",
-      "params": { "pressed": false }
+      "params": {
+        "pressed": false
+      }
     },
     {
       "type": "ASSERT_POINT",

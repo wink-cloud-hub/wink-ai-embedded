@@ -12,13 +12,6 @@
   },
   "steps": [
     {
-      "type": "INPUT_ANALOG",
-      "timeUs": "30ms",
-      "adcChannel": 0,
-      "valueNorm": 0.0586,
-      "description": "Cold water present at boot (25 C)"
-    },
-    {
       "type": "ASSERT_POINT",
       "timeUs": "200ms",
       "target": "plugin:display/text",
@@ -82,7 +75,7 @@
       "type": "INPUT_ANALOG",
       "timeUs": "5500ms",
       "adcChannel": 0,
-      "valueNorm": 0.0,
+      "valueNorm": 0,
       "description": "Inject NTC short fault"
     },
     {

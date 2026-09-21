@@ -1,0 +1,133 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "mcs51_health_pot safety: hot power-cycle / reboot lock (probe >= 45 C) locks heater off, shows COOL, denies start until 60s cooldown expires",
+    "templateId": "mcs51_health_pot",
+    "description": "GB 4706.1 / IEC 60335-1 safety: powering on a hot appliance (e.g. replugging dry-fired unit at 85 C) must not re-energise heater. Boot-time synchronous ADC sample latches 60s cooldown lock, displays COOL/temp, refuses ON/OFF press, and only allows heating after 60s.",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "70000000",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    },
+    "initialConditions": {
+      "temp_sensor": {
+        "temperature": 85
+      }
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "300ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "Hot power-up: heater is forced off immediately at boot"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "300ms",
+      "target": "plugin:display/text",
+      "matcher": {
+        "$regex": "^(C00L|-85-)$"
+      },
+      "description": "Hot power-up: display enters cooldown latch showing live temp -85- or C00L"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1200ms",
+      "target": "plugin:display/text",
+      "matcher": "C00L",
+      "description": "Hot power-up: display alternates to C00L during odd cooldown seconds"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "500ms",
+        "1500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=0,H=0,F=0",
+      "minPackets": 1,
+      "description": "UART telemetry: standby (S=0), heater off (H=0), no fault (F=0)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "1500ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": true
+      }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "1800ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": false
+      }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2200ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": false,
+      "description": "ON press during cooldown lock is refused: heater stays off"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "2000ms",
+        "3000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=0,H=0,F=0",
+      "minPackets": 1,
+      "description": "Start refused: stays in standby (S=0,H=0)"
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "63000ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": true
+      }
+    },
+    {
+      "type": "INPUT_PLUGIN_EVENT",
+      "timeUs": "63300ms",
+      "targetPluginId": "btn_onoff",
+      "action": "SET_PRESSED",
+      "params": {
+        "pressed": false
+      }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "64500ms",
+      "target": "plugin:heater_relay/on",
+      "matcher": true,
+      "description": "After 60s cooldown lock expires: ON press is accepted and heater energises"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "64000ms",
+        "66000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "S=1,H=1,F=0",
+      "minPackets": 1,
+      "description": "Enters heating mode (S=1,H=1,F=0)"
+    }
+  ]
+}
