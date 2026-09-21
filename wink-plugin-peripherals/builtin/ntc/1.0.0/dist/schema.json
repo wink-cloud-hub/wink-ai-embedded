@@ -27,6 +27,40 @@
     "variant": {
       "type": "string",
       "default": "default"
+    },
+    "label": {
+      "type": "string",
+      "default": ""
+    },
+    "vref": {
+      "type": "number",
+      "default": 3
+    },
+    "vrefNoisePct": {
+      "type": "number",
+      "default": 0,
+      "minimum": 0,
+      "maximum": 5
+    },
+    "lineRegulationPct": {
+      "type": "number",
+      "default": 0
+    },
+    "tempDriftPpm": {
+      "type": "number",
+      "default": 0
+    },
+    "gndBouncePct": {
+      "type": "number",
+      "default": 0
+    },
+    "heaterActive": {
+      "type": "boolean",
+      "default": false
+    },
+    "prngSeed": {
+      "type": "number",
+      "default": 42
     }
   },
   "required": [

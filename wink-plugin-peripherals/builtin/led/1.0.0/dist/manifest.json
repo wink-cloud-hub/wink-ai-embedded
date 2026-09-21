@@ -62,14 +62,52 @@
     "activeHigh": {
       "type": "boolean",
       "default": true
+    },
+    "contactWelded": {
+      "type": "boolean",
+      "default": false,
+      "description": "Relay/switch contact welded"
+    },
+    "faultType": {
+      "type": "string",
+      "default": "NONE",
+      "enum": [
+        "NONE",
+        "CONTACT_WELDED"
+      ],
+      "description": "Fault injection type"
     }
   },
   "stateChannels": {
     "on": {
       "type": "boolean",
       "default": false,
-      "description": "Lit state"
+      "description": "Lit / commanded state"
+    },
+    "welded": {
+      "type": "boolean",
+      "default": false,
+      "description": "Contact welded fault state"
+    },
+    "contactClosed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Physical contact closed state"
     }
   },
-  "events": {}
+  "events": {
+    "INJECT_FAULT": {
+      "description": "Inject electrical or mechanical fault",
+      "params": {
+        "faultType": {
+          "type": "string",
+          "default": "CONTACT_WELDED"
+        }
+      }
+    },
+    "CLEAR_FAULT": {
+      "description": "Clear active fault",
+      "params": {}
+    }
+  }
 }

@@ -127,6 +127,29 @@ function s(e = "default") {
 						default: 6,
 						min: 0,
 						max: 64
+					},
+					bounceModel: {
+						type: "string",
+						default: "deterministic_train",
+						enum: ["deterministic_train", "stochastic_fretting"],
+						description: "Contact bounce dynamics model"
+					},
+					chatterDurationRangeUs: {
+						type: "array",
+						description: "[minUs, maxUs] range for non-symmetric chatter duration"
+					},
+					contactResistanceRangeOhm: {
+						type: "array",
+						description: "[minOhm, maxOhm] range for dynamic contact resistance"
+					},
+					pullupResistanceOhm: {
+						type: "number",
+						default: 32e3,
+						description: "MCU internal weak pull-up resistance in Ohms"
+					},
+					seed: {
+						type: "number",
+						description: "Deterministic PRNG seed for chatter generation"
 					}
 				}
 			},
@@ -171,9 +194,14 @@ var c = s("default"), l = (e) => s(o(e)), u = class t extends e {
 	_pressed(e) {
 		let n = typeof e == "object" && e ? e : null, r = n ? !!n.pressed : !!(e ?? !0);
 		this._setState(r, {
-			pressDurationUs: f(n?.pressDurationUs),
-			bounceUs: f(n?.bounceUs),
-			bounceCount: typeof n?.bounceCount == "number" ? n.bounceCount : t.DEFAULT_BOUNCE_COUNT
+			pressDurationUs: m(n?.pressDurationUs),
+			bounceUs: m(n?.bounceUs),
+			bounceCount: typeof n?.bounceCount == "number" ? n.bounceCount : t.DEFAULT_BOUNCE_COUNT,
+			bounceModel: n?.bounceModel,
+			chatterDurationRangeUs: Array.isArray(n?.chatterDurationRangeUs) && n.chatterDurationRangeUs.length >= 2 ? [Number(n.chatterDurationRangeUs[0]), Number(n.chatterDurationRangeUs[1])] : void 0,
+			contactResistanceRangeOhm: Array.isArray(n?.contactResistanceRangeOhm) && n.contactResistanceRangeOhm.length >= 2 ? [Number(n.contactResistanceRangeOhm[0]), Number(n.contactResistanceRangeOhm[1])] : void 0,
+			pullupResistanceOhm: typeof n?.pullupResistanceOhm == "number" ? n.pullupResistanceOhm : 32e3,
+			seed: typeof n?.seed == "number" ? n.seed : void 0
 		});
 	}
 	_press() {
@@ -191,8 +219,19 @@ var c = s("default"), l = (e) => s(o(e)), u = class t extends e {
 		}
 		if (e) {
 			let e = c.nowUs(), t = n.bounceUs && n.bounceUs > 0n ? n.bounceUs : 0n, r = n.pressDurationUs;
-			if (this._pressStartUs = e, this._waveGeneration++, r !== void 0 || t > 0n) {
-				let i = d(e, t, n.bounceCount, o, s);
+			if (this._pressStartUs = e, this._waveGeneration++, n.bounceModel === "stochastic_fretting") {
+				let t = d(n.seed ?? Number((e ^ 1515870810n) & 4294967295n)), i = n.chatterDurationRangeUs ?? [2e3, 8e3], a = BigInt(Math.max(500, Math.floor(i[0] + t() * (i[1] - i[0])))), l = f(e, a, t, o, s, !0, n.contactResistanceRangeOhm, n.pullupResistanceOhm);
+				if (r !== void 0) {
+					this._scheduledReleaseUs = e + a + r;
+					let i = n.chatterDurationRangeUs ?? [5e3, 18e3], c = BigInt(Math.max(500, Math.floor(i[0] + t() * (i[1] - i[0])))), u = f(this._scheduledReleaseUs, c, t, o, s, !1, n.contactResistanceRangeOhm, n.pullupResistanceOhm);
+					l.push(...u);
+				} else this._scheduledReleaseUs = 0n;
+				c.injectWaveform(this._signalPinName, {
+					edges: l,
+					generation: this._waveGeneration
+				});
+			} else if (r !== void 0 || t > 0n) {
+				let i = p(e, t, n.bounceCount, o, s);
 				this._scheduledReleaseUs = e + t + (r ?? 0n), i.push({
 					tUs: this._scheduledReleaseUs,
 					level: o
@@ -208,18 +247,62 @@ var c = s("default"), l = (e) => s(o(e)), u = class t extends e {
 				generation: this._waveGeneration
 			});
 		} else {
-			let e = this._pressStartUs + t.MIN_PRESS_US, n = c.nowUs() > e ? c.nowUs() : e;
-			(this._scheduledReleaseUs === 0n || n < this._scheduledReleaseUs) && (this._waveGeneration++, c.injectWaveform(this._signalPinName, {
-				edges: [{
-					tUs: n,
-					level: o
-				}],
-				generation: this._waveGeneration
-			}));
+			let e = this._pressStartUs + t.MIN_PRESS_US, r = c.nowUs() > e ? c.nowUs() : e;
+			if (this._scheduledReleaseUs === 0n || r < this._scheduledReleaseUs) {
+				if (this._waveGeneration++, n.bounceModel === "stochastic_fretting") {
+					let e = d(n.seed ?? Number((r ^ 2779096485n) & 4294967295n)), t = n.chatterDurationRangeUs ?? [5e3, 18e3], i = f(r, BigInt(Math.max(500, Math.floor(t[0] + e() * (t[1] - t[0])))), e, o, s, !1, n.contactResistanceRangeOhm, n.pullupResistanceOhm);
+					c.injectWaveform(this._signalPinName, {
+						edges: i,
+						generation: this._waveGeneration
+					});
+				} else c.injectWaveform(this._signalPinName, {
+					edges: [{
+						tUs: r,
+						level: o
+					}],
+					generation: this._waveGeneration
+				});
+			}
 		}
 	}
 };
-function d(e, t, n, r, i) {
+function d(e) {
+	let t = e >>> 0;
+	return () => {
+		t = t + 1831565813 | 0;
+		let e = Math.imul(t ^ t >>> 15, 1 | t);
+		return e = e + Math.imul(e ^ e >>> 7, 61 | e) ^ e, ((e ^ e >>> 14) >>> 0) / 4294967296;
+	};
+}
+function f(e, t, n, r, i, a, o = [500, 5e3], s = 32e3) {
+	let c = [], l = a ? i : r, u = a ? r : i;
+	if (t <= 0n) return c.push({
+		tUs: e,
+		level: l
+	}), c;
+	let d = 6 + Math.floor(n() * 9), f = [];
+	for (let e = 0; e < d; e++) f.push(.2 + n() * 1.8);
+	let p = f.reduce((e, t) => e + t, 0), m = u, h = 0n, g = Number(t);
+	for (let l = 0; l < d - 1; l++) {
+		let u = f[l] / p, d = BigInt(Math.max(20, Math.floor(u * g)));
+		if (h += d, h >= t) break;
+		let _ = e + h, v = l % 2 == +!a, y = m;
+		if (v) {
+			let [e, t] = o, a = e + n() * (t - e), c = a / (a + s);
+			c <= .3 ? y = i : c >= .7 && (y = r);
+		} else y = r;
+		y !== m && (c.push({
+			tUs: _,
+			level: y
+		}), m = y);
+	}
+	let _ = e + t;
+	return (m !== l || c.length === 0) && c.push({
+		tUs: _,
+		level: l
+	}), c;
+}
+function p(e, t, n, r, i) {
 	let a = [];
 	if (t <= 0n) return a.push({
 		tUs: e,
@@ -238,7 +321,7 @@ function d(e, t, n, r, i) {
 		level: i
 	}), a;
 }
-function f(e) {
+function m(e) {
 	if (e !== void 0) {
 		if (typeof e == "number") return Number.isFinite(e) && e > 0 ? BigInt(Math.floor(e)) : void 0;
 		try {
@@ -249,10 +332,10 @@ function f(e) {
 		}
 	}
 }
-var p = {
+var h = {
 	manifest: c,
 	manifestFactory: l,
 	PluginClass: u
 };
 //#endregion
-export { a as BUTTON_PIN_VARIANTS, u as ButtonPlugin, d as buildPressEdges, c as buttonManifest, l as buttonManifestFactory, s as createButtonManifest, p as default };
+export { a as BUTTON_PIN_VARIANTS, u as ButtonPlugin, p as buildPressEdges, f as buildStochasticFrettingEdges, c as buttonManifest, l as buttonManifestFactory, s as createButtonManifest, d as createMulberry32, h as default };

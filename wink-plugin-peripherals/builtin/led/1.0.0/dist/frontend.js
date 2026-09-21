@@ -152,6 +152,11 @@ var x = v.default, S = e({
 			type: "boolean",
 			default: !1,
 			description: "Flip orientation"
+		},
+		contactWelded: {
+			type: "boolean",
+			default: !1,
+			description: "Contact welded fault state"
 		}
 	},
 	canvas: d,

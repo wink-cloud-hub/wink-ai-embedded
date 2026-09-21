@@ -38,7 +38,7 @@ var h = ["hasSignal"], g = { class: "buzzer-badge-area" }, _ = { class: "buzzer-
 			} catch (e) {
 				console.error("[Buzzer Glyph] Failed to start audio graph:", e);
 			}
-			else Math.abs(T - r) > 5 && (r >= 3e3 ? (s.type = "sine", s.frequency.setValueAtTime(r, i), b.gain.setValueAtTime(.24, i), x.frequency.setValueAtTime(2400, i), S.gain.setValueAtTime(.035, i)) : (s.type = "square", s.frequency.setValueAtTime(r, i), b.gain.setValueAtTime(.12, i), S.gain.setValueAtTime(0, i)), T = r), C.gain.setValueAtTime(1, i);
+			else Math.abs(T - r) > 5 && (r >= 3e3 ? (s.type = "sine", s.frequency.setValueAtTime(r, i), b.gain.setValueAtTime(.24, i), x?.frequency.setValueAtTime(2400, i), S?.gain.setValueAtTime(.035, i)) : (s.type = "square", s.frequency.setValueAtTime(r, i), b.gain.setValueAtTime(.12, i), S?.gain.setValueAtTime(0, i)), T = r), C.gain.setValueAtTime(1, i);
 		}
 		function O() {
 			if (C && r) {
@@ -128,7 +128,7 @@ var h = ["hasSignal"], g = { class: "buzzer-badge-area" }, _ = { class: "buzzer-
 	let n = e.__vccOpts || e;
 	for (let [e, r] of t) n[e] = r;
 	return n;
-}, S = /*#__PURE__*/ x(b, [["__scopeId", "data-v-818734d4"]]), C = { class: "widget-header" }, w = { class: "widget-title" }, T = { class: "metrics-grid" }, E = { class: "metric-item" }, D = { class: "metric-val" }, O = { class: "metric-item" }, k = { class: "metric-val" }, A = { class: "metric-item full-width" }, j = { class: "metric-mode" }, M = { class: "audio-control" }, N = /*#__PURE__*/ x(/* @__PURE__ */ s({
+}, S = /*#__PURE__*/ x(b, [["__scopeId", "data-v-03efb5b1"]]), C = { class: "widget-header" }, w = { class: "widget-title" }, T = { class: "metrics-grid" }, E = { class: "metric-item" }, D = { class: "metric-val" }, O = { class: "metric-item" }, k = { class: "metric-val" }, A = { class: "metric-item full-width" }, j = { class: "metric-mode" }, M = { class: "audio-control" }, N = /*#__PURE__*/ x(/* @__PURE__ */ s({
 	__name: "WorldWidget",
 	props: {
 		id: {},
@@ -157,7 +157,7 @@ var h = ["hasSignal"], g = { class: "buzzer-badge-area" }, _ = { class: "buzzer-
 			if (!i || !s || !_) try {
 				i = t.createOscillator(), s = t.createGain(), _ = t.createGain(), h = t.createOscillator(), g = t.createGain(), r >= 3e3 ? (i.type = "sine", i.frequency.setValueAtTime(r, a), s.gain.setValueAtTime(.24, a), h.type = "sine", h.frequency.setValueAtTime(2400, a), g.gain.setValueAtTime(.035, a)) : (i.type = "square", i.frequency.setValueAtTime(r, a), s.gain.setValueAtTime(.12, a), g.gain.setValueAtTime(0, a)), _.gain.setValueAtTime(1, a), i.connect(s).connect(_), h.connect(g).connect(_), _.connect(t.destination), i.start(), h.start(), y = r;
 			} catch {}
-			else Math.abs(y - r) > 5 && (r >= 3e3 ? (i.type = "sine", i.frequency.setValueAtTime(r, a), s.gain.setValueAtTime(.24, a), h.frequency.setValueAtTime(2400, a), g.gain.setValueAtTime(.035, a)) : (i.type = "square", i.frequency.setValueAtTime(r, a), s.gain.setValueAtTime(.12, a), g.gain.setValueAtTime(0, a)), y = r), _.gain.setValueAtTime(1, a);
+			else Math.abs(y - r) > 5 && (r >= 3e3 ? (i.type = "sine", i.frequency.setValueAtTime(r, a), s.gain.setValueAtTime(.24, a), h?.frequency.setValueAtTime(2400, a), g?.gain.setValueAtTime(.035, a)) : (i.type = "square", i.frequency.setValueAtTime(r, a), s.gain.setValueAtTime(.12, a), g?.gain.setValueAtTime(0, a)), y = r), _.gain.setValueAtTime(1, a);
 		}
 		function S() {
 			if (_ && r) {
@@ -237,7 +237,7 @@ var h = ["hasSignal"], g = { class: "buzzer-badge-area" }, _ = { class: "buzzer-
 			}, [o("span", null, p(n.value ? "🔇 Audio Muted" : "🔊 Audio Active"), 1)], 2)])
 		], 2));
 	}
-}), [["__scopeId", "data-v-54c22c23"]]), P = Object.freeze({
+}), [["__scopeId", "data-v-ca101289"]]), P = Object.freeze({
 	width: 75,
 	height: 90
 }), F = Object.freeze({

@@ -179,6 +179,36 @@ var b = n(import.meta.url, "ntc", "1.0.0", "sensor"), x = e({
 			type: "number",
 			default: 120,
 			description: "Max slider temperature in °C"
+		},
+		vref: {
+			type: "number",
+			default: 3,
+			description: "Nominal reference voltage in volts"
+		},
+		vrefNoisePct: {
+			type: "number",
+			default: 0,
+			description: "Vref random noise percentage (e.g. 0.1 for +/-0.1%)"
+		},
+		lineRegulationPct: {
+			type: "number",
+			default: 0,
+			description: "LDO line regulation drift percentage"
+		},
+		tempDriftPpm: {
+			type: "number",
+			default: 0,
+			description: "LDO temperature coefficient in ppm/degC"
+		},
+		gndBouncePct: {
+			type: "number",
+			default: 0,
+			description: "Ground bounce perturbation percentage"
+		},
+		heaterActive: {
+			type: "boolean",
+			default: !1,
+			description: "Heater active state causing ground bounce"
 		}
 	},
 	canvas: u,

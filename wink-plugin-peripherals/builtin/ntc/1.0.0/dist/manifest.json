@@ -67,6 +67,47 @@
     "variant": {
       "type": "string",
       "default": "default"
+    },
+    "label": {
+      "type": "string",
+      "default": ""
+    },
+    "vref": {
+      "type": "number",
+      "default": 3,
+      "description": "Nominal reference voltage in volts"
+    },
+    "vrefNoisePct": {
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 5,
+      "description": "Vref random noise percentage (e.g. 0.1 for +/-0.1%)"
+    },
+    "lineRegulationPct": {
+      "type": "number",
+      "default": 0,
+      "description": "LDO line regulation drift percentage (delta_line)"
+    },
+    "tempDriftPpm": {
+      "type": "number",
+      "default": 0,
+      "description": "LDO temperature coefficient in ppm/degC (delta_temp)"
+    },
+    "gndBouncePct": {
+      "type": "number",
+      "default": 0,
+      "description": "Ground bounce perturbation percentage when heater active (delta_gnd_bounce)"
+    },
+    "heaterActive": {
+      "type": "boolean",
+      "default": false,
+      "description": "Heater active state causing ground bounce"
+    },
+    "prngSeed": {
+      "type": "number",
+      "default": 42,
+      "description": "Deterministic PRNG seed for noise generation"
     }
   },
   "stateChannels": {
@@ -85,6 +126,10 @@
     "resistanceOhm": {
       "type": "number",
       "default": 10000
+    },
+    "vrefEffective": {
+      "type": "number",
+      "default": 3
     }
   },
   "events": {
@@ -96,6 +141,33 @@
           "min": -40,
           "max": 200,
           "unit": "°C"
+        }
+      }
+    },
+    "SET_VREF_PERTURBATION": {
+      "params": {
+        "vref_noise_pct": {
+          "type": "number"
+        },
+        "line_regulation_pct": {
+          "type": "number"
+        },
+        "temp_drift_ppm": {
+          "type": "number"
+        },
+        "gnd_bounce_pct": {
+          "type": "number"
+        },
+        "heater_active": {
+          "type": "boolean"
+        }
+      }
+    },
+    "SET_HEATER_ACTIVE": {
+      "params": {
+        "active": {
+          "type": "boolean",
+          "required": true
         }
       }
     }

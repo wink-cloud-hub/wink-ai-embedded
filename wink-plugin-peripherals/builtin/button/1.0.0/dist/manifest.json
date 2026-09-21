@@ -131,6 +131,32 @@
           "default": 6,
           "min": 0,
           "max": 64
+        },
+        "bounceModel": {
+          "type": "string",
+          "default": "deterministic_train",
+          "enum": [
+            "deterministic_train",
+            "stochastic_fretting"
+          ],
+          "description": "Contact bounce dynamics model"
+        },
+        "chatterDurationRangeUs": {
+          "type": "array",
+          "description": "[minUs, maxUs] range for non-symmetric chatter duration"
+        },
+        "contactResistanceRangeOhm": {
+          "type": "array",
+          "description": "[minOhm, maxOhm] range for dynamic contact resistance"
+        },
+        "pullupResistanceOhm": {
+          "type": "number",
+          "default": 32000,
+          "description": "MCU internal weak pull-up resistance in Ohms"
+        },
+        "seed": {
+          "type": "number",
+          "description": "Deterministic PRNG seed for chatter generation"
         }
       }
     },

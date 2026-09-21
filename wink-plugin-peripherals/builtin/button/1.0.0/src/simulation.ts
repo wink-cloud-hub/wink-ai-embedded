@@ -6,6 +6,7 @@ import {
   type PeripheralManifest,
   type PeripheralManifestPinInput,
   type ManifestFactory,
+  type IPluginContext,
 } from '@wink-ai/unisim-sdk';
 
 declare const __PLUGIN_TYPE__: string | undefined;
@@ -149,6 +150,8 @@ export const buttonManifestFactory: ManifestFactory = (variant: string) =>
   createButtonManifest(resolveButtonVariant(variant));
 
 export class ButtonPlugin extends SimpleGpioPlugin {
+  declare protected ctx?: IPluginContext<any>;
+
   readonly manifest = buttonManifest;
   static readonly manifest = buttonManifest;
 

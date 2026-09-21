@@ -62,19 +62,77 @@ function s(e = "default") {
 			activeHigh: {
 				type: "boolean",
 				default: !0
+			},
+			contactWelded: {
+				type: "boolean",
+				default: !1,
+				description: "Relay/switch contact welded"
+			},
+			faultType: {
+				type: "string",
+				default: "NONE",
+				enum: ["NONE", "CONTACT_WELDED"],
+				description: "Fault injection type"
 			}
 		},
-		stateChannels: { on: {
-			type: "boolean",
-			default: !1,
-			description: "Lit state"
-		} },
-		events: {}
+		stateChannels: {
+			on: {
+				type: "boolean",
+				default: !1,
+				description: "Lit / commanded state"
+			},
+			welded: {
+				type: "boolean",
+				default: !1,
+				description: "Contact welded fault state"
+			},
+			contactClosed: {
+				type: "boolean",
+				default: !1,
+				description: "Physical contact closed state"
+			}
+		},
+		events: {
+			INJECT_FAULT: {
+				description: "Inject electrical or mechanical fault",
+				params: { faultType: {
+					type: "string",
+					default: "CONTACT_WELDED"
+				} }
+			},
+			CLEAR_FAULT: {
+				description: "Clear active fault",
+				params: {}
+			}
+		}
 	});
 }
 var c = s("default"), l = (e) => s(a(e)), u = class extends e {
 	manifest = c;
 	static manifest = c;
+	_isWelded = !1;
+	_pinOn = !1;
+	onBound(e, t, n) {
+		let r = super.onBound(e, t, n) || {};
+		return this._isWelded = !!(n?.welded ?? n?.contactWelded), this.ctx && (this.ctx.publish("welded", this._isWelded), this.ctx.publish("contactClosed", this._isWelded || this._pinOn)), {
+			...r,
+			welded: this._isWelded,
+			contactClosed: this._isWelded || this._pinOn
+		};
+	}
+	onPinChange(e, t, n) {
+		let r = typeof e == "object" && e ? e.pin : e, i = typeof e == "object" && e ? e.state : t, a = typeof r == "number" ? r : parseInt(String(r), 10);
+		if (this.signalMcuPin >= 0 && !isNaN(a) && a !== this.signalMcuPin) return;
+		let o = i === 1 || i === !0, s = this.properties?.activeHigh ?? !0, c = this.properties?.activeLow ?? !1 ? !1 : s;
+		this._pinOn = c ? o : !o, this.ctx && (this.ctx.publish("on", this._pinOn), this._isWelded && (this.ctx.publish("welded", !0), this.ctx.publish("contactClosed", !0)));
+	}
+	_injectFault(e) {
+		let t = typeof e == "object" && e ? e.faultType ?? "CONTACT_WELDED" : e;
+		(t === "CONTACT_WELDED" || t === !0) && (this._isWelded = !0, this.ctx && (this.ctx.publish("welded", !0), this.ctx.publish("contactClosed", !0)));
+	}
+	_clearFault() {
+		this._isWelded = !1, this.ctx && (this.ctx.publish("welded", !1), this.ctx.publish("contactClosed", this._pinOn));
+	}
 }, d = {
 	manifest: c,
 	manifestFactory: l,

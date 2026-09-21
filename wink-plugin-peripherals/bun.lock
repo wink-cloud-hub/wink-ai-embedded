@@ -5,7 +5,7 @@
     "": {
       "name": "@wink-ai-embedded/wink-plugin-peripherals",
       "dependencies": {
-        "@wink-ai/unisim-sdk": "^1.0.1",
+        "@wink-ai/unisim-sdk": "^1.1.1",
         "@wink-ai/unisim-ui": "^1.1.2",
       },
       "devDependencies": {
@@ -90,7 +90,7 @@
 
     "@vue/shared": ["@vue/shared@3.5.43", "", {}, "sha512-uksS7YGMR5NZyr4JNq0Rp+QyLns0ueaz20KwzIPW9R0LH1Vnt4E+XUM29PNseEbf1www2gOuhuDi5AKOIXag9Q=="],
 
-    "@wink-ai/unisim-sdk": ["@wink-ai/unisim-sdk@1.0.1", "", {}, "sha512-Si34J0wc+29EzTqARalu6lucKWS+yV0qqEUqNAZBjkh2FAHIIi1fgykV3yQF8gtX+H9vPQGcbV+yX79p6TY/2A=="],
+    "@wink-ai/unisim-sdk": ["@wink-ai/unisim-sdk@1.1.1", "", {}, "sha512-XzEbLujXhViIdzFPr3lojn7hPDeW0m2Nrz/kvstRC+FeQDzQ33sN/aFw38x0YRHsYt2k3IYzArTHfqssxRdVeQ=="],
 
     "@wink-ai/unisim-ui": ["@wink-ai/unisim-ui@1.1.2", "", { "peerDependencies": { "@wink-ai/unisim-sdk": ">=1.0.0", "@wokwi/elements": "*", "vue": "^3.4.0" }, "optionalPeers": ["@wokwi/elements"] }, "sha512-ShCs8O8a6trxLeX4RykgItrTERijbEjCtsi1RSEdnDqgq8eIyUG+b2FEyvGIRJWZoOs+xo/3QKIE2joF+eYMpA=="],
 

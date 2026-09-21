@@ -53,6 +53,11 @@ const ledProps: PeripheralPropsSchema = {
     default: false,
     description: 'Flip orientation',
   },
+  contactWelded: {
+    type: 'boolean',
+    default: false,
+    description: 'Contact welded fault state',
+  },
 };
 
 export const ledDefinition: PeripheralDefinition = definePeripheral({

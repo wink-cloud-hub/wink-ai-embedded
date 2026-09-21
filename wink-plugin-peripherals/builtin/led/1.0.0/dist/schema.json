@@ -36,6 +36,18 @@
     "activeHigh": {
       "type": "boolean",
       "default": true
+    },
+    "contactWelded": {
+      "type": "boolean",
+      "default": false
+    },
+    "faultType": {
+      "type": "string",
+      "default": "NONE",
+      "enum": [
+        "NONE",
+        "CONTACT_WELDED"
+      ]
     }
   },
   "required": [

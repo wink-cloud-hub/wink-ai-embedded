@@ -1,5 +1,5 @@
 import { BaseSimulationPlugin as e, LogicStates as t, createThrottlePublish as n, normalizeManifest as r, normalizeVariantKey as i, resolvePluginIdentity as a } from "@wink-ai/unisim-sdk";
-//#region unisim-ui/dist/index.js
+//#region ../../wink-ai/packages/unisim-ui/dist/index.js
 var o = 0;
 function s() {
 	return o;
