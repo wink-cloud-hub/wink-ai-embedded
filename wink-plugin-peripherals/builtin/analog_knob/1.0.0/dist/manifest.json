@@ -1,0 +1,66 @@
+{
+  "_generated": "DO NOT EDIT - generated from src/simulation.ts by scripts/emit-sim-manifests.mjs",
+  "type": "analog_knob",
+  "version": "1.0.0",
+  "category": "input",
+  "displayName": "Analog Potentiometer Knob",
+  "description": "Analog potentiometer input knob or slider",
+  "timingModel": "event-driven",
+  "pins": [
+    {
+      "name": "SIG",
+      "direction": "source",
+      "signal": "analog",
+      "required": true,
+      "simRole": "signal",
+      "aliases": [
+        "sig",
+        "out"
+      ]
+    },
+    {
+      "name": "VCC",
+      "direction": "power",
+      "signal": "power",
+      "required": false,
+      "simRole": "power",
+      "catalogType": "power",
+      "aliases": [
+        "5v",
+        "vcc"
+      ]
+    },
+    {
+      "name": "GND",
+      "direction": "ground",
+      "signal": "power",
+      "required": false,
+      "simRole": "ground",
+      "catalogType": "power",
+      "aliases": [
+        "gnd"
+      ]
+    }
+  ],
+  "properties": {
+    "value": {
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 100
+    },
+    "variant": {
+      "type": "string",
+      "default": "standard"
+    }
+  },
+  "stateChannels": {
+    "value": {
+      "type": "number",
+      "default": 0,
+      "min": 0,
+      "max": 100
+    }
+  },
+  "events": {}
+}

@@ -1,3 +1,3 @@
-import { definePeripheralSimConfig } from "@wink-ai/unisim-ui/vite";
+import { definePeripheralSimConfig } from '@wink-ai/unisim-ui/vite';
 
-export default definePeripheralSimConfig({ type: "i2c_eeprom" });
+export default definePeripheralSimConfig({ type: 'i2c_eeprom' });

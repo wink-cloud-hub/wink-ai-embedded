@@ -1,9 +1,9 @@
-import { describe, expect, test } from "bun:test";
-import { createPluginStubHost } from "@wink-ai/unisim-sdk";
+import { describe, expect, test } from 'bun:test';
+import { createPluginStubHost } from '@wink-ai/unisim-sdk';
 
-import { SpiEepromPlugin } from "../simulation";
+import { SpiEepromPlugin } from '../simulation';
 
-const DEV = "spi_eeprom";
+const DEV = 'spi_eeprom';
 const CMD_WREN = 0x06;
 const CMD_WRDI = 0x04;
 const CMD_RDSR = 0x05;
@@ -16,13 +16,13 @@ function frame(...bytes: number[]): Uint8Array {
 
 function createPlugin(properties: Record<string, unknown> = {}) {
   const host = createPluginStubHost();
-  const binding = host.bind(SpiEepromPlugin, { instanceId: "spi_eeprom:0", properties });
+  const binding = host.bind(SpiEepromPlugin, { instanceId: 'spi_eeprom:0', properties });
   const plugin = binding.instance as unknown as SpiEepromPlugin;
   return { host, plugin };
 }
 
-describe("SpiEepromPlugin (M95256)", () => {
-  test("WREN latch + WRITE commit + READ round-trip (whole-frame path)", () => {
+describe('SpiEepromPlugin (M95256)', () => {
+  test('WREN latch + WRITE commit + READ round-trip (whole-frame path)', () => {
     const { host, plugin } = createPlugin();
 
     host.spiTransfer(DEV, frame(CMD_WREN));
@@ -35,7 +35,7 @@ describe("SpiEepromPlugin (M95256)", () => {
     expect(Array.from(read.slice(3))).toEqual([0xab, 0xcd]);
   });
 
-  test("WRITE without WREN is ignored and erased cells read 0xFF", () => {
+  test('WRITE without WREN is ignored and erased cells read 0xFF', () => {
     const { host } = createPlugin();
 
     host.spiTransfer(DEV, frame(CMD_WRITE, 0x00, 0x20, 0x55));
@@ -49,7 +49,7 @@ describe("SpiEepromPlugin (M95256)", () => {
     expect(read2[3]).toBe(0xff);
   });
 
-  test("RDSR streams WEL/WIP status bits", () => {
+  test('RDSR streams WEL/WIP status bits', () => {
     const { host } = createPlugin();
     expect(host.spiTransfer(DEV, frame(CMD_RDSR, 0x00))[1]).toBe(0);
 
@@ -57,7 +57,7 @@ describe("SpiEepromPlugin (M95256)", () => {
     expect(host.spiTransfer(DEV, frame(CMD_RDSR, 0x00))[1]).toBe(0b10);
   });
 
-  test("WIP window blocks everything except RDSR until tW expires", () => {
+  test('WIP window blocks everything except RDSR until tW expires', () => {
     const { host, plugin } = createPlugin({ writeCycleUs: 5000 });
 
     host.spiTransfer(DEV, frame(CMD_WREN));
@@ -77,7 +77,7 @@ describe("SpiEepromPlugin (M95256)", () => {
     expect(still[3]).toBe(0x11);
   });
 
-  test("session path: open/transfer/close with CS-edge latch semantics", () => {
+  test('session path: open/transfer/close with CS-edge latch semantics', () => {
     const { host, plugin } = createPlugin();
 
     const open1 = host.spiSessionOpen(DEV);
@@ -98,7 +98,7 @@ describe("SpiEepromPlugin (M95256)", () => {
     expect(read.rx[3]).toBe(0x5a);
   });
 
-  test("page write rolls over inside the 64-byte page", () => {
+  test('page write rolls over inside the 64-byte page', () => {
     const { host } = createPlugin();
     const payload = new Uint8Array(70);
     for (let i = 0; i < payload.length; i++) {
@@ -118,14 +118,26 @@ describe("SpiEepromPlugin (M95256)", () => {
     expect(Array.from(wrapped.slice(3))).toEqual(Array.from(payload.slice(64, 70)));
   });
 
-  test("unknown device id cannot open a session", () => {
+  test('unknown device id cannot open a session', () => {
     const { host } = createPlugin();
-    const bad = host.spiSessionOpen("nope");
+    const bad = host.spiSessionOpen('nope');
     expect(bad.ok).toBe(false);
     expect(bad.handle).toBe(0xff);
   });
 
-  test("serialize/deserialize restores memory, WEL and write count", () => {
+  test('readback channels expose READ data bytes per frame', () => {
+    const { host } = createPlugin();
+    host.spiTransfer(DEV, frame(CMD_WREN));
+    host.spiTransfer(DEV, frame(CMD_WRITE, 0x00, 0x15, 0x08));
+
+    host.spiTransfer(DEV, frame(CMD_READ, 0x00, 0x15, 0x00));
+
+    expect(host.lastPublish('readCount')).toBe(1);
+    expect(host.lastPublish('lastReadByte')).toBe(0x08);
+    expect(host.lastPublish('readbackHex')).toBe('08');
+  });
+
+  test('serialize/deserialize restores memory, WEL and write count', () => {
     const { host, plugin } = createPlugin();
     host.spiTransfer(DEV, frame(CMD_WREN));
     host.spiTransfer(DEV, frame(CMD_WRITE, 0x00, 0x05, 0x77));

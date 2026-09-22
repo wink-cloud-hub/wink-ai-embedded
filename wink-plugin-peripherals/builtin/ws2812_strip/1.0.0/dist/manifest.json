@@ -1,0 +1,69 @@
+{
+  "_generated": "DO NOT EDIT - generated from src/simulation.ts by scripts/emit-sim-manifests.mjs",
+  "type": "ws2812_strip",
+  "version": "1.0.0",
+  "category": "display",
+  "displayName": "WS2812 RGB LED Strip",
+  "description": "Addressable RGB LED strip powered by WS2812 protocol",
+  "timingModel": "event-driven",
+  "pins": [
+    {
+      "name": "DIN",
+      "direction": "sink",
+      "signal": "digital",
+      "required": true,
+      "simRole": "data",
+      "catalogType": "gpio",
+      "aliases": [
+        "data",
+        "din",
+        "gpio"
+      ]
+    },
+    {
+      "name": "VCC",
+      "direction": "power",
+      "signal": "power",
+      "required": false,
+      "simRole": "power",
+      "catalogType": "power",
+      "aliases": [
+        "5v",
+        "vcc"
+      ]
+    },
+    {
+      "name": "GND",
+      "direction": "ground",
+      "signal": "power",
+      "required": false,
+      "simRole": "ground",
+      "catalogType": "power",
+      "aliases": [
+        "gnd"
+      ]
+    }
+  ],
+  "properties": {
+    "numLeds": {
+      "type": "number",
+      "default": 8,
+      "min": 1,
+      "max": 256
+    },
+    "maxFps": {
+      "type": "number",
+      "default": 30,
+      "min": 1,
+      "max": 120
+    }
+  },
+  "stateChannels": {
+    "pixels": {
+      "type": "string",
+      "default": "[]",
+      "description": "JSON array of RGB hex colors"
+    }
+  },
+  "events": {}
+}

@@ -89,6 +89,39 @@ function Ensure-PeripheralEnvironment {
             }
         }
 
+        # 3b. Lint/format binaries (oxlint/oxfmt) ship with the frontend
+        #     toolchain. Link the package + its .bin shim so `bun run lint`
+        #     and `bun run format:check` work without a global install.
+        $FeBinDir = Join-Path $FeNodeModules ".bin"
+        $NmBinDir = Join-Path $NodeModulesDir ".bin"
+        if ((Test-Path $FeNodeModules) -and (Test-Path $FeBinDir)) {
+            if (-not (Test-Path $NmBinDir)) {
+                New-Item -ItemType Directory -Path $NmBinDir -Force | Out-Null
+            }
+            foreach ($tool in @("oxlint", "oxfmt")) {
+                $srcTool = Join-Path $FeNodeModules $tool
+                $dstTool = Join-Path $NodeModulesDir $tool
+                if ((Test-Path $srcTool) -and (-not (Test-Path $dstTool))) {
+                    try {
+                        New-Item -ItemType Junction -Path $dstTool -Target $srcTool -Force | Out-Null
+                    } catch {
+                        # Ignore link fallback warning
+                    }
+                }
+                foreach ($shim in @("$tool.exe", "$tool.bunx")) {
+                    $srcShim = Join-Path $FeBinDir $shim
+                    $dstShim = Join-Path $NmBinDir $shim
+                    if ((Test-Path $srcShim) -and (-not (Test-Path $dstShim))) {
+                        try {
+                            New-Item -ItemType HardLink -Path $dstShim -Target $srcShim -Force | Out-Null
+                        } catch {
+                            # Ignore link fallback warning
+                        }
+                    }
+                }
+            }
+        }
+
         # 4. Link @wink-ai/unisim-sdk and @wink-ai/unisim-ui (SOURCE mode only).
         #    The engine (@wink-ai/unisim) must NEVER be linked into this package:
         #    the suite is SDK-only (plan §0.5 invariant #2). A stale engine
@@ -317,6 +350,14 @@ function Build-AllPeripherals {
 }
 
 Build-AllPeripherals
+
+# Simulation-only plugins (no src/definition.ts) need dist/manifest.json for
+# winkcli device-tree generation; UI plugins get theirs from the vite UI build.
+# Emit from src/simulation.ts so the artifact can never drift silently.
+if (Get-Command "bun" -ErrorAction SilentlyContinue) {
+    Write-Host "[emit-manifest] Generating simulation-only manifests..." -ForegroundColor Cyan
+    & bun (Join-Path $ScriptDir "scripts\emit-sim-manifests.mjs")
+}
 
 if ($script:FailCount -gt 0) {
     exit 1

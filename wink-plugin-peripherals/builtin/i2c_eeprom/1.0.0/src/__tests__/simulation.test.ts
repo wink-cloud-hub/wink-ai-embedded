@@ -1,19 +1,19 @@
-import { describe, expect, test } from "bun:test";
-import { createPluginStubHost } from "@wink-ai/unisim-sdk";
+import { describe, expect, test } from 'bun:test';
+import { createPluginStubHost } from '@wink-ai/unisim-sdk';
 
-import { I2cEepromPlugin } from "../simulation";
+import { I2cEepromPlugin } from '../simulation';
 
 const ADDR = 0x50;
 
 function createPlugin(properties: Record<string, unknown> = {}) {
   const host = createPluginStubHost();
-  const binding = host.bind(I2cEepromPlugin, { instanceId: "i2c_eeprom:0", properties });
+  const binding = host.bind(I2cEepromPlugin, { instanceId: 'i2c_eeprom:0', properties });
   const plugin = binding.instance as unknown as I2cEepromPlugin;
   return { host, plugin };
 }
 
-describe("I2cEepromPlugin (AT24C256)", () => {
-  test("legacy whole-frame write then current-address read", () => {
+describe('I2cEepromPlugin (AT24C256)', () => {
+  test('legacy whole-frame write then current-address read', () => {
     const { host } = createPlugin();
 
     expect(host.i2cTransfer(ADDR, new Uint8Array([0x00, 0x10, 0xab])).ack).toBe(true);
@@ -22,7 +22,7 @@ describe("I2cEepromPlugin (AT24C256)", () => {
     expect(Array.from(read.readBytes)).toEqual([0xab]);
   });
 
-  test("session random read: address write, repeated START, one byte", () => {
+  test('session random read: address write, repeated START, one byte', () => {
     const { host } = createPlugin();
     host.i2cTransfer(ADDR, new Uint8Array([0x00, 0x20, 0x11, 0x22, 0x33]));
 
@@ -41,7 +41,7 @@ describe("I2cEepromPlugin (AT24C256)", () => {
     host.i2cSessionClose(open.handle);
   });
 
-  test("sequential read advances the internal pointer", () => {
+  test('sequential read advances the internal pointer', () => {
     const { host } = createPlugin();
     host.i2cTransfer(ADDR, new Uint8Array([0x00, 0x30, 0x0a, 0x0b, 0x0c]));
 
@@ -53,7 +53,7 @@ describe("I2cEepromPlugin (AT24C256)", () => {
     ]);
   });
 
-  test("page write rolls over inside the 64-byte page", () => {
+  test('page write rolls over inside the 64-byte page', () => {
     const { host } = createPlugin();
     const payload = new Uint8Array(70);
     for (let i = 0; i < payload.length; i++) {
@@ -74,24 +74,24 @@ describe("I2cEepromPlugin (AT24C256)", () => {
     expect(Array.from(rest.readBytes)).toEqual(Array.from(payload.slice(6, 64)));
   });
 
-  test("tWR window NACKs the address phase until the write cycle expires", () => {
+  test('tWR window NACKs the address phase until the write cycle expires', () => {
     const { host } = createPlugin({ writeCycleUs: 5000 });
     expect(host.i2cTransfer(ADDR, new Uint8Array([0x00, 0x10, 0x77])).ack).toBe(true);
-    expect(host.lastPublish("busy")).toBe(1);
+    expect(host.lastPublish('busy')).toBe(1);
 
     const blocked = host.i2cSessionOpen(ADDR, 1);
     expect(blocked.addrNack).toBe(true);
     host.i2cSessionClose(blocked.handle);
 
     host.advance(5000n);
-    expect(host.lastPublish("busy")).toBe(0);
+    expect(host.lastPublish('busy')).toBe(0);
 
     const ready = host.i2cSessionOpen(ADDR, 1);
     expect(ready.addrNack).toBe(false);
     host.i2cSessionClose(ready.handle);
   });
 
-  test("whole-frame transfer inside the tWR window fails with granular NACK bits", () => {
+  test('whole-frame transfer inside the tWR window fails with granular NACK bits', () => {
     const { host, plugin } = createPlugin({ writeCycleUs: 5000 });
     host.i2cTransfer(ADDR, new Uint8Array([0x00, 0x10, 0x01]));
 
@@ -101,15 +101,30 @@ describe("I2cEepromPlugin (AT24C256)", () => {
     expect(blocked.nackBits).toBe(0b1);
   });
 
-  test("writeCount state channel tracks committed transactions", () => {
+  test('writeCount state channel tracks committed transactions', () => {
     const { host } = createPlugin();
-    expect(host.lastPublish("writeCount")).toBe(0);
+    expect(host.lastPublish('writeCount')).toBe(0);
     host.i2cTransfer(ADDR, new Uint8Array([0x00, 0x00, 0x01]));
     host.i2cTransfer(ADDR, new Uint8Array([0x00, 0x01, 0x02]));
-    expect(host.lastPublish("writeCount")).toBe(2);
+    expect(host.lastPublish('writeCount')).toBe(2);
   });
 
-  test("serialize/deserialize keeps the non-volatile image and pointer", () => {
+  test('readback channels expose the bytes served in the read phase', () => {
+    const { host } = createPlugin();
+    host.i2cTransfer(ADDR, new Uint8Array([0x00, 0x20, 0x11, 0x22, 0x33]));
+
+    const open = host.i2cSessionOpen(ADDR, 0);
+    expect(host.i2cSessionWrite(open.handle, new Uint8Array([0x00, 0x20])).ok).toBe(true);
+    expect(host.i2cSessionRestart(open.handle, ADDR, 1).ok).toBe(true);
+    expect(host.i2cSessionRead(open.handle, 3, 0).ok).toBe(true);
+    host.i2cSessionClose(open.handle);
+
+    expect(host.lastPublish('readCount')).toBe(3);
+    expect(host.lastPublish('lastReadByte')).toBe(0x33);
+    expect(host.lastPublish('readbackHex')).toBe('112233');
+  });
+
+  test('serialize/deserialize keeps the non-volatile image and pointer', () => {
     const { host, plugin } = createPlugin();
     host.i2cTransfer(ADDR, new Uint8Array([0x00, 0x05, 0x5a, 0x5b]));
 

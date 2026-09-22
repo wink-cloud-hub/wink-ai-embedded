@@ -1,0 +1,96 @@
+{
+  "_generated": "DO NOT EDIT - generated from src/simulation.ts by scripts/emit-sim-manifests.mjs",
+  "type": "i2c_eeprom",
+  "version": "1.0.0",
+  "category": "storage",
+  "displayName": "AT24C256 I2C EEPROM",
+  "description": "32 KiB 24C-series I2C EEPROM with 64-byte page write and tWR NACK window",
+  "timingModel": "event-driven",
+  "pins": [
+    {
+      "name": "VCC",
+      "direction": "power",
+      "signal": "power",
+      "required": false,
+      "simRole": "power",
+      "catalogType": "power"
+    },
+    {
+      "name": "GND",
+      "direction": "ground",
+      "signal": "power",
+      "required": false,
+      "simRole": "ground",
+      "catalogType": "power"
+    },
+    {
+      "name": "SDA",
+      "direction": "bidirectional",
+      "signal": "digital",
+      "required": true,
+      "simRole": "signal",
+      "catalogType": "i2c"
+    },
+    {
+      "name": "SCL",
+      "direction": "sink",
+      "signal": "digital",
+      "required": true,
+      "simRole": "signal",
+      "catalogType": "i2c"
+    },
+    {
+      "name": "WP",
+      "direction": "sink",
+      "signal": "digital",
+      "required": false,
+      "simRole": "signal",
+      "catalogType": "gpio"
+    }
+  ],
+  "properties": {
+    "address": {
+      "type": "number",
+      "default": 80
+    },
+    "sizeBytes": {
+      "type": "number",
+      "default": 32768
+    },
+    "pageSize": {
+      "type": "number",
+      "default": 64
+    },
+    "writeCycleUs": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "stateChannels": {
+    "addressPointer": {
+      "type": "number",
+      "default": 0
+    },
+    "busy": {
+      "type": "number",
+      "default": 0
+    },
+    "writeCount": {
+      "type": "number",
+      "default": 0
+    },
+    "readCount": {
+      "type": "number",
+      "default": 0
+    },
+    "lastReadByte": {
+      "type": "number",
+      "default": 0
+    },
+    "readbackHex": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "events": {}
+}

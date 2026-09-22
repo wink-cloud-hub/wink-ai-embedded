@@ -1,0 +1,132 @@
+{
+  "_generated": "DO NOT EDIT - generated from src/simulation.ts by scripts/emit-sim-manifests.mjs",
+  "type": "pcf8574",
+  "version": "1.0.0",
+  "category": "infrastructure",
+  "displayName": "PCF8574 I2C IO Expander",
+  "description": "8-bit I2C I/O expander",
+  "timingModel": "event-driven",
+  "pins": [
+    {
+      "name": "VCC",
+      "direction": "power",
+      "signal": "power",
+      "required": false,
+      "simRole": "power",
+      "catalogType": "power"
+    },
+    {
+      "name": "GND",
+      "direction": "ground",
+      "signal": "power",
+      "required": false,
+      "simRole": "ground",
+      "catalogType": "power"
+    },
+    {
+      "name": "SDA",
+      "direction": "bidirectional",
+      "signal": "digital",
+      "required": true,
+      "simRole": "signal",
+      "catalogType": "i2c"
+    },
+    {
+      "name": "SCL",
+      "direction": "sink",
+      "signal": "digital",
+      "required": true,
+      "simRole": "signal",
+      "catalogType": "i2c"
+    },
+    {
+      "name": "INT",
+      "direction": "source",
+      "signal": "digital",
+      "required": false,
+      "simRole": "signal",
+      "catalogType": "gpio"
+    },
+    {
+      "name": "P0",
+      "direction": "sink",
+      "signal": "digital",
+      "required": false,
+      "simRole": "gpio",
+      "catalogType": "gpio"
+    },
+    {
+      "name": "P1",
+      "direction": "sink",
+      "signal": "digital",
+      "required": false,
+      "simRole": "gpio",
+      "catalogType": "gpio"
+    },
+    {
+      "name": "P2",
+      "direction": "sink",
+      "signal": "digital",
+      "required": false,
+      "simRole": "gpio",
+      "catalogType": "gpio"
+    },
+    {
+      "name": "P3",
+      "direction": "sink",
+      "signal": "digital",
+      "required": false,
+      "simRole": "gpio",
+      "catalogType": "gpio"
+    },
+    {
+      "name": "P4",
+      "direction": "sink",
+      "signal": "digital",
+      "required": false,
+      "simRole": "gpio",
+      "catalogType": "gpio"
+    },
+    {
+      "name": "P5",
+      "direction": "sink",
+      "signal": "digital",
+      "required": false,
+      "simRole": "gpio",
+      "catalogType": "gpio"
+    },
+    {
+      "name": "P6",
+      "direction": "sink",
+      "signal": "digital",
+      "required": false,
+      "simRole": "gpio",
+      "catalogType": "gpio"
+    },
+    {
+      "name": "P7",
+      "direction": "sink",
+      "signal": "digital",
+      "required": false,
+      "simRole": "gpio",
+      "catalogType": "gpio"
+    }
+  ],
+  "properties": {
+    "address": {
+      "type": "number",
+      "default": 32
+    },
+    "variant": {
+      "type": "string",
+      "default": "pcf8574_i2c"
+    }
+  },
+  "stateChannels": {
+    "latch": {
+      "type": "number",
+      "default": 255
+    }
+  },
+  "events": {}
+}

@@ -1,0 +1,142 @@
+{
+  "_generated": "DO NOT EDIT - generated from src/simulation.ts by scripts/emit-sim-manifests.mjs",
+  "type": "gps",
+  "version": "1.0.0",
+  "category": "comm",
+  "displayName": "GPS Receiver Module",
+  "description": "GPS receiver module (NMEA 0183 via UART / I2C)",
+  "timingModel": "event-driven",
+  "pins": [
+    {
+      "name": "TX",
+      "direction": "source",
+      "signal": "digital",
+      "required": true,
+      "simRole": "signal",
+      "catalogType": "gpio",
+      "aliases": [
+        "tx",
+        "out"
+      ]
+    },
+    {
+      "name": "RX",
+      "direction": "sink",
+      "signal": "digital",
+      "required": false,
+      "simRole": "signal",
+      "catalogType": "gpio",
+      "aliases": [
+        "rx",
+        "in"
+      ]
+    },
+    {
+      "name": "VCC",
+      "direction": "power",
+      "signal": "power",
+      "required": false,
+      "simRole": "power",
+      "catalogType": "power",
+      "aliases": [
+        "5v",
+        "vcc"
+      ]
+    },
+    {
+      "name": "GND",
+      "direction": "ground",
+      "signal": "power",
+      "required": false,
+      "simRole": "ground",
+      "catalogType": "power",
+      "aliases": [
+        "gnd"
+      ]
+    }
+  ],
+  "properties": {
+    "baudRate": {
+      "type": "number",
+      "default": 9600,
+      "min": 1200,
+      "max": 115200
+    },
+    "updateIntervalMs": {
+      "type": "number",
+      "default": 1000,
+      "min": 100,
+      "max": 10000,
+      "unit": "ms"
+    },
+    "latitude": {
+      "type": "number",
+      "default": 31.2304,
+      "min": -90,
+      "max": 90,
+      "unit": "deg"
+    },
+    "longitude": {
+      "type": "number",
+      "default": 121.4737,
+      "min": -180,
+      "max": 180,
+      "unit": "deg"
+    },
+    "fix": {
+      "type": "boolean",
+      "default": true
+    },
+    "uartPort": {
+      "type": "number",
+      "default": 0
+    },
+    "variant": {
+      "type": "string",
+      "default": "nmea_uart"
+    }
+  },
+  "stateChannels": {
+    "latitude": {
+      "type": "number",
+      "default": 31.2304,
+      "unit": "deg"
+    },
+    "longitude": {
+      "type": "number",
+      "default": 121.4737,
+      "unit": "deg"
+    },
+    "fix": {
+      "type": "boolean",
+      "default": true
+    },
+    "lastSentence": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "events": {
+    "SET_LOCATION": {
+      "description": "Set simulated GPS coordinates and fix state",
+      "params": {
+        "latitude": {
+          "type": "number",
+          "required": false,
+          "min": -90,
+          "max": 90
+        },
+        "longitude": {
+          "type": "number",
+          "required": false,
+          "min": -180,
+          "max": 180
+        },
+        "fix": {
+          "type": "boolean",
+          "required": false
+        }
+      }
+    }
+  }
+}

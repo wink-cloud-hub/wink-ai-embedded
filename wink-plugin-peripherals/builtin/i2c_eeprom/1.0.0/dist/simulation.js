@@ -71,6 +71,18 @@ function s() {
 			writeCount: {
 				type: "number",
 				default: 0
+			},
+			readCount: {
+				type: "number",
+				default: 0
+			},
+			lastReadByte: {
+				type: "number",
+				default: 0
+			},
+			readbackHex: {
+				type: "string",
+				default: ""
 			}
 		},
 		events: {}
@@ -95,6 +107,8 @@ var c = s(), l = () => s(), u = class extends e {
 	_phase = "idle";
 	_busyUntilUs = 0n;
 	_writeCount = 0;
+	_readCount = 0;
+	_readbackBytes = [];
 	_busyGeneration = 0;
 	_unregisterI2c;
 	get addr() {
@@ -104,7 +118,7 @@ var c = s(), l = () => s(), u = class extends e {
 		return this._pointer;
 	}
 	onBound(e, t, n) {
-		this._address = Number(n.address ?? i) & 127, this._size = Math.max(1, Math.trunc(Number(n.sizeBytes ?? a))), this._pageSize = Math.max(1, Math.trunc(Number(n.pageSize ?? o))), this._writeCycleUs = Math.max(0, Math.trunc(Number(n.writeCycleUs ?? 0))), this._memory = new Uint8Array(this._size).fill(255), this._pointer = 0, this._writeCount = 0;
+		this._address = Number(n.address ?? i) & 127, this._size = Math.max(1, Math.trunc(Number(n.sizeBytes ?? a))), this._pageSize = Math.max(1, Math.trunc(Number(n.pageSize ?? o))), this._writeCycleUs = Math.max(0, Math.trunc(Number(n.writeCycleUs ?? 0))), this._memory = new Uint8Array(this._size).fill(255), this._pointer = 0, this._writeCount = 0, this._readCount = 0, this._readbackBytes = [];
 		let r = this.ctx?.bus?.i2c;
 		r && typeof r.registerDevice == "function" ? this._unregisterI2c = r.registerDevice({
 			address: this._address,
@@ -114,7 +128,7 @@ var c = s(), l = () => s(), u = class extends e {
 			onReadByte: (e, t) => this.onReadByte(e, t),
 			onTransactionStart: () => this.onTransactionStart(),
 			onTransactionEnd: () => this.onTransactionEnd()
-		}) : this.ctx && this.ctx.registerI2cDevice(this), this.ctx?.publish("addressPointer", 0), this.ctx?.publish("busy", 0), this.ctx?.publish("writeCount", 0);
+		}) : this.ctx && this.ctx.registerI2cDevice(this), this.ctx?.publish("addressPointer", 0), this.ctx?.publish("busy", 0), this.ctx?.publish("writeCount", 0), this.ctx?.publish("readCount", 0), this.ctx?.publish("lastReadByte", 0), this.ctx?.publish("readbackHex", "");
 	}
 	onDestroy() {
 		if (this._unregisterI2c) {
@@ -124,10 +138,10 @@ var c = s(), l = () => s(), u = class extends e {
 		super.onDestroy();
 	}
 	onReset() {
-		this._pointer = 0, this._writeAddress = 0, this._addressPending = !1, this._writeData = [], this._addressBytes = [], this._phase = "idle", this._busyUntilUs = 0n, this._busyGeneration++, this.ctx?.publish("addressPointer", 0), this.ctx?.publish("busy", 0);
+		this._pointer = 0, this._writeAddress = 0, this._addressPending = !1, this._writeData = [], this._addressBytes = [], this._phase = "idle", this._busyUntilUs = 0n, this._busyGeneration++, this._readCount = 0, this._readbackBytes = [], this.ctx?.publish("addressPointer", 0), this.ctx?.publish("busy", 0), this.ctx?.publish("readCount", 0), this.ctx?.publish("lastReadByte", 0), this.ctx?.publish("readbackHex", "");
 	}
 	onAddressPhase(e) {
-		return !this.ctx || this.ctx.nowUs() >= this._busyUntilUs;
+		return e === 1 && (this._readbackBytes = [], this.ctx?.publish("readbackHex", "")), !this.ctx || this.ctx.nowUs() >= this._busyUntilUs;
 	}
 	onTransactionStart() {
 		this._finalizePending(!1), this._phase = "address", this._addressBytes = [], this._writeData = [], this._addressPending = !1;
@@ -140,7 +154,10 @@ var c = s(), l = () => s(), u = class extends e {
 	}
 	onReadByte(e, t) {
 		let n = this._memory[this._pointer % this._size];
-		return this._pointer = (this._pointer + 1) % this._size, this.ctx?.publish("addressPointer", this._pointer), n;
+		return this._pointer = (this._pointer + 1) % this._size, this._readCount++, this._readbackBytes.push(n), this.ctx?.publish("addressPointer", this._pointer), this.ctx?.publish("readCount", this._readCount), this.ctx?.publish("lastReadByte", n), this.ctx?.publish("readbackHex", this._readbackHex()), n;
+	}
+	_readbackHex() {
+		return this._readbackBytes.map((e) => e.toString(16).padStart(2, "0")).join("");
 	}
 	onTransfer(e, t) {
 		if (this.onTransactionStart(), !this.onAddressPhase(0)) return this.onTransactionEnd(), {
@@ -169,7 +186,9 @@ var c = s(), l = () => s(), u = class extends e {
 			addressPointer: this._pointer,
 			busyUntilUs: this._busyUntilUs.toString(),
 			memoryBase64: f(this._memory),
-			writeCount: this._writeCount
+			writeCount: this._writeCount,
+			readCount: this._readCount,
+			readbackHex: this._readbackHex()
 		};
 	}
 	deserializeState(e) {
@@ -182,7 +201,12 @@ var c = s(), l = () => s(), u = class extends e {
 		} catch {
 			this._busyUntilUs = 0n;
 		}
-		typeof e.writeCount == "number" && (this._writeCount = e.writeCount), this._phase = "idle", this._busyGeneration++, this.ctx?.publish("addressPointer", this._pointer), this.ctx?.publish("busy", +(this._busyUntilUs > 0n));
+		if (typeof e.writeCount == "number" && (this._writeCount = e.writeCount), typeof e.readCount == "number" && (this._readCount = e.readCount), typeof e.readbackHex == "string") {
+			let t = [];
+			for (let n = 0; n + 1 < e.readbackHex.length; n += 2) t.push(Number.parseInt(e.readbackHex.slice(n, n + 2), 16));
+			this._readbackBytes = t;
+		}
+		this._phase = "idle", this._busyGeneration++, this.ctx?.publish("addressPointer", this._pointer), this.ctx?.publish("busy", +(this._busyUntilUs > 0n)), this.ctx?.publish("readCount", this._readCount), this.ctx?.publish("lastReadByte", this._readbackBytes[this._readbackBytes.length - 1] ?? 0), this.ctx?.publish("readbackHex", this._readbackHex());
 	}
 	_finalizePending(e) {
 		if (this._writeData.length > 0 && e) {
