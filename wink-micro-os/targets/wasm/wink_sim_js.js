@@ -123,6 +123,46 @@ addToLibrary({
         }
         return 1;
     },
+    /* ADR-0085/0086 (CH2 I2C typed + session ABI): without a host override the
+     * bare harness has no bus engine, so the status-returning entry points must
+     * fail closed (WINK_ERR_UNSUPPORTED = -7) instead of faking ACK/session
+     * state. Session close is the lone idempotent exception (WINK_OK = 0). */
+    js_pal_i2c_transfer_ex: function (port, addr, wbuf, wlen, rbuf, rlen, resultPtr) {
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_i2c_transfer_ex'] === 'function' && Module['js_pal_i2c_transfer_ex'] !== _js_pal_i2c_transfer_ex) {
+            return Module['js_pal_i2c_transfer_ex'](port, addr, wbuf, wlen, rbuf, rlen, resultPtr);
+        }
+        return -7;
+    },
+    js_pal_i2c_session_open: function (port, addr, direction, outSessionPtr, resultPtr) {
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_i2c_session_open'] === 'function' && Module['js_pal_i2c_session_open'] !== _js_pal_i2c_session_open) {
+            return Module['js_pal_i2c_session_open'](port, addr, direction, outSessionPtr, resultPtr);
+        }
+        return -7;
+    },
+    js_pal_i2c_session_restart: function (sessionId, addr, direction, resultPtr) {
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_i2c_session_restart'] === 'function' && Module['js_pal_i2c_session_restart'] !== _js_pal_i2c_session_restart) {
+            return Module['js_pal_i2c_session_restart'](sessionId, addr, direction, resultPtr);
+        }
+        return -7;
+    },
+    js_pal_i2c_session_write: function (sessionId, bufPtr, len, resultPtr) {
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_i2c_session_write'] === 'function' && Module['js_pal_i2c_session_write'] !== _js_pal_i2c_session_write) {
+            return Module['js_pal_i2c_session_write'](sessionId, bufPtr, len, resultPtr);
+        }
+        return -7;
+    },
+    js_pal_i2c_session_read: function (sessionId, bufPtr, len, ackMode, resultPtr) {
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_i2c_session_read'] === 'function' && Module['js_pal_i2c_session_read'] !== _js_pal_i2c_session_read) {
+            return Module['js_pal_i2c_session_read'](sessionId, bufPtr, len, ackMode, resultPtr);
+        }
+        return -7;
+    },
+    js_pal_i2c_session_close: function (sessionId) {
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_i2c_session_close'] === 'function' && Module['js_pal_i2c_session_close'] !== _js_pal_i2c_session_close) {
+            return Module['js_pal_i2c_session_close'](sessionId);
+        }
+        return 0;
+    },
     js_pal_spi_transfer: function (port, deviceId, txbuf, len, rxbuf, mode, sckHz) {
         if (typeof Module !== 'undefined' && typeof Module['js_pal_spi_transfer'] === 'function' && Module['js_pal_spi_transfer'] !== _js_pal_spi_transfer) {
             return Module['js_pal_spi_transfer'](port, deviceId, txbuf, len, rxbuf, mode, sckHz);

@@ -28,6 +28,10 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+/* Status-code SSOT (WINK_OK / WINK_ERR_*) + the portable _Static_assert shim
+ * used by the ABI layout guards below (ADR-0085). The mid-file include near
+ * the power-model section keeps its place; this include is idempotent. */
+#include "wink_status.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -104,6 +108,108 @@ extern void    js_pal_pwm_set_duty_bp(uint8_t channel, uint16_t basis_points);
 extern bool    js_pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
                                     const uint8_t *write_buf, uint32_t write_len,
                                     uint8_t *read_buf,        uint32_t read_len);
+
+/**
+ * Structured I2C transfer result (ADR-0085). Layout is FROZEN:
+ * sizeof == 8, alignof == 4, natural alignment (no #pragma pack); the
+ * 32/16-bit fields are read Little-Endian from the Wasm linear memory
+ * (DataView.getUint32(ptr, true) / getUint16(ptr + 4, true) on the JS side).
+ *   nack_bits : bit N = slave NACK on write data byte N (first 32 write bytes
+ *               only; the read phase never sets bits - the master drives
+ *               ACK/NACK as the receiver there).
+ *   stretch_us: informational slave stretch / device write-cycle estimate,
+ *               0 = none (ADR-0072 dual-clock accounting stays C-side).
+ *   addr_nack : 0 = address phase ACKed, 1 = NACKed. ABI polarity: 1 = NACK
+ *               (deliberately NOT the I2CMSR.ADD_ACK register polarity).
+ *   flags     : PAL_I2C_RESULT_* bits below.
+ * The engine zeroes *result before filling it; callers never pre-clear.
+ */
+typedef struct {
+    uint32_t nack_bits;
+    uint16_t stretch_us;
+    uint8_t  addr_nack;
+    uint8_t  flags;
+} pal_i2c_result_t;
+
+#define PAL_I2C_ACK   0u  /* unified polarity for addr_nack / nack_bits */
+#define PAL_I2C_NACK  1u
+#define PAL_I2C_RESULT_ARB_LOST            (1u << 0)
+#define PAL_I2C_RESULT_BUS_ERROR           (1u << 1)
+#define PAL_I2C_RESULT_NACK_BITS_TRUNCATED (1u << 2)
+
+_Static_assert(sizeof(pal_i2c_result_t) == 8, "pal_i2c_result_t ABI size");
+_Static_assert(offsetof(pal_i2c_result_t, nack_bits)  == 0, "ABI layout");
+_Static_assert(offsetof(pal_i2c_result_t, stretch_us) == 4, "ABI layout");
+_Static_assert(offsetof(pal_i2c_result_t, addr_nack)  == 6, "ABI layout");
+_Static_assert(offsetof(pal_i2c_result_t, flags)      == 7, "ABI layout");
+
+/**
+ * Status-returning I2C transfer (ADR-0085). `dev_addr` is the right-aligned
+ * 7-bit address (no R/W bit); dev_addr > 0x7F is rejected with
+ * WINK_ERR_INVALID_ARG. Address/data NACKs are VALID protocol results:
+ * WINK_OK with result->addr_nack / result->nack_bits set. A NULL `result`
+ * upgrades any NACK/no-response to WINK_ERR_DISCONNECTED (never WINK_OK).
+ * SAFETY: write_buf/read_buf/result are WASM heap offsets valid only during
+ * this call; the JS side MUST NOT retain them.
+ */
+extern wink_status_t js_pal_i2c_transfer_ex(uint8_t port, uint16_t dev_addr,
+                                            const uint8_t *write_buf, uint32_t write_len,
+                                            uint8_t *read_buf,        uint32_t read_len,
+                                            pal_i2c_result_t *result);
+
+/* -- CH2 I2C controller-level session stream (ADR-0086) ---------------- */
+
+#define PAL_I2C_SESSION_POOL_MAX 4u     /* engine-global active session pool */
+#define PAL_I2C_SESSION_INVALID  0xFFu  /* failed/released handle sentinel */
+
+/* ack_mode: multi-byte read ACK policy (per-byte controllers use 1/2, len=1) */
+#define PAL_I2C_ACK_LAST_NACK  0u  /* ACK first len-1 bytes, NACK the last */
+#define PAL_I2C_ACK_ALL        1u  /* ACK every byte (controller-driven) */
+#define PAL_I2C_NACK_ALL       2u  /* NACK every byte (single-byte terminate) */
+
+/**
+ * Session open: START + address phase (ADR-0086 §1). One active session per
+ * physical port; the global pool holds up to PAL_I2C_SESSION_POOL_MAX
+ * handles. `direction`: 0 = write, 1 = read. On success *out_session holds
+ * the handle and *result->addr_nack reports the address phase; on failure
+ * *out_session is PAL_I2C_SESSION_INVALID. `result` is mandatory (NULL ->
+ * WINK_ERR_INVALID_ARG). Port already busy -> WINK_ERR_BUSY; pool full ->
+ * WINK_ERR_FULL.
+ */
+extern wink_status_t js_pal_i2c_session_open(uint8_t port, uint16_t dev_addr,
+                                             uint8_t direction, uint8_t *out_session,
+                                             pal_i2c_result_t *result);
+
+/**
+ * Repeated START + address phase on an existing session (allows W->R, W->W,
+ * R->W, R->R and a dev_addr change with plugin re-resolution). Address NACK
+ * leaves the session in ADDR_NACKED where only close/restart are legal.
+ */
+extern wink_status_t js_pal_i2c_session_restart(uint8_t session_id, uint16_t dev_addr,
+                                                uint8_t direction,
+                                                pal_i2c_result_t *result);
+
+/**
+ * Data phase: write `len` bytes (len == 0 -> WINK_ERR_INVALID_ARG; len > 32
+ * reports the first 32 bytes in nack_bits and sets NACK_BITS_TRUNCATED).
+ */
+extern wink_status_t js_pal_i2c_session_write(uint8_t session_id, const uint8_t *buf,
+                                              uint32_t len, pal_i2c_result_t *result);
+
+/**
+ * Data phase: read `len` bytes under the `ack_mode` policy (len == 0 ->
+ * WINK_ERR_INVALID_ARG). The read phase is master-driven ACK/NACK, so it
+ * never reports nack_bits.
+ */
+extern wink_status_t js_pal_i2c_session_read(uint8_t session_id, uint8_t *buf,
+                                             uint32_t len, uint8_t ack_mode,
+                                             pal_i2c_result_t *result);
+
+/**
+ * Close: STOP + release the handle. Idempotent - any handle (unknown,
+ * already released) returns WINK_OK.
+ */
+extern wink_status_t js_pal_i2c_session_close(uint8_t session_id);
 
 /**
  * Full-duplex SPI transfer.
@@ -352,6 +458,16 @@ extern bool     pal_wasm_gpio_read(uint16_t pin);
 extern bool     pal_wasm_i2c_transfer(uint8_t port, uint16_t dev_addr,
                                        const uint8_t *write_buf, uint32_t write_len,
                                        uint8_t *read_buf,        uint32_t read_len);
+/**
+ * ADR-0085 status-returning I2C transfer wrapper (JS->C test/worker surface).
+ * Returns the wink_status_t code directly; `out_result` (8-byte
+ * pal_i2c_result_t) receives the structured result on success and is zeroed
+ * on a rejected call. Mirrors the import of the same name.
+ */
+extern int32_t  pal_wasm_i2c_transfer_ex(uint8_t port, uint16_t dev_addr,
+                                         const uint8_t *write_buf, uint32_t write_len,
+                                         uint8_t *read_buf,        uint32_t read_len,
+                                         pal_i2c_result_t *out_result);
 
 /** Push a byte from host JS into Wasm UART RX fifo (Async RX, Phase 2). Returns false on overrun. */
 extern bool     pal_wasm_push_uart_rx_byte(uint8_t port, uint8_t byte);
@@ -371,6 +487,14 @@ extern uint32_t pal_wasm_get_sim_mode(void);
 
 /** Reset sim scheduler and fault latch (called before re-running firmware on RESET). */
 extern void     pal_wasm_reset_scheduler_state(void);
+
+/* -- Reset controller (ADR-0082, JS->C exports) ------------------------ */
+/** 1 = a reset (POR/SW/ WDT/EXT) is pending sanitization, 0 = none. */
+extern int      pal_wasm_has_pending_reset(void);
+/** mcs51_reset_reason_t value of the pending reset (0 = none). */
+extern int      pal_wasm_get_reset_reason(void);
+/** Acknowledge/consume the pending reset after the host handled it. */
+extern void     pal_wasm_clear_pending_reset(void);
 
 /* -- Power model  (Wave 3 stub, Axis F) -------------------------------- */
 struct wasm_pin_power_model_t;

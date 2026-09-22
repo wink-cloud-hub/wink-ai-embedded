@@ -14,6 +14,7 @@
     "_pal_wasm_get_pwm_duty_percent",
     "_pal_wasm_is_faulted",
     "_pal_wasm_gpio_read",
+    "_pal_wasm_i2c_transfer_ex",
     "_pal_wasm_get_abi_hash",
     "_pal_wasm_app_init",
     "_pal_wasm_app_tick",

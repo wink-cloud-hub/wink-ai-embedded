@@ -120,6 +120,38 @@ bool pal_wasm_i2c_transfer(uint8_t port, uint16_t dev_addr,
     return !wink_status_is_error(st);
 }
 
+/*
+ * ADR-0085 test/worker export surface: status-returning transfer wrapper.
+ * Returns the wink_status_t code directly and, when `out_result` is non-NULL,
+ * copies the 8-byte pal_i2c_result_t into caller-provided storage. The struct
+ * is zeroed first so a rejected call (invalid port / bus not initialized)
+ * still exposes the documented all-ACK-zero image instead of stale memory.
+ */
+EMSCRIPTEN_KEEPALIVE
+int32_t pal_wasm_i2c_transfer_ex(uint8_t port, uint16_t dev_addr,
+                                 const uint8_t *write_buf, uint32_t write_len,
+                                 uint8_t *read_buf, uint32_t read_len,
+                                 pal_i2c_result_t *out_result)
+{
+    if (out_result != NULL) {
+        memset(out_result, 0, sizeof(*out_result));
+    }
+    if (port >= PAL_I2C_PORTS) {
+        return (int32_t)WINK_ERR_INVALID_ARG;
+    }
+    if (!s_i2c_bus_inited[port]) {
+        return (int32_t)WINK_ERR_INVALID_STATE;
+    }
+
+    pal_i2c_result_t result;
+    wink_status_t st = js_pal_i2c_transfer_ex(port, dev_addr, write_buf, write_len,
+                                              read_buf, read_len, &result);
+    if (out_result != NULL && !wink_status_is_error(st)) {
+        *out_result = result;
+    }
+    return (int32_t)st;
+}
+
 wink_status_t pal_i2c_port_pins(uint8_t port, wink_pin_t *out_sda, wink_pin_t *out_scl) {
     if (out_sda == NULL && out_scl == NULL) { return WINK_ERR_INVALID_ARG; }
     if (port >= PAL_I2C_PORTS) { return WINK_ERR_INVALID_ARG; }
