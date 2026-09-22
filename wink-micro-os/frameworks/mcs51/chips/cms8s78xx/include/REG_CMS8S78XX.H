@@ -101,6 +101,24 @@ sfr TL4    = 0xE2;  // Timer 4 counter low
 sfr TH4    = 0xE3;  // Timer 4 counter high
 sfr ADCON2 = 0xE9;  // trigger config
 
+// ── 1.2) SPI / I2C controller SFR bytes (addresses per vendor cms8s78xx.h) ──
+// 0xEC..0xEF SPI; 0xF1..0xF7 I2C. I2CSCR/I2CSSR (0xF2) and I2CMCR/I2CMSR
+// (0xF5) are write/read views of one byte: firmware writes commands/control
+// and reads status back (see the T1.3 model, ADR-0085/0086).
+sfr SPCR    = 0xEC;  // SPI control (SPEN/SPR2/MSTR/CPOL/CPHA/SPRn)
+sfr SPSR    = 0xED;  // SPI status (bit7 SPISIF, bit6 WCOL, bit0 SSCEN)
+sfr SPDR    = 0xEE;  // SPI data buffer (write triggers the transfer)
+sfr SSCR    = 0xEF;  // SPI NSSx output control (bit1 NSSO1)
+sfr I2CSADR = 0xF1;  // I2C slave address
+sfr I2CSCR  = 0xF2;  // I2C slave control (write view)
+sfr I2CSSR  = 0xF2;  // I2C slave status (read view)
+sfr I2CSBUF = 0xF3;  // I2C slave data buffer
+sfr I2CMSA  = 0xF4;  // I2C master slave address (bits7:1 addr, bit0 R/W)
+sfr I2CMCR  = 0xF5;  // I2C master control command (write view)
+sfr I2CMSR  = 0xF5;  // I2C master status (read view)
+sfr I2CMBUF = 0xF6;  // I2C master data buffer
+sfr I2CMTP  = 0xF7;  // I2C master clock divider
+
 // ── 1.1) Port pin sbit aliases (CMS8S78xx vendor convention: P00 instead of P0_0) ──
 sbit P00 = 0x80; sbit P01 = 0x81; sbit P02 = 0x82; sbit P03 = 0x83;
 sbit P04 = 0x84; sbit P05 = 0x85; sbit P06 = 0x86; sbit P07 = 0x87;
@@ -193,6 +211,14 @@ xsfr PS_ADET(0xF0CC);  // ADET hardware trigger input pin selector
 xsfr PS_FB0(0xF0CD);   // EPWM fault brake 0 input pin selector
 xsfr PS_FB1(0xF0CE);   // EPWM fault brake 1 input pin selector
 xsfr PS_RXD(0xF69F);   // RXD input pin selector
+
+// SPI / I2C pin-share selectors (ref manual §7.2.3; MOVX/xdata space).
+xsfr PS_SCLK(0xF698);  // SPI SCLK pin selector
+xsfr PS_MOSI(0xF699);  // SPI MOSI pin selector
+xsfr PS_MISO(0xF69A);  // SPI MISO pin selector
+xsfr PS_NSS(0xF69B);   // SPI NSS pin selector
+xsfr PS_SCL(0xF69C);   // I2C SCL pin selector
+xsfr PS_SDA(0xF69D);   // I2C SDA pin selector
 
 xsfr BRTCON(0xF5C0);   // Baud Rate Timer control
 xsfr BRTDL(0xF5C1);    // Baud Rate Timer reload low
@@ -402,6 +428,83 @@ xsfr PWMDIF(0xF16F);     // PWM Down Match Interrupt Flag
 #define IRQ_EIE2_ADCIE_Msk     (0x1 << IRQ_EIE2_ADCIE_Pos)    // 0x10
 #define IRQ_EIF2_ADCIF_Pos     (4)
 #define IRQ_EIF2_ADCIF_Msk     (0x1 << IRQ_EIF2_ADCIF_Pos)    // 0x10
+
+// ── 3b) SPI / I2C bit positions, masks, and interrupt bits
+//        (names and values verbatim from vendor cms8s78xx.h) ───────────────
+// SPCR
+#define SPI_SPCR_SPEN_Pos      (6)
+#define SPI_SPCR_SPEN_Msk      (0x1 << SPI_SPCR_SPEN_Pos)
+#define SPI_SPCR_SPR2_Pos      (5)
+#define SPI_SPCR_SPR2_Msk      (0x1 << SPI_SPCR_SPR2_Pos)
+#define SPI_SPCR_MSTR_Pos      (4)
+#define SPI_SPCR_MSTR_Msk      (0x1 << SPI_SPCR_MSTR_Pos)
+#define SPI_SPCR_CPOL_Pos      (3)
+#define SPI_SPCR_CPOL_Msk      (0x1 << SPI_SPCR_CPOL_Pos)
+#define SPI_SPCR_CPHA_Pos      (2)
+#define SPI_SPCR_CPHA_Msk      (0x1 << SPI_SPCR_CPHA_Pos)
+#define SPI_SPCR_SPRn_Pos      (0)
+#define SPI_SPCR_SPRn_Msk      (0x3 << SPI_SPCR_SPRn_Pos)
+// SPSR
+#define SPI_SPSR_SPISIF_Pos    (7)
+#define SPI_SPSR_SPISIF_Msk    (0x1 << SPI_SPSR_SPISIF_Pos)
+#define SPI_SPSR_WCOL_Pos      (6)
+#define SPI_SPSR_WCOL_Msk      (0x1 << SPI_SPSR_WCOL_Pos)
+#define SPI_SPSR_SSCEN_Pos     (0)
+#define SPI_SPSR_SSCEN_Msk     (0x1 << SPI_SPSR_SSCEN_Pos)
+// I2CMCR
+#define I2C_I2CMCR_RSTS_Pos    (7)
+#define I2C_I2CMCR_RSTS_Msk    (0x1 << I2C_I2CMCR_RSTS_Pos)
+#define I2C_I2CMCR_ACK_Pos     (3)
+#define I2C_I2CMCR_ACK_Msk     (0x1 << I2C_I2CMCR_ACK_Pos)
+#define I2C_I2CMCR_STOP_Pos    (2)
+#define I2C_I2CMCR_STOP_Msk    (0x1 << I2C_I2CMCR_STOP_Pos)
+#define I2C_I2CMCR_START_Pos   (1)
+#define I2C_I2CMCR_START_Msk   (0x1 << I2C_I2CMCR_START_Pos)
+#define I2C_I2CMCR_RUN_Pos     (0)
+#define I2C_I2CMCR_RUN_Msk     (0x1 << I2C_I2CMCR_RUN_Pos)
+// I2CMSR
+#define I2C_I2CMSR_I2CMIF_Pos  (7)
+#define I2C_I2CMSR_I2CMIF_Msk  (0x1 << I2C_I2CMSR_I2CMIF_Pos)
+#define I2C_I2CMSR_BUS_BUSY_Pos (6)
+#define I2C_I2CMSR_BUS_BUSY_Msk (0x1 << I2C_I2CMSR_BUS_BUSY_Pos)
+#define I2C_I2CMSR_IDLE_Pos    (5)
+#define I2C_I2CMSR_IDLE_Msk    (0x1 << I2C_I2CMSR_IDLE_Pos)
+#define I2C_I2CMSR_ARB_LOST_Pos (4)
+#define I2C_I2CMSR_ARB_LOST_Msk (0x1 << I2C_I2CMSR_ARB_LOST_Pos)
+#define I2C_I2CMSR_DATA_ACK_Pos (3)
+#define I2C_I2CMSR_DATA_ACK_Msk (0x1 << I2C_I2CMSR_DATA_ACK_Pos)
+#define I2C_I2CMSR_ADD_ACK_Pos (2)
+#define I2C_I2CMSR_ADD_ACK_Msk (0x1 << I2C_I2CMSR_ADD_ACK_Pos)
+#define I2C_I2CMSR_ERROR_Pos   (1)
+#define I2C_I2CMSR_ERROR_Msk   (0x1 << I2C_I2CMSR_ERROR_Pos)
+#define I2C_I2CMSR_BUSY_Pos    (0)
+#define I2C_I2CMSR_BUSY_Msk    (0x1 << I2C_I2CMSR_BUSY_Pos)
+// I2CMSA
+#define I2C_I2CMSA_SAn_Pos     (1)
+#define I2C_I2CMSA_SAn_Msk     (0x7F << I2C_I2CMSA_SAn_Pos)
+#define I2C_I2CMSA_RS_Pos      (0)
+#define I2C_I2CMSA_RS_Msk      (0x1 << I2C_I2CMSA_RS_Pos)
+// I2CSCR
+#define I2C_I2CSCR_RSTS_Pos    (7)
+#define I2C_I2CSCR_RSTS_Msk    (0x1 << I2C_I2CSCR_RSTS_Pos)
+#define I2C_I2CSCR_DA_Pos      (0)
+#define I2C_I2CSCR_DA_Msk      (0x1 << I2C_I2CSCR_DA_Pos)
+// I2CSSR (SENDFIN_Msk shifts RSTS_Pos verbatim as in the vendor header)
+#define I2C_I2CSSR_SENDFIN_Pos (2)
+#define I2C_I2CSSR_SENDFIN_Msk (0x1 << I2C_I2CSCR_RSTS_Pos)
+#define I2C_I2CSSR_TREQ_Pos    (1)
+#define I2C_I2CSSR_TREQ_Msk    (0x1 << I2C_I2CSSR_TREQ_Pos)
+#define I2C_I2CSSR_RREQ_Pos    (0)
+#define I2C_I2CSSR_RREQ_Msk    (0x1 << I2C_I2CSSR_RREQ_Pos)
+// EIE2 / EIF2 (SPI + I2C interrupt bits)
+#define IRQ_EIE2_SPIIE_Pos     (7)
+#define IRQ_EIE2_SPIIE_Msk     (0x1 << IRQ_EIE2_SPIIE_Pos)    // 0x80
+#define IRQ_EIE2_I2CIE_Pos     (6)
+#define IRQ_EIE2_I2CIE_Msk     (0x1 << IRQ_EIE2_I2CIE_Pos)    // 0x40
+#define IRQ_EIF2_SPIIF_Pos     (7)
+#define IRQ_EIF2_SPIIF_Msk     (0x1 << IRQ_EIF2_SPIIF_Pos)    // 0x80
+#define IRQ_EIF2_I2CIF_Pos     (6)
+#define IRQ_EIF2_I2CIF_Msk     (0x1 << IRQ_EIF2_I2CIF_Pos)    // 0x40
 
 // ── 4) Vendor enumeration macros (verbatim from StdDriver inc/adc.h) ───────
 // Channel select
@@ -658,6 +761,23 @@ typedef enum Vref_K {
 #define GPIO_P14_MUX_TXD                     (0x03)  // P1.4 as UART TXD
 #define GPIO_P13_MUX_RXD                     (0x03)  // P1.3 as UART RXD (GAP-01: vendor gpio.h=0x03; was incorrectly 0x02)
 #define GPIO_P13                             (0x13)  // PS_RXD <- P1.3
+
+// SPI / I2C peripheral pin mux selectors (verbatim from StdDriver inc/gpio.h)
+#define GPIO_P00_MUX_MOSI                    (0x02)  // P0.0 as SPI MOSI
+#define GPIO_P02_MUX_MOSI                    (0x02)  // P0.2 as SPI MOSI
+#define GPIO_P06_MUX_MOSI                    (0x02)  // P0.6 as SPI MOSI
+#define GPIO_P03_MUX_MISO                    (0x02)  // P0.3 as SPI MISO
+#define GPIO_P10_MUX_MISO                    (0x02)  // P1.0 as SPI MISO
+#define GPIO_P04_MUX_SCLK                    (0x02)  // P0.4 as SPI SCLK
+#define GPIO_P11_MUX_SCLK                    (0x02)  // P1.1 as SPI SCLK
+#define GPIO_P05_MUX_NSS                     (0x02)  // P0.5 as SPI NSS
+#define GPIO_P12_MUX_NSS                     (0x02)  // P1.2 as SPI NSS
+#define GPIO_P05_MUX_NSSO0                   (0x02)  // P0.5 as SPI NSSO0
+#define GPIO_P12_MUX_NSSO1                   (0x02)  // P1.2 as SPI NSSO1
+#define GPIO_P03_MUX_SDA                     (0x03)  // P0.3 as I2C SDA
+#define GPIO_P04_MUX_SCL                     (0x03)  // P0.4 as I2C SCL
+#define GPIO_P10_MUX_SDA                     (0x03)  // P1.0 as I2C SDA
+#define GPIO_P11_MUX_SCL                     (0x03)  // P1.1 as I2C SCL
 
 // Fault Brake pin mux selectors (verbatim from StdDriver inc/gpio.h)
 #define GPIO_P06_MUX_FB0                     (0x04)  // P0.6 as FB0
@@ -1772,6 +1892,140 @@ static inline void ACMP_ConfigOffsetAdj(uint8_t ACMPn, uint8_t OffsetAdjMode, ui
 }
 
 #endif  // WINK_CMS8S_VENDOR_ACMP
+
+// ── 10d) Vendor I2C driver shims (verbatim bodies from StdDriver/src/i2c.c) ──
+// T1.3/T1.6: unmodified vendor example code calls the StdDriver I2C API
+// (I2C_EnableMasterMode / I2C_ConfigCLK / flag getters / flag clear). The
+// sandbox does not compile StdDriver sources, so their bodies live here as
+// static inline shims driving the 0xF5 command model (cms8s_i2c.cpp).
+#ifndef WINK_CMS8S_VENDOR_I2C
+static inline void I2C_ConfigCLK(uint8_t I2CMtp) {
+    I2CMTP = I2CMtp;
+}
+static inline void I2C_EnableMasterMode(void) {
+    I2CMCR = 0x00;
+    I2CSCR = 0x00;
+}
+static inline void I2C_DisableMasterMode(void) {
+    ;
+}
+static inline uint8_t I2C_GetMasterSendAddrFlag(void) {
+    return ((I2CMSR & I2C_I2CMSR_ADD_ACK_Msk) ? 1 : 0);
+}
+static inline uint8_t I2C_GetBusArbitrationFlag(void) {
+    return ((I2CMSR & I2C_I2CMSR_ARB_LOST_Msk) ? 1 : 0);
+}
+static inline uint8_t I2C_GetMasterErrorFlag(void) {
+    return ((I2CMSR & I2C_I2CMSR_ERROR_Msk) ? 1 : 0);
+}
+static inline uint8_t I2C_GetMasterBusyFlag(void) {
+    return ((I2CMSR & I2C_I2CMSR_BUSY_Msk) ? 1 : 0);
+}
+static inline uint8_t I2C_GetI2CBusBusyFlag(void) {
+    return ((I2CMSR & I2C_I2CMSR_BUS_BUSY_Msk) ? 1 : 0);
+}
+static inline uint8_t I2C_GetMasterIdleFlag(void) {
+    return ((I2CMSR & I2C_I2CMSR_IDLE_Msk) ? 1 : 0);
+}
+static inline void I2C_EnableInt(void) {
+    EIE2 |= IRQ_EIE2_I2CIE_Msk;
+}
+static inline void I2C_DisableInt(void) {
+    EIE2 &= ~(IRQ_EIE2_I2CIE_Msk);
+}
+static inline uint8_t I2C_GetMasterIntFlag(void) {
+    return ((I2CMSR & I2C_I2CMSR_I2CMIF_Msk) ? 1 : 0);
+}
+static inline void I2C_ClearMasterIntFlag(void) {
+    I2CMSR = 0x00;
+}
+#endif  // WINK_CMS8S_VENDOR_I2C
+
+// ── 10e) Vendor SPI driver macros & shims (verbatim from StdDriver
+//         inc/spi.h + src/spi.c) ─────────────────────────────────────────
+// T1.2/T1.6: the unmodified vendor SPI example configures the clock divider,
+// CPOL/CPHA and NSS mode through these StdDriver macros and API functions.
+#ifndef WINK_CMS8S_VENDOR_SPI
+// SPI clock divider (StdDriver inc/spi.h, verbatim values).
+#define SPI_CLK_DIV_4                        (0x00)
+#define SPI_CLK_DIV_8                        (0x1 << SPI_SPCR_SPRn_Pos)
+#define SPI_CLK_DIV_16                       (0x2 << SPI_SPCR_SPRn_Pos)
+#define SPI_CLK_DIV_32                       (0x3 << SPI_SPCR_SPRn_Pos)
+#define SPI_CLK_DIV_64                       (0x1 << SPI_SPCR_SPR2_Pos)
+#define SPI_CLK_DIV_128  ((0x1 << SPI_SPCR_SPR2_Pos) | (0x1 << SPI_SPCR_SPRn_Pos))
+#define SPI_CLK_DIV_256  ((0x1 << SPI_SPCR_SPR2_Pos) | (0x2 << SPI_SPCR_SPRn_Pos))
+#define SPI_CLK_DIV_512  ((0x1 << SPI_SPCR_SPR2_Pos) | (0x3 << SPI_SPCR_SPRn_Pos))
+// SPI clock polarity (CPOL) and phase (CPHA).
+#define SPI_CLK_CPOL_LOW                     (0x00)
+#define SPI_CLK_CPOL_HIGH                    (0x01 << SPI_SPCR_CPOL_Pos)
+#define SPI_CLK_CPHA_0                       (0x00)
+#define SPI_CLK_CPHA_1                       (0x01 << SPI_SPCR_CPHA_Pos)
+// NSS control mode (only meaningful in master mode).
+#define SPI_NSS_SSCR_CONTROL                 (0x0)
+#define SPI_NSS_AUTO_CONTROL                 (0x01)
+
+static inline void SPI_Start(void) {
+    SPCR |= SPI_SPCR_SPEN_Msk;
+}
+static inline void SPI_Stop(void) {
+    SPCR &= ~(SPI_SPCR_SPEN_Msk);
+}
+static inline void SPI_ConfigClk(uint8_t SPIClkDiv) {
+    uint8_t temp;
+    temp = SPCR;
+    temp &= ~(SPI_SPCR_SPR2_Msk | SPI_SPCR_SPRn_Msk);
+    temp |= SPIClkDiv;
+    SPCR = temp;
+}
+static inline void SPI_ConfigRunMode(uint8_t ClkPositive, uint8_t ClkPhash,
+                                     uint8_t NSSMode) {
+    uint8_t temp;
+    temp = SPCR;
+    temp &= ~(SPI_SPCR_CPOL_Msk | SPI_SPCR_CPHA_Msk);
+    temp |= (ClkPositive | ClkPhash);
+    SPCR = temp;
+    temp = SPSR;
+    temp &= ~(SPI_SPSR_SSCEN_Msk);
+    temp |= NSSMode;
+    SPSR = temp;
+}
+static inline void SPI_EnableMasterMode(void) {
+    SPCR |= (SPI_SPCR_MSTR_Msk);
+}
+static inline void SPI_DisableMasterMode(void) {
+    SPCR &= ~(SPI_SPCR_MSTR_Msk);
+}
+static inline void SPI_EnableSlaveMode(void) {
+    SPCR &= ~(SPI_SPCR_MSTR_Msk);
+}
+static inline void SPI_DisableSlaveMode(void) {
+    SPCR |= (SPI_SPCR_MSTR_Msk);
+}
+static inline uint8_t SPI_GetTransferIntFlag(void) {
+    return ((SPSR & SPI_SPSR_SPISIF_Msk) ? 1 : 0);
+}
+static inline void SPI_ClearTransferIntFlag(void) {
+    uint8_t temp;
+    temp = SPSR;
+    temp = SPDR;
+    (void)temp;  // vendor read-clear pair; value intentionally unused
+}
+static inline uint8_t SPI_GetWriteErrorIntFlag(void) {
+    return ((SPSR & SPI_SPSR_WCOL_Msk) ? 1 : 0);
+}
+static inline void SPI_ClearWriteErrorIntFlag(void) {
+    uint8_t temp;
+    temp = SPSR;
+    temp = SPDR;
+    (void)temp;  // vendor read-clear pair; value intentionally unused
+}
+static inline void SPI_EnableIntFlag(void) {
+    EIE2 |= IRQ_EIE2_SPIIE_Msk;
+}
+static inline void SPI_DisableIntFlag(void) {
+    EIE2 &= ~(IRQ_EIE2_SPIIE_Msk);
+}
+#endif  // WINK_CMS8S_VENDOR_SPI
 
 // ── 12) Vendor WDT & System Reset driver shims (verbatim from StdDriver wdt.c & system.c) ──
 #ifndef WINK_CMS8S_VENDOR_WDT

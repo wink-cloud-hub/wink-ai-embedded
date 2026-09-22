@@ -28,6 +28,27 @@
 #define CMS8S_SFR_T2IF 0xC9u
 #define CMS8S_SFR_T2IE 0xCFu
 
+// ── Direct SFR: SPI master controller (T1.2 model) ─────────────────────────
+// Addresses per vendor cms8s78xx.h and REG_CMS8S78XX.H (never re-declare the
+// sfr proxies here — this map is the plain-address view for model TUs).
+#define CMS8S_SFR_SPCR 0xECu  // control: SPEN/SPR2/MSTR/CPOL/CPHA/SPRn
+#define CMS8S_SFR_SPSR 0xEDu  // status: SPISIF/WCOL/SSCEN (read clears via SPDR)
+#define CMS8S_SFR_SPDR 0xEEu  // data buffer (write starts the synchronous transfer)
+#define CMS8S_SFR_SSCR 0xEFu  // NSSx output control (bit1 NSSO1)
+
+// ── Direct SFR: I2C controller (T1.3 model) ────────────────────────────────
+// 0xF2 and 0xF5 are write/read views of one byte: write hook sees the
+// command/control value, read hook serves the status byte (ADR-0086 §5.3).
+#define CMS8S_SFR_I2CSADR 0xF1u  // slave address
+#define CMS8S_SFR_I2CSCR  0xF2u  // slave control (write view)
+#define CMS8S_SFR_I2CSSR  0xF2u  // slave status (read view)
+#define CMS8S_SFR_I2CSBUF 0xF3u  // slave data buffer
+#define CMS8S_SFR_I2CMSA  0xF4u  // master slave address (bit0 = R/W)
+#define CMS8S_SFR_I2CMCR  0xF5u  // master control command (write view)
+#define CMS8S_SFR_I2CMSR  0xF5u  // master status (read view)
+#define CMS8S_SFR_I2CMBUF 0xF6u  // master data buffer
+#define CMS8S_SFR_I2CMTP  0xF7u  // master clock divider
+
 // ── XSFR: pin-share selectors ──────────────────────────────────────────────
 // Reset value 0x7F = no pin connected (ref manual).
 #define CMS8S_XSFR_PS_INT0 0xF0C0u
