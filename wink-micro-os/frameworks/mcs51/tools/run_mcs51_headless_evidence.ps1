@@ -72,17 +72,26 @@ $microAppDir = Join-Path $embeddedRoot 'wink-micro-app'
 # sister fix 8d06a4e8 (arbiter driven unconditionally; only the timing waveform
 # edge queue is gated to timing mode).
 $carriers = @(
-    @{ Name = 'mcs51_uart_hello';       Channel = 'ch2 UART TX (T1)' },
-    @{ Name = 'mcs51_uart_echo';        Channel = 'ch2 UART RX live (T2.3)' },
-    @{ Name = 'mcs51_analog_threshold'; Channel = 'ch3 analog ADC (T4)' },
-    @{ Name = 'mcs51_button_led_int';   Channel = 'ch1 INT0/1 (T3)' },
-    @{ Name = 'mcs51_button_led';       Channel = 'ch1 digital read (Stage 0)' }
+    @{ Name = 'mcs51_uart_hello';       Rel = 'mcs51/uart_hello';       Channel = 'ch2 UART TX (T1)' },
+    @{ Name = 'mcs51_uart_echo';        Rel = 'mcs51/uart_echo';        Channel = 'ch2 UART RX live (T2.3)' },
+    @{ Name = 'mcs51_analog_threshold'; Rel = 'mcs51/analog_threshold'; Channel = 'ch3 analog ADC (T4)' },
+    @{ Name = 'mcs51_button_led_int';   Rel = 'mcs51/button_led_int';   Channel = 'ch1 INT0/1 (T3)' },
+    @{ Name = 'mcs51_button_led';       Rel = 'mcs51/button_led';       Channel = 'ch1 digital read (Stage 0)' }
 )
-if ($App) { $carriers = $carriers | Where-Object { $_.Name -eq $App } }
+if ($App) { $carriers = $carriers | Where-Object { $_.Name -eq $App -or $_.Rel -eq $App } }
 if (-not $carriers) {
-    $customAppDir = Join-Path $microAppDir $App
+    # Custom app: accept a nested relative path (e.g. vendor/cms8s78xx/wdt) or
+    # a bare directory name resolved by recursive search.
+    $customRel = $App -replace '\\', '/'
+    $customAppDir = Join-Path $microAppDir $customRel
+    if (-not (Test-Path $customAppDir)) {
+        $hit = Get-ChildItem $microAppDir -Recurse -Directory -Filter (Split-Path $customRel -Leaf) |
+            Where-Object { Test-Path (Join-Path $_.FullName 'unisim-scenarios') } |
+            Select-Object -First 1
+        if ($hit) { $customAppDir = $hit.FullName }
+    }
     if (Test-Path $customAppDir) {
-        $carriers = @( @{ Name = $App; Channel = 'Custom / Vendor app' } )
+        $carriers = @( @{ Name = $App; Rel = $customAppDir; Channel = 'Custom / Vendor app' } )
     } else {
         Write-Error "No carrier app matched '$App'."
         exit 2
@@ -94,7 +103,7 @@ $env:WINK_DEV = '1'   # make winkcli use the sister TS source directly (no build
 $results = @()
 
 foreach ($c in $carriers) {
-    $appDir  = Join-Path $microAppDir $c.Name
+    $appDir  = if ([System.IO.Path]::IsPathRooted($c.Rel)) { $c.Rel } else { Join-Path $microAppDir $c.Rel }
     $scenDir = Join-Path $appDir 'unisim-scenarios'
 
     Write-Host ""
