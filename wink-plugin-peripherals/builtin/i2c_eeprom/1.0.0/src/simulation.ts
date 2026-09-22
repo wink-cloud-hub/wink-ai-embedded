@@ -87,7 +87,7 @@ export class I2cEepromPlugin extends BaseSimulationPlugin<I2cEepromState> implem
   private _size = DEFAULT_SIZE;
   private _pageSize = DEFAULT_PAGE_SIZE;
   private _writeCycleUs = 0;
-  private _memory: Uint8Array = new Uint8Array(DEFAULT_SIZE);
+  private _memory: Uint8Array = new Uint8Array(DEFAULT_SIZE).fill(0xff);
   private _pointer = 0;
   private _writeAddress = 0;
   private _addressPending = false;
@@ -116,7 +116,7 @@ export class I2cEepromPlugin extends BaseSimulationPlugin<I2cEepromState> implem
     this._size = Math.max(1, Math.trunc(Number(properties.sizeBytes ?? DEFAULT_SIZE)));
     this._pageSize = Math.max(1, Math.trunc(Number(properties.pageSize ?? DEFAULT_PAGE_SIZE)));
     this._writeCycleUs = Math.max(0, Math.trunc(Number(properties.writeCycleUs ?? 0)));
-    this._memory = new Uint8Array(this._size);
+    this._memory = new Uint8Array(this._size).fill(0xff);
     this._pointer = 0;
     this._writeCount = 0;
 
