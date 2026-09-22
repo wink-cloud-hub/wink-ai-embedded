@@ -136,7 +136,11 @@ int main(void) {
         CHECK(wink_mcs51_wdt_overflow_total() == 0u, "disabled WDT must not count");
     }
 
-    // ── 3) Overflow counts once per episode, feed re-arms ──────────────────
+    // ── 3) WDTRE reset: one count per arming episode; a fresh boot re-arms ─
+    // ADR-0082: a WDTRE=1 overflow triggers a real reset, so "feed re-arms"
+    // is a boot cycle, not an in-place re-arm. Any firmware SFR write after
+    // the overflow runs the sanitizer, which clears the pending reset,
+    // disables the WDT and zeroes the per-boot overflow counter.
     {
         init_ctx();
         set_wts(0u);  // 5461us
@@ -144,12 +148,29 @@ int main(void) {
         wink_mcs51_test_advance_virtual_us(6000u);
         wink_mcs51_wdt_check();
         CHECK(wink_mcs51_wdt_overflow_total() == 1u, "overflow must count");
+        CHECK(wink_mcs51_has_pending_reset(),
+              "WDTRE overflow must latch a pending reset");
         wink_mcs51_wdt_check();
-        CHECK(wink_mcs51_wdt_overflow_total() == 1u, "latch must hold one count");
-        wdt_feed();  // re-arm
+        CHECK(wink_mcs51_wdt_overflow_total() == 1u,
+              "latch must hold one count");
+
+        // The next proxied SFR write (any firmware write) runs the sanitizer.
+        wdt_feed();
+        CHECK(!wink_mcs51_has_pending_reset(),
+              "sanitizer must clear the pending reset");
+        CHECK(wink_mcs51_wdt_overflow_total() == 0u,
+              "reset must clear the per-boot overflow counter");
+        CHECK((static_cast<uint8_t>(WDCON) & 0x02u) == 0u,
+              "reset must clear WDTRE (WDT off until firmware re-enables)");
+
+        // Fresh boot: re-enable and overflow again -> one count in the new
+        // episode (proves episode counting, not a stuck latch).
+        set_wts(0u);
+        wdt_enable();
         wink_mcs51_test_advance_virtual_us(6000u);
         wink_mcs51_wdt_check();
-        CHECK(wink_mcs51_wdt_overflow_total() == 2u, "re-armed overflow must count");
+        CHECK(wink_mcs51_wdt_overflow_total() == 1u,
+              "post-reset overflow must count");
     }
 
     // ── 4) health_pot scale: 10ms feed + 23ms telemetry never trips ────────

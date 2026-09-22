@@ -34,7 +34,9 @@ namespace {
 constexpr uint8_t SFR_CKCON = 0x8E;
 constexpr uint8_t SFR_WDCON = 0x97;
 
-WinkSfr s_TA(0x96);
+#ifndef WINK_MCS51_STRICT
+WinkSfr s_TA(0x96);  // release-only WDCON TA unlock helper
+#endif
 WinkSfr s_WDCON(SFR_WDCON);
 WinkSfr s_CKCON(SFR_CKCON);
 
@@ -49,10 +51,12 @@ void init_ctx(void) {
     wink_mcs51_clock_reset();
 }
 
+#ifndef WINK_MCS51_STRICT
 void ta_unlock(void) {
     s_TA = 0xAAu;
     s_TA = 0x55u;
 }
+#endif
 
 void set_wts(uint8_t wts) {
     s_CKCON = static_cast<unsigned>(((uint8_t)s_CKCON & 0x1Fu) | ((wts & 0x07u) << 5u));
@@ -60,6 +64,9 @@ void set_wts(uint8_t wts) {
 
 }  // namespace
 
+// REG_CMS8S78XX.H remaps `main` to the fiber entry; this TU provides its own
+// main() (plus the STRICT child re-exec main), so drop the remap first.
+#undef main
 extern "C" void wink_mcs51_user_main(void) {}
 
 extern "C" void setUp(void) {}
@@ -159,11 +166,15 @@ int main(void) {
         CHECK(!wink_mcs51_has_pending_reset(), "DisableSoftwareReset must not trigger reset");
         CHECK((s_WDCON & 0x80u) == 0u, "SWRST bit must be 0");
 
-        // Write 1 to SWRST triggers software reset
+        // Write 1 to SWRST triggers software reset. ADR-0082: the firmware
+        // write path runs the sanitizer in its own microstep, so the pending
+        // latch is consumed immediately — observe the completed reset
+        // (sticky reason + self-cleared SWRST bit) instead of a lingering flag.
         SYS_EnableSoftwareReset();
-        CHECK(wink_mcs51_has_pending_reset(), "EnableSoftwareReset must latch pending reset");
-        CHECK(wink_mcs51_get_pending_reset_reason() == MCS51_RESET_REASON_SOFTWARE,
-              "Pending reset reason must be SOFTWARE");
+        CHECK(wink_mcs51_get_last_reset_reason() == MCS51_RESET_REASON_SOFTWARE,
+              "EnableSoftwareReset must complete a software reset");
+        CHECK(!wink_mcs51_has_pending_reset(),
+              "sanitizer must consume the pending latch");
         CHECK((s_WDCON & 0x80u) == 0u, "SWRST bit must self-clear to 0 in shadow");
     }
 
@@ -220,7 +231,7 @@ int main(void) {
         CHECK(wink_mcs51_has_pending_reset(), "WDT overflow with WDTRE=1 must latch pending reset");
         CHECK(wink_mcs51_get_pending_reset_reason() == MCS51_RESET_REASON_WDT,
               "Pending reset reason must be WDT");
-        CHECK(!mcs51_irq_source_pending(IRQ_SOURCE_WDT),
+        CHECK((wink_mcs51_get_pending_interrupts() & (1u << IRQ_SOURCE_WDT)) == 0u,
               "WDTRE reset priority must suppress Vector 20 IRQ dispatch");
 
         // Now test when WDTRE=0 and WDTIE=1 (pure timer mode, sample 32)
@@ -234,7 +245,7 @@ int main(void) {
         wink_mcs51_wdt_check();
 
         CHECK(!wink_mcs51_has_pending_reset(), "WDT overflow with WDTRE=0 must not latch reset");
-        CHECK(mcs51_irq_source_pending(IRQ_SOURCE_WDT),
+        CHECK((wink_mcs51_get_pending_interrupts() & (1u << IRQ_SOURCE_WDT)) != 0u,
               "WDT overflow with WDTRE=0 and WDTIE=1 must dispatch Vector 20 IRQ");
     }
 

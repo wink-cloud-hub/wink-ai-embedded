@@ -115,7 +115,10 @@ int main(void) {
     wink_mcs51_xdata_write(0xF000ull, 0x01u, 2u);  // declared -> silent
     check(wink_mcs51_xsfr_unmodeled_count() == 0u,
           "A: declared XSFR write must stay silent");
-    wink_mcs51_xdata_write(0xF120ull, 0x01u, 2u);  // undeclared -> trips
+    // 0xF0A0 is a reserved hole in the pin-mux window: no vendor register and
+    // no declared allowlist entry (do not reuse a peripheral block address
+    // here — a peripheral landing later would silently invert this check).
+    wink_mcs51_xdata_write(0xF0A0ull, 0x01u, 2u);  // undeclared -> trips
     check(wink_mcs51_xsfr_unmodeled_count() == 1u,
           "A: undeclared XSFR write must trip the unmodeled counter");
 
