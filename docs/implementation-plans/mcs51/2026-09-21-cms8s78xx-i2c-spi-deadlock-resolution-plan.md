@@ -14,7 +14,7 @@
 | **最新修订** | `2026-09-22`（v1.4：与 ADR-0085/0086 v1.3 契约对齐——错误码定案、session 必填 result、重复 START 路由、I2C 计时、防护判据重写、SPI 断言去内存快照、任务/门禁补齐） |
 | **目标平台/SoC** | `host` (GCC/MSVC C++17), `wasm` (Emscripten) 基于 `wink-micro-os/frameworks/mcs51` |
 | **工具链/运行时** | GCC 11+, MSVC 19+, Emscripten 3.1+, 原厂 `CMS8S78xx_DemoCode_V2.0.2`；UniSim 侧 Bun 1.x |
-| **计划状态** | 🟡 技术方案与 ADR 立项就绪（ADR-0085/0086 处于 Proposed），待评审后执行 |
+| **计划状态** | 🟢 Phase 1 已执行完成（T1.1–T1.6 全部落地：SPI/I2C 片内模型 + SFR 自旋防护 + 两 vendor 微应用三件套 + headless 收敛实证；Checklist 37/38 已标注"Phase 1 已解除运行阻塞"）；Phase 2 待 ADR-0085/0086 评审 Accepted 后启动 |
 | **优先级** | 🔴 P1（Checklist 列级优先级为 P3；两者维度不同，见 T2.5） |
 | **计划版本** | `v1.4` |
 | **关联技术设计** | 原厂 `CMS8S78xx` 参考手册（SPI/I2C 章节）；[04-wasm-simulation](../../../zh/design/04-wasm-simulation/00-README.md)；`wink-ai/packages/unisim/docs/internals/decisions/0085/0086`（私有仓 ADR） |
@@ -489,3 +489,4 @@ static constexpr uint32_t SPIN_GUARD_BUDGET_US = 50000u;
 | v1.2 | 2026-09-21 | 融合 ABI 评审与框架实况：①§2.3 根因改写（SFR proxy/charge/quota，非宿主冻结）；②§3 能力矩阵纠偏（imports/stub/非零拷贝/缺 host fallback）；③§5.1 证据边界与 0xF2/0xF5 语义；④§5.2/§5.3 按真实 hook 契约重写、Mock 协议无关、计费公式化、STOP 行为级偏差声明、ACK Polling 纠偏；⑤§5.4 看门狗重设计为 SFR 层自旋防护；⑥§5.5 插件契约化（ADR-0085/0086 前置）；⑦§6 任务路径/依赖重排（T2.0 硬前置、T1.7 门禁、ADR-0079 嵌套目录）；⑧§7 风险表更新（R5–R9 新增）；⑨§8 门禁命令更正 + 证据分级；⑩ADR 引用链接修正 |
 | v1.3 | 2026-09-22 | 融合 ADR-0085/0086 协议契约与实况校准：①§4.2/§5.5/§8 纠正 SPI 验收无串口事实，确立内存变量快照/插件通道断言；②§5.4 SfrSpinGuard 升级为 2 地址滑动窗口抵御多状态寄存器交替防抖；③T2.2 确立 SPI 会话流姐妹 ADR 对标 |
 | v1.4 | 2026-09-22 | 与 ADR-0085/0086 v1.3 契约对齐：①错误码定案（`WINK_ERR_DISCONNECTED`/`WINK_ERR_INVALID_STATE`）并清理 catalog 漂移（`addr_ack` 残留、`nack_bits` 写相位、session 必填 result、全局池命名）；②§5.3 补 repeated START 路由、ADDR_NACKED 映射、I2C 时钟计费与 RSTS 范围；③§5.4 防护重写（3 地址窗口 + 事件清零锚点 + 诊断优先/纤程退出，删除不可返回的 `WINK_ERR_TIMEOUT` 表述）；④SPI 断言去内存快照、T2.2a 立项 ADR-0087、T2.0 补 JS/导出实现面、T2.6 Layer-① 回写；⑤§7 新增 R10/R11 |
+| v1.5 | 2026-09-22 | Phase 1 执行记录（T1.1–T1.7）：①T1.1 补齐 SPI/I2C SFR、XSFR 引脚选择器与位掩码宏，GAP-23 allowlist 165→171；②T1.2/T1.3 落地 `cms8s_spi.cpp`（同步完成 + SPSR→SPDR 双步读清 + SSCR 边沿 + 分频计费）与 `cms8s_i2c.cpp`（0xF5 命令状态机 + 重复 START 路由 + ADDR_NACKED + SCL 计费 + 理想 ACK Mock），并补 host `js_pal_spi/i2c_transfer` fail-closed 垫片；③T1.4 落地 SFR 自旋防护（3 地址窗口 + 五类事件锚点 + 50ms 预算 + 诊断优先/longjmp 硬失败）；④T1.5 新增三套 CTest（SPI 11 组 / I2C 13 组 / spin-guard 7 组），10 项 mcs51 测试全绿；⑤T1.6 新建 `vendor/cms8s78xx/i2c_master_at24c256` 与 `spi_master_95256`（原厂源码 SHA256 逐字节一致）并生成三件套，headless 场景均 PASS（Virtual 2s ≈ Wall 0.2s）；⑥T1.7 门禁全绿（layering/api lint、shim audit 0 漂移、许可地图）并完成 Checklist 37/38 Phase 1 标注。Phase 2 保持阻塞于 ADR-0085/0086 评审 |
