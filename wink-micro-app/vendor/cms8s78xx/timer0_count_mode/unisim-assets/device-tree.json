@@ -1,5 +1,5 @@
 {
-  "appName": "vendor_cms8s78xx_timer0_count_mode",
+  "appName": "timer0_count_mode",
   "board": "cms8s78xx_devboard",
   "devices": {
     "btn": {

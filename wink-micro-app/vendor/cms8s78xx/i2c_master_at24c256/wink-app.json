@@ -10,5 +10,12 @@
     "version": "V2.0.2",
     "source_dir": "docs/vendors/Cmsemicon/CMS8S78xx_DemoCode_V2.0.2/CMS8S78xx_Example/Example/I2C/I2C_Master_AT24C256/code"
   },
-  "devices": {}
+  "devices": {
+    "at24c256": {
+      "type": "i2c_eeprom",
+      "address": 80,
+      "sda_pin": "$board.headers.P03",
+      "scl_pin": "$board.headers.P04"
+    }
+  }
 }

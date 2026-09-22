@@ -1,10 +1,11 @@
 {
-  "appName": "vendor_cms8s78xx_buzzer",
+  "appName": "buzzer",
   "board": "cms8s78xx_devboard",
   "devices": {
     "buzzer0": {
       "id": "buzzer0",
       "type": "buzzer",
+      "label": "Buzzer",
       "pinMapping": {
         "1": 3
       },

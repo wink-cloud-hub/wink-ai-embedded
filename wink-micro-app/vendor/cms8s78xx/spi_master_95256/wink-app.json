@@ -10,5 +10,14 @@
     "version": "V2.0.2",
     "source_dir": "docs/vendors/Cmsemicon/CMS8S78xx_DemoCode_V2.0.2/CMS8S78xx_Example/Example/SPI/SPI_Master_95256/code"
   },
-  "devices": {}
+  "devices": {
+    "m95256": {
+      "type": "spi_eeprom",
+      "device_id": "0",
+      "sck_pin": "$board.headers.P11",
+      "mosi_pin": "$board.headers.P06",
+      "miso_pin": "$board.headers.P10",
+      "cs_pin": "$board.headers.P12"
+    }
+  }
 }

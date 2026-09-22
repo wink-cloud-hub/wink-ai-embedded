@@ -1,5 +1,5 @@
 {
-  "appName": "mcs51_health_pot",
+  "appName": "health_pot",
   "board": "cms8s78xx_devboard",
   "devices": {
     "display": {

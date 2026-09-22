@@ -1,7 +1,21 @@
 {
   "appName": "spi_master_95256",
   "board": "cms8s78xx_devboard",
-  "devices": {},
+  "devices": {
+    "m95256": {
+      "id": "m95256",
+      "type": "spi_eeprom",
+      "pinMapping": {
+        "SCK": 9,
+        "MOSI": 6,
+        "MISO": 8,
+        "CS": 10
+      },
+      "properties": {
+        "deviceId": "0"
+      }
+    }
+  },
   "family": "mcs51",
   "core": "8051",
   "mcu": "cms8s78xx",

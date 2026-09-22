@@ -1,7 +1,7 @@
 {
   "header": {
     "version": "1.0.0",
-    "name": "mcs51 CMS8S78xx I2C Master AT24C256 Phase 1 convergence proof",
+    "name": "mcs51 CMS8S78xx I2C Master AT24C256 Phase 2 data proof",
     "templateId": "vendor_cms8s78xx_i2c_master_at24c256",
     "accuracyMode": "behavioral",
     "timeoutUs": "2000000",
@@ -14,21 +14,56 @@
       "timeUs": "100ms",
       "target": "gpio:3",
       "matcher": 1,
-      "description": "[I2C 总线空闲] P0.3 (Pin 3 / SDA) 上拉空闲为高电平 1；证明 I2C_Config 已完成四笔写读事务且未死在 while(!I2CMIF) 轮询（Phase 1 为理想 ACK Mock 总线，不含器件数据语义）"
+      "description": "[I2C 总线空闲] P0.3 (SDA) 上拉空闲为高；证明 I2C_Config 后四笔写读事务未死在 while(!I2CMIF) 轮询"
     },
     {
       "type": "ASSERT_POINT",
       "timeUs": "100ms",
       "target": "gpio:4",
       "matcher": 1,
-      "description": "[I2C 总线空闲] P0.4 (Pin 4 / SCL) 上拉空闲为高电平 1"
+      "description": "[I2C 总线空闲] P0.4 (SCL) 上拉空闲为高"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "plugin:at24c256/writeCount",
+      "matcher": 6,
+      "description": "[数据实证] 固件写入 0x10=0x31 与 0x11..0x15=0x32..0x36，AT24C256 插件共提交 6 次页写"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "plugin:at24c256/readbackHex",
+      "matcher": "3233343536",
+      "description": "[数据实证] At24c256_read_str(0x11, 5) 逐字节读回 0x32..0x36（插件通道字节级证据，非内存快照）"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "plugin:at24c256/readCount",
+      "matcher": 6,
+      "description": "[数据实证] 随机读 1 字节 + 连续读 5 字节 = 6 次读字节（repeated START 会话路径）"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "plugin:at24c256/addressPointer",
+      "matcher": 22,
+      "description": "[数据实证] 连续读后地址指针推进到 0x16"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "plugin:at24c256/busy",
+      "matcher": 0,
+      "description": "[时序] writeCycleUs=0 行为级模式下 tWR 窗口不挂起总线"
     },
     {
       "type": "ASSERT_POINT",
       "timeUs": "1000ms",
       "target": "gpio:3",
       "matcher": 1,
-      "description": "[收敛确证] P0.3 全程保持空闲高电平（firmware 已进入 while(1) 主循环，无复位/无挂死）"
+      "description": "[收敛确证] P0.3 全程保持空闲高电平（firmware 已进入 while(1) 主循环，无复死、无挂死）"
     }
   ]
 }

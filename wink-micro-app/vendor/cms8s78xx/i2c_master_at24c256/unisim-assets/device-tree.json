@@ -1,7 +1,19 @@
 {
   "appName": "i2c_master_at24c256",
   "board": "cms8s78xx_devboard",
-  "devices": {},
+  "devices": {
+    "at24c256": {
+      "id": "at24c256",
+      "type": "i2c_eeprom",
+      "pinMapping": {
+        "SDA": 3,
+        "SCL": 4
+      },
+      "properties": {
+        "address": 80
+      }
+    }
+  },
   "family": "mcs51",
   "core": "8051",
   "mcu": "cms8s78xx",

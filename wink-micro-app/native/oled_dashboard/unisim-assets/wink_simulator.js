@@ -1646,6 +1646,13 @@ async function createWasm() {
           return 1;
       }
 
+  function _js_pal_i2c_transfer_ex(port, addr, wbuf, wlen, rbuf, rlen, resultPtr) {
+          if (typeof Module !== 'undefined' && typeof Module['js_pal_i2c_transfer_ex'] === 'function' && Module['js_pal_i2c_transfer_ex'] !== _js_pal_i2c_transfer_ex) {
+              return Module['js_pal_i2c_transfer_ex'](port, addr, wbuf, wlen, rbuf, rlen, resultPtr);
+          }
+          return -7;
+      }
+
   function _js_pal_log(level, msgPtr) {
           if (typeof Module !== 'undefined' && typeof Module['js_pal_log'] === 'function' && Module['js_pal_log'] !== _js_pal_log) {
               return Module['js_pal_log'](level, msgPtr);
@@ -1718,6 +1725,13 @@ async function createWasm() {
               return Module['js_pal_poll_interrupt'](outCbPtr, outArgPtr);
           }
           return 0;
+      }
+
+  function _js_pal_spi_transfer_ex(port, deviceId, txbuf, len, rxbuf, mode, sckHz) {
+          if (typeof Module !== 'undefined' && typeof Module['js_pal_spi_transfer_ex'] === 'function' && Module['js_pal_spi_transfer_ex'] !== _js_pal_spi_transfer_ex) {
+              return Module['js_pal_spi_transfer_ex'](port, deviceId, txbuf, len, rxbuf, mode, sckHz);
+          }
+          return -7;
       }
 
   function _wink_ultrasonic_distance_events_trigger_now_by_trig_pin(pin) {
@@ -2351,6 +2365,8 @@ var _pal_wasm_set_gpio_input = Module['_pal_wasm_set_gpio_input'] = makeInvalidE
 var _pal_wasm_get_gpio_output = Module['_pal_wasm_get_gpio_output'] = makeInvalidEarlyAccess('_pal_wasm_get_gpio_output');
 var _pal_wasm_get_prng_state = Module['_pal_wasm_get_prng_state'] = makeInvalidEarlyAccess('_pal_wasm_get_prng_state');
 var _pal_wasm_i2c_transfer = Module['_pal_wasm_i2c_transfer'] = makeInvalidEarlyAccess('_pal_wasm_i2c_transfer');
+var _pal_wasm_i2c_transfer_ex = Module['_pal_wasm_i2c_transfer_ex'] = makeInvalidEarlyAccess('_pal_wasm_i2c_transfer_ex');
+var _pal_wasm_spi_transfer_ex = Module['_pal_wasm_spi_transfer_ex'] = makeInvalidEarlyAccess('_pal_wasm_spi_transfer_ex');
 var _pal_wasm_push_uart_rx_byte = Module['_pal_wasm_push_uart_rx_byte'] = makeInvalidEarlyAccess('_pal_wasm_push_uart_rx_byte');
 var _pal_wasm_report_oom = Module['_pal_wasm_report_oom'] = makeInvalidEarlyAccess('_pal_wasm_report_oom');
 var _pal_wasm_push_uart_rx_error = Module['_pal_wasm_push_uart_rx_error'] = makeInvalidEarlyAccess('_pal_wasm_push_uart_rx_error');
@@ -2392,6 +2408,9 @@ var _pal_wasm_get_total_energy_mj = Module['_pal_wasm_get_total_energy_mj'] = ma
 var _pal_wasm_app_init = Module['_pal_wasm_app_init'] = makeInvalidEarlyAccess('_pal_wasm_app_init');
 var _pal_wasm_app_tick = Module['_pal_wasm_app_tick'] = makeInvalidEarlyAccess('_pal_wasm_app_tick');
 var _pal_wasm_reset_app_state = Module['_pal_wasm_reset_app_state'] = makeInvalidEarlyAccess('_pal_wasm_reset_app_state');
+var _pal_wasm_has_pending_reset = Module['_pal_wasm_has_pending_reset'] = makeInvalidEarlyAccess('_pal_wasm_has_pending_reset');
+var _pal_wasm_get_reset_reason = Module['_pal_wasm_get_reset_reason'] = makeInvalidEarlyAccess('_pal_wasm_get_reset_reason');
+var _pal_wasm_clear_pending_reset = Module['_pal_wasm_clear_pending_reset'] = makeInvalidEarlyAccess('_pal_wasm_clear_pending_reset');
 var _main = Module['_main'] = makeInvalidEarlyAccess('_main');
 var _pal_wasm_set_sim_mode = Module['_pal_wasm_set_sim_mode'] = makeInvalidEarlyAccess('_pal_wasm_set_sim_mode');
 var _pal_wasm_get_sim_mode = Module['_pal_wasm_get_sim_mode'] = makeInvalidEarlyAccess('_pal_wasm_get_sim_mode');
@@ -2436,6 +2455,8 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['pal_wasm_get_gpio_output'] != 'undefined', 'missing Wasm export: pal_wasm_get_gpio_output');
   assert(typeof wasmExports['pal_wasm_get_prng_state'] != 'undefined', 'missing Wasm export: pal_wasm_get_prng_state');
   assert(typeof wasmExports['pal_wasm_i2c_transfer'] != 'undefined', 'missing Wasm export: pal_wasm_i2c_transfer');
+  assert(typeof wasmExports['pal_wasm_i2c_transfer_ex'] != 'undefined', 'missing Wasm export: pal_wasm_i2c_transfer_ex');
+  assert(typeof wasmExports['pal_wasm_spi_transfer_ex'] != 'undefined', 'missing Wasm export: pal_wasm_spi_transfer_ex');
   assert(typeof wasmExports['pal_wasm_push_uart_rx_byte'] != 'undefined', 'missing Wasm export: pal_wasm_push_uart_rx_byte');
   assert(typeof wasmExports['pal_wasm_report_oom'] != 'undefined', 'missing Wasm export: pal_wasm_report_oom');
   assert(typeof wasmExports['pal_wasm_push_uart_rx_error'] != 'undefined', 'missing Wasm export: pal_wasm_push_uart_rx_error');
@@ -2477,6 +2498,9 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['pal_wasm_app_init'] != 'undefined', 'missing Wasm export: pal_wasm_app_init');
   assert(typeof wasmExports['pal_wasm_app_tick'] != 'undefined', 'missing Wasm export: pal_wasm_app_tick');
   assert(typeof wasmExports['pal_wasm_reset_app_state'] != 'undefined', 'missing Wasm export: pal_wasm_reset_app_state');
+  assert(typeof wasmExports['pal_wasm_has_pending_reset'] != 'undefined', 'missing Wasm export: pal_wasm_has_pending_reset');
+  assert(typeof wasmExports['pal_wasm_get_reset_reason'] != 'undefined', 'missing Wasm export: pal_wasm_get_reset_reason');
+  assert(typeof wasmExports['pal_wasm_clear_pending_reset'] != 'undefined', 'missing Wasm export: pal_wasm_clear_pending_reset');
   assert(typeof wasmExports['main'] != 'undefined', 'missing Wasm export: main');
   assert(typeof wasmExports['pal_wasm_set_sim_mode'] != 'undefined', 'missing Wasm export: pal_wasm_set_sim_mode');
   assert(typeof wasmExports['pal_wasm_get_sim_mode'] != 'undefined', 'missing Wasm export: pal_wasm_get_sim_mode');
@@ -2518,6 +2542,8 @@ function assignWasmExports(wasmExports) {
   _pal_wasm_get_gpio_output = Module['_pal_wasm_get_gpio_output'] = createExportWrapper('pal_wasm_get_gpio_output', wasmExports['pal_wasm_get_gpio_output'], 1);
   _pal_wasm_get_prng_state = Module['_pal_wasm_get_prng_state'] = createExportWrapper('pal_wasm_get_prng_state', wasmExports['pal_wasm_get_prng_state'], 0);
   _pal_wasm_i2c_transfer = Module['_pal_wasm_i2c_transfer'] = createExportWrapper('pal_wasm_i2c_transfer', wasmExports['pal_wasm_i2c_transfer'], 6);
+  _pal_wasm_i2c_transfer_ex = Module['_pal_wasm_i2c_transfer_ex'] = createExportWrapper('pal_wasm_i2c_transfer_ex', wasmExports['pal_wasm_i2c_transfer_ex'], 7);
+  _pal_wasm_spi_transfer_ex = Module['_pal_wasm_spi_transfer_ex'] = createExportWrapper('pal_wasm_spi_transfer_ex', wasmExports['pal_wasm_spi_transfer_ex'], 7);
   _pal_wasm_push_uart_rx_byte = Module['_pal_wasm_push_uart_rx_byte'] = createExportWrapper('pal_wasm_push_uart_rx_byte', wasmExports['pal_wasm_push_uart_rx_byte'], 2);
   _pal_wasm_report_oom = Module['_pal_wasm_report_oom'] = createExportWrapper('pal_wasm_report_oom', wasmExports['pal_wasm_report_oom'], 2);
   _pal_wasm_push_uart_rx_error = Module['_pal_wasm_push_uart_rx_error'] = createExportWrapper('pal_wasm_push_uart_rx_error', wasmExports['pal_wasm_push_uart_rx_error'], 2);
@@ -2559,6 +2585,9 @@ function assignWasmExports(wasmExports) {
   _pal_wasm_app_init = Module['_pal_wasm_app_init'] = createExportWrapper('pal_wasm_app_init', wasmExports['pal_wasm_app_init'], 0);
   _pal_wasm_app_tick = Module['_pal_wasm_app_tick'] = createExportWrapper('pal_wasm_app_tick', wasmExports['pal_wasm_app_tick'], 0);
   _pal_wasm_reset_app_state = Module['_pal_wasm_reset_app_state'] = createExportWrapper('pal_wasm_reset_app_state', wasmExports['pal_wasm_reset_app_state'], 0);
+  _pal_wasm_has_pending_reset = Module['_pal_wasm_has_pending_reset'] = createExportWrapper('pal_wasm_has_pending_reset', wasmExports['pal_wasm_has_pending_reset'], 0);
+  _pal_wasm_get_reset_reason = Module['_pal_wasm_get_reset_reason'] = createExportWrapper('pal_wasm_get_reset_reason', wasmExports['pal_wasm_get_reset_reason'], 0);
+  _pal_wasm_clear_pending_reset = Module['_pal_wasm_clear_pending_reset'] = createExportWrapper('pal_wasm_clear_pending_reset', wasmExports['pal_wasm_clear_pending_reset'], 0);
   _main = Module['_main'] = createExportWrapper('main', wasmExports['main'], 2);
   _pal_wasm_set_sim_mode = Module['_pal_wasm_set_sim_mode'] = createExportWrapper('pal_wasm_set_sim_mode', wasmExports['pal_wasm_set_sim_mode'], 1);
   _pal_wasm_get_sim_mode = Module['_pal_wasm_get_sim_mode'] = createExportWrapper('pal_wasm_get_sim_mode', wasmExports['pal_wasm_get_sim_mode'], 0);
@@ -2627,6 +2656,8 @@ var wasmImports = {
   /** @export */
   js_pal_i2c_transfer: _js_pal_i2c_transfer,
   /** @export */
+  js_pal_i2c_transfer_ex: _js_pal_i2c_transfer_ex,
+  /** @export */
   js_pal_log: _js_pal_log,
   /** @export */
   js_pal_notify_pin_edge: _js_pal_notify_pin_edge,
@@ -2636,6 +2667,8 @@ var wasmImports = {
   js_pal_os_sleep_ms: _js_pal_os_sleep_ms,
   /** @export */
   js_pal_poll_interrupt: _js_pal_poll_interrupt,
+  /** @export */
+  js_pal_spi_transfer_ex: _js_pal_spi_transfer_ex,
   /** @export */
   wink_ultrasonic_distance_events_trigger_now_by_trig_pin: _wink_ultrasonic_distance_events_trigger_now_by_trig_pin
 };

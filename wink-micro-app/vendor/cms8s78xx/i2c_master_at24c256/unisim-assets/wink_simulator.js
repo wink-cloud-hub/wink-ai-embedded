@@ -1644,6 +1644,41 @@ async function createWasm() {
           }
       }
 
+  function _js_pal_i2c_session_close(sessionId) {
+          if (typeof Module !== 'undefined' && typeof Module['js_pal_i2c_session_close'] === 'function' && Module['js_pal_i2c_session_close'] !== _js_pal_i2c_session_close) {
+              return Module['js_pal_i2c_session_close'](sessionId);
+          }
+          return 0;
+      }
+
+  function _js_pal_i2c_session_open(port, addr, direction, outSessionPtr, resultPtr) {
+          if (typeof Module !== 'undefined' && typeof Module['js_pal_i2c_session_open'] === 'function' && Module['js_pal_i2c_session_open'] !== _js_pal_i2c_session_open) {
+              return Module['js_pal_i2c_session_open'](port, addr, direction, outSessionPtr, resultPtr);
+          }
+          return -7;
+      }
+
+  function _js_pal_i2c_session_read(sessionId, bufPtr, len, ackMode, resultPtr) {
+          if (typeof Module !== 'undefined' && typeof Module['js_pal_i2c_session_read'] === 'function' && Module['js_pal_i2c_session_read'] !== _js_pal_i2c_session_read) {
+              return Module['js_pal_i2c_session_read'](sessionId, bufPtr, len, ackMode, resultPtr);
+          }
+          return -7;
+      }
+
+  function _js_pal_i2c_session_restart(sessionId, addr, direction, resultPtr) {
+          if (typeof Module !== 'undefined' && typeof Module['js_pal_i2c_session_restart'] === 'function' && Module['js_pal_i2c_session_restart'] !== _js_pal_i2c_session_restart) {
+              return Module['js_pal_i2c_session_restart'](sessionId, addr, direction, resultPtr);
+          }
+          return -7;
+      }
+
+  function _js_pal_i2c_session_write(sessionId, bufPtr, len, resultPtr) {
+          if (typeof Module !== 'undefined' && typeof Module['js_pal_i2c_session_write'] === 'function' && Module['js_pal_i2c_session_write'] !== _js_pal_i2c_session_write) {
+              return Module['js_pal_i2c_session_write'](sessionId, bufPtr, len, resultPtr);
+          }
+          return -7;
+      }
+
   function _js_pal_i2c_transfer(port, addr, wbuf, wlen, rbuf, rlen) {
           if (typeof Module !== 'undefined' && typeof Module['js_pal_i2c_transfer'] === 'function' && Module['js_pal_i2c_transfer'] !== _js_pal_i2c_transfer) {
               return Module['js_pal_i2c_transfer'](port, addr, wbuf, wlen, rbuf, rlen);
@@ -1730,6 +1765,34 @@ async function createWasm() {
               return Module['js_pal_poll_interrupt'](outCbPtr, outArgPtr);
           }
           return 0;
+      }
+
+  function _js_pal_spi_session_close(sessionId) {
+          if (typeof Module !== 'undefined' && typeof Module['js_pal_spi_session_close'] === 'function' && Module['js_pal_spi_session_close'] !== _js_pal_spi_session_close) {
+              return Module['js_pal_spi_session_close'](sessionId);
+          }
+          return 0;
+      }
+
+  function _js_pal_spi_session_open(port, deviceId, mode, sckHz, outSessionPtr) {
+          if (typeof Module !== 'undefined' && typeof Module['js_pal_spi_session_open'] === 'function' && Module['js_pal_spi_session_open'] !== _js_pal_spi_session_open) {
+              return Module['js_pal_spi_session_open'](port, deviceId, mode, sckHz, outSessionPtr);
+          }
+          return -7;
+      }
+
+  function _js_pal_spi_session_transfer(sessionId, txbuf, rxbuf, len) {
+          if (typeof Module !== 'undefined' && typeof Module['js_pal_spi_session_transfer'] === 'function' && Module['js_pal_spi_session_transfer'] !== _js_pal_spi_session_transfer) {
+              return Module['js_pal_spi_session_transfer'](sessionId, txbuf, rxbuf, len);
+          }
+          return -7;
+      }
+
+  function _js_pal_spi_transfer_ex(port, deviceId, txbuf, len, rxbuf, mode, sckHz) {
+          if (typeof Module !== 'undefined' && typeof Module['js_pal_spi_transfer_ex'] === 'function' && Module['js_pal_spi_transfer_ex'] !== _js_pal_spi_transfer_ex) {
+              return Module['js_pal_spi_transfer_ex'](port, deviceId, txbuf, len, rxbuf, mode, sckHz);
+          }
+          return -7;
       }
 
   function _js_pal_uart_write(port, buf, len) {
@@ -2391,6 +2454,7 @@ var _pal_wasm_get_gpio_output = Module['_pal_wasm_get_gpio_output'] = makeInvali
 var _pal_wasm_get_prng_state = Module['_pal_wasm_get_prng_state'] = makeInvalidEarlyAccess('_pal_wasm_get_prng_state');
 var _pal_wasm_i2c_transfer = Module['_pal_wasm_i2c_transfer'] = makeInvalidEarlyAccess('_pal_wasm_i2c_transfer');
 var _pal_wasm_i2c_transfer_ex = Module['_pal_wasm_i2c_transfer_ex'] = makeInvalidEarlyAccess('_pal_wasm_i2c_transfer_ex');
+var _pal_wasm_spi_transfer_ex = Module['_pal_wasm_spi_transfer_ex'] = makeInvalidEarlyAccess('_pal_wasm_spi_transfer_ex');
 var _pal_wasm_push_uart_rx_byte = Module['_pal_wasm_push_uart_rx_byte'] = makeInvalidEarlyAccess('_pal_wasm_push_uart_rx_byte');
 var _pal_wasm_report_oom = Module['_pal_wasm_report_oom'] = makeInvalidEarlyAccess('_pal_wasm_report_oom');
 var _pal_wasm_push_uart_rx_error = Module['_pal_wasm_push_uart_rx_error'] = makeInvalidEarlyAccess('_pal_wasm_push_uart_rx_error');
@@ -2498,6 +2562,7 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['pal_wasm_get_prng_state'] != 'undefined', 'missing Wasm export: pal_wasm_get_prng_state');
   assert(typeof wasmExports['pal_wasm_i2c_transfer'] != 'undefined', 'missing Wasm export: pal_wasm_i2c_transfer');
   assert(typeof wasmExports['pal_wasm_i2c_transfer_ex'] != 'undefined', 'missing Wasm export: pal_wasm_i2c_transfer_ex');
+  assert(typeof wasmExports['pal_wasm_spi_transfer_ex'] != 'undefined', 'missing Wasm export: pal_wasm_spi_transfer_ex');
   assert(typeof wasmExports['pal_wasm_push_uart_rx_byte'] != 'undefined', 'missing Wasm export: pal_wasm_push_uart_rx_byte');
   assert(typeof wasmExports['pal_wasm_report_oom'] != 'undefined', 'missing Wasm export: pal_wasm_report_oom');
   assert(typeof wasmExports['pal_wasm_push_uart_rx_error'] != 'undefined', 'missing Wasm export: pal_wasm_push_uart_rx_error');
@@ -2601,6 +2666,7 @@ function assignWasmExports(wasmExports) {
   _pal_wasm_get_prng_state = Module['_pal_wasm_get_prng_state'] = createExportWrapper('pal_wasm_get_prng_state', wasmExports['pal_wasm_get_prng_state'], 0);
   _pal_wasm_i2c_transfer = Module['_pal_wasm_i2c_transfer'] = createExportWrapper('pal_wasm_i2c_transfer', wasmExports['pal_wasm_i2c_transfer'], 6);
   _pal_wasm_i2c_transfer_ex = Module['_pal_wasm_i2c_transfer_ex'] = createExportWrapper('pal_wasm_i2c_transfer_ex', wasmExports['pal_wasm_i2c_transfer_ex'], 7);
+  _pal_wasm_spi_transfer_ex = Module['_pal_wasm_spi_transfer_ex'] = createExportWrapper('pal_wasm_spi_transfer_ex', wasmExports['pal_wasm_spi_transfer_ex'], 7);
   _pal_wasm_push_uart_rx_byte = Module['_pal_wasm_push_uart_rx_byte'] = createExportWrapper('pal_wasm_push_uart_rx_byte', wasmExports['pal_wasm_push_uart_rx_byte'], 2);
   _pal_wasm_report_oom = Module['_pal_wasm_report_oom'] = createExportWrapper('pal_wasm_report_oom', wasmExports['pal_wasm_report_oom'], 2);
   _pal_wasm_push_uart_rx_error = Module['_pal_wasm_push_uart_rx_error'] = createExportWrapper('pal_wasm_push_uart_rx_error', wasmExports['pal_wasm_push_uart_rx_error'], 2);
@@ -2732,6 +2798,16 @@ var wasmImports = {
   /** @export */
   js_pal_gpio_write: _js_pal_gpio_write,
   /** @export */
+  js_pal_i2c_session_close: _js_pal_i2c_session_close,
+  /** @export */
+  js_pal_i2c_session_open: _js_pal_i2c_session_open,
+  /** @export */
+  js_pal_i2c_session_read: _js_pal_i2c_session_read,
+  /** @export */
+  js_pal_i2c_session_restart: _js_pal_i2c_session_restart,
+  /** @export */
+  js_pal_i2c_session_write: _js_pal_i2c_session_write,
+  /** @export */
   js_pal_i2c_transfer: _js_pal_i2c_transfer,
   /** @export */
   js_pal_i2c_transfer_ex: _js_pal_i2c_transfer_ex,
@@ -2745,6 +2821,14 @@ var wasmImports = {
   js_pal_os_sleep_ms: _js_pal_os_sleep_ms,
   /** @export */
   js_pal_poll_interrupt: _js_pal_poll_interrupt,
+  /** @export */
+  js_pal_spi_session_close: _js_pal_spi_session_close,
+  /** @export */
+  js_pal_spi_session_open: _js_pal_spi_session_open,
+  /** @export */
+  js_pal_spi_session_transfer: _js_pal_spi_session_transfer,
+  /** @export */
+  js_pal_spi_transfer_ex: _js_pal_spi_transfer_ex,
   /** @export */
   js_pal_uart_write: _js_pal_uart_write,
   /** @export */

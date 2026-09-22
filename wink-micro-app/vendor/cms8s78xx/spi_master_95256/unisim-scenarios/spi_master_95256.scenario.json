@@ -1,7 +1,7 @@
 {
   "header": {
     "version": "1.0.0",
-    "name": "mcs51 CMS8S78xx SPI Master M95256 Phase 1 convergence proof",
+    "name": "mcs51 CMS8S78xx SPI Master M95256 Phase 2 data proof",
     "templateId": "vendor_cms8s78xx_spi_master_95256",
     "accuracyMode": "behavioral",
     "timeoutUs": "2000000",
@@ -14,14 +14,49 @@
       "timeUs": "100ms",
       "target": "gpio:10",
       "matcher": 1,
-      "description": "[NSS 空闲] P1.2 (Pin 10 / NSSO1) 空闲为高电平 1；证明 SPI_Transmit 全部完成（SPISIF 同步置位，未死在 while(!SPI_GetTransferIntFlag())），且最后一帧已 STOP（Phase 1 为 0xFF MISO 空闲 Mock，不含器件数据语义）"
+      "description": "[NSS 空闲] P1.2 (NSSO1) 空闲为高；证明 SPI_Transmit 全部完成（SPISIF 同步置位），且最后一帧已 STOP"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "plugin:m95256/writeCount",
+      "matcher": 1,
+      "description": "[数据实证] SPI_M95256_Write(0x15, 0x08)：WREN 帧锁存 WEL，WRITE 帧 CS 上升沿提交 1 次页写"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "plugin:m95256/readbackHex",
+      "matcher": "08",
+      "description": "[数据实证] SPI_M95256_Read_Data(0x15) 读回 0x08（插件通道字节级证据，非内存快照）"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "plugin:m95256/readCount",
+      "matcher": 1,
+      "description": "[数据实证] READ 帧数据相位共吐出 1 字节"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "plugin:m95256/wel",
+      "matcher": 0,
+      "description": "[锁存语义] WRITE 帧 CS 上升沿提交后 WEL 自动清零"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "plugin:m95256/wip",
+      "matcher": 0,
+      "description": "[时序] writeCycleUs=0 行为级模式下 WIP 窗口不挂起"
     },
     {
       "type": "ASSERT_POINT",
       "timeUs": "1000ms",
       "target": "gpio:10",
       "matcher": 1,
-      "description": "[收敛确证] P1.2 全程保持高电平（firmware 已进入 while(1) 主循环，无复位/无挂死）"
+      "description": "[收敛确证] P1.2 全程保持高电平（firmware 已进入 while(1) 主循环，无复死、无挂死）"
     }
   ]
 }

@@ -1,5 +1,5 @@
 {
-  "appName": "vendor_cms8s78xx_extint1",
+  "appName": "extint1",
   "board": "cms8s78xx_devboard",
   "devices": {
     "btn": {

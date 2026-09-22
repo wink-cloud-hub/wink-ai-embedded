@@ -1,5 +1,5 @@
 {
-  "appName": "mcs51_button_led",
+  "appName": "button_led",
   "board": "stc89c52_devboard",
   "devices": {
     "btn": {

@@ -1,5 +1,5 @@
 {
-  "appName": "vendor_cms8s78xx_gpio",
+  "appName": "gpio",
   "board": "cms8s78xx_devboard",
   "devices": {
     "btn": {
