@@ -147,6 +147,7 @@ typedef struct {
 // S5 (CPL-06/08) adds the per-context irq_map (14 rows x 8 B = 112 incl.
 // ACMP) + the extend/flag-predicate/xsfr-validate hooks (12) + alignment (4):
 // 75664 B measured (MinGW i686), ceiling unchanged.
+// T1.4 adds the 24 B SFR spin-guard episode state (still inside the ceiling).
 // Locked by test_mcs51_context_budget (print + ceiling); see stage2 §4 table.
 // Allocation MUST be in BSS or heap — NEVER on fiber/stack.
 typedef struct Mcu51Context {
@@ -244,6 +245,16 @@ typedef struct Mcu51Context {
     // GAP-24 external MOVX bus occupancy (per-instance silicon
     // state; zeroed by context reset via memset).
     Mcs51ExtBusState extbus;
+    // T1.4 SFR spin guard (plan §5.4; defence in depth): ≤3-address sliding
+    // window + episode start + read count + per-episode trip latch. Pure
+    // diagnostic companion state; cleared by context reset (memset) and by
+    // every external-activity anchor through
+    // wink_mcs51_spin_guard_note_event(). Budget/API live in mcs51_trap.h.
+    uint8_t            spin_addrs[3];
+    uint8_t            spin_addr_count;
+    bool               spin_tripped;
+    uint32_t           spin_reads;
+    uint64_t           spin_window_start_us;
     // ADR-0082 Reset Controller tracking fields
     uint8_t            reset_pending;
     uint8_t            reset_reason;

@@ -3,6 +3,7 @@
 #include "wink_mcs51_edge_queue.h"
 
 #include <cstring>
+#include "mcs51_trap.h"
 #include "wink_mcs51_extint.h"
 #include "wink_mcs51_timer.h"
 
@@ -73,6 +74,7 @@ uint8_t mcs51_edge_queue_count(struct Mcu51Context* ctx) {
 
 void mcs51_edge_queue_drain(struct Mcu51Context* ctx) {
     if (!ctx) ctx = mcs51_get_context();
+    bool drained_any = false;
     while (ctx->edge_head != ctx->edge_tail) {
         McuEdgeEvent ev = ctx->edge_queue[ctx->edge_tail];
         if (ev.fire_us > ctx->virtual_us) {
@@ -80,6 +82,7 @@ void mcs51_edge_queue_drain(struct Mcu51Context* ctx) {
         }
         // Dequeue
         ctx->edge_tail = static_cast<uint8_t>((ctx->edge_tail + 1) % MCS51_EDGE_QUEUE_CAP);
+        drained_any = true;
 
 #ifndef __EMSCRIPTEN__
         wink_mcs51_host_set_ext_pin(ev.pin, ev.level);
@@ -97,6 +100,11 @@ void mcs51_edge_queue_drain(struct Mcu51Context* ctx) {
                 wink_mcs51_timer_pulse(2);
             }
         }
+    }
+    if (drained_any) {
+        // T1.4 anchor ③: a real pin/timer event is external activity that
+        // breaks a firmware poll episode.
+        wink_mcs51_spin_guard_note_event();
     }
 }
 

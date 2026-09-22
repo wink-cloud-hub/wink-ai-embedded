@@ -238,6 +238,9 @@ void mcs51_raise_irq(mcs51_irq_source_t src) {
     if (ctx == nullptr) {
         return;
     }
+    // T1.4 anchor ②: a dispatched IRQ is external activity that breaks a
+    // firmware poll episode (e.g. `while(!flag)` served by an ISR).
+    wink_mcs51_spin_guard_note_event();
     const mcs51_irq_map_entry_t& entry = ctx->irq_map[src];
     // Stage5 CPL-06 insulation: an extended source on a family without the
     // vector (e.g. an ADC request on classic) never latches pending.

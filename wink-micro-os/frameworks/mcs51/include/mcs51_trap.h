@@ -145,6 +145,32 @@ void mcs51_trap_register_sfr_read(uint8_t addr, mcs51_sfr_read_hook_t fn);
 // Test isolation: detach every pin trap and clear every SFR hook in active context.
 void mcs51_trap_reset(void);
 
+// ── SFR spin guard (T1.4 of the hardware-spin resolution plan §5.4) ────────
+// Defence in depth against unmodeled `while(!flag)` firmware spins: a bounded
+// ≤3-address SFR-read window that trips when no external activity occurs for
+// the virtual-time budget. The primary fix is always the peripheral model;
+// the guard only turns an unmodeled spin into a diagnosis (release) or a hard
+// failure (STRICT, or an installed fail-fast hook) instead of an endless
+// scenario. Only SFR reads count: transpiler-injected _nop_() microsteps and
+// pure software delays contain no reads and never trip it.
+//
+// External-activity anchors clear the window: any proxied SFR write,
+// mcs51_raise_irq(), a drained edge-queue event, UART RX injection, timer
+// overflow/reload, and — for scenario runners — an explicit call at
+// quantum/scenario boundaries via wink_mcs51_spin_guard_note_event().
+#define MCS51_SPIN_GUARD_BUDGET_US 50000u
+void wink_mcs51_spin_guard_check(uint8_t addr);
+void wink_mcs51_spin_guard_note_event(void);
+// Fail-fast sink: when installed it runs on a trip and MUST NOT return
+// (longjmp/abort — e.g. the ADR-0082 fiber exit). null + STRICT = assert and
+// abort; null + release = diagnostic counters + one warn per run.
+void wink_mcs51_spin_guard_set_abort_hook(void (*fn)(void));
+uint32_t wink_mcs51_spin_guard_trip_count(void);
+uint32_t wink_mcs51_spin_guard_trip_reads(void);
+uint8_t  wink_mcs51_spin_guard_trip_addr(void);
+uint32_t wink_mcs51_spin_guard_reads(void);
+void wink_mcs51_spin_guard_reset_counters(void);
+
 // Framework bridge extension (defined in mcs51_bridge.cpp). The framework init
 // callback runs peripheral init + trap_reset; post-init test seam (Task R1)
 // fires AFTER that, so test harnesses can dynamically bind pin traps.

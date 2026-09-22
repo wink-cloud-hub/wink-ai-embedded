@@ -26,8 +26,14 @@
 #include "wink_event.h"
 #include "wink_mcs51_wdt.h"
 
+#include <cassert>
 #include <csetjmp>
 #include <cstdint>
+#include <cstdlib>
+
+#ifndef WINK_MCS51_STRICT
+#include "pal_log.h"
+#endif
 
 // Stage4 CPL-10 / Stage7 S7-1: chip package registration is LINK-TIME
 // self-registration. Each chips/<family>/src/<family>_register.cpp carries a
@@ -43,6 +49,18 @@ namespace {
 
 std::jmp_buf s_reset_jmp_buf;
 bool s_reentry_active = false;
+
+// T1.4 spin guard diagnostics (M4: process-level counters, not silicon; the
+// per-episode window state lives in Mcu51Context so dual-context tests cannot
+// cross-talk). The abort hook is a process-level sink installed by
+// test/scenario harnesses.
+uint32_t s_spin_guard_trips = 0u;
+uint32_t s_spin_guard_trip_reads = 0u;
+uint8_t  s_spin_guard_trip_addr = 0xFFu;
+#ifndef WINK_MCS51_STRICT
+bool s_spin_guard_warned = false;
+#endif
+void (*s_spin_guard_abort_hook)(void) = nullptr;
 
 void mcs51_perform_reset_sanitization(Mcu51Context* ctx) {
     ctx->reset_guard = 1u;
@@ -91,6 +109,7 @@ void mcs51_framework_init(void) {
     mcs51_context_reset(ctx);
 
     (void)wink_event_queue_init(WINK_EVENT_QUEUE_DEFAULT_CAPACITY);
+    wink_mcs51_spin_guard_reset_counters();
 
     for (uint16_t pin = 0u; pin < 32u; ++pin) {
         js_pal_gpio_write(pin, true, MCS51_DRIVE_WEAK);
@@ -157,8 +176,118 @@ void wink_mcs51_microstep(void) {
     }
 }
 
+// ── T1.4 SFR spin guard (plan §5.4; defence in depth) ──────────────────────
+// Episode rule: reads of a ≤3-address SFR set with no external-activity
+// anchor and > budget of unbroken virtual time. Anchors call note_event()
+// (SFR write below, IRQ raise, edge drain, RX injection, timer overflow, and
+// explicit scenario/quantum boundaries); a 4th distinct address closes the
+// episode (rotations beyond 3 are the documented blind spot).
+void wink_mcs51_spin_guard_check(uint8_t addr) {
+    Mcu51Context* ctx = mcs51_get_context();
+    if (ctx == nullptr || ctx->reset_guard != 0u) {
+        return;  // mid-reset traffic is not a firmware spin
+    }
+    if (ctx->spin_tripped) {
+        return;  // latched until an anchor opens the next episode
+    }
+
+    bool in_window = false;
+    for (uint8_t i = 0u; i < ctx->spin_addr_count; ++i) {
+        if (ctx->spin_addrs[i] == addr) {
+            in_window = true;
+            break;
+        }
+    }
+    if (!in_window) {
+        if (ctx->spin_addr_count < 3u) {
+            if (ctx->spin_addr_count == 0u) {
+                ctx->spin_window_start_us = ctx->virtual_us;
+            }
+            ctx->spin_addrs[ctx->spin_addr_count] = addr;
+            ++ctx->spin_addr_count;
+        } else {
+            ctx->spin_addrs[0] = addr;
+            ctx->spin_addr_count = 1u;
+            ctx->spin_reads = 0u;
+            ctx->spin_window_start_us = ctx->virtual_us;
+        }
+    }
+    ++ctx->spin_reads;
+    if (ctx->virtual_us - ctx->spin_window_start_us <=
+        MCS51_SPIN_GUARD_BUDGET_US) {
+        return;
+    }
+
+    ctx->spin_tripped = true;  // one diagnosis per episode
+    ++s_spin_guard_trips;
+    s_spin_guard_trip_reads = ctx->spin_reads;
+    s_spin_guard_trip_addr = addr;
+#ifndef WINK_MCS51_STRICT
+    if (!s_spin_guard_warned) {
+        s_spin_guard_warned = true;
+        pal_log_w("MCS51",
+                  "SFR spin guard: %u reads of <=3 SFR addresses with no "
+                  "external activity for >%ums (last addr 0x%02X) - likely "
+                  "unmodeled hardware flag",
+                  static_cast<unsigned>(ctx->spin_reads),
+                  static_cast<unsigned>(MCS51_SPIN_GUARD_BUDGET_US / 1000u),
+                  static_cast<unsigned>(addr));
+    }
+#endif
+    if (s_spin_guard_abort_hook != nullptr) {
+        s_spin_guard_abort_hook();  // must not return (fiber exit/longjmp)
+    }
+#ifdef WINK_MCS51_STRICT
+    assert(0 && "SFR spin guard trip (WINK_MCS51_STRICT)");
+    std::abort();
+#endif
+}
+
+void wink_mcs51_spin_guard_note_event(void) {
+    Mcu51Context* ctx = mcs51_get_context();
+    if (ctx == nullptr) {
+        return;
+    }
+    ctx->spin_addr_count = 0u;
+    ctx->spin_reads = 0u;
+    ctx->spin_tripped = false;
+    ctx->spin_window_start_us = ctx->virtual_us;
+}
+
+void wink_mcs51_spin_guard_set_abort_hook(void (*fn)(void)) {
+    s_spin_guard_abort_hook = fn;
+}
+
+uint32_t wink_mcs51_spin_guard_trip_count(void) {
+    return s_spin_guard_trips;
+}
+
+uint32_t wink_mcs51_spin_guard_trip_reads(void) {
+    return s_spin_guard_trip_reads;
+}
+
+uint8_t wink_mcs51_spin_guard_trip_addr(void) {
+    return s_spin_guard_trip_addr;
+}
+
+uint32_t wink_mcs51_spin_guard_reads(void) {
+    Mcu51Context* ctx = mcs51_get_context();
+    return (ctx != nullptr) ? ctx->spin_reads : 0u;
+}
+
+void wink_mcs51_spin_guard_reset_counters(void) {
+    s_spin_guard_trips = 0u;
+    s_spin_guard_trip_reads = 0u;
+    s_spin_guard_trip_addr = 0xFFu;
+#ifndef WINK_MCS51_STRICT
+    s_spin_guard_warned = false;
+#endif
+    wink_mcs51_spin_guard_note_event();
+}
+
 void wink_mcs51_on_sfr_read(uint8_t addr) {
     Mcu51Context* ctx = mcs51_get_context();
+    wink_mcs51_spin_guard_check(addr);
     mcs51_sfr_read_hook_t hook = ctx->sfr_read_hooks[addr];
     if (hook != nullptr) {
         hook(ctx, addr);
@@ -168,6 +297,8 @@ void wink_mcs51_on_sfr_read(uint8_t addr) {
 
 void wink_mcs51_on_sfr_write(uint8_t addr, uint8_t old_val, uint8_t new_val) {
     Mcu51Context* ctx = mcs51_get_context();
+    // T1.4 anchor ①: any proxied firmware write is external activity.
+    wink_mcs51_spin_guard_note_event();
     // GAP-07: the registered pre-dispatch notify (chip TA window) runs
     // BEFORE the per-address hook, so an intervening firmware SFR write
     // aborts a half-open window first and the pending protected write

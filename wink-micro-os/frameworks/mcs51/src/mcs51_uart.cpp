@@ -344,6 +344,10 @@ uint8_t  wink_mcs51_uart_capture_byte(uint32_t idx) {
 EMSCRIPTEN_KEEPALIVE
 #endif
 void wink_mcs51_uart_rx_push(uint8_t byte) {
+    // T1.4 anchor ④: an injected RX byte is external activity that breaks a
+    // firmware `while(!RI)` poll episode (RX is pushed without a proxied SFR
+    // write, so anchor ① alone would false-positive here).
+    wink_mcs51_spin_guard_note_event();
     Mcu51UartState& uart = get_uart();
     uint32_t used = uart.rx_head - uart.rx_tail;
     if (used >= MCS51_UART_RX_FIFO_CAP) {

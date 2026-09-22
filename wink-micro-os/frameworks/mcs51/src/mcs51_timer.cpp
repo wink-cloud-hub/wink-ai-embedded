@@ -6,6 +6,7 @@
 #include "mcs51_context.h"
 #include "mcs51_family.h"
 #include "mcs51_sfr_map.h"
+#include "mcs51_trap.h"
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_isr.h"
 #include "wink_mcs51_strict.h"
@@ -176,6 +177,10 @@ void on_overflow(uint8_t t, uint64_t at_us) {
     Mcu51TimerChannel& tm = get_tm(t);
     uint8_t tf_bit = (t == 0) ? TCON_TF0 : TCON_TF1;
     sfr_set_bit(SFR_TCON, tf_bit);
+    // T1.4 anchor ④: a fired timer is external activity (the reload below is
+    // a model-internal shadow write, not a proxied firmware write, so anchor
+    // ① cannot see it).
+    wink_mcs51_spin_guard_note_event();
 
     mcs51_raise_irq(t == 0 ? IRQ_SOURCE_TIMER0 : IRQ_SOURCE_TIMER1);
 
@@ -274,6 +279,8 @@ void timer2_stop(void) {
 void on_timer2_overflow(uint64_t at_us) {
     Mcu51TimerState& tm = mcs51_get_context()->timer;
     sfr_set_bit(SFR_T2IF, T2IF_T2F);
+    // T1.4 anchor ④: same rule as the T0/T1 overflow above.
+    wink_mcs51_spin_guard_note_event();
 
     uint8_t t2con = sfr(SFR_T2CON);
     if ((t2con & 0x30u) != 0) { // T2Rn != 0: auto-reload or T2EX reload
