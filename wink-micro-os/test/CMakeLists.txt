@@ -1002,6 +1002,32 @@ if(TARGET wink_mcs51_core)
         ../frameworks/mcs51/test/cms8s78xx/test_cms8s_buzzer.cpp)
     target_compile_definitions(test_mcs51_cms8s_buzzer PRIVATE WINK_MCU_CMS8S78XX=1)
 
+    # T1.2 (PLAN-20260921-CMS8S78XX-I2C-SPI-DEADLOCK): on-chip SPI master
+    # model �?synchronous SPISIF auto-assert (vendor poll exits first read),
+    # SPSR->SPDR two-step read-clear, SPSR SW-write limits, WCOL overwrite,
+    # Fsys/SPIClkDiv charge, SSCR frame edges, vector-22 IRQ, reset re-install
+    # and the host channel-2 SPI fallback link contract.
+    add_mcs51_host_test(test_mcs51_cms8s_spi
+        ../frameworks/mcs51/test/cms8s78xx/test_cms8s_spi.cpp)
+    target_compile_definitions(test_mcs51_cms8s_spi PRIVATE WINK_MCU_CMS8S78XX=1)
+
+    # T1.3 (PLAN-20260921-CMS8S78XX-I2C-SPI-DEADLOCK): on-chip I2C master
+    # model �?0xF5 write/read split + command FSM (START/SEND/RECEIVE/STOP),
+    # repeated START routing, ADDR_NACKED reservation, STOP-no-I2CMIF
+    # deviation, mock RX injection, SCL-formula charge, 0xF2 slave-write
+    # tolerance, RSTS release and the host channel-2 I2C fallback link contract.
+    add_mcs51_host_test(test_mcs51_cms8s_i2c
+        ../frameworks/mcs51/test/cms8s78xx/test_cms8s_i2c.cpp)
+    target_compile_definitions(test_mcs51_cms8s_i2c PRIVATE WINK_MCU_CMS8S78XX=1)
+
+    # T1.4 (PLAN-20260921-CMS8S78XX-I2C-SPI-DEADLOCK §5.4): SFR spin guard �?
+    # no false kills (software delay / RX injection / timer overflow), tight
+    # <=3-address spin diagnosis with per-episode latch, write/RX/timer
+    # anchors, and the fail-fast longjmp exit (ADR-0082 fiber exit).
+    add_mcs51_host_test(test_mcs51_sfr_spin_guard
+        ../frameworks/mcs51/test/cms8s78xx/test_mcs51_sfr_spin_guard.cpp)
+    target_compile_definitions(test_mcs51_sfr_spin_guard PRIVATE WINK_MCU_CMS8S78XX=1)
+
     # CMS8S78xx on-chip ACMP (ACMP0/ACMP1) peripheral model test
     add_mcs51_host_test(test_mcs51_cms8s_acmp
         ../frameworks/mcs51/test/cms8s78xx/test_mcs51_cms8s_acmp.cpp)
