@@ -42,13 +42,15 @@
 | ch3 模拟 **ADC** | ✅ C 侧缝（`js_pal_adc_read_norm(pin)`→12-bit，v2 双空间 rail key：0~31 物理 Pin / 32~63 板级通道）+ 跨仓活桥已接通：sister `wink-ai` `afc54d68`（桥 `js_pal_adc_read_norm` 改接 `arbiter.readAnalog(pin)`，无驱动返 0 零回归）+ `81b94565`（headless `AdcDomainHandler` 绑定共享 PinArbiter，此前写进断线 store）。headless `mcs51_analog_threshold`：`INPUT_ANALOG adcChannel:0`（AN0→物理 Pin 0，v2 迁移）0.8→0.2→0.8 → CMS8S 片内 12-bit ADC → 阈值翻 P1.0 LED，`ASSERT_POINT` **8/8**（T4） | ADR-0076 A 类（跨仓已落地） |
 | ch2 UART **TX** | ✅ SBUF 写→`js_pal_uart_write`→UARTBus TX 时间线（置 TI、向量 4 同步）；headless `mcs51_uart_hello` `ASSERT_BUS_PAYLOAD` PASS（T1/T5） | ADR-0076 A 类 |
 | ch2 UART **RX** | ✅ 框架模型（fiber 上下文 drain 队列→锁 SBUF+置 RI+派向量 4，host+wasm ctest 闭环，T2）+ **活通道已跨仓接通**：sister `wink-ai` `cf19d412`——`UartBus.sendToFirmware` 优先解析 `wink_mcs51_uart_rx_push`（容忍 emscripten `_` 前缀），回落 `pal_wasm_push_uart_rx_byte(port,b)`；`BusDomainHandler.setWasmExportsFn` 解 headless 上下文先于 wasm 实例化的导出晚绑定。headless `mcs51_uart_echo`：`INPUT_BUS` 推 "A"/"BC" → 向量-4 ISR 收回 → polled TX 回声，`ASSERT_BUS_PAYLOAD` **4/4**（T2.3） | ADR-0076 A 类（跨仓已落地） |
-| ch2 bit-bang **I2C / SPI 从机** | ❌ 未建（ADC0832 = 现成 SPI 从机模板） | ADR-0076 A 类 |
+| ch2 硬件 **I2C 主机**（片内控制器 → AT24C256） | ✅ 片内 `cms8s_i2c.cpp` 按 ADR-0085/0086 路由 `_ex`/`session_*`；`i2c_eeprom` 插件挂载；headless 8 步插件通道数据断言 100% 绿（`readbackHex="3233343536"`） | ADR-0085/0086（§2.9） |
+| ch2 硬件 **SPI 主机**（片内控制器 → M95256） | ✅ 片内 `cms8s_spi.cpp` 按 ADR-0087 映射 `SSCR.NSSO1`/`SPDR` 到会话流；`spi_eeprom` 插件挂载；headless 7 步插件通道数据断言 100% 绿（`readbackHex="08"`） | ADR-0087（§2.9） |
+| ch2 bit-bang **I2C / SPI 从机** | ❌ 未建（ADC0832 = 现成 SPI 从机模板；硬件主机见上一行，不属 bit-bang） | ADR-0076 A 类 |
 | ch1 外部中断 **INT0/1**（向量 0/2） | ✅ 外部边沿→按 IT0/IT1 锁 IE0/IE1→派向量 0/2（边沿/电平、10ms 采样节流、未驱动线 idle-HIGH）；host 模型直测 + Keil e2e（host+wasm/Node）+ headless `mcs51_button_led_int` **10/10** PASS（T3/T5） | ADR-0076 A 类 |
 | ch1b **PWM** 占空（8051 无硬件 PWM） | ❌ 边沿能出，占空靠量边沿反推（⚠️） | §2.4，ADR-0076 |
 | 定时边沿注入队列（DHT 单总线/NEC 红外/超声波 ECHO/软 UART RX 共用） | ❌ 未建（外部世界现仅 10ms 片边界更新） | ADR-0076 D2 最高杠杆 |
 | ch4 WS2812/摄像头（亚 µs 周期编码） | ❌ native 功能钟不可行 | ADR-0076 B 类 → ISS 后端 |
 
-**一句话进度**：内部模型 ~70% 就绪（定时器/双 ADC/UART TX+RX 模型/外部中断 INT0/1/时钟/代理/热闭环已 ctest 证，host 23/wasm 10）；**Stage 2 活通道已接通五项**——通道-1 数字 GPIO 双向（阶段 0）、通道-2 UART **TX** 上 UARTBus（`mcs51_uart_hello` headless）、通道-1 **外部中断 INT0/1**（`mcs51_button_led_int` headless 10/10）、**通道-3 模拟 ADC 活桥**（`mcs51_analog_threshold` headless 8/8，跨仓 `afc54d68`+`81b94565`）、**通道-2 UART RX 活喂字节**（`mcs51_uart_echo` headless 4/4，跨仓 `cf19d412`）。仍 ❌：I2C/SPI 从机、定时边沿注入队列——属 Stage 3 收尾（A 类，native 可补、零改用户码）；亚 µs 时序（WS2812 等）归可选 ISS cycle 后端（B 类，小家电域低频，按需触发）。
+**一句话进度**：内部模型 ~70% 就绪（定时器/双 ADC/UART TX+RX 模型/外部中断 INT0/1/时钟/代理/热闭环已 ctest 证，host 23/wasm 10）；**Stage 2 活通道已接通七项**——通道-1 数字 GPIO 双向（阶段 0）、通道-2 UART **TX** 上 UARTBus（`mcs51_uart_hello` headless）、通道-1 **外部中断 INT0/1**（`mcs51_button_led_int` headless 10/10）、**通道-3 模拟 ADC 活桥**（`mcs51_analog_threshold` headless 8/8，跨仓 `afc54d68`+`81b94565`）、**通道-2 UART RX 活喂字节**（`mcs51_uart_echo` headless 4/4，跨仓 `cf19d412`）、**通道-2 硬件 I2C/SPI 主机会话流**（`i2c_master_at24c256` 8 步 / `spi_master_95256` 7 步插件通道数据断言全绿，ADR-0085/0086/0087，§2.9）。仍 ❌：bit-bang I2C/SPI 从机、定时边沿注入队列——属 Stage 3 收尾（A 类，native 可补、零改用户码）；亚 µs 时序（WS2812 等）归可选 ISS cycle 后端（B 类，小家电域低频，按需触发）。
 
 > **Stage 2 headless 载体（ADR-0076，2026-08-30）**：`mcs51_uart_hello`（UART TX 信标，`ASSERT_BUS_PAYLOAD` 总线间谍）、`mcs51_button_led_int`（/INT0 边沿 ISR 按键→LED，10 步同形断言 plugin 状态 + 原始 `gpio:8` 驱动电平）、`mcs51_analog_threshold`（ch3 模拟阈值→P1.0 LED，`INPUT_ANALOG` 0.8/0.2/0.8 追踪 8/8）、`mcs51_uart_echo`（UART RX live `INPUT_BUS` "A"/"BC" 4/4）。四个 app 均为**未修改 Keil 源码**，走生产 wasm 链接（ADR-0075 资产约定：device-tree.json + wink_simulator.js 入库，.wasm gitignore）。
 >
@@ -226,6 +228,25 @@ native 功能级后端的虚拟钟（ADR-0072）：`s_virtual_us` 只在拦截�
 - **配额/yield/ISR**（ADR-0072 复用）：主循环长帧跨配额片协作 yield + 定时器 catch-up（预期：硅片 TX 忙等本就不 block Timer ISR）；ISR 内写 SBUF 只推进钟不 yield。RX 1ms 起搏不动（与 9600bps 字节时间自洽）。
 - **后果**：解锁 GAP-07 WDT 验证（Task 4 前置）；UART 场景虚拟时间膨胀 `bytes·byte_us`；应用 DESIGN.md 须写"最长阻塞段（含帧长/波特率）< WTS 间隔"硬约束。完整比选见 [ADR-0081](../../decisions/core/0081-uart-tx-per-byte-synchronous-charge.md)。
 
+### 2.9 CH2 硬件 I2C/SPI 控制器会话契约与数据证据（ADR-0085/0086/0087 Accepted）
+
+片内硬件 I2C/SPI 主机（CMS8S78xx `I2CMCR` / `SSCR`+`SPDR`）不再由片内 Mock 直接应答，而是按**控制器级会话 ABI** 路由到 UniSim 引擎与虚拟 EEPROM 插件；本仓负责"控制器模型 → ABI"，器件语义（AT24C256/M95256 命令集、页写、tWR/WIP）留在插件（分层不越界，§2.4）。
+
+**命令映射（片内模型 → ABI）**
+
+| 固件动作 | I2C（ADR-0086） | SPI（ADR-0087） |
+|---|---|---|
+| `START\|RUN` / `SSCR.NSSO1=0` | `session_open`（活跃会话中再次 START → `session_restart`） | `session_open`（CS 拉低 + 帧开始） |
+| `RUN`（写/读） | `session_write` / `session_read(len=1, ACK/NACK)` | `session_transfer(len=1)` |
+| `STOP` / `SSCR.NSSO1=1` | `session_close`（STOP） | `session_close`（CS 释放 = WEL/WIP 提交点） |
+| 状态回填 | `pal_i2c_result_t.addr_nack` → `I2CMSR.ADD_ACK`；`nack_bits[0]` → `DATA_ACK` | —（SPI 无地址相位） |
+
+- **ABI 常量与错误分级**：`PAL_I2C/SPI_SESSION_POOL_MAX = 4`（引擎全局池，单 port 物理互斥）、`PAL_*_SESSION_INVALID = 0xFF`；`close` 幂等（任何句柄 `WINK_OK`）；未知 SPI 设备 `WINK_ERR_NOT_FOUND`（不建死会话）；I2C 地址 NACK 是合法业务结果（`addr_nack=1` → ADDR_NACKED，仅 close/restart 合法）。
+- **引擎侧线级契约**：会话只走插件 `onExchangeByte`（仅实现整帧 `onFrame` 的插件返回 `WINK_ERR_UNSUPPORTED`，不得静默降级）；`session_open/close` 由引擎驱动设备声明的 `csPin`（未声明不动引脚、不伪造边沿）；会话表纳入 state-hash，复位/纤程退出先 close（STOP / CS 释放）再清表；`WasmPhysicalBridge.MODEL_ABI_VERSION → unisim-phase3-diagnostic-l0-v2`（旧录制由 `assertCompatibleRecording` 拒绝）。
+- **host 与 wasm 的诚实边界**：host CTest 由 `mcs51_uni_bridge.cpp` 的可脚本化总线 mock 驱动（默认 fail-closed `-7`，模型回落 Phase 1 片内 Mock）；wasm 路径无回落——引擎 `UNSUPPORTED`/错误一律锁存 `I2CMIF`+`ERROR` 并计数，**绝不伪造总线数据**（ADR-0012 合约诚实）。
+- **证据口径（Phase 2 数据级）**：headless 数据断言只走插件通道 `plugin:<id>/<channel>`（不用内存快照/串口）。`i2c_master_at24c256` 8 步：`plugin:at24c256/writeCount=6`、`readbackHex="3233343536"`（`At24c256_read_str(0x11,5)` 读回 0x32..0x36）、`readCount=6`、`addressPointer=0x16`；`spi_master_95256` 7 步：`plugin:m95256/writeCount=1`、`readbackHex="08"`（`SPI_M95256_Read_Data(0x15)` 读回 0x08）、`readCount=1`、`wel=0`。两应用 `winkcli sim run --mode headless` 退出码 0；CTest `test_mcs51_cms8s_i2c` / `_spi` 覆盖 host mock 会话路由、ADDR_NACKED 与 CS 帧边界。证据分级（Phase 1 收敛 / Phase 2 数据）见实施计划 §8。
+- 完整契约与比选：跨仓 ADR-0085（`js_pal_i2c_transfer_ex` + `pal_i2c_result_t`）、ADR-0086（I2C 会话流）、ADR-0087（SPI 会话流 + CS 边沿，均归档于私有仓 `packages/unisim/docs/internals/decisions/`）；执行记录见 [PLAN-20260921](../../../implementation-plans/mcs51/2026-09-21-cms8s78xx-i2c-spi-deadlock-resolution-plan.md) v2.x。
+
 ## 3. 目录树、API 面、构建与测试矩阵（活规范）
 
 ### 3.1 目录树（`wink-micro-os/`）
@@ -237,6 +258,7 @@ frameworks/mcs51/                              # 沙箱层（ESP_PLATFORM 下整
   include/         ★ 通用 core 公共头（零厂商名/零扩展 SFR）
                    mcs51_context.h / mcs51_family.h / mcs51_peripheral.h /
                    mcs51_trap.h / mcs51_sfr_map.h / mcs51_adc.h /
+                   mcs51_bus_abi.h（ADR-0085/0086/0087 导入镜像）/
                    wink_mcs51_{gpio,uart,timer,isr,extint,clock,edge_queue,
                    wdt,pwm_meter,strict,ext_bus}.h / mcs51_pcon.h /
                    mcs51_proxy.hpp / mcs51_xsfr.hpp / mcs51_family_route.h /
@@ -246,8 +268,9 @@ frameworks/mcs51/                              # 沙箱层（ESP_PLATFORM 下整
                    pwm_meter,bridge,uni_bridge}.cpp
   chips/cms8s78xx/ 编译为 wink_mcs51_cms8s（register TU 链接期自注册）
     include/       cms8s_sfr_map.h / cms8s_xsfr_allowlist.h / REG_CMS8S78XX.H /
-                   cms8s78xx.h / cms8s_adc.h / cms8s_buzzer.h / cms8s_priv.h
-    src/           cms8s_{adc,buzzer,gpio,uart,timer,extint,sys,register}.cpp
+                   cms8s78xx.h / cms8s_adc.h / cms8s_buzzer.h /
+                   cms8s_i2c.h / cms8s_spi.h / cms8s_priv.h
+    src/           cms8s_{adc,buzzer,gpio,uart,timer,extint,sys,i2c,spi,register}.cpp
   chips/at89c52/   编译为 wink_mcs51_at89（classic = 零扩展纯净 core）
     include/at89_priv.h（预留）; src/at89_register.cpp（空实现 + 自注册协议占位）
   devices/adc0832/ 编译为 wink_mcs51_adc0832
