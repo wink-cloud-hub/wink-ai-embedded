@@ -59,6 +59,15 @@ else()
         "${CMAKE_COMMAND}" -E chdir "${WASM_SMOKE_BINARY_DIR}"
         "${_WASM_SMOKE_BUILD_TOOL}")
 endif()
+
+# Workspace layouts where the toolchain does not sit at ../wink-tools or
+# ../packages/wink-tools cannot rely on the inner project's path probing:
+# forward an explicitly configured WINK_TOOLS_ROOT into the external project.
+set(_WASM_SMOKE_EXTRA_ARGS "")
+if(DEFINED WINK_TOOLS_ROOT AND NOT WINK_TOOLS_ROOT STREQUAL "")
+    list(APPEND _WASM_SMOKE_EXTRA_ARGS "-DWINK_TOOLS_ROOT=${WINK_TOOLS_ROOT}")
+endif()
+
 ExternalProject_Add(wasm_unisim_smoke_build
     SOURCE_DIR          "${WASM_SMOKE_SOURCE_DIR}"
     BINARY_DIR          "${WASM_SMOKE_BINARY_DIR}"
@@ -76,11 +85,29 @@ ExternalProject_Add(wasm_unisim_smoke_build
         # sleep_ms). It is not production app code, so it opts out of the
         # global strict-nonblocking compile definition.
         -DWINK_STRICT_NONBLOCKING=0
+        ${_WASM_SMOKE_EXTRA_ARGS}
     INSTALL_COMMAND     ""
     TEST_COMMAND        ""
     BUILD_ALWAYS        ON
     EXCLUDE_FROM_ALL    ON
     STEP_TARGETS        build
+)
+
+# The smoke tree is an EXCLUDE_FROM_ALL ExternalProject, so a plain
+# `cmake --build` never produces its artifacts, and ctest DEPENDS only orders
+# other TESTS (a CMake target name there is a no-op). Build the artifacts in a
+# fixture setup test that the smoke test requires: only a `ctest -L wasm` (or
+# an explicit -R) pays for the emcc build, and the smoke test can no longer
+# run against a missing tree.
+add_test(
+    NAME wasm_node_smoke_build
+    COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"
+            --target wasm_unisim_smoke_build
+)
+set_tests_properties(wasm_node_smoke_build PROPERTIES
+    TIMEOUT 1800
+    LABELS  "wasm"
+    FIXTURES_SETUP wasm_node_smoke_artifacts
 )
 
 add_test(
@@ -92,7 +119,7 @@ add_test(
 set_tests_properties(wasm_node_smoke PROPERTIES
     TIMEOUT 120
     LABELS  "wasm"
-    DEPENDS wasm_unisim_smoke_build-build
+    FIXTURES_REQUIRED wasm_node_smoke_artifacts
 )
 
 message(STATUS "wasm_node_smoke: registered ctest 'wasm_node_smoke' (node=${NODE_EXECUTABLE}, emcmake=${EMCMAKE_EXECUTABLE})")
