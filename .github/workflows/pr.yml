@@ -141,7 +141,7 @@ jobs:
     # SDK-only dependency tree (plan 2026-09-17 §0.5 invariant #2): the peripheral
     # suite must typecheck and its migrated unit tests must pass with just the
     # published @wink-ai/unisim-sdk + @wink-ai/unisim-ui — never the closed engine.
-    # The full 13-plugin build half of the sandbox gate runs in the wink-ai CI
+    # The full 14-plugin build half of the sandbox gate runs in the wink-ai CI
     # (`peripherals-sandbox` job), where the winkcli toolchain source is available.
     runs-on: ubuntu-latest
     steps:
@@ -179,7 +179,7 @@ jobs:
         run: bun run typecheck
         working-directory: ${{ env.SANDBOX }}
 
-      - name: Bundle load smoke (13 builtins, SDK identity)
+      - name: Bundle load smoke (14 builtins, SDK identity)
         run: bun run test:bundles
         working-directory: ${{ env.SANDBOX }}
 
@@ -188,6 +188,7 @@ jobs:
           bun test \
             builtin/mono_oled/1.0.0/src/__tests__/simulation.test.ts \
             builtin/i2c_eeprom/1.0.0/src/__tests__/simulation.test.ts \
+            builtin/spi_eeprom/1.0.0/src/__tests__/simulation.test.ts \
             builtin/rc_servo/1.0.0/src/__tests__/simulation.test.ts
         working-directory: ${{ env.SANDBOX }}
 
