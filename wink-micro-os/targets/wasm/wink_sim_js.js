@@ -169,6 +169,34 @@ addToLibrary({
         }
         return 0;
     },
+    /* ADR-0087 (CH2 SPI typed + session ABI): without a host override the bare
+     * harness has no bus engine, so the status-returning entry points must fail
+     * closed (WINK_ERR_UNSUPPORTED = -7) instead of faking frames/session state.
+     * Session close is the lone idempotent exception (WINK_OK = 0). */
+    js_pal_spi_transfer_ex: function (port, deviceId, txbuf, len, rxbuf, mode, sckHz) {
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_spi_transfer_ex'] === 'function' && Module['js_pal_spi_transfer_ex'] !== _js_pal_spi_transfer_ex) {
+            return Module['js_pal_spi_transfer_ex'](port, deviceId, txbuf, len, rxbuf, mode, sckHz);
+        }
+        return -7;
+    },
+    js_pal_spi_session_open: function (port, deviceId, mode, sckHz, outSessionPtr) {
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_spi_session_open'] === 'function' && Module['js_pal_spi_session_open'] !== _js_pal_spi_session_open) {
+            return Module['js_pal_spi_session_open'](port, deviceId, mode, sckHz, outSessionPtr);
+        }
+        return -7;
+    },
+    js_pal_spi_session_transfer: function (sessionId, txbuf, rxbuf, len) {
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_spi_session_transfer'] === 'function' && Module['js_pal_spi_session_transfer'] !== _js_pal_spi_session_transfer) {
+            return Module['js_pal_spi_session_transfer'](sessionId, txbuf, rxbuf, len);
+        }
+        return -7;
+    },
+    js_pal_spi_session_close: function (sessionId) {
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_spi_session_close'] === 'function' && Module['js_pal_spi_session_close'] !== _js_pal_spi_session_close) {
+            return Module['js_pal_spi_session_close'](sessionId);
+        }
+        return 0;
+    },
     js_pal_uart_write: function (port, buf, len) {
         if (typeof Module !== 'undefined' && typeof Module['js_pal_uart_write'] === 'function' && Module['js_pal_uart_write'] !== _js_pal_uart_write) {
             return Module['js_pal_uart_write'](port, buf, len);

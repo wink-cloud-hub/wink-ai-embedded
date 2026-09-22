@@ -212,15 +212,63 @@ extern wink_status_t js_pal_i2c_session_read(uint8_t session_id, uint8_t *buf,
 extern wink_status_t js_pal_i2c_session_close(uint8_t session_id);
 
 /**
- * Full-duplex SPI transfer.
- * device_id is the chip-select / device index; mode in [0, 3].
- * Status: Phase 4 T5 — minimal stub.
+ * Full-duplex SPI transfer (LEGACY bool path).
+ * device_id currently carries the C-side `cs_pin` byte - that mapping is
+ * DEPRECATED (ADR-0087): new code uses js_pal_spi_transfer_ex or the session
+ * stream below, where device_id is the board-bound logical device number.
+ * mode in [0, 3].
  * SAFETY: JS implementation MUST NOT hold tx_buf/rx_buf across calls.
  */
 extern bool    js_pal_spi_transfer(uint8_t port, uint16_t device_id,
                                     const uint8_t *tx_buf, uint32_t len,
                                     uint8_t *rx_buf, uint8_t mode,
                                     uint32_t sck_hz);
+
+/**
+ * Status-returning whole-frame SPI transfer (ADR-0087). One call = one
+ * implicit CS-low frame; the engine drives the device-declared CS pin when
+ * bound. `device_id` is the board-bound LOGICAL DEVICE NUMBER (NOT the CS
+ * pin byte). `len == 0` -> WINK_ERR_INVALID_ARG; unknown device ->
+ * WINK_ERR_NOT_FOUND (SPI has no address-phase NACK business result).
+ * 8-bit word size only (no data_width parameter).
+ * SAFETY: JS implementation MUST NOT hold tx_buf/rx_buf across calls.
+ */
+extern wink_status_t js_pal_spi_transfer_ex(uint8_t port, uint16_t device_id,
+                                            const uint8_t *tx_buf, uint32_t len,
+                                            uint8_t *rx_buf, uint8_t mode,
+                                            uint32_t sck_hz);
+
+/* -- CH2 SPI controller-level session stream (ADR-0087) ---------------- */
+
+#define PAL_SPI_SESSION_POOL_MAX 4u     /* engine-global active session pool */
+#define PAL_SPI_SESSION_INVALID  0xFFu  /* failed/released handle sentinel */
+
+/**
+ * Session open: CS assert + frame start (ADR-0087). One active session per
+ * physical port; the global pool holds up to PAL_SPI_SESSION_POOL_MAX
+ * handles. `device_id` is the board-bound logical device number. On success
+ * *out_session holds the handle; on failure it is PAL_SPI_SESSION_INVALID.
+ * Port busy -> WINK_ERR_BUSY; pool full -> WINK_ERR_FULL; unbound device ->
+ * WINK_ERR_NOT_FOUND (no dead session is allocated).
+ */
+extern wink_status_t js_pal_spi_session_open(uint8_t port, uint16_t device_id,
+                                             uint8_t mode, uint32_t sck_hz,
+                                             uint8_t *out_session);
+
+/**
+ * Frame-internal full-duplex transfer (len == 0 -> WINK_ERR_INVALID_ARG).
+ * Line-level only: whole-frame-only plugins answer WINK_ERR_UNSUPPORTED and
+ * the engine never silently degrades to onFrame (ADR-0012).
+ */
+extern wink_status_t js_pal_spi_session_transfer(uint8_t session_id,
+                                                 const uint8_t *tx_buf,
+                                                 uint8_t *rx_buf, uint32_t len);
+
+/**
+ * Close: CS release (rising edge = WEL/WIP commit point) + frame end.
+ * Idempotent - any handle (unknown, already released) returns WINK_OK.
+ */
+extern wink_status_t js_pal_spi_session_close(uint8_t session_id);
 
 /** UART TX — writes a byte frame to the host. Async RX is Planned (Phase 2). */
 extern void    js_pal_uart_write(uint8_t port, const uint8_t *buf, uint32_t len);
@@ -468,6 +516,17 @@ extern int32_t  pal_wasm_i2c_transfer_ex(uint8_t port, uint16_t dev_addr,
                                          const uint8_t *write_buf, uint32_t write_len,
                                          uint8_t *read_buf,        uint32_t read_len,
                                          pal_i2c_result_t *out_result);
+
+/**
+ * ADR-0087 status-returning SPI whole-frame wrapper (JS->C test/worker
+ * surface). Returns the wink_status_t code directly. `device_id` is the
+ * board-bound logical device number; unknown device -> WINK_ERR_NOT_FOUND.
+ * Mirrors the import of the same name.
+ */
+extern int32_t  pal_wasm_spi_transfer_ex(uint8_t port, uint16_t device_id,
+                                         const uint8_t *tx_buf, uint32_t len,
+                                         uint8_t *rx_buf, uint8_t mode,
+                                         uint32_t sck_hz);
 
 /** Push a byte from host JS into Wasm UART RX fifo (Async RX, Phase 2). Returns false on overrun. */
 extern bool     pal_wasm_push_uart_rx_byte(uint8_t port, uint8_t byte);

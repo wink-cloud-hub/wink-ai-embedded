@@ -8,6 +8,7 @@
 #include "pal_wasm_completion.h"
 #include "pal_resource.h"
 #include "pal_wasm_common.h"
+#include <emscripten.h>
 #include <string.h>
 
 #define WASM_SPI_BUS_MAX 2
@@ -16,6 +17,10 @@
 struct pal_spi_device_s {
     bool                     in_use;
     uint8_t                  bus_id;
+    /* Board-bound logical device number (ADR-0087): the device-pool index.
+     * This - not cs_pin - is what js_pal_spi_transfer_ex / session_* pass as
+     * `device_id`. */
+    uint16_t                 device_id;
     uint8_t                  cs_pin;
     uint32_t                 clock_hz;
     uint8_t                  mode;
@@ -64,6 +69,7 @@ wink_status_t pal_spi_add_device(uint8_t bus, const pal_spi_device_config_t *cfg
 
     slot->in_use = true;
     slot->bus_id = bus;
+    slot->device_id = (uint16_t)(slot - s_devices);
     slot->cs_pin = (uint8_t)cfg->cs_pin;
     slot->clock_hz = (cfg->clock_hz > 0) ? cfg->clock_hz : 1000000;
     slot->mode = (uint8_t)cfg->mode;
@@ -92,7 +98,9 @@ wink_status_t pal_spi_transfer_dma(pal_spi_device_handle_t dev,
         return WINK_ERR_INVALID_ARG;
     }
 
-    /* 1. Pass data to JS (Axis C CH2) */
+    /* 1. Pass data to JS (Axis C CH2). LEGACY bool path: still passes cs_pin
+     *    as device_id (DEPRECATED per ADR-0087); new code uses
+     *    js_pal_spi_transfer_ex / js_pal_spi_session_* with dev->device_id. */
     js_pal_spi_transfer(dev->bus_id, dev->cs_pin, tx, (uint32_t)len, rx, dev->mode, dev->clock_hz);
 
     /* 2. Schedule completion based on modeled baud rate */
@@ -121,4 +129,32 @@ wink_status_t pal_spi_transfer_polling(pal_spi_device_handle_t dev,
         pal_wasm_advance_virtual_clock((uint64_t)delta_us);
     }
     return WINK_OK;
+}
+
+/*
+ * ADR-0087 test/worker export surface: status-returning whole-frame SPI
+ * transfer wrapper (symmetric to pal_wasm_i2c_transfer_ex). `device_id` is the
+ * board-bound logical device number; the JS engine answers WINK_ERR_NOT_FOUND
+ * for unbound devices and drives the declared CS pin around the frame.
+ */
+EMSCRIPTEN_KEEPALIVE
+int32_t pal_wasm_spi_transfer_ex(uint8_t port, uint16_t device_id,
+                                 const uint8_t *tx_buf, uint32_t len,
+                                 uint8_t *rx_buf, uint8_t mode, uint32_t sck_hz)
+{
+    WASM_FAULT_GUARD_WINKERR();
+
+    if (port >= WASM_SPI_BUS_MAX) {
+        return (int32_t)WINK_ERR_INVALID_ARG;
+    }
+    if (!s_bus_initialized[port]) {
+        return (int32_t)WINK_ERR_INVALID_STATE;
+    }
+    if (len == 0 || (tx_buf == NULL && rx_buf == NULL)) {
+        return (int32_t)WINK_ERR_INVALID_ARG;
+    }
+
+    wink_status_t st = js_pal_spi_transfer_ex(port, device_id, tx_buf, len,
+                                              rx_buf, mode, sck_hz);
+    return (int32_t)st;
 }
