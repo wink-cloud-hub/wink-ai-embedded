@@ -1,0 +1,9 @@
+{
+  "appName": "spi_master_95256",
+  "board": "cms8s78xx_devboard",
+  "devices": {},
+  "family": "mcs51",
+  "core": "8051",
+  "mcu": "cms8s78xx",
+  "vendor": "cmsemicon"
+}

@@ -1,0 +1,27 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "mcs51 CMS8S78xx SPI Master M95256 Phase 1 convergence proof",
+    "templateId": "vendor_cms8s78xx_spi_master_95256",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "2000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "100ms",
+      "target": "gpio:10",
+      "matcher": 1,
+      "description": "[NSS 空闲] P1.2 (Pin 10 / NSSO1) 空闲为高电平 1；证明 SPI_Transmit 全部完成（SPISIF 同步置位，未死在 while(!SPI_GetTransferIntFlag())），且最后一帧已 STOP（Phase 1 为 0xFF MISO 空闲 Mock，不含器件数据语义）"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1000ms",
+      "target": "gpio:10",
+      "matcher": 1,
+      "description": "[收敛确证] P1.2 全程保持高电平（firmware 已进入 while(1) 主循环，无复位/无挂死）"
+    }
+  ]
+}

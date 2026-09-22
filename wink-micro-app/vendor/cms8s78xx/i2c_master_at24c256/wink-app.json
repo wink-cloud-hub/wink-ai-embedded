@@ -1,0 +1,14 @@
+{
+  "app_name": "i2c_master_at24c256",
+  "display_name": "CMS8S78xx V2.0.2 - I2C Master AT24C256 (byte write + byte/idle read_str)",
+  "board": "cms8s78xx_devboard",
+  "category": "vendor_example",
+  "mcu": "cms8s78xx",
+  "tick_ms": 1,
+  "upstream": {
+    "vendor": "Cmsemicon",
+    "version": "V2.0.2",
+    "source_dir": "docs/vendors/Cmsemicon/CMS8S78xx_DemoCode_V2.0.2/CMS8S78xx_Example/Example/I2C/I2C_Master_AT24C256/code"
+  },
+  "devices": {}
+}
