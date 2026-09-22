@@ -62,7 +62,7 @@ var f = [
 	let n = e.__vccOpts || e;
 	for (let [e, r] of t) n[e] = r;
 	return n;
-}, h = /*#__PURE__*/ m(p, [["__scopeId", "data-v-3951f7d3"]]), g = { class: "virtual-button" }, _ = { class: "component-label" }, v = [
+}, h = /*#__PURE__*/ m(p, [["__scopeId", "data-v-8c68b518"]]), g = { class: "virtual-button" }, _ = { class: "component-label" }, v = [
 	"color",
 	"label",
 	"xray",
@@ -117,7 +117,7 @@ var f = [
 			style: { "pointer-events": "none" }
 		}, null, 8, v)], 32)]));
 	}
-}), [["__scopeId", "data-v-1debaa6a"]]), b = Object.freeze({
+}), [["__scopeId", "data-v-1a915d69"]]), b = Object.freeze({
 	width: 69,
 	height: 46
 }), x = Object.freeze({

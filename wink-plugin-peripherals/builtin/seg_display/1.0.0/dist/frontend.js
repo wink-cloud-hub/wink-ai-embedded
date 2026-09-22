@@ -75,7 +75,7 @@ var h = [
 	let n = e.__vccOpts || e;
 	for (let [e, r] of t) n[e] = r;
 	return n;
-}, v = /*#__PURE__*/ _(g, [["__scopeId", "data-v-c86f8a56"]]), y = { class: "seg-display-world-widget" }, b = [
+}, v = /*#__PURE__*/ _(g, [["__scopeId", "data-v-b044ecfd"]]), y = { class: "seg-display-world-widget" }, b = [
 	"digits",
 	"color",
 	"values"

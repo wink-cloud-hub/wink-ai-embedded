@@ -60,7 +60,11 @@ export function createLedManifest(variantName: LedVariant = 'default'): Peripher
       brightness: { type: 'number', default: 1.0, min: 0.0, max: 1.0 },
       label: { type: 'string', default: '' },
       activeHigh: { type: 'boolean', default: true },
-      contactWelded: { type: 'boolean', default: false, description: 'Relay/switch contact welded' },
+      contactWelded: {
+        type: 'boolean',
+        default: false,
+        description: 'Relay/switch contact welded',
+      },
       faultType: {
         type: 'string',
         default: 'NONE',
@@ -76,7 +80,11 @@ export function createLedManifest(variantName: LedVariant = 'default'): Peripher
     stateChannels: {
       on: { type: 'boolean', default: false, description: 'Lit / commanded state' },
       welded: { type: 'boolean', default: false, description: 'Contact welded fault state' },
-      contactClosed: { type: 'boolean', default: false, description: 'Physical contact closed state' },
+      contactClosed: {
+        type: 'boolean',
+        default: false,
+        description: 'Physical contact closed state',
+      },
     },
     events: {
       INJECT_FAULT: {

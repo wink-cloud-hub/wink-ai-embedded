@@ -65,7 +65,10 @@ function pinsFromOverlay(overlay: Readonly<PinsOverlayMap>): readonly GeneratedB
 
 function createOverlay(variant: SegVariantKey): Readonly<PinsOverlayMap> {
   const segOverlay = createSegmentOverlay();
-  const digitOverlay: Record<string, { relX: number; relY: number; wireNet: 'secondary'; required: boolean }> = {};
+  const digitOverlay: Record<
+    string,
+    { relX: number; relY: number; wireNet: 'secondary'; required: boolean }
+  > = {};
   const nDigits = SEG_VARIANT_DIGITS[variant];
 
   if (nDigits === 8) {

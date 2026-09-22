@@ -111,10 +111,10 @@ describe('seg_display simulation & contract test suite', () => {
     const m1 = createSegDisplayManifest('direct_gpio_1d');
     expect(m1.pins.length).toBe(9);
 
-    const dig1 = m1.pins.find((p) => p.name === 'DIG1');
+    const dig1 = m1.pins.find(p => p.name === 'DIG1');
     expect(dig1?.required).toBe(false);
 
-    const dig1_8d = m8.pins.find((p) => p.name === 'DIG1');
+    const dig1_8d = m8.pins.find(p => p.name === 'DIG1');
     expect(dig1_8d?.required).toBe(true);
   });
 
@@ -138,7 +138,7 @@ describe('seg_display simulation & contract test suite', () => {
     const bright = ctx.getLatestPublish('bright') as Uint8Array;
     expect(bright).toBeDefined();
     expect(bright.length).toBe(64);
-    expect(bright.every((b) => b === 0)).toBe(true);
+    expect(bright.every(b => b === 0)).toBe(true);
 
     const segMask = ctx.getLatestPublish('segMask');
     expect(segMask).toBe(JSON.stringify(new Array(8).fill(0)));
@@ -182,10 +182,30 @@ describe('seg_display simulation & contract test suite', () => {
   // Test 6: 4 Polarity combinations matrix
   test('6. four polarity combinations decode identical glyph', () => {
     const cases = [
-      { segActiveLevel: 'high' as const, digitActiveLevel: 'low' as const, segLevel: LogicStates.HIGH, digLevel: LogicStates.LOW },
-      { segActiveLevel: 'high' as const, digitActiveLevel: 'high' as const, segLevel: LogicStates.HIGH, digLevel: LogicStates.HIGH },
-      { segActiveLevel: 'low' as const, digitActiveLevel: 'low' as const, segLevel: LogicStates.LOW, digLevel: LogicStates.LOW },
-      { segActiveLevel: 'low' as const, digitActiveLevel: 'high' as const, segLevel: LogicStates.LOW, digLevel: LogicStates.HIGH },
+      {
+        segActiveLevel: 'high' as const,
+        digitActiveLevel: 'low' as const,
+        segLevel: LogicStates.HIGH,
+        digLevel: LogicStates.LOW,
+      },
+      {
+        segActiveLevel: 'high' as const,
+        digitActiveLevel: 'high' as const,
+        segLevel: LogicStates.HIGH,
+        digLevel: LogicStates.HIGH,
+      },
+      {
+        segActiveLevel: 'low' as const,
+        digitActiveLevel: 'low' as const,
+        segLevel: LogicStates.LOW,
+        digLevel: LogicStates.LOW,
+      },
+      {
+        segActiveLevel: 'low' as const,
+        digitActiveLevel: 'high' as const,
+        segLevel: LogicStates.LOW,
+        digLevel: LogicStates.HIGH,
+      },
     ];
 
     for (const c of cases) {
@@ -298,7 +318,11 @@ describe('seg_display simulation & contract test suite', () => {
         plugin.onPinChange(digPin, LogicStates.LOW, tUs);
         for (let s = 0; s < 8; s++) {
           const isLit = (charMask & (1 << s)) !== 0;
-          plugin.onPinChange(SEG_PINS[SEGMENT_NAMES[s]], isLit ? LogicStates.HIGH : LogicStates.LOW, tUs);
+          plugin.onPinChange(
+            SEG_PINS[SEGMENT_NAMES[s]],
+            isLit ? LogicStates.HIGH : LogicStates.LOW,
+            tUs,
+          );
         }
 
         // Hold for 1000us
@@ -440,7 +464,7 @@ describe('seg_display simulation & contract test suite', () => {
 
     const activeDigits = ctx.getLatestPublish('activeDigits');
     expect(activeDigits).toBeGreaterThanOrEqual(2);
-    expect(ctx.warnings.some((w) => w.includes('multiple digits driven simultaneously'))).toBe(true);
+    expect(ctx.warnings.some(w => w.includes('multiple digits driven simultaneously'))).toBe(true);
   });
 
   // Test 13: Throttling 1000 edges within 1ms
@@ -512,7 +536,7 @@ describe('seg_display simulation & contract test suite', () => {
 
     // CONFLICT on pin
     plugin.onPinChange(pinMap.A, LogicStates.CONFLICT, 120_000n);
-    expect(ctx.warnings.some((w) => w.includes('bus conflict'))).toBe(true);
+    expect(ctx.warnings.some(w => w.includes('bus conflict'))).toBe(true);
   });
 
   // Test 16: onReset lifecycle
@@ -531,7 +555,7 @@ describe('seg_display simulation & contract test suite', () => {
     plugin.onReset();
 
     const bright = ctx.getLatestPublish('bright') as Uint8Array;
-    expect(bright.every((b) => b === 0)).toBe(true);
+    expect(bright.every(b => b === 0)).toBe(true);
     const text = ctx.getLatestPublish('text') as string;
     expect(text.trim()).toBe('');
   });
@@ -586,7 +610,9 @@ describe('seg_display simulation & contract test suite', () => {
     expect(bright[0]).toBeGreaterThan(150);
 
     plugin.onPropertyChange('variant', 'direct_gpio_1d', 'direct_gpio_4d');
-    expect(ctx.warnings.some((w) => w.includes('runtime variant change is not supported'))).toBe(true);
+    expect(ctx.warnings.some(w => w.includes('runtime variant change is not supported'))).toBe(
+      true,
+    );
   });
 
   // Test 19: Pin alias uniqueness across all variants
@@ -681,7 +707,7 @@ describe('seg_display simulation & contract test suite', () => {
 
     expect(ctx.getLatestPublish('ghostingDetected')).toBe(true);
     expect(ctx.getLatestPublish('deadbandViolations')).toBeGreaterThanOrEqual(1);
-    expect(ctx.warnings.some((w) => w.includes('ghosting detected'))).toBe(true);
+    expect(ctx.warnings.some(w => w.includes('ghosting detected'))).toBe(true);
   });
 
   // Test 23: Digit overlap triggers deadband violation
@@ -706,7 +732,11 @@ describe('seg_display simulation & contract test suite', () => {
     plugin.onPinChange(pinMap.DIG2, LogicStates.LOW, tUs);
 
     expect(ctx.getLatestPublish('deadbandViolations')).toBeGreaterThanOrEqual(1);
-    expect(ctx.warnings.some((w) => w.includes('deadband violation: digit 2 activated while 1 other digit(s) active'))).toBe(true);
+    expect(
+      ctx.warnings.some(w =>
+        w.includes('deadband violation: digit 2 activated while 1 other digit(s) active'),
+      ),
+    ).toBe(true);
   });
 
   // Test 24: Nanosecond switching deadband validation
@@ -726,7 +756,7 @@ describe('seg_display simulation & contract test suite', () => {
     plugin.onPinChange({ pin: pinMap.DIG2, state: LogicStates.LOW, atUs: 1n, atNs: 1050n });
 
     expect(ctx.getLatestPublish('deadbandViolations')).toBe(1);
-    expect(ctx.warnings.some((w) => w.includes('50ns < 100ns'))).toBe(true);
+    expect(ctx.warnings.some(w => w.includes('50ns < 100ns'))).toBe(true);
 
     // Subtest B: Reset and test valid deadband: Deactivate DIG1 at 1000ns, activate DIG2 at 1250ns (250ns in [100ns, 500ns])
     plugin.onReset();

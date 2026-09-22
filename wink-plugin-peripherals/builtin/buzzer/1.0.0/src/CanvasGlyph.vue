@@ -39,11 +39,14 @@ function ensureAudioContext(): AudioContext | null {
     console.log('[Buzzer Glyph] AudioContext created, initial state:', audioCtx.state);
   }
   if (audioCtx.state === 'suspended') {
-    audioCtx.resume().then(() => {
-      console.log('[Buzzer Glyph] AudioContext resumed, state:', audioCtx?.state);
-    }).catch(err => {
-      console.warn('[Buzzer Glyph] AudioContext resume waiting for user interaction:', err);
-    });
+    audioCtx
+      .resume()
+      .then(() => {
+        console.log('[Buzzer Glyph] AudioContext resumed, state:', audioCtx?.state);
+      })
+      .catch(err => {
+        console.warn('[Buzzer Glyph] AudioContext resume waiting for user interaction:', err);
+      });
   }
   return audioCtx;
 }
@@ -138,23 +141,35 @@ function stopSound() {
     if (stopTimer) clearTimeout(stopTimer);
     stopTimer = setTimeout(() => {
       if (mainOsc) {
-        try { mainOsc.stop(); mainOsc.disconnect(); } catch {}
+        try {
+          mainOsc.stop();
+          mainOsc.disconnect();
+        } catch {}
         mainOsc = null;
       }
       if (cavityOsc) {
-        try { cavityOsc.stop(); cavityOsc.disconnect(); } catch {}
+        try {
+          cavityOsc.stop();
+          cavityOsc.disconnect();
+        } catch {}
         cavityOsc = null;
       }
       if (mainGain) {
-        try { mainGain.disconnect(); } catch {}
+        try {
+          mainGain.disconnect();
+        } catch {}
         mainGain = null;
       }
       if (cavityGain) {
-        try { cavityGain.disconnect(); } catch {}
+        try {
+          cavityGain.disconnect();
+        } catch {}
         cavityGain = null;
       }
       if (masterGain) {
-        try { masterGain.disconnect(); } catch {}
+        try {
+          masterGain.disconnect();
+        } catch {}
         masterGain = null;
       }
       currentFreq = 0;
@@ -177,9 +192,12 @@ function toggleMute(e?: Event) {
 
 function unlockAudioOnInteraction() {
   if (audioCtx && audioCtx.state === 'suspended') {
-    audioCtx.resume().then(() => {
-      console.log('[Buzzer Glyph] AudioContext unlocked by interaction, state:', audioCtx?.state);
-    }).catch(() => {});
+    audioCtx
+      .resume()
+      .then(() => {
+        console.log('[Buzzer Glyph] AudioContext unlocked by interaction, state:', audioCtx?.state);
+      })
+      .catch(() => {});
   }
 }
 
@@ -188,7 +206,10 @@ onMounted(() => {
   if (typeof window !== 'undefined') {
     window.addEventListener('click', unlockAudioOnInteraction, { capture: true, passive: true });
     window.addEventListener('keydown', unlockAudioOnInteraction, { capture: true, passive: true });
-    window.addEventListener('pointerdown', unlockAudioOnInteraction, { capture: true, passive: true });
+    window.addEventListener('pointerdown', unlockAudioOnInteraction, {
+      capture: true,
+      passive: true,
+    });
     document.addEventListener('visibilitychange', onVisibilityChange);
   }
 });
@@ -244,9 +265,7 @@ onBeforeUnmount(() => {
           {{ isAudioMuted ? '🔇' : '🔊' }}
         </button>
       </div>
-      <span v-if="hasSignal && frequency" class="freq-tag">
-        {{ Math.round(frequency) }}Hz
-      </span>
+      <span v-if="hasSignal && frequency" class="freq-tag"> {{ Math.round(frequency) }}Hz </span>
     </div>
   </div>
 </template>
@@ -299,7 +318,9 @@ onBeforeUnmount(() => {
   font-size: 11px;
   line-height: 1;
   opacity: 0.8;
-  transition: opacity 0.15s, transform 0.15s;
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
 }
 
 .audio-toggle-btn:hover {

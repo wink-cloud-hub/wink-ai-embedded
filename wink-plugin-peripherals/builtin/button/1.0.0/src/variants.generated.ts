@@ -8,28 +8,28 @@ export const BUTTON_AUTOGEN_SIZE = Object.freeze({
 });
 
 export const BUTTON_AUTOGEN_OVERLAY: Readonly<PinsOverlayMap> = Object.freeze({
-  "1.l": Object.freeze({
+  '1.l': Object.freeze({
     relX: 2,
     relY: 9,
     wireNet: 'primary' as const,
     defaultConnection: null,
     required: true,
   }),
-  "2.l": Object.freeze({
+  '2.l': Object.freeze({
     relX: 2,
     relY: 36,
     wireNet: 'gnd' as const,
     defaultConnection: 'GND' as const,
     required: false,
   }),
-  "1.r": Object.freeze({
+  '1.r': Object.freeze({
     relX: 65,
     relY: 9,
     wireNet: 'primary' as const,
     defaultConnection: null,
     required: false,
   }),
-  "2.r": Object.freeze({
+  '2.r': Object.freeze({
     relX: 65,
     relY: 36,
     wireNet: 'gnd' as const,

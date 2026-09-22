@@ -277,7 +277,16 @@ test('buildStochasticFrettingEdges emits monotonic chatter edges settling at tar
   const prng = createMulberry32(42);
   const startUs = 100_000n;
   const chatterUs = 6_000n;
-  const edges = buildStochasticFrettingEdges(startUs, chatterUs, prng, 1, 0, true, [500, 5000], 32000);
+  const edges = buildStochasticFrettingEdges(
+    startUs,
+    chatterUs,
+    prng,
+    1,
+    0,
+    true,
+    [500, 5000],
+    32000,
+  );
 
   expect(edges.length).toBeGreaterThanOrEqual(2);
   // Monotonic timestamps
@@ -315,4 +324,3 @@ test('stochastic_fretting injects waveform with non-symmetric chatter and schedu
   // Final edge of release must settle at idleLevel (1)
   expect(edges[edges.length - 1].level).toBe(1);
 });
-

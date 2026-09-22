@@ -49,7 +49,7 @@ var p = {
 			style: u(r.value)
 		}, f(e.label || e.id) + " (" + f(Math.round(e.angle)) + "°) ", 7)]));
 	}
-}), [["__scopeId", "data-v-8d19946d"]]), g = Object.freeze({
+}), [["__scopeId", "data-v-0186ed83"]]), g = Object.freeze({
 	width: 171,
 	height: 120
 }), _ = Object.freeze({

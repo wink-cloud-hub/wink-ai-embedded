@@ -20,7 +20,11 @@ import {
 
 const identity = resolvePluginIdentity(import.meta.url, 'seg_display', '1.0.0', 'display');
 
-function resolveChannel(comp: CircuitComponentInstance, ctx: SimViewContext, channel: string): unknown {
+function resolveChannel(
+  comp: CircuitComponentInstance,
+  ctx: SimViewContext,
+  channel: string,
+): unknown {
   const id = resolvePluginInstanceId(comp, identity.type);
   return (
     ctx.pluginChannels?.[comp.id]?.[channel] ??

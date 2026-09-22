@@ -153,7 +153,11 @@ test('active_gpio: DC on/off works with active-high polarity', () => {
     publish: (ch: string, v: unknown) => publishes.push({ ch, v }),
   } as any;
 
-  plugin.onBind(ctx, { '1': 18 }, { variant: 'active_gpio', defaultFreqHz: 2000, activeHigh: true });
+  plugin.onBind(
+    ctx,
+    { '1': 18 },
+    { variant: 'active_gpio', defaultFreqHz: 2000, activeHigh: true },
+  );
   publishes.length = 0;
 
   // Pin 18 goes HIGH at t=0. The first edge on a held level is ambiguous

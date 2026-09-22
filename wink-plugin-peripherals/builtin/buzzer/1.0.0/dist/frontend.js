@@ -128,7 +128,7 @@ var h = ["hasSignal"], g = { class: "buzzer-badge-area" }, _ = { class: "buzzer-
 	let n = e.__vccOpts || e;
 	for (let [e, r] of t) n[e] = r;
 	return n;
-}, S = /*#__PURE__*/ x(b, [["__scopeId", "data-v-03efb5b1"]]), C = { class: "widget-header" }, w = { class: "widget-title" }, T = { class: "metrics-grid" }, E = { class: "metric-item" }, D = { class: "metric-val" }, O = { class: "metric-item" }, k = { class: "metric-val" }, A = { class: "metric-item full-width" }, j = { class: "metric-mode" }, M = { class: "audio-control" }, N = /*#__PURE__*/ x(/* @__PURE__ */ s({
+}, S = /*#__PURE__*/ x(b, [["__scopeId", "data-v-d1de1baf"]]), C = { class: "widget-header" }, w = { class: "widget-title" }, T = { class: "metrics-grid" }, E = { class: "metric-item" }, D = { class: "metric-val" }, O = { class: "metric-item" }, k = { class: "metric-val" }, A = { class: "metric-item full-width" }, j = { class: "metric-mode" }, M = { class: "audio-control" }, N = /*#__PURE__*/ x(/* @__PURE__ */ s({
 	__name: "WorldWidget",
 	props: {
 		id: {},
@@ -237,7 +237,7 @@ var h = ["hasSignal"], g = { class: "buzzer-badge-area" }, _ = { class: "buzzer-
 			}, [o("span", null, p(n.value ? "🔇 Audio Muted" : "🔊 Audio Active"), 1)], 2)])
 		], 2));
 	}
-}), [["__scopeId", "data-v-ca101289"]]), P = Object.freeze({
+}), [["__scopeId", "data-v-fe91764f"]]), P = Object.freeze({
 	width: 75,
 	height: 90
 }), F = Object.freeze({

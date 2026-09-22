@@ -97,10 +97,7 @@ watchEffect(() => {
 </script>
 
 <template>
-  <div
-    class="seg-display-canvas"
-    :style="flip ? 'transform: rotate(180deg);' : undefined"
-  >
+  <div class="seg-display-canvas" :style="flip ? 'transform: rotate(180deg);' : undefined">
     <wokwi-7segment
       ref="segEl"
       :digits="effectiveNDigits"

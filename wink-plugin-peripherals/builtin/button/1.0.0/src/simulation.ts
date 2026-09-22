@@ -204,9 +204,7 @@ export class ButtonPlugin extends SimpleGpioPlugin {
       pressDurationUs: toBigUs(obj?.pressDurationUs),
       bounceUs: toBigUs(obj?.bounceUs),
       bounceCount:
-        typeof obj?.bounceCount === 'number'
-          ? obj.bounceCount
-          : ButtonPlugin.DEFAULT_BOUNCE_COUNT,
+        typeof obj?.bounceCount === 'number' ? obj.bounceCount : ButtonPlugin.DEFAULT_BOUNCE_COUNT,
       bounceModel: obj?.bounceModel,
       chatterDurationRangeUs:
         Array.isArray(obj?.chatterDurationRangeUs) && obj.chatterDurationRangeUs.length >= 2
@@ -315,13 +313,7 @@ export class ButtonPlugin extends SimpleGpioPlugin {
       } else if (pressDurationUs !== undefined || bounceUs > 0n) {
         // Explicit pulse: one atomic press/release pair (optionally with a
         // deterministic chatter train inside the leading edge).
-        const edges = buildPressEdges(
-          nowUs,
-          bounceUs,
-          options.bounceCount,
-          idleLevel,
-          pressLevel,
-        );
+        const edges = buildPressEdges(nowUs, bounceUs, options.bounceCount, idleLevel, pressLevel);
         this._scheduledReleaseUs = nowUs + bounceUs + (pressDurationUs ?? 0n);
         edges.push({ tUs: this._scheduledReleaseUs, level: idleLevel });
         ctx.injectWaveform(this._signalPinName, {

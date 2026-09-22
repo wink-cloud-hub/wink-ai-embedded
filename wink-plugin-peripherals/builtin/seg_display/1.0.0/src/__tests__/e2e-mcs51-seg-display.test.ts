@@ -1,11 +1,7 @@
 import { expect, test, describe } from 'bun:test';
 import { LogicStates } from '@wink-ai/unisim-sdk';
 
-import {
-  SegDisplayPlugin,
-  GHOST_MAX_BRIGHT,
-  LOGIC_THRESHOLD,
-} from '../simulation';
+import { SegDisplayPlugin, GHOST_MAX_BRIGHT, LOGIC_THRESHOLD } from '../simulation';
 import { CHAR_TO_SEG_MASK } from '../seg-font';
 
 function createMockCtx() {
@@ -147,7 +143,7 @@ describe('Part 2: 8051 Bare-Metal Firmware End-to-End Simulation Suite', () => {
         p0 = nextP0;
 
         // Step 3: P2 = ~(1 << d) (activate new digit)
-        const nextP2 = (~(1 << d)) & 0xff;
+        const nextP2 = ~(1 << d) & 0xff;
         drive8051Port(plugin, 16, p2, nextP2, tUs);
         p2 = nextP2;
 
@@ -281,8 +277,8 @@ describe('Part 2: 8051 Bare-Metal Firmware End-to-End Simulation Suite', () => {
         p2 = 0xff;
         drive8051Port(plugin, 0, p0, C51_SEG_TABLE[displayBuf[d]], tUs);
         p0 = C51_SEG_TABLE[displayBuf[d]];
-        drive8051Port(plugin, 16, p2, (~(1 << d)) & 0xff, tUs);
-        p2 = (~(1 << d)) & 0xff;
+        drive8051Port(plugin, 16, p2, ~(1 << d) & 0xff, tUs);
+        p2 = ~(1 << d) & 0xff;
 
         tUs += 1000n;
         ctx.advanceTime(1000n);
@@ -299,8 +295,8 @@ describe('Part 2: 8051 Bare-Metal Firmware End-to-End Simulation Suite', () => {
         p2 = 0xff;
         drive8051Port(plugin, 0, p0, C51_SEG_TABLE[displayBuf[d]], tUs);
         p0 = C51_SEG_TABLE[displayBuf[d]];
-        drive8051Port(plugin, 16, p2, (~(1 << d)) & 0xff, tUs);
-        p2 = (~(1 << d)) & 0xff;
+        drive8051Port(plugin, 16, p2, ~(1 << d) & 0xff, tUs);
+        p2 = ~(1 << d) & 0xff;
 
         tUs += 1000n;
         ctx.advanceTime(1000n);
@@ -333,8 +329,8 @@ describe('Part 2: 8051 Bare-Metal Firmware End-to-End Simulation Suite', () => {
         p2 = 0xff;
         drive8051Port(plugin, 0, p0, C51_SEG_TABLE[d + 1], tUs);
         p0 = C51_SEG_TABLE[d + 1];
-        drive8051Port(plugin, 16, p2, (~(1 << d)) & 0xff, tUs);
-        p2 = (~(1 << d)) & 0xff;
+        drive8051Port(plugin, 16, p2, ~(1 << d) & 0xff, tUs);
+        p2 = ~(1 << d) & 0xff;
         tUs += 1000n;
         ctx.advanceTime(1000n);
       }
@@ -344,7 +340,7 @@ describe('Part 2: 8051 Bare-Metal Firmware End-to-End Simulation Suite', () => {
     // 8051 Hardware Reset: P0 -> 0xFF (quasi-bidirectional reset state), P2 -> 0xFF
     plugin.onReset();
     const brightReset = ctx.getLatestPublish('bright') as Uint8Array;
-    expect(brightReset.every((b) => b === 0)).toBe(true);
+    expect(brightReset.every(b => b === 0)).toBe(true);
     expect((ctx.getLatestPublish('text') as string).trim()).toBe('');
 
     // Resume scanning after reset
@@ -356,8 +352,8 @@ describe('Part 2: 8051 Bare-Metal Firmware End-to-End Simulation Suite', () => {
         p2 = 0xff;
         drive8051Port(plugin, 0, p0, C51_SEG_TABLE[d + 1], tUs);
         p0 = C51_SEG_TABLE[d + 1];
-        drive8051Port(plugin, 16, p2, (~(1 << d)) & 0xff, tUs);
-        p2 = (~(1 << d)) & 0xff;
+        drive8051Port(plugin, 16, p2, ~(1 << d) & 0xff, tUs);
+        p2 = ~(1 << d) & 0xff;
         tUs += 1000n;
         ctx.advanceTime(1000n);
       }
@@ -395,9 +391,9 @@ describe('Part 2: 8051 Bare-Metal Firmware End-to-End Simulation Suite', () => {
     // The multi-cycle moving window must stabilize scanHz to 40Hz (between [40, 50]).
     const dig1ActiveTimestampsUs = [
       10_000n,
-      30_000n,  // delta = 20ms
-      60_000n,  // delta = 30ms
-      80_000n,  // delta = 20ms
+      30_000n, // delta = 20ms
+      60_000n, // delta = 30ms
+      80_000n, // delta = 20ms
       110_000n, // delta = 30ms
       130_000n, // delta = 20ms
       160_000n, // delta = 30ms
@@ -446,8 +442,8 @@ describe('Part 2: 8051 Bare-Metal Firmware End-to-End Simulation Suite', () => {
     // followed by alternating 20ms and 30ms slices.
     const startupWithJitterUs = [
       35_000n,
-      65_000n,  // delta = 30ms
-      85_000n,  // delta = 20ms
+      65_000n, // delta = 30ms
+      85_000n, // delta = 20ms
       115_000n, // delta = 30ms
       135_000n, // delta = 20ms
       165_000n, // delta = 30ms
@@ -465,4 +461,3 @@ describe('Part 2: 8051 Bare-Metal Firmware End-to-End Simulation Suite', () => {
     expect(scanHz).toBe(40);
   });
 });
-

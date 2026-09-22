@@ -38,14 +38,17 @@ const labelStyle = computed(() => {
 <template>
   <div
     class="servo-container"
-    style="position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;"
+    style="
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+    "
   >
     <wokwi-servo :angle="angle" />
-    <span
-      class="label"
-      :class="{ 'is-transposed': isTransposed }"
-      :style="labelStyle"
-    >
+    <span class="label" :class="{ 'is-transposed': isTransposed }" :style="labelStyle">
       {{ label || id }} ({{ Math.round(angle) }}°)
     </span>
   </div>

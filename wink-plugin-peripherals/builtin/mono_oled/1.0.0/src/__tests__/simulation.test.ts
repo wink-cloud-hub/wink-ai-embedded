@@ -40,7 +40,9 @@ describe('OledSsd1306Plugin', () => {
     const firstPublishCount = host.publishes.filter(({ channel }) => channel === 'fb').length;
 
     host.i2cTransfer(0x3c, new Uint8Array([0x40, 0x02]));
-    expect(host.publishes.filter(({ channel }) => channel === 'fb')).toHaveLength(firstPublishCount);
+    expect(host.publishes.filter(({ channel }) => channel === 'fb')).toHaveLength(
+      firstPublishCount,
+    );
 
     host.advance(16_000n);
     expect(host.publishes.filter(({ channel }) => channel === 'fb')).toHaveLength(
@@ -52,9 +54,7 @@ describe('OledSsd1306Plugin', () => {
     const { host } = createPlugin();
 
     /* SH1106 Page 1 command: 0xB1, col lower 0x02, col upper 0x10 */
-    expect(
-      host.i2cTransfer(0x3c, new Uint8Array([0x00, 0xb1, 0x02, 0x10])).ack,
-    ).toBe(true);
+    expect(host.i2cTransfer(0x3c, new Uint8Array([0x00, 0xb1, 0x02, 0x10])).ack).toBe(true);
     expect(host.i2cTransfer(0x3c, new Uint8Array([0x40, 0xcc, 0xdd])).ack).toBe(true);
 
     const framebuffer = host.lastPublish('fb') as Uint8Array;

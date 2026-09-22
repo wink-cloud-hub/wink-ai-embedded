@@ -8,21 +8,21 @@ export const RC_SERVO_AUTOGEN_SIZE = Object.freeze({
 });
 
 export const RC_SERVO_AUTOGEN_OVERLAY: Readonly<PinsOverlayMap> = Object.freeze({
-  "GND": Object.freeze({
+  GND: Object.freeze({
     relX: 0,
     relY: 50,
     wireNet: 'gnd' as const,
     defaultConnection: 'GND' as const,
     required: false,
   }),
-  "VCC": Object.freeze({
+  VCC: Object.freeze({
     relX: 0,
     relY: 60,
     wireNet: 'vcc' as const,
     defaultConnection: 'VCC' as const,
     required: false,
   }),
-  "PWM": Object.freeze({
+  PWM: Object.freeze({
     relX: 0,
     relY: 69,
     wireNet: 'primary' as const,

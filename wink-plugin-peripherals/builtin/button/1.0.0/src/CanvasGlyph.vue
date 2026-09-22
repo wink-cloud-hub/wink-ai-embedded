@@ -90,7 +90,7 @@ onBeforeUnmount(() => {
       :label="''"
       :xray="xray"
       :pressed="isPressed"
-      style="pointer-events: none;"
+      style="pointer-events: none"
     />
   </div>
 </template>

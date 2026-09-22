@@ -18,7 +18,7 @@ describe('rc_servo peripheral definition', () => {
   });
 
   it('does not declare redundant simulation.observe in frontend definition (SSOT in unisim binder)', () => {
-    const def:any = servoDefinition;
+    const def: any = servoDefinition;
     expect(def?.simulation?.observe).toBeUndefined();
   });
 

@@ -3,7 +3,8 @@ import { pinsFromBinderVariant } from '@wink-ai/unisim-ui';
 
 export type BuzzerVariantKey = 'passive_pwm' | 'active_gpio';
 
-export const BUZZER_TOPOLOGY_EQUIVALENCE: Readonly<Record<string, readonly string[]>> = Object.freeze({});
+export const BUZZER_TOPOLOGY_EQUIVALENCE: Readonly<Record<string, readonly string[]>> =
+  Object.freeze({});
 
 import { BUZZER_AUTOGEN_OVERLAY, BUZZER_AUTOGEN_SIZE } from './variants.generated';
 

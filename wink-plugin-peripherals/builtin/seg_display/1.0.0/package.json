@@ -1,8 +1,8 @@
 {
   "name": "@wink-peripheral/seg-display-v1",
-  "license": "GPL-3.0-only",
   "version": "1.0.0",
   "private": true,
+  "license": "GPL-3.0-only",
   "type": "module",
   "dependencies": {
     "@wink-ai/unisim-sdk": "^1.0.1",

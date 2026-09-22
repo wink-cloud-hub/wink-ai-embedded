@@ -6,10 +6,7 @@ export type RcServoVariantKey = 'sg90';
 export const RC_SERVO_TOPOLOGY_EQUIVALENCE: Readonly<Record<string, readonly string[]>> =
   Object.freeze({});
 
-import {
-  RC_SERVO_AUTOGEN_OVERLAY,
-  RC_SERVO_AUTOGEN_SIZE,
-} from './variants.generated';
+import { RC_SERVO_AUTOGEN_OVERLAY, RC_SERVO_AUTOGEN_SIZE } from './variants.generated';
 
 export const SG90_OVERLAY = RC_SERVO_AUTOGEN_OVERLAY;
 export const SG90_SIZE = RC_SERVO_AUTOGEN_SIZE;

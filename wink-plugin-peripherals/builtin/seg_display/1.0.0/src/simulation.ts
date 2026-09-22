@@ -12,11 +12,7 @@ import {
   type ThrottlePublishHandle,
 } from '@wink-ai/unisim-sdk';
 
-import {
-  SEG_VARIANT_DIGITS,
-  resolveSegVariant,
-  type SegVariantKey,
-} from './variants';
+import { SEG_VARIANT_DIGITS, resolveSegVariant, type SegVariantKey } from './variants';
 import { decodeSegMask } from './seg-font';
 
 export interface SegDisplayProps {
@@ -77,7 +73,9 @@ export function createSegDisplayPins(variantName: SegVariantKey): PeripheralMani
   return pins;
 }
 
-export function createSegDisplayManifest(variantName: SegVariantKey = 'direct_gpio_8d'): PeripheralManifest {
+export function createSegDisplayManifest(
+  variantName: SegVariantKey = 'direct_gpio_8d',
+): PeripheralManifest {
   const validVariant = resolveSegVariant(variantName);
   const pins = createSegDisplayPins(validVariant);
 
@@ -160,7 +158,8 @@ export function createSegDisplayManifest(variantName: SegVariantKey = 'direct_gp
       ghostingDetected: {
         type: 'boolean',
         default: false,
-        description: 'Flag indicating whether visual ghosting was detected due to unblanked segment change',
+        description:
+          'Flag indicating whether visual ghosting was detected due to unblanked segment change',
       },
       deadbandViolations: {
         type: 'number',
@@ -620,7 +619,8 @@ export class SegDisplayPlugin extends BaseSimulationPlugin<SegDisplayState, SegD
         if (gen !== this.tailGen) return;
         this.tailPending = false;
         const liveNow = this.getNowUs();
-        const effectiveNow = liveNow > scheduledAtUs ? liveNow : scheduledAtUs + PUBLISH_INTERVAL_US;
+        const effectiveNow =
+          liveNow > scheduledAtUs ? liveNow : scheduledAtUs + PUBLISH_INTERVAL_US;
         this.publishFrame(effectiveNow);
       });
     } else {

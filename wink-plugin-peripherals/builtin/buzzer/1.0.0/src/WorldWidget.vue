@@ -128,23 +128,35 @@ function stopSound() {
     if (stopTimer) clearTimeout(stopTimer);
     stopTimer = setTimeout(() => {
       if (mainOsc) {
-        try { mainOsc.stop(); mainOsc.disconnect(); } catch {}
+        try {
+          mainOsc.stop();
+          mainOsc.disconnect();
+        } catch {}
         mainOsc = null;
       }
       if (cavityOsc) {
-        try { cavityOsc.stop(); cavityOsc.disconnect(); } catch {}
+        try {
+          cavityOsc.stop();
+          cavityOsc.disconnect();
+        } catch {}
         cavityOsc = null;
       }
       if (mainGain) {
-        try { mainGain.disconnect(); } catch {}
+        try {
+          mainGain.disconnect();
+        } catch {}
         mainGain = null;
       }
       if (cavityGain) {
-        try { cavityGain.disconnect(); } catch {}
+        try {
+          cavityGain.disconnect();
+        } catch {}
         cavityGain = null;
       }
       if (masterGain) {
-        try { masterGain.disconnect(); } catch {}
+        try {
+          masterGain.disconnect();
+        } catch {}
         masterGain = null;
       }
       currentFreq = 0;

@@ -105,7 +105,8 @@ export function createBuzzerManifest(
     version: identity.version,
     category: identity.category,
     displayName: row.displayName,
-    description: 'Acoustic buzzer component supporting passive PWM, active GPIO, and auto-detecting periodic square wave tone synthesis',
+    description:
+      'Acoustic buzzer component supporting passive PWM, active GPIO, and auto-detecting periodic square wave tone synthesis',
     timingModel: 'event-driven',
     pins: row.pins,
     properties: {
@@ -225,12 +226,18 @@ export class BuzzerPlugin extends BaseSimulationPlugin<BuzzerState, BuzzerProps>
       pinMapping?.[rawPinName];
 
     if (mappedPin !== undefined) {
-      this.signalMcuPin = typeof mappedPin === 'number' ? mappedPin : parseInt(String(mappedPin), 10);
+      this.signalMcuPin =
+        typeof mappedPin === 'number' ? mappedPin : parseInt(String(mappedPin), 10);
     } else {
       this.signalMcuPin = -1;
     }
 
-    console.log('[Buzzer Sim] onBound with pinMapping:', pinMapping, 'signalMcuPin:', this.signalMcuPin);
+    console.log(
+      '[Buzzer Sim] onBound with pinMapping:',
+      pinMapping,
+      'signalMcuPin:',
+      this.signalMcuPin,
+    );
 
     this.hasSignal = false;
     this.frequency = 0;
@@ -267,7 +274,14 @@ export class BuzzerPlugin extends BaseSimulationPlugin<BuzzerState, BuzzerProps>
     this.frequency = frequency;
     this.duty = duty;
 
-    console.log('[Buzzer Sim] State change -> hasSignal:', hasSignal, 'freq:', frequency, 'duty:', duty);
+    console.log(
+      '[Buzzer Sim] State change -> hasSignal:',
+      hasSignal,
+      'freq:',
+      frequency,
+      'duty:',
+      duty,
+    );
     this.ctx?.publish('hasSignal', this.hasSignal);
     this.ctx?.publish('frequency', this.frequency);
     this.ctx?.publish('duty', this.duty);
@@ -285,11 +299,7 @@ export class BuzzerPlugin extends BaseSimulationPlugin<BuzzerState, BuzzerProps>
 
     if (dutyPercent > 0) {
       this.driveMode = 'pwm';
-      this.updateSoundState(
-        true,
-        Number(this.properties?.defaultFreqHz ?? 2000),
-        dutyPercent,
-      );
+      this.updateSoundState(true, Number(this.properties?.defaultFreqHz ?? 2000), dutyPercent);
     } else {
       this.driveMode = 'quiet';
       this.updateSoundState(false, 0, 0);
@@ -304,9 +314,7 @@ export class BuzzerPlugin extends BaseSimulationPlugin<BuzzerState, BuzzerProps>
       return;
     }
 
-    const isHigh =
-      level === LogicStates.HIGH ||
-      (level as unknown) === true;
+    const isHigh = level === LogicStates.HIGH || (level as unknown) === true;
 
     const activeHigh = this.properties?.activeHigh !== false;
     this.currentPinActive = activeHigh ? isHigh : !isHigh;
@@ -450,11 +458,7 @@ export class BuzzerPlugin extends BaseSimulationPlugin<BuzzerState, BuzzerProps>
 
     if (active) {
       this.driveMode = 'gpio_dc';
-      this.updateSoundState(
-        true,
-        Number(this.properties?.defaultFreqHz ?? 2000),
-        50,
-      );
+      this.updateSoundState(true, Number(this.properties?.defaultFreqHz ?? 2000), 50);
     } else {
       this.driveMode = 'quiet';
       this.updateSoundState(false, 0, 0);
