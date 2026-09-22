@@ -11,12 +11,12 @@
 |------|------|
 | **计划编号** | `PLAN-20260921-CMS8S78XX-I2C-SPI-DEADLOCK` |
 | **创建日期** | `2026-09-21` |
-| **最新修订** | `2026-09-21`（v1.2：融合 ABI 评审与框架实况修正——根因叙述、看门狗重设计、跨仓 ABI 依赖 ADR-0085/0086、任务路径/门禁命令纠偏） |
+| **最新修订** | `2026-09-22`（v1.4：与 ADR-0085/0086 v1.3 契约对齐——错误码定案、session 必填 result、重复 START 路由、I2C 计时、防护判据重写、SPI 断言去内存快照、任务/门禁补齐） |
 | **目标平台/SoC** | `host` (GCC/MSVC C++17), `wasm` (Emscripten) 基于 `wink-micro-os/frameworks/mcs51` |
 | **工具链/运行时** | GCC 11+, MSVC 19+, Emscripten 3.1+, 原厂 `CMS8S78xx_DemoCode_V2.0.2`；UniSim 侧 Bun 1.x |
 | **计划状态** | 🟡 技术方案与 ADR 立项就绪（ADR-0085/0086 处于 Proposed），待评审后执行 |
 | **优先级** | 🔴 P1（Checklist 列级优先级为 P3；两者维度不同，见 T2.5） |
-| **计划版本** | `v1.2` |
+| **计划版本** | `v1.4` |
 | **关联技术设计** | 原厂 `CMS8S78xx` 参考手册（SPI/I2C 章节）；[04-wasm-simulation](../../../zh/design/04-wasm-simulation/00-README.md)；`wink-ai/packages/unisim/docs/internals/decisions/0085/0086`（私有仓 ADR） |
 | **关联设计规范** | [07-mcs51-simulation-interception](../../../zh/design/02-wink-micro-os/07-mcs51-simulation-interception.md)；[04-wasm-simulation](../../../zh/design/04-wasm-simulation/00-README.md) |
 | **关联合格清单** | [`docs/vendors/Cmsemicon/CMS8S78XX_EXAMPLE_CHECKLIST.md`](../../vendors/Cmsemicon/CMS8S78XX_EXAMPLE_CHECKLIST.md) §8（编号 37 `I2C_Master_AT24C256`、38 `SPI_Master_95256`） |
@@ -123,8 +123,8 @@ int16_t At24c256_write_byte(uint16_t addr, uint8_t ch) {
 │  [wink-micro-os/frameworks/mcs51/chips/cms8s78xx: cms8s_spi.cpp & cms8s_i2c.cpp] │
 │       │ ① 状态机拦截、双步读清锁存跟踪、精准更新状态字                 │
 │       │ ② 计算传输开销, 推进虚拟时间 (wink_mcs51_charge_us)            │
-│       │ ③ 事务打包与片选跟踪 (SSCR Pin Edge / I2C Frame Buffer)        │
-│       │ ④ 内核死循环防卫 Watchdog 保护                                │
+│       │ ③ 片选边沿记录（SSCR，Phase 1 仅测试断言，供 SPI 会话 ADR）    │
+│       │ ④ SFR 层自旋防护（诊断优先，见 §5.4）                          │
 │       ▼                                                                │
 │  [Wasm FFI Bridge: targets/wasm/wink_sim_js.js]                        │
 │       │ 调用导入: js_pal_i2c_transfer_ex / js_pal_i2c_session_*        │
@@ -172,11 +172,11 @@ int16_t At24c256_write_byte(uint16_t addr, uint8_t ch) {
     3. 插件经 `wink-app.json` 声明并在运行时生成 `unisim-assets/device-tree.json`；
   * **达标效果**：
     1. 原厂 `At24c256_read_str()` 与 `SPI_M95256_Read_Data()` 读回写入的真实数据；
-    2. Headless 断言经 **插件通道**（`plugin:`）或串口输出校验，100% 绿灯。
+    2. Headless 断言：I2C 经插件通道或串口输出校验；SPI 因官方 demo 无串口逻辑且 `value` 为读后即死的局部变量（引擎无变量级内存断言），**只允许走插件通道**（如 `plugin:spi_eeprom/...`）校验，100% 绿灯。
 
 ---
 
-## 5. 详细实现技术规格（吸收专家评审深度改进）
+## 5. 详细实现技术规格（融合 ADR-0085/0086 v1.3 契约）
 
 ### 5.1 物理寄存器地址与位掩码基准校验（纠正原稿偏差）
 
@@ -281,7 +281,8 @@ static void on_spdr_write(Mcu51Context* ctx, uint8_t, uint8_t val) {
 - `SPSR` 写只允许改 `SSCEN`(bit0)，`SPISIF`/`WCOL` 软件写无效。
 
 #### 3. `SSCR` 边沿跟踪与片选语义
-- `SSCR` 写 hook 记录 bit1 边沿（高→低 = 帧开始，低→高 = 帧结束），作为 Phase 2 SPI 线级契约的输入；
+- `SSCR` 写 hook 记录 bit1 边沿（高→低 = 帧开始，低→高 = 帧结束）；
+- **Phase 1 的边沿记录仅用于 CTest 断言，不对外输出**：SPI 线级 ABI 尚不存在（ADR-0087 待立项），Phase 2 才把边沿接入会话契约；
 - **Phase 1 不在片内模型解析器件命令**：M95256 的 WREN/WRITE/RDSR 帧命令 FSM（评审 I13）属于片外器件语义，归 Phase 2 插件实现。
 
 #### 4. Phase 1 协议无关 Mock
@@ -310,20 +311,34 @@ static void on_spdr_write(Mcu51Context* ctx, uint8_t, uint8_t val) {
 3. **RECEIVE + ACK/NACK**（`0x01|0x08` / `0x01`）：接收 1 字节入 `I2CMBUF`，按 `I2CMCR.ACK` 在总线上回 ACK/NACK；置 `I2CMIF`。
 4. **STOP**（`0x04`，**不带 RUN**）：清 `BUS_BUSY`、置 `IDLE`，释放总线。
 
-**STOP 行为级偏差声明（评审 I12）**：原厂 demo 在 STOP 后**不做任何标志轮询**（直接软件延时），故 Phase 1 模型"STOP 不置 `I2CMIF`"是有意的行为级选择，而非寄存器级精确。若日后参考手册证实硬件在 STOP 后置 `I2CMIF`，且新固件据此轮询，本模型需升级为"STOP 也置位"（升级条件已记录，回归用例 `test_mcs51_cms8s_i2c_stop`）。
+**模型侧路由与错误映射（ADR-0086 v1.3）**：
+- **重复 START**：模型自持"当前是否有活跃会话"状态；固件在会话中再次下发 `START | RUN` 时必须路由到 `session_restart`（直接 `open` 会得 `WINK_ERR_BUSY`）；
+- **地址 NACK 后**：`session_open/restart` 返回 `addr_nack=1` 时，模型**跳过**后续数据命令，进入 `ADDR_NACKED` 映射（保持 `I2CMIF`、不更新 `DATA_ACK`）；
+- **非法状态命令**：引擎返回 `WINK_ERR_INVALID_STATE` 时，模型保持 `I2CMIF=1`、不更新 `DATA_ACK`/`ADD_ACK`，并记录诊断，不伪造成功；
+- **result 必填**：`open/restart/write/read` 均必须传 `result`（引擎对 NULL 返回 `WINK_ERR_INVALID_ARG`），否则 `I2CMSR.ADD_ACK/DATA_ACK` 无法回填。
 
-#### 3. ACK/NACK 与 tWR：现状纠偏（评审补充）
+**STOP 行为级偏差声明（评审 I12）**：原厂 demo 在 STOP 后**不做任何标志轮询**（直接软件延时），故 Phase 1 模型"STOP 不置 `I2CMIF`"是有意的行为级选择，而非寄存器级精确。若日后参考手册证实硬件在 STOP 后置 `I2CMIF`，且新固件据此轮询，本模型需升级为"STOP 也置位"（升级条件已记录，回归用例 `test_cms8s_i2c.cpp` 的 stop 用例）。
+
+#### 3. 时间计费（I2C，与 SPI 对称，补齐 v1.3 缺失）
+
+- 时钟公式（厂商 `i2c.c` 注释）：`I2CMTP = 0 → SCL = 3*10*Tsys`；`I2CMTP != 0 → SCL = 2*(1+I2CMTP)*10*Tsys`（demo 使用 `I2C_ConfigCLK(2)`）；
+- 每条 `I2CMCR` 命令计费：数据字节按 9 个 SCL（8 bit + ACK）、START/STOP 各按 9 个 SCL 估算；在 `0xF5` 写 hook 内 `wink_mcs51_charge_us(cmd_us)` 后再置 `I2CMIF`；
+- `Tsys`/`Fsys` 取自 `cms8s_sys` 模型（`SYS_SET_SYSTEM_CLK` 配置），禁止写死常量；demo 注释"400K"与 Fsys 假设的差异在 CTest 中固化为显式断言（与 §5.2 同口径）。
+
+#### 4. ACK/NACK 与 tWR：现状纠偏（评审补充）
 - **官方 demo 没有 ACK Polling**：`At24c256_write_byte()` 在 STOP 后使用固定 `2000×200` 次软件延时等待擦写，且全程不检查 `ADD_ACK`/`DATA_ACK`。v1.1 的"ACK Polling 二次死锁"是假想场景，风险等级下调；
 - Phase 1 Mock：所有寻址与数据**直接应答 ACK**（`ADD_ACK=0`、`DATA_ACK=0`），任何 ACK 分支都能收敛；
 - Phase 2 插件：按真实 24C 时序在 `tWR` 窗口内对寻址回 NACK。若未来固件引入 ACK Polling，需保证"轮询期间虚拟时间单调推进"（C 侧 `charge_us` 主导，ADR-0072），使轮询在有限次内收敛；该场景以独立 CTest/场景用例覆盖。
 
-#### 4. Phase 2 目标：会话流 ABI（ADR-0086）
+#### 5. Phase 2 目标：会话流 ABI（ADR-0086）
 - 逐命令时序（`START_SEND → SEND → START_RECEIVE_ACK → RECEIVE_ACK/NACK → STOP`）必须映射为 `js_pal_i2c_session_*`（`open/restart/write/read/close`），**不能**逐字节调用整事务 `js_pal_i2c_transfer`；
+- 控制器模型逐命令调用时 `len=1`：ACK 字节用 `ack_mode=PAL_I2C_ACK_ALL`，NACK 字节用 `PAL_I2C_NACK_ALL`；
 - `I2CMSA` 的 8-bit 地址（`0xA0`）→ ABI 7-bit `dev_addr`（`0x50`）转换在模型内完成。
 
-#### 5. 明确不做（Scope Out）
+#### 6. 明确不做（Scope Out）
 - 9-Clock 总线恢复（ADR-0067 的 PAL 层能力，不属片内模型；demo 无触发路径）；
 - 从机模式寄存器行为（仅容忍写入，见 §5.1 注 4）；
+- `I2CMCR.RSTS`（软件复位）不实现专用语义：按"清状态机 + 释放内部会话"最小处理或直接忽略，不得崩溃；
 - 多主仲裁、10-bit 地址、SMBus PEC。
 
 ---
@@ -333,25 +348,30 @@ static void on_spdr_write(Mcu51Context* ctx, uint8_t, uint8_t val) {
 #### 1. 为什么 v1.1 的 PC 看门狗不可实现
 框架**没有 PC/寄存器文件，也没有指令步进函数**：固件是转译后的 native 代码，微步进只发生在 SFR/XDATA 代理访问点。因此 `check_instruction(uint16_t pc)`、`mcs51_core.cpp`、`mcs51_watchdog.h` 均不存在且无法落地；且 `mcs51_watchdog.h` 会与既有片上看门狗模型 `include/wink_mcs51_wdt.h` 撞名。
 
-#### 2. 可实现的判据：同地址连续读 + 虚拟时间预算
+#### 2. 可实现的判据：多地址滑动窗口 + 事件清零 + 虚拟时间预算
 ```cpp
 /* 放在 SFR 读派发路径（mcs51_bridge.cpp / 各外设模型读 hook），非新文件 */
 struct SfrSpinGuard {
-    uint8_t  last_addr = 0xFF;
-    uint32_t consecutive = 0;
+    uint8_t  last_addrs[3] = {0xFF, 0xFF, 0xFF}; /* 3 地址滑动窗口：覆盖 A,B,A 与 A,B,C 交替轮询 */
     uint64_t window_start_us = 0;
+    uint32_t reads = 0;                          /* 仅诊断用 */
 };
-/* 命中条件：同一 SFR 地址被连续读取，且窗口内虚拟时间超过预算 */
-static constexpr uint32_t SPIN_GUARD_BUDGET_US = 10000u; /* 10ms，与 WINK_MCS51_QUOTA_US 对齐 */
+/* 默认预算 50ms（须大于测试语料最长合法硬件等待）；STRICT/CTest 可收紧 */
+static constexpr uint32_t SPIN_GUARD_BUDGET_US = 50000u;
 ```
-- 每次 SFR 读：若 `addr == last_addr` 则累加，否则重置；当 `virtual_us - window_start_us > SPIN_GUARD_BUDGET_US` 时触发；
+- **只统计 SFR 读**：转译器注入的 `_nop_()` microstep 不计入，demo 末尾 `while(1){;}` 不会误杀；
+- **窗口清零锚点（必须实现，缺一不可）**：① 任何经代理的 SFR 写；② `mcs51_raise_irq()` 派发；③ `mcs51_edge_queue_drain()` 产生边沿；④ 模型内部写标志（如 UART RX push、定时器重载）；⑤ 场景/量子步边界。这四类"外部事件"是区分"合法长等待"与"真自旋"的关键——仅靠 SFR 写清零会误杀 `while(!RI)`（RX 由 JS 注入、不经代理写）与长周期定时器等待；
+- **命中条件**：同一 3 地址集合内连续读 + 窗口内无上述任何事件 + `virtual_us - window_start_us > SPIN_GUARD_BUDGET_US`；
 - 虚拟时间由既有 `wink_mcs51_charge_us`（5µs/microstep）自然累积，无需额外时钟接口；
-- **不误杀软件延时**：有限 `for/for` 延时循环不含 SFR 访问，在 SFR 层不可见，天然不触发；空无限循环由转译器 `_nop_()` 注入处理（`tools/transpile_app_keil_c51.py`）。
+- **已知局限**：>3 个寄存器交替轮询可能漏报；作为防御纵深可接受，不追求完备（真正兜底是场景超时 + T1.2/T1.3 模型）。
 
 #### 3. 触发后的行为
-- 输出诊断快照：SFR 地址、连续读次数、虚拟时间、外设状态与固件当前调用栈可及信息；
-- 受控失败：按 STRICT/测试构建抛 `WINK_ERR_TIMEOUT` 或经 `wink_mcs51_unsupported()` 记录并中止当前用例，**绝不无声挂死**；
-- 阈值可按构建配置：STRICT/CTest 用 10ms；常规仿真可放宽或关闭（避免误报），由 T1.4 用例固化两种行为。
+- **默认诊断优先**：记录 SFR 地址、连续读次数、虚拟时间、外设状态，不中止仿真（避免误杀长等待）；
+- **STRICT/CTest 硬失败**：经 ADR-0082 的纤程退出（`longjmp`）终止当前用例并标记场景失败——注意**自旋发生在固件 native 代码中，没有调用边界可以"返回 `WINK_ERR_TIMEOUT`"**；不得复用 `wink_mcs51_unsupported()`（语义是"未支持特性"，会造成诊断污染）；
+- 预算/开关按构建配置，由 T1.4 用例固化"诊断不误杀"与"STRICT 必失败"两种行为。
+
+#### 4. 定位
+本机制是**防御纵深**：主修复仍是 T1.2/T1.3 的外设模型；T1.4 不得作为"解除死锁"的验收依据。
 
 #### 4. 定位
 本机制是**防御纵深**：主修复仍是 T1.2/T1.3 的外设模型；T1.4 不得作为"解除死锁"的验收依据。
@@ -365,7 +385,7 @@ static constexpr uint32_t SPIN_GUARD_BUDGET_US = 10000u; /* 10ms，与 WINK_MCS5
 #### 1. 插件交付形态与挂载
 - 交付形态：builtin 外设插件（`type` + 语义化版本目录 + manifest），可被 `winkcli`/Headless 扫描发现；插件不得直连宿主内部模块。
 - 挂载声明：微应用经 `wink-app.json` 声明，构建产物 `unisim-assets/device-tree.json` 固化绑定（I2C：port + 7-bit 地址；SPI：port + CS 引脚/`deviceId` 映射）。
-- 观测/断言：Headless 校验走**插件通道**（`plugin:`）或串口输出；当前 `ASSERT_BUS_PAYLOAD` 只解析 UART，不得作为 I2C/SPI 数据断言依赖。
+- 观测/断言：Headless 校验**只允许走插件通道**（`plugin:<id>/<channel>`）；`ASSERT_BUS_PAYLOAD` 当前只解析 UART，且 SPI 示例（No. 38）无串口逻辑、其 `value` 为读后即死的局部变量——引擎没有变量级内存断言能力，严禁依赖"内存快照 `value==0x08`"或串口输出。
 
 #### 2. 虚拟 I2C EEPROM 插件（AT24C256）
 - **从机地址**：7-bit `0x50`（写 `0xA0` / 读 `0xA1`）；
@@ -375,7 +395,7 @@ static constexpr uint32_t SPIN_GUARD_BUDGET_US = 10000u; /* 10ms，与 WINK_MCS5
 - **时序**：`behavioral` 模式不推进虚拟时间，tWR 只在 timing/cycle 模式计入时间线；固件时间由 C 侧 `charge_us` 主导。
 
 #### 3. 虚拟 SPI EEPROM 插件（M95256 / 25LC256）
-- **前置（独立 ADR）**：SPI 帧/CS 线级契约（`js_pal_spi_transfer` 目前为 `stub`，且 `deviceId` 为 CS 引脚字符串化）未定案前，本插件只做 Mock 级交付，不得宣称保真；
+- **前置（独立 ADR，T2.2a）**：SPI 帧/CS 线级契约未定案前，本插件只做 Mock 级交付，不得宣称保真。需先立项 **ADR-0087**（`js_pal_spi_session_*` + CS 引脚边沿绑定，对标 ADR-0086），并裁决它与 catalog 既有提案 `js_pal_spi_transfer_ex` 的关系、以及 `js_pal_spi_transfer`（`stub`）的升级归属；
 - **指令集**（按 M95256 语义实现，供 Phase 2 插件侧使用，片内模型不感知）：
   * `0x06` WREN：CS 低→高跳变时置 `WEL=1`；
   * `0x04` WRDI：清 `WEL`；
@@ -402,22 +422,24 @@ static constexpr uint32_t SPIN_GUARD_BUDGET_US = 10000u; /* 10ms，与 WINK_MCS5
 | :---: | :--- | :---: | :--- | :--- |
 | **T1.1** | 补齐 SPI / I2C SFR 声明与宏定义 | `embedded` | `wink-micro-os/frameworks/mcs51/chips/cms8s78xx/include/REG_CMS8S78XX.H`<br>`.../include/cms8s_sfr_map.h` | SPCR(0xEC)/SPSR(0xED)/SPDR(0xEE)/SSCR(0xEF)、I2CSADR..I2CMTP(0xF1..0xF7)；同步 `mcs51_shim_audit.py` fixture/allowlist；SPDX LGPL-3.0-only |
 | **T1.2** | SPI 片内外设模型（hook + 双步读清 + 计费） | `embedded` | `.../chips/cms8s78xx/src/cms8s_spi.cpp`<br>`.../include/cms8s_spi.h`<br>`.../mcs51_sources.cmake`<br>`wink-micro-os/frameworks/mcs51/src/mcs51_uni_bridge.cpp`（host fallback） | 1. 读 SPSR→读 SPDR 真正清 `SPISIF`；<br>2. SSCR 边沿跟踪；<br>3. `charge_us` 按 `Fsys/SPIClkDiv` 公式；<br>4. host 可链接 |
-| **T1.3** | I2C 片内外设模型（命令状态机 + Mock ACK） | `embedded` | `.../src/cms8s_i2c.cpp`<br>`.../include/cms8s_i2c.h`<br>`.../mcs51_sources.cmake` | 1. 0xF5 读写 hook 分离（含 `val==0` 清标志）；<br>2. START/RUN/STOP 状态机；<br>3. 0xF2 从机写入容忍；<br>4. STOP 行为级偏差用例 |
-| **T1.4** | SFR 层自旋防护（替代 PC 看门狗） | `embedded` | `wink-micro-os/frameworks/mcs51/src/mcs51_bridge.cpp`（读派发路径）<br>（**不新建** `mcs51_core.cpp`/`mcs51_watchdog.h`） | 同地址连续读 + 10ms 虚拟时间预算触发诊断；STRICT/常规两种行为；有限延时循环不误杀 |
-| **T1.5** | CTest 单测（读清时序/命令响应/防护） | `embedded` | `wink-micro-os/frameworks/mcs51/test/cms8s78xx/test_mcs51_cms8s_spi.cpp`<br>`.../test_mcs51_cms8s_i2c.cpp`<br>`wink-micro-os/test/CMakeLists.txt`（`add_mcs51_host_test` 注册） | CTest 100% 绿灯；含读清多重读、STOP、自旋防护正反例 |
-| **T1.6** | 官方微应用镜像与构建输出 | `embedded` | `wink-micro-app/vendor/cms8s78xx/spi_master_95256/`<br>`wink-micro-app/vendor/cms8s78xx/i2c_master_at24c256/`（ADR-0079 嵌套布局） | 原厂源码一行不改；`winkcli build sim` 产出三件套；运行无超时/不收敛 |
+| **T1.3** | I2C 片内外设模型（命令状态机 + 计时 + Mock ACK） | `embedded` | `.../src/cms8s_i2c.cpp`<br>`.../include/cms8s_i2c.h`<br>`.../mcs51_sources.cmake`<br>`wink-micro-os/frameworks/mcs51/src/mcs51_uni_bridge.cpp`（i2c host fallback） | 1. 0xF5 读写 hook 分离（含 `val==0` 清标志）；<br>2. START/RUN/repeated-START/STOP 状态机与 ADDR_NACKED 映射；<br>3. 0xF2 从机写入容忍；<br>4. 按 SCL 公式计费；<br>5. host 可链接 |
+| **T1.4** | SFR 层自旋防护（替代 PC 看门狗） | `embedded` | `wink-micro-os/frameworks/mcs51/src/mcs51_bridge.cpp`（读派发路径）<br>（**不新建** `mcs51_core.cpp`/`mcs51_watchdog.h`） | 3 地址窗口 + 事件清零锚点 + 虚拟时间预算；默认诊断不误杀、STRICT 经纤程退出硬失败；有限延时/长周期定时器/RX 等待不误杀 |
+| **T1.5** | CTest 单测（读清/命令/计时/防护） | `embedded` | `wink-micro-os/frameworks/mcs51/test/cms8s78xx/test_cms8s_spi.cpp`<br>`.../test_cms8s_i2c.cpp`<br>`.../test_mcs51_sfr_spin_guard.cpp`<br>`wink-micro-os/test/CMakeLists.txt`（`add_mcs51_host_test` 注册） | CTest 100% 绿灯；含读清多重读、repeated START、STOP、计时、防护正反例 |
+| **T1.6** | 官方微应用镜像与构建输出 | `embedded` | `wink-micro-app/vendor/cms8s78xx/spi_master_95256/`<br>`wink-micro-app/vendor/cms8s78xx/i2c_master_at24c256/`（ADR-0079 嵌套布局） | 按现有 vendor app scaffold 生成：`CMakeLists.txt` + `wink-app.json` + 拷贝原厂 `main.c/demo_*.c/h/isr.c`（一行不改）+ `unisim-scenarios/`；`winkcli build sim` 产出三件套；运行无超时/不收敛 |
 | **T1.7** | 门禁与证据分级 | `embedded` | — | `winkcli lint --pack layering --pack api`、`mcs51_shim_audit.py`、`check_license_map.py` 全绿；Checklist 37/38 仅标注"Phase 1 已解除运行阻塞" |
 
 ### 阶段二：ABI 落地与虚拟外设联动（ABI 优先级见左，实施 P2）
 
 | 序号 | 任务项 | 负责仓 | 涉及文件 | 验收标准 |
 | :---: | :--- | :---: | :--- | :--- |
-| **T2.0** | ADR-0085/0086 评审 + 七步 ABI hash 同步 | 双仓 | `wasm_bridge.h`、TS imports/exports、`PAL_WASM_ABI_HASH`、`abi-catalog.yaml` | ADR Accepted；catalog `proposed→implemented`；wasm parity 全绿（**T2.3/T2.4 硬前置**） |
+| **T2.0** | ADR-0085/0086 评审 + 七步 ABI hash 同步 | 双仓 | `wasm_bridge.h`、`targets/wasm/wink_sim_js.js`（新 import 的 JS 实现）、`targets/wasm/pal_wasm_ch2_bus.c`（测试导出面）、TS imports/exports、`PAL_WASM_ABI_HASH`、`abi-catalog.yaml` | ADR Accepted；catalog `proposed→implemented`；wasm parity 全绿（**T2.3/T2.4 硬前置**） |
 | **T2.1** | AT24C256 虚拟插件（线级会话接口） | `wink-ai` | builtin 插件交付物（manifest + 线级回调实现） | 单测覆盖页写回滚、Random/Sequential Read、tWR NACK 窗口 |
-| **T2.2** | M95256 虚拟插件（CS 帧契约后） | `wink-ai` | builtin 插件交付物 + SPI 线级契约 ADR | 单测覆盖 WREN/WEL 锁存、CS 上升沿提交、RDSR/WIP |
+| **T2.2a** | SPI 姐妹 ADR 立项与评审 | 双仓 | ADR-0087（`js_pal_spi_session_*` + CS 边沿绑定）；裁决 `js_pal_spi_transfer_ex` 与 `js_pal_spi_transfer`（stub）升级归属 | ADR Accepted；catalog 登记 SPI 会话符号（proposed） |
+| **T2.2** | M95256 虚拟插件（CS 帧契约后） | `wink-ai` | builtin 插件交付物 + 线级契约实现 | 单测覆盖 WREN/WEL 锁存、CS 上升沿提交、RDSR/WIP（**依赖 T2.2a**） |
 | **T2.3** | 双仓联调（`_ex` + `session_*`） | 双仓 | `cms8s_i2c.cpp`/`cms8s_spi.cpp` ↔ UniSim 桥接/总线 | 事务数据透传；AT24C256 随机读经 repeated START 成功；**不使用**整事务接口逐字节调用 |
-| **T2.4** | Headless 场景与数据实证 | 双仓 | 各微应用 `unisim-scenarios/` | 插件通道断言读写字节一致；`winkcli sim run` 退出码 0 |
+| **T2.4** | Headless 场景与数据实证 | 双仓 | 各微应用 `unisim-scenarios/` | **仅插件通道断言**（`plugin:<id>/<channel>`）读写字节一致；`winkcli sim run` 退出码 0 |
 | **T2.5** | Checklist 摘牌与归档 | `embedded` | `docs/vendors/Cmsemicon/CMS8S78XX_EXAMPLE_CHECKLIST.md` | 37/38 `🚫 Blocked → [x]`（以 T2.4 证据为准）；同步索引归档 |
+| **T2.6** | Layer-① 回写与 ADR 合流 | `embedded` | `docs/zh/design/02-wink-micro-os/07-mcs51-simulation-interception.md`；ADR-X1 收敛（ADR-0085/0086 规则抽象为跨通道通用规则） | 设计规范含 CH2 I2C/SPI 线级契约与证据口径；无悬空 ADR 引用 |
 
 ---
 
@@ -434,6 +456,8 @@ static constexpr uint32_t SPIN_GUARD_BUDGET_US = 10000u; /* 10ms，与 WINK_MCS5
 | **R7. 插件发现/挂载路径错误** | 🟡 中 | Headless 场景加载不到 EEPROM 插件 | 按 builtin 插件布局与 `wink-app.json → device-tree.json` 流程交付；T2.4 前先做最小挂载冒烟 |
 | **R8. 时序模式误用** | 🟡 中 | 默认 behavioral 下 tWR 不推进，误判"保真" | 验收声明明确模式；tWR 断言只在 timing/cycle 模式作为证据 |
 | **R9. 门禁/许可遗漏** | 🟡 中 | 合入被 CI 拦截 | T1.7 覆盖 layering/api lint、shim audit、license map、ABI catalog `--check` |
+| **R10. 自旋防护误杀合法长等待** | 🟡 中 | 长周期定时器/RX 注入/外部中断等待被误判为死锁，场景假失败 | §5.4 事件清零锚点（IRQ/边沿/模型内部写/量子步）+ 默认诊断优先 + 预算 50ms；STRICT 收紧需有语料依据；T1.4 正反例固化 |
+| **R11. ADR 与 catalog 契约漂移** | 🟡 中 | 文档/目录/实现三方不一致（如字段改名未同步、错误码写错） | T2.0 统一走七步 hash + catalog 再生成；评审前跑 `check:abi-catalog`；本计划 v1.4 已清理 `addr_ack`/`WINK_ERR_STATE`/内存快照等残留 |
 
 ---
 
@@ -448,7 +472,7 @@ static constexpr uint32_t SPIN_GUARD_BUDGET_US = 10000u; /* 10ms，与 WINK_MCS5
    - `python wink-micro-os/frameworks/mcs51/tools/mcs51_shim_audit.py`（0 漂移）；
    - `python .github/scripts/check_license_map.py`（许可地图合规）；
    - ABI 变更时：`bun run check:abi-catalog`（wink-ai 侧，md/readonly TS 新鲜度）+ wasm parity。
-4. **单测与场景全绿（Tests 100% Green）**：CTest 底座单测通过；Headless 场景退出码 0，数据校验经插件通道/串口断言完全通过。
+4. **单测与场景全绿（Tests 100% Green）**：CTest 底座单测通过；Headless 场景退出码 0，数据校验**仅经插件通道**（`plugin:<id>/<channel>`）断言完全通过（SPI 无串口、无变量级内存断言可用）。
 5. **证据分级（Evidence Tier）**：
    - Phase 1 证据 = "运行收敛 + 时序合理 + 单测"（Checklist 标注"运行已解除阻塞"）；
    - Phase 2 证据 = "读写数据一致 + repeated START/逐字节 ACK 路径覆盖"，**此时才允许 37/38 正式转为 `[x]`**。
@@ -463,3 +487,5 @@ static constexpr uint32_t SPIN_GUARD_BUDGET_US = 10000u; /* 10ms，与 WINK_MCS5
 | v1.0 | 2026-09-21 | 初稿：SFR 地址纠正、读清锁存、SSCR 边沿、ACK Polling 与看门狗设计 |
 | v1.1 | 2026-09-21 | 吸收嵌入式专家评审：物理地址与位掩码核对、双步读清、片选边沿、风险表 |
 | v1.2 | 2026-09-21 | 融合 ABI 评审与框架实况：①§2.3 根因改写（SFR proxy/charge/quota，非宿主冻结）；②§3 能力矩阵纠偏（imports/stub/非零拷贝/缺 host fallback）；③§5.1 证据边界与 0xF2/0xF5 语义；④§5.2/§5.3 按真实 hook 契约重写、Mock 协议无关、计费公式化、STOP 行为级偏差声明、ACK Polling 纠偏；⑤§5.4 看门狗重设计为 SFR 层自旋防护；⑥§5.5 插件契约化（ADR-0085/0086 前置）；⑦§6 任务路径/依赖重排（T2.0 硬前置、T1.7 门禁、ADR-0079 嵌套目录）；⑧§7 风险表更新（R5–R9 新增）；⑨§8 门禁命令更正 + 证据分级；⑩ADR 引用链接修正 |
+| v1.3 | 2026-09-22 | 融合 ADR-0085/0086 协议契约与实况校准：①§4.2/§5.5/§8 纠正 SPI 验收无串口事实，确立内存变量快照/插件通道断言；②§5.4 SfrSpinGuard 升级为 2 地址滑动窗口抵御多状态寄存器交替防抖；③T2.2 确立 SPI 会话流姐妹 ADR 对标 |
+| v1.4 | 2026-09-22 | 与 ADR-0085/0086 v1.3 契约对齐：①错误码定案（`WINK_ERR_DISCONNECTED`/`WINK_ERR_INVALID_STATE`）并清理 catalog 漂移（`addr_ack` 残留、`nack_bits` 写相位、session 必填 result、全局池命名）；②§5.3 补 repeated START 路由、ADDR_NACKED 映射、I2C 时钟计费与 RSTS 范围；③§5.4 防护重写（3 地址窗口 + 事件清零锚点 + 诊断优先/纤程退出，删除不可返回的 `WINK_ERR_TIMEOUT` 表述）；④SPI 断言去内存快照、T2.2a 立项 ADR-0087、T2.0 补 JS/导出实现面、T2.6 Layer-① 回写；⑤§7 新增 R10/R11 |
