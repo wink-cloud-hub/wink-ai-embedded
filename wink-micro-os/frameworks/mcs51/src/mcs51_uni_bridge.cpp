@@ -104,6 +104,49 @@ void js_pal_uart_write(uint8_t port, const uint8_t* buf, uint32_t len) {
     }
 }
 
+// Channel-2 SPI transfer (mirrors targets/wasm/wasm_bridge.h:
+//   bool js_pal_spi_transfer(uint8_t port, uint16_t device_id,
+//                            const uint8_t* tx_buf, uint32_t len,
+//                            uint8_t* rx_buf, uint8_t mode, uint32_t sck_hz)).
+// Phase 2 prerequisite: the on-chip SPI master model will route byte
+// exchanges here once the UniSim SPI session contract (ADR-0087, T2.2a)
+// lands. Host has no JS bus data plane, so the fallback is fail-closed —
+// report "not executed" instead of faking device bytes (ADR-0012 honesty over
+// silent degradation). Emscripten builds import the JS implementation instead
+// of linking this definition.
+bool js_pal_spi_transfer(uint8_t port, uint16_t device_id,
+                         const uint8_t* tx_buf, uint32_t len,
+                         uint8_t* rx_buf, uint8_t mode, uint32_t sck_hz) {
+    (void)port;
+    (void)device_id;
+    (void)tx_buf;
+    (void)len;
+    (void)rx_buf;
+    (void)mode;
+    (void)sck_hz;
+    return false;
+}
+
+// Channel-2 I2C transfer (mirrors targets/wasm/wasm_bridge.h:
+//   bool js_pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
+//                            const uint8_t* write_buf, uint32_t write_len,
+//                            uint8_t* read_buf, uint32_t read_len)).
+// Phase 2 prerequisite: the on-chip I2C master model will route whole
+// transactions here (and per-byte sessions via the ADR-0086 ABI) once the
+// UniSim engine wiring lands. Host has no JS bus data plane: fail closed
+// (ADR-0012). Emscripten builds import the JS implementation instead.
+bool js_pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
+                         const uint8_t* write_buf, uint32_t write_len,
+                         uint8_t* read_buf, uint32_t read_len) {
+    (void)port;
+    (void)dev_addr;
+    (void)write_buf;
+    (void)write_len;
+    (void)read_buf;
+    (void)read_len;
+    return false;
+}
+
 // Channel-1 read direction (external digital level driven by the JS
 // PinArbiter / an input plugin). No JS data plane on host, so the compat
 // library supplies a scriptable fallback. State codes mirror the platform

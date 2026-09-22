@@ -111,6 +111,54 @@ typedef struct {
     uint16_t brake_delay_cnt;
 } Cms8sEpwmState;
 
+// On-chip SPI master state (owner: cms8s_spi.cpp, T1.2 of
+// PLAN-20260921-CMS8S78XX-I2C-SPI-DEADLOCK). spcr/spsr/sscr are the model's
+// authoritative register images mirrored into sfr_shadow by the hooks;
+// spdr_rx holds the receive buffer served on a SPDR read; rx_value is the
+// Phase 1 protocol-agnostic mock byte (0xFF = MISO idle high).
+typedef struct {
+    uint8_t  spcr;
+    uint8_t  spsr;
+    uint8_t  spdr_rx;
+    uint8_t  sscr;
+    uint8_t  rx_value;
+    uint8_t  tx_last;
+    bool     spsr_read_latched;  // SPSR read armed the SPDR read-clear
+    uint32_t transfer_count;
+    uint32_t frame_start_count;  // SSCR.NSSO1 1->0 edges
+    uint32_t frame_end_count;    // SSCR.NSSO1 0->1 edges
+    uint32_t last_charge_us;
+} Cms8sSpiState;
+
+// On-chip I2C master state (owner: cms8s_i2c.cpp, T1.3 of
+// PLAN-20260921-CMS8S78XX-I2C-SPI-DEADLOCK). i2cmsr is the model's
+// authoritative status image served on 0xF5 reads; i2cmbuf_rx holds the
+// Phase 1 mock receive byte served on 0xF6 reads. session_active spans
+// START..STOP (repeated START keeps it), addr_nacked is the ADDR_NACKED
+// reservation state (ADR-0086 §2) that suppresses data commands.
+typedef struct {
+    uint8_t  i2cmsa;
+    uint8_t  i2cmbuf_tx;
+    uint8_t  i2cmbuf_rx;
+    uint8_t  i2cmtp;
+    uint8_t  i2cmsr;
+    uint8_t  i2cscr;
+    uint8_t  i2cssr;
+    bool     session_active;
+    bool     session_read;    // direction latched by the last address phase
+    bool     addr_nacked;     // ADDR_NACKED: only close/restart may follow
+    uint8_t  rx_value;        // Phase 1 mock receive byte
+    uint8_t  addr_ack_inject; // 0 = mock ACK (default); 1 = mock NACK
+    uint32_t cmd_count;
+    uint32_t start_count;
+    uint32_t restart_count;
+    uint32_t stop_count;
+    uint32_t addr_nack_count;
+    uint32_t illegal_cmd_count;
+    uint32_t last_charge_us;
+} Cms8sI2cState;
+
+
 // Aggregate chip block: ONE pool slot per context instance (BSS pool in
 // the register TU, indexed by ctx->instance_index). Timer T3/T4 +
 // capture/compare + port sampling join in stage4 (S2-2 D6 handover).
@@ -123,6 +171,8 @@ typedef struct {
     Cms8sTimerState timer;
     Cms8sAcmpState  acmp;
     Cms8sEpwmState  epwm;
+    Cms8sSpiState   spi;
+    Cms8sI2cState   i2c;
     bool            in_poll;
 } Cms8sPriv;
 

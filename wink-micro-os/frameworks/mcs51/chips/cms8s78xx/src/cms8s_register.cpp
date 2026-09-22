@@ -66,6 +66,12 @@ void cms8s_epwm_reset(struct Mcu51Context* ctx);
 void cms8s_epwm_poll(struct Mcu51Context* ctx);
 uint64_t cms8s_epwm_next_event_us(struct Mcu51Context* ctx);
 
+void cms8s_spi_init(struct Mcu51Context* ctx);
+void cms8s_spi_reset(struct Mcu51Context* ctx);
+
+void cms8s_i2c_init(struct Mcu51Context* ctx);
+void cms8s_i2c_reset(struct Mcu51Context* ctx);
+
 }  // extern "C"
 
 namespace {
@@ -157,6 +163,28 @@ const mcs51_peripheral_desc_t kCms8sDescs[] = {
         cms8s_timer_reset,
         cms8s_timer_poll,
         cms8s_timer_next_event_us,
+        MCS51_PHASE_CLOCK,
+        MCS51_FAMILY_MASK_CMS8S78XX
+    },
+    {
+        // T1.2: on-chip SPI master — pure hook installer (SPCR/SPSR/SPDR/
+        // SSCR); sync completion + two-step read-clear. No poll/next-event.
+        "cms8s_spi",
+        cms8s_spi_init,
+        cms8s_spi_reset,
+        nullptr,
+        nullptr,
+        MCS51_PHASE_CLOCK,
+        MCS51_FAMILY_MASK_CMS8S78XX
+    },
+    {
+        // T1.3: on-chip I2C master — pure hook installer (0xF2/0xF4..0xF7);
+        // 0xF5 command state machine + SCL charge. No poll/next-event.
+        "cms8s_i2c",
+        cms8s_i2c_init,
+        cms8s_i2c_reset,
+        nullptr,
+        nullptr,
         MCS51_PHASE_CLOCK,
         MCS51_FAMILY_MASK_CMS8S78XX
     },
