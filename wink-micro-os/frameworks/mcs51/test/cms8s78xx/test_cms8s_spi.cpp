@@ -38,6 +38,15 @@ extern "C" bool js_pal_spi_transfer(uint8_t port, uint16_t device_id,
                                     uint8_t* rx_buf, uint8_t mode,
                                     uint32_t sck_hz);
 
+// Host scriptable bus mock (T2.3-D): drives the ADR-0087 session routing
+// deterministically on host. Disabled by default (fallback stays fail-closed).
+extern "C" void wink_mcs51_host_spi_mock_reset(void);
+extern "C" void wink_mcs51_host_spi_mock_enable(bool enable);
+extern "C" void wink_mcs51_host_spi_set_rx_value(uint8_t value);
+extern "C" uint32_t wink_mcs51_host_spi_open_count(void);
+extern "C" uint32_t wink_mcs51_host_spi_transfer_count(void);
+extern "C" uint32_t wink_mcs51_host_spi_close_count(void);
+
 namespace {
 
 int g_fails = 0;
@@ -206,6 +215,42 @@ int main(void) {
         uint8_t rx_buf = 0x00u;
         check(!js_pal_spi_transfer(0u, 0u, &tx, 1u, &rx_buf, 0u, 1000000u),
               "host js_pal_spi_transfer fallback must fail closed");
+    }
+
+    // ── 10b) Phase 2: ADR-0087 session routing via the host mock ────────────
+    {
+        wink_mcs51_host_spi_mock_reset();
+        wink_mcs51_host_spi_mock_enable(true);
+        wink_mcs51_host_spi_set_rx_value(0x3Cu);
+        cms8s_spi_reset(ctx);
+
+        // CS assert (NSSO1 1->0) opens the frame.
+        SSCR = static_cast<uint8_t>(SSCR & ~0x02u);
+        check(wink_mcs51_host_spi_open_count() == 1u,
+              "NSSO1 1->0 must call ABI session_open");
+        // SPDR write pushes one byte through session_transfer.
+        const uint8_t rx = vendor_spi_transmit(0x77u);
+        check(rx == 0x3Cu, "ABI session_transfer byte must reach SPDR");
+        check(wink_mcs51_host_spi_transfer_count() == 1u,
+              "ABI session_transfer must be called on SPDR write");
+        check(cms8s_spi_last_tx() == 0x77u, "ABI TX byte not recorded");
+        // CS release (NSSO1 0->1) closes the frame (WEL/WIP commit point).
+        SSCR = static_cast<uint8_t>(SSCR | 0x02u);
+        check(wink_mcs51_host_spi_close_count() == 1u,
+              "NSSO1 0->1 must call ABI session_close");
+        check(cms8s_spi_abi_error_count() == 0u,
+              "scripted ABI run must not report bus errors");
+
+        // A second frame reopens a fresh session.
+        SSCR = static_cast<uint8_t>(SSCR & ~0x02u);
+        const uint8_t rx2 = vendor_spi_transmit(0x78u);
+        check(rx2 == 0x3Cu && wink_mcs51_host_spi_open_count() == 2u,
+              "second frame must reopen the ABI session");
+        SSCR = static_cast<uint8_t>(SSCR | 0x02u);
+        check(wink_mcs51_host_spi_close_count() == 2u,
+              "second frame must close the ABI session");
+
+        wink_mcs51_host_spi_mock_reset();
     }
 
     // ── 11) Reset restores the contract and re-installs hooks (S4-H2) ───────

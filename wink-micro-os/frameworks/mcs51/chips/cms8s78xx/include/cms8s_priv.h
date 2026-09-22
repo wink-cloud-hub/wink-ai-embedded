@@ -115,7 +115,9 @@ typedef struct {
 // PLAN-20260921-CMS8S78XX-I2C-SPI-DEADLOCK). spcr/spsr/sscr are the model's
 // authoritative register images mirrored into sfr_shadow by the hooks;
 // spdr_rx holds the receive buffer served on a SPDR read; rx_value is the
-// Phase 1 protocol-agnostic mock byte (0xFF = MISO idle high).
+// Phase 1 protocol-agnostic mock byte (0xFF = MISO idle high). Phase 2
+// (T2.3-D) adds session_id (ADR-0087 session opened by the SSCR.NSSO1 edge)
+// and logical_device (board-bound device number passed to the ABI).
 typedef struct {
     uint8_t  spcr;
     uint8_t  spsr;
@@ -123,19 +125,23 @@ typedef struct {
     uint8_t  sscr;
     uint8_t  rx_value;
     uint8_t  tx_last;
+    uint8_t  session_id;         // ADR-0087 handle; 0xFF = no active frame
+    uint16_t logical_device;     // board-bound logical device number
     bool     spsr_read_latched;  // SPSR read armed the SPDR read-clear
     uint32_t transfer_count;
     uint32_t frame_start_count;  // SSCR.NSSO1 1->0 edges
     uint32_t frame_end_count;    // SSCR.NSSO1 0->1 edges
+    uint32_t abi_error_count;    // session/transfer ABI failures (diagnostic)
     uint32_t last_charge_us;
 } Cms8sSpiState;
 
 // On-chip I2C master state (owner: cms8s_i2c.cpp, T1.3 of
 // PLAN-20260921-CMS8S78XX-I2C-SPI-DEADLOCK). i2cmsr is the model's
 // authoritative status image served on 0xF5 reads; i2cmbuf_rx holds the
-// Phase 1 mock receive byte served on 0xF6 reads. session_active spans
-// START..STOP (repeated START keeps it), addr_nacked is the ADDR_NACKED
-// reservation state (ADR-0086 §2) that suppresses data commands.
+// receive byte served on 0xF6 reads. session_active spans START..STOP
+// (repeated START keeps it), addr_nacked is the ADDR_NACKED reservation state
+// (ADR-0086 §2) that suppresses data commands. Phase 2 (T2.3-D) adds
+// session_id (ADR-0086 handle backing session_active).
 typedef struct {
     uint8_t  i2cmsa;
     uint8_t  i2cmbuf_tx;
@@ -147,6 +153,7 @@ typedef struct {
     bool     session_active;
     bool     session_read;    // direction latched by the last address phase
     bool     addr_nacked;     // ADDR_NACKED: only close/restart may follow
+    uint8_t  session_id;      // ADR-0086 handle; 0xFF = no active session
     uint8_t  rx_value;        // Phase 1 mock receive byte
     uint8_t  addr_ack_inject; // 0 = mock ACK (default); 1 = mock NACK
     uint32_t cmd_count;
@@ -155,6 +162,7 @@ typedef struct {
     uint32_t stop_count;
     uint32_t addr_nack_count;
     uint32_t illegal_cmd_count;
+    uint32_t abi_error_count; // session-ABI failures (diagnostic)
     uint32_t last_charge_us;
 } Cms8sI2cState;
 

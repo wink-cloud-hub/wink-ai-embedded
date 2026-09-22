@@ -39,6 +39,19 @@ extern "C" bool js_pal_i2c_transfer(uint8_t port, uint16_t dev_addr,
                                     uint32_t write_len, uint8_t* read_buf,
                                     uint32_t read_len);
 
+// Host scriptable bus mock (T2.3-D): drives the ADR-0086 session routing
+// deterministically on host. Disabled by default (fallback stays fail-closed).
+extern "C" void wink_mcs51_host_i2c_mock_reset(void);
+extern "C" void wink_mcs51_host_i2c_mock_enable(bool enable);
+extern "C" void wink_mcs51_host_i2c_set_addr_ack(bool ack);
+extern "C" void wink_mcs51_host_i2c_set_write_ack(bool ack);
+extern "C" void wink_mcs51_host_i2c_set_read_byte(uint8_t value);
+extern "C" uint32_t wink_mcs51_host_i2c_open_count(void);
+extern "C" uint32_t wink_mcs51_host_i2c_restart_count(void);
+extern "C" uint32_t wink_mcs51_host_i2c_write_count(void);
+extern "C" uint32_t wink_mcs51_host_i2c_read_count(void);
+extern "C" uint32_t wink_mcs51_host_i2c_close_count(void);
+
 namespace {
 
 int g_fails = 0;
@@ -262,6 +275,90 @@ int main(void) {
         uint8_t rx_buf = 0x00u;
         check(!js_pal_i2c_transfer(0u, 0x50u, &tx, 1u, &rx_buf, 1u),
               "host js_pal_i2c_transfer fallback must fail closed");
+    }
+
+    // ── 12b) Phase 2: ADR-0086 session routing via the host mock ────────────
+    {
+        wink_mcs51_host_i2c_mock_reset();
+        wink_mcs51_host_i2c_mock_enable(true);
+        wink_mcs51_host_i2c_set_read_byte(0xC3u);
+        cms8s_i2c_reset(ctx);  // fresh session table + counters
+
+        // START|RUN (write): open + write one byte, result ACK maps to flags.
+        I2CMTP = 2u;
+        I2CMSA = 0xA0u;
+        I2CMBUF = 0x11u;
+        I2CMCR = CMD_START_SEND;
+        wait_i2cmif();
+        check(wink_mcs51_host_i2c_open_count() == 1u,
+              "ABI session_open must be called on START|RUN");
+        check(wink_mcs51_host_i2c_write_count() == 1u,
+              "ABI session_write must send the I2CMBUF byte");
+        check((static_cast<uint8_t>(I2CMSR) & (ADD_ACK | DATA_ACK | ERROR)) == 0u,
+              "ABI ACKed address+data must clear ADD_ACK/DATA_ACK/ERROR");
+        check((static_cast<uint8_t>(I2CMSR) & I2CMIF) != 0u,
+              "ABI address phase must latch I2CMIF");
+        clear_i2cmif();
+
+        // RUN write with a scripted slave NACK -> DATA_ACK set.
+        wink_mcs51_host_i2c_set_write_ack(false);
+        I2CMBUF = 0x12u;
+        I2CMCR = CMD_SEND;
+        wait_i2cmif();
+        check((static_cast<uint8_t>(I2CMSR) & DATA_ACK) != 0u,
+              "ABI write NACK must set DATA_ACK");
+        wink_mcs51_host_i2c_set_write_ack(true);
+        clear_i2cmif();
+
+        // Repeated START read: restart + scripted read byte into I2CMBUF.
+        I2CMSA = 0xA1u;
+        I2CMCR = CMD_START_RX_ACK;
+        wait_i2cmif();
+        check(wink_mcs51_host_i2c_restart_count() == 1u,
+              "repeated START must route to ABI session_restart");
+        check(wink_mcs51_host_i2c_read_count() == 1u,
+              "ABI session_read must be called for the read direction");
+        check(static_cast<uint8_t>(I2CMBUF) == 0xC3u,
+              "ABI read byte must land in I2CMBUF");
+        clear_i2cmif();
+
+        // RUN read (NACK mode) also routes through the ABI.
+        I2CMCR = CMD_RECEIVE_NACK;
+        wait_i2cmif();
+        check(wink_mcs51_host_i2c_read_count() == 2u,
+              "RECEIVE_NACK must call ABI session_read");
+        clear_i2cmif();
+
+        // ADDR_NACKED through the ABI: write skipped, flags latched.
+        wink_mcs51_host_i2c_set_addr_ack(false);
+        I2CMSA = 0xA0u;
+        I2CMCR = CMD_START_SEND;
+        check(cms8s_i2c_addr_nack_count() == 1u,
+              "ABI address NACK must be counted");
+        check((static_cast<uint8_t>(I2CMSR) & (ADD_ACK | ERROR)) == (ADD_ACK | ERROR),
+              "ABI address NACK must set ADD_ACK/ERROR");
+        check((static_cast<uint8_t>(I2CMSR) & DATA_ACK) == 0u,
+              "ABI address NACK must not touch DATA_ACK");
+        const uint32_t writes_before = wink_mcs51_host_i2c_write_count();
+        I2CMCR = CMD_SEND;
+        check(wink_mcs51_host_i2c_write_count() == writes_before,
+              "ADDR_NACKED data command must not reach the ABI");
+        clear_i2cmif();
+
+        // Recovery restart, then STOP closes the ABI session. (Restart #3:
+        // read restart, ADDR_NACKED restart, recovery restart.)
+        wink_mcs51_host_i2c_set_addr_ack(true);
+        I2CMCR = CMD_START_SEND;
+        wait_i2cmif();
+        check(wink_mcs51_host_i2c_restart_count() == 3u,
+              "recovery restart not routed to the ABI");
+        clear_i2cmif();
+        I2CMCR = CMD_STOP;
+        check(wink_mcs51_host_i2c_close_count() == 1u,
+              "STOP must close the ABI session");
+        check(cms8s_i2c_abi_error_count() == 0u,
+              "scripted ABI run must not report bus errors");
+        wink_mcs51_host_i2c_mock_reset();
     }
 
     // ── 13) Reset restores the contract and re-installs hooks (S4-H2) ───────

@@ -33,6 +33,36 @@ mergeInto(LibraryManager.library, {
   // the bounded node test, no-op like the write channel.
   js_pal_gpio_release_mcu: function (pin) {},
   js_pal_adc_read_norm: function (pin) { return 0.0; },
+  // CH2 Phase 2 bus sessions (ADR-0085/0086/0087): the bounded node tests never
+  // drive I2C/SPI, so the status-returning entry points fail closed
+  // (WINK_ERR_UNSUPPORTED = -7; close is idempotently WINK_OK). The production
+  // library is wink_sim_js.js, where these forward to the UniSim engine.
+  js_pal_i2c_transfer_ex: function (port, addr, wbuf, wlen, rbuf, rlen, resultPtr) {
+    return -7;
+  },
+  js_pal_i2c_session_open: function (port, addr, direction, outSessionPtr, resultPtr) {
+    return -7;
+  },
+  js_pal_i2c_session_restart: function (sessionId, addr, direction, resultPtr) {
+    return -7;
+  },
+  js_pal_i2c_session_write: function (sessionId, bufPtr, len, resultPtr) {
+    return -7;
+  },
+  js_pal_i2c_session_read: function (sessionId, bufPtr, len, ackMode, resultPtr) {
+    return -7;
+  },
+  js_pal_i2c_session_close: function (sessionId) { return 0; },
+  js_pal_spi_transfer_ex: function (port, deviceId, txbuf, len, rxbuf, mode, sckHz) {
+    return -7;
+  },
+  js_pal_spi_session_open: function (port, deviceId, mode, sckHz, outSessionPtr) {
+    return -7;
+  },
+  js_pal_spi_session_transfer: function (sessionId, txbuf, rxbuf, len) {
+    return -7;
+  },
+  js_pal_spi_session_close: function (sessionId) { return 0; },
   // Channel-2 UART TX (SBUF write -> UARTBus): copy the byte run off the
   // WASM heap into a Module log the Node driver can assert.
   js_pal_uart_write: function (port, bufPtr, len) {

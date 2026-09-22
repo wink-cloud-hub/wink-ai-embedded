@@ -24,6 +24,7 @@
 
 #include "cms8s_priv.h"
 #include "cms8s_sfr_map.h"
+#include "mcs51_bus_abi.h"
 #include "mcs51_context.h"
 #include "mcs51_family.h"
 #include "mcs51_trap.h"
@@ -61,15 +62,80 @@ constexpr uint32_t SPI_DIV_TABLE[8] = {
     4u, 8u, 16u, 32u, 64u, 128u, 256u, 512u
 };
 
+// ── Phase 2 (T2.3-D): ADR-0087 session routing ─────────────────────────────
+//
+// SSCR.NSSO1 1->0 opens a session (CS assert + frame start), each SPDR write
+// pushes one byte through session_transfer, and NSSO1 0->1 closes the frame
+// (CS release = WEL/WIP commit point). SPCR CPOL/CPHA/SPRn map to the
+// session's mode/sck_hz (Fspi = Fsys/div); the model never parses device
+// commands (plan §5.2.4 layering).
+//
+// Host fallback: the host build has no JS bus engine. The compat library
+// (mcs51_uni_bridge.cpp) answers WINK_ERR_UNSUPPORTED until a test enables
+// its scriptable bus mock; the Phase 1 in-chip mock then completes the byte.
+// A wasm engine failure (unbound device / whole-frame-only plugin) is
+// surfaced through abi_error_count with the idle-high 0xFF byte, never a
+// fabricated device payload (ADR-0012).
+constexpr uint8_t SESSION_NONE = 0xFFu;
+constexpr uint8_t SPI_PORT_LOGICAL = 0u;  // first on-chip SPI bus
+constexpr uint8_t SPI_MISO_IDLE = 0xFFu;  // idle-high bus when no session
+
+constexpr uint8_t SPCR_CPOL_Msk = 0x08u;
+constexpr uint8_t SPCR_CPHA_Msk = 0x04u;
+
 inline Cms8sSpiState* spi_state(Mcu51Context* ctx) {
     Cms8sPriv* priv = cms8s_priv(ctx);
     return (priv != nullptr) ? &priv->spi : nullptr;
 }
 
-// Completes one byte synchronously: charge, mock RX load, SPISIF auto-assert
+// SPCR CPOL/CPHA -> SPI mode 0..3 (mode = (CPOL << 1) | CPHA).
+inline uint8_t spi_mode(const Cms8sSpiState* spi) {
+    return static_cast<uint8_t>(
+        (((spi->spcr & SPCR_CPOL_Msk) != 0u) ? 0x02u : 0x00u) |
+        (((spi->spcr & SPCR_CPHA_Msk) != 0u) ? 0x01u : 0x00u));
+}
+
+// Fspi = Fsys / SPIClkDiv (SPCR.SPR2:SPRn); 0 when the system clock is unset.
+inline uint32_t spi_sck_hz(const Cms8sSpiState* spi) {
+    const uint8_t div_idx = static_cast<uint8_t>(
+        (((spi->spcr & SPCR_SPR2_Msk) != 0u) ? 0x04u : 0x00u) |
+        (spi->spcr & SPCR_SPRn_Msk));
+    const uint32_t fsys = wink_mcs51_get_clock_hz();
+    return (fsys != 0u) ? (fsys / SPI_DIV_TABLE[div_idx]) : 0u;
+}
+
+// SSCR.NSSO1 1->0: open the ADR-0087 session (CS assert + frame start).
+// Returns true when a session handle was obtained.
+bool spi_open_session(Cms8sSpiState* spi) {
+    uint8_t sid = PAL_SPI_SESSION_INVALID;
+    const wink_status_t st = js_pal_spi_session_open(
+        SPI_PORT_LOGICAL, spi->logical_device, spi_mode(spi),
+        spi_sck_hz(spi), &sid);
+    if (st == WINK_ERR_UNSUPPORTED) {
+        // Host without a bus engine (scriptable mock disabled): the Phase 1
+        // in-chip mock owns SPDR completion; no session handle.
+        return false;
+    }
+    if (st < 0) {
+        ++spi->abi_error_count;  // unbound device / pool / port conflict
+        return false;
+    }
+    spi->session_id = sid;
+    return true;
+}
+
+// SSCR.NSSO1 0->1: close the frame (CS release = WEL/WIP commit point).
+void spi_close_session(Cms8sSpiState* spi) {
+    if (spi->session_id != SESSION_NONE) {
+        (void)js_pal_spi_session_close(spi->session_id);
+        spi->session_id = SESSION_NONE;
+    }
+}
+
+// Completes one byte synchronously: charge, RX load, SPISIF auto-assert
 // (mirrored into sfr_shadow so the very next read sees it), optional vector
 // 22 for the interrupt-driven path.
-void spi_complete_transfer(Mcu51Context* ctx, uint8_t tx) {
+void spi_complete_transfer(Mcu51Context* ctx, uint8_t tx, uint8_t rx) {
     Cms8sSpiState* spi = spi_state(ctx);
     if (spi == nullptr) {
         return;
@@ -94,7 +160,7 @@ void spi_complete_transfer(Mcu51Context* ctx, uint8_t tx) {
         spi->spsr |= SPSR_WCOL_Msk;  // overwrite before the flag was consumed
     }
     spi->tx_last = tx;
-    spi->spdr_rx = spi->rx_value;
+    spi->spdr_rx = rx;
     spi->spsr |= SPSR_SPISIF_Msk;
     ++spi->transfer_count;
 
@@ -164,7 +230,23 @@ extern "C" void on_spdr_write(Mcu51Context* ctx, uint8_t addr,
     (void)old_val;
     if (!ctx) ctx = mcs51_get_context();
     if (!cms8s_hook_armed(ctx)) return;
-    spi_complete_transfer(ctx, new_val);
+    Cms8sSpiState* spi = spi_state(ctx);
+    if (spi != nullptr && spi->session_id != SESSION_NONE) {
+        // ADR-0087 frame-internal byte: full-duplex through the engine.
+        uint8_t rx = SPI_MISO_IDLE;
+        const wink_status_t st = js_pal_spi_session_transfer(
+            spi->session_id, &new_val, &rx, 1u);
+        if (st < 0) {
+            ++spi->abi_error_count;
+            rx = SPI_MISO_IDLE;  // idle-high, never a fabricated payload
+        }
+        spi_complete_transfer(ctx, new_val, rx);
+        return;
+    }
+    // No active frame: Phase 1 protocol-agnostic completion (host fallback /
+    // firmware wrote SPDR outside a CS window).
+    spi_complete_transfer(ctx, new_val, (spi != nullptr) ? spi->rx_value
+                                                         : SPI_MISO_IDLE);
 }
 
 extern "C" void on_spdr_read(Mcu51Context* ctx, uint8_t addr) {
@@ -194,8 +276,10 @@ extern "C" void on_sscr_write(Mcu51Context* ctx, uint8_t addr,
     const bool now_deasserted = (new_val & SSCR_NSSO1_Msk) != 0u;
     if (was_deasserted && !now_deasserted) {
         ++spi->frame_start_count;  // NSSx 1 -> 0: frame begins
+        (void)spi_open_session(spi);  // ADR-0087 CS assert + frame start
     } else if (!was_deasserted && now_deasserted) {
         ++spi->frame_end_count;    // NSSx 0 -> 1: frame ends
+        spi_close_session(spi);    // CS release = WEL/WIP commit point
     }
     spi->sscr = new_val;
     ctx->sfr_shadow[SFR_SSCR] = new_val;
@@ -224,10 +308,13 @@ void cms8s_spi_reset(struct Mcu51Context* ctx) {
     cms8s_soc_bind(ctx);  // defensive: standalone resets bind too
     Cms8sSpiState* spi = spi_state(ctx);
     if (spi != nullptr) {
+        spi_close_session(spi);  // release any ADR-0087 frame before the wipe
         Cms8sSpiState fresh = {};
-        fresh.spdr_rx = 0xFFu;  // MISO idle high
-        fresh.rx_value = 0xFFu;
+        fresh.spdr_rx = SPI_MISO_IDLE;  // MISO idle high
+        fresh.rx_value = SPI_MISO_IDLE;
         fresh.sscr = SSCR_RESET_VALUE;
+        fresh.session_id = SESSION_NONE;
+        fresh.logical_device = 0u;  // board binding default (first device)
         *spi = fresh;
     }
     ctx->sfr_shadow[SFR_SPCR] = 0x00u;
@@ -290,6 +377,18 @@ void cms8s_spi_set_rx_value(uint8_t value) {
 uint8_t cms8s_spi_rx_value(void) {
     Cms8sSpiState* spi = spi_state(nullptr);
     return (spi != nullptr) ? spi->rx_value : 0xFFu;
+}
+
+uint32_t cms8s_spi_abi_error_count(void) {
+    Cms8sSpiState* spi = spi_state(nullptr);
+    return (spi != nullptr) ? spi->abi_error_count : 0u;
+}
+
+void cms8s_spi_set_logical_device(uint16_t device_id) {
+    Cms8sSpiState* spi = spi_state(nullptr);
+    if (spi != nullptr) {
+        spi->logical_device = device_id;
+    }
 }
 
 }  // extern "C"

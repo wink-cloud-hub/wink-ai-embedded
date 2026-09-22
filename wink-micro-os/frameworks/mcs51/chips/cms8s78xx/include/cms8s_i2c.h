@@ -25,7 +25,8 @@ void cms8s_i2c_init(struct Mcu51Context* ctx);
 void cms8s_i2c_reset(struct Mcu51Context* ctx);
 
 // Test observability: executed commands, START opens, repeated STARTs, STOPs,
-// address-phase NACKs, illegal/skipped commands and the last command charge.
+// address-phase NACKs, illegal/skipped commands, the last command charge and
+// the ADR-0086 session-ABI failure count (bus-level errors).
 uint32_t cms8s_i2c_cmd_count(void);
 uint32_t cms8s_i2c_start_count(void);
 uint32_t cms8s_i2c_restart_count(void);
@@ -33,9 +34,11 @@ uint32_t cms8s_i2c_stop_count(void);
 uint32_t cms8s_i2c_addr_nack_count(void);
 uint32_t cms8s_i2c_illegal_cmd_count(void);
 uint32_t cms8s_i2c_last_charge_us(void);
+uint32_t cms8s_i2c_abi_error_count(void);
 
-// Phase 1 mock injection. Defaults: every address phase ACKs and the mock
-// receive byte is 0x00. A reset restores both defaults.
+// Phase 1 mock injection, used only by the host in-chip fallback (the wasm
+// path always routes through the ADR-0086 engine). Defaults: every address
+// phase ACKs and the mock receive byte is 0x00. A reset restores both.
 void    cms8s_i2c_set_mock_addr_ack(bool ack);
 void    cms8s_i2c_set_mock_rx_value(uint8_t value);
 uint8_t cms8s_i2c_mock_rx_value(void);
