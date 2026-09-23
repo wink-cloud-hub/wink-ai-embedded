@@ -3,7 +3,7 @@
 > 📋 **本文档为实施总纲计划（Layer-③ 实施总纲）**，定义了在 WinkMicroOS 仿真体系中实现 `frameworks/esp_idf` 源码级 API 拦截层的完整架构设计、SoC 矩阵解耦、ESP-IDF v5/v6 双版本兼容方案、FreeRTOS 协作式调度映射以及派生子计划体系。
 > 本文档是指导总纲级任务（T-001~T-012）与 M0~M3 分步实施子计划的 **唯一事实来源（SSOT）与执行第一纲领**。子计划仅允许细化，**不得突破本总纲的架构红线、接口契约与验收出口**；发现冲突必须先回改本总纲并升版。
 >
-> 🎯 **计划版本**：v3.2（2026-09-23，v3.1 十条专家补充合入：0 框架变更，全部门面/M 阶段落点）
+> 🎯 **计划版本**：v3.3（2026-09-23，融合 11 条代码事实评审：P0 Handle ABA + resource_id 阻塞开工项，其余下沉 M1/M2）
 > 📚 **关联规范**：[`docs/zh/tech-designs/mcs51/mcu-compat-plan.md`](../../zh/tech-designs/mcs51/mcu-compat-plan.md)（双轴模型）、[`00-IMPLEMENTATION-PLAN-TEMPLATE.md`](../00-IMPLEMENTATION-PLAN-TEMPLATE.md)
 > 🏛️ **关联架构决策**：
 > - [ADR-0001](../../decisions/core/0001-error-code-sign-convention.md)（负数错误码约定）
@@ -30,12 +30,12 @@
 | 字段 | 内容 |
 |:---|:---|
 | **计划编号** | `PLAN-20260922-ESP-IDF-SIM-MASTER` |
-| **创建日期** | 2026-09-22（v2.0 修订于 2026-09-23；v3.0 修订于 2026-09-23；v3.2 修订于 2026-09-23） |
+| **创建日期** | 2026-09-22（v2.0 修订于 2026-09-23；v3.0 修订于 2026-09-23；v3.2~v3.3 修订于 2026-09-23） |
 | **目标平台/SoC** | `wasm32-unknown-emscripten` / `host` (x86_64, Windows/Linux)；语料对照 SoC：`esp32` / `esp32s3` / `esp32c3` / `esp32c6` |
 | **工具链/SDK版本**| `ESP-IDF v5.1.3 LTS` ~ `v6.1+`（语料与宏取证基线 = v6.1；v5.x 做双版本兼容回归） |
-| **计划状态** | 📋 就绪（v3.2 十条专家补充合入，0 框架变更，可作为执行 SSOT 第一纲领） |
+| **计划状态** | 📋 就绪（v3.3 融合 11 条代码事实评审，P0 已闭环，可作为执行 SSOT 第一纲领） |
 | **优先级** | 🔴 P0（运行时框架层核心演进） |
-| **计划版本** | `v3.2` |
+| **计划版本** | `v3.3` |
 | **关联技术设计** | [`docs/zh/tech-designs/core/pal-i2c-v6-compatibility.md`](../../zh/tech-designs/core/pal-i2c-v6-compatibility.md) |
 | **关联设计规范** | [`docs/zh/design/04-wasm-simulation/00-README.md`](../../zh/design/04-wasm-simulation/00-README.md)、[`02-wink-micro-os/`](../../zh/design/02-wink-micro-os/README.md) |
 | **关联评审记录** | [`2026-09-22-esp-idf-simulation-interception-master-plan-review.md`](./2026-09-22-esp-idf-simulation-interception-master-plan-review.md) |
@@ -239,15 +239,19 @@ wink-micro-os/frameworks/esp_idf/
 #### 3.5.1 门面映射契约（四个 API 签名已对头文件逐字核实）
 
 1. **任务创建（`xTaskCreate` / `xTaskCreatePinnedToCore`）**：
-   - 调用 `sim_scheduler_register(func, arg, name, priority, core_id, stack_depth, &out_id)`。
+   - 调用 `sim_scheduler_register(func, arg, name, priority, core_id, stack_depth, &out_id)`。注意调度器返回的是 **slot 下标**（见 `wink_sim_scheduler.c:111-113`，`gc` 后 slot 可复用），**不是终身稳定的 `t->id`**。
+   - **Handle 生命周期隔离（v3.3 新增，🔴 M1 前提）**：门面不得把 slot 直接当 `TaskHandle_t` 交给用户，否则动态创建/删除复用 slot 会出现 ABA（旧句柄误操作新任务）。`freertos_task.c` 必须维护 `handle → {slot, generation}` 间接层（POD 静态池，`vTaskDelete` 时递增 generation，旧 handle 即失效）；M1 DoD 含 ABA 回归测试（见 §7 L1）。
    - `core_id` 范围校验后安全忽略（单虚拟核）；`xTaskGetCoreID()` 恒返回 0（与 IDF 单核语义一致）。
-   - ⚠️ **语义降级（ADR-0012 诚实登记）**：调度器 `pick_next` 为**纯 RR，不读 priority/core_id**——FreeRTOS 25 级优先级**无调度效果**。必须在 `02-api-coverage-matrix.md` 显式登记「优先级：存储但不参与调度」，M1 子计划 DoD 含此项；优先级调度列为 Out-of-scope（需新 ADR 才可引入）。
+   - ⚠️ **语义降级（ADR-0012 诚实登记）**：调度器 `pick_next` 为**纯 RR，不读 priority/core_id**——FreeRTOS 25 级优先级**无调度效果**（但 waiter 唤醒序仍按优先级，见条目 3）。必须在 `02-api-coverage-matrix.md` 显式登记「优先级：存储但不参与调度」，M1 子计划 DoD 含此项；优先级调度列为 Out-of-scope（需新 ADR 才可引入）。
 2. **任务阻塞延时（`vTaskDelay` / `vTaskDelayUntil`）**：
-   - `configTICK_RATE_HZ=100`（与 IDF 官方默认一致，1 tick = 10,000 μs）；调用 `sim_scheduler_yield_timed(task_id, now_us, duration_us)` 让出 Fiber。
+   - `configTICK_RATE_HZ=100`（与 IDF 官方默认一致，1 tick = 10,000 μs；**仿真固定不可改**，见条目 6 降级登记）；调用 `sim_scheduler_yield_timed(task_id, now_us, duration_us)` 让出 Fiber。
    - ⚠️ 唤醒主体勘误：由 run 主循环 `sim_scheduler_wakeup_by_time(now_us)` 依虚拟/host 时钟推进（**非 UniSim 直接回调**）。
-3. **同步原语（Queue / Semaphore / Mutex）**：
+   - **`vTaskDelay(0)` 纯让出（v3.3 新增）**：真机语义 = `taskYIELD()`（不进等待态，只让同优先级任务先跑）。shim 中 `ticks == 0` 时**不得调用 `yield_timed(..., 0)`**（会在同一 tick 内调度-让出空转），而是直接协作切回调度主循环、保持 READY 态由 RR 自然轮转；M1 DoD 含 `vTaskDelay(0)` 让出序断言。
+3. **同步原语（Queue / Semaphore / Mutex / EventGroup）**：
    - 基于 `sim_scheduler_block(task_id, resource_id, now_us, timeout_us)` 与 `sim_scheduler_resume(task_id)`。
-   - ⚠️ **调度器无 per-resource 等待队列**（只记 `blocked_on`，`resume` 按 task_id 单唤醒）→ **Queue/Mutex shim 必须自建 waiter 簿记**（每对象 `waiters[WINK_SIM_MAX_TASKS]` FIFO、超时竞态、与 `wakeup_by_time` 的 `timeout_fired` 协同）；参照先例 `pal_osal_wasm.c` mutex/sem 池。这是 M1 最大隐藏工作量，**单列任务**（见 §6 M1-3）。
+   - ⚠️ **调度器无 per-resource 等待队列**（只记 `blocked_on`，`resume` 按 task_id 单唤醒）→ **Queue/Mutex shim 必须自建 waiter 簿记**（每对象 `waiters[WINK_SIM_MAX_TASKS]`、超时竞态、与 `wakeup_by_time` 的 `timeout_fired` 协同）；参照先例 `pal_osal_wasm.c` mutex/sem 池。这是 M1 最大隐藏工作量，**单列任务**（见 §6 M1-3）。
+   - **`resource_id` 命名空间（v3.3 新增，🔴 M1 接口契约）**：`blocked_on` 只是 `uint32_t` 琴键（见 `wink_sim_scheduler.c:189-198`），调度器不做分配；若 Queue 与 Mutex 各自从 0 编号，shim 的 waiter 查找会跨对象错唤醒。锁定编码 **`resource_id = (type_tag << 24) | local_index`**（`QUEUE=0x01, MUTEX=0x02, SEM=0x03, TIMER=0x04, GPTIMER=0x05`），或等价的对象静态池地址低 32 位（地址天然唯一，二选一后在 M1 登记）。
+   - **唤醒策略三分（v3.3 新增）**：`resume` 每次只唤醒单个 task，shim 按原语区分——① **Priority-one**（Queue/Sem/Mutex：唤醒等待者中优先级最高者，同优先级内 FIFO，真机即此语义）；② **Broadcast-all**（EventGroup：唤醒所有满足位条件的等待者）。EventGroup 若 M1 不做，真实现推 M2/M3，但 `event_groups.h` 已在闭包中，须在 coverage matrix 标明「仅声明 / Fail-Loud」状态，不得静默半实现。
 4. **强制切出与死循环（v3.0 机制勘误，撤销 v2.0 错误表述）**：
    - **WCET 5000 μs 是 fiber 返回后的墙钟事后检测** → 触发 `wink_runtime_fault(8002)` **告警，不能抢占正在死循环的 fiber**。
    - **真正的强制切出是 ADR-0072 配额片机制**（10,000 μs/片，经 `pal_os_sleep_ms(0)` 协作切出）。
@@ -266,6 +270,9 @@ wink-micro-os/frameworks/esp_idf/
     | `xQueueOverwrite`/`xQueuePeek`/ISR 级 API | 支持 Peek；`FromISR` 变体经 `pal_deferred` defer 到任务上下文（见 §3.7.2），无 defer 条件时才 Fail-Loud | defer 策略进 Out-of-scope 表 |
     | `app_main` 返回 | 视同任务正常退出 → `mark_zombie`；**不支持真机「app_main 退出后系统仍运行」的隐式 idle 语义**时须在 coverage matrix 登记实际行为 | M1 裁决后登记 |
     | 时间基统一 | 唯一换算 `tick = now_us / 10000`；`esp_timer_get_time` / `xTaskGetTickCount` / `gptimer alarm` 同源自 `sim_scheduler` 虚拟时钟，不单开 Timer 源 | M1 DoD |
+    | Tick 配置冻结 | `configTICK_RATE_HZ` 仿真固定 100（1 tick = 10 ms），不可经 menuconfig 修改；`pdMS_TO_TICKS(x)` 按 100Hz 整除截断——**`< 10 ms 的延时会被截断为 0`**（如 `pdMS_TO_TICKS(5) = 0`，真机 1000Hz 下为 5，这是功能性差异不是普通降级） | `sdkconfig_base.h` 注释 + coverage matrix 降级登记；1000Hz overlay 列为 M3 可选项 |
+    | `esp_timer_get_time` 精度 | 真机 1 μs，仿真 = 10 ms（`sim_scheduler` 步进粒度）；微秒级差值测量（如超声波 `end - start`）结果恒为 10000 的整数倍 | coverage matrix 降级登记；子 tick 插值（如引入）仅做读数侧伪精度、不进调度时间，否则破坏 Replay bit-exact（远期项） |
+    | EventGroup | M1 若只交付 Queue/Mutex/Sem，`event_groups.h` 保持「仅声明 / Fail-Loud」，广播语义随真实现推 M2/M3 | coverage matrix 状态列明，不得静默半实现 |
     | 栈单位 | IDF `usStackDepth` 单位 = words，门面换算 `bytes = words * 4` 再钳制到 `WINK_SIM_STACK_MIN`（见 `wink_sim_scheduler.c:83-88`） | M1 |
     | 任务预算 | `WINK_SIM_MAX_TASKS = 8` 扣掉 app_main + runtime 主 fiber + Timer 软派发位，用户可用 ≤ 6；`uxTaskGetNumberOfTasks` 差值进降级表 | M1 |
     | 确定性 | `esp_random` 用门面自带 xorshift、`framework_init` 取与 `sim_scheduler_reset(seed)` 同一种子；`chip_info` / `mac` / `version` 按 `WINK_ESP_TARGET` 返回固定伪值 | M0 |
@@ -329,6 +336,24 @@ wink-micro-os/frameworks/esp_idf/
 
 ---
 
+### 3.9 外设门面实现范围补充（v3.3 新增：GPTimer / SPI / NVS 三件套定级）
+
+> §3.1 目录树已列文件但无实现策略的三处，在此一次性定级，避免 M2 开工时返工。共同原则：只消费 `pal_*` 现有契约（红线 2），不动 PAL。
+
+1. **GPTimer（`driver/gptimer.h` → `src/drivers/esp_gptimer.c`，M2 交付）**：
+   - 虚拟化链路：`alarm` 注册到 `sim_scheduler` 唤醒时间源（复用 `wakeup_by_time` 主循环，不另起时间轮）→ 到期后经 `pal_deferred_post` 派发到任务上下文（alarm 回调视为 ISR 上下文，禁阻塞/malloc/log，与 §3.7.2 一致）；
+   - 精度 = 调度 tick 粒度（10 ms）；**`< 10 ms 周期的高频 alarm → 降级登记`**（功能性限制，随 §3.5.1.6 Tick 冻结同源）；
+   - M2 DoD 含 alarm 时序断言（到期误差 < 1 tick + 回调上下文断言）。
+2. **SPI Master（`driver/spi_master.h` → `src/drivers/esp_spi.c`，M2 定级）**：
+   - PAL 侧 `pal_spi.h` 已就绪（静态池 + DMA 引擎契约完整），门面具备真实现条件；
+   - M2 范围锁定：同步传输门面（`spi_bus_initialize` / `spi_bus_add_device` / `spi_device_transmit` 收敛至 `pal_spi_*`）+ 静态设备池；异步 DMA 回调经 `pal_deferred` 派发；Tier 语料待 M2 子计划选材（若无合适官方示例则以自研 samples 覆盖，coverage matrix 登记）。
+3. **NVS（`nvs.h` / `nvs_flash.h` → `src/core/esp_nvs.c`，M1 声明 / M2 真实现）**：
+   - 后端 = 内存 KV 静态池（对齐红线 4 零 malloc，键值长度截断按真机 `NVS_KEY_MAX`/`ESP_ERR_NVS_*` 如实返回）；
+   - 复位语义：`esp_restart()`（§3.6 系统复位弱钩子通道）**默认保留 NVS**（同真机），`nvs_flash_erase` 显式清除；命名空间隔离按真机 `nvs_open(namespace)` 语义；
+   - M1 子计划 coverage matrix 先标「Fail-Loud 桩」，M2 转真实现（Wi-Fi 虽 Out-of-scope，NVS KV 本身仿真价值高，提级到 M2）。
+
+---
+
 ## 4. 变更范围、依赖与风险（🔴 模板必选）
 
 ### 4.1 文件变更清单（模板 §3.1）
@@ -365,9 +390,9 @@ wink-micro-os/frameworks/esp_idf/
 |:---|:---|:---:|:---:|:---|
 | **D-001** | `targets/common/wink_sim_scheduler.h` 接口稳定性 | ✅ 是 | ✅ 已就绪 | ADR-0014；四 API 签名已逐字核实 |
 | **D-002** | `pal_i2c_transfer` 核心契约与真机双向验证 | ✅ 是 | ✅ 已就绪 | `pal-i2c-v6-compatibility.md` 已闭环 |
-| **D-003** | caps 双 SSOT 裁决 | ✅ 是 | 🔁 升级为 **T-001 ADR** | 方案已在 §3.3.2 锁定，待 ADR Accepted |
-| **D-004** | 创建 4 份模板命名子计划（T-003） | ✅ 是 | ⏳ 待执行 | 未创建前 M0 不得开工 |
-| **D-005** | 许可归类裁决 + license-map 更新（T-002） | ✅ 是 | ⏳ 待执行 | 见红线 7；阻塞首个 test/tools 文件提交 |
+| **D-003** | caps 双 SSOT 裁决 | ✅ 是 | ✅ 已完成 | ADR-0085 已 Accepted (commit `9753da1c`) |
+| **D-004** | 创建 4 份模板命名子计划（T-003） | ✅ 是 | ✅ 已完成 | 四份子计划已落盘，M0 详设就绪 |
+| **D-005** | 许可归类裁决 + license-map 更新（T-002） | ✅ 是 | ✅ 已完成 | license-map 与 NOTICE 已更新 (commit `05a5fb1a`) |
 
 ### 4.5 外部依赖（模板 §4.2，🔴 非本项目可控）
 
@@ -387,13 +412,15 @@ wink-micro-os/frameworks/esp_idf/
 | **R-001** | include 闭包规模超预期（blink ≥65 头，缺口 ≈48），M0 工期膨胀 | 🟠 高 | 🟡 中 | 6 | 编译驱动增量闭包（§3.2）+ `03-include-closure-inventory.md` 逐条登记；不预先铺树 | 专项小组 | 语料编译报错连续 >10 条未收敛 |
 | **R-002** | 语料外部依赖（`led_strip` 托管组件）阻塞「零修改」验收 | 🟠 高 | 🟡 中 | 6 | §7.1 零修改边界裁决：声明级 stub + coverage matrix 登记 | 专项小组 | M0-4 语料编译缺头 |
 | **R-003** | 用户代码双核绑定强依赖（依赖 Core 1 抢占时序） | 🟡 中 | 🟡 中 | 4 | 单虚拟核降级 + ADR-0014 明确放弃该类 bug 还原 + R-005 降级登记 | 架构组 | 运行 SMP 强依赖算法 |
-| **R-004** | Queue/Mutex waiter 簿记实现复杂度被低估，M1 滑期 | 🟡 中 | 🟠 高 | 6 | §3.5.1.3 单列 M1-3 任务；参照 `pal_osal_wasm.c` 先例；超时竞态专测 | 专项小组 | M1-3 >3 天未闭环 |
+| **R-004** | Queue/Mutex waiter 簿记实现复杂度被低估（含唤醒策略三分与 `resource_id` 编码），M1 滑期 | 🟡 中 | 🟠 高 | 6 | §3.5.1.3 单列 M1-3 任务（Priority-one/Broadcast-all + type_tag 编码）；参照 `pal_osal_wasm.c` 先例；超时竞态 + ABA 专测 | 专项小组 | M1-3 >3 天未闭环 |
 | **R-005** | 优先级/双核等语义降级未被上层感知，违反 ADR-0012 | 🟡 中 | 🟡 中 | 4 | coverage matrix 降级登记表 + lint 检查降级项必须挂文档锚点 | 架构组 | 代码出现未登记的行为弱化 |
 | **R-006** | 许可地图（LGPL 兜底）与 ADR-0084 D3/NOTICE/AGENTS（test=GPL）冲突导致 license-gate 与文字规范打架 | 🟠 高 | 🟡 中 | 6 | **T-002 前置裁决**：新增 esp_idf test/tools GPL 规则（方案 B，本纲领锁定） | 架构组 | 首个 test 文件带 SPDX 提交 |
 | **R-007** | 官方 Legacy 驱动 v7.0 废除导致构建不兼容 | 🟢 低 | 🟡 中 | 2 | Dual-Facade + CMake 退场开关，v7 配置自动裁剪 Legacy TU | 专项小组 | 接入 IDF v7 工具链 |
 | **R-008** | CI nightly IDF 版本（v5.4 且 `|| true` 非阻塞）与计划 v5.1.3~v6.1 错位 | 🟡 中 | 🟡 中 | 4 | T-012：对齐镜像版本或显式声明「双版本矩阵 + 非阻塞性质」 | 工具链组 | nightly 与语料版本漂移 |
 | **R-009** | 覆盖率 ≥85% 无可执行工具（全仓未接 gcov/lcov） | 🟡 中 | 🟡 中 | 4 | T-011：host 构建接 `--coverage`+lcov/gcovr；未接线前 L1 降级为「关键路径断言清单」并声明 | 专项小组 | L1 验收找不到报告产物 |
 | **R-010** | 强符号 `wink_app_get_callbacks` 与 mcs51 冲突 | 🟢 低 | 🟡 中 | 2 | T-009 README 互斥声明 + 构建系统单框架入选 | 专项小组 | 尝试双框架同链 |
+| **R-011** | TaskHandle 直接复用 slot 下标，动态创建/删除触发 ABA（旧句柄误操作新任务） | 🟡 中 | 🟠 高 | 6 | §3.5.1.1 Handle generation 间接层 + L1 ABA 回归；阻塞 M1 开工 | 专项小组 | 多任务动态创建/删除场景 |
+| **R-012** | `resource_id` 无命名空间，Queue/Mutex 独立编号跨对象错唤醒 | 🟡 中 | 🟠 高 | 6 | §3.5.1.3 type_tag 前缀编码 + L1 跨对象无串扰回归；阻塞 M1 开工 | 专项小组 | Queue 与 Mutex 并存等待 |
 
 ### 4.7 跨团队/跨模块协调点（模板 §4.4）
 
@@ -450,7 +477,7 @@ graph TD
 
 ### 5.2 总纲级任务清单
 
-#### Task T-001：caps 双 SSOT 前置 ADR `[ 状态: ⏳ 待开始 ]`
+#### Task T-001：caps 双 SSOT 前置 ADR `[ 状态: ✅ 已完成 (ADR-0085) ]`
 
 | 字段 | 内容 |
 |------|------|
@@ -458,14 +485,14 @@ graph TD
 | **预估工时** | 6 h |
 | **优先级** | 🔴 P0（阻塞 M0） |
 | **前置依赖** | 无 |
-| **修改文件** | `docs/decisions/core/00xx-cap-....md`（新增）；Accepted 后回写 `02-wink-micro-os` 设计规范 |
+| **修改文件** | `docs/decisions/core/0085-esp-idf-facade-soc-caps-vs-pal-caps-dual-ssot.md`（新增并 Accepted）；回写 `02-wink-micro-os` 设计规范 |
 
-- [ ] 起草 ADR：锁定 §3.3.2 方案（门面 `SOC_*` 为准 + PAL caps 为绝对上限 + 双层职责划界 + 长期 caps 自注入方向）
-- [ ] 评审 Accepted → 回写设计规范 → 总纲 D-003 标记闭环
+- [x] 起草 ADR：锁定 §3.3.2 方案（门面 `SOC_*` 为准 + PAL caps 为绝对上限 + 双层职责划界 + 长期 caps 自注入方向）
+- [x] 评审 Accepted → 回写设计规范 → 总纲 D-003 标记闭环
 
 **验证**：ADR 状态 = Accepted；`docs/zh/design/02-wink-micro-os/` 出现对应回写段落。
 
-#### Task T-002：许可归类裁决与 license-map 更新 `[ 状态: ⏳ 待开始 ]`
+#### Task T-002：许可归类裁决与 license-map 更新 `[ 状态: ✅ 已完成 (commit 05a5fb1a) ]`
 
 | 字段 | 内容 |
 |------|------|
@@ -473,17 +500,17 @@ graph TD
 | **预估工时** | 4 h |
 | **优先级** | 🔴 P0（阻塞首个 test/tools 文件） |
 | **前置依赖** | 无 |
-| **修改文件** | `.github/license-map.json`、`wink-micro-os/NOTICE`、（如需）ADR-0084 勘误说明 |
+| **修改文件** | `.github/license-map.json`、`wink-micro-os/NOTICE` |
 
-- [ ] **方案 B（本纲领锁定）**：license-map 在 `wink-micro-os/**` 兜底**之前**新增两条规则：
+- [x] **方案 B（本纲领锁定）**：license-map 在 `wink-micro-os/**` 兜底**之前**新增两条规则：
   - `wink-micro-os/frameworks/esp_idf/test/**` → `GPL-3.0-only`（对齐 ADR-0084 D3 `wink-micro-os/**/test/**` 与既有 test 惯例）
   - `wink-micro-os/frameworks/esp_idf/tools/**` → `GPL-3.0-only`（`must_have_ext: [".py"]`，对齐 mcs51 tools 惯例）
-- [ ] NOTICE 显式登记：`frameworks/esp_idf/{src,include,chips}` = `LGPL-3.0-only`；`test/`、`tools/*.py` = `GPL-3.0-only`（与红线 7 修订版一致）
-- [ ] 运行 `python .github/scripts/check_license_map.py` 全绿
+- [x] NOTICE 显式登记：`frameworks/esp_idf/{src,include,chips}` = `LGPL-3.0-only`；`test/`、`tools/*.py` = `GPL-3.0-only`（与红线 7 修订版一致）
+- [x] 运行 `python .github/scripts/check_license_map.py` 全绿
 
 **验证**：license-gate 门禁通过；ADR-0084/NOTICE/AGENTS 三方文字与地图语义一致（人工核对一次）。
 
-#### Task T-003：创建四份模板命名子计划 `[ 状态: ⏳ 待开始 ]`
+#### Task T-003：创建四份模板命名子计划 `[ 状态: ✅ 已完成 ]`
 
 | 字段 | 内容 |
 |------|------|
@@ -493,14 +520,14 @@ graph TD
 | **前置依赖** | T-001、T-002（子计划须引用已 Accepted 的 ADR） |
 | **修改文件** | `docs/implementation-plans/esp32/2026-09-2x-esp-idf-sim-m{0..3}-*.md`、`00-README.md` |
 
-- [ ] 按 `00-IMPLEMENTATION-PLAN-TEMPLATE.md` 创建：
-  - `./2026-09-23-esp-idf-sim-m0-gpio-plan.md`
-  - `./2026-09-24-esp-idf-sim-m1-freertos-plan.md`
-  - `./2026-09-25-esp-idf-sim-m2-bus-plan.md`
-  - `./2026-09-26-esp-idf-sim-m3-soc-ci-plan.md`
-- [ ] **先建占位后填内容**：本总纲与 `00-README` 已含四份子计划的相对链接，**占位文件必须先于总纲提交落盘**，否则 `docs-contract-gate` 断链失败（占位至少含标题 + 元数据表 + 「继承 PLAN-20260922-ESP-IDF-SIM-MASTER」+ 当前版本号声明）
-- [ ] 每份继承本纲领 7 条红线 + 对应里程碑 DoD（§6 矩阵）；**废止 `PLAN-2026xxxx-*` 文件名**（全仓零先例，不符模板 `YYYY-MM-DD-[feature]-plan.md`）
-- [ ] `00-README.md` 索引登记（与 T-010 合并执行；README v3.0 已预置索引行，核对即可）
+- [x] 按 `00-IMPLEMENTATION-PLAN-TEMPLATE.md` 创建：
+  - `./2026-09-23-esp-idf-sim-m0-gpio-plan.md`（完整详设）
+  - `./2026-09-24-esp-idf-sim-m1-freertos-plan.md`（占位继承）
+  - `./2026-09-25-esp-idf-sim-m2-bus-plan.md`（占位继承）
+  - `./2026-09-26-esp-idf-sim-m3-soc-ci-plan.md`（占位继承）
+- [x] **先建占位后填内容**：本总纲与 `00-README` 已含四份子计划的相对链接，占位文件先于总纲提交落盘，确保链接畅通
+- [x] 每份继承本纲领 7 条红线 + 对应里程碑 DoD（§6 矩阵）
+- [x] `00-README.md` 索引登记状态已更新
 
 **验证**：四文件存在、链接可点、元数据含「继承 PLAN-20260922-ESP-IDF-SIM-MASTER」及版本号；`docs-contract-gate` 通过。
 
@@ -542,7 +569,7 @@ graph TD
 | **前置依赖** | T-002 |
 | **修改文件** | `frameworks/esp_idf/tools/lint/*.py`、`wink-micro-os/test/CMakeLists.txt` |
 
-- [ ] 编写 `tools/lint/lint_esp_idf_*.py`：机器强制 **红线 3（禁 `pal_resource_claim`）、红线 4（禁运行期 malloc）、红线 5（禁浮点 PWM/必须 `pal_pwm_set_duty_bp`）、红线 7（SPDX 与许可地图一致）**
+- [ ] 编写 `tools/lint/lint_esp_idf_*.py`：机器强制 **红线 3（禁 `pal_resource_claim`）、红线 4（禁运行期 malloc，glob 限定 `frameworks/esp_idf/src/**/*.c`，显式排除 `targets/` 与 `osal/` 调度器基础设施）、红线 5（禁浮点 PWM/必须 `pal_pwm_set_duty_bp`）、红线 7（SPDX 与许可地图一致）**
 - [ ] 注册进 ctest（参照 mcs51 `lint_mcs51_safety.py` 模式）；纳入 L0/L4 清单
 > 说明：现有 `layering.yaml`/`api.yaml` **不含 frameworks 层**，对 esp_idf 文件不扫描——外部 pack 是唯一机器强制通道（评审 P1 闭环）。
 
@@ -584,7 +611,7 @@ graph TD
 
 ```mermaid
 gantt
-    title ESP-IDF 仿真拦截层实施路线图 (SSOT v3.0)
+    title ESP-IDF 仿真拦截层实施路线图 (SSOT v3.3)
     dateFormat  YYYY-MM-DD
     section 前置总纲任务
     T-001~T-006,T-009 前置闭环        :t0, 2026-09-23, 2d
@@ -598,23 +625,26 @@ gantt
     M1-2 vTaskDelay 与时间轮绑定+配额片声明 :m1_2, after m1_1, 2d
     M1-3 Queue/Mutex waiter 簿记闭环     :m1_3, after m1_2, 4d
     M1-4 多任务交替闪灯 Headless 验证     :m1_4, after m1_3, 2d
-    section M2 核心总线驱动双版本
+    section M2 核心总线驱动双版本（LEDC/I2C/UART 三线并行，集成日串行合入）
     M2-1 LEDC PWM 定点化适配 (ADR-0066)  :m2_1, after m1_4, 2d
-    M2-2 I2C 双版本门面 (Legacy + Master) :m2_2, after m2_1, 4d
-    M2-3 UART 字符流双向打通              :m2_3, after m2_2, 3d
+    M2-2 I2C 双版本门面 (Legacy + Master) :m2_2, after m1_4, 4d
+    M2-3 UART 字符流双向打通              :m2_3, after m1_4, 3d
+    M2-4 GPTimer/SPI/NVS 范围收口（§3.9）  :m2_4, after m2_2, 1d
     section M3 矩阵扩展与自动化测试
-    M3-1 SoC 矩阵补齐 (S3/C3/C6)         :m3_1, after m2_3, 3d
-    M3-2 Corpus 语料库接入 CI 与覆盖率     :m3_2, after m3_1, 3d
+    M3-1 SoC 矩阵补齐 (S3/C3/C6)         :m3_1, after m2_4, 3d
+    M3-2 Corpus 语料库接入 CI 与覆盖率     :m3_2, after m2_4, 3d
     M3-3 跨平台 Headless 证据链固化        :m3_3, after m3_2, 3d
 ```
+
+> 并行纪律（v3.3）：M2 三外设并行以压缩关键路径（9d → 4d + 集成 1d），但 `wink-micro-os/test/CMakeLists.txt` 为中央热文件（见 §5.1 冲突矩阵），三线测试注册必须在 M2-4 集成日串行合入，不得各线直写热文件。M3-1/M3-2 同理可部分并行，合入同纪律。
 
 ### 派生子计划矩阵表
 
 | 里程碑 | 派生子计划文档路径 | 核心交付物 | 验收标志（DoD 出口） |
 |:---|:---|:---|:---|
 | **M0** | [`2026-09-23-esp-idf-sim-m0-gpio-plan.md`](./2026-09-23-esp-idf-sim-m0-gpio-plan.md) | 基础 include 闭包（编译驱动）、`esp_idf_runtime` 引导、GPIO 门面、`chips/esp32`、外部 lint pack 首版 | Tier-A 语料（blink 或无外部依赖等价示例，按 §7.1 边界）原文直接编译，引脚翻转断言通过；`ctest -R esp_idf_corpus` 可运行 |
-| **M1** | [`2026-09-24-esp-idf-sim-m1-freertos-plan.md`](./2026-09-24-esp-idf-sim-m1-freertos-plan.md) | 任务/延时映射、**Queue/Mutex waiter 簿记**、优先级降级登记、`ESP_PLATFORM` 守卫等价 | 两任务 200ms/500ms 交替调度，Replay 轨迹完全一致；coverage matrix 含优先级降级条目；超时竞态专测通过 |
-| **M2** | [`2026-09-25-esp-idf-sim-m2-bus-plan.md`](./2026-09-25-esp-idf-sim-m2-bus-plan.md) | 定点 LEDC PWM、I2C Legacy + Modern 双门面、静态对象池、UART | 现代 I2C 官方语料 + Legacy Tier-B 语料均通过编译；PWM 输出无浮点（lint pack 强制） |
+| **M1** | [`2026-09-24-esp-idf-sim-m1-freertos-plan.md`](./2026-09-24-esp-idf-sim-m1-freertos-plan.md) | 任务/延时映射（含 Handle generation + `vTaskDelay(0)` 纯让出）、**Queue/Mutex waiter 簿记（含 `resource_id` 编码 + Priority-one/Broadcast-all）**、优先级降级登记、`ESP_PLATFORM` 守卫等价 | 两任务 200ms/500ms 交替调度，Replay 轨迹完全一致；coverage matrix 含优先级降级条目；超时竞态 + ABA + 让出序专测通过 |
+| **M2** | [`2026-09-25-esp-idf-sim-m2-bus-plan.md`](./2026-09-25-esp-idf-sim-m2-bus-plan.md) | 定点 LEDC PWM、I2C Legacy + Modern 双门面、静态对象池、UART（三线并行，M2-4 集成日串行合入）+ §3.9 GPTimer/SPI/NVS 范围收口 | 现代 I2C 官方语料 + Legacy Tier-B 语料均通过编译；PWM 输出无浮点（lint pack 强制）；alarm 时序断言通过 |
 | **M3** | [`2026-09-26-esp-idf-sim-m3-soc-ci-plan.md`](./2026-09-26-esp-idf-sim-m3-soc-ci-plan.md) | S3/C3/C6 能力矩阵、Corpus CI 门禁、覆盖率与 nightly 对齐（T-011/T-012） | C3 越界引脚 Fail-Loud；Tier-A 语料 100% 过 CI；许可与 lint 门禁全绿 |
 
 ---
@@ -649,12 +679,15 @@ gantt
 - [ ] `test/core/` 覆盖率 ≥85%（工具见 T-011；未接线期按关键路径断言清单降级执行并声明）。
 - [ ] `esp_err_from_wink()` 双向错误码翻译穷举断言无遗漏。
 - [ ] 引脚有效性掩码越界输入 100% 拦截返回 `ESP_ERR_INVALID_ARG`（按 `WINK_ESP_TARGET` 分芯片断言）。
-- [ ] Queue/Mutex waiter：FIFO 唤醒序、超时竞态、阻塞-恢复-再阻塞回归（M1 专测）。
+- [ ] Queue/Mutex waiter：优先级唤醒序（同优先级内 FIFO）、超时竞态、阻塞-恢复-再阻塞回归（M1 专测）；`resource_id` 类型前缀编码跨对象无串扰（R-012 回归）。
+- [ ] Handle 生命周期：动态创建/删除复用 slot 的 ABA 回归（旧 handle 失效断言）；`vTaskDelay(0)` 纯让出序（同优先级 READY 任务优先被选中，不进等待态）。
+- [ ] GPTimer alarm 时序断言（到期误差 < 1 tick + 回调任务上下文断言，M2）。
 - [ ] 语义降级登记抽查：coverage matrix 每一「降级」条目均有对应断言或文档锚点（ADR-0012）。
 
 ### L2 集成测试（功能闭环）
 - [ ] **时钟片同步**：FreeRTOS 虚拟调度与 UniSim 100 Hz PinArbiter 时钟推进同步；配额片切出（ADR-0072）与 WCET 8002 兜底行为符合预期（死循环样例：8002 触发且**不**谎称可抢占）。
 - [ ] **I2C 双版本**：同一工程分别调用 Legacy 与 Modern API，PAL 底层接收数据帧完全一致。
+- [ ] **GPTimer/SPI/NVS（§3.9 范围）**：alarm 到期经 deferred 派发时序正确；SPI 同步传输帧与 PAL 侧一致；NVS 复位保留/erase 清除语义正确。
 - [ ] **多框架互斥**：单框架入选构建成功（T-009 负例可选）。
 
 ### L3 文档验收
@@ -674,7 +707,7 @@ gantt
 1. 🚨 **C-ABI 与纯 C 实现原则**：`src/drivers/*.c` 等垫片必须标准 C99，严禁 C++ 运行时/异常。
 2. 🚨 **严禁侵入式修改 PAL / DAL**：只允许依赖 `pal/include`（HAL/OSAL）与自身组件，严禁反向污染 PAL、严禁越级调用 DAL/业务。
 3. 🚨 **严格遵守 ADR-0065**：门面层**严禁调用 `pal_resource_claim()`**；资源由 PAL Init/Deinit 独占管理（lint pack 强制）。
-4. 🚨 **零运行期堆分配**：总线/设备/waiter 句柄全部预分配静态池，运行期禁止 `malloc/free`（lint pack 强制）。
+4. 🚨 **零运行期堆分配（作用域 v3.3 精确化）**：`frameworks/esp_idf/src/**` 门面代码运行期禁止 `malloc/free`，总线/设备/waiter/handle 句柄全部预分配静态池（lint pack 强制，glob 限定门面目录）。**不扫描** `targets/common/` 调度器基础设施——`sim_ctx_create`（见 `sim_ctx.h:22`）在任务创建期（初始化期）分配数据栈 + Asyncify 栈属于基础设施行为，不在本红线内；T-006 lint 规则的 glob 必须显式排除 `targets/` 与 `osal/`，避免 CI 误拦。
 5. 🚨 **PWM 定点红线（ADR-0066）**：LEDC 门面全定点整数运算，底层严格 `pal_pwm_set_duty_bp()`，严禁浮点 duty（lint pack 强制；小数百分比用 `PAL_PWM_DUTY_PERMILLE(75)` 等）。
 6. 🚨 **合约诚实（ADR-0012）**：不支持的 API 编译期 `#error` 或链接期符号缺失，**严禁 Silent No-op**；**一切语义降级必须登记 coverage matrix 降级表**（优先级/双核/事后 WCET 等）。
 7. 🚨 **开源许可合规（ADR-0083/0084，v3.0 分层修订）**：
@@ -700,7 +733,7 @@ gantt
 #### 方案 3：功能降级（可选）
 - 语料 Tier-A 不可达时：降级为 Tier-B/自研 samples 维持 L1/L2，**并在 coverage matrix 与总纲变更日志显式记录降级原因与时限**（不得静默少测）。
 
-#### 8.1 回滚验证（🔴 模板必选）
+#### 9.1.4 回滚验证（🔴 模板必选）
 - [ ] 方案 1 在本地验证：OFF 后宿主全量 ctest 通过、零增量影响。
 - [ ] 方案 2 选定一个代表性 commit 完成一次演练 revert 并恢复。
 - [ ] 回滚后 L0 编译门禁通过；既有框架（arduino/mcs51）功能不受影响。
@@ -749,6 +782,7 @@ gantt
 | **v3.0** | 2026-09-23 | **吸收资深嵌入式专家评审 + IDF v6.1/本仓源码事实核查，升格为执行第一纲领**：<br>1. 🔴 勘误「WCET 强制让出」→ 双机制（ADR-0072 配额片主切出 + WCET 8002 事后告警）；<br>2. 🔴 重算 wasm 栈预算（96KB/fiber、8 任务 ≈768KB），16MB 引用改指 security-sandbox 规范；<br>3. 🔴 裁决「零修改」边界：led_strip 托管组件声明级 stub + Kconfig 宏注入 + 构建树复制，语料改 Tier-A/B/C 分级；legacy I2C 语料改指 test_apps；<br>4. 🔴 闭包策略由「预先 4 类」改为「编译驱动增量闭包」（实测 blink ≥65 头，低估 5~10 倍），新增 `03-include-closure-inventory.md`；<br>5. 🔴 许可冲突裁决（方案 B）：test/tools=GPL-3.0-only 写入红线 7 + T-002 license-map/NOTICE 任务；<br>6. 🟠 废止不存在的 `python wink.py test` → `winkcli test`；本机绝对路径降级为外部依赖 E-001；<br>7. 🟠 登记优先级 RR 降级、waiter 簿记单列 M1-3、`ESP_PLATFORM` 守卫等价裁决、生命周期改按代码事实、esp_restart 落到 `pal_wasm_target_*` 符号族、多框架强符号互斥（T-009）；<br>8. 🟠 新增总纲级任务 T-001~T-012、外部依赖表、风险责任人列、优先级矩阵/关键路径/冲突矩阵、回滚验证、附录 C 自检；子计划命名改模板式并列为 D-004 前置；<br>9. 🟡 补齐 lint pack（ADR-0080）/clang-tidy/headless/覆盖率/nightly 版本五项门禁落点；修正 ADR-0083/0084 死链、调度器/mcs51 相对路径；IDF 事实精度修订（#pragma message、移除清单补全、i2c 头归属、双组件取证源）。 | 架构组 / 专家评审吸收专项 |
 | **v3.1** | 2026-09-23 | **终审收口（可开工性补漏）**：<br>1. 修复 v3.0 交叉引用错误（页眉 §9.1→§4.5/§9.2.1、目标 1 §2.3→§7.1、§7.4 幽灵锚点→T-008、附录 A.4→A.3）；<br>2. 🔴 新增多语料 `sdkconfig.h` 两层 overlay 裁决（§3.2.4，禁止全局宏大杂烩）；<br>3. 🟠 补全 FreeRTOS 语义映射契约表：`vTaskDelete`/Timer 池/Idle 不建模/`FromISR` Fail-Loud/`app_main` 返回语义/任务上限计入规则（§3.5.1.6）；<br>4. 🟠 新增首批显式 Out-of-scope 清单与「首遇 API 三步流程」（§3.7.2）；`WINK_ESP_TARGET` 缺省 = esp32；<br>5. T-003 增加「占位文件先于总纲提交」防断链约束；T-010 标记已完成；T-003~T-012 补齐负责人与工时，优先级矩阵总工时修正为 45h。 | 架构组 / 终审收口 |
 | **v3.2** | 2026-09-23 | **专家补充合入（0 框架变更，全部门面/M 阶段落点）**：<br>1. §3.2.4 去 `#include_next`：基础层改名 `sdkconfig_base.h` + `BEFORE PRIVATE` overlay + `-D` 备选（MSVC 可移植）；<br>2. §3.5.1.6 增补时间基统一（`tick=now_us/10000`）、栈 words→bytes 换算、任务预算（用户可用 ≤6）、确定性（`esp_random` 自带 xorshift 同种子）、`vTaskDelayUntil` 追赶语义、临界区双入口与静态分配首批支持；`FromISR` 改 defer（`pal_deferred`）仅无条件时 Fail-Loud；<br>3. §3.7.2 ISR-defer 替代一刀切 Fail-Loud + `ESP_ERROR_CHECK` 禁 `abort` + WDT 虚拟化 + RMT 占位（M0 stub，M2/M4 真门面）。 | 架构组 |
+| **v3.3** | 2026-09-23 | **融合 11 条代码事实评审（P0 阻塞开工项闭环）**：<br>1. §3.5.1.1 Handle generation 间接层 + ABA 回归（R-011）；§3.5.1.3 `resource_id` type_tag 编码 + Priority-one/Broadcast-all 唤醒三分 + EventGroup 状态声明（R-012/R-004）；<br>2. §3.5.1.2 `vTaskDelay(0)` 纯让出 + §3.5.1.6 Tick 冻结/`pdMS_TO_TICKS` 截断 + `esp_timer` 10ms 精度降级登记；<br>3. 新 §3.9 GPTimer/SPI/NVS 三件套定级（M2）；§8 红线 4 + T-006 lint glob 作用域精确化（排除 `targets/`/`osal/`）；<br>4. §6 M2 三线并行 + M2-4 集成日串行合入纪律（热文件冲突）+ 派生矩阵 M1/M2 DoD 同步；§7 L1/L2 补 ABA/让出序/alarm 时序断言；风险册新增 R-011/R-012。 | 架构组 |
 
 ---
 
@@ -825,7 +859,7 @@ pwsh wink-micro-os/frameworks/esp_idf/tools/run_esp_idf_headless_evidence.ps1
 - [x] 构建/CI 变更已考虑（T-011/T-012、pr.yml/clang-tidy/license-gate 衔接）
 - [x] 附录 A（仿真向，真机 N/A 已声明）、B、C 齐全
 - [x] 死链已修（ADR-0083/0084、调度器/mcs51 路径、子计划命名模板化；四子计划链接待 T-003 占位落盘）
-- [x] 交叉引用自洽（§7.4 等失效锚点已于 v3.1 清除）；多语料 sdkconfig overlay（v3.2 去 `#include_next`）、FreeRTOS timers/`FromISR` defer/Out-of-scope 首批清单已裁决（v3.2）
+- [x] 交叉引用自洽（§7.4 等失效锚点已于 v3.1 清除）；多语料 sdkconfig overlay（v3.2 去 `#include_next`）、FreeRTOS timers/`FromISR` defer/Out-of-scope 首批清单已裁决（v3.2）；Handle ABA + resource_id + 唤醒三分 + GPTimer/SPI/NVS 定级已合入（v3.3，R-011/R-012）
 
 **自检签字**：____________________
 **日期**：2026-09-23
