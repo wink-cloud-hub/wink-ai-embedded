@@ -14,6 +14,10 @@ License map inside this component:
     affect the license of the application that includes it).
   - Host-only tools and test suites (frameworks/mcs51/tools/*.py and the
     test/ trees): GPL-3.0-only.
+  - ESP-IDF simulation interception framework (frameworks/esp_idf/):
+      - Runtime shims (src/, include/, chips/): LGPL-3.0-only.
+      - Test suites (test/): GPL-3.0-only.
+      - Lint and tooling scripts (tools/*.py): GPL-3.0-only.
 
 --------------------------------------------------------------------------------
 Third-party components bundled or linked with this distribution

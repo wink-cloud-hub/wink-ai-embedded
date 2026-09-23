@@ -50,6 +50,19 @@
       "must_have": true
     },
     {
+      "path": "wink-micro-os/frameworks/esp_idf/test/**",
+      "mode": "enforce",
+      "license": "GPL-3.0-only",
+      "must_have": true
+    },
+    {
+      "path": "wink-micro-os/frameworks/esp_idf/tools/**",
+      "mode": "enforce",
+      "license": "GPL-3.0-only",
+      "must_have": true,
+      "must_have_ext": [".py"]
+    },
+    {
       "path": "wink-micro-os/test/**",
       "mode": "enforce",
       "license": "GPL-3.0-only",
