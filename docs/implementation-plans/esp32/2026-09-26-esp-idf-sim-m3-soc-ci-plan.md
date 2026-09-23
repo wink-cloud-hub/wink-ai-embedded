@@ -4,7 +4,7 @@
 > 本计划为 ESP-IDF 仿真拦截层派生子计划（Milestone 3）。
 > **继承总纲**：[`PLAN-20260922-ESP-IDF-SIM-MASTER`](./2026-09-22-esp-idf-simulation-interception-master-plan.md) (v3.3)
 > **当前状态**：📋 待开始（骨架占位，M2 验收完成后展开详细代码步骤）
-> 🎯 **计划版本**：v1.1（2026-09-24，收官验收补遗）
+> 🎯 **计划版本**：v1.2（2026-09-24，vendor 行为证据套件约束）
 
 ---
 
@@ -18,7 +18,7 @@
 | **工具链/SDK版本**| `ESP-IDF v5.1.3 LTS` ~ `v6.1+` |
 | **计划状态** | 📋 待开始（继承总纲，待 M2 闭环后展开） |
 | **优先级** | 🔴 P0（交付收官与 CI 质量门禁） |
-| **计划版本** | `v1.1` |
+| **计划版本** | `v1.2` |
 | **关联技术设计** | [`docs/zh/tech-designs/core/pal-i2c-v6-compatibility.md`](../../zh/tech-designs/core/pal-i2c-v6-compatibility.md) |
 | **关联设计规范** | [`docs/zh/design/04-wasm-simulation/00-README.md`](../../zh/design/04-wasm-simulation/00-README.md)、[`02-wink-micro-os/`](../../zh/design/02-wink-micro-os/README.md) |
 | **关联 ADR** | ADR-0080（外部 lint pack）、ADR-0083/0084（开源许可合规）、ADR-0085（caps 双 SSOT） |
@@ -79,11 +79,12 @@ graph TD
 
 ---
 
-## 5. 展开前置约束（v1.1 新增，防返工）
+## 5. 展开前置约束（v1.1/v1.2 增补，防返工）
 
 1. **`WINK_ESP_TARGET` 是 CMake 配置期变量**：S3/C3/C6 越界拦截测试需独立构建树或 CI 矩阵 job 参数化，展开时必须设计矩阵（不得假设单构建树切 SoC）。
 2. **T-011/T-012 提前 spike**：覆盖率工具链与 nightly 镜像对齐拖到 M3 才暴露会返工 M0~M2 语料；M3-2 展开前先在 M0-6/M1-4 做最小 spike，M3 只收口报告。
 3. **收官 DoD 补两项**：Wasm 峰值内存采样（对照 768KB 最坏栈与 16MB 沙箱）+ T-001/T-002 回写 `02-wink-micro-os` 设计规范的验收证据。
+4. **vendor 行为证据套件（三层证据塔 L2，总纲 §7.1.1）**：`wink-micro-app/vendor/esp_idfv61/` 精选约 6~8 个（`blink_gpio` 打头，精选三规则）；M3-3 起草 checklist + Playbook（镜像 CMS 两件套），含 upstream 溯源 manifest 要求与 CI diff 检查（按 `source_dir` 从 pin 住的 IDF 树比对，漂移即红）；首批 1~2 个已在 M1-4 落地，M3-3 只收齐不返工。
 
 ---
 

@@ -3,7 +3,7 @@
 > 📋 **本文档为实施总纲计划（Layer-③ 实施总纲）**，定义了在 WinkMicroOS 仿真体系中实现 `frameworks/esp_idf` 源码级 API 拦截层的完整架构设计、SoC 矩阵解耦、ESP-IDF v5/v6 双版本兼容方案、FreeRTOS 协作式调度映射以及派生子计划体系。
 > 本文档是指导总纲级任务（T-001~T-012）与 M0~M3 分步实施子计划的 **唯一事实来源（SSOT）与执行第一纲领**。子计划仅允许细化，**不得突破本总纲的架构红线、接口契约与验收出口**；发现冲突必须先回改本总纲并升版。
 >
-> 🎯 **计划版本**：v3.4（2026-09-24，M0 执行前代码事实纠偏：I2C 收敛签名 + 子计划版本对齐）
+> 🎯 **计划版本**：v3.5（2026-09-24，三层证据塔：corpus 广度 + vendor 精选行为深度）
 > 📚 **关联规范**：[`docs/zh/tech-designs/mcs51/mcu-compat-plan.md`](../../zh/tech-designs/mcs51/mcu-compat-plan.md)（双轴模型）、[`00-IMPLEMENTATION-PLAN-TEMPLATE.md`](../00-IMPLEMENTATION-PLAN-TEMPLATE.md)
 > 🏛️ **关联架构决策**：
 > - [ADR-0001](../../decisions/core/0001-error-code-sign-convention.md)（负数错误码约定）
@@ -35,7 +35,7 @@
 | **工具链/SDK版本**| `ESP-IDF v5.1.3 LTS` ~ `v6.1+`（语料与宏取证基线 = v6.1；v5.x 做双版本兼容回归） |
 | **计划状态** | 📋 就绪（v3.3 融合 11 条代码事实评审，P0 已闭环，可作为执行 SSOT 第一纲领） |
 | **优先级** | 🔴 P0（运行时框架层核心演进） |
-| **计划版本** | `v3.4` |
+| **计划版本** | `v3.5` |
 | **关联技术设计** | [`docs/zh/tech-designs/core/pal-i2c-v6-compatibility.md`](../../zh/tech-designs/core/pal-i2c-v6-compatibility.md) |
 | **关联设计规范** | [`docs/zh/design/04-wasm-simulation/00-README.md`](../../zh/design/04-wasm-simulation/00-README.md)、[`02-wink-micro-os/`](../../zh/design/02-wink-micro-os/README.md) |
 | **关联评审记录** | [`2026-09-22-esp-idf-simulation-interception-master-plan-review.md`](./2026-09-22-esp-idf-simulation-interception-master-plan-review.md) |
@@ -666,6 +666,22 @@ gantt
 
 **注册与命令**：中央 `test/CMakeLists.txt` 注册 `esp_idf_corpus_<sample>` 族（T-005）→ `ctest -R esp_idf_corpus`；语料清单与 Tier 归属维护在 `02-api-coverage-matrix.md`。
 
+### 7.1.1 三层证据塔：编译广度 vs 行为深度（v3.5 新增）
+
+corpus（Tier-A/B/C）只证明“能编译”。行为证据走精选 vendor 套件（对标 `docs/vendors/Cmsemicon/CMS8S78XX_EXAMPLE_CHECKLIST.md` 双门禁，但只做精选集，不做全量）：
+
+| 层 | 位置 | 覆盖 | 门禁 |
+|:---|:---|:---|:---|
+| L0 编译广度 | `test/corpus/` | 全部 Tier-A | `ctest -R esp_idf_corpus`，每 PR |
+| L2 行为深度 | `wink-micro-app/vendor/esp_idfv61/<feature>/` | 每外设域 1 个代表（约 6~8 个：`blink_gpio`、ledc、i2c、uart、gptimer、spi、freertos 多任务…） | 真实编译 wasm 资产 + headless 场景 100% 绿 |
+| L2 治理 | `docs/vendors/Espressif/ESP32_IDFV61_EXAMPLE_CHECKLIST.md` + Playbook（M3-3 起草，镜像 CMS 两件套） | 精选集逐行审计 | L3/L4 |
+
+约定（v3.5 锁定）：
+1. **目录命名**：`vendor/esp_idfv61/`（版本维度；同一套 app 经 `WINK_ESP_TARGET` 矩阵覆盖 S3/C3/C6，不按芯片建目录；未来 `esp_idfv51` 并存做双版本，T-012）；目录短名 `<feature>`，manifest `app_name` 全局唯一 `esp_idfv61_<feature>`。
+2. **精选三规则**：有对应门面域 + 行为可观测（Level 1~3）+ 覆盖 distinct 风险；其余 corpus-only；Out-of-scope 两边都不收。
+3. **upstream 溯源（机检“一行不改”）**：每个 vendor app 的 `wink-app.json` 必含 `upstream: {vendor: "Espressif", version: "<IDF tag>", source_dir: "examples/..."}`（镜像 cms8s78xx `gpio` app）；M3-3 落一条 CI 检查，按 `source_dir` 从 pin 住的 IDF 树 diff，漂移即红。
+4. **节奏**：首批 1~2 个（含 `blink_gpio` 必选）在 M1-4 headless 验证时落地；其余与 checklist 在 M3-3 收齐。
+
 ### L0 编译门禁（必须 100% 通过）
 - [ ] **Host 目标**：GCC / Clang `-Wall -Wextra -Werror` 0 error 0 warning。
 - [ ] **Wasm 目标**：Emscripten 编译 0 error 0 warning。
@@ -784,6 +800,7 @@ gantt
 | **v3.2** | 2026-09-23 | **专家补充合入（0 框架变更，全部门面/M 阶段落点）**：<br>1. §3.2.4 去 `#include_next`：基础层改名 `sdkconfig_base.h` + `BEFORE PRIVATE` overlay + `-D` 备选（MSVC 可移植）；<br>2. §3.5.1.6 增补时间基统一（`tick=now_us/10000`）、栈 words→bytes 换算、任务预算（用户可用 ≤6）、确定性（`esp_random` 自带 xorshift 同种子）、`vTaskDelayUntil` 追赶语义、临界区双入口与静态分配首批支持；`FromISR` 改 defer（`pal_deferred`）仅无条件时 Fail-Loud；<br>3. §3.7.2 ISR-defer 替代一刀切 Fail-Loud + `ESP_ERROR_CHECK` 禁 `abort` + WDT 虚拟化 + RMT 占位（M0 stub，M2/M4 真门面）。 | 架构组 |
 | **v3.3** | 2026-09-23 | **融合 11 条代码事实评审（P0 阻塞开工项闭环）**：<br>1. §3.5.1.1 Handle generation 间接层 + ABA 回归（R-011）；§3.5.1.3 `resource_id` type_tag 编码 + Priority-one/Broadcast-all 唤醒三分 + EventGroup 状态声明（R-012/R-004）；<br>2. §3.5.1.2 `vTaskDelay(0)` 纯让出 + §3.5.1.6 Tick 冻结/`pdMS_TO_TICKS` 截断 + `esp_timer` 10ms 精度降级登记；<br>3. 新 §3.9 GPTimer/SPI/NVS 三件套定级（M2）；§8 红线 4 + T-006 lint glob 作用域精确化（排除 `targets/`/`osal/`）；<br>4. §6 M2 三线并行 + M2-4 集成日串行合入纪律（热文件冲突）+ 派生矩阵 M1/M2 DoD 同步；§7 L1/L2 补 ABA/让出序/alarm 时序断言；风险册新增 R-011/R-012。 | 架构组 |
 | **v3.4** | 2026-09-24 | **M0 执行前代码事实纠偏（子计划 v1.1 对齐）**：① §3.4.2 I2C 收敛签名纠正（7 参为 `pal_i2c_transfer_timeout`，6 参 `pal_i2c_transfer` 为默认超时包装）；② M0 升 v1.1（status 枚举 canonical、GPIO 门面补 `set_direction`、SoC 掩码改官方表达式、callbacks 七字段范式、reset 三钩子、task.h 声明桩、语料 OBJECT 化）；③ M1/M2/M3 升 v1.1（展开前置约束补遗）。0 框架变更。 | 架构组 |
+| **v3.5** | 2026-09-24 | **三层证据塔（§7.1.1）**：L0 corpus 全量广度 + L2 `vendor/esp_idfv61/` 精选行为深度（约 6~8 个，每域 1 代表）+ CMS 式 checklist 治理；锁定目录命名（版本维度，经 `WINK_ESP_TARGET` 矩阵 cover 全 SoC）、精选三规则、upstream manifest 机检“一行不改”、M1-4 首批 / M3-3 收齐节奏。0 框架变更。 | 架构组 |
 
 ---
 
