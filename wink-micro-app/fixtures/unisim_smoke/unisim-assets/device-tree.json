@@ -1,0 +1,32 @@
+{
+  "appName": "unisim_smoke",
+  "board": "esp32_devkitc_v4",
+  "devices": {
+    "board_led": {
+      "id": "board_led",
+      "type": "led",
+      "pinMapping": {
+        "A": 2
+      },
+      "properties": {
+        "activeHigh": true
+      }
+    },
+    "us_sensor": {
+      "id": "us_sensor",
+      "type": "ultrasonic",
+      "pinMapping": {
+        "TRIG": 12,
+        "ECHO": 13
+      },
+      "properties": {
+        "variant": "hcsr04",
+        "backend": "gpio_poll"
+      }
+    }
+  },
+  "family": "esp32",
+  "core": "xtensa-lx6",
+  "mcu": "esp32",
+  "vendor": "espressif"
+}

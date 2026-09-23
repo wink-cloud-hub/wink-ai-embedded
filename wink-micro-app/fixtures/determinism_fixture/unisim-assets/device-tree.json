@@ -1,0 +1,30 @@
+{
+  "appName": "determinism_fixture",
+  "board": "esp32_devkitc_v4",
+  "devices": {
+    "status_led": {
+      "id": "status_led",
+      "type": "led",
+      "pinMapping": {
+        "A": 2
+      },
+      "properties": {
+        "activeHigh": true
+      }
+    },
+    "trigger_btn": {
+      "id": "trigger_btn",
+      "type": "button",
+      "pinMapping": {
+        "1.l": 4
+      },
+      "properties": {
+        "activeLow": true
+      }
+    }
+  },
+  "family": "esp32",
+  "core": "xtensa-lx6",
+  "mcu": "esp32",
+  "vendor": "espressif"
+}

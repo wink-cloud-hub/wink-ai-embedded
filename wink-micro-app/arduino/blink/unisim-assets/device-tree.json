@@ -1,0 +1,9 @@
+{
+  "appName": "blink",
+  "board": "esp32_devkitc_v4",
+  "devices": {},
+  "family": "esp32",
+  "core": "xtensa-lx6",
+  "mcu": "esp32",
+  "vendor": "espressif"
+}

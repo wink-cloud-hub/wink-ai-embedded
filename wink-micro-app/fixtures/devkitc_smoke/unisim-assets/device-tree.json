@@ -1,0 +1,45 @@
+{
+  "appName": "devkitc_smoke",
+  "board": "esp32_devkitc_v4",
+  "devices": {
+    "board_led": {
+      "id": "board_led",
+      "type": "led",
+      "pinMapping": {
+        "A": 2
+      },
+      "properties": {
+        "activeHigh": true
+      }
+    },
+    "boot_button": {
+      "id": "boot_button",
+      "type": "button",
+      "pinMapping": {
+        "1.l": 0
+      },
+      "properties": {
+        "activeLow": true,
+        "longPressMs": 3000,
+        "isrCounter": true,
+        "autoPollMs": 10
+      }
+    },
+    "smoke_ultrasonic": {
+      "id": "smoke_ultrasonic",
+      "type": "ultrasonic",
+      "pinMapping": {
+        "TRIG": 18,
+        "ECHO": 19
+      },
+      "properties": {
+        "variant": "hcsr04",
+        "backend": "esp32_rmt"
+      }
+    }
+  },
+  "family": "esp32",
+  "core": "xtensa-lx6",
+  "mcu": "esp32",
+  "vendor": "espressif"
+}
