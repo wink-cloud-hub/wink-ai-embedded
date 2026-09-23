@@ -70,7 +70,7 @@ wink_status_t pal_adc_pin_channel(wink_pin_t pin, pal_adc_channel_t *out_ch);
  * @param[in] pin Physical GPIO pin number
  * @param[in] cfg Configuration struct (full_scale_mv, resolution_bits)
  * @param[out] out_ch Output pointer for acquired ADC channel handle
- * @return WINK_OK on success, WINK_ERR_NO_MEMORY if no channel slot available
+ * @return WINK_OK on success, WINK_ERR_NO_MEM if no channel slot available
  */
 WINK_WARN_UNUSED_RESULT
 wink_status_t pal_adc_acquire(wink_pin_t pin, const pal_adc_config_t *cfg, pal_adc_channel_t *out_ch);

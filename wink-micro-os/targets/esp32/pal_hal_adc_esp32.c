@@ -87,7 +87,7 @@ static wink_status_t esp_err_to_wink_status(esp_err_t err) {
         case ESP_ERR_INVALID_STATE:   return WINK_ERR_UNSUPPORTED;
         case ESP_ERR_NOT_FOUND:       return WINK_ERR_NOT_FOUND;
         case ESP_ERR_TIMEOUT:         return WINK_ERR_TIMEOUT;
-        case ESP_ERR_NO_MEM:          return WINK_ERR_NO_MEMORY;
+        case ESP_ERR_NO_MEM:          return WINK_ERR_NO_MEM;
         default:                      return WINK_ERR_HARDWARE;
     }
 }
@@ -186,7 +186,7 @@ wink_status_t pal_adc_init(pal_adc_channel_t ch, const pal_adc_config_t *cfg) {
     }
 
     pal_adc_ensure_locks();
-    if (s_ch_locks[ch] == NULL) return WINK_ERR_NO_MEMORY;
+    if (s_ch_locks[ch] == NULL) return WINK_ERR_NO_MEM;
 
     if (!ch_lock_take(ch)) return WINK_ERR_TIMEOUT;
     if (s_channels[ch].is_initialized) {
