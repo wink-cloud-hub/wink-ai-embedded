@@ -55,6 +55,7 @@ PAL 主要由两大部分组成：
 | **ADR-0066** | PWM Basis Points (bp) 定点规范与软浮点下线 | ✅ 统一定点万分比 `0..10000` (`bp`)，杜绝 20-bit 32位乘法溢出与 Cortex-M0/M3 软浮点库代码膨胀 <br> ✅ 浮点 `pal_pwm_set_duty` 弃用并由 `PAL_PWM_HIDE_FLOAT_API` 条件门控 |
 | **ADR-0067** | I2C 同步超时恢复与异步 DMA 演进 | ✅ `pal_i2c_transfer_timeout` 显式超时防护，提供 SCL 9脉冲总线防死锁恢复 `pal_i2c_bus_recover` |
 | **ADR-0068** | 模块化 `"hal/..."` 强制包含与 Umbrella 聚合 | ✅ 严格通过 `"hal/pal_gpio.h"` 等包含细粒度接口，`pal_hal.h` 仅作为向下兼容聚合头文件 |
+| **ADR-0085** | 仿真拦截门面 SoC 能力与 PAL Caps 双 SSOT 仲裁 | ✅ 确立两层职责显式划界：生态拦截门面（ESP-IDF/MCS-51 等）以芯片原生 `SOC_*` 宏与引脚掩码为唯一合法性判据，高保真还原硬件限制 <br> ✅ `pal_target_caps.h` 的 wasm/host 分支作为仿真宿主绝对容量上限（不随芯片缩小），保障宿主基础设施稳定性 |
 
 ---
 
