@@ -4,7 +4,8 @@
 > 本计划为 ESP-IDF 仿真拦截层派生子计划（Milestone 2）。
 > **继承总纲**：[`PLAN-20260922-ESP-IDF-SIM-MASTER`](./2026-09-22-esp-idf-simulation-interception-master-plan.md) (v3.3)
 > **当前状态**：📋 待开始（骨架占位，M1 验收完成后展开详细代码步骤）
-> 🎯 **计划版本**：v1.0（2026-09-23）
+> 🎯 **计划版本**：v1.1（2026-09-24，PAL 签名纠偏补遗）
+> 🔍 **签名基线**：`pal_i2c_transfer` 为 6 参（默认超时），显式超时用 7 参 `pal_i2c_transfer_timeout`（`pal/include/hal/pal_i2c.h:77-92`）；总纲 v3.3 的 7 参 `pal_i2c_transfer` 写法错误，M2 一律以本基线为准
 
 ---
 
@@ -18,7 +19,7 @@
 | **工具链/SDK版本**| `ESP-IDF v5.1.3 LTS` ~ `v6.1+` |
 | **计划状态** | 📋 待开始（继承总纲，待 M1 闭环后展开） |
 | **优先级** | 🔴 P0（外设总线核心能力） |
-| **计划版本** | `v1.0` |
+| **计划版本** | `v1.1` |
 | **关联技术设计** | [`docs/zh/tech-designs/core/pal-i2c-v6-compatibility.md`](../../zh/tech-designs/core/pal-i2c-v6-compatibility.md) |
 | **关联设计规范** | [`docs/zh/design/04-wasm-simulation/00-README.md`](../../zh/design/04-wasm-simulation/00-README.md)、[`02-wink-micro-os/`](../../zh/design/02-wink-micro-os/README.md) |
 | **关联 ADR** | ADR-0004（静态分发）、ADR-0065（禁 claim）、ADR-0066（PWM 定点化）、ADR-0085（caps 双 SSOT） |
@@ -37,7 +38,7 @@ ESP-IDF 的总线外设在 v5 与 v6 之间经历了重大架构迁移，特别�
 
 ### 2.2 核心设计与契约（总纲 v3.3 锁定）
 1. **LEDC PWM 定点化**：使用 `pal_pwm_set_duty_bp()`，彻底禁止浮点运算与裸字面量；lint pack 机器强制。
-2. **I2C 双门面共存**：同时提供 `driver/i2c.h` 与 `driver/i2c_master.h`，底层统一汇聚至 `pal_i2c_transfer()`。
+2. **I2C 双门面共存**：同时提供 `driver/i2c.h` 与 `driver/i2c_master.h`，底层统一汇聚至 `pal_i2c_transfer_timeout()`（7 参显式超时；默认超时可用 6 参 `pal_i2c_transfer()` 包装）。Legacy 命令链表（start/write/read/stop）折叠为单次 transfer 的规则与 ACK-check 策略在展开详设时单列。
 3. **静态句柄池（Static Handle Pool）**：禁止运行时 malloc，总线对象与设备控制块全部预分配。
 4. **UART 字符流**：环形缓冲区静态分配，双向桥接 `pal_uart_*`。
 5. **GPTimer / SPI / NVS 范围收口（§3.9 定级）**：
@@ -85,6 +86,15 @@ graph TD
 
 ---
 
-## 5. 待办声明
+## 5. 展开前置约束（v1.1 新增，防返工）
 
-> 📌 **展开条件**：M1 计划（`2026-09-24-esp-idf-sim-m1-freertos-plan.md`）通过 L0~L4 验收准出后，本计划将补充第 6 章详细任务执行步骤、精确代码片段、测试用例清单与回滚方案。
+1. **UART `driver_install` queue 语义必须先裁决**：复用 M1 FreeRTOS queue shim 还是门面自建，直接决定 M2-3 工作量，展开时单列裁决项（含 `RX_FULL/FIFO_OVF` 经 `pal_deferred_post_from_isr` 路径）。
+2. **LEDC 必须含 timer/channel 双步映射**：`ledc_timer_config(freq/resolution)` 冲突仲裁 + 按 `WINK_ESP_TARGET` 裁剪通道数（C3/C6=6），仅换算 duty 不够 DoD。
+3. **GPTimer 收敛目标二选一**：直连 `sim_scheduler` 还是经 `pal_hwtimer_*`，红线 2 倾向后者，展开时裁决并登记。
+4. **RMT 归宿**：总纲“ M2/M4”中的 M4 不存在，展开时明确 RMT 真门面归 M2 还是新立 M4，否则 `led_strip` 启用分支 Fail-Loud 无承接。
+
+---
+
+## 6. 待办声明
+
+> 📌 **展开条件**：M1 计划（`2026-09-24-esp-idf-sim-m1-freertos-plan.md`）通过 L0~L4 验收准出后，本计划将补充后续章节的详细任务执行步骤、精确代码片段、测试用例清单与回滚方案（消费 §5 约束）。

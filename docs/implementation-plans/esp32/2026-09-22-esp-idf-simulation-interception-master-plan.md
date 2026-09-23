@@ -3,7 +3,7 @@
 > 📋 **本文档为实施总纲计划（Layer-③ 实施总纲）**，定义了在 WinkMicroOS 仿真体系中实现 `frameworks/esp_idf` 源码级 API 拦截层的完整架构设计、SoC 矩阵解耦、ESP-IDF v5/v6 双版本兼容方案、FreeRTOS 协作式调度映射以及派生子计划体系。
 > 本文档是指导总纲级任务（T-001~T-012）与 M0~M3 分步实施子计划的 **唯一事实来源（SSOT）与执行第一纲领**。子计划仅允许细化，**不得突破本总纲的架构红线、接口契约与验收出口**；发现冲突必须先回改本总纲并升版。
 >
-> 🎯 **计划版本**：v3.3（2026-09-23，融合 11 条代码事实评审：P0 Handle ABA + resource_id 阻塞开工项，其余下沉 M1/M2）
+> 🎯 **计划版本**：v3.4（2026-09-24，M0 执行前代码事实纠偏：I2C 收敛签名 + 子计划版本对齐）
 > 📚 **关联规范**：[`docs/zh/tech-designs/mcs51/mcu-compat-plan.md`](../../zh/tech-designs/mcs51/mcu-compat-plan.md)（双轴模型）、[`00-IMPLEMENTATION-PLAN-TEMPLATE.md`](../00-IMPLEMENTATION-PLAN-TEMPLATE.md)
 > 🏛️ **关联架构决策**：
 > - [ADR-0001](../../decisions/core/0001-error-code-sign-convention.md)（负数错误码约定）
@@ -35,7 +35,7 @@
 | **工具链/SDK版本**| `ESP-IDF v5.1.3 LTS` ~ `v6.1+`（语料与宏取证基线 = v6.1；v5.x 做双版本兼容回归） |
 | **计划状态** | 📋 就绪（v3.3 融合 11 条代码事实评审，P0 已闭环，可作为执行 SSOT 第一纲领） |
 | **优先级** | 🔴 P0（运行时框架层核心演进） |
-| **计划版本** | `v3.3` |
+| **计划版本** | `v3.4` |
 | **关联技术设计** | [`docs/zh/tech-designs/core/pal-i2c-v6-compatibility.md`](../../zh/tech-designs/core/pal-i2c-v6-compatibility.md) |
 | **关联设计规范** | [`docs/zh/design/04-wasm-simulation/00-README.md`](../../zh/design/04-wasm-simulation/00-README.md)、[`02-wink-micro-os/`](../../zh/design/02-wink-micro-os/README.md) |
 | **关联评审记录** | [`2026-09-22-esp-idf-simulation-interception-master-plan-review.md`](./2026-09-22-esp-idf-simulation-interception-master-plan-review.md) |
@@ -223,9 +223,9 @@ wink-micro-os/frameworks/esp_idf/
 #### 3.4.2 双门面共存设计（Dual-Facade Pattern）
 
 1. **统一头文件池**：同时暴露 `driver/i2c.h`（Legacy）与 `driver/i2c_master.h`（Modern），配套 `driver/i2c_types.h` 与 `driver/i2c_types_legacy.h`。
-2. **底层收敛至单一事实源**：无论 `i2c_master_write_read_device()` 还是 `i2c_master_transmit()`，内部统一收敛后调用：
+2. **底层收敛至单一事实源**：无论 `i2c_master_write_read_device()` 还是 `i2c_master_transmit()`，内部统一收敛后调用（`pal_i2c_transfer` 为 6 参默认超时包装，显式超时用 7 参 `pal_i2c_transfer_timeout`；v3.3 的 7 参 `pal_i2c_transfer` 写法错误，v3.4 纠正）：
    ```c
-   pal_i2c_transfer(port, addr, tx_buf, tx_len, rx_buf, rx_len, timeout_ms);
+   pal_i2c_transfer_timeout(port, addr, tx_buf, tx_len, rx_buf, rx_len, timeout_ms);
    ```
 3. **静态对象句柄池（Static Handle Pool）**：`i2c_master_bus_handle_t` 等对象句柄由预分配 POD 静态数组发放（如 `static esp_i2c_bus_t s_bus_pool[2]`），禁止初始化期无节制 `malloc`（ADR-0045）。
 4. **语料选材修正（v3.0）**：官方 `examples/peripherals/i2c/*` **已 100% 迁移**到 `i2c_master.h`，无 legacy 示例；Legacy 半边语料改用 `components/driver/test_apps/legacy_i2c_driver/main/test_i2c.c`（**原文不改**，由平台提供 `unity.h` 兼容 stub），登记为 Tier-B 适配语料（见 §7.1）。
@@ -309,7 +309,7 @@ wink-micro-os/frameworks/esp_idf/
 * **SSOT 规范**：
   - 物理硬件资源仅由底层 PAL 在 Init 时自动 Claim、Deinit 时自动 Release；
   - **ESP-IDF 门面层一律严禁直接调用 `pal_resource_claim()`**（由 `tools/lint/` pack 机器强制，见 T-006）；
-  - 门面只负责：① 参数边界合法性检查（以当前 `WINK_ESP_TARGET` 的 `SOC_*`/`GPIO_IS_VALID_GPIO` 为准）；② 状态码翻译（`WINK_ERR_RESOURCE_BUSY` → `ESP_ERR_INVALID_STATE`）。
+  - 门面只负责：① 参数边界合法性检查（以当前 `WINK_ESP_TARGET` 的 `SOC_*`/`GPIO_IS_VALID_GPIO` 为准）；② 状态码翻译（`WINK_ERR_BUSY` → `ESP_ERR_INVALID_STATE`）。
 
 #### 3.7.2 错误码双向转换与合约诚实（ADR-0012）
 * Wink 负数错误码（ADR-0001）↔ ESP-IDF `ESP_OK=0 / ESP_FAIL=-1 / ESP_ERR_*=0x101+`：在 `src/core/esp_err.c` 实现 `esp_err_t esp_err_from_wink(wink_status_t status)` 双向映射，L1 穷举断言。
@@ -783,6 +783,7 @@ gantt
 | **v3.1** | 2026-09-23 | **终审收口（可开工性补漏）**：<br>1. 修复 v3.0 交叉引用错误（页眉 §9.1→§4.5/§9.2.1、目标 1 §2.3→§7.1、§7.4 幽灵锚点→T-008、附录 A.4→A.3）；<br>2. 🔴 新增多语料 `sdkconfig.h` 两层 overlay 裁决（§3.2.4，禁止全局宏大杂烩）；<br>3. 🟠 补全 FreeRTOS 语义映射契约表：`vTaskDelete`/Timer 池/Idle 不建模/`FromISR` Fail-Loud/`app_main` 返回语义/任务上限计入规则（§3.5.1.6）；<br>4. 🟠 新增首批显式 Out-of-scope 清单与「首遇 API 三步流程」（§3.7.2）；`WINK_ESP_TARGET` 缺省 = esp32；<br>5. T-003 增加「占位文件先于总纲提交」防断链约束；T-010 标记已完成；T-003~T-012 补齐负责人与工时，优先级矩阵总工时修正为 45h。 | 架构组 / 终审收口 |
 | **v3.2** | 2026-09-23 | **专家补充合入（0 框架变更，全部门面/M 阶段落点）**：<br>1. §3.2.4 去 `#include_next`：基础层改名 `sdkconfig_base.h` + `BEFORE PRIVATE` overlay + `-D` 备选（MSVC 可移植）；<br>2. §3.5.1.6 增补时间基统一（`tick=now_us/10000`）、栈 words→bytes 换算、任务预算（用户可用 ≤6）、确定性（`esp_random` 自带 xorshift 同种子）、`vTaskDelayUntil` 追赶语义、临界区双入口与静态分配首批支持；`FromISR` 改 defer（`pal_deferred`）仅无条件时 Fail-Loud；<br>3. §3.7.2 ISR-defer 替代一刀切 Fail-Loud + `ESP_ERROR_CHECK` 禁 `abort` + WDT 虚拟化 + RMT 占位（M0 stub，M2/M4 真门面）。 | 架构组 |
 | **v3.3** | 2026-09-23 | **融合 11 条代码事实评审（P0 阻塞开工项闭环）**：<br>1. §3.5.1.1 Handle generation 间接层 + ABA 回归（R-011）；§3.5.1.3 `resource_id` type_tag 编码 + Priority-one/Broadcast-all 唤醒三分 + EventGroup 状态声明（R-012/R-004）；<br>2. §3.5.1.2 `vTaskDelay(0)` 纯让出 + §3.5.1.6 Tick 冻结/`pdMS_TO_TICKS` 截断 + `esp_timer` 10ms 精度降级登记；<br>3. 新 §3.9 GPTimer/SPI/NVS 三件套定级（M2）；§8 红线 4 + T-006 lint glob 作用域精确化（排除 `targets/`/`osal/`）；<br>4. §6 M2 三线并行 + M2-4 集成日串行合入纪律（热文件冲突）+ 派生矩阵 M1/M2 DoD 同步；§7 L1/L2 补 ABA/让出序/alarm 时序断言；风险册新增 R-011/R-012。 | 架构组 |
+| **v3.4** | 2026-09-24 | **M0 执行前代码事实纠偏（子计划 v1.1 对齐）**：① §3.4.2 I2C 收敛签名纠正（7 参为 `pal_i2c_transfer_timeout`，6 参 `pal_i2c_transfer` 为默认超时包装）；② M0 升 v1.1（status 枚举 canonical、GPIO 门面补 `set_direction`、SoC 掩码改官方表达式、callbacks 七字段范式、reset 三钩子、task.h 声明桩、语料 OBJECT 化）；③ M1/M2/M3 升 v1.1（展开前置约束补遗）。0 框架变更。 | 架构组 |
 
 ---
 

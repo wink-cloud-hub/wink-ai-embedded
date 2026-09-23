@@ -4,7 +4,8 @@
 > 本计划为 ESP-IDF 仿真拦截层派生子计划（Milestone 1）。
 > **继承总纲**：[`PLAN-20260922-ESP-IDF-SIM-MASTER`](./2026-09-22-esp-idf-simulation-interception-master-plan.md) (v3.3)
 > **当前状态**：📋 待开始（骨架占位，M0 验收完成后展开详细代码步骤）
-> 🎯 **计划版本**：v1.0（2026-09-23）
+> 🎯 **计划版本**：v1.1（2026-09-24，M0 移交约束补遗）
+> 🔍 **M0 移交基线**：M0 v1.1 已交付 `freertos/task.h` 最小声明桩（`vTaskDelay` 原型 + `portTICK_PERIOD_MS`，实现递延本计划）；`wink_status.h` canonical 枚举以 `INVALID_ARG/NO_MEM/BUSY/UNSUPPORTED` 为准
 
 ---
 
@@ -18,7 +19,7 @@
 | **工具链/SDK版本**| `ESP-IDF v5.1.3 LTS` ~ `v6.1+` |
 | **计划状态** | 📋 待开始（继承总纲，待 M0 闭环后展开） |
 | **优先级** | 🔴 P0（核心并发底座） |
-| **计划版本** | `v1.0` |
+| **计划版本** | `v1.1` |
 | **关联技术设计** | [`docs/zh/tech-designs/core/pal-i2c-v6-compatibility.md`](../../zh/tech-designs/core/pal-i2c-v6-compatibility.md) |
 | **关联设计规范** | [`docs/zh/design/04-wasm-simulation/00-README.md`](../../zh/design/04-wasm-simulation/00-README.md)、[`02-wink-micro-os/`](../../zh/design/02-wink-micro-os/README.md) |
 | **关联 ADR** | ADR-0012（语义降级）、ADR-0014（确定性调度）、ADR-0045（零 malloc / 内存预算）、ADR-0072（配额片）、ADR-0085（caps 双 SSOT） |
@@ -84,6 +85,17 @@ graph TD
 
 ---
 
-## 5. 待办声明
+## 5. M0 移交物与展开前置约束（v1.1 新增，防返工）
 
-> 📌 **展开条件**：M0 计划（`2026-09-23-esp-idf-sim-m0-gpio-plan.md`）通过 L0~L4 验收准出后，本计划将补充第 6 章详细任务执行步骤、精确代码片段、测试用例清单与回滚方案。
+> 本节为 M0 v1.1 事实核对后补遗。展开后续详设前必须消费以下约束，否则与 M0 交付物冲突：
+
+1. **`task.h` 由桩转实现**：M0 仅交付声明（`vTaskDelay`/`vTaskDelayUntil` 原型 + `portTICK_PERIOD_MS`），M1-1 必须补函数体并收敛至 `sim_scheduler_yield_timed/block`；不得推翻 M0 已闭包头的对外形态（总纲冲突矩阵约束）。
+2. **错误码 canonical**：`WINK_ERR_INVALID_PARAM / NO_MEMORY / RESOURCE_BUSY / NOT_SUPPORTED` 四名不存在，M1 所有 waiter/queue 代码与测试必须用 `INVALID_ARG / NO_MEM / BUSY / RESOURCE_EXHAUSTED / UNSUPPORTED`（`wink_status.h`）。
+3. **日志入口**：`pal_log_info/warn/write` 不存在，统一 `pal_log_i/w/e/d`。
+4. **展开 DoD 必须含**：Handle generation ABA 回归、`resource_id` type_tag 二选一裁决记录、`vTaskDelay(0)` 让出序断言、Tick 截断（`pdMS_TO_TICKS(<10ms)==0`）lint 或断言、任务预算（用户可用 ≤6）说明。
+
+---
+
+## 6. 待办声明
+
+> 📌 **展开条件**：M0 计划（`2026-09-23-esp-idf-sim-m0-gpio-plan.md`）通过 L0~L4 验收准出后，本计划将补充后续章节的详细任务执行步骤、精确代码片段、测试用例清单与回滚方案（消费 §5 约束）。
