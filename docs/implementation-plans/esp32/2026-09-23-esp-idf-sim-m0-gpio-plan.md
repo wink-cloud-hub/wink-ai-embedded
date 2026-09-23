@@ -4,8 +4,9 @@
 > 本计划为 ESP-IDF 仿真拦截层派生子计划（Milestone 0）。
 > **继承总纲**：[`PLAN-20260922-ESP-IDF-SIM-MASTER`](./2026-09-22-esp-idf-simulation-interception-master-plan.md) (v3.3)
 > **当前状态**：📋 就绪 / 执行中
-> 🎯 **计划版本**：v1.0（2026-09-23）
+> 🎯 **计划版本**：v1.1（2026-09-24，代码事实核对修订：修正 6 处 P0 编译期错误 + blink 闭包缺口）
 > 📚 **关联规范**：`docs-adr.md`、`03-coding-guidelines.md`、`00-IMPLEMENTATION-PLAN-TEMPLATE.md`
+> 🔍 **核对基线**：`pal/include/wink_status.h`、`pal/include/hal/pal_gpio.h`、`pal/include/pal_log.h`、`runtime/include/wink_app.h`、`runtime/include/wink_runtime.h`、`targets/wasm/wasm_entry.c`、`frameworks/mcs51/src/mcs51_bridge.cpp`、ESP-IDF v6.1 官方 `driver/gpio.h` / `soc/esp32/soc_caps.h` / `blink_example_main.c`（详见 v1.1 变更记录）
 
 ---
 
@@ -19,7 +20,7 @@
 | **工具链/SDK版本**| `ESP-IDF v5.1.3 LTS` ~ `v6.1+`（取证基线：v6.1 tag） |
 | **计划状态** | 📋 就绪（准备执行） |
 | **优先级** | 🔴 P0（阻塞整个 ESP-IDF 仿真拦截层开工） |
-| **计划版本** | `v1.0` |
+| **计划版本** | `v1.1` |
 | **关联技术设计** | [`docs/zh/tech-designs/core/pal-i2c-v6-compatibility.md`](../../zh/tech-designs/core/pal-i2c-v6-compatibility.md) |
 | **关联设计规范** | [`docs/zh/design/04-wasm-simulation/00-README.md`](../../zh/design/04-wasm-simulation/00-README.md)、[`02-wink-micro-os/`](../../zh/design/02-wink-micro-os/README.md) |
 | **关联评审记录** | [`2026-09-22-esp-idf-simulation-interception-master-plan-review.md`](./2026-09-22-esp-idf-simulation-interception-master-plan-review.md) |
@@ -47,7 +48,7 @@ M0 阶段作为整个拦截体系的**开山基石**，必须解决三个核心�
 - ✅ **目标 1**：搭建自洽的 `frameworks/esp_idf` 目录骨架与 CMake 构建体系，支持 `ENABLE_ESP_IDF_FRAMEWORK` 开关，在 `ESP_PLATFORM`（真机）下 0 增量构建。
 - ✅ **目标 2**：完成编译驱动增量闭包机制，铺设 M0 必需的最小头文件家族，建立 `03-include-closure-inventory.md` 跟踪档案；实现多语料 `sdkconfig` 两层 overlay 机制。
 - ✅ **目标 3**：实现标准运行时生命周期强符号 `wink_app_get_callbacks` 导出，优雅接入 `esp_restart()` 复位钩子族，实现 `esp_err_from_wink` 错误码双向翻译。
-- ✅ **目标 4**：实现 `driver/gpio` 门面（`gpio_config`, `gpio_set_level`, `gpio_get_level`, `gpio_reset_pin`），严格消费 `pal_gpio_*`，门面层 0 `pal_resource_claim`。
+- ✅ **目标 4**：实现 `driver/gpio` 门面（`gpio_config`, `gpio_set_direction`, `gpio_set_level`, `gpio_get_level`, `gpio_reset_pin`），严格消费 `pal_gpio_*`，门面层 0 `pal_resource_claim`。注：`gpio_set_direction` 为 Tier-A blink 语料实测必需（`blink_example_main.c:84` 调用），M0 必须交付，不可递延。
 - ✅ **目标 5**：根据 ADR-0085 铺设 `chips/esp32` SoC 特性定义，严格执行经典 ESP32 引脚合法性与输出能力掩码断言。
 - ✅ **目标 6**：编写外部 lint pack 首版（`lint_esp_idf_isolation.py`），机器强制红线 3（禁 claim）、红线 4（运行期 0 malloc）、红线 5（禁浮点 PWM）、红线 7（开源许可）。
 - ✅ **目标 7**：在中央 `test/CMakeLists.txt` 注册 `esp_idf_corpus_<sample>` 机制，达成 Tier-A `blink` 原文 compile-only 零修改编译，以及核心单元测试 100% 通过。
@@ -96,8 +97,9 @@ M0 阶段作为整个拦截体系的**开山基石**，必须解决三个核心�
 | `wink-micro-os/frameworks/esp_idf/include/esp_rom_gpio.h` / `esp_rom_sys.h` | 🆕 新增 | ROM 引导桩头文件 |
 | `wink-micro-os/frameworks/esp_idf/include/esp_task_wdt.h` | 🆕 新增 | 看门狗接口桩 |
 | `wink-micro-os/frameworks/esp_idf/include/freertos/FreeRTOS.h` | 🆕 新增 | 包含基础定义 + 无条件包含 `idf_additions.h` |
+| `wink-micro-os/frameworks/esp_idf/include/freertos/task.h` | 🆕 新增 | M0 最小声明桩（`vTaskDelay`/`vTaskDelayUntil` 原型 + `portTICK_PERIOD_MS`，实现递延 M1；Tier-A blink `#include "freertos/task.h"` 编译必需） |
 | `wink-micro-os/frameworks/esp_idf/include/freertos/idf_additions.h` | 🆕 新增 | 乐鑫 FreeRTOS 扩展定义 |
-| `wink-micro-os/frameworks/esp_idf/include/driver/gpio.h` | 🆕 新增 | GPIO 驱动门面头文件 |
+| `wink-micro-os/frameworks/esp_idf/include/driver/gpio.h` | 🆕 新增 | GPIO 驱动门面头文件（含 `gpio_config` / `gpio_set_direction` / `gpio_set_level` / `gpio_get_level` / `gpio_reset_pin`；`gpio_set_direction` 为 blink 必需） |
 | `wink-micro-os/frameworks/esp_idf/include/hal/gpio_types.h` | 🆕 新增 | GPIO 底层类型定义 |
 | `wink-micro-os/frameworks/esp_idf/include/soc/soc_caps.h` / `gpio_num.h` | 🆕 新增 | SoC 包含中转头文件 |
 | `wink-micro-os/frameworks/esp_idf/chips/esp32/include/soc/soc_caps.h` | 🆕 新增 | 经典 ESP32 硬件能力宏（ADR-0085） |
@@ -358,7 +360,7 @@ graph TD
 
 - [ ] **Step 4：错误码与检查宏**
   - `include/esp_err.h`：定义 `esp_err_t`，定义 `ESP_OK=0, ESP_FAIL=-1, ESP_ERR_NO_MEM=0x101, ESP_ERR_INVALID_ARG=0x102, ESP_ERR_INVALID_STATE=0x103, ESP_ERR_TIMEOUT=0x107` 等。
-  - `include/esp_check.h`：实现 `ESP_ERROR_CHECK(x)`，当返回值非 `ESP_OK` 时调用 `wink_runtime_fault(8001)` 并记录日志，**严禁使用 host abort/exit**。
+  - `include/esp_check.h`：实现 `ESP_ERROR_CHECK(x)`，当返回值非 `ESP_OK` 时调用 `wink_runtime_raise_fault(WINK_FAULT_RUNTIME(1))`（即 8001 语义，`wink_fault.h`）并记录日志，**严禁使用 host abort/exit**。注：`wink_runtime_fault` 需双参 `(callbacks*, code)`（`wink_runtime.h:55`），门面侧统一用单参 `wink_runtime_raise_fault(code)`。
 
 - [ ] **Step 5：日志门面与分片闭包**
   - 编写 `include/esp_log.h`，实现 `ESP_LOGE`, `ESP_LOGW`, `ESP_LOGI`, `ESP_LOGD`, `ESP_LOGV`。
@@ -367,6 +369,7 @@ graph TD
 - [ ] **Step 6：FreeRTOS 守卫等价头文件**
   - `include/freertos/FreeRTOS.h`：基础类型定义，并在尾部**无条件**包含 `#include "freertos/idf_additions.h"`（规避未定义 `ESP_PLATFORM` 导致的漏包陷阱）。
   - `include/freertos/idf_additions.h`：声明桩定义。
+  - `include/freertos/task.h`（M0 最小声明桩，v1.1 新增）：仅提供 `vTaskDelay` / `vTaskDelayUntil` 原型、`portTICK_PERIOD_MS`（=1000/100）与 `TickType_t/BaseType_t` 最小类型，使 Tier-A blink（`#include "freertos/task.h"` + `vTaskDelay` 调用）达到 compile-only；函数体实现递延 M1，链接语料目标时以 `WINK_UNAVAILABLE_MSG` 或链接期缺失 Fail-Loud，严禁静默空实现。
 
 - [ ] **Step 7：语料边界桩**
   - `include/led_strip.h`：提供 `led_strip_handle_t` 等声明级 stub（当语料未启用对应配置时仅需声明，零链接依赖）。
@@ -392,71 +395,85 @@ graph TD
 #### 详细步骤
 
 - [ ] **Step 1：编写 `src/esp_idf_runtime.c`**
-  实现并导出框架生命周期强符号：
+  实现并导出框架生命周期强符号（对齐 `mcs51_bridge.cpp:351-363` 七字段范式；`wink_app.h:139-150` 的 `init/loop` 为 `void(void)`，严禁返回 `wink_status_t`）：
   ```c
   /* SPDX-License-Identifier: LGPL-3.0-only */
-  #include "runtime/include/wink_app.h"
+  #include "wink_app.h"
   #include "pal_log.h"
 
   extern void app_main(void);
 
-  static wink_status_t esp_idf_framework_init(void) {
-      pal_log_info("ESP_IDF", "Framework initialized in simulation mode");
-      return WINK_OK;
+  static void esp_idf_framework_init(void) {
+      pal_log_i("ESP_IDF", "Framework initialized in simulation mode");
   }
 
-  static wink_status_t esp_idf_app_loop(void) {
+  static void esp_idf_app_loop(void) {
       /* app_main 由 runtime 作为独立 fiber 启动，主循环配合调度 */
-      return WINK_OK;
   }
 
   static const wink_app_callbacks_t s_esp_idf_callbacks = {
-      .init = esp_idf_framework_init,
-      .loop = esp_idf_app_loop,
+      esp_idf_framework_init,
+      esp_idf_app_loop,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
   };
 
   const wink_app_callbacks_t* wink_app_get_callbacks(void) {
       return &s_esp_idf_callbacks;
   }
   ```
+  注：`#include "wink_app.h"` 依赖 runtime include 路径（参照中央 `test/CMakeLists.txt` 已含 `runtime/include`），不得写成 `runtime/include/wink_app.h`。
 
 - [ ] **Step 2：编写 `src/esp_idf_bridge.c`**
   实现系统复位与版本查询：
-  - `esp_restart()`：严禁调用 host `exit()` 或 `abort()`。必须通过 weak 外部钩子触发复位标记（对齐 ADR-0082 与 `mcs51_bridge.cpp` 惯例）：
+  - `esp_restart()`：严禁调用 host `exit()` 或 `abort()`。对齐 `mcs51_bridge.cpp:366-376` 与 `targets/wasm/wasm_entry.c:45-47` 先例——框架侧**实现**弱钩子族（三符号，严禁自创 `pal_wasm_target_trigger_reset`，该符号全仓不存在），`esp_restart` 仅置 pending 标志：
     ```c
+    #include <stdbool.h>
+    #include "pal_log.h"
+
+    static bool s_esp_pending_reset = false;
+    static int s_esp_reset_reason = 4; /* SOFTWARE */
+
     void esp_restart(void) {
-        pal_log_warn("ESP_SYS", "esp_restart requested -> triggering pending reset");
-        extern void pal_wasm_target_trigger_reset(void) __attribute__((weak));
-        if (pal_wasm_target_trigger_reset) {
-            pal_wasm_target_trigger_reset();
-        }
+        pal_log_w("ESP_SYS", "esp_restart requested -> pending reset flag set");
+        s_esp_pending_reset = true;
     }
+
+    /* 供 targets/wasm 弱钩子查询的导出（命名不得带 wink_mcs51 前缀冲突） */
+    bool pal_wasm_target_has_pending_reset(void) { return s_esp_pending_reset; }
+    int pal_wasm_target_get_reset_reason(void) { return s_esp_reset_reason; }
+    void pal_wasm_target_clear_pending_reset(void) { s_esp_pending_reset = false; }
     ```
+    注：多框架强符号互斥（T-009）下，`esp_idf` 与 `mcs51` 不可同链，此三符号无冲突；若同链必须构建期报错。
   - `esp_get_idf_version()`：返回 `"v6.1-dev-winksim"`。
 
 - [ ] **Step 3：编写 `src/core/esp_err.c`**
-  实现 `esp_err_from_wink(wink_status_t status)` 与逆向映射：
+  实现 `esp_err_from_wink(wink_status_t status)` 与逆向映射（枚举名以 `pal/include/wink_status.h:78-113` 为准；`WINK_ERR_INVALID_PARAM / NO_MEMORY / RESOURCE_BUSY / NOT_SUPPORTED` 四名全仓不存在，严禁使用）：
   ```c
   /* SPDX-License-Identifier: LGPL-3.0-only */
   #include "esp_err.h"
-  #include "pal/include/core/wink_status.h"
+  #include "wink_status.h"
 
   esp_err_t esp_err_from_wink(wink_status_t status) {
       switch (status) {
           case WINK_OK:                  return ESP_OK;
-          case WINK_ERR_INVALID_PARAM:   return ESP_ERR_INVALID_ARG;
-          case WINK_ERR_NO_MEMORY:       return ESP_ERR_NO_MEM;
+          case WINK_ERR_INVALID_ARG:     return ESP_ERR_INVALID_ARG;
+          case WINK_ERR_NO_MEM:          return ESP_ERR_NO_MEM;
           case WINK_ERR_INVALID_STATE:   return ESP_ERR_INVALID_STATE;
           case WINK_ERR_TIMEOUT:         return ESP_ERR_TIMEOUT;
-          case WINK_ERR_RESOURCE_BUSY:   return ESP_ERR_INVALID_STATE;
-          case WINK_ERR_NOT_SUPPORTED:   return ESP_ERR_NOT_SUPPORTED;
+          case WINK_ERR_BUSY:            return ESP_ERR_INVALID_STATE;
+          case WINK_ERR_UNSUPPORTED:     return ESP_ERR_NOT_SUPPORTED;
           default:                       return ESP_FAIL;
       }
   }
   ```
+  另需实现反向 `wink_status_t wink_status_from_esp(esp_err_t err)`（参照 `targets/esp32/pal_hal_adc_esp32.c:83-93` 方向），L1 对双向做穷举断言。
 
 - [ ] **Step 4：编写 `src/core/esp_log.c` 与 `src/core/esp_system.c`**
-  - `esp_log.c`：桥接至 `pal_log_write()`。
+  - `esp_log.c`：按等级桥接至 `pal_log_e / pal_log_w / pal_log_i / pal_log_d`（`pal_log.h` 仅此四入口，无 `pal_log_write`；INFO 在 ISR 会被静默丢弃，需登记）。
   - `esp_system.c`：`esp_random()` 使用轻量确定性 xorshift32 算法，初始化时与调度器使用同一种子，保证仿真 Replay 确定性。
 
 #### 验证步骤
@@ -473,21 +490,23 @@ graph TD
 | **优先级** | 🔴 P0 |
 | **前置依赖** | Task M0-2, Task M0-3 |
 | **修改文件** | `chips/esp32/**`, `include/driver/gpio.h`, `include/hal/gpio_types.h`, `src/drivers/esp_gpio.c` |
-| **接口变化** | 导出标准 `gpio_config`, `gpio_set_level`, `gpio_get_level`, `gpio_reset_pin` API |
+| **接口变化** | 导出标准 `gpio_config`, `gpio_set_direction`, `gpio_set_level`, `gpio_get_level`, `gpio_reset_pin` API |
 
 #### 详细步骤
 
 - [ ] **Step 1：编写 `chips/esp32/include/soc/soc_caps.h` 与 `gpio_num.h`**
-  严格按官方 ESP32 芯片特性核实取证（ADR-0085）：
+  严格按官方 ESP32 芯片特性核实取证（ADR-0085；v6.1 `components/soc/esp32/include/soc/soc_caps.h:185-194`）。**严禁手写字面量掩码**——v1.0 的 `0xFFFFFFFFFULL`（9×F，仅 36bit）与 `0x000000033FFFFFFFULL`（位数畸形）均错误，必须逐字复刻官方表达式：
   ```c
   /* SPDX-License-Identifier: LGPL-3.0-only */
   #ifndef SOC_CAPS_ESP32_H_
   #define SOC_CAPS_ESP32_H_
 
   #define SOC_GPIO_PIN_COUNT          40
-  #define SOC_GPIO_VALID_GPIO_MASK    0xFFFFFFFFFULL
-  /* GPIO 34~39 仅限输入，输出掩码将其排除 */
-  #define SOC_GPIO_VALID_OUTPUT_GPIO_MASK 0x000000033FFFFFFFULL
+  /* 官方原式：0xFFFFFFFFFFULL(10×F=40bit) 排除 24/28/29/30/31；输出再排除 34~39 */
+  #define SOC_GPIO_VALID_GPIO_MASK \
+      (0xFFFFFFFFFFULL & ~(0ULL | (1ULL<<24) | (1ULL<<28) | (1ULL<<29) | (1ULL<<30) | (1ULL<<31)))
+  #define SOC_GPIO_VALID_OUTPUT_GPIO_MASK \
+      (SOC_GPIO_VALID_GPIO_MASK & ~(0ULL | (1ULL<<34) | (1ULL<<35) | (1ULL<<36) | (1ULL<<37) | (1ULL<<38) | (1ULL<<39)))
 
   #define GPIO_IS_VALID_GPIO(gpio_num) \
       ((gpio_num >= 0 && gpio_num < 40) && \
@@ -499,25 +518,29 @@ graph TD
 
   #endif /* SOC_CAPS_ESP32_H_ */
   ```
+  取证命令见附录；`gpio_num.h` 同源复刻官方引脚枚举（含 `GPIO_NUM_NC/MAX`）。
 
 - [ ] **Step 2：编写 `include/driver/gpio.h` 与 `include/hal/gpio_types.h`**
-  定义 `gpio_num_t`, `gpio_mode_t`, `gpio_config_t` 等标准结构体与函数原型。
+  定义 `gpio_num_t`, `gpio_mode_t`, `gpio_config_t` 等标准结构体与函数原型。原型以官方 `driver/gpio.h:60/71/130/144/161` 为准：`gpio_config/gpio_reset_pin/gpio_set_level` 返回 `esp_err_t`，`gpio_get_level` 返回 `int`，**新增 `gpio_set_direction`（blink 必需）**。
 
 - [ ] **Step 3：编写 `src/drivers/esp_gpio.c`**
+  （PAL 签名以 `pal/include/hal/pal_gpio.h` 为准：`pal_gpio_init(pin, mode)` 双参无 config 结构体；`pal_gpio_write(pin,bool)`；`pal_gpio_read(pin,bool*)`；`pal_gpio_reset_pin` 返回 `void`。v1.0 的 `pal_gpio_init(pin,&conf)` 不存在。）
   - **`gpio_config(const gpio_config_t *pGPIOConfig)`**：
     - 遍历 `pin_bit_mask`，使用 `GPIO_IS_VALID_GPIO` 与输出合法性检查；
     - 校验失败立即返回 `ESP_ERR_INVALID_ARG`；
-    - 将模式转换为 `pal_gpio_mode_t`，调用 `pal_gpio_init(pin, &conf)`；
+    - 将 `mode` 逐 pin 转换为 `pal_gpio_mode_t`，逐 pin 调用 `pal_gpio_init((wink_pin_t)pin, pal_mode)`；
     - 🚨 **红线 3**：严禁调用 `pal_resource_claim()`。
+  - **`gpio_set_direction(gpio_num_t gpio_num, gpio_mode_t mode)`**（v1.1 新增，blink 必需）：
+    - 边界检查同 `gpio_config`；转调 `pal_gpio_set_direction((wink_pin_t)gpio_num, pal_mode)`；返回 `esp_err_from_wink(status)`。
   - **`gpio_set_level(gpio_num_t gpio_num, uint32_t level)`**：
     - 边界检查：若 `!GPIO_IS_VALID_OUTPUT_GPIO(gpio_num)` 则返回 `ESP_ERR_INVALID_ARG`；
-    - 转调 `pal_gpio_write((uint8_t)gpio_num, (uint8_t)(level ? 1 : 0))`；
+    - 转调 `pal_gpio_write((wink_pin_t)gpio_num, level ? true : false)`；
     - 返回 `esp_err_from_wink(status)`。
-  - **`gpio_get_level(gpio_num_t gpio_num)`**：
-    - 边界检查：若 `!GPIO_IS_VALID_GPIO(gpio_num)` 则返回 0；
-    - 转调 `pal_gpio_read((uint8_t)gpio_num, &val)` 并返回电平。
-  - **`gpio_reset_pin(gpio_num_t gpio_num)`**：
-    - 恢复为浮空输入态。
+  - **`gpio_get_level(gpio_num_t gpio_num)`**（官方返回 `int`，无错误码通道）：
+    - 边界检查：若 `!GPIO_IS_VALID_GPIO(gpio_num)` 则 `ESP_LOGE` + 返回 0，并在 `02-api-coverage-matrix.md` 登记“越界与低电平不可区分”（ADR-0012 诚实登记）；
+    - 转调 `pal_gpio_read((wink_pin_t)gpio_num, &val)`，失败亦记日志后返回 0（或末次已知值，M0 裁决后登记），并返回电平。
+  - **`gpio_reset_pin(gpio_num_t gpio_num)`**（官方返回 `esp_err_t`）：
+    - 越界返回 `ESP_ERR_INVALID_ARG`；转调 `pal_gpio_deinit((wink_pin_t)gpio_num)`（`pal_gpio_reset_pin` 仅 `void`，不用其返回值），成功返回 `ESP_OK`。
 
 #### 验证步骤
 1. **单元测试命令**：
@@ -582,8 +605,8 @@ graph TD
 #### 详细步骤
 
 - [ ] **Step 1：建立 Tier-A Blink 语料目录与 overlay**
-  - 创建 `test/corpus/blink/blink_example_main.c`（100% 乐鑫原厂代码，原文零修改）。
-  - 创建 `test/corpus/blink/include/sdkconfig.h`（overlay 层）：
+  - 创建 `test/corpus/blink/blink_example_main.c`（100% 乐鑫原厂代码，原文零修改；入口为 `app_main` 而非 `main`，见官方 `examples/get-started/blink/main/blink_example_main.c:91`）。
+  - 创建 `test/corpus/blink/include/sdkconfig.h`（overlay 层；必须选中 GPIO 分支，否则命中 `#error "unsupported LED type"`）：
     ```c
     /* SPDX-License-Identifier: GPL-3.0-only */
     #ifndef CORPUS_BLINK_SDKCONFIG_H_
@@ -591,6 +614,8 @@ graph TD
 
     #include "sdkconfig_base.h"
 
+    /* Kconfig.projbuild 选择：GPIO 直驱分支（避开 LED_STRIP/RMT 后端，RMT 真门面递延 M2/M4） */
+    #define CONFIG_BLINK_LED_GPIO 1
     #define CONFIG_BLINK_GPIO 2
     #define CONFIG_BLINK_PERIOD 1000
 
@@ -602,6 +627,7 @@ graph TD
   - `test/core/test_esp_gpio.c`：模拟 GPIO 输入输出，断言电平读写与掩码越界拦截。
 
 - [ ] **Step 3：在 `test/CMakeLists.txt` 中注册编译语料与单元测试**
+  > ⚠️ v1.1 修正：语料入口为 `app_main` 而非 `main`，严禁 `add_executable`（host 链接期 `undefined reference to main`）。compile-only 语料必须以 `OBJECT` 库只编译不链接；`add_test` 改为构建该 OBJECT 目标。
   ```cmake
   # 注册 core 单元测试
   add_executable(test_esp_err core/test_esp_err.c)
@@ -612,20 +638,20 @@ graph TD
   target_link_libraries(test_esp_gpio PRIVATE wink_framework_esp_idf)
   add_test(NAME test_esp_gpio COMMAND test_esp_gpio)
 
-  # 注册 Tier-A Blink 原文 compile-only 语料测试
-  add_executable(esp_idf_corpus_blink EXCLUDE_FROM_ALL
+  # 注册 Tier-A Blink 原文 compile-only 语料测试（OBJECT：只编译，不链接 main）
+  add_library(esp_idf_corpus_blink_obj OBJECT
       corpus/blink/blink_example_main.c
   )
-  target_include_directories(esp_idf_corpus_blink BEFORE PRIVATE
+  target_include_directories(esp_idf_corpus_blink_obj BEFORE PRIVATE
       ${CMAKE_CURRENT_SOURCE_DIR}/corpus/blink/include
   )
-  target_link_libraries(esp_idf_corpus_blink PRIVATE
+  target_link_libraries(esp_idf_corpus_blink_obj PRIVATE
       wink_framework_esp_idf
   )
 
-  # 注册 ctest 语料目标
+  # 注册 ctest 语料目标（构建 OBJECT 即通过）
   add_test(NAME esp_idf_corpus_blink
-      COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target esp_idf_corpus_blink
+      COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target esp_idf_corpus_blink_obj
   )
   set_tests_properties(esp_idf_corpus_blink PROPERTIES LABELS "esp_idf_corpus;tier_a")
   ```
@@ -719,6 +745,7 @@ graph TD
 | 版本 | 日期 | 变更内容 | 变更人 |
 |:---:|:---:|:---|:---:|
 | **v1.0** | 2026-09-23 | 基于总纲 v3.3 派生 M0 实施计划，完成 6 项核心 Task 细化、代码片段设计与验收标准制定 | 仿真拦截专项小组 |
+| **v1.1** | 2026-09-24 | 代码事实核对修订（执行前纠偏，避免返工）：① `esp_err.c` 枚举改 canonical（`INVALID_ARG/NO_MEM/BUSY/UNSUPPORTED`）+ 补反向映射要求；② `pal_gpio_init(pin,mode)` 纠正（删 `&conf` 伪签名），`write/read` 改 `bool`，`reset_pin` 按官方 `esp_err_t` 语义经 `pal_gpio_deinit` 实现；③ 新增 `gpio_set_direction`（blink 实测必需）；④ `gpio_get_level` 越界 `ESP_LOGE`+降级登记（ADR-0012）；⑤ SoC 掩码改官方表达式（删 9×F 手写字面量）；⑥ `wink_app_callbacks` 改 `void(void)` 七字段范式 + `pal_log_i/w` 纠正 + `ESP_ERROR_CHECK` 改 `wink_runtime_raise_fault`；⑦ `esp_restart` 改 mcs51 式三钩子实现（删不存在的 `trigger_reset`）；⑧ `task.h` 最小声明桩新增（blink 编译必需，实现递延 M1）；⑨ overlay 补 `CONFIG_BLINK_LED_GPIO`；⑩ 语料改 `OBJECT` 库只编译不链接 | 仿真拦截专项小组 |
 
 ---
 
@@ -733,8 +760,8 @@ cd d:\workspaces\ai-coding\wink-ai\wink-ai-embedded
 # 2. 生成 Host 构建树（启用 ESP-IDF 仿真框架）
 cmake -B build -S wink-micro-os -DENABLE_ESP_IDF_FRAMEWORK=ON
 
-# 3. 编译核心单测与语料
-cmake --build build --config Debug --target test_esp_err test_esp_gpio esp_idf_corpus_blink
+# 3. 编译核心单测与语料（语料为 OBJECT 库，只编译不链接）
+cmake --build build --config Debug --target test_esp_err test_esp_gpio esp_idf_corpus_blink_obj
 
 # 4. 运行 CTest 门禁
 ctest --test-dir build -R esp_idf -V
