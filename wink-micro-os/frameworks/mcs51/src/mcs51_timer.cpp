@@ -182,22 +182,40 @@ void on_overflow(uint8_t t, uint64_t at_us) {
     // ① cannot see it).
     wink_mcs51_spin_guard_note_event();
 
-    mcs51_raise_irq(t == 0 ? IRQ_SOURCE_TIMER0 : IRQ_SOURCE_TIMER1);
-
-    wink_mcs51_clear_reti_suppress();
-    mcs51_irq_scan_and_dispatch();
-
+    // ADR-0078 ordering invariant: CONSUME the fired deadline before
+    // dispatching. The ISR's proxied SFR accesses synchronously pump
+    // wink_mcs51_microstep(), which re-enters step_timer(); a deadline still
+    // armed at `at_us` would re-fire this same overflow, leaving a duplicate
+    // pending request that runs the ISR body twice per period (the timer0/1
+    // re-arm regression). Mirrors on_timer2_overflow and the T3/T4 chip
+    // models, which already re-arm before dispatching.
     if (!tm.running || tm.external_clk) {
         tm.next_ovf_us = NO_OVERFLOW;
-        return;
-    }
-
-    if (tm.mode == 2) {
+    } else if (tm.mode == 2) {
+        // Hardware auto-reload: the reload happens at overflow, before the
+        // ISR runs (firmware reads the reloaded TL, as on silicon).
         uint8_t th_addr = (t == 0) ? SFR_TH0 : SFR_TH1;
         uint8_t tl_addr = (t == 0) ? SFR_TL0 : SFR_TL1;
         mcs51_get_context()->sfr_shadow[tl_addr] = sfr(th_addr);
         tm.next_ovf_us = at_us + reload_period_us(t, 2);
     } else {
+        // Mode 0/1: software reload expected in the ISR. Disarm now so the
+        // ISR's nested microsteps cannot re-fire this overflow; re-armed
+        // after dispatch below.
+        tm.next_ovf_us = NO_OVERFLOW;
+    }
+
+    mcs51_raise_irq(t == 0 ? IRQ_SOURCE_TIMER0 : IRQ_SOURCE_TIMER1);
+
+    wink_mcs51_clear_reti_suppress();
+    mcs51_irq_scan_and_dispatch();
+
+    if (tm.running && !tm.external_clk && tm.mode != 2) {
+        // Mode 0/1: re-arm from the ISR-written THx/TLx, anchored at the
+        // overflow instant (the pre-ADR-0078 documented design: the native
+        // backend does not model interrupt latency, so the software reload
+        // applies from `at_us` and must not leak the per-SFR-access proxy
+        // billing into the firmware-visible period).
         schedule_from_reload(t, at_us);
     }
 }

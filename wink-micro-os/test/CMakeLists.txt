@@ -1051,6 +1051,29 @@ if(TARGET wink_mcs51_core)
         ../frameworks/mcs51/test/cms8s78xx/test_cms8s_clo.cpp)
     target_compile_definitions(test_mcs51_cms8s_clo PRIVATE WINK_MCU_CMS8S78XX=1)
 
+    # PLAN-20260924-MCS51-T01-OVERFLOW-REARM-FIX: T0/T1 overflow re-arm
+    # ordering regression (ADR-0078 eager dispatch must consume the fired
+    # deadline before running the ISR). Model-level exact dispatch counts for
+    # the two re-entrancy-exposing ISR shapes (mode-2 toggle-only / mode-1
+    # toggle-before-reload) + the REAL vendor timer0 firmware e2e (the missing
+    # ctest shape: pre-fix it dispatches twice per period).
+    add_mcs51_host_test(test_mcs51_timer_overflow_rearm
+        ../frameworks/mcs51/test/core/test_mcs51_timer_overflow_rearm.cpp)
+    target_compile_definitions(test_mcs51_timer_overflow_rearm PRIVATE WINK_MCU_CMS8S78XX=1)
+
+    mcs51_transpile_app(vendor/cms8s78xx/timer0_timming_mode main)
+    mcs51_transpile_app(vendor/cms8s78xx/timer0_timming_mode demo_timer)
+    mcs51_transpile_app(vendor/cms8s78xx/timer0_timming_mode isr)
+    add_mcs51_host_test(test_mcs51_vendor_timer0_rearm
+        ../frameworks/mcs51/test/core/test_mcs51_vendor_timer0_rearm.c
+        ${_MCS51_vendor_cms8s78xx_timer0_timming_mode_main_CPP}
+        ${_MCS51_vendor_cms8s78xx_timer0_timming_mode_demo_timer_CPP}
+        ${_MCS51_vendor_cms8s78xx_timer0_timming_mode_isr_CPP}
+        ${_MCS51_RUNTIME_SRCS})
+    target_include_directories(test_mcs51_vendor_timer0_rearm PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../wink-micro-app/vendor/cms8s78xx/timer0_timming_mode)
+    target_compile_definitions(test_mcs51_vendor_timer0_rearm PRIVATE WINK_MCU_CMS8S78XX=1)
+
     # Stage 3 A-02: ADC reference chain — VSEL/Vrail scaling (Pull track),
     # LDO/mux readiness gates + counters, DIV-sensitive charge_us.
     add_mcs51_host_test(test_mcs51_adc_refchain

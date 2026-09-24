@@ -10,11 +10,17 @@
   },
   "steps": [
     {
-      "type": "ASSERT_POINT",
-      "timeUs": "1000us",
-      "target": "gpio:0",
-      "matcher": 0,
-      "description": "[MCU启动] P0.0 心跳引脚上电初始置低 (main.c::P00=0 -> 确认 Timer0 尚未触发翻转)"
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "290ms",
+      "windowUs": ["20ms", "280ms"],
+      "pin": 0,
+      "expected": {
+        "kind": "frequencyHz",
+        "value": {
+          "$between": [150, 260]
+        }
+      },
+      "description": "[MCU启动/心跳] P0.0 心跳方波速率 = Timer0 溢出率/2。模型真值 1/(2*2500us) = 200Hz（at-anchored 标称周期，native 后端不建模中断延迟）；headless 观测层按 10ms 批量时间戳计边沿，实测 200Hz。带宽 [150,260] 保留对二次派发类回归（速率近似翻倍 -> ~294Hz）的检出能力。注：原 step-1「1ms 时 P0.0 必为低」断言不可观测——引擎启动 burst 已推进固件约 10ms（3 次翻转），该断言仅能在缺陷模型下按奇偶巧合通过，故改为速率断言（PLAN-20260924-MCS51-T01-OVERFLOW-REARM-FIX 诚实标定）。"
     },
     {
       "type": "ASSERT_POINT",
@@ -34,8 +40,10 @@
       "type": "ASSERT_POINT",
       "timeUs": "200ms",
       "target": "plugin:display/scanHz",
-      "matcher": { "$between": [40, 50] },
-      "description": "[扫描时序] 帧刷新率稳定在 ~45Hz (demo_timer.c::5ms溢出中断 × 5拍循环 -> 验证虚拟时钟保真度)"
+      "matcher": {
+        "$between": [60, 110]
+      },
+      "description": "[扫描时序] 帧刷新率（插件观测）。模型真值 = 5 拍 x 2500us = 80Hz（at-anchored 标称）；插件的 3 采样滑动窗在 headless ~10ms 批量时间戳下确定性摆动于 {67, 100}（观测层量化，非固件偏差）。带宽 [60,110] 覆盖观测摆动并保留缺陷态（修复前实测 200Hz）的检出能力（PLAN-20260924-MCS51-T01-OVERFLOW-REARM-FIX 诚实标定）。"
     },
     {
       "type": "ASSERT_POINT",

@@ -219,6 +219,7 @@ native 功能级后端的虚拟钟（ADR-0072）：`s_virtual_us` 只在拦截�
   - 彻底淘汰简单的 `s_in_isr` 标志，以 `in_service_depth > 0` 作为唯一真值源。
 - **单指令执行抑制（Single-Instruction Suppression）**：RETI 或写 IE/IP 后，硬件置位 `reti_suppress_one`，强制主程序至少推进一个微步周期才允许响应下一 pending 中断，杜绝主循环饥饿。
 - **标志清除契约**：区分 `MCS51_IRQ_HW_AUTO_CLEAR`（硬件响应自清）与 `MCS51_IRQ_SW_CLEAR`（固件显式清零；未清零则退出 ISR 后重新触发）。
+- **Eager-dispatch 排序不变式（2026-09-24，PLAN-20260924-MCS51-T01-OVERFLOW-REARM-FIX）**：外设模型在派发 ISR 前**必须先消费/推进已触发的调度时间戳**。ISR 的代理 SFR 访问（如 `P32 = ~P32`）会同步泵 `wink_mcs51_microstep()` 并重入外设 poll；若时间戳仍停在已触发点，同一事件会被再次 raise，残留 pending 在约 2 个量子后二次派发（ISR 体每周期执行两次 → 计时 ~2x 静默失真）。T0/T1 `on_overflow` 已按此重排：mode 2 预重排 `at+period`；mode 0/1 派发前 `NO_OVERFLOW` 消费、派发后按 `at_us` 用 ISR 写入值重基（**at-anchored**，ADR-0078 前原始设计——native 后端不建模中断延迟，逐次 SFR 访问的代理记账不得泄漏进固件可见周期；回归反例：write-instant 重排会使 health_pot tick +0.05% 并破坏 60s 冷却锁场景）。与 `on_timer2_overflow` / T3/T4（chip）既有正确顺序对齐。回归证据：`test_mcs51_timer_overflow_rearm`（模型级精确派发数，红灯先行）+ `test_mcs51_vendor_timer0_rearm`（原厂 timer0 app e2e）。**新增任何"派发前带调度状态"的外设模型时必须遵守本不变式。**
 
 ### 2.8 UART TX 整字节同步记账（ADR-0081 Accepted）
 

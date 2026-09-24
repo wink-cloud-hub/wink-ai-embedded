@@ -18,12 +18,12 @@
         "kind": "frequencyHz",
         "value": {
           "$near": {
-            "target": 4260,
+            "target": 5000,
             "tolerance": 100
           }
         }
       },
-      "description": "Timer1 16-bit software reload overflow triggers Timer1_IRQHandler toggling P32 (pin 26) with ISR software-reload latency (~4.26kHz)"
+      "description": "Timer1 16-bit software reload overflow triggers Timer1_IRQHandler toggling P32 (pin 26). Post-fix deterministic model value: 5000Hz = nominal 100us period (200 counts @ Fsys/12), the pre-ADR-0078 at-anchored design: the software reload applies from the overflow instant and the native backend does not model interrupt latency (ADR-0076), so per-SFR-access proxy billing must not leak into the firmware-visible period. The old 4260Hz target was an ADR-0078-era artifact (proxy billing mistaken for ISR latency); PLAN-20260924-MCS51-T01-OVERFLOW-REARM-FIX re-anchored it."
     }
   ]
 }
