@@ -1,0 +1,13 @@
+/* SPDX-License-Identifier: LGPL-3.0-only */
+#ifndef SDKCONFIG_BASE_H_
+#define SDKCONFIG_BASE_H_
+
+#define CONFIG_IDF_TARGET_ESP32 1
+#define CONFIG_IDF_TARGET "esp32"
+#define CONFIG_FREERTOS_HZ 100
+#define CONFIG_LOG_DEFAULT_LEVEL 3
+#define CONFIG_LOG_COLORS 1
+
+/* 注意：严格禁止在此处定义 ESP_PLATFORM，避免污染底层真机分支宏 */
+
+#endif /* SDKCONFIG_BASE_H_ */
