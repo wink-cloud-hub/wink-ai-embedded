@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: LGPL-3.0-only
+set(ESP_IDF_FRAMEWORK_SOURCES
+    ${CMAKE_CURRENT_LIST_DIR}/src/esp_idf_runtime.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/esp_idf_bridge.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_err.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_log.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_system.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/drivers/esp_gpio.c
+)
+
+if(NOT DEFINED WINK_ESP_TARGET)
+    set(WINK_ESP_TARGET "esp32")
+endif()
+
+set(ESP_IDF_FRAMEWORK_INCLUDES
+    ${CMAKE_CURRENT_LIST_DIR}/chips/${WINK_ESP_TARGET}/include
+    ${CMAKE_CURRENT_LIST_DIR}/include
+)

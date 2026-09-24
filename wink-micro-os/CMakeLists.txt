@@ -320,7 +320,12 @@ else()
     add_subdirectory(bal)
     add_subdirectory(frameworks)
 
+    if(WINK_APP_ESP_IDF AND WINK_APP_MCS51)
+        message(FATAL_ERROR "[frameworks] esp_idf and mcs51 both export strong wink_app_get_callbacks; enable only one app framework")
+    endif()
+
     add_dependencies(wink_runtime check_pt_footguns)
+
 endif()
 
 # WebAssembly target configuration
@@ -438,6 +443,9 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
     # board devices as declared. A generic-core app never links the cms8s
     # package (L4). New chips need no edit here.
     if(WINK_APP_MCS51 AND TARGET wink_mcs51_core)
+        if(WINK_APP_ESP_IDF)
+            message(FATAL_ERROR "[frameworks] esp_idf and mcs51 both export strong wink_app_get_callbacks; enable only one app framework")
+        endif()
         message(STATUS
             "[frameworks] MCS-51 interception enabled for App "
             "(mcu=${_wink_app_mcu}, family=${_wink_mcs51_family})")
@@ -482,6 +490,15 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
             add_dependencies(wink_mcs51_core generate_mcs51_board_config)
         endif()
     endif()
+
+    if(WINK_APP_ESP_IDF AND TARGET wink_framework_esp_idf)
+        if(WINK_APP_MCS51)
+            message(FATAL_ERROR "[frameworks] esp_idf and mcs51 both export strong wink_app_get_callbacks; enable only one app framework")
+        endif()
+        message(STATUS "[frameworks] ESP-IDF interception enabled for App")
+        target_link_libraries(wink_simulator PRIVATE wink_framework_esp_idf)
+    endif()
+
     target_include_directories(wink_simulator PRIVATE
         ${WASM_EXTRA_INCLUDE_DIRS}
         ${WINK_OSAL_INCLUDE_DIRS}
