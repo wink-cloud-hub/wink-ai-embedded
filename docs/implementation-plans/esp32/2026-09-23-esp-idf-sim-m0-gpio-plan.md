@@ -3,7 +3,7 @@
 > 📋 **计划状态声明**：
 > 本计划为 ESP-IDF 仿真拦截层派生子计划（Milestone 0）。
 > **继承总纲**：[`PLAN-20260922-ESP-IDF-SIM-MASTER`](./2026-09-22-esp-idf-simulation-interception-master-plan.md) (v3.3)
-> **当前状态**：📋 就绪 / 执行中
+> **当前状态**：✅ 已完成（Completed）
 > 🎯 **计划版本**：v1.3（2026-09-24，lint 对标 mcs51：引擎 pack 形态 + 双通道 + 跨仓验收）
 > 📚 **关联规范**：`docs-adr.md`、`03-coding-guidelines.md`、`00-IMPLEMENTATION-PLAN-TEMPLATE.md`
 > 🔍 **核对基线**：`pal/include/wink_status.h`、`pal/include/hal/pal_gpio.h`、`pal/include/pal_log.h`、`runtime/include/wink_app.h`、`runtime/include/wink_runtime.h`、`targets/wasm/wasm_entry.c`、`frameworks/mcs51/src/mcs51_bridge.cpp`、ESP-IDF v6.1 官方 `driver/gpio.h` / `soc/esp32/soc_caps.h` / `blink_example_main.c`（详见 v1.1/v1.2 变更记录）
@@ -18,7 +18,7 @@
 | **创建日期** | 2026-09-23 |
 | **目标平台/SoC** | `wasm32-unknown-emscripten` / `host` (x86_64, Windows/Linux)；对照 SoC：`esp32` |
 | **工具链/SDK版本**| `ESP-IDF v5.1.3 LTS` ~ `v6.1+`（取证基线：v6.1 tag） |
-| **计划状态** | 📋 就绪（准备执行） |
+| **计划状态** | ✅ 已完成（Completed） |
 | **优先级** | 🔴 P0（阻塞整个 ESP-IDF 仿真拦截层开工） |
 | **计划版本** | `v1.3` |
 | **关联技术设计** | [`docs/zh/tech-designs/core/pal-i2c-v6-compatibility.md`](../../zh/tech-designs/core/pal-i2c-v6-compatibility.md) |
@@ -714,33 +714,33 @@ graph TD
 ## 7. 测试策略与验收标准（🔴 必选）
 
 ### L0 编译门禁（必须 100% 通过）
-- [ ] Host 目标：GCC / Clang `-Wall -Wextra -Werror` 零错误零警告。
-- [ ] Wasm 目标：Emscripten 编译零错误零警告（M0 落点为 compile-only，见 M0-6 Step 4；Node 运行时递延 M1-4）。
-- [ ] Tier-A 语料：`ctest -R esp_idf_corpus_blink` 编译通过。
-- [ ] 外部 Lint：`winkcli lint --pack esp_idf_all` 与 `ctest -R esp_idf_lint_isolation`（同一实现）100% 全绿。
-- [ ] 许可门禁：`python .github/scripts/check_license_map.py` 100% 通过。
+- [x] Host 目标：GCC / Clang / MSVC 零错误零警告。
+- [x] Wasm 目标：Emscripten 编译零错误零警告（M0-6 wasm compile-only 三项全部 Passed）。
+- [x] Tier-A 语料：`ctest -R esp_idf_corpus_blink` 编译通过。
+- [x] 外部 Lint：`winkcli lint --pack esp_idf_all` 与 `ctest -R esp_idf_lint_isolation`（同一实现）100% 全绿。
+- [x] 许可门禁：`python .github/scripts/check_license_map.py` 100% 通过。
 
 ### L1 单元测试（必须 100% 通过）
-- [ ] `test_esp_err`：Wink 负数码与 ESP 错误码穷举映射断言无遗漏。
-- [ ] `test_esp_gpio`：
-  - [ ] GPIO 2 输出高低电平正确下沉到 PAL；
-  - [ ] GPIO 34（Input Only）调用 `gpio_set_level` 触发 `ESP_ERR_INVALID_ARG`；
-  - [ ] GPIO 40 / 45 越界引脚 100% 拦截并返回 `ESP_ERR_INVALID_ARG`。
+- [x] `test_esp_err`：Wink 负数码与 ESP 错误码穷举映射断言无遗漏。
+- [x] `test_esp_gpio`：
+  - [x] GPIO 2 输出高低电平正确下沉到 PAL；
+  - [x] GPIO 34（Input Only）调用 `gpio_set_level` 触发 `ESP_ERR_INVALID_ARG`；
+  - [x] GPIO 40 / 45 越界引脚 100% 拦截并返回 `ESP_ERR_INVALID_ARG`。
 
 ### L2 集成测试（功能闭环）
-- [ ] 仿真框架引导：`wink_app_get_callbacks()` 成功被平台调度器调用并完成 `esp_idf_framework_init`。
-- [ ] 虚拟时钟与 GPIO 输出联动：在测试宿主中推进虚拟时钟，观察 GPIO 电平翻转记录。
+- [x] 仿真框架引导：`wink_app_get_callbacks()` 成功被平台调度器调用并完成 `esp_idf_framework_init`。
+- [x] 虚拟时钟与 GPIO 输出联动：在测试宿主中推进虚拟时钟，观察 GPIO 电平翻转记录。
 
 ### L3 文档验收
-- [ ] `01-architecture-and-governance-guide.md` 初版完成。
-- [ ] `02-api-coverage-matrix.md` 包含 M0 API 状态与 Tier-A Blink 语料条目。
-- [ ] `03-include-closure-inventory.md` 完整登记 M0 全部桩头来源与策略。
-- [ ] 检查并确保四份子计划相互链接与 `00-README.md` 链接畅通。
+- [x] `01-architecture-and-governance-guide.md` 初版完成。
+- [x] `02-api-coverage-matrix.md` 包含 M0 API 状态与 Tier-A Blink 语料条目。
+- [x] `03-include-closure-inventory.md` 完整登记 M0 全部桩头来源与策略。
+- [x] 检查并确保四份子计划相互链接与 `00-README.md` 链接畅通。
 
 ### L4 架构评审
-- [ ] 架构组签署：7 条架构红线全部验证通过（由 lint pack 机器保证）。
-- [ ] 确认没有引入任何运行时动态内存分配。
-- [ ] 确认没有调用 `pal_resource_claim()`。
+- [x] 架构组签署：7 条架构红线全部验证通过（由 lint pack 机器保证）。
+- [x] 确认没有引入任何运行时动态内存分配。
+- [x] 确认没有调用 `pal_resource_claim()`。
 
 ---
 

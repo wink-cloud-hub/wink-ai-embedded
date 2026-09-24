@@ -1259,3 +1259,101 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/wasm/pal_adc/add_wink_wasm_adc_test.cmake)
 # MCS-51/8051 interception wasm test (emcc + ASYNCIFY fibers + Node).
 # Gracefully skips when emcc/node absent.
 include(${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/mcs51/test/wasm/add_wink_wasm_mcs51_test.cmake)
+
+# ── ESP-IDF Simulation Interception Framework (M0) ───────────────────────────
+if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
+    if(WIN32)
+        find_program(WINKCLI_EXECUTABLE NAMES winkcli.bat winkcli.cmd winkcli.exe winkcli)
+    else()
+        find_program(WINKCLI_EXECUTABLE NAMES winkcli)
+    endif()
+    if(WINKCLI_EXECUTABLE)
+        add_test(NAME esp_idf_lint_isolation
+            COMMAND ${WINKCLI_EXECUTABLE} lint --pack esp_idf_all
+                --lint-paths ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/tools/lint
+        )
+        set_tests_properties(esp_idf_lint_isolation PROPERTIES LABELS "esp_idf;lint")
+    endif()
+
+    # 2. Core unit tests
+    add_executable(test_esp_err
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_err.c
+        ${UNITY_DIR}/unity.c
+    )
+    target_include_directories(test_esp_err PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    target_link_libraries(test_esp_err PRIVATE wink_framework_esp_idf)
+    if(MSVC)
+        target_compile_options(test_esp_err PRIVATE /W4 /WX /wd4100 /wd4210)
+    else()
+        target_compile_options(test_esp_err PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
+    endif()
+    if(TARGET generate_config)
+        add_dependencies(test_esp_err generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_err)
+    add_test(NAME test_esp_err COMMAND test_esp_err)
+    set_tests_properties(test_esp_err PROPERTIES LABELS "esp_idf;core")
+
+    add_executable(test_esp_gpio
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_gpio.c
+        ${UNITY_DIR}/unity.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_gpio PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    target_link_libraries(test_esp_gpio PRIVATE wink_framework_esp_idf dal)
+    if(MSVC)
+        target_compile_options(test_esp_gpio PRIVATE /W4 /WX /wd4100 /wd4210)
+    else()
+        target_compile_options(test_esp_gpio PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
+    endif()
+    if(TARGET generate_config)
+        add_dependencies(test_esp_gpio generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_gpio)
+    add_test(NAME test_esp_gpio COMMAND test_esp_gpio)
+    set_tests_properties(test_esp_gpio PROPERTIES LABELS "esp_idf;core")
+
+    # 3. Tier-A Blink official corpus (OBJECT library: compile-only, no main link)
+    add_library(esp_idf_corpus_blink_obj OBJECT
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/blink/blink_example_main.c
+    )
+    target_include_directories(esp_idf_corpus_blink_obj BEFORE PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/blink/include
+    )
+    target_link_libraries(esp_idf_corpus_blink_obj PRIVATE
+        wink_framework_esp_idf
+    )
+    if(MSVC)
+        target_compile_options(esp_idf_corpus_blink_obj PRIVATE /W4 /WX /wd4100 /wd4210)
+    else()
+        target_compile_options(esp_idf_corpus_blink_obj PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
+    endif()
+    if(TARGET generate_config)
+        add_dependencies(esp_idf_corpus_blink_obj generate_config)
+    endif()
+
+    add_test(NAME esp_idf_corpus_blink
+        COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target esp_idf_corpus_blink_obj
+    )
+    set_tests_properties(esp_idf_corpus_blink PROPERTIES LABELS "esp_idf_corpus;tier_a")
+
+    # 4. Wasm compile-only gate
+    include(${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/wasm/esp_idf_wasm_compile.cmake)
+    add_esp_idf_wasm_compile_check(test_esp_err
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_err.c
+    )
+    add_esp_idf_wasm_compile_check(test_esp_gpio
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_gpio.c
+    )
+    add_esp_idf_wasm_compile_check(corpus_blink
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/blink/blink_example_main.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/blink/include
+    )
+endif()
+
