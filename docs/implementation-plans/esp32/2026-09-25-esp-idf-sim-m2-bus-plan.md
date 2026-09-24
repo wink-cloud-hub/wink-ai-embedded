@@ -3,10 +3,10 @@
 > 📋 **计划状态声明**：
 > 本计划为 ESP-IDF 仿真拦截层派生子计划（Milestone 2）。
 > **继承总纲**：[`PLAN-20260922-ESP-IDF-SIM-MASTER`](./2026-09-22-esp-idf-simulation-interception-master-plan.md) (v3.5)
-> **当前状态**：📋 待开始（详设完成，M1 验收完成后可立即开工）
-> 🎯 **计划版本**：v2.1（2026-09-24，深度吸收 6 项嵌入式真实性防护与物理断层声明）
+> **当前状态**：📋 待开始（详设已闭环升级，M1 v1.4 全量验收移交，开工前隐患已彻底清零）
+> 🎯 **计划版本**：v2.2（2026-09-24，闭环 M1 移交锚点与开工前 5 项关键隐患：UART 协程切出桥、真实 API 纠偏、`resource_id` 标签解冲为 0x08、GPTimer 延迟派发、静态池预算上调至 14KB）
 > 📚 **关联规范**：`docs-adr.md`、`03-coding-guidelines.md`、`00-IMPLEMENTATION-PLAN-TEMPLATE.md`
-> 🔍 **M1 移交基线**：M1 已闭环交付协作式调度器与并发原语（`wink_sim_scheduler` 映射、Handle generation ABA 防御、`vTaskDelay(0)` 纯让出、Queue/Mutex waiter 簿记、`resource_id = (type_tag << 24) | local_index` 编码、`wink_status.h` canonical 枚举 `INVALID_ARG/NO_MEM/BUSY/RESOURCE_EXHAUSTED/TIMEOUT/UNSUPPORTED`）；总纲 v3.3 的 7 参 `pal_i2c_transfer` 纠偏为 6 参默认超时包装，显式超时统一走 7 参 `pal_i2c_transfer_timeout`（`pal/include/hal/pal_i2c.h:77-92`）。
+> 🔍 **M1 移交基线**：M1 v1.4 已 100% 验收交付（DoD 全部通过，协作式调度器与并发原语闭环、Handle generation ABA 防御、`vTaskDelay(0)` 纯让出、Queue/Mutex waiter 簿记、EventGroup 快照竞态修复、7 桩补齐、超时递减闭环、`resource_id = (type_tag << 24) | local_index` 编码、`wink_status.h` canonical 枚举 `INVALID_ARG/NO_MEM/BUSY/RESOURCE_EXHAUSTED/TIMEOUT/UNSUPPORTED`）；总纲 v3.3 的 7 参 `pal_i2c_transfer` 纠偏为 6 参默认超时包装，显式超时统一走 7 参 `pal_i2c_transfer_timeout`（`pal/include/hal/pal_i2c.h:77-92`）。
 
 ---
 
@@ -15,16 +15,16 @@
 | 字段 | 内容 |
 |:---|:---|
 | **计划编号** | `PLAN-20260925-ESP-IDF-SIM-M2` |
-| **创建日期** | 2026-09-23（v1.0 骨架；v1.1 签名纠偏；v2.0 详设展开；v2.1 吸收 6 项嵌入式防护与物理断层声明于 2026-09-24） |
+| **创建日期** | 2026-09-23（v1.0 骨架；v1.1 签名纠偏；v2.0 详设展开；v2.1 吸收 6 项嵌入式防护；v2.2 闭环 5 项开工前隐患与 M1 v1.4 移交基线于 2026-09-24） |
 | **目标平台/SoC** | `wasm32-unknown-emscripten` / `host` (x86_64, Windows/Linux)；对照 SoC：`esp32` / `esp32c3` / `esp32c6` |
 | **工具链/SDK版本**| `ESP-IDF v5.1.3 LTS` ~ `v6.1+`（取证基线：v6.1 tag） |
-| **计划状态** | 📋 待开始（详设就绪，M1 验收后可立即执行） |
+| **计划状态** | 📋 待开始（详设闭环升级，M1 验收交付，随时可开工） |
 | **优先级** | 🔴 P0（外设总线与定时器核心能力） |
-| **计划版本** | `v2.1` |
+| **计划版本** | `v2.2` |
 | **关联技术设计** | [`docs/zh/tech-designs/core/pal-i2c-v6-compatibility.md`](../../zh/tech-designs/core/pal-i2c-v6-compatibility.md) |
 | **关联设计规范** | [`docs/zh/design/04-wasm-simulation/00-README.md`](../../zh/design/04-wasm-simulation/00-README.md)、[`02-wink-micro-os/`](../../zh/design/02-wink-micro-os/README.md) |
 | **关联评审记录** | [`2026-09-22-esp-idf-simulation-interception-master-plan-review.md`](./2026-09-22-esp-idf-simulation-interception-master-plan-review.md) |
-| **关联 ADR** | [ADR-0001](../../decisions/core/0001-error-code-sign-convention.md)（负数错误码）、[ADR-0004](../../decisions/core/0004-static-dispatch-vs-runtime-ops.md)（静态分发与无虚表）、[ADR-0012](../../decisions/core/0012-contract-honesty-over-silent-degradation.md)（合约诚实与降级登记）、[ADR-0014](../../decisions/unisim/0014-sim-single-virtual-core.md)（确定性调度）、[ADR-0045](../../decisions/unisim/0045-simulation-memory-quota-and-fault-policy.md)（零 malloc 与静态池）、[ADR-0065](../../decisions/core/0065-pal-hardware-raII-resource-ownership.md)（禁门面 claim）、[ADR-0066](../../decisions/core/0066-pwm-basis-points-and-float-deprecation.md)（PWM 定点化万分比）、[ADR-0070](../../decisions/core/0070-mcs51-zero-code-simulation-interception-layer.md)（生命周期与 Fiber）、[ADR-0080](../../decisions/core/0080-external-lint-pack-discovery-and-mcs51-guard-sinking.md)（外部 lint pack 发现）、[ADR-0082](../../decisions/core/0082-mcs51-reset-semantics-fiber-exit-and-reentry.md)（复位语义）、[ADR-0083/0084](../../decisions/core/0083-adopt-gpl-3.0-only-license-policy.md)（开源许可分层）、[ADR-0085](../../decisions/core/0085-esp-idf-facade-soc-caps-vs-pal-caps-dual-ssot.md)（caps 双 SSOT 裁决） |
+| **关联 ADR** | [ADR-0001](../../decisions/core/0001-error-code-sign-convention.md)（负数错误码）、[ADR-0004](../../decisions/core/0004-static-dispatch-vs-runtime-ops.md)（静态分发与无虚表）、[ADR-0012](../../decisions/core/0012-contract-honesty-over-silent-degradation.md)（合约诚实与降级登记）、[ADR-0014](../../decisions/unisim/0014-sim-single-virtual-core.md)（确定性调度）、[ADR-0045](../../decisions/unisim/0045-simulation-memory-quota-and-fault-policy.md)（零 malloc 与静态池）、[ADR-0065](../../decisions/core/0065-pal-hardware-raii-resource-ownership.md)（禁门面 claim）、[ADR-0066](../../decisions/core/0066-pwm-basis-points-and-float-deprecation.md)（PWM 定点化万分比）、[ADR-0070](../../decisions/core/0070-mcs51-zero-code-simulation-interception-layer.md)（生命周期与 Fiber）、[ADR-0080](../../decisions/core/0080-external-lint-pack-discovery-and-mcs51-guard-sinking.md)（外部 lint pack 发现）、[ADR-0082](../../decisions/core/0082-mcs51-reset-semantics-fiber-exit-and-reentry.md)（复位语义）、[ADR-0083/0084](../../decisions/core/0083-adopt-gpl-3.0-only-license-policy.md)（开源许可分层）、[ADR-0085](../../decisions/core/0085-esp-idf-facade-soc-caps-vs-pal-caps-dual-ssot.md)（caps 双 SSOT 裁决） |
 | **目标里程碑** | M2（核心总线驱动双版本、定点 LEDC PWM、UART 字符流、GPTimer/SPI/NVS 收口与热文件集成） |
 | **前置依赖计划** | [`./2026-09-24-esp-idf-sim-m1-freertos-plan.md`](./2026-09-24-esp-idf-sim-m1-freertos-plan.md)（M1 100% DoD 闭环） |
 | **继承计划** | 继承自 [`PLAN-20260922-ESP-IDF-SIM-MASTER`](./2026-09-22-esp-idf-simulation-interception-master-plan.md) (v3.5) |
@@ -142,7 +142,7 @@
 > 1. 🚨 **C-ABI 与纯 C 实现原则**：全部新增 `.c` 文件标准 C99 编写，严禁 C++ 运行时与类异常。
 > 2. 🚨 **严禁侵入式修改 PAL / DAL**：只允许依赖 `pal/include`（HAL/OSAL）既有能力。
 > 3. 🚨 **严格遵守 ADR-0065**：门面层**严禁调用 `pal_resource_claim()`**，硬件所有权归底层 PAL 独占。
-> 4. 🚨 **零运行期堆分配（Zero Runtime Malloc）**：门面运行期禁止 `malloc/free/calloc/realloc`，所有总线控制块、句柄、设备结构体、环形缓冲区全部使用 POD 静态池预分配。
+> 4. 🚨 **零运行期堆分配（Zero Runtime Malloc）与静态预算控制**：门面运行期禁止 `malloc/free/calloc/realloc`，所有总线控制块、句柄、设备结构体、环形缓冲区全部使用 POD 静态池预分配；框架全局静态内存上限自 M1 的 < 8KB 正式上调为 **< 14KB**（严格受控于总纲 §8 红线 4 之 `< 16KB` 顶格指标内，M1 基线 ~7.7KB + M2 增量 ~6.0KB = ~13.7KB）。
 > 5. 🚨 **PWM 定点红线（ADR-0066）**：LEDC 门面必须通过纯整数算术换算为 Basis Points（万分比），严禁浮点运算与裸 `pal_pwm_set_duty` 调用。
 > 6. 🚨 **合约诚实（ADR-0012）**：未支持的特性（如硬件流控、高阶 DMA 散聚、RMT 真驱动、I2C 从机模式）一律 Fail-Loud（返回 `ESP_ERR_NOT_SUPPORTED`）或编译期报错，严禁静默空函数；语义降级（如 LEDC Fade 瞬时更新、GPTimer 10ms 精度）必须在 coverage matrix 显式登记。
 > 7. 🚨 **开源许可合规（ADR-0083/0084）**：
@@ -154,7 +154,7 @@
 
 | 维度 | 预计开销 / 限制 | 风险分析 | 应对策略 |
 |:---|:---|:---|:---|
-| **静态 RAM 开销** | 约 **9.2 KB**（I2C 池 ~1KB，UART 环形缓存 2×1.5KB=3KB，SPI 设备池 ~512B，NVS 控制块与表 ~4KB，LEDC/GPTimer ~700B） | 宿主仿真内存超标风险低（Wasm 预算 16MB） | 全部预分配静态 POD 结构体，无运行期碎片，随二进制只读/数据段装载 |
+| **静态 RAM 开销** | 增量约 **6.0 KB**（I2C 句柄池 ~1KB，UART 环形缓存 3×512B=1.5KB，SPI 设备池 ~512B，NVS 控制块与表 ~2.5KB，LEDC/GPTimer ~500B）；叠加 M1 既有基线（~7.7KB），全框架静态总额约 **13.7 KB < 14 KB** | 静态红线超标风险已可控（总纲上限 16KB，Wasm 预算 16MB） | 全部预分配静态 POD 结构体与 `_Static_assert` 守卫，无运行期碎片，随二进制只读/数据段装载 |
 | **堆内存 (Heap)** | **0 字节** | 堆泄漏与不可预测碎片 | `lint_esp_idf_isolation.py` 机器强制，0 动态分配 |
 | **栈深度 (Stack)** | 单次外设调用 < 256 字节 | 栈溢出风险 | 门面函数参数校验后直接下沉调用，无大局部数组，NVS 命名空间在打开时深拷贝进静态控制块 |
 | **并发与中断** | 虚拟时间单线程执行，异步事件经 `pal_deferred_post` 派发 | 竞态与重入问题 | 消除宿主原生多线程竞争，ISR 事件统一推送到任务上下文队列，阻塞任务由资源事件显式唤醒 |
@@ -170,7 +170,7 @@
 | **D-001** | `targets/common/wink_sim_scheduler.h` 调度器接口 | ✅ 是 | ✅ 已就绪 | ADR-0014 既有能力 |
 | **D-002** | `pal_i2c_transfer_timeout` 核心契约与显式超时 | ✅ 是 | ✅ 已就绪 | `pal-i2c-v6-compatibility.md` 已闭环 |
 | **D-003** | caps 双 SSOT 裁决 | ✅ 是 | ✅ 已完成 | ADR-0085 Accepted |
-| **D-006** | M1 协作式调度器与并发原语闭环 | ✅ 是 | ✅ 已就绪 | M1 交付 FreeRTOS 任务与队列底座 |
+| **D-006** | M1 协作式调度器与并发原语闭环 | ✅ 是 | ✅ 100% 验收闭环 | M1 v1.4 全量达成（DoD 100%，含 Handle ABA / 双向 Waiter / 7 符号补齐 / 竞态消除） |
 
 ### 4.2 外部依赖
 
@@ -186,7 +186,7 @@
 |:---|:---|:---:|:---:|:---:|:---|:---|:---|
 | **R-001** | I2C Legacy 遇到包含 Repeated START 的复合序列时折叠错乱 | 🟡 中 | 🟠 高 | 6 | 实现自包含的状态机，严格按写地址/写数据/重复起始/读地址/读数据折叠为单次 `pal_i2c_transfer_timeout`；非标多段时序 Fail-Loud | 专项小组 | 驱动真实 I2C 传感器复合读写 |
 | **R-002** | LEDC 定时器多通道共享时频率与分辨率仲裁冲突 | 🟡 中 | 🟡 中 | 4 | 实现 `s_ledc_timers` 独立簿记，通道初始化时校验 timer 是否已配置；未配置或参数失配直接返回 `ESP_ERR_INVALID_STATE` | 专项小组 | 语料中不同通道指定冲突参数 |
-| **R-003** | UART 消费任务在无数据时紧凑空转饿死系统（死循环） | 🟠 高 | 🔴 极高 | 8 | `uart_read_bytes` 在空缓冲且 `ticks_to_wait > 0` 时调用 `sim_scheduler_block` 协作挂起任务，数据到达由事件唤醒 | 专项小组 | 业务代码执行 `while(1) read_bytes` |
+| **R-003** | UART 消费任务在无数据时紧凑空转饿死系统（死循环） | 🟠 高 | 🔴 极高 | 8 | `uart_read_bytes` 在空缓冲且 `ticks_to_wait > 0` 时调用 `sim_scheduler_block` 紧跟 `sim_scheduler_yield_context()` 协作挂起并切出 Fiber 栈，数据到达由事件唤醒 | 专项小组 | 业务代码执行 `while(1) read_bytes` |
 | **R-004** | GPTimer 高频 alarm（< 10ms）由于调度粒度引发时钟畸变 | 🟠 高 | 🟡 中 | 6 | 严守 100Hz 冻结基线，小于 10ms 的周期向上钳位为 10ms，并在 `02-api-coverage-matrix.md` 显式登记功能性降级 | 专项小组 | 业务请求 microsecond 级定时器 |
 | **R-005** | NVS 静态表空间耗尽或调用方栈指针逃逸致野指针 | 🟡 中 | 🟠 高 | 6 | 门面内部自建 `s_nvs_handles[4]` 深拷贝命名空间，并限制最大 32 个条目；超限返回 `ESP_ERR_NVS_NOT_ENOUGH_SPACE` | 专项小组 | 临时局部变量作命名空间传参 |
 | **R-006** | `test/CMakeLists.txt` 中央热文件并行写入冲突 | 🟠 高 | 🟡 中 | 6 | 实施总纲并行纪律：M2-1/2/3 测试暂写分支，统一在 M2-4 集成日串行合并入中央文件 | 专项小组 | 三外设并行提交引发 git 冲突 |
@@ -205,7 +205,7 @@
    - **裁决结论**：**复用 M1 FreeRTOS Queue Shim，并实现任务挂起与唤醒机制**。
    - **设计机制**：
      - 当 `uart_driver_install` 传入 `queue_size > 0` 且 `uart_queue != NULL` 时，门面直接调用 M1 提供的 `xQueueCreate(queue_size, sizeof(uart_event_t))` 创建队列并输出句柄；
-     - `uart_read_bytes` 在 `rx_count == 0` 且 `ticks_to_wait > 0` 时，调用 `sim_scheduler_block(task_id, (RES_UART << 24) | port, ...)` 将任务挂起；
+     - `uart_read_bytes` 在 `rx_count == 0` 且 `ticks_to_wait > 0` 时，调用 `sim_scheduler_block(task_id, (RES_UART_TAG << 24) | port, ...)` 并立即调用 `sim_scheduler_yield_context()` 将 Fiber 协程栈挂起切出；`RES_UART_TAG` 取 `0x08u` 彻底避开 M1 既有标签；
      - 底层 `pal_uart_event` 产生时，通过 `pal_deferred_post` 派发任务上下文，存入环形缓冲区，投递 `uart_event_t`，并调用 `sim_scheduler_resume` 唤醒挂起的读取任务；
      - 显式过滤 `UART_PIN_NO_CHANGE`（-1），严禁越界强转。
 2. **裁决项 2：LEDC Timer/Channel 双步映射、SoC 裁剪与 Fade 闭环**
@@ -879,7 +879,7 @@ graph TD
   #include <string.h>
 
   #define UART_RING_BUF_SIZE 1024
-  #define RES_UART_TAG 0x06
+  #define RES_UART_TAG 0x08u // 避开 M1 的 SUSPEND(0x06) 与 TIMER(0x07)
 
   typedef struct {
       bool installed;
@@ -912,7 +912,7 @@ graph TD
           }
           // 若有因等待数据而挂起的任务，立刻唤醒
           if (u->waiting_task_id >= 0) {
-              sim_scheduler_resume(u->waiting_task_id);
+              sim_scheduler_resume((uint32_t)u->waiting_task_id);
               u->waiting_task_id = -1;
           }
       } else if (event == PAL_UART_EVENT_BUFFER_FULL && u->event_queue) {
@@ -956,14 +956,35 @@ graph TD
       esp_uart_port_t *u = &s_uarts[uart_num];
       if (!u->installed) return -1;
 
-      // 关键防护 R-003：当缓冲区无数据且设置了超时等待时，挂起当前任务，严禁自旋死循环
-      if (u->rx_count == 0 && ticks_to_wait > 0) {
-          int cur_task = sim_scheduler_get_current_task_id();
-          if (cur_task >= 0) {
-              u->waiting_task_id = cur_task;
-              uint32_t timeout_us = (ticks_to_wait == portMAX_DELAY) ? 0 : (ticks_to_wait * 10000u);
-              uint32_t res_id = (RES_UART_TAG << 24) | (uint32_t)uart_num;
-              sim_scheduler_block(cur_task, res_id, sim_scheduler_get_time_us(), timeout_us);
+      // 关键防护 R-003：当缓冲区无数据且设置了超时等待时，协作式挂起当前任务并切出 Fiber 栈，严禁自旋死循环
+      TickType_t remaining = ticks_to_wait;
+      while (u->rx_count == 0) {
+          if (remaining == 0) {
+              return 0; // 等待超时或 0 等待，直接返回 0 字节
+          }
+          uint32_t self = sim_scheduler_current_id();
+          if (self == SIM_SCHED_NO_READY) {
+              return 0;
+          }
+
+          u->waiting_task_id = (int)self;
+          uint32_t res_id = (RES_UART_TAG << 24) | (uint32_t)uart_num;
+          uint64_t timeout_us = (remaining == portMAX_DELAY) ? 0ULL : ((uint64_t)remaining * (portTICK_PERIOD_MS * 1000ULL));
+          uint64_t before_us = pal_os_get_us();
+
+          sim_scheduler_block(self, res_id, before_us, timeout_us);
+          sim_scheduler_yield_context(); // 真正挂起 Fiber 协程栈，交回主循环调度；唤醒后自此恢复
+
+          u->waiting_task_id = -1;
+          const sim_task_t *t = sim_scheduler_get(self);
+          if (t && t->timeout_fired && u->rx_count == 0) {
+              return 0; // 超时触发且仍无数据，退出返回 0
+          }
+
+          if (remaining != portMAX_DELAY) {
+              uint64_t elapsed_us = pal_os_get_us() - before_us;
+              TickType_t elapsed_ticks = (TickType_t)(elapsed_us / (portTICK_PERIOD_MS * 1000ULL));
+              remaining = (elapsed_ticks >= remaining) ? 0 : (remaining - elapsed_ticks);
           }
       }
 
@@ -1014,13 +1035,18 @@ graph TD
 
   static struct gptimer_t s_gptimers[PAL_HWTIMERS_MAX];
 
-  static void on_hwtimer_isr(void *arg) {
+  static void on_hwtimer_deferred(void *arg) {
       struct gptimer_t *t = (struct gptimer_t *)arg;
       if (t && t->alarm_cb) {
           gptimer_alarm_event_data_t edata = { .alarm_value = t->alarm_count };
           // 官方规范：回调签名返回 bool
           (void)t->alarm_cb((gptimer_handle_t)t, &edata, t->user_data);
       }
+  }
+
+  static void on_hwtimer_isr(void *arg) {
+      // 经 pal_deferred_post 派发至任务上下文，禁止在真实/仿真中断上下文中同步直调用户代码
+      pal_deferred_post(on_hwtimer_deferred, arg);
   }
 
   esp_err_t gptimer_new_timer(const gptimer_config_t *config, gptimer_handle_t *ret_timer) {
@@ -1039,7 +1065,7 @@ graph TD
 
   esp_err_t gptimer_get_raw_count(gptimer_handle_t timer, uint64_t *value) {
       if (!timer || !value) return ESP_ERR_INVALID_ARG;
-      uint64_t now_us = (uint64_t)sim_scheduler_get_time_us();
+      uint64_t now_us = (uint64_t)pal_os_get_us();
       *value = (now_us * (uint64_t)timer->resolution_hz) / 1000000ULL;
       return ESP_OK;
   }
@@ -1297,6 +1323,7 @@ graph TD
 | **v1.1** | 2026-09-24 | 签名纠偏与前置约束补遗：`pal_i2c_transfer` 纠偏为 6 参（默认超时），显式超时统一用 7 参 `pal_i2c_transfer_timeout`；增列 4 项展开前置约束（UART queue 裁决、LEDC 双步映射、GPTimer 目标、RMT 归宿） | 仿真拦截专项小组 |
 | **v2.0** | 2026-09-24 | 完整详设展开版：① 消费并终审裁决 §5 前置 4 项约束；② 给出 Task M2-1~M2-4 全部关键 C 结构体与核心算法片段；③ 细化 I2C 命令链表折叠与 Modern API；④ 给出基于内存静态池的 NVS 跨复位持久化机制；⑤ 明确 M2-4 集成日串行合入纪律 | 仿真拦截专项小组 |
 | **v2.1** | 2026-09-24 | 深度吸收 6 项嵌入式真实性防护与物理断层声明：① §2.4 新增《物理学与电气连续域不可逆断层声明》；② Task M2-1 补齐 LEDC Fade 完整接口族与 C3/C6 模式拦截；③ Task M2-2 强化 I2C Repeated START 复合时序状态机与从机模式 Fail-Loud；④ Task M2-3 落实 UART `uart_read_bytes` 协作式阻塞挂起与唤醒，支持 `UART_PIN_NO_CHANGE`；⑤ Task M2-4 修复 SPI Host 编号映射偏移并支持 `SPI_TRANS_USE_TXDATA` 内部数组，重构 NVS 独立句柄控制块深拷贝命名空间防止栈逃逸，补全基础数据类型读写 | 仿真拦截专项小组 |
+| **v2.2** | 2026-09-24 | **M1 移交锚定与开工前 5 项关键隐患深度闭环**：<br>① D-006 锚定 M1 v1.4 全量验收闭环基线（7 个未实现符号补齐、EventGroup 快照竞态消除、队列与信号量超时动态递减、`esp_restart` noreturn 仿真守卫全部通过）；<br>② Task M2-3 修复 UART `uart_read_bytes` Fiber 切出桥（补齐 `sim_scheduler_yield_context()` 挂起纤程栈），杜绝自旋死循环；纠正幻觉 API 为 `sim_scheduler_current_id()` 与 `pal_os_get_us()`；<br>③ `RES_UART_TAG` 解冲调整为 `0x08u`（彻底避开 M1 的 `SUSPEND=0x06u` 与 `TIMER=0x07u`）；<br>④ Task M2-4 GPTimer alarm 补齐 `pal_deferred_post` 延迟派发逻辑与 `pal_os_get_us()` 符号纠偏；<br>⑤ 静态池预算明确核算：M1 ~7.7KB + M2 ~6KB = ~13.7KB，红线规范明确上调为 `< 14KB`（受控于总纲 `< 16KB` 内）。 | 仿真拦截专项小组 |
 
 ---
 
@@ -1343,14 +1370,14 @@ python .github/scripts/check_license_map.py
 
 ## 附录 C：计划质量自检清单（🔴 必选）
 
-- [x] 元数据完整（计划编号、目标平台、版本、关联 ADR-0066/0085 等齐全）
-- [x] 系统资源与并发约束已评估（RAM ~9.2KB 静态分配，Heap 0 字节）
-- [x] 依赖关系清晰（M1 协作并发底座已作为前置基线接合）
+- [x] 元数据完整（计划编号、目标平台、版本、关联 ADR-0066/0085 等齐全；已升级至 v2.2 闭环详设版）
+- [x] 系统资源与并发约束已评估（RAM ~13.7KB 静态分配，全框架静态上限锁死在 < 14KB，受控于总纲 < 16KB，Heap 0 字节）
+- [x] 依赖关系清晰（M1 v1.4 100% 验收交付已作为稳固基线锚定）
 - [x] Task 粒度合适（4 个 Task，工时 8~16h，总计 46h，并行关键路径 26h）
-- [x] 每个 Task 均配备精确的代码级设计、数据结构定义与算法片段
+- [x] 每个 Task 均配备精确的代码级设计、数据结构定义与算法片段（含 Fiber 切出桥与 `pal_deferred_post` 契约）
 - [x] 深度吸收 6 项嵌入式真实性防护（UART 阻塞防自旋死循环、SPI Host 偏移与 `USE_TXDATA`、LEDC Fade 闭环、I2C 复合时序折叠、NVS 命名空间防逃逸、物理不可逆断层声明）
 - [x] 消费并解决 v1.1 提出的全部 4 项展开前置约束（UART 队列、LEDC 双步、GPTimer 目标、RMT 归宿）
-- [x] 风险登记册已全面识别（包含 R-001~R-010 共 10 项严密对策）
+- [x] 风险登记册已全面识别（包含 R-001~R-010 共 10 项严密对策，R-003 明确 Fiber 挂起契约）
 - [x] 严格落实中央热文件 `test/CMakeLists.txt` 集成日串行合入纪律
 - [x] 回滚方案齐备（CMake 开关、Git Revert、外设功能性降级）
 - [x] 验收标准量化清晰（L0~L4 分级定义完全，命令完备）

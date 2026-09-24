@@ -17,6 +17,12 @@ void esp_freertos_pools_reset(void) {
 void esp_restart(void) {
     pal_log_w("ESP_SYS", "esp_restart requested -> pending reset flag set");
     s_esp_pending_reset = true;
+    /* Simulate noreturn: yield CPU so main loop can process the pending reset.
+     * Guard with scheduler check in case called before scheduler starts. */
+    if (sim_scheduler_current_id() != SIM_SCHED_NO_READY) {
+        sim_scheduler_yield_context();
+        for (;;) { sim_scheduler_yield_context(); } /* noreturn guard */
+    }
 }
 
 /* 供 targets/wasm 弱钩子查询的导出（命名不得带 wink_mcs51 前缀冲突） */

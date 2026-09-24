@@ -106,8 +106,10 @@ BaseType_t xQueueSend(QueueHandle_t xQueue, const void * const pvItemToQueue, Ti
 
     uint32_t q_idx = (uint32_t)(q - s_queues);
 
+    TickType_t remaining = xTicksToWait;
+
     while (q->cur_items >= q->max_items) {
-        if (xTicksToWait == 0) {
+        if (remaining == 0) {
             return errQUEUE_FULL;
         }
         uint32_t self = sim_scheduler_current_id();
@@ -115,12 +117,19 @@ BaseType_t xQueueSend(QueueHandle_t xQueue, const void * const pvItemToQueue, Ti
             return errQUEUE_FULL;
         }
 
+        uint64_t before_us = pal_os_get_us();
         waiter_add(q->tx_waiters, &q->tx_waiter_count, self);
-        bool ok = sync_block(FREERTOS_MAKE_RES_ID(FREERTOS_TAG_QUEUE, q_idx), xTicksToWait);
+        bool ok = sync_block(FREERTOS_MAKE_RES_ID(FREERTOS_TAG_QUEUE, q_idx), remaining);
         waiter_remove(q->tx_waiters, &q->tx_waiter_count, self);
 
         if (!ok && q->cur_items >= q->max_items) {
             return errQUEUE_FULL;
+        }
+        /* Decrement remaining for next iteration (portMAX_DELAY = infinite, no decrement) */
+        if (remaining != portMAX_DELAY) {
+            uint64_t elapsed_us = pal_os_get_us() - before_us;
+            TickType_t elapsed_ticks = (TickType_t)(elapsed_us / (portTICK_PERIOD_MS * 1000ULL));
+            remaining = (elapsed_ticks >= remaining) ? 0 : (remaining - elapsed_ticks);
         }
     }
 
@@ -146,8 +155,10 @@ BaseType_t xQueueReceive(QueueHandle_t xQueue, void * const pvBuffer, TickType_t
 
     uint32_t q_idx = (uint32_t)(q - s_queues);
 
+    TickType_t remaining = xTicksToWait;
+
     while (q->cur_items == 0) {
-        if (xTicksToWait == 0) {
+        if (remaining == 0) {
             return errQUEUE_EMPTY;
         }
         uint32_t self = sim_scheduler_current_id();
@@ -155,12 +166,19 @@ BaseType_t xQueueReceive(QueueHandle_t xQueue, void * const pvBuffer, TickType_t
             return errQUEUE_EMPTY;
         }
 
+        uint64_t before_us = pal_os_get_us();
         waiter_add(q->rx_waiters, &q->rx_waiter_count, self);
-        bool ok = sync_block(FREERTOS_MAKE_RES_ID(FREERTOS_TAG_QUEUE, q_idx), xTicksToWait);
+        bool ok = sync_block(FREERTOS_MAKE_RES_ID(FREERTOS_TAG_QUEUE, q_idx), remaining);
         waiter_remove(q->rx_waiters, &q->rx_waiter_count, self);
 
         if (!ok && q->cur_items == 0) {
             return errQUEUE_EMPTY;
+        }
+        /* Decrement remaining for next iteration (portMAX_DELAY = infinite, no decrement) */
+        if (remaining != portMAX_DELAY) {
+            uint64_t elapsed_us = pal_os_get_us() - before_us;
+            TickType_t elapsed_ticks = (TickType_t)(elapsed_us / (portTICK_PERIOD_MS * 1000ULL));
+            remaining = (elapsed_ticks >= remaining) ? 0 : (remaining - elapsed_ticks);
         }
     }
 
@@ -186,8 +204,10 @@ BaseType_t xQueuePeek(QueueHandle_t xQueue, void * const pvBuffer, TickType_t xT
 
     uint32_t q_idx = (uint32_t)(q - s_queues);
 
+    TickType_t remaining = xTicksToWait;
+
     while (q->cur_items == 0) {
-        if (xTicksToWait == 0) {
+        if (remaining == 0) {
             return errQUEUE_EMPTY;
         }
         uint32_t self = sim_scheduler_current_id();
@@ -195,12 +215,19 @@ BaseType_t xQueuePeek(QueueHandle_t xQueue, void * const pvBuffer, TickType_t xT
             return errQUEUE_EMPTY;
         }
 
+        uint64_t before_us = pal_os_get_us();
         waiter_add(q->rx_waiters, &q->rx_waiter_count, self);
-        bool ok = sync_block(FREERTOS_MAKE_RES_ID(FREERTOS_TAG_QUEUE, q_idx), xTicksToWait);
+        bool ok = sync_block(FREERTOS_MAKE_RES_ID(FREERTOS_TAG_QUEUE, q_idx), remaining);
         waiter_remove(q->rx_waiters, &q->rx_waiter_count, self);
 
         if (!ok && q->cur_items == 0) {
             return errQUEUE_EMPTY;
+        }
+        /* Decrement remaining for next iteration (portMAX_DELAY = infinite, no decrement) */
+        if (remaining != portMAX_DELAY) {
+            uint64_t elapsed_us = pal_os_get_us() - before_us;
+            TickType_t elapsed_ticks = (TickType_t)(elapsed_us / (portTICK_PERIOD_MS * 1000ULL));
+            remaining = (elapsed_ticks >= remaining) ? 0 : (remaining - elapsed_ticks);
         }
     }
 
@@ -256,4 +283,26 @@ BaseType_t xQueueReceiveFromISR(QueueHandle_t xQueue, void * const pvBuffer, Bas
         *pxHigherPriorityTaskWoken = pdFALSE;
     }
     return xQueueReceive(xQueue, pvBuffer, 0);
+}
+
+BaseType_t xQueueSendToFront(QueueHandle_t xQueue, const void * const pvItemToQueue, TickType_t xTicksToWait) {
+    (void)xQueue;
+    (void)pvItemToQueue;
+    (void)xTicksToWait;
+    pal_log_e("FREERTOS", "xQueueSendToFront: not supported (ring buffer, no head insert). Use xQueueSend.");
+    return errQUEUE_FULL;
+}
+
+BaseType_t xQueueSendToFrontFromISR(QueueHandle_t xQueue, const void * const pvItemToQueue, BaseType_t * const pxHigherPriorityTaskWoken) {
+    (void)xQueue;
+    (void)pvItemToQueue;
+    if (pxHigherPriorityTaskWoken != NULL) {
+        *pxHigherPriorityTaskWoken = pdFALSE;
+    }
+    pal_log_e("FREERTOS", "xQueueSendToFrontFromISR: not supported (ring buffer, no head insert)");
+    return errQUEUE_FULL;
+}
+
+BaseType_t xQueuePeekFromISR(QueueHandle_t xQueue, void * const pvBuffer) {
+    return xQueuePeek(xQueue, pvBuffer, 0);
 }

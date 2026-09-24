@@ -340,6 +340,58 @@ void test_event_group_broadcast_and_clear_on_exit(void) {
     vEventGroupDelete(s_eg);
 }
 
+static bool s_mw1_done = false;
+static bool s_mw2_done = false;
+
+static void mw_waiter1(void* arg) {
+    (void)arg;
+    EventBits_t bits = xEventGroupWaitBits(s_eg, 0x04, pdTRUE, pdFALSE, 20);
+    if ((bits & 0x04) != 0) {
+        s_mw1_done = true;
+    }
+    vTaskDelete(NULL);
+}
+
+static void mw_waiter2(void* arg) {
+    (void)arg;
+    EventBits_t bits = xEventGroupWaitBits(s_eg, 0x04, pdTRUE, pdFALSE, 20);
+    if ((bits & 0x04) != 0) {
+        s_mw2_done = true;
+    }
+    vTaskDelete(NULL);
+}
+
+static void mw_setter(void* arg) {
+    (void)arg;
+    vTaskDelay(1);
+    xEventGroupSetBits(s_eg, 0x04);
+    vTaskDelete(NULL);
+}
+
+void test_event_group_multi_waiter_same_bit_clear_on_exit(void) {
+    s_eg = xEventGroupCreate();
+    TEST_ASSERT_NOT_NULL(s_eg);
+    s_mw1_done = false;
+    s_mw2_done = false;
+
+    TaskHandle_t h1, h2, hs;
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(mw_waiter1, "mw1", 32 * 1024, NULL, 5, &h1));
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(mw_waiter2, "mw2", 32 * 1024, NULL, 5, &h2));
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(mw_setter, "mws", 32 * 1024, NULL, 5, &hs));
+
+    wink_status_t st = pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 50);
+    TEST_ASSERT_EQUAL(WINK_OK, st);
+
+    /* Both waiters must have observed 0x04 despite xClearOnExit == pdTRUE */
+    TEST_ASSERT_TRUE(s_mw1_done);
+    TEST_ASSERT_TRUE(s_mw2_done);
+
+    /* After both exited, 0x04 must be cleared */
+    TEST_ASSERT_EQUAL(0, xEventGroupGetBits(s_eg) & 0x04);
+
+    vEventGroupDelete(s_eg);
+}
+
 /* --------------------------------------------------------------------------
  * 9. Dual Task 200ms / 500ms Alternation (M1 DoD explicitly specified)
  * -------------------------------------------------------------------------- */
@@ -372,7 +424,7 @@ void test_dual_task_200ms_500ms_alternation(void) {
     TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(task_200ms, "t200", 32 * 1024, NULL, 5, &h1));
     TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(task_500ms, "t500", 32 * 1024, NULL, 5, &h2));
 
-    wink_status_t st = pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 150);
+    wink_status_t st = pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 120);
     TEST_ASSERT_EQUAL(WINK_OK, st);
 
     TEST_ASSERT_EQUAL(6, s_alt_count);
@@ -394,11 +446,34 @@ void test_from_isr_and_stubs(void) {
     TEST_ASSERT_EQUAL(pdPASS, xQueueSendFromISR(q, &item, &woken));
     TEST_ASSERT_EQUAL(pdFALSE, woken);
 
+    /* Test xQueueSendToBack and xQueueSendToBackFromISR macros */
+    int item2 = 84;
+    woken = pdTRUE;
+    TEST_ASSERT_EQUAL(pdPASS, xQueueSendToBackFromISR(q, &item2, &woken));
+    TEST_ASSERT_EQUAL(pdFALSE, woken);
+
+    /* Test xQueuePeekFromISR */
+    int peek_item = 0;
+    TEST_ASSERT_EQUAL(pdPASS, xQueuePeekFromISR(q, &peek_item));
+    TEST_ASSERT_EQUAL(42, peek_item);
+
     int out_item = 0;
     woken = pdTRUE;
     TEST_ASSERT_EQUAL(pdPASS, xQueueReceiveFromISR(q, &out_item, &woken));
     TEST_ASSERT_EQUAL(pdFALSE, woken);
     TEST_ASSERT_EQUAL(42, out_item);
+
+    /* Test xQueueSendToBack macro in task context */
+    int item3 = 100;
+    TEST_ASSERT_EQUAL(pdPASS, xQueueSendToBack(q, &item3, 0));
+
+    /* Test Fail-Loud stubs for xQueueSendToFront / ISR */
+    int item_front = 999;
+    woken = pdTRUE;
+    TEST_ASSERT_EQUAL(errQUEUE_FULL, xQueueSendToFront(q, &item_front, 0));
+    TEST_ASSERT_EQUAL(errQUEUE_FULL, xQueueSendToFrontFromISR(q, &item_front, &woken));
+    TEST_ASSERT_EQUAL(pdFALSE, woken);
+
     vQueueDelete(q);
 
     /* Timers Fail-Loud */
@@ -406,8 +481,12 @@ void test_from_isr_and_stubs(void) {
     TEST_ASSERT_EQUAL(pdFAIL, xTimerStart(NULL, 0));
     TEST_ASSERT_EQUAL(pdFAIL, xTimerStop(NULL, 0));
 
-    /* Miscellaneous FreeRTOS APIs */
+    /* Recursive mutex Fail-Loud */
     TEST_ASSERT_NULL(xSemaphoreCreateRecursiveMutex());
+    TEST_ASSERT_EQUAL(pdFAIL, xSemaphoreTakeRecursive(NULL, 0));
+    TEST_ASSERT_EQUAL(pdFAIL, xSemaphoreGiveRecursive(NULL));
+
+    /* Miscellaneous FreeRTOS APIs */
     TEST_ASSERT_EQUAL(0, xPortGetCoreID());
     TEST_ASSERT_EQUAL(taskSCHEDULER_RUNNING, xTaskGetSchedulerState());
     TEST_ASSERT_EQUAL(UINT32_MAX, uxTaskGetStackHighWaterMark(NULL));
@@ -422,6 +501,7 @@ int main(void) {
     RUN_TEST(test_queue_fifo_and_timeout);
     RUN_TEST(test_mutex_priority_waking_order);
     RUN_TEST(test_event_group_broadcast_and_clear_on_exit);
+    RUN_TEST(test_event_group_multi_waiter_same_bit_clear_on_exit);
     RUN_TEST(test_dual_task_200ms_500ms_alternation);
     RUN_TEST(test_from_isr_and_stubs);
     return UNITY_END();

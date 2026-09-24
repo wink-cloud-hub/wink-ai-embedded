@@ -152,9 +152,10 @@ BaseType_t xSemaphoreTake(SemaphoreHandle_t xSemaphore, TickType_t xTicksToWait)
     }
 
     uint32_t sem_idx = (uint32_t)(s - s_sems);
+    TickType_t remaining = xTicksToWait;
 
     while (s->count == 0) {
-        if (xTicksToWait == 0) {
+        if (remaining == 0) {
             return pdFALSE;
         }
         uint32_t self = sim_scheduler_current_id();
@@ -166,8 +167,15 @@ BaseType_t xSemaphoreTake(SemaphoreHandle_t xSemaphore, TickType_t xTicksToWait)
         sem_waiter_add(s, self, prio);
 
         uint32_t tag = (s->type == SEM_TYPE_MUTEX) ? FREERTOS_TAG_MUTEX : FREERTOS_TAG_SEM;
-        bool ok = sync_block(FREERTOS_MAKE_RES_ID(tag, sem_idx), xTicksToWait);
+        uint64_t before_us = pal_os_get_us();
+        bool ok = sync_block(FREERTOS_MAKE_RES_ID(tag, sem_idx), remaining);
         sem_waiter_remove(s, self);
+
+        if (remaining != portMAX_DELAY) {
+            uint64_t elapsed_us = pal_os_get_us() - before_us;
+            TickType_t elapsed_ticks = (TickType_t)(elapsed_us / (portTICK_PERIOD_MS * 1000ULL));
+            remaining = (elapsed_ticks >= remaining) ? 0 : (remaining - elapsed_ticks);
+        }
 
         if (!ok && s->count == 0) {
             return pdFALSE;
@@ -240,4 +248,17 @@ BaseType_t xSemaphoreGiveFromISR(SemaphoreHandle_t xSemaphore, BaseType_t * cons
 UBaseType_t uxSemaphoreGetCount(SemaphoreHandle_t xSemaphore) {
     esp_sem_t* s = resolve_sem(xSemaphore);
     return s ? (UBaseType_t)s->count : 0u;
+}
+
+BaseType_t xSemaphoreTakeRecursive(SemaphoreHandle_t xMutex, TickType_t xBlockTime) {
+    (void)xMutex;
+    (void)xBlockTime;
+    pal_log_e("FREERTOS", "xSemaphoreTakeRecursive: not supported (ADR item 10, recursive mutex disabled)");
+    return pdFAIL;
+}
+
+BaseType_t xSemaphoreGiveRecursive(SemaphoreHandle_t xMutex) {
+    (void)xMutex;
+    pal_log_e("FREERTOS", "xSemaphoreGiveRecursive: not supported (ADR item 10, recursive mutex disabled)");
+    return pdFAIL;
 }

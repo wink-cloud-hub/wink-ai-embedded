@@ -105,9 +105,9 @@
 - **拦截层行为**：`FromISR` 复用任务上下文逻辑；`*pxHigherPriorityTaskWoken` 恒定赋值为 `pdFALSE`（协作调度器在下一切出点自发评估，无即时上下文强占）。
 
 ### 降级条目 10：FreeRTOS 定时器与递归互斥 Fail-Loud
-- **受影响 API**：`xTimerCreate`, `xTimerStart`, `xTimerStop`, `xTimerReset`, `xTimerChangePeriod`, `xSemaphoreCreateRecursiveMutex`
+- **受影响 API**：`xTimerCreate`, `xTimerStart`, `xTimerStop`, `xTimerReset`, `xTimerChangePeriod`, `xSemaphoreCreateRecursiveMutex`, `xSemaphoreTakeRecursive`, `xSemaphoreGiveRecursive`
 - **设计权衡**：定时器守护任务（Daemon Task）与软件定时器排期 M2+；递归互斥在嵌入式开发中属反模式。
-- **拦截层行为**：`xTimerCreate` 与 `xSemaphoreCreateRecursiveMutex` 返回 `NULL` 并 `ESP_LOGE`；各操作函数返回 `pdFAIL` 并 `ESP_LOGE`。严禁静默假装成功。
+- **拦截层行为**：`xTimerCreate` 与 `xSemaphoreCreateRecursiveMutex` 返回 `NULL` 并 `ESP_LOGE`；各操作函数（含 `xSemaphoreTakeRecursive/GiveRecursive`）返回 `pdFAIL` 并 `ESP_LOGE`。严禁静默假装成功。
 
 ### 降级条目 11：Tick 时钟冻结与自然绕回
 - **受影响 API**：`xTaskGetTickCount`, `xTaskGetTickCountFromISR`
@@ -125,6 +125,11 @@
 - **受影响 API**：`xQueueCreate`
 - **设计权衡**：坚持零堆内存分配（Zero Dynamic Malloc）原则，每个队列控制块内置定额 512 字节环形存储。
 - **拦截层行为**：当 `uxQueueLength * uxItemSize > 512` 时，打出 `ESP_LOGW` 警告并直接返回 `NULL`。
+
+### 降级条目 14：Queue 头部入队操作 Fail-Loud
+- **受影响 API**：`xQueueSendToFront`, `xQueueSendToFrontFromISR`
+- **设计权衡**：仿真层队列采用单向定额环形缓冲区（Ring Buffer）实现 FIFO 语义，暂不支持双端逆向头插操作（LIFO）。
+- **拦截层行为**：打出 `ESP_LOGE` 错误日志并返回 `errQUEUE_FULL`；ISR 变体同时将 `*pxHigherPriorityTaskWoken` 赋为 `pdFALSE`。提示开发者改用标准 `xQueueSend` / `xQueueSendToBack`。
 
 ---
 

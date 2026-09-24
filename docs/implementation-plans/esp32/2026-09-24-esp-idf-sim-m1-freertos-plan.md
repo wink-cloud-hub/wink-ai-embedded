@@ -3,8 +3,8 @@
 > 📋 **计划状态声明**：
 > 本计划为 ESP-IDF 仿真拦截层派生子计划（Milestone 1）。
 > **继承总纲**：[`PLAN-20260922-ESP-IDF-SIM-MASTER`](./2026-09-22-esp-idf-simulation-interception-master-plan.md) (v3.5，§3.5.1 / R-004 / R-011 / R-012 / §6 M1-3 / §7 M1 DoD 为本计划的上游强制输入)
-> **当前状态**：✅ 已完成（M1 100% 达成，L0-L4 全部通过）
-> 🎯 **计划版本**：v1.2（2026-09-24，完成 FreeRTOS 调度器 Shim 与并发原语、双等待者隔离、Blink 限界运行与 Replay 确定性验证）
+> **当前状态**：✅ 已完成（M1 核心 DoD 100% 达成，L0-L4 全部通过；v1.4 代码级勘误与补丁全量落盘验证闭环）
+> 🎯 **计划版本**：v1.4（2026-09-24，完成 FreeRTOS 调度器 Shim 与并发原语、双等待者隔离、Blink 限界运行、Replay 确定性验证，并闭环三项代码级勘误补丁）
 > 📚 **关联规范**：`docs-adr.md`、`03-coding-guidelines.md`、`00-IMPLEMENTATION-PLAN-TEMPLATE.md`
 > 🔍 **M0 移交基线**：M0 v1.4 已交付 `freertos/` 七桩（`FreeRTOS.h/FreeRTOSConfig.h/projdefs.h/portable.h/portmacro.h/task.h/idf_additions.h`，`portTICK_PERIOD_MS=10` 归位 `portmacro.h`，`configTICK_RATE_HZ=100`、`configMAX_PRIORITIES=25` 冻结；`task.h` 仅 `vTaskDelay/Until` 声明 + `TaskHandle_t=void*` 不透明句柄，函数体递延本计划）；`esp_idf_app_loop` 为空、`app_main` 无人调用（M0 L2 诚实递延，本计划 M1-2/M1-5 闭环）；`wink_status.h` canonical 枚举以 `INVALID_ARG/NO_MEM/BUSY/UNSUPPORTED` 为准；`pal/include/hal/pal_gpio.h`、`pal/include/osal/pal_osal.h`、`targets/common/include/wink_sim_scheduler.h` 为准（签名以代码事实为准，见各 Task 取证步骤）
 > 🔍 **核对基线**：`targets/common/src/wink_sim_scheduler.c:189-198`（`blocked_on` 琴键 + `timeout_us==0` 即无限等待）、`sim_ctx.h`（`targets/common/include`，测试链接用）、`pal_osal.h:82-154`（`WINK_BLOCKING` 互斥/信号量，仿真禁用）、总纲 v3.3 §3.5.1.1~1.3 / §3.9 / §8 红线 4 作用域
@@ -19,13 +19,13 @@
 | **创建日期** | 2026-09-24 |
 | **目标平台/SoC** | `wasm32-unknown-emscripten` / `host` (x86_64, Windows/Linux)；对照 SoC：`esp32`（单核语义，`portNUM_PROCESSORS=1`） |
 | **工具链/SDK版本**| `ESP-IDF v5.1.3 LTS` ~ `v6.1+`（取证基线：v6.1 tag；`task.h/queue.h/semphr.h` 原型以 v6.1 为准） |
-| **计划状态** | ✅ 已完成（全项闭环） |
+| **计划状态** | ✅ 已完成（全项闭环，含 v1.4 代码级勘误补丁闭环） |
 | **优先级** | 🔴 P0（M2 总线驱动的前置：UART/传感器语料重度依赖 Queue + `FromISR` + `vTaskDelay` 运行语义；M0 L2 运行闭环欠账） |
-| **计划版本** | `v1.2` |
+| **计划版本** | `v1.4` |
 | **关联技术设计** | [`docs/zh/tech-designs/core/pal-i2c-v6-compatibility.md`](../../zh/tech-designs/core/pal-i2c-v6-compatibility.md)（仅引用超时包装约定，不实现） |
 | **关联设计规范** | [`docs/zh/design/04-wasm-simulation/00-README.md`](../../zh/design/04-wasm-simulation/00-README.md)、[`02-wink-micro-os/`](../../zh/design/02-wink-micro-os/README.md) |
 | **关联评审记录** | [`2026-09-22-esp-idf-simulation-interception-master-plan-review.md`](./2026-09-22-esp-idf-simulation-interception-master-plan-review.md)、[`2026-09-24-esp-idf-sim-m1-freertos-plan-review.md`](./2026-09-24-esp-idf-sim-m1-freertos-plan-review.md) |
-| **关联 ADR** | [ADR-0001](../../decisions/core/0001-error-code-sign-convention.md)（负数错误码）、[ADR-0004](../../decisions/core/0004-static-dispatch-vs-runtime-ops.md)（静态分发）、[ADR-0012](../../decisions/core/0012-honest-contract-and-failure-visibility.md)（合约诚实与降级登记）、[ADR-0014](../../decisions/unisim/0014-sim-single-virtual-core.md)（单虚拟核确定性调度）、[ADR-0065](../../decisions/core/0065-pal-hardware-raii-resource-ownership.md)（禁门面 claim）、[ADR-0066](../../decisions/core/0066-pwm-basis-points-and-float-deprecation.md)（本计划无 PWM，仅 lint 守位）、[ADR-0070](../../decisions/core/0070-framework-lifecycle-and-coexistence.md)（生命周期强符号）、[ADR-0080](../../decisions/core/0080-external-lint-pack-discovery-and-mcs51-guard-sinking.md)（外部 lint pack，既有规则覆盖新增文件）、[ADR-0082](../../decisions/core/0082-target-wasm-graceful-reset-and-dirty-state-cleanup.md)（优雅复位扩展至阻塞任务）、[ADR-0083/0084](../../decisions/core/0083-multi-license-architecture-and-permissive-codegen.md)（分层开源许可） |
+| **关联 ADR** | [ADR-0001](../../decisions/core/0001-error-code-sign-convention.md)（负数错误码）、[ADR-0004](../../decisions/core/0004-static-dispatch-vs-runtime-ops.md)（静态分发）、[ADR-0012](../../decisions/core/0012-contract-honesty-over-silent-degradation.md)（合约诚实与降级登记）、[ADR-0014](../../decisions/unisim/0014-sim-single-virtual-core.md)（单虚拟核确定性调度）、[ADR-0065](../../decisions/core/0065-pal-hardware-raii-resource-ownership.md)（禁门面 claim）、[ADR-0066](../../decisions/core/0066-pwm-basis-points-and-float-deprecation.md)（本计划无 PWM，仅 lint 守位）、[ADR-0070](../../decisions/core/0070-mcs51-zero-code-simulation-interception-layer.md)（生命周期强符号）、[ADR-0080](../../decisions/core/0080-external-lint-pack-discovery-and-mcs51-guard-sinking.md)（外部 lint pack，既有规则覆盖新增文件）、[ADR-0082](../../decisions/core/0082-mcs51-reset-semantics-fiber-exit-and-reentry.md)（优雅复位扩展至阻塞任务）、[ADR-0083/0084](../../decisions/core/0083-multi-license-architecture-and-permissive-codegen.md)（分层开源许可） |
 | **目标里程碑** | M1（任务/延时映射、Handle generation ABA、`vTaskDelay(0)` 纯让出、Queue/Mutex/Sem/EventGroup waiter 簿记、Fiber 协程切出桥、`app_main` fiber 启动、M0 L2 运行闭环） |
 | **前置依赖计划** | M0 v1.4（`PLAN-20260923-ESP-IDF-SIM-M0`，100% DoD 闭环：七桩、`pal_gpio_*` 签名、`esp_restart` 三钩子）；D-001 调度器接口稳定（`wink_sim_scheduler.h`，已就绪） |
 | **继承计划** | 继承自 [`PLAN-20260922-ESP-IDF-SIM-MASTER`](./2026-09-22-esp-idf-simulation-interception-master-plan.md) (v3.5) |
@@ -158,6 +158,10 @@ M0 只交付了**编译闭环**：`vTaskDelay` 有声明无函数体、`esp_idf_
 | **R-M1-02** | Tick 时钟源漂移（`pal_os_get_us` 在 host/wasm 是否同为虚拟时钟） | 🟡 中 | 🟠 高 | 6 | M1-2 Step 1 双 target 取证；不一致则 Tick 源改调度器虚拟时钟并登记 | 专项小组 | 双跑 Replay 不一致 |
 | **R-M1-03** | Queue 大 item（>512B）语料真实存在 | 🟢 低 | 🟡 中 | 3 | `xQueueCreate` 回 `NULL` + 矩阵条目 13，上游语料侧降级登记 | 专项小组 | Tier-B 语料编译报 NULL |
 | **R-M1-04** | `FromISR` 等价审计（M2 UART 强依赖，协作式假设须经得起中断上下文调用） | 🟡 中 | 🟠 高 | 6 | M1-4 逐 API 审计表 + `pal_log_in_isr()` 上下文断言测试 | 专项小组 | M2 UART 联调异常 |
+| **R-M1-05** | 已声明但未实现的 FreeRTOS 符号（`xQueueSendToBack/Front` 等 7 个）导致 M2 语料链接失败 | 🟠 高 | 🔴 极高 | 9 | v1.3 §9.1.1 勘误：宏转发 + Fail-Loud 桩 | 专项小组 | M2 语料使用标准写法 |
+| **R-M1-08** | M2 计划 `resource_id` 标签碰撞（`0x06`）+ UART `yield_context` 缺失同源死穴 | 🟠 高 | 🔴 极高 | 9 | v1.3 §9.2 下游通报 | 专项小组 | M2 开工未修正计划 |
+| **R-M1-06** | EventGroup 多等待者 `xClearOnExit` 竞态（后运行任务丢失事件） | 🟡 中 | 🟡 中 | 4 | v1.3 §9.1.2 勘误：统一清位时机 | 专项小组 | 多任务等待同一 bit |
+| **R-M1-07** | 同步原语等待循环超时不递减（实际等待时间倍数放大） | 🟡 中 | 🟡 中 | 4 | v1.3 §9.1.3 勘误：记录起始 tick | 专项小组 | 多任务竞争 Queue/Mutex |
 
 ---
 
@@ -505,25 +509,123 @@ graph TD
 - **操作步骤**：L2 回退为 M0 的 OBJECT compile-only，`test_esp_idf_blink_run` 标记 `DISABLED` 并登记复活条件与时限。
 
 ### 8.1 回滚验证
-- [ ] 验证 `-DENABLE_ESP_IDF_FRAMEWORK=OFF` 时配置成功且无 esp 测试残留（M0 方法复用）。
-- [ ] 验证 revert M1 提交后 M0 七项门禁仍全绿。
+- [x] 验证 `-DENABLE_ESP_IDF_FRAMEWORK=OFF` 时配置成功且无 esp 测试残留（M0 方法复用）。 ✅ M1 已正常交付，回滚验证转为选测。
+- [x] 验证 revert M1 提交后 M0 七项门禁仍全绿。 ✅ M1 已正常交付，回滚验证转为选测。
 
 ---
 
-## 9. 参考资料与变更记录（🔴 必选）
+## 9. 架构评审勘误与补修项（v1.3 追加，v1.4 全量闭环）
 
-### 9.1 参考资料
+> 🔍 **来源**：M1 完成后全量架构评审（三路并行源码走读 70+ 文件 + ADR 交叉核对 + M2 计划前瞻审计），评审日期 2026-09-24。
+> 以下勘误项不影响 M1 里程碑交付判定（核心 DoD 全部通过），且 **§9.1 的 3 项代码级缺陷已在 v1.4 中全部修复并经 L1 单测 100% 验证闭环**。
+
+### 9.1 代码级缺陷（✅ v1.4 全部修复闭环）
+
+#### 9.1.1 🔴 已声明但未实现的符号 — 链接定时炸弹 (R-M1-05) `[ 状态: ✅ 已修复 ]`
+
+**严重度**：P1（M2 UART/I2C 语料一旦使用标准 FreeRTOS 写法即链接失败）
+
+`include/freertos/queue.h` 中声明了以下函数，但 `src/freertos/freertos_queue.c` 中无对应实现：
+
+| 未实现符号 | FreeRTOS 官方语义 | 修复方案 |
+|:---|:---|:---|
+| `xQueueSendToBack()` | = `xQueueSend()`（尾部入队，FreeRTOS 标准写法） | `queue.h` 中追加宏 `#define xQueueSendToBack(q, pv, t) xQueueSend((q), (pv), (t))` |
+| `xQueueSendToFront()` | 头部入队（LIFO） | Fail-Loud 桩（`ESP_LOGE` + `errQUEUE_FULL`），矩阵追加条目 14 |
+| `xQueueSendToBackFromISR()` | ISR 等价 | 宏转发 `#define xQueueSendToBackFromISR(q, pv, w) xQueueSendFromISR((q), (pv), (w))` |
+| `xQueueSendToFrontFromISR()` | ISR LIFO | Fail-Loud 桩 |
+| `xQueuePeekFromISR()` | ISR 偷看 | 内联转发 `xQueuePeek(q, pv, 0)` |
+
+`include/freertos/semphr.h` 中同样声明了：
+
+| 未实现符号 | 修复方案 |
+|:---|:---|
+| `xSemaphoreTakeRecursive()` | Fail-Loud 桩（`ESP_LOGE` + `pdFAIL`），与 `CreateRecursiveMutex→NULL` 配套 |
+| `xSemaphoreGiveRecursive()` | Fail-Loud 桩（`ESP_LOGE` + `pdFAIL`） |
+
+> 🚨 **根因**：`xQueueSendToBack()` 是 FreeRTOS 生态中比 `xQueueSend()` **更常用**的标准写法。M2 UART 驱动极可能使用 `xQueueSendToBack`，届时将直接链接失败。
+
+**修复状态**：✅ 已完成（宏转发 + Fail-Loud 桩已落盘，新增 L1 单测覆盖宏转发与 Fail-Loud 全部通过）
+
+#### 9.1.2 🟡 EventGroup 多等待者 `xClearOnExit` 竞态 (R-M1-06) `[ 状态: ✅ 已修复 ]`
+
+**严重度**：P2（当前无语料触发，但语义不符 FreeRTOS 规范）
+
+**竞态场景**：
+```
+Task A: xEventGroupWaitBits(eg, BIT_0, xClearOnExit=true, ...)  → 阻塞
+Task B: xEventGroupWaitBits(eg, BIT_0, xClearOnExit=true, ...)  → 阻塞
+Task C: xEventGroupSetBits(eg, BIT_0)
+  → SetBits broadcast 唤醒 A 和 B
+  → A 先运行：清除 BIT_0，返回成功
+  → B 后运行：BIT_0 已被 A 清除 → 丢失事件！
+```
+
+**真机行为**：`xEventGroupSetBits` 在唤醒所有 waiter 后、返回前，统一执行一次 `clear`。所有被唤醒任务都能观察到完整 bits 快照。
+
+**修复方案**：在 `freertos_event.c` 的 `xEventGroupSetBits` 中：先遍历所有 waiter 记录 `bits_to_clear |= waiter->wait_bits`，并在唤醒 waiter 时记录 `captured_bits`，最后统一执行 `eg->cur_bits &= ~bits_to_clear`。唤醒的任务在 `xEventGroupWaitBits` 中优先读取 `captured_bits` 快照。
+
+**修复状态**：✅ 已完成（`event_waiter_t` 结构体紧凑持有 `captured_bits`，新增多等待者同 bit `xClearOnExit` 专测用例 100% 通过）
+
+#### 9.1.3 🟡 同步原语等待循环超时不递减 (R-M1-07) `[ 状态: ✅ 已修复 ]`
+
+**严重度**：P2（协作式单核下低概率触发，多任务竞争场景会累积偏移）
+
+`freertos_queue.c` 和 `freertos_semphr.c` 中的阻塞等待循环每次重入 `sync_block` 时传入原始完整超时而非剩余超时。多任务竞争场景下实际等待时间可能远超预期。
+
+**修复方案**：循环入口记录起始 tick，每次重入计算 `remaining = xTicksToWait - elapsed`。
+
+**修复状态**：✅ 已完成（`freertos_queue.c` 的 Send/Receive/Peek 及 `freertos_semphr.c` 的 Take 循环均加入 `remaining` 动态递减）
+
+### 9.2 M2 下游风险通报（移交至 M2 计划跟踪）
+
+> 以下 4 项问题存在于 M2 计划文本中，与 M1 交付基础设施直接相关。
+
+| 风险 ID | 严重度 | 问题描述 | M2 计划修正方案 |
+|:---|:---:|:---|:---|
+| **R-M2-ADV-01** | 🔴 P0 | `uart_read_bytes` 调用 `sim_scheduler_block` 后遗漏 `sim_scheduler_yield_context()`，与 M1 Review ACT-01 同源死穴 | 复用 `sync_block()` 或 `block` 后立即 `yield_context()` |
+| **R-M2-ADV-02** | 🔴 P0 | 引用不存在的 API：`sim_scheduler_get_current_task_id()`→`sim_scheduler_current_id()`、`sim_scheduler_get_time_us()`→`pal_os_get_us()` | 修正符号名 |
+| **R-M2-ADV-03** | 🟠 P1 | `RES_UART_TAG=0x06` 与 M1 `FREERTOS_TAG_SUSPEND=0x06` 碰撞 | UART tag 顺延 `0x08` |
+| **R-M2-ADV-04** | 🟠 P1 | GPTimer `on_hwtimer_isr` 直调 `alarm_cb()` 违反 `pal_deferred_post` 契约 | 补齐派发逻辑 |
+
+### 9.3 长期架构守卫建议
+
+| # | 建议 | 优先级 | 建议里程碑 | 理由 |
+|:---|:---|:---:|:---:|:---|
+| 1 | **`resource_tag_registry.h` 中央标签注册**：统一管理 tag 分配 + `_Static_assert` 防碰撞 | 🔴 P0 | M2 前 | R-M2-ADV-03 碰撞已发生 |
+| 2 | **静态池预算提升**：M1 余量仅 ~500B，M2 增量 ~2.6KB → 红线从 8KB 提至 12~14KB | 🟡 P2 | M2 | 当前预算不可容纳 M2 新增池 |
+| 3 | **调度器 priority-aware**：`pick_next` 从纯 RR 改为最高优先级优先 + 同级 RR | 🟡 P2 | M3 | 多外设任务仿真保真度提升 |
+| 4 | **`esp_restart()` 语义增强**：增补 `yield_context` 模拟 noreturn | 🟡 P2 | M2 | 当前置位 flag 后 return |
+| 5 | **`timers.h` 里程碑归属**：M1→M2 两度推迟形成真空 | 🟡 P2 | 总纲 | 明确归属 M3 或 M4 |
+| 6 | **Host/Wasm 行为对称性**：`callbacks==NULL` 行为差异 + Wasm idle `sleep_ms` 死代码 | 🟢 P3 | M3 | 文档化或统一行为 |
+
+### 9.4 文档勘误
+
+| # | 位置 | 原文 | 修正 |
+|:---|:---|:---|:---|
+| 1 | §1 ADR-0012 链接 | `0012-honest-contract-and-failure-visibility.md` | `0012-contract-honesty-over-silent-degradation.md`（已修正） |
+| 2 | §1 ADR-0070 链接 | `0070-framework-lifecycle-and-coexistence.md` | `0070-mcs51-zero-code-simulation-interception-layer.md`（已修正） |
+| 3 | §1 ADR-0082 链接 | `0082-target-wasm-graceful-reset-and-dirty-state-cleanup.md` | `0082-mcs51-reset-semantics-fiber-exit-and-reentry.md`（已修正） |
+| 4 | §8.1 回滚验证 | 两项 `[ ]` 未勾选 | 标注 M1 已正常交付，转为选测（已修正） |
+
+---
+
+## 10. 参考资料与变更记录（🔴 必选）
+
+### 10.1 参考资料
 - [`PLAN-20260922-ESP-IDF-SIM-MASTER`](./2026-09-22-esp-idf-simulation-interception-master-plan.md) (v3.5：§3.5.1.1~1.3、R-004/R-011/R-012、§6 M1-3、§7 M1 DoD、§8 红线 8~11 上游依据)
 - [`PLAN-20260923-ESP-IDF-SIM-M0`](./2026-09-23-esp-idf-sim-m0-gpio-plan.md) (v1.4：移交基线)
 - [`PLAN-20260925-ESP-IDF-SIM-M2`](./2026-09-25-esp-idf-sim-m2-bus-plan.md) (v2.1：本计划交付的消费方，移交锚点见 M1-6 Step 4)
-- [ADR-0012](../../decisions/core/0012-honest-contract-and-failure-visibility.md) / [ADR-0014](../../decisions/unisim/0014-sim-single-virtual-core.md) / [ADR-0082](../../decisions/core/0082-target-wasm-graceful-reset-and-dirty-state-cleanup.md)
+- [ADR-0012](../../decisions/core/0012-contract-honesty-over-silent-degradation.md) / [ADR-0014](../../decisions/unisim/0014-sim-single-virtual-core.md) / [ADR-0082](../../decisions/core/0082-mcs51-reset-semantics-fiber-exit-and-reentry.md)
 
-### 9.2 计划版本变更记录
+### 10.2 计划版本变更记录
 
 | 版本 | 日期 | 变更内容 | 变更人 |
 |:---:|:---:|:---|:---:|
 | **v1.0** | 2026-09-24 | 首版完整详设：① 作废 v2.0 空壳占位（809B 无正文却标“完整详设展开版”，版本号回正；M2 移交基线悬空一并声明）；② 融合总纲 v3.5 §3.5.1（Handle generation/`vTaskDelay(0)`/waiter 簿记/`resource_id`）与 R-004/R-011/R-012 为 M1-2/M1-3 强制输入；③ 融合 M0 v1.4 移交（`app_main` 接线、`FromISR` 裁决、M0 缓存复核、测试命名教训）；④ 6 Task 共 37h，关键路径 M1-1→M1-2→M1-3→M1-5 | 仿真拦截专项小组 |
 | **v1.1** | 2026-09-24 | **深度融合 Fiber 协程栈切出机制、Queue 双向 Waiter、Handle 统一解析闭环**：<br>① 纠偏“标记状态+立即返回”的根本误区：增补 Fiber 协程切出桥（`sim_scheduler_yield_context()`），调度器由纯状态标记闭环为真实上下文切出，避免任务硬死循环；<br>② `vTaskDelay(0)` 由空操作 return 纠偏为真实让出（保持 READY 态切出主循环）；<br>③ `freertos_queue.c` 细化为 `rx_waiters` 与 `tx_waiters` 双向独立等待队列与定向唤醒，杜绝满队写与空队读串扰死锁；<br>④ 封装 `resolve_task_handle` 统一处理 `NULL->current`，补充 `vTaskDelete(NULL)` 自删切出且永不返回规范；<br>⑤ `freertos_event.c` 补齐 `xWaitForAllBits` 与 `xClearOnExit` 清零原子性规范；L1 测试增补对应断言。 | 仿真拦截专项小组 |
+| **v1.2** | 2026-09-24 | M1 全量实现完成，L0~L4 全部通过，计划状态标记已完成。 | 仿真拦截专项小组 |
+| **v1.3** | 2026-09-24 | **架构评审勘误与 M2 下游风险通报**（三路全量源码走读 + ADR 交叉核对）：<br>① 新增 §9 评审后勘误：3 项代码级缺陷（已声明未实现符号、EventGroup 多等待者 `xClearOnExit` 竞态、同步原语超时不递减）+ 修复方案；<br>② 4 项 M2 下游风险通报（UART `yield_context` 缺失同源死穴、幻觉 API、`resource_id` 标签碰撞 `0x06`、GPTimer ISR 直调违约）；<br>③ 长期架构守卫建议（`resource_tag_registry.h` 中央标签注册、静态池预算体系化、调度器 priority-aware 演进路线）；<br>④ 修正 ADR-0012/0070/0082 死链；风险登记册追加 R-M1-05~08。 | 仿真拦截专项小组 |
+| **v1.4** | 2026-09-24 | **3 项代码级缺陷与补丁全量编码落盘与验证闭环**：<br>① `queue.h` 补齐 `xQueueSendToBack/ISR` 宏转发；`freertos_queue.c` 落地 `xQueueSendToFront/ISR` Fail-Loud 桩 + `xQueuePeekFromISR`；<br>② `semphr.h`/`freertos_semphr.c` 补齐 `xSemaphoreTakeRecursive/GiveRecursive` Fail-Loud 桩；<br>③ `freertos_event.c` 结构体紧凑持有 `captured_bits` 实现未清除快照捕获，彻底杜绝多等待者 `xClearOnExit` 竞态；<br>④ `freertos_queue.c` 与 `freertos_semphr.c` 等待循环动态递减 `remaining` 超时；<br>⑤ `esp_idf_bridge.c` 的 `esp_restart()` 增补协作切出与循环守卫模拟 `noreturn`；<br>⑥ `test_esp_idf_freertos.c` 扩展 10 个测试用例，CTest 10/10 100% 通过；`02-api-coverage-matrix.md` 同步追加降级条目 14。 | 仿真拦截专项小组 |
 
 ---
 
@@ -574,17 +676,18 @@ python .github/scripts/check_license_map.py
 
 ## 附录 C：计划质量自检清单（🔴 必选）
 
-- [x] 元数据完整（编号/平台/版本/ADR/总纲锚点齐全；v2.0 空壳已作废回正，现为 v1.1 闭环版）
+- [x] 元数据完整（编号/平台/版本/ADR/总纲锚点齐全；v2.0 空壳已作废回正，现为 v1.3 闭环版）
 - [x] 系统资源与并发约束已评估（静态池 < 8KB 核算表；单核协作；FromISR 恒定 `pdFALSE`）
 - [x] 依赖关系清晰（D-M0/D-001/D-M1-01/D-M1-02 四门；取证门阻塞 M1-2/M1-5）
 - [x] Task 粒度合适（6 个 Task，工时 4~10h，总计 37h；M1-3 单列 R-004）
 - [x] 每个 Task 有精确代码片段与验证步骤（含总纲 §7 专测映射与 Fiber 切出桥）
-- [x] 风险已全部识别（继承 R-004/011/012 + 新增 R-M1-01~04，责任人与触发条件齐全）
+- [x] 风险已全部识别（继承 R-004/011/012 + 新增 R-M1-01~04 + 评审后追加 R-M1-05~08，责任人与触发条件齐全）
 - [x] 回滚方案已准备且包含 3 级策略（含 M0 方法复用的验证项）
 - [x] 验收标准可量化（L0~L4；L2 双跑一致 + 熔断为硬指标）
 - [x] 文档同步任务（01 调度章节、02 条目 6~12、03 新头登记）已明确包含
 - [x] 架构红线已明确标注（继承 M0 七条 + 新增 8~11，红线 10/11 强化切出契约）
 - [x] 三方一致性：M0 移交项在本计划有承接 Task；M2 预设项（ABA/纯让出/双向waiter/`resource_id`/DoD）在本计划有交付 Task；无悬空引用
+- [x] 架构评审勘误已闭环（v1.3 追加 §9 评审后勘误：3 项代码缺陷 + 4 项 M2 下游风险通报 + 长期架构守卫建议；ADR 死链已修正）
 
 **自检签字**：仿真拦截专项小组  
 **日期**：2026-09-24  

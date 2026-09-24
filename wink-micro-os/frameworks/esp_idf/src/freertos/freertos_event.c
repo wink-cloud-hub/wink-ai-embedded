@@ -14,8 +14,11 @@
 typedef struct {
     uint32_t     sim_id;
     EventBits_t  bits_to_wait_for;
-    BaseType_t   clear_on_exit;
-    BaseType_t   wait_for_all;
+    EventBits_t  captured_bits;
+    uint8_t      clear_on_exit;
+    uint8_t      wait_for_all;
+    uint8_t      woken;
+    uint8_t      reserved;
 } event_waiter_t;
 
 typedef struct {
@@ -95,16 +98,24 @@ EventBits_t xEventGroupWaitBits(EventGroupHandle_t xEventGroup,
     if (eg->waiter_count < WINK_SIM_MAX_TASKS) {
         eg->waiters[eg->waiter_count].sim_id = self;
         eg->waiters[eg->waiter_count].bits_to_wait_for = wait_bits;
-        eg->waiters[eg->waiter_count].clear_on_exit = xClearOnExit;
-        eg->waiters[eg->waiter_count].wait_for_all = xWaitForAllBits;
+        eg->waiters[eg->waiter_count].captured_bits = 0;
+        eg->waiters[eg->waiter_count].clear_on_exit = (uint8_t)(xClearOnExit ? 1 : 0);
+        eg->waiters[eg->waiter_count].wait_for_all = (uint8_t)(xWaitForAllBits ? 1 : 0);
+        eg->waiters[eg->waiter_count].woken = 0;
+        eg->waiters[eg->waiter_count].reserved = 0;
         eg->waiter_count++;
     }
 
     uint32_t eg_idx = (uint32_t)(eg - s_events);
     (void)sync_block(FREERTOS_MAKE_RES_ID(FREERTOS_TAG_EVENT, eg_idx), xTicksToWait);
 
+    EventBits_t ret = 0;
+    bool was_woken = false;
+
     for (uint8_t i = 0; i < eg->waiter_count; ++i) {
         if (eg->waiters[i].sim_id == self) {
+            ret = eg->waiters[i].captured_bits;
+            was_woken = (eg->waiters[i].woken != 0);
             for (uint8_t j = i; j + 1 < eg->waiter_count; ++j) {
                 eg->waiters[j] = eg->waiters[j + 1];
             }
@@ -113,10 +124,13 @@ EventBits_t xEventGroupWaitBits(EventGroupHandle_t xEventGroup,
         }
     }
 
-    EventBits_t ret = eg->cur_bits;
-    if (event_condition_met(eg->cur_bits, wait_bits, xWaitForAllBits)) {
-        if (xClearOnExit) {
-            eg->cur_bits &= ~wait_bits;
+    if (!was_woken) {
+        /* Woken by timeout or unblock without matching SetBits */
+        ret = eg->cur_bits;
+        if (event_condition_met(eg->cur_bits, wait_bits, xWaitForAllBits)) {
+            if (xClearOnExit) {
+                eg->cur_bits &= ~wait_bits;
+            }
         }
     }
 
@@ -131,11 +145,25 @@ EventBits_t xEventGroupSetBits(EventGroupHandle_t xEventGroup, const EventBits_t
 
     eg->cur_bits |= (uxBitsToSet & 0x00FFFFFFu);
 
+    /* Collect bits to clear AFTER all waiters capture their snapshot (FreeRTOS semantics:
+     * all woken tasks observe the full bits snapshot before any xClearOnExit takes effect) */
+    EventBits_t bits_to_clear = 0;
+
     for (uint8_t i = 0; i < eg->waiter_count; ++i) {
         event_waiter_t* w = &eg->waiters[i];
         if (event_condition_met(eg->cur_bits, w->bits_to_wait_for, w->wait_for_all)) {
+            w->captured_bits = eg->cur_bits;
+            w->woken = 1;
             sim_scheduler_resume(w->sim_id);
+            if (w->clear_on_exit) {
+                bits_to_clear |= w->bits_to_wait_for;
+            }
         }
+    }
+
+    /* Deferred clear: all woken tasks see the pre-clear snapshot */
+    if (bits_to_clear != 0) {
+        eg->cur_bits &= ~bits_to_clear;
     }
 
     return eg->cur_bits;
