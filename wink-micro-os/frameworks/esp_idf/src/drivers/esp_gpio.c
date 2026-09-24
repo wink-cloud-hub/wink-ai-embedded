@@ -5,6 +5,11 @@
 #include "esp_log.h"
 #include "soc/soc_caps.h"
 
+/* Output read-back cache (ADR-0012 降级条目 3, see docs/02-api-coverage-matrix.md):
+ * Host/Wasm PAL `pal_gpio_read` on an output-configured pin reports the mode
+ * idle level, not the last driven level, so the facade must remember what it
+ * drove. Cleared on gpio_config-to-input / gpio_set_direction-to-input /
+ * gpio_reset_pin. Single-threaded cooperative sim only; pins < 64. */
 static uint64_t s_is_output = 0ULL;
 static uint64_t s_output_levels = 0ULL;
 
@@ -85,8 +90,11 @@ esp_err_t gpio_set_direction(gpio_num_t gpio_num, gpio_mode_t mode) {
         return ESP_ERR_INVALID_ARG;
     }
 
+    /* NOTE: lowered via pal_gpio_init (not pal_gpio_set_direction) on purpose:
+     * the host PAL set_direction is a no-op that records no mode, while init is
+     * idempotent and records the mode the read path depends on. Official
+     * gpio_set_direction carries no pull args, so DISABLE pulls are correct. */
     pal_gpio_mode_t pal_mode = convert_gpio_mode(mode, GPIO_PULLUP_DISABLE, GPIO_PULLDOWN_DISABLE);
-    /* pal_gpio_init initializes the pin and claims it idempotently */
     wink_status_t status = pal_gpio_init((wink_pin_t)gpio_num, pal_mode);
     if (status < 0) {
         return esp_err_from_wink(status);
@@ -151,40 +159,48 @@ esp_err_t gpio_reset_pin(gpio_num_t gpio_num) {
     return esp_err_from_wink(status);
 }
 
+/* Pull / interrupt / ISR family: NOT supported in M0 simulation (ADR-0012
+ * 降级条目 4). Fail-loud with ESP_ERR_NOT_SUPPORTED, never silent ESP_OK. */
+
 esp_err_t gpio_set_pull_mode(gpio_num_t gpio_num, gpio_pull_mode_t pull) {
     (void)pull;
     if (!GPIO_IS_VALID_GPIO(gpio_num)) {
         return ESP_ERR_INVALID_ARG;
     }
-    return ESP_OK;
+    ESP_LOGE("GPIO", "gpio_set_pull_mode: not supported in simulation (M0)");
+    return ESP_ERR_NOT_SUPPORTED;
 }
 
 esp_err_t gpio_pullup_en(gpio_num_t gpio_num) {
     if (!GPIO_IS_VALID_GPIO(gpio_num)) {
         return ESP_ERR_INVALID_ARG;
     }
-    return ESP_OK;
+    ESP_LOGE("GPIO", "gpio_pullup_en: not supported in simulation (M0)");
+    return ESP_ERR_NOT_SUPPORTED;
 }
 
 esp_err_t gpio_pullup_dis(gpio_num_t gpio_num) {
     if (!GPIO_IS_VALID_GPIO(gpio_num)) {
         return ESP_ERR_INVALID_ARG;
     }
-    return ESP_OK;
+    ESP_LOGE("GPIO", "gpio_pullup_dis: not supported in simulation (M0)");
+    return ESP_ERR_NOT_SUPPORTED;
 }
 
 esp_err_t gpio_pulldown_en(gpio_num_t gpio_num) {
     if (!GPIO_IS_VALID_GPIO(gpio_num)) {
         return ESP_ERR_INVALID_ARG;
     }
-    return ESP_OK;
+    ESP_LOGE("GPIO", "gpio_pulldown_en: not supported in simulation (M0)");
+    return ESP_ERR_NOT_SUPPORTED;
 }
 
 esp_err_t gpio_pulldown_dis(gpio_num_t gpio_num) {
     if (!GPIO_IS_VALID_GPIO(gpio_num)) {
         return ESP_ERR_INVALID_ARG;
     }
-    return ESP_OK;
+    ESP_LOGE("GPIO", "gpio_pulldown_dis: not supported in simulation (M0)");
+    return ESP_ERR_NOT_SUPPORTED;
 }
 
 esp_err_t gpio_set_intr_type(gpio_num_t gpio_num, gpio_int_type_t intr_type) {
@@ -192,39 +208,47 @@ esp_err_t gpio_set_intr_type(gpio_num_t gpio_num, gpio_int_type_t intr_type) {
     if (!GPIO_IS_VALID_GPIO(gpio_num)) {
         return ESP_ERR_INVALID_ARG;
     }
-    return ESP_OK;
+    ESP_LOGE("GPIO", "gpio_set_intr_type: not supported in simulation (M0)");
+    return ESP_ERR_NOT_SUPPORTED;
 }
 
 esp_err_t gpio_intr_enable(gpio_num_t gpio_num) {
     if (!GPIO_IS_VALID_GPIO(gpio_num)) {
         return ESP_ERR_INVALID_ARG;
     }
-    return ESP_OK;
+    ESP_LOGE("GPIO", "gpio_intr_enable: not supported in simulation (M0)");
+    return ESP_ERR_NOT_SUPPORTED;
 }
 
 esp_err_t gpio_intr_disable(gpio_num_t gpio_num) {
     if (!GPIO_IS_VALID_GPIO(gpio_num)) {
         return ESP_ERR_INVALID_ARG;
     }
-    return ESP_OK;
+    ESP_LOGE("GPIO", "gpio_intr_disable: not supported in simulation (M0)");
+    return ESP_ERR_NOT_SUPPORTED;
 }
 
 esp_err_t gpio_install_isr_service(int intr_alloc_flags) {
     (void)intr_alloc_flags;
-    return ESP_OK;
+    ESP_LOGE("GPIO", "gpio_install_isr_service: not supported in simulation (M0)");
+    return ESP_ERR_NOT_SUPPORTED;
 }
 
 void gpio_uninstall_isr_service(void) {
+    /* void C-ABI: cannot signal failure; warn loudly (降级条目 4). */
+    ESP_LOGW("GPIO", "gpio_uninstall_isr_service: no-op, ISR not supported in simulation (M0)");
 }
 
 esp_err_t gpio_isr_handler_add(gpio_num_t gpio_num, gpio_isr_t isr_handler, void *args) {
     (void)gpio_num;
     (void)isr_handler;
     (void)args;
-    return ESP_OK;
+    ESP_LOGE("GPIO", "gpio_isr_handler_add: not supported in simulation (M0)");
+    return ESP_ERR_NOT_SUPPORTED;
 }
 
 esp_err_t gpio_isr_handler_remove(gpio_num_t gpio_num) {
     (void)gpio_num;
-    return ESP_OK;
+    ESP_LOGE("GPIO", "gpio_isr_handler_remove: not supported in simulation (M0)");
+    return ESP_ERR_NOT_SUPPORTED;
 }

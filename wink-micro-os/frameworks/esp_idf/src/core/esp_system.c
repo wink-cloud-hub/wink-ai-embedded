@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LGPL-3.0-only */
 #include "esp_system.h"
+#include "esp_log.h"
 #include "esp_random.h"
 #include "esp_chip_info.h"
 #include "esp_timer.h"
@@ -58,30 +59,40 @@ void esp_rom_delay_us(uint32_t us) {
 }
 
 void esp_rom_gpio_pad_select_gpio(uint32_t gpio_num) {
+    /* void ROM C-ABI: cannot signal failure; warn loudly (降级条目 5). */
     (void)gpio_num;
+    ESP_LOGW("ESP_SYS", "esp_rom_gpio_pad_select_gpio: no-op in simulation (M0)");
 }
+
+/* Task watchdog / interrupt allocator: NOT supported in M0 simulation
+ * (ADR-0012 降级条目 5). Fail-loud with ESP_ERR_NOT_SUPPORTED. */
 
 esp_err_t esp_task_wdt_init(const esp_task_wdt_config_t *config) {
     (void)config;
-    return ESP_OK;
+    ESP_LOGE("ESP_SYS", "esp_task_wdt_init: not supported in simulation (M0)");
+    return ESP_ERR_NOT_SUPPORTED;
 }
 
 esp_err_t esp_task_wdt_deinit(void) {
-    return ESP_OK;
+    ESP_LOGE("ESP_SYS", "esp_task_wdt_deinit: not supported in simulation (M0)");
+    return ESP_ERR_NOT_SUPPORTED;
 }
 
 esp_err_t esp_task_wdt_add(TaskHandle_t handle) {
     (void)handle;
-    return ESP_OK;
+    ESP_LOGE("ESP_SYS", "esp_task_wdt_add: not supported in simulation (M0)");
+    return ESP_ERR_NOT_SUPPORTED;
 }
 
 esp_err_t esp_task_wdt_reset(void) {
-    return ESP_OK;
+    ESP_LOGE("ESP_SYS", "esp_task_wdt_reset: not supported in simulation (M0)");
+    return ESP_ERR_NOT_SUPPORTED;
 }
 
 esp_err_t esp_task_wdt_delete(TaskHandle_t handle) {
     (void)handle;
-    return ESP_OK;
+    ESP_LOGE("ESP_SYS", "esp_task_wdt_delete: not supported in simulation (M0)");
+    return ESP_ERR_NOT_SUPPORTED;
 }
 
 esp_err_t esp_intr_alloc(int source, int flags, intr_handler_t handler, void *arg, intr_handle_t *ret_handle) {
@@ -90,12 +101,14 @@ esp_err_t esp_intr_alloc(int source, int flags, intr_handler_t handler, void *ar
     (void)handler;
     (void)arg;
     if (ret_handle) {
-        *ret_handle = (intr_handle_t)0x1;
+        *ret_handle = (intr_handle_t)0;
     }
-    return ESP_OK;
+    ESP_LOGE("ESP_SYS", "esp_intr_alloc: not supported in simulation (M0)");
+    return ESP_ERR_NOT_SUPPORTED;
 }
 
 esp_err_t esp_intr_free(intr_handle_t handle) {
     (void)handle;
-    return ESP_OK;
+    ESP_LOGE("ESP_SYS", "esp_intr_free: not supported in simulation (M0)");
+    return ESP_ERR_NOT_SUPPORTED;
 }
