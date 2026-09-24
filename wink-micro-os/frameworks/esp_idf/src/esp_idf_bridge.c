@@ -1,0 +1,25 @@
+/* SPDX-License-Identifier: LGPL-3.0-only */
+#include <stdbool.h>
+#include "pal_log.h"
+#include "esp_system.h"
+
+static bool s_esp_pending_reset = false;
+static int s_esp_reset_reason = 4; /* SOFTWARE */
+
+void esp_restart(void) {
+    pal_log_w("ESP_SYS", "esp_restart requested -> pending reset flag set");
+    s_esp_pending_reset = true;
+}
+
+/* 供 targets/wasm 弱钩子查询的导出（命名不得带 wink_mcs51 前缀冲突） */
+bool pal_wasm_target_has_pending_reset(void) { return s_esp_pending_reset; }
+int pal_wasm_target_get_reset_reason(void) { return s_esp_reset_reason; }
+void pal_wasm_target_clear_pending_reset(void) { s_esp_pending_reset = false; }
+
+esp_reset_reason_t esp_reset_reason(void) {
+    return ESP_RST_SW;
+}
+
+const char *esp_get_idf_version(void) {
+    return "v6.1-dev-winksim";
+}
