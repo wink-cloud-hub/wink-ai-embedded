@@ -8,14 +8,15 @@
 | :--- | :--- | :--- | :--- |
 | **[2026-09-22-esp-idf-simulation-interception-master-plan.md](./2026-09-22-esp-idf-simulation-interception-master-plan.md)** | 📋 就绪 (v3.5) | M0~M3 | **ESP-IDF 源码级仿真拦截总纲（执行第一纲领 / SSOT）**<br>涵盖 C-ABI 驱动门面、SoC 特性矩阵解耦、ESP-IDF v5/v6 双门面兼容、FreeRTOS→`wink_sim_scheduler` 映射、语料 Tier 分级与总纲级任务 T-001~T-012。 |
 | [2026-09-22-esp-idf-simulation-interception-master-plan-review.md](./2026-09-22-esp-idf-simulation-interception-master-plan-review.md) | 📎 归档 | — | v1.0 架构评审记录（其 P0/P1 已在总纲 v2.0/v3.0 闭环）。 |
+| [2026-09-24-esp-idf-sim-m1-freertos-plan-review.md](./2026-09-24-esp-idf-sim-m1-freertos-plan-review.md) | 📎 归档 | M1 | v1.0 架构评审记录（5 项核心事实与架构缺陷，已在 M1 计划 v1.1 闭环）。 |
 
 ### 派生子计划（模板命名，T-003 已落盘）
 
 | 子计划 | 里程碑 | 状态 | 文档路径 |
 | :--- | :--- | :--- | :--- |
-| M0 骨架与最小 GPIO 闭环 | M0 | 📋 就绪执行中 (v1.3 lint 引擎形态双通道) | [2026-09-23-esp-idf-sim-m0-gpio-plan.md](./2026-09-23-esp-idf-sim-m0-gpio-plan.md) |
-| M1 FreeRTOS 调度器 Shim | M1 | 📋 待开始 (v1.2 占位+展开约束) | [2026-09-24-esp-idf-sim-m1-freertos-plan.md](./2026-09-24-esp-idf-sim-m1-freertos-plan.md) |
-| M2 总线外设双版本与定点 PWM | M2 | 📋 待开始 (v1.1 占位+展开约束) | [2026-09-25-esp-idf-sim-m2-bus-plan.md](./2026-09-25-esp-idf-sim-m2-bus-plan.md) |
+| M0 骨架与最小 GPIO 闭环 | M0 | ✅ 已完成 (v1.4 闭环交付) | [2026-09-23-esp-idf-sim-m0-gpio-plan.md](./2026-09-23-esp-idf-sim-m0-gpio-plan.md) |
+| M1 FreeRTOS 调度器 Shim | M1 | 📋 详设就绪 (v1.1 闭环 Fiber 协程切出与双向 Waiter) | [2026-09-24-esp-idf-sim-m1-freertos-plan.md](./2026-09-24-esp-idf-sim-m1-freertos-plan.md) |
+| M2 总线外设双版本与定点 PWM | M2 | 📋 详设就绪 (v2.1 吸收 6 项真实性防护与断层声明) | [2026-09-25-esp-idf-sim-m2-bus-plan.md](./2026-09-25-esp-idf-sim-m2-bus-plan.md) |
 | M3 SoC 矩阵扩展与语料 CI | M3 | 📋 待开始 (v1.2 占位+展开约束) | [2026-09-26-esp-idf-sim-m3-soc-ci-plan.md](./2026-09-26-esp-idf-sim-m3-soc-ci-plan.md) |
 
 ## 相关架构规范与决策
