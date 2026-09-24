@@ -48,6 +48,7 @@ const mcs51_irq_map_entry_t s_default_irq_map[IRQ_SOURCE__COUNT] = {
     /* IRQ_SOURCE_TIMER4 */ { 0xFFu, 0xFFu, 0u, 0xFFu, 0u, 0xFFu, 0u, MCS51_IRQ_SW_CLEAR },
     /* IRQ_SOURCE_ACMP */   { 0xFFu, 0xFFu, 0u, 0xFFu, 0u, 0xFFu, 0u, MCS51_IRQ_SW_CLEAR },
     /* IRQ_SOURCE_WDT */    { 0xFFu, 0xFFu, 0u, 0xFFu, 0u, 0xFFu, 0u, MCS51_IRQ_SW_CLEAR },
+    /* IRQ_SOURCE_LVD */    { 0xFFu, 0xFFu, 0u, 0xFFu, 0u, 0xFFu, 0u, MCS51_IRQ_SW_CLEAR },
 };
 
 // Stage5 CPL-06 insulation: a vector is reachable only when the ACTIVE

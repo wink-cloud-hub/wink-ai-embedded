@@ -227,6 +227,9 @@ xsfr BRTDH(0xF5C2);    // Baud Rate Timer reload high
 xsfr ADCLDO(0xF692);  // ADC LDO control (bit7 LDOEN, bits6:5 VSEL, bit4 OUTEN)
 xsfr TS_REG(0xF693);  // Temperature sensor control & trim register
 
+// Low-Voltage Detect (LVD, XSFR 0xF690, no TA protection, reset 0x00)
+xsfr LVDCON(0xF690);  // LVD control: LVDSEL[7:4] threshold, LVDEN[3], LVDINTE[1], LVDINTF[0,W0C]
+
 // Analog Comparator (ACMP0/ACMP1, 0xF500..0xF50D)
 xsfr C0CON0(0xF500);   // ACMP0 control 0
 xsfr C0CON1(0xF501);   // ACMP0 control 1
@@ -347,6 +350,34 @@ xsfr PWMDIF(0xF16F);     // PWM Down Match Interrupt Flag
 // EIE2 (WDT interrupt enable)
 #define IRQ_EIE2_WDTIE_Pos       (5)
 #define IRQ_EIE2_WDTIE_Msk       (0x1 << IRQ_EIE2_WDTIE_Pos)
+
+// LVDCON (XSFR 0xF690, names verbatim from vendor cms8s78xx.h)
+#define LVD_LVDCON_LVDSEL_Pos    (4)
+#define LVD_LVDCON_LVDSEL_Msk    (0xF << LVD_LVDCON_LVDSEL_Pos)
+#define LVD_LVDCON_LVDEN_Pos     (3)
+#define LVD_LVDCON_LVDEN_Msk     (0x1 << LVD_LVDCON_LVDEN_Pos)
+#define LVD_LVDCON_LVDINTE_Pos   (1)
+#define LVD_LVDCON_LVDINTE_Msk   (0x1 << LVD_LVDCON_LVDINTE_Pos)
+#define LVD_LVDCON_LVDINTF_Pos   (0)
+#define LVD_LVDCON_LVDINTF_Msk   (0x1 << LVD_LVDCON_LVDINTF_Pos)
+
+// System LVD voltage thresholds (verbatim from vendor StdDriver inc/system.h)
+#define SYS_LVD_2_0V             (0x00)
+#define SYS_LVD_2_16V            (0x01<<LVD_LVDCON_LVDSEL_Pos)
+#define SYS_LVD_2_31V            (0x02<<LVD_LVDCON_LVDSEL_Pos)
+#define SYS_LVD_2_45V            (0x03<<LVD_LVDCON_LVDSEL_Pos)
+#define SYS_LVD_2_60V            (0x04<<LVD_LVDCON_LVDSEL_Pos)
+#define SYS_LVD_2_73V            (0x05<<LVD_LVDCON_LVDSEL_Pos)
+#define SYS_LVD_2_88V            (0x06<<LVD_LVDCON_LVDSEL_Pos)
+#define SYS_LVD_2_98V            (0x07<<LVD_LVDCON_LVDSEL_Pos)
+#define SYS_LVD_3_21V            (0x08<<LVD_LVDCON_LVDSEL_Pos)
+#define SYS_LVD_3_42V            (0x09<<LVD_LVDCON_LVDSEL_Pos)
+#define SYS_LVD_3_62V            (0x0A<<LVD_LVDCON_LVDSEL_Pos)
+#define SYS_LVD_3_81V            (0x0B<<LVD_LVDCON_LVDSEL_Pos)
+#define SYS_LVD_4_0V             (0x0C<<LVD_LVDCON_LVDSEL_Pos)
+#define SYS_LVD_4_2V             (0x0D<<LVD_LVDCON_LVDSEL_Pos)
+#define SYS_LVD_4_43V            (0x0E<<LVD_LVDCON_LVDSEL_Pos)
+#define SYS_LVD_4_6V             (0x0F<<LVD_LVDCON_LVDSEL_Pos)
 
 // PWMCON
 #define EPWM_PWMCON_PWMRUN_Pos   (7)
@@ -2153,6 +2184,41 @@ static inline void SYS_ClearPowerOnResetFlag(void) {
     WDCON &= ~WDT_WDCON_PORF_Msk;
 }
 #endif  // WINK_CMS8S_VENDOR_SYS_RESET
+
+// ── 12b) LVD driver shims (verbatim from vendor StdDriver system.c) ──────────
+// LVDCON is NOT TA-protected (only CLKDIV/WDCON use the TA window).
+#ifndef WINK_CMS8S_VENDOR_SYS_LVD
+static inline void SYS_EnableLVD(void) {
+    LVDCON |= LVD_LVDCON_LVDEN_Msk;
+}
+
+static inline void SYS_DisableLVD(void) {
+    LVDCON &= ~(LVD_LVDCON_LVDEN_Msk);
+}
+
+static inline void SYS_ConfigLVD(uint8_t LVDValue) {
+    uint8_t temp = LVDCON;
+    temp &= ~(LVD_LVDCON_LVDSEL_Msk);
+    temp |= LVDValue;
+    LVDCON = temp;
+}
+
+static inline void SYS_EnableLVDInt(void) {
+    LVDCON |= LVD_LVDCON_LVDINTE_Msk;
+}
+
+static inline void SYS_DisableLVDInt(void) {
+    LVDCON &= ~(LVD_LVDCON_LVDINTE_Msk);
+}
+
+static inline uint8_t SYS_GetLVDIntFlag(void) {
+    return ((LVDCON & LVD_LVDCON_LVDINTF_Msk) ? 1 : 0);
+}
+
+static inline void SYS_ClearLVDIntFlag(void) {
+    LVDCON &= ~(LVD_LVDCON_LVDINTF_Msk);
+}
+#endif  // WINK_CMS8S_VENDOR_SYS_LVD
 
 // ── 13) EPWM Driver Macros & Inline APIs (from StdDriver epwm.h / epwm.c) ───────
 #define EPWM_CHANNEL_NUM                     (4)

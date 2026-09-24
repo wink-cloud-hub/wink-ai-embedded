@@ -1,0 +1,69 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "mcs51 CMS8S78xx LVD 4.0V threshold detection headless proof",
+    "templateId": "vendor_cms8s78xx_lvd",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "1000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "10ms",
+      "adcChannel": 62,
+      "valueNorm": 1.0,
+      "description": "Virtual VDD sense (rail key 62, board-channel space) at 5.0V, above the 4.0V LVD threshold. NOTE: INPUT_POWER is intentionally unused (no executor in this topology); the virtual sense key is the behavioral VDD injection seam."
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "gpio:26",
+      "matcher": 0,
+      "description": "[Power-on baseline] P3.2 stays at initial low 0, no LVD interrupt"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "100ms",
+      "adcChannel": 62,
+      "valueNorm": 0.7,
+      "description": "VDD drops to 3.5V (below the 4.0V threshold)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "150ms",
+      "target": "gpio:26",
+      "matcher": 1,
+      "description": "[First trigger] LVD interrupt (Vector 26), ISR runs P32=~P32 flipping to 1"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "250ms",
+      "target": "gpio:26",
+      "matcher": 1,
+      "description": "[Anti-storm hold] sustained 3.5V undervoltage, cleared flag never re-fires, P3.2 stable at 1"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "300ms",
+      "adcChannel": 62,
+      "valueNorm": 1.0,
+      "description": "VDD recovers to 5.0V (past the 4.1V hysteresis line, re-armed)"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "350ms",
+      "adcChannel": 62,
+      "valueNorm": 0.7,
+      "description": "VDD drops a second time to 3.5V"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "400ms",
+      "target": "gpio:26",
+      "matcher": 0,
+      "description": "[Second trigger] re-armed detector catches the drop again, ISR flips P3.2 back to 0"
+    }
+  ]
+}

@@ -99,6 +99,14 @@ typedef struct {
     uint64_t last_poll_us;
 } Cms8sAcmpState;
 
+// Low-voltage detect state (owner: cms8s_lvd.cpp).
+typedef struct {
+    uint8_t  state;          // 0=NORMAL (Vdd>=Vth), 1=UNDERVOLT (Vdd<Vth)
+    uint8_t  lvdintf;        // model-private effective LVDINTF (W0C settled in poll)
+    float    vdd_norm;       // last sampled VDD norm; reset default 1.0f (5.0V)
+    uint64_t last_poll_us;
+} Cms8sLvdState;
+
 // Enhanced PWM state (owner: cms8s_epwm.cpp).
 typedef struct {
     uint16_t counter[4];      // current counter per channel (0..3)
@@ -178,6 +186,7 @@ typedef struct {
     Cms8sPortExtIntState port_extint;
     Cms8sTimerState timer;
     Cms8sAcmpState  acmp;
+    Cms8sLvdState   lvd;
     Cms8sEpwmState  epwm;
     Cms8sSpiState   spi;
     Cms8sI2cState   i2c;

@@ -347,6 +347,11 @@ const Cms8sIrqExtension kCms8sIrqExtensions[] = {
     { IRQ_SOURCE_TIMER3, { 15u, 0xAAu, 0u, 0xB2u, 0u, 0xBAu, 0u, MCS51_IRQ_HW_AUTO_CLEAR } },
     { IRQ_SOURCE_TIMER4, { 16u, 0xAAu, 1u, 0xB2u, 1u, 0xBAu, 1u, MCS51_IRQ_HW_AUTO_CLEAR } },
     { IRQ_SOURCE_ACMP,   { 14u, 0xFFu, 0u, 0xFFu, 0u, 0xB9u, 7u, MCS51_IRQ_SW_CLEAR } },
+    // LVD: Vector 26, EIP3 (0xBB) bit 3 (module IRQ_LVD=27 -> bit 27-24=3),
+    // local enable + flag both live in XSFR LVDCON (no IE/EIF bit), so the
+    // raise-side model gates and flag/en stay 0xFF here; SW_CLEAR (firmware
+    // clears LVDCON.LVDINTF by writing 0).
+    { IRQ_SOURCE_LVD,    { 26u, 0xFFu, 0u, 0xFFu, 0u, 0xBBu, 3u, MCS51_IRQ_SW_CLEAR } },
     { IRQ_SOURCE_WDT,    { 20u, 0xAAu, 5u, 0x97u, 3u, 0xBAu, 5u, MCS51_IRQ_SW_CLEAR } },
 };
 
@@ -403,6 +408,18 @@ extern "C" bool cms8s_irq_flag_predicate(struct Mcu51Context* ctx,
         uint8_t d = ctx->xdata_shadow[XSFR_PWMDIF] & ctx->xdata_shadow[XSFR_PWMDIE];
         uint8_t fb = ((ctx->xdata_shadow[XSFR_PWMFBKC] & 0x40u) && (ctx->xdata_shadow[XSFR_PWMFBKC] & 0x80u)) ? 1u : 0u;
         return (z | p | u | d | fb) != 0;
+    }
+    if (src == IRQ_SOURCE_LVD) {
+        // Defense in depth behind the model-side raise gate (the LVD row
+        // carries flag_sfr == 0xFF, so dispatch short-circuits before the
+        // predicate; this branch documents the triple condition and guards
+        // any direct predicate caller): module enable (LVDEN bit 3) +
+        // interrupt enable (LVDINTE bit 1) + latched flag (LVDINTF bit 0).
+        constexpr uint16_t XSFR_LVDCON = 0xF690u;
+        const uint8_t lvdcon = ctx->xdata_shadow[XSFR_LVDCON];
+        return ((lvdcon & 0x08u) != 0u) &&
+               ((lvdcon & 0x02u) != 0u) &&
+               ((lvdcon & 0x01u) != 0u);
     }
     if (entry->flag_sfr == 0xFFu) {
         return true;

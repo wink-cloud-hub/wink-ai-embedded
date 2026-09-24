@@ -336,7 +336,7 @@ uint16_t Read_ADC_Channel(uint8_t ch) {
 1. **Timer2**：`REGX52.H` 中未声明 `T2CON`、`RCAP2L`、`RCAP2H`、`TL2`、`TH2`，全框架未提供 Timer2 计数模型。请统一使用 Timer0 或 Timer1；
 2. **Timer0 Mode 3（双 8 位独立分拆模式）**：Timer0 在 Mode 3 下保持空闲，STRICT 模式下触发 `MCS51_FEAT_TIMER_MODE3` 断言；
 3. **Timer 外部 C/T 引脚脉冲计数**：`TMOD` 中配置 `C/T = 1` 时无外部脉冲源，定时器保持空闲，STRICT 模式下触发 `MCS51_FEAT_TIMER_EXT_CLK` 断言；
-4. **STOP（Power-Down）唤醒源（GAP-17'）**：仿真支持的唤醒源为 `INT0/INT1`（需 `EA=1`）与 GPIO 端口中断 `P0EI~P3EI`（需对应 `PnEXTIE` 使能 + `EA=1`，每边沿唤醒一次）；`WUT`（LSI 唤醒定时器）、`LSE`、`SWE/UART0-RXD`、`LVD` 尚无模型，**不能唤醒 STOP**——低功耗代码若依赖这些源，仿真将停在 `PCON.1` 处，属预期内的诚实阻塞而非挂死，真机行为以手册为准。
+4. **STOP（Power-Down）唤醒源（GAP-17'）**：仿真支持的唤醒源为 `INT0/INT1`（需 `EA=1`）与 GPIO 端口中断 `P0EI~P3EI`（需对应 `PnEXTIE` 使能 + `EA=1`，每边沿唤醒一次）；`WUT`（LSI 唤醒定时器）、`LSE`、`SWE/UART0-RXD` 尚无模型，`LVD` 仅有运行态中断模型（2026-09-24，PLAN-20260924-CMS8S78XX-LVD），四者均**不能唤醒 STOP**——低功耗代码若依赖这些源，仿真将停在 `PCON.1` 处，属预期内的诚实阻塞而非挂死，真机行为以手册为准。
 5. **IAP/Flash 在应用编程（GAP-24）**：CMS8S78xx 的 `MCTRL/MDATA/MADR/MLOCK/PCRCD`（`0xF9~0xFF`）无 NVS 持久化与编程/擦除时序模型；任何固件访问触发 `MCS51_FEAT_IAP_FLASH`（STRICT 断言 / Release 计数），影子值会话内保持但掉电语义未模拟，量产须以真机标定为准。
 
 ---

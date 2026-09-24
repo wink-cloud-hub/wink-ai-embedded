@@ -61,6 +61,11 @@ void cms8s_acmp_reset(struct Mcu51Context* ctx);
 void cms8s_acmp_poll(struct Mcu51Context* ctx);
 uint64_t cms8s_acmp_next_event_us(struct Mcu51Context* ctx);
 
+void cms8s_lvd_init(struct Mcu51Context* ctx);
+void cms8s_lvd_reset(struct Mcu51Context* ctx);
+void cms8s_lvd_poll(struct Mcu51Context* ctx);
+uint64_t cms8s_lvd_next_event_us(struct Mcu51Context* ctx);
+
 void cms8s_epwm_init(struct Mcu51Context* ctx);
 void cms8s_epwm_reset(struct Mcu51Context* ctx);
 void cms8s_epwm_poll(struct Mcu51Context* ctx);
@@ -94,6 +99,15 @@ const mcs51_peripheral_desc_t kCms8sDescs[] = {
         cms8s_acmp_reset,
         cms8s_acmp_poll,
         cms8s_acmp_next_event_us,
+        MCS51_PHASE_ADC,
+        MCS51_FAMILY_MASK_CMS8S78XX
+    },
+    {
+        "cms8s_lvd",
+        cms8s_lvd_init,
+        cms8s_lvd_reset,
+        cms8s_lvd_poll,
+        cms8s_lvd_next_event_us,
         MCS51_PHASE_ADC,
         MCS51_FAMILY_MASK_CMS8S78XX
     },

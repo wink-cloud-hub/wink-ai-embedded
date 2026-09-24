@@ -128,8 +128,10 @@ void poll_port_ints(Mcu51Context* ctx, bool force, uint64_t now) {
                     // PD clause in mcs51_raise_irq: EA-gated, PD-bit-gated,
                     // one post per edge (match fires once per transition,
                     // so a held level cannot flood the event queue).
-                    // WUT/LSE/SWE/LVD have no model and stay unwakeable
-                    // (redline §4.7).
+                    // WUT/LSE/SWE have no model and stay unwakeable
+                    // (redline §4.7); LVD is modeled for run-state IRQ by
+                    // cms8s_lvd but stays unwakeable from STOP (Power-Down)
+                    // wake is descoped (see PLAN-20260924-CMS8S78XX-LVD).
                     if (ea && (ctx->sfr_shadow[SFR_PCON] & 0x02u) != 0u) {
                         wink_event_t evt = {0};
                         (void)wink_event_post(&evt);

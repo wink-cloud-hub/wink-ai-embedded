@@ -47,7 +47,7 @@
 | [GAP-13](#gap-13p1第二轮评审复位后硬件时钟未种子化12mhz-兜底与-ckcon-叠加最多-6-倍) | ✅ 完成 | **P1** | A-06 | 复位后硬件时钟未种子化（12MHz 兜底，与 CKCON 叠加最多 6 倍）；buzzer 同源问题并入（GAP-16） | 不写 CLKDIV 就起定时器的固件时序错 | 否（main 首句即配时钟） |
 | [GAP-14](#gap-14p2第二轮评审timer0-mode1-软件重载延迟不建模) | ⬜ 未开始 | P2 | A-08（粗补/文档）+ B-03（精确根治） | Timer0 Mode1 软件重载延迟（每 tick 数 µs 漂移）不建模 | 高精度时间戳/频率测量应用系统性漂移 | 可忽略（最细 100ms） |
 | [GAP-15](#gap-15p2第二轮评审整端口写的逐位通知非原子) | ⬜ 未开始 | P2 | A-08 | 整端口写被拆成 8 个逐位 gpio_write 通知（当前同步不可观测，属隐式假设） | 未来异步插件/总线型外设可能读到中间态 | 否（同步执行） |
-| [GAP-17'](#gap-17p2第二轮评审修正stoppd-唤醒源不完整) | 🔧 部分（2026-09-11：GPIO 端口中断 PD 唤醒路径落地 + `test_mcs51_low_power` 用例，反向验证通过；WUT/LSE/SWE/LVD 标不支持，红线 §4.7 落） | P2 | A-08 | STOP 唤醒源模型不完整（仅 INT0/1；缺 GPIO 端口中断/WUT/LSE/LVD/SWE） | 低功耗代码仿真不醒/真机行为不一致 | 否（未用低功耗） |
+| [GAP-17'](#gap-17p2第二轮评审修正stoppd-唤醒源不完整) | 🔧 部分（2026-09-11：GPIO 端口中断 PD 唤醒路径落地 + `test_mcs51_low_power` 用例，反向验证通过；2026-09-24：LVD 运行态中断模型落地（PLAN-20260924-CMS8S78XX-LVD，Vector 26），PD 唤醒仍 descope；WUT/LSE/SWE 标不支持，红线 §4.7 落） | P2 | A-08 | STOP 唤醒源模型不完整（仅 INT0/1；缺 GPIO 端口中断/WUT/LSE/LVD/SWE） | 低功耗代码仿真不醒/真机行为不一致 | 否（未用低功耗） |
 | [GAP-19](#gap-19p1第二轮评审结构性风险-a场景绿--可烧录的物理前提未显式呈现) | ⬜ 未开始 | **P1** | A-07 | 结构：场景报告/AI 提示词不呈现"绿色不保证的物理前提" | 用户/AI 误把仿真绿当可烧录背书 | 间接 |
 | [GAP-20](#gap-20p2第二轮评审结构性风险-ccleanup-副本溯源与门禁状态不可见) | ⬜ 未开始 | P2 | A-07 | 结构：被测的是 cleanup 副本，C51 编译状态不在报告中 | 改写器缺陷导致"测的不是真机跑的" | 间接 |
 | [GAP-21](#gap-21p2第二轮评审结构性风险-bwasm-每场景重建的生命周期假设无回归钉防) | ⬜ 未开始 | P2 | A-07 | 结构：跨场景污染当前靠"每场景新 wasm 实例"兜住，无测试钉防 | 未来 runner 复用实例即成 P0 | 否 |
@@ -452,7 +452,7 @@ health_pot 的 10ms tick（T0 重载 0xB1E0）与 9600bps（TH1=217）都按 24M
 
 ### GAP-17'（P2，第二轮评审修正）STOP（Power-Down）唤醒源不完整
 
-评审原案"PCON 未建模"不成立：`mcs51_bridge.cpp:59` 注册 0x87 写 hook，`mcs51_pcon.cpp` 实现了 IDLE（步进推进到下一事件 / 事件等待）与 PD（事件等待），`mcs51_isr.cpp:205-215` 在中断到达时 post 唤醒事件。**但对照参考手册 §5.4.1，STOP 的合法唤醒源为：① INT0/INT1；② GPIO 端口中断（PxnEICFG，向量 7~10）；③ WUT（LSI 唤醒定时器）；④ LSE；另 §5.1 SWE 位置位时 UART0 RXD 可唤醒、LVD 可唤醒。** 模型只放行了 INT0/INT1（且要求 EA=1），其余源在 PD 中唤不醒 fiber（PD 阻塞于 `wink_event_pend` 期间微步停摆，端口轮询也不运行）。**处置**：P2 补 GPIO 端口中断的 PD 唤醒路径（port_ints 挂起即 post），WUT/LSE/SWE/LVD 在模型实现对应外设前于红线手册标注"不支持 STOP 唤醒"；不允许静默假装能醒。
+评审原案"PCON 未建模"不成立：`mcs51_bridge.cpp:59` 注册 0x87 写 hook，`mcs51_pcon.cpp` 实现了 IDLE（步进推进到下一事件 / 事件等待）与 PD（事件等待），`mcs51_isr.cpp:205-215` 在中断到达时 post 唤醒事件。**但对照参考手册 §5.4.1，STOP 的合法唤醒源为：① INT0/INT1；② GPIO 端口中断（PxnEICFG，向量 7~10）；③ WUT（LSI 唤醒定时器）；④ LSE；另 §5.1 SWE 位置位时 UART0 RXD 可唤醒、LVD 可唤醒。** 模型只放行了 INT0/INT1（且要求 EA=1），其余源在 PD 中唤不醒 fiber（PD 阻塞于 `wink_event_pend` 期间微步停摆，端口轮询也不运行）。**处置**：P2 补 GPIO 端口中断的 PD 唤醒路径（port_ints 挂起即 post），WUT/LSE/SWE/LVD 在模型实现对应外设前于红线手册标注"不支持 STOP 唤醒"；不允许静默假装能醒。**更新（2026-09-24，PLAN-20260924-CMS8S78XX-LVD）**：LVD 运行态中断模型已落地（`cms8s_lvd.cpp`，Vector 26），LVD 分句改为"LVD 模型已有、PD 唤醒接入另项"；WUT/LSE/SWE 仍无模型、维持不支持 STOP 唤醒。
 
 ### GAP-19（P1，第二轮评审结构风险 A）"场景绿 = 可烧录"的物理前提必须主动呈现
 

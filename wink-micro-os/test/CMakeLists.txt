@@ -1038,6 +1038,12 @@ if(TARGET wink_mcs51_core)
         ../frameworks/mcs51/test/cms8s78xx/test_mcs51_cms8s_epwm.cpp)
     target_compile_definitions(test_mcs51_cms8s_epwm PRIVATE WINK_MCU_CMS8S78XX=1)
 
+    # CMS8S78xx Low-Voltage Detect (LVD) peripheral model test
+    # (PLAN-20260924-CMS8S78XX-LVD): W0C, edge latch, anti-storm, re-arm, gates.
+    add_mcs51_host_test(test_mcs51_cms8s_lvd
+        ../frameworks/mcs51/test/cms8s78xx/test_mcs51_cms8s_lvd.cpp)
+    target_compile_definitions(test_mcs51_cms8s_lvd PRIVATE WINK_MCU_CMS8S78XX=1)
+
     # Stage 3 A-02: ADC reference chain — VSEL/Vrail scaling (Pull track),
     # LDO/mux readiness gates + counters, DIV-sensitive charge_us.
     add_mcs51_host_test(test_mcs51_adc_refchain
