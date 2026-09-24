@@ -1,0 +1,20 @@
+{
+  "app_name": "systemclock",
+  "display_name": "CMS8S78xx V2.0.2 - SystemClock CLO /64 on P1.3 + P3.2 blink",
+  "board": "cms8s78xx_devboard",
+  "category": "vendor_example",
+  "mcu": "cms8s78xx",
+  "tick_ms": 1,
+  "upstream": {
+    "vendor": "Cmsemicon",
+    "version": "V2.0.2",
+    "source_dir": "docs/vendors/Cmsemicon/CMS8S78xx_DemoCode_V2.0.2/CMS8S78xx_Example/Example/SystemClock/code"
+  },
+  "devices": {
+    "led": {
+      "type": "led",
+      "gpio_pin": "$board.headers.P32",
+      "active_high": true
+    }
+  }
+}

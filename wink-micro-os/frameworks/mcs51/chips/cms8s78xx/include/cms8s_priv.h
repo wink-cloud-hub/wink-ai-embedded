@@ -48,6 +48,22 @@ typedef struct {
     uint32_t toggle_count;
 } Cms8sBuzzerState;
 
+// System-clock output CLO (owner: cms8s_clo.cpp, PLAN-20260924-SYSCLOCK).
+// Pure-integer Bresenham phase accumulator over T_half = 32e6/Fsys us:
+// step_us/rem_step are quotient/remainder of 32000000/clock_hz_last,
+// rem_accum carries the fractional microsecond across toggles so the
+// macroscopic output frequency has zero error (24 MHz -> true 375 kHz).
+typedef struct {
+    bool     running;
+    uint8_t  pin_level;
+    uint32_t step_us;        // integer quotient: (32 * 1e6) / clock_hz
+    uint32_t rem_step;       // integer remainder: (32 * 1e6) % clock_hz
+    uint32_t rem_accum;      // phase accumulator: overflows carry whole us
+    uint32_t clock_hz_last;  // last configured Fsys (dynamic retune detect)
+    uint64_t next_toggle_us; // next pin-toggle virtual timestamp
+    uint32_t toggle_count;   // cumulative toggles (host-test observable)
+} Cms8sCloState;
+
 // On-chip 12-bit ADC + ADET trigger (owner: cms8s_adc.cpp).
 typedef struct {
     uint32_t conversion_count;
@@ -181,6 +197,7 @@ typedef struct {
 typedef struct {
     Cms8sSysState   sys;
     Cms8sBuzzerState buzzer;
+    Cms8sCloState   clo;
     Cms8sAdcState   adc;
     Cms8sAdetState  adet;
     Cms8sPortExtIntState port_extint;

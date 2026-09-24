@@ -1044,6 +1044,13 @@ if(TARGET wink_mcs51_core)
         ../frameworks/mcs51/test/cms8s78xx/test_mcs51_cms8s_lvd.cpp)
     target_compile_definitions(test_mcs51_cms8s_lvd PRIVATE WINK_MCU_CMS8S78XX=1)
 
+    # CMS8S78xx system-clock output (CLO) peripheral model test
+    # (PLAN-20260924-CMS8S78XX-SYSCLOCK): mux gate, Bresenham stepping,
+    # dynamic retune, classic isolation, reset-in-flight.
+    add_mcs51_host_test(test_mcs51_cms8s_clo
+        ../frameworks/mcs51/test/cms8s78xx/test_cms8s_clo.cpp)
+    target_compile_definitions(test_mcs51_cms8s_clo PRIVATE WINK_MCU_CMS8S78XX=1)
+
     # Stage 3 A-02: ADC reference chain — VSEL/Vrail scaling (Pull track),
     # LDO/mux readiness gates + counters, DIV-sensitive charge_us.
     add_mcs51_host_test(test_mcs51_adc_refchain

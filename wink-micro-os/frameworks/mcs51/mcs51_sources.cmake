@@ -44,6 +44,7 @@ set(MCS51_CMS8S_SOURCES
     "${MCS51_FW_DIR}/chips/cms8s78xx/src/cms8s_acmp.cpp"
     "${MCS51_FW_DIR}/chips/cms8s78xx/src/cms8s_lvd.cpp"
     "${MCS51_FW_DIR}/chips/cms8s78xx/src/cms8s_buzzer.cpp"
+    "${MCS51_FW_DIR}/chips/cms8s78xx/src/cms8s_clo.cpp"
     "${MCS51_FW_DIR}/chips/cms8s78xx/src/cms8s_epwm.cpp"
     "${MCS51_FW_DIR}/chips/cms8s78xx/src/cms8s_spi.cpp"
     "${MCS51_FW_DIR}/chips/cms8s78xx/src/cms8s_i2c.cpp"

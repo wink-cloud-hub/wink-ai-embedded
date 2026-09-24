@@ -13,16 +13,16 @@
 | **创建日期** | `2026-09-24` |
 | **目标平台/SoC** | `host` (GCC/MSVC C++17), `wasm` (Emscripten ASYNCIFY) 基于 `frameworks/mcs51` |
 | **工具链/SDK版本**| GCC 11+, MSVC 19+, Emscripten 3.1+, 原厂 `CMS8S78xx_DemoCode_V2.0.2` |
-| **计划状态** | `Accepted / 待执行（评审已闭环）` |
+| **计划状态** | `Done / 执行闭环（2026-09-24，5 任务全绿，偏离见 v1.3）` |
 | **优先级** | P2（Checklist §9 编号 40，与清单口径一致） |
-| **计划版本** | `v1.2`（评审吸收与架构融合见 §1.1） |
+| **计划版本** | `v1.3`（评审吸收、架构融合与执行偏离见 §1.1） |
 | **关联技术设计** | 原厂 `CMS8S78xx` 参考手册 Ch.4（系统时钟结构 §4.1，CLO 输出）；保真度基线 `2026-09-08-mcs51-simulation-vs-silicon-fidelity-and-test-limits.md` |
 | **关联设计规范** | [`docs/zh/design/02-wink-micro-os/07-mcs51-simulation-interception.md`](../../zh/design/02-wink-micro-os/07-mcs51-simulation-interception.md) |
 | **关联合格清单** | [`docs/vendors/Cmsemicon/CMS8S78XX_EXAMPLE_CHECKLIST.md`](../../vendors/Cmsemicon/CMS8S78XX_EXAMPLE_CHECKLIST.md) §9（编号 40） |
 | **关联 ADR** | [ADR-0004](../../design/decisions/0004-static-dispatch-vs-runtime-ops.md)（静态分发与无虚表）、[ADR-0012](../../decisions/core/0012-fail-loud-contract-discipline.md)（契约诚实与强报错）、[ADR-0043](../../design/decisions/0043-arch-lint-rules.md)（分层门禁）、[ADR-0070](../../decisions/core/0070-mcs51-zero-code-simulation-interception-layer.md)（C++ 零侵入拦截）、[ADR-0071](../../decisions/core/0071-sfr-proxy-rmw-edge-data-plane.md)（XSFR 代理数据面）、[ADR-0072](../../decisions/core/0072-dual-clock-domain-and-quota-catchup.md)（双时钟域与微步调度） |
 | **前置依赖计划** | `PLAN-20260924-CMS8S78XX-LVD-FIDELITY`（CLO 模型复用其验证过的微步/Headless 链路；`MCS51_MAX_PERIPHERALS` 在 LVD 落地后已满 12 槽） |
 | **跨仓依赖** | **无**（CLO 走标准 `js_pal_gpio_write` ch1 数字写通道，`ASSERT_WAVEFORM` 为已有契约） |
-| **目标里程碑** | 1. 建立 `cms8s_clo` 高保真时钟输出模型（P1.3 复用 CLO，Fsys/64 方波，buzzer 同构 + Bresenham 相位累加）；<br>2. 补齐 `REG_CMS8S78XX.H` 缺失的 `GPIO_P13_MUX_CLO (0x05)`；<br>3. 外设注册表扩容 `MCS51_MAX_PERIPHERALS 12→16`（LVD 已占满）；<br>4. 交付原厂源码零改动的微应用 `vendor_cms8s78xx_systemclock` 与三件套编译资产；<br>5. Host CTest（7 用例矩阵）+ Headless 波形断言（P13 CLO 375kHz + P32 闪烁，20ms 紧凑预算防溢出）100% 绿灯并摘牌 Checklist 40。 |
+| **目标里程碑** | 1. 建立 `cms8s_clo` 高保真时钟输出模型（P1.3 复用 CLO，Fsys/64 方波，buzzer 同构 + Bresenham 相位累加）；<br>2. 补齐 `REG_CMS8S78XX.H` 缺失的 `GPIO_P13_MUX_CLO (0x05)`；<br>3. 外设注册表扩容 `MCS51_MAX_PERIPHERALS 12→16`（LVD 已占满）；<br>4. 交付原厂源码零改动的微应用 `vendor_cms8s78xx_systemclock` 与三件套编译资产；<br>5. Host CTest（7 用例矩阵）+ Headless 波形断言（P13 CLO 375kHz + P32 闪烁，4s 长跑宽窗，v1.3 偏离替代 20ms 短窗）100% 绿灯并摘牌 Checklist 40。 |
 | **所需技能** | `embedded-best-practice` |
 
 ### 1.1 变更记录
@@ -32,6 +32,7 @@
 | v1.0 | 2026-09-24 | 初稿：CLO 模型 SSOT、µs 量化诚实标注、5 任务链 |
 | v1.1 | 2026-09-24 | 深度评审补丁：Host notify 128 饱和断言纪律；Headless 虚拟时间预算 ≤200ms；Test 5 改直写 `clock_hz`；波形断言定为 `$near 250000±5000`。评审确认：TRIS 方向门控不拦截 bridge 直写（buzzer/ACMP 先例）、空 ISR 转译零风险、P13 无复用冲突、CLO 不进 `Mcu51Context` 故预算零影响 |
 | v1.2 | 2026-09-24 | 专家评审融合闭环（Accepted）：① 纠正半周期物理公式（分子 64→32），引入纯整数 Bresenham 相位累加器实现 24MHz 下真 375kHz（消除 33.3% 频偏）；② 攻克 PinTracer 10000 槽环形缓冲溢出风险，Headless 虚拟时间由 ≤200ms 紧缩至 20ms，断言窗口前置至 `[2ms, 6ms]`；③ 扩充 Host CTest 至 7 用例矩阵（补齐 Classic 跨 Family 隔离防护与运行态 Reset 飞态清零安全）；④ 规范 CTest 路径为 `../frameworks/mcs51/test/cms8s78xx/test_cms8s_clo.cpp` 对齐既有规范。 |
+| v1.3 | 2026-09-24 | 执行偏离记录（Done，证据见 Checklist #40）：① v1.2 的 20ms 紧凑预算 + `[2ms,6ms]` 前置短窗实证不可行——headless 引擎按 ~10ms 主节拍批量执行固件、同节拍内全部边沿共享一个时间戳，375kHz 在毫秒级窗口内恒读 0（CLO 模型经 wasm 内打点证实以真 375kHz 翻转，固件/P32 亦正常，纯属观测层量化问题）；改用 4s 长跑 + `[100ms,3900ms]` 宽窗（多秒平均稀释批量量化噪声至 <0.2%，`$near 375000±2000` 实测 ±500Hz 稳定通过，Virtual 4s / Wall ~3.6s）；② `getPinEdges` 反馈不分引脚，CLO 与 P32 须拆分为 `clo.scenario.json` / `p32.scenario.json` 双文件隔离（混窗互染计数）；③ P32 取活性带 `$between [1000,300000]`（实测 sim 节奏 50kHz，非硅片真值，符合原计划“不断言绝对周期”）。附带发现（非本计划引入，干净树可复现）：`timer0_timming_mode` 现读 10000（期望 5000），系引擎侧预存漂移，已知会相关方。 |
 
 ---
 
@@ -56,7 +57,7 @@ P32 软件延时闪烁**无需外设模型**（纯 CPU 指令流，fiber 自然�
 | **D1** | CLO 模型形态 | **独立 `cms8s_clo.h/cpp` 外设，buzzer 同构**（`running/pin_level/next_toggle_us/toggle_count` + `MAX_TOGGLES_PER_POLL` 封顶） | buzzer 是已验证的"mux 门控 + 分频 pin toggle"同构解；`cms8s_sys.cpp` 已 569+ 行，不再塞入 |
 | **D2** | 运行门控 | **`P13CFG == 0x05` 即运行，无使能寄存器** | 原厂示例无任何 CLO 使能调用，硅片即纯复用选择；频率恒 `Fsys/64`，`Fsys` 取 `ctx->clock_hz` 活值（CLKDIV 钩子维护，复位种子 24MHz） |
 | **D3** | µs 量化与保真度 | **纯整数 Bresenham 相位累加器（真 375kHz 纳秒守恒）** | 纠正 v1.1 误将整周期分子 64 当半周期的物理失误（$T_{half}=\frac{32\times 10^6}{F_{sys}}$）；通过整型余数累加（24MHz 下翻转间隔序列 `[1, 1, 2, 1, 1, 2...]µs`，平均半周期 1.333µs），宏观波形频率 100% 保持在硅片真实的 375,000 Hz（0% 频偏），告别 250kHz 虚假参数 |
-| **D4** | P32 与 PinTracer 容量 | **前置短窗断言 + 20ms 紧凑预算（防 10k 环形缓冲溢出）** | CLO(375k) + P32(~330k) 翻转率 >1k edges/ms，10ms 即可冲垮 `PinTracer` 10000 槽缓冲；前置短窗（`[2ms, 6ms]` @ `7ms`）且将场景总预算定为 20ms，彻底杜绝数据覆盖导致的 `0.00Hz` 假死 |
+| **D4** | P32 与观测层批量量化 | **4s 长跑 + `[100ms, 3900ms]` 宽窗（替代 v1.2 的 20ms 前置短窗，见 v1.3）** | headless 引擎按 ~10ms 主节拍批量执行固件、同节拍边沿共享一时间戳，375kHz 在毫秒窗内恒读 0；headless 边沿采集为无界数组（非 PinTracer 10k 环形），多秒平均稀释批量量化噪声至 <0.2%；`getPinEdges` 不分引脚，CLO/P32 须分文件隔离 |
 | **D5** | shim 范围 | **仅加 `GPIO_P13_MUX_CLO`**（P13CFG XSFR、`SYS_SET_SYSTEM_CLK`、GPIO 宏均已存在） | 最小差分；`shim_audit` 须保持 0 hard mismatch |
 | **D6** | 注册表扩容 | **`MCS51_MAX_PERIPHERALS 12→16`** | LVD 已占满 12 槽；16 预留 LCD 类模型与新 family 空间，注释同步修订 |
 
@@ -147,7 +148,7 @@ Task 2: cms8s_clo 建模 + priv + 注册 + MAX_PERIPHERALS 16 + sources
         ▼
 Task 3: Host CTest (test_mcs51_cms8s_clo, 7 用例矩阵) + 全绿门禁
         ▼
-Task 4: 微应用 + 三件套 + 前置短窗防溢出 Headless 实证 (375kHz)
+Task 4: 微应用 + 三件套 + 长跑宽窗 Headless 实证 (375kHz, v1.3)
         ▼
 Task 5: lint/许可/回写 + Checklist 40 摘牌
 ```
@@ -155,7 +156,7 @@ Task 5: lint/许可/回写 + Checklist 40 摘牌
 ### Task 1: 方言垫片补齐（无 Allowlist 变更）
 - **目标**：`REG_CMS8S78XX.H`（P13 mux 区，`GPIO_P13_MUX_RXD` 行旁）
 - 新增：`#define GPIO_P13_MUX_CLO (0x05)  // P1.3 as CLO (system clock /64 output)`（verbatim 原厂 `gpio.h`）
-- 验证：`python wink-micro-os/frameworks/mcs51/tools/mcs51_shim_audit.py`（0 hard mismatch；Allowlist 无新 XSFR， kimia 不重生成，仅 `--check-xsfr-allowlist` 过新鲜度）
+- 验证：`python wink-micro-os/frameworks/mcs51/tools/mcs51_shim_audit.py`（0 hard mismatch；Allowlist 无新 XSFR，不重生成，仅 `--check-xsfr-allowlist` 过新鲜度）
 
 ### Task 2: 仿真内核 CLO 建模与注册
 - **新建**：`chips/cms8s78xx/include/cms8s_clo.h`（`init/reset/poll/next_event_us` + 3 项可观测函数 + 头注释 D3）
@@ -179,10 +180,10 @@ Task 5: lint/许可/回写 + Checklist 40 摘牌
 ### Task 4: 原厂微应用接入与 Headless 实证
 - **路径**：`wink-micro-app/vendor/cms8s78xx/systemclock/`；原厂仅 `main.c` + `isr.c`（全空 ISR），**一行不改**镜像
 - **配套**：`CMakeLists.txt`（仿 acmp0/reset_software，`_SRC_FILES main.c isr.c`）、`wink-app.json`（`app_name: systemclock`，`templateId` 对齐 `vendor_cms8s78xx_systemclock`，`upstream.source_dir` 指 `.../Example/SystemClock/code`，devices 绑 P32 LED）
-- **场景设计**（`unisim-scenarios/systemclock.scenario.json`）：
-  - **CLO 频率高保真断言**：在 `timeUs: "7ms"` 执行 `ASSERT_WAVEFORM pin: 11`，观测窗口 `windowUs: ["2ms", "6ms"]`（时长 4ms，产生 3000 个边沿，完全位于 PinTracer 10000 槽安全区），断言值 `$near: {target: 375000, tolerance: 2000}`（100% 吻合硅片真实 375kHz）；
-  - **P32 闪烁指示断言**：在 `timeUs: "10ms"` 对 `pin: 26`（P3.2）执行 `ASSERT_WAVEFORM`，断言活性 `$between: [1000, 300000]` 或差分点断言（先实测后微调）；
-  - **虚拟时间紧凑预算（防溢出核心）**：场景 `timeoutUs` 初值设为 `"20000"`（20ms），绝不设 100ms~1s 长窗，杜绝 PinTracer 环形覆盖与无谓的 Wasm 桥接耗时。
+- **场景设计**（`unisim-scenarios/clo.scenario.json` + `p32.scenario.json`，双文件隔离——headless `getPinEdges` 反馈不分引脚，混窗互染计数）：
+  - **CLO 频率高保真断言**（`clo.scenario.json`）：`ASSERT_WAVEFORM pin: 11`，观测窗口 `windowUs: ["100000", "3900000"]` @ `timeUs: "3950000"`（4s 长跑；引擎 ~10ms 批量时间戳量化经多秒平均稀释至 <0.2%），断言值 `$near: {target: 375000, tolerance: 2000}`（100% 吻合硅片真实 375kHz；±500Hz 重跑稳定）；
+  - **P32 闪烁指示断言**（`p32.scenario.json`）：对 `pin: 26`（P3.2）执行 `ASSERT_WAVEFORM`，断言活性 `$between: [1000, 300000]`（实测 sim 节奏 50kHz；不断言绝对周期，只断言翻转活性，符合“先实测后落值”）；
+  - **虚拟时间预算（v1.3 修订）**：场景 `timeoutUs` 为 `"4000000"`（4s，Wall-clock ~3.6s），替代 v1.2 的 20ms 紧凑预算（实证不可行，见 v1.3 偏离记录）。
 - **命令**：`winkcli build sim --app vendor_cms8s78xx_systemclock`；`winkcli sim run --app vendor_cms8s78xx_systemclock --mode headless --scenarios ...`
 
 ### Task 5: 治理回写与 Checklist 摘牌
@@ -195,7 +196,7 @@ Task 5: lint/许可/回写 + Checklist 40 摘牌
 ## 5. 验收准则与黄金门禁
 
 1. **真实编译产物完整**：`unisim-assets/` 下 `device-tree.json`、`wink_simulator.js`、`wink_simulator.wasm` 三件套；
-2. **Headless 断言 100% 绿灯**：退出码 0，虚拟时间 ≤20ms，Wall-clock 耗时 ≤100ms，CLO 波形断言精确命中 375kHz；
+2. **Headless 断言 100% 绿灯**：退出码 0，虚拟时间 4s（v1.3 修订：20ms 短窗实证不可行，见 §1.1），Wall-clock 耗时 ~3.6s，CLO 波形断言精确命中 375kHz（`$near 375000±2000`，±500Hz 重跑稳定）；
 3. **Host CTest 全绿**：新增 `test_mcs51_cms8s_clo` 全 PASS（7/7 用例），`test_mcs51_context_budget` 仍绿，既有可构建 suite 无回退（4 项预存 MSVC 失败除外，见 LVD 计划 v1.2）；
 4. **代码纯净**：零 `malloc`、CLO 状态零进 `Mcu51Context`（chip 池）、`mcs51_shim_audit` 0 漂移、许可地图（runtime LGPL / test GPL）；
 5. **原厂零改动**：`main.c`/`isr.c` 与 `docs/vendors/.../SystemClock/code/` diff 为空。
@@ -206,8 +207,8 @@ Task 5: lint/许可/回写 + Checklist 40 摘牌
 
 | 风险 | 等级 | 缓解 |
 |------|:---:|------|
-| PinTracer 10000 槽环形缓冲区高频溢出导致断言假死 | 高 | 断言窗口前置至 `[2ms, 6ms]` @ `7ms`，总仿真窗口严格压至 20ms（产生约 6000 边沿，坚守在 10000 安全阈值内） |
-| 超高频 CLO 翻转拖慢 Headless wall-clock | 中 | `MAX_TOGGLES_PER_POLL` 封顶（buzzer 同款）；`next_event_us` 精确调度避免忙轮询；紧凑 20ms 窗口使 Wall-clock 压低在 50ms 级 |
+| 引擎批量时间戳量化导致毫秒窗恒读 0（v1.3 已证伪短窗假设） | 高 | 4s 长跑 + `[100ms, 3900ms]` 宽窗（多秒平均稀释量化噪声至 <0.2%）；CLO/P32 分文件隔离（`getPinEdges` 不分引脚）；headless 边沿采集为无界数组，10k PinTracer 环形之忧不适用本链路 |
+| 超高频 CLO 翻转拖慢 Headless wall-clock | 中 | `MAX_TOGGLES_PER_POLL` 封顶（buzzer 同款）；`next_event_us` 精确调度避免忙轮询；4s 长跑 Wall-clock 实测 ~3.6s（EPWM 刹车类已有 8~18s 先例，可接受） |
 | 离散微秒步进导致 375kHz 频偏 | 低 | 引入 Bresenham 相位累加器，微观 `[1, 1, 2]µs` 步进，宏观平均半周期 1.333µs，达成 100% 零频偏 |
 | P32 软件延时周期不可预估 | 低 | Task 4 显式先实测后落值；不断言绝对周期，只断言翻转活性或差分点 |
 | `MAX_PERIPHERALS` 扩容弱化注册表熔断语义 | 低 | 仅 12→16，注释修订保留 abort 熔断；LCD 仍有 3 槽 headroom |
@@ -217,10 +218,10 @@ Task 5: lint/许可/回写 + Checklist 40 摘牌
 
 ## 7. 交付物清单
 
-1. 计划文档：本文件（v1.2，确认后转执行中）
+1. 计划文档：本文件（v1.3，执行闭环 Done）
 2. 框架：`REG_CMS8S78XX.H`（1 宏）、**新建** `cms8s_clo.h/cpp`、`cms8s_priv.h`、`cms8s_register.cpp`、`mcs51_sources.cmake`、`mcs51_peripheral.h`
 3. 测试：**新建** `frameworks/mcs51/test/cms8s78xx/test_cms8s_clo.cpp` + CMake 注册
-4. App：`wink-micro-app/vendor/cms8s78xx/systemclock/`（2 源镜像 + CMake + json + scenario + assets 三件套）
+4. App：`wink-micro-app/vendor/cms8s78xx/systemclock/`（2 源镜像 + CMake + json + `clo`/`p32` 双 scenario + assets 三件套）
 5. 文档：Checklist #40、Layer-① 表① CLO 行
 
 ---

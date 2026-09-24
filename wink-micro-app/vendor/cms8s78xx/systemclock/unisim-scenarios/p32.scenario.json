@@ -1,0 +1,26 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "CMS8S78xx SystemClock P3.2 blink liveness proof",
+    "templateId": "vendor_cms8s78xx_systemclock",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "4000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "3950000",
+      "windowUs": ["100000", "3900000"],
+      "pin": 26,
+      "expected": {
+        "kind": "frequencyHz",
+        "value": {
+          "$between": [1000, 300000]
+        }
+      },
+      "description": "P3.2 software-delay blink indicator shows toggle activity (liveness only, never absolute period: the Keil for(3000) delay loop is pure arithmetic and charges ~0 virtual time per ADR-0076 native-backend limits, so the 50kHz sim pacing is NOT the silicon blink rate). Separate file from clo.scenario.json: the headless getPinEdges feed is pin-agnostic, so mixed-pin waveforms would corrupt each other's counts."
+    }
+  ]
+}

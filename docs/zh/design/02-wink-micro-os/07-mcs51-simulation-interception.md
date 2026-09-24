@@ -30,6 +30,7 @@
 | **iron_ntc 热闭环**（ADC0832 测温 + NTC LUT + 继电器 bang-bang + 开/短路安全态） | ✅ | M6 e2e |
 | **CMS8S78xx EPWM & 硬件刹车**（递减/增减中心对称计数、4通道时基、过零/周期中断向量 18、4种刹车模式、FB0/1 动态引脚输入与片内 ACMP 模拟比较器直连刹车） | ✅ | PLAN-20260916-CMS8S78XX-EPWM-FIDELITY，test_mcs51_cms8s_epwm（9 例）/ 8 个原厂微应用实证 |
 | **CMS8S78xx LVD 低压检测**（XSFR LVDCON@0xF690、16 档阈值 2.0~4.6V、下降沿单向锁存 + Vector 26、中断风暴免疫） | ✅ | PLAN-20260924-CMS8S78XX-LVD-FIDELITY，test_mcs51_cms8s_lvd（6 例）/ `vendor_cms8s78xx_lvd` headless 8 步全绿。诚实口径：① VDD 刺激走**虚拟 sense rail key 62**（板级通道空间，非硅片引脚；INPUT_POWER 无执行器故弃用）；② **100mV 重臂迟滞为行为级建模选择**，手册未给滞回值，非硅标定真值；③ STOP 唤醒 descope（仅运行态 IRQ）。 |
+| **CMS8S78xx CLO 系统时钟输出**（P13CFG=0x05 复用门控、无使能寄存器、Fsys/64，纯整数 Bresenham 相位累加器零频偏：24MHz 下 `[1,1,2]µs` 步进即真 375kHz） | ✅ | PLAN-20260924-CMS8S78XX-SYSCLOCK-FIDELITY，test_mcs51_cms8s_clo（7 例：mux 门控/Bresenham 步进/6MHz 变频跟随 93.75kHz/跨 Family 隔离/飞态复位）/ `vendor_cms8s78xx_systemclock` headless 双场景全绿（CLO `$near 375000±2000` + P32 活性）。诚实口径：① headless 用 4s 长跑 + `[100ms,3900ms]` 宽窗——引擎按 ~10ms 主节拍批量执行固件、同节拍边沿共享一时间戳，毫秒级短窗对 375kHz 不可分辨（短窗 20ms 方案实证不可行）；② `getPinEdges` 不分引脚，多波形须分文件隔离；③ P32 只断言活性（`for(3000)` 纯算术延时充 ~0 虚拟时间，50kHz sim 节奏非硅片真值）。 |
 | 板级 codegen `mcs51_board_config.h` + 生产 wasm 自动链接 | ✅ | ADR-0075 |
 | Timer 外部计数 C/T、Timer0 mode3 | ❌（现 idle + STRICT 告警） | ADR-0076 D2（A 类） |
 

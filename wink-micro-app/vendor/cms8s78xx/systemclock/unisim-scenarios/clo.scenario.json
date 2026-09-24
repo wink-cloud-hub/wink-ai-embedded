@@ -1,0 +1,29 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "CMS8S78xx SystemClock CLO 375kHz headless proof",
+    "templateId": "vendor_cms8s78xx_systemclock",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "4000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "3950000",
+      "windowUs": ["100000", "3900000"],
+      "pin": 11,
+      "expected": {
+        "kind": "frequencyHz",
+        "value": {
+          "$near": {
+            "target": 375000,
+            "tolerance": 2000
+          }
+        }
+      },
+      "description": "CLO routes Fsys/64 (24MHz/64) to P1.3 (pin 11): true 375kHz via Bresenham phase accumulation. Long-run window: the headless engine batches firmware execution in ~10ms master ticks (all edges in a tick share one timestamp), so sub-10ms windows read empty; the multi-second average dilutes batch quantization below 0.2% and resolves the silicon-exact rate (verified stable within +-500Hz across runs). Exact step-level proof lives in host CTest test_mcs51_cms8s_clo."
+    }
+  ]
+}

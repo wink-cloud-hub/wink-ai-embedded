@@ -55,13 +55,15 @@ extern const uint8_t g_mcs51_num_peripherals;
 // (same pointer or same name registers once); the table never shrinks
 // except through the test seam below.
 //
-// Capacity rationale (stage4 review follow-up): core 3 + current chip
-// package 7 = 10 today; 12 leaves headroom for one more family. Overflow is
+// Capacity rationale (stage4 review follow-up, PLAN-20260924-SYSCLOCK):
+// core 3 + current chip package 12 = 15 today (cms8s_clo filled the 12th
+// slot); 16 leaves headroom for LCD-class models and a new family.
+// Overflow is
 // a build contract violation and ABORTS in every build (assert is
 // NDEBUG-compiled out; the unconditional abort is the real fuse) — never a
 // silent drop.
 #ifndef MCS51_MAX_PERIPHERALS
-#define MCS51_MAX_PERIPHERALS 12u
+#define MCS51_MAX_PERIPHERALS 16u
 #endif
 void mcs51_peripheral_register(const mcs51_peripheral_desc_t* desc);
 uint8_t mcs51_peripheral_registered_count(void);

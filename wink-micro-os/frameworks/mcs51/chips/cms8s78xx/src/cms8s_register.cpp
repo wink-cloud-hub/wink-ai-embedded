@@ -35,6 +35,11 @@ void cms8s_buzzer_reset(struct Mcu51Context* ctx);
 void cms8s_buzzer_poll(struct Mcu51Context* ctx);
 uint64_t cms8s_buzzer_next_event_us(struct Mcu51Context* ctx);
 
+void cms8s_clo_init(struct Mcu51Context* ctx);
+void cms8s_clo_reset(struct Mcu51Context* ctx);
+void cms8s_clo_poll(struct Mcu51Context* ctx);
+uint64_t cms8s_clo_next_event_us(struct Mcu51Context* ctx);
+
 void cms8s_sys_init(struct Mcu51Context* ctx);
 void cms8s_sys_reset(struct Mcu51Context* ctx);
 void cms8s_sys_poll(struct Mcu51Context* ctx);
@@ -117,6 +122,15 @@ const mcs51_peripheral_desc_t kCms8sDescs[] = {
         cms8s_buzzer_reset,
         cms8s_buzzer_poll,
         cms8s_buzzer_next_event_us,
+        MCS51_PHASE_CLOCK,
+        MCS51_FAMILY_MASK_CMS8S78XX
+    },
+    {
+        "cms8s_clo",
+        cms8s_clo_init,
+        cms8s_clo_reset,
+        cms8s_clo_poll,
+        cms8s_clo_next_event_us,
         MCS51_PHASE_CLOCK,
         MCS51_FAMILY_MASK_CMS8S78XX
     },

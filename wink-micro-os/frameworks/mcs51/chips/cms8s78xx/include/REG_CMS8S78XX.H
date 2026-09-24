@@ -790,6 +790,7 @@ typedef enum Vref_K {
 #define GPIO_P05_MUX_ADET                    (0x05)  // PS_ADET <- P0.5
 #define GPIO_P13_MUX_ADET                    (0x13)  // PS_ADET <- P1.3
 #define GPIO_P14_MUX_TXD                     (0x03)  // P1.4 as UART TXD
+#define GPIO_P13_MUX_CLO                     (0x05)  // P1.3 as CLO (system clock /64 output)
 #define GPIO_P13_MUX_RXD                     (0x03)  // P1.3 as UART RXD (GAP-01: vendor gpio.h=0x03; was incorrectly 0x02)
 #define GPIO_P13                             (0x13)  // PS_RXD <- P1.3
 
