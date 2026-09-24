@@ -519,6 +519,7 @@ wink_status_t pal_sim_scheduler_run(const struct wink_app_callbacks* callbacks,
     if (s_main_ctx == NULL) {
         s_main_ctx = sim_ctx_from_current();
     }
+    sim_scheduler_set_main_ctx(s_main_ctx);
     wink_sim_mode_init_from_env();
     pal_wasm_clear_fault_latch();
     pal_wasm_fault_set_callbacks(callbacks);

@@ -6,6 +6,11 @@ set(ESP_IDF_FRAMEWORK_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_log.c
     ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_system.c
     ${CMAKE_CURRENT_LIST_DIR}/src/drivers/esp_gpio.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/freertos/freertos_task.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/freertos/freertos_queue.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/freertos/freertos_semphr.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/freertos/freertos_event.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/freertos/freertos_timers.c
 )
 
 if(NOT DEFINED WINK_ESP_TARGET)
@@ -15,4 +20,6 @@ endif()
 set(ESP_IDF_FRAMEWORK_INCLUDES
     ${CMAKE_CURRENT_LIST_DIR}/chips/${WINK_ESP_TARGET}/include
     ${CMAKE_CURRENT_LIST_DIR}/include
+    ${CMAKE_CURRENT_LIST_DIR}/src/freertos
+    ${CMAKE_CURRENT_LIST_DIR}/../../targets/common/include
 )

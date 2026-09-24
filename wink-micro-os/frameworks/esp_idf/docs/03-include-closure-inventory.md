@@ -1,8 +1,8 @@
 # ESP-IDF 仿真拦截层 Include 闭包追踪清单 (03-include-closure-inventory)
 
-> **版本**：v1.0  
-> **适用里程碑**：M0 (最小 GPIO 闭环与 Tier-A Blink 语料)  
-> **设计依据**：Task M0-2 (T-004) 编译驱动增量 include 闭包策略
+> **版本**：v1.1  
+> **适用里程碑**：M1 (FreeRTOS 调度器与并发原语 Shim)  
+> **设计依据**：Task M1-1 编译驱动增量 include 闭包策略
 
 ---
 
@@ -53,3 +53,16 @@
 | `include/soc/gpio_num.h` | `soc` | 中转层 | 硬件引脚定义 | 中转至 `chips/${WINK_ESP_TARGET}/include/soc/gpio_num.h` |
 | `chips/esp32/include/soc/soc_caps.h` | `soc/esp32` | 芯片原生能力宏 | GPIO 门面断言 | 经典 ESP32 引脚与输出能力掩码原式 (ADR-0085) |
 | `chips/esp32/include/soc/gpio_num.h` | `soc/esp32` | 原生引脚枚举 | GPIO 驱动 | 官方经典 ESP32 引脚枚举 `GPIO_NUM_0` ~ `GPIO_NUM_39` |
+
+---
+
+## 3. M1 新增头文件闭包登记表 (FreeRTOS 调度与同步)
+
+| 头文件路径 | 官方组件来源 | 桩策略 | 驱动语料 / 依赖项 | 说明 |
+|:---|:---|:---:|:---:|:---|
+| `include/freertos/task.h` | `freertos` | 全量任务声明扩展 | Task 生命周期与延时 | 扩展创建/挂起/删除/Tick/状态/自删/切出等完整 API |
+| `include/freertos/queue.h` | `freertos` | 同步声明桩 | 队列通信 (Tier-B UART 等) | 导出 `xQueueCreate/Send/Receive/Peek` 与 `FromISR` 全家桶 |
+| `include/freertos/semphr.h` | `freertos` | 同步声明桩 | 互斥量与信号量 | 导出 Mutex/Binary/Counting 与 `FromISR`，Recursive 标废弃 |
+| `include/freertos/event_groups.h` | `freertos` | 同步声明桩 | 24-bit 事件组 | 导出 `xEventGroupWaitBits/SetBits/ClearBits` 与广播 |
+| `include/freertos/timers.h` | `freertos` | Fail-Loud 声明桩 | 软件定时器 | 声明完整原型，运行时一律 Fail-Loud 报错返回 (递延 M2+) |
+

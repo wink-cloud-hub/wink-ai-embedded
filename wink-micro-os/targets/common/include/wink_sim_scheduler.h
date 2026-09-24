@@ -85,6 +85,10 @@ void          sim_scheduler_set_current(uint32_t task_id);
 
 sim_ctx_t*    sim_scheduler_current_ctx(void);
 
+void          sim_scheduler_set_main_ctx(sim_ctx_t* ctx);
+sim_ctx_t*    sim_scheduler_main_ctx(void);
+void          sim_scheduler_yield_context(void);
+
 #ifdef __cplusplus
 }  /* extern "C" */
 #endif

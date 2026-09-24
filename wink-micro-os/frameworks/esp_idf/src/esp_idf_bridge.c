@@ -2,9 +2,17 @@
 #include <stdbool.h>
 #include "pal_log.h"
 #include "esp_system.h"
+#include "freertos_sync.h"
 
 static bool s_esp_pending_reset = false;
 static int s_esp_reset_reason = 4; /* SOFTWARE */
+
+void esp_freertos_pools_reset(void) {
+    esp_freertos_task_pool_reset();
+    esp_freertos_queue_pool_reset();
+    esp_freertos_sem_pool_reset();
+    esp_freertos_event_pool_reset();
+}
 
 void esp_restart(void) {
     pal_log_w("ESP_SYS", "esp_restart requested -> pending reset flag set");
@@ -14,7 +22,10 @@ void esp_restart(void) {
 /* 供 targets/wasm 弱钩子查询的导出（命名不得带 wink_mcs51 前缀冲突） */
 bool pal_wasm_target_has_pending_reset(void) { return s_esp_pending_reset; }
 int pal_wasm_target_get_reset_reason(void) { return s_esp_reset_reason; }
-void pal_wasm_target_clear_pending_reset(void) { s_esp_pending_reset = false; }
+void pal_wasm_target_clear_pending_reset(void) {
+    s_esp_pending_reset = false;
+    esp_freertos_pools_reset();
+}
 
 esp_reset_reason_t esp_reset_reason(void) {
     return ESP_RST_SW;

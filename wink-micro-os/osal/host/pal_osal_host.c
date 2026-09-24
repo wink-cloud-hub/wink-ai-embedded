@@ -547,6 +547,7 @@ uint32_t pal_os_get_current_task_stack_free(void) { return 0u; }
 wink_status_t pal_sim_scheduler_run(const struct wink_app_callbacks* callbacks,
                                     uint32_t main_task_id, uint32_t max_ticks) {
     s_main_ctx = sim_ctx_from_current();
+    sim_scheduler_set_main_ctx(s_main_ctx);
     wink_sim_mode_init_from_env();
     uint32_t ticks_run = 0;
 

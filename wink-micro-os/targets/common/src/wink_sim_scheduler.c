@@ -255,3 +255,21 @@ sim_ctx_t* sim_scheduler_current_ctx(void) {
     if (s_current_task_id >= WINK_SIM_MAX_TASKS) return NULL;
     return s_tasks[s_current_task_id].ctx;
 }
+
+static sim_ctx_t* s_sim_main_ctx = NULL;
+
+void sim_scheduler_set_main_ctx(sim_ctx_t* ctx) {
+    s_sim_main_ctx = ctx;
+}
+
+sim_ctx_t* sim_scheduler_main_ctx(void) {
+    return s_sim_main_ctx;
+}
+
+void sim_scheduler_yield_context(void) {
+    sim_ctx_t* cur = sim_scheduler_current_ctx();
+    assert(cur != NULL && s_sim_main_ctx != NULL &&
+           "sim_scheduler_yield_context called outside valid fiber context or main_ctx unset");
+    sim_ctx_switch(cur, s_sim_main_ctx);
+}
+

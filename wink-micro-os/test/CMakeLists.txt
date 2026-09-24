@@ -1319,6 +1319,31 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     add_test(NAME test_esp_gpio COMMAND test_esp_gpio)
     set_tests_properties(test_esp_gpio PROPERTIES LABELS "esp_idf;core")
 
+    add_executable(test_esp_idf_freertos
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_idf_freertos.c
+        ${UNITY_DIR}/unity.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_idf_freertos PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/freertos
+        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
+    )
+    target_link_libraries(test_esp_idf_freertos PRIVATE wink_framework_esp_idf dal)
+    if(MSVC)
+        target_compile_options(test_esp_idf_freertos PRIVATE /W4 /WX /wd4100 /wd4210)
+    else()
+        target_compile_options(test_esp_idf_freertos PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
+    endif()
+    if(TARGET generate_config)
+        add_dependencies(test_esp_idf_freertos generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_idf_freertos)
+    add_test(NAME test_esp_idf_freertos COMMAND test_esp_idf_freertos)
+    set_tests_properties(test_esp_idf_freertos PROPERTIES LABELS "esp_idf;core")
+
     # 3. Tier-A Blink official corpus (OBJECT library: compile-only, no main link)
     add_library(esp_idf_corpus_blink_obj OBJECT
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/blink/blink_example_main.c
@@ -1343,13 +1368,44 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     )
     set_tests_properties(esp_idf_corpus_blink PROPERTIES LABELS "esp_idf_corpus;tier_a")
 
-    # 4. Wasm compile-only gate
+    # 4. Blink bounded run test (L2 Replay determinism)
+    add_executable(test_esp_idf_blink_run
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/run/test_esp_idf_blink_run.c
+        $<TARGET_OBJECTS:esp_idf_corpus_blink_obj>
+        ${UNITY_DIR}/unity.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_idf_blink_run PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/blink/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/freertos
+        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
+    )
+    target_link_libraries(test_esp_idf_blink_run PRIVATE wink_framework_esp_idf dal)
+    if(MSVC)
+        target_compile_options(test_esp_idf_blink_run PRIVATE /W4 /WX /wd4100 /wd4210)
+    else()
+        target_compile_options(test_esp_idf_blink_run PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
+    endif()
+    if(TARGET generate_config)
+        add_dependencies(test_esp_idf_blink_run generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_idf_blink_run)
+    add_test(NAME test_esp_idf_blink_run COMMAND test_esp_idf_blink_run)
+    set_tests_properties(test_esp_idf_blink_run PROPERTIES LABELS "esp_idf;run" TIMEOUT 60)
+
+    # 5. Wasm compile-only gate
     include(${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/wasm/esp_idf_wasm_compile.cmake)
     add_esp_idf_wasm_compile_check(test_esp_err
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_err.c
     )
     add_esp_idf_wasm_compile_check(test_esp_gpio
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_gpio.c
+    )
+    add_esp_idf_wasm_compile_check(test_esp_idf_freertos
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_idf_freertos.c
     )
     add_esp_idf_wasm_compile_check(corpus_blink
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/blink/blink_example_main.c

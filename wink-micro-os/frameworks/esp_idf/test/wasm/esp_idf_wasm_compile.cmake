@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-only
-# Wasm compile-only gate for ESP-IDF simulation interception layer (M0).
+# Wasm compile-only gate for ESP-IDF simulation interception layer (M0/M1).
 # Checks emcc compilation (-Wall -Wextra -Werror) without linking.
 
 function(add_esp_idf_wasm_compile_check name source_file)
@@ -23,6 +23,8 @@ function(add_esp_idf_wasm_compile_check name source_file)
             -Wall -Wextra -Werror -Wno-unused-parameter
             -I${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
             -I${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/chips/esp32/include
+            -I${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/freertos
+            -I${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
             -I${CMAKE_CURRENT_SOURCE_DIR}/../pal/include
             -I${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/hal
             -I${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/osal

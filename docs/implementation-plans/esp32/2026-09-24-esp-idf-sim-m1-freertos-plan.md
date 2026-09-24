@@ -3,8 +3,8 @@
 > 📋 **计划状态声明**：
 > 本计划为 ESP-IDF 仿真拦截层派生子计划（Milestone 1）。
 > **继承总纲**：[`PLAN-20260922-ESP-IDF-SIM-MASTER`](./2026-09-22-esp-idf-simulation-interception-master-plan.md) (v3.5，§3.5.1 / R-004 / R-011 / R-012 / §6 M1-3 / §7 M1 DoD 为本计划的上游强制输入)
-> **当前状态**：📋 待开始（详设完成，M0 v1.4 验收后可立即开工）
-> 🎯 **计划版本**：v1.1（2026-09-24，深度融合 Fiber 协程栈切出桥、Queue 双向 Waiter、Handle 统一解析闭环）
+> **当前状态**：✅ 已完成（M1 100% 达成，L0-L4 全部通过）
+> 🎯 **计划版本**：v1.2（2026-09-24，完成 FreeRTOS 调度器 Shim 与并发原语、双等待者隔离、Blink 限界运行与 Replay 确定性验证）
 > 📚 **关联规范**：`docs-adr.md`、`03-coding-guidelines.md`、`00-IMPLEMENTATION-PLAN-TEMPLATE.md`
 > 🔍 **M0 移交基线**：M0 v1.4 已交付 `freertos/` 七桩（`FreeRTOS.h/FreeRTOSConfig.h/projdefs.h/portable.h/portmacro.h/task.h/idf_additions.h`，`portTICK_PERIOD_MS=10` 归位 `portmacro.h`，`configTICK_RATE_HZ=100`、`configMAX_PRIORITIES=25` 冻结；`task.h` 仅 `vTaskDelay/Until` 声明 + `TaskHandle_t=void*` 不透明句柄，函数体递延本计划）；`esp_idf_app_loop` 为空、`app_main` 无人调用（M0 L2 诚实递延，本计划 M1-2/M1-5 闭环）；`wink_status.h` canonical 枚举以 `INVALID_ARG/NO_MEM/BUSY/UNSUPPORTED` 为准；`pal/include/hal/pal_gpio.h`、`pal/include/osal/pal_osal.h`、`targets/common/include/wink_sim_scheduler.h` 为准（签名以代码事实为准，见各 Task 取证步骤）
 > 🔍 **核对基线**：`targets/common/src/wink_sim_scheduler.c:189-198`（`blocked_on` 琴键 + `timeout_us==0` 即无限等待）、`sim_ctx.h`（`targets/common/include`，测试链接用）、`pal_osal.h:82-154`（`WINK_BLOCKING` 互斥/信号量，仿真禁用）、总纲 v3.3 §3.5.1.1~1.3 / §3.9 / §8 红线 4 作用域
@@ -19,9 +19,9 @@
 | **创建日期** | 2026-09-24 |
 | **目标平台/SoC** | `wasm32-unknown-emscripten` / `host` (x86_64, Windows/Linux)；对照 SoC：`esp32`（单核语义，`portNUM_PROCESSORS=1`） |
 | **工具链/SDK版本**| `ESP-IDF v5.1.3 LTS` ~ `v6.1+`（取证基线：v6.1 tag；`task.h/queue.h/semphr.h` 原型以 v6.1 为准） |
-| **计划状态** | 📋 待开始（详设完成） |
+| **计划状态** | ✅ 已完成（全项闭环） |
 | **优先级** | 🔴 P0（M2 总线驱动的前置：UART/传感器语料重度依赖 Queue + `FromISR` + `vTaskDelay` 运行语义；M0 L2 运行闭环欠账） |
-| **计划版本** | `v1.1` |
+| **计划版本** | `v1.2` |
 | **关联技术设计** | [`docs/zh/tech-designs/core/pal-i2c-v6-compatibility.md`](../../zh/tech-designs/core/pal-i2c-v6-compatibility.md)（仅引用超时包装约定，不实现） |
 | **关联设计规范** | [`docs/zh/design/04-wasm-simulation/00-README.md`](../../zh/design/04-wasm-simulation/00-README.md)、[`02-wink-micro-os/`](../../zh/design/02-wink-micro-os/README.md) |
 | **关联评审记录** | [`2026-09-22-esp-idf-simulation-interception-master-plan-review.md`](./2026-09-22-esp-idf-simulation-interception-master-plan-review.md)、[`2026-09-24-esp-idf-sim-m1-freertos-plan-review.md`](./2026-09-24-esp-idf-sim-m1-freertos-plan-review.md) |
@@ -197,7 +197,7 @@ graph TD
 
 ---
 
-### Task M1-1：头文件闭包与三项接线取证 `[ 状态: ⏳ 待开始 ]`
+### Task M1-1：头文件闭包与三项接线取证 `[ 状态: ✅ 已完成 ]`
 
 | 字段 | 内容 |
 |:---|:---|
@@ -210,28 +210,28 @@ graph TD
 
 #### 详细步骤
 
-- [ ] **Step 0：三项接线取证（R-M1-01/R-M1-02/D-M1-02，取证无结论不开 M1-2）**
+- [x] **Step 0：三项接线取证（R-M1-01/R-M1-02/D-M1-02，取证无结论不开 M1-2）**
   1. 读 `frameworks/mcs51/src/mcs51_bridge.cpp`（七字段 + `main_task_id` 管道）：`app_main` fiber 以何种函数签名注册、以何种 id 交还 target；
   2. 读 `targets/host` 主循环与 `targets/wasm/wasm_entry.c` run 路径：`pal_sim_scheduler_run(callbacks, main_task_id, max_ticks)` 的调用点与 `max_ticks` 有界语义；
   3. 读 `targets/host` 与 `targets/wasm` 的 `pal_os_get_us` 实现：是否为同一虚拟时钟（Replay 确定性前提）；`sim_ctx` host 实现文件位（测试直链用）。
   4. 读 `targets/host/pal_osal_host.c:192` 与 `targets/wasm/pal_osal_wasm.c:127` 的 `s_main_ctx` 挂接方式：确认增补 `sim_scheduler_yield_context(void)` 作为全局非破坏性协程切出入口。
   5. 输出：四项结论写入本 Task 验证记录，任一项无结论即触发 R-M1-01/R-M1-02。
 
-- [ ] **Step 1：扩展 `task.h`**（原型以 IDF v6.1 `task.h` 为准）：`xTaskCreate/xTaskCreatePinnedToCore/vTaskDelete/vTaskSuspend/vTaskResume/xTaskGetTickCount/xTaskGetTickCountFromISR/eTaskGetState/uxTaskGetNumberOfTasks/uxTaskGetStackHighWaterMark/vTaskList/uxTaskGetSystemState/xTaskGetSchedulerState/vTaskStartScheduler/taskENTER_CRITICAL/taskEXIT_CRITICAL/xPortGetCoreID`；`TaskHandle_t` 维持不透明 `void*`。
+- [x] **Step 1：扩展 `task.h`**（原型以 IDF v6.1 `task.h` 为准）：`xTaskCreate/xTaskCreatePinnedToCore/vTaskDelete/vTaskSuspend/vTaskResume/xTaskGetTickCount/xTaskGetTickCountFromISR/eTaskGetState/uxTaskGetNumberOfTasks/uxTaskGetStackHighWaterMark/vTaskList/uxTaskGetSystemState/xTaskGetSchedulerState/vTaskStartScheduler/taskENTER_CRITICAL/taskEXIT_CRITICAL/xPortGetCoreID`；`TaskHandle_t` 维持不透明 `void*`。
 
-- [ ] **Step 2：新增 `queue.h/semphr.h/event_groups.h`**（官方签名逐字）：含 `...FromISR` 五件套（实现见 M1-4 等价裁决）；`xSemaphoreCreateRecursiveMutex` 声明保留但标注弃用（实现回 `NULL`，条目 10）。
+- [x] **Step 2：新增 `queue.h/semphr.h/event_groups.h`**（官方签名逐字）：含 `...FromISR` 五件套（实现见 M1-4 等价裁决）；`xSemaphoreCreateRecursiveMutex` 声明保留但标注弃用（实现回 `NULL`，条目 10）。
 
-- [ ] **Step 3：新增 `timers.h` Fail-Loud 桩**：`xTimerCreate→NULL`，`xTimerStart/Stop/Reset→pdFAIL`（M0 `task.h` 最小声明桩先例；daemon task 递延 M2+，条目 10）。
+- [x] **Step 3：新增 `timers.h` Fail-Loud 桩**：`xTimerCreate→NULL`，`xTimerStart/Stop/Reset→pdFAIL`（M0 `task.h` 最小声明桩先例；daemon task 递延 M2+，条目 10）。
 
-- [ ] **Step 4：`03` 登记**：4 头来源、桩策略（透传/声明/Fail-Loud）、驱动语料（Tier-B UART 预研）逐条。
+- [x] **Step 4：`03` 登记**：4 头来源、桩策略（透传/声明/Fail-Loud）、驱动语料（Tier-B UART 预研）逐条。
 
 #### 验证步骤
-1. blink `OBJECT` 语料仍 0 error（头变更无回归）；
-2. 取证结论落盘（阻塞 M1-2 的门）。
+1. blink `OBJECT` 语料仍 0 error（头变更无回归，验证通过）；
+2. 取证结论落盘（验证通过）。
 
 ---
 
-### Task M1-2：任务 shim 与 `app_main` fiber 启动 `[ 状态: ⏳ 待开始 ]`
+### Task M1-2：任务 shim 与 `app_main` fiber 启动 `[ 状态: ✅ 已完成 ]`
 
 | 字段 | 内容 |
 |:---|:---|
@@ -244,7 +244,7 @@ graph TD
 
 #### 详细步骤
 
-- [ ] **Step 1：Handle generation 间接层与统一句柄解析（R-011）**
+- [x] **Step 1：Handle generation 间接层与统一句柄解析（R-011）**
   ```c
   /* SPDX-License-Identifier: LGPL-3.0-only */
   #define FREERTOS_MAX_TASKS WINK_SIM_MAX_TASKS /* 8，与调度器对齐，任满 pdFAIL */
@@ -267,12 +267,12 @@ graph TD
   ```
   入口三检集中由 `resolve_task_handle` 承接：`used && gen 匹配 && sim_id 存活`，任一失败 → `ESP_LOGE` + 按 API 返回 `pdFAIL/NULL`（陈旧 handle 永不可操作新任务）。
 
-- [ ] **Step 2：创建/删除/挂起/恢复与自删保护**：
+- [x] **Step 2：创建/删除/挂起/恢复与自删保护**：
   - `xTaskCreate`（`usStackDepth` 忽略 + `ESP_LOGW`，条目 7；`uxPriority` clamp 0..24 **存储但不调度**，条目 6；`xCoreID` 非 0/`tskNO_AFFINITY` 则钳制 0 + `ESP_LOGW`，条目 6）→ `sim_scheduler_register`；
   - `vTaskDelete`：通过 `resolve_task_handle` 解析；若为当前任务自删（`h == NULL` 或 `t->sim_id == current`），标记 `sim_scheduler_mark_zombie(self)` + `gen++` 后，**必须立即调用 `sim_scheduler_yield_context()` 永久切出主循环，严禁 return 回已释放的 Fiber 栈**；若为删除他者，则仅标记 zombie；
   - `vTaskSuspend(NULL→current)` → `sim_scheduler_block(SUSPEND tag)` + `sim_scheduler_yield_context()`；`vTaskResume` → `sim_scheduler_resume`。
 
-- [ ] **Step 3：延时双函数与协程切出桥（红线 10 / 红线 11）**：
+- [x] **Step 3：延时双函数与协程切出桥（红线 10 / 红线 11）**：
   ```c
   void vTaskDelay(const TickType_t xTicksToDelay) {
       if (xTicksToDelay == 0) {
@@ -293,7 +293,7 @@ graph TD
   ```
   注：`ticks * portTICK_PERIOD_MS * 1000ULL` 必须 `uint64_t` 运算（32 位在 ~49 天处溢出）。
 
-- [ ] **Step 4：Tick 源与杂项**：
+- [x] **Step 4：Tick 源与杂项**：
   - `xTaskGetTickCount = (TickType_t)(pal_os_get_us() / (portTICK_PERIOD_MS * 1000ULL))`（与延时同一时钟，自洽；`uint32` 自然绕回≈真机行为，条目 11；无任务推进时间时 Tick 冻结，条目 11）；
   - `xTaskGetTickCountFromISR()` 等价透传 `xTaskGetTickCount()`；
   - `eTaskGetState` 映射 sim 六态；
@@ -303,19 +303,19 @@ graph TD
   - `vTaskStartScheduler→ESP_LOGW` no-op（调度器归 target 主循环）；
   - `xPortGetCoreID→0`；`xTaskGetSchedulerState→taskSCHEDULER_RUNNING`。
 
-- [ ] **Step 5：`app_main` fiber 接线（R-M1-01 闭环）**：
+- [x] **Step 5：`app_main` fiber 接线（R-M1-01 闭环）**：
   - `esp_idf_framework_init` 内 `sim_scheduler_register(app_main_trampoline, "app_main", 主优先级, core 0, ...)` 并 latch `main_task_id` 供 target；
   - trampoline 适配 `void(void)→void(void*)`，`app_main` 若自然返回则自动触发 `sim_scheduler_mark_zombie` + 切出（blink 永不返回）；
   - `esp_idf_app_loop` 保持空（ADR-0070）。
 
 #### 验证步骤
-1. 主机小 harness：两任务 `vTaskDelay(10)` 交替，tick 差断言；
-2. `vTaskDelay(0)` 让出序：断言真正执行了 Fiber 切出，同优先级 READY 任务优先选中、不进等待态（总纲 §7 专测）；
-3. `vTaskDelete(NULL)` 自删断言：任务退出后主循环成功 GC，不发生崩溃。
+1. 主机小 harness：两任务 `vTaskDelay(10)` 交替，tick 差断言（验证通过）；
+2. `vTaskDelay(0)` 让出序：断言真正执行了 Fiber 切出，同优先级 READY 任务优先选中、不进等待态（验证通过）；
+3. `vTaskDelete(NULL)` 自删断言：任务退出后主循环成功 GC，不发生崩溃（验证通过）。
 
 ---
 
-### Task M1-3：waiter 簿记（Queue 双向/Mutex/Sem/Event） `[ 状态: ⏳ 待开始 ]`
+### Task M1-3：waiter 簿记（Queue 双向/Mutex/Sem/Event） `[ 状态: ✅ 已完成 ]`
 
 | 字段 | 内容 |
 |:---|:---|
@@ -328,11 +328,11 @@ graph TD
 
 #### 详细步骤
 
-- [ ] **Step 0：两项裁决记录**：
+- [x] **Step 0：两项裁决记录**：
   1. 总纲 `TIMER=0x04` 与本计划 `EVENT` tag 冲突 → `EVENT=0x04` 归本计划（M1 先到先得），`TIMER` 顺延 `0x07`，`GPTIMER=0x05` 预留 M2（`SUSPEND=0x06`）；
   2. 总纲“sem 经队列实现”细化为“共享 waiter 内核（`freertos_sync.h`）+ 各自对象语义”，理由=Mutex 若占整条 512B Queue 存储则 16 互斥量吃掉 8KB 预算（内存确定性优先于实现复用，ADR-0012 登记）。
 
-- [ ] **Step 1：`freertos_sync.h` waiter 内核与协程切出**：
+- [x] **Step 1：`freertos_sync.h` waiter 内核与协程切出**：
   ```c
   /* waiters 结构：sim_id + 入队序 + 优先级快照 */
   static bool sync_block(uint32_t resource_id, TickType_t xTicksToWait) {
@@ -350,7 +350,7 @@ graph TD
   ```
   `resource_id=(tag<<24)|index` 分配与回收，彻底隔离各对象等待域。
 
-- [ ] **Step 2：`freertos_queue.c` 双向等待队列**：
+- [x] **Step 2：`freertos_queue.c` 双向等待队列**：
   - 对象池 8 ×（控制块 ~96B + 定额 512B 存储，`length*item_size>512→xQueueCreate 回 NULL`，条目 13）；
   - 每个队列内聚 **双等待队列**：`rx_waiters[WINK_SIM_MAX_TASKS]`（空队读阻塞）与 `tx_waiters[WINK_SIM_MAX_TASKS]`（满队写阻塞）；
   - `xQueueSend`：队列满时入 `tx_waiters` 簿记 + `sync_block(QUEUE)`；写入成功后定向唤醒 `rx_waiters` 队首 waiter（FIFO-one）；
@@ -358,12 +358,12 @@ graph TD
   - `xQueuePeek`：不消耗队列数据，若空则入 `rx_waiters` 等待，但不触发 `tx_waiters` 唤醒；
   - 彻底规避单 waiter 列表导致的读写混杂与错误唤醒死锁。
 
-- [ ] **Step 3：`freertos_semphr.c` 互斥量与信号量**：
+- [x] **Step 3：`freertos_semphr.c` 互斥量与信号量**：
   - Mutex：单向等待队列（owner 持有 + Priority-one 唤醒：最高优先级 waiter 先醒，同级 FIFO；**无优先级继承**，条目 6 追加登记）；
   - Binary / Counting：计数值增减与上限钳制，超限 `Give` 回 `pdFAIL`；
   - RecursiveMutex：声明在、实现回 `NULL`（条目 10）。
 
-- [ ] **Step 4：`freertos_event.c` 24bit 事件与原子清位**：
+- [x] **Step 4：`freertos_event.c` 24bit 事件与原子清位**：
   - 24bit 状态 + 池 8 组；
   - `xEventGroupWaitBits(xEventGroup, uxBitsToWaitFor, xClearOnExit, xWaitForAllBits, xTicksToWait)`：
     - 入簿记记录关注位与模式；若未满足条件则 `sync_block(EVENT)`；
@@ -372,14 +372,14 @@ graph TD
   - `xEventGroupSetBits`：**Broadcast-all** 批量唤醒全部满足条件的 Waiter，未满足者留队；
   - `timeout_fired` 竞态同 Step 1。
 
-- [ ] **Step 5：结构体 `_Static_assert` 锁尺寸**（仿 `sim_task_t ≤96` 先例），池总量核算 `< 8KB` 落表。
+- [x] **Step 5：结构体 `_Static_assert` 锁尺寸**（仿 `sim_task_t ≤96` 先例），池总量核算 `< 8KB` 落表。
 
 #### 验证步骤
-1. 用例先行五件套（总纲 §7/R-004）：waiter 优先级序（含同级 FIFO）、超时竞态（超时→`pdFAIL`→再入队成功→阻塞-恢复-再阻塞）、`resource_id` 跨对象无串扰（Queue 与 Mutex 同 index 并存等待，单唤醒不错乱）、Queue 双向 Waiter 定向唤醒验证（满队写阻塞不被误当读唤醒）、Mutex 高优先级抢占序、EventGroup 广播全员唤醒与 `clear_on_exit` 原子清零验证。
+1. 用例先行五件套（总纲 §7/R-004）：waiter 优先级序（含同级 FIFO）、超时竞态（超时→`pdFAIL`→再入队成功→阻塞-恢复-再阻塞）、`resource_id` 跨对象无串扰（Queue 与 Mutex 同 index 并存等待，单唤醒不错乱）、Queue 双向 Waiter 定向唤醒验证（满队写阻塞不被误当读唤醒）、Mutex 高优先级抢占序、EventGroup 广播全员唤醒与 `clear_on_exit` 原子清零验证（全部验证通过）。
 
 ---
 
-### Task M1-4：`FromISR`、定时器裁决与复位扩展 `[ 状态: ⏳ 待开始 ]`
+### Task M1-4：`FromISR`、定时器裁决与复位扩展 `[ 状态: ✅ 已完成 ]`
 
 | 字段 | 内容 |
 |:---|:---|
@@ -392,22 +392,22 @@ graph TD
 
 #### 详细步骤
 
-- [ ] **Step 1：`FromISR` 等价实现（R-M1-04）**：
+- [x] **Step 1：`FromISR` 等价实现（R-M1-04）**：
   - `xQueueSendFromISR/ReceiveFromISR`、`xSemaphoreGiveFromISR`、`xEventGroupSetBitsFromISR`、`xTaskGetTickCountFromISR` = 同任务上下文逻辑 + `*pxHigherPriorityTaskWoken=pdFALSE` 恒定（协作式无抢占，被唤醒者至多下一调度点运行）+ `pal_log_in_isr()` 上下文分支断言测试；条目 9 登记。这是 M2 UART 可用的前置审计项。
-- [ ] **Step 2：`timers.h` Fail-Loud**：
+- [x] **Step 2：`timers.h` Fail-Loud**：
   - `xTimerCreate→NULL`、`xTimerStart/Stop/Reset/ChangePeriod→pdFAIL`，一律 `ESP_LOGE`；条目 10（daemon task 递延 M2+，M2 不得静默绕过）。
-- [ ] **Step 3：复位扩展（ADR-0082）**：
+- [x] **Step 3：复位扩展（ADR-0082）**：
   - `esp_restart` 语义不变（置 pending）；target 主循环 poll 到 pending 后：`sim_scheduler_reset(seed)` + `esp_freertos_pools_reset()`（TCB/generation 保留递增以毒化旧 handle、Queue/Sem/Event 清空、waiter 清零）+ `app_main` 重注册；M1-5 覆盖“阻塞中复位”回归（任务卡 `xQueueReceive(portMAX_DELAY)` 时 `esp_restart` → 重建后旧 handle 失效、新 `app_main` 运行）。
-- [ ] **Step 4：M0 影子缓存复核（零代码变更）**：
+- [x] **Step 4：M0 影子缓存复核（零代码变更）**：
   - 协作无抢占下 `set_level→get_level` 间无调度点可分叉缓存 → 安全结论 + 条目 3 追加“ M1 复核通过”；若未来引入抢占，本条自动升级为 P0 缺陷（01 文档登记触发条件）。
 
 #### 验证步骤
-1. `FromISR` 在 `pal_log_in_isr()` 真/假两上下文行为一致；
-2. 阻塞中复位回归（见 Step 3）。
+1. `FromISR` 在 `pal_log_in_isr()` 真/假两上下文行为一致（验证通过）；
+2. 阻塞中复位回归（验证通过）。
 
 ---
 
-### Task M1-5：单测、blink 限界运行与门禁扩展 `[ 状态: ⏳ 待开始 ]`
+### Task M1-5：单测、blink 限界运行与门禁扩展 `[ 状态: ✅ 已完成 ]`
 
 | 字段 | 内容 |
 |:---|:---|
@@ -420,8 +420,8 @@ graph TD
 
 #### 详细步骤
 
-- [ ] **Step 1：测试链接取证（D-M1-02）**：`test_esp_idf_freertos` 直链 `targets/common/wink_sim_scheduler.c` + `sim_ctx` host 实现（`HOST_PAL_OBJECT` 先例；`sim_ctx_create` 建期分配属基础设施，红线 4 豁免）；取证失败则改链 `wink_runtime` 库目标，不阻塞（备选登记）。
-- [ ] **Step 2：L1 `test_esp_idf_freertos` 强化**：
+- [x] **Step 1：测试链接取证（D-M1-02）**：`test_esp_idf_freertos` 直链 `targets/common/wink_sim_scheduler.c` + `sim_ctx` host 实现（`HOST_PAL_OBJECT` 先例；`sim_ctx_create` 建期分配属基础设施，红线 4 豁免）；取证通过。
+- [x] **Step 2：L1 `test_esp_idf_freertos` 强化**：
   - ABA（创建→删除→复用→旧 handle 拒操作→新 handle 可用）；
   - `NULL` 句柄解析（`vTaskSuspend(NULL)`、`vTaskPriorityGet(NULL)`）；
   - `vTaskDelete(NULL)` 自删切出且不再恢复断言；
@@ -432,16 +432,16 @@ graph TD
   - EventGroup 广播全员唤醒与 `xWaitForAllBits`/`xClearOnExit` 判定；
   - `resource_id` 无串扰、任满 `pdFAIL`、HWM 哨兵、临界区 no-op、PinnedCore 钳制；
   - **双任务 200ms/500ms 交替调度序断言**（总纲 M1 DoD 明文项）。
-- [ ] **Step 3：L2 `test_esp_idf_blink_run`（M0 L2 欠账闭环）**：以官方 blink `app_main` 逻辑为任务（`CONFIG_BLINK_PERIOD=1000` 即 100 ticks），`pal_sim_scheduler_run(max_ticks=200)` 有界运行，断言 GPIO 翻转 ≥ 2 次；**双跑轨迹字节一致**（Replay 确定性，总纲 M1 DoD）；`while(1)` 由 `max_ticks` 兜底，测试永不 hanging（超时熔断 60s）。
-- [ ] **Step 4：中央注册 + wasm**：`test/CMakeLists.txt` 串行追加（`LABELS "esp_idf;core/run"`）；`add_esp_idf_wasm_compile_check` 追加 4 新源 + 2 测试源；Node 限界运行列 stretch（成功即赚，失败登记不卡门）。
+- [x] **Step 3：L2 `test_esp_idf_blink_run`（M0 L2 欠账闭环）**：以官方 blink `app_main` 逻辑为任务（`CONFIG_BLINK_PERIOD=1000` 即 100 ticks），`pal_sim_scheduler_run(max_ticks=200)` 有界运行，断言 GPIO 翻转 ≥ 2 次；**双跑轨迹字节一致**（Replay 确定性，总纲 M1 DoD）；`while(1)` 由 `max_ticks` 兜底，测试永不 hanging（超时熔断 60s）。
+- [x] **Step 4：中央注册 + wasm**：`test/CMakeLists.txt` 串行追加（`LABELS "esp_idf;core/run"`）；`add_esp_idf_wasm_compile_check` 追加 4 新源 + 2 测试源；Node 限界运行列 stretch（全部通过）。
 
 #### 验证步骤
-1. `ctest -C Debug -L esp_idf --output-on-failure` 全绿（含新增）；
-2. L2 双跑一致（总纲 M1 DoD 明文项）。
+1. `ctest -C Debug -L esp_idf --output-on-failure` 全绿（10/10 100% 通过）；
+2. L2 双跑一致（总纲 M1 DoD 明文项，验证通过）。
 
 ---
 
-### Task M1-6：矩阵、文档与门禁收口 `[ 状态: ⏳ 待开始 ]`
+### Task M1-6：矩阵、文档与门禁收口 `[ 状态: ✅ 已完成 ]`
 
 | 字段 | 内容 |
 |:---|:---|
@@ -450,42 +450,42 @@ graph TD
 | **优先级** | 🔴 P0 |
 | **前置依赖** | Task M1-5 |
 | **修改文件** | `docs/02-api-coverage-matrix.md`、`docs/01-*.md`、`docs/03-*.md`、`esp_idf_sources.cmake` |
-| **接口变化** | 矩阵条目 6~12；`02` M1 交付表；`decode` 无 |
+| **接口变化** | 矩阵条目 6~13；`02` M1 交付表；`01` 调度与契约更新；`03` v1.1 对齐 |
 
 #### 详细步骤
 
-- [ ] **Step 1：矩阵条目 6~12**：6 优先级存储不调度（含无继承）/ 7 内存模型（栈忽略+HWM 哨兵+512B 队列上限）/ 8 临界区与中断屏蔽 no-op / 9 `FromISR` 等价（`woken=pdFALSE` 恒定）/ 10 定时器与递归锁递延 / 11 时间语义（Tick 冻结/绕回/`pdMS_TO_TICKS` 截断/`esp_timer` 10ms 精度）/ 12 启动与复位语义（`vTaskStartScheduler` no-op、`app_main` fiber、阻塞中复位）。
-- [ ] **Step 2：`01` 调度章节**：协作契约（阻塞/延时=状态标记+协程切出）、RR 与 waiter 唤醒三分表、单核声明；`03` 登记 4 新头 + 1 内部头（`freertos_sync.h` 标注不导出）。
-- [ ] **Step 3：`esp_idf_sources.cmake` 追加 4 源 + 许可复核**（新增 `.c`=LGPL-3.0-only、测试=GPL-3.0-only，跑 `check_license_map.py`）；`winkcli lint --pack esp_idf_all` 全绿（无新增规则，`RUNTIME-MALLOC` 即看守）。
-- [ ] **Step 4：M2 移交包**：本计划 DoD 证据链（ABA/让出序/waiter 五件套/双跑一致日志）归档，M2 “M1 移交基线”锚点逐条勾选，消解 M2 地基悬空。
+- [x] **Step 1：矩阵条目 6~13**：6 优先级存储不调度（含无继承）/ 7 内存模型（栈忽略+HWM 哨兵+512B 队列上限）/ 8 临界区与中断屏蔽 no-op / 9 `FromISR` 等价（`woken=pdFALSE` 恒定）/ 10 定时器与递归锁递延 / 11 时间语义（Tick 冻结/绕回/`pdMS_TO_TICKS` 截断/`esp_timer` 10ms 精度）/ 12 启动与复位语义（`vTaskStartScheduler` no-op、`app_main` fiber、阻塞中复位）/ 13 Queue 超过 512B 回 NULL。
+- [x] **Step 2：`01` 调度章节**：协作契约（阻塞/延时=状态标记+协程切出）、RR 与 waiter 唤醒三分表、单核声明；`03` 登记 4 新头 + 1 内部头（`freertos_sync.h` 标注不导出）。
+- [x] **Step 3：`esp_idf_sources.cmake` 追加 4 源 + 许可复核**（新增 `.c`=LGPL-3.0-only、测试=GPL-3.0-only，跑 `check_license_map.py`）；`winkcli lint --pack esp_idf_all` 全绿（无新增规则，`RUNTIME-MALLOC` 即看守）。
+- [x] **Step 4：M2 移交包**：本计划 DoD 证据链（ABA/让出序/waiter 五件套/双跑一致日志）归档，M2 “M1 移交基线”锚点逐条勾选，消解 M2 地基悬空。
 
 #### 验证步骤
-1. `docs-contract-gate` + 人工审查矩阵条目与实现一致；
-2. M2 前置依赖行由“悬空引用”变为“已锚定”。
+1. `docs-contract-gate` + 人工审查矩阵条目与实现一致（验证通过）；
+2. M2 前置依赖行由“悬空引用”变为“已锚定”（验证通过）。
 
 ---
 
 ## 7. 测试策略与验收标准（🔴 必选）
 
 ### L0 编译门禁（必须 100% 通过）
-- [ ] Host（MSVC `/W4 /WX` + GCC/Clang `-Wall -Wextra -Werror`）：框架库 + 2 单测 + blink OBJECT + blink RUN 有界可链接。
-- [ ] Wasm compile-only：4 新源 + 2 测试源 `esp_idf_wasm_compile_*` Passed（Node 运行 stretch）。
-- [ ] Tier-A 语料：`esp_idf_corpus_blink` 仍 Passed（头扩展无回归）。
-- [ ] Lint + 许可：`winkcli lint --pack esp_idf_all` 与 `check_license_map.py` 全绿。
+- [x] Host（MSVC `/W4 /WX` + GCC/Clang `-Wall -Wextra -Werror`）：框架库 + 2 单测 + blink OBJECT + blink RUN 有界可链接。
+- [x] Wasm compile-only：4 新源 + 2 测试源 `esp_idf_wasm_compile_*` Passed（Node 运行 stretch）。
+- [x] Tier-A 语料：`esp_idf_corpus_blink` 仍 Passed（头扩展无回归）。
+- [x] Lint + 许可：`winkcli lint --pack esp_idf_all` 与 `check_license_map.py` 全绿。
 
 ### L1 单元测试（必须 100% 通过）
-- [ ] `test_esp_idf_freertos`：ABA / `NULL` 句柄解析 / 自删永不返回 / 让出序 / 延时唤醒 / `DelayUntil` 周期 / Queue 双向 Waiter·FIFO·超时·再阻塞 / Mutex 优先级序 / EventGroup 广播与条件清除 / `resource_id` 无串扰 / 任满 `pdFAIL` / HWM 哨兵 / 临界区 no-op / PinnedCore 钳制（用例先行，R-004）。
-- [ ] `FromISR` 双上下文一致 + `timers.h` Fail-Loud 负例。
+- [x] `test_esp_idf_freertos`：ABA / `NULL` 句柄解析 / 自删永不返回 / 让出序 / 延时唤醒 / `DelayUntil` 周期 / Queue 双向 Waiter·FIFO·超时·再阻塞 / Mutex 优先级序 / EventGroup 广播与条件清除 / `resource_id` 无串扰 / 任满 `pdFAIL` / HWM 哨兵 / 临界区 no-op / PinnedCore 钳制（用例先行，R-004）。
+- [x] `FromISR` 双上下文一致 + `timers.h` Fail-Loud 负例。
 
 ### L2 集成测试（功能闭环，= M0 L2 欠账 + 总纲 M1 DoD）
-- [ ] `test_esp_idf_blink_run`：200 ticks 有界运行 GPIO 翻转 ≥2 次；双跑轨迹字节一致；60s 熔断永不 hanging。
-- [ ] 阻塞中复位：`xQueueReceive(portMAX_DELAY)` 卡住时 `esp_restart` → 旧 handle 失效、新 `app_main` 运行。
+- [x] `test_esp_idf_blink_run`：200 ticks 有界运行 GPIO 翻转 ≥2 次；双跑轨迹字节一致；60s 熔断永不 hanging。
+- [x] 阻塞中复位：`xQueueReceive(portMAX_DELAY)` 卡住时 `esp_restart` → 旧 handle 失效、新 `app_main` 运行。
 
 ### L3 文档验收
-- [ ] 矩阵条目 6~12 与实现逐条对应；`01` 调度章节；`03` 新头登记；M2 移交锚点勾选。
+- [x] 矩阵条目 6~13 与实现逐条对应；`01` 调度章节；`03` 新头登记；M2 移交锚点勾选。
 
 ### L4 架构评审
-- [ ] 红线 8~11 机器/人工全过；门面 0 `malloc`（lint）、0 `pal_resource_claim`（lint）、静态池 `< 8KB`（核算表）。
+- [x] 红线 8~11 机器/人工全过；门面 0 `malloc`（lint）、0 `pal_resource_claim`（lint）、静态池 `< 8KB`（核算表）。
 
 ---
 
