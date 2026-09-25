@@ -12,6 +12,7 @@
 
 * **活设计规范**：[`docs/zh/design/02-wink-micro-os/07-mcs51-simulation-interception.md`](../../../../docs/zh/design/02-wink-micro-os/07-mcs51-simulation-interception.md)
 * **解耦系列实施总纲**：[`docs/implementation-plans/mcs51/2026-09-11-mcs51-decoupling/00-README.md`](../../../../docs/implementation-plans/mcs51/2026-09-11-mcs51-decoupling/00-README.md)
+* **方言 Token 重写演进计划**：[`docs/implementation-plans/mcs51/2026-09-25-mcs51-dialect-lexer-and-token-rewriter-plan.md`](../../../../docs/implementation-plans/mcs51/2026-09-25-mcs51-dialect-lexer-and-token-rewriter-plan.md)
 * **核心架构决策**：
   * [ADR-0004 编译期静态分发与无虚表原则](../../../../docs/design/decisions/0004-static-dispatch-vs-runtime-ops.md)
   * [ADR-0070 MCS-51 零代码仿真拦截总纲](../../../../docs/decisions/core/0070-mcs51-zero-code-simulation-interception-layer.md)
