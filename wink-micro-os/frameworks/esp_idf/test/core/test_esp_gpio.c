@@ -47,7 +47,8 @@ void test_esp_gpio_set_direction(void) {
 }
 
 void test_esp_gpio_input_only_pin_rejected_for_output(void) {
-    /* GPIO 34 is input-only on ESP32 */
+#if defined(CONFIG_IDF_TARGET_ESP32)
+    /* GPIO 34 is input-only on classic ESP32 (S3/C3/C6 have no input-only pins) */
     gpio_config_t cfg = {
         .pin_bit_mask = (1ULL << GPIO_NUM_34),
         .mode = GPIO_MODE_OUTPUT,
@@ -58,31 +59,33 @@ void test_esp_gpio_input_only_pin_rejected_for_output(void) {
     TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, gpio_config(&cfg));
     TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, gpio_set_direction(GPIO_NUM_34, GPIO_MODE_OUTPUT));
     TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, gpio_set_level(GPIO_NUM_34, 1));
-
     /* But valid as input */
     cfg.mode = GPIO_MODE_INPUT;
     TEST_ASSERT_EQUAL_INT32(ESP_OK, gpio_config(&cfg));
     TEST_ASSERT_EQUAL_INT32(ESP_OK, gpio_reset_pin(GPIO_NUM_34));
+#else
+    TEST_IGNORE_MESSAGE("No input-only GPIO on this SoC");
+#endif
 }
 
 void test_esp_gpio_out_of_bounds_pin_rejected(void) {
-    /* GPIO 40 and GPIO 45 are out of bounds */
+    /* Pins 60/61 are out of bounds on every supported SoC (esp32/s3/c3/c6) */
     gpio_config_t cfg = {
-        .pin_bit_mask = (1ULL << 45),
+        .pin_bit_mask = (1ULL << 60),
         .mode = GPIO_MODE_OUTPUT,
         .pull_up_en = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type = GPIO_INTR_DISABLE,
     };
     TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, gpio_config(&cfg));
-    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, gpio_set_direction((gpio_num_t)45, GPIO_MODE_OUTPUT));
-    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, gpio_set_level((gpio_num_t)45, 1));
-    TEST_ASSERT_EQUAL_INT(0, gpio_get_level((gpio_num_t)45));
-    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, gpio_reset_pin((gpio_num_t)45));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, gpio_set_direction((gpio_num_t)60, GPIO_MODE_OUTPUT));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, gpio_set_level((gpio_num_t)60, 1));
+    TEST_ASSERT_EQUAL_INT(0, gpio_get_level((gpio_num_t)60));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, gpio_reset_pin((gpio_num_t)60));
 
-    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, gpio_set_direction((gpio_num_t)40, GPIO_MODE_OUTPUT));
-    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, gpio_set_level((gpio_num_t)40, 1));
-    TEST_ASSERT_EQUAL_INT(0, gpio_get_level((gpio_num_t)40));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, gpio_set_direction((gpio_num_t)61, GPIO_MODE_OUTPUT));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, gpio_set_level((gpio_num_t)61, 1));
+    TEST_ASSERT_EQUAL_INT(0, gpio_get_level((gpio_num_t)61));
 }
 
 void test_esp_restart_pending_flag(void) {
@@ -144,9 +147,49 @@ void test_esp_gpio_unsupported_apis_fail_loud(void) {
     TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_SUPPORTED, gpio_isr_handler_remove(GPIO_NUM_2));
     /* Out-of-range still wins over NOT_SUPPORTED. */
     TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG,
-        gpio_set_pull_mode((gpio_num_t)45, GPIO_PULLUP_ONLY));
+        gpio_set_pull_mode((gpio_num_t)60, GPIO_PULLUP_ONLY));
     /* void C-ABI: must not crash. */
     gpio_uninstall_isr_service();
+}
+
+void test_esp_gpio_mode_mapping_and_pull_fail_loud(void) {
+    /* gpio_set_direction exercises every PAL mode mapping */
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gpio_set_direction(GPIO_NUM_4, GPIO_MODE_INPUT));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gpio_set_direction(GPIO_NUM_4, GPIO_MODE_OUTPUT_OD));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gpio_set_direction(GPIO_NUM_4, GPIO_MODE_INPUT_OUTPUT));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gpio_set_direction(GPIO_NUM_4, GPIO_MODE_INPUT_OUTPUT_OD));
+    /* Pin 60 is out of range on every supported SoC */
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, gpio_set_direction((gpio_num_t)60, GPIO_MODE_INPUT));
+
+    /* gpio_config pull/OD/input-output variants */
+    gpio_config_t cfg = {
+        .pin_bit_mask = (1ULL << GPIO_NUM_4),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gpio_config(&cfg));
+    cfg.pull_up_en = GPIO_PULLUP_DISABLE;
+    cfg.pull_down_en = GPIO_PULLDOWN_ENABLE;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gpio_config(&cfg));
+    cfg.mode = GPIO_MODE_INPUT_OUTPUT_OD;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gpio_config(&cfg));
+    cfg.mode = GPIO_MODE_OUTPUT_OD;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gpio_config(&cfg));
+
+    /* reset clears the shadow caches */
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gpio_reset_pin(GPIO_NUM_4));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, gpio_reset_pin((gpio_num_t)60));
+
+    /* Remaining fail-loud pull/intr APIs */
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_SUPPORTED, gpio_pullup_dis(GPIO_NUM_4));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_SUPPORTED, gpio_pulldown_en(GPIO_NUM_4));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_SUPPORTED, gpio_pulldown_dis(GPIO_NUM_4));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_SUPPORTED, gpio_intr_disable(GPIO_NUM_4));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, gpio_pulldown_en((gpio_num_t)60));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, gpio_pulldown_dis((gpio_num_t)60));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, gpio_intr_disable((gpio_num_t)60));
 }
 
 int main(void) {
@@ -158,5 +201,6 @@ int main(void) {
     RUN_TEST(test_esp_restart_pending_flag);
     RUN_TEST(test_esp_restart_peripherals_reset);
     RUN_TEST(test_esp_gpio_unsupported_apis_fail_loud);
+    RUN_TEST(test_esp_gpio_mode_mapping_and_pull_fail_loud);
     return UNITY_END();
 }

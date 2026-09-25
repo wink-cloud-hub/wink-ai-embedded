@@ -79,10 +79,33 @@ void test_uart_boundary_checks(void) {
         uart_flush(UART_NUM_MAX));
 }
 
+void test_uart_edge_paths(void) {
+    /* Not-installed / invalid argument paths */
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_STATE, uart_driver_delete(UART_NUM_0));
+    TEST_ASSERT_EQUAL_INT(-1, uart_write_bytes(UART_NUM_0, NULL, 1));
+    TEST_ASSERT_EQUAL_INT(-1, uart_write_bytes(UART_NUM_0, "x", 0));
+    TEST_ASSERT_EQUAL_INT(-1, uart_read_bytes(UART_NUM_0, NULL, 1, 0));
+    TEST_ASSERT_EQUAL_INT(-1, uart_read_bytes(UART_NUM_0, (void *)"x", 0, 0));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, uart_get_buffered_data_len(UART_NUM_0, NULL));
+
+    /* Install without an event queue (queue_size == 0) */
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, uart_driver_install(UART_NUM_0, 0, 0, 0, NULL, 0));
+    /* set_pin after install: deinit + reinit path */
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, uart_set_pin(UART_NUM_0, 1, 3, -1, -1));
+
+    /* Blocking read without a running scheduler/task context returns 0 */
+    char rx[4] = { 0 };
+    TEST_ASSERT_EQUAL_INT(0, uart_read_bytes(UART_NUM_0, rx, sizeof(rx), 5));
+
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_STATE, uart_driver_install(UART_NUM_0, 0, 0, 0, NULL, 0));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, uart_driver_delete(UART_NUM_0));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_uart_param_config_and_pins);
     RUN_TEST(test_uart_driver_install_and_lifecycle);
     RUN_TEST(test_uart_boundary_checks);
+    RUN_TEST(test_uart_edge_paths);
     return UNITY_END();
 }

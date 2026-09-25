@@ -492,6 +492,206 @@ void test_from_isr_and_stubs(void) {
     TEST_ASSERT_EQUAL(UINT32_MAX, uxTaskGetStackHighWaterMark(NULL));
 }
 
+/* --------------------------------------------------------------------------
+ * 11. Edge / Fail-Loud Coverage (M3-2 coverage hardening)
+ * -------------------------------------------------------------------------- */
+void test_freertos_timers_fail_loud_family(void) {
+    BaseType_t woken = pdTRUE;
+    TEST_ASSERT_NULL(xTimerCreate(NULL, 0, 0, NULL, NULL));
+    TEST_ASSERT_EQUAL(pdFAIL, xTimerChangePeriod(NULL, 5, 0));
+    TEST_ASSERT_EQUAL(pdFAIL, xTimerDelete(NULL, 0));
+    TEST_ASSERT_EQUAL(pdFAIL, xTimerReset(NULL, 0));
+    TEST_ASSERT_EQUAL(pdFAIL, xTimerStartFromISR(NULL, NULL));
+
+    woken = pdTRUE;
+    TEST_ASSERT_EQUAL(pdFAIL, xTimerStartFromISR(NULL, &woken));
+    TEST_ASSERT_EQUAL(pdFALSE, woken);
+    woken = pdTRUE;
+    TEST_ASSERT_EQUAL(pdFAIL, xTimerStopFromISR(NULL, &woken));
+    TEST_ASSERT_EQUAL(pdFALSE, woken);
+    woken = pdTRUE;
+    TEST_ASSERT_EQUAL(pdFAIL, xTimerResetFromISR(NULL, &woken));
+    TEST_ASSERT_EQUAL(pdFALSE, woken);
+    woken = pdTRUE;
+    TEST_ASSERT_EQUAL(pdFAIL, xTimerChangePeriodFromISR(NULL, 5, &woken));
+    TEST_ASSERT_EQUAL(pdFALSE, woken);
+
+    TEST_ASSERT_EQUAL(pdFALSE, xTimerIsTimerActive(NULL));
+    TEST_ASSERT_NULL(pvTimerGetTimerID(NULL));
+}
+
+void test_freertos_queue_invalid_and_exhaustion(void) {
+    int v = 7;
+    int out = 0;
+
+    TEST_ASSERT_NULL(xQueueCreate(0, sizeof(int)));
+    TEST_ASSERT_NULL(xQueueCreate(100, 8)); /* 800B > 512B budget */
+    TEST_ASSERT_EQUAL(errQUEUE_FULL, xQueueSend(NULL, &v, 0));
+    TEST_ASSERT_EQUAL(errQUEUE_EMPTY, xQueueReceive(NULL, &v, 0));
+    TEST_ASSERT_EQUAL(errQUEUE_EMPTY, xQueuePeek(NULL, &v, 0));
+    vQueueDelete(NULL);
+    TEST_ASSERT_EQUAL_UINT32(0, uxQueueMessagesWaiting(NULL));
+    TEST_ASSERT_EQUAL_UINT32(0, uxQueueSpacesAvailable(NULL));
+    TEST_ASSERT_EQUAL(pdFAIL, xQueueReset(NULL));
+
+    QueueHandle_t q = xQueueCreate(1, sizeof(int));
+    TEST_ASSERT_NOT_NULL(q);
+    TEST_ASSERT_EQUAL(pdPASS, xQueueSend(q, &v, 0));
+    TEST_ASSERT_EQUAL(errQUEUE_FULL, xQueueSend(q, &v, 0));
+    TEST_ASSERT_EQUAL(pdPASS, xQueuePeek(q, &out, 0));
+    TEST_ASSERT_EQUAL(7, out);
+    TEST_ASSERT_EQUAL_UINT32(1, uxQueueMessagesWaiting(q));
+    TEST_ASSERT_EQUAL_UINT32(0, uxQueueSpacesAvailable(q));
+    TEST_ASSERT_EQUAL(pdPASS, xQueueReset(q));
+    TEST_ASSERT_EQUAL(errQUEUE_EMPTY, xQueueReceive(q, &out, 0));
+    /* xQueueSendToFront is an intentional Fail-Loud stub (ring buffer, ADR-0012) */
+    TEST_ASSERT_EQUAL(errQUEUE_FULL, xQueueSendToFront(q, &v, 0));
+    vQueueDelete(q);
+
+    QueueHandle_t pool[8];
+    uint32_t n = 0;
+    for (; n < 8; ++n) {
+        pool[n] = xQueueCreate(1, 4);
+        TEST_ASSERT_NOT_NULL(pool[n]);
+    }
+    TEST_ASSERT_NULL(xQueueCreate(1, 4)); /* slot pool exhausted */
+    for (uint32_t i = 0; i < n; ++i) {
+        vQueueDelete(pool[i]);
+    }
+}
+
+void test_freertos_semaphore_edges(void) {
+    BaseType_t woken = pdTRUE;
+
+    TEST_ASSERT_NULL(xSemaphoreCreateCounting(0, 0));
+    TEST_ASSERT_NULL(xSemaphoreCreateCounting(2, 3));
+    TEST_ASSERT_EQUAL(pdFALSE, xSemaphoreTake(NULL, 0));
+    TEST_ASSERT_EQUAL(pdFALSE, xSemaphoreGive(NULL));
+    vSemaphoreDelete(NULL);
+    TEST_ASSERT_EQUAL(pdFALSE, xSemaphoreTakeFromISR(NULL, &woken));
+    TEST_ASSERT_EQUAL(pdFALSE, woken);
+    woken = pdTRUE;
+    TEST_ASSERT_EQUAL(pdFALSE, xSemaphoreGiveFromISR(NULL, &woken));
+    TEST_ASSERT_EQUAL(pdFALSE, woken);
+    TEST_ASSERT_EQUAL_UINT32(0, uxSemaphoreGetCount(NULL));
+
+    SemaphoreHandle_t cnt = xSemaphoreCreateCounting(2, 1);
+    TEST_ASSERT_NOT_NULL(cnt);
+    TEST_ASSERT_EQUAL_UINT32(1, uxSemaphoreGetCount(cnt));
+    TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(cnt, 0));
+    TEST_ASSERT_EQUAL_UINT32(0, uxSemaphoreGetCount(cnt));
+    TEST_ASSERT_EQUAL(pdFALSE, xSemaphoreTake(cnt, 0));
+    TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreGive(cnt));
+    TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreGive(cnt));
+    TEST_ASSERT_EQUAL(pdFALSE, xSemaphoreGive(cnt)); /* max count reached */
+    vSemaphoreDelete(cnt);
+
+    SemaphoreHandle_t bin = xSemaphoreCreateBinary();
+    TEST_ASSERT_NOT_NULL(bin);
+    TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreGive(bin));
+    TEST_ASSERT_EQUAL(pdFALSE, xSemaphoreGive(bin)); /* binary already full */
+    vSemaphoreDelete(bin);
+}
+
+void test_freertos_event_group_edges(void) {
+    BaseType_t woken = pdTRUE;
+
+    TEST_ASSERT_EQUAL_UINT32(0, xEventGroupSetBits(NULL, 1));
+    TEST_ASSERT_EQUAL_UINT32(0, xEventGroupClearBits(NULL, 1));
+    TEST_ASSERT_EQUAL_UINT32(0, xEventGroupGetBits(NULL));
+    TEST_ASSERT_EQUAL_UINT32(0, xEventGroupWaitBits(NULL, 1, pdFALSE, pdFALSE, 0));
+    vEventGroupDelete(NULL);
+    TEST_ASSERT_EQUAL(pdPASS, xEventGroupSetBitsFromISR(NULL, 1, &woken));
+    TEST_ASSERT_EQUAL(pdFALSE, woken);
+    TEST_ASSERT_EQUAL(pdPASS, xEventGroupClearBitsFromISR(NULL, 1));
+    TEST_ASSERT_EQUAL_UINT32(0, xEventGroupGetBitsFromISR(NULL));
+
+    EventGroupHandle_t eg = xEventGroupCreate();
+    TEST_ASSERT_NOT_NULL(eg);
+    TEST_ASSERT_EQUAL(0x10, xEventGroupSetBits(eg, 0x10));
+    /* Immediate condition with clear-on-exit */
+    TEST_ASSERT_EQUAL(0x10, xEventGroupWaitBits(eg, 0x10, pdTRUE, pdFALSE, 0));
+    TEST_ASSERT_EQUAL_UINT32(0, xEventGroupGetBits(eg) & 0x10);
+    TEST_ASSERT_EQUAL(0x20, xEventGroupSetBits(eg, 0x20));
+    TEST_ASSERT_EQUAL(0x20, xEventGroupClearBits(eg, 0x20));
+    TEST_ASSERT_EQUAL_UINT32(0, xEventGroupGetBits(eg) & 0x20);
+    vEventGroupDelete(eg);
+
+    EventGroupHandle_t pool[8];
+    uint32_t n = 0;
+    for (; n < 8; ++n) {
+        pool[n] = xEventGroupCreate();
+        TEST_ASSERT_NOT_NULL(pool[n]);
+    }
+    TEST_ASSERT_NULL(xEventGroupCreate()); /* slot pool exhausted */
+    for (uint32_t i = 0; i < n; ++i) {
+        vEventGroupDelete(pool[i]);
+    }
+}
+
+void test_freertos_task_edge_paths(void) {
+    TaskHandle_t h = NULL;
+
+    /* Priority clamp: > 24 becomes 24 */
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(dummy_task_fn, "clamp", 32 * 1024, NULL, 99, &h));
+    TEST_ASSERT_EQUAL(24, uxTaskPriorityGet(h));
+    vTaskDelete(h);
+
+    /* Core ID clamp + suspend/resume lifecycle */
+    h = NULL;
+    TEST_ASSERT_EQUAL(pdPASS,
+        xTaskCreatePinnedToCore(dummy_task_fn, "core", 32 * 1024, NULL, 5, &h, 7));
+    vTaskSuspend(h);
+    vTaskResume(h);
+    vTaskDelete(h);
+
+    /* No-current-task / NULL paths */
+    vTaskSuspend(NULL);
+    vTaskResume(NULL);
+    vTaskDelayUntil(NULL, 5);
+    TEST_ASSERT_EQUAL(eDeleted, eTaskGetState(NULL));
+    TEST_ASSERT_EQUAL_UINT32(0, uxTaskPriorityGet(NULL));
+    vTaskStartScheduler(); /* no-op in simulation */
+    (void)xTaskGetTickCountFromISR();
+}
+
+void test_freertos_task_states_and_priority_clamp(void) {
+    TaskHandle_t h = NULL;
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(dummy_task_fn, "st", 32 * 1024, NULL, 3, &h));
+    TEST_ASSERT_EQUAL(eReady, eTaskGetState(h));
+    vTaskSuspend(h);
+    TEST_ASSERT_EQUAL(eSuspended, eTaskGetState(h));
+    vTaskResume(h);
+    TEST_ASSERT_EQUAL(eReady, eTaskGetState(h));
+    vTaskPrioritySet(h, 99); /* clamped to 24 */
+    TEST_ASSERT_EQUAL(24, uxTaskPriorityGet(h));
+    TEST_ASSERT_EQUAL(UINT32_MAX, uxTaskGetStackHighWaterMark(h));
+    TEST_ASSERT_GREATER_OR_EQUAL(1, uxTaskGetNumberOfTasks());
+    TEST_ASSERT_EQUAL(taskSCHEDULER_RUNNING, xTaskGetSchedulerState());
+    vTaskDelay(5); /* no current task -> no-op */
+
+    TickType_t prev = xTaskGetTickCount();
+    vTaskDelayUntil(&prev, 1); /* target > now: delay path (no task -> returns immediately) */
+    prev = (TickType_t)-2;
+    vTaskDelayUntil(&prev, 1); /* target <= now: refresh only */
+    TEST_ASSERT_EQUAL(xTaskGetTickCount(), prev);
+    vTaskDelete(h);
+}
+
+void test_freertos_task_pool_exhaustion(void) {
+    TaskHandle_t pool[8];
+    uint32_t n = 0;
+    for (; n < 8; ++n) {
+        pool[n] = NULL;
+        TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(dummy_task_fn, "pool", 8 * 1024, NULL, 1, &pool[n]));
+    }
+    TaskHandle_t overflow = NULL;
+    TEST_ASSERT_EQUAL(pdFAIL, xTaskCreate(dummy_task_fn, "pool9", 8 * 1024, NULL, 1, &overflow));
+    for (uint32_t i = 0; i < n; ++i) {
+        vTaskDelete(pool[i]);
+    }
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_task_handle_aba_protection);
@@ -504,5 +704,12 @@ int main(void) {
     RUN_TEST(test_event_group_multi_waiter_same_bit_clear_on_exit);
     RUN_TEST(test_dual_task_200ms_500ms_alternation);
     RUN_TEST(test_from_isr_and_stubs);
+    RUN_TEST(test_freertos_timers_fail_loud_family);
+    RUN_TEST(test_freertos_queue_invalid_and_exhaustion);
+    RUN_TEST(test_freertos_semaphore_edges);
+    RUN_TEST(test_freertos_event_group_edges);
+    RUN_TEST(test_freertos_task_edge_paths);
+    RUN_TEST(test_freertos_task_states_and_priority_clamp);
+    RUN_TEST(test_freertos_task_pool_exhaustion);
     return UNITY_END();
 }
