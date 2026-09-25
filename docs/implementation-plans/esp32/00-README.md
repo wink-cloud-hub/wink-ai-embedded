@@ -15,9 +15,9 @@
 | 子计划 | 里程碑 | 状态 | 文档路径 |
 | :--- | :--- | :--- | :--- |
 | M0 骨架与最小 GPIO 闭环 | M0 | ✅ 已完成 (v1.4 闭环交付) | [2026-09-23-esp-idf-sim-m0-gpio-plan.md](./2026-09-23-esp-idf-sim-m0-gpio-plan.md) |
-| M1 FreeRTOS 调度器 Shim | M1 | 📋 详设就绪 (v1.1 闭环 Fiber 协程切出与双向 Waiter) | [2026-09-24-esp-idf-sim-m1-freertos-plan.md](./2026-09-24-esp-idf-sim-m1-freertos-plan.md) |
-| M2 总线外设双版本与定点 PWM | M2 | 📋 详设就绪 (v2.1 吸收 6 项真实性防护与断层声明) | [2026-09-25-esp-idf-sim-m2-bus-plan.md](./2026-09-25-esp-idf-sim-m2-bus-plan.md) |
-| M3 SoC 矩阵扩展与语料 CI | M3 | 📋 待开始 (v1.2 占位+展开约束) | [2026-09-26-esp-idf-sim-m3-soc-ci-plan.md](./2026-09-26-esp-idf-sim-m3-soc-ci-plan.md) |
+| M1 FreeRTOS 调度器 Shim | M1 | ✅ 已完成 (v1.4 全量验收闭环) | [2026-09-24-esp-idf-sim-m1-freertos-plan.md](./2026-09-24-esp-idf-sim-m1-freertos-plan.md) |
+| M2 总线外设双版本与定点 PWM | M2 | ✅ 已完成 (v2.4 28/28 测试与架构加固闭环) | [2026-09-25-esp-idf-sim-m2-bus-plan.md](./2026-09-25-esp-idf-sim-m2-bus-plan.md) |
+| M3 SoC 矩阵扩展与语料 CI | M3 | 📋 详设就绪 (v2.0 详设完全展开版，待开工) | [2026-09-26-esp-idf-sim-m3-soc-ci-plan.md](./2026-09-26-esp-idf-sim-m3-soc-ci-plan.md) |
 
 ## 相关架构规范与决策
 

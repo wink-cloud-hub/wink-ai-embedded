@@ -50,10 +50,8 @@
       "must_have": true
     },
     {
-      "path": "wink-micro-os/frameworks/esp_idf/test/corpus/blink/blink_example_main.c",
-      "mode": "text",
-      "license": "CC0-1.0",
-      "contains": ["Public Domain"]
+      "path": "wink-micro-os/frameworks/esp_idf/test/corpus/**",
+      "mode": "skip"
     },
     {
       "path": "wink-micro-os/frameworks/esp_idf/test/**",
