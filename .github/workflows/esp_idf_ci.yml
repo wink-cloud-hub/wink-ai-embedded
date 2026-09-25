@@ -50,10 +50,27 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      # The host build hard-requires the wink toolchain (cmake/wink_tools.cmake).
+      # Public runners have neither winkcli nor the closed source tree, so mirror
+      # the pr.yml policy: detect and skip with a warning until winkcli is distributed.
+      - name: Detect wink toolchain
+        id: toolchain
+        shell: bash
+        run: |
+          if command -v winkcli >/dev/null 2>&1 \
+             || [ -f ../wink-tools/tools/codegen/scripts/list_drivers.py ] \
+             || [ -f ../packages/wink-tools/tools/codegen/scripts/list_drivers.py ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::wink toolchain is not distributed yet; host matrix build is skipped (roadmap: cross-platform winkcli distribution)."
+          fi
       - name: Configure CMake
+        if: steps.toolchain.outputs.available == 'true'
         run: |
           cmake -B build -S wink-micro-os -DENABLE_ESP_IDF_FRAMEWORK=ON -DTARGET_PLATFORM=host -DWINK_ESP_TARGET=${{ matrix.target }}
       - name: Build and Test
+        if: steps.toolchain.outputs.available == 'true'
         run: |
           cmake --build build --config Debug -j2
           ctest --test-dir build -C Debug -L esp_idf --output-on-failure
@@ -63,16 +80,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Detect wink toolchain
+        id: toolchain
+        shell: bash
+        run: |
+          if command -v winkcli >/dev/null 2>&1 \
+             || [ -f ../wink-tools/tools/codegen/scripts/list_drivers.py ] \
+             || [ -f ../packages/wink-tools/tools/codegen/scripts/list_drivers.py ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::wink toolchain is not distributed yet; coverage pipeline is skipped (roadmap: cross-platform winkcli distribution)."
+          fi
       - name: Install lcov
+        if: steps.toolchain.outputs.available == 'true'
         run: sudo apt-get update && sudo apt-get install -y lcov
       - name: Run Coverage Pipeline
+        if: steps.toolchain.outputs.available == 'true'
         run: |
           chmod +x wink-micro-os/frameworks/esp_idf/tools/coverage.sh
           ./wink-micro-os/frameworks/esp_idf/tools/coverage.sh
       - name: Check 85% Line Coverage Threshold
+        if: steps.toolchain.outputs.available == 'true'
         run: |
           python wink-micro-os/frameworks/esp_idf/tools/check_coverage.py build_cov/coverage_filtered.info 85
       - name: Upload Coverage HTML Artifact
+        if: steps.toolchain.outputs.available == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: esp_idf_coverage_html
