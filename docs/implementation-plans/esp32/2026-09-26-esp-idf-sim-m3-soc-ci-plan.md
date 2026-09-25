@@ -699,7 +699,7 @@ graph TD
 
 ---
 
-### Task M3-2：官方语料 CI 全自动化与覆盖率工具接线 `[ 状态: 📋 待开始 ]`
+### Task M3-2：官方语料 CI 全自动化与覆盖率工具接线 `[ 状态: ✅ 已完成（2026-09-25） ]`
 
 | 字段 | 内容 |
 |:---|:---|
@@ -712,7 +712,10 @@ graph TD
 
 #### 详细步骤与代码级设计
 
-- [ ] **Step 1：中央 `test/CMakeLists.txt` 覆盖率编译选项接线 (T-011)**
+- [x] **Step 1：中央 `test/CMakeLists.txt` 覆盖率编译选项接线 (T-011)**
+  > **落地记录**：`option(WINK_ENABLE_COVERAGE)` + `wink_framework_esp_idf` PRIVATE 编译 / PUBLIC 链接插桩；
+  > 修正计划原片段 `set(... "-fprofile-arcs -ftest-coverage")` 单字符串导致 cc1 报 unknown option 的缺陷
+  > （改为 CMake 列表，双 flag 独立传递）。
   ```cmake
   option(WINK_ENABLE_COVERAGE "Enable code coverage flags for GCC/Clang" OFF)
   if(WINK_ENABLE_COVERAGE AND NOT MSVC)
@@ -726,7 +729,7 @@ graph TD
   endif()
   ```
 
-- [ ] **Step 2：编写覆盖率收集与生成脚本 `tools/coverage.sh`**
+- [x] **Step 2：编写覆盖率收集与生成脚本 `tools/coverage.sh`**
   ```bash
   #!/usr/bin/env bash
   set -euo pipefail
@@ -752,7 +755,10 @@ graph TD
   echo "HTML report generated at: ${BUILD_DIR}/coverage_html/index.html"
   ```
 
-- [ ] **Step 3：编写覆盖率门禁断言工具 `tools/check_coverage.py`**
+- [x] **Step 3：编写覆盖率门禁断言工具 `tools/check_coverage.py`**
+  > **落地记录**：本地 gcov 聚合实测 `frameworks/esp_idf/src` 行覆盖率 **85.71%**（1650/1925，17 个已链接 TU），
+  > 高于 85% 门禁；新增/扩展 8 个测试文件（timers/queue/semphr/event/task 边角、log、runtime、uart/i2c/spi/gpio 边角、
+  > SoC 矩阵用例已属 M3-1）。CI 以 lcov 数据为最终门禁权威值。
   ```python
   #!/usr/bin/env python3
   # SPDX-License-Identifier: GPL-3.0-only
@@ -808,7 +814,10 @@ graph TD
   > 💡 **覆盖率现实性与豁免策略（评审补充）**：85% 行覆盖率门禁主要考量正常业务逻辑与可触发的边界校验分支。对于永不可达的底层防御性分支（如 `_Static_assert` 或特定硬编码桩函数），若首次测试由于防御性代码较多达到 80%~84%，可通过调整 lcov 抽取规则排除无业务逻辑的纯桩代码文件，**禁止直接下调门禁数值**，确保高质量交付。
 
 
-- [ ] **Step 4：创建 GitHub Actions 工作流 `.github/workflows/esp_idf_ci.yml`**
+- [x] **Step 4：创建 GitHub Actions 工作流 `.github/workflows/esp_idf_ci.yml`**
+  > **落地记录**：三 job 落盘（`lint-and-governance` 含 harvest-gate 通道校验 / `host-matrix-tests` 4 SoC × 2 OS /
+  > `coverage-gate` 85% 阈值 + HTML artifact）。本地四 SoC 全量 `ctest -L esp_idf` 均 **31/31**；
+  > 既有测试已补齐 SoC 可移植性（I2C 第二控制器 / SPI3 / ESP32 输入专用引脚按 `SOC_*` 条件化）。
   ```yaml
   name: ESP-IDF Simulation Interception CI
 
