@@ -1652,6 +1652,18 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     add_test(NAME test_esp_idf_blink_run COMMAND test_esp_idf_blink_run)
     set_tests_properties(test_esp_idf_blink_run PROPERTIES LABELS "esp_idf;run" TIMEOUT 60)
 
+    # Cross-platform headless deterministic replay (M3 Task M3-3, T-008)
+    find_package(Python3 COMPONENTS Interpreter QUIET)
+    if(Python3_Interpreter_FOUND)
+        add_test(NAME esp_idf_headless_replay
+            COMMAND ${Python3_EXECUTABLE}
+                ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/headless/test_esp_idf_headless_replay.py
+                $<TARGET_FILE:test_esp_idf_blink_run>
+        )
+        set_tests_properties(esp_idf_headless_replay
+            PROPERTIES LABELS "esp_idf;headless" TIMEOUT 180)
+    endif()
+
     # 5. Wasm compile-only gate
     include(${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/wasm/esp_idf_wasm_compile.cmake)
     add_esp_idf_wasm_compile_check(test_esp_err
