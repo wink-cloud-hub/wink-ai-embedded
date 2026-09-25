@@ -33,7 +33,7 @@
 | **创建日期** | 2026-09-22（v2.0 修订于 2026-09-23；v3.0 修订于 2026-09-23；v3.2~v3.3 修订于 2026-09-23） |
 | **目标平台/SoC** | `wasm32-unknown-emscripten` / `host` (x86_64, Windows/Linux)；语料对照 SoC：`esp32` / `esp32s3` / `esp32c3` / `esp32c6` |
 | **工具链/SDK版本**| `ESP-IDF v5.1.3 LTS` ~ `v6.1+`（语料与宏取证基线 = v6.1；v5.x 做双版本兼容回归） |
-| **计划状态** | 🟡 验收证据就绪（M0~M3 主体已交付；未闭环：L2 vendor 精选套件、T-012 Nightly、Actions 实跑）待 Owner 结项签署 |
+| **计划状态** | ✅ 已验收结项（M0~M3，2026-09-25；master CI 五工作流绿，PR Fast CI 前端 sandbox 红为外部 SDK 发布依赖 [#13](https://github.com/wink-cloud-hub/wink-ai-embedded/issues/13)） |
 | **优先级** | 🔴 P0（运行时框架层核心演进） |
 | **计划版本** | `v3.6` |
 | **关联技术设计** | [`docs/zh/tech-designs/core/pal-i2c-v6-compatibility.md`](../../zh/tech-designs/core/pal-i2c-v6-compatibility.md) |
@@ -736,8 +736,8 @@ corpus（Tier-A/B/C）只证明“能编译”。行为证据走精选 vendor �
 | L2 Vendor 精选行为套件 | `wink-micro-app/vendor/esp_idfv61/`：5 域上游逐字源 + 哈希 pin + `esp_idfv61_*` host/wasm 编译门禁 + `esp_idfv61_vendor_upstream` 校验（§7.1.1） | ✅ |
 | L3 文档终审 | 01 §5 / 02 v2.2 §4 / 03 v1.3 §6；ADR-0085 修订、ADR-0087 Accepted | ✅ |
 | L4 红线机器证据 | `esp_idf_all`（0 malloc / 0 claim / 定点 PWM / SPDX）全绿 | ✅ |
-| L4 CI 实跑 | `.github/workflows/esp_idf_ci.yml` 已落盘，待 push 后验证 | ⏳ |
-| T-012 Nightly 双版本矩阵 | 递延 Nightly 专项（M3 v2.2 §2.2 范围声明） | ⏸ |
+| L4 CI 实跑 | License/Harvest/Docs Contract/Clang-Tidy/ESP-IDF CI 五工作流在 master 全绿（run `36159425048` 等）；PR Fast CI 唯一红为 `peripherals-sdk-sandbox`（外部 SDK 发布依赖，跟踪 [#13](https://github.com/wink-cloud-hub/wink-ai-embedded/issues/13)） | ✅（外部项 #13） |
+| T-012 Nightly 双版本矩阵 | `nightly.yml: idf-dual-version` 落盘：release-v6.1 阻断式 IDF 树 diff / release-v5.1 探针（R-008 接受） | ✅ |
 
 ---
 
@@ -824,7 +824,7 @@ corpus（Tier-A/B/C）只证明“能编译”。行为证据走精选 vendor �
 | **v3.3** | 2026-09-23 | **融合 11 条代码事实评审（P0 阻塞开工项闭环）**：<br>1. §3.5.1.1 Handle generation 间接层 + ABA 回归（R-011）；§3.5.1.3 `resource_id` type_tag 编码 + Priority-one/Broadcast-all 唤醒三分 + EventGroup 状态声明（R-012/R-004）；<br>2. §3.5.1.2 `vTaskDelay(0)` 纯让出 + §3.5.1.6 Tick 冻结/`pdMS_TO_TICKS` 截断 + `esp_timer` 10ms 精度降级登记；<br>3. 新 §3.9 GPTimer/SPI/NVS 三件套定级（M2）；§8 红线 4 + T-006 lint glob 作用域精确化（排除 `targets/`/`osal/`）；<br>4. §6 M2 三线并行 + M2-4 集成日串行合入纪律（热文件冲突）+ 派生矩阵 M1/M2 DoD 同步；§7 L1/L2 补 ABA/让出序/alarm 时序断言；风险册新增 R-011/R-012。 | 架构组 |
 | **v3.4** | 2026-09-24 | **M0 执行前代码事实纠偏（子计划 v1.1 对齐）**：① §3.4.2 I2C 收敛签名纠正（7 参为 `pal_i2c_transfer_timeout`，6 参 `pal_i2c_transfer` 为默认超时包装）；② M0 升 v1.1（status 枚举 canonical、GPIO 门面补 `set_direction`、SoC 掩码改官方表达式、callbacks 七字段范式、reset 三钩子、task.h 声明桩、语料 OBJECT 化）；③ M1/M2/M3 升 v1.1（展开前置约束补遗）。0 框架变更。 | 架构组 |
 | **v3.5** | 2026-09-24 | **三层证据塔（§7.1.1）**：L0 corpus 全量广度 + L2 `vendor/esp_idfv61/` 精选行为深度（约 6~8 个，每域 1 代表）+ CMS 式 checklist 治理；锁定目录命名（版本维度，经 `WINK_ESP_TARGET` 矩阵 cover 全 SoC）、精选三规则、upstream manifest 机检“一行不改”、M1-4 首批 / M3-3 收齐节奏。0 框架变更。 | 架构组 |
-| **v3.6** | 2026-09-25 | **M3 收官结项证据记录**：M3-1/2/3 交付（S3/C3/C6 SoC 数据 + 4 SoC 矩阵 31/31、覆盖率 85.71%、headless 3-run bit-exact、CI 工作流与覆盖率门禁）；T-008/T-011 闭环；T-012 递延 Nightly 专项；新增 §7.5 验收证据表（遗留项：L2 vendor 精选套件、Actions 实跑验证）。 | 架构组 / 仿真拦截专项小组 |
+| **v3.6** | 2026-09-25 | **M3 收官结项证据记录**：M3-1/2/3 交付（S3/C3/C6 SoC 数据 + 4 SoC 矩阵 31/31、覆盖率 85.71%、headless 3-run bit-exact、CI 工作流与覆盖率门禁）；T-008/T-011 闭环；T-012 nightly 双版本矩阵落盘；L2 vendor 套件 `esp_idfv61`（5 域哈希链）落盘；新增 §7.5 验收证据表；master CI 五工作流全绿，PR Fast CI 前端 sandbox 红为外部 SDK 发布依赖（#13）。 | 架构组 / 仿真拦截专项小组 |
 
 ---
 

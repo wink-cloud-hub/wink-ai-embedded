@@ -3,7 +3,7 @@
 > 📋 **计划状态声明**：
 > 本计划为 ESP-IDF 仿真拦截层派生子计划（Milestone 3，收官里程碑）。
 > **继承总纲**：[`PLAN-20260922-ESP-IDF-SIM-MASTER`](./2026-09-22-esp-idf-simulation-interception-master-plan.md) (v3.5)
-> **当前状态**：🟡 M3-1/M3-2 已完成；M3-3 证据就绪（Step 4 结项签署待 Owner；遗留项：L2 vendor 精选套件、T-012 Nightly、Actions 实跑）
+> **当前状态**：✅ M3-1/M3-2/M3-3 全量交付并实跑（唯一外部项：PR Fast CI 前端 sandbox 的 SDK 发布依赖 #13）
 > 🎯 **计划版本**：v2.3（2026-09-25，收官执行记录）；v2.2（2026-09-25，官方真值校核修订：S3 有效掩码/枚举回归官方事实（22~25 物理不存在）、C6 LP 外设 HP-only 有意偏离登记、"LTS" 术语与 EOL 更正、全部 CMake 配置补 `-DTARGET_PLATFORM=host`（修复默认 wasm 平台导致 ctest 零测试假绿）、winkcli CI 安装方式修正、覆盖率 link options 改 PUBLIC、`WINK_IDF_TARGET_DEFINE` 目录作用域修正、legacy_i2c corpus 硬编码宏清理、T-012 范围声明对齐）
 > 📚 **关联规范**：`docs-adr.md`、`03-coding-guidelines.md`、`00-IMPLEMENTATION-PLAN-TEMPLATE.md`
 > 🔍 **M2 移交基线**：M2 v2.4 已 100% 验收交付（DoD 全部通过，28/28 CTest 测试 100% 绿灯，License Map 与 Layering Lint 0 findings；闭环 4 项立即架构加固：外设全局复位链条 `esp_peripherals_reset`、I2C 链表多事务阻断与显式校验、NVS 静态池严格压缩至 3KB、UART 并发读者防护与事件长度保真）。
@@ -1001,9 +1001,10 @@ graph TD
   - 核查 L0~L4 全部门禁出口（证据记录见总纲「结项验收记录」）；
   - 将实施总纲 [`PLAN-20260922-ESP-IDF-SIM-MASTER`](./2026-09-22-esp-idf-simulation-interception-master-plan.md) 状态签署为 `✅ 已验收结项`。
 
-  > **当前状态（2026-09-25）**：L0/L1/L3 证据齐备（四 SoC 31/31、覆盖率 85.71%、门禁双绿、headless bit-exact）；
-  > **未闭环项**：① master §7.1.1 `vendor/esp_idfv61` 精选行为套件未落盘；② T-012 Nightly 双版本矩阵（M3 v2.2 已声明不在本计划交付）；
-  > ③ Actions 实跑需 push 后验证。以上闭环或显式接受后方可结项签署。
+  > **当前状态（2026-09-25，已 push 并实跑）**：L0/L1/L3 证据齐备（四 SoC 31/31、覆盖率 85.71%、门禁双绿、headless bit-exact）；
+  > ① `vendor/esp_idfv61` 5 域套件已落盘（哈希链 + host/wasm 编译门禁）；② T-012 nightly 双版本矩阵已落盘；
+  > ③ Actions 实跑：License/Harvest/Docs Contract/Clang-Tidy/ESP-IDF CI 五工作流全绿（run `36159425048` 等）。
+  > **唯一外部项**：PR Fast CI `peripherals-sdk-sandbox`（前端 SDK 未发布 i2c-session API）跟踪 [#13](https://github.com/wink-cloud-hub/wink-ai-embedded/issues/13)，非本框架范围。
 
 ---
 
@@ -1045,7 +1046,8 @@ graph TD
 
 ### L4 治理与发布门禁
 - [x] 0 动态堆分配（`esp_idf_all` pack 的 RUNTIME-MALLOC 规则 + ctest lint 全绿）。
-- [ ] GitHub Actions CI 工作流在 master 分支全绿：工作流已落盘，**待 push 后实跑验证**。
+- [x] GitHub Actions CI 工作流在 master 分支实跑：License/Harvest/Docs Contract/Clang-Tidy/ESP-IDF CI 五工作流全绿
+      （run `36159425048` 等，commit `b1c4608e`）；PR Fast CI 仅 `peripherals-sdk-sandbox` 红，外部 SDK 发布依赖（[#13](https://github.com/wink-cloud-hub/wink-ai-embedded/issues/13)）。
 
 ---
 
