@@ -56,8 +56,8 @@ extern const uint8_t g_mcs51_num_peripherals;
 // except through the test seam below.
 //
 // Capacity rationale (stage4 review follow-up, PLAN-20260924-SYSCLOCK):
-// core 3 + current chip package 12 = 15 today (cms8s_clo filled the 12th
-// slot); 16 leaves headroom for LCD-class models and a new family.
+// core 3 + current chip package 12 = 15 today (the CLO model filled the
+// 12th slot); 16 leaves headroom for LCD-class models and a new family.
 // Overflow is
 // a build contract violation and ABORTS in every build (assert is
 // NDEBUG-compiled out; the unconditional abort is the real fuse) — never a
