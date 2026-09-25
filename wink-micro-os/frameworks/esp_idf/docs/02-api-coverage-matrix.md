@@ -1,11 +1,11 @@
 # ESP-IDF 仿真拦截层 API 覆盖矩阵与降级登记簿 (02-api-coverage-matrix)
 
-> **版本**：v1.1  
-> **适用里程碑**：M1 (FreeRTOS 调度器与并发原语 Shim)
+> **版本**：v2.0  
+> **适用里程碑**：M2 (外设与总线仿真拦截：LEDC, I2C, UART, GPTimer, SPI, NVS)
 
 ---
 
-## 1. M0 & M1 交付 API 覆盖清单
+## 1. M0, M1 & M2 交付 API 覆盖清单
 
 | API 标识符 | 所属头文件 | 实现状态 | 仿真底层对应物 | 降级/弱化登记 |
 |:---|:---|:---:|:---|:---|
@@ -50,6 +50,35 @@
 | `xEventGroupWaitBits` / `SetBits` / `ClearBits` | `freertos/event_groups.h` | ✅ 支持 | Broadcast-all + `sync_block` | 支持 `xWaitForAllBits` 及 `xClearOnExit` |
 | `xEventGroup*FromISR` | `freertos/event_groups.h` | ⚠️ 降级支持 | 等价任务逻辑 | **[降级登记 9]** `*pxHigherPriorityTaskWoken=pdFALSE` 恒定 |
 | `timers.h` 全系 API | `freertos/timers.h` | 🚫 未支持 | Fail-Loud | **[降级登记 10]** `xTimerCreate` 返 NULL，其余返 `pdFAIL` |
+| `ledc_timer_config` / `ledc_channel_config` | `driver/ledc.h` | ✅ 支持 | `pal_pwm_config_pin` | 支持配置 4 定时器 / 8 通道；零浮点定点计算 |
+| `ledc_set_duty` / `ledc_update_duty` | `driver/ledc.h` | ✅ 支持 | `pal_pwm_set_duty_bp` | 定点 basis points 转换（0..10000 BP）；ADR-0066 纯整型 |
+| `ledc_set_fade_with_time` / `ledc_fade_start` | `driver/ledc.h` | ⚠️ 降级支持 | 即时阶跃 + 同步回调 | **[降级登记 15]** 无硬件斜坡生成器，降级为目标值直接生效 |
+| `ledc_set_freq` / `ledc_get_freq` / `ledc_get_duty` | `driver/ledc.h` | ✅ 支持 | `pal_pwm_set_freq` | 支持通道/定时器参数动态查询与频率重设 |
+| `ledc_stop` | `driver/ledc.h` | ✅ 支持 | `pal_pwm_set_duty_bp(0)` | 强制输出空闲电平并关断输出 |
+| `i2c_param_config` / `i2c_driver_install` / `delete` | `driver/i2c.h` (Legacy) | ✅ 支持 | `pal_i2c_init` / `deinit` | 记录主从模式；从机模式 Fail-Loud 拒绝 |
+| `i2c_cmd_link_create` / `delete` | `driver/i2c.h` (Legacy) | ✅ 支持 | 静态 8 命令槽位池 | 支持单链最高 32 个命令节点（Zero Malloc） |
+| `i2c_master_start` / `stop` / `write*` / `read*` | `driver/i2c.h` (Legacy) | ✅ 支持 | 内存连续缓冲区校验 | 仅记录操作序列，为 CMD Folding 收集参数 |
+| `i2c_master_cmd_begin` | `driver/i2c.h` (Legacy) | ⚠️ 降级支持 | `pal_i2c_transfer_timeout` | **[降级登记 19]** 状态机折叠为单次/复合 PAL 传输，支持 Repeated START |
+| `i2c_new_master_bus` / `i2c_del_master_bus` | `driver/i2c_master.h` (Modern) | ✅ 支持 | `pal_i2c_init` / `deinit` | 静态总线池分配与资源隔离 |
+| `i2c_master_bus_add_device` / `rm_device` | `driver/i2c_master.h` (Modern) | ✅ 支持 | 静态器件槽位分配 | 支持 16 器件同时挂载于虚拟总线 |
+| `i2c_master_transmit` / `receive` / `probe` | `driver/i2c_master.h` (Modern) | ✅ 支持 | `pal_i2c_transfer_timeout` | 阻塞式主模式标准数据收发与 ACK 探测 |
+| `uart_param_config` / `uart_set_pin` | `driver/uart.h` | ✅ 支持 | 延迟引脚与波特率簿记 | 支持 `UART_PIN_NO_CHANGE` (-1) 参数 |
+| `uart_driver_install` / `uart_driver_delete` | `driver/uart.h` | ✅ 支持 | `pal_uart_init` / `deinit` | 内置 512B 环形缓冲区，支持 FreeRTOS 事件队列 |
+| `uart_write_bytes` | `driver/uart.h` | ✅ 支持 | `pal_uart_write` | 支持定额字节阻塞发送 |
+| `uart_read_bytes` | `driver/uart.h` | ⚠️ 降级支持 | 环形缓冲区读取 + 协作切出 | **[降级登记 17]** 超时等待调用 `sim_scheduler_yield_context` 协作让出 |
+| `uart_flush` / `uart_get_buffered_data_len` | `driver/uart.h` | ✅ 支持 | 环形缓冲区指针重置与计数 | 准确返回当前待读字节数 |
+| `gptimer_new_timer` / `gptimer_del_timer` | `driver/gptimer.h` | ✅ 支持 | 静态 4 定时器槽位池 | 参数校验与分辨率记录 |
+| `gptimer_set_alarm_action` | `driver/gptimer.h` | ⚠️ 降级支持 | `pal_hwtimer_init` | **[降级登记 16]** 周期自动 clamp 不小于 10ms (10000us) |
+| `gptimer_enable` / `disable` / `start` / `stop` | `driver/gptimer.h` | ✅ 支持 | `pal_hwtimer_start` / `stop` | 状态机校验（必须先 enable 再 start） |
+| `gptimer_get_raw_count` / `set_raw_count` | `driver/gptimer.h` | ✅ 支持 | `pal_os_get_us()` + 偏移推导 | 支持动态修改/查询定时器计数值 |
+| `gptimer_register_event_callbacks` | `driver/gptimer.h` | ✅ 支持 | 警报中断上下文直调 | 警报触发时同步调用用户 `on_alarm` 回调 |
+| `spi_bus_initialize` / `spi_bus_free` | `driver/spi_common.h` | ✅ 支持 | `pal_spi_init` / `deinit` | 支持 SPI2_HOST (HSPI) 与 SPI3_HOST (VSPI)；SPI1 Fail-Loud 拒绝 |
+| `spi_bus_add_device` / `remove_device` | `driver/spi_common.h` | ✅ 支持 | `pal_spi_add_device` | 静态 8 器件池；支持极性/相位/CS 高低有效映射 |
+| `spi_device_transmit` | `driver/spi_master.h` | ⚠️ 降级支持 | `pal_spi_transfer_device` | **[降级登记 18]** 支持 `SPI_TRANS_USE_TXDATA/RXDATA`，全双工同步轮询 |
+| `nvs_flash_init` / `erase` / `deinit` | `nvs_flash.h` | ✅ 支持 | 内存 KV 清空与初始化 | 支持模拟 Flash 初始化与格式化 |
+| `nvs_open` / `nvs_close` / `nvs_commit` | `nvs.h` | ✅ 支持 | 静态 8 句柄槽位分配 | 命名空间隔离与深拷贝；commit 为 no-op 确认 |
+| `nvs_set_*` / `nvs_get_*` 全类型原语 | `nvs.h` | ⚠️ 降级支持 | 静态 32 键值项存储池 | **[降级登记 20]** 纯内存态存储，无跨进程物理持久化 |
+| `nvs_erase_key` / `nvs_erase_all` | `nvs.h` | ✅ 支持 | 句柄命名空间匹配擦除 | 精确支持单键擦除与空间批量擦除 |
 
 ---
 
@@ -131,6 +160,36 @@
 - **设计权衡**：仿真层队列采用单向定额环形缓冲区（Ring Buffer）实现 FIFO 语义，暂不支持双端逆向头插操作（LIFO）。
 - **拦截层行为**：打出 `ESP_LOGE` 错误日志并返回 `errQUEUE_FULL`；ISR 变体同时将 `*pxHigherPriorityTaskWoken` 赋为 `pdFALSE`。提示开发者改用标准 `xQueueSend` / `xQueueSendToBack`。
 
+### 降级条目 15：LEDC 渐变降级为即时阶跃与同步回调
+- **受影响 API**：`ledc_set_fade_with_time`, `ledc_set_fade_with_step`, `ledc_fade_start`, `ledc_cb_register`
+- **设计权衡**：Wasm/Host 仿真环境无独立高频 PWM 硬件斜坡发生器。
+- **拦截层行为**：`ledc_fade_start` 立即将占空比设置为目标值；若注册了 `fade_cb`，在设置后直接同步调用该回调（`LEDC_FADE_STOPPED` 事件），无动态渐变延时过程。占空比计算严格遵循 ADR-0066 纯整型定点基点（0..10000 BP），严禁浮点运算。
+
+### 降级条目 16：GPTimer 仿真周期下限钳制 10ms
+- **受影响 API**：`gptimer_set_alarm_action`
+- **设计权衡**：微秒级硬件定时器中断若在宿主无限制投递，会导致事件队列被软中断淹没，阻塞 Fiber/协作调度步进。
+- **拦截层行为**：当用户传入的 `alarm_count` 对应周期小于 10000 微秒（10ms）时，底层下发至 `pal_hwtimer_init` 时自动 clamp 为 10000 微秒。
+
+### 降级条目 17：UART 硬件流控忽略与定额缓冲协作阻塞
+- **受影响 API**：`uart_set_pin`, `uart_read_bytes`
+- **设计权衡**：Host 仿真器无 RTS/CTS 物理连线，且零动态内存分配；单端口同时仅维持单一协作阻塞读取者。
+- **拦截层行为**：`uart_set_pin` 中 RTS/CTS 仅记录参数后忽略；`uart_read_bytes` 在空缓冲且 `ticks_to_wait > 0` 时，调用 `sim_scheduler_block` 协作挂起并切出 Fiber，直到底层 PAL 收到数据并注入环形缓冲区后 resume 唤醒；若同一端口已有任务在阻塞，次发任务直接拒绝返回错误以绝孤儿覆写。
+
+### 降级条目 18：SPI Master 同步轮询与从机映射
+- **受影响 API**：`spi_bus_initialize`, `spi_device_transmit`
+- **设计权衡**：仿真环境目前不模拟 DMA 异步中断队列与半双工模式。
+- **拦截层行为**：`spi_device_transmit` 采用全双工同步轮询；主机 ID 仅支持 `SPI2_HOST` (0) 与 `SPI3_HOST` (1)，`SPI1_HOST`（Flash 专用总线）Fail-Loud 报错拒绝。
+
+### 降级条目 19：I2C 降级折叠引擎与从机拒绝
+- **受影响 API**：`i2c_master_cmd_begin`, `i2c_driver_install`
+- **设计权衡**：ESP-IDF Legacy 命令链 API（Start-Write-Read-Stop）在 PAL 侧对应单次组合原子事务 `pal_i2c_transfer_timeout`。
+- **拦截层行为**：状态机引擎在 `i2c_master_cmd_begin` 遍历并折叠链表为 `tx_buf` 与 `rx_buf`（支持单次 Repeated START 复合传输）；同一个 `cmd_handle` 内若包含多个独立 `START...STOP` 事务则 Fail-Loud 报错 `ESP_ERR_NOT_SUPPORTED`；`i2c_driver_install` 若请求 `I2C_MODE_SLAVE` 则立即 Fail-Loud 返回 `ESP_ERR_NOT_SUPPORTED`。
+
+### 降级条目 20：NVS 键值存储内存态模拟
+- **受影响 API**：`nvs_set_*`, `nvs_get_*`, `nvs_commit`
+- **设计权衡**：单元测试与仿真环境默认隔离宿主文件系统，静态内存严格控制在 3KB 预算内。
+- **拦截层行为**：内置静态 16 项 KV 存储池（单项最大 128B 数据），`nvs_commit` 为空操作；键值在当前进程生命周期内跨复位持久（ADR-0082），`nvs_flash_erase` 显式抹除。
+
 ---
 
 ## 3. 官方语料验证集
@@ -138,3 +197,7 @@
 | 语料标识 | 官方路径 | 覆盖功能点 | 目标形态 |
 |:---|:---|:---|:---:|
 | `corpus_blink` | `examples/get-started/blink/main/blink_example_main.c` | GPIO 配置、输出电平控制、FreeRTOS 延迟与多任务协作 | `OBJECT` compile-only 100% 通过；`test_esp_idf_blink_run` 200 ticks 有界运行 + Replay 确定性双跑验证 |
+| `corpus_ledc_basic` | `examples/peripherals/ledc/ledc_basic/main/ledc_basic_example_main.c` | LEDC 4 定时器/通道配置、PWM 占空比设置、渐变 API | `OBJECT` compile-only 100% 通过；Wasm compile check 通过 |
+| `corpus_i2c_basic` | `examples/peripherals/i2c/i2c_basic/main/i2c_basic_example_main.c` | Modern I2C Master 总线/器件注册、Transmit/Receive 事务 | `OBJECT` compile-only 100% 通过；Wasm compile check 通过 |
+| `corpus_legacy_i2c` | `components/driver/test_apps/legacy_i2c_driver/main/test_i2c.c` | Legacy I2C 接口集（配置、命令链、时序、从机） | Tier-B stub 闭包 `OBJECT` compile-only 100% 通过；Wasm compile check 通过 |
+

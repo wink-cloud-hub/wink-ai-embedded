@@ -31,6 +31,15 @@ typedef int32_t esp_err_t;
 #define ESP_ERR_INVALID_MAC         0x10B   /*!< MAC address was invalid */
 #define ESP_ERR_NOT_FINISHED        0x10C   /*!< There are items remained to retrieve */
 
+#ifndef ESP_ERROR_CHECK
+#define ESP_ERROR_CHECK(x) do {                                         \
+        esp_err_t __err_rc = (x);                                       \
+        if (__err_rc != ESP_OK) {                                       \
+            assert(__err_rc == ESP_OK);                                 \
+        }                                                               \
+    } while (0)
+#endif
+
 const char *esp_err_to_name(esp_err_t code);
 const char *esp_err_to_name_r(esp_err_t code, char *buf, size_t buflen);
 

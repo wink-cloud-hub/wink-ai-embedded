@@ -1311,6 +1311,12 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
         set_tests_properties(esp_idf_lint_isolation PROPERTIES LABELS "esp_idf;lint")
     endif()
 
+    if(MSVC)
+        set(ESP_IDF_TEST_COMPILE_OPTIONS /W4 /WX /wd4100 /wd4210 /wd4201)
+    else()
+        set(ESP_IDF_TEST_COMPILE_OPTIONS -Wall -Wextra -Werror -Wno-unused-parameter)
+    endif()
+
     # 2. Core unit tests
     add_executable(test_esp_err
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_err.c
@@ -1321,11 +1327,7 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
         ${CMAKE_CURRENT_SOURCE_DIR}
     )
     target_link_libraries(test_esp_err PRIVATE wink_framework_esp_idf)
-    if(MSVC)
-        target_compile_options(test_esp_err PRIVATE /W4 /WX /wd4100 /wd4210)
-    else()
-        target_compile_options(test_esp_err PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
-    endif()
+    target_compile_options(test_esp_err PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
     if(TARGET generate_config)
         add_dependencies(test_esp_err generate_config)
     endif()
@@ -1343,11 +1345,7 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
         ${CMAKE_CURRENT_SOURCE_DIR}
     )
     target_link_libraries(test_esp_gpio PRIVATE wink_framework_esp_idf dal)
-    if(MSVC)
-        target_compile_options(test_esp_gpio PRIVATE /W4 /WX /wd4100 /wd4210)
-    else()
-        target_compile_options(test_esp_gpio PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
-    endif()
+    target_compile_options(test_esp_gpio PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
     if(TARGET generate_config)
         add_dependencies(test_esp_gpio generate_config)
     endif()
@@ -1368,11 +1366,7 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
         ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
     )
     target_link_libraries(test_esp_idf_freertos PRIVATE wink_framework_esp_idf dal)
-    if(MSVC)
-        target_compile_options(test_esp_idf_freertos PRIVATE /W4 /WX /wd4100 /wd4210)
-    else()
-        target_compile_options(test_esp_idf_freertos PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
-    endif()
+    target_compile_options(test_esp_idf_freertos PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
     if(TARGET generate_config)
         add_dependencies(test_esp_idf_freertos generate_config)
     endif()
@@ -1380,7 +1374,118 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     add_test(NAME test_esp_idf_freertos COMMAND test_esp_idf_freertos)
     set_tests_properties(test_esp_idf_freertos PROPERTIES LABELS "esp_idf;core")
 
-    # 3. Tier-A Blink official corpus (OBJECT library: compile-only, no main link)
+    add_executable(test_esp_ledc
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_ledc.c
+        ${UNITY_DIR}/unity.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_ledc PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    target_link_libraries(test_esp_ledc PRIVATE wink_framework_esp_idf dal)
+    target_compile_options(test_esp_ledc PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(test_esp_ledc generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_ledc)
+    add_test(NAME test_esp_ledc COMMAND test_esp_ledc)
+    set_tests_properties(test_esp_ledc PROPERTIES LABELS "esp_idf;core")
+
+    add_executable(test_esp_i2c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_i2c.c
+        ${UNITY_DIR}/unity.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_i2c PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    target_link_libraries(test_esp_i2c PRIVATE wink_framework_esp_idf dal)
+    target_compile_options(test_esp_i2c PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(test_esp_i2c generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_i2c)
+    add_test(NAME test_esp_i2c COMMAND test_esp_i2c)
+    set_tests_properties(test_esp_i2c PROPERTIES LABELS "esp_idf;core")
+
+    add_executable(test_esp_uart
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_uart.c
+        ${UNITY_DIR}/unity.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_uart PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
+    )
+    target_link_libraries(test_esp_uart PRIVATE wink_framework_esp_idf dal)
+    target_compile_options(test_esp_uart PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(test_esp_uart generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_uart)
+    add_test(NAME test_esp_uart COMMAND test_esp_uart)
+    set_tests_properties(test_esp_uart PROPERTIES LABELS "esp_idf;core")
+
+    add_executable(test_esp_gptimer
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_gptimer.c
+        ${UNITY_DIR}/unity.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_gptimer PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
+    )
+    target_link_libraries(test_esp_gptimer PRIVATE wink_framework_esp_idf dal)
+    target_compile_options(test_esp_gptimer PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(test_esp_gptimer generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_gptimer)
+    add_test(NAME test_esp_gptimer COMMAND test_esp_gptimer)
+    set_tests_properties(test_esp_gptimer PROPERTIES LABELS "esp_idf;core")
+
+    add_executable(test_esp_spi
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_spi.c
+        ${UNITY_DIR}/unity.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_spi PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    target_link_libraries(test_esp_spi PRIVATE wink_framework_esp_idf dal)
+    target_compile_options(test_esp_spi PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(test_esp_spi generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_spi)
+    add_test(NAME test_esp_spi COMMAND test_esp_spi)
+    set_tests_properties(test_esp_spi PROPERTIES LABELS "esp_idf;core")
+
+    add_executable(test_esp_nvs
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_nvs.c
+        ${UNITY_DIR}/unity.c
+    )
+    target_include_directories(test_esp_nvs PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    target_link_libraries(test_esp_nvs PRIVATE wink_framework_esp_idf)
+    target_compile_options(test_esp_nvs PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(test_esp_nvs generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_nvs)
+    add_test(NAME test_esp_nvs COMMAND test_esp_nvs)
+    set_tests_properties(test_esp_nvs PROPERTIES LABELS "esp_idf;core")
+
+    # 3. Tier-A Official corpus (OBJECT libraries: compile-only, no main link)
     add_library(esp_idf_corpus_blink_obj OBJECT
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/blink/blink_example_main.c
     )
@@ -1390,11 +1495,7 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     target_link_libraries(esp_idf_corpus_blink_obj PRIVATE
         wink_framework_esp_idf
     )
-    if(MSVC)
-        target_compile_options(esp_idf_corpus_blink_obj PRIVATE /W4 /WX /wd4100 /wd4210)
-    else()
-        target_compile_options(esp_idf_corpus_blink_obj PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
-    endif()
+    target_compile_options(esp_idf_corpus_blink_obj PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
     if(TARGET generate_config)
         add_dependencies(esp_idf_corpus_blink_obj generate_config)
     endif()
@@ -1403,6 +1504,65 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
         COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target esp_idf_corpus_blink_obj
     )
     set_tests_properties(esp_idf_corpus_blink PROPERTIES LABELS "esp_idf_corpus;tier_a")
+
+    add_library(esp_idf_corpus_ledc_basic_obj OBJECT
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/ledc_basic/ledc_basic_example_main.c
+    )
+    target_include_directories(esp_idf_corpus_ledc_basic_obj BEFORE PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/ledc_basic/include
+    )
+    target_link_libraries(esp_idf_corpus_ledc_basic_obj PRIVATE
+        wink_framework_esp_idf
+    )
+    target_compile_options(esp_idf_corpus_ledc_basic_obj PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(esp_idf_corpus_ledc_basic_obj generate_config)
+    endif()
+
+    add_test(NAME esp_idf_corpus_ledc
+        COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target esp_idf_corpus_ledc_basic_obj
+    )
+    set_tests_properties(esp_idf_corpus_ledc PROPERTIES LABELS "esp_idf_corpus;tier_a")
+
+    add_library(esp_idf_corpus_i2c_basic_obj OBJECT
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/i2c_basic/i2c_basic_example_main.c
+    )
+    target_include_directories(esp_idf_corpus_i2c_basic_obj BEFORE PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/i2c_basic/include
+    )
+    target_link_libraries(esp_idf_corpus_i2c_basic_obj PRIVATE
+        wink_framework_esp_idf
+    )
+    target_compile_options(esp_idf_corpus_i2c_basic_obj PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(esp_idf_corpus_i2c_basic_obj generate_config)
+    endif()
+
+    add_test(NAME esp_idf_corpus_i2c
+        COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target esp_idf_corpus_i2c_basic_obj
+    )
+    set_tests_properties(esp_idf_corpus_i2c PROPERTIES LABELS "esp_idf_corpus;tier_a")
+
+    # Tier-B Legacy I2C upstream corpus (OBJECT library: compile-only, no main link)
+    add_library(esp_idf_corpus_legacy_i2c_obj OBJECT
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/legacy_i2c/test_i2c.c
+    )
+    target_include_directories(esp_idf_corpus_legacy_i2c_obj BEFORE PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/legacy_i2c/include
+        ${UNITY_DIR}
+    )
+    target_link_libraries(esp_idf_corpus_legacy_i2c_obj PRIVATE
+        wink_framework_esp_idf
+    )
+    target_compile_options(esp_idf_corpus_legacy_i2c_obj PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(esp_idf_corpus_legacy_i2c_obj generate_config)
+    endif()
+
+    add_test(NAME esp_idf_corpus_legacy_i2c
+        COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target esp_idf_corpus_legacy_i2c_obj
+    )
+    set_tests_properties(esp_idf_corpus_legacy_i2c PROPERTIES LABELS "esp_idf_corpus;tier_b")
 
     # 4. Blink bounded run test (L2 Replay determinism)
     add_executable(test_esp_idf_blink_run
@@ -1420,11 +1580,7 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
         ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
     )
     target_link_libraries(test_esp_idf_blink_run PRIVATE wink_framework_esp_idf dal)
-    if(MSVC)
-        target_compile_options(test_esp_idf_blink_run PRIVATE /W4 /WX /wd4100 /wd4210)
-    else()
-        target_compile_options(test_esp_idf_blink_run PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
-    endif()
+    target_compile_options(test_esp_idf_blink_run PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
     if(TARGET generate_config)
         add_dependencies(test_esp_idf_blink_run generate_config)
     endif()
@@ -1443,9 +1599,39 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     add_esp_idf_wasm_compile_check(test_esp_idf_freertos
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_idf_freertos.c
     )
+    add_esp_idf_wasm_compile_check(test_esp_ledc
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_ledc.c
+    )
+    add_esp_idf_wasm_compile_check(test_esp_i2c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_i2c.c
+    )
+    add_esp_idf_wasm_compile_check(test_esp_uart
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_uart.c
+    )
+    add_esp_idf_wasm_compile_check(test_esp_gptimer
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_gptimer.c
+    )
+    add_esp_idf_wasm_compile_check(test_esp_spi
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_spi.c
+    )
+    add_esp_idf_wasm_compile_check(test_esp_nvs
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_nvs.c
+    )
     add_esp_idf_wasm_compile_check(corpus_blink
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/blink/blink_example_main.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/blink/include
+    )
+    add_esp_idf_wasm_compile_check(corpus_ledc_basic
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/ledc_basic/ledc_basic_example_main.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/ledc_basic/include
+    )
+    add_esp_idf_wasm_compile_check(corpus_i2c_basic
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/i2c_basic/i2c_basic_example_main.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/i2c_basic/include
+    )
+    add_esp_idf_wasm_compile_check(corpus_legacy_i2c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/legacy_i2c/test_i2c.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/legacy_i2c/include
     )
 endif()
 

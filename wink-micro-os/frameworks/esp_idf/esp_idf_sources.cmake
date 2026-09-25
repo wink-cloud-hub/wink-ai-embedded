@@ -6,6 +6,13 @@ set(ESP_IDF_FRAMEWORK_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_log.c
     ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_system.c
     ${CMAKE_CURRENT_LIST_DIR}/src/drivers/esp_gpio.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/drivers/esp_ledc.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/drivers/esp_i2c_legacy.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/drivers/esp_i2c_master.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/drivers/esp_uart.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/drivers/esp_gptimer.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/drivers/esp_spi.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_nvs.c
     ${CMAKE_CURRENT_LIST_DIR}/src/freertos/freertos_task.c
     ${CMAKE_CURRENT_LIST_DIR}/src/freertos/freertos_queue.c
     ${CMAKE_CURRENT_LIST_DIR}/src/freertos/freertos_semphr.c

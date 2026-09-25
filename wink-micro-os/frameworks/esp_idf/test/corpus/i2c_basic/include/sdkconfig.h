@@ -1,0 +1,11 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
+#ifndef CORPUS_I2C_BASIC_SDKCONFIG_H_
+#define CORPUS_I2C_BASIC_SDKCONFIG_H_
+
+#include "sdkconfig_base.h"
+
+#define CONFIG_I2C_MASTER_SCL 22
+#define CONFIG_I2C_MASTER_SDA 21
+#define CONFIG_I2C_MASTER_FREQUENCY 400000
+
+#endif /* CORPUS_I2C_BASIC_SDKCONFIG_H_ */

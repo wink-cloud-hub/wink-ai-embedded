@@ -21,6 +21,7 @@ function(add_esp_idf_wasm_compile_check name source_file)
         OUTPUT "${_out_obj}"
         COMMAND ${EMCC_EXECUTABLE} -c "${_src_abs}" -o "${_out_obj}"
             -Wall -Wextra -Werror -Wno-unused-parameter
+            -DUNITY_SUPPORT_64=1
             -I${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
             -I${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/chips/esp32/include
             -I${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/freertos

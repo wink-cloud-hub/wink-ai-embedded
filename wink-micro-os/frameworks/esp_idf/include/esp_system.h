@@ -28,6 +28,9 @@ typedef enum {
 } esp_reset_reason_t;
 
 esp_reset_reason_t esp_reset_reason(void);
+uint32_t esp_get_free_heap_size(void);
+void esp_freertos_pools_reset(void);
+void esp_peripherals_reset(void);
 
 #ifdef __cplusplus
 }

@@ -12,6 +12,7 @@
 extern "C" {
 #endif
 
+#undef ESP_ERROR_CHECK
 #define ESP_ERROR_CHECK(x) do {                                                \
         esp_err_t __err_rc = (x);                                              \
         if (unlikely(__err_rc != ESP_OK)) {                                    \

@@ -4,6 +4,8 @@
 #include "esp_err.h"
 #include "esp_system.h"
 #include "soc/soc_caps.h"
+#include "driver/i2c_master.h"
+#include "driver/uart.h"
 #include <stdbool.h>
 
 /* Simulation reset hooks, defined (strong) in src/esp_idf_bridge.c and
@@ -97,6 +99,38 @@ void test_esp_restart_pending_flag(void) {
     TEST_ASSERT_FALSE(pal_wasm_target_has_pending_reset());
 }
 
+void test_esp_restart_peripherals_reset(void) {
+    pal_wasm_target_clear_pending_reset();
+
+    /* 1. Initialize peripherals */
+    i2c_master_bus_config_t bus_cfg = {
+        .i2c_port = I2C_NUM_0,
+        .sda_io_num = 21,
+        .scl_io_num = 22,
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+        .glitch_ignore_cnt = 7
+    };
+    i2c_master_bus_handle_t bus = NULL;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, i2c_new_master_bus(&bus_cfg, &bus));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, uart_driver_install(UART_NUM_0, 256, 256, 0, NULL, 0));
+
+    /* 2. Re-install without reset fails with INVALID_STATE */
+    i2c_master_bus_handle_t bus2 = NULL;
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_STATE, i2c_new_master_bus(&bus_cfg, &bus2));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_STATE, uart_driver_install(UART_NUM_0, 256, 256, 0, NULL, 0));
+
+    /* 3. Restart and clear pending reset */
+    esp_restart();
+    pal_wasm_target_clear_pending_reset();
+
+    /* 4. After clear_pending_reset, all peripherals must be in clean initial state and re-openable */
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, i2c_new_master_bus(&bus_cfg, &bus));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, uart_driver_install(UART_NUM_0, 256, 256, 0, NULL, 0));
+
+    /* Cleanup */
+    pal_wasm_target_clear_pending_reset();
+}
+
 void test_esp_gpio_unsupported_apis_fail_loud(void) {
     /* ADR-0012: unsupported APIs must Fail-Loud, never silent ESP_OK. */
     TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_SUPPORTED,
@@ -122,6 +156,7 @@ int main(void) {
     RUN_TEST(test_esp_gpio_input_only_pin_rejected_for_output);
     RUN_TEST(test_esp_gpio_out_of_bounds_pin_rejected);
     RUN_TEST(test_esp_restart_pending_flag);
+    RUN_TEST(test_esp_restart_peripherals_reset);
     RUN_TEST(test_esp_gpio_unsupported_apis_fail_loud);
     return UNITY_END();
 }

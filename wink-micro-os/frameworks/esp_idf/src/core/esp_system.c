@@ -64,6 +64,23 @@ void esp_rom_gpio_pad_select_gpio(uint32_t gpio_num) {
     ESP_LOGW("ESP_SYS", "esp_rom_gpio_pad_select_gpio: no-op in simulation (M0)");
 }
 
+void esp_rom_gpio_connect_out_signal(uint32_t gpio_num, uint32_t signal_idx, bool out_inv, bool oen_inv) {
+    (void)gpio_num;
+    (void)signal_idx;
+    (void)out_inv;
+    (void)oen_inv;
+}
+
+void esp_rom_gpio_connect_in_signal(uint32_t gpio_num, uint32_t signal_idx, bool inv) {
+    (void)gpio_num;
+    (void)signal_idx;
+    (void)inv;
+}
+
+uint32_t esp_get_free_heap_size(void) {
+    return 100000;
+}
+
 /* Task watchdog / interrupt allocator: NOT supported in M0 simulation
  * (ADR-0012 降级条目 5). Fail-loud with ESP_ERR_NOT_SUPPORTED. */
 
