@@ -10,19 +10,33 @@ permissions:
   issues: write
 
 jobs:
-  esp32-idf-build:
+  # T-012: dual-version IDF upstream traceability.
+  #   v6.1 (pinned baseline): byte-exact diff of the vendor suite sources (blocking).
+  #   v5.1 (legacy probe): presence + drift report only (non-blocking, risk R-008 accepted).
+  idf-dual-version:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - idf: release-v6.1
+            mode: block
+          - idf: release-v5.1
+            mode: probe
+    continue-on-error: ${{ matrix.mode == 'probe' }}
+    container: espressif/idf:${{ matrix.idf }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Build with ESP-IDF Docker
+      - name: Verify vendor app upstream against ${{ matrix.idf }}
         run: |
-          docker run --rm -v $PWD:/project -w /project/wink-micro-os espressif/idf:v5.4 idf.py build || true
+          if [ "${{ matrix.mode }}" = "block" ]; then
+            python3 wink-micro-os/frameworks/esp_idf/tools/check_vendor_app_upstream.py \
+              --idf-tree /opt/esp/idf
+          else
+            python3 wink-micro-os/frameworks/esp_idf/tools/check_vendor_app_upstream.py \
+              --idf-tree /opt/esp/idf --allow-hash-drift --allow-missing
+          fi
 
   stress-and-replay:
     runs-on: ubuntu-latest

@@ -603,10 +603,12 @@ graph TD
       `frameworks/esp_idf/src` 实测 **85.71%**（gcov 聚合，2026-09-25）；CI `coverage-gate` job 以 lcov 为权威。
 **验证**：`check_coverage.py build_cov/coverage_filtered.info 85` 退出码 0（CI）。
 
-#### Task T-012：nightly IDF 版本对齐 `[ 状态: ⏸ 递延（M3 v2.2 §2.2 范围声明；转 Nightly 专项）]`（P2，预估 4 h）
+#### Task T-012：nightly IDF 版本对齐 `[ 状态: ✅ 已完成（2026-09-25）]`（P2，预估 4 h）
 
-- [ ] 对齐 `nightly.yml` 镜像至计划版本矩阵（或显式声明双版本矩阵 + `|| true` 非阻塞性质与风险 R-008 接受）
-**验证**：T-012 记录写入总纲变更日志（结项前遗留项，见 §7.5）。
+- [x] `nightly.yml` 新增 `idf-dual-version` 矩阵：`espressif/idf:release-v6.1`（阻断式 vendor 上游 diff）
+      与 `release-v5.1`（存在性 + 漂移探针，`continue-on-error` 非阻塞，R-008 显式接受）；
+      替代原 `espressif/idf:v5.4 ... || true` 悬挂状态。
+**验证**：工作流 YAML 落盘 + 本地四种 checker 模式（match/drift/probe/missing）实测符合预期；Nightly 实跑随推送后首轮结果复核。
 
 ---
 
@@ -676,7 +678,7 @@ corpus（Tier-A/B/C）只证明“能编译”。行为证据走精选 vendor �
 | 层 | 位置 | 覆盖 | 门禁 |
 |:---|:---|:---|:---|
 | L0 编译广度 | `test/corpus/` | 全部 Tier-A | `ctest -R esp_idf_corpus`，每 PR |
-| L2 行为深度 | `wink-micro-app/vendor/esp_idfv61/<feature>/` | 每外设域 1 个代表（约 6~8 个：`blink_gpio`、ledc、i2c、uart、gptimer、spi、freertos 多任务…） | 真实编译 wasm 资产 + headless 场景 100% 绿 |
+| L2 行为深度 | `wink-micro-app/vendor/esp_idfv61/<feature>/` | 已交付 5 域代表：`blink_gpio`、`ledc_basic`、`i2c_basic`、`uart_echo`、`gptimer_alarm`（SPI/NVS 因封闭 SLA 白名单缺项暂缺，见套件 README §3） | 上游 normalized 哈希链 + host/wasm compile 门禁 + `esp_idf_headless_replay`；Nightly v6.1 阻断式 IDF 树 diff、v5.1 探针（T-012） |
 | L2 治理 | `docs/vendors/Espressif/ESP32_IDFV61_EXAMPLE_CHECKLIST.md` + Playbook（M3-3 起草，镜像 CMS 两件套） | 精选集逐行审计 | L3/L4 |
 
 约定（v3.5 锁定）：
@@ -731,7 +733,7 @@ corpus（Tier-A/B/C）只证明“能编译”。行为证据走精选 vendor �
 | L1 单元测试 | `ctest -L esp_idf`：esp32/s3/c3/c6 各 **31/31** | ✅ |
 | L1 覆盖率（T-011） | `frameworks/esp_idf/src` **85.71%**（gcov 聚合；CI lcov 为权威） | ✅ |
 | L2 确定性回放（T-008） | `esp_idf_headless_replay` 3 次 SHA-256 bit-exact | ✅ |
-| L2 Vendor 精选行为套件 | `wink-micro-app/vendor/esp_idfv61/` **未落盘**（§7.1.1） | ⏳ |
+| L2 Vendor 精选行为套件 | `wink-micro-app/vendor/esp_idfv61/`：5 域上游逐字源 + 哈希 pin + `esp_idfv61_*` host/wasm 编译门禁 + `esp_idfv61_vendor_upstream` 校验（§7.1.1） | ✅ |
 | L3 文档终审 | 01 §5 / 02 v2.2 §4 / 03 v1.3 §6；ADR-0085 修订、ADR-0087 Accepted | ✅ |
 | L4 红线机器证据 | `esp_idf_all`（0 malloc / 0 claim / 定点 PWM / SPDX）全绿 | ✅ |
 | L4 CI 实跑 | `.github/workflows/esp_idf_ci.yml` 已落盘，待 push 后验证 | ⏳ |

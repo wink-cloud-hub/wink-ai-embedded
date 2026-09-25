@@ -1035,8 +1035,9 @@ graph TD
 
 ### L2 行为仿真与回放门禁
 - [x] `test_esp_idf_headless_replay.py`：3 次运行轨迹哈希 bit-exact 全部一致（ctest `esp_idf_headless_replay`）。
-- [ ] Vendor app 行走测试：**未落盘**（`wink-micro-app/vendor/esp_idfv61/` 精选套件，master §7.1.1 跟踪）。
-      现有等价证据：`test_esp_idf_blink_run` 有界运行 + `esp_restart` 清洗链由 `test_esp_gpio.test_esp_restart_peripherals_reset` 覆盖。
+- [x] Vendor app 行走测试：`wink-micro-app/vendor/esp_idfv61/` 5 域套件落盘（上游逐字源 + 哈希 pin +
+      host/wasm 编译门禁 + `esp_idfv61_vendor_upstream` 校验）；行为等价证据：`test_esp_idf_blink_run` 有界运行 +
+      `esp_idf_headless_replay` bit-exact；`esp_restart` 清洗链由 `test_esp_gpio.test_esp_restart_peripherals_reset` 覆盖。
 
 ### L3 文档与覆盖率门禁
 - [x] 行覆盖率报告：`frameworks/esp_idf/src/` Line Coverage **85.71%** ≥ 85%（gcov 本地聚合；CI lcov 为最终权威）。
