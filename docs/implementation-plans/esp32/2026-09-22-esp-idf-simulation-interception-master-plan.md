@@ -33,9 +33,9 @@
 | **创建日期** | 2026-09-22（v2.0 修订于 2026-09-23；v3.0 修订于 2026-09-23；v3.2~v3.3 修订于 2026-09-23） |
 | **目标平台/SoC** | `wasm32-unknown-emscripten` / `host` (x86_64, Windows/Linux)；语料对照 SoC：`esp32` / `esp32s3` / `esp32c3` / `esp32c6` |
 | **工具链/SDK版本**| `ESP-IDF v5.1.3 LTS` ~ `v6.1+`（语料与宏取证基线 = v6.1；v5.x 做双版本兼容回归） |
-| **计划状态** | 📋 就绪（v3.3 融合 11 条代码事实评审，P0 已闭环，可作为执行 SSOT 第一纲领） |
+| **计划状态** | 🟡 验收证据就绪（M0~M3 主体已交付；未闭环：L2 vendor 精选套件、T-012 Nightly、Actions 实跑）待 Owner 结项签署 |
 | **优先级** | 🔴 P0（运行时框架层核心演进） |
-| **计划版本** | `v3.5` |
+| **计划版本** | `v3.6` |
 | **关联技术设计** | [`docs/zh/tech-designs/core/pal-i2c-v6-compatibility.md`](../../zh/tech-designs/core/pal-i2c-v6-compatibility.md) |
 | **关联设计规范** | [`docs/zh/design/04-wasm-simulation/00-README.md`](../../zh/design/04-wasm-simulation/00-README.md)、[`02-wink-micro-os/`](../../zh/design/02-wink-micro-os/README.md) |
 | **关联评审记录** | [`2026-09-22-esp-idf-simulation-interception-master-plan-review.md`](./2026-09-22-esp-idf-simulation-interception-master-plan-review.md) |
@@ -581,10 +581,11 @@ graph TD
 - [ ] L0~L4 各级补录：`winkcli lint --pack layering --pack api`（回归确认）、clang-tidy（CI 自动覆盖，确认 0 新增告警）、外部 pack、`check_license_map.py`
 **验证**：§7 清单与 CI workflow 实际 job 一一对应，无「纸面门禁」。
 
-#### Task T-008：headless evidence 执行落点固化 `[ 状态: ⏳ 待开始 ]`（P1，预估 3 h）
+#### Task T-008：headless evidence 执行落点固化 `[ 状态: ✅ 已完成（2026-09-25，M3-3）]`（P1，预估 3 h）
 
-- [ ] 在 `README.md` 与 L2 验收明确：本地 Win-only 手动（对齐 mcs51 先例）为**当前落点**；是否进 nightly 作为后续可选项记录，不冒充已有 CI 能力
-**验证**：脚本本地一键跑通并产出轨迹哈希。
+- [x] 落点：`frameworks/esp_idf/test/headless/test_esp_idf_headless_replay.py` + ctest `esp_idf_headless_replay`（label `esp_idf;headless`）；
+      本地与 CI（有 Python 时）均可一键跑通，3 次运行 bit-exact；README/01 文档已登记。
+**验证**：`ctest -R esp_idf_headless_replay` 通过并输出一致哈希。
 
 #### Task T-009：多框架互斥声明 `[ 状态: ⏳ 待开始 ]`（预估 3 h）
 
@@ -596,15 +597,16 @@ graph TD
 - [x] 修复 `../../design/decisions/0004-...` 等错误路径（正确为 `../../decisions/core/...`）；删除不存在的 ADR-0040 引用；索引登记总纲 v3.0 + 四子计划占位行（2026-09-23 已随 v3.0 执行）
 **验证**：链接全绿（docs-contract-gate；四子计划链接待 T-003 落盘后转全绿）。
 
-#### Task T-011：覆盖率工具接线 `[ 状态: ⏳ 待开始 ]`（P2，预估 4 h）
+#### Task T-011：覆盖率工具接线 `[ 状态: ✅ 已完成（2026-09-25，M3-2）]`（P2，预估 4 h）
 
-- [ ] host 构建接 `--coverage`，产出 lcov/gcovr 报告纳入 L1；未完成前 L1 按「关键路径断言清单」执行并在计划标注降级原因
-**验证**：可产出 `test/core/` 覆盖率报告且 ≥85%（或已声明降级）。
+- [x] host 构建接 `--coverage`（`WINK_ENABLE_COVERAGE`），`tools/coverage.sh` 产 lcov 报告 + `tools/check_coverage.py` 85% 门禁；
+      `frameworks/esp_idf/src` 实测 **85.71%**（gcov 聚合，2026-09-25）；CI `coverage-gate` job 以 lcov 为权威。
+**验证**：`check_coverage.py build_cov/coverage_filtered.info 85` 退出码 0（CI）。
 
-#### Task T-012：nightly IDF 版本对齐 `[ 状态: ⏳ 待开始 ]`（P2，预估 4 h）
+#### Task T-012：nightly IDF 版本对齐 `[ 状态: ⏸ 递延（M3 v2.2 §2.2 范围声明；转 Nightly 专项）]`（P2，预估 4 h）
 
 - [ ] 对齐 `nightly.yml` 镜像至计划版本矩阵（或显式声明双版本矩阵 + `|| true` 非阻塞性质与风险 R-008 接受）
-**验证**：T-012 记录写入总纲变更日志。
+**验证**：T-012 记录写入总纲变更日志（结项前遗留项，见 §7.5）。
 
 ---
 
@@ -717,6 +719,24 @@ corpus（Tier-A/B/C）只证明“能编译”。行为证据走精选 vendor �
 - [ ] 许可合规：`check_license_map.py` 全绿 **且** 地图与 ADR-0084/NOTICE 语义一致（T-002 人工核对记录）。
 - [ ] 模板附录 C 自检清单全部打勾（见文末）。
 
+### 7.5 结项验收证据记录（2026-09-25，M0~M3）
+
+> 本节为结项签署前的机器证据快照；未闭环项须先闭环或由 Owner 显式接受（对齐 ADR-0012 合约诚实）。
+
+| 门禁 | 证据 | 状态 |
+|:---|:---|:---:|
+| L0 Host / Wasm / 多 SoC 编译 | 框架库 `--clean-first` 0 warning；13 个 wasm compile ctest；4 SoC 构建通过 | ✅ |
+| L0 语料（Tier-A/B，零修改） | `esp_idf_corpus_*` 4 组 × 4 SoC 全绿 | ✅ |
+| L0 Lint / 许可 / 收割门禁 | `esp_idf_lint_isolation` 绿；`check_license_map.py` 绿；`check_harvested_headers.py` 绿 | ✅ |
+| L1 单元测试 | `ctest -L esp_idf`：esp32/s3/c3/c6 各 **31/31** | ✅ |
+| L1 覆盖率（T-011） | `frameworks/esp_idf/src` **85.71%**（gcov 聚合；CI lcov 为权威） | ✅ |
+| L2 确定性回放（T-008） | `esp_idf_headless_replay` 3 次 SHA-256 bit-exact | ✅ |
+| L2 Vendor 精选行为套件 | `wink-micro-app/vendor/esp_idfv61/` **未落盘**（§7.1.1） | ⏳ |
+| L3 文档终审 | 01 §5 / 02 v2.2 §4 / 03 v1.3 §6；ADR-0085 修订、ADR-0087 Accepted | ✅ |
+| L4 红线机器证据 | `esp_idf_all`（0 malloc / 0 claim / 定点 PWM / SPDX）全绿 | ✅ |
+| L4 CI 实跑 | `.github/workflows/esp_idf_ci.yml` 已落盘，待 push 后验证 | ⏳ |
+| T-012 Nightly 双版本矩阵 | 递延 Nightly 专项（M3 v2.2 §2.2 范围声明） | ⏸ |
+
 ---
 
 ## 8. 架构红线与质量约束（DoD 准入准出；违反即拒绝合入）
@@ -802,6 +822,7 @@ corpus（Tier-A/B/C）只证明“能编译”。行为证据走精选 vendor �
 | **v3.3** | 2026-09-23 | **融合 11 条代码事实评审（P0 阻塞开工项闭环）**：<br>1. §3.5.1.1 Handle generation 间接层 + ABA 回归（R-011）；§3.5.1.3 `resource_id` type_tag 编码 + Priority-one/Broadcast-all 唤醒三分 + EventGroup 状态声明（R-012/R-004）；<br>2. §3.5.1.2 `vTaskDelay(0)` 纯让出 + §3.5.1.6 Tick 冻结/`pdMS_TO_TICKS` 截断 + `esp_timer` 10ms 精度降级登记；<br>3. 新 §3.9 GPTimer/SPI/NVS 三件套定级（M2）；§8 红线 4 + T-006 lint glob 作用域精确化（排除 `targets/`/`osal/`）；<br>4. §6 M2 三线并行 + M2-4 集成日串行合入纪律（热文件冲突）+ 派生矩阵 M1/M2 DoD 同步；§7 L1/L2 补 ABA/让出序/alarm 时序断言；风险册新增 R-011/R-012。 | 架构组 |
 | **v3.4** | 2026-09-24 | **M0 执行前代码事实纠偏（子计划 v1.1 对齐）**：① §3.4.2 I2C 收敛签名纠正（7 参为 `pal_i2c_transfer_timeout`，6 参 `pal_i2c_transfer` 为默认超时包装）；② M0 升 v1.1（status 枚举 canonical、GPIO 门面补 `set_direction`、SoC 掩码改官方表达式、callbacks 七字段范式、reset 三钩子、task.h 声明桩、语料 OBJECT 化）；③ M1/M2/M3 升 v1.1（展开前置约束补遗）。0 框架变更。 | 架构组 |
 | **v3.5** | 2026-09-24 | **三层证据塔（§7.1.1）**：L0 corpus 全量广度 + L2 `vendor/esp_idfv61/` 精选行为深度（约 6~8 个，每域 1 代表）+ CMS 式 checklist 治理；锁定目录命名（版本维度，经 `WINK_ESP_TARGET` 矩阵 cover 全 SoC）、精选三规则、upstream manifest 机检“一行不改”、M1-4 首批 / M3-3 收齐节奏。0 框架变更。 | 架构组 |
+| **v3.6** | 2026-09-25 | **M3 收官结项证据记录**：M3-1/2/3 交付（S3/C3/C6 SoC 数据 + 4 SoC 矩阵 31/31、覆盖率 85.71%、headless 3-run bit-exact、CI 工作流与覆盖率门禁）；T-008/T-011 闭环；T-012 递延 Nightly 专项；新增 §7.5 验收证据表（遗留项：L2 vendor 精选套件、Actions 实跑验证）。 | 架构组 / 仿真拦截专项小组 |
 
 ---
 

@@ -92,3 +92,32 @@ const wink_app_callbacks_t* wink_app_get_callbacks(void);
    共享 `include/soc/` 不得有同名文件；选片由 `esp_idf_target.cmake` 派生的 include 顺序完成，**禁止 `#include_next`**。
 3. **目标宏注入**：`CONFIG_IDF_TARGET_*` / `CONFIG_IDF_TARGET` 由 CMake 从 `WINK_ESP_TARGET` 派生并 PUBLIC 注入；
    `sdkconfig_base.h` 禁止硬编码；未提供数据的 SoC 在 configure 期 `FATAL_ERROR`（Fail-Loud，不静默回退 esp32）。
+
+---
+
+## 5. 多 SoC 矩阵与 CI 使用指南 (M3)
+
+### 5.1 目标切换
+
+```powershell
+# 默认 esp32；支持 esp32s3 / esp32c3 / esp32c6
+cmake -S wink-micro-os -B build -DTARGET_PLATFORM=host -DWINK_ESP_TARGET=esp32c3
+cmake --build build && ctest --test-dir build -L esp_idf --output-on-failure
+```
+
+新增 SoC 的准入清单：
+1. 新建 `chips/<soc>/include/soc/{soc_caps.h,gpio_num.h}`（逐项对照官方 v6.1 源，禁止臆造掩码）；
+2. 在 `channels.json: chips_handwritten` 登记（收割器支持 per-SoC 发射后转正并移出）；
+3. 驱动/测试中的 SoC 差异一律以 `SOC_*` 宏或 `CONFIG_IDF_TARGET_*` 条件化，禁止硬编码引脚号假设。
+
+### 5.2 CI 与门禁（`.github/workflows/esp_idf_ci.yml`）
+
+| Job | 内容 | 本地等价命令 |
+|:---|:---|:---|
+| `lint-and-governance` | license map + harvest gate（channels/relocation/manifest）+ winkcli packs（可用时） | `check_harvested_headers.py --rules ... --channels ...` |
+| `host-matrix-tests` | 4 SoC × (ubuntu/windows) 全量 `-L esp_idf` | 逐 SoC `-DWINK_ESP_TARGET` 构建 + ctest |
+| `coverage-gate` | lcov 抽取 `frameworks/esp_idf/src`，行覆盖率 ≥85% | `tools/coverage.sh` + `tools/check_coverage.py` |
+| ctest `esp_idf_headless_replay` | 确定性回放（3 次运行 bit-exact，过滤墙钟/指针） | `ctest -R esp_idf_headless_replay` |
+
+> 本地实测基线（2026-09-25）：四 SoC `-L esp_idf` 各 **31/31**；gcov 聚合行覆盖率 **85.71%**；
+> headless 回放 3 次哈希一致；框架库 `--clean-first` 0 warning。

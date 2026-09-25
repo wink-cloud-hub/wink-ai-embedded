@@ -1,7 +1,7 @@
 # ESP-IDF 仿真拦截层 Include 闭包追踪清单 (03-include-closure-inventory)
 
-> **版本**：v1.2  
-> **适用里程碑**：M1 (FreeRTOS 调度器与并发原语 Shim) → M2+（v6.1 收割闭包）  
+> **版本**：v1.3  
+> **适用里程碑**：M1 → M3（v6.1 收割闭包 + S3/C3/C6 SoC 矩阵归档）  
 > **设计依据**：Task M1-1 编译驱动增量 include 闭包策略；`PLAN-20260925-SDK-HARVESTER-ENGINE v2.13`
 
 ---
@@ -124,7 +124,7 @@
 
 | 头文件路径 (相对于 corpus 目录) | 对应 upstream 组件 | 闭包职责与内容 |
 |:---|:---|:---|
-| `include/sdkconfig.h` | `sdkconfig` | 定义 `CONFIG_IDF_TARGET_ESP32 1`, `SOC_HP_I2C_NUM 2`, `SOC_I2C_SUPPORT_SLAVE 1` |
+| `include/sdkconfig.h` | `sdkconfig` | `#include "sdkconfig_base.h"` + `SOC_I2C_SUPPORT_SLAVE 1`（`CONFIG_IDF_TARGET_*` 由 CMake 注入；`SOC_HP_I2C_NUM` 由 `chips/` 数据提供，M3-1 清理硬编码） |
 | `include/unity_config.h` | `unity` | 包含 `sdkconfig.h`，提供编译期配置预置 |
 | `include/test_utils.h` | `unity/test_utils` | `TEST_CASE`, `TEST_CASE_MULTIPLE_DEVICES`, `TEST_ESP_OK`, 信号与内存泄漏打桩 |
 | `include/hal/i2c_periph.h` | `soc/hal` | `i2c_dev_t`（`ctr`, `fifo_conf`, `rxfifo_st`）、`I2C0/1` 外部符号与 `i2c_periph_signal` |
@@ -133,6 +133,23 @@
 | `include/hal/uart_ll.h` | `hal` | `uart_ll_enable_bus_clock`, `uart_ll_get_rxd_edge_cnt` 等硬件底座 inline 模拟打桩 |
 | `include/esp_private/periph_ctrl.h` | `esp_hw_support` | `PERIPH_RCC_ATOMIC` 宏及外设时钟启停打桩 |
 | `include/esp_private/gpio.h` | `esp_driver_gpio` | `gpio_func_sel` 与 `PIN_FUNC_GPIO` 宏映射 |
+
+---
+
+## 6. M3 SoC 头文件归档（S3/C3/C6，ADR-0085 修订 / ADR-0087）
+
+| 头文件路径（框架根相对） | 归属 | 内容 | 通道登记 |
+|:---|:---|:---|:---|
+| `chips/esp32s3/include/soc/soc_caps.h` | SoC 能力数据 SSOT | 49 引脚（22~25 不存在）、8ch LEDC 无 HS、2×I2C、3×UART、3×SPI | `channels.json: chips_handwritten` |
+| `chips/esp32s3/include/soc/gpio_num.h` | 同上 | `GPIO_NUM_0..48`（跳过 22~25）、`GPIO_NUM_MAX=49` | 同上 |
+| `chips/esp32c3/include/soc/soc_caps.h` | 同上 | 22 引脚、6ch LEDC 无 HS、1×I2C、2×UART、2×SPI | 同上 |
+| `chips/esp32c3/include/soc/gpio_num.h` | 同上 | `GPIO_NUM_0..21`、`GPIO_NUM_MAX=22` | 同上 |
+| `chips/esp32c6/include/soc/soc_caps.h` | 同上 | 31 引脚、6ch LEDC 无 HS、HP-only 1×I2C / 2×UART（LP 不暴露）、2×SPI | 同上 |
+| `chips/esp32c6/include/soc/gpio_num.h` | 同上 | `GPIO_NUM_0..30`、`GPIO_NUM_MAX=31` | 同上 |
+
+> **说明**：esp32 的 `soc_caps.h`/`gpio_num.h` 为 vendored 产物按字节迁移（sha256 与 `manifest.file_hashes` 同值，
+> relocated 校验），无手写登记；S3/C3/C6 为 M3 手写首版，待闭源收割器支持 per-SoC 发射后转生成物并移出登记。
+> 共享 `include/soc/` 不再承载同名文件；选片由 `esp_idf_target.cmake` 的 include 顺序完成（无 `#include_next`）。
 
 
 

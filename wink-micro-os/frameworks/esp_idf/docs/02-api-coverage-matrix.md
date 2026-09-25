@@ -1,7 +1,7 @@
 # ESP-IDF 仿真拦截层 API 覆盖矩阵与降级登记簿 (02-api-coverage-matrix)
 
-> **版本**：v2.1  
-> **适用里程碑**：M2 (外设与总线仿真拦截：LEDC, I2C, UART, GPTimer, SPI, NVS)  
+> **版本**：v2.2  
+> **适用里程碑**：M2~M3 (外设与总线仿真拦截；多 SoC 矩阵、覆盖率与确定性收官)  
 > **收割口径**：v6.1@fff9895c vendored（`manifest.hash = 542eb37a5dc3604c`）
 
 ---
@@ -224,4 +224,31 @@
 | `corpus_ledc_basic` | `examples/peripherals/ledc/ledc_basic/main/ledc_basic_example_main.c` | LEDC 4 定时器/通道配置、PWM 占空比设置、渐变 API | `OBJECT` compile-only 100% 通过；Wasm compile check 通过 |
 | `corpus_i2c_basic` | `examples/peripherals/i2c/i2c_basic/main/i2c_basic_example_main.c` | Modern I2C Master 总线/器件注册、Transmit/Receive 事务 | `OBJECT` compile-only 100% 通过；Wasm compile check 通过 |
 | `corpus_legacy_i2c` | `components/driver/test_apps/legacy_i2c_driver/main/test_i2c.c` | Legacy I2C 接口集（配置、命令链、时序、从机） | Tier-B stub 闭包 `OBJECT` compile-only 100% 通过；Wasm compile check 通过 |
+
+---
+
+## 4. M3 验收快照（2026-09-25）
+
+### 4.1 SoC 能力矩阵
+
+| SoC | 引脚上限 | LEDC | HP I2C | UART(HP) | SPI | 数据归属 |
+|:---|:---:|:---:|:---:|:---:|:---:|:---|
+| esp32 | 40（24/28~31 不存在，34~39 输入专用） | 8ch + HS | 2 | 3 | 3 | `chips/esp32`（vendored 迁移） |
+| esp32s3 | 49（22~25 不存在） | 8ch（无 HS） | 2 | 3 | 3 | `chips/esp32s3`（手写，登记 channels.json） |
+| esp32c3 | 22 | 6ch（无 HS） | 1 | 2 | 2 | `chips/esp32c3`（手写） |
+| esp32c6 | 31 | 6ch（无 HS） | 1（LP 不暴露） | 2（LP 不暴露） | 2 | `chips/esp32c6`（手写） |
+
+越界行为：门面按 `SOC_*` 运行期 Fail-Loud（`ESP_ERR_INVALID_ARG`），由 `test_esp_soc_matrix` 及各驱动单测覆盖
+（TC-SOC-01~07：C3 GPIO 22+ / HS LEDC / I2C_NUM_1 / UART_NUM_2 / SPI3、ESP32 GPIO34 输出、越界引脚）。
+
+### 4.2 覆盖率与确定性
+
+| 指标 | 实测 | 门禁 |
+|:---|:---|:---|
+| `frameworks/esp_idf/src` 行覆盖率 | **85.71%**（gcov 聚合 1650/1925，17 个已链接 TU） | ≥85%（`check_coverage.py`，CI 以 lcov 为准） |
+| `ctest -L esp_idf` | esp32/s3/c3/c6 各 **31/31** | 100% |
+| Headless 确定性回放 | `test_esp_idf_blink_run` 3 次 SHA-256 bit-exact | `esp_idf_headless_replay` ctest |
+| 框架库编译告警 | `--clean-first` 0 warning | L0 |
+
+> 注：覆盖率数据为 2026-09-25 本地 gcov 基线；CI 的 lcov 管道为最终权威值。
 

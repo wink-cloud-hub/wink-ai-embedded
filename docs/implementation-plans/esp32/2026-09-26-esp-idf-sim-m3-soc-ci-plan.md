@@ -3,8 +3,8 @@
 > 📋 **计划状态声明**：
 > 本计划为 ESP-IDF 仿真拦截层派生子计划（Milestone 3，收官里程碑）。
 > **继承总纲**：[`PLAN-20260922-ESP-IDF-SIM-MASTER`](./2026-09-22-esp-idf-simulation-interception-master-plan.md) (v3.5)
-> **当前状态**：📋 待开始（v2.2 完成 ESP-IDF 官方源码真值校核与 CI 可执行性修订，前置依赖 M2 v2.4 已 100% 验收闭环）
-> 🎯 **计划版本**：v2.2（2026-09-25，官方真值校核修订：S3 有效掩码/枚举回归官方事实（22~25 物理不存在）、C6 LP 外设 HP-only 有意偏离登记、"LTS" 术语与 EOL 更正、全部 CMake 配置补 `-DTARGET_PLATFORM=host`（修复默认 wasm 平台导致 ctest 零测试假绿）、winkcli CI 安装方式修正、覆盖率 link options 改 PUBLIC、`WINK_IDF_TARGET_DEFINE` 目录作用域修正、legacy_i2c corpus 硬编码宏清理、T-012 范围声明对齐）
+> **当前状态**：🟡 M3-1/M3-2 已完成；M3-3 证据就绪（Step 4 结项签署待 Owner；遗留项：L2 vendor 精选套件、T-012 Nightly、Actions 实跑）
+> 🎯 **计划版本**：v2.3（2026-09-25，收官执行记录）；v2.2（2026-09-25，官方真值校核修订：S3 有效掩码/枚举回归官方事实（22~25 物理不存在）、C6 LP 外设 HP-only 有意偏离登记、"LTS" 术语与 EOL 更正、全部 CMake 配置补 `-DTARGET_PLATFORM=host`（修复默认 wasm 平台导致 ctest 零测试假绿）、winkcli CI 安装方式修正、覆盖率 link options 改 PUBLIC、`WINK_IDF_TARGET_DEFINE` 目录作用域修正、legacy_i2c corpus 硬编码宏清理、T-012 范围声明对齐）
 > 📚 **关联规范**：`docs-adr.md`、`03-coding-guidelines.md`、`00-IMPLEMENTATION-PLAN-TEMPLATE.md`
 > 🔍 **M2 移交基线**：M2 v2.4 已 100% 验收交付（DoD 全部通过，28/28 CTest 测试 100% 绿灯，License Map 与 Layering Lint 0 findings；闭环 4 项立即架构加固：外设全局复位链条 `esp_peripherals_reset`、I2C 链表多事务阻断与显式校验、NVS 静态池严格压缩至 3KB、UART 并发读者防护与事件长度保真）。
 
@@ -898,7 +898,7 @@ graph TD
 
 ---
 
-### Task M3-3：跨平台 Headless 证据链固化与收官总结 `[ 状态: 📋 待开始 ]`
+### Task M3-3：跨平台 Headless 证据链固化与收官总结 `[ 状态: 🟡 证据就绪（2026-09-25），Step 4 结项签署待 Owner ]`
 
 | 字段 | 内容 |
 |:---|:---|
@@ -911,7 +911,11 @@ graph TD
 
 #### 详细步骤与代码级设计
 
-- [ ] **Step 1：固化 Headless 确定性回放验证脚本 `test_esp_idf_headless_replay.py`**
+- [x] **Step 1：固化 Headless 确定性回放验证脚本 `test_esp_idf_headless_replay.py`**
+
+  > **落地记录**：脚本落盘 `test/headless/`，并注册 ctest `esp_idf_headless_replay`（label `esp_idf;headless`，
+  > 3 次运行 bit-exact；过滤器按宿主日志实际格式改为整段墙钟前缀 + 指针/TID，虚拟时间戳保留在哈希内）。
+  > 实测 3 次 SHA-256 一致。
 
   > ⚠️ **评审加固**：原版本三处问题已修正：① 无超时保护（死循环将永久挂起）；② 未过滤 `ESP_LOGx` 中的时间戳/指针地址等非确定性内容；③ 仅跑 2 次统计上不充分。
 
@@ -980,34 +984,42 @@ graph TD
       main()
   ```
 
-- [ ] **Step 2：三层证据塔 L2 Vendor 行为用例核查**
+- [x] **Step 2：三层证据塔 L2 Vendor 行为用例核查**
   - 运行 `test_esp_idf_blink_run`，验证周期调度与 GPIO 输出事件；
   - 运行官方示例语料 CTest：`esp_idf_corpus_blink`、`esp_idf_corpus_ledc`、`esp_idf_corpus_i2c`、`esp_idf_corpus_legacy_i2c`（可批量：`ctest -R esp_idf_corpus`）。
 
-- [ ] **Step 3：文档矩阵与闭包清单终审回写**
-  - 更新 `docs/01-architecture-and-governance-guide.md`：增加多 SoC 矩阵配置与 CI 流水线使用指南；
-  - 更新 `docs/02-api-coverage-matrix.md`：记录最终覆盖率百分比与全部已闭环外设状态；
-  - 更新 `docs/03-include-closure-inventory.md`：归档 6 个 SoC 头文件（S3/C3/C6 的 `soc_caps.h` 与 `gpio_num.h`）。
+  > **落地记录**：`test_esp_idf_blink_run` + 4 组语料在四 SoC 矩阵下全部通过；
+  > 但 master §7.1.1 的 `wink-micro-app/vendor/esp_idfv61/` 精选行为套件（6~8 个 app）**未落盘**，
+  > 列为结项前遗留项（见 §7 L2 / 总纲结项记录）。
+
+- [x] **Step 3：文档矩阵与闭包清单终审回写**
+  - 更新 `docs/01-architecture-and-governance-guide.md`：增加多 SoC 矩阵配置与 CI 流水线使用指南（§5）；
+  - 更新 `docs/02-api-coverage-matrix.md`：记录最终覆盖率百分比与全部已闭环外设状态（v2.2 §4）；
+  - 更新 `docs/03-include-closure-inventory.md`：归档 6 个 SoC 头文件（v1.3 §6）。
 
 - [ ] **Step 4：组织总纲全量验收评审与结项**
-  - 核查 L0~L4 全部门禁出口；
+  - 核查 L0~L4 全部门禁出口（证据记录见总纲「结项验收记录」）；
   - 将实施总纲 [`PLAN-20260922-ESP-IDF-SIM-MASTER`](./2026-09-22-esp-idf-simulation-interception-master-plan.md) 状态签署为 `✅ 已验收结项`。
+
+  > **当前状态（2026-09-25）**：L0/L1/L3 证据齐备（四 SoC 31/31、覆盖率 85.71%、门禁双绿、headless bit-exact）；
+  > **未闭环项**：① master §7.1.1 `vendor/esp_idfv61` 精选行为套件未落盘；② T-012 Nightly 双版本矩阵（M3 v2.2 已声明不在本计划交付）；
+  > ③ Actions 实跑需 push 后验证。以上闭环或显式接受后方可结项签署。
 
 ---
 
 ## 7. 测试策略与分级验收出口（L0 ~ L4）
 
 ### L0 编译门禁（必须 100% 通过）
-- [ ] **Host 目标编译**：GCC / Clang `-Wall -Wextra -Werror` 0 error 0 warning。
-- [ ] **Wasm 目标编译**：Emscripten 0 error 0 warning。
-- [ ] **多 SoC 目标编译**：`-DWINK_ESP_TARGET=esp32s3/esp32c3/esp32c6` 全部无告警编译。
-- [ ] **Tier-A / Tier-B 语料编译**：4 组官方语料源文件（`*.c`）原文零修改 100% 编译通过（harness 侧 `legacy_i2c/include/sdkconfig.h` 按 Step 4.5 清理硬编码宏，不属语料源文件）。
-- [ ] **代码规范与机器红线**：`winkcli lint --pack esp_idf_all` 与 `winkcli lint --pack layering --pack api` 全绿。
-- [ ] **开源许可门禁**：`python .github/scripts/check_license_map.py` 100% 匹配。
+- [x] **Host 目标编译**：`-Wall -Wextra -Werror`。**框架库 `--clean-first` 0 warning**（i2c/ledc `warn_unused_result` 已清理）；仓库其余既有 DAL `warn_unused_result` 告警不属本计划范围，另立跟踪。
+- [x] **Wasm 目标编译**：13 个 `esp_idf_wasm_compile_*` ctest 全绿（含 4 语料）。
+- [x] **多 SoC 目标编译**：`-DWINK_ESP_TARGET=esp32s3/esp32c3/esp32c6` 构建通过（缺数据 configure 期 `FATAL_ERROR`）。
+- [x] **Tier-A / Tier-B 语料编译**：4 组语料原文零修改 100% 通过。
+- [x] **代码规范与机器红线**：`esp_idf_all` 经 ctest `esp_idf_lint_isolation` 全绿；`layering`/`api` 由 CI job 执行（本地 winkcli 可用时同款命令）。
+- [x] **开源许可门禁**：`check_license_map.py` 100% 匹配（2026-09-25 实测）。
 
 ### L1 单元测试门禁（必须 100% 通过）
-- [ ] 全部单元测试（`test_esp_err`、`test_esp_gpio`、`test_esp_idf_freertos`、`test_esp_ledc`、`test_esp_i2c`、`test_esp_uart`、`test_esp_gptimer`、`test_esp_spi`、`test_esp_nvs`）全部绿灯。
-- [ ] `test_esp_soc_matrix`：各 SoC 芯片引脚边界与专用控制器越界拦截 100% 断言成功。
+- [x] 全部单元测试（`test_esp_err/log/gpio/idf_freertos/ledc/i2c/uart/gptimer/spi/nvs/runtime/soc_matrix`）在 esp32/s3/c3/c6 各 **31/31** 全绿。
+- [x] `test_esp_soc_matrix`：各 SoC 芯片引脚边界与专用控制器越界拦截 100% 断言成功（TC-SOC-01~07）。
 
 #### L1 边界与异常分支测试用例矩阵（🔴 必测）
 
@@ -1022,16 +1034,17 @@ graph TD
 | **TC-SOC-07** | ESP32-C3/C6 SPI | 请求初始化 `SPI3_HOST` | 返回 `ESP_ERR_INVALID_ARG`（C3/C6 仅有 2 个 SPI 控制器，SPI3_HOST 越界） |
 
 ### L2 行为仿真与回放门禁
-- [ ] `test_esp_idf_headless_replay.py`：3 次运行轨迹哈希 bit-exact 全部一致（含非确定性内容过滤）。
-- [ ] Vendor app 行走测试：无运行时未捕获异常，`esp_restart` 后状态清洗完整。
+- [x] `test_esp_idf_headless_replay.py`：3 次运行轨迹哈希 bit-exact 全部一致（ctest `esp_idf_headless_replay`）。
+- [ ] Vendor app 行走测试：**未落盘**（`wink-micro-app/vendor/esp_idfv61/` 精选套件，master §7.1.1 跟踪）。
+      现有等价证据：`test_esp_idf_blink_run` 有界运行 + `esp_restart` 清洗链由 `test_esp_gpio.test_esp_restart_peripherals_reset` 覆盖。
 
 ### L3 文档与覆盖率门禁
-- [ ] 行覆盖率报告：`frameworks/esp_idf/src/` Line Coverage **≥ 85%**。
-- [ ] `01`、`02`、`03` 三份治理文档齐备且无断链。
+- [x] 行覆盖率报告：`frameworks/esp_idf/src/` Line Coverage **85.71%** ≥ 85%（gcov 本地聚合；CI lcov 为最终权威）。
+- [x] `01`、`02`、`03` 三份治理文档已按 M3 终审回写（01 §5 / 02 v2.2 §4 / 03 v1.3 §6）。
 
 ### L4 治理与发布门禁
-- [ ] 0 动态堆分配（外部 lint 扫描零 `malloc`）。
-- [ ] GitHub Actions CI 工作流在 master 分支全绿通过。
+- [x] 0 动态堆分配（`esp_idf_all` pack 的 RUNTIME-MALLOC 规则 + ctest lint 全绿）。
+- [ ] GitHub Actions CI 工作流在 master 分支全绿：工作流已落盘，**待 push 后实跑验证**。
 
 ---
 
@@ -1069,6 +1082,7 @@ graph TD
 | **v1.2** | 2026-09-24 | 吸收 vendor 行为证据套件要求与三层证据塔规范 | 仿真拦截专项小组 |
 | **v2.0** | 2026-09-25 | **完全详设展开版（收官战役）**：<br>① 消费 M2 v2.4 交付基线，补齐全部前置约束；<br>② 给出 S3/C3/C6 三芯片 `soc_caps.h` 与 `gpio_num.h` 完整官方真值表与代码设计；<br>③ 给出驱动层门面 Fail-Loud 宏校验改造；<br>④ 给出多 SoC 差异化拦截单测 `test_esp_soc_matrix` 完整代码；<br>⑤ 设计覆盖率工具链 `coverage.sh` 与 `check_coverage.py`（≥ 85% 门禁）；<br>⑥ 给出 GitHub Actions CI 全流水线 YAML 配置；<br>⑦ 给出 Headless 确定性回放脚本 `test_esp_idf_headless_replay.py`；<br>⑧ 规范化 L0~L4 收官验收准则与回滚策略。 | 仿真拦截专项小组 |
 | **v2.1** | 2026-09-25 | **专家评审加固版**：<br>① 补全 S3 `gpio_num.h` 缺失的 GPIO 22~25 枚举并显式声明 Flash/PSRAM 简化策略；<br>② Step 4.5 新增 CMake `CONFIG_IDF_TARGET_*` 编译宏自动推导与注入；<br>③ LEDC/I2C/UART 门面校验加固（明确替换旧宏、前置端口校验防止越界、`_Static_assert` 保障 UART 枚举覆盖）；<br>④ 补充 SPI 门面 SoC 校验（C3/C6 限制 2 控制器，新增 `TC-SOC-07`）；<br>⑤ 裁决采用 CI 矩阵独立编译策略，解决驱动与单测宏展开冲突；<br>⑥ 加固 Headless 确定性回放脚本（3 轮测试、超时保护、时间戳/指针地址过滤）；<br>⑦ 覆盖率工具链补充分支覆盖率解析与豁免策略，修正附录 A.2 脚本执行路径；更新 SSOT 追溯矩阵。 | 仿真拦截专项小组 |
+| **v2.3** | 2026-09-25 | **M3 收官执行记录**：① M3-1 落地（S3/C3/C6 `soc_caps`/`gpio_num` + `channels.json` 登记 + 驱动 `SOC_*` Fail-Loud + `test_esp_soc_matrix`）；② M3-2 落地（覆盖率为 85.71%、`coverage.sh`/`check_coverage.py`、`.github/workflows/esp_idf_ci.yml` 4 SoC × 2 OS 矩阵，修正计划原 String-vs-List flag 缺陷）；③ M3-3 落地（headless 3-run bit-exact ctest、01/02/03 终审回写、master §7.5 证据记录）；④ L0~L4 逐项勾选并显式标注遗留项（vendor 精选套件未落盘、T-012 递延、Actions 待实跑）。 | 仿真拦截专项小组 |
 | **v2.2** | 2026-09-25 | **官方真值校核与可执行性修订版（v5.1.3/v6.1 源码逐项比对 + 本地 cmake/ctest 实测）**：<br>① S3 有效掩码与枚举回归官方事实：`GPIO 22~25` 物理不存在（v5.1.3/v6.1 掩码与枚举一致排除），掩码改为 `0x1FFFFFFFFFFFFULL & ~(22~25)`、枚举跳过 22~25，真值表/文件清单/§2.1 同步修正（v2.1 的"22~25 枚举补全"系误判，本版撤销）；<br>② ESP32/C6 真值表精确化（掩码排除 24、28~31；C6 官方双版本值 v5.1.3=1I2C/2UART、v6.1=2I2C/3UART 含 LP），新增 **裁决项 4**：C6 LP 外设 HP-only 有意偏离登记（撤销"C6 硬件不支持 LP I2C"错误注释）；<br>③ 新增 **裁决项 5**：门面全集枚举/宏（`SPI3_HOST`/`UART_NUM_2`/`LEDC_HIGH_SPEED_MODE`/`SOC_LEDC_SUPPORT_HS_MODE=0`）对官方编译期 fail-loud 的有意替代登记；<br>④ 全部 CMake 配置补 `-DTARGET_PLATFORM=host`（实测默认 wasm 平台下 `test/` 不注册、`ctest -L esp_idf` 零测试 exit 0 假绿）；<br>⑤ CI 删除必失败的 `pip install ./wink-tools`（无打包元数据，pr.yml 明令禁止），改为 pr.yml 同款 winkcli 获取与缺省跳过策略；<br>⑥ 覆盖率 `target_link_options` 由 PRIVATE 改 PUBLIC（STATIC 库 PRIVATE 不传播，测试可执行文件缺 `__gcov_*` 必然链接失败）；<br>⑦ Step 4.5 注入动作移至 `frameworks/esp_idf/CMakeLists.txt`（修 `WINK_IDF_TARGET_DEFINE` 跨目录作用域不可见），并新增 legacy_i2c corpus `sdkconfig.h` 硬编码宏清理（防 C3/C6 矩阵 `-Werror` 重定义）；<br>⑧ Step 5 I2C 校验移除 `PAL_I2C_PORT_MAX`（ADR-0085 D1）并登记存量整改（`esp_i2c_master.c`/`esp_i2c_legacy.c`）；<br>⑨ 撤销"v5.1.3 LTS"术语（官方 2020-07 起无 LTS 品牌，v5.1 已于 2025-12 EOL，v5.1.3 亦非最后 patch）；<br>⑩ 目标 4 与 T-012 范围声明对齐（Nightly IDF 版本矩阵不在本计划交付）；Headless 成功指标补路径与 `<path_to_test_binary>` 参数；DoD/Step 语料名更正为实际 CTest 名 `esp_idf_corpus_*`。 | 仿真拦截专项小组 |
 
 ---
