@@ -32,3 +32,18 @@
 2. **0 硬件寄存器指针**：严禁直接包含 `soc/gpio_reg.h`、`soc/hwcrypto_reg.h` 等涉及物理地址解引用的内部头文件；
 3. **属性宏消解**：`IRAM_ATTR`、`DRAM_ATTR`、`RTC_DATA_ATTR` 必须通过 `esp_attr.h` 消解为空；
 4. **纯声明原则**：除极简单的宏定义外，严禁在 `.h` 文件中编写函数实现体（实现逻辑全部下沉至 `src/drivers/`）。
+
+---
+
+## 3. 多版本（IDF v5.x / v6.x）约定
+
+1. **单一版本树**：`include/` 同一时刻只承载**一个 IDF 版本的产物**（当前 v6.1）。
+   artifact 名与 `manifest.json.sdk_tag` 是版本 SSOT（如 `esp-idf-v6.1-esp32.tar.gz`）。
+2. **切版本 = 重新 vendoring**：拿到新版本（如 v5.1.3）后重新收割并覆盖本目录；
+   不做双树并存。跨版本 API 差异（如 legacy `driver/i2c.h` 与 `driver/i2c_master.h`）
+   由门面层 Dual-Facade 在同一头文件池内并存覆盖（见总纲 §3.4）。
+3. **版本规则入口在闭源侧**：版本差异（组件目录布局、分片头存在性等）收敛在
+   `wink-tools/tools/sdk_harvester/rules/esp_idf.yaml` 的 `version_overlays`（数据条目，不改代码）。
+   新增版本时先跑 `--dry-run --format json` 校验 `source_root_missing` 清单，再执行收割。
+4. **豁免文件跨版本兼容**：`sdkconfig_base.h`、`esp_attr.h`、`hal/spi_types.h`、`freertos/*`、
+   `soc/gpio_struct.h` 等手写豁免文件必须同时服务 v5/v6 语义（新版本新增属性宏时在此增补）。
