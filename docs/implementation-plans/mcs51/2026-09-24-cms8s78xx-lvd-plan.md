@@ -19,7 +19,7 @@
 | **关联技术设计** | 原厂 `CMS8S78xx` 参考手册 Ch.4 (System Control & LVD)；保真度基线 `2026-09-08-mcs51-simulation-vs-silicon-fidelity-and-test-limits.md` |
 | **关联设计规范** | [`docs/zh/design/02-wink-micro-os/07-mcs51-simulation-interception.md`](../../zh/design/02-wink-micro-os/07-mcs51-simulation-interception.md) |
 | **关联合格清单** | [`docs/vendors/Cmsemicon/CMS8S78XX_EXAMPLE_CHECKLIST.md`](../../vendors/Cmsemicon/CMS8S78XX_EXAMPLE_CHECKLIST.md) §7（编号 36） |
-| **关联总纲规范** | [UniSim 嵌入式韧性与合成故障注入体系计划总纲 (2026-09-24)](../../../../../wink-ai/packages/unisim/docs/plans/2026-09-24-embedded-resilience-and-fault-injection-master-plan/00-README.md) §4.1 PVD/LVD 早期欠压预警投毒子系统（跨仓参考，本计划不依赖） |
+| **关联总纲规范** | UniSim 嵌入式韧性与合成故障注入体系计划总纲（2026-09-24，`unisim` 私有仓，本地 internals 通道） §4.1 PVD/LVD 早期欠压预警投毒子系统（跨仓参考，本计划不依赖） |
 | **关联 ADR** | [ADR-0004](../../design/decisions/0004-static-dispatch-vs-runtime-ops.md)（静态分发与无虚表）、[ADR-0012](../../decisions/core/0012-fail-loud-contract-discipline.md)（契约诚实与强报错）、[ADR-0043](../../design/decisions/0043-arch-lint-rules.md)（分层门禁）、[ADR-0070](../../decisions/core/0070-mcs51-zero-code-simulation-interception-layer.md)（C++ 零侵入拦截）、[ADR-0071](../../decisions/core/0071-sfr-proxy-rmw-edge-data-plane.md)（XSFR 代理数据面）、[ADR-0072](../../decisions/core/0072-dual-clock-domain-and-quota-catchup.md)（双时钟域与微步调度）、[ADR-0078](../../decisions/core/0078-mcs51-two-phase-irq-and-in-service-masking.md)（中断两阶段挂起与嵌套深度管理） |
 | **前置依赖计划** | `PLAN-20260915-MCS51-RESET-FIDELITY`（复位与看门狗模型已就绪） |
 | **跨仓依赖** | **无**（v1.1 选定虚拟 VDD sense + `INPUT_ANALOG`，不引入 `INPUT_POWER` 执行器与新 wasm ABI） |

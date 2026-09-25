@@ -32,7 +32,7 @@
 ### 2. 剩余任务（按依赖顺序执行）
 
 #### T2.3-A：unisim 引擎 SPI 会话流（ADR-0087 实现）
-文件：`packages/unisim/src/core/bus/spi-bus.ts`、`packages/unisim/src/types/runtime/spi.ts`、`src/core/domains/BusDomainHandler.ts`、`src/core/bridge/unisim-bridge-factory.ts`、`src/types/wasm/imports.ts`、`src/worker/wasm-physical-bridge.ts`。
+文件：`unisim` 私有实现的 SPI 总线、运行时 SPI 类型、BusDomainHandler、Bridge Factory、WASM imports 与物理桥接 worker（逻辑模块名，源码见本地 internals 通道）。
 - 按 ADR-0087 §1/§2 实现（与 `I2CBus` 对称，复用同一错误码语义）：
   - `SPIDevice` 扩展线级回调（`onExchangeByte/onTransactionStart/onTransactionEnd`，`csPin` 从设备配置透传）；
   - `SPIBus.transferEx(port, deviceId, tx, mode, sckHz)`：整帧，未知设备 `WINK_ERR_NOT_FOUND`（新错误常量，勿复用 I2C 的语义）；
@@ -77,7 +77,7 @@
 
 ### 3. 验证命令速查
 embedded（工作目录 = 仓根）：
-- 构建+全量测试（MinGW）：`cmake -B build_host -S wink-micro-os -G "MinGW Makefiles" -DTARGET_PLATFORM=host -DWINK_APP_DIR=wink-micro-app/fixtures/unisim_smoke -DWINK_TOOLS_ROOT=D:/workspaces/ai-coding/wink-ai/wink-ai/packages/wink-tools`
+- 构建+全量测试（MinGW）：`cmake -B build_host -S wink-micro-os -G "MinGW Makefiles" -DTARGET_PLATFORM=host -DWINK_APP_DIR=wink-micro-app/fixtures/unisim_smoke -DWINK_TOOLS_ROOT=<wink-tools 本地仓库路径>`
   然后 `cmake --build build_host -- -k`；`ctest --test-dir build_host --output-on-failure`
 - 门禁：`winkcli lint --pack layering --pack api --pack wasm`；`python wink-micro-os/frameworks/mcs51/tools/mcs51_shim_audit.py`；`python .github/scripts/check_license_map.py`；`python wink-micro-os/frameworks/mcs51/tools/lint/lint_fw_core_isolation.py`
 - 资产：`winkcli build sim --app i2c_master_at24c256`、`--app spi_master_95256`；`winkcli sim run --app <name> --mode headless --scenarios wink-micro-app/vendor/cms8s78xx/<name>/unisim-scenarios`
@@ -95,7 +95,7 @@ unisim（工作目录 = `packages/unisim`）：
 - 已知坑：
   - `wink-plugin-peripherals` 私有路径是 junction；编辑任一路径等价。
   - `docs/vendors/` 整体 gitignored（Checklist 与厂商 SDK 不入库）。
-  - `wink-tools` 完整源码在 `D:/workspaces/ai-coding/wink-ai/wink-ai/packages/wink-tools`（CI 用的 `-DWINK_TOOLS_ROOT` 指向此处）；`wasm_node_smoke` 依赖 fixture 构建（已修复）。
+  - `wink-tools` 完整源码位于本地兄弟仓库（CI 用的 `-DWINK_TOOLS_ROOT` 指向该路径）；`wasm_node_smoke` 依赖 fixture 构建（已修复）。
   - `docs/implementation-plans/esp32/`、`docs/todolist/...` 非本任务产物，勿动。
   - 其余 vendor apps 已提交的 `unisim-assets` 在 hash bump 后会变旧（仅需重建两个 Phase 2 应用；如需全量重建，先与用户确认）。
 - 完成后更新计划书（新增 vX.Y 执行记录）与相关 ADR follow-up；汇报时列出：改动文件、门禁结果、剩余风险。

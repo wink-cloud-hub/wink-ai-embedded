@@ -17,7 +17,7 @@
 | **计划状态** | 🟢 Phase 1 已完成；🟢 **Phase 2 已完成**（T2.0–T2.6 全部落地并实证；Checklist 37/38 已正式摘牌） |
 | **优先级** | 🔴 P1（Checklist 列级优先级为 P3；两者维度不同，见 T2.5） |
 | **计划版本** | `v2.1` |
-| **关联技术设计** | 原厂 `CMS8S78xx` 参考手册（SPI/I2C 章节）；[04-wasm-simulation](../../../zh/design/04-wasm-simulation/00-README.md)；`wink-ai/packages/unisim/docs/internals/decisions/0085/0086/0087/0088`（私有仓 ADR） |
+| **关联技术设计** | 原厂 `CMS8S78xx` 参考手册（SPI/I2C 章节）；[04-wasm-simulation](../../../zh/design/04-wasm-simulation/00-README.md)；`unisim` 私有 ADR（0085~0088，本地 internals 通道） |
 | **关联设计规范** | [07-mcs51-simulation-interception](../../../zh/design/02-wink-micro-os/07-mcs51-simulation-interception.md)（§2.9 CH2 会话契约）；[04-wasm-simulation](../../../zh/design/04-wasm-simulation/00-README.md) |
 | **关联合格清单** | [`docs/vendors/Cmsemicon/CMS8S78XX_EXAMPLE_CHECKLIST.md`](../../vendors/Cmsemicon/CMS8S78XX_EXAMPLE_CHECKLIST.md) §8（编号 37 `I2C_Master_AT24C256`、38 `SPI_Master_95256`，均 `[x]`） |
 | **关联 ADR** | [ADR-0004](../../decisions/core/0004-static-dispatch-vs-runtime-ops.md)（静态分发）、[ADR-0070](../../decisions/core/0070-mcs51-zero-code-simulation-interception-layer.md)（零侵入拦截）、[ADR-0071](../../decisions/core/0071-sfr-proxy-rmw-edge-data-plane.md)（SFR 代理数据面）、[ADR-0072](../../decisions/core/0072-dual-clock-domain-and-quota-catchup.md)（双时钟/配额）、[ADR-0075](../../decisions/core/0075-mcs51-production-wasm-target-headless.md)（headless 实证）、[ADR-0076](../../decisions/core/0076-mcs51-sim-backends-native-vs-iss-channel-roadmap.md)（仿真后端路线）、[ADR-0081](../../decisions/core/0081-uart-tx-per-byte-synchronous-charge.md)（整字节同步记账）、[ADR-0082](../../decisions/core/0082-mcs51-reset-semantics-fiber-exit-and-reentry.md)（复位/纤程语义）；跨仓 **ADR-0085**（I2C 整事务状态化 `js_pal_i2c_transfer_ex`，Accepted）、**ADR-0086**（I2C 控制器会话流，Accepted）、**ADR-0087**（SPI 会话流 + CS 边沿，Accepted）、**ADR-0088/ADR-X1**（通用 ABI 返回值模型，Proposed；私有仓归档） |
@@ -95,7 +95,7 @@ int16_t At24c256_write_byte(uint16_t addr, uint8_t ch) {
 | :--- | :--- | :--- |
 | **层级归属** | **芯片内核与片内外设层 (SoC Silicon Layer)** | **板级总线拓扑与片外器件层 (Board/Bus Layer)** |
 | **感知范围** | 8051 SFR 读写、中断向量派发、微步进/配额让出、虚拟时钟计费 | WASM imports（`js_pal_*`）、总线/插件契约与虚拟时间线 |
-| **已具备能力** | • `REG_CMS8S78XX.H` 寄存器体系（ADC/UART/Timer 等已有模型）<br>• `mcs51_uart` 写入 SBUF 同步 `charge_us` 后置 `TI` 的范式（ADR-0081）<br>• wasm 侧已声明 `js_pal_i2c_transfer` import（catalog: implemented）<br>• `js_pal_spi_transfer` import（catalog: **stub**，未生产可用）<br>• SFR hook 机制 `mcs51_trap_register_sfr_read/write` + `sfr_shadow` 数据面 | • `I2CBus`/`SPIBus` 总线调度（**整事务/整帧级**，插件只见 `onTransfer`/`onFrame`）<br>• `unisim-bridge-factory.ts` 桥接存在（**slice 堆拷贝，非零拷贝**）<br>• Headless 场景断言与时间线捕获引擎 |
+| **已具备能力** | • `REG_CMS8S78XX.H` 寄存器体系（ADC/UART/Timer 等已有模型）<br>• `mcs51_uart` 写入 SBUF 同步 `charge_us` 后置 `TI` 的范式（ADR-0081）<br>• wasm 侧已声明 `js_pal_i2c_transfer` import（catalog: implemented）<br>• `js_pal_spi_transfer` import（catalog: **stub**，未生产可用）<br>• SFR hook 机制 `mcs51_trap_register_sfr_read/write` + `sfr_shadow` 数据面 | • `I2CBus`/`SPIBus` 总线调度（**整事务/整帧级**，插件只见 `onTransfer`/`onFrame`）<br>• unisim bridge factory 桥接存在（**slice 堆拷贝，非零拷贝**）<br>• Headless 场景断言与时间线捕获引擎 |
 | **当前缺失** | • **无 `SPCR`/`SPSR`/`SPDR`/`SSCR` SFR 读写拦截模型**<br>• **无 `I2CMCR`/`I2CMSR` 状态机模型**<br>• 未把片内总线事件转为 `js_pal_*` 调用<br>• host 构建缺 `js_pal_i2c/spi_transfer` fallback（否则 CTest 链接失败）<br>• 缺少基于 SFR 层的自旋防护 | • **缺少片外 AT24C256 / M95256 虚拟器件插件**<br>• **总线只到"整事务"层，缺 repeated START / 逐字节 ACK / CS 边沿可见性**（ADR-0086 目标）<br>• SPI 通道为 stub，`device_id`/CS 映射契约未定 |
 
 ### 3.2 裁决结论
