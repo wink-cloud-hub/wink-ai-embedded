@@ -1,0 +1,21 @@
+{
+  "app_name": "esp_idfv61_ledc_basic",
+  "display_name": "Espressif ESP-IDF LEDC basic (PWM fade)",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/peripherals/ledc/ledc_basic/main",
+    "files": {
+      "ledc_basic_example_main.c": "646af2f193d386ca06609af7e9f27f206a9491be112c62d41048113027b9a123"
+    }
+  },
+  "devices": {
+    "led": {
+      "type": "led",
+      "gpio_pin": 2,
+      "active_high": true
+    }
+  }
+}

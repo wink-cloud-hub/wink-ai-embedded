@@ -1,0 +1,22 @@
+{
+  "app_name": "esp_idfv61_i2c_basic",
+  "display_name": "Espressif ESP-IDF I2C basic (modern master)",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/peripherals/i2c/i2c_basic/main",
+    "files": {
+      "i2c_basic_example_main.c": "836a2cb561ea0056d2c1ae45bf75831f64ce2cc03518074ce2625ae634f2fffc"
+    }
+  },
+  "devices": {
+    "sensor": {
+      "type": "i2c_device",
+      "sda_pin": 21,
+      "scl_pin": 22,
+      "address": 104
+    }
+  }
+}

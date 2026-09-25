@@ -1709,5 +1709,48 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/legacy_i2c/test_i2c.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/legacy_i2c/include
     )
+
+    # ── esp_idfv61 vendor behavior suite (master plan §7.1.1, L2) ─────────────
+    set(_ESP_IDFV61_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../wink-micro-app/vendor/esp_idfv61")
+    set(_ESP_IDFV61_APPS
+        "blink_gpio:blink_example_main.c"
+        "ledc_basic:ledc_basic_example_main.c"
+        "i2c_basic:i2c_basic_example_main.c"
+        "uart_echo:uart_echo_example_main.c"
+        "gptimer_alarm:gptimer_example_main.c"
+    )
+    foreach(_entry IN LISTS _ESP_IDFV61_APPS)
+        string(REPLACE ":" ";" _parts "${_entry}")
+        list(GET _parts 0 _app)
+        list(GET _parts 1 _src)
+        set(_app_dir "${_ESP_IDFV61_ROOT}/${_app}")
+        if(NOT EXISTS "${_app_dir}/${_src}")
+            message(FATAL_ERROR "esp_idfv61 vendor app missing: ${_app}/${_src}")
+        endif()
+
+        add_library(esp_idfv61_${_app}_obj OBJECT "${_app_dir}/${_src}")
+        target_include_directories(esp_idfv61_${_app}_obj BEFORE PRIVATE "${_app_dir}/include")
+        target_link_libraries(esp_idfv61_${_app}_obj PRIVATE wink_framework_esp_idf)
+        target_compile_options(esp_idfv61_${_app}_obj PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+        if(TARGET generate_config)
+            add_dependencies(esp_idfv61_${_app}_obj generate_config)
+        endif()
+
+        add_test(NAME esp_idfv61_${_app}
+            COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target esp_idfv61_${_app}_obj)
+        set_tests_properties(esp_idfv61_${_app} PROPERTIES LABELS "esp_idfv61_vendor;tier_v")
+
+        add_esp_idf_wasm_compile_check(esp_idfv61_${_app}
+            "${_app_dir}/${_src}" "${_app_dir}/include")
+    endforeach()
+
+    if(Python3_Interpreter_FOUND)
+        add_test(NAME esp_idfv61_vendor_upstream
+            COMMAND ${Python3_EXECUTABLE}
+                ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/tools/check_vendor_app_upstream.py
+                --root ${_ESP_IDFV61_ROOT})
+        set_tests_properties(esp_idfv61_vendor_upstream
+            PROPERTIES LABELS "esp_idfv61_vendor;governance" TIMEOUT 60)
+    endif()
 endif()
 

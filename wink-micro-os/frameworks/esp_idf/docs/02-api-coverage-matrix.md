@@ -248,6 +248,7 @@
 | `frameworks/esp_idf/src` 行覆盖率 | **85.71%**（gcov 聚合 1650/1925，17 个已链接 TU） | ≥85%（`check_coverage.py`，CI 以 lcov 为准） |
 | `ctest -L esp_idf` | esp32/s3/c3/c6 各 **31/31** | 100% |
 | Headless 确定性回放 | `test_esp_idf_blink_run` 3 次 SHA-256 bit-exact | `esp_idf_headless_replay` ctest |
+| Vendor 行为套件（L2） | `wink-micro-app/vendor/esp_idfv61/` 5 域（GPIO/LEDC/I2C/UART/GPTimer）上游逐字源 + normalized 哈希 pin；`esp_idfv61_*` host/wasm 编译全绿 | `esp_idfv61_vendor_upstream` + Nightly IDF 树 diff |
 | 框架库编译告警 | `--clean-first` 0 warning | L0 |
 
 > 注：覆盖率数据为 2026-09-25 本地 gcov 基线；CI 的 lcov 管道为最终权威值。

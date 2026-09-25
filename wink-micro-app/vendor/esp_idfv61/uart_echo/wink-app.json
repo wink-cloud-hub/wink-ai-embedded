@@ -1,0 +1,15 @@
+{
+  "app_name": "esp_idfv61_uart_echo",
+  "display_name": "Espressif ESP-IDF UART echo",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/peripherals/uart/uart_echo/main",
+    "files": {
+      "uart_echo_example_main.c": "573aac433eaf223af1b12d924e2997012d57e8fc579d918250f3c4221df01253"
+    }
+  },
+  "devices": {}
+}

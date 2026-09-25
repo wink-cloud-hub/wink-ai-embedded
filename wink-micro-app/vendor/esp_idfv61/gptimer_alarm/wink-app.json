@@ -1,0 +1,15 @@
+{
+  "app_name": "esp_idfv61_gptimer_alarm",
+  "display_name": "Espressif ESP-IDF GPTimer alarm",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/peripherals/timer_group/gptimer/main",
+    "files": {
+      "gptimer_example_main.c": "85c8a9b4c2ce25430b4b6097c5a999403c122c5bdc12ed1eb901450326ebb67b"
+    }
+  },
+  "devices": {}
+}

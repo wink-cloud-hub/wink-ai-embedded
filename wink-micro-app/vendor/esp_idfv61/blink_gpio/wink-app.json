@@ -1,0 +1,21 @@
+{
+  "app_name": "esp_idfv61_blink_gpio",
+  "display_name": "Espressif ESP-IDF blink (GPIO output)",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/get-started/blink/main",
+    "files": {
+      "blink_example_main.c": "f22a5003ceb215227be9213da746cd383b15225c6c12899d1c0ffa6add0684b8"
+    }
+  },
+  "devices": {
+    "led": {
+      "type": "led",
+      "gpio_pin": 2,
+      "active_high": true
+    }
+  }
+}
