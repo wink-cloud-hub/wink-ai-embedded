@@ -70,6 +70,18 @@ void esp_log_write(esp_log_level_t level, const char *tag, const char *format, .
     va_end(args);
 }
 
+/* ESP-IDF v6 统一日志入口（收割头 ESP_LOG* 宏展开目标，见 esp_log.h/esp_log_config.h） */
+void esp_log_va(esp_log_config_t config, const char *tag, const char *format, va_list args) {
+    esp_log_writev((esp_log_level_t)ESP_LOG_GET_LEVEL(config.data), tag, format, args);
+}
+
+void esp_log(esp_log_config_t config, const char *tag, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    esp_log_va(config, tag, format, args);
+    va_end(args);
+}
+
 void esp_log_buffer_hex_internal(const char *tag, const void *buffer, uint16_t buff_len, esp_log_level_t level) {
     if (!buffer || buff_len == 0 || level > s_global_log_level) {
         return;

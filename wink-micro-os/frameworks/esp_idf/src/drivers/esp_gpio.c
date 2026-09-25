@@ -2,6 +2,7 @@
 #include "driver/gpio.h"
 #include "hal/pal_gpio.h"
 #include "esp_err.h"
+#include "esp_idf_wink.h"
 #include "esp_log.h"
 #include "soc/soc_caps.h"
 
@@ -234,9 +235,10 @@ esp_err_t gpio_install_isr_service(int intr_alloc_flags) {
     return ESP_ERR_NOT_SUPPORTED;
 }
 
-void gpio_uninstall_isr_service(void) {
-    /* void C-ABI: cannot signal failure; warn loudly (降级条目 4). */
+esp_err_t gpio_uninstall_isr_service(void) {
+    /* v6.1 C-ABI 为 esp_err_t（旧版 void）；仿真未支持 ISR，warn + Fail-Loud（降级条目 4）。 */
     ESP_LOGW("GPIO", "gpio_uninstall_isr_service: no-op, ISR not supported in simulation (M0)");
+    return ESP_ERR_NOT_SUPPORTED;
 }
 
 esp_err_t gpio_isr_handler_add(gpio_num_t gpio_num, gpio_isr_t isr_handler, void *args) {

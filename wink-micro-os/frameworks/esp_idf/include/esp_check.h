@@ -22,6 +22,7 @@ extern "C" {
         }                                                                      \
     } while (0)
 
+#undef ESP_ERROR_CHECK_WITHOUT_ABORT
 #define ESP_ERROR_CHECK_WITHOUT_ABORT(x) ({                                    \
         esp_err_t __err_rc = (x);                                              \
         if (unlikely(__err_rc != ESP_OK)) {                                    \

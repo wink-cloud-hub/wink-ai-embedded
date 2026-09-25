@@ -2,6 +2,7 @@
 #include "unity.h"
 #include "driver/spi_master.h"
 #include "esp_err.h"
+#include "esp_idf_wink.h"
 
 void setUp(void) {
     esp_spi_reset();

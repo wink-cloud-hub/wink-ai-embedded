@@ -1,25 +1,45 @@
 /* SPDX-License-Identifier: LGPL-3.0-only */
-#ifndef ESP_IDF_VERSION_H
-#define ESP_IDF_VERSION_H
+/* Harvested from esp-idf v6.1@fff9895c (Apache-2.0) — factual C-ABI only, comments stripped. See NOTICE. */
+/* AUTOMATICALLY GENERATED FILE - DO NOT EDIT MANUALLY! Manifest: 542eb37a5dc3604c Source: v6.1@fff9895c Config: esp32/v6.1 */
+#ifndef WINK_H_GUARD_ESP_IDF_VERSION_H
+#define WINK_H_GUARD_ESP_IDF_VERSION_H
+#ifndef __WINK_HARVESTED_ESP_IDF_VERSION_H__
+#define __WINK_HARVESTED_ESP_IDF_VERSION_H__
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include "wink_sla.h"
+
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
+/* --- Macros (object + allowlisted function-like; first-wins + #ifndef wrapped) --- */
+#ifndef ESP_IDF_VERSION
+#define ESP_IDF_VERSION ESP_IDF_VERSION_VAL(ESP_IDF_VERSION_MAJOR,  ESP_IDF_VERSION_MINOR,  ESP_IDF_VERSION_PATCH)
+#endif
+#ifndef ESP_IDF_VERSION_MAJOR
 #define ESP_IDF_VERSION_MAJOR 6
+#endif
+#ifndef ESP_IDF_VERSION_MINOR
 #define ESP_IDF_VERSION_MINOR 1
+#endif
+#ifndef ESP_IDF_VERSION_PATCH
 #define ESP_IDF_VERSION_PATCH 0
-
+#endif
+#ifndef ESP_IDF_VERSION_VAL
 #define ESP_IDF_VERSION_VAL(major, minor, patch) ((major << 16) | (minor << 8) | (patch))
+#endif
 
-#define ESP_IDF_VERSION ESP_IDF_VERSION_VAL(ESP_IDF_VERSION_MAJOR, \
-                                            ESP_IDF_VERSION_MINOR, \
-                                            ESP_IDF_VERSION_PATCH)
+/* --- Enums (implicit values backfilled; ABI attrs preserved) --- */
 
-const char *esp_get_idf_version(void);
+/* --- Structs & Typedefs (merged, source order preserved for C forward refs) --- */
+
+const char* esp_get_idf_version(void);
+
 
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* ESP_IDF_VERSION_H */
+#endif /* __WINK_HARVESTED_ESP_IDF_VERSION_H__ */
+#endif /* WINK_H_GUARD_ESP_IDF_VERSION_H */

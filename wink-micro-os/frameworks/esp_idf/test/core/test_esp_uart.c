@@ -2,6 +2,7 @@
 #include "unity.h"
 #include "driver/uart.h"
 #include "esp_err.h"
+#include "esp_idf_wink.h"
 
 void setUp(void) {
     esp_uart_reset();

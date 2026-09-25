@@ -331,7 +331,7 @@ void esp_i2c_legacy_reset(void) {
         s_cmd_links[i].entry_count = 0;
         s_cmd_links[i].write_offset = 0;
     }
-    for (int p = 0; p < SOC_HP_I2C_NUM; p++) {
+    for (int p = 0; p < (int)SOC_HP_I2C_NUM; p++) {
         s_i2c_high_period[p] = 0;
         s_i2c_low_period[p] = 0;
         s_i2c_start_setup[p] = 0;

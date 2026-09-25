@@ -3,6 +3,7 @@
 #include "driver/i2c.h"
 #include "driver/i2c_master.h"
 #include "esp_err.h"
+#include "esp_idf_wink.h"
 
 void setUp(void) {
     esp_i2c_legacy_reset();

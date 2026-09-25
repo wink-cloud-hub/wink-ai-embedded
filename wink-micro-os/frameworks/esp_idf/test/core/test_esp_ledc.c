@@ -2,6 +2,7 @@
 #include "unity.h"
 #include "driver/ledc.h"
 #include "esp_err.h"
+#include "esp_idf_wink.h"
 #include "soc/soc_caps.h"
 
 static bool s_cb_called = false;
@@ -65,7 +66,7 @@ void test_ledc_channel_without_timer_rejected(void) {
         .timer_sel = LEDC_TIMER_0,
         .duty = 0,
         .hpoint = 0,
-        .flags = 0,
+        .flags = { .output_invert = 0 },
         .sleep_mode = 0
     };
     /* Timer 0 not configured yet -> ESP_ERR_INVALID_STATE */
@@ -90,7 +91,7 @@ void test_ledc_channel_config_and_duty(void) {
         .timer_sel = LEDC_TIMER_1,
         .duty = 512, /* approx 50% */
         .hpoint = 0,
-        .flags = 0,
+        .flags = {0},
         .sleep_mode = 0
     };
     TEST_ASSERT_EQUAL_INT32(ESP_OK, ledc_channel_config(&ch_cfg));
@@ -146,7 +147,7 @@ void test_ledc_fade_workflow_and_callback(void) {
         .timer_sel = LEDC_TIMER_2,
         .duty = 0,
         .hpoint = 0,
-        .flags = 0,
+        .flags = {0},
         .sleep_mode = 0
     };
     TEST_ASSERT_EQUAL_INT32(ESP_OK, ledc_channel_config(&ch_cfg));
@@ -186,7 +187,7 @@ void test_ledc_dynamic_frequency_adjustment(void) {
         .timer_sel = LEDC_TIMER_3,
         .duty = 100,
         .hpoint = 0,
-        .flags = 0,
+        .flags = {0},
         .sleep_mode = 0
     };
     TEST_ASSERT_EQUAL_INT32(ESP_OK, ledc_channel_config(&ch_cfg));

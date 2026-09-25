@@ -1,25 +1,38 @@
 /* SPDX-License-Identifier: LGPL-3.0-only */
-#ifndef DRIVER_GPTIMER_TYPES_H_
-#define DRIVER_GPTIMER_TYPES_H_
-
+/* Harvested from esp-idf v6.1@fff9895c (Apache-2.0) — factual C-ABI only, comments stripped. See NOTICE. */
+/* AUTOMATICALLY GENERATED FILE - DO NOT EDIT MANUALLY! Manifest: 542eb37a5dc3604c Source: v6.1@fff9895c Config: esp32/v6.1 */
+#ifndef WINK_H_GUARD_DRIVER_GPTIMER_TYPES_H
+#define WINK_H_GUARD_DRIVER_GPTIMER_TYPES_H
+#ifndef __WINK_HARVESTED_DRIVER_GPTIMER_TYPES_H__
+#define __WINK_HARVESTED_DRIVER_GPTIMER_TYPES_H__
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include "wink_sla.h"
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "hal/timer_types.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+/* --- Macros (object + allowlisted function-like; first-wins + #ifndef wrapped) --- */
 
-typedef struct gptimer_t *gptimer_handle_t;
+/* --- Enums (implicit values backfilled; ABI attrs preserved) --- */
 
+/* --- Structs & Typedefs (merged, source order preserved for C forward refs) --- */
+typedef struct gptimer_t * gptimer_handle_t;
 typedef struct {
     uint64_t count_value;
     uint64_t alarm_value;
 } gptimer_alarm_event_data_t;
-
 typedef bool (*gptimer_alarm_cb_t)(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx);
+
+
 
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* DRIVER_GPTIMER_TYPES_H_ */
+#endif /* __WINK_HARVESTED_DRIVER_GPTIMER_TYPES_H__ */
+#endif /* WINK_H_GUARD_DRIVER_GPTIMER_TYPES_H */

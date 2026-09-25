@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "unity.h"
 #include "esp_err.h"
+#include "esp_idf_wink.h"
 #include "wink_status.h"
 #include <string.h>
 

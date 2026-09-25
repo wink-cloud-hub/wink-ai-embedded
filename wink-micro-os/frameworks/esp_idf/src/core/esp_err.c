@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: LGPL-3.0-only */
 #include "esp_err.h"
+#include "esp_idf_wink.h"
 #include "wink_status.h"
 #include <string.h>
 

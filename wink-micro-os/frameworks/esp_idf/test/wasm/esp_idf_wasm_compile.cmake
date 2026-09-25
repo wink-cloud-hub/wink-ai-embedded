@@ -22,6 +22,8 @@ function(add_esp_idf_wasm_compile_check name source_file)
         COMMAND ${EMCC_EXECUTABLE} -c "${_src_abs}" -o "${_out_obj}"
             -Wall -Wextra -Werror -Wno-unused-parameter
             -DUNITY_SUPPORT_64=1
+            # corpus overlay 优先（Tier-B stub 与 sdkconfig.h 均须覆盖 framework 同名头）
+            ${_inc_args}
             -I${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
             -I${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/chips/esp32/include
             -I${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/freertos
@@ -30,9 +32,11 @@ function(add_esp_idf_wasm_compile_check name source_file)
             -I${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/hal
             -I${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/osal
             -I${CMAKE_CURRENT_SOURCE_DIR}/../runtime/include
+            -I${CMAKE_CURRENT_SOURCE_DIR}/../trace/include
+            -I${CMAKE_BINARY_DIR}/generated
             -I${CMAKE_CURRENT_SOURCE_DIR}/unity
-            ${_inc_args}
-        DEPENDS "${_src_abs}"
+            -I${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/shim/include
+        DEPENDS "${_src_abs}" "${CMAKE_BINARY_DIR}/generated/wink_config.h"
         COMMENT "Wasm compile-only check: ${name}"
         VERBATIM
     )

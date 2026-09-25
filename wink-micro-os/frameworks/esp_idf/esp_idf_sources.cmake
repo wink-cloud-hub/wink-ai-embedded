@@ -29,4 +29,8 @@ set(ESP_IDF_FRAMEWORK_INCLUDES
     ${CMAKE_CURRENT_LIST_DIR}/include
     ${CMAKE_CURRENT_LIST_DIR}/src/freertos
     ${CMAKE_CURRENT_LIST_DIR}/../../targets/common/include
+    # 手写 esp_check.h -> wink_runtime.h -> wink_fault.h -> wink_trace.h 依赖链
+    ${CMAKE_CURRENT_LIST_DIR}/../../trace/include
+    # 默认 sdkconfig 垫片：必须排在 corpus overlay 之后（见 shim/include/sdkconfig.h）
+    ${CMAKE_CURRENT_LIST_DIR}/shim/include
 )

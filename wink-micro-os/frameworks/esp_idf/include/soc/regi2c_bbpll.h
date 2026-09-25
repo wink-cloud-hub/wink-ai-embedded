@@ -1,0 +1,440 @@
+/* SPDX-License-Identifier: LGPL-3.0-only */
+/* Harvested from esp-idf v6.1@fff9895c (Apache-2.0) — factual C-ABI only, comments stripped. See NOTICE. */
+/* AUTOMATICALLY GENERATED FILE - DO NOT EDIT MANUALLY! Manifest: 542eb37a5dc3604c Source: v6.1@fff9895c Config: esp32/v6.1 */
+#ifndef WINK_H_GUARD_SOC_REGI2C_BBPLL_H
+#define WINK_H_GUARD_SOC_REGI2C_BBPLL_H
+#ifndef __WINK_HARVESTED_SOC_REGI2C_BBPLL_H__
+#define __WINK_HARVESTED_SOC_REGI2C_BBPLL_H__
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include "wink_sla.h"
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+/* --- Macros (object + allowlisted function-like; first-wins + #ifndef wrapped) --- */
+#ifndef I2C_BBPLL
+#define I2C_BBPLL 0x66
+#endif
+#ifndef I2C_BBPLL_BBADC_CAL_7_0
+#define I2C_BBPLL_BBADC_CAL_7_0 12
+#endif
+#ifndef I2C_BBPLL_BBADC_CAL_7_0_LSB
+#define I2C_BBPLL_BBADC_CAL_7_0_LSB 0
+#endif
+#ifndef I2C_BBPLL_BBADC_CAL_7_0_MSB
+#define I2C_BBPLL_BBADC_CAL_7_0_MSB 7
+#endif
+#ifndef I2C_BBPLL_BBADC_CAL_9_8
+#define I2C_BBPLL_BBADC_CAL_9_8 11
+#endif
+#ifndef I2C_BBPLL_BBADC_CAL_9_8_LSB
+#define I2C_BBPLL_BBADC_CAL_9_8_LSB 3
+#endif
+#ifndef I2C_BBPLL_BBADC_CAL_9_8_MSB
+#define I2C_BBPLL_BBADC_CAL_9_8_MSB 4
+#endif
+#ifndef I2C_BBPLL_BBADC_DCM
+#define I2C_BBPLL_BBADC_DCM 11
+#endif
+#ifndef I2C_BBPLL_BBADC_DCM_LSB
+#define I2C_BBPLL_BBADC_DCM_LSB 5
+#endif
+#ifndef I2C_BBPLL_BBADC_DCM_MSB
+#define I2C_BBPLL_BBADC_DCM_MSB 6
+#endif
+#ifndef I2C_BBPLL_BBADC_DELAY1
+#define I2C_BBPLL_BBADC_DELAY1 8
+#endif
+#ifndef I2C_BBPLL_BBADC_DELAY1_LSB
+#define I2C_BBPLL_BBADC_DELAY1_LSB 0
+#endif
+#ifndef I2C_BBPLL_BBADC_DELAY1_MSB
+#define I2C_BBPLL_BBADC_DELAY1_MSB 1
+#endif
+#ifndef I2C_BBPLL_BBADC_DELAY2
+#define I2C_BBPLL_BBADC_DELAY2 8
+#endif
+#ifndef I2C_BBPLL_BBADC_DELAY2_LSB
+#define I2C_BBPLL_BBADC_DELAY2_LSB 2
+#endif
+#ifndef I2C_BBPLL_BBADC_DELAY2_MSB
+#define I2C_BBPLL_BBADC_DELAY2_MSB 3
+#endif
+#ifndef I2C_BBPLL_BBADC_DELAY3
+#define I2C_BBPLL_BBADC_DELAY3 8
+#endif
+#ifndef I2C_BBPLL_BBADC_DELAY3_LSB
+#define I2C_BBPLL_BBADC_DELAY3_LSB 4
+#endif
+#ifndef I2C_BBPLL_BBADC_DELAY3_MSB
+#define I2C_BBPLL_BBADC_DELAY3_MSB 5
+#endif
+#ifndef I2C_BBPLL_BBADC_DELAY4
+#define I2C_BBPLL_BBADC_DELAY4 8
+#endif
+#ifndef I2C_BBPLL_BBADC_DELAY4_LSB
+#define I2C_BBPLL_BBADC_DELAY4_LSB 6
+#endif
+#ifndef I2C_BBPLL_BBADC_DELAY4_MSB
+#define I2C_BBPLL_BBADC_DELAY4_MSB 7
+#endif
+#ifndef I2C_BBPLL_BBADC_DELAY5
+#define I2C_BBPLL_BBADC_DELAY5 9
+#endif
+#ifndef I2C_BBPLL_BBADC_DELAY5_LSB
+#define I2C_BBPLL_BBADC_DELAY5_LSB 0
+#endif
+#ifndef I2C_BBPLL_BBADC_DELAY5_MSB
+#define I2C_BBPLL_BBADC_DELAY5_MSB 1
+#endif
+#ifndef I2C_BBPLL_BBADC_DELAY6
+#define I2C_BBPLL_BBADC_DELAY6 9
+#endif
+#ifndef I2C_BBPLL_BBADC_DELAY6_LSB
+#define I2C_BBPLL_BBADC_DELAY6_LSB 2
+#endif
+#ifndef I2C_BBPLL_BBADC_DELAY6_MSB
+#define I2C_BBPLL_BBADC_DELAY6_MSB 3
+#endif
+#ifndef I2C_BBPLL_BBADC_DIV
+#define I2C_BBPLL_BBADC_DIV 10
+#endif
+#ifndef I2C_BBPLL_BBADC_DIV_LSB
+#define I2C_BBPLL_BBADC_DIV_LSB 4
+#endif
+#ifndef I2C_BBPLL_BBADC_DIV_MSB
+#define I2C_BBPLL_BBADC_DIV_MSB 5
+#endif
+#ifndef I2C_BBPLL_BBADC_DSMP
+#define I2C_BBPLL_BBADC_DSMP 9
+#endif
+#ifndef I2C_BBPLL_BBADC_DSMP_LSB
+#define I2C_BBPLL_BBADC_DSMP_LSB 4
+#endif
+#ifndef I2C_BBPLL_BBADC_DSMP_MSB
+#define I2C_BBPLL_BBADC_DSMP_MSB 7
+#endif
+#ifndef I2C_BBPLL_BBADC_INPUT_SHORT
+#define I2C_BBPLL_BBADC_INPUT_SHORT 11
+#endif
+#ifndef I2C_BBPLL_BBADC_INPUT_SHORT_LSB
+#define I2C_BBPLL_BBADC_INPUT_SHORT_LSB 2
+#endif
+#ifndef I2C_BBPLL_BBADC_INPUT_SHORT_MSB
+#define I2C_BBPLL_BBADC_INPUT_SHORT_MSB 2
+#endif
+#ifndef I2C_BBPLL_DIV_CPU
+#define I2C_BBPLL_DIV_CPU 11
+#endif
+#ifndef I2C_BBPLL_DIV_CPU_LSB
+#define I2C_BBPLL_DIV_CPU_LSB 1
+#endif
+#ifndef I2C_BBPLL_DIV_CPU_MSB
+#define I2C_BBPLL_DIV_CPU_MSB 1
+#endif
+#ifndef I2C_BBPLL_DIV_DAC
+#define I2C_BBPLL_DIV_DAC 11
+#endif
+#ifndef I2C_BBPLL_DIV_DAC_LSB
+#define I2C_BBPLL_DIV_DAC_LSB 0
+#endif
+#ifndef I2C_BBPLL_DIV_DAC_MSB
+#define I2C_BBPLL_DIV_DAC_MSB 0
+#endif
+#ifndef I2C_BBPLL_DTEST
+#define I2C_BBPLL_DTEST 10
+#endif
+#ifndef I2C_BBPLL_DTEST_LSB
+#define I2C_BBPLL_DTEST_LSB 0
+#endif
+#ifndef I2C_BBPLL_DTEST_MSB
+#define I2C_BBPLL_DTEST_MSB 1
+#endif
+#ifndef I2C_BBPLL_ENDIV5
+#define I2C_BBPLL_ENDIV5 11
+#endif
+#ifndef I2C_BBPLL_ENDIV5_LSB
+#define I2C_BBPLL_ENDIV5_LSB 7
+#endif
+#ifndef I2C_BBPLL_ENDIV5_MSB
+#define I2C_BBPLL_ENDIV5_MSB 7
+#endif
+#ifndef I2C_BBPLL_ENT_ADC
+#define I2C_BBPLL_ENT_ADC 10
+#endif
+#ifndef I2C_BBPLL_ENT_ADC_LSB
+#define I2C_BBPLL_ENT_ADC_LSB 2
+#endif
+#ifndef I2C_BBPLL_ENT_ADC_MSB
+#define I2C_BBPLL_ENT_ADC_MSB 3
+#endif
+#ifndef I2C_BBPLL_ENT_PLL
+#define I2C_BBPLL_ENT_PLL 10
+#endif
+#ifndef I2C_BBPLL_ENT_PLL_LSB
+#define I2C_BBPLL_ENT_PLL_LSB 6
+#endif
+#ifndef I2C_BBPLL_ENT_PLL_MSB
+#define I2C_BBPLL_ENT_PLL_MSB 6
+#endif
+#ifndef I2C_BBPLL_HOSTID
+#define I2C_BBPLL_HOSTID 4
+#endif
+#ifndef I2C_BBPLL_IR_CAL_CK_DIV
+#define I2C_BBPLL_IR_CAL_CK_DIV 0
+#endif
+#ifndef I2C_BBPLL_IR_CAL_CK_DIV_LSB
+#define I2C_BBPLL_IR_CAL_CK_DIV_LSB 4
+#endif
+#ifndef I2C_BBPLL_IR_CAL_CK_DIV_MSB
+#define I2C_BBPLL_IR_CAL_CK_DIV_MSB 7
+#endif
+#ifndef I2C_BBPLL_IR_CAL_DELAY
+#define I2C_BBPLL_IR_CAL_DELAY 0
+#endif
+#ifndef I2C_BBPLL_IR_CAL_DELAY_LSB
+#define I2C_BBPLL_IR_CAL_DELAY_LSB 0
+#endif
+#ifndef I2C_BBPLL_IR_CAL_DELAY_MSB
+#define I2C_BBPLL_IR_CAL_DELAY_MSB 3
+#endif
+#ifndef I2C_BBPLL_IR_CAL_ENX_CAP
+#define I2C_BBPLL_IR_CAL_ENX_CAP 1
+#endif
+#ifndef I2C_BBPLL_IR_CAL_ENX_CAP_LSB
+#define I2C_BBPLL_IR_CAL_ENX_CAP_LSB 4
+#endif
+#ifndef I2C_BBPLL_IR_CAL_ENX_CAP_MSB
+#define I2C_BBPLL_IR_CAL_ENX_CAP_MSB 4
+#endif
+#ifndef I2C_BBPLL_IR_CAL_EXT_CAP
+#define I2C_BBPLL_IR_CAL_EXT_CAP 1
+#endif
+#ifndef I2C_BBPLL_IR_CAL_EXT_CAP_LSB
+#define I2C_BBPLL_IR_CAL_EXT_CAP_LSB 0
+#endif
+#ifndef I2C_BBPLL_IR_CAL_EXT_CAP_MSB
+#define I2C_BBPLL_IR_CAL_EXT_CAP_MSB 3
+#endif
+#ifndef I2C_BBPLL_IR_CAL_RSTB
+#define I2C_BBPLL_IR_CAL_RSTB 1
+#endif
+#ifndef I2C_BBPLL_IR_CAL_RSTB_LSB
+#define I2C_BBPLL_IR_CAL_RSTB_LSB 5
+#endif
+#ifndef I2C_BBPLL_IR_CAL_RSTB_MSB
+#define I2C_BBPLL_IR_CAL_RSTB_MSB 5
+#endif
+#ifndef I2C_BBPLL_IR_CAL_START
+#define I2C_BBPLL_IR_CAL_START 1
+#endif
+#ifndef I2C_BBPLL_IR_CAL_START_LSB
+#define I2C_BBPLL_IR_CAL_START_LSB 6
+#endif
+#ifndef I2C_BBPLL_IR_CAL_START_MSB
+#define I2C_BBPLL_IR_CAL_START_MSB 6
+#endif
+#ifndef I2C_BBPLL_IR_CAL_UNSTOP
+#define I2C_BBPLL_IR_CAL_UNSTOP 1
+#endif
+#ifndef I2C_BBPLL_IR_CAL_UNSTOP_LSB
+#define I2C_BBPLL_IR_CAL_UNSTOP_LSB 7
+#endif
+#ifndef I2C_BBPLL_IR_CAL_UNSTOP_MSB
+#define I2C_BBPLL_IR_CAL_UNSTOP_MSB 7
+#endif
+#ifndef I2C_BBPLL_OC_BST_DIV
+#define I2C_BBPLL_OC_BST_DIV 5
+#endif
+#ifndef I2C_BBPLL_OC_BST_DIV_LSB
+#define I2C_BBPLL_OC_BST_DIV_LSB 3
+#endif
+#ifndef I2C_BBPLL_OC_BST_DIV_MSB
+#define I2C_BBPLL_OC_BST_DIV_MSB 3
+#endif
+#ifndef I2C_BBPLL_OC_BST_E2C
+#define I2C_BBPLL_OC_BST_E2C 5
+#endif
+#ifndef I2C_BBPLL_OC_BST_E2C_LSB
+#define I2C_BBPLL_OC_BST_E2C_LSB 4
+#endif
+#ifndef I2C_BBPLL_OC_BST_E2C_MSB
+#define I2C_BBPLL_OC_BST_E2C_MSB 4
+#endif
+#ifndef I2C_BBPLL_OC_BW
+#define I2C_BBPLL_OC_BW 5
+#endif
+#ifndef I2C_BBPLL_OC_BW_LSB
+#define I2C_BBPLL_OC_BW_LSB 6
+#endif
+#ifndef I2C_BBPLL_OC_BW_MSB
+#define I2C_BBPLL_OC_BW_MSB 7
+#endif
+#ifndef I2C_BBPLL_OC_DCHGP
+#define I2C_BBPLL_OC_DCHGP 4
+#endif
+#ifndef I2C_BBPLL_OC_DCHGP_LSB
+#define I2C_BBPLL_OC_DCHGP_LSB 1
+#endif
+#ifndef I2C_BBPLL_OC_DCHGP_MSB
+#define I2C_BBPLL_OC_DCHGP_MSB 3
+#endif
+#ifndef I2C_BBPLL_OC_DCUR
+#define I2C_BBPLL_OC_DCUR 5
+#endif
+#ifndef I2C_BBPLL_OC_DCUR_LSB
+#define I2C_BBPLL_OC_DCUR_LSB 0
+#endif
+#ifndef I2C_BBPLL_OC_DCUR_MSB
+#define I2C_BBPLL_OC_DCUR_MSB 2
+#endif
+#ifndef I2C_BBPLL_OC_DHREF_SEL
+#define I2C_BBPLL_OC_DHREF_SEL 4
+#endif
+#ifndef I2C_BBPLL_OC_DHREF_SEL_LSB
+#define I2C_BBPLL_OC_DHREF_SEL_LSB 4
+#endif
+#ifndef I2C_BBPLL_OC_DHREF_SEL_MSB
+#define I2C_BBPLL_OC_DHREF_SEL_MSB 5
+#endif
+#ifndef I2C_BBPLL_OC_DIV_10_8
+#define I2C_BBPLL_OC_DIV_10_8 2
+#endif
+#ifndef I2C_BBPLL_OC_DIV_10_8_LSB
+#define I2C_BBPLL_OC_DIV_10_8_LSB 4
+#endif
+#ifndef I2C_BBPLL_OC_DIV_10_8_MSB
+#define I2C_BBPLL_OC_DIV_10_8_MSB 6
+#endif
+#ifndef I2C_BBPLL_OC_DIV_7_0
+#define I2C_BBPLL_OC_DIV_7_0 3
+#endif
+#ifndef I2C_BBPLL_OC_DIV_7_0_LSB
+#define I2C_BBPLL_OC_DIV_7_0_LSB 0
+#endif
+#ifndef I2C_BBPLL_OC_DIV_7_0_MSB
+#define I2C_BBPLL_OC_DIV_7_0_MSB 7
+#endif
+#ifndef I2C_BBPLL_OC_DLREF_SEL
+#define I2C_BBPLL_OC_DLREF_SEL 4
+#endif
+#ifndef I2C_BBPLL_OC_DLREF_SEL_LSB
+#define I2C_BBPLL_OC_DLREF_SEL_LSB 6
+#endif
+#ifndef I2C_BBPLL_OC_DLREF_SEL_MSB
+#define I2C_BBPLL_OC_DLREF_SEL_MSB 7
+#endif
+#ifndef I2C_BBPLL_OC_ENB_FCAL
+#define I2C_BBPLL_OC_ENB_FCAL 4
+#endif
+#ifndef I2C_BBPLL_OC_ENB_FCAL_LSB
+#define I2C_BBPLL_OC_ENB_FCAL_LSB 0
+#endif
+#ifndef I2C_BBPLL_OC_ENB_FCAL_MSB
+#define I2C_BBPLL_OC_ENB_FCAL_MSB 0
+#endif
+#ifndef I2C_BBPLL_OC_ENB_VCON
+#define I2C_BBPLL_OC_ENB_VCON 10
+#endif
+#ifndef I2C_BBPLL_OC_ENB_VCON_LSB
+#define I2C_BBPLL_OC_ENB_VCON_LSB 7
+#endif
+#ifndef I2C_BBPLL_OC_ENB_VCON_MSB
+#define I2C_BBPLL_OC_ENB_VCON_MSB 7
+#endif
+#ifndef I2C_BBPLL_OC_LREF
+#define I2C_BBPLL_OC_LREF 2
+#endif
+#ifndef I2C_BBPLL_OC_LREF_LSB
+#define I2C_BBPLL_OC_LREF_LSB 7
+#endif
+#ifndef I2C_BBPLL_OC_LREF_MSB
+#define I2C_BBPLL_OC_LREF_MSB 7
+#endif
+#ifndef I2C_BBPLL_OC_REF_DIV
+#define I2C_BBPLL_OC_REF_DIV 2
+#endif
+#ifndef I2C_BBPLL_OC_REF_DIV_LSB
+#define I2C_BBPLL_OC_REF_DIV_LSB 0
+#endif
+#ifndef I2C_BBPLL_OC_REF_DIV_MSB
+#define I2C_BBPLL_OC_REF_DIV_MSB 3
+#endif
+#ifndef I2C_BBPLL_OC_TSCHGP
+#define I2C_BBPLL_OC_TSCHGP 5
+#endif
+#ifndef I2C_BBPLL_OC_TSCHGP_LSB
+#define I2C_BBPLL_OC_TSCHGP_LSB 5
+#endif
+#ifndef I2C_BBPLL_OC_TSCHGP_MSB
+#define I2C_BBPLL_OC_TSCHGP_MSB 5
+#endif
+#ifndef I2C_BBPLL_OR_CAL_CAP
+#define I2C_BBPLL_OR_CAL_CAP 7
+#endif
+#ifndef I2C_BBPLL_OR_CAL_CAP_LSB
+#define I2C_BBPLL_OR_CAL_CAP_LSB 0
+#endif
+#ifndef I2C_BBPLL_OR_CAL_CAP_MSB
+#define I2C_BBPLL_OR_CAL_CAP_MSB 3
+#endif
+#ifndef I2C_BBPLL_OR_CAL_END
+#define I2C_BBPLL_OR_CAL_END 7
+#endif
+#ifndef I2C_BBPLL_OR_CAL_END_LSB
+#define I2C_BBPLL_OR_CAL_END_LSB 6
+#endif
+#ifndef I2C_BBPLL_OR_CAL_END_MSB
+#define I2C_BBPLL_OR_CAL_END_MSB 6
+#endif
+#ifndef I2C_BBPLL_OR_CAL_OVF
+#define I2C_BBPLL_OR_CAL_OVF 7
+#endif
+#ifndef I2C_BBPLL_OR_CAL_OVF_LSB
+#define I2C_BBPLL_OR_CAL_OVF_LSB 5
+#endif
+#ifndef I2C_BBPLL_OR_CAL_OVF_MSB
+#define I2C_BBPLL_OR_CAL_OVF_MSB 5
+#endif
+#ifndef I2C_BBPLL_OR_CAL_UDF
+#define I2C_BBPLL_OR_CAL_UDF 7
+#endif
+#ifndef I2C_BBPLL_OR_CAL_UDF_LSB
+#define I2C_BBPLL_OR_CAL_UDF_LSB 4
+#endif
+#ifndef I2C_BBPLL_OR_CAL_UDF_MSB
+#define I2C_BBPLL_OR_CAL_UDF_MSB 4
+#endif
+#ifndef I2C_BBPLL_OR_LOCK1
+#define I2C_BBPLL_OR_LOCK1 6
+#endif
+#ifndef I2C_BBPLL_OR_LOCK1_LSB
+#define I2C_BBPLL_OR_LOCK1_LSB 0
+#endif
+#ifndef I2C_BBPLL_OR_LOCK1_MSB
+#define I2C_BBPLL_OR_LOCK1_MSB 0
+#endif
+#ifndef I2C_BBPLL_OR_LOCK2
+#define I2C_BBPLL_OR_LOCK2 6
+#endif
+#ifndef I2C_BBPLL_OR_LOCK2_LSB
+#define I2C_BBPLL_OR_LOCK2_LSB 1
+#endif
+#ifndef I2C_BBPLL_OR_LOCK2_MSB
+#define I2C_BBPLL_OR_LOCK2_MSB 1
+#endif
+
+/* --- Enums (implicit values backfilled; ABI attrs preserved) --- */
+
+/* --- Structs & Typedefs (merged, source order preserved for C forward refs) --- */
+
+
+
+#ifdef __cplusplus
+}
+#endif
+#endif /* __WINK_HARVESTED_SOC_REGI2C_BBPLL_H__ */
+#endif /* WINK_H_GUARD_SOC_REGI2C_BBPLL_H */

@@ -3,6 +3,7 @@
 #include "driver/gptimer.h"
 #include "hal/pal_hwtimer.h"
 #include "esp_err.h"
+#include "esp_idf_wink.h"
 
 static bool s_alarm_fired = false;
 static uint64_t s_alarm_val = 0;

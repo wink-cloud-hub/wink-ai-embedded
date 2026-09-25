@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include "pal_log.h"
 #include "esp_system.h"
+#include "esp_idf_wink.h"
 #include "freertos_sync.h"
 #include "driver/ledc.h"
 #include "driver/i2c.h"

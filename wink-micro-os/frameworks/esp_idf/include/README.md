@@ -47,3 +47,24 @@
    新增版本时先跑 `--dry-run --format json` 校验 `source_root_missing` 清单，再执行收割。
 4. **豁免文件跨版本兼容**：`sdkconfig_base.h`、`esp_attr.h`、`hal/spi_types.h`、`freertos/*`、
    `soc/gpio_struct.h` 等手写豁免文件必须同时服务 v5/v6 语义（新版本新增属性宏时在此增补）。
+
+---
+
+## 4. 当前 vendored 状态（P1-A，2026-09-25）
+
+* **版本锚**：`esp-idf v6.1@fff9895c`，`manifest.json.hash = 542eb37a5dc3604c`（280 个生成头，Banner 可查）。
+* **手写通道 A（不参与收割，随版本演进维护）**：
+  - 豁免：`sdkconfig_base.h`、`esp_attr.h`、`hal/spi_types.h`、`freertos/*`、`soc/gpio_struct.h`、`led_strip.h`；
+  - 门面扩展：`esp_idf_wink.h`（错误码桥接 + 各驱动 reset 钩子）、`esp_check.h`；
+  - 默认 config 垫片：`../shim/include/sdkconfig.h`（include 搜索序最后，corpus overlay 优先）。
+* **chips/<target> 分发点**：`soc/soc_caps.h`、`soc/gpio_num.h` 以 `#include_next` 转发到 vendored 数据
+  （ADR-0085 入口语义保留，数据 SSOT 迁移至 `include/`，ADR 回写待 P2）。
+* **门禁**：
+  ```bash
+  # 开源侧 vendored 树（manifest 自锚/逐文件哈希/Banner/片段/yaml 三表）
+  python .github/scripts/check_harvested_headers.py --include-dir wink-micro-os/frameworks/esp_idf/include \
+      --rules <wink-tools>/tools/sdk_harvester/rules/esp_idf.yaml
+  # 正式构建验收
+  cmake -S wink-micro-os -B wink-micro-os/build/test -DTARGET_PLATFORM=host -G "MinGW Makefiles" && \
+  cmake --build wink-micro-os/build/test && ctest --test-dir wink-micro-os/build/test -L esp_idf --output-on-failure
+  ```
