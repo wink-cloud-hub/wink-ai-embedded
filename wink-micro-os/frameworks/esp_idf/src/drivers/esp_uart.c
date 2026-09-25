@@ -101,7 +101,10 @@ esp_err_t uart_driver_install(uart_port_t uart_num, int rx_buffer_size, int tx_b
     (void)rx_buffer_size;
     (void)tx_buffer_size;
     (void)intr_alloc_flags;
-    if (uart_num >= UART_NUM_MAX) {
+    /* ADR-0085 D1：全 SoC 共用 UART 枚举，SoC 端口上限以 SOC_UART_HP_NUM 运行期 Fail-Loud 拦截 */
+    _Static_assert(UART_NUM_MAX >= SOC_UART_HP_NUM,
+                   "UART_NUM_MAX must cover all SoC UART ports");
+    if (uart_num >= SOC_UART_HP_NUM || uart_num >= UART_NUM_MAX) {
         return ESP_ERR_INVALID_ARG;
     }
     esp_uart_port_t *u = &s_uarts[uart_num];

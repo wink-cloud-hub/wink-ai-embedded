@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 #include "driver/spi_master.h"
 #include "hal/pal_spi.h"
+#include "esp_log.h"
 #include <string.h>
 
 #define MAX_SPI_DEVS 8
@@ -15,6 +16,12 @@ static struct spi_device_t s_spis[MAX_SPI_DEVS];
 esp_err_t spi_bus_initialize(spi_host_device_t host_id, const spi_bus_config_t *bus_config, spi_dma_chan_t dma_chan) {
     (void)dma_chan;
     if (!bus_config) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    /* ADR-0085 D1：SPI_HOST 枚举保持全集，SoC 端口上限运行期 Fail-Loud（C3/C6 仅 2 个 SPI） */
+    if (host_id >= SOC_SPI_PERIPH_NUM) {
+        ESP_LOGE("esp_spi", "SPI host %d not available on current SoC (max %d)",
+                 (int)host_id, (int)SOC_SPI_PERIPH_NUM);
         return ESP_ERR_INVALID_ARG;
     }
     // 关键防护 R-009：IDF SPI2_HOST=1, SPI3_HOST=2 映射至 PAL 0 与 1

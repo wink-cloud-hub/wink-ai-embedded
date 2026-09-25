@@ -3,7 +3,7 @@
 #include "hal/pal_i2c.h"
 #include <string.h>
 
-#define MAX_MASTER_BUSES PAL_I2C_PORT_MAX
+#define MAX_MASTER_BUSES SOC_HP_I2C_NUM
 #define MAX_MASTER_DEVICES 8
 
 struct i2c_master_bus_t {

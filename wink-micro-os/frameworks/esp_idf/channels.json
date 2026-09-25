@@ -26,7 +26,14 @@
     "freertos/task.h",
     "freertos/timers.h"
   ],
-  "chips_handwritten": [],
+  "chips_handwritten": [
+    "chips/esp32s3/include/soc/soc_caps.h",
+    "chips/esp32s3/include/soc/gpio_num.h",
+    "chips/esp32c3/include/soc/soc_caps.h",
+    "chips/esp32c3/include/soc/gpio_num.h",
+    "chips/esp32c6/include/soc/soc_caps.h",
+    "chips/esp32c6/include/soc/gpio_num.h"
+  ],
   "relocated": {
     "soc/soc_caps.h": "chips/{soc}/include/soc/soc_caps.h",
     "soc/gpio_num.h": "chips/{soc}/include/soc/gpio_num.h"

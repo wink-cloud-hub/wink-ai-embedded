@@ -1335,6 +1335,25 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     add_test(NAME test_esp_err COMMAND test_esp_err)
     set_tests_properties(test_esp_err PROPERTIES LABELS "esp_idf;core")
 
+    # SoC capability matrix: builds once per WINK_ESP_TARGET (CI matrix strategy)
+    add_executable(test_esp_soc_matrix
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_soc_matrix.c
+        ${UNITY_DIR}/unity.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_soc_matrix PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    target_link_libraries(test_esp_soc_matrix PRIVATE wink_framework_esp_idf dal)
+    target_compile_options(test_esp_soc_matrix PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(test_esp_soc_matrix generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_soc_matrix)
+    add_test(NAME test_esp_soc_matrix COMMAND test_esp_soc_matrix)
+    set_tests_properties(test_esp_soc_matrix PROPERTIES LABELS "esp_idf;core")
+
     add_executable(test_esp_gpio
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_gpio.c
         ${UNITY_DIR}/unity.c

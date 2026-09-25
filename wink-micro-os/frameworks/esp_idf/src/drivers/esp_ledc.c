@@ -35,8 +35,8 @@ esp_err_t ledc_timer_config(const ledc_timer_config_t *timer_conf) {
         timer_conf->freq_hz == 0) {
         return ESP_ERR_INVALID_ARG;
     }
-#if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32C6) || defined(CONFIG_IDF_TARGET_ESP32S3)
-    if (timer_conf->speed_mode != LEDC_LOW_SPEED_MODE) {
+#if !SOC_LEDC_SUPPORT_HS_MODE
+    if (timer_conf->speed_mode == LEDC_HIGH_SPEED_MODE) {
         ESP_LOGE(TAG, "High speed mode not supported on current SoC");
         return ESP_ERR_INVALID_ARG;
     }

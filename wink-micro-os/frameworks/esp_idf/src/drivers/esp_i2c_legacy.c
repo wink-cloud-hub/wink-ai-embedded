@@ -36,7 +36,7 @@ esp_err_t i2c_driver_install(i2c_port_t i2c_num, i2c_mode_t mode, size_t slv_rx_
     (void)slv_rx_buf_len;
     (void)slv_tx_buf_len;
     (void)intr_alloc_flags;
-    if (i2c_num >= PAL_I2C_PORT_MAX) {
+    if (i2c_num >= SOC_HP_I2C_NUM) {
         return ESP_ERR_INVALID_ARG;
     }
     // 严格红线 6：PAL 仅支持主机模式，从机直接 Fail-Loud
@@ -48,7 +48,7 @@ esp_err_t i2c_driver_install(i2c_port_t i2c_num, i2c_mode_t mode, size_t slv_rx_
 }
 
 esp_err_t i2c_driver_delete(i2c_port_t i2c_num) {
-    if (i2c_num >= PAL_I2C_PORT_MAX) {
+    if (i2c_num >= SOC_HP_I2C_NUM) {
         return ESP_ERR_INVALID_ARG;
     }
     pal_i2c_bus_deinit((uint8_t)i2c_num);
@@ -56,7 +56,7 @@ esp_err_t i2c_driver_delete(i2c_port_t i2c_num) {
 }
 
 esp_err_t i2c_param_config(i2c_port_t i2c_num, const i2c_config_t *i2c_conf) {
-    if (i2c_num >= PAL_I2C_PORT_MAX || !i2c_conf) {
+    if (i2c_num >= SOC_HP_I2C_NUM || !i2c_conf) {
         return ESP_ERR_INVALID_ARG;
     }
     if (i2c_conf->mode != I2C_MODE_MASTER) {
@@ -149,7 +149,7 @@ esp_err_t i2c_master_stop(i2c_cmd_handle_t cmd_handle) {
 // 状态机驱动的复合时序折叠引擎：解析 Start -> W_Addr -> W_Data -> (Rep_Start -> R_Addr) -> R_Data -> Stop
 esp_err_t i2c_master_cmd_begin(i2c_port_t i2c_num, i2c_cmd_handle_t cmd_handle, TickType_t ticks_to_wait) {
     esp_i2c_cmd_link_t *link = (esp_i2c_cmd_link_t *)cmd_handle;
-    if (!link || i2c_num >= PAL_I2C_PORT_MAX || link->entry_count == 0) {
+    if (!link || i2c_num >= SOC_HP_I2C_NUM || link->entry_count == 0) {
         return ESP_ERR_INVALID_ARG;
     }
 
