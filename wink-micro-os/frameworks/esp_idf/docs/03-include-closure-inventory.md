@@ -1,8 +1,8 @@
 # ESP-IDF 仿真拦截层 Include 闭包追踪清单 (03-include-closure-inventory)
 
-> **版本**：v1.1  
-> **适用里程碑**：M1 (FreeRTOS 调度器与并发原语 Shim)  
-> **设计依据**：Task M1-1 编译驱动增量 include 闭包策略
+> **版本**：v1.2  
+> **适用里程碑**：M1 (FreeRTOS 调度器与并发原语 Shim) → M2+（v6.1 收割闭包）  
+> **设计依据**：Task M1-1 编译驱动增量 include 闭包策略；`PLAN-20260925-SDK-HARVESTER-ENGINE v2.13`
 
 ---
 
@@ -14,6 +14,26 @@
    本仓桩头之间一律采用前缀式自包含（例如 `#include "freertos/portmacro.h"`），不复刻官方多组件 include 根路径拆分，以维持最小侵入性与宿主环境一致性。
 3. **合约诚实 (ADR-0012)**：
    桩头分为四类策略：宏消解、类型映射、透传垫片、声明桩。严禁提供静默空实现函数。
+4. **自动化收割优先原则 (Automated Harvesting First)**：
+   对于枚举全集、硬件能力掩码、配置结构体等大批量类型声明，严禁人工手工抄写，优先通过闭源工具链收割器一键提取更新（见 `packages/wink-tools/tools/sdk_harvester/`，计划参考 `PLAN-20260925-SDK-HARVESTER-ENGINE`），杜绝拼写失误与版本升级腐烂。
+
+---
+
+## 1.5 收割闭包（现行，v6.1 vendored）
+
+> **2026-09-25 起**：`include/` 的复杂类型/枚举/配置头已由闭源 SDK Harvester 产物整体取代
+> （见 `include/README.md` §4 与 `include/manifest.json`，`manifest.hash = 542eb37a5dc3604c`）。
+> 当前生效闭包以机器 SSOT 为准：
+> [`../include/include-closure-inventory.inc.md`](../include/include-closure-inventory.inc.md)
+> （survey 280 生成头；`--include-mode block` 生产闭包 52 头，由 `production.entry_headers` 9 头推导）。
+>
+> **手写范围（豁免 + 扩展，不参与收割）**：
+> `sdkconfig_base.h`、`esp_attr.h`、`hal/spi_types.h`、`freertos/*`、`soc/gpio_struct.h`、`led_strip.h`、
+> `esp_check.h`（wink_fault 集成）、`esp_idf_wink.h`（错误码桥接 + 8 个 reset 钩子）、
+> `shim/include/sdkconfig.h`（默认垫片，搜索序最后）、`chips/<target>/{soc_caps,gpio_num}.h`（`#include_next` 分发点）。
+>
+> **§2~§4 表格说明**：保留为手写垫片时代的闭包登记与迁移依据（历史审计）；新增依赖一律走收割器
+> （`rules/esp_idf.yaml` 三表 + `production.entry_headers`），不再手工扩展 §2~§4。
 
 ---
 

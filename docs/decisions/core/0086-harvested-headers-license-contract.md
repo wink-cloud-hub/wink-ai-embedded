@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 状态 | **Proposed（提议中）** |
+| 状态 | **Accepted（已采纳）** |
 | 日期 | 2026-09-25 |
 | 触发 | 闭源收割流水线 `PLAN-20260925-SDK-HARVESTER-ENGINE v2.1` 产物需落开源仓 `frameworks/esp_idf/include/`；须在不泄露工具实现的前提下确立许可与消费契约 |
 | 影响范围 | `wink-micro-os/frameworks/**/include/**`（LGPL-3.0-only）；`wink-micro-os/NOTICE`；`.github/license-map.json`；`frameworks/esp_idf/include/README.md`；`02-api-coverage-matrix.md` SLA 片段 |
@@ -43,12 +43,13 @@
 
 ## 5. 遵循与后续（Compliance & Follow-up）
 
-- [ ] `NOTICE` + `license-map.json` 更新（含收割产物规则，置于 `wink-micro-os/**` 兜底之前）
-- [ ] `frameworks/esp_idf/include/README.md` 入口统一为 `wink internal harvest-sdk` artifact 流程
-- [ ] CI `license-gate` + `manifest.hash` 校验接线；演练一次 vendoring + 回滚
-- [ ] 法务会签后转 Accepted，并回写 `coding-conventions §7`
+- [x] `NOTICE` + `license-map.json` 更新（含收割产物规则，置于 `wink-micro-os/**` 兜底之前）
+- [x] `frameworks/esp_idf/include/README.md` 入口统一为 `wink internal harvest-sdk` artifact 流程
+- [x] CI `license-gate` + `manifest.hash` 校验脚本落盘（闭源 `ci_gate` / 开源 `.github/scripts/check_harvested_headers.py`）；已完成一次正式 vendoring（P1-A，官方构建/ctest 28/28）
+- [x] Owner 批准转 Accepted（2026-09-25）；回写 `coding-conventions §7`；回滚演练保留为独立跟踪项（N-1 artifact 机制已具备）
 
 ---
 
 *该 ADR 状态变更记录：*
 - 2026-09-25：Proposed（架构组，随收割计划 v2.1 起草，待法务会签）
+- 2026-09-25：**Accepted**（Owner 批准；证据：P1-A vendoring 落库，manifest `84db04923752c2f8`，`check_harvested_headers --rules` + `check_license_map.py` 双绿）

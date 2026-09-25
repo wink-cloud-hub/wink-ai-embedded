@@ -1,7 +1,29 @@
 # ESP-IDF 仿真拦截层 API 覆盖矩阵与降级登记簿 (02-api-coverage-matrix)
 
-> **版本**：v2.0  
-> **适用里程碑**：M2 (外设与总线仿真拦截：LEDC, I2C, UART, GPTimer, SPI, NVS)
+> **版本**：v2.1  
+> **适用里程碑**：M2 (外设与总线仿真拦截：LEDC, I2C, UART, GPTimer, SPI, NVS)  
+> **收割口径**：v6.1@fff9895c vendored（`manifest.hash = 542eb37a5dc3604c`）
+
+---
+
+## 0. 收割 SLA 快照（机器生成，v6.1@fff9895c）
+
+> 本表为门面**人工维护**的 API 覆盖与降级登记；与其互补的**全量机器生成**清单见
+> [`../include/api-coverage-matrix.inc.md`](../include/api-coverage-matrix.inc.md)
+> （280 生成头 / 450 Supported / 1097 Out-of-scope）。片段由闭源收割器单源反写，**禁止手改**；
+> 一致性由闭源 `ci_gate` 与开源 `.github/scripts/check_harvested_headers.py` 双向校验。
+
+| 收割状态 | 生成口径 | 与本文档的关系 |
+|:---|:---|:---|
+| ✅ Supported | `rules/esp_idf.yaml: sla.supported_prefixes`（v2.13 补齐 `esp_restart`/`esp_random`/`esp_err_to_name`/`spi_bus_*`/`i2c_del_master_bus` 等门面已实现 API） | 应与 §1 门面行一一对应 |
+| 🚫 Out-of-scope | `__WINK_SIM__` 注入时编译期 `WINK_SLA_ERROR` 阻断（GCC/Clang `error` 属性；MSVC 空宏 + 链接缺符号 + `winkcli lint` 前移） | 对应 §1「未支持」与 §2 Fail-Loud 条目 |
+| ⚠️ 降级支持 | 门面运行时桩/语义弱化（§2 登记） | 收割侧不判定降级，由本文档人工登记 |
+
+> **v6.1 vendoring 变更（2026-09-25）**：
+> - `esp_log` 系列随 IDF v6 统一入口：门面新增 `esp_log`/`esp_log_va` 实现（`ESP_LOG*` 宏展开目标）；
+> - `gpio_uninstall_isr_service` 官方签名由 `void` 变为 `esp_err_t`（见降级条目 4）；
+> - `esp_intr_alloc/free`、`esp_task_wdt_*` 在 `__WINK_SIM__` 注入下为**编译期** Fail-Loud（收割 SLA），
+>   未注入时门面运行时桩仍返回 `ESP_ERR_NOT_SUPPORTED`（见降级条目 5）。
 
 ---
 
@@ -108,10 +130,12 @@
 ### 降级条目 4：GPIO 上拉/中断/ISR 全家桶未支持（Fail-Loud）
 - **受影响 API**：`gpio_set_pull_mode`、`gpio_pullup_en/dis`、`gpio_pulldown_en/dis`、`gpio_set_intr_type`、`gpio_intr_enable/disable`、`gpio_install_isr_service`、`gpio_isr_handler_add/remove`、`gpio_uninstall_isr_service`
 - **拦截层行为**：有效引脚一律 `ESP_LOGE` + 返回 `ESP_ERR_NOT_SUPPORTED`。
+- **v6.1 vendoring（2026-09-25）**：`gpio_uninstall_isr_service` 官方签名由 `void` 变为 `esp_err_t`，门面同步返回 `ESP_ERR_NOT_SUPPORTED`；`esp_intr_alloc`/`esp_intr_free` 的**调用点**在 `__WINK_SIM__` 注入下由收割 SLA 编译期 `WINK_SLA_ERROR` 阻断（见降级条目 5）。
 
 ### 降级条目 5：看门狗/中断分配/ROM 垫片未支持（Fail-Loud）
 - **受影响 API**：`esp_task_wdt_*`、`esp_intr_alloc/free`、`esp_rom_gpio_pad_select_gpio`
 - **拦截层行为**：前两组 `ESP_LOGE` + 返回 `ESP_ERR_NOT_SUPPORTED`；`esp_rom_gpio_pad_select_gpio` 仅 `ESP_LOGW` 后 no-op。
+- **v6.1 vendoring（2026-09-25）**：`esp_task_wdt_*`/`esp_intr_alloc/free` 在 `__WINK_SIM__` 注入时改为**编译期 Fail-Loud**（收割 Out-of-scope；MSVC 空宏 + 链接缺符号 + lint 前移），未注入时保留上述运行时桩；`esp_rom_gpio_pad_select_gpio` 已入 SLA 白名单（纯声明 + 运行时 no-op）。
 
 ### 降级条目 6：优先级存储但不抢占调度、多核 Affinity 钳制 Core 0
 - **受影响 API**：`xTaskCreate`, `xTaskCreatePinnedToCore`, `vTaskPrioritySet`, `uxTaskPriorityGet`

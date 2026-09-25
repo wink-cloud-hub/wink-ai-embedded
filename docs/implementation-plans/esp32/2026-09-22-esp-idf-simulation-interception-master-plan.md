@@ -184,6 +184,7 @@ wink-micro-os/frameworks/esp_idf/
     - **语料 overlay 层** `test/corpus/<sample>/include/sdkconfig.h`：首行显式 `#include "sdkconfig_base.h"` 后再定义本示例的 Kconfig 私有宏，CMake 为每个 `esp_idf_corpus_<sample>` 目标将**本语料 overlay 置于 include 路径首位**（`BEFORE PRIVATE`，与 §3.3.2 chips 路径前置同一手法）；
     - **严禁 `#include_next`**（MSVC 不支持，不可移植）；宏数量少时允许直接 `-DCONFIG_XXX=...` 编译期注入，不建文件。
 5. **验收**：每条闭包登记项可追溯到至少一个 Tier-A 语料的编译错误；`03-include-closure-inventory.md` 与 ctest 同步演进（L3 文档验收项）。
+6. **自动化收割工具链保障（v3.6 补强，✅ 已落地 2026-09-25）**：为防止手工手写头文件引发拼写失误与版本升级腐烂，枚举全集、配置结构体与函数原型优先通过闭源工具链收割流水线（`wink-ai/packages/wink-tools/tools/sdk_harvester/`，见计划 `PLAN-20260925-SDK-HARVESTER-ENGINE`）自动提纯生成，彻底杜绝手工农耕。**落地证据（计划 v2.13 §5.1）**：v6.1 双 SoC 收割 + ABI/宏等价（36/36）+ 正式 vendoring（`manifest.hash = 542eb37a5dc3604c`，官方构建 100% / `ctest -L esp_idf` 28/28）；`include/` 手写范围收敛为豁免文件与 `esp_check.h`/`esp_idf_wink.h` 扩展；闭包清单与 SLA 矩阵已由机器片段反写至 `02/03` 文档（本项关闭）。
 
 ---
 

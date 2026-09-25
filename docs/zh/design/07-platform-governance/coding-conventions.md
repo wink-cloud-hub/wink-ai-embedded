@@ -229,6 +229,7 @@ The following C++ flags are globally enforced for C++ compilation and cannot be 
 3. **第三方边界**：新增第三方依赖须核对兼容矩阵并在 `wink-micro-os/NOTICE` 登记；`GPL-2.0-only` 组件与所有分层均不兼容，严禁合入或进入分发物。
 4. **门禁**：`python .github/scripts/check_license_map.py`（CI `license-gate`，push/PR 触发）；改目录许可必须同步更新 `.github/license-map.json` 与本节。
 5. **厂商夹具纪律（E-003）**：原厂 SDK、私有工程夹具仅存本地 `docs/vendors/`（gitignore，永不入库）；新增示例须以 clean-room shim 或本地 fixture 形式接入。
+6. **收割影子头契约（ADR-0086）**：`wink-micro-os/frameworks/**/include/**` 中由闭源 SDK Harvester 生成的影子头，是 Apache-2.0 上游的**事实性 C-ABI 声明**（仅名/签名/数值/布局；剥注释/汇编/私头），按运行时层许可 `LGPL-3.0-only` 消费。每文件含 `SPDX + Harvested from <tag>@<sha>`，随 artifact 下发 `manifest.json`（`hash` 自锚 + 逐文件 `file_hashes`）与 `NOTICE.inc`；vendored 树门禁为 `python .github/scripts/check_harvested_headers.py --include-dir <dir> [--rules <esp_idf.yaml>]`。厂商源码树（E-003）仍永不入库。
 
 
 
