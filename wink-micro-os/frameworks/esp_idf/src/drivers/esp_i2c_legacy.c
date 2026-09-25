@@ -51,7 +51,8 @@ esp_err_t i2c_driver_delete(i2c_port_t i2c_num) {
     if (i2c_num >= SOC_HP_I2C_NUM) {
         return ESP_ERR_INVALID_ARG;
     }
-    pal_i2c_bus_deinit((uint8_t)i2c_num);
+    wink_status_t st = pal_i2c_bus_deinit((uint8_t)i2c_num);
+    (void)st;
     return ESP_OK;
 }
 

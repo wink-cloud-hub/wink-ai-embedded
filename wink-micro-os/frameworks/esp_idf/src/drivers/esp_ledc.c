@@ -125,7 +125,8 @@ esp_err_t ledc_stop(ledc_mode_t speed_mode, ledc_channel_t channel, uint32_t idl
     }
     s_channels[channel].pending_duty = 0;
     s_channels[channel].active_duty = 0;
-    pal_pwm_set_duty_bp((uint8_t)channel, 0);
+    wink_status_t st = pal_pwm_set_duty_bp((uint8_t)channel, 0);
+    (void)st;
     return ESP_OK;
 }
 
@@ -218,7 +219,8 @@ esp_err_t ledc_set_freq(ledc_mode_t speed_mode, ledc_timer_t timer_num, uint32_t
                 .resolution_bits = (uint8_t)t->duty_resolution,
                 .clock_requirement = PAL_PWM_CLOCK_AUTO
             };
-            pal_pwm_init_ex((uint8_t)ch_idx, &cfg);
+            wink_status_t st = pal_pwm_init_ex((uint8_t)ch_idx, &cfg);
+            (void)st;
             ledc_update_duty(speed_mode, (ledc_channel_t)ch_idx);
         }
     }
@@ -235,7 +237,8 @@ uint32_t ledc_get_freq(ledc_mode_t speed_mode, ledc_timer_t timer_num) {
 void esp_ledc_reset(void) {
     for (int i = 0; i < SOC_LEDC_CHANNEL_NUM; i++) {
         if (s_channels[i].configured) {
-            pal_pwm_deinit((uint8_t)i);
+            wink_status_t st = pal_pwm_deinit((uint8_t)i);
+            (void)st;
         }
     }
     memset(s_timers, 0, sizeof(s_timers));

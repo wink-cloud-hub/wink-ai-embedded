@@ -126,7 +126,8 @@ esp_err_t i2c_del_master_bus(i2c_master_bus_handle_t bus_handle) {
             s_devices[i].bus = NULL;
         }
     }
-    pal_i2c_bus_deinit(bus_handle->port);
+    wink_status_t st = pal_i2c_bus_deinit(bus_handle->port);
+    (void)st;
     bus_handle->in_use = false;
     return ESP_OK;
 }
@@ -147,7 +148,8 @@ void esp_i2c_master_reset(void) {
     }
     for (int i = 0; i < MAX_MASTER_BUSES; i++) {
         if (s_buses[i].in_use) {
-            pal_i2c_bus_deinit((uint8_t)i);
+            wink_status_t st = pal_i2c_bus_deinit((uint8_t)i);
+            (void)st;
             s_buses[i].in_use = false;
         }
     }
