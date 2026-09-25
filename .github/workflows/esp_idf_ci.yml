@@ -1,0 +1,79 @@
+name: ESP-IDF Simulation Interception CI
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - 'wink-micro-os/frameworks/esp_idf/**'
+      - '.github/workflows/esp_idf_ci.yml'
+  pull_request:
+    branches: [ master ]
+    paths:
+      - 'wink-micro-os/frameworks/esp_idf/**'
+      - '.github/workflows/esp_idf_ci.yml'
+  workflow_dispatch:
+
+jobs:
+  lint-and-governance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check License Map
+        run: python .github/scripts/check_license_map.py
+      - name: Verify Harvested Headers and Asset Channels
+        run: |
+          python .github/scripts/check_harvested_headers.py \
+            --channels wink-micro-os/frameworks/esp_idf/channels.json
+      # winkcli ships via GitHub Releases (same policy as pr.yml).
+      # Do NOT `pip install ./wink-tools`: no pyproject.toml/setup.py, and the
+      # name is not on PyPI (name-squatting risk).
+      - name: Run Layering / API / ESP-IDF Lint
+        run: |
+          if ! command -v winkcli >/dev/null 2>&1; then
+            echo "::warning::winkcli not on PATH; install from GitHub Releases (see wink-tools/README.md). Lint packs skipped."
+            exit 0
+          fi
+          winkcli lint --pack layering --pack api
+          winkcli lint --pack esp_idf_all
+
+  host-matrix-tests:
+    needs: lint-and-governance
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        target: [esp32, esp32s3, esp32c3, esp32c6]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure CMake
+        run: |
+          cmake -B build -S wink-micro-os -DENABLE_ESP_IDF_FRAMEWORK=ON -DTARGET_PLATFORM=host -DWINK_ESP_TARGET=${{ matrix.target }}
+      - name: Build and Test
+        run: |
+          cmake --build build --config Debug -j2
+          ctest --test-dir build -C Debug -L esp_idf --output-on-failure
+
+  coverage-gate:
+    needs: lint-and-governance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install lcov
+        run: sudo apt-get update && sudo apt-get install -y lcov
+      - name: Run Coverage Pipeline
+        run: |
+          chmod +x wink-micro-os/frameworks/esp_idf/tools/coverage.sh
+          ./wink-micro-os/frameworks/esp_idf/tools/coverage.sh
+      - name: Check 85% Line Coverage Threshold
+        run: |
+          python wink-micro-os/frameworks/esp_idf/tools/check_coverage.py build_cov/coverage_filtered.info 85
+      - name: Upload Coverage HTML Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: esp_idf_coverage_html
+          path: build_cov/coverage_html/
