@@ -2,6 +2,9 @@
 # Wasm compile-only gate for ESP-IDF simulation interception layer (M0/M1).
 # Checks emcc compilation (-Wall -Wextra -Werror) without linking.
 
+set(_ESP_IDF_TARGET_MODULE "${CMAKE_CURRENT_LIST_DIR}/../../esp_idf_target.cmake")
+include("${_ESP_IDF_TARGET_MODULE}")
+
 function(add_esp_idf_wasm_compile_check name source_file)
     if(NOT WINK_BUILD_WASM_TESTS)
         message(STATUS "[esp_idf_wasm] Skipped wasm compile check for ${name} (emcc not found)")
@@ -22,10 +25,11 @@ function(add_esp_idf_wasm_compile_check name source_file)
         COMMAND ${EMCC_EXECUTABLE} -c "${_src_abs}" -o "${_out_obj}"
             -Wall -Wextra -Werror -Wno-unused-parameter
             -DUNITY_SUPPORT_64=1
+            -D${WINK_IDF_TARGET_DEFINE}=1
             # corpus overlay 优先（Tier-B stub 与 sdkconfig.h 均须覆盖 framework 同名头）
             ${_inc_args}
             -I${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
-            -I${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/chips/esp32/include
+            -I${WINK_ESP_TARGET_INCLUDE_DIR}
             -I${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/freertos
             -I${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
             -I${CMAKE_CURRENT_SOURCE_DIR}/../pal/include
@@ -36,7 +40,7 @@ function(add_esp_idf_wasm_compile_check name source_file)
             -I${CMAKE_BINARY_DIR}/generated
             -I${CMAKE_CURRENT_SOURCE_DIR}/unity
             -I${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/shim/include
-        DEPENDS "${_src_abs}" "${CMAKE_BINARY_DIR}/generated/wink_config.h"
+        DEPENDS "${_src_abs}" "${CMAKE_BINARY_DIR}/generated/wink_config.h" "${_ESP_IDF_TARGET_MODULE}"
         COMMENT "Wasm compile-only check: ${name}"
         VERBATIM
     )

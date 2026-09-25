@@ -20,12 +20,10 @@ set(ESP_IDF_FRAMEWORK_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/freertos/freertos_timers.c
 )
 
-if(NOT DEFINED WINK_ESP_TARGET)
-    set(WINK_ESP_TARGET "esp32")
-endif()
+include(${CMAKE_CURRENT_LIST_DIR}/esp_idf_target.cmake)
 
 set(ESP_IDF_FRAMEWORK_INCLUDES
-    ${CMAKE_CURRENT_LIST_DIR}/chips/${WINK_ESP_TARGET}/include
+    ${WINK_ESP_TARGET_INCLUDE_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/include
     ${CMAKE_CURRENT_LIST_DIR}/src/freertos
     ${CMAKE_CURRENT_LIST_DIR}/../../targets/common/include

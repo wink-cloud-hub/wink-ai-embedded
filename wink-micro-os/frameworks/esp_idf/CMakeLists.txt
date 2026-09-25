@@ -14,6 +14,12 @@ target_include_directories(wink_framework_esp_idf PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/../../runtime/include
 )
 
+# SoC selection macro SSOT (ADR-0085 D3 / ADR-0087): propagated to tests and corpora.
+target_compile_definitions(wink_framework_esp_idf PUBLIC
+    ${WINK_IDF_TARGET_DEFINE}=1
+    "${WINK_IDF_TARGET_STRING_DEFINE}"
+)
+
 target_link_libraries(wink_framework_esp_idf PUBLIC
     pal
 )
