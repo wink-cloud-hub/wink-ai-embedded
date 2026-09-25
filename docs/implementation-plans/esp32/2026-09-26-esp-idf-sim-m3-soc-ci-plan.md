@@ -235,7 +235,7 @@ graph TD
 
 ---
 
-### Task M3-1：SoC 硬件能力矩阵扩展 (S3/C3/C6) 与 Fail-Loud 校验 `[ 状态: 📋 待开始 ]`
+### Task M3-1：SoC 硬件能力矩阵扩展 (S3/C3/C6) 与 Fail-Loud 校验 `[ 状态: ✅ 已完成（2026-09-25） ]`
 
 | 字段 | 内容 |
 |:---|:---|
@@ -248,7 +248,7 @@ graph TD
 
 #### 详细步骤与代码级设计
 
-- [ ] **Step 1：建立 `chips/esp32s3` 头文件闭包**
+- [x] **Step 1：建立 `chips/esp32s3` 头文件闭包**
   - 新建 `wink-micro-os/frameworks/esp_idf/chips/esp32s3/include/soc/soc_caps.h`：
     ```c
     /* SPDX-License-Identifier: LGPL-3.0-only */
@@ -326,7 +326,7 @@ graph TD
     #endif /* SOC_GPIO_NUM_ESP32S3_H_ */
     ```
 
-- [ ] **Step 2：建立 `chips/esp32c3` 头文件闭包**
+- [x] **Step 2：建立 `chips/esp32c3` 头文件闭包**
   - 新建 `wink-micro-os/frameworks/esp_idf/chips/esp32c3/include/soc/soc_caps.h`：
     ```c
     /* SPDX-License-Identifier: LGPL-3.0-only */
@@ -395,7 +395,7 @@ graph TD
     #endif /* SOC_GPIO_NUM_ESP32C3_H_ */
     ```
 
-- [ ] **Step 3：建立 `chips/esp32c6` 头文件闭包**
+- [x] **Step 3：建立 `chips/esp32c6` 头文件闭包**
   - 新建 `wink-micro-os/frameworks/esp_idf/chips/esp32c6/include/soc/soc_caps.h`：
     ```c
     /* SPDX-License-Identifier: LGPL-3.0-only */
@@ -467,7 +467,7 @@ graph TD
     #endif /* SOC_GPIO_NUM_ESP32C6_H_ */
     ```
 
-- [ ] **Step 4：落地 ADR-0087 —— per-SoC 数据归属 `chips/<target>`（无分发层）**
+- [x] **Step 4：落地 ADR-0087 —— per-SoC 数据归属 `chips/<target>`（无分发层）**
 
   > ⚠️ **2026-09-25 修订（ADR-0085 D3 修订 / ADR-0087）**：数据物理归属 `chips/<target>/include/soc/`，
   > 共享 `include/soc/` 不得再有同名文件；选片由 CMake include 顺序（`esp_idf_target.cmake` 单源）完成，
@@ -521,7 +521,7 @@ graph TD
   （目标宏由命令行 `target_compile_definitions` 供给，能力宏由芯片头供给），
   仅保留 `#include "sdkconfig_base.h"` 与语料自有配置 `#define SOC_I2C_SUPPORT_SLAVE 1`。
 
-- [ ] **Step 5：强化驱动层门面 Fail-Loud 校验**
+- [x] **Step 5：强化驱动层门面 Fail-Loud 校验**
   - 在 `src/drivers/esp_ledc.c` 中：
     **替换**（非追加）现有硬编码 `#if defined(CONFIG_IDF_TARGET_ESP32C3) || ...` 分支，改为遵从 `SOC_LEDC_SUPPORT_HS_MODE` 宏：
     ```c
@@ -566,7 +566,7 @@ graph TD
     > （C3/C6 下引用 `SPI3_HOST` 即编译期报错）；门面 `include/hal/spi_types.h` 保持全集定义，
     > 以运行期 Fail-Loud 替代编译期 fail-loud，保障 `TC-SOC-07` 可编译可执行。
 
-- [ ] **Step 6：编写多 SoC 单元测试套件 `test/core/test_esp_soc_matrix.c`**
+- [x] **Step 6：编写多 SoC 单元测试套件 `test/core/test_esp_soc_matrix.c`**
   ```c
   /* SPDX-License-Identifier: GPL-3.0-only */
   #include "unity.h"
@@ -660,7 +660,11 @@ graph TD
   }
   ```
 
-- [ ] **Step 7：在 CMakeLists.txt 中注册 SoC 矩阵测试（🔴 评审裁决：采用 CI 矩阵策略）**
+- [x] **Step 7：在 CMakeLists.txt 中注册 SoC 矩阵测试（🔴 评审裁决：采用 CI 矩阵策略）**
+
+  > **落地记录（2026-09-25）**：`test_esp_soc_matrix` 已注册；四目标实测全绿
+  > （esp32 默认构建 29/29 `ctest -L esp_idf`；esp32s3/esp32c3/esp32c6 各自 `-DWINK_ESP_TARGET`
+  > 构建 + `ctest -R test_esp_soc_matrix` 通过）。CI 矩阵 workflow 归 Task M3-2 Step 4。
 
   > ⚠️ **评审裁决**：驱动源码与测试源码必须在同一个 `CONFIG_IDF_TARGET_*` 宏下编译。
   > 因此"单构建树同时注册 4 个 SoC 测试目标"在共享驱动库的架构下不可行（驱动中的
