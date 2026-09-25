@@ -102,3 +102,21 @@ ESP-IDF 门面层（`frameworks/esp_idf/src/drivers/*.c`）进行参数合法性
 ### 回写要求
 
 本 ADR Accepted 后，须将 D1~D4 核心内容回写至 `docs/zh/design/02-wink-micro-os/` 设计规范中 PAL 能力管理相关章节，并在 `PLAN-20260922-ESP-IDF-SIM-MASTER` 中将 D-003 标记为闭环。
+
+---
+
+## 5. 修订记录（2026-09-25，AD P1-A→P2 收口）
+
+> 依据：[ADR-0087](0087-esp-idf-asset-channels-and-soc-data-ownership.md)（资产通道与 SoC 数据归属）。本节仅修订 D3 的数据落位，D1/D2/D4/D5 不变。
+
+| 原表述（D3） | 修订后（本 ADR 的有效语义） |
+|---|---|
+| "`soc/soc_caps.h` 透传至芯片专属头" | `soc/soc_caps.h`、`soc/gpio_num.h` 的 per-SoC 数据**物理归属 `chips/<soc>/include/soc/`**；共享 `include/soc/` 不得出现同名文件 |
+| `chips/<target>/include` 置于包含路径首位 | 不变（`esp_idf_target.cmake` 单源派生，`WINK_ESP_TARGET` 默认 `esp32`） |
+| 未定义转发机制 | **禁止 `#include_next`**；选片由 include 顺序完成，无转发层；未提供数据的 SoC 在 configure 期 `FATAL_ERROR` |
+| 能力宏由芯片头提供 | 不变；另新增 `CONFIG_IDF_TARGET*` 由 CMake PUBLIC 注入，`sdkconfig_base.h` 禁硬编码 |
+| 手写 chips 头 | 由 `channels.json` 登记并门禁校验（未登记/陈旧/重复发布/哈希漂移均 fail） |
+
+*状态变更记录：*
+- 2026-09-23：Accepted（原始 D1~D5）
+- 2026-09-25：D3 修订生效（随 ADR-0087 Accepted；证据：`ctest -L esp_idf` 28/28 + `check_harvested_headers.py [--rules]` 双绿）
