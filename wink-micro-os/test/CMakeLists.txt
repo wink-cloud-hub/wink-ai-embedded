@@ -1317,6 +1317,15 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
         set(ESP_IDF_TEST_COMPILE_OPTIONS -Wall -Wextra -Werror -Wno-unused-parameter)
     endif()
 
+    # Coverage instrumentation (T-011): framework library only; PUBLIC link options
+    # so the static lib's __gcov_* symbols reach test executables.
+    option(WINK_ENABLE_COVERAGE "Enable code coverage flags for GCC/Clang" OFF)
+    if(WINK_ENABLE_COVERAGE AND NOT MSVC)
+        set(ESP_IDF_COVERAGE_FLAGS -fprofile-arcs -ftest-coverage)
+        target_compile_options(wink_framework_esp_idf PRIVATE ${ESP_IDF_COVERAGE_FLAGS})
+        target_link_options(wink_framework_esp_idf PUBLIC ${ESP_IDF_COVERAGE_FLAGS})
+    endif()
+
     # 2. Core unit tests
     add_executable(test_esp_err
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_err.c
@@ -1334,6 +1343,42 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     wink_test_attach_manifest(test_esp_err)
     add_test(NAME test_esp_err COMMAND test_esp_err)
     set_tests_properties(test_esp_err PROPERTIES LABELS "esp_idf;core")
+
+    add_executable(test_esp_idf_runtime
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_idf_runtime.c
+        ${UNITY_DIR}/unity.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_idf_runtime PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    target_link_libraries(test_esp_idf_runtime PRIVATE wink_framework_esp_idf dal)
+    target_compile_options(test_esp_idf_runtime PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(test_esp_idf_runtime generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_idf_runtime)
+    add_test(NAME test_esp_idf_runtime COMMAND test_esp_idf_runtime)
+    set_tests_properties(test_esp_idf_runtime PROPERTIES LABELS "esp_idf;core")
+
+    add_executable(test_esp_log
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_log.c
+        ${UNITY_DIR}/unity.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_log PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    target_link_libraries(test_esp_log PRIVATE wink_framework_esp_idf dal)
+    target_compile_options(test_esp_log PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(test_esp_log generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_log)
+    add_test(NAME test_esp_log COMMAND test_esp_log)
+    set_tests_properties(test_esp_log PROPERTIES LABELS "esp_idf;core")
 
     # SoC capability matrix: builds once per WINK_ESP_TARGET (CI matrix strategy)
     add_executable(test_esp_soc_matrix
