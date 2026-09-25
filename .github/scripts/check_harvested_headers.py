@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
-"""Vendored harvested-header gate for wink-ai-embedded (ADR-0086 / P0-B).
+"""Vendored harvested-header gate for wink-ai-embedded (ADR-0086 / ADR-0087 / P0-B).
 
 Checks a vendored `wink-micro-os/frameworks/esp_idf/include` tree produced by the
 closed-source SDK harvester (PLAN-20260925-SDK-HARVESTER-ENGINE, Task 7):
@@ -16,10 +16,16 @@ closed-source SDK harvester (PLAN-20260925-SDK-HARVESTER-ENGINE, Task 7):
      machine-readable summaries must agree with the manifest, the generated-header
      set, the API declarations, and the include rows;
   4. optional `--rules <esp_idf.yaml>`: every emitted `#include` must be declared in
-     allowlist/rewrite/stub tables; `verify.abi_headers`/`macro_headers` must exist.
+     allowlist/rewrite/stub tables; `verify.abi_headers`/`macro_headers` must exist
+     (paths may resolve through the `relocated` map).
+  5. optional `--channels <channels.json>` (default: `include_dir/../channels.json`):
+     open-side asset ownership registry. `handwritten` must equal the unmarked header
+     set (shared tree + chips); `chips_handwritten` likewise for chips; `relocated`
+     entries must be absent from the shared tree and byte-match manifest.file_hashes
+     at their `{soc}`-resolved target (ADR-0085 / ADR-0087).
 
 Usage:
-  python .github/scripts/check_harvested_headers.py [--include-dir DIR] [--rules YAML]
+  python .github/scripts/check_harvested_headers.py [--include-dir DIR] [--rules YAML] [--channels JSON]
 
 Exit code: 0 = pass, 1 = violations.
 """
@@ -56,6 +62,13 @@ def sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def display_rel(path: Path, include_root: Path) -> str:
+    try:
+        return path.relative_to(include_root).as_posix()
+    except ValueError:
+        return path.relative_to(include_root.parent).as_posix()
+
+
 def load_rules(path: Path, sdk_tag: str) -> dict:
     try:
         import yaml  # type: ignore
@@ -83,6 +96,7 @@ def main(argv: list[str] | None = None) -> int:
         default=str(here.parents[2] / "wink-micro-os" / "frameworks" / "esp_idf" / "include"),
     )
     parser.add_argument("--rules", default=None, help="closed-source rules/esp_idf.yaml（可选）")
+    parser.add_argument("--channels", default=None, help="资产通道登记 channels.json（默认 include_dir/../channels.json）")
     args = parser.parse_args(argv)
     root = Path(args.include_dir).resolve()
     errors: list[str] = []
@@ -102,13 +116,47 @@ def main(argv: list[str] | None = None) -> int:
     elif recompute_manifest_hash(manifest) != mhash:
         errors.append("manifest.hash mismatch (self-anchor broken)")
 
+    channels_path = Path(args.channels).resolve() if args.channels else root.parent / "channels.json"
+    channels: dict = {}
+    if channels_path.is_file():
+        channels = json.loads(channels_path.read_text(encoding="utf-8"))
+    else:
+        warnings.append(f"channels.json not found at {channels_path}; ownership/relocation checks disabled")
+    handwritten = set(channels.get("handwritten") or [])
+    chips_handwritten = set(channels.get("chips_handwritten") or [])
+    default_soc = str(channels.get("default_soc") or "")
+    relocated = {str(k): str(v) for k, v in (channels.get("relocated") or {}).items()}
+
     recorded = manifest.get("file_hashes") or {}
     actual = {
         p.relative_to(root).as_posix(): p
         for p in sorted(root.rglob("*"))
         if p.is_file() and p.name != "manifest.json"
     }
+    virtual_rels: set[str] = set()
+    relocated_targets: list[Path] = []
+    for rel, pattern in sorted(relocated.items()):
+        if rel in actual:
+            errors.append(f"relocated header must not exist in shared include tree: {rel}")
+        digest = recorded.get(rel)
+        if digest is None:
+            errors.append(f"relocated header missing from manifest.file_hashes: {rel}")
+            continue
+        if not default_soc:
+            errors.append(f"channels.json default_soc missing; cannot resolve relocated header {rel}")
+            continue
+        target_rel = pattern.replace("{soc}", default_soc)
+        target = root.parent / target_rel
+        if not target.is_file():
+            errors.append(f"relocated header target missing: {target_rel} (resolved from {rel})")
+            continue
+        if sha256_file(target) != digest:
+            errors.append(f"relocated header tampered (sha256 mismatch): {target_rel} (resolved from {rel})")
+        virtual_rels.add(rel)
+        relocated_targets.append(target)
     for rel, digest in sorted(recorded.items()):
+        if rel in relocated:
+            continue
         p = actual.get(rel)
         if p is None:
             errors.append(f"file_hashes entry missing on disk: {rel}")
@@ -124,11 +172,11 @@ def main(argv: list[str] | None = None) -> int:
     headers = sorted(root.rglob("*.h"))
     generated = [p for p in headers if GEN_MARK in p.read_text(encoding="utf-8", errors="replace")]
     generated_rels = {p.relative_to(root).as_posix() for p in generated}
-    frag_rels = generated_rels - {"wink_sla.h"}  # SLA 桩头不属于 API 覆盖片段行集合
+    frag_rels = (generated_rels | virtual_rels) - {"wink_sla.h"}  # SLA 桩头不属于 API 覆盖片段行集合
     banner_mismatch = 0
-    for p in generated:
+    for p in generated + relocated_targets:
         m = BANNER_RE.search(p.read_text(encoding="utf-8", errors="replace"))
-        rel = p.relative_to(root).as_posix()
+        rel = display_rel(p, root)
         if not m:
             errors.append(f"{rel}: generated header missing Manifest banner")
         elif m.group(1) != mhash:
@@ -136,6 +184,24 @@ def main(argv: list[str] | None = None) -> int:
     if banner_mismatch:
         errors.append(f"{banner_mismatch} generated headers banner hash != manifest {mhash}")
     unmarked = [p.relative_to(root).as_posix() for p in headers if p not in generated]
+
+    if channels:
+        unmarked_set = set(unmarked)
+        for rel in sorted(unmarked_set - handwritten):
+            errors.append(f"hand-written header not registered in channels.json: {rel}")
+        for rel in sorted(handwritten - unmarked_set):
+            errors.append(f"channels.json handwritten entry stale (missing or generated): {rel}")
+        chips_dir = root.parent / "chips"
+        if chips_dir.is_dir():
+            chips_unmarked = {
+                display_rel(p, root)
+                for p in sorted(chips_dir.rglob("*.h"))
+                if GEN_MARK not in p.read_text(encoding="utf-8", errors="replace")
+            }
+            for rel in sorted(chips_unmarked - chips_handwritten):
+                errors.append(f"hand-written chip header not registered in channels.json: {rel}")
+            for rel in sorted(chips_handwritten - chips_unmarked):
+                errors.append(f"channels.json chips_handwritten entry stale: {rel}")
 
     rules = None
     if args.rules:
@@ -145,8 +211,8 @@ def main(argv: list[str] | None = None) -> int:
             rel = p.relative_to(root).as_posix()
             if any(fnmatch(rel, pat) for pat in exempt):
                 errors.append(f"exempt file was overwritten by generated artifact: {rel}")
-    else:
-        warnings.append(f"{len(unmarked)} hand-written headers skipped (pass --rules to enforce exempt protection)")
+    elif not channels:
+        warnings.append(f"{len(unmarked)} hand-written headers skipped (pass --rules/--channels to enforce ownership)")
 
     api_path = root / "api-coverage-matrix.inc.md"
     inv_path = root / "include-closure-inventory.inc.md"
@@ -223,8 +289,11 @@ def main(argv: list[str] | None = None) -> int:
                     errors.append(f"{rel}: emitted include not declared in rules tables: {inc}")
         for key in ("abi_headers", "macro_headers"):
             for rel in (rules.get("verify") or {}).get(key, []):
-                if not (root / rel).is_file():
-                    errors.append(f"rule.verify.{key} header missing: {rel}")
+                candidate = root / rel
+                if not candidate.is_file() and rel in relocated and default_soc:
+                    candidate = root.parent / relocated[rel].replace("{soc}", default_soc)
+                if not candidate.is_file():
+                    errors.append(f"rule.verify.{key} header missing: {rel} (relocation-aware)")
         rule_cfgs = {(c.get("soc"), c.get("idf")) for c in rules.get("configs") or []}
         for c in manifest.get("configs") or []:
             if (c.get("soc"), c.get("idf")) not in rule_cfgs:

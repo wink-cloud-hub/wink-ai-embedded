@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "framework": "esp_idf",
+  "default_soc": "esp32",
+  "_comment": "Asset ownership registry for the vendored ESP-IDF facade (ADR-0087). Machine-checked by .github/scripts/check_harvested_headers.py. Paths are relative to include/ (handwritten) or to the framework root (relocated targets).",
+  "handwritten": [
+    "sdkconfig_base.h",
+    "esp_attr.h",
+    "esp_check.h",
+    "esp_idf_wink.h",
+    "esp_pm.h",
+    "esp_timer.h",
+    "led_strip.h",
+    "driver/i2c.h",
+    "driver/i2c_types_legacy.h",
+    "hal/spi_types.h",
+    "freertos/FreeRTOS.h",
+    "freertos/FreeRTOSConfig.h",
+    "freertos/event_groups.h",
+    "freertos/idf_additions.h",
+    "freertos/portable.h",
+    "freertos/portmacro.h",
+    "freertos/projdefs.h",
+    "freertos/queue.h",
+    "freertos/semphr.h",
+    "freertos/task.h",
+    "freertos/timers.h"
+  ],
+  "chips_handwritten": [],
+  "relocated": {
+    "soc/soc_caps.h": "chips/{soc}/include/soc/soc_caps.h",
+    "soc/gpio_num.h": "chips/{soc}/include/soc/gpio_num.h"
+  }
+}

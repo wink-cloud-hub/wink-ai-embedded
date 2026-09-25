@@ -1,0 +1,24 @@
+name: Harvest Gate
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  harvested-headers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify vendored header tree and asset channels
+        # Closed-source rules yaml is not published; --rules runs in the local/release
+        # pipeline (see frameworks/esp_idf/include/README.md §4). Channel ownership,
+        # relocation integrity and manifest self-anchor are always enforced.
+        run: |
+          python .github/scripts/check_harvested_headers.py \
+            --channels wink-micro-os/frameworks/esp_idf/channels.json
