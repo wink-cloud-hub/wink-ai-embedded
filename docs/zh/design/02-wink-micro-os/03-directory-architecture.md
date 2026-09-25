@@ -192,6 +192,13 @@ wink-micro-os/
     └── avoidance_car/          #   app_callbacks.c + device_tree.{c,h} + board_config.c + wink_app.json
 ```
 
+> **轴 B 框架资产通道与 SoC 数据归属（ADR-0087，2026-09-25 起）**：
+> `frameworks/<eco>/` 内部资产分三类——① `include/`：收割生成的纯声明 ABI 镜像（`manifest.json` + Banner 可验，
+> 100% 机器产出）；② 手写通道：豁免/门面扩展头，由各框架 `channels.json` 登记并门禁强制（未登记/陈旧/重复发布即 fail）；
+> ③ `chips/<soc>/`：SoC 能力数据 SSOT。`frameworks/esp_idf` 的选片由 CMake include 顺序完成
+> （`esp_idf_target.cmake` 单源派生，缺数据在 configure 期 Fail-Loud），**禁止 `#include_next`**；
+> 共享 `include/soc/` 不得与 `chips/<soc>/include/soc/` 出现同名文件。`ESP_PLATFORM` 下整树早退，真机零增量。
+
 ## 4.1 示例/注入点应用（App）目录结构与各文件职责
 
 在 `samples/`（或用户导出的 App 项目工程）下，每一个具体应用目录（如 `samples/avoidance_car/`）都包含以下核心文件。它们各自的角色分工与生成来源如下：

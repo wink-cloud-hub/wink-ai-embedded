@@ -52,18 +52,24 @@
 
 ## 4. 当前 vendored 状态（P1-A，2026-09-25）
 
-* **版本锚**：`esp-idf v6.1@fff9895c`，`manifest.json.hash = 542eb37a5dc3604c`（280 个生成头，Banner 可查）。
+* **版本锚**：`esp-idf v6.1@fff9895c`，`manifest.json.hash = 542eb37a5dc3604c`（manifest 覆盖 280 个生成头：
+  278 个驻留本树 + 2 个迁移至 `chips/`，Banner 可查）。
 * **手写通道 A（不参与收割，随版本演进维护）**：
-  - 豁免：`sdkconfig_base.h`、`esp_attr.h`、`hal/spi_types.h`、`freertos/*`、`soc/gpio_struct.h`、`led_strip.h`；
-  - 门面扩展：`esp_idf_wink.h`（错误码桥接 + 各驱动 reset 钩子）、`esp_check.h`；
+  - 登记 SSOT：`../channels.json`（`handwritten` / `chips_handwritten` / `relocated`，门禁强制；
+    当前共享树 21 个手写头，含 `sdkconfig_base.h`、`esp_attr.h`、`esp_check.h`、`esp_idf_wink.h`、
+    `led_strip.h`、`esp_pm.h`、`esp_timer.h`、`hal/spi_types.h`、`driver/{i2c,i2c_types_legacy}.h`、`freertos/*`）；
   - 默认 config 垫片：`../shim/include/sdkconfig.h`（include 搜索序最后，corpus overlay 优先）。
-* **chips/<target> 分发点**：`soc/soc_caps.h`、`soc/gpio_num.h` 以 `#include_next` 转发到 vendored 数据
-  （ADR-0085 入口语义保留，数据 SSOT 迁移至 `include/`，ADR 回写待 P2）。
+* **chips/<target> 数据点（ADR-0085 D3 修订 / ADR-0087）**：`soc/soc_caps.h`、`soc/gpio_num.h`
+  的 per-SoC 数据物理归属 `chips/<target>/include/soc/`，本树不再保留同名文件；选片由 CMake
+  include 顺序完成（`../esp_idf_target.cmake` 单源），**禁止 `#include_next`**（MSVC 安全）。
+  过渡期 esp32 数据为 vendored 产物按字节迁移（sha256 与 `manifest.file_hashes` 同值）；
+  新 SoC 由收割器按配置发射（闭源规则改动清单见实施计划），未登记不得手工落位。
 * **门禁**：
   ```bash
-  # 开源侧 vendored 树（manifest 自锚/逐文件哈希/Banner/片段/yaml 三表）
+  # 开源侧 vendored 树（manifest 自锚/逐文件哈希/Banner/片段/yaml 三表 + 资产通道登记）
   python .github/scripts/check_harvested_headers.py --include-dir wink-micro-os/frameworks/esp_idf/include \
-      --rules <wink-tools>/tools/sdk_harvester/rules/esp_idf.yaml
+      --rules <wink-tools>/tools/sdk_harvester/rules/esp_idf.yaml \
+      --channels wink-micro-os/frameworks/esp_idf/channels.json
   # 正式构建验收
   cmake -S wink-micro-os -B wink-micro-os/build/test -DTARGET_PLATFORM=host -G "MinGW Makefiles" && \
   cmake --build wink-micro-os/build/test && ctest --test-dir wink-micro-os/build/test -L esp_idf --output-on-failure

@@ -27,10 +27,16 @@
 > [`../include/include-closure-inventory.inc.md`](../include/include-closure-inventory.inc.md)
 > （survey 280 生成头；`--include-mode block` 生产闭包 52 头，由 `production.entry_headers` 9 头推导）。
 >
-> **手写范围（豁免 + 扩展，不参与收割）**：
-> `sdkconfig_base.h`、`esp_attr.h`、`hal/spi_types.h`、`freertos/*`、`soc/gpio_struct.h`、`led_strip.h`、
-> `esp_check.h`（wink_fault 集成）、`esp_idf_wink.h`（错误码桥接 + 8 个 reset 钩子）、
-> `shim/include/sdkconfig.h`（默认垫片，搜索序最后）、`chips/<target>/{soc_caps,gpio_num}.h`（`#include_next` 分发点）。
+> **手写范围（以 `../channels.json` 为登记 SSOT，门禁强制，共 21 头）**：
+> 豁免/扩展：`sdkconfig_base.h`、`esp_attr.h`、`esp_check.h`（wink_fault 集成）、`esp_idf_wink.h`（错误码桥接 +
+> 8 个 reset 钩子）、`esp_pm.h`、`esp_timer.h`、`led_strip.h`、`hal/spi_types.h`、`driver/i2c.h`、
+> `driver/i2c_types_legacy.h`、`freertos/*`（11 头）；
+> 另有 `shim/include/sdkconfig.h`（默认垫片，搜索序最后，位于 `include/` 之外）。
+>
+> **SoC 数据归属（ADR-0085 D3 修订 / ADR-0087，2026-09-25）**：
+> `soc/soc_caps.h`、`soc/gpio_num.h` 的 per-SoC 数据物理归属 `chips/<target>/include/soc/`
+> （esp32 为 vendored 数据按字节迁移，sha256 与 manifest 同值），`include/soc/` 不再保留同名文件；
+> 选片由 CMake include 顺序完成（`esp_idf_target.cmake`），禁止 `#include_next`。下表对应行仅作历史登记。
 >
 > **§2~§4 表格说明**：保留为手写垫片时代的闭包登记与迁移依据（历史审计）；新增依赖一律走收割器
 > （`rules/esp_idf.yaml` 三表 + `production.entry_headers`），不再手工扩展 §2~§4。

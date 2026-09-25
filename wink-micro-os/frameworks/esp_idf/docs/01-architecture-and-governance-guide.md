@@ -81,3 +81,14 @@ const wink_app_callbacks_t* wink_app_get_callbacks(void);
 7. **开源许可合规 (ADR-0083/0084)**：
    - `frameworks/esp_idf/{src,include,chips}` = **LGPL-3.0-only**；
    - `frameworks/esp_idf/{test,tools}` = **GPL-3.0-only**。
+
+---
+
+## 4. 资产通道与 SoC 数据归属 (ADR-0087)
+
+1. **三类资产物理绝缘**：`include/`（收割生成，manifest/Banner 可验）、手写通道（登记于 `channels.json`）、
+   `src/` 门面实现。生成物与手写物不得互相覆盖；`check_harvested_headers.py` 全量校验（未登记/陈旧/重复发布/哈希漂移均 fail）。
+2. **SoC 数据归属**：`soc/{soc_caps,gpio_num}.h` 的 per-SoC 数据位于 `chips/<soc>/include/soc/`，
+   共享 `include/soc/` 不得有同名文件；选片由 `esp_idf_target.cmake` 派生的 include 顺序完成，**禁止 `#include_next`**。
+3. **目标宏注入**：`CONFIG_IDF_TARGET_*` / `CONFIG_IDF_TARGET` 由 CMake 从 `WINK_ESP_TARGET` 派生并 PUBLIC 注入；
+   `sdkconfig_base.h` 禁止硬编码；未提供数据的 SoC 在 configure 期 `FATAL_ERROR`（Fail-Loud，不静默回退 esp32）。

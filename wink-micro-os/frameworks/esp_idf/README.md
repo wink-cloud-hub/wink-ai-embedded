@@ -24,8 +24,10 @@ WinkMicroOS 支持多应用运行时接入，关于应用生命周期符号绑�
 
 ```
 frameworks/esp_idf/
-├── CMakeLists.txt              # 框架 CMake 构建配置（真机早退）
+├── CMakeLists.txt              # 框架 CMake 构建配置（真机早退 + 目标宏注入）
 ├── esp_idf_sources.cmake       # 源码与头文件包含路径 SSOT 清单
+├── esp_idf_target.cmake        # WINK_ESP_TARGET → 包含目录/宏 SSOT（ADR-0085/0087）
+├── channels.json               # 资产通道登记：手写头/迁移映射（ADR-0087，门禁强制）
 ├── README.md                   # 架构与开发者指引
 ├── docs/                       # 架构规范与覆盖矩阵
 │   ├── 01-architecture-and-governance-guide.md
@@ -37,8 +39,8 @@ frameworks/esp_idf/
 │   ├── freertos/               # FreeRTOS 兼容头文件桩
 │   ├── hal/                    # HAL 类型定义（如 gpio_types.h）
 │   └── soc/                    # SoC 统一转发
-├── chips/                      # 芯片原生能力定义（ADR-0085）
-│   └── esp32/                  # 经典 ESP32 SoC 特性
+├── chips/                      # SoC 能力数据 SSOT（ADR-0085/ADR-0087）
+│   └── esp32/include/soc/      # soc_caps.h / gpio_num.h 数据点（含 CMake 选片顺序，无转发）
 ├── src/                        # 门面与桥接实现 (LGPL-3.0-only)
 │   ├── core/                   # 错误码、日志、系统
 │   ├── drivers/                # 外设驱动实现 (下沉至 PAL)
@@ -51,3 +53,15 @@ frameworks/esp_idf/
     ├── corpus/                 # 原厂官方语料镜像
     └── wasm/                   # wasm compile-only 门禁
 ```
+
+---
+
+## 4. 头文件垫片生成与维护 SOP (Harvester Pipeline)
+
+为防止手写头文件导致的拼写失误与版本升级腐烂，本框架头文件遵循**“生成与实现分离”**原则：
+* **`include/` (纯声明头文件)**：严禁手工敲写复杂的原厂枚举与结构体，统一由闭源工具链收割器生成：
+  - 收割工具位置：`wink-ai/packages/wink-tools/tools/sdk_harvester/`
+  - 实施计划详见：[`packages/wink-tools/tools/sdk_harvester/docs/plans/2026-09-25-sdk-harvester-architecture-and-implementation-plan.md`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai/packages/wink-tools/tools/sdk_harvester/docs/plans/2026-09-25-sdk-harvester-architecture-and-implementation-plan.md)
+* **`src/` (门面实现逻辑)**：研发核心精力集中于 `src/drivers/` 门面层，将已声明的官方 API 精准桥接至 Wink `pal_*` 硬件抽象层。
+* **`channels.json` (资产通道登记)**：新增/删除手写头或迁移文件时必须同步登记（ADR-0087）；
+  `.github/scripts/check_harvested_headers.py` 强制校验，未登记/陈旧/重复发布一律 fail。
