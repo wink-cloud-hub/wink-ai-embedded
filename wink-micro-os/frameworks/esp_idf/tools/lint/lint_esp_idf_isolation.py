@@ -180,7 +180,8 @@ class EspIdfIsolationPack:
                     )
 
                 # Red Line 4: Zero runtime dynamic heap allocation
-                if _MALLOC_RE.search(line):
+                # Note: esp_heap_caps.c is the heap allocator facade providing heap_caps_* to user apps
+                if _MALLOC_RE.search(line) and not norm.endswith("/esp_heap_caps.c"):
                     emit(
                         idx,
                         "ESPIDF-RUNTIME-MALLOC",

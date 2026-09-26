@@ -8,6 +8,7 @@
 #include "esp_rom_gpio.h"
 #include "esp_task_wdt.h"
 #include "esp_intr_alloc.h"
+#include "esp_heap_caps.h"
 #include "pal_osal.h"
 #include "wink_sim_scheduler.h"  /* sim_scheduler_yield_context */
 #include "freertos_sync.h"        /* esp_sim_spin_wait_account (ISSUE-06) */
@@ -98,7 +99,7 @@ void esp_rom_gpio_connect_in_signal(uint32_t gpio_num, uint32_t signal_idx, bool
 }
 
 uint32_t esp_get_free_heap_size(void) {
-    return 100000;
+    return (uint32_t)heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
 }
 
 /* Task watchdog / interrupt allocator: NOT supported in M0 simulation
