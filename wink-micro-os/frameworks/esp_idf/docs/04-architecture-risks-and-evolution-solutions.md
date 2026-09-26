@@ -356,12 +356,21 @@
 
 ## 3. 演进路线图与阶段规划 (Roadmap)
 
-| 阶段 | 关注瓶颈 | 核心交付物 | 验收准则 |
+| 阶段 | 关注瓶颈 | 核心交付物 | 验收准则 / 状态 |
 |:---|:---|:---|:---|
-| **Phase 1 (M3收尾~P1)** | ISSUE-03 静态池容量<br>ISSUE-10 64位指针截断 | CMake `WINK_ESP_SIM_PROFILE` (LITE/STANDARD)<br>全面引入 `uintptr_t` 与 `-Wpointer-to-int-cast` 门禁 | 编译宏可控；大应用队列不返 NULL；Host 64位无指针截断告警 |
-| **Phase 2 (P2)** | ISSUE-02 并发假阳性<br>ISSUE-06 忙等死锁<br>ISSUE-13 C++ 构造时序 | 自旋锁状态记录、跨上下文让步断言报警<br>门面忙等计数自愈让步<br>公开 API 增加 `ensure_subsystem_ready` 冷启动 | 捕获临界区非法阻塞；纯死等不卡死浏览器；C++ 全局对象安全构造 |
-| **Phase 3 (P3)** | ISSUE-04 虚拟中断支持<br>ISSUE-07 NVS 持久化<br>ISSUE-08 堆能力降级 | 门面级虚拟中断注册表 + 事件泵<br>对接宿主 IndexedDB / localStorage 持久化<br>`esp_heap_caps.h` 门面映射 | 支持按键边沿触发 ISR；页面刷新 NVS 数据保留；cJSON 编译通过 |
-| **Phase 4 (长期预研)** | ISSUE-01 复杂外设代偿<br>ISSUE-09 软复位快照<br>ISSUE-11 演进 JSPI<br>ISSUE-12 语义级单总线<br>ISSUE-14 VFS 沙箱隔离 | 宿主网络隧道（WebSocket 代理至 `esp_netif`）<br>Wasm 线性内存快照 (Snapshot) 热重载<br>迁移至 Wasm JSPI 规范<br>WS2812/DHT 提升为 Channel 2/4 语义总线<br>VFS 宏重命名与纯内存沙箱 |
+| **Phase 1 (M3收尾~P1)** | ISSUE-03 静态池容量<br>ISSUE-10 64位指针截断 | CMake `WINK_ESP_SIM_PROFILE` (LITE/STANDARD)<br>全面引入 `uintptr_t` 与 `-Wpointer-to-int-cast` 门禁 | ✅ **已验收合入**（编译宏可控；大应用队列不返 NULL；Host 64位无指针截断告警） |
+| **Phase 2 (P2)** | ISSUE-02 并发假阳性<br>ISSUE-06 忙等死锁<br>ISSUE-13 C++ 构造时序 | 自旋锁状态记录、跨上下文让步断言报警 (`portMUX_TYPE`)<br>门面忙等计数自愈让步 (`esp_sim_spin_wait_account`)<br>公开 API 增加幂等按需冷启动 (`esp_idf_ensure_framework_ready`) | ✅ **已验收合入**（捕获临界区非法阻塞；纯死等推进虚拟时钟不卡死；C++ 全局对象安全构造；全量单测 100% 通过） |
+| **Phase 3 (P3)** | ISSUE-04 虚拟中断支持<br>ISSUE-07 NVS 持久化<br>ISSUE-08 堆能力降级 | 门面级虚拟中断注册表 + 事件泵<br>对接宿主 IndexedDB / localStorage 持久化<br>`esp_heap_caps.h` 门面映射 | 📋 待启动（支持按键边沿触发 ISR；页面刷新 NVS 数据保留；cJSON 编译通过） |
+| **Phase 4 (长期预研)** | ISSUE-01 复杂外设代偿<br>ISSUE-09 软复位快照<br>ISSUE-11 演进 JSPI<br>ISSUE-12 语义级单总线<br>ISSUE-14 VFS 沙箱隔离 | 宿主网络隧道（WebSocket 代理至 `esp_netif`）<br>Wasm 线性内存快照 (Snapshot) 热重载<br>迁移至 Wasm JSPI 规范<br>WS2812/DHT 提升为 Channel 2/4 语义总线<br>VFS 宏重命名与纯内存沙箱 | 📋 待预研 |
+
+> 📌 **Phase 2 实施结项与中长期演进差距声明**（防误判提示）：
+> 尽管 Phase 2 成功闭环了 ISSUE-02、ISSUE-06 与 ISSUE-13 的核心风险，但为了保持单虚拟核与轻量零分配原则，部分机制采用了阶段性替代方案。以下三项长期演进差距明确记录如下，将在后续阶段深化解决：
+>
+> | 演进项 | 当前 Phase 2 状态 | 待完成阶段 |
+> |:---|:---|:---|
+> | **ISSUE-03：构建期静态容量自动推导** | 📋 **未实现**，当前仍需人工选择 CMake Profile 档位（扫描生成 `sdkconfig_sim_caps.h`） | Phase 3+ |
+> | **ISSUE-06：执行配额看门狗** | 📋 **未实现**，当前忙等计数器（500次轮询+自愈推钟10µs）为短期替代方案，尚未集成 ADR-0072 级 10ms 物理墙钟硬看门狗 | Phase 3+ |
+> | **ISSUE-13：ELF `.init_array` 静态扫描门禁** | 📋 **未实现**，当前为运行期按需冷启动防御，尚未在编译期由收割器静态阻断违规全局构造 | Phase 3+/收割器迭代 |
 
 ---
 

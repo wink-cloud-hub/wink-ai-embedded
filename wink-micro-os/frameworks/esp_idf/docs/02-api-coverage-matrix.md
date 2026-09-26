@@ -57,7 +57,7 @@
 | `uxTaskPriorityGet` / `vTaskPrioritySet` | `freertos/task.h` | ✅ 支持 | TCB 优先级簿记 | 动态优先级更新 |
 | `uxTaskGetStackHighWaterMark` | `freertos/task.h` | ⚠️ 降级支持 | 哨兵值 | **[降级登记 7]** 固定返回 `UINT32_MAX`，无真实栈水位概念 |
 | `vTaskList` / `uxTaskGetSystemState` | `freertos/task.h` | ✅ 支持 | 结构化格式化 | 有界快照导出 |
-| `taskENTER_CRITICAL` / `EXIT_CRITICAL` | `freertos/task.h` | ⚠️ 降级支持 | no-op | **[降级登记 8]** 单核协作无抢占，临界区天然安全 |
+| `taskENTER_CRITICAL` / `EXIT_CRITICAL` / `portENTER_CRITICAL` / `portEXIT_CRITICAL` / `taskENTER_CRITICAL_ISR` / `taskEXIT_CRITICAL_ISR` | `freertos/task.h` / `freertos/portmacro.h` | ✅ 支持 | `portMUX_TYPE` 簿记与让步断言 | **[降级登记 8]** 追踪自旋锁所有者与嵌套深度，持有期间禁止任何阻塞让步原语（100% Fail-Loud 拦截） |
 | `xPortGetCoreID` / `xTaskGetSchedulerState` | `freertos/task.h` | ✅ 支持 | 静态常量 | 恒定返回 core 0 与 RUNNING |
 | `vTaskStartScheduler` | `freertos/task.h` | ⚠️ 降级支持 | no-op | 调度权由 target 主循环持有，warn 后忽略 |
 | `xQueueCreate` / `vQueueDelete` | `freertos/queue.h` | ⚠️ 降级支持 | 静态 FIFO 缓冲池 (8x 512B) | **[降级登记 13]** 容量超过 512B 返回 NULL |
@@ -147,10 +147,12 @@
 - **设计权衡**：仿真环境协程基于宿主纤程（Windows Fiber / POSIX ucontext / Emscripten Asyncify），分配宿主堆栈；无嵌入式物理栈指针。
 - **拦截层行为**：`usStackDepth` 由底座自动 clamp 下限；`uxTaskGetStackHighWaterMark` 固定返回 `UINT32_MAX` 哨兵值。
 
-### 降级条目 8：临界区空操作（单核协作式无抢占）
-- **受影响 API**：`taskENTER_CRITICAL`, `taskEXIT_CRITICAL`, `taskENTER_CRITICAL_ISR`, `taskEXIT_CRITICAL_ISR`
-- **设计权衡**：单虚拟核协作调度下，任意代码段在执行到显式切出点（如 `vTaskDelay` / `sync_block`）前天然具备排他原子性。
-- **拦截层行为**：宏定义展开为 `((void)0)`，无死锁开销。
+### 降级条目 8：自旋锁并发语义与临界区非法让步拦截（Phase 2 升级）
+- **受影响 API**：`taskENTER_CRITICAL`, `taskEXIT_CRITICAL`, `portENTER_CRITICAL`, `portEXIT_CRITICAL`, `taskENTER_CRITICAL_ISR`, `taskEXIT_CRITICAL_ISR`
+- **设计权衡**：单虚拟核协作调度下无多核物理并发，但自旋锁在此场景下的核心语义是“临界区互斥与让步边界声明”。为消除假阳性并发暗病（ISSUE-02），基于 `portMUX_TYPE` 完整追踪持有者纤程与嵌套深度。
+- **拦截层行为**：
+  1. 完整记录 `owner` 任务 ID 与嵌套深度 `count`；
+  2. 严禁在持有自旋锁期间调用任何可能触发让步/阻塞的 API（`vTaskDelay`、`xQueueReceive`、`xQueueSend`、`xSemaphoreTake`、`xEventGroupWaitBits`），违规时 100% Fail-Loud 触发致命断言并终止进程（ADR-0012），杜绝多核并发代码在仿真环境下假阳性通过。
 
 ### 降级条目 9：FromISR 系列 API 协作式等价处理
 - **受影响 API**：`xQueueSendFromISR`, `xQueueReceiveFromISR`, `xSemaphoreGiveFromISR`, `xEventGroupSetBitsFromISR`, `xTaskGetTickCountFromISR`
