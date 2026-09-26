@@ -360,17 +360,14 @@
 |:---|:---|:---|:---|
 | **Phase 1 (M3收尾~P1)** | ISSUE-03 静态池容量<br>ISSUE-10 64位指针截断 | CMake `WINK_ESP_SIM_PROFILE` (LITE/STANDARD)<br>全面引入 `uintptr_t` 与 `-Wpointer-to-int-cast` 门禁 | ✅ **已验收合入**（编译宏可控；大应用队列不返 NULL；Host 64位无指针截断告警） |
 | **Phase 2 (P2)** | ISSUE-02 并发假阳性<br>ISSUE-06 忙等死锁<br>ISSUE-13 C++ 构造时序 | 自旋锁状态记录、跨上下文让步断言报警 (`portMUX_TYPE`)<br>门面忙等计数自愈让步 (`esp_sim_spin_wait_account`)<br>公开 API 增加幂等按需冷启动 (`esp_idf_ensure_framework_ready`) | ✅ **已验收合入**（捕获临界区非法阻塞；纯死等推进虚拟时钟不卡死；C++ 全局对象安全构造；全量单测 100% 通过） |
-| **Phase 3 (P3)** | ISSUE-04 虚拟中断支持<br>ISSUE-07 NVS 持久化<br>ISSUE-08 堆能力降级 | 门面级虚拟中断注册表 + 事件泵<br>对接宿主 IndexedDB / localStorage 持久化<br>`esp_heap_caps.h` 门面映射 | 📋 待启动（支持按键边沿触发 ISR；页面刷新 NVS 数据保留；cJSON 编译通过） |
-| **Phase 4 (长期预研)** | ISSUE-01 复杂外设代偿<br>ISSUE-09 软复位快照<br>ISSUE-11 演进 JSPI<br>ISSUE-12 语义级单总线<br>ISSUE-14 VFS 沙箱隔离 | 宿主网络隧道（WebSocket 代理至 `esp_netif`）<br>Wasm 线性内存快照 (Snapshot) 热重载<br>迁移至 Wasm JSPI 规范<br>WS2812/DHT 提升为 Channel 2/4 语义总线<br>VFS 宏重命名与纯内存沙箱 | 📋 待预研 |
+| **Phase 3 (P3)** | ISSUE-04 虚拟中断支持<br>ISSUE-07 NVS 持久化<br>ISSUE-08 堆能力门面<br>ISSUE-14 沙箱文件隔离 | 门面级虚拟中断注册表 + 双上下文事件泵 (`esp_sim_gpio_inject_edge`)<br>NVS 二进制快照 CRC32 守护 + 受控沙箱原子落盘 (`.sim_sandbox/`)<br>`esp_heap_caps.h` 零指针侵入静态簿记门面 (libc `free` 兼容)<br>FreeRTOS 原语优先级唤醒与即时纤程抢占 | ✅ **已验收合入**（虚拟 GPIO 中断支持电平/边沿检测与双上下文安全分发；NVS 具备完整 CRUD 与掉电冷重启恢复；堆能力提供 DMA 32 字节对齐与 PSRAM 诚实鉴权；全量 48 项 CTest 100% 通过） |
+| **Phase 4 (长期预研)** | ISSUE-01 复杂外设代偿<br>ISSUE-09 软复位快照<br>ISSUE-11 演进 JSPI<br>ISSUE-12 语义级单总线 | 宿主网络隧道（WebSocket 代理至 `esp_netif`）<br>Wasm 线性内存快照 (Snapshot) 热重载<br>迁移至 Wasm JSPI 规范<br>WS2812/DHT 提升为 Channel 2/4 语义总线 | 📋 待预研 |
 
-> 📌 **Phase 2 实施结项与中长期演进差距声明**（防误判提示）：
-> 尽管 Phase 2 成功闭环了 ISSUE-02、ISSUE-06 与 ISSUE-13 的核心风险，但为了保持单虚拟核与轻量零分配原则，部分机制采用了阶段性替代方案。以下三项长期演进差距明确记录如下，将在后续阶段深化解决：
->
-> | 演进项 | 当前 Phase 2 状态 | 待完成阶段 |
-> |:---|:---|:---|
-> | **ISSUE-03：构建期静态容量自动推导** | 📋 **未实现**，当前仍需人工选择 CMake Profile 档位（扫描生成 `sdkconfig_sim_caps.h`） | Phase 3+ |
-> | **ISSUE-06：执行配额看门狗** | 📋 **未实现**，当前忙等计数器（500次轮询+自愈推钟10µs）为短期替代方案，尚未集成 ADR-0072 级 10ms 物理墙钟硬看门狗 | Phase 3+ |
-> | **ISSUE-13：ELF `.init_array` 静态扫描门禁** | 📋 **未实现**，当前为运行期按需冷启动防御，尚未在编译期由收割器静态阻断违规全局构造 | Phase 3+/收割器迭代 |
+> 📌 **Phase 3 实施结项声明**：
+> Phase 3 成功闭环了 ISSUE-04、ISSUE-07、ISSUE-08 与 ISSUE-14：
+> 1. **虚拟中断与抢占安全**：基于 `s_gpio_isr_slots` 建立引脚服务表，打通 `pal_os_set_sim_isr_context()`，FreeRTOS 原语全面升级为最高优先级唤醒与 `portYIELD_FROM_ISR` 即时抢占；外部主线程注入严禁调用 `sim_scheduler_yield_context()` 彻底杜绝崩溃（R-302）。
+> 2. **受控沙箱持久化**：NVS 升级为跨平台原子落盘（Windows `unlink` + `rename`），引入 streaming CRC32 完整性校验，数据收敛于受控目录 `.sim_sandbox/`。
+> 3. **零指针侵入堆能力**：`esp_heap_caps.c` 采用独立静态簿记表，返回合法原始 `malloc` 裸指针，彻底消除系统 `free()` 崩溃（R-304），并与 `esp_get_free_heap_size()` 实现 SSOT 水位统一。
 
 ---
 

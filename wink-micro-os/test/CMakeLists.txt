@@ -1484,6 +1484,56 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     set_tests_properties(test_spinlock_yield_guard_assertion
                          PROPERTIES LABELS "esp_idf;core" WILL_FAIL TRUE TIMEOUT 30)
 
+    # Phase 3 full regression suite (PLAN-20260927-ESP-IDF-SIM-PHASE3)
+    add_executable(test_esp_idf_phase3
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_idf_phase3.c
+        ${UNITY_DIR}/unity.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_idf_phase3 PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/freertos
+        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/osal
+        ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/hal
+    )
+    target_link_libraries(test_esp_idf_phase3 PRIVATE wink_framework_esp_idf dal)
+    target_compile_options(test_esp_idf_phase3 PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(test_esp_idf_phase3 generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_idf_phase3)
+    add_test(NAME test_esp_idf_phase3 COMMAND test_esp_idf_phase3)
+    set_tests_properties(test_esp_idf_phase3 PROPERTIES LABELS "esp_idf;core" TIMEOUT 60)
+
+    # Phase 3 negative crash target: verifies that vTaskDelay inside simulated ISR triggers assertion
+    add_executable(test_esp_idf_phase3_crash
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_idf_phase3_crash.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_idf_phase3_crash PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/freertos
+        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/osal
+        ${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/hal
+    )
+    target_link_libraries(test_esp_idf_phase3_crash PRIVATE wink_framework_esp_idf dal)
+    target_compile_options(test_esp_idf_phase3_crash PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(test_esp_idf_phase3_crash generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_idf_phase3_crash)
+    add_test(NAME test_isr_blocking_guard_assertion
+             COMMAND test_esp_idf_phase3_crash)
+    set_tests_properties(test_isr_blocking_guard_assertion
+                         PROPERTIES LABELS "esp_idf;core" WILL_FAIL TRUE TIMEOUT 30)
+
     add_executable(test_esp_ledc
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_ledc.c
         ${UNITY_DIR}/unity.c
@@ -1738,6 +1788,9 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     )
     add_esp_idf_wasm_compile_check(test_esp_nvs
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_nvs.c
+    )
+    add_esp_idf_wasm_compile_check(test_esp_idf_phase3
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_idf_phase3.c
     )
     add_esp_idf_wasm_compile_check(corpus_blink
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/blink/blink_example_main.c

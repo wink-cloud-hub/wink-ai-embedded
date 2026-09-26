@@ -37,7 +37,7 @@
 | `gpio_get_level` | `driver/gpio.h` | ⚠️ 降级支持 | `pal_gpio_read` | **[降级登记 1]** 越界/读取失败与电平 0 不可区分 |
 | `gpio_reset_pin` | `driver/gpio.h` | ✅ 支持 | `pal_gpio_deinit` | 成功返回 `ESP_OK`，越界返回 `ESP_ERR_INVALID_ARG` |
 | `gpio_set_pull_mode` / `gpio_pullup_en_dis` / `gpio_pulldown_en_dis` | `driver/gpio.h` | 🚫 未支持 | 无 | **[降级登记 4]** 越界仍 `ESP_ERR_INVALID_ARG`，有效引脚 `ESP_LOGE` + `ESP_ERR_NOT_SUPPORTED` |
-| `gpio_set_intr_type` / `gpio_intr_enable_disable` / `gpio_install_isr_service` / `gpio_isr_handler_add_remove` | `driver/gpio.h` | 🚫 未支持 | 无 | **[降级登记 4]** `ESP_LOGE` + `ESP_ERR_NOT_SUPPORTED`；`gpio_uninstall_isr_service`（void 无错误通道）仅 `ESP_LOGW` |
+| `gpio_set_intr_type` / `gpio_intr_enable_disable` / `gpio_install_isr_service` / `gpio_isr_handler_add_remove` / `gpio_uninstall_isr_service` | `driver/gpio.h` | ✅ 支持 | 虚拟引脚中断注册表与双上下文事件分发器 | Phase 3 全面支持：动态挂载 ISR、电平与边沿判定、双上下文事件泵注入 `esp_sim_gpio_inject_edge`，回调执行时置位 `pal_os_set_sim_isr_context(true)` |
 | `esp_task_wdt_*` / `esp_intr_alloc_free` | `esp_task_wdt.h` / `esp_intr_alloc.h` | 🚫 未支持 | 无 | **[降级登记 5]** `ESP_LOGE` + `ESP_ERR_NOT_SUPPORTED`；失败时 `esp_intr_alloc` 回写空句柄 |
 | `esp_rom_gpio_pad_select_gpio` | `esp_rom_gpio.h` | ⚠️ 降级支持 | 无 | **[降级登记 5]** void 无错误通道，仅 `ESP_LOGW` 后 no-op |
 | `esp_err_from_wink` | `esp_err.h` | ✅ 支持 | 查表转换 | 负数 Wink 错误码转为 ESP 0x101+ 体系 |
@@ -62,15 +62,15 @@
 | `vTaskStartScheduler` | `freertos/task.h` | ⚠️ 降级支持 | no-op | 调度权由 target 主循环持有，warn 后忽略 |
 | `xQueueCreate` / `vQueueDelete` | `freertos/queue.h` | ⚠️ 降级支持 | 静态 FIFO 缓冲池 (8x 512B) | **[降级登记 13]** 容量超过 512B 返回 NULL |
 | `xQueueSend` / `xQueueReceive` / `xQueuePeek` | `freertos/queue.h` | ✅ 支持 | 双等待者队列 + `sync_block` | FIFO-one 定向唤醒，双向 waiter 彻底隔离 |
-| `xQueueSendFromISR` / `ReceiveFromISR` | `freertos/queue.h` | ⚠️ 降级支持 | 等价任务逻辑 | **[降级登记 9]** `*pxHigherPriorityTaskWoken=pdFALSE` 恒定 |
+| `xQueueSendFromISR` / `ReceiveFromISR` | `freertos/queue.h` | ✅ 支持 | 优先级感知唤醒 + 抢占让步 | Phase 3 扫描等待者队列并唤醒最高优先级任务；高优先级被唤醒时设置 `*pxHigherPriorityTaskWoken=pdTRUE` 并触发 `portYIELD_FROM_ISR` |
 | `uxQueueMessagesWaiting` / `SpacesAvailable` | `freertos/queue.h` | ✅ 支持 | 队列实时元素统计 | 精确计数 |
 | `xQueueReset` | `freertos/queue.h` | ✅ 支持 | 队列清空 | 重置读写指针与计数 |
 | `xSemaphoreCreateMutex` / `Binary` / `Counting` | `freertos/semphr.h` | ✅ 支持 | 静态信号量池 (16x) | Priority-one 定向唤醒（最高优先级先醒，同级 FIFO） |
 | `xSemaphoreCreateRecursiveMutex` | `freertos/semphr.h` | 🚫 未支持 | Fail-Loud | **[降级登记 10]** 返回 NULL，声明保留 |
-| `xSemaphoreTake` / `xSemaphoreGive` / `FromISR` | `freertos/semphr.h` | ✅ 支持 | 信号量原子记数 + `sync_block` | 支持 Mutex / Binary / Counting |
+| `xSemaphoreTake` / `xSemaphoreGive` / `FromISR` | `freertos/semphr.h` | ✅ 支持 | 信号量原子记数 + `sync_block` | 支持 Mutex / Binary / Counting；Phase 3 补充 `xSemaphoreTakeFromISR` 与优先级唤醒判定 |
 | `xEventGroupCreate` / `vEventGroupDelete` | `freertos/event_groups.h` | ✅ 支持 | 静态事件组池 (8x) | 24-bit 事件标志 |
 | `xEventGroupWaitBits` / `SetBits` / `ClearBits` | `freertos/event_groups.h` | ✅ 支持 | Broadcast-all + `sync_block` | 支持 `xWaitForAllBits` 及 `xClearOnExit` |
-| `xEventGroup*FromISR` | `freertos/event_groups.h` | ⚠️ 降级支持 | 等价任务逻辑 | **[降级登记 9]** `*pxHigherPriorityTaskWoken=pdFALSE` 恒定 |
+| `xEventGroup*FromISR` | `freertos/event_groups.h` | ✅ 支持 | 优先级感知唤醒 + 抢占让步 | Phase 3 高优先级被唤醒时设置 `*pxHigherPriorityTaskWoken=pdTRUE` 并触发 `portYIELD_FROM_ISR` |
 | `timers.h` 全系 API | `freertos/timers.h` | 🚫 未支持 | Fail-Loud | **[降级登记 10]** `xTimerCreate` 返 NULL，其余返 `pdFAIL` |
 | `ledc_timer_config` / `ledc_channel_config` | `driver/ledc.h` | ✅ 支持 | `pal_pwm_config_pin` | 支持配置 4 定时器 / 8 通道；零浮点定点计算 |
 | `ledc_set_duty` / `ledc_update_duty` | `driver/ledc.h` | ✅ 支持 | `pal_pwm_set_duty_bp` | 定点 basis points 转换（0..10000 BP）；ADR-0066 纯整型 |
@@ -97,10 +97,12 @@
 | `spi_bus_initialize` / `spi_bus_free` | `driver/spi_common.h` | ✅ 支持 | `pal_spi_init` / `deinit` | 支持 SPI2_HOST (HSPI) 与 SPI3_HOST (VSPI)；SPI1 Fail-Loud 拒绝 |
 | `spi_bus_add_device` / `remove_device` | `driver/spi_common.h` | ✅ 支持 | `pal_spi_add_device` | 静态 8 器件池；支持极性/相位/CS 高低有效映射 |
 | `spi_device_transmit` | `driver/spi_master.h` | ⚠️ 降级支持 | `pal_spi_transfer_device` | **[降级登记 18]** 支持 `SPI_TRANS_USE_TXDATA/RXDATA`，全双工同步轮询 |
-| `nvs_flash_init` / `erase` / `deinit` | `nvs_flash.h` | ✅ 支持 | 内存 KV 清空与初始化 | 支持模拟 Flash 初始化与格式化 |
-| `nvs_open` / `nvs_close` / `nvs_commit` | `nvs.h` | ✅ 支持 | 静态 8 句柄槽位分配 | 命名空间隔离与深拷贝；commit 为 no-op 确认 |
-| `nvs_set_*` / `nvs_get_*` 全类型原语 | `nvs.h` | ⚠️ 降级支持 | 静态 32 键值项存储池 | **[降级登记 20]** 纯内存态存储，无跨进程物理持久化 |
-| `nvs_erase_key` / `nvs_erase_all` | `nvs.h` | ✅ 支持 | 句柄命名空间匹配擦除 | 精确支持单键擦除与空间批量擦除 |
+| `nvs_flash_init` / `erase` / `deinit` | `nvs_flash.h` | ✅ 支持 | 内存 KV 清空与初始化 | 支持模拟 Flash 初始化、沙箱二进制镜像重载与格式化 |
+| `nvs_open` / `nvs_close` / `nvs_commit` | `nvs.h` | ✅ 支持 | 静态 8 句柄槽位分配 | 命名空间隔离与深拷贝；Phase 3 `nvs_commit` 支持原子持久化落盘至受控沙箱 |
+| `nvs_set_*` / `nvs_get_*` 全类型原语 | `nvs.h` | ✅ 支持 | 静态键值项存储池 + 沙箱镜像 | Phase 3 支持 `.sim_sandbox/nvs_storage.bin` 二进制落盘与 CRC32 完整性校验，跨进程/跨重启持久化 |
+| `nvs_erase_key` / `nvs_erase_all` / `nvs_open_from_partition` | `nvs.h` | ✅ 支持 | 句柄命名空间匹配擦除 | 精确支持单键擦除与空间批量擦除，支持从指定分区打开 |
+| `heap_caps_malloc` / `heap_caps_free` / `heap_caps_calloc` / `heap_caps_realloc` | `esp_heap_caps.h` | ✅ 支持 | 原生系统堆分配与静态簿记表 | Phase 3 零指针侵入，返回真实首地址，100% 兼容 libc `free()`；DMA 32 字节硬件边界对齐；SPIRAM 依芯片能力与配置诚实校验 |
+| `heap_caps_get_free_size` / `heap_caps_get_minimum_free_size` | `esp_heap_caps.h` | ✅ 支持 | 堆内存水位 SSOT 簿记 | 动态统计已分配字节与历史最低水位，与 `esp_get_free_heap_size()` 统一 |
 
 ---
 
@@ -127,10 +129,10 @@
 - **拦截层行为**：门面维护 `s_is_output` / `s_output_levels` 回读缓存（`src/drivers/esp_gpio.c`），`gpio_set_level` 成功即更新；输入模式引脚直读 PAL。
 - **M1 复核**：协作单线程及协作多任务环境下，`set_level` 与 `get_level` 之间无抢占分叉风险，M1 复核通过。
 
-### 降级条目 4：GPIO 上拉/中断/ISR 全家桶未支持（Fail-Loud）
-- **受影响 API**：`gpio_set_pull_mode`、`gpio_pullup_en/dis`、`gpio_pulldown_en/dis`、`gpio_set_intr_type`、`gpio_intr_enable/disable`、`gpio_install_isr_service`、`gpio_isr_handler_add/remove`、`gpio_uninstall_isr_service`
+### 降级条目 4：GPIO 上拉未支持（Fail-Loud）与中断 ISR（Phase 3 升级）
+- **受影响 API**：`gpio_set_pull_mode`、`gpio_pullup_en/dis`、`gpio_pulldown_en/dis`
 - **拦截层行为**：有效引脚一律 `ESP_LOGE` + 返回 `ESP_ERR_NOT_SUPPORTED`。
-- **v6.1 vendoring（2026-09-25）**：`gpio_uninstall_isr_service` 官方签名由 `void` 变为 `esp_err_t`，门面同步返回 `ESP_ERR_NOT_SUPPORTED`；`esp_intr_alloc`/`esp_intr_free` 的**调用点**在 `__WINK_SIM__` 注入下由收割 SLA 编译期 `WINK_SLA_ERROR` 阻断（见降级条目 5）。
+- **Phase 3 中断与 ISR 升级**：`gpio_install_isr_service`、`gpio_uninstall_isr_service`、`gpio_set_intr_type`、`gpio_intr_enable/disable`、`gpio_isr_handler_add/remove` 已全面升级为 ✅ 支持。底层通过 `s_gpio_isr_slots` 管理单引脚中断服务，支持电平与边沿检测，通过双上下文事件分发器 `esp_sim_gpio_inject_edge` 模拟硬件跳变，并在执行回调时同步置位 `pal_os_set_sim_isr_context(true)`。
 
 ### 降级条目 5：看门狗/中断分配/ROM 垫片未支持（Fail-Loud）
 - **受影响 API**：`esp_task_wdt_*`、`esp_intr_alloc/free`、`esp_rom_gpio_pad_select_gpio`
@@ -154,10 +156,10 @@
   1. 完整记录 `owner` 任务 ID 与嵌套深度 `count`；
   2. 严禁在持有自旋锁期间调用任何可能触发让步/阻塞的 API（`vTaskDelay`、`xQueueReceive`、`xQueueSend`、`xSemaphoreTake`、`xEventGroupWaitBits`），违规时 100% Fail-Loud 触发致命断言并终止进程（ADR-0012），杜绝多核并发代码在仿真环境下假阳性通过。
 
-### 降级条目 9：FromISR 系列 API 协作式等价处理
-- **受影响 API**：`xQueueSendFromISR`, `xQueueReceiveFromISR`, `xSemaphoreGiveFromISR`, `xEventGroupSetBitsFromISR`, `xTaskGetTickCountFromISR`
+### 降级条目 9：FromISR 系列 API 优先级唤醒与即时抢占（Phase 3 升级）
+- **受影响 API**：`xQueueSendFromISR`, `xQueueReceiveFromISR`, `xSemaphoreGiveFromISR`, `xSemaphoreTakeFromISR`, `xEventGroupSetBitsFromISR`, `xTaskGetTickCountFromISR`
 - **设计权衡**：仿真环境中中断例程与普通协程同属单线程事件驱动链路。
-- **拦截层行为**：`FromISR` 复用任务上下文逻辑；`*pxHigherPriorityTaskWoken` 恒定赋值为 `pdFALSE`（协作调度器在下一切出点自发评估，无即时上下文强占）。
+- **Phase 3 拦截层升级**：`*FromISR` 不再恒定返回 `pdFALSE`。队列、信号量、事件组出队/解除阻塞时升级为**按任务优先级选择最高优先任务唤醒**；当被唤醒的任务优先级高于当前上下文时，置位 `*pxHigherPriorityTaskWoken = pdTRUE` 并请求中断让步（`s_isr_yield_requested`），在纤程上下文中通过 `portYIELD_FROM_ISR` 触发即时抢占。同时所有阻塞原语注入 `esp_freertos_assert_not_in_isr()` 违规门禁拦截。
 
 ### 降级条目 10：FreeRTOS 定时器与递归互斥 Fail-Loud
 - **受影响 API**：`xTimerCreate`, `xTimerStart`, `xTimerStop`, `xTimerReset`, `xTimerChangePeriod`, `xSemaphoreCreateRecursiveMutex`, `xSemaphoreTakeRecursive`, `xSemaphoreGiveRecursive`
@@ -211,10 +213,10 @@
 - **设计权衡**：ESP-IDF Legacy 命令链 API（Start-Write-Read-Stop）在 PAL 侧对应单次组合原子事务 `pal_i2c_transfer_timeout`。
 - **拦截层行为**：状态机引擎在 `i2c_master_cmd_begin` 遍历并折叠链表为 `tx_buf` 与 `rx_buf`（支持单次 Repeated START 复合传输）；同一个 `cmd_handle` 内若包含多个独立 `START...STOP` 事务则 Fail-Loud 报错 `ESP_ERR_NOT_SUPPORTED`；`i2c_driver_install` 若请求 `I2C_MODE_SLAVE` 则立即 Fail-Loud 返回 `ESP_ERR_NOT_SUPPORTED`。
 
-### 降级条目 20：NVS 键值存储内存态模拟
-- **受影响 API**：`nvs_set_*`, `nvs_get_*`, `nvs_commit`
-- **设计权衡**：单元测试与仿真环境默认隔离宿主文件系统，静态内存严格控制在 3KB 预算内。
-- **拦截层行为**：内置静态 16 项 KV 存储池（单项最大 128B 数据），`nvs_commit` 为空操作；键值在当前进程生命周期内跨复位持久（ADR-0082），`nvs_flash_erase` 显式抹除。
+### 降级条目 20：NVS 键值存储持久化沙箱（Phase 3 升级）
+- **受影响 API**：`nvs_set_*`, `nvs_get_*`, `nvs_commit`, `nvs_erase_key`, `nvs_erase_all`, `nvs_open_from_partition`
+- **设计权衡**：单元测试与仿真环境默认隔离宿主文件系统，持久化受控收敛于沙箱目录。
+- **Phase 3 拦截层升级**：由纯内存态存储升级为物理持久化与受控沙箱隔离。`nvs_commit()` 时通过跨平台安全覆盖（Windows `unlink` + `rename`）原子写入受控目录 `.sim_sandbox/nvs_storage.bin`，并带 `NVS1` 魔数与 streaming CRC32 校验；`nvs_flash_init()` 时自动验证并重载数据，保证跨进程和掉电重启后的数据持久化。浏览器环境下对接 `wink_wasm_nvs_save` / `load`。
 
 ---
 
