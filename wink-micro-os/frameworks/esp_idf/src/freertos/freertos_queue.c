@@ -9,8 +9,21 @@
 #include "wink_sim_scheduler.h"
 #include "pal_log.h"
 
-#define FREERTOS_MAX_QUEUES 8
-#define FREERTOS_QUEUE_STORAGE_SIZE 512
+#ifndef FREERTOS_MAX_QUEUES
+#  ifdef CONFIG_FREERTOS_MAX_QUEUES
+#    define FREERTOS_MAX_QUEUES CONFIG_FREERTOS_MAX_QUEUES
+#  else
+#    define FREERTOS_MAX_QUEUES 8
+#  endif
+#endif
+
+#ifndef FREERTOS_QUEUE_STORAGE_SIZE
+#  ifdef CONFIG_FREERTOS_QUEUE_STORAGE
+#    define FREERTOS_QUEUE_STORAGE_SIZE CONFIG_FREERTOS_QUEUE_STORAGE
+#  else
+#    define FREERTOS_QUEUE_STORAGE_SIZE 512
+#  endif
+#endif
 
 typedef struct {
     bool     used;
@@ -26,7 +39,7 @@ typedef struct {
     uint8_t  tx_waiter_count;
 } esp_queue_t;
 
-_Static_assert(sizeof(esp_queue_t) <= 640, "esp_queue_t size budget exceeded");
+_Static_assert(sizeof(esp_queue_t) <= (FREERTOS_QUEUE_STORAGE_SIZE + (WINK_SIM_MAX_TASKS * 8) + 64), "esp_queue_t size budget exceeded");
 
 static esp_queue_t s_queues[FREERTOS_MAX_QUEUES];
 
@@ -81,7 +94,7 @@ QueueHandle_t xQueueCreate(const UBaseType_t uxQueueLength, const UBaseType_t ux
     }
     uint64_t total_bytes = (uint64_t)uxQueueLength * (uint64_t)uxItemSize;
     if (total_bytes > FREERTOS_QUEUE_STORAGE_SIZE) {
-        pal_log_w("FREERTOS", "Queue size %llu exceeds 512B budget", (unsigned long long)total_bytes);
+        pal_log_w("FREERTOS", "Queue size %llu exceeds %uB budget", (unsigned long long)total_bytes, (unsigned)FREERTOS_QUEUE_STORAGE_SIZE);
         return NULL;
     }
 

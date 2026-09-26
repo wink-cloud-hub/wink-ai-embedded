@@ -9,7 +9,13 @@
 #include "wink_sim_scheduler.h"
 #include "pal_log.h"
 
-#define FREERTOS_MAX_SEMAPHORES 16
+#ifndef FREERTOS_MAX_SEMAPHORES
+#  ifdef CONFIG_FREERTOS_MAX_SEMAPHORES
+#    define FREERTOS_MAX_SEMAPHORES CONFIG_FREERTOS_MAX_SEMAPHORES
+#  else
+#    define FREERTOS_MAX_SEMAPHORES 16
+#  endif
+#endif
 
 typedef enum {
     SEM_TYPE_MUTEX = 0,
@@ -28,7 +34,7 @@ typedef struct {
     uint8_t    waiter_count;
 } esp_sem_t;
 
-_Static_assert(sizeof(esp_sem_t) <= 128, "esp_sem_t size budget exceeded");
+_Static_assert(sizeof(esp_sem_t) <= (32 + (WINK_SIM_MAX_TASKS * 8)), "esp_sem_t size budget exceeded");
 
 static esp_sem_t s_sems[FREERTOS_MAX_SEMAPHORES];
 

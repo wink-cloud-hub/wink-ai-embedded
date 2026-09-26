@@ -14,11 +14,26 @@ target_include_directories(wink_framework_esp_idf PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/../../runtime/include
 )
 
-# SoC selection macro SSOT (ADR-0085 D3 / ADR-0087): propagated to tests and corpora.
+# SoC selection macro SSOT (ADR-0085 D3 / ADR-0087) and profile capacity definitions (ISSUE-03)
 target_compile_definitions(wink_framework_esp_idf PUBLIC
     ${WINK_IDF_TARGET_DEFINE}=1
     "${WINK_IDF_TARGET_STRING_DEFINE}"
+    ${WINK_ESP_PROFILE_DEFINES}
 )
+
+if(TARGET pal_host)
+    target_compile_definitions(pal_host PRIVATE WINK_SIM_MAX_TASKS=${WINK_SIM_MAX_TASKS})
+endif()
+if(TARGET pal_wasm)
+    target_compile_definitions(pal_wasm PRIVATE WINK_SIM_MAX_TASKS=${WINK_SIM_MAX_TASKS})
+endif()
+
+# Pointer safety and warning gate (ISSUE-10)
+if(MSVC)
+    target_compile_options(wink_framework_esp_idf PRIVATE /W4 /WX /wd4100 /wd4210 /wd4201 /we4311 /we4312)
+else()
+    target_compile_options(wink_framework_esp_idf PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter -Wpointer-to-int-cast -Wint-to-pointer-cast)
+endif()
 
 target_link_libraries(wink_framework_esp_idf PUBLIC
     pal

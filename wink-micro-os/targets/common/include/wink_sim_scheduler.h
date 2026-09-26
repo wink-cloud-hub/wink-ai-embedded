@@ -17,7 +17,9 @@
 extern "C" {
 #endif
 
+#ifndef WINK_SIM_MAX_TASKS
 #define WINK_SIM_MAX_TASKS 8
+#endif
 #define WINK_SIM_TASK_WCET_THRESHOLD_US (5000u)
 
 #if defined(__EMSCRIPTEN__)

@@ -142,11 +142,11 @@ esp_err_t i2c_master_bus_rm_device(i2c_master_dev_handle_t handle) {
 }
 
 void esp_i2c_master_reset(void) {
-    for (int i = 0; i < MAX_MASTER_DEVICES; i++) {
+    for (uint32_t i = 0; i < MAX_MASTER_DEVICES; i++) {
         s_devices[i].in_use = false;
         s_devices[i].bus = NULL;
     }
-    for (int i = 0; i < MAX_MASTER_BUSES; i++) {
+    for (uint32_t i = 0; i < MAX_MASTER_BUSES; i++) {
         if (s_buses[i].in_use) {
             wink_status_t st = pal_i2c_bus_deinit((uint8_t)i);
             (void)st;

@@ -15,7 +15,13 @@
 extern "C" {
 #endif
 
-#define FREERTOS_MAX_TASKS WINK_SIM_MAX_TASKS /* 8 */
+#ifndef FREERTOS_MAX_TASKS
+#  ifdef CONFIG_FREERTOS_MAX_TASKS
+#    define FREERTOS_MAX_TASKS CONFIG_FREERTOS_MAX_TASKS
+#  else
+#    define FREERTOS_MAX_TASKS WINK_SIM_MAX_TASKS
+#  endif
+#endif
 
 #define FREERTOS_TAG_QUEUE    0x01u
 #define FREERTOS_TAG_MUTEX    0x02u

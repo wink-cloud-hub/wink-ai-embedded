@@ -37,3 +37,7 @@ target_include_directories(pal_host PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../../test/stubs
     ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/include)
+
+if(WINK_ESP_PROFILE_DEFINES)
+    target_compile_definitions(pal_host PRIVATE ${WINK_ESP_PROFILE_DEFINES})
+endif()

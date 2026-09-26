@@ -9,7 +9,13 @@
 #include "wink_sim_scheduler.h"
 #include "pal_log.h"
 
-#define FREERTOS_MAX_EVENT_GROUPS 8
+#ifndef FREERTOS_MAX_EVENT_GROUPS
+#  ifdef CONFIG_FREERTOS_MAX_EVENT_GROUPS
+#    define FREERTOS_MAX_EVENT_GROUPS CONFIG_FREERTOS_MAX_EVENT_GROUPS
+#  else
+#    define FREERTOS_MAX_EVENT_GROUPS 8
+#  endif
+#endif
 
 typedef struct {
     uint32_t     sim_id;
@@ -28,7 +34,7 @@ typedef struct {
     uint8_t        waiter_count;
 } esp_event_group_t;
 
-_Static_assert(sizeof(esp_event_group_t) <= 160, "esp_event_group_t size budget exceeded");
+_Static_assert(sizeof(esp_event_group_t) <= (16 + (WINK_SIM_MAX_TASKS * sizeof(event_waiter_t))), "esp_event_group_t size budget exceeded");
 
 static esp_event_group_t s_events[FREERTOS_MAX_EVENT_GROUPS];
 
