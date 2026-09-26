@@ -1312,9 +1312,9 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     endif()
 
     if(MSVC)
-        set(ESP_IDF_TEST_COMPILE_OPTIONS /W4 /WX /wd4100 /wd4210 /wd4201)
+        set(ESP_IDF_TEST_COMPILE_OPTIONS /W4 /WX /wd4100 /wd4210 /wd4201 /we4311 /we4312)
     else()
-        set(ESP_IDF_TEST_COMPILE_OPTIONS -Wall -Wextra -Werror -Wno-unused-parameter)
+        set(ESP_IDF_TEST_COMPILE_OPTIONS -Wall -Wextra -Werror -Wno-unused-parameter -Wpointer-to-int-cast -Wint-to-pointer-cast)
     endif()
 
     # Coverage instrumentation (T-011): framework library only; PUBLIC link options

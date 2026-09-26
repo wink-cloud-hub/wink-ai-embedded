@@ -14,6 +14,26 @@
 #include "wink_sim_scheduler.h"
 #include "pal_osal.h"
 
+#ifndef CONFIG_FREERTOS_MAX_TASKS
+#define CONFIG_FREERTOS_MAX_TASKS 8
+#endif
+
+#ifndef CONFIG_FREERTOS_MAX_QUEUES
+#define CONFIG_FREERTOS_MAX_QUEUES 8
+#endif
+
+#ifndef CONFIG_FREERTOS_QUEUE_STORAGE_SIZE
+#define CONFIG_FREERTOS_QUEUE_STORAGE_SIZE 512
+#endif
+
+#ifndef CONFIG_FREERTOS_MAX_SEMAPHORES
+#define CONFIG_FREERTOS_MAX_SEMAPHORES 16
+#endif
+
+#ifndef CONFIG_FREERTOS_MAX_EVENT_GROUPS
+#define CONFIG_FREERTOS_MAX_EVENT_GROUPS 8
+#endif
+
 extern void sim_set_mono_time_us(uint64_t us);
 
 void setUp(void) {
@@ -525,7 +545,7 @@ void test_freertos_queue_invalid_and_exhaustion(void) {
     int out = 0;
 
     TEST_ASSERT_NULL(xQueueCreate(0, sizeof(int)));
-    TEST_ASSERT_NULL(xQueueCreate(100, 8)); /* 800B > 512B budget */
+    TEST_ASSERT_NULL(xQueueCreate(CONFIG_FREERTOS_QUEUE_STORAGE_SIZE + 1, 1)); /* exceeds budget */
     TEST_ASSERT_EQUAL(errQUEUE_FULL, xQueueSend(NULL, &v, 0));
     TEST_ASSERT_EQUAL(errQUEUE_EMPTY, xQueueReceive(NULL, &v, 0));
     TEST_ASSERT_EQUAL(errQUEUE_EMPTY, xQueuePeek(NULL, &v, 0));
@@ -548,9 +568,9 @@ void test_freertos_queue_invalid_and_exhaustion(void) {
     TEST_ASSERT_EQUAL(errQUEUE_FULL, xQueueSendToFront(q, &v, 0));
     vQueueDelete(q);
 
-    QueueHandle_t pool[8];
+    QueueHandle_t pool[CONFIG_FREERTOS_MAX_QUEUES];
     uint32_t n = 0;
-    for (; n < 8; ++n) {
+    for (; n < CONFIG_FREERTOS_MAX_QUEUES; ++n) {
         pool[n] = xQueueCreate(1, 4);
         TEST_ASSERT_NOT_NULL(pool[n]);
     }
@@ -617,9 +637,9 @@ void test_freertos_event_group_edges(void) {
     TEST_ASSERT_EQUAL_UINT32(0, xEventGroupGetBits(eg) & 0x20);
     vEventGroupDelete(eg);
 
-    EventGroupHandle_t pool[8];
+    EventGroupHandle_t pool[CONFIG_FREERTOS_MAX_EVENT_GROUPS];
     uint32_t n = 0;
-    for (; n < 8; ++n) {
+    for (; n < CONFIG_FREERTOS_MAX_EVENT_GROUPS; ++n) {
         pool[n] = xEventGroupCreate();
         TEST_ASSERT_NOT_NULL(pool[n]);
     }
@@ -679,17 +699,55 @@ void test_freertos_task_states_and_priority_clamp(void) {
 }
 
 void test_freertos_task_pool_exhaustion(void) {
-    TaskHandle_t pool[8];
+    TaskHandle_t pool[CONFIG_FREERTOS_MAX_TASKS];
     uint32_t n = 0;
-    for (; n < 8; ++n) {
+    for (; n < CONFIG_FREERTOS_MAX_TASKS; ++n) {
         pool[n] = NULL;
         TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(dummy_task_fn, "pool", 8 * 1024, NULL, 1, &pool[n]));
     }
     TaskHandle_t overflow = NULL;
-    TEST_ASSERT_EQUAL(pdFAIL, xTaskCreate(dummy_task_fn, "pool9", 8 * 1024, NULL, 1, &overflow));
+    TEST_ASSERT_EQUAL(pdFAIL, xTaskCreate(dummy_task_fn, "overflow", 8 * 1024, NULL, 1, &overflow));
     for (uint32_t i = 0; i < n; ++i) {
         vTaskDelete(pool[i]);
     }
+}
+
+void test_freertos_semaphore_pool_exhaustion(void) {
+    SemaphoreHandle_t pool[CONFIG_FREERTOS_MAX_SEMAPHORES];
+    uint32_t n = 0;
+    for (; n < CONFIG_FREERTOS_MAX_SEMAPHORES; ++n) {
+        pool[n] = xSemaphoreCreateBinary();
+        TEST_ASSERT_NOT_NULL(pool[n]);
+    }
+    TEST_ASSERT_NULL(xSemaphoreCreateBinary()); /* slot pool exhausted */
+    for (uint32_t i = 0; i < n; ++i) {
+        vSemaphoreDelete(pool[i]);
+    }
+}
+
+void test_freertos_event_group_pool_exhaustion(void) {
+    EventGroupHandle_t pool[CONFIG_FREERTOS_MAX_EVENT_GROUPS];
+    uint32_t n = 0;
+    for (; n < CONFIG_FREERTOS_MAX_EVENT_GROUPS; ++n) {
+        pool[n] = xEventGroupCreate();
+        TEST_ASSERT_NOT_NULL(pool[n]);
+    }
+    TEST_ASSERT_NULL(xEventGroupCreate()); /* slot pool exhausted */
+    for (uint32_t i = 0; i < n; ++i) {
+        vEventGroupDelete(pool[i]);
+    }
+}
+
+void test_freertos_pointer_cast_safety(void) {
+    /* Verify TaskHandle_t and uintptr_t roundtrip without truncation (ISSUE-10) */
+    TaskHandle_t h = NULL;
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(dummy_task_fn, "ptr_safe", 8 * 1024, NULL, 2, &h));
+    TEST_ASSERT_NOT_NULL(h);
+    uintptr_t uptr = (uintptr_t)h;
+    TaskHandle_t h_restored = (TaskHandle_t)uptr;
+    TEST_ASSERT_EQUAL_PTR(h, h_restored);
+    TEST_ASSERT_EQUAL(2, uxTaskPriorityGet(h_restored));
+    vTaskDelete(h_restored);
 }
 
 int main(void) {
@@ -711,5 +769,8 @@ int main(void) {
     RUN_TEST(test_freertos_task_edge_paths);
     RUN_TEST(test_freertos_task_states_and_priority_clamp);
     RUN_TEST(test_freertos_task_pool_exhaustion);
+    RUN_TEST(test_freertos_semaphore_pool_exhaustion);
+    RUN_TEST(test_freertos_event_group_pool_exhaustion);
+    RUN_TEST(test_freertos_pointer_cast_safety);
     return UNITY_END();
 }
