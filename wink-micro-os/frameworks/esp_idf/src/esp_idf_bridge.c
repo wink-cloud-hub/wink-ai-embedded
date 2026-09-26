@@ -20,6 +20,7 @@ void esp_freertos_pools_reset(void) {
     esp_freertos_queue_pool_reset();
     esp_freertos_sem_pool_reset();
     esp_freertos_event_pool_reset();
+    esp_freertos_spinlock_reset(); /* Phase 2: reset critical-depth + spin counters */
 }
 
 void esp_peripherals_reset(void) {

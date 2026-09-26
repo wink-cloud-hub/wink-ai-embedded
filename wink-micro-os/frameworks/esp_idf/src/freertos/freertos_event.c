@@ -8,6 +8,7 @@
 #include "freertos_sync.h"
 #include "wink_sim_scheduler.h"
 #include "pal_log.h"
+extern void esp_idf_ensure_framework_ready(void); /* Phase 2 Task 4 cold-start */
 
 #ifndef FREERTOS_MAX_EVENT_GROUPS
 #  ifdef CONFIG_FREERTOS_MAX_EVENT_GROUPS
@@ -61,6 +62,7 @@ void esp_freertos_event_pool_reset(void) {
 }
 
 EventGroupHandle_t xEventGroupCreate(void) {
+    esp_idf_ensure_framework_ready(); /* Phase 2 Task 4.2 */
     for (uint32_t i = 0; i < FREERTOS_MAX_EVENT_GROUPS; ++i) {
         if (!s_events[i].used) {
             memset(&s_events[i], 0, sizeof(esp_event_group_t));
@@ -95,6 +97,9 @@ EventBits_t xEventGroupWaitBits(EventGroupHandle_t xEventGroup,
     if (xTicksToWait == 0) {
         return eg->cur_bits;
     }
+
+    /* Phase 2 Task 2.3: about to block on event group — guard */
+    esp_freertos_assert_not_in_critical("xEventGroupWaitBits");
 
     uint32_t self = sim_scheduler_current_id();
     if (self == SIM_SCHED_NO_READY) {

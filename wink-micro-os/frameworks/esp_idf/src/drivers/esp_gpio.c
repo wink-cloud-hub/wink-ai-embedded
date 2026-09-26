@@ -5,6 +5,8 @@
 #include "esp_idf_wink.h"
 #include "esp_log.h"
 #include "soc/soc_caps.h"
+#include "freertos_sync.h"  /* esp_sim_spin_wait_account, Phase 2 ISSUE-06 */
+extern void esp_idf_ensure_framework_ready(void); /* Phase 2 ISSUE-13 */
 
 /* Output read-back cache (ADR-0012 降级条目 3, see docs/02-api-coverage-matrix.md):
  * Host/Wasm PAL `pal_gpio_read` on an output-configured pin reports the mode
@@ -37,6 +39,7 @@ static pal_gpio_mode_t convert_gpio_mode(gpio_mode_t mode, gpio_pullup_t pull_up
 }
 
 esp_err_t gpio_config(const gpio_config_t *pGPIOConfig) {
+    esp_idf_ensure_framework_ready(); /* Phase 2 Task 4.3: C++ static constructor safe */
     if (!pGPIOConfig || pGPIOConfig->pin_bit_mask == 0) {
         return ESP_ERR_INVALID_ARG;
     }
@@ -78,6 +81,7 @@ esp_err_t gpio_config(const gpio_config_t *pGPIOConfig) {
 }
 
 esp_err_t gpio_set_direction(gpio_num_t gpio_num, gpio_mode_t mode) {
+    esp_idf_ensure_framework_ready(); /* Phase 2 Task 4.3: C++ static constructor safe */
     if (!GPIO_IS_VALID_GPIO(gpio_num)) {
         return ESP_ERR_INVALID_ARG;
     }
@@ -128,6 +132,9 @@ esp_err_t gpio_set_level(gpio_num_t gpio_num, uint32_t level) {
 }
 
 int gpio_get_level(gpio_num_t gpio_num) {
+    /* Phase 2 Task 3.2: busy-wait self-healing spin counter (ISSUE-06) */
+    esp_sim_spin_wait_account();
+
     if (!GPIO_IS_VALID_GPIO(gpio_num)) {
         ESP_LOGE("GPIO", "gpio_get_level: invalid pin %d", (int)gpio_num);
         return 0;

@@ -18,6 +18,7 @@ set(ESP_IDF_FRAMEWORK_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/freertos/freertos_semphr.c
     ${CMAKE_CURRENT_LIST_DIR}/src/freertos/freertos_event.c
     ${CMAKE_CURRENT_LIST_DIR}/src/freertos/freertos_timers.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/freertos/freertos_spinlock.c
 )
 
 include(${CMAKE_CURRENT_LIST_DIR}/esp_idf_target.cmake)

@@ -8,6 +8,7 @@
 #include "freertos_sync.h"
 #include "wink_sim_scheduler.h"
 #include "pal_log.h"
+extern void esp_idf_ensure_framework_ready(void); /* Phase 2 Task 4 cold-start */
 
 #ifndef FREERTOS_MAX_SEMAPHORES
 #  ifdef CONFIG_FREERTOS_MAX_SEMAPHORES
@@ -96,6 +97,7 @@ void esp_freertos_sem_pool_reset(void) {
 }
 
 SemaphoreHandle_t xSemaphoreCreateMutex(void) {
+    esp_idf_ensure_framework_ready(); /* Phase 2 Task 4.2 */
     for (uint32_t i = 0; i < FREERTOS_MAX_SEMAPHORES; ++i) {
         if (!s_sems[i].used) {
             memset(&s_sems[i], 0, sizeof(esp_sem_t));
@@ -112,6 +114,7 @@ SemaphoreHandle_t xSemaphoreCreateMutex(void) {
 }
 
 SemaphoreHandle_t xSemaphoreCreateBinary(void) {
+    esp_idf_ensure_framework_ready(); /* Phase 2 Task 4.2 */
     for (uint32_t i = 0; i < FREERTOS_MAX_SEMAPHORES; ++i) {
         if (!s_sems[i].used) {
             memset(&s_sems[i], 0, sizeof(esp_sem_t));
@@ -128,6 +131,7 @@ SemaphoreHandle_t xSemaphoreCreateBinary(void) {
 }
 
 SemaphoreHandle_t xSemaphoreCreateCounting(const UBaseType_t uxMaxCount, const UBaseType_t uxInitialCount) {
+    esp_idf_ensure_framework_ready(); /* Phase 2 Task 4.2 */
     if (uxMaxCount == 0 || uxInitialCount > uxMaxCount) {
         return NULL;
     }
@@ -164,6 +168,8 @@ BaseType_t xSemaphoreTake(SemaphoreHandle_t xSemaphore, TickType_t xTicksToWait)
         if (remaining == 0) {
             return pdFALSE;
         }
+        /* Phase 2 Task 2.3: xTicksToWait > 0 means we will block — guard */
+        esp_freertos_assert_not_in_critical("xSemaphoreTake");
         uint32_t self = sim_scheduler_current_id();
         if (self == SIM_SCHED_NO_READY) {
             return pdFALSE;

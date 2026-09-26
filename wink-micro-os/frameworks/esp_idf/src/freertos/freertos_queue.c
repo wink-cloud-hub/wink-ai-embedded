@@ -8,6 +8,7 @@
 #include "freertos_sync.h"
 #include "wink_sim_scheduler.h"
 #include "pal_log.h"
+extern void esp_idf_ensure_framework_ready(void); /* Phase 2 Task 4 cold-start */
 
 #ifndef FREERTOS_MAX_QUEUES
 #  ifdef CONFIG_FREERTOS_MAX_QUEUES
@@ -89,6 +90,7 @@ void esp_freertos_queue_pool_reset(void) {
 }
 
 QueueHandle_t xQueueCreate(const UBaseType_t uxQueueLength, const UBaseType_t uxItemSize) {
+    esp_idf_ensure_framework_ready(); /* Phase 2 Task 4.2: C++ static constructor safe */
     if (uxQueueLength == 0) {
         return NULL;
     }
@@ -125,6 +127,8 @@ BaseType_t xQueueSend(QueueHandle_t xQueue, const void * const pvItemToQueue, Ti
         if (remaining == 0) {
             return errQUEUE_FULL;
         }
+        /* Phase 2 Task 2.2: xTicksToWait > 0 means we will block — guard */
+        esp_freertos_assert_not_in_critical("xQueueSend");
         uint32_t self = sim_scheduler_current_id();
         if (self == SIM_SCHED_NO_READY) {
             return errQUEUE_FULL;
@@ -174,6 +178,8 @@ BaseType_t xQueueReceive(QueueHandle_t xQueue, void * const pvBuffer, TickType_t
         if (remaining == 0) {
             return errQUEUE_EMPTY;
         }
+        /* Phase 2 Task 2.2: xTicksToWait > 0 means we will block — guard */
+        esp_freertos_assert_not_in_critical("xQueueReceive");
         uint32_t self = sim_scheduler_current_id();
         if (self == SIM_SCHED_NO_READY) {
             return errQUEUE_EMPTY;

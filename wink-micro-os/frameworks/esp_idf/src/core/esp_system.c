@@ -9,7 +9,10 @@
 #include "esp_task_wdt.h"
 #include "esp_intr_alloc.h"
 #include "pal_osal.h"
+#include "wink_sim_scheduler.h"  /* sim_scheduler_yield_context */
+#include "freertos_sync.h"        /* esp_sim_spin_wait_account (ISSUE-06) */
 #include <string.h>
+extern void esp_idf_ensure_framework_ready(void); /* Phase 2 ISSUE-13 */
 
 /* Deterministic xorshift32 for simulation replayability */
 static uint32_t s_random_state = 2463534242UL;
@@ -51,11 +54,28 @@ void esp_chip_info(esp_chip_info_t *out_info) {
 }
 
 int64_t esp_timer_get_time(void) {
+    /* Phase 2 Task 4.3 + 3.2: order MUST be cold-start first, then spin-account.
+     * sim_scheduler_current_id() is undefined before the scheduler is ready;
+     * ensure_framework_ready() guarantees it is valid before spin accounting. */
+    esp_idf_ensure_framework_ready();
+    esp_sim_spin_wait_account();
     return (int64_t)pal_os_get_us();
 }
 
 void esp_rom_delay_us(uint32_t us) {
+    /* Phase 2 Task 3.2 M2: tiered busy-wait strategy (ISSUE-06).
+     *  us <= 100  : advance virtual clock only — preserve µs timing precision.
+     *  100 < us <= 5000 : advance + count as spin (auto-yield at threshold).
+     *  us > 5000  : advance + immediate forced yield (prevent browser freeze). */
     pal_os_busy_wait_us(us);
+    if (us > 5000U) {
+        if (sim_scheduler_current_ctx() != NULL) {
+            sim_scheduler_yield_context();   /* >5ms: force yield unconditionally */
+        }
+    } else if (us > 100U) {
+        esp_sim_spin_wait_account();     /* mid-range: contribute to spin count */
+    }
+    /* us <= 100: only clock advance, no yield trigger */
 }
 
 void esp_rom_gpio_pad_select_gpio(uint32_t gpio_num) {

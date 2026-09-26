@@ -39,10 +39,14 @@ typedef struct xTASK_STATUS {
 
 #define tskNO_AFFINITY              ((BaseType_t) 0x7FFFFFFF)
 
-#define taskENTER_CRITICAL(mux)     ((void)0)
-#define taskEXIT_CRITICAL(mux)      ((void)0)
-#define taskENTER_CRITICAL_ISR(mux) ((void)0)
-#define taskEXIT_CRITICAL_ISR(mux)  ((void)0)
+/* Phase 2: redirect to real spinlock state-tracking implementations (ISSUE-02).
+ * Originally these were no-op ((void)0) macros; now they invoke
+ * vPortEnterCritical / vPortExitCritical which track owner + nesting depth and
+ * assert that no blocking yield occurs inside a critical section. */
+#define taskENTER_CRITICAL(mux)     vPortEnterCritical(mux)
+#define taskEXIT_CRITICAL(mux)      vPortExitCritical(mux)
+#define taskENTER_CRITICAL_ISR(mux) vPortEnterCritical_ISR(mux)
+#define taskEXIT_CRITICAL_ISR(mux)  vPortExitCritical_ISR(mux)
 
 #define taskYIELD()                 vTaskDelay(0)
 

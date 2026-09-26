@@ -174,7 +174,13 @@ void vTaskResume(TaskHandle_t xTaskToResume) {
 }
 
 void vTaskDelay(const TickType_t xTicksToDelay) {
+    /* Phase 2 Task 2.1: block if inside a portMUX_TYPE critical section */
+    esp_freertos_assert_not_in_critical("vTaskDelay");
+
     if (xTicksToDelay == 0) {
+        uint32_t self0 = sim_scheduler_current_id();
+        /* Step 3.3: reset spin counter on any voluntary yield */
+        esp_sim_spin_wait_reset(self0);
         sim_scheduler_yield_context();
         return;
     }
@@ -184,12 +190,18 @@ void vTaskDelay(const TickType_t xTicksToDelay) {
         return;
     }
 
+    /* Step 3.3: reset spin counter before timed block */
+    esp_sim_spin_wait_reset(self);
+
     uint64_t dur_us = (uint64_t)xTicksToDelay * (uint64_t)(portTICK_PERIOD_MS * 1000ULL);
     sim_scheduler_yield_timed(self, pal_os_get_us(), dur_us);
     sim_scheduler_yield_context();
 }
 
 void vTaskDelayUntil(TickType_t * const pxPreviousWakeTime, const TickType_t xTimeIncrement) {
+    /* Phase 2 Task 2.1: block if inside a portMUX_TYPE critical section */
+    esp_freertos_assert_not_in_critical("vTaskDelayUntil");
+
     if (pxPreviousWakeTime == NULL) {
         return;
     }
@@ -276,8 +288,8 @@ void vTaskStartScheduler(void) {
     pal_log_w("FREERTOS", "vTaskStartScheduler is a no-op under cooperative simulator");
 }
 
-void vPortEnterCritical(void) {}
-void vPortExitCritical(void) {}
+/* vPortEnterCritical / vPortExitCritical implementations moved to
+ * freertos_spinlock.c (Phase 2 ISSUE-02: spinlock state tracking). */
 
 void vTaskList(char * pcWriteBuffer) {
     if (pcWriteBuffer == NULL) return;

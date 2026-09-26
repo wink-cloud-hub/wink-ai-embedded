@@ -73,6 +73,22 @@ void       esp_freertos_event_pool_reset(void);
 void       esp_freertos_pools_reset(void);
 void       esp_freertos_register_task_slot(uint32_t slot, int32_t prio, const char* name);
 
+/* ── Phase 2: spinlock critical-depth tracking (ISSUE-02) ──────────────────
+ * Implemented in freertos_spinlock.c. Internal arrays not exposed here.
+ * esp_freertos_get_critical_depth() returns the nesting depth for task_id;
+ * esp_freertos_assert_not_in_critical() hard-asserts the caller is NOT inside
+ * a portMUX_TYPE critical section (called from all blocking/yield primitives). */
+uint32_t   esp_freertos_get_critical_depth(uint32_t task_id);
+void       esp_freertos_assert_not_in_critical(const char *api_name);
+void       esp_freertos_spinlock_reset(void);
+
+/* ── Phase 2: per-fiber busy-wait spin accounting (ISSUE-06) ───────────────
+ * esp_sim_spin_wait_account() increments the current fiber's spin counter;
+ * when the threshold is hit it auto-yields + advances virtual time.
+ * esp_sim_spin_wait_reset() clears the counter on any voluntary yield. */
+void       esp_sim_spin_wait_account(void);
+void       esp_sim_spin_wait_reset(uint32_t task_id);
+
 #ifdef __cplusplus
 }
 #endif
