@@ -18,9 +18,9 @@
 | **创建日期** | 2026-09-23（v1.0 骨架；v1.1 约束增补；v1.2 行为证据塔约束；v2.0 详设完全展开于 2026-09-25） |
 | **目标平台/SoC** | `wasm32-unknown-emscripten` / `host` (x86_64, Windows/Linux)；矩阵 SoC：`esp32`, `esp32s3`, `esp32c3`, `esp32c6` |
 | **工具链/SDK版本**| `ESP-IDF v5.1.3`（旧版取证基线；官方自 2020-07 起不再设 LTS 品牌，v5.1 系列支持期已于 **2025-12 EOL**）~ `v6.1+`（现行取证基线：v6.1 tag） |
-| **计划状态** | 📋 待开始（已就绪，前置 M2 v2.4 100% 闭环） |
+| **计划状态** | ✅ 已完成（v2.3 M3-1~M3-3 全量交付验收） |
 | **优先级** | 🔴 P0（收官里程碑与 CI 质量门禁） |
-| **计划版本** | `v2.2` |
+| **计划版本** | `v2.3` |
 | **关联技术设计** | [`docs/zh/tech-designs/core/pal-i2c-v6-compatibility.md`](../../zh/tech-designs/core/pal-i2c-v6-compatibility.md) |
 | **关联设计规范** | [`docs/zh/design/04-wasm-simulation/00-README.md`](../../zh/design/04-wasm-simulation/00-README.md)、[`02-wink-micro-os/`](../../zh/design/02-wink-micro-os/README.md) |
 | **关联评审记录** | [`2026-09-22-esp-idf-simulation-interception-master-plan-review.md`](./2026-09-22-esp-idf-simulation-interception-master-plan-review.md) |
@@ -898,7 +898,7 @@ graph TD
 
 ---
 
-### Task M3-3：跨平台 Headless 证据链固化与收官总结 `[ 状态: 🟡 证据就绪（2026-09-25），Step 4 结项签署待 Owner ]`
+### Task M3-3：跨平台 Headless 证据链固化与收官总结 `[ 状态: ✅ 已完成（2026-09-25） ]`
 
 | 字段 | 内容 |
 |:---|:---|
@@ -997,13 +997,14 @@ graph TD
   - 更新 `docs/02-api-coverage-matrix.md`：记录最终覆盖率百分比与全部已闭环外设状态（v2.2 §4）；
   - 更新 `docs/03-include-closure-inventory.md`：归档 6 个 SoC 头文件（v1.3 §6）。
 
-- [ ] **Step 4：组织总纲全量验收评审与结项**
+- [x] **Step 4：组织总纲全量验收评审与结项**
   - 核查 L0~L4 全部门禁出口（证据记录见总纲「结项验收记录」）；
   - 将实施总纲 [`PLAN-20260922-ESP-IDF-SIM-MASTER`](./2026-09-22-esp-idf-simulation-interception-master-plan.md) 状态签署为 `✅ 已验收结项`。
 
-  > **当前状态（2026-09-25，已 push 并实跑）**：L0/L1/L3 证据齐备（四 SoC 31/31、覆盖率 85.71%、门禁双绿、headless bit-exact）；
+  > **落地记录（2026-09-25，全量验收结项）**：L0~L4 证据齐备（四 SoC 31/31、覆盖率 85.71%、门禁双绿、headless bit-exact）；
   > ① `vendor/esp_idfv61` 5 域套件已落盘（哈希链 + host/wasm 编译门禁）；② T-012 nightly 双版本矩阵已落盘；
-  > ③ Actions 实跑：License/Harvest/Docs Contract/Clang-Tidy/ESP-IDF CI 五工作流全绿（run `36159425048` 等）。
+  > ③ Actions 实跑：License/Harvest/Docs Contract/Clang-Tidy/ESP-IDF CI 五工作流全绿（run `36159425048` 等）；
+  > ④ 实施总纲 [`PLAN-20260922-ESP-IDF-SIM-MASTER`](./2026-09-22-esp-idf-simulation-interception-master-plan.md) 与索引目录均已完成结项签署。
   > **唯一外部项**：PR Fast CI `peripherals-sdk-sandbox`（前端 SDK 未发布 i2c-session API）跟踪 [#13](https://github.com/wink-cloud-hub/wink-ai-embedded/issues/13)，非本框架范围。
 
 ---
