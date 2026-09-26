@@ -1438,6 +1438,52 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     add_test(NAME test_esp_idf_freertos COMMAND test_esp_idf_freertos)
     set_tests_properties(test_esp_idf_freertos PROPERTIES LABELS "esp_idf;core")
 
+    # Phase 2 regression suite (PLAN-20260926-ESP-IDF-SIM-PHASE2)
+    add_executable(test_esp_idf_phase2
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_idf_phase2.c
+        ${UNITY_DIR}/unity.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_idf_phase2 PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/freertos
+        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
+    )
+    target_link_libraries(test_esp_idf_phase2 PRIVATE wink_framework_esp_idf dal)
+    target_compile_options(test_esp_idf_phase2 PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(test_esp_idf_phase2 generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_idf_phase2)
+    add_test(NAME test_esp_idf_phase2 COMMAND test_esp_idf_phase2)
+    set_tests_properties(test_esp_idf_phase2 PROPERTIES LABELS "esp_idf;core" TIMEOUT 60)
+
+    # M3 crash target: verifies that vTaskDelay inside a held spinlock triggers
+    # esp_freertos_assert_not_in_critical() → assert() → non-zero exit.
+    # CTest WILL_FAIL TRUE means a non-zero exit is the expected PASS outcome.
+    add_executable(test_esp_idf_phase2_crash
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_idf_phase2_crash.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_idf_phase2_crash PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/freertos
+        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
+    )
+    target_link_libraries(test_esp_idf_phase2_crash PRIVATE wink_framework_esp_idf dal)
+    target_compile_options(test_esp_idf_phase2_crash PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(test_esp_idf_phase2_crash generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_idf_phase2_crash)
+    add_test(NAME test_spinlock_yield_guard_assertion
+             COMMAND test_esp_idf_phase2_crash)
+    set_tests_properties(test_spinlock_yield_guard_assertion
+                         PROPERTIES LABELS "esp_idf;core" WILL_FAIL TRUE TIMEOUT 30)
+
     add_executable(test_esp_ledc
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_ledc.c
         ${UNITY_DIR}/unity.c
