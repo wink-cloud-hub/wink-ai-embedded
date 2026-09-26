@@ -1,15 +1,58 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 #include "nvs_flash.h"
 #include "nvs.h"
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
+
+#if defined(_WIN32)
+#  include <direct.h>
+#  include <io.h>
+#  define nvs_mkdir(dir) _mkdir(dir)
+#  define nvs_unlink(path) _unlink(path)
+#else
+#  include <sys/stat.h>
+#  include <unistd.h>
+#  define nvs_mkdir(dir) mkdir(dir, 0755)
+#  define nvs_unlink(path) unlink(path)
+#endif
 
 #define NVS_MAX_HANDLES 4
-#define NVS_MAX_ENTRIES 16
+
+#ifndef NVS_MAX_ENTRIES
+#  ifdef CONFIG_NVS_MAX_ENTRIES
+#    define NVS_MAX_ENTRIES CONFIG_NVS_MAX_ENTRIES
+#  else
+#    define NVS_MAX_ENTRIES 16
+#  endif
+#endif
+
 #define NVS_KEY_LEN 16
 #define NVS_VAL_BUF_SIZE 128
 
 _Static_assert(NVS_KEY_LEN >= 16, "NVS_KEY_LEN budget check");
-_Static_assert(NVS_MAX_ENTRIES * NVS_VAL_BUF_SIZE <= 4096, "NVS value storage budget check");
+_Static_assert(NVS_MAX_ENTRIES * NVS_VAL_BUF_SIZE <= 16384, "NVS value storage budget check");
+
+#define ESP_SIM_NVS_MAGIC 0x4E565331u /* "NVS1" */
+#define ESP_SIM_NVS_VERSION 1
+
+#pragma pack(push, 1)
+typedef struct {
+    uint32_t magic;         /* 0x4E565331 ("NVS1") */
+    uint16_t version;       /* 1 */
+    uint16_t entry_count;   /* Number of valid entries */
+    uint32_t crc32;         /* CRC32 of valid entries data */
+    uint32_t reserved;      /* Alignment */
+} esp_sim_nvs_header_t;
+
+typedef struct {
+    char     ns[NVS_KEY_LEN];
+    char     key[NVS_KEY_LEN];
+    uint32_t len;
+    uint8_t  data[NVS_VAL_BUF_SIZE];
+} esp_sim_nvs_record_t;
+#pragma pack(pop)
 
 typedef struct {
     bool in_use;
@@ -27,8 +70,70 @@ typedef struct {
 static esp_nvs_handle_t s_nvs_handles[NVS_MAX_HANDLES];
 static nvs_entry_t s_nvs_storage[NVS_MAX_ENTRIES];
 
+#if defined(__EMSCRIPTEN__)
+__attribute__((weak)) int wink_wasm_nvs_save(const void *buf, size_t size);
+__attribute__((weak)) int wink_wasm_nvs_load(void *buf, size_t max_size, size_t *out_size);
+#endif
+
+static uint32_t esp_sim_nvs_crc32_update(uint32_t crc, const uint8_t *data, size_t length) {
+    for (size_t i = 0; i < length; i++) {
+        crc ^= data[i];
+        for (int j = 0; j < 8; j++) {
+            crc = (crc >> 1) ^ (0xEDB88320u & (-(int)(crc & 1)));
+        }
+    }
+    return crc;
+}
+
+static void esp_sim_nvs_get_sandbox_paths(char *out_final, size_t final_sz, char *out_tmp, size_t tmp_sz) {
+    const char *dir = getenv("WINK_SIM_SANDBOX_DIR");
+    if (!dir || dir[0] == '\0') {
+        dir = ".sim_sandbox";
+    }
+    (void)nvs_mkdir(dir);
+    snprintf(out_final, final_sz, "%s/nvs_storage.bin", dir);
+    snprintf(out_tmp, tmp_sz, "%s/nvs_storage.bin.tmp", dir);
+}
+
 esp_err_t nvs_flash_init(void) {
-    // 仿真环境下内存 KV 表随进程生命周期初始化，直接返回成功
+    for (int i = 0; i < NVS_MAX_HANDLES; i++) {
+        s_nvs_handles[i].in_use = false;
+    }
+
+    char final_path[256], tmp_path[256];
+    esp_sim_nvs_get_sandbox_paths(final_path, sizeof(final_path), tmp_path, sizeof(tmp_path));
+    FILE *f = fopen(final_path, "rb");
+    if (f) {
+        esp_sim_nvs_header_t hdr;
+        if (fread(&hdr, sizeof(hdr), 1, f) == 1) {
+            if (hdr.magic == ESP_SIM_NVS_MAGIC && hdr.version == ESP_SIM_NVS_VERSION && hdr.entry_count <= NVS_MAX_ENTRIES) {
+                uint32_t crc = 0xFFFFFFFFu;
+                esp_sim_nvs_record_t rec;
+                bool ok = true;
+                memset(s_nvs_storage, 0, sizeof(s_nvs_storage));
+                for (uint16_t i = 0; i < hdr.entry_count; i++) {
+                    if (fread(&rec, sizeof(rec), 1, f) != 1) {
+                        ok = false;
+                        break;
+                    }
+                    crc = esp_sim_nvs_crc32_update(crc, (const uint8_t *)&rec, sizeof(rec));
+                    s_nvs_storage[i].valid = true;
+                    strncpy(s_nvs_storage[i].ns, rec.ns, NVS_KEY_LEN - 1);
+                    s_nvs_storage[i].ns[NVS_KEY_LEN - 1] = '\0';
+                    strncpy(s_nvs_storage[i].key, rec.key, NVS_KEY_LEN - 1);
+                    s_nvs_storage[i].key[NVS_KEY_LEN - 1] = '\0';
+                    s_nvs_storage[i].len = rec.len;
+                    size_t copy_len = rec.len > NVS_VAL_BUF_SIZE ? NVS_VAL_BUF_SIZE : rec.len;
+                    memcpy(s_nvs_storage[i].data, rec.data, copy_len);
+                }
+                if (!ok || (~crc != hdr.crc32)) {
+                    memset(s_nvs_storage, 0, sizeof(s_nvs_storage));
+                }
+            }
+        }
+        fclose(f);
+    }
+
     return ESP_OK;
 }
 
@@ -37,6 +142,13 @@ esp_err_t nvs_flash_deinit(void) {
         s_nvs_handles[i].in_use = false;
     }
     return ESP_OK;
+}
+
+void esp_sim_nvs_reset_memory(void) {
+    memset(s_nvs_storage, 0, sizeof(s_nvs_storage));
+    for (int i = 0; i < NVS_MAX_HANDLES; i++) {
+        s_nvs_handles[i].in_use = false;
+    }
 }
 
 esp_err_t nvs_open(const char *name, nvs_open_mode_t open_mode, nvs_handle_t *out_handle) {
@@ -56,6 +168,11 @@ esp_err_t nvs_open(const char *name, nvs_open_mode_t open_mode, nvs_handle_t *ou
     return ESP_ERR_NVS_NOT_ENOUGH_SPACE;
 }
 
+esp_err_t nvs_open_from_partition(const char *part_name, const char *namespace_name, nvs_open_mode_t open_mode, nvs_handle_t *out_handle) {
+    (void)part_name;
+    return nvs_open(namespace_name, open_mode, out_handle);
+}
+
 void nvs_close(nvs_handle_t handle) {
     uint32_t idx = (uint32_t)handle;
     if (idx >= 1 && idx <= NVS_MAX_HANDLES) {
@@ -65,6 +182,59 @@ void nvs_close(nvs_handle_t handle) {
 
 esp_err_t nvs_flash_erase(void) {
     memset(s_nvs_storage, 0, sizeof(s_nvs_storage));
+    char final_path[256], tmp_path[256];
+    esp_sim_nvs_get_sandbox_paths(final_path, sizeof(final_path), tmp_path, sizeof(tmp_path));
+    (void)nvs_unlink(final_path);
+    (void)nvs_unlink(tmp_path);
+    return ESP_OK;
+}
+
+esp_err_t nvs_erase_key(nvs_handle_t handle, const char *key) {
+    uint32_t idx = (uint32_t)handle;
+    if (idx < 1 || idx > NVS_MAX_HANDLES || !s_nvs_handles[idx - 1].in_use || !key) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    const char *ns = s_nvs_handles[idx - 1].ns;
+    for (int i = 0; i < NVS_MAX_ENTRIES; i++) {
+        if (s_nvs_storage[i].valid && strcmp(s_nvs_storage[i].ns, ns) == 0 && strcmp(s_nvs_storage[i].key, key) == 0) {
+            s_nvs_storage[i].valid = false;
+            memset(s_nvs_storage[i].data, 0, sizeof(s_nvs_storage[i].data));
+            s_nvs_storage[i].len = 0;
+            return ESP_OK;
+        }
+    }
+    return ESP_ERR_NVS_NOT_FOUND;
+}
+
+esp_err_t nvs_erase_all(nvs_handle_t handle) {
+    uint32_t idx = (uint32_t)handle;
+    if (idx < 1 || idx > NVS_MAX_HANDLES || !s_nvs_handles[idx - 1].in_use) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    const char *ns = s_nvs_handles[idx - 1].ns;
+    for (int i = 0; i < NVS_MAX_ENTRIES; i++) {
+        if (s_nvs_storage[i].valid && strcmp(s_nvs_storage[i].ns, ns) == 0) {
+            s_nvs_storage[i].valid = false;
+            memset(s_nvs_storage[i].data, 0, sizeof(s_nvs_storage[i].data));
+            s_nvs_storage[i].len = 0;
+        }
+    }
+    return ESP_OK;
+}
+
+esp_err_t nvs_get_used_entry_count(nvs_handle_t handle, size_t *used_entries) {
+    uint32_t idx = (uint32_t)handle;
+    if (idx < 1 || idx > NVS_MAX_HANDLES || !s_nvs_handles[idx - 1].in_use || !used_entries) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    const char *ns = s_nvs_handles[idx - 1].ns;
+    size_t count = 0;
+    for (int i = 0; i < NVS_MAX_ENTRIES; i++) {
+        if (s_nvs_storage[i].valid && strcmp(s_nvs_storage[i].ns, ns) == 0) {
+            count++;
+        }
+    }
+    *used_entries = count;
     return ESP_OK;
 }
 
@@ -202,5 +372,65 @@ esp_err_t nvs_get_str(nvs_handle_t h, const char *k, char *v, size_t *l) {
 
 esp_err_t nvs_commit(nvs_handle_t h) {
     (void)h;
+
+    uint16_t count = 0;
+    uint32_t crc = 0xFFFFFFFFu;
+    esp_sim_nvs_record_t rec;
+
+    for (int i = 0; i < NVS_MAX_ENTRIES; i++) {
+        if (s_nvs_storage[i].valid) {
+            memset(&rec, 0, sizeof(rec));
+            strncpy(rec.ns, s_nvs_storage[i].ns, NVS_KEY_LEN - 1);
+            strncpy(rec.key, s_nvs_storage[i].key, NVS_KEY_LEN - 1);
+            rec.len = (uint32_t)s_nvs_storage[i].len;
+            size_t copy_len = s_nvs_storage[i].len > NVS_VAL_BUF_SIZE ? NVS_VAL_BUF_SIZE : s_nvs_storage[i].len;
+            memcpy(rec.data, s_nvs_storage[i].data, copy_len);
+            crc = esp_sim_nvs_crc32_update(crc, (const uint8_t *)&rec, sizeof(rec));
+            count++;
+        }
+    }
+
+    esp_sim_nvs_header_t hdr;
+    memset(&hdr, 0, sizeof(hdr));
+    hdr.magic = ESP_SIM_NVS_MAGIC;
+    hdr.version = ESP_SIM_NVS_VERSION;
+    hdr.entry_count = count;
+    hdr.crc32 = ~crc;
+
+    char final_path[256], tmp_path[256];
+    esp_sim_nvs_get_sandbox_paths(final_path, sizeof(final_path), tmp_path, sizeof(tmp_path));
+    FILE *f = fopen(tmp_path, "wb");
+    if (!f) {
+        return ESP_FAIL;
+    }
+    if (fwrite(&hdr, sizeof(hdr), 1, f) != 1) {
+        fclose(f);
+        (void)nvs_unlink(tmp_path);
+        return ESP_FAIL;
+    }
+    for (int i = 0; i < NVS_MAX_ENTRIES; i++) {
+        if (s_nvs_storage[i].valid) {
+            memset(&rec, 0, sizeof(rec));
+            strncpy(rec.ns, s_nvs_storage[i].ns, NVS_KEY_LEN - 1);
+            strncpy(rec.key, s_nvs_storage[i].key, NVS_KEY_LEN - 1);
+            rec.len = (uint32_t)s_nvs_storage[i].len;
+            size_t copy_len = s_nvs_storage[i].len > NVS_VAL_BUF_SIZE ? NVS_VAL_BUF_SIZE : s_nvs_storage[i].len;
+            memcpy(rec.data, s_nvs_storage[i].data, copy_len);
+            if (fwrite(&rec, sizeof(rec), 1, f) != 1) {
+                fclose(f);
+                (void)nvs_unlink(tmp_path);
+                return ESP_FAIL;
+            }
+        }
+    }
+    fflush(f);
+    fclose(f);
+
+    /* Atomic overwrite on Windows requires removing destination before rename */
+    (void)nvs_unlink(final_path);
+    if (rename(tmp_path, final_path) != 0) {
+        return ESP_FAIL;
+    }
+
     return ESP_OK;
 }
