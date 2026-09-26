@@ -18,6 +18,8 @@
 | M1 FreeRTOS 调度器 Shim | M1 | ✅ 已完成 (v1.4 全量验收闭环) | [2026-09-24-esp-idf-sim-m1-freertos-plan.md](./2026-09-24-esp-idf-sim-m1-freertos-plan.md) |
 | M2 总线外设双版本与定点 PWM | M2 | ✅ 已完成 (v2.4 28/28 测试与架构加固闭环) | [2026-09-25-esp-idf-sim-m2-bus-plan.md](./2026-09-25-esp-idf-sim-m2-bus-plan.md) |
 | M3 SoC 矩阵扩展与语料 CI | M3 | 📋 详设就绪 (v2.0 详设完全展开版，待开工) | [2026-09-26-esp-idf-sim-m3-soc-ci-plan.md](./2026-09-26-esp-idf-sim-m3-soc-ci-plan.md) |
+| Phase 2 并发安全、忙等自愈与静态构造 | P2 | ✅ 已完成 (v1.0 45/45 测试与架构加固闭环) | [2026-09-26-esp-idf-sim-phase2-plan.md](./2026-09-26-esp-idf-sim-phase2-plan.md) |
+| Phase 3 虚拟中断、NVS沙箱与堆能力 | P3 | ✅ 已完成 (v1.0 48/48 测试全绿与架构治理闭环) | [2026-09-27-esp-idf-sim-phase3-plan.md](./2026-09-27-esp-idf-sim-phase3-plan.md) |
 | M4 Wi-Fi/BLE 连接性（远期演进） | M4 | 📋 规划草案 (v1.0 架构与路线图已锚定) | [2026-09-27-esp-idf-sim-m4-wifi-ble-connectivity-roadmap.md](./2026-09-27-esp-idf-sim-m4-wifi-ble-connectivity-roadmap.md) |
 
 ## 相关架构规范与决策
