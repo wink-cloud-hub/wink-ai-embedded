@@ -1,8 +1,8 @@
 # ESP-IDF 仿真拦截层 Include 闭包追踪清单 (03-include-closure-inventory)
 
-> **版本**：v1.3  
-> **适用里程碑**：M1 → M3（v6.1 收割闭包 + S3/C3/C6 SoC 矩阵归档）  
-> **设计依据**：Task M1-1 编译驱动增量 include 闭包策略；`PLAN-20260925-SDK-HARVESTER-ENGINE v2.13`
+> **版本**：v1.4  
+> **适用里程碑**：M1 → M4-1（v6.1 收割闭包 + S3/C3/C6 SoC 矩阵 + M4-1 Wi-Fi/Event 闭包）  
+> **设计依据**：Task M1-1 编译驱动增量 include 闭包策略；`PLAN-20260925-SDK-HARVESTER-ENGINE v2.13`；`2026-09-27-esp-idf-sim-m4-1-wifi-event-plan`
 
 ---
 
@@ -150,6 +150,20 @@
 > **说明**：esp32 的 `soc_caps.h`/`gpio_num.h` 为 vendored 产物按字节迁移（sha256 与 `manifest.file_hashes` 同值，
 > relocated 校验），无手写登记；S3/C3/C6 为 M3 手写首版，待闭源收割器支持 per-SoC 发射后转生成物并移出登记。
 > 共享 `include/soc/` 不再承载同名文件；选片由 `esp_idf_target.cmake` 的 include 顺序完成（无 `#include_next`）。
+
+---
+
+## 7. M4-1 Wi-Fi 与 Event 头文件闭包（ADR-0087）
+
+| 头文件路径 (相对于 include/ 目录) | 对应 ESP-IDF 组件 | 闭包职责与内容 | 通道登记 |
+|:---|:---|:---|:---|
+| `esp_event_base.h` | `esp_event` | `esp_event_base_t` 类型定义、`ESP_EVENT_ANY_BASE`/`ID` 宏、句柄声明 | `channels.json: handwritten` |
+| `esp_event.h` | `esp_event` | 默认事件循环创建/删除、处理函数及实例的注册/注销、`esp_event_post` 与仿真复位 | `channels.json: handwritten` |
+| `esp_wifi_types.h` | `esp_wifi` | `wifi_mode_t`, `wifi_auth_mode_t`, `wifi_sta_config_t` (含嵌套 `threshold` 与 SAE PWE), `wifi_init_config_t` | `channels.json: handwritten` |
+| `esp_wifi.h` | `esp_wifi` | STA 模式门面全集（init/start/connect/disconnect/get_mac 等）、扫描 API 桩声明、`WIFI_EVENT` 声明 | `channels.json: handwritten` |
+| `esp_netif_types.h` | `esp_netif` | `IP_EVENT` 声明、`esp_ip4_addr_t`、`IPSTR`/`IP2STR` 宏、`esp_netif_ip_info_t`、`ip_event_got_ip_t` | `channels.json: handwritten` |
+| `esp_netif.h` | `esp_netif` | `esp_netif_init`, `esp_netif_create_default_wifi_sta`, `esp_netif_get_ip_info` 声明 | `channels.json: handwritten` |
+
 
 
 

@@ -1,7 +1,7 @@
 # ESP-IDF 仿真拦截层 API 覆盖矩阵与降级登记簿 (02-api-coverage-matrix)
 
-> **版本**：v2.2  
-> **适用里程碑**：M2~M3 (外设与总线仿真拦截；多 SoC 矩阵、覆盖率与确定性收官)  
+> **版本**：v2.3  
+> **适用里程碑**：M2~M4-1 (外设与总线仿真拦截；多 SoC 矩阵；M4-1 Wi-Fi 基础与事件循环)  
 > **收割口径**：v6.1@fff9895c vendored（`manifest.hash = 542eb37a5dc3604c`）
 
 ---
@@ -218,6 +218,21 @@
 - **设计权衡**：单元测试与仿真环境默认隔离宿主文件系统，持久化受控收敛于沙箱目录。
 - **Phase 3 拦截层升级**：由纯内存态存储升级为物理持久化与受控沙箱隔离。`nvs_commit()` 时通过跨平台安全覆盖（Windows `unlink` + `rename`）原子写入受控目录 `.sim_sandbox/nvs_storage.bin`，并带 `NVS1` 魔数与 streaming CRC32 校验；`nvs_flash_init()` 时自动验证并重载数据，保证跨进程和掉电重启后的数据持久化。浏览器环境下对接 `wink_wasm_nvs_save` / `load`。
 
+### 降级条目 21：Wi-Fi AP 模式与 APSTA 模式 Fail-Loud 拒绝
+- **受影响 API**：`esp_wifi_set_mode`
+- **设计权衡**：仿真环境面向低代码边缘节点 STA 连接上云与局域网通讯，暂不模拟 SoftAP 接入点射频服务与 DHCP Server。
+- **拦截层行为**：传入 `WIFI_MODE_AP` 或 `WIFI_MODE_APSTA` 时，显式 `ESP_LOGE` 报警并返回 `ESP_ERR_NOT_SUPPORTED`（ADR-0012 合约诚实）。
+
+### 降级条目 22：Wi-Fi 扫描接口桩实现与 Fail-Loud
+- **受影响 API**：`esp_wifi_scan_start`, `esp_wifi_scan_stop`, `esp_wifi_scan_get_ap_records`
+- **设计权衡**：仿真环境无真实 2.4GHz RF 空口抓包与 AP 广播信标帧扫描。
+- **拦截层行为**：`esp_wifi_scan_start` 记录日志并返回 `ESP_ERR_NOT_SUPPORTED`；`esp_wifi_scan_get_ap_records` 将数量置 0 并返回 `ESP_ERR_NOT_SUPPORTED`。
+
+### 降级条目 23：Wi-Fi STA 固定虚拟网络环境与异步延时
+- **受影响 API**：`esp_wifi_connect`, `esp_wifi_get_mac`, `esp_netif_get_ip_info`
+- **设计权衡**：为保证仿真回放完全确定性与零外部物理网络依赖。
+- **拦截层行为**：固定虚拟 MAC `DE:AD:BE:EF:00:01`；固定 IP `192.168.4.2/24`、网关 `192.168.4.1`；`esp_wifi_connect()` 派发异步 100ms 协作虚拟延时任务，通过令牌校验防幽灵事件，延时结束后顺序派发 `WIFI_EVENT_STA_CONNECTED` 与 `IP_EVENT_STA_GOT_IP`。
+
 ---
 
 ## 3. 官方语料验证集
@@ -228,6 +243,7 @@
 | `corpus_ledc_basic` | `examples/peripherals/ledc/ledc_basic/main/ledc_basic_example_main.c` | LEDC 4 定时器/通道配置、PWM 占空比设置、渐变 API | `OBJECT` compile-only 100% 通过；Wasm compile check 通过 |
 | `corpus_i2c_basic` | `examples/peripherals/i2c/i2c_basic/main/i2c_basic_example_main.c` | Modern I2C Master 总线/器件注册、Transmit/Receive 事务 | `OBJECT` compile-only 100% 通过；Wasm compile check 通过 |
 | `corpus_legacy_i2c` | `components/driver/test_apps/legacy_i2c_driver/main/test_i2c.c` | Legacy I2C 接口集（配置、命令链、时序、从机） | Tier-B stub 闭包 `OBJECT` compile-only 100% 通过；Wasm compile check 通过 |
+| `corpus_wifi_sta` | `examples/wifi/getting_started/station/main/station_example_main.c` | Wi-Fi Station 初始化、配置、事件循环与重连处理 | Tier-A `OBJECT` compile-only 100% 通过；Wasm compile check 通过 |
 
 ---
 
@@ -256,4 +272,16 @@
 | 框架库编译告警 | `--clean-first` 0 warning | L0 |
 
 > 注：覆盖率数据为 2026-09-25 本地 gcov 基线；CI 的 lcov 管道为最终权威值。
+
+---
+
+## 5. M4-1 验收快照（2026-09-26）
+
+### 5.1 覆盖范围与架构亮点
+
+- **手写 C-ABI 闭包（6 头文件）**：`esp_event_base.h`, `esp_event.h`, `esp_wifi_types.h`, `esp_wifi.h`, `esp_netif_types.h`, `esp_netif.h`，无修改兼容官方 ESP-IDF v6.1 station 语料。
+- **静态零堆事件系统**：16 槽静态池，跨编译单元 base 匹配回退，快照派发防重入迭代器破坏，独立 instance 句柄反注册。
+- **6 态 FSM 与防幽灵事件**：递增 `s_connect_token` 令牌机制彻底阻断中途取消、断开、析构后的倒挂 `GOT_IP` 事件。
+- **测试与语料**：17 个全新 Unity 单元测试 100% 通过；官方 `station_example_main.c` Tier-A `OBJECT` 库真实编译与 Wasm compile check 100% 通过。
+- **门禁全绿**：`ctest -L esp_idf` 50/50 零回归全绿；`check_harvested_headers.py` 0 error；`check_license_map.py` 通过；`winkcli lint` 无违规。
 
