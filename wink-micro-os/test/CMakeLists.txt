@@ -1645,6 +1645,27 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     add_test(NAME test_esp_nvs COMMAND test_esp_nvs)
     set_tests_properties(test_esp_nvs PROPERTIES LABELS "esp_idf;core")
 
+    add_executable(test_esp_wifi
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_wifi.c
+        ${UNITY_DIR}/unity.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_wifi PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/freertos
+        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
+    )
+    target_link_libraries(test_esp_wifi PRIVATE wink_framework_esp_idf dal)
+    target_compile_options(test_esp_wifi PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(test_esp_wifi generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_wifi)
+    add_test(NAME test_esp_wifi COMMAND test_esp_wifi)
+    set_tests_properties(test_esp_wifi PROPERTIES LABELS "esp_idf;core" TIMEOUT 60)
+
     # 3. Tier-A Official corpus (OBJECT libraries: compile-only, no main link)
     add_library(esp_idf_corpus_blink_obj OBJECT
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/blink/blink_example_main.c
@@ -1702,6 +1723,25 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
         COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target esp_idf_corpus_i2c_basic_obj
     )
     set_tests_properties(esp_idf_corpus_i2c PROPERTIES LABELS "esp_idf_corpus;tier_a")
+
+    add_library(esp_idf_corpus_wifi_sta_obj OBJECT
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/wifi_sta/station_example_main.c
+    )
+    target_include_directories(esp_idf_corpus_wifi_sta_obj BEFORE PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/wifi_sta/include
+    )
+    target_link_libraries(esp_idf_corpus_wifi_sta_obj PRIVATE
+        wink_framework_esp_idf
+    )
+    target_compile_options(esp_idf_corpus_wifi_sta_obj PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(esp_idf_corpus_wifi_sta_obj generate_config)
+    endif()
+
+    add_test(NAME esp_idf_corpus_wifi_sta
+        COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target esp_idf_corpus_wifi_sta_obj
+    )
+    set_tests_properties(esp_idf_corpus_wifi_sta PROPERTIES LABELS "esp_idf_corpus;tier_a")
 
     # Tier-B Legacy I2C upstream corpus (OBJECT library: compile-only, no main link)
     add_library(esp_idf_corpus_legacy_i2c_obj OBJECT
@@ -1807,6 +1847,13 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     add_esp_idf_wasm_compile_check(corpus_legacy_i2c
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/legacy_i2c/test_i2c.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/legacy_i2c/include
+    )
+    add_esp_idf_wasm_compile_check(test_esp_wifi
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_wifi.c
+    )
+    add_esp_idf_wasm_compile_check(corpus_wifi_sta
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/wifi_sta/station_example_main.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/wifi_sta/include
     )
 
     # ── esp_idfv61 vendor behavior suite (master plan §7.1.1, L2) ─────────────
