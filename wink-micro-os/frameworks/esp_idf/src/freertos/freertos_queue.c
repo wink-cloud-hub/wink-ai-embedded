@@ -75,10 +75,19 @@ static void waiter_remove(uint32_t* arr, uint8_t* count, uint32_t sim_id) {
     }
 }
 
-static uint32_t waiter_pop_first(uint32_t* arr, uint8_t* count) {
+static uint32_t waiter_pop_highest_prio(uint32_t* arr, uint8_t* count) {
     if (*count == 0) return SIM_SCHED_NO_READY;
-    uint32_t res = arr[0];
-    for (uint8_t j = 0; j + 1 < *count; ++j) {
+    uint8_t best_idx = 0;
+    int32_t best_prio = esp_freertos_get_task_prio(arr[0]);
+    for (uint8_t i = 1; i < *count; ++i) {
+        int32_t p = esp_freertos_get_task_prio(arr[i]);
+        if (p > best_prio) {
+            best_prio = p;
+            best_idx = i;
+        }
+    }
+    uint32_t res = arr[best_idx];
+    for (uint8_t j = best_idx; j + 1 < *count; ++j) {
         arr[j] = arr[j + 1];
     }
     (*count)--;
@@ -127,6 +136,8 @@ BaseType_t xQueueSend(QueueHandle_t xQueue, const void * const pvItemToQueue, Ti
         if (remaining == 0) {
             return errQUEUE_FULL;
         }
+        /* Phase 3 Task 2.6: cannot block inside ISR */
+        esp_freertos_assert_not_in_isr("xQueueSend");
         /* Phase 2 Task 2.2: xTicksToWait > 0 means we will block — guard */
         esp_freertos_assert_not_in_critical("xQueueSend");
         uint32_t self = sim_scheduler_current_id();
@@ -156,7 +167,7 @@ BaseType_t xQueueSend(QueueHandle_t xQueue, const void * const pvItemToQueue, Ti
     q->write_idx = (q->write_idx + 1) % q->max_items;
     q->cur_items++;
 
-    uint32_t rx_id = waiter_pop_first(q->rx_waiters, &q->rx_waiter_count);
+    uint32_t rx_id = waiter_pop_highest_prio(q->rx_waiters, &q->rx_waiter_count);
     if (rx_id != SIM_SCHED_NO_READY) {
         sim_scheduler_resume(rx_id);
     }
@@ -178,6 +189,8 @@ BaseType_t xQueueReceive(QueueHandle_t xQueue, void * const pvBuffer, TickType_t
         if (remaining == 0) {
             return errQUEUE_EMPTY;
         }
+        /* Phase 3 Task 2.6: cannot block inside ISR */
+        esp_freertos_assert_not_in_isr("xQueueReceive");
         /* Phase 2 Task 2.2: xTicksToWait > 0 means we will block — guard */
         esp_freertos_assert_not_in_critical("xQueueReceive");
         uint32_t self = sim_scheduler_current_id();
@@ -207,7 +220,7 @@ BaseType_t xQueueReceive(QueueHandle_t xQueue, void * const pvBuffer, TickType_t
     q->read_idx = (q->read_idx + 1) % q->max_items;
     q->cur_items--;
 
-    uint32_t tx_id = waiter_pop_first(q->tx_waiters, &q->tx_waiter_count);
+    uint32_t tx_id = waiter_pop_highest_prio(q->tx_waiters, &q->tx_waiter_count);
     if (tx_id != SIM_SCHED_NO_READY) {
         sim_scheduler_resume(tx_id);
     }
@@ -229,6 +242,8 @@ BaseType_t xQueuePeek(QueueHandle_t xQueue, void * const pvBuffer, TickType_t xT
         if (remaining == 0) {
             return errQUEUE_EMPTY;
         }
+        /* Phase 3 Task 2.6: cannot block inside ISR */
+        esp_freertos_assert_not_in_isr("xQueuePeek");
         uint32_t self = sim_scheduler_current_id();
         if (self == SIM_SCHED_NO_READY) {
             return errQUEUE_EMPTY;
@@ -294,14 +309,64 @@ BaseType_t xQueueSendFromISR(QueueHandle_t xQueue, const void * const pvItemToQu
     if (pxHigherPriorityTaskWoken != NULL) {
         *pxHigherPriorityTaskWoken = pdFALSE;
     }
-    return xQueueSend(xQueue, pvItemToQueue, 0);
+    esp_queue_t* q = resolve_queue(xQueue);
+    if (q == NULL || q->cur_items >= q->max_items) {
+        return errQUEUE_FULL;
+    }
+
+    if (pvItemToQueue != NULL && q->item_size > 0) {
+        memcpy(&q->storage[q->write_idx * q->item_size], pvItemToQueue, q->item_size);
+    }
+    q->write_idx = (q->write_idx + 1) % q->max_items;
+    q->cur_items++;
+
+    uint32_t rx_id = waiter_pop_highest_prio(q->rx_waiters, &q->rx_waiter_count);
+    if (rx_id != SIM_SCHED_NO_READY) {
+        sim_scheduler_resume(rx_id);
+        int32_t woken_prio = esp_freertos_get_task_prio(rx_id);
+        uint32_t cur_id = sim_scheduler_current_id();
+        int32_t cur_prio = (cur_id == SIM_SCHED_NO_READY) ? -1 : esp_freertos_get_task_prio(cur_id);
+        if (woken_prio > cur_prio) {
+            if (pxHigherPriorityTaskWoken != NULL) {
+                *pxHigherPriorityTaskWoken = pdTRUE;
+            }
+            esp_freertos_request_isr_yield();
+        }
+    }
+
+    return pdPASS;
 }
 
 BaseType_t xQueueReceiveFromISR(QueueHandle_t xQueue, void * const pvBuffer, BaseType_t * const pxHigherPriorityTaskWoken) {
     if (pxHigherPriorityTaskWoken != NULL) {
         *pxHigherPriorityTaskWoken = pdFALSE;
     }
-    return xQueueReceive(xQueue, pvBuffer, 0);
+    esp_queue_t* q = resolve_queue(xQueue);
+    if (q == NULL || q->cur_items == 0) {
+        return errQUEUE_EMPTY;
+    }
+
+    if (pvBuffer != NULL && q->item_size > 0) {
+        memcpy(pvBuffer, &q->storage[q->read_idx * q->item_size], q->item_size);
+    }
+    q->read_idx = (q->read_idx + 1) % q->max_items;
+    q->cur_items--;
+
+    uint32_t tx_id = waiter_pop_highest_prio(q->tx_waiters, &q->tx_waiter_count);
+    if (tx_id != SIM_SCHED_NO_READY) {
+        sim_scheduler_resume(tx_id);
+        int32_t woken_prio = esp_freertos_get_task_prio(tx_id);
+        uint32_t cur_id = sim_scheduler_current_id();
+        int32_t cur_prio = (cur_id == SIM_SCHED_NO_READY) ? -1 : esp_freertos_get_task_prio(cur_id);
+        if (woken_prio > cur_prio) {
+            if (pxHigherPriorityTaskWoken != NULL) {
+                *pxHigherPriorityTaskWoken = pdTRUE;
+            }
+            esp_freertos_request_isr_yield();
+        }
+    }
+
+    return pdPASS;
 }
 
 BaseType_t xQueueSendToFront(QueueHandle_t xQueue, const void * const pvItemToQueue, TickType_t xTicksToWait) {

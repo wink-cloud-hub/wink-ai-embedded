@@ -8,6 +8,7 @@
 
 #include "esp_err.h"
 #include "wink_status.h"
+#include "hal/gpio_types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,12 +21,20 @@ wink_status_t wink_status_from_esp(esp_err_t err);
 /* 复位钩子：清空各门面静态资源池（测试 setUp / 软复位复用） */
 void esp_freertos_pools_reset(void);
 void esp_peripherals_reset(void);
+void esp_gpio_reset(void);
+void esp_heap_caps_reset(void);
 void esp_ledc_reset(void);
 void esp_gptimer_reset(void);
 void esp_i2c_legacy_reset(void);
 void esp_i2c_master_reset(void);
 void esp_uart_reset(void);
 void esp_spi_reset(void);
+
+/* Phase 3 GPIO ISR simulation edge injection (ISSUE-04) */
+esp_err_t esp_sim_gpio_inject_edge(gpio_num_t pin, uint32_t from_level, uint32_t to_level);
+
+/* Phase 3 NVS simulation memory cache reset (for testing cold reload from sandbox file) */
+void esp_sim_nvs_reset_memory(void);
 
 #ifdef __cplusplus
 }

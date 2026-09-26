@@ -98,6 +98,8 @@ EventBits_t xEventGroupWaitBits(EventGroupHandle_t xEventGroup,
         return eg->cur_bits;
     }
 
+    /* Phase 3 Task 2.6: cannot block inside ISR */
+    esp_freertos_assert_not_in_isr("xEventGroupWaitBits");
     /* Phase 2 Task 2.3: about to block on event group — guard */
     esp_freertos_assert_not_in_critical("xEventGroupWaitBits");
 
@@ -211,7 +213,45 @@ BaseType_t xEventGroupSetBitsFromISR(EventGroupHandle_t xEventGroup,
     if (pxHigherPriorityTaskWoken != NULL) {
         *pxHigherPriorityTaskWoken = pdFALSE;
     }
-    (void)xEventGroupSetBits(xEventGroup, uxBitsToSet);
+    esp_event_group_t* eg = resolve_event_group(xEventGroup);
+    if (eg == NULL) {
+        return pdPASS;
+    }
+
+    eg->cur_bits |= (uxBitsToSet & 0x00FFFFFFu);
+
+    EventBits_t bits_to_clear = 0;
+    bool higher_woken = false;
+    uint32_t cur_id = sim_scheduler_current_id();
+    int32_t cur_prio = (cur_id == SIM_SCHED_NO_READY) ? -1 : esp_freertos_get_task_prio(cur_id);
+
+    for (uint8_t i = 0; i < eg->waiter_count; ++i) {
+        event_waiter_t* w = &eg->waiters[i];
+        if (event_condition_met(eg->cur_bits, w->bits_to_wait_for, w->wait_for_all)) {
+            w->captured_bits = eg->cur_bits;
+            w->woken = 1;
+            sim_scheduler_resume(w->sim_id);
+            int32_t wprio = esp_freertos_get_task_prio(w->sim_id);
+            if (wprio > cur_prio) {
+                higher_woken = true;
+            }
+            if (w->clear_on_exit) {
+                bits_to_clear |= w->bits_to_wait_for;
+            }
+        }
+    }
+
+    if (bits_to_clear != 0) {
+        eg->cur_bits &= ~bits_to_clear;
+    }
+
+    if (higher_woken) {
+        if (pxHigherPriorityTaskWoken != NULL) {
+            *pxHigherPriorityTaskWoken = pdTRUE;
+        }
+        esp_freertos_request_isr_yield();
+    }
+
     return pdPASS;
 }
 

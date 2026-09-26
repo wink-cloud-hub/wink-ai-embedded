@@ -6,7 +6,19 @@
 #include "esp_log.h"
 #include "soc/soc_caps.h"
 #include "freertos_sync.h"  /* esp_sim_spin_wait_account, Phase 2 ISSUE-06 */
+#include "wink_sim_scheduler.h"
+#include "pal_osal.h"
 extern void esp_idf_ensure_framework_ready(void); /* Phase 2 ISSUE-13 */
+
+typedef struct {
+    gpio_isr_t       handler;
+    void            *arg;
+    gpio_int_type_t  intr_type;
+    bool             enabled;
+} esp_sim_gpio_isr_slot_t;
+
+static bool s_isr_service_installed = false;
+static esp_sim_gpio_isr_slot_t s_gpio_isr_slots[SOC_GPIO_PIN_COUNT];
 
 /* Output read-back cache (ADR-0012 降级条目 3, see docs/02-api-coverage-matrix.md):
  * Host/Wasm PAL `pal_gpio_read` on an output-configured pin reports the mode
@@ -74,6 +86,10 @@ esp_err_t gpio_config(const gpio_config_t *pGPIOConfig) {
                 s_is_output &= ~(1ULL << pin);
                 s_output_levels &= ~(1ULL << pin);
             }
+            if (pGPIOConfig->intr_type != GPIO_INTR_DISABLE) {
+                s_gpio_isr_slots[pin].intr_type = pGPIOConfig->intr_type;
+                s_gpio_isr_slots[pin].enabled = true;
+            }
         }
     }
 
@@ -120,6 +136,7 @@ esp_err_t gpio_set_level(gpio_num_t gpio_num, uint32_t level) {
         return ESP_ERR_INVALID_ARG;
     }
 
+    uint32_t old_level = (s_output_levels & (1ULL << gpio_num)) ? 1 : 0;
     wink_status_t status = pal_gpio_write((wink_pin_t)gpio_num, level ? true : false);
     if (status >= 0) {
         if (level) {
@@ -128,7 +145,12 @@ esp_err_t gpio_set_level(gpio_num_t gpio_num, uint32_t level) {
             s_output_levels &= ~(1ULL << gpio_num);
         }
     }
-    return esp_err_from_wink(status);
+    esp_err_t err = esp_err_from_wink(status);
+    if (err == ESP_OK && old_level != (level ? 1u : 0u)) {
+        /* Phase 3: In-fiber loopback injection if pin interrupt registered and enabled */
+        esp_sim_gpio_inject_edge(gpio_num, old_level, level ? 1u : 0u);
+    }
+    return err;
 }
 
 int gpio_get_level(gpio_num_t gpio_num) {
@@ -162,6 +184,9 @@ esp_err_t gpio_reset_pin(gpio_num_t gpio_num) {
 
     s_is_output &= ~(1ULL << gpio_num);
     s_output_levels &= ~(1ULL << gpio_num);
+    if ((int)gpio_num < SOC_GPIO_PIN_COUNT) {
+        memset(&s_gpio_isr_slots[gpio_num], 0, sizeof(esp_sim_gpio_isr_slot_t));
+    }
 
     wink_status_t status = pal_gpio_deinit((wink_pin_t)gpio_num);
     return esp_err_from_wink(status);
@@ -212,52 +237,145 @@ esp_err_t gpio_pulldown_dis(gpio_num_t gpio_num) {
 }
 
 esp_err_t gpio_set_intr_type(gpio_num_t gpio_num, gpio_int_type_t intr_type) {
-    (void)intr_type;
-    if (!GPIO_IS_VALID_GPIO(gpio_num)) {
+    if (!GPIO_IS_VALID_GPIO(gpio_num) || (int)gpio_num >= SOC_GPIO_PIN_COUNT) {
         return ESP_ERR_INVALID_ARG;
     }
-    ESP_LOGE("GPIO", "gpio_set_intr_type: not supported in simulation (M0)");
-    return ESP_ERR_NOT_SUPPORTED;
+    s_gpio_isr_slots[gpio_num].intr_type = intr_type;
+    return ESP_OK;
 }
 
 esp_err_t gpio_intr_enable(gpio_num_t gpio_num) {
-    if (!GPIO_IS_VALID_GPIO(gpio_num)) {
+    if (!GPIO_IS_VALID_GPIO(gpio_num) || (int)gpio_num >= SOC_GPIO_PIN_COUNT) {
         return ESP_ERR_INVALID_ARG;
     }
-    ESP_LOGE("GPIO", "gpio_intr_enable: not supported in simulation (M0)");
-    return ESP_ERR_NOT_SUPPORTED;
+    s_gpio_isr_slots[gpio_num].enabled = true;
+    return ESP_OK;
 }
 
 esp_err_t gpio_intr_disable(gpio_num_t gpio_num) {
-    if (!GPIO_IS_VALID_GPIO(gpio_num)) {
+    if (!GPIO_IS_VALID_GPIO(gpio_num) || (int)gpio_num >= SOC_GPIO_PIN_COUNT) {
         return ESP_ERR_INVALID_ARG;
     }
-    ESP_LOGE("GPIO", "gpio_intr_disable: not supported in simulation (M0)");
-    return ESP_ERR_NOT_SUPPORTED;
+    s_gpio_isr_slots[gpio_num].enabled = false;
+    return ESP_OK;
 }
 
 esp_err_t gpio_install_isr_service(int intr_alloc_flags) {
     (void)intr_alloc_flags;
-    ESP_LOGE("GPIO", "gpio_install_isr_service: not supported in simulation (M0)");
-    return ESP_ERR_NOT_SUPPORTED;
+    if (s_isr_service_installed) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    s_isr_service_installed = true;
+    return ESP_OK;
 }
 
 esp_err_t gpio_uninstall_isr_service(void) {
-    /* v6.1 C-ABI 为 esp_err_t（旧版 void）；仿真未支持 ISR，warn + Fail-Loud（降级条目 4）。 */
-    ESP_LOGW("GPIO", "gpio_uninstall_isr_service: no-op, ISR not supported in simulation (M0)");
-    return ESP_ERR_NOT_SUPPORTED;
+    if (!s_isr_service_installed) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    s_isr_service_installed = false;
+    memset(s_gpio_isr_slots, 0, sizeof(s_gpio_isr_slots));
+    return ESP_OK;
 }
 
 esp_err_t gpio_isr_handler_add(gpio_num_t gpio_num, gpio_isr_t isr_handler, void *args) {
-    (void)gpio_num;
-    (void)isr_handler;
-    (void)args;
-    ESP_LOGE("GPIO", "gpio_isr_handler_add: not supported in simulation (M0)");
-    return ESP_ERR_NOT_SUPPORTED;
+    if (!s_isr_service_installed) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (!GPIO_IS_VALID_GPIO(gpio_num) || (int)gpio_num >= SOC_GPIO_PIN_COUNT) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (isr_handler == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    s_gpio_isr_slots[gpio_num].handler = isr_handler;
+    s_gpio_isr_slots[gpio_num].arg = args;
+    s_gpio_isr_slots[gpio_num].enabled = true;
+    return ESP_OK;
 }
 
 esp_err_t gpio_isr_handler_remove(gpio_num_t gpio_num) {
-    (void)gpio_num;
-    ESP_LOGE("GPIO", "gpio_isr_handler_remove: not supported in simulation (M0)");
-    return ESP_ERR_NOT_SUPPORTED;
+    if (!s_isr_service_installed) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (!GPIO_IS_VALID_GPIO(gpio_num) || (int)gpio_num >= SOC_GPIO_PIN_COUNT) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    s_gpio_isr_slots[gpio_num].handler = NULL;
+    s_gpio_isr_slots[gpio_num].arg = NULL;
+    s_gpio_isr_slots[gpio_num].enabled = false;
+    return ESP_OK;
+}
+
+esp_err_t esp_sim_gpio_inject_edge(gpio_num_t pin, uint32_t from_level, uint32_t to_level) {
+    if (!GPIO_IS_VALID_GPIO(pin) || (int)pin >= SOC_GPIO_PIN_COUNT) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    esp_sim_gpio_isr_slot_t *slot = &s_gpio_isr_slots[pin];
+    if (!slot->enabled || slot->handler == NULL) {
+        return ESP_OK;
+    }
+
+    bool match = false;
+    switch (slot->intr_type) {
+        case GPIO_INTR_POSEDGE:
+            match = (from_level == 0 && to_level != 0);
+            break;
+        case GPIO_INTR_NEGEDGE:
+            match = (from_level != 0 && to_level == 0);
+            break;
+        case GPIO_INTR_ANYEDGE:
+            match = ((from_level != 0) != (to_level != 0));
+            break;
+        case GPIO_INTR_LOW_LEVEL:
+            match = (to_level == 0);
+            break;
+        case GPIO_INTR_HIGH_LEVEL:
+            match = (to_level != 0);
+            break;
+        default:
+            match = false;
+            break;
+    }
+
+    if (!match) {
+        return ESP_OK;
+    }
+
+    /* Update shadow level so readback during ISR sees the new level */
+    if (to_level) {
+        s_output_levels |= (1ULL << pin);
+    } else {
+        s_output_levels &= ~(1ULL << pin);
+    }
+
+    /* ISR Execution Sandbox */
+    pal_os_set_sim_isr_context(true);
+    esp_freertos_clear_isr_yield_requested();
+
+    slot->handler(slot->arg);
+
+    pal_os_set_sim_isr_context(false);
+
+    /* Context-Aware Preemption Dispatcher */
+    if (esp_freertos_is_isr_yield_requested()) {
+        esp_freertos_clear_isr_yield_requested();
+        if (sim_scheduler_current_ctx() != NULL) {
+            /* Scenario B: inside task fiber -> immediate cooperative yield to higher prio task */
+            sim_scheduler_yield_context();
+        } else {
+            /* Scenario A: from host main thread / test harness -> do NOT yield_context()!
+             * The awakened task is already marked READY and will be picked up by the scheduler loop. */
+        }
+    }
+
+    return ESP_OK;
+}
+
+void esp_gpio_reset(void) {
+    s_is_output = 0ULL;
+    s_output_levels = 0ULL;
+    s_isr_service_installed = false;
+    memset(s_gpio_isr_slots, 0, sizeof(s_gpio_isr_slots));
 }

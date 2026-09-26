@@ -20,6 +20,14 @@ typedef uint32_t TickType_t;
 
 #define portNOP()               ((void)0)
 
+/* Cooperative simulation yield and ISR preemption request primitives (Phase 3 ISSUE-04) */
+void sim_scheduler_yield_context(void);
+void esp_freertos_request_isr_yield(void);
+
+#define portYIELD()                  sim_scheduler_yield_context()
+#define portYIELD_FROM_ISR(woken)    do { if (woken) { esp_freertos_request_isr_yield(); } } while(0)
+#define portEND_SWITCHING_ISR(woken) portYIELD_FROM_ISR(woken)
+
 /* ── Phase 2: portMUX_TYPE spinlock state tracking (ISSUE-02) ──────────────
  * In single-virtual-core cooperative scheduling, portMUX_TYPE acts as a
  * mutual-exclusion marker and critical-section boundary declaration. Physical

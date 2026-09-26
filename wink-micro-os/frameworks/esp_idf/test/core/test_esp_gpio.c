@@ -135,21 +135,23 @@ void test_esp_restart_peripherals_reset(void) {
 }
 
 void test_esp_gpio_unsupported_apis_fail_loud(void) {
-    /* ADR-0012: unsupported APIs must Fail-Loud, never silent ESP_OK. */
+    /* ADR-0012: unsupported pull APIs must Fail-Loud, never silent ESP_OK. */
     TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_SUPPORTED,
         gpio_set_pull_mode(GPIO_NUM_2, GPIO_PULLUP_ONLY));
     TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_SUPPORTED, gpio_pullup_en(GPIO_NUM_2));
-    TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_SUPPORTED, gpio_set_intr_type(GPIO_NUM_2, GPIO_INTR_POSEDGE));
-    TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_SUPPORTED, gpio_intr_enable(GPIO_NUM_2));
-    TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_SUPPORTED, gpio_install_isr_service(0));
-    TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_SUPPORTED,
+
+    /* Phase 3 (ISSUE-04): interrupt APIs are now supported */
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gpio_set_intr_type(GPIO_NUM_2, GPIO_INTR_POSEDGE));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gpio_intr_enable(GPIO_NUM_2));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gpio_install_isr_service(0));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG,
         gpio_isr_handler_add(GPIO_NUM_2, NULL, NULL));
-    TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_SUPPORTED, gpio_isr_handler_remove(GPIO_NUM_2));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gpio_isr_handler_remove(GPIO_NUM_2));
     /* Out-of-range still wins over NOT_SUPPORTED. */
     TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG,
         gpio_set_pull_mode((gpio_num_t)60, GPIO_PULLUP_ONLY));
-    /* void C-ABI: must not crash. */
-    gpio_uninstall_isr_service();
+    /* Clean up ISR service */
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gpio_uninstall_isr_service());
 }
 
 void test_esp_gpio_mode_mapping_and_pull_fail_loud(void) {
@@ -182,11 +184,11 @@ void test_esp_gpio_mode_mapping_and_pull_fail_loud(void) {
     TEST_ASSERT_EQUAL_INT32(ESP_OK, gpio_reset_pin(GPIO_NUM_4));
     TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, gpio_reset_pin((gpio_num_t)60));
 
-    /* Remaining fail-loud pull/intr APIs */
+    /* Remaining fail-loud pull APIs */
     TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_SUPPORTED, gpio_pullup_dis(GPIO_NUM_4));
     TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_SUPPORTED, gpio_pulldown_en(GPIO_NUM_4));
     TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_SUPPORTED, gpio_pulldown_dis(GPIO_NUM_4));
-    TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_SUPPORTED, gpio_intr_disable(GPIO_NUM_4));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gpio_intr_disable(GPIO_NUM_4));
     TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, gpio_pulldown_en((gpio_num_t)60));
     TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, gpio_pulldown_dis((gpio_num_t)60));
     TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, gpio_intr_disable((gpio_num_t)60));

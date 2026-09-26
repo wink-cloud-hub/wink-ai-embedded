@@ -168,6 +168,8 @@ BaseType_t xSemaphoreTake(SemaphoreHandle_t xSemaphore, TickType_t xTicksToWait)
         if (remaining == 0) {
             return pdFALSE;
         }
+        /* Phase 3 Task 2.6: cannot block inside ISR */
+        esp_freertos_assert_not_in_isr("xSemaphoreTake");
         /* Phase 2 Task 2.3: xTicksToWait > 0 means we will block — guard */
         esp_freertos_assert_not_in_critical("xSemaphoreTake");
         uint32_t self = sim_scheduler_current_id();
@@ -247,14 +249,39 @@ BaseType_t xSemaphoreTakeFromISR(SemaphoreHandle_t xSemaphore, BaseType_t * cons
     if (pxHigherPriorityTaskWoken != NULL) {
         *pxHigherPriorityTaskWoken = pdFALSE;
     }
-    return xSemaphoreTake(xSemaphore, 0);
+    esp_sem_t* s = resolve_sem(xSemaphore);
+    if (s == NULL || s->count == 0) {
+        return pdFALSE;
+    }
+    s->count--;
+    return pdTRUE;
 }
 
 BaseType_t xSemaphoreGiveFromISR(SemaphoreHandle_t xSemaphore, BaseType_t * const pxHigherPriorityTaskWoken) {
     if (pxHigherPriorityTaskWoken != NULL) {
         *pxHigherPriorityTaskWoken = pdFALSE;
     }
-    return xSemaphoreGive(xSemaphore);
+    esp_sem_t* s = resolve_sem(xSemaphore);
+    if (s == NULL || s->count >= s->max_count) {
+        return pdFALSE;
+    }
+    s->count++;
+    if (s->waiter_count > 0) {
+        uint32_t wake_id = sem_waiter_pop_highest_prio(s);
+        if (wake_id != SIM_SCHED_NO_READY) {
+            sim_scheduler_resume(wake_id);
+            int32_t woken_prio = esp_freertos_get_task_prio(wake_id);
+            uint32_t cur_id = sim_scheduler_current_id();
+            int32_t cur_prio = (cur_id == SIM_SCHED_NO_READY) ? -1 : esp_freertos_get_task_prio(cur_id);
+            if (woken_prio > cur_prio) {
+                if (pxHigherPriorityTaskWoken != NULL) {
+                    *pxHigherPriorityTaskWoken = pdTRUE;
+                }
+                esp_freertos_request_isr_yield();
+            }
+        }
+    }
+    return pdTRUE;
 }
 
 UBaseType_t uxSemaphoreGetCount(SemaphoreHandle_t xSemaphore) {

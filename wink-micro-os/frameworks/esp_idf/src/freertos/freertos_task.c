@@ -13,6 +13,19 @@
 #include "esp_log.h"
 
 static esp_tcb_t s_tcb[FREERTOS_MAX_TASKS];
+static bool s_isr_yield_requested = false;
+
+void esp_freertos_request_isr_yield(void) {
+    s_isr_yield_requested = true;
+}
+
+bool esp_freertos_is_isr_yield_requested(void) {
+    return s_isr_yield_requested;
+}
+
+void esp_freertos_clear_isr_yield_requested(void) {
+    s_isr_yield_requested = false;
+}
 
 esp_tcb_t* esp_freertos_resolve_handle(TaskHandle_t h) {
     if (h == NULL) {
@@ -50,6 +63,7 @@ void esp_freertos_register_task_slot(uint32_t slot, int32_t prio, const char* na
 }
 
 void esp_freertos_task_pool_reset(void) {
+    s_isr_yield_requested = false;
     for (uint32_t i = 0; i < FREERTOS_MAX_TASKS; ++i) {
         if (s_tcb[i].used) {
             s_tcb[i].gen++;
@@ -174,6 +188,8 @@ void vTaskResume(TaskHandle_t xTaskToResume) {
 }
 
 void vTaskDelay(const TickType_t xTicksToDelay) {
+    /* Phase 3 Task 2.6: cannot delay from ISR */
+    esp_freertos_assert_not_in_isr("vTaskDelay");
     /* Phase 2 Task 2.1: block if inside a portMUX_TYPE critical section */
     esp_freertos_assert_not_in_critical("vTaskDelay");
 
@@ -199,6 +215,8 @@ void vTaskDelay(const TickType_t xTicksToDelay) {
 }
 
 void vTaskDelayUntil(TickType_t * const pxPreviousWakeTime, const TickType_t xTimeIncrement) {
+    /* Phase 3 Task 2.6: cannot delay from ISR */
+    esp_freertos_assert_not_in_isr("vTaskDelayUntil");
     /* Phase 2 Task 2.1: block if inside a portMUX_TYPE critical section */
     esp_freertos_assert_not_in_critical("vTaskDelayUntil");
 

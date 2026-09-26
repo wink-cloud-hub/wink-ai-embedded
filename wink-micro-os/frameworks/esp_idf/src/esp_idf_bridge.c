@@ -24,6 +24,8 @@ void esp_freertos_pools_reset(void) {
 }
 
 void esp_peripherals_reset(void) {
+    esp_gpio_reset();
+    esp_heap_caps_reset();
     esp_ledc_reset();
     esp_i2c_legacy_reset();
     esp_i2c_master_reset();

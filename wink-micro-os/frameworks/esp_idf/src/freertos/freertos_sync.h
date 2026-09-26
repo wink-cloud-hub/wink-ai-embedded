@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdlib.h>
+#include <assert.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "wink_sim_scheduler.h"
@@ -88,6 +90,24 @@ void       esp_freertos_spinlock_reset(void);
  * esp_sim_spin_wait_reset() clears the counter on any voluntary yield. */
 void       esp_sim_spin_wait_account(void);
 void       esp_sim_spin_wait_reset(uint32_t task_id);
+
+/* ── Phase 3: ISR execution guard & yield request (ISSUE-04) ──────────────── */
+void       esp_freertos_request_isr_yield(void);
+bool       esp_freertos_is_isr_yield_requested(void);
+void       esp_freertos_clear_isr_yield_requested(void);
+
+/**
+ * @brief Fail-loud gate to verify an API is NOT called from ISR context.
+ *        Called from all blocking FreeRTOS primitives (delay, sem take, queue recv).
+ */
+static inline void esp_freertos_assert_not_in_isr(const char *api_name) {
+    if (pal_os_in_isr()) {
+        pal_log_e("FREERTOS", "FATAL: Illegal blocking call %s invoked from ISR context!",
+                  api_name ? api_name : "<unknown>");
+        assert(!pal_os_in_isr() && "Illegal blocking call invoked from ISR context");
+        abort();
+    }
+}
 
 #ifdef __cplusplus
 }
