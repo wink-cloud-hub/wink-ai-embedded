@@ -32,7 +32,8 @@ frameworks/esp_idf/
 ├── docs/                       # 架构规范与覆盖矩阵
 │   ├── 01-architecture-and-governance-guide.md
 │   ├── 02-api-coverage-matrix.md
-│   └── 03-include-closure-inventory.md
+│   ├── 03-include-closure-inventory.md
+│   └── 04-architecture-risks-and-evolution-solutions.md
 ├── include/                    # 乐鑫原生头文件垫片家族
 │   ├── driver/                 # 外设驱动门面（如 gpio.h）
 │   ├── esp_private/            # 私有头文件分片
