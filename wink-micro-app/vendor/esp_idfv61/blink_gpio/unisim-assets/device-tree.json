@@ -1,0 +1,20 @@
+{
+  "appName": "esp_idfv61_blink_gpio",
+  "board": "esp32_devkitc_v4",
+  "devices": {
+    "led": {
+      "id": "led",
+      "type": "led",
+      "pinMapping": {
+        "A": 2
+      },
+      "properties": {
+        "activeHigh": true
+      }
+    }
+  },
+  "family": "esp32",
+  "core": "xtensa-lx6",
+  "mcu": "esp32",
+  "vendor": "espressif"
+}

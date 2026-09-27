@@ -1,0 +1,62 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP32 ESP-IDF v6.1 blink_gpio headless simulation proof",
+    "templateId": "esp_idfv61_blink_gpio",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3500000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "gpio:2",
+      "matcher": 0,
+      "description": "[上电初始 50ms] GPIO2 初始输出低电平 0 (LED 熄灭)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "gpio:2",
+      "matcher": 0,
+      "description": "[初始周期维持 500ms] GPIO2 维持低电平 0"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1050ms",
+      "target": "gpio:2",
+      "matcher": 1,
+      "description": "[周期翻转 1050ms] 经过 1000ms FreeRTOS 延时后，GPIO2 翻转为高电平 1 (LED 点亮)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "gpio:2",
+      "matcher": 1,
+      "description": "[高电平维持 1500ms] GPIO2 稳定维持高电平 1"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2050ms",
+      "target": "gpio:2",
+      "matcher": 0,
+      "description": "[周期翻转 2050ms] 经过 2000ms 后，GPIO2 翻转恢复为低电平 0 (LED 熄灭)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2500ms",
+      "target": "gpio:2",
+      "matcher": 0,
+      "description": "[低电平维持 2500ms] GPIO2 稳定维持低电平 0"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "3050ms",
+      "target": "gpio:2",
+      "matcher": 1,
+      "description": "[周期翻转 3050ms] 经过 3000ms 后，GPIO2 再次翻转为高电平 1 (LED 再次点亮)"
+    }
+  ]
+}

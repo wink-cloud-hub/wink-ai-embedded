@@ -3,6 +3,8 @@
   "display_name": "Espressif ESP-IDF blink (GPIO output)",
   "board": "esp32_devkitc_v4",
   "category": "vendor_example",
+  "mcu": "esp32",
+  "tick_ms": 1,
   "upstream": {
     "vendor": "Espressif",
     "version": "v6.1",
