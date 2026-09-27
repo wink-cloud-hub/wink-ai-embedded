@@ -33,7 +33,16 @@
     "freertos/queue.h",
     "freertos/semphr.h",
     "freertos/task.h",
-    "freertos/timers.h"
+    "freertos/timers.h",
+    "host/ble_gap.h",
+    "host/ble_gatt.h",
+    "host/ble_hs.h",
+    "host/ble_uuid.h",
+    "nimble/nimble_port.h",
+    "nimble/nimble_port_freertos.h",
+    "os/os_mbuf.h",
+    "services/gap/ble_svc_gap.h",
+    "services/gatt/ble_svc_gatt.h"
   ],
   "chips_handwritten": [
     "chips/esp32s3/include/soc/soc_caps.h",
