@@ -1708,6 +1708,27 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     add_test(NAME test_esp_http_client COMMAND test_esp_http_client)
     set_tests_properties(test_esp_http_client PROPERTIES LABELS "esp_idf;core" TIMEOUT 60)
 
+    add_executable(test_esp_nimble
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_nimble.c
+        ${UNITY_DIR}/unity.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_nimble PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/freertos
+        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
+    )
+    target_link_libraries(test_esp_nimble PRIVATE wink_framework_esp_idf dal)
+    target_compile_options(test_esp_nimble PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(test_esp_nimble generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_nimble)
+    add_test(NAME test_esp_nimble COMMAND test_esp_nimble)
+    set_tests_properties(test_esp_nimble PROPERTIES LABELS "esp_idf;core" TIMEOUT 60)
+
     # 3. Tier-A Official corpus (OBJECT libraries: compile-only, no main link)
     add_library(esp_idf_corpus_blink_obj OBJECT
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/blink/blink_example_main.c
@@ -1822,6 +1843,27 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
         COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target esp_idf_corpus_http_client_obj
     )
     set_tests_properties(esp_idf_corpus_http_client PROPERTIES LABELS "esp_idf_corpus;tier_a")
+
+    add_library(esp_idf_corpus_bleprph_obj OBJECT
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/bleprph/main.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/bleprph/gatt_svr.c
+    )
+    target_include_directories(esp_idf_corpus_bleprph_obj BEFORE PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/bleprph
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/bleprph/include
+    )
+    target_link_libraries(esp_idf_corpus_bleprph_obj PRIVATE
+        wink_framework_esp_idf
+    )
+    target_compile_options(esp_idf_corpus_bleprph_obj PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(esp_idf_corpus_bleprph_obj generate_config)
+    endif()
+
+    add_test(NAME esp_idf_corpus_bleprph
+        COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target esp_idf_corpus_bleprph_obj
+    )
+    set_tests_properties(esp_idf_corpus_bleprph PROPERTIES LABELS "esp_idf_corpus;tier_a")
 
     # Tier-B Legacy I2C upstream corpus (OBJECT library: compile-only, no main link)
     add_library(esp_idf_corpus_legacy_i2c_obj OBJECT
@@ -1948,6 +1990,19 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     add_esp_idf_wasm_compile_check(corpus_http_client
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/http_client/esp_http_client_example.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/http_client/include
+    )
+    add_esp_idf_wasm_compile_check(test_esp_nimble
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_nimble.c
+    )
+    add_esp_idf_wasm_compile_check(corpus_bleprph
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/bleprph/main.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/bleprph
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/bleprph/include
+    )
+    add_esp_idf_wasm_compile_check(corpus_bleprph_gatt
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/bleprph/gatt_svr.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/bleprph
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/bleprph/include
     )
 
     # ── esp_idfv61 vendor behavior suite (master plan §7.1.1, L2) ─────────────
