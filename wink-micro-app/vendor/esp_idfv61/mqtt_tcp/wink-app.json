@@ -1,0 +1,15 @@
+{
+  "app_name": "esp_idfv61_mqtt_tcp",
+  "display_name": "Espressif ESP-IDF MQTT TCP client (Pub/Sub)",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/protocols/mqtt/main",
+    "files": {
+      "app_main.c": "4da6311ab2126077f159eec53e5eed17d8da91c9f78fbaea05f8dbd225963ed1"
+    }
+  },
+  "devices": {}
+}

@@ -1,0 +1,15 @@
+{
+  "app_name": "esp_idfv61_wifi_sta",
+  "display_name": "Espressif ESP-IDF Wi-Fi station (STA connection)",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/wifi/getting_started/station/main",
+    "files": {
+      "station_example_main.c": "b406938b3a63ed2a03b041fd148cebc39e9c2e895f53016ca5e5e57ad9fa002b"
+    }
+  },
+  "devices": {}
+}

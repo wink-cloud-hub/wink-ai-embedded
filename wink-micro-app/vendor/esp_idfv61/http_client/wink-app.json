@@ -1,0 +1,15 @@
+{
+  "app_name": "esp_idfv61_http_client",
+  "display_name": "Espressif ESP-IDF HTTP client (REST GET/POST)",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/protocols/esp_http_client/main",
+    "files": {
+      "esp_http_client_example.c": "28c1253a3f1858a71e00a26f5af9222f18ac744b5bc25bb8d1762df5d51c6e1c"
+    }
+  },
+  "devices": {}
+}
