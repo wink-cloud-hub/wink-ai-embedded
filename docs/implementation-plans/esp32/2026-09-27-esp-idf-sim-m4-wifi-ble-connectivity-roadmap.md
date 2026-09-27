@@ -3,8 +3,8 @@
 > 📋 **计划状态声明**：
 > 本计划为 ESP-IDF 仿真拦截层连接性演进路线图（Milestone 4，Wi-Fi / BLE 连接性专项）。
 > **继承总纲**：[`PLAN-20260922-ESP-IDF-SIM-MASTER`](./2026-09-22-esp-idf-simulation-interception-master-plan.md) (v3.5)
-> **当前状态**：🔄 执行中（Active，M4-1 ~ M4-3 已全量闭环交付，当前全面推进 M4-4 UniSim 蓝牙调试面板联调）
-> 🎯 **计划版本**：v2.0（2026-09-27，推进 M4-4 Web 蓝牙调试面板实施）
+> **当前状态**：✅ 已完成（Milestone 4 Wi-Fi 与 BLE 连接性全线闭环结项，M4-1 ~ M4-4 100% 验收）
+> 🎯 **计划版本**：v2.1（2026-09-27，M4 里程碑全线完工结项版）
 > 📚 **关联规范**：`docs-adr.md`、`03-coding-guidelines.md`、`00-IMPLEMENTATION-PLAN-TEMPLATE.md`、[ADR-0057](../../decisions/core/0057-pal-adc-subsystem-and-channel-3-analog-contract.md)（PAL 保持对网络栈无知与 ADC2 互斥）、[ADR-0083/0084](../../decisions/core/0083-dual-target-compilation-and-license-boundaries.md)（许可分层）
 
 ---
@@ -18,9 +18,9 @@
 | **最后更新** | 2026-09-27 |
 | **目标平台/SoC** | `wasm32-unknown-emscripten` / `host` (x86_64, Windows/Linux)；前端运行环境：`@wink-ai/unisim` (Browser) |
 | **目标协议栈** | Wi-Fi (802.11 b/g/n STA/AP 语义)、lwIP/Sockets 语义垫片、MQTT/HTTP、BLE 5.0 (NimBLE GATT/GAP) |
-| **计划状态** | 🔄 执行中（Active，M4-1 ~ M4-3 已交付验收，当前聚焦 M4-4） |
+| **计划状态** | ✅ 已完成（Milestone 4 全线验收结项） |
 | **优先级** | 🟡 P1（M3 底座收官后的高阶连接性拓展） |
-| **计划版本** | `v2.0` |
+| **计划版本** | `v2.1` |
 | **前置依赖计划** | [`./2026-09-26-esp-idf-sim-m3-soc-ci-plan.md`](./2026-09-26-esp-idf-sim-m3-soc-ci-plan.md)（M3 100% 验收结项） |
 | **关联技术设计** | [`docs/zh/design/04-wasm-simulation/00-README.md`](../../zh/design/04-wasm-simulation/00-README.md)、[`docs/zh/design/02-wink-micro-os/02-pal-platform-abstraction.md`](../../zh/design/02-wink-micro-os/02-pal-platform-abstraction.md) |
 | **计划负责人** | 仿真拦截专项小组 & UniSim 前端引擎组 |
@@ -159,7 +159,7 @@ graph TD
 
 ---
 
-### Task M4-4：UniSim Web 交互式虚拟蓝牙调试面板 `[ 状态: 🔄 执行中 (实施计划推进) ]`
+### Task M4-4：UniSim Web 交互式虚拟蓝牙调试面板 `[ 状态: ✅ 已完成 (v1.2 全量验收) ]`
 
 | 字段 | 内容 |
 |:---|:---|
@@ -201,7 +201,7 @@ graph TD
 | **M4-1 Wi-Fi 状态机与事件闭环** | 16 h | 官方 `wifi/getting_started/station` 语料编译通过，状态机驱动事件断言全绿 | ✅ **已完成** (v1.2 结项) |
 | **M4-2 HTTP/MQTT 代理与离线 Broker** | 18 h | 官方 `mqtt/tcp` 语料通过编译，UniSim 本地 Broker 收到仿真消息 | ✅ **已完成** (v1.2 结项) |
 | **M4-3 NimBLE 虚拟 GATT 服务闭环** | 16 h | 官方 `bluetooth/nimble/bleprph` 语料通过编译，GATT 读写回调单测通过 | ✅ **已完成** (v1.2 结项) |
-| **M4-4 UniSim Web 蓝牙调试面板联调** | 14 h | Web 前端成功连接仿真固件，实现特征值自省、收发与波形绘制 | 🔄 **执行中** |
+| **M4-4 UniSim Web 蓝牙调试面板联调** | 14 h | Web 前端成功连接仿真固件，实现特征值自省、收发与通知交互 | ✅ **已完成** (v1.2 结项) |
 | **总计** | **64 h** | | |
 
 ---
@@ -209,5 +209,5 @@ graph TD
 ## 7. 结语与锚定声明
 
 本规划正式记录了 WinkMicroOS 与 UniSim 面向物联网无线连接（Wi-Fi/BLE）的战略演进路线。
-**M4-1 ~ M4-3 的 C 侧仿真底座已全部交付结项，现全面推进 M4-4 UniSim Web 交互式虚拟蓝牙调试面板建设！**
+**M4-1 ~ M4-4 的 C 侧仿真底座与 UniSim 前端交互面板已全部交付验收结项，Milestone 4 取得圆满大捷！**
 

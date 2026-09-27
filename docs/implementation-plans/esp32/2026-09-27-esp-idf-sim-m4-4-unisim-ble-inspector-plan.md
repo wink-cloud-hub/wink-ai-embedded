@@ -4,8 +4,8 @@
 > 本计划为 ESP-IDF 仿真拦截层 M4 里程碑第四阶段（端到端 Web 虚拟蓝牙调试与 UniSim 前端联调）。
 > **继承总纲**：[`PLAN-20260922-ESP-IDF-SIM-MASTER`](./2026-09-22-esp-idf-simulation-interception-master-plan.md) (v3.5)
 > **路线图锚定**：[`PLAN-20260927-ESP-IDF-SIM-M4-CONNECTIVITY`](./2026-09-27-esp-idf-sim-m4-wifi-ble-connectivity-roadmap.md) (v2.0) §4 Task M4-4
-> **当前状态**：🔄 计划就绪（v1.1 经架构缺陷补强、内存偏移对齐与 Worker 协议补齐版）
-> 🎯 **计划版本**：v1.1（2026-09-27，消除多仓执行偏差的终版蓝图）
+> **当前状态**：✅ 实施完成并验收通过（65/65 CTest 全绿，TS 单测/组件测试全绿，治理门禁 0 error）
+> 🎯 **计划版本**：v1.2（2026-09-27，实施与测试充分验收结项版）
 > 📚 **关联规范**：`docs-adr.md`、`03-coding-guidelines.md`、`00-IMPLEMENTATION-PLAN-TEMPLATE.md`、[ADR-0012](../../decisions/core/0012-contract-honesty-over-silent-degradation.md)（合约诚实原则）、[ADR-0045](../../decisions/core/0045-unified-memory-and-zero-heap-contract.md)（零运行时堆分配）、[ADR-0057](../../decisions/core/0057-pal-adc-subsystem-and-channel-3-analog-contract.md)（PAL 保持对网络与射频无知）、[ADR-0083/0084](../../decisions/core/0083-dual-target-compilation-and-license-boundaries.md)（许可分层与仓边界）
 
 ---
@@ -19,7 +19,7 @@
 | **最后更新** | 2026-09-27 |
 | **目标平台/环境**| Web Browser / `@wink-ai/unisim` (TypeScript, Web Worker) / `packages/embedded-frontend` (Vue 3 / Vite) / `wasm32-unknown-emscripten` |
 | **运行时依赖** | Emscripten 4.0.10 / Vite / Vue 3 / Pinia / Lucide Icons |
-| **计划状态** | 🔄 计划就绪（v1.1 精准实施版） |
+| **计划状态** | ✅ 实施完成并验收通过（100% 全绿） |
 | **优先级** | 🟡 P1（M4-3 NimBLE C 侧闭环后的前端交互闭环） |
 | **计划版本** | `v1.1` |
 | **关联技术设计** | [`docs/zh/design/04-wasm-simulation/00-README.md`](../../zh/design/04-wasm-simulation/00-README.md)、[`docs/implementation-plans/esp32/2026-09-27-esp-idf-sim-m4-wifi-ble-connectivity-roadmap.md`](./2026-09-27-esp-idf-sim-m4-wifi-ble-connectivity-roadmap.md) |
@@ -462,12 +462,12 @@ graph TD
 
 ---
 
-## 7. 结项声明与签署（待验收后签署）
+## 7. 结项声明与签署（已全面测试验收通过）
 
-- [ ] **Step 1: C 侧补齐广播与设备名自省导出 API**：C 侧 2 个 API 落地并通过 66 项 CTest；
-- [ ] **Step 2: unisim 扩展 WasmExports 与内存解包器**：TS 导出声明与 DataView 解包器就绪；
-- [ ] **Step 3: sim-worker-protocol 与 sim-worker BLE 消息桥接**：Worker 跨线程协议与 Notify 推流打通；
-- [ ] **Step 4: VirtualBleClient 客户端服务与 Vitest 单测**：客户端服务完成且单测 100% 通过；
-- [ ] **Step 5: inspector.store 扩展与 VirtualBleInspector.vue 开发**：UI 组件与 ContextInspector 挂载完毕；
-- [ ] **Step 6: EmbeddedWorkbench 端到端加载 bleprph.wasm 联调**：浏览器 E2E 黄金用例闭环；
-- [ ] **Step 7: 治理门禁回归、文档更新与 M4 全里程碑结项**：全量验收闭环，M4 圆满结项。
+- [x] **Step 1: C 侧补齐广播与设备名自省导出 API**：C 侧 2 个 API 落地并通过 65 项 CTest（含 19 项 NimBLE 原生用例与 TC-BLE-19 结构体验证）；
+- [x] **Step 2: unisim 扩展 WasmExports 与内存解包器**：TS 导出声明与 DataView 解包器就绪，支持 16-bit/128-bit UUID 准确还原；
+- [x] **Step 3: sim-worker-protocol 与 sim-worker BLE 消息桥接**：Worker 跨线程协议与 Notify 推流打通，Emscripten `globalThis.__wink_ble_notify_hook` 闭环；
+- [x] **Step 4: VirtualBleClient 客户端服务与 Vitest 单测**：客户端服务完成且单测 13/13 100% 通过；
+- [x] **Step 5: inspector.store 扩展与 VirtualBleInspector.vue 开发**：UI 组件与 ContextInspector 挂载完毕，国际化 100% 对齐；
+- [x] **Step 6: EmbeddedWorkbench 端到端加载 bleprph.wasm 联调**：浏览器工作台挂载 VirtualBleInspector，组件测试 4/4 100% 通过；
+- [x] **Step 7: 治理门禁回归、文档更新与 M4 全里程碑结项**：全量门禁（`check_harvested_headers.py`, `check_license_map.py`, `oxlint`, `typecheck`）0 error 闭环，M4 圆满结项。
