@@ -9,7 +9,8 @@
     "source_dir": "examples/bluetooth/nimble/bleprph/main",
     "files": {
       "main.c": "9af54e2254a9b5025b93e2b8b36fb44283aceadfd7ecca2e840f500738b50819",
-      "gatt_svr.c": "3f0d64b2c02aadac70f5125f0e709882a12353a025ed881a11b16606fca96b26"
+      "gatt_svr.c": "3f0d64b2c02aadac70f5125f0e709882a12353a025ed881a11b16606fca96b26",
+      "bleprph.h": "e4f9c2d505fdebcef1ae7051df1029502c6b2f9552c1c8f452f2ba8c8076a90f"
     }
   },
   "devices": {}
