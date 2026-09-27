@@ -91,7 +91,7 @@ gatt_svr_chr_access_heart_rate(uint16_t conn_handle, uint16_t attr_handle,
     (void)conn_handle;
     (void)attr_handle;
     (void)arg;
-    uint16_t uuid16 = ble_uuid_u16(ctxt->chr.chr->uuid);
+    uint16_t uuid16 = ble_uuid_u16(ctxt->chr->uuid);
     int rc;
 
     switch (uuid16) {
@@ -117,7 +117,7 @@ gatt_svr_chr_access_device_info(uint16_t conn_handle, uint16_t attr_handle,
     (void)conn_handle;
     (void)attr_handle;
     (void)arg;
-    uint16_t uuid16 = ble_uuid_u16(ctxt->chr.chr->uuid);
+    uint16_t uuid16 = ble_uuid_u16(ctxt->chr->uuid);
     int rc;
 
     switch (uuid16) {

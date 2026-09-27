@@ -32,6 +32,13 @@ extern "C" {
 #define BLE_GATT_REGISTER_OP_CHR      2
 #define BLE_GATT_REGISTER_OP_DSC      3
 
+#define BLE_ATT_F_READ                      0x01
+#define BLE_ATT_F_WRITE                     0x02
+#define BLE_ATT_ERR_INVALID_ATTR_VALUE_LEN  0x0D
+#define BLE_ATT_ERR_UNLIKELY                0x0E
+#define BLE_ATT_ERR_INSUFFICIENT_RES        0x11
+#define BLE_HS_CONN_HANDLE_NONE             0xFFFF
+
 struct ble_gatt_access_ctxt;
 struct ble_gatt_chr_def;
 struct ble_gatt_dsc_def;
@@ -43,12 +50,8 @@ typedef int ble_gatt_access_fn(uint16_t conn_handle, uint16_t attr_handle,
 struct ble_gatt_access_ctxt {
     uint8_t op;
     union {
-        struct {
-            const struct ble_gatt_chr_def *chr;
-        } chr;
-        struct {
-            const struct ble_gatt_dsc_def *dsc;
-        } dsc;
+        const struct ble_gatt_chr_def *chr;
+        const struct ble_gatt_dsc_def *dsc;
     };
     struct os_mbuf *om;
 };
@@ -58,15 +61,19 @@ struct ble_gatt_register_ctxt {
     union {
         struct {
             const struct ble_gatt_svc_def *svc;
+            const struct ble_gatt_svc_def *svc_def;
             uint16_t handle;
         } svc;
         struct {
             const struct ble_gatt_chr_def *chr;
+            const struct ble_gatt_chr_def *chr_def;
             uint16_t handle;
+            uint16_t def_handle;
             uint16_t val_handle;
         } chr;
         struct {
             const struct ble_gatt_dsc_def *dsc;
+            const struct ble_gatt_dsc_def *dsc_def;
             uint16_t handle;
         } dsc;
     };

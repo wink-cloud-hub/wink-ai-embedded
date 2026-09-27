@@ -43,6 +43,7 @@ typedef enum {
 
 typedef struct {
     esp_mqtt_error_type_t error_type;
+    int connect_return_code;
     int esp_tls_last_esp_err;
     int esp_tls_stack_err;
     int esp_transport_sock_errno;
@@ -76,6 +77,10 @@ typedef struct {
             const char *path;
             uint32_t port;
         } address;
+        struct {
+            esp_err_t (*crt_bundle_attach)(void *conf);
+            const char *certificate;
+        } verification;
     } broker;
     struct {
         struct {

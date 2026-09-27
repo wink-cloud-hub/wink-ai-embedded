@@ -418,3 +418,20 @@ void esp_http_client_sim_set_response(esp_http_client_handle_t client, int statu
         }
     }
 }
+
+esp_err_t esp_http_client_set_redirection(esp_http_client_handle_t client) {
+    (void)client;
+    return ESP_OK;
+}
+
+int esp_http_client_chunk_write_begin(esp_http_client_handle_t client, int len) {
+    (void)client;
+    (void)len;
+    return 0;
+}
+
+int esp_http_client_chunk_write_end(esp_http_client_handle_t client, bool is_last) {
+    (void)client;
+    (void)is_last;
+    return 0;
+}

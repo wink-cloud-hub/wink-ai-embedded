@@ -50,6 +50,7 @@ typedef enum {
     HTTP_EVENT_ON_CONNECTED,
     HTTP_EVENT_HEADER_SENT,
     HTTP_EVENT_ON_HEADER,
+    HTTP_EVENT_ON_HEADERS_COMPLETE,
     HTTP_EVENT_ON_DATA,
     HTTP_EVENT_ON_FINISH,
     HTTP_EVENT_DISCONNECTED,
@@ -117,6 +118,9 @@ int esp_http_client_read_response(esp_http_client_handle_t client, char *buffer,
 int esp_http_client_write(esp_http_client_handle_t client, const char *buffer, int len);
 bool esp_http_client_is_chunked_response(esp_http_client_handle_t client);
 esp_err_t esp_http_client_close(esp_http_client_handle_t client);
+esp_err_t esp_http_client_set_redirection(esp_http_client_handle_t client);
+int esp_http_client_chunk_write_begin(esp_http_client_handle_t client, int len);
+int esp_http_client_chunk_write_end(esp_http_client_handle_t client, bool is_last);
 
 /* Wink 仿真与 Mock 专用 */
 WINK_SIM_EXPORT void esp_http_client_sim_reset(void);

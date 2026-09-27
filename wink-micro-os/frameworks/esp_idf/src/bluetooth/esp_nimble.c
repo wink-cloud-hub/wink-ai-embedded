@@ -428,7 +428,7 @@ int ble_gatts_chr_updated(uint16_t chr_def_handle) {
             struct ble_gatt_access_ctxt ctxt;
             memset(&ctxt, 0, sizeof(ctxt));
             ctxt.op = BLE_GATT_ACCESS_OP_READ_CHR;
-            ctxt.chr.chr = chr->def;
+            ctxt.chr = chr->def;
             ctxt.om = &om;
 
             int rc = chr->access_cb(1, chr->val_handle, &ctxt, chr->arg);
@@ -688,7 +688,7 @@ int esp_nimble_sim_read_chr(uint16_t conn_handle, uint16_t val_handle, void *out
         struct ble_gatt_access_ctxt ctxt;
         memset(&ctxt, 0, sizeof(ctxt));
         ctxt.op = BLE_GATT_ACCESS_OP_READ_CHR;
-        ctxt.chr.chr = chr->def;
+        ctxt.chr = chr->def;
         ctxt.om = &om;
 
         int rc = chr->access_cb(conn_handle, val_handle, &ctxt, chr->arg);
@@ -742,7 +742,7 @@ int esp_nimble_sim_write_chr(uint16_t conn_handle, uint16_t val_handle, const vo
         struct ble_gatt_access_ctxt ctxt;
         memset(&ctxt, 0, sizeof(ctxt));
         ctxt.op = BLE_GATT_ACCESS_OP_WRITE_CHR;
-        ctxt.chr.chr = chr->def;
+        ctxt.chr = chr->def;
         ctxt.om = &om;
 
         int rc = chr->access_cb(conn_handle, val_handle, &ctxt, chr->arg);
@@ -783,6 +783,22 @@ int esp_nimble_sim_subscribe(uint16_t conn_handle, uint16_t val_handle, bool not
         s_ble_state.adv_cb(&ev, s_ble_state.adv_cb_arg);
     }
     return 0;
+}
+
+int ble_hs_id_copy_addr(uint8_t id_addr_type, uint8_t *out_id_addr, int *out_is_nrpa) {
+    (void)id_addr_type;
+    if (out_id_addr) {
+        memset(out_id_addr, 0x11, 6);
+    }
+    if (out_is_nrpa) {
+        *out_is_nrpa = 0;
+    }
+    return 0;
+}
+
+void ble_store_util_status_rr(void *event, void *arg) {
+    (void)event;
+    (void)arg;
 }
 
 void esp_nimble_sim_reset(void) {

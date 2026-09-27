@@ -38,6 +38,8 @@ struct ble_hs_cfg {
     ble_gatt_register_fn *gatts_register_cb;
     void *gatts_register_arg;
     void *store_status_cb;
+    uint8_t sm_io_cap;
+    uint8_t sm_sc;
 };
 
 extern struct ble_hs_cfg ble_hs_cfg;
@@ -47,6 +49,8 @@ int ble_hs_is_enabled(void);
 int ble_hs_mbuf_to_flat(const struct os_mbuf *om, void *flat, uint16_t max_len, uint16_t *out_len);
 struct os_mbuf *ble_hs_mbuf_from_flat(const void *buf, uint16_t len);
 int ble_hs_id_infer_auto(int privacy, uint8_t *out_own_addr_type);
+int ble_hs_id_copy_addr(uint8_t id_addr_type, uint8_t *out_id_addr, int *out_is_nrpa);
+void ble_store_util_status_rr(void *event, void *arg);
 int ble_hs_util_ensure_addr(int prefer_random);
 
 /* UniSim 仿真与前端交互导出类型 */
