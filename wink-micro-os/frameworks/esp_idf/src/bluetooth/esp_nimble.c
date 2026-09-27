@@ -463,6 +463,15 @@ int ble_gatts_notify_custom(uint16_t conn_handle, uint16_t val_handle, struct os
     if (s_ble_state.notify_hook && om) {
         s_ble_state.notify_hook(conn_handle, val_handle, om->om_databuf, om->om_len);
     }
+#if defined(__EMSCRIPTEN__)
+    if (om) {
+        EM_ASM({
+            if (typeof globalThis !== 'undefined' && typeof globalThis.__wink_ble_notify_hook === 'function') {
+                globalThis.__wink_ble_notify_hook($0, $1, $2, $3);
+            }
+        }, conn_handle, val_handle, om->om_databuf, om->om_len);
+    }
+#endif
     return 0;
 }
 
@@ -597,6 +606,17 @@ int esp_nimble_sim_get_char_info(uint8_t svc_index, uint8_t chr_index, sim_ble_c
         }
     }
     return BLE_HS_EINVAL;
+}
+
+int esp_nimble_sim_is_advertising(void) {
+    return s_ble_state.is_advertising ? 1 : 0;
+}
+
+int esp_nimble_sim_get_device_name(char *out_buf, size_t max_len) {
+    if (!out_buf || max_len == 0) return BLE_HS_EINVAL;
+    strncpy(out_buf, s_ble_state.device_name, max_len - 1);
+    out_buf[max_len - 1] = '\0';
+    return 0;
 }
 
 int esp_nimble_sim_connect(void) {

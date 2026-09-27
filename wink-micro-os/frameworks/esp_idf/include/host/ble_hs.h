@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: LGPL-3.0-only */
 #pragma once
 #include <stdint.h>
+#include <stddef.h>
 #include <stdbool.h>
 #include "esp_err.h"
 #include "os/os_mbuf.h"
@@ -75,6 +76,8 @@ WINK_SIM_EXPORT int esp_nimble_sim_get_char_count(uint8_t svc_index);
 WINK_SIM_EXPORT int esp_nimble_sim_get_char_info(uint8_t svc_index, uint8_t chr_index, sim_ble_chr_info_t *out_info);
 
 /* UniSim 测试与操作注入 API */
+WINK_SIM_EXPORT int esp_nimble_sim_is_advertising(void);
+WINK_SIM_EXPORT int esp_nimble_sim_get_device_name(char *out_buf, size_t max_len);
 WINK_SIM_EXPORT int esp_nimble_sim_connect(void);
 WINK_SIM_EXPORT int esp_nimble_sim_disconnect(void);
 WINK_SIM_EXPORT int esp_nimble_sim_read_chr(uint16_t conn_handle, uint16_t val_handle, void *out_buf, uint16_t max_len, uint16_t *out_len);

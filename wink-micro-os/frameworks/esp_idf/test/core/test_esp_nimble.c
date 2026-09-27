@@ -408,6 +408,8 @@ static void test_ble_invalid_handle_defense(void) {
 
 /* ── TC-BLE-14: 仿真符号导出保全（Wasm DCE） ─────────────────────────────────── */
 static void test_ble_sim_export_symbols_callable(void) {
+    TEST_ASSERT_NOT_NULL(esp_nimble_sim_is_advertising);
+    TEST_ASSERT_NOT_NULL(esp_nimble_sim_get_device_name);
     TEST_ASSERT_NOT_NULL(esp_nimble_sim_connect);
     TEST_ASSERT_NOT_NULL(esp_nimble_sim_disconnect);
     TEST_ASSERT_NOT_NULL(esp_nimble_sim_read_chr);
@@ -568,6 +570,8 @@ static void test_ble_unisim_tree_discovery(void) {
     };
     ble_gatts_add_svcs(svcs);
 
+    TEST_ASSERT_EQUAL(20, sizeof(sim_ble_service_info_t));
+    TEST_ASSERT_EQUAL(26, sizeof(sim_ble_chr_info_t));
     TEST_ASSERT_EQUAL(1, esp_nimble_sim_get_service_count());
 
     sim_ble_service_info_t sinfo;
@@ -598,6 +602,33 @@ static void test_ble_unisim_tree_discovery(void) {
     TEST_ASSERT_EQUAL_HEX16(0x2a38, c2_uuid);
 }
 
+/* ── TC-BLE-19: UniSim 自省扩展（广播状态与设备名称读取） ─────────────────── */
+static void test_ble_sim_introspection_adv_and_name(void) {
+    nimble_port_init();
+    ble_hs_init();
+
+    TEST_ASSERT_EQUAL(0, esp_nimble_sim_is_advertising());
+
+    ble_svc_gap_device_name_set("my-test-ble");
+    char name_buf[64] = {0};
+    TEST_ASSERT_EQUAL(0, esp_nimble_sim_get_device_name(name_buf, sizeof(name_buf)));
+    TEST_ASSERT_EQUAL_STRING("my-test-ble", name_buf);
+
+    /* Test null / zero buffer defense */
+    TEST_ASSERT_EQUAL(BLE_HS_EINVAL, esp_nimble_sim_get_device_name(NULL, 10));
+    TEST_ASSERT_EQUAL(BLE_HS_EINVAL, esp_nimble_sim_get_device_name(name_buf, 0));
+
+    /* Start advertising */
+    struct ble_gap_adv_params adv_params;
+    memset(&adv_params, 0, sizeof(adv_params));
+    ble_gap_adv_start(0, NULL, -1, &adv_params, NULL, NULL);
+    TEST_ASSERT_EQUAL(1, esp_nimble_sim_is_advertising());
+
+    /* Stop advertising */
+    ble_gap_adv_stop();
+    TEST_ASSERT_EQUAL(0, esp_nimble_sim_is_advertising());
+}
+
 /* ── Main Runner ───────────────────────────────────────────────────────────── */
 int main(void) {
     UNITY_BEGIN();
@@ -620,6 +651,7 @@ int main(void) {
     RUN_TEST(test_ble_gap_event_subscribe_bidirectional);
     RUN_TEST(test_ble_gatts_notify_custom);
     RUN_TEST(test_ble_unisim_tree_discovery);
+    RUN_TEST(test_ble_sim_introspection_adv_and_name);
 
     return UNITY_END();
 }
