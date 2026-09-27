@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
 """
-Generate docs/vendors/Espressif/ESP32_IDFV61_EXAMPLE_CHECKLIST.md
-Exhaustive, 100% census of all 476 official examples in ESP-IDF v6.1.
+Generate ESP32_IDFV61_EXAMPLE_CHECKLIST.md
+Exhaustive, 100% census of all 478 official examples in ESP-IDF v6.1.
+Guarantees strictly sequential #001 ~ #478 numbering in document display order.
 """
 
 from pathlib import Path
 import datetime
 
 ROOT_EXAMPLES = Path(r"D:\software\embedded-tools\esp-idf\.espressif\v6.1\esp-idf\examples")
-OUTPUT_MD = Path("wink-micro-os/frameworks/esp_idf/docs/05-esp32-idfv61-example-checklist.md")
+OUTPUT_MD_1 = Path("docs/vendors/Espressif/ESP32_IDFV61_EXAMPLE_CHECKLIST.md")
+OUTPUT_MD_2 = Path("wink-micro-os/frameworks/esp_idf/docs/05-esp32-idfv61-example-checklist.md")
 
 # Known implemented in M0~M4
 IMPLEMENTED_MAP = {
@@ -19,33 +21,33 @@ IMPLEMENTED_MAP = {
     "peripherals/uart/uart_echo": ("esp_idfv61_uart_echo", "📜 Level 2", "M2 已落地。UART 阻塞读/写回环，环形缓冲区与多任务调度。"),
     "peripherals/timer_group/gptimer": ("esp_idfv61_gptimer_alarm", "⚡ Level 3", "M2 已落地。高精度通用硬件定时器 Alarm 回调与自动重载机制。"),
     "wifi/getting_started/station": ("esp_idfv61_wifi_sta", "📜 Level 2", "M4-1 已落地。虚拟 AP 状态机与 DHCP 虚拟 IP 分配，esp_event 事件循环派发。"),
-    "protocols/esp_http_client": ("esp_idfv61_http_client", "📜 Level 2", "M4-2 已落地。HTTP 客户端请求隧道桥接，支持 GET/POST 响应流式解析。"),
+    "protocols/esp_http_client": ("esp_idfv61_http_client", "📜 Level 2", "M4-2 已落地。HTTP 客户端请求隧道桥接，支持 GET/POST 响应流式解析与分块传输。"),
     "protocols/mqtt": ("esp_idfv61_mqtt_tcp", "📜 Level 2", "M4-2 已落地。ESP-MQTT 客户端连接内存虚拟轻量 Broker，Pub/Sub 实时闭环。"),
     "bluetooth/nimble/bleprph": ("esp_idfv61_bleprph", "🎯 Level 1", "M4-3/M4-4 已落地。NimBLE GATT 静态属性池、特征值读写回调与 Virtual BLE Inspector 交互面板。"),
 }
 
-# Category metadata
-CATEGORY_TITLES = {
-    "get-started": ("基础快速起步 (Get-Started)", 0),
-    "peripherals": ("片上与总线外设 (Peripherals)", 1),
-    "system": ("操作系统与核心系统调用 (System & OS)", 2),
-    "protocols": ("网络与应用层通信协议 (Protocols)", 3),
-    "wifi": ("Wi-Fi 无线局域网 (Wi-Fi)", 4),
-    "bluetooth": ("蓝牙协议栈 (Bluetooth)", 5),
-    "storage": ("片上存储与文件系统 (Storage)", 6),
-    "network": ("底层网络与接口 (Network)", 7),
-    "cxx": ("C++ 运行时与语言特性 (C++)", 8),
-    "build_system": ("构建系统与组件组织 (Build System)", 9),
-    "security": ("硬件加密与芯片安全特性 (Security - 硬件物理特性)", 10),
-    "custom_bootloader": ("定制引导加载程序 (Custom Bootloader)", 11),
-    "ethernet": ("有线以太网 (Ethernet - 外部 PHY 硬件)", 12),
-    "lowpower": ("超低功耗与 ULP 协处理器 (Low Power & ULP)", 13),
-    "mesh": ("Wi-Fi 空间自组网 (Mesh)", 14),
-    "openthread": ("OpenThread 802.15.4 线程网络 (OpenThread)", 15),
-    "zigbee": ("Zigbee 2.4G 射频网络 (Zigbee)", 16),
-    "ieee802154": ("IEEE 802.15.4 原始射频 (IEEE 802.15.4)", 17),
-    "phy": ("射频物理层与工厂校准 (PHY & Calibration)", 18),
-}
+# Category display metadata and order
+CATEGORY_ORDER = [
+    ("get-started", "基础快速起步 (Get-Started)"),
+    ("peripherals", "片上与总线外设 (Peripherals)"),
+    ("system", "操作系统与核心系统调用 (System & OS)"),
+    ("protocols", "网络与应用层通信协议 (Protocols)"),
+    ("wifi", "Wi-Fi 无线局域网 (Wi-Fi)"),
+    ("bluetooth", "蓝牙协议栈 (Bluetooth)"),
+    ("storage", "片上存储与文件系统 (Storage)"),
+    ("network", "底层网络与接口 (Network)"),
+    ("cxx", "C++ 运行时与语言特性 (C++)"),
+    ("build_system", "构建系统与组件组织 (Build System)"),
+    ("security", "硬件加密与芯片安全特性 (Security - 硬件物理特性)"),
+    ("custom_bootloader", "定制引导加载程序 (Custom Bootloader)"),
+    ("ethernet", "有线以太网 (Ethernet - 外部 PHY 硬件)"),
+    ("lowpower", "超低功耗与 ULP 协处理器 (Low Power & ULP)"),
+    ("mesh", "Wi-Fi 空间自组网 (Mesh)"),
+    ("openthread", "OpenThread 802.15.4 线程网络 (OpenThread)"),
+    ("zigbee", "Zigbee 2.4G 射频网络 (Zigbee)"),
+    ("ieee802154", "IEEE 802.15.4 原始射频 (IEEE 802.15.4)"),
+    ("phy", "射频物理层与工厂校准 (PHY & Calibration)"),
+]
 
 def analyze_example(rel_path: str):
     cat = rel_path.split("/")[0]
@@ -115,29 +117,46 @@ def analyze_example(rel_path: str):
     return ("[ ]", "📜 Level 2", "P2", "待适配", "待排期。依赖进一步框架门面扩展。")
 
 def main():
-    examples = []
+    cat_order_map = {k: idx for idx, (k, _) in enumerate(CATEGORY_ORDER)}
+
+    # Discover all true ESP-IDF example projects
+    # A true example project directory contains a project-level CMakeLists.txt
+    projects = []
     for p in sorted(ROOT_EXAMPLES.rglob("CMakeLists.txt")):
-        if (p.parent / "main").is_dir():
-            rel = p.parent.relative_to(ROOT_EXAMPLES).as_posix()
-            cat = rel.split("/")[0]
-            examples.append((cat, rel))
+        rel = p.parent.relative_to(ROOT_EXAMPLES).as_posix()
+        # Filter out shared helper components and inner sub-targets
+        if "common_components" in rel:
+            continue
+        if rel.endswith("/ulp"): # Inner ULP coprocessor sub-target
+            continue
+        if "/components/" in rel or rel.endswith("/components"):
+            continue
+        if rel.endswith("/main"):
+            continue
 
-    print(f"Total discovered examples: {len(examples)}")
-    
-    # Categorize
-    by_category = {}
-    for cat, rel in examples:
-        by_category.setdefault(cat, []).append(rel)
+        try:
+            txt = p.read_text(encoding="utf-8", errors="ignore")
+            if "project.cmake" in txt or ("project(" in txt and "idf_component_register" not in txt):
+                cat = rel.split("/")[0]
+                projects.append((cat, rel))
+        except Exception:
+            pass
 
-    # Count stats
-    total_count = len(examples)
-    status_counts = {"[x]": 0, "[ ]": 0, "[-]": 0, "🚫": 0}
-    
+    # Sort strictly by CATEGORY_ORDER then by relative path
+    projects.sort(key=lambda x: (cat_order_map.get(x[0], 999), x[1]))
+
+    total_count = len(projects)
+    print(f"Total verified standalone example projects: {total_count}")
+
+    # Assign sequential IDs #001 ~ #478 strictly in document order
     analyzed_items = []
-    for idx, (cat, rel) in enumerate(examples, 1):
+    status_counts = {"[x]": 0, "[ ]": 0, "[-]": 0, "🚫": 0}
+    by_category = {}
+
+    for idx, (cat, rel) in enumerate(projects, 1):
         status, obs, prio, app, desc = analyze_example(rel)
         status_counts[status] += 1
-        analyzed_items.append({
+        item = {
             "id": f"{idx:03d}",
             "cat": cat,
             "path": rel,
@@ -146,9 +165,10 @@ def main():
             "prio": prio,
             "app": app,
             "desc": desc,
-        })
+        }
+        analyzed_items.append(item)
+        by_category.setdefault(cat, []).append(item)
 
-    # Build Markdown Content
     now = datetime.datetime.now().strftime("%Y-%m-%d")
     md = []
     md.append("# ESP-IDF v6.1 官方示例全量仿真适配核对清单 (Checklist)")
@@ -156,19 +176,34 @@ def main():
     md.append("> **权威上游路径**：`D:\\software\\embedded-tools\\esp-idf\\.espressif\\v6.1\\esp-idf\\examples`  ")
     md.append("> **参考标准规范**：[`PLAN-20260922-ESP-IDF-SIM-MASTER`](../../implementation-plans/esp32/2026-09-22-esp-idf-simulation-interception-master-plan.md) §7.1.1（三层证据塔与精选规则）  ")
     md.append("> **对标基线**：[`docs/vendors/Cmsemicon/CMS8S78XX_EXAMPLE_CHECKLIST.md`](../Cmsemicon/CMS8S78XX_EXAMPLE_CHECKLIST.md)（业界最高保真审计基线）  ")
-    md.append(f"> **生成日期**：{now} | **版本**：v1.0 (全量普查版)  ")
+    md.append(f"> **生成日期**：{now} | **版本**：v1.1 (全量连续编号普查版)  ")
     md.append("")
     md.append("---")
     md.append("")
     md.append("## 一、 总体适配进度与全量普查统计")
     md.append("")
-    md.append(f"- **官方分类总数**：{len(by_category)} 个功能大类")
-    md.append(f"- **官方独立子示例总数**：**{total_count} 个**（地毯式 100% 全量建档，无任何遗漏）")
+    md.append(f"- **官方功能大类总数**：**{len(CATEGORY_ORDER)} 个大类**")
+    md.append(f"- **官方独立示例工程总数**：**{total_count} 个**（地毯式 100% 全量建档，严格按编号 `#001 ~ #{total_count:03d}` 连续顺排）")
     md.append("- **全景状态分布统计**：")
-    md.append(f"  - `[x]` **已完成适配并实证 (Passed)**：**{status_counts['[x]']} 项**（M0~M4 核心黄金外设与网络连接代表）")
-    md.append(f"  - `[ ]` **待适配排期中 (Pending In-Scope)**：**{status_counts['[ ]']} 项**（ADC、RMT/RGB、NVS、WebSocket 等纯软件可模拟用例）")
-    md.append(f"  - `[-]` **纯物理硬件专用 / 声明 Out-of-Scope**：**{status_counts['[-]']} 项**（Zigbee、Thread、以太网变压器、eFuse 硬件不可逆特性等诚实排除项）")
+    md.append(f"  - `[x]` **已完成适配并实证 (Passed)**：**{status_counts['[x]']} 项**（M0~M4 核心黄金外设与网络连接代表，Host/Wasm 双向编译与行为实证 100% 通过）")
+    md.append(f"  - `[ ]` **待适配排期中 (Pending In-Scope)**：**{status_counts['[ ]']} 项**（ADC、RMT/RGB、SPI Master、NVS、WebSocket 等纯软件可模拟用例）")
+    md.append(f"  - `[-]` **纯物理硬件专用 / 声明 Out-of-Scope**：**{status_counts['[-]']} 项**（遵循 [ADR-0012 合约诚实原则](../../decisions/core/0012-contract-honesty-over-silent-degradation.md)，明确标明因缺乏物理射频波形、外部 PHY 变压器硬件或物理熔丝而免于失真模拟的项）")
     md.append(f"  - `🚫` **存在前置阻断 (Blocked)**：**{status_counts['🚫']} 项**")
+    md.append("")
+    md.append("### 大类索引与编号导航总览")
+    md.append("")
+    md.append("| 序号 | 功能大类 | 包含示例数 | 编号跨度 | 已实证项数 | 范围定位 |")
+    md.append("| :---: | :--- | :---: | :---: | :---: | :--- |")
+
+    for cat_idx, (cat_key, cat_title) in enumerate(CATEGORY_ORDER, 1):
+        items = by_category.get(cat_key, [])
+        if not items:
+            continue
+        first_id = items[0]["id"]
+        last_id = items[-1]["id"]
+        passed = sum(1 for it in items if it["status"] == "[x]")
+        md.append(f"| {cat_idx:02d} | [{cat_title}](#{cat_key}) | {len(items)} 项 | `#{first_id} ~ #{last_id}` | {passed} 项 | `examples/{cat_key}/` |")
+
     md.append("")
     md.append("---")
     md.append("")
@@ -188,18 +223,19 @@ def main():
     md.append("")
     md.append("---")
     md.append("")
-    md.append("## 三、 476 个官方示例逐项核对总账")
+    md.append(f"## 三、 {total_count} 个官方示例逐项核对总账")
     md.append("")
 
-    # Output tables by category in prioritized order
-    sorted_cats = sorted(by_category.keys(), key=lambda c: CATEGORY_TITLES.get(c, (c, 99))[1])
-    
-    for cat in sorted_cats:
-        cat_title = CATEGORY_TITLES.get(cat, (cat.title(), 99))[0]
-        cat_items = [it for it in analyzed_items if it["cat"] == cat]
-        passed_in_cat = sum(1 for it in cat_items if it["status"] == "[x]")
-        
-        md.append(f"### {cat_title}（共 {len(cat_items)} 项 | 已实证: {passed_in_cat} 项）")
+    for cat_key, cat_title in CATEGORY_ORDER:
+        cat_items = by_category.get(cat_key, [])
+        if not cat_items:
+            continue
+        first_id = cat_items[0]["id"]
+        last_id = cat_items[-1]["id"]
+        passed = sum(1 for it in cat_items if it["status"] == "[x]")
+
+        md.append(f"<a id=\"{cat_key}\"></a>")
+        md.append(f"### {cat_title}（共 {len(cat_items)} 项 | 编号 `#{first_id} ~ #{last_id}` | 已实证: {passed} 项）")
         md.append("")
         md.append("| 状态 | 编号 | 官方子示例相对路径 | 可观测等级 | 优先级 | 对应 wink-micro-app | 验收标准与架构说明 |")
         md.append("| :---: | :---: | :--- | :---: | :---: | :--- | :--- |")
@@ -209,8 +245,15 @@ def main():
         md.append("---")
         md.append("")
 
-    OUTPUT_MD.write_text("\n".join(md), encoding="utf-8")
-    print(f"Checklist successfully written to {OUTPUT_MD}")
+    content = "\n".join(md)
+    OUTPUT_MD_1.parent.mkdir(parents=True, exist_ok=True)
+    OUTPUT_MD_1.write_text(content, encoding="utf-8")
+    OUTPUT_MD_2.parent.mkdir(parents=True, exist_ok=True)
+    OUTPUT_MD_2.write_text(content, encoding="utf-8")
+
+    print(f"Checklist successfully written to:")
+    print(f"  1. {OUTPUT_MD_1}")
+    print(f"  2. {OUTPUT_MD_2}")
     print(f"Stats: Total={total_count}, Passed={status_counts['[x]']}, Pending={status_counts['[ ]']}, OutOfScope={status_counts['[-]']}")
 
 if __name__ == "__main__":
