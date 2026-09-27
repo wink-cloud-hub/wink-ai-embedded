@@ -1666,6 +1666,48 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     add_test(NAME test_esp_wifi COMMAND test_esp_wifi)
     set_tests_properties(test_esp_wifi PROPERTIES LABELS "esp_idf;core" TIMEOUT 60)
 
+    add_executable(test_esp_mqtt
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_mqtt.c
+        ${UNITY_DIR}/unity.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_mqtt PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/freertos
+        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
+    )
+    target_link_libraries(test_esp_mqtt PRIVATE wink_framework_esp_idf dal)
+    target_compile_options(test_esp_mqtt PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(test_esp_mqtt generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_mqtt)
+    add_test(NAME test_esp_mqtt COMMAND test_esp_mqtt)
+    set_tests_properties(test_esp_mqtt PROPERTIES LABELS "esp_idf;core" TIMEOUT 60)
+
+    add_executable(test_esp_http_client
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_http_client.c
+        ${UNITY_DIR}/unity.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_http_client PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/freertos
+        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
+    )
+    target_link_libraries(test_esp_http_client PRIVATE wink_framework_esp_idf dal)
+    target_compile_options(test_esp_http_client PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(test_esp_http_client generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_http_client)
+    add_test(NAME test_esp_http_client COMMAND test_esp_http_client)
+    set_tests_properties(test_esp_http_client PROPERTIES LABELS "esp_idf;core" TIMEOUT 60)
+
     # 3. Tier-A Official corpus (OBJECT libraries: compile-only, no main link)
     add_library(esp_idf_corpus_blink_obj OBJECT
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/blink/blink_example_main.c
@@ -1742,6 +1784,44 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
         COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target esp_idf_corpus_wifi_sta_obj
     )
     set_tests_properties(esp_idf_corpus_wifi_sta PROPERTIES LABELS "esp_idf_corpus;tier_a")
+
+    add_library(esp_idf_corpus_mqtt_tcp_obj OBJECT
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/mqtt_tcp/app_main.c
+    )
+    target_include_directories(esp_idf_corpus_mqtt_tcp_obj BEFORE PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/mqtt_tcp/include
+    )
+    target_link_libraries(esp_idf_corpus_mqtt_tcp_obj PRIVATE
+        wink_framework_esp_idf
+    )
+    target_compile_options(esp_idf_corpus_mqtt_tcp_obj PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(esp_idf_corpus_mqtt_tcp_obj generate_config)
+    endif()
+
+    add_test(NAME esp_idf_corpus_mqtt_tcp
+        COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target esp_idf_corpus_mqtt_tcp_obj
+    )
+    set_tests_properties(esp_idf_corpus_mqtt_tcp PROPERTIES LABELS "esp_idf_corpus;tier_a")
+
+    add_library(esp_idf_corpus_http_client_obj OBJECT
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/http_client/esp_http_client_example.c
+    )
+    target_include_directories(esp_idf_corpus_http_client_obj BEFORE PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/http_client/include
+    )
+    target_link_libraries(esp_idf_corpus_http_client_obj PRIVATE
+        wink_framework_esp_idf
+    )
+    target_compile_options(esp_idf_corpus_http_client_obj PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(esp_idf_corpus_http_client_obj generate_config)
+    endif()
+
+    add_test(NAME esp_idf_corpus_http_client
+        COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target esp_idf_corpus_http_client_obj
+    )
+    set_tests_properties(esp_idf_corpus_http_client PROPERTIES LABELS "esp_idf_corpus;tier_a")
 
     # Tier-B Legacy I2C upstream corpus (OBJECT library: compile-only, no main link)
     add_library(esp_idf_corpus_legacy_i2c_obj OBJECT
@@ -1854,6 +1934,20 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     add_esp_idf_wasm_compile_check(corpus_wifi_sta
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/wifi_sta/station_example_main.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/wifi_sta/include
+    )
+    add_esp_idf_wasm_compile_check(test_esp_mqtt
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_mqtt.c
+    )
+    add_esp_idf_wasm_compile_check(test_esp_http_client
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_http_client.c
+    )
+    add_esp_idf_wasm_compile_check(corpus_mqtt_tcp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/mqtt_tcp/app_main.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/mqtt_tcp/include
+    )
+    add_esp_idf_wasm_compile_check(corpus_http_client
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/http_client/esp_http_client_example.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/http_client/include
     )
 
     # ── esp_idfv61 vendor behavior suite (master plan §7.1.1, L2) ─────────────
