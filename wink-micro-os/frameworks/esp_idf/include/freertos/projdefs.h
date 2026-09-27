@@ -4,8 +4,7 @@
 
 #include <stdint.h>
 
-typedef int32_t BaseType_t;
-typedef uint32_t UBaseType_t;
+#include "freertos/portmacro.h"
 
 #define pdTRUE          ((BaseType_t) 1)
 #define pdFALSE         ((BaseType_t) 0)

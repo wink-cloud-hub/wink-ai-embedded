@@ -163,6 +163,9 @@ esp_err_t ledc_set_fade_with_step(ledc_mode_t speed_mode, ledc_channel_t channel
 
 esp_err_t ledc_fade_start(ledc_mode_t speed_mode, ledc_channel_t channel, ledc_fade_mode_t fade_mode) {
     (void)fade_mode;
+    if (!s_fade_installed) {
+        return ESP_ERR_INVALID_STATE;
+    }
     if (channel >= SOC_LEDC_CHANNEL_NUM || !s_channels[channel].configured) {
         return ESP_ERR_INVALID_ARG;
     }

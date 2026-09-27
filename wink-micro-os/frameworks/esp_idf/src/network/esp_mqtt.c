@@ -564,6 +564,11 @@ int esp_mqtt_sim_get_last_published(char *out_topic, size_t topic_max, char *out
     return s_last_data_len;
 }
 
+int esp_mqtt_sim_get_last_msg_id(void) {
+    return s_last_msg_id;
+}
+
 void esp_mqtt_sim_set_publish_hook(esp_mqtt_sim_publish_hook_t hook) {
     s_publish_hook = hook;
 }
+

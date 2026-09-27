@@ -121,6 +121,7 @@ WINK_SIM_EXPORT bool esp_mqtt_sim_is_connected(esp_mqtt_client_handle_t client);
 WINK_SIM_EXPORT void esp_mqtt_sim_set_network_ready(bool ready);
 WINK_SIM_EXPORT int esp_mqtt_sim_inject_message(const char *topic, const char *data, int data_len);
 WINK_SIM_EXPORT int esp_mqtt_sim_get_last_published(char *out_topic, size_t topic_max, char *out_data, size_t data_max);
+WINK_SIM_EXPORT int esp_mqtt_sim_get_last_msg_id(void);
 WINK_SIM_EXPORT void esp_mqtt_sim_set_publish_hook(esp_mqtt_sim_publish_hook_t hook);
 
 #ifdef __cplusplus
