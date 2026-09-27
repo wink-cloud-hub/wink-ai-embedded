@@ -1,8 +1,8 @@
 # ESP-IDF 仿真拦截层 Include 闭包追踪清单 (03-include-closure-inventory)
 
-> **版本**：v1.4  
-> **适用里程碑**：M1 → M4-1（v6.1 收割闭包 + S3/C3/C6 SoC 矩阵 + M4-1 Wi-Fi/Event 闭包）  
-> **设计依据**：Task M1-1 编译驱动增量 include 闭包策略；`PLAN-20260925-SDK-HARVESTER-ENGINE v2.13`；`2026-09-27-esp-idf-sim-m4-1-wifi-event-plan`
+> **版本**：v1.5  
+> **适用里程碑**：M1 → M4-2（v6.1 收割闭包 + S3/C3/C6 SoC 矩阵 + M4-1 Wi-Fi/Event 闭包 + M4-2 MQTT/HTTP 闭包）  
+> **设计依据**：Task M1-1 编译驱动增量 include 闭包策略；`PLAN-20260925-SDK-HARVESTER-ENGINE v2.13`；`2026-09-27-esp-idf-sim-m4-2-mqtt-http-plan`
 
 ---
 
@@ -163,6 +163,16 @@
 | `esp_wifi.h` | `esp_wifi` | STA 模式门面全集（init/start/connect/disconnect/get_mac 等）、扫描 API 桩声明、`WIFI_EVENT` 声明 | `channels.json: handwritten` |
 | `esp_netif_types.h` | `esp_netif` | `IP_EVENT` 声明、`esp_ip4_addr_t`、`IPSTR`/`IP2STR` 宏、`esp_netif_ip_info_t`、`ip_event_got_ip_t` | `channels.json: handwritten` |
 | `esp_netif.h` | `esp_netif` | `esp_netif_init`, `esp_netif_create_default_wifi_sta`, `esp_netif_get_ip_info` 声明 | `channels.json: handwritten` |
+
+---
+
+## 8. M4-2 MQTT 与 HTTP 客户端头文件闭包（ADR-0087）
+
+| 头文件路径 (相对于 include/ 目录) | 对应 ESP-IDF 组件 | 闭包职责与内容 | 通道登记 |
+|:---|:---|:---|:---|
+| `mqtt_client.h` | `esp-mqtt` | `esp_mqtt_client_handle_t`、`esp_mqtt_event_id_t`、嵌套配置结构体、标准客户端生命周期与发布/订阅、`WINK_SIM_EXPORT` 仿真接口（Mock Broker 消息注入/遥测探测/UniSim 推流钩子） | `channels.json: handwritten` |
+| `esp_http_client.h` | `esp_http_client` | `esp_http_client_handle_t`、方法/认证/传输枚举、`esp_http_client_config_t`、高阶 `perform` 与 Native 流式读取 API（`open`/`fetch_headers`/`read`/`close` 等）、仿真 Mock 响应注入 | `channels.json: handwritten` |
+
 
 
 

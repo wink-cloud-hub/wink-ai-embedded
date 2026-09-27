@@ -1,7 +1,7 @@
 # ESP-IDF 仿真拦截层 API 覆盖矩阵与降级登记簿 (02-api-coverage-matrix)
 
-> **版本**：v2.3  
-> **适用里程碑**：M2~M4-1 (外设与总线仿真拦截；多 SoC 矩阵；M4-1 Wi-Fi 基础与事件循环)  
+> **版本**：v2.4  
+> **适用里程碑**：M2~M4-2 (外设与总线仿真拦截；多 SoC 矩阵；M4-1 Wi-Fi 基础与事件循环；M4-2 MQTT 与 HTTP 通信代理)  
 > **收割口径**：v6.1@fff9895c vendored（`manifest.hash = 542eb37a5dc3604c`）
 
 ---
@@ -103,6 +103,25 @@
 | `nvs_erase_key` / `nvs_erase_all` / `nvs_open_from_partition` | `nvs.h` | ✅ 支持 | 句柄命名空间匹配擦除 | 精确支持单键擦除与空间批量擦除，支持从指定分区打开 |
 | `heap_caps_malloc` / `heap_caps_free` / `heap_caps_calloc` / `heap_caps_realloc` | `esp_heap_caps.h` | ✅ 支持 | 原生系统堆分配与静态簿记表 | Phase 3 零指针侵入，返回真实首地址，100% 兼容 libc `free()`；DMA 32 字节硬件边界对齐；SPIRAM 依芯片能力与配置诚实校验 |
 | `heap_caps_get_free_size` / `heap_caps_get_minimum_free_size` | `esp_heap_caps.h` | ✅ 支持 | 堆内存水位 SSOT 簿记 | 动态统计已分配字节与历史最低水位，与 `esp_get_free_heap_size()` 统一 |
+| `esp_wifi_init` / `start` / `stop` / `connect` / `disconnect` / `deinit` | `esp_wifi.h` | ✅ 支持 | Wi-Fi 6 态状态机与异步 100ms 协作任务 | 令牌机制彻底阻断幽灵事件；双 target 同源编译通过 |
+| `esp_wifi_get_mac` / `set_mac` / `set_config` / `get_config` | `esp_wifi.h` | ✅ 支持 | 虚拟 MAC 与 STA 配置深拷贝 | 默认分配虚拟 MAC `DE:AD:BE:EF:00:01` |
+| `esp_wifi_set_mode` | `esp_wifi.h` | ⚠️ 降级支持 | STA 模式支持 | **[降级登记 21]** 仅支持 STA 模式，AP/APSTA 模式 Fail-Loud 报错 |
+| `esp_wifi_scan_*` | `esp_wifi.h` | 🚫 未支持 | 无 | **[降级登记 22]** 仿真环境无真实 2.4GHz RF 扫描，Fail-Loud 报错 |
+| `esp_event_loop_create_default` / `delete_default` | `esp_event.h` | ✅ 支持 | 静态 16 槽事件处理池 | 默认系统事件循环 |
+| `esp_event_handler_register` / `unregister` | `esp_event.h` | ✅ 支持 | 静态 16 槽事件处理池 | 支持通配 base 与通配 id，支持快照派发 |
+| `esp_event_handler_instance_register` / `unregister` | `esp_event.h` | ✅ 支持 | 独立句柄反注册 | 支持自注销与安全隔离 |
+| `esp_event_post` | `esp_event.h` | ✅ 支持 | 同步快照派发器 | 防重入与防迭代器破坏 |
+| `esp_netif_init` / `esp_netif_create_default_wifi_sta` | `esp_netif.h` | ✅ 支持 | 虚拟 Netif 实例管理 | 单例 STA Netif 句柄 |
+| `esp_netif_get_ip_info` | `esp_netif.h` | ⚠️ 降级支持 | 静态虚拟 IP 地址池 | **[降级登记 23]** 固定分配 `192.168.4.2/24`，网关 `192.168.4.1` |
+| `esp_mqtt_client_init` / `start` / `stop` / `reconnect` / `disconnect` / `destroy` | `mqtt_client.h` | ✅ 支持 | 静态 2 客户端池与令牌协作任务 | 支持完整生命周期管理、连接状态机与异步 50ms 延时 |
+| `esp_mqtt_client_publish` / `subscribe` / `unsubscribe` | `mqtt_client.h` | ⚠️ 降级支持 | 内存 Mock Broker（8 主题槽位） | **[降级登记 24]** 支持精确与 `+`/`#` 通配符分发，隐式 strlen，派发 DATA 与发布端 PUBLISHED 事件 |
+| `esp_mqtt_client_register_event` | `mqtt_client.h` | ✅ 支持 | 客户端专用回调与全局事件总线 | 兼容 IDF v5/v6 事件注册范式 |
+| `esp_mqtt_sim_*` | `mqtt_client.h` | ✅ 支持 | Wasm 导出符号与 UniSim 推送钩子 | 支持测试消息注入、遥测探测与无轮询实时推流 |
+| `esp_http_client_init` / `perform` / `cleanup` | `esp_http_client.h` | ⚠️ 降级支持 | 静态 2 客户端实例池与 Mock 响应 | **[降级登记 25]** 模拟高阶请求，派发完整 HTTP 事件流，保证非空默认响应头 |
+| `esp_http_client_set_url` / `set_method` / `set_post_field` | `esp_http_client.h` | ✅ 支持 | URL 解析器与参数映射 | 支持 GET/POST/PUT/PATCH/DELETE/HEAD 等方法 |
+| `esp_http_client_set_header` / `get_header` / `delete_header` | `esp_http_client.h` | ✅ 支持 | 静态 8 请求头槽位映射表 | 零堆分配安全存储与检索 |
+| `esp_http_client_open` / `fetch_headers` / `read` / `read_response` / `write` / `close` | `esp_http_client.h` | ✅ 支持 | Native 流式底层流水线 | 官方流式语料核心依赖，支持分块读取 Mock 响应 |
+| `esp_http_client_sim_*` | `esp_http_client.h` | ✅ 支持 | 仿真 Mock 响应注入池 | 支持按实例精准隔离状态码与 Body 返回 |
 
 ---
 
@@ -233,6 +252,25 @@
 - **设计权衡**：为保证仿真回放完全确定性与零外部物理网络依赖。
 - **拦截层行为**：固定虚拟 MAC `DE:AD:BE:EF:00:01`；固定 IP `192.168.4.2/24`、网关 `192.168.4.1`；`esp_wifi_connect()` 派发异步 100ms 协作虚拟延时任务，通过令牌校验防幽灵事件，延时结束后顺序派发 `WIFI_EVENT_STA_CONNECTED` 与 `IP_EVENT_STA_GOT_IP`。
 
+### 降级条目 24：MQTT 静态轻量 Mock Broker 与单机自闭环
+- **受影响 API**：`esp_mqtt_client_init`, `esp_mqtt_client_publish`, `esp_mqtt_client_subscribe`, `esp_mqtt_client_unsubscribe`
+- **设计权衡**：浏览器 Wasm 严禁原生 Raw TCP Socket，且教学与离线 CI 管道无法假定公网外部 MQTT Broker 的可用性。
+- **拦截层行为**：
+  1. 纯静态零堆内存设计，最多支持 2 个客户端实例与 8 个订阅模式；
+  2. 实现单层通配符 `+` 与多层通配符 `#` 的无递归快速模式匹配；
+  3. 客户端发布消息时，自动分发至本进程所有匹配订阅者（派发 `MQTT_EVENT_DATA`），同时向发布者自身派发带相同 `msg_id` 的 `MQTT_EVENT_PUBLISHED`；
+  4. 支持 UniSim 实时推流钩子 `esp_mqtt_sim_set_publish_hook`，前端可视化面板免轮询推流。
+
+### 降级条目 25：HTTP 客户端静态门面与离线流式流水线
+- **受影响 API**：`esp_http_client_init`, `esp_http_client_perform`, `esp_http_client_open`, `esp_http_client_read`
+- **设计权衡**：仿真环境面向业务协议与控制层校验，不引入庞大的真实 TLS 密码学套件与外部公网 HTTP 握手。
+- **拦截层行为**：
+  1. 静态分配 2 个客户端与固定 8 槽位请求头表，杜绝运行时动态堆分配；
+  2. `perform` 完整模拟标准 HTTP 事件周期（Connected -> Header Sent -> On Header -> On Data -> On Finish -> Disconnected）；
+  3. Header 派发时注入安全的默认标准头（`Content-Type: text/plain`，`Content-Length`），严禁传空指针以杜绝应用崩溃；
+  4. 完整支持 Native 流式 API（`open` / `fetch_headers` / `read` / `close`）；
+  5. 提供 `esp_http_client_sim_set_response` 支持按实例定制注入 Mock 响应与状态码。
+
 ---
 
 ## 3. 官方语料验证集
@@ -244,6 +282,8 @@
 | `corpus_i2c_basic` | `examples/peripherals/i2c/i2c_basic/main/i2c_basic_example_main.c` | Modern I2C Master 总线/器件注册、Transmit/Receive 事务 | `OBJECT` compile-only 100% 通过；Wasm compile check 通过 |
 | `corpus_legacy_i2c` | `components/driver/test_apps/legacy_i2c_driver/main/test_i2c.c` | Legacy I2C 接口集（配置、命令链、时序、从机） | Tier-B stub 闭包 `OBJECT` compile-only 100% 通过；Wasm compile check 通过 |
 | `corpus_wifi_sta` | `examples/wifi/getting_started/station/main/station_example_main.c` | Wi-Fi Station 初始化、配置、事件循环与重连处理 | Tier-A `OBJECT` compile-only 100% 通过；Wasm compile check 通过 |
+| `corpus_mqtt_tcp` | `examples/protocols/mqtt/tcp/main/app_main.c` | MQTT 连接、事件循环、多 QoS 发布/订阅、通配符消费与错误处理 | Tier-A `OBJECT` compile-only 100% 通过；Wasm compile check 通过 |
+| `corpus_http_client` | `examples/protocols/esp_http_client/main/esp_http_client_example.c` | REST GET/POST/PUT/PATCH/DELETE/HEAD、Native 流式读取与自定义头 | Tier-A `OBJECT` compile-only 100% 通过；Wasm compile check 通过 |
 
 ---
 
@@ -284,4 +324,21 @@
 - **6 态 FSM 与防幽灵事件**：递增 `s_connect_token` 令牌机制彻底阻断中途取消、断开、析构后的倒挂 `GOT_IP` 事件。
 - **测试与语料**：17 个全新 Unity 单元测试 100% 通过；官方 `station_example_main.c` Tier-A `OBJECT` 库真实编译与 Wasm compile check 100% 通过。
 - **门禁全绿**：`ctest -L esp_idf` 50/50 零回归全绿；`check_harvested_headers.py` 0 error；`check_license_map.py` 通过；`winkcli lint` 无违规。
+
+---
+
+## 6. M4-2 验收快照（2026-09-27）
+
+### 6.1 覆盖范围与架构亮点
+
+- **手写 C-ABI 闭包（2 头文件）**：`mqtt_client.h` 与 `esp_http_client.h`，无修改兼容官方 ESP-IDF v6.1 MQTT/TCP 与 HTTP Client 官方示例语料。
+- **自闭环 Virtual Mock Broker**：纯内存态零堆分配静态 Mock Broker，支持单层通配符 `+` 与多层通配符 `#`，支持隐式 `strlen` 计算与 `MQTT_EVENT_PUBLISHED` 闭环派发。
+- **并发与防重入加固**：客户端结构体严格隔离 `tx_*` 与 `rx_*` 双缓冲区，应用在 `MQTT_EVENT_DATA` 回调中直接调用 `publish` 绝无内存与数据污染；递增 `s_mqtt_token` 令牌彻底阻断中途 stop 造成的幽灵任务事件。
+- **双轨 HTTP Client 流式栈**：支持高阶 `perform` 与底层流式 Native API（`open`/`fetch_headers`/`read`/`write`/`close`），预置安全合法 Header 严防空指针崩溃。
+- **Wasm 符号保全与 UniSim 钩子**：所有测试与仿真拓展 API 均使用 `WINK_SIM_EXPORT` 修饰，前端支持通过 `esp_mqtt_sim_set_publish_hook` 实时消费遥测数据。
+- **测试与门禁全绿**：
+  - 16 项 MQTT 单元测试 + 11 项 HTTP 单元测试 = 27 项全新用例 100% PASS；
+  - `ctest -L esp_idf` 全量 60/60 测试（52 项原有 + 8 项新增）100% 零回归通过；
+  - `check_harvested_headers.py` 0 error；`check_license_map.py` 满意通过；`esp_idf_lint_isolation` 100% 通过。
+
 
