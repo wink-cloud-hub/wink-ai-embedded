@@ -20,10 +20,11 @@
 | M3 SoC 矩阵扩展与语料 CI | M3 | ✅ 已完成 (v2.3 M3-1~M3-3 全量交付验收) | [2026-09-26-esp-idf-sim-m3-soc-ci-plan.md](./2026-09-26-esp-idf-sim-m3-soc-ci-plan.md) |
 | Phase 2 并发安全、忙等自愈与静态构造 | P2 | ✅ 已完成 (v1.0 45/45 测试与架构加固闭环) | [2026-09-26-esp-idf-sim-phase2-plan.md](./2026-09-26-esp-idf-sim-phase2-plan.md) |
 | Phase 3 虚拟中断、NVS沙箱与堆能力 | P3 | ✅ 已完成 (v1.0 48/48 测试全绿与架构治理闭环) | [2026-09-27-esp-idf-sim-phase3-plan.md](./2026-09-27-esp-idf-sim-phase3-plan.md) |
-| M4 Wi-Fi/BLE 连接性（远期演进） | M4 | 📋 规划草案 (v1.0 架构与路线图已锚定) | [2026-09-27-esp-idf-sim-m4-wifi-ble-connectivity-roadmap.md](./2026-09-27-esp-idf-sim-m4-wifi-ble-connectivity-roadmap.md) |
+| M4 Wi-Fi/BLE 连接性（演进路线图） | M4 | 🔄 执行中 (v2.0 M4-1~M4-3 已交付，M4-4 推进中) | [2026-09-27-esp-idf-sim-m4-wifi-ble-connectivity-roadmap.md](./2026-09-27-esp-idf-sim-m4-wifi-ble-connectivity-roadmap.md) |
 | M4-1 Wi-Fi 基础连接状态机与 esp_event 事件循环 | M4-1 | ✅ 已完成 (v1.2 50/50 测试全绿与语料验收闭环) | [2026-09-27-esp-idf-sim-m4-1-wifi-event-plan.md](./2026-09-27-esp-idf-sim-m4-1-wifi-event-plan.md) |
 | M4-2 MQTT 与 HTTP 通信代理与自闭环 | M4-2 | ✅ 已完成 (v1.2 60/60 测试全绿与语料验收闭环) | [2026-09-27-esp-idf-sim-m4-2-mqtt-http-plan.md](./2026-09-27-esp-idf-sim-m4-2-mqtt-http-plan.md) |
 | M4-3 NimBLE 虚拟 GATT 服务与特征值抽象 | M4-3 | ✅ 已完成 (v1.2 65/65 测试全绿与语料验收闭环) | [2026-09-27-esp-idf-sim-m4-3-nimble-gatt-plan.md](./2026-09-27-esp-idf-sim-m4-3-nimble-gatt-plan.md) |
+| M4-4 UniSim Web 交互式虚拟蓝牙调试面板 | M4-4 | 🔄 推进中 (v1.0 计划草案编制就绪) | [2026-09-27-esp-idf-sim-m4-4-unisim-ble-inspector-plan.md](./2026-09-27-esp-idf-sim-m4-4-unisim-ble-inspector-plan.md) |
 
 ## 相关架构规范与决策
 
