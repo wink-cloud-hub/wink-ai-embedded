@@ -23,7 +23,7 @@
 | M4 Wi-Fi/BLE 连接性（远期演进） | M4 | 📋 规划草案 (v1.0 架构与路线图已锚定) | [2026-09-27-esp-idf-sim-m4-wifi-ble-connectivity-roadmap.md](./2026-09-27-esp-idf-sim-m4-wifi-ble-connectivity-roadmap.md) |
 | M4-1 Wi-Fi 基础连接状态机与 esp_event 事件循环 | M4-1 | ✅ 已完成 (v1.2 50/50 测试全绿与语料验收闭环) | [2026-09-27-esp-idf-sim-m4-1-wifi-event-plan.md](./2026-09-27-esp-idf-sim-m4-1-wifi-event-plan.md) |
 | M4-2 MQTT 与 HTTP 通信代理与自闭环 | M4-2 | ✅ 已完成 (v1.2 60/60 测试全绿与语料验收闭环) | [2026-09-27-esp-idf-sim-m4-2-mqtt-http-plan.md](./2026-09-27-esp-idf-sim-m4-2-mqtt-http-plan.md) |
-| M4-3 NimBLE 虚拟 GATT 服务与特征值抽象 | M4-3 | 📋 就绪待评审 (v1.0 设计与测试规约已锚定) | [2026-09-27-esp-idf-sim-m4-3-nimble-gatt-plan.md](./2026-09-27-esp-idf-sim-m4-3-nimble-gatt-plan.md) |
+| M4-3 NimBLE 虚拟 GATT 服务与特征值抽象 | M4-3 | ✅ 已完成 (v1.2 65/65 测试全绿与语料验收闭环) | [2026-09-27-esp-idf-sim-m4-3-nimble-gatt-plan.md](./2026-09-27-esp-idf-sim-m4-3-nimble-gatt-plan.md) |
 
 ## 相关架构规范与决策
 

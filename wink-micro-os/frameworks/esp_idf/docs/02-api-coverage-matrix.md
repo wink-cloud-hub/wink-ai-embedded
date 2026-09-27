@@ -1,7 +1,7 @@
 # ESP-IDF 仿真拦截层 API 覆盖矩阵与降级登记簿 (02-api-coverage-matrix)
 
-> **版本**：v2.4  
-> **适用里程碑**：M2~M4-2 (外设与总线仿真拦截；多 SoC 矩阵；M4-1 Wi-Fi 基础与事件循环；M4-2 MQTT 与 HTTP 通信代理)  
+> **版本**：v2.5  
+> **适用里程碑**：M2~M4-3 (外设与总线仿真拦截；多 SoC 矩阵；M4-1 Wi-Fi 基础；M4-2 MQTT 与 HTTP；M4-3 NimBLE 虚拟 GATT 服务与特征值抽象)  
 > **收割口径**：v6.1@fff9895c vendored（`manifest.hash = 542eb37a5dc3604c`）
 
 ---
@@ -122,6 +122,17 @@
 | `esp_http_client_set_header` / `get_header` / `delete_header` | `esp_http_client.h` | ✅ 支持 | 静态 8 请求头槽位映射表 | 零堆分配安全存储与检索 |
 | `esp_http_client_open` / `fetch_headers` / `read` / `read_response` / `write` / `close` | `esp_http_client.h` | ✅ 支持 | Native 流式底层流水线 | 官方流式语料核心依赖，支持分块读取 Mock 响应 |
 | `esp_http_client_sim_*` | `esp_http_client.h` | ✅ 支持 | 仿真 Mock 响应注入池 | 支持按实例精准隔离状态码与 Body 返回 |
+| `nimble_port_init` / `deinit` / `run` / `stop` | `nimble/nimble_port.h` | ✅ 支持 | NimBLE Port 与协同调度脉冲 | 协同单次脉冲驱动 `sync_cb`，不阻塞 Wasm/Host 主线程 |
+| `nimble_port_freertos_init` / `deinit` | `nimble/nimble_port_freertos.h` | ✅ 支持 | FreeRTOS 任务绑定门面 | 支持直接触发 Host 任务函数 |
+| `ble_svc_gap_init` / `ble_svc_gap_device_name*` / `appearance*` | `services/gap/ble_svc_gap.h` | ✅ 支持 | GAP 设备信息与外观管理 | 静态存储设备名称与 16 位外观码 |
+| `ble_svc_gatt_init` | `services/gatt/ble_svc_gatt.h` | ✅ 支持 | GATT 基础服务初始化门面 | 零堆规范初始化 |
+| `ble_gatts_count_cfg` / `ble_gatts_add_svcs` / `ble_gatts_start` | `host/ble_gatt.h` | ✅ 支持 | 静态 8 服务 / 32 特征值 / 32 描述符池 | **[降级登记 26]** 超出静态容量 Fail-Loud 报错；单调自增句柄分配；驱动 `gatts_register_cb` |
+| `ble_gatts_chr_updated` / `ble_gatts_notify` / `notify_custom` | `host/ble_gatt.h` | ✅ 支持 | CCCD 订阅检测与主动推流 | 检测已订阅状态后通过 `notify_hook` 实时推流 |
+| `ble_gap_adv_start` / `stop` / `active` / `set_fields` / `rsp_set_fields` | `host/ble_gap.h` | ✅ 支持 | GAP 广播状态机与描述符管理 | 记录广播/响应字段，连接建立时自动停止广播 |
+| `ble_gap_conn_find` / `ble_gap_terminate` | `host/ble_gap.h` | ✅ 支持 | 单链路虚拟连接描述符 | 跟踪连接参数并支持主动断开 |
+| `ble_uuid_cmp` / `ble_uuid_to_str` / `ble_uuid_u16` | `host/ble_uuid.h` | ✅ 支持 | 16/32/128 位 UUID 与 Base UUID 映射 | 支持标准蓝牙 Base UUID 转换与比较 |
+| `os_mbuf_append` / `copydata` / `ble_hs_mbuf_*` | `os/os_mbuf.h` / `host/ble_hs.h` | ✅ 支持 | 零堆静态 mbuf 缓冲与安全解包 | 官方语料读写与解包标准支持 |
+| `esp_nimble_sim_*` | `host/ble_hs.h` | ✅ 支持 | UniSim 仿真控制与服务树动态发现 | 支持前端连接/断开注入、读写特征值、订阅与服务树枚举 |
 
 ---
 
@@ -271,6 +282,17 @@
   4. 完整支持 Native 流式 API（`open` / `fetch_headers` / `read` / `close`）；
   5. 提供 `esp_http_client_sim_set_response` 支持按实例定制注入 Mock 响应与状态码。
 
+### 降级条目 26：NimBLE 射频物理层旁路与单链路虚拟连接
+- **受影响 API**：`ble_gap_adv_start`, `ble_gap_adv_stop`, `esp_nimble_sim_connect`, `esp_nimble_sim_disconnect`
+- **设计权衡**：仿真环境无法也不应模拟 2.4GHz 空间跳频（FHSS）与 GFSK 调制解调。
+- **拦截层行为**：
+  1. 提供单链路虚拟连接与状态机（`conn_handle = 1`，协商 MTU = 256）；
+  2. 纯静态零堆预分配 GATT 注册池（最多 8 个 Service、32 个 Characteristic、32 个 Descriptor），超限时 Fail-Loud 报错；
+  3. `nimble_port_run()` 采用协同非阻塞脉冲，触发应用 `ble_hs_cfg.sync_cb()`，绝不独占主线程；
+  4. 外部仿真订阅时，向应用 GAP 回调派发 `BLE_GAP_EVENT_SUBSCRIBE`，支持应用定时器或传感器驱动；
+  5. 固件调用 `ble_gatts_chr_updated()` 或 `notify_custom()` 时，向 UniSim 导出钩子 `esp_nimble_sim_set_notify_hook` 实时推送最新数据；
+  6. 导出全套服务树枚举发现 API（`esp_nimble_sim_get_service_count/info`、`esp_nimble_sim_get_char_count/info`），彻底解除 UniSim 前端“失明”状态。
+
 ---
 
 ## 3. 官方语料验证集
@@ -283,7 +305,8 @@
 | `corpus_legacy_i2c` | `components/driver/test_apps/legacy_i2c_driver/main/test_i2c.c` | Legacy I2C 接口集（配置、命令链、时序、从机） | Tier-B stub 闭包 `OBJECT` compile-only 100% 通过；Wasm compile check 通过 |
 | `corpus_wifi_sta` | `examples/wifi/getting_started/station/main/station_example_main.c` | Wi-Fi Station 初始化、配置、事件循环与重连处理 | Tier-A `OBJECT` compile-only 100% 通过；Wasm compile check 通过 |
 | `corpus_mqtt_tcp` | `examples/protocols/mqtt/tcp/main/app_main.c` | MQTT 连接、事件循环、多 QoS 发布/订阅、通配符消费与错误处理 | Tier-A `OBJECT` compile-only 100% 通过；Wasm compile check 通过 |
-| `corpus_http_client` | `examples/protocols/esp_http_client/main/esp_http_client_example.c` | REST GET/POST/PUT/PATCH/DELETE/HEAD、Native 流式读取与自定义头 | Tier-A `OBJECT` compile-only 100% 通过；Wasm compile check 通过 |
+| `corpus_http_client` | `examples/protocols/esp_http_client/main/esp_http_client_example.c` | HTTP Client GET/POST、Redirect、流式读取与自定义 Header 注册 | Tier-A `OBJECT` compile-only 100% 通过；Wasm compile check 通过 |
+| `corpus_bleprph` | `examples/bluetooth/nimble/bleprph/main/main.c` & `gatt_svr.c` | NimBLE GAP 广播、GATT 心率/设备信息服务、CCCD 订阅与通知推送 | Tier-A `OBJECT` compile-only 100% 通过；Wasm compile check 通过 |
 
 ---
 
@@ -340,5 +363,22 @@
   - 16 项 MQTT 单元测试 + 11 项 HTTP 单元测试 = 27 项全新用例 100% PASS；
   - `ctest -L esp_idf` 全量 60/60 测试（52 项原有 + 8 项新增）100% 零回归通过；
   - `check_harvested_headers.py` 0 error；`check_license_map.py` 满意通过；`esp_idf_lint_isolation` 100% 通过。
+
+---
+
+## 7. M4-3 验收快照（2026-09-27）
+
+### 7.1 覆盖范围与架构亮点
+
+- **手写 C-ABI 闭包（9 头文件）**：`host/ble_hs.h`, `host/ble_uuid.h`, `host/ble_gap.h`, `host/ble_gatt.h`, `services/gap/ble_svc_gap.h`, `services/gatt/ble_svc_gatt.h`, `nimble/nimble_port.h`, `nimble/nimble_port_freertos.h`, `os/os_mbuf.h`，无修改兼容官方 ESP-IDF v6.1 `bleprph` 外设语料。
+- **零堆静态 GATT 注册池**：静态分配 8 个 Service、32 个 Characteristic、32 个 Descriptor 槽位，规范分配单调递增属性句柄；超限时 Fail-Loud 报错（ADR-0012/0045）。
+- **协同调度脉冲与非阻塞规约**：`nimble_port_run()` 负责驱动单次 Host 同步脉冲，触发应用 `ble_hs_cfg.sync_cb()`，不执行死循环，确保主线程不被独占。
+- **双向订阅与 Notify 推流**：仿真注入订阅时，不仅记录内部订阅状态，同时向应用派发 `BLE_GAP_EVENT_SUBSCRIBE`；固件调用 `chr_updated` 或 `notify_custom` 时向外部 `notify_hook` 实时推流。
+- **UniSim 服务树动态发现**：导出 `esp_nimble_sim_get_service_count/info` 与 `esp_nimble_sim_get_char_count/info`，彻底解除 UniSim 前端“失明”状态。
+- **测试与门禁全绿**：
+  - 18 项 NimBLE 单元测试 100% PASS（TC-BLE-01 ~ TC-BLE-18 全绿）；
+  - `ctest -L esp_idf` 全量 65/65 测试（60 项既有 + 5 项新增）100% 零回归全绿；
+  - `check_harvested_headers.py` 0 error；`check_license_map.py` satisfied；`winkcli lint` 无违规。
+
 
 

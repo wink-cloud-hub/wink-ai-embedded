@@ -1,8 +1,8 @@
 # ESP-IDF 仿真拦截层 Include 闭包追踪清单 (03-include-closure-inventory)
 
-> **版本**：v1.5  
-> **适用里程碑**：M1 → M4-2（v6.1 收割闭包 + S3/C3/C6 SoC 矩阵 + M4-1 Wi-Fi/Event 闭包 + M4-2 MQTT/HTTP 闭包）  
-> **设计依据**：Task M1-1 编译驱动增量 include 闭包策略；`PLAN-20260925-SDK-HARVESTER-ENGINE v2.13`；`2026-09-27-esp-idf-sim-m4-2-mqtt-http-plan`
+> **版本**：v1.6  
+> **适用里程碑**：M1 → M4-3（v6.1 收割闭包 + S3/C3/C6 SoC 矩阵 + M4-1 Wi-Fi/Event + M4-2 MQTT/HTTP + M4-3 NimBLE GATT 闭包）  
+> **设计依据**：Task M1-1 编译驱动增量 include 闭包策略；`PLAN-20260925-SDK-HARVESTER-ENGINE v2.13`；`2026-09-27-esp-idf-sim-m4-3-nimble-gatt-plan`
 
 ---
 
@@ -172,6 +172,23 @@
 |:---|:---|:---|:---|
 | `mqtt_client.h` | `esp-mqtt` | `esp_mqtt_client_handle_t`、`esp_mqtt_event_id_t`、嵌套配置结构体、标准客户端生命周期与发布/订阅、`WINK_SIM_EXPORT` 仿真接口（Mock Broker 消息注入/遥测探测/UniSim 推流钩子） | `channels.json: handwritten` |
 | `esp_http_client.h` | `esp_http_client` | `esp_http_client_handle_t`、方法/认证/传输枚举、`esp_http_client_config_t`、高阶 `perform` 与 Native 流式读取 API（`open`/`fetch_headers`/`read`/`close` 等）、仿真 Mock 响应注入 | `channels.json: handwritten` |
+
+---
+
+## 9. M4-3 NimBLE 蓝牙与 GATT 虚拟化头文件闭包（ADR-0087）
+
+| 头文件路径 (相对于 include/ 目录) | 对应 ESP-IDF 组件 | 闭包职责与内容 | 通道登记 |
+|:---|:---|:---|:---|
+| `host/ble_hs.h` | `nimble/host` | NimBLE Host 核心配置、错误码定义、UniSim 服务树动态发现与测试注入 API | `channels.json: handwritten` |
+| `host/ble_uuid.h` | `nimble/host` | 16/32/128 位 UUID 格式定义、INIT/DECLARE 宏、UUID 比较与格式化工具 | `channels.json: handwritten` |
+| `host/ble_gap.h` | `nimble/host` | GAP 广播、扫描响应、单链路虚拟连接描述符、GAP 事件定义与派发模型 | `channels.json: handwritten` |
+| `host/ble_gatt.h` | `nimble/host` | GATT 服务树、特征值声明、描述符声明、注册上下文与访问回调定义 | `channels.json: handwritten` |
+| `services/gap/ble_svc_gap.h` | `nimble/services` | GAP 设备名称与外观服务公开门面 | `channels.json: handwritten` |
+| `services/gatt/ble_svc_gatt.h` | `nimble/services` | GATT 内置服务初始化公开门面 | `channels.json: handwritten` |
+| `nimble/nimble_port.h` | `nimble/port` | NimBLE Port 初始化、运行脉冲与反初始化接口 | `channels.json: handwritten` |
+| `nimble/nimble_port_freertos.h` | `nimble/port` | FreeRTOS 任务绑定门面 | `channels.json: handwritten` |
+| `os/os_mbuf.h` | `nimble/os` | 零堆轻量静态 mbuf 缓冲结构体与数据拷贝/追加函数 | `channels.json: handwritten` |
+
 
 
 
