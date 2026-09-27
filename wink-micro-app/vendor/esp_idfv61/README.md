@@ -5,6 +5,10 @@
 >
 > **许可**：本目录下源码为 Espressif ESP-IDF 官方示例原文（Apache-2.0 / CC0-1.0 / Public Domain，
 > 文件头保留原声明）。`wink-micro-app/vendor/**` 在 `license-map.json` 中为 skip 通道。
+>
+> 📖 **官方规范与进度总账**：
+> - 📋 **[CHECKLIST.md](CHECKLIST.md)**：ESP-IDF v6.1 478 个官方示例全量普查总账与核对大表
+> - 🛠️ **[PLAYBOOK.md](PLAYBOOK.md)**：官方示例端到端仿真适配与无头实证标准执行手册 (SOP)
 
 ## 1. 精选应用矩阵
 
