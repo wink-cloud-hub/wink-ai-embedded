@@ -14,6 +14,7 @@
 #include "wink_sim_scheduler.h"
 #include "pal_osal.h"
 #include "pal_irq.h"
+#include "esp_sim_handle.h"
 
 #ifndef CONFIG_FREERTOS_MAX_TASKS
 #define CONFIG_FREERTOS_MAX_TASKS 8
@@ -1494,6 +1495,84 @@ void test_h4_timeout_waiter_cleanup_and_no_ghost_wakeups(void) {
     vQueueDelete(s_h4_queue);
 }
 
+/* --------------------------------------------------------------------------
+ * 13. Phase 4: Cross-Instance Sequence Handover & Monotonicity
+ * -------------------------------------------------------------------------- */
+void test_freertos_cross_instance_sequence_handover_and_monotonicity(void) {
+    /* 1. Simulate Instance 1: Create resources and capture tokens */
+    QueueHandle_t q1 = xQueueCreate(2, sizeof(int));
+    SemaphoreHandle_t s1 = xSemaphoreCreateBinary();
+    EventGroupHandle_t eg1 = xEventGroupCreate();
+    TEST_ASSERT_NOT_NULL(q1);
+    TEST_ASSERT_NOT_NULL(s1);
+    TEST_ASSERT_NOT_NULL(eg1);
+
+    uint32_t seq1 = esp_sim_handle_get_sequence();
+    TEST_ASSERT_TRUE(seq1 > 0);
+
+    /* 2. Simulate Instance 1 reset & destroy, handover seq1 to Instance 2 */
+    esp_freertos_pools_reset();
+    esp_sim_handle_set_sequence_base(seq1);
+    TEST_ASSERT_EQUAL_UINT32(seq1, esp_sim_handle_get_sequence());
+
+    /* 3. Verify Instance 2 rejects stale handles from Instance 1 */
+    int dummy = 42;
+    TEST_ASSERT_EQUAL(pdFALSE, xQueueSend(q1, &dummy, 0));
+    TEST_ASSERT_EQUAL(pdFALSE, xQueueReceive(q1, &dummy, 0));
+    TEST_ASSERT_EQUAL(pdFALSE, xSemaphoreGive(s1));
+    TEST_ASSERT_EQUAL(pdFALSE, xSemaphoreTake(s1, 0));
+    TEST_ASSERT_EQUAL(0, xEventGroupSetBits(eg1, 1));
+    TEST_ASSERT_EQUAL(0, xEventGroupGetBits(eg1));
+
+    /* 4. Create fresh handles in Instance 2: verify strictly monotonic sequence */
+    QueueHandle_t q2 = xQueueCreate(2, sizeof(int));
+    SemaphoreHandle_t s2 = xSemaphoreCreateBinary();
+    EventGroupHandle_t eg2 = xEventGroupCreate();
+    TEST_ASSERT_NOT_NULL(q2);
+    TEST_ASSERT_NOT_NULL(s2);
+    TEST_ASSERT_NOT_NULL(eg2);
+
+    uint32_t q2_seq = ((uint32_t)(uintptr_t)q2) >> 11;
+    uint32_t s2_seq = ((uint32_t)(uintptr_t)s2) >> 11;
+    uint32_t eg2_seq = ((uint32_t)(uintptr_t)eg2) >> 11;
+
+    TEST_ASSERT_TRUE(q2_seq > seq1);
+    TEST_ASSERT_TRUE(s2_seq > q2_seq);
+    TEST_ASSERT_TRUE(eg2_seq > s2_seq);
+
+    /* Verify fresh handles work */
+    TEST_ASSERT_EQUAL(pdPASS, xQueueSend(q2, &dummy, 0));
+    int readback = 0;
+    TEST_ASSERT_EQUAL(pdPASS, xQueueReceive(q2, &readback, 0));
+    TEST_ASSERT_EQUAL(42, readback);
+
+    TEST_ASSERT_EQUAL(pdPASS, xSemaphoreGive(s2));
+    TEST_ASSERT_EQUAL(pdPASS, xSemaphoreTake(s2, 0));
+
+    TEST_ASSERT_EQUAL(0x03, xEventGroupSetBits(eg2, 0x03));
+    TEST_ASSERT_EQUAL(0x03, xEventGroupGetBits(eg2));
+
+    vQueueDelete(q2);
+    vSemaphoreDelete(s2);
+    vEventGroupDelete(eg2);
+
+    /* 5. Verify boundary exhaustion limit (ESP_SIM_HANDLE_MAX_SEQUENCE) */
+    uint32_t max_seq = (1u << 21) - 1u;
+    esp_sim_handle_set_sequence_base(max_seq - 1);
+    TEST_ASSERT_EQUAL_UINT32(max_seq - 1, esp_sim_handle_get_sequence());
+
+    QueueHandle_t q_bound1 = xQueueCreate(1, sizeof(int));
+    TEST_ASSERT_NOT_NULL(q_bound1);
+    TEST_ASSERT_EQUAL_UINT32(max_seq, ((uint32_t)(uintptr_t)q_bound1) >> 11);
+    TEST_ASSERT_EQUAL_UINT32(max_seq, esp_sim_handle_get_sequence());
+
+    QueueHandle_t q_bound2 = xQueueCreate(1, sizeof(int));
+    TEST_ASSERT_NULL(q_bound2); /* Must be rejected on exhaustion */
+    TEST_ASSERT_EQUAL_UINT32(max_seq, esp_sim_handle_get_sequence()); /* No wrap */
+
+    vQueueDelete(q_bound1);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_task_handle_aba_protection);
@@ -1535,5 +1614,6 @@ int main(void) {
     RUN_TEST(test_h4_same_time_total_order_reversed_slots);
     RUN_TEST(test_h4_multi_run_deterministic_replay);
     RUN_TEST(test_h4_timeout_waiter_cleanup_and_no_ghost_wakeups);
+    RUN_TEST(test_freertos_cross_instance_sequence_handover_and_monotonicity);
     return UNITY_END();
 }

@@ -22,9 +22,11 @@
     "_pal_wasm_reset_app_state",
     "_pal_wasm_has_pending_reset",
     "_pal_wasm_get_reset_reason",
-    "_pal_wasm_clear_pending_reset"
+    "_pal_wasm_clear_pending_reset",
+    "_esp_sim_handle_get_sequence",
+    "_esp_sim_handle_set_sequence_base"
   ],
-  "EXPORTED_RUNTIME_METHODS": ["ccall", "cwrap", "HEAPU8", "Asyncify", "callMain"],
+  "EXPORTED_RUNTIME_METHODS": ["ccall", "cwrap", "HEAPU8", "HEAPU32", "Asyncify", "callMain"],
   "ASYNCIFY_IMPORTS": ["js_pal_os_sleep_ms", "js_pal_os_busy_wait_us"],
   "ASYNCIFY_STACK_SIZE": 65536,
   "EXPORT_NAME": "WasmSandbox"

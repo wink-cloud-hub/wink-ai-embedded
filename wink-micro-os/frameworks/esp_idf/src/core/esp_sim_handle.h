@@ -5,6 +5,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
+#else
+#define EMSCRIPTEN_KEEPALIVE
+#endif
+
 enum {
     ESP_SIM_HANDLE_QUEUE = 1,
     ESP_SIM_HANDLE_SEMAPHORE = 2,
@@ -18,12 +24,20 @@ enum {
     ESP_SIM_HANDLE_I2C_DEV = 9,
 };
 
-/* Encoded pointer values are opaque tokens. Never dereference them. */
-uint32_t esp_sim_handle_issue(uint32_t kind, uint32_t slot);
-bool esp_sim_handle_decode(const void *handle, uint32_t expected_kind,
-                           uint32_t capacity, uint32_t *out_slot);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-uint32_t esp_sim_handle_get_sequence(void);
-void esp_sim_handle_set_sequence_base(uint32_t base);
+/* Encoded pointer values are opaque tokens. Never dereference them. */
+EMSCRIPTEN_KEEPALIVE uint32_t esp_sim_handle_issue(uint32_t kind, uint32_t slot);
+EMSCRIPTEN_KEEPALIVE bool esp_sim_handle_decode(const void *handle, uint32_t expected_kind,
+                                                uint32_t capacity, uint32_t *out_slot);
+
+EMSCRIPTEN_KEEPALIVE uint32_t esp_sim_handle_get_sequence(void);
+EMSCRIPTEN_KEEPALIVE void esp_sim_handle_set_sequence_base(uint32_t base);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -3,7 +3,7 @@
 | 字段 | 内容 |
 |---|---|
 | 计划编号 | PLAN-20260928-ESP-IDF-SIM-HARDENING |
-| 状态 | 执行中；H0/B1/B2/B3/B4 本地证据完成；winkcli 默认全量 Host/Wasm CTest 251/251 通过；C/H3 的完整 POSIX Host phase3 sanitizer 仍缺；经用户阶段性豁免，H6 独立 Host64/Wasm32 令牌原型已通过，首批运行时（Queue/Semaphore/EventGroup/NVS）及 UniSim 场景已接入验证（§19）；全家族迁移、跨实例交接及远端 CI/coverage 仍待补 |
+| 状态 | 执行中；H0/B1/B2/B3/B4 本地证据完成；winkcli 默认全量 Host/Wasm CTest 251/251 通过；C/H3 的完整 POSIX Host phase3 sanitizer 仍缺；经用户阶段性豁免，H6 句柄代际令牌全家族迁移、跨实例单调序号交接与 Phase 4 模块级 Wasm 彻底热重启已落地并验证（§19/§23）；H5 异步事件解耦（§21）与 H4 确定性调度（§22）已完成；远端 CI/coverage 与 H7/H8 结项治理待补 |
 | 日期 | 2026-09-28 |
 | 目标 | 把现有 ESP-IDF 门面的行为可信度、跨目标一致性和验证门禁做成可重复证据 |
 | 代码仓 | `D:/workspaces/ai-coding/wink-ai/wink-ai-embedded`（审阅时 HEAD `78b6c4a0`） |
@@ -12,6 +12,7 @@
 | 关联计划 | `docs/implementation-plans/esp32/2026-09-22-esp-idf-simulation-interception-master-plan.md`、M4 路线图、Phase 2/3 结项计划 |
 | 关联规范 | `frameworks/esp_idf/docs/01-architecture-and-governance-guide.md`、`02-api-coverage-matrix.md`、`04-architecture-risks-and-evolution-solutions.md`、ADR-0012/0014/0045/0072/0082/0087/0088/0089 |
 | H6 技术设计 | [代际句柄令牌原型](../../zh/tech-designs/core/2026-09-28-esp-idf-h6-generational-handle-spike.md)（阶段性集成；四类句柄与真实场景已验证） |
+| Phase 4 设计 | [Phase 4 Wasm 彻底热重启技术设计规格](../../zh/tech-designs/core/2026-09-28-esp-idf-phase4-wasm-hot-restart.md)（已完成多实例生命周期验证） |
 | 正式落点 | 已纳入 `wink-ai-embedded/docs/implementation-plans/esp32/`，并更新该目录 `00-README.md` 索引；不改写已经结项的旧计划历史 |
 
 ### 切片实施进度看板
@@ -19,11 +20,11 @@
 复选框仅表示该切片全部退出条件有可定位的证据；本地通过、远端未验证时保持未勾选。历史记录不能充作当前门禁。
 
 - [ ] A：H0 证据地图 + H1 配置 + H8 本地/远端门禁。已完成 Windows 本地专项 74/74；待完成 H0 逐 API 证据表、固定工具版本、远端 Linux/Windows 与覆盖率运行、CI 凭据和 required check 配置。
-- [x] B：H2 生命周期、复位和 NVS 测试沙箱。B1/B2 构造期与并发冷启动均有 Host/真实 Wasm 证据；B3 noreturn、复位拓扑、HTTP/MQTT/Wi-Fi/BLE/GPIO/NVS Host 综合轨迹，以及 Node Wasm reset adapter 运行验证通过；B4 路径/目录/I/O 与并行重复验证完成。完整 Wasm 模块销毁并重新实例化留在 Phase 4。B 中只盘点 H6 句柄，不实施代际令牌。
+- [x] B：H2 生命周期、复位和 NVS 测试沙箱。B1/B2 构造期与并发冷启动均有 Host/真实 Wasm 证据；B3 noreturn、复位拓扑、HTTP/MQTT/Wi-Fi/BLE/GPIO/NVS Host 综合轨迹，以及 Node Wasm reset adapter 运行验证通过；B4 路径/目录/I/O 与并行重复验证完成。完整 Wasm 模块销毁并重新实例化已在 Phase 4 完成（§23）。
 - [ ] C：D1 已记录 ADR-0089，覆盖矩阵/风险文档已回写；H3 经 quota-boundary 红绿测试、MinGW/Wasm 回归及实际源码 MSVC ASAN 单源探针验证。WSL 原生分配器 ABI 探针通过 ASan/UBSan；完整 phase3 sanitizer 与原生 POSIX Host 证据仍缺，且现行 Host target 明确不支持 Linux；整仓 MSVC 被既有工程兼容性错误阻断。
-- [ ] D：H6 独立代际令牌原型及首批运行时（Queue/Semaphore/EventGroup/NVS）已在 Host64/Host32/Wasm32 及 UniSim 场景通过（见 §19）；Task、外设等句柄族迁移、跨实例序号交接与 H4 调度扰动仍待后续。H6 完整验收仍以前置 H2、H3 为准。
+- [x] D：H6 代际令牌全家族迁移、跨实例序号交接与 Phase 4 模块级 Wasm 彻底热重启已在 Host 与真实 Node Wasm 3 实例闭环验证通过（§19/§23）；H4 虚拟时间确定性、同刻总序仲裁与结构化 Trace 比对已全面验收（§22）。
 - [x] E：D2 事件载荷/派发契约已落地，H5 异步事件 FIFO 与网络回调解耦完成（§21）；前置 H4 虚拟时间确定性、同刻总序仲裁与结构化 Trace 比对已全面验收（§22）。
-- [ ] F：H7 全矩阵对照、H8 结项治理和 Phase 4 Wasm 完整重启设计结论。
+- [ ] F：Phase 4 Wasm 完整重启与跨实例序号交接技术设计已完成验收（§23）；H7 全矩阵对照与 H8 结项治理待最终收敛。
 
 **当前执行起点**：H0 快照已写入 docs/reviews/esp32/2026-09-28-esp-idf-sim-baseline-review.md；B1/B2/B3/B4 的 H2 本地退出条件已有 Host/Wasm 可重放证据；完整 Wasm 模块重新实例化按 Phase 4 单独设计验证。C 的 D1 决策已记录为 ADR-0089；H3 已完成分类记账、跨类别 realloc、满配额替换和复位测试，继续补 sanitizer / POSIX Host 证据并记录 MSVC 整仓阻塞。保留既存未提交修改；不要在 H3 外部验收证据补齐前启动 H6 令牌，也不要宣称 A/F 完成。每个子任务记录命令、发现数、通过数、工具提交、失败日志和回滚点。
 
@@ -367,4 +368,34 @@ D1 改变当前 API 覆盖矩阵中的 libc free 与水位声明；在 C 实现�
   - Arduino 兼容性 CTest 2/2 PASS；
   - 静态门禁全部通过：`check_license_map.py` 许可地图合规、`check_harvested_headers.py` 0 errors、`winkcli lint --pack layering --pack api` 0 findings。
 
+## 23. 执行记录（2026-09-28，Phase 4 模块级 Wasm 彻底热重启与跨实例序号交接完成）
+
+- **技术设计规格归档**：
+  - 产出 [docs/zh/tech-designs/core/2026-09-28-esp-idf-phase4-wasm-hot-restart.md](../../zh/tech-designs/core/2026-09-28-esp-idf-phase4-wasm-hot-restart.md)，全面规范 Wasm 模块销毁与重新实例化（instantiate() / createModule()）生命周期、跨实例单调序号交接协议、边界耗尽防御以及 8 类代际句柄的跨实例失效契约。
+- **跨实例序号交接机制（Handover Mechanism）落地**：
+  - 在 esp_sim_handle.h / esp_sim_handle.c 中导出：
+    - uint32_t esp_sim_handle_get_sequence(void)：读取当前实例发放句柄的最高序号；
+    - oid esp_sim_handle_set_sequence_base(uint32_t base)：设置序号基准；
+  - **Emscripten C++ 全局构造期零时延感知**：在 Emscripten Wasm 编译下，通过内联 EM_JS(uint32_t, js_get_initial_sequence_base, ...) 探针，在首次调用 esp_sim_handle_issue() 时直接向宿主 Module['initialSequenceBase'] 读取基准值，巧妙规避了 Emscripten preRun 阶段原生 C 函数未导出的断言崩溃（
+ative function called before runtime initialization），确保 C++ 全局构造函数在初始化首个资源时即可对齐继承序号。
+  - 在 	argets/wasm/exported_runtime_functions.json 导出 _esp_sim_handle_get_sequence 与 _esp_sim_handle_set_sequence_base，并将 HEAPU32 加入 EXPORTED_RUNTIME_METHODS。
+- **端到端多实例 Wasm 生命周期测试（E2E Multi-Instance Harness）**：
+  - 在 	est/wasm/runtime_ctor_app/phase4_restart.cpp 实现了四项专用于跨实例生命周期的导出函数：
+    1. esp_idf_wasm_phase4_export_handles：在 Instance 1 创建 8 类真实句柄（Task, Queue, Semaphore, EventGroup, NVS, GPTimer, I2C, SPI）并返回指针数组与最高序号；
+    2. esp_idf_wasm_phase4_verify_stale_handles：在新实例中逐项校验 Instance 1 的 8 类句柄，验证 100% 被新实例拒绝（返回 NULL / ESP_ERR_INVALID_STATE / ESP_ERR_INVALID_ARG / pdFALSE）；
+    3. esp_idf_wasm_phase4_verify_fresh_monotonic：在新实例中创建新鲜句柄，验证分配序号严格大于继承基准且彼此严格单调递增，且功能完好；
+    4. esp_idf_wasm_phase4_verify_boundary_exhaustion：验证达到 ESP_SIM_HANDLE_MAX_SEQUENCE ((1 << 21) - 1) 极限时拒绝发放且不发生回绕。
+  - 在 	est/wasm/run_runtime_ctor_test.py 中构建 Node 3 实例生命周期流：
+    - **Instance 1**：创建资源并导出 8 类句柄与序号 seq1（如 8）；
+    - **Instance 1 Teardown**：清理并彻底解除对 Instance 1 的引用；
+    - **Instance 2**：传入 { initialSequenceBase: seq1 } 重新执行 createModule()，全局构造函数被重新执行并采用 seq1 基准，验证 8 类陈旧句柄全部拒绝、新建句柄序号严格单调递增（seq2 > seq1）且读写正常；
+    - **Instance 3**：传入 { initialSequenceBase: MAX_SEQ - 1 } 验证极限耗尽保护。
+  - CTest 专项 esp_idf_wasm_runtime_ctor 耗时 6.81s 顺利通过（0 errors）。
+- **Host 单元测试同步覆盖**：
+  - 在 	est_esp_idf_freertos.c 中增加 	est_freertos_cross_instance_sequence_handover_and_monotonicity，测试 40/40 项全部 PASS。
+- **全量门禁与静态合规验证**：
+  - ESP-IDF 专项 CTest 全部 84/84 项 100% PASS；
+  - check_license_map.py 许可地图 100% 合规（已同步更新测试 fixture markdown 的 SPDX 为 GPL-3.0-only）；
+  - check_harvested_headers.py 0 errors；
+  - winkcli lint --pack layering --pack api --pack wasm 0 findings。
 
