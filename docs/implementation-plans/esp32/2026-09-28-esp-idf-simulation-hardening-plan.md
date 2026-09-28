@@ -27,7 +27,9 @@
 
 **当前执行起点**：H0 快照已写入 docs/reviews/esp32/2026-09-28-esp-idf-sim-baseline-review.md；B1/B2/B3/B4 的 H2 本地退出条件已有 Host/Wasm 可重放证据；完整 Wasm 模块重新实例化按 Phase 4 单独设计验证。C 的 D1 决策已记录为 ADR-0089；H3 已完成分类记账、跨类别 realloc、满配额替换和复位测试，继续补 sanitizer / POSIX Host 证据并记录 MSVC 整仓阻塞。保留既存未提交修改；不要在 H3 外部验收证据补齐前启动 H6 令牌，也不要宣称 A/F 完成。每个子任务记录命令、发现数、通过数、工具提交、失败日志和回滚点。
 
-**后续例外**：§18/§19 记录用户对 H6 独立原型与首批运行时的阶段性豁免；不改变 C、D 完整退出标准，其余资源家族迁移仍需完成。
+**后续例外**：
+- **POSIX Host 暂缓（用户 2026-09-28 决策）**：POSIX Host 目标（Linux `sim_ctx_posix_ucontext.c`）及其远端 Linux Host 构建与 Coverage 门禁暂缓，当前阶段全面以 Windows (MinGW/MSVC Fiber) + Wasm32 作为开发基准推进，POSIX 移植移交后续独立任务。
+- §18/§19 记录用户对 H6 独立原型与首批运行时的阶段性豁免；按路线图逐个解决外设与 Task 句柄代际化、H5 异步事件队列及后续切片。
 
 ## 1. 目标、边界和验收原则
 
@@ -310,3 +312,12 @@ D1 改变当前 API 覆盖矩阵中的 libc free 与水位声明；在 C 实现�
 - 深入阻塞恢复点后，新增三项 Host 红测：资源删除并同槽创建带数据的新对象时，旧队列读取者、旧信号量等待者、旧事件组等待者曾误读新对象。修复 Queue 发送/接收/窥视、Semaphore take、EventGroup wait 的恢复点原 token 校验，三项转绿；再次构建并运行真实 Wasm 场景仍为 4/4 断言 PASS。
 - `wink-micro-app/fixtures/esp_idf_h6_handles` 用真实 ESP-IDF Wasm App 在 GPIO2/4/5/18 分别输出四类结果；`wink-ai/packages/wink-tools/wink.py build wasm`、`build sim` 成功，`sim run --mode headless --scenarios ... --reporter junit` 得到 1 个场景、4 个断言 PASS，JUnit `build/h6-unisim-artifacts/junit-report.xml` 为 tests=1、failures=0。Host 定向 CTest `test_esp_idf_freertos`、`test_esp_nvs` 2/2 通过，扩大到 ESP-IDF 专项 CTest 为 82/82 通过；layering/api lint 与许可地图通过。Wasm 链接及含实际 Node runtime 的 CTest 需能访问工作区外 Emscripten SDK 缓存。
 - 当前实际场景只覆盖四类句柄的删除/关闭后同槽复用及新句柄可用。Task、外设、网络等其他句柄族仍待迁移；完整 Wasm 模块重新实例化后的序号交接尚未进入正式运行时，故不得声明 H6 完成或 ESP32 真机行为已验证。下一步先固定跨实例所有权/ABI，再扩展家族与 reset 场景，并补齐 H3 门禁及 profile/map 证据。
+
+## 20. 执行记录（2026-09-28，POSIX Host 暂缓与下一阶段推进路线）
+
+- 用户明确决策：**POSIX Host 目标（Linux / `sim_ctx_posix_ucontext.c`）暂缓，现阶段全面以 Windows (MinGW/MSVC Fiber) + Wasm32 作为开发基准推进**。Linux 跨平台宿主适配独立归档，后续作为专用移植任务实施。
+- 剩余问题按以下优先级逐个推进：
+  1. **H6 句柄代际令牌全家族扩展**：扩容家族类型位至 4 位，将令牌扩展至 `TaskHandle_t` 与外设句柄（GPTimer, I2C, SPI 等），导出跨 Wasm 实例单调序号交接 ABI，彻底杜绝所有资源槽位 ABA 悬挂指针；
+  2. **H5 异步事件 FIFO 与网络回调解耦**：落地 D2 契约，实现深拷贝事件缓冲区与独立调度器 Fiber 事件泵，彻底切断网络驱动回调直接阻塞用户调用栈；
+  3. **H4 虚拟时间确定性与同刻调度总序**：建立 ADR-0053 同刻总序仲裁与结构化 Trace 黄金比对；
+  4. **Phase 4 模块级 Wasm 彻底热重启**：实现销毁旧实例并重新 instantiate() 的生命周期闭环。
