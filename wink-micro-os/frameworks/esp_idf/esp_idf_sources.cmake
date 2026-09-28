@@ -35,6 +35,7 @@ set(ESP_IDF_FRAMEWORK_INCLUDES
     ${WINK_ESP_TARGET_INCLUDE_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/include
     ${CMAKE_CURRENT_LIST_DIR}/src/freertos
+    ${CMAKE_CURRENT_LIST_DIR}/src/core
     ${CMAKE_CURRENT_LIST_DIR}/../../targets/common/include
     # 手写 esp_check.h -> wink_runtime.h -> wink_fault.h -> wink_trace.h 依赖链
     ${CMAKE_CURRENT_LIST_DIR}/../../trace/include

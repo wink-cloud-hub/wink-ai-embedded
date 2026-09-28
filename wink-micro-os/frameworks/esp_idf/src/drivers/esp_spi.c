@@ -2,6 +2,7 @@
 #include "driver/spi_master.h"
 #include "hal/pal_spi.h"
 #include "esp_log.h"
+#include "esp_sim_handle.h"
 #include <string.h>
 
 #define MAX_SPI_DEVS 8
@@ -9,9 +10,25 @@
 struct spi_device_t {
     bool in_use;
     pal_spi_device_handle_t pal_handle;
+    uint32_t token;
 };
 
 static struct spi_device_t s_spis[MAX_SPI_DEVS];
+
+static struct spi_device_t *resolve_spi_device(spi_device_handle_t handle) {
+    if (!handle) {
+        return NULL;
+    }
+    uint32_t slot = 0;
+    if (!esp_sim_handle_decode(handle, ESP_SIM_HANDLE_SPI, MAX_SPI_DEVS, &slot)) {
+        return NULL;
+    }
+    struct spi_device_t *dev = &s_spis[slot];
+    if (!dev->in_use || dev->token != (uint32_t)(uintptr_t)handle) {
+        return NULL;
+    }
+    return dev;
+}
 
 esp_err_t spi_bus_initialize(spi_host_device_t host_id, const spi_bus_config_t *bus_config, spi_dma_chan_t dma_chan) {
     (void)dma_chan;
@@ -79,9 +96,15 @@ esp_err_t spi_bus_add_device(spi_host_device_t host_id, const spi_device_interfa
             if (pal_spi_add_device(pal_bus, &dcfg, &pal_dev) != WINK_OK) {
                 return ESP_FAIL;
             }
+            uint32_t token = esp_sim_handle_issue(ESP_SIM_HANDLE_SPI, (uint32_t)i);
+            if (!token) {
+                pal_spi_remove_device(pal_dev);
+                return ESP_ERR_NO_MEM;
+            }
             s_spis[i].in_use = true;
             s_spis[i].pal_handle = pal_dev;
-            *handle = &s_spis[i];
+            s_spis[i].token = token;
+            *handle = (spi_device_handle_t)(uintptr_t)token;
             return ESP_OK;
         }
     }
@@ -89,17 +112,20 @@ esp_err_t spi_bus_add_device(spi_host_device_t host_id, const spi_device_interfa
 }
 
 esp_err_t spi_bus_remove_device(spi_device_handle_t handle) {
-    if (!handle || !handle->in_use) {
+    struct spi_device_t *dev = resolve_spi_device(handle);
+    if (!dev) {
         return ESP_ERR_INVALID_ARG;
     }
-    pal_spi_remove_device(handle->pal_handle);
-    handle->in_use = false;
-    handle->pal_handle = NULL;
+    pal_spi_remove_device(dev->pal_handle);
+    dev->in_use = false;
+    dev->pal_handle = NULL;
+    dev->token = 0;
     return ESP_OK;
 }
 
 esp_err_t spi_device_transmit(spi_device_handle_t handle, spi_transaction_t *trans_desc) {
-    if (!handle || !handle->in_use || !trans_desc) {
+    struct spi_device_t *dev = resolve_spi_device(handle);
+    if (!dev || !trans_desc) {
         return ESP_ERR_INVALID_ARG;
     }
     size_t byte_len = (trans_desc->length + 7) / 8;
@@ -112,7 +138,7 @@ esp_err_t spi_device_transmit(spi_device_handle_t handle, spi_transaction_t *tra
         ? trans_desc->rx_data
         : (uint8_t *)trans_desc->rx_buffer;
 
-    wink_status_t st = pal_spi_transfer_polling(handle->pal_handle, tx, rx, byte_len);
+    wink_status_t st = pal_spi_transfer_polling(dev->pal_handle, tx, rx, byte_len);
     return (st == WINK_OK) ? ESP_OK : ESP_FAIL;
 }
 
@@ -122,8 +148,10 @@ void esp_spi_reset(void) {
             pal_spi_remove_device(s_spis[i].pal_handle);
             s_spis[i].in_use = false;
             s_spis[i].pal_handle = NULL;
+            s_spis[i].token = 0;
         }
     }
     pal_spi_deinit_bus(0);
     pal_spi_deinit_bus(1);
 }
+

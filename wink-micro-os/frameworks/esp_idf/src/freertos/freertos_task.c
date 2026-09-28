@@ -11,6 +11,7 @@
 #include "pal_osal.h"
 #include "pal_log.h"
 #include "esp_log.h"
+#include "../core/esp_sim_handle.h"
 
 static esp_tcb_t s_tcb[FREERTOS_MAX_TASKS];
 static bool s_isr_yield_requested = false;
@@ -32,14 +33,12 @@ esp_tcb_t* esp_freertos_resolve_handle(TaskHandle_t h) {
         uint32_t slot = sim_scheduler_current_id();
         return (slot < FREERTOS_MAX_TASKS && s_tcb[slot].used) ? &s_tcb[slot] : NULL;
     }
-    uint32_t val = (uint32_t)(uintptr_t)h;
-    uint32_t slot = val & 0xFFu;
-    uint16_t gen = (uint16_t)(val >> 8);
-    if (slot >= FREERTOS_MAX_TASKS) {
+    uint32_t slot;
+    if (!esp_sim_handle_decode(h, ESP_SIM_HANDLE_TASK, FREERTOS_MAX_TASKS, &slot)) {
         return NULL;
     }
     esp_tcb_t* t = &s_tcb[slot];
-    if (!t->used || t->gen != gen || t->sim_id != slot) {
+    if (!t->used || t->token != (uint32_t)(uintptr_t)h || t->sim_id != slot) {
         return NULL;
     }
     return t;
@@ -55,6 +54,7 @@ int32_t esp_freertos_get_task_prio(uint32_t sim_id) {
 void esp_freertos_register_task_slot(uint32_t slot, int32_t prio, const char* name) {
     if (slot >= FREERTOS_MAX_TASKS) return;
     s_tcb[slot].used = true;
+    s_tcb[slot].token = esp_sim_handle_issue(ESP_SIM_HANDLE_TASK, slot);
     if (s_tcb[slot].gen == 0) s_tcb[slot].gen = 1;
     s_tcb[slot].sim_id = slot;
     s_tcb[slot].prio = prio;
@@ -69,6 +69,7 @@ void esp_freertos_task_pool_reset(void) {
             s_tcb[i].gen++;
             if (s_tcb[i].gen == 0) s_tcb[i].gen = 1;
             s_tcb[i].used = false;
+            s_tcb[i].token = 0;
         }
         s_tcb[i].sim_id = 0;
         s_tcb[i].prio = 0;
@@ -111,7 +112,12 @@ BaseType_t xTaskCreatePinnedToCore(TaskFunction_t pxTaskCode,
         return pdFAIL;
     }
 
+    uint32_t token = esp_sim_handle_issue(ESP_SIM_HANDLE_TASK, slot);
+    if (token == 0) {
+        return pdFAIL;
+    }
     s_tcb[slot].used = true;
+    s_tcb[slot].token = token;
     if (s_tcb[slot].gen == 0) {
         s_tcb[slot].gen = 1;
     }
@@ -121,8 +127,7 @@ BaseType_t xTaskCreatePinnedToCore(TaskFunction_t pxTaskCode,
     s_tcb[slot].name[sizeof(s_tcb[slot].name) - 1] = '\0';
 
     if (pxCreatedTask != NULL) {
-        uint32_t handle_val = ((uint32_t)s_tcb[slot].gen << 8) | slot;
-        *pxCreatedTask = (TaskHandle_t)(uintptr_t)handle_val;
+        *pxCreatedTask = (TaskHandle_t)(uintptr_t)token;
     }
 
     return pdPASS;
@@ -149,6 +154,7 @@ void vTaskDelete(TaskHandle_t xTaskToDelete) {
     uint32_t cur = sim_scheduler_current_id();
 
     t->used = false;
+    t->token = 0;
     t->gen++;
     if (t->gen == 0) {
         t->gen = 1;

@@ -154,10 +154,61 @@ void test_spi_invalid_args_and_device_pool(void) {
     TEST_ASSERT_EQUAL_INT32(ESP_OK, spi_bus_free(SPI2_HOST));
 }
 
+void test_spi_stale_handle_and_aba(void) {
+    spi_bus_config_t bus_cfg = {
+        .mosi_io_num = 23,
+        .miso_io_num = 19,
+        .sclk_io_num = 18,
+        .quadwp_io_num = -1,
+        .quadhd_io_num = -1,
+    };
+    spi_device_interface_config_t dev_cfg = {
+        .mode = 0,
+        .clock_speed_hz = 1000000,
+        .spics_io_num = 5,
+        .queue_size = 1,
+    };
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, spi_bus_initialize(SPI2_HOST, &bus_cfg, SPI_DMA_DISABLED));
+
+    spi_device_handle_t dev1 = NULL;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, spi_bus_add_device(SPI2_HOST, &dev_cfg, &dev1));
+    TEST_ASSERT_NOT_NULL(dev1);
+
+    /* Remove dev1 */
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, spi_bus_remove_device(dev1));
+
+    /* Operating on stale dev1 must return ESP_ERR_INVALID_ARG */
+    spi_transaction_t t = {
+        .flags = SPI_TRANS_USE_TXDATA | SPI_TRANS_USE_RXDATA,
+        .length = 8,
+        .rxlength = 8,
+        .tx_data = { 0x55, 0, 0, 0 },
+        .rx_data = { 0 },
+    };
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, spi_device_transmit(dev1, &t));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, spi_bus_remove_device(dev1));
+
+    /* Re-add device (reuses slot 0) */
+    spi_device_handle_t dev2 = NULL;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, spi_bus_add_device(SPI2_HOST, &dev_cfg, &dev2));
+    TEST_ASSERT_NOT_NULL(dev2);
+    TEST_ASSERT_NOT_EQUAL(dev1, dev2);
+
+    /* Stale dev1 cannot access dev2 */
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, spi_device_transmit(dev1, &t));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, spi_bus_remove_device(dev1));
+
+    /* dev2 works normally */
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, spi_device_transmit(dev2, &t));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, spi_bus_remove_device(dev2));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, spi_bus_free(SPI2_HOST));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_spi_bus_init_and_host_mapping);
     RUN_TEST(test_spi_device_add_and_transmit);
     RUN_TEST(test_spi_invalid_args_and_device_pool);
+    RUN_TEST(test_spi_stale_handle_and_aba);
     return UNITY_END();
 }

@@ -343,6 +343,62 @@ void test_modern_i2c_master_invalid_args(void) {
     TEST_ASSERT_EQUAL_INT32(ESP_OK, i2c_del_master_bus(bus));
 }
 
+void test_modern_i2c_stale_handle_and_aba(void) {
+    i2c_master_bus_config_t bus_cfg = {
+        .i2c_port = 0,
+        .sda_io_num = 21,
+        .scl_io_num = 22,
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+        .glitch_ignore_cnt = 7,
+        .flags = { .enable_internal_pullup = true }
+    };
+    i2c_master_bus_handle_t bus = NULL;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, i2c_new_master_bus(&bus_cfg, &bus));
+    TEST_ASSERT_NOT_NULL(bus);
+
+    i2c_device_config_t dev_cfg = {
+        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+        .device_address = 0x50,
+        .scl_speed_hz = 400000
+    };
+    i2c_master_dev_handle_t dev1 = NULL;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, i2c_master_bus_add_device(bus, &dev_cfg, &dev1));
+    TEST_ASSERT_NOT_NULL(dev1);
+
+    /* Remove dev1 */
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, i2c_master_bus_rm_device(dev1));
+
+    /* Operating on stale dev1 must return ESP_ERR_INVALID_ARG */
+    uint8_t dummy[1] = { 0 };
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, i2c_master_transmit(dev1, dummy, 1, 50));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, i2c_master_receive(dev1, dummy, 1, 50));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, i2c_master_bus_rm_device(dev1));
+
+    /* Add dev2, reuses slot 0 */
+    i2c_master_dev_handle_t dev2 = NULL;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, i2c_master_bus_add_device(bus, &dev_cfg, &dev2));
+    TEST_ASSERT_NOT_NULL(dev2);
+    TEST_ASSERT_NOT_EQUAL(dev1, dev2);
+
+    /* Stale dev1 cannot access dev2 */
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, i2c_master_transmit(dev1, dummy, 1, 50));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, i2c_master_bus_rm_device(dev1));
+
+    /* Delete bus, invalidates bus handle */
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, i2c_del_master_bus(bus));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, i2c_del_master_bus(bus));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, i2c_master_probe(bus, 0x50, 50));
+
+    /* Re-create bus, verifies anti-ABA for bus handles */
+    i2c_master_bus_handle_t bus2 = NULL;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, i2c_new_master_bus(&bus_cfg, &bus2));
+    TEST_ASSERT_NOT_NULL(bus2);
+    TEST_ASSERT_NOT_EQUAL(bus, bus2);
+
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, i2c_master_probe(bus, 0x50, 50));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, i2c_del_master_bus(bus2));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_legacy_i2c_slave_mode_rejected);
@@ -354,5 +410,6 @@ int main(void) {
     RUN_TEST(test_modern_i2c_master_bus_lifecycle);
     RUN_TEST(test_modern_i2c_device_pool_limit);
     RUN_TEST(test_modern_i2c_master_invalid_args);
+    RUN_TEST(test_modern_i2c_stale_handle_and_aba);
     return UNITY_END();
 }

@@ -40,6 +40,7 @@ extern "C" {
 typedef struct {
     bool     used;
     uint16_t gen;
+    uint32_t token;
     uint32_t sim_id;
     int32_t  prio;
     char     name[16];
