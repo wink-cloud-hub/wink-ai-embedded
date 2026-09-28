@@ -26,19 +26,39 @@ static uint32_t s_app_main_slot = SIM_SCHED_NO_READY;
  * Thread-safety: atomic_bool degrades to a plain read/write on wasm32
  * (single-threaded), so there is zero overhead in the Wasm target.
  * On host POSIX the CAS prevents TOCTOU races (P1 fix from plan review).   */
-static atomic_bool s_framework_inited = ATOMIC_VAR_INIT(false);
+typedef enum {
+    ESP_IDF_FRAMEWORK_UNINITIALIZED = 0,
+    ESP_IDF_FRAMEWORK_INITIALIZING = 1,
+    ESP_IDF_FRAMEWORK_READY = 2,
+} esp_idf_framework_init_state_t;
+
+static atomic_uint s_framework_init_state =
+    ATOMIC_VAR_INIT(ESP_IDF_FRAMEWORK_UNINITIALIZED);
 
 void esp_idf_ensure_framework_ready(void) {
-    bool expected = false;
-    /* Only the first thread that succeeds in false→true runs the init body */
-    if (atomic_compare_exchange_strong(&s_framework_inited, &expected, true)) {
+    unsigned expected = ESP_IDF_FRAMEWORK_UNINITIALIZED;
+    if (atomic_compare_exchange_strong_explicit(
+            &s_framework_init_state,
+            &expected,
+            ESP_IDF_FRAMEWORK_INITIALIZING,
+            memory_order_acq_rel,
+            memory_order_acquire)) {
         esp_freertos_pools_reset();
+        atomic_store_explicit(
+            &s_framework_init_state,
+            ESP_IDF_FRAMEWORK_READY,
+            memory_order_release);
         pal_log_i("ESP_IDF",
                   "Framework lazily auto-initialized (C++ static constructor safe)");
+        return;
     }
-    /* All subsequent callers: CAS failed (expected became true) → instant return */
-}
 
+    /* A concurrent caller must observe completed pool initialization. */
+    while (atomic_load_explicit(
+               &s_framework_init_state,
+               memory_order_acquire) == ESP_IDF_FRAMEWORK_INITIALIZING) {
+    }
+}
 static void app_main_trampoline(void* arg) {
     (void)arg;
     app_main();
@@ -53,10 +73,9 @@ static void app_main_trampoline(void* arg) {
 static void esp_idf_framework_init(void) {
     pal_log_i("ESP_IDF", "Framework initialized in simulation mode");
 
-    /* Mark framework as ready via atomic store so ensure_framework_ready()
-     * called from C++ constructors after this point skips reinitialisation. */
-    atomic_store(&s_framework_inited, true);
-    esp_freertos_pools_reset();
+    /* Cold-start pool initialization is separate from app_main registration.
+     * Re-entering framework init must preserve resources created by globals. */
+    esp_idf_ensure_framework_ready();
 
     uint32_t slot = UINT32_MAX;
     wink_status_t st = sim_scheduler_register(

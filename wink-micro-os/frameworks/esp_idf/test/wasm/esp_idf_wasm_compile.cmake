@@ -19,6 +19,10 @@ function(add_esp_idf_wasm_compile_check name source_file)
     foreach(_inc IN LISTS _extra_includes)
         list(APPEND _inc_args "-I${_inc}")
     endforeach()
+    set(_profile_args "")
+    foreach(_define IN LISTS WINK_ESP_PROFILE_DEFINES)
+        list(APPEND _profile_args "-D${_define}")
+    endforeach()
 
     add_custom_command(
         OUTPUT "${_out_obj}"
@@ -26,6 +30,7 @@ function(add_esp_idf_wasm_compile_check name source_file)
             -Wall -Wextra -Werror -Wno-unused-parameter
             -DUNITY_SUPPORT_64=1
             -D${WINK_IDF_TARGET_DEFINE}=1
+            ${_profile_args}
             # corpus overlay 优先（Tier-B stub 与 sdkconfig.h 均须覆盖 framework 同名头）
             ${_inc_args}
             -I${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include

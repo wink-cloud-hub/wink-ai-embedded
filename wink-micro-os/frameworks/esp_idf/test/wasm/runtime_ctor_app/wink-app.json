@@ -1,0 +1,5 @@
+{
+  "app_name": "esp-idf-wasm-global-constructor-test",
+  "mcu": "esp32",
+  "devices": {}
+}

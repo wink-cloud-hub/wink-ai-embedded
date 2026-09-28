@@ -9,11 +9,21 @@
 #include "esp_event.h"
 #include "esp_netif.h"
 #include "esp_idf_wink.h"
+#include "esp_http_client.h"
+#include "mqtt_client.h"
+#include "nimble/nimble_port.h"
+#include "host/ble_hs.h"
+#include "driver/gpio.h"
+#include "nvs_flash.h"
+#include "nvs.h"
 #include "wink_sim_scheduler.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
 extern void sim_set_mono_time_us(uint64_t us);
+extern void pal_wasm_target_clear_pending_reset(void);
+extern void pal_wasm_target_request_reset(void);
+extern bool pal_wasm_target_has_pending_reset(void);
 
 void setUp(void) {
     sim_set_mono_time_us(0);
@@ -21,6 +31,9 @@ void setUp(void) {
     esp_freertos_pools_reset();
     esp_event_loop_sim_reset();
     esp_wifi_sim_reset();
+    esp_http_client_sim_reset();
+    esp_mqtt_sim_reset();
+    esp_nimble_sim_reset();
     esp_netif_init();
 }
 
@@ -30,7 +43,137 @@ void tearDown(void) {
     esp_freertos_pools_reset();
     esp_event_loop_sim_reset();
     esp_wifi_sim_reset();
+    esp_http_client_sim_reset();
+    esp_mqtt_sim_reset();
+    esp_nimble_sim_reset();
     esp_netif_deinit();
+}
+
+static esp_err_t reset_http_event_handler(esp_http_client_event_t *event) {
+    int *count = (int *)event->user_data;
+    if (count && event->event_id == HTTP_EVENT_ON_CONNECTED) (*count)++;
+    return ESP_OK;
+}
+
+static void reset_mqtt_event_handler(void *arg, esp_event_base_t base,
+                                     int32_t event_id, void *event_data) {
+    (void)base;
+    (void)event_data;
+    int *connected_count = (int *)arg;
+    if (connected_count && event_id == MQTT_EVENT_CONNECTED) (*connected_count)++;
+}
+
+static int s_sta_connected_count;
+static int s_got_ip_count;
+static void wifi_test_event_handler(void *arg, esp_event_base_t base,
+                                    int32_t id, void *data);
+
+/* A soft reset must cancel all old network producers before fresh instances
+ * reuse their static pools. In particular, a queued MQTT task must not adopt
+ * the new client's handler/token when the scheduler resumes it. */
+void test_network_modules_reset_as_one_session(void) {
+    int old_http_events = 0;
+    int new_http_events = 0;
+    int old_mqtt_connected = 0;
+    int new_mqtt_connected = 0;
+    nvs_handle_t old_nvs = 0;
+    s_sta_connected_count = 0;
+    s_got_ip_count = 0;
+
+    TEST_ASSERT_EQUAL(ESP_OK, esp_event_loop_create_default());
+
+    esp_http_client_config_t old_http_cfg = {
+        .url = "http://old.example/reset",
+        .event_handler = reset_http_event_handler,
+        .user_data = &old_http_events,
+    };
+    esp_http_client_handle_t old_http = esp_http_client_init(&old_http_cfg);
+    TEST_ASSERT_NOT_NULL(old_http);
+    TEST_ASSERT_EQUAL(ESP_OK, esp_http_client_perform(old_http));
+    TEST_ASSERT_EQUAL(1, old_http_events);
+
+    esp_mqtt_sim_set_network_ready(true);
+    esp_mqtt_client_config_t old_mqtt_cfg = {
+        .broker.address.uri = "mqtt://127.0.0.1:1883",
+    };
+    esp_mqtt_client_handle_t old_mqtt = esp_mqtt_client_init(&old_mqtt_cfg);
+    TEST_ASSERT_NOT_NULL(old_mqtt);
+    TEST_ASSERT_EQUAL(ESP_OK, esp_mqtt_client_register_event(
+        old_mqtt, MQTT_EVENT_ANY, reset_mqtt_event_handler, &old_mqtt_connected));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_mqtt_client_start(old_mqtt));
+
+    TEST_ASSERT_EQUAL(ESP_OK, nimble_port_init());
+    TEST_ASSERT_EQUAL(1, ble_hs_is_enabled());
+    TEST_ASSERT_EQUAL(ESP_OK, gpio_set_direction(GPIO_NUM_2, GPIO_MODE_OUTPUT));
+    TEST_ASSERT_EQUAL(ESP_OK, gpio_set_level(GPIO_NUM_2, 1));
+    TEST_ASSERT_EQUAL(ESP_OK, nvs_flash_init());
+    TEST_ASSERT_EQUAL(ESP_OK, nvs_open("reset_trace", NVS_READWRITE, &old_nvs));
+    TEST_ASSERT_EQUAL(ESP_OK, nvs_set_u32(old_nvs, "persist", 0x51A7));
+    TEST_ASSERT_EQUAL(ESP_OK, nvs_commit(old_nvs));
+
+    /* Reset before the scheduled MQTT task has had a chance to start. */
+    pal_wasm_target_request_reset();
+    TEST_ASSERT_TRUE(pal_wasm_target_has_pending_reset());
+    pal_wasm_target_clear_pending_reset();
+    TEST_ASSERT_FALSE(pal_wasm_target_has_pending_reset());
+    TEST_ASSERT_EQUAL(0, esp_http_client_get_status_code(old_http));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_STATE, esp_mqtt_client_start(old_mqtt));
+    TEST_ASSERT_FALSE(esp_mqtt_sim_is_connected(old_mqtt));
+    TEST_ASSERT_EQUAL(0, ble_hs_is_enabled());
+    TEST_ASSERT_EQUAL(0, gpio_get_level(GPIO_NUM_2));
+    uint32_t persisted = 0;
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, nvs_get_u32(old_nvs, "persist", &persisted));
+    TEST_ASSERT_EQUAL(0, old_mqtt_connected);
+
+    /* Recreate every producer, then let both old and new scheduler entries run. */
+    TEST_ASSERT_EQUAL(ESP_OK, esp_event_loop_create_default());
+    esp_netif_t fresh_netif = esp_netif_create_default_wifi_sta();
+    TEST_ASSERT_NOT_NULL(fresh_netif);
+    TEST_ASSERT_EQUAL(ESP_OK, esp_event_handler_register(
+        WIFI_EVENT, ESP_EVENT_ANY_ID, wifi_test_event_handler, NULL));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_event_handler_register(
+        IP_EVENT, IP_EVENT_STA_GOT_IP, wifi_test_event_handler, NULL));
+    wifi_init_config_t wifi_cfg = WIFI_INIT_CONFIG_DEFAULT();
+    TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_init(&wifi_cfg));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_set_mode(WIFI_MODE_STA));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_start());
+    TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_connect());
+
+    esp_mqtt_client_handle_t new_mqtt = esp_mqtt_client_init(&old_mqtt_cfg);
+    TEST_ASSERT_NOT_NULL(new_mqtt);
+    TEST_ASSERT_EQUAL(ESP_OK, esp_mqtt_client_register_event(
+        new_mqtt, MQTT_EVENT_ANY, reset_mqtt_event_handler, &new_mqtt_connected));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_mqtt_client_start(new_mqtt));
+    TEST_ASSERT_EQUAL(ESP_OK, nimble_port_init());
+    TEST_ASSERT_EQUAL(1, ble_hs_is_enabled());
+    TEST_ASSERT_EQUAL(ESP_OK, gpio_set_direction(GPIO_NUM_2, GPIO_MODE_OUTPUT));
+    TEST_ASSERT_EQUAL(ESP_OK, gpio_set_level(GPIO_NUM_2, 1));
+    TEST_ASSERT_EQUAL(ESP_OK, nvs_flash_init());
+    nvs_handle_t new_nvs = 0;
+    TEST_ASSERT_EQUAL(ESP_OK, nvs_open("reset_trace", NVS_READWRITE, &new_nvs));
+    TEST_ASSERT_EQUAL(ESP_OK, nvs_get_u32(new_nvs, "persist", &persisted));
+    TEST_ASSERT_EQUAL_UINT32(0x51A7, persisted);
+
+    esp_http_client_config_t new_http_cfg = {
+        .url = "http://new.example/reset",
+        .event_handler = reset_http_event_handler,
+        .user_data = &new_http_events,
+    };
+    esp_http_client_handle_t new_http = esp_http_client_init(&new_http_cfg);
+    TEST_ASSERT_NOT_NULL(new_http);
+    TEST_ASSERT_EQUAL(ESP_OK, esp_http_client_perform(new_http));
+
+    TEST_ASSERT_EQUAL(WINK_OK, pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 50));
+    TEST_ASSERT_TRUE(esp_wifi_sim_is_connected());
+    TEST_ASSERT_EQUAL(1, s_sta_connected_count);
+    TEST_ASSERT_EQUAL(1, s_got_ip_count);
+    TEST_ASSERT_TRUE(esp_mqtt_sim_is_connected(new_mqtt));
+    TEST_ASSERT_EQUAL(0, old_mqtt_connected);
+    TEST_ASSERT_EQUAL(1, new_mqtt_connected);
+    TEST_ASSERT_EQUAL(1, new_http_events);
+    TEST_ASSERT_EQUAL(1, gpio_get_level(GPIO_NUM_2));
+    nvs_close(new_nvs);
+    TEST_ASSERT_EQUAL(ESP_OK, nvs_flash_deinit());
 }
 
 /* --------------------------------------------------------------------------
@@ -214,6 +357,45 @@ void test_wifi_disconnect_during_connecting_cancels_task(void) {
     TEST_ASSERT_FALSE(esp_wifi_sim_is_connected());
     TEST_ASSERT_EQUAL(0, s_sta_connected_count);
     TEST_ASSERT_EQUAL(0, s_got_ip_count);
+}
+
+/* Reset invalidates an in-flight connection token before a new session starts. */
+void test_wifi_restart_invalidates_old_connect_task(void) {
+    s_sta_connected_count = 0;
+    s_got_ip_count = 0;
+
+    esp_netif_t old_netif = esp_netif_create_default_wifi_sta();
+    TEST_ASSERT_NOT_NULL(old_netif);
+    esp_event_loop_create_default();
+    esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, wifi_test_event_handler, NULL);
+    esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, wifi_test_event_handler, NULL);
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    esp_wifi_init(&cfg);
+    esp_wifi_set_mode(WIFI_MODE_STA);
+    esp_wifi_start();
+    TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_connect());
+
+    /* Soft reset cancels network state, event registrations and task handles. */
+    pal_wasm_target_clear_pending_reset();
+    TEST_ASSERT_FALSE(esp_wifi_sim_is_connected());
+    esp_netif_ip_info_t old_ip_info;
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_STATE,
+        esp_netif_get_ip_info(old_netif, &old_ip_info));
+
+    /* Start a fresh session before the old delayed task wakes. */
+    esp_event_loop_create_default();
+    TEST_ASSERT_NOT_NULL(esp_netif_create_default_wifi_sta());
+    esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, wifi_test_event_handler, NULL);
+    esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, wifi_test_event_handler, NULL);
+    TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_init(&cfg));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_set_mode(WIFI_MODE_STA));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_start());
+    TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_connect());
+    pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 50);
+
+    TEST_ASSERT_TRUE(esp_wifi_sim_is_connected());
+    TEST_ASSERT_EQUAL(1, s_sta_connected_count);
+    TEST_ASSERT_EQUAL(1, s_got_ip_count);
 }
 
 /* TC-WIFI-09: re-entrant connect() returns ESP_ERR_WIFI_CONN */
@@ -436,6 +618,8 @@ int main(void) {
     RUN_TEST(test_wifi_scan_not_supported);
     RUN_TEST(test_wifi_disconnect_and_reconnect);
     RUN_TEST(test_wifi_disconnect_during_connecting_cancels_task);
+    RUN_TEST(test_wifi_restart_invalidates_old_connect_task);
+    RUN_TEST(test_network_modules_reset_as_one_session);
     RUN_TEST(test_wifi_reentrant_connect_returns_conn_err);
 
     /* Event Loop & Snapshot Dispatch */

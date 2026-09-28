@@ -3,109 +3,167 @@ name: ESP-IDF Simulation Interception CI
 on:
   push:
     branches: [ master ]
-    paths:
+    paths: &esp_paths
       - 'wink-micro-os/frameworks/esp_idf/**'
+      - 'wink-micro-os/targets/common/**'
+      - 'wink-micro-os/targets/host/**'
+      - 'wink-micro-os/targets/wasm/**'
+      - 'wink-micro-os/pal/**'
+      - 'wink-micro-os/test/**'
+      - 'wink-micro-os/cmake/**'
+      - 'wink-micro-os/CMakeLists.txt'
+      - 'wink-micro-app/vendor/esp_idfv61/**'
+      - 'docs/implementation-plans/esp32/**'
+      - 'docs/decisions/**'
+      - '.github/scripts/check_harvested_headers.py'
+      - '.github/scripts/check_license_map.py'
       - '.github/workflows/esp_idf_ci.yml'
   pull_request:
     branches: [ master ]
-    paths:
-      - 'wink-micro-os/frameworks/esp_idf/**'
-      - '.github/workflows/esp_idf_ci.yml'
+    paths: *esp_paths
   workflow_dispatch:
+
+# Required repository configuration: WINK_TOOLS_REPOSITORY (owner/repo),
+# WINK_TOOLS_REF (pinned commit SHA), WINK_TOOLS_READ_TOKEN (read-only secret).
+# Missing configuration fails the gate; no lint, build or coverage step may skip.
+env:
+  WINK_TOOLS_ROOT: ${{ github.workspace }}/.wink-tools-source/packages/wink-tools
 
 jobs:
   lint-and-governance:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - &require_tools
+        name: Require pinned wink-tools source
+        shell: bash
+        env:
+          TOOLS_REPOSITORY: ${{ vars.WINK_TOOLS_REPOSITORY }}
+          TOOLS_REF: ${{ vars.WINK_TOOLS_REF }}
+          TOOLS_TOKEN: ${{ secrets.WINK_TOOLS_READ_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPOSITORY: ${{ github.repository }}
+        run: |
+          if [[ "$EVENT_NAME" == pull_request && "$HEAD_REPOSITORY" != "$BASE_REPOSITORY" ]]; then
+            echo "::error::Fork pull requests cannot access the private toolchain; run this gate in a trusted environment before merge."
+            exit 1
+          fi
+          if [[ -z "$TOOLS_REPOSITORY" || -z "$TOOLS_TOKEN" || ! "$TOOLS_REF" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "::error::Configure WINK_TOOLS_REPOSITORY, a 40-character WINK_TOOLS_REF commit, and WINK_TOOLS_READ_TOKEN. ESP-IDF gates cannot run without pinned wink-tools source."
+            exit 1
+          fi
+      - &checkout_tools
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.WINK_TOOLS_REPOSITORY }}
+          ref: ${{ vars.WINK_TOOLS_REF }}
+          token: ${{ secrets.WINK_TOOLS_READ_TOKEN }}
+          path: .wink-tools-source
+          persist-credentials: false
+      - &check_tools
+        name: Check source toolchain
+        shell: bash
+        run: test -f "$WINK_TOOLS_ROOT/wink.py" && test -f "$WINK_TOOLS_ROOT/tools/codegen/scripts/list_drivers.py"
+      - name: Install Python lint dependencies
+        run: python -m pip install pyyaml jinja2 rich
       - name: Check License Map
         run: python .github/scripts/check_license_map.py
       - name: Verify Harvested Headers and Asset Channels
-        run: |
-          python .github/scripts/check_harvested_headers.py \
-            --channels wink-micro-os/frameworks/esp_idf/channels.json
-      # winkcli ships via GitHub Releases (same policy as pr.yml).
-      # Do NOT `pip install ./wink-tools`: no pyproject.toml/setup.py, and the
-      # name is not on PyPI (name-squatting risk).
+        run: python .github/scripts/check_harvested_headers.py --channels wink-micro-os/frameworks/esp_idf/channels.json
       - name: Run Layering / API / ESP-IDF Lint
+        shell: bash
         run: |
-          if ! command -v winkcli >/dev/null 2>&1; then
-            echo "::warning::winkcli not on PATH; install from GitHub Releases (see wink-tools/README.md). Lint packs skipped."
-            exit 0
-          fi
-          winkcli lint --pack layering --pack api
-          winkcli lint --pack esp_idf_all
+          python "$WINK_TOOLS_ROOT/wink.py" lint --root wink-micro-os --pack layering --pack api
+          python "$WINK_TOOLS_ROOT/wink.py" lint --root wink-micro-os --pack esp_idf_all \
+            --lint-paths wink-micro-os/frameworks/esp_idf/tools/lint
 
   host-matrix-tests:
     needs: lint-and-governance
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
-        target: [esp32, esp32s3, esp32c3, esp32c6]
+        include:
+          # Note: Host target currently requires Win32 Fiber (targets/host/CMakeLists.txt).
+          # Linux (ubuntu-latest) matrix jobs are deferred until ADR-0013 sim_ctx_posix_ucontext.c is implemented.
+          - { os: windows-latest, target: esp32, profile: LITE }
+          - { os: windows-latest, target: esp32, profile: STANDARD }
+          - { os: windows-latest, target: esp32, profile: PRO }
+          - { os: windows-latest, target: esp32s3, profile: LITE }
+          - { os: windows-latest, target: esp32c3, profile: LITE }
+          - { os: windows-latest, target: esp32c6, profile: LITE }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      # The host build hard-requires the wink toolchain (cmake/wink_tools.cmake).
-      # Public runners have neither winkcli nor the closed source tree, so mirror
-      # the pr.yml policy: detect and skip with a warning until winkcli is distributed.
-      - name: Detect wink toolchain
-        id: toolchain
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Set up Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: '3.1.64'
+      - *require_tools
+      - *checkout_tools
+      - *check_tools
+      - name: Install build dependencies
+        shell: bash
+        run: python -m pip install pyyaml jinja2 rich
+      - name: Configure CMake
         shell: bash
         run: |
-          if command -v winkcli >/dev/null 2>&1 \
-             || [ -f ../wink-tools/tools/codegen/scripts/list_drivers.py ] \
-             || [ -f ../packages/wink-tools/tools/codegen/scripts/list_drivers.py ]; then
-            echo "available=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::wink toolchain is not distributed yet; host matrix build is skipped (roadmap: cross-platform winkcli distribution)."
-          fi
-      - name: Configure CMake
-        if: steps.toolchain.outputs.available == 'true'
+          cmake -B build -S wink-micro-os -DENABLE_ESP_IDF_FRAMEWORK=ON \
+            -DTARGET_PLATFORM=host -DWINK_TOOLS_ROOT="$WINK_TOOLS_ROOT" \
+            -DWINK_ESP_TARGET=${{ matrix.target }} -DWINK_ESP_SIM_PROFILE=${{ matrix.profile }}
+      - name: Build
+        run: cmake --build build --config Debug --target esp_idf_host_tests --parallel 2
+      - name: Run ESP-IDF core, corpus and vendor suites
+        shell: bash
         run: |
-          cmake -B build -S wink-micro-os -DENABLE_ESP_IDF_FRAMEWORK=ON -DTARGET_PLATFORM=host -DWINK_ESP_TARGET=${{ matrix.target }}
-      - name: Build and Test
-        if: steps.toolchain.outputs.available == 'true'
-        run: |
-          cmake --build build --config Debug -j2
-          ctest --test-dir build -C Debug -L esp_idf --output-on-failure
+          for label in esp_idf esp_idf_corpus esp_idfv61_vendor; do
+            ctest --test-dir build -C Debug -L "^${label}$" --no-tests=error --output-on-failure
+          done
+      - name: Run ESP-IDF Wasm compile suite
+        shell: bash
+        run: ctest --test-dir build -C Debug -L '^esp_idf_wasm$' --no-tests=error --output-on-failure
 
   coverage-gate:
     needs: lint-and-governance
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Detect wink toolchain
-        id: toolchain
+      - name: Check Linux Host Support (ADR-0013)
+        id: host_check
         shell: bash
         run: |
-          if command -v winkcli >/dev/null 2>&1 \
-             || [ -f ../wink-tools/tools/codegen/scripts/list_drivers.py ] \
-             || [ -f ../packages/wink-tools/tools/codegen/scripts/list_drivers.py ]; then
-            echo "available=true" >> "$GITHUB_OUTPUT"
+          if ! grep -q "sim_ctx_posix_ucontext.c" wink-micro-os/targets/host/CMakeLists.txt; then
+            echo "supported=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Linux host target is pending ADR-0013 (sim_ctx_posix_ucontext.c); coverage pipeline skipped."
           else
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::wink toolchain is not distributed yet; coverage pipeline is skipped (roadmap: cross-platform winkcli distribution)."
+            echo "supported=true" >> "$GITHUB_OUTPUT"
           fi
-      - name: Install lcov
-        if: steps.toolchain.outputs.available == 'true'
-        run: sudo apt-get update && sudo apt-get install -y lcov
+      - uses: actions/setup-python@v5
+        if: steps.host_check.outputs.supported == 'true'
+        with:
+          python-version: '3.11'
+      - *require_tools
+      - *checkout_tools
+      - *check_tools
+      - name: Install coverage dependencies
+        if: steps.host_check.outputs.supported == 'true'
+        run: |
+          python -m pip install pyyaml jinja2 rich
+          sudo apt-get update && sudo apt-get install -y lcov
       - name: Run Coverage Pipeline
-        if: steps.toolchain.outputs.available == 'true'
-        run: |
-          chmod +x wink-micro-os/frameworks/esp_idf/tools/coverage.sh
-          ./wink-micro-os/frameworks/esp_idf/tools/coverage.sh
+        if: steps.host_check.outputs.supported == 'true'
+        run: bash wink-micro-os/frameworks/esp_idf/tools/coverage.sh
       - name: Check 85% Line Coverage Threshold
-        if: steps.toolchain.outputs.available == 'true'
-        run: |
-          python wink-micro-os/frameworks/esp_idf/tools/check_coverage.py build_cov/coverage_filtered.info 85
+        if: steps.host_check.outputs.supported == 'true'
+        run: python wink-micro-os/frameworks/esp_idf/tools/check_coverage.py build_cov/coverage_filtered.info 85
       - name: Upload Coverage HTML Artifact
-        if: steps.toolchain.outputs.available == 'true'
+        if: steps.host_check.outputs.supported == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: esp_idf_coverage_html

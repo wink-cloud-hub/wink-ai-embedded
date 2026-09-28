@@ -14,6 +14,7 @@
 extern bool pal_wasm_target_has_pending_reset(void);
 extern int pal_wasm_target_get_reset_reason(void);
 extern void pal_wasm_target_clear_pending_reset(void);
+extern void pal_wasm_target_request_reset(void);
 
 void setUp(void) {}
 void tearDown(void) {}
@@ -89,11 +90,12 @@ void test_esp_gpio_out_of_bounds_pin_rejected(void) {
 }
 
 void test_esp_restart_pending_flag(void) {
-    /* Never touches host exit/abort: only raises the pending flag. */
+    /* Observe the reset request through the test adapter; public esp_restart
+     * is noreturn and is covered by a subprocess contract test. */
     pal_wasm_target_clear_pending_reset();
     TEST_ASSERT_FALSE(pal_wasm_target_has_pending_reset());
 
-    esp_restart();
+    pal_wasm_target_request_reset();
     TEST_ASSERT_TRUE(pal_wasm_target_has_pending_reset());
     TEST_ASSERT_EQUAL_INT(4, pal_wasm_target_get_reset_reason()); /* SOFTWARE */
     TEST_ASSERT_EQUAL_INT(ESP_RST_SW, esp_reset_reason());
@@ -123,7 +125,7 @@ void test_esp_restart_peripherals_reset(void) {
     TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_STATE, uart_driver_install(UART_NUM_0, 256, 256, 0, NULL, 0));
 
     /* 3. Restart and clear pending reset */
-    esp_restart();
+    pal_wasm_target_request_reset();
     pal_wasm_target_clear_pending_reset();
 
     /* 4. After clear_pending_reset, all peripherals must be in clean initial state and re-openable */
