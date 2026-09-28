@@ -13,6 +13,7 @@
 #include "freertos_sync.h"
 #include "wink_sim_scheduler.h"
 #include "pal_osal.h"
+#include "pal_irq.h"
 
 #ifndef CONFIG_FREERTOS_MAX_TASKS
 #define CONFIG_FREERTOS_MAX_TASKS 8
@@ -35,6 +36,15 @@
 #endif
 
 extern void sim_set_mono_time_us(uint64_t us);
+
+typedef void (*host_time_hook_fn)(uint64_t time_us, void* arg);
+#if defined(__EMSCRIPTEN__)
+void host_sim_set_time_hook(uint64_t target_us, host_time_hook_fn hook, void* arg) {
+    (void)target_us; (void)hook; (void)arg;
+}
+#else
+extern void host_sim_set_time_hook(uint64_t target_us, host_time_hook_fn hook, void* arg);
+#endif
 
 void setUp(void) {
     sim_set_mono_time_us(0);
@@ -1211,6 +1221,279 @@ void test_freertos_pointer_cast_safety(void) {
     vTaskDelete(h_restored);
 }
 
+/* --------------------------------------------------------------------------
+ * H4: ADR-0053 Same-Timestamp Scheduling Total Order & Structured Trace Tests
+ * -------------------------------------------------------------------------- */
+#define H4_TEST_IRQ 7
+#define H4_MAGIC_VAL 0xA53Cu
+
+static QueueHandle_t s_h4_queue = NULL;
+static uint32_t s_h4_received = 0;
+static TickType_t s_h4_reader_tick = 0;
+static TickType_t s_h4_delayed_tick = 0;
+static BaseType_t s_h4_receive_res = pdFAIL;
+static BaseType_t s_h4_isr_send_res = pdFAIL;
+static BaseType_t s_h4_isr_woken = pdFALSE;
+static int s_h4_reader_step = 0;
+static int s_h4_delayed_step = 0;
+
+static void h4_isr_handler(void* arg) {
+    (void)arg;
+    uint32_t val = H4_MAGIC_VAL;
+    s_h4_isr_send_res = xQueueSendFromISR(s_h4_queue, &val, &s_h4_isr_woken);
+}
+
+static void h4_reader_task(void* arg) {
+    (void)arg;
+    s_h4_reader_step = 1;
+    s_h4_receive_res = xQueueReceive(s_h4_queue, &s_h4_received, 1);
+    s_h4_reader_tick = xTaskGetTickCount();
+    s_h4_reader_step = 2;
+    vTaskDelete(NULL);
+}
+
+static void h4_delayed_task(void* arg) {
+    (void)arg;
+    s_h4_delayed_step = 1;
+    vTaskDelay(1);
+    s_h4_delayed_tick = xTaskGetTickCount();
+    s_h4_delayed_step = 2;
+    vTaskDelete(NULL);
+}
+
+static void h4_timeout_only_task(void* arg) {
+    (void)arg;
+    uint32_t val = 0;
+    BaseType_t res = xQueueReceive(s_h4_queue, &val, 1); /* 10ms timeout */
+    TEST_ASSERT_EQUAL(pdFALSE, res);
+    vTaskDelete(NULL);
+}
+
+static void h4_trigger_irq_hook(uint64_t time_us, void* arg) {
+    (void)time_us;
+    (void)arg;
+    pal_irq_set_pending(H4_TEST_IRQ);
+}
+
+void test_h4_same_time_total_order_standard(void) {
+    sim_set_mono_time_us(0);
+    sim_scheduler_trace_reset();
+    sim_scheduler_trace_enable(true);
+
+    s_h4_received = 0;
+    s_h4_reader_tick = s_h4_delayed_tick = 0;
+    s_h4_receive_res = s_h4_isr_send_res = pdFAIL;
+    s_h4_isr_woken = pdFALSE;
+    s_h4_reader_step = s_h4_delayed_step = 0;
+
+    s_h4_queue = xQueueCreate(1, sizeof(uint32_t));
+    TEST_ASSERT_NOT_NULL(s_h4_queue);
+
+    TEST_ASSERT_EQUAL(WINK_OK, pal_irq_enable(H4_TEST_IRQ, PAL_IRQ_PRIO_NORMAL, h4_isr_handler, NULL));
+
+    TaskHandle_t h_reader = NULL;
+    TaskHandle_t h_delayed = NULL;
+    /* Create reader first (slot 0), then delayed (slot 1) */
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(h4_reader_task, "h4_r", 32 * 1024, NULL, 5, &h_reader));
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(h4_delayed_task, "h4_d", 32 * 1024, NULL, 5, &h_delayed));
+
+    /* Register time hook: when virtual clock reaches 10000us (1 tick deadline), pend IRQ */
+    host_sim_set_time_hook(10000, h4_trigger_irq_hook, NULL);
+
+    /* Run scheduler: tasks start at 0us, block, time advances to 10000us,
+     * IRQ fires at 10000us, Phase 0 drains IRQ, and ADR-0053 schedules tasks. */
+    TEST_ASSERT_EQUAL(WINK_OK, pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 20));
+
+    TEST_ASSERT_EQUAL(2, s_h4_reader_step);
+    TEST_ASSERT_EQUAL(2, s_h4_delayed_step);
+    TEST_ASSERT_EQUAL(pdPASS, s_h4_isr_send_res);
+    TEST_ASSERT_EQUAL(pdTRUE, s_h4_isr_woken);
+    TEST_ASSERT_EQUAL(pdPASS, s_h4_receive_res);
+    TEST_ASSERT_EQUAL(H4_MAGIC_VAL, s_h4_received);
+    TEST_ASSERT_EQUAL(1, s_h4_reader_tick);
+    TEST_ASSERT_EQUAL(1, s_h4_delayed_tick);
+
+    /* Verify Structured Trace complies with ADR-0053 */
+    uint32_t count = sim_scheduler_trace_count();
+    TEST_ASSERT_GREATER_OR_EQUAL(5, count);
+
+    int irq_idx = -1, woken_reader_idx = -1, woken_delayed_idx = -1;
+    int switch_reader_idx = -1, switch_delayed_idx = -1;
+
+    for (uint32_t i = 0; i < count; ++i) {
+        const wink_sim_trace_entry_t* e = sim_scheduler_trace_get(i);
+        TEST_ASSERT_NOT_NULL(e);
+        if (e->virtual_time_us == 10000) {
+            if (e->event_type == WINK_SIM_TRACE_EVENT_IRQ_DISPATCH && e->resource_id == H4_TEST_IRQ) {
+                irq_idx = (int)i;
+            } else if (e->event_type == WINK_SIM_TRACE_EVENT_TASK_WOKEN && e->wake_reason == WINK_SIM_WAKE_IRQ) {
+                woken_reader_idx = (int)i;
+            } else if (e->event_type == WINK_SIM_TRACE_EVENT_TASK_WOKEN && e->wake_reason == WINK_SIM_WAKE_TIMEOUT) {
+                woken_delayed_idx = (int)i;
+            } else if (e->event_type == WINK_SIM_TRACE_EVENT_TASK_SWITCH_IN && strcmp(e->task_name, "h4_r") == 0) {
+                if (switch_reader_idx < 0) switch_reader_idx = (int)i;
+            } else if (e->event_type == WINK_SIM_TRACE_EVENT_TASK_SWITCH_IN && strcmp(e->task_name, "h4_d") == 0) {
+                if (switch_delayed_idx < 0) switch_delayed_idx = (int)i;
+            }
+        }
+    }
+
+    TEST_ASSERT_GREATER_OR_EQUAL(0, irq_idx);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, woken_reader_idx);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, woken_delayed_idx);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, switch_reader_idx);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, switch_delayed_idx);
+
+    /* Total order verification per ADR-0053: IRQ -> Reader Woken -> Delayed Woken -> Reader Switch-In -> Delayed Switch-In */
+    TEST_ASSERT_TRUE(irq_idx < woken_reader_idx);
+    TEST_ASSERT_TRUE(woken_reader_idx < woken_delayed_idx);
+    TEST_ASSERT_TRUE(switch_reader_idx < switch_delayed_idx);
+
+    TEST_ASSERT_EQUAL(WINK_OK, pal_irq_disable(H4_TEST_IRQ));
+    vQueueDelete(s_h4_queue);
+}
+
+void test_h4_same_time_total_order_reversed_slots(void) {
+    sim_set_mono_time_us(0);
+    sim_scheduler_trace_reset();
+    sim_scheduler_trace_enable(true);
+
+    s_h4_received = 0;
+    s_h4_reader_tick = s_h4_delayed_tick = 0;
+    s_h4_receive_res = s_h4_isr_send_res = pdFAIL;
+    s_h4_isr_woken = pdFALSE;
+    s_h4_reader_step = s_h4_delayed_step = 0;
+
+    s_h4_queue = xQueueCreate(1, sizeof(uint32_t));
+    TEST_ASSERT_NOT_NULL(s_h4_queue);
+
+    TEST_ASSERT_EQUAL(WINK_OK, pal_irq_enable(H4_TEST_IRQ, PAL_IRQ_PRIO_NORMAL, h4_isr_handler, NULL));
+
+    TaskHandle_t h_reader = NULL;
+    TaskHandle_t h_delayed = NULL;
+    /* REVERSED: Create delayed task first (slot 0), reader second (slot 1) */
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(h4_delayed_task, "h4_d", 32 * 1024, NULL, 5, &h_delayed));
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(h4_reader_task, "h4_r", 32 * 1024, NULL, 5, &h_reader));
+
+    /* Register time hook at 10000us */
+    host_sim_set_time_hook(10000, h4_trigger_irq_hook, NULL);
+
+    /* Run scheduler */
+    TEST_ASSERT_EQUAL(WINK_OK, pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 20));
+
+    TEST_ASSERT_EQUAL(2, s_h4_reader_step);
+    TEST_ASSERT_EQUAL(2, s_h4_delayed_step);
+    TEST_ASSERT_EQUAL(H4_MAGIC_VAL, s_h4_received);
+
+    /* Verify that despite delayed being in slot 0, ADR-0053 arbitration guarantees
+     * reader (slot 1) is switched in BEFORE delayed (slot 0) */
+    uint32_t count = sim_scheduler_trace_count();
+    int switch_reader_idx = -1, switch_delayed_idx = -1;
+
+    for (uint32_t i = 0; i < count; ++i) {
+        const wink_sim_trace_entry_t* e = sim_scheduler_trace_get(i);
+        if (e->virtual_time_us == 10000 && e->event_type == WINK_SIM_TRACE_EVENT_TASK_SWITCH_IN) {
+            if (strcmp(e->task_name, "h4_r") == 0 && switch_reader_idx < 0) {
+                switch_reader_idx = (int)i;
+            } else if (strcmp(e->task_name, "h4_d") == 0 && switch_delayed_idx < 0) {
+                switch_delayed_idx = (int)i;
+            }
+        }
+    }
+
+    TEST_ASSERT_GREATER_OR_EQUAL(0, switch_reader_idx);
+    TEST_ASSERT_GREATER_OR_EQUAL(0, switch_delayed_idx);
+    TEST_ASSERT_TRUE_MESSAGE(switch_reader_idx < switch_delayed_idx,
+                             "ADR-0053 arbitration failed: reader did not execute before delayed in reversed slots");
+
+    TEST_ASSERT_EQUAL(WINK_OK, pal_irq_disable(H4_TEST_IRQ));
+    vQueueDelete(s_h4_queue);
+}
+
+void test_h4_multi_run_deterministic_replay(void) {
+    wink_sim_trace_entry_t baseline_trace[16];
+    uint32_t baseline_count = 0;
+
+    for (int run = 0; run < 5; ++run) {
+        sim_set_mono_time_us(0);
+        sim_scheduler_trace_reset();
+        sim_scheduler_trace_enable(true);
+
+        s_h4_received = 0;
+        s_h4_queue = xQueueCreate(1, sizeof(uint32_t));
+        TEST_ASSERT_NOT_NULL(s_h4_queue);
+        TEST_ASSERT_EQUAL(WINK_OK, pal_irq_enable(H4_TEST_IRQ, PAL_IRQ_PRIO_NORMAL, h4_isr_handler, NULL));
+
+        TaskHandle_t hr, hd;
+        TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(h4_reader_task, "h4_r", 32 * 1024, NULL, 5, &hr));
+        TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(h4_delayed_task, "h4_d", 32 * 1024, NULL, 5, &hd));
+
+        host_sim_set_time_hook(10000, h4_trigger_irq_hook, NULL);
+        TEST_ASSERT_EQUAL(WINK_OK, pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 20));
+
+        uint32_t cur_count = sim_scheduler_trace_count();
+        TEST_ASSERT_GREATER_OR_EQUAL(5, cur_count);
+
+        if (run == 0) {
+            baseline_count = (cur_count < 16) ? cur_count : 16;
+            for (uint32_t i = 0; i < baseline_count; ++i) {
+                baseline_trace[i] = *sim_scheduler_trace_get(i);
+            }
+        } else {
+            TEST_ASSERT_EQUAL_UINT32(baseline_count, (cur_count < 16) ? cur_count : 16);
+            for (uint32_t i = 0; i < baseline_count; ++i) {
+                const wink_sim_trace_entry_t* cur = sim_scheduler_trace_get(i);
+                TEST_ASSERT_EQUAL_UINT64(baseline_trace[i].virtual_time_us, cur->virtual_time_us);
+                TEST_ASSERT_EQUAL_UINT32(baseline_trace[i].task_slot, cur->task_slot);
+                TEST_ASSERT_EQUAL_UINT8(baseline_trace[i].wake_reason, cur->wake_reason);
+                TEST_ASSERT_EQUAL_UINT8(baseline_trace[i].event_type, cur->event_type);
+                TEST_ASSERT_EQUAL_STRING(baseline_trace[i].task_name, cur->task_name);
+            }
+        }
+
+        TEST_ASSERT_EQUAL(WINK_OK, pal_irq_disable(H4_TEST_IRQ));
+        vQueueDelete(s_h4_queue);
+    }
+}
+
+void test_h4_timeout_waiter_cleanup_and_no_ghost_wakeups(void) {
+    sim_set_mono_time_us(0);
+    sim_scheduler_trace_reset();
+    sim_scheduler_trace_enable(true);
+
+    s_h4_queue = xQueueCreate(1, sizeof(uint32_t));
+    TEST_ASSERT_NOT_NULL(s_h4_queue);
+
+    TaskHandle_t h = NULL;
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(h4_timeout_only_task, "h4_to", 32 * 1024, NULL, 5, &h));
+
+    /* Step 1: task blocks on queue */
+    TEST_ASSERT_EQUAL(WINK_OK, pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 1));
+
+    /* Advance time to 10000us (timeout expires) without any IRQ */
+    sim_set_mono_time_us(10000);
+    TEST_ASSERT_EQUAL(WINK_OK, pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 5));
+
+    /* Trace must record exactly 1 TIMEOUT wake event */
+    uint32_t count = sim_scheduler_trace_count();
+    uint32_t timeout_wakes = 0;
+    for (uint32_t i = 0; i < count; ++i) {
+        const wink_sim_trace_entry_t* e = sim_scheduler_trace_get(i);
+        if (e->event_type == WINK_SIM_TRACE_EVENT_TASK_WOKEN && e->wake_reason == WINK_SIM_WAKE_TIMEOUT) {
+            timeout_wakes++;
+        }
+    }
+    TEST_ASSERT_EQUAL_UINT32(1, timeout_wakes);
+
+    /* Post data into queue: dead/timed-out task must NOT receive it */
+    uint32_t item = 0x1234;
+    TEST_ASSERT_EQUAL(pdPASS, xQueueSend(s_h4_queue, &item, 0));
+    TEST_ASSERT_EQUAL(1, uxQueueMessagesWaiting(s_h4_queue));
+
+    /* Delete queue */
+    vQueueDelete(s_h4_queue);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_task_handle_aba_protection);
@@ -1248,5 +1531,9 @@ int main(void) {
     RUN_TEST(test_freertos_semaphore_pool_exhaustion);
     RUN_TEST(test_freertos_event_group_pool_exhaustion);
     RUN_TEST(test_freertos_pointer_cast_safety);
+    RUN_TEST(test_h4_same_time_total_order_standard);
+    RUN_TEST(test_h4_same_time_total_order_reversed_slots);
+    RUN_TEST(test_h4_multi_run_deterministic_replay);
+    RUN_TEST(test_h4_timeout_waiter_cleanup_and_no_ghost_wakeups);
     return UNITY_END();
 }

@@ -34,6 +34,41 @@ extern "C" {
 #endif
 
 typedef enum {
+    WINK_SIM_WAKE_NONE = 0,
+    WINK_SIM_WAKE_IRQ = 1,
+    WINK_SIM_WAKE_SYNC_RES = 2,
+    WINK_SIM_WAKE_TIMEOUT = 3,
+    WINK_SIM_WAKE_DIRECT = 4,
+} wink_sim_wake_reason_t;
+
+typedef enum {
+    WINK_SIM_TRACE_EVENT_NONE = 0,
+    WINK_SIM_TRACE_EVENT_IRQ_DISPATCH = 1,
+    WINK_SIM_TRACE_EVENT_TASK_WOKEN = 2,
+    WINK_SIM_TRACE_EVENT_TASK_SWITCH_IN = 3,
+    WINK_SIM_TRACE_EVENT_TASK_BLOCK = 4,
+    WINK_SIM_TRACE_EVENT_TASK_YIELD = 5,
+} wink_sim_trace_event_type_t;
+
+#ifndef WINK_SIM_TRACE_CAPACITY
+#define WINK_SIM_TRACE_CAPACITY 128
+#endif
+
+typedef struct {
+    uint64_t virtual_time_us;
+    uint32_t sequence;
+    uint32_t task_id;
+    uint32_t task_slot;
+    uint32_t resource_id;
+    uint8_t  wake_reason;       /**< wink_sim_wake_reason_t */
+    uint8_t  event_type;        /**< wink_sim_trace_event_type_t */
+    uint16_t reserved;
+    char     task_name[16];
+    uint32_t pad;
+} wink_sim_trace_entry_t;
+_Static_assert(sizeof(wink_sim_trace_entry_t) == 48, "wink_sim_trace_entry_t must be 48 bytes");
+
+typedef enum {
     SIM_TASK_STATE_INVALID = 0,
     SIM_TASK_STATE_READY,       /**< Runnable */
     SIM_TASK_STATE_WAITING,     /**< Waiting for sleep_ms timer */
@@ -50,6 +85,7 @@ typedef struct {
     uint64_t wakeup_us;
     uint32_t blocked_on;
     bool     timeout_fired;
+    uint8_t  last_wake_reason;  /**< wink_sim_wake_reason_t */
     sim_task_state_t state;
     uint32_t id;
     char     name[16];
@@ -90,6 +126,15 @@ sim_ctx_t*    sim_scheduler_current_ctx(void);
 void          sim_scheduler_set_main_ctx(sim_ctx_t* ctx);
 sim_ctx_t*    sim_scheduler_main_ctx(void);
 void          sim_scheduler_yield_context(void);
+
+void                          sim_scheduler_trace_enable(bool enable);
+bool                          sim_scheduler_trace_is_enabled(void);
+void                          sim_scheduler_trace_reset(void);
+uint32_t                      sim_scheduler_trace_count(void);
+const wink_sim_trace_entry_t* sim_scheduler_trace_get(uint32_t index);
+void                          sim_scheduler_trace_record(uint64_t virtual_time_us, uint32_t task_slot,
+                                                         uint32_t resource_id, wink_sim_wake_reason_t wake_reason,
+                                                         wink_sim_trace_event_type_t event_type);
 
 #ifdef __cplusplus
 }  /* extern "C" */

@@ -23,6 +23,8 @@
 static inline bool IsDebuggerPresent(void) { return false; }
 #endif
 
+extern int32_t pal_host_dispatch_pending_interrupts(void);
+
 struct wink_app_callbacks;
 /* Cross-platform weak stub */
 #if defined(_MSC_VER)
@@ -92,9 +94,31 @@ static struct {
 } s_gpio_ideal[SIM_GPIO_IDEAL_SLOTS];
 static wink_sim_faults_t s_faults = { 0 };
 
+typedef void (*host_time_hook_fn)(uint64_t time_us, void* arg);
+static host_time_hook_fn s_time_hook = NULL;
+static void* s_time_hook_arg = NULL;
+static uint64_t s_time_hook_target_us = 0;
+
+void host_sim_set_time_hook(uint64_t target_us, host_time_hook_fn hook, void* arg) {
+    s_time_hook_target_us = target_us;
+    s_time_hook = hook;
+    s_time_hook_arg = arg;
+}
+
 /* ---- HAL side accessors ---- */
 uint64_t host_sim_time_us(void) { return s_time_us; }
-void host_sim_advance_to(uint64_t us) { if (us > s_time_us) s_time_us = us; }
+void host_sim_advance_to(uint64_t us) {
+    if (us > s_time_us) {
+        if (s_time_hook && s_time_us < s_time_hook_target_us && us >= s_time_hook_target_us) {
+            s_time_us = s_time_hook_target_us;
+            host_time_hook_fn fn = s_time_hook;
+            void* arg = s_time_hook_arg;
+            s_time_hook = NULL;
+            fn(s_time_hook_target_us, arg);
+        }
+        s_time_us = us;
+    }
+}
 uint64_t host_echo_rise_us(void) { return s_echo_rise_us; }
 uint64_t host_echo_high_us(void) { return s_echo_high_us; }
 uint16_t host_echo_pin(void) { return s_echo_pin; }
@@ -129,6 +153,7 @@ void sim_reset_time(void) {
     s_abnormal_boot_count = 0;
     s_last_i2c_port = 0; s_last_i2c_addr = 0;
     s_last_i2c_write_len = 0; s_i2c_transfer_count = 0;
+    s_time_hook = NULL;
     sim_clear_gpio_ideal();
 }
 void sim_set_mono_time_us(uint64_t us) { s_time_us = us; }
@@ -566,6 +591,7 @@ wink_status_t pal_sim_scheduler_run(const struct wink_app_callbacks* callbacks,
     sim_scheduler_set_current(SIM_SCHED_NO_READY);
 
     while (1) {
+        pal_host_dispatch_pending_interrupts();
         sim_scheduler_gc_zombies();
 
         if (main_task_id != SIM_SCHED_NO_READY) {
@@ -591,6 +617,11 @@ wink_status_t pal_sim_scheduler_run(const struct wink_app_callbacks* callbacks,
 
         sim_scheduler_set_current(next);
         const sim_task_t* t = sim_scheduler_get(next);
+        sim_scheduler_trace_record(now, next, 0,
+                                   (wink_sim_wake_reason_t)t->last_wake_reason,
+                                   WINK_SIM_TRACE_EVENT_TASK_SWITCH_IN);
+        ((sim_task_t*)t)->last_wake_reason = (uint8_t)WINK_SIM_WAKE_NONE;
+
         uint64_t wall_start_us = host_wall_clock_us();
         sim_ctx_switch(s_main_ctx, t->ctx);
         sim_scheduler_set_current(SIM_SCHED_NO_READY);

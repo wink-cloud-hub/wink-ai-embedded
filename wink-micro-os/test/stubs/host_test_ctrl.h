@@ -22,6 +22,9 @@ void sim_set_reset_reason(pal_os_reset_reason_t reason);
 void sim_set_mono_time_us(uint64_t us);
 void sim_advance_mono_time_us(uint64_t delta_us);
 
+typedef void (*host_time_hook_fn)(uint64_t time_us, void* arg);
+void host_sim_set_time_hook(uint64_t target_us, host_time_hook_fn hook, void* arg);
+
 uint8_t  sim_last_i2c_port(void);
 uint16_t sim_last_i2c_addr(void);
 uint32_t sim_last_i2c_write_len(void);

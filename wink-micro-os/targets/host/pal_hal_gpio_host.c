@@ -11,6 +11,7 @@
 #include "pal_resource.h"
 #include "hal/pal_rmt.h"
 #include "host_test_ctrl.h"
+#include "wink_sim_scheduler.h"
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -367,6 +368,65 @@ static pal_isr_t s_host_irq_table[HOST_MAX_IRQ] = {NULL};
 static void *s_host_irq_arg[HOST_MAX_IRQ] = {NULL};
 static uint32_t s_host_logical_isr_count[HOST_MAX_IRQ] = {0};
 
+#define HOST_MAX_PENDING_IRQ 64
+typedef struct {
+    uint32_t irq_num;
+} host_pending_irq_t;
+
+static host_pending_irq_t s_host_pending_queue[HOST_MAX_PENDING_IRQ];
+static uint32_t s_host_pending_head = 0;
+static uint32_t s_host_pending_count = 0;
+static uint32_t s_host_pending_overflow_count = 0;
+
+static inline void host_sw_enqueue(uint32_t irq_num) {
+    if (s_host_pending_count >= HOST_MAX_PENDING_IRQ) {
+        s_host_pending_head = (s_host_pending_head + 1) % HOST_MAX_PENDING_IRQ;
+        s_host_pending_count--;
+        s_host_pending_overflow_count++;
+    }
+    uint32_t tail = (s_host_pending_head + s_host_pending_count) % HOST_MAX_PENDING_IRQ;
+    s_host_pending_queue[tail].irq_num = irq_num;
+    s_host_pending_count++;
+}
+
+static inline bool host_sw_dequeue(uint32_t *out_irq) {
+    if (s_host_pending_count == 0) return false;
+    *out_irq = s_host_pending_queue[s_host_pending_head].irq_num;
+    s_host_pending_head = (s_host_pending_head + 1) % HOST_MAX_PENDING_IRQ;
+    s_host_pending_count--;
+    return true;
+}
+
+void pal_irq_set_pending(uint32_t irq_num) {
+    if (irq_num < HOST_MAX_IRQ && s_host_irq_table[irq_num] != NULL) {
+        host_sw_enqueue(irq_num);
+    }
+}
+
+void pal_irq_clear_pending(uint32_t irq_num) {
+    (void)irq_num;
+}
+
+int32_t pal_host_dispatch_pending_interrupts(void) {
+    if (s_irq_lock_depth > 0) {
+        return -1;
+    }
+    int32_t count = 0;
+    uint32_t irq_num;
+    while (host_sw_dequeue(&irq_num)) {
+        if (irq_num < HOST_MAX_IRQ && s_host_irq_table[irq_num] != NULL) {
+            pal_os_set_sim_isr_context(true);
+            s_host_logical_isr_count[irq_num]++;
+            sim_scheduler_trace_record(pal_os_get_us(), 0, irq_num,
+                                       WINK_SIM_WAKE_IRQ, WINK_SIM_TRACE_EVENT_IRQ_DISPATCH);
+            s_host_irq_table[irq_num](s_host_irq_arg[irq_num]);
+            pal_os_set_sim_isr_context(false);
+            count++;
+        }
+    }
+    return count;
+}
+
 wink_status_t pal_irq_enable(uint32_t irq_num, pal_irq_prio_t prio,
                               pal_isr_t handler, void *arg)
 {
@@ -427,6 +487,10 @@ void pal_host_reset_all_gpio_interrupts(void)
     memset(s_host_logical_isr_count, 0, sizeof(s_host_logical_isr_count));
     memset(s_host_irq_table, 0, sizeof(s_host_irq_table));
     memset(s_host_irq_arg, 0, sizeof(s_host_irq_arg));
+    memset(s_host_pending_queue, 0, sizeof(s_host_pending_queue));
+    s_host_pending_head = 0;
+    s_host_pending_count = 0;
+    s_host_pending_overflow_count = 0;
     s_pending_count = 0;
     s_irq_lock_depth = 0;
 
@@ -473,6 +537,7 @@ void pal_irq_restore(uint32_t mask)
 
     if (s_irq_lock_depth == 0 && mask == 0) {
         flush_pending_interrupts();
+        pal_host_dispatch_pending_interrupts();
     }
 }
 

@@ -9,6 +9,7 @@
 #include "pal_irq_advanced.h"
 #include "wasm_bridge.h"
 #include "pal_wasm_common.h"
+#include "wink_sim_scheduler.h"
 
 #include <string.h>
 
@@ -211,6 +212,8 @@ void pal_wasm_dispatch_pending_irqs(void)
     while (sw_dequeue(&irq_num)) {
         if (irq_num < WASM_MAX_IRQ && s_wasm_irq_table[irq_num] != NULL) {
             pal_os_set_sim_isr_context(true);
+            sim_scheduler_trace_record(pal_os_get_us(), 0, irq_num,
+                                       WINK_SIM_WAKE_IRQ, WINK_SIM_TRACE_EVENT_IRQ_DISPATCH);
             s_wasm_irq_table[irq_num](s_wasm_irq_arg[irq_num]);
             pal_os_set_sim_isr_context(false);
         }

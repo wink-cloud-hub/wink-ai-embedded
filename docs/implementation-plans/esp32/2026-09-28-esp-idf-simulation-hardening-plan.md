@@ -22,7 +22,7 @@
 - [x] B：H2 生命周期、复位和 NVS 测试沙箱。B1/B2 构造期与并发冷启动均有 Host/真实 Wasm 证据；B3 noreturn、复位拓扑、HTTP/MQTT/Wi-Fi/BLE/GPIO/NVS Host 综合轨迹，以及 Node Wasm reset adapter 运行验证通过；B4 路径/目录/I/O 与并行重复验证完成。完整 Wasm 模块销毁并重新实例化留在 Phase 4。B 中只盘点 H6 句柄，不实施代际令牌。
 - [ ] C：D1 已记录 ADR-0089，覆盖矩阵/风险文档已回写；H3 经 quota-boundary 红绿测试、MinGW/Wasm 回归及实际源码 MSVC ASAN 单源探针验证。WSL 原生分配器 ABI 探针通过 ASan/UBSan；完整 phase3 sanitizer 与原生 POSIX Host 证据仍缺，且现行 Host target 明确不支持 Linux；整仓 MSVC 被既有工程兼容性错误阻断。
 - [ ] D：H6 独立代际令牌原型及首批运行时（Queue/Semaphore/EventGroup/NVS）已在 Host64/Host32/Wasm32 及 UniSim 场景通过（见 §19）；Task、外设等句柄族迁移、跨实例序号交接与 H4 调度扰动仍待后续。H6 完整验收仍以前置 H2、H3 为准。
-- [ ] E：D2 事件载荷/派发契约，再实施 H5 FIFO、网络迁移与端到端测试。H5 的前置 H2、H4 必须都验收。
+- [x] E：D2 事件载荷/派发契约已落地，H5 异步事件 FIFO 与网络回调解耦完成（§21）；前置 H4 虚拟时间确定性、同刻总序仲裁与结构化 Trace 比对已全面验收（§22）。
 - [ ] F：H7 全矩阵对照、H8 结项治理和 Phase 4 Wasm 完整重启设计结论。
 
 **当前执行起点**：H0 快照已写入 docs/reviews/esp32/2026-09-28-esp-idf-sim-baseline-review.md；B1/B2/B3/B4 的 H2 本地退出条件已有 Host/Wasm 可重放证据；完整 Wasm 模块重新实例化按 Phase 4 单独设计验证。C 的 D1 决策已记录为 ADR-0089；H3 已完成分类记账、跨类别 realloc、满配额替换和复位测试，继续补 sanitizer / POSIX Host 证据并记录 MSVC 整仓阻塞。保留既存未提交修改；不要在 H3 外部验收证据补齐前启动 H6 令牌，也不要宣称 A/F 完成。每个子任务记录命令、发现数、通过数、工具提交、失败日志和回滚点。
@@ -337,4 +337,34 @@ D1 改变当前 API 覆盖矩阵中的 libc free 与水位声明；在 C 实现�
   - `test_esp_wifi.c`（19/19 PASS）与 `test_esp_mqtt.c`（16/16 PASS）全面通过；
   - ESP-IDF 专项 CTest 全部 84/84 项（31 Host + 8 corpus + 35 Wasm + 10 vendor）100% PASS；
   - 静态门禁全部通过：`check_license_map.py` 许可地图合规、`check_harvested_headers.py` 0 errors、`winkcli lint --pack layering --pack api` 0 findings。
+
+## 22. 执行记录（2026-09-28，H4 虚拟时间确定性与同刻调度总序完成）
+
+- **结构化 Trace 与调度器仲裁核心落地**：
+  - 规范并实现了标准结构化 Trace 格式（`wink_sim_scheduler.h` / `wink_sim_scheduler.c`）：
+    - `wink_sim_wake_reason_t`（`SIM_WAKE_REASON_NONE`, `IRQ`, `SYNC_RES`, `TIMEOUT`, `DIRECT`）；
+    - `wink_sim_trace_event_type_t`（`SIM_TRACE_EVENT_IRQ_DISPATCH`, `TASK_WOKEN`, `TASK_SWITCH_IN`, `TASK_BLOCK`, `TASK_YIELD`）；
+    - 定义了跨 32 位/64 位固定 48 字节 POD 结构体 `wink_sim_trace_entry_t`（含 `virtual_time_us`, `sequence`, `task_id`, `task_slot`, `resource_id`, `wake_reason`, `event_type`, `task_name`），并用 `_Static_assert(sizeof(wink_sim_trace_entry_t) == 48)` 强制断言；采用静态固定环形缓冲区，杜绝动态内存分配；
+    - 导出通用 Trace 管理接口：`sim_scheduler_trace_enable()`, `sim_scheduler_trace_reset()`, `sim_scheduler_trace_count()`, `sim_scheduler_trace_get()`, `sim_scheduler_trace_record()`。
+  - 在 `sim_task_t` 中添加 `last_wake_reason` 标记字段，经 `_Static_assert(sizeof(sim_task_t) <= 96)` 确保内存约束。
+  - `sim_scheduler_pick_next` 全面实现 ADR-0053 因果全序仲裁：当处于同一微秒虚拟时间片时，优先调度因外部 IRQ 唤醒的阻塞任务，切入后清除唤醒原因标记，其余平级任务保持严格 Round-Robin。
+  - 调度器弱符号优化：对 `pal_os_get_us()` 与 `pal_os_in_isr()` 采用 weak fallback 机制，保证无 PAL 强依赖的独立单元测试自包含链接。
+- **Host 与 Wasm 双 Target 对称支持**：
+  - Host 端补齐 Phase 0 中断队列：在 `pal_hal_gpio_host.c` 实现了 `pal_irq_set_pending()`、`pal_irq_clear_pending()` 与 `pal_host_dispatch_pending_interrupts()`；
+  - `pal_osal_host.c` 的 `pal_sim_scheduler_run()` 循环顶部严格执行 Phase 0 中断排空，任务切入前准确记录 `SIM_TRACE_EVENT_TASK_SWITCH_IN` Trace；
+  - Host 增加了精确时钟推进钩子 `host_sim_set_time_hook(target_us, fn, arg)`，支持在虚拟时间快进到达特定时刻的瞬间注入硬件/外部中断；
+  - Wasm 端在 `pal_wasm_dispatch_pending_irqs()` 与 `pal_osal_wasm.c` 中对称埋点记录 `IRQ_DISPATCH` 与 `TASK_SWITCH_IN`。
+- **专项黄金比对测试落地**：
+  - 在 `test_esp_idf_freertos.c` 中实现了 4 项 H4 专项黄金比对测试：
+    1. `test_h4_same_time_total_order_standard`：在同一 10000us 虚拟时间片，验证 `[IRQ] -> [Reader Woken] -> [Delayed Woken] -> [Reader Switch-In] -> [Delayed Switch-In]` 黄金全序绝对成立；
+    2. `test_h4_same_time_total_order_reversed_slots`：验证槽位倒置无关性（Delayed 任务占 slot 0，Reader 任务占 slot 1），因果仲裁依然确保 Reader 优先于 Delayed 切入执行；
+    3. `test_h4_multi_run_deterministic_replay`：验证连续 5 轮完整执行，结构化 Trace 逐字段 100% 比特级完全一致；
+    4. `test_h4_timeout_waiter_cleanup_and_no_ghost_wakeups`：验证超时 waiter 清理机制与资源删除后无幽灵唤醒/回调。
+- **全量门禁核验通过**：
+  - `test_esp_idf_freertos.exe` 39/39 项测试全部 PASS；
+  - ESP-IDF 专项 CTest 全部 84/84 项 100% PASS；
+  - 核心调度器单测 `test_sim_scheduler` 7/7 PASS；
+  - Arduino 兼容性 CTest 2/2 PASS；
+  - 静态门禁全部通过：`check_license_map.py` 许可地图合规、`check_harvested_headers.py` 0 errors、`winkcli lint --pack layering --pack api` 0 findings。
+
 

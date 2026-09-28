@@ -20,11 +20,81 @@
 #define SCHED_TRACE(fmt, ...) ((void)0)
 #endif
 
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((weak)) uint64_t pal_os_get_us(void) { return 0; }
+__attribute__((weak)) bool pal_os_in_isr(void) { return false; }
+#elif defined(_MSC_VER)
+static uint64_t _default_pal_os_get_us(void) { return 0; }
+static bool _default_pal_os_in_isr(void) { return false; }
+#pragma comment(linker, "/alternatename:pal_os_get_us=_default_pal_os_get_us")
+#pragma comment(linker, "/alternatename:pal_os_in_isr=_default_pal_os_in_isr")
+#else
+extern uint64_t pal_os_get_us(void);
+extern bool pal_os_in_isr(void);
+#endif
+
 static sim_task_t s_tasks[WINK_SIM_MAX_TASKS];
 static uint32_t s_task_id_counter = 0;
 static uint32_t s_current_task_id = SIM_SCHED_NO_READY;
 static uint32_t s_prng_state = 42;
 static uint32_t s_last_scheduled_task_id = SIM_SCHED_NO_READY;
+
+static wink_sim_trace_entry_t s_sim_trace_buffer[WINK_SIM_TRACE_CAPACITY];
+static uint32_t s_sim_trace_count = 0;
+static uint32_t s_sim_trace_sequence = 0;
+static bool s_sim_trace_enabled = true;
+
+void sim_scheduler_trace_enable(bool enable) {
+    s_sim_trace_enabled = enable;
+}
+
+bool sim_scheduler_trace_is_enabled(void) {
+    return s_sim_trace_enabled;
+}
+
+void sim_scheduler_trace_reset(void) {
+    memset(s_sim_trace_buffer, 0, sizeof(s_sim_trace_buffer));
+    s_sim_trace_count = 0;
+    s_sim_trace_sequence = 0;
+}
+
+uint32_t sim_scheduler_trace_count(void) {
+    return s_sim_trace_count;
+}
+
+const wink_sim_trace_entry_t* sim_scheduler_trace_get(uint32_t index) {
+    if (index >= s_sim_trace_count || index >= WINK_SIM_TRACE_CAPACITY) {
+        return NULL;
+    }
+    return &s_sim_trace_buffer[index];
+}
+
+void sim_scheduler_trace_record(uint64_t virtual_time_us, uint32_t task_slot,
+                                uint32_t resource_id, wink_sim_wake_reason_t wake_reason,
+                                wink_sim_trace_event_type_t event_type) {
+    if (!s_sim_trace_enabled) return;
+    if (s_sim_trace_count >= WINK_SIM_TRACE_CAPACITY) return;
+
+    wink_sim_trace_entry_t* entry = &s_sim_trace_buffer[s_sim_trace_count++];
+    entry->virtual_time_us = (virtual_time_us > 0) ? virtual_time_us : pal_os_get_us();
+    entry->sequence = ++s_sim_trace_sequence;
+    entry->task_slot = task_slot;
+    entry->resource_id = resource_id;
+    entry->wake_reason = (uint8_t)wake_reason;
+    entry->event_type = (uint8_t)event_type;
+    entry->reserved = 0;
+
+    if (task_slot < WINK_SIM_MAX_TASKS &&
+        s_tasks[task_slot].state != SIM_TASK_STATE_INVALID &&
+        s_tasks[task_slot].state != SIM_TASK_STATE_TERMINATED) {
+        entry->task_id = s_tasks[task_slot].id;
+        strncpy(entry->task_name, s_tasks[task_slot].name, sizeof(entry->task_name) - 1);
+        entry->task_name[sizeof(entry->task_name) - 1] = '\0';
+    } else {
+        entry->task_id = 0;
+        entry->task_name[0] = '\0';
+    }
+}
 
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((unused))
@@ -60,6 +130,7 @@ void sim_scheduler_reset(uint32_t prng_seed) {
     s_current_task_id = SIM_SCHED_NO_READY;
     s_last_scheduled_task_id = SIM_SCHED_NO_READY;
     s_prng_state = prng_seed ? prng_seed : 42;
+    sim_scheduler_trace_reset();
 }
 
 wink_status_t sim_scheduler_register(void (*func)(void*), void* arg,
@@ -101,6 +172,7 @@ wink_status_t sim_scheduler_register(void (*func)(void*), void* arg,
     t->wakeup_us = 0;
     t->blocked_on = 0;
     t->timeout_fired = false;
+    t->last_wake_reason = (uint8_t)WINK_SIM_WAKE_NONE;
     t->state = SIM_TASK_STATE_READY;
     t->id = s_task_id_counter++;
     t->ctx = ctx;
@@ -148,12 +220,16 @@ uint32_t sim_scheduler_wakeup_by_time(uint64_t now_us) {
              t->wakeup_us > 0 && t->wakeup_us <= now_us) {
             
             bool was_blocked = (t->state == SIM_TASK_STATE_BLOCKED);
+            uint32_t res_id = t->blocked_on;
             t->state = SIM_TASK_STATE_READY;
             t->wakeup_us = 0;
             if (was_blocked) {
                 t->timeout_fired = true;
                 t->blocked_on = 0;
             }
+            t->last_wake_reason = (uint8_t)WINK_SIM_WAKE_TIMEOUT;
+            sim_scheduler_trace_record(now_us, i, res_id,
+                                       WINK_SIM_WAKE_TIMEOUT, WINK_SIM_TRACE_EVENT_TASK_WOKEN);
             count++;
             SCHED_TRACE("Woke up task '%s' [slot=%u] due to timeout (was_blocked=%d)", t->name, i, was_blocked);
         }
@@ -162,6 +238,18 @@ uint32_t sim_scheduler_wakeup_by_time(uint64_t now_us) {
 }
 
 uint32_t sim_scheduler_pick_next(void) {
+    /* ADR-0053 Total Order Arbitration:
+     * In the same virtual instant, tasks woken by an external/IRQ causal chain
+     * take deterministic precedence over pure timer/delay timeout tasks. */
+    for (uint32_t i = 0; i < WINK_SIM_MAX_TASKS; ++i) {
+        if (s_tasks[i].state == SIM_TASK_STATE_READY &&
+            s_tasks[i].last_wake_reason == WINK_SIM_WAKE_IRQ) {
+            s_last_scheduled_task_id = i;
+            SCHED_TRACE("Picked IRQ-woken task slot=%u (ADR-0053 causal precedence)", i);
+            return i;
+        }
+    }
+
     uint32_t start_id = (s_last_scheduled_task_id == SIM_SCHED_NO_READY)
                         ? 0u
                         : (s_last_scheduled_task_id + 1u) % WINK_SIM_MAX_TASKS;
@@ -182,6 +270,9 @@ void sim_scheduler_yield_timed(uint32_t task_id, uint64_t now_us, uint64_t durat
         sim_task_t* t = &s_tasks[task_id];
         t->state = SIM_TASK_STATE_WAITING;
         t->wakeup_us = now_us + duration_us;
+        t->last_wake_reason = (uint8_t)WINK_SIM_WAKE_NONE;
+        sim_scheduler_trace_record(now_us, task_id, 0,
+                                   WINK_SIM_WAKE_NONE, WINK_SIM_TRACE_EVENT_TASK_YIELD);
         SCHED_TRACE("Task '%s' [slot=%u] yielding for %llu us (until %llu)", t->name, task_id, duration_us, t->wakeup_us);
     }
 }
@@ -194,6 +285,9 @@ void sim_scheduler_block(uint32_t task_id, uint32_t resource_id,
         t->blocked_on = resource_id;
         t->wakeup_us = (timeout_us == 0) ? 0 : (now_us + timeout_us);
         t->timeout_fired = false;
+        t->last_wake_reason = (uint8_t)WINK_SIM_WAKE_NONE;
+        sim_scheduler_trace_record(now_us, task_id, resource_id,
+                                   WINK_SIM_WAKE_NONE, WINK_SIM_TRACE_EVENT_TASK_BLOCK);
         SCHED_TRACE("Task '%s' [slot=%u] blocked on res=%u, timeout=%llu", t->name, task_id, resource_id, timeout_us);
     }
 }
@@ -202,11 +296,18 @@ void sim_scheduler_resume(uint32_t task_id) {
     if (task_id < WINK_SIM_MAX_TASKS) {
         sim_task_t* t = &s_tasks[task_id];
         if (t->state == SIM_TASK_STATE_BLOCKED) {
+            uint32_t res_id = t->blocked_on;
             t->state = SIM_TASK_STATE_READY;
             t->blocked_on = 0;
             t->wakeup_us = 0;
             t->timeout_fired = false;
-            SCHED_TRACE("Resumed task '%s' [slot=%u]", t->name, task_id);
+
+            wink_sim_wake_reason_t reason = pal_os_in_isr() ? WINK_SIM_WAKE_IRQ : WINK_SIM_WAKE_SYNC_RES;
+            t->last_wake_reason = (uint8_t)reason;
+
+            sim_scheduler_trace_record(pal_os_get_us(), task_id, res_id,
+                                       reason, WINK_SIM_TRACE_EVENT_TASK_WOKEN);
+            SCHED_TRACE("Resumed task '%s' [slot=%u, reason=%u]", t->name, task_id, reason);
         }
     }
 }

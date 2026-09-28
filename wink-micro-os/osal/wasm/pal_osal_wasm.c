@@ -583,6 +583,11 @@ wink_status_t pal_sim_scheduler_run(const struct wink_app_callbacks* callbacks,
 
         sim_scheduler_set_current(next);
         const sim_task_t* t = sim_scheduler_get(next);
+        sim_scheduler_trace_record(now, next, 0,
+                                   (wink_sim_wake_reason_t)t->last_wake_reason,
+                                   WINK_SIM_TRACE_EVENT_TASK_SWITCH_IN);
+        ((sim_task_t*)t)->last_wake_reason = (uint8_t)WINK_SIM_WAKE_NONE;
+
         uint64_t wall_start_us = wasm_wall_clock_us();
         sim_ctx_switch(s_main_ctx, t->ctx);
         sim_scheduler_set_current(SIM_SCHED_NO_READY);
