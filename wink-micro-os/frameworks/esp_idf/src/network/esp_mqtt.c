@@ -51,24 +51,132 @@ static bool s_network_ready = true;
 static uint32_t s_mqtt_token = 0;
 static TaskHandle_t s_mqtt_task_handle = NULL;
 static esp_mqtt_sim_publish_hook_t s_publish_hook = NULL;
+static bool s_mqtt_core_handler_registered = false;
+
+typedef struct {
+    uint32_t client_token;
+    uint8_t client_slot;
+    esp_mqtt_event_id_t event_id;
+    int msg_id;
+    bool dup;
+    bool retain;
+    int qos;
+    int topic_len;
+    int data_len;
+    int current_data_offset;
+    int total_data_len;
+    void *user_context;
+    esp_event_handler_t event_handler;
+    void *event_handler_arg;
+    esp_mqtt_event_id_t registered_event;
+    esp_event_handler_t config_event_handle;
+    char topic[MAX_TOPIC_LEN];
+    char data[MAX_DATA_LEN];
+    esp_mqtt_error_codes_t error_codes;
+} mqtt_event_envelope_t;
+
+static void mqtt_core_event_pump_handler(void *arg, esp_event_base_t base, int32_t event_id, void *data) {
+    (void)arg;
+    (void)base;
+    if (!data) {
+        return;
+    }
+    mqtt_event_envelope_t *env = (mqtt_event_envelope_t *)data;
+    if (env->client_slot >= MAX_MQTT_CLIENTS) {
+        return;
+    }
+    struct esp_mqtt_client *client = &s_clients[env->client_slot];
+    /* 核对代际 token 与初始化状态，防止已被 destroy 或复用换代（DELETED 善后事件除外） */
+    if (env->event_id != MQTT_EVENT_DELETED) {
+        if (!client->initialized || client->token != env->client_token) {
+            return;
+        }
+    }
+
+    esp_mqtt_event_t evt;
+    memset(&evt, 0, sizeof(evt));
+    evt.event_id = env->event_id;
+    evt.client = client;
+    evt.user_context = env->user_context;
+    evt.msg_id = env->msg_id;
+    evt.dup = env->dup;
+    evt.retain = env->retain;
+    evt.qos = env->qos;
+    evt.topic = (env->topic_len > 0) ? env->topic : NULL;
+    evt.topic_len = env->topic_len;
+    evt.data = (env->data_len > 0) ? env->data : NULL;
+    evt.data_len = env->data_len;
+    evt.total_data_len = env->total_data_len;
+    evt.current_data_offset = env->current_data_offset;
+    if (env->event_id == MQTT_EVENT_ERROR) {
+        evt.error_handle = &env->error_codes;
+    }
+
+    /* 严格按 D2 契约在事件泵上下文按顺序执行：
+     * 1. 客户端通过 esp_mqtt_client_register_event 注册的回调
+     */
+    if (env->event_handler) {
+        if (env->registered_event == MQTT_EVENT_ANY ||
+            (int)env->registered_event == (int)ESP_EVENT_ANY_ID ||
+            env->registered_event == (esp_mqtt_event_id_t)event_id) {
+            env->event_handler(env->event_handler_arg, MQTT_EVENTS, event_id, &evt);
+        }
+    }
+
+    /* 2. 兼容配置通过 config.event_handle 注册的回调 */
+    if (env->config_event_handle) {
+        env->config_event_handle(env->user_context, MQTT_EVENTS, event_id, &evt);
+    }
+}
+
+static void ensure_mqtt_core_handler_registered(void) {
+    if (!s_mqtt_core_handler_registered) {
+        (void)esp_event_handler_register(MQTT_EVENTS, ESP_EVENT_ANY_ID, mqtt_core_event_pump_handler, NULL);
+        s_mqtt_core_handler_registered = true;
+    }
+}
 
 static void dispatch_event(esp_mqtt_client_handle_t client, esp_mqtt_event_id_t event_id, esp_mqtt_event_t *event) {
     if (!client || !event) {
         return;
     }
-    event->event_id = event_id;
-    event->client = client;
-    if (client->event_handler) {
-        if (client->registered_event == MQTT_EVENT_ANY ||
-            (int)client->registered_event == (int)ESP_EVENT_ANY_ID ||
-            client->registered_event == event_id) {
-            client->event_handler(client->event_handler_arg, MQTT_EVENTS, (int32_t)event_id, event);
-        }
+    ensure_mqtt_core_handler_registered();
+
+    mqtt_event_envelope_t env;
+    memset(&env, 0, sizeof(env));
+    env.client_token = client->token;
+    env.client_slot = (uint8_t)(client - s_clients);
+    env.event_id = event_id;
+    env.user_context = client->config.user_context;
+    env.event_handler = client->event_handler;
+    env.event_handler_arg = client->event_handler_arg;
+    env.registered_event = client->registered_event;
+    env.config_event_handle = client->config.event_handle;
+    env.msg_id = event->msg_id;
+    env.dup = event->dup;
+    env.retain = event->retain;
+    env.qos = event->qos;
+    env.topic_len = event->topic_len;
+    env.data_len = event->data_len;
+    env.current_data_offset = event->current_data_offset;
+    env.total_data_len = event->total_data_len;
+    if (event->error_handle) {
+        env.error_codes = *event->error_handle;
     }
-    if (client->config.event_handle) {
-        client->config.event_handle(client->config.user_context, MQTT_EVENTS, (int32_t)event_id, event);
+    if (event->topic && event->topic_len > 0) {
+        size_t cplen = (size_t)event->topic_len < (MAX_TOPIC_LEN - 1) ? (size_t)event->topic_len : (MAX_TOPIC_LEN - 1);
+        memcpy(env.topic, event->topic, cplen);
+        env.topic[cplen] = '\0';
+        env.topic_len = (int)cplen;
     }
-    esp_event_post(MQTT_EVENTS, (int32_t)event_id, event, sizeof(*event), portMAX_DELAY);
+    if (event->data && event->data_len > 0) {
+        size_t cplen = (size_t)event->data_len < MAX_DATA_LEN ? (size_t)event->data_len : MAX_DATA_LEN;
+        memcpy(env.data, event->data, cplen);
+        env.data_len = (int)cplen;
+    }
+
+    /* 异步投递进默认事件队列，绝不在调用者栈上同步触发用户回调 */
+    (void)esp_event_post(MQTT_EVENTS, (int32_t)event_id, &env, sizeof(env), 0);
 }
 
 static bool mqtt_topic_match(const char *sub, const char *pub) {
@@ -210,7 +318,7 @@ esp_err_t esp_mqtt_client_start(esp_mqtt_client_handle_t client) {
     client->started = true;
     client->token = ++s_mqtt_token;
 
-    BaseType_t rc = xTaskCreate(mqtt_connect_task, "mqtt_conn", 2048,
+    BaseType_t rc = xTaskCreate(mqtt_connect_task, "mqtt_conn", 32768,
                                 (void *)client, 1, &s_mqtt_task_handle);
     if (rc != pdPASS) {
         client->started = false;
@@ -255,7 +363,7 @@ esp_err_t esp_mqtt_client_reconnect(esp_mqtt_client_handle_t client) {
 
     client->token = ++s_mqtt_token;
     client->started = true;
-    BaseType_t rc = xTaskCreate(mqtt_connect_task, "mqtt_conn", 2048,
+    BaseType_t rc = xTaskCreate(mqtt_connect_task, "mqtt_conn", 32768,
                                 (void *)client, 1, &s_mqtt_task_handle);
     if (rc != pdPASS) {
         client->started = false;
@@ -485,6 +593,7 @@ void esp_mqtt_sim_reset(void) {
     s_publish_hook = NULL;
     s_next_msg_id = 1;
     s_mqtt_task_handle = NULL;
+    s_mqtt_core_handler_registered = false;
     memset(s_subscriptions, 0, sizeof(s_subscriptions));
     memset(s_last_topic, 0, sizeof(s_last_topic));
     memset(s_last_data, 0, sizeof(s_last_data));

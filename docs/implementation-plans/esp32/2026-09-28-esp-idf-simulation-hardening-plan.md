@@ -321,3 +321,20 @@ D1 改变当前 API 覆盖矩阵中的 libc free 与水位声明；在 C 实现�
   2. **H5 异步事件 FIFO 与网络回调解耦**：落地 D2 契约，实现深拷贝事件缓冲区与独立调度器 Fiber 事件泵，彻底切断网络驱动回调直接阻塞用户调用栈；
   3. **H4 虚拟时间确定性与同刻调度总序**：建立 ADR-0053 同刻总序仲裁与结构化 Trace 黄金比对；
   4. **Phase 4 模块级 Wasm 彻底热重启**：实现销毁旧实例并重新 instantiate() 的生命周期闭环。
+
+## 21. 执行记录（2026-09-28，H5 异步事件 FIFO 与网络回调解耦完成）
+
+- **D2 契约全面落地**：
+  - `esp_event.h` / `esp_event.c` 实现容量 32（`WINK_ESP_EVENT_QUEUE_CAPACITY`）的静态环形 FIFO 队列与 1024 字节（`WINK_ESP_EVENT_MAX_PAYLOAD`）以内的事件载荷深拷贝，杜绝调用栈局部变量/指针寿命越界。
+  - `esp_event_post()` 仅负责验证参数、深拷贝入队并给出信号量，成功即立即返回，不在调用栈内同步遍历触发 handler（D2-T1）；入队满队列返回 `ESP_ERR_TIMEOUT`，载荷超额返回 `ESP_ERR_NO_MEM`（D2-T5）。
+  - 后台事件泵 Fiber 任务（`sys_evt`，栈深 32768 满足 ADR-0013）基于计数信号量（`xSemaphoreCreateCounting(32, 0)`）驱动，队列空时阻塞休眠防止虚拟时间空转，有事件时被调度器唤醒并在独立上下文按入队 FIFO 顺序逐项出队分发；导出 `esp_event_loop_run_step()` 与 `esp_event_loop_run_all_pending()`，回调内再 post 只入队不递归，单步调用深度严格保持为 1（D2-T1）。
+  - Handler instance 注册接入代际 token 机制，有效防御同槽注销与复用产生的 ABA 悬挂注销（D2-T6）。
+- **网络驱动回调全面解耦**：
+  - `esp_mqtt.c`：`dispatch_event()` 将包含 topic/data 完整内容及回调快照的 `mqtt_event_envelope_t` 投递进默认事件队列，由事件泵在独立上下文分发给客户端事件回调，彻底切除 `publish()`、`subscribe()`、`unsubscribe()`、`stop()` 等直接在调用者栈触发用户回调的同步侵入（D2-T4）；对 `MQTT_EVENT_DELETED` 采用信封快照安全投递，确保实例清理后善后回调仍准确送达。
+  - `esp_wifi.c` / `esp_mqtt.c`：任务栈深度全面对齐 ADR-0013 仿真下限（32768 字节），清除所有 stack clamping 告警。
+- **验证与门禁**：
+  - 新增专用 D2 契约测试 `test_esp_event.c`（6/6 Tests PASS），接入 Host 与 Wasm 编译门禁 `esp_idf_wasm_compile_test_esp_event`；
+  - `test_esp_wifi.c`（19/19 PASS）与 `test_esp_mqtt.c`（16/16 PASS）全面通过；
+  - ESP-IDF 专项 CTest 全部 84/84 项（31 Host + 8 corpus + 35 Wasm + 10 vendor）100% PASS；
+  - 静态门禁全部通过：`check_license_map.py` 许可地图合规、`check_harvested_headers.py` 0 errors、`winkcli lint --pack layering --pack api` 0 findings。
+

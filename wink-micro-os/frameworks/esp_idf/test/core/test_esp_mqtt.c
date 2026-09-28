@@ -191,6 +191,7 @@ void test_mqtt_exact_subscription_and_callback(void) {
     esp_mqtt_client_handle_t client = helper_start_connected_client();
     int msg_id = esp_mqtt_client_subscribe(client, "/topic/a", 0);
     TEST_ASSERT_TRUE(msg_id > 0);
+    esp_event_loop_run_all_pending();
     TEST_ASSERT_EQUAL(1, s_subscribed_count);
     TEST_ASSERT_EQUAL(msg_id, s_last_msg_id);
 }
@@ -199,10 +200,12 @@ void test_mqtt_exact_subscription_and_callback(void) {
 void test_mqtt_publish_subscribe_loopback(void) {
     esp_mqtt_client_handle_t client = helper_start_connected_client();
     TEST_ASSERT_TRUE(esp_mqtt_client_subscribe(client, "device/telemetry", 0) > 0);
+    esp_event_loop_run_all_pending();
 
     const char *payload = "{\"val\": 123}";
     int pub_id = esp_mqtt_client_publish(client, "device/telemetry", payload, 0, 0, 0);
     TEST_ASSERT_TRUE(pub_id > 0);
+    esp_event_loop_run_all_pending();
 
     TEST_ASSERT_EQUAL(1, s_data_count);
     TEST_ASSERT_EQUAL_STRING("device/telemetry", s_last_event_topic);
@@ -223,12 +226,15 @@ void test_mqtt_publish_unsubscribed_topic(void) {
 void test_mqtt_unsubscribe(void) {
     esp_mqtt_client_handle_t client = helper_start_connected_client();
     TEST_ASSERT_TRUE(esp_mqtt_client_subscribe(client, "/topic/a", 0) > 0);
+    esp_event_loop_run_all_pending();
 
     int unsub_id = esp_mqtt_client_unsubscribe(client, "/topic/a");
     TEST_ASSERT_TRUE(unsub_id > 0);
+    esp_event_loop_run_all_pending();
     TEST_ASSERT_EQUAL(1, s_unsubscribed_count);
 
     esp_mqtt_client_publish(client, "/topic/a", "no_listen", 0, 0, 0);
+    esp_event_loop_run_all_pending();
     TEST_ASSERT_EQUAL(0, s_data_count);
 }
 
@@ -236,9 +242,11 @@ void test_mqtt_unsubscribe(void) {
 void test_mqtt_sim_inject_message(void) {
     esp_mqtt_client_handle_t client = helper_start_connected_client();
     TEST_ASSERT_TRUE(esp_mqtt_client_subscribe(client, "cloud/command", 0) > 0);
+    esp_event_loop_run_all_pending();
 
     int count = esp_mqtt_sim_inject_message("cloud/command", "restart", 7);
     TEST_ASSERT_EQUAL(1, count);
+    esp_event_loop_run_all_pending();
     TEST_ASSERT_EQUAL(1, s_data_count);
     TEST_ASSERT_EQUAL_STRING("cloud/command", s_last_event_topic);
     TEST_ASSERT_EQUAL_STRING("restart", s_last_event_data);
@@ -291,11 +299,13 @@ void test_mqtt_subscription_table_full(void) {
     for (int i = 0; i < 8; i++) {
         TEST_ASSERT_TRUE(esp_mqtt_client_subscribe(client, topics[i], 0) > 0);
     }
+    esp_event_loop_run_all_pending();
     TEST_ASSERT_EQUAL(8, s_subscribed_count);
 
     /* 第 9 个订阅超出 MAX_SUBSCRIPTIONS (8)，返回 -1 */
     int overflow = esp_mqtt_client_subscribe(client, "t/9", 0);
     TEST_ASSERT_EQUAL(-1, overflow);
+    esp_event_loop_run_all_pending();
     TEST_ASSERT_EQUAL(8, s_subscribed_count);
 }
 
@@ -322,8 +332,10 @@ void test_mqtt_null_and_invalid_arguments(void) {
 void test_mqtt_destroy_lifecycle(void) {
     esp_mqtt_client_handle_t client = helper_start_connected_client();
     TEST_ASSERT_TRUE(esp_mqtt_client_subscribe(client, "sub/1", 0) > 0);
+    esp_event_loop_run_all_pending();
 
     TEST_ASSERT_EQUAL(ESP_OK, esp_mqtt_client_destroy(client));
+    esp_event_loop_run_all_pending();
     TEST_ASSERT_EQUAL(1, s_deleted_count);
 
     /* 销毁后该实例无法再次 start */
@@ -334,18 +346,22 @@ void test_mqtt_destroy_lifecycle(void) {
 void test_mqtt_single_level_wildcard_plus(void) {
     esp_mqtt_client_handle_t client = helper_start_connected_client();
     TEST_ASSERT_TRUE(esp_mqtt_client_subscribe(client, "sensor/+/temp", 0) > 0);
+    esp_event_loop_run_all_pending();
 
     /* 匹配单个层级 */
     esp_mqtt_client_publish(client, "sensor/1/temp", "24", 2, 0, 0);
+    esp_event_loop_run_all_pending();
     TEST_ASSERT_EQUAL(1, s_data_count);
     TEST_ASSERT_EQUAL_STRING("sensor/1/temp", s_last_event_topic);
 
     /* 两个层级不匹配 + */
     esp_mqtt_client_publish(client, "sensor/1/2/temp", "25", 2, 0, 0);
+    esp_event_loop_run_all_pending();
     TEST_ASSERT_EQUAL(1, s_data_count);
 
     /* 另一命名单层匹配 */
     esp_mqtt_client_publish(client, "sensor/kitchen/temp", "26", 2, 0, 0);
+    esp_event_loop_run_all_pending();
     TEST_ASSERT_EQUAL(2, s_data_count);
     TEST_ASSERT_EQUAL_STRING("sensor/kitchen/temp", s_last_event_topic);
 }
@@ -354,15 +370,19 @@ void test_mqtt_single_level_wildcard_plus(void) {
 void test_mqtt_multi_level_wildcard_hash(void) {
     esp_mqtt_client_handle_t client = helper_start_connected_client();
     TEST_ASSERT_TRUE(esp_mqtt_client_subscribe(client, "device/#", 0) > 0);
+    esp_event_loop_run_all_pending();
 
     esp_mqtt_client_publish(client, "device/status", "online", 6, 0, 0);
+    esp_event_loop_run_all_pending();
     TEST_ASSERT_EQUAL(1, s_data_count);
 
     esp_mqtt_client_publish(client, "device/room/sensor/temp", "22", 2, 0, 0);
+    esp_event_loop_run_all_pending();
     TEST_ASSERT_EQUAL(2, s_data_count);
 
     /* 不同前缀不匹配 */
     esp_mqtt_client_publish(client, "other/device/status", "test", 4, 0, 0);
+    esp_event_loop_run_all_pending();
     TEST_ASSERT_EQUAL(2, s_data_count);
 }
 
@@ -374,6 +394,7 @@ void test_mqtt_published_event_dispatched_to_publisher(void) {
 
     int pub_id = esp_mqtt_client_publish(client, "out/topic", "msg", 3, 0, 0);
     TEST_ASSERT_TRUE(pub_id > 0);
+    esp_event_loop_run_all_pending();
     TEST_ASSERT_EQUAL(1, s_published_count);
     TEST_ASSERT_EQUAL(pub_id, s_last_published_msg_id);
 }
@@ -382,6 +403,7 @@ void test_mqtt_published_event_dispatched_to_publisher(void) {
 void test_mqtt_reentrant_publish_in_callback(void) {
     esp_mqtt_client_handle_t client = helper_start_connected_client();
     TEST_ASSERT_TRUE(esp_mqtt_client_subscribe(client, "req/ping", 0) > 0);
+    esp_event_loop_run_all_pending();
 
     s_reentrant_active = true;
     s_reentrant_published_ok = false;
@@ -389,6 +411,7 @@ void test_mqtt_reentrant_publish_in_callback(void) {
     const char *orig_payload = "ping_payload_content";
     int pub_id = esp_mqtt_client_publish(client, "req/ping", orig_payload, 0, 0, 0);
     TEST_ASSERT_TRUE(pub_id > 0);
+    esp_event_loop_run_all_pending();
 
     TEST_ASSERT_TRUE(s_reentrant_published_ok);
     /* 验证外层回调内读取到的 payload 没有被 nested publish 的 ack_payload 覆写 */

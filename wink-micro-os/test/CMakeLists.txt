@@ -1706,6 +1706,26 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     add_test(NAME test_esp_spi COMMAND test_esp_spi)
     set_tests_properties(test_esp_spi PROPERTIES LABELS "esp_idf;core")
 
+    add_executable(test_esp_event
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_event.c
+        ${UNITY_DIR}/unity.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_event PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
+    )
+    target_link_libraries(test_esp_event PRIVATE wink_framework_esp_idf dal)
+    target_compile_options(test_esp_event PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(test_esp_event generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_event)
+    add_test(NAME test_esp_event COMMAND test_esp_event)
+    set_tests_properties(test_esp_event PROPERTIES LABELS "esp_idf;core")
+
     add_executable(test_esp_nvs
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_nvs.c
         ${UNITY_DIR}/unity.c
@@ -2126,6 +2146,9 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     )
     add_esp_idf_wasm_compile_check(test_esp_spi
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_spi.c
+    )
+    add_esp_idf_wasm_compile_check(test_esp_event
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_event.c
     )
     add_esp_idf_wasm_compile_check(test_esp_nvs
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_nvs.c

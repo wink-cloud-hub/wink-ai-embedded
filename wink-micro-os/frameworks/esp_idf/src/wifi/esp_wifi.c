@@ -127,7 +127,7 @@ esp_err_t esp_wifi_connect(void) {
     }
     s_wifi.state = WIFI_SIM_CONNECTING;
     uint32_t token = ++s_connect_token;
-    BaseType_t rc = xTaskCreate(wifi_connect_task, "wifi_conn", 2048,
+    BaseType_t rc = xTaskCreate(wifi_connect_task, "wifi_conn", 32768,
                                 (void*)(uintptr_t)token, 1, &s_conn_task_handle);
     if (rc != pdPASS) {
         s_wifi.state = WIFI_SIM_STARTED;

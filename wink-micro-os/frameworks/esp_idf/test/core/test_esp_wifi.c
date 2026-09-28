@@ -236,6 +236,7 @@ void test_wifi_init_start_connect_got_ip(void) {
     };
     TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_set_config(WIFI_IF_STA, &conf));
     TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_start());
+    esp_event_loop_run_all_pending();
     TEST_ASSERT_EQUAL(1, s_sta_start_count);
 
     TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_connect());
@@ -320,6 +321,7 @@ void test_wifi_disconnect_and_reconnect(void) {
     /* Disconnect */
     TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_disconnect());
     TEST_ASSERT_FALSE(esp_wifi_sim_is_connected());
+    esp_event_loop_run_all_pending();
     TEST_ASSERT_EQUAL(1, s_sta_disconnected_count);
 
     /* Reconnect */
@@ -443,11 +445,13 @@ void test_event_register_and_post(void) {
 
     int dummy = 42;
     TEST_ASSERT_EQUAL(ESP_OK, esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_START, &dummy, sizeof(dummy), 0));
+    esp_event_loop_run_all_pending();
     TEST_ASSERT_EQUAL(1, s_simple_evt_count);
     TEST_ASSERT_EQUAL(WIFI_EVENT_STA_START, s_simple_evt_last_id);
 
     /* Post different event id: should not trigger */
     esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_STOP, NULL, 0, 0);
+    esp_event_loop_run_all_pending();
     TEST_ASSERT_EQUAL(1, s_simple_evt_count);
 }
 
@@ -475,6 +479,7 @@ void test_event_wildcard_any_base_and_id(void) {
     esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_START, NULL, 0, 0);
     esp_event_post(IP_EVENT, IP_EVENT_STA_GOT_IP, NULL, 0, 0);
     esp_event_post("CUSTOM_BASE", 123, NULL, 0, 0);
+    esp_event_loop_run_all_pending();
 
     TEST_ASSERT_EQUAL(3, s_simple_evt_count);
 }
@@ -486,10 +491,12 @@ void test_event_unregister_stops_callbacks(void) {
     esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_START, simple_evt_handler, NULL);
 
     esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_START, NULL, 0, 0);
+    esp_event_loop_run_all_pending();
     TEST_ASSERT_EQUAL(1, s_simple_evt_count);
 
     TEST_ASSERT_EQUAL(ESP_OK, esp_event_handler_unregister(WIFI_EVENT, WIFI_EVENT_STA_START, simple_evt_handler));
     esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_START, NULL, 0, 0);
+    esp_event_loop_run_all_pending();
     TEST_ASSERT_EQUAL(1, s_simple_evt_count);
 }
 
@@ -527,6 +534,7 @@ void test_event_instance_independent_unregister(void) {
     /* Post both */
     esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_CONNECTED, NULL, 0, 0);
     esp_event_post(IP_EVENT, IP_EVENT_STA_GOT_IP, NULL, 0, 0);
+    esp_event_loop_run_all_pending();
     TEST_ASSERT_EQUAL(1, s_multi_wifi_count);
     TEST_ASSERT_EQUAL(1, s_multi_ip_count);
 
@@ -537,6 +545,7 @@ void test_event_instance_independent_unregister(void) {
     /* Post both again */
     esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_CONNECTED, NULL, 0, 0);
     esp_event_post(IP_EVENT, IP_EVENT_STA_GOT_IP, NULL, 0, 0);
+    esp_event_loop_run_all_pending();
     TEST_ASSERT_EQUAL(1, s_multi_wifi_count); /* Wifi count unchanged */
     TEST_ASSERT_EQUAL(2, s_multi_ip_count);   /* IP count incremented */
 }
@@ -559,10 +568,12 @@ void test_event_self_unregister_in_callback(void) {
 
     /* First post executes handler and it unregisters itself */
     TEST_ASSERT_EQUAL(ESP_OK, esp_event_post(WIFI_EVENT, 1, NULL, 0, 0));
+    esp_event_loop_run_all_pending();
     TEST_ASSERT_EQUAL(1, s_self_unreg_call_count);
 
     /* Second post should not invoke handler */
     TEST_ASSERT_EQUAL(ESP_OK, esp_event_post(WIFI_EVENT, 1, NULL, 0, 0));
+    esp_event_loop_run_all_pending();
     TEST_ASSERT_EQUAL(1, s_self_unreg_call_count);
 }
 

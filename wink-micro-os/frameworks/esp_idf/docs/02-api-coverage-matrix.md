@@ -109,8 +109,8 @@
 | `esp_wifi_scan_*` | `esp_wifi.h` | 🚫 未支持 | 无 | **[降级登记 22]** 仿真环境无真实 2.4GHz RF 扫描，Fail-Loud 报错 |
 | `esp_event_loop_create_default` / `delete_default` | `esp_event.h` | ✅ 支持 | 静态 16 槽事件处理池 | 默认系统事件循环 |
 | `esp_event_handler_register` / `unregister` | `esp_event.h` | ✅ 支持 | 静态 16 槽事件处理池 | 支持通配 base 与通配 id，支持快照派发 |
-| `esp_event_handler_instance_register` / `unregister` | `esp_event.h` | ✅ 支持 | 独立句柄反注册 | 支持自注销与安全隔离 |
-| `esp_event_post` | `esp_event.h` | ✅ 支持 | 同步快照派发器 | 防重入与防迭代器破坏 |
+| `esp_event_handler_instance_register` / `unregister` | `esp_event.h` | ✅ 支持 | 代际令牌句柄反注册 | 支持自注销、代际防 ABA 槽位复用 (D2/H6) |
+| `esp_event_post` | `esp_event.h` | ✅ 支持 | 异步 FIFO 环形队列 + 深拷贝 | 容量 32，深拷贝载荷 ≤1024B，事件泵 Fiber 解耦，防重入与无递归死锁 (D2/H5) |
 | `esp_netif_init` / `esp_netif_create_default_wifi_sta` | `esp_netif.h` | ✅ 支持 | 虚拟 Netif 实例管理 | 单例 STA Netif 句柄 |
 | `esp_netif_get_ip_info` | `esp_netif.h` | ⚠️ 降级支持 | 静态虚拟 IP 地址池 | **[降级登记 23]** 固定分配 `192.168.4.2/24`，网关 `192.168.4.1` |
 | `esp_mqtt_client_init` / `start` / `stop` / `reconnect` / `disconnect` / `destroy` | `mqtt_client.h` | ✅ 支持 | 静态 2 客户端池与令牌协作任务 | 支持完整生命周期管理、连接状态机与异步 50ms 延时 |
