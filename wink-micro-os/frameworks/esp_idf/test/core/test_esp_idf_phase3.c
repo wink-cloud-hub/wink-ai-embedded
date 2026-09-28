@@ -5,8 +5,8 @@
  * Per PLAN-20260927-ESP-IDF-SIM-PHASE3 §6 Task 5:
  *   Group 1: Virtual GPIO edge ISR, dual-context injection, and FreeRTOS waking
  *   Group 2: NVS persistence, CRUD lifecycle, and cold reboot from sandbox file
- *   Group 3: Heap capabilities (DMA 32-byte alignment, SPIRAM honest rejection, free heap query)
- *   Group 4: Standard libc free() interop with heap_caps_malloc (zero pointer offset)
+ *   Group 3: Heap capabilities (DMA alignment, honest ordinary-domain hints, SPIRAM rejection)
+ *   Group 4: Ordinary libc free() and special allocation tracker isolation
  *   Group 5: Dynamic tree/node parsing and lifecycle validation (JSON-like interop)
  */
 
@@ -428,7 +428,7 @@ void test_heap_caps_allocations_and_alignment(void) {
     TEST_ASSERT_NULL(p_psram);
 #endif
 
-    /* SSOT heap size consistency */
+    /* Ordinary heap metrics are capacity hints, not live free-byte counters. */
     size_t free_before = heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
     TEST_ASSERT_TRUE(free_before > 0);
     TEST_ASSERT_EQUAL_UINT32(free_before, esp_get_free_heap_size());
@@ -436,7 +436,7 @@ void test_heap_caps_allocations_and_alignment(void) {
     void *temp_buf = heap_caps_malloc(2048, MALLOC_CAP_DEFAULT);
     TEST_ASSERT_NOT_NULL(temp_buf);
     size_t free_after = heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
-    TEST_ASSERT_EQUAL_UINT32(free_before - 2048, free_after);
+    TEST_ASSERT_EQUAL_UINT32(free_before, free_after);
 
     heap_caps_free(temp_buf);
     size_t free_restored = heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
@@ -446,7 +446,9 @@ void test_heap_caps_allocations_and_alignment(void) {
     /* Minimum free size query */
     size_t min_free = heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT);
     TEST_ASSERT_TRUE(min_free > 0);
-    TEST_ASSERT_TRUE(min_free <= free_restored);
+    TEST_ASSERT_EQUAL_UINT32(free_restored, min_free);
+    TEST_ASSERT_EQUAL_UINT32(free_restored,
+        heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT));
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -485,6 +487,125 @@ void test_heap_caps_libc_free_interop(void) {
     TEST_ASSERT_NOT_NULL(rptr_new);
     TEST_ASSERT_EQUAL_UINT8(0xEE, ((uint8_t *)rptr_new)[0]);
     heap_caps_free(rptr_new);
+}
+
+void test_heap_caps_ordinary_free_does_not_consume_special_tracker(void) {
+    size_t dma_free_before = heap_caps_get_free_size(MALLOC_CAP_DMA);
+    for (size_t i = 0; i < 160; ++i) {
+        void *ordinary = heap_caps_malloc(8, MALLOC_CAP_DEFAULT);
+        TEST_ASSERT_NOT_NULL(ordinary);
+        free(ordinary);
+    }
+
+    void *dma = heap_caps_malloc(64, MALLOC_CAP_DMA);
+    TEST_ASSERT_NOT_NULL(dma);
+    TEST_ASSERT_EQUAL_UINT32(0, ((uintptr_t)dma) % 32);
+    TEST_ASSERT_EQUAL_UINT32(dma_free_before - 64,
+        heap_caps_get_free_size(MALLOC_CAP_DMA));
+    heap_caps_free(dma);
+    TEST_ASSERT_EQUAL_UINT32(dma_free_before,
+        heap_caps_get_free_size(MALLOC_CAP_DMA));
+}
+
+void test_heap_caps_explicit_alignment_uses_special_release_path(void) {
+    void *aligned = heap_caps_aligned_alloc(64, 127, MALLOC_CAP_DEFAULT);
+    TEST_ASSERT_NOT_NULL(aligned);
+    TEST_ASSERT_EQUAL_UINT32(0, ((uintptr_t)aligned) % 64);
+    heap_caps_free(aligned);
+
+    void *dma_aligned = heap_caps_aligned_alloc(8, 127, MALLOC_CAP_DMA);
+    TEST_ASSERT_NOT_NULL(dma_aligned);
+    TEST_ASSERT_EQUAL_UINT32(0, ((uintptr_t)dma_aligned) % 32);
+    heap_caps_free(dma_aligned);
+}
+
+void test_heap_caps_special_tracker_full_fails_and_reuses_released_slot(void) {
+    const size_t slot_count = 512;
+    void **special = (void **)calloc(slot_count, sizeof(*special));
+    TEST_ASSERT_NOT_NULL(special);
+    size_t count = 0;
+    while (count < slot_count) {
+        special[count] = heap_caps_malloc(1, MALLOC_CAP_DMA);
+        if (special[count] == NULL) break;
+        count++;
+    }
+    TEST_ASSERT_TRUE(count > 0);
+    TEST_ASSERT_TRUE(count < slot_count);
+    TEST_ASSERT_NULL(heap_caps_malloc(1, MALLOC_CAP_DMA));
+
+    heap_caps_free(special[count - 1]);
+    special[count - 1] = NULL;
+    void *replacement = heap_caps_malloc(1, MALLOC_CAP_DMA);
+    TEST_ASSERT_NOT_NULL(replacement);
+    heap_caps_free(replacement);
+    for (size_t i = 0; i < count; ++i) heap_caps_free(special[i]);
+    free(special);
+}
+
+void test_heap_caps_realloc_category_transitions_preserve_old_data(void) {
+    uint8_t *ordinary = (uint8_t *)heap_caps_malloc(16, MALLOC_CAP_DEFAULT);
+    TEST_ASSERT_NOT_NULL(ordinary);
+    memset(ordinary, 0xA5, 16);
+    void *unsupported = heap_caps_realloc(ordinary, 64, MALLOC_CAP_DMA);
+    TEST_ASSERT_NULL(unsupported);
+    TEST_ASSERT_EQUAL_UINT8(0xA5, ordinary[0]);
+    TEST_ASSERT_EQUAL_UINT8(0xA5, ordinary[15]);
+    free(ordinary);
+
+    uint8_t *special = (uint8_t *)heap_caps_malloc(16, MALLOC_CAP_DMA);
+    TEST_ASSERT_NOT_NULL(special);
+    memset(special, 0x5A, 16);
+    uint8_t *ordinary_result = (uint8_t *)heap_caps_realloc(
+        special, 32, MALLOC_CAP_DEFAULT);
+    TEST_ASSERT_NOT_NULL(ordinary_result);
+    TEST_ASSERT_EQUAL_UINT8(0x5A, ordinary_result[0]);
+    TEST_ASSERT_EQUAL_UINT8(0x5A, ordinary_result[15]);
+    heap_caps_free(ordinary_result);
+}
+
+void test_heap_caps_special_realloc_reuses_its_quota_transactionally(void) {
+    const size_t quota = 320u * 1024u;
+    esp_heap_caps_reset();
+    uint8_t *special = (uint8_t *)heap_caps_malloc(quota, MALLOC_CAP_DMA);
+    TEST_ASSERT_NOT_NULL(special);
+    special[0] = 0x31;
+    special[quota - 1] = 0x73;
+
+    /* Replacing an allocation of the same size must not double-charge quota. */
+    uint8_t *replacement = (uint8_t *)heap_caps_realloc(
+        special, quota, MALLOC_CAP_DMA);
+    TEST_ASSERT_NOT_NULL(replacement);
+    TEST_ASSERT_EQUAL_UINT8(0x31, replacement[0]);
+    TEST_ASSERT_EQUAL_UINT8(0x73, replacement[quota - 1]);
+    TEST_ASSERT_EQUAL_UINT32(0, heap_caps_get_free_size(MALLOC_CAP_DMA));
+
+    heap_caps_free(replacement);
+    TEST_ASSERT_EQUAL_UINT32(quota, heap_caps_get_free_size(MALLOC_CAP_DMA));
+}
+
+void test_heap_caps_calloc_rejects_multiplication_overflow(void) {
+    TEST_ASSERT_NULL(heap_caps_calloc(SIZE_MAX / 2 + 1, 2, MALLOC_CAP_DEFAULT));
+}
+
+void test_heap_caps_reset_releases_special_but_preserves_ordinary(void) {
+    uint8_t *ordinary = (uint8_t *)heap_caps_malloc(8, MALLOC_CAP_DEFAULT);
+    TEST_ASSERT_NOT_NULL(ordinary);
+    memset(ordinary, 0xC3, 8);
+    void *special = heap_caps_malloc(64, MALLOC_CAP_DMA);
+    TEST_ASSERT_NOT_NULL(special);
+
+    esp_heap_caps_reset();
+    TEST_ASSERT_EQUAL_UINT8(0xC3, ordinary[0]);
+    TEST_ASSERT_EQUAL_UINT8(0xC3, ordinary[7]);
+    TEST_ASSERT_EQUAL_UINT32(320u * 1024u,
+        heap_caps_get_free_size(MALLOC_CAP_DMA));
+    free(ordinary);
+
+    /* A repeated reset is idempotent and tracker slots are reusable. */
+    esp_heap_caps_reset();
+    void *after_reset = heap_caps_malloc(64, MALLOC_CAP_DMA);
+    TEST_ASSERT_NOT_NULL(after_reset);
+    heap_caps_free(after_reset);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -611,6 +732,13 @@ int main(void) {
 
     /* Group 4: Standard libc free() interop */
     RUN_TEST(test_heap_caps_libc_free_interop);
+    RUN_TEST(test_heap_caps_ordinary_free_does_not_consume_special_tracker);
+    RUN_TEST(test_heap_caps_explicit_alignment_uses_special_release_path);
+    RUN_TEST(test_heap_caps_special_tracker_full_fails_and_reuses_released_slot);
+    RUN_TEST(test_heap_caps_realloc_category_transitions_preserve_old_data);
+    RUN_TEST(test_heap_caps_special_realloc_reuses_its_quota_transactionally);
+    RUN_TEST(test_heap_caps_calloc_rejects_multiplication_overflow);
+    RUN_TEST(test_heap_caps_reset_releases_special_but_preserves_ordinary);
 
     /* Group 5: Dynamic Node Tree */
     RUN_TEST(test_dynamic_node_parsing_and_teardown);
