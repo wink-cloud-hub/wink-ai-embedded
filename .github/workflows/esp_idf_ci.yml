@@ -114,20 +114,20 @@ jobs:
       - name: Configure CMake
         shell: bash
         run: |
-          cmake -B build -S wink-micro-os -DENABLE_ESP_IDF_FRAMEWORK=ON \
+          cmake -B build/tests/host/esp-idf -S wink-micro-os -DENABLE_ESP_IDF_FRAMEWORK=ON \
             -DTARGET_PLATFORM=host -DWINK_TOOLS_ROOT="$WINK_TOOLS_ROOT" \
             -DWINK_ESP_TARGET=${{ matrix.target }} -DWINK_ESP_SIM_PROFILE=${{ matrix.profile }}
       - name: Build
-        run: cmake --build build --config Debug --target esp_idf_host_tests --parallel 2
+        run: cmake --build build/tests/host/esp-idf --config Debug --target esp_idf_host_tests --parallel 2
       - name: Run ESP-IDF core, corpus and vendor suites
         shell: bash
         run: |
           for label in esp_idf esp_idf_corpus esp_idfv61_vendor; do
-            ctest --test-dir build -C Debug -L "^${label}$" --no-tests=error --output-on-failure
+            ctest --test-dir build/tests/host/esp-idf -C Debug -L "^${label}$" --no-tests=error --output-on-failure
           done
       - name: Run ESP-IDF Wasm compile suite
         shell: bash
-        run: ctest --test-dir build -C Debug -L '^esp_idf_wasm$' --no-tests=error --output-on-failure
+        run: ctest --test-dir build/tests/host/esp-idf -C Debug -L '^esp_idf_wasm$' --no-tests=error --output-on-failure
 
   coverage-gate:
     needs: lint-and-governance
@@ -161,10 +161,10 @@ jobs:
         run: bash wink-micro-os/frameworks/esp_idf/tools/coverage.sh
       - name: Check 85% Line Coverage Threshold
         if: steps.host_check.outputs.supported == 'true'
-        run: python wink-micro-os/frameworks/esp_idf/tools/check_coverage.py build_cov/coverage_filtered.info 85
+        run: python wink-micro-os/frameworks/esp_idf/tools/check_coverage.py build/artifacts/coverage/coverage_filtered.info 85
       - name: Upload Coverage HTML Artifact
         if: steps.host_check.outputs.supported == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: esp_idf_coverage_html
-          path: build_cov/coverage_html/
+          path: build/artifacts/coverage/coverage_html/

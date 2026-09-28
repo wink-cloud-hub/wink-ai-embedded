@@ -65,17 +65,43 @@ jobs:
       - name: Configure CMake (Host)
         if: steps.toolchain.outputs.available == 'true'
         run: |
-          cmake -B build_host -S wink-micro-os -G Ninja \
+          cmake -B build/tests/host/general -S wink-micro-os -G Ninja \
             -DTARGET_PLATFORM=host \
             -DWINK_APP_DIR=wink-micro-app/fixtures/unisim_smoke
 
       - name: Build Host Binaries
         if: steps.toolchain.outputs.available == 'true'
-        run: cmake --build build_host
+        run: cmake --build build/tests/host/general
 
       - name: Run PAL & DAL Unit Tests
         if: steps.toolchain.outputs.available == 'true'
-        run: ctest --test-dir build_host --output-on-failure
+        run: ctest --test-dir build/tests/host/general --output-on-failure
+
+      - name: Verify Clean Build Container & No In-Tree Mutation
+        if: steps.toolchain.outputs.available == 'true'
+        shell: bash
+        run: |
+          # 1. Enforce that build/ container contains no CMakeCache directly
+          if [ -f build/CMakeCache.txt ]; then
+            echo "::error::Violation: build/ contains CMakeCache.txt! Must be a pure container."
+            exit 1
+          fi
+          # 2. Enforce that no build* directories exist outside build/
+          shopt -s nullglob
+          other_builds=(build-*/ build_*/)
+          if [ ${#other_builds[@]} -gt 0 ]; then
+            echo "::error::Violation: Found scattered build directories: ${other_builds[*]}"
+            exit 1
+          fi
+          # 3. Enforce carrier source tree zero mutation
+          if [ -d wink-firmware-carriers/esp32 ]; then
+            status=$(git status --porcelain wink-firmware-carriers/esp32)
+            if [ -n "$status" ]; then
+              echo "::error::Violation: carrier in-tree mutation detected:"
+              echo "$status"
+              exit 1
+            fi
+          fi
 
   wasm-build-and-test:
     runs-on: ubuntu-latest
@@ -125,17 +151,17 @@ jobs:
       - name: Configure CMake (Host tree hosts the emcc wasm tests)
         if: steps.toolchain.outputs.available == 'true'
         run: |
-          cmake -B build_host -S wink-micro-os -G Ninja \
+          cmake -B build/tests/wasm/node-suite -S wink-micro-os -G Ninja \
             -DTARGET_PLATFORM=host \
             -DWINK_APP_DIR=wink-micro-app/fixtures/unisim_smoke
 
       - name: Build (emcc wasm test targets are ALL)
         if: steps.toolchain.outputs.available == 'true'
-        run: cmake --build build_host
+        run: cmake --build build/tests/wasm/node-suite
 
       - name: Run wasm/Node tests (label "wasm")
         if: steps.toolchain.outputs.available == 'true'
-        run: ctest --test-dir build_host -L wasm --output-on-failure
+        run: ctest --test-dir build/tests/wasm/node-suite -L wasm --output-on-failure
 
   peripherals-sdk-sandbox:
     # SDK-only dependency tree (plan 2026-09-17 §0.5 invariant #2): the peripheral

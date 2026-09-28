@@ -4,7 +4,7 @@
 # Run from the repository root: bash wink-micro-os/frameworks/esp_idf/tools/coverage.sh
 set -euo pipefail
 
-BUILD_DIR="build_cov"
+BUILD_DIR="build/artifacts/coverage"
 rm -rf "${BUILD_DIR}"
 
 # TARGET_PLATFORM=host is mandatory: the default wasm platform does not register

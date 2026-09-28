@@ -45,7 +45,7 @@ jobs:
       - name: Configure CMake (compile database)
         if: steps.toolchain.outputs.available == 'true'
         run: |
-          cmake -B build_host -S wink-micro-os -G Ninja \
+          cmake -B build/tests/host/general -S wink-micro-os -G Ninja \
             -DTARGET_PLATFORM=host \
             -DWINK_APP_DIR=wink-micro-app/fixtures/unisim_smoke \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
@@ -54,12 +54,12 @@ jobs:
         if: steps.toolchain.outputs.available == 'true'
         shell: bash
         run: |
-          if [ ! -f build_host/compile_commands.json ]; then
+          if [ ! -f build/tests/host/general/compile_commands.json ]; then
             echo "::warning::compile database unavailable; skipping clang-tidy."
             exit 0
           fi
           find wink-micro-os -name "*.c" -not -path "*/third_party/*" -print0 \
-            | xargs -0 -r clang-tidy-17 -p build_host 2>&1 | tee clang-tidy-report.txt
+            | xargs -0 -r clang-tidy-17 -p build/tests/host/general 2>&1 | tee clang-tidy-report.txt
           if grep -q "error:" clang-tidy-report.txt; then
             echo "::error::Clang-Tidy found errors, see report above"
             exit 1

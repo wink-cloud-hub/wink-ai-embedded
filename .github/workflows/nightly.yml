@@ -60,9 +60,9 @@ jobs:
         if: steps.toolchain.outputs.available == 'true'
         run: |
           sudo apt-get update && sudo apt-get install -y cmake ninja-build
-          cmake -B build_stress -S wink-micro-os -DTARGET_PLATFORM=host -DWINK_APP_DIR=wink-micro-app/fixtures/unisim_smoke
-          cmake --build build_stress
-          ctest --test-dir build_stress -R "test_pal_lockfree_pipeline|test_sim_scheduler" --output-on-failure
+          cmake -B build/tests/host/stress -S wink-micro-os -DTARGET_PLATFORM=host -DWINK_APP_DIR=wink-micro-app/fixtures/unisim_smoke
+          cmake --build build/tests/host/stress
+          ctest --test-dir build/tests/host/stress -R "test_pal_lockfree_pipeline|test_sim_scheduler" --output-on-failure
 
   winkcli-docs-drift:
     # Runs the released winkcli binary, so it must be a Windows runner.
