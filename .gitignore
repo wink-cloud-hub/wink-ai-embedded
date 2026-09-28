@@ -1,8 +1,6 @@
 # ===== C / CMake Build Artifacts =====
 # Build directories
 build/
-build-*/
-build_*/
 !wink-tools/tools/cli/commands/build/
 out/
 dist/
@@ -73,6 +71,7 @@ Testing/
 
 # ===== ESP-IDF / Emscripten =====
 # ESP-IDF build and local sdkconfig copies
+sdkconfig
 sdkconfig.old
 managed_components/
 dependencies.lock
