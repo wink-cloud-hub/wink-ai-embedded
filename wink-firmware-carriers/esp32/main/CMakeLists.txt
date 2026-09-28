@@ -36,9 +36,12 @@ else()
     set(_WINK_GEN_APP_ARGS --app-name "${WINK_APP}")
 endif()
 
+set(_WINK_APP_SOURCES_CMAKE "${CMAKE_CURRENT_BINARY_DIR}/app_sources.cmake")
+
 execute_process(
     COMMAND "${_WINK_GEN_PY}" "${_WINK_GEN_SCRIPT}"
             --esp32-firmware-dir "${COMPONENT_DIR}/.."
+            --output "${_WINK_APP_SOURCES_CMAKE}"
             ${_WINK_GEN_APP_ARGS}
     WORKING_DIRECTORY "${COMPONENT_DIR}/.."
     RESULT_VARIABLE GEN_SCRIPT_RESULT
@@ -48,7 +51,7 @@ if(NOT GEN_SCRIPT_RESULT EQUAL 0)
     message(FATAL_ERROR "generate_app_sources.py failed with code ${GEN_SCRIPT_RESULT}")
 endif()
 
-include(${COMPONENT_DIR}/app_sources.cmake)
+include(${_WINK_APP_SOURCES_CMAKE})
 
 set(GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
 file(MAKE_DIRECTORY ${GEN_DIR})
