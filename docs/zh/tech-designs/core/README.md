@@ -8,6 +8,7 @@
 
 | 方案文档 | 核心内容 | 对应 ADR |
 | :--- | :--- | :--- |
+| [2026-09-28-esp-idf-d2-event-ownership-and-pump.md](./2026-09-28-esp-idf-d2-event-ownership-and-pump.md) | ESP-IDF H5 前置的事件载荷所有权、队列和网络回调派发契约（Proposed） | ADR-0012、ADR-0053 |
 | [2026-06-29-dal-peripheral-abstraction-refactoring-proposal.md](./2026-06-29-dal-peripheral-abstraction-refactoring-proposal.md) | DAL 器件抽象层标准化与 `config_t` 重构提案 | ADR-0003, ADR-0004 |
 | [2026-06-29-wink-micro-os-directory-reorganization-proposal.md](./2026-06-29-wink-micro-os-directory-reorganization-proposal.md) | WinkMicroOS Ports & Adapters 目录拓扑重组 | ADR-0021 |
 | [2026-07-06-bal-dcst-architecture-refactor.md](./2026-07-06-bal-dcst-architecture-refactor.md) | BAL 业务抽象层 DCST 架构重构方案 | ADR-0023, ADR-0037 |
