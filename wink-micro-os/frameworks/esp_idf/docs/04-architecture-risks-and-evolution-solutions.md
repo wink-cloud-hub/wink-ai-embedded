@@ -243,6 +243,7 @@
   提供完整的 `esp_heap_caps.h` 门面：
   - 将 `heap_caps_malloc()` 透传降级映射为标准 `malloc()`；
   - 对于 `MALLOC_CAP_SPIRAM`，若模拟芯片具备该能力（如 S3 配置带 PSRAM），正常分配并扣减虚拟 PSRAM 配额计数；若目标芯片不支持则返回 `NULL`（合约诚实）。
+- **当前契约（ADR-0089，取代本节旧的“全能力统一 malloc”描述）**：普通分配走 libc 且不进入有限 tracker；DMA、SPIRAM 与超基线对齐使用分类簿记。普通域水位是容量提示，不是实测 SSOT。特殊分配必须通过 `heap_caps_free` 释放，以兼容 MSVC 的 `_aligned_malloc/_aligned_free` 配对；本机未安装 MSVC 时，该释放路径仍需 Windows CI 验证。
 - **中长期演进（内存水位监控仪）**：  
   建立仿真内存水位监控（Memory Watermark Inspector），在前端仪表盘实时展示应用在不同内存能力域的消耗波形，帮助开发者在仿真期就提前发现“物理硬件内存泄漏”。
 
@@ -254,16 +255,16 @@
 - **核心机理**：  
   物理单片机调用 `esp_restart()` 时，硬件电路触发 POR（上电复位），引导程序执行：**将 `.bss` 段重新全清零，将 `.data` 段的初值从 Flash 重新拷贝覆盖到 SRAM**。
 - **潜在摩擦与风险**：  
-  在 Wasm / Host 仿真环境下，调用 `esp_restart()` 只是框架重置了 FreeRTOS 任务池和队列（`esp_freertos_pools_reset()`）：
+  在 Wasm / Host 仿真环境下，当前 `esp_restart()` 触发的是**局部软复位**：清理 HTTP/MQTT、Wi-Fi/Netif/NimBLE、事件循环、scheduler fibers、外设、易失 NVS 句柄及 FreeRTOS 池；它不重置进程/Wasm 实例中的用户静态存储：
   - **用户业务代码中的全局变量、静态局部变量（如 `static int s_state = 1;`）根本没有被重置**！
   - 如果用户代码在复位前把全局变量修改成了错误状态，复位后重入 `app_main`，代码读取到的依然是复位前的“脏数据”；
   - 开发者在仿真环境中会百思不得其解：“为什么我的单片机重启了，变量状态却没有恢复初始值？”
 
 #### 2. 解决方案 (Solutions)
-- **短期应对（明确警告声明）**：  
-  在 `esp_idf_bridge.c` 复位钩子中，向用户明确打印警告日志：`ESP_LOGW("SYSTEM", "Software reset in simulation does not reset user C global/static variables. Consider reloading the page/instance.")`。
-- **中长期演进（Wasm 内存快照热重载）**：  
-  在 Wasm 模块初次初始化完成、尚未进入 `app_main` 前，由宿主保存一份极轻量的 `.bss` 和 `.data` 内存快照（Memory Snapshot）。当收到 `esp_restart` 信号时，宿主利用 `memcpy` 瞬间用原始快照覆盖当前内存段，达成**物理级别的 bit-exact 纯净复位**。
+- **当前契约**：
+  文档与 UniSim 输出必须称作局部软复位，不能声称复位了用户全局变量。宿主在 scheduler 主边界处理 pending reset；复位先撤销异步 producer/token，再销毁 scheduler fibers 和易失资源。已提交 NVS 数据保留。
+- **Phase 4 正确性 oracle**：
+  Wasm 完整复位以销毁旧模块并重新实例化为准，重新运行 `.bss/.data` 初始化和 C++ 构造器。暂不以线性内存快照代替；只有证明 `memory.grow`、宿主闭包/句柄、异步任务、持久化存储及初始化次序等价后，才重新评估快照方案。
 
 ---
 

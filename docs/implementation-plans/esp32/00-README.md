@@ -25,6 +25,7 @@
 | M4-2 MQTT 与 HTTP 通信代理与自闭环 | M4-2 | ✅ 已完成 (v1.2 60/60 测试全绿与语料验收闭环) | [2026-09-27-esp-idf-sim-m4-2-mqtt-http-plan.md](./2026-09-27-esp-idf-sim-m4-2-mqtt-http-plan.md) |
 | M4-3 NimBLE 虚拟 GATT 服务与特征值抽象 | M4-3 | ✅ 已完成 (v1.2 65/65 测试全绿与语料验收闭环) | [2026-09-27-esp-idf-sim-m4-3-nimble-gatt-plan.md](./2026-09-27-esp-idf-sim-m4-3-nimble-gatt-plan.md) |
 | M4-4 UniSim Web 交互式虚拟蓝牙调试面板 | M4-4 | 🔄 推进中 (v1.0 计划草案编制就绪) | [2026-09-27-esp-idf-sim-m4-4-unisim-ble-inspector-plan.md](./2026-09-27-esp-idf-sim-m4-4-unisim-ble-inspector-plan.md) |
+| ESP-IDF 仿真基建加固 | H0～H8 | 🔄 执行中（2026-09-28，先建立门禁与基线） | [2026-09-28-esp-idf-simulation-hardening-plan.md](./2026-09-28-esp-idf-simulation-hardening-plan.md) |
 
 ## 相关架构规范与决策
 

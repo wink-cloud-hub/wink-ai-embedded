@@ -64,8 +64,9 @@ const wink_app_callbacks_t* wink_app_get_callbacks(void);
 
 ### 2.5 系统复位 (`esp_restart`) 与池清零 (ADR-0082)
 - 严禁调用 host `exit()` 或 `abort()`。
-- 通过 `pal_wasm_target_has_pending_reset` / `pal_wasm_target_get_reset_reason` 弱钩子族通知调度器优雅复位。
-- 复位响应执行 `esp_freertos_pools_reset()`：递增 TCB `gen` 计数毒化旧句柄、清空 Queue/Sem/Event 池及 waiter 列表。
+- `esp_restart()` 是 noreturn 契约：调度器 fiber 设置 pending 并持续让出，不恢复调用后的用户代码；fiber 外调用记录错误并终止当前进程。测试若只需观察 reset request，使用内部 `pal_wasm_target_request_reset()` adapter。
+- Host/Wasm 宿主必须在 scheduler 主边界调用 `pal_wasm_target_clear_pending_reset()`。复位按 HTTP/MQTT → Wi-Fi/Netif/NimBLE → Event Loop → scheduler fiber → peripherals/NVS volatile handles → FreeRTOS pools 清理；销毁 scheduler fiber 前先撤销网络 token 和回调源。边界由断言保护。
+- 已提交 NVS 数据跨软复位保留，易失 NVS handle、网络客户端、Netif、GPIO 与同步句柄失效；资源池可在复位后重新建立。该软复位不恢复用户 `.bss/.data` 或 C++ 静态构造器状态；Wasm 完整复位须由宿主销毁并重新实例化模块，列入 Phase 4。
 
 ---
 

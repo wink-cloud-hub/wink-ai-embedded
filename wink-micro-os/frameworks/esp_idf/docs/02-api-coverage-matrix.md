@@ -101,8 +101,8 @@
 | `nvs_open` / `nvs_close` / `nvs_commit` | `nvs.h` | ✅ 支持 | 静态 8 句柄槽位分配 | 命名空间隔离与深拷贝；Phase 3 `nvs_commit` 支持原子持久化落盘至受控沙箱 |
 | `nvs_set_*` / `nvs_get_*` 全类型原语 | `nvs.h` | ✅ 支持 | 静态键值项存储池 + 沙箱镜像 | Phase 3 支持 `.sim_sandbox/nvs_storage.bin` 二进制落盘与 CRC32 完整性校验，跨进程/跨重启持久化 |
 | `nvs_erase_key` / `nvs_erase_all` / `nvs_open_from_partition` | `nvs.h` | ✅ 支持 | 句柄命名空间匹配擦除 | 精确支持单键擦除与空间批量擦除，支持从指定分区打开 |
-| `heap_caps_malloc` / `heap_caps_free` / `heap_caps_calloc` / `heap_caps_realloc` | `esp_heap_caps.h` | ✅ 支持 | 原生系统堆分配与静态簿记表 | Phase 3 零指针侵入，返回真实首地址，100% 兼容 libc `free()`；DMA 32 字节硬件边界对齐；SPIRAM 依芯片能力与配置诚实校验 |
-| `heap_caps_get_free_size` / `heap_caps_get_minimum_free_size` | `esp_heap_caps.h` | ✅ 支持 | 堆内存水位 SSOT 簿记 | 动态统计已分配字节与历史最低水位，与 `esp_get_free_heap_size()` 统一 |
+| `heap_caps_malloc` / `heap_caps_free` / `heap_caps_calloc` / `heap_caps_realloc` | `esp_heap_caps.h` | ⚠️ 降级支持 | 普通分配走宿主 libc；DMA/SPIRAM/超基线对齐进入有限 tracker | 普通分配可用 `free` 或 `heap_caps_free`；特殊分配必须用 `heap_caps_free`（MSVC 对齐块由 `_aligned_free` 释放）；普通→特殊 realloc 返回 NULL 并保留旧指针；DMA 对齐为仿真地址约束，不证明物理可达 |
+| `heap_caps_get_free_size` / `heap_caps_get_minimum_free_size` / `heap_caps_get_largest_free_block` | `esp_heap_caps.h` | ⚠️ 提示/降级 | 普通域返回配置容量提示；特殊域根据成对 tracker 记账 | 普通域查询不代表实测空闲、水位或碎片；特殊域只在 `heap_caps_free` 完整配对后精确；不声称与硬件 SSOT 水位一致（ADR-0089） |
 | `esp_wifi_init` / `start` / `stop` / `connect` / `disconnect` / `deinit` | `esp_wifi.h` | ✅ 支持 | Wi-Fi 6 态状态机与异步 100ms 协作任务 | 令牌机制彻底阻断幽灵事件；双 target 同源编译通过 |
 | `esp_wifi_get_mac` / `set_mac` / `set_config` / `get_config` | `esp_wifi.h` | ✅ 支持 | 虚拟 MAC 与 STA 配置深拷贝 | 默认分配虚拟 MAC `DE:AD:BE:EF:00:01` |
 | `esp_wifi_set_mode` | `esp_wifi.h` | ⚠️ 降级支持 | STA 模式支持 | **[降级登记 21]** 仅支持 STA 模式，AP/APSTA 模式 Fail-Loud 报错 |
