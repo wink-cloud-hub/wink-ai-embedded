@@ -15,8 +15,8 @@ cmake -B "${BUILD_DIR}" -S wink-micro-os \
     -DWINK_ENABLE_COVERAGE=ON \
     -DCMAKE_BUILD_TYPE=Debug
 
-cmake --build "${BUILD_DIR}" -j"$(nproc)"
-ctest --test-dir "${BUILD_DIR}" -L esp_idf --output-on-failure
+cmake --build "${BUILD_DIR}" --target esp_idf_host_tests -j"$(nproc)"
+ctest --test-dir "${BUILD_DIR}" -L '^esp_idf$' --no-tests=error --output-on-failure
 
 # Collect and keep only frameworks/esp_idf/src
 lcov --capture --directory "${BUILD_DIR}" --output-file "${BUILD_DIR}/coverage_all.info"

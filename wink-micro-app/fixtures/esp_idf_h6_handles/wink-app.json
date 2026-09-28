@@ -1,0 +1,14 @@
+{
+  "app_name": "esp_idf_h6_handles",
+  "display_name": "ESP-IDF H6 stale handle simulation",
+  "board": "esp32_devkitc_v4",
+  "category": "fixture",
+  "mcu": "esp32",
+  "tick_ms": 1,
+  "devices": {
+    "queue_pass": { "type": "led", "gpio_pin": 2, "active_high": true },
+    "semaphore_pass": { "type": "led", "gpio_pin": 4, "active_high": true },
+    "event_pass": { "type": "led", "gpio_pin": 5, "active_high": true },
+    "nvs_pass": { "type": "led", "gpio_pin": 18, "active_high": true }
+  }
+}

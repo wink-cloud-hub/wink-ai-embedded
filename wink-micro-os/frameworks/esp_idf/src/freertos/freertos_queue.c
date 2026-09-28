@@ -8,6 +8,7 @@
 #include "freertos_sync.h"
 #include "wink_sim_scheduler.h"
 #include "pal_log.h"
+#include "../core/esp_sim_handle.h"
 extern void esp_idf_ensure_framework_ready(void); /* Phase 2 Task 4 cold-start */
 
 #ifndef FREERTOS_MAX_QUEUES
@@ -19,8 +20,8 @@ extern void esp_idf_ensure_framework_ready(void); /* Phase 2 Task 4 cold-start *
 #endif
 
 #ifndef FREERTOS_QUEUE_STORAGE_SIZE
-#  ifdef CONFIG_FREERTOS_QUEUE_STORAGE
-#    define FREERTOS_QUEUE_STORAGE_SIZE CONFIG_FREERTOS_QUEUE_STORAGE
+#  ifdef CONFIG_FREERTOS_QUEUE_STORAGE_SIZE
+#    define FREERTOS_QUEUE_STORAGE_SIZE CONFIG_FREERTOS_QUEUE_STORAGE_SIZE
 #  else
 #    define FREERTOS_QUEUE_STORAGE_SIZE 512
 #  endif
@@ -28,6 +29,7 @@ extern void esp_idf_ensure_framework_ready(void); /* Phase 2 Task 4 cold-start *
 
 typedef struct {
     bool     used;
+    uint32_t token;
     uint32_t item_size;
     uint32_t max_items;
     uint32_t cur_items;
@@ -45,12 +47,11 @@ _Static_assert(sizeof(esp_queue_t) <= (FREERTOS_QUEUE_STORAGE_SIZE + (WINK_SIM_M
 static esp_queue_t s_queues[FREERTOS_MAX_QUEUES];
 
 static inline esp_queue_t* resolve_queue(QueueHandle_t q) {
-    if (q == NULL) return NULL;
-    esp_queue_t* candidate = (esp_queue_t*)q;
-    if (candidate < &s_queues[0] || candidate >= &s_queues[FREERTOS_MAX_QUEUES]) {
-        return NULL;
-    }
-    if (!candidate->used) return NULL;
+    uint32_t slot;
+    if (!esp_sim_handle_decode(q, ESP_SIM_HANDLE_QUEUE,
+                               FREERTOS_MAX_QUEUES, &slot)) return NULL;
+    esp_queue_t* candidate = &s_queues[slot];
+    if (!candidate->used || candidate->token != (uint32_t)(uintptr_t)q) return NULL;
     return candidate;
 }
 
@@ -111,11 +112,14 @@ QueueHandle_t xQueueCreate(const UBaseType_t uxQueueLength, const UBaseType_t ux
 
     for (uint32_t i = 0; i < FREERTOS_MAX_QUEUES; ++i) {
         if (!s_queues[i].used) {
+            uint32_t token = esp_sim_handle_issue(ESP_SIM_HANDLE_QUEUE, i);
+            if (token == 0) return NULL;
             memset(&s_queues[i], 0, sizeof(esp_queue_t));
             s_queues[i].used = true;
+            s_queues[i].token = token;
             s_queues[i].max_items = (uint32_t)uxQueueLength;
             s_queues[i].item_size = (uint32_t)uxItemSize;
-            return (QueueHandle_t)&s_queues[i];
+            return (QueueHandle_t)(uintptr_t)token;
         }
     }
     pal_log_w("FREERTOS", "No free queue slot");
@@ -148,7 +152,12 @@ BaseType_t xQueueSend(QueueHandle_t xQueue, const void * const pvItemToQueue, Ti
         uint64_t before_us = pal_os_get_us();
         waiter_add(q->tx_waiters, &q->tx_waiter_count, self);
         bool ok = sync_block(FREERTOS_MAKE_RES_ID(FREERTOS_TAG_QUEUE, q_idx), remaining);
+        if (resolve_queue(xQueue) != q) return errQUEUE_FULL;
         waiter_remove(q->tx_waiters, &q->tx_waiter_count, self);
+
+        if (!q->used) {
+            return errQUEUE_FULL;
+        }
 
         if (!ok && q->cur_items >= q->max_items) {
             return errQUEUE_FULL;
@@ -201,7 +210,12 @@ BaseType_t xQueueReceive(QueueHandle_t xQueue, void * const pvBuffer, TickType_t
         uint64_t before_us = pal_os_get_us();
         waiter_add(q->rx_waiters, &q->rx_waiter_count, self);
         bool ok = sync_block(FREERTOS_MAKE_RES_ID(FREERTOS_TAG_QUEUE, q_idx), remaining);
+        if (resolve_queue(xQueue) != q) return errQUEUE_EMPTY;
         waiter_remove(q->rx_waiters, &q->rx_waiter_count, self);
+
+        if (!q->used) {
+            return errQUEUE_EMPTY;
+        }
 
         if (!ok && q->cur_items == 0) {
             return errQUEUE_EMPTY;
@@ -252,7 +266,12 @@ BaseType_t xQueuePeek(QueueHandle_t xQueue, void * const pvBuffer, TickType_t xT
         uint64_t before_us = pal_os_get_us();
         waiter_add(q->rx_waiters, &q->rx_waiter_count, self);
         bool ok = sync_block(FREERTOS_MAKE_RES_ID(FREERTOS_TAG_QUEUE, q_idx), remaining);
+        if (resolve_queue(xQueue) != q) return errQUEUE_EMPTY;
         waiter_remove(q->rx_waiters, &q->rx_waiter_count, self);
+
+        if (!q->used) {
+            return errQUEUE_EMPTY;
+        }
 
         if (!ok && q->cur_items == 0) {
             return errQUEUE_EMPTY;

@@ -4,6 +4,8 @@
 #include "nvs.h"
 #include <string.h>
 
+extern void pal_wasm_target_clear_pending_reset(void);
+
 void setUp(void) {
     nvs_flash_init();
     nvs_flash_erase();
@@ -40,6 +42,23 @@ void test_nvs_handle_lifecycle_and_limit(void) {
     for (int i = 0; i < 4; i++) {
         nvs_close(handles[i]);
     }
+}
+
+void test_nvs_stale_handle_cannot_access_or_close_reused_slot(void) {
+    nvs_handle_t old_handle = 0;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_open("old_ns", NVS_READWRITE, &old_handle));
+    nvs_close(old_handle);
+
+    nvs_handle_t current = 0;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_open("new_ns", NVS_READWRITE, &current));
+    TEST_ASSERT_NOT_EQUAL(old_handle, current);
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG,
+        nvs_set_u32(old_handle, "value", 1));
+    nvs_close(old_handle);
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_set_u32(current, "value", 2));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, nvs_commit(old_handle));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_commit(current));
+    nvs_close(current);
 }
 
 void test_nvs_all_primitive_types(void) {
@@ -131,24 +150,48 @@ void test_nvs_entry_limit(void) {
     nvs_handle_t h = 0;
     TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_open("limit_ns", NVS_READWRITE, &h));
 
-    /* Add 16 entries */
-    for (int i = 0; i < 16; i++) {
+    /* Fill the selected simulation profile's entry pool. */
+    for (int i = 0; i < CONFIG_NVS_MAX_ENTRIES; i++) {
         char key[16];
         snprintf(key, sizeof(key), "k%d", i);
         TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_set_u32(h, key, (uint32_t)i));
     }
 
-    /* 17th entry should fail with ESP_ERR_NVS_NOT_ENOUGH_SPACE */
+    /* The first entry beyond the configured pool must fail. */
     TEST_ASSERT_EQUAL_INT32(ESP_ERR_NVS_NOT_ENOUGH_SPACE, nvs_set_u32(h, "overflow_k", 999));
 
     nvs_close(h);
 }
 
+void test_nvs_commit_survives_soft_reset_but_handles_do_not(void) {
+    nvs_handle_t old_handle = 0;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_open("reset_persist", NVS_READWRITE, &old_handle));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_set_u32(old_handle, "persisted", 0x51A7));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_commit(old_handle));
+
+    pal_wasm_target_clear_pending_reset();
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG,
+        nvs_get_u32(old_handle, "persisted", &(uint32_t){0}));
+
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_flash_init());
+    nvs_handle_t new_handle = 0;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_open("reset_persist", NVS_READWRITE, &new_handle));
+    TEST_ASSERT_NOT_EQUAL(old_handle, new_handle);
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG,
+        nvs_set_u32(old_handle, "persisted", 0));
+    uint32_t value = 0;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_get_u32(new_handle, "persisted", &value));
+    TEST_ASSERT_EQUAL_UINT32(0x51A7, value);
+    nvs_close(new_handle);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_nvs_handle_lifecycle_and_limit);
+    RUN_TEST(test_nvs_stale_handle_cannot_access_or_close_reused_slot);
     RUN_TEST(test_nvs_all_primitive_types);
     RUN_TEST(test_nvs_erase_and_not_found);
     RUN_TEST(test_nvs_entry_limit);
+    RUN_TEST(test_nvs_commit_survives_soft_reset_but_handles_do_not);
     return UNITY_END();
 }

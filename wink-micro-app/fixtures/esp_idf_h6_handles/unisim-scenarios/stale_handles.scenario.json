@@ -1,0 +1,17 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF H6 stale handles across slot reuse",
+    "templateId": "esp_idf_h6_handles",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "500000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    { "type": "ASSERT_POINT", "timeUs": "100ms", "target": "gpio:2", "matcher": 1, "description": "Queue old handle rejected and current handle works" },
+    { "type": "ASSERT_POINT", "timeUs": "100ms", "target": "gpio:4", "matcher": 1, "description": "Semaphore old handle rejected and current handle works" },
+    { "type": "ASSERT_POINT", "timeUs": "100ms", "target": "gpio:5", "matcher": 1, "description": "Event group old handle rejected and current handle works" },
+    { "type": "ASSERT_POINT", "timeUs": "100ms", "target": "gpio:18", "matcher": 1, "description": "NVS old handle rejected and current handle works" }
+  ]
+}

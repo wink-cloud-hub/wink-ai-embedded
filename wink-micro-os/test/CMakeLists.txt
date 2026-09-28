@@ -1298,18 +1298,22 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/mcs51/test/wasm/add_wink_wasm_
 
 # ── ESP-IDF Simulation Interception Framework (M0) ───────────────────────────
 if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
-    if(WIN32)
-        find_program(WINKCLI_EXECUTABLE NAMES winkcli.bat winkcli.cmd winkcli.exe winkcli)
+    if(WINK_TOOLS_ROOT AND EXISTS "${WINK_TOOLS_ROOT}/wink.py")
+        find_package(Python3 COMPONENTS Interpreter REQUIRED)
+        set(_ESP_IDF_LINT_COMMAND ${Python3_EXECUTABLE} "${WINK_TOOLS_ROOT}/wink.py")
     else()
-        find_program(WINKCLI_EXECUTABLE NAMES winkcli)
+        find_program(WINKCLI_EXECUTABLE NAMES winkcli winkcli.exe winkcli.cmd winkcli.bat)
+        if(NOT WINKCLI_EXECUTABLE)
+            message(FATAL_ERROR "ESP-IDF lint requires wink-tools source or winkcli")
+        endif()
+        set(_ESP_IDF_LINT_COMMAND ${WINKCLI_EXECUTABLE})
     endif()
-    if(WINKCLI_EXECUTABLE)
-        add_test(NAME esp_idf_lint_isolation
-            COMMAND ${WINKCLI_EXECUTABLE} lint --pack esp_idf_all
-                --lint-paths ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/tools/lint
-        )
-        set_tests_properties(esp_idf_lint_isolation PROPERTIES LABELS "esp_idf;lint")
-    endif()
+    add_test(NAME esp_idf_lint_isolation
+        COMMAND ${_ESP_IDF_LINT_COMMAND} lint --root ${CMAKE_CURRENT_SOURCE_DIR}/..
+            --pack esp_idf_all
+            --lint-paths ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/tools/lint
+    )
+    set_tests_properties(esp_idf_lint_isolation PROPERTIES LABELS "esp_idf;lint")
 
     if(MSVC)
         set(ESP_IDF_TEST_COMPILE_OPTIONS /W4 /WX /wd4100 /wd4210 /wd4201 /we4311 /we4312)
@@ -1417,6 +1421,25 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     add_test(NAME test_esp_gpio COMMAND test_esp_gpio)
     set_tests_properties(test_esp_gpio PROPERTIES LABELS "esp_idf;core")
 
+    if(Python3_Interpreter_FOUND)
+        add_executable(test_esp_restart_outside_scheduler
+            ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_restart_outside_scheduler.c
+            ${HOST_PAL_OBJECT}
+        )
+        target_include_directories(test_esp_restart_outside_scheduler PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
+            ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
+        )
+        target_link_libraries(test_esp_restart_outside_scheduler PRIVATE
+            wink_framework_esp_idf dal)
+        add_test(NAME test_esp_restart_outside_scheduler
+            COMMAND ${Python3_EXECUTABLE}
+                ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/check_esp_restart_noreturn.py
+                $<TARGET_FILE:test_esp_restart_outside_scheduler>)
+        set_tests_properties(test_esp_restart_outside_scheduler PROPERTIES
+            LABELS "esp_idf;core;lifecycle" TIMEOUT 15)
+    endif()
+
     add_executable(test_esp_idf_freertos
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_idf_freertos.c
         ${UNITY_DIR}/unity.c
@@ -1437,6 +1460,61 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     wink_test_attach_manifest(test_esp_idf_freertos)
     add_test(NAME test_esp_idf_freertos COMMAND test_esp_idf_freertos)
     set_tests_properties(test_esp_idf_freertos PROPERTIES LABELS "esp_idf;core")
+    # B1: real C++ global construction must survive the framework cold-start path.
+    add_executable(test_esp_idf_global_ctor
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_idf_global_ctor.cpp
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_idf_global_ctor PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/freertos
+        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
+    )
+    target_link_libraries(test_esp_idf_global_ctor PRIVATE wink_framework_esp_idf dal)
+    set(_esp_idf_global_ctor_compile_options ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        list(REMOVE_ITEM _esp_idf_global_ctor_compile_options
+            -Wpointer-to-int-cast
+            -Wint-to-pointer-cast
+        )
+    endif()
+    target_compile_options(test_esp_idf_global_ctor PRIVATE ${_esp_idf_global_ctor_compile_options})
+    set_target_properties(test_esp_idf_global_ctor PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF
+    )
+    if(TARGET generate_config)
+        add_dependencies(test_esp_idf_global_ctor generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_idf_global_ctor)
+    add_test(NAME test_esp_idf_global_ctor COMMAND test_esp_idf_global_ctor)
+    set_tests_properties(test_esp_idf_global_ctor PROPERTIES LABELS "esp_idf;core;lifecycle")
+
+    # Deterministically hold pool reset open and prove concurrent cold-start
+    # callers cannot return before the initializer publishes READY.
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        find_package(Threads REQUIRED)
+        add_executable(test_esp_idf_concurrent_cold_start
+            ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_idf_concurrent_cold_start.cpp
+            ${HOST_PAL_OBJECT}
+        )
+        target_include_directories(test_esp_idf_concurrent_cold_start PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
+            ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/freertos
+            ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
+        )
+        target_link_libraries(test_esp_idf_concurrent_cold_start PRIVATE
+            wink_framework_esp_idf dal Threads::Threads)
+        target_link_options(test_esp_idf_concurrent_cold_start PRIVATE
+            "-Wl,--wrap=esp_freertos_pools_reset")
+        target_compile_features(test_esp_idf_concurrent_cold_start PRIVATE cxx_std_17)
+        add_test(NAME test_esp_idf_concurrent_cold_start
+            COMMAND test_esp_idf_concurrent_cold_start)
+        set_tests_properties(test_esp_idf_concurrent_cold_start PROPERTIES
+            LABELS "esp_idf;core;lifecycle;concurrency" TIMEOUT 15)
+    endif()
 
     # Phase 2 regression suite (PLAN-20260926-ESP-IDF-SIM-PHASE2)
     add_executable(test_esp_idf_phase2
@@ -1631,6 +1709,7 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     add_executable(test_esp_nvs
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_nvs.c
         ${UNITY_DIR}/unity.c
+        ${HOST_PAL_OBJECT}
     )
     target_include_directories(test_esp_nvs PRIVATE
         ${UNITY_DIR}
@@ -1642,8 +1721,65 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
         add_dependencies(test_esp_nvs generate_config)
     endif()
     wink_test_attach_manifest(test_esp_nvs)
-    add_test(NAME test_esp_nvs COMMAND test_esp_nvs)
-    set_tests_properties(test_esp_nvs PROPERTIES LABELS "esp_idf;core")
+    add_test(NAME test_esp_nvs
+        COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/run_nvs_sandbox_test.py
+            --sandbox ${CMAKE_BINARY_DIR}/sim_sandboxes/test_esp_nvs
+            --build-root ${CMAKE_BINARY_DIR}
+            $<TARGET_FILE:test_esp_nvs>)
+    set_tests_properties(test_esp_nvs PROPERTIES
+        LABELS "esp_idf;core;sandbox" TIMEOUT 30)
+
+    add_executable(test_esp_nvs_bad_sandbox
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_nvs_bad_sandbox.c
+    )
+    target_include_directories(test_esp_nvs_bad_sandbox PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include)
+    target_link_libraries(test_esp_nvs_bad_sandbox PRIVATE wink_framework_esp_idf)
+    if(TARGET generate_config)
+        add_dependencies(test_esp_nvs_bad_sandbox generate_config)
+    endif()
+    if(Python3_Interpreter_FOUND)
+        add_test(NAME test_esp_nvs_bad_sandbox
+            COMMAND ${Python3_EXECUTABLE}
+                ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/run_nvs_sandbox_test.py
+                --sandbox ${CMAKE_BINARY_DIR}/sim_sandboxes/test_esp_nvs_bad_sandbox
+                --build-root ${CMAKE_BINARY_DIR}
+                --expect-not-directory
+                $<TARGET_FILE:test_esp_nvs_bad_sandbox>)
+        set_tests_properties(test_esp_nvs_bad_sandbox PROPERTIES
+            LABELS "esp_idf;core;sandbox" TIMEOUT 15)
+        add_test(NAME test_esp_nvs_sandbox_path_length
+            COMMAND ${Python3_EXECUTABLE}
+                ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/run_nvs_sandbox_test.py
+                --sandbox ${CMAKE_BINARY_DIR}/sim_sandboxes/test_esp_nvs_path_length
+                --build-root ${CMAKE_BINARY_DIR}
+                --too-long-path
+                $<TARGET_FILE:test_esp_nvs_bad_sandbox>)
+        set_tests_properties(test_esp_nvs_sandbox_path_length PROPERTIES
+            LABELS "esp_idf;core;sandbox" TIMEOUT 15)
+    endif()
+
+    add_executable(test_esp_nvs_io_error
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_nvs_io_error.c
+    )
+    target_include_directories(test_esp_nvs_io_error PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include)
+    target_link_libraries(test_esp_nvs_io_error PRIVATE wink_framework_esp_idf)
+    if(TARGET generate_config)
+        add_dependencies(test_esp_nvs_io_error generate_config)
+    endif()
+    if(Python3_Interpreter_FOUND)
+        add_test(NAME test_esp_nvs_io_error
+            COMMAND ${Python3_EXECUTABLE}
+                ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/run_nvs_sandbox_test.py
+                --sandbox ${CMAKE_BINARY_DIR}/sim_sandboxes/test_esp_nvs_io_error
+                --build-root ${CMAKE_BINARY_DIR}
+                --expect-io-error
+                $<TARGET_FILE:test_esp_nvs_io_error>)
+        set_tests_properties(test_esp_nvs_io_error PROPERTIES
+            LABELS "esp_idf;core;sandbox" TIMEOUT 15)
+    endif()
 
     add_executable(test_esp_wifi
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_wifi.c
@@ -1922,8 +2058,48 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
             PROPERTIES LABELS "esp_idf;headless" TIMEOUT 180)
     endif()
 
+    # Build only the executables needed by the ESP-IDF core CTest label. The
+    # repository-wide ALL target also builds unrelated framework/Wasm suites.
+    set(_ESP_IDF_HOST_TEST_TARGETS
+        test_esp_err test_esp_idf_runtime test_esp_log test_esp_soc_matrix
+        test_esp_gpio test_esp_restart_outside_scheduler test_esp_idf_freertos test_esp_idf_global_ctor test_esp_idf_phase2
+        test_esp_idf_phase2_crash test_esp_idf_phase3 test_esp_idf_phase3_crash
+        test_esp_ledc test_esp_i2c test_esp_uart test_esp_gptimer test_esp_spi
+        test_esp_nvs test_esp_nvs_bad_sandbox test_esp_nvs_io_error test_esp_wifi test_esp_mqtt test_esp_http_client
+        test_esp_nimble test_esp_idf_blink_run
+    )
+    if(TARGET test_esp_idf_concurrent_cold_start)
+        list(APPEND _ESP_IDF_HOST_TEST_TARGETS test_esp_idf_concurrent_cold_start)
+    endif()
+    add_custom_target(esp_idf_host_tests DEPENDS ${_ESP_IDF_HOST_TEST_TARGETS})
+
     # 5. Wasm compile-only gate
     include(${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/wasm/esp_idf_wasm_compile.cmake)
+
+    # End-to-end Wasm runtime gate for ESP-IDF C++ global constructors. This
+    # deliberately uses an isolated nested build and Node module instance.
+    find_program(ESP_IDF_EMCMAKE_EXECUTABLE emcmake)
+    find_program(ESP_IDF_NODE_EXECUTABLE node)
+    if(Python3_Interpreter_FOUND AND ESP_IDF_EMCMAKE_EXECUTABLE AND ESP_IDF_NODE_EXECUTABLE)
+        add_test(NAME esp_idf_wasm_runtime_ctor
+            COMMAND ${Python3_EXECUTABLE}
+                ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/wasm/run_runtime_ctor_test.py
+                --emcmake ${ESP_IDF_EMCMAKE_EXECUTABLE}
+                --cmake ${CMAKE_COMMAND}
+                --node ${ESP_IDF_NODE_EXECUTABLE}
+                --source ${CMAKE_CURRENT_SOURCE_DIR}/..
+                --fixture ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/wasm/runtime_ctor_app
+                --tools ${WINK_TOOLS_ROOT}
+                --build ${CMAKE_BINARY_DIR}/esp_idf_wasm_runtime_ctor
+        )
+        set_tests_properties(esp_idf_wasm_runtime_ctor PROPERTIES
+            LABELS "esp_idf;wasm_runtime;lifecycle"
+            TIMEOUT 300
+            RESOURCE_LOCK esp_idf_wasm_runtime_ctor)
+    else()
+        message(STATUS "ESP-IDF Wasm runtime test unavailable: requires emcmake and node")
+    endif()
+
     add_esp_idf_wasm_compile_check(test_esp_err
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_err.c
     )
@@ -1932,6 +2108,9 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     )
     add_esp_idf_wasm_compile_check(test_esp_idf_freertos
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_idf_freertos.c
+    )
+    add_esp_idf_wasm_compile_check(test_esp_idf_global_ctor
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_idf_global_ctor.cpp
     )
     add_esp_idf_wasm_compile_check(test_esp_ledc
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_ledc.c
@@ -2072,4 +2251,3 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
             PROPERTIES LABELS "esp_idfv61_vendor;governance" TIMEOUT 60)
     endif()
 endif()
-

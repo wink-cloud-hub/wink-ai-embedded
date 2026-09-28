@@ -84,6 +84,49 @@ void test_task_handle_aba_protection(void) {
     vTaskDelete(hB);
 }
 
+void test_queue_stale_handle_cannot_send_to_reused_slot(void) {
+    uint32_t value = 0x12345678u;
+    QueueHandle_t old = xQueueCreate(1, sizeof(value));
+    TEST_ASSERT_NOT_NULL(old);
+    vQueueDelete(old);
+
+    QueueHandle_t current = xQueueCreate(1, sizeof(value));
+    TEST_ASSERT_NOT_NULL(current);
+    TEST_ASSERT_NOT_EQUAL(old, current);
+    TEST_ASSERT_EQUAL(errQUEUE_FULL, xQueueSend(old, &value, 0));
+    TEST_ASSERT_EQUAL(0u, uxQueueMessagesWaiting(current));
+    TEST_ASSERT_EQUAL(pdPASS, xQueueSend(current, &value, 0));
+    vQueueDelete(current);
+}
+
+void test_semaphore_stale_handle_cannot_give_reused_slot(void) {
+    SemaphoreHandle_t old = xSemaphoreCreateBinary();
+    TEST_ASSERT_NOT_NULL(old);
+    vSemaphoreDelete(old);
+
+    SemaphoreHandle_t current = xSemaphoreCreateBinary();
+    TEST_ASSERT_NOT_NULL(current);
+    TEST_ASSERT_NOT_EQUAL(old, current);
+    TEST_ASSERT_EQUAL(pdFALSE, xSemaphoreGive(old));
+    TEST_ASSERT_EQUAL(0u, uxSemaphoreGetCount(current));
+    TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreGive(current));
+    vSemaphoreDelete(current);
+}
+
+void test_event_group_stale_handle_cannot_set_reused_slot(void) {
+    EventGroupHandle_t old = xEventGroupCreate();
+    TEST_ASSERT_NOT_NULL(old);
+    vEventGroupDelete(old);
+
+    EventGroupHandle_t current = xEventGroupCreate();
+    TEST_ASSERT_NOT_NULL(current);
+    TEST_ASSERT_NOT_EQUAL(old, current);
+    TEST_ASSERT_EQUAL(0u, xEventGroupSetBits(old, 0x1u));
+    TEST_ASSERT_EQUAL(0u, xEventGroupGetBits(current));
+    TEST_ASSERT_EQUAL(0x1u, xEventGroupSetBits(current, 0x1u));
+    vEventGroupDelete(current);
+}
+
 /* --------------------------------------------------------------------------
  * 2. NULL Handle Resolution & 3. Self Deletion
  * -------------------------------------------------------------------------- */
@@ -241,6 +284,405 @@ void test_queue_fifo_and_timeout(void) {
     TEST_ASSERT_TRUE(s_timeout_ok);
 
     vQueueDelete(s_q);
+}
+
+static int s_timeout_handoff_trace[3];
+static int s_timeout_handoff_count;
+static int s_timeout_handoff_value;
+
+static void timeout_handoff_first_reader(void *arg) {
+    (void)arg;
+    int value = 0;
+    if (xQueueReceive(s_q, &value, 1) == errQUEUE_EMPTY) {
+        s_timeout_handoff_trace[s_timeout_handoff_count++] = 1;
+    }
+    vTaskDelete(NULL);
+}
+
+static void timeout_handoff_second_reader(void *arg) {
+    (void)arg;
+    int value = 0;
+    if (xQueueReceive(s_q, &value, 10) == pdPASS) {
+        s_timeout_handoff_value = value;
+        s_timeout_handoff_trace[s_timeout_handoff_count++] = 3;
+    }
+    vTaskDelete(NULL);
+}
+
+static void timeout_handoff_writer(void *arg) {
+    (void)arg;
+    vTaskDelay(2);
+    int value = 73;
+    if (xQueueSend(s_q, &value, 0) == pdPASS) {
+        s_timeout_handoff_trace[s_timeout_handoff_count++] = 2;
+    }
+    vTaskDelete(NULL);
+}
+
+void test_queue_timeout_does_not_steal_next_waiter_wakeup(void) {
+    s_q = xQueueCreate(1, sizeof(int));
+    TEST_ASSERT_NOT_NULL(s_q);
+    s_timeout_handoff_count = 0;
+    s_timeout_handoff_value = 0;
+    memset(s_timeout_handoff_trace, 0, sizeof(s_timeout_handoff_trace));
+
+    TaskHandle_t first, second, writer;
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(timeout_handoff_first_reader,
+        "timeout_first", 32768, NULL, 5, &first));
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(timeout_handoff_second_reader,
+        "timeout_second", 32768, NULL, 5, &second));
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(timeout_handoff_writer,
+        "timeout_writer", 32768, NULL, 5, &writer));
+
+    TEST_ASSERT_EQUAL(WINK_OK, pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 50));
+    TEST_ASSERT_EQUAL(3, s_timeout_handoff_count);
+    TEST_ASSERT_EQUAL(1, s_timeout_handoff_trace[0]);
+    TEST_ASSERT_EQUAL(2, s_timeout_handoff_trace[1]);
+    TEST_ASSERT_EQUAL(3, s_timeout_handoff_trace[2]);
+    TEST_ASSERT_EQUAL(73, s_timeout_handoff_value);
+    TEST_ASSERT_EQUAL_UINT32(0, uxQueueMessagesWaiting(s_q));
+    vQueueDelete(s_q);
+}
+
+static TickType_t s_wrap_before;
+static TickType_t s_wrap_after;
+static BaseType_t s_wrap_receive_result;
+
+static void queue_timeout_across_tick_wrap(void *arg) {
+    (void)arg;
+    int value = 0;
+    s_wrap_before = xTaskGetTickCount();
+    s_wrap_receive_result = xQueueReceive(s_q, &value, 3);
+    s_wrap_after = xTaskGetTickCount();
+    vTaskDelete(NULL);
+}
+
+void test_queue_timeout_across_tick_count_wrap(void) {
+    const uint64_t tick_us = (uint64_t)portTICK_PERIOD_MS * 1000u;
+    sim_set_mono_time_us(((uint64_t)UINT32_MAX - 1u) * tick_us);
+    s_q = xQueueCreate(1, sizeof(int));
+    TEST_ASSERT_NOT_NULL(s_q);
+    s_wrap_before = s_wrap_after = 0;
+    s_wrap_receive_result = pdPASS;
+
+    TaskHandle_t reader;
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(queue_timeout_across_tick_wrap,
+        "wrap_reader", 32768, NULL, 5, &reader));
+    TEST_ASSERT_EQUAL(WINK_OK, pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 10));
+    TEST_ASSERT_EQUAL_UINT32(UINT32_MAX - 1u, s_wrap_before);
+    TEST_ASSERT_EQUAL_UINT32(1u, s_wrap_after);
+    TEST_ASSERT_EQUAL(errQUEUE_EMPTY, s_wrap_receive_result);
+    TEST_ASSERT_EQUAL_UINT32(0, uxQueueMessagesWaiting(s_q));
+    vQueueDelete(s_q);
+}
+
+static BaseType_t s_deleted_queue_result;
+static uint32_t s_deleted_queue_reader_returns;
+
+static void deleted_queue_reader(void *arg) {
+    (void)arg;
+    int value = 0;
+    s_deleted_queue_result = xQueueReceive(s_q, &value, portMAX_DELAY);
+    ++s_deleted_queue_reader_returns;
+    vTaskDelete(NULL);
+}
+
+static void deleted_queue_deleter(void *arg) {
+    (void)arg;
+    vTaskDelay(1);
+    vQueueDelete(s_q);
+    vTaskDelete(NULL);
+}
+
+void test_queue_delete_releases_blocked_reader_once(void) {
+    s_q = xQueueCreate(1, sizeof(int));
+    TEST_ASSERT_NOT_NULL(s_q);
+    s_deleted_queue_result = pdPASS;
+    s_deleted_queue_reader_returns = 0;
+
+    TaskHandle_t reader, deleter;
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(deleted_queue_reader,
+        "delete_reader", 32768, NULL, 5, &reader));
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(deleted_queue_deleter,
+        "delete_queue", 32768, NULL, 5, &deleter));
+    TEST_ASSERT_EQUAL(WINK_OK, pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 10));
+    TEST_ASSERT_EQUAL(1, s_deleted_queue_reader_returns);
+    TEST_ASSERT_EQUAL(errQUEUE_EMPTY, s_deleted_queue_result);
+    TEST_ASSERT_EQUAL(eDeleted, eTaskGetState(reader));
+}
+
+static QueueHandle_t s_reused_queue;
+static void reused_queue_deleter(void *arg) {
+    (void)arg;
+    vTaskDelay(1);
+    vQueueDelete(s_q);
+    s_reused_queue = xQueueCreate(1, sizeof(int));
+    int fresh = 71;
+    if (s_reused_queue) (void)xQueueSend(s_reused_queue, &fresh, 0);
+    vTaskDelete(NULL);
+}
+
+void test_queue_blocked_old_reader_cannot_consume_reused_slot(void) {
+    s_q = xQueueCreate(1, sizeof(int));
+    TEST_ASSERT_NOT_NULL(s_q);
+    s_reused_queue = NULL;
+    s_deleted_queue_result = pdPASS;
+    s_deleted_queue_reader_returns = 0;
+    TaskHandle_t reader, deleter;
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(deleted_queue_reader,
+        "reused_reader", 32768, NULL, 5, &reader));
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(reused_queue_deleter,
+        "reused_queue", 32768, NULL, 5, &deleter));
+    TEST_ASSERT_EQUAL(WINK_OK, pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 10));
+    TEST_ASSERT_NOT_NULL(s_reused_queue);
+    TEST_ASSERT_NOT_EQUAL(s_q, s_reused_queue);
+    TEST_ASSERT_EQUAL(1, s_deleted_queue_reader_returns);
+    TEST_ASSERT_EQUAL(errQUEUE_EMPTY, s_deleted_queue_result);
+    TEST_ASSERT_EQUAL_UINT32(1, uxQueueMessagesWaiting(s_reused_queue));
+    vQueueDelete(s_reused_queue);
+}
+
+static BaseType_t s_deleted_queue_send_result;
+static uint32_t s_deleted_queue_writer_returns;
+
+static void deleted_queue_writer(void *arg) {
+    (void)arg;
+    int value = 99;
+    s_deleted_queue_send_result = xQueueSend(s_q, &value, portMAX_DELAY);
+    ++s_deleted_queue_writer_returns;
+    vTaskDelete(NULL);
+}
+
+void test_queue_delete_releases_blocked_writer_once(void) {
+    s_q = xQueueCreate(1, sizeof(int));
+    TEST_ASSERT_NOT_NULL(s_q);
+    int initial = 17;
+    TEST_ASSERT_EQUAL(pdPASS, xQueueSend(s_q, &initial, 0));
+    s_deleted_queue_send_result = pdPASS;
+    s_deleted_queue_writer_returns = 0;
+
+    TaskHandle_t writer, deleter;
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(deleted_queue_writer,
+        "delete_writer", 32768, NULL, 5, &writer));
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(deleted_queue_deleter,
+        "delete_queue", 32768, NULL, 5, &deleter));
+    TEST_ASSERT_EQUAL(WINK_OK, pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 10));
+    TEST_ASSERT_EQUAL(1, s_deleted_queue_writer_returns);
+    TEST_ASSERT_EQUAL(errQUEUE_FULL, s_deleted_queue_send_result);
+    TEST_ASSERT_EQUAL(eDeleted, eTaskGetState(writer));
+}
+
+static BaseType_t s_deleted_queue_peek_result;
+static uint32_t s_deleted_queue_peek_returns;
+
+static void deleted_queue_peeker(void *arg) {
+    (void)arg;
+    int value = 0;
+    s_deleted_queue_peek_result = xQueuePeek(s_q, &value, portMAX_DELAY);
+    ++s_deleted_queue_peek_returns;
+    vTaskDelete(NULL);
+}
+
+void test_queue_delete_releases_blocked_peeker_once(void) {
+    s_q = xQueueCreate(1, sizeof(int));
+    TEST_ASSERT_NOT_NULL(s_q);
+    s_deleted_queue_peek_result = pdPASS;
+    s_deleted_queue_peek_returns = 0;
+
+    TaskHandle_t peeker, deleter;
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(deleted_queue_peeker,
+        "delete_peeker", 32768, NULL, 5, &peeker));
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(deleted_queue_deleter,
+        "delete_queue", 32768, NULL, 5, &deleter));
+    TEST_ASSERT_EQUAL(WINK_OK, pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 10));
+    TEST_ASSERT_EQUAL(1, s_deleted_queue_peek_returns);
+    TEST_ASSERT_EQUAL(errQUEUE_EMPTY, s_deleted_queue_peek_result);
+    TEST_ASSERT_EQUAL(eDeleted, eTaskGetState(peeker));
+}
+
+static SemaphoreHandle_t s_deleted_sem;
+static BaseType_t s_deleted_sem_result;
+static uint32_t s_deleted_sem_waiter_returns;
+
+static void deleted_sem_waiter(void *arg) {
+    (void)arg;
+    s_deleted_sem_result = xSemaphoreTake(s_deleted_sem, portMAX_DELAY);
+    ++s_deleted_sem_waiter_returns;
+    vTaskDelete(NULL);
+}
+
+static void deleted_sem_deleter(void *arg) {
+    (void)arg;
+    vTaskDelay(1);
+    vSemaphoreDelete(s_deleted_sem);
+    vTaskDelete(NULL);
+}
+
+void test_semaphore_delete_releases_blocked_waiter_once(void) {
+    s_deleted_sem = xSemaphoreCreateBinary();
+    TEST_ASSERT_NOT_NULL(s_deleted_sem);
+    s_deleted_sem_result = pdTRUE;
+    s_deleted_sem_waiter_returns = 0;
+
+    TaskHandle_t waiter, deleter;
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(deleted_sem_waiter,
+        "delete_sem_wait", 32768, NULL, 5, &waiter));
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(deleted_sem_deleter,
+        "delete_sem", 32768, NULL, 5, &deleter));
+    TEST_ASSERT_EQUAL(WINK_OK, pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 10));
+    TEST_ASSERT_EQUAL(1, s_deleted_sem_waiter_returns);
+    TEST_ASSERT_EQUAL(pdFALSE, s_deleted_sem_result);
+    TEST_ASSERT_EQUAL(eDeleted, eTaskGetState(waiter));
+}
+
+static SemaphoreHandle_t s_reused_sem;
+static void reused_sem_deleter(void *arg) {
+    (void)arg;
+    vTaskDelay(1);
+    vSemaphoreDelete(s_deleted_sem);
+    s_reused_sem = xSemaphoreCreateBinary();
+    if (s_reused_sem) (void)xSemaphoreGive(s_reused_sem);
+    vTaskDelete(NULL);
+}
+
+void test_semaphore_blocked_old_waiter_cannot_take_reused_slot(void) {
+    s_deleted_sem = xSemaphoreCreateBinary();
+    TEST_ASSERT_NOT_NULL(s_deleted_sem);
+    s_reused_sem = NULL;
+    s_deleted_sem_result = pdTRUE;
+    s_deleted_sem_waiter_returns = 0;
+    TaskHandle_t waiter, deleter;
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(deleted_sem_waiter,
+        "reused_sem_wait", 32768, NULL, 5, &waiter));
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(reused_sem_deleter,
+        "reused_sem", 32768, NULL, 5, &deleter));
+    TEST_ASSERT_EQUAL(WINK_OK, pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 10));
+    TEST_ASSERT_NOT_NULL(s_reused_sem);
+    TEST_ASSERT_NOT_EQUAL(s_deleted_sem, s_reused_sem);
+    TEST_ASSERT_EQUAL(1, s_deleted_sem_waiter_returns);
+    TEST_ASSERT_EQUAL(pdFALSE, s_deleted_sem_result);
+    TEST_ASSERT_EQUAL_UINT32(1, uxSemaphoreGetCount(s_reused_sem));
+    vSemaphoreDelete(s_reused_sem);
+}
+
+static EventGroupHandle_t s_deleted_event_group;
+static EventBits_t s_deleted_event_result;
+static uint32_t s_deleted_event_waiter_returns;
+
+static void deleted_event_waiter(void *arg) {
+    (void)arg;
+    s_deleted_event_result = xEventGroupWaitBits(s_deleted_event_group,
+        0x01, pdFALSE, pdFALSE, portMAX_DELAY);
+    ++s_deleted_event_waiter_returns;
+    vTaskDelete(NULL);
+}
+
+static void deleted_event_deleter(void *arg) {
+    (void)arg;
+    vTaskDelay(1);
+    vEventGroupDelete(s_deleted_event_group);
+    vTaskDelete(NULL);
+}
+
+void test_event_group_delete_releases_blocked_waiter_once(void) {
+    s_deleted_event_group = xEventGroupCreate();
+    TEST_ASSERT_NOT_NULL(s_deleted_event_group);
+    s_deleted_event_result = 0xFFFFFFFFu;
+    s_deleted_event_waiter_returns = 0;
+
+    TaskHandle_t waiter, deleter;
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(deleted_event_waiter,
+        "delete_event_wait", 32768, NULL, 5, &waiter));
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(deleted_event_deleter,
+        "delete_event", 32768, NULL, 5, &deleter));
+    TEST_ASSERT_EQUAL(WINK_OK, pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 10));
+    TEST_ASSERT_EQUAL(1, s_deleted_event_waiter_returns);
+    TEST_ASSERT_EQUAL_UINT32(0, s_deleted_event_result);
+    TEST_ASSERT_EQUAL(eDeleted, eTaskGetState(waiter));
+}
+
+static EventGroupHandle_t s_reused_event_group;
+static void reused_event_deleter(void *arg) {
+    (void)arg;
+    vTaskDelay(1);
+    vEventGroupDelete(s_deleted_event_group);
+    s_reused_event_group = xEventGroupCreate();
+    if (s_reused_event_group) (void)xEventGroupSetBits(s_reused_event_group, 0x01);
+    vTaskDelete(NULL);
+}
+
+void test_event_group_blocked_old_waiter_cannot_observe_reused_slot(void) {
+    s_deleted_event_group = xEventGroupCreate();
+    TEST_ASSERT_NOT_NULL(s_deleted_event_group);
+    s_reused_event_group = NULL;
+    s_deleted_event_result = 0xFFFFFFFFu;
+    s_deleted_event_waiter_returns = 0;
+    TaskHandle_t waiter, deleter;
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(deleted_event_waiter,
+        "reused_event_wait", 32768, NULL, 5, &waiter));
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(reused_event_deleter,
+        "reused_event", 32768, NULL, 5, &deleter));
+    TEST_ASSERT_EQUAL(WINK_OK, pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 10));
+    TEST_ASSERT_NOT_NULL(s_reused_event_group);
+    TEST_ASSERT_NOT_EQUAL(s_deleted_event_group, s_reused_event_group);
+    TEST_ASSERT_EQUAL(1, s_deleted_event_waiter_returns);
+    TEST_ASSERT_EQUAL_UINT32(0, s_deleted_event_result);
+    TEST_ASSERT_EQUAL_UINT32(1, xEventGroupGetBits(s_reused_event_group));
+    vEventGroupDelete(s_reused_event_group);
+}
+
+static SemaphoreHandle_t s_timeout_sem;
+static BaseType_t s_timeout_sem_first_result;
+static BaseType_t s_timeout_sem_second_result;
+static int s_timeout_sem_trace[3];
+static int s_timeout_sem_trace_count;
+
+static void timeout_sem_first_waiter(void *arg) {
+    (void)arg;
+    s_timeout_sem_first_result = xSemaphoreTake(s_timeout_sem, 1);
+    s_timeout_sem_trace[s_timeout_sem_trace_count++] = 1;
+    vTaskDelete(NULL);
+}
+
+static void timeout_sem_second_waiter(void *arg) {
+    (void)arg;
+    s_timeout_sem_second_result = xSemaphoreTake(s_timeout_sem, 10);
+    s_timeout_sem_trace[s_timeout_sem_trace_count++] = 3;
+    vTaskDelete(NULL);
+}
+
+static void timeout_sem_giver(void *arg) {
+    (void)arg;
+    vTaskDelay(2);
+    if (xSemaphoreGive(s_timeout_sem) == pdTRUE) {
+        s_timeout_sem_trace[s_timeout_sem_trace_count++] = 2;
+    }
+    vTaskDelete(NULL);
+}
+
+void test_semaphore_timeout_does_not_steal_next_waiter_wakeup(void) {
+    s_timeout_sem = xSemaphoreCreateBinary();
+    TEST_ASSERT_NOT_NULL(s_timeout_sem);
+    s_timeout_sem_first_result = s_timeout_sem_second_result = -1;
+    s_timeout_sem_trace_count = 0;
+    memset(s_timeout_sem_trace, 0, sizeof(s_timeout_sem_trace));
+
+    TaskHandle_t first, second, giver;
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(timeout_sem_first_waiter,
+        "timeout_sem_1", 32768, NULL, 5, &first));
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(timeout_sem_second_waiter,
+        "timeout_sem_2", 32768, NULL, 5, &second));
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(timeout_sem_giver,
+        "timeout_sem_g", 32768, NULL, 5, &giver));
+    TEST_ASSERT_EQUAL(WINK_OK, pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 10));
+    TEST_ASSERT_EQUAL(3, s_timeout_sem_trace_count);
+    TEST_ASSERT_EQUAL(1, s_timeout_sem_trace[0]);
+    TEST_ASSERT_EQUAL(2, s_timeout_sem_trace[1]);
+    TEST_ASSERT_EQUAL(3, s_timeout_sem_trace[2]);
+    TEST_ASSERT_EQUAL(pdFALSE, s_timeout_sem_first_result);
+    TEST_ASSERT_EQUAL(pdTRUE, s_timeout_sem_second_result);
+    TEST_ASSERT_EQUAL_UINT32(0, uxSemaphoreGetCount(s_timeout_sem));
+    vSemaphoreDelete(s_timeout_sem);
 }
 
 /* --------------------------------------------------------------------------
@@ -580,6 +1022,25 @@ void test_freertos_queue_invalid_and_exhaustion(void) {
     }
 }
 
+void test_freertos_queue_profile_storage_boundary(void) {
+    QueueHandle_t q = xQueueCreate(CONFIG_FREERTOS_QUEUE_STORAGE_SIZE, 1);
+    TEST_ASSERT_NOT_NULL(q);
+
+    for (uint32_t i = 0; i < CONFIG_FREERTOS_QUEUE_STORAGE_SIZE; ++i) {
+        uint8_t value = (uint8_t)i;
+        TEST_ASSERT_EQUAL(pdPASS, xQueueSend(q, &value, 0));
+    }
+    TEST_ASSERT_EQUAL_UINT32(CONFIG_FREERTOS_QUEUE_STORAGE_SIZE,
+                             uxQueueMessagesWaiting(q));
+
+    for (uint32_t i = 0; i < CONFIG_FREERTOS_QUEUE_STORAGE_SIZE; ++i) {
+        uint8_t value = 0;
+        TEST_ASSERT_EQUAL(pdPASS, xQueueReceive(q, &value, 0));
+        TEST_ASSERT_EQUAL_UINT8((uint8_t)i, value);
+    }
+    vQueueDelete(q);
+}
+
 void test_freertos_semaphore_edges(void) {
     BaseType_t woken = pdTRUE;
 
@@ -753,10 +1214,24 @@ void test_freertos_pointer_cast_safety(void) {
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_task_handle_aba_protection);
+    RUN_TEST(test_queue_stale_handle_cannot_send_to_reused_slot);
+    RUN_TEST(test_semaphore_stale_handle_cannot_give_reused_slot);
+    RUN_TEST(test_event_group_stale_handle_cannot_set_reused_slot);
     RUN_TEST(test_task_null_handle_and_self_delete);
     RUN_TEST(test_task_delay_zero_yield_order);
     RUN_TEST(test_task_delay_and_delay_until);
     RUN_TEST(test_queue_fifo_and_timeout);
+    RUN_TEST(test_queue_timeout_does_not_steal_next_waiter_wakeup);
+    RUN_TEST(test_queue_timeout_across_tick_count_wrap);
+    RUN_TEST(test_queue_delete_releases_blocked_reader_once);
+    RUN_TEST(test_queue_blocked_old_reader_cannot_consume_reused_slot);
+    RUN_TEST(test_queue_delete_releases_blocked_writer_once);
+    RUN_TEST(test_queue_delete_releases_blocked_peeker_once);
+    RUN_TEST(test_semaphore_delete_releases_blocked_waiter_once);
+    RUN_TEST(test_semaphore_blocked_old_waiter_cannot_take_reused_slot);
+    RUN_TEST(test_event_group_delete_releases_blocked_waiter_once);
+    RUN_TEST(test_event_group_blocked_old_waiter_cannot_observe_reused_slot);
+    RUN_TEST(test_semaphore_timeout_does_not_steal_next_waiter_wakeup);
     RUN_TEST(test_mutex_priority_waking_order);
     RUN_TEST(test_event_group_broadcast_and_clear_on_exit);
     RUN_TEST(test_event_group_multi_waiter_same_bit_clear_on_exit);
@@ -764,6 +1239,7 @@ int main(void) {
     RUN_TEST(test_from_isr_and_stubs);
     RUN_TEST(test_freertos_timers_fail_loud_family);
     RUN_TEST(test_freertos_queue_invalid_and_exhaustion);
+    RUN_TEST(test_freertos_queue_profile_storage_boundary);
     RUN_TEST(test_freertos_semaphore_edges);
     RUN_TEST(test_freertos_event_group_edges);
     RUN_TEST(test_freertos_task_edge_paths);

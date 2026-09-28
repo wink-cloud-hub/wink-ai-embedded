@@ -8,6 +8,7 @@
 #include "freertos_sync.h"
 #include "wink_sim_scheduler.h"
 #include "pal_log.h"
+#include "../core/esp_sim_handle.h"
 extern void esp_idf_ensure_framework_ready(void); /* Phase 2 Task 4 cold-start */
 
 #ifndef FREERTOS_MAX_SEMAPHORES
@@ -26,6 +27,7 @@ typedef enum {
 
 typedef struct {
     bool       used;
+    uint32_t   token;
     sem_type_t type;
     uint32_t   count;
     uint32_t   max_count;
@@ -40,12 +42,11 @@ _Static_assert(sizeof(esp_sem_t) <= (32 + (WINK_SIM_MAX_TASKS * 8)), "esp_sem_t 
 static esp_sem_t s_sems[FREERTOS_MAX_SEMAPHORES];
 
 static inline esp_sem_t* resolve_sem(SemaphoreHandle_t s) {
-    if (s == NULL) return NULL;
-    esp_sem_t* candidate = (esp_sem_t*)s;
-    if (candidate < &s_sems[0] || candidate >= &s_sems[FREERTOS_MAX_SEMAPHORES]) {
-        return NULL;
-    }
-    if (!candidate->used) return NULL;
+    uint32_t slot;
+    if (!esp_sim_handle_decode(s, ESP_SIM_HANDLE_SEMAPHORE,
+                               FREERTOS_MAX_SEMAPHORES, &slot)) return NULL;
+    esp_sem_t* candidate = &s_sems[slot];
+    if (!candidate->used || candidate->token != (uint32_t)(uintptr_t)s) return NULL;
     return candidate;
 }
 
@@ -100,13 +101,16 @@ SemaphoreHandle_t xSemaphoreCreateMutex(void) {
     esp_idf_ensure_framework_ready(); /* Phase 2 Task 4.2 */
     for (uint32_t i = 0; i < FREERTOS_MAX_SEMAPHORES; ++i) {
         if (!s_sems[i].used) {
+            uint32_t token = esp_sim_handle_issue(ESP_SIM_HANDLE_SEMAPHORE, i);
+            if (token == 0) return NULL;
             memset(&s_sems[i], 0, sizeof(esp_sem_t));
             s_sems[i].used = true;
+            s_sems[i].token = token;
             s_sems[i].type = SEM_TYPE_MUTEX;
             s_sems[i].count = 1;
             s_sems[i].max_count = 1;
             s_sems[i].owner_task_id = SIM_SCHED_NO_READY;
-            return (SemaphoreHandle_t)&s_sems[i];
+            return (SemaphoreHandle_t)(uintptr_t)token;
         }
     }
     pal_log_w("FREERTOS", "No free semaphore slot for mutex");
@@ -117,13 +121,16 @@ SemaphoreHandle_t xSemaphoreCreateBinary(void) {
     esp_idf_ensure_framework_ready(); /* Phase 2 Task 4.2 */
     for (uint32_t i = 0; i < FREERTOS_MAX_SEMAPHORES; ++i) {
         if (!s_sems[i].used) {
+            uint32_t token = esp_sim_handle_issue(ESP_SIM_HANDLE_SEMAPHORE, i);
+            if (token == 0) return NULL;
             memset(&s_sems[i], 0, sizeof(esp_sem_t));
             s_sems[i].used = true;
+            s_sems[i].token = token;
             s_sems[i].type = SEM_TYPE_BINARY;
             s_sems[i].count = 0;
             s_sems[i].max_count = 1;
             s_sems[i].owner_task_id = SIM_SCHED_NO_READY;
-            return (SemaphoreHandle_t)&s_sems[i];
+            return (SemaphoreHandle_t)(uintptr_t)token;
         }
     }
     pal_log_w("FREERTOS", "No free semaphore slot for binary semaphore");
@@ -137,13 +144,16 @@ SemaphoreHandle_t xSemaphoreCreateCounting(const UBaseType_t uxMaxCount, const U
     }
     for (uint32_t i = 0; i < FREERTOS_MAX_SEMAPHORES; ++i) {
         if (!s_sems[i].used) {
+            uint32_t token = esp_sim_handle_issue(ESP_SIM_HANDLE_SEMAPHORE, i);
+            if (token == 0) return NULL;
             memset(&s_sems[i], 0, sizeof(esp_sem_t));
             s_sems[i].used = true;
+            s_sems[i].token = token;
             s_sems[i].type = SEM_TYPE_COUNTING;
             s_sems[i].count = (uint32_t)uxInitialCount;
             s_sems[i].max_count = (uint32_t)uxMaxCount;
             s_sems[i].owner_task_id = SIM_SCHED_NO_READY;
-            return (SemaphoreHandle_t)&s_sems[i];
+            return (SemaphoreHandle_t)(uintptr_t)token;
         }
     }
     pal_log_w("FREERTOS", "No free semaphore slot for counting semaphore");
@@ -183,7 +193,12 @@ BaseType_t xSemaphoreTake(SemaphoreHandle_t xSemaphore, TickType_t xTicksToWait)
         uint32_t tag = (s->type == SEM_TYPE_MUTEX) ? FREERTOS_TAG_MUTEX : FREERTOS_TAG_SEM;
         uint64_t before_us = pal_os_get_us();
         bool ok = sync_block(FREERTOS_MAKE_RES_ID(tag, sem_idx), remaining);
+        if (resolve_sem(xSemaphore) != s) return pdFALSE;
         sem_waiter_remove(s, self);
+
+        if (!s->used) {
+            return pdFALSE;
+        }
 
         if (remaining != portMAX_DELAY) {
             uint64_t elapsed_us = pal_os_get_us() - before_us;

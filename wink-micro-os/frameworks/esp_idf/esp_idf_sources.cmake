@@ -6,6 +6,7 @@ set(ESP_IDF_FRAMEWORK_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_log.c
     ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_system.c
     ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_heap_caps.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_sim_handle.c
     ${CMAKE_CURRENT_LIST_DIR}/src/drivers/esp_gpio.c
     ${CMAKE_CURRENT_LIST_DIR}/src/drivers/esp_ledc.c
     ${CMAKE_CURRENT_LIST_DIR}/src/drivers/esp_i2c_legacy.c

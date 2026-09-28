@@ -8,6 +8,7 @@
 #include "freertos_sync.h"
 #include "wink_sim_scheduler.h"
 #include "pal_log.h"
+#include "../core/esp_sim_handle.h"
 extern void esp_idf_ensure_framework_ready(void); /* Phase 2 Task 4 cold-start */
 
 #ifndef FREERTOS_MAX_EVENT_GROUPS
@@ -30,6 +31,7 @@ typedef struct {
 
 typedef struct {
     bool           used;
+    uint32_t       token;
     EventBits_t    cur_bits;
     event_waiter_t waiters[WINK_SIM_MAX_TASKS];
     uint8_t        waiter_count;
@@ -40,12 +42,11 @@ _Static_assert(sizeof(esp_event_group_t) <= (16 + (WINK_SIM_MAX_TASKS * sizeof(e
 static esp_event_group_t s_events[FREERTOS_MAX_EVENT_GROUPS];
 
 static inline esp_event_group_t* resolve_event_group(EventGroupHandle_t eg) {
-    if (eg == NULL) return NULL;
-    esp_event_group_t* candidate = (esp_event_group_t*)eg;
-    if (candidate < &s_events[0] || candidate >= &s_events[FREERTOS_MAX_EVENT_GROUPS]) {
-        return NULL;
-    }
-    if (!candidate->used) return NULL;
+    uint32_t slot;
+    if (!esp_sim_handle_decode(eg, ESP_SIM_HANDLE_EVENT_GROUP,
+                               FREERTOS_MAX_EVENT_GROUPS, &slot)) return NULL;
+    esp_event_group_t* candidate = &s_events[slot];
+    if (!candidate->used || candidate->token != (uint32_t)(uintptr_t)eg) return NULL;
     return candidate;
 }
 
@@ -65,9 +66,12 @@ EventGroupHandle_t xEventGroupCreate(void) {
     esp_idf_ensure_framework_ready(); /* Phase 2 Task 4.2 */
     for (uint32_t i = 0; i < FREERTOS_MAX_EVENT_GROUPS; ++i) {
         if (!s_events[i].used) {
+            uint32_t token = esp_sim_handle_issue(ESP_SIM_HANDLE_EVENT_GROUP, i);
+            if (token == 0) return NULL;
             memset(&s_events[i], 0, sizeof(esp_event_group_t));
             s_events[i].used = true;
-            return (EventGroupHandle_t)&s_events[i];
+            s_events[i].token = token;
+            return (EventGroupHandle_t)(uintptr_t)token;
         }
     }
     pal_log_w("FREERTOS", "No free event group slot");
@@ -121,6 +125,7 @@ EventBits_t xEventGroupWaitBits(EventGroupHandle_t xEventGroup,
 
     uint32_t eg_idx = (uint32_t)(eg - s_events);
     (void)sync_block(FREERTOS_MAKE_RES_ID(FREERTOS_TAG_EVENT, eg_idx), xTicksToWait);
+    if (resolve_event_group(xEventGroup) != eg) return 0;
 
     EventBits_t ret = 0;
     bool was_woken = false;

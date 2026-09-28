@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 #include "nvs_flash.h"
+#include "esp_sim_handle.h"
 #include "nvs.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <errno.h>
 
 #if defined(_WIN32)
 #  include <direct.h>
 #  include <io.h>
+#  include <sys/stat.h>
 #  define nvs_mkdir(dir) _mkdir(dir)
 #  define nvs_unlink(path) _unlink(path)
 #else
@@ -56,6 +59,7 @@ typedef struct {
 
 typedef struct {
     bool in_use;
+    uint32_t token;
     char ns[NVS_KEY_LEN];
 } esp_nvs_handle_t;
 
@@ -69,6 +73,16 @@ typedef struct {
 
 static esp_nvs_handle_t s_nvs_handles[NVS_MAX_HANDLES];
 static nvs_entry_t s_nvs_storage[NVS_MAX_ENTRIES];
+
+static esp_nvs_handle_t *resolve_nvs_handle(nvs_handle_t handle) {
+    uint32_t slot;
+    if (!esp_sim_handle_decode((void *)(uintptr_t)handle,
+                               ESP_SIM_HANDLE_NVS, NVS_MAX_HANDLES, &slot)) {
+        return NULL;
+    }
+    esp_nvs_handle_t *record = &s_nvs_handles[slot];
+    return record->in_use && record->token == handle ? record : NULL;
+}
 
 #if defined(__EMSCRIPTEN__)
 __attribute__((weak)) int wink_wasm_nvs_save(const void *buf, size_t size);
@@ -85,14 +99,31 @@ static uint32_t esp_sim_nvs_crc32_update(uint32_t crc, const uint8_t *data, size
     return crc;
 }
 
-static void esp_sim_nvs_get_sandbox_paths(char *out_final, size_t final_sz, char *out_tmp, size_t tmp_sz) {
+static bool esp_sim_nvs_path_is_directory(const char *path) {
+#if defined(_WIN32)
+    struct _stat st;
+    return _stat(path, &st) == 0 && (st.st_mode & _S_IFDIR) != 0;
+#else
+    struct stat st;
+    return stat(path, &st) == 0 && S_ISDIR(st.st_mode);
+#endif
+}
+
+static esp_err_t esp_sim_nvs_get_sandbox_paths(char *out_final, size_t final_sz, char *out_tmp, size_t tmp_sz) {
     const char *dir = getenv("WINK_SIM_SANDBOX_DIR");
     if (!dir || dir[0] == '\0') {
         dir = ".sim_sandbox";
     }
-    (void)nvs_mkdir(dir);
-    snprintf(out_final, final_sz, "%s/nvs_storage.bin", dir);
-    snprintf(out_tmp, tmp_sz, "%s/nvs_storage.bin.tmp", dir);
+    if (nvs_mkdir(dir) != 0 && (errno != EEXIST || !esp_sim_nvs_path_is_directory(dir))) {
+        return ESP_FAIL;
+    }
+    int final_len = snprintf(out_final, final_sz, "%s/nvs_storage.bin", dir);
+    int tmp_len = snprintf(out_tmp, tmp_sz, "%s/nvs_storage.bin.tmp", dir);
+    if (final_len < 0 || (size_t)final_len >= final_sz ||
+        tmp_len < 0 || (size_t)tmp_len >= tmp_sz) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return ESP_OK;
 }
 
 esp_err_t nvs_flash_init(void) {
@@ -101,8 +132,14 @@ esp_err_t nvs_flash_init(void) {
     }
 
     char final_path[256], tmp_path[256];
-    esp_sim_nvs_get_sandbox_paths(final_path, sizeof(final_path), tmp_path, sizeof(tmp_path));
+    esp_err_t path_err = esp_sim_nvs_get_sandbox_paths(final_path, sizeof(final_path), tmp_path, sizeof(tmp_path));
+    if (path_err != ESP_OK) {
+        return path_err;
+    }
     FILE *f = fopen(final_path, "rb");
+    if (!f && errno != ENOENT) {
+        return ESP_FAIL;
+    }
     if (f) {
         esp_sim_nvs_header_t hdr;
         if (fread(&hdr, sizeof(hdr), 1, f) == 1) {
@@ -158,10 +195,13 @@ esp_err_t nvs_open(const char *name, nvs_open_mode_t open_mode, nvs_handle_t *ou
     }
     for (int i = 0; i < NVS_MAX_HANDLES; i++) {
         if (!s_nvs_handles[i].in_use) {
+            uint32_t token = esp_sim_handle_issue(ESP_SIM_HANDLE_NVS, (uint32_t)i);
+            if (token == 0) return ESP_ERR_NVS_NOT_ENOUGH_SPACE;
             s_nvs_handles[i].in_use = true;
+            s_nvs_handles[i].token = token;
             strncpy(s_nvs_handles[i].ns, name, NVS_KEY_LEN - 1);
             s_nvs_handles[i].ns[NVS_KEY_LEN - 1] = '\0';
-            *out_handle = (nvs_handle_t)(i + 1);
+            *out_handle = (nvs_handle_t)token;
             return ESP_OK;
         }
     }
@@ -174,27 +214,30 @@ esp_err_t nvs_open_from_partition(const char *part_name, const char *namespace_n
 }
 
 void nvs_close(nvs_handle_t handle) {
-    uint32_t idx = (uint32_t)handle;
-    if (idx >= 1 && idx <= NVS_MAX_HANDLES) {
-        s_nvs_handles[idx - 1].in_use = false;
-    }
+    esp_nvs_handle_t *record = resolve_nvs_handle(handle);
+    if (record) record->in_use = false;
 }
 
 esp_err_t nvs_flash_erase(void) {
     memset(s_nvs_storage, 0, sizeof(s_nvs_storage));
     char final_path[256], tmp_path[256];
-    esp_sim_nvs_get_sandbox_paths(final_path, sizeof(final_path), tmp_path, sizeof(tmp_path));
-    (void)nvs_unlink(final_path);
-    (void)nvs_unlink(tmp_path);
+    esp_err_t path_err = esp_sim_nvs_get_sandbox_paths(final_path, sizeof(final_path), tmp_path, sizeof(tmp_path));
+    if (path_err != ESP_OK) {
+        return path_err;
+    }
+    if ((nvs_unlink(final_path) != 0 && errno != ENOENT) ||
+        (nvs_unlink(tmp_path) != 0 && errno != ENOENT)) {
+        return ESP_FAIL;
+    }
     return ESP_OK;
 }
 
 esp_err_t nvs_erase_key(nvs_handle_t handle, const char *key) {
-    uint32_t idx = (uint32_t)handle;
-    if (idx < 1 || idx > NVS_MAX_HANDLES || !s_nvs_handles[idx - 1].in_use || !key) {
+    esp_nvs_handle_t *record = resolve_nvs_handle(handle);
+    if (!record || !key) {
         return ESP_ERR_INVALID_ARG;
     }
-    const char *ns = s_nvs_handles[idx - 1].ns;
+    const char *ns = record->ns;
     for (int i = 0; i < NVS_MAX_ENTRIES; i++) {
         if (s_nvs_storage[i].valid && strcmp(s_nvs_storage[i].ns, ns) == 0 && strcmp(s_nvs_storage[i].key, key) == 0) {
             s_nvs_storage[i].valid = false;
@@ -207,11 +250,11 @@ esp_err_t nvs_erase_key(nvs_handle_t handle, const char *key) {
 }
 
 esp_err_t nvs_erase_all(nvs_handle_t handle) {
-    uint32_t idx = (uint32_t)handle;
-    if (idx < 1 || idx > NVS_MAX_HANDLES || !s_nvs_handles[idx - 1].in_use) {
+    esp_nvs_handle_t *record = resolve_nvs_handle(handle);
+    if (!record) {
         return ESP_ERR_INVALID_ARG;
     }
-    const char *ns = s_nvs_handles[idx - 1].ns;
+    const char *ns = record->ns;
     for (int i = 0; i < NVS_MAX_ENTRIES; i++) {
         if (s_nvs_storage[i].valid && strcmp(s_nvs_storage[i].ns, ns) == 0) {
             s_nvs_storage[i].valid = false;
@@ -223,11 +266,11 @@ esp_err_t nvs_erase_all(nvs_handle_t handle) {
 }
 
 esp_err_t nvs_get_used_entry_count(nvs_handle_t handle, size_t *used_entries) {
-    uint32_t idx = (uint32_t)handle;
-    if (idx < 1 || idx > NVS_MAX_HANDLES || !s_nvs_handles[idx - 1].in_use || !used_entries) {
+    esp_nvs_handle_t *record = resolve_nvs_handle(handle);
+    if (!record || !used_entries) {
         return ESP_ERR_INVALID_ARG;
     }
-    const char *ns = s_nvs_handles[idx - 1].ns;
+    const char *ns = record->ns;
     size_t count = 0;
     for (int i = 0; i < NVS_MAX_ENTRIES; i++) {
         if (s_nvs_storage[i].valid && strcmp(s_nvs_storage[i].ns, ns) == 0) {
@@ -239,11 +282,11 @@ esp_err_t nvs_get_used_entry_count(nvs_handle_t handle, size_t *used_entries) {
 }
 
 esp_err_t nvs_set_blob(nvs_handle_t handle, const char *key, const void *value, size_t length) {
-    uint32_t idx = (uint32_t)handle;
-    if (idx < 1 || idx > NVS_MAX_HANDLES || !s_nvs_handles[idx - 1].in_use || !key || !value || length > NVS_VAL_BUF_SIZE) {
+    esp_nvs_handle_t *record = resolve_nvs_handle(handle);
+    if (!record || !key || !value || length > NVS_VAL_BUF_SIZE) {
         return ESP_ERR_INVALID_ARG;
     }
-    const char *ns = s_nvs_handles[idx - 1].ns;
+    const char *ns = record->ns;
     for (int i = 0; i < NVS_MAX_ENTRIES; i++) {
         if (s_nvs_storage[i].valid && strcmp(s_nvs_storage[i].ns, ns) == 0 && strcmp(s_nvs_storage[i].key, key) == 0) {
             memcpy(s_nvs_storage[i].data, value, length);
@@ -267,11 +310,11 @@ esp_err_t nvs_set_blob(nvs_handle_t handle, const char *key, const void *value, 
 }
 
 esp_err_t nvs_get_blob(nvs_handle_t handle, const char *key, void *out_value, size_t *length) {
-    uint32_t idx = (uint32_t)handle;
-    if (idx < 1 || idx > NVS_MAX_HANDLES || !s_nvs_handles[idx - 1].in_use || !key || !length) {
+    esp_nvs_handle_t *record = resolve_nvs_handle(handle);
+    if (!record || !key || !length) {
         return ESP_ERR_INVALID_ARG;
     }
-    const char *ns = s_nvs_handles[idx - 1].ns;
+    const char *ns = record->ns;
     for (int i = 0; i < NVS_MAX_ENTRIES; i++) {
         if (s_nvs_storage[i].valid && strcmp(s_nvs_storage[i].ns, ns) == 0 && strcmp(s_nvs_storage[i].key, key) == 0) {
             if (out_value != NULL) {
@@ -371,7 +414,7 @@ esp_err_t nvs_get_str(nvs_handle_t h, const char *k, char *v, size_t *l) {
 }
 
 esp_err_t nvs_commit(nvs_handle_t h) {
-    (void)h;
+    if (!resolve_nvs_handle(h)) return ESP_ERR_INVALID_ARG;
 
     uint16_t count = 0;
     uint32_t crc = 0xFFFFFFFFu;
@@ -398,7 +441,10 @@ esp_err_t nvs_commit(nvs_handle_t h) {
     hdr.crc32 = ~crc;
 
     char final_path[256], tmp_path[256];
-    esp_sim_nvs_get_sandbox_paths(final_path, sizeof(final_path), tmp_path, sizeof(tmp_path));
+    esp_err_t path_err = esp_sim_nvs_get_sandbox_paths(final_path, sizeof(final_path), tmp_path, sizeof(tmp_path));
+    if (path_err != ESP_OK) {
+        return path_err;
+    }
     FILE *f = fopen(tmp_path, "wb");
     if (!f) {
         return ESP_FAIL;
@@ -423,8 +469,12 @@ esp_err_t nvs_commit(nvs_handle_t h) {
             }
         }
     }
-    fflush(f);
-    fclose(f);
+    int flush_failed = fflush(f) != 0;
+    int close_failed = fclose(f) != 0;
+    if (flush_failed || close_failed) {
+        (void)nvs_unlink(tmp_path);
+        return ESP_FAIL;
+    }
 
     /* Atomic overwrite on Windows requires removing destination before rename */
     (void)nvs_unlink(final_path);
