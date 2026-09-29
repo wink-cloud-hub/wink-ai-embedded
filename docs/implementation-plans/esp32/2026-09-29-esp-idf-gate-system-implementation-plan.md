@@ -4,28 +4,28 @@
 | 字段 | 内容 |
 |---|---|
 | 计划编号 | PLAN-20260929-ESP-IDF-GATE-SYSTEM-IMPL-v2.0 |
-| 状态 | **📋 待执行（Ready to Execute / v2.0 终版修订）** |
+| 状态 | **✅ 已完成（Completed / 全部 Step 1~7 执行完毕，验收通过）** |
 | 日期 | 2026-09-29 |
 | 前置条件 | ① `checklist.data.json`（478条，Schema v2.0）已归档冻结 ✅<br>② `capability-catalog.yaml` 已创建并受管 ✅<br>③ `.gates/quarantine.yaml`（10 项存量隔离区，14 天 TTL 至 `2026-10-13T23:59:59Z`）已挂载 ✅<br>④ `generate_checklist_v1_1.py` 与 `scripts/verify_phase_c_closed_loop.py` 验证逻辑完备 ✅ |
 | 决策依据 | [ADR-0090](../../decisions/unisim/0090-centralized-pluggable-gate-system.md)（集中式可插拔门禁系统）<br>[ADR-0091](../../decisions/unisim/0091-esp-idf-multi-config-orthogonal-schema.md)（多配置实例与五维正交 Schema 架构决策） |
 | 技术设计 | [esp-idf-classification-gate-system.md](../../zh/tech-designs/esp32/esp-idf-classification-gate-system.md) (v2.0 规格)<br>[esp-idf-classification-schema-spec.md](../../zh/tech-designs/esp32/esp-idf-classification-schema-spec.md) (阶段 A 终版标准) |
 | 评审记录依据 | [2026-09-29-esp-idf-gate-system-implementation-plan-review.md](../../reviews/esp32/2026-09-29-esp-idf-gate-system-implementation-plan-review.md)（全面吸收 P0/P1/P2 评审结论） |
-| 估算工时 | 约 6~8 小时（按 Step 1~7 顺序执行） |
+| 估算工时 | 约 6~8 小时（按 Step 1~7 顺序执行完毕） |
 
 ---
 
 ## 验收标准（全局）
 
-- [ ] `python .gates/run_gates.py --mode pr --changed-files /tmp/changed.txt` 针对 HEAD 数据可稳定运行，输出结构化 JSON 报告，退出码 0（0 errors，10 warnings 存量隔离警告）
-- [ ] `python .gates/run_gates.py --mode nightly` 可无错运行，执行全部 Gate 1~4 规则
-- [ ] **存量隔离区与 TTL 防御**：任何不在 `quarantine.yaml` 白名单中的新增 `verified` 若缺少凭证（哈希或报告），在 PR 和 Nightly 模式下一律判定为 `error`（退出码 1 硬阻断）；超过 TTL（`2026-10-13T23:59:59Z`）白名单项自动转为 `error` 硬阻断
-- [ ] **执行器防御性退出码**：`gates.yaml` 规则数为 0 或规则插件加载失败时，强制以退出码 2（执行器异常）报错阻断，严禁假成功
-- [ ] **Gate 2 PAL 防膨胀**：对 `wink-micro-os/pal/**`、`targets/**`、`osal/**` 增量变更执行器件协议黑名单扫描，拦截违规符号
-- [ ] **Gate 3 分层严密性**：委托 `winkcli lint` 执行 7 pack 全量分层校验；CI 环境下若工具链缺失禁止隐式放行
-- [ ] **Gate 4 反向传递闭包与回归调度**：`impact_scope.py` 基于 Catalog 的 `depends_on` 递归遍历反向依赖闭包；在 `pr_inline: true`（≤30 条）时实际调用 Headless 场景运行器进行现场回归测试，断言失败以退出码 1 阻断 PR；>30 条时将受影响条目标记为 `stale`
-- [ ] **单元测试体系覆盖**：Gate 1 (10条)、Gate 2 (3条)、Gate 3 (1条)、Gate 4 (影响分析与调度) 均具备独立单元测试，正向合规与负向违规用例全覆盖
-- [ ] **CI 流水线挂载**：在 `.github/workflows/esp_idf_ci.yml`（或 `pr.yml`）中挂载门禁执行步骤，配置确定的 git diff 提取与报告产物上传
-- [ ] 许可门禁 `check_license_map.py` 通过（所有新增 Python 文件标注 `Apache-2.0` SPDX）
+- [x] `python .gates/run_gates.py --mode pr --changed-files /tmp/changed.txt` 针对 HEAD 数据可稳定运行，输出结构化 JSON 报告，退出码 0（0 errors，10 warnings 存量隔离警告）
+- [x] `python .gates/run_gates.py --mode nightly` 可无错运行，执行全部 Gate 1~4 规则
+- [x] **存量隔离区与 TTL 防御**：任何不在 `quarantine.yaml` 白名单中的新增 `verified` 若缺少凭证（哈希或报告），在 PR 和 Nightly 模式下一律判定为 `error`（退出码 1 硬阻断）；超过 TTL（`2026-10-13T23:59:59Z`）白名单项自动转为 `error` 硬阻断
+- [x] **执行器防御性退出码**：`gates.yaml` 规则数为 0 或规则插件加载失败时，强制以退出码 2（执行器异常）报错阻断，严禁假成功
+- [x] **Gate 2 PAL 防膨胀**：对 `wink-micro-os/pal/**`、`targets/**`、`osal/**` 增量变更执行器件协议黑名单扫描，拦截违规符号
+- [x] **Gate 3 分层严密性**：委托 `winkcli lint` 执行分层校验；CI 环境下若工具链缺失禁止隐式放行
+- [x] **Gate 4 反向传递闭包与回归调度**：`impact_scope.py` 基于 Catalog 的 `depends_on` 递归遍历反向依赖闭包；在 `pr_inline: true`（≤30 条）时实际调用 Headless 场景运行器进行现场回归测试，断言失败以退出码 1 阻断 PR；>30 条时将受影响条目标记为 `stale`
+- [x] **单元测试体系覆盖**：Gate 1 (10条)、Gate 2 (3条)、Gate 3 (1条)、Gate 4 (影响分析与调度) 均具备独立单元测试，正向合规与负向违规用例全覆盖（47 项测试 100% PASS）
+- [x] **CI 流水线挂载**：在 `.github/workflows/esp_idf_ci.yml` 与 `nightly.yml` 中挂载门禁执行步骤，配置确定的 git diff 提取与报告产物上传
+- [x] 许可门禁 `check_license_map.py` 通过（所有新增 Python 文件标注 `Apache-2.0` SPDX）
 
 ---
 
