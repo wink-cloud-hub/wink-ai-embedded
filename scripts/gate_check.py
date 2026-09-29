@@ -25,6 +25,7 @@ Usage:
 
 import argparse
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -42,6 +43,97 @@ CHECKLIST_MD = REPO_ROOT / "wink-micro-app" / "vendor" / "esp_idfv61" / "CHECKLI
 # Gate 1 (10 rules) + Gate 3 (1 rule) always run. Gate 2 / Gate 4 are
 # git_diff-triggered and legitimately skip when nothing they watch changed.
 MIN_RULES_EXECUTED = 11
+
+# --- confidentiality guard ---------------------------------------------------
+# This repository is open source; the wink-tools toolchain it drives is a
+# commercial secret that is deliberately not vendored here. Two classes of leak
+# are checked before anything else runs:
+#
+#   1. Files inside a gitignored junction mount. `docs/.internals/` resolves to
+#      the private toolchain checkout on developer machines, so an explicit
+#      `git add` can stage its source even though the path is ignored.
+#   2. The private toolchain's own remote identifiers appearing in tracked text.
+#      Naming its host, organisation id or repo path publishes internal
+#      infrastructure even though it grants no access.
+#
+# The private identifiers are DISCOVERED AT RUNTIME from the local sibling
+# checkout rather than hardcoded. Hardcoding them would make this scanner the
+# very leak it exists to prevent, and it would also go stale the moment the
+# toolchain moved. When the sibling checkout is absent -- CI, a fresh clone, a
+# contributor -- the check degrades to a generic SSH-remote pattern, which has no
+# false positives on ordinary code.
+PRIVATE_DIR_NAMES = ("wink-ai",)
+SSH_REMOTE = re.compile("g" + "it@" + r"[\w.\-]+:")
+PROTO_REMOTE = re.compile(r"(?:" + "ssh" + r"|" + "git" + r")://" + r"\S+")
+JUNCTION_PREFIXES = ("docs/.internals/", "docs/vendors/", ".internals/")
+SCANNABLE_SUFFIXES = {".py", ".yaml", ".yml", ".json", ".md", ".c", ".h",
+                      ".txt", ".ps1", ".sh", ".cmake", ".toml"}
+
+
+def private_identifiers() -> set[str]:
+    """Learns the private toolchain's remote identifiers from the local checkout.
+
+    Returns tokens that must never appear in this repository. Empty when the
+    checkout is unavailable, in which case only the generic patterns apply.
+    """
+    tokens: set[str] = set()
+    for parent in (REPO_ROOT.parent, REPO_ROOT.parent.parent):
+        for name in PRIVATE_DIR_NAMES:
+            cand = parent / name
+            if not (cand / ".git").exists():
+                continue
+            for key in ("url", "url"):
+                proc = subprocess.run(["git", "-C", str(cand), "remote", "get-url", "origin"],
+                                      capture_output=True, text=True)
+                url = (proc.stdout or "").strip()
+                if not url:
+                    continue
+                # Record the host and the org/repo path, plus the org id that
+                # appears as a path prefix in some forges.
+                cleaned = url.split("://")[-1].split("@")[-1]
+                host, _, path = cleaned.partition(":")
+                for piece in (host, path.replace(".git", ""), path.split("/")[0] if "/" in path else ""):
+                    if piece and len(piece) > 3:
+                        tokens.add(piece)
+    return tokens
+
+
+def check_confidentiality(candidates: list[str]) -> list[str]:
+    """Returns one message per confidentiality violation found among candidates."""
+    extra = private_identifiers()
+    problems: list[str] = []
+    for rel in candidates:
+        if any(rel.startswith(p) for p in JUNCTION_PREFIXES):
+            problems.append(
+                f"{rel}: lives inside a gitignored private-mount path. "
+                f"Unstage it and add a precise negation to .gitignore instead."
+            )
+            continue
+        path = REPO_ROOT / rel
+        if not path.is_file() or path.suffix.lower() not in SCANNABLE_SUFFIXES:
+            continue
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError as exc:
+            problems.append(f"{rel}: unreadable ({exc})")
+            continue
+        m = SSH_REMOTE.search(text) or PROTO_REMOTE.search(text)
+        if m:
+            problems.append(
+                f"{rel}: contains a git remote ({m.group(0)[:60]}). The toolchain "
+                f"is a commercial secret; do not publish its host, organisation id "
+                f"or commit id in this open-source repository."
+            )
+            continue
+        for token in extra:
+            if token in text:
+                problems.append(
+                    f"{rel}: contains an identifier belonging to the private "
+                    f"toolchain repository. Do not publish its host, organisation "
+                    f"id or repo path here."
+                )
+                break
+    return problems
 
 
 def _banner(text: str) -> None:
@@ -79,6 +171,13 @@ def changed_files_path(tmp: Path, all_files: bool) -> Path | None:
     return tmp
 
 
+def staged_files() -> list[str]:
+    """Paths staged for commit -- the set that could actually leave the machine."""
+    proc = subprocess.run(["git", "diff", "--name-only", "--cached"],
+                          cwd=str(REPO_ROOT), capture_output=True, text=True)
+    return [ln.strip() for ln in proc.stdout.splitlines() if ln.strip()]
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Local ESP-IDF governance gate check")
     ap.add_argument("--all", action="store_true",
@@ -89,9 +188,21 @@ def main() -> int:
 
     import tempfile
     tmp = Path(tempfile.gettempdir()) / "wink_gate_changed_files.txt"
+    failures = []
+
+    # ---- Step 0: confidentiality (must be first) ----------------------------
+    _banner("Step 0/3  Confidentiality guard (private toolchain must not leak)")
+    staged = staged_files()
+    problems = check_confidentiality(staged)
+    if problems:
+        for p in problems:
+            print(f"  LEAK: {p}")
+        failures.append("confidentiality guard")
+    else:
+        print(f"  {len(staged)} staged file(s) scanned, no private toolchain "
+              f"identifiers or private-mount paths found.")
 
     # ---- Step 1: does the enforcer itself still work? -------------------------
-    failures = []
     if not args.no_tests:
         _banner("Step 1/3  Gate engine self-test (meta-guard)")
         rc = _run([sys.executable, "-m", "pytest", str(GATE_TESTS), "-q"])
