@@ -80,8 +80,8 @@ wink-micro-app/vendor/esp_idfv61/
 ### 顶层结构
 
 ```yaml
-spec_version: "1.1.0"          # 对齐 CLASSIFICATION-SPEC.md 版本
-description: "..."
+spec_version: "2.0.0"          # 对齐 CLASSIFICATION-SPEC.md v2.0 版本
+description: "WinkMicroOS ESP-IDF 示例分类管治门禁注册表 (SSOT)"
 
 modes:                          # 触发模式定义
   pr:
@@ -116,7 +116,7 @@ rules:
 
     # 可选：传递给规则 run() 函数的额外配置
     config:
-      packs: [layering, api, dal, isr, user_surface, wasm]
+      packs: [layering, api, dal, isr, user_surface, wasm, i18n]
 ```
 
 ---
@@ -139,11 +139,13 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
     ----------
     context : dict
         由 gate_context.py 构建的共享上下文，包含：
-        - manifest      : dict  — 已解析的 checklist.data.json
+        - manifest      : dict  — 已解析的 checklist.data.json (Schema v2.0)
         - catalog       : dict  — 已解析的 capability-catalog.yaml
-        - changed_files : list  — git diff --name-only 结果（可能为空）
-        - spec_version  : str   — 当前规范版本号
+        - quarantine    : dict  — 已解析的 .gates/quarantine.yaml 白名单
+        - changed_files : list  — 变更文件列表（POSIX 风格路径）
+        - spec_version  : str   — 当前规范版本号 ("2.0.0")
         - mode          : str   — "pr" 或 "nightly"
+        - now_utc       : datetime — 当前 UTC 时间基准
 
     config : dict | None
         从 gates.yaml 中该规则的 config 字段注入（可选）
@@ -157,6 +159,7 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
             "severity":   "error"|"warning"|"info",
             "entry_id":   str | None,       # 涉及的 checklist 条目 ID（可无）
             "display_id": int | None,       # 涉及的条目编号（可无）
+            "config_id":  str | None,       # 涉及的配置实例 ID（可无）
             "file_path":  str | None,       # 涉及的文件路径（可无）
             "message":    str,              # 人类可读的描述
         }
@@ -172,6 +175,7 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
                     "severity":   "error",
                     "entry_id":   entry["id"],
                     "display_id": entry["display_id"],
+                    "config_id":  None,
                     "file_path":  None,
                     "message":    f"引用未声明的能力 ID: {cap_id}",
                 })
@@ -183,7 +187,7 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
 | 约束 | 说明 |
 |---|---|
 | `run()` 是唯一公开入口 | 不允许依赖全局状态或 `sys.argv` |
-| 必须是**纯函数语义** | 不修改 context，不写文件，不 print |
+| 必须是**纯函数语义** | 不修改 context，不写文件，不 print，无副作用 |
 | 超时控制由执行器负责 | 规则内不设 timeout，由 `run_gates.py` 注入信号 |
 | 异常自动捕获 | 规则内抛出的未捕获异常由执行器捕获，转为 `severity: error` Finding |
 
@@ -201,6 +205,7 @@ python .gates/run_gates.py [选项]
   --gate {1,2,3,4}            只运行指定 Gate（可多次指定）
   --rule RULE_ID              只运行指定规则（调试用）
   --changed-files FILE        包含 git diff 文件列表的文本文件（每行一个路径）
+  --allow-empty-diff          在 PR 模式下显式允许变更文件列表为空
   --output-json FILE          将结构化报告写入 JSON 文件
   --no-fail                   有错误时也不以非零退出码退出（调试用）
 ```
@@ -208,17 +213,18 @@ python .gates/run_gates.py [选项]
 ### 执行流程
 
 ```
-1. 加载 gates.yaml，过滤出当前 mode 生效的规则
-2. 若有 changed-files，加载变更文件列表
-3. 对每条规则：
-   a. 检查 trigger_paths（若配置）—— 若变更列表为空或无交集，跳过此规则（输出 SKIP）
+1. 加载 gates.yaml，过滤出当前 mode 生效的规则；若生效规则数为 0，退出码 2 报错
+2. 构建共享上下文 context（载入 manifest、catalog、quarantine.yaml、UTC 时间）
+3. 若有 changed-files，载入变更文件列表并正规化为 POSIX 格式；若 PR 模式下文件为空且未指定 --allow-empty-diff，报错退出
+4. 对每条规则：
+   a. 检查 trigger_paths（若配置）—— 若变更列表与 trigger 无交集，跳过此规则（输出 SKIP）
    b. 计算当前 mode 下的有效 severity（考虑 mode_severity_override）
-   c. importlib.import_module 加载规则模块
-   d. 调用 rule.run(context, config)，捕获异常
+   c. 动态加载规则模块，若加载失败以退出码 2 报错
+   d. 调用 rule.run(context, config)，捕获单规则异常转换为 severity: error 的 Finding
    e. 收集 Finding 列表
-4. 汇总所有 Finding，按 Gate 分组统计
-5. 输出结构化报告（stdout + 可选 JSON 文件）
-6. 若存在 severity=error 的 Finding，以退出码 1 退出；否则退出码 0
+5. 汇总所有 Finding，按 (gate, rule_id, display_id, message) 稳定排序
+6. 输出结构化报告（stdout + 可选 JSON 文件）
+7. 若存在 severity=error 的 Finding，以退出码 1 退出；否则退出码 0
 ```
 
 ### 退出码语义
@@ -227,7 +233,7 @@ python .gates/run_gates.py [选项]
 |---|---|
 | `0` | 全部通过（允许有 warning/info） |
 | `1` | 存在 `severity: error` 的 Finding（CI 阻断） |
-| `2` | 执行器自身错误（YAML 解析失败、文件不存在等） |
+| `2` | 执行器自身错误（YAML 解析失败、生效规则为0、模块加载失败等） |
 
 ---
 
@@ -235,32 +241,33 @@ python .gates/run_gates.py [选项]
 
 ```json
 {
-  "run_at": "2026-09-29T11:34:00+08:00",
+  "run_at": "2026-09-29T11:34:00Z",
   "mode": "pr",
-  "spec_version": "1.1.0",
+  "spec_version": "2.0.0",
   "summary": {
     "total_rules": 16,
     "executed": 13,
     "skipped": 3,
     "passed": 12,
     "errors": 0,
-    "warnings": 1,
+    "warnings": 10,
     "infos": 0
   },
   "gate_summary": {
-    "gate_1": { "status": "PASS",  "executed": 11, "errors": 0, "warnings": 1 },
+    "gate_1": { "status": "PASS",  "executed": 10, "errors": 0, "warnings": 10 },
     "gate_2": { "status": "SKIP",  "reason": "no pal/targets/osal changes in PR diff" },
     "gate_3": { "status": "PASS",  "executed": 1, "errors": 0 },
     "gate_4": { "status": "INFO",  "impact_entries": [23, 64, 83] }
   },
   "findings": [
     {
-      "rule_id":    "g1.assets_sha256",
+      "rule_id":    "g1.can_check_mark",
       "severity":   "warning",
       "entry_id":   "esp.get_started.blink",
       "display_id": 1,
+      "config_id":  "wasm_sim_standard",
       "file_path":  null,
-      "message":    "delivery.state=verified 但 assets_sha256 三件套未填写"
+      "message":    "处于存量债务隔离区白名单中（TTL 至 2026-10-13T23:59:59Z）"
     }
   ]
 }
@@ -268,21 +275,20 @@ python .gates/run_gates.py [选项]
 
 ---
 
-## 七、Gate 1 全量规则清单
+## 七、Gate 1 全量规则清单（对齐 Schema v2.0）
 
-| 规则 ID | 模块 | 严重度(PR/Nightly) | 描述 |
+| 规则 ID | 模块 | 严重度(PR/Nightly) | 描述与判定逻辑 |
 |---|---|---|---|
 | `g1.path_unique` | `g1_path_unique` | error / error | `upstream_path` 在全量 478 条中严禁重复 |
 | `g1.cap_id_exists` | `g1_cap_id_exists` | error / error | `required_capabilities` 中每个 ID 必须在 catalog 中已声明 |
-| `g1.assets_sha256` | `g1_assets_sha256` | **warning** / error | `delivery.state=verified` 时 `assets_sha256` 三件套非空 |
-| `g1.oos_has_evidence` | `g1_oos_has_evidence` | error / error | `status=out_of_scope_product` 必须有 `exclusion_evidence`；存量 `sla_block_symbols` 为空在 PR 降级为 warning，Nightly 强制 error |
-| `g1.verified_has_negative` | `g1_verified_has_negative` | **warning** / error | `delivery.state=verified` 时 `negative_cases` 至少 1 条 |
-| `g1.no_pending_verified` | `g1_no_pending_verified` | error / error | `scope_and_maturity.status=pending_audit` 时 `delivery.state` 严禁为 `verified` |
-| `g1.id_format` | `g1_id_format` | error / error | `id` 必须符合正则 `^esp\.[a-z0-9_\-.]+$` |
-| `g1.version_alignment` | `g1_version_alignment` | **info** / warning | `written_at_spec_version` 应与当前规范版本一致 |
-| `g1.scenario_exists` | `g1_scenario_exists` | **warning** / error | `delivery.state=verified` 时 `app_dir/scenario_path` 文件在物理磁盘上真实存在 |
-| `g1.auditor_required` | `g1_auditor_required` | error / error | `audit.verdict=audited` 时 `auditor` 字段非空且非占位符 |
-| `g1.soc_matrix_complete` | `g1_soc_matrix_complete` | error / error | `soc_matrix` 必须显式且完整包含 `esp32`, `esp32s3`, `esp32c3`, `esp32c6` 四个芯片定义 |
+| `g1.id_format` | `g1_id_format` | error / error | `id` 必须符合正则 `^esp\.[a-z0-9_]+(\.[a-z0-9_]+)+$` |
+| `g1.version_alignment` | `g1_version_alignment` | error / error | `written_at_spec_version` 必须全量统一为 `"2.0.0"` |
+| `g1.execution_configs` | `g1_execution_configs` | error / error | 每个条目 `executions` 数组必须非空；`config_id`、`backend`、`target_soc`、`profile` 合法 |
+| `g1.orthogonal_states` | `g1_orthogonal_states` | error / error | `scope.inclusion`、`scope.schedule`、`audit.verdict` 状态五维正交，禁止未审先排 |
+| `g1.can_check_mark` | `g1_can_check_mark` | **warning** / error | 针对 `delivery_state=verified` 校验六要素；对 `.gates/quarantine.yaml` 内条目在 TTL 前报 warning，白名单外或 TTL 逾期报 error 强阻断 |
+| `g1.quarantine_ttl` | `g1_quarantine_ttl` | error / error | 独立扫描 `quarantine.yaml`，当前 UTC 时间超过 `grace_period_expires` 立即阻断 |
+| `g1.sla_evidence` | `g1_sla_evidence` | error / error | `scope.inclusion=out_of_scope` 或 `expected_rejection` 必须具备 `sla_error_symbol` 与 `exclusion_evidence` |
+| `g1.auditor_required` | `g1_auditor_required` | error / error | `audit.verdict=audited` 时 `auditor` 非空且 `audited_configs` 数组显式覆盖声明的配置 |
 
 ---
 
@@ -300,79 +306,104 @@ python .gates/run_gates.py [选项]
 
 | 规则 ID | 模块 | 配置 | 描述 |
 |---|---|---|---|
-| `g3.winkcli_lint` | `g3_winkcli_lint` | `packs: [layering, api, dal, isr, user_surface, wasm]` | 委托 `winkcli lint` 执行 6 pack 全量分层校验 |
-
-> **注**：当前 `winkcli` 仅配置了 `layering, api` 两个 pack。迁移至门禁系统后，逐步补全 `dal, isr, user_surface, wasm` 四个 pack 的规则文件。
+| `g3.winkcli_lint` | `g3_winkcli_lint` | `packs: [layering, api, dal, isr, user_surface, wasm, i18n]` | 委托 `winkcli lint` 执行 7 pack 全量分层校验；CI 环境下若工具缺失强制报错阻断 |
 
 ---
 
-## 十、Gate 4：`impact_scope.py` 独立工具规范
+## 十、Gate 4：`impact_scope.py` 独立工具与回归规范
 
 ### 用途
 
-当底层文件（如 `pal_wasm_i2c.c`）被修改时，自动计算"哪些示例必须重新验证"。
+当底层代码、能力字典或场景脚本被修改时，基于 `capability-catalog.yaml` 的依赖图谱计算反向传递闭包，定位所有受影响的示例与配置，并自动触发定向 Headless 场景回归。
 
-### 调用方式
+### 核心算法（反向传递闭包与防御性解析）
 
-```bash
-# PR 模式：输出受影响的示例 display_id 列表
-python .gates/impact_scope.py --changed-files changed.txt
+```python
+def compute_impact_closure(changed_files: list[str], catalog: dict, manifest: dict) -> dict:
+    """
+    1. 根据 owned_paths 定位直接受影响原子能力
+    2. 根据 depends_on (mandatory & conditional) 计算反向传递图闭包
+    3. 匹配 manifest 中所有直接或间接依赖该能力链的示例与配置
+    4. 对非代码变更（Catalog/Scenario/Device-Tree）执行全局或定向扩散
+    """
+    capabilities = catalog.get("capabilities", {})
+    direct_caps = set()
 
-# 也可通过 run_gates.py 的 g4.impact_scope 规则自动触发
+    # 1. 匹配直接受影响能力
+    norm_changed = [os.path.normpath(f).replace("\\", "/") for f in changed_files]
+    for cap_id, cap_def in capabilities.items():
+        for owned in cap_def.get("owned_paths", []):
+            norm_owned = os.path.normpath(owned).replace("\\", "/")
+            if any(fnmatch.fnmatch(f, norm_owned) for f in norm_changed):
+                direct_caps.add(cap_id)
+
+    # 2. 构造反向依赖有向图并递归扩散
+    reverse_graph = defaultdict(set)
+    for parent_id, cap_def in capabilities.items():
+        depends_on = cap_def.get("depends_on", {})
+        for req in depends_on.get("mandatory", []):
+            reverse_graph[req].add(parent_id)
+        for cond in depends_on.get("conditional", []):
+            for req in cond.get("requires", []):
+                reverse_graph[req].add(parent_id)
+
+    closure_caps = set(direct_caps)
+    worklist = list(direct_caps)
+    while worklist:
+        curr = worklist.pop(0)
+        for parent in reverse_graph.get(curr, []):
+            if parent not in closure_caps:
+                closure_caps.add(parent)
+                worklist.append(parent)
+
+    # 3. 收集受影响示例与配置
+    impact_entries = []
+    for entry in manifest["entries"]:
+        reqs = set(entry.get("required_capabilities", []))
+        if reqs & closure_caps:
+            impact_entries.append(entry["display_id"])
+
+    # 4. 判断调度策略
+    pr_inline = len(impact_entries) <= 30
+    return {
+        "affected_capabilities": sorted(list(closure_caps)),
+        "impact_entries": sorted(impact_entries),
+        "pr_inline": pr_inline,
+    }
 ```
 
-### 核心算法
+### 输出语义与测试调度闭环
 
-```
-输入：changed_files（变更文件路径列表）
-
-1. 加载 capability-catalog.yaml
-2. 对每个 changed_file：
-   for cap_id, cap in catalog["capabilities"]:
-       if any(changed_file 匹配 cap.owned_paths glob):
-           affected_caps.add(cap_id)
-
-3. 加载 checklist.data.json
-4. 对每个 entry：
-   if any(cap_id in entry.required_capabilities for cap_id in affected_caps):
-       impact_entries.add(entry.display_id)
-
-5. 输出 JSON：
-   {
-     "affected_capabilities": ["cap.bus.i2c_master", ...],
-     "impact_entries": [23, 64, 83, ...],
-     "pr_inline": true/false    // 受影响 ≤30 条 → true（内联回归）
-   }
-```
-
-### 输出语义
-
-| `pr_inline` | 含义 | CI 动作 |
+| `pr_inline` | 含义 | CI 动作与状态闭环 |
 |---|---|---|
-| `true` | 受影响示例 ≤30 条 | PR 内立即触发定向回归 |
-| `false` | 受影响示例 >30 条 | 本次 PR 标记"影响范围大"，推至 Nightly 全量回归 |
+| `true` | 受影响示例 ≤30 条 | PR 内立即调用 Headless 场景回归执行器逐项重测；**测试断言失败直接退出码 1 阻断 PR** |
+| `false` | 受影响示例 >30 条 | 生成 Nightly 待重测清单；受波及条目在当次构建中标记为 **`stale`**，杜绝以旧凭证冒充有效 |
 
 ---
 
 ## 十一、CI 挂载方式（目标状态）
 
 ```yaml
-# .github/workflows/pr.yml（目标状态）
-- name: Run Gate System (PR mode)
+# .github/workflows/esp_idf_ci.yml 或 pr.yml
+- name: Run ESP-IDF Gate System (PR mode)
+  shell: bash
   run: |
-    git diff --name-only HEAD~1 HEAD > /tmp/changed.txt
+    # 提取 PR 相对基线的分支变更文件
+    git fetch origin ${{ github.base_ref }} --depth=1
+    git diff --name-only origin/${{ github.base_ref }}...HEAD > /tmp/changed_files.txt
+    
     python wink-micro-app/vendor/esp_idfv61/.gates/run_gates.py \
       --mode pr \
-      --changed-files /tmp/changed.txt \
-      --output-json gate_report.json
+      --changed-files /tmp/changed_files.txt \
+      --output-json reports/gate_report.json
   continue-on-error: false
 
-# .github/workflows/nightly.yml（目标状态）
-- name: Run Gate System (Nightly full)
-  run: |
-    python wink-micro-app/vendor/esp_idfv61/.gates/run_gates.py \
-      --mode nightly \
-      --output-json gate_report_nightly.json
+- name: Upload Gate Report
+  if: always()
+  uses: actions/upload-artifact@v4
+  with:
+    name: esp_idf_gate_report
+    path: reports/gate_report.json
 ```
 
 ---
