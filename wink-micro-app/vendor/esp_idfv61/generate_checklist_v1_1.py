@@ -8,12 +8,16 @@ sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="repla
 generate_checklist_v1_1.py
 ==========================
 从 checklist.data.json 单向渲染生成 CHECKLIST.md（只读派生看板）。
-支持 Schema v1.1 与 Schema v2.0，对齐 ADR-0091 与纯函数门禁规范。
+支持 Schema v2.0，对齐 ADR-0090、ADR-0091 与纯函数门禁规范。
+
+依据 2026-09-29-esp-idf-gate-system-implementation-plan.md：
+数据合规性校验已彻底由 .gates/run_gates.py (Gate 1 全量规则) 统一接管，
+本脚本仅保留向后兼容的代理验证入口及单向只读 Markdown 渲染职责。
 
 用法:
     python generate_checklist_v1_1.py           # 重新生成 CHECKLIST.md
     python generate_checklist_v1_1.py --dry-run  # 输出到 stdout，不写文件
-    python generate_checklist_v1_1.py --strict   # 严格模式：存量隔离区外任何未补哈希直接报错
+    python generate_checklist_v1_1.py --skip-validate # 跳过 Gate 1 校验直接渲染
 
 铁律四：本脚本是唯一合法的 CHECKLIST.md 写入路径，严禁人工直接编辑 CHECKLIST.md。
 """
@@ -98,78 +102,27 @@ def load_quarantine() -> dict[str, dict]:
 
 
 # ─────────────────────────────────────────────────────────────
-# 前置数据校验（CI Gate 1 逻辑，支持纯函数校验与隔离区 TTL）
+# 前置数据校验（过渡逻辑已退休，彻底由 run_gates.py Gate 1 统一接管）
 # ─────────────────────────────────────────────────────────────
-def validate_data(manifest: dict, catalog: dict, quarantine: dict[str, dict], strict: bool = False) -> tuple[list[str], list[str]]:
-    """返回 (errors, warnings)；errors 非空 = CI 阻断；warnings 不阻断但输出提示。"""
-    errors   = []
-    warnings = []
-    known_caps = set(catalog.get("capabilities", {}).keys())
-    seen_paths = {}
-    now_utc = datetime.now(timezone.utc)
-    is_v2 = manifest.get("spec_version", "").startswith("2.")
-
-    for entry in manifest["entries"]:
-        eid  = entry.get("id", "?")
-        num  = entry.get("display_id", "?")
-        path = entry.get("upstream_path", "?")
-
-        # 路径唯一性（始终是硬错误）
-        if path in seen_paths:
-            errors.append(f"[Gate 1] #{num} 与 #{seen_paths[path]} 重复 upstream_path: {path}")
-        else:
-            seen_paths[path] = num
-
-        # 能力 ID 必须在 Catalog 中已声明（始终是硬错误）
-        for cap_id in entry.get("required_capabilities", []):
-            if cap_id not in known_caps:
-                errors.append(f"[Gate 1] #{num} ({eid}) 引用未声明的能力: {cap_id}")
-
-        # 隔离区与 Verified 证据核验
-        if is_v2:
-            executions = entry.get("executions", [])
-            if not executions:
-                errors.append(f"[Gate 1] #{num} ({eid}) executions 数组不能为空")
-                continue
-
-            for ex in executions:
-                if ex.get("delivery_state") == "verified":
-                    evidence = ex.get("evidence")
-                    is_quarantined = eid in quarantine
-
-                    if is_quarantined:
-                        q_item = quarantine[eid]
-                        exp_str = q_item.get("grace_period_expires")
-                        exp_dt = datetime.fromisoformat(exp_str.replace("Z", "+00:00"))
-                        if now_utc > exp_dt:
-                            errors.append(f"[Gate 1] #{num} ({eid}) 存量隔离区 TTL 已于 {exp_str} 逾期！必须提交 PR 回退为 planned。")
-                        else:
-                            warnings.append(f"[Gate 1] #{num} ({eid}) 处于存量债务隔离区白名单中（TTL 至 {exp_str}）")
-                    else:
-                        if not evidence or not isinstance(evidence, dict):
-                            errors.append(f"[Gate 1] #{num} ({eid}) delivery_state=verified 但 evidence 缺失或为 null")
-                        else:
-                            sha = evidence.get("assets_sha256")
-                            if not sha or sha == "0000000000000000000000000000000000000000000000000000000000000000":
-                                msg = f"[Gate 1] #{num} ({eid}) delivery_state=verified 但未在隔离区且 assets_sha256 无效"
-                                if strict:
-                                    errors.append(msg)
-                                else:
-                                    warnings.append(msg)
-        else:
-            # v1.1 兼容分支
-            delivery = entry.get("delivery", {})
-            if delivery.get("state") == "verified":
-                sha = delivery.get("assets_sha256") or {}
-                if not all(sha.get(k) for k in ["device_tree", "js", "wasm"]):
-                    msg = f"[Gate 1] #{num} ({eid}) delivery.state=verified 但 assets_sha256 三件套未填写"
-                    if strict:
-                        errors.append(msg)
-                    else:
-                        warnings.append(msg)
-
-    return errors, warnings
-
+def validate_data(manifest: dict = None, catalog: dict = None, quarantine: dict = None, strict: bool = False) -> tuple[list[str], list[str]]:
+    """
+    [过渡逻辑已退休]
+    依据 2026-09-29-esp-idf-gate-system-implementation-plan.md，
+    数据合规性校验已彻底移交 .gates/run_gates.py (Gate 1 全量 10 条规则)。
+    保留此函数以便向后兼容，内部直接委托 run_gates.py Gate 1 校验。
+    """
+    import subprocess
+    cmd = [
+        sys.executable,
+        str(SCRIPT_DIR / ".gates" / "run_gates.py"),
+        "--gate", "1",
+        "--mode", "nightly" if strict else "pr",
+        "--allow-empty-diff",
+    ]
+    res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    if res.returncode != 0:
+        return [f"Gate 1 门禁校验失败 (退出码 {res.returncode}):\n{res.stdout}\n{res.stderr}"], []
+    return [], []
 
 # ─────────────────────────────────────────────────────────────
 # 渲染单个条目行
@@ -403,22 +356,16 @@ def main():
     if quarantine:
         print(f"[generate] 载入存量隔离区白名单: {len(quarantine)} 项条目挂载中")
 
-    # 4. Gate 1 数据校验
+    # 4. Gate 1 数据校验（由 .gates/run_gates.py 统一接管）
     if not args.skip_validate:
-        print(f"[generate] 执行 Gate 1 前置数据校验 {'(strict)' if args.strict else '(pure-function)'}...")
-        errors, warnings = validate_data(manifest, catalog, quarantine, strict=args.strict)
-        if warnings:
-            print(f"[Gate 1] WARN - {len(warnings)} 条警告:")
-            for w in warnings[:5]:
-                print(f"  {w}")
-            if len(warnings) > 5:
-                print(f"  ... 及另外 {len(warnings)-5} 条")
+        print(f"[generate] 执行 Gate 1 前置数据校验 (委托 .gates/run_gates.py Gate 1)...")
+        errors, warnings = validate_data(strict=args.strict)
         if errors:
-            print(f"[Gate 1] FAIL - 校验失败，{len(errors)} 条硬错误：")
+            print(f"[Gate 1] FAIL - 校验失败：")
             for e in errors:
                 print(f"  {e}")
             sys.exit(1)
-        print(f"[Gate 1] PASS - 校验通过 ({len(manifest['entries'])} 条，0 错误，{len(warnings)} 条受控隔离警告)")
+        print(f"[Gate 1] PASS - Gate 1 校验通过，继续单向渲染 CHECKLIST.md。")
 
     # 5. 渲染
     print(f"[generate] 渲染 CHECKLIST.md ...")
