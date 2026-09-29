@@ -10,6 +10,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "sim_responder.h"
+
 extern void host_record_i2c(uint8_t port, uint16_t addr, uint32_t write_len);
 
 static bool s_i2c_bus_inited[PAL_I2C_PORTS] = {false};
@@ -41,6 +43,11 @@ wink_status_t pal_i2c_transfer_timeout(uint8_t port, uint16_t addr,
     if (!s_i2c_bus_inited[port]) {
         printf("WINK_WARN: I2C port %d transfer called before bus init, lazy initializing (deprecated path)\n", port);
         s_i2c_bus_inited[port] = true;
+    }
+    wink_status_t resp_st = sim_responder_dispatch(SIM_BUS_TYPE_I2C, port, addr, w, wl, r, rl);
+    if (resp_st != WINK_ERR_NOT_FOUND) {
+        host_record_i2c(port, addr, wl);
+        return resp_st;
     }
     (void)w;
     host_record_i2c(port, addr, wl);

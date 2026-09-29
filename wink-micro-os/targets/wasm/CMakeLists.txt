@@ -27,6 +27,7 @@ set(PAL_WASM_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/pal_resource.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/wink_sim_physical.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/wink_sim_scheduler.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/sim_responder.c
 )
 
 set(PAL_WASM_SOURCES ${PAL_WASM_SOURCES} PARENT_SCOPE)

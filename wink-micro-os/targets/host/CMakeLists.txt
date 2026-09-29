@@ -27,6 +27,7 @@ add_library(pal_host OBJECT
     ${CMAKE_CURRENT_SOURCE_DIR}/../../runtime/src/wink_dev_config.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/wink_sim_physical.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/wink_sim_scheduler.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/sim_responder.c
 )
 
 target_link_libraries(pal_host PUBLIC pal)

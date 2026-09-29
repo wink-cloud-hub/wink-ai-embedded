@@ -123,43 +123,18 @@ esp_err_t esp_partition_deregister_external(const esp_partition_t* partition) WI
 esp_err_t esp_partition_deregister_external(const esp_partition_t* partition);
 #endif
 
-#if defined(__WINK_SIM__)
-esp_err_t esp_partition_erase_range(const esp_partition_t* partition,
-                                    size_t offset, size_t size) WINK_SLA_ERROR("Wink SLA Violation: esp_partition_erase_range out of Core 8 scope.");
-#else
 esp_err_t esp_partition_erase_range(const esp_partition_t* partition,
                                     size_t offset, size_t size);
-#endif
 
-#if defined(__WINK_SIM__)
-esp_partition_iterator_t esp_partition_find(esp_partition_type_t type, esp_partition_subtype_t subtype, const char* label) WINK_SLA_ERROR("Wink SLA Violation: esp_partition_find out of Core 8 scope.");
-#else
 esp_partition_iterator_t esp_partition_find(esp_partition_type_t type, esp_partition_subtype_t subtype, const char* label);
-#endif
 
-#if defined(__WINK_SIM__)
-esp_err_t esp_partition_find_err(esp_partition_type_t type, esp_partition_subtype_t subtype, const char* label, esp_partition_iterator_t* it) WINK_SLA_ERROR("Wink SLA Violation: esp_partition_find_err out of Core 8 scope.");
-#else
 esp_err_t esp_partition_find_err(esp_partition_type_t type, esp_partition_subtype_t subtype, const char* label, esp_partition_iterator_t* it);
-#endif
 
-#if defined(__WINK_SIM__)
-const esp_partition_t* esp_partition_find_first(esp_partition_type_t type, esp_partition_subtype_t subtype, const char* label) WINK_SLA_ERROR("Wink SLA Violation: esp_partition_find_first out of Core 8 scope.");
-#else
 const esp_partition_t* esp_partition_find_first(esp_partition_type_t type, esp_partition_subtype_t subtype, const char* label);
-#endif
 
-#if defined(__WINK_SIM__)
-esp_err_t esp_partition_find_first_err(esp_partition_type_t type, esp_partition_subtype_t subtype, const char* label, const esp_partition_t** partition) WINK_SLA_ERROR("Wink SLA Violation: esp_partition_find_first_err out of Core 8 scope.");
-#else
 esp_err_t esp_partition_find_first_err(esp_partition_type_t type, esp_partition_subtype_t subtype, const char* label, const esp_partition_t** partition);
-#endif
 
-#if defined(__WINK_SIM__)
-const esp_partition_t* esp_partition_get(esp_partition_iterator_t iterator) WINK_SLA_ERROR("Wink SLA Violation: esp_partition_get out of Core 8 scope.");
-#else
 const esp_partition_t* esp_partition_get(esp_partition_iterator_t iterator);
-#endif
 
 #if defined(__WINK_SIM__)
 esp_err_t esp_partition_get_blockdev(const esp_partition_type_t type, const esp_partition_subtype_t subtype, const char *label, esp_blockdev_handle_t *out_bdl_handle) WINK_SLA_ERROR("Wink SLA Violation: esp_partition_get_blockdev out of Core 8 scope.");
@@ -167,11 +142,7 @@ esp_err_t esp_partition_get_blockdev(const esp_partition_type_t type, const esp_
 esp_err_t esp_partition_get_blockdev(const esp_partition_type_t type, const esp_partition_subtype_t subtype, const char *label, esp_blockdev_handle_t *out_bdl_handle);
 #endif
 
-#if defined(__WINK_SIM__)
-uint32_t esp_partition_get_main_flash_sector_size(void) WINK_SLA_ERROR("Wink SLA Violation: esp_partition_get_main_flash_sector_size out of Core 8 scope.");
-#else
 uint32_t esp_partition_get_main_flash_sector_size(void);
-#endif
 
 #if defined(__WINK_SIM__)
 esp_err_t esp_partition_get_sha256(const esp_partition_t* partition, uint8_t* sha_256) WINK_SLA_ERROR("Wink SLA Violation: esp_partition_get_sha256 out of Core 8 scope.");
@@ -179,11 +150,7 @@ esp_err_t esp_partition_get_sha256(const esp_partition_t* partition, uint8_t* sh
 esp_err_t esp_partition_get_sha256(const esp_partition_t* partition, uint8_t* sha_256);
 #endif
 
-#if defined(__WINK_SIM__)
-void esp_partition_iterator_release(esp_partition_iterator_t iterator) WINK_SLA_ERROR("Wink SLA Violation: esp_partition_iterator_release out of Core 8 scope.");
-#else
 void esp_partition_iterator_release(esp_partition_iterator_t iterator);
-#endif
 
 #if defined(__WINK_SIM__)
 esp_err_t esp_partition_mmap(const esp_partition_t* partition, size_t offset, size_t size,
@@ -201,11 +168,7 @@ void esp_partition_munmap(esp_partition_mmap_handle_t handle) WINK_SLA_ERROR("Wi
 void esp_partition_munmap(esp_partition_mmap_handle_t handle);
 #endif
 
-#if defined(__WINK_SIM__)
-esp_partition_iterator_t esp_partition_next(esp_partition_iterator_t iterator) WINK_SLA_ERROR("Wink SLA Violation: esp_partition_next out of Core 8 scope.");
-#else
 esp_partition_iterator_t esp_partition_next(esp_partition_iterator_t iterator);
-#endif
 
 #if defined(__WINK_SIM__)
 esp_err_t esp_partition_ptr_get_blockdev(const esp_partition_t *partition, esp_blockdev_handle_t *out_bdl_handle) WINK_SLA_ERROR("Wink SLA Violation: esp_partition_ptr_get_blockdev out of Core 8 scope.");
@@ -213,21 +176,11 @@ esp_err_t esp_partition_ptr_get_blockdev(const esp_partition_t *partition, esp_b
 esp_err_t esp_partition_ptr_get_blockdev(const esp_partition_t *partition, esp_blockdev_handle_t *out_bdl_handle);
 #endif
 
-#if defined(__WINK_SIM__)
-esp_err_t esp_partition_read(const esp_partition_t* partition,
-                             size_t src_offset, void* dst, size_t size) WINK_SLA_ERROR("Wink SLA Violation: esp_partition_read out of Core 8 scope.");
-#else
 esp_err_t esp_partition_read(const esp_partition_t* partition,
                              size_t src_offset, void* dst, size_t size);
-#endif
 
-#if defined(__WINK_SIM__)
-esp_err_t esp_partition_read_raw(const esp_partition_t* partition,
-                                 size_t src_offset, void* dst, size_t size) WINK_SLA_ERROR("Wink SLA Violation: esp_partition_read_raw out of Core 8 scope.");
-#else
 esp_err_t esp_partition_read_raw(const esp_partition_t* partition,
                                  size_t src_offset, void* dst, size_t size);
-#endif
 
 #if defined(__WINK_SIM__)
 esp_err_t esp_partition_register_external(esp_flash_t* flash_chip, size_t offset, size_t size,
@@ -257,21 +210,11 @@ esp_err_t esp_partition_verify_err(const esp_partition_t* partition, const esp_p
 esp_err_t esp_partition_verify_err(const esp_partition_t* partition, const esp_partition_t** out_partition);
 #endif
 
-#if defined(__WINK_SIM__)
-esp_err_t esp_partition_write(const esp_partition_t* partition,
-                              size_t dst_offset, const void* src, size_t size) WINK_SLA_ERROR("Wink SLA Violation: esp_partition_write out of Core 8 scope.");
-#else
 esp_err_t esp_partition_write(const esp_partition_t* partition,
                               size_t dst_offset, const void* src, size_t size);
-#endif
 
-#if defined(__WINK_SIM__)
-esp_err_t esp_partition_write_raw(const esp_partition_t* partition,
-                                  size_t dst_offset, const void* src, size_t size) WINK_SLA_ERROR("Wink SLA Violation: esp_partition_write_raw out of Core 8 scope.");
-#else
 esp_err_t esp_partition_write_raw(const esp_partition_t* partition,
                                   size_t dst_offset, const void* src, size_t size);
-#endif
 
 #ifdef __cplusplus
 }

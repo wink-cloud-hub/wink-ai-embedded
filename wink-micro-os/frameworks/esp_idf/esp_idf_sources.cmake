@@ -15,6 +15,8 @@ set(ESP_IDF_FRAMEWORK_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/drivers/esp_gptimer.c
     ${CMAKE_CURRENT_LIST_DIR}/src/drivers/esp_spi.c
     ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_nvs.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_partition.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_vfs_ram.c
     ${CMAKE_CURRENT_LIST_DIR}/src/freertos/freertos_task.c
     ${CMAKE_CURRENT_LIST_DIR}/src/freertos/freertos_queue.c
     ${CMAKE_CURRENT_LIST_DIR}/src/freertos/freertos_semphr.c

@@ -2091,6 +2091,27 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     add_test(NAME test_esp_idf_ledc_run COMMAND test_esp_idf_ledc_run)
     set_tests_properties(test_esp_idf_ledc_run PROPERTIES LABELS "esp_idf;run" TIMEOUT 60)
 
+    add_executable(test_esp_idf_safeguards
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/run/test_esp_idf_safeguards.c
+        ${UNITY_DIR}/unity.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_idf_safeguards PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/stubs
+    )
+    target_link_libraries(test_esp_idf_safeguards PRIVATE wink_framework_esp_idf dal)
+    target_compile_options(test_esp_idf_safeguards PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(test_esp_idf_safeguards generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_idf_safeguards)
+    add_test(NAME test_esp_idf_safeguards COMMAND test_esp_idf_safeguards)
+    set_tests_properties(test_esp_idf_safeguards PROPERTIES LABELS "esp_idf;run" TIMEOUT 60)
+
     # Cross-platform headless deterministic replay (M3 Task M3-3, T-008)
     find_package(Python3 COMPONENTS Interpreter QUIET)
     if(Python3_Interpreter_FOUND)
