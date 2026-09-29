@@ -21,6 +21,8 @@ Usage:
     python scripts/gate_check.py                 # staged + unstaged changes
     python scripts/gate_check.py --all           # full sweep, ignore diff
     python scripts/gate_check.py --no-tests      # skip the engine self-test
+    python scripts/gate_check.py --pre-commit    # Step 0 only (<10ms, for pre-commit hook)
+    python scripts/gate_check.py --install-hooks # install git pre-commit & pre-push hooks
 """
 
 import argparse
@@ -189,13 +191,77 @@ def staged_files() -> list[str]:
     return [ln.strip() for ln in proc.stdout.splitlines() if ln.strip()]
 
 
+def install_hooks() -> int:
+    """Installs Git hooks for Plan A: pre-commit (fast leak guard) and pre-push (full gate)."""
+    hooks_dir = REPO_ROOT / ".githooks"
+    hooks_dir.mkdir(parents=True, exist_ok=True)
+
+    pre_commit = hooks_dir / "pre-commit"
+    pre_commit.write_text(
+        "#!/bin/sh\n"
+        "# Plan A: Step 0 fast confidentiality guard (<10ms, zero friction)\n"
+        "python scripts/gate_check.py --confidentiality-only\n",
+        encoding="utf-8"
+    )
+
+    pre_push = hooks_dir / "pre-push"
+    pre_push.write_text(
+        "#!/bin/sh\n"
+        "# Plan A: Full ESP-IDF governance gate (~2.5s) before pushing\n"
+        "python scripts/gate_check.py\n",
+        encoding="utf-8"
+    )
+
+    try:
+        import stat
+        for p in (pre_commit, pre_push):
+            p.chmod(p.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    except Exception:
+        pass
+
+    proc = subprocess.run(
+        ["git", "config", "core.hooksPath", ".githooks"],
+        cwd=str(REPO_ROOT), capture_output=True, text=True,
+        encoding="utf-8", errors="replace"
+    )
+    if proc.returncode == 0:
+        print("  Successfully installed Git hooks into .githooks/ and configured core.hooksPath.")
+        print("    - pre-commit: fast confidentiality guard (<10ms, prevents secret leaks)")
+        print("    - pre-push:   full governance gate (~2.5s, 91 tests + SSOT rules)")
+        return 0
+    else:
+        print(f"  Failed to configure git core.hooksPath: {proc.stderr}")
+        return 1
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Local ESP-IDF governance gate check")
     ap.add_argument("--all", action="store_true",
                     help="Full sweep; do not restrict to a git diff")
     ap.add_argument("--no-tests", action="store_true",
                     help="Skip the gate engine self-test")
+    ap.add_argument("--confidentiality-only", "--pre-commit", action="store_true",
+                    dest="confidentiality_only",
+                    help="Run only Step 0 (Confidentiality guard for pre-commit)")
+    ap.add_argument("--install-hooks", action="store_true",
+                    help="Install Git pre-commit (confidentiality) and pre-push (full gate) hooks")
     args = ap.parse_args()
+
+    if args.install_hooks:
+        return install_hooks()
+
+    if args.confidentiality_only:
+        _banner("Pre-Commit Guard: Confidentiality (private toolchain must not leak)")
+        staged = staged_files()
+        problems = check_confidentiality(staged)
+        if problems:
+            for p in problems:
+                print(f"  LEAK: {p}")
+            print("\n  Pre-commit check FAILED: sensitive paths or identifiers detected.")
+            return 1
+        print(f"  {len(staged)} staged file(s) scanned, no private toolchain "
+              f"identifiers or private-mount paths found.")
+        return 0
 
     import tempfile
     tmp = Path(tempfile.gettempdir()) / "wink_gate_changed_files.txt"

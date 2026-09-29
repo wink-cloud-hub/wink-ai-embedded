@@ -1,0 +1,3 @@
+#!/bin/sh
+# Plan A: Step 0 fast confidentiality guard (<10ms, zero friction)
+python scripts/gate_check.py --confidentiality-only
