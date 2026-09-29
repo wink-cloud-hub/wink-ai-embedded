@@ -54,22 +54,23 @@
 | **`native/{feature}`** | 模式 1 | **Wink 原生 AI-Native 业务** | 深度使用 `wink-micro-os/dal`，Role API 事件驱动或 L2 专家双任务 | `native/oled_dashboard`, `native/avoidance_car` |
 | **`fixtures/{smoke}`** | 系统支撑 | **平台 CI 与确定性测试夹具** | 硬件板级 Bring-up 自检、Wasm JS 胶水测试、微秒级时钟步进确定性验证 | `fixtures/devkitc_smoke`, `fixtures/determinism_fixture` |
 
-### 目录嵌套约定（ADR-0079）
+### 目录嵌套约定（ADR-0079，2026-09 修订）
 
-为长期可维护性，app 除平铺（深度 1）外还支持**最多三级嵌套**分组：
+为长期可维护性，app 除平铺（深度 1）外还支持**最多四级嵌套**分组：
 
 ```
 wink-micro-app/
-├── oled_dashboard/wink-app.json            # 深度 1：平铺（存量形态，继续支持）
-├── mcs51/button_led/wink-app.json          # 深度 2：<分组>/<app>
-└── vendor/cms8s78xx/gpio/wink-app.json     # 深度 3：<g1>/<g2>/<app>（上限）
+├── oled_dashboard/wink-app.json                                 # 深度 1：平铺（存量形态，继续支持）
+├── mcs51/button_led/wink-app.json                               # 深度 2：<分组>/<app>
+├── vendor/cms8s78xx/gpio/wink-app.json                          # 深度 3：<g1>/<g2>/<app>
+└── vendor/esp_idfv61/peripherals/gptimer_alarm/wink-app.json   # 深度 4：<g1>/<g2>/<g3>/<app>（上限）
 ```
 
 规则（Python wink-tools、unisim、前端工作区扫描三处一致，详见 [ADR-0079](../docs/decisions/core/0079-micro-app-nested-app-discovery.md)）：
 
 * **清单即边界**：扫描器一旦在某目录发现 `wink-app.json`，即认定为 app 并**停止向内搜索**；app 内部的源码、docs、unisim-assets 均为其私有内容，内层再放清单也不会产生第二个 app。
-* **最深 3 级**：仅无清单的分组目录会继续下钻；超过 3 级的清单不会被发现且工具链会告警。
-* **app id 即相对路径**：平铺 id 仍是裸名（`oled_dashboard`），嵌套 id 为 `mcs51/button_led`（POSIX 分隔符）。它同时是 CLI `--app` 参数、`build/wasm/<id>` 构建目录与前端缓存键。
+* **最深 4 级**：仅无清单的分组目录会继续下钻；超过 4 级的清单不会被发现且工具链会告警。
+* **app id 即相对路径**：平铺 id 仍是裸名（`oled_dashboard`），嵌套 id 为 `mcs51/button_led` 或 `vendor/esp_idfv61/peripherals/gptimer_alarm`（POSIX 分隔符）。它同时是 CLI `--app` 参数、`build/wasm/<id>` 构建目录与前端缓存键。
 * **叶子名别名**：裸叶子名在全树唯一时可直接引用；一旦不同分组出现同名 app，必须使用全 id 消歧，否则报歧义错误。
 * 创建嵌套 app：`python packages/wink-tools/wink.py create app mcs51/button_led`（拒绝绝对路径、`..` 以及在已有 app 内部再建 app）。
 

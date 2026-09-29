@@ -42,10 +42,10 @@
 
 ### D1. 层级上限与清单剪枝
 
-- app 清单 `wink-app.json` 只能出现在 micro-app 根（`wink-micro-app/`、`apps/`、`micro-apps/`，前端兼容名）下深度 1～3 的目录中。
-- 发现算法为受控 DFS：**目录一旦包含 `wink-app.json`，即判定为 app 边界，记录该 app 后立即剪枝，不再递归其子目录**；无清单目录仅在 `depth < 3` 时继续下钻；深度 3 无清单即停止。
+- app 清单 `wink-app.json` 只能出现在 micro-app 根（`wink-micro-app/`、`apps/`、`micro-apps/`，前端兼容名）下深度 1～4 的目录中（初始设计上限为 3，2026-09 增补支持大型生态扩容至 4，见 §5）。
+- 发现算法为受控 DFS：**目录一旦包含 `wink-app.json`，即判定为 app 边界，记录该 app 后立即剪枝，不再递归其子目录**；无清单目录仅在 `depth < MAX_APP_DEPTH (4)` 时继续下钻；深度 4 无清单即停止。
 - 点开头目录（`.xxx`）与符号链接跳过。
-- 深度 >3 出现的清单属于配置错误：Python lint/发现链路以 WARN 暴露（不静默、不纳入）。
+- 深度 >4 出现的清单属于配置错误：Python lint/发现链路以 WARN 暴露（不静默、不纳入）。
 
 ### D2. app id 与叶子名别名
 
@@ -79,6 +79,18 @@
 **约束 / 代价：**
 
 - 新增 app 发现入口必须复用 `app_discovery.py`，禁止再写死一级枚举（lint 评审关注项）；
-- `wink create app` 只接受 1～3 段的相对 id，拒绝绝对路径、`..`、以及在已有 app 边界内建 app；
+- `wink create app` 接受 1～4 段的相对 id，拒绝绝对路径、`..`、以及在已有 app 边界内建 app；
 - 嵌套 app 的 `common/include` 按「从 app 父目录逐级向上、最近者胜」解析，组级 `common` 可遮蔽根级 `common`；
-- 深度 4 及更深的 app 不被发现且会告警——这是有意的 fail-loud，而不是静默支持。
+- 深度超过上限（原为 4 级，修订后为 5 级及更深）的 app 不被发现且会告警——这是有意的 fail-loud，而不是静默支持。
+
+---
+
+## 5. 增补修订（Amendment 2026-09-29：支持大型框架 4 级嵌套）
+
+| 项 | 内容 |
+|---|---|
+| 日期 | 2026-09-29 |
+| 触发 | 接入 ESP-IDF v6.1 官方示例生态体系（共 478 项示例，312 项纳管）。ESP-IDF 上游天然具备二级领域结构（`get-started/`、`peripherals/`、`protocols/`、`wifi/`、`bluetooth/` 等）。若强行在 3 级限制下平铺，单目录将堆积 300+ 工程，丧失领域自解释性且极易导致命名碰撞。 |
+| 决策结论 | **将受限 DFS 最大深度上限 `MAX_APP_DEPTH` 由 3 级提升至 4 级**。 |
+| 结构形态 | 支持 `<app>` (1) \| `<g1>/<app>` (2) \| `<g1>/<g2>/<app>` (3) \| `<g1>/<g2>/<g3>/<app>` (4)，典型如 `vendor/esp_idfv61/peripherals/gptimer_alarm`。 |
+| 边界与约束 | ①「清单即边界」剪枝机制 100% 保持；② 深度 ≥ 5 的清单继续作为配置错误报 Overshoot 告警；③ 最长路径预算（Path Budget）实测处于安全窗口（< 140 字符，低于 250 字符红线）；④ 三端（Python `wink-tools`、TS `unisim`、Vue `embedded-frontend`）同步升级，保证单一事实语义一致。 |
