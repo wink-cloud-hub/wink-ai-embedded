@@ -1,0 +1,114 @@
+# SPDX-License-Identifier: GPL-3.0-only
+spec_version: "2.0.0"
+description: "WinkMicroOS ESP-IDF 示例历史存量债务隔离区白名单 (10 项存量缺失证据条目)"
+
+quarantined_entries:
+  - id: "esp.get_started.blink"
+    config_id: "wasm_sim_standard"
+    rule_exemptions:
+      - "gate1.evidence_hash_present"
+      - "gate1.execution_report_verified"
+    reason: "早期打样接入遗留条目，已具备真实编译工程与场景脚本，但数据源中缺少防伪哈希与结构化运行凭据"
+    quarantined_at: "2026-09-29T14:00:00Z"
+    grace_period_expires: "2026-10-13T23:59:59Z"   # 14 天硬性 TTL
+    owner: "sim_core_team"
+    migration_action_on_expiry: "revert_to_planned"
+
+  - id: "esp.peripherals.i2c.i2c_basic"
+    config_id: "wasm_sim_standard"
+    rule_exemptions:
+      - "gate1.evidence_hash_present"
+      - "gate1.execution_report_verified"
+    reason: "早期打样接入遗留条目，缺少防伪哈希与结构化运行凭据"
+    quarantined_at: "2026-09-29T14:00:00Z"
+    grace_period_expires: "2026-10-13T23:59:59Z"
+    owner: "sim_core_team"
+    migration_action_on_expiry: "revert_to_planned"
+
+  - id: "esp.peripherals.ledc.ledc_basic"
+    config_id: "wasm_sim_standard"
+    rule_exemptions:
+      - "gate1.evidence_hash_present"
+      - "gate1.execution_report_verified"
+    reason: "早期打样接入遗留条目，缺少防伪哈希与结构化运行凭据"
+    quarantined_at: "2026-09-29T14:00:00Z"
+    grace_period_expires: "2026-10-13T23:59:59Z"
+    owner: "sim_core_team"
+    migration_action_on_expiry: "revert_to_planned"
+
+  - id: "esp.peripherals.timer_group.gptimer"
+    config_id: "wasm_sim_standard"
+    rule_exemptions:
+      - "gate1.evidence_hash_present"
+      - "gate1.execution_report_verified"
+    reason: "早期打样接入遗留条目，缺少防伪哈希与结构化运行凭据"
+    quarantined_at: "2026-09-29T14:00:00Z"
+    grace_period_expires: "2026-10-13T23:59:59Z"
+    owner: "sim_core_team"
+    migration_action_on_expiry: "revert_to_planned"
+
+  - id: "esp.peripherals.uart.uart_echo"
+    config_id: "wasm_sim_standard"
+    rule_exemptions:
+      - "gate1.evidence_hash_present"
+      - "gate1.execution_report_verified"
+    reason: "早期打样接入遗留条目，缺少防伪哈希与结构化运行凭据"
+    quarantined_at: "2026-09-29T14:00:00Z"
+    grace_period_expires: "2026-10-13T23:59:59Z"
+    owner: "sim_core_team"
+    migration_action_on_expiry: "revert_to_planned"
+
+  - id: "esp.protocols.esp_http_client"
+    config_id: "wasm_sim_standard"
+    rule_exemptions:
+      - "gate1.evidence_hash_present"
+      - "gate1.execution_report_verified"
+    reason: "早期打样接入遗留条目，缺少防伪哈希与结构化运行凭据"
+    quarantined_at: "2026-09-29T14:00:00Z"
+    grace_period_expires: "2026-10-13T23:59:59Z"
+    owner: "sim_core_team"
+    migration_action_on_expiry: "revert_to_planned"
+
+  - id: "esp.protocols.mqtt"
+    config_id: "wasm_sim_standard"
+    rule_exemptions:
+      - "gate1.evidence_hash_present"
+      - "gate1.execution_report_verified"
+    reason: "早期打样接入遗留条目，缺少防伪哈希与结构化运行凭据"
+    quarantined_at: "2026-09-29T14:00:00Z"
+    grace_period_expires: "2026-10-13T23:59:59Z"
+    owner: "sim_core_team"
+    migration_action_on_expiry: "revert_to_planned"
+
+  - id: "esp.wifi.getting_started.station"
+    config_id: "wasm_sim_standard"
+    rule_exemptions:
+      - "gate1.evidence_hash_present"
+      - "gate1.execution_report_verified"
+    reason: "早期打样接入遗留条目，缺少防伪哈希与结构化运行凭据"
+    quarantined_at: "2026-09-29T14:00:00Z"
+    grace_period_expires: "2026-10-13T23:59:59Z"
+    owner: "sim_core_team"
+    migration_action_on_expiry: "revert_to_planned"
+
+  - id: "esp.wifi.scan"
+    config_id: "wasm_sim_standard"
+    rule_exemptions:
+      - "gate1.evidence_hash_present"
+      - "gate1.execution_report_verified"
+    reason: "早期打样接入遗留条目，缺少防伪哈希与结构化运行凭据"
+    quarantined_at: "2026-09-29T14:00:00Z"
+    grace_period_expires: "2026-10-13T23:59:59Z"
+    owner: "sim_core_team"
+    migration_action_on_expiry: "revert_to_planned"
+
+  - id: "esp.bluetooth.nimble.bleprph"
+    config_id: "wasm_sim_standard"
+    rule_exemptions:
+      - "gate1.evidence_hash_present"
+      - "gate1.execution_report_verified"
+    reason: "早期打样接入遗留条目，缺少防伪哈希与结构化运行凭据"
+    quarantined_at: "2026-09-29T14:00:00Z"
+    grace_period_expires: "2026-10-13T23:59:59Z"
+    owner: "sim_core_team"
+    migration_action_on_expiry: "revert_to_planned"
