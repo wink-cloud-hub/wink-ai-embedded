@@ -121,7 +121,7 @@
 | [-] | 039 | `peripherals/jpeg/jpeg_encode` | 🎯 Level 1 | P4 | — | 声明 Out-of-Scope。硬件 JPEG 编解码加速器。 |
 | [ ] | 040 | `peripherals/lcd/i2c_oled` | 📜 Level 2 | P1 | `peripherals/lcd_i2c_oled` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 041 | `peripherals/lcd/i80_controller` | 📜 Level 2 | P1 | `peripherals/lcd_i80_controller` | 待排期。依赖进一步框架门面扩展。 |
-| [-] | 042 | `peripherals/lcd/mipi_dsi` | 📜 Level 2 | P4 | — | 声明 Out-of-Scope。调用底层硬件 eFuse 物理熔断驱动，软件仿真无法进行不可逆电气熔断。 |
+| [-] | 042 | `peripherals/lcd/mipi_dsi` | 📜 Level 2 | P4 | — | 声明 Out-of-Scope。MIPI-DSI 高速差分显示物理接口。 |
 | [ ] | 043 | `peripherals/lcd/parlio_simulate` | 📜 Level 2 | P1 | `peripherals/lcd_parlio_simulate` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 044 | `peripherals/lcd/rgb_panel` | 📜 Level 2 | P1 | `peripherals/lcd_rgb_panel` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 045 | `peripherals/lcd/spi_lcd_touch` | 📜 Level 2 | P1 | `peripherals/lcd_spi_lcd_touch` | 待排期。依赖进一步框架门面扩展。 |
@@ -229,10 +229,10 @@
 | [ ] | 139 | `system/ipc/ipc_isr/xtensa` | 📜 Level 2 | P1 | `system/ipc_ipc_isr_xtensa` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 140 | `system/light_sleep` | 📜 Level 2 | P1 | `system/light_sleep` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 141 | `system/nmi_isr` | 📜 Level 2 | P1 | `system/nmi_isr` | 待排期。依赖进一步框架门面扩展。 |
-| [-] | 142 | `system/ota/advanced_https_ota` | 📜 Level 2 | P4 | — | 声明 Out-of-Scope。调用底层硬件 eFuse 物理熔断驱动，软件仿真无法进行不可逆电气熔断。 |
+| [-] | 142 | `system/ota/advanced_https_ota` | 📜 Level 2 | P3 | `system/ota_advanced_https_ota` | 暂缓投入。依赖外部模型。 |
 | [ ] | 143 | `system/ota/native_ota_example` | 📜 Level 2 | P1 | `system/ota_native_ota_example` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 144 | `system/ota/otatool` | 📜 Level 2 | P1 | `system/ota_otatool` | 待排期。依赖进一步框架门面扩展。 |
-| [-] | 145 | `system/ota/partitions_ota` | 📜 Level 2 | P4 | — | 声明 Out-of-Scope。调用底层硬件 eFuse 物理熔断驱动，软件仿真无法进行不可逆电气熔断。 |
+| [-] | 145 | `system/ota/partitions_ota` | 📜 Level 2 | P3 | `system/ota_partitions_ota` | 暂缓投入。依赖外部模型。 |
 | [ ] | 146 | `system/ota/simple_ota_example` | 📜 Level 2 | P1 | `system/ota_simple_ota_example` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 147 | `system/perfmon` | 📜 Level 2 | P1 | `system/perfmon` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 148 | `system/pthread` | 📜 Level 2 | P1 | `system/pthread` | 待排期。依赖进一步框架门面扩展。 |

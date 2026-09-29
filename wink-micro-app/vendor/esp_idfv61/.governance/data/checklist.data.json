@@ -3,8 +3,8 @@
   "generated_at": "2026-09-29T07:05:19.837683+00:00",
   "total_entries": 478,
   "summary": {
-    "scope_in": 310,
-    "scope_out": 168,
+    "scope_in": 312,
+    "scope_out": 166,
     "scope_unknown": 0,
     "audited": 10,
     "verified_configs": 10
@@ -2570,7 +2570,7 @@
       "written_at_spec_version": "2.0.0",
       "scope": {
         "inclusion": "out_of_scope",
-        "exclusion_reason": "调用底层硬件 eFuse 物理熔断驱动，软件仿真无法进行不可逆电气熔断",
+        "exclusion_reason": "MIPI-DSI 高速差分显示物理接口",
         "schedule": "deferred"
       },
       "audit": {
@@ -8754,8 +8754,8 @@
       "upstream_path": "examples/system/ota/advanced_https_ota",
       "written_at_spec_version": "2.0.0",
       "scope": {
-        "inclusion": "out_of_scope",
-        "exclusion_reason": "调用底层硬件 eFuse 物理熔断驱动，软件仿真无法进行不可逆电气熔断",
+        "inclusion": "in_scope",
+        "exclusion_reason": null,
         "schedule": "deferred"
       },
       "audit": {
@@ -8950,8 +8950,8 @@
       "upstream_path": "examples/system/ota/partitions_ota",
       "written_at_spec_version": "2.0.0",
       "scope": {
-        "inclusion": "out_of_scope",
-        "exclusion_reason": "调用底层硬件 eFuse 物理熔断驱动，软件仿真无法进行不可逆电气熔断",
+        "inclusion": "in_scope",
+        "exclusion_reason": null,
         "schedule": "deferred"
       },
       "audit": {

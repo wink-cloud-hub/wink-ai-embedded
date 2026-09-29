@@ -1,616 +1,767 @@
-# SPDX-License-Identifier: Apache-2.0
-spec_version: "2.0.0"
-description: "WinkMicroOS ESP-IDF 官方示例仿真全景能力图谱字典 (SSOT - ADR-0092 扩充版)"
-
+spec_version: 2.0.0
+description: WinkMicroOS ESP-IDF 官方示例仿真全景能力图谱字典 (SSOT - ADR-0092 扩充版)
 capabilities:
-  # ── 1. 核心与并发调度 (cap.core.*) ──────────────────────────────────────────
   cap.core.fiber_task:
-    name: "纤程任务调度"
+    name: 纤程任务调度
     layer: core_sim
     status: implemented
-    description: "纤程级任务创建、切换、挂起与协作式调度"
+    description: 纤程级任务创建、切换、挂起与协作式调度
     owned_paths:
-      - "wink-micro-os/targets/wasm/wink_sim_scheduler.c"
-      - "wink-micro-os/pal/include/pal_task.h"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    - wink-micro-os/targets/wasm/wasm_entry.c
+    - wink-micro-os/frameworks/esp_idf/src/freertos/freertos_task.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/frameworks/mcs51/targets/wasm/sim_scheduler.c"
-
+    - wink-micro-os/frameworks/mcs51/targets/wasm/sim_scheduler.c
   cap.core.sync_tokens:
-    name: "代际同步令牌"
+    name: 代际同步令牌
     layer: core_sim
     status: implemented
-    description: "32位代际令牌化信号量、互斥锁、队列与事件组"
+    description: 32位代际令牌化信号量、互斥锁、队列与事件组
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/freertos/freertos_tokens.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    - wink-micro-os/frameworks/esp_idf/src/freertos/freertos_sync.h
+    - wink-micro-os/frameworks/esp_idf/src/freertos/freertos_task.c
+    - wink-micro-os/frameworks/esp_idf/src/freertos/freertos_semphr.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/osal/include/osal_sync.h"
-
+    - wink-micro-os/osal/include/osal_sync.h
   cap.core.category_heap:
-    name: "分类记账堆内存"
+    name: 分类记账堆内存
     layer: facade
     status: implemented
-    description: "ADR-0089 分类记账与堆边界防御、Heap Caps 门面适配"
+    description: ADR-0089 分类记账与堆边界防御、Heap Caps 门面适配
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/heap/esp_heap_caps.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    - wink-micro-os/frameworks/esp_idf/src/core/esp_heap_caps.c
+    - wink-micro-os/frameworks/esp_idf/include/esp_heap_caps.h
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/osal/include/osal_mem.h"
-
+    - wink-micro-os/osal/include/osal_mem.h
   cap.core.hot_restart:
-    name: "模块级热重启"
+    name: 模块级热重启
     layer: core_sim
     status: planned
-    description: "Phase 4 Wasm 模块实例级彻底销毁与幂等重建"
+    description: Phase 4 Wasm 模块实例级彻底销毁与幂等重建
     owned_paths:
-      - "wink-micro-os/targets/wasm/wasm_bridge.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
-
-  # ── 2. 模拟量与波形 (cap.analog.*) ──────────────────────────────────────────
+    - wink-micro-os/targets/wasm/wasm_bridge.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
   cap.analog.adc_oneshot:
-    name: "ADC 单次采样"
+    name: ADC 单次采样
     layer: pal
     status: implemented
-    description: "PAL 通用单次采样与引脚电平/毫伏转换"
+    description: PAL 通用单次采样与引脚电平/毫伏转换
     owned_paths:
-      - "wink-micro-os/pal/include/hal/pal_adc.h"
-      - "wink-micro-os/targets/wasm/pal_wasm_adc.c"
-      - "wink-micro-os/targets/esp32/pal_esp32_adc.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    - wink-micro-os/targets/wasm/pal_wasm_ch3_adc.c
+    - wink-micro-os/pal/include/pal.h
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/targets/baremetal/stm32/pal_stm32_adc.c"
-
+    - wink-micro-os/targets/baremetal/stm32/pal_stm32_adc.c
   cap.analog.adc_dma:
-    name: "ADC 连续 DMA 采样"
+    name: ADC 连续 DMA 采样
     layer: pal
     status: planned
-    description: "连续双缓冲 DMA 模拟量采集接口"
+    description: 连续双缓冲 DMA 模拟量采集接口
     owned_paths:
-      - "wink-micro-os/pal/include/hal/pal_adc_dma.h"
-      - "wink-micro-os/targets/wasm/pal_wasm_adc_dma.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
-
+    - wink-micro-os/pal/include/hal/pal_adc_dma.h
+    - wink-micro-os/targets/wasm/pal_wasm_adc_dma.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
   cap.analog.dac_out:
-    name: "DAC 模拟电压输出"
+    name: DAC 模拟电压输出
     layer: pal
-    status: implemented
-    description: "PAL 通用 DAC 模拟量电压输出"
+    status: planned
+    description: PAL 通用 DAC 模拟量电压输出
     owned_paths:
-      - "wink-micro-os/pal/include/hal/pal_dac.h"
-    soc_support: [esp32, esp32s2]
+    - wink-micro-os/pal/include/hal/pal_dac.h
+    soc_support:
+    - esp32
+    - esp32s2
     cross_mcu_evidence:
-      - "wink-micro-os/targets/baremetal/stm32/pal_stm32_dac.c"
-
-  # ── 3. 脉冲、定时与调制 (cap.pulse.*) ───────────────────────────────────────
+    - wink-micro-os/targets/baremetal/stm32/pal_stm32_dac.c
   cap.pulse.tx_buffer:
-    name: "微秒脉冲发送缓冲"
+    name: 微秒脉冲发送缓冲
     layer: pal
     status: implemented
-    description: "PAL 通用微秒脉冲序列发送缓冲 (RMT Tx 引擎抽象)"
+    description: PAL 通用微秒脉冲序列发送缓冲 (RMT Tx 引擎抽象)
     owned_paths:
-      - "wink-micro-os/pal/include/hal/pal_pulse.h"
-      - "wink-micro-os/targets/wasm/pal_wasm_pulse.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    - wink-micro-os/pal/include/hal/pal_rmt.h
+    - wink-micro-os/targets/wasm/pal_wasm_rmt.c
+    - wink-micro-os/targets/host/pal_hal_rmt_host.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/targets/baremetal/stm32/pal_stm32_pulse.c"
+    - wink-micro-os/targets/baremetal/stm32/pal_stm32_pulse.c
     depends_on:
       mandatory:
-        - "cap.core.sync_tokens"
-
+      - cap.core.sync_tokens
   cap.pulse.rx_capture:
-    name: "微秒脉冲捕获"
+    name: 微秒脉冲捕获
     layer: pal
     status: planned
-    description: "PAL 通用微秒脉冲电平跳变捕获与脉宽测量 (RMT Rx 引擎抽象)"
+    description: PAL 通用微秒脉冲电平跳变捕获与脉宽测量 (RMT Rx 引擎抽象)
     owned_paths:
-      - "wink-micro-os/pal/include/hal/pal_pulse.h"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
-
+    - wink-micro-os/pal/include/hal/pal_pulse.h
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
   cap.pulse.pcnt_quad:
-    name: "正交编码脉冲计数"
+    name: 正交编码脉冲计数
     layer: pal
     status: planned
-    description: "PAL 通用正交编码脉冲计数 (PCNT)"
+    description: PAL 通用正交编码脉冲计数 (PCNT)
     owned_paths:
-      - "wink-micro-os/pal/include/hal/pal_pcnt.h"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
-
+    - wink-micro-os/pal/include/hal/pal_pcnt.h
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
   cap.pulse.ledc_fade:
-    name: "LEDC 定点 PWM 渐变"
+    name: LEDC 定点 PWM 渐变
     layer: pal
     status: implemented
-    description: "LEDC 通用定时器通道、无浮点定点占空比与平滑渐变 (ADR-0066)"
+    description: LEDC 通用定时器通道、无浮点定点占空比与平滑渐变 (ADR-0066)
     owned_paths:
-      - "wink-micro-os/pal/include/hal/pal_pwm.h"
-      - "wink-micro-os/targets/wasm/pal_wasm_pwm.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    - wink-micro-os/targets/wasm/pal_wasm_ch1b_pwm.c
+    - wink-micro-os/frameworks/esp_idf/src/drivers/esp_ledc.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/frameworks/mcs51/targets/wasm/sim_pwm.c"
-
+    - wink-micro-os/frameworks/mcs51/targets/wasm/sim_pwm.c
   cap.pulse.mcpwm_motor:
-    name: "MCPWM 多通道电机控制"
+    name: MCPWM 多通道电机控制
     layer: model
     status: planned
-    description: "六通道死区互补 PWM、故障刹车与捕获模块"
+    description: 六通道死区互补 PWM、故障刹车与捕获模块
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/mcpwm/mcpwm_sim.c"
-    soc_support: [esp32, esp32s3]
-
+    - wink-micro-os/frameworks/esp_idf/src/mcpwm/mcpwm_sim.c
+    soc_support:
+    - esp32
+    - esp32s3
   cap.pulse.touch_pad:
-    name: "电容触摸按键采样"
+    name: 电容触摸按键采样
     layer: pal
     status: planned
-    description: "电容触摸引脚充放电计数与阈值中断"
+    description: 电容触摸引脚充放电计数与阈值中断
     owned_paths:
-      - "wink-micro-os/pal/include/hal/pal_touch.h"
-    soc_support: [esp32, esp32s2, esp32s3]
-
-  # ── 4. 通用串行与总线 (cap.bus.*) ───────────────────────────────────────────
+    - wink-micro-os/pal/include/hal/pal_touch.h
+    soc_support:
+    - esp32
+    - esp32s2
+    - esp32s3
   cap.bus.i2c_master:
-    name: "I2C 主机模式"
+    name: I2C 主机模式
     layer: pal
     status: implemented
-    description: "PAL 通用 I2C 主机标准/快速模式收发事务"
+    description: PAL 通用 I2C 主机标准/快速模式收发事务
     owned_paths:
-      - "wink-micro-os/pal/include/hal/pal_i2c.h"
-      - "wink-micro-os/targets/wasm/pal_wasm_i2c.c"
-      - "wink-micro-os/targets/esp32/pal_esp32_i2c.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    - wink-micro-os/pal/include/hal/pal_hal.h
+    - wink-micro-os/targets/wasm/pal_wasm_ch2_bus.c
+    - wink-micro-os/frameworks/esp_idf/src/drivers/esp_i2c_master.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/frameworks/mcs51/targets/wasm/sim_i2c.c"
-
+    - wink-micro-os/frameworks/mcs51/targets/wasm/sim_i2c.c
   cap.bus.spi_master:
-    name: "SPI 主机模式"
+    name: SPI 主机模式
     layer: pal
     status: implemented
-    description: "PAL 通用 SPI 主机轮询/DMA 传输"
+    description: PAL 通用 SPI 主机轮询/DMA 传输
     owned_paths:
-      - "wink-micro-os/pal/include/hal/pal_spi.h"
-      - "wink-micro-os/targets/wasm/pal_wasm_spi.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    - wink-micro-os/pal/include/hal/pal_hal.h
+    - wink-micro-os/targets/wasm/pal_wasm_ch2_spi.c
+    - wink-micro-os/frameworks/esp_idf/src/drivers/esp_spi.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/frameworks/mcs51/targets/wasm/sim_spi.c"
-
+    - wink-micro-os/frameworks/mcs51/targets/wasm/sim_spi.c
   cap.bus.uart_stream:
-    name: "UART 异步双工字符流"
+    name: UART 异步双工字符流
     layer: pal
     status: implemented
-    description: "PAL 通用异步双工串口字符流传输与环形缓冲"
+    description: PAL 通用异步双工串口字符流传输与环形缓冲
     owned_paths:
-      - "wink-micro-os/pal/include/hal/pal_uart.h"
-      - "wink-micro-os/targets/wasm/pal_wasm_uart.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    - wink-micro-os/pal/include/hal/pal_hal.h
+    - wink-micro-os/targets/wasm/pal_wasm_ch2_uart.c
+    - wink-micro-os/frameworks/esp_idf/src/drivers/esp_uart.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/frameworks/mcs51/targets/wasm/sim_uart.c"
-
+    - wink-micro-os/frameworks/mcs51/targets/wasm/sim_uart.c
   cap.bus.temp_sensor:
-    name: "片上内置温度传感器"
+    name: 片上内置温度传感器
     layer: pal
-    status: implemented
-    description: "片上内置温度传感器采样与温度读取"
+    status: planned
+    description: 片上内置温度传感器采样与温度读取
     owned_paths:
-      - "wink-micro-os/pal/include/hal/pal_temp.h"
-    soc_support: [esp32s2, esp32s3, esp32c3, esp32c6]
+    - wink-micro-os/pal/include/hal/pal_temp.h
+    soc_support:
+    - esp32s2
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/targets/wasm/pal_wasm_temp.c"
-
+    - wink-micro-os/targets/wasm/pal_wasm_temp.c
   cap.bus.parlio:
-    name: "ParlIO 并行总线接口"
+    name: ParlIO 并行总线接口
     layer: model
     status: planned
-    description: "高速并行数据输入输出总线传输"
+    description: 高速并行数据输入输出总线传输
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/parlio/parlio_sim.c"
-    soc_support: [esp32c6, esp32h2, esp32p4]
-
-  # ── 5. 专用总线与协议流 (cap.proto.*) ───────────────────────────────────────
+    - wink-micro-os/frameworks/esp_idf/src/parlio/parlio_sim.c
+    soc_support:
+    - esp32c6
+    - esp32h2
+    - esp32p4
   cap.proto.ws2812:
-    name: "WS2812 协议编码管道"
+    name: WS2812 协议编码管道
     layer: model
     status: implemented
-    description: "领域模型 WS2812 RGB 颜色顺序编解码与灯带管道"
+    description: 领域模型 WS2812 RGB 颜色顺序编解码与灯带管道
     owned_paths:
-      - "wink-micro-os/dal/src/output/dal_ws2812.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    - wink-micro-os/dal/src/output/dal_ws2812.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/dal/include/output/dal_ws2812.h"
+    - wink-micro-os/dal/include/output/dal_ws2812.h
     depends_on:
       mandatory:
-        - "cap.pulse.tx_buffer"
-        - "cap.core.fiber_task"
-
+      - cap.pulse.tx_buffer
+      - cap.core.fiber_task
   cap.proto.nec_ir:
-    name: "NEC 红外遥控协议模型"
+    name: NEC 红外遥控协议模型
     layer: model
     status: planned
-    description: "领域模型 NEC 38kHz 载波收发解析状态机"
+    description: 领域模型 NEC 38kHz 载波收发解析状态机
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/rmt/esp_nec_ir_model.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
-
+    - wink-micro-os/frameworks/esp_idf/src/rmt/esp_nec_ir_model.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
   cap.proto.twai_can:
-    name: "TWAI / CAN 总线帧模型"
+    name: TWAI / CAN 总线帧模型
     layer: model
     status: planned
-    description: "领域模型 CAN 帧过滤与虚拟总线广播"
+    description: 领域模型 CAN 帧过滤与虚拟总线广播
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/twai/esp_twai_model.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
-
+    - wink-micro-os/frameworks/esp_idf/src/twai/esp_twai_model.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
   cap.proto.i2s_stream:
-    name: "I2S 音频流管道"
+    name: I2S 音频流管道
     layer: model
     status: planned
-    description: "领域模型 I2S 音频流环形缓冲管道与时钟生成"
+    description: 领域模型 I2S 音频流环形缓冲管道与时钟生成
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/i2s/esp_i2s_model.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
-
-  # ── 6. 存储与文件系统 (cap.vfs.*, cap.storage.*) ────────────────────────────
+    - wink-micro-os/frameworks/esp_idf/src/i2s/esp_i2s_model.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
   cap.vfs.mem_sandbox:
-    name: "内存沙箱文件系统"
+    name: 内存沙箱文件系统
     layer: model
     status: implemented
-    description: "纯内存 Inode 树状沙箱文件系统 (POSIX VFS 适配)"
+    description: 纯内存 Inode 树状沙箱文件系统 (POSIX VFS 适配)
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/vfs/vfs_mem_sandbox.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    - wink-micro-os/frameworks/esp_idf/src/core/esp_vfs_ram.c
+    - wink-micro-os/frameworks/esp_idf/include/esp_vfs_ram.h
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/osal/include/osal_fs.h"
-
+    - wink-micro-os/osal/include/osal_fs.h
   cap.vfs.nvs_partition:
-    name: "虚拟 NVS 分区与键值存储"
+    name: 虚拟 NVS 分区与键值存储
     layer: model
     status: implemented
-    description: "虚拟 Flash 分区表与 NVS 键值对存储模型"
+    description: 虚拟 Flash 分区表与 NVS 键值对存储模型
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/nvs/nvs_sim_partition.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    - wink-micro-os/frameworks/esp_idf/src/core/esp_nvs.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/osal/include/osal_nvs.h"
-
+    - wink-micro-os/osal/include/osal_nvs.h
   cap.vfs.spiffs_format:
-    name: "SPIFFS 镜像与挂载"
+    name: SPIFFS 镜像与挂载
     layer: model
     status: planned
-    description: "SPIFFS 扁平文件系统镜像加载与挂载"
+    description: SPIFFS 扁平文件系统镜像加载与挂载
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/spiffs/spiffs_sim.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
-
+    - wink-micro-os/frameworks/esp_idf/src/spiffs/spiffs_sim.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
   cap.vfs.fatfs_vfs:
-    name: "FATFS 文件系统挂载"
+    name: FATFS 文件系统挂载
     layer: model
     status: planned
-    description: "虚拟 FATFS 文件系统挂载与 POSIX VFS 接口适配"
+    description: 虚拟 FATFS 文件系统挂载与 POSIX VFS 接口适配
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/vfs/vfs_fatfs.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
-
+    - wink-micro-os/frameworks/esp_idf/src/vfs/vfs_fatfs.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
   cap.storage.wear_levelling:
-    name: "Flash 磨损均衡层"
+    name: Flash 磨损均衡层
     layer: model
     status: planned
-    description: "Wear Levelling 磨损均衡虚拟扇区抽象"
+    description: Wear Levelling 磨损均衡虚拟扇区抽象
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/storage/wear_levelling.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
-
+    - wink-micro-os/frameworks/esp_idf/src/storage/wear_levelling.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
   cap.storage.sdmmc_host:
-    name: "SD/SDMMC 主机传输"
+    name: SD/SDMMC 主机传输
     layer: model
     status: planned
-    description: "SDMMC/SDIO 主机总线协议与块设备挂载"
+    description: SDMMC/SDIO 主机总线协议与块设备挂载
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/storage/sdmmc_sim.c"
-    soc_support: [esp32, esp32s3]
-
+    - wink-micro-os/frameworks/esp_idf/src/storage/sdmmc_sim.c
+    soc_support:
+    - esp32
+    - esp32s3
   cap.storage.partition_api:
-    name: "Flash 分区表多区寻址"
+    name: Flash 分区表多区寻址
     layer: model
     status: implemented
-    description: "esp_partition_find / read / write 多分区表寻址与只读映射"
+    description: esp_partition_find / read / write 多分区表寻址与只读映射
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/storage/partition_sim.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    - wink-micro-os/frameworks/esp_idf/src/core/esp_partition.c
+    - wink-micro-os/frameworks/esp_idf/include/esp_partition_sim.h
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/osal/include/osal_flash.h"
-
-  # ── 7. 网络与真实连接 (cap.net.*, cap.wifi.*, cap.mesh.*) ───────────────────
+    - wink-micro-os/osal/include/osal_flash.h
   cap.net.event_pump:
-    name: "异步事件泵与信封分发"
+    name: 异步事件泵与信封分发
     layer: facade
     status: implemented
-    description: "D2 异步深拷贝事件队列与分发 (esp_event 核心循环)"
+    description: D2 异步深拷贝事件队列与分发 (esp_event 核心循环)
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/event/esp_event_pump.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    - wink-micro-os/frameworks/esp_idf/src/core/esp_event.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/osal/include/osal_event.h"
-
+    - wink-micro-os/osal/include/osal_event.h
   cap.net.host_socket:
-    name: "宿主原生 Socket 隧道"
-    layer: host_bridge
-    status: implemented
-    description: "宿主 POSIX / WinSock 原生网络隧道代理 (TCP/UDP 收发)"
+    name: 宿主原生 Socket 隧道
+    layer: facade
+    status: planned
+    description: 宿主 POSIX / WinSock 原生网络隧道代理 (TCP/UDP 收发)
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/net/host_socket_tunnel.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    - wink-micro-os/frameworks/esp_idf/src/net/host_socket_tunnel.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/targets/wasm/wink_sim_net.c"
-
+    - wink-micro-os/targets/wasm/wink_sim_net.c
   cap.net.host_ws_tunnel:
-    name: "浏览器 WebSocket 网络代理"
-    layer: host_bridge
-    status: implemented
-    description: "浏览器 WebSocket 真实全双工网络代理与信令转换"
+    name: 浏览器 WebSocket 网络代理
+    layer: facade
+    status: planned
+    description: 浏览器 WebSocket 真实全双工网络代理与信令转换
     owned_paths:
-      - "wink-micro-os/targets/wasm/wasm_net_bridge.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    - wink-micro-os/targets/wasm/wasm_net_bridge.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/targets/wasm/wink_sim_net.c"
-
+    - wink-micro-os/targets/wasm/wink_sim_net.c
   cap.wifi.station_mode:
-    name: "Wi-Fi Station 模式与事件循环"
+    name: Wi-Fi Station 模式与事件循环
     layer: facade
     status: implemented
-    description: "Wi-Fi 扫描、认证连接、DHCP 虚拟 IP 分配与 esp_event 事件"
+    description: Wi-Fi 扫描、认证连接、DHCP 虚拟 IP 分配与 esp_event 事件
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/wifi/esp_wifi_sim.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    - wink-micro-os/frameworks/esp_idf/src/wifi/esp_wifi.c
+    - wink-micro-os/frameworks/esp_idf/include/esp_wifi.h
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/targets/wasm/wink_sim_wifi.c"
-
+    - wink-micro-os/targets/wasm/wink_sim_wifi.c
   cap.wifi.ap_mode:
-    name: "Wi-Fi SoftAP 模式"
+    name: Wi-Fi SoftAP 模式
     layer: facade
     status: planned
-    description: "SoftAP 热点广播、客户端连接事件与虚拟 DHCP Server"
+    description: SoftAP 热点广播、客户端连接事件与虚拟 DHCP Server
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/wifi/esp_wifi_ap_sim.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
-
+    - wink-micro-os/frameworks/esp_idf/src/wifi/esp_wifi_ap_sim.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
   cap.mesh.esp_now:
-    name: "ESP-NOW 无连接通信"
+    name: ESP-NOW 无连接通信
     layer: model
     status: planned
-    description: "ESP-NOW 局域无连接 MAC 帧收发与广播管道"
+    description: ESP-NOW 局域无连接 MAC 帧收发与广播管道
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/mesh/esp_now_sim.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
-
-  # ── 8. 蓝牙低功耗协议栈 (cap.ble.*) ─────────────────────────────────────────
+    - wink-micro-os/frameworks/esp_idf/src/mesh/esp_now_sim.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
   cap.ble.gap_adv:
-    name: "BLE GAP 广播与扫描"
+    name: BLE GAP 广播与扫描
     layer: model
     status: implemented
-    description: "NimBLE GAP 外设广播、广播包构造、信标与扫描应答"
+    description: NimBLE GAP 外设广播、广播包构造、信标与扫描应答
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/bt/esp_nimble_gap.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    - wink-micro-os/frameworks/esp_idf/src/bluetooth/esp_nimble.c
+    - wink-micro-os/frameworks/esp_idf/include/host/ble_gap.h
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/targets/wasm/wink_sim_ble.c"
-
+    - wink-micro-os/targets/wasm/wink_sim_ble.c
   cap.ble.gatt_server:
-    name: "BLE GATT 属性服务器"
+    name: BLE GATT 属性服务器
     layer: model
     status: implemented
-    description: "NimBLE GATT 服务端属性表注册、特征值读写回调与通知"
+    description: NimBLE GATT 服务端属性表注册、特征值读写回调与通知
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/bt/esp_nimble_gatts.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    - wink-micro-os/frameworks/esp_idf/src/bluetooth/esp_nimble.c
+    - wink-micro-os/frameworks/esp_idf/include/host/ble_gatt.h
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/targets/wasm/wink_sim_ble.c"
-
+    - wink-micro-os/targets/wasm/wink_sim_ble.c
   cap.ble.gatt_client:
-    name: "BLE GATT 客户端"
+    name: BLE GATT 客户端
     layer: model
     status: planned
-    description: "NimBLE GATT 客户端远程服务发现、特征值读取与写入"
+    description: NimBLE GATT 客户端远程服务发现、特征值读取与写入
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/bt/esp_nimble_gattc.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
-
+    - wink-micro-os/frameworks/esp_idf/src/bt/esp_nimble_gattc.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
   cap.ble.smp_security:
-    name: "BLE SMP 安全配对"
+    name: BLE SMP 安全配对
     layer: model
     status: planned
-    description: "安全管理器协议配对、Passkey 显示/输入与绑定密钥存储"
+    description: 安全管理器协议配对、Passkey 显示/输入与绑定密钥存储
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/bt/esp_nimble_smp.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
-
-  # ── 9. 电源管理与休眠 (cap.pm.*) ────────────────────────────────────────────
+    - wink-micro-os/frameworks/esp_idf/src/bt/esp_nimble_smp.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
   cap.pm.light_sleep:
-    name: "Light-sleep 轻度休眠"
+    name: Light-sleep 轻度休眠
     layer: core_sim
     status: planned
-    description: "CPU 纤程暂停调度、时钟门控与定时器微秒唤醒"
+    description: CPU 纤程暂停调度、时钟门控与定时器微秒唤醒
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/pm/esp_pm_sleep.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
-
+    - wink-micro-os/frameworks/esp_idf/src/pm/esp_pm_sleep.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
   cap.pm.deep_sleep:
-    name: "Deep-sleep 深度休眠"
+    name: Deep-sleep 深度休眠
     layer: core_sim
     status: planned
-    description: "上下文断电、RTC 内存保留与 RTC GPIO/定时器唤醒重置"
+    description: 上下文断电、RTC 内存保留与 RTC GPIO/定时器唤醒重置
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/pm/esp_pm_deep_sleep.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
-
+    - wink-micro-os/frameworks/esp_idf/src/pm/esp_pm_deep_sleep.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
   cap.pm.dynamic_freq:
-    name: "动态时钟调频"
+    name: 动态时钟调频
     layer: facade
     status: planned
-    description: "esp_pm 动态频率与功耗锁（PM Locks）门面管理"
+    description: esp_pm 动态频率与功耗锁（PM Locks）门面管理
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/pm/esp_pm_locks.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
-
-  # ── 10. 硬件加密与安全 (cap.crypto.*) ───────────────────────────────────────
+    - wink-micro-os/frameworks/esp_idf/src/pm/esp_pm_locks.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
   cap.crypto.mbedtls_shim:
-    name: "mbedTLS 跨平台套件桥接"
-    layer: host_bridge
-    status: implemented
-    description: "mbedTLS 软算法跨平台桥接 (TLS握手/HTTPS客户端连接)"
+    name: mbedTLS 跨平台套件桥接
+    layer: facade
+    status: planned
+    description: mbedTLS 软算法跨平台桥接 (TLS握手/HTTPS客户端连接)
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/crypto/mbedtls_bridge.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    - wink-micro-os/frameworks/esp_idf/src/crypto/mbedtls_bridge.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/targets/wasm/wink_sim_crypto.c"
-
+    - wink-micro-os/targets/wasm/wink_sim_crypto.c
   cap.crypto.hw_sha_aes:
-    name: "硬件 SHA/AES 加速器校验"
+    name: 硬件 SHA/AES 加速器校验
     layer: facade
     status: planned
-    description: "硬件加密引擎只读校验与数据块计算门面"
+    description: 硬件加密引擎只读校验与数据块计算门面
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/crypto/hw_crypto_facade.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
-
-  # ── 11. 系统控制台与生命周期 (cap.system.*, cap.usb.*) ─────────────────────
+    - wink-micro-os/frameworks/esp_idf/src/crypto/hw_crypto_facade.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
   cap.system.console_cmd:
-    name: "虚拟控制台交互"
+    name: 虚拟控制台交互
     layer: facade
-    status: implemented
-    description: "esp_console / linenoise 命令行输入解析与命令分发"
+    status: planned
+    description: esp_console / linenoise 命令行输入解析与命令分发
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/system/esp_console_sim.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    - wink-micro-os/frameworks/esp_idf/src/system/esp_console_sim.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/targets/wasm/wink_sim_console.c"
-
+    - wink-micro-os/targets/wasm/wink_sim_console.c
   cap.system.ota_update:
-    name: "OTA 固件升级与回滚校验"
+    name: OTA 固件升级与回滚校验
     layer: model
     status: planned
-    description: "OTA 双应用分区镜像写入、启动标记切换与回滚"
+    description: OTA 双应用分区镜像写入、启动标记切换与回滚
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/system/esp_ota_sim.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
-
+    - wink-micro-os/frameworks/esp_idf/src/system/esp_ota_sim.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
   cap.system.app_trace:
-    name: "系统运行时跟踪"
+    name: 系统运行时跟踪
     layer: core_sim
     status: planned
-    description: "系统任务切换跟踪与内存堆分析导出"
+    description: 系统任务切换跟踪与内存堆分析导出
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/system/esp_app_trace_sim.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
-
+    - wink-micro-os/frameworks/esp_idf/src/system/esp_app_trace_sim.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
   cap.usb.cdc_acm:
-    name: "USB-CDC 虚拟双工流"
+    name: USB-CDC 虚拟双工流
     layer: model
     status: planned
-    description: "USB-CDC 虚拟串口端点枚举与字符流收发"
+    description: USB-CDC 虚拟串口端点枚举与字符流收发
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/usb/usb_cdc_sim.c"
-    soc_support: [esp32s2, esp32s3]
-
+    - wink-micro-os/frameworks/esp_idf/src/usb/usb_cdc_sim.c
+    soc_support:
+    - esp32s2
+    - esp32s3
   cap.usb.serial_jtag:
-    name: "USB-Serial/JTAG 控制台"
+    name: USB-Serial/JTAG 控制台
     layer: facade
     status: planned
-    description: "片上 USB-Serial-JTAG 打印与交互存根"
+    description: 片上 USB-Serial-JTAG 打印与交互存根
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/usb/usb_serial_jtag_sim.c"
-    soc_support: [esp32c3, esp32s3, esp32c6]
-
-  # ── 12. 协处理器与特殊硬件 (cap.coproc.*, cap.media.*) ─────────────────────
+    - wink-micro-os/frameworks/esp_idf/src/usb/usb_serial_jtag_sim.c
+    soc_support:
+    - esp32c3
+    - esp32s3
+    - esp32c6
   cap.coproc.ulp_fsm:
-    name: "ULP FSM 虚拟机与 RTC 共享内存"
+    name: ULP FSM 虚拟机与 RTC 共享内存
     layer: model
     status: planned
-    description: "ULP 状态机汇编解释器与 RTC 慢速内存共享"
+    description: ULP 状态机汇编解释器与 RTC 慢速内存共享
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/ulp/ulp_fsm_vm.c"
-    soc_support: [esp32, esp32s3]
-
+    - wink-micro-os/frameworks/esp_idf/src/ulp/ulp_fsm_vm.c
+    soc_support:
+    - esp32
+    - esp32s3
   cap.coproc.ulp_riscv:
-    name: "ULP RISC-V 加载器"
+    name: ULP RISC-V 加载器
     layer: model
     status: planned
-    description: "ULP RISC-V 32位 ELF 二进制加载器与沙箱"
+    description: ULP RISC-V 32位 ELF 二进制加载器与沙箱
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/ulp/ulp_riscv_vm.c"
-    soc_support: [esp32s2, esp32s3]
-
+    - wink-micro-os/frameworks/esp_idf/src/ulp/ulp_riscv_vm.c
+    soc_support:
+    - esp32s2
+    - esp32s3
   cap.media.camera_dma:
-    name: "DVP/CSI 虚拟图像帧捕获"
+    name: DVP/CSI 虚拟图像帧捕获
     layer: model
     status: planned
-    description: "虚拟图像帧缓冲流注入与 DMA 描述符接收"
+    description: 虚拟图像帧缓冲流注入与 DMA 描述符接收
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/media/camera_dma_sim.c"
-    soc_support: [esp32, esp32s3]
-
-  # ── 13. DMA 与内存传输 (cap.dma.*) ──────────────────────────────────────────
+    - wink-micro-os/frameworks/esp_idf/src/media/camera_dma_sim.c
+    soc_support:
+    - esp32
+    - esp32s3
   cap.dma.memcpy_sim:
-    name: "DMA 描述符与内存传输"
-    layer: core_sim
-    status: implemented
-    description: "DMA 传输仿真与链表描述符更新"
-    owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/dma/sim_dma.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
-    cross_mcu_evidence:
-      - "wink-micro-os/osal/include/osal_dma.h"
-
-  cap.dma.double_buffer:
-    name: "DMA 双缓冲与完成中断"
+    name: DMA 描述符与内存传输
     layer: core_sim
     status: planned
-    description: "乒乓双缓冲与传输完成回调分发"
+    description: DMA 传输仿真与链表描述符更新
     owned_paths:
-      - "wink-micro-os/frameworks/esp_idf/src/dma/sim_dma_double_buf.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
-
-  # ── 14. 中断与回调上下文 (cap.irq.*) ────────────────────────────────────────
+    - wink-micro-os/frameworks/esp_idf/src/dma/sim_dma.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
+    cross_mcu_evidence:
+    - wink-micro-os/osal/include/osal_dma.h
+  cap.dma.double_buffer:
+    name: DMA 双缓冲与完成中断
+    layer: core_sim
+    status: planned
+    description: 乒乓双缓冲与传输完成回调分发
+    owned_paths:
+    - wink-micro-os/frameworks/esp_idf/src/dma/sim_dma_double_buf.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
   cap.irq.isr_dispatch:
-    name: "ISR 上下文模拟"
+    name: ISR 上下文模拟
     layer: core_sim
     status: implemented
-    description: "ISR 上下文纤程模拟、从 ISR 发送队列与栈隔离"
+    description: ISR 上下文纤程模拟、从 ISR 发送队列与栈隔离
     owned_paths:
-      - "wink-micro-os/targets/wasm/wink_sim_irq.c"
-      - "wink-micro-os/pal/include/pal_interrupt.h"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    - wink-micro-os/targets/wasm/pal_wasm_irq.c
+    - wink-micro-os/pal/include/pal_irq.h
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/frameworks/mcs51/targets/wasm/sim_irq.c"
-
+    - wink-micro-os/frameworks/mcs51/targets/wasm/sim_irq.c
   cap.irq.edge_trigger:
-    name: "GPIO 边沿中断触发"
+    name: GPIO 边沿中断触发
     layer: pal
     status: implemented
-    description: "GPIO 边沿中断触发、去抖与分发"
+    description: GPIO 边沿中断触发、去抖与分发
     owned_paths:
-      - "wink-micro-os/pal/include/hal/pal_gpio.h"
-      - "wink-micro-os/targets/wasm/pal_wasm_gpio.c"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    - wink-micro-os/targets/wasm/pal_wasm_ch1_gpio.c
+    - wink-micro-os/frameworks/esp_idf/src/drivers/esp_gpio.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/frameworks/mcs51/targets/wasm/sim_gpio.c"
-
-  # ── 15. 构建与配置 (cap.build.*) ───────────────────────────────────────────
+    - wink-micro-os/frameworks/mcs51/targets/wasm/sim_gpio.c
   cap.build.component_reg:
-    name: "CMake 原厂组件解析"
-    layer: build
-    status: implemented
-    description: "idf_component_register 透明解析与依赖链接"
+    name: CMake 原厂组件解析
+    layer: facade
+    status: planned
+    description: idf_component_register 透明解析与依赖链接
     owned_paths:
-      - "wink-tools/packages/wink-tools/wink/build_system/cmake_parser.py"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    - wink-tools/packages/wink-tools/wink/build_system/cmake_parser.py
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/samples/sample_common.cmake"
-
+    - wink-micro-os/samples/sample_common.cmake
   cap.build.kconfig_parse:
-    name: "Kconfig 宏自动映射"
-    layer: build
-    status: implemented
-    description: "sdkconfig.defaults 自动映射与编译宏转义"
+    name: Kconfig 宏自动映射
+    layer: facade
+    status: planned
+    description: sdkconfig.defaults 自动映射与编译宏转义
     owned_paths:
-      - "wink-tools/packages/wink-tools/wink/build_system/kconfig_bridge.py"
-    soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    - wink-tools/packages/wink-tools/wink/build_system/kconfig_bridge.py
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
     cross_mcu_evidence:
-      - "wink-micro-os/codegen/kconfig_map.py"
+    - wink-micro-os/codegen/kconfig_map.py
