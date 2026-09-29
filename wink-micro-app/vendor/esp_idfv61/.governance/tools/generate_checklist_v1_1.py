@@ -25,16 +25,22 @@ generate_checklist_v1_1.py
 import json
 import sys
 import argparse
+import subprocess
 from pathlib import Path
 from datetime import datetime, timezone
 
 import yaml
 
-SCRIPT_DIR   = Path(__file__).parent
-DATA_JSON    = SCRIPT_DIR / "checklist.data.json"
-CATALOG_YAML = SCRIPT_DIR / "capability-catalog.yaml"
-QUARANTINE_YAML = SCRIPT_DIR / ".gates" / "quarantine.yaml"
-OUTPUT_MD    = SCRIPT_DIR / "CHECKLIST.md"
+SCRIPT_DIR   = Path(__file__).resolve().parent
+GOV_DIR      = SCRIPT_DIR.parent if SCRIPT_DIR.name == "tools" else SCRIPT_DIR
+DATA_JSON    = GOV_DIR / "data" / "checklist.data.json" if (GOV_DIR / "data" / "checklist.data.json").exists() else GOV_DIR / "checklist.data.json"
+CATALOG_YAML = GOV_DIR / "catalog" / "capability-catalog.yaml" if (GOV_DIR / "catalog" / "capability-catalog.yaml").exists() else GOV_DIR / "capability-catalog.yaml"
+QUARANTINE_YAML = (
+    GOV_DIR / "gates" / "quarantine.yaml"
+    if (GOV_DIR / "gates" / "quarantine.yaml").exists()
+    else (GOV_DIR / "quarantine.yaml" if (GOV_DIR / "quarantine.yaml").exists() else GOV_DIR / ".gates" / "quarantine.yaml")
+)
+OUTPUT_MD    = GOV_DIR.parent / "CHECKLIST.md"
 
 # ─────────────────────────────────────────────────────────────
 # 状态符渲染映射
@@ -111,10 +117,10 @@ def validate_data(manifest: dict = None, catalog: dict = None, quarantine: dict 
     数据合规性校验已彻底移交 .gates/run_gates.py (Gate 1 全量 10 条规则)。
     保留此函数以便向后兼容，内部直接委托 run_gates.py Gate 1 校验。
     """
-    import subprocess
+    run_gates_script = GOV_DIR / "gates" / "run_gates.py"
     cmd = [
         sys.executable,
-        str(SCRIPT_DIR / ".gates" / "run_gates.py"),
+        str(run_gates_script),
         "--gate", "1",
         "--mode", "nightly" if strict else "pr",
         "--allow-empty-diff",
@@ -248,12 +254,12 @@ def render_checklist(manifest: dict, quarantine: dict[str, dict]) -> str:
         "<!-- ⚠️  此文件由 generate_checklist_v1_1.py 自动生成，严禁人工直接编辑！修改请编辑 checklist.data.json -->",
         "# ESP-IDF v6.1 官方示例全量仿真适配核对清单 (Checklist)",
         "",
-        f"> **数据单一事实源（SSOT）**：[`checklist.data.json`](checklist.data.json)（Spec v{spec_ver}，多配置实例与五维正交模型）  ",
+        f"> **数据单一事实源（SSOT）**：[`checklist.data.json`](.governance/data/checklist.data.json)（Spec v{spec_ver}，多配置实例与五维正交模型）  ",
         f"> **生成时间**：{gen_date}  ",
-        "> **分类规范**：[`CLASSIFICATION-SPEC.md`](CLASSIFICATION-SPEC.md) (v2.0)  ",
-        "> **能力字典**：[`capability-catalog.yaml`](capability-catalog.yaml)  ",
-        "> **隔离区白名单**：[`.gates/quarantine.yaml`](.gates/quarantine.yaml)（10 项存量债务，14 天 TTL 生效中）  ",
-        "> **执行手册**：[`PLAYBOOK.md`](PLAYBOOK.md) (v2.0)  ",
+        "> **分类规范**：[`CLASSIFICATION-SPEC.md`](.governance/specs/CLASSIFICATION-SPEC.md) (v2.0)  ",
+        "> **能力字典**：[`capability-catalog.yaml`](.governance/catalog/capability-catalog.yaml)  ",
+        "> **隔离区白名单**：[`gates/quarantine.yaml`](.governance/gates/quarantine.yaml)（10 项存量债务，14 天 TTL 生效中）  ",
+        "> **执行手册**：[`PLAYBOOK.md`](.governance/specs/PLAYBOOK.md) (v2.0)  ",
         "",
         "---",
         "",

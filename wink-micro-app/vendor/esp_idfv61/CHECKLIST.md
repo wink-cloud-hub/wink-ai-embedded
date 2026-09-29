@@ -2,12 +2,12 @@
 <!-- ⚠️  此文件由 generate_checklist_v1_1.py 自动生成，严禁人工直接编辑！修改请编辑 checklist.data.json -->
 # ESP-IDF v6.1 官方示例全量仿真适配核对清单 (Checklist)
 
-> **数据单一事实源（SSOT）**：[`checklist.data.json`](checklist.data.json)（Spec v2.0.0，多配置实例与五维正交模型）  
+> **数据单一事实源（SSOT）**：[`checklist.data.json`](.governance/data/checklist.data.json)（Spec v2.0.0，多配置实例与五维正交模型）  
 > **生成时间**：2026-09-29  
-> **分类规范**：[`CLASSIFICATION-SPEC.md`](CLASSIFICATION-SPEC.md) (v2.0)  
-> **能力字典**：[`capability-catalog.yaml`](capability-catalog.yaml)  
-> **隔离区白名单**：[`.gates/quarantine.yaml`](.gates/quarantine.yaml)（10 项存量债务，14 天 TTL 生效中）  
-> **执行手册**：[`PLAYBOOK.md`](PLAYBOOK.md) (v2.0)  
+> **分类规范**：[`CLASSIFICATION-SPEC.md`](.governance/specs/CLASSIFICATION-SPEC.md) (v2.0)  
+> **能力字典**：[`capability-catalog.yaml`](.governance/catalog/capability-catalog.yaml)  
+> **隔离区白名单**：[`gates/quarantine.yaml`](.governance/gates/quarantine.yaml)（10 项存量债务，14 天 TTL 生效中）  
+> **执行手册**：[`PLAYBOOK.md`](.governance/specs/PLAYBOOK.md) (v2.0)  
 
 ---
 

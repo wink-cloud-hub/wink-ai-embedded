@@ -15,9 +15,9 @@ from pathlib import Path
 import yaml
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-ESP_IDFV61_DIR = SCRIPT_DIR.parent
-CHECKLIST_DATA_PATH = ESP_IDFV61_DIR / "checklist.data.json"
-QUARANTINE_PATH = ESP_IDFV61_DIR / ".gates" / "quarantine.yaml"
+GOV_DIR = SCRIPT_DIR.parent
+CHECKLIST_DATA_PATH = GOV_DIR / "data" / "checklist.data.json"
+QUARANTINE_PATH = GOV_DIR / "gates" / "quarantine.yaml"
 
 def main():
     print("[*] Loading checklist.data.json...")

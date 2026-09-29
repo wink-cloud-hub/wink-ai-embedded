@@ -8,7 +8,9 @@
 >
 > 📖 **官方规范与进度总账**：
 > - 📋 **[CHECKLIST.md](CHECKLIST.md)**：ESP-IDF v6.1 478 个官方示例全量普查总账与核对大表
-> - 🛠️ **[PLAYBOOK.md](PLAYBOOK.md)**：官方示例端到端仿真适配与无头实证标准执行手册 (SOP)
+> - 🛠️ **[PLAYBOOK.md](.governance/specs/PLAYBOOK.md)**：官方示例端到端仿真适配与无头实证标准执行手册 (SOP)
+> - 📜 **[CLASSIFICATION-SPEC.md](.governance/specs/CLASSIFICATION-SPEC.md)**：分级分类管治法典与四道门禁规范
+> - 🏛️ **[架构治理资产库](.governance/)**：能力字典、数据 SSOT、门禁系统（Gate 1~4）与自动化脚本集
 
 ## 1. 精选应用矩阵
 

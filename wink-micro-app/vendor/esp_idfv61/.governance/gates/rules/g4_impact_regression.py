@@ -106,8 +106,7 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
                     })
     else:
         # Impact scope exceeds PR threshold (> 30 entries)
-        # 1. Output nightly pending regression manifest
-        reports_dir = ws_root / "wink-micro-app" / "vendor" / "esp_idfv61" / ".gates" / "reports"
+        reports_dir = ws_root / "wink-micro-app" / "vendor" / "esp_idfv61" / ".governance" / "gates" / "reports"
         reports_dir.mkdir(parents=True, exist_ok=True)
         pending_file = reports_dir / "nightly_pending_regression.json"
 

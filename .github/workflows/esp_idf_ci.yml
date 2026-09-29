@@ -88,12 +88,12 @@ jobs:
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             git fetch origin ${{ github.base_ref }} --depth=1
             git diff --name-only origin/${{ github.base_ref }}...HEAD > /tmp/changed_files.txt
-            python wink-micro-app/vendor/esp_idfv61/.gates/run_gates.py \
+            python wink-micro-app/vendor/esp_idfv61/.governance/gates/run_gates.py \
               --mode pr \
               --changed-files /tmp/changed_files.txt \
               --output-json reports/esp_idf_gate_report.json
           else
-            python wink-micro-app/vendor/esp_idfv61/.gates/run_gates.py \
+            python wink-micro-app/vendor/esp_idfv61/.governance/gates/run_gates.py \
               --mode pr \
               --allow-empty-diff \
               --output-json reports/esp_idf_gate_report.json

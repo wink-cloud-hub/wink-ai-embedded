@@ -27,7 +27,15 @@ sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="repla
 
 WORKSPACE_ROOT = Path(__file__).resolve().parent.parent
 ESP_IDFV61_DIR = WORKSPACE_ROOT / "wink-micro-app" / "vendor" / "esp_idfv61"
-CATALOG_PATH   = ESP_IDFV61_DIR / "capability-catalog.yaml"
+CATALOG_PATH   = (
+    ESP_IDFV61_DIR / ".governance" / "catalog" / "capability-catalog.yaml"
+    if (ESP_IDFV61_DIR / ".governance" / "catalog" / "capability-catalog.yaml").exists()
+    else (
+        ESP_IDFV61_DIR / ".governance" / "capability-catalog.yaml"
+        if (ESP_IDFV61_DIR / ".governance" / "capability-catalog.yaml").exists()
+        else ESP_IDFV61_DIR / "capability-catalog.yaml"
+    )
+)
 
 
 def compute_file_sha256(path: Path) -> str:

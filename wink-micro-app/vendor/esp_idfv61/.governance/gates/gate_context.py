@@ -141,10 +141,37 @@ def build_context(
     ws_root = Path(workspace_root).resolve() if workspace_root else find_workspace_root()
 
     default_esp_dir = ws_root / "wink-micro-app" / "vendor" / "esp_idfv61"
+    default_gov_dir = default_esp_dir / ".governance"
 
-    m_path = Path(manifest_path).resolve() if manifest_path else default_esp_dir / "checklist.data.json"
-    c_path = Path(catalog_path).resolve() if catalog_path else default_esp_dir / "capability-catalog.yaml"
-    q_path = Path(quarantine_path).resolve() if quarantine_path else default_esp_dir / ".gates" / "quarantine.yaml"
+    if manifest_path:
+        m_path = Path(manifest_path).resolve()
+    else:
+        if (default_gov_dir / "data" / "checklist.data.json").exists():
+            m_path = default_gov_dir / "data" / "checklist.data.json"
+        elif (default_gov_dir / "checklist.data.json").exists():
+            m_path = default_gov_dir / "checklist.data.json"
+        else:
+            m_path = default_esp_dir / "checklist.data.json"
+
+    if catalog_path:
+        c_path = Path(catalog_path).resolve()
+    else:
+        if (default_gov_dir / "catalog" / "capability-catalog.yaml").exists():
+            c_path = default_gov_dir / "catalog" / "capability-catalog.yaml"
+        elif (default_gov_dir / "capability-catalog.yaml").exists():
+            c_path = default_gov_dir / "capability-catalog.yaml"
+        else:
+            c_path = default_esp_dir / "capability-catalog.yaml"
+
+    if quarantine_path:
+        q_path = Path(quarantine_path).resolve()
+    else:
+        if (default_gov_dir / "gates" / "quarantine.yaml").exists():
+            q_path = default_gov_dir / "gates" / "quarantine.yaml"
+        elif (default_gov_dir / "quarantine.yaml").exists():
+            q_path = default_gov_dir / "quarantine.yaml"
+        else:
+            q_path = default_gov_dir / "gates" / "quarantine.yaml"
 
     if not m_path.exists():
         raise FileNotFoundError(f"Checklist manifest file not found: {m_path}")

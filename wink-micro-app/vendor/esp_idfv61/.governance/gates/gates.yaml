@@ -110,7 +110,8 @@ rules:
     modes: [pr, nightly]
     trigger: git_diff
     trigger_paths:
-      - "wink-micro-app/vendor/esp_idfv61/capability-catalog.yaml"
+      - "wink-micro-app/vendor/esp_idfv61/.governance/catalog/capability-catalog.yaml"
+      - "wink-micro-app/vendor/esp_idfv61/.governance/capability-catalog.yaml"
     module: rules.g2_cap_has_owned_paths
     description: "能力项必须声明非空 owned_paths 列表"
 
@@ -120,7 +121,8 @@ rules:
     modes: [pr, nightly]
     trigger: git_diff
     trigger_paths:
-      - "wink-micro-app/vendor/esp_idfv61/capability-catalog.yaml"
+      - "wink-micro-app/vendor/esp_idfv61/.governance/catalog/capability-catalog.yaml"
+      - "wink-micro-app/vendor/esp_idfv61/.governance/capability-catalog.yaml"
     module: rules.g2_cap_cross_mcu
     description: "已实现能力跨 MCU 凭据审查"
 

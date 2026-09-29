@@ -186,7 +186,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p reports
-          python wink-micro-app/vendor/esp_idfv61/.gates/run_gates.py \
+          python wink-micro-app/vendor/esp_idfv61/.governance/gates/run_gates.py \
             --mode nightly \
             --output-json reports/gate_report_nightly.json
         continue-on-error: false
