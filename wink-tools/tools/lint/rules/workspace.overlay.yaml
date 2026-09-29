@@ -1,0 +1,10 @@
+version: 1
+id: workspace
+disable_rules: []
+overrides:
+  APP-NO-DAL-CALL:
+    add_allow_paths:
+      - path: 'wink-micro-app/fixtures/resource_conflict/**'
+        reason: 'counter-example sample intentionally calls dal_* for pal_resource wiring tests'
+      - path: 'wink-micro-app/native/dual_task_demo/**'
+        reason: 'L2 expert sample: hand-written device_tree, actuator registry, Flash override'
