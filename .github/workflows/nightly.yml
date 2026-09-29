@@ -172,3 +172,27 @@ jobs:
               print("::error::Docs drift detected; opened a new issue.")
           sys.exit(1)
           PY
+
+  esp-idf-gate-nightly:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Python dependencies
+        run: python -m pip install pyyaml
+      - name: Run ESP-IDF Gate System (Nightly full mode)
+        shell: bash
+        run: |
+          mkdir -p reports
+          python wink-micro-app/vendor/esp_idfv61/.gates/run_gates.py \
+            --mode nightly \
+            --output-json reports/gate_report_nightly.json
+        continue-on-error: false
+      - name: Upload Nightly Gate Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: esp_idf_gate_report_nightly
+          path: reports/gate_report_nightly.json

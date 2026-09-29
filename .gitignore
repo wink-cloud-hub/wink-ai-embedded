@@ -124,3 +124,6 @@ docs/vendors/
 docs/.internals/
 .internals/
 
+# Gate report outputs (ephemeral CI outputs)
+**/esp_idfv61/.gates/reports/*.json
+
