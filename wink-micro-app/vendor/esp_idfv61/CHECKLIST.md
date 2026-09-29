@@ -1,6 +1,7 @@
 # ESP-IDF v6.1 官方示例全量仿真适配核对清单 (Checklist)
 
 > **权威上游路径**：`D:\software\embedded-tools\esp-idf\.espressif\v6.1\esp-idf\examples`  
+> **分类与能力规范**：[`CLASSIFICATION-SPEC.md`](CLASSIFICATION-SPEC.md)（六层职责分工、能力图谱与准入治理法典）  
 > **执行标准手册**：[`PLAYBOOK.md`](PLAYBOOK.md)（硬性门禁与五阶段工作流）  
 > **参考标准规范**：[`PLAN-20260922-ESP-IDF-SIM-MASTER`](../../../docs/implementation-plans/esp32/2026-09-22-esp-idf-simulation-interception-master-plan.md) §7.1.1（三层证据塔与精选规则）  
 > **对标基线**：[`CMS8S78xx 官方示例清单`](../cms8s78xx/CHECKLIST.md)（业界最高保真审计基线）  
