@@ -62,7 +62,7 @@
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L1_ui",
-            "scenario_path": "blink_gpio/unisim-scenarios/blink_gpio.scenario.json",
+            "scenario_path": "get-started/blink_gpio/unisim-scenarios/blink_gpio.scenario.json",
             "timeout_virtual_us": 3500000,
             "timeout_wall_ms": 10000,
             "positive_cases": [
@@ -92,7 +92,8 @@
             "verified_at": "2026-09-29T14:00:00Z"
           }
         }
-      ]
+      ],
+      "target_app_dir": "get-started/blink_gpio"
     },
     {
       "id": "esp.get_started.hello_world",
@@ -151,7 +152,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "get-started/hello_world"
     },
     {
       "id": "esp.peripherals.adc.continuous_read",
@@ -211,7 +213,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/adc_continuous_read"
     },
     {
       "id": "esp.peripherals.adc.oneshot_read",
@@ -271,7 +274,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/adc_oneshot_read"
     },
     {
       "id": "esp.peripherals.analog_comparator.auto_scan",
@@ -331,7 +335,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/analog_comparator_auto_scan"
     },
     {
       "id": "esp.peripherals.analog_comparator.etm_periodic_scan",
@@ -392,7 +397,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/analog_comparator_etm_periodic_scan"
     },
     {
       "id": "esp.peripherals.bitscrambler",
@@ -452,7 +458,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/bitscrambler"
     },
     {
       "id": "esp.peripherals.camera.dvp_dsi",
@@ -512,7 +519,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/camera_dvp_dsi"
     },
     {
       "id": "esp.peripherals.camera.dvp_isp_dsi",
@@ -573,7 +581,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/camera_dvp_isp_dsi"
     },
     {
       "id": "esp.peripherals.camera.mipi_isp_dsi",
@@ -633,7 +642,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/camera_mipi_isp_dsi"
     },
     {
       "id": "esp.peripherals.dac.dac_continuous.dac_audio",
@@ -692,7 +702,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/dac_dac_continuous_dac_audio"
     },
     {
       "id": "esp.peripherals.dac.dac_continuous.signal_generator",
@@ -755,7 +766,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/dac_dac_continuous_signal_generator"
     },
     {
       "id": "esp.peripherals.dac.dac_cosine_wave",
@@ -815,7 +827,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/dac_dac_cosine_wave"
     },
     {
       "id": "esp.peripherals.dac.dac_oneshot",
@@ -876,7 +889,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/dac_dac_oneshot"
     },
     {
       "id": "esp.peripherals.dedicated_gpio.soft_i2c",
@@ -936,7 +950,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/dedicated_gpio_soft_i2c"
     },
     {
       "id": "esp.peripherals.dedicated_gpio.soft_spi",
@@ -996,7 +1011,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/dedicated_gpio_soft_spi"
     },
     {
       "id": "esp.peripherals.dedicated_gpio.soft_uart",
@@ -1056,7 +1072,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/dedicated_gpio_soft_uart"
     },
     {
       "id": "esp.peripherals.dma.async_color_convert",
@@ -1116,7 +1133,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/dma_async_color_convert"
     },
     {
       "id": "esp.peripherals.dma.async_crc",
@@ -1176,7 +1194,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/dma_async_crc"
     },
     {
       "id": "esp.peripherals.gpio.generic_gpio",
@@ -1236,7 +1255,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/gpio_generic_gpio"
     },
     {
       "id": "esp.peripherals.gpio.matrix_keyboard",
@@ -1296,7 +1316,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/gpio_matrix_keyboard"
     },
     {
       "id": "esp.peripherals.h264",
@@ -1356,7 +1377,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/h264"
     },
     {
       "id": "esp.peripherals.i2c.i2c_basic",
@@ -1430,7 +1452,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/i2c_basic"
     },
     {
       "id": "esp.peripherals.i2c.i2c_eeprom",
@@ -1490,7 +1513,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/i2c_i2c_eeprom"
     },
     {
       "id": "esp.peripherals.i2c.i2c_slave_network_sensor",
@@ -1552,7 +1576,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/i2c_i2c_slave_network_sensor"
     },
     {
       "id": "esp.peripherals.i2c.i2c_tools",
@@ -1613,7 +1638,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/i2c_i2c_tools"
     },
     {
       "id": "esp.peripherals.i2c.i2c_u8g2",
@@ -1674,7 +1700,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/i2c_i2c_u8g2"
     },
     {
       "id": "esp.peripherals.i2s.i2s_advance.i2s_usb",
@@ -1736,7 +1763,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/i2s_i2s_advance_i2s_usb"
     },
     {
       "id": "esp.peripherals.i2s.i2s_basic.i2s_pdm",
@@ -1796,7 +1824,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/i2s_i2s_basic_i2s_pdm"
     },
     {
       "id": "esp.peripherals.i2s.i2s_basic.i2s_std",
@@ -1857,7 +1886,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/i2s_i2s_basic_i2s_std"
     },
     {
       "id": "esp.peripherals.i2s.i2s_basic.i2s_tdm",
@@ -1917,7 +1947,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/i2s_i2s_basic_i2s_tdm"
     },
     {
       "id": "esp.peripherals.i2s.i2s_codec.i2s_es7210_tdm",
@@ -1978,7 +2009,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/i2s_i2s_codec_i2s_es7210_tdm"
     },
     {
       "id": "esp.peripherals.i2s.i2s_codec.i2s_es8311",
@@ -2040,7 +2072,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/i2s_i2s_codec_i2s_es8311"
     },
     {
       "id": "esp.peripherals.i2s.i2s_recorder",
@@ -2102,7 +2135,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/i2s_i2s_recorder"
     },
     {
       "id": "esp.peripherals.i3c.i3c_i2c_basic",
@@ -2161,7 +2195,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/i3c_i3c_i2c_basic"
     },
     {
       "id": "esp.peripherals.i3c.i3c_lsm6dscx",
@@ -2221,7 +2256,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/i3c_i3c_lsm6dscx"
     },
     {
       "id": "esp.peripherals.isp.multi_pipelines",
@@ -2282,7 +2318,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/isp_multi_pipelines"
     },
     {
       "id": "esp.peripherals.jpeg.jpeg_decode",
@@ -2341,7 +2378,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/jpeg_jpeg_decode"
     },
     {
       "id": "esp.peripherals.jpeg.jpeg_encode",
@@ -2400,7 +2438,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/jpeg_jpeg_encode"
     },
     {
       "id": "esp.peripherals.lcd.i2c_oled",
@@ -2460,7 +2499,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/lcd_i2c_oled"
     },
     {
       "id": "esp.peripherals.lcd.i80_controller",
@@ -2520,7 +2560,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/lcd_i80_controller"
     },
     {
       "id": "esp.peripherals.lcd.mipi_dsi",
@@ -2580,7 +2621,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/lcd_mipi_dsi"
     },
     {
       "id": "esp.peripherals.lcd.parlio_simulate",
@@ -2640,7 +2682,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/lcd_parlio_simulate"
     },
     {
       "id": "esp.peripherals.lcd.rgb_panel",
@@ -2700,7 +2743,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/lcd_rgb_panel"
     },
     {
       "id": "esp.peripherals.lcd.spi_lcd_touch",
@@ -2761,7 +2805,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/lcd_spi_lcd_touch"
     },
     {
       "id": "esp.peripherals.lcd.tjpgd",
@@ -2823,7 +2868,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/lcd_tjpgd"
     },
     {
       "id": "esp.peripherals.ledc.ledc_basic",
@@ -2899,7 +2945,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/ledc_basic"
     },
     {
       "id": "esp.peripherals.ledc.ledc_dimmer",
@@ -2960,7 +3007,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/ledc_ledc_dimmer"
     },
     {
       "id": "esp.peripherals.ledc.ledc_fade",
@@ -3020,7 +3068,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/ledc_ledc_fade"
     },
     {
       "id": "esp.peripherals.ledc.ledc_gamma_curve_fade",
@@ -3080,7 +3129,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/ledc_ledc_gamma_curve_fade"
     },
     {
       "id": "esp.peripherals.mcpwm.mcpwm_bdc_speed_control",
@@ -3140,7 +3190,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/mcpwm_mcpwm_bdc_speed_control"
     },
     {
       "id": "esp.peripherals.mcpwm.mcpwm_bldc_hall_control",
@@ -3201,7 +3252,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/mcpwm_mcpwm_bldc_hall_control"
     },
     {
       "id": "esp.peripherals.mcpwm.mcpwm_capture_hc_sr04",
@@ -3261,7 +3313,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/mcpwm_mcpwm_capture_hc_sr04"
     },
     {
       "id": "esp.peripherals.mcpwm.mcpwm_foc_svpwm_open_loop",
@@ -3322,7 +3375,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/mcpwm_mcpwm_foc_svpwm_open_loop"
     },
     {
       "id": "esp.peripherals.mcpwm.mcpwm_servo_control",
@@ -3382,7 +3436,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/mcpwm_mcpwm_servo_control"
     },
     {
       "id": "esp.peripherals.mcpwm.mcpwm_sync",
@@ -3443,7 +3498,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/mcpwm_mcpwm_sync"
     },
     {
       "id": "esp.peripherals.parlio.parlio_rx.logic_analyzer",
@@ -3509,7 +3565,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/parlio_parlio_rx_logic_analyzer"
     },
     {
       "id": "esp.peripherals.parlio.parlio_tx.advanced_rgb_led_matrix",
@@ -3569,7 +3626,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/parlio_parlio_tx_advanced_rgb_led_matrix"
     },
     {
       "id": "esp.peripherals.parlio.parlio_tx.simple_rgb_led_matrix",
@@ -3630,7 +3688,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/parlio_parlio_tx_simple_rgb_led_matrix"
     },
     {
       "id": "esp.peripherals.pcnt.rotary_encoder",
@@ -3692,7 +3751,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/pcnt_rotary_encoder"
     },
     {
       "id": "esp.peripherals.ppa.ppa_rgb_lcd",
@@ -3752,7 +3812,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/ppa_ppa_rgb_lcd"
     },
     {
       "id": "esp.peripherals.rmt.dshot_esc",
@@ -3812,7 +3873,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/rmt_dshot_esc"
     },
     {
       "id": "esp.peripherals.rmt.ir_nec_transceiver",
@@ -3874,7 +3936,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/rmt_ir_nec_transceiver"
     },
     {
       "id": "esp.peripherals.rmt.led_strip",
@@ -3935,7 +3998,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/rmt_led_strip"
     },
     {
       "id": "esp.peripherals.rmt.led_strip_simple_encoder",
@@ -3995,7 +4059,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/rmt_led_strip_simple_encoder"
     },
     {
       "id": "esp.peripherals.rmt.musical_buzzer",
@@ -4055,7 +4120,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/rmt_musical_buzzer"
     },
     {
       "id": "esp.peripherals.rmt.onewire",
@@ -4115,7 +4181,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/rmt_onewire"
     },
     {
       "id": "esp.peripherals.rmt.stepper_motor",
@@ -4176,7 +4243,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/rmt_stepper_motor"
     },
     {
       "id": "esp.peripherals.sdio.host",
@@ -4236,7 +4304,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/sdio_host"
     },
     {
       "id": "esp.peripherals.sdio.slave",
@@ -4295,7 +4364,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/sdio_slave"
     },
     {
       "id": "esp.peripherals.sigma_delta.sdm_dac",
@@ -4355,7 +4425,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/sigma_delta_sdm_dac"
     },
     {
       "id": "esp.peripherals.sigma_delta.sdm_led",
@@ -4414,7 +4485,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/sigma_delta_sdm_led"
     },
     {
       "id": "esp.peripherals.spi_master.hd_eeprom",
@@ -4475,7 +4547,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/spi_master_hd_eeprom"
     },
     {
       "id": "esp.peripherals.spi_master.lcd",
@@ -4536,7 +4609,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/spi_master_lcd"
     },
     {
       "id": "esp.peripherals.spi_slave.receiver",
@@ -4596,7 +4670,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/spi_slave_receiver"
     },
     {
       "id": "esp.peripherals.spi_slave.sender",
@@ -4657,7 +4732,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/spi_slave_sender"
     },
     {
       "id": "esp.peripherals.spi_slave_hd.append_mode.master",
@@ -4717,7 +4793,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/spi_slave_hd_append_mode_master"
     },
     {
       "id": "esp.peripherals.spi_slave_hd.append_mode.slave",
@@ -4776,7 +4853,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/spi_slave_hd_append_mode_slave"
     },
     {
       "id": "esp.peripherals.spi_slave_hd.segment_mode.seg_master",
@@ -4836,7 +4914,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/spi_slave_hd_segment_mode_seg_master"
     },
     {
       "id": "esp.peripherals.spi_slave_hd.segment_mode.seg_slave",
@@ -4895,7 +4974,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/spi_slave_hd_segment_mode_seg_slave"
     },
     {
       "id": "esp.peripherals.temperature_sensor.temp_sensor",
@@ -4955,7 +5035,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/temperature_sensor_temp_sensor"
     },
     {
       "id": "esp.peripherals.temperature_sensor.temp_sensor_monitor",
@@ -5015,7 +5096,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/temperature_sensor_temp_sensor_monitor"
     },
     {
       "id": "esp.peripherals.timer_group.gptimer",
@@ -5089,7 +5171,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/gptimer_alarm"
     },
     {
       "id": "esp.peripherals.timer_group.gptimer_capture_hc_sr04",
@@ -5150,7 +5233,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/timer_group_gptimer_capture_hc_sr04"
     },
     {
       "id": "esp.peripherals.timer_group.wiegand_interface",
@@ -5212,7 +5296,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/timer_group_wiegand_interface"
     },
     {
       "id": "esp.peripherals.touch_sensor.touch_sens_basic",
@@ -5271,7 +5356,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/touch_sensor_touch_sens_basic"
     },
     {
       "id": "esp.peripherals.touch_sensor.touch_sens_sleep",
@@ -5332,7 +5418,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/touch_sensor_touch_sens_sleep"
     },
     {
       "id": "esp.peripherals.twai.cybergear",
@@ -5392,7 +5479,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/twai_cybergear"
     },
     {
       "id": "esp.peripherals.twai.twai_error_recovery",
@@ -5451,7 +5539,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/twai_twai_error_recovery"
     },
     {
       "id": "esp.peripherals.twai.twai_network.twai_listen_only",
@@ -5510,7 +5599,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/twai_twai_network_twai_listen_only"
     },
     {
       "id": "esp.peripherals.twai.twai_network.twai_sender",
@@ -5569,7 +5659,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/twai_twai_network_twai_sender"
     },
     {
       "id": "esp.peripherals.twai.twai_utils",
@@ -5630,7 +5721,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/twai_twai_utils"
     },
     {
       "id": "esp.peripherals.uart.nmea0183_parser",
@@ -5691,7 +5783,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/uart_nmea0183_parser"
     },
     {
       "id": "esp.peripherals.uart.uart_async_rxtxtasks",
@@ -5752,7 +5845,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/uart_uart_async_rxtxtasks"
     },
     {
       "id": "esp.peripherals.uart.uart_dma_ota",
@@ -5814,7 +5908,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/uart_uart_dma_ota"
     },
     {
       "id": "esp.peripherals.uart.uart_echo",
@@ -5889,7 +5984,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/uart_echo"
     },
     {
       "id": "esp.peripherals.uart.uart_echo_rs485",
@@ -5950,7 +6046,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/uart_uart_echo_rs485"
     },
     {
       "id": "esp.peripherals.uart.uart_events",
@@ -6010,7 +6107,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/uart_uart_events"
     },
     {
       "id": "esp.peripherals.uart.uart_repl",
@@ -6072,7 +6170,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/uart_uart_repl"
     },
     {
       "id": "esp.peripherals.uart.uart_select",
@@ -6132,7 +6231,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/uart_uart_select"
     },
     {
       "id": "esp.peripherals.usb.device.cherryusb_serial_device",
@@ -6191,7 +6291,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/usb_device_cherryusb_serial_device"
     },
     {
       "id": "esp.peripherals.usb.device.tusb_cdc_acm_wakeup",
@@ -6251,7 +6352,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/usb_device_tusb_cdc_acm_wakeup"
     },
     {
       "id": "esp.peripherals.usb.device.tusb_composite_msc_serialdevice",
@@ -6311,7 +6413,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/usb_device_tusb_composite_msc_serialdevice"
     },
     {
       "id": "esp.peripherals.usb.device.tusb_console",
@@ -6370,7 +6473,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/usb_device_tusb_console"
     },
     {
       "id": "esp.peripherals.usb.device.tusb_hid",
@@ -6430,7 +6534,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/usb_device_tusb_hid"
     },
     {
       "id": "esp.peripherals.usb.device.tusb_midi",
@@ -6489,7 +6594,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/usb_device_tusb_midi"
     },
     {
       "id": "esp.peripherals.usb.device.tusb_msc",
@@ -6552,7 +6658,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/usb_device_tusb_msc"
     },
     {
       "id": "esp.peripherals.usb.device.tusb_ncm",
@@ -6614,7 +6721,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/usb_device_tusb_ncm"
     },
     {
       "id": "esp.peripherals.usb.device.tusb_serial_device",
@@ -6673,7 +6781,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/usb_device_tusb_serial_device"
     },
     {
       "id": "esp.peripherals.usb.host.cdc",
@@ -6733,7 +6842,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/usb_host_cdc"
     },
     {
       "id": "esp.peripherals.usb.host.cherryusb_host",
@@ -6795,7 +6905,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/usb_host_cherryusb_host"
     },
     {
       "id": "esp.peripherals.usb.host.hid",
@@ -6855,7 +6966,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/usb_host_hid"
     },
     {
       "id": "esp.peripherals.usb.host.msc",
@@ -6915,7 +7027,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/usb_host_msc"
     },
     {
       "id": "esp.peripherals.usb.host.usb_host_lib",
@@ -6976,7 +7089,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/usb_host_usb_host_lib"
     },
     {
       "id": "esp.peripherals.usb.host.uvc",
@@ -7035,7 +7149,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/usb_host_uvc"
     },
     {
       "id": "esp.peripherals.usb_serial_jtag.usb_serial_jtag_echo",
@@ -7094,7 +7209,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "peripherals/usb_serial_jtag_usb_serial_jtag_echo"
     },
     {
       "id": "esp.system.app_trace_basic",
@@ -7154,7 +7270,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/app_trace_basic"
     },
     {
       "id": "esp.system.app_trace_to_plot",
@@ -7214,7 +7331,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/app_trace_to_plot"
     },
     {
       "id": "esp.system.base_mac_address",
@@ -7273,7 +7391,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/base_mac_address"
     },
     {
       "id": "esp.system.console.advanced",
@@ -7340,7 +7459,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/console_advanced"
     },
     {
       "id": "esp.system.console.basic",
@@ -7402,7 +7522,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/console_basic"
     },
     {
       "id": "esp.system.deep_sleep",
@@ -7464,7 +7585,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/deep_sleep"
     },
     {
       "id": "esp.system.deep_sleep_wake_stub",
@@ -7524,7 +7646,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/deep_sleep_wake_stub"
     },
     {
       "id": "esp.system.efuse",
@@ -7583,7 +7706,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/efuse"
     },
     {
       "id": "esp.system.esp_event.default_event_loop",
@@ -7643,7 +7767,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/esp_event_default_event_loop"
     },
     {
       "id": "esp.system.esp_event.user_event_loops",
@@ -7703,7 +7828,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/esp_event_user_event_loops"
     },
     {
       "id": "esp.system.esp_timer",
@@ -7763,7 +7889,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/esp_timer"
     },
     {
       "id": "esp.system.esp_trace",
@@ -7823,7 +7950,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/esp_trace"
     },
     {
       "id": "esp.system.eventfd",
@@ -7884,7 +8012,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/eventfd"
     },
     {
       "id": "esp.system.flash_suspend",
@@ -7945,7 +8074,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/flash_suspend"
     },
     {
       "id": "esp.system.freertos.basic_freertos_smp_usage",
@@ -8005,7 +8135,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/freertos_basic_freertos_smp_usage"
     },
     {
       "id": "esp.system.freertos.real_time_stats",
@@ -8064,7 +8195,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/freertos_real_time_stats"
     },
     {
       "id": "esp.system.gcov",
@@ -8125,7 +8257,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/gcov"
     },
     {
       "id": "esp.system.gdbstub",
@@ -8184,7 +8317,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/gdbstub"
     },
     {
       "id": "esp.system.heap_task_tracking.advanced",
@@ -8244,7 +8378,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/heap_task_tracking_advanced"
     },
     {
       "id": "esp.system.heap_task_tracking.basic",
@@ -8304,7 +8439,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/heap_task_tracking_basic"
     },
     {
       "id": "esp.system.himem",
@@ -8365,7 +8501,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/himem"
     },
     {
       "id": "esp.system.ipc.ipc_isr.riscv",
@@ -8424,7 +8561,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ipc_ipc_isr_riscv"
     },
     {
       "id": "esp.system.ipc.ipc_isr.xtensa",
@@ -8483,7 +8621,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ipc_ipc_isr_xtensa"
     },
     {
       "id": "esp.system.light_sleep",
@@ -8545,7 +8684,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/light_sleep"
     },
     {
       "id": "esp.system.nmi_isr",
@@ -8605,7 +8745,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/nmi_isr"
     },
     {
       "id": "esp.system.ota.advanced_https_ota",
@@ -8671,7 +8812,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ota_advanced_https_ota"
     },
     {
       "id": "esp.system.ota.native_ota_example",
@@ -8737,7 +8879,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ota_native_ota_example"
     },
     {
       "id": "esp.system.ota.otatool",
@@ -8798,7 +8941,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ota_otatool"
     },
     {
       "id": "esp.system.ota.partitions_ota",
@@ -8863,7 +9007,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ota_partitions_ota"
     },
     {
       "id": "esp.system.ota.simple_ota_example",
@@ -8927,7 +9072,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ota_simple_ota_example"
     },
     {
       "id": "esp.system.perfmon",
@@ -8987,7 +9133,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/perfmon"
     },
     {
       "id": "esp.system.pthread",
@@ -9046,7 +9193,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/pthread"
     },
     {
       "id": "esp.system.rt_mqueue",
@@ -9105,7 +9253,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/rt_mqueue"
     },
     {
       "id": "esp.system.select",
@@ -9166,7 +9315,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/select"
     },
     {
       "id": "esp.system.startup_time",
@@ -9225,7 +9375,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/startup_time"
     },
     {
       "id": "esp.system.sysview_tracing",
@@ -9286,7 +9437,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/sysview_tracing"
     },
     {
       "id": "esp.system.sysview_tracing_heap_log",
@@ -9346,7 +9498,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/sysview_tracing_heap_log"
     },
     {
       "id": "esp.system.task_watchdog",
@@ -9405,7 +9558,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/task_watchdog"
     },
     {
       "id": "esp.system.ulp.lp_core.build_system",
@@ -9465,7 +9619,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_lp_core_build_system"
     },
     {
       "id": "esp.system.ulp.lp_core.debugging",
@@ -9525,7 +9680,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_lp_core_debugging"
     },
     {
       "id": "esp.system.ulp.lp_core.gpio",
@@ -9586,7 +9742,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_lp_core_gpio"
     },
     {
       "id": "esp.system.ulp.lp_core.gpio_intr_pulse_counter",
@@ -9647,7 +9804,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_lp_core_gpio_intr_pulse_counter"
     },
     {
       "id": "esp.system.ulp.lp_core.gpio_wakeup",
@@ -9707,7 +9865,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_lp_core_gpio_wakeup"
     },
     {
       "id": "esp.system.ulp.lp_core.inter_cpu_critical_section",
@@ -9766,7 +9925,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_lp_core_inter_cpu_critical_section"
     },
     {
       "id": "esp.system.ulp.lp_core.interrupt",
@@ -9826,7 +9986,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_lp_core_interrupt"
     },
     {
       "id": "esp.system.ulp.lp_core.lp_adc",
@@ -9886,7 +10047,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_lp_core_lp_adc"
     },
     {
       "id": "esp.system.ulp.lp_core.lp_i2c",
@@ -9946,7 +10108,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_lp_core_lp_i2c"
     },
     {
       "id": "esp.system.ulp.lp_core.lp_mailbox",
@@ -10006,7 +10169,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_lp_core_lp_mailbox"
     },
     {
       "id": "esp.system.ulp.lp_core.lp_spi",
@@ -10066,7 +10230,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_lp_core_lp_spi"
     },
     {
       "id": "esp.system.ulp.lp_core.lp_timer_interrupt",
@@ -10126,7 +10291,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_lp_core_lp_timer_interrupt"
     },
     {
       "id": "esp.system.ulp.lp_core.lp_touch",
@@ -10186,7 +10352,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_lp_core_lp_touch"
     },
     {
       "id": "esp.system.ulp.lp_core.lp_uart.lp_uart_char_seq_wakeup",
@@ -10246,7 +10413,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_lp_core_lp_uart_lp_uart_char_seq_wakeup"
     },
     {
       "id": "esp.system.ulp.lp_core.lp_uart.lp_uart_echo",
@@ -10306,7 +10474,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_lp_core_lp_uart_lp_uart_echo"
     },
     {
       "id": "esp.system.ulp.lp_core.lp_uart.lp_uart_print",
@@ -10366,7 +10535,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_lp_core_lp_uart_lp_uart_print"
     },
     {
       "id": "esp.system.ulp.ulp_fsm.ulp_adc",
@@ -10428,7 +10598,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_ulp_fsm_ulp_adc"
     },
     {
       "id": "esp.system.ulp.ulp_fsm_riscv_combined.counter",
@@ -10489,7 +10660,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_ulp_fsm_riscv_combined_counter"
     },
     {
       "id": "esp.system.ulp.ulp_riscv.adc",
@@ -10549,7 +10721,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_ulp_riscv_adc"
     },
     {
       "id": "esp.system.ulp.ulp_riscv.ds18b20_onewire",
@@ -10610,7 +10783,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_ulp_riscv_ds18b20_onewire"
     },
     {
       "id": "esp.system.ulp.ulp_riscv.gpio",
@@ -10671,7 +10845,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_ulp_riscv_gpio"
     },
     {
       "id": "esp.system.ulp.ulp_riscv.gpio_interrupt",
@@ -10732,7 +10907,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_ulp_riscv_gpio_interrupt"
     },
     {
       "id": "esp.system.ulp.ulp_riscv.gpio_pulse_counter",
@@ -10793,7 +10969,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_ulp_riscv_gpio_pulse_counter"
     },
     {
       "id": "esp.system.ulp.ulp_riscv.i2c",
@@ -10853,7 +11030,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_ulp_riscv_i2c"
     },
     {
       "id": "esp.system.ulp.ulp_riscv.interrupts",
@@ -10913,7 +11091,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_ulp_riscv_interrupts"
     },
     {
       "id": "esp.system.ulp.ulp_riscv.touch",
@@ -10973,7 +11152,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_ulp_riscv_touch"
     },
     {
       "id": "esp.system.ulp.ulp_riscv.uart_print",
@@ -11033,7 +11213,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/ulp_ulp_riscv_uart_print"
     },
     {
       "id": "esp.system.unit_test",
@@ -11092,7 +11273,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/unit_test"
     },
     {
       "id": "esp.system.unit_test.test",
@@ -11151,7 +11333,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/unit_test_test"
     },
     {
       "id": "esp.system.xip_from_psram",
@@ -11211,7 +11394,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "system/xip_from_psram"
     },
     {
       "id": "esp.protocols.dns_over_https",
@@ -11273,7 +11457,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/dns_over_https"
     },
     {
       "id": "esp.protocols.esp_http_client",
@@ -11349,7 +11534,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/http_client"
     },
     {
       "id": "esp.protocols.esp_http_client_mutual_auth",
@@ -11411,7 +11597,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/esp_http_client_mutual_auth"
     },
     {
       "id": "esp.protocols.esp_local_ctrl",
@@ -11473,7 +11660,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/esp_local_ctrl"
     },
     {
       "id": "esp.protocols.http_request",
@@ -11535,7 +11723,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/http_request"
     },
     {
       "id": "esp.protocols.http_server.advanced_tests",
@@ -11597,7 +11786,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/http_server_advanced_tests"
     },
     {
       "id": "esp.protocols.http_server.async_handlers",
@@ -11659,7 +11849,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/http_server_async_handlers"
     },
     {
       "id": "esp.protocols.http_server.captive_portal",
@@ -11721,7 +11912,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/http_server_captive_portal"
     },
     {
       "id": "esp.protocols.http_server.file_serving",
@@ -11786,7 +11978,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/http_server_file_serving"
     },
     {
       "id": "esp.protocols.http_server.persistent_sockets",
@@ -11848,7 +12041,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/http_server_persistent_sockets"
     },
     {
       "id": "esp.protocols.http_server.restful_server",
@@ -11910,7 +12104,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/http_server_restful_server"
     },
     {
       "id": "esp.protocols.http_server.simple",
@@ -11972,7 +12167,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/http_server_simple"
     },
     {
       "id": "esp.protocols.http_server.ws_echo_server",
@@ -12034,7 +12230,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/http_server_ws_echo_server"
     },
     {
       "id": "esp.protocols.https_mbedtls",
@@ -12096,7 +12293,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/https_mbedtls"
     },
     {
       "id": "esp.protocols.https_request",
@@ -12158,7 +12356,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/https_request"
     },
     {
       "id": "esp.protocols.https_server.simple",
@@ -12220,7 +12419,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/https_server_simple"
     },
     {
       "id": "esp.protocols.https_server.wss_server",
@@ -12282,7 +12482,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/https_server_wss_server"
     },
     {
       "id": "esp.protocols.https_x509_bundle",
@@ -12344,7 +12545,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/https_x509_bundle"
     },
     {
       "id": "esp.protocols.icmp.pmtu_probe",
@@ -12405,7 +12607,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/icmp_pmtu_probe"
     },
     {
       "id": "esp.protocols.icmp_echo",
@@ -12467,7 +12670,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/icmp_echo"
     },
     {
       "id": "esp.protocols.l2tap",
@@ -12528,7 +12732,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/l2tap"
     },
     {
       "id": "esp.protocols.mqtt",
@@ -12604,7 +12809,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/mqtt_tcp"
     },
     {
       "id": "esp.protocols.mqtt5",
@@ -12666,7 +12872,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/mqtt5"
     },
     {
       "id": "esp.protocols.smtp_client",
@@ -12728,7 +12935,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/smtp_client"
     },
     {
       "id": "esp.protocols.sntp",
@@ -12790,7 +12998,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/sntp"
     },
     {
       "id": "esp.protocols.sockets.icmpv6_ping",
@@ -12851,7 +13060,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/sockets_icmpv6_ping"
     },
     {
       "id": "esp.protocols.sockets.non_blocking",
@@ -12912,7 +13122,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/sockets_non_blocking"
     },
     {
       "id": "esp.protocols.sockets.tcp_client",
@@ -12973,7 +13184,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/sockets_tcp_client"
     },
     {
       "id": "esp.protocols.sockets.tcp_client_multi_net",
@@ -13034,7 +13246,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/sockets_tcp_client_multi_net"
     },
     {
       "id": "esp.protocols.sockets.tcp_server",
@@ -13096,7 +13309,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/sockets_tcp_server"
     },
     {
       "id": "esp.protocols.sockets.tcp_transport_client",
@@ -13158,7 +13372,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/sockets_tcp_transport_client"
     },
     {
       "id": "esp.protocols.sockets.udp_client",
@@ -13219,7 +13434,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/sockets_udp_client"
     },
     {
       "id": "esp.protocols.sockets.udp_multicast",
@@ -13281,7 +13497,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/sockets_udp_multicast"
     },
     {
       "id": "esp.protocols.sockets.udp_server",
@@ -13343,7 +13560,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/sockets_udp_server"
     },
     {
       "id": "esp.protocols.static_ip",
@@ -13405,7 +13623,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "protocols/static_ip"
     },
     {
       "id": "esp.wifi.espnow",
@@ -13468,7 +13687,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "wifi/espnow"
     },
     {
       "id": "esp.wifi.fast_scan",
@@ -13530,7 +13750,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "wifi/fast_scan"
     },
     {
       "id": "esp.wifi.ftm",
@@ -13593,7 +13814,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "wifi/ftm"
     },
     {
       "id": "esp.wifi.getting_started.softap",
@@ -13655,7 +13877,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "wifi/getting_started_softAP"
     },
     {
       "id": "esp.wifi.getting_started.station",
@@ -13717,7 +13940,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "wifi/wifi_sta"
     },
     {
       "id": "esp.wifi.iperf",
@@ -13780,7 +14004,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "wifi/iperf"
     },
     {
       "id": "esp.wifi.itwt",
@@ -13844,7 +14069,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "wifi/itwt"
     },
     {
       "id": "esp.wifi.power_save",
@@ -13908,7 +14134,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "wifi/power_save"
     },
     {
       "id": "esp.wifi.roaming.roaming_11kvr",
@@ -13970,7 +14197,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "wifi/roaming_roaming_11kvr"
     },
     {
       "id": "esp.wifi.roaming.roaming_app",
@@ -14032,7 +14260,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "wifi/roaming_roaming_app"
     },
     {
       "id": "esp.wifi.scan",
@@ -14108,7 +14337,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "wifi/scan"
     },
     {
       "id": "esp.wifi.smart_config",
@@ -14170,7 +14400,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "wifi/smart_config"
     },
     {
       "id": "esp.wifi.softap_sta",
@@ -14232,7 +14463,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "wifi/softap_sta"
     },
     {
       "id": "esp.wifi.wifi_aware.nan_console",
@@ -14295,7 +14527,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "wifi/wifi_aware_nan_console"
     },
     {
       "id": "esp.wifi.wifi_aware.nan_publisher",
@@ -14357,7 +14590,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "wifi/wifi_aware_nan_publisher"
     },
     {
       "id": "esp.wifi.wifi_aware.nan_subscriber",
@@ -14419,7 +14653,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "wifi/wifi_aware_nan_subscriber"
     },
     {
       "id": "esp.wifi.wifi_aware.usd_publisher",
@@ -14481,7 +14716,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "wifi/wifi_aware_usd_publisher"
     },
     {
       "id": "esp.wifi.wifi_aware.usd_subscriber",
@@ -14543,7 +14779,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "wifi/wifi_aware_usd_subscriber"
     },
     {
       "id": "esp.wifi.wifi_eap_fast",
@@ -14605,7 +14842,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "wifi/wifi_eap_fast"
     },
     {
       "id": "esp.wifi.wifi_easy_connect.dpp_enrollee",
@@ -14667,7 +14905,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "wifi/wifi_easy_connect_dpp-enrollee"
     },
     {
       "id": "esp.wifi.wifi_enterprise",
@@ -14729,7 +14968,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "wifi/wifi_enterprise"
     },
     {
       "id": "esp.wifi.wifi_nvs_config",
@@ -14791,7 +15031,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "wifi/wifi_nvs_config"
     },
     {
       "id": "esp.wifi.wps",
@@ -14853,7 +15094,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "wifi/wps"
     },
     {
       "id": "esp.wifi.wps_softap_registrar",
@@ -14915,7 +15157,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "wifi/wps_softap_registrar"
     },
     {
       "id": "esp.bluetooth.ble_get_started.bluedroid.bluedroid_beacon",
@@ -14976,7 +15219,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/ble_get_started_bluedroid_Bluedroid_Beacon"
     },
     {
       "id": "esp.bluetooth.ble_get_started.bluedroid.bluedroid_connection",
@@ -15037,7 +15281,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/ble_get_started_bluedroid_Bluedroid_Connection"
     },
     {
       "id": "esp.bluetooth.ble_get_started.bluedroid.bluedroid_gatt_server",
@@ -15100,7 +15345,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/ble_get_started_bluedroid_Bluedroid_GATT_Server"
     },
     {
       "id": "esp.bluetooth.ble_get_started.nimble.nimble_beacon",
@@ -15162,7 +15408,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/ble_get_started_nimble_NimBLE_Beacon"
     },
     {
       "id": "esp.bluetooth.ble_get_started.nimble.nimble_connection",
@@ -15226,7 +15473,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/ble_get_started_nimble_NimBLE_Connection"
     },
     {
       "id": "esp.bluetooth.ble_get_started.nimble.nimble_gatt_server",
@@ -15290,7 +15538,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/ble_get_started_nimble_NimBLE_GATT_Server"
     },
     {
       "id": "esp.bluetooth.ble_get_started.nimble.nimble_security",
@@ -15354,7 +15603,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/ble_get_started_nimble_NimBLE_Security"
     },
     {
       "id": "esp.bluetooth.ble_uart_service",
@@ -15415,7 +15665,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/ble_uart_service"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble.ble_acl_latency.cent",
@@ -15476,7 +15727,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_ble_acl_latency_cent"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble.ble_acl_latency.periph",
@@ -15537,7 +15789,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_ble_acl_latency_periph"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble.ble_ancs",
@@ -15598,7 +15851,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_ble_ancs"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble.ble_compatibility_test",
@@ -15659,7 +15913,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_ble_compatibility_test"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble.ble_eddystone_receiver",
@@ -15720,7 +15975,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_ble_eddystone_receiver"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble.ble_eddystone_sender",
@@ -15781,7 +16037,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_ble_eddystone_sender"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble.ble_enc_adv_data.enc_adv_data_cent",
@@ -15842,7 +16099,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_ble_enc_adv_data_enc_adv_data_cent"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble.ble_enc_adv_data.enc_adv_data_prph",
@@ -15903,7 +16161,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_ble_enc_adv_data_enc_adv_data_prph"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble.ble_hid_device_demo",
@@ -15967,7 +16226,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_ble_hid_device_demo"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble.ble_ibeacon",
@@ -16028,7 +16288,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_ble_ibeacon"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble.ble_multi_conn.ble_multi_conn_cent",
@@ -16089,7 +16350,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_ble_multi_conn_ble_multi_conn_cent"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble.ble_multi_conn.ble_multi_conn_prph",
@@ -16150,7 +16412,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_ble_multi_conn_ble_multi_conn_prph"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble.ble_spp_client",
@@ -16212,7 +16475,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_ble_spp_client"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble.ble_spp_server",
@@ -16275,7 +16539,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_ble_spp_server"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble.ble_throughput.throughput_client",
@@ -16336,7 +16601,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_ble_throughput_throughput_client"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble.ble_throughput.throughput_server",
@@ -16397,7 +16663,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_ble_throughput_throughput_server"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble.gatt_client",
@@ -16458,7 +16725,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_gatt_client"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble.gatt_security_client",
@@ -16519,7 +16787,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_gatt_security_client"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble.gatt_security_server",
@@ -16580,7 +16849,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_gatt_security_server"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble.gatt_server",
@@ -16641,7 +16911,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_gatt_server"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble.gatt_server_service_table",
@@ -16702,7 +16973,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_gatt_server_service_table"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble.gattc_multi_connect",
@@ -16763,7 +17035,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_gattc_multi_connect"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble_50.ble50_security_client",
@@ -16824,7 +17097,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_50_ble50_security_client"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble_50.ble50_security_server",
@@ -16885,7 +17159,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_50_ble50_security_server"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble_50.ble50_throughput.throughput_client",
@@ -16946,7 +17221,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_50_ble50_throughput_throughput_client"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble_50.ble50_throughput.throughput_server",
@@ -17007,7 +17283,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_50_ble50_throughput_throughput_server"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble_50.ble_conn_subrating_central",
@@ -17068,7 +17345,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_50_ble_conn_subrating_central"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble_50.ble_conn_subrating_peripheral",
@@ -17129,7 +17407,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_50_ble_conn_subrating_peripheral"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble_50.ble_connection_central_with_cte",
@@ -17190,7 +17469,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_50_ble_connection_central_with_cte"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble_50.ble_connection_peripheral_with_cte",
@@ -17251,7 +17531,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_50_ble_connection_peripheral_with_cte"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble_50.ble_pawr_advertiser",
@@ -17312,7 +17593,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_50_ble_pawr_advertiser"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble_50.ble_pawr_advertiser_conn",
@@ -17373,7 +17655,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_50_ble_pawr_advertiser_conn"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble_50.ble_pawr_synchronizer",
@@ -17434,7 +17717,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_50_ble_pawr_synchronizer"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble_50.ble_periodic_adv_with_cte",
@@ -17495,7 +17779,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_50_ble_periodic_adv_with_cte"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble_50.ble_periodic_sync_with_cte",
@@ -17556,7 +17841,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_50_ble_periodic_sync_with_cte"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble_50.ble_power_control_central",
@@ -17617,7 +17903,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_50_ble_power_control_central"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble_50.ble_power_control_peripheral",
@@ -17678,7 +17965,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_50_ble_power_control_peripheral"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble_50.multi_adv",
@@ -17739,7 +18027,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_50_multi-adv"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble_50.periodic_adv",
@@ -17800,7 +18089,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_50_periodic_adv"
     },
     {
       "id": "esp.bluetooth.bluedroid.ble_50.periodic_sync",
@@ -17861,7 +18151,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_ble_50_periodic_sync"
     },
     {
       "id": "esp.bluetooth.bluedroid.bluedroid_host_only.bluedroid_host_only_uart",
@@ -17923,7 +18214,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_bluedroid_host_only_bluedroid_host_only_uart"
     },
     {
       "id": "esp.bluetooth.bluedroid.classic_bt.a2dp_sink_stream",
@@ -17983,7 +18275,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_classic_bt_a2dp_sink_stream"
     },
     {
       "id": "esp.bluetooth.bluedroid.classic_bt.a2dp_sink_stream_aac",
@@ -18043,7 +18336,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_classic_bt_a2dp_sink_stream_aac"
     },
     {
       "id": "esp.bluetooth.bluedroid.classic_bt.a2dp_source",
@@ -18104,7 +18398,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_classic_bt_a2dp_source"
     },
     {
       "id": "esp.bluetooth.bluedroid.classic_bt.a2dp_source_aac",
@@ -18165,7 +18460,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_classic_bt_a2dp_source_aac"
     },
     {
       "id": "esp.bluetooth.bluedroid.classic_bt.avrcp_absolute_volume",
@@ -18225,7 +18521,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_classic_bt_avrcp_absolute_volume"
     },
     {
       "id": "esp.bluetooth.bluedroid.classic_bt.avrcp_ct_cover_art",
@@ -18285,7 +18582,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_classic_bt_avrcp_ct_cover_art"
     },
     {
       "id": "esp.bluetooth.bluedroid.classic_bt.avrcp_ct_metadata",
@@ -18345,7 +18643,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_classic_bt_avrcp_ct_metadata"
     },
     {
       "id": "esp.bluetooth.bluedroid.classic_bt.bt_discovery",
@@ -18406,7 +18705,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_classic_bt_bt_discovery"
     },
     {
       "id": "esp.bluetooth.bluedroid.classic_bt.bt_hid_mouse_device",
@@ -18467,7 +18767,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_classic_bt_bt_hid_mouse_device"
     },
     {
       "id": "esp.bluetooth.bluedroid.classic_bt.bt_l2cap_client",
@@ -18529,7 +18830,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_classic_bt_bt_l2cap_client"
     },
     {
       "id": "esp.bluetooth.bluedroid.classic_bt.bt_l2cap_server",
@@ -18591,7 +18893,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_classic_bt_bt_l2cap_server"
     },
     {
       "id": "esp.bluetooth.bluedroid.classic_bt.bt_spp_acceptor",
@@ -18652,7 +18955,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_classic_bt_bt_spp_acceptor"
     },
     {
       "id": "esp.bluetooth.bluedroid.classic_bt.bt_spp_initiator",
@@ -18714,7 +19018,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_classic_bt_bt_spp_initiator"
     },
     {
       "id": "esp.bluetooth.bluedroid.classic_bt.bt_spp_vfs_acceptor",
@@ -18776,7 +19081,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_classic_bt_bt_spp_vfs_acceptor"
     },
     {
       "id": "esp.bluetooth.bluedroid.classic_bt.bt_spp_vfs_initiator",
@@ -18838,7 +19144,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_classic_bt_bt_spp_vfs_initiator"
     },
     {
       "id": "esp.bluetooth.bluedroid.classic_bt.hfp_ag",
@@ -18901,7 +19208,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_classic_bt_hfp_ag"
     },
     {
       "id": "esp.bluetooth.bluedroid.classic_bt.hfp_hf",
@@ -18964,7 +19272,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_classic_bt_hfp_hf"
     },
     {
       "id": "esp.bluetooth.bluedroid.coex.a2dp_gatts_coex",
@@ -19025,7 +19334,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_coex_a2dp_gatts_coex"
     },
     {
       "id": "esp.bluetooth.bluedroid.coex.gattc_gatts_coex",
@@ -19086,7 +19396,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bluedroid_coex_gattc_gatts_coex"
     },
     {
       "id": "esp.bluetooth.blufi",
@@ -19150,7 +19461,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/blufi"
     },
     {
       "id": "esp.bluetooth.esp_ble_audio.bap.broadcast_sink",
@@ -19212,7 +19524,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_audio_bap_broadcast_sink"
     },
     {
       "id": "esp.bluetooth.esp_ble_audio.bap.broadcast_source",
@@ -19273,7 +19586,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_audio_bap_broadcast_source"
     },
     {
       "id": "esp.bluetooth.esp_ble_audio.bap.unicast_client",
@@ -19335,7 +19649,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_audio_bap_unicast_client"
     },
     {
       "id": "esp.bluetooth.esp_ble_audio.bap.unicast_server",
@@ -19396,7 +19711,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_audio_bap_unicast_server"
     },
     {
       "id": "esp.bluetooth.esp_ble_audio.cap.acceptor",
@@ -19458,7 +19774,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_audio_cap_acceptor"
     },
     {
       "id": "esp.bluetooth.esp_ble_audio.cap.initiator",
@@ -19520,7 +19837,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_audio_cap_initiator"
     },
     {
       "id": "esp.bluetooth.esp_ble_audio.tmap.bmr",
@@ -19582,7 +19900,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_audio_tmap_bmr"
     },
     {
       "id": "esp.bluetooth.esp_ble_audio.tmap.bms",
@@ -19644,7 +19963,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_audio_tmap_bms"
     },
     {
       "id": "esp.bluetooth.esp_ble_audio.tmap.central",
@@ -19706,7 +20026,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_audio_tmap_central"
     },
     {
       "id": "esp.bluetooth.esp_ble_audio.tmap.peripheral",
@@ -19768,7 +20089,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_audio_tmap_peripheral"
     },
     {
       "id": "esp.bluetooth.esp_ble_iso.big_broadcaster",
@@ -19829,7 +20151,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_iso_big_broadcaster"
     },
     {
       "id": "esp.bluetooth.esp_ble_iso.big_receiver",
@@ -19891,7 +20214,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_iso_big_receiver"
     },
     {
       "id": "esp.bluetooth.esp_ble_iso.cis_central",
@@ -19953,7 +20277,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_iso_cis_central"
     },
     {
       "id": "esp.bluetooth.esp_ble_iso.cis_peripheral",
@@ -20014,7 +20339,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_iso_cis_peripheral"
     },
     {
       "id": "esp.bluetooth.esp_ble_mesh.aligenie_demo",
@@ -20076,7 +20402,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_mesh_aligenie_demo"
     },
     {
       "id": "esp.bluetooth.esp_ble_mesh.directed_forwarding.df_client",
@@ -20138,7 +20465,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_mesh_directed_forwarding_df_client"
     },
     {
       "id": "esp.bluetooth.esp_ble_mesh.directed_forwarding.df_server",
@@ -20200,7 +20528,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_mesh_directed_forwarding_df_server"
     },
     {
       "id": "esp.bluetooth.esp_ble_mesh.fast_provisioning.fast_prov_client",
@@ -20261,7 +20590,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_mesh_fast_provisioning_fast_prov_client"
     },
     {
       "id": "esp.bluetooth.esp_ble_mesh.fast_provisioning.fast_prov_server",
@@ -20322,7 +20652,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_mesh_fast_provisioning_fast_prov_server"
     },
     {
       "id": "esp.bluetooth.esp_ble_mesh.onoff_models.onoff_client",
@@ -20383,7 +20714,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_mesh_onoff_models_onoff_client"
     },
     {
       "id": "esp.bluetooth.esp_ble_mesh.onoff_models.onoff_server",
@@ -20445,7 +20777,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_mesh_onoff_models_onoff_server"
     },
     {
       "id": "esp.bluetooth.esp_ble_mesh.provisioner",
@@ -20506,7 +20839,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_mesh_provisioner"
     },
     {
       "id": "esp.bluetooth.esp_ble_mesh.remote_provisioning.rpr_client",
@@ -20567,7 +20901,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_mesh_remote_provisioning_rpr_client"
     },
     {
       "id": "esp.bluetooth.esp_ble_mesh.remote_provisioning.rpr_server",
@@ -20628,7 +20963,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_mesh_remote_provisioning_rpr_server"
     },
     {
       "id": "esp.bluetooth.esp_ble_mesh.remote_provisioning.unprov_dev",
@@ -20689,7 +21025,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_mesh_remote_provisioning_unprov_dev"
     },
     {
       "id": "esp.bluetooth.esp_ble_mesh.sensor_models.sensor_client",
@@ -20750,7 +21087,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_mesh_sensor_models_sensor_client"
     },
     {
       "id": "esp.bluetooth.esp_ble_mesh.sensor_models.sensor_server",
@@ -20811,7 +21149,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_mesh_sensor_models_sensor_server"
     },
     {
       "id": "esp.bluetooth.esp_ble_mesh.vendor_models.vendor_client",
@@ -20872,7 +21211,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_mesh_vendor_models_vendor_client"
     },
     {
       "id": "esp.bluetooth.esp_ble_mesh.vendor_models.vendor_server",
@@ -20933,7 +21273,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_mesh_vendor_models_vendor_server"
     },
     {
       "id": "esp.bluetooth.esp_ble_mesh.wifi_coexist",
@@ -20998,7 +21339,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_ble_mesh_wifi_coexist"
     },
     {
       "id": "esp.bluetooth.esp_hid_device",
@@ -21062,7 +21404,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_hid_device"
     },
     {
       "id": "esp.bluetooth.esp_hid_host",
@@ -21126,7 +21469,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/esp_hid_host"
     },
     {
       "id": "esp.bluetooth.hci.ble_adv_scan_combined",
@@ -21187,7 +21531,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/hci_ble_adv_scan_combined"
     },
     {
       "id": "esp.bluetooth.hci.controller_hci_uart_esp32",
@@ -21249,7 +21594,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/hci_controller_hci_uart_esp32"
     },
     {
       "id": "esp.bluetooth.hci.controller_hci_uart_esp32c3_and_esp32s3",
@@ -21311,7 +21657,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/hci_controller_hci_uart_esp32c3_and_esp32s3"
     },
     {
       "id": "esp.bluetooth.hci.controller_vhci_ble_adv",
@@ -21372,7 +21719,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/hci_controller_vhci_ble_adv"
     },
     {
       "id": "esp.bluetooth.nimble.ble_ancs",
@@ -21434,7 +21782,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_ancs"
     },
     {
       "id": "esp.bluetooth.nimble.ble_chan_sound_initiator",
@@ -21496,7 +21845,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_chan_sound_initiator"
     },
     {
       "id": "esp.bluetooth.nimble.ble_chan_sound_reflector",
@@ -21558,7 +21908,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_chan_sound_reflector"
     },
     {
       "id": "esp.bluetooth.nimble.ble_cte.ble_periodic_adv_with_cte",
@@ -21620,7 +21971,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_cte_ble_periodic_adv_with_cte"
     },
     {
       "id": "esp.bluetooth.nimble.ble_cte.ble_periodic_sync_with_cte",
@@ -21682,7 +22034,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_cte_ble_periodic_sync_with_cte"
     },
     {
       "id": "esp.bluetooth.nimble.ble_cts.cts_cent",
@@ -21744,7 +22097,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_cts_cts_cent"
     },
     {
       "id": "esp.bluetooth.nimble.ble_cts.cts_prph",
@@ -21806,7 +22160,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_cts_cts_prph"
     },
     {
       "id": "esp.bluetooth.nimble.ble_dynamic_service",
@@ -21868,7 +22223,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_dynamic_service"
     },
     {
       "id": "esp.bluetooth.nimble.ble_enc_adv_data.enc_adv_data_cent",
@@ -21930,7 +22286,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_enc_adv_data_enc_adv_data_cent"
     },
     {
       "id": "esp.bluetooth.nimble.ble_enc_adv_data.enc_adv_data_prph",
@@ -21992,7 +22349,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_enc_adv_data_enc_adv_data_prph"
     },
     {
       "id": "esp.bluetooth.nimble.ble_gattc_gatts_coex",
@@ -22054,7 +22412,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_gattc_gatts_coex"
     },
     {
       "id": "esp.bluetooth.nimble.ble_htp.htp_cent",
@@ -22116,7 +22475,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_htp_htp_cent"
     },
     {
       "id": "esp.bluetooth.nimble.ble_htp.htp_prph",
@@ -22178,7 +22538,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_htp_htp_prph"
     },
     {
       "id": "esp.bluetooth.nimble.ble_l2cap_coc.coc_blecent",
@@ -22240,7 +22601,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_l2cap_coc_coc_blecent"
     },
     {
       "id": "esp.bluetooth.nimble.ble_l2cap_coc.coc_bleprph",
@@ -22302,7 +22664,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_l2cap_coc_coc_bleprph"
     },
     {
       "id": "esp.bluetooth.nimble.ble_multi_adv",
@@ -22364,7 +22727,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_multi_adv"
     },
     {
       "id": "esp.bluetooth.nimble.ble_multi_conn.ble_multi_conn_cent",
@@ -22426,7 +22790,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_multi_conn_ble_multi_conn_cent"
     },
     {
       "id": "esp.bluetooth.nimble.ble_multi_conn.ble_multi_conn_prph",
@@ -22488,7 +22853,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_multi_conn_ble_multi_conn_prph"
     },
     {
       "id": "esp.bluetooth.nimble.ble_pawr_adv.ble_pawr_adv",
@@ -22550,7 +22916,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_pawr_adv_ble_pawr_adv"
     },
     {
       "id": "esp.bluetooth.nimble.ble_pawr_adv.ble_pawr_sync",
@@ -22612,7 +22979,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_pawr_adv_ble_pawr_sync"
     },
     {
       "id": "esp.bluetooth.nimble.ble_pawr_adv_conn.ble_pawr_adv_conn",
@@ -22674,7 +23042,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_pawr_adv_conn_ble_pawr_adv_conn"
     },
     {
       "id": "esp.bluetooth.nimble.ble_pawr_adv_conn.ble_pawr_sync_conn",
@@ -22736,7 +23105,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_pawr_adv_conn_ble_pawr_sync_conn"
     },
     {
       "id": "esp.bluetooth.nimble.ble_periodic_adv",
@@ -22798,7 +23168,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_periodic_adv"
     },
     {
       "id": "esp.bluetooth.nimble.ble_periodic_sync",
@@ -22860,7 +23231,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_periodic_sync"
     },
     {
       "id": "esp.bluetooth.nimble.ble_phy.phy_cent",
@@ -22922,7 +23294,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_phy_phy_cent"
     },
     {
       "id": "esp.bluetooth.nimble.ble_phy.phy_prph",
@@ -22984,7 +23357,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_phy_phy_prph"
     },
     {
       "id": "esp.bluetooth.nimble.ble_proximity_sensor.proximity_sensor_cent",
@@ -23046,7 +23420,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_proximity_sensor_proximity_sensor_cent"
     },
     {
       "id": "esp.bluetooth.nimble.ble_proximity_sensor.proximity_sensor_prph",
@@ -23108,7 +23483,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_proximity_sensor_proximity_sensor_prph"
     },
     {
       "id": "esp.bluetooth.nimble.ble_spi_slave",
@@ -23169,7 +23545,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_spi_slave"
     },
     {
       "id": "esp.bluetooth.nimble.ble_spp.spp_client",
@@ -23232,7 +23609,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_spp_spp_client"
     },
     {
       "id": "esp.bluetooth.nimble.ble_spp.spp_server",
@@ -23295,7 +23673,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_ble_spp_spp_server"
     },
     {
       "id": "esp.bluetooth.nimble.blecent",
@@ -23357,7 +23736,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_blecent"
     },
     {
       "id": "esp.bluetooth.nimble.blecsc",
@@ -23419,7 +23799,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_blecsc"
     },
     {
       "id": "esp.bluetooth.nimble.blehr",
@@ -23481,7 +23862,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_blehr"
     },
     {
       "id": "esp.bluetooth.nimble.blemesh",
@@ -23543,7 +23925,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_blemesh"
     },
     {
       "id": "esp.bluetooth.nimble.bleprph",
@@ -23605,7 +23988,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/bleprph"
     },
     {
       "id": "esp.bluetooth.nimble.bleprph_host_only",
@@ -23668,7 +24052,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_bleprph_host_only"
     },
     {
       "id": "esp.bluetooth.nimble.bleprph_wifi_coex",
@@ -23732,7 +24117,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_bleprph_wifi_coex"
     },
     {
       "id": "esp.bluetooth.nimble.hci",
@@ -23794,7 +24180,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_hci"
     },
     {
       "id": "esp.bluetooth.nimble.power_save",
@@ -23857,7 +24244,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_power_save"
     },
     {
       "id": "esp.bluetooth.nimble.throughput_app.blecent_throughput",
@@ -23923,7 +24311,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_throughput_app_blecent_throughput"
     },
     {
       "id": "esp.bluetooth.nimble.throughput_app.bleprph_throughput",
@@ -23985,7 +24374,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "bluetooth/nimble_throughput_app_bleprph_throughput"
     },
     {
       "id": "esp.storage.custom_flash_driver",
@@ -24045,7 +24435,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/custom_flash_driver"
     },
     {
       "id": "esp.storage.emmc",
@@ -24107,7 +24498,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/emmc"
     },
     {
       "id": "esp.storage.fatfs.bdl_wl",
@@ -24170,7 +24562,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/fatfs_bdl_wl"
     },
     {
       "id": "esp.storage.fatfs.ext_flash",
@@ -24232,7 +24625,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/fatfs_ext_flash"
     },
     {
       "id": "esp.storage.fatfs.fatfsgen",
@@ -24293,7 +24687,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/fatfs_fatfsgen"
     },
     {
       "id": "esp.storage.fatfs.fs_operations",
@@ -24354,7 +24749,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/fatfs_fs_operations"
     },
     {
       "id": "esp.storage.fatfs.getting_started",
@@ -24415,7 +24811,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/fatfs_getting_started"
     },
     {
       "id": "esp.storage.littlefs",
@@ -24475,7 +24872,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/littlefs"
     },
     {
       "id": "esp.storage.nvs.nvs_bootloader",
@@ -24535,7 +24933,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/nvs_nvs_bootloader"
     },
     {
       "id": "esp.storage.nvs.nvs_console",
@@ -24599,7 +24998,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/nvs_nvs_console"
     },
     {
       "id": "esp.storage.nvs.nvs_iteration",
@@ -24660,7 +25060,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/nvs_nvs_iteration"
     },
     {
       "id": "esp.storage.nvs.nvs_rw_blob",
@@ -24722,7 +25123,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/nvs_nvs_rw_blob"
     },
     {
       "id": "esp.storage.nvs.nvs_rw_value",
@@ -24783,7 +25185,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/nvs_nvs_rw_value"
     },
     {
       "id": "esp.storage.nvs.nvs_rw_value_cxx",
@@ -24844,7 +25247,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/nvs_nvs_rw_value_cxx"
     },
     {
       "id": "esp.storage.nvs.nvs_statistics",
@@ -24905,7 +25309,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/nvs_nvs_statistics"
     },
     {
       "id": "esp.storage.nvs.nvsgen",
@@ -24966,7 +25371,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/nvs_nvsgen"
     },
     {
       "id": "esp.storage.partition_api.partition_find",
@@ -25027,7 +25433,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/partition_api_partition_find"
     },
     {
       "id": "esp.storage.partition_api.partition_mmap",
@@ -25088,7 +25495,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/partition_api_partition_mmap"
     },
     {
       "id": "esp.storage.partition_api.partition_ops",
@@ -25149,7 +25557,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/partition_api_partition_ops"
     },
     {
       "id": "esp.storage.parttool",
@@ -25209,7 +25618,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/parttool"
     },
     {
       "id": "esp.storage.perf_benchmark",
@@ -25275,7 +25685,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/perf_benchmark"
     },
     {
       "id": "esp.storage.sd_card.sdmmc",
@@ -25339,7 +25750,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/sd_card_sdmmc"
     },
     {
       "id": "esp.storage.sd_card.sdspi",
@@ -25401,7 +25813,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/sd_card_sdspi"
     },
     {
       "id": "esp.storage.semihost_vfs",
@@ -25461,7 +25874,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/semihost_vfs"
     },
     {
       "id": "esp.storage.spiffs",
@@ -25522,7 +25936,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/spiffs"
     },
     {
       "id": "esp.storage.spiffsgen",
@@ -25583,7 +25998,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/spiffsgen"
     },
     {
       "id": "esp.storage.wear_levelling",
@@ -25644,7 +26060,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "storage/wear_levelling"
     },
     {
       "id": "esp.network.bridge",
@@ -25707,7 +26124,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "network/bridge"
     },
     {
       "id": "esp.network.eth2ap",
@@ -25769,7 +26187,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "network/eth2ap"
     },
     {
       "id": "esp.network.simple_sniffer",
@@ -25835,7 +26254,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "network/simple_sniffer"
     },
     {
       "id": "esp.network.sta2eth",
@@ -25898,7 +26318,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "network/sta2eth"
     },
     {
       "id": "esp.network.vlan_support",
@@ -25958,7 +26379,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "network/vlan_support"
     },
     {
       "id": "esp.cxx.exceptions",
@@ -26017,7 +26439,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "cxx/exceptions"
     },
     {
       "id": "esp.cxx.pthread",
@@ -26076,7 +26499,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "cxx/pthread"
     },
     {
       "id": "esp.cxx.rtti",
@@ -26135,7 +26559,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "cxx/rtti"
     },
     {
       "id": "esp.build_system.cmake.component_manager",
@@ -26194,7 +26619,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "build_system/cmake_component_manager"
     },
     {
       "id": "esp.build_system.cmake.idf_as_lib",
@@ -26253,7 +26679,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "build_system/cmake_idf_as_lib"
     },
     {
       "id": "esp.build_system.cmake.import_lib",
@@ -26313,7 +26740,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "build_system/cmake_import_lib"
     },
     {
       "id": "esp.build_system.cmake.import_prebuilt",
@@ -26374,7 +26802,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "build_system/cmake_import_prebuilt"
     },
     {
       "id": "esp.build_system.cmake.import_prebuilt.prebuilt",
@@ -26435,7 +26864,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "build_system/cmake_import_prebuilt_prebuilt"
     },
     {
       "id": "esp.build_system.cmake.multi_config",
@@ -26494,7 +26924,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "build_system/cmake_multi_config"
     },
     {
       "id": "esp.build_system.cmake.plugins",
@@ -26553,7 +26984,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "build_system/cmake_plugins"
     },
     {
       "id": "esp.build_system.cmakev2.features.component_manager",
@@ -26612,7 +27044,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "build_system/cmakev2_features_component_manager"
     },
     {
       "id": "esp.build_system.cmakev2.features.conditional_component",
@@ -26671,7 +27104,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "build_system/cmakev2_features_conditional_component"
     },
     {
       "id": "esp.build_system.cmakev2.features.idf_as_lib",
@@ -26730,7 +27164,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "build_system/cmakev2_features_idf_as_lib"
     },
     {
       "id": "esp.build_system.cmakev2.features.import_lib",
@@ -26790,7 +27225,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "build_system/cmakev2_features_import_lib"
     },
     {
       "id": "esp.build_system.cmakev2.features.import_lib_direct",
@@ -26849,7 +27285,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "build_system/cmakev2_features_import_lib_direct"
     },
     {
       "id": "esp.build_system.cmakev2.features.import_prebuilt",
@@ -26910,7 +27347,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "build_system/cmakev2_features_import_prebuilt"
     },
     {
       "id": "esp.build_system.cmakev2.features.import_prebuilt.prebuilt",
@@ -26971,7 +27409,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "build_system/cmakev2_features_import_prebuilt_prebuilt"
     },
     {
       "id": "esp.build_system.cmakev2.features.multi_binary",
@@ -27030,7 +27469,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "build_system/cmakev2_features_multi_binary"
     },
     {
       "id": "esp.build_system.cmakev2.features.multi_config",
@@ -27089,7 +27529,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "build_system/cmakev2_features_multi_config"
     },
     {
       "id": "esp.build_system.cmakev2.features.plugins",
@@ -27148,7 +27589,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "build_system/cmakev2_features_plugins"
     },
     {
       "id": "esp.build_system.cmakev2.get_started.hello_world",
@@ -27207,7 +27649,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "build_system/cmakev2_get-started_hello_world"
     },
     {
       "id": "esp.build_system.wrappers",
@@ -27266,7 +27709,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "build_system/wrappers"
     },
     {
       "id": "esp.security.flash_encryption",
@@ -27329,7 +27773,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "security/flash_encryption"
     },
     {
       "id": "esp.security.hmac_soft_jtag",
@@ -27390,7 +27835,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "security/hmac_soft_jtag"
     },
     {
       "id": "esp.security.key_manager",
@@ -27450,7 +27896,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "security/key_manager"
     },
     {
       "id": "esp.security.nvs_encryption_hmac",
@@ -27511,7 +27958,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "security/nvs_encryption_hmac"
     },
     {
       "id": "esp.security.psa_its_custom_backend",
@@ -27571,7 +28019,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "security/psa_its_custom_backend"
     },
     {
       "id": "esp.security.security_features_app",
@@ -27632,7 +28081,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "security/security_features_app"
     },
     {
       "id": "esp.security.tee.tee_attestation",
@@ -27691,7 +28141,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "security/tee_tee_attestation"
     },
     {
       "id": "esp.security.tee.tee_basic",
@@ -27750,7 +28201,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "security/tee_tee_basic"
     },
     {
       "id": "esp.security.tee.tee_secure_ota",
@@ -27817,7 +28269,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "security/tee_tee_secure_ota"
     },
     {
       "id": "esp.security.tee.tee_secure_storage",
@@ -27876,7 +28329,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "security/tee_tee_secure_storage"
     },
     {
       "id": "esp.custom_bootloader.bootloader_extra_dir",
@@ -27935,7 +28389,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "custom_bootloader/bootloader_extra_dir"
     },
     {
       "id": "esp.custom_bootloader.bootloader_hooks",
@@ -27994,7 +28449,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "custom_bootloader/bootloader_hooks"
     },
     {
       "id": "esp.custom_bootloader.bootloader_multiboot",
@@ -28053,7 +28509,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "custom_bootloader/bootloader_multiboot"
     },
     {
       "id": "esp.custom_bootloader.bootloader_override",
@@ -28112,7 +28569,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "custom_bootloader/bootloader_override"
     },
     {
       "id": "esp.ethernet.basic",
@@ -28172,7 +28630,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "ethernet/basic"
     },
     {
       "id": "esp.ethernet.iperf",
@@ -28234,7 +28693,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "ethernet/iperf"
     },
     {
       "id": "esp.ethernet.ptp",
@@ -28295,7 +28755,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "ethernet/ptp"
     },
     {
       "id": "esp.lowpower.power_management",
@@ -28355,7 +28816,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "lowpower/power_management"
     },
     {
       "id": "esp.lowpower.vbat",
@@ -28416,7 +28878,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "lowpower/vbat"
     },
     {
       "id": "esp.mesh.internal_communication",
@@ -28480,7 +28943,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "mesh/internal_communication"
     },
     {
       "id": "esp.mesh.ip_internal_network",
@@ -28544,7 +29008,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "mesh/ip_internal_network"
     },
     {
       "id": "esp.mesh.manual_networking",
@@ -28608,7 +29073,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "mesh/manual_networking"
     },
     {
       "id": "esp.openthread.ot_br",
@@ -28669,7 +29135,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "openthread/ot_br"
     },
     {
       "id": "esp.openthread.ot_cli",
@@ -28730,7 +29197,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "openthread/ot_cli"
     },
     {
       "id": "esp.openthread.ot_rcp",
@@ -28792,7 +29260,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "openthread/ot_rcp"
     },
     {
       "id": "esp.openthread.ot_sleepy_device.deep_sleep",
@@ -28854,7 +29323,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "openthread/ot_sleepy_device_deep_sleep"
     },
     {
       "id": "esp.openthread.ot_sleepy_device.light_sleep",
@@ -28917,7 +29387,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "openthread/ot_sleepy_device_light_sleep"
     },
     {
       "id": "esp.openthread.ot_trel",
@@ -28978,7 +29449,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "openthread/ot_trel"
     },
     {
       "id": "esp.zigbee.esp_zigbee_gateway",
@@ -29040,7 +29512,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "zigbee/esp_zigbee_gateway"
     },
     {
       "id": "esp.zigbee.light_sample.ha_on_off_light",
@@ -29101,7 +29574,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "zigbee/light_sample_HA_on_off_light"
     },
     {
       "id": "esp.zigbee.light_sample.ha_on_off_switch",
@@ -29162,7 +29636,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "zigbee/light_sample_HA_on_off_switch"
     },
     {
       "id": "esp.ieee802154.ieee802154_cli",
@@ -29224,7 +29699,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "ieee802154/ieee802154_cli"
     },
     {
       "id": "esp.phy.antenna",
@@ -29286,7 +29762,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "phy/antenna"
     },
     {
       "id": "esp.phy.cert_test",
@@ -29348,7 +29825,8 @@
           },
           "evidence": null
         }
-      ]
+      ],
+      "target_app_dir": "phy/cert_test"
     }
   ]
 }

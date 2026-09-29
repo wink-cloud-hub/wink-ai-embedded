@@ -2265,19 +2265,20 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     # ── esp_idfv61 vendor behavior suite (master plan §7.1.1, L2) ─────────────
     set(_ESP_IDFV61_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../wink-micro-app/vendor/esp_idfv61")
     set(_ESP_IDFV61_APPS
-        "blink_gpio:blink_example_main.c"
-        "ledc_basic:ledc_basic_example_main.c"
-        "i2c_basic:i2c_basic_example_main.c"
-        "uart_echo:uart_echo_example_main.c"
-        "gptimer_alarm:gptimer_example_main.c"
-        "wifi_sta:station_example_main.c"
-        "http_client:esp_http_client_example.c"
-        "mqtt_tcp:app_main.c"
-        "bleprph:main.c,gatt_svr.c"
+        "get-started/blink_gpio:blink_example_main.c"
+        "peripherals/ledc_basic:ledc_basic_example_main.c"
+        "peripherals/i2c_basic:i2c_basic_example_main.c"
+        "peripherals/uart_echo:uart_echo_example_main.c"
+        "peripherals/gptimer_alarm:gptimer_example_main.c"
+        "wifi/wifi_sta:station_example_main.c"
+        "protocols/http_client:esp_http_client_example.c"
+        "protocols/mqtt_tcp:app_main.c"
+        "bluetooth/bleprph:main.c,gatt_svr.c"
     )
     foreach(_entry IN LISTS _ESP_IDFV61_APPS)
         string(REPLACE ":" ";" _parts "${_entry}")
         list(GET _parts 0 _app)
+        get_filename_component(_app_name "${_app}" NAME)
         list(GET _parts 1 _srcs_raw)
         string(REPLACE "," ";" _src_list "${_srcs_raw}")
         set(_app_dir "${_ESP_IDFV61_ROOT}/${_app}")
@@ -2289,31 +2290,31 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
             list(APPEND _abs_srcs "${_app_dir}/${_src}")
         endforeach()
 
-        add_library(esp_idfv61_${_app}_obj OBJECT ${_abs_srcs})
-        target_include_directories(esp_idfv61_${_app}_obj BEFORE PRIVATE
+        add_library(esp_idfv61_${_app_name}_obj OBJECT ${_abs_srcs})
+        target_include_directories(esp_idfv61_${_app_name}_obj BEFORE PRIVATE
             "${_app_dir}/include"
             "${_app_dir}"
         )
-        target_link_libraries(esp_idfv61_${_app}_obj PRIVATE wink_framework_esp_idf)
-        target_compile_options(esp_idfv61_${_app}_obj PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+        target_link_libraries(esp_idfv61_${_app_name}_obj PRIVATE wink_framework_esp_idf)
+        target_compile_options(esp_idfv61_${_app_name}_obj PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
         if(NOT MSVC)
-            target_compile_options(esp_idfv61_${_app}_obj PRIVATE -Wno-error=stack-usage=)
+            target_compile_options(esp_idfv61_${_app_name}_obj PRIVATE -Wno-error=stack-usage=)
         endif()
         if(TARGET generate_config)
-            add_dependencies(esp_idfv61_${_app}_obj generate_config)
+            add_dependencies(esp_idfv61_${_app_name}_obj generate_config)
         endif()
 
-        add_test(NAME esp_idfv61_${_app}
-            COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target esp_idfv61_${_app}_obj)
-        set_tests_properties(esp_idfv61_${_app} PROPERTIES LABELS "esp_idfv61_vendor;tier_v")
+        add_test(NAME esp_idfv61_${_app_name}
+            COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target esp_idfv61_${_app_name}_obj)
+        set_tests_properties(esp_idfv61_${_app_name} PROPERTIES LABELS "esp_idfv61_vendor;tier_v")
 
         list(LENGTH _src_list _num_srcs)
         foreach(_src IN LISTS _src_list)
             if(_num_srcs EQUAL 1)
-                set(_wasm_name "esp_idfv61_${_app}")
+                set(_wasm_name "esp_idfv61_${_app_name}")
             else()
                 get_filename_component(_src_we "${_src}" NAME_WE)
-                set(_wasm_name "esp_idfv61_${_app}_${_src_we}")
+                set(_wasm_name "esp_idfv61_${_app_name}_${_src_we}")
             endif()
             add_esp_idf_wasm_compile_check(${_wasm_name}
                 "${_app_dir}/${_src}" "${_app_dir}/include" "${_app_dir}")

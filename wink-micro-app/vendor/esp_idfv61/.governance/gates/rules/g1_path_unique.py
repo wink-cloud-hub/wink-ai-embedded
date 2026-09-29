@@ -11,11 +11,13 @@ RULE_ID = "g1.path_unique"
 def run(context: dict, config: dict | None = None) -> list[dict]:
     findings = []
     seen_paths = {}
+    seen_target_dirs = {}
 
     for entry in context["manifest"].get("entries", []):
         display_id = entry.get("display_id")
         entry_id = entry.get("id")
         path = entry.get("upstream_path")
+        target_dir = entry.get("target_app_dir")
 
         if not path:
             findings.append({
@@ -41,5 +43,19 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
             })
         else:
             seen_paths[path] = display_id
+
+        if target_dir:
+            if target_dir in seen_target_dirs:
+                findings.append({
+                    "rule_id": RULE_ID,
+                    "severity": "error",
+                    "entry_id": entry_id,
+                    "display_id": display_id,
+                    "config_id": None,
+                    "file_path": None,
+                    "message": f"Duplicate target_app_dir '{target_dir}' previously registered by entry #{seen_target_dirs[target_dir]}",
+                })
+            else:
+                seen_target_dirs[target_dir] = display_id
 
     return findings

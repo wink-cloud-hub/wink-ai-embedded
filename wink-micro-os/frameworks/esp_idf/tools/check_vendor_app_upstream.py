@@ -53,14 +53,14 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     if args.print_hashes:
-        for app_dir in sorted(p for p in root.iterdir() if p.is_dir()):
+        for app_dir in sorted(p.parent for p in root.rglob("wink-app.json") if not any(part.startswith(".") for part in p.parts)):
             for src in sorted(app_dir.glob("*.c")):
                 print(f"{app_dir.name}/{src.name} {digest(src)}")
         return 0
 
     errors: list[str] = []
     warnings: list[str] = []
-    apps = sorted(p for p in root.iterdir() if p.is_dir() and (p / "wink-app.json").is_file())
+    apps = sorted(p.parent for p in root.rglob("wink-app.json") if not any(part.startswith(".") for part in p.parts))
     if not apps:
         errors.append(f"no vendor apps found under {root}")
 

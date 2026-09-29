@@ -61,15 +61,15 @@ $espIdfBaseDir = Join-Path $microAppDir 'vendor\esp_idfv61'
 
 # Known ESP32 carrier apps
 $allCarriers = @(
-    @{ Name = 'blink_gpio';    Rel = 'vendor/esp_idfv61/blink_gpio';    Channel = 'GPIO Output & FreeRTOS vTaskDelay' },
-    @{ Name = 'ledc_basic';    Rel = 'vendor/esp_idfv61/ledc_basic';    Channel = 'LEDC PWM & Hardware Timer' },
-    @{ Name = 'i2c_basic';     Rel = 'vendor/esp_idfv61/i2c_basic';     Channel = 'I2C Master Bus Communication' },
-    @{ Name = 'uart_echo';     Rel = 'vendor/esp_idfv61/uart_echo';     Channel = 'UART Loopback & Ring Buffer' },
-    @{ Name = 'gptimer_alarm'; Rel = 'vendor/esp_idfv61/gptimer_alarm'; Channel = 'General Purpose Timer & Alarms' },
-    @{ Name = 'wifi_sta';      Rel = 'vendor/esp_idfv61/wifi_sta';      Channel = 'Wi-Fi Station Mode & Netif' },
-    @{ Name = 'http_client';   Rel = 'vendor/esp_idfv61/http_client';   Channel = 'HTTP/REST Client & Events' },
-    @{ Name = 'mqtt_tcp';      Rel = 'vendor/esp_idfv61/mqtt_tcp';      Channel = 'MQTT Protocol & Event Loop' },
-    @{ Name = 'bleprph';       Rel = 'vendor/esp_idfv61/bleprph';       Channel = 'NimBLE GAP/GATT Server' }
+    @{ Name = 'blink_gpio';    Rel = 'vendor/esp_idfv61/get-started/blink_gpio';    Channel = 'GPIO Output & FreeRTOS vTaskDelay' },
+    @{ Name = 'ledc_basic';    Rel = 'vendor/esp_idfv61/peripherals/ledc_basic';    Channel = 'LEDC PWM & Hardware Timer' },
+    @{ Name = 'i2c_basic';     Rel = 'vendor/esp_idfv61/peripherals/i2c_basic';     Channel = 'I2C Master Bus Communication' },
+    @{ Name = 'uart_echo';     Rel = 'vendor/esp_idfv61/peripherals/uart_echo';     Channel = 'UART Loopback & Ring Buffer' },
+    @{ Name = 'gptimer_alarm'; Rel = 'vendor/esp_idfv61/peripherals/gptimer_alarm'; Channel = 'General Purpose Timer & Alarms' },
+    @{ Name = 'wifi_sta';      Rel = 'vendor/esp_idfv61/wifi/wifi_sta';              Channel = 'Wi-Fi Station Mode & Netif' },
+    @{ Name = 'http_client';   Rel = 'vendor/esp_idfv61/protocols/http_client';   Channel = 'HTTP/REST Client & Events' },
+    @{ Name = 'mqtt_tcp';      Rel = 'vendor/esp_idfv61/protocols/mqtt_tcp';      Channel = 'MQTT Protocol & Event Loop' },
+    @{ Name = 'bleprph';       Rel = 'vendor/esp_idfv61/bluetooth/bleprph';       Channel = 'NimBLE GAP/GATT Server' }
 )
 
 $carriers = @()

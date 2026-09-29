@@ -46,3 +46,18 @@ def test_path_unique_negative_missing():
     findings = g1_path_unique.run(context)
     assert len(findings) == 1
     assert "missing 'upstream_path'" in findings[0]["message"]
+
+
+def test_target_app_dir_duplicate():
+    context = {
+        "manifest": {
+            "entries": [
+                {"id": "esp.a", "display_id": 1, "upstream_path": "examples/a", "target_app_dir": "peripherals/dup"},
+                {"id": "esp.b", "display_id": 2, "upstream_path": "examples/b", "target_app_dir": "peripherals/dup"},
+            ]
+        }
+    }
+    findings = g1_path_unique.run(context)
+    assert len(findings) == 1
+    assert "Duplicate target_app_dir" in findings[0]["message"]
+

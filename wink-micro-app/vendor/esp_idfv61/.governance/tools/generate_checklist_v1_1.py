@@ -152,9 +152,19 @@ def render_row(entry: dict, quarantine: dict[str, dict]) -> tuple[str, str]:
         pos_cases  = acceptance.get("positive_cases", [])
         evidence   = ex0.get("evidence")
 
-        app_dir = "待适配"
-        if eid in quarantine:
-            app_dir = f"esp_idfv61_{Path(upstream).name}"
+        target_dir = entry.get("target_app_dir") or ""
+        app_exists = (OUTPUT_MD.parent / target_dir / "wink-app.json").is_file() if target_dir else False
+
+        if app_exists:
+            app_col = f"[`{target_dir}`]({target_dir})"
+        elif eid in quarantine:
+            app_col = f"`{target_dir or ('esp_idfv61_' + Path(upstream).name)}`"
+        elif inclusion == "out_of_scope":
+            app_col = "—"
+        elif target_dir:
+            app_col = f"`{target_dir}`"
+        else:
+            app_col = "待适配"
 
         # 状态符与描述裁判
         if eid in quarantine:
@@ -212,13 +222,20 @@ def render_row(entry: dict, quarantine: dict[str, dict]) -> tuple[str, str]:
 
         caps     = entry.get("required_capabilities", [])
         pri_hint = "P0" if symbol == "[x]" else ("P4" if symbol == "[-]" else "P1")
-        app_dir  = entry.get("delivery", {}).get("app_dir") or "待适配"
+        target_dir = entry.get("target_app_dir") or entry.get("delivery", {}).get("app_dir") or ""
+        app_exists = (OUTPUT_MD.parent / target_dir / "wink-app.json").is_file() if target_dir else False
+        if app_exists:
+            app_col = f"[`{target_dir}`]({target_dir})"
+        elif target_dir:
+            app_col = f"`{target_dir}`"
+        else:
+            app_col = "待适配"
 
     # 截断超长描述
     if len(desc) > 80:
         desc = desc[:77] + "..."
 
-    row_str = f"| {symbol} | {num:03d} | `{upstream}` | {obs_str} | {pri_hint} | `{app_dir}` | {desc} |"
+    row_str = f"| {symbol} | {num:03d} | `{upstream}` | {obs_str} | {pri_hint} | {app_col} | {desc} |"
     return row_str, metric_tag
 
 

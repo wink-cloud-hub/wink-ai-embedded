@@ -14,17 +14,17 @@
 
 ## 1. 精选应用矩阵
 
-| App | 门面域 | distinct 风险 | upstream source_dir (v6.1) |
+| App (落盘相对路径) | 门面域 | distinct 风险 | upstream source_dir (v6.1) |
 |:---|:---|:---|:---|
-| `blink_gpio` | GPIO + FreeRTOS delay | 输出电平/周期调度 | `examples/get-started/blink/main`（`blink_example_main.c`） |
-| `ledc_basic` | LEDC PWM | 定时器/通道/占空比/渐变 | `examples/peripherals/ledc/ledc_basic/main`（`ledc_basic_example_main.c`） |
-| `i2c_basic` | Modern I2C master | 总线-器件二级句柄事务 | `examples/peripherals/i2c/i2c_basic/main`（`i2c_basic_example_main.c`） |
-| `uart_echo` | UART | 阻塞读/写回环、任务栈 | `examples/peripherals/uart/uart_echo/main`（`uart_echo_example_main.c`） |
-| `gptimer_alarm` | GPTimer | alarm 回调/自动重载/动态改期 | `examples/peripherals/timer_group/gptimer/main`（`gptimer_example_main.c`） |
-| `wifi_sta` | Wi-Fi STA | AP 连接状态机/DHCP IP 分配 | `examples/wifi/getting_started/station/main`（`station_example_main.c`） |
-| `http_client` | HTTP Client | RESTful GET/POST 隧道流式请求 | `examples/protocols/esp_http_client/main`（`esp_http_client_example.c`） |
-| `mqtt_tcp` | MQTT Client | TCP 消息发布订阅/离线轻量 Broker | `examples/protocols/mqtt/main`（`app_main.c`） |
-| `bleprph` | NimBLE GATT | 静态 GATT 属性池/特征值读写通知 | `examples/bluetooth/nimble/bleprph/main`（`main.c`, `gatt_svr.c`） |
+| `get-started/blink_gpio` | GPIO + FreeRTOS delay | 输出电平/周期调度 | `examples/get-started/blink/main`（`blink_example_main.c`） |
+| `peripherals/ledc_basic` | LEDC PWM | 定时器/通道/占空比/渐变 | `examples/peripherals/ledc/ledc_basic/main`（`ledc_basic_example_main.c`） |
+| `peripherals/i2c_basic` | Modern I2C master | 总线-器件二级句柄事务 | `examples/peripherals/i2c/i2c_basic/main`（`i2c_basic_example_main.c`） |
+| `peripherals/uart_echo` | UART | 阻塞读/写回环、任务栈 | `examples/peripherals/uart/uart_echo/main`（`uart_echo_example_main.c`） |
+| `peripherals/gptimer_alarm` | GPTimer | alarm 回调/自动重载/动态改期 | `examples/peripherals/timer_group/gptimer/main`（`gptimer_example_main.c`） |
+| `wifi/wifi_sta` | Wi-Fi STA | AP 连接状态机/DHCP IP 分配 | `examples/wifi/getting_started/station/main`（`station_example_main.c`） |
+| `protocols/http_client` | HTTP Client | RESTful GET/POST 隧道流式请求 | `examples/protocols/esp_http_client/main`（`esp_http_client_example.c`） |
+| `protocols/mqtt_tcp` | MQTT Client | TCP 消息发布订阅/离线轻量 Broker | `examples/protocols/mqtt/main`（`app_main.c`） |
+| `bluetooth/bleprph` | NimBLE GATT | 静态 GATT 属性池/特征值读写通知 | `examples/bluetooth/nimble/bleprph/main`（`main.c`, `gatt_svr.c`） |
 
 **收录规则（master §7.1.1 精选三规则）**：① 有对应门面域；② 行为可观测（编译 + 单测/回放）；
 ③ 覆盖 distinct 风险。Out-of-scope API 两边都不收。

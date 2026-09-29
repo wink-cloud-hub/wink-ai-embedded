@@ -316,13 +316,13 @@ winkcli lint --pack layering --pack api
 
 ### 黄金标杆：`#001: blink_gpio`（GPIO Output + FreeRTOS Task Delay）
 
-- **代码位置**：[blink_gpio/](blink_gpio/)
+- **代码位置**：[get-started/blink_gpio/](../../get-started/blink_gpio/)
 - **官方源码**：`blink_example_main.c`（ESP-IDF v6.1 官方原始源码，SHA-256: `f22a5003ce...`，一行不改）
-- **仿真资产包**：[blink_gpio/unisim-assets/](blink_gpio/unisim-assets/)
+- **仿真资产包**：[get-started/blink_gpio/unisim-assets/](../../get-started/blink_gpio/unisim-assets/)
   - `device-tree.json` (362 B)
   - `wink_simulator.js` (122.6 KB)
   - `wink_simulator.wasm` (146.1 KB)
-- **场景测试脚本**：[blink_gpio/unisim-scenarios/blink_gpio.scenario.json](blink_gpio/unisim-scenarios/blink_gpio.scenario.json)
+- **场景测试脚本**：[get-started/blink_gpio/unisim-scenarios/blink_gpio.scenario.json](../../get-started/blink_gpio/unisim-scenarios/blink_gpio.scenario.json)
 - **实证时序断言表**：
 
 | 时间点 (Virtual Time) | 触发事件 / 动作 | 预期 GPIO2 电平 | 断言结果 | 说明 |
