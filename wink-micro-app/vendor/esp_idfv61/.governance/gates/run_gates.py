@@ -87,6 +87,15 @@ def parse_args(args=None):
         help="Path to write structured JSON report output",
     )
     parser.add_argument(
+        "--require-executed",
+        type=int,
+        default=None,
+        help=(
+            "Minimum number of rules that must actually execute. Guards against an "
+            "all-SKIP run (empty diff, unavailable trigger) being reported as a clean pass."
+        ),
+    )
+    parser.add_argument(
         "--no-fail",
         action="store_true",
         help="Always exit with code 0 even if errors are found (for local debug only)",
@@ -381,6 +390,15 @@ def main(args=None):
 
     if total_errors > 0 and not opts.no_fail:
         print("\n[RESULT] FAILED: Gate checks identified blocking errors (exit code 1).")
+        sys.exit(1)
+
+    required = getattr(opts, "require_executed", None)
+    if required and executed_count < required:
+        print(
+            f"\n[RESULT] FAILED: only {executed_count} of the required {required} rules actually "
+            f"executed. An under-executed run is indistinguishable from a clean pass, "
+            f"so it must not be reported as success (exit code 1)."
+        )
         sys.exit(1)
 
     print("\n[RESULT] PASSED: Gate checks completed successfully (exit code 0).")

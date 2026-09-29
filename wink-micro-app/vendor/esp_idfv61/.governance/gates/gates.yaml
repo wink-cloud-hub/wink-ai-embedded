@@ -99,10 +99,26 @@ rules:
         - "pixel"
         - "necir"
         - "at24"
-        - "i2c_addr"
         - "touch_pad"
         - "servo"
         - "oled"
+      # `i2c_addr` 曾在本表中，已移除：I2C 总线地址是跨 MCU 通用总线概念，
+      # 属第二层应承载的通用抽象（PAL_RESOURCE_I2C_ADDR 即正确表达方式）；
+      # 器件专属地址由 `at24` 覆盖。按铁律一「责任划给能力，不给器件名」，
+      # 泛化的总线寻址不该被当作器件语义倒灌而拦截。
+      #
+      # dal/ 与 app/ 刻意不在扫描范围：按六层决策树，器件专属语义（如 WS2812 编码器）
+      # 合法归属第四层 dal_ws2812，扩大扫描会误伤架构正确的代码。
+      #
+      # 以下 allowlist 为逐条人工审核结论，均为「PAL 正确地把能力建模为通用抽象」
+      # 或「文档示例」而非器件语义倒灌。每条新增都必须写明 reason。
+      allowlist:
+        - path: "wink-micro-os/pal/include/hal/pal_rmt.h"
+          token: "ws2812"
+          reason: "pal_rmt 是通用脉冲收发能力，文档说明其泛化于 LED 灯带/红外/步进，属能力建模而非器件绑定"
+        - path: "wink-micro-os/pal/include/pal_log.h"
+          token: "servo"
+          reason: "LOG_TAG/LOG_I 的文档示例文本，非 API 标识符"
 
   - id: g2.cap_has_owned_paths
     gate: 2
@@ -137,6 +153,12 @@ rules:
       packs: [layering, api]
       strict_environment: true
       timeout_seconds: 120
+      # 项目本地覆盖层（wink lint 原生 overlay 机制）。
+      # 带 overrides/disable_rules 键的 YAML 会被当作 overlay 而非 pack，
+      # add_allow_paths 追加到内置规则上——因此无需分叉私仓里的规则包。
+      # 引擎与内置规则数据在私有仓，路径豁免则只对本仓布局有意义，故需要这层外置。
+      overlays:
+        - "wink-tools/tools/lint/rules/workspace.overlay.yaml"
 
   # Gate 4: 依赖反向影响闭包与回归调度 (1条)
   - id: g4.impact_regression

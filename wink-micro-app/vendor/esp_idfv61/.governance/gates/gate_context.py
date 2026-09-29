@@ -15,11 +15,82 @@ Loads and normalizes:
 
 import os
 import sys
+import re
 import json
 import subprocess
 from pathlib import Path
 from datetime import datetime, timezone
 import yaml
+
+
+class ManifestSchemaError(ValueError):
+    """Raised when the checklist manifest is structurally unusable.
+
+    Fail-closed by design: a truncated or half-written manifest must abort the
+    gate run, never silently pass as an empty (violation-free) corpus.
+    """
+
+
+def validate_manifest_schema(manifest, source_path) -> str:
+    """Validates the structural integrity of checklist.data.json at load time.
+
+    Every downstream rule reads ``context["manifest"].get("entries", [])``, which
+    returns ``[]`` both for an absent key and for a present-but-empty list. Without
+    this guard a botched regeneration (crash, merge conflict, bad sed) produces a
+    fully green gate run over zero entries -- the worst possible failure mode,
+    because it is indistinguishable from a clean pass.
+
+    Returns the manifest's declared ``spec_version``.
+    Raises ManifestSchemaError (subclass of ValueError) on any violation.
+    """
+    if not isinstance(manifest, dict):
+        raise ManifestSchemaError(
+            f"Manifest root must be a JSON object, got {type(manifest).__name__} ({source_path})"
+        )
+
+    if "spec_version" not in manifest:
+        raise ManifestSchemaError(f"Manifest is missing required key 'spec_version' ({source_path})")
+    spec_version = manifest["spec_version"]
+    if not isinstance(spec_version, str) or not re.match(r"^\d+\.\d+\.\d+$", spec_version):
+        raise ManifestSchemaError(
+            f"Manifest 'spec_version' must be a MAJOR.MINOR.PATCH string, got {spec_version!r} ({source_path})"
+        )
+
+    if "entries" not in manifest:
+        raise ManifestSchemaError(
+            f"Manifest is missing required key 'entries' ({source_path}). "
+            "A truncated manifest must never be reported as a clean gate run."
+        )
+    entries = manifest["entries"]
+    if not isinstance(entries, list):
+        raise ManifestSchemaError(
+            f"Manifest 'entries' must be a JSON array, got {type(entries).__name__} ({source_path})"
+        )
+    if not entries:
+        raise ManifestSchemaError(
+            f"Manifest 'entries' is empty ({source_path}). "
+            "Refusing to certify a zero-entry corpus as fully compliant."
+        )
+
+    declared_total = manifest.get("total_entries")
+    if declared_total is not None:
+        if not isinstance(declared_total, int):
+            raise ManifestSchemaError(
+                f"Manifest 'total_entries' must be an integer, got {type(declared_total).__name__} ({source_path})"
+            )
+        if declared_total != len(entries):
+            raise ManifestSchemaError(
+                f"Manifest 'total_entries' ({declared_total}) disagrees with the actual entry "
+                f"count ({len(entries)}) ({source_path}). Data file is likely partially written."
+            )
+
+    bad = [i for i, e in enumerate(entries) if not isinstance(e, dict)]
+    if bad:
+        raise ManifestSchemaError(
+            f"Manifest has {len(bad)} non-object entry element(s) at indices {bad[:5]} ({source_path})"
+        )
+
+    return spec_version
 
 
 def find_workspace_root(start_path: Path | None = None) -> Path:
@@ -183,6 +254,8 @@ def build_context(
     with open(m_path, "r", encoding="utf-8") as f:
         manifest = json.load(f)
 
+    manifest_spec_version = validate_manifest_schema(manifest, m_path)
+
     with open(c_path, "r", encoding="utf-8") as f:
         catalog = yaml.safe_load(f) or {}
 
@@ -204,7 +277,7 @@ def build_context(
         "quarantine": quarantine,
         "changed_files": changed_files,
         "workspace_root": str(ws_root).replace("\\", "/"),
-        "spec_version": "2.0.0",
+        "spec_version": manifest_spec_version,
         "mode": mode,
         "now_utc": current_utc,
     }

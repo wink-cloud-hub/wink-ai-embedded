@@ -2,8 +2,12 @@
 """
 g4_impact_regression.py
 =======================
-Gate 4 Rule: Executes reverse transitive impact analysis and triggers headless
-regression tests or marks evidence as stale for Nightly regression.
+Gate 4 Rule: Computes the reverse transitive impact closure over the capability
+graph and structurally validates the scenarios of impacted examples.
+
+Scope honesty: this rule does NOT execute simulations. It performs static
+structural validation only. Real behavioural regression requires the UniSim
+headless evidence runner and is a separate concern.
 """
 
 import json
@@ -14,11 +18,20 @@ from impact_scope import compute_impact_closure
 RULE_ID = "g4.impact_regression"
 
 
-def verify_scenario_headless(entry: dict, execution: dict, ws_root: Path) -> tuple[bool, str]:
+def validate_scenario_manifest(entry: dict, execution: dict, ws_root: Path) -> tuple[bool, str]:
+    """Structurally validates the scenario declared by an execution config.
+
+    NOTE: this performs *no* simulation. It does not launch a Wasm runtime, Node,
+    or any headless runner. Its only failure trigger is a ``broken_assertion``
+    flag authored in the same manifest the rule reads, so it is a self-consistency
+    check, not a regression.
+
+    Actually executing the scenario requires the UniSim headless evidence runner
+    (run_esp32_headless_evidence.ps1) and is deliberately out of scope for this
+    pure-Python gate. Keep the naming honest so the rule is not mistaken for an
+    executed regression.
     """
-    Validates the scenario and execution config integrity for inline headless regression.
-    """
-    acc = execution.get("acceptance", {})
+    acc = execution.get("acceptance") or {}
     sc_rel = acc.get("scenario_path")
     if not sc_rel:
         return True, "No scenario path declared"
@@ -34,7 +47,13 @@ def verify_scenario_headless(entry: dict, execution: dict, ws_root: Path) -> tup
             break
 
     if not sc_file:
-        return True, "Scenario file not on disk; skipping headless execution"
+        # Fail-closed, consistent with g1_can_check_mark: once an execution claims
+        # to have been built, a scenario that is declared but absent from the
+        # workspace is a broken declaration, not a reason to report a clean pass.
+        return False, (
+            f"Scenario file declared at '{sc_rel}' is not on disk. "
+            f"A declared-but-missing scenario must not be reported as a pass."
+        )
 
     try:
         with open(sc_file, "r", encoding="utf-8") as f:
@@ -42,17 +61,20 @@ def verify_scenario_headless(entry: dict, execution: dict, ws_root: Path) -> tup
     except Exception as e:
         return False, f"Corrupted scenario JSON file '{sc_rel}': {e}"
 
+    if not isinstance(sc_data, dict):
+        return False, f"Invalid scenario '{sc_rel}': root must be a JSON object"
+
     # Verify scenario structure
     if "steps" in sc_data and not isinstance(sc_data["steps"], list):
         return False, f"Invalid 'steps' structure in scenario '{sc_rel}'"
 
     # Verify assertions
-    pos_cases = acc.get("positive_cases", [])
+    pos_cases = acc.get("positive_cases") or []
     for p in pos_cases:
         if isinstance(p, dict) and p.get("broken_assertion"):
-            return False, f"Regression assertion failed in positive case: {p.get('name')}"
+            return False, f"Regression assertion flagged broken in positive case: {p.get('name')}"
 
-    return True, "Scenario headless verification passed"
+    return True, "Scenario manifest structurally valid (not executed)"
 
 
 def run(context: dict, config: dict | None = None) -> list[dict]:
@@ -86,14 +108,23 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
     entry_by_id = {e.get("display_id"): e for e in manifest.get("entries", [])}
 
     if pr_inline:
-        # Schedule and execute headless regression inline (<= 30 entries)
+        # Inline structural validation of impacted scenarios (<= max_inline entries).
         for did in impact_entries:
             entry = entry_by_id.get(did)
             if not entry:
                 continue
 
             for ex in entry.get("executions", []):
-                passed, reason = verify_scenario_headless(entry, ex, ws_root)
+                # A scenario path on a `planned` execution is a *planned declaration*,
+                # not a claim that the artifact exists. 468 of 469 declared scenarios
+                # are absent precisely because that work has not been done yet.
+                # Enforcing presence there would block all real work, so presence is
+                # only required once an execution claims to have been built.
+                # This mirrors g1_can_check_mark, which likewise only validates
+                # artifacts for non-planned delivery states.
+                if ex.get("delivery_state", "planned") == "planned":
+                    continue
+                passed, reason = validate_scenario_manifest(entry, ex, ws_root)
                 if not passed:
                     findings.append({
                         "rule_id": RULE_ID,
@@ -101,11 +132,14 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
                         "entry_id": entry.get("id"),
                         "display_id": did,
                         "config_id": ex.get("config_id"),
-                        "file_path": ex.get("acceptance", {}).get("scenario_path"),
-                        "message": f"Headless regression failed for entry #{did}: {reason}",
+                        "file_path": (ex.get("acceptance") or {}).get("scenario_path"),
+                        "message": f"Scenario validation failed for entry #{did}: {reason}",
                     })
     else:
-        # Impact scope exceeds PR threshold (> 30 entries)
+        # Impact scope exceeds the PR inline threshold.
+        # NOTE: the pending report is a triage artifact for a human/nightly job to
+        # pick up. Nothing in CI consumes it automatically, so this finding is a
+        # warning, not a claim that a regression was scheduled and will run.
         reports_dir = ws_root / "wink-micro-app" / "vendor" / "esp_idfv61" / ".governance" / "gates" / "reports"
         reports_dir.mkdir(parents=True, exist_ok=True)
         pending_file = reports_dir / "nightly_pending_regression.json"
@@ -116,11 +150,13 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
             "impact_count": impact_count,
             "impact_entries": impact_entries,
             "affected_capabilities": closure["affected_capabilities"],
+            "consumed_by": None,
+            "note": "Triage artifact only. No CI job consumes this file automatically; "
+                    "run the UniSim headless evidence runner for these entries before merge.",
         }
         with open(pending_file, "w", encoding="utf-8") as f:
             json.dump(pending_data, f, indent=2, ensure_ascii=False)
 
-        # 2. Mark entries as stale with warning
         findings.append({
             "rule_id": RULE_ID,
             "severity": "warning",
@@ -129,9 +165,11 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
             "config_id": None,
             "file_path": "reports/nightly_pending_regression.json",
             "message": (
-                f"Impact scope {impact_count} entries exceeds PR threshold ({max_inline}). "
-                f"Entries marked as stale and scheduled for Nightly regression. "
-                f"Wrote manifest to {pending_file.name}."
+                f"Impact scope {impact_count} entries exceeds PR threshold ({max_inline}); "
+                f"{impact_count} impacted entries were NOT regression-tested by this gate. "
+                f"No CI job consumes the pending list automatically -- run the UniSim headless "
+                f"evidence runner for {pending_file.name} before merging. "
+                f"This gate only performs structural scenario validation, never execution."
             ),
         })
 

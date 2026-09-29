@@ -8,7 +8,9 @@ Gate 1 Rule: Verifies that entry ID conforms to the stable identifier regex ^esp
 import re
 
 RULE_ID = "g1.id_format"
-ID_PATTERN = re.compile(r"^esp\.[a-z0-9_]+(\.[a-z0-9_]+)+$")
+# `\Z` rather than `$`: Python's `$` also matches immediately before a trailing
+# newline, so "esp.a.b\n" would otherwise pass the stable-ID check.
+ID_PATTERN = re.compile(r"^esp\.[a-z0-9_]+(\.[a-z0-9_]+)+\Z")
 
 
 def run(context: dict, config: dict | None = None) -> list[dict]:

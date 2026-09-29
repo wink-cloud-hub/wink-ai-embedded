@@ -124,6 +124,9 @@ docs/vendors/
 docs/.internals/
 .internals/
 
-# Gate report outputs (ephemeral CI outputs)
-**/esp_idfv61/.gates/reports/*.json
+# Gate report outputs (ephemeral CI outputs).
+# The `.gates/` spelling here predates the `.governance/` restructure and matched
+# nothing, so generated artifacts were being committed.
+**/esp_idfv61/.governance/gates/reports/*.json
+!**/esp_idfv61/.governance/gates/reports/.gitkeep
 
