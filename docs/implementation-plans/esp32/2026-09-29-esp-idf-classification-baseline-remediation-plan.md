@@ -359,7 +359,7 @@
 | **阶段 A：语义与 Schema 裁决** | 制定 Schema v2.0 与能力图谱语法规格，设立三条解析防御红线与 `WINK_SLA_ERROR` 规范 | [esp-idf-classification-schema-spec.md][schema-spec] | **COMPLETED** | Draft 2020-12 Schema 校验规范完备，多配置 `executions` 实体模型定义确立 |
 | **阶段 B：决策与规范回写** | 采纳 ADR-0091，全面回写 CLASSIFICATION-SPEC v2.0、PLAYBOOK v2.0 与门禁技术设计 | [ADR-0091][adr91]、[CLASSIFICATION-SPEC.md][spec]、[PLAYBOOK.md][playbook]、[esp-idf-classification-gate-system.md][gate-design] | **COMPLETED** | 规范目录全面重构；消灭 Markdown 手写看板冲突；如实标注 `.gates/` 过渡现状与 pure function 门禁约束 |
 | **阶段 C：最小闭环验证** | 编写黄金正向用例与 3 个负向边界用例，打通端到端校验逻辑 | [verify_phase_c_closed_loop.py][phase-c-script] | **COMPLETED** | 4/4 测试 100% PASS（正向 blink 真实文件通过投影 `[x]`，空哈希/脏哈希被拒投影 `[ ]`，SLA 排除投影 `[-]`） |
-| **阶段 D：存量迁移与门禁落地** | 挂载 14 天 TTL 隔离区白名单，执行 478 条存量数据 Schema v2.0 迁移，重生成看板 | [.gates/quarantine.yaml][quarantine]、[migrate_checklist_v1_to_v2.py][migrator]、[checklist.data.json][data]、[CHECKLIST.md][checklist] | **COMPLETED** | 478 条数据全量升级；10 个历史空哈希项隔离渲染为 `[?]`，消除虚假 `[x]`；严格门禁校验 0 错误 |
+| **阶段 D：存量迁移与门禁落地** | 挂载 14 天 TTL 隔离区白名单，执行 478 条存量数据 Schema v2.0 迁移，重生成看板 | [.gates/quarantine.yaml][quarantine]、`migrate_checklist_v1_to_v2.py`（完成并归档于 Git 历史）、[checklist.data.json][data]、[CHECKLIST.md][checklist] | **COMPLETED** | 478 条数据全量升级；10 个历史空哈希项隔离渲染为 `[?]`，消除虚假 `[x]`；严格门禁校验 0 错误 |
 | **阶段 E：基线冻结与归档** | 逐项核对 Q01~Q08 关闭标准，确认许可证门禁与代码纯净度，正式冻结基线 | 本整改方案归档、全量脚本验证通过 | **COMPLETED** | 架构缺陷与语义漏洞全部彻底闭环；无数据丢失；门禁只读纯函数防腐生效 |
 
 ### 2. 核心架构资产与交付物索引
@@ -371,10 +371,10 @@
 - **存量债务隔离区白名单**：[.gates/quarantine.yaml][quarantine]（TTL 截至 `2026-10-13T23:59:59Z`）
 - **数据源（SSOT）**：[checklist.data.json][data]（Schema v2.0，478 条）
 - **单向只读看板**：[CHECKLIST.md][checklist]（Verified: 0, Quarantined: 10, Out-of-Scope: 183, Unknown: 285）
-- **迁移与门禁工具**：
-  - [migrate_checklist_v1_to_v2.py][migrator]
-  - [generate_checklist_v1_1.py][renderer]
-  - [verify_phase_c_closed_loop.py][phase-c-script]
+- **活动工具与校验脚本**：
+  - [generate_checklist_v1_1.py][renderer]（单向看板派生与严格门禁校验入口）
+  - [verify_phase_c_closed_loop.py][phase-c-script]（闭环校验用例集）
+  - *注：`migrate_checklist_v1_to_v2.py` 与 `migrate_checklist_v1_1.py` 为一次性存量迁移脚本，已在阶段 D 执行完成并完整留存归档于 Git 提交历史中。*
 
 ### 3. 验收签署与冻结结论
 
@@ -385,7 +385,6 @@
 [schema-spec]: ../../zh/tech-designs/esp32/esp-idf-classification-schema-spec.md
 [adr91]: ../../decisions/unisim/0091-esp-idf-multi-config-orthogonal-schema.md
 [quarantine]: ../../../wink-micro-app/vendor/esp_idfv61/.gates/quarantine.yaml
-[migrator]: ../../../wink-micro-app/vendor/esp_idfv61/migrate_checklist_v1_to_v2.py
 [phase-c-script]: ../../../scripts/verify_phase_c_closed_loop.py
 [spec]: ../../../wink-micro-app/vendor/esp_idfv61/CLASSIFICATION-SPEC.md
 [catalog]: ../../../wink-micro-app/vendor/esp_idfv61/capability-catalog.yaml
