@@ -5,9 +5,10 @@
 | 文档编号 | TECH-DESIGN-ESP32-GATE-SYSTEM-v1.0 |
 | 状态 | **Accepted（设计完成，待实施）** |
 | 日期 | 2026-09-29 |
-| 决策依据 | [ADR-0090](../../../docs/decisions/unisim/0090-centralized-pluggable-gate-system.md)（集中式可插拔门禁系统） |
-| 数据 SSOT | [`checklist.data.json`](../../../wink-micro-app/vendor/esp_idfv61/checklist.data.json)、[`capability-catalog.yaml`](../../../wink-micro-app/vendor/esp_idfv61/capability-catalog.yaml) |
-| 规范依据 | [`CLASSIFICATION-SPEC.md`](../../../wink-micro-app/vendor/esp_idfv61/CLASSIFICATION-SPEC.md) v1.1 §四 CI Gate 1~4 |
+| 决策依据 | [ADR-0090](../../../docs/decisions/unisim/0090-centralized-pluggable-gate-system.md)（集中式可插拔门禁系统）<br>[ADR-0091](../../../docs/decisions/unisim/0091-esp-idf-multi-config-orthogonal-schema.md)（多配置实例与五维正交 Schema 架构） |
+| 数据 SSOT | [`checklist.data.json`](../../../wink-micro-app/vendor/esp_idfv61/checklist.data.json) (Schema v2.0)<br>[`capability-catalog.yaml`](../../../wink-micro-app/vendor/esp_idfv61/capability-catalog.yaml) |
+| 规范依据 | [`CLASSIFICATION-SPEC.md`](../../../wink-micro-app/vendor/esp_idfv61/CLASSIFICATION-SPEC.md) v2.0 §七 CI Gate 1~4<br>[ESP-IDF 分类数据 Schema 终版规格](esp-idf-classification-schema-spec.md) |
+| 实施计划 | [分类规范执行基线整改计划](../../../implementation-plans/esp32/2026-09-29-esp-idf-classification-baseline-remediation-plan.md) (Approved) |
 
 ---
 
@@ -26,14 +27,15 @@
 
 ```
 wink-micro-app/vendor/esp_idfv61/
-├── checklist.data.json          ← 数据 SSOT（478 条）
-├── capability-catalog.yaml      ← 能力字典 SSOT
-├── generate_checklist_v1_1.py   ← CHECKLIST.md 渲染器（内嵌 Gate 1 基础校验）
+├── checklist.data.json          ← 数据 SSOT（478 条，Schema v2.0）
+├── capability-catalog.yaml      ← 能力字典 SSOT（含 depends_on 依赖图）
+├── generate_checklist_v1_1.py   ← CHECKLIST.md 渲染器（过渡期工具；待升级至 v2.0 裁判逻辑）
 │
 └── .gates/                      ← 门禁系统根目录（本设计主体）
     │
     ├── gates.yaml               ← 【唯一门禁注册表】所有规则的声明式定义
-    ├── run_gates.py             ← 【唯一 CI 入口】统一执行器
+    ├── quarantine.yaml          ← 【存量债务隔离区白名单】14 天硬性 TTL，逾期硬阻断
+    ├── run_gates.py             ← 【唯一 CI 入口】统一执行器（只读纯函数，不修改文件）
     ├── gate_context.py          ← 共享上下文构建器（数据加载、git diff 解析）
     │
     ├── rules/                   ← 插件目录（每文件一条规则）
