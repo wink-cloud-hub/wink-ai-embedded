@@ -8,6 +8,7 @@ reported as a clean pass -- the single layering-integrity gate failing open.
 """
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -126,10 +127,10 @@ def test_missing_toolchain_hint_names_canonical_path(tmp_path):
     ws.mkdir()
     hint = g3.toolchain_search_hint(ws)
     assert "wink-ai/packages/wink-tools" in hint
-    assert "not a 'winkcli' binary on PATH" in hint
+    assert "PATH" in hint
 
 
-def test_toolchain_resolution_never_touches_path(monkeypatch, tmp_path):
+def test_source_never_probes_path(monkeypatch, tmp_path):
     """Behavioural guard: resolving the toolchain must not consult PATH at all."""
     def _boom(_name):
         raise AssertionError("find_winkcli_executable must not probe PATH")
@@ -146,6 +147,52 @@ def test_toolchain_resolution_never_touches_path(monkeypatch, tmp_path):
     (canonical / "wink.py").write_text("# toolchain\n", encoding="utf-8")
     cmd = g3.find_winkcli_executable(ws)
     assert cmd is not None and cmd[1].endswith("wink.py")
+
+
+# --- confidentiality ---------------------------------------------------------
+# The toolchain is a commercial-secret private repository and this repository is
+# open source. Publishing its remote, organisation id or commit id here would
+# hand out reconnaissance material about internal infrastructure, so none of it
+# may appear in committed files -- not in the lock, not in diagnostics, not in a
+# generator that gets re-run and re-committed.
+#
+# These checks are deliberately written with GENERIC patterns rather than the
+# actual confidential strings: a test that hardcoded the private host or org id
+# would itself be the leak it is meant to prevent.
+
+GIT_REMOTE = re.compile(r"(?:git@[^\s'\"]+|ssh://\S+|git://\S+)")
+
+
+def _assert_no_remote(text: str, what: str) -> None:
+    m = GIT_REMOTE.search(text)
+    assert m is None, f"{what} discloses a git remote: {m.group(0)!r}"
+
+
+def test_hint_does_not_disclose_the_private_toolchain_remote():
+    from pathlib import Path as _P
+    hint = g3.toolchain_search_hint(_P("."))
+    _assert_no_remote(hint, "toolchain_search_hint")
+    assert "wink-ai/packages/wink-tools/wink.py" in hint, "hint must stay actionable"
+
+
+def test_lock_file_discloses_no_remote_or_commit():
+    import yaml as _yaml
+    text = g3.TOOLCHAIN_LOCK.read_text(encoding="utf-8")
+    _assert_no_remote(text, "toolchain.lock.yaml")
+    data = _yaml.safe_load(text)
+    tc = data["toolchain"]
+    for banned in ("repository", "remote", "url", "pinned_commit", "pinned_branch"):
+        assert banned not in tc, f"toolchain lock must not record {banned!r}"
+    assert tc["entry_sha256"], "content hash must still be recorded"
+
+
+def test_generator_never_writes_the_private_remote():
+    gen = (g3.TOOLCHAIN_LOCK.parent / "tools" / "refresh_toolchain_lock.py")
+    src = gen.read_text(encoding="utf-8")
+    _assert_no_remote(src, "refresh_toolchain_lock.py")
+    for emitted in ("  repository:", "  pinned_commit:", "  pinned_branch:"):
+        assert f'f\'{emitted}' not in src, \
+            f"generator must not emit {emitted.strip()} into the lock"
 
 
 # --- toolchain fingerprint ---------------------------------------------------

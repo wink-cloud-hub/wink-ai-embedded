@@ -4,12 +4,14 @@
 #
 # WHY THIS EXISTS
 # ---------------
-# Gate 3 executes the linter from the PRIVATE wink-ai repository
-# (wink-ai/packages/wink-tools/wink.py). That repository is deliberately not
-# vendored here -- it is a commercial-secret private repo. The consequence is
-# that the engine is not version-controlled in this repository, so nothing
-# would otherwise detect that the engine underneath a given lint verdict has
-# changed. This lock makes the coupling auditable WITHOUT vendoring anything.
+# Gate 3 executes the linter from a PRIVATE toolchain checkout that is
+# deliberately not vendored here. That repository is a commercial secret
+# and is not open-sourced, so the engine is not version-controlled in this
+# repository and nothing would otherwise detect that the engine underneath
+# a given lint verdict has changed. This lock makes the coupling auditable
+# WITHOUT vendoring anything -- and without disclosing where the toolchain
+# lives: it records only content hashes, never a remote URL, organisation
+# id, or commit id.
 #
 # MISMATCH SEMANTICS
 # ------------------
@@ -22,12 +24,13 @@
 spec_version: "1.0"
 
 toolchain:
-  repository: "git@codeup.aliyun.com:64e41d33407cfc1afb62cdce/wink-ai/wink-ai.git"
   package_relpath: "packages/wink-tools"
   entry_point: "wink.py"
-  pinned_commit: "823ce13ace3b3d90ddc323ed1699226f800b33b0"
-  pinned_branch: "master"
+  # Local checkout convention only; the remote is intentionally omitted.
+  checkout_convention: "sibling directory named wink-ai/"
   # Authoritative: content hash of the engine entry point actually executed.
+  # Content-based rather than commit-based on purpose: it reveals nothing
+  # about the private repository and still changes when the engine does.
   entry_sha256: "691f3670ede755d73eaba0660e0226d61af85cb939098dba1035329d1fe2da15"
 
 # Rule data lives in BOTH repos; Gate 3 executes the private repo's copy.

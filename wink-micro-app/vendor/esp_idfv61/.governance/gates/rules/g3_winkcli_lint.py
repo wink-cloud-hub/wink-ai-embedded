@@ -98,14 +98,21 @@ def _build_cmd(cmd_base: list[str], ws_root: Path, packs: list[str],
 
 
 def toolchain_search_hint(ws_root: Path) -> str:
-    """Human-actionable message listing where the toolchain was looked for."""
+    """Human-actionable message listing where the toolchain was looked for.
+
+    Deliberately describes the toolchain by its local path only. The engine lives
+    in a private, commercial-secret repository; naming its remote, organisation
+    or commit here would publish that infrastructure in this open-source repo.
+    """
     probed = [str(ws_root.parent / CANONICAL_TOOLCHAIN_RELPATH),
               str(ws_root / CANONICAL_TOOLCHAIN_RELPATH)]
     return (
         f"Looked for: {', '.join(probed)}, or $WINK_TOOLS_ROOT/wink.py. "
-        f"Local convention requires invoking the linter through "
-        f"'wink-ai/packages/wink-tools/wink.py' (sibling repository, remote "
-        f"git@codeup.aliyun.com:wink-ai/wink-ai.git), not a 'winkcli' binary on PATH."
+        f"By convention the linter is invoked through "
+        f"'wink-ai/packages/wink-tools/wink.py' from the sibling private "
+        f"toolchain checkout, not through a 'winkcli' binary on PATH. "
+        f"If the sibling checkout is absent, restore it and re-run; do not "
+        f"point this gate at a PATH binary."
     )
 
 

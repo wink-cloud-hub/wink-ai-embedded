@@ -87,6 +87,12 @@ def main() -> int:
     print(f"entry point  : {entry}")
     print(f"  sha256     : {sha256(entry)}")
     print(f"  commit     : {commit} ({branch})")
+    # The remote URL is read only to confirm the checkout is the expected one.
+    # It is never written to the lock: this repo is open source and the toolchain
+    # is a commercial secret, so the remote, its organisation id and its commit
+    # history must not be published here.
+    if remote and "wink-ai" not in remote:
+        print(f"  WARNING: unexpected toolchain remote {remote!r}", file=sys.stderr)
 
     if args.sync_mirror:
         MIRROR_RULES.mkdir(parents=True, exist_ok=True)
@@ -128,12 +134,14 @@ def main() -> int:
         "#",
         "# WHY THIS EXISTS",
         "# ---------------",
-        "# Gate 3 executes the linter from the PRIVATE wink-ai repository",
-        "# (wink-ai/packages/wink-tools/wink.py). That repository is deliberately not",
-        "# vendored here -- it is a commercial-secret private repo. The consequence is",
-        "# that the engine is not version-controlled in this repository, so nothing",
-        "# would otherwise detect that the engine underneath a given lint verdict has",
-        "# changed. This lock makes the coupling auditable WITHOUT vendoring anything.",
+        "# Gate 3 executes the linter from a PRIVATE toolchain checkout that is",
+        "# deliberately not vendored here. That repository is a commercial secret",
+        "# and is not open-sourced, so the engine is not version-controlled in this",
+        "# repository and nothing would otherwise detect that the engine underneath",
+        "# a given lint verdict has changed. This lock makes the coupling auditable",
+        "# WITHOUT vendoring anything -- and without disclosing where the toolchain",
+        "# lives: it records only content hashes, never a remote URL, organisation",
+        "# id, or commit id.",
         "#",
         "# MISMATCH SEMANTICS",
         "# ------------------",
@@ -143,15 +151,16 @@ def main() -> int:
         "#     python .governance/tools/refresh_toolchain_lock.py",
         "#",
         "# GENERATED FILE -- do not hand-edit.",
-        f'spec_version: "1.0"',
+        'spec_version: "1.0"',
         "",
         "toolchain:",
-        f'  repository: "{remote}"',
         '  package_relpath: "packages/wink-tools"',
         '  entry_point: "wink.py"',
-        f'  pinned_commit: "{commit}"',
-        f'  pinned_branch: "{branch}"',
+        "  # Local checkout convention only; the remote is intentionally omitted.",
+        '  checkout_convention: "sibling directory named wink-ai/"',
         "  # Authoritative: content hash of the engine entry point actually executed.",
+        "  # Content-based rather than commit-based on purpose: it reveals nothing",
+        "  # about the private repository and still changes when the engine does.",
         f'  entry_sha256: "{sha256(entry)}"',
         "",
         "# Rule data lives in BOTH repos; Gate 3 executes the private repo's copy.",
