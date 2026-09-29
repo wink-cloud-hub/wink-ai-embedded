@@ -54,11 +54,14 @@ def locate_private_repo() -> Path | None:
 def git_info(repo: Path) -> tuple[str, str]:
     try:
         commit = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"],
-                                capture_output=True, text=True).stdout.strip()
+                                capture_output=True, text=True,
+                                encoding="utf-8", errors="replace").stdout.strip()
         branch = subprocess.run(["git", "-C", str(repo), "rev-parse", "--abbrev-ref", "HEAD"],
-                                capture_output=True, text=True).stdout.strip()
+                                capture_output=True, text=True,
+                                encoding="utf-8", errors="replace").stdout.strip()
         remote = subprocess.run(["git", "-C", str(repo), "remote", "get-url", "origin"],
-                                capture_output=True, text=True).stdout.strip()
+                                capture_output=True, text=True,
+                                encoding="utf-8", errors="replace").stdout.strip()
         return commit, branch, remote
     except OSError:
         return "", "", ""

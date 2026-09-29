@@ -82,19 +82,21 @@ def private_identifiers() -> set[str]:
             cand = parent / name
             if not (cand / ".git").exists():
                 continue
-            for key in ("url", "url"):
-                proc = subprocess.run(["git", "-C", str(cand), "remote", "get-url", "origin"],
-                                      capture_output=True, text=True)
-                url = (proc.stdout or "").strip()
-                if not url:
-                    continue
-                # Record the host and the org/repo path, plus the org id that
-                # appears as a path prefix in some forges.
-                cleaned = url.split("://")[-1].split("@")[-1]
-                host, _, path = cleaned.partition(":")
-                for piece in (host, path.replace(".git", ""), path.split("/")[0] if "/" in path else ""):
-                    if piece and len(piece) > 3:
-                        tokens.add(piece)
+            proc = subprocess.run(
+                ["git", "-C", str(cand), "remote", "get-url", "origin"],
+                capture_output=True, text=True,
+                encoding="utf-8", errors="replace"
+            )
+            url = (proc.stdout or "").strip()
+            if not url:
+                continue
+            # Record the host and the org/repo path, plus the org id that
+            # appears as a path prefix in some forges.
+            cleaned = url.split("://")[-1].split("@")[-1]
+            host, _, path = cleaned.partition(":")
+            for piece in (host, path.replace(".git", ""), path.split("/")[0] if "/" in path else ""):
+                if piece and len(piece) > 3:
+                    tokens.add(piece)
     return tokens
 
 
@@ -143,7 +145,10 @@ def _banner(text: str) -> None:
 def _run(cmd, cwd=REPO_ROOT, quiet=False):
     print(f"  $ {' '.join(str(c) for c in cmd)}")
     if quiet:
-        return subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True).returncode
+        return subprocess.run(
+            cmd, cwd=str(cwd), capture_output=True, text=True,
+            encoding="utf-8", errors="replace"
+        ).returncode
     return subprocess.run(cmd, cwd=str(cwd)).returncode
 
 
@@ -162,7 +167,10 @@ def changed_files_path(tmp: Path, all_files: bool) -> Path | None:
         ["git", "diff", "--name-only", "--cached"],
         ["git", "ls-files", "--others", "--exclude-standard"],
     ):
-        proc = subprocess.run(cmd, cwd=str(REPO_ROOT), capture_output=True, text=True)
+        proc = subprocess.run(
+            cmd, cwd=str(REPO_ROOT), capture_output=True, text=True,
+            encoding="utf-8", errors="replace"
+        )
         names |= {ln.strip() for ln in proc.stdout.splitlines() if ln.strip()}
     if not names:
         return None
@@ -173,8 +181,11 @@ def changed_files_path(tmp: Path, all_files: bool) -> Path | None:
 
 def staged_files() -> list[str]:
     """Paths staged for commit -- the set that could actually leave the machine."""
-    proc = subprocess.run(["git", "diff", "--name-only", "--cached"],
-                          cwd=str(REPO_ROOT), capture_output=True, text=True)
+    proc = subprocess.run(
+        ["git", "diff", "--name-only", "--cached"],
+        cwd=str(REPO_ROOT), capture_output=True, text=True,
+        encoding="utf-8", errors="replace"
+    )
     return [ln.strip() for ln in proc.stdout.splitlines() if ln.strip()]
 
 
