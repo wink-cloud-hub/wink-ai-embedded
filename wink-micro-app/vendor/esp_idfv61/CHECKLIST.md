@@ -14,9 +14,9 @@
 ## 一、 总体适配进度统计
 
 - **官方独立示例总数**：**478 个**
-  - `[x]` **已完成六要素实证 (Verified)**：**0 项**
-  - `[?]` **存量隔离待补凭证 (Quarantined Debt)**：**10 项**（14 天 TTL 过期硬阻断，至 `2026-10-13`）
-  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**281 项**
+  - `[x]` **已完成六要素实证 (Verified)**：**1 项**
+  - `[?]` **存量隔离待补凭证 (Quarantined Debt)**：**0 项**（14 天 TTL 过期硬阻断，至 `2026-10-13`）
+  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**290 项**
   - `[-]` **明确产品排除 / 暂缓投入 (Out-of-Scope / Deferred)**：**187 项**（编译期 `WINK_SLA_ERROR` Fail-Loud 阻断）
   - `?` **待深度审定 (Pending Audit / Unknown Scope)**：**0 项**
 
@@ -24,12 +24,12 @@
 
 | 序号 | 功能大类 | 包含示例数 | 编号跨度 | 已实证 | 隔离待补 |
 | :---: | :--- | :---: | :---: | :---: | :---: |
-| 01 | [基础快速起步 (Get-Started)](#get-started) | 2 项 | `#001 ~ #002` | 0 项 | 1 项 |
-| 02 | [片上与总线外设 (Peripherals)](#peripherals) | 114 项 | `#003 ~ #116` | 0 项 | 4 项 |
+| 01 | [基础快速起步 (Get-Started)](#get-started) | 2 项 | `#001 ~ #002` | 1 项 | 0 项 |
+| 02 | [片上与总线外设 (Peripherals)](#peripherals) | 114 项 | `#003 ~ #116` | 0 项 | 0 项 |
 | 03 | [操作系统与核心系统调用 (System & OS)](#system) | 68 项 | `#117 ~ #184` | 0 项 | 0 项 |
-| 04 | [网络与应用层通信协议 (Protocols)](#protocols) | 35 项 | `#185 ~ #219` | 0 项 | 2 项 |
-| 05 | [Wi-Fi 无线局域网 (Wi-Fi)](#wifi) | 24 项 | `#220 ~ #243` | 0 项 | 2 项 |
-| 06 | [蓝牙协议栈 (Bluetooth)](#bluetooth) | 147 项 | `#244 ~ #390` | 0 项 | 1 项 |
+| 04 | [网络与应用层通信协议 (Protocols)](#protocols) | 35 项 | `#185 ~ #219` | 0 项 | 0 项 |
+| 05 | [Wi-Fi 无线局域网 (Wi-Fi)](#wifi) | 24 项 | `#220 ~ #243` | 0 项 | 0 项 |
+| 06 | [蓝牙协议栈 (Bluetooth)](#bluetooth) | 147 项 | `#244 ~ #390` | 0 项 | 0 项 |
 | 07 | [片上存储与文件系统 (Storage)](#storage) | 27 项 | `#391 ~ #417` | 0 项 | 0 项 |
 | 08 | [底层网络与接口 (Network)](#network) | 5 项 | `#418 ~ #422` | 0 项 | 0 项 |
 | 09 | [C++ 运行时与语言特性 (C++)](#cxx) | 3 项 | `#423 ~ #425` | 0 项 | 0 项 |
@@ -68,17 +68,17 @@
 ## 三、 478 个官方示例逐项核对总账
 
 <a id="get-started"></a>
-### 基础快速起步 (Get-Started)（共 2 项 | 编号 `#001 ~ #002` | 已实证: 0 项 | 隔离待补: 1 项）
+### 基础快速起步 (Get-Started)（共 2 项 | 编号 `#001 ~ #002` | 已实证: 1 项 | 隔离待补: 0 项）
 
 | 状态 | 编号 | 官方子示例相对路径 | 可观测等级 | 优先级 | 对应 wink-micro-app | 验收标准与架构说明 |
 | :---: | :---: | :--- | :---: | :---: | :--- | :--- |
-| [?] | 001 | `get-started/blink` | 🎯 Level 1 | P1 | `esp_idfv61_blink` | 待补凭证 (存量隔离区债务，14天 TTL 至 2026-10-13) |
+| [x] | 001 | `get-started/blink` | 🎯 Level 1 | P0 | `待适配` | 已完成实证。 |
 | [ ] | 002 | `get-started/hello_world` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 
 ---
 
 <a id="peripherals"></a>
-### 片上与总线外设 (Peripherals)（共 114 项 | 编号 `#003 ~ #116` | 已实证: 0 项 | 隔离待补: 4 项）
+### 片上与总线外设 (Peripherals)（共 114 项 | 编号 `#003 ~ #116` | 已实证: 0 项 | 隔离待补: 0 项）
 
 | 状态 | 编号 | 官方子示例相对路径 | 可观测等级 | 优先级 | 对应 wink-micro-app | 验收标准与架构说明 |
 | :---: | :---: | :--- | :---: | :---: | :--- | :--- |
@@ -102,7 +102,7 @@
 | [ ] | 020 | `peripherals/gpio/generic_gpio` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 021 | `peripherals/gpio/matrix_keyboard` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [-] | 022 | `peripherals/h264` | 🎯 Level 1 | P4 | `待适配` | 声明 Out-of-Scope。硬件 H.264 编解码加速器。 |
-| [?] | 023 | `peripherals/i2c/i2c_basic` | 📜 Level 2 | P1 | `esp_idfv61_i2c_basic` | 待补凭证 (存量隔离区债务，14天 TTL 至 2026-10-13) |
+| [ ] | 023 | `peripherals/i2c/i2c_basic` | 📜 Level 2 | P1 | `待适配` | I2C读取传感器寄存器 |
 | [ ] | 024 | `peripherals/i2c/i2c_eeprom` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 025 | `peripherals/i2c/i2c_slave_network_sensor` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 026 | `peripherals/i2c/i2c_tools` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
@@ -126,7 +126,7 @@
 | [ ] | 044 | `peripherals/lcd/rgb_panel` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 045 | `peripherals/lcd/spi_lcd_touch` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 046 | `peripherals/lcd/tjpgd` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
-| [?] | 047 | `peripherals/ledc/ledc_basic` | 🎯 Level 1 | P1 | `esp_idfv61_ledc_basic` | 待补凭证 (存量隔离区债务，14天 TTL 至 2026-10-13) |
+| [ ] | 047 | `peripherals/ledc/ledc_basic` | 🎯 Level 1 | P1 | `待适配` | PWM占空比渐变 |
 | [ ] | 048 | `peripherals/ledc/ledc_dimmer` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 049 | `peripherals/ledc/ledc_fade` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 050 | `peripherals/ledc/ledc_gamma_curve_fade` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
@@ -162,7 +162,7 @@
 | [ ] | 080 | `peripherals/spi_slave_hd/segment_mode/seg_slave` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 081 | `peripherals/temperature_sensor/temp_sensor` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 082 | `peripherals/temperature_sensor/temp_sensor_monitor` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
-| [?] | 083 | `peripherals/timer_group/gptimer` | ⚡ Level 3 | P1 | `esp_idfv61_gptimer` | 待补凭证 (存量隔离区债务，14天 TTL 至 2026-10-13) |
+| [ ] | 083 | `peripherals/timer_group/gptimer` | ⚡ Level 3 | P1 | `待适配` | 定时器 Alarm 回调触发 |
 | [ ] | 084 | `peripherals/timer_group/gptimer_capture_hc_sr04` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 085 | `peripherals/timer_group/wiegand_interface` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 086 | `peripherals/touch_sensor/touch_sens_basic` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
@@ -175,7 +175,7 @@
 | [ ] | 093 | `peripherals/uart/nmea0183_parser` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 094 | `peripherals/uart/uart_async_rxtxtasks` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 095 | `peripherals/uart/uart_dma_ota` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
-| [?] | 096 | `peripherals/uart/uart_echo` | 📜 Level 2 | P1 | `esp_idfv61_uart_echo` | 待补凭证 (存量隔离区债务，14天 TTL 至 2026-10-13) |
+| [ ] | 096 | `peripherals/uart/uart_echo` | 📜 Level 2 | P1 | `待适配` | UART Echo 回显 |
 | [ ] | 097 | `peripherals/uart/uart_echo_rs485` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 098 | `peripherals/uart/uart_events` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 099 | `peripherals/uart/uart_repl` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
@@ -276,12 +276,12 @@
 ---
 
 <a id="protocols"></a>
-### 网络与应用层通信协议 (Protocols)（共 35 项 | 编号 `#185 ~ #219` | 已实证: 0 项 | 隔离待补: 2 项）
+### 网络与应用层通信协议 (Protocols)（共 35 项 | 编号 `#185 ~ #219` | 已实证: 0 项 | 隔离待补: 0 项）
 
 | 状态 | 编号 | 官方子示例相对路径 | 可观测等级 | 优先级 | 对应 wink-micro-app | 验收标准与架构说明 |
 | :---: | :---: | :--- | :---: | :---: | :--- | :--- |
 | [ ] | 185 | `protocols/dns_over_https` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
-| [?] | 186 | `protocols/esp_http_client` | 📜 Level 2 | P1 | `esp_idfv61_esp_http_client` | 待补凭证 (存量隔离区债务，14天 TTL 至 2026-10-13) |
+| [ ] | 186 | `protocols/esp_http_client` | 📜 Level 2 | P1 | `待适配` | HTTP GET 200 响应 |
 | [ ] | 187 | `protocols/esp_http_client_mutual_auth` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 188 | `protocols/esp_local_ctrl` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 189 | `protocols/http_request` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
@@ -301,7 +301,7 @@
 | [ ] | 203 | `protocols/icmp/pmtu_probe` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 204 | `protocols/icmp_echo` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 205 | `protocols/l2tap` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
-| [?] | 206 | `protocols/mqtt` | 📜 Level 2 | P1 | `esp_idfv61_mqtt` | 待补凭证 (存量隔离区债务，14天 TTL 至 2026-10-13) |
+| [ ] | 206 | `protocols/mqtt` | 📜 Level 2 | P1 | `待适配` | MQTT Publish/Subscribe 闭环 |
 | [ ] | 207 | `protocols/mqtt5` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 208 | `protocols/smtp_client` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 209 | `protocols/sntp` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
@@ -319,7 +319,7 @@
 ---
 
 <a id="wifi"></a>
-### Wi-Fi 无线局域网 (Wi-Fi)（共 24 项 | 编号 `#220 ~ #243` | 已实证: 0 项 | 隔离待补: 2 项）
+### Wi-Fi 无线局域网 (Wi-Fi)（共 24 项 | 编号 `#220 ~ #243` | 已实证: 0 项 | 隔离待补: 0 项）
 
 | 状态 | 编号 | 官方子示例相对路径 | 可观测等级 | 优先级 | 对应 wink-micro-app | 验收标准与架构说明 |
 | :---: | :---: | :--- | :---: | :---: | :--- | :--- |
@@ -327,13 +327,13 @@
 | [ ] | 221 | `wifi/fast_scan` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 222 | `wifi/ftm` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 223 | `wifi/getting_started/softAP` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
-| [?] | 224 | `wifi/getting_started/station` | 📜 Level 2 | P1 | `esp_idfv61_station` | 待补凭证 (存量隔离区债务，14天 TTL 至 2026-10-13) |
+| [ ] | 224 | `wifi/getting_started/station` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 225 | `wifi/iperf` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 226 | `wifi/itwt` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 227 | `wifi/power_save` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 228 | `wifi/roaming/roaming_11kvr` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 229 | `wifi/roaming/roaming_app` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
-| [?] | 230 | `wifi/scan` | 📜 Level 2 | P1 | `esp_idfv61_scan` | 待补凭证 (存量隔离区债务，14天 TTL 至 2026-10-13) |
+| [ ] | 230 | `wifi/scan` | 📜 Level 2 | P1 | `待适配` | Wi-Fi 扫描返回虚拟 AP 列表 |
 | [ ] | 231 | `wifi/smart_config` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 232 | `wifi/softap_sta` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 233 | `wifi/wifi_aware/nan_console` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
@@ -351,7 +351,7 @@
 ---
 
 <a id="bluetooth"></a>
-### 蓝牙协议栈 (Bluetooth)（共 147 项 | 编号 `#244 ~ #390` | 已实证: 0 项 | 隔离待补: 1 项）
+### 蓝牙协议栈 (Bluetooth)（共 147 项 | 编号 `#244 ~ #390` | 已实证: 0 项 | 隔离待补: 0 项）
 
 | 状态 | 编号 | 官方子示例相对路径 | 可观测等级 | 优先级 | 对应 wink-micro-app | 验收标准与架构说明 |
 | :---: | :---: | :--- | :---: | :---: | :--- | :--- |
@@ -495,7 +495,7 @@
 | [ ] | 381 | `bluetooth/nimble/blecsc` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 382 | `bluetooth/nimble/blehr` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 383 | `bluetooth/nimble/blemesh` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
-| [?] | 384 | `bluetooth/nimble/bleprph` | 🎯 Level 1 | P1 | `esp_idfv61_bleprph` | 待补凭证 (存量隔离区债务，14天 TTL 至 2026-10-13) |
+| [ ] | 384 | `bluetooth/nimble/bleprph` | 🎯 Level 1 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 385 | `bluetooth/nimble/bleprph_host_only` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 386 | `bluetooth/nimble/bleprph_wifi_coex` | 📜 Level 2 | P1 | `待适配` | 待排期。依赖进一步框架门面扩展。 |
 | [-] | 387 | `bluetooth/nimble/hci` | ⚙️ Level 4 | P4 | `待适配` | 声明 Out-of-Scope。2.4GHz 蓝牙射频基带物理层。 |
