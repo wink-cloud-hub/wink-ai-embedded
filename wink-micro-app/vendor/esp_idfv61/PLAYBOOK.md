@@ -1,30 +1,36 @@
 # ESP-IDF v6.1 官方示例仿真适配与测试标准执行手册 (Playbook)
 
-> **版本**：v1.0  
-> **适用芯片**：Espressif ESP32 / ESP32-S3 / ESP32-C3 系列  
-> **关联清单**：[CHECKLIST.md](CHECKLIST.md)  
+> **版本**：v2.0 (Aligned with Schema v2.0 & ADR-0091)  
+> **适用芯片**：Espressif ESP32 / ESP32-S3 / ESP32-C3 / ESP32-C6 系列  
+> **数据单一真理源 (SSOT)**：[`checklist.data.json`](checklist.data.json)  
+> **派生执行看板**：[`CHECKLIST.md`](CHECKLIST.md)（由生成脚本单向生成，**严禁纯手工编辑**）  
 > **执行脚本**：[run_esp32_headless_evidence.ps1](../../../wink-micro-os/frameworks/esp_idf/tools/run_esp32_headless_evidence.ps1)  
+> **门禁规范**：[`CLASSIFICATION-SPEC.md`](CLASSIFICATION-SPEC.md) 与 [`.gates/gates.yaml`](.gates/gates.yaml)  
 > **适用对象**：AI Coding Agents（Antigravity、Claude Code 等）与嵌入式开发工程师。
 
 ---
 
 ## 零、 核心原则与硬性门禁 (Non-Negotiable Gates)
 
-对于清单 [CHECKLIST.md](CHECKLIST.md) 中的**每一项示例**，在将其状态标记为 `[x]`（已完成）之前，**必须严格执行并通过以下三大硬性门禁**：
+对于清单 [`checklist.data.json`](checklist.data.json) 中的**每一个示例及其执行配置实例 (`executions[config]`)**，在满足看板打勾 `[x]`（已验证）之前，**必须严格执行并通过以下硬性约束**：
 
-1. **真实编译输出仿真资产三件套 (unisim-assets/)**：
+1. **执行配置 (executions) 一等公民实体**：
+   每个示例支持多种执行宿主配置（`wasm_browser`、`wasm_node`、`esp32_hardware`、`host_native`）。**严禁一个后端的测试通过自动代表其他配置已交付**。必须针对特定配置生成并绑定独立的测试凭据。
+2. **真实编译输出仿真资产三件套 (unisim-assets/)**：
    使用 `wink-ai/packages/wink-tools/` 进行端到端真实构建编译，生成并输出资产三件套至微应用目录下的 `unisim-assets/`：
    - `device-tree.json`（由 `wink-app.json` 经 `runtime_device_tree.py` 严格校验生成的拓扑与引脚映射）
    - `wink_simulator.js`（Emscripten Wasm 运行时胶水层）
    - `wink_simulator.wasm`（包含 `wink_framework_esp_idf` 仿真内核、FreeRTOS 调度器与官方应用代码的 Wasm 二进制）
-2. **确定性 Headless 自动化测试实证 (unisim-scenarios/)**：
-   编写对应的场景脚本 `unisim-scenarios/<name>.scenario.json`，使用 `run_esp32_headless_evidence.ps1` 驱动 UniSim Headless 模式进行自动化测试，确保所有微秒级断言步骤（引脚电平、时钟时序、外设事件）**100% 绿灯通过**。
-3. **原厂源码“一行不改”准则**：
+3. **确定性 Headless 自动化测试实证 (unisim-scenarios/)**：
+   编写对应的场景脚本 `unisim-scenarios/<name>.scenario.json`，使用 `run_esp32_headless_evidence.ps1` 驱动 UniSim Headless 模式进行自动化测试，确保所有微秒级断言步骤（引脚电平、时钟时序、外设事件）**100% 绿灯通过**。测试断言失败（处于 `regressed`）或执行报告缺失者，**严禁打勾 `[x]`**。
+4. **原厂源码“一行不改”准则**：
    从 ESP-IDF 官方仓库镜像的代码文件（如 `blink_example_main.c`、`ledc_basic_example_main.c`）必须保持原汁原味，上游 SHA-256 哈希值需在 `wink-app.json` 中锁定。Kconfig / `sdkconfig` 宏定义一律在独立的 `include/sdkconfig.h` 中进行私有覆盖，底层行为由 `wink_framework_esp_idf` 门面垫片透明承接。
+5. **SSOT 单一写入路径铁律**：
+   所有交付凭证必须写入单一数据源 [`checklist.data.json`](checklist.data.json) 中对应配置的 `evidence` 字段，随后运行生成脚本自动更新看板 [`CHECKLIST.md`](CHECKLIST.md)。**严禁手动直接修改 CHECKLIST.md 中的勾选状态！**
 
 > [!CAUTION]
 > **绝对门禁声明**：
-> 任何未在 App 独立目录下产出 `unisim-assets/` 三件套、未编写 `unisim-scenarios/*.scenario.json`、未通过 `run_esp32_headless_evidence.ps1` 无头场景验证的示例，**一律严禁在 Checklist 中标记为 `[x]`！** 仅通过底层 CTest 编译或单元测试不等于应用级仿真交付。
+> 任何未在 App 独立目录下产出 `unisim-assets/` 三件套、未编写 `unisim-scenarios/*.scenario.json`、未通过 `run_esp32_headless_evidence.ps1` 无头场景验证的配置实例，其 `delivery_state` 必须诚实保留为 `planned`，`evidence` 必须为 `null`，**一律严禁在看板中标记为 `[x]`！** 仅通过底层 CTest 编译或单元测试不等于应用级仿真交付。
 
 ---
 
@@ -68,10 +74,11 @@
                                    │
                                    ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│ 阶段五：核对清单 (Checklist) 回写与归档 (Checklist Sign-off)            │
-│   ├── 更新 ESP32_IDFV61_EXAMPLE_CHECKLIST.md 状态为 [x]                │
-│   ├── 填入对应 App 目录名与详实验收记录（场景路径、关键断言时序）        │
-│   └── 更新总体适配进度计数                                             │
+│ 阶段五：数据源 (checklist.data.json) 回写与看板生成 (Checklist Sign-off) │
+│   ├── 定位指定配置实例 config_id，置 delivery_state 为 "verified"       │
+│   ├── 填入真实防伪凭据 evidence (run_id, 产物哈希, 报告引用, commit, 时间)│
+│   ├── 运行生成脚本: python packages/wink-tools/generate_checklist.py   │
+│   └── 依据六要素合取公式 CanCheckMark(E, C) 自动在 CHECKLIST.md 打勾   │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -266,17 +273,42 @@ powershell -ExecutionPolicy Bypass -File wink-micro-os/frameworks/esp_idf/tools/
 
 ---
 
-## 六、 阶段五：核对清单 (Checklist) 回写与归档 (Checklist Sign-off)
+## 六、 阶段五：数据源 (checklist.data.json) 归档与看板生成 (Checklist Sign-off)
 
-只有在**阶段二（真实编译输出 assets）**与**阶段三（Headless 场景测试 100% 通过）**均成功完成之后，方可编辑 [CHECKLIST.md](CHECKLIST.md)：
+只有在**阶段二（真实编译输出 assets）**与**阶段三（Headless 场景测试 100% 通过）**均成功完成之后，方可触发归档流程。**严禁直接纯手工编辑 `CHECKLIST.md` 看板！** 必须遵循以下单一数据写入与派生渲染标准流程：
 
-1. 将对应条目的 `状态` 列更新为 `[x]`。
-2. 在 `对应 wink-micro-app` 列填入创建的应用目录名（例如 `esp_idfv61_blink_gpio`）。
-3. 在 `验收标准与架构说明` 列详细注明：
-   - 包含 `unisim-assets/` 三件套与 `unisim-scenarios/` 场景脚本；
-   - 经过 `run_esp32_headless_evidence.ps1` 驱动 UniSim Headless 测试 100% 绿灯；
-   - 标注关键微秒级断言时序与实证结果。
-4. 同步更新文档顶部统计计数。
+### 1. 定位目标配置实例并更新状态
+在 [`checklist.data.json`](checklist.data.json) 中查找到当前示例条目（通过语义稳定 `id`），在其 `executions: [...]` 数组中定位本次交付的具体配置项（通过 `config_id`，如 `sim_browser_esp32`）：
+1. 将该配置实例的 `delivery_state` 由 `"building"` 或 `"planned"` 更新为 `"verified"`；
+2. 确保前置条件满足：`scope.inclusion == "in_scope"`，`audit.verdict == "audited"`（且 `audited_configs` 包含当前 `config_id`），所引用的原子能力依赖图谱处于 `satisfied`。
+
+### 2. 写入真实防伪凭据 (evidence)
+在当前配置对象的 `evidence` 字段中完整回写以下六位一体凭据（严禁留空或填入伪造占位符）：
+```json
+"evidence": {
+  "run_id": "run-20260929-1400-blink-01",
+  "assets_sha256": "<unisim-assets三件套校验和>",
+  "scenario_sha256": "<unisim-scenarios/*.scenario.json校验和>",
+  "execution_report_ref": "reports/esp32/run-20260929-1400-blink-01.json",
+  "verified_commit": "<当前工作区 Git HEAD 提交哈希>",
+  "verified_at": "2026-09-29T14:00:00Z"
+}
+```
+
+### 3. 单向重新生成执行看板
+在仓库根目录执行看板生成脚本，由脚本基于六要素合取公式 $\text{CanCheckMark}(E, C)$ 自动裁判并渲染打勾：
+```bash
+python packages/wink-tools/generate_esp_idfv61_checklist.py
+```
+- 若所有充要条件满足且防伪哈希与本地资产匹配，脚本将自动在 [`CHECKLIST.md`](CHECKLIST.md) 对应行输出 `[x]` 并更新统计汇总；
+- 若出现任何凭据缺失、哈希不匹配或测试失败断言，脚本将输出 `[ ]` 或阻断警告，绝不放行。
+
+### 4. 运行全量 CI 门禁核验
+提交 PR 前，运行门禁流水线确保 Gate 1~4 全部通过：
+```bash
+python packages/wink-tools/wink.py gate check
+winkcli lint --pack layering --pack api
+```
 
 ---
 
