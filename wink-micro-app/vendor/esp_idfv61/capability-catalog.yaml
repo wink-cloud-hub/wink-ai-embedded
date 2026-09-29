@@ -90,6 +90,9 @@ capabilities:
       - "wink-micro-os/pal/include/hal/pal_pulse.h"
       - "wink-micro-os/targets/wasm/pal_wasm_pulse.c"
     soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    depends_on:
+      mandatory:
+        - "cap.core.sync_tokens"
 
   cap.pulse.rx_capture:
     name: "微秒脉冲捕获"
@@ -154,6 +157,10 @@ capabilities:
     owned_paths:
       - "wink-micro-os/dal/src/output/dal_ws2812.c"
     soc_support: [esp32, esp32s3, esp32c3, esp32c6]
+    depends_on:
+      mandatory:
+        - "cap.pulse.tx_buffer"
+        - "cap.core.fiber_task"
 
   cap.proto.nec_ir:
     name: "NEC 红外遥控协议模型"

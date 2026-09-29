@@ -1,0 +1,148 @@
+# SPDX-License-Identifier: Apache-2.0
+spec_version: "2.0.0"
+description: "WinkMicroOS ESP-IDF 示例分类管治门禁注册表 (SSOT)"
+
+modes:
+  pr:
+    max_wall_seconds: 120
+  nightly:
+    max_wall_seconds: 3600
+
+rules:
+  # Gate 1: SSOT 数据完整性 (10条)
+  - id: g1.path_unique
+    gate: 1
+    severity: error
+    modes: [pr, nightly]
+    module: rules.g1_path_unique
+    description: "upstream_path 唯一性校验"
+
+  - id: g1.cap_id_exists
+    gate: 1
+    severity: error
+    modes: [pr, nightly]
+    module: rules.g1_cap_id_exists
+    description: "required_capabilities 声明合法性"
+
+  - id: g1.id_format
+    gate: 1
+    severity: error
+    modes: [pr, nightly]
+    module: rules.g1_id_format
+    description: "条目稳定 ID 正则格式校验"
+
+  - id: g1.version_alignment
+    gate: 1
+    severity: error
+    modes: [pr, nightly]
+    module: rules.g1_version_alignment
+    description: "spec_version 与 written_at_spec_version 版本对齐"
+
+  - id: g1.execution_configs
+    gate: 1
+    severity: error
+    modes: [pr, nightly]
+    module: rules.g1_execution_configs
+    description: "executions 多配置实例合法性校验"
+
+  - id: g1.orthogonal_states
+    gate: 1
+    severity: error
+    modes: [pr, nightly]
+    module: rules.g1_orthogonal_states
+    description: "五维正交状态组合约束校验"
+
+  - id: g1.can_check_mark
+    gate: 1
+    severity: error
+    modes: [pr, nightly]
+    module: rules.g1_can_check_mark
+    description: "六要素闭环裁判与存量隔离区分流"
+
+  - id: g1.quarantine_ttl
+    gate: 1
+    severity: error
+    modes: [pr, nightly]
+    module: rules.g1_quarantine_ttl
+    description: "存量隔离区 14 天 TTL 硬性逾期校验"
+
+  - id: g1.sla_evidence
+    gate: 1
+    severity: error
+    modes: [pr, nightly]
+    module: rules.g1_sla_evidence
+    description: "排除项与预期拒绝 SLA 凭证校验"
+
+  - id: g1.auditor_required
+    gate: 1
+    severity: error
+    modes: [pr, nightly]
+    module: rules.g1_auditor_required
+    description: "已审计条目责任人与配置覆盖校验"
+
+  # Gate 2: PAL 防膨胀 (3条)
+  - id: g2.pal_naming
+    gate: 2
+    severity: error
+    modes: [pr, nightly]
+    trigger: git_diff
+    trigger_paths:
+      - "wink-micro-os/pal/**"
+      - "wink-micro-os/targets/**"
+      - "wink-micro-os/osal/**"
+    module: rules.g2_pal_naming
+    description: "PAL/Targets/OSAL 抽象层负向器件与协议关键词扫描"
+    config:
+      forbidden_patterns:
+        - "ws2812"
+        - "rgb"
+        - "pixel"
+        - "necir"
+        - "at24"
+        - "i2c_addr"
+        - "touch_pad"
+        - "servo"
+        - "oled"
+
+  - id: g2.cap_has_owned_paths
+    gate: 2
+    severity: error
+    modes: [pr, nightly]
+    trigger: git_diff
+    trigger_paths:
+      - "wink-micro-app/vendor/esp_idfv61/capability-catalog.yaml"
+    module: rules.g2_cap_has_owned_paths
+    description: "能力项必须声明非空 owned_paths 列表"
+
+  - id: g2.cap_cross_mcu
+    gate: 2
+    severity: warning
+    modes: [pr, nightly]
+    trigger: git_diff
+    trigger_paths:
+      - "wink-micro-app/vendor/esp_idfv61/capability-catalog.yaml"
+    module: rules.g2_cap_cross_mcu
+    description: "已实现能力跨 MCU 凭据审查"
+
+  # Gate 3: 分层严密性 (1条)
+  - id: g3.winkcli_lint
+    gate: 3
+    severity: error
+    modes: [pr, nightly]
+    module: rules.g3_winkcli_lint
+    description: "委托 winkcli 执行全量分层校验"
+    config:
+      packs: [layering, api]
+      strict_environment: true
+      timeout_seconds: 120
+
+  # Gate 4: 依赖反向影响闭包与回归调度 (1条)
+  - id: g4.impact_regression
+    gate: 4
+    severity: error
+    modes: [pr, nightly]
+    trigger: git_diff
+    module: rules.g4_impact_regression
+    description: "反向传递闭包遍历与现场 Headless 仿真回归调度"
+    config:
+      max_inline_entries: 30

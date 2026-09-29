@@ -3635,7 +3635,9 @@
         "dispute_ref": null,
         "ruling_path": null
       },
-      "required_capabilities": [],
+      "required_capabilities": [
+        "cap.proto.ws2812"
+      ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
         "header_closure": [],
