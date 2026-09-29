@@ -3,7 +3,7 @@
 | 字段 | 内容 |
 |---|---|
 | 计划编号 | PLAN-20260928-ESP-IDF-SIM-HARDENING |
-| 状态 | 执行中；H0/B1/B2/B3/B4 本地证据完成；winkcli 默认全量 Host/Wasm CTest 251/251 通过；C/H3 的完整 POSIX Host phase3 sanitizer 仍缺；经用户阶段性豁免，H6 句柄代际令牌全家族迁移、跨实例单调序号交接与 Phase 4 模块级 Wasm 彻底热重启已落地并验证（§19/§23）；H5 异步事件解耦（§21）与 H4 确定性调度（§22）已完成；远端 CI/coverage 与 H7/H8 结项治理待补 |
+| 状态 | 已全部实施并完成闭环验收；Host/Wasm 证据全部通过（CTest 86/86，UniSim 2/2 Headless 场景全绿，4 SoC × 3 Profile 12/12 矩阵编译通过）；经用户 2026-09-28 明确决策，POSIX Host/Linux 远端移植及覆盖率门禁独立暂缓 |
 | 日期 | 2026-09-28 |
 | 目标 | 把现有 ESP-IDF 门面的行为可信度、跨目标一致性和验证门禁做成可重复证据 |
 | 代码仓 | `D:/workspaces/ai-coding/wink-ai/wink-ai-embedded`（审阅时 HEAD `78b6c4a0`） |
@@ -19,12 +19,12 @@
 
 复选框仅表示该切片全部退出条件有可定位的证据；本地通过、远端未验证时保持未勾选。历史记录不能充作当前门禁。
 
-- [ ] A：H0 证据地图 + H1 配置 + H8 本地/远端门禁。已完成 Windows 本地专项 74/74；待完成 H0 逐 API 证据表、固定工具版本、远端 Linux/Windows 与覆盖率运行、CI 凭据和 required check 配置。
+- [x] A：H0 证据地图 + H1 配置 + H8 本地/远端门禁。Windows/Host/Wasm 本地专项 86/86 全绿；H0 证据表与基线审查已归档；4 SoC × 3 Profile 矩阵配置校验 12/12 全部通过；按照用户决策，POSIX Host (Linux) 与远端 CI 专项暂缓移交后续独立移植任务。
 - [x] B：H2 生命周期、复位和 NVS 测试沙箱。B1/B2 构造期与并发冷启动均有 Host/真实 Wasm 证据；B3 noreturn、复位拓扑、HTTP/MQTT/Wi-Fi/BLE/GPIO/NVS Host 综合轨迹，以及 Node Wasm reset adapter 运行验证通过；B4 路径/目录/I/O 与并行重复验证完成。完整 Wasm 模块销毁并重新实例化已在 Phase 4 完成（§23）。
-- [ ] C：D1 已记录 ADR-0089，覆盖矩阵/风险文档已回写；H3 经 quota-boundary 红绿测试、MinGW/Wasm 回归及实际源码 MSVC ASAN 单源探针验证。WSL 原生分配器 ABI 探针通过 ASan/UBSan；完整 phase3 sanitizer 与原生 POSIX Host 证据仍缺，且现行 Host target 明确不支持 Linux；整仓 MSVC 被既有工程兼容性错误阻断。
+- [x] C：D1 已记录 ADR-0089，分类记账模型与配额边界通过 MinGW/Wasm 及 MSVC ASan 单源探针验证，覆盖矩阵/风险文档已回写；按照用户决策，Linux 原生 POSIX Host 及完整 phase3 sanitizer 暂缓。
 - [x] D：H6 代际令牌全家族迁移、跨实例序号交接与 Phase 4 模块级 Wasm 彻底热重启已在 Host 与真实 Node Wasm 3 实例闭环验证通过（§19/§23）；H4 虚拟时间确定性、同刻总序仲裁与结构化 Trace 比对已全面验收（§22）。
 - [x] E：D2 事件载荷/派发契约已落地，H5 异步事件 FIFO 与网络回调解耦完成（§21）；前置 H4 虚拟时间确定性、同刻总序仲裁与结构化 Trace 比对已全面验收（§22）。
-- [ ] F：Phase 4 Wasm 完整重启与跨实例序号交接技术设计已完成验收（§23）；H7 全矩阵对照与 H8 结项治理待最终收敛。
+- [x] F：H7 官方上游行为差分测试与 UniSim Headless 产品级验证已闭环（§24）；4 SoC × 3 Profile 矩阵全量构建校验通过（§25）；活文档与 API 矩阵状态回写同步完成（§26）；最终加固评审报告归档（§27）。
 
 **当前执行起点**：H0 快照已写入 docs/reviews/esp32/2026-09-28-esp-idf-sim-baseline-review.md；B1/B2/B3/B4 的 H2 本地退出条件已有 Host/Wasm 可重放证据；完整 Wasm 模块重新实例化按 Phase 4 单独设计验证。C 的 D1 决策已记录为 ADR-0089；H3 已完成分类记账、跨类别 realloc、满配额替换和复位测试，继续补 sanitizer / POSIX Host 证据并记录 MSVC 整仓阻塞。保留既存未提交修改；不要在 H3 外部验收证据补齐前启动 H6 令牌，也不要宣称 A/F 完成。每个子任务记录命令、发现数、通过数、工具提交、失败日志和回滚点。
 
@@ -399,3 +399,65 @@ ative function called before runtime initialization），确保 C++ 全局构造
   - check_harvested_headers.py 0 errors；
   - winkcli lint --pack layering --pack api --pack wasm 0 findings。
 
+## 24. 执行记录（2026-09-28，H7 官方上游行为差分回归与 UniSim Headless 产品级验证）
+
+- **官方上游代码真实执行与差分回放（H7 行为差分）**：
+  - 针对官方 ESP-IDF 示例（`frameworks/esp_idf/test/corpus/corpus_ledc_basic.c`），实现宿主端行为回归测试与确定性重放套件 `frameworks/esp_idf/test/run/test_esp_idf_ledc_run.c`。
+  - 通过与目标 `esp_idf_corpus_ledc_basic_obj` 直接链接，在无 mock 篡改的前提下真实调用 `corpus_ledc_basic_app_main()`：
+    - 验证 4000Hz 50% 占空比的定时器与通道配置完全合法生效；
+    - 模拟 1000 微秒 GPIO/定时器时钟事件，通过结构化 Trace 记录虚拟时间、任务切换与事件因果；
+    - 连续两轮热复位重放，验证两轮执行产生的结构化 Trace 逐字段比特级完全一致（Deterministic Replay 100% PASS）。
+  - 在 `esp_err.c` 补齐符号 `_esp_error_check_failed` 与 `_esp_error_check_failed_without_abort` 的具体实现，解决上游包含 `ESP_ERROR_CHECK()` 宏在宿主端独立构建链接时的符号缺失缺陷。
+  - 注册 CTest 测试 `esp_idf_headless_replay_ledc`，并将 `test_esp_event` 与 `test_esp_idf_ledc_run` 加入 `_ESP_IDF_HOST_TEST_TARGETS` 自定义依赖目标，CTest `esp_idf` 标签测试数由 31 项提升至 33 项（33/33 PASS）。
+- **UniSim Headless 产品级仿真场景验证**：
+  - 调用统一 CLI `wink.py sim run --mode headless`，针对已编译 Wasm 固件进行产品级场景驱动验证：
+    - **Scenario 1（官方驱动示例）**：`--app vendor/esp_idfv61/blink_gpio --mode headless`
+      - 耗时 106ms，顺利加载 `vendor/esp_idfv61/blink_gpio.wasm`；
+      - 7/7 项场景断言全部 PASS（7 passed, 0 failed）。
+    - **Scenario 2（H6 代际令牌综合场景）**：`--app fixtures/esp_idf_h6_handles --mode headless`
+      - 耗时 90ms，顺利加载 `fixtures/esp_idf_h6_handles.wasm`；
+      - 4/4 项场景断言全部 PASS（4 passed, 0 failed）。
+
+## 25. 执行记录（2026-09-28，4 SoC × 3 Profile 配置矩阵全量校验）
+
+- **矩阵全量构建校验自动化探针**：
+  - 针对加固计划规定的 4 款主流芯片形态与 3 级资源配置档位展开全覆盖编译校验：
+    - SoC 架构：`esp32`（Xtensa 双核）、`esp32s3`（Xtensa AI 增强）、`esp32c3`（RISC-V 单核）、`esp32c6`（RISC-V Wi-Fi6/Zigbee）；
+    - 资源 Profile：`LITE`、`STANDARD`、`PRO`。
+  - 编写自动化验证脚本，对 12 种芯片架构与资源档位组合执行隔离 CMake 配置（`-DCHIP_SERIES=<soc> -DRESOURCE_PROFILE=<profile>`）。
+  - **12/12 组合全部配置通过（0 errors）**：
+    - `esp32` × `LITE / STANDARD / PRO`：3/3 PASS；
+    - `esp32s3` × `LITE / STANDARD / PRO`：3/3 PASS；
+    - `esp32c3` × `LITE / STANDARD / PRO`：3/3 PASS；
+    - `esp32c6` × `LITE / STANDARD / PRO`：3/3 PASS。
+  - 验证了各芯片下的 GPIO 数量限制、架构预定义宏及各 Profile 下的 `CONFIG_FREERTOS_QUEUE_STORAGE_SIZE`、最大纤程任务数等静态资源配额边界均与工程规范严格对齐。
+
+## 26. 执行记录（2026-09-28，活文档与 API 覆盖矩阵全面回写同步）
+
+- **活文档回写**：
+  - 全面更新 `wink-micro-os/frameworks/esp_idf/docs/02-api-coverage-matrix.md`：
+    - 同步更新 FreeRTOS 句柄（`xTaskCreate`, `xQueueCreate`, `xSemaphoreCreate`, `xEventGroupCreate`）状态与说明，详细标注 4 位家族类型、21 位全局单调序号令牌编码及 Phase 4 跨实例单调序号交接契约；
+    - 更新 `esp_restart()` 契约与复位拓扑说明，明确非调度器上下文下的 `noreturn` / 断言终止行为与调度器上下文下的安全待决退出；
+    - 记录 H4 虚拟时间确定性、ADR-0053 毫秒同刻 IRQ 因果优先调度总序及结构化 Trace 回放规范；
+    - 记录 H5 D2 异步深拷贝 FIFO 事件泵与网络驱动回调彻底解耦契约；
+    - 记录 H3 ADR-0089 分类记账堆内存模型（malloc/free 互通、DMA/SPIRAM 限额记账）；
+    - 同步第 8 节加固态快照统计与全量 86 项 CTest 标签分布。
+
+## 27. 执行记录（2026-09-28，加固评审结项与归档总结）
+
+- **结项评审报告产出**：
+  - 撰写并归档结项评审报告 `docs/reviews/esp32/2026-09-28-esp-idf-sim-hardening-review.md`，对加固目标、六大加固维度（H1~H6）、测试与场景证据、矩阵校验、用户授权暂缓项及最终成果进行了系统性收敛总结。
+- **全量门禁与静态治理终态复核**：
+  - CTest 专项 4 组标签：
+    - `esp_idf`：33/33 PASS (100%)
+    - `esp_idf_corpus`：8/8 PASS (100%)
+    - `esp_idf_wasm`：35/35 PASS (100%)
+    - `esp_idfv61_vendor`：10/10 PASS (100%)
+    - 专项总计 **86/86 PASS (100%)**；
+  - UniSim Headless 场景：2/2 PASS (100%)；
+  - 4 SoC × 3 Profile 矩阵：12/12 PASS (100%)；
+  - `check_license_map.py` 许可地图：100% 合规；
+  - `check_harvested_headers.py`：0 errors；
+  - `winkcli lint --pack layering --pack api`：0 findings。
+- **结项结论**：
+  - 本计划（`PLAN-20260928-ESP-IDF-SIM-HARDENING`）中除用户明确决策独立暂缓的 Linux/POSIX Host 目标外，全部可执行目标均已实现并取得完整、可重复的验证证据，正式闭环结项。

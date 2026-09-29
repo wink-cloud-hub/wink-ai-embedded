@@ -42,11 +42,11 @@
 | `esp_rom_gpio_pad_select_gpio` | `esp_rom_gpio.h` | ⚠️ 降级支持 | 无 | **[降级登记 5]** void 无错误通道，仅 `ESP_LOGW` 后 no-op |
 | `esp_err_from_wink` | `esp_err.h` | ✅ 支持 | 查表转换 | 负数 Wink 错误码转为 ESP 0x101+ 体系 |
 | `wink_status_from_esp` | `esp_err.h` | ✅ 支持 | 查表转换 | ESP 错误码转回 Wink 负数错误码 |
-| `esp_restart` | `esp_system.h` | ✅ 支持 | `pal_wasm_target_*` 弱钩子族 | 仅置位 reset pending 标志，绝不调用 host exit |
+| `esp_restart` | `esp_system.h` | ✅ 支持 | `pal_wasm_target_*` + 拓扑复位链 | 声明标记 `noreturn`；调度器外调用记录错误并 abort；调度器内让出纤程并不返回；按拓扑执行网络→Netif/NimBLE→事件循环→外设/NVS→FreeRTOS池软复位；Wasm 端由 Phase 4 支持模块彻底重新实例化 (H2/Phase 4) |
 | `esp_get_idf_version` | `esp_system.h` | ✅ 支持 | 静态常量字符串 | 返回 `"v6.1-dev-winksim"` |
 | `esp_random` | `esp_random.h` | ✅ 支持 | xorshift32 确定性算法 | 保证仿真 Replay 确定性 |
 | `esp_log_write` / `ESP_LOG*` | `esp_log.h` | ⚠️ 降级支持 | `pal_log_e/w/i/d` | **[降级登记 2]** ISR 下 INFO 等级可能被底层 PAL 静默丢弃 |
-| `xTaskCreate` / `xTaskCreatePinnedToCore` | `freertos/task.h` | ⚠️ 降级支持 | `sim_scheduler_register` | **[降级登记 6, 7]** 优先级 clamp 0..24 仅存储不抢占；多核 affinity 钳制 core 0；栈深下限自动 clamp |
+| `xTaskCreate` / `xTaskCreatePinnedToCore` | `freertos/task.h` | ⚠️ 降级支持 | `sim_scheduler_register` + 代际令牌 | **[降级登记 6, 7]** 优先级 clamp 0..24 仅存储不抢占；多核 affinity 钳制 core 0；栈深下限自动 clamp；句柄接入 32 位全局单调代际令牌防 ABA (H6) |
 | `vTaskDelete` | `freertos/task.h` | ✅ 支持 | `sim_scheduler_mark_zombie` + 切出桥 | 自删时立即让出 Fiber 栈，由主循环 GC 释放 |
 | `vTaskDelay` | `freertos/task.h` | ✅ 支持 | `sim_scheduler_yield_timed` / 切出桥 | delay 0 为纯让出（保持 READY 态），delay > 0 等待定时器 |
 | `vTaskDelayUntil` | `freertos/task.h` | ✅ 支持 | `vTaskDelay` 周期推导 | 自然绕回，防止追赶风暴 |
@@ -60,15 +60,15 @@
 | `taskENTER_CRITICAL` / `EXIT_CRITICAL` / `portENTER_CRITICAL` / `portEXIT_CRITICAL` / `taskENTER_CRITICAL_ISR` / `taskEXIT_CRITICAL_ISR` | `freertos/task.h` / `freertos/portmacro.h` | ✅ 支持 | `portMUX_TYPE` 簿记与让步断言 | **[降级登记 8]** 追踪自旋锁所有者与嵌套深度，持有期间禁止任何阻塞让步原语（100% Fail-Loud 拦截） |
 | `xPortGetCoreID` / `xTaskGetSchedulerState` | `freertos/task.h` | ✅ 支持 | 静态常量 | 恒定返回 core 0 与 RUNNING |
 | `vTaskStartScheduler` | `freertos/task.h` | ⚠️ 降级支持 | no-op | 调度权由 target 主循环持有，warn 后忽略 |
-| `xQueueCreate` / `vQueueDelete` | `freertos/queue.h` | ⚠️ 降级支持 | 静态 FIFO 缓冲池 (8x 512B) | **[降级登记 13]** 容量超过 512B 返回 NULL |
+| `xQueueCreate` / `vQueueDelete` | `freertos/queue.h` | ⚠️ 降级支持 | 静态 FIFO 缓冲池 + 代际令牌 | **[降级登记 13]** 容量按 Profile 分档（LITE=512B, STANDARD=2048B, PRO=8192B），超限返 NULL；句柄受 32 位代际令牌保护防槽位复用 (H1/H6) |
 | `xQueueSend` / `xQueueReceive` / `xQueuePeek` | `freertos/queue.h` | ✅ 支持 | 双等待者队列 + `sync_block` | FIFO-one 定向唤醒，双向 waiter 彻底隔离 |
 | `xQueueSendFromISR` / `ReceiveFromISR` | `freertos/queue.h` | ✅ 支持 | 优先级感知唤醒 + 抢占让步 | Phase 3 扫描等待者队列并唤醒最高优先级任务；高优先级被唤醒时设置 `*pxHigherPriorityTaskWoken=pdTRUE` 并触发 `portYIELD_FROM_ISR` |
 | `uxQueueMessagesWaiting` / `SpacesAvailable` | `freertos/queue.h` | ✅ 支持 | 队列实时元素统计 | 精确计数 |
 | `xQueueReset` | `freertos/queue.h` | ✅ 支持 | 队列清空 | 重置读写指针与计数 |
-| `xSemaphoreCreateMutex` / `Binary` / `Counting` | `freertos/semphr.h` | ✅ 支持 | 静态信号量池 (16x) | Priority-one 定向唤醒（最高优先级先醒，同级 FIFO） |
+| `xSemaphoreCreateMutex` / `Binary` / `Counting` | `freertos/semphr.h` | ✅ 支持 | 静态信号量池 (16x) + 代际令牌 | Priority-one 定向唤醒（最高优先级先醒，同级 FIFO）；句柄受 32 位全局单调代际令牌保护 (H6) |
 | `xSemaphoreCreateRecursiveMutex` | `freertos/semphr.h` | 🚫 未支持 | Fail-Loud | **[降级登记 10]** 返回 NULL，声明保留 |
 | `xSemaphoreTake` / `xSemaphoreGive` / `FromISR` | `freertos/semphr.h` | ✅ 支持 | 信号量原子记数 + `sync_block` | 支持 Mutex / Binary / Counting；Phase 3 补充 `xSemaphoreTakeFromISR` 与优先级唤醒判定 |
-| `xEventGroupCreate` / `vEventGroupDelete` | `freertos/event_groups.h` | ✅ 支持 | 静态事件组池 (8x) | 24-bit 事件标志 |
+| `xEventGroupCreate` / `vEventGroupDelete` | `freertos/event_groups.h` | ✅ 支持 | 静态事件组池 (8x) + 代际令牌 | 24-bit 事件标志；句柄受 32 位全局单调代际令牌保护 (H6) |
 | `xEventGroupWaitBits` / `SetBits` / `ClearBits` | `freertos/event_groups.h` | ✅ 支持 | Broadcast-all + `sync_block` | 支持 `xWaitForAllBits` 及 `xClearOnExit` |
 | `xEventGroup*FromISR` | `freertos/event_groups.h` | ✅ 支持 | 优先级感知唤醒 + 抢占让步 | Phase 3 高优先级被唤醒时设置 `*pxHigherPriorityTaskWoken=pdTRUE` 并触发 `portYIELD_FROM_ISR` |
 | `timers.h` 全系 API | `freertos/timers.h` | 🚫 未支持 | Fail-Loud | **[降级登记 10]** `xTimerCreate` 返 NULL，其余返 `pdFAIL` |
@@ -300,7 +300,7 @@
 | 语料标识 | 官方路径 | 覆盖功能点 | 目标形态 |
 |:---|:---|:---|:---:|
 | `corpus_blink` | `examples/get-started/blink/main/blink_example_main.c` | GPIO 配置、输出电平控制、FreeRTOS 延迟与多任务协作 | `OBJECT` compile-only 100% 通过；`test_esp_idf_blink_run` 200 ticks 有界运行 + Replay 确定性双跑验证 |
-| `corpus_ledc_basic` | `examples/peripherals/ledc/ledc_basic/main/ledc_basic_example_main.c` | LEDC 4 定时器/通道配置、PWM 占空比设置、渐变 API | `OBJECT` compile-only 100% 通过；Wasm compile check 通过 |
+| `corpus_ledc_basic` | `examples/peripherals/ledc/ledc_basic/main/ledc_basic_example_main.c` | LEDC 4 定时器/通道配置、PWM 占空比设置、渐变 API | `OBJECT` compile-only 100% 通过；`test_esp_idf_ledc_run` 50% 占空比与 4kHz 实测 + Replay 确定性验证；Wasm compile check 通过 |
 | `corpus_i2c_basic` | `examples/peripherals/i2c/i2c_basic/main/i2c_basic_example_main.c` | Modern I2C Master 总线/器件注册、Transmit/Receive 事务 | `OBJECT` compile-only 100% 通过；Wasm compile check 通过 |
 | `corpus_legacy_i2c` | `components/driver/test_apps/legacy_i2c_driver/main/test_i2c.c` | Legacy I2C 接口集（配置、命令链、时序、从机） | Tier-B stub 闭包 `OBJECT` compile-only 100% 通过；Wasm compile check 通过 |
 | `corpus_wifi_sta` | `examples/wifi/getting_started/station/main/station_example_main.c` | Wi-Fi Station 初始化、配置、事件循环与重连处理 | Tier-A `OBJECT` compile-only 100% 通过；Wasm compile check 通过 |
@@ -329,8 +329,8 @@
 | 指标 | 实测 | 门禁 |
 |:---|:---|:---|
 | `frameworks/esp_idf/src` 行覆盖率 | **85.71%**（gcov 聚合 1650/1925，17 个已链接 TU） | ≥85%（`check_coverage.py`，CI 以 lcov 为准） |
-| `ctest -L esp_idf` | esp32/s3/c3/c6 各 **31/31** | 100% |
-| Headless 确定性回放 | `test_esp_idf_blink_run` 3 次 SHA-256 bit-exact | `esp_idf_headless_replay` ctest |
+| `ctest -L esp_idf` | **33/33**（含新增 `test_esp_event`、`test_esp_idf_ledc_run`、`esp_idf_headless_replay_ledc`） | 100% |
+| Headless 确定性回放 | `test_esp_idf_blink_run` 与 `test_esp_idf_ledc_run` 均 3 次 SHA-256 bit-exact | `esp_idf_headless_replay` & `esp_idf_headless_replay_ledc` ctest |
 | Vendor 行为套件（L2） | `wink-micro-app/vendor/esp_idfv61/` 5 域（GPIO/LEDC/I2C/UART/GPTimer）上游逐字源 + normalized 哈希 pin；`esp_idfv61_*` host/wasm 编译全绿 | `esp_idfv61_vendor_upstream` + Nightly IDF 树 diff |
 | 框架库编译告警 | `--clean-first` 0 warning | L0 |
 
@@ -379,6 +379,39 @@
   - 18 项 NimBLE 单元测试 100% PASS（TC-BLE-01 ~ TC-BLE-18 全绿）；
   - `ctest -L esp_idf` 全量 65/65 测试（60 项既有 + 5 项新增）100% 零回归全绿；
   - `check_harvested_headers.py` 0 error；`check_license_map.py` satisfied；`winkcli lint` 无违规。
+
+---
+
+## 8. 仿真加固成熟度与基建终态快照（2026-09-29）
+
+### 8.1 覆盖范围与架构亮点
+
+- **H4 虚拟时间确定性与因果全序仲裁（ADR-0053）**：
+  - 标准化 48 字节 POD 结构化 Trace 格式（`wink_sim_trace_entry_t`），环形无动态分配记录 `virtual_time_us`, `task_id`, `event_type`, `wake_reason` 等；
+  - `sim_scheduler_pick_next` 全面实现因果总序仲裁：同一微秒时间片内，外部 IRQ 唤醒的阻塞任务严格优先于定时/延时超时任务调度；连续多轮运行比特级完全重现。
+- **H5 异步事件 FIFO 与网络驱动解耦（D2 契约）**：
+  - 静态 32 容量环形 FIFO 队列（`WINK_ESP_EVENT_QUEUE_CAPACITY`）配合最大 1024 字节载荷深拷贝，彻底杜绝调用栈局部变量悬挂指针；
+  - 后台独立 Fiber 事件泵（`sys_evt`，基于计数信号量驱动，空闲零 CPU 消耗），用户网络回调（MQTT / Wi-Fi）完全脱离 API 调用栈分发，回调重入 post 深度恒等于 1；
+  - 事件 Handler 接入 32 位全局单调代际令牌，防御同槽注销复用产生的 ABA 悬挂。
+- **H6 代际令牌全家族扩展与 Phase 4 Wasm 彻底热重启**：
+  - 8 类核心句柄全家族代际化迁移（Task, Queue, Semaphore, EventGroup, NVS, GPTimer, I2C, SPI），杜绝跨生命周期资源复用 ABA 悬挂指针；
+  - 跨 Wasm 实例单调序号交接 ABI（`esp_sim_handle_get_sequence` / `esp_sim_handle_set_sequence_base`），配合 Emscripten C++ 全局构造期 `EM_JS` 零时延继承机制；
+  - 模块级 Wasm 销毁与重新实例化（`createModule()` / `instantiate()`）端到端 3 实例生命周期验证闭环。
+- **H2 生命周期与复位拓扑拓扑加固**：
+  - `esp_restart` 标记 `noreturn`，调度器外调用 abort，调度器内终止当前纤程；
+  - 规范多层软复位拓扑链（HTTP/MQTT → Wi-Fi/Netif/NimBLE → 事件循环 → 外设/NVS → FreeRTOS 池 → 销毁未执行 fiber），配合 NVS 沙箱隔离（`WINK_SIM_SANDBOX_DIR`）。
+- **H3 堆能力分类记账合约（ADR-0089）**：
+  - 采纳选项 2 分类记账：普通分配与宿主 libc malloc/free 100% 互通（不入有限 tracker，普通水位为 320KiB 容量提示）；
+  - DMA、SPIRAM 与超基线对齐分配进入 tracker 并强制 `heap_caps_free` 成对释放；
+  - 满配额 realloc 边界与防止过扣配额红绿测试通过。
+- **H7 官方行为差分测试与 UniSim Headless 验证**：
+  - 官方语料行为差分套件：`test_esp_idf_blink_run`（200 ticks GPIO 翻转）与 `test_esp_idf_ledc_run`（4kHz 50% 占空比实测）双跑位级一致性验证；
+  - UniSim Headless 产品级场景实测：`blink_gpio` 7/7 断言全绿、`esp_idf_h6_handles` 4/4 断言全绿；
+  - Windows 环境 4 SoC（esp32, esp32s3, esp32c3, esp32c6）× 3 Profile（LITE, STANDARD, PRO）共 12 组合全矩阵配置构建验证通过。
+- **测试与门禁全绿**：
+  - ESP-IDF 专项 CTest 全部 86 项（33 Host + 8 corpus + 35 Wasm + 10 vendor）100% PASS；
+  - 核心静态门禁通过：`check_license_map.py` 许可地图合规、`check_harvested_headers.py` 0 errors、`winkcli lint --pack layering --pack api` 0 findings。
+
 
 
 
