@@ -1,0 +1,50 @@
+{
+  "appName": "esp_idf_h6_handles",
+  "board": "esp32_devkitc_v4",
+  "devices": {
+    "queue_pass": {
+      "id": "queue_pass",
+      "type": "led",
+      "pinMapping": {
+        "A": 2
+      },
+      "properties": {
+        "activeHigh": true
+      }
+    },
+    "semaphore_pass": {
+      "id": "semaphore_pass",
+      "type": "led",
+      "pinMapping": {
+        "A": 4
+      },
+      "properties": {
+        "activeHigh": true
+      }
+    },
+    "event_pass": {
+      "id": "event_pass",
+      "type": "led",
+      "pinMapping": {
+        "A": 5
+      },
+      "properties": {
+        "activeHigh": true
+      }
+    },
+    "nvs_pass": {
+      "id": "nvs_pass",
+      "type": "led",
+      "pinMapping": {
+        "A": 18
+      },
+      "properties": {
+        "activeHigh": true
+      }
+    }
+  },
+  "family": "esp32",
+  "core": "xtensa-lx6",
+  "mcu": "esp32",
+  "vendor": "espressif"
+}
