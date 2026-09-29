@@ -63,3 +63,21 @@ const char *esp_err_to_name_r(esp_err_t code, char *buf, size_t buflen) {
     buf[buflen - 1] = '\0';
     return buf;
 }
+
+void _esp_error_check_failed(esp_err_t rc, const char *file, int line, const char *function, const char *expression) {
+    (void)rc;
+    (void)file;
+    (void)line;
+    (void)function;
+    (void)expression;
+    abort();
+}
+
+void _esp_error_check_failed_without_abort(esp_err_t rc, const char *file, int line, const char *function, const char *expression) {
+    (void)rc;
+    (void)file;
+    (void)line;
+    (void)function;
+    (void)expression;
+}
+

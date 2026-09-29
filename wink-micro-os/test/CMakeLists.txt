@@ -2066,6 +2066,31 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     add_test(NAME test_esp_idf_blink_run COMMAND test_esp_idf_blink_run)
     set_tests_properties(test_esp_idf_blink_run PROPERTIES LABELS "esp_idf;run" TIMEOUT 60)
 
+    # LEDC bounded run test (L2 Replay determinism and official corpus behavior parity)
+    add_executable(test_esp_idf_ledc_run
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/run/test_esp_idf_ledc_run.c
+        $<TARGET_OBJECTS:esp_idf_corpus_ledc_basic_obj>
+        ${UNITY_DIR}/unity.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_idf_ledc_run PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/ledc_basic/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/freertos
+        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/stubs
+    )
+    target_link_libraries(test_esp_idf_ledc_run PRIVATE wink_framework_esp_idf dal)
+    target_compile_options(test_esp_idf_ledc_run PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(test_esp_idf_ledc_run generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_idf_ledc_run)
+    add_test(NAME test_esp_idf_ledc_run COMMAND test_esp_idf_ledc_run)
+    set_tests_properties(test_esp_idf_ledc_run PROPERTIES LABELS "esp_idf;run" TIMEOUT 60)
+
     # Cross-platform headless deterministic replay (M3 Task M3-3, T-008)
     find_package(Python3 COMPONENTS Interpreter QUIET)
     if(Python3_Interpreter_FOUND)
@@ -2076,6 +2101,14 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
         )
         set_tests_properties(esp_idf_headless_replay
             PROPERTIES LABELS "esp_idf;headless" TIMEOUT 180)
+
+        add_test(NAME esp_idf_headless_replay_ledc
+            COMMAND ${Python3_EXECUTABLE}
+                ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/headless/test_esp_idf_headless_replay.py
+                $<TARGET_FILE:test_esp_idf_ledc_run>
+        )
+        set_tests_properties(esp_idf_headless_replay_ledc
+            PROPERTIES LABELS "esp_idf;headless" TIMEOUT 180)
     endif()
 
     # Build only the executables needed by the ESP-IDF core CTest label. The
@@ -2085,8 +2118,9 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
         test_esp_gpio test_esp_restart_outside_scheduler test_esp_idf_freertos test_esp_idf_global_ctor test_esp_idf_phase2
         test_esp_idf_phase2_crash test_esp_idf_phase3 test_esp_idf_phase3_crash
         test_esp_ledc test_esp_i2c test_esp_uart test_esp_gptimer test_esp_spi
+        test_esp_event
         test_esp_nvs test_esp_nvs_bad_sandbox test_esp_nvs_io_error test_esp_wifi test_esp_mqtt test_esp_http_client
-        test_esp_nimble test_esp_idf_blink_run
+        test_esp_nimble test_esp_idf_blink_run test_esp_idf_ledc_run
     )
     if(TARGET test_esp_idf_concurrent_cold_start)
         list(APPEND _ESP_IDF_HOST_TEST_TARGETS test_esp_idf_concurrent_cold_start)
