@@ -175,19 +175,52 @@ jobs:
 
   esp-idf-gate-nightly:
     runs-on: ubuntu-latest
+    env:
+      # Gate 3 runs with strict_environment: true, so a missing pinned toolchain
+      # is a hard error rather than a skip. The job must therefore provide wink-tools
+      # or it fails on every run by construction.
+      WINK_TOOLS_ROOT: ${{ github.workspace }}/.wink-tools-source/packages/wink-tools
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - name: Install Python dependencies
-        run: python -m pip install pyyaml
+        run: python -m pip install pyyaml pytest
+      - name: Require pinned wink-tools source
+        shell: bash
+        env:
+          TOOLS_REPOSITORY: ${{ vars.WINK_TOOLS_REPOSITORY }}
+          TOOLS_REF: ${{ vars.WINK_TOOLS_REF }}
+          TOOLS_TOKEN: ${{ secrets.WINK_TOOLS_READ_TOKEN }}
+        run: |
+          if [[ -z "$TOOLS_REPOSITORY" || -z "$TOOLS_TOKEN" || ! "$TOOLS_REF" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "::error::Configure WINK_TOOLS_REPOSITORY, a 40-character WINK_TOOLS_REF commit, and WINK_TOOLS_READ_TOKEN. The nightly gate cannot run without pinned wink-tools source."
+            exit 1
+          fi
+      - name: Checkout pinned wink-tools
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.WINK_TOOLS_REPOSITORY }}
+          ref: ${{ vars.WINK_TOOLS_REF }}
+          token: ${{ secrets.WINK_TOOLS_READ_TOKEN }}
+          path: .wink-tools-source
+          persist-credentials: false
+      - name: Verify toolchain source
+        shell: bash
+        run: test -f "$WINK_TOOLS_ROOT/wink.py"
+      - name: Test the gate engine itself
+        run: python -m pytest wink-micro-app/vendor/esp_idfv61/.governance/gates/tests -q
       - name: Run ESP-IDF Gate System (Nightly full mode)
         shell: bash
+        # NOTE: Gate 2 and Gate 4 are git_diff-triggered, so on a scheduled run with
+        # no diff they are skipped; the floor is therefore Gate 1 (10) + Gate 3 (1).
         run: |
           mkdir -p reports
           python wink-micro-app/vendor/esp_idfv61/.governance/gates/run_gates.py \
             --mode nightly \
+            --allow-empty-diff \
+            --require-executed 11 \
             --output-json reports/gate_report_nightly.json
         continue-on-error: false
       - name: Upload Nightly Gate Report

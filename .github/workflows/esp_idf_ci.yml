@@ -69,7 +69,9 @@ jobs:
         shell: bash
         run: test -f "$WINK_TOOLS_ROOT/wink.py" && test -f "$WINK_TOOLS_ROOT/tools/codegen/scripts/list_drivers.py"
       - name: Install Python lint dependencies
-        run: python -m pip install pyyaml jinja2 rich
+        run: python -m pip install pyyaml jinja2 rich pytest
+      - name: Test the gate engine itself
+        run: python -m pytest wink-micro-app/vendor/esp_idfv61/.governance/gates/tests -q
       - name: Check License Map
         run: python .github/scripts/check_license_map.py
       - name: Verify Harvested Headers and Asset Channels
@@ -83,6 +85,9 @@ jobs:
 
       - name: Run ESP-IDF Gate System (PR mode)
         shell: bash
+        # --require-executed 11 is the floor for Gate 1 (10 rules) + Gate 3 (1 rule),
+        # which must always run. Without it, a run where every diff-triggered rule
+        # was skipped would exit 0 and be indistinguishable from a clean pass.
         run: |
           mkdir -p reports
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
@@ -91,11 +96,13 @@ jobs:
             python wink-micro-app/vendor/esp_idfv61/.governance/gates/run_gates.py \
               --mode pr \
               --changed-files /tmp/changed_files.txt \
+              --require-executed 11 \
               --output-json reports/esp_idf_gate_report.json
           else
             python wink-micro-app/vendor/esp_idfv61/.governance/gates/run_gates.py \
               --mode pr \
               --allow-empty-diff \
+              --require-executed 11 \
               --output-json reports/esp_idf_gate_report.json
           fi
         continue-on-error: false

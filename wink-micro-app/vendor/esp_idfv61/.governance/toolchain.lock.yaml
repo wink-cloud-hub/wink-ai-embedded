@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Toolchain fingerprint for the ESP-IDF classification gate system.
+#
+# WHY THIS EXISTS
+# ---------------
+# Gate 3 executes the linter from the PRIVATE wink-ai repository
+# (wink-ai/packages/wink-tools/wink.py). That repository is deliberately not
+# vendored here -- it is a commercial-secret private repo. The consequence is
+# that the engine is not version-controlled in this repository, so nothing
+# would otherwise detect that the engine underneath a given lint verdict has
+# changed. This lock makes the coupling auditable WITHOUT vendoring anything.
+#
+# MISMATCH SEMANTICS
+# ------------------
+# A mismatch is a WARNING, never an error. The private toolchain is under
+# active development; hard-blocking on every engine change would produce
+# alert fatigue and get the check disabled. Refresh deliberately with:
+#     python .governance/tools/refresh_toolchain_lock.py
+#
+# GENERATED FILE -- do not hand-edit.
+spec_version: "1.0"
+
+toolchain:
+  repository: "git@codeup.aliyun.com:64e41d33407cfc1afb62cdce/wink-ai/wink-ai.git"
+  package_relpath: "packages/wink-tools"
+  entry_point: "wink.py"
+  pinned_commit: "823ce13ace3b3d90ddc323ed1699226f800b33b0"
+  pinned_branch: "master"
+  # Authoritative: content hash of the engine entry point actually executed.
+  entry_sha256: "691f3670ede755d73eaba0660e0226d61af85cb939098dba1035329d1fe2da15"
+
+# Rule data lives in BOTH repos; Gate 3 executes the private repo's copy.
+# This repo's wink-tools/tools/lint/rules/ is a committed mirror kept for
+# reviewability. If the copies diverge, the mirror no longer describes what
+# is actually linted.
+rule_data_reference: "private_repo"
+rule_data:
+  api.yaml: "5b5945ece8b2149502b7da094eb420b49d17d36d0a7cd5d81abfa197c3a34de7"
+  dal.yaml: "bdaabfaa41ce9d2323b6d9e201f686d810ebc59d6c10a85f0732b122981a52d5"
+  i18n.yaml: "146bdada4254f5fbd0f836867378274facbb6249be1a5c6ee94ba790331c9b39"
+  isr.yaml: "798676e6c5c5a79d5d052422a60bb03b9e3e171463b5d0386482c3323bd8dcc2"
+  layering.yaml: "a154887db6e74c2ca479c858ac2eda6cf8a167f5fb227675c57d900f524aef36"
+  user_surface.yaml: "df00a57eede74096e5aad332eaa15884685e8ad50eb715f3b954a6c311e0f712"
+  wasm.yaml: "43564e49937ef37f7b83b6082714c8d61a300dba4e2a25dcdb64ccc40d35cc38"
+
+# Project-local overlays: the ONLY customization channel for the rule data.
+# wink lint treats a YAML carrying `overrides`/`disable_rules` as an overlay
+# rather than a pack and appends add_allow_paths onto the built-in rule, so
+# the project customises lint without forking the private toolchain's packs.
+# Gate 3 passes these via `--config` after the built-in packs.
+overlays:
+  workspace.overlay.yaml: "64ec9a6a5b242126da486302229afbdba3b05fa3f547a6729d76250b40315882"
