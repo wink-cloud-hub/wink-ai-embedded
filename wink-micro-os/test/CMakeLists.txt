@@ -1742,6 +1742,28 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     add_test(NAME test_esp_gptimer COMMAND test_esp_gptimer)
     set_tests_properties(test_esp_gptimer PROPERTIES LABELS "esp_idf;core")
 
+    add_executable(test_freertos_timers
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_freertos_timers.c
+        ${UNITY_DIR}/unity.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_freertos_timers PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/core
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/freertos
+        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
+    )
+    target_link_libraries(test_freertos_timers PRIVATE wink_framework_esp_idf dal)
+    target_compile_options(test_freertos_timers PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(test_freertos_timers generate_config)
+    endif()
+    wink_test_attach_manifest(test_freertos_timers)
+    add_test(NAME test_freertos_timers COMMAND test_freertos_timers)
+    set_tests_properties(test_freertos_timers PROPERTIES LABELS "esp_idf;core")
+
     add_executable(test_esp_spi
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_spi.c
         ${UNITY_DIR}/unity.c
@@ -2261,6 +2283,9 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     )
     add_esp_idf_wasm_compile_check(test_esp_gptimer
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_gptimer.c
+    )
+    add_esp_idf_wasm_compile_check(test_freertos_timers
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_freertos_timers.c
     )
     add_esp_idf_wasm_compile_check(test_esp_spi
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_spi.c

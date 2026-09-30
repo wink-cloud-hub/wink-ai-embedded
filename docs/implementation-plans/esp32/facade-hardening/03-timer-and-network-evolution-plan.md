@@ -64,7 +64,7 @@
 
 ### 阶段 1：FreeRTOS 定时器守护纤程与交付矩阵 (Timer Daemon Fiber & Delivery Matrix)
 
-- [ ] **任务 T1.1**：逐项落实 FreeRTOS Timer API 交付矩阵与 Daemon 驱动引擎：
+- [x] **任务 T1.1**：逐项落实 FreeRTOS Timer API 交付矩阵与 Daemon 驱动引擎：
   | API 名称 | 交付归属 | 语义契约与实现策略 |
   |---|---|---|
   | `xTimerCreate` | **本期实现** | 分配静态槽位，获取全局自增代际 `generation`，初始化结构体 |
@@ -77,13 +77,13 @@
   | `xTimerStartFromISR` 等 | **显式不支持** | 门面当前无独立硬件 ISR 线程，统一调用标准版本或返回错误 |
   | `esp_timer_create` 等 | **显式不支持** | Fail-Loud：返回 `ESP_ERR_NOT_SUPPORTED` |
 
-- [ ] **任务 T1.2**：编写定时器单测集 `test/freertos/test_freertos_timers.c`：
+- [x] **任务 T1.2**：编写定时器单测集 `test/freertos/test_freertos_timers.c`：
   - **提前插入即刻唤醒单测（P0 验证）**：Daemon 正在阻塞等待 1000ms 定时器时，从另一任务插入 20ms 短定时器，验证 Daemon 被 `xQueueSend` 立即唤醒并在 20ms 到期时准时分发；
   - **槽位复用 ABA 单测（P1 验证）**：创建 Timer A，启动后立即 Delete 并在同一槽位快速分配 Timer B，验证 Timer A 在队列中的旧命令到期被代际防御丢弃；
   - **队列满背压与防死锁单测**：连续填满命令队列，验证带超时与非阻塞返回 `pdFAIL`，验证临界区内投递触发断言拦截；
   - **LITE 配置（8 任务槽）极限容量单测**：验证在仅有 8 个任务槽的极限环境下，Daemon 与 5 个应用任务共存稳定运行。
 
-- [ ] **任务 T1.3**：【防腐硬约束】新组件回写 [`src/esp_idf_bridge.c`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-os/frameworks/esp_idf/src/esp_idf_bridge.c) 双阶段复位 DAG：
+- [x] **任务 T1.3**：【防腐硬约束】新组件回写 [`src/esp_idf_bridge.c`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-os/frameworks/esp_idf/src/esp_idf_bridge.c) 双阶段复位 DAG：
   - 在复位流程的 Stage 5 增加 `esp_freertos_timers_sim_reset()`：彻底排空定时器命令队列与待执行工作项，停止 Daemon 纤程；
   - 编写专门的**“定时器即将触发瞬间强行重启”**单测：在到期前 1ms 触发 `esp_restart()`，断言重启后旧定时器零残留、新基线完全干净。
 

@@ -27,6 +27,7 @@ static bool s_esp_pending_reset = false;
 static int s_esp_reset_reason = 4; /* SOFTWARE */
 
 void esp_freertos_pools_reset(void) {
+    esp_freertos_timers_sim_reset();
     esp_freertos_task_pool_reset();
     esp_freertos_queue_pool_reset();
     esp_freertos_sem_pool_reset();
@@ -123,6 +124,9 @@ void pal_wasm_target_clear_pending_reset(void) {
 
     /* Stage 5: Drain system event loop and stop event task */
     esp_event_loop_sim_reset();
+
+    /* Stage 5.5: Drain FreeRTOS software timer command queue and cancel active timers */
+    esp_freertos_timers_sim_reset();
 
     /* Stage 6: Evict all application fibers and reset scheduler state */
     sim_scheduler_reset(0);

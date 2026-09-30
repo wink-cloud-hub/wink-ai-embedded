@@ -73,8 +73,15 @@ void       esp_freertos_task_pool_reset(void);
 void       esp_freertos_queue_pool_reset(void);
 void       esp_freertos_sem_pool_reset(void);
 void       esp_freertos_event_pool_reset(void);
+void       esp_freertos_timers_sim_reset(void);
 void       esp_freertos_pools_reset(void);
 void       esp_freertos_register_task_slot(uint32_t slot, int32_t prio, const char* name);
+uint32_t   esp_freertos_get_active_timer_count(void);
+uint32_t   esp_freertos_get_timer_daemon_sim_id(void);
+
+typedef void (*esp_timer_work_fn_t)(void *arg, uint32_t token);
+BaseType_t esp_freertos_timer_post_work_item(esp_timer_work_fn_t fn, void *arg, uint32_t *out_token, TickType_t delay_ticks);
+BaseType_t esp_freertos_timer_cancel_work_item(uint32_t token);
 
 /* ── Phase 2: spinlock critical-depth tracking (ISSUE-02) ──────────────────
  * Implemented in freertos_spinlock.c. Internal arrays not exposed here.

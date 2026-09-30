@@ -22,6 +22,7 @@ enum {
     ESP_SIM_HANDLE_I2C = 7,
     ESP_SIM_HANDLE_SPI = 8,
     ESP_SIM_HANDLE_I2C_DEV = 9,
+    ESP_SIM_HANDLE_TIMER = 10,
 };
 
 #ifdef __cplusplus
