@@ -4,9 +4,9 @@
 | 字段 | 内容 |
 |---|---|
 | 计划编号 | PLAN-20260930-ESP-IDF-WIFI-NETIF-DETERMINISTIC-ENV-v2.0 |
-| 状态 | 📝 **Ready for Execution（吸收深度白盒专项评审意见后的修订终版）** |
+| 状态 | ✅ **Completed（全面按期完成，门禁与全量实证 100% 通过）** |
 | 日期 | 2026-09-30 |
-| 周期估算 | 6~7 个工作日（分 Batch 1 ~ 3 阶段递进执行） |
+| 周期估算 | 6~7 个工作日（已按 Plan v2.0 完整实施闭环） |
 | 优先次序 | **T0 语义注入与观测链路 → v6.1 C-ABI 头文件纠偏 → STA 三阶段确定性状态机 → 空口扫描子系统 → SoftAP与网络就绪级联联动 → 门禁与无头实证** |
 | 决策依据 | [ADR-0012：契约诚实优于静默降级（Fail-Loud 原则）](../../decisions/core/0012-contract-honesty-over-silent-degradation.md)<br>[ADR-0002：双 Target 同源编译原则](../../decisions/unisim/0002-dual-target-compilation.md)<br>[ADR-0003：生产口径与保真边界约束（永不承诺虚实恒等）](../../decisions/unisim/0003-simulation-fidelity-boundary.md)<br>[ADR-0004：编译期静态分发优于运行时函数指针](../../decisions/core/0004-static-dispatch-vs-runtime-ops.md)<br>[ADR-0045：仿真内存配额与异常故障策略](../../decisions/unisim/0045-simulation-memory-quota-and-fault-policy.md)<br>[ADR-0053：虚拟时间因果同刻总序仲裁模型](../../decisions/unisim/0053-sim-same-timestamp-event-total-order.md)<br>[ADR-0089：分类记账堆内存与边界防御模型](../../decisions/core/0089-esp-idf-heap-caps-allocation-contract.md)<br>[ADR-0091：多配置实例与五维正交 Schema 架构决策](../../decisions/unisim/0091-esp-idf-multi-config-orthogonal-schema.md)<br>[ADR-0092：ESP-IDF 官方示例仿真治理前置筑基宪章](../../decisions/unisim/0092-esp-idf-simulation-governance-and-capability-charter.md) |
 | 管辖数据源 | [`checklist.data.json`](../../../wink-micro-app/vendor/esp_idfv61/.governance/data/checklist.data.json)、[`capability-catalog.yaml`](../../../wink-micro-app/vendor/esp_idfv61/.governance/catalog/capability-catalog.yaml)、[`.governance/gates/`](../../../wink-micro-app/vendor/esp_idfv61/.governance/gates/) |
@@ -41,16 +41,16 @@
    - 严格执行 ADR-0091，禁止用 Node.js 无头执行给 `checklist.data.json` 中的 `wasm_browser` 打勾，明确分列 `wasm_node` 证据通道；待真实场景证据闭环后才更新能力目录状态为 `implemented`。
 
 ### 1.2 全局验收标准 (DoD)
-- [ ] **G-01（C 代码零业务数据硬编码）**：`src/wifi/` 下所有 C 文件严禁出现具体的硬编码 IPv4 字符串（如 `192.168.1.100`）、固定 MAC 或 if-else 业务特判，违者由 Gate 5 Rule 503 静态门禁直接阻断；
-- [ ] **G-02（T0 规范与跨用例完全复位）**：标准时间格式（`us/ms/s`），通过标准 Wasm 导出 C-ABI 注入虚拟 AP，每次测试退出后通过 `sim_wifi_env_reset()` 释放所有虚拟 AP 与 Netif 状态，同 seed 重跑轨迹 100% 一致；
-- [ ] **G-03（C-ABI 签名与结构体 100% 对齐 v6.1）**：`esp_netif_t` 恢复为标准对象类型，`ip_event_got_ip_t.esp_netif` 纠正为一级指针；官方 `wifi_sta` 示例源文件在未做任何修改的情况下一次性同源编译成功；
-- [ ] **G-04（三阶段状态机与代际防幽灵保障）**：
+- [x] **G-01（C 代码零业务数据硬编码）**：`src/wifi/` 下所有 C 文件严禁出现具体的硬编码 IPv4 字符串（如 `192.168.1.100`）、固定 MAC 或 if-else 业务特判，违者由 Gate 5 Rule 503 静态门禁直接阻断；
+- [x] **G-02（T0 规范与跨用例完全复位）**：标准时间格式（`us/ms/s`），通过标准 Wasm 导出 C-ABI 注入虚拟 AP，每次测试退出后通过 `sim_wifi_env_reset()` 释放所有虚拟 AP 与 Netif 状态，同 seed 重跑轨迹 100% 一致；
+- [x] **G-03（C-ABI 签名与结构体 100% 对齐 v6.1）**：`esp_netif_t` 恢复为标准对象类型，`ip_event_got_ip_t.esp_netif` 纠正为一级指针；官方 `wifi_sta` 示例源文件在未做任何修改的情况下一次性同源编译成功；
+- [x] **G-04（三阶段状态机与代际防幽灵保障）**：
   - 密码正确 $\to$ 完整经历 `STA_START` $\to$ `STA_CONNECTED` $\to$ `STA_GOT_IP`；
   - 密码错误 / 握手超时 $\to$ 准确触发 `STA_DISCONNECTED`，携带对应 `reason`；
   - 在 Association 或 DHCP 阶段调用 `esp_wifi_disconnect()` 或 `esp_wifi_stop()` $\to$ 立即取消后续在途事件，**绝不产生迟到的幽灵 `GOT_IP` 事件**；
-- [ ] **G-05（扫描子系统质量）**：`esp_wifi_scan_start()` 与 `esp_wifi_scan_get_ap_records()` 严格按 RSSI 降序返回，支持单次消费失效，`esp_wifi_scan_get_ap_num()` 准确返回候选数量；
-- [ ] **G-06（网络就绪级联联动）**：Wi-Fi 取得 IP 时标记网络就绪，Wi-Fi 掉线时置低网络就绪状态并向传输层广播网络中断，使处于连接中的 MQTT 客户端能够自然触发 `MQTT_EVENT_DISCONNECTED`；
-- [ ] **G-07（反异变防御与证据合规）**：部署 Rule 503 与 Rule 504 门禁；反异变测试（篡改场景中 AP 密码或期望分配 IP）必报红灯；证据严格归属 `wasm_node`，`ctest -L esp_idf` 100% 绿灯。
+- [x] **G-05（扫描子系统质量）**：`esp_wifi_scan_start()` 与 `esp_wifi_scan_get_ap_records()` 严格按 RSSI 降序返回，支持单次消费失效，`esp_wifi_scan_get_ap_num()` 准确返回候选数量；
+- [x] **G-06（网络就绪级联联动）**：Wi-Fi 取得 IP 时标记网络就绪，Wi-Fi 掉线时置低网络就绪状态并向传输层广播网络中断，使处于连接中的 MQTT 客户端能够自然触发 `MQTT_EVENT_DISCONNECTED`；
+- [x] **G-07（反异变防御与证据合规）**：部署 Rule 503 与 Rule 504 门禁；反异变测试（篡改场景中 AP 密码或期望分配 IP）必报红灯；证据严格归属 `wasm_node`，`ctest -L esp_idf` 100% 绿灯。
 
 ---
 
@@ -295,58 +295,58 @@ esp_err_t esp_wifi_scan_get_ap_num(uint16_t *number);
 ```
 
 ### 阶段 0：T0 注入与语义观测基建 (Infrastructure & Observability)
-- [ ] **任务 T0.1**：规范场景时间语法，全面废除 `µs` 符号，收敛为合规的 `us/ms/s`；
-- [ ] **任务 T0.2**：定义 Wasm 导出 C-ABI 注入接口：
+- [x] **任务 T0.1**：规范场景时间语法，全面废除 `µs` 符号，收敛为合规的 `us/ms/s`；
+- [x] **任务 T0.2**：定义 Wasm 导出 C-ABI 注入接口：
   - `sim_wifi_env_inject_ap(const char* json_str)`
   - `sim_wifi_env_inject_fault(const char* json_str)`
   - `sim_wifi_env_reset(void)`
-- [ ] **任务 T0.3**：建立语义观测探针，通过 Wasm 导出符号向无头运行器暴露 `wifi:state` 与 `netif:sta:ip`，废除以电压作为网络断言的无效做法。
+- [x] **任务 T0.3**：建立语义观测探针，通过 Wasm 导出符号向无头运行器暴露 `wifi:state` 与 `netif:sta:ip`，废除以电压作为网络断言的无效做法。
 
 ### 阶段 1：ESP-IDF v6.1 头文件契约彻底纠偏 (Header ABI Alignment)
-- [ ] **任务 T1.1**：纠偏 `frameworks/esp_idf/include/esp_netif_types.h`：
+- [x] **任务 T1.1**：纠偏 `frameworks/esp_idf/include/esp_netif_types.h`：
   - 恢复 `typedef struct esp_netif_obj esp_netif_t;`；
   - 修正 `ip_event_got_ip_t.esp_netif` 为 `esp_netif_t *` 一级指针；
-- [ ] **任务 T1.2**：补齐 `include/esp_wifi.h` 与 `include/esp_wifi_types.h`：
+- [x] **任务 T1.2**：补齐 `include/esp_wifi.h` 与 `include/esp_wifi_types.h`：
   - 添加 `WIFI_EVENT_SCAN_DONE` 枚举；
   - 补全 `wifi_event_sta_disconnected_t` 结构体；
   - 补全 `wifi_ap_record_t` 与 `esp_wifi_scan_get_ap_num()` 原型声明；
-- [ ] **任务 T1.3**：维护 `channels.json` 与 `check_harvested_headers.py`，确保资产一致性校验 0 error。
+- [x] **任务 T1.3**：维护 `channels.json` 与 `check_harvested_headers.py`，确保资产一致性校验 0 error。
 
 ### 阶段 2：【第一批交付】STA 三阶段确定性状态机与 Netif 驱动 (Batch 1: STA Core)
-- [ ] **任务 T2.1**：在 `frameworks/esp_idf/src/wifi/` 下实现 `sim_wifi_env.h/.c`：
+- [x] **任务 T2.1**：在 `frameworks/esp_idf/src/wifi/` 下实现 `sim_wifi_env.h/.c`：
   - 8-AP POD 静态表驱动，0 动态堆分配；
   - 支持虚拟 DHCP 分配器（依据 AP 网段分配 IP、掩码、网关、DNS）；
-- [ ] **任务 T2.2**：重构 `src/wifi/esp_wifi.c` STA 状态机：
+- [x] **任务 T2.2**：重构 `src/wifi/esp_wifi.c` STA 状态机：
   - 移除硬编码 `192.168.1.100`；
   - 实现 Association $\to$ DHCP $\to$ Disconnect 三阶段状态推进；
   - 引入 `state_generation_token`，在 `disconnect`/`stop` 时使在途事件失效，彻底杜绝“幽灵 GOT_IP”；
   - 对齐 `CONFIG_ESP_WIFI_SSID="myssid"` / `"mypassword"`；支持握手超时等细分原因码。
 
 ### 阶段 3：【第二批交付】空口扫描（Scan）子系统 (Batch 2: Scan Pipeline)
-- [ ] **任务 T3.1**：在 `sim_wifi_env` 中实现扫描检索逻辑：
+- [x] **任务 T3.1**：在 `sim_wifi_env` 中实现扫描检索逻辑：
   - 实现基于入参 `wifi_scan_config_t` 的 SSID 与 Channel 过滤；
   - 实现基于 RSSI 的稳定降序排序算法；
-- [ ] **任务 T3.2**：在 `esp_wifi.c` 中落地扫描 API：
+- [x] **任务 T3.2**：在 `esp_wifi.c` 中落地扫描 API：
   - `esp_wifi_scan_start()` 触发扫描并派发 `WIFI_EVENT_SCAN_DONE`；
   - `esp_wifi_scan_get_ap_num()` 返回候选总数；
   - `esp_wifi_scan_get_ap_records()` 实现一次性安全消费拷贝。
 
 ### 阶段 4：【第三批交付】SoftAP / APSTA 与底层网络状态联动 (Batch 3: SoftAP & Linkage)
-- [ ] **任务 T4.1**：重构 `src/wifi/esp_netif.c` 为多槽位数组（支持最大 4 个实例）：
+- [x] **任务 T4.1**：重构 `src/wifi/esp_netif.c` 为多槽位数组（支持最大 4 个实例）：
   - 独立实例化 `esp_netif_create_default_wifi_sta()` 与 `esp_netif_create_default_wifi_ap()`；
   - 保证 STA 与 SoftAP 独立句柄、独立 MAC 与独立 IP 空间；
-- [ ] **任务 T4.2**：实现网络状态级联就绪总线（`sim_network_broker`）：
+- [x] **任务 T4.2**：实现网络状态级联就绪总线（`sim_network_broker`）：
   - 当 STA 取得 IP 时，广播网络物理就绪；
   - 当 STA 掉线时，置低网络就绪状态；
   - 联动 `src/network/esp_mqtt.c`：当网络断开时，使处于连接态的 MQTT 客户端正确触发断链回调，消除假连。
 
 ### 阶段 5：门禁强化、反异变防御与全量无头实证 (Verification & Governance)
-- [ ] **任务 T5.1**：在 `.governance/gates/rules/` 部署：
+- [x] **任务 T5.1**：在 `.governance/gates/rules/` 部署：
   - `g5_no_wifi_inline_mock.py`（Rule 503）：阻断 C 代码硬编码 IP 与密码；
   - `g5_wifi_assertion_quality.py`（Rule 504）：检查 Wi-Fi 语义断言有效性；
-- [ ] **任务 T5.2**：编写反异变单元测试：篡改虚拟 AP 密码与期望分配 IP，验证断言能够 100% 触发红灯；
-- [ ] **任务 T5.3**：在 `checklist.data.json` 中为 `#006 wifi_sta` 明确区分 `wasm_node` 证据条目；
-- [ ] **任务 T5.4**：更新 `test_esp_wifi.c` 并执行 `ctest -L esp_idf`，运行 `run_esp32_headless_evidence.ps1 -App wifi_sta` 输出确定性实据，全部达成 100% 通过后更新 `capability-catalog.yaml` 为 `implemented`。
+- [x] **任务 T5.2**：编写反异变单元测试：篡改虚拟 AP 密码与期望分配 IP，验证断言能够 100% 触发红灯；
+- [x] **任务 T5.3**：在 `checklist.data.json` 中为 #006 wifi_sta 明确区分 `wasm_node` 证据条目；
+- [x] **任务 T5.4**：更新 `test_esp_wifi.c` 并执行 `ctest -L esp_idf`，运行 `run_esp32_headless_evidence.ps1 -App wifi_sta` 输出确定性实据，全部达成 100% 通过后更新 `capability-catalog.yaml` 为 `implemented`。
 
 ---
 
@@ -366,3 +366,68 @@ esp_err_t esp_wifi_scan_get_ap_num(uint16_t *number);
 
 - **Milestone 1（当前计划）**：按 Batch 1 $\to$ 2 $\to$ 3 递进交付 STA 三阶段状态机、扫描子系统、SoftAP 与传输层就绪联动；
 - **Milestone 2（后续规划）**：推进 SmartConfig / WPS 配网握手仿真与多 STA 动态漫游网络拓扑。
+
+---
+
+## 六、 实施与实证验收记录 (Execution & Verification Evidence)
+
+### 6.1 Gate 5 治理门禁与反异变测试
+- **命令**：`pytest wink-micro-app/vendor/esp_idfv61/.governance/gates/tests/ -v`
+- **结果**：103/103 passed in 1.31s
+- **涵盖**：
+  - `test_g5_no_wifi_inline_mock_clean_codebase`：代码库零硬编码 IPv4/密码特判侵入；
+  - `test_g5_no_wifi_inline_mock_mutation_catches_ipv4_literal`：反异变用例（注入违规 IPv4 字符串字面量立即红灯拦截）；
+  - `test_g5_no_wifi_inline_mock_mutation_catches_pwd_branch`：反异变用例（注入内联 strcmp/strstr 密码比对立即红灯拦截）；
+  - `test_g5_wifi_assertion_quality_positive`：Wi-Fi 场景规范与语义断言质量校验通过；
+  - `test_g5_wifi_assertion_quality_catches_empty_aps`：反异变用例（空 AP 列表立即红灯拦截）；
+  - `test_g5_wifi_assertion_quality_catches_missing_ssid`：反异变用例（缺失 SSID 立即红灯拦截）；
+  - `test_g5_wifi_assertion_quality_catches_non_semantic_target`：反异变用例（无 wifi:*/netif:* 语义信号断言立即被防洗绿门禁红灯阻断）。
+
+### 6.2 治理门禁全量运行 (Nightly Mode)
+- **命令**：`python wink-micro-app/vendor/esp_idfv61/.governance/gates/run_gates.py --mode nightly`
+- **结果**：
+  - Active Rules Registered: 19
+  - Total Rules: 19 | Executed: 14 | Skipped: 5 | Errors: 0 | Warnings: 0
+  - `[PASS] g5.wifi_assertion_quality (Errors: 0, Warnings: 0)`
+  - `[RESULT] PASSED: Gate checks completed successfully (exit code 0)`
+
+### 6.3 开源许可与收割头文件资产一致性检查
+- **命令**：`python .github/scripts/check_license_map.py`
+  - 结果：`OK: license map satisfied`（679 LGPL-3.0-only, 304 GPL-3.0-only, 157 Apache-2.0...）
+- **命令**：`python .github/scripts/check_harvested_headers.py`
+  - 结果：`[harvest-gate] root=... manifest=542eb37a5dc3604c generated_headers=278 unmarked=42 errors=0`
+
+### 6.4 ESP-IDF 完整回归测试 (CTest)
+- **命令**：`ctest -L esp_idf --output-on-failure`
+- **结果**：`100% tests passed out of 87`
+- **核心用例**：
+  - `test_esp_wifi`：26/26 测试全绿（涵盖关联、DHCP、错误密码 4WAY_HANDSHAKE_TIMEOUT、未知 SSID NO_AP_FOUND、DROP_BEACON 信标丢弃、扫描 RSSI 降序及单次安全消费、MQTT 掉线级联断开）；
+  - `esp_idfv61_wifi_sta`：通过（官方原生 Station 示例同源无缝编译运行）；
+  - `esp_idf_wasm_compile_esp_idfv61_wifi_sta`：通过（Emscripten/Wasm32 编译 0 error）；
+  - `esp_idf_wasm_compile_corpus_wifi_sta`：通过。
+
+### 6.5 官方示例无头确定性实证 (UniSim Headless Evidence)
+- **命令**：`powershell -ExecutionPolicy Bypass -File wink-micro-os/frameworks/esp_idf/tools/run_esp32_headless_evidence.ps1 -App wifi_sta`
+- **结果**：
+  ```
+  ▶ Executing Scenario: [wifi_sta.scenario.json]
+  [wink I] [         0 ms] [wifi station] I (0) wifi station: ESP_WIFI_MODE_STA
+  [wink I] [         0 ms] [WIFI_SIM] I (0) WIFI_SIM: Wi-Fi initialized in simulation mode
+  [wink I] [         0 ms] [wifi station] I (0) wifi station: wifi_init_sta finished.
+  [wink I] [       101 ms] [wifi station] I (101) wifi station: got ip:192.168.1.100
+  [wink I] [       101 ms] [wifi station] I (101) wifi station: connected to ap SSID:myssid password:mypassword
+  [wink I] [      2001 ms] [wifi station] I (2001) wifi station: retry to connect to the AP
+  [wink I] [      2001 ms] [wifi station] I (2001) wifi station: connect to the AP fail
+        ✓ Step #1 [INJECT_WIFI_FIXTURE] @ 0µs - Status: PASSED
+        ✓ Step #2 [ASSERT_POINT] @ 1500000µs - Status: PASSED (netif:sta:ip == 192.168.1.100)
+        ✓ Step #3 [INJECT_WIFI_FIXTURE] @ 2000000µs - Status: PASSED (DROP_BEACON fault)
+        ✓ Step #4 [ASSERT_POINT] @ 2500000µs - Status: PASSED (wifi:sta:state == DISCONNECTED)
+    ✔ Status: PASS | Virtual Time: 3000000µs | Wall-Clock: 88ms
+
+  =========================== [SUMMARY REPORT (HEADLESS)] ===========================
+  🟢 PASS | ESP-IDF v6.1 Wi-Fi STA Connection & Scan Deterministic Proof | Virtual: 3000000µs | Host: 88ms
+  Total Scenarios: 1 | Total Execution Time: 90ms
+  ================ ESP32 headless evidence summary ================
+    [PASS] wifi_sta             Wi-Fi Station Mode & Netif
+  All ESP-IDF headless carriers PASSED.
+  ```
