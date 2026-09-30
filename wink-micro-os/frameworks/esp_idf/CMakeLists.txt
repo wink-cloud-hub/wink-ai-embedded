@@ -11,7 +11,10 @@ add_library(wink_framework_esp_idf STATIC EXCLUDE_FROM_ALL
 
 target_include_directories(wink_framework_esp_idf PUBLIC
     ${ESP_IDF_FRAMEWORK_INCLUDES}
-    ${CMAKE_CURRENT_LIST_DIR}/../../runtime/include
+)
+
+target_include_directories(wink_framework_esp_idf PRIVATE
+    ${ESP_IDF_FRAMEWORK_PRIVATE_INCLUDES}
 )
 
 # SoC selection macro SSOT (ADR-0085 D3 / ADR-0087) and profile capacity definitions (ISSUE-03)
@@ -19,6 +22,8 @@ target_compile_definitions(wink_framework_esp_idf PUBLIC
     ${WINK_IDF_TARGET_DEFINE}=1
     "${WINK_IDF_TARGET_STRING_DEFINE}"
     ${WINK_ESP_PROFILE_DEFINES}
+    SIMULATION=1
+    WINK_SIM_TEST=1
 )
 
 if(TARGET pal_host)

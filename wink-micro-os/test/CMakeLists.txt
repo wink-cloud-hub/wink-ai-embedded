@@ -1348,6 +1348,45 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     add_test(NAME test_esp_err COMMAND test_esp_err)
     set_tests_properties(test_esp_err PROPERTIES LABELS "esp_idf;core")
 
+    add_executable(test_esp_check
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_check.c
+        ${UNITY_DIR}/unity.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_check PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    target_link_libraries(test_esp_check PRIVATE wink_framework_esp_idf)
+    target_compile_options(test_esp_check PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(test_esp_check generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_check)
+    add_test(NAME test_esp_check COMMAND test_esp_check)
+    set_tests_properties(test_esp_check PROPERTIES LABELS "esp_idf;core")
+
+    add_test(NAME esp_idf_negative_boundary
+        COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/negative_boundary_test/run_negative_boundary_test.py
+    )
+    set_tests_properties(esp_idf_negative_boundary PROPERTIES LABELS "esp_idf;core;boundary")
+
+    add_test(NAME esp_idf_headers_standalone
+        COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/tools/check_headers_standalone.py
+    )
+    set_tests_properties(esp_idf_headers_standalone PROPERTIES LABELS "esp_idf;core;standalone")
+
+    add_test(NAME esp_idf_sla_fail_loud
+        COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_sla_fail_loud.py
+    )
+    set_tests_properties(esp_idf_sla_fail_loud PROPERTIES LABELS "esp_idf;core;sla")
+
+
+
+
     add_executable(test_esp_idf_runtime
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_idf_runtime.c
         ${UNITY_DIR}/unity.c
@@ -2179,6 +2218,9 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
 
     add_esp_idf_wasm_compile_check(test_esp_err
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_err.c
+    )
+    add_esp_idf_wasm_compile_check(test_esp_check
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_check.c
     )
     add_esp_idf_wasm_compile_check(test_esp_gpio
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_gpio.c

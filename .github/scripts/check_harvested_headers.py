@@ -191,6 +191,29 @@ def main(argv: list[str] | None = None) -> int:
             errors.append(f"hand-written header not registered in channels.json: {rel}")
         for rel in sorted(handwritten - unmarked_set):
             errors.append(f"channels.json handwritten entry stale (missing or generated): {rel}")
+
+        # T2.3.1: Strict 1:1 bidirectional equivalence between handwritten and handwritten_entries
+        if "handwritten_entries" in channels:
+            entries_paths = {str(e.get("path")) for e in channels.get("handwritten_entries", []) if isinstance(e, dict)}
+            if set(handwritten) != entries_paths:
+                errors.append("channels.json SSOT divergence: 'handwritten' and 'handwritten_entries' must be strictly identical sets")
+            if len(channels.get("handwritten_entries", [])) != len(entries_paths):
+                errors.append("channels.json duplicate entries found in 'handwritten_entries'")
+
+        # T2.3.2: Self-check of README.md declared handwritten count against channels.json
+        readme_path = root / "README.md"
+        if readme_path.is_file():
+            readme_text = readme_path.read_text(encoding="utf-8")
+            m_count = re.search(r"当前共享树\s*(\d+)\s*个手写头", readme_text)
+            if not m_count:
+                errors.append("include/README.md missing declared handwritten count pattern '当前共享树 N 个手写头'")
+            else:
+                declared_count = int(m_count.group(1))
+                if declared_count != len(handwritten):
+                    errors.append(
+                        f"include/README.md declared handwritten count ({declared_count}) != channels.json ({len(handwritten)})"
+                    )
+
         chips_dir = root.parent / "chips"
         if chips_dir.is_dir():
             chips_unmarked = {
@@ -202,6 +225,7 @@ def main(argv: list[str] | None = None) -> int:
                 errors.append(f"hand-written chip header not registered in channels.json: {rel}")
             for rel in sorted(chips_handwritten - chips_unmarked):
                 errors.append(f"channels.json chips_handwritten entry stale: {rel}")
+
 
     rules = None
     if args.rules:

@@ -5,3 +5,7 @@ set(WINK_APP_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/h4_same_time.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/phase4_restart.cpp"
     PARENT_SCOPE)
+set(WINK_APP_INCLUDE_DIRS
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../../src/core"
+    PARENT_SCOPE)
+

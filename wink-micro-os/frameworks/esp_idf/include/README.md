@@ -55,9 +55,15 @@
 * **版本锚**：`esp-idf v6.1@fff9895c`，`manifest.json.hash = 542eb37a5dc3604c`（manifest 覆盖 280 个生成头：
   278 个驻留本树 + 2 个迁移至 `chips/`，Banner 可查）。
 * **手写通道 A（不参与收割，随版本演进维护）**：
-  - 登记 SSOT：`../channels.json`（`handwritten` / `chips_handwritten` / `relocated`，门禁强制；
-    当前共享树 21 个手写头，含 `sdkconfig_base.h`、`esp_attr.h`、`esp_check.h`、`esp_idf_wink.h`、
-    `led_strip.h`、`esp_pm.h`、`esp_timer.h`、`hal/spi_types.h`、`driver/{i2c,i2c_types_legacy}.h`、`freertos/*`）；
+  - 登记 SSOT：`../channels.json`（`schema_version: 2`，`handwritten` 与 `handwritten_entries` 严格 1:1 双向等价，门禁强制；当前共享树 41 个手写头）；
+  - 子系统分布（共 41 项）：
+    - **Core** (9 项)：`sdkconfig_base.h`、`esp_attr.h`、`esp_check.h`、`esp_event.h`、`esp_event_base.h`、`esp_heap_caps.h`、`esp_pm.h`、`esp_timer.h`、`esp_idf_wink.h`
+    - **Driver** (4 项)：`led_strip.h`、`driver/i2c.h`、`driver/i2c_types_legacy.h`、`hal/spi_types.h`
+    - **Storage** (2 项)：`esp_partition_sim.h`、`esp_vfs_ram.h`
+    - **WiFi** (2 项)：`esp_wifi.h`、`esp_wifi_types.h`
+    - **Network** (4 项)：`esp_http_client.h`、`esp_netif.h`、`esp_netif_types.h`、`mqtt_client.h`
+    - **FreeRTOS** (11 项)：`freertos/FreeRTOS.h`、`freertos/FreeRTOSConfig.h`、`freertos/event_groups.h`、`freertos/idf_additions.h`、`freertos/portable.h`、`freertos/portmacro.h`、`freertos/projdefs.h`、`freertos/queue.h`、`freertos/semphr.h`、`freertos/task.h`、`freertos/timers.h`
+    - **BLE** (9 项)：`host/ble_gap.h`、`host/ble_gatt.h`、`host/ble_hs.h`、`host/ble_uuid.h`、`nimble/nimble_port.h`、`nimble/nimble_port_freertos.h`、`os/os_mbuf.h`、`services/gap/ble_svc_gap.h`、`services/gatt/ble_svc_gatt.h`
   - 默认 config 垫片：`../shim/include/sdkconfig.h`（include 搜索序最后，corpus overlay 优先）。
 * **chips/<target> 数据点（ADR-0085 D3 修订 / ADR-0087）**：`soc/soc_caps.h`、`soc/gpio_num.h`
   的 per-SoC 数据物理归属 `chips/<target>/include/soc/`，本树不再保留同名文件；选片由 CMake

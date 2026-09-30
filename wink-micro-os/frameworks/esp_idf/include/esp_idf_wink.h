@@ -6,6 +6,10 @@
 #ifndef ESP_IDF_WINK_H_
 #define ESP_IDF_WINK_H_
 
+#if !defined(SIMULATION) && !defined(WINK_SIM_TEST)
+#error "FATAL: This header is a WinkMicroOS simulation-only header! It cannot be included in physical ESP-IDF hardware builds."
+#endif
+
 #include "esp_err.h"
 #include "wink_status.h"
 #include "hal/gpio_types.h"

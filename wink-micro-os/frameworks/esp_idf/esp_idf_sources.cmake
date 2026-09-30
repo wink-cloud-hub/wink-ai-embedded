@@ -37,16 +37,21 @@ set(ESP_IDF_FRAMEWORK_SOURCES
 
 include(${CMAKE_CURRENT_LIST_DIR}/esp_idf_target.cmake)
 
+# 对外暴露的公共头目录（PUBLIC）：仅允许厂商公开 API 垫片、目标芯片头与 sdkconfig 默认垫片
 set(ESP_IDF_FRAMEWORK_INCLUDES
     ${WINK_ESP_TARGET_INCLUDE_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/include
+    ${CMAKE_CURRENT_LIST_DIR}/shim/include
+)
+
+# 门面内部专用私有头目录（PRIVATE）：严格收敛，禁止向应用泄漏
+set(ESP_IDF_FRAMEWORK_PRIVATE_INCLUDES
     ${CMAKE_CURRENT_LIST_DIR}/src/freertos
     ${CMAKE_CURRENT_LIST_DIR}/src/core
     ${CMAKE_CURRENT_LIST_DIR}/src/wifi
     ${CMAKE_CURRENT_LIST_DIR}/src/network
+    ${CMAKE_CURRENT_LIST_DIR}/src/sim_include
     ${CMAKE_CURRENT_LIST_DIR}/../../targets/common/include
-    # 手写 esp_check.h -> wink_runtime.h -> wink_fault.h -> wink_trace.h 依赖链
     ${CMAKE_CURRENT_LIST_DIR}/../../trace/include
-    # 默认 sdkconfig 垫片：必须排在 corpus overlay 之后（见 shim/include/sdkconfig.h）
-    ${CMAKE_CURRENT_LIST_DIR}/shim/include
+    ${CMAKE_CURRENT_LIST_DIR}/../../runtime/include
 )

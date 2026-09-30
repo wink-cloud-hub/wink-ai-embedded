@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "framework": "esp_idf",
   "default_soc": "esp32",
   "_comment": "Asset ownership registry for the vendored ESP-IDF facade (ADR-0087). Machine-checked by .github/scripts/check_harvested_headers.py. Paths are relative to include/ (handwritten) or to the framework root (relocated targets).",
@@ -20,7 +20,6 @@
     "esp_wifi_types.h",
     "led_strip.h",
     "mqtt_client.h",
-    "sim_net_responder.h",
     "esp_partition_sim.h",
     "esp_vfs_ram.h",
     "driver/i2c.h",
@@ -58,5 +57,253 @@
   "relocated": {
     "soc/soc_caps.h": "chips/{soc}/include/soc/soc_caps.h",
     "soc/gpio_num.h": "chips/{soc}/include/soc/gpio_num.h"
-  }
+  },
+  "handwritten_entries": [
+    {
+      "path": "sdkconfig_base.h",
+      "nature": "vendor_public",
+      "subsystem": "core",
+      "upstream_component": "esp_system"
+    },
+    {
+      "path": "esp_attr.h",
+      "nature": "vendor_public",
+      "subsystem": "core",
+      "upstream_component": "esp_common"
+    },
+    {
+      "path": "esp_check.h",
+      "nature": "vendor_public",
+      "subsystem": "core",
+      "upstream_component": "esp_common"
+    },
+    {
+      "path": "esp_event.h",
+      "nature": "vendor_public",
+      "subsystem": "core",
+      "upstream_component": "esp_event"
+    },
+    {
+      "path": "esp_event_base.h",
+      "nature": "vendor_public",
+      "subsystem": "core",
+      "upstream_component": "esp_event"
+    },
+    {
+      "path": "esp_heap_caps.h",
+      "nature": "vendor_public",
+      "subsystem": "core",
+      "upstream_component": "heap"
+    },
+    {
+      "path": "esp_idf_wink.h",
+      "nature": "sim_bridge",
+      "subsystem": "core",
+      "upstream_component": "none"
+    },
+    {
+      "path": "esp_pm.h",
+      "nature": "vendor_public",
+      "subsystem": "core",
+      "upstream_component": "esp_pm"
+    },
+    {
+      "path": "esp_timer.h",
+      "nature": "vendor_public",
+      "subsystem": "core",
+      "upstream_component": "esp_timer"
+    },
+    {
+      "path": "led_strip.h",
+      "nature": "vendor_public",
+      "subsystem": "driver",
+      "upstream_component": "led_strip"
+    },
+    {
+      "path": "driver/i2c.h",
+      "nature": "vendor_public",
+      "subsystem": "driver",
+      "upstream_component": "driver"
+    },
+    {
+      "path": "driver/i2c_types_legacy.h",
+      "nature": "vendor_public",
+      "subsystem": "driver",
+      "upstream_component": "driver"
+    },
+    {
+      "path": "hal/spi_types.h",
+      "nature": "vendor_public",
+      "subsystem": "driver",
+      "upstream_component": "hal"
+    },
+    {
+      "path": "esp_partition_sim.h",
+      "nature": "sim_bridge",
+      "subsystem": "storage",
+      "upstream_component": "none"
+    },
+    {
+      "path": "esp_vfs_ram.h",
+      "nature": "sim_bridge",
+      "subsystem": "storage",
+      "upstream_component": "none"
+    },
+    {
+      "path": "esp_wifi.h",
+      "nature": "vendor_public",
+      "subsystem": "wifi",
+      "upstream_component": "esp_wifi"
+    },
+    {
+      "path": "esp_wifi_types.h",
+      "nature": "vendor_public",
+      "subsystem": "wifi",
+      "upstream_component": "esp_wifi"
+    },
+    {
+      "path": "esp_http_client.h",
+      "nature": "vendor_public",
+      "subsystem": "network",
+      "upstream_component": "esp_http_client"
+    },
+    {
+      "path": "esp_netif.h",
+      "nature": "vendor_public",
+      "subsystem": "network",
+      "upstream_component": "esp_netif"
+    },
+    {
+      "path": "esp_netif_types.h",
+      "nature": "vendor_public",
+      "subsystem": "network",
+      "upstream_component": "esp_netif"
+    },
+    {
+      "path": "mqtt_client.h",
+      "nature": "vendor_public",
+      "subsystem": "network",
+      "upstream_component": "mqtt"
+    },
+    {
+      "path": "freertos/FreeRTOS.h",
+      "nature": "vendor_public",
+      "subsystem": "freertos",
+      "upstream_component": "freertos"
+    },
+    {
+      "path": "freertos/FreeRTOSConfig.h",
+      "nature": "vendor_public",
+      "subsystem": "freertos",
+      "upstream_component": "freertos"
+    },
+    {
+      "path": "freertos/event_groups.h",
+      "nature": "vendor_public",
+      "subsystem": "freertos",
+      "upstream_component": "freertos"
+    },
+    {
+      "path": "freertos/idf_additions.h",
+      "nature": "vendor_public",
+      "subsystem": "freertos",
+      "upstream_component": "freertos"
+    },
+    {
+      "path": "freertos/portable.h",
+      "nature": "vendor_public",
+      "subsystem": "freertos",
+      "upstream_component": "freertos"
+    },
+    {
+      "path": "freertos/portmacro.h",
+      "nature": "vendor_public",
+      "subsystem": "freertos",
+      "upstream_component": "freertos"
+    },
+    {
+      "path": "freertos/projdefs.h",
+      "nature": "vendor_public",
+      "subsystem": "freertos",
+      "upstream_component": "freertos"
+    },
+    {
+      "path": "freertos/queue.h",
+      "nature": "vendor_public",
+      "subsystem": "freertos",
+      "upstream_component": "freertos"
+    },
+    {
+      "path": "freertos/semphr.h",
+      "nature": "vendor_public",
+      "subsystem": "freertos",
+      "upstream_component": "freertos"
+    },
+    {
+      "path": "freertos/task.h",
+      "nature": "vendor_public",
+      "subsystem": "freertos",
+      "upstream_component": "freertos"
+    },
+    {
+      "path": "freertos/timers.h",
+      "nature": "vendor_public",
+      "subsystem": "freertos",
+      "upstream_component": "freertos"
+    },
+    {
+      "path": "host/ble_gap.h",
+      "nature": "vendor_public",
+      "subsystem": "ble",
+      "upstream_component": "nimble"
+    },
+    {
+      "path": "host/ble_gatt.h",
+      "nature": "vendor_public",
+      "subsystem": "ble",
+      "upstream_component": "nimble"
+    },
+    {
+      "path": "host/ble_hs.h",
+      "nature": "vendor_public",
+      "subsystem": "ble",
+      "upstream_component": "nimble"
+    },
+    {
+      "path": "host/ble_uuid.h",
+      "nature": "vendor_public",
+      "subsystem": "ble",
+      "upstream_component": "nimble"
+    },
+    {
+      "path": "nimble/nimble_port.h",
+      "nature": "vendor_public",
+      "subsystem": "ble",
+      "upstream_component": "nimble"
+    },
+    {
+      "path": "nimble/nimble_port_freertos.h",
+      "nature": "vendor_public",
+      "subsystem": "ble",
+      "upstream_component": "nimble"
+    },
+    {
+      "path": "os/os_mbuf.h",
+      "nature": "vendor_public",
+      "subsystem": "ble",
+      "upstream_component": "nimble"
+    },
+    {
+      "path": "services/gap/ble_svc_gap.h",
+      "nature": "vendor_public",
+      "subsystem": "ble",
+      "upstream_component": "nimble"
+    },
+    {
+      "path": "services/gatt/ble_svc_gatt.h",
+      "nature": "vendor_public",
+      "subsystem": "ble",
+      "upstream_component": "nimble"
+    }
+  ]
 }

@@ -4,7 +4,7 @@
 | 字段 | 内容 |
 |---|---|
 | 计划编号 | PLAN-20260930-ESP-IDF-BOUNDARY-AND-CHANNELS-v1.3 |
-| 状态 | 📝 **Ready for Execution（待公开头闭包解耦验证）** |
+| 状态 | ✅ **Phase 1 & Phase 2 Implemented（阶段 1 与阶段 2 门面硬隔离已实施并通过门禁）** |
 | 日期 | 2026-09-30 |
 | 周期估算 | 1~1.5 个工作日 |
 | 优先次序 | **_esp_error_check_failed 对齐与 esp_check.h 解耦 → sim_internal 物理隔离 → CMake PRIVATE/PUBLIC include 边界收敛 → 隔离负测与自包含正测 → channels.json 双向等价门禁 → Fail-Loud 宏规范 → 冲突显式决议** |
@@ -41,7 +41,7 @@
 
 ### 阶段 1：公开头解耦、物理隔离与构建边界硬收敛 (Header Decoupling & Boundary Hardening)
 
-- [ ] **任务 T1.0**：对齐原厂 `_esp_error_check_failed` 签名与契约，解耦 [`include/esp_check.h`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-os/frameworks/esp_idf/include/esp_check.h)：
+- [x] **任务 T1.0**：对齐原厂 `_esp_error_check_failed` 签名与契约，解耦 [`include/esp_check.h`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-os/frameworks/esp_idf/include/esp_check.h)：
   - 改造措施：
     1. 移除 `#include "wink_runtime.h"` 和 `#include "wink_fault.h"`；
     2. 对齐乐鑫原厂规范的断言函数声明：
@@ -53,14 +53,14 @@
     4. 在 [`src/core/esp_err.c:67`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-os/frameworks/esp_idf/src/core/esp_err.c#L67) 完善实现：输出详细错误日志 $\to$ 通知测试 Harness 捕获钩子 $\to$ 调用标准 `abort()` 终止；
     5. 编写单测 `test/core/test_esp_check.c`：验证 `ESP_ERROR_CHECK` 成功时不终止，失败时准确触发 `_esp_error_check_failed` 并被测试 Harness 拦截。
 
-- [ ] **任务 T1.1**：仿真内部专有桩头物理迁出公开目录（Physical Relocation of `sim_internal`）：
+- [x] **任务 T1.1**：仿真内部专有桩头物理迁出公开目录（Physical Relocation of `sim_internal`）：
   - 目标文件：仅用于仿真环境驱动而未在乐鑫官方 SDK 导出的纯内部桩头（如 `include/sim_net_responder.h`）；
   - 改造措施：
     1. 物理迁入 `wink-micro-os/frameworks/esp_idf/src/sim_include/` 或对应 `src/network/` 内部目录；
     2. 在公开 `include/` 中仅保留属于乐鑫官方 API 垫片（如 `esp_wifi.h`）或必须跨靶暴露的桥接头（如 `esp_idf_wink.h`）；
     3. 对于保留在公开目录的桥接头，加装仿真环境专用防呆守卫（见 T2.4）。
 
-- [ ] **任务 T1.2**：拆分 [`esp_idf_sources.cmake`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-os/frameworks/esp_idf/esp_idf_sources.cmake) 与收紧 [`CMakeLists.txt`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-os/frameworks/esp_idf/CMakeLists.txt)：
+- [x] **任务 T1.2**：拆分 [`esp_idf_sources.cmake`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-os/frameworks/esp_idf/esp_idf_sources.cmake) 与收紧 [`CMakeLists.txt`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-os/frameworks/esp_idf/CMakeLists.txt)：
   - **`ESP_IDF_FRAMEWORK_INCLUDES`（对外 PUBLIC）**：严格缩减为仅允许对外暴露的目录：
     ```cmake
     set(ESP_IDF_FRAMEWORK_INCLUDES
@@ -84,22 +84,22 @@
     ```
   - `CMakeLists.txt` 中将私有目录以 `PRIVATE` 注入 `wink_framework_esp_idf`，彻底屏蔽内部目录对消费者的泄漏。
 
-- [ ] **任务 T1.3**：全量消费者破窗依赖清查与收敛：
+- [x] **任务 T1.3**：全量消费者破窗依赖清查与收敛：
   - 静态检索 `wink-micro-app/` 与 `test/` 下的所有源文件，排查是否存在应用层或非核心测试单元违规引用 `freertos_sync.h`、`sim_wifi_env.h`、`sim_network_broker.h` 等内部头；
   - 若存在非内部测试 Harness 依赖，将其显式收敛至测试专属编译配置或标准化门面接口。
 
-- [ ] **任务 T1.4**：隔离子工程负向测试（CMake `try_compile` Negative Boundary Test）：
+- [x] **任务 T1.4**：隔离子工程负向测试（CMake `try_compile` Negative Boundary Test）：
   - 废弃在 CTest 中使用 `WILL_FAIL` 标记普通构建目标的错误设计（因编译错误会导致整个父工程在构建期直接挂死，无法进入测试阶段）；
   - 编写专门的 CMake 隔离子工程负测试：
     - 在 `test/core/negative_boundary_test/` 放置一个独立的微型 CMake 工程；
     - 测试源文件 `negative_boundary_consumer.c` 仅链接 `wink_framework_esp_idf`，尝试 `#include "freertos_sync.h"`；
     - 顶层 CMake 通过 `try_compile(RESULT_VAR ...)` 或 CTest 脚本调用独立子构建，断言子工程构建失败（`RESULT_VAR FALSE`），并在日志输出中匹配到 `fatal error: freertos_sync.h: No such file or directory`。
 
-- [ ] **任务 T1.5**：自动化单头自包含测试与头文件分类测试（Standalone Header Validation）：
+- [x] **任务 T1.5**：自动化单头自包含测试与头文件分类测试（Standalone Header Validation）：
   - 新增 CMake 验证目标 `check_esp_idf_headers_standalone`：
     - 运行环境：使用消费者实际获得的完整 PUBLIC 依赖闭包（`wink_framework_esp_idf` PUBLIC Includes + `wink_pal` PUBLIC Includes）；
     - 针对不同类别头文件实施精准验证：
-      - **A 类（Vendor Public 原厂公开头）**：遍历 `esp_err.h`, `driver/*.h`, `freertos/*.h` 等，生成临时单元独立编译，验证 100% 自包含；
+      - **A 类（Vendor Public 原厂公开头）**：遍历 `esp_err.h`, `driver/*.h`, `freertos/*.h` 等，生成临时单元独立编译，验证 100% 自包含（119 个测试公开头 100% 通过）；
       - **B 类（Sim Bridge 跨靶桥接头）**：针对 `esp_idf_wink.h`，验证在 `SIMULATION` 宏定义下可正常单头编译，并增加真机交叉编译负测（断言 `#error` 守卫精确触发）；
       - **C 类（Vendor Internal 原厂内部头）**：对 `esp_private/*.h` 建立独立白名单，明确其供内部组件调用，不向 App 做出单独自包含承诺。
 
@@ -107,7 +107,7 @@
 
 ### 阶段 2：资产通道元数据升级与门禁强等价校验 (Channels & Strict SSOT Alignment)
 
-- [ ] **任务 T2.1**：升级 [`channels.json`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-os/frameworks/esp_idf/channels.json) Schema：
+- [x] **任务 T2.1**：升级 [`channels.json`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-os/frameworks/esp_idf/channels.json) Schema：
   - 严格保持现有 `handwritten` 字符串数组向下兼容，在其旁边新增结构化属性列表 `handwritten_entries`：
     ```json
     {
@@ -139,11 +139,11 @@
     - `sim_bridge`：仿真必须保留的跨靶桥接与控制头（如 `esp_idf_wink.h`）；
     - `sim_internal`：必须已迁出 `include/` 至内部私有路径的辅助头。
 
-- [ ] **任务 T2.2**：修正 [`include/README.md`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-os/frameworks/esp_idf/include/README.md) 文档漂移：
-  - 将第 58 行过期的“21 个手写头”更新为与当前代码一致的真实数量；
+- [x] **任务 T2.2**：修正 [`include/README.md`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-os/frameworks/esp_idf/include/README.md) 文档漂移：
+  - 将第 58 行过期的“21 个手写头”更新为与当前代码一致的真实数量（41 个手写头）；
   - 按子系统（Core, Driver, FreeRTOS, Storage, WiFi, Network, BLE）列出手写资产清单，彻底消除文档漂移。
 
-- [ ] **任务 T2.3**：强化 [check_harvested_headers.py](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/.github/scripts/check_harvested_headers.py) 门禁：
+- [x] **任务 T2.3**：强化 [check_harvested_headers.py](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/.github/scripts/check_harvested_headers.py) 门禁：
   - **集合严格 1:1 双向等价校验（防双 SSOT 漂移）**：
     新增断言逻辑：提取 `handwritten` 列表与 `handwritten_entries` 中的 `path` 字段，断言两个集合严格完全相等：
     ```python
@@ -155,7 +155,7 @@
   - 确认保持现有的未标记孤儿头双向差集拦截（`unmarked_set - handwritten`）；
   - **多 SSOT 自洽性扫描（T2.3.4）**：校验 `channels.json` 中手写头与物理文件 1:1 吻合，并核验与 `capability-catalog.yaml` 的状态对齐。
 
-- [ ] **任务 T2.4**：【关键防呆】纯仿真桥接头加装真机硬守卫（Simulation Leakage Guard）：
+- [x] **任务 T2.4**：【关键防呆】纯仿真桥接头加装真机硬守卫（Simulation Leakage Guard）：
   - 目标文件：[`include/esp_idf_wink.h`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-os/frameworks/esp_idf/include/esp_idf_wink.h) 等跨靶头；
   - 注入防误调宏守卫：
     ```c
@@ -164,7 +164,7 @@
     #endif
     ```
 
-- [ ] **任务 T2.5**：规范 Out-of-Scope API 的 Fail-Loud 宏拦截机制（ADR-0012 落地）：
+- [x] **任务 T2.5**：规范 Out-of-Scope API 的 Fail-Loud 宏拦截机制（ADR-0012 落地）：
   - 目标文件：[`include/wink_sla.h`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-os/frameworks/esp_idf/include/wink_sla.h) 及对应驱动桩头；
   - 规范原则：对于 `checklist.md` 中 187 项明确声明为 `[-] Out-of-Scope` 或暂缓实现的特性 API（如 eFuse 熔丝操作、特定外部 PHY 等）：
     1. 编译期阻断：在头文件中使用 `WINK_SLA_ERROR("API is Out-of-Scope under Wink Wasm SLA")` 声明；

@@ -3,6 +3,8 @@
 #include "esp_idf_wink.h"
 #include "wink_status.h"
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 esp_err_t esp_err_from_wink(wink_status_t status) {
     switch (status) {
@@ -64,20 +66,30 @@ const char *esp_err_to_name_r(esp_err_t code, char *buf, size_t buflen) {
     return buf;
 }
 
+typedef void (*esp_error_check_failed_hook_t)(esp_err_t rc, const char *file, int line,
+                                             const char *function, const char *expression);
+
+static esp_error_check_failed_hook_t s_esp_error_check_failed_hook = NULL;
+
+void esp_error_check_set_failed_hook(esp_error_check_failed_hook_t hook) {
+    s_esp_error_check_failed_hook = hook;
+}
+
 void _esp_error_check_failed(esp_err_t rc, const char *file, int line, const char *function, const char *expression) {
-    (void)rc;
-    (void)file;
-    (void)line;
-    (void)function;
-    (void)expression;
+    printf("ESP_ERROR_CHECK failed: esp_err_t 0x%x (%s) at %p\nfile: \"%s\" line %d\nfunc: %s\nexpression: %s\n",
+           rc, esp_err_to_name(rc), (void *)_esp_error_check_failed,
+           file ? file : "", line, function ? function : "", expression ? expression : "");
+    if (s_esp_error_check_failed_hook != NULL) {
+        s_esp_error_check_failed_hook(rc, file, line, function, expression);
+    }
     abort();
 }
 
 void _esp_error_check_failed_without_abort(esp_err_t rc, const char *file, int line, const char *function, const char *expression) {
-    (void)rc;
-    (void)file;
-    (void)line;
-    (void)function;
-    (void)expression;
+    printf("ESP_ERROR_CHECK_WITHOUT_ABORT failed: esp_err_t 0x%x (%s) at %p\nfile: \"%s\" line %d\nfunc: %s\nexpression: %s\n",
+           rc, esp_err_to_name(rc), (void *)_esp_error_check_failed_without_abort,
+           file ? file : "", line, function ? function : "", expression ? expression : "");
+    if (s_esp_error_check_failed_hook != NULL) {
+        s_esp_error_check_failed_hook(rc, file, line, function, expression);
+    }
 }
-
