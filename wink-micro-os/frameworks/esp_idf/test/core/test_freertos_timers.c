@@ -301,7 +301,7 @@ void test_freertos_timers_slot_reuse_aba(void) {
  * 7. Command Queue Backpressure & Non-blocking Fail-Loud
  * -------------------------------------------------------------------------- */
 void test_freertos_timers_queue_full_backpressure(void) {
-    TimerHandle_t t = xTimerCreate("bp_t", 50, pdFALSE, NULL, common_timer_cb);
+    TimerHandle_t t = xTimerCreate("bp_t", 50, pdFALSE, (void *)(uintptr_t)0x55aa, common_timer_cb);
     TEST_ASSERT_NOT_NULL(t);
 
     /* Fill the command queue (length = 8) */
@@ -312,7 +312,31 @@ void test_freertos_timers_queue_full_backpressure(void) {
     /* 9th command with xTicksToWait = 0 must fail with pdFAIL */
     TEST_ASSERT_EQUAL(pdFAIL, xTimerStart(t, 0));
 
-    xTimerDelete(t, 0);
+    /* Queue is full: stop, change period, delete must fail and safely rollback without handle destruction */
+    TEST_ASSERT_EQUAL(pdFAIL, xTimerStop(t, 0));
+    TEST_ASSERT_EQUAL(pdFAIL, xTimerChangePeriod(t, 100, 0));
+    TEST_ASSERT_EQUAL(pdFAIL, xTimerDelete(t, 0));
+
+    /* Verify handle is still intact and not prematurely destroyed by failed delete */
+    TEST_ASSERT_EQUAL_PTR((void *)(uintptr_t)0x55aa, pvTimerGetTimerID(t));
+
+    /* Work item post must fail gracefully and not leak slot when queue is full */
+    uint32_t work_tok = 999;
+    TEST_ASSERT_EQUAL(pdFAIL, esp_freertos_timer_post_work_item(common_work_item_fn, NULL, &work_tok, 0));
+    TEST_ASSERT_EQUAL(0, work_tok);
+
+    /* Run scheduler to drain queue */
+    wink_status_t st = pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 10);
+    TEST_ASSERT_EQUAL(WINK_OK, st);
+
+    /* Now that queue is drained, delete must succeed */
+    TEST_ASSERT_EQUAL(pdPASS, xTimerDelete(t, 0));
+
+    /* Run scheduler to process delete command */
+    pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 5);
+
+    /* Second delete on retired timer handle must fail */
+    TEST_ASSERT_EQUAL(pdFAIL, xTimerDelete(t, 0));
 }
 
 /* --------------------------------------------------------------------------

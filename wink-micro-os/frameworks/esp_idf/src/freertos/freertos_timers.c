@@ -114,6 +114,9 @@ static void prvEnsureDaemonStarted(void) {
         esp_freertos_register_task_slot(s_daemon_sim_id, 1, "sys_timer");
     } else {
         ESP_LOGE(TAG, "Failed to register sys_timer daemon task (status=%d)", st);
+        s_daemon_initialized = false;
+        s_daemon_running = false;
+        s_daemon_sim_id = SIM_SCHED_NO_READY;
     }
 }
 
@@ -424,16 +427,21 @@ BaseType_t xTimerStop(TimerHandle_t xTimer, const TickType_t xTicksToWait) {
         return pdFAIL;
     }
 
-    /* Advance generation immediately so any pending start commands in queue are invalidated */
-    t->generation = ++s_global_timer_gen;
+    uint32_t prev_gen = t->generation;
+    uint32_t next_gen = ++s_global_timer_gen;
+    t->generation = next_gen;
 
     timer_cmd_msg_t msg = {
         .type = TIMER_CMD_STOP,
         .slot_id = t->slot_id,
-        .generation = t->generation,
+        .generation = next_gen,
     };
 
-    return prvSendTimerCommand(&msg, xTicksToWait);
+    BaseType_t ret = prvSendTimerCommand(&msg, xTicksToWait);
+    if (ret != pdPASS) {
+        t->generation = prev_gen;
+    }
+    return ret;
 }
 
 BaseType_t xTimerChangePeriod(TimerHandle_t xTimer, const TickType_t xNewPeriod, const TickType_t xTicksToWait) {
@@ -445,16 +453,22 @@ BaseType_t xTimerChangePeriod(TimerHandle_t xTimer, const TickType_t xNewPeriod,
         return pdFAIL;
     }
 
-    t->generation = ++s_global_timer_gen;
+    uint32_t prev_gen = t->generation;
+    uint32_t next_gen = ++s_global_timer_gen;
+    t->generation = next_gen;
 
     timer_cmd_msg_t msg = {
         .type = TIMER_CMD_CHANGE_PERIOD,
         .slot_id = t->slot_id,
-        .generation = t->generation,
+        .generation = next_gen,
         .period_ticks = xNewPeriod,
     };
 
-    return prvSendTimerCommand(&msg, xTicksToWait);
+    BaseType_t ret = prvSendTimerCommand(&msg, xTicksToWait);
+    if (ret != pdPASS) {
+        t->generation = prev_gen;
+    }
+    return ret;
 }
 
 BaseType_t xTimerDelete(TimerHandle_t xTimer, const TickType_t xTicksToWait) {
@@ -466,19 +480,21 @@ BaseType_t xTimerDelete(TimerHandle_t xTimer, const TickType_t xTicksToWait) {
     uint32_t slot = t->slot_id;
     uint32_t gen = t->generation;
 
-    /* Mark unused immediately so slot can be reused, but with a new generation */
-    t->used = false;
-    t->active = false;
-    t->token = 0;
-    t->generation = ++s_global_timer_gen;
-
     timer_cmd_msg_t msg = {
         .type = TIMER_CMD_DELETE,
         .slot_id = slot,
         .generation = gen,
     };
 
-    return prvSendTimerCommand(&msg, xTicksToWait);
+    BaseType_t ret = prvSendTimerCommand(&msg, xTicksToWait);
+    if (ret == pdPASS) {
+        /* Mark unused only once command is successfully enqueued */
+        t->used = false;
+        t->active = false;
+        t->token = 0;
+        t->generation = ++s_global_timer_gen;
+    }
+    return ret;
 }
 
 BaseType_t xTimerReset(TimerHandle_t xTimer, const TickType_t xTicksToWait) {
@@ -596,7 +612,17 @@ BaseType_t esp_freertos_timer_post_work_item(esp_timer_work_fn_t fn, void *arg, 
         .work_arg = arg,
     };
 
-    return prvSendTimerCommand(&msg, 0);
+    BaseType_t ret = prvSendTimerCommand(&msg, 0);
+    if (ret != pdPASS) {
+        /* Rollback slot reservation on enqueue failure to prevent leaking timer slots */
+        memset(t, 0, sizeof(*t));
+        t->used = false;
+        t->generation = ++s_global_timer_gen;
+        if (out_token) {
+            *out_token = 0;
+        }
+    }
+    return ret;
 }
 
 BaseType_t esp_freertos_timer_cancel_work_item(uint32_t token) {
