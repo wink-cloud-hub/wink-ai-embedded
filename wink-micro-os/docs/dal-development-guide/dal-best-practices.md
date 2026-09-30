@@ -1,6 +1,6 @@
 # DAL 规范与最佳实践
 
-本文是活规范 [`01-dal-device-abstraction.md`](../../../docs/design/02-wink-micro-os/01-dal-device-abstraction.md) 的**实践摘要**，并固化 H 桥等变体扩展的约定。若与活规范冲突，以活规范 + Accepted ADR 为准，并回写活规范。
+本文是活规范 [`01-dal-device-abstraction.md`](../../../docs/zh/design/02-wink-micro-os/01-dal-device-abstraction.md) 的**实践摘要**，并固化 H 桥等变体扩展的约定。若表述冲突，以活规范的当前契约为准；Accepted ADR 记录历史选型背景。
 
 | 项 | 内容 |
 |----|------|
@@ -30,7 +30,7 @@
 
 | 规则 | 说明 |
 |------|------|
-| POD + 命名 API | 无 `ops` / vtable / `container_of` 子类（[ADR-0004](../../../docs/design/decisions/0004-static-dispatch-vs-runtime-ops.md)） |
+| POD + 命名 API | DAL 常规设备操作无每实例 `ops` / vtable / `container_of` 子类；安全关断等专用回调另有明确契约（[现行 DAL 规范](../../../docs/zh/design/02-wink-micro-os/01-dal-device-abstraction.md)） |
 | 负数错误码 | `wink_status_t`：0 成功，负数为错（[ADR-0001](../../../docs/design/decisions/0001-error-code-sign-convention.md)） |
 | 双 target | 同源可编 wasm / ESP-IDF（[ADR-0002](../../../docs/design/decisions/0002-dual-target-compilation.md)） |
 | 语义命名 | 控制语义优先（如 `dc_motor`、`rc_servo`）；禁止用泛称 `motor` 当 DAL 类型前缀（[ADR-0048](../../../docs/design/decisions/0048-actuator-control-semantic-naming.md)） |
@@ -302,9 +302,9 @@ pulse_ms = min_pulse + (angle / effective_max_angle) * (max_pulse - min_pulse)
 
 ---
 
-## 6. 仿真与旁路（[Wasm 仿真 3.0 SSOT](../../../docs/design/04-wasm-simulation-3.0/00-README.md)）
+## 6. 仿真与旁路（[Wasm 仿真 3.0 SSOT](../../../docs/zh/design/04-wasm-simulation/00-README.md)）
 
-- **通道选择**：优先通过 Channel 1 (GPIO) / Channel 2b (PWM) 进行底层同源仿真测试；若要跳过底层 PAL 直接与前端交互，可通过 WASM Bridge 挂载 **Channel 4 语义 Bypass**（`dal_<type>_*` Direct Bridge，详见 [08-channel-routing.md](../../../docs/design/04-wasm-simulation-3.0/02-mechanisms/08-channel-routing.md)）。
+- **通道选择**：App/BAL/DAL 保持同源；物理量来源在 PAL/Wasm target 替换。GPIO 使用 Channel 1，PWM 使用 Channel 1b；总线、ADC 和缓冲区按各自通道路由。Channel 4 是缓冲区通道，不是 DAL 直返业务语义值的入口（见 [08-channel-routing.md](../../../docs/zh/design/04-wasm-simulation/02-mechanisms/08-channel-routing.md)）。
 - **Manifest 对齐**：仿真侧 Manifest / 元数据中的 `type` 字符串与 codegen YAML 的 `type:` 须**逐字一致**。
 
 ---

@@ -9,14 +9,14 @@
 
 ```text
 wink-app.json  ──codegen──►  device_tree.*（全局 POD 实例）
-App / Role     ──调用──►  {instance}_{verb}（Role 包装）或 dal_<type>_*（DAL API，无虚表）
-DAL / BAL      ──调用──►  pal_*（真机）或 Wasm Bridge / Channel 1~4（仿真旁路，WASM Simulation 3.0）
+App / Role     ──调用──►  {instance}_{verb}（Role 包装）或 dal_<type>_*（DAL 具名 API）
+DAL / BAL      ──调用──►  pal_*（同源调用；Wasm target 在 PAL 替换物理量来源）
 ```
 
 - App **不**直接玩 GPIO/PWM 时序；只调 Role 动词或 `dal_*`。
 - 引脚与通道写在 JSON，换板改配置，不改业务调用点。
-- 范式：POD + 静态命名函数（[ADR-0004](../../../docs/design/decisions/0004-static-dispatch-vs-runtime-ops.md)）。
-- 仿真对齐：DAL 支持语义 Bypass（WASM Bridge Channel 4）或物理 GPIO/PWM 通道仿真，架构详见 [Wasm 仿真 3.0 SSOT](../../../docs/design/04-wasm-simulation-3.0/00-README.md)。
+- 范式：DAL 常规设备操作采用 POD + 具名函数，不用每实例 `ops` 虚表；安全关断等专用注册表可使用受控回调（[现行 DAL 规范](../../../docs/zh/design/02-wink-micro-os/01-dal-device-abstraction.md)）。
+- 仿真对齐：App/BAL/DAL 保持同源驱动逻辑；Wasm target 在 PAL 替换引脚、电平、脉宽、总线响应等物理量来源。通道路由见 [Wasm 仿真 3.0 SSOT](../../../docs/zh/design/04-wasm-simulation/00-README.md)。
 
 ---
 

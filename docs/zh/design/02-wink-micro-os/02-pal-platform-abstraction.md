@@ -33,7 +33,7 @@ PAL 主要由两大部分组成：
   └──────────────────┘                └──────────────────┘
 ```
 
-为了实现极致的执行效率，PAL 在真机模式下**不采用**动态 C++ 虚函数表（vtable）或 C 语言运行期函数指针注册的多态形式。而是通过 **CMake 静态条件编译绑定**，利用 `TARGET_PLATFORM` (代表硬件平台/HAL) 与 `WINK_OSAL_TYPE` (代表操作系统适配/OSAL) 两个维度的正交组装（详见 [ADR-0041](../../decisions/core/0041-hal-osal-directory-orthogonality.md)），使上层调用在编译期直接路由绑定到对应平台的物理代码实现，做到**“零运行期封装开销”**。
+PAL 的目标实现通过 **CMake 静态条件编译绑定**：`TARGET_PLATFORM` 选择硬件平台/HAL，`WINK_OSAL_TYPE` 选择 OSAL（详见 [ADR-0041](../../decisions/core/0041-hal-osal-directory-orthogonality.md)）。常规 `pal_*` API 无需通过每实例 `ops` 表选择平台实现；这只免除了**平台选择的额外间接分发**，不代表 PAL 调用或 Wasm–JS 桥接本身零开销。GPIO 中断、硬件定时器等按 API 契约注册的回调仍可使用函数指针。
 
 ---
 
@@ -44,8 +44,8 @@ PAL 主要由两大部分组成：
 | ADR 编号 | 决策主题 | 核心约定 |
 |---------|---------|---------|
 | **ADR-0001** | 负数错误码约定 | ✅ 所有可能失败的函数返回 `wink_status_t` <br> ✅ `0 = WINK_OK = 成功` <br> ✅ **负数 = 错误**（如 `-1 = WINK_ERR_INVALID_ARG`） <br> ✅ 检查范式：`status < 0` 或 `wink_status_is_error(status)` <br> 📘 **每一码语义 / 恢复策略 / 是否可作 `WINK_PT_EXIT` 条件**：见 [错误模型规范 §11](../07-platform-governance/02-error-fault-model.md#11-ai-codegen-错误码语义详表)（SSOT） |
-| **ADR-0002** | 双 target 同源编译 | ✅ 一份 C 代码同时编译到 Emscripten/Wasm32 与 ESP-IDF/xtensa <br> ✅ CMake 按目标平台静态路由实现文件，零运行期开销 <br> ✅ 仿真代码严格隔离于 `targets/*/` + `#if defined(SIMULATION)`，真机零编译污染 |
-| **ADR-0004** | 编译期静态分发 | ✅ **禁止虚函数表（vtable）**、禁止运行期 `ops` 函数指针表、禁止 `container_of` 强转 <br> ✅ 采用「命名式 API + POD 结构体」范式，所有调用在编译期静态绑定 <br> ✅ DAL 外设实例为纯数据结构体，由具名函数操作（如 `dal_rc_servo_init(&servo, pin)`） |
+| **ADR-0002** | 双 target 同源编译 | ✅ 一份 C 代码同时编译到 Emscripten/Wasm32 与 ESP-IDF/xtensa <br> ✅ CMake 按目标平台静态路由实现文件，无平台选择用的运行期 `ops` 查表 <br> ✅ 仿真代码严格隔离于 `targets/*/` + `#if defined(SIMULATION)`，真机零编译污染 |
+| **ADR-0004** | 编译期静态分发 | ✅ 常规 DAL/PAL 设备操作不采用每实例 vtable / `ops` 表与 `container_of` 子类转换 <br> ✅ 采用「命名式 API + POD 结构体」，器件类型与平台实现在生成/构建时绑定；驱动内部可按变体分支 <br> ✅ 安全关断、配置覆盖、IRQ 等特定用途的回调表不充当通用设备虚表 |
 | **ADR-0006** | ESP-IDF v6.x I2C 兼容 | ✅ ESP-IDF v5.x → v6.x I2C API 破坏性变更由 PAL 层抹平 <br> ✅ MVP 固定 GPIO 映射（I2C0: 21/22, I2C1: 33/32），Phase 2 可配置化 |
 | **ADR-0012** | 契约诚实 > 静默降级 | ✅ PAL/HAL 头文件承诺必须与所有 target 实现对齐；某 target 无法兑现时 **显式返回 `WINK_ERR_UNSUPPORTED`**，禁止静默降级 <br> ✅ 跨 target 行为差异必须在头文件 doxygen 里显式标注 <br> ✅ 新增/修订 PAL/HAL 接口时，必须做"target 能力矩阵"评估（能兑现 / 拒接 / 头文件下调三选一） <br> 📘 已作为原则贯穿 ADR-0015 / ADR-0016 / ADR-0018 |
 | **ADR-0025** | App 阻断诚实性 pragma 规范 | ✅ **抑制警告最小化**：禁止在 App 事件回调或主 loop 裸写 file-scope 抑制 pragma。<br> ✅ **编译期抑制宏**：PAL / Runtime 提供 `WINK_INTERNAL_BLOCKING_REGION_BEGIN/END`（BAL内部）与 `WINK_INIT_BLOCKING_REGION_BEGIN/END`（App init一次性诊断）语义宏封装。<br> ✅ **Wasm STRICT_NONBLOCKING=1**：仿真 target 默认强制开启，在编译和链接期 fail-fast 拦截非法阻塞调用。 |

@@ -2,7 +2,7 @@
 
 <!-- i18n-meta
 source: docs/zh/design/02-wink-micro-os/01-dal-device-abstraction.md
-translated: 2026-08-17
+translated: 2026-09-30
 glossary-version: v1.0
 translator: AI-assisted
 sync-status: up-to-date
@@ -13,7 +13,7 @@ sync-status: up-to-date
 | **Code-Mapping (In-Repo)** | `/src/core/dal/` (`dal_gpio.h`, `dal_i2c.h`, `dal_sensor.h`) |
 | **Associated ADRs** | ADR-0004, **ADR-0003**, ADR-0040, ADR-0046, ADR-0048, ADR-0050, **ADR-0051**, ADR-0056 |
 | **Associated Technical Designs** | [user-surface-insulation-design.md](../../tech-designs/tools/2026-07-28-user-surface-insulation-design.md); [scannable-codegen-extension-roots-design.md](../../tech-designs/tools/2026-07-28-scannable-codegen-extension-roots-design.md) |
-| **Simulation Routing Spec** | [04-wasm-simulation/03-multi-channel-sim-routing.md](../04-wasm-simulation/archive/03-multi-channel-sim-routing.md) (4-Channel PAL Bypass; DAL Target Zero Simulation Macros) |
+| **Simulation Routing Spec** | [Current channel routing](../04-wasm-simulation/02-mechanisms/08-channel-routing.md) (physical inputs substituted in PAL/Wasm target; DAL targets zero simulation macros) |
 | **Associated Implementation Plans** | [user-surface-phase1-plan.md](../../implementation-plans/frontend/2026-07-28-user-surface-phase1-plan.md) |
 | **Associated Reviews** | [dal-control-semantic-completeness-review §10](../../reviews/core/2026-07-28-dal-control-semantic-completeness-review.md); [user-surface-phase1-plan-review.md](../../reviews/frontend/2026-07-28-user-surface-phase1-plan-review.md) |
 | **Practical Summary** | [`dal-best-practices.md`](../../../wink-micro-os/docs/dal-development-guide/dal-best-practices.md) |
@@ -43,7 +43,7 @@ Exposing low-level hardware buses (GPIO, I2C, SPI, PWM) directly to high-level b
 To resolve these issues, Wink-AI introduces the **Device Abstraction Layer (DAL)** between business logic (App/BAL) and PAL, enforcing:
 
 1. **Business Semantic Interfaces**: Treating peripherals as logical components (distance in cm, angle in °, framebuffer), abstracting away register and timing complexities.
-2. **Physical Quantity Source Replacement (Non-Business Bypass)**: Simulation performance optimization is contained entirely within **PAL / Wasm target**; DAL executes identical driver logic on simulation and hardware, replacing only the **source of physical quantities** (signal levels, pulse widths, I2C slave responses, ADC raw values, payload buffers; see [ADR-0003](../../decisions/unisim/0003-simulation-fidelity-boundary.md), [03-multi-channel-sim-routing](../04-wasm-simulation/archive/03-multi-channel-sim-routing.md)).
+2. **Physical Quantity Source Replacement (Non-Business Bypass)**: Simulation performance optimization is contained entirely within **PAL / Wasm target**; DAL executes identical driver logic on simulation and hardware, replacing only the **source of physical quantities** (signal levels, pulse widths, I2C slave responses, ADC raw values, payload buffers; see [ADR-0003](../../decisions/unisim/0003-simulation-fidelity-boundary.md), [current channel routing](../04-wasm-simulation/02-mechanisms/08-channel-routing.md)).
 
 ---
 
@@ -77,34 +77,35 @@ graph TD
 > This section clarifies DAL's design paradigm. The core mechanism of classic embedded OOP 4-layer architecture (see skill reference baseline [`runtime-polymorphism/architecture.md`](../../../.claude/skills/c-runtime-polymorphism-reading/references/runtime-polymorphism/architecture.md)) is **ops table polymorphic dispatch (`me->ops->on(me)`) + `container_of` subclass inference**. DAL **deliberately diverges from this paradigm**, declared here to prevent implementer misjudgments.
 >
 > Relevant Decision: **[ADR-0004: Compile-Time Static Dispatch vs Runtime Ops Polymorphism Selection](../../decisions/core/0004-static-dispatch-vs-runtime-ops.md)**.
+> ADR-0004 records the original choice. Its estimates about zero memory overhead, Wasm performance, and bridge gains must be read under the current boundaries and measurement requirement in this section. The prohibition concerns generic device `ops` vtables, not every dedicated callback.
 > Related Context: [Review Report §2.1](../../reviews/core/2026-06-22-architecture-review.md), [`01-system-overall/01-system-overview.md §3.1`](../01-system-overall/01-system-overview.md) mapping table.
 
 #### 1. Paradigm Comparison
 
 *   **DAL Paradigm Choices**:
-    *   DAL device structs (e.g., `dal_ultrasonic_t`) are **pure Plain Old Data (POD) structures**, with **no `ops` pointers, no `vptr`, and no `dal_base` parent class**.
+    *   DAL device structs (e.g., `dal_ultrasonic_t`) are **Plain Old Data (POD) structures**, with **no generic `ops` pointer, no `vptr`, and no `dal_base` parent class**. POD does not mean that every function pointer is absent: the event callback in `dal_button_t` serves one feature, not a device-operations vtable.
     *   Functions like `dal_ultrasonic_read` are **type-specific statically dispatched free functions**, taking an instance pointer as the first argument to invoke lower layers directly.
-    *   Polymorphism is achieved via **compile-time CMake routing + independent `.c` per device**, rather than runtime ops table lookups.
-    *   PAL layer similarly uses CMake static binding (see [`02-pal-platform-abstraction.md §1`](./02-pal-platform-abstraction.md)), avoiding runtime function pointer registration.
+    *   Named APIs determine the device type at compile time, while CMake selects the target implementation. A device may still branch locally on configuration such as `variant`; its normal operations do not use a per-instance `ops` table.
+    *   CMake also binds the target implementation of ordinary PAL APIs (see [`02-pal-platform-abstraction.md §1`](./02-pal-platform-abstraction.md)). Dedicated interrupt and timer callbacks do not select the platform through a runtime `ops` table.
     *   **POD Represents In-Memory State, Not Wire/Flash Layout (Review P1-5 / Phase 6 Task 6-1)**: Forbids `__attribute__((packed))` / `#pragma pack` (uses natural alignment to avoid ARM/Xtensa unaligned access faults); members ordered descending by alignment; cross-process wire/flash structures must be independently named (`xxx_wire_t` / `xxx_flash_record_t`, with version/endianness/CRC), **prohibiting `memcpy` from runtime POD directly to wire/flash**, requiring explicit serialize/deserialize. See [`.claude/rules/c-code.md §4`](../../../.claude/rules/c-code.md).
 
 *   **Why Runtime Ops Polymorphism was Abandoned**:
-    1.  **AI Generability**: Named APIs (`dal_ultrasonic_read`) are more intuitive than `me->ops->read(me)`, easier for AI to generate deterministically, and simpler to validate with static analyzers and compilers for pointer safety.
-    2.  **Simulation Performance**: Static dispatch eliminates `call_indirect` jump overhead in Wasm, reducing frequency and cost of Wasm-to-JS bridge invocations.
-    3.  **MVP Single-Implementation Premise**: Peripheral topology is fully determined at compile time, eliminating the need to hot-swap drivers dynamically at runtime.
+    1.  **Generation and Validation**: Named APIs (`dal_ultrasonic_read`) expose device types and function signatures to codegen, the compiler, and layering lint. This does not guarantee that generated business logic is correct.
+    2.  **Call Path and Simulation Boundary**: Ordinary DAL/PAL calls need no per-instance `ops` pointer or indirect dispatch, which gives the compiler more opportunity to optimize. Actual speed and size gains require measurements on the target build. Wasm-to-JS bridge frequency is mainly determined by PAL physical-input substitution and channel routing in the [current simulation architecture](../04-wasm-simulation/01-overview/01-architecture.md), not by static dispatch itself.
+    3.  **Known Topology**: Device types, wiring, and target platform are chosen during generation or build, so replacing an entire driver at runtime is unnecessary. Pre-initialization configuration overrides and local variant branches may still exist.
 
 ---
 
 #### 2. Capability Mapping & Compensation for the 3 Classic OOP Benefits
 
 One might ask: Does discarding runtime polymorphism forfeit its 3 classic benefits—"hardware shielding", "unified container management", and "dynamic hot-swapping"?
-Answer: **We achieve equivalent compensation on the toolchain side via compile-time codegen, or define them as Non-goals.**
+Answer: **Codegen binds known devices and can expand some lifecycle calls. Generic device iteration and runtime replacement of driver types are outside the current DAL contract.**
 
 | Classic Benefit of Runtime Polymorphism | Platform Compensation & Design (Static Dispatch + Codegen) | Truly Lost? |
 | :--- | :--- | :--- |
-| **1. Hardware Shielding (Open-Closed Principle OCP)** | **Codegen Device Tree Binding**: When hardware pins or buses change, business code `dal_led_on(&front_led)` **requires zero changes**. Adjustments happen in the visual low-code editor, where Codegen regenerates global POD instances in `device_tree.c`. Platform porting switches linked `targets/` via CMake. | **Not lost**; converted from runtime jumps to compile-time bindings. |
-| **2. Unified Container Lifecycle Management** | **Codegen Static Unrolling**: Instead of iterating dynamic pointer arrays with `for` loops, Codegen generates flat, explicit sequential calls in `device_tree.c` (e.g., generating `device_tree_init()` to initialize all devices). This yields **zero heap overhead, absolute static safety, and outstanding breakpoint debugging**. | **Lost at runtime, fully compensated by Codegen static expansion**. |
-| **3. Runtime Dynamic Driver Replacement & Hot-Plugging** | **Defined as Non-Goal**: Peripherals in this low-code system (servos, sensors) are permanently wired upon hardware assembly; runtime hot-plugging of driver instances is not required. | **Completely discarded**, in favorable exchange for lower RAM footprint and higher AI generation success. |
+| **1. Hardware Shielding (Open-Closed Principle OCP)** | **Codegen Device Tree Binding**: Changing pins or channels for the same device type can leave business calls intact while codegen updates instance configuration; CMake selects the target platform. Switching to a driver type with a different interface requires a Role binding or business-call change, not just new pin settings. | **Partly retained; cross-type replacement needs generation-time adaptation**. |
+| **2. Unified Container Lifecycle Management** | **Codegen and Dedicated Registries**: Generated code can call initialization for each known device. Cross-cutting operations such as safe-off and Flash configuration overrides still use fixed-capacity `function pointer + context` tables (see `wink-micro-os/runtime/{wink_actuator_registry,wink_dev_config}`). These tables consume memory and use indirect calls; neither zero overhead nor absolute static safety follows. | **No generic DAL `ops` container; controlled iteration remains for specific operations**. |
+| **3. Runtime Dynamic Driver Replacement & Hot-Plugging** | **Defined as Non-Goal**: No general interface replaces an entire device driver type at runtime. Parameters may be overridden before initialization, and a driver may branch on a variant within its family. | **Generic hot-swapping is unsupported**. |
 
 > **Evolution Path & Driver Variant Compatibility Strategy**:
 > The same logical device (e.g., DC motor) may be driven by different chips/modules (H-bridge L298N, TB6612, DRV8833, or I2C smart drivers). Upper layers must maintain uniform semantics. Handling strategies:

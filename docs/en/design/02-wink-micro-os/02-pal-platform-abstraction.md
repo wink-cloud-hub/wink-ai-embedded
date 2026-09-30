@@ -2,7 +2,7 @@
 
 <!-- i18n-meta
 source: docs/zh/design/02-wink-micro-os/02-pal-platform-abstraction.md
-translated: 2026-08-17
+translated: 2026-09-30
 glossary-version: v1.0
 translator: AI-assisted
 sync-status: up-to-date
@@ -41,7 +41,7 @@ PAL consists of two major sub-layers:
   └──────────────────┘                └──────────────────┘
 ```
 
-In order to achieve optimal execution efficiency, PAL in physical targets does **not** employ dynamic C++ virtual method tables (vtables) or C runtime function pointer registration polymorphism. Instead, it utilizes **CMake static conditional compilation bindings** orthogonal across `TARGET_PLATFORM` (HAL) and `WINK_OSAL_TYPE` (OSAL) per [ADR-0041](../../decisions/core/0041-hal-osal-directory-orthogonality.md), eliminating all runtime wrapper overhead.
+PAL target implementations are bound through **CMake static selection**: `TARGET_PLATFORM` selects the hardware platform/HAL and `WINK_OSAL_TYPE` selects the OSAL (see [ADR-0041](../../decisions/core/0041-hal-osal-directory-orthogonality.md)). Ordinary `pal_*` APIs need no per-instance `ops` table to choose a platform implementation. This avoids an extra indirect dispatch for **platform selection**; it does not make PAL calls or the Wasm-to-JS bridge free. GPIO interrupt and hardware timer callbacks may still use function pointers under their API contracts.
 
 ---
 
@@ -53,7 +53,7 @@ In order to achieve optimal execution efficiency, PAL in physical targets does *
 |---|---|---|
 | **ADR-0001** | Negative error code convention | ✅ All fallible functions return `wink_status_t`<br>✅ `0 = WINK_OK = Success`<br>✅ **Negative values = Error** (e.g. `-1 = WINK_ERR_INVALID_ARG`)<br>✅ Checking pattern: `status < 0` or `wink_status_is_error(status)`<br>📘 See [Error Model Spec §11](../07-platform-governance/02-error-fault-model.md#11-ai-codegen-错误码语义详表) |
 | **ADR-0002** | Dual-target compilation | ✅ Single C codebase compiles simultaneously to Emscripten/Wasm32 and ESP-IDF/xtensa<br>✅ CMake statically routes implementation files per target platform<br>✅ Simulation code strictly isolated in `targets/*/` + `#if defined(SIMULATION)` |
-| **ADR-0004** | Compile-time static dispatch | ✅ **Forbidden vtables**, forbidden runtime `ops` function pointer tables, forbidden `container_of`<br>✅ Named API + POD structs paradigm, static bindings at compile time<br>✅ DAL instances are pure data structs manipulated by named functions |
+| **ADR-0004** | Compile-time static dispatch | ✅ Ordinary DAL/PAL device operations do not use per-instance vtables or `ops` tables, or `container_of` subclass casts<br>✅ Named APIs + POD structs bind device types and platform implementations during generation/build; drivers may branch on variants internally<br>✅ Dedicated safe-off, configuration override, and IRQ callback tables are not generic device vtables |
 | **ADR-0006** | ESP-IDF v6.x I2C compatibility | ✅ ESP-IDF v5.x $\rightarrow$ v6.x I2C API breaking changes smoothed by PAL<br>✅ MVP fixed GPIO mappings (I2C0: 21/22, I2C1: 33/32) |
 | **ADR-0012** | Contract honesty over silent degradation | ✅ PAL/HAL header commitments must strictly align with target implementations; unsupported targets **explicitly return `WINK_ERR_UNSUPPORTED`**<br>✅ Cross-target behavioral divergence documented explicitly in Doxygen headers<br>✅ Target capability evaluations mandatory for new APIs |
 | **ADR-0025** | App blocking honesty pragma convention | ✅ **Minimal warning suppression**: Prohibits file-scope naked pragmas in App event callbacks or main loops.<br>✅ **Compile-time macros**: PAL/Runtime provides `WINK_INTERNAL_BLOCKING_REGION_BEGIN/END` and `WINK_INIT_BLOCKING_REGION_BEGIN/END`.<br>✅ **Wasm STRICT_NONBLOCKING=1**: Fail-fast compilation and link time interception of illegal blocking. |

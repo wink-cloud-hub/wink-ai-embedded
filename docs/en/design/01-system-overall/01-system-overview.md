@@ -2,7 +2,7 @@
 
 <!-- i18n-meta
 source: docs/zh/design/01-system-overall/01-system-overview.md
-translated: 2026-08-17
+translated: 2026-09-30
 glossary-version: v1.0
 translator: AI-assisted
 sync-status: up-to-date
@@ -190,18 +190,18 @@ According to platform trade secret isolation specifications and monorepo physica
 >
 > See [2026-06-22 Architecture Review §2.1](../../reviews/core/2026-06-22-architecture-review.md) and [`02-wink-micro-os/01-dal-device-abstraction.md §2.1`](../02-wink-micro-os/01-dal-device-abstraction.md).
 
-PAL adopts CMake static direct calls (matching Platform Layer conventions); DAL drops runtime ops table polymorphism in favor of named flat APIs + compile-time routing (trading dynamic extensibility for AI generability and simulation performance); registration layer responsibilities are handled by `device_tree` code generation.
+PAL uses CMake to select a target implementation. Ordinary DAL device operations use named APIs, and codegen binds known device types and instances. Generated device trees handle part of static registration. Dedicated callbacks for safe-off and configuration overrides can still be invoked at runtime.
 
 | Classic 4-Layer Mechanism | Platform Realization | Relationship |
 |---|---|---|
-| Application Layer (Handles only, oblivious to subclasses) | App (Includes only `device_tree.h`, calls only `bal_xxx` / `dal_xxx`) | ✅ Identical contract, zero App modification on hardware change |
+| Application Layer (Handles only, oblivious to subclasses) | App uses instances from `device_tree.h` and calls semantic Role / BAL / DAL APIs | ✅ Pin changes within one device type can preserve calls; cross-type changes require checking Role bindings |
 | Abstraction Layer ops table polymorphism (`me->ops->on(me)`) | DAL named flat APIs | ⚠️ Paradigm reconstruction |
 | `container_of` subclass inference | None (DAL has no parent-child struct hierarchy) | ⚠️ Intentionally omitted |
 | Implementation layer populates ops table | Independent `.c` per device + static dispatch | ⚠️ Compile-time routing replaces runtime dispatch |
 | Registration Layer (`board_init` / `MODULE_INIT`) | `device_tree.c` code generation | 🔄 Replaced with generative approach |
 | Platform Layer static direct calls | PAL CMake static binding | ✅ Identical (Aligned with workspace HAL static dispatch policy) |
 
-**Rationale for Trade-off**: Within MVP scope, a device model typically has a single hardware realization, obviating the need for runtime polymorphism; named APIs are far more AI-friendly and statically verifiable; static dispatch has zero runtime overhead, boosting Wasm simulation performance and binary footprint. **The trade-off** is giving up unified dynamic device polymorphism—adding a new peripheral requires a dedicated API rather than filling out an ops table.
+**Rationale for Trade-off**: Device models and wiring are known during generation or build, so ordinary calls need no per-instance `ops` lookup. Named APIs make types and signatures easier to generate and check at compile time. **The trade-off** is the absence of a unified runtime device-operations interface: a new peripheral needs its own API, descriptor, and binding. Avoiding one indirect dispatch does not make the simulation bridge or the whole system free; speed and size gains require measurements on the actual targets. Bridge frequency depends on PAL physical-input substitution and channel routing (see the [current simulation architecture](../04-wasm-simulation/01-overview/01-architecture.md)).
 
 ---
 

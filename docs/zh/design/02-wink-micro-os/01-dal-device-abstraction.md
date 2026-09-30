@@ -5,7 +5,7 @@
 | **Code-Mapping (内仓)** | `/src/core/dal/` (`dal_gpio.h`, `dal_i2c.h`, `dal_sensor.h`) |
 | **关联 ADR** | ADR-0004、**ADR-0003**、ADR-0040、ADR-0046、ADR-0048、ADR-0050、**ADR-0051**、ADR-0056 |
 | **关联技术设计** | [user-surface-insulation-design.md](../../tech-designs/tools/2026-07-28-user-surface-insulation-design.md)；[scannable-codegen-extension-roots-design.md](../../tech-designs/tools/2026-07-28-scannable-codegen-extension-roots-design.md) |
-| **仿真路由专规** | [04-wasm-simulation/03-multi-channel-sim-routing.md](../04-wasm-simulation/archive/03-multi-channel-sim-routing.md)（四通道 PAL 旁路；DAL 目标零仿真宏） |
+| **仿真路由专规** | [现行通道路由](../04-wasm-simulation/02-mechanisms/08-channel-routing.md)（物理量在 PAL/Wasm target 替换；DAL 目标零仿真宏） |
 | **关联实施计划** | [user-surface-phase1-plan.md](../../implementation-plans/frontend/2026-07-28-user-surface-phase1-plan.md) |
 | **关联评审** | [dal-control-semantic-completeness-review §10](../../reviews/core/2026-07-28-dal-control-semantic-completeness-review.md)；[user-surface-phase1-plan-review.md](../../reviews/frontend/2026-07-28-user-surface-phase1-plan-review.md) |
 | **实践摘要** | [`dal-best-practices.md`](../../../wink-micro-os/docs/dal-development-guide/dal-best-practices.md) |
@@ -35,7 +35,7 @@
 为了彻底解决以上问题，Wink-AI 平台在上层业务（App/BAL）与 PAL 之间，显式地引入**器件抽象层 (DAL)**。它遵循：
 
 1. **业务语义接口**：把外设变成逻辑组件（距离 cm、角度 °、帧缓冲），屏蔽寄存器与引脚时序细节。
-2. **物理量来源替换（非业务直通）**：仿真性能优化落在 **PAL / Wasm target**，DAL 与真机跑同一套驱动逻辑；只替换电平、脉宽、总线从机响应、ADC raw、缓冲区等**物理量来源**（见 [ADR-0003](../../decisions/unisim/0003-simulation-fidelity-boundary.md)、[03-multi-channel-sim-routing](../04-wasm-simulation/archive/03-multi-channel-sim-routing.md)）。
+2. **物理量来源替换（非业务直通）**：仿真性能优化落在 **PAL / Wasm target**，DAL 与真机跑同一套驱动逻辑；只替换电平、脉宽、总线从机响应、ADC raw、缓冲区等**物理量来源**（见 [ADR-0003](../../decisions/unisim/0003-simulation-fidelity-boundary.md)、[现行通道路由](../04-wasm-simulation/02-mechanisms/08-channel-routing.md)）。
 
 ---
 
@@ -69,34 +69,35 @@ graph TD
 > 本节澄清 DAL 的设计范式选择。经典嵌入式 OOP 四层架构（见 skill 参考基线 [`runtime-polymorphism/architecture.md`](../../../.claude/skills/c-runtime-polymorphism-reading/references/runtime-polymorphism/architecture.md)）的核心机制是 **ops 表多态 dispatch（`me->ops->on(me)`）+ `container_of` 反推子类**。本平台的 DAL **有意识地偏离了这一范式**，特此声明，避免实现者误判。
 >
 > 相关决策见：**[ADR-0004：编译期静态分发与运行期 ops 多态选型决策](../../decisions/core/0004-static-dispatch-vs-runtime-ops.md)**。
+> ADR-0004 记录当时的选型背景；其中关于零内存开销、Wasm 性能与桥接收益的估计，须按本节的现行边界和实测要求理解。禁止的是通用设备 `ops` 虚表，并非所有专用回调。
 > 相关关联：[评审报告 §2.1](../../reviews/core/2026-06-22-architecture-review.md)、[`01-system-overall/01-system-overview.md §3.1`](../01-system-overall/01-system-overview.md) 映射表。
 
 #### 1. 范式差异对比
 
 *   **本平台 DAL 的范式选择**：
-    *   DAL 器件结构体（如 `dal_ultrasonic_t`）是**纯 POD 数据结构**，**无 `ops` 指针、无 `vptr`、无 `dal_base` 父类**。
+    *   DAL 器件结构体（如 `dal_ultrasonic_t`）是**POD 数据结构**，**无通用 `ops` 指针、无 `vptr`、无 `dal_base` 父类**。POD 不等于没有任何函数指针：`dal_button_t` 的事件回调是特定功能，不是设备操作虚表。
     *   `dal_ultrasonic_read` 等是**按类型静态分发的自由函数**，首参传实例指针，直调底层。
-    *   多态性通过**编译期 CMake 路由 + 每器件独立 `.c`** 实现，而非运行期 ops 表查表。
-    *   PAL 层同样采用 CMake 静态直调（见 [`02-pal-platform-abstraction.md §1`](./02-pal-platform-abstraction.md)），弃用运行期函数指针注册。
+    *   器件类型由具名 API 在编译期确定，目标平台实现由 CMake 选取；同一器件内部仍可按 `variant` 等配置字段进行局部运行期分支，不使用每实例 `ops` 表查表。
+    *   PAL 的常规平台 API 同样由 CMake 绑定目标实现（见 [`02-pal-platform-abstraction.md §1`](./02-pal-platform-abstraction.md)）；中断、定时器等专门回调不属于平台实现的运行期 `ops` 选择。
     *   **POD 是内存态、非线协议/flash 布局（review P1-5 / Phase 6 Task 6-1）**：禁 `__attribute__((packed))` / `#pragma pack`（自然对齐，避免 ARM/Xtensa 对齐故障）；成员按对齐需求降序排列；跨进程/边界的 wire/flash 结构须独立命名（`xxx_wire_t` / `xxx_flash_record_t`，带 version/endianness/CRC），**禁 `memcpy` 运行时 POD 到 wire/flash**，须经 serialize/deserialize。详见 [`.claude/rules/c-code.md §4`](../../../.claude/rules/c-code.md)。
 
 *   **为何放弃运行期 ops 多态**：
-    1.  **AI 可生成性**：命名式 API（`dal_ultrasonic_read`）比 `me->ops->read(me)` 更直观、更易由 AI 确定性生成、更易通过编译器和静态规则进行指针安全校验。
-    2.  **仿真性能**：静态分发消除了 Wasm 环境中的 `call_indirect` 间接调用跳转，大幅降低 Wasm 与 JS 频繁桥接的通信开销。
-    3.  **MVP 单实现前提**：本系统外设拓扑在编译期完全确定，不需要运行期动态切换设备驱动实现。
+    1.  **生成与校验**：命名式 API（`dal_ultrasonic_read`）使器件类型和函数签名在编译期可见，便于 Codegen、编译器和分层 lint 检查；这不能保证生成的业务逻辑一定正确。
+    2.  **调用路径与仿真边界**：常规 DAL/PAL 调用无需每实例 `ops` 指针及其间接分发，便于编译器优化。其实际速度与体积收益须在目标构建上测量；Wasm–JS 桥接频率主要由 [现行仿真架构](../04-wasm-simulation/01-overview/01-architecture.md)中的 PAL 物理量替换与通道路由决定，并非由静态分发直接降低。
+    3.  **拓扑已知前提**：器件类型、接线及目标平台在生成/构建时选定，因此不需要运行期替换整套驱动；初始化前的配置覆盖及器件内部的变体分支仍可存在。
 
 ---
 
 #### 2. 对照运行时多态“三大核心好处”的能力映射与代偿
 
 有人可能会质疑：舍弃了运行时多态（C OOP），是否会丢掉其带来的“屏蔽硬件差异”、“统一容器管理”、“动态热插拔”这三大经典优势？
-答案是：**我们通过“编译期/代码生成器 (Codegen)”在工具链侧实现了同等代偿，或将其定义为 Non-goal。**
+答案是：**Codegen 承担已知设备的绑定和部分生命周期展开；通用设备遍历与运行期更换驱动类型不属于当前 DAL 契约。**
 
 | 运行时多态的核心好处 | 本项目方案的代偿与设计设计（静态分发 + Codegen） | 是否失去 |
 | :--- | :--- | :--- |
-| **1. 屏蔽硬件差异 (开闭原则 OCP)** | **Codegen 设备树绑定**：当硬件引脚或总线改变时，业务代码 `dal_led_on(&front_led)` **一行都不用改**。修改操作发生在低代码前端，由 Codegen 重新生成 `device_tree.c` 里的全局 POD 实例参数。平台移植则通过 CMake 切换链接 `targets/`。 | **没有失去**，由运行期跳转变为编译期绑定。 |
-| **2. 统一容器管理 (生命周期控制)** | **Codegen 静态展开**：虽然无法声明通用指针数组并用 `for` 循环遍历，但 Codegen 会在生成的 `device_tree.c` 中直接帮我们生成扁平的、显式的顺序调用（如自动生成 `device_tree_init()` 统一执行器件初始化）。这换来了**零内存开销、绝对的静态安全和极佳的断点调试体验**。 | **运行时遍历失去，但由 Codegen 静态生成代偿**。 |
-| **3. 运行时动态替换与热插拔** | **定义为 Non-goal (非设计目标)**：本低代码系统的外设（舵机、传感器等）在硬件接线确定后即固化，不存在运行时热插拔驱动的需求。 | **彻底失去**，但通过降低 RAM 开销与提升 AI 代码生成率进行了良性交换。 |
+| **1. 屏蔽硬件差异 (开闭原则 OCP)** | **Codegen 设备树绑定**：同一器件类型仅更换引脚或通道时，业务调用可保持不变，Codegen 更新设备实例配置；目标平台由 CMake 选择。若改用接口不同的驱动类型，需更新 Role 绑定或业务调用，不能仅靠改引脚配置。 | **保留部分能力；跨类型替换仍需生成期适配**。 |
+| **2. 统一容器管理 (生命周期控制)** | **Codegen 与专用注册表**：已知设备可由生成代码逐个调用初始化；安全关断和 Flash 配置覆盖等横切操作仍使用固定容量的 `函数指针 + 上下文` 表（见 `wink-micro-os/runtime/{wink_actuator_registry,wink_dev_config}`）。这些表有内存与间接调用成本，不能称为零开销或绝对静态安全。 | **没有通用 DAL `ops` 容器；特定操作保留受控遍历**。 |
+| **3. 运行时动态替换与热插拔** | **定义为 Non-goal (非设计目标)**：不提供运行时更换整个器件驱动类型的通用接口；初始化前可覆盖参数，同族变体可由驱动内部按配置分支。 | **通用热替换不支持**。 |
 
 > **局部演进路线 (Evolution Path) & 驱动变体兼容策略**：
 > 同一种逻辑设备（如直流电机）可能由不同模块/芯片驱动（H 桥 L298N、TB6612、DRV8833，或 I2C 智能驱动等）。上层调用须保持语义一致。处理方式：

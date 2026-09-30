@@ -267,18 +267,18 @@ graph TD
 >
 > 详见 [2026-06-22 评审报告 §2.1](../../reviews/core/2026-06-22-architecture-review.md) 与 [`02-wink-micro-os/01-dal-device-abstraction.md §2.1`](../02-wink-micro-os/01-dal-device-abstraction.md)。
 
-PAL 采用 CMake 静态直调（符合 Platform 层惯例）；DAL 放弃运行期 ops 表多态、改用命名式扁平 API + 编译期路由（换取 AI 可生成性与仿真性能）；注册层职责由 `device_tree` 代码生成承担。
+PAL 由 CMake 静态选取目标实现；DAL 常规设备操作采用具名 API，由 Codegen 绑定已知器件类型和实例；设备树的生成承担部分静态注册职责。安全关断、配置覆盖等专用回调仍可在运行期调用。
 
 | 经典四层架构机制 | 本平台落地 | 关系 |
 |---|---|---|
-| 应用层（只拿句柄、不知子类） | App（只 include `device_tree.h`、只调 `bal_xxx` / `dal_xxx`） | ✅ 契约一致，换硬件 App 零修改 |
+| 应用层（只拿句柄、不知子类） | App 使用 `device_tree.h` 提供的实例，调用 Role / BAL / DAL 语义 API | ✅ 同类型换引脚可不改调用；跨类型更换需核对 Role 绑定 |
 | 抽象层 ops 表多态（`me->ops->on(me)`） | DAL 命名式扁平 API | ⚠️ 范式重构 |
 | `container_of` 反推子类 | 无（DAL 无父子结构） | ⚠️ 主动放弃 |
 | 实现层填 ops 表 | 每器件独立 `.c` + 静态分发 | ⚠️ 编译期路由替代运行期分发 |
 | 注册层（`board_init` / `MODULE_INIT`） | `device_tree.c` 代码生成 | 🔄 替换为生成式 |
 | Platform 层静态直调 | PAL CMake 静态绑定 | ✅ 一致（对齐同工作区 HAL 静态直调方针） |
 
-**取舍理由**：MVP 范围内同器件类型通常单硬件实现，无需运行时多态；命名式 API 对 AI 生成更友好、更可静态校验；静态分发零运行期开销，利于 Wasm 仿真性能与代码体积。**代价**是放弃"统一 device 模型"的可扩展性——加新器件需加整套独立 API，而非只填一张 ops 表。
+**取舍理由**：设备型号和拓扑在生成/构建时已知，常规调用无须每实例 `ops` 查表；具名 API 使类型与签名便于生成和编译期检查。**代价**是没有统一的运行期设备操作接口，新增器件需扩展其 API、描述与绑定。省去一次间接分发不等于仿真桥接或整个系统零开销；性能和体积收益需在实际目标上测量，仿真桥接频率取决于 PAL 的物理量来源与通道路由（见 [现行仿真架构](../04-wasm-simulation/01-overview/01-architecture.md)）。
 
 ---
 
