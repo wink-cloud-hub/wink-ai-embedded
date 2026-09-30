@@ -3,7 +3,7 @@
 
 > **创建日期**：2026-09-30  
 > **更新日期**：2026-09-30（已全面吸收深度架构评审与防腐门禁意见，完成代码治理与 CI 证据核验四位一体闭环）  
-> **状态**：Active（推进中：计划 01 已完成；计划 02 已完成验收；计划 03 技术设计已落盘待审；横向计划 04 启动 PR 门禁与真核验引擎重构）  
+> **状态**：Active（推进中：计划 01、02、03 已圆满完成并全量回归；横向计划 04 启动 PR 门禁与真核验引擎重构）  
 > **前序废弃计划**：[`../2026-09-30-esp-idf-facade-governance-and-extensibility-plan.md`](../2026-09-30-esp-idf-facade-governance-and-extensibility-plan.md)（已废弃）
 
 ---
@@ -66,8 +66,8 @@
   └─ 动作：LITE/STANDARD/PRO 容量与 esp_sim_handle 64 槽位上限编译期静态断言
                                       │
                                       ▼ (计划 2 验收完成且技术设计规格评审通过后开启)
-  【计划 3：软定时器守护模型与网络出口时序解耦】 (时序与连接专项攻坚，Blocked on Tech Design)
-  前置技术设计：docs/zh/tech-designs/esp32/03-timer-and-network-architecture.md (硬门禁落盘)
+  【计划 3：软定时器守护模型与网络出口时序解耦】 (已圆满完成，Timer Daemon / Broker 解耦 / 无头实证全绿)
+  前置技术设计：docs/zh/tech-designs/esp32/03-timer-and-network-architecture.md (v1.1 已归档)
   文件：03-timer-and-network-evolution-plan.md
   ├─ 动作：严禁直塞 16 槽/WCET 约束的 soft_timer；落地 Timer Daemon 纤程或有界可取消工作项
   ├─ 动作：新增组件强制回写 esp_idf_bridge.c 复位 DAG，测试即将到期硬重启无幽灵回调

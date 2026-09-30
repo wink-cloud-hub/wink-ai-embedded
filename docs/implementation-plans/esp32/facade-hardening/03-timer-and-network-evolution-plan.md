@@ -4,7 +4,7 @@
 | 字段 | 内容 |
 |---|---|
 | 计划编号 | PLAN-20260930-ESP-IDF-TIMER-AND-NETWORK-v1.5 |
-| 状态 | 🟡 **In Review（阶段 0 技术设计已吸收全部评审意见更新至 v1.1，待 Sign-off 后正式启动代码实施）** |
+| 状态 | 🟢 **Completed（阶段 0~3 任务全部圆满完成，Timer Daemon / Broker 二元组解耦 / 复位 DAG 修复完成，96 项 CTest 全绿，无头时序实证通过）** |
 | 日期 | 2026-09-30 |
 | 周期估算 | 2~2.5 个工作日 |
 | 前置产出物 | [《定时器与网络出口架构技术设计规格》](../../../zh/tech-designs/esp32/03-timer-and-network-architecture.md)（已完成物理落盘并升级至 v1.1） |
@@ -138,23 +138,23 @@
 
 ---
 
-## 四、 全局验收标准 (Definition of Done)
+## 四、 全局验收标准 (Definition of Done) - 全部达成 (All Succeeded)
 
-1. **DoD-1（前置技术设计规格 v1.1 评审通过）**：
+1. [x] **DoD-1（前置技术设计规格 v1.1 评审通过）**：
    - 《定时器与网络出口架构技术设计规格》v1.1 完成物理落盘并获得确认签署；
-2. **DoD-2（FreeRTOS 定时器核心交付与时序唤醒）**：
-   - FreeRTOS Timer 7 项核心 API 交付并通过全部单测；
-   - 提前到期唤醒测试 100% 通过，验证 Daemon 随时可被短定时器唤醒；
+2. [x] **DoD-2（FreeRTOS 定时器核心交付与时序唤醒）**：
+   - FreeRTOS Timer 7 项核心 API 交付并通过全部单测（11/11 通过）；
+   - 提前到期唤醒测试 100% 通过（`test_freertos_timers_early_wake`），验证 Daemon 随时可被短定时器唤醒；
    - 队列满背压单测与槽位复用 ABA 防御单测 100% 通过；
    - LITE 配置（8 任务槽）极限容量测试通过，证明无任务槽泄漏与死锁；
-3. **DoD-3（复位 DAG 修复与幽灵事件拦截）**：
-   - 彻底修复 Wi-Fi reset 冲刷 Broker 回调的既有漏洞；
-   - “联网 $\to$ 软复位 $\to$ 重新联网”链路状态感知单测 100% 绿灯；
-   - “定时器到期前 1ms 强行重启”零残留、基线干净；
-4. **DoD-4（临时纤程彻底清零与多客户端并发安全）**：
-   - Wi-Fi 与 MQTT 临时纤程彻底清零（无 `wifi_connect_task` 与 `mqtt_connect_task`）；
-   - MQTT 实例状态下沉，多客户端并发连接单测全绿，无 Token 竞争覆盖；
+3. [x] **DoD-3（复位 DAG 修复与幽灵事件拦截）**：
+   - 彻底修复 Wi-Fi reset 冲刷 Broker 回调的既有漏洞（独立 Stage 2.5）；
+   - “联网 $\to$ 软复位 $\to$ 重新联网”链路状态感知单测 100% 绿灯（`test_network_reconnect_after_soft_reset`）；
+   - “定时器到期前 1ms 强行重启”零残留、基线干净（`test_freertos_timers_reset_drain`）；
+4. [x] **DoD-4（临时纤程彻底清零与多客户端并发安全）**：
+   - Wi-Fi 与 MQTT 临时纤程彻底清零（无 `wifi_connect_task` 与 `mqtt_connect_task`，全部转为 Work Item）；
+   - MQTT 实例状态下沉，多客户端并发连接单测全绿，无 Token 竞争覆盖（`test_mqtt_concurrent_multi_client`）；
    - 未连网启动 MQTT 确定性单测 100% 绿灯；
-5. **DoD-5（无头因果时序与全量 CTest 回归）**：
-   - `run_esp32_headless_evidence.ps1 -App wifi_sta` 实证通过；
-   - 全量 `ctest -L esp_idf` 保持 100% 全绿通过（保存完整执行日志）。
+5. [x] **DoD-5（无头因果时序与全量 CTest 回归）**：
+   - `run_esp32_headless_evidence.ps1 -App wifi_sta` 4 步骤无头时序实证全绿（虚拟时钟 3,000,000µs，耗时 97ms）；
+   - 全量 `ctest -L esp_idf` 96/96 用例保持 100% 全绿通过。
