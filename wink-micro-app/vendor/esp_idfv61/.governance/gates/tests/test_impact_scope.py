@@ -72,3 +72,37 @@ def test_impact_pr_inline_threshold():
 
     assert res["impact_count"] == 35
     assert res["pr_inline"] is False
+
+
+def test_impact_global_paths():
+    manifest, catalog = load_fixture_data()
+    # Change core bridge file
+    changed = ["wink-micro-os/frameworks/esp_idf/src/esp_idf_bridge.c"]
+    res = compute_impact_closure(changed, catalog, manifest)
+
+    assert res["hit_global"] is True
+    # Entry 1 (esp.get_started.blink) is verified in minimal_manifest_v2, so it MUST be included
+    assert 1 in res["impact_entries"]
+
+
+def test_impact_fail_closed_unknown_path():
+    manifest, catalog = load_fixture_data()
+    # Unmapped code file under frameworks/esp_idf
+    changed = ["wink-micro-os/frameworks/esp_idf/src/unknown_unmapped_driver.c"]
+    res = compute_impact_closure(changed, catalog, manifest)
+
+    assert "wink-micro-os/frameworks/esp_idf/src/unknown_unmapped_driver.c" in res["unknown_paths"]
+
+
+def test_g4_unknown_path_blocks_pr():
+    from rules import g4_impact_regression
+    manifest, catalog = load_fixture_data()
+    context = {
+        "manifest": manifest,
+        "catalog": catalog,
+        "changed_files": ["wink-micro-os/frameworks/esp_idf/src/unknown_unmapped_driver.c"],
+        "workspace_root": str(FIXTURES_DIR.parent),
+    }
+    findings = g4_impact_regression.run(context)
+    assert any(f["severity"] == "error" and "FAIL_ON_UNKNOWN_PATH" in f["message"] for f in findings)
+

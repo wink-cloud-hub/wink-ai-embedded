@@ -23,6 +23,33 @@ if str(GATES_DIR) not in sys.path:
 from gate_context import normalize_posix_path, find_workspace_root
 
 
+GLOBAL_IMPACT_PATTERNS = [
+    "*/esp_idf_bridge.c",
+    "esp_idf_bridge.c",
+    "*/esp_sim_handle.c",
+    "esp_sim_handle.c",
+    "*CMakeLists.txt",
+    "*/cmake/**",
+    "cmake/**",
+    "*/pal/**",
+    "pal/**",
+    "*/targets/**",
+    "targets/**",
+    "*/osal/**",
+    "osal/**",
+    "wink-micro-os/CMakeLists.txt",
+]
+
+IGNORED_NON_CODE_PATTERNS = [
+    "*.md", "*.txt", "*.rst", "*.json", "*.yaml", "*.yml", "*.png", "*.jpg", "*.svg", "*.lock",
+    "*/docs/**", "docs/**",
+    "*/.governance/**", ".governance/**",
+    "*/tools/**", "tools/**",
+    "*/test/**", "test/**", "tests/**", "*/tests/**",
+    "*.ps1", "*.sh", "*.py",
+]
+
+
 def compute_impact_closure(
     changed_files: list[str],
     catalog: dict,
@@ -32,15 +59,17 @@ def compute_impact_closure(
     """
     Computes the reverse transitive dependency closure:
     1. Matches changed files against owned_paths of capabilities
-    2. Diffuses non-code changes (scenario files, catalog changes)
-    3. Traverses reverse dependency graph (mandatory and conditional depends_on)
-    4. Gathers all checklist entries referencing the impacted capability closure
-    5. Returns impact scope summary and pr_inline decision
+    2. Checks GLOBAL_IMPACT_PATHS (esp_idf_bridge.c, esp_sim_handle.c, cmake, etc.)
+    3. Detects unmapped code files under frameworks/esp_idf or vendor/esp_idfv61 (Fail-Closed)
+    4. Traverses reverse dependency graph (mandatory and conditional depends_on)
+    5. Gathers all checklist entries referencing impacted capabilities or target_app_dir
+    6. Returns impact scope summary and pr_inline decision
     """
     capabilities = catalog.get("capabilities", {})
     norm_changed = [normalize_posix_path(f) for f in changed_files]
 
     direct_caps = set()
+    mapped_files = set()
 
     # 1. Match directly affected capabilities by owned_paths
     for cap_id, cap_def in capabilities.items():
@@ -51,27 +80,69 @@ def compute_impact_closure(
             for f in norm_changed:
                 if fnmatch.fnmatch(f, norm_owned) or fnmatch.fnmatch(f, f"*/{norm_owned}") or f == norm_owned:
                     direct_caps.add(cap_id)
-                    break
+                    mapped_files.add(f)
 
-    # 2. Non-code changes diffusion
-    # If capability-catalog.yaml itself changed: mark all capabilities declared/modified
+    # 2. Match GLOBAL_IMPACT_PATTERNS
+    hit_global = False
+    for f in norm_changed:
+        for g_pat in GLOBAL_IMPACT_PATTERNS:
+            if fnmatch.fnmatch(f, g_pat) or fnmatch.fnmatch(f, f"*/{g_pat}") or f == g_pat:
+                hit_global = True
+                mapped_files.add(f)
+                break
+
+    # 3. Non-code changes diffusion (catalog changes)
     catalog_changed = any("capability-catalog.yaml" in f for f in norm_changed)
     if catalog_changed:
         for cap_id in capabilities:
             direct_caps.add(cap_id)
 
-    # 3. Scenario scripts changed directly
+    # 4. App directory changes direct mapping
     direct_impact_entries = set()
+    app_target_dirs = {}
+    for entry in manifest.get("entries", []):
+        t_dir = entry.get("target_app_dir")
+        if t_dir:
+            app_target_dirs[normalize_posix_path(t_dir)] = entry.get("display_id")
+
+    for f in norm_changed:
+        for t_dir, did in app_target_dirs.items():
+            if f"/{t_dir}/" in f"/{f}/" or f.startswith(t_dir) or f.endswith(t_dir):
+                mapped_files.add(f)
+                direct_impact_entries.add(did)
+                break
+
+    # 5. Scenario scripts changed directly
     for entry in manifest.get("entries", []):
         display_id = entry.get("display_id")
         for ex in entry.get("executions", []):
             sc_path = ex.get("acceptance", {}).get("scenario_path")
             if sc_path:
                 norm_sc = normalize_posix_path(sc_path)
-                if any(f.endswith(norm_sc) or norm_sc.endswith(f) for f in norm_changed):
-                    direct_impact_entries.add(display_id)
+                for f in norm_changed:
+                    if f.endswith(norm_sc) or norm_sc.endswith(f):
+                        direct_impact_entries.add(display_id)
+                        mapped_files.add(f)
 
-    # 4. Construct reverse dependency graph and traverse transitive closure
+    # 6. Ignored non-code files
+    for f in norm_changed:
+        for ign in IGNORED_NON_CODE_PATTERNS:
+            if fnmatch.fnmatch(f, ign) or fnmatch.fnmatch(f, f"*/{ign}"):
+                mapped_files.add(f)
+                break
+
+    # 7. Check for unmapped unknown code files (Fail-Closed)
+    unknown_paths = []
+    for f in norm_changed:
+        if (
+            "frameworks/esp_idf" in f or "vendor/esp_idfv61" in f or
+            f.startswith("wink-micro-os/") or f.startswith("wink-micro-app/")
+        ):
+            if f not in mapped_files:
+                if f.endswith((".c", ".h", ".cpp", ".hpp", ".S")):
+                    unknown_paths.append(f)
+
+    # 8. Construct reverse dependency graph and traverse transitive closure
     reverse_graph = defaultdict(set)
     for parent_id, cap_def in capabilities.items():
         if not isinstance(cap_def, dict):
@@ -93,13 +164,22 @@ def compute_impact_closure(
                 closure_caps.add(parent)
                 worklist.append(parent)
 
-    # 5. Collect impacted entries from manifest
+    # 9. Collect impacted entries from manifest
     impact_entries = set(direct_impact_entries)
     for entry in manifest.get("entries", []):
         display_id = entry.get("display_id")
         reqs = set(entry.get("required_capabilities", []))
         if reqs & closure_caps:
             impact_entries.add(display_id)
+
+    # If global core was hit or checklist.data.json changed, add all verified entries
+    if hit_global or any("checklist.data.json" in f for f in norm_changed):
+        for entry in manifest.get("entries", []):
+            display_id = entry.get("display_id")
+            for ex in entry.get("executions", []):
+                if ex.get("delivery_state") == "verified":
+                    impact_entries.add(display_id)
+                    break
 
     sorted_impact_entries = sorted(list(impact_entries))
     pr_inline = len(sorted_impact_entries) <= max_inline_entries
@@ -110,6 +190,8 @@ def compute_impact_closure(
         "impact_entries": sorted_impact_entries,
         "impact_count": len(sorted_impact_entries),
         "pr_inline": pr_inline,
+        "hit_global": hit_global,
+        "unknown_paths": sorted(list(set(unknown_paths))),
     }
 
 

@@ -10,10 +10,19 @@ structural validation only. Real behavioural regression requires the UniSim
 headless evidence runner and is a separate concern.
 """
 
+import sys
 import json
 from pathlib import Path
 from datetime import datetime, timezone
 from impact_scope import compute_impact_closure
+
+try:
+    from evidence_verifier import verify_evidence
+except ImportError:
+    GATES_DIR = Path(__file__).resolve().parent.parent
+    if str(GATES_DIR) not in sys.path:
+        sys.path.insert(0, str(GATES_DIR))
+    from evidence_verifier import verify_evidence
 
 RULE_ID = "g4.impact_regression"
 
@@ -97,6 +106,22 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
         max_inline_entries=max_inline,
     )
 
+    # 1. Check for unmapped unknown code files (Fail-Closed)
+    for unk in closure.get("unknown_paths", []):
+        findings.append({
+            "rule_id": RULE_ID,
+            "severity": "error",
+            "entry_id": None,
+            "display_id": None,
+            "config_id": None,
+            "file_path": unk,
+            "message": (
+                f"FAIL_ON_UNKNOWN_PATH: Modified code path '{unk}' is not mapped in "
+                f"capability-catalog.yaml, target_app_dir, or GLOBAL_IMPACT_PATHS. "
+                f"Fail-closed: all ESP-IDF facade changes must be mapped or registered."
+            ),
+        })
+
     impact_count = closure["impact_count"]
     impact_entries = closure["impact_entries"]
     pr_inline = closure["pr_inline"]
@@ -116,12 +141,7 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
 
             for ex in entry.get("executions", []):
                 # A scenario path on a `planned` execution is a *planned declaration*,
-                # not a claim that the artifact exists. 468 of 469 declared scenarios
-                # are absent precisely because that work has not been done yet.
-                # Enforcing presence there would block all real work, so presence is
-                # only required once an execution claims to have been built.
-                # This mirrors g1_can_check_mark, which likewise only validates
-                # artifacts for non-planned delivery states.
+                # not a claim that the artifact exists.
                 if ex.get("delivery_state", "planned") == "planned":
                     continue
                 passed, reason = validate_scenario_manifest(entry, ex, ws_root)
@@ -135,11 +155,22 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
                         "file_path": (ex.get("acceptance") or {}).get("scenario_path"),
                         "message": f"Scenario validation failed for entry #{did}: {reason}",
                     })
+                elif ex.get("delivery_state") == "verified":
+                    # Validate real evidence only if scenario passed and delivery_state == 'verified'
+                    ev_ok, ev_errors = verify_evidence(entry, ex, ws_root, strict_disk=True)
+                    if not ev_ok:
+                        for err in ev_errors:
+                            findings.append({
+                                "rule_id": RULE_ID,
+                                "severity": "error",
+                                "entry_id": entry.get("id"),
+                                "display_id": did,
+                                "config_id": ex.get("config_id"),
+                                "file_path": None,
+                                "message": f"Regression evidence verification failed for entry #{did}: {err}",
+                            })
     else:
         # Impact scope exceeds the PR inline threshold.
-        # NOTE: the pending report is a triage artifact for a human/nightly job to
-        # pick up. Nothing in CI consumes it automatically, so this finding is a
-        # warning, not a claim that a regression was scheduled and will run.
         reports_dir = ws_root / "wink-micro-app" / "vendor" / "esp_idfv61" / ".governance" / "gates" / "reports"
         reports_dir.mkdir(parents=True, exist_ok=True)
         pending_file = reports_dir / "nightly_pending_regression.json"
