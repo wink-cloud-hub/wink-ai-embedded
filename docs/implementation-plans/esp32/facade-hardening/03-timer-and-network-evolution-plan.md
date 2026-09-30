@@ -3,12 +3,12 @@
 
 | 字段 | 内容 |
 |---|---|
-| 计划编号 | PLAN-20260930-ESP-IDF-TIMER-AND-NETWORK-v1.3 |
-| 状态 | 📋 **Blocked on Tech Design（待前置技术设计规格评审通过后正式启动）** |
+| 计划编号 | PLAN-20260930-ESP-IDF-TIMER-AND-NETWORK-v1.4 |
+| 状态 | 🟡 **In Review（阶段 0 技术设计已完成落盘，待评审通过后正式启动代码实施）** |
 | 日期 | 2026-09-30 |
 | 周期估算 | 2~2.5 个工作日 |
-| 前置产出物 | [《定时器与网络出口架构技术设计规格》](../../../zh/tech-designs/esp32/03-timer-and-network-architecture.md)（物理落盘硬门禁） |
-| 优先次序 | **前置架构技术设计 → 定时器独立守护纤程 (Timer Daemon Fiber) 落地 → 强制回写复位 DAG → MQTT 实例状态下沉 (消除全局单例冲突) → Wi-Fi / MQTT 临时任务收敛 → 多 Netif 路由与 Broker 扩展** |
+| 前置产出物 | [《定时器与网络出口架构技术设计规格》](../../../zh/tech-designs/esp32/03-timer-and-network-architecture.md)（已完成物理落盘） |
+| 优先次序 | **前置架构技术设计（已完成） → 定时器独立守护纤程 (Timer Daemon Fiber) 落地 → 强制回写复位 DAG → MQTT 实例状态下沉 (消除全局单例冲突) → Wi-Fi / MQTT 临时任务收敛 → 多 Netif 路由与 Broker 扩展** |
 | 决策依据 | [ADR-0007：协作式纤程与事件调度模型](../../../decisions/core/0007-cooperative-loop-execution-model.md)<br>[ADR-0053：虚拟时间因果同刻总序仲裁模型](../../../decisions/unisim/0053-sim-same-timestamp-event-total-order.md)<br>[ADR-0057：PAL ADC 子系统与通道 3（模拟量）仿真契约](../../../decisions/core/0057-pal-adc-subsystem-and-channel-3-analog-contract.md) |
 | 管辖数据源 | [`src/freertos/freertos_timers.c`](../../../../wink-micro-os/frameworks/esp_idf/src/freertos/freertos_timers.c)、[`runtime/src/wink_soft_timer.c`](../../../../wink-micro-os/runtime/src/wink_soft_timer.c)、[`src/wifi/esp_wifi.c`](../../../../wink-micro-os/frameworks/esp_idf/src/wifi/esp_wifi.c)、[`src/network/esp_mqtt.c`](../../../../wink-micro-os/frameworks/esp_idf/src/network/esp_mqtt.c)、[`src/network/sim_network_broker.c`](../../../../wink-micro-os/frameworks/esp_idf/src/network/sim_network_broker.c) |
 | 实施目标文件 | `src/freertos/freertos_timers.c`、`src/wifi/esp_wifi.c`、`src/network/esp_mqtt.c`、`src/network/sim_network_broker.*`、`src/esp_idf_bridge.c` |
@@ -44,8 +44,8 @@
 
 ### 阶段 0：前置技术设计规格产出（Prerequisite Tech Design Spec - 硬门禁）
 
-- [ ] **任务 T0.1**：编写并归档 [《定时器与网络出口架构技术设计规格》](../../../zh/tech-designs/esp32/03-timer-and-network-architecture.md)：
-  - **物理落盘要求**：本实施计划在阶段 0 技术设计文件完成物理落盘并获得架构团队 Sign-off 之前，严禁编写阶段 1~3 的 C 代码；
+- [x] **任务 T0.1**：编写并归档 [《定时器与网络出口架构技术设计规格》](../../../zh/tech-designs/esp32/03-timer-and-network-architecture.md)：
+  - **物理落盘要求**：本实施计划在阶段 0 技术设计文件完成物理落盘并获得架构团队 Sign-off 之前，严禁编写阶段 1~3 的 C 代码；（✅ 已完成物理落盘，待 Sign-off）
   - **模块 1：Timer Daemon 纤程与工作项队列设计**：
     - 定义 FreeRTOS 软件定时器在 `sim_scheduler` 协作式体系下的守护纤程模型；
     - 设计轻量、有界、带代际 Token 的定时器命令队列与回调队列；评估 LITE 配置（仅 8 任务槽）的容量预算；
