@@ -174,14 +174,37 @@ classDiagram
     }
 
     class Evidence {
+        <<interface / polymorphic>>
+        +string backend
         +string run_id
+        +string verified_commit
+        +string verified_at
+    }
+
+    class WasmSimEvidence {
+        +string backend = "wasm_simulation"
         +string assets_sha256
         +string scenario_sha256
         +string execution_report_ref
-        +string verified_commit
-        +string verified_at
         +DiffParity diff_parity
     }
+
+    class Esp32HwEvidence {
+        +string backend = "esp32_hardware"
+        +string firmware_elf_sha256
+        +string serial_log_report_ref
+        +string board_type
+    }
+
+    class BuildSystemEvidence {
+        +string backend = "build_system"
+        +string build_log_ref
+        +string compiler_version
+    }
+
+    Evidence <|-- WasmSimEvidence
+    Evidence <|-- Esp32HwEvidence
+    Evidence <|-- BuildSystemEvidence
 
     SampleEntry "1" *-- "1..*" ExecutionConfig : executions
     ExecutionConfig "1" *-- "0..1" Evidence : evidence (null when planned)
@@ -203,7 +226,7 @@ classDiagram
   - `profile`: 运行规格（`standard | minimal | debug | coverage`）；
   - `delivery_state`: 交付证据状态（`planned | building | verified | stale | regressed`）；
   - `acceptance`: 验收场景与断言规格（`observability_level`, `scenario_path`, `timeout_virtual_us`, `timeout_wall_ms`, `positive_cases`, `negative_cases`）；
-  - `evidence`: 防伪凭据对象（尚未通过时必须为 `null`，通过时必须包含 `run_id`, `assets_sha256`, `scenario_sha256`, `execution_report_ref`, `verified_commit`, `verified_at`，以及可选的限定差分凭据 `diff_parity`）。
+  - `evidence`: 防伪凭据对象（尚未通过时必须为 `null`，通过时支持版本化多态后端凭据模型：`wasm_simulation` 仿真凭据、`esp32_hardware` 物理芯片串口断言凭据、或 `build_system` 构建链接凭据，且均包含 `run_id`, `verified_commit`, `verified_at`）。
 
 ### 2. 完整 JSON Schema 规格 (Draft 2020-12)
 
@@ -240,6 +263,8 @@ classDiagram
         "scope_in": { "type": "integer" },
         "scope_out": { "type": "integer" },
         "scope_unknown": { "type": "integer" },
+        "in_scope_active": { "type": "integer" },
+        "in_scope_deferred": { "type": "integer" },
         "audited": { "type": "integer" },
         "verified_configs": { "type": "integer" }
       }
@@ -419,33 +444,83 @@ classDiagram
         },
         "evidence": {
           "type": ["object", "null"],
-          "required": [
-            "run_id",
-            "assets_sha256",
-            "scenario_sha256",
-            "execution_report_ref",
-            "verified_commit",
-            "verified_at"
-          ],
-          "properties": {
-            "run_id": { "type": "string" },
-            "assets_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
-            "scenario_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
-            "execution_report_ref": { "type": "string" },
-            "verified_commit": { "type": "string", "pattern": "^[a-f0-9]{7,40}$" },
-            "verified_at": { "type": "string", "format": "date-time" },
-            "diff_parity": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
               "type": "object",
-              "required": ["sim_run_id", "hw_run_id", "ruleset_version", "tolerance_us", "observed_vectors"],
               "properties": {
-                "sim_run_id": { "type": "string" },
-                "hw_run_id": { "type": "string" },
-                "ruleset_version": { "type": "string" },
-                "tolerance_us": { "type": "integer", "minimum": 0 },
-                "observed_vectors": { "type": "array", "items": { "type": "string" } }
-              }
+                "backend": { "const": "wasm_simulation" },
+                "run_id": { "type": "string" },
+                "assets_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+                "scenario_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+                "execution_report_ref": { "type": "string" },
+                "verified_commit": { "type": "string", "pattern": "^[a-f0-9]{7,40}$" },
+                "verified_at": { "type": "string", "format": "date-time" },
+                "diff_parity": {
+                  "type": "object",
+                  "required": ["sim_run_id", "hw_run_id", "ruleset_version", "tolerance_us", "observed_vectors"],
+                  "properties": {
+                    "sim_run_id": { "type": "string" },
+                    "hw_run_id": { "type": "string" },
+                    "ruleset_version": { "type": "string" },
+                    "tolerance_us": { "type": "integer", "minimum": 0 },
+                    "observed_vectors": { "type": "array", "items": { "type": "string" } }
+                  }
+                }
+              },
+              "required": [
+                "backend",
+                "run_id",
+                "assets_sha256",
+                "scenario_sha256",
+                "execution_report_ref",
+                "verified_commit",
+                "verified_at"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "backend": { "const": "esp32_hardware" },
+                "run_id": { "type": "string" },
+                "firmware_elf_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+                "serial_log_report_ref": { "type": "string" },
+                "board_type": { "type": "string" },
+                "verified_commit": { "type": "string", "pattern": "^[a-f0-9]{7,40}$" },
+                "verified_at": { "type": "string", "format": "date-time" }
+              },
+              "required": [
+                "backend",
+                "run_id",
+                "firmware_elf_sha256",
+                "serial_log_report_ref",
+                "board_type",
+                "verified_commit",
+                "verified_at"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "backend": { "const": "build_system" },
+                "run_id": { "type": "string" },
+                "build_log_ref": { "type": "string" },
+                "compiler_version": { "type": "string" },
+                "verified_commit": { "type": "string", "pattern": "^[a-f0-9]{7,40}$" },
+                "verified_at": { "type": "string", "format": "date-time" }
+              },
+              "required": [
+                "backend",
+                "run_id",
+                "build_log_ref",
+                "compiler_version",
+                "verified_commit",
+                "verified_at"
+              ]
             }
-          }
+          ]
         }
       }
     }

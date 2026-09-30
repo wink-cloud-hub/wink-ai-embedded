@@ -43,50 +43,53 @@
 
 ---
 
-## 一、 标准实施闭环工作流 (5 阶段)
+## 一、 标准实施闭环工作流 (5 阶段：通用准备 + 目标分支实证 + 统一收口)
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────┐
-│ 阶段一：新建 App 与原厂代码镜像 (Setup & Mirror)                        │
+│ 阶段一：新建 App 与原厂代码镜像 (Setup & Mirror) [通用准备]            │
 │   ├── 创建 wink-micro-app/vendor/esp_idfv61/<feature>/                 │
 │   ├── 镜像官方源码（保持一行不改，计算 SHA-256 哈希）                    │
 │   ├── 配置 include/sdkconfig.h (Kconfig 语料私有宏)                     │
 │   ├── 配置 CMakeLists.txt (导出 WINK_APP_SOURCES 与 WINK_APP_ESP_IDF)   │
-│   ├── 配置 wink-app.json (声明 board, mcu, devices 引脚映射)           │
-│   └── 编写 unisim-scenarios/<feature>.scenario.json 确定性场景测试脚本 │
+│   └── 配置 wink-app.json (声明 board, mcu, devices 引脚拓扑)           │
 └──────────────────────────────────┬─────────────────────────────────────┘
                                    │
                                    ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│ 阶段二：使用 wink-tools 进行真实编译构建输出 (Real Build)               │
-│   ├── 运行: python packages/wink-tools/wink.py build sim --app <app>   │
-│   ├── [1/3] 校验并生成 device-tree.json                                │
-│   ├── [2/3] Emscripten 真实编译 Wasm 二进制并链接 wink_framework_esp_idf│
-│   └── [3/3] 提取并校验 unisim-assets/ 三件套有效性                     │
+│ 阶段二：Target 差异化编译构建 (Branch by Target Backend) [分支阶段]    │
+│   ├── 分支 A (Wasm 仿真): wink.py build sim --app <app>               │
+│   │   └── 生成并校验 unisim-assets/ 三件套 (tree, js, wasm)            │
+│   ├── 分支 B (ESP32 硬件): wink.py esp32 build <app> 或 idf.py build   │
+│   │   └── 生成真实 xtensa ELF 固件并计算 firmware_elf_sha256           │
+│   └── 分支 C (构建工程): CMake 原生工程生成与构建编译链接测试          │
 └──────────────────────────────────┬─────────────────────────────────────┘
                                    │
                                    ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│ 阶段三：使用 run_esp32_headless_evidence.ps1 自动化实证 (Headless Verification) │
-│   ├── 运行: powershell run_esp32_headless_evidence.ps1 -App <app>      │
-│   ├── 加载 unisim-assets/ 仿真三件套                                   │
-│   ├── 执行微秒级时序模拟 (Virtual Time Scheduler)                       │
-│   └── 断言微秒级引脚电平与插件状态 (ASSERT_POINT 100% 绿灯)            │
+│ 阶段三：Target 差异化自动化实证 (Branch by Target Backend) [分支阶段]  │
+│   ├── 分支 A (Wasm 仿真): run_esp32_headless_evidence.ps1 -App <app>   │
+│   │   ├── 本地生成凭据: 带 -WriteEvidence 参数回写 assets & scenario 哈希│
+│   │   └── CI 只读重验: 纯只读校验 scenario 与 report 断言 100% 绿灯     │
+│   ├── 分支 B (ESP32 硬件): 串口自动化断言 (Serial Output Assertion)    │
+│   │   └── 刷入固件，捕获串口启动特征日志，断言正则全绿，产出 hw-report │
+│   └── 分支 C (构建工程): 原生构建链路状态校验与编译日志归档           │
 └──────────────────────────────────┬─────────────────────────────────────┘
                                    │
                                    ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│ 阶段四：底座 CTest 回归与分层门禁检查 (Unit & Lint Gates)               │
+│ 阶段四：底座 CTest 回归与防腐门禁检查 (Unit & Anti-Decay Gates) [通用] │
 │   ├── 执行 CTest 单元测试验证底层外设模型 (test_esp_idf_*)             │
-│   └── 运行分层门禁: winkcli lint --pack layering --pack api            │
+│   ├── 运行分层架构防腐检查: winkcli lint --pack layering --pack api     │
+│   └── 运行 Gate 1~5 门禁校验: python run_gates.py --mode pr            │
 └──────────────────────────────────┬─────────────────────────────────────┘
                                    │
                                    ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│ 阶段五：数据源 (checklist.data.json) 回写与看板生成 (Checklist Sign-off) │
+│ 阶段五：数据源 (checklist.data.json) 归档与看板生成 (Sign-off) [通用]   │
 │   ├── 定位指定配置实例 config_id，置 delivery_state 为 "verified"       │
-│   ├── 填入真实防伪凭据 evidence (run_id, 产物哈希, 报告引用, commit, 时间)│
-│   ├── 运行生成脚本: python packages/wink-tools/generate_checklist.py   │
+│   ├── 填入真实防伪凭据 evidence (支持 wasm/hardware/build 多态 backend)│
+│   ├── 运行生成脚本: python generate_checklist_v1_1.py                  │
 │   └── 依据六要素合取公式 CanCheckMark(E, C) 自动在 CHECKLIST.md 打勾   │
 └────────────────────────────────────────────────────────────────────────┘
 ```
@@ -266,29 +269,56 @@ python packages/wink-tools/wink.py build sim --app vendor/esp_idfv61/<feature>
 
 ---
 
-## 四、 阶段三：使用 `run_esp32_headless_evidence.ps1` 自动化实证 (Headless Verification)
+## 四、 阶段三：自动化实证闭环 (Target-Specific Automated Evidence)
 
-### 1. 统一自动化测试脚本
-在 `wink-ai-embedded` 仓库根目录下运行统一验证脚本：
+依据执行配置的 Target 属性，进入对应的自动化实证流水线：
+
+### 1. Wasm 仿真配置实证（`run_esp32_headless_evidence.ps1`）
+在 `wink-ai-embedded` 仓库根目录下运行统一无头实证脚本：
 
 ```powershell
-# 运行指定应用：
+# 本地测试指定应用并生成凭据（写入 assets_sha256 与 run-report.json）：
+powershell -ExecutionPolicy Bypass -File wink-micro-os/frameworks/esp_idf/tools/run_esp32_headless_evidence.ps1 -App blink_gpio -WriteEvidence
+
+# 纯只读回归测试（CI 与本地验证模式，绝不修改数据源）：
 powershell -ExecutionPolicy Bypass -File wink-micro-os/frameworks/esp_idf/tools/run_esp32_headless_evidence.ps1 -App blink_gpio
 
 # 批量运行所有已包含 unisim-scenarios 的 ESP-IDF 应用：
 powershell -ExecutionPolicy Bypass -File wink-micro-os/frameworks/esp_idf/tools/run_esp32_headless_evidence.ps1
 ```
 
-### 2. 执行机制与安全性保障
-1. 自动定位同级 `wink-ai` 仓库中的 `wink-tools` 命令行入口；
-2. 注入开发通道标记 `$env:WINK_DEV = '1'`，绕过票据签发硬阻断；
-3. 自动检测 `<app>/unisim-scenarios/` 目录并批量拉起 Headless 模式运行所有场景脚本；
-4. 汇总各用例执行状态并输出彩色总览报告，进程返回标准退出码（0 = 全部成功，非 0 = 存在失败）。
+- **执行机制与安全性保障**：
+  1. 自动定位 `wink-tools` 命令行入口；
+  2. 注入开发通道标记 `$env:WINK_DEV = '1'`，绕过票据签发硬阻断；
+  3. 自动检测 `<app>/unisim-scenarios/` 目录并批量拉起 Headless 模式运行所有场景脚本；
+  4. 汇总各用例执行状态并输出彩色总览报告，进程返回标准退出码（0 = 全部成功，非 0 = 存在失败）。
+- **结果判断与标准输出**：
+  - 各 Step 绿色勾选 `✓ Step #N [ASSERT_POINT] @ ...µs - Status: PASSED`；
+  - 最终汇总 `All ESP-IDF headless carriers PASSED.`，退出码为 `0`。
 
-### 3. 结果判断与标准输出
-- **成功标准**：
-  - 控制台按序输出各 Step 的绿色勾选标记 `✓ Step #N [ASSERT_POINT] @ ...µs - Status: PASSED`；
-  - 最终汇总输出 `All ESP-IDF headless carriers PASSED.`，退出码为 `0`。
+### 2. 物理硬件配置实证（ESP32 真实芯片串口断言流程）
+对于已上真机验证的条目（如 `esp32_hardware` 配置）：
+1. **交叉编译固件**：通过 `wink.py esp32 build <app>` 或 ESP-IDF 原厂 `idf.py build` 产出目标 ELF 与 BIN；
+2. **防伪哈希锁定**：计算 ELF 真实 SHA-256 填入 `firmware_elf_sha256`；
+3. **串口自动化捕获与断言**：
+   - 烧录至指定物理开发板（如 `esp32_devkitc_v4`）；
+   - 通过串口监视工具（115200 波特率）捕获芯片上电冷启动与业务日志；
+   - 依据 `acceptance.positive_cases` 中声明的正则模式进行逐行命中匹配；
+   - 输出符合统一 Schema 的串口执行报告 `reports/hw/run-<timestamp>-<app>.json`（包含 `passed_steps`, `board_type`, `raw_log`）；
+4. **差分比对（Diff Parity）**：对要求虚实差分比对的条目，将真机串口时戳与 Wasm 仿真虚拟时钟对齐，验证事件时序误差在声明的 `tolerance_us` 阈值以内。
+
+### 3. 纯构建工程配置实证（Build System Verification）
+对于原厂构建系统与工具链验证示例（`#426~#444`）：
+1. **CMake 原生调用**：使用原生构建系统执行完整生成与编译：
+   ```bash
+   cmake -B build -S examples/build_system/<feature>
+   cmake --build build
+   ```
+2. **编译日志归档**：将完整标准输出与标准错误流归档至 `reports/build/run-<timestamp>-<app>.log`；
+3. **断言与指标提取**：
+   - 验证构建退出码为 `0`；
+   - 记录编译器完整版本号（如 `emcc 3.1.56` 或 `xtensa-esp32-elf-gcc 13.2.0`）；
+   - 在执行报告中记录生成的产物列表与符号表校验结果。
 
 ### 4. 场景复位与状态基线断言规范（Reset State Baseline）
 针对网络、蓝牙、外设等有状态示例，在场景脚本末尾应包含**软复位与基线断言步骤**：
@@ -370,23 +400,44 @@ powershell -ExecutionPolicy Bypass -File wink-micro-os/frameworks/esp_idf/tools/
 ```
 
 > [!IMPORTANT]
-> **本地生成 vs CI 纯只读原则**：
-> - 开发者本地可通过 `run_esp32_headless_evidence.ps1 -App <app> -WriteEvidence` 自动测试并回写凭据；
-> - **在 CI 自动化门禁中，所有脚本严格遵循只读原则**，严禁在 CI 运行中修改 `checklist.data.json`。CI 负责在干净环境中重演构建与无头回归，校验凭据与当前代码真实产物的一致性。
+> **本地生成凭据 vs CI 纯只读校验操作边界 (Local Generation vs CI Read-Only Boundary)**：
+> 1. **本地开发态（凭据生成与回写）**：
+>    - 开发者本地运行带 `-WriteEvidence` 的无头实证脚本：
+>      ```powershell
+>      powershell -ExecutionPolicy Bypass -File wink-micro-os/frameworks/esp_idf/tools/run_esp32_headless_evidence.ps1 -App <app> -WriteEvidence
+>      ```
+>    - 脚本会自动重新构建最新资产、计算标准化三件套复合哈希（`SHA256(SHA256(wasm) || "\n" || SHA256(js) || "\n" || SHA256(tree))`）与场景哈希，并将最新运行结果与报告路径安全回写至 `checklist.data.json`；
+>    - 接着运行看板生成脚本单向更新 `CHECKLIST.md`：
+>      ```bash
+>      python wink-micro-app/vendor/esp_idfv61/.governance/tools/generate_checklist_v1_1.py
+>      ```
+> 2. **CI 门禁态（纯只读核验与强制阻断）**：
+>    - **严禁在 CI 流程中传递 `-WriteEvidence` 或执行任何写回操作！**
+>    - CI 运行 `run_gates.py`，内置的 `evidence_verifier.py` 纯只读加载工作区资产与 `run-report.json`，独立重算哈希并严格校验：
+>      - 资产哈希一致性（`assets_sha256` 必须与工作区三件套精确吻合）；
+>      - 场景用例一致性（`scenario_sha256` 必须与用例文件精确吻合）；
+>      - 报告执行真实性（报告中的状态必须为 `passed`，且 `failedSteps == 0`、`errorSteps == 0`）；
+>    - 任何不匹配、陈旧凭据或报告缺失一律直接 Fail-Closed 阻断 PR 合入。
 
 ### 3. 单向重新生成执行看板
 在仓库根目录执行看板生成脚本，由脚本基于六要素合取公式 $\text{CanCheckMark}(E, C)$ 自动裁判并渲染打勾：
 ```bash
-python packages/wink-tools/generate_esp_idfv61_checklist.py
+python wink-micro-app/vendor/esp_idfv61/.governance/tools/generate_checklist_v1_1.py
 ```
 - 若所有充要条件满足且防伪哈希与本地资产匹配，脚本将自动在 [`CHECKLIST.md`](CHECKLIST.md) 对应行输出 `[x]` 并更新统计汇总；
-- 若出现任何凭据缺失、哈希不匹配或测试失败断言，脚本将输出 `[ ]` 或阻断警告，绝不放行。
+- 若出现任何凭据缺失、哈希不匹配或测试失败断言，脚本将输出 `[ ]` 或 `[!]` 阻断警告，绝不放行。
 
 ### 4. 运行全量 CI 门禁核验
-提交 PR 前，运行门禁流水线确保 Gate 1~4 全部通过：
+提交 PR 前，运行门禁流水线确保 Gate 1~5 与分层防腐检查全部通过：
 ```bash
-python packages/wink-tools/wink.py gate check
+# 1. 运行门禁系统 (PR 模式)
+python wink-micro-app/vendor/esp_idfv61/.governance/gates/run_gates.py --mode pr --allow-empty-diff
+
+# 2. 运行分层架构与 API 门禁
 winkcli lint --pack layering --pack api
+
+# 3. 运行数据源与看板不变量自洽检查
+python .github/scripts/check_ssot_invariants.py
 ```
 
 ---

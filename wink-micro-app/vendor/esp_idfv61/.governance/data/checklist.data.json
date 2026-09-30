@@ -6,8 +6,10 @@
     "scope_in": 312,
     "scope_out": 166,
     "scope_unknown": 0,
-    "audited": 10,
-    "verified_configs": 10
+    "in_scope_active": 291,
+    "in_scope_deferred": 21,
+    "audited": 1,
+    "verified_configs": 1
   },
   "entries": [
     {
@@ -84,6 +86,7 @@
             "sla_error_symbol": null
           },
           "evidence": {
+            "backend": "wasm_simulation",
             "run_id": "run-20260930-esp.get_started.blink-verified",
             "assets_sha256": "5059fbe1b5be803fa932691e16d8a0a314f6ef84cd3486f4ff3c2985c8e01026",
             "scenario_sha256": "48e7494366d56bfab523750ba94359c349604f1437ab7c44f0a5f333f503c157",

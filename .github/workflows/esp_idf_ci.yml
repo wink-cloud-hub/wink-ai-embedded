@@ -21,6 +21,7 @@ on:
       - 'docs/decisions/**'
       - '.github/scripts/check_harvested_headers.py'
       - '.github/scripts/check_license_map.py'
+      - '.github/scripts/check_ssot_invariants.py'
       - '.github/workflows/esp_idf_ci.yml'
   pull_request:
     branches: [ master ]
@@ -75,6 +76,8 @@ jobs:
         run: python -m pytest wink-micro-app/vendor/esp_idfv61/.governance/gates/tests -q
       - name: Check License Map
         run: python .github/scripts/check_license_map.py
+      - name: Check SSOT Invariants
+        run: python .github/scripts/check_ssot_invariants.py
       - name: Verify Harvested Headers and Asset Channels
         run: python .github/scripts/check_harvested_headers.py --channels wink-micro-os/frameworks/esp_idf/channels.json
       - name: Run Layering / API / ESP-IDF Lint

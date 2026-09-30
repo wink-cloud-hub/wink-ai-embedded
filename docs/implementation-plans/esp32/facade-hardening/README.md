@@ -3,7 +3,7 @@
 
 > **创建日期**：2026-09-30  
 > **更新日期**：2026-09-30（已全面吸收深度架构评审与防腐门禁意见，完成代码治理与 CI 证据核验四位一体闭环）  
-> **状态**：Active（推进中：计划 01、02、03 已圆满完成并全量回归；横向计划 04 启动 PR 门禁与真核验引擎重构）  
+> **状态**：Active（已完成：计划 01、02、03、04 全部圆满完成，门面基建加固、反向影响分析、防腐机器拦截与 SSOT 闭环 100% 达成）  
 > **前序废弃计划**：[`../2026-09-30-esp-idf-facade-governance-and-extensibility-plan.md`](../2026-09-30-esp-idf-facade-governance-and-extensibility-plan.md)（已废弃）
 
 ---
@@ -76,7 +76,7 @@
   └─ 动作：多 Netif 默认路由与出口绑定规则落地，broker 回调携带 Netif 身份与事件枚举
                                       │
                                       ▼ (横向守护贯穿始终)
-  【计划 4：证据真实性、全自动 PR 门禁与防腐机器拦截】 (横向门禁与真实闭环)
+  【计划 4：证据真实性、全自动 PR 门禁与防腐机器拦截】 (已圆满完成，Required Check / 真证据核验 / Fail-Closed 影响回归 / Gate 5 防腐拦截 / SSOT 不变量校验全绿)
   文件：04-evidence-and-pr-gate-plan.md
   ├─ 动作：解除 CI workflow_dispatch 手动隔离，接入 PR 自动运行并设为 Required Status Check
   ├─ 动作：落地六要素真核验引擎 (重算资产与场景 SHA-256、解析执行报告 status 与断言)
