@@ -4,6 +4,7 @@
 #include "esp_err.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos_sync.h"
 #include "sim_network_broker.h"
 #include <string.h>
 
@@ -28,6 +29,7 @@ struct esp_mqtt_client {
     bool started;
     bool connected;
     uint32_t token;
+    uint32_t work_item_id;
     esp_mqtt_client_config_t config;
     esp_event_handler_t event_handler;
     void *event_handler_arg;
@@ -49,8 +51,7 @@ static int s_last_msg_id = 0;
 static int s_next_msg_id = 1;
 
 static bool s_network_ready = true;
-static uint32_t s_mqtt_token = 0;
-static TaskHandle_t s_mqtt_task_handle = NULL;
+static uint32_t s_global_mqtt_token = 1000;
 static esp_mqtt_sim_publish_hook_t s_publish_hook = NULL;
 static bool s_mqtt_core_handler_registered = false;
 
@@ -253,23 +254,20 @@ static bool mqtt_topic_match(const char *sub, const char *pub) {
     return (*sub == '\0' && *pub == '\0');
 }
 
-static void mqtt_connect_task(void *arg) {
-    esp_mqtt_client_handle_t client = (esp_mqtt_client_handle_t)arg;
-    if (!client) {
-        s_mqtt_task_handle = NULL;
-        vTaskDelete(NULL);
+static void mqtt_connect_work_cb(void *arg, uint32_t work_token) {
+    (void)work_token;
+    uint32_t my_token = (uint32_t)(uintptr_t)arg;
+    struct esp_mqtt_client *client = NULL;
+    for (size_t i = 0; i < MAX_MQTT_CLIENTS; i++) {
+        if (s_clients[i].initialized && s_clients[i].token == my_token) {
+            client = &s_clients[i];
+            break;
+        }
+    }
+    if (!client || !client->started) {
         return;
     }
-
-    uint32_t my_token = client->token;
-    vTaskDelay(pdMS_TO_TICKS(50));
-
-    /* 安全检查：若中途被 stop/destroy 或 token 不匹配，安全退出 */
-    if (!client->initialized || !client->started || client->token != my_token || s_mqtt_token != my_token) {
-        s_mqtt_task_handle = NULL;
-        vTaskDelete(NULL);
-        return;
-    }
+    client->work_item_id = 0;
 
     if (!s_network_ready) {
         client->connected = false;
@@ -290,9 +288,6 @@ static void mqtt_connect_task(void *arg) {
         disc_event.client = client;
         disc_event.user_context = client->config.user_context;
         dispatch_event(client, MQTT_EVENT_DISCONNECTED, &disc_event);
-
-        s_mqtt_task_handle = NULL;
-        vTaskDelete(NULL);
         return;
     }
 
@@ -303,9 +298,6 @@ static void mqtt_connect_task(void *arg) {
     conn_event.client = client;
     conn_event.user_context = client->config.user_context;
     dispatch_event(client, MQTT_EVENT_CONNECTED, &conn_event);
-
-    s_mqtt_task_handle = NULL;
-    vTaskDelete(NULL);
 }
 
 esp_mqtt_client_handle_t esp_mqtt_client_init(const esp_mqtt_client_config_t *config) {
@@ -317,6 +309,7 @@ esp_mqtt_client_handle_t esp_mqtt_client_init(const esp_mqtt_client_config_t *co
         if (!s_clients[i].initialized) {
             memset(&s_clients[i], 0, sizeof(s_clients[i]));
             s_clients[i].initialized = true;
+            s_clients[i].token = ++s_global_mqtt_token;
             s_clients[i].config = *config;
             s_clients[i].registered_event = MQTT_EVENT_ANY;
             return &s_clients[i];
@@ -347,10 +340,18 @@ esp_err_t esp_mqtt_client_start(esp_mqtt_client_handle_t client) {
     }
 
     client->started = true;
-    client->token = ++s_mqtt_token;
+    uint32_t token = ++s_global_mqtt_token;
+    client->token = token;
 
-    BaseType_t rc = xTaskCreate(mqtt_connect_task, "mqtt_conn", 32768,
-                                (void *)client, 1, &s_mqtt_task_handle);
+    if (client->work_item_id != 0) {
+        esp_freertos_timer_cancel_work_item(client->work_item_id);
+        client->work_item_id = 0;
+    }
+
+    BaseType_t rc = esp_freertos_timer_post_work_item(mqtt_connect_work_cb,
+                                                      (void *)(uintptr_t)token,
+                                                      &client->work_item_id,
+                                                      pdMS_TO_TICKS(50));
     if (rc != pdPASS) {
         client->started = false;
         return ESP_ERR_NO_MEM;
@@ -362,8 +363,11 @@ esp_err_t esp_mqtt_client_stop(esp_mqtt_client_handle_t client) {
     if (!client) {
         return ESP_ERR_INVALID_ARG;
     }
-    s_mqtt_token++;
-    client->token = s_mqtt_token;
+    client->token = ++s_global_mqtt_token;
+    if (client->work_item_id != 0) {
+        esp_freertos_timer_cancel_work_item(client->work_item_id);
+        client->work_item_id = 0;
+    }
     client->started = false;
 
     bool was_connected = client->connected;
@@ -384,6 +388,10 @@ esp_err_t esp_mqtt_client_reconnect(esp_mqtt_client_handle_t client) {
     if (!client) {
         return ESP_ERR_INVALID_ARG;
     }
+    if (client->work_item_id != 0) {
+        esp_freertos_timer_cancel_work_item(client->work_item_id);
+        client->work_item_id = 0;
+    }
     client->connected = false;
     esp_mqtt_event_t disc_event;
     memset(&disc_event, 0, sizeof(disc_event));
@@ -392,10 +400,13 @@ esp_err_t esp_mqtt_client_reconnect(esp_mqtt_client_handle_t client) {
     disc_event.user_context = client->config.user_context;
     dispatch_event(client, MQTT_EVENT_DISCONNECTED, &disc_event);
 
-    client->token = ++s_mqtt_token;
+    uint32_t token = ++s_global_mqtt_token;
+    client->token = token;
     client->started = true;
-    BaseType_t rc = xTaskCreate(mqtt_connect_task, "mqtt_conn", 32768,
-                                (void *)client, 1, &s_mqtt_task_handle);
+    BaseType_t rc = esp_freertos_timer_post_work_item(mqtt_connect_work_cb,
+                                                      (void *)(uintptr_t)token,
+                                                      &client->work_item_id,
+                                                      pdMS_TO_TICKS(50));
     if (rc != pdPASS) {
         client->started = false;
         return ESP_ERR_NO_MEM;
@@ -622,10 +633,15 @@ esp_err_t esp_mqtt_client_register_event(esp_mqtt_client_handle_t client, esp_mq
 /* ── Wink 仿真与 UniSim 扩展接口 ─────────────────────────────────────── */
 
 void esp_mqtt_sim_reset(void) {
-    s_mqtt_token++;
+    for (size_t i = 0; i < MAX_MQTT_CLIENTS; i++) {
+        if (s_clients[i].work_item_id != 0) {
+            esp_freertos_timer_cancel_work_item(s_clients[i].work_item_id);
+            s_clients[i].work_item_id = 0;
+        }
+    }
+    s_global_mqtt_token++;
     s_publish_hook = NULL;
     s_next_msg_id = 1;
-    s_mqtt_task_handle = NULL;
     s_mqtt_core_handler_registered = false;
     memset(s_subscriptions, 0, sizeof(s_subscriptions));
     memset(s_last_topic, 0, sizeof(s_last_topic));

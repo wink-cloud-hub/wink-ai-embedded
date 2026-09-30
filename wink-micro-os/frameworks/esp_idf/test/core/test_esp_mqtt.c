@@ -431,6 +431,122 @@ void test_mqtt_qos0_does_not_dispatch_published_event(void) {
     TEST_ASSERT_EQUAL(0, s_published_count);
 }
 
+/* TC-MQTT-18: 槽位快速复用 ABA 幽灵事件防御 */
+static int s_client_b_connect_count = 0;
+static void client_b_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
+    (void)handler_args;
+    (void)base;
+    (void)event_data;
+    if ((esp_mqtt_event_id_t)event_id == MQTT_EVENT_CONNECTED) {
+        s_client_b_connect_count++;
+    }
+}
+
+static void mqtt_aba_test_task(void *arg) {
+    (void)arg;
+    esp_mqtt_client_config_t cfg_a = {
+        .broker.address.uri = "mqtt://127.0.0.1:1883",
+    };
+    esp_mqtt_client_handle_t client_a = esp_mqtt_client_init(&cfg_a);
+    TEST_ASSERT_NOT_NULL(client_a);
+    TEST_ASSERT_EQUAL(ESP_OK, esp_mqtt_client_register_event(client_a, ESP_EVENT_ANY_ID, mqtt_test_event_handler, NULL));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_mqtt_client_start(client_a));
+
+    /* 运行 2 个 tick (20ms)，Client A 尚未到期 (需 50ms) */
+    vTaskDelay(2);
+    TEST_ASSERT_FALSE(esp_mqtt_sim_is_connected(client_a));
+    TEST_ASSERT_EQUAL(0, s_connected_count);
+
+    /* 立即销毁 Client A */
+    TEST_ASSERT_EQUAL(ESP_OK, esp_mqtt_client_destroy(client_a));
+
+    /* 立即在同槽位分配 Client B */
+    s_client_b_connect_count = 0;
+    esp_mqtt_client_config_t cfg_b = {
+        .broker.address.uri = "mqtt://127.0.0.1:1883",
+    };
+    esp_mqtt_client_handle_t client_b = esp_mqtt_client_init(&cfg_b);
+    TEST_ASSERT_NOT_NULL(client_b);
+    TEST_ASSERT_EQUAL_PTR(client_a, client_b); /* 确保落在相同内存槽位 */
+    TEST_ASSERT_EQUAL(ESP_OK, esp_mqtt_client_register_event(client_b, ESP_EVENT_ANY_ID, client_b_event_handler, NULL));
+
+    /* 故意不 start Client B，前推时间跨越原 Client A 的 50ms 到期点 (再等 6 ticks = 60ms) */
+    vTaskDelay(6);
+
+    /* 验证 Client B 绝不触发任何连接事件，且保持未连接 */
+    TEST_ASSERT_EQUAL(0, s_client_b_connect_count);
+    TEST_ASSERT_FALSE(esp_mqtt_sim_is_connected(client_b));
+
+    /* 现在正常启动 Client B，验证独立生命周期正常 */
+    TEST_ASSERT_EQUAL(ESP_OK, esp_mqtt_client_start(client_b));
+    vTaskDelay(6);
+    TEST_ASSERT_TRUE(esp_mqtt_sim_is_connected(client_b));
+    TEST_ASSERT_EQUAL(1, s_client_b_connect_count);
+
+    esp_mqtt_client_destroy(client_b);
+    vTaskDelete(NULL);
+}
+
+void test_mqtt_slot_reuse_aba(void) {
+    TEST_ASSERT_EQUAL(ESP_OK, esp_event_loop_create_default());
+    esp_mqtt_sim_set_network_ready(true);
+
+    TaskHandle_t th;
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(mqtt_aba_test_task, "aba_task", 32768, NULL, 5, &th));
+    wink_status_t st = pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 50);
+    TEST_ASSERT_EQUAL(WINK_OK, st);
+    TEST_ASSERT_EQUAL(1, s_client_b_connect_count);
+}
+
+/* TC-MQTT-19: 多客户端独立并发连接 */
+static int s_client1_conn = 0;
+static int s_client2_conn = 0;
+static void multi_client1_handler(void *args, esp_event_base_t base, int32_t id, void *data) {
+    (void)args; (void)base; (void)data;
+    if ((esp_mqtt_event_id_t)id == MQTT_EVENT_CONNECTED) s_client1_conn++;
+}
+static void multi_client2_handler(void *args, esp_event_base_t base, int32_t id, void *data) {
+    (void)args; (void)base; (void)data;
+    if ((esp_mqtt_event_id_t)id == MQTT_EVENT_CONNECTED) s_client2_conn++;
+}
+
+void test_mqtt_multi_client_concurrent_connect(void) {
+    TEST_ASSERT_EQUAL(ESP_OK, esp_event_loop_create_default());
+    esp_mqtt_sim_set_network_ready(true);
+
+    s_client1_conn = 0;
+    s_client2_conn = 0;
+
+    esp_mqtt_client_config_t cfg1 = {.broker.address.uri = "mqtt://127.0.0.1:1883"};
+    esp_mqtt_client_config_t cfg2 = {.broker.address.uri = "mqtt://127.0.0.1:1883"};
+
+    esp_mqtt_client_handle_t c1 = esp_mqtt_client_init(&cfg1);
+    esp_mqtt_client_handle_t c2 = esp_mqtt_client_init(&cfg2);
+    TEST_ASSERT_NOT_NULL(c1);
+    TEST_ASSERT_NOT_NULL(c2);
+    TEST_ASSERT_NOT_EQUAL(c1, c2);
+
+    TEST_ASSERT_EQUAL(ESP_OK, esp_mqtt_client_register_event(c1, ESP_EVENT_ANY_ID, multi_client1_handler, NULL));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_mqtt_client_register_event(c2, ESP_EVENT_ANY_ID, multi_client2_handler, NULL));
+
+    /* 同时启动两个客户端 */
+    TEST_ASSERT_EQUAL(ESP_OK, esp_mqtt_client_start(c1));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_mqtt_client_start(c2));
+
+    /* 前推 50ms 仿真时间 */
+    wink_status_t st = pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 10);
+    TEST_ASSERT_EQUAL(WINK_OK, st);
+
+    /* 验证两个客户端均成功连接，无 Token 竞争覆盖 */
+    TEST_ASSERT_TRUE(esp_mqtt_sim_is_connected(c1));
+    TEST_ASSERT_TRUE(esp_mqtt_sim_is_connected(c2));
+    TEST_ASSERT_EQUAL(1, s_client1_conn);
+    TEST_ASSERT_EQUAL(1, s_client2_conn);
+
+    esp_mqtt_client_destroy(c1);
+    esp_mqtt_client_destroy(c2);
+}
+
 /* --------------------------------------------------------------------------
  * Unity Main Runner
  * -------------------------------------------------------------------------- */
@@ -454,6 +570,8 @@ int main(void) {
     RUN_TEST(test_mqtt_published_event_dispatched_to_publisher);
     RUN_TEST(test_mqtt_reentrant_publish_in_callback);
     RUN_TEST(test_mqtt_qos0_does_not_dispatch_published_event);
+    RUN_TEST(test_mqtt_slot_reuse_aba);
+    RUN_TEST(test_mqtt_multi_client_concurrent_connect);
 
     return UNITY_END();
 }

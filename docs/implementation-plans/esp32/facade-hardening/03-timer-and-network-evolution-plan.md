@@ -91,11 +91,11 @@
 
 ### 阶段 2：临时纤程任务精准收敛（Task Pruning & Ghost Event Elimination）
 
-- [ ] **任务 T2.1**：重构 `src/wifi/esp_wifi.c` STA 连接状态机：
+- [x] **任务 T2.1**：重构 `src/wifi/esp_wifi.c` STA 连接状态机：
   - 移除通过 `xTaskCreate` 启动的一次性临时任务 `wifi_connect_task`；
   - 采用 Timer Daemon 工作项投递 100ms 延迟连接事件；
   - 严格保持全局代际（`s_wifi_generation`），在调用 `esp_wifi_disconnect()` 或收到 `DROP_BEACON` 时即刻失效在途工作项，彻底消除迟到的幽灵 `GOT_IP` 事件；
-- [ ] **任务 T2.2**：重构 `src/network/esp_mqtt.c` 实例状态管理与任务收敛：
+- [x] **任务 T2.2**：重构 `src/network/esp_mqtt.c` 实例状态管理与任务收敛：
   - **消除全局单例**：彻底废除 `s_mqtt_token` 与 `s_mqtt_task_handle`，下沉至 `struct esp_mqtt_client` 实例内部结构体，支持最多 `MAX_MQTT_CLIENTS` 个独立客户端并发连接；
   - 移除通过 `xTaskCreate` 启动的 50ms 一次性临时连接任务 `mqtt_connect_task`，改为实例绑定的延迟事件投递；
   - **MQTT 槽位复用 ABA 单测**：验证 Client A 发起连接延时期间立即 `destroy` 并在同槽位分配 Client B，Client B 绝不触发 Client A 的回调；
