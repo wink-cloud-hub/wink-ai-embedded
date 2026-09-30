@@ -206,4 +206,35 @@ rules:
     module: rules.g5_wifi_assertion_quality
     description: "Wi-Fi 场景断言质量与状态/IP 语义断言验证"
 
+  - id: g5.no_app_specific_branch
+    gate: 5
+    severity: error
+    modes: [pr, nightly]
+    trigger: git_diff
+    trigger_paths:
+      - "wink-micro-os/frameworks/esp_idf/src/**"
+    module: rules.g5_no_app_specific_branch
+    description: "禁止应用特化分支（禁止 strcmp(app, ...) 等应用特化逻辑）"
+
+  - id: g5.no_raw_delay_tasks
+    gate: 5
+    severity: error
+    modes: [pr, nightly]
+    trigger: git_diff
+    trigger_paths:
+      - "wink-micro-os/frameworks/esp_idf/src/**"
+    module: rules.g5_no_raw_delay_tasks
+    description: "禁止临时延时纤程（协议栈与外设中严禁使用 xTaskCreate 创建临时延时任务）"
+
+  - id: g5.reset_registration_verified
+    gate: 5
+    severity: error
+    modes: [pr, nightly]
+    trigger: git_diff
+    trigger_paths:
+      - "wink-micro-os/frameworks/esp_idf/src/**"
+    module: rules.g5_reset_registration_verified
+    description: "静态状态复位链注册校验（新增 static 状态必须在 esp_idf_bridge.c 复位链中注册）"
+
+
 

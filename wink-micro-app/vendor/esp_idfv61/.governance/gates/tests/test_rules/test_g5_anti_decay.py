@@ -2,112 +2,163 @@
 """
 test_g5_anti_decay.py
 =====================
-Unit and mutation tests for Gate 5 rules (g5_no_inline_mock and g5_network_assertion_quality).
+Unit tests for Gate 5 anti-decay rules:
+- g5_no_app_specific_branch
+- g5_no_raw_delay_tasks
+- g5_reset_registration_verified
 """
 
-import json
 from pathlib import Path
-from rules import g5_no_inline_mock, g5_network_assertion_quality
+from rules import g5_no_app_specific_branch
+from rules import g5_no_raw_delay_tasks
+from rules import g5_reset_registration_verified
 
 
-def test_g5_no_inline_mock_clean_codebase(tmp_path):
-    # Context pointing to a clean mock network dir
-    net_dir = tmp_path / "wink-micro-os" / "frameworks" / "esp_idf" / "src" / "network"
-    net_dir.mkdir(parents=True)
-    c_file = net_dir / "clean_http.c"
-    c_file.write_text(
-        '#include "esp_http_client.h"\n'
-        'static void parse(const char *url) {\n'
-        '    if (strncmp(url, "http://", 7) == 0) {}\n'
-        '}\n',
-        encoding="utf-8"
-    )
+def test_no_app_specific_branch_clean_passes(tmp_path):
+    src_dir = tmp_path / "wink-micro-os" / "frameworks" / "esp_idf" / "src" / "drivers"
+    src_dir.mkdir(parents=True)
+    c_file = src_dir / "clean_driver.c"
+    c_file.write_text("""
+    #include "esp_err.h"
+    esp_err_t driver_init(void) {
+        return ESP_OK;
+    }
+    """, encoding="utf-8")
 
-    context = {"workspace_root": str(tmp_path)}
-    findings = g5_no_inline_mock.run(context)
+    context = {
+        "workspace_root": str(tmp_path),
+        "changed_files": [str(c_file.relative_to(tmp_path))],
+    }
+    findings = g5_no_app_specific_branch.run(context)
     assert len(findings) == 0
 
 
-def test_g5_no_inline_mock_mutation_catches_banned_domain(tmp_path):
-    net_dir = tmp_path / "wink-micro-os" / "frameworks" / "esp_idf" / "src" / "network"
-    net_dir.mkdir(parents=True)
-    bad_c = net_dir / "bad_http.c"
-    bad_c.write_text(
-        'void perform(void) {\n'
-        '    const char *url = "http://httpbin.org/get";\n'
-        '}\n',
-        encoding="utf-8"
-    )
-
-    context = {"workspace_root": str(tmp_path)}
-    findings = g5_no_inline_mock.run(context)
-    assert len(findings) >= 1
-    assert "Hardcoded business domain/URL detected" in findings[0]["message"]
-
-
-def test_g5_no_inline_mock_mutation_catches_inline_if_else(tmp_path):
-    net_dir = tmp_path / "wink-micro-os" / "frameworks" / "esp_idf" / "src" / "network"
-    net_dir.mkdir(parents=True)
-    bad_c = net_dir / "spaghetti_http.c"
-    bad_c.write_text(
-        'void perform(struct client *c) {\n'
-        '    if (strstr(c->url, "/ota_firmware")) {\n'
-        '        do_mock();\n'
-        '    }\n'
-        '}\n',
-        encoding="utf-8"
-    )
-
-    context = {"workspace_root": str(tmp_path)}
-    findings = g5_no_inline_mock.run(context)
-    assert len(findings) >= 1
-    assert "Inlined URL branch check detected" in findings[0]["message"]
-
-
-def test_g5_network_assertion_quality_positive(tmp_path):
-    sc_dir = tmp_path / "wink-micro-app" / "vendor" / "esp_idfv61" / "protocols" / "http" / "unisim-scenarios"
-    sc_dir.mkdir(parents=True)
-    sc_file = sc_dir / "test.scenario.json"
-    sc_data = {
-        "header": {"name": "test"},
-        "steps": [
-            {
-                "type": "INJECT_NET_FIXTURE",
-                "routes": [{"url_prefix": "http://example/get"}]
-            },
-            {
-                "type": "ASSERT_POINT",
-                "matcher": "HTTP_EVENT_ON_FINISH"
-            }
-        ]
+def test_no_app_specific_branch_detects_strcmp(tmp_path):
+    src_dir = tmp_path / "wink-micro-os" / "frameworks" / "esp_idf" / "src" / "drivers"
+    src_dir.mkdir(parents=True)
+    c_file = src_dir / "bad_driver.c"
+    c_file.write_text("""
+    if (strcmp(app, "blink") == 0) {
+        do_blink_hack();
     }
-    sc_file.write_text(json.dumps(sc_data), encoding="utf-8")
+    """, encoding="utf-8")
 
-    context = {"workspace_root": str(tmp_path)}
-    findings = g5_network_assertion_quality.run(context)
+    context = {
+        "workspace_root": str(tmp_path),
+        "changed_files": [str(c_file.relative_to(tmp_path))],
+    }
+    findings = g5_no_app_specific_branch.run(context)
+    assert len(findings) == 1
+    assert findings[0]["severity"] == "error"
+    assert "App-specific branch detected" in findings[0]["message"]
+
+
+def test_no_app_specific_branch_detects_config_macro(tmp_path):
+    src_dir = tmp_path / "wink-micro-os" / "frameworks" / "esp_idf" / "src" / "drivers"
+    src_dir.mkdir(parents=True)
+    c_file = src_dir / "bad_macro.c"
+    c_file.write_text("""
+    #ifdef CONFIG_APP_BLINK
+    hack();
+    #endif
+    """, encoding="utf-8")
+
+    context = {
+        "workspace_root": str(tmp_path),
+        "changed_files": [str(c_file.relative_to(tmp_path))],
+    }
+    findings = g5_no_app_specific_branch.run(context)
+    assert len(findings) == 1
+    assert findings[0]["severity"] == "error"
+
+
+def test_no_raw_delay_tasks_clean_passes(tmp_path):
+    src_dir = tmp_path / "wink-micro-os" / "frameworks" / "esp_idf" / "src" / "wifi"
+    src_dir.mkdir(parents=True)
+    c_file = src_dir / "esp_wifi.c"
+    c_file.write_text("""
+    // Uses timer work item instead of raw task
+    esp_freertos_timer_post_work_item(cb, arg, &token, 10);
+    """, encoding="utf-8")
+
+    context = {
+        "workspace_root": str(tmp_path),
+        "changed_files": [str(c_file.relative_to(tmp_path))],
+    }
+    findings = g5_no_raw_delay_tasks.run(context)
     assert len(findings) == 0
 
 
-def test_g5_network_assertion_quality_catches_empty_matcher(tmp_path):
-    sc_dir = tmp_path / "wink-micro-app" / "vendor" / "esp_idfv61" / "protocols" / "http" / "unisim-scenarios"
-    sc_dir.mkdir(parents=True)
-    sc_file = sc_dir / "fake_green.scenario.json"
-    sc_data = {
-        "header": {"name": "fake_green"},
-        "steps": [
-            {
-                "type": "INJECT_NET_FIXTURE",
-                "routes": [{"url_prefix": "http://example/get"}]
-            },
-            {
-                "type": "ASSERT_POINT",
-                "matcher": ""
-            }
-        ]
-    }
-    sc_file.write_text(json.dumps(sc_data), encoding="utf-8")
+def test_no_raw_delay_tasks_detects_temporary_task(tmp_path):
+    src_dir = tmp_path / "wink-micro-os" / "frameworks" / "esp_idf" / "src" / "wifi"
+    src_dir.mkdir(parents=True)
+    c_file = src_dir / "bad_wifi.c"
+    c_file.write_text("""
+    xTaskCreate(task_fn, "wifi_connect_task", 4096, NULL, 5, NULL);
+    """, encoding="utf-8")
 
-    context = {"workspace_root": str(tmp_path)}
-    findings = g5_network_assertion_quality.run(context)
+    context = {
+        "workspace_root": str(tmp_path),
+        "changed_files": [str(c_file.relative_to(tmp_path))],
+    }
+    findings = g5_no_raw_delay_tasks.run(context)
     assert len(findings) >= 1
-    assert "anti-greenwashing" in findings[0]["message"]
+    assert any("Banned temporary delay task" in f["message"] for f in findings)
+
+
+def test_reset_registration_verified_clean_passes(tmp_path):
+    src_dir = tmp_path / "wink-micro-os" / "frameworks" / "esp_idf" / "src"
+    src_dir.mkdir(parents=True)
+    bridge_file = src_dir / "esp_idf_bridge.c"
+    bridge_file.write_text("""
+    void pal_wasm_target_clear_pending_reset(void) {
+        esp_foo_sim_reset();
+    }
+    """, encoding="utf-8")
+
+    driver_dir = src_dir / "drivers"
+    driver_dir.mkdir()
+    foo_file = driver_dir / "esp_foo.c"
+    foo_file.write_text("""
+    static struct foo_pool s_pool;
+    void esp_foo_sim_reset(void) {
+        memset(&s_pool, 0, sizeof(s_pool));
+    }
+    """, encoding="utf-8")
+
+    context = {
+        "workspace_root": str(tmp_path),
+        "changed_files": [str(foo_file.relative_to(tmp_path))],
+    }
+    findings = g5_reset_registration_verified.run(context)
+    assert len(findings) == 0
+
+
+def test_reset_registration_unregistered_fails(tmp_path):
+    src_dir = tmp_path / "wink-micro-os" / "frameworks" / "esp_idf" / "src"
+    src_dir.mkdir(parents=True)
+    bridge_file = src_dir / "esp_idf_bridge.c"
+    bridge_file.write_text("""
+    void pal_wasm_target_clear_pending_reset(void) {
+        // missing esp_bar_sim_reset()
+    }
+    """, encoding="utf-8")
+
+    driver_dir = src_dir / "drivers"
+    driver_dir.mkdir()
+    bar_file = driver_dir / "esp_bar.c"
+    bar_file.write_text("""
+    static int s_state;
+    void esp_bar_sim_reset(void) {
+        s_state = 0;
+    }
+    """, encoding="utf-8")
+
+    context = {
+        "workspace_root": str(tmp_path),
+        "changed_files": [str(bar_file.relative_to(tmp_path))],
+    }
+    findings = g5_reset_registration_verified.run(context)
+    assert len(findings) == 1
+    assert findings[0]["severity"] == "error"
+    assert "not called inside esp_idf_bridge.c reset DAG" in findings[0]["message"]
