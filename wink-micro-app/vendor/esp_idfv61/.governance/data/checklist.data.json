@@ -11482,7 +11482,7 @@
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.net.event_pump",
-        "cap.net.host_socket",
+        "cap.net.http_client_mock",
         "cap.vfs.nvs_partition"
       ],
       "compatibility": {
@@ -11559,7 +11559,7 @@
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.net.event_pump",
-        "cap.net.host_socket",
+        "cap.net.http_client_mock",
         "cap.vfs.nvs_partition"
       ],
       "compatibility": {
@@ -11748,6 +11748,7 @@
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.net.event_pump",
+        "cap.net.http_server",
         "cap.vfs.nvs_partition",
         "cap.wifi.station_mode"
       ],
@@ -11811,6 +11812,7 @@
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.net.event_pump",
+        "cap.net.http_server",
         "cap.vfs.nvs_partition",
         "cap.wifi.station_mode"
       ],
@@ -11874,6 +11876,7 @@
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.net.event_pump",
+        "cap.net.http_server",
         "cap.vfs.nvs_partition",
         "cap.wifi.station_mode"
       ],
@@ -11937,6 +11940,7 @@
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.net.event_pump",
+        "cap.net.http_server",
         "cap.storage.sdmmc_host",
         "cap.vfs.fatfs_vfs",
         "cap.vfs.mem_sandbox",
@@ -12003,6 +12007,7 @@
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.net.event_pump",
+        "cap.net.http_server",
         "cap.vfs.nvs_partition",
         "cap.wifi.station_mode"
       ],
@@ -12066,6 +12071,7 @@
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.net.event_pump",
+        "cap.net.http_server",
         "cap.vfs.mem_sandbox",
         "cap.vfs.nvs_partition"
       ],
@@ -12129,6 +12135,7 @@
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.net.event_pump",
+        "cap.net.http_server",
         "cap.vfs.nvs_partition",
         "cap.wifi.station_mode"
       ],
@@ -12192,6 +12199,7 @@
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.net.event_pump",
+        "cap.net.http_server",
         "cap.vfs.nvs_partition",
         "cap.wifi.station_mode"
       ],
@@ -12757,7 +12765,7 @@
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.net.event_pump",
-        "cap.net.host_socket",
+        "cap.net.mqtt_client_mock",
         "cap.vfs.nvs_partition"
       ],
       "compatibility": {
@@ -12834,7 +12842,7 @@
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.net.event_pump",
-        "cap.net.host_socket",
+        "cap.net.mqtt_client_mock",
         "cap.vfs.nvs_partition"
       ],
       "compatibility": {

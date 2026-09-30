@@ -170,3 +170,22 @@ rules:
     description: "反向传递闭包遍历与现场 Headless 仿真回归调度"
     config:
       max_inline_entries: 30
+
+  # Gate 5: 架构防腐与断言质量 (2条)
+  - id: g5.no_inline_mock
+    gate: 5
+    severity: error
+    modes: [pr, nightly]
+    trigger: git_diff
+    trigger_paths:
+      - "wink-micro-os/frameworks/esp_idf/src/network/**"
+    module: rules.g5_no_inline_mock
+    description: "禁止在网络门面 C 源码中内联硬编码业务 URL 或测试 JSON"
+
+  - id: g5.network_assertion_quality
+    gate: 5
+    severity: error
+    modes: [pr, nightly]
+    module: rules.g5_network_assertion_quality
+    description: "网络场景断言质量与非空载荷验证"
+

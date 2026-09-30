@@ -49,7 +49,7 @@ def parse_args(args=None):
         "--gate",
         action="append",
         type=int,
-        choices=[1, 2, 3, 4],
+        choices=[1, 2, 3, 4, 5],
         help="Limit execution to specified Gate number(s) (e.g. --gate 1)",
     )
     parser.add_argument(

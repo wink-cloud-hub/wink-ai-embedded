@@ -409,13 +409,67 @@ capabilities:
     - esp32c6
     cross_mcu_evidence:
     - wink-micro-os/osal/include/osal_event.h
+  cap.net.http_client_mock:
+    name: HTTP 客户端确定性离线应答
+    layer: facade
+    status: implemented
+    description: 确定性离线静态路由匹配与 HTTP 事件流派发门面
+    owned_paths:
+    - wink-micro-os/frameworks/esp_idf/src/network/esp_http.c
+    - wink-micro-os/frameworks/esp_idf/include/esp_http_client.h
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
+    cross_mcu_evidence:
+    - wink-micro-os/osal/include/osal_event.h
+  cap.net.mqtt_client_mock:
+    name: MQTT 客户端内存轻量代理
+    layer: facade
+    status: implemented
+    description: 内存态轻量 Mock Broker、通配符匹配与双缓冲重入防守
+    owned_paths:
+    - wink-micro-os/frameworks/esp_idf/src/network/esp_mqtt.c
+    - wink-micro-os/frameworks/esp_idf/include/mqtt_client.h
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
+    cross_mcu_evidence:
+    - wink-micro-os/osal/include/osal_event.h
+  cap.net.http_server:
+    name: HTTP Web 服务端与路由调度
+    layer: model
+    status: planned
+    description: 嵌入式 HTTP Server 请求监听、URI 路由与 Session 会话管理
+    owned_paths:
+    - wink-micro-os/frameworks/esp_idf/src/network/esp_http_server.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
+  cap.net.bsd_socket:
+    name: BSD 标准 Socket 协议栈适配
+    layer: facade
+    status: planned
+    description: POSIX / BSD Socket 标准 C-ABI 映射 (sys/socket.h, netdb.h)
+    owned_paths:
+    - wink-micro-os/frameworks/esp_idf/src/network/esp_socket_shim.c
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
   cap.net.host_socket:
     name: 宿主原生 Socket 隧道
     layer: facade
     status: planned
     description: 宿主 POSIX / WinSock 原生网络隧道代理 (TCP/UDP 收发)
     owned_paths:
-    - wink-micro-os/frameworks/esp_idf/src/net/host_socket_tunnel.c
+    - wink-micro-os/frameworks/esp_idf/src/network/host_socket_tunnel.c
     soc_support:
     - esp32
     - esp32s3

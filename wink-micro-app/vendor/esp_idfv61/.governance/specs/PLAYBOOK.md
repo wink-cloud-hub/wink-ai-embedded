@@ -179,6 +179,21 @@ set(WINK_APP_SOURCES "" PARENT_SCOPE)
   },
   "steps": [
     {
+      "type": "INJECT_NET_FIXTURE",
+      "timeUs": "0ms",
+      "protocol": "http",
+      "description": "上电注入网络模拟应答路由 (URL 前缀、状态码与响应体)",
+      "routes": [
+        {
+          "method": "GET",
+          "url_prefix": "http://httpbin.org/get",
+          "status_code": 200,
+          "headers": { "Content-Type": "application/json" },
+          "body": "{\"origin\":\"127.0.0.1\",\"url\":\"http://httpbin.org/get\"}"
+        }
+      ]
+    },
+    {
       "type": "ASSERT_POINT",
       "timeUs": "50ms",
       "target": "gpio:2",
@@ -195,6 +210,11 @@ set(WINK_APP_SOURCES "" PARENT_SCOPE)
   ]
 }
 ```
+
+> **网络测试步骤说明 (`INJECT_NET_FIXTURE`)**：
+> - 适用于 HTTP/MQTT 等网络类示例。无头运行器（Headless Runner）在启动微应用仿真时，解析并在 C 门面注册模拟路由表与静态载荷；
+> - 运行结束或复位时自动调用 `sim_net_responder_reset()` 清空，杜绝跨用例状态串扰。
+
 
 ---
 
