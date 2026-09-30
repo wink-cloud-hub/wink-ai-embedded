@@ -29,6 +29,8 @@ GLOBAL_IMPACT_PATTERNS = [
     "*/esp_sim_handle.c",
     "esp_sim_handle.c",
     "*CMakeLists.txt",
+    "*.cmake",
+    "*.cmake.in",
     "*/cmake/**",
     "cmake/**",
     "*/pal/**",
@@ -37,6 +39,8 @@ GLOBAL_IMPACT_PATTERNS = [
     "targets/**",
     "*/osal/**",
     "osal/**",
+    "*/runtime/**",
+    "runtime/**",
     "wink-micro-os/CMakeLists.txt",
 ]
 
@@ -139,7 +143,7 @@ def compute_impact_closure(
             f.startswith("wink-micro-os/") or f.startswith("wink-micro-app/")
         ):
             if f not in mapped_files:
-                if f.endswith((".c", ".h", ".cpp", ".hpp", ".S")):
+                if f.endswith((".c", ".h", ".cpp", ".hpp", ".S", ".cmake")):
                     unknown_paths.append(f)
 
     # 8. Construct reverse dependency graph and traverse transitive closure

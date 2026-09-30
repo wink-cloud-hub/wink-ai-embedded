@@ -13,16 +13,16 @@ from pathlib import Path
 RULE_ID = "g5.no_app_specific_branch"
 
 BANNED_APP_PATTERNS = [
-    # Comparing against app name variables
-    re.compile(r'str(?:case)?(?:cmp|ncmp|str)\s*\(\s*(?:app|app_name|app_id|template_id)\b', re.IGNORECASE),
-    # Hardcoded known carrier app names in strcmp/strstr
+    # Comparing against app/sample/example/demo variables
+    re.compile(r'str(?:case)?(?:cmp|ncmp|str)\s*\(\s*(?:\w*(?:app|sample|example|demo|template)\w*)\s*,', re.IGNORECASE),
+    re.compile(r'str(?:case)?(?:cmp|ncmp|str)\s*\([^,]+,\s*(?:\w*(?:app|sample|example|demo|template)\w*)\s*\)', re.IGNORECASE),
+    # Hardcoded carrier app or sample prefixes/names in strcmp/strstr
     re.compile(
-        r'str(?:case)?(?:cmp|str)\s*\([^,]+,\s*"(?:esp_idfv61_|blink|blink_gpio|wifi_sta|mqtt_tcp|i2c_basic|ledc_basic|uart_echo|gptimer_alarm|bleprph)[^"]*"\s*\)',
+        r'str(?:case)?(?:cmp|str)\s*\([^)]*"(?:esp_idfv61_|sample_|example_|blink|wifi_sta|mqtt_tcp|i2c_basic|ledc_basic|uart_echo|gptimer_alarm|bleprph)[^"]*"',
         re.IGNORECASE,
     ),
-    # App-specific CONFIG macros
-    re.compile(r'#\s*ifdef\s+CONFIG_APP_', re.IGNORECASE),
-    re.compile(r'#\s*if\s+defined\s*\(\s*CONFIG_APP_', re.IGNORECASE),
+    # App-specific CONFIG or SAMPLE macros
+    re.compile(r'#\s*if(?:def|\s+defined\s*\()\s*(?:CONFIG_)?(?:APP|SAMPLE|EXAMPLE)_', re.IGNORECASE),
 ]
 
 

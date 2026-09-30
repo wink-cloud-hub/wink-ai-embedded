@@ -106,3 +106,15 @@ def test_g4_unknown_path_blocks_pr():
     findings = g4_impact_regression.run(context)
     assert any(f["severity"] == "error" and "FAIL_ON_UNKNOWN_PATH" in f["message"] for f in findings)
 
+
+def test_impact_cmake_sources_global_path():
+    manifest, catalog = load_fixture_data()
+    # Modifying cmake files must trigger global impact and include verified entries
+    changed = ["wink-micro-os/frameworks/esp_idf/esp_idf_sources.cmake"]
+    res = compute_impact_closure(changed, catalog, manifest)
+
+    assert res["hit_global"] is True
+    assert 1 in res["impact_entries"]
+    assert res["impact_count"] >= 1
+
+

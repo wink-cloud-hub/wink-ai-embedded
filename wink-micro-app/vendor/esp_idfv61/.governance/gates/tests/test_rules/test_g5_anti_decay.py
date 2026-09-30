@@ -162,3 +162,63 @@ def test_reset_registration_unregistered_fails(tmp_path):
     assert len(findings) == 1
     assert findings[0]["severity"] == "error"
     assert "not called inside esp_idf_bridge.c reset DAG" in findings[0]["message"]
+
+
+def test_no_raw_delay_tasks_detects_driver_task(tmp_path):
+    src_dir = tmp_path / "wink-micro-os" / "frameworks" / "esp_idf" / "src" / "drivers"
+    src_dir.mkdir(parents=True)
+    c_file = src_dir / "esp_custom_driver.c"
+    c_file.write_text("""
+    xTaskCreate(worker_fn, "custom_worker", 4096, NULL, 3, NULL);
+    """, encoding="utf-8")
+
+    context = {
+        "workspace_root": str(tmp_path),
+        "changed_files": [str(c_file.relative_to(tmp_path))],
+    }
+    findings = g5_no_raw_delay_tasks.run(context)
+    assert len(findings) >= 1
+    assert any("drivers" in f["message"] for f in findings)
+
+
+def test_reset_registration_unprefixed_static_state_detected(tmp_path):
+    src_dir = tmp_path / "wink-micro-os" / "frameworks" / "esp_idf" / "src"
+    src_dir.mkdir(parents=True)
+    bridge_file = src_dir / "esp_idf_bridge.c"
+    bridge_file.write_text("void pal_wasm_target_clear_pending_reset(void) {}", encoding="utf-8")
+
+    driver_dir = src_dir / "drivers"
+    driver_dir.mkdir()
+    c_file = driver_dir / "unprefixed_state.c"
+    c_file.write_text("""
+    static int global_counter = 0;
+    static struct my_pool custom_pool;
+    """, encoding="utf-8")
+
+    context = {
+        "workspace_root": str(tmp_path),
+        "changed_files": [str(c_file.relative_to(tmp_path))],
+    }
+    findings = g5_reset_registration_verified.run(context)
+    assert len(findings) >= 1
+    assert any("no esp_*_sim_reset()" in f["message"] for f in findings)
+
+
+def test_no_app_specific_branch_detects_new_sample_branch(tmp_path):
+    src_dir = tmp_path / "wink-micro-os" / "frameworks" / "esp_idf" / "src" / "drivers"
+    src_dir.mkdir(parents=True)
+    c_file = src_dir / "sample_branch.c"
+    c_file.write_text("""
+    if (strcmp(sample_name, "camera_stream") == 0) {
+        enable_camera_hack();
+    }
+    """, encoding="utf-8")
+
+    context = {
+        "workspace_root": str(tmp_path),
+        "changed_files": [str(c_file.relative_to(tmp_path))],
+    }
+    findings = g5_no_app_specific_branch.run(context)
+    assert len(findings) >= 1
+    assert any("App-specific branch detected" in f["message"] for f in findings)
+

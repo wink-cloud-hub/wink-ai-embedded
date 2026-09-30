@@ -12,15 +12,15 @@ from pathlib import Path
 
 RULE_ID = "g5.reset_registration_verified"
 
-# Regex to detect file-scope static state definitions
+# Regex to detect file-scope static state definitions (any variable, not just s_/g_/m_)
 STATIC_STATE_PATTERN = re.compile(
-    r'^\s*static\s+(?!inline\b)(?:struct\s+\w+|\w+)\s+(?:s_\w+|g_\w+|m_\w+)\b',
+    r'^\s*static\s+(?!const\b)(?!inline\b)(?:struct\s+\w+|\w+)\s+(?:\*+\s*)?([a-zA-Z_]\w*)\s*(?:\[[^\]]*\])?\s*(?:=[^;]+)?\s*;',
     re.MULTILINE,
 )
 
 # Regex to detect reset function declarations/definitions
 RESET_FUNC_PATTERN = re.compile(
-    r'\b(?:esp_\w+_sim_reset|sim_\w+_reset)\s*\(\s*void\s*\)',
+    r'\b(?:esp_\w+_(?:sim_)?reset|sim_\w+_reset|\w+_deinit)\s*\(\s*void\s*\)',
 )
 
 

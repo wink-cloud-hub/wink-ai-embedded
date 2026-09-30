@@ -137,3 +137,34 @@ def test_g4_exceed_pr_inline_threshold_marks_stale_warning(tmp_path):
     # the pending list, and this gate never marks entries stale or executes them.
     assert "NOT regression-tested by this gate" in findings[0]["message"]
     assert "No CI job consumes" in findings[0]["message"]
+
+
+def test_g4_exceed_pr_inline_threshold_blocks_in_pr_mode(tmp_path):
+    context = {
+        "workspace_root": str(tmp_path),
+        "mode": "pr",
+        "changed_files": ["wink-micro-os/targets/wasm/wink_sim_scheduler.c"],
+        "catalog": {
+            "capabilities": {
+                "cap.core.fiber_task": {
+                    "owned_paths": ["wink-micro-os/targets/wasm/wink_sim_scheduler.c"],
+                }
+            }
+        },
+        "manifest": {
+            "entries": [
+                {
+                    "id": f"esp.entry.{i}",
+                    "display_id": i,
+                    "required_capabilities": ["cap.core.fiber_task"],
+                    "executions": [],
+                }
+                for i in range(1, 35)
+            ]
+        },
+    }
+    findings = g4_impact_regression.run(context, {"max_inline_entries": 30})
+    assert len(findings) == 1
+    assert findings[0]["severity"] == "error"
+    assert "FAIL_ON_OVERFLOW" in findings[0]["message"]
+    assert "exceeds PR threshold" in findings[0]["message"]

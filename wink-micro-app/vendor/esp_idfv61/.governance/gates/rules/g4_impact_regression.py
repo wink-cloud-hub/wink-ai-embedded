@@ -188,9 +188,14 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
         with open(pending_file, "w", encoding="utf-8") as f:
             json.dump(pending_data, f, indent=2, ensure_ascii=False)
 
+        # In PR mode or when fail_on_overflow is enabled, overflow is an ERROR (Fail-Closed).
+        # In nightly or triage mode, it produces a warning.
+        is_pr_mode = (context.get("mode") == "pr") or config.get("fail_on_overflow", False)
+        severity = "error" if is_pr_mode else "warning"
+
         findings.append({
             "rule_id": RULE_ID,
-            "severity": "warning",
+            "severity": severity,
             "entry_id": None,
             "display_id": None,
             "config_id": None,
@@ -198,9 +203,14 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
             "message": (
                 f"Impact scope {impact_count} entries exceeds PR threshold ({max_inline}); "
                 f"{impact_count} impacted entries were NOT regression-tested by this gate. "
-                f"No CI job consumes the pending list automatically -- run the UniSim headless "
-                f"evidence runner for {pending_file.name} before merging. "
-                f"This gate only performs structural scenario validation, never execution."
+                + (
+                    f"FAIL_ON_OVERFLOW: In PR mode, large-scale changes exceeding inline verification "
+                    f"capacity must be verified with UniSim headless runner or scoped down (Fail-Closed)."
+                    if is_pr_mode else
+                    f"No CI job consumes the pending list automatically -- run the UniSim headless "
+                    f"evidence runner for {pending_file.name} before merging. "
+                    f"This gate only performs structural scenario validation, never execution."
+                )
             ),
         })
 

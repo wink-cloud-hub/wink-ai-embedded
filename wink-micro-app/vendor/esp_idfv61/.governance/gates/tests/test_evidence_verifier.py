@@ -165,3 +165,74 @@ def test_verify_evidence_tampered_scenario_hash(dummy_assets_dir, dummy_scenario
     ok, errors = verify_evidence(entry, execution_config, ws_root=tmp_path, strict_disk=True)
     assert ok is False
     assert any("scenario_sha256 mismatch" in e for e in errors)
+
+
+def test_verify_evidence_fail_closed_nonexistent_files(tmp_path):
+    entry = {
+        "id": "esp.test_nonexistent",
+        "target_app_dir": "nonexistent_app",
+    }
+    execution_config = {
+        "config_id": "cfg",
+        "delivery_state": "verified",
+        "acceptance": {"scenario_path": "nonexistent_app/nonexistent.scenario.json"},
+        "evidence": {
+            "run_id": "run-test",
+            "assets_sha256": "a" * 64,
+            "scenario_sha256": "b" * 64,
+            "execution_report_ref": "reports/nonexistent_app/run-report.json",
+        },
+    }
+
+    # Strict disk check MUST fail closed when declared files do not exist on disk
+    ok, errors = verify_evidence(entry, execution_config, ws_root=tmp_path, strict_disk=True)
+    assert ok is False
+    assert any("not found on disk" in e for e in errors)
+
+
+def test_verify_evidence_esp32_hardware(tmp_path):
+    entry = {"id": "esp.test_hw", "target_app_dir": "test_hw"}
+    log_file = tmp_path / "serial_log.txt"
+    log_file.write_text("All 10 tests passed on ESP32-S3\n", encoding="utf-8")
+
+    execution_config = {
+        "config_id": "hw-esp32s3",
+        "delivery_state": "verified",
+        "evidence": {
+            "backend": "esp32_hardware",
+            "run_id": "run-hw-1",
+            "firmware_elf_sha256": "1" * 64,
+            "serial_log_report_ref": str(log_file),
+            "board_type": "esp32s3_devkit_c",
+            "verified_commit": "abcdef1",
+            "verified_at": "2026-09-30T12:00:00Z",
+        },
+    }
+
+    ok, errors = verify_evidence(entry, execution_config, ws_root=tmp_path, strict_disk=True)
+    assert ok is True
+    assert errors == []
+
+
+def test_verify_evidence_build_system(tmp_path):
+    entry = {"id": "esp.test_build", "target_app_dir": "test_build"}
+    build_log = tmp_path / "build.log"
+    build_log.write_text("Build succeeded with 0 errors\n", encoding="utf-8")
+
+    execution_config = {
+        "config_id": "build-toolchain",
+        "delivery_state": "verified",
+        "evidence": {
+            "backend": "build_system",
+            "run_id": "run-build-1",
+            "build_log_ref": str(build_log),
+            "compiler_version": "xtensa-esp32-elf-gcc 13.2.0",
+            "verified_commit": "abcdef1",
+            "verified_at": "2026-09-30T12:00:00Z",
+        },
+    }
+
+    ok, errors = verify_evidence(entry, execution_config, ws_root=tmp_path, strict_disk=True)
+    assert ok is True
+    assert errors == []
+

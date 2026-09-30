@@ -158,83 +158,142 @@ def verify_evidence(
     """
     Validate evidence for an execution configuration.
     Performs pure read-only validation:
-    1. Evidence structure completeness
-    2. Computed assets composite SHA-256 match (when unisim-assets present)
-    3. Computed scenario SHA-256 match (when scenario present)
-    4. Execution report structured assertion (when report present)
+    1. Evidence structure completeness per polymorphic schema (wasm_simulation, esp32_hardware, build_system)
+    2. Computed assets composite SHA-256 match (for wasm_simulation)
+    3. Computed scenario SHA-256 match (for wasm_simulation)
+    4. Execution report structured assertion (for wasm_simulation)
+    5. Fail-closed: missing disk artifacts cause verification error when strict_disk=True
     """
     errors = []
     evidence = execution_config.get("evidence")
     if not evidence or not isinstance(evidence, dict):
         return False, ["delivery_state='verified' but evidence is null or not an object"]
 
-    assets_sha = evidence.get("assets_sha256")
-    scenario_sha = evidence.get("scenario_sha256")
-    rep_ref = evidence.get("execution_report_ref")
-
-    if not assets_sha or len(assets_sha) != 64 or assets_sha == "0" * 64:
-        errors.append(f"Invalid or empty assets_sha256: '{assets_sha}'")
-
-    if not scenario_sha or len(scenario_sha) != 64 or scenario_sha == "0" * 64:
-        errors.append(f"Invalid or empty scenario_sha256: '{scenario_sha}'")
-
-    if not rep_ref or not isinstance(rep_ref, str):
-        errors.append("Missing execution_report_ref")
-    elif "fail" in rep_ref.lower() or "error" in rep_ref.lower():
-        errors.append(f"execution_report_ref contains failure indicator: '{rep_ref}'")
-
-    if errors:
-        return False, errors
-
-    if not strict_disk:
-        return True, []
-
-    # Disk file cross-validation
+    backend = evidence.get("backend", "wasm_simulation")
     vendor_root = ws_root / "wink-micro-app" / "vendor" / "esp_idfv61"
 
-    # 1. Assets cross-validation
-    target_dir_rel = entry.get("target_app_dir")
-    if target_dir_rel:
-        p_cand = vendor_root / target_dir_rel / "unisim-assets"
-        if not p_cand.exists():
-            p_cand = ws_root / target_dir_rel / "unisim-assets"
-        if p_cand.is_dir():
-            try:
-                computed_assets_sha = compute_assets_composite_sha256(p_cand)
-                if computed_assets_sha != assets_sha:
-                    errors.append(
-                        f"assets_sha256 mismatch for {target_dir_rel}: declared '{assets_sha}', computed '{computed_assets_sha}'"
-                    )
-            except Exception as e:
-                errors.append(f"Failed to compute assets composite SHA-256 in {p_cand}: {e}")
+    if backend in ("wasm_simulation", None):
+        assets_sha = evidence.get("assets_sha256")
+        scenario_sha = evidence.get("scenario_sha256")
+        rep_ref = evidence.get("execution_report_ref")
 
-    # 2. Scenario cross-validation
-    scenario_path_rel = execution_config.get("acceptance", {}).get("scenario_path")
-    if scenario_path_rel:
-        sc_cand = vendor_root / scenario_path_rel
-        if not sc_cand.is_file():
-            sc_cand = ws_root / scenario_path_rel
-        if sc_cand.is_file():
-            try:
-                computed_sc_sha = compute_scenario_sha256(sc_cand)
-                if computed_sc_sha != scenario_sha:
-                    errors.append(
-                        f"scenario_sha256 mismatch for {scenario_path_rel}: declared '{scenario_sha}', computed '{computed_sc_sha}'"
-                    )
-            except Exception as e:
-                errors.append(f"Failed to compute scenario SHA-256 for {sc_cand}: {e}")
+        if not assets_sha or len(assets_sha) != 64 or assets_sha == "0" * 64:
+            errors.append(f"Invalid or empty assets_sha256: '{assets_sha}'")
 
-    # 3. Execution report cross-validation
-    if rep_ref:
-        resolved_rep = resolve_execution_report_path(rep_ref, ws_root)
-        if resolved_rep and resolved_rep.is_file():
-            rep_ok, rep_msg = verify_execution_report(resolved_rep)
-            if not rep_ok:
-                errors.append(f"Execution report check failed ({resolved_rep}): {rep_msg}")
-        # Note: if resolved_rep is None, but strict disk is requested and target_app_dir exists, flag warning/error
-        elif target_dir_rel and (vendor_root / target_dir_rel).is_dir():
-            # In strict mode, if app exists but report is missing on disk
-            errors.append(f"Execution report could not be found on disk: '{rep_ref}'")
+        if not scenario_sha or len(scenario_sha) != 64 or scenario_sha == "0" * 64:
+            errors.append(f"Invalid or empty scenario_sha256: '{scenario_sha}'")
+
+        if not rep_ref or not isinstance(rep_ref, str):
+            errors.append("Missing execution_report_ref")
+        elif "fail" in rep_ref.lower() or "error" in rep_ref.lower():
+            errors.append(f"execution_report_ref contains failure indicator: '{rep_ref}'")
+
+        if errors:
+            return False, errors
+
+        if not strict_disk:
+            return True, []
+
+        # Disk file cross-validation (Fail-Closed)
+        target_dir_rel = entry.get("target_app_dir")
+        if target_dir_rel:
+            app_cand = vendor_root / target_dir_rel
+            if not app_cand.exists():
+                app_cand = ws_root / target_dir_rel
+            if not app_cand.is_dir():
+                errors.append(f"Target app directory declared at '{target_dir_rel}' does not exist on disk: {app_cand}")
+            else:
+                assets_cand = app_cand / "unisim-assets"
+                if not assets_cand.is_dir():
+                    errors.append(f"Required unisim-assets directory not found on disk: {assets_cand}")
+                else:
+                    try:
+                        computed_assets_sha = compute_assets_composite_sha256(assets_cand)
+                        if computed_assets_sha != assets_sha:
+                            errors.append(
+                                f"assets_sha256 mismatch for {target_dir_rel}: declared '{assets_sha}', computed '{computed_assets_sha}'"
+                            )
+                    except Exception as e:
+                        errors.append(f"Failed to compute assets composite SHA-256 in {assets_cand}: {e}")
+
+        scenario_path_rel = execution_config.get("acceptance", {}).get("scenario_path")
+        if scenario_path_rel:
+            sc_cand = vendor_root / scenario_path_rel
+            if not sc_cand.is_file():
+                sc_cand = ws_root / scenario_path_rel
+            if not sc_cand.is_file():
+                if target_dir_rel:
+                    errors.append(f"Required scenario file not found on disk: {sc_cand}")
+            else:
+                try:
+                    computed_sc_sha = compute_scenario_sha256(sc_cand)
+                    if computed_sc_sha != scenario_sha:
+                        errors.append(
+                            f"scenario_sha256 mismatch for {scenario_path_rel}: declared '{scenario_sha}', computed '{computed_sc_sha}'"
+                        )
+                except Exception as e:
+                    errors.append(f"Failed to compute scenario SHA-256 for {sc_cand}: {e}")
+
+        if rep_ref:
+            resolved_rep = resolve_execution_report_path(rep_ref, ws_root)
+            if not resolved_rep or not resolved_rep.is_file():
+                if target_dir_rel:
+                    errors.append(f"Execution report declared but not found on disk: '{rep_ref}'")
+            else:
+                rep_ok, rep_msg = verify_execution_report(resolved_rep)
+                if not rep_ok:
+                    errors.append(f"Execution report check failed ({resolved_rep}): {rep_msg}")
+
+    elif backend == "esp32_hardware":
+        elf_sha = evidence.get("firmware_elf_sha256")
+        serial_log_ref = evidence.get("serial_log_report_ref")
+        board_type = evidence.get("board_type")
+
+        if not elf_sha or len(elf_sha) != 64 or elf_sha == "0" * 64:
+            errors.append(f"Invalid or empty firmware_elf_sha256: '{elf_sha}'")
+
+        if not serial_log_ref or not isinstance(serial_log_ref, str):
+            errors.append("Missing serial_log_report_ref")
+        elif "fail" in serial_log_ref.lower() or "error" in serial_log_ref.lower():
+            errors.append(f"serial_log_report_ref contains failure indicator: '{serial_log_ref}'")
+
+        if not board_type or not isinstance(board_type, str):
+            errors.append("Missing or invalid board_type in esp32_hardware evidence")
+
+        if errors:
+            return False, errors
+
+        if not strict_disk:
+            return True, []
+
+        resolved_log = resolve_execution_report_path(serial_log_ref, ws_root)
+        if not resolved_log or not resolved_log.is_file():
+            errors.append(f"Serial log report could not be found on disk: '{serial_log_ref}'")
+
+    elif backend == "build_system":
+        build_log_ref = evidence.get("build_log_ref")
+        compiler_version = evidence.get("compiler_version")
+
+        if not build_log_ref or not isinstance(build_log_ref, str):
+            errors.append("Missing build_log_ref")
+        elif "fail" in build_log_ref.lower() or "error" in build_log_ref.lower():
+            errors.append(f"build_log_ref contains failure indicator: '{build_log_ref}'")
+
+        if not compiler_version or not isinstance(compiler_version, str):
+            errors.append("Missing or invalid compiler_version in build_system evidence")
+
+        if errors:
+            return False, errors
+
+        if not strict_disk:
+            return True, []
+
+        resolved_build = resolve_execution_report_path(build_log_ref, ws_root)
+        if not resolved_build or not resolved_build.is_file():
+            errors.append(f"Build log could not be found on disk: '{build_log_ref}'")
+
+    else:
+        errors.append(f"Unsupported evidence backend: '{backend}'")
 
     return len(errors) == 0, errors
 
@@ -243,6 +302,7 @@ def write_evidence_for_app(
     app_name: str,
     ws_root: Path,
     report_src: Optional[Path] = None,
+    config_id: Optional[str] = None,
 ) -> bool:
     """
     Local helper to record evidence into checklist.data.json.
@@ -323,17 +383,34 @@ def write_evidence_for_app(
     run_id = f"run-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{matched_entry.get('id', 'app')}-verified"
     rel_report_ref = f"reports/{target_dir_rel}/run-report.json".replace("\\", "/")
 
-    # Update execution[0]
+    # Locate target execution config by config_id or use default
+    target_exec = None
+    if config_id:
+        for ex in matched_entry.get("executions", []):
+            if ex.get("config_id") == config_id:
+                target_exec = ex
+                break
+    if not target_exec:
+        executions = matched_entry.get("executions", [])
+        if not executions:
+            sys.stderr.write(f"Error: No executions defined in entry '{matched_entry.get('id')}'\n")
+            return False
+        target_exec = executions[0]
+
     matched_entry["audit"]["verdict"] = "audited"
     matched_entry["audit"]["auditor"] = "arch_team"
     matched_entry["audit"]["audited_at"] = now_iso
-    matched_entry["audit"]["audited_configs"] = ["wasm_sim_standard"]
+    target_cfg_id = target_exec.get("config_id", "wasm_sim_standard")
+    if "audited_configs" not in matched_entry["audit"] or not isinstance(matched_entry["audit"]["audited_configs"], list):
+        matched_entry["audit"]["audited_configs"] = []
+    if target_cfg_id not in matched_entry["audit"]["audited_configs"]:
+        matched_entry["audit"]["audited_configs"].append(target_cfg_id)
 
-    ex0 = matched_entry["executions"][0]
-    ex0["delivery_state"] = "verified"
+    target_exec["delivery_state"] = "verified"
     rel_scen_path = f"{target_dir_rel}/unisim-scenarios/{scenario_file.name}".replace("\\", "/")
-    ex0["acceptance"]["scenario_path"] = rel_scen_path
-    ex0["evidence"] = {
+    target_exec.setdefault("acceptance", {})["scenario_path"] = rel_scen_path
+    target_exec["evidence"] = {
+        "backend": "wasm_simulation",
         "run_id": run_id,
         "assets_sha256": assets_sha,
         "scenario_sha256": scenario_sha,

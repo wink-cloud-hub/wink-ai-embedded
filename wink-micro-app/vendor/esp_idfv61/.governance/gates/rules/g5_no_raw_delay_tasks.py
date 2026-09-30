@@ -14,12 +14,12 @@ RULE_ID = "g5.no_raw_delay_tasks"
 
 # Banned temporary task names
 BANNED_TASK_NAMES = re.compile(
-    r'xTaskCreate\s*\([^,]+,\s*"(?:wifi_connect_task|mqtt_connect_task|delay_task|temp_task|sleep_task|connect_task)[^"]*"',
+    r'xTaskCreate(?:PinnedToCore)?\s*\([^,]+,\s*"[^"]*(?:delay|temp|sleep|connect|retry|poll|wait)[^"]*"',
     re.IGNORECASE,
 )
 
-# Any xTaskCreate in wifi or network subsystems (must use timer work items)
-BANNED_TASK_SUBSYSTEMS = ("wifi", "network")
+# Any xTaskCreate in wifi, network, or drivers subsystems (must use timer work items or PAL interrupts)
+BANNED_TASK_SUBSYSTEMS = ("wifi", "network", "drivers")
 
 
 def run(context: dict, config: dict | None = None) -> list[dict]:
