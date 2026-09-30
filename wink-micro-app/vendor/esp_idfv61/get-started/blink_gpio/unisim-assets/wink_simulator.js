@@ -1837,6 +1837,9 @@ async function createWasm() {
 
 
 
+
+
+
 Module['setSimMode'] = function (mode) { var v = (mode === 'HEADLESS') ? 1 : 0; if (typeof Module['_pal_wasm_set_sim_mode'] === 'function') { Module['_pal_wasm_set_sim_mode'](v); } };;
 // End JS library code
 
@@ -1883,6 +1886,9 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   Module['callMain'] = callMain;
   Module['ccall'] = ccall;
   Module['cwrap'] = cwrap;
+  Module['UTF8ToString'] = UTF8ToString;
+  Module['stringToUTF8'] = stringToUTF8;
+  Module['lengthBytesUTF8'] = lengthBytesUTF8;
   Module['Asyncify'] = Asyncify;
   var missingLibrarySymbols = [
   'writeI53ToI64',
@@ -2108,10 +2114,7 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'PATH_FS',
   'UTF8Decoder',
   'UTF8ArrayToString',
-  'UTF8ToString',
   'stringToUTF8Array',
-  'stringToUTF8',
-  'lengthBytesUTF8',
   'UTF16Decoder',
   'stringToUTF8OnStack',
   'writeArrayToMemory',
@@ -2400,6 +2403,15 @@ var _esp_sim_handle_decode = Module['_esp_sim_handle_decode'] = makeInvalidEarly
 var _esp_sim_handle_get_sequence = Module['_esp_sim_handle_get_sequence'] = makeInvalidEarlyAccess('_esp_sim_handle_get_sequence');
 var _esp_sim_handle_set_sequence_base = Module['_esp_sim_handle_set_sequence_base'] = makeInvalidEarlyAccess('_esp_sim_handle_set_sequence_base');
 var _fflush = makeInvalidEarlyAccess('_fflush');
+var _sim_wifi_env_reset = Module['_sim_wifi_env_reset'] = makeInvalidEarlyAccess('_sim_wifi_env_reset');
+var _sim_wifi_env_scan = Module['_sim_wifi_env_scan'] = makeInvalidEarlyAccess('_sim_wifi_env_scan');
+var _sim_wifi_env_get_scan_num = Module['_sim_wifi_env_get_scan_num'] = makeInvalidEarlyAccess('_sim_wifi_env_get_scan_num');
+var _sim_wifi_env_get_scan_records = Module['_sim_wifi_env_get_scan_records'] = makeInvalidEarlyAccess('_sim_wifi_env_get_scan_records');
+var _sim_wifi_env_inject_ap = Module['_sim_wifi_env_inject_ap'] = makeInvalidEarlyAccess('_sim_wifi_env_inject_ap');
+var _sim_wifi_env_inject_fault = Module['_sim_wifi_env_inject_fault'] = makeInvalidEarlyAccess('_sim_wifi_env_inject_fault');
+var _sim_wifi_env_get_state_str = Module['_sim_wifi_env_get_state_str'] = makeInvalidEarlyAccess('_sim_wifi_env_get_state_str');
+var _sim_wifi_env_get_sta_ip_str = Module['_sim_wifi_env_get_sta_ip_str'] = makeInvalidEarlyAccess('_sim_wifi_env_get_sta_ip_str');
+var _sim_wifi_env_get_sta_ip_ptr = Module['_sim_wifi_env_get_sta_ip_ptr'] = makeInvalidEarlyAccess('_sim_wifi_env_get_sta_ip_ptr');
 var _esp_mqtt_sim_is_connected = Module['_esp_mqtt_sim_is_connected'] = makeInvalidEarlyAccess('_esp_mqtt_sim_is_connected');
 var _esp_mqtt_sim_set_network_ready = Module['_esp_mqtt_sim_set_network_ready'] = makeInvalidEarlyAccess('_esp_mqtt_sim_set_network_ready');
 var _esp_mqtt_sim_inject_message = Module['_esp_mqtt_sim_inject_message'] = makeInvalidEarlyAccess('_esp_mqtt_sim_inject_message');
@@ -2431,11 +2443,11 @@ var ___set_stack_limits = Module['___set_stack_limits'] = makeInvalidEarlyAccess
 var dynCall_vi = makeInvalidEarlyAccess('dynCall_vi');
 var dynCall_v = makeInvalidEarlyAccess('dynCall_v');
 var dynCall_viiii = makeInvalidEarlyAccess('dynCall_viiii');
+var dynCall_vii = makeInvalidEarlyAccess('dynCall_vii');
 var dynCall_ii = makeInvalidEarlyAccess('dynCall_ii');
 var dynCall_iiii = makeInvalidEarlyAccess('dynCall_iiii');
 var dynCall_jiji = makeInvalidEarlyAccess('dynCall_jiji');
 var dynCall_iidiiiii = makeInvalidEarlyAccess('dynCall_iidiiiii');
-var dynCall_vii = makeInvalidEarlyAccess('dynCall_vii');
 var _asyncify_start_unwind = makeInvalidEarlyAccess('_asyncify_start_unwind');
 var _asyncify_stop_unwind = makeInvalidEarlyAccess('_asyncify_stop_unwind');
 var _asyncify_start_rewind = makeInvalidEarlyAccess('_asyncify_start_rewind');
@@ -2516,6 +2528,15 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['esp_sim_handle_get_sequence'] != 'undefined', 'missing Wasm export: esp_sim_handle_get_sequence');
   assert(typeof wasmExports['esp_sim_handle_set_sequence_base'] != 'undefined', 'missing Wasm export: esp_sim_handle_set_sequence_base');
   assert(typeof wasmExports['fflush'] != 'undefined', 'missing Wasm export: fflush');
+  assert(typeof wasmExports['sim_wifi_env_reset'] != 'undefined', 'missing Wasm export: sim_wifi_env_reset');
+  assert(typeof wasmExports['sim_wifi_env_scan'] != 'undefined', 'missing Wasm export: sim_wifi_env_scan');
+  assert(typeof wasmExports['sim_wifi_env_get_scan_num'] != 'undefined', 'missing Wasm export: sim_wifi_env_get_scan_num');
+  assert(typeof wasmExports['sim_wifi_env_get_scan_records'] != 'undefined', 'missing Wasm export: sim_wifi_env_get_scan_records');
+  assert(typeof wasmExports['sim_wifi_env_inject_ap'] != 'undefined', 'missing Wasm export: sim_wifi_env_inject_ap');
+  assert(typeof wasmExports['sim_wifi_env_inject_fault'] != 'undefined', 'missing Wasm export: sim_wifi_env_inject_fault');
+  assert(typeof wasmExports['sim_wifi_env_get_state_str'] != 'undefined', 'missing Wasm export: sim_wifi_env_get_state_str');
+  assert(typeof wasmExports['sim_wifi_env_get_sta_ip_str'] != 'undefined', 'missing Wasm export: sim_wifi_env_get_sta_ip_str');
+  assert(typeof wasmExports['sim_wifi_env_get_sta_ip_ptr'] != 'undefined', 'missing Wasm export: sim_wifi_env_get_sta_ip_ptr');
   assert(typeof wasmExports['esp_mqtt_sim_is_connected'] != 'undefined', 'missing Wasm export: esp_mqtt_sim_is_connected');
   assert(typeof wasmExports['esp_mqtt_sim_set_network_ready'] != 'undefined', 'missing Wasm export: esp_mqtt_sim_set_network_ready');
   assert(typeof wasmExports['esp_mqtt_sim_inject_message'] != 'undefined', 'missing Wasm export: esp_mqtt_sim_inject_message');
@@ -2547,11 +2568,11 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['dynCall_vi'] != 'undefined', 'missing Wasm export: dynCall_vi');
   assert(typeof wasmExports['dynCall_v'] != 'undefined', 'missing Wasm export: dynCall_v');
   assert(typeof wasmExports['dynCall_viiii'] != 'undefined', 'missing Wasm export: dynCall_viiii');
+  assert(typeof wasmExports['dynCall_vii'] != 'undefined', 'missing Wasm export: dynCall_vii');
   assert(typeof wasmExports['dynCall_ii'] != 'undefined', 'missing Wasm export: dynCall_ii');
   assert(typeof wasmExports['dynCall_iiii'] != 'undefined', 'missing Wasm export: dynCall_iiii');
   assert(typeof wasmExports['dynCall_jiji'] != 'undefined', 'missing Wasm export: dynCall_jiji');
   assert(typeof wasmExports['dynCall_iidiiiii'] != 'undefined', 'missing Wasm export: dynCall_iidiiiii');
-  assert(typeof wasmExports['dynCall_vii'] != 'undefined', 'missing Wasm export: dynCall_vii');
   assert(typeof wasmExports['asyncify_start_unwind'] != 'undefined', 'missing Wasm export: asyncify_start_unwind');
   assert(typeof wasmExports['asyncify_stop_unwind'] != 'undefined', 'missing Wasm export: asyncify_stop_unwind');
   assert(typeof wasmExports['asyncify_start_rewind'] != 'undefined', 'missing Wasm export: asyncify_start_rewind');
@@ -2629,6 +2650,15 @@ function assignWasmExports(wasmExports) {
   _esp_sim_handle_get_sequence = Module['_esp_sim_handle_get_sequence'] = createExportWrapper('esp_sim_handle_get_sequence', wasmExports['esp_sim_handle_get_sequence'], 0);
   _esp_sim_handle_set_sequence_base = Module['_esp_sim_handle_set_sequence_base'] = createExportWrapper('esp_sim_handle_set_sequence_base', wasmExports['esp_sim_handle_set_sequence_base'], 1);
   _fflush = createExportWrapper('fflush', wasmExports['fflush'], 1);
+  _sim_wifi_env_reset = Module['_sim_wifi_env_reset'] = createExportWrapper('sim_wifi_env_reset', wasmExports['sim_wifi_env_reset'], 0);
+  _sim_wifi_env_scan = Module['_sim_wifi_env_scan'] = createExportWrapper('sim_wifi_env_scan', wasmExports['sim_wifi_env_scan'], 1);
+  _sim_wifi_env_get_scan_num = Module['_sim_wifi_env_get_scan_num'] = createExportWrapper('sim_wifi_env_get_scan_num', wasmExports['sim_wifi_env_get_scan_num'], 0);
+  _sim_wifi_env_get_scan_records = Module['_sim_wifi_env_get_scan_records'] = createExportWrapper('sim_wifi_env_get_scan_records', wasmExports['sim_wifi_env_get_scan_records'], 2);
+  _sim_wifi_env_inject_ap = Module['_sim_wifi_env_inject_ap'] = createExportWrapper('sim_wifi_env_inject_ap', wasmExports['sim_wifi_env_inject_ap'], 1);
+  _sim_wifi_env_inject_fault = Module['_sim_wifi_env_inject_fault'] = createExportWrapper('sim_wifi_env_inject_fault', wasmExports['sim_wifi_env_inject_fault'], 1);
+  _sim_wifi_env_get_state_str = Module['_sim_wifi_env_get_state_str'] = createExportWrapper('sim_wifi_env_get_state_str', wasmExports['sim_wifi_env_get_state_str'], 0);
+  _sim_wifi_env_get_sta_ip_str = Module['_sim_wifi_env_get_sta_ip_str'] = createExportWrapper('sim_wifi_env_get_sta_ip_str', wasmExports['sim_wifi_env_get_sta_ip_str'], 2);
+  _sim_wifi_env_get_sta_ip_ptr = Module['_sim_wifi_env_get_sta_ip_ptr'] = createExportWrapper('sim_wifi_env_get_sta_ip_ptr', wasmExports['sim_wifi_env_get_sta_ip_ptr'], 0);
   _esp_mqtt_sim_is_connected = Module['_esp_mqtt_sim_is_connected'] = createExportWrapper('esp_mqtt_sim_is_connected', wasmExports['esp_mqtt_sim_is_connected'], 1);
   _esp_mqtt_sim_set_network_ready = Module['_esp_mqtt_sim_set_network_ready'] = createExportWrapper('esp_mqtt_sim_set_network_ready', wasmExports['esp_mqtt_sim_set_network_ready'], 1);
   _esp_mqtt_sim_inject_message = Module['_esp_mqtt_sim_inject_message'] = createExportWrapper('esp_mqtt_sim_inject_message', wasmExports['esp_mqtt_sim_inject_message'], 3);
@@ -2660,11 +2690,11 @@ function assignWasmExports(wasmExports) {
   dynCall_vi = dynCalls['vi'] = createExportWrapper('dynCall_vi', wasmExports['dynCall_vi'], 2);
   dynCall_v = dynCalls['v'] = createExportWrapper('dynCall_v', wasmExports['dynCall_v'], 1);
   dynCall_viiii = dynCalls['viiii'] = createExportWrapper('dynCall_viiii', wasmExports['dynCall_viiii'], 5);
+  dynCall_vii = dynCalls['vii'] = createExportWrapper('dynCall_vii', wasmExports['dynCall_vii'], 3);
   dynCall_ii = dynCalls['ii'] = createExportWrapper('dynCall_ii', wasmExports['dynCall_ii'], 2);
   dynCall_iiii = dynCalls['iiii'] = createExportWrapper('dynCall_iiii', wasmExports['dynCall_iiii'], 4);
   dynCall_jiji = dynCalls['jiji'] = createExportWrapper('dynCall_jiji', wasmExports['dynCall_jiji'], 4);
   dynCall_iidiiiii = dynCalls['iidiiiii'] = createExportWrapper('dynCall_iidiiiii', wasmExports['dynCall_iidiiiii'], 8);
-  dynCall_vii = dynCalls['vii'] = createExportWrapper('dynCall_vii', wasmExports['dynCall_vii'], 3);
   _asyncify_start_unwind = createExportWrapper('asyncify_start_unwind', wasmExports['asyncify_start_unwind'], 1);
   _asyncify_stop_unwind = createExportWrapper('asyncify_stop_unwind', wasmExports['asyncify_stop_unwind'], 0);
   _asyncify_start_rewind = createExportWrapper('asyncify_start_rewind', wasmExports['asyncify_start_rewind'], 1);

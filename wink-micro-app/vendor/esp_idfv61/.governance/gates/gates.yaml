@@ -171,7 +171,7 @@ rules:
     config:
       max_inline_entries: 30
 
-  # Gate 5: 架构防腐与断言质量 (2条)
+  # Gate 5: 架构防腐与断言质量 (4条)
   - id: g5.no_inline_mock
     gate: 5
     severity: error
@@ -182,10 +182,28 @@ rules:
     module: rules.g5_no_inline_mock
     description: "禁止在网络门面 C 源码中内联硬编码业务 URL 或测试 JSON"
 
+  - id: g5.no_wifi_inline_mock
+    gate: 5
+    severity: error
+    modes: [pr, nightly]
+    trigger: git_diff
+    trigger_paths:
+      - "wink-micro-os/frameworks/esp_idf/src/wifi/**"
+    module: rules.g5_no_wifi_inline_mock
+    description: "禁止在 Wi-Fi 驱动 C 源码中内联硬编码 IPv4 字符串、固定 MAC 或密码特判"
+
   - id: g5.network_assertion_quality
     gate: 5
     severity: error
     modes: [pr, nightly]
     module: rules.g5_network_assertion_quality
     description: "网络场景断言质量与非空载荷验证"
+
+  - id: g5.wifi_assertion_quality
+    gate: 5
+    severity: error
+    modes: [pr, nightly]
+    module: rules.g5_wifi_assertion_quality
+    description: "Wi-Fi 场景断言质量与状态/IP 语义断言验证"
+
 

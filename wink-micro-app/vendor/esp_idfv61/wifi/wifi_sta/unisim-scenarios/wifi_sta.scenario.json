@@ -1,0 +1,68 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 Wi-Fi STA Connection & Scan Deterministic Proof",
+    "templateId": "esp_idfv61_wifi_sta",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "INJECT_WIFI_FIXTURE",
+      "timeUs": "0ms",
+      "accessPoints": [
+        {
+          "ssid": "myssid",
+          "bssid": "00:11:22:33:44:55",
+          "rssi": -45,
+          "channel": 1,
+          "authMode": "WPA2_PSK",
+          "password": "mypassword",
+          "dhcp": {
+            "assignedIp": "192.168.1.100",
+            "netmask": "255.255.255.0",
+            "gateway": "192.168.1.1",
+            "dns": "192.168.1.1"
+          }
+        },
+        {
+          "ssid": "Nearby_AP",
+          "bssid": "00:11:22:33:44:56",
+          "rssi": -75,
+          "channel": 6,
+          "authMode": "OPEN",
+          "password": ""
+        }
+      ]
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "netif:sta:ip",
+      "condition": "equals",
+      "expected": "192.168.1.100",
+      "matcher": "192.168.1.100",
+      "description": "断言 STA 接口通过虚拟 DHCP 成功取得 IP 192.168.1.100"
+    },
+    {
+      "type": "INJECT_WIFI_FIXTURE",
+      "timeUs": "2000ms",
+      "fault": {
+        "targetSsid": "myssid",
+        "action": "DROP_BEACON",
+        "reason": "BEACON_TIMEOUT"
+      }
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2500ms",
+      "target": "wifi:sta:state",
+      "condition": "equals",
+      "expected": "DISCONNECTED",
+      "matcher": "DISCONNECTED",
+      "description": "断言在信标丢失注入后 Wi-Fi 状态准确置为 DISCONNECTED"
+    }
+  ]
+}

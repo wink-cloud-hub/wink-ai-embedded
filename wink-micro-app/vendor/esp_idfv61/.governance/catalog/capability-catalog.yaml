@@ -509,15 +509,18 @@ capabilities:
   cap.wifi.ap_mode:
     name: Wi-Fi SoftAP 模式
     layer: facade
-    status: planned
+    status: implemented
     description: SoftAP 热点广播、客户端连接事件与虚拟 DHCP Server
     owned_paths:
-    - wink-micro-os/frameworks/esp_idf/src/wifi/esp_wifi_ap_sim.c
+    - wink-micro-os/frameworks/esp_idf/src/wifi/esp_wifi.c
+    - wink-micro-os/frameworks/esp_idf/src/wifi/esp_netif.c
     soc_support:
     - esp32
     - esp32s3
     - esp32c3
     - esp32c6
+    cross_mcu_evidence:
+    - wink-micro-os/targets/wasm/wink_sim_wifi.c
   cap.mesh.esp_now:
     name: ESP-NOW 无连接通信
     layer: model

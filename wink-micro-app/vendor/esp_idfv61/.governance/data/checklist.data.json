@@ -13947,6 +13947,38 @@
             "sla_error_symbol": null
           },
           "evidence": null
+        },
+        {
+          "config_id": "wasm_sim_node",
+          "backend": "wasm_node",
+          "target_soc": "esp32",
+          "profile": "standard",
+          "delivery_state": "planned",
+          "acceptance": {
+            "type": "wasm_simulation",
+            "observability_level": "L3_probe",
+            "scenario_path": "wifi/wifi_sta/unisim-scenarios/wifi_sta.scenario.json",
+            "timeout_virtual_us": 3000000,
+            "timeout_wall_ms": 10000,
+            "positive_cases": [
+              {
+                "name": "Wi-Fi STA DHCP IP allocation and beacon fault disconnect",
+                "matcher": {
+                  "target": "netif:sta:ip",
+                  "expected": "192.168.1.100"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "DROP_BEACON fault injection",
+                "expect_error": "disconnect",
+                "detects": "beacon timeout triggers STA_DISCONNECTED"
+              }
+            ],
+            "sla_error_symbol": null
+          },
+          "evidence": null
         }
       ],
       "target_app_dir": "wifi/wifi_sta"
