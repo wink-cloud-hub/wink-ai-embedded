@@ -1,16 +1,22 @@
 /* SPDX-License-Identifier: LGPL-3.0-only */
-/* src/wifi/esp_wifi.c — 健壮性加固版 */
+/* src/wifi/esp_wifi.c — 确定性虚拟空口与状态机加固版 */
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "sim_wifi_env.h"
+#include "sim_network_broker.h"
 #include <string.h>
 
 ESP_EVENT_DEFINE_BASE(WIFI_EVENT);
 ESP_EVENT_DEFINE_BASE(IP_EVENT);
 
 static const uint8_t SIM_STA_MAC[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x01};
+static const uint8_t SIM_AP_MAC[6]  = {0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x02};
+
+extern esp_netif_t* esp_netif_get_handle_sta(void);
+extern void esp_netif_set_sta_ip_info(const esp_netif_ip_info_t *info);
 
 typedef enum {
     WIFI_SIM_OFF = 0,
@@ -18,18 +24,21 @@ typedef enum {
     WIFI_SIM_STARTED,
     WIFI_SIM_CONNECTING,
     WIFI_SIM_CONNECTED,
-    WIFI_SIM_GOT_IP
+    WIFI_SIM_GOT_IP,
+    WIFI_SIM_DISCONNECTED
 } wifi_sim_state_t;
 
 typedef struct {
     wifi_sim_state_t state;
     wifi_mode_t mode;
     wifi_sta_config_t sta_cfg;
+    wifi_ap_config_t  ap_cfg;
     uint8_t sta_mac[6];
+    uint8_t ap_mac[6];
     bool initialized;
 } esp_wifi_sim_t;
 
-static esp_wifi_sim_t s_wifi = {.state = WIFI_SIM_OFF};
+static esp_wifi_sim_t s_wifi = {.state = WIFI_SIM_OFF, .mode = WIFI_MODE_STA};
 static uint32_t s_connect_token = 0;
 static TaskHandle_t s_conn_task_handle = NULL;
 
@@ -39,6 +48,28 @@ static inline size_t safe_strnlen(const char *s, size_t maxlen) {
         len++;
     }
     return len;
+}
+
+static void on_beacon_drop(const char *target_ssid, uint8_t reason) {
+    if (!s_wifi.initialized || s_wifi.state < WIFI_SIM_CONNECTING) {
+        return;
+    }
+    if (target_ssid && target_ssid[0] != '\0') {
+        if (strcmp((const char*)s_wifi.sta_cfg.ssid, target_ssid) != 0) {
+            return;
+        }
+    }
+    s_connect_token++;
+    s_wifi.state = WIFI_SIM_DISCONNECTED;
+    sim_wifi_env_set_state(WIFI_SIM_DISCONNECTED);
+    sim_network_broker_set_ready(false);
+
+    wifi_event_sta_disconnected_t de;
+    memset(&de, 0, sizeof(de));
+    de.reason = reason;
+    memcpy(de.ssid, s_wifi.sta_cfg.ssid, WIFI_SSID_LEN);
+    de.ssid_len = (uint8_t)safe_strnlen((const char*)s_wifi.sta_cfg.ssid, WIFI_SSID_LEN);
+    esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &de, sizeof(de), portMAX_DELAY);
 }
 
 static void wifi_connect_task(void *arg) {
@@ -52,28 +83,74 @@ static void wifi_connect_task(void *arg) {
         return;
     }
 
+    /* 查找虚拟 AP */
+    const sim_wifi_ap_t *ap = sim_wifi_env_find_ap_by_ssid((const char*)s_wifi.sta_cfg.ssid);
+    if (!ap || ap->drop_beacon) {
+        /* AP 未找到或信标丢失 (Drop Beacon 故障注入中) */
+        s_wifi.state = WIFI_SIM_DISCONNECTED;
+        sim_wifi_env_set_state(WIFI_SIM_DISCONNECTED);
+        sim_network_broker_set_ready(false);
+        wifi_event_sta_disconnected_t de;
+        memset(&de, 0, sizeof(de));
+        de.reason = (ap && ap->drop_beacon && ap->fault_reason) ? ap->fault_reason : WIFI_REASON_NO_AP_FOUND;
+        memcpy(de.ssid, s_wifi.sta_cfg.ssid, WIFI_SSID_LEN);
+        de.ssid_len = (uint8_t)safe_strnlen((const char*)s_wifi.sta_cfg.ssid, WIFI_SSID_LEN);
+        esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &de, sizeof(de), portMAX_DELAY);
+        s_conn_task_handle = NULL;
+        vTaskDelete(NULL);
+        return;
+    }
+
+    /* 密码核对 */
+    if (ap->authmode != WIFI_AUTH_OPEN) {
+        if (strcmp((const char*)s_wifi.sta_cfg.password, ap->password) != 0) {
+            /* 密码错误 / 4次握手超时 */
+            s_wifi.state = WIFI_SIM_DISCONNECTED;
+            sim_wifi_env_set_state(WIFI_SIM_DISCONNECTED);
+            sim_network_broker_set_ready(false);
+            wifi_event_sta_disconnected_t de;
+            memset(&de, 0, sizeof(de));
+            de.reason = WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT;
+            memcpy(de.ssid, s_wifi.sta_cfg.ssid, WIFI_SSID_LEN);
+            de.ssid_len = (uint8_t)safe_strnlen((const char*)s_wifi.sta_cfg.ssid, WIFI_SSID_LEN);
+            esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &de, sizeof(de), portMAX_DELAY);
+            s_conn_task_handle = NULL;
+            vTaskDelete(NULL);
+            return;
+        }
+    }
+
+    /* 阶段 1：Association (关联完成) */
     s_wifi.state = WIFI_SIM_CONNECTED;
-    wifi_event_sta_connected_t ce = {
-        .channel = 6,
-        .authmode = WIFI_AUTH_WPA2_PSK,
-        .ssid_len = (uint8_t)safe_strnlen((const char*)s_wifi.sta_cfg.ssid, WIFI_SSID_LEN)
-    };
-    memcpy(ce.ssid, s_wifi.sta_cfg.ssid, WIFI_SSID_LEN);
+    sim_wifi_env_set_state(WIFI_SIM_CONNECTED);
+    wifi_event_sta_connected_t ce;
+    memset(&ce, 0, sizeof(ce));
+    ce.channel = ap->channel;
+    ce.authmode = ap->authmode;
+    ce.ssid_len = (uint8_t)safe_strnlen((const char*)ap->ssid, WIFI_SSID_LEN);
+    memcpy(ce.ssid, ap->ssid, WIFI_SSID_LEN);
+    memcpy(ce.bssid, ap->bssid, 6);
     esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_CONNECTED, &ce, sizeof(ce), portMAX_DELAY);
 
-    /* 再次校验，防止 STA_CONNECTED 回调中调用了 disconnect */
+    /* 再次校验，防止 STA_CONNECTED 回调中调用了 disconnect / stop */
     if (s_wifi.state == WIFI_SIM_CONNECTED && s_connect_token == my_token) {
+        /* 阶段 2：DHCP (地址协商完成) */
         s_wifi.state = WIFI_SIM_GOT_IP;
-        ip_event_got_ip_t ie = {
-            .esp_netif = NULL,
-            .ip_info = {
-                .ip = {.addr = ESP_IP4TOADDR(192, 168, 4, 2)},
-                .netmask = {.addr = ESP_IP4TOADDR(255, 255, 255, 0)},
-                .gw = {.addr = ESP_IP4TOADDR(192, 168, 4, 1)},
-            },
-            .ip_changed = true,
-        };
+        sim_wifi_env_set_state(WIFI_SIM_GOT_IP);
+
+        esp_netif_ip_info_t ip_info = ap->dhcp_info;
+        esp_netif_set_sta_ip_info(&ip_info);
+        sim_wifi_env_set_sta_ip(ip_info.ip);
+
+        ip_event_got_ip_t ie;
+        memset(&ie, 0, sizeof(ie));
+        ie.esp_netif = esp_netif_get_handle_sta();
+        ie.ip_info = ip_info;
+        ie.ip_changed = true;
         esp_event_post(IP_EVENT, IP_EVENT_STA_GOT_IP, &ie, sizeof(ie), portMAX_DELAY);
+
+        /* 阶段 3：传输层网络级联就绪 */
+        sim_network_broker_set_ready(true);
     }
 
     s_conn_task_handle = NULL;
@@ -86,16 +163,18 @@ esp_err_t esp_wifi_init(const wifi_init_config_t *config) {
         return ESP_ERR_INVALID_STATE;
     }
     memcpy(s_wifi.sta_mac, SIM_STA_MAC, 6);
+    memcpy(s_wifi.ap_mac, SIM_AP_MAC, 6);
     s_wifi.state = WIFI_SIM_INIT;
     s_wifi.initialized = true;
+    sim_wifi_env_set_state(WIFI_SIM_INIT);
+    sim_wifi_env_set_beacon_drop_cb(on_beacon_drop);
     ESP_LOGI("WIFI_SIM", "Wi-Fi initialized in simulation mode");
     return ESP_OK;
 }
 
 esp_err_t esp_wifi_set_mode(wifi_mode_t mode) {
-    if (mode == WIFI_MODE_AP || mode == WIFI_MODE_APSTA) {
-        ESP_LOGE("WIFI_SIM", "AP mode not supported in simulation (ADR-0012)");
-        return ESP_ERR_NOT_SUPPORTED;
+    if (mode >= WIFI_MODE_MAX) {
+        return ESP_ERR_INVALID_ARG;
     }
     s_wifi.mode = mode;
     return ESP_OK;
@@ -114,7 +193,14 @@ esp_err_t esp_wifi_start(void) {
         return ESP_ERR_INVALID_STATE;
     }
     s_wifi.state = WIFI_SIM_STARTED;
-    esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_START, NULL, 0, portMAX_DELAY);
+    sim_wifi_env_set_state(WIFI_SIM_STARTED);
+
+    if (s_wifi.mode == WIFI_MODE_STA || s_wifi.mode == WIFI_MODE_APSTA) {
+        esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_START, NULL, 0, portMAX_DELAY);
+    }
+    if (s_wifi.mode == WIFI_MODE_AP || s_wifi.mode == WIFI_MODE_APSTA) {
+        esp_event_post(WIFI_EVENT, WIFI_EVENT_AP_START, NULL, 0, portMAX_DELAY);
+    }
     return ESP_OK;
 }
 
@@ -126,11 +212,14 @@ esp_err_t esp_wifi_connect(void) {
         return ESP_ERR_WIFI_CONN;
     }
     s_wifi.state = WIFI_SIM_CONNECTING;
+    sim_wifi_env_set_state(WIFI_SIM_CONNECTING);
+
     uint32_t token = ++s_connect_token;
     BaseType_t rc = xTaskCreate(wifi_connect_task, "wifi_conn", 32768,
                                 (void*)(uintptr_t)token, 1, &s_conn_task_handle);
     if (rc != pdPASS) {
         s_wifi.state = WIFI_SIM_STARTED;
+        sim_wifi_env_set_state(WIFI_SIM_STARTED);
         return ESP_ERR_NO_MEM;
     }
     return ESP_OK;
@@ -142,7 +231,15 @@ esp_err_t esp_wifi_disconnect(void) {
     }
     s_connect_token++; /* 废弃未完成的连接任务 */
     s_wifi.state = WIFI_SIM_STARTED;
-    esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, NULL, 0, portMAX_DELAY);
+    sim_wifi_env_set_state(WIFI_SIM_DISCONNECTED);
+    sim_network_broker_set_ready(false);
+
+    wifi_event_sta_disconnected_t de;
+    memset(&de, 0, sizeof(de));
+    de.reason = WIFI_REASON_ASSOC_LEAVE;
+    memcpy(de.ssid, s_wifi.sta_cfg.ssid, WIFI_SSID_LEN);
+    de.ssid_len = (uint8_t)safe_strnlen((const char*)s_wifi.sta_cfg.ssid, WIFI_SSID_LEN);
+    esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &de, sizeof(de), portMAX_DELAY);
     return ESP_OK;
 }
 
@@ -152,7 +249,15 @@ esp_err_t esp_wifi_stop(void) {
     }
     s_connect_token++; /* 废弃连接中任务 */
     s_wifi.state = WIFI_SIM_INIT;
-    esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_STOP, NULL, 0, portMAX_DELAY);
+    sim_wifi_env_set_state(WIFI_SIM_INIT);
+    sim_network_broker_set_ready(false);
+
+    if (s_wifi.mode == WIFI_MODE_STA || s_wifi.mode == WIFI_MODE_APSTA) {
+        esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_STOP, NULL, 0, portMAX_DELAY);
+    }
+    if (s_wifi.mode == WIFI_MODE_AP || s_wifi.mode == WIFI_MODE_APSTA) {
+        esp_event_post(WIFI_EVENT, WIFI_EVENT_AP_STOP, NULL, 0, portMAX_DELAY);
+    }
     return ESP_OK;
 }
 
@@ -168,6 +273,9 @@ esp_err_t esp_wifi_get_mac(wifi_interface_t ifx, uint8_t mac[6]) {
     if (ifx == WIFI_IF_STA) {
         memcpy(mac, s_wifi.sta_mac, 6);
         return ESP_OK;
+    } else if (ifx == WIFI_IF_AP) {
+        memcpy(mac, s_wifi.ap_mac, 6);
+        return ESP_OK;
     }
     return ESP_ERR_NOT_SUPPORTED;
 }
@@ -179,15 +287,25 @@ esp_err_t esp_wifi_set_mac(wifi_interface_t ifx, const uint8_t mac[6]) {
     if (ifx == WIFI_IF_STA) {
         memcpy(s_wifi.sta_mac, mac, 6);
         return ESP_OK;
+    } else if (ifx == WIFI_IF_AP) {
+        memcpy(s_wifi.ap_mac, mac, 6);
+        return ESP_OK;
     }
     return ESP_ERR_NOT_SUPPORTED;
 }
 
 esp_err_t esp_wifi_set_config(wifi_interface_t ifx, wifi_config_t *conf) {
-    if (ifx == WIFI_IF_STA && conf) {
-        s_wifi.sta_cfg = conf->sta;
+    if (!conf) {
+        return ESP_ERR_INVALID_ARG;
     }
-    return ESP_OK;
+    if (ifx == WIFI_IF_STA) {
+        s_wifi.sta_cfg = conf->sta;
+        return ESP_OK;
+    } else if (ifx == WIFI_IF_AP) {
+        s_wifi.ap_cfg = conf->ap;
+        return ESP_OK;
+    }
+    return ESP_ERR_NOT_SUPPORTED;
 }
 
 esp_err_t esp_wifi_get_config(wifi_interface_t ifx, wifi_config_t *conf) {
@@ -196,8 +314,12 @@ esp_err_t esp_wifi_get_config(wifi_interface_t ifx, wifi_config_t *conf) {
     }
     if (ifx == WIFI_IF_STA) {
         conf->sta = s_wifi.sta_cfg;
+        return ESP_OK;
+    } else if (ifx == WIFI_IF_AP) {
+        conf->ap = s_wifi.ap_cfg;
+        return ESP_OK;
     }
-    return ESP_OK;
+    return ESP_ERR_NOT_SUPPORTED;
 }
 
 esp_err_t esp_wifi_set_ps(wifi_ps_type_t type) {
@@ -205,29 +327,41 @@ esp_err_t esp_wifi_set_ps(wifi_ps_type_t type) {
     return ESP_OK;
 }
 
-esp_err_t esp_wifi_scan_start(const wifi_scan_config_t *c, bool b) {
-    (void)c;
-    (void)b;
-    ESP_LOGE("WIFI_SIM", "esp_wifi_scan_start: not supported (ADR-0012)");
-    return ESP_ERR_NOT_SUPPORTED;
+esp_err_t esp_wifi_scan_start(const wifi_scan_config_t *config, bool block) {
+    if (!s_wifi.initialized || s_wifi.state < WIFI_SIM_STARTED) {
+        return ESP_ERR_WIFI_NOT_STARTED;
+    }
+    (void)block;
+    esp_err_t err = sim_wifi_env_scan(config);
+    if (err == ESP_OK) {
+        esp_event_post(WIFI_EVENT, WIFI_EVENT_SCAN_DONE, NULL, 0, portMAX_DELAY);
+    }
+    return err;
 }
 
 esp_err_t esp_wifi_scan_stop(void) {
-    return ESP_ERR_NOT_SUPPORTED;
+    return ESP_OK;
 }
 
-esp_err_t esp_wifi_scan_get_ap_records(uint16_t *n, void *r) {
-    (void)r;
-    if (n) {
-        *n = 0;
+esp_err_t esp_wifi_scan_get_ap_num(uint16_t *number) {
+    if (!number) {
+        return ESP_ERR_INVALID_ARG;
     }
-    return ESP_ERR_NOT_SUPPORTED;
+    *number = sim_wifi_env_get_scan_num();
+    return ESP_OK;
+}
+
+esp_err_t esp_wifi_scan_get_ap_records(uint16_t *number, wifi_ap_record_t *ap_records) {
+    return sim_wifi_env_get_scan_records(number, ap_records);
 }
 
 void esp_wifi_sim_reset(void) {
     s_connect_token++;
     memset(&s_wifi, 0, sizeof(s_wifi));
+    s_wifi.mode = WIFI_MODE_STA;
     s_conn_task_handle = NULL;
+    sim_wifi_env_reset();
+    sim_network_broker_reset();
 }
 
 bool esp_wifi_sim_is_connected(void) {

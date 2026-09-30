@@ -37,6 +37,8 @@ function(add_esp_idf_wasm_compile_check name source_file)
             -I${WINK_ESP_TARGET_INCLUDE_DIR}
             -I${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/freertos
             -I${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/core
+            -I${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/wifi
+            -I${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/network
             -I${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
             -I${CMAKE_CURRENT_SOURCE_DIR}/../pal/include
             -I${CMAKE_CURRENT_SOURCE_DIR}/../pal/include/hal

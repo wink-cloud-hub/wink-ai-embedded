@@ -4,6 +4,7 @@
 #include "esp_err.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "sim_network_broker.h"
 #include <string.h>
 
 #define TAG "ESP_MQTT"
@@ -177,6 +178,36 @@ static void dispatch_event(esp_mqtt_client_handle_t client, esp_mqtt_event_id_t 
 
     /* 异步投递进默认事件队列，绝不在调用者栈上同步触发用户回调 */
     (void)esp_event_post(MQTT_EVENTS, (int32_t)event_id, &env, sizeof(env), 0);
+}
+
+static void on_network_broker_state_changed(bool ready, void *user_ctx) {
+    (void)user_ctx;
+    s_network_ready = ready;
+    if (!ready) {
+        for (size_t i = 0; i < MAX_MQTT_CLIENTS; i++) {
+            struct esp_mqtt_client *c = &s_clients[i];
+            if (c->initialized && c->started && c->connected) {
+                c->connected = false;
+                c->error_codes.error_type = MQTT_ERROR_TYPE_TCP_TRANSPORT;
+                c->error_codes.esp_transport_sock_errno = 113; /* EHOSTUNREACH */
+
+                esp_mqtt_event_t err_event;
+                memset(&err_event, 0, sizeof(err_event));
+                err_event.event_id = MQTT_EVENT_ERROR;
+                err_event.client = c;
+                err_event.user_context = c->config.user_context;
+                err_event.error_handle = &c->error_codes;
+                dispatch_event(c, MQTT_EVENT_ERROR, &err_event);
+
+                esp_mqtt_event_t disc_event;
+                memset(&disc_event, 0, sizeof(disc_event));
+                disc_event.event_id = MQTT_EVENT_DISCONNECTED;
+                disc_event.client = c;
+                disc_event.user_context = c->config.user_context;
+                dispatch_event(c, MQTT_EVENT_DISCONNECTED, &disc_event);
+            }
+        }
+    }
 }
 
 static bool mqtt_topic_match(const char *sub, const char *pub) {
@@ -592,7 +623,6 @@ esp_err_t esp_mqtt_client_register_event(esp_mqtt_client_handle_t client, esp_mq
 
 void esp_mqtt_sim_reset(void) {
     s_mqtt_token++;
-    s_network_ready = true;
     s_publish_hook = NULL;
     s_next_msg_id = 1;
     s_mqtt_task_handle = NULL;
@@ -603,6 +633,8 @@ void esp_mqtt_sim_reset(void) {
     s_last_data_len = 0;
     s_last_msg_id = 0;
     memset(s_clients, 0, sizeof(s_clients));
+    s_network_ready = sim_network_broker_is_ready();
+    sim_network_broker_register_cb(on_network_broker_state_changed, NULL);
 }
 
 bool esp_mqtt_sim_is_connected(esp_mqtt_client_handle_t client) {
@@ -611,6 +643,7 @@ bool esp_mqtt_sim_is_connected(esp_mqtt_client_handle_t client) {
 
 void esp_mqtt_sim_set_network_ready(bool ready) {
     s_network_ready = ready;
+    sim_network_broker_set_ready(ready);
 }
 
 int esp_mqtt_sim_inject_message(const char *topic, const char *data, int data_len) {

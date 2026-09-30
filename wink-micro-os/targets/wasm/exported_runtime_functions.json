@@ -24,9 +24,14 @@
     "_pal_wasm_get_reset_reason",
     "_pal_wasm_clear_pending_reset",
     "_esp_sim_handle_get_sequence",
-    "_esp_sim_handle_set_sequence_base"
+    "_esp_sim_handle_set_sequence_base",
+    "_sim_wifi_env_reset",
+    "_sim_wifi_env_inject_ap",
+    "_sim_wifi_env_inject_fault",
+    "_sim_wifi_env_get_state_str",
+    "_sim_wifi_env_get_sta_ip_ptr"
   ],
-  "EXPORTED_RUNTIME_METHODS": ["ccall", "cwrap", "HEAPU8", "HEAPU32", "Asyncify", "callMain"],
+  "EXPORTED_RUNTIME_METHODS": ["ccall", "cwrap", "HEAPU8", "HEAPU32", "Asyncify", "callMain", "lengthBytesUTF8", "stringToUTF8", "UTF8ToString"],
   "ASYNCIFY_IMPORTS": ["js_pal_os_sleep_ms", "js_pal_os_busy_wait_us"],
   "ASYNCIFY_STACK_SIZE": 65536,
   "EXPORT_NAME": "WasmSandbox"

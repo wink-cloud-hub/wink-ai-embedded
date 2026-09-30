@@ -19,8 +19,11 @@ typedef enum {
     WIFI_EVENT_STA_STOP,
     WIFI_EVENT_STA_CONNECTED,
     WIFI_EVENT_STA_DISCONNECTED,
+    WIFI_EVENT_SCAN_DONE,
     WIFI_EVENT_AP_START,
     WIFI_EVENT_AP_STOP,
+    WIFI_EVENT_AP_STACONNECTED,
+    WIFI_EVENT_AP_STADISCONNECTED,
     WIFI_EVENT_MAX,
 } wifi_event_t;
 
@@ -38,14 +41,10 @@ esp_err_t esp_wifi_set_ps(wifi_ps_type_t type);
 esp_err_t esp_wifi_get_mac(wifi_interface_t ifx, uint8_t mac[6]);
 esp_err_t esp_wifi_set_mac(wifi_interface_t ifx, const uint8_t mac[6]);
 
-typedef struct {
-    uint8_t show_hidden;
-    uint8_t scan_type;
-} wifi_scan_config_t;
-
 esp_err_t esp_wifi_scan_start(const wifi_scan_config_t *config, bool block);
 esp_err_t esp_wifi_scan_stop(void);
-esp_err_t esp_wifi_scan_get_ap_records(uint16_t *number, void *ap_records);
+esp_err_t esp_wifi_scan_get_ap_num(uint16_t *number);
+esp_err_t esp_wifi_scan_get_ap_records(uint16_t *number, wifi_ap_record_t *ap_records);
 
 /* Wink simulation helper functions */
 void esp_wifi_sim_reset(void);

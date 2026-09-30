@@ -1811,6 +1811,8 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/freertos
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/wifi
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/network
         ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
     )
     target_link_libraries(test_esp_wifi PRIVATE wink_framework_esp_idf dal)

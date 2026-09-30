@@ -17,7 +17,8 @@ typedef enum {
     IP_EVENT_MAX,
 } ip_event_t;
 
-typedef struct esp_netif_obj* esp_netif_t;
+struct esp_netif_obj;
+typedef struct esp_netif_obj esp_netif_t;
 
 /* 纯正 32-bit IPv4 地址结构体，兼顾 .addr 访问与指针输出 */
 typedef struct {

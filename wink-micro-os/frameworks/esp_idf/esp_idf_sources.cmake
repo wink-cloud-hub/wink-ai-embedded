@@ -26,6 +26,8 @@ set(ESP_IDF_FRAMEWORK_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_event.c
     ${CMAKE_CURRENT_LIST_DIR}/src/wifi/esp_wifi.c
     ${CMAKE_CURRENT_LIST_DIR}/src/wifi/esp_netif.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/wifi/sim_wifi_env.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/network/sim_network_broker.c
     ${CMAKE_CURRENT_LIST_DIR}/src/network/esp_mqtt.c
     ${CMAKE_CURRENT_LIST_DIR}/src/network/esp_http.c
     ${CMAKE_CURRENT_LIST_DIR}/src/network/sim_bounded_stream.c
@@ -40,6 +42,8 @@ set(ESP_IDF_FRAMEWORK_INCLUDES
     ${CMAKE_CURRENT_LIST_DIR}/include
     ${CMAKE_CURRENT_LIST_DIR}/src/freertos
     ${CMAKE_CURRENT_LIST_DIR}/src/core
+    ${CMAKE_CURRENT_LIST_DIR}/src/wifi
+    ${CMAKE_CURRENT_LIST_DIR}/src/network
     ${CMAKE_CURRENT_LIST_DIR}/../../targets/common/include
     # 手写 esp_check.h -> wink_runtime.h -> wink_fault.h -> wink_trace.h 依赖链
     ${CMAKE_CURRENT_LIST_DIR}/../../trace/include

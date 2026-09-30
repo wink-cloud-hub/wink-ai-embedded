@@ -2,6 +2,8 @@
 /* src/core/esp_event.c */
 #include "esp_event.h"
 #include "esp_log.h"
+#include "pal_log.h"
+#include "sdkconfig_base.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
@@ -128,11 +130,14 @@ int esp_event_loop_run_all_pending(void) {
 
 static void sys_evt_task(void *arg) {
     (void)arg;
+    pal_log_i("SYS_EVT", "task started, s_loop_created=%d s_q_sem=%p", (int)s_loop_created, (void*)s_q_sem);
     while (s_loop_created) {
         if (!s_q_sem) {
             break;
         }
+        pal_log_i("SYS_EVT", "before xSemaphoreTake");
         BaseType_t res = xSemaphoreTake(s_q_sem, portMAX_DELAY);
+        pal_log_i("SYS_EVT", "after xSemaphoreTake res=%d", (int)res);
         if (!s_loop_created) {
             break;
         }
