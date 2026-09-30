@@ -1,0 +1,84 @@
+{
+  "timestamp": "2026-09-30T12:30:27.666Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP32 ESP-IDF v6.1 blink_gpio headless simulation proof",
+        "templateId": "esp_idfv61_blink_gpio",
+        "totalVirtualUs": "3500000",
+        "wallClockMs": 93
+      },
+      "summary": {
+        "totalSteps": 7,
+        "passedSteps": 7,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 0,
+          "expected": 0
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "500000",
+          "actual": 0,
+          "expected": 0
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "1050000",
+          "actual": 1,
+          "expected": 1
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": 1,
+          "expected": 1
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "2050000",
+          "actual": 0,
+          "expected": 0
+        },
+        {
+          "stepIndex": 5,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": 0,
+          "expected": 0
+        },
+        {
+          "stepIndex": 6,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "3050000",
+          "actual": 1,
+          "expected": 1
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

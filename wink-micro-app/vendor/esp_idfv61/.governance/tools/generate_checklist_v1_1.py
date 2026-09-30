@@ -41,6 +41,15 @@ QUARANTINE_YAML = (
     else (GOV_DIR / "quarantine.yaml" if (GOV_DIR / "quarantine.yaml").exists() else GOV_DIR / ".gates" / "quarantine.yaml")
 )
 OUTPUT_MD    = GOV_DIR.parent / "CHECKLIST.md"
+WS_ROOT      = SCRIPT_DIR.parents[4]
+
+try:
+    from evidence_verifier import verify_evidence
+except ImportError:
+    GATES_DIR = GOV_DIR / "gates"
+    if str(GATES_DIR) not in sys.path:
+        sys.path.insert(0, str(GATES_DIR))
+    from evidence_verifier import verify_evidence
 
 # ─────────────────────────────────────────────────────────────
 # 状态符渲染映射
@@ -143,14 +152,30 @@ def render_row(entry: dict, quarantine: dict[str, dict]) -> tuple[str, str]:
         scope_obj  = entry.get("scope", {})
         inclusion  = scope_obj.get("inclusion", "unknown")
         schedule   = scope_obj.get("schedule", "active")
-        executions = entry.get("executions", [{}])
-        ex0        = executions[0] if executions else {}
-        delivery   = ex0.get("delivery_state", "planned")
-        acceptance = ex0.get("acceptance", {})
-        obs_raw    = acceptance.get("observability_level", "L4_internal")
-        obs_str    = OBS_EMOJI.get(obs_raw, obs_raw)
-        pos_cases  = acceptance.get("positive_cases", [])
-        evidence   = ex0.get("evidence")
+        executions = entry.get("executions", [])
+        has_verified = False
+        has_regressed = False
+        valid_evidence = False
+        pos_cases = []
+        obs_raw = "L4_internal"
+
+        for ex in executions:
+            acceptance = ex.get("acceptance", {})
+            if acceptance.get("observability_level"):
+                obs_raw = acceptance.get("observability_level")
+            if acceptance.get("positive_cases"):
+                pos_cases = acceptance.get("positive_cases")
+
+            d_state = ex.get("delivery_state", "planned")
+            if d_state == "verified":
+                has_verified = True
+                ok, _ = verify_evidence(entry, ex, WS_ROOT, strict_disk=True)
+                if ok:
+                    valid_evidence = True
+                else:
+                    has_regressed = True
+
+        obs_str = OBS_EMOJI.get(obs_raw, obs_raw)
 
         target_dir = entry.get("target_app_dir") or ""
         app_exists = (OUTPUT_MD.parent / target_dir / "wink-app.json").is_file() if target_dir else False
@@ -178,11 +203,16 @@ def render_row(entry: dict, quarantine: dict[str, dict]) -> tuple[str, str]:
             desc = f"声明 Out-of-Scope。{reason}。"
             pri_hint = "P4"
             metric_tag = "out_of_scope"
-        elif delivery == "verified" and evidence and evidence.get("assets_sha256") and evidence["assets_sha256"] != "0" * 64:
+        elif has_verified and valid_evidence:
             symbol = "[x]"
             desc = "已完成实证。"
             pri_hint = "P0"
             metric_tag = "verified"
+        elif has_regressed:
+            symbol = "[!]"
+            desc = "实证凭据核验未通过，需重新回归。"
+            pri_hint = "P0"
+            metric_tag = "regressed"
         elif schedule == "deferred":
             symbol = "[-]"
             reason = scope_obj.get("exclusion_reason") or "依赖外部模型"
@@ -195,7 +225,7 @@ def render_row(entry: dict, quarantine: dict[str, dict]) -> tuple[str, str]:
             pri_hint = "P2"
             metric_tag = "pending_audit"
         else:
-            symbol = DELIVERY_STATE_SYMBOL.get(delivery, "[ ]")
+            symbol = "[ ]"
             desc = pos_cases[0].get("name", "待排期。") if pos_cases else "待排期。依赖进一步框架门面扩展。"
             pri_hint = "P1"
             metric_tag = "planned"

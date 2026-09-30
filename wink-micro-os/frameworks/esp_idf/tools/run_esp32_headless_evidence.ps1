@@ -31,7 +31,8 @@
 param(
     [string]$App,
     [ValidateSet('spec', 'json', 'junit')]
-    [string]$Reporter = 'spec'
+    [string]$Reporter = 'spec',
+    [switch]$WriteEvidence
 )
 
 $ErrorActionPreference = 'Stop'
@@ -130,6 +131,17 @@ foreach ($c in $carriers) {
     finally {
         $ErrorActionPreference = $prevEap
         Pop-Location
+    }
+
+    if ($ok -and $WriteEvidence) {
+        $verifierScript = Join-Path $embeddedRoot 'wink-micro-app\vendor\esp_idfv61\.governance\tools\evidence_verifier.py'
+        $reportSrc = Join-Path $winkToolsDir 'artifacts\run-report.json'
+        Write-Host "Recording evidence for $($c.Name)..." -ForegroundColor Magenta
+        & python "$verifierScript" --write-app "$($c.Name)" --report-src "$reportSrc" --workspace-root "$embeddedRoot"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Failed to record evidence for $($c.Name)"
+            $ok = $false
+        }
     }
 
     $results += [pscustomobject]@{ App = $c.Name; Channel = $c.Channel; Ok = $ok; Note = '' }

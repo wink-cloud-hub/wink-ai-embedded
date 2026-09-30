@@ -1,14 +1,9 @@
 name: ESP-IDF Simulation Interception CI
 
-# The gate job (Gate 3) executes the linter from a PRIVATE, commercial-secret
-# toolchain checkout. Running that on a public CI runner would require granting
-# the runner a read token for that repository, which is not something this repo
-# should do. Gate enforcement is therefore LOCAL: run
-# `python scripts/gate_check.py` before committing, and optionally re-run the
-# gate from here on demand with `workflow_dispatch`.
-#
-# Everything below the gate (license map, harvested headers, host matrix,
-# coverage) depends only on this repository and still runs automatically.
+# CI runs automatically on pull_request and push to master for all esp_paths.
+# Internal PRs and pushes check out the pinned wink-tools source and execute
+# layering lint, API lint, and Gate 1-5 enforcement.
+# External Fork PRs fail-closed at the credential boundary to protect secrets.
 on:
   push:
     branches: [ master ]
@@ -45,7 +40,6 @@ jobs:
           python-version: '3.11'
       - &require_tools
         name: Require pinned wink-tools source
-        if: github.event_name == 'workflow_dispatch'
         shell: bash
         env:
           TOOLS_REPOSITORY: ${{ vars.WINK_TOOLS_REPOSITORY }}
@@ -60,11 +54,10 @@ jobs:
             exit 1
           fi
           if [[ -z "$TOOLS_REPOSITORY" || -z "$TOOLS_TOKEN" || ! "$TOOLS_REF" =~ ^[0-9a-fA-F]{40}$ ]]; then
-            echo "::error::Configure WINK_TOOLS_REPOSITORY, a 40-character WINK_TOOLS_REF commit, and WINK_TOOLS_READ_TOKEN. The on-demand gate run needs pinned wink-tools source."
+            echo "::error::Configure WINK_TOOLS_REPOSITORY, a 40-character WINK_TOOLS_REF commit, and WINK_TOOLS_READ_TOKEN. The gate run needs pinned wink-tools source."
             exit 1
           fi
       - &checkout_tools
-        if: github.event_name == 'workflow_dispatch'
         uses: actions/checkout@v4
         with:
           repository: ${{ vars.WINK_TOOLS_REPOSITORY }}
@@ -74,7 +67,6 @@ jobs:
           persist-credentials: false
       - &check_tools
         name: Check source toolchain
-        if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: test -f "$WINK_TOOLS_ROOT/wink.py" && test -f "$WINK_TOOLS_ROOT/tools/codegen/scripts/list_drivers.py"
       - name: Install Python lint dependencies
@@ -86,7 +78,6 @@ jobs:
       - name: Verify Harvested Headers and Asset Channels
         run: python .github/scripts/check_harvested_headers.py --channels wink-micro-os/frameworks/esp_idf/channels.json
       - name: Run Layering / API / ESP-IDF Lint
-        if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
           python "$WINK_TOOLS_ROOT/wink.py" lint --root wink-micro-os --pack layering --pack api
@@ -94,8 +85,6 @@ jobs:
             --lint-paths wink-micro-os/frameworks/esp_idf/tools/lint
 
       - name: Run ESP-IDF Gate System (PR mode)
-        # Gate 3 executes the private toolchain, so this step is on-demand only.
-        if: github.event_name == 'workflow_dispatch'
         shell: bash
         # --require-executed 11 is the floor for Gate 1 (10 rules) + Gate 3 (1 rule),
         # which must always run. Without it, a run where every diff-triggered rule
@@ -120,7 +109,7 @@ jobs:
         continue-on-error: false
 
       - name: Upload ESP-IDF Gate Report
-        if: always() && github.event_name == 'workflow_dispatch'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: esp_idf_gate_report

@@ -23,7 +23,7 @@
       "audit": {
         "verdict": "audited",
         "auditor": "arch_team",
-        "audited_at": "2026-09-29T14:00:00Z",
+        "audited_at": "2026-09-30T12:32:38Z",
         "audited_configs": [
           "wasm_sim_standard"
         ],
@@ -84,12 +84,12 @@
             "sla_error_symbol": null
           },
           "evidence": {
-            "run_id": "run-20260929-esp-get_started-blink-verified",
-            "assets_sha256": "4b72cd7f72c7cffcba2b2ed504a87e92715b61dd9fdf36e5cef89476940ddf6c",
+            "run_id": "run-20260930-esp.get_started.blink-verified",
+            "assets_sha256": "5059fbe1b5be803fa932691e16d8a0a314f6ef84cd3486f4ff3c2985c8e01026",
             "scenario_sha256": "48e7494366d56bfab523750ba94359c349604f1437ab7c44f0a5f333f503c157",
-            "execution_report_ref": "unisim://reports/esp.get_started.blink/run-20260929-verified.json",
-            "verified_commit": "81a5cbbb",
-            "verified_at": "2026-09-29T14:00:00Z"
+            "execution_report_ref": "reports/get-started/blink_gpio/run-report.json",
+            "verified_commit": "9036ee14d75f3b9911f56d73b29e0d04999c8cb9",
+            "verified_at": "2026-09-30T12:32:38Z"
           }
         }
       ],

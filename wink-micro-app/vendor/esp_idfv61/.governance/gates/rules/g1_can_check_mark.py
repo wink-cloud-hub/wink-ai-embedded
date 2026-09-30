@@ -5,8 +5,17 @@ g1_can_check_mark.py
 Gate 1 Rule: 6-factor checkmark closed-loop referee and quarantine debt triage.
 """
 
+import sys
 from pathlib import Path
 from datetime import datetime, timezone
+
+try:
+    from evidence_verifier import verify_evidence
+except ImportError:
+    GATES_DIR = Path(__file__).resolve().parent.parent
+    if str(GATES_DIR) not in sys.path:
+        sys.path.insert(0, str(GATES_DIR))
+    from evidence_verifier import verify_evidence
 
 RULE_ID = "g1.can_check_mark"
 NULL_HASH_64 = "0" * 64
@@ -176,21 +185,10 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
                     "message": f"Factor 3 Failed: Dependency closure status is '{dep_status}' (expected 'satisfied')",
                 })
 
-            # Factor 5: Evidence & Non-empty Hashes
-            evidence = ex.get("evidence")
-            if not evidence or not isinstance(evidence, dict):
-                findings.append({
-                    "rule_id": RULE_ID,
-                    "severity": "error",
-                    "entry_id": entry_id,
-                    "display_id": display_id,
-                    "config_id": cid,
-                    "file_path": None,
-                    "message": "Factor 5 Failed: delivery_state='verified' but evidence is null or not an object",
-                })
-            else:
-                assets_sha = evidence.get("assets_sha256")
-                if not assets_sha or len(assets_sha) != 64 or assets_sha == NULL_HASH_64:
+            # Factor 5 & 6: Real Evidence Verification & Structured Assertions
+            ev_ok, ev_errors = verify_evidence(entry, ex, ws_root, strict_disk=True)
+            if not ev_ok:
+                for err in ev_errors:
                     findings.append({
                         "rule_id": RULE_ID,
                         "severity": "error",
@@ -198,42 +196,7 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
                         "display_id": display_id,
                         "config_id": cid,
                         "file_path": None,
-                        "message": f"Factor 5 Failed: assets_sha256 is invalid or empty ('{assets_sha}')",
-                    })
-
-                scenario_sha = evidence.get("scenario_sha256")
-                if not scenario_sha or len(scenario_sha) != 64 or scenario_sha == NULL_HASH_64:
-                    findings.append({
-                        "rule_id": RULE_ID,
-                        "severity": "error",
-                        "entry_id": entry_id,
-                        "display_id": display_id,
-                        "config_id": cid,
-                        "file_path": None,
-                        "message": f"Factor 5 Failed: scenario_sha256 is invalid or empty ('{scenario_sha}')",
-                    })
-
-                # Factor 6: Execution report confirms success
-                rep_ref = evidence.get("execution_report_ref")
-                if not rep_ref or not isinstance(rep_ref, str):
-                    findings.append({
-                        "rule_id": RULE_ID,
-                        "severity": "error",
-                        "entry_id": entry_id,
-                        "display_id": display_id,
-                        "config_id": cid,
-                        "file_path": None,
-                        "message": "Factor 6 Failed: execution_report_ref is missing",
-                    })
-                elif "fail" in rep_ref.lower() or "error" in rep_ref.lower():
-                    findings.append({
-                        "rule_id": RULE_ID,
-                        "severity": "error",
-                        "entry_id": entry_id,
-                        "display_id": display_id,
-                        "config_id": cid,
-                        "file_path": None,
-                        "message": f"Factor 6 Failed: execution report '{rep_ref}' indicates test failure",
+                        "message": f"Factor 5/6 Failed: {err}",
                     })
 
             # Check scenario file existence on disk if declared

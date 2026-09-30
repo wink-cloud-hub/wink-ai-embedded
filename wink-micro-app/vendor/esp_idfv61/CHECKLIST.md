@@ -3,7 +3,7 @@
 # ESP-IDF v6.1 官方示例全量仿真适配核对清单 (Checklist)
 
 > **数据单一事实源（SSOT）**：[`checklist.data.json`](.governance/data/checklist.data.json)（Spec v2.0.0，多配置实例与五维正交模型）  
-> **生成时间**：2026-09-29  
+> **生成时间**：2026-09-30  
 > **分类规范**：[`CLASSIFICATION-SPEC.md`](.governance/specs/CLASSIFICATION-SPEC.md) (v2.0)  
 > **能力字典**：[`capability-catalog.yaml`](.governance/catalog/capability-catalog.yaml)  
 > **隔离区白名单**：[`gates/quarantine.yaml`](.governance/gates/quarantine.yaml)（10 项存量债务，14 天 TTL 生效中）  
@@ -327,7 +327,7 @@
 | [ ] | 221 | `wifi/fast_scan` | 📜 Level 2 | P1 | `wifi/fast_scan` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 222 | `wifi/ftm` | 📜 Level 2 | P1 | `wifi/ftm` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 223 | `wifi/getting_started/softAP` | 📜 Level 2 | P1 | `wifi/getting_started_softAP` | 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 224 | `wifi/getting_started/station` | 📜 Level 2 | P1 | [`wifi/wifi_sta`](wifi/wifi_sta) | 待排期。依赖进一步框架门面扩展。 |
+| [ ] | 224 | `wifi/getting_started/station` | ⚡ Level 3 | P1 | [`wifi/wifi_sta`](wifi/wifi_sta) | Wi-Fi STA DHCP IP allocation and beacon fault disconnect |
 | [ ] | 225 | `wifi/iperf` | 📜 Level 2 | P1 | `wifi/iperf` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 226 | `wifi/itwt` | 📜 Level 2 | P1 | `wifi/itwt` | 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 227 | `wifi/power_save` | 📜 Level 2 | P1 | `wifi/power_save` | 待排期。依赖进一步框架门面扩展。 |
