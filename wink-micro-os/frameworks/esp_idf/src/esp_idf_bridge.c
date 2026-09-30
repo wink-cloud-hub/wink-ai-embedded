@@ -22,6 +22,7 @@ extern void esp_mqtt_sim_reset(void);
 extern void esp_http_client_sim_reset(void);
 extern void esp_nimble_sim_reset(void);
 extern void esp_event_loop_sim_reset(void);
+extern void sim_network_broker_reset(void);
 
 static bool s_esp_pending_reset = false;
 static int s_esp_reset_reason = 4; /* SOFTWARE */
@@ -113,8 +114,11 @@ void pal_wasm_target_clear_pending_reset(void) {
     esp_http_client_sim_reset();
     esp_mqtt_sim_reset();
 
-    /* Stage 2: Reset Wi-Fi subsystem (internally resets sim_network_broker_reset) */
+    /* Stage 2: Reset Wi-Fi subsystem */
     esp_wifi_sim_reset();
+
+    /* Stage 2.5: Reset network broker state and callback subscriptions */
+    sim_network_broker_reset();
 
     /* Stage 3: Re-arm fresh netif baseline */
     (void)esp_netif_init();

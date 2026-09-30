@@ -374,7 +374,6 @@ void esp_wifi_sim_reset(void) {
     memset(&s_wifi, 0, sizeof(s_wifi));
     s_wifi.mode = WIFI_MODE_STA;
     sim_wifi_env_reset();
-    sim_network_broker_reset();
 }
 
 bool esp_wifi_sim_is_connected(void) {

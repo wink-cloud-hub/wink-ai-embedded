@@ -181,8 +181,12 @@ static void dispatch_event(esp_mqtt_client_handle_t client, esp_mqtt_event_id_t 
     (void)esp_event_post(MQTT_EVENTS, (int32_t)event_id, &env, sizeof(env), 0);
 }
 
-static void on_network_broker_state_changed(bool ready, void *user_ctx) {
+static void mqtt_connect_work_cb(void *arg, uint32_t work_token);
+
+static void on_network_broker_state_changed(esp_netif_t *netif, sim_netif_event_t event, void *user_ctx) {
+    (void)netif;
     (void)user_ctx;
+    bool ready = (event == SIM_NETIF_EVT_UP);
     s_network_ready = ready;
     if (!ready) {
         for (size_t i = 0; i < MAX_MQTT_CLIENTS; i++) {
@@ -208,7 +212,32 @@ static void on_network_broker_state_changed(bool ready, void *user_ctx) {
                 dispatch_event(c, MQTT_EVENT_DISCONNECTED, &disc_event);
             }
         }
+    } else {
+        for (size_t i = 0; i < MAX_MQTT_CLIENTS; i++) {
+            struct esp_mqtt_client *c = &s_clients[i];
+            if (c->initialized && c->started && !c->connected) {
+                uint32_t token = ++s_global_mqtt_token;
+                c->token = token;
+                if (c->work_item_id != 0) {
+                    esp_freertos_timer_cancel_work_item(c->work_item_id);
+                    c->work_item_id = 0;
+                }
+                esp_freertos_timer_post_work_item(mqtt_connect_work_cb,
+                                                  (void *)(uintptr_t)token,
+                                                  &c->work_item_id,
+                                                  pdMS_TO_TICKS(10));
+            }
+        }
     }
+}
+
+static bool s_mqtt_broker_registered = false;
+static void ensure_mqtt_broker_registered(void) {
+    if (!s_mqtt_broker_registered) {
+        sim_network_broker_register_cb(on_network_broker_state_changed, NULL);
+        s_mqtt_broker_registered = true;
+    }
+    s_network_ready = sim_network_broker_is_ready();
 }
 
 static bool mqtt_topic_match(const char *sub, const char *pub) {
@@ -304,6 +333,7 @@ esp_mqtt_client_handle_t esp_mqtt_client_init(const esp_mqtt_client_config_t *co
     if (!config) {
         return NULL;
     }
+    ensure_mqtt_broker_registered();
 
     for (int i = 0; i < MAX_MQTT_CLIENTS; i++) {
         if (!s_clients[i].initialized) {
@@ -650,7 +680,10 @@ void esp_mqtt_sim_reset(void) {
     s_last_msg_id = 0;
     memset(s_clients, 0, sizeof(s_clients));
     s_network_ready = sim_network_broker_is_ready();
-    sim_network_broker_register_cb(on_network_broker_state_changed, NULL);
+    if (s_mqtt_broker_registered) {
+        sim_network_broker_unregister_cb(on_network_broker_state_changed, NULL);
+        s_mqtt_broker_registered = false;
+    }
 }
 
 bool esp_mqtt_sim_is_connected(esp_mqtt_client_handle_t client) {
@@ -658,6 +691,7 @@ bool esp_mqtt_sim_is_connected(esp_mqtt_client_handle_t client) {
 }
 
 void esp_mqtt_sim_set_network_ready(bool ready) {
+    ensure_mqtt_broker_registered();
     s_network_ready = ready;
     sim_network_broker_set_ready(ready);
 }

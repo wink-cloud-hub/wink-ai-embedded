@@ -1004,6 +1004,135 @@ void test_wifi_anti_mutation_tampered_ip(void) {
 }
 
 /* --------------------------------------------------------------------------
+ * Phase 3: Broker Tuple Unregister & Soft Reset Cascade
+ * -------------------------------------------------------------------------- */
+typedef struct {
+    int up_count;
+    int down_count;
+} broker_test_ctx_t;
+
+static void shared_broker_test_cb(esp_netif_t *netif, sim_netif_event_t event, void *user_ctx) {
+    (void)netif;
+    broker_test_ctx_t *ctx = (broker_test_ctx_t *)user_ctx;
+    if (ctx) {
+        if (event == SIM_NETIF_EVT_UP) ctx->up_count++;
+        if (event == SIM_NETIF_EVT_DOWN) ctx->down_count++;
+    }
+}
+
+void test_sim_network_broker_tuple_unregister(void) {
+    sim_network_broker_reset();
+
+    broker_test_ctx_t ctx1 = {0, 0};
+    broker_test_ctx_t ctx2 = {0, 0};
+
+    /* Register both contexts with the same static callback function */
+    TEST_ASSERT_EQUAL(0, sim_network_broker_register_cb(shared_broker_test_cb, &ctx1));
+    TEST_ASSERT_EQUAL(0, sim_network_broker_register_cb(shared_broker_test_cb, &ctx2));
+
+    /* Notify UP */
+    sim_network_broker_set_ready(true);
+    TEST_ASSERT_EQUAL(1, ctx1.up_count);
+    TEST_ASSERT_EQUAL(1, ctx2.up_count);
+
+    /* Unregister ONLY ctx1 */
+    sim_network_broker_unregister_cb(shared_broker_test_cb, &ctx1);
+
+    /* Notify DOWN: ctx1 must NOT receive, ctx2 MUST receive */
+    sim_network_broker_set_ready(false);
+    TEST_ASSERT_EQUAL(0, ctx1.down_count);
+    TEST_ASSERT_EQUAL(1, ctx2.down_count);
+
+    /* Unregister ctx2 */
+    sim_network_broker_unregister_cb(shared_broker_test_cb, &ctx2);
+
+    /* Notify UP: neither receives */
+    sim_network_broker_set_ready(true);
+    TEST_ASSERT_EQUAL(1, ctx1.up_count);
+    TEST_ASSERT_EQUAL(1, ctx2.up_count);
+}
+
+static int s_reconnect_mqtt_conn = 0;
+static void reconnect_mqtt_handler(void *arg, esp_event_base_t base, int32_t id, void *data) {
+    (void)arg; (void)base; (void)data;
+    if ((esp_mqtt_event_id_t)id == MQTT_EVENT_CONNECTED) {
+        s_reconnect_mqtt_conn++;
+    }
+}
+
+void test_network_reconnect_after_soft_reset(void) {
+    s_reconnect_mqtt_conn = 0;
+    s_sta_connected_count = 0;
+    s_got_ip_count = 0;
+
+    TEST_ASSERT_EQUAL(ESP_OK, esp_event_loop_create_default());
+    esp_netif_t *netif1 = esp_netif_create_default_wifi_sta();
+    TEST_ASSERT_NOT_NULL(netif1);
+    TEST_ASSERT_EQUAL(ESP_OK, esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, wifi_test_event_handler, NULL));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, wifi_test_event_handler, NULL));
+
+    /* Session 1: Wi-Fi connect & MQTT connect */
+    wifi_init_config_t cfg1 = WIFI_INIT_CONFIG_DEFAULT();
+    TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_init(&cfg1));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_set_mode(WIFI_MODE_STA));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_start());
+    wifi_config_t conf1 = {.sta = {.ssid = "TestSSID", .password = "TestPass"}};
+    TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_set_config(WIFI_IF_STA, &conf1));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_connect());
+
+    esp_mqtt_client_config_t mcfg1 = {.broker.address.uri = "mqtt://127.0.0.1:1883"};
+    esp_mqtt_client_handle_t mqtt1 = esp_mqtt_client_init(&mcfg1);
+    TEST_ASSERT_NOT_NULL(mqtt1);
+    TEST_ASSERT_EQUAL(ESP_OK, esp_mqtt_client_register_event(mqtt1, ESP_EVENT_ANY_ID, reconnect_mqtt_handler, NULL));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_mqtt_client_start(mqtt1));
+
+    wink_status_t st = pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 50);
+    TEST_ASSERT_EQUAL(WINK_OK, st);
+    TEST_ASSERT_TRUE(esp_wifi_sim_is_connected());
+    TEST_ASSERT_TRUE(esp_mqtt_sim_is_connected(mqtt1));
+    TEST_ASSERT_EQUAL(1, s_reconnect_mqtt_conn);
+
+    /* Soft reset DAG */
+    pal_wasm_target_request_reset();
+    TEST_ASSERT_TRUE(pal_wasm_target_has_pending_reset());
+    pal_wasm_target_clear_pending_reset();
+    TEST_ASSERT_FALSE(pal_wasm_target_has_pending_reset());
+
+    /* Session 2: Re-arm baseline from clean state */
+    s_reconnect_mqtt_conn = 0;
+    s_sta_connected_count = 0;
+    s_got_ip_count = 0;
+
+    TEST_ASSERT_EQUAL(ESP_OK, esp_event_loop_create_default());
+    esp_netif_t *netif2 = esp_netif_create_default_wifi_sta();
+    TEST_ASSERT_NOT_NULL(netif2);
+    TEST_ASSERT_EQUAL(ESP_OK, esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, wifi_test_event_handler, NULL));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, wifi_test_event_handler, NULL));
+
+    wifi_init_config_t cfg2 = WIFI_INIT_CONFIG_DEFAULT();
+    TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_init(&cfg2));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_set_mode(WIFI_MODE_STA));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_start());
+    wifi_config_t conf2 = {.sta = {.ssid = "TestSSID", .password = "TestPass"}};
+    TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_set_config(WIFI_IF_STA, &conf2));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_connect());
+
+    esp_mqtt_client_config_t mcfg2 = {.broker.address.uri = "mqtt://127.0.0.1:1883"};
+    esp_mqtt_client_handle_t mqtt2 = esp_mqtt_client_init(&mcfg2);
+    TEST_ASSERT_NOT_NULL(mqtt2);
+    TEST_ASSERT_EQUAL(ESP_OK, esp_mqtt_client_register_event(mqtt2, ESP_EVENT_ANY_ID, reconnect_mqtt_handler, NULL));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_mqtt_client_start(mqtt2));
+
+    st = pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 50);
+    TEST_ASSERT_EQUAL(WINK_OK, st);
+    TEST_ASSERT_TRUE(esp_wifi_sim_is_connected());
+    TEST_ASSERT_TRUE(esp_mqtt_sim_is_connected(mqtt2));
+    TEST_ASSERT_EQUAL(1, s_reconnect_mqtt_conn);
+
+    esp_mqtt_client_destroy(mqtt2);
+}
+
+/* --------------------------------------------------------------------------
  * Unity Main Runner
  * -------------------------------------------------------------------------- */
 int main(void) {
@@ -1042,6 +1171,10 @@ int main(void) {
     /* Anti-Mutation Tests */
     RUN_TEST(test_wifi_anti_mutation_tampered_password);
     RUN_TEST(test_wifi_anti_mutation_tampered_ip);
+
+    /* Phase 3 Broker & Reset Hardening */
+    RUN_TEST(test_sim_network_broker_tuple_unregister);
+    RUN_TEST(test_network_reconnect_after_soft_reset);
 
     return UNITY_END();
 }

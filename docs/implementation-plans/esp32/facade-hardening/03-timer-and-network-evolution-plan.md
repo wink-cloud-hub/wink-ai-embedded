@@ -105,7 +105,7 @@
 
 ### 阶段 3：多 Netif 链路状态感知与 Broker 演进 (Network Broker Refinement)
 
-- [ ] **任务 T3.1**：升级 [`src/network/sim_network_broker.c`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-os/frameworks/esp_idf/src/network/sim_network_broker.c)：
+- [x] **任务 T3.1**：升级 [`src/network/sim_network_broker.c`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-os/frameworks/esp_idf/src/network/sim_network_broker.c)：
   - 扩展接口为携带 Netif 实例身份与 `(cb, user_ctx)` 二元组精确定位注销：
     ```c
     typedef enum {
@@ -118,10 +118,10 @@
     void sim_network_broker_notify_netif(esp_netif_t *netif, sim_netif_event_t event);
     ```
   - 编写单测验证两个客户端共用同一静态函数回调时，注销互不干扰；
-- [ ] **任务 T3.2**：重构复位链并验证网络回调留存：
+- [x] **任务 T3.2**：重构复位链并验证网络回调留存：
   - 彻底拆分复位 Tear-down 与 Re-arm 阶段，解耦 `sim_network_broker_reset()` 与上层监听注册；
   - 编写“联网 $\to$ 软复位 $\to$ 重新联网”单测，断言新客户端能稳定收到网络上线事件并成功连接；
-- [ ] **任务 T3.3**：端到端无头时序实证回归：
+- [x] **任务 T3.3**：端到端无头时序实证回归：
   - 执行 `powershell ./wink-micro-os/frameworks/esp_idf/tools/run_esp32_headless_evidence.ps1 -App wifi_sta`；
   - 验证虚拟时钟、因果事件先后序与无头实证场景全绿通过。
 
