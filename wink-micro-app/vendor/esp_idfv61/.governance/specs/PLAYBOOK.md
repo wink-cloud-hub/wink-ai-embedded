@@ -16,21 +16,30 @@
 
 1. **执行配置 (executions) 一等公民实体**：
    每个示例支持多种执行宿主配置（`wasm_browser`、`wasm_node`、`esp32_hardware`、`host_native`）。**严禁一个后端的测试通过自动代表其他配置已交付**。必须针对特定配置生成并绑定独立的测试凭据。
-2. **真实编译输出仿真资产三件套 (unisim-assets/)**：
-   使用 `wink-ai/packages/wink-tools/` 进行端到端真实构建编译，生成并输出资产三件套至微应用目录下的 `unisim-assets/`：
-   - `device-tree.json`（由 `wink-app.json` 经 `runtime_device_tree.py` 严格校验生成的拓扑与引脚映射）
-   - `wink_simulator.js`（Emscripten Wasm 运行时胶水层）
-   - `wink_simulator.wasm`（包含 `wink_framework_esp_idf` 仿真内核、FreeRTOS 调度器与官方应用代码的 Wasm 二进制）
-3. **确定性 Headless 自动化测试实证 (unisim-scenarios/)**：
-   编写对应的场景脚本 `unisim-scenarios/<name>.scenario.json`，使用 `run_esp32_headless_evidence.ps1` 驱动 UniSim Headless 模式进行自动化测试，确保所有微秒级断言步骤（引脚电平、时钟时序、外设事件）**100% 绿灯通过**。测试断言失败（处于 `regressed`）或执行报告缺失者，**严禁打勾 `[x]`**。
+2. **按 Target/Backend 提供真实异构交付资产 (Heterogeneous Assets)**：
+   依据执行配置的底层物理属性，分别产出对应防伪资产：
+   - **Wasm 仿真配置 (`wasm_*`)**：使用 `wink-tools` 编译输出微应用目录下的 `unisim-assets/` 三件套（`device-tree.json`, `wink_simulator.js`, `wink_simulator.wasm`）；
+   - **物理芯片配置 (`esp32_hardware`)**：产出真实 xtensa 交叉编译二进制产物（ELF / BIN / MAP）及对应 SHA-256；
+   - **宿主/构建类配置 (`host_native` / `build_system`)**：产出本地原生构建二进制或标准编译链接执行日志。
+3. **自动化测试实证闭环 (Verifiable Evidence)**：
+   依据配置属性完成真实自动化验证，严禁仅以声明充当交付：
+   - **Wasm 仿真配置**：编写 `unisim-scenarios/<name>.scenario.json`，经由 `run_esp32_headless_evidence.ps1` 执行无头仿真，所有微秒断言步骤 100% 绿灯；
+   - **物理芯片配置**：提供真机烧录输出、串口上电启动日志与预期特征字符串正则匹配记录；
+   - **构建系统配置**：提供 CMake 编译输出日志与进程退出码为 0 的执行报告。
 4. **原厂源码“一行不改”准则**：
    从 ESP-IDF 官方仓库镜像的代码文件（如 `blink_example_main.c`、`ledc_basic_example_main.c`）必须保持原汁原味，上游 SHA-256 哈希值需在 `wink-app.json` 中锁定。Kconfig / `sdkconfig` 宏定义一律在独立的 `include/sdkconfig.h` 中进行私有覆盖，底层行为由 `wink_framework_esp_idf` 门面垫片透明承接。
 5. **SSOT 单一写入路径铁律**：
    所有交付凭证必须写入单一数据源 [`checklist.data.json`](checklist.data.json) 中对应配置的 `evidence` 字段，随后运行生成脚本自动更新看板 [`CHECKLIST.md`](CHECKLIST.md)。**严禁手动直接修改 CHECKLIST.md 中的勾选状态！**
+6. **门面底座中立与防腐铁律（Zero Kernel Bypass & Anti-Decay）**：
+   为保证 291 项 Active 示例（1 项已验证，290 项待适配）的接入不会侵染、劣化底层仿真门面（`wink_framework_esp_idf`），任何示例适配必须遵守以下硬性防腐红线：
+   - **严禁 App 特化分支**：底座门面严禁出现 `if (strcmp(app, ...))` 等针对特定示例的私有 Bypass；行为差异必须通过原厂标准配置宏（Kconfig / sdkconfig）或确定性场景注入驱动；
+   - **严禁随意开临时延时纤程**：严禁在协议栈或驱动中调用 `xTaskCreate` 启动临时延时任务，必须统一使用带代际 Token 的定时器工作项，杜绝打爆 LITE 8 任务槽；
+   - **新增资源必须自锚复位因果链**：新增任何有状态或句柄的外设/协议模块，必须在 `esp_idf_bridge.c` 复位流程中注册注销逻辑，并在无头场景结束时验证基线干净；
+   - **严禁手工伪造未收割原厂头**：必须经由 Harvester 生成或按 SLA 规范声明，严禁在 `include/` 私设手写头。
 
 > [!CAUTION]
 > **绝对门禁声明**：
-> 任何未在 App 独立目录下产出 `unisim-assets/` 三件套、未编写 `unisim-scenarios/*.scenario.json`、未通过 `run_esp32_headless_evidence.ps1` 无头场景验证的配置实例，其 `delivery_state` 必须诚实保留为 `planned`，`evidence` 必须为 `null`，**一律严禁在看板中标记为 `[x]`！** 仅通过底层 CTest 编译或单元测试不等于应用级仿真交付。
+> 任何未在 App 独立目录下产出对应 Target 真实资产、未通过自动化实证检验并生成合规执行报告的配置实例，其 `delivery_state` 必须诚实保留为 `planned`，`evidence` 必须为 `null`，**一律严禁在看板中标记为 `[x]`！** 仅通过底层 CTest 编译不等于应用级交付。
 
 ---
 
@@ -215,6 +224,12 @@ set(WINK_APP_SOURCES "" PARENT_SCOPE)
 > - 适用于 HTTP/MQTT 等网络类示例。无头运行器（Headless Runner）在启动微应用仿真时，解析并在 C 门面注册模拟路由表与静态载荷；
 > - 运行结束或复位时自动调用 `sim_net_responder_reset()` 清空，杜绝跨用例状态串扰。
 
+### 5. 原厂未收割 API 处置规程（Strict Harvester Pipeline）
+若官方示例代码调用了当前门面公开 `include/` 中尚未收割的原厂 API：
+- **路径 A（纳入实现）**：必须通过 Harvester 闭源收割规则生成对应头文件并经门禁校验合入，**严禁开发者在 `include/` 下手工捏造未经审定的原厂头**；
+- **路径 B（声明 Out-of-Scope）**：若该特性属于明确排除范围（如 eFuse 熔丝硬件、特定外部 PHY 等），必须在 `wink_sla.h` 下使用 `WINK_SLA_ERROR` 进行编译期阻断，或运行期返回 `ESP_ERR_NOT_SUPPORTED`，并在 `checklist.data.json` 标记为 `[-] Out-of-Scope`，**严禁写空函数静默返回 `ESP_OK`**。
+
+
 
 ---
 
@@ -275,18 +290,27 @@ powershell -ExecutionPolicy Bypass -File wink-micro-os/frameworks/esp_idf/tools/
   - 控制台按序输出各 Step 的绿色勾选标记 `✓ Step #N [ASSERT_POINT] @ ...µs - Status: PASSED`；
   - 最终汇总输出 `All ESP-IDF headless carriers PASSED.`，退出码为 `0`。
 
+### 4. 场景复位与状态基线断言规范（Reset State Baseline）
+针对网络、蓝牙、外设等有状态示例，在场景脚本末尾应包含**软复位与基线断言步骤**：
+- 验证应用在执行完成或断开后，系统调用软复位能够干净回到初始态；
+- 杜绝因前一个用例未排空后台工作项或未注销事件观察者，导致后续无头用例发生幽灵状态串扰。
+
 ---
 
-## 五、 阶段四：底座 CTest 回归与架构分层门禁 (Unit & Lint Gates)
+## 五、 阶段四：底座 CTest 回归与架构分层三大硬门禁 (Unit & Anti-Decay Gates)
 
-如果当前适配的示例涉及底座 FreeRTOS 调度器、新增 HAL 驱动桩或门面扩充：
+如果当前适配的示例涉及底座 FreeRTOS 调度器、新增 HAL 驱动桩或门面扩充，提交前必须完整跑通以下三大硬门禁：
 
-1. **底层 CTest 回归测试**：
+1. **门禁 1：全门面 CTest 零回归（Full CTest Regression）**：
+   严禁只跑当前示例相关的小测试。必须执行全量 ESP-IDF 门面回归，确保既有全部单测保持 100% 全绿：
    ```bash
-   ctest -R test_esp_idf_<feature> --output-on-failure
+   ctest -L esp_idf --output-on-failure
    ```
-2. **架构分层与 API 门禁校验**：
-   依据 ADR-0043，在 `wink-ai-embedded` 运行分层门禁检查：
+2. **门禁 2：复位因果图与 Delta 零泄漏门禁（Reset & Memory Delta Gate）**：
+   - 运行复位双断言测试：验证优雅退出时内存与任务差额（Delta）为 0；
+   - 运行并发重启测试：验证在运行期调用 `esp_restart()` 后，各对象池重置为干净基线，旧句柄/回调彻底失效。
+3. **门禁 3：架构分层与 API 规范门禁（Layering & Lint Gate）**：
+   依据 ADR-0043，在 `wink-ai-embedded` 运行分层门禁检查，严禁任何业务代码破窗引用 `src/freertos/`、`src/wifi/` 等私有实现路径：
    ```bash
    winkcli lint --pack layering --pack api
    ```
@@ -303,17 +327,52 @@ powershell -ExecutionPolicy Bypass -File wink-micro-os/frameworks/esp_idf/tools/
 2. 确保前置条件满足：`scope.inclusion == "in_scope"`，`audit.verdict == "audited"`（且 `audited_configs` 包含当前 `config_id`），所引用的原子能力依赖图谱处于 `satisfied`。
 
 ### 2. 写入真实防伪凭据 (evidence)
-在当前配置对象的 `evidence` 字段中完整回写以下六位一体凭据（严禁留空或填入伪造占位符）：
+在当前配置对象的 `evidence` 字段中回写对应后端格式的真实凭据（严禁留空或填入伪造占位符）。
+
+**A. 仿真后端配置（`backend: "wasm_simulation"`）**：
 ```json
 "evidence": {
+  "backend": "wasm_simulation",
   "run_id": "run-20260929-1400-blink-01",
-  "assets_sha256": "<unisim-assets三件套校验和>",
+  "assets_sha256": "<三件套规范复合SHA256>",
   "scenario_sha256": "<unisim-scenarios/*.scenario.json校验和>",
   "execution_report_ref": "reports/esp32/run-20260929-1400-blink-01.json",
   "verified_commit": "<当前工作区 Git HEAD 提交哈希>",
   "verified_at": "2026-09-29T14:00:00Z"
 }
 ```
+> **三件套复合哈希计算规范**：
+> `assets_sha256` = `SHA256(SHA256(wink_simulator.wasm) + "\n" + SHA256(wink_simulator.js) + "\n" + SHA256(device-tree.json))`。由本地生成脚本统一计算，门禁按相同算法重算复核。
+
+**B. 真实硬件后端配置（`backend: "esp32_hardware"`）**：
+```json
+"evidence": {
+  "backend": "esp32_hardware",
+  "run_id": "hw-20260929-1500-blink-01",
+  "firmware_elf_sha256": "<交叉编译生成ELF文件哈希>",
+  "serial_log_report_ref": "reports/hw/run-20260929-1500-blink-01.json",
+  "board_type": "esp32_devkitc_v4",
+  "verified_commit": "<当前工作区 Git HEAD 提交哈希>",
+  "verified_at": "2026-09-29T15:00:00Z"
+}
+```
+
+**C. 纯构建验证配置（`backend: "build_system"`）**：
+```json
+"evidence": {
+  "backend": "build_system",
+  "run_id": "build-20260929-1600-blink-01",
+  "build_log_ref": "reports/build/run-20260929-1600-blink-01.log",
+  "compiler_version": "emcc-3.1.56",
+  "verified_commit": "<当前工作区 Git HEAD 提交哈希>",
+  "verified_at": "2026-09-29T16:00:00Z"
+}
+```
+
+> [!IMPORTANT]
+> **本地生成 vs CI 纯只读原则**：
+> - 开发者本地可通过 `run_esp32_headless_evidence.ps1 -App <app> -WriteEvidence` 自动测试并回写凭据；
+> - **在 CI 自动化门禁中，所有脚本严格遵循只读原则**，严禁在 CI 运行中修改 `checklist.data.json`。CI 负责在干净环境中重演构建与无头回归，校验凭据与当前代码真实产物的一致性。
 
 ### 3. 单向重新生成执行看板
 在仓库根目录执行看板生成脚本，由脚本基于六要素合取公式 $\text{CanCheckMark}(E, C)$ 自动裁判并渲染打勾：
