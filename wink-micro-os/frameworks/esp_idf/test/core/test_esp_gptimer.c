@@ -198,6 +198,98 @@ void test_gptimer_cross_instance_sequence_handover(void) {
     TEST_ASSERT_EQUAL_INT32(ESP_OK, gptimer_del_timer(t));
 }
 
+void test_gptimer_dynamic_alarm_update_while_running(void) {
+    gptimer_config_t cfg = {
+        .clk_src = GPTIMER_CLK_SRC_DEFAULT,
+        .direction = GPTIMER_COUNT_UP,
+        .resolution_hz = 1000000
+    };
+    gptimer_handle_t timer = NULL;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gptimer_new_timer(&cfg, &timer));
+
+    gptimer_event_callbacks_t cbs = {
+        .on_alarm = test_gptimer_cb
+    };
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gptimer_register_event_callbacks(timer, &cbs, NULL));
+
+    gptimer_alarm_config_t alarm_cfg = {
+        .alarm_count = 10000,
+        .reload_count = 0,
+        .flags = { .auto_reload_on_alarm = false }
+    };
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gptimer_set_alarm_action(timer, &alarm_cfg));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gptimer_enable(timer));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gptimer_start(timer));
+
+    /* Dynamically update alarm while running (T2.2) */
+    gptimer_alarm_config_t alarm_cfg2 = {
+        .alarm_count = 35000,
+        .reload_count = 0,
+        .flags = { .auto_reload_on_alarm = false }
+    };
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gptimer_set_alarm_action(timer, &alarm_cfg2));
+
+    /* Fire soft interrupt and verify new alarm count is observed */
+    s_alarm_fired = false;
+    pal_hwtimer_fire_soft(0);
+    TEST_ASSERT_TRUE(s_alarm_fired);
+    TEST_ASSERT_EQUAL_UINT64(35000, s_alarm_val);
+
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gptimer_stop(timer));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gptimer_del_timer(timer));
+}
+
+void test_gptimer_stale_isr_defense(void) {
+    gptimer_config_t cfg = {
+        .clk_src = GPTIMER_CLK_SRC_DEFAULT,
+        .direction = GPTIMER_COUNT_UP,
+        .resolution_hz = 1000000
+    };
+    gptimer_handle_t timer = NULL;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gptimer_new_timer(&cfg, &timer));
+
+    gptimer_event_callbacks_t cbs = {
+        .on_alarm = test_gptimer_cb
+    };
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gptimer_register_event_callbacks(timer, &cbs, NULL));
+
+    gptimer_alarm_config_t alarm_cfg = {
+        .alarm_count = 15000,
+        .reload_count = 0,
+        .flags = { .auto_reload_on_alarm = false }
+    };
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gptimer_set_alarm_action(timer, &alarm_cfg));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gptimer_enable(timer));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gptimer_start(timer));
+
+    /* Delete timer while running */
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gptimer_del_timer(timer));
+
+    /* Reset flag, then fire soft interrupt on underlying hardware channel 0 */
+    s_alarm_fired = false;
+    s_alarm_val = 0;
+    pal_hwtimer_fire_soft(0);
+
+    /* Verify stale ISR was blocked and did NOT call test_gptimer_cb */
+    TEST_ASSERT_FALSE(s_alarm_fired);
+    TEST_ASSERT_EQUAL_UINT64(0, s_alarm_val);
+}
+
+void test_gptimer_start_unconfigured_alarm_error(void) {
+    gptimer_config_t cfg = {
+        .clk_src = GPTIMER_CLK_SRC_DEFAULT,
+        .direction = GPTIMER_COUNT_UP,
+        .resolution_hz = 1000000
+    };
+    gptimer_handle_t timer = NULL;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gptimer_new_timer(&cfg, &timer));
+
+    /* Trying to start without enable must return ESP_ERR_INVALID_STATE */
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_STATE, gptimer_start(timer));
+
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, gptimer_del_timer(timer));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_gptimer_lifecycle_and_validation);
@@ -206,6 +298,9 @@ int main(void) {
     RUN_TEST(test_gptimer_pool_limit);
     RUN_TEST(test_gptimer_stale_handle_and_aba);
     RUN_TEST(test_gptimer_cross_instance_sequence_handover);
+    RUN_TEST(test_gptimer_dynamic_alarm_update_while_running);
+    RUN_TEST(test_gptimer_stale_isr_defense);
+    RUN_TEST(test_gptimer_start_unconfigured_alarm_error);
     return UNITY_END();
 }
 

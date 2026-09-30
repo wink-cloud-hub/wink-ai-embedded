@@ -22,6 +22,7 @@
 #endif
 
 #define NVS_MAX_HANDLES 4
+_Static_assert(NVS_MAX_HANDLES <= 64, "NVS_MAX_HANDLES must not exceed 64 (handle encoding limit)");
 
 #ifndef NVS_MAX_ENTRIES
 #  ifdef CONFIG_NVS_MAX_ENTRIES
@@ -129,7 +130,10 @@ static esp_err_t esp_sim_nvs_get_sandbox_paths(char *out_final, size_t final_sz,
 esp_err_t nvs_flash_init(void) {
     for (int i = 0; i < NVS_MAX_HANDLES; i++) {
         s_nvs_handles[i].in_use = false;
+        s_nvs_handles[i].token = 0;
+        s_nvs_handles[i].ns[0] = '\0';
     }
+    memset(s_nvs_storage, 0, sizeof(s_nvs_storage));
 
     char final_path[256], tmp_path[256];
     esp_err_t path_err = esp_sim_nvs_get_sandbox_paths(final_path, sizeof(final_path), tmp_path, sizeof(tmp_path));
@@ -147,7 +151,6 @@ esp_err_t nvs_flash_init(void) {
                 uint32_t crc = 0xFFFFFFFFu;
                 esp_sim_nvs_record_t rec;
                 bool ok = true;
-                memset(s_nvs_storage, 0, sizeof(s_nvs_storage));
                 for (uint16_t i = 0; i < hdr.entry_count; i++) {
                     if (fread(&rec, sizeof(rec), 1, f) != 1) {
                         ok = false;
@@ -177,7 +180,11 @@ esp_err_t nvs_flash_init(void) {
 esp_err_t nvs_flash_deinit(void) {
     for (int i = 0; i < NVS_MAX_HANDLES; i++) {
         s_nvs_handles[i].in_use = false;
+        s_nvs_handles[i].token = 0;
+        s_nvs_handles[i].ns[0] = '\0';
     }
+    /* Discard uncommitted RAM modifications; committed flash remains in sandbox storage */
+    memset(s_nvs_storage, 0, sizeof(s_nvs_storage));
     return ESP_OK;
 }
 
@@ -185,6 +192,8 @@ void esp_sim_nvs_reset_memory(void) {
     memset(s_nvs_storage, 0, sizeof(s_nvs_storage));
     for (int i = 0; i < NVS_MAX_HANDLES; i++) {
         s_nvs_handles[i].in_use = false;
+        s_nvs_handles[i].token = 0;
+        s_nvs_handles[i].ns[0] = '\0';
     }
 }
 

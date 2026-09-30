@@ -19,6 +19,8 @@ extern void esp_idf_ensure_framework_ready(void); /* Phase 2 Task 4 cold-start *
 #  endif
 #endif
 
+_Static_assert(FREERTOS_MAX_SEMAPHORES <= 64, "FREERTOS_MAX_SEMAPHORES must not exceed 64 (handle encoding limit)");
+
 typedef enum {
     SEM_TYPE_MUTEX = 0,
     SEM_TYPE_BINARY,

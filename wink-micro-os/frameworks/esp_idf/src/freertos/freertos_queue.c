@@ -19,6 +19,8 @@ extern void esp_idf_ensure_framework_ready(void); /* Phase 2 Task 4 cold-start *
 #  endif
 #endif
 
+_Static_assert(FREERTOS_MAX_QUEUES <= 64, "FREERTOS_MAX_QUEUES must not exceed 64 (handle encoding limit)");
+
 #ifndef FREERTOS_QUEUE_STORAGE_SIZE
 #  ifdef CONFIG_FREERTOS_QUEUE_STORAGE_SIZE
 #    define FREERTOS_QUEUE_STORAGE_SIZE CONFIG_FREERTOS_QUEUE_STORAGE_SIZE
@@ -258,6 +260,8 @@ BaseType_t xQueuePeek(QueueHandle_t xQueue, void * const pvBuffer, TickType_t xT
         }
         /* Phase 3 Task 2.6: cannot block inside ISR */
         esp_freertos_assert_not_in_isr("xQueuePeek");
+        /* Phase 2: cannot block inside spinlock critical section */
+        esp_freertos_assert_not_in_critical("xQueuePeek");
         uint32_t self = sim_scheduler_current_id();
         if (self == SIM_SCHED_NO_READY) {
             return errQUEUE_EMPTY;

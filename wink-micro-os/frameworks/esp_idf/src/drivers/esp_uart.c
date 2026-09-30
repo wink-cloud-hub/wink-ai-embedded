@@ -4,6 +4,8 @@
 #include "osal/pal_osal.h"
 #include "osal/pal_deferred.h"
 #include "wink_sim_scheduler.h"
+#include "esp_idf_wink.h"
+#include "freertos_sync.h"
 #include <string.h>
 
 #define UART_RING_BUF_SIZE 512
@@ -91,7 +93,7 @@ esp_err_t uart_set_pin(uart_port_t uart_num, int tx_io_num, int rx_io_num, int r
         wink_status_t st = pal_uart_init((uint8_t)uart_num, u->tx_pin, u->rx_pin, u->baud_rate > 0 ? u->baud_rate : 115200);
         if (st != WINK_OK) {
             u->pal_initialized = false;
-            return ESP_FAIL;
+            return esp_err_from_wink(st);
         }
     }
     return ESP_OK;
@@ -115,7 +117,7 @@ esp_err_t uart_driver_install(uart_port_t uart_num, int rx_buffer_size, int tx_b
     if (!u->pal_initialized) {
         wink_status_t st = pal_uart_init((uint8_t)uart_num, u->tx_pin, u->rx_pin, u->baud_rate > 0 ? u->baud_rate : 115200);
         if (st != WINK_OK) {
-            return ESP_FAIL;
+            return esp_err_from_wink(st);
         }
         u->pal_initialized = true;
     }
@@ -190,6 +192,8 @@ int uart_read_bytes(uart_port_t uart_num, void *buf, uint32_t length, TickType_t
         if (u->waiting_task_id >= 0 && u->waiting_task_id != (int)self) {
             return -1;
         }
+
+        esp_freertos_assert_not_in_critical("uart_read_bytes");
 
         u->waiting_task_id = (int)self;
         uint32_t res_id = (RES_UART_TAG << 24) | (uint32_t)uart_num;

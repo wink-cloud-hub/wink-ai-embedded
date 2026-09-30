@@ -185,6 +185,37 @@ void test_nvs_commit_survives_soft_reset_but_handles_do_not(void) {
     nvs_close(new_handle);
 }
 
+void test_nvs_uncommitted_discarded_on_deinit_reinit(void) {
+    nvs_handle_t h1 = 0;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_open("uncommit_test", NVS_READWRITE, &h1));
+
+    /* Key 1: committed to persistent backing store */
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_set_u32(h1, "committed_k", 12345));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_commit(h1));
+
+    /* Key 2: uncommitted, only in RAM cache */
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_set_u32(h1, "uncommitted_k", 99999));
+    nvs_close(h1);
+
+    /* Simulate power-cycle / soft-reset by deinit then init (RAM cleared, disk preserved) */
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_flash_deinit());
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_flash_init());
+
+    nvs_handle_t h2 = 0;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_open("uncommit_test", NVS_READWRITE, &h2));
+
+    /* Committed key must be present */
+    uint32_t val1 = 0;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_get_u32(h2, "committed_k", &val1));
+    TEST_ASSERT_EQUAL_UINT32(12345, val1);
+
+    /* Uncommitted key must have been discarded! */
+    uint32_t val2 = 0;
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_NVS_NOT_FOUND, nvs_get_u32(h2, "uncommitted_k", &val2));
+
+    nvs_close(h2);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_nvs_handle_lifecycle_and_limit);
@@ -193,5 +224,6 @@ int main(void) {
     RUN_TEST(test_nvs_erase_and_not_found);
     RUN_TEST(test_nvs_entry_limit);
     RUN_TEST(test_nvs_commit_survives_soft_reset_but_handles_do_not);
+    RUN_TEST(test_nvs_uncommitted_discarded_on_deinit_reinit);
     return UNITY_END();
 }

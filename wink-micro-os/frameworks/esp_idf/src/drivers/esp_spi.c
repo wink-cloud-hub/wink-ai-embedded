@@ -3,6 +3,7 @@
 #include "hal/pal_spi.h"
 #include "esp_log.h"
 #include "esp_sim_handle.h"
+#include "esp_idf_wink.h"
 #include <string.h>
 
 #define MAX_SPI_DEVS 8
@@ -61,7 +62,8 @@ esp_err_t spi_bus_initialize(spi_host_device_t host_id, const spi_bus_config_t *
         .dma_enabled = false,
         .timeout_ms = PAL_SPI_DEFAULT_TIMEOUT_MS
     };
-    return (pal_spi_init_bus(&pcfg) == WINK_OK) ? ESP_OK : ESP_FAIL;
+    wink_status_t st = pal_spi_init_bus(&pcfg);
+    return esp_err_from_wink(st);
 }
 
 esp_err_t spi_bus_free(spi_host_device_t host_id) {
@@ -93,8 +95,9 @@ esp_err_t spi_bus_add_device(spi_host_device_t host_id, const spi_device_interfa
                 .cs_hold_ns = 0
             };
             pal_spi_device_handle_t pal_dev = NULL;
-            if (pal_spi_add_device(pal_bus, &dcfg, &pal_dev) != WINK_OK) {
-                return ESP_FAIL;
+            wink_status_t st = pal_spi_add_device(pal_bus, &dcfg, &pal_dev);
+            if (st != WINK_OK) {
+                return esp_err_from_wink(st);
             }
             uint32_t token = esp_sim_handle_issue(ESP_SIM_HANDLE_SPI, (uint32_t)i);
             if (!token) {
@@ -139,7 +142,7 @@ esp_err_t spi_device_transmit(spi_device_handle_t handle, spi_transaction_t *tra
         : (uint8_t *)trans_desc->rx_buffer;
 
     wink_status_t st = pal_spi_transfer_polling(dev->pal_handle, tx, rx, byte_len);
-    return (st == WINK_OK) ? ESP_OK : ESP_FAIL;
+    return esp_err_from_wink(st);
 }
 
 void esp_spi_reset(void) {

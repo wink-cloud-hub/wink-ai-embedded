@@ -342,3 +342,13 @@ void esp_heap_caps_reset(void) {
     s_minimum_internal_free = INTERNAL_HEAP_TOTAL_BYTES;
     s_minimum_spiram_free = SPIRAM_HEAP_TOTAL_BYTES;
 }
+
+size_t esp_heap_caps_get_active_allocations(void) {
+    size_t count = 0;
+    for (size_t i = 0; i < ESP_SIM_HEAP_TRACKER_MAX; ++i) {
+        if (s_heap_records[i].used) {
+            count++;
+        }
+    }
+    return count;
+}

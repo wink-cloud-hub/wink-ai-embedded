@@ -2,6 +2,7 @@
 #include "driver/i2c.h"
 #include "hal/pal_i2c.h"
 #include "esp_log.h"
+#include "esp_idf_wink.h"
 #include <string.h>
 #include <assert.h>
 
@@ -66,7 +67,7 @@ esp_err_t i2c_param_config(i2c_port_t i2c_num, const i2c_config_t *i2c_conf) {
     }
     uint32_t speed = (i2c_conf->master.clk_speed > 0) ? i2c_conf->master.clk_speed : 400000;
     wink_status_t st = pal_i2c_bus_init((uint8_t)i2c_num, (wink_pin_t)i2c_conf->sda_io_num, (wink_pin_t)i2c_conf->scl_io_num, speed);
-    return (st == WINK_OK) ? ESP_OK : ESP_FAIL;
+    return esp_err_from_wink(st);
 }
 
 i2c_cmd_handle_t i2c_cmd_link_create(void) {
@@ -212,7 +213,7 @@ esp_err_t i2c_master_cmd_begin(i2c_port_t i2c_num, i2c_cmd_handle_t cmd_handle, 
     }
 
     wink_status_t st = pal_i2c_transfer_timeout((uint8_t)i2c_num, dev_addr, tx_buf, tx_len, rx_buf, rx_len, timeout_ms);
-    return (st == WINK_OK) ? ESP_OK : (st == WINK_ERR_TIMEOUT ? ESP_ERR_TIMEOUT : ESP_FAIL);
+    return esp_err_from_wink(st);
 }
 
 // --- Legacy Timing & Slave Stubs (Tier-B Corpus Compatibility) ---

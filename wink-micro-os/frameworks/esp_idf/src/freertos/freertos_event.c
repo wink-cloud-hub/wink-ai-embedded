@@ -19,6 +19,8 @@ extern void esp_idf_ensure_framework_ready(void); /* Phase 2 Task 4 cold-start *
 #  endif
 #endif
 
+_Static_assert(FREERTOS_MAX_EVENT_GROUPS <= 64, "FREERTOS_MAX_EVENT_GROUPS must not exceed 64 (handle encoding limit)");
+
 typedef struct {
     uint32_t     sim_id;
     EventBits_t  bits_to_wait_for;

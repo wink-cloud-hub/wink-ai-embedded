@@ -2,6 +2,7 @@
 #include "driver/i2c_master.h"
 #include "hal/pal_i2c.h"
 #include "esp_sim_handle.h"
+#include "esp_idf_wink.h"
 #include <string.h>
 
 #define MAX_MASTER_BUSES SOC_HP_I2C_NUM
@@ -86,7 +87,7 @@ esp_err_t i2c_new_master_bus(const i2c_master_bus_config_t *bus_config, i2c_mast
 
     wink_status_t st = pal_i2c_bus_init(port, (wink_pin_t)bus_config->sda_io_num, (wink_pin_t)bus_config->scl_io_num, 400000);
     if (st != WINK_OK) {
-        return ESP_FAIL;
+        return esp_err_from_wink(st);
     }
 
     uint32_t token = esp_sim_handle_issue(ESP_SIM_HANDLE_I2C_BUS, port);
@@ -134,7 +135,7 @@ esp_err_t i2c_master_transmit(i2c_master_dev_handle_t handle, const uint8_t *wri
     }
     uint32_t t_ms = (xfer_timeout_ms < 0) ? PAL_I2C_DEFAULT_TIMEOUT_MS : (uint32_t)xfer_timeout_ms;
     wink_status_t st = pal_i2c_transfer_timeout(dev->bus->port, dev->addr, write_buffer, (uint32_t)write_size, NULL, 0, t_ms);
-    return (st == WINK_OK) ? ESP_OK : ESP_FAIL;
+    return esp_err_from_wink(st);
 }
 
 esp_err_t i2c_master_receive(i2c_master_dev_handle_t handle, uint8_t *read_buffer, size_t read_size, int xfer_timeout_ms) {
@@ -144,7 +145,7 @@ esp_err_t i2c_master_receive(i2c_master_dev_handle_t handle, uint8_t *read_buffe
     }
     uint32_t t_ms = (xfer_timeout_ms < 0) ? PAL_I2C_DEFAULT_TIMEOUT_MS : (uint32_t)xfer_timeout_ms;
     wink_status_t st = pal_i2c_transfer_timeout(dev->bus->port, dev->addr, NULL, 0, read_buffer, (uint32_t)read_size, t_ms);
-    return (st == WINK_OK) ? ESP_OK : ESP_FAIL;
+    return esp_err_from_wink(st);
 }
 
 esp_err_t i2c_master_transmit_receive(i2c_master_dev_handle_t handle, const uint8_t *write_buffer, size_t write_size, uint8_t *read_buffer, size_t read_size, int xfer_timeout_ms) {
@@ -154,7 +155,7 @@ esp_err_t i2c_master_transmit_receive(i2c_master_dev_handle_t handle, const uint
     }
     uint32_t t_ms = (xfer_timeout_ms < 0) ? PAL_I2C_DEFAULT_TIMEOUT_MS : (uint32_t)xfer_timeout_ms;
     wink_status_t st = pal_i2c_transfer_timeout(dev->bus->port, dev->addr, write_buffer, (uint32_t)write_size, read_buffer, (uint32_t)read_size, t_ms);
-    return (st == WINK_OK) ? ESP_OK : ESP_FAIL;
+    return esp_err_from_wink(st);
 }
 
 esp_err_t i2c_master_probe(i2c_master_bus_handle_t bus_handle, uint16_t address, int xfer_timeout_ms) {
@@ -164,7 +165,13 @@ esp_err_t i2c_master_probe(i2c_master_bus_handle_t bus_handle, uint16_t address,
     }
     uint32_t t_ms = (xfer_timeout_ms < 0) ? PAL_I2C_DEFAULT_TIMEOUT_MS : (uint32_t)xfer_timeout_ms;
     wink_status_t st = pal_i2c_transfer_timeout(bus->port, address, NULL, 0, NULL, 0, t_ms);
-    return (st == WINK_OK) ? ESP_OK : ESP_ERR_NOT_FOUND;
+    if (st == WINK_OK) {
+        return ESP_OK;
+    }
+    if (st == WINK_ERR_TIMEOUT) {
+        return ESP_ERR_TIMEOUT;
+    }
+    return ESP_ERR_NOT_FOUND;
 }
 
 esp_err_t i2c_del_master_bus(i2c_master_bus_handle_t bus_handle) {

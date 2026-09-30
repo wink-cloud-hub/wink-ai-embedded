@@ -13,6 +13,8 @@
 #include "esp_log.h"
 #include "../core/esp_sim_handle.h"
 
+_Static_assert(FREERTOS_MAX_TASKS <= 64, "FREERTOS_MAX_TASKS must not exceed 64 (handle encoding limit)");
+
 static esp_tcb_t s_tcb[FREERTOS_MAX_TASKS];
 static bool s_isr_yield_requested = false;
 
@@ -75,6 +77,16 @@ void esp_freertos_task_pool_reset(void) {
         s_tcb[i].prio = 0;
         s_tcb[i].name[0] = '\0';
     }
+}
+
+uint32_t esp_freertos_get_active_task_count(void) {
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < FREERTOS_MAX_TASKS; ++i) {
+        if (s_tcb[i].used) {
+            count++;
+        }
+    }
+    return count;
 }
 
 BaseType_t xTaskCreatePinnedToCore(TaskFunction_t pxTaskCode,
@@ -163,6 +175,7 @@ void vTaskDelete(TaskHandle_t xTaskToDelete) {
     sim_scheduler_mark_zombie(slot);
 
     if (slot == cur) {
+        esp_freertos_assert_not_in_critical("vTaskDelete");
         sim_scheduler_yield_context();
         for (;;) {}
     }
@@ -177,6 +190,10 @@ void vTaskSuspend(TaskHandle_t xTaskToSuspend) {
     uint32_t slot = t->sim_id;
     uint32_t cur = sim_scheduler_current_id();
     uint32_t res_id = FREERTOS_MAKE_RES_ID(FREERTOS_TAG_SUSPEND, slot);
+
+    if (slot == cur) {
+        esp_freertos_assert_not_in_critical("vTaskSuspend");
+    }
 
     sim_scheduler_block(slot, res_id, pal_os_get_us(), 0ULL);
     if (slot == cur) {

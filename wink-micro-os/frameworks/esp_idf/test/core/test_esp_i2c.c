@@ -399,6 +399,73 @@ void test_modern_i2c_stale_handle_and_aba(void) {
     TEST_ASSERT_EQUAL_INT32(ESP_OK, i2c_del_master_bus(bus2));
 }
 
+#if !defined(__EMSCRIPTEN__)
+#include "sim_responder.h"
+
+static wink_status_t fault_responder_cb(sim_responder_t *self,
+                                        const uint8_t *write_buf, size_t write_len,
+                                        uint8_t *read_buf, size_t read_len) {
+    (void)self;
+    (void)write_buf;
+    (void)write_len;
+    (void)read_buf;
+    (void)read_len;
+    return WINK_ERR_TIMEOUT;
+}
+#endif
+
+void test_modern_i2c_fault_injection(void) {
+#if !defined(__EMSCRIPTEN__)
+    i2c_master_bus_config_t bus_cfg = {
+        .i2c_port = I2C_NUM_0,
+        .sda_io_num = 21,
+        .scl_io_num = 22,
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+        .glitch_ignore_cnt = 7,
+        .flags = { .enable_internal_pullup = true }
+    };
+    i2c_master_bus_handle_t bus = NULL;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, i2c_new_master_bus(&bus_cfg, &bus));
+    TEST_ASSERT_NOT_NULL(bus);
+
+    i2c_device_config_t dev_cfg = {
+        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+        .device_address = 0x48,
+        .scl_speed_hz = 100000
+    };
+    i2c_master_dev_handle_t dev = NULL;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, i2c_master_bus_add_device(bus, &dev_cfg, &dev));
+    TEST_ASSERT_NOT_NULL(dev);
+
+    sim_responder_t resp = {
+        .bus_type = SIM_BUS_TYPE_I2C,
+        .port = 0,
+        .address = 0x48,
+        .in_use = false,
+        .on_transfer = fault_responder_cb,
+        .user_data = NULL,
+        .next = NULL
+    };
+    sim_responder_register(&resp);
+
+    uint8_t tx[1] = { 0xAA };
+    uint8_t rx[1] = { 0 };
+
+    /* Transmit returns ESP_ERR_TIMEOUT when responder returns WINK_ERR_TIMEOUT */
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_TIMEOUT, i2c_master_transmit(dev, tx, 1, 50));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_TIMEOUT, i2c_master_receive(dev, rx, 1, 50));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_TIMEOUT, i2c_master_transmit_receive(dev, tx, 1, rx, 1, 50));
+
+    /* Probe returns ESP_OK because responder ACKs the device address */
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, i2c_master_probe(bus, 0x48, 50));
+
+    sim_responder_unregister(&resp);
+
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, i2c_master_bus_rm_device(dev));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, i2c_del_master_bus(bus));
+#endif
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_legacy_i2c_slave_mode_rejected);
@@ -411,5 +478,6 @@ int main(void) {
     RUN_TEST(test_modern_i2c_device_pool_limit);
     RUN_TEST(test_modern_i2c_master_invalid_args);
     RUN_TEST(test_modern_i2c_stale_handle_and_aba);
+    RUN_TEST(test_modern_i2c_fault_injection);
     return UNITY_END();
 }

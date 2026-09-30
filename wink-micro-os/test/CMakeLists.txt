@@ -1395,6 +1395,8 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     target_include_directories(test_esp_idf_runtime PRIVATE
         ${UNITY_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
     )
     target_link_libraries(test_esp_idf_runtime PRIVATE wink_framework_esp_idf dal)
     target_compile_options(test_esp_idf_runtime PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
@@ -1488,6 +1490,7 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
         ${UNITY_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/core
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/freertos
         ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
     )
@@ -1597,8 +1600,18 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     endif()
     wink_test_attach_manifest(test_esp_idf_phase2_crash)
     add_test(NAME test_spinlock_yield_guard_assertion
-             COMMAND test_esp_idf_phase2_crash)
+             COMMAND test_esp_idf_phase2_crash delay)
     set_tests_properties(test_spinlock_yield_guard_assertion
+                         PROPERTIES LABELS "esp_idf;core" WILL_FAIL TRUE TIMEOUT 30)
+
+    add_test(NAME test_spinlock_yield_guard_semaphore
+             COMMAND test_esp_idf_phase2_crash sem)
+    set_tests_properties(test_spinlock_yield_guard_semaphore
+                         PROPERTIES LABELS "esp_idf;core" WILL_FAIL TRUE TIMEOUT 30)
+
+    add_test(NAME test_spinlock_yield_guard_queue
+             COMMAND test_esp_idf_phase2_crash queue)
+    set_tests_properties(test_spinlock_yield_guard_queue
                          PROPERTIES LABELS "esp_idf;core" WILL_FAIL TRUE TIMEOUT 30)
 
     # Phase 3 full regression suite (PLAN-20260927-ESP-IDF-SIM-PHASE3)
@@ -1677,6 +1690,7 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     target_include_directories(test_esp_i2c PRIVATE
         ${UNITY_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
     )
     target_link_libraries(test_esp_i2c PRIVATE wink_framework_esp_idf dal)
     target_compile_options(test_esp_i2c PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
@@ -1716,6 +1730,7 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
         ${UNITY_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/core
         ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
     )
     target_link_libraries(test_esp_gptimer PRIVATE wink_framework_esp_idf dal)
@@ -1894,6 +1909,7 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/freertos
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/network
         ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
     )
     target_link_libraries(test_esp_http_client PRIVATE wink_framework_esp_idf dal)
@@ -2093,6 +2109,7 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     target_include_directories(test_esp_idf_blink_run PRIVATE
         ${UNITY_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/blink/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/freertos
@@ -2117,6 +2134,7 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     target_include_directories(test_esp_idf_ledc_run PRIVATE
         ${UNITY_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../runtime/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/corpus/ledc_basic/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/freertos
@@ -2141,6 +2159,7 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
         ${UNITY_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/core
         ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
         ${CMAKE_CURRENT_SOURCE_DIR}/stubs
     )
@@ -2182,7 +2201,7 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
         test_esp_ledc test_esp_i2c test_esp_uart test_esp_gptimer test_esp_spi
         test_esp_event
         test_esp_nvs test_esp_nvs_bad_sandbox test_esp_nvs_io_error test_esp_wifi test_esp_mqtt test_esp_http_client
-        test_esp_nimble test_esp_idf_blink_run test_esp_idf_ledc_run
+        test_esp_nimble test_esp_idf_blink_run test_esp_idf_ledc_run test_esp_idf_safeguards
     )
     if(TARGET test_esp_idf_concurrent_cold_start)
         list(APPEND _ESP_IDF_HOST_TEST_TARGETS test_esp_idf_concurrent_cold_start)

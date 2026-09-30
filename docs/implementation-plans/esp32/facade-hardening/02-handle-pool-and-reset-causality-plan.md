@@ -4,7 +4,7 @@
 | 字段 | 内容 |
 |---|---|
 | 计划编号 | PLAN-20260930-ESP-IDF-LIFECYCLE-RESET-CRITICAL-v1.3 |
-| 状态 | 📋 **Draft / Planned（待计划 01 验收后正式启动）** |
+| 状态 | ✅ **Completed（实施完成，94/94 测试全量通过）** |
 | 日期 | 2026-09-30 |
 | 周期估算 | 1.5~2 个工作日 |
 | 优先次序 | **错误语义精细审计与故障注入 → GPTimer 及外设生命周期与异常回滚缺口审计 → 复位完整因果图 (含 Netif/Broker) 与复位前 Delta 记账 → 阻塞切出点全梳理与临界区守卫补齐** |
@@ -43,7 +43,7 @@
 
 ### 阶段 1：错误码映射审计与驱动契约故障注入 (Error Code Precision Audit)
 
-- [ ] **任务 T1.1**：逐驱动梳理错误码映射契约表：
+- [x] **任务 T1.1**：逐驱动梳理错误码映射契约表：
   - 建立驱动错误码映射矩阵：
     | 驱动模块 | 底层 Wink / PAL 状态 | 当前门面返回值 | 原厂期望标准返回值 | 改进措施 |
     |---|---|---|---|---|
@@ -52,35 +52,35 @@
     | `esp_spi` | `WINK_ERR_BUSY` | `ESP_FAIL` | `ESP_ERR_INVALID_STATE` | 避免有损覆盖 |
     | `esp_uart`| 缓冲区满 / 溢出 | `ESP_FAIL` | `ESP_ERR_NO_MEM` / `ESP_FAIL` | 对齐原厂 driver API |
     | `esp_gptimer`| 未配置报警即启动 | `ESP_FAIL` | `ESP_ERR_INVALID_STATE` | 规范状态前置校验 |
-- [ ] **任务 T1.2**：按契约精细化重构驱动错误返回：
+- [x] **任务 T1.2**：按契约精细化重构驱动错误返回：
   - 替换驱动中裸露的 `return (st == WINK_OK) ? ESP_OK : ESP_FAIL;`；
   - 严禁盲目调用单一宏，必须结合 API 文档与上下文语义返回精确错误码；
-- [ ] **任务 T1.3**：增加故障注入测试用例（Fault Injection Tests）：
+- [x] **任务 T1.3**：增加故障注入测试用例（Fault Injection Tests）：
   - 在 `test/drivers/` 相应单测中增加故障注入分支，验证底层返回超时或硬件错误时，门面准确向应用传递期望的乐鑫原厂标准错误码。
 
 ---
 
 ### 阶段 2：GPTimer 及外设驱动生命周期缺口审计 (Lifecycle Gap Audit)
 
-- [ ] **任务 T2.1**：底层启动与停止异常回滚审计（Rollback on Failure）：
+- [x] **任务 T2.1**：底层启动与停止异常回滚审计（Rollback on Failure）：
   - 审查 [`src/drivers/esp_gptimer.c`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-os/frameworks/esp_idf/src/drivers/esp_gptimer.c)：
     - 若 `pal_hwtimer_start()` 返回失败，必须立即将 `t->running` 回退为 `false`，并保持错误码精确向上传递；
     - 若 `pal_hwtimer_stop()` 返回失败，严禁擅自修改内部运行标志，确保软件状态与底层硬件真实状态 100% 同步；
-- [ ] **任务 T2.2**：运行中修改 Alarm 与并发竞态审计：
+- [x] **任务 T2.2**：运行中修改 Alarm 与并发竞态审计：
   - 审计 `gptimer_set_alarm_action()` 在 Timer 处于 `running` 状态下的行为：
     - 检查是否需要加锁或在临界区内更新 `alarm_count` 和 `alarm_cb`，防止更新到一半时触发底层 ISR 造成野指针回调；
-- [ ] **任务 T2.3**：删除与复位瞬间的悬空回调（Stale ISR Defense）：
+- [x] **任务 T2.3**：删除与复位瞬间的悬空回调（Stale ISR Defense）：
   - 审计 `gptimer_del_timer()` 与 `esp_peripherals_reset()`：
     - 确保在清空槽位 `in_use = false` 前，底层 `pal_hwtimer_stop()` 和 `pal_hwtimer_deinit()` 已经完成；
     - 引入代际 Token 校验与回调排空边界，消除在注销瞬间未决的中断回调打入已被复用的新句柄；
-- [ ] **任务 T2.4**：编写生命周期缺口回归单测：
+- [x] **任务 T2.4**：编写生命周期缺口回归单测：
   - 在 `test/core/test_esp_gptimer.c` 中新增专门测试：底层启动失败状态回滚测试、运行中动态更新 alarm 测试、删除后中断不泄露测试。
 
 ---
 
 ### 阶段 3：固化复位因果依赖图 (DAG) 与双断言模型 (Reset DAG & Dual Assertion Model)
 
-- [ ] **任务 T3.1**：因果固化与时序审计 [`src/esp_idf_bridge.c`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-os/frameworks/esp_idf/src/esp_idf_bridge.c) 完整复位依赖图：
+- [x] **任务 T3.1**：因果固化与时序审计 [`src/esp_idf_bridge.c`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-os/frameworks/esp_idf/src/esp_idf_bridge.c) 完整复位依赖图：
   - 确认既有代码第 84 行的 `(void)esp_netif_init()` 处于正确的拓扑位置，并显式记录与审计 `esp_wifi_sim_reset()` 间接调用 `sim_network_broker_reset()` 的副作用链路；
   - 在 `esp_idf_bridge.c` 源码中固化完整的因果撤回时序图：
     ```
@@ -110,10 +110,10 @@
          ▼
     8. esp_freertos_pools_reset()                          [最后重置 OS 槽位池与内核对象]
     ```
-- [ ] **任务 T3.2**：NVS 持久化状态与 RAM 缓存隔离：
+- [x] **任务 T3.2**：NVS 持久化状态与 RAM 缓存隔离：
   - 明确 NVS 语义：已提交（`nvs_commit`）的数据代表物理 Flash，虚拟断电或软复位均必须保留；
   - 软复位与虚拟掉电仅丢弃未提交的写缓冲与 RAM 临时上下文，确保其行为与物理 ESP32 芯片完全吻合；
-- [ ] **任务 T3.3**：实现测试观测接口与双断言模型（Dual Assertion Model）：
+- [x] **任务 T3.3**：实现测试观测接口与双断言模型（Dual Assertion Model）：
   - 在 `src/core/esp_heap_caps.c` 与 `src/freertos/freertos_task.c` 中导出专用观测钩子：
     ```c
     size_t esp_heap_caps_get_active_allocations(void);
@@ -127,7 +127,7 @@
 
 ### 阶段 4：并发临界区阻塞切出守卫补齐 (Critical Section Yield Guard)
 
-- [ ] **任务 T4.1**：梳理全门面所有阻塞切出点并补齐断言：
+- [x] **任务 T4.1**：梳理全门面所有阻塞切出点并补齐断言：
   - 排查 `src/freertos/` 中所有直接或间接调用 `sim_scheduler_yield_context()` 的 API：
     - `xSemaphoreTake`（阻塞等待分支：`ticks_to_wait > 0`）；
     - `xQueueSend` / `xQueueReceive`（阻塞等待分支：`ticks_to_wait > 0`）；
@@ -135,7 +135,7 @@
     - `xTaskNotifyWait`（阻塞等待分支：`xTicksToWait > 0`）；
   - 严格确保在触发切出让步前调用 `esp_freertos_assert_not_in_critical(__func__)`；
   - 区分“用户 API 违规切出”与“调度器内部让步”，避免内部正常轮转触发误报；
-- [ ] **任务 T4.2**：编写阻塞切出负向测试用例：
+- [x] **任务 T4.2**：编写阻塞切出负向测试用例：
   - 在 `test/freertos/test_freertos_spinlock.c` 中增设针对 `xSemaphoreTake` 与 `xQueueReceive` 的负向拦截测试；
   - 验证在持有 `portENTER_CRITICAL()` 期间若强行阻塞等待，测试 Harness 能精准捕获致命断言拦截。
 
@@ -143,7 +143,7 @@
 
 ### 阶段 5：容量配置校验与既有 Profile 扩展 (Profile Capacity Audit)
 
-- [ ] **任务 T5.1**：校验 [`esp_idf_target.cmake`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-os/frameworks/esp_idf/esp_idf_target.cmake) 中的 LITE/STANDARD/PRO 容量与编码上限：
+- [x] **任务 T5.1**：校验 [`esp_idf_target.cmake`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-os/frameworks/esp_idf/esp_idf_target.cmake) 中的 LITE/STANDARD/PRO 容量与编码上限：
   - 检查 `CONFIG_FREERTOS_MAX_QUEUES`、`CONFIG_FREERTOS_MAX_TASKS` 等与 `esp_sim_handle.c` 的 `MAX_SLOTS = 64` 约束；
   - 澄清并解耦：`CONFIG_NVS_MAX_ENTRIES` 是数据条目数（可在 PRO 配置下设为 128/256），其句柄池 `NVS_MAX_HANDLES = 4` 符合句柄上限；
   - 增加静态断言（编译期检查），确保任何 Profile 配置下的句柄槽位数绝不突破 64 编码上限；
@@ -163,17 +163,23 @@
 
 ## 四、 全局验收标准 (Definition of Done)
 
-1. **DoD-1（错误码语义精确度与故障注入）**：
+1. [x] **DoD-1（错误码语义精确度与故障注入）**：
    - 驱动中不再出现无意义的 `(st == WINK_OK) ? ESP_OK : ESP_FAIL`；
-   - 超时、参数错误、状态错误等均返回原厂对齐的标准错误码，并有对应故障注入单测验证；
-2. **DoD-2（生命周期与异常回滚完备性）**：
-   - 底层启动/停止硬件失败时，软件状态 100% 诚实回滚；
-   - 动态更新 alarm 具备并发安全性；删除与复位后无悬空中断回调污染；
-3. **DoD-3（复位因果图完整性与双断言覆盖）**：
-   - `esp_idf_bridge.c` 代码与注释完整覆盖 8 阶段复位因果链（含 Netif 与 Broker 副作用）；
-   - 测试 Harness 在优雅退出时断言 Delta 为 0，在并发运行中 `esp_restart()` 时断言重置基线干净且旧句柄失效；
-   - NVS 已提交数据在软复位与虚拟断电后完整保留；
-4. **DoD-4（阻塞切出守卫覆盖度）**：
-   - 所有带阻塞等待的 FreeRTOS 同步原语均加装临界区安全守卫，并在负测中验证拦截；
-5. **DoD-5（全量 CTest 真实回归）**：
-   - 在宿主环境中执行全量 `ctest -L esp_idf`，保存真实运行日志与退出码，保持 100% 全绿。
+   - 超时、参数错误、状态错误等均返回原厂对齐的标准错误码（`esp_err.c` 建立完备映射，各驱动如 I2C/SPI/UART/LEDC/GPTimer 全面重构）；
+   - 增加 SPI 硬件忙注入单测 (`test_spi_fault_injection`) 与 I2C 超时注入单测 (`test_modern_i2c_fault_injection`) 验证通过；
+2. [x] **DoD-2（生命周期与异常回滚完备性）**：
+   - GPTimer 底层启动硬件失败时，状态立即回滚（`t->running = false`），停止失败时保持硬件真实状态；
+   - 运行中动态更新 alarm (`gptimer_set_alarm_action`) 具备停止-配置-重启生命周期安全性与代际累加；
+   - 删除与复位通过 ISR 代际令牌防卫 (`isr_generation`) 彻底消除悬空中断回调打入复用句柄的风险；
+   - 在 `test_esp_gptimer.c` 中增加针对动态修改、代际失效、未配报警启动失败的 3 组针对性单测且 100% 通过；
+3. [x] **DoD-3（复位因果图完整性与双断言覆盖）**：
+   - `esp_idf_bridge.c` 代码与注释完整固化 8 阶段复位因果拓扑图（含 Broker 间接依赖、Netif 基线、调度器前/后边界断言）；
+   - NVS 明确 RAM 缓存与 Flash 持久化隔离契约：已提交数据软复位与虚拟断电不丢，未提交缓存随 deinit/reset 丢弃，`test_nvs_uncommitted_discarded_on_deinit_reinit` 单测验证通过；
+   - 导出 `esp_heap_caps_get_active_allocations()` 与 `esp_freertos_get_active_task_count()` 测试观测钩子；
+   - 在 `test_esp_idf_runtime.c` 落地并验证模式 A（优雅退出零泄漏审计）与模式 B（并发运行中 `esp_restart()` 干净基线与旧句柄失效）；
+4. [x] **DoD-4（阻塞切出守卫覆盖度）**：
+   - 所有带阻塞等待的 FreeRTOS 原语（`vTaskDelay`、`vTaskDelayUntil`、`xSemaphoreTake`、`xQueueSend`、`xQueueReceive`、`xEventGroupWaitBits`、`xTaskNotifyWait`、`uart_read_bytes` 等）均加装 `esp_freertos_assert_not_in_critical` 守卫；
+   - 在 `test_esp_idf_phase2_crash.c` 与 CMake 中注册针对 delay、semaphore、queue 的 3 组独立负向崩溃切出测试，精准验证致命拦截；
+5. [x] **DoD-5（全量 CTest 真实回归）**：
+   - 运行全量 `ctest -L esp_idf`，94 项测试（含 CTest 原生、Wasm 编译、Corpus 演练、自包含头文件检查、Crash 负测）100% 全部通过（`100% tests passed out of 94`，耗时 61.92 秒）；
+   - 运行 `check_headers_standalone.py`，119 项公共头文件全部自包含通过（0 失败）。

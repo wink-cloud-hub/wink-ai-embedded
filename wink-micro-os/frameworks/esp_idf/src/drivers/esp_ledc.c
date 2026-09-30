@@ -2,6 +2,7 @@
 #include "driver/ledc.h"
 #include "hal/pal_pwm.h"
 #include "esp_log.h"
+#include "esp_idf_wink.h"
 #include <string.h>
 
 static const char *TAG = "esp_ledc";
@@ -69,7 +70,7 @@ esp_err_t ledc_channel_config(const ledc_channel_config_t *ch_conf) {
 
     wink_status_t st = pal_pwm_init_ex((uint8_t)ch_conf->channel, &cfg);
     if (st != WINK_OK) {
-        return ESP_FAIL;
+        return esp_err_from_wink(st);
     }
 
     esp_ledc_channel_state_t *ch = &s_channels[ch_conf->channel];
@@ -114,7 +115,7 @@ esp_err_t ledc_update_duty(ledc_mode_t speed_mode, ledc_channel_t channel) {
     }
 
     wink_status_t st = pal_pwm_set_duty_bp((uint8_t)channel, basis_points);
-    return (st == WINK_OK) ? ESP_OK : ESP_FAIL;
+    return esp_err_from_wink(st);
 }
 
 esp_err_t ledc_stop(ledc_mode_t speed_mode, ledc_channel_t channel, uint32_t idle_level) {
@@ -126,8 +127,7 @@ esp_err_t ledc_stop(ledc_mode_t speed_mode, ledc_channel_t channel, uint32_t idl
     s_channels[channel].pending_duty = 0;
     s_channels[channel].active_duty = 0;
     wink_status_t st = pal_pwm_set_duty_bp((uint8_t)channel, 0);
-    (void)st;
-    return ESP_OK;
+    return esp_err_from_wink(st);
 }
 
 esp_err_t ledc_fade_func_install(int intr_alloc_flags) {

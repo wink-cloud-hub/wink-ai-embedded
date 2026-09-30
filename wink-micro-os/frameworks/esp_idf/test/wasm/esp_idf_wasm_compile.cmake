@@ -29,6 +29,7 @@ function(add_esp_idf_wasm_compile_check name source_file)
         COMMAND ${EMCC_EXECUTABLE} -c "${_src_abs}" -o "${_out_obj}"
             -Wall -Wextra -Werror -Wno-unused-parameter
             -DUNITY_SUPPORT_64=1
+            -DSIMULATION=1
             -D${WINK_IDF_TARGET_DEFINE}=1
             ${_profile_args}
             # corpus overlay 优先（Tier-B stub 与 sdkconfig.h 均须覆盖 framework 同名头）

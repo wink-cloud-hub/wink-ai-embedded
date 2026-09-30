@@ -3,6 +3,7 @@
 #include "hal/pal_hwtimer.h"
 #include "osal/pal_osal.h"
 #include "esp_sim_handle.h"
+#include "esp_idf_wink.h"
 #include <string.h>
 
 struct gptimer_t {
@@ -21,6 +22,7 @@ struct gptimer_t {
 };
 
 static struct gptimer_t s_gptimers[PAL_HWTIMERS_MAX];
+_Static_assert(PAL_HWTIMERS_MAX <= 64, "PAL_HWTIMERS_MAX must not exceed 64 (handle encoding limit)");
 
 static struct gptimer_t *resolve_gptimer(gptimer_handle_t timer) {
     if (!timer) {
@@ -39,8 +41,11 @@ static struct gptimer_t *resolve_gptimer(gptimer_handle_t timer) {
 
 static void on_hwtimer_isr(void *arg) {
     struct gptimer_t *t = (struct gptimer_t *)arg;
-    if (t && t->in_use && t->alarm_cb) {
+    if (t && t->in_use && t->running && t->alarm_cb) {
         gptimer_handle_t timer_handle = (gptimer_handle_t)(uintptr_t)t->token;
+        if (resolve_gptimer(timer_handle) != t) {
+            return;
+        }
         uint64_t now_val = 0;
         gptimer_get_raw_count(timer_handle, &now_val);
         gptimer_alarm_event_data_t edata = {
@@ -135,17 +140,21 @@ esp_err_t gptimer_set_alarm_action(gptimer_handle_t timer, const gptimer_alarm_c
     if (!t || !config) {
         return ESP_ERR_INVALID_ARG;
     }
+    bool was_running = t->running;
+    if (was_running && t->alarm_configured) {
+        pal_hwtimer_stop(t->id);
+    }
+    if (t->alarm_configured) {
+        pal_hwtimer_deinit(t->id);
+        t->alarm_configured = false;
+    }
+
     t->alarm_count = config->alarm_count;
     t->auto_reload = config->flags.auto_reload_on_alarm ? true : false;
 
     uint64_t us = (config->alarm_count * 1000000ULL) / t->resolution_hz;
     if (us < 10000ULL) {
         us = 10000ULL;
-    }
-
-    if (t->alarm_configured) {
-        pal_hwtimer_deinit(t->id);
-        t->alarm_configured = false;
     }
 
     pal_hwtimer_cfg_t pcfg = {
@@ -161,11 +170,16 @@ esp_err_t gptimer_set_alarm_action(gptimer_handle_t timer, const gptimer_alarm_c
     };
     wink_status_t st = pal_hwtimer_init(&pcfg);
     if (st != WINK_OK) {
-        return ESP_FAIL;
+        t->running = false;
+        return esp_err_from_wink(st);
     }
     t->alarm_configured = true;
-    if (t->running) {
-        pal_hwtimer_start(t->id);
+    if (was_running) {
+        wink_status_t sst = pal_hwtimer_start(t->id);
+        if (sst != WINK_OK) {
+            t->running = false;
+            return esp_err_from_wink(sst);
+        }
     }
     return ESP_OK;
 }
@@ -200,7 +214,8 @@ esp_err_t gptimer_start(gptimer_handle_t timer) {
     if (t->alarm_configured) {
         wink_status_t st = pal_hwtimer_start(t->id);
         if (st != WINK_OK) {
-            return ESP_FAIL;
+            t->running = false;
+            return esp_err_from_wink(st);
         }
     }
     return ESP_OK;
@@ -214,13 +229,13 @@ esp_err_t gptimer_stop(gptimer_handle_t timer) {
     if (!t->enabled) {
         return ESP_ERR_INVALID_STATE;
     }
-    t->running = false;
     if (t->alarm_configured) {
         wink_status_t st = pal_hwtimer_stop(t->id);
         if (st != WINK_OK) {
-            return ESP_FAIL;
+            return esp_err_from_wink(st);
         }
     }
+    t->running = false;
     return ESP_OK;
 }
 
@@ -229,10 +244,17 @@ esp_err_t gptimer_del_timer(gptimer_handle_t timer) {
     if (!t) {
         return ESP_ERR_INVALID_ARG;
     }
+    if (t->running || t->alarm_configured) {
+        pal_hwtimer_stop(t->id);
+    }
     if (t->alarm_configured) {
         pal_hwtimer_deinit(t->id);
         t->alarm_configured = false;
     }
+    t->enabled = false;
+    t->running = false;
+    t->alarm_cb = NULL;
+    t->user_data = NULL;
     t->in_use = false;
     t->token = 0;
     return ESP_OK;
@@ -241,6 +263,7 @@ esp_err_t gptimer_del_timer(gptimer_handle_t timer) {
 void esp_gptimer_reset(void) {
     for (int i = 0; i < PAL_HWTIMERS_MAX; i++) {
         if (s_gptimers[i].alarm_configured) {
+            pal_hwtimer_stop(s_gptimers[i].id);
             pal_hwtimer_deinit(s_gptimers[i].id);
         }
     }

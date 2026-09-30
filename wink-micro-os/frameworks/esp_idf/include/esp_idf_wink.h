@@ -40,6 +40,10 @@ esp_err_t esp_sim_gpio_inject_edge(gpio_num_t pin, uint32_t from_level, uint32_t
 /* Phase 3 NVS simulation memory cache reset (for testing cold reload from sandbox file) */
 void esp_sim_nvs_reset_memory(void);
 
+/* Test Harness Observation Hooks (Dual Assertion Model: DoD-3) */
+size_t esp_heap_caps_get_active_allocations(void);
+uint32_t esp_freertos_get_active_task_count(void);
+
 #ifdef __cplusplus
 }
 #endif

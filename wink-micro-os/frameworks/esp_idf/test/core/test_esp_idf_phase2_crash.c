@@ -12,31 +12,53 @@
  */
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
+#include "freertos/queue.h"
 #include "freertos_sync.h"
 
 #include <signal.h>
 #include <stdlib.h>
+#include <string.h>
+
+extern void esp_idf_ensure_framework_ready(void);
 
 static void abort_handler(int sig) {
     (void)sig;
     exit(1);
 }
 
-int main(void) {
+int main(int argc, char *argv[]) {
     signal(SIGABRT, abort_handler);
 
     /* Ensure framework pools are ready */
-    esp_freertos_pools_reset();
+    esp_idf_ensure_framework_ready();
+
+    const char *mode = (argc > 1) ? argv[1] : "delay";
+
+    SemaphoreHandle_t sem = NULL;
+    QueueHandle_t q = NULL;
+    if (strcmp(mode, "sem") == 0) {
+        sem = xSemaphoreCreateBinary();
+    } else if (strcmp(mode, "queue") == 0) {
+        q = xQueueCreate(1, sizeof(int));
+    }
 
     portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 
     /* Acquire the spinlock — depth becomes 1 for this (no-scheduler) context */
     vPortEnterCritical(&mux);
 
-    /* This call MUST trigger esp_freertos_assert_not_in_critical("vTaskDelay")
-     * → assert(0) → SIGABRT → non-zero exit.
-     * If the guard is missing, the process exits 0 and CTest fails (WILL_FAIL). */
-    vTaskDelay(1);
+    if (strcmp(mode, "sem") == 0) {
+        /* Blocking take inside critical section MUST assert */
+        xSemaphoreTake(sem, 10);
+    } else if (strcmp(mode, "queue") == 0) {
+        int dummy = 0;
+        /* Blocking receive on empty queue inside critical section MUST assert */
+        xQueueReceive(q, &dummy, 10);
+    } else {
+        /* Default mode: vTaskDelay */
+        vTaskDelay(1);
+    }
 
     /* Should never reach here if the guard is working */
     vPortExitCritical(&mux);

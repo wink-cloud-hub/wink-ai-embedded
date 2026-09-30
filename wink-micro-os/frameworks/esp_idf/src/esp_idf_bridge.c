@@ -73,20 +73,64 @@ void esp_restart(void) {
 /* 供 targets/wasm 弱钩子查询的导出（命名不得带 wink_mcs51 前缀冲突） */
 bool pal_wasm_target_has_pending_reset(void) { return s_esp_pending_reset; }
 int pal_wasm_target_get_reset_reason(void) { return s_esp_reset_reason; }
+
+/**
+ * @brief Complete 8-stage Reset Causality DAG (ADR-0085 / PLAN-20260930-ESP-IDF-LIFECYCLE-RESET-CRITICAL):
+ *
+ *  Scheduler boundary check: assert(sim_scheduler_current_id() == SIM_SCHED_NO_READY)
+ *       │
+ *       ▼
+ *  1. esp_http_client_sim_reset() / esp_mqtt_sim_reset()  [Disconnect upper connections, drain in-flight events]
+ *       │
+ *       ▼
+ *  2. esp_wifi_sim_reset() ───(indirect side-effect)───► sim_network_broker_reset() [Tear down air interface & network broker]
+ *       │
+ *       ▼
+ *  3. (void)esp_netif_init()                              [Re-initialize default network interface baseline]
+ *       │
+ *       ▼
+ *  4. esp_nimble_sim_reset()                              [Tear down BLE stack & advertise handles]
+ *       │
+ *       ▼
+ *  5. esp_event_loop_sim_reset()                          [Drain default event queue, unregister sys_evt fiber]
+ *       │
+ *       ▼
+ *  6. sim_scheduler_reset(0)                              [Reset scheduler, evict all application task fibers]
+ *       │
+ *       ▼
+ *  7. esp_peripherals_reset()                             [Release hardware PALs, stop GPTimers, flush NVS cache]
+ *       │
+ *       ▼
+ *  8. esp_freertos_pools_reset()                          [Reset FreeRTOS kernel object pools & spinlocks]
+ */
 void pal_wasm_target_clear_pending_reset(void) {
     assert(sim_scheduler_current_id() == SIM_SCHED_NO_READY &&
            "ESP-IDF soft reset must be applied at a scheduler boundary");
     s_esp_pending_reset = false;
-    /* Tear down producers and queued callbacks before their dependencies. */
+
+    /* Stage 1: Disconnect upper application protocol clients */
     esp_http_client_sim_reset();
     esp_mqtt_sim_reset();
+
+    /* Stage 2: Reset Wi-Fi subsystem (internally resets sim_network_broker_reset) */
     esp_wifi_sim_reset();
+
+    /* Stage 3: Re-arm fresh netif baseline */
     (void)esp_netif_init();
+
+    /* Stage 4: Reset BLE/NimBLE subsystem */
     esp_nimble_sim_reset();
+
+    /* Stage 5: Drain system event loop and stop event task */
     esp_event_loop_sim_reset();
-    /* Invalidate dormant fibers as well as module tokens before pool reuse. */
+
+    /* Stage 6: Evict all application fibers and reset scheduler state */
     sim_scheduler_reset(0);
+
+    /* Stage 7: Reset peripheral drivers (GPIO, LEDC, I2C, SPI, UART, GPTimer, NVS) */
     esp_peripherals_reset();
+
+    /* Stage 8: Reset FreeRTOS object pools (tasks, queues, semaphores, events, spinlocks) */
     esp_freertos_pools_reset();
 }
 
