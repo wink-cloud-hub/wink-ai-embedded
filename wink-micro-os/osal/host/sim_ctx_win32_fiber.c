@@ -36,6 +36,10 @@ sim_ctx_t* sim_ctx_from_current(void) {
     return c;
 }
 
+void sim_ctx_refresh_current(sim_ctx_t* ctx) {
+    (void)ctx;
+}
+
 sim_ctx_t* sim_ctx_create(void (*entry)(void*), void* arg, size_t stack_bytes) {
     struct sim_ctx* c = (struct sim_ctx*)calloc(1, sizeof(*c));
     if (!c) return NULL;

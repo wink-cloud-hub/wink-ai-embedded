@@ -18,6 +18,7 @@
 #include "wink_sim_scheduler.h"
 #include "wink_trace.h"
 #include <emscripten.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <inttypes.h>
@@ -518,6 +519,8 @@ wink_status_t pal_sim_scheduler_run(const struct wink_app_callbacks* callbacks,
 
     if (s_main_ctx == NULL) {
         s_main_ctx = sim_ctx_from_current();
+    } else {
+        sim_ctx_refresh_current(s_main_ctx);
     }
     sim_scheduler_set_main_ctx(s_main_ctx);
     wink_sim_mode_init_from_env();

@@ -45,6 +45,13 @@ sim_ctx_t* sim_ctx_from_current(void) {
     return c;
 }
 
+void sim_ctx_refresh_current(sim_ctx_t* ctx) {
+    if (!ctx) return;
+    assert(ctx->is_main && "sim_ctx_refresh_current called on non-main fiber context");
+    emscripten_fiber_init_from_current_context(
+        &ctx->fiber, ctx->asyncify_stack, ctx->async_bytes);
+}
+
 sim_ctx_t* sim_ctx_create(void (*entry)(void*), void* arg, size_t stack_bytes) {
     struct sim_ctx* c = calloc(1, sizeof(*c));
     if (!c) return NULL;

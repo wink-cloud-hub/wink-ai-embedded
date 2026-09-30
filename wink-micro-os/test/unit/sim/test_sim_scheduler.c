@@ -36,6 +36,10 @@ sim_ctx_t* sim_ctx_from_current(void) {
     return ctx;
 }
 
+void sim_ctx_refresh_current(sim_ctx_t* ctx) {
+    (void)ctx;
+}
+
 void sim_ctx_switch(sim_ctx_t* from, sim_ctx_t* to) {
     s_mock_ctx_switch_count++;
     (void)from;

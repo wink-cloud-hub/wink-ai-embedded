@@ -29,6 +29,13 @@ sim_ctx_t* sim_ctx_create(void (*entry)(void*), void* arg, size_t stack_bytes);
 sim_ctx_t* sim_ctx_from_current(void);
 
 /**
+ * @brief Rebind or refresh main scheduler fiber handle to the current call frame.
+ *
+ * @param ctx Main fiber context handle previously obtained via sim_ctx_from_current().
+ */
+void sim_ctx_refresh_current(sim_ctx_t* ctx);
+
+/**
  * @brief Switch execution context from @p from to @p to.
  *
  * @param from Source context handle.

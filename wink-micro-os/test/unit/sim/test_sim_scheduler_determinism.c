@@ -25,6 +25,7 @@ sim_ctx_t* sim_ctx_from_current(void) {
     ctx->entry = NULL; ctx->arg = NULL; ctx->stack_bytes = 0;
     return ctx;
 }
+void sim_ctx_refresh_current(sim_ctx_t* ctx) { (void)ctx; }
 void sim_ctx_switch(sim_ctx_t* from, sim_ctx_t* to) { (void)from; (void)to; }
 void sim_ctx_destroy(sim_ctx_t* ctx) { free(ctx); }
 
