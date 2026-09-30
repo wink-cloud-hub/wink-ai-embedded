@@ -99,7 +99,7 @@ wink_status_t pal_pcnt_init(const pal_pcnt_config_t *cfg,
 
     st = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_a, "pal_pcnt_esp32");
     if (st != WINK_OK) {
-        pal_resource_release(PAL_RESOURCE_PCNT_UNIT, slot->id, "pal_pcnt_esp32");
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_PCNT_UNIT, slot->id, "pal_pcnt_esp32"));
         pal_spinlock_unlock(&s_pcnt_lock);
         return st;
     }
@@ -107,8 +107,8 @@ wink_status_t pal_pcnt_init(const pal_pcnt_config_t *cfg,
     if (cfg->pin_b >= 0) {
         st = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_b, "pal_pcnt_esp32");
         if (st != WINK_OK) {
-            pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_a, "pal_pcnt_esp32");
-            pal_resource_release(PAL_RESOURCE_PCNT_UNIT, slot->id, "pal_pcnt_esp32");
+            WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_a, "pal_pcnt_esp32"));
+            WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_PCNT_UNIT, slot->id, "pal_pcnt_esp32"));
             pal_spinlock_unlock(&s_pcnt_lock);
             return st;
         }
@@ -120,15 +120,14 @@ wink_status_t pal_pcnt_init(const pal_pcnt_config_t *cfg,
     pcnt_unit_config_t unit_config = {
         .low_limit = slot->low_limit,
         .high_limit = slot->high_limit,
-        .intr_flags = ESP_INTR_FLAG_IRAM,
     };
     esp_err_t err = pcnt_new_unit(&unit_config, &slot->unit_handle);
     if (err != ESP_OK) {
         if (cfg->pin_b >= 0) {
-            pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_b, "pal_pcnt_esp32");
+            WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_b, "pal_pcnt_esp32"));
         }
-        pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_a, "pal_pcnt_esp32");
-        pal_resource_release(PAL_RESOURCE_PCNT_UNIT, slot->id, "pal_pcnt_esp32");
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_a, "pal_pcnt_esp32"));
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_PCNT_UNIT, slot->id, "pal_pcnt_esp32"));
         pal_spinlock_unlock(&s_pcnt_lock);
         return WINK_ERR_HARDWARE;
     }
@@ -154,10 +153,10 @@ wink_status_t pal_pcnt_init(const pal_pcnt_config_t *cfg,
     if (err != ESP_OK) {
         pcnt_del_unit(slot->unit_handle);
         if (cfg->pin_b >= 0) {
-            pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_b, "pal_pcnt_esp32");
+            WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_b, "pal_pcnt_esp32"));
         }
-        pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_a, "pal_pcnt_esp32");
-        pal_resource_release(PAL_RESOURCE_PCNT_UNIT, slot->id, "pal_pcnt_esp32");
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_a, "pal_pcnt_esp32"));
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_PCNT_UNIT, slot->id, "pal_pcnt_esp32"));
         pal_spinlock_unlock(&s_pcnt_lock);
         return WINK_ERR_HARDWARE;
     }
@@ -172,9 +171,9 @@ wink_status_t pal_pcnt_init(const pal_pcnt_config_t *cfg,
         if (err != ESP_OK) {
             pcnt_del_channel(slot->chan_a);
             pcnt_del_unit(slot->unit_handle);
-            if (cfg->pin_b >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_b, "pal_pcnt_esp32");
-            pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_a, "pal_pcnt_esp32");
-            pal_resource_release(PAL_RESOURCE_PCNT_UNIT, slot->id, "pal_pcnt_esp32");
+            if (cfg->pin_b >= 0) WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_b, "pal_pcnt_esp32"));
+            WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_a, "pal_pcnt_esp32"));
+            WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_PCNT_UNIT, slot->id, "pal_pcnt_esp32"));
             pal_spinlock_unlock(&s_pcnt_lock);
             return WINK_ERR_HARDWARE;
         }
@@ -241,10 +240,10 @@ wink_status_t pal_pcnt_deinit(pal_pcnt_unit_handle_t handle) {
     handle->unit_handle = NULL;
 
     if (handle->cfg.pin_b >= 0) {
-        pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)handle->cfg.pin_b, "pal_pcnt_esp32");
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)handle->cfg.pin_b, "pal_pcnt_esp32"));
     }
-    pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)handle->cfg.pin_a, "pal_pcnt_esp32");
-    pal_resource_release(PAL_RESOURCE_PCNT_UNIT, handle->id, "pal_pcnt_esp32");
+    WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)handle->cfg.pin_a, "pal_pcnt_esp32"));
+    WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_PCNT_UNIT, handle->id, "pal_pcnt_esp32"));
 
     handle->in_use = false;
     PAL_ATOMIC_STORE(&handle->accum_count, 0, PAL_RELAXED);
@@ -281,7 +280,7 @@ wink_status_t pal_pcnt_get_count(pal_pcnt_unit_handle_t handle, int64_t *count_o
         retries++;
     } while (retries < 8);
 
-    LOG_W(LOG_TAG, "PCNT get_count retry limit exceeded, returning latest atomic sample");
+    LOG_W("PCNT get_count retry limit exceeded, returning latest atomic sample");
     *count_out = a2 + (int64_t)raw_val;
     return WINK_OK;
 }

@@ -178,9 +178,9 @@ wink_status_t dal_ultrasonic_init(dal_ultrasonic_t *dev, const dal_ultrasonic_co
 cleanup:
     LOG_E("init FAILED rc=%d: owner=%s variant=%d (rolling back)",
           (int)rc, cfg->owner, (int)cfg->variant);
-    if (echo_inited)  { (void)pal_gpio_reset_pin((uint16_t)cfg->echo_pin); }
-    if (trig_inited)  { (void)pal_gpio_reset_pin((uint16_t)cfg->trig_pin); }
-    if (sig_inited)   { (void)pal_gpio_reset_pin((uint16_t)cfg->sig_pin); }
+    if (echo_inited)  { pal_gpio_reset_pin((uint16_t)cfg->echo_pin); }
+    if (trig_inited)  { pal_gpio_reset_pin((uint16_t)cfg->trig_pin); }
+    if (sig_inited)   { pal_gpio_reset_pin((uint16_t)cfg->sig_pin); }
     if (echo_claimed) { WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->echo_pin, cfg->owner)); }
     if (trig_claimed) { WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->trig_pin, cfg->owner)); }
     if (sig_claimed)  { WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->sig_pin, cfg->owner)); }
@@ -224,11 +224,11 @@ wink_status_t dal_ultrasonic_request_measurement(dal_ultrasonic_t *dev) {
         );
     } else if (dev->config.variant == DAL_ULTRASONIC_VARIANT_SINGLE_PIN_PING) {
         uint16_t sig = (uint16_t)dev->config.sig_pin;
-        (void)pal_gpio_init(sig, PAL_GPIO_OUTPUT_PUSH_PULL);
-        (void)pal_gpio_write(sig, true);
+        WINK_IGNORE_RESULT(pal_gpio_init(sig, PAL_GPIO_OUTPUT_PUSH_PULL));
+        WINK_IGNORE_RESULT(pal_gpio_write(sig, true));
         pal_os_busy_wait_us(5);
-        (void)pal_gpio_write(sig, false);
-        (void)pal_gpio_init(sig, PAL_GPIO_INPUT);
+        WINK_IGNORE_RESULT(pal_gpio_write(sig, false));
+        WINK_IGNORE_RESULT(pal_gpio_init(sig, PAL_GPIO_INPUT));
         dev->state = DAL_ULTRASONIC_MEASURING;
 
         cap = pal_gpio_pulse_in(sig, true, timeout, &pulse_us);
@@ -308,11 +308,11 @@ wink_status_t dal_ultrasonic_read(dal_ultrasonic_t *dev, float *out_distance_cm)
         );
     } else if (dev->config.variant == DAL_ULTRASONIC_VARIANT_SINGLE_PIN_PING) {
         uint16_t sig = (uint16_t)dev->config.sig_pin;
-        (void)pal_gpio_init(sig, PAL_GPIO_OUTPUT_PUSH_PULL);
-        (void)pal_gpio_write(sig, true);
+        WINK_IGNORE_RESULT(pal_gpio_init(sig, PAL_GPIO_OUTPUT_PUSH_PULL));
+        WINK_IGNORE_RESULT(pal_gpio_write(sig, true));
         pal_os_busy_wait_us(5);
-        (void)pal_gpio_write(sig, false);
-        (void)pal_gpio_init(sig, PAL_GPIO_INPUT);
+        WINK_IGNORE_RESULT(pal_gpio_write(sig, false));
+        WINK_IGNORE_RESULT(pal_gpio_init(sig, PAL_GPIO_INPUT));
         status = pal_gpio_pulse_in(sig, true, timeout, &pulse_us);
     } else {
         *out_distance_cm = dev->last_distance;

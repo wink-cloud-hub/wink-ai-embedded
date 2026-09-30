@@ -41,8 +41,13 @@ if(ESP_PLATFORM)
             esp_driver_pcnt
             esp_driver_gptimer
             esp_driver_mcpwm
-            esp_driver_gdma
+            esp_driver_uart
+            esp_adc
+            esp_hw_support
         )
+        if(NOT IDF_TARGET STREQUAL "esp32")
+            list(APPEND WINK_ESP_DRIVER_COMPONENTS esp_driver_gdma)
+        endif()
     else()
         message(FATAL_ERROR "ESP-IDF >= 5.4 required for wink-micro-os esp32 target (found: ${ESP_IDF_VERSION})")
     endif()

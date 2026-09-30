@@ -207,10 +207,10 @@ wink_status_t pal_gpio_deinit(wink_pin_t pin) {
     }
 
     /* 1. Disable interrupt */
-    (void)pal_gpio_disable_interrupt(pin);
+    WINK_IGNORE_RESULT(pal_gpio_disable_interrupt(pin));
 
     /* 2. Wait for in-flight ISR execution barrier */
-    (void)pal_gpio_synchronize_interrupt(pin);
+    WINK_IGNORE_RESULT(pal_gpio_synchronize_interrupt(pin));
 
     /* 3. Reset hardware pad to high-Z default */
     gpio_reset_pin((gpio_num_t)pin);
@@ -222,12 +222,12 @@ wink_status_t pal_gpio_deinit(wink_pin_t pin) {
     portEXIT_CRITICAL(&s_gpio_table_mux);
 
     /* 4. Release resource claim */
-    (void)pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, "pal_gpio");
+    WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, "pal_gpio"));
     return WINK_OK;
 }
 
 void pal_gpio_reset_pin(wink_pin_t pin) {
-    (void)pal_gpio_deinit(pin);
+    WINK_IGNORE_RESULT(pal_gpio_deinit(pin));
 }
 
 wink_status_t pal_gpio_set_direction(wink_pin_t pin, pal_gpio_mode_t mode) {

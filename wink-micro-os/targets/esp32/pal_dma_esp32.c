@@ -22,7 +22,7 @@
 static inline void check_psram_boundary(const void *addr) {
 #if defined(CONFIG_IDF_TARGET_ESP32)
     if (addr != NULL && !esp_ptr_in_dram(addr) && !esp_ptr_in_iram(addr)) {
-        LOG_E(LOG_TAG, "FATAL: DMA buffer %p is not in internal DRAM (Classic ESP32 DMA cannot access PSRAM)", addr);
+        LOG_E("FATAL: DMA buffer %p is not in internal DRAM (Classic ESP32 DMA cannot access PSRAM)", addr);
     }
 #else
     (void)addr;

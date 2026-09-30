@@ -5,11 +5,13 @@
  */
 #include "pal_hal.h"
 #include "hal/pal_i2c.h"
+#include "pal_resource.h"
 #include "pal_spinlock.h"
 
 #include <string.h>
 
 #if defined(ESP_PLATFORM)
+#include "driver/gpio.h"
 #include "esp_err.h"
 #include "esp_idf_version.h"
 
@@ -334,7 +336,7 @@ wink_status_t pal_i2c_transfer_timeout(uint8_t port, uint16_t dev_addr,
 
     if (err == ESP_ERR_TIMEOUT) {
         /* Auto-recover bus if slave held SDA low (ADR-0067) */
-        (void)pal_i2c_bus_recover(port);
+        WINK_IGNORE_RESULT(pal_i2c_bus_recover(port));
         return WINK_ERR_TIMEOUT;
     }
     if (err != ESP_OK) {
@@ -391,13 +393,13 @@ wink_status_t pal_i2c_bus_init(uint8_t port, wink_pin_t sda, wink_pin_t scl, uin
     if (rc != WINK_OK) { return rc; }
     rc = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)sda, "pal_i2c");
     if (rc != WINK_OK) {
-        pal_resource_release(PAL_RESOURCE_I2C_PORT, port, "pal_i2c");
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_I2C_PORT, port, "pal_i2c"));
         return rc;
     }
     rc = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)scl, "pal_i2c");
     if (rc != WINK_OK) {
-        pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)sda, "pal_i2c");
-        pal_resource_release(PAL_RESOURCE_I2C_PORT, port, "pal_i2c");
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)sda, "pal_i2c"));
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_I2C_PORT, port, "pal_i2c"));
         return rc;
     }
 
@@ -505,9 +507,9 @@ wink_status_t pal_i2c_bus_deinit(uint8_t port) {
     s_i2c_initialized[port] = false;
     xSemaphoreGive(mutex);
 
-    pal_resource_release(PAL_RESOURCE_I2C_PORT, port, "pal_i2c");
-    pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pal_i2c_pin_map[port][0], "pal_i2c");
-    pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pal_i2c_pin_map[port][1], "pal_i2c");
+    WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_I2C_PORT, port, "pal_i2c"));
+    WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pal_i2c_pin_map[port][0], "pal_i2c"));
+    WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pal_i2c_pin_map[port][1], "pal_i2c"));
     return WINK_OK;
 }
 #if defined(__GNUC__) || defined(__clang__)

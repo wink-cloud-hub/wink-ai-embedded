@@ -120,7 +120,7 @@ wink_status_t pal_deferred_init(uint8_t core_id) {
         hi_prio = tskIDLE_PRIORITY + 1;
     }
 
-    s_queues[PAL_DEFERRED_HI].task_handle = xTaskCreatePinnedToCoreStatic(
+    s_queues[PAL_DEFERRED_HI].task_handle = xTaskCreateStaticPinnedToCore(
         deferred_worker_task,
         "pal_defer_hi",
         HI_STACK_WORDS,
@@ -132,7 +132,7 @@ wink_status_t pal_deferred_init(uint8_t core_id) {
     );
 
     UBaseType_t lo_prio = tskIDLE_PRIORITY + 2;
-    s_queues[PAL_DEFERRED_LO].task_handle = xTaskCreatePinnedToCoreStatic(
+    s_queues[PAL_DEFERRED_LO].task_handle = xTaskCreateStaticPinnedToCore(
         deferred_worker_task,
         "pal_defer_lo",
         LO_STACK_WORDS,

@@ -6,6 +6,7 @@
 #include "hal/pal_adc.h"
 #include "pal_resource.h"
 #include "pal_spinlock.h"
+#include "pal_irq.h"
 #include <string.h>
 
 #if defined(ESP_PLATFORM)
@@ -225,7 +226,7 @@ wink_status_t pal_adc_init(pal_adc_channel_t ch, const pal_adc_config_t *cfg) {
         adc_oneshot_unit_init_cfg_t init_config = {
             .unit_id  = unit_id,
             .clk_src  = ADC_RTC_CLK_SRC_DEFAULT,
-            .ulp_mode = ADC_ULP_MODE_DISABLED,
+            .ulp_mode = ADC_ULP_MODE_DISABLE,
         };
         err = adc_oneshot_new_unit(&init_config, &s_unit_handles[unit_id]);
         if (err != ESP_OK) {
@@ -477,7 +478,7 @@ static adc_continuous_handle_t s_cont_handle[ESP32_ADC_NUM_UNITS];
 
 static pal_adc_continuous_cfg_t s_active_cont_cfg[ESP32_ADC_NUM_UNITS];
 
-static bool PAL_ISR s_adc_conv_done_cb(adc_continuous_handle_t handle,
+static PAL_ISR bool s_adc_conv_done_cb(adc_continuous_handle_t handle,
                                        const adc_continuous_evt_data_t *edata,
                                        void *user_data) {
     (void)handle;

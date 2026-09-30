@@ -60,7 +60,7 @@ void pal_os_busy_wait_us(uint32_t us) {
     if (us > 50000) {
         while (us > 10000) {
             esp_rom_delay_us(10000);
-            (void)pal_os_wdt_feed();
+            WINK_IGNORE_RESULT(pal_os_wdt_feed());
             us -= 10000;
         }
     }
@@ -406,4 +406,20 @@ void pal_os_ringbuf_destroy(pal_os_ringbuf_handle_t rb) {
 
     vRingbufferDelete(rb->handle);
     free(rb);
+}
+
+bool pal_os_ringbuf_coalesce_event(
+    pal_os_ringbuf_handle_t rb,
+    const void* event_ptr,
+    uint32_t event_size,
+    uint32_t match_offset,
+    uint32_t match_size
+) {
+    (void)rb;
+    (void)event_ptr;
+    (void)event_size;
+    (void)match_offset;
+    (void)match_size;
+    /* FreeRTOS ringbuffer does not support random in-place update; return false to perform standard push */
+    return false;
 }

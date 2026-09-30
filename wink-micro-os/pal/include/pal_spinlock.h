@@ -18,13 +18,13 @@
 
 #if defined(ESP_PLATFORM)
   #include "freertos/FreeRTOS.h"
-  #include "soc/cpu.h"
+  #include "esp_cpu.h"
 
   typedef portMUX_TYPE pal_spinlock_t;
   #define PAL_SPINLOCK_INITIALIZER   portMUX_INITIALIZER_UNLOCKED
 
   static inline void pal_spinlock_init(pal_spinlock_t *l) {
-      vPortCPUInitializeMutex(l);
+      portMUX_INITIALIZE(l);
   }
 
   static inline void pal_spinlock_lock(pal_spinlock_t *l) {

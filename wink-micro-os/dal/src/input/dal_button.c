@@ -92,7 +92,7 @@ wink_status_t dal_button_init(dal_button_t *dev, const dal_button_config_t *cfg)
     return WINK_OK;
 
 cleanup:
-    if (pin_inited)  { (void)pal_gpio_reset_pin(cfg->pin); }
+    if (pin_inited)  { pal_gpio_reset_pin(cfg->pin); }
     if (pin_claimed) { WINK_IGNORE_UNUSED(pal_resource_release(PAL_RESOURCE_GPIO_PIN, cfg->pin, cfg->owner)); }
     return rc;
 }

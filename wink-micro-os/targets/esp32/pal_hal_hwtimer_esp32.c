@@ -84,7 +84,7 @@ wink_status_t pal_hwtimer_init(const pal_hwtimer_cfg_t *cfg) {
 
     /* FPU Safety Rule: ISR is forbidden from using hardware FPU */
     if (cfg->uses_fpu) {
-        LOG_W(LOG_TAG, "uses_fpu=true is rejected: HW timer ISR must be fixed-point Q15/Q31");
+        LOG_W("uses_fpu=true is rejected: HW timer ISR must be fixed-point Q15/Q31");
         return WINK_ERR_INVALID_ARG;
     }
 
@@ -111,7 +111,7 @@ wink_status_t pal_hwtimer_init(const pal_hwtimer_cfg_t *cfg) {
 
     esp_err_t err = gptimer_new_timer(&timer_config, &slot->gptimer);
     if (err != ESP_OK) {
-        pal_resource_release(PAL_RESOURCE_HWTIMER, cfg->timer_id, "pal_hwtimer_esp32");
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_HWTIMER, cfg->timer_id, "pal_hwtimer_esp32"));
         pal_spinlock_unlock(&s_hwtimer_lock);
         return WINK_ERR_HARDWARE;
     }
@@ -125,7 +125,7 @@ wink_status_t pal_hwtimer_init(const pal_hwtimer_cfg_t *cfg) {
     err = gptimer_set_alarm_action(slot->gptimer, &alarm_config);
     if (err != ESP_OK) {
         gptimer_del_timer(slot->gptimer);
-        pal_resource_release(PAL_RESOURCE_HWTIMER, cfg->timer_id, "pal_hwtimer_esp32");
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_HWTIMER, cfg->timer_id, "pal_hwtimer_esp32"));
         pal_spinlock_unlock(&s_hwtimer_lock);
         return WINK_ERR_HARDWARE;
     }
@@ -150,7 +150,7 @@ wink_status_t pal_hwtimer_init(const pal_hwtimer_cfg_t *cfg) {
         .result = ESP_OK,
     };
 
-    TaskHandle_t task_h = xTaskCreatePinnedToCoreStatic(
+    TaskHandle_t task_h = xTaskCreateStaticPinnedToCore(
         hwtimer_pinned_init_task,
         "hwtimer_init",
         sizeof(s_init_task_stack) / sizeof(StackType_t),
@@ -242,16 +242,16 @@ wink_status_t pal_hwtimer_change_period(uint8_t timer_id, uint32_t period_us) {
     return (err == ESP_OK) ? WINK_OK : WINK_ERR_HARDWARE;
 }
 
-wink_status_t pal_hwtimer_deinit(uint8_t timer_id) {
+void pal_hwtimer_deinit(uint8_t timer_id) {
     if (timer_id >= PAL_HWTIMERS_MAX) {
-        return WINK_ERR_INVALID_ARG;
+        return;
     }
 
     pal_spinlock_lock(&s_hwtimer_lock);
     esp32_hwtimer_slot_t *slot = &s_timers[timer_id];
     if (!slot->in_use) {
         pal_spinlock_unlock(&s_hwtimer_lock);
-        return WINK_ERR_INVALID_STATE;
+        return;
     }
 
     if (slot->is_running) {
@@ -263,11 +263,10 @@ wink_status_t pal_hwtimer_deinit(uint8_t timer_id) {
     gptimer_del_timer(slot->gptimer);
     slot->gptimer = NULL;
 
-    pal_resource_release(PAL_RESOURCE_HWTIMER, timer_id, "pal_hwtimer_esp32");
+    WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_HWTIMER, timer_id, "pal_hwtimer_esp32"));
     slot->in_use = false;
 
     pal_spinlock_unlock(&s_hwtimer_lock);
-    return WINK_OK;
 }
 
 wink_status_t pal_hwtimer_fire_soft(uint8_t timer_id) {

@@ -119,7 +119,7 @@ wink_status_t pal_uart_init_ex(uint8_t port, const pal_uart_config_ex_t *cfg) {
     if (cfg->tx_pin >= 0) {
         st = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->tx_pin, "pal_uart_esp32");
         if (st != WINK_OK) {
-            pal_resource_release(PAL_RESOURCE_UART_PORT, port, "pal_uart_esp32");
+            WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_UART_PORT, port, "pal_uart_esp32"));
             pal_spinlock_unlock(&s_uart_lock);
             return st;
         }
@@ -129,9 +129,9 @@ wink_status_t pal_uart_init_ex(uint8_t port, const pal_uart_config_ex_t *cfg) {
         st = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->rx_pin, "pal_uart_esp32");
         if (st != WINK_OK) {
             if (cfg->tx_pin >= 0) {
-                pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->tx_pin, "pal_uart_esp32");
+                WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->tx_pin, "pal_uart_esp32"));
             }
-            pal_resource_release(PAL_RESOURCE_UART_PORT, port, "pal_uart_esp32");
+            WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_UART_PORT, port, "pal_uart_esp32"));
             pal_spinlock_unlock(&s_uart_lock);
             return st;
         }
@@ -148,18 +148,18 @@ wink_status_t pal_uart_init_ex(uint8_t port, const pal_uart_config_ex_t *cfg) {
 
     esp_err_t err = uart_param_config((uart_port_t)port, &uart_config);
     if (err != ESP_OK) {
-        if (cfg->rx_pin >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->rx_pin, "pal_uart_esp32");
-        if (cfg->tx_pin >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->tx_pin, "pal_uart_esp32");
-        pal_resource_release(PAL_RESOURCE_UART_PORT, port, "pal_uart_esp32");
+        if (cfg->rx_pin >= 0) WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->rx_pin, "pal_uart_esp32"));
+        if (cfg->tx_pin >= 0) WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->tx_pin, "pal_uart_esp32"));
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_UART_PORT, port, "pal_uart_esp32"));
         pal_spinlock_unlock(&s_uart_lock);
         return WINK_ERR_HARDWARE;
     }
 
     err = uart_set_pin((uart_port_t)port, (int)cfg->tx_pin, (int)cfg->rx_pin, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     if (err != ESP_OK) {
-        if (cfg->rx_pin >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->rx_pin, "pal_uart_esp32");
-        if (cfg->tx_pin >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->tx_pin, "pal_uart_esp32");
-        pal_resource_release(PAL_RESOURCE_UART_PORT, port, "pal_uart_esp32");
+        if (cfg->rx_pin >= 0) WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->rx_pin, "pal_uart_esp32"));
+        if (cfg->tx_pin >= 0) WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->tx_pin, "pal_uart_esp32"));
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_UART_PORT, port, "pal_uart_esp32"));
         pal_spinlock_unlock(&s_uart_lock);
         return WINK_ERR_HARDWARE;
     }
@@ -169,9 +169,9 @@ wink_status_t pal_uart_init_ex(uint8_t port, const pal_uart_config_ex_t *cfg) {
 
     err = uart_driver_install((uart_port_t)port, (int)rx_buf_sz, (int)tx_buf_sz, 16, &p->uart_queue, 0);
     if (err != ESP_OK) {
-        if (cfg->rx_pin >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->rx_pin, "pal_uart_esp32");
-        if (cfg->tx_pin >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->tx_pin, "pal_uart_esp32");
-        pal_resource_release(PAL_RESOURCE_UART_PORT, port, "pal_uart_esp32");
+        if (cfg->rx_pin >= 0) WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->rx_pin, "pal_uart_esp32"));
+        if (cfg->tx_pin >= 0) WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->tx_pin, "pal_uart_esp32"));
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_UART_PORT, port, "pal_uart_esp32"));
         pal_spinlock_unlock(&s_uart_lock);
         return WINK_ERR_HARDWARE;
     }
@@ -231,12 +231,12 @@ void pal_uart_deinit(uint8_t port) {
     uart_driver_delete((uart_port_t)port);
 
     if (p->rx_pin >= 0) {
-        pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)p->rx_pin, "pal_uart_esp32");
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)p->rx_pin, "pal_uart_esp32"));
     }
     if (p->tx_pin >= 0) {
-        pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)p->tx_pin, "pal_uart_esp32");
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)p->tx_pin, "pal_uart_esp32"));
     }
-    pal_resource_release(PAL_RESOURCE_UART_PORT, port, "pal_uart_esp32");
+    WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_UART_PORT, port, "pal_uart_esp32"));
 
     p->in_use = false;
     pal_spinlock_unlock(&s_uart_lock);

@@ -5,6 +5,7 @@
 #include "osal/pal_deferred.h"
 #include "pal_resource.h"
 #include "pal_spinlock.h"
+#include "pal_irq.h"
 #include "pal_log.h"
 
 #include <string.h>
@@ -24,9 +25,6 @@
 
 #define RMT_MEM_BLOCK_SYMB_DEFAULT 64
 #define RMT_MAX_SYMBOLS_BUFFER      256
-
-_Static_assert(sizeof(pal_rmt_symbol_t) == sizeof(rmt_symbol_word_t),
-               "pal_rmt_symbol_t size must match IDF rmt_symbol_word_t");
 
 #if defined(CONFIG_IDF_TARGET_ESP32)
     /* Classic ESP32: use REF_TICK (1MHz) to avoid APB clock scaling breaking WS2812 timings */
@@ -48,6 +46,7 @@ struct pal_rmt_channel_s {
     pal_rmt_rx_callback_t    rx_cb;
     void                    *rx_cb_arg;
     bool                     rx_active;
+    rmt_symbol_word_t        tx_symbols[RMT_MAX_SYMBOLS_BUFFER];
     rmt_symbol_word_t        rx_symbols[RMT_MAX_SYMBOLS_BUFFER];
     pal_rmt_symbol_t         converted_rx[RMT_MAX_SYMBOLS_BUFFER];
     size_t                   rx_count;
@@ -138,7 +137,7 @@ wink_status_t pal_rmt_acquire_channel(const pal_rmt_channel_config_t *cfg,
 
     st = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin, "pal_rmt_esp32");
     if (st != WINK_OK) {
-        pal_resource_release(PAL_RESOURCE_RMT_CHAN, slot->id, "pal_rmt_esp32");
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_RMT_CHAN, slot->id, "pal_rmt_esp32"));
         pal_spinlock_unlock(&s_rmt_lock);
         return st;
     }
@@ -153,15 +152,14 @@ wink_status_t pal_rmt_acquire_channel(const pal_rmt_channel_config_t *cfg,
             .resolution_hz = res_hz,
             .mem_block_symbols = mem_syms,
             .trans_queue_depth = 4,
-            .intr_flags = ESP_INTR_FLAG_IRAM,
         };
 #if defined(CONFIG_SOC_RMT_SUPPORT_DMA) && CONFIG_SOC_RMT_SUPPORT_DMA
         tx_cfg.flags.with_dma = cfg->dma_enabled;
 #endif
         esp_err_t err = rmt_new_tx_channel(&tx_cfg, &slot->chan_handle);
         if (err != ESP_OK) {
-            pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin, "pal_rmt_esp32");
-            pal_resource_release(PAL_RESOURCE_RMT_CHAN, slot->id, "pal_rmt_esp32");
+            WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin, "pal_rmt_esp32"));
+            WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_RMT_CHAN, slot->id, "pal_rmt_esp32"));
             pal_spinlock_unlock(&s_rmt_lock);
             return WINK_ERR_HARDWARE;
         }
@@ -170,8 +168,8 @@ wink_status_t pal_rmt_acquire_channel(const pal_rmt_channel_config_t *cfg,
         err = rmt_new_copy_encoder(&enc_cfg, &slot->copy_encoder);
         if (err != ESP_OK) {
             rmt_del_channel(slot->chan_handle);
-            pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin, "pal_rmt_esp32");
-            pal_resource_release(PAL_RESOURCE_RMT_CHAN, slot->id, "pal_rmt_esp32");
+            WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin, "pal_rmt_esp32"));
+            WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_RMT_CHAN, slot->id, "pal_rmt_esp32"));
             pal_spinlock_unlock(&s_rmt_lock);
             return WINK_ERR_HARDWARE;
         }
@@ -187,15 +185,14 @@ wink_status_t pal_rmt_acquire_channel(const pal_rmt_channel_config_t *cfg,
             .clk_src = PAL_RMT_CLK_SRC,
             .resolution_hz = res_hz,
             .mem_block_symbols = mem_syms,
-            .intr_flags = ESP_INTR_FLAG_IRAM,
         };
 #if defined(CONFIG_SOC_RMT_SUPPORT_DMA) && CONFIG_SOC_RMT_SUPPORT_DMA
         rx_cfg.flags.with_dma = cfg->dma_enabled;
 #endif
         esp_err_t err = rmt_new_rx_channel(&rx_cfg, &slot->chan_handle);
         if (err != ESP_OK) {
-            pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin, "pal_rmt_esp32");
-            pal_resource_release(PAL_RESOURCE_RMT_CHAN, slot->id, "pal_rmt_esp32");
+            WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin, "pal_rmt_esp32"));
+            WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_RMT_CHAN, slot->id, "pal_rmt_esp32"));
             pal_spinlock_unlock(&s_rmt_lock);
             return WINK_ERR_HARDWARE;
         }
@@ -241,8 +238,8 @@ wink_status_t pal_rmt_release_channel(pal_rmt_channel_handle_t ch) {
     rmt_del_channel(ch->chan_handle);
     ch->chan_handle = NULL;
 
-    pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)ch->cfg.pin, "pal_rmt_esp32");
-    pal_resource_release(PAL_RESOURCE_RMT_CHAN, ch->id, "pal_rmt_esp32");
+    WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)ch->cfg.pin, "pal_rmt_esp32"));
+    WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_RMT_CHAN, ch->id, "pal_rmt_esp32"));
 
     ch->in_use = false;
     pal_spinlock_unlock(&s_rmt_lock);
@@ -259,15 +256,22 @@ wink_status_t pal_rmt_tx_send(pal_rmt_channel_handle_t ch,
         return WINK_ERR_INVALID_ARG;
     }
 
-    /* 1. Flush DMA cache for output symbol stream */
-    pal_dma_cache_clean(symbols, count * sizeof(pal_rmt_symbol_t));
-
-    /* 2. Fast critical section: update callback context and grab channel handle */
+    /* 1. Fast critical section: update callback context and grab channel handle */
     pal_spinlock_lock(&s_rmt_lock);
     if (!ch->in_use || ch->cfg.direction != PAL_RMT_DIR_TX) {
         pal_spinlock_unlock(&s_rmt_lock);
         return WINK_ERR_INVALID_STATE;
     }
+
+    /* 2. Convert pal_rmt_symbol_t (8 bytes) to IDF rmt_symbol_word_t (4 bytes) */
+    size_t send_cnt = (count > RMT_MAX_SYMBOLS_BUFFER) ? RMT_MAX_SYMBOLS_BUFFER : count;
+    for (size_t i = 0; i < send_cnt; i++) {
+        ch->tx_symbols[i].duration0 = symbols[i].duration0_ticks & 0x7FFF;
+        ch->tx_symbols[i].level0 = symbols[i].level0 & 0x1;
+        ch->tx_symbols[i].duration1 = symbols[i].duration1_ticks & 0x7FFF;
+        ch->tx_symbols[i].level1 = symbols[i].level1 & 0x1;
+    }
+    pal_dma_cache_clean(ch->tx_symbols, send_cnt * sizeof(rmt_symbol_word_t));
 
     ch->tx_cb = cb;
     ch->tx_cb_arg = arg;
@@ -275,12 +279,12 @@ wink_status_t pal_rmt_tx_send(pal_rmt_channel_handle_t ch,
     rmt_encoder_handle_t enc = ch->copy_encoder;
     pal_spinlock_unlock(&s_rmt_lock);
 
-    /* 3. Transmit outside spinlock (zero-copy on S3+ GDMA / layout-compatible cast) */
+    /* 3. Transmit outside spinlock */
     rmt_transmit_config_t tx_cfg = {
         .loop_count = 0,
     };
-    esp_err_t err = rmt_transmit(chan, enc, (const rmt_symbol_word_t *)symbols,
-                                 count * sizeof(rmt_symbol_word_t), &tx_cfg);
+    esp_err_t err = rmt_transmit(chan, enc, ch->tx_symbols,
+                                 send_cnt * sizeof(rmt_symbol_word_t), &tx_cfg);
     if (err != ESP_OK) {
         pal_spinlock_lock(&s_rmt_lock);
         ch->tx_cb = NULL;

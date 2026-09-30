@@ -99,7 +99,7 @@ wink_status_t pal_mcpwm_new_timer(const pal_mcpwm_timer_cfg_t *cfg, pal_mcpwm_ti
 
     esp_err_t err = mcpwm_new_timer(&timer_config, &slot->timer_handle);
     if (err != ESP_OK) {
-        pal_resource_release(PAL_RESOURCE_MCPWM_TIMER, (uint32_t)(cfg->mcpwm_unit * 3 + cfg->timer_id), "pal_mcpwm_esp32");
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_MCPWM_TIMER, (uint32_t)(cfg->mcpwm_unit * 3 + cfg->timer_id), "pal_mcpwm_esp32"));
         pal_spinlock_unlock(&s_mcpwm_lock);
         return WINK_ERR_HARDWARE;
     }
@@ -171,7 +171,7 @@ wink_status_t pal_mcpwm_new_oper(const pal_mcpwm_oper_cfg_t *cfg, pal_mcpwm_oper
     if (cfg->pin_pwm_b >= 0) {
         wink_status_t st = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_pwm_b, "pal_mcpwm_esp32");
         if (st != WINK_OK) {
-            if (cfg->pin_pwm_a >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_pwm_a, "pal_mcpwm_esp32");
+            if (cfg->pin_pwm_a >= 0) WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_pwm_a, "pal_mcpwm_esp32"));
             pal_spinlock_unlock(&s_mcpwm_lock);
             return st;
         }
@@ -182,8 +182,8 @@ wink_status_t pal_mcpwm_new_oper(const pal_mcpwm_oper_cfg_t *cfg, pal_mcpwm_oper
     };
     esp_err_t err = mcpwm_new_operator(&oper_config, &slot->oper_handle);
     if (err != ESP_OK) {
-        if (cfg->pin_pwm_b >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_pwm_b, "pal_mcpwm_esp32");
-        if (cfg->pin_pwm_a >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_pwm_a, "pal_mcpwm_esp32");
+        if (cfg->pin_pwm_b >= 0) WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_pwm_b, "pal_mcpwm_esp32"));
+        if (cfg->pin_pwm_a >= 0) WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->pin_pwm_a, "pal_mcpwm_esp32"));
         pal_spinlock_unlock(&s_mcpwm_lock);
         return WINK_ERR_HARDWARE;
     }
@@ -208,14 +208,14 @@ wink_status_t pal_mcpwm_new_oper(const pal_mcpwm_oper_cfg_t *cfg, pal_mcpwm_oper
     /* Dead-time configuration for complementary pairs */
     if (cfg->complementary_enable && slot->gen_a && slot->gen_b) {
         mcpwm_dead_time_config_t dt_red = {
-            .posedge_path = MCPWM_DEAD_TIME_PATH_DELAY,
-            .negedge_path = MCPWM_DEAD_TIME_PATH_BYPASS,
+            .posedge_delay_ticks = cfg->deadtime_red_ticks,
+            .negedge_delay_ticks = 0,
         };
         mcpwm_generator_set_dead_time(slot->gen_a, slot->gen_a, &dt_red);
 
         mcpwm_dead_time_config_t dt_fed = {
-            .posedge_path = MCPWM_DEAD_TIME_PATH_BYPASS,
-            .negedge_path = MCPWM_DEAD_TIME_PATH_DELAY,
+            .posedge_delay_ticks = 0,
+            .negedge_delay_ticks = cfg->deadtime_fed_ticks,
         };
         mcpwm_generator_set_dead_time(slot->gen_b, slot->gen_b, &dt_fed);
     }
@@ -296,11 +296,10 @@ wink_status_t pal_mcpwm_new_fault(const pal_mcpwm_fault_cfg_t *cfg, pal_mcpwm_fa
             .group_id = 0,
             .gpio_num = cfg->fault_pin,
             .flags.active_level = cfg->active_level,
-            .intr_flags = ESP_INTR_FLAG_IRAM,
         };
         esp_err_t err = mcpwm_new_gpio_fault(&gpio_fault_config, &slot->fault_handle);
         if (err != ESP_OK) {
-            pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->fault_pin, "pal_mcpwm_esp32");
+            WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)cfg->fault_pin, "pal_mcpwm_esp32"));
             pal_spinlock_unlock(&s_mcpwm_lock);
             return WINK_ERR_HARDWARE;
         }
@@ -426,10 +425,10 @@ void pal_mcpwm_del_timer(pal_mcpwm_timer_handle_t t) {
                     s_opers[i].gen_b = NULL;
                 }
                 if (s_opers[i].cfg.pin_pwm_b >= 0) {
-                    pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)s_opers[i].cfg.pin_pwm_b, "pal_mcpwm_esp32");
+                    WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)s_opers[i].cfg.pin_pwm_b, "pal_mcpwm_esp32"));
                 }
                 if (s_opers[i].cfg.pin_pwm_a >= 0) {
-                    pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)s_opers[i].cfg.pin_pwm_a, "pal_mcpwm_esp32");
+                    WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)s_opers[i].cfg.pin_pwm_a, "pal_mcpwm_esp32"));
                 }
                 if (s_opers[i].oper_handle != NULL) {
                     mcpwm_del_operator(s_opers[i].oper_handle);
@@ -442,7 +441,7 @@ void pal_mcpwm_del_timer(pal_mcpwm_timer_handle_t t) {
         mcpwm_timer_disable(t->timer_handle);
         mcpwm_del_timer(t->timer_handle);
         t->timer_handle = NULL;
-        pal_resource_release(PAL_RESOURCE_MCPWM_TIMER, (uint32_t)(t->cfg.mcpwm_unit * 3 + t->cfg.timer_id), "pal_mcpwm_esp32");
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_MCPWM_TIMER, (uint32_t)(t->cfg.mcpwm_unit * 3 + t->cfg.timer_id), "pal_mcpwm_esp32"));
         t->in_use = false;
     }
     pal_spinlock_unlock(&s_mcpwm_lock);

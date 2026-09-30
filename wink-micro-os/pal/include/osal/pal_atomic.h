@@ -17,6 +17,10 @@
 #define PAL_RLX      __ATOMIC_RELAXED
 #define PAL_SEQ_CST  __ATOMIC_SEQ_CST
 
+#define PAL_ACQUIRE  PAL_ACQ
+#define PAL_RELEASE  PAL_REL
+#define PAL_RELAXED  PAL_RLX
+
 #if defined(__GNUC__) || defined(__clang__)
 
 #define PAL_ATOMIC_LOAD(ptr, ord)      __atomic_load_n((ptr), (ord))

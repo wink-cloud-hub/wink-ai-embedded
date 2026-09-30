@@ -59,7 +59,7 @@ wink_status_t pal_pwm_init_ex(uint8_t channel, const pal_pwm_config_t *cfg)
     if (pin >= 0) {
         rc = pal_resource_claim(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, "pal_pwm_esp32");
         if (rc != WINK_OK) {
-            pal_resource_release(PAL_RESOURCE_PWM_CHANNEL, channel, "pal_pwm_esp32");
+            WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_PWM_CHANNEL, channel, "pal_pwm_esp32"));
             return rc;
         }
     }
@@ -67,8 +67,8 @@ wink_status_t pal_pwm_init_ex(uint8_t channel, const pal_pwm_config_t *cfg)
     uint8_t bits = cfg->resolution_bits ? cfg->resolution_bits : 13u;
     ledc_timer_bit_t duty_res;
     if (!pwm_map_ledc_bits(bits, &duty_res)) {
-        if (pin >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, "pal_pwm_esp32");
-        pal_resource_release(PAL_RESOURCE_PWM_CHANNEL, channel, "pal_pwm_esp32");
+        if (pin >= 0) WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, "pal_pwm_esp32"));
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_PWM_CHANNEL, channel, "pal_pwm_esp32"));
         return WINK_ERR_INVALID_ARG;
     }
 
@@ -88,8 +88,8 @@ wink_status_t pal_pwm_init_ex(uint8_t channel, const pal_pwm_config_t *cfg)
     uint8_t timer_num = 0;
     wink_status_t rs = pal_pwm_router_acquire(channel, &prof, &timer_num);
     if (wink_status_is_error(rs)) {
-        if (pin >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, "pal_pwm_esp32");
-        pal_resource_release(PAL_RESOURCE_PWM_CHANNEL, channel, "pal_pwm_esp32");
+        if (pin >= 0) WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, "pal_pwm_esp32"));
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_PWM_CHANNEL, channel, "pal_pwm_esp32"));
         return rs;
     }
 
@@ -103,8 +103,8 @@ wink_status_t pal_pwm_init_ex(uint8_t channel, const pal_pwm_config_t *cfg)
     esp_err_t err = ledc_timer_config(&timer_cfg);
     if (err != ESP_OK) {
         pal_pwm_router_release(channel);
-        if (pin >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, "pal_pwm_esp32");
-        pal_resource_release(PAL_RESOURCE_PWM_CHANNEL, channel, "pal_pwm_esp32");
+        if (pin >= 0) WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, "pal_pwm_esp32"));
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_PWM_CHANNEL, channel, "pal_pwm_esp32"));
         return WINK_ERR_HARDWARE;
     }
 
@@ -120,8 +120,8 @@ wink_status_t pal_pwm_init_ex(uint8_t channel, const pal_pwm_config_t *cfg)
     err = ledc_channel_config(&ch_cfg);
     if (err != ESP_OK) {
         pal_pwm_router_release(channel);
-        if (pin >= 0) pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, "pal_pwm_esp32");
-        pal_resource_release(PAL_RESOURCE_PWM_CHANNEL, channel, "pal_pwm_esp32");
+        if (pin >= 0) WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, "pal_pwm_esp32"));
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_PWM_CHANNEL, channel, "pal_pwm_esp32"));
         return WINK_ERR_HARDWARE;
     }
 
@@ -175,9 +175,9 @@ wink_status_t pal_pwm_deinit(uint8_t channel) {
     wink_pin_t pin = pal_pwm_pin_map[channel];
     if (pin >= 0 && pin < GPIO_NUM_MAX) {
         (void)gpio_reset_pin((gpio_num_t)pin);
-        pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, "pal_pwm_esp32");
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_GPIO_PIN, (uint32_t)pin, "pal_pwm_esp32"));
     }
-    pal_resource_release(PAL_RESOURCE_PWM_CHANNEL, channel, "pal_pwm_esp32");
+    WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_PWM_CHANNEL, channel, "pal_pwm_esp32"));
     return WINK_OK;
 }
 

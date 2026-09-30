@@ -8,6 +8,7 @@
 #include "osal/pal_deferred.h"
 #include "pal_resource.h"
 #include "pal_spinlock.h"
+#include "pal_irq.h"
 
 #include <string.h>
 
@@ -57,7 +58,7 @@ static void esp32_spi_deferred_worker(void *arg) {
     }
 }
 
-static void PAL_ISR esp32_spi_post_transfer_cb(spi_transaction_t *trans) {
+static PAL_ISR void esp32_spi_post_transfer_cb(spi_transaction_t *trans) {
     if (trans == NULL || trans->user == NULL) {
         return;
     }
@@ -104,7 +105,7 @@ wink_status_t pal_spi_init_bus(const pal_spi_bus_config_t *cfg) {
     spi_dma_chan_t dma_chan = cfg->dma_enabled ? SPI_DMA_CH_AUTO : SPI_DMA_DISABLED;
     esp_err_t err = spi_bus_initialize(host, &buscfg, dma_chan);
     if (err != ESP_OK) {
-        pal_resource_release(PAL_RESOURCE_SPI_BUS, cfg->spi_bus, "pal_spi_esp32");
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_SPI_BUS, cfg->spi_bus, "pal_spi_esp32"));
         pal_spinlock_unlock(&s_spi_lock);
         return WINK_ERR_HARDWARE;
     }
@@ -139,7 +140,7 @@ wink_status_t pal_spi_deinit_bus(uint8_t bus) {
         if (b->devices[i].in_use) {
             spi_bus_remove_device(b->devices[i].handle);
             if (b->devices[i].cfg.cs_pin >= 0) {
-                pal_resource_release(PAL_RESOURCE_SPI_CS, (uint32_t)b->devices[i].cfg.cs_pin, "pal_spi_esp32_dev");
+                WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_SPI_CS, (uint32_t)b->devices[i].cfg.cs_pin, "pal_spi_esp32_dev"));
             }
             b->devices[i].in_use = false;
         }
@@ -151,7 +152,7 @@ wink_status_t pal_spi_deinit_bus(uint8_t bus) {
         b->bus_mutex = NULL;
     }
     b->is_initialized = false;
-    pal_resource_release(PAL_RESOURCE_SPI_BUS, bus, "pal_spi_esp32");
+    WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_SPI_BUS, bus, "pal_spi_esp32"));
     pal_spinlock_unlock(&s_spi_lock);
     return WINK_OK;
 }
@@ -211,7 +212,7 @@ wink_status_t pal_spi_add_device(uint8_t bus, const pal_spi_device_config_t *cfg
     esp_err_t err = spi_bus_add_device(b->host_id, &devcfg, &esp_handle);
     if (err != ESP_OK) {
         if (cfg->cs_pin >= 0) {
-            pal_resource_release(PAL_RESOURCE_SPI_CS, (uint32_t)cfg->cs_pin, "pal_spi_esp32_dev");
+            WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_SPI_CS, (uint32_t)cfg->cs_pin, "pal_spi_esp32_dev"));
         }
         pal_spinlock_unlock(&s_spi_lock);
         return WINK_ERR_HARDWARE;
@@ -242,7 +243,7 @@ wink_status_t pal_spi_remove_device(pal_spi_device_handle_t dev) {
 
     spi_bus_remove_device(dev->handle);
     if (dev->cfg.cs_pin >= 0) {
-        pal_resource_release(PAL_RESOURCE_SPI_CS, (uint32_t)dev->cfg.cs_pin, "pal_spi_esp32_dev");
+        WINK_IGNORE_RESULT(pal_resource_release(PAL_RESOURCE_SPI_CS, (uint32_t)dev->cfg.cs_pin, "pal_spi_esp32_dev"));
     }
     dev->in_use = false;
     dev->handle = NULL;
