@@ -47,20 +47,20 @@ def main(argv: list[str] | None = None) -> int:
                         help="print normalized SHA-256 for every source (maintainer pin refresh) and exit")
     args = parser.parse_args(argv)
 
-    root = Path(args.root)
+    root = Path(args.root).resolve()
     if not root.is_dir():
         print(f"[vendor-upstream] root not found: {root}", file=sys.stderr)
         return 1
 
     if args.print_hashes:
-        for app_dir in sorted(p.parent for p in root.rglob("wink-app.json") if not any(part.startswith(".") for part in p.parts)):
+        for app_dir in sorted(p.parent for p in root.rglob("wink-app.json") if not any(part.startswith(".") for part in p.relative_to(root).parts)):
             for src in sorted(app_dir.glob("*.c")):
                 print(f"{app_dir.name}/{src.name} {digest(src)}")
         return 0
 
     errors: list[str] = []
     warnings: list[str] = []
-    apps = sorted(p.parent for p in root.rglob("wink-app.json") if not any(part.startswith(".") for part in p.parts))
+    apps = sorted(p.parent for p in root.rglob("wink-app.json") if not any(part.startswith(".") for part in p.relative_to(root).parts))
     if not apps:
         errors.append(f"no vendor apps found under {root}")
 

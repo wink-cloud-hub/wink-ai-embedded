@@ -17,6 +17,16 @@ extern "C" {
 #  define WINK_SIM_EXPORT
 #endif
 
+#define ESP_ERR_HTTP_BASE               (0x7000)
+#define ESP_ERR_HTTP_MAX_REDIRECT       (ESP_ERR_HTTP_BASE + 1)
+#define ESP_ERR_HTTP_CONNECT            (ESP_ERR_HTTP_BASE + 2)
+#define ESP_ERR_HTTP_DATA_READ          (ESP_ERR_HTTP_BASE + 3)
+#define ESP_ERR_HTTP_FETCH_HEADER       (ESP_ERR_HTTP_BASE + 4)
+#define ESP_ERR_HTTP_INVALID_TRANSPORT  (ESP_ERR_HTTP_BASE + 5)
+#define ESP_ERR_HTTP_CONNECTING         (ESP_ERR_HTTP_BASE + 6)
+#define ESP_ERR_HTTP_EAGAIN             (ESP_ERR_HTTP_BASE + 7)
+#define ESP_ERR_HTTP_CONNECTION_CLOSED  (ESP_ERR_HTTP_BASE + 8)
+
 typedef struct esp_http_client* esp_http_client_handle_t;
 
 typedef enum {
@@ -112,7 +122,7 @@ esp_err_t esp_http_client_cleanup(esp_http_client_handle_t client);
 
 /* 低级 Native 流式读取 API（官方语料核心依赖） */
 esp_err_t esp_http_client_open(esp_http_client_handle_t client, int write_len);
-int esp_http_client_fetch_headers(esp_http_client_handle_t client);
+int64_t esp_http_client_fetch_headers(esp_http_client_handle_t client);
 int esp_http_client_read(esp_http_client_handle_t client, char *buffer, int len);
 int esp_http_client_read_response(esp_http_client_handle_t client, char *buffer, int len);
 int esp_http_client_write(esp_http_client_handle_t client, const char *buffer, int len);

@@ -28,6 +28,8 @@ set(ESP_IDF_FRAMEWORK_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/wifi/esp_netif.c
     ${CMAKE_CURRENT_LIST_DIR}/src/network/esp_mqtt.c
     ${CMAKE_CURRENT_LIST_DIR}/src/network/esp_http.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/network/sim_bounded_stream.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/network/sim_net_responder.c
     ${CMAKE_CURRENT_LIST_DIR}/src/bluetooth/esp_nimble.c
 )
 

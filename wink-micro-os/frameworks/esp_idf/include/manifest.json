@@ -93,7 +93,7 @@
     "esp_memprot.h": "50ed8aa6e368f6d06372f2be2554cabd227ca8f2bd4918c37a373da6952a37ce",
     "esp_memprot_err.h": "d5793b7c3967fe27c9ce687498cb96d9d0fdc998d1e3ed04b91517cdf479bd43",
     "esp_memprot_types.h": "911ae033c661bcc82f5fedf1ebc924b2d6b0c92864dd16e34e2a05c80b529c86",
-    "esp_partition.h": "5d1fb86bb4c4fa324588260ba8386ba5eb1610f1ede960867d2bd8846a8f5b13",
+    "esp_partition.h": "dac4fe936f05a0d62a92e903790f1afcfb518e114be1d95d1a4b2abd6789bd99",
     "esp_private/adc_share_hw_ctrl.h": "16c036ddb8e5a5176ace8e258a76ae3db91a84d9499c088f3321fbc7210e9a89",
     "esp_private/critical_section.h": "a30573255006503c2169cb71749e38f933623f813f820b30f648fb0930908a41",
     "esp_private/crosscore_int.h": "d66d3689ed0afe233b31b8539af69aca2ce3d67d2985aafedd04fb6b7a1da8d4",

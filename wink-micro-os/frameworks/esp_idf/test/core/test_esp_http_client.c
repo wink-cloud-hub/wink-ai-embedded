@@ -6,6 +6,7 @@
 
 #include "esp_err.h"
 #include "esp_http_client.h"
+#include "sim_net_responder.h"
 
 static int s_event_connected_count = 0;
 static int s_event_header_sent_count = 0;
@@ -13,6 +14,7 @@ static int s_event_on_header_count = 0;
 static int s_event_on_data_count = 0;
 static int s_event_on_finish_count = 0;
 static int s_event_disconnected_count = 0;
+static int s_event_error_count = 0;
 
 static bool s_header_key_null_detected = false;
 static bool s_header_val_null_detected = false;
@@ -26,6 +28,9 @@ static esp_err_t http_test_event_handler(esp_http_client_event_t *evt) {
         return ESP_ERR_INVALID_ARG;
     }
     switch (evt->event_id) {
+    case HTTP_EVENT_ERROR:
+        s_event_error_count++;
+        break;
     case HTTP_EVENT_ON_CONNECTED:
         s_event_connected_count++;
         break;
@@ -75,6 +80,7 @@ void setUp(void) {
     s_event_on_data_count = 0;
     s_event_on_finish_count = 0;
     s_event_disconnected_count = 0;
+    s_event_error_count = 0;
 
     s_header_key_null_detected = false;
     s_header_val_null_detected = false;
@@ -90,6 +96,16 @@ void tearDown(void) {
 
 /* TC-HTTP-01: 基本 GET 请求与状态码 */
 void test_http_basic_get_and_status_code(void) {
+    static const sim_http_route_t route = {
+        .url_prefix = "http://httpbin.org/get",
+        .resp = {
+            .status_code = 200,
+            .body_data = (const uint8_t *)"{\"origin\": \"127.0.0.1\"}",
+            .body_len = 23,
+        },
+    };
+    TEST_ASSERT_EQUAL(ESP_OK, sim_http_responder_register_route(&route));
+
     esp_http_client_config_t cfg = {
         .url = "http://httpbin.org/get",
         .event_handler = http_test_event_handler,
@@ -110,6 +126,16 @@ void test_http_basic_get_and_status_code(void) {
 
 /* TC-HTTP-02: 自定义 URL 与路径设置 */
 void test_http_custom_url_and_path(void) {
+    static const sim_http_route_t route = {
+        .url_prefix = "http://api.example.com/v2/sensor",
+        .resp = {
+            .status_code = 200,
+            .body_data = (const uint8_t *)"{\"temp\": 25.0}",
+            .body_len = 14,
+        },
+    };
+    TEST_ASSERT_EQUAL(ESP_OK, sim_http_responder_register_route(&route));
+
     esp_http_client_config_t cfg = {
         .url = "http://api.example.com/v1/status",
         .event_handler = http_test_event_handler,
@@ -194,6 +220,16 @@ void test_http_headers_set_get_delete(void) {
 
 /* TC-HTTP-06: 连续多次 perform */
 void test_http_multiple_consecutive_performs(void) {
+    static const sim_http_route_t route = {
+        .url_prefix = "http://example.com/repeat",
+        .resp = {
+            .status_code = 200,
+            .body_data = (const uint8_t *)"repeat_ok",
+            .body_len = 9,
+        },
+    };
+    TEST_ASSERT_EQUAL(ESP_OK, sim_http_responder_register_route(&route));
+
     esp_http_client_config_t cfg = {
         .url = "http://example.com/repeat",
         .event_handler = http_test_event_handler,
@@ -285,6 +321,17 @@ void test_http_native_streaming_pipeline(void) {
 
 /* TC-HTTP-10: Header 事件派发空指针防守 */
 void test_http_header_event_null_pointer_safety(void) {
+    static sim_http_route_t route;
+    memset(&route, 0, sizeof(route));
+    strncpy(route.url_prefix, "http://example.com/headers_safety", sizeof(route.url_prefix) - 1);
+    route.resp.status_code = 200;
+    route.resp.body_data = (const uint8_t *)"ok";
+    route.resp.body_len = 2;
+    strcpy(route.resp.headers[0].key, "X-Custom");
+    strcpy(route.resp.headers[0].value, "HeaderVal");
+    route.resp.header_count = 1;
+    TEST_ASSERT_EQUAL(ESP_OK, sim_http_responder_register_route(&route));
+
     esp_http_client_config_t cfg = {
         .url = "http://example.com/headers_safety",
         .event_handler = http_test_event_handler,
@@ -312,6 +359,54 @@ void test_http_chunked_response_query(void) {
     TEST_ASSERT_EQUAL(ESP_OK, esp_http_client_cleanup(client));
 }
 
+/* TC-HTTP-12: 未注册路由显式红灯 (Fail-Loud, ADR-0012) */
+void test_http_unmapped_url_fails_loud(void) {
+    esp_http_client_config_t cfg = {
+        .url = "http://unknown-server.internal/unmapped",
+        .event_handler = http_test_event_handler,
+    };
+    esp_http_client_handle_t client = esp_http_client_init(&cfg);
+    TEST_ASSERT_NOT_NULL(client);
+
+    /* 必须显式返回 ESP_ERR_HTTP_CONNECT，严禁静默伪造 200 或 404 */
+    TEST_ASSERT_EQUAL(ESP_ERR_HTTP_CONNECT, esp_http_client_perform(client));
+    TEST_ASSERT_EQUAL(1, s_event_error_count);
+
+    TEST_ASSERT_EQUAL(ESP_OK, esp_http_client_cleanup(client));
+}
+
+/* TC-HTTP-13: 64位 fetch_headers 与流式读取有界流 */
+void test_http_fetch_headers_64bit_content_length(void) {
+    static const sim_http_route_t route = {
+        .url_prefix = "http://example.com/stream64",
+        .resp = {
+            .status_code = 200,
+            .body_data = (const uint8_t *)"0123456789abcdef",
+            .body_len = 16,
+        },
+    };
+    TEST_ASSERT_EQUAL(ESP_OK, sim_http_responder_register_route(&route));
+
+    esp_http_client_config_t cfg = {
+        .url = "http://example.com/stream64",
+    };
+    esp_http_client_handle_t client = esp_http_client_init(&cfg);
+    TEST_ASSERT_NOT_NULL(client);
+
+    TEST_ASSERT_EQUAL(ESP_OK, esp_http_client_open(client, 0));
+    int64_t clen = esp_http_client_fetch_headers(client);
+    TEST_ASSERT_EQUAL_INT64(16, clen);
+    TEST_ASSERT_EQUAL_INT64(16, esp_http_client_get_content_length(client));
+
+    char buf[32] = {0};
+    int rlen = esp_http_client_read(client, buf, sizeof(buf));
+    TEST_ASSERT_EQUAL(16, rlen);
+    TEST_ASSERT_EQUAL_STRING("0123456789abcdef", buf);
+
+    TEST_ASSERT_EQUAL(ESP_OK, esp_http_client_close(client));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_http_client_cleanup(client));
+}
+
 /* --------------------------------------------------------------------------
  * Unity Main Runner
  * -------------------------------------------------------------------------- */
@@ -329,6 +424,8 @@ int main(void) {
     RUN_TEST(test_http_native_streaming_pipeline);
     RUN_TEST(test_http_header_event_null_pointer_safety);
     RUN_TEST(test_http_chunked_response_query);
+    RUN_TEST(test_http_unmapped_url_fails_loud);
+    RUN_TEST(test_http_fetch_headers_64bit_content_length);
 
     return UNITY_END();
 }

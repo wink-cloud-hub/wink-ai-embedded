@@ -464,8 +464,9 @@ int esp_mqtt_client_publish(esp_mqtt_client_handle_t client, const char *topic, 
             if (sub_client && sub_client->connected) {
                 strncpy(sub_client->rx_topic, topic, sizeof(sub_client->rx_topic) - 1);
                 sub_client->rx_topic[sizeof(sub_client->rx_topic) - 1] = '\0';
+                size_t cplen = 0;
                 if (data && len > 0) {
-                    size_t cplen = (size_t)len < sizeof(sub_client->rx_data) - 1 ? (size_t)len : sizeof(sub_client->rx_data) - 1;
+                    cplen = (size_t)len < sizeof(sub_client->rx_data) - 1 ? (size_t)len : sizeof(sub_client->rx_data) - 1;
                     memcpy(sub_client->rx_data, data, cplen);
                     sub_client->rx_data[cplen] = '\0';
                 } else {
@@ -480,7 +481,7 @@ int esp_mqtt_client_publish(esp_mqtt_client_handle_t client, const char *topic, 
                 event.topic = sub_client->rx_topic;
                 event.topic_len = (int)strlen(sub_client->rx_topic);
                 event.data = sub_client->rx_data;
-                event.data_len = len;
+                event.data_len = (int)cplen;
                 event.total_data_len = len;
                 event.current_data_offset = 0;
                 event.msg_id = msg_id;
@@ -492,14 +493,16 @@ int esp_mqtt_client_publish(esp_mqtt_client_handle_t client, const char *topic, 
         }
     }
 
-    /* 向发布者自身派发 MQTT_EVENT_PUBLISHED 事件 */
-    esp_mqtt_event_t pub_event;
-    memset(&pub_event, 0, sizeof(pub_event));
-    pub_event.event_id = MQTT_EVENT_PUBLISHED;
-    pub_event.client = client;
-    pub_event.user_context = client->config.user_context;
-    pub_event.msg_id = msg_id;
-    dispatch_event(client, MQTT_EVENT_PUBLISHED, &pub_event);
+    /* 向发布者自身派发 MQTT_EVENT_PUBLISHED 事件（仅限 QoS > 0，与 ESP-IDF 官方规范一致） */
+    if (qos > 0) {
+        esp_mqtt_event_t pub_event;
+        memset(&pub_event, 0, sizeof(pub_event));
+        pub_event.event_id = MQTT_EVENT_PUBLISHED;
+        pub_event.client = client;
+        pub_event.user_context = client->config.user_context;
+        pub_event.msg_id = msg_id;
+        dispatch_event(client, MQTT_EVENT_PUBLISHED, &pub_event);
+    }
 
     return msg_id;
 }
@@ -630,8 +633,9 @@ int esp_mqtt_sim_inject_message(const char *topic, const char *data, int data_le
             if (sub_client && sub_client->connected) {
                 strncpy(sub_client->rx_topic, topic, sizeof(sub_client->rx_topic) - 1);
                 sub_client->rx_topic[sizeof(sub_client->rx_topic) - 1] = '\0';
+                size_t cplen = 0;
                 if (data && data_len > 0) {
-                    size_t cplen = (size_t)data_len < sizeof(sub_client->rx_data) - 1 ? (size_t)data_len : sizeof(sub_client->rx_data) - 1;
+                    cplen = (size_t)data_len < sizeof(sub_client->rx_data) - 1 ? (size_t)data_len : sizeof(sub_client->rx_data) - 1;
                     memcpy(sub_client->rx_data, data, cplen);
                     sub_client->rx_data[cplen] = '\0';
                 } else {
@@ -646,7 +650,7 @@ int esp_mqtt_sim_inject_message(const char *topic, const char *data, int data_le
                 event.topic = sub_client->rx_topic;
                 event.topic_len = (int)strlen(sub_client->rx_topic);
                 event.data = sub_client->rx_data;
-                event.data_len = data_len;
+                event.data_len = (int)cplen;
                 event.total_data_len = data_len;
                 event.current_data_offset = 0;
                 event.msg_id = msg_id;
