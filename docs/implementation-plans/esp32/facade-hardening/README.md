@@ -2,8 +2,8 @@
 # ESP-IDF 仿真门面长期可维护性治理与架构演进计划集 (Facade Hardening)
 
 > **创建日期**：2026-09-30  
-> **更新日期**：2026-09-30（已全面吸收深度架构评审与防腐门禁意见，完成代码治理与 CI 证据核验四位一体闭环）  
-> **状态**：Active（已完成：计划 01、02、03、04 全部圆满完成，门面基建加固、反向影响分析、防腐机器拦截与 SSOT 闭环 100% 达成）  
+> **更新日期**：2026-09-30（完成第一轮核心阻断项加固：Timer 回滚与负测、CMake 影响面纳管、多后端证据 Schema 与 Fail-Closed 校验、Gate 5 规则敏感度提升；计划 01 T3.1/T3.2 及 Headless 真实回归持续推进中）  
+> **状态**：Active（试点就绪阶段：核心防腐阻断项已修复，具备开展小规模 checklist 人工逐项复核试点条件；计划 01 规则收割裁决与大规模批量回归尚未全部闭环）  
 > **前序废弃计划**：[`../2026-09-30-esp-idf-facade-governance-and-extensibility-plan.md`](../2026-09-30-esp-idf-facade-governance-and-extensibility-plan.md)（已废弃）
 
 ---
@@ -28,14 +28,13 @@
    - 堆内存审计区分“正常优雅退出零泄漏 Delta”与“运行中强行 `esp_restart()` 依赖释放与基线重置”；
 6. **软定时器上下文安全与网络架构严格分层**：
    - 警惕 [`wink_soft_timer.c`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-os/runtime/src/wink_soft_timer.c) 仅有全局 16 槽且受主循环 `WINK_LIGHT_HARD_LIMIT_US` 强力 WCET 审计的致命风险（连续 3 次超时才报 fault），严禁将 Wi-Fi 握手、DHCP 和用户事件直接塞入系统定时器回调；
-   - 计划 03 严格执行文档流转规则，**前置产出《技术设计规格》（Tech Design）**，明确 Timer Daemon 纤程与有界工作队列机制；
+   - 计划 03 严格执行文档流转规则，**前置产出《技术设计规格》（Tech Design）**，明确 Timer Daemon 纤程与有界工作队列机制；完善入队失败回滚与句柄保护；
    - 纠正 Broker 接口名偏差（`sim_network_broker_register_cb`），扩展回调携带 Netif 实例指针与事件类型，消除 [`esp_mqtt.c`](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/wink-micro-os/frameworks/esp_idf/src/network/esp_mqtt.c) 中全局单例 `s_mqtt_token` 的并发冲突，制定多 Netif 出口路由规则；
-7. **横向合入门禁从“形式主义”走向“真闭环”（最核心升级）**：
-   - 识别出 CI 脚本长期依赖 `if: github.event_name == 'workflow_dispatch'` 导致 PR 从不自动跑门禁与分层 lint 的致命漏洞，将其全面接入 PR 自动化并设为 Required Status Check；
-   - 废除 Gate 1 仅核验 64 位字符长度与文件名不含 `"fail"` 的虚假检查，重构真核验引擎（重算真实哈希、解析报告 status 和断言结果）；
-   - 改造 Gate 4 为真实的已交付用例 Headless 仿真回归，废除仅写 warning 和未消费 pending 文件的设计；
-   - 将防腐四铁律编码为 Gate 5.5 ~ 5.8 规则脚本并配齐单测；
-   - 纠正多 SSOT 事实源与看板派生数字漂移。
+7. **横向合入门禁从“形式主义”走向“真闭环”（核心演进方向）**：
+   - 识别出 CI 脚本长期依赖 `if: github.event_name == 'workflow_dispatch'` 导致 PR 从不自动跑门禁与分层 lint 的漏洞，将其全面接入 PR 自动化并设为必需检查；触发路径补齐 `runtime/**` 与 `osal/**`；
+   - 废除 Gate 1 仅核验字符长度的薄弱检查，重构真核验引擎（重算真实哈希、解析报告 status 和断言结果，支持 `wasm_simulation`、`esp32_hardware`、`build_system` 多态 Schema，磁盘文件 Fail-Closed 阻断）；
+   - Gate 4 纳管 `*.cmake` 构建范围；结构校验与 UniSim Headless 仿真回归分步演进；
+   - 将防腐铁律编码为 Gate 5 规则脚本（涵盖所有静态变量定义、驱动任务创建拦截与宽泛样例分支阻断）并配齐正反用例。
 
 ---
 

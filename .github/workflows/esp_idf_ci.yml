@@ -13,6 +13,8 @@ on:
       - 'wink-micro-os/targets/host/**'
       - 'wink-micro-os/targets/wasm/**'
       - 'wink-micro-os/pal/**'
+      - 'wink-micro-os/osal/**'
+      - 'wink-micro-os/runtime/**'
       - 'wink-micro-os/test/**'
       - 'wink-micro-os/cmake/**'
       - 'wink-micro-os/CMakeLists.txt'
