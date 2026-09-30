@@ -17,10 +17,14 @@ typedef enum {
 typedef void (*sim_netif_event_cb_t)(esp_netif_t *netif, sim_netif_event_t event, void *user_ctx);
 
 #define SIM_NETWORK_MAX_CBS 8
+#define SIM_NETWORK_MAX_NETIFS 4
 
 void sim_network_broker_reset(void);
 void sim_network_broker_set_ready(bool ready);
 bool sim_network_broker_is_ready(void);
+
+bool sim_network_broker_is_netif_ready(esp_netif_t *netif);
+void sim_network_broker_set_netif_ready(esp_netif_t *netif, bool ready);
 
 int  sim_network_broker_register_cb(sim_netif_event_cb_t cb, void *user_ctx);
 void sim_network_broker_unregister_cb(sim_netif_event_cb_t cb, void *user_ctx);

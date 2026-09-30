@@ -11,6 +11,8 @@
 #include "wink_sim_scheduler.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "esp_netif.h"
+#include "sim_network_broker.h"
 
 extern void sim_set_mono_time_us(uint64_t us);
 
@@ -108,6 +110,7 @@ void setUp(void) {
     sim_scheduler_reset(42);
     esp_freertos_pools_reset();
     esp_event_loop_sim_reset();
+    sim_network_broker_reset();
     esp_mqtt_sim_reset();
 
     s_connected_count = 0;
@@ -133,6 +136,7 @@ void tearDown(void) {
     sim_scheduler_reset(0);
     esp_freertos_pools_reset();
     esp_event_loop_sim_reset();
+    sim_network_broker_reset();
     esp_mqtt_sim_reset();
 }
 
@@ -547,6 +551,105 @@ void test_mqtt_multi_client_concurrent_connect(void) {
     esp_mqtt_client_destroy(c2);
 }
 
+/* TC-MQTT-20: 多网卡路由隔离 (STA 外网 vs SoftAP 本地互不污染) */
+static int s_sta_conn = 0;
+static int s_sta_disc = 0;
+static int s_ap_conn = 0;
+static int s_ap_disc = 0;
+
+static void sta_client_handler(void *args, esp_event_base_t base, int32_t id, void *data) {
+    (void)args; (void)base; (void)data;
+    if ((esp_mqtt_event_id_t)id == MQTT_EVENT_CONNECTED) s_sta_conn++;
+    if ((esp_mqtt_event_id_t)id == MQTT_EVENT_DISCONNECTED) s_sta_disc++;
+}
+
+static void ap_client_handler(void *args, esp_event_base_t base, int32_t id, void *data) {
+    (void)args; (void)base; (void)data;
+    if ((esp_mqtt_event_id_t)id == MQTT_EVENT_CONNECTED) s_ap_conn++;
+    if ((esp_mqtt_event_id_t)id == MQTT_EVENT_DISCONNECTED) s_ap_disc++;
+}
+
+void test_mqtt_multi_netif_routing_isolation(void) {
+    TEST_ASSERT_EQUAL(ESP_OK, esp_event_loop_create_default());
+    sim_network_broker_reset();
+
+    s_sta_conn = 0; s_sta_disc = 0;
+    s_ap_conn = 0;  s_ap_disc = 0;
+
+    esp_netif_t *netif_sta = esp_netif_create_default_wifi_sta();
+    esp_netif_t *netif_ap = esp_netif_create_default_wifi_ap();
+    TEST_ASSERT_NOT_NULL(netif_sta);
+    TEST_ASSERT_NOT_NULL(netif_ap);
+    TEST_ASSERT_NOT_EQUAL(netif_sta, netif_ap);
+
+    /* 客户端 1：默认 STA 路由 */
+    esp_mqtt_client_config_t cfg_sta = {
+        .broker.address.uri = "mqtt://127.0.0.1:1883",
+        .network.netif = NULL /* 缺省走默认 STA */
+    };
+    /* 客户端 2：绑定 SoftAP 本地网卡 */
+    esp_mqtt_client_config_t cfg_ap = {
+        .broker.address.uri = "mqtt://192.168.4.1:1883",
+        .network.netif = netif_ap
+    };
+
+    esp_mqtt_client_handle_t c_sta = esp_mqtt_client_init(&cfg_sta);
+    esp_mqtt_client_handle_t c_ap = esp_mqtt_client_init(&cfg_ap);
+    TEST_ASSERT_NOT_NULL(c_sta);
+    TEST_ASSERT_NOT_NULL(c_ap);
+
+    TEST_ASSERT_EQUAL(ESP_OK, esp_mqtt_client_register_event(c_sta, ESP_EVENT_ANY_ID, sta_client_handler, NULL));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_mqtt_client_register_event(c_ap, ESP_EVENT_ANY_ID, ap_client_handler, NULL));
+
+    /* 启动两个客户端（此时网络均未上线） */
+    TEST_ASSERT_EQUAL(ESP_OK, esp_mqtt_client_start(c_sta));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_mqtt_client_start(c_ap));
+
+    /* 仿真时钟前推 50ms：均未能连接，各产生 1 次未联网断开事件 */
+    pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 10);
+    TEST_ASSERT_FALSE(esp_mqtt_sim_is_connected(c_sta));
+    TEST_ASSERT_FALSE(esp_mqtt_sim_is_connected(c_ap));
+    TEST_ASSERT_EQUAL(1, s_sta_disc);
+    TEST_ASSERT_EQUAL(1, s_ap_disc);
+
+    /* 阶段 1：SoftAP 单独上线，验证 STA 客户端不受任何波及 */
+    sim_network_broker_notify_netif(netif_ap, SIM_NETIF_EVT_UP);
+    pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 10);
+
+    TEST_ASSERT_TRUE(esp_mqtt_sim_is_connected(c_ap));
+    TEST_ASSERT_FALSE(esp_mqtt_sim_is_connected(c_sta)); /* 铁证：SoftAP 上线绝不激活 STA MQTT */
+    TEST_ASSERT_EQUAL(1, s_ap_conn);
+    TEST_ASSERT_EQUAL(0, s_sta_conn);
+
+    /* 阶段 2：STA 上线，STA 客户端连接，AP 客户端维持原状 */
+    sim_network_broker_notify_netif(netif_sta, SIM_NETIF_EVT_UP);
+    pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 10);
+
+    TEST_ASSERT_TRUE(esp_mqtt_sim_is_connected(c_sta));
+    TEST_ASSERT_TRUE(esp_mqtt_sim_is_connected(c_ap));
+    TEST_ASSERT_EQUAL(1, s_sta_conn);
+    TEST_ASSERT_EQUAL(1, s_ap_conn);
+
+    /* 阶段 3：SoftAP 下线，仅 AP 客户端断开 (增至 2 次)，STA 客户端稳固连接 (维持 1 次) */
+    sim_network_broker_notify_netif(netif_ap, SIM_NETIF_EVT_DOWN);
+    pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 10);
+
+    TEST_ASSERT_FALSE(esp_mqtt_sim_is_connected(c_ap));
+    TEST_ASSERT_TRUE(esp_mqtt_sim_is_connected(c_sta)); /* 铁证：SoftAP 下线绝不切断 STA MQTT */
+    TEST_ASSERT_EQUAL(2, s_ap_disc);
+    TEST_ASSERT_EQUAL(1, s_sta_disc);
+
+    /* 阶段 4：STA 下线，STA 客户端断开 (增至 2 次) */
+    sim_network_broker_notify_netif(netif_sta, SIM_NETIF_EVT_DOWN);
+    pal_sim_scheduler_run(NULL, SIM_SCHED_NO_READY, 10);
+
+    TEST_ASSERT_FALSE(esp_mqtt_sim_is_connected(c_sta));
+    TEST_ASSERT_EQUAL(2, s_sta_disc);
+
+    esp_mqtt_client_destroy(c_sta);
+    esp_mqtt_client_destroy(c_ap);
+}
+
 /* --------------------------------------------------------------------------
  * Unity Main Runner
  * -------------------------------------------------------------------------- */
@@ -572,6 +675,7 @@ int main(void) {
     RUN_TEST(test_mqtt_qos0_does_not_dispatch_published_event);
     RUN_TEST(test_mqtt_slot_reuse_aba);
     RUN_TEST(test_mqtt_multi_client_concurrent_connect);
+    RUN_TEST(test_mqtt_multi_netif_routing_isolation);
 
     return UNITY_END();
 }

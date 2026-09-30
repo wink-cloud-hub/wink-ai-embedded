@@ -8,6 +8,7 @@
 #include "freertos_sync.h"
 #include "sim_wifi_env.h"
 #include "sim_network_broker.h"
+#include "esp_netif.h"
 #include <string.h>
 
 ESP_EVENT_DEFINE_BASE(WIFI_EVENT);
@@ -196,6 +197,7 @@ esp_err_t esp_wifi_start(void) {
     }
     if (s_wifi.mode == WIFI_MODE_AP || s_wifi.mode == WIFI_MODE_APSTA) {
         esp_event_post(WIFI_EVENT, WIFI_EVENT_AP_START, NULL, 0, portMAX_DELAY);
+        sim_network_broker_notify_netif(esp_netif_create_default_wifi_ap(), SIM_NETIF_EVT_UP);
     }
     return ESP_OK;
 }
@@ -260,12 +262,13 @@ esp_err_t esp_wifi_stop(void) {
     }
     s_wifi.state = WIFI_SIM_INIT;
     sim_wifi_env_set_state(WIFI_SIM_INIT);
-    sim_network_broker_set_ready(false);
 
     if (s_wifi.mode == WIFI_MODE_STA || s_wifi.mode == WIFI_MODE_APSTA) {
+        sim_network_broker_notify_netif(esp_netif_get_handle_sta(), SIM_NETIF_EVT_DOWN);
         esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_STOP, NULL, 0, portMAX_DELAY);
     }
     if (s_wifi.mode == WIFI_MODE_AP || s_wifi.mode == WIFI_MODE_APSTA) {
+        sim_network_broker_notify_netif(esp_netif_create_default_wifi_ap(), SIM_NETIF_EVT_DOWN);
         esp_event_post(WIFI_EVENT, WIFI_EVENT_AP_STOP, NULL, 0, portMAX_DELAY);
     }
     return ESP_OK;

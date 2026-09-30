@@ -1910,6 +1910,8 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/freertos
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/wifi
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/network
         ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
     )
     target_link_libraries(test_esp_mqtt PRIVATE wink_framework_esp_idf dal)
@@ -2217,9 +2219,10 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     # Build only the executables needed by the ESP-IDF core CTest label. The
     # repository-wide ALL target also builds unrelated framework/Wasm suites.
     set(_ESP_IDF_HOST_TEST_TARGETS
-        test_esp_err test_esp_idf_runtime test_esp_log test_esp_soc_matrix
+        test_esp_err test_esp_check test_esp_idf_runtime test_esp_log test_esp_soc_matrix
         test_esp_gpio test_esp_restart_outside_scheduler test_esp_idf_freertos test_esp_idf_global_ctor test_esp_idf_phase2
         test_esp_idf_phase2_crash test_esp_idf_phase3 test_esp_idf_phase3_crash
+        test_freertos_timers
         test_esp_ledc test_esp_i2c test_esp_uart test_esp_gptimer test_esp_spi
         test_esp_event
         test_esp_nvs test_esp_nvs_bad_sandbox test_esp_nvs_io_error test_esp_wifi test_esp_mqtt test_esp_http_client

@@ -11,17 +11,61 @@ typedef struct {
     bool in_use;
 } sim_network_cb_slot_t;
 
-static bool s_broker_ready = false;
+typedef struct {
+    esp_netif_t *netif;
+    bool ready;
+    bool in_use;
+} sim_netif_state_t;
+
+static sim_netif_state_t s_netifs[SIM_NETWORK_MAX_NETIFS];
 static sim_network_cb_slot_t s_slots[SIM_NETWORK_MAX_CBS];
 
 void sim_network_broker_reset(void) {
-    s_broker_ready = false;
+    memset(s_netifs, 0, sizeof(s_netifs));
     memset(s_slots, 0, sizeof(s_slots));
+}
+
+bool sim_network_broker_is_netif_ready(esp_netif_t *netif) {
+    if (!netif) {
+        netif = esp_netif_get_handle_sta();
+    }
+    for (size_t i = 0; i < SIM_NETWORK_MAX_NETIFS; i++) {
+        if (s_netifs[i].in_use && s_netifs[i].netif == netif) {
+            return s_netifs[i].ready;
+        }
+    }
+    return false;
+}
+
+bool sim_network_broker_is_ready(void) {
+    return sim_network_broker_is_netif_ready(esp_netif_get_handle_sta());
 }
 
 void sim_network_broker_notify_netif(esp_netif_t *netif, sim_netif_event_t event) {
     bool ready = (event == SIM_NETIF_EVT_UP);
-    s_broker_ready = ready;
+    if (!netif) {
+        netif = esp_netif_get_handle_sta();
+    }
+
+    bool found = false;
+    for (size_t i = 0; i < SIM_NETWORK_MAX_NETIFS; i++) {
+        if (s_netifs[i].in_use && s_netifs[i].netif == netif) {
+            s_netifs[i].ready = ready;
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        for (size_t i = 0; i < SIM_NETWORK_MAX_NETIFS; i++) {
+            if (!s_netifs[i].in_use) {
+                s_netifs[i].in_use = true;
+                s_netifs[i].netif = netif;
+                s_netifs[i].ready = ready;
+                break;
+            }
+        }
+    }
+
     for (size_t i = 0; i < SIM_NETWORK_MAX_CBS; i++) {
         if (s_slots[i].in_use && s_slots[i].cb) {
             s_slots[i].cb(netif, event, s_slots[i].user_ctx);
@@ -29,22 +73,19 @@ void sim_network_broker_notify_netif(esp_netif_t *netif, sim_netif_event_t event
     }
 }
 
-void sim_network_broker_set_ready(bool ready) {
-    if (s_broker_ready == ready) {
+void sim_network_broker_set_netif_ready(esp_netif_t *netif, bool ready) {
+    if (!netif) {
+        netif = esp_netif_get_handle_sta();
+    }
+    if (sim_network_broker_is_netif_ready(netif) == ready) {
         return;
     }
-    s_broker_ready = ready;
-    esp_netif_t *sta = esp_netif_get_handle_sta();
     sim_netif_event_t evt = ready ? SIM_NETIF_EVT_UP : SIM_NETIF_EVT_DOWN;
-    for (size_t i = 0; i < SIM_NETWORK_MAX_CBS; i++) {
-        if (s_slots[i].in_use && s_slots[i].cb) {
-            s_slots[i].cb(sta, evt, s_slots[i].user_ctx);
-        }
-    }
+    sim_network_broker_notify_netif(netif, evt);
 }
 
-bool sim_network_broker_is_ready(void) {
-    return s_broker_ready;
+void sim_network_broker_set_ready(bool ready) {
+    sim_network_broker_set_netif_ready(esp_netif_get_handle_sta(), ready);
 }
 
 int sim_network_broker_register_cb(sim_netif_event_cb_t cb, void *user_ctx) {

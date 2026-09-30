@@ -6,6 +6,7 @@
 #include "freertos/task.h"
 #include "freertos_sync.h"
 #include "sim_network_broker.h"
+#include "esp_netif.h"
 #include <string.h>
 
 #define TAG "ESP_MQTT"
@@ -28,9 +29,11 @@ struct esp_mqtt_client {
     bool initialized;
     bool started;
     bool connected;
+    uint32_t client_slot;
     uint32_t token;
     uint32_t work_item_id;
     esp_mqtt_client_config_t config;
+    esp_netif_t *bound_netif;
     esp_event_handler_t event_handler;
     void *event_handler_arg;
     esp_mqtt_event_id_t registered_event;
@@ -50,7 +53,16 @@ static int s_last_data_len = 0;
 static int s_last_msg_id = 0;
 static int s_next_msg_id = 1;
 
-static bool s_network_ready = true;
+extern esp_netif_t* esp_netif_get_handle_sta(void);
+
+static bool client_matches_netif(const struct esp_mqtt_client *client, const esp_netif_t *netif) {
+    if (!client || !client->initialized) {
+        return false;
+    }
+    esp_netif_t *target = client->bound_netif ? client->bound_netif : esp_netif_get_handle_sta();
+    return (target == netif);
+}
+
 static uint32_t s_global_mqtt_token = 1000;
 static esp_mqtt_sim_publish_hook_t s_publish_hook = NULL;
 static bool s_mqtt_core_handler_registered = false;
@@ -184,60 +196,49 @@ static void dispatch_event(esp_mqtt_client_handle_t client, esp_mqtt_event_id_t 
 static void mqtt_connect_work_cb(void *arg, uint32_t work_token);
 
 static void on_network_broker_state_changed(esp_netif_t *netif, sim_netif_event_t event, void *user_ctx) {
-    (void)netif;
-    (void)user_ctx;
+    struct esp_mqtt_client *c = (struct esp_mqtt_client *)user_ctx;
+    if (!c || !c->initialized) {
+        return;
+    }
+    if (!client_matches_netif(c, netif)) {
+        return;
+    }
     bool ready = (event == SIM_NETIF_EVT_UP);
-    s_network_ready = ready;
     if (!ready) {
-        for (size_t i = 0; i < MAX_MQTT_CLIENTS; i++) {
-            struct esp_mqtt_client *c = &s_clients[i];
-            if (c->initialized && c->started && c->connected) {
-                c->connected = false;
-                c->error_codes.error_type = MQTT_ERROR_TYPE_TCP_TRANSPORT;
-                c->error_codes.esp_transport_sock_errno = 113; /* EHOSTUNREACH */
+        if (c->started && c->connected) {
+            c->connected = false;
+            c->error_codes.error_type = MQTT_ERROR_TYPE_TCP_TRANSPORT;
+            c->error_codes.esp_transport_sock_errno = 113; /* EHOSTUNREACH */
 
-                esp_mqtt_event_t err_event;
-                memset(&err_event, 0, sizeof(err_event));
-                err_event.event_id = MQTT_EVENT_ERROR;
-                err_event.client = c;
-                err_event.user_context = c->config.user_context;
-                err_event.error_handle = &c->error_codes;
-                dispatch_event(c, MQTT_EVENT_ERROR, &err_event);
+            esp_mqtt_event_t err_event;
+            memset(&err_event, 0, sizeof(err_event));
+            err_event.event_id = MQTT_EVENT_ERROR;
+            err_event.client = c;
+            err_event.user_context = c->config.user_context;
+            err_event.error_handle = &c->error_codes;
+            dispatch_event(c, MQTT_EVENT_ERROR, &err_event);
 
-                esp_mqtt_event_t disc_event;
-                memset(&disc_event, 0, sizeof(disc_event));
-                disc_event.event_id = MQTT_EVENT_DISCONNECTED;
-                disc_event.client = c;
-                disc_event.user_context = c->config.user_context;
-                dispatch_event(c, MQTT_EVENT_DISCONNECTED, &disc_event);
-            }
+            esp_mqtt_event_t disc_event;
+            memset(&disc_event, 0, sizeof(disc_event));
+            disc_event.event_id = MQTT_EVENT_DISCONNECTED;
+            disc_event.client = c;
+            disc_event.user_context = c->config.user_context;
+            dispatch_event(c, MQTT_EVENT_DISCONNECTED, &disc_event);
         }
     } else {
-        for (size_t i = 0; i < MAX_MQTT_CLIENTS; i++) {
-            struct esp_mqtt_client *c = &s_clients[i];
-            if (c->initialized && c->started && !c->connected) {
-                uint32_t token = ++s_global_mqtt_token;
-                c->token = token;
-                if (c->work_item_id != 0) {
-                    esp_freertos_timer_cancel_work_item(c->work_item_id);
-                    c->work_item_id = 0;
-                }
-                esp_freertos_timer_post_work_item(mqtt_connect_work_cb,
-                                                  (void *)(uintptr_t)token,
-                                                  &c->work_item_id,
-                                                  pdMS_TO_TICKS(10));
+        if (c->started && !c->connected) {
+            uint32_t token = ++s_global_mqtt_token;
+            c->token = token;
+            if (c->work_item_id != 0) {
+                esp_freertos_timer_cancel_work_item(c->work_item_id);
+                c->work_item_id = 0;
             }
+            esp_freertos_timer_post_work_item(mqtt_connect_work_cb,
+                                              (void *)(uintptr_t)token,
+                                              &c->work_item_id,
+                                              pdMS_TO_TICKS(10));
         }
     }
-}
-
-static bool s_mqtt_broker_registered = false;
-static void ensure_mqtt_broker_registered(void) {
-    if (!s_mqtt_broker_registered) {
-        sim_network_broker_register_cb(on_network_broker_state_changed, NULL);
-        s_mqtt_broker_registered = true;
-    }
-    s_network_ready = sim_network_broker_is_ready();
 }
 
 static bool mqtt_topic_match(const char *sub, const char *pub) {
@@ -298,7 +299,8 @@ static void mqtt_connect_work_cb(void *arg, uint32_t work_token) {
     }
     client->work_item_id = 0;
 
-    if (!s_network_ready) {
+    esp_netif_t *target = client->bound_netif ? client->bound_netif : esp_netif_get_handle_sta();
+    if (!sim_network_broker_is_netif_ready(target)) {
         client->connected = false;
         client->error_codes.error_type = MQTT_ERROR_TYPE_TCP_TRANSPORT;
         client->error_codes.esp_transport_sock_errno = 113; /* EHOSTUNREACH */
@@ -333,15 +335,17 @@ esp_mqtt_client_handle_t esp_mqtt_client_init(const esp_mqtt_client_config_t *co
     if (!config) {
         return NULL;
     }
-    ensure_mqtt_broker_registered();
 
     for (int i = 0; i < MAX_MQTT_CLIENTS; i++) {
         if (!s_clients[i].initialized) {
             memset(&s_clients[i], 0, sizeof(s_clients[i]));
             s_clients[i].initialized = true;
+            s_clients[i].client_slot = (uint32_t)i;
             s_clients[i].token = ++s_global_mqtt_token;
             s_clients[i].config = *config;
+            s_clients[i].bound_netif = config->network.netif;
             s_clients[i].registered_event = MQTT_EVENT_ANY;
+            sim_network_broker_register_cb(on_network_broker_state_changed, &s_clients[i]);
             return &s_clients[i];
         }
     }
@@ -355,6 +359,14 @@ esp_err_t esp_mqtt_client_set_uri(esp_mqtt_client_handle_t client, const char *u
     }
     client->config.uri = uri;
     client->config.broker.address.uri = uri;
+    return ESP_OK;
+}
+
+esp_err_t esp_mqtt_client_set_netif(esp_mqtt_client_handle_t client, esp_netif_t *netif) {
+    if (!client || !client->initialized) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    client->bound_netif = netif;
     return ESP_OK;
 }
 
@@ -465,6 +477,7 @@ esp_err_t esp_mqtt_client_destroy(esp_mqtt_client_handle_t client) {
         return ESP_ERR_INVALID_ARG;
     }
     esp_mqtt_client_stop(client);
+    sim_network_broker_unregister_cb(on_network_broker_state_changed, client);
 
     for (int i = 0; i < MAX_SUBSCRIPTIONS; i++) {
         if (s_subscriptions[i].used && s_subscriptions[i].client == client) {
@@ -664,9 +677,12 @@ esp_err_t esp_mqtt_client_register_event(esp_mqtt_client_handle_t client, esp_mq
 
 void esp_mqtt_sim_reset(void) {
     for (size_t i = 0; i < MAX_MQTT_CLIENTS; i++) {
-        if (s_clients[i].work_item_id != 0) {
-            esp_freertos_timer_cancel_work_item(s_clients[i].work_item_id);
-            s_clients[i].work_item_id = 0;
+        if (s_clients[i].initialized) {
+            if (s_clients[i].work_item_id != 0) {
+                esp_freertos_timer_cancel_work_item(s_clients[i].work_item_id);
+                s_clients[i].work_item_id = 0;
+            }
+            sim_network_broker_unregister_cb(on_network_broker_state_changed, &s_clients[i]);
         }
     }
     s_global_mqtt_token++;
@@ -679,11 +695,6 @@ void esp_mqtt_sim_reset(void) {
     s_last_data_len = 0;
     s_last_msg_id = 0;
     memset(s_clients, 0, sizeof(s_clients));
-    s_network_ready = sim_network_broker_is_ready();
-    if (s_mqtt_broker_registered) {
-        sim_network_broker_unregister_cb(on_network_broker_state_changed, NULL);
-        s_mqtt_broker_registered = false;
-    }
 }
 
 bool esp_mqtt_sim_is_connected(esp_mqtt_client_handle_t client) {
@@ -691,8 +702,6 @@ bool esp_mqtt_sim_is_connected(esp_mqtt_client_handle_t client) {
 }
 
 void esp_mqtt_sim_set_network_ready(bool ready) {
-    ensure_mqtt_broker_registered();
-    s_network_ready = ready;
     sim_network_broker_set_ready(ready);
 }
 

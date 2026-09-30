@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include "esp_err.h"
 #include "esp_event.h"
+#include "esp_netif_types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -92,6 +93,7 @@ typedef struct {
     struct {
         int buffer_size;
         int out_buffer_size;
+        esp_netif_t *netif;
     } network;
     /* v4 兼容顶层字段 */
     const char *uri;
@@ -103,6 +105,7 @@ typedef struct {
 /* 标准客户端生命周期与操作 API */
 esp_mqtt_client_handle_t esp_mqtt_client_init(const esp_mqtt_client_config_t *config);
 esp_err_t esp_mqtt_client_set_uri(esp_mqtt_client_handle_t client, const char *uri);
+esp_err_t esp_mqtt_client_set_netif(esp_mqtt_client_handle_t client, esp_netif_t *netif);
 esp_err_t esp_mqtt_client_start(esp_mqtt_client_handle_t client);
 esp_err_t esp_mqtt_client_stop(esp_mqtt_client_handle_t client);
 esp_err_t esp_mqtt_client_reconnect(esp_mqtt_client_handle_t client);
