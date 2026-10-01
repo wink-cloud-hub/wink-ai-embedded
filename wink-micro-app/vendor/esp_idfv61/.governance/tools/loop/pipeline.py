@@ -137,9 +137,14 @@ class LoopPipeline:
         gate_script = self.governance_dir / "gates" / "run_gates.py"
         rc, out = self.run_python(gate_script, ["--gate", "1"])
         # Check if our specific app has errors
-        if f"({app_id})" in out and "ERROR" in out:
+        app_errors = [
+            line for line in out.splitlines()
+            if "[ERROR]" in line and f"({app_id})" in line
+        ]
+        if app_errors:
             self.rollback_app(app_dir)
-            return PipelineResult(app_id, False, f"Gate 1 semantic check failed:\n{out[:300]}", "GATE_1_PRE")
+            err_summary = "\n".join(app_errors[:3])
+            return PipelineResult(app_id, False, f"Gate 1 semantic check failed:\n{err_summary}", "GATE_1_PRE")
 
         # --- Phase 3: Positive Baseline Execution ---
         rc, out = self.run_powershell(["-File", str(self.runner_script), "-App", app_name, "-Reporter", "json"])
@@ -203,9 +208,14 @@ class LoopPipeline:
 
         # --- Phase 6: Post-Audit Gate 1 Check ---
         rc, out = self.run_python(gate_script, ["--gate", "1"])
-        if rc != 0 and f"({app_id})" in out and "ERROR" in out:
+        post_app_errors = [
+            line for line in out.splitlines()
+            if "[ERROR]" in line and f"({app_id})" in line
+        ]
+        if rc != 0 and post_app_errors:
             self.rollback_app(app_dir)
-            return PipelineResult(app_id, False, f"Post-audit Gate 1 failed:\n{out[:300]}", "GATE_1_POST")
+            err_summary = "\n".join(post_app_errors[:3])
+            return PipelineResult(app_id, False, f"Post-audit Gate 1 failed:\n{err_summary}", "GATE_1_POST")
 
         # --- Phase 7: Re-render Checklist & Git Commit ---
         if not self.dry_run:

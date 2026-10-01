@@ -28,8 +28,8 @@ class AgentSynthesizer:
         if self.custom_agent_cmd:
             return self.custom_agent_cmd.split()
 
-        # Check in order of priority: agy -> qoderclicn -> claude -> opencode
-        candidate_binaries = ["agy", "qoderclicn", "claude", "opencode"]
+        # Check in order of priority: qoderclicn -> agy -> claude -> opencode
+        candidate_binaries = ["qoderclicn", "agy", "claude", "opencode"]
         for binary in candidate_binaries:
             found = shutil.which(binary) or shutil.which(f"{binary}.cmd") or shutil.which(f"{binary}.exe")
             # Also check known custom install paths if not in PATH
