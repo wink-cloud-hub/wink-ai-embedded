@@ -11514,7 +11514,7 @@
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": null,
+            "scenario_path": "protocols/http_client/unisim-scenarios/http_client.scenario.json",
             "timeout_virtual_us": 5000000,
             "timeout_wall_ms": 15000,
             "positive_cases": [

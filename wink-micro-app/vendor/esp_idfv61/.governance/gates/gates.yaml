@@ -80,6 +80,13 @@ rules:
     module: rules.g1_auditor_required
     description: "已审计条目责任人与配置覆盖校验"
 
+  - id: g1.carrier_landing_integrity
+    gate: 1
+    severity: error
+    modes: [pr, nightly]
+    module: rules.g1_carrier_landing_integrity
+    description: "落盘 Carrier 应用实证资产配对与阶段完整性校验"
+
   # Gate 2: PAL 防膨胀 (3条)
   - id: g2.pal_naming
     gate: 2
