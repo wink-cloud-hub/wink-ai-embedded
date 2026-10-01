@@ -180,7 +180,7 @@ def test_verify_evidence_fail_closed_nonexistent_files(tmp_path):
             "run_id": "run-test",
             "assets_sha256": "a" * 64,
             "scenario_sha256": "b" * 64,
-            "execution_report_ref": "reports/nonexistent_app/run-report.json",
+            "execution_report_ref": ".governance/reports/nonexistent_app/run-report.json",
         },
     }
 

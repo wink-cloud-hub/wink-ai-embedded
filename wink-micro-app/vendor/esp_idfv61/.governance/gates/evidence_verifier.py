@@ -86,11 +86,14 @@ def resolve_execution_report_path(ref: str, ws_root: Path) -> Optional[Path]:
     # 3. Handle unisim:// URI scheme
     if ref.startswith("unisim://"):
         rel_path = ref.removeprefix("unisim://").lstrip("/")
-        # If it starts with reports/, try stripping or matching
-        sub = rel_path.removeprefix("reports/").lstrip("/")
+        # If it starts with reports/ or .governance/reports/, try stripping or matching
+        sub = rel_path.removeprefix(".governance/reports/").removeprefix("reports/").lstrip("/")
         candidates = [
+            vendor_root / ".governance" / "reports" / sub,
+            vendor_root / ".governance" / "reports" / rel_path,
             vendor_root / "reports" / sub,
             vendor_root / "reports" / rel_path,
+            ws_root / ".governance" / "reports" / sub,
             ws_root / "reports" / sub,
             ws_root / "reports" / rel_path,
             vendor_root / ".governance" / "gates" / "reports" / sub,
@@ -350,7 +353,7 @@ def write_evidence_for_app(
     scenario_sha = compute_scenario_sha256(scenario_file)
 
     # Determine report destination
-    reports_dir = vendor_root / "reports" / target_dir_rel
+    reports_dir = vendor_root / ".governance" / "reports" / target_dir_rel
     reports_dir.mkdir(parents=True, exist_ok=True)
     report_dst = reports_dir / "run-report.json"
 
@@ -381,7 +384,7 @@ def write_evidence_for_app(
 
     now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     run_id = f"run-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{matched_entry.get('id', 'app')}-verified"
-    rel_report_ref = f"reports/{target_dir_rel}/run-report.json".replace("\\", "/")
+    rel_report_ref = f".governance/reports/{target_dir_rel}/run-report.json".replace("\\", "/")
 
     # Locate target execution config by config_id or use default
     target_exec = None

@@ -304,7 +304,7 @@ powershell -ExecutionPolicy Bypass -File wink-micro-os/frameworks/esp_idf/tools/
    - 烧录至指定物理开发板（如 `esp32_devkitc_v4`）；
    - 通过串口监视工具（115200 波特率）捕获芯片上电冷启动与业务日志；
    - 依据 `acceptance.positive_cases` 中声明的正则模式进行逐行命中匹配；
-   - 输出符合统一 Schema 的串口执行报告 `reports/hw/run-<timestamp>-<app>.json`（包含 `passed_steps`, `board_type`, `raw_log`）；
+   - 输出符合统一 Schema 的串口执行报告 `.governance/reports/hw/run-<timestamp>-<app>.json`（包含 `passed_steps`, `board_type`, `raw_log`）；
 4. **差分比对（Diff Parity）**：对要求虚实差分比对的条目，将真机串口时戳与 Wasm 仿真虚拟时钟对齐，验证事件时序误差在声明的 `tolerance_us` 阈值以内。
 
 ### 3. 纯构建工程配置实证（Build System Verification）
@@ -314,7 +314,7 @@ powershell -ExecutionPolicy Bypass -File wink-micro-os/frameworks/esp_idf/tools/
    cmake -B build -S examples/build_system/<feature>
    cmake --build build
    ```
-2. **编译日志归档**：将完整标准输出与标准错误流归档至 `reports/build/run-<timestamp>-<app>.log`；
+2. **编译日志归档**：将完整标准输出与标准错误流归档至 `.governance/reports/build/run-<timestamp>-<app>.log`；
 3. **断言与指标提取**：
    - 验证构建退出码为 `0`；
    - 记录编译器完整版本号（如 `emcc 3.1.56` 或 `xtensa-esp32-elf-gcc 13.2.0`）；
@@ -366,7 +366,7 @@ powershell -ExecutionPolicy Bypass -File wink-micro-os/frameworks/esp_idf/tools/
   "run_id": "run-20260929-1400-blink-01",
   "assets_sha256": "<三件套规范复合SHA256>",
   "scenario_sha256": "<unisim-scenarios/*.scenario.json校验和>",
-  "execution_report_ref": "reports/esp32/run-20260929-1400-blink-01.json",
+  "execution_report_ref": ".governance/reports/esp32/run-20260929-1400-blink-01.json",
   "verified_commit": "<当前工作区 Git HEAD 提交哈希>",
   "verified_at": "2026-09-29T14:00:00Z"
 }
@@ -380,7 +380,7 @@ powershell -ExecutionPolicy Bypass -File wink-micro-os/frameworks/esp_idf/tools/
   "backend": "esp32_hardware",
   "run_id": "hw-20260929-1500-blink-01",
   "firmware_elf_sha256": "<交叉编译生成ELF文件哈希>",
-  "serial_log_report_ref": "reports/hw/run-20260929-1500-blink-01.json",
+  "serial_log_report_ref": ".governance/reports/hw/run-20260929-1500-blink-01.json",
   "board_type": "esp32_devkitc_v4",
   "verified_commit": "<当前工作区 Git HEAD 提交哈希>",
   "verified_at": "2026-09-29T15:00:00Z"
@@ -392,7 +392,7 @@ powershell -ExecutionPolicy Bypass -File wink-micro-os/frameworks/esp_idf/tools/
 "evidence": {
   "backend": "build_system",
   "run_id": "build-20260929-1600-blink-01",
-  "build_log_ref": "reports/build/run-20260929-1600-blink-01.log",
+  "build_log_ref": ".governance/reports/build/run-20260929-1600-blink-01.log",
   "compiler_version": "emcc-3.1.56",
   "verified_commit": "<当前工作区 Git HEAD 提交哈希>",
   "verified_at": "2026-09-29T16:00:00Z"

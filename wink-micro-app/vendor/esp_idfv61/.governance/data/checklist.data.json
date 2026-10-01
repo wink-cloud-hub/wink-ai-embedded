@@ -90,7 +90,7 @@
             "run_id": "run-20260930-esp.get_started.blink-verified",
             "assets_sha256": "5059fbe1b5be803fa932691e16d8a0a314f6ef84cd3486f4ff3c2985c8e01026",
             "scenario_sha256": "48e7494366d56bfab523750ba94359c349604f1437ab7c44f0a5f333f503c157",
-            "execution_report_ref": "reports/get-started/blink_gpio/run-report.json",
+            "execution_report_ref": ".governance/reports/get-started/blink_gpio/run-report.json",
             "verified_commit": "9036ee14d75f3b9911f56d73b29e0d04999c8cb9",
             "verified_at": "2026-09-30T12:32:38Z"
           }
