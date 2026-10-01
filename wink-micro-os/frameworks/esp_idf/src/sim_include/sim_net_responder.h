@@ -11,11 +11,19 @@
 extern "C" {
 #endif
 
+#if defined(__EMSCRIPTEN__)
+#  include <emscripten.h>
+#  define WINK_SIM_EXPORT EMSCRIPTEN_KEEPALIVE
+#else
+#  define WINK_SIM_EXPORT
+#endif
+
 #define SIM_HTTP_MAX_ROUTES     16
 #define SIM_HTTP_MAX_HEADERS    8
 #define SIM_HTTP_KEY_MAX        32
 #define SIM_HTTP_VAL_MAX        128
 #define SIM_HTTP_URL_MAX        128
+#define SIM_HTTP_BODY_MAX       1024
 
 typedef struct {
     char key[SIM_HTTP_KEY_MAX];
@@ -26,6 +34,7 @@ typedef struct {
     int status_code;
     sim_http_header_kv_t headers[SIM_HTTP_MAX_HEADERS];
     size_t header_count;
+    char body_buf[SIM_HTTP_BODY_MAX];
     const uint8_t *body_data;
     size_t body_len;
     esp_err_t fault_inject_err; /* 若非 ESP_OK 则触发模拟底层网络异常 */
@@ -41,10 +50,17 @@ typedef struct {
 } sim_http_route_t;
 
 /* 路由注册与重置 API（供测试用例或场景加载器初始化） */
-void sim_http_responder_reset(void);
-esp_err_t sim_http_responder_register_route(const sim_http_route_t *route);
+WINK_SIM_EXPORT void sim_http_responder_reset(void);
+WINK_SIM_EXPORT esp_err_t sim_http_responder_register_route(const sim_http_route_t *route);
 const sim_http_response_t *sim_http_responder_match(const char *method, const char *url);
 size_t sim_http_responder_route_count(void);
+
+/* Wasm 仿真注入与指标观测 API */
+WINK_SIM_EXPORT int sim_http_responder_inject_json(const char *json_str);
+WINK_SIM_EXPORT int sim_http_get_last_status_code(void);
+WINK_SIM_EXPORT int sim_http_get_total_rx_bytes(void);
+WINK_SIM_EXPORT int sim_http_get_request_count(void);
+void sim_http_record_request(int status_code, size_t rx_bytes);
 
 #ifdef __cplusplus
 }

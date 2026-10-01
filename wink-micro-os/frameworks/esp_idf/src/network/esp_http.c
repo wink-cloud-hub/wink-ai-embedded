@@ -150,8 +150,13 @@ esp_http_client_handle_t esp_http_client_init(const esp_http_client_config_t *co
                 strncpy(s_http_clients[i].host, config->host, sizeof(s_http_clients[i].host) - 1);
                 s_http_clients[i].port = port;
                 strncpy(s_http_clients[i].path, path, sizeof(s_http_clients[i].path) - 1);
-                snprintf(s_http_clients[i].url, sizeof(s_http_clients[i].url), "http://%.96s:%d%.96s",
-                         config->host, port, path);
+                if (port == 80 || port == 443) {
+                    snprintf(s_http_clients[i].url, sizeof(s_http_clients[i].url), "http://%.96s%.96s",
+                             config->host, path);
+                } else {
+                    snprintf(s_http_clients[i].url, sizeof(s_http_clients[i].url), "http://%.96s:%d%.96s",
+                             config->host, port, path);
+                }
             }
             return &s_http_clients[i];
         }
@@ -310,6 +315,7 @@ esp_err_t esp_http_client_perform(esp_http_client_handle_t client) {
 
     client->status_code = resp->status_code;
     client->response_len = (int64_t)resp->body_len;
+    sim_http_record_request(resp->status_code, resp->body_len);
 
     /* 1. ON_CONNECTED */
     dispatch_http_event(client, HTTP_EVENT_ON_CONNECTED, NULL, 0, NULL, NULL);
@@ -372,6 +378,7 @@ esp_err_t esp_http_client_open(esp_http_client_handle_t client, int write_len) {
     client->matched_resp = resp;
     client->status_code = resp->status_code;
     client->response_len = (int64_t)resp->body_len;
+    sim_http_record_request(resp->status_code, resp->body_len);
 
     sim_bounded_stream_reset(&client->req_stream);
     sim_bounded_stream_reset(&client->stream);
@@ -473,20 +480,20 @@ void esp_http_client_sim_reset(void) {
 }
 
 void esp_http_client_sim_set_response(esp_http_client_handle_t client, int status_code, const char *content, size_t content_len) {
-    sim_http_route_t route;
-    memset(&route, 0, sizeof(route));
+    static sim_http_route_t s_set_resp_route;
+    memset(&s_set_resp_route, 0, sizeof(s_set_resp_route));
     if (client && client->url[0] != '\0') {
-        strncpy(route.url_prefix, client->url, sizeof(route.url_prefix) - 1);
+        strncpy(s_set_resp_route.url_prefix, client->url, sizeof(s_set_resp_route.url_prefix) - 1);
     } else {
-        strcpy(route.url_prefix, "http");
+        strcpy(s_set_resp_route.url_prefix, "http");
     }
-    route.resp.status_code = status_code;
-    route.resp.body_data = (const uint8_t*)content;
-    route.resp.body_len = content_len;
-    strcpy(route.resp.headers[0].key, "Content-Type");
-    strcpy(route.resp.headers[0].value, "text/plain");
-    route.resp.header_count = 1;
-    sim_http_responder_register_route(&route);
+    s_set_resp_route.resp.status_code = status_code;
+    s_set_resp_route.resp.body_data = (const uint8_t*)content;
+    s_set_resp_route.resp.body_len = content_len;
+    strcpy(s_set_resp_route.resp.headers[0].key, "Content-Type");
+    strcpy(s_set_resp_route.resp.headers[0].value, "text/plain");
+    s_set_resp_route.resp.header_count = 1;
+    sim_http_responder_register_route(&s_set_resp_route);
 }
 
 esp_err_t esp_http_client_set_redirection(esp_http_client_handle_t client) {

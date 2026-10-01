@@ -30,6 +30,11 @@
     "_sim_wifi_env_inject_fault",
     "_sim_wifi_env_get_state_str",
     "_sim_wifi_env_get_sta_ip_ptr",
+    "_sim_http_responder_reset",
+    "_sim_http_responder_inject_json",
+    "_sim_http_get_last_status_code",
+    "_sim_http_get_total_rx_bytes",
+    "_sim_http_get_request_count",
     "_pal_wasm_push_uart_rx_byte",
     "_pal_wasm_push_uart_rx_error",
     "_pal_wasm_get_uart_rx_available"
