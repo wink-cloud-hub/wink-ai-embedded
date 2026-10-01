@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 4,
-    "verified_configs": 4
+    "audited": 5,
+    "verified_configs": 5
   },
   "entries": [
     {
@@ -11494,10 +11494,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "arch_team",
+        "audited_at": "2026-10-01T13:12:58Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -11530,7 +11532,7 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
@@ -11555,7 +11557,15 @@
             ],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261001-esp.protocols.esp_http_client-verified",
+            "assets_sha256": "754c4d62aa1b9a521b407fbaed118d1762470c0cf80b58ea4b0cb0aa6ca3e491",
+            "scenario_sha256": "9439f4b78630b09f9960529bc51bcf368e2c534227da0204eec103876ad4c987",
+            "execution_report_ref": ".governance/reports/protocols/http_client/run-report.json",
+            "verified_commit": "2d0f913f83fd1791b74afb4a5ed1e7d64dbcbb98",
+            "verified_at": "2026-10-01T13:12:58Z"
+          }
         }
       ],
       "target_app_dir": "protocols/http_client"

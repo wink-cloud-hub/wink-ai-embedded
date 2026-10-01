@@ -10,18 +10,65 @@
   },
   "steps": [
     {
+      "type": "INJECT_NET_FIXTURE",
+      "timeUs": "0ms",
+      "protocol": "http",
+      "description": "预注入真实 HTTP 路由应答（GET/POST/PUT/PATCH/DELETE）",
+      "routes": [
+        {
+          "method": "GET",
+          "url_prefix": "http://httpbin.org/get",
+          "status_code": 200,
+          "headers": { "Content-Type": "application/json" },
+          "body": "{\"origin\":\"127.0.0.1\",\"url\":\"http://httpbin.org/get\"}"
+        },
+        {
+          "method": "POST",
+          "url_prefix": "http://httpbin.org/post",
+          "status_code": 200,
+          "headers": { "Content-Type": "application/json" },
+          "body": "{\"data\":\"{\\\"field1\\\":\\\"value1\\\"}\",\"origin\":\"127.0.0.1\"}"
+        },
+        {
+          "method": "PUT",
+          "url_prefix": "http://httpbin.org/put",
+          "status_code": 200,
+          "body": "{\"status\":\"ok\"}"
+        },
+        {
+          "method": "PATCH",
+          "url_prefix": "http://httpbin.org/patch",
+          "status_code": 200,
+          "body": "{\"status\":\"patched\"}"
+        },
+        {
+          "method": "DELETE",
+          "url_prefix": "http://httpbin.org/delete",
+          "status_code": 200,
+          "body": "{\"status\":\"deleted\"}"
+        }
+      ]
+    },
+    {
       "type": "ASSERT_POINT",
       "timeUs": "500ms",
-      "target": "power:VCC_WIFI",
-      "matcher": 3.3,
-      "description": "断言网络通信模块主供电轨稳定维持 3.3V"
+      "target": "http:client:status_code",
+      "matcher": 200,
+      "description": "断言首个 HTTP GET 请求成功返回 200 OK 状态码"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "http:client:rx_bytes_total",
+      "matcher": { "$gt": 0 },
+      "description": "断言 HTTP 客户端接收到真实网络载荷数据流"
     },
     {
       "type": "ASSERT_POINT",
       "timeUs": "1000ms",
-      "target": "power:VCC_3V3",
-      "matcher": 3.3,
-      "description": "断言系统核心 3.3V 电源轨维持稳定输出"
+      "target": "http:client:request_count",
+      "matcher": { "$gte": 1 },
+      "description": "断言至少 1 次完整 HTTP 事务执行完成"
     }
   ]
 }

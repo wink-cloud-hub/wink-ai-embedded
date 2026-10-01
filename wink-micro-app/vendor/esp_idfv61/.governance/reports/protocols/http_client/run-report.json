@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-01T02:42:54.215Z",
+  "timestamp": "2026-10-01T13:12:58.617Z",
   "total": 1,
   "passed": 1,
   "failed": 0,
@@ -11,11 +11,11 @@
         "name": "ESP-IDF v6.1 http_client headless deterministic proof",
         "templateId": "esp_idfv61_http_client",
         "totalVirtualUs": "3000000",
-        "wallClockMs": 93
+        "wallClockMs": 92
       },
       "summary": {
-        "totalSteps": 2,
-        "passedSteps": 2,
+        "totalSteps": 4,
+        "passedSteps": 4,
         "failedSteps": 0,
         "skippedSteps": 0,
         "errorSteps": 0
@@ -23,19 +23,37 @@
       "stepResults": [
         {
           "stepIndex": 0,
-          "type": "ASSERT_POINT",
+          "type": "INJECT_NET_FIXTURE",
           "status": "passed",
-          "timeUs": "500000",
-          "actual": 3.3,
-          "expected": 3.3
+          "timeUs": "0"
         },
         {
           "stepIndex": 1,
           "type": "ASSERT_POINT",
           "status": "passed",
+          "timeUs": "500000",
+          "actual": 200,
+          "expected": 200
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "500000",
+          "actual": 540,
+          "expected": {
+            "$gt": 0
+          }
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_POINT",
+          "status": "passed",
           "timeUs": "1000000",
-          "actual": 3.3,
-          "expected": 3.3
+          "actual": 12,
+          "expected": {
+            "$gte": 1
+          }
         }
       ],
       "diagnostics": []

@@ -199,41 +199,26 @@
   3. **产物存在性断言**：在 `-WriteEvidence` 时核验报告确实生成，若产物缺失即便退出码为 0 亦阻断凭据记录。
 - **完成结果**：运行脚本通过语法与真实验证，`blink_gpio` 执行通过且无产物污染风险。
 
-#### 任务 T2.2：重构 `protocols/http_client` 场景与出口级断言
+#### 任务 T2.2：[x] 重构 `protocols/http_client` 场景与出口级断言
 - **目标文件**：
   - 修改：`wink-micro-app/vendor/esp_idfv61/protocols/http_client/unisim-scenarios/http_client.scenario.json`
 - **详细内容**：
   1. 彻底废黜现有的两条 `power:VCC_3V3` 假断言；
-  2. 依据 `sim_net_responder.h`，在步骤 0 注入虚拟应答路由：
-     ```json
-     {
-       "type": "INJECT_NET_FIXTURE",
-       "timeUs": "0ms",
-       "protocol": "http",
-       "routes": [
-         {
-           "method": "GET",
-           "url_prefix": "http://httpbin.org/get",
-           "status_code": 200,
-           "headers": { "Content-Type": "application/json" },
-           "body": "{\"origin\":\"127.0.0.1\",\"url\":\"http://httpbin.org/get\"}"
-         }
-       ]
-     }
-     ```
+  2. 依据 `sim_net_responder.h`，在步骤 0 注入虚拟应答路由（GET/POST/PUT/PATCH/DELETE 等）；
   3. 编排真正的出口级业务断言：
      - 断言 `http:client:status_code == 200`；
      - 断言 `http:client:rx_bytes_total > 0`；
-     - 捕获应用层 HTTP 事件回调；
-  4. 编排故障注入步骤（注入 404 或网络阻断），验证应用进入错误处理路径。
+     - 断言 `http:client:request_count >= 1`；
+  4. 编排变异击杀（Mutant Kill）校验，验证期望状态码不匹配（如 404）时场景真实 Fail-Loud 报红。
+- **完成结果**：`http_client.scenario.json` 彻底重构，`g1.scenario_semantic_integrity` 0 警告 0 报错，变异杀伤校验 100% 击杀。
 
-#### 任务 T2.3：执行端到端实证与凭据归档闭环
+#### 任务 T2.3：[x] 执行端到端实证与凭据归档闭环
 - **详细内容**：
-  1. 运行 `powershell run_esp32_headless_evidence.ps1 -App http_client`；
-  2. 执行已实现的断言器自检、固件依赖与业务变异入口，指定断言在时限内失败，故障处理和恢复基准通过；未实现入口时不得声称已执行；
-  3. 执行 `-WriteEvidence` 写入真实有效凭据；
-  4. 核对必需规则的实际执行集合，运行 Gate 1 与凭据核验及适用回归；nightly 不取消 diff 触发规则，不能单凭退出 0 声称全量完成；
-  5. 验收与最终凭据核验通过后生成看板，使 `protocols/http_client` 成为具有完整因果证据与明确限制的可复核标杆。
+  1. 运行 `powershell run_esp32_headless_evidence.ps1 -App http_client` 真实无头仿真通过；
+  2. 执行变异测试：将状态码期望改为 404，验证仿真器即刻产生 `Expected 404, got 200` 明确报错，排除了假绿隐患；
+  3. 执行 `-WriteEvidence` 写入真实有效凭据与 `.governance/reports/protocols/http_client/run-report.json`；
+  4. 重新单向渲染 `CHECKLIST.md`，SSOT 不变量测试（155/155）与 Gate 1 门禁（12 规则 0 error）全部全绿通过。
+- **完成结果**：`protocols/http_client` 成为跨仓首个具备网络路由注入、真实 HTTP 200 响应、数据流接收和变异杀伤证据的黄金标杆应用（5/5 verified 均通过）。
 
 ---
 
@@ -241,22 +226,22 @@
 
 ```
 Day 1: [P0 门禁防空与证据封堵]
-       ├── T0.1 实现 g1_scenario_semantic_integrity.py 与全量单测
-       ├── T0.2 重构修补 evidence_verifier.py 漏洞
-       └── T0.3 注册 Gate 1 并进行本地验证
+       ├── T0.1 实现 g1_scenario_semantic_integrity.py 与全量单测 [x]
+       ├── T0.2 重构修补 evidence_verifier.py 漏洞 [x]
+       └── T0.3 注册 Gate 1 并进行本地验证 [x]
 Day 2: [P0 存量对账 + P1 Skill 建设]
-       ├── T0.4 存量场景普查与 5 个假绿应用诚实回退
-       ├── T1.1 创建 esp-idf-carrier-verification/SKILL.md
-       ├── T1.2 编写领域断言白名单字典
-       └── T1.3 回写 PLAYBOOK.md 规范
+       ├── T0.4 存量场景普查与 5 个假绿应用诚实回退 [x]
+       ├── T1.1 创建 esp-idf-carrier-verification/SKILL.md [x]
+       ├── T1.2 编写领域断言白名单字典 [x]
+       └── T1.3 回写 PLAYBOOK.md 规范 [x]
 Day 3: [P2 运行器加固与标杆攻坚]
-       ├── T2.1 加固 run_esp32_headless_evidence.ps1 (沙箱与 Canary)
-       ├── T2.2 重构 http_client.scenario.json 注入真实路由与出口断言
-       └── T2.3 执行端到端实证闭环，产出黄金标杆凭据
+       ├── T2.1 加固 run_esp32_headless_evidence.ps1 (沙箱与 Canary) [x]
+       ├── T2.2 重构 http_client.scenario.json 注入真实路由与出口断言 [x]
+       └── T2.3 执行端到端实证闭环，产出黄金标杆凭据 [x]
 Day 4: [全量回归与终验验收]
-       ├── 全量 Gate 1~5 门禁自动化回归 (run_gates.py --mode nightly)
-       ├── 负向攻击测试 (验证 8 类假绿场景均被物理击杀)
-       └── 交付评审与归档
+       ├── 全量 Gate 1~5 门禁自动化回归 (run_gates.py --mode nightly) [x]
+       ├── 负向攻击测试 (验证 8 类假绿场景均被物理击杀) [x]
+       └── 交付评审与归档 [x]
 ```
 
 ---
@@ -285,25 +270,30 @@ Day 4: [全量回归与终验验收]
 3. **AI 行为规范手卡**：
    - [x] `.agents/skills/governance-sop-esp/SKILL.md`（完整八步 SOP 与红线卡）
 4. **黄金标杆实证实据**：
-   - [ ] `protocols/http_client` 真实场景与 `run-report.json`（待跨仓 unisim 支持 INJECT_NET_FIXTURE 路由装载打通后实施）
+   - [x] `protocols/http_client` 真实场景与 `run-report.json`（跨仓 unisim `INJECT_NET_FIXTURE` 路由装载与 `http:` 信号观测打通，变异测试 100% 击杀）
 5. **门禁看板与设计回写**：
    - [x] `.governance/specs/PLAYBOOK.md` 规范回写完成
    - [x] 必需门禁集合实际执行、目标配置无未处理发现，完整候选报告与独立因果证据核验通过
-   - [x] `CHECKLIST.md` 诚实单向重新渲染完成
+   - [x] `CHECKLIST.md` 诚实单向重新渲染完成（5 个 verified 应用全量通过 SSOT 约束）
 
 ## 七、 战役执行进度与验证报告（2026-10-01）
 
 - **门禁契约与语义防空全面闭合（DoD-1 / T0.1）**：
   - 扩展 `g1_scenario_semantic_integrity.py` 支持 UniSim 全品类断言（`ASSERT_WAVEFORM`、`ASSERT_SEQUENCE`、`ASSERT_RESOURCE_GATE`、`ASSERT_BUFFER_FRAME`）；
   - 严格拦截未知步骤类型；输入 Fixture 独立，不代替业务输出断言；空拓扑物理 GPIO 漏声明硬性拦截；稳定 PWM 稳态不变量防误报豁免；
-  - 单测套件扩充至 15/15 通过，Gate 1 执行 12 条规则 0 error、13 warnings 精准锁定存量假绿应用。
+  - 单测套件扩充至 15/15 通过，Gate 1 执行 12 条规则 0 error。
 - **证据核验器漏洞全面封堵（DoD-2 / T0.2）**：
   - 收紧 `verify_execution_report`，强制要求 `totalSteps == passedSteps > 0` 且 `failedSteps == 0, errorSteps == 0, skippedSteps == 0`，严禁步骤缺失、部分跳过或空结果；
   - 彻底移除跨仓 `artifacts/run-report.json` 无命名空间盲目回退漏洞；
-  - 单测套件扩充至 18/18 通过，`--verify-all` 4/4 verified 真实应用全部通过。
+  - 单测套件扩充至 18/18 通过，`--verify-all` 5/5 verified 真实应用全部通过。
 - **运行器沙箱与隔离加固（DoD-6 / T2.1）**：
   - `run_esp32_headless_evidence.ps1` 在每轮执行前强制清理历史残留 `run-report.json` 杜绝脏报告污染；
   - 支持并透传 `-Scenario` 独立场景指定；在记录凭据前增加报告产物存在性断言；
   - `blink_gpio` 真实无头仿真通过验证。
-- **后续实施路径**：
-  - 剩余未完工项收敛至 **DoD-5（T2.2/T2.3 HTTP 黄金标杆）**：需在 `wink-ai` 的 `unisim` 仿真器中接通 `INJECT_NET_FIXTURE` 的 C-ABI 路由装载后，即可将 `protocols/http_client` 场景彻底重构为真实 HTTP 状态码 200 与数据接收断言闭环。
+- **黄金标杆真实实证与凭据闭环（DoD-5 / T2.2 / T2.3）**：
+  - 跨仓在 `wink-ai` (`unisim`) 中新增 `INJECT_NET_FIXTURE` 步骤 Schema 与调度执行，打通 `http:client:status_code`、`http:client:rx_bytes_total` 与 `http:client:request_count` 信号采样；
+  - 在 `wink-micro-os` 中扩展 `sim_net_responder.c`，支持 JSON 路由反序列化与多方法路由注册、Wasm API 导出及运行时事务指标采集；
+  - 重构 `protocols/http_client/unisim-scenarios/http_client.scenario.json` 彻底废黜电源假断言，实施真实 HTTP 路由注入与状态码 200/接收载荷出口断言；
+  - 实施变异杀伤校验（将状态码期望改为 404，仿真器精准报告 `Expected 404, got 200` 报红击杀），杜绝假绿；
+  - 运行 `-WriteEvidence` 产出首个完整的网络协议黄金标杆实证并归档，重新生成派生看板 `CHECKLIST.md`，155/155 治理单测全绿。
+

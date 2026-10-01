@@ -14,9 +14,9 @@
 ## 一、 总体适配进度统计
 
 - **官方独立示例总数**：**478 个**
-  - `[x]` **已完成六要素实证 (Verified)**：**4 项**
+  - `[x]` **已完成六要素实证 (Verified)**：**5 项**
   - `[?]` **存量隔离待补凭证 (Quarantined Debt)**：**0 项**（14 天 TTL 过期硬阻断，至 `2026-10-13`）
-  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**287 项**
+  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**286 项**
   - `[-]` **明确产品排除 / 暂缓投入 (Out-of-Scope / Deferred)**：**187 项**（编译期 `WINK_SLA_ERROR` Fail-Loud 阻断）
   - `?` **待深度审定 (Pending Audit / Unknown Scope)**：**0 项**
 
@@ -27,7 +27,7 @@
 | 01 | [基础快速起步 (Get-Started)](#get-started) | 2 项 | `#001 ~ #002` | 1 项 | 0 项 |
 | 02 | [片上与总线外设 (Peripherals)](#peripherals) | 114 项 | `#003 ~ #116` | 2 项 | 0 项 |
 | 03 | [操作系统与核心系统调用 (System & OS)](#system) | 68 项 | `#117 ~ #184` | 0 项 | 0 项 |
-| 04 | [网络与应用层通信协议 (Protocols)](#protocols) | 35 项 | `#185 ~ #219` | 0 项 | 0 项 |
+| 04 | [网络与应用层通信协议 (Protocols)](#protocols) | 35 项 | `#185 ~ #219` | 1 项 | 0 项 |
 | 05 | [Wi-Fi 无线局域网 (Wi-Fi)](#wifi) | 24 项 | `#220 ~ #243` | 1 项 | 0 项 |
 | 06 | [蓝牙协议栈 (Bluetooth)](#bluetooth) | 147 项 | `#244 ~ #390` | 0 项 | 0 项 |
 | 07 | [片上存储与文件系统 (Storage)](#storage) | 27 项 | `#391 ~ #417` | 0 项 | 0 项 |
@@ -319,12 +319,12 @@
 ---
 
 <a id="protocols"></a>
-### 网络与应用层通信协议 (Protocols)（共 35 项 | 编号 `#185 ~ #219` | 已实证: 0 项 | 隔离待补: 0 项）
+### 网络与应用层通信协议 (Protocols)（共 35 项 | 编号 `#185 ~ #219` | 已实证: 1 项 | 隔离待补: 0 项）
 
 | 状态 | 编号 | 官方子示例相对路径 | 可观测等级 | 优先级 | 对应 wink-micro-app | 验收标准与架构说明 |
 | :---: | :---: | :--- | :---: | :---: | :--- | :--- |
 | [ ] | 185 | `protocols/dns_over_https` | 📜 Level 2 | P2 | `protocols/dns_over_https` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 186 | `protocols/esp_http_client` | 📜 Level 2 | P1 | [`protocols/http_client`](protocols/http_client) | [Lane 6: 无线网络] HTTP GET 200 响应 |
+| [x] | 186 | `protocols/esp_http_client` | 📜 Level 2 | P0 | [`protocols/http_client`](protocols/http_client) | [Lane 6: 无线网络] 已完成实证。 |
 | [ ] | 187 | `protocols/esp_http_client_mutual_auth` | 📜 Level 2 | P1 | `protocols/esp_http_client_mutual_auth` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 188 | `protocols/esp_local_ctrl` | 📜 Level 2 | P2 | `protocols/esp_local_ctrl` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 189 | `protocols/http_request` | 📜 Level 2 | P2 | `protocols/http_request` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
