@@ -37,7 +37,9 @@
    - **新增资源必须自锚复位因果链**：新增任何有状态或句柄的外设/协议模块，必须在 `esp_idf_bridge.c` 复位流程中注册注销逻辑，并在无头场景结束时验证基线干净；
    - **严禁手工伪造未收割原厂头**：必须经由 Harvester 生成或按 SLA 规范声明，严禁在 `include/` 私设手写头。
 7. **防假绿与语义完整性硬性门禁（Anti-False-Green & Scenario Semantic Integrity）**：
-   任何场景编排必须遵循真测试四大公理（因果性、状态跳变、拓扑闭环、变异杀伤）。严禁退化为静态无关电源断言（如 `power:VCC_3V3 == 3.3`）、无状态跳变或恒真判定。断言必须直接命中被测业务核心出口（GPIO 翻转、串口回显、网络状态码与报文、PWM 占空比等），引脚必须在 `wink-app.json` 声明。所有 Wasm 仿真用例交付前必须通过 `g1.scenario_semantic_integrity` 门禁与 Canary 变异杀伤校验。现场操作强制执行 Skill [governance-sop-esp](../../../.agents/skills/governance-sop-esp/SKILL.md)。
+   核心业务断言须具备因果性、与契约相符的行为覆盖、交互闭环和缺陷敏感性。允许辅助电源、初始化及稳态/不变量检查，但不能单独替代业务证明；周期与状态迁移契约须检查实际变化。物理连接按 Manifest 拓扑核验，逻辑总线和网络信号按公开运行时契约核验。交付前分别完成断言器自检、固件依赖检查、有效业务变异、适用故障处理及恢复基准；环境扰动或改错预期不能单独证明固件依赖。现场操作使用 Skill [governance-sop-esp](../../../../../.agents/skills/governance-sop-esp/SKILL.md)。
+
+> **当前实现边界（2026-10-01）**：配置/场景参数尚未贯穿实际运行，凭据核验未检查完整执行集合及因果证据；波形/序列断言的静态门禁识别存在缺口。现有核验器通过不代表上述验收要求全部完成，缺口见 [实证工作流](../../../../../.agents/skills/governance-sop-esp/references/evidence-workflow.md) 与 [实施计划](../../../../../docs/implementation-plans/esp32/2026-10-01-anti-false-green-verification-plan.md)。
 
 > [!CAUTION]
 > **绝对门禁声明**：
@@ -225,14 +227,14 @@ set(WINK_APP_SOURCES "" PARENT_SCOPE)
 }
 ```
 
-> **网络测试步骤说明 (`INJECT_NET_FIXTURE`)**：
-> - 适用于 HTTP/MQTT 等网络类示例。无头运行器（Headless Runner）在启动微应用仿真时，解析并在 C 门面注册模拟路由表与静态载荷；
-> - 运行结束或复位时自动调用 `sim_net_responder_reset()` 清空，杜绝跨用例状态串扰。
+> **网络测试草案说明 (`INJECT_NET_FIXTURE`)**：
+> - 上述模板包含拟议网络注入接口；截至 2026-10-01，当前运行时尚不能解析该步骤，不能直接运行或作为交付证据。
+> - HTTP/MQTT 扩展需实现路由注入、真实业务出口、报告与复位契约，并逐项通过验证。底层存在某个 C API 不等于场景运行器已接通该能力。
 
 ### 5. 原厂未收割 API 处置规程（Strict Harvester Pipeline）
 若官方示例代码调用了当前门面公开 `include/` 中尚未收割的原厂 API：
 - **路径 A（纳入实现）**：必须通过 Harvester 闭源收割规则生成对应头文件并经门禁校验合入，**严禁开发者在 `include/` 下手工捏造未经审定的原厂头**；
-- **路径 B（声明 Out-of-Scope）**：若该特性属于明确排除范围（如 eFuse 熔丝硬件、特定外部 PHY 等），必须在 `wink_sla.h` 下使用 `WINK_SLA_ERROR` 进行编译期阻断，或运行期返回 `ESP_ERR_NOT_SUPPORTED`，并在 `checklist.data.json` 标记为 `[-] Out-of-Scope`，**严禁写空函数静默返回 `ESP_OK`**。
+- **路径 B（已裁定 Out-of-Scope）**：只有满足 CLASSIFICATION-SPEC 的物理介质排除条件并完成范围裁定，才通过生成规则提供 `WINK_SLA_ERROR` 编译期阻断及对应拒绝实证；`wink_sla.h` 是生成产物，禁止手工编辑。普通能力缺口按产品范围继续规划，不自动转成排除项；合法运行时接口的未支持错误须按其契约显式返回，**严禁写空函数静默返回 `ESP_OK`**。
 
 
 
@@ -327,13 +329,13 @@ powershell -ExecutionPolicy Bypass -File wink-micro-os/frameworks/esp_idf/tools/
 - 验证应用在执行完成或断开后，系统调用软复位能够干净回到初始态；
 - 杜绝因前一个用例未排空后台工作项或未注销事件观察者，导致后续无头用例发生幽灵状态串扰。
 
-### 5. 场景语义防假绿与变异杀伤校验（Anti-False-Green & Canary Mutation）
+### 5. 场景语义防假绿与因果检验（Anti-False-Green & Causal Verification）
 为彻底杜绝“假绿测试”（False Green / Vacuous Pass），在设计与交付 Wasm 场景（`unisim-scenarios/*.scenario.json`）时，必须执行以下硬性标准：
-1. **领域 Target 命中**：断言必须针对所属门面域的核心特性（控制类测 `gpio:*`/`pwm:*`，总线类测 `uart:*`/`ASSERT_BUS_PAYLOAD`，网络类测 `http:client:*`/`mqtt:*` 等）。严禁退化为断言静态电源（`power:VCC_*`）；
-2. **状态跳变覆盖**：周期或时序用例必须包含至少 1 次电平或状态跳变断言，严禁仅测 50ms 初始静态值；
-3. **引脚拓扑合规**：场景断言中涉及的所有物理引脚与器件，必须已在 `wink-app.json` 的 `devices` 节点中明确声明；
-4. **变异杀伤检验（Canary Mutation）**：在交付前，必须通过人为篡改预期值或破坏注入环境，验证断言能够真实失败报红。无法被破坏杀死的断言严禁投入生产；
-5. **门禁自动扫描**：提交 PR 前必须执行 `python run_gates.py --mode pr`，确保 `g1.scenario_semantic_integrity` 与 `evidence_verifier` 为 0 Error。具体操作详见 Skill [governance-sop-esp](../../../.agents/skills/governance-sop-esp/SKILL.md) 与 [domain-assertion-guide.md](../../../.agents/skills/governance-sop-esp/references/domain-assertion-guide.md)。
+1. **领域出口与契约预检**：核验 Step、Target、Matcher 的解析、执行和门禁支持；核心业务不能由电源或仅有 Fixture 代替。HTTP/MQTT 等拟议出口须先实现，不能依据名称猜测可用；
+2. **契约行为覆盖**：周期/时序检查迁移和时间窗口；初始化、稳态 PWM 与不变量可检查稳定结果，同时提供固件依赖与指定缺陷敏感性证据；
+3. **观测对象核对**：物理引脚/器件按有效拓扑声明核验；UART bus ID、方向以及 Wi-Fi/Netif 等逻辑信号分别按契约核验；
+4. **独立因果检验**：正常基准通过后，分别完成错误预期自检、保持激励与正确预期不变的固件依赖检查、有效业务变异；断网等故障场景应验证错误处理通过。恢复基准须通过，解析/编译/Runner 错误不计为业务杀伤；
+5. **报告与门禁复核**：核对全部必需场景与业务断言逐项结果、实际配置和原始检查报告；执行 `python .governance/gates/run_gates.py --gate 1` 与 `python .governance/gates/evidence_verifier.py --verify-all`（这两条命令以本手册所属 `esp_idfv61` 为当前目录），并核对适用 Gate 2~5 的实际执行集合。PR/nightly 模式或退出 0 不自动证明全部检查完成。具体命令和当前工具限制见 [实证工作流](../../../../../.agents/skills/governance-sop-esp/references/evidence-workflow.md)。
 
 ---
 

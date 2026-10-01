@@ -9,7 +9,7 @@
 > - 💾 **结构化档案（数据 SSOT）**：[`checklist.data.json`](checklist.data.json)（478 个示例的多配置实体与五维正交元数据单一真理源，Schema v2.0）  
 > - 🚦 **门禁注册表（CI 目标真理源）**：[`.gates/gates.yaml`](.gates/gates.yaml)（Gate 1~4 全部规则的声明式注册表，含 `g1.scenario_semantic_integrity` 防假绿规则）  
 > - 🛠️ **操作手册（实施 SOP）**：[`PLAYBOOK.md`](PLAYBOOK.md)（定义单个示例迁移的五阶段工程流水线与硬性门禁）  
-> - 🤖 **现场规程（AI 治理 Skill）**：[`governance-sop-esp`](../../../.agents/skills/governance-sop-esp/SKILL.md)（现场 AI 行为约束器，定义防假绿现场八步 SOP、反模式禁令与领域断言白名单）  
+> - 🤖 **现场规程（AI 治理 Skill）**：[`governance-sop-esp`](../../../../../.agents/skills/governance-sop-esp/SKILL.md)（任务模式、业务验收原则与按需加载的八步实证工作流）
 > - 📊 **执行看板（派生视图）**：[`CHECKLIST.md`](CHECKLIST.md)（由数据源单向渲染生成的只读看板，严禁纯手工编辑）  
 > **核心关联 ADR**：  
 > - [ADR-0012：契约诚实优于静默降级（PAL/HAL 抽象层通用原则）](../../../docs/decisions/core/0012-contract-honesty-over-silent-degradation.md)  
@@ -62,9 +62,10 @@
 - 涉及 Schema 破损性变更时触发规范版本号升级（如 v2.0）并执行可复核的数据迁移。
 
 ### 铁律六：防假绿与语义完整性硬性门禁，严禁退化断言与虚假绿灯
-- **真测试四大公理**：因果性（A-1）、状态跳变（A-2）、拓扑闭环（A-3）、变异杀伤（A-4）。测试断言必须直接命中被测业务逻辑的核心因果链与出口观测点；
+- **业务验收四项原则**：因果性（A-1）、契约行为覆盖（A-2）、交互闭环（A-3）、缺陷敏感性（A-4）。核心业务断言命中真实业务出口；辅助环境检查不单独充当业务证明。周期/迁移契约检查动态变化，初始化、稳态与不变量按自身契约检查，并证明固件依赖和指定有效变异的敏感性；
 - **严禁退化断言**：在通信、控制、网络协议等非电源管理类工程中，严禁仅断言静态电源轨电压（如 `power:VCC_3V3 == 3.3`）作为“通过凭据”；
-- **门禁与 Canary 闭环**：所有声明为 `verified` 的条目，其场景必须通过 `g1.scenario_semantic_integrity` 门禁检查，并在提交前通过 Canary 变异杀伤校验（人为注错必须变红）。现场作业必须强制遵循 Skill [`governance-sop-esp`](../../../.agents/skills/governance-sop-esp/SKILL.md)。
+- **独立因果证据与门禁**：配置交付前分别核验断言器自检、固件依赖、指定业务变异、适用故障处理和恢复基准，绑定本轮输入与原始报告。改错预期仅证明断言器工作，环境扰动仅证明环境/故障敏感性；当前静态门禁与凭据核验器未自动覆盖全部要求，退出 0 不等于完整验收。现场流程见 [`governance-sop-esp`](../../../../../.agents/skills/governance-sop-esp/SKILL.md) 与 [实证工作流](../../../../../.agents/skills/governance-sop-esp/references/evidence-workflow.md)。
+- **能力阻塞保持正交**：`delivery_state` 继续使用既有五种合法值，能力缺口通过依赖闭包与诊断表达；禁止写入 `blocked_on_runtime` 等新交付状态，禁止把缺能力自动改为产品排除。Review/Reverify 保留登记状态，状态迁移和看板写入仅在对应授权的交付工作中进行。
 
 ---
 
