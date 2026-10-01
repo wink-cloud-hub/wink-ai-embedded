@@ -318,3 +318,85 @@ def test_write_evidence_targeting_config_id(tmp_path, dummy_assets_dir, dummy_pa
     assert cfg_b["evidence"]["scenario_sha256"] != ""
 
 
+def test_verify_execution_report_rejects_error_steps(tmp_path):
+    """Execution reports with errorSteps > 0 are rejected."""
+    rep = tmp_path / "error-steps.json"
+    rep.write_text(json.dumps({
+        "results": [{
+            "ok": True,
+            "status": "passed",
+            "summary": {"totalSteps": 5, "passedSteps": 5, "failedSteps": 0, "errorSteps": 1},
+        }]
+    }), encoding="utf-8")
+    ok, msg = verify_execution_report(rep)
+    assert ok is False
+    assert "errorSteps" in msg
+
+
+def test_verify_execution_report_rejects_skipped_steps(tmp_path):
+    """Execution reports with skippedSteps > 0 are rejected."""
+    rep = tmp_path / "skipped-steps.json"
+    rep.write_text(json.dumps({
+        "results": [{
+            "ok": True,
+            "status": "passed",
+            "summary": {"totalSteps": 5, "passedSteps": 4, "failedSteps": 0, "skippedSteps": 1},
+        }]
+    }), encoding="utf-8")
+    ok, msg = verify_execution_report(rep)
+    assert ok is False
+    assert "skippedSteps" in msg or "mismatch" in msg
+
+
+def test_verify_execution_report_rejects_total_not_equal_passed(tmp_path):
+    """Execution reports where passedSteps != totalSteps are rejected."""
+    rep = tmp_path / "mismatch-steps.json"
+    rep.write_text(json.dumps({
+        "results": [{
+            "ok": True,
+            "status": "passed",
+            "summary": {"totalSteps": 5, "passedSteps": 3, "failedSteps": 0, "errorSteps": 0},
+        }]
+    }), encoding="utf-8")
+    ok, msg = verify_execution_report(rep)
+    assert ok is False
+    assert "step count mismatch" in msg
+
+
+def test_verify_execution_report_rejects_empty_results(tmp_path):
+    """Execution reports with empty results array are rejected."""
+    rep = tmp_path / "empty-results.json"
+    rep.write_text(json.dumps({"results": []}), encoding="utf-8")
+    ok, msg = verify_execution_report(rep)
+    assert ok is False
+    assert "empty" in msg
+
+
+def test_verify_execution_report_single_run_error_steps_rejected(tmp_path):
+    """Single run report with errorSteps > 0 is rejected."""
+    rep = tmp_path / "single-error.json"
+    rep.write_text(json.dumps({
+        "status": "passed",
+        "summary": {"totalSteps": 3, "passedSteps": 3, "failedSteps": 0, "errorSteps": 1},
+    }), encoding="utf-8")
+    ok, msg = verify_execution_report(rep)
+    assert ok is False
+    assert "error steps" in msg
+
+
+def test_resolve_report_no_loose_shared_fallback(tmp_path):
+    """resolve_execution_report_path does NOT resolve to un-scoped sister artifacts/run-report.json."""
+    from evidence_verifier import resolve_execution_report_path
+
+    # Create dummy sister repo artifacts/run-report.json
+    sister_artifacts = tmp_path.parent / "wink-ai" / "packages" / "wink-tools" / "artifacts"
+    sister_artifacts.mkdir(parents=True, exist_ok=True)
+    shared_rep = sister_artifacts / "run-report.json"
+    shared_rep.write_text("{}", encoding="utf-8")
+
+    # Asking for a non-existent app report must NOT fall back to shared_rep
+    resolved = resolve_execution_report_path("unisim://reports/nonexistent_app/run-report.json", tmp_path)
+    assert resolved is None
+
+
+

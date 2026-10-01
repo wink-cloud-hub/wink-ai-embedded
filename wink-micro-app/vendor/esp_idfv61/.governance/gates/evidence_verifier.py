@@ -98,9 +98,8 @@ def resolve_execution_report_path(ref: str, ws_root: Path) -> Optional[Path]:
             ws_root / "reports" / rel_path,
             vendor_root / ".governance" / "gates" / "reports" / sub,
             ws_root / ".governance" / "gates" / "reports" / sub,
-            # Fallback to wink-tools artifacts directory
+            # Fallback to app-scoped artifacts subpath in sister repo
             ws_root.parent / "wink-ai" / "packages" / "wink-tools" / "artifacts" / sub,
-            ws_root.parent / "wink-ai" / "packages" / "wink-tools" / "artifacts" / "run-report.json",
         ]
         for c in candidates:
             if c.is_file():
@@ -112,7 +111,8 @@ def resolve_execution_report_path(ref: str, ws_root: Path) -> Optional[Path]:
 def verify_execution_report(report_path: Path) -> Tuple[bool, str]:
     """
     Structured assertion of a headless JSON execution report.
-    Validates report parse, status == 'passed', failedSteps == 0, errorSteps == 0.
+    Validates report parse, status == 'passed', totalSteps == passedSteps > 0,
+    failedSteps == 0, errorSteps == 0, skippedSteps == 0.
     """
     if not report_path.is_file():
         return False, f"Report file not found: {report_path}"
@@ -123,24 +123,40 @@ def verify_execution_report(report_path: Path) -> Tuple[bool, str]:
     except Exception as e:
         return False, f"Failed to parse report JSON: {e}"
 
-    # Check top-level summary/results
-    results = report.get("results")
-    if isinstance(results, list) and results:
+    # Check top-level results array
+    if "results" in report:
+        results = report.get("results")
+        if not isinstance(results, list) or len(results) == 0:
+            return False, "Execution report 'results' array is empty or not a list"
         for idx, res in enumerate(results):
+            if not isinstance(res, dict):
+                return False, f"Execution result #{idx} is not an object"
             if not res.get("ok", False):
                 return False, f"Execution result #{idx} ok is False"
             status = res.get("status")
             if status != "passed":
                 return False, f"Execution result #{idx} status is '{status}', expected 'passed'"
-            summary = res.get("summary", {})
-            passed_steps = summary.get("passedSteps", summary.get("passed_steps", 0))
-            total_steps = summary.get("totalSteps", summary.get("total_steps", 0))
+            summary = res.get("summary")
+            if not isinstance(summary, dict):
+                return False, f"Execution result #{idx} summary is missing or not an object"
+            total_steps = summary.get("totalSteps", summary.get("total_steps"))
+            passed_steps = summary.get("passedSteps", summary.get("passed_steps"))
+            failed_steps = summary.get("failedSteps", summary.get("failed_steps", 0))
+            error_steps = summary.get("errorSteps", summary.get("error_steps", 0))
+            skipped_steps = summary.get("skippedSteps", summary.get("skipped_steps", 0))
+
+            if total_steps is None or passed_steps is None:
+                return False, f"Execution result #{idx} summary missing step count fields"
             if passed_steps <= 0 or total_steps <= 0:
                 return False, f"Execution result #{idx} has 0 passed steps (totalSteps={total_steps}, passedSteps={passed_steps})"
-            if summary.get("failedSteps", summary.get("failed_steps", 0)) > 0:
-                return False, f"Execution result #{idx} has failedSteps={summary.get('failedSteps')}"
-            if summary.get("errorSteps", summary.get("error_steps", 0)) > 0:
-                return False, f"Execution result #{idx} has errorSteps={summary.get('errorSteps')}"
+            if failed_steps > 0:
+                return False, f"Execution result #{idx} has failedSteps={failed_steps}"
+            if error_steps > 0:
+                return False, f"Execution result #{idx} has errorSteps={error_steps}"
+            if skipped_steps > 0:
+                return False, f"Execution result #{idx} has skippedSteps={skipped_steps}"
+            if passed_steps != total_steps:
+                return False, f"Execution result #{idx} step count mismatch: passedSteps ({passed_steps}) != totalSteps ({total_steps})"
         return True, "Execution report passed all step assertions"
 
     # Single-run or alternate format
@@ -148,12 +164,27 @@ def verify_execution_report(report_path: Path) -> Tuple[bool, str]:
     if status:
         if status != "passed":
             return False, f"Report status is '{status}', expected 'passed'"
-        summary = report.get("summary", {})
-        passed_steps = summary.get("passedSteps", summary.get("passed_steps", 0))
-        if passed_steps <= 0:
-            return False, f"Report summary indicates 0 passed steps (passedSteps={passed_steps})"
-        if summary.get("failed_steps", 0) > 0 or summary.get("failedSteps", 0) > 0:
-            return False, f"Report summary indicates failed steps"
+        summary = report.get("summary")
+        if not isinstance(summary, dict):
+            return False, "Report summary is missing or not an object"
+        total_steps = summary.get("totalSteps", summary.get("total_steps"))
+        passed_steps = summary.get("passedSteps", summary.get("passed_steps"))
+        failed_steps = summary.get("failedSteps", summary.get("failed_steps", 0))
+        error_steps = summary.get("errorSteps", summary.get("error_steps", 0))
+        skipped_steps = summary.get("skippedSteps", summary.get("skipped_steps", 0))
+
+        if total_steps is None or passed_steps is None:
+            return False, "Report summary missing step count fields"
+        if passed_steps <= 0 or total_steps <= 0:
+            return False, f"Report summary indicates 0 passed steps (totalSteps={total_steps}, passedSteps={passed_steps})"
+        if failed_steps > 0:
+            return False, f"Report summary indicates failed steps ({failed_steps})"
+        if error_steps > 0:
+            return False, f"Report summary indicates error steps ({error_steps})"
+        if skipped_steps > 0:
+            return False, f"Report summary indicates skipped steps ({skipped_steps})"
+        if passed_steps != total_steps:
+            return False, f"Report summary step count mismatch: passedSteps ({passed_steps}) != totalSteps ({total_steps})"
         return True, "Execution report passed top-level assertion"
 
     return False, "Report JSON missing both 'results' array and 'status' field"
