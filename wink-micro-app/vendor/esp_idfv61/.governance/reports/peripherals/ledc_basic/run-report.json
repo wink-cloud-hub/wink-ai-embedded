@@ -1,0 +1,52 @@
+{
+  "timestamp": "2026-10-01T02:42:10.665Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP32 ESP-IDF v6.1 ledc_basic headless simulation proof",
+        "templateId": "esp_idfv61_ledc_basic",
+        "totalVirtualUs": "2000000",
+        "wallClockMs": 81
+      },
+      "summary": {
+        "totalSteps": 3,
+        "passedSteps": 3,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 50,
+          "expected": 50
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "500000",
+          "actual": 50,
+          "expected": 50
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": 50,
+          "expected": 50
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

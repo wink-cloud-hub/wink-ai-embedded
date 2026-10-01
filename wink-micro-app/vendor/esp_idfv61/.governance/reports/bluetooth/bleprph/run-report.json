@@ -1,0 +1,44 @@
+{
+  "timestamp": "2026-10-01T02:43:11.947Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 bleprph headless deterministic proof",
+        "templateId": "esp_idfv61_bleprph",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 94
+      },
+      "summary": {
+        "totalSteps": 2,
+        "passedSteps": 2,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "500000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": 3.3,
+          "expected": 3.3
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

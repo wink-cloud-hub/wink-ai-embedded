@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-30T12:30:27.666Z",
+  "timestamp": "2026-10-01T02:42:02.639Z",
   "total": 1,
   "passed": 1,
   "failed": 0,
@@ -11,7 +11,7 @@
         "name": "ESP32 ESP-IDF v6.1 blink_gpio headless simulation proof",
         "templateId": "esp_idfv61_blink_gpio",
         "totalVirtualUs": "3500000",
-        "wallClockMs": 93
+        "wallClockMs": 120
       },
       "summary": {
         "totalSteps": 7,
