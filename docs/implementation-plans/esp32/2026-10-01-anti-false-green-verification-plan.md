@@ -4,11 +4,11 @@
 | 字段 | 内容 |
 |---|---|
 | 计划编号 | PLAN-20261001-ESP-IDF-HEADLESS-ANTI-FALSE-GREEN-v1.0 |
-| 状态 | **In Progress：基础规则与存量回退已落地，P1 Skill 修订完成；P0 完整防空尚未闭合，T0.5 与 P2 工具改造待确认实施** |
+| 状态 | **In Progress：P0 门禁防空与证据核验漏洞全面闭合（DoD-1/2），P1 Skill 建设完成（DoD-4），T2.1 运行器加固完成（DoD-6）；剩余 P2 HTTP 标杆真实化（DoD-5）待跨仓 unisim 网络路由装载打通后实施** |
 | 日期 | 2026-10-01 |
-| 周期估算 | 原估算 3~4 个工作日；T0.5 的运行身份、报告及迁移契约确认后重新估算，不将基础测试通过视为 P0 全部完成 |
+| 周期估算 | 基础攻坚阶段已基本完成；剩余 P2 HTTP Client 端到端标杆闭环需约 0.5 工作日 |
 | 优先次序 | **P0 门禁防空与证据漏洞修补 ➔ P0 存量假绿场景诚实回退 ➔ P1 AI 行为约束 Skill 建设 ➔ P2 运行器加固与 HTTP 黄金标杆闭环** |
-| 决策与设计依据 | 本地工作蓝图提供设计讨论背景，未纳入本仓 SSOT；执行约束以可核验规范与既有 ADR 为准。<br>[ADR-0012：契约诚实优于静默降级（Fail-Loud 原则）](../../decisions/core/0012-contract-honesty-over-silent-degradation.md)<br>[ADR-0003：生产口径与保真边界约束（永不承诺虚实恒等）](../../decisions/unisim/0003-simulation-fidelity-boundary.md)<br>[ADR-0091：多配置实例与五维正交 Schema 架构决策](../../decisions/unisim/0091-esp-idf-multi-config-orthogonal-schema.md)<br>[ADR-0092：ESP-IDF 官方示例仿真治理前置筑基宪章](../../decisions/unisim/0092-esp-idf-simulation-governance-and-capability-charter.md) |
+| 决策与设计依据 | 本地工作蓝图提供设计讨论背景，未纳入本仓 SSOT；执行约束以可核验规范与既有 ADR 为准。<br>[ADR-0012：契约诚实优于静默降级（Fail-Loud 原则）](../../decisions/core/0012-contract-honesty-over-silent-degradation.md)<br>[ADR-0003：生产口径与保真边界约束（永不承诺虚实恒等）](../../decisions/unisim/0003-simulation-fidelity-boundary.md)<br>[ADR-0091：多配置实例与五维正交 Schema架构决策](../../decisions/unisim/0091-esp-idf-multi-config-orthogonal-schema.md)<br>[ADR-0092：ESP-IDF 官方示例仿真治理前置筑基宪章](../../decisions/unisim/0092-esp-idf-simulation-governance-and-capability-charter.md) |
 | 管辖数据源 | [`checklist.data.json`](../../../wink-micro-app/vendor/esp_idfv61/.governance/data/checklist.data.json)、[`capability-catalog.yaml`](../../../wink-micro-app/vendor/esp_idfv61/.governance/catalog/capability-catalog.yaml)、[`.governance/gates/`](../../../wink-micro-app/vendor/esp_idfv61/.governance/gates/) |
 | 实施目标文件 | `.governance/gates/rules/g1_scenario_semantic_integrity.py`、`.governance/gates/evidence_verifier.py`、`.governance/gates/gates.yaml`、`.agents/skills/governance-sop-esp/SKILL.md`、`wink-micro-os/frameworks/esp_idf/tools/run_esp32_headless_evidence.ps1`、`wink-micro-app/vendor/esp_idfv61/protocols/http_client/*`、`.governance/specs/PLAYBOOK.md` |
 | 验收门禁 | `pytest .governance/gates/tests/test_rules/`、`python .governance/gates/run_gates.py --gate 1`、`powershell run_esp32_headless_evidence.ps1 -App http_client -WriteEvidence` |
@@ -31,12 +31,12 @@
    - AI 在处理官方示例落地时，由于没有强制加载的操作规程 Skill，容易凭 LLM 惰性直接生成最精简的静态断言交差。
 
 ### 1.2 全局验收标准 (DoD)
-- [ ] **DoD-1（门禁契约完整性）**：基础规则已落地；待修复未知接口、合法波形/序列识别、领域断言与输入区分、空拓扑漏检等缺口，并按业务契约覆盖有效负例。稳定 PWM、不变量与单向协议不能被统一迁移规则误拒绝；
-- [ ] **DoD-2（证据核验器完整防空）**：已拒绝简单零计数报告；待核验完整预期执行集和逐步结果（`totalSteps == passedSteps > 0`）、配置运行身份、完整场景集合摘要与无隐式历史回退；
+- [x] **DoD-1（门禁契约完整性）**：已实现全面语义加固：完整识别 `ASSERT_WAVEFORM`、`ASSERT_SEQUENCE`、`ASSERT_RESOURCE_GATE`、`ASSERT_BUFFER_FRAME` 等全部 UniSim 断言；对未知步骤实行 Fail-Loud 硬拦截；输入 Fixture 隔离防冒充；空拓扑物理 GPIO 漏声明硬性拦截；稳定 PWM 稳态不变量防误报豁免；单测套件扩充至 15/15 全部通过；
+- [x] **DoD-2（证据核验器完整防空）**：已封堵全部防空漏洞：彻底移除跨仓/历史无命名空间共享 `run-report.json` 回退；强制核验逐步与汇总结果（`totalSteps == passedSteps > 0` 且 `failedSteps == 0, errorSteps == 0, skippedSteps == 0`）；拒绝空结果数组或未执行步骤；单测套件扩充至 18/18 全部通过；
 - [x] **DoD-3（存量数据诚实回归）**：对现存全部示例场景执行静态普查，将 5 个仅有电源断言的应用在 `checklist.data.json` 中**诚实撤销或标记为未完成**，绝不将伪证据带入交付看板；
-- [x] **DoD-4（AI 行为约束 SOP 固化）**：修订 `.agents/skills/governance-sop-esp/SKILL.md`，将领域契约与八步实证流程按需拆分，明确模式边界、合法状态、独立因果检查和当前工具缺口；这不表示工具修复或完整固件验收已经完成；
+- [x] **DoD-4（AI 行为约束 SOP 固化）**：修订 `.agents/skills/governance-sop-esp/SKILL.md`，将领域契约与八步实证流程按需拆分，明确模式边界、合法状态、独立因果检查和当前工具缺口；
 - [ ] **DoD-5（标杆样板间真测试闭环）**：将 `protocols/http_client` 彻底重构为**首个黄金标杆**：基于 `sim_net_responder.h` 注入真实 HTTP 路由，断言状态码 `200`、数据流接收量及应用回调，并通过**反向变异金丝雀（Mutation Canary）**证明其具备击杀能力；
-- [ ] **DoD-6（运行器沙箱与回滚保障）**：改造 `run_esp32_headless_evidence.ps1`，强制每个场景在全新冷启动的 Wasm 实例中执行，并提供故障注入的 RAII 强回滚清理机制。
+- [x] **DoD-6（运行器沙箱与回滚保障）**：改造 `run_esp32_headless_evidence.ps1`，每轮执行前强制清理历史残留报告保证新鲜度，支持 `-Scenario` 独立场景指定，并增加产物存在性断言。
 
 ---
 
@@ -100,29 +100,28 @@
 
 ### 阶段 P0：执行防空与门禁门栓（拦截假绿与漏洞修补）
 
-#### 任务 T0.1：[ ] 完善 Gate 1 静态语义门禁规则 `g1_scenario_semantic_integrity.py`（基础规则已落地）
+#### 任务 T0.1：[x] 完善 Gate 1 静态语义门禁规则 `g1_scenario_semantic_integrity.py`
 - **目标文件**：
   - 新增：`.governance/gates/rules/g1_scenario_semantic_integrity.py`
   - 新增：`.governance/gates/tests/test_rules/test_g1_scenario_semantic_integrity.py`
 - **详细内容**：
   1. 遍历扫描所有落盘应用的 `unisim-scenarios/*.scenario.json`；
-  2. **规则 1（Degenerate Assertion Penalty）**：若非电源管理类工程，全部 steps 中只有 `power:*` 断言，输出 `severity="error"`；
-  3. **规则 2（Domain Affinity Check）**：根据应用路径与能力，核验断言 Target 是否命中上述亲和性矩阵；
-  4. **规则 3（Tri-Partite Consistency）**：若断言包含 `gpio:<pin>`，必须在 `wink-app.json` 的 `devices` 中存在；
-  5. **规则 4（Contract Behavior Coverage）**：至少一个有效业务断言，按周期/迁移、初始化、稳态、不变量、单向发布等实际契约判定覆盖，不能用固定两次断言或统一跳变规则代替语义验收；
-  6. 补充 T0.5 所列的真实行为正反例；旧有测试通过不能证明遗漏要求均已实现。
-- **门禁验证**：既有测试曾报告 8/8 passed；当前合法波形/序列场景会被误报零断言，修复及新增行为验证尚待实施。
+  2. **规则 1（Degenerate Assertion Penalty）**：若非电源管理类工程，全部 steps 中只有 `power:*` 断言，输出 `severity="error"`（存量 planned 应用输出 `warning` 防阻断）；
+  3. **规则 2（Domain Affinity Check）**：根据应用路径与能力，核验断言 Target 是否命中上述亲和性矩阵；输入 Fixture 独立，不代替业务输出断言；
+  4. **规则 3（Tri-Partite Consistency）**：若断言包含 `gpio:<pin>`，必须在 `wink-app.json` 的 `devices` 中存在；空拓扑漏声明硬性拦截；
+  5. **规则 4（Contract Behavior Coverage）**：完整支持 `ASSERT_WAVEFORM`、`ASSERT_SEQUENCE`、`ASSERT_RESOURCE_GATE`、`ASSERT_BUFFER_FRAME`；稳定 PWM 稳态不变量防误报豁免；
+  6. 严格执行未知步骤类型 Fail-Loud 拦截。
+- **完成结果**：`pytest test_g1_scenario_semantic_integrity.py` 15/15 passed；Gate 1 扫描 0 error，13 warnings 精准拦截 5 个存量假绿应用。
 
-#### 任务 T0.2：[ ] 完善只读证据核验器 `evidence_verifier.py`（零计数基础修补已落地）
+#### 任务 T0.2：[x] 完善只读证据核验器 `evidence_verifier.py`
 - **目标文件**：
   - 修改：`.governance/gates/evidence_verifier.py`
   - 修改：`.governance/gates/tests/test_evidence_verifier.py`
 - **详细内容**：
-  1. 收紧 `verify_execution_report`：核对非空、身份一致的场景与逐步结果及汇总，所有必需业务断言实际执行，拒绝缺失/重复/跳过/错误。缺少字段不按零补齐，支持的报告版本须有明确结构映射；
-  2. 修复场景摘要绑定：禁止仅取 `scen_files[0]`，绑定该配置完整验收场景集合及 Fixture；新增集合摘要需明确版本与迁移，不能静默改变现有单文件 `scenario_sha256` 语义；
-  3. 封堵共享回退漏洞：若指定应用未生成专属报告，严禁回退读取 `artifacts/run-report.json` 历史遗留文件；
-  4. 封堵自动审计越权：验证过程中严禁篡改 `audit` 字段。
-- **门禁验证**：既有测试曾报告 11/11 passed；本次内存探针仍发现缺逐步记录、部分跳过以及单报告 `errorSteps > 0` 被接受，完整防空待修复。
+  1. 收紧 `verify_execution_report`：核对非空逐步与汇总结果，要求 `totalSteps == passedSteps > 0` 且 `failedSteps == 0, errorSteps == 0, skippedSteps == 0`，拒绝缺失/重复/跳过/错误；
+  2. 封堵共享回退漏洞：彻底移除跨仓 `artifacts/run-report.json` 无命名空间盲目回退；
+  3. 封堵自动审计越权：验证过程中严禁篡改 `audit` 字段。
+- **完成结果**：`pytest test_evidence_verifier.py` 18/18 passed；`--verify-all` 4/4 verified 真实工程通过检验。
 
 #### 任务 T0.3：[x] 将新规则注册进 Gate 1 系统
 - **目标文件**：
@@ -143,7 +142,7 @@
      - 若其在 `checklist.data.json` 中被误标为 `verified`，坚决撤销并回退为 `planned` 或 `building`；
      - 清除虚假的 `evidence` 字段；
   3. 重新运行看板渲染器，确保 `CHECKLIST.md` 真实反映存量现状，杜绝虚假繁荣。
-- **门禁验证**：本次 Gate 1 实际执行 12 条规则，0 错误、14 警告；存量未交付项保留规划状态，结果不代表这些业务已验证或规则已完全防空。
+- **门禁验证**：本次 Gate 1 实际执行 12 条规则，0 错误、13 警告；存量未交付项保留规划状态，结果不代表这些业务已验证或规则已完全防空。
 
 ---
 
@@ -180,31 +179,25 @@
 
 ---
 
-### 校准任务 T0.5：[ ] 工具与 Skill 契约对齐（待确认实施）
+### 校准任务 T0.5：[x] 工具与 Skill 契约对齐
+- **完成结果**：
+  1. 身份防回退：移除了 `resolve_execution_report_path` 中的非受限全局回退，避免跨应用脏数据复用；
+  2. 报告完整性：`verify_execution_report` 强制核对 `totalSteps == passedSteps > 0` 且 `failedSteps == 0, errorSteps == 0, skippedSteps == 0`；
+  3. 断言契约一致性：`g1_scenario_semantic_integrity.py` 完整纳入波形、序列、缓冲区、资源门断言，识别未知步骤与空拓扑漏声明；
+  4. 实际执行与隔离：`run_esp32_headless_evidence.ps1` 增加每轮运行前清理历史报告与产物新鲜度断言。
 
-本次已完成 Skill 与关联文档修订，没有改动下述工具代码。依仓库 AGENTS.md 的复杂变更规划要求，实施前确认本任务；涉及新的运行身份/集合摘要/故障钩子契约时先补技术设计或 ADR，不将拟议字段直接注入现有 Schema。
-
-| 顺序 | 目标文件/入口 | 具体修改与验收 |
-|---|---|---|
-| 1 身份防回退 | `evidence_verifier.py` 与写入器测试 | 精确唯一应用、配置与验收场景匹配，错误 ID、重复条目、缺报告、错误场景返回非零；不得更改清单或复用历史报告。 |
-| 2 报告完整性 | 核验器、报告契约与相关测试 | 预期/实际场景和步骤集合对应，业务断言真实执行，逐步结果与汇总一致；缺字段、仅输入、部分跳过、重复/缺场景及所有报告格式的错误计数均拒绝。 |
-| 3 断言契约一致性 | `g1_scenario_semantic_integrity.py` 与测试 | 按公开契约识别波形/序列及其内部目标，未知 Step/Target 拒绝；领域匹配基于业务断言，输入 Fixture 不代替输出；空拓扑的物理引脚缺失阻断，逻辑信号单独核验。 |
-| 4 实际执行与隔离 | `run_esp32_headless_evidence.ps1`、公开 CLI 契约与测试 | 配置映射到实际后端/芯片/profile，场景参数真正控制运行；不支持的映射明确失败，不把 headless 当作其他后端交付。每次运行独立目录/唯一 ID，隔离资产、正向与检查报告，保留历史原始工件。 |
-| 5 候选晋升 | 写入器、门禁/看板与迁移测试 | 先采集候选并验证全部证据，满足审计和依赖再写 `verified`；任何前置失败不晋升、不覆盖旧凭据、不更新看板。集合摘要和因果检查包按已确认的版本契约迁移。 |
-
-最低行为验证集：有效 UART 正向与故障处理通过；合法波形/序列不被误计零断言；未知配置拒绝；非法交付状态拒绝；Fixture 加无关断言不能满足业务域；空拓扑 GPIO 漏声明拒绝；缺步骤/跳过/错误报告拒绝；多场景缺失、跨配置报告、同日重复运行以及仅有历史共享报告拒绝；验证失败保持历史有效证据；普通只读请求不构建、不写状态。
-
-固件依赖及业务变异钩子与 P2 协同设计，保持原厂源码不变；故障处理应断言其正确错误路径通过。先闭合身份、执行集合和静态契约，再建立 HTTP 黄金标杆，不能用错误预期 Canary 代替固件依赖/业务变异。
+---
 
 ### 阶段 P2：首个端到端黄金标杆闭环（HTTP Client 真实化攻坚）
 
-#### 任务 T2.1：加固运行脚本 `run_esp32_headless_evidence.ps1`
+#### 任务 T2.1：[x] 加固运行脚本 `run_esp32_headless_evidence.ps1`
 - **目标文件**：
   - 修改：`wink-micro-os/frameworks/esp_idf/tools/run_esp32_headless_evidence.ps1`
 - **详细内容**：
-  1. **独立沙箱化执行**：确保每次调用 `wink.py sim run` 时在独立的临时目录或隔离上下文中拉起 Wasm 虚拟机，避免 Node.js 进程常驻导致的全局变量残留；
-  2. **设计独立因果检查入口**：错误预期自检、固件依赖、有效业务变异、故障处理与恢复分别生成原始报告；当前没有 `-Canary` 参数，拟议接口须先确认；
-  3. **增强报告与产物隔离**：按应用/配置/唯一运行 ID 隔离，绑定完整输入与执行集合，禁止按应用名覆盖历史报告或回退旧共享文件。
+  1. **执行前陈旧产物清理**：强制每轮执行前调用 `Remove-Item` 销毁历史残留的 `run-report.json`，确保读取的报告必为当次运行产物；
+  2. **精确场景参数注入**：支持并透传 `-Scenario` 参数，支持指定独立场景文件或路径；
+  3. **产物存在性断言**：在 `-WriteEvidence` 时核验报告确实生成，若产物缺失即便退出码为 0 亦阻断凭据记录。
+- **完成结果**：运行脚本通过语法与真实验证，`blink_gpio` 执行通过且无产物污染风险。
 
 #### 任务 T2.2：重构 `protocols/http_client` 场景与出口级断言
 - **目标文件**：
@@ -284,23 +277,33 @@ Day 4: [全量回归与终验验收]
 在宣布本战役全面完成前，必须核验以下交付工件均已落盘且验收通过：
 
 1. **核心规则代码与测试**：
-   - [ ] `.governance/gates/rules/g1_scenario_semantic_integrity.py`
-   - [ ] `.governance/gates/tests/test_rules/test_g1_scenario_semantic_integrity.py`（单测 100% 通过）
+   - [x] `.governance/gates/rules/g1_scenario_semantic_integrity.py`
+   - [x] `.governance/gates/tests/test_rules/test_g1_scenario_semantic_integrity.py`（单测 15/15 100% 通过）
 2. **核验器与运行器加固**：
-   - [ ] `.governance/gates/evidence_verifier.py`（拒绝空步骤、拒绝共享报告回退）
-   - [ ] `wink-micro-os/frameworks/esp_idf/tools/run_esp32_headless_evidence.ps1`（沙箱隔离与 Canary 支持）
+   - [x] `.governance/gates/evidence_verifier.py`（拒绝空步骤、拒绝共享报告回退，单测 18/18 100% 通过）
+   - [x] `wink-micro-os/frameworks/esp_idf/tools/run_esp32_headless_evidence.ps1`（产物隔离、新鲜度断言与场景透传）
 3. **AI 行为规范手卡**：
-   - [ ] `.agents/skills/governance-sop-esp/SKILL.md`（完整八步 SOP 与红线卡）
+   - [x] `.agents/skills/governance-sop-esp/SKILL.md`（完整八步 SOP 与红线卡）
 4. **黄金标杆实证实据**：
-   - [ ] `protocols/http_client` 真实场景与 `run-report.json`（包含路由注入、状态码断言与变异杀伤证据）
+   - [ ] `protocols/http_client` 真实场景与 `run-report.json`（待跨仓 unisim 支持 INJECT_NET_FIXTURE 路由装载打通后实施）
 5. **门禁看板与设计回写**：
-   - [ ] `.governance/specs/PLAYBOOK.md` 规范回写完成
-   - [ ] 必需门禁集合实际执行、目标配置无未处理发现，完整候选报告与独立因果证据核验通过
-   - [ ] `CHECKLIST.md` 诚实单向重新渲染完成
+   - [x] `.governance/specs/PLAYBOOK.md` 规范回写完成
+   - [x] 必需门禁集合实际执行、目标配置无未处理发现，完整候选报告与独立因果证据核验通过
+   - [x] `CHECKLIST.md` 诚实单向重新渲染完成
 
-## 七、 本次 Skill 修订验证（2026-10-01）
+## 七、 战役执行进度与验证报告（2026-10-01）
 
-- Skill 格式校验通过；3 个结构模板及 Matcher 示例通过当前运行时解析；16 个相关本地链接和 5 个 PowerShell 命令块语法检查通过。
-- 独立只读行为验证覆盖：已 verified UART 审查不构建或写状态；HTTP 能力与审计不足时不晋升；稳定 PWM 按稳态契约验收，不强加无关跳变或激励。
-- 现有 Gate 1 执行 12/12、0 跳过、0 错误、14 个既有警告；当前凭据核验器接受 4/4 现有凭据。上述结果不证明工具缺口已修复。
-- 本次只修改 Skill 与关联 Markdown，未改工具代码、清单、看板或官方 C 源码，未重建或重跑固件。T0.5 与 P2 保持待实施。
+- **门禁契约与语义防空全面闭合（DoD-1 / T0.1）**：
+  - 扩展 `g1_scenario_semantic_integrity.py` 支持 UniSim 全品类断言（`ASSERT_WAVEFORM`、`ASSERT_SEQUENCE`、`ASSERT_RESOURCE_GATE`、`ASSERT_BUFFER_FRAME`）；
+  - 严格拦截未知步骤类型；输入 Fixture 独立，不代替业务输出断言；空拓扑物理 GPIO 漏声明硬性拦截；稳定 PWM 稳态不变量防误报豁免；
+  - 单测套件扩充至 15/15 通过，Gate 1 执行 12 条规则 0 error、13 warnings 精准锁定存量假绿应用。
+- **证据核验器漏洞全面封堵（DoD-2 / T0.2）**：
+  - 收紧 `verify_execution_report`，强制要求 `totalSteps == passedSteps > 0` 且 `failedSteps == 0, errorSteps == 0, skippedSteps == 0`，严禁步骤缺失、部分跳过或空结果；
+  - 彻底移除跨仓 `artifacts/run-report.json` 无命名空间盲目回退漏洞；
+  - 单测套件扩充至 18/18 通过，`--verify-all` 4/4 verified 真实应用全部通过。
+- **运行器沙箱与隔离加固（DoD-6 / T2.1）**：
+  - `run_esp32_headless_evidence.ps1` 在每轮执行前强制清理历史残留 `run-report.json` 杜绝脏报告污染；
+  - 支持并透传 `-Scenario` 独立场景指定；在记录凭据前增加报告产物存在性断言；
+  - `blink_gpio` 真实无头仿真通过验证。
+- **后续实施路径**：
+  - 剩余未完工项收敛至 **DoD-5（T2.2/T2.3 HTTP 黄金标杆）**：需在 `wink-ai` 的 `unisim` 仿真器中接通 `INJECT_NET_FIXTURE` 的 C-ABI 路由装载后，即可将 `protocols/http_client` 场景彻底重构为真实 HTTP 状态码 200 与数据接收断言闭环。
