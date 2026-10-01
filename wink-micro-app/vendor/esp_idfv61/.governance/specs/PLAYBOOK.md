@@ -36,10 +36,12 @@
    - **严禁随意开临时延时纤程**：严禁在协议栈或驱动中调用 `xTaskCreate` 启动临时延时任务，必须统一使用带代际 Token 的定时器工作项，杜绝打爆 LITE 8 任务槽；
    - **新增资源必须自锚复位因果链**：新增任何有状态或句柄的外设/协议模块，必须在 `esp_idf_bridge.c` 复位流程中注册注销逻辑，并在无头场景结束时验证基线干净；
    - **严禁手工伪造未收割原厂头**：必须经由 Harvester 生成或按 SLA 规范声明，严禁在 `include/` 私设手写头。
+7. **防假绿与语义完整性硬性门禁（Anti-False-Green & Scenario Semantic Integrity）**：
+   任何场景编排必须遵循真测试四大公理（因果性、状态跳变、拓扑闭环、变异杀伤）。严禁退化为静态无关电源断言（如 `power:VCC_3V3 == 3.3`）、无状态跳变或恒真判定。断言必须直接命中被测业务核心出口（GPIO 翻转、串口回显、网络状态码与报文、PWM 占空比等），引脚必须在 `wink-app.json` 声明。所有 Wasm 仿真用例交付前必须通过 `g1.scenario_semantic_integrity` 门禁与 Canary 变异杀伤校验。现场操作强制执行 Skill [governance-sop-esp](../../../.agents/skills/governance-sop-esp/SKILL.md)。
 
 > [!CAUTION]
 > **绝对门禁声明**：
-> 任何未在 App 独立目录下产出对应 Target 真实资产、未通过自动化实证检验并生成合规执行报告的配置实例，其 `delivery_state` 必须诚实保留为 `planned`，`evidence` 必须为 `null`，**一律严禁在看板中标记为 `[x]`！** 仅通过底层 CTest 编译不等于应用级交付。
+> 任何未在 App 独立目录下产出对应 Target 真实资产、未通过自动化实证检验（含防假绿语义完整性检验）并生成合规执行报告的配置实例，其 `delivery_state` 必须诚实保留为 `planned`，`evidence` 必须为 `null`，**一律严禁在看板中标记为 `[x]`！** 仅通过底层 CTest 编译不等于应用级交付。
 
 ---
 
@@ -324,6 +326,14 @@ powershell -ExecutionPolicy Bypass -File wink-micro-os/frameworks/esp_idf/tools/
 针对网络、蓝牙、外设等有状态示例，在场景脚本末尾应包含**软复位与基线断言步骤**：
 - 验证应用在执行完成或断开后，系统调用软复位能够干净回到初始态；
 - 杜绝因前一个用例未排空后台工作项或未注销事件观察者，导致后续无头用例发生幽灵状态串扰。
+
+### 5. 场景语义防假绿与变异杀伤校验（Anti-False-Green & Canary Mutation）
+为彻底杜绝“假绿测试”（False Green / Vacuous Pass），在设计与交付 Wasm 场景（`unisim-scenarios/*.scenario.json`）时，必须执行以下硬性标准：
+1. **领域 Target 命中**：断言必须针对所属门面域的核心特性（控制类测 `gpio:*`/`pwm:*`，总线类测 `uart:*`/`ASSERT_BUS_PAYLOAD`，网络类测 `http:client:*`/`mqtt:*` 等）。严禁退化为断言静态电源（`power:VCC_*`）；
+2. **状态跳变覆盖**：周期或时序用例必须包含至少 1 次电平或状态跳变断言，严禁仅测 50ms 初始静态值；
+3. **引脚拓扑合规**：场景断言中涉及的所有物理引脚与器件，必须已在 `wink-app.json` 的 `devices` 节点中明确声明；
+4. **变异杀伤检验（Canary Mutation）**：在交付前，必须通过人为篡改预期值或破坏注入环境，验证断言能够真实失败报红。无法被破坏杀死的断言严禁投入生产；
+5. **门禁自动扫描**：提交 PR 前必须执行 `python run_gates.py --mode pr`，确保 `g1.scenario_semantic_integrity` 与 `evidence_verifier` 为 0 Error。具体操作详见 Skill [governance-sop-esp](../../../.agents/skills/governance-sop-esp/SKILL.md) 与 [domain-assertion-guide.md](../../../.agents/skills/governance-sop-esp/references/domain-assertion-guide.md)。
 
 ---
 

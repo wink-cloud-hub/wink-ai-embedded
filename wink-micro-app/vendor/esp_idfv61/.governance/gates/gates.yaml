@@ -87,6 +87,13 @@ rules:
     module: rules.g1_carrier_landing_integrity
     description: "落盘 Carrier 应用实证资产配对与阶段完整性校验"
 
+  - id: g1.scenario_semantic_integrity
+    gate: 1
+    severity: error
+    modes: [pr, nightly]
+    module: rules.g1_scenario_semantic_integrity
+    description: "场景断言语义真实性、领域亲和性与防假绿拦截校验"
+
   # Gate 2: PAL 防膨胀 (3条)
   - id: g2.pal_naming
     gate: 2

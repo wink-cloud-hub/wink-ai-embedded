@@ -7,8 +7,9 @@
 > - 📜 **分类规范（宪章法典）**：[`CLASSIFICATION-SPEC.md`](CLASSIFICATION-SPEC.md)（本文档：定义架构职责、分类决策树与准入裁判标准）  
 > - 🧩 **能力字典（能力 SSOT）**：[`capability-catalog.yaml`](capability-catalog.yaml)（原子能力图谱单一真理源，含 `depends_on` 依赖图，支持反向影响分析与 CI 校验）  
 > - 💾 **结构化档案（数据 SSOT）**：[`checklist.data.json`](checklist.data.json)（478 个示例的多配置实体与五维正交元数据单一真理源，Schema v2.0）  
-> - 🚦 **门禁注册表（CI 目标真理源）**：[`.gates/gates.yaml`](.gates/gates.yaml)（Gate 1~4 全部规则的声明式注册表，见实施计划；当前过渡期通过现行校验脚本执行，待 `.gates/` 架构合入后全面切换）  
+> - 🚦 **门禁注册表（CI 目标真理源）**：[`.gates/gates.yaml`](.gates/gates.yaml)（Gate 1~4 全部规则的声明式注册表，含 `g1.scenario_semantic_integrity` 防假绿规则）  
 > - 🛠️ **操作手册（实施 SOP）**：[`PLAYBOOK.md`](PLAYBOOK.md)（定义单个示例迁移的五阶段工程流水线与硬性门禁）  
+> - 🤖 **现场规程（AI 治理 Skill）**：[`governance-sop-esp`](../../../.agents/skills/governance-sop-esp/SKILL.md)（现场 AI 行为约束器，定义防假绿现场八步 SOP、反模式禁令与领域断言白名单）  
 > - 📊 **执行看板（派生视图）**：[`CHECKLIST.md`](CHECKLIST.md)（由数据源单向渲染生成的只读看板，严禁纯手工编辑）  
 > **核心关联 ADR**：  
 > - [ADR-0012：契约诚实优于静默降级（PAL/HAL 抽象层通用原则）](../../../docs/decisions/core/0012-contract-honesty-over-silent-degradation.md)  
@@ -59,6 +60,11 @@
 - 架构师在 3 个工作日内出具裁定（记录裁定推演路径与依据，回写元数据 `audit` 字段）；
 - **门禁纯函数原则**：门禁在 CI 运行时严禁修改任何数据文件；TTL 到期后豁免失效仅报告阻断 Error，状态回退通过显式数据迁移 PR 完成；
 - 涉及 Schema 破损性变更时触发规范版本号升级（如 v2.0）并执行可复核的数据迁移。
+
+### 铁律六：防假绿与语义完整性硬性门禁，严禁退化断言与虚假绿灯
+- **真测试四大公理**：因果性（A-1）、状态跳变（A-2）、拓扑闭环（A-3）、变异杀伤（A-4）。测试断言必须直接命中被测业务逻辑的核心因果链与出口观测点；
+- **严禁退化断言**：在通信、控制、网络协议等非电源管理类工程中，严禁仅断言静态电源轨电压（如 `power:VCC_3V3 == 3.3`）作为“通过凭据”；
+- **门禁与 Canary 闭环**：所有声明为 `verified` 的条目，其场景必须通过 `g1.scenario_semantic_integrity` 门禁检查，并在提交前通过 Canary 变异杀伤校验（人为注错必须变红）。现场作业必须强制遵循 Skill [`governance-sop-esp`](../../../.agents/skills/governance-sop-esp/SKILL.md)。
 
 ---
 
