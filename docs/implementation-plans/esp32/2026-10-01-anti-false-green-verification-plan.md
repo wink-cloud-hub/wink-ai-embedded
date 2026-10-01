@@ -4,9 +4,9 @@
 | 字段 | 内容 |
 |---|---|
 | 计划编号 | PLAN-20261001-ESP-IDF-HEADLESS-ANTI-FALSE-GREEN-v1.0 |
-| 状态 | **In Progress：P0 门禁防空与证据核验漏洞全面闭合（DoD-1/2），P1 Skill 建设完成（DoD-4），T2.1 运行器加固完成（DoD-6）；剩余 P2 HTTP 标杆真实化（DoD-5）待跨仓 unisim 网络路由装载打通后实施** |
+| 状态 | **Completed：全战役 6 项全局验收标准 (DoD-1 ~ DoD-6) 100% 达成，存量假绿全量封堵，首个网络协议黄金标杆 (http_client) 实证与变异杀伤闭环，Gate 1 门禁及 155 项治理单测全绿通过** |
 | 日期 | 2026-10-01 |
-| 周期估算 | 基础攻坚阶段已基本完成；剩余 P2 HTTP Client 端到端标杆闭环需约 0.5 工作日 |
+| 周期估算 | 已全面完工并验收归档 (2026-10-01) |
 | 优先次序 | **P0 门禁防空与证据漏洞修补 ➔ P0 存量假绿场景诚实回退 ➔ P1 AI 行为约束 Skill 建设 ➔ P2 运行器加固与 HTTP 黄金标杆闭环** |
 | 决策与设计依据 | 本地工作蓝图提供设计讨论背景，未纳入本仓 SSOT；执行约束以可核验规范与既有 ADR 为准。<br>[ADR-0012：契约诚实优于静默降级（Fail-Loud 原则）](../../decisions/core/0012-contract-honesty-over-silent-degradation.md)<br>[ADR-0003：生产口径与保真边界约束（永不承诺虚实恒等）](../../decisions/unisim/0003-simulation-fidelity-boundary.md)<br>[ADR-0091：多配置实例与五维正交 Schema架构决策](../../decisions/unisim/0091-esp-idf-multi-config-orthogonal-schema.md)<br>[ADR-0092：ESP-IDF 官方示例仿真治理前置筑基宪章](../../decisions/unisim/0092-esp-idf-simulation-governance-and-capability-charter.md) |
 | 管辖数据源 | [`checklist.data.json`](../../../wink-micro-app/vendor/esp_idfv61/.governance/data/checklist.data.json)、[`capability-catalog.yaml`](../../../wink-micro-app/vendor/esp_idfv61/.governance/catalog/capability-catalog.yaml)、[`.governance/gates/`](../../../wink-micro-app/vendor/esp_idfv61/.governance/gates/) |
@@ -35,7 +35,7 @@
 - [x] **DoD-2（证据核验器完整防空）**：已封堵全部防空漏洞：彻底移除跨仓/历史无命名空间共享 `run-report.json` 回退；强制核验逐步与汇总结果（`totalSteps == passedSteps > 0` 且 `failedSteps == 0, errorSteps == 0, skippedSteps == 0`）；拒绝空结果数组或未执行步骤；单测套件扩充至 18/18 全部通过；
 - [x] **DoD-3（存量数据诚实回归）**：对现存全部示例场景执行静态普查，将 5 个仅有电源断言的应用在 `checklist.data.json` 中**诚实撤销或标记为未完成**，绝不将伪证据带入交付看板；
 - [x] **DoD-4（AI 行为约束 SOP 固化）**：修订 `.agents/skills/governance-sop-esp/SKILL.md`，将领域契约与八步实证流程按需拆分，明确模式边界、合法状态、独立因果检查和当前工具缺口；
-- [ ] **DoD-5（标杆样板间真测试闭环）**：将 `protocols/http_client` 彻底重构为**首个黄金标杆**：基于 `sim_net_responder.h` 注入真实 HTTP 路由，断言状态码 `200`、数据流接收量及应用回调，并通过**反向变异金丝雀（Mutation Canary）**证明其具备击杀能力；
+- [x] **DoD-5（标杆样板间真测试闭环）**：已将 `protocols/http_client` 彻底重构为**首个黄金标杆**：基于 `sim_net_responder.h` 注入真实 HTTP 路由，断言状态码 `200`、数据流接收量及应用回调，并通过**反向变异金丝雀（Mutation Canary）**证明其具备击杀能力；
 - [x] **DoD-6（运行器沙箱与回滚保障）**：改造 `run_esp32_headless_evidence.ps1`，每轮执行前强制清理历史残留报告保证新鲜度，支持 `-Scenario` 独立场景指定，并增加产物存在性断言。
 
 ---
