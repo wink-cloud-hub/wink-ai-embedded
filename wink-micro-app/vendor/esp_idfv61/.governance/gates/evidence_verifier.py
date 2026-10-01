@@ -133,9 +133,13 @@ def verify_execution_report(report_path: Path) -> Tuple[bool, str]:
             if status != "passed":
                 return False, f"Execution result #{idx} status is '{status}', expected 'passed'"
             summary = res.get("summary", {})
-            if summary.get("failedSteps", 0) > 0:
+            passed_steps = summary.get("passedSteps", summary.get("passed_steps", 0))
+            total_steps = summary.get("totalSteps", summary.get("total_steps", 0))
+            if passed_steps <= 0 or total_steps <= 0:
+                return False, f"Execution result #{idx} has 0 passed steps (totalSteps={total_steps}, passedSteps={passed_steps})"
+            if summary.get("failedSteps", summary.get("failed_steps", 0)) > 0:
                 return False, f"Execution result #{idx} has failedSteps={summary.get('failedSteps')}"
-            if summary.get("errorSteps", 0) > 0:
+            if summary.get("errorSteps", summary.get("error_steps", 0)) > 0:
                 return False, f"Execution result #{idx} has errorSteps={summary.get('errorSteps')}"
         return True, "Execution report passed all step assertions"
 
@@ -145,6 +149,9 @@ def verify_execution_report(report_path: Path) -> Tuple[bool, str]:
         if status != "passed":
             return False, f"Report status is '{status}', expected 'passed'"
         summary = report.get("summary", {})
+        passed_steps = summary.get("passedSteps", summary.get("passed_steps", 0))
+        if passed_steps <= 0:
+            return False, f"Report summary indicates 0 passed steps (passedSteps={passed_steps})"
         if summary.get("failed_steps", 0) > 0 or summary.get("failedSteps", 0) > 0:
             return False, f"Report summary indicates failed steps"
         return True, "Execution report passed top-level assertion"
@@ -306,6 +313,7 @@ def write_evidence_for_app(
     ws_root: Path,
     report_src: Optional[Path] = None,
     config_id: Optional[str] = None,
+    scenario_path: Optional[Path] = None,
 ) -> bool:
     """
     Local helper to record evidence into checklist.data.json.
@@ -352,11 +360,14 @@ def write_evidence_for_app(
     assets_sha = compute_assets_composite_sha256(assets_dir)
 
     # Find scenario file
-    scen_files = list(scen_dir.glob("*.scenario.json"))
-    if not scen_files:
-        sys.stderr.write(f"Error: No *.scenario.json found in {scen_dir}\n")
-        return False
-    scenario_file = scen_files[0]
+    if scenario_path and Path(scenario_path).is_file():
+        scenario_file = Path(scenario_path)
+    else:
+        scen_files = sorted(list(scen_dir.glob("*.scenario.json")), key=lambda p: p.name)
+        if not scen_files:
+            sys.stderr.write(f"Error: No *.scenario.json found in {scen_dir}\n")
+            return False
+        scenario_file = scen_files[0]
     scenario_sha = compute_scenario_sha256(scenario_file)
 
     # Determine report destination
@@ -367,17 +378,14 @@ def write_evidence_for_app(
     if report_src and report_src.is_file():
         report_dst.write_bytes(report_src.read_bytes())
     elif not report_dst.is_file():
-        # Look in wink-tools artifacts
-        cand = ws_root.parent / "wink-ai" / "packages" / "wink-tools" / "artifacts" / "run-report.json"
-        if cand.is_file():
-            report_dst.write_bytes(cand.read_bytes())
+        sys.stderr.write(f"Error: Report source not found: {report_src}\n")
+        return False
 
     # Verify the report before committing evidence
-    if report_dst.is_file():
-        rep_ok, rep_msg = verify_execution_report(report_dst)
-        if not rep_ok:
-            sys.stderr.write(f"Error: Generated report verification failed: {rep_msg}\n")
-            return False
+    rep_ok, rep_msg = verify_execution_report(report_dst)
+    if not rep_ok:
+        sys.stderr.write(f"Error: Generated report verification failed: {rep_msg}\n")
+        return False
 
     # Get current git commit
     try:
@@ -402,19 +410,19 @@ def write_evidence_for_app(
                 break
     if not target_exec:
         executions = matched_entry.get("executions", [])
-        if not executions:
+        wasm_execs = [ex for ex in executions if ex.get("config_id", "").startswith("wasm") or ex.get("acceptance", {}).get("backend") == "wasm_simulation"]
+        if wasm_execs:
+            target_exec = wasm_execs[0]
+        elif executions:
+            target_exec = executions[0]
+        else:
             sys.stderr.write(f"Error: No executions defined in entry '{matched_entry.get('id')}'\n")
             return False
-        target_exec = executions[0]
 
-    matched_entry["audit"]["verdict"] = "audited"
-    matched_entry["audit"]["auditor"] = "arch_team"
-    matched_entry["audit"]["audited_at"] = now_iso
+    # Note on Anti-Pattern P-8: Evidence recording does NOT automatically fabricate
+    # audit approval (audit.verdict='audited', auditor='arch_team'). Audit is an
+    # independent human/architecture review duty verified by Gate 1 rules.
     target_cfg_id = target_exec.get("config_id", "wasm_sim_standard")
-    if "audited_configs" not in matched_entry["audit"] or not isinstance(matched_entry["audit"]["audited_configs"], list):
-        matched_entry["audit"]["audited_configs"] = []
-    if target_cfg_id not in matched_entry["audit"]["audited_configs"]:
-        matched_entry["audit"]["audited_configs"].append(target_cfg_id)
 
     target_exec["delivery_state"] = "verified"
     rel_scen_path = f"{target_dir_rel}/unisim-scenarios/{scenario_file.name}".replace("\\", "/")
@@ -452,6 +460,8 @@ def main():
     parser = argparse.ArgumentParser(description="WinkMicroOS Evidence Verifier")
     parser.add_argument("--verify-all", action="store_true", help="Verify all verified entries in checklist.data.json")
     parser.add_argument("--write-app", type=str, help="Record evidence for a specific app (local tool only)")
+    parser.add_argument("--config-id", type=str, help="Target execution config_id (e.g. wasm_sim_standard)")
+    parser.add_argument("--scenario", type=str, help="Path to specific .scenario.json file")
     parser.add_argument("--report-src", type=str, help="Source path of run-report.json to copy")
     parser.add_argument("--workspace-root", type=str, default=".", help="Workspace root directory")
     args = parser.parse_args()
@@ -460,7 +470,14 @@ def main():
 
     if args.write_app:
         report_src_p = Path(args.report_src).resolve() if args.report_src else None
-        success = write_evidence_for_app(args.write_app, ws_root, report_src_p)
+        scen_p = Path(args.scenario).resolve() if args.scenario else None
+        success = write_evidence_for_app(
+            args.write_app,
+            ws_root,
+            report_src_p,
+            config_id=args.config_id,
+            scenario_path=scen_p,
+        )
         sys.exit(0 if success else 1)
 
     if args.verify_all:

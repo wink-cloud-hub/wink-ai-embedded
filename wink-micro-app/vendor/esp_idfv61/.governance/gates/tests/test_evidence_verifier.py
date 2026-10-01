@@ -236,3 +236,85 @@ def test_verify_evidence_build_system(tmp_path):
     assert ok is True
     assert errors == []
 
+
+def test_verify_execution_report_zero_steps_rejected(tmp_path):
+    """Execution report with passedSteps=0 is strictly rejected."""
+    empty_rep = tmp_path / "zero-steps-report.json"
+    content = {
+        "results": [
+            {
+                "ok": True,
+                "status": "passed",
+                "summary": {"totalSteps": 0, "passedSteps": 0, "failedSteps": 0, "errorSteps": 0},
+            }
+        ]
+    }
+    empty_rep.write_text(json.dumps(content), encoding="utf-8")
+    ok, msg = verify_execution_report(empty_rep)
+    assert ok is False
+    assert "0 passed steps" in msg
+
+
+def test_verify_execution_report_single_run_zero_steps_rejected(tmp_path):
+    """Single run report format with passedSteps=0 is strictly rejected."""
+    single_rep = tmp_path / "single-zero-steps.json"
+    content = {
+        "status": "passed",
+        "summary": {"totalSteps": 0, "passedSteps": 0, "failedSteps": 0},
+    }
+    single_rep.write_text(json.dumps(content), encoding="utf-8")
+    ok, msg = verify_execution_report(single_rep)
+    assert ok is False
+    assert "0 passed steps" in msg
+
+
+def test_write_evidence_targeting_config_id(tmp_path, dummy_assets_dir, dummy_passing_report):
+    from evidence_verifier import write_evidence_for_app
+
+    # Create dummy app structure in tmp_path
+    vendor_root = tmp_path / "wink-micro-app" / "vendor" / "esp_idfv61"
+    gov_data = vendor_root / ".governance" / "data"
+    gov_data.mkdir(parents=True)
+    app_dir = vendor_root / "get-started" / "test_app"
+    app_dir.mkdir(parents=True)
+    (app_dir / "unisim-assets").mkdir(parents=True)
+    for f in dummy_assets_dir.iterdir():
+        (app_dir / "unisim-assets" / f.name).write_bytes(f.read_bytes())
+    (app_dir / "unisim-scenarios").mkdir(parents=True)
+    scen_file = app_dir / "unisim-scenarios" / "test.scenario.json"
+    scen_file.write_text('{"steps": []}', encoding="utf-8")
+
+    manifest = {
+        "entries": [
+            {
+                "id": "esp.test_app",
+                "target_app_dir": "get-started/test_app",
+                "executions": [
+                    {"config_id": "cfg_a", "delivery_state": "planned"},
+                    {"config_id": "cfg_b", "delivery_state": "planned"},
+                ],
+            }
+        ]
+    }
+    (gov_data / "checklist.data.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+    # Record evidence targeting cfg_b specifically
+    ok = write_evidence_for_app(
+        "esp.test_app",
+        ws_root=tmp_path,
+        report_src=dummy_passing_report,
+        config_id="cfg_b",
+        scenario_path=scen_file,
+    )
+    assert ok is True
+
+    # Check manifest updated cfg_b, but NOT cfg_a
+    updated = json.loads((gov_data / "checklist.data.json").read_text(encoding="utf-8"))
+    execs = updated["entries"][0]["executions"]
+    cfg_a = next(e for e in execs if e["config_id"] == "cfg_a")
+    cfg_b = next(e for e in execs if e["config_id"] == "cfg_b")
+    assert cfg_a["delivery_state"] == "planned"
+    assert cfg_b["delivery_state"] == "verified"
+    assert cfg_b["evidence"]["scenario_sha256"] != ""
+
+

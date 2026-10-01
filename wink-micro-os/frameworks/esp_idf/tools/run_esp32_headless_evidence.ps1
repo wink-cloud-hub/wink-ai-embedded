@@ -30,6 +30,8 @@
 [CmdletBinding()]
 param(
     [string]$App,
+    [string]$ConfigId,
+    [string]$Scenario,
     [ValidateSet('spec', 'json', 'junit')]
     [string]$Reporter = 'spec',
     [switch]$WriteEvidence
@@ -138,7 +140,10 @@ foreach ($c in $carriers) {
         $verifierScript = Join-Path $embeddedRoot 'wink-micro-app\vendor\esp_idfv61\.governance\tools\evidence_verifier.py'
         $reportSrc = Join-Path $winkToolsDir 'artifacts\run-report.json'
         Write-Host "Recording evidence for $($c.Name)..." -ForegroundColor Magenta
-        & python "$verifierScript" --write-app "$($c.Name)" --report-src "$reportSrc" --workspace-root "$embeddedRoot"
+        $vArgs = @('--write-app', $c.Name, '--report-src', $reportSrc, '--workspace-root', $embeddedRoot)
+        if ($ConfigId) { $vArgs += @('--config-id', $ConfigId) }
+        if ($Scenario) { $vArgs += @('--scenario', $Scenario) }
+        & python "$verifierScript" @vArgs
         if ($LASTEXITCODE -ne 0) {
             Write-Warning "Failed to record evidence for $($c.Name)"
             $ok = $false
