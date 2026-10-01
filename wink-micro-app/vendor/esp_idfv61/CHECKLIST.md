@@ -14,9 +14,9 @@
 ## 一、 总体适配进度统计
 
 - **官方独立示例总数**：**478 个**
-  - `[x]` **已完成六要素实证 (Verified)**：**5 项**
+  - `[x]` **已完成六要素实证 (Verified)**：**6 项**
   - `[?]` **存量隔离待补凭证 (Quarantined Debt)**：**0 项**（14 天 TTL 过期硬阻断，至 `2026-10-13`）
-  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**286 项**
+  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**285 项**
   - `[-]` **明确产品排除 / 暂缓投入 (Out-of-Scope / Deferred)**：**187 项**（编译期 `WINK_SLA_ERROR` Fail-Loud 阻断）
   - `?` **待深度审定 (Pending Audit / Unknown Scope)**：**0 项**
 
@@ -25,7 +25,7 @@
 | 序号 | 功能大类 | 包含示例数 | 编号跨度 | 已实证 | 隔离待补 |
 | :---: | :--- | :---: | :---: | :---: | :---: |
 | 01 | [基础快速起步 (Get-Started)](#get-started) | 2 项 | `#001 ~ #002` | 1 项 | 0 项 |
-| 02 | [片上与总线外设 (Peripherals)](#peripherals) | 114 项 | `#003 ~ #116` | 2 项 | 0 项 |
+| 02 | [片上与总线外设 (Peripherals)](#peripherals) | 114 项 | `#003 ~ #116` | 3 项 | 0 项 |
 | 03 | [操作系统与核心系统调用 (System & OS)](#system) | 68 项 | `#117 ~ #184` | 0 项 | 0 项 |
 | 04 | [网络与应用层通信协议 (Protocols)](#protocols) | 35 项 | `#185 ~ #219` | 1 项 | 0 项 |
 | 05 | [Wi-Fi 无线局域网 (Wi-Fi)](#wifi) | 24 项 | `#220 ~ #243` | 1 项 | 0 项 |
@@ -121,7 +121,7 @@
 ---
 
 <a id="peripherals"></a>
-### 片上与总线外设 (Peripherals)（共 114 项 | 编号 `#003 ~ #116` | 已实证: 2 项 | 隔离待补: 0 项）
+### 片上与总线外设 (Peripherals)（共 114 项 | 编号 `#003 ~ #116` | 已实证: 3 项 | 隔离待补: 0 项）
 
 | 状态 | 编号 | 官方子示例相对路径 | 可观测等级 | 优先级 | 对应 wink-micro-app | 验收标准与架构说明 |
 | :---: | :---: | :--- | :---: | :---: | :--- | :--- |
@@ -205,7 +205,7 @@
 | [ ] | 080 | `peripherals/spi_slave_hd/segment_mode/seg_slave` | 📜 Level 2 | P2 | `peripherals/spi_slave_hd_segment_mode_seg_slave` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 081 | `peripherals/temperature_sensor/temp_sensor` | 📜 Level 2 | P2 | `peripherals/temperature_sensor_temp_sensor` | [Lane 4: 模拟电学] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 082 | `peripherals/temperature_sensor/temp_sensor_monitor` | 📜 Level 2 | P2 | `peripherals/temperature_sensor_temp_sensor_monitor` | [Lane 4: 模拟电学] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 083 | `peripherals/timer_group/gptimer` | ⚡ Level 3 | P0 | [`peripherals/gptimer_alarm`](peripherals/gptimer_alarm) | [Lane 3: 脉冲定时] 定时器 Alarm 回调触发 |
+| [x] | 083 | `peripherals/timer_group/gptimer` | ⚡ Level 3 | P0 | [`peripherals/gptimer_alarm`](peripherals/gptimer_alarm) | [Lane 3: 脉冲定时] 已完成实证。 |
 | [ ] | 084 | `peripherals/timer_group/gptimer_capture_hc_sr04` | 📜 Level 2 | P2 | `peripherals/timer_group_gptimer_capture_hc_sr04` | [Lane 3: 脉冲定时] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 085 | `peripherals/timer_group/wiegand_interface` | 📜 Level 2 | P2 | `peripherals/timer_group_wiegand_interface` | [Lane 3: 脉冲定时] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 086 | `peripherals/touch_sensor/touch_sens_basic` | 📜 Level 2 | P1 | `peripherals/touch_sensor_touch_sens_basic` | [Lane 4: 模拟电学] 待排期。依赖进一步框架门面扩展。 |

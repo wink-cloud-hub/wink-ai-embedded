@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 5,
-    "verified_configs": 5
+    "audited": 6,
+    "verified_configs": 6
   },
   "entries": [
     {
@@ -5123,10 +5123,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "arch_team",
+        "audited_at": "2026-10-01T13:42:03Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -5157,7 +5159,7 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L3_probe",
@@ -5182,7 +5184,15 @@
             ],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261001-esp.peripherals.timer_group.gptimer-verified",
+            "assets_sha256": "21fa81f89e9ebe49d91c0df4736d35fad74bcd70282c5347b5e178da2b6775ad",
+            "scenario_sha256": "366e42a850ed09936e0fca9ed3096e823d29c7cfd8d0fce4f08fe448fb798e8c",
+            "execution_report_ref": ".governance/reports/peripherals/gptimer_alarm/run-report.json",
+            "verified_commit": "570f761dcb083b47f3c4c1bdad959b7c11807350",
+            "verified_at": "2026-10-01T13:39:34Z"
+          }
         }
       ],
       "target_app_dir": "peripherals/gptimer_alarm"

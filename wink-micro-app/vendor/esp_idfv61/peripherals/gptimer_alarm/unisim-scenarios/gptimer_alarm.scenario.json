@@ -11,17 +11,31 @@
   "steps": [
     {
       "type": "ASSERT_POINT",
-      "timeUs": "500ms",
-      "target": "power:VCC_3V3",
-      "matcher": 3.3,
-      "description": "断言硬件定时器启动阶段系统供电轨稳定维持 3.3V"
+      "timeUs": "100ms",
+      "target": "timer:0/frequencyhz",
+      "matcher": 1000000,
+      "description": "断言通用硬件定时器基础时钟频率配置为 1MHz (1µs 分辨率)"
     },
     {
       "type": "ASSERT_POINT",
-      "timeUs": "11s",
-      "target": "power:VCC_3V3",
-      "matcher": 3.3,
-      "description": "断言经过多次单次与重载告警周期后系统状态稳定"
+      "timeUs": "500ms",
+      "target": "timer:0/counter",
+      "matcher": { "$between": [400000, 600000] },
+      "description": "断言硬件定时器运行推进至 500ms 窗口"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1000ms",
+      "target": "timer:0/counter",
+      "matcher": { "$between": [900000, 1100000] },
+      "description": "断言硬件定时器运行推进至 1000ms 告警触发窗口"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2000ms",
+      "target": "timer:0/counter",
+      "matcher": { "$between": [1900000, 2100000] },
+      "description": "断言自动重载阶段硬件定时器持续推进至 2000ms 窗口"
     }
   ]
 }
