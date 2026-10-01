@@ -122,13 +122,27 @@ foreach ($c in $carriers) {
         continue
     }
 
+    $targetScen = if ($Scenario) {
+        if ([System.IO.Path]::IsPathRooted($Scenario)) { $Scenario }
+        elseif (Test-Path (Join-Path $scenDir $Scenario)) { Join-Path $scenDir $Scenario }
+        else { $Scenario }
+    } else {
+        $scenDir
+    }
+
+    $reportSrc = Join-Path $winkToolsDir 'artifacts\run-report.json'
+    # Anti-False-Green: Remove any stale report from previous runs to guarantee freshness
+    if (Test-Path $reportSrc) {
+        Remove-Item -Force $reportSrc -ErrorAction SilentlyContinue
+    }
+
     Push-Location $winkToolsDir
     $prevEap = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     $actualReporter = if ($WriteEvidence -and $Reporter -eq 'spec') { 'json' } else { $Reporter }
     try {
         & python wink.py sim run --app "$appDir" --mode headless `
-            --scenarios "$scenDir" --reporter $actualReporter
+            --scenarios "$targetScen" --reporter $actualReporter
         $ok = ($LASTEXITCODE -eq 0)
     }
     finally {
@@ -137,16 +151,20 @@ foreach ($c in $carriers) {
     }
 
     if ($ok -and $WriteEvidence) {
-        $verifierScript = Join-Path $embeddedRoot 'wink-micro-app\vendor\esp_idfv61\.governance\tools\evidence_verifier.py'
-        $reportSrc = Join-Path $winkToolsDir 'artifacts\run-report.json'
-        Write-Host "Recording evidence for $($c.Name)..." -ForegroundColor Magenta
-        $vArgs = @('--write-app', $c.Name, '--report-src', $reportSrc, '--workspace-root', $embeddedRoot)
-        if ($ConfigId) { $vArgs += @('--config-id', $ConfigId) }
-        if ($Scenario) { $vArgs += @('--scenario', $Scenario) }
-        & python "$verifierScript" @vArgs
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warning "Failed to record evidence for $($c.Name)"
+        if (-not (Test-Path $reportSrc)) {
+            Write-Warning "Simulation reported success but no report artifact was created at $reportSrc"
             $ok = $false
+        } else {
+            $verifierScript = Join-Path $embeddedRoot 'wink-micro-app\vendor\esp_idfv61\.governance\gates\evidence_verifier.py'
+            Write-Host "Recording evidence for $($c.Name)..." -ForegroundColor Magenta
+            $vArgs = @('--write-app', $c.Name, '--report-src', $reportSrc, '--workspace-root', $embeddedRoot)
+            if ($ConfigId) { $vArgs += @('--config-id', $ConfigId) }
+            if ($Scenario) { $vArgs += @('--scenario', $targetScen) }
+            & python "$verifierScript" @vArgs
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warning "Failed to record evidence for $($c.Name)"
+                $ok = $false
+            }
         }
     }
 
