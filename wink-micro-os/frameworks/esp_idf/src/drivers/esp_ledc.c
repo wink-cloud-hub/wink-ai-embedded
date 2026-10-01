@@ -101,15 +101,15 @@ esp_err_t ledc_update_duty(ledc_mode_t speed_mode, ledc_channel_t channel) {
     esp_ledc_timer_state_t *t = &s_timers[ch->speed_mode][ch->timer_sel];
 
     ch->active_duty = ch->pending_duty;
-    uint32_t top = (1u << (uint32_t)t->duty_resolution) - 1u;
-    if (top == 0) {
-        top = 1;
+    uint32_t max_duty = (1u << (uint32_t)t->duty_resolution);
+    if (max_duty == 0) {
+        max_duty = 1;
     }
 
     // 纯定点万分比计算（0..10000），带四舍五入防溢出，严禁浮点
-    uint32_t duty_clamped = (ch->active_duty > top) ? top : ch->active_duty;
-    uint64_t prod = (uint64_t)duty_clamped * 10000ULL + (top / 2ULL);
-    uint16_t basis_points = (uint16_t)(prod / top);
+    uint32_t duty_clamped = (ch->active_duty > max_duty) ? max_duty : ch->active_duty;
+    uint64_t prod = (uint64_t)duty_clamped * 10000ULL + (max_duty / 2ULL);
+    uint16_t basis_points = (uint16_t)(prod / max_duty);
     if (basis_points > 10000u) {
         basis_points = 10000u;
     }

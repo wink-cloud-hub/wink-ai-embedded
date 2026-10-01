@@ -29,7 +29,10 @@
     "_sim_wifi_env_inject_ap",
     "_sim_wifi_env_inject_fault",
     "_sim_wifi_env_get_state_str",
-    "_sim_wifi_env_get_sta_ip_ptr"
+    "_sim_wifi_env_get_sta_ip_ptr",
+    "_pal_wasm_push_uart_rx_byte",
+    "_pal_wasm_push_uart_rx_error",
+    "_pal_wasm_get_uart_rx_available"
   ],
   "EXPORTED_RUNTIME_METHODS": ["ccall", "cwrap", "HEAPU8", "HEAPU32", "Asyncify", "callMain", "lengthBytesUTF8", "stringToUTF8", "UTF8ToString"],
   "ASYNCIFY_IMPORTS": ["js_pal_os_sleep_ms", "js_pal_os_busy_wait_us"],

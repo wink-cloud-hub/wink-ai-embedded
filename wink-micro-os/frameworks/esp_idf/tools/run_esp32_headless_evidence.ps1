@@ -123,9 +123,10 @@ foreach ($c in $carriers) {
     Push-Location $winkToolsDir
     $prevEap = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
+    $actualReporter = if ($WriteEvidence -and $Reporter -eq 'spec') { 'json' } else { $Reporter }
     try {
         & python wink.py sim run --app "$appDir" --mode headless `
-            --scenarios "$scenDir" --reporter $Reporter
+            --scenarios "$scenDir" --reporter $actualReporter
         $ok = ($LASTEXITCODE -eq 0)
     }
     finally {

@@ -801,6 +801,10 @@ void ble_store_util_status_rr(void *event, void *arg) {
     (void)arg;
 }
 
+void ble_store_config_init(void) {
+    /* No-op in headless simulation: NVS key store mock */
+}
+
 void esp_nimble_sim_reset(void) {
     memset(&s_ble_state, 0, sizeof(s_ble_state));
     memset(&ble_hs_cfg, 0, sizeof(ble_hs_cfg));

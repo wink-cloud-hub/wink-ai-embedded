@@ -62,6 +62,9 @@ wink_status_t sim_responder_unregister(sim_responder_t *responder)
     return WINK_ERR_NOT_FOUND;
 }
 
+static sim_i2c_sensor_mpu9250_t s_default_mpu9250;
+static bool s_default_mpu9250_inited = false;
+
 void sim_responder_reset_all(void)
 {
     for (uint32_t i = 0u; i < s_responder_count; i++) {
@@ -71,6 +74,7 @@ void sim_responder_reset_all(void)
         }
     }
     s_responder_count = 0u;
+    s_default_mpu9250_inited = false;
 }
 
 wink_status_t sim_responder_dispatch(sim_bus_type_t bus_type, uint8_t port, uint16_t address,
@@ -90,7 +94,15 @@ wink_status_t sim_responder_dispatch(sim_bus_type_t bus_type, uint8_t port, uint
     }
 
     if (target == NULL) {
-        return WINK_ERR_NOT_FOUND;
+        if (bus_type == SIM_BUS_TYPE_I2C && (address == 0x68u || address == 0x69u)) {
+            if (!s_default_mpu9250_inited) {
+                sim_i2c_sensor_mpu9250_init(&s_default_mpu9250, port, address);
+                s_default_mpu9250_inited = true;
+            }
+            target = &s_default_mpu9250.base;
+        } else {
+            return WINK_ERR_NOT_FOUND;
+        }
     }
 
     /* Zero-length probe (I2C probe / ACK test) */
@@ -162,5 +174,71 @@ void sim_i2c_eeprom_at24c02_reset(sim_i2c_eeprom_at24c02_t *eeprom)
     if (eeprom != NULL) {
         memset(eeprom->memory, 0xFF, sizeof(eeprom->memory));
         eeprom->word_addr = 0u;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Built-in Responder: MPU9250 I2C IMU
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+static wink_status_t mpu9250_transfer(sim_responder_t *self,
+                                      const uint8_t *write_buf, size_t write_len,
+                                      uint8_t *read_buf, size_t read_len)
+{
+    sim_i2c_sensor_mpu9250_t *mpu = (sim_i2c_sensor_mpu9250_t *)self;
+    if (mpu == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    /* Write phase: write_buf[0] is register pointer, subsequent bytes are written */
+    if (write_buf != NULL && write_len > 0u) {
+        mpu->current_reg = write_buf[0] & 0x7Fu;
+        for (size_t i = 1u; i < write_len; i++) {
+            uint8_t reg = (uint8_t)((mpu->current_reg + (i - 1u)) & 0x7Fu);
+            mpu->registers[reg] = write_buf[i];
+            /* Soft reset on PWR_MGMT_1 bit 7 */
+            if (reg == 0x6Bu && (write_buf[i] & 0x80u)) {
+                sim_i2c_sensor_mpu9250_reset(mpu);
+            }
+        }
+    }
+
+    /* Read phase */
+    if (read_buf != NULL && read_len > 0u) {
+        for (size_t i = 0u; i < read_len; i++) {
+            uint8_t reg = (uint8_t)((mpu->current_reg + i) & 0x7Fu);
+            read_buf[i] = mpu->registers[reg];
+        }
+    }
+
+    return WINK_OK;
+}
+
+wink_status_t sim_i2c_sensor_mpu9250_init(sim_i2c_sensor_mpu9250_t *mpu,
+                                          uint8_t port, uint16_t address)
+{
+    if (mpu == NULL) {
+        return WINK_ERR_INVALID_ARG;
+    }
+
+    memset(mpu, 0, sizeof(*mpu));
+    sim_i2c_sensor_mpu9250_reset(mpu);
+
+    mpu->base.bus_type = SIM_BUS_TYPE_I2C;
+    mpu->base.port = port;
+    mpu->base.address = address;
+    mpu->base.on_transfer = mpu9250_transfer;
+    mpu->base.user_data = mpu;
+
+    return sim_responder_register(&mpu->base);
+}
+
+void sim_i2c_sensor_mpu9250_reset(sim_i2c_sensor_mpu9250_t *mpu)
+{
+    if (mpu != NULL) {
+        memset(mpu->registers, 0, sizeof(mpu->registers));
+        mpu->registers[0x75] = 0x71u; /* WHO_AM_I default 0x71 */
+        mpu->registers[0x6B] = 0x01u; /* PWR_MGMT_1 default clock */
+        mpu->current_reg = 0u;
     }
 }

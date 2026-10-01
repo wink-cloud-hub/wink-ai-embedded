@@ -67,6 +67,22 @@ wink_status_t sim_i2c_eeprom_at24c02_init(sim_i2c_eeprom_at24c02_t *eeprom,
 /** Reset AT24C02 memory contents (e.g. fill with 0xFF) */
 void sim_i2c_eeprom_at24c02_reset(sim_i2c_eeprom_at24c02_t *eeprom);
 
+/* ── Standard Built-in Responder: MPU9250 I2C IMU ── */
+#define SIM_MPU9250_REG_MAP_SIZE 128u
+
+typedef struct {
+    sim_responder_t base;
+    uint8_t         registers[SIM_MPU9250_REG_MAP_SIZE];
+    uint8_t         current_reg;
+} sim_i2c_sensor_mpu9250_t;
+
+/** Initialize and register an MPU9250 virtual sensor on specified port & address */
+wink_status_t sim_i2c_sensor_mpu9250_init(sim_i2c_sensor_mpu9250_t *mpu,
+                                          uint8_t port, uint16_t address);
+
+/** Reset MPU9250 registers to power-on default */
+void sim_i2c_sensor_mpu9250_reset(sim_i2c_sensor_mpu9250_t *mpu);
+
 #ifdef __cplusplus
 }
 #endif

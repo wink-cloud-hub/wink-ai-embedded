@@ -24,6 +24,8 @@
 
 static pal_os_ringbuf_handle_t s_uart_rx_fifo[WASM_UART_MAX_PORTS] = {NULL, NULL};
 static bool s_uart_inited[WASM_UART_MAX_PORTS] = {false, false};
+static pal_uart_event_callback_t s_uart_event_cb[WASM_UART_MAX_PORTS] = {NULL, NULL};
+static void *s_uart_event_arg[WASM_UART_MAX_PORTS] = {NULL, NULL};
 
 static void ensure_port_fifo_created(uint8_t port)
 {
@@ -58,7 +60,14 @@ bool pal_wasm_push_uart_rx_byte(uint8_t port, uint8_t byte)
     if (st != WINK_OK) {
         /* Overrun: drop newest byte and log fault (G6 overrun policy) */
         pal_wasm_log_fault(FAULT_TYPE_UART_OVERRUN, port);
+        if (s_uart_event_cb[port] != NULL) {
+            s_uart_event_cb[port](port, PAL_UART_EVENT_BUFFER_FULL, NULL, 0, s_uart_event_arg[port]);
+        }
         return false;
+    }
+
+    if (s_uart_event_cb[port] != NULL) {
+        s_uart_event_cb[port](port, PAL_UART_EVENT_RX_DATA, &byte, 1, s_uart_event_arg[port]);
     }
 
     /* Raise the UART RX software IRQ; cooperative single-core, no race. */
@@ -79,6 +88,9 @@ void pal_wasm_push_uart_rx_error(uint8_t port, uint8_t error_flags)
     /* flags: 1=FRAMING, 2=PARITY, 4=OVERRUN */
     if (error_flags & 4) {
         pal_wasm_log_fault(FAULT_TYPE_UART_OVERRUN, port);
+        if (s_uart_event_cb[port] != NULL) {
+            s_uart_event_cb[port](port, PAL_UART_EVENT_RX_FIFO_OVF, NULL, 0, s_uart_event_arg[port]);
+        }
     }
 }
 
@@ -107,6 +119,16 @@ wink_status_t pal_uart_init(uint8_t port, wink_pin_t tx_pin, wink_pin_t rx_pin, 
     }
 
     s_uart_inited[port] = true;
+    return WINK_OK;
+}
+
+wink_status_t pal_uart_set_event_callback(uint8_t port, pal_uart_event_callback_t cb, void *arg)
+{
+    if (port >= WASM_UART_MAX_PORTS) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    s_uart_event_cb[port] = cb;
+    s_uart_event_arg[port] = arg;
     return WINK_OK;
 }
 
@@ -171,5 +193,7 @@ void pal_wasm_ch2_uart_reset(void)
             s_uart_rx_fifo[port] = NULL;
         }
         s_uart_inited[port] = false;
+        s_uart_event_cb[port] = NULL;
+        s_uart_event_arg[port] = NULL;
     }
 }
