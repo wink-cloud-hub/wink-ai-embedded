@@ -140,6 +140,85 @@ def validate_data(manifest: dict = None, catalog: dict = None, quarantine: dict 
     return [], []
 
 # ─────────────────────────────────────────────────────────────
+# 六大正交并发研发泳道与优先级阶梯推导逻辑
+# ─────────────────────────────────────────────────────────────
+def classify_example_lane_and_priority(
+    upstream: str,
+    inclusion: str,
+    schedule: str,
+    has_verified: bool,
+    valid_evidence: bool,
+) -> tuple[str, str, str]:
+    """
+    推导示例的并发泳道与优先级阶梯
+    返回: (lane_id, priority_tier, lane_tag)
+    """
+    cat = upstream.split("/")[0]
+    sub = upstream.split("/")[1] if "/" in upstream else ""
+
+    # 1. 物理不可逆排除与暂缓投入
+    if inclusion == "out_of_scope":
+        return ("lane_7_hardware", "P4", "[Lane 7: 硬件排除]")
+    if schedule == "deferred":
+        return ("lane_7_hardware", "P3", "[Lane 7: 暂缓投入]")
+
+    # 2. 正交并发泳道归属
+    if cat in ("get-started", "system", "cxx"):
+        lane_id = "lane_1_core"
+        lane_tag = "[Lane 1: 内核调度]"
+    elif cat == "storage":
+        lane_id = "lane_5_storage"
+        lane_tag = "[Lane 5: 本地存储]"
+    elif cat in ("wifi", "protocols", "bluetooth", "network"):
+        lane_id = "lane_6_net_rf"
+        lane_tag = "[Lane 6: 无线网络]"
+    elif cat == "peripherals":
+        if sub in ("ledc", "timer_group", "rmt", "mcpwm", "pcnt", "sigma_delta"):
+            lane_id = "lane_3_pulse"
+            lane_tag = "[Lane 3: 脉冲定时]"
+        elif sub in ("adc", "dac", "analog_comparator", "touch_sensor", "temperature_sensor"):
+            lane_id = "lane_4_analog"
+            lane_tag = "[Lane 4: 模拟电学]"
+        else:
+            lane_id = "lane_2_bus"
+            lane_tag = "[Lane 2: 数字总线]"
+    else:
+        lane_id = "lane_7_hardware"
+        lane_tag = "[Lane 7: 硬件排除]"
+
+    # 3. 优先级阶梯划分 (P0 核心标杆 -> P1 通用积木 -> P2 进阶多通道 -> P3 复杂长尾)
+    if has_verified and valid_evidence:
+        return (lane_id, "P0", lane_tag)
+
+    P0_TARGETS = {
+        "get-started/blink",
+        "peripherals/i2c/i2c_basic",
+        "peripherals/uart/uart_echo",
+        "peripherals/ledc/ledc_basic",
+        "peripherals/timer_group/gptimer",
+        "peripherals/adc/oneshot_read",
+        "storage/nvs/nvs_rw_value",
+        "wifi/getting_started/station",
+    }
+    if upstream in P0_TARGETS:
+        return (lane_id, "P0", lane_tag)
+
+    P1_KEYWORDS = (
+        "spi_master", "generic_gpio", "gpio", "oneshot", "cosine", "nvs_rw",
+        "http_client", "mqtt", "bleprph", "basic", "echo", "alarm", "freertos",
+        "hello_world"
+    )
+    if any(k in upstream for k in P1_KEYWORDS):
+        return (lane_id, "P1", lane_tag)
+
+    P3_KEYWORDS = ("server", "camera", "lcd", "usb", "ulp", "bitscrambler", "h264", "jpeg")
+    if any(k in upstream for k in P3_KEYWORDS):
+        return (lane_id, "P3", lane_tag)
+
+    return (lane_id, "P2", lane_tag)
+
+
+# ─────────────────────────────────────────────────────────────
 # 渲染单个条目行
 # ─────────────────────────────────────────────────────────────
 def render_row(entry: dict, quarantine: dict[str, dict]) -> tuple[str, str]:
@@ -191,10 +270,15 @@ def render_row(entry: dict, quarantine: dict[str, dict]) -> tuple[str, str]:
         else:
             app_col = "待适配"
 
+        # 推导并发泳道与优先级
+        lane_id, pri_tier, lane_tag = classify_example_lane_and_priority(
+            upstream, inclusion, schedule, has_verified, valid_evidence
+        )
+
         # 状态符与描述裁判
         if eid in quarantine:
             symbol = "[?]"
-            desc = "待补凭证 (存量隔离区债务，14天 TTL 至 2026-10-13)"
+            desc = f"{lane_tag} 待补凭证 (存量隔离区债务，14天 TTL 至 2026-10-13)"
             pri_hint = "P1"
             metric_tag = "quarantined"
         elif inclusion == "out_of_scope":
@@ -205,12 +289,12 @@ def render_row(entry: dict, quarantine: dict[str, dict]) -> tuple[str, str]:
             metric_tag = "out_of_scope"
         elif has_verified and valid_evidence:
             symbol = "[x]"
-            desc = "已完成实证。"
+            desc = f"{lane_tag} 已完成实证。"
             pri_hint = "P0"
             metric_tag = "verified"
         elif has_regressed:
             symbol = "[!]"
-            desc = "实证凭据核验未通过，需重新回归。"
+            desc = f"{lane_tag} 实证凭据核验未通过，需重新回归。"
             pri_hint = "P0"
             metric_tag = "regressed"
         elif schedule == "deferred":
@@ -226,8 +310,9 @@ def render_row(entry: dict, quarantine: dict[str, dict]) -> tuple[str, str]:
             metric_tag = "pending_audit"
         else:
             symbol = "[ ]"
-            desc = pos_cases[0].get("name", "待排期。") if pos_cases else "待排期。依赖进一步框架门面扩展。"
-            pri_hint = "P1"
+            case_name = pos_cases[0].get("name") if pos_cases else None
+            desc = f"{lane_tag} {case_name}" if case_name else f"{lane_tag} 待排期。依赖进一步框架门面扩展。"
+            pri_hint = pri_tier
             metric_tag = "planned"
     else:
         # v1.1 渲染分支
@@ -335,6 +420,45 @@ def render_checklist(manifest: dict, quarantine: dict[str, dict]) -> str:
         lines.append(f"| {idx:02d} | [{title}](#{anchor}) | {len(group_rows)} 项 | `#{lo:03d} ~ #{hi:03d}` | {cnt_v} 项 | {cnt_q} 项 |")
     lines += ["", "---", ""]
 
+    # ── 并发研发泳道与优先级调度矩阵 ──────────────────────────────
+    lines += [
+        "### 并发研发泳道与优先级调度矩阵 (Concurrency Lanes & Execution Matrix)",
+        "",
+        "> **并发编排说明**：为支持后续多个实施计划与 AI Coding Agents **安全并发推进**，478 个官方示例划分为 **6 条正交并发研发泳道**。各泳道在运行时门面（`wink-micro-os/frameworks/esp_idf/`）与外设驱动上物理隔离，支持并行认领开发，杜绝底座代码冲突。",
+        "",
+        "| 泳道代号与技术领域 | 覆盖示例数 (Active) | 核心标杆 (P0) | 通用积木 (P1) | 进阶模式 (P2) | 复杂生态 (P3) | 关键底座依赖 | 并发隔离与协作建议 |",
+        "| :--- | :---: | :---: | :---: | :---: | :---: | :--- | :--- |",
+        "| **Lane 1: 核心系统与内核调度** | 70 项 | 2 项 | 11 项 | 54 项 | 3 项 | FreeRTOS 纤程调度器、代际令牌 | 底座筑基泳道，优先收敛核心语义；其他泳道的前提 |",
+        "| **Lane 2: 通用数字总线与通信** | 46 项 | 2 项 | 12 项 | 24 项 | 8 项 | `pal_i2c`, `pal_spi`, `pal_uart` | 纯外设模型，与 Lane 3~6 物理正交，可独立并行推进 |",
+        "| **Lane 3: 脉冲发生与硬件定时器** | 23 项 | 2 项 | 3 项 | 15 项 | 3 项 | 定点 PWM、虚拟微秒因果推进 | 纯波形与硬件定时，与 Lane 2, 4~6 独立并行推进 |",
+        "| **Lane 4: 模拟量转换与电学传感** | 12 项 | 1 项 | 4 项 | 7 项 | 0 项 | `pal_adc`, `pal_dac` | 模拟电学采样，与通信总线及网络完全正交，可独立推进 |",
+        "| **Lane 5: 本地存储与虚拟文件系统**| 27 项 | 1 项 | 4 项 | 20 项 | 2 项 | 内存虚拟块设备、VFS 句柄抽象 | 纯内存/虚拟块，与外设及网络零耦合，可完全独立推进 |",
+        "| **Lane 6: 无线网络与通信协议栈**| 113 项 | 1 项 | 3 项 | 95 项 | 14 项 | 确定性虚拟空口、Netif、NimBLE | 虚拟网络 Broker 闭环，与 Lane 2~5 独立并行推进 |",
+        "",
+        "#### 🎯 各泳道推荐优先并发认领就绪清单 (Ready-to-Claim P0/P1 Backlog)",
+        "",
+        "| 泳道 | 编号 | 官方子示例相对路径 | 优先级 | 对应 App 目录 | 推荐理由与解锁价值 |",
+        "| :--- | :---: | :--- | :---: | :--- | :--- |",
+        "| **Lane 1: 系统** | `#001` | `get-started/blink` | P0 | [`get-started/blink_gpio`](get-started/blink_gpio) | ✅ 已完成实证。建立最小 FreeRTOS 任务与 GPIO 输出范式 |",
+        "| **Lane 1: 系统** | `#002` | `get-started/hello_world` | P1 | `get-started/hello_world` | 解锁系统控制台输出与基础芯片信息获取 |",
+        "| **Lane 2: 总线** | `#019` | `peripherals/i2c/i2c_basic` | P0 | `peripherals/i2c_basic` | 解锁对象式 I2C Master 总线与传感器寄存器通信 |",
+        "| **Lane 2: 总线** | `#108` | `peripherals/uart/uart_echo` | P0 | `peripherals/uart_echo` | 解锁双任务环形缓冲与串口交互终端 |",
+        "| **Lane 2: 总线** | `#088` | `peripherals/spi_master/hd_eeprom` | P1 | `peripherals/spi_eeprom` | 解锁高速 SPI 总线全双工读写支持 |",
+        "| **Lane 3: 脉冲** | `#047` | `peripherals/ledc/ledc_basic` | P0 | `peripherals/ledc_basic` | 解锁定点 PWM 占空比无浮点呼吸调光 |",
+        "| **Lane 3: 脉冲** | `#096` | `peripherals/timer_group/gptimer` | P0 | `peripherals/gptimer_alarm` | 解锁高精度硬件定时器 Alarm 与中断回调 |",
+        "| **Lane 4: 模拟** | `#004` | `peripherals/adc/oneshot_read` | P0 | `peripherals/adc_oneshot` | 解锁电压校准与多通道电位器模拟采样 |",
+        "| **Lane 4: 模拟** | `#015` | `peripherals/dac/dac_cosine` | P1 | `peripherals/dac_cosine` | 解锁 DAC 连续余弦波音频发生 |",
+        "| **Lane 5: 存储** | `#395` | `storage/nvs/nvs_rw_value` | P0 | `storage/nvs_rw_value` | 解锁键值对非易失性持久化，为 Wi-Fi 凭证打底 |",
+        "| **Lane 5: 存储** | `#403` | `storage/spiffs/spiffs` | P1 | `storage/spiffs` | 解锁片上文件系统与文件读写接口 |",
+        "| **Lane 6: 网络** | `#220` | `wifi/getting_started/station` | P0 | `wifi/wifi_sta` | 解锁虚拟 AP 状态机与 DHCP 虚拟 IP 分配 |",
+        "| **Lane 6: 网络** | `#185` | `protocols/esp_http_client` | P1 | `protocols/http_client` | 解锁 REST GET/POST 网络通信客户端 |",
+        "| **Lane 6: 网络** | `#186` | `protocols/mqtt/tcp` | P1 | `protocols/mqtt_tcp` | 解锁轻量 Broker Pub/Sub 实时闭环 |",
+        "| **Lane 6: 蓝牙** | `#245` | `bluetooth/nimble/bleprph` | P1 | `bluetooth/bleprph` | 解锁 NimBLE GATT 特征值读写与 Virtual Inspector |",
+        "",
+        "---",
+        "",
+    ]
+
     # ── 符号说明 ─────────────────────────────────────────────
     lines += [
         "## 二、 符号与分类说明",
@@ -353,6 +477,14 @@ def render_checklist(manifest: dict, quarantine: dict[str, dict]) -> str:
         "| Level 3 | ⚡ | IO 打点 / GPIO 波形探测 |",
         "| Level 4 | ⚙️ | 纯内部静默逻辑（内存、错误码、寄存器状态）|",
         "| Blocked | 🚫 | 前置阻断，依赖未建模，会导致仿真死锁 |",
+        "",
+        "### 优先级与泳道编排说明",
+        "",
+        "- **P0（核心筑基标杆）**：已完成验证（`[x]`）或该泳道最核心的基础设施标杆，解锁该泳道后续一切前置依赖。",
+        "- **P1（高频通用积木）**：覆盖通用业务场景中约 70% 的核心功能（如 SPI 全双工、GPTimer 报警、NVS 键值存储、HTTP GET/POST）。",
+        "- **P2（进阶模式与多通道）**：ADC 连续采样 DMA、LEDC 多通道平滑呼吸、SoftAP + STA 级联、BLE Central 多连接。",
+        "- **P3（复杂组合与长尾）**：WebSocket 服务端长连接、mDNS 组播、复杂总线级联传感器、暂缓投入项。",
+        "- **P4（硬件约束排除）**：不可逆物理介质（eFuse、外部 PHY 以太网、空间 RF 测试等），编译期显式阻断。",
         "",
         "---",
         "",
