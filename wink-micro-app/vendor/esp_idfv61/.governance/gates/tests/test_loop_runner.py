@@ -1,0 +1,110 @@
+# SPDX-License-Identifier: Apache-2.0
+"""
+Unit tests for Autonomous Governance Loop Engine (tools/loop)
+"""
+import copy
+import json
+from pathlib import Path
+import pytest
+
+import sys
+TOOLS_DIR = Path(__file__).resolve().parent.parent.parent / "tools"
+if str(TOOLS_DIR) not in sys.path:
+    sys.path.insert(0, str(TOOLS_DIR))
+
+from loop.mutator import CanaryMutator
+from loop.runner import LoopRunner
+from loop.agent import AgentSynthesizer
+
+
+@pytest.fixture
+def sample_scenario():
+    return {
+        "header": {
+            "name": "sample test scenario",
+            "templateId": "sample",
+            "timeoutUs": "1000000",
+        },
+        "steps": [
+            {
+                "type": "ASSERT_POINT",
+                "timeUs": "100ms",
+                "target": "power:VCC_3V3",
+                "matcher": 3.3,
+                "description": "Aux power rail check",
+            },
+            {
+                "type": "ASSERT_POINT",
+                "timeUs": "500ms",
+                "target": "timer:0/counter",
+                "matcher": {"$between": [400000, 600000]},
+                "description": "Core domain assertion",
+            },
+        ],
+    }
+
+
+def test_canary_mutator_target_identification(sample_scenario):
+    mutator = CanaryMutator()
+    idx = mutator.identify_target_step(sample_scenario["steps"])
+    assert idx == 1  # Should pick domain timer:0/counter, not power:VCC_3V3
+
+
+def test_canary_mutator_between_shift():
+    mutator = CanaryMutator()
+    orig = {"$between": [1000, 2000]}
+    mutated, desc = mutator.mutate_matcher(orig)
+    assert mutated["$between"] == [1002000, 2002000]
+    assert "shifted" in desc
+
+
+def test_canary_mutator_scalar_mutations():
+    mutator = CanaryMutator()
+    m200, _ = mutator.mutate_matcher(200)
+    assert m200 == 404
+
+    m0, _ = mutator.mutate_matcher(0)
+    assert m0 == 1
+
+    m1, _ = mutator.mutate_matcher(1)
+    assert m1 == 0
+
+
+def test_canary_mutator_detects_false_green():
+    mutator = CanaryMutator()
+    meta = {"step_index": 1, "target": "timer:0/counter", "mutation_desc": "shifted"}
+    # If exit_code is 0, mutant survived -> False Green!
+    killed, msg = mutator.verify_kill(0, "All passed", meta)
+    assert not killed
+    assert "FALSE GREEN DETECTED" in msg
+
+
+def test_canary_mutator_confirms_kill():
+    mutator = CanaryMutator()
+    meta = {"step_index": 1, "target": "timer:0/counter", "mutation_desc": "shifted"}
+    killed, msg = mutator.verify_kill(1, "Step #2 FAILED: outside range", meta)
+    assert killed
+    assert "successfully killed" in msg
+
+
+def test_runner_candidate_selection():
+    ws_root = Path(__file__).resolve().parents[6]
+    runner = LoopRunner(workspace_root=ws_root, dry_run=True)
+    candidates = runner.select_candidates()
+    # Verified entries like blink_gpio or gptimer_alarm should be excluded
+    candidate_ids = [c["id"] for c in candidates]
+    assert "esp.get_started.blink" not in candidate_ids
+    assert "esp.peripherals.timer_group.gptimer" not in candidate_ids
+
+    # Unverified landed apps should be present
+    assert "esp.peripherals.i2c.i2c_basic" in candidate_ids or len(candidate_ids) > 0
+
+
+def test_agent_synthesizer_prompt_contains_rules():
+    ws_root = Path(__file__).resolve().parents[6]
+    agent = AgentSynthesizer(workspace_root=ws_root)
+    fake_entry = {"id": "esp.test.app", "target_app_dir": "test/app"}
+    prompt = agent.build_prompt(fake_entry, ws_root)
+    assert "governance-sop-esp/SKILL.md" in prompt
+    assert "power:*" in prompt
+    assert "反模式红线禁令" in prompt
