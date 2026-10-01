@@ -12,7 +12,8 @@ def normalize(text: str) -> str:
 def digest(path: Path) -> str:
     return hashlib.sha256(normalize(path.read_text(encoding='utf-8-sig')).encode('utf-8')).hexdigest()
 
-idf_root = Path(r"D:\software\embedded-tools\esp-idf\.espressif\v6.1\esp-idf")
+from esp_path_resolver import get_idf_root
+idf_root, _ = get_idf_root()
 vendor_root = Path(r"wink-micro-app/vendor/esp_idfv61")
 
 apps = [

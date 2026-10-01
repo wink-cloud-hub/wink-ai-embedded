@@ -28,11 +28,25 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="repla
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-VENDOR_DIR = SCRIPT_DIR.parent if SCRIPT_DIR.name == "scripts" else SCRIPT_DIR
-DATA_JSON = VENDOR_DIR / "checklist.data.json"
-CATALOG_YAML = VENDOR_DIR / "capability-catalog.yaml"
+GOV_DIR = SCRIPT_DIR.parent if SCRIPT_DIR.name == "tools" else SCRIPT_DIR
+DATA_JSON = (
+    GOV_DIR / "data" / "checklist.data.json"
+    if (GOV_DIR / "data" / "checklist.data.json").exists()
+    else GOV_DIR / "checklist.data.json"
+)
+CATALOG_YAML = (
+    GOV_DIR / "catalog" / "capability-catalog.yaml"
+    if (GOV_DIR / "catalog" / "capability-catalog.yaml").exists()
+    else GOV_DIR / "capability-catalog.yaml"
+)
 
-DEFAULT_IDF_EXAMPLES = Path(r"D:\software\embedded-tools\esp-idf\.espressif\v6.1\esp-idf\examples")
+# 导入统一路径解析器
+try:
+    from esp_path_resolver import get_idf_examples_dir, add_idf_cli_arguments
+except ImportError:
+    if str(SCRIPT_DIR) not in sys.path:
+        sys.path.insert(0, str(SCRIPT_DIR))
+    from esp_path_resolver import get_idf_examples_dir, add_idf_cli_arguments
 
 INCLUDE_RE = re.compile(r'^\s*#\s*include\s+["<]([^">]+)[">]', re.MULTILINE)
 CONFIG_RE = re.compile(r'^\s*(CONFIG_[A-Za-z0-9_]+)\s*=', re.MULTILINE)
@@ -51,25 +65,6 @@ PHYSICAL_OUT_PATTERNS = {
     "custom_bootloader": "芯片二级引导程序，纯软件仿真直接进入 app_main",
     "build_system": "构建工具链自身测试，非嵌入式运行时业务代码",
 }
-
-
-def resolve_examples_root() -> Path:
-    env_root = os.environ.get("ESP_IDF_EXAMPLES_DIR", "").strip()
-    if env_root and Path(env_root).is_dir():
-        return Path(env_root).resolve()
-    if DEFAULT_IDF_EXAMPLES.is_dir():
-        return DEFAULT_IDF_EXAMPLES.resolve()
-    # 尝试在典型位置探查
-    candidates = [
-        Path(r"C:\Espressif\frameworks\esp-idf\examples"),
-        Path.home() / "esp" / "esp-idf" / "examples",
-    ]
-    for c in candidates:
-        if c.is_dir():
-            return c.resolve()
-    raise FileNotFoundError(
-        "无法定位 ESP-IDF 官方 examples 目录，请设置环境变量 ESP_IDF_EXAMPLES_DIR"
-    )
 
 
 def extract_includes_from_file(file_path: Path) -> Set[str]:
@@ -198,21 +193,16 @@ def analyze_all_examples(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="ESP-IDF 官方示例静态依赖提取器")
-    parser.add_argument(
-        "--idf-examples",
-        type=Path,
-        default=None,
-        help="ESP-IDF 官方 examples 目录路径",
-    )
+    add_idf_cli_arguments(parser)
     parser.add_argument(
         "--output-report",
         type=Path,
-        default=VENDOR_DIR / "scripts" / "extracted_dependencies_report.json",
+        default=SCRIPT_DIR / "extracted_dependencies_report.json",
         help="输出的结构化分析报告路径",
     )
     args = parser.parse_args()
 
-    examples_root = args.idf_examples or resolve_examples_root()
+    examples_root = get_idf_examples_dir(args.idf_examples, args.idf_path)
     print(f"[extract] 使用 ESP-IDF 示例根目录: {examples_root}")
     print(f"[extract] 正在扫描 {DATA_JSON} 中 478 个示例的源码依赖...")
 

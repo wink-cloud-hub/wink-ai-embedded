@@ -130,3 +130,8 @@ docs/.internals/
 **/esp_idfv61/.governance/gates/reports/*.json
 !**/esp_idfv61/.governance/gates/reports/.gitkeep
 
+# Local developer governance configuration (machine-specific paths)
+**/esp_idfv61/.governance/local_config.json
+**/esp_idfv61/.governance/*.local.*
+
+

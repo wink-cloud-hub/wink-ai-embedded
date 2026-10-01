@@ -8,8 +8,15 @@ Guarantees strictly sequential #001 ~ #478 numbering in document display order.
 
 from pathlib import Path
 import datetime
+import sys
 
-ROOT_EXAMPLES = Path(r"D:\software\embedded-tools\esp-idf\.espressif\v6.1\esp-idf\examples")
+try:
+    from esp_path_resolver import get_idf_examples_dir
+except ImportError:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from esp_path_resolver import get_idf_examples_dir
+
+ROOT_EXAMPLES = get_idf_examples_dir()
 OUTPUT_MD_1 = Path("docs/vendors/Espressif/ESP32_IDFV61_EXAMPLE_CHECKLIST.md")
 OUTPUT_MD_2 = Path("wink-micro-os/frameworks/esp_idf/docs/05-esp32-idfv61-example-checklist.md")
 
