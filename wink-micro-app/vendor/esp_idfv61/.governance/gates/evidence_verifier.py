@@ -324,10 +324,17 @@ def write_evidence_for_app(
     # Locate entry by app_name in target_app_dir or id
     matched_entry = None
     for entry in data.get("entries", []):
-        t_dir = entry.get("target_app_dir") or ""
-        if t_dir.endswith(app_name) or app_name in t_dir or entry.get("id") == app_name:
+        t_dir = (entry.get("target_app_dir") or "").replace("\\", "/")
+        if entry.get("id") == app_name or t_dir == app_name or t_dir.endswith("/" + app_name):
             matched_entry = entry
             break
+
+    if not matched_entry:
+        for entry in data.get("entries", []):
+            t_dir = (entry.get("target_app_dir") or "").replace("\\", "/")
+            if t_dir.endswith(app_name) or app_name in t_dir:
+                matched_entry = entry
+                break
 
     if not matched_entry:
         sys.stderr.write(f"Error: No checklist entry found matching app '{app_name}'\n")
@@ -421,6 +428,12 @@ def write_evidence_for_app(
         "verified_commit": git_commit,
         "verified_at": now_iso,
     }
+
+    # Recompute summary fields
+    if "summary" in data:
+        all_entries = data.get("entries", [])
+        data["summary"]["audited"] = sum(1 for e in all_entries if e.get("audit", {}).get("verdict") == "audited")
+        data["summary"]["verified_configs"] = sum(1 for e in all_entries for ex in e.get("executions", []) if ex.get("delivery_state") == "verified")
 
     # Save manifest
     with open(manifest_path, "w", encoding="utf-8") as f:

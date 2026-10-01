@@ -614,15 +614,17 @@ capabilities:
   cap.pm.dynamic_freq:
     name: 动态时钟调频
     layer: facade
-    status: planned
+    status: implemented
     description: esp_pm 动态频率与功耗锁（PM Locks）门面管理
     owned_paths:
-    - wink-micro-os/frameworks/esp_idf/src/pm/esp_pm_locks.c
+    - wink-micro-os/frameworks/esp_idf/include/esp_pm.h
     soc_support:
     - esp32
     - esp32s3
     - esp32c3
     - esp32c6
+    cross_mcu_evidence:
+    - wink-micro-os/pal/include/pal_hwtimer.h
   cap.crypto.mbedtls_shim:
     name: mbedTLS 跨平台套件桥接
     layer: facade
