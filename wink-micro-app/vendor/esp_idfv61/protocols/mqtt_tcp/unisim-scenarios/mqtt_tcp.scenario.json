@@ -1,0 +1,27 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 mqtt_tcp headless deterministic proof",
+    "templateId": "esp_idfv61_mqtt_tcp",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "power:VCC_WIFI",
+      "matcher": 3.3,
+      "description": "断言MQTT通信连接阶段网络供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1000ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言MQTT事件循环运行期间系统核心电源稳定维持 3.3V"
+    }
+  ]
+}

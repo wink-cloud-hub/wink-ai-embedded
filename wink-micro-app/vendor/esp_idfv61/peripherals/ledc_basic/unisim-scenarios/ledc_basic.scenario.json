@@ -1,0 +1,34 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP32 ESP-IDF v6.1 ledc_basic headless simulation proof",
+    "templateId": "esp_idfv61_ledc_basic",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "2000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "pwm:0",
+      "matcher": 50,
+      "description": "[LEDC PWM 50ms] LEDC Channel 0 占空比稳定输出 50%"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "pwm:0",
+      "matcher": 50,
+      "description": "[LEDC PWM 500ms] LEDC Channel 0 持续维持 50% PWM 占空比"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1000ms",
+      "target": "pwm:0",
+      "matcher": 50,
+      "description": "[LEDC PWM 1000ms] LEDC Channel 0 稳定输出 50% 脉冲"
+    }
+  ]
+}

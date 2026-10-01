@@ -1,0 +1,27 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 bleprph headless deterministic proof",
+    "templateId": "esp_idfv61_bleprph",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统核心 3.3V 电源轨维持稳定输出"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1000ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言 BLE GATT Server 运行期电源持续稳定"
+    }
+  ]
+}

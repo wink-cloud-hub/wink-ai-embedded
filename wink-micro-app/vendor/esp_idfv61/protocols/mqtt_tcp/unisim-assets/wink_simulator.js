@@ -3922,26 +3922,6 @@ var stringToUTF8Array = (str, heap, outIdx, maxBytesToWrite) => {
   }
   
 
-  function ___syscall_unlinkat(dirfd, path, flags) {
-  try {
-  
-      path = SYSCALLS.getStr(path);
-      path = SYSCALLS.calculateAt(dirfd, path);
-      if (!flags) {
-        FS.unlink(path);
-      } else if (flags === 512) {
-        FS.rmdir(path);
-      } else {
-        return -28;
-      }
-      return 0;
-    } catch (e) {
-    if (typeof FS == 'undefined' || !(e.name === 'ErrnoError')) throw e;
-    return -e.errno;
-  }
-  }
-  
-
   var __abort_js = () =>
       abort('native code called abort()');
 
@@ -5403,6 +5383,7 @@ var _pal_wasm_get_sim_mode = Module['_pal_wasm_get_sim_mode'] = makeInvalidEarly
 var _pal_wasm_is_clock_warning_fired = Module['_pal_wasm_is_clock_warning_fired'] = makeInvalidEarlyAccess('_pal_wasm_is_clock_warning_fired');
 var _free = Module['_free'] = makeInvalidEarlyAccess('_free');
 var _malloc = Module['_malloc'] = makeInvalidEarlyAccess('_malloc');
+var _strerror = makeInvalidEarlyAccess('_strerror');
 var _esp_http_client_sim_reset = Module['_esp_http_client_sim_reset'] = makeInvalidEarlyAccess('_esp_http_client_sim_reset');
 var _esp_mqtt_sim_reset = Module['_esp_mqtt_sim_reset'] = makeInvalidEarlyAccess('_esp_mqtt_sim_reset');
 var _esp_nimble_sim_reset = Module['_esp_nimble_sim_reset'] = makeInvalidEarlyAccess('_esp_nimble_sim_reset');
@@ -5440,7 +5421,6 @@ var _esp_nimble_sim_write_chr = Module['_esp_nimble_sim_write_chr'] = makeInvali
 var _esp_nimble_sim_subscribe = Module['_esp_nimble_sim_subscribe'] = makeInvalidEarlyAccess('_esp_nimble_sim_subscribe');
 var _emscripten_stack_get_base = makeInvalidEarlyAccess('_emscripten_stack_get_base');
 var _emscripten_stack_get_end = makeInvalidEarlyAccess('_emscripten_stack_get_end');
-var _strerror = makeInvalidEarlyAccess('_strerror');
 var _emscripten_stack_init = makeInvalidEarlyAccess('_emscripten_stack_init');
 var _emscripten_stack_set_limits = makeInvalidEarlyAccess('_emscripten_stack_set_limits');
 var _emscripten_stack_get_free = makeInvalidEarlyAccess('_emscripten_stack_get_free');
@@ -5451,13 +5431,13 @@ var ___set_stack_limits = Module['___set_stack_limits'] = makeInvalidEarlyAccess
 var dynCall_iiiiii = makeInvalidEarlyAccess('dynCall_iiiiii');
 var dynCall_vi = makeInvalidEarlyAccess('dynCall_vi');
 var dynCall_viiii = makeInvalidEarlyAccess('dynCall_viiii');
+var dynCall_ii = makeInvalidEarlyAccess('dynCall_ii');
 var dynCall_v = makeInvalidEarlyAccess('dynCall_v');
 var dynCall_viiiii = makeInvalidEarlyAccess('dynCall_viiiii');
-var dynCall_vii = makeInvalidEarlyAccess('dynCall_vii');
 var dynCall_viii = makeInvalidEarlyAccess('dynCall_viii');
+var dynCall_vii = makeInvalidEarlyAccess('dynCall_vii');
 var dynCall_jiji = makeInvalidEarlyAccess('dynCall_jiji');
 var dynCall_iiii = makeInvalidEarlyAccess('dynCall_iiii');
-var dynCall_ii = makeInvalidEarlyAccess('dynCall_ii');
 var dynCall_iidiiiii = makeInvalidEarlyAccess('dynCall_iidiiiii');
 var _asyncify_start_unwind = makeInvalidEarlyAccess('_asyncify_start_unwind');
 var _asyncify_stop_unwind = makeInvalidEarlyAccess('_asyncify_stop_unwind');
@@ -5531,6 +5511,7 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['pal_wasm_is_clock_warning_fired'] != 'undefined', 'missing Wasm export: pal_wasm_is_clock_warning_fired');
   assert(typeof wasmExports['free'] != 'undefined', 'missing Wasm export: free');
   assert(typeof wasmExports['malloc'] != 'undefined', 'missing Wasm export: malloc');
+  assert(typeof wasmExports['strerror'] != 'undefined', 'missing Wasm export: strerror');
   assert(typeof wasmExports['esp_http_client_sim_reset'] != 'undefined', 'missing Wasm export: esp_http_client_sim_reset');
   assert(typeof wasmExports['esp_mqtt_sim_reset'] != 'undefined', 'missing Wasm export: esp_mqtt_sim_reset');
   assert(typeof wasmExports['esp_nimble_sim_reset'] != 'undefined', 'missing Wasm export: esp_nimble_sim_reset');
@@ -5568,7 +5549,6 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['esp_nimble_sim_subscribe'] != 'undefined', 'missing Wasm export: esp_nimble_sim_subscribe');
   assert(typeof wasmExports['emscripten_stack_get_base'] != 'undefined', 'missing Wasm export: emscripten_stack_get_base');
   assert(typeof wasmExports['emscripten_stack_get_end'] != 'undefined', 'missing Wasm export: emscripten_stack_get_end');
-  assert(typeof wasmExports['strerror'] != 'undefined', 'missing Wasm export: strerror');
   assert(typeof wasmExports['emscripten_stack_init'] != 'undefined', 'missing Wasm export: emscripten_stack_init');
   assert(typeof wasmExports['emscripten_stack_set_limits'] != 'undefined', 'missing Wasm export: emscripten_stack_set_limits');
   assert(typeof wasmExports['emscripten_stack_get_free'] != 'undefined', 'missing Wasm export: emscripten_stack_get_free');
@@ -5579,13 +5559,13 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['dynCall_iiiiii'] != 'undefined', 'missing Wasm export: dynCall_iiiiii');
   assert(typeof wasmExports['dynCall_vi'] != 'undefined', 'missing Wasm export: dynCall_vi');
   assert(typeof wasmExports['dynCall_viiii'] != 'undefined', 'missing Wasm export: dynCall_viiii');
+  assert(typeof wasmExports['dynCall_ii'] != 'undefined', 'missing Wasm export: dynCall_ii');
   assert(typeof wasmExports['dynCall_v'] != 'undefined', 'missing Wasm export: dynCall_v');
   assert(typeof wasmExports['dynCall_viiiii'] != 'undefined', 'missing Wasm export: dynCall_viiiii');
-  assert(typeof wasmExports['dynCall_vii'] != 'undefined', 'missing Wasm export: dynCall_vii');
   assert(typeof wasmExports['dynCall_viii'] != 'undefined', 'missing Wasm export: dynCall_viii');
+  assert(typeof wasmExports['dynCall_vii'] != 'undefined', 'missing Wasm export: dynCall_vii');
   assert(typeof wasmExports['dynCall_jiji'] != 'undefined', 'missing Wasm export: dynCall_jiji');
   assert(typeof wasmExports['dynCall_iiii'] != 'undefined', 'missing Wasm export: dynCall_iiii');
-  assert(typeof wasmExports['dynCall_ii'] != 'undefined', 'missing Wasm export: dynCall_ii');
   assert(typeof wasmExports['dynCall_iidiiiii'] != 'undefined', 'missing Wasm export: dynCall_iidiiiii');
   assert(typeof wasmExports['asyncify_start_unwind'] != 'undefined', 'missing Wasm export: asyncify_start_unwind');
   assert(typeof wasmExports['asyncify_stop_unwind'] != 'undefined', 'missing Wasm export: asyncify_stop_unwind');
@@ -5656,6 +5636,7 @@ function assignWasmExports(wasmExports) {
   _pal_wasm_is_clock_warning_fired = Module['_pal_wasm_is_clock_warning_fired'] = createExportWrapper('pal_wasm_is_clock_warning_fired', wasmExports['pal_wasm_is_clock_warning_fired'], 0);
   _free = Module['_free'] = createExportWrapper('free', wasmExports['free'], 1);
   _malloc = Module['_malloc'] = createExportWrapper('malloc', wasmExports['malloc'], 1);
+  _strerror = createExportWrapper('strerror', wasmExports['strerror'], 1);
   _esp_http_client_sim_reset = Module['_esp_http_client_sim_reset'] = createExportWrapper('esp_http_client_sim_reset', wasmExports['esp_http_client_sim_reset'], 0);
   _esp_mqtt_sim_reset = Module['_esp_mqtt_sim_reset'] = createExportWrapper('esp_mqtt_sim_reset', wasmExports['esp_mqtt_sim_reset'], 0);
   _esp_nimble_sim_reset = Module['_esp_nimble_sim_reset'] = createExportWrapper('esp_nimble_sim_reset', wasmExports['esp_nimble_sim_reset'], 0);
@@ -5693,7 +5674,6 @@ function assignWasmExports(wasmExports) {
   _esp_nimble_sim_subscribe = Module['_esp_nimble_sim_subscribe'] = createExportWrapper('esp_nimble_sim_subscribe', wasmExports['esp_nimble_sim_subscribe'], 4);
   _emscripten_stack_get_base = wasmExports['emscripten_stack_get_base'];
   _emscripten_stack_get_end = wasmExports['emscripten_stack_get_end'];
-  _strerror = createExportWrapper('strerror', wasmExports['strerror'], 1);
   _emscripten_stack_init = wasmExports['emscripten_stack_init'];
   _emscripten_stack_set_limits = wasmExports['emscripten_stack_set_limits'];
   _emscripten_stack_get_free = wasmExports['emscripten_stack_get_free'];
@@ -5704,13 +5684,13 @@ function assignWasmExports(wasmExports) {
   dynCall_iiiiii = dynCalls['iiiiii'] = createExportWrapper('dynCall_iiiiii', wasmExports['dynCall_iiiiii'], 6);
   dynCall_vi = dynCalls['vi'] = createExportWrapper('dynCall_vi', wasmExports['dynCall_vi'], 2);
   dynCall_viiii = dynCalls['viiii'] = createExportWrapper('dynCall_viiii', wasmExports['dynCall_viiii'], 5);
+  dynCall_ii = dynCalls['ii'] = createExportWrapper('dynCall_ii', wasmExports['dynCall_ii'], 2);
   dynCall_v = dynCalls['v'] = createExportWrapper('dynCall_v', wasmExports['dynCall_v'], 1);
   dynCall_viiiii = dynCalls['viiiii'] = createExportWrapper('dynCall_viiiii', wasmExports['dynCall_viiiii'], 6);
-  dynCall_vii = dynCalls['vii'] = createExportWrapper('dynCall_vii', wasmExports['dynCall_vii'], 3);
   dynCall_viii = dynCalls['viii'] = createExportWrapper('dynCall_viii', wasmExports['dynCall_viii'], 4);
+  dynCall_vii = dynCalls['vii'] = createExportWrapper('dynCall_vii', wasmExports['dynCall_vii'], 3);
   dynCall_jiji = dynCalls['jiji'] = createExportWrapper('dynCall_jiji', wasmExports['dynCall_jiji'], 4);
   dynCall_iiii = dynCalls['iiii'] = createExportWrapper('dynCall_iiii', wasmExports['dynCall_iiii'], 4);
-  dynCall_ii = dynCalls['ii'] = createExportWrapper('dynCall_ii', wasmExports['dynCall_ii'], 2);
   dynCall_iidiiiii = dynCalls['iidiiiii'] = createExportWrapper('dynCall_iidiiiii', wasmExports['dynCall_iidiiiii'], 8);
   _asyncify_start_unwind = createExportWrapper('asyncify_start_unwind', wasmExports['asyncify_start_unwind'], 1);
   _asyncify_stop_unwind = createExportWrapper('asyncify_stop_unwind', wasmExports['asyncify_stop_unwind'], 0);
@@ -5741,8 +5721,6 @@ var wasmImports = {
   __syscall_openat: ___syscall_openat,
   /** @export */
   __syscall_stat64: ___syscall_stat64,
-  /** @export */
-  __syscall_unlinkat: ___syscall_unlinkat,
   /** @export */
   _abort_js: __abort_js,
   /** @export */

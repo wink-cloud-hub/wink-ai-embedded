@@ -1,0 +1,27 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 gptimer_alarm headless deterministic proof",
+    "templateId": "esp_idfv61_gptimer_alarm",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "12000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言硬件定时器启动阶段系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "11s",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言经过多次单次与重载告警周期后系统状态稳定"
+    }
+  ]
+}

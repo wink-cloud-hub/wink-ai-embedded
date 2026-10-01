@@ -1,0 +1,27 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 i2c_basic headless deterministic proof",
+    "templateId": "esp_idfv61_i2c_basic",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "2000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言I2C总线主控初始化阶段系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言MPU9250寄存器读写与总线释放后状态稳定"
+    }
+  ]
+}
