@@ -30,7 +30,39 @@ from typing import List, Dict, Any, Optional
 
 RULE_ID = "g1.scenario_semantic_integrity"
 
-ASSERTION_STEP_TYPES = {"ASSERT_POINT", "ASSERT_EVENT", "ASSERT_BUS_PAYLOAD", "ASSERT_RANGE"}
+ASSERTION_STEP_TYPES = {
+    "ASSERT_POINT",
+    "ASSERT_RANGE",
+    "ASSERT_EVENT",
+    "ASSERT_WAVEFORM",
+    "ASSERT_BUS_PAYLOAD",
+    "ASSERT_PACKET_STREAM",
+    "ASSERT_BUFFER_FRAME",
+    "ASSERT_RESOURCE_GATE",
+    "ASSERT_SEQUENCE",
+}
+
+ACTION_STEP_TYPES = {
+    "INPUT_BUS",
+    "INPUT_PIN",
+    "INPUT_EVENT",
+    "INPUT_ANALOG",
+    "INPUT_BUFFER",
+    "INPUT_POWER",
+    "INPUT_PLUGIN_EVENT",
+    "INPUT_PWM",
+    "INJECT_FAULT",
+    "INJECT_WIFI_FIXTURE",
+    "INJECT_NET_FIXTURE",
+    "CLEAR_FAULTS",
+    "CONFIG_PIN",
+    "INTERRUPT_RAISE",
+    "UNREGISTER_BUS_DEVICE",
+    "DELAY",
+    "WAIT_UNTIL",
+    "SYSTEM_CONTROL",
+    "RESTORE_SNAPSHOT",
+}
 
 DOMAIN_AFFINITY_PATTERNS = [
     {
@@ -44,7 +76,7 @@ DOMAIN_AFFINITY_PATTERNS = [
         "name": "Wi-Fi Infrastructure",
         "match_fn": lambda targets, steps, text: any(
             t.startswith("wifi:") or t.startswith("netif:") for t in targets
-        ) or any(s.get("type") == "INJECT_WIFI_FIXTURE" for s in steps),
+        ),
         "error_msg": "Wi-Fi application scenarios must assert domain targets matching 'wifi:*' or 'netif:*'.",
     },
     {
@@ -52,23 +84,23 @@ DOMAIN_AFFINITY_PATTERNS = [
         "name": "HTTP Client",
         "match_fn": lambda targets, steps, text: any(
             t.startswith("http:") or t.startswith("netif:") for t in targets
-        ) or any(s.get("type") == "INJECT_NET_FIXTURE" and s.get("protocol") == "http" for s in steps),
-        "error_msg": "HTTP application scenarios must assert 'http:*' targets or inject HTTP net fixtures.",
+        ),
+        "error_msg": "HTTP application scenarios must assert 'http:*' or 'netif:*' domain targets.",
     },
     {
         "category_keywords": ["mqtt", "mqtt_tcp"],
         "name": "MQTT Protocol",
         "match_fn": lambda targets, steps, text: any(
             t.startswith("mqtt:") or t.startswith("netif:") for t in targets
-        ) or any(s.get("type") == "INJECT_NET_FIXTURE" and s.get("protocol") == "mqtt" for s in steps),
-        "error_msg": "MQTT application scenarios must assert 'mqtt:*' targets or inject MQTT net fixtures.",
+        ),
+        "error_msg": "MQTT application scenarios must assert 'mqtt:*' or 'netif:*' domain targets.",
     },
     {
         "category_keywords": ["uart", "uart_echo"],
         "name": "UART Communication",
         "match_fn": lambda targets, steps, text: any(
             t.startswith("uart:") for t in targets
-        ) or any(s.get("busType") == "uart" for s in steps),
+        ),
         "error_msg": "UART application scenarios must assert 'uart:*' targets or bus payload echoes.",
     },
     {
@@ -76,7 +108,7 @@ DOMAIN_AFFINITY_PATTERNS = [
         "name": "I2C Master/Slave",
         "match_fn": lambda targets, steps, text: any(
             t.startswith("i2c:") for t in targets
-        ) or any(s.get("busType") == "i2c" for s in steps),
+        ),
         "error_msg": "I2C application scenarios must assert 'i2c:*' targets or I2C bus transactions.",
     },
     {
@@ -123,6 +155,56 @@ def _extract_declared_gpios(wink_app_path: Path) -> set:
     return declared
 
 
+def _extract_step_targets(step: dict) -> list[str]:
+    """Extract all assertion targets declared in an assertion step."""
+    stype = step.get("type")
+    targets = []
+    if not stype:
+        return targets
+
+    # Direct target field (ASSERT_POINT, ASSERT_RANGE, ASSERT_EVENT)
+    tgt = step.get("target")
+    if tgt and isinstance(tgt, str):
+        targets.append(tgt)
+
+    if stype == "ASSERT_WAVEFORM":
+        pin = step.get("pin")
+        if pin is not None:
+            pin_str = str(pin)
+            targets.append(pin_str if pin_str.startswith("gpio:") else f"gpio:{pin_str}")
+
+    elif stype in ("ASSERT_BUS_PAYLOAD", "ASSERT_PACKET_STREAM"):
+        bus_type = step.get("busType")
+        if bus_type:
+            bus_id = step.get("busId")
+            if bus_id is not None:
+                targets.append(f"{bus_type}:{bus_id}")
+            targets.append(f"{bus_type}:payload")
+
+    elif stype == "ASSERT_BUFFER_FRAME":
+        channel = step.get("channel", "framebuffer")
+        targets.append(f"framebuffer:{channel}")
+        targets.append("display:framebuffer")
+
+    elif stype == "ASSERT_RESOURCE_GATE":
+        targets.append("resource:gate")
+        for metric in ("heap", "cpu", "power"):
+            if metric in step:
+                targets.append(f"resource:{metric}")
+
+    elif stype == "ASSERT_SEQUENCE":
+        for ev in step.get("events", []):
+            if isinstance(ev, dict):
+                ev_tgt = ev.get("target")
+                if ev_tgt and isinstance(ev_tgt, str):
+                    targets.append(ev_tgt)
+                ev_bus = ev.get("busType")
+                if ev_bus and isinstance(ev_bus, str):
+                    targets.append(f"{ev_bus}:payload")
+
+    return targets
+
+
 def run(context: dict, config: dict | None = None) -> list[dict]:
     findings = []
     ws_root = Path(context.get("workspace_root", "."))
@@ -139,6 +221,8 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
         if t:
             norm_t = str(t).replace("\\", "/").strip("/")
             entries_by_target[norm_t] = e
+
+    known_step_types = ASSERTION_STEP_TYPES | ACTION_STEP_TYPES
 
     # Discover all landed apps
     for manifest_file in sorted(vendor_root.rglob("wink-app.json")):
@@ -184,9 +268,30 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
                 })
                 continue
 
+            # Validate against unknown step types (Fail-Loud)
+            has_unknown_steps = False
+            for step in steps:
+                stype = step.get("type") if isinstance(step, dict) else None
+                if not stype or stype not in known_step_types:
+                    findings.append({
+                        "rule_id": RULE_ID,
+                        "severity": "error",
+                        "entry_id": entry_id,
+                        "display_id": display_id,
+                        "config_id": None,
+                        "file_path": str(scen_file),
+                        "message": (
+                            f"Unknown or missing scenario step type '{stype}' in '{scen_file.name}'. "
+                            f"Must be a valid UniSim step type."
+                        ),
+                    })
+                    has_unknown_steps = True
+
             # Extract assertions
-            assertion_steps = [s for s in steps if s.get("type") in ASSERTION_STEP_TYPES]
-            targets = [s.get("target") for s in assertion_steps if s.get("target")]
+            assertion_steps = [s for s in steps if isinstance(s, dict) and s.get("type") in ASSERTION_STEP_TYPES]
+            targets = []
+            for s in assertion_steps:
+                targets.extend(_extract_step_targets(s))
 
             # 1. Non-empty Assertion Rule
             if len(assertion_steps) == 0:
@@ -199,14 +304,14 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
                     "file_path": str(scen_file),
                     "message": (
                         f"Scenario '{scen_file.name}' in '{target_app_dir}' contains 0 assertion steps. "
-                        f"At least one valid assertion (e.g. ASSERT_POINT) is required."
+                        f"At least one valid assertion (e.g. ASSERT_POINT, ASSERT_WAVEFORM, ASSERT_BUS_PAYLOAD) is required."
                     ),
                 })
                 continue
 
             # Determine blocking severity (Fail-Closed):
             # If the app claims to be 'verified' (or entry is missing/untracked), false green is a blocking ERROR.
-            # Only if the entry explicitly declares all executions as unverified ('planned'/'building')
+            # Only if the entry explicitly declares all executions as unverified ('planned'/'building'/'unsupported')
             # does it downgrade to a WARNING for in-progress drafting.
             executions = entry.get("executions", []) if entry else []
             is_explicitly_unverified = executions and all(
@@ -214,8 +319,11 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
             )
             assertion_severity = "warning" if is_explicitly_unverified else "error"
             is_power_mgmt_app = "power_save" in target_app_dir or "sleep" in target_app_dir
+
+            # 2. Anti-Degenerate Assertion Penalty (P-1 Defense)
             power_targets = [t for t in targets if t and t.startswith("power:")]
-            if len(power_targets) == len(assertion_steps) and not is_power_mgmt_app:
+            non_power_targets = [t for t in targets if t and not t.startswith("power:") and not t.startswith("resource:power")]
+            if len(assertion_steps) > 0 and len(non_power_targets) == 0 and not is_power_mgmt_app:
                 findings.append({
                     "rule_id": RULE_ID,
                     "severity": assertion_severity,
@@ -230,7 +338,7 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
                     ),
                 })
 
-            # 3. Domain Target Affinity
+            # 3. Domain Target Affinity (Output assertions must prove business function)
             target_app_lower = target_app_dir.lower()
             for domain in DOMAIN_AFFINITY_PATTERNS:
                 if any(kw in target_app_lower for kw in domain["category_keywords"]):
@@ -250,12 +358,13 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
                         })
                     break
 
-            # 4. Tri-Partite Pin Topology Consistency
+            # 4. Tri-Partite Pin Topology Consistency (Physical pins must be declared)
             for t in targets:
                 if t.startswith("gpio:"):
-                    pin_str = t.split(":", 1)[1].strip()
+                    pin_part = t.split(":", 1)[1].strip()
+                    pin_str = pin_part.split(":")[0] if ":" in pin_part else pin_part
                     if pin_str.isdigit():
-                        if declared_gpios and pin_str not in declared_gpios:
+                        if pin_str not in declared_gpios:
                             findings.append({
                                 "rule_id": RULE_ID,
                                 "severity": "error",
@@ -271,12 +380,22 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
                             })
 
             # 5. Temporal Dynamics / Transition Requirement
-            # If all assertions target the exact same target with the exact same matcher and no stimulus injection
+            # Steady-state peripheral signals (such as PWM duty cycle) are valid invariants across time.
             point_assertions = [s for s in assertion_steps if s.get("type") == "ASSERT_POINT"]
             if len(point_assertions) >= 2 and len(set(targets)) == 1:
+                target_0 = targets[0]
+                is_steady_state_peripheral = (
+                    target_0.startswith("pwm:") or
+                    target_0.startswith("ledc:") or
+                    is_power_mgmt_app
+                )
                 matchers = [str(s.get("matcher")) for s in point_assertions]
-                has_stimulus = any(s.get("type", "").startswith("INJECT_") or s.get("type", "").startswith("INPUT_") for s in steps)
-                if len(set(matchers)) == 1 and not has_stimulus and not is_power_mgmt_app:
+                has_stimulus = any(
+                    s.get("type", "").startswith("INJECT_") or
+                    s.get("type", "").startswith("INPUT_")
+                    for s in steps
+                )
+                if len(set(matchers)) == 1 and not has_stimulus and not is_steady_state_peripheral:
                     findings.append({
                         "rule_id": RULE_ID,
                         "severity": "warning",
@@ -286,7 +405,7 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
                         "file_path": str(scen_file),
                         "message": (
                             f"Static point tautology warning in '{target_app_dir}/{scen_file.name}': "
-                            f"all assertions check constant '{targets[0]} == {matchers[0]}' "
+                            f"all assertions check constant '{target_0} == {matchers[0]}' "
                             f"without state transition or external stimulus."
                         ),
                     })
