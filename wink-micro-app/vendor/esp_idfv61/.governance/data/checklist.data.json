@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 9,
-    "verified_configs": 9
+    "audited": 4,
+    "verified_configs": 4
   },
   "entries": [
     {
@@ -1394,12 +1394,10 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "audited",
-        "auditor": "arch_team",
-        "audited_at": "2026-10-01T02:42:19Z",
-        "audited_configs": [
-          "wasm_sim_standard"
-        ],
+        "verdict": "pending",
+        "auditor": null,
+        "audited_at": null,
+        "audited_configs": [],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -1430,7 +1428,7 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "verified",
+          "delivery_state": "planned",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
@@ -1455,15 +1453,7 @@
             ],
             "sla_error_symbol": null
           },
-          "evidence": {
-            "backend": "wasm_simulation",
-            "run_id": "run-20261001-esp.peripherals.i2c.i2c_basic-verified",
-            "assets_sha256": "69eac3c92ddf419b2a66f04d0004c788ec415e94de08b470d213aac65ae844c2",
-            "scenario_sha256": "7fe9abfaa30ff8c878f5c931f8c08c98c9e8e82509ea00e1b1b7269ce4429326",
-            "execution_report_ref": ".governance/reports/peripherals/i2c_basic/run-report.json",
-            "verified_commit": "58f4cade1113f07368185b420bfc07121bc82a1d",
-            "verified_at": "2026-10-01T02:42:19Z"
-          }
+          "evidence": null
         }
       ],
       "target_app_dir": "peripherals/i2c_basic"
@@ -5133,12 +5123,10 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "audited",
-        "auditor": "arch_team",
-        "audited_at": "2026-10-01T02:42:36Z",
-        "audited_configs": [
-          "wasm_sim_standard"
-        ],
+        "verdict": "pending",
+        "auditor": null,
+        "audited_at": null,
+        "audited_configs": [],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -5169,7 +5157,7 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "verified",
+          "delivery_state": "planned",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L3_probe",
@@ -5194,15 +5182,7 @@
             ],
             "sla_error_symbol": null
           },
-          "evidence": {
-            "backend": "wasm_simulation",
-            "run_id": "run-20261001-esp.peripherals.timer_group.gptimer-verified",
-            "assets_sha256": "84f5c8fb7e82e470c27fd39f1a4abd77e0f7dc05d9a2e649b135f09b94df8815",
-            "scenario_sha256": "0bafb2fb974b7df7b1207ec6a5be1fd279451dfbb8fbf182cc0758f024e0f075",
-            "execution_report_ref": ".governance/reports/peripherals/gptimer_alarm/run-report.json",
-            "verified_commit": "58f4cade1113f07368185b420bfc07121bc82a1d",
-            "verified_at": "2026-10-01T02:42:36Z"
-          }
+          "evidence": null
         }
       ],
       "target_app_dir": "peripherals/gptimer_alarm"
@@ -11514,12 +11494,10 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "audited",
-        "auditor": "arch_team",
-        "audited_at": "2026-10-01T02:42:54Z",
-        "audited_configs": [
-          "wasm_sim_standard"
-        ],
+        "verdict": "pending",
+        "auditor": null,
+        "audited_at": null,
+        "audited_configs": [],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -11552,7 +11530,7 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "verified",
+          "delivery_state": "planned",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
@@ -11577,15 +11555,7 @@
             ],
             "sla_error_symbol": null
           },
-          "evidence": {
-            "backend": "wasm_simulation",
-            "run_id": "run-20261001-esp.protocols.esp_http_client-verified",
-            "assets_sha256": "7828f83228187a8bd31daf232195413211020f09b23fa2c29bf2b1f352150935",
-            "scenario_sha256": "499e9fd1beb01a583e17030cd996149016d330f79d6d11b35d2058a75d6166d0",
-            "execution_report_ref": ".governance/reports/protocols/http_client/run-report.json",
-            "verified_commit": "58f4cade1113f07368185b420bfc07121bc82a1d",
-            "verified_at": "2026-10-01T02:42:54Z"
-          }
+          "evidence": null
         }
       ],
       "target_app_dir": "protocols/http_client"
@@ -12807,12 +12777,10 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "audited",
-        "auditor": "arch_team",
-        "audited_at": "2026-10-01T02:43:03Z",
-        "audited_configs": [
-          "wasm_sim_standard"
-        ],
+        "verdict": "pending",
+        "auditor": null,
+        "audited_at": null,
+        "audited_configs": [],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -12845,7 +12813,7 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "verified",
+          "delivery_state": "planned",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
@@ -12870,15 +12838,7 @@
             ],
             "sla_error_symbol": null
           },
-          "evidence": {
-            "backend": "wasm_simulation",
-            "run_id": "run-20261001-esp.protocols.mqtt-verified",
-            "assets_sha256": "c01dc64b1a719c8645b4a413507857df6b2efc9353d239d8b773ae521ccfbfe2",
-            "scenario_sha256": "3484754cb1902563ea0d63f53e2aa854be2c5033882f873db7325cded97a7ea6",
-            "execution_report_ref": ".governance/reports/protocols/mqtt_tcp/run-report.json",
-            "verified_commit": "58f4cade1113f07368185b420bfc07121bc82a1d",
-            "verified_at": "2026-10-01T02:43:03Z"
-          }
+          "evidence": null
         }
       ],
       "target_app_dir": "protocols/mqtt_tcp"
@@ -24052,12 +24012,10 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "audited",
-        "auditor": "arch_team",
-        "audited_at": "2026-10-01T02:43:12Z",
-        "audited_configs": [
-          "wasm_sim_standard"
-        ],
+        "verdict": "pending",
+        "auditor": null,
+        "audited_at": null,
+        "audited_configs": [],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -24090,7 +24048,7 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "verified",
+          "delivery_state": "planned",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L1_ui",
@@ -24101,15 +24059,7 @@
             "negative_cases": [],
             "sla_error_symbol": null
           },
-          "evidence": {
-            "backend": "wasm_simulation",
-            "run_id": "run-20261001-esp.bluetooth.nimble.bleprph-verified",
-            "assets_sha256": "fb990d2a7a4e43487c988dae355f989b0a917a96ba31228f40af902f2a858ce0",
-            "scenario_sha256": "4a4252b9a86b9aa2dc56493853e7ad501f419b330d1bc2fc58a09f6dd6065eef",
-            "execution_report_ref": ".governance/reports/bluetooth/bleprph/run-report.json",
-            "verified_commit": "58f4cade1113f07368185b420bfc07121bc82a1d",
-            "verified_at": "2026-10-01T02:43:12Z"
-          }
+          "evidence": null
         }
       ],
       "target_app_dir": "bluetooth/bleprph"
