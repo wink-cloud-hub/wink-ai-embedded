@@ -32,6 +32,7 @@ extern "C" {
 #define FREERTOS_TAG_GPTIMER  0x05u
 #define FREERTOS_TAG_SUSPEND  0x06u
 #define FREERTOS_TAG_TIMER    0x07u
+#define FREERTOS_TAG_TASK_NOTIFY 0x08u
 
 #define FREERTOS_MAKE_RES_ID(tag, idx) (((uint32_t)(tag) << 24) | ((uint32_t)(idx) & 0x00FFFFFFu))
 #define FREERTOS_RES_TAG(res_id)       ((uint8_t)((res_id) >> 24))
@@ -43,6 +44,7 @@ typedef struct {
     uint32_t token;
     uint32_t sim_id;
     int32_t  prio;
+    uint32_t notify_val;
     char     name[16];
 } esp_tcb_t;
 

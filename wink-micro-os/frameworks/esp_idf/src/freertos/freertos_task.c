@@ -60,6 +60,7 @@ void esp_freertos_register_task_slot(uint32_t slot, int32_t prio, const char* na
     if (s_tcb[slot].gen == 0) s_tcb[slot].gen = 1;
     s_tcb[slot].sim_id = slot;
     s_tcb[slot].prio = prio;
+    s_tcb[slot].notify_val = 0;
     strncpy(s_tcb[slot].name, name ? name : "task", sizeof(s_tcb[slot].name) - 1);
     s_tcb[slot].name[sizeof(s_tcb[slot].name) - 1] = '\0';
 }
@@ -75,6 +76,7 @@ void esp_freertos_task_pool_reset(void) {
         }
         s_tcb[i].sim_id = 0;
         s_tcb[i].prio = 0;
+        s_tcb[i].notify_val = 0;
         s_tcb[i].name[0] = '\0';
     }
 }
@@ -383,3 +385,66 @@ UBaseType_t uxTaskGetSystemState(TaskStatus_t * const pxTaskStatusArray,
     }
     return count;
 }
+
+TaskHandle_t xTaskGetCurrentTaskHandle(void) {
+    uint32_t slot = sim_scheduler_current_id();
+    if (slot < FREERTOS_MAX_TASKS && s_tcb[slot].used) {
+        return (TaskHandle_t)(uintptr_t)s_tcb[slot].token;
+    }
+    return NULL;
+}
+
+uint32_t ulTaskNotifyTake(BaseType_t xClearCountOnExit, TickType_t xTicksToWait) {
+    esp_freertos_assert_not_in_isr("ulTaskNotifyTake");
+    esp_freertos_assert_not_in_critical("ulTaskNotifyTake");
+
+    uint32_t slot = sim_scheduler_current_id();
+    if (slot >= FREERTOS_MAX_TASKS || !s_tcb[slot].used) {
+        return 0;
+    }
+
+    esp_tcb_t *t = &s_tcb[slot];
+
+    if (t->notify_val == 0 && xTicksToWait > 0) {
+        uint32_t res_id = FREERTOS_MAKE_RES_ID(FREERTOS_TAG_TASK_NOTIFY, slot);
+        (void)sync_block(res_id, xTicksToWait);
+    }
+
+    uint32_t count = t->notify_val;
+    if (count > 0) {
+        if (xClearCountOnExit == pdTRUE) {
+            t->notify_val = 0;
+        } else {
+            t->notify_val--;
+        }
+    }
+    return count;
+}
+
+void vTaskNotifyGiveFromISR(TaskHandle_t xTaskToNotify, BaseType_t *pxHigherPriorityTaskWoken) {
+    esp_tcb_t *t = esp_freertos_resolve_handle(xTaskToNotify);
+    if (t == NULL) {
+        return;
+    }
+
+    t->notify_val++;
+    sim_scheduler_resume(t->sim_id);
+
+    if (pxHigherPriorityTaskWoken != NULL) {
+        *pxHigherPriorityTaskWoken = pdTRUE;
+    }
+    s_isr_yield_requested = true;
+}
+
+BaseType_t xTaskNotifyGive(TaskHandle_t xTaskToNotify) {
+    esp_freertos_assert_not_in_isr("xTaskNotifyGive");
+    esp_tcb_t *t = esp_freertos_resolve_handle(xTaskToNotify);
+    if (t == NULL) {
+        return pdFAIL;
+    }
+
+    t->notify_val++;
+    sim_scheduler_resume(t->sim_id);
+    return pdPASS;
+}
+

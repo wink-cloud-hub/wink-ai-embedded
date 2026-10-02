@@ -83,6 +83,11 @@ BaseType_t xPortGetCoreID(void);
 void vTaskPrioritySet(TaskHandle_t xTask, UBaseType_t uxNewPriority);
 UBaseType_t uxTaskPriorityGet(TaskHandle_t xTask);
 
+TaskHandle_t xTaskGetCurrentTaskHandle(void);
+uint32_t ulTaskNotifyTake(BaseType_t xClearCountOnExit, TickType_t xTicksToWait);
+void vTaskNotifyGiveFromISR(TaskHandle_t xTaskToNotify, BaseType_t *pxHigherPriorityTaskWoken);
+BaseType_t xTaskNotifyGive(TaskHandle_t xTaskToNotify);
+
 #ifdef __cplusplus
 }
 #endif

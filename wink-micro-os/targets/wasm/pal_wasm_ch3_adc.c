@@ -184,4 +184,64 @@ wink_status_t pal_adc_read_mv(pal_adc_channel_t ch, uint16_t *out_mv) {
 void pal_wasm_ch3_adc_reset(void) {
     memset(s_channels, 0, sizeof(s_channels));
 }
+
+typedef struct {
+    bool active;
+    pal_adc_continuous_cfg_t cfg;
+    uint8_t channels_copy[PAL_ADC_CHANNELS];
+} wasm_adc_cont_t;
+
+static wasm_adc_cont_t s_wasm_adc_cont[2];
+
+wink_status_t pal_wasm_adc_pump_continuous(uint8_t unit) {
+    if (unit > 1 || !s_wasm_adc_cont[unit].active) {
+        return WINK_ERR_INVALID_STATE;
+    }
+    const pal_adc_continuous_cfg_t *cfg = &s_wasm_adc_cont[unit].cfg;
+    if (cfg->dma_buf_a == NULL || cfg->samples_per_buf == 0) {
+        return WINK_ERR_INVALID_STATE;
+    }
+
+    for (size_t i = 0; i < cfg->samples_per_buf; i++) {
+        uint8_t ch = 0;
+        if (cfg->channel_count > 0 && cfg->channels != NULL) {
+            ch = cfg->channels[i % cfg->channel_count];
+        }
+        uint16_t sample = 0;
+        if (pal_adc_read_raw((pal_adc_channel_t)ch, &sample) == WINK_OK) {
+            cfg->dma_buf_a[i] = sample;
+        } else {
+            cfg->dma_buf_a[i] = (uint16_t)(1000 + (i * 10));
+        }
+    }
+
+    if (cfg->on_half_full != NULL) {
+        cfg->on_half_full(cfg->cb_arg, cfg->dma_buf_a, cfg->samples_per_buf / 2);
+    }
+    if (cfg->on_full != NULL) {
+        cfg->on_full(cfg->cb_arg, cfg->dma_buf_a, cfg->samples_per_buf);
+    }
+    return WINK_OK;
+}
+
+wink_status_t pal_adc_continuous_start(const pal_adc_continuous_cfg_t *cfg) {
+    if (cfg == NULL || cfg->adc_unit > 1 || cfg->dma_buf_a == NULL || cfg->samples_per_buf == 0) {
+        return WINK_ERR_INVALID_ARG;
+    }
+    s_wasm_adc_cont[cfg->adc_unit].active = true;
+    s_wasm_adc_cont[cfg->adc_unit].cfg = *cfg;
+    if (cfg->channel_count > 0 && cfg->channels != NULL) {
+        size_t cnt = cfg->channel_count > PAL_ADC_CHANNELS ? PAL_ADC_CHANNELS : cfg->channel_count;
+        memcpy(s_wasm_adc_cont[cfg->adc_unit].channels_copy, cfg->channels, cnt);
+        s_wasm_adc_cont[cfg->adc_unit].cfg.channels = s_wasm_adc_cont[cfg->adc_unit].channels_copy;
+    }
+
+    return pal_wasm_adc_pump_continuous(cfg->adc_unit);
+}
+
+wink_status_t pal_adc_continuous_stop(uint8_t adc_unit) {
+    if (adc_unit > 1) return WINK_ERR_INVALID_ARG;
+    s_wasm_adc_cont[adc_unit].active = false;
+    return WINK_OK;
+}
 #endif
