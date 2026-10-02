@@ -29,6 +29,7 @@ BaseType_t xTimerResetFromISR(TimerHandle_t xTimer, BaseType_t *pxHigherPriority
 BaseType_t xTimerChangePeriodFromISR(TimerHandle_t xTimer, const TickType_t xNewPeriod, BaseType_t *pxHigherPriorityTaskWoken);
 BaseType_t xTimerIsTimerActive(TimerHandle_t xTimer);
 void *pvTimerGetTimerID(const TimerHandle_t xTimer);
+void vTimerSetReloadMode(TimerHandle_t xTimer, const UBaseType_t uxAutoReload);
 
 #ifdef __cplusplus
 }

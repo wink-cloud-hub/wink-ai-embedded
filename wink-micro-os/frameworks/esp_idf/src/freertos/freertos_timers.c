@@ -529,6 +529,13 @@ void *pvTimerGetTimerID(const TimerHandle_t xTimer) {
     return t->timer_id;
 }
 
+void vTimerSetReloadMode(TimerHandle_t xTimer, const UBaseType_t uxAutoReload) {
+    esp_sim_timer_t *t = resolve_timer(xTimer);
+    if (t) {
+        t->auto_reload = (uxAutoReload != pdFALSE);
+    }
+}
+
 BaseType_t xTimerStartFromISR(TimerHandle_t xTimer, BaseType_t *pxHigherPriorityTaskWoken) {
     (void)xTimer;
     if (pxHigherPriorityTaskWoken != NULL) {

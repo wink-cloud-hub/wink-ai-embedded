@@ -419,20 +419,37 @@ void test_timer_work_item_execution_and_cancel(void) {
 /* --------------------------------------------------------------------------
  * 10. esp_timer Fail-Loud Contract (ADR-0012)
  * -------------------------------------------------------------------------- */
+static void dummy_esp_timer_cb(void *arg) {
+    (void)arg;
+}
+
 void test_esp_timer_fail_loud(void) {
     esp_timer_handle_t th = NULL;
-    esp_timer_create_args_t args = {
+    esp_timer_create_args_t invalid_args = {
         .callback = NULL,
         .arg = NULL,
-        .name = "unsupported"
+        .name = "invalid"
     };
 
-    TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_SUPPORTED, esp_timer_create(&args, &th));
+    /* Invalid argument checks */
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, esp_timer_create(&invalid_args, &th));
     TEST_ASSERT_NULL(th);
-    TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_SUPPORTED, esp_timer_start_once(th, 1000));
-    TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_SUPPORTED, esp_timer_start_periodic(th, 1000));
-    TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_SUPPORTED, esp_timer_stop(th));
-    TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_SUPPORTED, esp_timer_delete(th));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, esp_timer_start_once(th, 1000));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, esp_timer_start_periodic(th, 1000));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, esp_timer_stop(th));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, esp_timer_delete(th));
+
+    /* Valid creation and lifecycle */
+    esp_timer_create_args_t valid_args = {
+        .callback = dummy_esp_timer_cb,
+        .arg = NULL,
+        .name = "valid"
+    };
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, esp_timer_create(&valid_args, &th));
+    TEST_ASSERT_NOT_NULL(th);
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, esp_timer_start_periodic(th, 10000));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, esp_timer_stop(th));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, esp_timer_delete(th));
 
     /* esp_timer_get_time returns valid monotonically non-decreasing microseconds */
     int64_t t0 = esp_timer_get_time();

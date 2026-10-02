@@ -22,6 +22,7 @@ extern void esp_mqtt_sim_reset(void);
 extern void esp_http_client_sim_reset(void);
 extern void esp_nimble_sim_reset(void);
 extern void esp_event_loop_sim_reset(void);
+extern void esp_timer_sim_reset(void);
 extern void sim_network_broker_reset(void);
 
 static bool s_esp_pending_reset = false;
@@ -128,6 +129,7 @@ void pal_wasm_target_clear_pending_reset(void) {
 
     /* Stage 5: Drain system event loop and stop event task */
     esp_event_loop_sim_reset();
+    esp_timer_sim_reset();
 
     /* Stage 5.5: Drain FreeRTOS software timer command queue and cancel active timers */
     esp_freertos_timers_sim_reset();

@@ -64,37 +64,6 @@ int64_t esp_timer_get_time(void) {
     return (int64_t)pal_os_get_us();
 }
 
-esp_err_t esp_timer_create(const esp_timer_create_args_t* create_args, esp_timer_handle_t* out_handle) {
-    (void)create_args;
-    if (out_handle) {
-        *out_handle = NULL;
-    }
-    ESP_LOGW("ESP_TIMER", "esp_timer_create not supported in simulation facade (ADR-0012 Fail-Loud)");
-    return ESP_ERR_NOT_SUPPORTED;
-}
-
-esp_err_t esp_timer_start_once(esp_timer_handle_t timer, uint64_t timeout_us) {
-    (void)timer;
-    (void)timeout_us;
-    return ESP_ERR_NOT_SUPPORTED;
-}
-
-esp_err_t esp_timer_start_periodic(esp_timer_handle_t timer, uint64_t period_us) {
-    (void)timer;
-    (void)period_us;
-    return ESP_ERR_NOT_SUPPORTED;
-}
-
-esp_err_t esp_timer_stop(esp_timer_handle_t timer) {
-    (void)timer;
-    return ESP_ERR_NOT_SUPPORTED;
-}
-
-esp_err_t esp_timer_delete(esp_timer_handle_t timer) {
-    (void)timer;
-    return ESP_ERR_NOT_SUPPORTED;
-}
-
 void esp_rom_delay_us(uint32_t us) {
     /* Phase 2 Task 3.2 M2: tiered busy-wait strategy (ISSUE-06).
      *  us <= 100  : advance virtual clock only — preserve µs timing precision.
