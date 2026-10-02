@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 6,
-    "verified_configs": 6
+    "audited": 7,
+    "verified_configs": 7
   },
   "entries": [
     {
@@ -1394,10 +1394,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "arch_team",
+        "audited_at": "2026-10-02T03:19:18Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -1428,7 +1430,7 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
@@ -1453,7 +1455,15 @@
             ],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261002-esp.peripherals.i2c.i2c_basic-verified",
+            "assets_sha256": "b2cccd60fd0cda73de5aff48c0a619d633fc737876b8d3e2ec7559842276322e",
+            "scenario_sha256": "b758752fbfca569c82ba1a2575fb2dec28d8cd0f5d6fa538f5077cef6e812f30",
+            "execution_report_ref": ".governance/reports/peripherals/i2c_basic/run-report.json",
+            "verified_commit": "dcf19fb32e0854bb511d9e45bb227318bf9e806d",
+            "verified_at": "2026-10-02T07:09:40Z"
+          }
         }
       ],
       "target_app_dir": "peripherals/i2c_basic"

@@ -1,7 +1,20 @@
 {
   "appName": "esp_idfv61_i2c_basic",
   "board": "esp32_devkitc_v4",
-  "devices": {},
+  "devices": {
+    "imu": {
+      "id": "imu",
+      "type": "imu",
+      "pinMapping": {
+        "SDA": 21,
+        "SCL": 22
+      },
+      "properties": {
+        "variant": "mpu9250_i2c",
+        "address": 104
+      }
+    }
+  },
   "family": "esp32",
   "core": "xtensa-lx6",
   "mcu": "esp32",

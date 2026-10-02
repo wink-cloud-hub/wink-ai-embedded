@@ -14,9 +14,9 @@
 ## 一、 总体适配进度统计
 
 - **官方独立示例总数**：**478 个**
-  - `[x]` **已完成六要素实证 (Verified)**：**6 项**
+  - `[x]` **已完成六要素实证 (Verified)**：**7 项**
   - `[?]` **存量隔离待补凭证 (Quarantined Debt)**：**0 项**（14 天 TTL 过期硬阻断，至 `2026-10-13`）
-  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**285 项**
+  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**284 项**
   - `[-]` **明确产品排除 / 暂缓投入 (Out-of-Scope / Deferred)**：**187 项**（编译期 `WINK_SLA_ERROR` Fail-Loud 阻断）
   - `?` **待深度审定 (Pending Audit / Unknown Scope)**：**0 项**
 
@@ -25,7 +25,7 @@
 | 序号 | 功能大类 | 包含示例数 | 编号跨度 | 已实证 | 隔离待补 |
 | :---: | :--- | :---: | :---: | :---: | :---: |
 | 01 | [基础快速起步 (Get-Started)](#get-started) | 2 项 | `#001 ~ #002` | 1 项 | 0 项 |
-| 02 | [片上与总线外设 (Peripherals)](#peripherals) | 114 项 | `#003 ~ #116` | 3 项 | 0 项 |
+| 02 | [片上与总线外设 (Peripherals)](#peripherals) | 114 项 | `#003 ~ #116` | 4 项 | 0 项 |
 | 03 | [操作系统与核心系统调用 (System & OS)](#system) | 68 项 | `#117 ~ #184` | 0 项 | 0 项 |
 | 04 | [网络与应用层通信协议 (Protocols)](#protocols) | 35 项 | `#185 ~ #219` | 1 项 | 0 项 |
 | 05 | [Wi-Fi 无线局域网 (Wi-Fi)](#wifi) | 24 项 | `#220 ~ #243` | 1 项 | 0 项 |
@@ -121,7 +121,7 @@
 ---
 
 <a id="peripherals"></a>
-### 片上与总线外设 (Peripherals)（共 114 项 | 编号 `#003 ~ #116` | 已实证: 3 项 | 隔离待补: 0 项）
+### 片上与总线外设 (Peripherals)（共 114 项 | 编号 `#003 ~ #116` | 已实证: 4 项 | 隔离待补: 0 项）
 
 | 状态 | 编号 | 官方子示例相对路径 | 可观测等级 | 优先级 | 对应 wink-micro-app | 验收标准与架构说明 |
 | :---: | :---: | :--- | :---: | :---: | :--- | :--- |
@@ -145,7 +145,7 @@
 | [ ] | 020 | `peripherals/gpio/generic_gpio` | 📜 Level 2 | P1 | `peripherals/gpio_generic_gpio` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 021 | `peripherals/gpio/matrix_keyboard` | 📜 Level 2 | P1 | `peripherals/gpio_matrix_keyboard` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
 | [-] | 022 | `peripherals/h264` | 🎯 Level 1 | P4 | — | 声明 Out-of-Scope。硬件 H.264 编解码加速器。 |
-| [ ] | 023 | `peripherals/i2c/i2c_basic` | 📜 Level 2 | P0 | [`peripherals/i2c_basic`](peripherals/i2c_basic) | [Lane 2: 数字总线] I2C读取传感器寄存器 |
+| [x] | 023 | `peripherals/i2c/i2c_basic` | 📜 Level 2 | P0 | [`peripherals/i2c_basic`](peripherals/i2c_basic) | [Lane 2: 数字总线] 已完成实证。 |
 | [ ] | 024 | `peripherals/i2c/i2c_eeprom` | 📜 Level 2 | P2 | `peripherals/i2c_i2c_eeprom` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 025 | `peripherals/i2c/i2c_slave_network_sensor` | 📜 Level 2 | P2 | `peripherals/i2c_i2c_slave_network_sensor` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 026 | `peripherals/i2c/i2c_tools` | 📜 Level 2 | P2 | `peripherals/i2c_i2c_tools` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |

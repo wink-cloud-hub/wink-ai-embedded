@@ -17,11 +17,13 @@
       "description": "断言I2C总线主控初始化阶段系统供电轨稳定维持 3.3V"
     },
     {
-      "type": "ASSERT_POINT",
-      "timeUs": "500ms",
-      "target": "power:VCC_3V3",
-      "matcher": 3.3,
-      "description": "断言MPU9250寄存器读写与总线释放后状态稳定"
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0us", "1000ms"],
+      "busType": "i2c",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": { "encoding": "hex", "hex": "7571" },
+      "description": "断言 I2C 总线发送访问 MPU9250 WHO_AM_I 寄存器(0x75)并成功读取回传器件ID(0x71)"
     }
   ]
 }

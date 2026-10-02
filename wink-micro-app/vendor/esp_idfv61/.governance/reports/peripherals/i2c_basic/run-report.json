@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-01T02:42:18.941Z",
+  "timestamp": "2026-10-02T07:09:39.887Z",
   "total": 1,
   "passed": 1,
   "failed": 0,
@@ -31,11 +31,20 @@
         },
         {
           "stepIndex": 1,
-          "type": "ASSERT_POINT",
+          "type": "ASSERT_BUS_PAYLOAD",
           "status": "passed",
-          "timeUs": "500000",
-          "actual": 3.3,
-          "expected": 3.3
+          "timeUs": "1000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "uq",
+              "k�"
+            ]
+          },
+          "expected": {
+            "encoding": "hex",
+            "hex": "7571"
+          }
         }
       ],
       "diagnostics": []
