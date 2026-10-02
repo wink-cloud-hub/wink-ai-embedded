@@ -69,6 +69,34 @@ description: 审查、编写、复验或交付 wink-micro-app/vendor/esp_idfv61 
 - `ASSERT_WAVEFORM/ASSERT_SEQUENCE` 可由当前运行时解析，但静态语义门禁尚未正确计为断言；不能增加无关点断言或绕过门禁来交差。
 - 物理引脚/器件按拓扑核验；UART 总线、Wi-Fi/Netif 等逻辑观测按各自契约核验，不统一塞进 `devices`。当前 GPIO 门禁在声明为空时存在漏检，需要补充人工核查。
 
+## 底座缺陷自主调查与受控 PAL 增量自愈规程 (Autonomous Self-Healing SOP)
+
+当运行流水线带 `--auto-heal` 遇到 Phase 3 正向基线仿真失败时，系统自动启动双 Agent 自愈闭环。自愈执行必须严格遵循以下规程：
+
+1. **不可变调查资产规范**：
+   自愈在 `.governance/investigations/<entry_id>/` 下持久化留存不可篡改证据链：
+   - `01-ROOT-CAUSE-ANALYSIS.md`：根因现象、堆栈追溯与归因三维裁定；
+   - `02-REMEDIATION-PLAN.md`：方案正文、红线自查与 Synthesis Log 深度融合记录；
+   - `03-ADVERSARIAL-REVIEW.md`：裁判 Agent 出具的双盲对抗审查记录；
+   - `patch.diff`：标准的 Unified Diff 代码补丁工件（物理写入的唯一凭证）；
+   - `session_state.json`：12 阶段完整状态机与断点恢复快照（Schema v2）。
+
+2. **PAL 纯增量演进四大钢铁纪律（ADR-0092 Tier 1 规范）**：
+   - **纯增量原则**：允许在 `wink-micro-os/pal/include/hal/` 新增通用外设抽象文件（如 `pal_dac.h`），严禁修改已存在的函数签名、入参、返回值或既有结构体字段（零破坏性变更）；
+   - **跨平台洁癖**：PAL 头文件严禁引入任何 `esp_*.h`、`freertos/*.h` 或芯片寄存器私有类型，必须保持 8051/STM32 跨平台通用性；
+   - **三位一体同源提交**：新增外设头文件必须同时在当前补丁中提交 `targets/wasm/` 仿真桩与 `targets/esp32/` 物理驱动，缺一不可；
+   - **门禁合规**：必须通过 `winkcli lint --pack layering --pack api` 与 Gate 2 防膨胀扫描。
+
+3. **双盲审查与补丁工件化**：
+   - 传给审查裁判的 Prompt 必须剥离出案者的内部思考链（CoT），防止思维锚定；
+   - 代码修改必须以受控 `patch.diff` 为介质，在物理修改前经 `HeuristicSafetyChecker` 执行 8 大硬检（H-1 空桩、H-2 特判、H-3 变异绕过、H-4 告警降级、H-5 PAL 纯洁度、H-6 浮点 PWM、H-7 许可证、H-8 安全白名单）；
+   - 执行 `git apply --check` 预检无冲突后方允许事务性合入。
+
+4. **双轨事务性回滚与分级零回归**：
+   - 前置 Pre-flight 检查工作区脏代码，发现未暂存修改立即终止自愈并报错；
+   - 回滚时精准执行双轨清理：已跟踪修改项 `git checkout -- <file>`，新增未跟踪项 `file.unlink()` 彻底删除；
+   - 补丁应用后必须触发 L1 同领域快速回归与 L2 全量 6 大黄金用例（`blink`, `ledc`, `gptimer`, `uart_echo`, `http_client`, `station`）零回归验证；任何基准退化一票否决回滚。
+
 ## Review 的只读命令
 
 ```powershell
