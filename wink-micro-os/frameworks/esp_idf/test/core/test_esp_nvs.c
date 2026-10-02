@@ -216,6 +216,45 @@ void test_nvs_uncommitted_discarded_on_deinit_reinit(void) {
     nvs_close(h2);
 }
 
+void test_nvs_iterators_and_type_metadata(void) {
+    nvs_handle_t h = 0;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_open("iter_ns", NVS_READWRITE, &h));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_set_i32(h, "counter", 42));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_set_str(h, "message", "hello_nvs"));
+
+    nvs_type_t t = NVS_TYPE_ANY;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_find_key(h, "counter", &t));
+    TEST_ASSERT_EQUAL_INT(NVS_TYPE_I32, t);
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_find_key(h, "message", &t));
+    TEST_ASSERT_EQUAL_INT(NVS_TYPE_STR, t);
+
+    nvs_iterator_t it = NULL;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_entry_find("nvs", "iter_ns", NVS_TYPE_ANY, &it));
+    TEST_ASSERT_NOT_NULL(it);
+
+    int count = 0;
+    while (it != NULL) {
+        nvs_entry_info_t info;
+        TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_entry_info(it, &info));
+        TEST_ASSERT_EQUAL_STRING("iter_ns", info.namespace_name);
+        if (strcmp(info.key, "counter") == 0) {
+            TEST_ASSERT_EQUAL_INT(NVS_TYPE_I32, info.type);
+            count++;
+        } else if (strcmp(info.key, "message") == 0) {
+            TEST_ASSERT_EQUAL_INT(NVS_TYPE_STR, info.type);
+            count++;
+        }
+        esp_err_t res = nvs_entry_next(&it);
+        if (res != ESP_OK) {
+            TEST_ASSERT_EQUAL_INT32(ESP_ERR_NVS_NOT_FOUND, res);
+            TEST_ASSERT_NULL(it);
+        }
+    }
+    TEST_ASSERT_EQUAL_INT(2, count);
+    nvs_release_iterator(it);
+    nvs_close(h);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_nvs_handle_lifecycle_and_limit);
@@ -225,5 +264,6 @@ int main(void) {
     RUN_TEST(test_nvs_entry_limit);
     RUN_TEST(test_nvs_commit_survives_soft_reset_but_handles_do_not);
     RUN_TEST(test_nvs_uncommitted_discarded_on_deinit_reinit);
+    RUN_TEST(test_nvs_iterators_and_type_metadata);
     return UNITY_END();
 }

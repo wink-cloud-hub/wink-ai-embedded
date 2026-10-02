@@ -76,7 +76,8 @@ $allCarriers = @(
     @{ Name = 'wifi_sta';      Rel = 'vendor/esp_idfv61/wifi/wifi_sta';              Channel = 'Wi-Fi Station Mode & Netif' },
     @{ Name = 'http_client';   Rel = 'vendor/esp_idfv61/protocols/http_client';   Channel = 'HTTP/REST Client & Events' },
     @{ Name = 'mqtt_tcp';      Rel = 'vendor/esp_idfv61/protocols/mqtt_tcp';      Channel = 'MQTT Protocol & Event Loop' },
-    @{ Name = 'bleprph';       Rel = 'vendor/esp_idfv61/bluetooth/bleprph';       Channel = 'NimBLE GAP/GATT Server' }
+    @{ Name = 'bleprph';       Rel = 'vendor/esp_idfv61/bluetooth/bleprph';       Channel = 'NimBLE GAP/GATT Server' },
+    @{ Name = 'nvs_nvs_rw_value'; Rel = 'vendor/esp_idfv61/storage/nvs_nvs_rw_value'; Channel = 'NVS Read/Write Value & Key Iteration' }
 )
 
 $carriers = @()

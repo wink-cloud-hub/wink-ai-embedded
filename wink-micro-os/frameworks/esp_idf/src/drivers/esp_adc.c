@@ -437,7 +437,10 @@ esp_err_t adc_continuous_config(adc_continuous_handle_t handle, const adc_contin
                 .full_scale_mv = get_atten_full_scale_mv((adc_atten_t)p->atten),
                 .resolution_bits = (p->bit_width > 0) ? p->bit_width : 12,
             };
-            (void)pal_adc_init((pal_adc_channel_t)p->channel, &pal_cfg);
+            wink_status_t init_st = pal_adc_init((pal_adc_channel_t)p->channel, &pal_cfg);
+            if (init_st < 0) {
+                return ESP_FAIL;
+            }
         }
     }
     s_continuous_ctx.dig_cfg.adc_pattern = s_continuous_ctx.patterns;
