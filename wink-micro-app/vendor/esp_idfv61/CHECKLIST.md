@@ -14,9 +14,9 @@
 ## 一、 总体适配进度统计
 
 - **官方独立示例总数**：**478 个**
-  - `[x]` **已完成六要素实证 (Verified)**：**17 项**
+  - `[x]` **已完成六要素实证 (Verified)**：**18 项**
   - `[?]` **存量隔离待补凭证 (Quarantined Debt)**：**0 项**（14 天 TTL 过期硬阻断，至 `2026-10-13`）
-  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**274 项**
+  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**273 项**
   - `[-]` **明确产品排除 / 暂缓投入 (Out-of-Scope / Deferred)**：**187 项**（编译期 `WINK_SLA_ERROR` Fail-Loud 阻断）
   - `?` **待深度审定 (Pending Audit / Unknown Scope)**：**0 项**
 
@@ -26,7 +26,7 @@
 | :---: | :--- | :---: | :---: | :---: | :---: |
 | 01 | [基础快速起步 (Get-Started)](#get-started) | 2 项 | `#001 ~ #002` | 2 项 | 0 项 |
 | 02 | [片上与总线外设 (Peripherals)](#peripherals) | 114 项 | `#003 ~ #116` | 9 项 | 0 项 |
-| 03 | [操作系统与核心系统调用 (System & OS)](#system) | 68 项 | `#117 ~ #184` | 0 项 | 0 项 |
+| 03 | [操作系统与核心系统调用 (System & OS)](#system) | 68 项 | `#117 ~ #184` | 1 项 | 0 项 |
 | 04 | [网络与应用层通信协议 (Protocols)](#protocols) | 35 项 | `#185 ~ #219` | 2 项 | 0 项 |
 | 05 | [Wi-Fi 无线局域网 (Wi-Fi)](#wifi) | 24 项 | `#220 ~ #243` | 1 项 | 0 项 |
 | 06 | [蓝牙协议栈 (Bluetooth)](#bluetooth) | 147 项 | `#244 ~ #390` | 1 项 | 0 项 |
@@ -243,7 +243,7 @@
 ---
 
 <a id="system"></a>
-### 操作系统与核心系统调用 (System & OS)（共 68 项 | 编号 `#117 ~ #184` | 已实证: 0 项 | 隔离待补: 0 项）
+### 操作系统与核心系统调用 (System & OS)（共 68 项 | 编号 `#117 ~ #184` | 已实证: 1 项 | 隔离待补: 0 项）
 
 | 状态 | 编号 | 官方子示例相对路径 | 可观测等级 | 优先级 | 对应 wink-micro-app | 验收标准与架构说明 |
 | :---: | :---: | :--- | :---: | :---: | :--- | :--- |
@@ -255,7 +255,7 @@
 | [ ] | 122 | `system/deep_sleep` | 📜 Level 2 | P2 | `system/deep_sleep` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 123 | `system/deep_sleep_wake_stub` | 📜 Level 2 | P2 | `system/deep_sleep_wake_stub` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
 | [-] | 124 | `system/efuse` | 📜 Level 2 | P4 | — | 声明 Out-of-Scope。调用底层硬件 eFuse 物理熔断驱动，软件仿真无法进行不可逆电气熔断。 |
-| [ ] | 125 | `system/esp_event/default_event_loop` | 📜 Level 2 | P2 | `system/esp_event_default_event_loop` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
+| [x] | 125 | `system/esp_event/default_event_loop` | 📜 Level 2 | P0 | [`system/esp_event_default_event_loop`](system/esp_event_default_event_loop) | [Lane 1: 内核调度] 已完成实证。 |
 | [ ] | 126 | `system/esp_event/user_event_loops` | 📜 Level 2 | P2 | `system/esp_event_user_event_loops` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 127 | `system/esp_timer` | 📜 Level 2 | P2 | `system/esp_timer` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 128 | `system/esp_trace` | 📜 Level 2 | P2 | `system/esp_trace` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
