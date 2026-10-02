@@ -1,0 +1,48 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 dac_oneshot headless deterministic proof",
+    "templateId": "esp_idfv61_dac_dac_oneshot",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3500ms",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "0ms",
+      "adcChannel": 25,
+      "valueNorm": 0.4,
+      "description": "向 DAC/ADC Channel 0 (GPIO 25) 注入 40% 模拟电学基线"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "0ms",
+      "adcChannel": 26,
+      "valueNorm": 0.7,
+      "description": "向 DAC/ADC Channel 1 (GPIO 26) 注入 70% 模拟电学基线"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统核心供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "adc:25",
+      "matcher": { "$near": { "target": 0.4, "tolerance": 0.05 } },
+      "description": "断言 DAC/ADC Channel 0 (GPIO 25) 模拟采样轨维持 0.4"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "adc:26",
+      "matcher": { "$near": { "target": 0.7, "tolerance": 0.05 } },
+      "description": "断言 DAC/ADC Channel 1 (GPIO 26) 模拟采样轨维持 0.7"
+    }
+  ]
+}

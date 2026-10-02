@@ -14,9 +14,9 @@
 ## 一、 总体适配进度统计
 
 - **官方独立示例总数**：**478 个**
-  - `[x]` **已完成六要素实证 (Verified)**：**9 项**
+  - `[x]` **已完成六要素实证 (Verified)**：**10 项**
   - `[?]` **存量隔离待补凭证 (Quarantined Debt)**：**0 项**（14 天 TTL 过期硬阻断，至 `2026-10-13`）
-  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**282 项**
+  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**281 项**
   - `[-]` **明确产品排除 / 暂缓投入 (Out-of-Scope / Deferred)**：**187 项**（编译期 `WINK_SLA_ERROR` Fail-Loud 阻断）
   - `?` **待深度审定 (Pending Audit / Unknown Scope)**：**0 项**
 
@@ -25,7 +25,7 @@
 | 序号 | 功能大类 | 包含示例数 | 编号跨度 | 已实证 | 隔离待补 |
 | :---: | :--- | :---: | :---: | :---: | :---: |
 | 01 | [基础快速起步 (Get-Started)](#get-started) | 2 项 | `#001 ~ #002` | 1 项 | 0 项 |
-| 02 | [片上与总线外设 (Peripherals)](#peripherals) | 114 项 | `#003 ~ #116` | 5 项 | 0 项 |
+| 02 | [片上与总线外设 (Peripherals)](#peripherals) | 114 项 | `#003 ~ #116` | 6 项 | 0 项 |
 | 03 | [操作系统与核心系统调用 (System & OS)](#system) | 68 项 | `#117 ~ #184` | 0 项 | 0 项 |
 | 04 | [网络与应用层通信协议 (Protocols)](#protocols) | 35 项 | `#185 ~ #219` | 2 项 | 0 项 |
 | 05 | [Wi-Fi 无线局域网 (Wi-Fi)](#wifi) | 24 项 | `#220 ~ #243` | 1 项 | 0 项 |
@@ -121,7 +121,7 @@
 ---
 
 <a id="peripherals"></a>
-### 片上与总线外设 (Peripherals)（共 114 项 | 编号 `#003 ~ #116` | 已实证: 5 项 | 隔离待补: 0 项）
+### 片上与总线外设 (Peripherals)（共 114 项 | 编号 `#003 ~ #116` | 已实证: 6 项 | 隔离待补: 0 项）
 
 | 状态 | 编号 | 官方子示例相对路径 | 可观测等级 | 优先级 | 对应 wink-micro-app | 验收标准与架构说明 |
 | :---: | :---: | :--- | :---: | :---: | :--- | :--- |
@@ -136,7 +136,7 @@
 | [ ] | 011 | `peripherals/dac/dac_continuous/dac_audio` | 📜 Level 2 | P2 | `peripherals/dac_dac_continuous_dac_audio` | [Lane 4: 模拟电学] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 012 | `peripherals/dac/dac_continuous/signal_generator` | 📜 Level 2 | P2 | `peripherals/dac_dac_continuous_signal_generator` | [Lane 4: 模拟电学] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 013 | `peripherals/dac/dac_cosine_wave` | 📜 Level 2 | P1 | `peripherals/dac_dac_cosine_wave` | [Lane 4: 模拟电学] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 014 | `peripherals/dac/dac_oneshot` | 📜 Level 2 | P1 | `peripherals/dac_dac_oneshot` | [Lane 4: 模拟电学] 待排期。依赖进一步框架门面扩展。 |
+| [x] | 014 | `peripherals/dac/dac_oneshot` | 📜 Level 2 | P0 | [`peripherals/dac_dac_oneshot`](peripherals/dac_dac_oneshot) | [Lane 4: 模拟电学] 已完成实证。 |
 | [ ] | 015 | `peripherals/dedicated_gpio/soft_i2c` | 📜 Level 2 | P1 | `peripherals/dedicated_gpio_soft_i2c` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 016 | `peripherals/dedicated_gpio/soft_spi` | 📜 Level 2 | P1 | `peripherals/dedicated_gpio_soft_spi` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 017 | `peripherals/dedicated_gpio/soft_uart` | 📜 Level 2 | P1 | `peripherals/dedicated_gpio_soft_uart` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |

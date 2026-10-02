@@ -1,0 +1,17 @@
+{
+  "app_name": "esp_idfv61_dac_dac_oneshot",
+  "display_name": "Espressif ESP-IDF DAC oneshot",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "mcu": "esp32",
+  "tick_ms": 1,
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/peripherals/dac/dac_oneshot/main",
+    "files": {
+      "dac_oneshot_example_main.c": "4c94f4f44cc28126fb9137930e22f9f08e9ceda5555a5b94054811b3422466bb"
+    }
+  },
+  "devices": {}
+}

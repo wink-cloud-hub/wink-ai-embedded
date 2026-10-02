@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 9,
-    "verified_configs": 9
+    "audited": 10,
+    "verified_configs": 10
   },
   "entries": [
     {
@@ -854,10 +854,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-02T09:07:01Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -889,18 +891,26 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/peripherals_dac_dac_oneshot.scenario.json",
+            "scenario_path": "peripherals/dac_dac_oneshot/unisim-scenarios/dac_dac_oneshot.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
             "positive_cases": [],
             "negative_cases": [],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261002-esp.peripherals.dac.dac_oneshot-verified",
+            "assets_sha256": "194ed48bbfbcd20217c99926ff1ac010d69d1cd0aa78536f9f4aaeabcc98c3f7",
+            "scenario_sha256": "3c09f3356308b093c0b1d10691690418cf4cc1ed1b90d2dd077d2123aa93fb5a",
+            "execution_report_ref": ".governance/reports/peripherals/dac_dac_oneshot/run-report.json",
+            "verified_commit": "a7d0b63831319d4956df03e2df0cbfe256b67c4a",
+            "verified_at": "2026-10-02T09:07:01Z"
+          }
         }
       ],
       "target_app_dir": "peripherals/dac_dac_oneshot"
