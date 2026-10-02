@@ -1,0 +1,18 @@
+{
+  "app_name": "esp_idfv61_system_esp_timer",
+  "display_name": "Espressif ESP-IDF esp_timer",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "mcu": "esp32",
+  "simulation_profile": "STANDARD",
+  "tick_ms": 1,
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/system/esp_timer/main",
+    "files": {
+      "main.c": "20a88b5266f303339dcc3c6711a4e0aec53a8e40523990f2768de5f2346edc2d"
+    }
+  },
+  "devices": {}
+}

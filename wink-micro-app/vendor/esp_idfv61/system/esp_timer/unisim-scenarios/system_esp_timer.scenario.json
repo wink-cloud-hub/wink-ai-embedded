@@ -1,0 +1,101 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 esp_timer headless deterministic proof",
+    "templateId": "esp_idfv61_system_esp_timer",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "15000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Started timers, time since boot:",
+      "description": "断言系统成功初始化并启动四个高精度定时器"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["400ms", "1500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Periodic timer called, time since boot:",
+      "description": "断言首个周期性定时器（500ms 周期）成功到达首次回调"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["1000ms", "3000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Timer stats:",
+      "description": "断言主任务通过 esp_timer_dump 导出定时器状态快照"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["2500ms", "4000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Timed periodic timer called, time since boot:",
+      "description": "断言指定绝对时间的定时周期定时器在 3s 到达首次回调"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["4500ms", "6000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "One-shot timer called, time since boot:",
+      "description": "断言 5s 单次定时器按预定延迟精确触发"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["4500ms", "6000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Restarted periodic timer with 1s period",
+      "description": "断言单次定时器回调中成功将周期定时器重启为 1s 周期"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["5500ms", "7500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Timed one-shot timer called, time since boot:",
+      "description": "断言 6s 绝对时间单次定时器精确触发"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["5500ms", "7500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Restarted timed periodic timer with 1s period",
+      "description": "断言在回调中通过 esp_timer_restart_at 重启定时周期定时器"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["10000ms", "15000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Stopped and deleted timers",
+      "description": "断言主任务成功停止并销毁全部定时器完成示例生命周期闭环"
+    }
+  ]
+}
