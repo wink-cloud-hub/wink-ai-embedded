@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 7,
-    "verified_configs": 7
+    "audited": 8,
+    "verified_configs": 8
   },
   "entries": [
     {
@@ -12807,10 +12807,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-02T08:08:22Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -12843,7 +12845,7 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
@@ -12868,7 +12870,15 @@
             ],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261002-esp.protocols.mqtt-verified",
+            "assets_sha256": "2642c08b558a608b1590a750026c20d02032b9b07dce1ebd786de703c4ed227e",
+            "scenario_sha256": "485bb71bc54c5d94bea68a9cde7ed68d95e79a88a394751e0180ec0b9c9479b8",
+            "execution_report_ref": ".governance/reports/protocols/mqtt_tcp/run-report.json",
+            "verified_commit": "099f3f4b13b89178c520480bc987c8803380db7a",
+            "verified_at": "2026-10-02T08:08:22Z"
+          }
         }
       ],
       "target_app_dir": "protocols/mqtt_tcp"

@@ -4,24 +4,58 @@
     "name": "ESP-IDF v6.1 mqtt_tcp headless deterministic proof",
     "templateId": "esp_idfv61_mqtt_tcp",
     "accuracyMode": "behavioral",
-    "timeoutUs": "3000000",
+    "timeoutUs": "3000ms",
     "failurePolicy": "fail-fast",
     "determinism": { "prngSeed": 42 }
   },
   "steps": [
     {
+      "type": "INJECT_WIFI_FIXTURE",
+      "timeUs": "0ms",
+      "accessPoints": [
+        {
+          "ssid": "myssid",
+          "bssid": "00:11:22:33:44:55",
+          "rssi": -45,
+          "channel": 1,
+          "authMode": "WPA2_PSK",
+          "password": "mypassword",
+          "dhcp": {
+            "assignedIp": "192.168.1.100",
+            "netmask": "255.255.255.0",
+            "gateway": "192.168.1.1",
+            "dns": "192.168.1.1"
+          }
+        }
+      ]
+    },
+    {
       "type": "ASSERT_POINT",
       "timeUs": "500ms",
-      "target": "power:VCC_WIFI",
-      "matcher": 3.3,
-      "description": "断言MQTT通信连接阶段网络供电轨稳定维持 3.3V"
+      "target": "netif:sta:ip",
+      "matcher": "192.168.1.100",
+      "description": "断言底层网络通过 Wi-Fi STA 协商获得有效虚拟 IP 地址并就绪"
     },
     {
       "type": "ASSERT_POINT",
       "timeUs": "1000ms",
-      "target": "power:VCC_3V3",
-      "matcher": 3.3,
-      "description": "断言MQTT事件循环运行期间系统核心电源稳定维持 3.3V"
+      "target": "mqtt:client:state",
+      "matcher": "CONNECTED",
+      "description": "断言 MQTT 客户端成功与 Broker 建立稳定 TCP/MQTT 连接"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "mqtt:tx:topic",
+      "matcher": "topic/qos0",
+      "description": "断言 MQTT 客户端向指定业务主题 topic/qos0 成功发布数据"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "mqtt:rx:payload",
+      "matcher": "data",
+      "description": "断言 MQTT 客户端成功接收到订阅主题回环派发的业务载荷数据"
     }
   ]
 }
