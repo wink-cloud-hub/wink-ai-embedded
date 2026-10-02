@@ -81,7 +81,8 @@ $allCarriers = @(
     @{ Name = 'spi_master_hd_eeprom'; Rel = 'vendor/esp_idfv61/peripherals/spi_master_hd_eeprom'; Channel = 'SPI Master Half-Duplex Bus Communication & EEPROM' },
     @{ Name = 'gpio_generic_gpio'; Rel = 'vendor/esp_idfv61/peripherals/gpio_generic_gpio'; Channel = 'Generic GPIO Input/Output & Edge Interrupt' },
     @{ Name = 'esp_event_default_event_loop'; Rel = 'vendor/esp_idfv61/system/esp_event_default_event_loop'; Channel = 'Default Event Loop & Periodic Timer/Task Events' },
-    @{ Name = 'freertos_real_time_stats'; Rel = 'vendor/esp_idfv61/system/freertos_real_time_stats'; Channel = 'FreeRTOS Real Time Stats & Task Execution Measurement' }
+    @{ Name = 'freertos_real_time_stats'; Rel = 'vendor/esp_idfv61/system/freertos_real_time_stats'; Channel = 'FreeRTOS Real Time Stats & Task Execution Measurement' },
+    @{ Name = 'esp_timer'; Rel = 'vendor/esp_idfv61/system/esp_timer'; Channel = 'High Resolution Timer & Periodic/Oneshot Alarms' }
 )
 
 $carriers = @()

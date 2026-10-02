@@ -447,8 +447,12 @@ void test_esp_timer_fail_loud(void) {
     };
     TEST_ASSERT_EQUAL_INT32(ESP_OK, esp_timer_create(&valid_args, &th));
     TEST_ASSERT_NOT_NULL(th);
+    TEST_ASSERT_FALSE(esp_timer_is_active(th));
     TEST_ASSERT_EQUAL_INT32(ESP_OK, esp_timer_start_periodic(th, 10000));
+    TEST_ASSERT_TRUE(esp_timer_is_active(th));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, esp_timer_dump(stdout));
     TEST_ASSERT_EQUAL_INT32(ESP_OK, esp_timer_stop(th));
+    TEST_ASSERT_FALSE(esp_timer_is_active(th));
     TEST_ASSERT_EQUAL_INT32(ESP_OK, esp_timer_delete(th));
 
     /* esp_timer_get_time returns valid monotonically non-decreasing microseconds */

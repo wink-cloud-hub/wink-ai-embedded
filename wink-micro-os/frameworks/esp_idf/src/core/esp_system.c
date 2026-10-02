@@ -165,3 +165,20 @@ esp_err_t esp_intr_free(intr_handle_t handle) {
     ESP_LOGE("ESP_SYS", "esp_intr_free: not supported in simulation (M0)");
     return ESP_ERR_NOT_SUPPORTED;
 }
+
+#include <unistd.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+int usleep(useconds_t us) {
+    if (us == 0) {
+        return 0;
+    }
+    TickType_t ticks = (TickType_t)(us / (portTICK_PERIOD_MS * 1000ULL));
+    if (ticks == 0) {
+        ticks = 1;
+    }
+    vTaskDelay(ticks);
+    return 0;
+}
+
