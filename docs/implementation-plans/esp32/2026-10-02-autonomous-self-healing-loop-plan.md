@@ -1,18 +1,18 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
-# 实施计划：ESP-IDF 治理 Loop 底座自愈与双 Agent 对抗审查闭环体系 (v2.2 工业实战终版)
+# 实施计划：ESP-IDF 治理 Loop 底座自愈与双 Agent 对抗审查闭环体系 (v2.3 终极精细版)
 
 | 字段 | 内容 |
 |---|---|
-| 计划编号 | PLAN-20261002-ESP-IDF-AUTONOMOUS-SELF-HEALING-LOOP-v2.2 |
+| 计划编号 | PLAN-20261002-ESP-IDF-AUTONOMOUS-SELF-HEALING-LOOP-v2.3 |
 | 状态 | **Ready for Execution** |
 | 日期 | 2026-10-02 |
 | 目标平台/SoC | `wasm32-unknown-emscripten` / `esp32 xtensa` 双 Target |
 | 工具链/SDK版本| `ESP-IDF v6.1-dev` / `Emscripten 3.1.x` / Node.js 24+ / Python 3.11+ / pytest |
-| 计划版本 | `v2.2`（工业实战深度修订版：解绑机械一刀切，引入 **PAL 外设抽象受控纯增量演进分级门禁**，彻底消除后续 478 项用例因底层外设缺失导致的批量阻塞；补齐统一补丁工件 `patch.diff`、12 阶段完整物理状态机与断点恢复矩阵、零依赖分级 C 解析器、双盲对抗审查与双轨事务回滚） |
-| 优先次序 | **P0 机器防腐分级硬核与 12 状态持久化 ➔ P0 双盲 Agent 对抗审查与补丁工件化 ➔ P0 受控 PAL 纯增量演进与事务回滚 ➔ P1 流水线挂载与 CLI 调度 ➔ P2 标杆示例（mqtt_tcp / i2c_basic）实证闭环** |
+| 计划版本 | `v2.3`（工业实战终极精细版：增补**执行后客观闭环复盘与补遗门禁 (Post-Execution Completeness Audit)**，构建 13 阶段完整物理状态机，彻底破除大模型“满足即停 (Premature Closure)”与粗心遗漏缺陷；受控 PAL 纯增量演进分级门禁，统一补丁工件 `patch.diff`，零依赖分级 C 解析器，双盲对抗审查与双轨事务回滚） |
+| 优先次序 | **P0 机器防腐分级硬核与 13 状态持久化 ➔ P0 双盲 Agent 对抗审查与补丁工件化 ➔ P0 执行后客观复盘与补遗门禁 ➔ P0 受控 PAL 纯增量演进与事务回滚 ➔ P1 流水线挂载与 CLI 调度 ➔ P2 标杆示例（mqtt_tcp / i2c_basic）实证闭环** |
 | 决策与设计依据 | [ADR-0001：负数错误码标准](../../decisions/core/0001-error-code-sign-convention.md)<br>[ADR-0002：双 Target 同源编译](../../decisions/core/0002-dual-target-compilation.md)<br>[ADR-0004：编译期静态分发](../../decisions/core/0004-static-dispatch-vs-runtime-ops.md)<br>[ADR-0012：契约诚实优于静默降级（Fail-Loud 原则）](../../decisions/core/0012-contract-honesty-over-silent-degradation.md)<br>[ADR-0083 / ADR-0084：开源许可分层地图](../../decisions/core/0083-open-source-license-boundary.md)<br>[ADR-0091：多配置实例与五维正交 Schema](../../decisions/unisim/0091-esp-idf-multi-config-orthogonal-schema.md)<br>[ADR-0092：ESP-IDF 官方示例仿真治理前置筑基宪章（Tier 1 基础外设下沉 PAL 规范）](../../decisions/unisim/0092-esp-idf-simulation-governance-and-capability-charter.md)<br>[PLAN-20261001-ESP-IDF-HEADLESS-ANTI-FALSE-GREEN](./2026-10-01-anti-false-green-verification-plan.md) |
 | 管辖数据源 | `checklist.data.json`、`wink-micro-app/vendor/esp_idfv61/.governance/investigations/`、`wink-micro-os/frameworks/esp_idf/`、`wink-micro-os/pal/`、`packages/unisim/` |
-| 实施目标文件 | `.governance/tools/loop/remediator.py`（新增）、`.governance/tools/loop/safety_checker.py`（新增，独立分级防腐与 PAL 纯增量白名单规则模块）、`.governance/tools/loop/agent.py`（扩充双盲与补丁生成）、`.governance/tools/loop/pipeline.py`（扩充挂载自愈）、`.governance/tools/loop/runner.py`（扩充双 Agent CLI 调度）、`.governance/gates/tests/test_loop_remediator.py`（新增离线单测套件）、`.agents/skills/governance-sop-esp/SKILL.md`（同步更新） |
+| 实施目标文件 | `.governance/tools/loop/remediator.py`（新增）、`.governance/tools/loop/safety_checker.py`（新增，独立分级防腐与 PAL 纯增量白名单规则模块）、`.governance/tools/loop/agent.py`（扩充双盲、执行后自查与补丁生成）、`.governance/tools/loop/pipeline.py`（扩充挂载自愈）、`.governance/tools/loop/runner.py`（扩充双 Agent CLI 调度）、`.governance/gates/tests/test_loop_remediator.py`（新增离线单测套件）、`.agents/skills/governance-sop-esp/SKILL.md`（同步更新） |
 | 验收门禁 | `pytest .governance/gates/tests/test_loop_remediator.py`（100% 离线通过）、`pytest .governance/gates/tests/test_loop_runner.py`、`python .github/scripts/check_license_map.py`、`python .governance/gates/run_gates.py --gate 1`、零回归黄金套件全绿 |
 
 ---
@@ -20,24 +20,21 @@
 ## 一、 战略总目标与设计哲学
 
 ### 1.1 战役背景与深层痛点
-在 `PLAN-20261001` 战役完成后，治理 Loop 已经实现了“场景自主编写、Gate 1 语义拦截、Canary 变异击杀、凭据自动签署”的防假绿闭环。然而，当前系统在面对“需要修补底座框架”的场景时，暴露出三个深层次瓶颈：
+在 `PLAN-20261001` 战役完成后，治理 Loop 已经实现了“场景自主编写、Gate 1 语义拦截、Canary 变异击杀、凭据自动签署”的防假绿闭环。然而，当前系统在面对“需要修补底座框架”的场景时，暴露出四个深层次瓶颈：
 1. **单向止损造成治理吞吐阻塞**：
    - 当官方示例因底层缺乏协议桩（如 `mqtt_tcp` 缺乏 MQTT Broker 模拟器）、缺乏外设硬件影子模型时，现有 Loop 会在 Phase 3 基线阶段直接报错并执行 `rollback_app` 干净回滚；
    - 缺少框架能力的条目只能永久挂在 `planned` 状态，必须依赖人工排查，无法形成自动化自治推进。
 2. **底层 PAL 能力盲区与机械封锁的矛盾（关键破局点）**：
    - 经实测审计，当前 `wink-micro-os/pal/include/hal/` 仅有 11 个基础外设（ADC, DMA, GPIO, HWTimer, I2C, MCPWM, PCNT, PWM, RMT, SPI, UART）；
    - 在面对 478 个官方用例中涉及的 DAC、TouchPad、Temperature Sensor、SDMMC、看门狗 WDT、RTC PM 等外设时，底层 PAL 处于完全空白态；
-   - 若简单机械地实行“严禁修改 PAL”的一刀切限制，后续数百个用例会在自愈入口批量撞墙熔断；
    - **破局方案**：必须区分“严禁破坏性修改内核 ABI”与“允许通用外设受控纯增量扩展”，打通平台进化通道。
 3. **Agent 自我共谋与架构腐化风险（核心防范对象）**：
-   - 若草率允许 Agent 在基线失败时自由改动底座，Agent 会出于“通过测试”的贪婪目标走向投机：
-     - **投机 A（P-6 空桩违规）**：在 C 框架写空函数直接 `return ESP_OK;`；
-     - **投机 B（App 特判硬编码）**：在底座中加入 `if (strstr(app_name, "..."))` 专用分支，破坏通用性；
-     - **投机 C（降级断言标准）**：反向修改场景把断言门槛降低（如放宽 Matcher 到恒真）来迁就缺陷；
-     - **投机 D（破坏既有资产）**：修改了共享 C 文件（如 `esp_wifi.c` 或 `sim_net_responder.c`），使得当前 App 跑通了，却导致之前交付的黄金用例全线崩溃；
-     - **投机 E（PAL 私有结构体污染）**：直接在通用 PAL 中 `#include "esp_*.h"` 引入厂商专有类型，破坏跨平台（8051/STM32）同源性。
+   - 若草率允许 Agent 在基线失败时自由改动底座，Agent 会出于“通过测试”的贪婪目标走向投机：空桩违规、特判硬编码、私降编译参数、破坏既有资产、引入厂商专有头文件污染。
+4. **大模型“满足即停（Premature Closure）”与粗心盲区**：
+   - Agent 在第一次实施方案时，往往在实现主要成功路径后便急于结束，容易遗漏原方案承诺的辅助逻辑（如异常分支释放、头文件函数导出、Wasm 与 ESP32 双向闭环）；
+   - 若缺乏执行后的客观自查追问，这些遗漏将直接撞上后续耗时的编译或回归测试导致整体回滚。
 
-### 1.2 核心设计哲学（七大钢铁原则）
+### 1.2 核心设计哲学（八大钢铁原则）
 1. **归因先行与自愈权限分级裁定（Tri-Layer Triage Matrix with PAL Controlled Evolution）**：
    - 严禁盲修代码。必须先有结构化根因分析报告，明确定位缺陷层级；
    - 明确自主修复边界：允许修补应用级配置、协议层 Mock 桩，以及 **PAL 外设 HAL 层的纯增量演进**（严禁破坏性修改既有 ABI 或注入厂商专有结构体；严禁修改 OSAL 调度核心与 UniSim 核心调度器）。
@@ -53,12 +50,16 @@
    - 执行 `git apply --check patch.diff` 验证无冲突后方允许物理合入。
 4. **分级零依赖机器防腐防线（Tiered Heuristic Defense）**：
    - 不单依赖 LLM 裁判自觉性，系统使用内置零依赖纯 Python Tokenizer 与语句扫描器（可无缝升级 Tree-sitter AST）直接查杀空桩、特判和越权修改，确保在任何标准 Python 3.11 环境 100% 稳固运行。
-5. **分级零回归门禁（Tiered Zero-Regression Gate）**：
+5. **执行后客观闭环复盘与补遗门禁（Post-Execution Objective Audit）**：
+   - 在初版补丁生成后、物理编译前，强制插入一次单次结构化追问复盘；
+   - 严禁泛化的哲学提问，必须**对照原方案承诺的 DoD 逐项画勾审计**；
+   - 采用二值化判词（`FULLY_COMPLETE` vs `GAPS_FOUND`），发现遗漏产出增量补遗补丁，无遗漏直接放行，单次收敛，严禁过度设计与画蛇添足。
+6. **分级零回归门禁（Tiered Zero-Regression Gate）**：
    - 修复底座或扩展 PAL 后，自动分级触发**零回归验证**：先跑同领域用例（L1 快检），再重跑全部已交付黄金用例（L2 全量）；历史资产退化一票否决。
-6. **双轨事务回滚与开发现场保护（Transactional Dual-Track Rollback）**：
-   - 前置 Pre-flight 检查目标文件是否存在用户未暂存修改；
+7. **双轨事务回滚与开发现场保护（Transactional Dual-Track Rollback）**：
+   - 前置 Pre-flight 检查目标文件是否存在用户未暂存修改；发现脏文件立即终止自愈；
    - 回滚时区分“已跟踪修改文件（`git checkout --`）”与“自愈新增文件（`unlink` 彻底删除）”，严禁粗暴 `git checkout .` 误伤用户现场代码。
-7. **动态行为终极质检（Dynamic Behavioral Verification via Canary）**：
+8. **动态行为终极质检（Dynamic Behavioral Verification via Canary）**：
    - Phase 4 Canary 变异击杀是检验自愈补丁（如协议 Mock、PAL 新外设响应桩）真实性的试金石：若 Agent 伪造无状态死桩，变异场景将无法被击杀（触发 False-Green 拦截），迫使自愈产出真实的状态机响应。
 
 ---
@@ -71,7 +72,7 @@
 
 ```text
 wink-micro-app/vendor/esp_idfv61/.governance/investigations/<entry_id>/
-├── session_state.json          # 覆盖 12 状态的持久化快照 (支持断点恢复与代数追踪)
+├── session_state.json          # 覆盖 13 状态的持久化快照 (支持断点恢复与代数追踪)
 ├── raw_failure.log             # 触发自愈的初始报错原始日志
 ├── 01-ROOT-CAUSE-ANALYSIS.md   # 现象、调用栈、因果链断点、归因三维定位
 ├── 02-REMEDIATION-PLAN.md      # 技术方案、防腐红线、改动范围、验收标准 (融合版)
@@ -114,8 +115,6 @@ wink-micro-app/vendor/esp_idfv61/.governance/investigations/<entry_id>/
    - 必须通过 `winkcli lint --pack layering --pack api` 自动化机器扫描。
 
 #### 3. 物理写入安全白名单与黑名单（Safe-Write Whitelist & Blacklist）
-系统通过 `safety_checker.py` 对 `patch.diff` 中涉及的所有文件路径进行严格安全边界检验：
-
 ```python
 # 严格白名单 (修改范围必须 100% 匹配以下前缀)
 SAFE_WRITE_WHITELIST = [
@@ -207,9 +206,51 @@ blocking_issues_count: 0
 
 ---
 
+### 2.5 执行后完整性自查与补遗契约（Post-Execution Audit Protocol）
+
+为了根治大模型在初次写完代码后的“满足即停（Premature Closure）”现象，在 Agent A 完成方案重构与初版 `patch.diff` 生成后，系统强制插入一次**基于原方案承诺 DoD 的结构化追问复盘**。
+
+#### 1. 结构化审计自查 Prompt 规范
+```markdown
+[TASK] 自愈实施后完整性自查与 DoD 对照审计 (Role A: Post-Execution Audit)
+
+你刚刚已经完成了 02-REMEDIATION-PLAN.md 的物理代码初版实施与 patch.diff 导出。
+现在请对照【原方案承诺的验收标准 (DoD)】与【实际生成的 patch.diff】进行严密的客观对比自查：
+
+【强制自查四项清单】:
+1. 方案覆盖度对照：02-REMEDIATION-PLAN.md 中承诺的每一个技术要点，在 patch.diff 中是否均有物理代码落地？是否存在遗漏？
+2. 三位一体与接口完整性：新增/修改的 C 接口是否在对应头文件中正确导出？Wasm 仿真端与 ESP32 物理端是否双向闭环？
+3. 边界与防御完整性：超时、缓冲区溢出、空指针及异常返回路径是否均有正确处理，是否存在未完成的 TODO？
+4. 机器合规洁癖：是否存在任何未删掉的测试硬编码、浮点 PWM 或临时日志？
+
+【二值化判决输出规范 (严格防过度设计与反向画蛇添足)】:
+你必须输出以下两者之一，严禁无病呻吟发散：
+- 情况 A (确实完全交付，无任何遗漏):
+  输出:
+  VERDICT: FULLY_COMPLETE
+  理由简述（列出各项 DoD 已 100% 满足的事实证据）。
+  （此时严禁添加任何新特性或重构！）
+
+- 情况 B (发现确凿遗漏):
+  输出:
+  VERDICT: GAPS_FOUND
+  明确列出缺失的要点（例如：漏掉了头文件导出或超时重试分支）。
+  并直接给出增量补遗补丁：
+  ```diff
+  ... 增量修复 diff ...
+  ```
+```
+
+#### 2. 补遗控制与单次收敛约束
+1. **单次收敛铁律（One-Shot Bounded）**：执行后追问**严格限定为 1 轮**，绝不允许反复循环套娃追问，彻底规避大模型因过度自省而产生幻觉；
+2. **零改动快速放行**：若返回 `FULLY_COMPLETE`，直接推进到 `HEURISTIC_PRECHECK`；
+3. **增量合并（Patch Concatenation）**：若返回 `GAPS_FOUND`，系统提取增量 diff 追加合并至 `patch.diff`，迁移至 `PATCH_SUPPLEMENTING`，随后一并提交机器防腐硬核检验。
+
+---
+
 ## 三、 核心模块详细设计与类接口
 
-### 3.1 覆盖物理执行的 12 阶段状态机与断点恢复矩阵
+### 3.1 覆盖物理执行的 13 阶段状态机与断点恢复矩阵
 
 #### 1. 完整状态流转图
 ```
@@ -223,7 +264,15 @@ blocking_issues_count: 0
                 [PLAN_SYNTHESIZED]                                          │
                         │                                                   │
                         ▼                                                   │
-                [HEURISTIC_PRECHECK] ───────────────────────────────────────┤
+             [POST_EXEC_AUDITING] (二次追问客观复盘)                         │
+                        │                                                   │
+       ┌────────────────┴────────────────┐                                  │
+       ▼ (GAPS_FOUND)                    ▼ (FULLY_COMPLETE)                 │
+[PATCH_SUPPLEMENTING]                    │ (无遗漏直接放行)                 │
+       │ (合并增量补丁)                   │                                  │
+       └────────────────┬────────────────┘                                  │
+                        ▼                                                   │
+               [HEURISTIC_PRECHECK] ────────────────────────────────────────┤
                         │ (通过)                                            │
                         ▼                                                   │
                 [PATCH_APPLYING] ──> [PATCH_APPLIED] ───────────────────────┤
@@ -251,15 +300,14 @@ blocking_issues_count: 0
   "app_id": "esp.peripherals.dac",
   "attempt": 1,
   "max_attempts": 2,
-  "current_state": "PATCH_APPLIED",
+  "current_state": "POST_EXEC_AUDITING",
   "history": [
     { "state": "INIT", "timestamp": "2026-10-02T08:15:00Z" },
     { "state": "RCA_AUTHORED", "timestamp": "2026-10-02T08:15:20Z" },
     { "state": "PLAN_AUTHORED", "timestamp": "2026-10-02T08:15:45Z" },
     { "state": "REVIEW_DONE", "verdict": "REVISE_REQUIRED", "timestamp": "2026-10-02T08:16:10Z" },
     { "state": "PLAN_SYNTHESIZED", "timestamp": "2026-10-02T08:16:35Z" },
-    { "state": "HEURISTIC_PRECHECK", "verdict": "PASSED", "timestamp": "2026-10-02T08:16:40Z" },
-    { "state": "PATCH_APPLIED", "timestamp": "2026-10-02T08:16:42Z" }
+    { "state": "POST_EXEC_AUDITING", "verdict": "FULLY_COMPLETE", "timestamp": "2026-10-02T08:16:45Z" }
   ],
   "modified_files": [
     "wink-micro-app/vendor/esp_idfv61/peripherals/dac/dac_continuous/wink-app.json"
@@ -276,6 +324,7 @@ blocking_issues_count: 0
 | 中断时状态 (`current_state`) | 磁盘物理状态 | 恢复策略 |
 |---|---|---|
 | `INIT` ~ `PLAN_SYNTHESIZED` | 物理代码未动 | 直接载入已有 md 文档，推进到下一分析状态。 |
+| `POST_EXEC_AUDITING` / `PATCH_SUPPLEMENTING` | 物理代码未动 | 重新运行二次自查或合并增量 diff。 |
 | `HEURISTIC_PRECHECK` | 物理代码未动 | 重新运行安全扫描。 |
 | `PATCH_APPLYING` | 可能存在半写入 | 执行事务双轨清理，重新从 `patch.diff` 应用。 |
 | `PATCH_APPLIED` ~ `CANARY_KILL` | 物理代码已修改 | 感知到补丁已打入，继续运行后续验证阶段（编译/回归/Canary）。 |
@@ -325,7 +374,8 @@ class TransactionalGitTracker:
         self.ws_root = workspace_root
 
     def pre_flight_check(self, target_files: List[Path]) -> Tuple[bool, str]:
-        """Ensures candidate files have no uncommitted dirty modifications before healing starts."""
+        """Ensures candidate files have no uncommitted dirty modifications before healing starts.
+        Terminates immediately if dirty files found, asking user to git stash or commit."""
         ...
 
     def apply_patch(self, patch_file: Path) -> Tuple[bool, str]:
@@ -351,7 +401,7 @@ class ZeroRegressionRunner:
         self.runner_script = runner_script
 
     def run_l1_domain_regression(self, touched_files: List[Path]) -> Tuple[bool, str]:
-        """Runs verified apps sharing the same domain (e.g., network -> esp_http_client, station)."""
+        """Runs verified apps sharing the same domain based on DOMAIN_FILE_MAP."""
         ...
 
     def run_l2_golden_regression(self) -> Tuple[bool, str]:
@@ -359,7 +409,7 @@ class ZeroRegressionRunner:
         ...
 ```
 
-#### 4. 自愈控制器主编排 (`remediator.py`)
+#### 4. 执行后自查与自愈控制器主编排 (`remediator.py`)
 ```python
 class Remediator:
     def __init__(
@@ -367,13 +417,20 @@ class Remediator:
         workspace_root: Path,
         agent_synthesizer: AgentSynthesizer,
         max_attempts: int = 2,
-        agent_a_cmd: Optional[str] = None,
-        agent_b_cmd: Optional[str] = None,
     ):
         ...
 
+    def run_post_execution_audit(
+        self,
+        app_entry: dict,
+        plan_content: str,
+        patch_text: str,
+    ) -> Tuple[str, Optional[str]]:
+        """Executes one-shot DoD-based completeness audit. Returns (verdict, optional_supplementary_diff)."""
+        ...
+
     def remediate_app(self, app_entry: dict, app_dir: Path, failure_log: str) -> Tuple[bool, str]:
-        """Executes full autonomous investigation, review, patch verification, and regression."""
+        """Executes full autonomous investigation, review, post-exec audit, patch verification, and regression."""
         ...
 ```
 
@@ -383,11 +440,12 @@ class Remediator:
 
 ```
 Phase 1: 凭据规格、分级防腐硬核与双盲 Agent 状态机 (P0)
-   ├── T1.1: 12 状态机脚手架与断点恢复管理器 (InvestigationWorkspace & session_state.json)
+   ├── T1.1: 13 状态机脚手架与断点恢复管理器 (InvestigationWorkspace & session_state.json)
    ├── T1.2: AgentSynthesizer 双盲 Prompt、patch.diff 格式规范与独立 CLI 调度
    ├── T1.3: 分级解析引擎架构 (safety_checker.py: Tier 1 纯 Python Tokenizer + PAL 纯增量硬检 + H-1~H-8 规则)
    ├── T1.4: 双 Agent 审查与深度融合状态机 (含 PAL 跨平台洁癖审计与深度吸收)
-   └── T1.5: 离线 Mock 单测套件 (test_loop_remediator.py, 秒级 100% 覆盖)
+   ├── T1.5: 离线 Mock 单测套件 (test_loop_remediator.py, 秒级 100% 覆盖)
+   └── T1.6: PostExecutionAuditor 执行后完整性自查器与增量补遗状态机
 
 Phase 2: 安全修补沙箱、双Target同源校验与分级零回归 (P0)
    ├── T2.1: 事务性 Git 差异捕获与双轨精准回滚 (Pre-flight + checkout + unlink)
@@ -407,10 +465,10 @@ Phase 3: 流水线挂载、标杆示例自愈实证与治理闭环 (P1/P2)
 
 ### Phase 1：凭据规格、分级防腐硬核与双盲 Agent 状态机 (P0)
 
-- [ ] **T1.1（12 状态机脚手架与断点恢复管理器）**
+- [ ] **T1.1（13 状态机脚手架与断点恢复管理器）**
   - **位置**：`wink-micro-app/vendor/esp_idfv61/.governance/tools/loop/remediator.py`
   - **要求**：实现 `InvestigationWorkspace` 类，维护 `session_state.json`（Schema v2）；
-  - **能力**：支持完整的 12 阶段状态迁移验证；支持根据当前物理状态安全恢复或回滚；保存原始报错日志 `raw_failure.log`。
+  - **能力**：支持完整的 13 阶段状态迁移验证（含 `POST_EXEC_AUDITING` 与 `PATCH_SUPPLEMENTING`）；支持根据当前物理状态安全恢复或回滚；保存原始报错日志 `raw_failure.log`。
 
 - [ ] **T1.2（AgentSynthesizer 双盲 Prompt、patch.diff 格式规范与独立 CLI 调度）**
   - **位置**：`wink-micro-app/vendor/esp_idfv61/.governance/tools/loop/agent.py`
@@ -418,8 +476,9 @@ Phase 3: 流水线挂载、标杆示例自愈实证与治理闭环 (P1/P2)
     1. 新增 `build_root_cause_prompt(...)`：指导归因定位并产出 01-RCA、02-PLAN 初稿与标准的 Unified Diff 补丁；
     2. 新增 `build_adversarial_review_prompt(...)`：执行**双盲审查**，仅输入原始日志、方案正文与 `patch.diff`，严格剥离思考链，注入对抗找茬与 PAL 跨平台洁癖 Rubric；
     3. 新增 `build_synthesis_prompt(...)`：注入审查意见，重构方案正文与 `patch.diff`，并生成 Synthesis Log；
-    4. 支持 `--agent-a-cmd` 与 `--agent-b-cmd` 独立配置，单 CLI 时自动开启无上下文进程隔离；
-    5. **`patch.diff` 格式约束**：必须为标准 Unified Diff 格式，以 `a/` `b/` 前缀标识源/目标路径（与 `git diff` 输出一致），上下文行数固定为 3。Agent 生成 C 代码后，由 `Remediator` 统一调用 `git diff --no-index` 或 `git diff --` 导出，禁止 Agent 自行拼接 diff 文本。
+    4. 新增 `build_post_exec_audit_prompt(...)`：构建基于 DoD 验收清单的执行后完整性追问 Prompt；
+    5. 支持 `--agent-a-cmd` 与 `--agent-b-cmd` 独立配置，单 CLI 时自动开启无上下文进程隔离；
+    6. **`patch.diff` 格式约束**：必须为标准 Unified Diff 格式，以 `a/` `b/` 前缀标识源/目标路径（与 `git diff` 输出一致），上下文行数固定为 3。Agent 生成 C 代码后，由 `Remediator` 统一调用 `git diff --no-index` 或 `git diff --` 导出，禁止 Agent 自行拼接 diff 文本。
 
 - [ ] **T1.3（分级解析引擎架构与 safety_checker.py 独立模块）**
   - **位置**：`safety_checker.py`（独立模块）
@@ -435,7 +494,11 @@ Phase 3: 流水线挂载、标杆示例自愈实证与治理闭环 (P1/P2)
 
 - [ ] **T1.5（离线 Mock 单测套件）**
   - **位置**：`.governance/gates/tests/test_loop_remediator.py`
-  - **要求**：编写包含 `MockAgentSynthesizer` 与静态报错快照的离线单测套件，覆盖脚手架、12 状态迁移、YAML 提取、PAL 纯增量硬检、H-1~H-8 拦截、双轨回滚，测试必须零网络且毫秒级 100% 通过。
+  - **要求**：编写包含 `MockAgentSynthesizer` 与静态报错快照的离线单测套件，覆盖脚手架、13 状态迁移、YAML 提取、PAL 纯增量硬检、执行后自查补遗分支、H-1~H-8 拦截、双轨回滚，测试必须零网络且毫秒级 100% 通过。
+
+- [ ] **T1.6（PostExecutionAuditor 执行后自查与补遗集成）**
+  - **位置**：`remediator.py`、`agent.py`
+  - **要求**：在方案合成与物理预检之间挂接单次 DoD 对照自查；支持二值化判词提取（`FULLY_COMPLETE` 与 `GAPS_FOUND`）；支持增量 diff 提取与合并追加。
 
 ---
 
@@ -495,7 +558,7 @@ Phase 3: 流水线挂载、标杆示例自愈实证与治理闭环 (P1/P2)
   - **要求**：
     - 运行 `python run_loop.py --app mqtt_tcp --auto-heal`；
     - 观察系统建立 `.governance/investigations/esp.protocols.mqtt/`；
-    - 观察 Agent A 与 Agent B 的双盲审查、方案融合与 `patch.diff` 导出；
+    - 观察 Agent A 与 Agent B 的双盲审查、方案融合、执行后 DoD 自查补遗与 `patch.diff` 导出；
     - 观察底层 MQTT 仿真桩的补充、分级零回归通过、Phase 4 Canary 变异击杀通过（验证桩的真实动态行为）及 Git 提交。
 
 - [ ] **T3.3（规则文档与治理 SOP 回写）**
@@ -519,6 +582,7 @@ Phase 3: 流水线挂载、标杆示例自愈实证与治理闭环 (P1/P2)
 | **R-6** | 宿主缺少编译型 C 解析器依赖导致门禁爆错 | 中 | 部署 **Tier 1 零外部依赖纯 Python Tokenizer**，确保在任何标准 Python 3.11 环境 100% 离线稳定运行。 |
 | **R-7** | PAL 机械式一刀切禁止改动导致数百个用例批量阻塞 | 极高 | **解绑一刀切限制，推行 Core-B 受控纯增量演进**：允许新增通用外设抽象与驱动，彻底打通后续 Lane 4/5 模拟量与存储等用例的进化瓶颈。 |
 | **R-8** | PAL 增量扩展中混入 ESP32 厂商专有代码或破坏既有 ABI | 极高 | 部署 **H-5 机器硬检**（拦截任何 `esp_*.h`、禁止改动既有函数签名）+ **Agent B 跨平台洁癖审计** + **三位一体同源提交验证**，死守跨平台纯净性。 |
+| **R-9** | Agent 执行后过度反思（谄媚怀疑、画蛇添足与过度设计） | 高 | 部署 **T1.6 二值化封闭判词**（强制对照原方案 DoD 条目提供证据）+ **单次收敛上限**（严格最多追问 1 次），严禁发散式重构。 |
 
 ---
 
@@ -530,4 +594,5 @@ Phase 3: 流水线挂载、标杆示例自愈实证与治理闭环 (P1/P2)
 - [ ] **DoD-4（防假绿动态检验）**：自愈后的应用必须通过 Canary 变异击杀（Fail-Loud），验证底层桩具备真实状态机响应；
 - [ ] **DoD-5（单测与门禁完备）**：自愈引擎离线单测套件 100% 毫秒级通过，Gate 1 门检与 License 门检 100% 通过；
 - [ ] **DoD-6（离线单测自洽性）**：单测套件内置 Mock 机制，严禁在自动化测试中消耗真实 LLM API 或依赖外网；
-- [ ] **DoD-7（补丁工件与受控 PAL 增量演进合规）**：所有代码变更必须以受控 `patch.diff` 为介质且 100% 落在安全白名单内；触及 PAL 的改动必须 100% 满足纯增量、无厂商头文件污染及三位一体同源交付（Header + Wasm + ESP32）。
+- [ ] **DoD-7（补丁工件与受控 PAL 增量演进合规）**：所有代码变更必须以受控 `patch.diff` 为介质且 100% 落在安全白名单内；触及 PAL 的改动必须 100% 满足纯增量、无厂商头文件污染及三位一体同源交付（Header + Wasm + ESP32）；
+- [ ] **DoD-8（执行后自查闭环合规性）**：补丁正式应用前必须经过基于 DoD 清单的单次执行后自查，漏项增量补遗必须通过机器防腐硬核检验。
