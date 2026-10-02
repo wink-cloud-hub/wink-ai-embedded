@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 13,
-    "verified_configs": 13
+    "audited": 14,
+    "verified_configs": 14
   },
   "entries": [
     {
@@ -25300,10 +25300,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-02T18:42:11Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -25335,18 +25337,26 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L4_internal",
-            "scenario_path": "unisim-scenarios/storage_nvs_nvs_rw_value.scenario.json",
+            "scenario_path": "storage/nvs_nvs_rw_value/unisim-scenarios/nvs_nvs_rw_value.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
             "positive_cases": [],
             "negative_cases": [],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261002-esp.storage.nvs.nvs_rw_value-verified",
+            "assets_sha256": "47c266925baf7d9b1f78208b51816924b7057193c4a2f6510b48e20d4019ac7c",
+            "scenario_sha256": "be09ec0daf23db0803b4d8c0f55435d384c695dc19acf055fc0865202094f363",
+            "execution_report_ref": ".governance/reports/storage/nvs_nvs_rw_value/run-report.json",
+            "verified_commit": "31b0e416796be82fbae352bd2d599fb40e658bac",
+            "verified_at": "2026-10-02T18:42:11Z"
+          }
         }
       ],
       "target_app_dir": "storage/nvs_nvs_rw_value"

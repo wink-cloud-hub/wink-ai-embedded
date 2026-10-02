@@ -1,0 +1,114 @@
+{
+  "timestamp": "2026-10-02T18:42:11.333Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 nvs_rw_value headless deterministic proof",
+        "templateId": "esp_idfv61_nvs_nvs_rw_value",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 95
+      },
+      "summary": {
+        "totalSteps": 7,
+        "passedSteps": 7,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) nvs_example: \nOpening Non-Volatile Storage (NVS) handle...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nWriting counter to NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nReading counter from NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: Read counter = 42\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nWriting string to NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nReading string from NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: Read string: Hello from NVS!\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nFinding keys in NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: Key: 'counter', Type: i32\u001b[0m\n\u001b[0;32mI (0) nvs_example: Key: 'message', Type: str\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nDeleting key from NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nCommitting updates in NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: NVS handle closed.\u001b[0m\n\u001b[0;32mI (0) nvs_example: Returned to app_main\u001b[0m\n"
+            ]
+          },
+          "expected": "Opening Non-Volatile Storage (NVS) handle..."
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) nvs_example: \nOpening Non-Volatile Storage (NVS) handle...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nWriting counter to NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nReading counter from NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: Read counter = 42\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nWriting string to NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nReading string from NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: Read string: Hello from NVS!\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nFinding keys in NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: Key: 'counter', Type: i32\u001b[0m\n\u001b[0;32mI (0) nvs_example: Key: 'message', Type: str\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nDeleting key from NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nCommitting updates in NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: NVS handle closed.\u001b[0m\n\u001b[0;32mI (0) nvs_example: Returned to app_main\u001b[0m\n"
+            ]
+          },
+          "expected": "Read counter = 42"
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) nvs_example: \nOpening Non-Volatile Storage (NVS) handle...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nWriting counter to NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nReading counter from NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: Read counter = 42\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nWriting string to NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nReading string from NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: Read string: Hello from NVS!\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nFinding keys in NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: Key: 'counter', Type: i32\u001b[0m\n\u001b[0;32mI (0) nvs_example: Key: 'message', Type: str\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nDeleting key from NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nCommitting updates in NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: NVS handle closed.\u001b[0m\n\u001b[0;32mI (0) nvs_example: Returned to app_main\u001b[0m\n"
+            ]
+          },
+          "expected": "Read string: Hello from NVS!"
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) nvs_example: \nOpening Non-Volatile Storage (NVS) handle...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nWriting counter to NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nReading counter from NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: Read counter = 42\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nWriting string to NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nReading string from NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: Read string: Hello from NVS!\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nFinding keys in NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: Key: 'counter', Type: i32\u001b[0m\n\u001b[0;32mI (0) nvs_example: Key: 'message', Type: str\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nDeleting key from NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nCommitting updates in NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: NVS handle closed.\u001b[0m\n\u001b[0;32mI (0) nvs_example: Returned to app_main\u001b[0m\n"
+            ]
+          },
+          "expected": "Key: 'counter', Type: i32"
+        },
+        {
+          "stepIndex": 5,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) nvs_example: \nOpening Non-Volatile Storage (NVS) handle...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nWriting counter to NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nReading counter from NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: Read counter = 42\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nWriting string to NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nReading string from NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: Read string: Hello from NVS!\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nFinding keys in NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: Key: 'counter', Type: i32\u001b[0m\n\u001b[0;32mI (0) nvs_example: Key: 'message', Type: str\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nDeleting key from NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nCommitting updates in NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: NVS handle closed.\u001b[0m\n\u001b[0;32mI (0) nvs_example: Returned to app_main\u001b[0m\n"
+            ]
+          },
+          "expected": "Key: 'message', Type: str"
+        },
+        {
+          "stepIndex": 6,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) nvs_example: \nOpening Non-Volatile Storage (NVS) handle...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nWriting counter to NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nReading counter from NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: Read counter = 42\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nWriting string to NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nReading string from NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: Read string: Hello from NVS!\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nFinding keys in NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: Key: 'counter', Type: i32\u001b[0m\n\u001b[0;32mI (0) nvs_example: Key: 'message', Type: str\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nDeleting key from NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nCommitting updates in NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: NVS handle closed.\u001b[0m\n\u001b[0;32mI (0) nvs_example: Returned to app_main\u001b[0m\n"
+            ]
+          },
+          "expected": "Returned to app_main"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

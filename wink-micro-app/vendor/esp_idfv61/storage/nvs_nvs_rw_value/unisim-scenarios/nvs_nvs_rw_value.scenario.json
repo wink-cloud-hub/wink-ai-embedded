@@ -1,0 +1,74 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 nvs_rw_value headless deterministic proof",
+    "templateId": "esp_idfv61_nvs_nvs_rw_value",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Opening Non-Volatile Storage (NVS) handle...",
+      "description": "断言成功打开 NVS 存储分区与命名空间句柄"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Read counter = 42",
+      "description": "断言从 NVS 读出已写入的 32 位整型 counter 值为 42"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Read string: Hello from NVS!",
+      "description": "断言从 NVS 读出已写入的字符串 'Hello from NVS!'"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Key: 'counter', Type: i32",
+      "description": "断言 NVS 迭代器成功遍历出 counter 键且类型为 i32"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Key: 'message', Type: str",
+      "description": "断言 NVS 迭代器成功遍历出 message 键且类型为 str"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "2000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Returned to app_main",
+      "description": "断言完成删除键、提交与关闭句柄后安全返回 app_main"
+    }
+  ]
+}
