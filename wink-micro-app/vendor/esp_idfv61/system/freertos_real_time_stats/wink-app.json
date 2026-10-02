@@ -1,0 +1,18 @@
+{
+  "app_name": "esp_idfv61_system_freertos_real_time_stats",
+  "display_name": "Espressif ESP-IDF freertos_real_time_stats",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "mcu": "esp32",
+  "simulation_profile": "STANDARD",
+  "tick_ms": 1,
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/system/freertos/real_time_stats/main",
+    "files": {
+      "main.c": "e90ba48a308b9e5735de50e86776ae2b9731fac05ede5bd2a0ad9efef73ab29c"
+    }
+  },
+  "devices": {}
+}
