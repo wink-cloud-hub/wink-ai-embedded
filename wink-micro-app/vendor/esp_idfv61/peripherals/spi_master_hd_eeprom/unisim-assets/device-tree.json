@@ -1,0 +1,23 @@
+{
+  "appName": "esp_idfv61_spi_master_hd_eeprom",
+  "board": "esp32_devkitc_v4",
+  "devices": {
+    "eeprom": {
+      "id": "eeprom",
+      "type": "spi_eeprom",
+      "pinMapping": {
+        "CS": 13,
+        "SCK": 19,
+        "MOSI": 23,
+        "MISO": 18
+      },
+      "properties": {
+        "deviceId": "spi_eeprom"
+      }
+    }
+  },
+  "family": "esp32",
+  "core": "xtensa-lx6",
+  "mcu": "esp32",
+  "vendor": "espressif"
+}

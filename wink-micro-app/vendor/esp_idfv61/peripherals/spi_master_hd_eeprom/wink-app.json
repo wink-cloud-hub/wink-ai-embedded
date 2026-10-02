@@ -1,0 +1,28 @@
+{
+  "app_name": "esp_idfv61_spi_master_hd_eeprom",
+  "display_name": "Espressif ESP-IDF SPI Master Half Duplex EEPROM",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "mcu": "esp32",
+  "tick_ms": 1,
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/peripherals/spi_master/hd_eeprom",
+    "files": {
+      "spi_eeprom_main.c": "db471d12afbd747aaab4ad7e55e6ddb7bee6661386bbc530204fa2c81dea74e5",
+      "spi_eeprom.c": "04c02594607dc1e6d35182831ddcbc774f7089d39e96d96fe325baad1ef76354",
+      "spi_eeprom.h": "7fac6472185ae7152d9bc65b576fd41c7e9c7a3cacf1bb14e27635af27c88d7c"
+    }
+  },
+  "devices": {
+    "eeprom": {
+      "type": "spi_eeprom",
+      "deviceId": "spi_eeprom",
+      "cs_pin": 13,
+      "sck_pin": 19,
+      "mosi_pin": 23,
+      "miso_pin": 18
+    }
+  }
+}
