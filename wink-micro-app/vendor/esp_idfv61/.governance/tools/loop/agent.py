@@ -310,6 +310,72 @@ blocking_issues_count: 0
 """
         return prompt.strip()
 
+    def build_post_exec_audit_prompt(
+        self,
+        app_entry: Dict[str, Any],
+        plan_content: str,
+        patch_diff: str,
+    ) -> str:
+        """Construct Post-Execution Completeness Audit prompt for Agent A based on DoD checklist."""
+        app_id = app_entry.get("id", "app")
+
+        prompt = f"""
+[TASK] 自愈实施后完整性自查与 DoD 对照审计 (Role A: Post-Execution Audit)
+
+目标条目: {app_id}
+
+你刚刚已经完成了 02-REMEDIATION-PLAN.md 的物理代码初版实施与 patch.diff 导出。
+现在请对照【原方案承诺的验收标准 (DoD)】与【实际生成的 patch.diff】进行严密的客观对比自查：
+
+【原方案正文 (02-REMEDIATION-PLAN.md)】:
+{plan_content}
+
+【已生成的物理补丁 (patch.diff)】:
+```diff
+{patch_diff[:6000]}
+```
+
+【强制自查四项清单】:
+1. 方案覆盖度对照：02-REMEDIATION-PLAN.md 中承诺的每一个技术要点，在 patch.diff 中是否均有物理代码落地？是否存在遗漏？
+2. 三位一体与接口完整性：新增/修改的 C 接口是否在对应头文件中正确导出？Wasm 仿真端与 ESP32 物理端是否双向闭环？
+3. 边界与防御完整性：超时、缓冲区溢出、空指针及异常返回路径是否均有正确处理，是否存在未完成的 TODO？
+4. 机器合规洁癖：是否存在任何未删掉的测试硬编码、浮点 PWM 或临时日志？
+
+【二值化判决输出规范 (严格防过度设计与反向画蛇添足)】:
+你必须输出以下两者之一，严禁无病呻吟发散：
+- 情况 A (确实完全交付，无任何遗漏):
+  输出:
+  VERDICT: FULLY_COMPLETE
+  理由简述（列出各项 DoD 已 100% 满足的事实证据）。
+  （此时严禁添加任何新特性或重构！）
+
+- 情况 B (发现确凿遗漏):
+  输出:
+  VERDICT: GAPS_FOUND
+  明确列出缺失的要点（例如：漏掉了头文件导出或超时重试分支）。
+  并直接给出增量补遗补丁：
+  ```diff
+  ... 增量修复 diff ...
+  ```
+"""
+        return prompt.strip()
+
+    @staticmethod
+    def parse_post_exec_audit_verdict(audit_text: str) -> Tuple[str, Optional[str]]:
+        """Parse post-execution audit verdict and optional supplementary diff.
+
+        Returns (verdict, optional_supplementary_diff).
+        verdict is 'FULLY_COMPLETE' or 'GAPS_FOUND'.
+        """
+        verdict = "FULLY_COMPLETE"
+        if re.search(r"\bVERDICT:\s*GAPS_FOUND\b", audit_text, re.IGNORECASE):
+            verdict = "GAPS_FOUND"
+        elif re.search(r"\bVERDICT:\s*FULLY_COMPLETE\b", audit_text, re.IGNORECASE):
+            verdict = "FULLY_COMPLETE"
+
+        supplementary_diff = AgentSynthesizer.extract_patch_diff(audit_text) if verdict == "GAPS_FOUND" else None
+        return verdict, supplementary_diff
+
     # -------------------------------------------------------------------------
     # Parsing Helpers
     # -------------------------------------------------------------------------

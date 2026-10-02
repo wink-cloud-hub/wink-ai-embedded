@@ -270,9 +270,10 @@ def test_zero_regression_domain_detection(tmp_path):
 class MockAgentSynthesizer(AgentSynthesizer):
     """Simulates Role A and Role B offline with deterministic responses."""
 
-    def __init__(self, workspace_root: Path):
+    def __init__(self, workspace_root: Path, audit_verdict: str = "FULLY_COMPLETE"):
         super().__init__(workspace_root)
-        self.invocations: List[str] = []
+        self.invocations: list[str] = []
+        self.audit_verdict = audit_verdict
 
     def invoke_agent(self, prompt: str, role: str = "A", timeout_sec: int = 300) -> tuple[int, str]:
         self.invocations.append(role)
@@ -305,11 +306,63 @@ blocking_issues_count: 0
 ### 1. 架构防腐红线审查
 - 无空桩或特判倾向.
 """
+        elif "[TASK] 自愈实施后完整性自查与 DoD 对照审计" in prompt:
+            if self.audit_verdict == "FULLY_COMPLETE":
+                return 0, """
+VERDICT: FULLY_COMPLETE
+All DoD requirements are 100% satisfied. No further changes needed.
+"""
+            else:
+                return 0, """
+VERDICT: GAPS_FOUND
+Missing mock timeout property in wink-app.json.
+
+```diff
+--- a/wink-micro-app/vendor/esp_idfv61/protocols/mqtt/mqtt_tcp/wink-app.json
++++ b/wink-micro-app/vendor/esp_idfv61/protocols/mqtt/mqtt_tcp/wink-app.json
+@@ -4,1 +4,2 @@
++  "timeout_ms": 5000
+ }
+```
+"""
         return 0, "OK"
 
 
+def test_post_exec_audit_prompt_and_parser(tmp_path):
+    synthesizer = AgentSynthesizer(tmp_path)
+    app_entry = {"id": "esp.peripherals.gpio"}
+    plan = "## Plan\nAdd GPIO pullup"
+    patch = "--- a/file.c\n+++ b/file.c\n@@ -1 +1 @@\n+int x;"
+
+    prompt = synthesizer.build_post_exec_audit_prompt(app_entry, plan, patch)
+    assert "esp.peripherals.gpio" in prompt
+    assert "VERDICT: FULLY_COMPLETE" in prompt
+    assert "VERDICT: GAPS_FOUND" in prompt
+
+    # Test parser with FULLY_COMPLETE
+    v1, d1 = synthesizer.parse_post_exec_audit_verdict("VERDICT: FULLY_COMPLETE\nAll done.")
+    assert v1 == "FULLY_COMPLETE"
+    assert d1 is None
+
+    # Test parser with GAPS_FOUND and diff block
+    sample_gaps = """
+VERDICT: GAPS_FOUND
+Omitted header include.
+```diff
+--- a/wink-micro-app/vendor/esp_idfv61/peripherals/gpio/main/gpio_example_main.c
++++ b/wink-micro-app/vendor/esp_idfv61/peripherals/gpio/main/gpio_example_main.c
+@@ -10,3 +10,4 @@
++#include "esp_log.h"
+```
+"""
+    v2, d2 = synthesizer.parse_post_exec_audit_verdict(sample_gaps)
+    assert v2 == "GAPS_FOUND"
+    assert d2 is not None
+    assert "+#include \"esp_log.h\"" in d2
+
+
 def test_remediator_offline_orchestration(tmp_path, monkeypatch):
-    mock_agent = MockAgentSynthesizer(tmp_path)
+    mock_agent = MockAgentSynthesizer(tmp_path, audit_verdict="FULLY_COMPLETE")
     remediator = Remediator(tmp_path, mock_agent, max_attempts=2)
 
     # Monkeypatch git apply and regression to isolate offline execution
@@ -335,3 +388,48 @@ def test_remediator_offline_orchestration(tmp_path, monkeypatch):
     assert "Autonomous self-healing patch applied" in msg
     assert "A" in mock_agent.invocations
     assert "B" in mock_agent.invocations
+
+    # Verify state history contains POST_EXEC_AUDITING and not PATCH_SUPPLEMENTING
+    ws = InvestigationWorkspace(tmp_path, "esp.protocols.mqtt")
+    state_data = json.loads(ws.state_file.read_text(encoding="utf-8"))
+    history_states = [h["state"] for h in state_data["history"]]
+    assert RemediatorState.POST_EXEC_AUDITING.value in history_states
+    assert RemediatorState.PATCH_SUPPLEMENTING.value not in history_states
+
+
+def test_remediator_post_exec_audit_gaps_supplemented(tmp_path, monkeypatch):
+    mock_agent = MockAgentSynthesizer(tmp_path, audit_verdict="GAPS_FOUND")
+    remediator = Remediator(tmp_path, mock_agent, max_attempts=2)
+
+    monkeypatch.setattr(remediator.git_tracker, "pre_flight_check", lambda files: (True, "OK"))
+    monkeypatch.setattr(remediator.git_tracker, "apply_patch", lambda pfile: (True, "Applied", [], []))
+    monkeypatch.setattr(remediator.regression_runner, "run_l1_domain_regression", lambda d: (True, "L1 OK"))
+    monkeypatch.setattr(remediator.regression_runner, "run_l2_golden_regression", lambda: (True, "L2 OK"))
+
+    app_entry = {
+        "id": "esp.protocols.mqtt_gaps",
+        "target_app_dir": "protocols/mqtt/mqtt_tcp",
+    }
+    app_dir = tmp_path / "wink-micro-app" / "vendor" / "esp_idfv61" / "protocols" / "mqtt" / "mqtt_tcp"
+    app_dir.mkdir(parents=True, exist_ok=True)
+
+    ok, msg = remediator.remediate_app(
+        app_entry=app_entry,
+        app_dir=app_dir,
+        failure_log="Connection refused",
+    )
+
+    assert ok
+    assert "Autonomous self-healing patch applied" in msg
+
+    # Verify state history contains both POST_EXEC_AUDITING and PATCH_SUPPLEMENTING
+    ws = InvestigationWorkspace(tmp_path, "esp.protocols.mqtt_gaps")
+    state_data = json.loads(ws.state_file.read_text(encoding="utf-8"))
+    history_states = [h["state"] for h in state_data["history"]]
+    assert RemediatorState.POST_EXEC_AUDITING.value in history_states
+    assert RemediatorState.PATCH_SUPPLEMENTING.value in history_states
+
+    # Verify supplementary diff was merged into patch.diff
+    patch_content = ws.patch_file.read_text(encoding="utf-8")
+    assert "timeout_ms" in patch_content
+

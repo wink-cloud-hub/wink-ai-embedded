@@ -28,6 +28,8 @@ class RemediatorState(str, Enum):
     ADVERSARIAL_REVIEWING = "ADVERSARIAL_REVIEWING"
     REVISE_REQUIRED = "REVISE_REQUIRED"
     PLAN_SYNTHESIZED = "PLAN_SYNTHESIZED"
+    POST_EXEC_AUDITING = "POST_EXEC_AUDITING"
+    PATCH_SUPPLEMENTING = "PATCH_SUPPLEMENTING"
     HEURISTIC_PRECHECK = "HEURISTIC_PRECHECK"
     PATCH_APPLYING = "PATCH_APPLYING"
     PATCH_APPLIED = "PATCH_APPLIED"
@@ -361,6 +363,18 @@ class Remediator:
         )
         self.regression_runner = ZeroRegressionRunner(workspace_root, runner_script)
 
+    def run_post_execution_audit(
+        self,
+        app_entry: Dict[str, Any],
+        plan_content: str,
+        patch_text: str,
+    ) -> Tuple[str, Optional[str]]:
+        """Run single-pass DoD completeness audit. Returns (verdict, optional_supplementary_diff)."""
+        prompt = self.agent.build_post_exec_audit_prompt(app_entry, plan_content, patch_text)
+        rc, out = self.agent.invoke_agent(prompt, role="A")
+        verdict, supp_diff = self.agent.parse_post_exec_audit_verdict(out)
+        return verdict, supp_diff
+
     def remediate_app(
         self,
         app_entry: Dict[str, Any],
@@ -457,6 +471,24 @@ class Remediator:
             if ws.patch_file.is_file():
                 patch_text = ws.patch_file.read_text(encoding="utf-8")
             ws.transition_to(RemediatorState.PLAN_SYNTHESIZED)
+
+        # ---------------------------------------------------------------------
+        # Step 3.5: Post-Execution Completeness Audit & Bounded Supplementation
+        # ---------------------------------------------------------------------
+        print(f"  [heal] Running Post-Execution Completeness Audit against DoD...", flush=True)
+        ws.transition_to(RemediatorState.POST_EXEC_AUDITING)
+        current_plan = ws.plan_file.read_text(encoding="utf-8") if ws.plan_file.is_file() else orig_plan_content
+        audit_verdict, supp_diff = self.run_post_execution_audit(
+            app_entry=app_entry,
+            plan_content=current_plan,
+            patch_text=patch_text,
+        )
+        print(f"  [heal] Post-Execution Audit Verdict: {audit_verdict}", flush=True)
+        if audit_verdict == "GAPS_FOUND" and supp_diff:
+            print(f"  [heal] Gaps found during audit; merging supplementary patch...", flush=True)
+            ws.transition_to(RemediatorState.PATCH_SUPPLEMENTING)
+            patch_text = patch_text.strip() + "\n\n" + supp_diff.strip()
+            ws.patch_file.write_text(patch_text, encoding="utf-8")
 
         # ---------------------------------------------------------------------
         # Step 4: Machine Heuristic Safety Check (H-1 to H-8)
