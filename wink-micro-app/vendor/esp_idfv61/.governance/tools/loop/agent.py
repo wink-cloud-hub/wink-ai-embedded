@@ -197,20 +197,35 @@ class AgentSynthesizer:
 请基于以上报错日志和源码进行深入排查，并在调查资产目录下产出两份不可变资产与补丁草案：
 1. 写入 `{investigation_dir.as_posix()}/01-ROOT-CAUSE-ANALYSIS.md`:
    - 描述失败现象、调用栈追踪、因果链断点；
-   - 明确进行【归因三级判定】:
+   - 明确进行【归因判定 (五级归因矩阵)】:
      * Layer C (App配置): 引脚缺失、Kconfig 未开、超时不足
      * Layer A (C 框架外设/协议层): frameworks/esp_idf 缺少协议状态机桩 (如 MQTT Broker 响应)
-     * Layer Core-B (PAL 通用外设增量): 缺少通用外设 (如 DAC/Touch/SDMMC/WDT)，须严格纯增量
+     * Layer Core-B (PAL 通用外设增量): 缺少片上通用外设 (如 DAC/Touch/SDMMC/WDT)，须严格纯增量
+     * Layer D (外置插件外设层): I2C/SPI 从机无应答、读 WHO_AM_I 为 0/FF、缺少传感器/显示/执行器等外部芯片
      * Layer B1 (UniSim TS内核) / Layer Core-A (OSAL 内核调度): 若属此类，必须明确标注并建议人类审批熔断。
+
+【Layer D: 外置插件外设判定与实施军规 (SSOT)】:
+若排查确认仿真失败原因为缺少外部芯片/传感器：
+1. 必须将缺陷明确归类为: 【Layer D (Peripheral Plugin)】；
+2. 必须先行读取权威文档:
+   - D:/workspaces/ai-coding/wink-ai/wink-ai-embedded/docs/implementation-plans/wokwi-dal-type-coverage-type/00-master-execution-plan.md
+   - docs/implementation-plans/wokwi-dal-type-coverage-type/00.1-category-type-variant-wokwi-ssot.md
+3. 查表确定标准命名:
+   * 严禁裸芯片型号作为 type (如严禁 type: mpu9250，必须为 type: imu, variant: mpu9250_i2c)
+   * 确认对应的 Wokwi 原生组件标识 (如 <wokwi-mpu6050>) 与物理引脚拓扑
+4. 区分已有插件 vs 全新插件:
+   * 若 wink-plugin-peripherals/builtin/<type>/dist/manifest.json 已就绪，直接编排 wink-app.json 引脚拓扑 (分支 D1.A)
+   * 若为全新器件类型，在 docs/implementation-plans/wokwi-dal-type-coverage-type/ 下编撰标准子计划 (分支 D1.B)。
 2. 写入 `{investigation_dir.as_posix()}/02-REMEDIATION-PLAN.md`:
    - 技术修复策略、修改文件列表、验收标准；
-   - 架构防腐红线自查 (杜绝空桩、杜绝 app_name 特判、杜绝私降编译参数、保持 PAL 跨平台纯度)；
+   - 架构防腐红线自查 (杜绝空桩、杜绝 app_name 特判、杜绝私降编译参数、保持 PAL 跨平台纯度、遵循外设军规 P-1~P-8)；
    - 在方案正文中必须包含标准的 Unified Diff 代码补丁（使用 ```diff 格式），或者直接将补丁写入 `{investigation_dir.as_posix()}/patch.diff`。
 
 【patch.diff 格式硬性约束】:
 - 必须是标准的 Unified Diff 格式（以 `--- a/path` 和 `+++ b/path` 开头，上下文行数=3）；
-- 涉及的文件路径必须严格遵守 SAFE_WRITE_WHITELIST，严禁修改 OSAL 核心或 UniSim TS 代码；
-- 若涉及 PAL 外设扩展（wink-micro-os/pal/include/hal/），必须满足纯增量原则并提供 targets/wasm 与 targets/esp32 同源适配，严禁引入 esp_*.h 头文件。
+- 涉及的文件路径必须严格遵守 SAFE_WRITE_WHITELIST，严禁修改 OSAL 核心或 UniSim TS 核心调度；
+- 若涉及 PAL 外设扩展（wink-micro-os/pal/include/hal/），必须满足纯增量原则并提供 targets/wasm 与 targets/esp32 同源适配，严禁引入 esp_*.h 头文件；
+- 若涉及外设插件，必须包含子计划与规范的 builtin/<type>/ 插件代码，严禁裸芯片型号作为 type。
 
 请立即开始分析并创建上述文档。
 """
@@ -250,7 +265,7 @@ class AgentSynthesizer:
 {patch_diff[:6000]}
 ```
 
-【审判准则与反模式红线 (8 大硬检)】:
+【审判准则与反模式红线 (8 大硬检 + 外设 4 大军规)】:
 1. H-1 空桩审查：严禁任何只 return ESP_OK / 0 的虚假空桩；
 2. H-2 特判审查：严禁在 C 框架中针对本工程名称进行 strstr / 硬编码分支；
 3. H-3 变异审查：严禁试图绕过 Canary 变异击杀机制；
@@ -258,7 +273,14 @@ class AgentSynthesizer:
 5. H-5 PAL 纯洁度审查：若修改了 pal/，必须为严格纯增量，严禁引入任何 esp_*.h 或厂商专有头文件，必须三位一体（头文件 + wasm桩 + esp32驱动）；
 6. H-6 浮点 PWM：严禁使用裸 float 占空比 API，必须使用 pal_pwm_set_duty_bp；
 7. H-7 许可证合规：新增文件必须包含正确 SPDX-License-Identifier；
-8. H-8 安全白名单：改动必须严格限制在应用自身与 frameworks/esp_idf 或 pal/hal。
+8. H-8 安全白名单：改动必须严格限制在应用自身与 frameworks/esp_idf, pal/hal, builtin 插件或 doc plans。
+
+【外设插件专项找茬红线 (Role B 重点对抗项)】:
+- P-5 (SSOT 命名合规性): 方案是否违反了 00-master-execution-plan.md？是否存在自创裸芯片 type 行为？
+- P-6 (引脚物理 1:1 对齐): 仿真模型引脚是否与 Wokwi 物理规格 1:1 对齐？是否有遗漏中断引脚或辅助总线引脚？
+- P-7 (时序与寄存器诚实度): 是否实现了真实的寄存器映射与时序响应？是否存在无状态伪造假桩？
+- P-8 (多用例状态隔离): 插件是否提供了清理与重置机制？是否会泄漏状态给下一个测试用例？
+凡违反上述任一红线，必须判定为 REVISE_REQUIRED 或 REJECTED！
 
 【输出要求】:
 必须以 YAML Frontmatter 开头，随后给出详细审查理由：
@@ -469,3 +491,32 @@ blocking_issues_count: 0
             return False, f"Agent wrote scenario with fewer than 2 steps: {len(steps)}"
 
         return True, f"Agent successfully synthesized valid scenario with {len(steps)} steps."
+
+    @staticmethod
+    def detect_peripheral_type_from_failure(failure_log: str) -> Optional[str]:
+        """Detect peripheral type keyword from failure log (e.g. imu, motion, rtc)."""
+        log_lower = failure_log.lower()
+        if "mpu" in log_lower or "imu" in log_lower or "gyro" in log_lower or "accel" in log_lower:
+            return "imu"
+        if "pir" in log_lower or "motion" in log_lower:
+            return "motion"
+        if "rtc" in log_lower or "ds1307" in log_lower or "ds3231" in log_lower:
+            return "rtc"
+        if "hx711" in log_lower or "load_cell" in log_lower or "scale" in log_lower:
+            return "load_cell"
+        if "tft" in log_lower or "ili9341" in log_lower:
+            return "tft"
+        return None
+
+    def is_existing_peripheral_plugin(self, peripheral_type: str) -> bool:
+        """Check if peripheral plugin already has a built manifest (Branch D1.A)."""
+        manifest_p = (
+            self.ws_root
+            / "wink-plugin-peripherals"
+            / "builtin"
+            / peripheral_type
+            / "1.0.0"
+            / "dist"
+            / "manifest.json"
+        )
+        return manifest_p.is_file()

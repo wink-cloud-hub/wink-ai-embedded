@@ -12,6 +12,7 @@ import datetime
 import json
 import os
 import re
+import shutil
 import subprocess
 from enum import Enum
 from pathlib import Path
@@ -25,6 +26,10 @@ class RemediatorState(str, Enum):
     INIT = "INIT"
     RCA_AUTHORED = "RCA_AUTHORED"
     PLAN_AUTHORED = "PLAN_AUTHORED"
+    PERIPHERAL_D1_SSOT_MAPPED = "PERIPHERAL_D1_SSOT_MAPPED"
+    PERIPHERAL_D2_ADVERSARIAL_REVIEW = "PERIPHERAL_D2_ADVERSARIAL_REVIEW"
+    PERIPHERAL_D3_PLUGIN_BUILDING = "PERIPHERAL_D3_PLUGIN_BUILDING"
+    PERIPHERAL_D4_TOPOLOGY_WIRED = "PERIPHERAL_D4_TOPOLOGY_WIRED"
     ADVERSARIAL_REVIEWING = "ADVERSARIAL_REVIEWING"
     REVISE_REQUIRED = "REVISE_REQUIRED"
     PLAN_SYNTHESIZED = "PLAN_SYNTHESIZED"
@@ -37,6 +42,7 @@ class RemediatorState(str, Enum):
     L1_REGRESSION = "L1_REGRESSION"
     L2_REGRESSION = "L2_REGRESSION"
     CANARY_KILL = "CANARY_KILL"
+    PERIPHERAL_SYNCED_MASTER_PLAN = "PERIPHERAL_SYNCED_MASTER_PLAN"
     COMPLETED = "COMPLETED"
     ROLLED_BACK = "ROLLED_BACK"
     CIRCUIT_BREAKER_ESCALATED = "CIRCUIT_BREAKER_ESCALATED"
@@ -232,11 +238,17 @@ class TransactionalGitTracker:
 
         return True, "Patch applied successfully.", modified, created
 
-    def rollback(self, modified_files: List[Path], created_files: List[Path]):
+    def rollback(
+        self,
+        modified_files: List[Path],
+        created_files: List[Path],
+        created_dirs: Optional[List[Path]] = None,
+    ):
         """Dual-track precise rollback:
 
         1. Tracked modified: git checkout -- <file>
-        2. Untracked created: file.unlink()
+        2. Untracked created files: file.unlink()
+        3. Newly created directories (e.g. peripheral plugin tree): shutil.rmtree()
         """
         for mf in modified_files:
             if mf.is_file():
@@ -252,6 +264,35 @@ class TransactionalGitTracker:
                     cf.unlink(missing_ok=True)
             except Exception:
                 pass
+
+        # Clean explicitly tracked created directories
+        if created_dirs:
+            for cd in created_dirs:
+                if cd.is_dir():
+                    try:
+                        shutil.rmtree(cd, ignore_errors=True)
+                    except Exception:
+                        pass
+
+        # Scan for empty peripheral plugin directories created during run
+        for cf in created_files:
+            rel = cf.as_posix()
+            if "wink-plugin-peripherals/builtin/" in rel:
+                # Find the root of the specific peripheral plugin: builtin/<type>
+                parts = cf.parts
+                if "builtin" in parts:
+                    idx = parts.index("builtin")
+                    if idx + 1 < len(parts):
+                        plugin_root = Path(*parts[: idx + 2])
+                        if plugin_root.is_dir():
+                            # If no files remain in plugin directory, clean entire subtree
+                            remaining = list(plugin_root.rglob("*"))
+                            remaining_files = [f for f in remaining if f.is_file()]
+                            if not remaining_files:
+                                try:
+                                    shutil.rmtree(plugin_root, ignore_errors=True)
+                                except Exception:
+                                    pass
 
 
 class ZeroRegressionRunner:
@@ -555,3 +596,37 @@ class Remediator:
             self.git_tracker.rollback(mod_files, new_files)
             ws.transition_to(RemediatorState.ROLLED_BACK, reason=str(e))
             return False, f"Unexpected error during regression testing: {e}"
+
+    def sync_master_execution_plan(self, peripheral_type: str, plan_filename: str) -> bool:
+        """Bidirectionally sync delivered peripheral plugin status into 00-master-execution-plan.md."""
+        master_plan_path = (
+            self.ws_root
+            / "docs"
+            / "implementation-plans"
+            / "wokwi-dal-type-coverage-type"
+            / "00-master-execution-plan.md"
+        )
+        if not master_plan_path.is_file():
+            return False
+
+        content = master_plan_path.read_text(encoding="utf-8")
+        lines = content.splitlines()
+        updated = False
+
+        row_pattern = re.compile(rf"^(\|\s*\d+\s*\|\s*\w+\s*\|\s*`{peripheral_type}`\s*\|\s*[^|]+\|\s*[^|]+\|)([^|]+)\|([^|]+)\|")
+        new_lines = []
+        for line in lines:
+            m = row_pattern.match(line)
+            if m:
+                prefix = m.group(1)
+                new_line = f"{prefix} 🟢 Implemented (Sim Plugin Delivered) | `{plan_filename}` |"
+                new_lines.append(new_line)
+                updated = True
+            else:
+                new_lines.append(line)
+
+        if updated:
+            master_plan_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+            return True
+        return False
+

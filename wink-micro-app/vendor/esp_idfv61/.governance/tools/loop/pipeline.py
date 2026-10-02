@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import datetime
 import json
+import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
@@ -115,6 +117,91 @@ class LoopPipeline:
             cwd=str(self.ws_root),
             capture_output=True,
         )
+
+    def compile_peripheral_plugin(self, peripheral_type: str) -> Tuple[bool, str]:
+        """Compile a peripheral plugin into dist/manifest.json and dist/simulation.js.
+
+        Includes Build Pre-flight Check for node, npm, and vite dependencies.
+        Returns (success: bool, diagnosis_message: str).
+        """
+        plugin_dir = self.ws_root / "wink-plugin-peripherals" / "builtin" / peripheral_type
+        if not plugin_dir.is_dir():
+            return False, f"Peripheral plugin directory not found: {plugin_dir}"
+
+        # 1. Pre-flight Check: node & npm availability
+        node_bin = shutil.which("node") or shutil.which("node.exe")
+        npm_bin = shutil.which("npm") or shutil.which("npm.cmd")
+        if not node_bin or not npm_bin:
+            return False, (
+                "[BUILD_ENV_ERROR] Node.js or npm is missing in host environment. "
+                "Cannot build TypeScript simulation plugin for peripheral."
+            )
+
+        # 2. Check for build script in package.json or plugin directory
+        pkg_file = plugin_dir / "package.json"
+        if not pkg_file.is_file():
+            return False, f"[BUILD_ENV_ERROR] Missing package.json in peripheral plugin: {plugin_dir}"
+
+        # 3. Execute build:sim
+        try:
+            build_res = subprocess.run(
+                [npm_bin, "run", "build:sim"],
+                cwd=str(plugin_dir),
+                capture_output=True,
+                text=True,
+                timeout=120,
+                shell=True if sys.platform == "win32" else False,
+            )
+            if build_res.returncode != 0:
+                return False, f"[BUILD_ENV_ERROR] Plugin build failed:\n{build_res.stderr or build_res.stdout}"
+        except subprocess.TimeoutExpired:
+            return False, "[BUILD_ENV_ERROR] Plugin build timed out after 120s"
+        except Exception as e:
+            return False, f"[BUILD_ENV_ERROR] Unexpected error compiling plugin: {e}"
+
+        # 4. Verify outputs: dist/simulation.js and dist/manifest.json
+        manifest_f = plugin_dir / "1.0.0" / "dist" / "manifest.json"
+        if not manifest_f.is_file():
+            manifest_f = plugin_dir / "dist" / "manifest.json"
+
+        if not manifest_f.is_file():
+            return False, f"Build succeeded but expected output manifest.json not found in {plugin_dir}"
+
+        return True, f"Successfully compiled peripheral plugin '{peripheral_type}'."
+
+    def update_app_peripheral_topology(
+        self,
+        app_dir: Path,
+        peripheral_type: str,
+        variant: str,
+        address: Optional[int] = None,
+    ) -> Tuple[bool, str]:
+        """Update or inject peripheral topology into wink-app.json."""
+        wink_app_file = app_dir / "wink-app.json"
+        if not wink_app_file.is_file():
+            return False, f"wink-app.json not found in {app_dir}"
+
+        try:
+            app_data = json.loads(wink_app_file.read_text(encoding="utf-8"))
+            peripherals = app_data.setdefault("peripherals", [])
+            existing = next((p for p in peripherals if p.get("type") == peripheral_type), None)
+            if existing:
+                existing["variant"] = variant
+                if address is not None:
+                    existing["address"] = address
+            else:
+                new_entry: Dict[str, Any] = {
+                    "type": peripheral_type,
+                    "variant": variant,
+                }
+                if address is not None:
+                    new_entry["address"] = address
+                peripherals.append(new_entry)
+
+            wink_app_file.write_text(json.dumps(app_data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            return True, f"Updated {wink_app_file} with peripheral {peripheral_type} ({variant})."
+        except Exception as e:
+            return False, f"Failed updating wink-app.json: {e}"
 
     def execute_app(self, app_entry: Dict[str, Any]) -> PipelineResult:
         """Run the full autonomous SOP workflow on a single checklist entry."""

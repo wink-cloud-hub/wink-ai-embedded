@@ -29,6 +29,8 @@ SAFE_WRITE_WHITELIST = [
     "wink-micro-os/pal/include/hal/",
     "wink-micro-os/targets/wasm/",
     "wink-micro-os/targets/esp32/",
+    "wink-plugin-peripherals/builtin/",
+    "docs/implementation-plans/wokwi-dal-type-coverage-type/",
 ]
 
 STRICT_BLOCKED_PATHS = [
@@ -275,8 +277,100 @@ class HeuristicSafetyChecker:
 
         return (len(errors) == 0, errors)
 
-    def validate_all(self, patch_content: str) -> Tuple[bool, List[str]]:
-        """Run complete H-1 to H-8 validation on unified diff patch."""
+    def validate_peripheral_plugin_rules(self, patch_content: str, ws_root: Optional[Path] = None) -> Tuple[bool, List[str]]:
+        """Validate peripheral plugin additions for P-1, P-2, P-3, P-4 rules."""
+        errors = []
+        touched = self.extract_touched_files(patch_content)
+        plugin_files = [f for f in touched if f.startswith("wink-plugin-peripherals/builtin/")]
+
+        if not plugin_files:
+            return (True, [])
+
+        # Extract peripheral types touched
+        types_touched = set()
+        for pf in plugin_files:
+            parts = pf.replace("\\", "/").split("/")
+            # wink-plugin-peripherals/builtin/<type>/...
+            if len(parts) >= 3 and parts[2]:
+                types_touched.add(parts[2])
+
+        # Forbidden chip-specific model names that should be unified (Rule P-2)
+        FORBIDDEN_BARE_TYPES = {
+            "mpu6050", "mpu9250", "dht11", "dht22", "ds1307", "hx711",
+            "ili9341", "ws2812", "tm1637", "ch340", "cp2102",
+        }
+
+        # Valid pin types for manifest (Rule P-3)
+        VALID_PIN_TYPES = {
+            "gpio", "i2c_scl", "i2c_sda", "spi_sck", "spi_mosi", "spi_miso",
+            "spi_cs", "power_vcc", "power_gnd", "analog", "uart_tx", "uart_rx", "pwm",
+        }
+
+        # Check P-2: Type consolidation
+        for ptype in types_touched:
+            if ptype.lower() in FORBIDDEN_BARE_TYPES:
+                errors.append(
+                    f"P-2 Type Unification Violation: Forbidden chip-specific model name '{ptype}' used as peripheral type. "
+                    f"Must unify to canonical type (e.g. 'imu', 'rtc', 'tft', etc.) conforming to 00-master-execution-plan.md."
+                )
+
+        # Check P-1: Plan document must exist for any new peripheral type
+        plan_files_in_patch = [
+            f for f in touched if f.startswith("docs/implementation-plans/wokwi-dal-type-coverage-type/")
+        ]
+        for ptype in types_touched:
+            has_plan_in_patch = any(ptype in pf for pf in plan_files_in_patch)
+            has_plan_on_disk = False
+            if ws_root:
+                plan_dir = ws_root / "docs" / "implementation-plans" / "wokwi-dal-type-coverage-type"
+                if plan_dir.is_dir():
+                    has_plan_on_disk = any(ptype in p.name for p in plan_dir.glob("*.md"))
+
+            if not has_plan_in_patch and not has_plan_on_disk:
+                errors.append(
+                    f"P-1 Plan-First Violation: Peripheral plugin '{ptype}' lacks mandatory sub-plan document. "
+                    f"Expected docs/implementation-plans/wokwi-dal-type-coverage-type/*-{ptype}-plan.md."
+                )
+
+        # Parse added file contents for P-3 and P-4
+        current_file = ""
+        file_lines: Dict[str, List[str]] = {}
+        for line in patch_content.splitlines():
+            if line.startswith("+++ b/"):
+                current_file = line[6:].strip().replace("\\", "/")
+                file_lines[current_file] = []
+                continue
+            if line.startswith("+") and not line.startswith("+++"):
+                if current_file in file_lines:
+                    file_lines[current_file].append(line[1:])
+
+        # Check P-3 & P-4 on content
+        for fpath, lines in file_lines.items():
+            content = "\n".join(lines)
+            if fpath.endswith("manifest.json"):
+                # Rule P-3: Check pinTypes
+                pin_type_matches = re.findall(r'"pinType"\s*:\s*"([^"]+)"', content)
+                for pt in pin_type_matches:
+                    if pt not in VALID_PIN_TYPES:
+                        errors.append(
+                            f"P-3 Manifest Integrity Violation: Invalid pinType '{pt}' in {fpath}. "
+                            f"Valid pinTypes are: {sorted(VALID_PIN_TYPES)}"
+                        )
+
+            if fpath.endswith("simulation.ts"):
+                # Rule P-4: Lifecycle reset check
+                has_reset_method = bool(re.search(r'\breset\s*\(', content))
+                has_attach_reset = bool(re.search(r'onAttach[\s\S]*?(this\.\w+\s*=\s*(0|\[\]|\{\}|null|false))', content))
+                if not has_reset_method and not has_attach_reset:
+                    errors.append(
+                        f"P-4 Lifecycle Reset Violation: Peripheral plugin {fpath} must implement state reset "
+                        f"(e.g. reset() method or explicit state clearing in onAttach)."
+                    )
+
+        return (len(errors) == 0, errors)
+
+    def validate_all(self, patch_content: str, ws_root: Optional[Path] = None) -> Tuple[bool, List[str]]:
+        """Run complete H-1 to H-8 and P-1 to P-4 validation on unified diff patch."""
         all_errors = []
 
         # Scope & Whitelist (H-8)
@@ -290,5 +384,9 @@ class HeuristicSafetyChecker:
         # Content Rules (H-1, H-2, H-3, H-4, H-6, H-7)
         ok_content, content_errs = self.validate_patch_content(patch_content)
         all_errors.extend(content_errs)
+
+        # Peripheral Plugin Rules (P-1, P-2, P-3, P-4)
+        ok_plugin, plugin_errs = self.validate_peripheral_plugin_rules(patch_content, ws_root=ws_root)
+        all_errors.extend(plugin_errs)
 
         return (len(all_errors) == 0, all_errors)
