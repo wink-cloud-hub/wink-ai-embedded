@@ -45,6 +45,7 @@ typedef struct {
     uint32_t sim_id;
     int32_t  prio;
     uint32_t notify_val;
+    uint32_t runtime_counter;
     char     name[16];
 } esp_tcb_t;
 
