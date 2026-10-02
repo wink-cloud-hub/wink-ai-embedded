@@ -87,12 +87,12 @@
           },
           "evidence": {
             "backend": "wasm_simulation",
-            "run_id": "run-20261001-esp.get_started.blink-verified",
-            "assets_sha256": "94364bae6866f9070e71ae8625a89d766bbc23954e3881c025ce2a08686e9dd4",
+            "run_id": "run-20261002-esp.get_started.blink-verified",
+            "assets_sha256": "5d79fed366d7745d18e49164068a26619146c61accf9ff7c1aca7ea4cefe1c60",
             "scenario_sha256": "48e7494366d56bfab523750ba94359c349604f1437ab7c44f0a5f333f503c157",
             "execution_report_ref": ".governance/reports/get-started/blink_gpio/run-report.json",
-            "verified_commit": "58f4cade1113f07368185b420bfc07121bc82a1d",
-            "verified_at": "2026-10-01T02:42:02Z"
+            "verified_commit": "b78917fe5a1049d5ce1a2556ead8a1a786e24741",
+            "verified_at": "2026-10-02T01:40:42Z"
           }
         }
       ],
@@ -2950,12 +2950,12 @@
           },
           "evidence": {
             "backend": "wasm_simulation",
-            "run_id": "run-20261001-esp.peripherals.ledc.ledc_basic-verified",
-            "assets_sha256": "23d2afc61b9bd97c1689762a231a91ad7078b1b837bdb95d260e0faf3e82790d",
+            "run_id": "run-20261002-esp.peripherals.ledc.ledc_basic-verified",
+            "assets_sha256": "02bd752437d75a92eb945ff3a889493880713cf50ff2d8eb3b1042d69909c3ca",
             "scenario_sha256": "8148f232e7df1a76f096ccf3df430d98a2e2ce41497be77a9ba1ce1c369ae853",
             "execution_report_ref": ".governance/reports/peripherals/ledc_basic/run-report.json",
-            "verified_commit": "58f4cade1113f07368185b420bfc07121bc82a1d",
-            "verified_at": "2026-10-01T02:42:10Z"
+            "verified_commit": "b78917fe5a1049d5ce1a2556ead8a1a786e24741",
+            "verified_at": "2026-10-02T01:40:46Z"
           }
         }
       ],
@@ -6009,12 +6009,12 @@
           },
           "evidence": {
             "backend": "wasm_simulation",
-            "run_id": "run-20261001-esp.peripherals.uart.uart_echo-verified",
-            "assets_sha256": "43aaddc857dd132b423b6e6f4d1eeaf1fd6ddc66cdfcea0b0ca4b84374d6ba85",
+            "run_id": "run-20261002-esp.peripherals.uart.uart_echo-verified",
+            "assets_sha256": "aeb4e007a8420886bf0171c98bdccf0c5c2c6d38b0a1d6d0f5c423ba2b15df6c",
             "scenario_sha256": "bb3271c3531529ac41ee4a146e2097604cfd3d904f633e0ac3100dc1205c8f62",
             "execution_report_ref": ".governance/reports/peripherals/uart_echo/run-report.json",
-            "verified_commit": "58f4cade1113f07368185b420bfc07121bc82a1d",
-            "verified_at": "2026-10-01T02:42:27Z"
+            "verified_commit": "b78917fe5a1049d5ce1a2556ead8a1a786e24741",
+            "verified_at": "2026-10-02T01:40:46Z"
           }
         }
       ],
@@ -13993,12 +13993,12 @@
           },
           "evidence": {
             "backend": "wasm_simulation",
-            "run_id": "run-20261001-esp.wifi.getting_started.station-verified",
-            "assets_sha256": "3c9b11e0f9e5709bada9c4ca58de87bbe8135f1ae984352546a3496e52573256",
+            "run_id": "run-20261002-esp.wifi.getting_started.station-verified",
+            "assets_sha256": "eb503bb987c53ae2d6ed15f7f7973e1308a178bdaa736f2de6a70ea7a5d71a67",
             "scenario_sha256": "64c43ef7217486584a3a4b5ea19f5fac62a33ffb8ea238a3571b17d8ca6eb2a0",
             "execution_report_ref": ".governance/reports/wifi/wifi_sta/run-report.json",
-            "verified_commit": "58f4cade1113f07368185b420bfc07121bc82a1d",
-            "verified_at": "2026-10-01T02:42:46Z"
+            "verified_commit": "b78917fe5a1049d5ce1a2556ead8a1a786e24741",
+            "verified_at": "2026-10-02T01:40:46Z"
           }
         },
         {
