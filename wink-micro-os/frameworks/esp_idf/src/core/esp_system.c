@@ -3,6 +3,7 @@
 #include "esp_log.h"
 #include "esp_random.h"
 #include "esp_chip_info.h"
+#include "esp_flash.h"
 #include "esp_timer.h"
 #include "esp_rom_sys.h"
 #include "esp_rom_gpio.h"
@@ -131,6 +132,20 @@ void esp_rom_gpio_connect_in_signal(uint32_t gpio_num, uint32_t signal_idx, bool
 
 uint32_t esp_get_free_heap_size(void) {
     return (uint32_t)heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
+}
+
+uint32_t esp_get_minimum_free_heap_size(void) {
+    return (uint32_t)heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
+}
+
+esp_err_t esp_flash_get_size(esp_flash_t *chip, uint32_t *out_size) {
+    (void)chip;
+    if (!out_size) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    /* Standard ESP32 DevKit 4MB external SPI flash */
+    *out_size = 4 * 1024 * 1024;
+    return ESP_OK;
 }
 
 /* Task watchdog / interrupt allocator: NOT supported in M0 simulation

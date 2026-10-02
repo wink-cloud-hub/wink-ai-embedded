@@ -65,6 +65,7 @@ $espIdfBaseDir = Join-Path $microAppDir 'vendor\esp_idfv61'
 # Known ESP32 carrier apps
 $allCarriers = @(
     @{ Name = 'blink_gpio';    Rel = 'vendor/esp_idfv61/get-started/blink_gpio';    Channel = 'GPIO Output & FreeRTOS vTaskDelay' },
+    @{ Name = 'hello_world';   Rel = 'vendor/esp_idfv61/get-started/hello_world';   Channel = 'Chip Info & System Lifecycle Reset' },
     @{ Name = 'ledc_basic';    Rel = 'vendor/esp_idfv61/peripherals/ledc_basic';    Channel = 'LEDC PWM & Hardware Timer' },
     @{ Name = 'i2c_basic';     Rel = 'vendor/esp_idfv61/peripherals/i2c_basic';     Channel = 'I2C Master Bus Communication' },
     @{ Name = 'uart_echo';     Rel = 'vendor/esp_idfv61/peripherals/uart_echo';     Channel = 'UART Loopback & Ring Buffer' },
