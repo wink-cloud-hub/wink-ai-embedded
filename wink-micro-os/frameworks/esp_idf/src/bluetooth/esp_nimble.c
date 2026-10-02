@@ -318,6 +318,7 @@ int ble_gatts_add_svcs(const struct ble_gatt_svc_def *svcs) {
             memset(&ctxt, 0, sizeof(ctxt));
             ctxt.op = BLE_GATT_REGISTER_OP_SVC;
             ctxt.svc.svc = svc;
+            ctxt.svc.svc_def = svc;
             ctxt.svc.handle = s_rec->start_handle;
             ble_hs_cfg.gatts_register_cb(&ctxt, ble_hs_cfg.gatts_register_arg);
         }
@@ -346,7 +347,9 @@ int ble_gatts_add_svcs(const struct ble_gatt_svc_def *svcs) {
                     memset(&ctxt, 0, sizeof(ctxt));
                     ctxt.op = BLE_GATT_REGISTER_OP_CHR;
                     ctxt.chr.chr = chr;
+                    ctxt.chr.chr_def = chr;
                     ctxt.chr.handle = c_rec->handle;
+                    ctxt.chr.def_handle = c_rec->handle;
                     ctxt.chr.val_handle = c_rec->val_handle;
                     ble_hs_cfg.gatts_register_cb(&ctxt, ble_hs_cfg.gatts_register_arg);
                 }
@@ -367,6 +370,7 @@ int ble_gatts_add_svcs(const struct ble_gatt_svc_def *svcs) {
                             memset(&ctxt, 0, sizeof(ctxt));
                             ctxt.op = BLE_GATT_REGISTER_OP_DSC;
                             ctxt.dsc.dsc = dsc;
+                            ctxt.dsc.dsc_def = dsc;
                             ctxt.dsc.handle = d_rec->handle;
                             ble_hs_cfg.gatts_register_cb(&ctxt, ble_hs_cfg.gatts_register_arg);
                         }
@@ -810,3 +814,27 @@ void esp_nimble_sim_reset(void) {
     memset(&ble_hs_cfg, 0, sizeof(ble_hs_cfg));
     s_ble_state.next_handle = 1;
 }
+
+#if defined(__EMSCRIPTEN__)
+#  include <emscripten.h>
+#  define WINK_SIM_EXPORT EMSCRIPTEN_KEEPALIVE
+#else
+#  define WINK_SIM_EXPORT
+#endif
+
+WINK_SIM_EXPORT int sim_ble_get_adv_state(void) {
+    return s_ble_state.is_advertising ? 1 : 0;
+}
+
+WINK_SIM_EXPORT const char* sim_ble_get_device_name(void) {
+    return s_ble_state.device_name;
+}
+
+WINK_SIM_EXPORT int sim_ble_get_num_services(void) {
+    return (int)s_ble_state.num_svcs;
+}
+
+WINK_SIM_EXPORT int sim_ble_get_num_characteristics(void) {
+    return (int)s_ble_state.num_chrs;
+}
+
