@@ -84,6 +84,7 @@ esp_err_t gpio_config(const gpio_config_t *pGPIOConfig) {
             }
             if (is_output) {
                 s_is_output |= (1ULL << pin);
+                (void)pal_gpio_write((wink_pin_t)pin, false);
             } else {
                 s_is_output &= ~(1ULL << pin);
                 s_output_levels &= ~(1ULL << pin);
@@ -161,6 +162,14 @@ esp_err_t gpio_set_level(gpio_num_t gpio_num, uint32_t level) {
         if (level) {
             esp_sim_gpio_inject_edge(GPIO_NUM_18, 0, 1);
         }
+    } else if (gpio_num == GPIO_NUM_18) {
+        /* Generic GPIO Loopback: OUTPUT_0 (18) -> INPUT_0 (4) */
+        esp_sim_gpio_set_input_level(GPIO_NUM_4, level ? 1 : 0);
+        esp_sim_gpio_inject_edge(GPIO_NUM_4, old_level, level ? 1u : 0u);
+    } else if (gpio_num == GPIO_NUM_19) {
+        /* Generic GPIO Loopback: OUTPUT_1 (19) -> INPUT_1 (5) */
+        esp_sim_gpio_set_input_level(GPIO_NUM_5, level ? 1 : 0);
+        esp_sim_gpio_inject_edge(GPIO_NUM_5, old_level, level ? 1u : 0u);
     }
     return err;
 }

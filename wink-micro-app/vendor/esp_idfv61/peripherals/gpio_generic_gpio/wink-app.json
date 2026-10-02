@@ -1,0 +1,38 @@
+{
+  "app_name": "esp_idfv61_gpio_generic_gpio",
+  "display_name": "ESP-IDF v6.1 Generic GPIO Example",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "mcu": "esp32",
+  "tick_ms": 1,
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/peripherals/gpio/generic_gpio/main",
+    "files": {
+      "gpio_example_main.c": "64cc3c1e28607dfa4ea411efe9c16cd83e07b93336ba9c499f8de530c5eabd67"
+    }
+  },
+  "devices": {
+    "led_out0": {
+      "type": "led",
+      "gpio_pin": 18,
+      "active_high": true
+    },
+    "led_out1": {
+      "type": "led",
+      "gpio_pin": 19,
+      "active_high": true
+    },
+    "trigger_btn0": {
+      "type": "button",
+      "gpio_pin": 4,
+      "active_low": true
+    },
+    "trigger_btn1": {
+      "type": "button",
+      "gpio_pin": 5,
+      "active_low": true
+    }
+  }
+}

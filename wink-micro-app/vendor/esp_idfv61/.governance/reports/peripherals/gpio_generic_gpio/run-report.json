@@ -1,0 +1,112 @@
+{
+  "timestamp": "2026-10-02T21:31:49.143Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 generic_gpio headless deterministic proof",
+        "templateId": "esp_idfv61_gpio_generic_gpio",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 112
+      },
+      "summary": {
+        "totalSteps": 7,
+        "passedSteps": 7,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 0,
+          "expected": 0
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "1050000",
+          "actual": 1,
+          "expected": 1
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "Minimum free heap size: 327680 bytes\ncnt: 0\n",
+              "GPIO[4] intr, val: 1\nGPIO[5] intr, val: 1\ncnt: 1\n",
+              "GPIO[4] intr, val: 0\ncnt: 2\n"
+            ]
+          },
+          "expected": "Minimum free heap size:"
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "Minimum free heap size: 327680 bytes\ncnt: 0\n",
+              "GPIO[4] intr, val: 1\nGPIO[5] intr, val: 1\ncnt: 1\n",
+              "GPIO[4] intr, val: 0\ncnt: 2\n"
+            ]
+          },
+          "expected": "cnt: 0"
+        },
+        {
+          "stepIndex": 5,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 2,
+            "candidatePayloads": [
+              "Minimum free heap size: 327680 bytes\ncnt: 0\n",
+              "GPIO[4] intr, val: 1\nGPIO[5] intr, val: 1\ncnt: 1\n",
+              "GPIO[4] intr, val: 0\ncnt: 2\n"
+            ]
+          },
+          "expected": "GPIO[4] intr, val:"
+        },
+        {
+          "stepIndex": 6,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "Minimum free heap size: 327680 bytes\ncnt: 0\n",
+              "GPIO[4] intr, val: 1\nGPIO[5] intr, val: 1\ncnt: 1\n",
+              "GPIO[4] intr, val: 0\ncnt: 2\n"
+            ]
+          },
+          "expected": "cnt: 1"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

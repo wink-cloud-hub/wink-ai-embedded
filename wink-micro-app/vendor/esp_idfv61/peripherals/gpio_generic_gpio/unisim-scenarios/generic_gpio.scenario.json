@@ -1,0 +1,70 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 generic_gpio headless deterministic proof",
+    "templateId": "esp_idfv61_gpio_generic_gpio",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "gpio:18",
+      "matcher": 0,
+      "description": "断言初始化完成后 GPIO 18 输出初始低电平 0"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1050ms",
+      "target": "gpio:18",
+      "matcher": 1,
+      "description": "断言 1000ms 后主循环翻转 GPIO 18 输出高电平 1"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "2500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Minimum free heap size:",
+      "description": "断言初始化完成并输出系统堆内存统计"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "2500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "cnt: 0",
+      "description": "断言主循环启动并打印初始计数器 cnt: 0"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "2500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "GPIO[4] intr, val:",
+      "description": "断言输出脉冲通过回路触发 GPIO 4 边沿中断并通过队列唤醒任务"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "2500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "cnt: 1",
+      "description": "断言主循环周期延时完成并推进到 cnt: 1"
+    }
+  ]
+}

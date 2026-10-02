@@ -1,0 +1,50 @@
+{
+  "appName": "esp_idfv61_gpio_generic_gpio",
+  "board": "esp32_devkitc_v4",
+  "devices": {
+    "led_out0": {
+      "id": "led_out0",
+      "type": "led",
+      "pinMapping": {
+        "A": 18
+      },
+      "properties": {
+        "activeHigh": true
+      }
+    },
+    "led_out1": {
+      "id": "led_out1",
+      "type": "led",
+      "pinMapping": {
+        "A": 19
+      },
+      "properties": {
+        "activeHigh": true
+      }
+    },
+    "trigger_btn0": {
+      "id": "trigger_btn0",
+      "type": "button",
+      "pinMapping": {
+        "1.l": 4
+      },
+      "properties": {
+        "activeLow": true
+      }
+    },
+    "trigger_btn1": {
+      "id": "trigger_btn1",
+      "type": "button",
+      "pinMapping": {
+        "1.l": 5
+      },
+      "properties": {
+        "activeLow": true
+      }
+    }
+  },
+  "family": "esp32",
+  "core": "xtensa-lx6",
+  "mcu": "esp32",
+  "vendor": "espressif"
+}

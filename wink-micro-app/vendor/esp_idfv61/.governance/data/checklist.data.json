@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 16,
-    "verified_configs": 16
+    "audited": 17,
+    "verified_configs": 17
   },
   "entries": [
     {
@@ -1251,10 +1251,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-02T21:30:00Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -1285,18 +1287,26 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/peripherals_gpio_generic_gpio.scenario.json",
+            "scenario_path": "peripherals/gpio_generic_gpio/unisim-scenarios/generic_gpio.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
             "positive_cases": [],
             "negative_cases": [],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261002-esp.peripherals.gpio.generic_gpio-verified",
+            "assets_sha256": "f7738175d99b993a3e46ad096bed06c024f33676638b749d10795245edff3f14",
+            "scenario_sha256": "ac6b8baccb08117d7a9bd78bf8ece4f94caa7eb9f6d5d9fd3868d50974ed9d8b",
+            "execution_report_ref": ".governance/reports/peripherals/gpio_generic_gpio/run-report.json",
+            "verified_commit": "fd7ac922e4ff651fa1d9686181768438782b6656",
+            "verified_at": "2026-10-02T21:31:49Z"
+          }
         }
       ],
       "target_app_dir": "peripherals/gpio_generic_gpio"
