@@ -1,0 +1,172 @@
+{
+  "timestamp": "2026-10-02T23:49:50.773Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 esp_timer headless deterministic proof",
+        "templateId": "esp_idfv61_system_esp_timer",
+        "totalVirtualUs": "15000000",
+        "wallClockMs": 141
+      },
+      "summary": {
+        "totalSteps": 10,
+        "passedSteps": 10,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) example: Started timers, time since boot: 0 us\u001b[0m\nTimer stats:\nName                  Period      Alarm       periodic              500000      500000      \ntimed_periodic        500000      3000000     \none-shot              0           5000000     \ntimed_one-shot        0           6000000     \n",
+              "\u001b[0;32mI (501) example: Periodic timer called, time since boot: 501000 us\u001b[0m\n"
+            ]
+          },
+          "expected": "Started timers, time since boot:"
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 2,
+            "candidatePayloads": [
+              "\u001b[0;32mI (501) example: Periodic timer called, time since boot: 501000 us\u001b[0m\n",
+              "\u001b[0;32mI (1001) example: Periodic timer called, time since boot: 1001000 us\u001b[0m\n"
+            ]
+          },
+          "expected": "Periodic timer called, time since boot:"
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "3000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (1001) example: Periodic timer called, time since boot: 1001000 us\u001b[0m\n",
+              "\u001b[0;32mI (1501) example: Periodic timer called, time since boot: 1501000 us\u001b[0m\n",
+              "Timer stats:\nName                  Period      Alarm       periodic              500000      2000000     \ntimed_periodic        500000      3000000     \none-shot              0           5000000     \ntimed_one-shot        0           6000000     \n\u001b[0;32mI (2001) example: Periodic timer called, time since boot: 2001000 us\u001b[0m\n",
+              "\u001b[0;32mI (2501) example: Periodic timer called, time since boot: 2501000 us\u001b[0m\n"
+            ]
+          },
+          "expected": "Timer stats:"
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "4000000",
+          "actual": {
+            "matchedCount": 2,
+            "candidatePayloads": [
+              "\u001b[0;32mI (2501) example: Periodic timer called, time since boot: 2501000 us\u001b[0m\n",
+              "\u001b[0;32mI (3001) example: Periodic timer called, time since boot: 3001000 us\u001b[0m\n\u001b[0;32mI (3001) example: Timed periodic timer called, time since boot: 3001000 us\u001b[0m\n",
+              "\u001b[0;32mI (3501) example: Periodic timer called, time since boot: 3501000 us\u001b[0m\n\u001b[0;32mI (3501) example: Timed periodic timer called, time since boot: 3501000 us\u001b[0m\n",
+              "Timer stats:\nName                  Period      Alarm       periodic              500000      4000000     \ntimed_periodic        500000      4000000     \none-shot              0           5000000     \ntimed_one-shot        0           6000000     \n"
+            ]
+          },
+          "expected": "Timed periodic timer called, time since boot:"
+        },
+        {
+          "stepIndex": 5,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "6000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (4501) example: Periodic timer called, time since boot: 4501000 us\u001b[0m\n\u001b[0;32mI (4501) example: Timed periodic timer called, time since boot: 4501000 us\u001b[0m\n",
+              "\u001b[0;32mI (5001) example: Periodic timer called, time since boot: 5001000 us\u001b[0m\n\u001b[0;32mI (5001) example: Timed periodic timer called, time since boot: 5001000 us\u001b[0m\n\u001b[0;32mI (5001) example: One-shot timer called, time since boot: 5001000 us\u001b[0m\n\u001b[0;32mI (5001) example: Restarted periodic timer with 1s period, time since boot: 5001000 us\u001b[0m\n",
+              "\u001b[0;32mI (5501) example: Timed periodic timer called, time since boot: 5501000 us\u001b[0m\n",
+              "Timer stats:\nName                  Period      Alarm       periodic              1000000     6001000     \ntimed_periodic        500000      6000000     \ntimed_one-shot        0           6000000     \n"
+            ]
+          },
+          "expected": "One-shot timer called, time since boot:"
+        },
+        {
+          "stepIndex": 6,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "6000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (4501) example: Periodic timer called, time since boot: 4501000 us\u001b[0m\n\u001b[0;32mI (4501) example: Timed periodic timer called, time since boot: 4501000 us\u001b[0m\n",
+              "\u001b[0;32mI (5001) example: Periodic timer called, time since boot: 5001000 us\u001b[0m\n\u001b[0;32mI (5001) example: Timed periodic timer called, time since boot: 5001000 us\u001b[0m\n\u001b[0;32mI (5001) example: One-shot timer called, time since boot: 5001000 us\u001b[0m\n\u001b[0;32mI (5001) example: Restarted periodic timer with 1s period, time since boot: 5001000 us\u001b[0m\n",
+              "\u001b[0;32mI (5501) example: Timed periodic timer called, time since boot: 5501000 us\u001b[0m\n",
+              "Timer stats:\nName                  Period      Alarm       periodic              1000000     6001000     \ntimed_periodic        500000      6000000     \ntimed_one-shot        0           6000000     \n"
+            ]
+          },
+          "expected": "Restarted periodic timer with 1s period"
+        },
+        {
+          "stepIndex": 7,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "7500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (5501) example: Timed periodic timer called, time since boot: 5501000 us\u001b[0m\n",
+              "Timer stats:\nName                  Period      Alarm       periodic              1000000     6001000     \ntimed_periodic        500000      6000000     \ntimed_one-shot        0           6000000     \n\u001b[0;32mI (6001) example: Periodic timer called, time since boot: 6001000 us\u001b[0m\n\u001b[0;32mI (6001) example: Timed periodic timer called, time since boot: 6001000 us\u001b[0m\n\u001b[0;32mI (6001) example: Timed one-shot timer called, time since boot: 6001000 us\u001b[0m\n\u001b[0;32mI (6001) example: Restarted timed periodic timer with 1s period, time since boot: 6001000 us\u001b[0m\n",
+              "\u001b[0;32mI (6991) example: Timed periodic timer called, time since boot: 6991000 us\u001b[0m\n\u001b[0;32mI (7001) example: Periodic timer called, time since boot: 7001000 us\u001b[0m\n"
+            ]
+          },
+          "expected": "Timed one-shot timer called, time since boot:"
+        },
+        {
+          "stepIndex": 8,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "7500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (5501) example: Timed periodic timer called, time since boot: 5501000 us\u001b[0m\n",
+              "Timer stats:\nName                  Period      Alarm       periodic              1000000     6001000     \ntimed_periodic        500000      6000000     \ntimed_one-shot        0           6000000     \n\u001b[0;32mI (6001) example: Periodic timer called, time since boot: 6001000 us\u001b[0m\n\u001b[0;32mI (6001) example: Timed periodic timer called, time since boot: 6001000 us\u001b[0m\n\u001b[0;32mI (6001) example: Timed one-shot timer called, time since boot: 6001000 us\u001b[0m\n\u001b[0;32mI (6001) example: Restarted timed periodic timer with 1s period, time since boot: 6001000 us\u001b[0m\n",
+              "\u001b[0;32mI (6991) example: Timed periodic timer called, time since boot: 6991000 us\u001b[0m\n\u001b[0;32mI (7001) example: Periodic timer called, time since boot: 7001000 us\u001b[0m\n"
+            ]
+          },
+          "expected": "Restarted timed periodic timer with 1s period"
+        },
+        {
+          "stepIndex": 9,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "15000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (10991) example: Timed periodic timer called, time since boot: 10991000 us\u001b[0m\n\u001b[0;32mI (11001) example: Periodic timer called, time since boot: 11001000 us\u001b[0m\n",
+              "\u001b[0;32mI (11991) example: Timed periodic timer called, time since boot: 11991000 us\u001b[0m\n\u001b[0;32mI (12000) example: Stopped and deleted timers\u001b[0m\n"
+            ]
+          },
+          "expected": "Stopped and deleted timers"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

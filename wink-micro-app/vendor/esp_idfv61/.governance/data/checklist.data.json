@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 18,
-    "verified_configs": 19
+    "audited": 20,
+    "verified_configs": 20
   },
   "entries": [
     {
@@ -7955,17 +7955,18 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-02T23:50:14Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
       "required_capabilities": [
         "cap.core.fiber_task",
-        "cap.core.sync_tokens",
-        "cap.pm.light_sleep"
+        "cap.core.sync_tokens"
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
@@ -7989,18 +7990,26 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/system_esp_timer.scenario.json",
-            "timeout_virtual_us": 3000000,
-            "timeout_wall_ms": 10000,
+            "scenario_path": "system/esp_timer/unisim-scenarios/system_esp_timer.scenario.json",
+            "timeout_virtual_us": 15000000,
+            "timeout_wall_ms": 30000,
             "positive_cases": [],
             "negative_cases": [],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261002-esp.system.esp_timer-verified",
+            "assets_sha256": "da216d90bdd179b2564c0e1e5c80e6f53bdc160240738181d3f396b257fb338d",
+            "scenario_sha256": "15f97644f8dc5336652d55111566374d60c53fc50420cb12820103a6606f89d1",
+            "execution_report_ref": ".governance/reports/system/esp_timer/run-report.json",
+            "verified_commit": "54c4f397c3fc7ce57b806d0b1e328f834f39dca1",
+            "verified_at": "2026-10-02T23:49:50Z"
+          }
         }
       ],
       "target_app_dir": "system/esp_timer"
