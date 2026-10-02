@@ -1,0 +1,17 @@
+{
+  "app_name": "esp_idfv61_nvs_nvs_rw_blob",
+  "display_name": "Espressif ESP-IDF nvs_rw_blob",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "mcu": "esp32",
+  "tick_ms": 1,
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/storage/nvs/nvs_rw_blob/main",
+    "files": {
+      "nvs_blob_example_main.c": "5a2d37cd89b7d12934a1bd2abb512097e1be315b6dbfbbcfa6e39b9dbe7223ba"
+    }
+  },
+  "devices": {}
+}

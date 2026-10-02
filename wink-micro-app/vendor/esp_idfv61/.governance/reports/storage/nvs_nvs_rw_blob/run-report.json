@@ -1,0 +1,153 @@
+{
+  "timestamp": "2026-10-02T19:31:29.722Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 nvs_rw_blob headless deterministic proof",
+        "templateId": "esp_idfv61_nvs_nvs_rw_blob",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 85
+      },
+      "summary": {
+        "totalSteps": 10,
+        "passedSteps": 10,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) nvs_blob_example: Saving test data blob...\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nReading updated blob data:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Reading test data blob:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: ID: 123\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Name: Test Sample\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Values: 3.140, 2.718, -0.000, 0.000\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Flags: 0xABCD1234\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Counts: -100, 100\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Active: true\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nReading array data blob:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Array[0] = 0\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nBlob operations completed.\u001b[0m\n"
+            ]
+          },
+          "expected": "Saving test data blob..."
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) nvs_blob_example: Saving test data blob...\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nReading updated blob data:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Reading test data blob:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: ID: 123\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Name: Test Sample\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Values: 3.140, 2.718, -0.000, 0.000\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Flags: 0xABCD1234\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Counts: -100, 100\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Active: true\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nReading array data blob:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Array[0] = 0\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nBlob operations completed.\u001b[0m\n"
+            ]
+          },
+          "expected": "Reading test data blob:"
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) nvs_blob_example: Saving test data blob...\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nReading updated blob data:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Reading test data blob:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: ID: 123\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Name: Test Sample\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Values: 3.140, 2.718, -0.000, 0.000\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Flags: 0xABCD1234\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Counts: -100, 100\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Active: true\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nReading array data blob:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Array[0] = 0\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nBlob operations completed.\u001b[0m\n"
+            ]
+          },
+          "expected": "ID: 123"
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) nvs_blob_example: Saving test data blob...\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nReading updated blob data:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Reading test data blob:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: ID: 123\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Name: Test Sample\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Values: 3.140, 2.718, -0.000, 0.000\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Flags: 0xABCD1234\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Counts: -100, 100\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Active: true\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nReading array data blob:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Array[0] = 0\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nBlob operations completed.\u001b[0m\n"
+            ]
+          },
+          "expected": "Name: Test Sample"
+        },
+        {
+          "stepIndex": 5,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) nvs_blob_example: Saving test data blob...\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nReading updated blob data:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Reading test data blob:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: ID: 123\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Name: Test Sample\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Values: 3.140, 2.718, -0.000, 0.000\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Flags: 0xABCD1234\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Counts: -100, 100\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Active: true\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nReading array data blob:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Array[0] = 0\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nBlob operations completed.\u001b[0m\n"
+            ]
+          },
+          "expected": "Flags: 0xABCD1234"
+        },
+        {
+          "stepIndex": 6,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) nvs_blob_example: Saving test data blob...\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nReading updated blob data:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Reading test data blob:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: ID: 123\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Name: Test Sample\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Values: 3.140, 2.718, -0.000, 0.000\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Flags: 0xABCD1234\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Counts: -100, 100\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Active: true\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nReading array data blob:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Array[0] = 0\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nBlob operations completed.\u001b[0m\n"
+            ]
+          },
+          "expected": "Active: true"
+        },
+        {
+          "stepIndex": 7,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) nvs_blob_example: Saving test data blob...\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nReading updated blob data:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Reading test data blob:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: ID: 123\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Name: Test Sample\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Values: 3.140, 2.718, -0.000, 0.000\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Flags: 0xABCD1234\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Counts: -100, 100\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Active: true\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nReading array data blob:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Array[0] = 0\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nBlob operations completed.\u001b[0m\n"
+            ]
+          },
+          "expected": "Reading array data blob:"
+        },
+        {
+          "stepIndex": 8,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) nvs_blob_example: Saving test data blob...\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nReading updated blob data:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Reading test data blob:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: ID: 123\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Name: Test Sample\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Values: 3.140, 2.718, -0.000, 0.000\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Flags: 0xABCD1234\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Counts: -100, 100\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Active: true\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nReading array data blob:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Array[0] = 0\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nBlob operations completed.\u001b[0m\n"
+            ]
+          },
+          "expected": "Array[0] = "
+        },
+        {
+          "stepIndex": 9,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) nvs_blob_example: Saving test data blob...\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nReading updated blob data:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Reading test data blob:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: ID: 123\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Name: Test Sample\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Values: 3.140, 2.718, -0.000, 0.000\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Flags: 0xABCD1234\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Counts: -100, 100\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Active: true\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nReading array data blob:\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: Array[0] = 0\u001b[0m\n\u001b[0;32mI (0) nvs_blob_example: \nBlob operations completed.\u001b[0m\n"
+            ]
+          },
+          "expected": "Blob operations completed."
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

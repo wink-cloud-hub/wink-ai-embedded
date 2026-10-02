@@ -1,0 +1,101 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 nvs_rw_blob headless deterministic proof",
+    "templateId": "esp_idfv61_nvs_nvs_rw_blob",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "2000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Saving test data blob...",
+      "description": "断言成功调用 nvs_set_blob 写入复杂聚合结构体 test_data"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "2000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Reading test data blob:",
+      "description": "断言进入结构体 Blob 数据读取与反序列化验证"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "2000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "ID: 123",
+      "description": "断言读出的 test_data.id 为 123"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "2000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Name: Test Sample",
+      "description": "断言读出的 test_data.name 字符串字段为 'Test Sample'"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "2000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Flags: 0xABCD1234",
+      "description": "断言读出的 test_data.flags 32位标志位精确匹配 0xABCD1234"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "2000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Active: true",
+      "description": "断言读出的布尔字段 test_data.active 为 true"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "2000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Reading array data blob:",
+      "description": "断言进入动态探测长度并读取的数组 Blob 流程"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "2000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Array[0] = ",
+      "description": "断言动态数组 Blob 第 0 个时间戳元素已成功写入并读出"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "2000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Blob operations completed.",
+      "description": "断言 NVS 结构体与动态数组 Blob 全部操作成功闭环"
+    }
+  ]
+}

@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 14,
-    "verified_configs": 14
+    "audited": 15,
+    "verified_configs": 15
   },
   "entries": [
     {
@@ -25237,10 +25237,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-02T19:31:29Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -25273,18 +25275,26 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L4_internal",
-            "scenario_path": "unisim-scenarios/storage_nvs_nvs_rw_blob.scenario.json",
+            "scenario_path": "storage/nvs_nvs_rw_blob/unisim-scenarios/nvs_nvs_rw_blob.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
             "positive_cases": [],
             "negative_cases": [],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261002-esp.storage.nvs.nvs_rw_blob-verified",
+            "assets_sha256": "844efe435341bddda71d3af7bf3260e479f21097409bfcf445bf5aac1b1d24d4",
+            "scenario_sha256": "27927f880a63cbfbb416357fc143e4cf9c13f90579bfc5cd7ac0582c92afb053",
+            "execution_report_ref": ".governance/reports/storage/nvs_nvs_rw_blob/run-report.json",
+            "verified_commit": "f8121fc13bf277fec481c443867f9d4b518c0008",
+            "verified_at": "2026-10-02T19:31:29Z"
+          }
         }
       ],
       "target_app_dir": "storage/nvs_nvs_rw_blob"
