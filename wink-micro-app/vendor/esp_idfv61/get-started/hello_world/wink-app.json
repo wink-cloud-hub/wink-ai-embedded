@@ -1,0 +1,17 @@
+{
+  "app_name": "esp_idfv61_hello_world",
+  "display_name": "Espressif ESP-IDF hello_world",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "mcu": "esp32",
+  "tick_ms": 1,
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/get-started/hello_world/main",
+    "files": {
+      "hello_world_main.c": "b2d1c8573307e010d276d2d0df537f1fe752416f8422e267aa8b1661c1744595"
+    }
+  },
+  "devices": {}
+}

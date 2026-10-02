@@ -1,0 +1,65 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 hello_world headless deterministic proof",
+    "templateId": "esp_idfv61_hello_world",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Hello world!",
+      "description": "断言从 UART0 TX 观测到 'Hello world!' 启动问候"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "4MB external flash",
+      "description": "断言从 UART0 TX 观测到 '4MB external flash' 硬件自省参数"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Restarting in 10 seconds...",
+      "description": "断言进入倒计时初始状态 10 秒"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["950ms", "1500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Restarting in 9 seconds...",
+      "description": "经过 1000ms FreeRTOS 延时后，断言进入倒计时 9 秒状态"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["1950ms", "2500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Restarting in 8 seconds...",
+      "description": "经过 2000ms FreeRTOS 延时后，断言进入倒计时 8 秒状态"
+    }
+  ]
+}

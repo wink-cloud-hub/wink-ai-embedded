@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 12,
-    "verified_configs": 12
+    "audited": 13,
+    "verified_configs": 13
   },
   "entries": [
     {
@@ -109,10 +109,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-02T13:01:20Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -142,18 +144,26 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/get-started_hello_world.scenario.json",
+            "scenario_path": "get-started/hello_world/unisim-scenarios/hello_world.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
             "positive_cases": [],
             "negative_cases": [],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261002-esp.get_started.hello_world-verified",
+            "assets_sha256": "0dca4e5ebe503a1128c10742b5fde34a2e222d5bc155a75885a372f583fec110",
+            "scenario_sha256": "eb39fc2dc8a8e1d75b270e38c7098a3db4d7a82f9c199ef9ff0d5a4ebcffdf51",
+            "execution_report_ref": ".governance/reports/get-started/hello_world/run-report.json",
+            "verified_commit": "370713c5a06f72176cb6b8742b38fdce74f4dfae",
+            "verified_at": "2026-10-02T13:01:08Z"
+          }
         }
       ],
       "target_app_dir": "get-started/hello_world"
