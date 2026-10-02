@@ -15,6 +15,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from .agent import AgentSynthesizer
 from .mutator import CanaryMutator
+from .remediator import Remediator
 
 
 class PipelineResult:
@@ -36,10 +37,15 @@ class LoopPipeline:
         self,
         workspace_root: Path,
         custom_agent_cmd: Optional[str] = None,
+        custom_agent_a_cmd: Optional[str] = None,
+        custom_agent_b_cmd: Optional[str] = None,
+        auto_heal: bool = False,
+        max_heal_attempts: int = 2,
         dry_run: bool = False,
     ):
         self.ws_root = workspace_root
         self.dry_run = dry_run
+        self.auto_heal = auto_heal
         self.vendor_root = workspace_root / "wink-micro-app" / "vendor" / "esp_idfv61"
         self.governance_dir = self.vendor_root / ".governance"
         self.manifest_path = self.governance_dir / "data" / "checklist.data.json"
@@ -52,7 +58,17 @@ class LoopPipeline:
             / "run_esp32_headless_evidence.ps1"
         )
         self.mutator = CanaryMutator()
-        self.agent = AgentSynthesizer(workspace_root, custom_agent_cmd=custom_agent_cmd)
+        self.agent = AgentSynthesizer(
+            workspace_root,
+            custom_agent_cmd=custom_agent_cmd,
+            custom_agent_a_cmd=custom_agent_a_cmd,
+            custom_agent_b_cmd=custom_agent_b_cmd,
+        )
+        self.remediator = Remediator(
+            workspace_root=workspace_root,
+            agent_synthesizer=self.agent,
+            max_attempts=max_heal_attempts,
+        )
 
     def run_powershell(self, cmd_args: list[str], timeout_sec: int = 120) -> Tuple[int, str]:
         """Execute a PowerShell command string reliably across platforms."""
@@ -148,6 +164,16 @@ class LoopPipeline:
 
         # --- Phase 3: Positive Baseline Execution ---
         rc, out = self.run_powershell(["-File", str(self.runner_script), "-App", app_name, "-Reporter", "json"])
+        if rc != 0 and self.auto_heal:
+            print(f"[heal] Positive baseline failed (code {rc}) for {app_id}. Triggering autonomous self-healing loop...", flush=True)
+            heal_ok, heal_msg = self.remediator.remediate_app(app_entry, app_dir, out)
+            if heal_ok:
+                print(f"[heal] Self-healing succeeded: {heal_msg}. Re-executing baseline simulation...", flush=True)
+                rc, out = self.run_powershell(["-File", str(self.runner_script), "-App", app_name, "-Reporter", "json"])
+            else:
+                self.rollback_app(app_dir)
+                return PipelineResult(app_id, False, f"Autonomous self-healing failed:\n{heal_msg}", "BASELINE_HEAL_FAILED")
+
         if rc != 0:
             self.rollback_app(app_dir)
             return PipelineResult(app_id, False, f"Positive baseline simulation failed (code {rc}):\n{out[:300]}", "BASELINE")

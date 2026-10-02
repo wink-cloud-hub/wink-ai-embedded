@@ -25,6 +25,10 @@ class LoopRunner:
         workspace_root: Path,
         dry_run: bool = False,
         custom_agent_cmd: Optional[str] = None,
+        custom_agent_a_cmd: Optional[str] = None,
+        custom_agent_b_cmd: Optional[str] = None,
+        auto_heal: bool = False,
+        max_heal_attempts: int = 2,
     ):
         self.ws_root = workspace_root
         self.dry_run = dry_run
@@ -33,6 +37,10 @@ class LoopRunner:
         self.pipeline = LoopPipeline(
             workspace_root=workspace_root,
             custom_agent_cmd=custom_agent_cmd,
+            custom_agent_a_cmd=custom_agent_a_cmd,
+            custom_agent_b_cmd=custom_agent_b_cmd,
+            auto_heal=auto_heal,
+            max_heal_attempts=max_heal_attempts,
             dry_run=dry_run,
         )
 
@@ -165,7 +173,11 @@ def main():
     parser.add_argument("--limit", type=int, help="Maximum number of applications to process in this run")
     parser.add_argument("--list", action="store_true", help="List matched candidates and exit without executing")
     parser.add_argument("--dry-run", action="store_true", help="Simulate execution without git commits or checklist writes")
+    parser.add_argument("--auto-heal", action="store_true", help="Enable autonomous self-healing on baseline failure")
+    parser.add_argument("--max-heal-attempts", type=int, default=2, help="Maximum self-healing attempts before escalation")
     parser.add_argument("--agent-cmd", type=str, help="Custom headless agent CLI command (e.g. 'claude -p')")
+    parser.add_argument("--agent-a-cmd", type=str, help="Custom agent CLI command for Role A (Proposer)")
+    parser.add_argument("--agent-b-cmd", type=str, help="Custom agent CLI command for Role B (Auditor)")
     parser.add_argument("--workspace-root", type=str, default=".", help="Workspace root directory")
 
     args = parser.parse_args()
@@ -175,6 +187,10 @@ def main():
         workspace_root=ws_root,
         dry_run=args.dry_run,
         custom_agent_cmd=args.agent_cmd,
+        custom_agent_a_cmd=args.agent_a_cmd,
+        custom_agent_b_cmd=args.agent_b_cmd,
+        auto_heal=args.auto_heal,
+        max_heal_attempts=args.max_heal_attempts,
     )
 
     exit_code = runner.run(

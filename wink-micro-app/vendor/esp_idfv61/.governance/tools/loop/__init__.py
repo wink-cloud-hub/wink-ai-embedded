@@ -8,6 +8,14 @@ from .mutator import CanaryMutator
 from .agent import AgentSynthesizer
 from .pipeline import LoopPipeline, PipelineResult
 from .runner import LoopRunner, main
+from .safety_checker import HeuristicSafetyChecker, TieredCParser
+from .remediator import (
+    Remediator,
+    InvestigationWorkspace,
+    TransactionalGitTracker,
+    ZeroRegressionRunner,
+    RemediatorState,
+)
 
 __all__ = [
     "CanaryMutator",
@@ -16,4 +24,11 @@ __all__ = [
     "PipelineResult",
     "LoopRunner",
     "main",
+    "HeuristicSafetyChecker",
+    "TieredCParser",
+    "Remediator",
+    "InvestigationWorkspace",
+    "TransactionalGitTracker",
+    "ZeroRegressionRunner",
+    "RemediatorState",
 ]
