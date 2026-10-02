@@ -164,10 +164,15 @@ message(STATUS "Configuration will be generated at: ${WINK_CONFIG_H}")
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/mcs51_families.cmake)
 
 set(_wink_app_is_mcs51 FALSE)
+set(_wink_app_is_vendor FALSE)
 set(_wink_app_mcu "")
 set(_wink_mcs51_family "")
 if(NOT WINK_APP_JSON STREQUAL "" AND EXISTS "${WINK_APP_JSON}")
     file(READ "${WINK_APP_JSON}" _wink_app_json_text LIMIT 4096)
+    if(_wink_app_json_text MATCHES "\"category\"[ \t\r\n]*:[ \t\r\n]*\"vendor_example\""
+       OR "${WINK_APP_DIR}" MATCHES "[/\\\\]vendor[/\\\\]")
+        set(_wink_app_is_vendor TRUE)
+    endif()
     if(_wink_app_json_text MATCHES "\"mcu\"[ \t\r\n]*:[ \t\r\n]*\"([^\"]+)\"")
         set(_wink_app_mcu "${CMAKE_MATCH_1}")
     endif()
@@ -274,34 +279,33 @@ else()
     else()
         set(_wink_dal_do_prune TRUE)
     endif()
-    if(_wink_app_is_mcs51)
-        # Do NOT run app_codegen DAL pruning (it rejects the frontend-only
-        # button/led plugin devices). Instead prune to EMPTY explicitly: load
-        # the driver table at this scope and force every WINK_USE_<driver> OFF
-        # so dal/bal compile only their unconditional stub TUs. (Inlined rather
-        # than wink_dal_load_driver_table(): that is a function whose
-        # WINK_KNOWN_DRIVERS stays function-scoped.)
+    if(_wink_app_is_mcs51 OR _wink_app_is_vendor)
+        # Do NOT run app_codegen DAL pruning (it rejects frontend-only or
+        # vendor-managed plugin devices like mpu9250, i2c_eeprom, etc.).
+        # Instead prune to EMPTY explicitly: load the driver table at this scope
+        # and force every WINK_USE_<driver> OFF so dal/bal compile only their
+        # unconditional stub TUs.
         set(_wink_dal_do_prune FALSE)
         get_filename_component(WINK_MICRO_OS_ROOT
             "${CMAKE_CURRENT_SOURCE_DIR}" ABSOLUTE)
-        set(_mcs51_drv_gen "${CMAKE_BINARY_DIR}/mcs51_drivers.cmake")
+        set(_no_dal_drv_gen "${CMAKE_BINARY_DIR}/no_dal_drivers.cmake")
         execute_process(
             COMMAND ${Python3_EXECUTABLE}
                     "${WINK_TOOLS_ROOT}/tools/codegen/scripts/list_drivers.py"
                     --cmake --mode=source
-            OUTPUT_FILE "${_mcs51_drv_gen}"
-            RESULT_VARIABLE _mcs51_drv_rc)
-        if(NOT _mcs51_drv_rc EQUAL 0)
-            message(FATAL_ERROR "mcs51: list_drivers.py failed (rc=${_mcs51_drv_rc})")
+            OUTPUT_FILE "${_no_dal_drv_gen}"
+            RESULT_VARIABLE _no_dal_drv_rc)
+        if(NOT _no_dal_drv_rc EQUAL 0)
+            message(FATAL_ERROR "no_dal: list_drivers.py failed (rc=${_no_dal_drv_rc})")
         endif()
-        include("${_mcs51_drv_gen}")
+        include("${_no_dal_drv_gen}")
         # Directory-scope (NOT `CACHE ... FORCE`) OFF switches: they inherit
         # into dal/bal and shadow the per-driver cache options (CMP0077 NEW),
         # while leaving the cache untouched. A later reconfigure with a
-        # non-mcs51 app therefore returns to the cached driver defaults
+        # non-mcs51/vendor app therefore returns to the cached driver defaults
         # automatically instead of staying silently pruned-off.
-        foreach(_wink_mcs51_drv IN LISTS WINK_KNOWN_DRIVERS)
-            set(WINK_USE_${_wink_mcs51_drv} OFF)
+        foreach(_wink_pruned_drv IN LISTS WINK_KNOWN_DRIVERS)
+            set(WINK_USE_${_wink_pruned_drv} OFF)
         endforeach()
     endif()
     if(_wink_dal_do_prune

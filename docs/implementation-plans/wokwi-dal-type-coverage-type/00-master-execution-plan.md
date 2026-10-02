@@ -1,4 +1,4 @@
-﻿# Wokwi-Elements ↔ DAL `type` 全量外设覆盖大型执行计划总纲
+# Wokwi-Elements ↔ DAL `type` 全量外设覆盖大型执行计划总纲
 
 | 项 | 内容 |
 |---|---|
@@ -103,7 +103,7 @@
 | # | 父目录 (Category) | type | 对应 Wokwi 组件 | 关键架构约束 | 进度状态 | 子计划文档路径 |
 |---|---|---|---|---|---|---|
 | 15 | sensor | `motion` | `pir-motion-sensor` | 仅限 PIR 人体红外移动侦测（不与数字阈值混用） | 🆕 Planned | `15-p2-sensor-motion-plan.md` |
-| 16 | sensor | `imu` | `mpu6050` | I2C 6 轴加速度/陀螺仪芯片 | 🆕 Planned | `16-p2-sensor-imu-plan.md` |
+| 16 | sensor | `imu` | `mpu6050` | I2C 6 轴加速度/陀螺仪芯片 | 🟢 Implemented (Sim Plugin Delivered) | `16-p2-sensor-imu-plan.md` |
 | 17 | sensor | `load_cell` | `hx711` | 24-bit 专用 AFE 称重芯片，双线脉冲串行协议 | 🆕 Planned | `17-p2-sensor-load-cell-plan.md` |
 | 18 | sensor | `heart_rate` | `heart-beat-sensor` | 模拟脉搏心率传感器 | 🆕 Planned | `18-p2-sensor-heart-rate-plan.md` |
 | 19 | storage | `sdcard` | `microsd-card` | SPI 块设备接口，供 FAT/LittleFS 文件系统挂载 | 🆕 Planned | `19-p2-storage-sdcard-plan.md` |
@@ -207,7 +207,8 @@ docs/implementation-plans/2026-08-05-wokwi-dal-type-coverage-plan/
 ├── 13-p1-display-led-matrix-plan.md                 # P1: WS2812 灯阵/灯环
 ├── 14-p1-display-seg-display-plan.md                # P1: 数码管
 ├── 15-p2-sensor-motion-plan.md                      # P2: PIR 人体红外移动侦测
-├── 16-p2-sensor-imu-plan.md                         # P2: 6 轴 IMU (MPU6050)
+├── 16-p2-sensor-imu-plan.md                         # P2: 6 轴 IMU (MPU6050/MPU9250)
+├── 16.1-p2-sensor-imu-plugin-simulation-plan.md     # P2: IMU 插件仿真专项设计与交付
 ├── 17-p2-sensor-load-cell-plan.md                   # P2: 称重传感器 (HX711)
 ├── 18-p2-sensor-heart-rate-plan.md                  # P2: 脉搏心率传感器
 ├── 19-p2-storage-sdcard-plan.md                     # P2: MicroSD 卡块设备

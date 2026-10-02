@@ -73,6 +73,7 @@ wink_status_t pal_i2c_transfer_timeout(uint8_t port, uint16_t dev_addr,
     wink_status_t resp_st = sim_responder_dispatch(SIM_BUS_TYPE_I2C, port, dev_addr,
                                                    write_buf, write_len, read_buf, read_len);
     if (resp_st != WINK_ERR_NOT_FOUND) {
+        js_pal_i2c_transfer(port, dev_addr, write_buf, write_len, read_buf, read_len);
         return resp_st;
     }
 

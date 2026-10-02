@@ -1,0 +1,152 @@
+{
+  "_generated": "DO NOT EDIT - generated from src/simulation.ts by scripts/emit-sim-manifests.mjs",
+  "type": "imu",
+  "version": "1.0.0",
+  "category": "sensor",
+  "displayName": "Inertial Measurement Unit (6-Axis/9-Axis)",
+  "description": "High-fidelity 6-Axis/9-Axis IMU sensor supporting MPU-6050/6500/9250 with 3D kinematics",
+  "timingModel": "event-driven",
+  "pins": [
+    {
+      "name": "VCC",
+      "direction": "power",
+      "signal": "power",
+      "required": false,
+      "simRole": "power",
+      "catalogType": "power"
+    },
+    {
+      "name": "GND",
+      "direction": "ground",
+      "signal": "power",
+      "required": false,
+      "simRole": "ground",
+      "catalogType": "power"
+    },
+    {
+      "name": "SCL",
+      "direction": "sink",
+      "signal": "digital",
+      "required": true,
+      "simRole": "signal",
+      "catalogType": "i2c"
+    },
+    {
+      "name": "SDA",
+      "direction": "bidirectional",
+      "signal": "digital",
+      "required": true,
+      "simRole": "signal",
+      "catalogType": "i2c"
+    },
+    {
+      "name": "AD0",
+      "direction": "sink",
+      "signal": "digital",
+      "required": false,
+      "simRole": "signal",
+      "catalogType": "gpio"
+    },
+    {
+      "name": "INT",
+      "direction": "source",
+      "signal": "digital",
+      "required": false,
+      "simRole": "signal",
+      "catalogType": "gpio"
+    },
+    {
+      "name": "XCL",
+      "direction": "sink",
+      "signal": "digital",
+      "required": false,
+      "simRole": "signal",
+      "catalogType": "i2c"
+    },
+    {
+      "name": "XDA",
+      "direction": "bidirectional",
+      "signal": "digital",
+      "required": false,
+      "simRole": "signal",
+      "catalogType": "i2c"
+    }
+  ],
+  "properties": {
+    "variant": {
+      "type": "string",
+      "default": "mpu6050_i2c"
+    },
+    "address": {
+      "type": "number",
+      "default": 104
+    },
+    "roll": {
+      "type": "number",
+      "default": 0
+    },
+    "pitch": {
+      "type": "number",
+      "default": 0
+    },
+    "yaw": {
+      "type": "number",
+      "default": 0
+    },
+    "temperature": {
+      "type": "number",
+      "default": 25
+    }
+  },
+  "stateChannels": {
+    "whoAmI": {
+      "type": "number",
+      "default": 104
+    },
+    "pwrMgmt1": {
+      "type": "number",
+      "default": 1
+    },
+    "regPointer": {
+      "type": "number",
+      "default": 0
+    },
+    "accelX": {
+      "type": "number",
+      "default": 0
+    },
+    "accelY": {
+      "type": "number",
+      "default": 0
+    },
+    "accelZ": {
+      "type": "number",
+      "default": 16384
+    },
+    "gyroX": {
+      "type": "number",
+      "default": 0
+    },
+    "gyroY": {
+      "type": "number",
+      "default": 0
+    },
+    "gyroZ": {
+      "type": "number",
+      "default": 0
+    },
+    "tempDegc": {
+      "type": "number",
+      "default": 25
+    },
+    "writeCount": {
+      "type": "number",
+      "default": 0
+    },
+    "readCount": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "events": {}
+}
