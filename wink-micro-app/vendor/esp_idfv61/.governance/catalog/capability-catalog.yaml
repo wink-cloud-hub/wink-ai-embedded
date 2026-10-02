@@ -77,11 +77,12 @@ capabilities:
   cap.analog.adc_dma:
     name: ADC 连续 DMA 采样
     layer: pal
-    status: planned
+    status: implemented
     description: 连续双缓冲 DMA 模拟量采集接口
     owned_paths:
-    - wink-micro-os/pal/include/hal/pal_adc_dma.h
-    - wink-micro-os/targets/wasm/pal_wasm_adc_dma.c
+    - wink-micro-os/pal/include/hal/pal_adc.h
+    - wink-micro-os/targets/wasm/pal_wasm_ch3_adc.c
+    - wink-micro-os/frameworks/esp_idf/src/drivers/esp_adc.c
     soc_support:
     - esp32
     - esp32s3

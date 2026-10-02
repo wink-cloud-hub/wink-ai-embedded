@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 11,
-    "verified_configs": 11
+    "audited": 12,
+    "verified_configs": 12
   },
   "entries": [
     {
@@ -169,10 +169,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-02T12:32:24Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -203,18 +205,26 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L1_ui",
-            "scenario_path": "unisim-scenarios/peripherals_adc_continuous_read.scenario.json",
+            "scenario_path": "peripherals/adc_continuous_read/unisim-scenarios/peripherals_adc_continuous_read.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
             "positive_cases": [],
             "negative_cases": [],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261002-esp.peripherals.adc.continuous_read-verified",
+            "assets_sha256": "c246c6ddbf78334539236dca0f12c7a846acae0ad390b7d5fe2f427194268823",
+            "scenario_sha256": "70f4a247c11336f57e942296e4ebed3837570102baaddded9bb02736f0871247",
+            "execution_report_ref": ".governance/reports/peripherals/adc_continuous_read/run-report.json",
+            "verified_commit": "1fc7387ac11776e5ec44d8f394bb2d3a33b2971e",
+            "verified_at": "2026-10-02T12:32:24Z"
+          }
         }
       ],
       "target_app_dir": "peripherals/adc_continuous_read"

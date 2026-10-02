@@ -1,0 +1,17 @@
+{
+  "app_name": "esp_idfv61_adc_continuous_read",
+  "display_name": "Espressif ESP-IDF ADC continuous read",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "mcu": "esp32",
+  "tick_ms": 1,
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/peripherals/adc/continuous_read/main",
+    "files": {
+      "continuous_read_main.c": "f8d02828e82574b4d3e80cf2deb2e9693dc1cdf2bd48086589f84c38cf7bea9b"
+    }
+  },
+  "devices": {}
+}

@@ -1,0 +1,62 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 adc_continuous_read headless deterministic proof",
+    "templateId": "esp_idfv61_adc_continuous_read",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3500ms",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "0ms",
+      "adcChannel": 34,
+      "valueNorm": 0.484,
+      "description": "向 ADC1 Channel 6 (GPIO 34) 输入 1500mV 归一化模拟电压 (1500/3100 ≈ 0.484)"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "0ms",
+      "adcChannel": 35,
+      "valueNorm": 0.806,
+      "description": "向 ADC1 Channel 7 (GPIO 35) 输入 2500mV 归一化模拟电压 (2500/3100 ≈ 0.806)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统核心供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "200ms",
+      "target": "adc:34",
+      "matcher": { "$near": { "target": 0.484, "tolerance": 0.05 } },
+      "description": "断言 ADC1 Channel 6 (GPIO 34) 模拟采样轨维持 0.484"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "200ms",
+      "target": "adc:35",
+      "matcher": { "$near": { "target": 0.806, "tolerance": 0.05 } },
+      "description": "断言 ADC1 Channel 7 (GPIO 35) 模拟采样轨维持 0.806"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "adc:34",
+      "matcher": { "$near": { "target": 0.484, "tolerance": 0.05 } },
+      "description": "断言稳态下 ADC1 Channel 6 (GPIO 34) 采样轨持续稳定"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "adc:35",
+      "matcher": { "$near": { "target": 0.806, "tolerance": 0.05 } },
+      "description": "断言稳态下 ADC1 Channel 7 (GPIO 35) 采样轨持续稳定"
+    }
+  ]
+}
