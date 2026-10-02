@@ -369,7 +369,8 @@ esp_err_t nvs_get_blob(nvs_handle_t handle, const char *key, void *out_value, si
         if (s_nvs_storage[i].valid && strcmp(s_nvs_storage[i].ns, ns) == 0 && strcmp(s_nvs_storage[i].key, key) == 0) {
             if (out_value != NULL) {
                 if (*length < s_nvs_storage[i].len) {
-                    return ESP_ERR_INVALID_ARG;
+                    *length = s_nvs_storage[i].len;
+                    return ESP_ERR_NVS_INVALID_LENGTH;
                 }
                 memcpy(out_value, s_nvs_storage[i].data, s_nvs_storage[i].len);
             }

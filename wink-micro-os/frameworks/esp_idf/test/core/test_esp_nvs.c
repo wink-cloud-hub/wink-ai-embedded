@@ -255,6 +255,34 @@ void test_nvs_iterators_and_type_metadata(void) {
     nvs_close(h);
 }
 
+void test_nvs_blob_size_query_and_bounds(void) {
+    nvs_handle_t h = 0;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_open("blob_ns", NVS_READWRITE, &h));
+
+    uint8_t payload[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_set_blob(h, "raw_blob", payload, sizeof(payload)));
+
+    /* 1. Query size only with out_value = NULL */
+    size_t req_len = 0;
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_get_blob(h, "raw_blob", NULL, &req_len));
+    TEST_ASSERT_EQUAL_UINT32(16, (uint32_t)req_len);
+
+    /* 2. Buffer too small returns ESP_ERR_NVS_INVALID_LENGTH and sets required length */
+    uint8_t small_buf[8];
+    size_t small_len = sizeof(small_buf);
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_NVS_INVALID_LENGTH, nvs_get_blob(h, "raw_blob", small_buf, &small_len));
+    TEST_ASSERT_EQUAL_UINT32(16, (uint32_t)small_len);
+
+    /* 3. Sufficient buffer succeeds */
+    uint8_t exact_buf[16];
+    size_t exact_len = sizeof(exact_buf);
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, nvs_get_blob(h, "raw_blob", exact_buf, &exact_len));
+    TEST_ASSERT_EQUAL_UINT32(16, (uint32_t)exact_len);
+    TEST_ASSERT_EQUAL_MEMORY(payload, exact_buf, 16);
+
+    nvs_close(h);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_nvs_handle_lifecycle_and_limit);
@@ -265,5 +293,7 @@ int main(void) {
     RUN_TEST(test_nvs_commit_survives_soft_reset_but_handles_do_not);
     RUN_TEST(test_nvs_uncommitted_discarded_on_deinit_reinit);
     RUN_TEST(test_nvs_iterators_and_type_metadata);
+    RUN_TEST(test_nvs_blob_size_query_and_bounds);
     return UNITY_END();
 }
+
