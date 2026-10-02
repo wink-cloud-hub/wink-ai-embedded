@@ -108,3 +108,20 @@ def test_agent_synthesizer_prompt_contains_rules():
     assert "governance-sop-esp/SKILL.md" in prompt
     assert "power:*" in prompt
     assert "反模式红线禁令" in prompt
+
+
+def test_agent_synthesizer_qoder_model_configuration():
+    ws_root = Path(__file__).resolve().parents[6]
+    # Default model should be Qwen3.8-Flash
+    agent_default = AgentSynthesizer(workspace_root=ws_root)
+    assert agent_default.qoder_model == "Qwen3.8-Flash"
+
+    # Custom model override
+    agent_custom = AgentSynthesizer(workspace_root=ws_root, qoder_model="Qwen3.8-Max")
+    assert agent_custom.qoder_model == "Qwen3.8-Max"
+
+    cmd = agent_default.detect_agent_executable(role="A")
+    if cmd and "qoderclicn" in cmd[0]:
+        assert "-m" in cmd
+        assert "Qwen3.8-Flash" in cmd
+

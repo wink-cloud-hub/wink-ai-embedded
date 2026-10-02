@@ -26,16 +26,18 @@ class AgentSynthesizer:
         custom_agent_cmd: Optional[str] = None,
         custom_agent_a_cmd: Optional[str] = None,
         custom_agent_b_cmd: Optional[str] = None,
+        qoder_model: str = "Qwen3.8-Flash",
     ):
         self.ws_root = workspace_root
         self.custom_agent_cmd = custom_agent_cmd
         self.custom_agent_a_cmd = custom_agent_a_cmd or custom_agent_cmd
         self.custom_agent_b_cmd = custom_agent_b_cmd or custom_agent_cmd
+        self.qoder_model = qoder_model
 
     def detect_agent_executable(self, role: str = "A") -> Optional[List[str]]:
         """Find the best available Agent CLI executable for the given role.
 
-        Role A: Primary proposal author (defaults to qoderclicn -> agy -> claude).
+        Role A: Primary proposal author (defaults to qoderclicn [-m Qwen3.8-Flash] -> agy -> claude).
         Role B: Adversarial red-team auditor (defaults to agy -> claude -> qoderclicn).
         """
         if role == "A" and self.custom_agent_a_cmd:
@@ -67,7 +69,13 @@ class AgentSynthesizer:
                 if binary == "agy":
                     effort = "high" if role == "B" else "medium"
                     return [found, "--dangerously-skip-permissions", "--effort", effort, "-p"]
-                if binary in ("qoderclicn", "claude"):
+                if binary == "qoderclicn":
+                    cmd = [found]
+                    if self.qoder_model:
+                        cmd.extend(["-m", self.qoder_model])
+                    cmd.extend(["--dangerously-skip-permissions", "-p"])
+                    return cmd
+                if binary == "claude":
                     return [found, "--dangerously-skip-permissions", "-p"]
                 if binary == "opencode":
                     return [found, "run"]

@@ -27,6 +27,7 @@ class LoopRunner:
         custom_agent_cmd: Optional[str] = None,
         custom_agent_a_cmd: Optional[str] = None,
         custom_agent_b_cmd: Optional[str] = None,
+        qoder_model: str = "Qwen3.8-Flash",
         auto_heal: bool = False,
         max_heal_attempts: int = 2,
     ):
@@ -39,6 +40,7 @@ class LoopRunner:
             custom_agent_cmd=custom_agent_cmd,
             custom_agent_a_cmd=custom_agent_a_cmd,
             custom_agent_b_cmd=custom_agent_b_cmd,
+            qoder_model=qoder_model,
             auto_heal=auto_heal,
             max_heal_attempts=max_heal_attempts,
             dry_run=dry_run,
@@ -175,6 +177,7 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Simulate execution without git commits or checklist writes")
     parser.add_argument("--auto-heal", action="store_true", help="Enable autonomous self-healing on baseline failure")
     parser.add_argument("--max-heal-attempts", type=int, default=2, help="Maximum self-healing attempts before escalation")
+    parser.add_argument("--qoder-model", type=str, default="Qwen3.8-Flash", help="Default model for Qoder CLI (default: Qwen3.8-Flash)")
     parser.add_argument("--agent-cmd", type=str, help="Custom headless agent CLI command (e.g. 'claude -p')")
     parser.add_argument("--agent-a-cmd", type=str, help="Custom agent CLI command for Role A (Proposer)")
     parser.add_argument("--agent-b-cmd", type=str, help="Custom agent CLI command for Role B (Auditor)")
@@ -189,6 +192,7 @@ def main():
         custom_agent_cmd=args.agent_cmd,
         custom_agent_a_cmd=args.agent_a_cmd,
         custom_agent_b_cmd=args.agent_b_cmd,
+        qoder_model=args.qoder_model,
         auto_heal=args.auto_heal,
         max_heal_attempts=args.max_heal_attempts,
     )

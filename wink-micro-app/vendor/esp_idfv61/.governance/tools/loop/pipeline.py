@@ -39,6 +39,7 @@ class LoopPipeline:
         custom_agent_cmd: Optional[str] = None,
         custom_agent_a_cmd: Optional[str] = None,
         custom_agent_b_cmd: Optional[str] = None,
+        qoder_model: str = "Qwen3.8-Flash",
         auto_heal: bool = False,
         max_heal_attempts: int = 2,
         dry_run: bool = False,
@@ -63,6 +64,7 @@ class LoopPipeline:
             custom_agent_cmd=custom_agent_cmd,
             custom_agent_a_cmd=custom_agent_a_cmd,
             custom_agent_b_cmd=custom_agent_b_cmd,
+            qoder_model=qoder_model,
         )
         self.remediator = Remediator(
             workspace_root=workspace_root,
