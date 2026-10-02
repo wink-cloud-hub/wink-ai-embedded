@@ -2,8 +2,8 @@
 
 > 📋 **计划状态声明**：本计划为 M4 大里程碑第一子任务（M4-1，Wi-Fi 无线连接语义仿真）。
 > **继承路线图**：[PLAN-20260927-ESP-IDF-SIM-M4-CONNECTIVITY](file:///d:/workspaces/ai-coding/wink-ai/wink-ai-embedded/docs/implementation-plans/esp32/2026-09-27-esp-idf-sim-m4-wifi-ble-connectivity-roadmap.md) (v1.0)
-> **当前状态**：📋 待开始（前置 M3 + Phase 3 已 100% 验收，48/48 测试全绿）
-> 🎯 **计划版本**：v1.1（2026-09-26，专家评审与健壮性加固版）
+> **当前状态**：✅ 已完成（v1.2 50/50 测试全绿与语料验收闭环）
+> 🎯 **计划版本**：v1.2（2026-09-26，全量执行与验收闭环版）
 
 ---
 
@@ -15,7 +15,8 @@
 | **创建日期** | 2026-09-26 |
 | **目标平台** | host (x86_64/Windows/Linux) / wasm (wasm32-unknown-emscripten) |
 | **SoC 矩阵** | esp32, esp32s3, esp32c3, esp32c6 |
-| **计划状态** | 📋 待开始 |
+| **计划状态** | ✅ 已完成（v1.2 全量验收闭环） |
+| **计划版本** | v1.2 |
 | **优先级** | P0（90% IoT 代码首步 esp_wifi_connect()）|
 | **目标里程碑** | M4-1：Wi-Fi FSM + esp_event + esp_netif |
 | **前置依赖** | Phase 3（48/48 全绿，已完成）|
