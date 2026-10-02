@@ -90,10 +90,12 @@ capabilities:
   cap.analog.dac_out:
     name: DAC 模拟电压输出
     layer: pal
-    status: planned
+    status: implemented
     description: PAL 通用 DAC 模拟量电压输出
     owned_paths:
-    - wink-micro-os/pal/include/hal/pal_dac.h
+    - wink-micro-os/frameworks/esp_idf/src/drivers/esp_dac.c
+    - wink-micro-os/frameworks/esp_idf/include/driver/dac_oneshot.h
+    - wink-micro-os/frameworks/esp_idf/include/hal/dac_types.h
     soc_support:
     - esp32
     - esp32s2

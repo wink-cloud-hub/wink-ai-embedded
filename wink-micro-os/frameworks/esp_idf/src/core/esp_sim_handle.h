@@ -25,6 +25,7 @@ enum {
     ESP_SIM_HANDLE_TIMER = 10,
     ESP_SIM_HANDLE_ADC_ONESHOT = 11,
     ESP_SIM_HANDLE_ADC_CALI = 12,
+    ESP_SIM_HANDLE_DAC_ONESHOT = 13,
 };
 
 #ifdef __cplusplus

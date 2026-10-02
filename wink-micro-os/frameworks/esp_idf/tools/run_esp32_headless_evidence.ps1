@@ -70,6 +70,7 @@ $allCarriers = @(
     @{ Name = 'uart_echo';     Rel = 'vendor/esp_idfv61/peripherals/uart_echo';     Channel = 'UART Loopback & Ring Buffer' },
     @{ Name = 'gptimer_alarm'; Rel = 'vendor/esp_idfv61/peripherals/gptimer_alarm'; Channel = 'General Purpose Timer & Alarms' },
     @{ Name = 'adc_oneshot_read'; Rel = 'vendor/esp_idfv61/peripherals/adc_oneshot_read'; Channel = 'ADC Oneshot Read & Calibration' },
+    @{ Name = 'dac_dac_oneshot'; Rel = 'vendor/esp_idfv61/peripherals/dac_dac_oneshot'; Channel = 'DAC Oneshot Output & Voltage Generation' },
     @{ Name = 'wifi_sta';      Rel = 'vendor/esp_idfv61/wifi/wifi_sta';              Channel = 'Wi-Fi Station Mode & Netif' },
     @{ Name = 'http_client';   Rel = 'vendor/esp_idfv61/protocols/http_client';   Channel = 'HTTP/REST Client & Events' },
     @{ Name = 'mqtt_tcp';      Rel = 'vendor/esp_idfv61/protocols/mqtt_tcp';      Channel = 'MQTT Protocol & Event Loop' },
