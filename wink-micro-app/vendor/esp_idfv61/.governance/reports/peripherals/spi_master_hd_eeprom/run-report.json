@@ -1,0 +1,101 @@
+{
+  "timestamp": "2026-10-02T21:05:54.486Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 spi_master_hd_eeprom headless deterministic proof",
+        "templateId": "esp_idfv61_spi_master_hd_eeprom",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 87
+      },
+      "summary": {
+        "totalSteps": 6,
+        "passedSteps": 6,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) main: Initializing bus SPI2...\u001b[0m\n\u001b[0;32mI (0) main: Initializing device...\u001b[0m\n\u001b[0;32mI (0) main: Write: Hello World!\u001b[0m\n\u001b[0;32mI (0) main: Read: Hello World!\u001b[0m\n\u001b[0;32mI (0) main: Example finished.\u001b[0m\n"
+            ]
+          },
+          "expected": "Initializing bus SPI2..."
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) main: Initializing bus SPI2...\u001b[0m\n\u001b[0;32mI (0) main: Initializing device...\u001b[0m\n\u001b[0;32mI (0) main: Write: Hello World!\u001b[0m\n\u001b[0;32mI (0) main: Read: Hello World!\u001b[0m\n\u001b[0;32mI (0) main: Example finished.\u001b[0m\n"
+            ]
+          },
+          "expected": "Initializing device..."
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) main: Initializing bus SPI2...\u001b[0m\n\u001b[0;32mI (0) main: Initializing device...\u001b[0m\n\u001b[0;32mI (0) main: Write: Hello World!\u001b[0m\n\u001b[0;32mI (0) main: Read: Hello World!\u001b[0m\n\u001b[0;32mI (0) main: Example finished.\u001b[0m\n"
+            ]
+          },
+          "expected": "Write: Hello World!"
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) main: Initializing bus SPI2...\u001b[0m\n\u001b[0;32mI (0) main: Initializing device...\u001b[0m\n\u001b[0;32mI (0) main: Write: Hello World!\u001b[0m\n\u001b[0;32mI (0) main: Read: Hello World!\u001b[0m\n\u001b[0;32mI (0) main: Example finished.\u001b[0m\n"
+            ]
+          },
+          "expected": "Read: Hello World!"
+        },
+        {
+          "stepIndex": 5,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) main: Initializing bus SPI2...\u001b[0m\n\u001b[0;32mI (0) main: Initializing device...\u001b[0m\n\u001b[0;32mI (0) main: Write: Hello World!\u001b[0m\n\u001b[0;32mI (0) main: Read: Hello World!\u001b[0m\n\u001b[0;32mI (0) main: Example finished.\u001b[0m\n"
+            ]
+          },
+          "expected": "Example finished."
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

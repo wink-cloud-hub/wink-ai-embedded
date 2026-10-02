@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 15,
-    "verified_configs": 15
+    "audited": 16,
+    "verified_configs": 16
   },
   "entries": [
     {
@@ -1498,7 +1498,7 @@
           "evidence": {
             "backend": "wasm_simulation",
             "run_id": "run-20261002-esp.peripherals.i2c.i2c_basic-verified",
-            "assets_sha256": "b2cccd60fd0cda73de5aff48c0a619d633fc737876b8d3e2ec7559842276322e",
+            "assets_sha256": "1c748eeaf6ab7c4fdf5a2eb6135b23ce7e887e1c9eccf60f6a5856114ed14ca0",
             "scenario_sha256": "b758752fbfca569c82ba1a2575fb2dec28d8cd0f5d6fa538f5077cef6e812f30",
             "execution_report_ref": ".governance/reports/peripherals/i2c_basic/run-report.json",
             "verified_commit": "dcf19fb32e0854bb511d9e45bb227318bf9e806d",
@@ -4562,10 +4562,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-02T21:04:08Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -4597,18 +4599,26 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/peripherals_spi_master_hd_eeprom.scenario.json",
+            "scenario_path": "peripherals/spi_master_hd_eeprom/unisim-scenarios/spi_master_hd_eeprom.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
             "positive_cases": [],
             "negative_cases": [],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261002-esp.peripherals.spi_master.hd_eeprom-verified",
+            "assets_sha256": "d526d1494b965571b7c97d9137caf0816e55c5cb6a791b7522be54a966638d12",
+            "scenario_sha256": "068d67db69def83b8606a3931715af72a60636f047e4b65a946c7c5244835941",
+            "execution_report_ref": ".governance/reports/peripherals/spi_master_hd_eeprom/run-report.json",
+            "verified_commit": "e2a9fe56ebda887a8c7ec3cd4e6ac69eabebd9b6",
+            "verified_at": "2026-10-02T21:05:54Z"
+          }
         }
       ],
       "target_app_dir": "peripherals/spi_master_hd_eeprom"
