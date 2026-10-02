@@ -1,0 +1,93 @@
+{
+  "timestamp": "2026-10-02T08:48:32.633Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 adc_oneshot_read headless deterministic proof",
+        "templateId": "esp_idfv61_adc_oneshot_read",
+        "totalVirtualUs": "3500000",
+        "wallClockMs": 80
+      },
+      "summary": {
+        "totalSteps": 7,
+        "passedSteps": 7,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "INPUT_ANALOG",
+          "status": "passed",
+          "timeUs": "0"
+        },
+        {
+          "stepIndex": 1,
+          "type": "INPUT_ANALOG",
+          "status": "passed",
+          "timeUs": "0"
+        },
+        {
+          "stepIndex": 2,
+          "type": "INPUT_ANALOG",
+          "status": "passed",
+          "timeUs": "0"
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "500000",
+          "actual": 0.75,
+          "expected": {
+            "$near": {
+              "target": 0.75,
+              "tolerance": 0.05
+            }
+          }
+        },
+        {
+          "stepIndex": 5,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": 0.25,
+          "expected": {
+            "$near": {
+              "target": 0.25,
+              "tolerance": 0.05
+            }
+          }
+        },
+        {
+          "stepIndex": 6,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": 0.5,
+          "expected": {
+            "$near": {
+              "target": 0.5,
+              "tolerance": 0.05
+            }
+          }
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

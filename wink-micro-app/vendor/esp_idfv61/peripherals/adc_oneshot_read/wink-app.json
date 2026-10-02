@@ -1,0 +1,17 @@
+{
+  "app_name": "esp_idfv61_adc_oneshot_read",
+  "display_name": "Espressif ESP-IDF ADC oneshot read",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "mcu": "esp32",
+  "tick_ms": 1,
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/peripherals/adc/oneshot_read/main",
+    "files": {
+      "oneshot_read_main.c": "0bdc7226442cae85cc512677f7ba05f6cc478613b765e835ddc989a16c7331d8"
+    }
+  },
+  "devices": {}
+}

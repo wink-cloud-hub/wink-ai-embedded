@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 8,
-    "verified_configs": 8
+    "audited": 9,
+    "verified_configs": 9
   },
   "entries": [
     {
@@ -230,10 +230,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-02T08:48:32Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -264,18 +266,26 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L1_ui",
-            "scenario_path": "unisim-scenarios/peripherals_adc_oneshot_read.scenario.json",
+            "scenario_path": "peripherals/adc_oneshot_read/unisim-scenarios/adc_oneshot_read.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
             "positive_cases": [],
             "negative_cases": [],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261002-esp.peripherals.adc.oneshot_read-verified",
+            "assets_sha256": "f9f1e120c89a79df0e361db16a3bfcce9c44dc8b367c455204b9404669c7fb84",
+            "scenario_sha256": "668309f58d7cac30bfa33313cdd925a4e844564e7b0e5779dea07728b49b7971",
+            "execution_report_ref": ".governance/reports/peripherals/adc_oneshot_read/run-report.json",
+            "verified_commit": "69f9feec07c9192d54f49915af7f7ec3c82a5c52",
+            "verified_at": "2026-10-02T08:48:32Z"
+          }
         }
       ],
       "target_app_dir": "peripherals/adc_oneshot_read"

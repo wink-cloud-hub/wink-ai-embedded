@@ -1,0 +1,62 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 adc_oneshot_read headless deterministic proof",
+    "templateId": "esp_idfv61_adc_oneshot_read",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3500ms",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "0ms",
+      "adcChannel": 32,
+      "valueNorm": 0.75,
+      "description": "向 ADC1 Channel 4 (GPIO 32) 输入 75% 模拟电压"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "0ms",
+      "adcChannel": 33,
+      "valueNorm": 0.25,
+      "description": "向 ADC1 Channel 5 (GPIO 33) 输入 25% 模拟电压"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "0ms",
+      "adcChannel": 4,
+      "valueNorm": 0.5,
+      "description": "向 ADC2 Channel 0 (GPIO 4) 输入 50% 模拟电压"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统核心供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "adc:32",
+      "matcher": { "$near": { "target": 0.75, "tolerance": 0.05 } },
+      "description": "断言 ADC1 Channel 4 (GPIO 32) 模拟采样轨维持 0.75"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "adc:33",
+      "matcher": { "$near": { "target": 0.25, "tolerance": 0.05 } },
+      "description": "断言 ADC1 Channel 5 (GPIO 33) 模拟采样轨维持 0.25"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2500ms",
+      "target": "adc:4",
+      "matcher": { "$near": { "target": 0.5, "tolerance": 0.05 } },
+      "description": "断言 ADC2 Channel 0 (GPIO 4) 模拟采样轨维持 0.5"
+    }
+  ]
+}
