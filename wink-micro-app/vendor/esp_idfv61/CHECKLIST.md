@@ -14,9 +14,9 @@
 ## 一、 总体适配进度统计
 
 - **官方独立示例总数**：**478 个**
-  - `[x]` **已完成六要素实证 (Verified)**：**18 项**
+  - `[x]` **已完成六要素实证 (Verified)**：**19 项**
   - `[?]` **存量隔离待补凭证 (Quarantined Debt)**：**0 项**（14 天 TTL 过期硬阻断，至 `2026-10-13`）
-  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**273 项**
+  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**272 项**
   - `[-]` **明确产品排除 / 暂缓投入 (Out-of-Scope / Deferred)**：**187 项**（编译期 `WINK_SLA_ERROR` Fail-Loud 阻断）
   - `?` **待深度审定 (Pending Audit / Unknown Scope)**：**0 项**
 
@@ -26,7 +26,7 @@
 | :---: | :--- | :---: | :---: | :---: | :---: |
 | 01 | [基础快速起步 (Get-Started)](#get-started) | 2 项 | `#001 ~ #002` | 2 项 | 0 项 |
 | 02 | [片上与总线外设 (Peripherals)](#peripherals) | 114 项 | `#003 ~ #116` | 9 项 | 0 项 |
-| 03 | [操作系统与核心系统调用 (System & OS)](#system) | 68 项 | `#117 ~ #184` | 1 项 | 0 项 |
+| 03 | [操作系统与核心系统调用 (System & OS)](#system) | 68 项 | `#117 ~ #184` | 2 项 | 0 项 |
 | 04 | [网络与应用层通信协议 (Protocols)](#protocols) | 35 项 | `#185 ~ #219` | 2 项 | 0 项 |
 | 05 | [Wi-Fi 无线局域网 (Wi-Fi)](#wifi) | 24 项 | `#220 ~ #243` | 1 项 | 0 项 |
 | 06 | [蓝牙协议栈 (Bluetooth)](#bluetooth) | 147 项 | `#244 ~ #390` | 1 项 | 0 项 |
@@ -243,7 +243,7 @@
 ---
 
 <a id="system"></a>
-### 操作系统与核心系统调用 (System & OS)（共 68 项 | 编号 `#117 ~ #184` | 已实证: 1 项 | 隔离待补: 0 项）
+### 操作系统与核心系统调用 (System & OS)（共 68 项 | 编号 `#117 ~ #184` | 已实证: 2 项 | 隔离待补: 0 项）
 
 | 状态 | 编号 | 官方子示例相对路径 | 可观测等级 | 优先级 | 对应 wink-micro-app | 验收标准与架构说明 |
 | :---: | :---: | :--- | :---: | :---: | :--- | :--- |
@@ -262,7 +262,7 @@
 | [ ] | 129 | `system/eventfd` | 📜 Level 2 | P2 | `system/eventfd` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 130 | `system/flash_suspend` | 📜 Level 2 | P2 | `system/flash_suspend` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 131 | `system/freertos/basic_freertos_smp_usage` | 📜 Level 2 | P1 | `system/freertos_basic_freertos_smp_usage` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 132 | `system/freertos/real_time_stats` | 📜 Level 2 | P1 | `system/freertos_real_time_stats` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
+| [x] | 132 | `system/freertos/real_time_stats` | 📜 Level 2 | P0 | [`system/freertos_real_time_stats`](system/freertos_real_time_stats) | [Lane 1: 内核调度] 已完成实证。 |
 | [ ] | 133 | `system/gcov` | 📜 Level 2 | P2 | `system/gcov` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 134 | `system/gdbstub` | 📜 Level 2 | P2 | `system/gdbstub` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 135 | `system/heap_task_tracking/advanced` | 📜 Level 2 | P2 | `system/heap_task_tracking_advanced` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |

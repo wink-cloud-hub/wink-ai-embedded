@@ -1,0 +1,105 @@
+{
+  "timestamp": "2026-10-02T22:41:10.465Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 freertos_real_time_stats headless deterministic proof",
+        "templateId": "esp_idfv61_system_freertos_real_time_stats",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 132
+      },
+      "summary": {
+        "totalSteps": 6,
+        "passedSteps": 6,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\n\nGetting real time stats over 100 ticks\n"
+            ]
+          },
+          "expected": "Getting real time stats over 100 ticks"
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "| Task | Run Time | Percentage\n| app_main | 0 | 0%\n| spin0 | 1100 | 110%\n| spin1 | 1100 | 110%\n| spin2 | 1100 | 110%\n| spin3 | 1100 | 110%\n| spin4 | 1100 | 110%\n| spin5 | 1100 | 110%\n| stats | 1000 | 100%\nReal time stats obtained\n",
+              "\n\nGetting real time stats over 100 ticks\n"
+            ]
+          },
+          "expected": "| Task | Run Time | Percentage"
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "| Task | Run Time | Percentage\n| app_main | 0 | 0%\n| spin0 | 1100 | 110%\n| spin1 | 1100 | 110%\n| spin2 | 1100 | 110%\n| spin3 | 1100 | 110%\n| spin4 | 1100 | 110%\n| spin5 | 1100 | 110%\n| stats | 1000 | 100%\nReal time stats obtained\n",
+              "\n\nGetting real time stats over 100 ticks\n"
+            ]
+          },
+          "expected": "spin0"
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 2,
+            "candidatePayloads": [
+              "| Task | Run Time | Percentage\n| app_main | 0 | 0%\n| spin0 | 1100 | 110%\n| spin1 | 1100 | 110%\n| spin2 | 1100 | 110%\n| spin3 | 1100 | 110%\n| spin4 | 1100 | 110%\n| spin5 | 1100 | 110%\n| stats | 1000 | 100%\nReal time stats obtained\n",
+              "\n\nGetting real time stats over 100 ticks\n"
+            ]
+          },
+          "expected": "stats"
+        },
+        {
+          "stepIndex": 5,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "| Task | Run Time | Percentage\n| app_main | 0 | 0%\n| spin0 | 1100 | 110%\n| spin1 | 1100 | 110%\n| spin2 | 1100 | 110%\n| spin3 | 1100 | 110%\n| spin4 | 1100 | 110%\n| spin5 | 1100 | 110%\n| stats | 1000 | 100%\nReal time stats obtained\n",
+              "\n\nGetting real time stats over 100 ticks\n"
+            ]
+          },
+          "expected": "Real time stats obtained"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

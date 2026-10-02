@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 17,
-    "verified_configs": 18
+    "audited": 18,
+    "verified_configs": 19
   },
   "entries": [
     {
@@ -8262,10 +8262,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-02T22:41:10Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -8295,18 +8297,26 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/system_freertos_real_time_stats.scenario.json",
+            "scenario_path": "system/freertos_real_time_stats/unisim-scenarios/real_time_stats.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
             "positive_cases": [],
             "negative_cases": [],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261002-esp.system.freertos.real_time_stats-verified",
+            "assets_sha256": "f98fcc26bfe65983b56cbeba9c2ea4bc106dfdb40c0b2337ba72070f3731e632",
+            "scenario_sha256": "c495756852f85e557673026e8f1460b7babce15711926d633daf180a84a8cb69",
+            "execution_report_ref": ".governance/reports/system/freertos_real_time_stats/run-report.json",
+            "verified_commit": "1ca38952a79c40b93c584181e908949c53f55df3",
+            "verified_at": "2026-10-02T22:41:10Z"
+          }
         }
       ],
       "target_app_dir": "system/freertos_real_time_stats"
