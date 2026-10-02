@@ -9,7 +9,7 @@
     "in_scope_active": 291,
     "in_scope_deferred": 21,
     "audited": 17,
-    "verified_configs": 17
+    "verified_configs": 18
   },
   "entries": [
     {
@@ -7823,10 +7823,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-02T22:00:00Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -7857,18 +7859,26 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/system_esp_event_default_event_loop.scenario.json",
-            "timeout_virtual_us": 3000000,
+            "scenario_path": "system/esp_event_default_event_loop/unisim-scenarios/default_event_loop.scenario.json",
+            "timeout_virtual_us": 3500000,
             "timeout_wall_ms": 10000,
             "positive_cases": [],
             "negative_cases": [],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261002-esp.system.esp_event.default_event_loop-verified",
+            "assets_sha256": "9985de6365425f5cc14d8aa04cc6557dcaf0b9d899b8f1899976dded8f12b275",
+            "scenario_sha256": "aef430b63be745b8da378c559bbe98ff130e665260cbde2d9a6d21e62a01d3a2",
+            "execution_report_ref": ".governance/reports/system/esp_event_default_event_loop/run-report.json",
+            "verified_commit": "96a4aef972b5f12da4e861f0226383a0191723cc",
+            "verified_at": "2026-10-02T22:00:24Z"
+          }
         }
       ],
       "target_app_dir": "system/esp_event_default_event_loop"

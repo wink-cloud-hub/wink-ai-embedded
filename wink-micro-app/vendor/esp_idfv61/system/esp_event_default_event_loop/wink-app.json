@@ -1,0 +1,18 @@
+{
+  "app_name": "esp_idfv61_system_esp_event_default_event_loop",
+  "display_name": "Espressif ESP-IDF default_event_loop",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "mcu": "esp32",
+  "tick_ms": 1,
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/system/esp_event/default_event_loop/main",
+    "files": {
+      "main.c": "be65a6cee63ef66b8309ffcc181423521697dc1a1c57eea87603e5dee1187c4f",
+      "event_source.h": "47134f12e87f841dedc32ccdbc46d3494da4473ff1530e82e5d15446acaf0549"
+    }
+  },
+  "devices": {}
+}

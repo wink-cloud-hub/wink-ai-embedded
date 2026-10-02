@@ -79,7 +79,8 @@ $allCarriers = @(
     @{ Name = 'nvs_nvs_rw_value'; Rel = 'vendor/esp_idfv61/storage/nvs_nvs_rw_value'; Channel = 'NVS Read/Write Value & Key Iteration' },
     @{ Name = 'nvs_nvs_rw_blob';  Rel = 'vendor/esp_idfv61/storage/nvs_nvs_rw_blob';  Channel = 'NVS Read/Write Struct & Array Blobs' },
     @{ Name = 'spi_master_hd_eeprom'; Rel = 'vendor/esp_idfv61/peripherals/spi_master_hd_eeprom'; Channel = 'SPI Master Half-Duplex Bus Communication & EEPROM' },
-    @{ Name = 'gpio_generic_gpio'; Rel = 'vendor/esp_idfv61/peripherals/gpio_generic_gpio'; Channel = 'Generic GPIO Input/Output & Edge Interrupt' }
+    @{ Name = 'gpio_generic_gpio'; Rel = 'vendor/esp_idfv61/peripherals/gpio_generic_gpio'; Channel = 'Generic GPIO Input/Output & Edge Interrupt' },
+    @{ Name = 'esp_event_default_event_loop'; Rel = 'vendor/esp_idfv61/system/esp_event_default_event_loop'; Channel = 'Default Event Loop & Periodic Timer/Task Events' }
 )
 
 $carriers = @()

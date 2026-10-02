@@ -1,0 +1,128 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 default_event_loop headless deterministic proof",
+    "templateId": "esp_idfv61_system_esp_event_default_event_loop",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3500ms",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "setting up",
+      "description": "断言系统初始化启动 default_event_loop"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "starting event sources",
+      "description": "断言事件源任务与周期定时器启动"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "TIMER_EVENTS:TIMER_EVENT_STARTED: timer_started_handler, instance 0",
+      "description": "断言定时器启动事件分发至 handler 实例 0"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "TIMER_EVENTS:TIMER_EVENT_STARTED: timer_started_handler, instance 1",
+      "description": "断言定时器启动事件分发至 handler 实例 1"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "TIMER_EVENTS:TIMER_EVENT_STARTED: timer_started_handler_2",
+      "description": "断言定时器启动事件分发至 handler 2"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "TIMER_EVENTS:TIMER_EVENT_STARTED: all_event_handler",
+      "description": "断言全事件泛型通配处理器捕获定时器启动事件"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "TASK_EVENTS:TASK_ITERATION_EVENT: task_iteration_handler, executed 1 times",
+      "description": "断言任务事件源完成第 1 次迭代投递与深拷贝接收"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["500ms", "2500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "TASK_EVENTS:TASK_ITERATION_EVENT: unregistering task_iteration_handler",
+      "description": "断言任务在第 3 次迭代注销特定事件处理器实例"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["500ms", "2500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "TIMER_EVENTS:TIMER_EVENT_EXPIRY: timer_expiry_handler, executed 1 out of 3 times",
+      "description": "断言 esp_timer 周期超时并在事件循环中被成功派发"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["2000ms", "3500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "TIMER_EVENTS:TIMER_EVENT_EXPIRY: timer_expiry_handler, executed 3 out of 3 times",
+      "description": "断言定时器达到最大超时次数 3 次"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["2000ms", "3500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "TIMER_EVENTS:TIMER_EVENT_STOPPED: timer_stopped_handler",
+      "description": "断言定时器停止事件被捕获"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["2000ms", "3500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "TIMER_EVENTS:TIMER_EVENT_STOPPED: deleted timer event source",
+      "description": "断言定时器对象成功删除并安全退出"
+    }
+  ]
+}
