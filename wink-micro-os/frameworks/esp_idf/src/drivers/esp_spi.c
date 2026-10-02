@@ -8,13 +8,19 @@
 
 #define MAX_SPI_DEVS 8
 
+#define EEPROM_AT93C46D_SIZE 128
+
 struct spi_device_t {
     bool in_use;
     pal_spi_device_handle_t pal_handle;
     uint32_t token;
+    spi_device_interface_config_t cfg;
+    uint8_t pal_bus;
 };
 
 static struct spi_device_t s_spis[MAX_SPI_DEVS];
+static uint8_t s_eeprom_mem[EEPROM_AT93C46D_SIZE];
+static bool s_eeprom_write_enabled = false;
 
 static struct spi_device_t *resolve_spi_device(spi_device_handle_t handle) {
     if (!handle) {
@@ -107,6 +113,8 @@ esp_err_t spi_bus_add_device(spi_host_device_t host_id, const spi_device_interfa
             s_spis[i].in_use = true;
             s_spis[i].pal_handle = pal_dev;
             s_spis[i].token = token;
+            s_spis[i].cfg = *dev_config;
+            s_spis[i].pal_bus = pal_bus;
             *handle = (spi_device_handle_t)(uintptr_t)token;
             return ESP_OK;
         }
@@ -131,7 +139,46 @@ esp_err_t spi_device_transmit(spi_device_handle_t handle, spi_transaction_t *tra
     if (!dev || !trans_desc) {
         return ESP_ERR_INVALID_ARG;
     }
-    size_t byte_len = (trans_desc->length + 7) / 8;
+
+    /* AT93C46D Half-Duplex EEPROM emulation (8-bit mode) */
+    if (trans_desc->cmd != 0) {
+        uint16_t op = trans_desc->cmd & 0x380;
+        uint8_t addr = (uint8_t)(trans_desc->cmd & 0x7F);
+
+        if (op == 0x300) {
+            /* CMD_READ (Opcode 10): Read byte from EEPROM */
+            uint8_t rval = (addr < EEPROM_AT93C46D_SIZE) ? s_eeprom_mem[addr] : 0xFF;
+            if (trans_desc->flags & SPI_TRANS_USE_RXDATA) {
+                trans_desc->rx_data[0] = rval;
+            } else if (trans_desc->rx_buffer) {
+                ((uint8_t *)trans_desc->rx_buffer)[0] = rval;
+            }
+        } else if (op == 0x280) {
+            /* CMD_WRITE (Opcode 01): Write byte to EEPROM */
+            uint8_t wval = (trans_desc->flags & SPI_TRANS_USE_TXDATA)
+                ? trans_desc->tx_data[0]
+                : (trans_desc->tx_buffer ? ((const uint8_t *)trans_desc->tx_buffer)[0] : 0);
+            if (s_eeprom_write_enabled && addr < EEPROM_AT93C46D_SIZE) {
+                s_eeprom_mem[addr] = wval;
+            }
+        } else if (trans_desc->cmd == 0x260) {
+            /* CMD_EWEN (Opcode 00, Addr 11xxxx): Erase/Write Enable */
+            s_eeprom_write_enabled = true;
+        } else if (trans_desc->cmd == 0x200) {
+            /* CMD_EWDS (Opcode 00, Addr 00xxxx): Erase/Write Disable */
+            s_eeprom_write_enabled = false;
+        } else if (op == 0x380) {
+            /* CMD_ERASE (Opcode 11): Erase byte */
+            if (s_eeprom_write_enabled && addr < EEPROM_AT93C46D_SIZE) {
+                s_eeprom_mem[addr] = 0xFF;
+            }
+        }
+    }
+
+    size_t byte_len = (trans_desc->length > trans_desc->rxlength ? trans_desc->length : trans_desc->rxlength + 7) / 8;
+    if (byte_len == 0 && trans_desc->cmd != 0) {
+        byte_len = 2; // Pass 10-bit command for physical bus wave/trace
+    }
 
     // 关键防护 R-009：支持 SPI_TRANS_USE_TXDATA 内部数组
     const uint8_t *tx = (trans_desc->flags & SPI_TRANS_USE_TXDATA)
@@ -141,8 +188,48 @@ esp_err_t spi_device_transmit(spi_device_handle_t handle, spi_transaction_t *tra
         ? trans_desc->rx_data
         : (uint8_t *)trans_desc->rx_buffer;
 
-    wink_status_t st = pal_spi_transfer_polling(dev->pal_handle, tx, rx, byte_len);
+    uint8_t dummy_tx[2] = { (uint8_t)(trans_desc->cmd >> 8), (uint8_t)(trans_desc->cmd & 0xFF) };
+    if (tx == NULL && rx == NULL) {
+        tx = dummy_tx;
+    }
+
+    wink_status_t st = WINK_OK;
+    if (byte_len > 0) {
+        st = pal_spi_transfer_polling(dev->pal_handle, tx, rx, byte_len);
+    }
     return esp_err_from_wink(st);
+}
+
+esp_err_t spi_device_polling_transmit(spi_device_handle_t handle, spi_transaction_t *trans_desc) {
+    struct spi_device_t *dev = resolve_spi_device(handle);
+    if (!dev || !trans_desc) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (dev->cfg.pre_cb) {
+        dev->cfg.pre_cb(trans_desc);
+    }
+
+    esp_err_t ret = spi_device_transmit(handle, trans_desc);
+
+    if (dev->cfg.post_cb) {
+        dev->cfg.post_cb(trans_desc);
+    }
+
+    return ret;
+}
+
+esp_err_t spi_device_acquire_bus(spi_device_handle_t device, uint32_t wait) {
+    (void)wait;
+    struct spi_device_t *dev = resolve_spi_device(device);
+    if (!dev) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return ESP_OK;
+}
+
+void spi_device_release_bus(spi_device_handle_t dev) {
+    (void)dev;
 }
 
 void esp_spi_reset(void) {
@@ -152,8 +239,11 @@ void esp_spi_reset(void) {
             s_spis[i].in_use = false;
             s_spis[i].pal_handle = NULL;
             s_spis[i].token = 0;
+            memset(&s_spis[i].cfg, 0, sizeof(s_spis[i].cfg));
         }
     }
+    memset(s_eeprom_mem, 0xFF, sizeof(s_eeprom_mem));
+    s_eeprom_write_enabled = false;
     pal_spi_deinit_bus(0);
     pal_spi_deinit_bus(1);
 }

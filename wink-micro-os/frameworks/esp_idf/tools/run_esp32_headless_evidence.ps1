@@ -77,7 +77,8 @@ $allCarriers = @(
     @{ Name = 'http_client';   Rel = 'vendor/esp_idfv61/protocols/http_client';   Channel = 'HTTP/REST Client & Events' },
     @{ Name = 'mqtt_tcp';      Rel = 'vendor/esp_idfv61/protocols/mqtt_tcp';      Channel = 'MQTT Protocol & Event Loop' },
     @{ Name = 'nvs_nvs_rw_value'; Rel = 'vendor/esp_idfv61/storage/nvs_nvs_rw_value'; Channel = 'NVS Read/Write Value & Key Iteration' },
-    @{ Name = 'nvs_nvs_rw_blob';  Rel = 'vendor/esp_idfv61/storage/nvs_nvs_rw_blob';  Channel = 'NVS Read/Write Struct & Array Blobs' }
+    @{ Name = 'nvs_nvs_rw_blob';  Rel = 'vendor/esp_idfv61/storage/nvs_nvs_rw_blob';  Channel = 'NVS Read/Write Struct & Array Blobs' },
+    @{ Name = 'spi_master_hd_eeprom'; Rel = 'vendor/esp_idfv61/peripherals/spi_master_hd_eeprom'; Channel = 'SPI Master Half-Duplex Bus Communication & EEPROM' }
 )
 
 $carriers = @()

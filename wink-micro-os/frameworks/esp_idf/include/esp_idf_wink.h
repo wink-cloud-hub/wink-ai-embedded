@@ -36,6 +36,7 @@ void esp_spi_reset(void);
 
 /* Phase 3 GPIO ISR simulation edge injection (ISSUE-04) */
 esp_err_t esp_sim_gpio_inject_edge(gpio_num_t pin, uint32_t from_level, uint32_t to_level);
+void esp_sim_gpio_set_input_level(gpio_num_t pin, uint32_t level);
 
 /* Phase 3 NVS simulation memory cache reset (for testing cold reload from sandbox file) */
 void esp_sim_nvs_reset_memory(void);

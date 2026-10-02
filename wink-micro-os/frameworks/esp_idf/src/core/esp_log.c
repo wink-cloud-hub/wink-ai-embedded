@@ -19,6 +19,23 @@ esp_log_level_t esp_log_level_get(const char *tag) {
     return s_global_log_level;
 }
 
+esp_log_level_t esp_log_get_default_level(void) {
+    return s_global_log_level;
+}
+
+int esp_rom_printf(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    int ret = 0;
+    if (s_custom_vprintf != NULL) {
+        ret = s_custom_vprintf(fmt, args);
+    } else {
+        ret = vprintf(fmt, args);
+    }
+    va_end(args);
+    return ret;
+}
+
 uint32_t esp_log_timestamp(void) {
     return (uint32_t)pal_os_get_ms();
 }

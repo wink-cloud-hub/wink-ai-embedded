@@ -27,6 +27,8 @@ static esp_sim_gpio_isr_slot_t s_gpio_isr_slots[SOC_GPIO_PIN_COUNT];
  * gpio_reset_pin. Single-threaded cooperative sim only; pins < 64. */
 static uint64_t s_is_output = 0ULL;
 static uint64_t s_output_levels = 0ULL;
+static uint64_t s_sim_input_override = 0ULL;
+static uint64_t s_sim_input_levels = 0ULL;
 
 static pal_gpio_mode_t convert_gpio_mode(gpio_mode_t mode, gpio_pullup_t pull_up, gpio_pulldown_t pull_down) {
     if (mode == GPIO_MODE_INPUT) {
@@ -150,6 +152,16 @@ esp_err_t gpio_set_level(gpio_num_t gpio_num, uint32_t level) {
         /* Phase 3: In-fiber loopback injection if pin interrupt registered and enabled */
         esp_sim_gpio_inject_edge(gpio_num, old_level, level ? 1u : 0u);
     }
+
+    /* AT93C46D SPI EEPROM CS-to-MISO ready signal emulation:
+     * When CS (GPIO 13) is driven HIGH, the EEPROM indicates ready by driving MISO (GPIO 18) HIGH.
+     * When CS is driven LOW, MISO returns to LOW. */
+    if (gpio_num == GPIO_NUM_13) {
+        esp_sim_gpio_set_input_level(GPIO_NUM_18, level ? 1 : 0);
+        if (level) {
+            esp_sim_gpio_inject_edge(GPIO_NUM_18, 0, 1);
+        }
+    }
     return err;
 }
 
@@ -165,6 +177,11 @@ int gpio_get_level(gpio_num_t gpio_num) {
     /* If pin is tracked as output, read back the written level */
     if (s_is_output & (1ULL << gpio_num)) {
         return (s_output_levels & (1ULL << gpio_num)) ? 1 : 0;
+    }
+
+    /* If pin has simulated external input level override */
+    if (s_sim_input_override & (1ULL << gpio_num)) {
+        return (s_sim_input_levels & (1ULL << gpio_num)) ? 1 : 0;
     }
 
     bool val = false;
@@ -373,9 +390,22 @@ esp_err_t esp_sim_gpio_inject_edge(gpio_num_t pin, uint32_t from_level, uint32_t
     return ESP_OK;
 }
 
+void esp_sim_gpio_set_input_level(gpio_num_t pin, uint32_t level) {
+    if ((uint32_t)pin < SOC_GPIO_PIN_COUNT) {
+        s_sim_input_override |= (1ULL << pin);
+        if (level) {
+            s_sim_input_levels |= (1ULL << pin);
+        } else {
+            s_sim_input_levels &= ~(1ULL << pin);
+        }
+    }
+}
+
 void esp_gpio_reset(void) {
     s_is_output = 0ULL;
     s_output_levels = 0ULL;
+    s_sim_input_override = 0ULL;
+    s_sim_input_levels = 0ULL;
     s_isr_service_installed = false;
     memset(s_gpio_isr_slots, 0, sizeof(s_gpio_isr_slots));
 }

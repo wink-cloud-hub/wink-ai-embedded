@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "soc/soc_caps.h"
+#include "soc/clk_tree_defs.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,8 +23,7 @@ typedef enum {
 #define HSPI_HOST SPI2_HOST
 #define VSPI_HOST SPI3_HOST
 
-typedef int spi_clock_source_t;
-#define SPI_CLK_SRC_DEFAULT 0
+typedef soc_periph_spi_clk_src_t spi_clock_source_t;
 
 typedef enum {
     SPI_SAMPLING_POINT_PHASE_0 = 0,
