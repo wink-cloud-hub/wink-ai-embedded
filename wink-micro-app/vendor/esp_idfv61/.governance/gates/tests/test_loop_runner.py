@@ -96,8 +96,10 @@ def test_runner_candidate_selection():
     assert "esp.get_started.blink" not in candidate_ids
     assert "esp.peripherals.timer_group.gptimer" not in candidate_ids
 
-    # Unverified landed apps should be present
-    assert "esp.peripherals.i2c.i2c_basic" in candidate_ids or len(candidate_ids) > 0
+    # When explicit app is requested, it can be targeted even if verified
+    explicit_candidates = runner.select_candidates(app_name="blink_gpio")
+    assert len(explicit_candidates) == 1
+    assert explicit_candidates[0]["id"] == "esp.get_started.blink"
 
 
 def test_agent_synthesizer_prompt_contains_rules():

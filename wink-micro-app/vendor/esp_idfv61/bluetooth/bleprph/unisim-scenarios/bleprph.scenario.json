@@ -4,24 +4,45 @@
     "name": "ESP-IDF v6.1 bleprph headless deterministic proof",
     "templateId": "esp_idfv61_bleprph",
     "accuracyMode": "behavioral",
-    "timeoutUs": "3000000",
+    "timeoutUs": "3000ms",
     "failurePolicy": "fail-fast",
     "determinism": { "prngSeed": 42 }
   },
   "steps": [
     {
       "type": "ASSERT_POINT",
-      "timeUs": "500ms",
+      "timeUs": "50ms",
       "target": "power:VCC_3V3",
       "matcher": 3.3,
-      "description": "断言系统核心 3.3V 电源轨维持稳定输出"
+      "description": "断言系统核心 3.3V 供电轨维持稳定输出"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "ble:gap:adv_state",
+      "matcher": "ADVERTISING",
+      "description": "断言 NimBLE GAP 广播状态机成功进入 ADVERTISING 广播活跃态"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "ble:gap:device_name",
+      "matcher": "nimble-bleprph",
+      "description": "断言 BLE 设备名已与官方示例配置同步为 nimble-bleprph"
     },
     {
       "type": "ASSERT_POINT",
       "timeUs": "1000ms",
-      "target": "power:VCC_3V3",
-      "matcher": 3.3,
-      "description": "断言 BLE GATT Server 运行期电源持续稳定"
+      "target": "ble:gatt:num_services",
+      "matcher": { "$gte": 1 },
+      "description": "断言 GATT Server 服务表至少成功挂载 1 组主服务定义"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "ble:gap:adv_state",
+      "matcher": "ADVERTISING",
+      "description": "断言 NimBLE GAP 稳态广播持续处于 ADVERTISING 态"
     }
   ]
 }

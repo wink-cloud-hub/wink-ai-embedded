@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-01T02:43:11.947Z",
+  "timestamp": "2026-10-02T11:35:50.326Z",
   "total": 1,
   "passed": 1,
   "failed": 0,
@@ -11,11 +11,11 @@
         "name": "ESP-IDF v6.1 bleprph headless deterministic proof",
         "templateId": "esp_idfv61_bleprph",
         "totalVirtualUs": "3000000",
-        "wallClockMs": 94
+        "wallClockMs": 90
       },
       "summary": {
-        "totalSteps": 2,
-        "passedSteps": 2,
+        "totalSteps": 5,
+        "passedSteps": 5,
         "failedSteps": 0,
         "skippedSteps": 0,
         "errorSteps": 0
@@ -25,7 +25,7 @@
           "stepIndex": 0,
           "type": "ASSERT_POINT",
           "status": "passed",
-          "timeUs": "500000",
+          "timeUs": "50000",
           "actual": 3.3,
           "expected": 3.3
         },
@@ -33,9 +33,35 @@
           "stepIndex": 1,
           "type": "ASSERT_POINT",
           "status": "passed",
+          "timeUs": "500000",
+          "actual": "ADVERTISING",
+          "expected": "ADVERTISING"
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "500000",
+          "actual": "nimble-bleprph",
+          "expected": "nimble-bleprph"
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_POINT",
+          "status": "passed",
           "timeUs": "1000000",
-          "actual": 3.3,
-          "expected": 3.3
+          "actual": 1,
+          "expected": {
+            "$gte": 1
+          }
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": "ADVERTISING",
+          "expected": "ADVERTISING"
         }
       ],
       "diagnostics": []

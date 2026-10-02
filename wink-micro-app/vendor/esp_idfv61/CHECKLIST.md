@@ -14,9 +14,9 @@
 ## 一、 总体适配进度统计
 
 - **官方独立示例总数**：**478 个**
-  - `[x]` **已完成六要素实证 (Verified)**：**10 项**
+  - `[x]` **已完成六要素实证 (Verified)**：**11 项**
   - `[?]` **存量隔离待补凭证 (Quarantined Debt)**：**0 项**（14 天 TTL 过期硬阻断，至 `2026-10-13`）
-  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**281 项**
+  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**280 项**
   - `[-]` **明确产品排除 / 暂缓投入 (Out-of-Scope / Deferred)**：**187 项**（编译期 `WINK_SLA_ERROR` Fail-Loud 阻断）
   - `?` **待深度审定 (Pending Audit / Unknown Scope)**：**0 项**
 
@@ -29,7 +29,7 @@
 | 03 | [操作系统与核心系统调用 (System & OS)](#system) | 68 项 | `#117 ~ #184` | 0 项 | 0 项 |
 | 04 | [网络与应用层通信协议 (Protocols)](#protocols) | 35 项 | `#185 ~ #219` | 2 项 | 0 项 |
 | 05 | [Wi-Fi 无线局域网 (Wi-Fi)](#wifi) | 24 项 | `#220 ~ #243` | 1 项 | 0 项 |
-| 06 | [蓝牙协议栈 (Bluetooth)](#bluetooth) | 147 项 | `#244 ~ #390` | 0 项 | 0 项 |
+| 06 | [蓝牙协议栈 (Bluetooth)](#bluetooth) | 147 项 | `#244 ~ #390` | 1 项 | 0 项 |
 | 07 | [片上存储与文件系统 (Storage)](#storage) | 27 项 | `#391 ~ #417` | 0 项 | 0 项 |
 | 08 | [底层网络与接口 (Network)](#network) | 5 项 | `#418 ~ #422` | 0 项 | 0 项 |
 | 09 | [C++ 运行时与语言特性 (C++)](#cxx) | 3 项 | `#423 ~ #425` | 0 项 | 0 项 |
@@ -394,7 +394,7 @@
 ---
 
 <a id="bluetooth"></a>
-### 蓝牙协议栈 (Bluetooth)（共 147 项 | 编号 `#244 ~ #390` | 已实证: 0 项 | 隔离待补: 0 项）
+### 蓝牙协议栈 (Bluetooth)（共 147 项 | 编号 `#244 ~ #390` | 已实证: 1 项 | 隔离待补: 0 项）
 
 | 状态 | 编号 | 官方子示例相对路径 | 可观测等级 | 优先级 | 对应 wink-micro-app | 验收标准与架构说明 |
 | :---: | :---: | :--- | :---: | :---: | :--- | :--- |
@@ -538,7 +538,7 @@
 | [ ] | 381 | `bluetooth/nimble/blecsc` | 📜 Level 2 | P2 | `bluetooth/nimble_blecsc` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 382 | `bluetooth/nimble/blehr` | 📜 Level 2 | P2 | `bluetooth/nimble_blehr` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 383 | `bluetooth/nimble/blemesh` | 📜 Level 2 | P2 | `bluetooth/nimble_blemesh` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 384 | `bluetooth/nimble/bleprph` | 🎯 Level 1 | P1 | [`bluetooth/bleprph`](bluetooth/bleprph) | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
+| [x] | 384 | `bluetooth/nimble/bleprph` | 🎯 Level 1 | P0 | [`bluetooth/bleprph`](bluetooth/bleprph) | [Lane 6: 无线网络] 已完成实证。 |
 | [ ] | 385 | `bluetooth/nimble/bleprph_host_only` | 📜 Level 2 | P1 | `bluetooth/nimble_bleprph_host_only` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 386 | `bluetooth/nimble/bleprph_wifi_coex` | 📜 Level 2 | P1 | `bluetooth/nimble_bleprph_wifi_coex` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
 | [-] | 387 | `bluetooth/nimble/hci` | ⚙️ Level 4 | P4 | — | 声明 Out-of-Scope。2.4GHz 蓝牙射频基带物理层。 |

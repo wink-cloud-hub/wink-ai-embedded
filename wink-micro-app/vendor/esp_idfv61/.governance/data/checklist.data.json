@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 10,
-    "verified_configs": 10
+    "audited": 11,
+    "verified_configs": 11
   },
   "entries": [
     {
@@ -24072,10 +24072,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-02T11:35:58Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -24108,7 +24110,7 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L1_ui",
@@ -24119,7 +24121,15 @@
             "negative_cases": [],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261002-esp.bluetooth.nimble.bleprph-verified",
+            "assets_sha256": "ce7d568e1eee69731566436fa071d8f0ebfca49b4123639dfa80395016bd16dc",
+            "scenario_sha256": "6289972d59906fbeda9099d1d20c601fa633ecb0830552c73ba5b947fe6d4bde",
+            "execution_report_ref": ".governance/reports/bluetooth/bleprph/run-report.json",
+            "verified_commit": "dced52370776b2ceba87637df7e7bebe437a3f59",
+            "verified_at": "2026-10-02T11:35:50Z"
+          }
         }
       ],
       "target_app_dir": "bluetooth/bleprph"
