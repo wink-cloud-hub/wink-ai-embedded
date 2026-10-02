@@ -9,6 +9,13 @@
 #include "esp_netif.h"
 #include <string.h>
 
+#if defined(__EMSCRIPTEN__)
+#  include <emscripten.h>
+#  define WINK_SIM_EXPORT EMSCRIPTEN_KEEPALIVE
+#else
+#  define WINK_SIM_EXPORT
+#endif
+
 #define TAG "ESP_MQTT"
 
 #define MAX_MQTT_CLIENTS    2
@@ -775,5 +782,22 @@ int esp_mqtt_sim_get_last_msg_id(void) {
 
 void esp_mqtt_sim_set_publish_hook(esp_mqtt_sim_publish_hook_t hook) {
     s_publish_hook = hook;
+}
+
+WINK_SIM_EXPORT int sim_mqtt_get_state(void) {
+    for (int i = 0; i < MAX_MQTT_CLIENTS; i++) {
+        if (s_clients[i].initialized && s_clients[i].connected) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+WINK_SIM_EXPORT const char* sim_mqtt_get_last_topic(void) {
+    return s_last_topic;
+}
+
+WINK_SIM_EXPORT const char* sim_mqtt_get_last_data(void) {
+    return s_last_data;
 }
 
