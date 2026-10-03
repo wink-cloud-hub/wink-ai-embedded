@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 22,
-    "verified_configs": 22
+    "audited": 23,
+    "verified_configs": 23
   },
   "entries": [
     {
@@ -1540,10 +1540,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-03T01:37:31Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -1574,18 +1576,26 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/peripherals_i2c_i2c_eeprom.scenario.json",
+            "scenario_path": "peripherals/i2c_i2c_eeprom/unisim-scenarios/peripherals_i2c_i2c_eeprom.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
             "positive_cases": [],
             "negative_cases": [],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261003-esp.peripherals.i2c.i2c_eeprom-verified",
+            "assets_sha256": "19ae1e691553d1fac7542c412e250c999d5cc512e1487c10c6c733cb4f5da56b",
+            "scenario_sha256": "3a6f91861e3cde3da4accf324e9f8de5626f1c07ef2e2e9ba7dfbfbc03c02a6a",
+            "execution_report_ref": ".governance/reports/peripherals/i2c_i2c_eeprom/run-report.json",
+            "verified_commit": "e7a4ca63cf0a00f3236925e3aac4911e40afd88f",
+            "verified_at": "2026-10-03T01:37:17Z"
+          }
         }
       ],
       "target_app_dir": "peripherals/i2c_i2c_eeprom"
