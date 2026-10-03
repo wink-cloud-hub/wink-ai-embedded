@@ -1,0 +1,17 @@
+{
+  "app_name": "esp_idfv61_dac_dac_cosine_wave",
+  "display_name": "Espressif ESP-IDF DAC cosine wave",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "mcu": "esp32",
+  "tick_ms": 1,
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/peripherals/dac/dac_cosine_wave/main",
+    "files": {
+      "dac_cosine_example_main.c": "f4eb206bc2430b50255051b8e2350581c277f5979b1a0bcbbcf68ce2b6cfe8c"
+    }
+  },
+  "devices": {}
+}

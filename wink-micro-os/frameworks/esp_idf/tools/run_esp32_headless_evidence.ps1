@@ -82,7 +82,8 @@ $allCarriers = @(
     @{ Name = 'gpio_generic_gpio'; Rel = 'vendor/esp_idfv61/peripherals/gpio_generic_gpio'; Channel = 'Generic GPIO Input/Output & Edge Interrupt' },
     @{ Name = 'esp_event_default_event_loop'; Rel = 'vendor/esp_idfv61/system/esp_event_default_event_loop'; Channel = 'Default Event Loop & Periodic Timer/Task Events' },
     @{ Name = 'freertos_real_time_stats'; Rel = 'vendor/esp_idfv61/system/freertos_real_time_stats'; Channel = 'FreeRTOS Real Time Stats & Task Execution Measurement' },
-    @{ Name = 'esp_timer'; Rel = 'vendor/esp_idfv61/system/esp_timer'; Channel = 'High Resolution Timer & Periodic/Oneshot Alarms' }
+    @{ Name = 'esp_timer'; Rel = 'vendor/esp_idfv61/system/esp_timer'; Channel = 'High Resolution Timer & Periodic/Oneshot Alarms' },
+    @{ Name = 'dac_dac_cosine_wave'; Rel = 'vendor/esp_idfv61/peripherals/dac_dac_cosine_wave'; Channel = 'DAC Cosine Wave Generator & Voltage Output' }
 )
 
 $carriers = @()

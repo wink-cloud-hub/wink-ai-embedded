@@ -1,0 +1,9 @@
+{
+  "appName": "esp_idfv61_dac_dac_cosine_wave",
+  "board": "esp32_devkitc_v4",
+  "devices": {},
+  "family": "esp32",
+  "core": "xtensa-lx6",
+  "mcu": "esp32",
+  "vendor": "espressif"
+}

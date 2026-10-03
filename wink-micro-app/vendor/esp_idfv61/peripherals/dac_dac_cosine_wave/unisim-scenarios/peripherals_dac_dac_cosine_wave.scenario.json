@@ -1,0 +1,62 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 dac_cosine_wave headless deterministic proof",
+    "templateId": "esp_idfv61_dac_dac_cosine_wave",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3500ms",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "0ms",
+      "adcChannel": 25,
+      "valueNorm": 0.5,
+      "description": "向 DAC/ADC Channel 0 (GPIO 25) 注入 50% 模拟电学基线"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "0ms",
+      "adcChannel": 26,
+      "valueNorm": 0.8,
+      "description": "向 DAC/ADC Channel 1 (GPIO 26) 注入 80% 模拟电学基线"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统核心供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "adc:25",
+      "matcher": { "$near": { "target": 0.5, "tolerance": 0.05 } },
+      "description": "断言 DAC/ADC Channel 0 (GPIO 25) 模拟采样轨维持 0.5"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "adc:26",
+      "matcher": { "$near": { "target": 0.8, "tolerance": 0.05 } },
+      "description": "断言 DAC/ADC Channel 1 (GPIO 26) 模拟采样轨维持 0.8"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "2000ms",
+      "adcChannel": 25,
+      "valueNorm": 0.3,
+      "description": "向 DAC/ADC Channel 0 (GPIO 25) 动态调制至 30%"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2500ms",
+      "target": "adc:25",
+      "matcher": { "$near": { "target": 0.3, "tolerance": 0.05 } },
+      "description": "断言 DAC/ADC Channel 0 (GPIO 25) 动态响应至 0.3"
+    }
+  ]
+}
