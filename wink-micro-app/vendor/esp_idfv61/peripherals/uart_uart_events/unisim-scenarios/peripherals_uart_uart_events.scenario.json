@@ -1,0 +1,80 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 peripherals_uart_uart_events headless deterministic proof",
+    "templateId": "esp_idfv61_uart_uart_events",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "INPUT_BUS",
+      "timeUs": "100ms",
+      "mode": "stream",
+      "busType": "uart",
+      "busId": 0,
+      "payload": {
+        "encoding": "utf8",
+        "text": "HELLO_ESP32_WINK"
+      },
+      "description": "向 UART0 注入普通数据流以触发 UART_DATA 事件"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["100ms", "1200ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "[DATA EVT]:",
+      "description": "断言事件任务成功响应普通数据到达事件并输出处理标记"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["100ms", "1200ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "[UART DATA]: 1",
+      "description": "断言事件驱动任务从队列中按字节流读取并记录接收长度"
+    },
+    {
+      "type": "INPUT_BUS",
+      "timeUs": "1500ms",
+      "mode": "stream",
+      "busType": "uart",
+      "busId": 0,
+      "payload": {
+        "encoding": "utf8",
+        "text": "+++"
+      },
+      "description": "向 UART0 注入模式特征字符 +++ 以触发模式检测中断"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["1500ms", "2800ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "[UART PATTERN DETECTED] pos: 0",
+      "description": "断言模式检测中断触发并准确定位起始偏移量"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["1500ms", "2800ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "read pat : +++",
+      "description": "断言从环形缓冲区中准确提取匹配的模式特征字符 +++"
+    }
+  ]
+}
