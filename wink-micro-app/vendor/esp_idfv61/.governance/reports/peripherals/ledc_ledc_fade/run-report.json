@@ -1,0 +1,104 @@
+{
+  "timestamp": "2026-10-03T15:10:30.789Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 peripherals_ledc_ledc_fade headless deterministic proof",
+        "templateId": "esp_idfv61_ledc_ledc_fade",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 89
+      },
+      "summary": {
+        "totalSteps": 7,
+        "passedSteps": 7,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "800000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "1. LEDC fade up to duty = 4000\n2. LEDC fade down to duty = 0\n3. LEDC set duty = 4000 without fade\n"
+            ]
+          },
+          "expected": "1. LEDC fade up to duty = 4000"
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "800000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "1. LEDC fade up to duty = 4000\n2. LEDC fade down to duty = 0\n3. LEDC set duty = 4000 without fade\n"
+            ]
+          },
+          "expected": "2. LEDC fade down to duty = 0"
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "800000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "1. LEDC fade up to duty = 4000\n2. LEDC fade down to duty = 0\n3. LEDC set duty = 4000 without fade\n"
+            ]
+          },
+          "expected": "3. LEDC set duty = 4000 without fade"
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "800000",
+          "actual": 48.83,
+          "expected": 48.83
+        },
+        {
+          "stepIndex": 5,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1400000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "4. LEDC set duty = 0 without fade\n"
+            ]
+          },
+          "expected": "4. LEDC set duty = 0 without fade"
+        },
+        {
+          "stepIndex": 6,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": 0,
+          "expected": 0
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

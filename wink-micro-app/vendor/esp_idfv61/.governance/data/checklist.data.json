@@ -8,8 +8,9 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 24,
-    "verified_configs": 24
+    "audited": 25,
+    "verified_configs": 25,
+    "verified": 25
   },
   "entries": [
     {
@@ -3115,10 +3116,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-03T15:10:30Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -3149,18 +3152,40 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/peripherals_ledc_ledc_fade.scenario.json",
+            "scenario_path": "peripherals/ledc_ledc_fade/unisim-scenarios/peripherals_ledc_ledc_fade.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
+            "positive_cases": [
+              {
+                "name": "LEDC 多通道硬件平滑渐变与计数信号量同步",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "4\\. LEDC set duty = 0 without fade"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "注入占空比越界变异",
+                "expect_error": "timeout",
+                "detects": "断言器敏感捕获变异日志输出"
+              }
+            ],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261003-esp.peripherals.ledc.ledc_fade-verified",
+            "assets_sha256": "20ca6393e9e07e708f343c4771b3bfddb26bf4cecc54886d5440d11aaeb111c9",
+            "scenario_sha256": "408c522c704942c92469a026259f93188ce7f6deca6ca8f9e620bf4005a31cfc",
+            "execution_report_ref": ".governance/reports/peripherals/ledc_ledc_fade/run-report.json",
+            "verified_commit": "1d805ab02bf145ec053bae08b6afcdf598c3f3a1",
+            "verified_at": "2026-10-03T15:10:30Z"
+          }
         }
       ],
       "target_app_dir": "peripherals/ledc_ledc_fade"

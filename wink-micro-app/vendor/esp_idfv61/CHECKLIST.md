@@ -14,9 +14,9 @@
 ## 一、 总体适配进度统计
 
 - **官方独立示例总数**：**478 个**
-  - `[x]` **已完成六要素实证 (Verified)**：**24 项**
+  - `[x]` **已完成六要素实证 (Verified)**：**25 项**
   - `[?]` **存量隔离待补凭证 (Quarantined Debt)**：**0 项**（14 天 TTL 过期硬阻断，至 `2026-10-13`）
-  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**267 项**
+  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**266 项**
   - `[-]` **明确产品排除 / 暂缓投入 (Out-of-Scope / Deferred)**：**187 项**（编译期 `WINK_SLA_ERROR` Fail-Loud 阻断）
   - `?` **待深度审定 (Pending Audit / Unknown Scope)**：**0 项**
 
@@ -25,7 +25,7 @@
 | 序号 | 功能大类 | 包含示例数 | 编号跨度 | 已实证 | 隔离待补 |
 | :---: | :--- | :---: | :---: | :---: | :---: |
 | 01 | [基础快速起步 (Get-Started)](#get-started) | 2 项 | `#001 ~ #002` | 2 项 | 0 项 |
-| 02 | [片上与总线外设 (Peripherals)](#peripherals) | 114 项 | `#003 ~ #116` | 12 项 | 0 项 |
+| 02 | [片上与总线外设 (Peripherals)](#peripherals) | 114 项 | `#003 ~ #116` | 13 项 | 0 项 |
 | 03 | [操作系统与核心系统调用 (System & OS)](#system) | 68 项 | `#117 ~ #184` | 3 项 | 0 项 |
 | 04 | [网络与应用层通信协议 (Protocols)](#protocols) | 35 项 | `#185 ~ #219` | 2 项 | 0 项 |
 | 05 | [Wi-Fi 无线局域网 (Wi-Fi)](#wifi) | 24 项 | `#220 ~ #243` | 1 项 | 0 项 |
@@ -121,7 +121,7 @@
 ---
 
 <a id="peripherals"></a>
-### 片上与总线外设 (Peripherals)（共 114 项 | 编号 `#003 ~ #116` | 已实证: 12 项 | 隔离待补: 0 项）
+### 片上与总线外设 (Peripherals)（共 114 项 | 编号 `#003 ~ #116` | 已实证: 13 项 | 隔离待补: 0 项）
 
 | 状态 | 编号 | 官方子示例相对路径 | 可观测等级 | 优先级 | 对应 wink-micro-app | 验收标准与架构说明 |
 | :---: | :---: | :--- | :---: | :---: | :--- | :--- |
@@ -171,7 +171,7 @@
 | [ ] | 046 | `peripherals/lcd/tjpgd` | 📜 Level 2 | P3 | `peripherals/lcd_tjpgd` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
 | [x] | 047 | `peripherals/ledc/ledc_basic` | 🎯 Level 1 | P0 | [`peripherals/ledc_basic`](peripherals/ledc_basic) | [Lane 3: 脉冲定时] 已完成实证。 |
 | [ ] | 048 | `peripherals/ledc/ledc_dimmer` | 📜 Level 2 | P2 | `peripherals/ledc_ledc_dimmer` | [Lane 3: 脉冲定时] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 049 | `peripherals/ledc/ledc_fade` | 📜 Level 2 | P2 | `peripherals/ledc_ledc_fade` | [Lane 3: 脉冲定时] 待排期。依赖进一步框架门面扩展。 |
+| [x] | 049 | `peripherals/ledc/ledc_fade` | 📜 Level 2 | P0 | [`peripherals/ledc_ledc_fade`](peripherals/ledc_ledc_fade) | [Lane 3: 脉冲定时] 已完成实证。 |
 | [ ] | 050 | `peripherals/ledc/ledc_gamma_curve_fade` | 📜 Level 2 | P2 | `peripherals/ledc_ledc_gamma_curve_fade` | [Lane 3: 脉冲定时] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 051 | `peripherals/mcpwm/mcpwm_bdc_speed_control` | 📜 Level 2 | P2 | `peripherals/mcpwm_mcpwm_bdc_speed_control` | [Lane 3: 脉冲定时] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 052 | `peripherals/mcpwm/mcpwm_bldc_hall_control` | 📜 Level 2 | P2 | `peripherals/mcpwm_mcpwm_bldc_hall_control` | [Lane 3: 脉冲定时] 待排期。依赖进一步框架门面扩展。 |
