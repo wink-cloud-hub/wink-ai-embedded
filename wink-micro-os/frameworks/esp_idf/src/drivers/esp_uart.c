@@ -9,6 +9,7 @@
 #include <string.h>
 
 #define UART_RING_BUF_SIZE 512
+#define UART_PATTERN_QUEUE_MAX 32
 #define RES_UART_TAG 0x08u
 
 typedef struct {
@@ -23,6 +24,17 @@ typedef struct {
     uint32_t rx_tail;
     uint32_t rx_count;
     int waiting_task_id;
+
+    /* Pattern detection */
+    bool pattern_enabled;
+    char pattern_chr;
+    uint8_t pattern_chr_num;
+    uint8_t pattern_match_count;
+    int pattern_positions[UART_PATTERN_QUEUE_MAX];
+    int pattern_head;
+    int pattern_tail;
+    int pattern_count;
+    int pattern_queue_max;
 } esp_uart_port_t;
 
 static esp_uart_port_t s_uarts[UART_NUM_MAX];
@@ -38,18 +50,51 @@ static void on_pal_uart_event(uint8_t port, pal_uart_event_t event, const uint8_
 
     if (event == PAL_UART_EVENT_RX_DATA && data && len > 0) {
         size_t pushed = 0;
+        bool pattern_hit = false;
         for (size_t i = 0; i < len; i++) {
             if (u->rx_count < UART_RING_BUF_SIZE) {
                 u->rx_buf[u->rx_head] = data[i];
                 u->rx_head = (u->rx_head + 1) % UART_RING_BUF_SIZE;
                 u->rx_count++;
                 pushed++;
+
+                if (u->pattern_enabled && data[i] == (uint8_t)u->pattern_chr) {
+                    u->pattern_match_count++;
+                    if (u->pattern_match_count == u->pattern_chr_num) {
+                        pattern_hit = true;
+                        int pos = (int)u->rx_count - (int)u->pattern_chr_num;
+                        if (pos < 0) {
+                            pos = 0;
+                        }
+                        int q_max = u->pattern_queue_max > 0 ? u->pattern_queue_max : UART_PATTERN_QUEUE_MAX;
+                        if (u->pattern_count < q_max) {
+                            u->pattern_positions[u->pattern_head] = pos;
+                            u->pattern_head = (u->pattern_head + 1) % q_max;
+                            u->pattern_count++;
+                        }
+                        u->pattern_match_count = 0;
+                    }
+                } else if (u->pattern_enabled) {
+                    if (u->pattern_match_count > 0 && u->event_queue) {
+                        uart_event_t q_evt = { .type = UART_DATA, .size = u->pattern_match_count, .timeout_flag = false };
+                        BaseType_t woken = pdFALSE;
+                        xQueueSendFromISR(u->event_queue, &q_evt, &woken);
+                    }
+                    u->pattern_match_count = 0;
+                }
             }
         }
         if (u->event_queue && pushed > 0) {
-            uart_event_t q_evt = { .type = UART_DATA, .size = pushed, .timeout_flag = false };
             BaseType_t woken = pdFALSE;
-            xQueueSendFromISR(u->event_queue, &q_evt, &woken);
+            if (pattern_hit) {
+                uart_event_t q_evt = { .type = UART_PATTERN_DET, .size = pushed, .timeout_flag = false };
+                xQueueSendFromISR(u->event_queue, &q_evt, &woken);
+            } else if (u->pattern_enabled && u->pattern_match_count > 0) {
+                /* Hold back event while pattern is accumulating */
+            } else {
+                uart_event_t q_evt = { .type = UART_DATA, .size = pushed, .timeout_flag = false };
+                xQueueSendFromISR(u->event_queue, &q_evt, &woken);
+            }
         }
         if (pushed < len && u->event_queue) {
             uart_event_t q_evt = { .type = UART_BUFFER_FULL, .size = 0, .timeout_flag = false };
@@ -232,7 +277,13 @@ esp_err_t uart_flush(uart_port_t uart_num) {
     }
     esp_uart_port_t *u = &s_uarts[uart_num];
     u->rx_head = u->rx_tail = u->rx_count = 0;
+    u->pattern_head = u->pattern_tail = u->pattern_count = 0;
+    u->pattern_match_count = 0;
     return ESP_OK;
+}
+
+esp_err_t uart_flush_input(uart_port_t uart_num) {
+    return uart_flush(uart_num);
 }
 
 esp_err_t uart_get_buffered_data_len(uart_port_t uart_num, size_t *size) {
@@ -241,6 +292,70 @@ esp_err_t uart_get_buffered_data_len(uart_port_t uart_num, size_t *size) {
     }
     *size = s_uarts[uart_num].rx_count;
     return ESP_OK;
+}
+
+esp_err_t uart_enable_pattern_det_baud_intr(uart_port_t uart_num, char pattern_chr, uint8_t chr_num, int chr_tout, int post_idle, int pre_idle) {
+    (void)chr_tout;
+    (void)post_idle;
+    (void)pre_idle;
+    if (uart_num >= UART_NUM_MAX) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    esp_uart_port_t *u = &s_uarts[uart_num];
+    u->pattern_enabled = true;
+    u->pattern_chr = pattern_chr;
+    u->pattern_chr_num = chr_num;
+    u->pattern_match_count = 0;
+    return ESP_OK;
+}
+
+esp_err_t uart_disable_pattern_det_intr(uart_port_t uart_num) {
+    if (uart_num >= UART_NUM_MAX) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    esp_uart_port_t *u = &s_uarts[uart_num];
+    u->pattern_enabled = false;
+    u->pattern_match_count = 0;
+    return ESP_OK;
+}
+
+esp_err_t uart_pattern_queue_reset(uart_port_t uart_num, int queue_length) {
+    if (uart_num >= UART_NUM_MAX) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    esp_uart_port_t *u = &s_uarts[uart_num];
+    u->pattern_head = 0;
+    u->pattern_tail = 0;
+    u->pattern_count = 0;
+    u->pattern_match_count = 0;
+    u->pattern_queue_max = (queue_length > 0 && queue_length <= UART_PATTERN_QUEUE_MAX) ? queue_length : UART_PATTERN_QUEUE_MAX;
+    return ESP_OK;
+}
+
+int uart_pattern_pop_pos(uart_port_t uart_num) {
+    if (uart_num >= UART_NUM_MAX) {
+        return -1;
+    }
+    esp_uart_port_t *u = &s_uarts[uart_num];
+    if (u->pattern_count == 0) {
+        return -1;
+    }
+    int pos = u->pattern_positions[u->pattern_tail];
+    int q_max = u->pattern_queue_max > 0 ? u->pattern_queue_max : UART_PATTERN_QUEUE_MAX;
+    u->pattern_tail = (u->pattern_tail + 1) % q_max;
+    u->pattern_count--;
+    return pos;
+}
+
+int uart_pattern_get_pos(uart_port_t uart_num) {
+    if (uart_num >= UART_NUM_MAX) {
+        return -1;
+    }
+    esp_uart_port_t *u = &s_uarts[uart_num];
+    if (u->pattern_count == 0) {
+        return -1;
+    }
+    return u->pattern_positions[u->pattern_tail];
 }
 
 void esp_uart_reset(void) {
