@@ -4,6 +4,7 @@
  * @brief ESP-IDF DAC driver facade (ADR-0002 dual-target, ADR-0045 zero-heap).
  */
 #include "driver/dac_oneshot.h"
+#include "driver/dac_cosine.h"
 #include "esp_log.h"
 #include "esp_err.h"
 #include "esp_sim_handle.h"
@@ -89,5 +90,102 @@ esp_err_t dac_oneshot_output_voltage(dac_oneshot_handle_t handle, uint8_t digi_v
 
     s_dac_channels[slot].last_value = digi_value;
     ESP_LOGD(TAG, "DAC channel %d output voltage: %d", s_dac_channels[slot].chan_id, digi_value);
+    return ESP_OK;
+}
+
+/* ========================================================================= */
+/*                          DAC Cosine Wave Driver                           */
+/* ========================================================================= */
+
+typedef struct {
+    bool in_use;
+    bool is_running;
+    dac_channel_t chan_id;
+    int pin;
+    uint32_t freq_hz;
+    dac_cosine_atten_t atten;
+    dac_cosine_phase_t phase;
+    int8_t offset;
+    uint32_t token;
+} esp_dac_cosine_channel_t;
+
+static esp_dac_cosine_channel_t s_dac_cosine_channels[MAX_DAC_CHANNELS];
+
+esp_err_t dac_cosine_new_channel(const dac_cosine_config_t *cos_cfg, dac_cosine_handle_t *ret_handle) {
+    if (!cos_cfg || !ret_handle) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (cos_cfg->chan_id >= MAX_DAC_CHANNELS) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    uint32_t slot = (uint32_t)cos_cfg->chan_id;
+    if (s_dac_cosine_channels[slot].in_use) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    int pin = dac_chan_to_pin(cos_cfg->chan_id);
+    if (pin < 0) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    s_dac_cosine_channels[slot].in_use = true;
+    s_dac_cosine_channels[slot].is_running = false;
+    s_dac_cosine_channels[slot].chan_id = cos_cfg->chan_id;
+    s_dac_cosine_channels[slot].pin = pin;
+    s_dac_cosine_channels[slot].freq_hz = cos_cfg->freq_hz;
+    s_dac_cosine_channels[slot].atten = cos_cfg->atten;
+    s_dac_cosine_channels[slot].phase = cos_cfg->phase;
+    s_dac_cosine_channels[slot].offset = cos_cfg->offset;
+
+    uint32_t token = esp_sim_handle_issue(ESP_SIM_HANDLE_DAC_COSINE, slot);
+    s_dac_cosine_channels[slot].token = token;
+    *ret_handle = (dac_cosine_handle_t)(uintptr_t)token;
+
+    ESP_LOGI(TAG, "DAC cosine channel %d (GPIO %d) initialized, freq=%u Hz", cos_cfg->chan_id, pin, (unsigned int)cos_cfg->freq_hz);
+    return ESP_OK;
+}
+
+esp_err_t dac_cosine_start(dac_cosine_handle_t handle) {
+    uint32_t slot = 0;
+    if (!esp_sim_handle_decode((const void *)(uintptr_t)handle, ESP_SIM_HANDLE_DAC_COSINE, MAX_DAC_CHANNELS, &slot)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (!s_dac_cosine_channels[slot].in_use) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    s_dac_cosine_channels[slot].is_running = true;
+    ESP_LOGI(TAG, "DAC cosine channel %d started", s_dac_cosine_channels[slot].chan_id);
+    return ESP_OK;
+}
+
+esp_err_t dac_cosine_stop(dac_cosine_handle_t handle) {
+    uint32_t slot = 0;
+    if (!esp_sim_handle_decode((const void *)(uintptr_t)handle, ESP_SIM_HANDLE_DAC_COSINE, MAX_DAC_CHANNELS, &slot)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (!s_dac_cosine_channels[slot].in_use) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    s_dac_cosine_channels[slot].is_running = false;
+    ESP_LOGI(TAG, "DAC cosine channel %d stopped", s_dac_cosine_channels[slot].chan_id);
+    return ESP_OK;
+}
+
+esp_err_t dac_cosine_del_channel(dac_cosine_handle_t handle) {
+    uint32_t slot = 0;
+    if (!esp_sim_handle_decode((const void *)(uintptr_t)handle, ESP_SIM_HANDLE_DAC_COSINE, MAX_DAC_CHANNELS, &slot)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (!s_dac_cosine_channels[slot].in_use) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    s_dac_cosine_channels[slot].in_use = false;
+    s_dac_cosine_channels[slot].is_running = false;
+    s_dac_cosine_channels[slot].token = 0;
+    ESP_LOGI(TAG, "DAC cosine channel %d deleted", s_dac_cosine_channels[slot].chan_id);
     return ESP_OK;
 }
