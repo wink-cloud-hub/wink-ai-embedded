@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 20,
-    "verified_configs": 20
+    "audited": 21,
+    "verified_configs": 21
   },
   "entries": [
     {
@@ -813,17 +813,20 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-03T00:19:13Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
       "required_capabilities": [
         "cap.analog.adc_oneshot",
         "cap.core.fiber_task",
-        "cap.core.sync_tokens"
+        "cap.core.sync_tokens",
+        "cap.analog.dac_out"
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
@@ -847,18 +850,26 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/peripherals_dac_dac_cosine_wave.scenario.json",
+            "scenario_path": "peripherals/dac_dac_cosine_wave/unisim-scenarios/peripherals_dac_dac_cosine_wave.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
             "positive_cases": [],
             "negative_cases": [],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261003-esp.peripherals.dac.dac_cosine_wave-verified",
+            "assets_sha256": "f1f629ddd8eaffaebf25c70ad37ee397f6b1b9c7e3f097cd57eaf22bd10d44bb",
+            "scenario_sha256": "37d5aa3de8015ce15f2c49f294ceef137eb834051a15b43dbbdb28e80d7656e1",
+            "execution_report_ref": ".governance/reports/peripherals/dac_dac_cosine_wave/run-report.json",
+            "verified_commit": "4cd3544912df2f0238bc4b77f6077378d4587585",
+            "verified_at": "2026-10-03T00:19:04Z"
+          }
         }
       ],
       "target_app_dir": "peripherals/dac_dac_cosine_wave"

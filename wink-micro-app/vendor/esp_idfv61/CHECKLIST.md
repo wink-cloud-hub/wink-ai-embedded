@@ -3,7 +3,7 @@
 # ESP-IDF v6.1 官方示例全量仿真适配核对清单 (Checklist)
 
 > **数据单一事实源（SSOT）**：[`checklist.data.json`](.governance/data/checklist.data.json)（Spec v2.0.0，多配置实例与五维正交模型）  
-> **生成时间**：2026-10-02  
+> **生成时间**：2026-10-03  
 > **分类规范**：[`CLASSIFICATION-SPEC.md`](.governance/specs/CLASSIFICATION-SPEC.md) (v2.0)  
 > **能力字典**：[`capability-catalog.yaml`](.governance/catalog/capability-catalog.yaml)  
 > **隔离区白名单**：[`gates/quarantine.yaml`](.governance/gates/quarantine.yaml)（10 项存量债务，14 天 TTL 生效中）  
@@ -14,9 +14,9 @@
 ## 一、 总体适配进度统计
 
 - **官方独立示例总数**：**478 个**
-  - `[x]` **已完成六要素实证 (Verified)**：**20 项**
+  - `[x]` **已完成六要素实证 (Verified)**：**21 项**
   - `[?]` **存量隔离待补凭证 (Quarantined Debt)**：**0 项**（14 天 TTL 过期硬阻断，至 `2026-10-13`）
-  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**271 项**
+  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**270 项**
   - `[-]` **明确产品排除 / 暂缓投入 (Out-of-Scope / Deferred)**：**187 项**（编译期 `WINK_SLA_ERROR` Fail-Loud 阻断）
   - `?` **待深度审定 (Pending Audit / Unknown Scope)**：**0 项**
 
@@ -25,7 +25,7 @@
 | 序号 | 功能大类 | 包含示例数 | 编号跨度 | 已实证 | 隔离待补 |
 | :---: | :--- | :---: | :---: | :---: | :---: |
 | 01 | [基础快速起步 (Get-Started)](#get-started) | 2 项 | `#001 ~ #002` | 2 项 | 0 项 |
-| 02 | [片上与总线外设 (Peripherals)](#peripherals) | 114 项 | `#003 ~ #116` | 9 项 | 0 项 |
+| 02 | [片上与总线外设 (Peripherals)](#peripherals) | 114 项 | `#003 ~ #116` | 10 项 | 0 项 |
 | 03 | [操作系统与核心系统调用 (System & OS)](#system) | 68 项 | `#117 ~ #184` | 3 项 | 0 项 |
 | 04 | [网络与应用层通信协议 (Protocols)](#protocols) | 35 项 | `#185 ~ #219` | 2 项 | 0 项 |
 | 05 | [Wi-Fi 无线局域网 (Wi-Fi)](#wifi) | 24 项 | `#220 ~ #243` | 1 项 | 0 项 |
@@ -121,7 +121,7 @@
 ---
 
 <a id="peripherals"></a>
-### 片上与总线外设 (Peripherals)（共 114 项 | 编号 `#003 ~ #116` | 已实证: 9 项 | 隔离待补: 0 项）
+### 片上与总线外设 (Peripherals)（共 114 项 | 编号 `#003 ~ #116` | 已实证: 10 项 | 隔离待补: 0 项）
 
 | 状态 | 编号 | 官方子示例相对路径 | 可观测等级 | 优先级 | 对应 wink-micro-app | 验收标准与架构说明 |
 | :---: | :---: | :--- | :---: | :---: | :--- | :--- |
@@ -135,7 +135,7 @@
 | [-] | 010 | `peripherals/camera/mipi_isp_dsi` | 🎯 Level 1 | P4 | — | 声明 Out-of-Scope。MIPI-CSI/DVP 物理差分摄像头传感器。 |
 | [ ] | 011 | `peripherals/dac/dac_continuous/dac_audio` | 📜 Level 2 | P2 | `peripherals/dac_dac_continuous_dac_audio` | [Lane 4: 模拟电学] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 012 | `peripherals/dac/dac_continuous/signal_generator` | 📜 Level 2 | P2 | `peripherals/dac_dac_continuous_signal_generator` | [Lane 4: 模拟电学] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 013 | `peripherals/dac/dac_cosine_wave` | 📜 Level 2 | P1 | `peripherals/dac_dac_cosine_wave` | [Lane 4: 模拟电学] 待排期。依赖进一步框架门面扩展。 |
+| [x] | 013 | `peripherals/dac/dac_cosine_wave` | 📜 Level 2 | P0 | [`peripherals/dac_dac_cosine_wave`](peripherals/dac_dac_cosine_wave) | [Lane 4: 模拟电学] 已完成实证。 |
 | [x] | 014 | `peripherals/dac/dac_oneshot` | 📜 Level 2 | P0 | [`peripherals/dac_dac_oneshot`](peripherals/dac_dac_oneshot) | [Lane 4: 模拟电学] 已完成实证。 |
 | [ ] | 015 | `peripherals/dedicated_gpio/soft_i2c` | 📜 Level 2 | P1 | `peripherals/dedicated_gpio_soft_i2c` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 016 | `peripherals/dedicated_gpio/soft_spi` | 📜 Level 2 | P1 | `peripherals/dedicated_gpio_soft_spi` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
