@@ -1,0 +1,56 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 peripherals_i2c_i2c_eeprom headless deterministic proof",
+    "templateId": "esp_idfv61_i2c_i2c_eeprom",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "2500ms"],
+      "busType": "i2c",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": { "encoding": "hex", "hex": "00100001020304050607" },
+      "description": "断言 I2C 总线向 EEPROM 从机发送首个写入分块 (地址 0x0010 与 8 字节数据)"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "2500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f",
+      "description": "断言 I2C EEPROM 回读首行 16 字节数据矩阵与写入一致"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "2500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "10 11 12 13 14 15 16 17 18 19 1a 1b 1c 1d 1e 1f",
+      "description": "断言 I2C EEPROM 回读次行 16 字节数据矩阵与写入一致"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "2500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "20 21 22 23 24 25 26 27 28 29 2a 2b 2c 2d 2e 2f",
+      "description": "断言 I2C EEPROM 回读尾行 16 字节数据矩阵与写入一致"
+    }
+  ]
+}

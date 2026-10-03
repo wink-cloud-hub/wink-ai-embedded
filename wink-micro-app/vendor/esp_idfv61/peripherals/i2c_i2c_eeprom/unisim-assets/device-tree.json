@@ -1,0 +1,21 @@
+{
+  "appName": "esp_idfv61_i2c_i2c_eeprom",
+  "board": "esp32_devkitc_v4",
+  "devices": {
+    "eeprom": {
+      "id": "eeprom",
+      "type": "i2c_eeprom",
+      "pinMapping": {
+        "SDA": 21,
+        "SCL": 22
+      },
+      "properties": {
+        "address": 80
+      }
+    }
+  },
+  "family": "esp32",
+  "core": "xtensa-lx6",
+  "mcu": "esp32",
+  "vendor": "espressif"
+}

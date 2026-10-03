@@ -1,0 +1,26 @@
+{
+  "app_name": "esp_idfv61_i2c_i2c_eeprom",
+  "display_name": "Espressif ESP-IDF I2C EEPROM Example",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "mcu": "esp32",
+  "tick_ms": 1,
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/peripherals/i2c/i2c_eeprom",
+    "files": {
+      "i2c_eeprom_main.c": "f2412ff9b6c4dbe4c2204eee6283e707355d2355650edde3aa64d12f6a269cba",
+      "i2c_eeprom.c": "3d72db2628859e2306a6791c41c874fe38c0a435bfb5eafd874c2127a9317b53",
+      "i2c_eeprom.h": "6e22796cce2c280a539af6e154505303050f728380737ef10c1356b624cd9c8c"
+    }
+  },
+  "devices": {
+    "eeprom": {
+      "type": "i2c_eeprom",
+      "address": 80,
+      "sda_pin": 21,
+      "scl_pin": 22
+    }
+  }
+}
