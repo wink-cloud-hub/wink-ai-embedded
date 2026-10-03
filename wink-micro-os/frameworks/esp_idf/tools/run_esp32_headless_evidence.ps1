@@ -84,7 +84,8 @@ $allCarriers = @(
     @{ Name = 'freertos_real_time_stats'; Rel = 'vendor/esp_idfv61/system/freertos_real_time_stats'; Channel = 'FreeRTOS Real Time Stats & Task Execution Measurement' },
     @{ Name = 'esp_timer'; Rel = 'vendor/esp_idfv61/system/esp_timer'; Channel = 'High Resolution Timer & Periodic/Oneshot Alarms' },
     @{ Name = 'dac_dac_cosine_wave'; Rel = 'vendor/esp_idfv61/peripherals/dac_dac_cosine_wave'; Channel = 'DAC Cosine Wave Generator & Voltage Output' },
-    @{ Name = 'spiffs'; Rel = 'vendor/esp_idfv61/storage/spiffs'; Channel = 'SPIFFS Filesystem & VFS RAM Sandbox Operations' }
+    @{ Name = 'spiffs'; Rel = 'vendor/esp_idfv61/storage/spiffs'; Channel = 'SPIFFS Filesystem & VFS RAM Sandbox Operations' },
+    @{ Name = 'i2c_i2c_eeprom'; Rel = 'vendor/esp_idfv61/peripherals/i2c_i2c_eeprom'; Channel = 'I2C Master Bus Communication & EEPROM Read/Write' }
 )
 
 $carriers = @()

@@ -64,6 +64,8 @@ wink_status_t sim_responder_unregister(sim_responder_t *responder)
 
 static sim_i2c_sensor_mpu9250_t s_default_mpu9250;
 static bool s_default_mpu9250_inited = false;
+static sim_i2c_eeprom_at24c02_t s_default_at24c02;
+static bool s_default_at24c02_inited = false;
 
 void sim_responder_reset_all(void)
 {
@@ -75,6 +77,7 @@ void sim_responder_reset_all(void)
     }
     s_responder_count = 0u;
     s_default_mpu9250_inited = false;
+    s_default_at24c02_inited = false;
 }
 
 wink_status_t sim_responder_dispatch(sim_bus_type_t bus_type, uint8_t port, uint16_t address,
@@ -100,6 +103,12 @@ wink_status_t sim_responder_dispatch(sim_bus_type_t bus_type, uint8_t port, uint
                 s_default_mpu9250_inited = true;
             }
             target = &s_default_mpu9250.base;
+        } else if (bus_type == SIM_BUS_TYPE_I2C && (address >= 0x50u && address <= 0x57u)) {
+            if (!s_default_at24c02_inited) {
+                sim_i2c_eeprom_at24c02_init(&s_default_at24c02, port, address);
+                s_default_at24c02_inited = true;
+            }
+            target = &s_default_at24c02.base;
         } else {
             return WINK_ERR_NOT_FOUND;
         }
@@ -130,20 +139,41 @@ static wink_status_t at24c02_transfer(sim_responder_t *self,
         return WINK_ERR_INVALID_ARG;
     }
 
-    /* Write phase */
-    if (write_buf != NULL && write_len > 0u) {
-        eeprom->word_addr = write_buf[0];
-        for (size_t i = 1u; i < write_len; i++) {
-            eeprom->memory[eeprom->word_addr] = write_buf[i];
-            eeprom->word_addr = (uint8_t)((eeprom->word_addr + 1u) & 0xFFu);
-        }
-    }
-
-    /* Read phase */
+    /* 1. Combined transaction with Read phase (e.g. i2c_master_transmit_receive) */
     if (read_buf != NULL && read_len > 0u) {
+        if (write_buf != NULL && write_len > 0u) {
+            if (write_len == 1u) {
+                eeprom->word_addr = write_buf[0];
+            } else {
+                /* 16-bit word address (big endian) */
+                eeprom->word_addr = (uint8_t)(((uint16_t)write_buf[write_len - 2u] << 8) | write_buf[write_len - 1u]);
+            }
+        }
         for (size_t i = 0u; i < read_len; i++) {
             read_buf[i] = eeprom->memory[eeprom->word_addr];
             eeprom->word_addr = (uint8_t)((eeprom->word_addr + 1u) & 0xFFu);
+        }
+        return WINK_OK;
+    }
+
+    /* 2. Pure Write phase */
+    if (write_buf != NULL && write_len > 0u) {
+        if (write_len == 1u) {
+            eeprom->word_addr = write_buf[0];
+        } else if (write_buf[0] == 0u && write_len > 2u) {
+            /* 16-bit word address with payload (e.g. address 0x0010, payload starting at byte 2) */
+            eeprom->word_addr = (uint8_t)(((uint16_t)write_buf[0] << 8) | write_buf[1]);
+            for (size_t i = 2u; i < write_len; i++) {
+                eeprom->memory[eeprom->word_addr] = write_buf[i];
+                eeprom->word_addr = (uint8_t)((eeprom->word_addr + 1u) & 0xFFu);
+            }
+        } else {
+            /* 8-bit word address with payload */
+            eeprom->word_addr = write_buf[0];
+            for (size_t i = 1u; i < write_len; i++) {
+                eeprom->memory[eeprom->word_addr] = write_buf[i];
+                eeprom->word_addr = (uint8_t)((eeprom->word_addr + 1u) & 0xFFu);
+            }
         }
     }
 

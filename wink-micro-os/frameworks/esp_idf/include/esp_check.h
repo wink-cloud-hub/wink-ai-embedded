@@ -66,6 +66,25 @@ void _esp_error_check_failed_without_abort(esp_err_t rc, const char *file, int l
         }                                                                      \
     } while (0)
 
+#define ESP_GOTO_ON_FALSE(a, err_code, goto_tag, log_tag, format, ...) do {   \
+        if (unlikely(!(a))) {                                                  \
+            ESP_LOGE(log_tag, "%s(%d): " format, __FUNCTION__, __LINE__,      \
+                     ##__VA_ARGS__);                                           \
+            ret = err_code;                                                    \
+            goto goto_tag;                                                     \
+        }                                                                      \
+    } while (0)
+
+#define ESP_GOTO_ON_ERROR(x, goto_tag, log_tag, format, ...) do {              \
+        esp_err_t __err_rc = (x);                                              \
+        if (unlikely(__err_rc != ESP_OK)) {                                    \
+            ESP_LOGE(log_tag, "%s(%d): " format, __FUNCTION__, __LINE__,      \
+                     ##__VA_ARGS__);                                           \
+            ret = __err_rc;                                                    \
+            goto goto_tag;                                                     \
+        }                                                                      \
+    } while (0)
+
 #ifdef __cplusplus
 }
 #endif
