@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 23,
-    "verified_configs": 23
+    "audited": 24,
+    "verified_configs": 24
   },
   "entries": [
     {
@@ -6184,10 +6184,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-03T12:29:45Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -6218,18 +6220,26 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/peripherals_uart_uart_events.scenario.json",
+            "scenario_path": "peripherals/uart_uart_events/unisim-scenarios/peripherals_uart_uart_events.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
             "positive_cases": [],
             "negative_cases": [],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261003-esp.peripherals.uart.uart_events-verified",
+            "assets_sha256": "37436b2da6c7a11a9e931a0de306e8c39109be73758d362c7680107b55806c51",
+            "scenario_sha256": "fbbeaf7233cb07e5b3b8eae2ed986f59ab45567abcd8b9e83ae66640c9f1c214",
+            "execution_report_ref": ".governance/reports/peripherals/uart_uart_events/run-report.json",
+            "verified_commit": "37d9fa4aad4fdbadb9baaf9be7ece9c516eddee3",
+            "verified_at": "2026-10-03T12:29:33Z"
+          }
         }
       ],
       "target_app_dir": "peripherals/uart_uart_events"
@@ -26192,11 +26202,11 @@
           "evidence": {
             "backend": "wasm_simulation",
             "run_id": "run-20261003-esp.storage.spiffs-verified",
-            "assets_sha256": "31743a929f75e6f10589e4c40581849b60cc94d23a1d0f6eb354e8d67ec9a149",
+            "assets_sha256": "35643b0cbfbfaf70dfa1baba87c2cd8dd8aa78315ab2bc22557057f26e6299b5",
             "scenario_sha256": "53e82d1e23d2a654b665978dc88744503ada25bb6b908b5674493092623023f1",
             "execution_report_ref": ".governance/reports/storage/spiffs/run-report.json",
-            "verified_commit": "6dc54810",
-            "verified_at": "2026-10-03T00:39:11Z"
+            "verified_commit": "37d9fa4aad4fdbadb9baaf9be7ece9c516eddee3",
+            "verified_at": "2026-10-03T12:30:04Z"
           }
         }
       ],

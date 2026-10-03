@@ -85,7 +85,8 @@ $allCarriers = @(
     @{ Name = 'esp_timer'; Rel = 'vendor/esp_idfv61/system/esp_timer'; Channel = 'High Resolution Timer & Periodic/Oneshot Alarms' },
     @{ Name = 'dac_dac_cosine_wave'; Rel = 'vendor/esp_idfv61/peripherals/dac_dac_cosine_wave'; Channel = 'DAC Cosine Wave Generator & Voltage Output' },
     @{ Name = 'spiffs'; Rel = 'vendor/esp_idfv61/storage/spiffs'; Channel = 'SPIFFS Filesystem & VFS RAM Sandbox Operations' },
-    @{ Name = 'i2c_i2c_eeprom'; Rel = 'vendor/esp_idfv61/peripherals/i2c_i2c_eeprom'; Channel = 'I2C Master Bus Communication & EEPROM Read/Write' }
+    @{ Name = 'i2c_i2c_eeprom'; Rel = 'vendor/esp_idfv61/peripherals/i2c_i2c_eeprom'; Channel = 'I2C Master Bus Communication & EEPROM Read/Write' },
+    @{ Name = 'uart_uart_events'; Rel = 'vendor/esp_idfv61/peripherals/uart_uart_events'; Channel = 'UART FreeRTOS Event Queue & Pattern Detect' }
 )
 
 $carriers = @()

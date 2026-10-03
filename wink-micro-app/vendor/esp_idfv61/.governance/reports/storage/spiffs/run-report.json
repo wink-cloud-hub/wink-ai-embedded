@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-03T00:39:10.842Z",
+  "timestamp": "2026-10-03T12:30:04.134Z",
   "total": 1,
   "passed": 1,
   "failed": 0,
@@ -11,7 +11,7 @@
         "name": "ESP-IDF v6.1 storage_spiffs headless deterministic proof",
         "templateId": "esp_idfv61_storage_spiffs",
         "totalVirtualUs": "3000000",
-        "wallClockMs": 92
+        "wallClockMs": 107
       },
       "summary": {
         "totalSteps": 8,
