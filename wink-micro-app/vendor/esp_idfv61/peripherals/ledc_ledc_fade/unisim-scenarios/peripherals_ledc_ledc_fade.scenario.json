@@ -1,0 +1,70 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 peripherals_ledc_ledc_fade headless deterministic proof",
+    "templateId": "esp_idfv61_ledc_ledc_fade",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "800ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "1. LEDC fade up to duty = 4000",
+      "description": "断言阶段 1 多通道平滑渐变升占空比启动"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "800ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "2. LEDC fade down to duty = 0",
+      "description": "断言阶段 1 计数信号量回收完毕并推进至阶段 2 渐变归零"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "800ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "3. LEDC set duty = 4000 without fade",
+      "description": "断言阶段 2 渐变完成并推进至阶段 3 直接占空比配置"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "pwm:0",
+      "matcher": 48.83,
+      "description": "断言阶段 3 中 LEDC 通道 0 输出 48.83% (4883bp) PWM 占空比"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["1000ms", "1400ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "4. LEDC set duty = 0 without fade",
+      "description": "断言 1000ms 延时到期并推进至阶段 4 直接清零配置"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "pwm:0",
+      "matcher": 0,
+      "description": "断言阶段 4 中 LEDC 通道 0 占空比直接清零为 0%"
+    }
+  ]
+}

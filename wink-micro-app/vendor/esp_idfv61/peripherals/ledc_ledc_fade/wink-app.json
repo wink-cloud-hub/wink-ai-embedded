@@ -1,0 +1,36 @@
+{
+  "app_name": "esp_idfv61_ledc_fade",
+  "display_name": "Espressif ESP-IDF LEDC fade (smooth fade)",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/peripherals/ledc/ledc_fade/main",
+    "files": {
+      "ledc_fade_example_main.c": "e05ce10c2f1bed04bdf4c85883674124e3b61a4d56dc3e4ce438febb58447984"
+    }
+  },
+  "devices": {
+    "led_ch0": {
+      "type": "led",
+      "gpio_pin": 18,
+      "active_high": true
+    },
+    "led_ch1": {
+      "type": "led",
+      "gpio_pin": 19,
+      "active_high": true
+    },
+    "led_ch2": {
+      "type": "led",
+      "gpio_pin": 4,
+      "active_high": true
+    },
+    "led_ch3": {
+      "type": "led",
+      "gpio_pin": 5,
+      "active_high": true
+    }
+  }
+}

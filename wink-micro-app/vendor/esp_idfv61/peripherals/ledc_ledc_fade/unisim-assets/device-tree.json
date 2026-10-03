@@ -1,0 +1,50 @@
+{
+  "appName": "esp_idfv61_ledc_fade",
+  "board": "esp32_devkitc_v4",
+  "devices": {
+    "led_ch0": {
+      "id": "led_ch0",
+      "type": "led",
+      "pinMapping": {
+        "A": 18
+      },
+      "properties": {
+        "activeHigh": true
+      }
+    },
+    "led_ch1": {
+      "id": "led_ch1",
+      "type": "led",
+      "pinMapping": {
+        "A": 19
+      },
+      "properties": {
+        "activeHigh": true
+      }
+    },
+    "led_ch2": {
+      "id": "led_ch2",
+      "type": "led",
+      "pinMapping": {
+        "A": 4
+      },
+      "properties": {
+        "activeHigh": true
+      }
+    },
+    "led_ch3": {
+      "id": "led_ch3",
+      "type": "led",
+      "pinMapping": {
+        "A": 5
+      },
+      "properties": {
+        "activeHigh": true
+      }
+    }
+  },
+  "family": "esp32",
+  "core": "xtensa-lx6",
+  "mcu": "esp32",
+  "vendor": "espressif"
+}
