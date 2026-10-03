@@ -1,0 +1,127 @@
+{
+  "timestamp": "2026-10-03T00:39:10.842Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 storage_spiffs headless deterministic proof",
+        "templateId": "esp_idfv61_storage_spiffs",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 92
+      },
+      "summary": {
+        "totalSteps": 8,
+        "passedSteps": 8,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) example: Initializing SPIFFS\u001b[0m\n\u001b[0;32mI (0) example: Partition size: total: 896321, used: 0\u001b[0m\n\u001b[0;32mI (0) example: Opening file\u001b[0m\n\u001b[0;32mI (0) example: File written\u001b[0m\n\u001b[0;32mI (0) example: Renaming file\u001b[0m\n\u001b[0;32mI (0) example: Reading file\u001b[0m\n\u001b[0;32mI (0) example: Read from file: 'Hello World!'\u001b[0m\n\u001b[0;32mI (0) example: SPIFFS unmounted\u001b[0m\n"
+            ]
+          },
+          "expected": "Initializing SPIFFS"
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) example: Initializing SPIFFS\u001b[0m\n\u001b[0;32mI (0) example: Partition size: total: 896321, used: 0\u001b[0m\n\u001b[0;32mI (0) example: Opening file\u001b[0m\n\u001b[0;32mI (0) example: File written\u001b[0m\n\u001b[0;32mI (0) example: Renaming file\u001b[0m\n\u001b[0;32mI (0) example: Reading file\u001b[0m\n\u001b[0;32mI (0) example: Read from file: 'Hello World!'\u001b[0m\n\u001b[0;32mI (0) example: SPIFFS unmounted\u001b[0m\n"
+            ]
+          },
+          "expected": "Partition size: total: 896321, used: 0"
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) example: Initializing SPIFFS\u001b[0m\n\u001b[0;32mI (0) example: Partition size: total: 896321, used: 0\u001b[0m\n\u001b[0;32mI (0) example: Opening file\u001b[0m\n\u001b[0;32mI (0) example: File written\u001b[0m\n\u001b[0;32mI (0) example: Renaming file\u001b[0m\n\u001b[0;32mI (0) example: Reading file\u001b[0m\n\u001b[0;32mI (0) example: Read from file: 'Hello World!'\u001b[0m\n\u001b[0;32mI (0) example: SPIFFS unmounted\u001b[0m\n"
+            ]
+          },
+          "expected": "Opening file"
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) example: Initializing SPIFFS\u001b[0m\n\u001b[0;32mI (0) example: Partition size: total: 896321, used: 0\u001b[0m\n\u001b[0;32mI (0) example: Opening file\u001b[0m\n\u001b[0;32mI (0) example: File written\u001b[0m\n\u001b[0;32mI (0) example: Renaming file\u001b[0m\n\u001b[0;32mI (0) example: Reading file\u001b[0m\n\u001b[0;32mI (0) example: Read from file: 'Hello World!'\u001b[0m\n\u001b[0;32mI (0) example: SPIFFS unmounted\u001b[0m\n"
+            ]
+          },
+          "expected": "File written"
+        },
+        {
+          "stepIndex": 5,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) example: Initializing SPIFFS\u001b[0m\n\u001b[0;32mI (0) example: Partition size: total: 896321, used: 0\u001b[0m\n\u001b[0;32mI (0) example: Opening file\u001b[0m\n\u001b[0;32mI (0) example: File written\u001b[0m\n\u001b[0;32mI (0) example: Renaming file\u001b[0m\n\u001b[0;32mI (0) example: Reading file\u001b[0m\n\u001b[0;32mI (0) example: Read from file: 'Hello World!'\u001b[0m\n\u001b[0;32mI (0) example: SPIFFS unmounted\u001b[0m\n"
+            ]
+          },
+          "expected": "Renaming file"
+        },
+        {
+          "stepIndex": 6,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) example: Initializing SPIFFS\u001b[0m\n\u001b[0;32mI (0) example: Partition size: total: 896321, used: 0\u001b[0m\n\u001b[0;32mI (0) example: Opening file\u001b[0m\n\u001b[0;32mI (0) example: File written\u001b[0m\n\u001b[0;32mI (0) example: Renaming file\u001b[0m\n\u001b[0;32mI (0) example: Reading file\u001b[0m\n\u001b[0;32mI (0) example: Read from file: 'Hello World!'\u001b[0m\n\u001b[0;32mI (0) example: SPIFFS unmounted\u001b[0m\n"
+            ]
+          },
+          "expected": "Read from file: 'Hello World!'"
+        },
+        {
+          "stepIndex": 7,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) example: Initializing SPIFFS\u001b[0m\n\u001b[0;32mI (0) example: Partition size: total: 896321, used: 0\u001b[0m\n\u001b[0;32mI (0) example: Opening file\u001b[0m\n\u001b[0;32mI (0) example: File written\u001b[0m\n\u001b[0;32mI (0) example: Renaming file\u001b[0m\n\u001b[0;32mI (0) example: Reading file\u001b[0m\n\u001b[0;32mI (0) example: Read from file: 'Hello World!'\u001b[0m\n\u001b[0;32mI (0) example: SPIFFS unmounted\u001b[0m\n"
+            ]
+          },
+          "expected": "SPIFFS unmounted"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 21,
-    "verified_configs": 21
+    "audited": 22,
+    "verified_configs": 22
   },
   "entries": [
     {
@@ -26131,10 +26131,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-03T00:39:18Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -26166,18 +26168,26 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/storage_spiffs.scenario.json",
+            "scenario_path": "storage/spiffs/unisim-scenarios/storage_spiffs.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
             "positive_cases": [],
             "negative_cases": [],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261003-esp.storage.spiffs-verified",
+            "assets_sha256": "31743a929f75e6f10589e4c40581849b60cc94d23a1d0f6eb354e8d67ec9a149",
+            "scenario_sha256": "53e82d1e23d2a654b665978dc88744503ada25bb6b908b5674493092623023f1",
+            "execution_report_ref": ".governance/reports/storage/spiffs/run-report.json",
+            "verified_commit": "6dc54810",
+            "verified_at": "2026-10-03T00:39:11Z"
+          }
         }
       ],
       "target_app_dir": "storage/spiffs"

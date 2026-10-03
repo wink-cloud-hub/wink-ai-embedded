@@ -340,10 +340,11 @@ capabilities:
   cap.vfs.spiffs_format:
     name: SPIFFS 镜像与挂载
     layer: model
-    status: planned
+    status: implemented
     description: SPIFFS 扁平文件系统镜像加载与挂载
     owned_paths:
-    - wink-micro-os/frameworks/esp_idf/src/spiffs/spiffs_sim.c
+    - wink-micro-os/frameworks/esp_idf/src/core/esp_spiffs.c
+    - wink-micro-os/frameworks/esp_idf/include/esp_spiffs.h
     soc_support:
     - esp32
     - esp32s3
