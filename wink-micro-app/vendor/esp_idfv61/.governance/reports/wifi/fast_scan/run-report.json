@@ -1,0 +1,86 @@
+{
+  "timestamp": "2026-10-04T14:00:25.996Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 Wi-Fi Fast Scan & Connection Deterministic Proof",
+        "templateId": "esp_idfv61_wifi_fast_scan",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 93
+      },
+      "summary": {
+        "totalSteps": 7,
+        "passedSteps": 7,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "INJECT_WIFI_FIXTURE",
+          "status": "passed",
+          "timeUs": "0"
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": "192.168.1.100",
+          "expected": "192.168.1.100"
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": "GOT_IP",
+          "expected": "GOT_IP"
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) WIFI_SIM: Wi-Fi initialized in simulation mode\u001b[0m\n",
+              "\u001b[0;32mI (101) scan: got ip:192.168.1.100\u001b[0m\n"
+            ]
+          },
+          "expected": "got ip:192.168.1.100"
+        },
+        {
+          "stepIndex": 5,
+          "type": "INJECT_WIFI_FIXTURE",
+          "status": "passed",
+          "timeUs": "2000000"
+        },
+        {
+          "stepIndex": 6,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": "DISCONNECTED",
+          "expected": "DISCONNECTED"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

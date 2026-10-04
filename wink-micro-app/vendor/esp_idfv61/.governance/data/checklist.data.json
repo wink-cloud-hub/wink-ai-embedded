@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 27,
-    "verified_configs": 27,
+    "audited": 28,
+    "verified_configs": 28,
     "verified": 25
   },
   "entries": [
@@ -13917,10 +13917,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-04T14:00:37Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -13953,18 +13955,32 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/wifi_fast_scan.scenario.json",
+            "scenario_path": "wifi/fast_scan/unisim-scenarios/wifi_fast_scan.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
+            "positive_cases": [
+              "断言系统供电轨稳定维持 3.3V",
+              "断言 STA 接口通过快速扫描及 DHCP 协商成功取得 IP 192.168.1.100",
+              "断言 Wi-Fi 底座状态机推进至 GOT_IP 状态",
+              "断言 UART 控制台输出扫描连接后获取的 IP 日志",
+              "断言信标丢失故障注入后 Wi-Fi 状态准确流转至 DISCONNECTED"
+            ],
             "negative_cases": [],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261004-esp.wifi.fast_scan-verified",
+            "assets_sha256": "5f2ec094261b025ea3b3e3acb8e06565a661004138b1d972ec0797a68f96e219",
+            "scenario_sha256": "32171b71dd10435f1b619b2cae65a5a06ec3c10249b7638c66f7d417457cef28",
+            "execution_report_ref": ".governance/reports/wifi/fast_scan/run-report.json",
+            "verified_commit": "762f8c8601cfdf61b89c681f4ed41a262581be7d",
+            "verified_at": "2026-10-04T14:00:26Z"
+          }
         }
       ],
       "target_app_dir": "wifi/fast_scan"
@@ -14174,12 +14190,12 @@
           },
           "evidence": {
             "backend": "wasm_simulation",
-            "run_id": "run-20261002-esp.wifi.getting_started.station-verified",
-            "assets_sha256": "eb503bb987c53ae2d6ed15f7f7973e1308a178bdaa736f2de6a70ea7a5d71a67",
+            "run_id": "run-20261004-esp.wifi.getting_started.station-verified",
+            "assets_sha256": "da81c25e13a32c6d65cc14d873b022b89712b42d8be095e31e9e078ccc9193f9",
             "scenario_sha256": "64c43ef7217486584a3a4b5ea19f5fac62a33ffb8ea238a3571b17d8ca6eb2a0",
             "execution_report_ref": ".governance/reports/wifi/wifi_sta/run-report.json",
-            "verified_commit": "b78917fe5a1049d5ce1a2556ead8a1a786e24741",
-            "verified_at": "2026-10-02T01:40:46Z"
+            "verified_commit": "762f8c8601cfdf61b89c681f4ed41a262581be7d",
+            "verified_at": "2026-10-04T14:00:15Z"
           }
         },
         {

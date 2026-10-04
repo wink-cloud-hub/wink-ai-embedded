@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-01T02:42:46.059Z",
+  "timestamp": "2026-10-04T14:00:15.711Z",
   "total": 1,
   "passed": 1,
   "failed": 0,
@@ -11,7 +11,7 @@
         "name": "ESP-IDF v6.1 Wi-Fi STA Connection & Scan Deterministic Proof",
         "templateId": "esp_idfv61_wifi_sta",
         "totalVirtualUs": "3000000",
-        "wallClockMs": 112
+        "wallClockMs": 88
       },
       "summary": {
         "totalSteps": 4,
