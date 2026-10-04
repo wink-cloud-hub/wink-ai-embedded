@@ -91,7 +91,8 @@ $allCarriers = @(
     @{ Name = 'nvs_nvs_iteration'; Rel = 'vendor/esp_idfv61/storage/nvs_nvs_iteration'; Channel = 'NVS Key Iteration & Type Filter' },
     @{ Name = 'getting_started_softAP'; Rel = 'vendor/esp_idfv61/wifi/getting_started_softAP'; Channel = 'Wi-Fi SoftAP Hotspot & Broadcast Beacon' },
     @{ Name = 'fast_scan'; Rel = 'vendor/esp_idfv61/wifi/fast_scan'; Channel = 'Wi-Fi Fast Scan & Association Determinism' },
-    @{ Name = 'scan'; Rel = 'vendor/esp_idfv61/wifi/scan'; Channel = 'Wi-Fi Active Scan & AP Discovery' }
+    @{ Name = 'scan'; Rel = 'vendor/esp_idfv61/wifi/scan'; Channel = 'Wi-Fi Active Scan & AP Discovery' },
+    @{ Name = 'ble_get_started_nimble_NimBLE_Beacon'; Rel = 'vendor/esp_idfv61/bluetooth/ble_get_started_nimble_NimBLE_Beacon'; Channel = 'NimBLE Beacon Advertising & GAP Device Info' }
 )
 
 $carriers = @()

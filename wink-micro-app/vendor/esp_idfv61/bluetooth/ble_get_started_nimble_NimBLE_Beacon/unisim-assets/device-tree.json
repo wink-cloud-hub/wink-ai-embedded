@@ -1,0 +1,9 @@
+{
+  "appName": "esp_idfv61_ble_get_started_nimble_NimBLE_Beacon",
+  "board": "esp32_devkitc_v4",
+  "devices": {},
+  "family": "esp32",
+  "core": "xtensa-lx6",
+  "mcu": "esp32",
+  "vendor": "espressif"
+}

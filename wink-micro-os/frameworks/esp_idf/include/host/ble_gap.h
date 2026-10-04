@@ -123,6 +123,13 @@ struct ble_hs_adv_fields {
     uint8_t tx_pwr_lvl_is_present:1;
     uint16_t appearance;
     uint8_t appearance_is_present:1;
+    uint8_t le_role;
+    uint8_t le_role_is_present:1;
+    const uint8_t *device_addr;
+    uint8_t device_addr_type;
+    uint8_t device_addr_is_present:1;
+    const uint8_t *uri;
+    uint8_t uri_len;
 };
 
 #define BLE_HS_ADV_F_DISC_LTD 0x01

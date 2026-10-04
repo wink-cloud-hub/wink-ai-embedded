@@ -1,0 +1,18 @@
+{
+  "app_name": "esp_idfv61_ble_get_started_nimble_NimBLE_Beacon",
+  "display_name": "Espressif ESP-IDF NimBLE Beacon",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/bluetooth/ble_get_started/nimble/NimBLE_Beacon/main",
+    "files": {
+      "main.c": "d31c11a5486f5dfed86e02059db9b021e6a646fc258795d9148a48d1d1d6d499",
+      "src/gap.c": "19fcdb46eeefa0fbc831d3e57418738cc038d91d7579b6ae14323facb27e943d",
+      "include/common.h": "c70a87cd53e3c0eb122c6e18049221439e907d17f850445998daed15763ca923",
+      "include/gap.h": "f6dd756e6f9d0bd1af0cfd69ea2fcab481e8015bd7237e74ebb3f8579696df03"
+    }
+  },
+  "devices": {}
+}
