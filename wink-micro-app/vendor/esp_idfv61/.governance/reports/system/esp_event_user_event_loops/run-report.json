@@ -1,0 +1,181 @@
+{
+  "timestamp": "2026-10-04T23:20:35.900Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 system_esp_event_user_event_loops headless deterministic proof",
+        "templateId": "esp_idfv61_system_esp_event_user_event_loops",
+        "totalVirtualUs": "7000000",
+        "wallClockMs": 115
+      },
+      "summary": {
+        "totalSteps": 10,
+        "passedSteps": 10,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) user_event_loops: setting up\u001b[0m\n\u001b[0;32mI (0) user_event_loops: starting event source\u001b[0m\n\u001b[0;32mI (0) user_event_loops: starting application task\u001b[0m\n\u001b[0;32mI (1) user_event_loops: posting TASK_EVENTS:TASK_ITERATION_EVENT to loop_without_task, iteration 1 out of 10\u001b[0m\n\u001b[0;32mI (1) user_event_loops: application_task: running application task\u001b[0m\n\u001b[0;32mI (1) user_event_loops: handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_without_task, iteration 1\u001b[0m\n",
+              "\u001b[0;32mI (101) user_event_loops: application_task: running application task\u001b[0m\n",
+              "\u001b[0;32mI (501) user_event_loops: posting TASK_EVENTS:TASK_ITERATION_EVENT to loop_with_task, iteration 2 out of 10\u001b[0m\n\u001b[0;32mI (501) user_event_loops: handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_with_task, iteration 2\u001b[0m\n"
+            ]
+          },
+          "expected": "setting up"
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) user_event_loops: setting up\u001b[0m\n\u001b[0;32mI (0) user_event_loops: starting event source\u001b[0m\n\u001b[0;32mI (0) user_event_loops: starting application task\u001b[0m\n\u001b[0;32mI (1) user_event_loops: posting TASK_EVENTS:TASK_ITERATION_EVENT to loop_without_task, iteration 1 out of 10\u001b[0m\n\u001b[0;32mI (1) user_event_loops: application_task: running application task\u001b[0m\n\u001b[0;32mI (1) user_event_loops: handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_without_task, iteration 1\u001b[0m\n",
+              "\u001b[0;32mI (101) user_event_loops: application_task: running application task\u001b[0m\n",
+              "\u001b[0;32mI (501) user_event_loops: posting TASK_EVENTS:TASK_ITERATION_EVENT to loop_with_task, iteration 2 out of 10\u001b[0m\n\u001b[0;32mI (501) user_event_loops: handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_with_task, iteration 2\u001b[0m\n"
+            ]
+          },
+          "expected": "starting event source"
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) user_event_loops: setting up\u001b[0m\n\u001b[0;32mI (0) user_event_loops: starting event source\u001b[0m\n\u001b[0;32mI (0) user_event_loops: starting application task\u001b[0m\n\u001b[0;32mI (1) user_event_loops: posting TASK_EVENTS:TASK_ITERATION_EVENT to loop_without_task, iteration 1 out of 10\u001b[0m\n\u001b[0;32mI (1) user_event_loops: application_task: running application task\u001b[0m\n\u001b[0;32mI (1) user_event_loops: handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_without_task, iteration 1\u001b[0m\n",
+              "\u001b[0;32mI (101) user_event_loops: application_task: running application task\u001b[0m\n",
+              "\u001b[0;32mI (501) user_event_loops: posting TASK_EVENTS:TASK_ITERATION_EVENT to loop_with_task, iteration 2 out of 10\u001b[0m\n\u001b[0;32mI (501) user_event_loops: handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_with_task, iteration 2\u001b[0m\n"
+            ]
+          },
+          "expected": "starting application task"
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) user_event_loops: setting up\u001b[0m\n\u001b[0;32mI (0) user_event_loops: starting event source\u001b[0m\n\u001b[0;32mI (0) user_event_loops: starting application task\u001b[0m\n\u001b[0;32mI (1) user_event_loops: posting TASK_EVENTS:TASK_ITERATION_EVENT to loop_without_task, iteration 1 out of 10\u001b[0m\n\u001b[0;32mI (1) user_event_loops: application_task: running application task\u001b[0m\n\u001b[0;32mI (1) user_event_loops: handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_without_task, iteration 1\u001b[0m\n",
+              "\u001b[0;32mI (101) user_event_loops: application_task: running application task\u001b[0m\n",
+              "\u001b[0;32mI (501) user_event_loops: posting TASK_EVENTS:TASK_ITERATION_EVENT to loop_with_task, iteration 2 out of 10\u001b[0m\n\u001b[0;32mI (501) user_event_loops: handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_with_task, iteration 2\u001b[0m\n",
+              "\u001b[0;32mI (1001) user_event_loops: posting TASK_EVENTS:TASK_ITERATION_EVENT to loop_without_task, iteration 3 out of 10\u001b[0m\n\u001b[0;32mI (1001) user_event_loops: handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_without_task, iteration 3\u001b[0m\n",
+              "\u001b[0;32mI (1101) user_event_loops: application_task: running application task\u001b[0m\n"
+            ]
+          },
+          "expected": "posting TASK_EVENTS:TASK_ITERATION_EVENT to loop_without_task, iteration 1 out of 10"
+        },
+        {
+          "stepIndex": 5,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) user_event_loops: setting up\u001b[0m\n\u001b[0;32mI (0) user_event_loops: starting event source\u001b[0m\n\u001b[0;32mI (0) user_event_loops: starting application task\u001b[0m\n\u001b[0;32mI (1) user_event_loops: posting TASK_EVENTS:TASK_ITERATION_EVENT to loop_without_task, iteration 1 out of 10\u001b[0m\n\u001b[0;32mI (1) user_event_loops: application_task: running application task\u001b[0m\n\u001b[0;32mI (1) user_event_loops: handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_without_task, iteration 1\u001b[0m\n",
+              "\u001b[0;32mI (101) user_event_loops: application_task: running application task\u001b[0m\n",
+              "\u001b[0;32mI (501) user_event_loops: posting TASK_EVENTS:TASK_ITERATION_EVENT to loop_with_task, iteration 2 out of 10\u001b[0m\n\u001b[0;32mI (501) user_event_loops: handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_with_task, iteration 2\u001b[0m\n",
+              "\u001b[0;32mI (1001) user_event_loops: posting TASK_EVENTS:TASK_ITERATION_EVENT to loop_without_task, iteration 3 out of 10\u001b[0m\n\u001b[0;32mI (1001) user_event_loops: handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_without_task, iteration 3\u001b[0m\n",
+              "\u001b[0;32mI (1101) user_event_loops: application_task: running application task\u001b[0m\n"
+            ]
+          },
+          "expected": "handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_without_task, iteration 1"
+        },
+        {
+          "stepIndex": 6,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (501) user_event_loops: posting TASK_EVENTS:TASK_ITERATION_EVENT to loop_with_task, iteration 2 out of 10\u001b[0m\n\u001b[0;32mI (501) user_event_loops: handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_with_task, iteration 2\u001b[0m\n",
+              "\u001b[0;32mI (1001) user_event_loops: posting TASK_EVENTS:TASK_ITERATION_EVENT to loop_without_task, iteration 3 out of 10\u001b[0m\n\u001b[0;32mI (1001) user_event_loops: handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_without_task, iteration 3\u001b[0m\n",
+              "\u001b[0;32mI (1101) user_event_loops: application_task: running application task\u001b[0m\n",
+              "\u001b[0;32mI (1501) user_event_loops: posting TASK_EVENTS:TASK_ITERATION_EVENT to loop_with_task, iteration 4 out of 10\u001b[0m\n\u001b[0;32mI (1501) user_event_loops: handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_with_task, iteration 4\u001b[0m\n"
+            ]
+          },
+          "expected": "posting TASK_EVENTS:TASK_ITERATION_EVENT to loop_with_task, iteration 2 out of 10"
+        },
+        {
+          "stepIndex": 7,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (501) user_event_loops: posting TASK_EVENTS:TASK_ITERATION_EVENT to loop_with_task, iteration 2 out of 10\u001b[0m\n\u001b[0;32mI (501) user_event_loops: handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_with_task, iteration 2\u001b[0m\n",
+              "\u001b[0;32mI (1001) user_event_loops: posting TASK_EVENTS:TASK_ITERATION_EVENT to loop_without_task, iteration 3 out of 10\u001b[0m\n\u001b[0;32mI (1001) user_event_loops: handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_without_task, iteration 3\u001b[0m\n",
+              "\u001b[0;32mI (1101) user_event_loops: application_task: running application task\u001b[0m\n",
+              "\u001b[0;32mI (1501) user_event_loops: posting TASK_EVENTS:TASK_ITERATION_EVENT to loop_with_task, iteration 4 out of 10\u001b[0m\n\u001b[0;32mI (1501) user_event_loops: handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_with_task, iteration 4\u001b[0m\n"
+            ]
+          },
+          "expected": "handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_with_task, iteration 2"
+        },
+        {
+          "stepIndex": 8,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "6500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (4001) user_event_loops: posting TASK_EVENTS:TASK_ITERATION_EVENT to loop_without_task, iteration 9 out of 10\u001b[0m\n\u001b[0;32mI (4001) user_event_loops: handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_without_task, iteration 9\u001b[0m\n",
+              "\u001b[0;32mI (4101) user_event_loops: application_task: running application task\u001b[0m\n",
+              "\u001b[0;32mI (4501) user_event_loops: posting TASK_EVENTS:TASK_ITERATION_EVENT to loop_with_task, iteration 10 out of 10\u001b[0m\n\u001b[0;32mI (4501) user_event_loops: handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_with_task, iteration 10\u001b[0m\n",
+              "\u001b[0;32mI (5201) user_event_loops: application_task: running application task\u001b[0m\n",
+              "\u001b[0;32mI (5501) user_event_loops: deleting task event source\u001b[0m\n",
+              "\u001b[0;32mI (6301) user_event_loops: application_task: running application task\u001b[0m\n"
+            ]
+          },
+          "expected": "handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_with_task, iteration 10"
+        },
+        {
+          "stepIndex": 9,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "7000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (4501) user_event_loops: posting TASK_EVENTS:TASK_ITERATION_EVENT to loop_with_task, iteration 10 out of 10\u001b[0m\n\u001b[0;32mI (4501) user_event_loops: handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_with_task, iteration 10\u001b[0m\n",
+              "\u001b[0;32mI (5201) user_event_loops: application_task: running application task\u001b[0m\n",
+              "\u001b[0;32mI (5501) user_event_loops: deleting task event source\u001b[0m\n",
+              "\u001b[0;32mI (6301) user_event_loops: application_task: running application task\u001b[0m\n"
+            ]
+          },
+          "expected": "deleting task event source"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

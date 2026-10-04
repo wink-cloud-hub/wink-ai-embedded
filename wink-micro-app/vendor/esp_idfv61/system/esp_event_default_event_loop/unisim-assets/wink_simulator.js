@@ -1655,6 +1655,32 @@ async function createWasm() {
           }
       }
 
+  function _js_pal_os_busy_wait_us(us) {
+          if (typeof Module !== 'undefined' && typeof Module['js_pal_os_busy_wait_us'] === 'function' && Module['js_pal_os_busy_wait_us'] !== _js_pal_os_busy_wait_us) {
+              return Asyncify.handleSleep(function(wakeUp) {
+                  Promise.resolve(Module['js_pal_os_busy_wait_us'](us)).then(function() {
+                      wakeUp();
+                  });
+              });
+          }
+          // VirtualClock advances by the exact BigInt(us) value — determinism is preserved regardless
+          // of the wall-clock setTimeout delay. For sub-ms durations (us < 1000), use a 0ms timeout
+          // (next event-loop tick) rather than a forced 1ms wait. This prevents I²C/SPI bit-bang
+          // simulations from running 2-10x slower than the equivalent real MCU timing.
+          var advanceUs = BigInt(us);
+          var waitMs = us >= 1000 ? Math.floor(us / 1000) : 0;
+          return Asyncify.handleSleep(function(wakeUp) {
+              setTimeout(function() {
+                  try {
+                      _pal_wasm_advance_virtual_clock(advanceUs);
+                  } catch (_e1) {
+                      try { _pal_wasm_advance_virtual_clock(Number(advanceUs)); } catch (_e2) {}
+                  }
+                  wakeUp();
+              }, waitMs);
+          });
+      }
+
   function _js_pal_os_sleep_ms(ms) {
           if (typeof Module !== 'undefined' && typeof Module['js_pal_os_sleep_ms'] === 'function' && Module['js_pal_os_sleep_ms'] !== _js_pal_os_sleep_ms) {
               return Asyncify.handleSleep(function(wakeUp) {
@@ -2779,6 +2805,8 @@ var wasmImports = {
   js_pal_log: _js_pal_log,
   /** @export */
   js_pal_notify_pin_edge: _js_pal_notify_pin_edge,
+  /** @export */
+  js_pal_os_busy_wait_us: _js_pal_os_busy_wait_us,
   /** @export */
   js_pal_os_sleep_ms: _js_pal_os_sleep_ms,
   /** @export */

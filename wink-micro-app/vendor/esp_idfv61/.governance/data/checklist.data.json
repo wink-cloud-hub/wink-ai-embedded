@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 29,
-    "verified_configs": 30,
+    "audited": 31,
+    "verified_configs": 31,
     "verified": 25
   },
   "entries": [
@@ -7928,12 +7928,12 @@
           },
           "evidence": {
             "backend": "wasm_simulation",
-            "run_id": "run-20261002-esp.system.esp_event.default_event_loop-verified",
-            "assets_sha256": "9985de6365425f5cc14d8aa04cc6557dcaf0b9d899b8f1899976dded8f12b275",
+            "run_id": "run-20261004-esp.system.esp_event.default_event_loop-verified",
+            "assets_sha256": "cb594ca3a663a32544089f45a530fe1ebca32fe3c42958ccd707a7ac3c63ca4d",
             "scenario_sha256": "aef430b63be745b8da378c559bbe98ff130e665260cbde2d9a6d21e62a01d3a2",
             "execution_report_ref": ".governance/reports/system/esp_event_default_event_loop/run-report.json",
-            "verified_commit": "96a4aef972b5f12da4e861f0226383a0191723cc",
-            "verified_at": "2026-10-02T22:00:24Z"
+            "verified_commit": "e8a093466cd8a4fb87a7ae1537380c576df07a56",
+            "verified_at": "2026-10-04T23:20:52Z"
           }
         }
       ],
@@ -7950,10 +7950,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "arch_team",
+        "audited_at": "2026-10-05T07:20:00Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -7984,18 +7986,40 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/system_esp_event_user_event_loops.scenario.json",
-            "timeout_virtual_us": 3000000,
+            "scenario_path": "system/esp_event_user_event_loops/unisim-scenarios/system_esp_event_user_event_loops.scenario.json",
+            "timeout_virtual_us": 7000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
+            "positive_cases": [
+              {
+                "name": "用户自定义事件循环交替分发与调度",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_with_task, iteration 10"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "事件循环任务被挂起或停止调度",
+                "expect_error": "timeout",
+                "detects": "事件分发阻塞导致迭代事件丢失"
+              }
+            ],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261004-esp.system.esp_event.user_event_loops-verified",
+            "assets_sha256": "ac48dc2db064111d60a5f8c6f83ef02a6caae1f7a8cf690ed5f1d2f20bdfa8a5",
+            "scenario_sha256": "a870fc969fb04180066f534a8691bbee8f41525149223020933dbf6bea9d5e88",
+            "execution_report_ref": ".governance/reports/system/esp_event_user_event_loops/run-report.json",
+            "verified_commit": "4f37efcc5d198e399677fd6c0ed3b9dd25b0fcef",
+            "verified_at": "2026-10-04T23:20:36Z"
+          }
         }
       ],
       "target_app_dir": "system/esp_event_user_event_loops"
