@@ -36,6 +36,9 @@ typedef enum {
     WIFI_AUTH_WPA_WPA2_PSK,
     WIFI_AUTH_WPA2_ENTERPRISE,
     WIFI_AUTH_WPA3_PSK,
+    WIFI_AUTH_WPA2_WPA3_PSK,
+    WIFI_AUTH_WAPI_PSK,
+    WIFI_AUTH_OWE,
     WIFI_AUTH_MAX
 } wifi_auth_mode_t;
 
@@ -45,6 +48,16 @@ typedef enum {
     WPA3_SAE_PWE_HASH_TO_ELEMENT = 2,
     WPA3_SAE_PWE_BOTH = 3,
 } wifi_sae_pwe_method_t;
+
+typedef struct {
+    bool capable;
+    bool required;
+} wifi_pmf_config_t;
+
+typedef struct {
+    uint16_t period;
+    bool protected_keep_alive;
+} wifi_bss_max_idle_config_t;
 
 typedef enum {
     WIFI_IF_STA = 0,
@@ -80,6 +93,10 @@ typedef struct {
     uint8_t ssid_hidden;
     uint8_t max_connection;
     uint16_t beacon_interval;
+    uint8_t sae_pwe_h2e;
+    wifi_pmf_config_t pmf_cfg;
+    wifi_bss_max_idle_config_t bss_max_idle_cfg;
+    uint16_t gtk_rekey_interval;
 } wifi_ap_config_t;
 
 typedef union {
