@@ -4714,6 +4714,12 @@ var stringToUTF8Array = (str, heap, outIdx, maxBytesToWrite) => {
           return -7;
       }
 
+  function _js_pal_uart_write(port, buf, len) {
+          if (typeof Module !== 'undefined' && typeof Module['js_pal_uart_write'] === 'function' && Module['js_pal_uart_write'] !== _js_pal_uart_write) {
+              return Module['js_pal_uart_write'](port, buf, len);
+          }
+      }
+
   function _wink_ultrasonic_distance_events_trigger_now_by_trig_pin(pin) {
           if (typeof Module !== 'undefined' && typeof Module['wink_ultrasonic_distance_events_trigger_now_by_trig_pin'] === 'function' && Module['wink_ultrasonic_distance_events_trigger_now_by_trig_pin'] !== _wink_ultrasonic_distance_events_trigger_now_by_trig_pin) {
               return Module['wink_ultrasonic_distance_events_trigger_now_by_trig_pin'](pin);
@@ -5463,6 +5469,7 @@ var _emscripten_stack_get_current = makeInvalidEarlyAccess('_emscripten_stack_ge
 var ___set_stack_limits = Module['___set_stack_limits'] = makeInvalidEarlyAccess('___set_stack_limits');
 var dynCall_iiiiii = makeInvalidEarlyAccess('dynCall_iiiiii');
 var dynCall_vi = makeInvalidEarlyAccess('dynCall_vi');
+var dynCall_iii = makeInvalidEarlyAccess('dynCall_iii');
 var dynCall_viiii = makeInvalidEarlyAccess('dynCall_viiii');
 var dynCall_v = makeInvalidEarlyAccess('dynCall_v');
 var dynCall_viiiii = makeInvalidEarlyAccess('dynCall_viiiii');
@@ -5604,6 +5611,7 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['__set_stack_limits'] != 'undefined', 'missing Wasm export: __set_stack_limits');
   assert(typeof wasmExports['dynCall_iiiiii'] != 'undefined', 'missing Wasm export: dynCall_iiiiii');
   assert(typeof wasmExports['dynCall_vi'] != 'undefined', 'missing Wasm export: dynCall_vi');
+  assert(typeof wasmExports['dynCall_iii'] != 'undefined', 'missing Wasm export: dynCall_iii');
   assert(typeof wasmExports['dynCall_viiii'] != 'undefined', 'missing Wasm export: dynCall_viiii');
   assert(typeof wasmExports['dynCall_v'] != 'undefined', 'missing Wasm export: dynCall_v');
   assert(typeof wasmExports['dynCall_viiiii'] != 'undefined', 'missing Wasm export: dynCall_viiiii');
@@ -5742,6 +5750,7 @@ function assignWasmExports(wasmExports) {
   ___set_stack_limits = Module['___set_stack_limits'] = createExportWrapper('__set_stack_limits', wasmExports['__set_stack_limits'], 2);
   dynCall_iiiiii = dynCalls['iiiiii'] = createExportWrapper('dynCall_iiiiii', wasmExports['dynCall_iiiiii'], 6);
   dynCall_vi = dynCalls['vi'] = createExportWrapper('dynCall_vi', wasmExports['dynCall_vi'], 2);
+  dynCall_iii = dynCalls['iii'] = createExportWrapper('dynCall_iii', wasmExports['dynCall_iii'], 3);
   dynCall_viiii = dynCalls['viiii'] = createExportWrapper('dynCall_viiii', wasmExports['dynCall_viiii'], 5);
   dynCall_v = dynCalls['v'] = createExportWrapper('dynCall_v', wasmExports['dynCall_v'], 1);
   dynCall_viiiii = dynCalls['viiiii'] = createExportWrapper('dynCall_viiiii', wasmExports['dynCall_viiiii'], 6);
@@ -5822,6 +5831,8 @@ var wasmImports = {
   js_pal_poll_interrupt: _js_pal_poll_interrupt,
   /** @export */
   js_pal_spi_transfer_ex: _js_pal_spi_transfer_ex,
+  /** @export */
+  js_pal_uart_write: _js_pal_uart_write,
   /** @export */
   wink_ultrasonic_distance_events_trigger_now_by_trig_pin: _wink_ultrasonic_distance_events_trigger_now_by_trig_pin
 };

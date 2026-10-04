@@ -70,18 +70,34 @@ typedef enum {
     WIFI_PS_MIN_MODEM
 } wifi_ps_type_t;
 
+typedef enum {
+    WIFI_FAST_SCAN = 0,
+    WIFI_ALL_CHANNEL_SCAN,
+} wifi_scan_method_t;
+
+typedef enum {
+    WIFI_CONNECT_AP_BY_SIGNAL = 0,
+    WIFI_CONNECT_AP_BY_SECURITY,
+} wifi_sort_method_t;
+
+typedef struct {
+    int8_t           rssi;
+    wifi_auth_mode_t authmode;
+    uint8_t          rssi_5g_adjustment;
+} wifi_scan_threshold_t;
+
 /* 乐鑫官方语料兼容的嵌套 threshold 结构体与 SAE 配置（零修改编译契约）*/
 typedef struct {
-    uint8_t ssid[WIFI_SSID_LEN];
-    uint8_t password[WIFI_PASS_LEN];
-    bool    bssid_set;
-    uint8_t bssid[6];
-    uint8_t channel;
-    struct {
-        wifi_auth_mode_t authmode;
-    } threshold;
-    uint8_t sae_pwe_h2e;
-    uint8_t sae_h2e_identifier[32];
+    uint8_t               ssid[WIFI_SSID_LEN];
+    uint8_t               password[WIFI_PASS_LEN];
+    wifi_scan_method_t    scan_method;
+    bool                  bssid_set;
+    uint8_t               bssid[6];
+    uint8_t               channel;
+    wifi_sort_method_t    sort_method;
+    wifi_scan_threshold_t threshold;
+    uint8_t               sae_pwe_h2e;
+    uint8_t               sae_h2e_identifier[32];
 } wifi_sta_config_t;
 
 typedef struct {
