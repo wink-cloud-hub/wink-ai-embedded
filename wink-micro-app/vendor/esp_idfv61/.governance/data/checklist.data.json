@@ -9,7 +9,7 @@
     "in_scope_active": 291,
     "in_scope_deferred": 21,
     "audited": 29,
-    "verified_configs": 29,
+    "verified_configs": 30,
     "verified": 25
   },
   "entries": [
@@ -15658,10 +15658,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-04T15:11:15Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -15694,18 +15696,31 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/bluetooth_ble_get_started_nimble_NimBLE_Beacon.scenario.json",
+            "scenario_path": "bluetooth/ble_get_started_nimble_NimBLE_Beacon/unisim-scenarios/bluetooth_ble_get_started_nimble_NimBLE_Beacon.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
+            "positive_cases": [
+              {
+                "id": "tc_ble_beacon_adv",
+                "description": "Verify NimBLE Beacon GAP advertising state machine and device name synchronisation"
+              }
+            ],
             "negative_cases": [],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261004-esp.bluetooth.ble_get_started.nimble.nimble_beacon-verified",
+            "assets_sha256": "021a04066a3bce4a5d98015614435f5764c339fbac4af1d78394ef34129e5a45",
+            "scenario_sha256": "ffad8e2d81bac8e8eca8834acb8246eefef5da1921861a3267f6cd972ba7df00",
+            "execution_report_ref": ".governance/reports/bluetooth/ble_get_started_nimble_NimBLE_Beacon/run-report.json",
+            "verified_commit": "af3bcb1b1d46a04c35f31870c57724cf22df2c56",
+            "verified_at": "2026-10-04T15:11:14Z"
+          }
         }
       ],
       "target_app_dir": "bluetooth/ble_get_started_nimble_NimBLE_Beacon"

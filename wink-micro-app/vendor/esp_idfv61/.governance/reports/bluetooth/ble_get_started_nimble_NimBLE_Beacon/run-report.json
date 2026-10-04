@@ -1,0 +1,68 @@
+{
+  "timestamp": "2026-10-04T15:11:14.127Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 ble_get_started_nimble_NimBLE_Beacon headless deterministic proof",
+        "templateId": "esp_idfv61_ble_get_started_nimble_NimBLE_Beacon",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 85
+      },
+      "summary": {
+        "totalSteps": 5,
+        "passedSteps": 5,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "500000",
+          "actual": "ADVERTISING",
+          "expected": "ADVERTISING"
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "500000",
+          "actual": "NimBLE_Beacon",
+          "expected": "NimBLE_Beacon"
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": "ADVERTISING",
+          "expected": "ADVERTISING"
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": "NimBLE_Beacon",
+          "expected": "NimBLE_Beacon"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}
