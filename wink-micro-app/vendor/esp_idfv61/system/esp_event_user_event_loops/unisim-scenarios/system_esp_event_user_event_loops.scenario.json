@@ -1,0 +1,103 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 system_esp_event_user_event_loops headless deterministic proof",
+    "templateId": "esp_idfv61_system_esp_event_user_event_loops",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "7000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "setting up",
+      "description": "断言系统初始化与双用户事件循环创建"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "starting event source",
+      "description": "断言启动周期性事件源任务"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "starting application task",
+      "description": "断言启动无任务事件循环的手动调度应用任务"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "posting TASK_EVENTS:TASK_ITERATION_EVENT to loop_without_task, iteration 1 out of 10",
+      "description": "断言第 1 次迭代投递至无任务事件循环 loop_without_task"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_without_task, iteration 1",
+      "description": "断言无任务事件循环在 application_task 内完成第 1 次事件处理"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["500ms", "2000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "posting TASK_EVENTS:TASK_ITERATION_EVENT to loop_with_task, iteration 2 out of 10",
+      "description": "断言第 2 次迭代投递至专属任务事件循环 loop_with_task"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["500ms", "2000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_with_task, iteration 2",
+      "description": "断言专属任务事件循环异步调度完成第 2 次事件处理"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["4000ms", "6500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_with_task, iteration 10",
+      "description": "断言完成所有 10 轮双循环交替迭代分发与深度处理"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["4500ms", "7000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "deleting task event source",
+      "description": "断言事件源任务生命周期正常结束并安全退出"
+    }
+  ]
+}
