@@ -19,6 +19,18 @@
 extern "C" {
 #endif
 
+typedef struct {
+    int32_t queue_size;
+    const char* task_name;
+    UBaseType_t task_priority;
+    uint32_t task_stack_size;
+    BaseType_t task_core_id;
+} esp_event_loop_args_t;
+
+esp_err_t esp_event_loop_create(const esp_event_loop_args_t* event_loop_args, esp_event_loop_handle_t* event_loop);
+esp_err_t esp_event_loop_delete(esp_event_loop_handle_t event_loop);
+esp_err_t esp_event_loop_run(esp_event_loop_handle_t event_loop, TickType_t ticks_to_run);
+
 esp_err_t esp_event_loop_create_default(void);
 esp_err_t esp_event_loop_delete_default(void);
 
@@ -46,6 +58,25 @@ esp_err_t esp_event_post(esp_event_base_t event_base,
                          void* event_data,
                          size_t event_data_size,
                          TickType_t ticks_to_wait);
+
+esp_err_t esp_event_post_to(esp_event_loop_handle_t event_loop,
+                            esp_event_base_t event_base,
+                            int32_t event_id,
+                            void* event_data,
+                            size_t event_data_size,
+                            TickType_t ticks_to_wait);
+
+esp_err_t esp_event_handler_instance_register_with(esp_event_loop_handle_t event_loop,
+                                                  esp_event_base_t event_base,
+                                                  int32_t event_id,
+                                                  esp_event_handler_t event_handler,
+                                                  void* event_handler_arg,
+                                                  esp_event_handler_instance_t* instance);
+
+esp_err_t esp_event_handler_instance_unregister_with(esp_event_loop_handle_t event_loop,
+                                                    esp_event_base_t event_base,
+                                                    int32_t event_id,
+                                                    esp_event_handler_instance_t instance);
 
 /* Wink simulation helpers */
 void esp_event_loop_sim_reset(void);
