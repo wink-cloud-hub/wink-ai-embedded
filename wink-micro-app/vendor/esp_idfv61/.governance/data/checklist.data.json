@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 28,
-    "verified_configs": 28,
+    "audited": 29,
+    "verified_configs": 29,
     "verified": 25
   },
   "entries": [
@@ -14564,10 +14564,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-04T14:22:15Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -14600,21 +14602,20 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": null,
+            "scenario_path": "wifi/scan/unisim-scenarios/wifi_scan.scenario.json",
             "timeout_virtual_us": 5000000,
             "timeout_wall_ms": 15000,
             "positive_cases": [
-              {
-                "name": "Wi-Fi 扫描返回虚拟 AP 列表",
-                "matcher": {
-                  "op": "regex",
-                  "expected": "SSID.*found"
-                }
-              }
+              "断言系统供电轨稳定维持 3.3V",
+              "断言 Wi-Fi 底座状态机推进至 STARTED 激活态",
+              "断言 UART 输出扫描发现的 AP 总数",
+              "断言 UART 打印高信号强度目标 AP myssid",
+              "断言 UART 打印测试热点 AP TestSSID",
+              "断言 UART 打印周边开放式 AP Nearby_AP"
             ],
             "negative_cases": [
               {
@@ -14625,7 +14626,15 @@
             ],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261004-esp.wifi.scan-verified",
+            "assets_sha256": "418f018231bac7ff1ff9482e048072206bce73d198170b69ed9a756a70983f0d",
+            "scenario_sha256": "2a58ccc299b93cf09f6d0d486ba27e78d0208dbe36d93a230127ef2172f84f88",
+            "execution_report_ref": ".governance/reports/wifi/scan/run-report.json",
+            "verified_commit": "eee43262aeec65b6eef17b45b9d758996c678c59",
+            "verified_at": "2026-10-04T14:22:07Z"
+          }
         }
       ],
       "target_app_dir": "wifi/scan"

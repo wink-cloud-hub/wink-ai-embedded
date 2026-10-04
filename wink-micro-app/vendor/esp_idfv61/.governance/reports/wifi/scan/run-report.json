@@ -1,0 +1,96 @@
+{
+  "timestamp": "2026-10-04T14:22:07.042Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 Wi-Fi Active Scan & AP Discovery Deterministic Proof",
+        "templateId": "esp_idfv61_wifi_scan",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 89
+      },
+      "summary": {
+        "totalSteps": 6,
+        "passedSteps": 6,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": "STARTED",
+          "expected": "STARTED"
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) WIFI_SIM: Wi-Fi initialized in simulation mode\u001b[0m\n\u001b[0;32mI (0) scan: Max AP number ap_info can hold = 10\u001b[0m\n\u001b[0;32mI (0) scan: Total APs scanned = 3, actual AP number ap_info holds = 3\u001b[0m\n\u001b[0;32mI (0) scan: SSID \t\tmyssid\u001b[0m\n\u001b[0;32mI (0) scan: RSSI \t\t-45\u001b[0m\n\u001b[0;32mI (0) scan: Authmode \tWIFI_AUTH_WPA2_PSK\u001b[0m\n\u001b[0;32mI (0) scan: Pairwise Cipher \tWIFI_CIPHER_TYPE_NONE\u001b[0m\n\u001b[0;32mI (0) scan: Group Cipher \tWIFI_CIPHER_TYPE_NONE\u001b[0m\n\u001b[0;32mI (0) scan: Channel \t\t1\u001b[0m\n\u001b[0;32mI (0) scan: SSID \t\tTestSSID\u001b[0m\n\u001b[0;32mI (0) scan: RSSI \t\t-50\u001b[0m\n\u001b[0;32mI (0) scan: Authmode \tWIFI_AUTH_WPA2_PSK\u001b[0m\n\u001b[0;32mI (0) scan: Pairwise Cipher \tWIFI_CIPHER_TYPE_NONE\u001b[0m\n\u001b[0;32mI (0) scan: Group Cipher \tWIFI_CIPHER_TYPE_NONE\u001b[0m\n\u001b[0;32mI (0) scan: Channel \t\t6\u001b[0m\n\u001b[0;32mI (0) scan: SSID \t\tNearby_AP\u001b[0m\n\u001b[0;32mI (0) scan: RSSI \t\t-75\u001b[0m\n\u001b[0;32mI (0) scan: Authmode \tWIFI_AUTH_OPEN\u001b[0m\n\u001b[0;32mI (0) scan: Pairwise Cipher \tWIFI_CIPHER_TYPE_NONE\u001b[0m\n\u001b[0;32mI (0) scan: Group Cipher \tWIFI_CIPHER_TYPE_NONE\u001b[0m\n\u001b[0;32mI (0) scan: Channel \t\t6\u001b[0m\n"
+            ]
+          },
+          "expected": "Total APs scanned = 3"
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) WIFI_SIM: Wi-Fi initialized in simulation mode\u001b[0m\n\u001b[0;32mI (0) scan: Max AP number ap_info can hold = 10\u001b[0m\n\u001b[0;32mI (0) scan: Total APs scanned = 3, actual AP number ap_info holds = 3\u001b[0m\n\u001b[0;32mI (0) scan: SSID \t\tmyssid\u001b[0m\n\u001b[0;32mI (0) scan: RSSI \t\t-45\u001b[0m\n\u001b[0;32mI (0) scan: Authmode \tWIFI_AUTH_WPA2_PSK\u001b[0m\n\u001b[0;32mI (0) scan: Pairwise Cipher \tWIFI_CIPHER_TYPE_NONE\u001b[0m\n\u001b[0;32mI (0) scan: Group Cipher \tWIFI_CIPHER_TYPE_NONE\u001b[0m\n\u001b[0;32mI (0) scan: Channel \t\t1\u001b[0m\n\u001b[0;32mI (0) scan: SSID \t\tTestSSID\u001b[0m\n\u001b[0;32mI (0) scan: RSSI \t\t-50\u001b[0m\n\u001b[0;32mI (0) scan: Authmode \tWIFI_AUTH_WPA2_PSK\u001b[0m\n\u001b[0;32mI (0) scan: Pairwise Cipher \tWIFI_CIPHER_TYPE_NONE\u001b[0m\n\u001b[0;32mI (0) scan: Group Cipher \tWIFI_CIPHER_TYPE_NONE\u001b[0m\n\u001b[0;32mI (0) scan: Channel \t\t6\u001b[0m\n\u001b[0;32mI (0) scan: SSID \t\tNearby_AP\u001b[0m\n\u001b[0;32mI (0) scan: RSSI \t\t-75\u001b[0m\n\u001b[0;32mI (0) scan: Authmode \tWIFI_AUTH_OPEN\u001b[0m\n\u001b[0;32mI (0) scan: Pairwise Cipher \tWIFI_CIPHER_TYPE_NONE\u001b[0m\n\u001b[0;32mI (0) scan: Group Cipher \tWIFI_CIPHER_TYPE_NONE\u001b[0m\n\u001b[0;32mI (0) scan: Channel \t\t6\u001b[0m\n"
+            ]
+          },
+          "expected": "SSID \t\tmyssid"
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) WIFI_SIM: Wi-Fi initialized in simulation mode\u001b[0m\n\u001b[0;32mI (0) scan: Max AP number ap_info can hold = 10\u001b[0m\n\u001b[0;32mI (0) scan: Total APs scanned = 3, actual AP number ap_info holds = 3\u001b[0m\n\u001b[0;32mI (0) scan: SSID \t\tmyssid\u001b[0m\n\u001b[0;32mI (0) scan: RSSI \t\t-45\u001b[0m\n\u001b[0;32mI (0) scan: Authmode \tWIFI_AUTH_WPA2_PSK\u001b[0m\n\u001b[0;32mI (0) scan: Pairwise Cipher \tWIFI_CIPHER_TYPE_NONE\u001b[0m\n\u001b[0;32mI (0) scan: Group Cipher \tWIFI_CIPHER_TYPE_NONE\u001b[0m\n\u001b[0;32mI (0) scan: Channel \t\t1\u001b[0m\n\u001b[0;32mI (0) scan: SSID \t\tTestSSID\u001b[0m\n\u001b[0;32mI (0) scan: RSSI \t\t-50\u001b[0m\n\u001b[0;32mI (0) scan: Authmode \tWIFI_AUTH_WPA2_PSK\u001b[0m\n\u001b[0;32mI (0) scan: Pairwise Cipher \tWIFI_CIPHER_TYPE_NONE\u001b[0m\n\u001b[0;32mI (0) scan: Group Cipher \tWIFI_CIPHER_TYPE_NONE\u001b[0m\n\u001b[0;32mI (0) scan: Channel \t\t6\u001b[0m\n\u001b[0;32mI (0) scan: SSID \t\tNearby_AP\u001b[0m\n\u001b[0;32mI (0) scan: RSSI \t\t-75\u001b[0m\n\u001b[0;32mI (0) scan: Authmode \tWIFI_AUTH_OPEN\u001b[0m\n\u001b[0;32mI (0) scan: Pairwise Cipher \tWIFI_CIPHER_TYPE_NONE\u001b[0m\n\u001b[0;32mI (0) scan: Group Cipher \tWIFI_CIPHER_TYPE_NONE\u001b[0m\n\u001b[0;32mI (0) scan: Channel \t\t6\u001b[0m\n"
+            ]
+          },
+          "expected": "SSID \t\tTestSSID"
+        },
+        {
+          "stepIndex": 5,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) WIFI_SIM: Wi-Fi initialized in simulation mode\u001b[0m\n\u001b[0;32mI (0) scan: Max AP number ap_info can hold = 10\u001b[0m\n\u001b[0;32mI (0) scan: Total APs scanned = 3, actual AP number ap_info holds = 3\u001b[0m\n\u001b[0;32mI (0) scan: SSID \t\tmyssid\u001b[0m\n\u001b[0;32mI (0) scan: RSSI \t\t-45\u001b[0m\n\u001b[0;32mI (0) scan: Authmode \tWIFI_AUTH_WPA2_PSK\u001b[0m\n\u001b[0;32mI (0) scan: Pairwise Cipher \tWIFI_CIPHER_TYPE_NONE\u001b[0m\n\u001b[0;32mI (0) scan: Group Cipher \tWIFI_CIPHER_TYPE_NONE\u001b[0m\n\u001b[0;32mI (0) scan: Channel \t\t1\u001b[0m\n\u001b[0;32mI (0) scan: SSID \t\tTestSSID\u001b[0m\n\u001b[0;32mI (0) scan: RSSI \t\t-50\u001b[0m\n\u001b[0;32mI (0) scan: Authmode \tWIFI_AUTH_WPA2_PSK\u001b[0m\n\u001b[0;32mI (0) scan: Pairwise Cipher \tWIFI_CIPHER_TYPE_NONE\u001b[0m\n\u001b[0;32mI (0) scan: Group Cipher \tWIFI_CIPHER_TYPE_NONE\u001b[0m\n\u001b[0;32mI (0) scan: Channel \t\t6\u001b[0m\n\u001b[0;32mI (0) scan: SSID \t\tNearby_AP\u001b[0m\n\u001b[0;32mI (0) scan: RSSI \t\t-75\u001b[0m\n\u001b[0;32mI (0) scan: Authmode \tWIFI_AUTH_OPEN\u001b[0m\n\u001b[0;32mI (0) scan: Pairwise Cipher \tWIFI_CIPHER_TYPE_NONE\u001b[0m\n\u001b[0;32mI (0) scan: Group Cipher \tWIFI_CIPHER_TYPE_NONE\u001b[0m\n\u001b[0;32mI (0) scan: Channel \t\t6\u001b[0m\n"
+            ]
+          },
+          "expected": "SSID \t\tNearby_AP"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}
