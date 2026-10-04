@@ -9,7 +9,7 @@
     "in_scope_active": 291,
     "in_scope_deferred": 21,
     "audited": 25,
-    "verified_configs": 25,
+    "verified_configs": 26,
     "verified": 25
   },
   "entries": [
@@ -25280,10 +25280,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-04T12:37:11Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -25315,18 +25317,33 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
-            "observability_level": "L4_internal",
-            "scenario_path": "unisim-scenarios/storage_nvs_nvs_iteration.scenario.json",
+            "observability_level": "L2_log",
+            "scenario_path": "storage/nvs_nvs_iteration/unisim-scenarios/storage_nvs_nvs_iteration.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
+            "positive_cases": [
+              "Erasing default NVS partition and reinitializing NVS sandbox",
+              "Writing 7 u32 mock data key-value pairs to namespace '_mock_data'",
+              "Writing 7 i8 mock data key-value pairs to namespace '_mock_data'",
+              "Iterating over NVS_TYPE_U32 data and validating entry info",
+              "Iterating over NVS_TYPE_I8 data and validating entry info",
+              "Iterating over NVS_TYPE_ANY data and validating total 14 items count"
+            ],
             "negative_cases": [],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261004-esp.storage.nvs.nvs_iteration-verified",
+            "assets_sha256": "c528f8fd5077b36e5114aa28ac727c17c62caaffbf0f575b8b07547f89e81076",
+            "scenario_sha256": "7ca69a5f0ba2323ce160cec8a24c2d57302ff5e8b62e44d2b45856c77fcc09cb",
+            "execution_report_ref": ".governance/reports/storage/nvs_nvs_iteration/run-report.json",
+            "verified_commit": "63d2651f60ab40917542e871af4e19b34f1ccac3",
+            "verified_at": "2026-10-04T12:36:53Z"
+          }
         }
       ],
       "target_app_dir": "storage/nvs_nvs_iteration"

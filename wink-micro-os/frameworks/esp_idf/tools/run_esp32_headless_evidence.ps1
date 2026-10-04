@@ -87,7 +87,8 @@ $allCarriers = @(
     @{ Name = 'spiffs'; Rel = 'vendor/esp_idfv61/storage/spiffs'; Channel = 'SPIFFS Filesystem & VFS RAM Sandbox Operations' },
     @{ Name = 'i2c_i2c_eeprom'; Rel = 'vendor/esp_idfv61/peripherals/i2c_i2c_eeprom'; Channel = 'I2C Master Bus Communication & EEPROM Read/Write' },
     @{ Name = 'uart_uart_events'; Rel = 'vendor/esp_idfv61/peripherals/uart_uart_events'; Channel = 'UART FreeRTOS Event Queue & Pattern Detect' },
-    @{ Name = 'ledc_ledc_fade'; Rel = 'vendor/esp_idfv61/peripherals/ledc_ledc_fade'; Channel = 'LEDC Hardware Smooth Fade & Semaphore Callback' }
+    @{ Name = 'ledc_ledc_fade'; Rel = 'vendor/esp_idfv61/peripherals/ledc_ledc_fade'; Channel = 'LEDC Hardware Smooth Fade & Semaphore Callback' },
+    @{ Name = 'nvs_nvs_iteration'; Rel = 'vendor/esp_idfv61/storage/nvs_nvs_iteration'; Channel = 'NVS Key Iteration & Type Filter' }
 )
 
 $carriers = @()

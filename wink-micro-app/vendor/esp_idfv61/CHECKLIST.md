@@ -3,7 +3,7 @@
 # ESP-IDF v6.1 官方示例全量仿真适配核对清单 (Checklist)
 
 > **数据单一事实源（SSOT）**：[`checklist.data.json`](.governance/data/checklist.data.json)（Spec v2.0.0，多配置实例与五维正交模型）  
-> **生成时间**：2026-10-03  
+> **生成时间**：2026-10-04  
 > **分类规范**：[`CLASSIFICATION-SPEC.md`](.governance/specs/CLASSIFICATION-SPEC.md) (v2.0)  
 > **能力字典**：[`capability-catalog.yaml`](.governance/catalog/capability-catalog.yaml)  
 > **隔离区白名单**：[`gates/quarantine.yaml`](.governance/gates/quarantine.yaml)（10 项存量债务，14 天 TTL 生效中）  
@@ -14,9 +14,9 @@
 ## 一、 总体适配进度统计
 
 - **官方独立示例总数**：**478 个**
-  - `[x]` **已完成六要素实证 (Verified)**：**25 项**
+  - `[x]` **已完成六要素实证 (Verified)**：**26 项**
   - `[?]` **存量隔离待补凭证 (Quarantined Debt)**：**0 项**（14 天 TTL 过期硬阻断，至 `2026-10-13`）
-  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**266 项**
+  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**265 项**
   - `[-]` **明确产品排除 / 暂缓投入 (Out-of-Scope / Deferred)**：**187 项**（编译期 `WINK_SLA_ERROR` Fail-Loud 阻断）
   - `?` **待深度审定 (Pending Audit / Unknown Scope)**：**0 项**
 
@@ -30,7 +30,7 @@
 | 04 | [网络与应用层通信协议 (Protocols)](#protocols) | 35 项 | `#185 ~ #219` | 2 项 | 0 项 |
 | 05 | [Wi-Fi 无线局域网 (Wi-Fi)](#wifi) | 24 项 | `#220 ~ #243` | 1 项 | 0 项 |
 | 06 | [蓝牙协议栈 (Bluetooth)](#bluetooth) | 147 项 | `#244 ~ #390` | 1 项 | 0 项 |
-| 07 | [片上存储与文件系统 (Storage)](#storage) | 27 项 | `#391 ~ #417` | 3 项 | 0 项 |
+| 07 | [片上存储与文件系统 (Storage)](#storage) | 27 项 | `#391 ~ #417` | 4 项 | 0 项 |
 | 08 | [底层网络与接口 (Network)](#network) | 5 项 | `#418 ~ #422` | 0 项 | 0 项 |
 | 09 | [C++ 运行时与语言特性 (C++)](#cxx) | 3 项 | `#423 ~ #425` | 0 项 | 0 项 |
 | 10 | [构建系统与组件组织 (Build System)](#build_system) | 19 项 | `#426 ~ #444` | 0 项 | 0 项 |
@@ -549,7 +549,7 @@
 ---
 
 <a id="storage"></a>
-### 片上存储与文件系统 (Storage)（共 27 项 | 编号 `#391 ~ #417` | 已实证: 3 项 | 隔离待补: 0 项）
+### 片上存储与文件系统 (Storage)（共 27 项 | 编号 `#391 ~ #417` | 已实证: 4 项 | 隔离待补: 0 项）
 
 | 状态 | 编号 | 官方子示例相对路径 | 可观测等级 | 优先级 | 对应 wink-micro-app | 验收标准与架构说明 |
 | :---: | :---: | :--- | :---: | :---: | :--- | :--- |
@@ -563,7 +563,7 @@
 | [ ] | 398 | `storage/littlefs` | 📜 Level 2 | P2 | `storage/littlefs` | [Lane 5: 本地存储] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 399 | `storage/nvs/nvs_bootloader` | ⚙️ Level 4 | P2 | `storage/nvs_nvs_bootloader` | [Lane 5: 本地存储] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 400 | `storage/nvs/nvs_console` | ⚙️ Level 4 | P2 | `storage/nvs_nvs_console` | [Lane 5: 本地存储] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 401 | `storage/nvs/nvs_iteration` | ⚙️ Level 4 | P2 | `storage/nvs_nvs_iteration` | [Lane 5: 本地存储] 待排期。依赖进一步框架门面扩展。 |
+| [x] | 401 | `storage/nvs/nvs_iteration` | 📜 Level 2 | P0 | [`storage/nvs_nvs_iteration`](storage/nvs_nvs_iteration) | [Lane 5: 本地存储] 已完成实证。 |
 | [x] | 402 | `storage/nvs/nvs_rw_blob` | ⚙️ Level 4 | P0 | [`storage/nvs_nvs_rw_blob`](storage/nvs_nvs_rw_blob) | [Lane 5: 本地存储] 已完成实证。 |
 | [x] | 403 | `storage/nvs/nvs_rw_value` | ⚙️ Level 4 | P0 | [`storage/nvs_nvs_rw_value`](storage/nvs_nvs_rw_value) | [Lane 5: 本地存储] 已完成实证。 |
 | [ ] | 404 | `storage/nvs/nvs_rw_value_cxx` | ⚙️ Level 4 | P1 | `storage/nvs_nvs_rw_value_cxx` | [Lane 5: 本地存储] 待排期。依赖进一步框架门面扩展。 |
