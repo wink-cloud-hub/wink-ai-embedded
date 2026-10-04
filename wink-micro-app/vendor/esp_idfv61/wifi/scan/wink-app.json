@@ -1,0 +1,17 @@
+{
+  "app_name": "esp_idfv61_wifi_scan",
+  "display_name": "Espressif ESP-IDF Wi-Fi Scan",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "mcu": "esp32",
+  "tick_ms": 1,
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/wifi/scan/main",
+    "files": {
+      "scan.c": "ee0e6ec9184952b1d8f4e4a09f9c123b541ef0b53b703b2b0b97be463b893fbd"
+    }
+  },
+  "devices": {}
+}

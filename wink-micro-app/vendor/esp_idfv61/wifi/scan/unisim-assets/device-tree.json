@@ -1,0 +1,9 @@
+{
+  "appName": "esp_idfv61_wifi_scan",
+  "board": "esp32_devkitc_v4",
+  "devices": {},
+  "family": "esp32",
+  "core": "xtensa-lx6",
+  "mcu": "esp32",
+  "vendor": "espressif"
+}

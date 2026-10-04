@@ -90,7 +90,8 @@ $allCarriers = @(
     @{ Name = 'ledc_ledc_fade'; Rel = 'vendor/esp_idfv61/peripherals/ledc_ledc_fade'; Channel = 'LEDC Hardware Smooth Fade & Semaphore Callback' },
     @{ Name = 'nvs_nvs_iteration'; Rel = 'vendor/esp_idfv61/storage/nvs_nvs_iteration'; Channel = 'NVS Key Iteration & Type Filter' },
     @{ Name = 'getting_started_softAP'; Rel = 'vendor/esp_idfv61/wifi/getting_started_softAP'; Channel = 'Wi-Fi SoftAP Hotspot & Broadcast Beacon' },
-    @{ Name = 'fast_scan'; Rel = 'vendor/esp_idfv61/wifi/fast_scan'; Channel = 'Wi-Fi Fast Scan & Association Determinism' }
+    @{ Name = 'fast_scan'; Rel = 'vendor/esp_idfv61/wifi/fast_scan'; Channel = 'Wi-Fi Fast Scan & Association Determinism' },
+    @{ Name = 'scan'; Rel = 'vendor/esp_idfv61/wifi/scan'; Channel = 'Wi-Fi Active Scan & AP Discovery' }
 )
 
 $carriers = @()

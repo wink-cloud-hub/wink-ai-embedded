@@ -1,0 +1,81 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 Wi-Fi Active Scan & AP Discovery Deterministic Proof",
+    "templateId": "esp_idfv61_wifi_scan",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "condition": "equals",
+      "expected": 3.3,
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1000ms",
+      "target": "wifi:sta:state",
+      "condition": "equals",
+      "expected": "STARTED",
+      "matcher": "STARTED",
+      "description": "断言 Wi-Fi 底座状态机推进至 STARTED 激活态"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Total APs scanned = 3",
+      "description": "断言 UART 输出扫描发现的 AP 总数"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "SSID \t\tmyssid",
+      "description": "断言 UART 打印高信号强度目标 AP myssid"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "SSID \t\tTestSSID",
+      "description": "断言 UART 打印测试热点 AP TestSSID"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "SSID \t\tNearby_AP",
+      "description": "断言 UART 打印周边开放式 AP Nearby_AP"
+    }
+  ]
+}

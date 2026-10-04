@@ -34,11 +34,20 @@ typedef enum {
     WIFI_AUTH_WPA_PSK,
     WIFI_AUTH_WPA2_PSK,
     WIFI_AUTH_WPA_WPA2_PSK,
-    WIFI_AUTH_WPA2_ENTERPRISE,
+    WIFI_AUTH_ENTERPRISE,
+    WIFI_AUTH_WPA2_ENTERPRISE = WIFI_AUTH_ENTERPRISE,
     WIFI_AUTH_WPA3_PSK,
     WIFI_AUTH_WPA2_WPA3_PSK,
     WIFI_AUTH_WAPI_PSK,
     WIFI_AUTH_OWE,
+    WIFI_AUTH_WPA3_ENT_192,
+    WIFI_AUTH_DUMMY_1,
+    WIFI_AUTH_DUMMY_2,
+    WIFI_AUTH_DPP,
+    WIFI_AUTH_WPA3_ENTERPRISE,
+    WIFI_AUTH_WPA2_WPA3_ENTERPRISE,
+    WIFI_AUTH_WPA_ENTERPRISE,
+    WIFI_AUTH_UNKNOWN,
     WIFI_AUTH_MAX
 } wifi_auth_mode_t;
 
@@ -241,9 +250,15 @@ typedef struct {
     uint32_t wps:1;
     uint32_t ftm_responder:1;
     uint32_t ftm_initiator:1;
-    uint32_t reserved:25;
+    uint32_t akm_dpp:1;
+    uint32_t reserved:24;
     wifi_country_t country;
 } wifi_ap_record_t;
+
+typedef struct {
+    uint16_t ghz_2_channels;
+    uint32_t ghz_5_channels;
+} wifi_scan_channel_bitmap_t;
 
 typedef struct {
     const uint8_t *ssid;
@@ -251,6 +266,7 @@ typedef struct {
     uint8_t channel;
     uint8_t show_hidden;
     uint8_t scan_type;
+    wifi_scan_channel_bitmap_t channel_bitmap;
 } wifi_scan_config_t;
 
 #ifdef __cplusplus
