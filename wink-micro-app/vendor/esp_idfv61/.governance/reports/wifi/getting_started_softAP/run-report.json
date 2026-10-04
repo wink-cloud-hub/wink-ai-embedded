@@ -1,0 +1,70 @@
+{
+  "timestamp": "2026-10-04T13:42:42.781Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 Wi-Fi softAP deterministic proof",
+        "templateId": "esp_idfv61_wifi_getting_started_softAP",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 87
+      },
+      "summary": {
+        "totalSteps": 4,
+        "passedSteps": 4,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": "STARTED",
+          "expected": "STARTED"
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) wifi softAP: ESP_WIFI_MODE_AP\u001b[0m\n\u001b[0;32mI (0) WIFI_SIM: Wi-Fi initialized in simulation mode\u001b[0m\n\u001b[0;32mI (0) wifi softAP: wifi_init_softap finished. SSID:myssid password:mypassword channel:1\u001b[0m\n"
+            ]
+          },
+          "expected": "ESP_WIFI_MODE_AP"
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) wifi softAP: ESP_WIFI_MODE_AP\u001b[0m\n\u001b[0;32mI (0) WIFI_SIM: Wi-Fi initialized in simulation mode\u001b[0m\n\u001b[0;32mI (0) wifi softAP: wifi_init_softap finished. SSID:myssid password:mypassword channel:1\u001b[0m\n"
+            ]
+          },
+          "expected": "wifi_init_softap finished. SSID:myssid password:mypassword channel:1"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

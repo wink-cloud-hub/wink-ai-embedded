@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 25,
-    "verified_configs": 26,
+    "audited": 27,
+    "verified_configs": 27,
     "verified": 25
   },
   "entries": [
@@ -14044,10 +14044,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-04T13:42:55Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -14080,18 +14082,32 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/wifi_getting_started_softAP.scenario.json",
+            "scenario_path": "wifi/getting_started_softAP/unisim-scenarios/wifi_getting_started_softAP.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
+            "positive_cases": [
+              "Power rail VCC_3V3 maintained at 3.3V",
+              "Wi-Fi subsystem state machine advanced to STARTED",
+              "Wi-Fi subsystem initialization and AP mode activation (ESP_WIFI_MODE_AP)",
+              "SoftAP network interface creation and beacon broadcast configuration",
+              "Hotspot operational with SSID 'myssid' on channel 1"
+            ],
             "negative_cases": [],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261004-esp.wifi.getting_started.softap-verified",
+            "assets_sha256": "eb2513ef99d38bc8fc66c954413f5228ae56911d2971302e6408c40d7ffc767d",
+            "scenario_sha256": "55c592ab539744dfc1bcd79ab09e1a696d72007a528ebcd2e016a0467095ec8f",
+            "execution_report_ref": ".governance/reports/wifi/getting_started_softAP/run-report.json",
+            "verified_commit": "d71e0909b0561c33716da1bb5cac6451a29c42ad",
+            "verified_at": "2026-10-04T13:42:42Z"
+          }
         }
       ],
       "target_app_dir": "wifi/getting_started_softAP"
