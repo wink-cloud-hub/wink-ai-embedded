@@ -1,0 +1,17 @@
+{
+  "app_name": "esp_idfv61_nvs_nvs_iteration",
+  "display_name": "Espressif ESP-IDF nvs_iteration",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "mcu": "esp32",
+  "tick_ms": 1,
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/storage/nvs/nvs_iteration/main",
+    "files": {
+      "nvs_iteration_example.c": "98be250a7c002f426d21d02c0abae9b59762dec92dc0109d57e0eb2b35f8a713"
+    }
+  },
+  "devices": {}
+}

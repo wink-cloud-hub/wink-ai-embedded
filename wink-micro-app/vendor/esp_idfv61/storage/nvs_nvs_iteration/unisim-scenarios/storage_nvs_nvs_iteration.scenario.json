@@ -1,0 +1,106 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 storage_nvs_nvs_iteration headless deterministic proof",
+    "templateId": "esp_idfv61_nvs_nvs_iteration",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Erasing the contents of the default NVS partition...",
+      "description": "断言擦除并初始化默认 NVS 分区"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Wrote 7 u32 mock data key-value pairs to NVS namespace '_mock_data'.",
+      "description": "断言批量写入 7 项 uint32_t 模拟键值对"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Wrote 7 i8 mock data key-value pairs to NVS namespace '_mock_data'.",
+      "description": "断言批量写入 7 项 int8_t 模拟键值对"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Entry info: key 'system_startup' for data type type NVS_TYPE_U32 in namespace '_mock_data'",
+      "description": "断言使用 NVS_TYPE_U32 迭代器成功定位并解析 u32 类型条目"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Entry info: key 'temperature' for data type type NVS_TYPE_I8 in namespace '_mock_data'",
+      "description": "断言使用 NVS_TYPE_I8 迭代器成功定位并解析 i8 类型条目"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Iterated over 14 entries.",
+      "description": "断言使用 NVS_TYPE_ANY 迭代器全量遍历出 14 项条目"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "2000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Returning from app_main().",
+      "description": "断言完成所有迭代与资源释放后安全退出 app_main"
+    }
+  ]
+}
