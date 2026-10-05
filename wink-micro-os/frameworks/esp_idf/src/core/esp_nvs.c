@@ -2,6 +2,7 @@
 #include "nvs_flash.h"
 #include "esp_sim_handle.h"
 #include "nvs.h"
+#include "esp_fault.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -326,6 +327,9 @@ esp_err_t nvs_get_used_entry_count(nvs_handle_t handle, size_t *used_entries) {
 }
 
 static esp_err_t nvs_set_typed_blob(nvs_handle_t handle, const char *key, const void *value, size_t length, nvs_type_t type) {
+    if (sim_esp_fault_is_active(ESP_FAULT_DOMAIN_NVS, ESP_FAULT_NVS_PARTITION_FULL)) {
+        return ESP_ERR_NVS_NOT_ENOUGH_SPACE;
+    }
     esp_nvs_handle_t *record = resolve_nvs_handle(handle);
     if (!record || !key || !value || length > NVS_VAL_BUF_SIZE) {
         return ESP_ERR_INVALID_ARG;
@@ -360,6 +364,9 @@ esp_err_t nvs_set_blob(nvs_handle_t handle, const char *key, const void *value, 
 }
 
 esp_err_t nvs_get_blob(nvs_handle_t handle, const char *key, void *out_value, size_t *length) {
+    if (sim_esp_fault_is_active(ESP_FAULT_DOMAIN_NVS, ESP_FAULT_NVS_READ_CORRUPT)) {
+        return ESP_ERR_NVS_CORRUPT_KEY_PART;
+    }
     esp_nvs_handle_t *record = resolve_nvs_handle(handle);
     if (!record || !key || !length) {
         return ESP_ERR_INVALID_ARG;

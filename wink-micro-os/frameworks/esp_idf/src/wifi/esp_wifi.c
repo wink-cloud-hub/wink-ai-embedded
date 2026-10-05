@@ -9,6 +9,7 @@
 #include "sim_wifi_env.h"
 #include "sim_network_broker.h"
 #include "esp_netif.h"
+#include "esp_fault.h"
 #include <string.h>
 
 ESP_EVENT_DEFINE_BASE(WIFI_EVENT);
@@ -87,6 +88,35 @@ static void wifi_connect_work_cb(void *arg, uint32_t work_token) {
         return;
     }
 
+    /* 故障注入检查：鉴权失败 */
+    if (sim_esp_fault_is_active(ESP_FAULT_DOMAIN_WIFI, ESP_FAULT_WIFI_AUTH_FAIL)) {
+        s_wifi.state = WIFI_SIM_DISCONNECTED;
+        sim_wifi_env_set_state(WIFI_SIM_DISCONNECTED);
+        sim_network_broker_set_ready(false);
+        wifi_event_sta_disconnected_t de;
+        memset(&de, 0, sizeof(de));
+        uint32_t reason = sim_esp_fault_get_param(ESP_FAULT_DOMAIN_WIFI, ESP_FAULT_WIFI_AUTH_FAIL);
+        de.reason = reason ? (uint8_t)reason : WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT;
+        memcpy(de.ssid, s_wifi.sta_cfg.ssid, WIFI_SSID_LEN);
+        de.ssid_len = (uint8_t)safe_strnlen((const char*)s_wifi.sta_cfg.ssid, WIFI_SSID_LEN);
+        esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &de, sizeof(de), portMAX_DELAY);
+        return;
+    }
+
+    /* 故障注入检查：信标丢失 */
+    if (sim_esp_fault_is_active(ESP_FAULT_DOMAIN_WIFI, ESP_FAULT_WIFI_BEACON_TIMEOUT)) {
+        s_wifi.state = WIFI_SIM_DISCONNECTED;
+        sim_wifi_env_set_state(WIFI_SIM_DISCONNECTED);
+        sim_network_broker_set_ready(false);
+        wifi_event_sta_disconnected_t de;
+        memset(&de, 0, sizeof(de));
+        de.reason = WIFI_REASON_BEACON_TIMEOUT;
+        memcpy(de.ssid, s_wifi.sta_cfg.ssid, WIFI_SSID_LEN);
+        de.ssid_len = (uint8_t)safe_strnlen((const char*)s_wifi.sta_cfg.ssid, WIFI_SSID_LEN);
+        esp_event_post(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &de, sizeof(de), portMAX_DELAY);
+        return;
+    }
+
     /* 查找虚拟 AP */
     const sim_wifi_ap_t *ap = sim_wifi_env_find_ap_by_ssid((const char*)s_wifi.sta_cfg.ssid);
     if (!ap || ap->drop_beacon) {
@@ -134,6 +164,11 @@ static void wifi_connect_work_cb(void *arg, uint32_t work_token) {
 
     /* 再次校验，防止 STA_CONNECTED 回调中调用了 disconnect / stop */
     if (s_wifi.state == WIFI_SIM_CONNECTED && s_wifi_generation == my_token) {
+        /* 故障注入检查：DHCP 超时 */
+        if (sim_esp_fault_is_active(ESP_FAULT_DOMAIN_NETIF, ESP_FAULT_NETIF_DHCP_TIMEOUT)) {
+            return;
+        }
+
         /* 阶段 2：DHCP (地址协商完成) */
         s_wifi.state = WIFI_SIM_GOT_IP;
         sim_wifi_env_set_state(WIFI_SIM_GOT_IP);

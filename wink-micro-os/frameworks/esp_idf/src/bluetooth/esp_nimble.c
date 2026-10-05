@@ -10,6 +10,7 @@
 #include "services/gap/ble_svc_gap.h"
 #include "services/gatt/ble_svc_gatt.h"
 #include "os/os_mbuf.h"
+#include "esp_fault.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -487,6 +488,10 @@ int ble_gap_adv_start(uint8_t own_addr_type, const ble_addr_t *direct_addr,
     (void)own_addr_type;
     (void)direct_addr;
     (void)duration_ms;
+
+    if (sim_esp_fault_is_active(ESP_FAULT_DOMAIN_BLE, ESP_FAULT_BLE_ADV_REJECT)) {
+        return BLE_HS_EINVAL;
+    }
 
     if (adv_params) {
         s_ble_state.adv_params = *adv_params;

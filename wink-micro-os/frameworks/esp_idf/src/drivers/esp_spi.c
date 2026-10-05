@@ -4,6 +4,7 @@
 #include "esp_log.h"
 #include "esp_sim_handle.h"
 #include "esp_idf_wink.h"
+#include "esp_fault.h"
 #include <string.h>
 
 #define MAX_SPI_DEVS 8
@@ -138,6 +139,9 @@ esp_err_t spi_device_transmit(spi_device_handle_t handle, spi_transaction_t *tra
     struct spi_device_t *dev = resolve_spi_device(handle);
     if (!dev || !trans_desc) {
         return ESP_ERR_INVALID_ARG;
+    }
+    if (sim_esp_fault_is_active(ESP_FAULT_DOMAIN_SPI, ESP_FAULT_SPI_TRANSFER_FAIL)) {
+        return ESP_ERR_INVALID_RESPONSE;
     }
 
     /* AT93C46D Half-Duplex EEPROM emulation (8-bit mode) */

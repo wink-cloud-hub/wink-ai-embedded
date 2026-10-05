@@ -3,6 +3,7 @@
 #include "hal/pal_i2c.h"
 #include "esp_sim_handle.h"
 #include "esp_idf_wink.h"
+#include "esp_fault.h"
 #include <string.h>
 
 #define MAX_MASTER_BUSES SOC_HP_I2C_NUM
@@ -133,6 +134,18 @@ esp_err_t i2c_master_transmit(i2c_master_dev_handle_t handle, const uint8_t *wri
     if (!dev || !dev->bus || !dev->bus->in_use) {
         return ESP_ERR_INVALID_ARG;
     }
+    if (sim_esp_fault_is_active(ESP_FAULT_DOMAIN_I2C, ESP_FAULT_I2C_NACK)) {
+        uint32_t p = sim_esp_fault_get_param(ESP_FAULT_DOMAIN_I2C, ESP_FAULT_I2C_NACK);
+        if (p == 0 || p == dev->addr) {
+            return ESP_ERR_NOT_FOUND;
+        }
+    }
+    if (sim_esp_fault_is_active(ESP_FAULT_DOMAIN_I2C, ESP_FAULT_I2C_TIMEOUT)) {
+        uint32_t p = sim_esp_fault_get_param(ESP_FAULT_DOMAIN_I2C, ESP_FAULT_I2C_TIMEOUT);
+        if (p == 0 || p == dev->addr) {
+            return ESP_ERR_TIMEOUT;
+        }
+    }
     uint32_t t_ms = (xfer_timeout_ms < 0) ? PAL_I2C_DEFAULT_TIMEOUT_MS : (uint32_t)xfer_timeout_ms;
     wink_status_t st = pal_i2c_transfer_timeout(dev->bus->port, dev->addr, write_buffer, (uint32_t)write_size, NULL, 0, t_ms);
     return esp_err_from_wink(st);
@@ -142,6 +155,18 @@ esp_err_t i2c_master_receive(i2c_master_dev_handle_t handle, uint8_t *read_buffe
     struct i2c_master_dev_t *dev = resolve_i2c_dev(handle);
     if (!dev || !dev->bus || !dev->bus->in_use) {
         return ESP_ERR_INVALID_ARG;
+    }
+    if (sim_esp_fault_is_active(ESP_FAULT_DOMAIN_I2C, ESP_FAULT_I2C_NACK)) {
+        uint32_t p = sim_esp_fault_get_param(ESP_FAULT_DOMAIN_I2C, ESP_FAULT_I2C_NACK);
+        if (p == 0 || p == dev->addr) {
+            return ESP_ERR_NOT_FOUND;
+        }
+    }
+    if (sim_esp_fault_is_active(ESP_FAULT_DOMAIN_I2C, ESP_FAULT_I2C_TIMEOUT)) {
+        uint32_t p = sim_esp_fault_get_param(ESP_FAULT_DOMAIN_I2C, ESP_FAULT_I2C_TIMEOUT);
+        if (p == 0 || p == dev->addr) {
+            return ESP_ERR_TIMEOUT;
+        }
     }
     uint32_t t_ms = (xfer_timeout_ms < 0) ? PAL_I2C_DEFAULT_TIMEOUT_MS : (uint32_t)xfer_timeout_ms;
     wink_status_t st = pal_i2c_transfer_timeout(dev->bus->port, dev->addr, NULL, 0, read_buffer, (uint32_t)read_size, t_ms);
@@ -153,6 +178,18 @@ esp_err_t i2c_master_transmit_receive(i2c_master_dev_handle_t handle, const uint
     if (!dev || !dev->bus || !dev->bus->in_use) {
         return ESP_ERR_INVALID_ARG;
     }
+    if (sim_esp_fault_is_active(ESP_FAULT_DOMAIN_I2C, ESP_FAULT_I2C_NACK)) {
+        uint32_t p = sim_esp_fault_get_param(ESP_FAULT_DOMAIN_I2C, ESP_FAULT_I2C_NACK);
+        if (p == 0 || p == dev->addr) {
+            return ESP_ERR_NOT_FOUND;
+        }
+    }
+    if (sim_esp_fault_is_active(ESP_FAULT_DOMAIN_I2C, ESP_FAULT_I2C_TIMEOUT)) {
+        uint32_t p = sim_esp_fault_get_param(ESP_FAULT_DOMAIN_I2C, ESP_FAULT_I2C_TIMEOUT);
+        if (p == 0 || p == dev->addr) {
+            return ESP_ERR_TIMEOUT;
+        }
+    }
     uint32_t t_ms = (xfer_timeout_ms < 0) ? PAL_I2C_DEFAULT_TIMEOUT_MS : (uint32_t)xfer_timeout_ms;
     wink_status_t st = pal_i2c_transfer_timeout(dev->bus->port, dev->addr, write_buffer, (uint32_t)write_size, read_buffer, (uint32_t)read_size, t_ms);
     return esp_err_from_wink(st);
@@ -162,6 +199,18 @@ esp_err_t i2c_master_probe(i2c_master_bus_handle_t bus_handle, uint16_t address,
     struct i2c_master_bus_t *bus = resolve_i2c_bus(bus_handle);
     if (!bus) {
         return ESP_ERR_INVALID_ARG;
+    }
+    if (sim_esp_fault_is_active(ESP_FAULT_DOMAIN_I2C, ESP_FAULT_I2C_NACK)) {
+        uint32_t p = sim_esp_fault_get_param(ESP_FAULT_DOMAIN_I2C, ESP_FAULT_I2C_NACK);
+        if (p == 0 || p == address) {
+            return ESP_ERR_NOT_FOUND;
+        }
+    }
+    if (sim_esp_fault_is_active(ESP_FAULT_DOMAIN_I2C, ESP_FAULT_I2C_TIMEOUT)) {
+        uint32_t p = sim_esp_fault_get_param(ESP_FAULT_DOMAIN_I2C, ESP_FAULT_I2C_TIMEOUT);
+        if (p == 0 || p == address) {
+            return ESP_ERR_TIMEOUT;
+        }
     }
     uint32_t t_ms = (xfer_timeout_ms < 0) ? PAL_I2C_DEFAULT_TIMEOUT_MS : (uint32_t)xfer_timeout_ms;
     wink_status_t st = pal_i2c_transfer_timeout(bus->port, address, NULL, 0, NULL, 0, t_ms);

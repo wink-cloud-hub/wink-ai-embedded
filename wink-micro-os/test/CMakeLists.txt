@@ -1701,6 +1701,27 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     add_test(NAME test_esp_i2c COMMAND test_esp_i2c)
     set_tests_properties(test_esp_i2c PROPERTIES LABELS "esp_idf;core")
 
+    add_executable(test_esp_fault
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_fault.c
+        ${UNITY_DIR}/unity.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_fault PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/core
+        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
+    )
+    target_link_libraries(test_esp_fault PRIVATE wink_framework_esp_idf dal)
+    target_compile_options(test_esp_fault PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(test_esp_fault generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_fault)
+    add_test(NAME test_esp_fault COMMAND test_esp_fault)
+    set_tests_properties(test_esp_fault PROPERTIES LABELS "esp_idf;core")
+
     add_executable(test_esp_uart
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_uart.c
         ${UNITY_DIR}/unity.c
@@ -2298,6 +2319,9 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     )
     add_esp_idf_wasm_compile_check(test_esp_nvs
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_nvs.c
+    )
+    add_esp_idf_wasm_compile_check(test_esp_fault
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_fault.c
     )
     add_esp_idf_wasm_compile_check(test_esp_idf_phase3
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_idf_phase3.c

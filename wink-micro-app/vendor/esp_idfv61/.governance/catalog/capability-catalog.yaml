@@ -55,6 +55,8 @@ capabilities:
     description: Phase 4 Wasm 模块实例级彻底销毁与幂等重建
     owned_paths:
     - wink-micro-os/targets/wasm/wasm_bridge.c
+    - wink-micro-os/frameworks/esp_idf/src/core/esp_fault.c
+    - wink-micro-os/frameworks/esp_idf/src/core/esp_fault.h
     soc_support:
     - esp32
     - esp32s3
