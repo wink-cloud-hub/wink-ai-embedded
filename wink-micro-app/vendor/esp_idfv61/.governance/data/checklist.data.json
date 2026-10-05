@@ -84,7 +84,7 @@
                 "detects": "虚拟时钟冻结导致翻转停止"
               }
             ],
-            "sla_error_symbol": null
+            "sla_error_symbol": "CLOCK_STOP_TIMEOUT"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -3170,12 +3170,12 @@
             ],
             "negative_cases": [
               {
-                "stimulus": "注入占空比越界变异",
-                "expect_error": "timeout",
-                "detects": "断言器敏感捕获变异日志输出"
+                "stimulus": "注入占空比越界变异 (>4095)",
+                "expect_error": "ESP_ERR_INVALID_ARG",
+                "detects": "LEDC 通道占空比边界校验缺失导致溢出"
               }
             ],
-            "sla_error_symbol": null
+            "sla_error_symbol": "ESP_ERR_INVALID_ARG"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -5298,7 +5298,7 @@
                 "detects": "零周期死锁模拟"
               }
             ],
-            "sla_error_symbol": null
+            "sla_error_symbol": "ESP_ERR_INVALID_ARG"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -6159,7 +6159,7 @@
                 "detects": "缓冲区溢出静默丢弃"
               }
             ],
-            "sla_error_symbol": null
+            "sla_error_symbol": "ESP_ERR_NO_MEM"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -9910,7 +9910,7 @@
                 "detects": "看门狗未配置时静默放行导致死锁盲区"
               }
             ],
-            "sla_error_symbol": null
+            "sla_error_symbol": "ESP_ERR_INVALID_STATE"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -11891,12 +11891,12 @@
             ],
             "negative_cases": [
               {
-                "stimulus": "无效 URL / DNS 不可达",
-                "expect_error": "ESP_ERR_HTTP_CONNECT",
-                "detects": "静默失败无错误码"
+                "stimulus": "服务端应答 404 Not Found 异常路由",
+                "expect_error": "404",
+                "detects": "HTTP 异常状态码未被感知捕获"
               }
             ],
-            "sla_error_symbol": null
+            "sla_error_symbol": "HTTP_STATUS_404"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -14360,9 +14360,23 @@
             "scenario_path": "wifi/wifi_sta/unisim-scenarios/wifi_sta.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "positive_cases": [
+              {
+                "name": "Wi-Fi Station 模式连接与获取 IP",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "got ip"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "注入 AP 空口信标丢失 (DROP_BEACON)",
+                "expect_error": "DISCONNECTED",
+                "detects": "Wi-Fi 异常断开时未能感知并触发重连/断开事件"
+              }
+            ],
+            "sla_error_symbol": "WIFI_EVENT_STA_DISCONNECTED"
           },
           "evidence": {
             "backend": "wasm_simulation",

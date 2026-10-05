@@ -1,0 +1,51 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 http_client headless 404/500 fault rejection proof",
+    "templateId": "esp_idfv61_http_client_fail",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "INJECT_NET_FIXTURE",
+      "timeUs": "0ms",
+      "protocol": "http",
+      "description": "预注入 404 Not Found 与 500 Server Error 异常响应路由",
+      "routes": [
+        {
+          "method": "GET",
+          "url_prefix": "http://httpbin.org/get",
+          "status_code": 404,
+          "headers": { "Content-Type": "application/json" },
+          "body": "{\"error\":\"Not Found\",\"code\":404}"
+        },
+        {
+          "method": "POST",
+          "url_prefix": "http://httpbin.org/post",
+          "status_code": 500,
+          "headers": { "Content-Type": "application/json" },
+          "body": "{\"error\":\"Internal Server Error\",\"code\":500}"
+        }
+      ]
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "http:client:status_code",
+      "matcher": 404,
+      "description": "断言首个 HTTP GET 请求感知并准确返回 404 状态码"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "HTTP_EVENT_ON_FINISH",
+      "description": "断言客户端生命周期在异常状态码分发后依然安全流转至 FINISH"
+    }
+  ]
+}

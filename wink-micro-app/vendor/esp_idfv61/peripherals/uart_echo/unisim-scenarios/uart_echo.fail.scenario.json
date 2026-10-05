@@ -1,0 +1,41 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 uart_echo headless framing fault rejection proof",
+    "templateId": "esp_idfv61_uart_echo_fail",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "2000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "INPUT_BUS",
+      "timeUs": "100ms",
+      "mode": "stream",
+      "busType": "uart",
+      "busId": 1,
+      "payload": {
+        "encoding": "utf8",
+        "text": "CORRUPTED_PACKET_TEST"
+      },
+      "description": "通过 UART1 RX 注入压力/边界报文数据"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["100ms", "1000ms"],
+      "busType": "uart",
+      "busId": 1,
+      "direction": "tx",
+      "matcher": "CORRUPTED_PACKET_TEST",
+      "description": "断言从 UART1 TX 观察到完全匹配的回显数据"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP32 ESP-IDF v6.1 blink_gpio headless fault & anomaly resilience proof",
+    "templateId": "esp_idfv61_blink_gpio_fail",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3500000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "gpio:2",
+      "matcher": 0,
+      "description": "[初始异常拦截] 初始上电 50ms 严禁误触发高电平，保持 0"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "gpio:2",
+      "matcher": 0,
+      "description": "[延时保护] 未达 1000ms 翻转阈值前保持 0，杜绝高频毛刺"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1050ms",
+      "target": "gpio:2",
+      "matcher": 1,
+      "description": "[首周期翻转] 确认 1000ms 门限生效翻转为 1"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "gpio:2",
+      "matcher": 1,
+      "description": "[高电平稳态] 维持高电平 1"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2050ms",
+      "target": "gpio:2",
+      "matcher": 0,
+      "description": "[次周期翻转] 翻转恢复为低电平 0"
+    }
+  ]
+}

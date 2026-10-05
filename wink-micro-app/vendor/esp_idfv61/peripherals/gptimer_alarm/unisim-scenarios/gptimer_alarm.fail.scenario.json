@@ -1,0 +1,34 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 gptimer_alarm counter monotonic boundary proof",
+    "templateId": "esp_idfv61_gptimer_alarm_fail",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "6000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "100ms",
+      "target": "timer:0/frequencyhz",
+      "matcher": 1000000,
+      "description": "断言通用硬件定时器基础时钟频率配置为 1MHz (1µs 分辨率)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "300ms",
+      "target": "timer:0/counter",
+      "matcher": { "$between": [200000, 400000] },
+      "description": "断言硬件定时器计数连续推进至 300ms 窗口"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "800ms",
+      "target": "timer:0/counter",
+      "matcher": { "$between": [700000, 900000] },
+      "description": "断言硬件定时器计数持续单调递增，未发生意外冻结"
+    }
+  ]
+}
