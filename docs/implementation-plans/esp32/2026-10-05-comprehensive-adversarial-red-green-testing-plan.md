@@ -7,6 +7,7 @@
 > **责任体系**：嵌入式仿真核心架构组 / 治理流水线 SOP 团队  
 > **适用目标**：`wink-micro-app/vendor/esp_idfv61` 官方示例库及 UniSim 仿真内核  
 > **关联架构评审**：[2026-10-05-esp-idf-completed-items-review.md](../../reviews/esp32/2026-10-05-esp-idf-completed-items-review.md)  
+> **Batch 0 技术设计**：[候选证据、断言自检与双实证绑定契约](../../zh/tech-designs/esp32/esp-idf-batch0-evidence-contract.md)
 > **关联核心规范**：ADR-0001 (负数错误码)、ADR-0004 (静态分发)、ADR-0043 (分层门禁)、ADR-0066 (PWM定点bp)、ADR-0092 (PAL增量规范)
 
 ---
@@ -36,6 +37,156 @@ WinkMicroOS 当前已建立起一套基于 Wasm Headless 的 ESP-IDF 官方示�
 
 ## 2. 六大落地战略支柱 (The 6 Strategic Pillars)
 
+### 当前执行批次：Batch 0 证据判定与晋升止血（2026-10-05 用户确认）
+
+本节 Batch 0~2 是先行验证的独立编号；§5 中的 Batch 编号用于后续全量推广，两者按各自标题区分。
+
+本轮先修治理工具的验收判据，再开展领域底座修复。历史提交和文件存在只表示实现资产已落地，不代表本轮业务验收完成；§5.1 的完成声明须按下列标准重新核验。只读基线为 Gate 1 执行 12/12、核验器接受 35/35，35 个已登记 verified 的配置中有 20 个 `negative_cases` 为空。
+
+| 顺序 | 修改范围 | 验收标准 |
+|---|---|---|
+| B0-1 | `mutator.py` 及结构化报告判定 | 仅接受本轮绑定场景中指定业务断言的实际失败；Runner timeout、步骤 passed 后无关退出、编译/加载失败、错误场景、重复步骤、失败发生在其他步骤均不得计为击杀。 |
+| B0-2 | `generate_checklist_v1_1.py` 的双实证判定 | 正常与故障处理报告必须绑定同一应用、配置与产物，且对应场景完整通过；只有 `.fail.scenario.json` 文件、旧报告或其他配置报告不能点亮 Red。故障处理声明须能定位真实故障激励与业务出口。 |
+| B0-3 | `pipeline.py` 的候选采集和运行隔离 | 每轮使用 UUID 目录，分开保存基准、自检和恢复报告与输入摘要；只产出 candidate_evidence，停止自签 auditor、自动写 verified、自动渲染正式看板及自动提交。失败保留诊断，不覆盖历史正式凭据或用户修改。 |
+| B0-4 | 回归与记录 | 对上述反例、有效断言失败、场景/产物错配、恢复失败及候选流程执行回归；运行 Gate 1、现有凭据只读核验和许可门禁，记录实际结果。 |
+
+本轮不签发审计、不晋升正式凭据。候选包采用独立的版本化格式，不改变现有 `scenario_sha256` 单场景语义或 `delivery_state` 枚举；缺少运行身份或能力时保留明确诊断，不构造成功凭据。完整人工审计后的事务晋升属于后续交付任务。
+
+测试结果口径：正常业务、故障处理及恢复场景均应通过；断言器自检应命中指定断言失败，且只证明 Matcher 活性；固件依赖和有效业务实现变异各自需要独立证据，不能用错误密码、断网或改错预期替代。解除故障/变异后必须重新通过正常基准。
+
+Batch 0 完成后，以 UART Echo 建立正常、故障处理、业务变异与恢复的完整示范，再推进 TWDT、CPU 计费和时钟治理。自动流水线本轮只证明所实际执行的检查类别，不宣称完整业务变异或硬件验收。
+
+#### Batch 0 执行记录（2026-10-05）
+
+- [x] B0-1：用反例复现日志关键字误判后，改为绑定场景/报告哈希、执行身份、目标业务步骤及逐步结果；补充真实 Runner error 诊断、JSON 布尔值错绑和产物篡改回归。
+- [x] B0-2：移除 `.fail` 文件存在即亮 Red 的规则；正式双实证辅助格式逐配置绑定正常/故障报告、产物、契约、独立 run 与既有审计。只读渲染结果为 35 项正常实证、0 项双实证；正式看板未写入。
+- [x] B0-3：候选流水线完成 UUID 应用副本、独立报告、基线/自检/恢复、失败诊断留存；删除自动签审计、写 verified、生成看板、提交和 Git 回退路径。门禁只排除专用候选命名空间，其他未登记载体仍被拦截。
+- [x] B0-4：治理测试 **245 passed**；Gate 1 **12/12 执行、0 skipped、0 errors**；旧登记凭据只读核验 **35/35**；全运行时 layering/API lint 无发现；许可门禁、PowerShell 语法与 `git diff --check` 通过。
+
+真实 UART 候选 run 为 `20261005T115442Z-717fb3d159f64cf083ec97d5487df63c`，保存在本机 `.governance/runs/<run_id>/candidate_evidence.json`（Git 忽略，本轮未晋升）：
+
+| 检查 | 实际结果 | 接受结论 |
+|---|---|---|
+| 正常基线 | exit 0，3 个步骤全部通过 | 正常业务场景通过 |
+| 断言器自检 | exit 1，步骤 0/1 通过，指定步骤 2（零基索引）的 UART TX 业务断言失败 | 断言器活性通过；不能作为业务实现变异或故障处理证据 |
+| 恢复基线 | exit 0，3 个步骤全部通过 | 恢复通过 |
+
+三轮资产复合哈希一致：`635551a1fc350d479912a953fae47f6bb0cfb88cccec73add63b3622864f1362`；应用原始输入与副本输入保持稳定。对登记、看板及 35 个正式报告共 **37 个文件**进行 Git 属性规范化后的内容核对，均与初始清洁基线一致。正式 `twin-proof.json` 创建数为 0。
+
+真实重建同时暴露并修复四处存量编译阻断：TWDT 配置成员对齐 `trigger_panic`；内部故障探针头更名为 `esp_sim_fault.h`，消除与 SDK 公共 `esp_fault.h` 的碰撞；ADC reset 使用现有 `started` 状态和既有 PAL stop 参数；删除从未读取的 MQTT RX 私有长度计数。厂商公共头与原厂示例未改。上述修复使 UART 生产 Wasm 重建通过，**不代表 W-3/W-5/W-7 的业务验收完成**。
+
+限制：额外 Host 故障探针测试构建被存量 `esp_cpu.h` 的 static inline 仅声明及 GCC 16 的 `-Werror=unused-function` 阻断，未执行测试，未通过关闭警告规避；本轮未执行 ESP32 真机验证。后续先完成 UART 固件依赖/有效业务变异/适用故障处理示范，再推进 TWDT 专项与 Host 头文件兼容性治理。
+
+#### Batch 1：UART 因果示范（2026-10-05 用户确认继续）
+
+沿用 Batch 0 候选隔离，不写正式清单、审计、凭据或看板。测试边界为候选采集公开入口、公开 CLI/场景报告，以及 UART RX 输入到固件 TX 输出；外部进程可以在治理回归中替代，实际业务结论必须来自真实 Wasm 执行。
+
+| 顺序 | 操作 | 验收标准 |
+|---|---|---|
+| B1-1 | 锁定 UART1、115200 baud、原厂源文件与 `wasm_sim_standard` | 原厂源文件 SHA-256 与 Manifest 一致；场景输入、目标 TX 断言及期限不变。 |
+| B1-2 | 在独立应用副本禁用 `uart_write_bytes` 出口 | 初始化/RX 仍执行；步骤 2 的正确 TX 断言在 1000 ms 窗口末失败。编译或运行器失败不计。 |
+| B1-3 | 在独立副本把首字节异或 `1` | 原来的输入和正确预期不变；步骤 2 失败，实际 TX 为 `IELLO_ESP32_WINK`。保存源文件副本、差异、固件及报告摘要。 |
+| B1-4 | 原样恢复副本，独立进程启动 | 正常基准通过；恢复源码与基准字节一致、恢复固件哈希与基准一致；每轮固件另存避免覆盖证据。 |
+| B1-5 | 检查故障适用性并执行接收边界探测 | 原厂 Echo 不使用事件队列、不处理运行期 RX/TX 错误；既有溢出 `ESP_ERR_NO_MEM` 契约和“换字符串”负例不能作为故障处理。用间隔发送的 4 个 96 字节报文探测累计接收边界，记录通过、业务回归或基础设施错误，不将故障缺口标为完成。 |
+| B1-5a | 修复边界探测定位的 Wasm UART 重复缓存 | 已由回调消费的数据不再复制留存于 PAL 256 字节 FIFO；无回调的 polling 路径保持缓存/溢出行为。原厂代码不改，同一 4×96 字节场景由失败变为通过。 |
+| B1-6 | 治理回归与原始资产保护 | 自检、固件依赖、业务变异分别判定；失败/异常也必须恢复，拒绝陈旧固件；正式清单、看板、历史报告和原厂示例保持不变。 |
+
+完整故障处理仍须选择具有原厂异常分支的 UART Events 或独立门面契约，并核对公开故障注入与观测支持；不得为点亮 Red 给 UART Echo 添加原厂不存在的处理分支。本批次先形成可复核的因果证据与缺口结论。技术格式见 [候选证据契约](../../zh/tech-designs/esp32/esp-idf-batch0-evidence-contract.md)。
+
+#### Batch 1 执行记录（2026-10-05）
+
+- [x] B1-1~4：新增显式 `--proof-profile uart-causality`，原厂哈希锁定，仅在候选副本实施两种源码变异；每阶段另存源码/差异、场景、真实固件、日志和报告。陈旧固件、错误 TX、矛盾匹配计数、无报告、变异存活、运行器错误和恢复失败均被拒绝，异常后也恢复副本。
+- [x] B1-5/5a：真实边界场景复现累计接收丢失，定位并修复 Wasm PAL 的回调交付与 polling FIFO 重复缓存；无回调时保留既有 FIFO 行为。原厂 Echo、SDK 公共头和清单未改。
+- [x] B1-6：治理测试 **264 passed**；真实 emcc/Node UART 单元测试 **4 passed**（`-Wall -Wextra -Werror`，含 768 字节回调流、切回 polling 与满缓冲拒绝）。对独立旧源码副本复跑为 **4 tests / 1 failure**，命中回调累计接收缺陷。Gate 1 **12 executed / 0 skipped / 0 errors**；Gate 2 的 PAL 命名规则 **1 executed / 0 errors**，另两条目录未变而 skipped；Gate 3 **1/1 executed / 0 errors**；全运行时 layering/API lint、许可门禁、PowerShell 语法及 `git diff --check` 通过。
+
+保留的真实 Wasm 候选（本机 `.governance/runs/<run_id>/`，Git 忽略）：
+
+| 检查 | 修复前 `20261005T122337Z-067b30ce33ea4a1a93e0d4077ea9f223` | 修复后 `20261005T123057Z-2f432bdb3214495cb2f42c291db2ffa8` |
+|---|---|---|
+| 正常基线 | 3/3 通过 | 3/3 通过 |
+| 断言器自检 | 步骤 2 指定失败 | 步骤 2 指定失败，固件与基准一致 |
+| 固件依赖 | 禁用 TX，指定断言失败，实际载荷为空 | 相同结果，变异固件哈希与基准不同 |
+| 业务变异 | 指定断言失败，实际 TX 为 `IELLO_ESP32_WINK` | 相同结果，变异固件哈希与基准不同 |
+| 4×96 字节间隔接收 | 前两报文完整，第三报文仅 64 字节；步骤 6 在 850 ms 失败 | 9/9 步骤通过，四报文完整 |
+| 恢复基线 | 3/3 通过 | 3/3 通过，源码与基准一致、资产哈希恢复 |
+
+修复后基准、自检、接收边界与恢复资产复合哈希同为 `e447dbbf28ed37037c2326cc800ea0a80350fb319abf971d94e8b6fb49d7c546`；两种源码变异分别拥有不同固件和独立资产副本。两个候选的源文件、场景、报告、固件和资产绑定均另行只读复核通过。原生 fail-fast 报告保留 pending 尾部的映射已用 RED→GREEN 回归补齐；修复前候选最初判定保持原样，新判定单独保存在该 run 的 `validation-review.json`。
+
+故障处理适用性结论为 **contract_gap**：Echo 未启用事件队列，读写循环没有异常分支；“溢出返回 ESP_ERR_NO_MEM”不能从其原厂业务链路成立。修复后入口因此仍返回非零、阶段 `UART_CONTRACT`、候选状态 `candidate_incomplete`，尽管 `causality_complete: true`。这表示适用范围和证据缺口，不能点亮 TWIN-PROOF。
+
+保护复核：正式清单、看板及 35 个历史报告共 **37 文件**的 Git 属性规范化内容未变，正式 twin-proof 创建数 **0**；原厂 UART Echo 的 SHA-256 仍为 `573aac433eaf223af1b12d924e2997012d57e8fc579d918250f3c4221df01253`。既有凭据只读核验仍为 **35/35**，不代表重建并验收了这 35 个应用。
+
+后续先基于 UART Events 的实际异常分支确定溢出/帧错误契约，补真实激励、事件观测与恢复，随后推进 TWDT。门面的 `rx_buffer_size` 配置、固定 512 字节容量和完整错误传播仍未修复；本轮未验证 UART timing、ESP32 HIL 或共享运行时下的并发采集。未执行会在原应用目录调度构建的 Gate 4 全量影响回归，不作正式交付结论。
+
+复跑：
+
+```powershell
+python -X utf8 -B wink-micro-app/vendor/esp_idfv61/.governance/tools/run_loop.py --app uart_echo --config-id wasm_sim_standard --proof-profile uart-causality
+powershell -NoProfile -ExecutionPolicy Bypass -File wink-micro-os/test/wasm/run_uart_rx_semantics_emcc.ps1
+```
+
+#### Batch 2：UART Events 故障传播与恢复（2026-10-05 用户确认继续）
+
+原厂 `uart_events_example_main.c` 的哈希固定为 `8d173ac3cd0e1a9fec6dc1bf6de48a865172a43cc5f910635c63e00dbef770de`。本批次继续 Authoring/Reverify，使用候选应用副本与独立 Node 进程，通过现有公开 Wasm C-ABI `pal_wasm_push_uart_rx_error(port, flags)` 注入一次性接收错误；通过生产 JS 桥的 UART TX 捕获原厂任务处理结果。此 harness 是独立、版本化的候选证据，不能伪装成原生 CLI 场景报告或正式双实证。
+
+| 顺序 | 操作 | 验收标准 |
+|---|---|---|
+| B2-1 | 锁定 Events 原厂源码、ESP32 配置和既有正常场景 | 原厂摘要一致；在候选副本完成真实 CLI 正常、自检与恢复，保存生产资产。 |
+| B2-2 | 先复现错误丢失，再补 PAL 与 ESP-IDF 门面传播 | 帧错误 `1`、校验错误 `2`、硬件 FIFO 溢出 `4` 分别到达事件队列；未知位与无效端口不产生错误事件；保留既有 polling/回调 RX 回归。 |
+| B2-3 | 在生产 Wasm 中执行故障与同实例恢复 | 正常 RX/TX 先通过且无故障日志；注入后原厂任务分别输出 `uart frame error`、`uart parity error`、`hw fifo overflow`；随后在同一实例收到新的完整 echo。输出必须来自 UART TX，不能用探针自身日志代替。 |
+| B2-4 | 隔离业务变异与重建恢复 | 仅在副本禁用原厂错误处理分支，保留初始化和正常回显；相同故障断言失败且无运行器错误，变异固件摘要必须变化。原样恢复源码并重建后，正常与故障检查再次通过且资产摘要恢复。 |
+| B2-5 | 候选完整性与门禁复核 | 绑定 harness/故障合同、原厂或变异源码、资产、结构化报告和命令；治理回归、相关门禁、lint、许可检查通过，正式资产与历史证据保持原样。 |
+
+边界：故障入口注入 PAL 接收事件，未模拟线路波形、波特率或 UART 校验检测；原厂正常配置禁用 parity，校验错误检查只证明异常事件传播及处理。固定 512 字节接收容量、事件队列满时的丢弃和软件缓冲溢出压力测试另行治理。无有效独立审计与原生故障场景契约时，不晋升正式 TWIN-PROOF。
+
+#### Batch 2 执行记录（2026-10-05）
+
+- [x] B2-1：在 UUID 副本完成正常 CLI 基准、自检、恢复。新增 `--proof-profile uart-events-fault`，固定原厂摘要及 ESP32 标准配置，普通仿真报告与独立 ABI harness 报告分别保存。
+- [x] B2-2：生产 Wasm 复现三种错误日志缺失；PAL 单元测试 **6 tests / 2 failures**，命中帧/校验错误未投递及组合标志丢失。修复 PAL 标志投递与门面 SDK 事件映射后，真实 emcc/Node 单元测试 **6 passed**，既有 RX 回归保持通过。
+- [x] B2-3/4：生产 Wasm 的无故障对照、帧/校验/FIFO 错误处理及同实例后续回显通过；副本移除原厂错误分支后，正常 CLI 仍通过，三种指定错误日志断言失败，前后回显通过。还原源码并重建后全部恢复，源码和资产摘要回到基准值。
+- [x] B2-5：治理测试 **285 passed**，包括原始 TX 重算、错误端口/窗口/注入、资产错配、陈旧变异固件、运行器异常及恢复失败；Gate 1 **12 executed / 0 skipped / 0 errors**，Gate 2 **1 executed / 2 skipped / 0 errors**（能力目录未变），Gate 3 **1 executed / 0 errors**。全运行时 layering/API lint、许可门禁及差异检查通过。
+
+修复前候选为 `20261005T142826Z-7c419ddc94e1490592d8036a8875878d`：正常 CLI 三项已接受，独立错误检查保存在 `uart-events-fault-review.json` 及 `uart-events-fault-red/`，无故障对照通过，帧/校验/FIFO 三项均因错误日志缺失失败。该补充检查没有修改原有正常候选的判定或正式凭据。
+
+修复后候选为 `20261005T143640Z-b73d3e5e58c243c4bed09f0f7aace65e`：
+
+| 检查组 | 正常业务与错误处理 | 接受结论 |
+|---|---|---|
+| 原厂正常 CLI | 基准与恢复各 7/7 通过，自检仅步骤 6 指定失败 | 三项正常/自检候选接受 |
+| 原厂 ABI 故障组 | 对照、帧错误、校验错误、FIFO 溢出共 4 报告，各自正常、处理及同实例后续回显通过 | 4/4 接受 |
+| 错误分支移除 | 正常 CLI 7/7 通过；对照通过，三种故障仅步骤 1 错误日志断言失败，正常及后续回显通过 | 4/4 接受，固件摘要已变化 |
+| 还原组 | 正常 CLI 7/7 通过；上述 4 个 ABI 报告再次通过 | 4/4 接受，源码和资产摘要恢复 |
+
+基准与还原资产复合 SHA-256 同为 `a724e4f8a9cb97ef180f641897d8bcabf1c0331304a551947cd9e4f02214321e`，Wasm 摘要同为 `432c77d3949d4e7f24a12b4f290a2991e957cd5bf89c708c48208aae9e06c83a`；变异 Wasm 为 `1943de0c7375d37325c4ef8778751d3908c87f06b334a099b40a5c9219845bf0`。12 个故障报告及其源码、合同、资产绑定用当前判定器另行只读复核通过，原候选文件保持不变，复核记录为 `validation-review.json`。候选状态 `candidate_ready`、`fault_handling_complete: true` 只代表本专项已执行的检查集合。
+
+同领域 Echo 因果回归为 `20261005T144704Z-9468cefebc574e4e8f28bda28132bd76`：六项检查均接受，4×96 字节场景 9/9 通过；仍以 `UART_CONTRACT` 非零保留原厂 Echo 异常处理缺口。正式清单、看板及 35 个历史报告共 **37 文件**的 Git 规范化内容未变，两份原厂 UART 源码摘要不变，旧凭据只读核验 **35/35**，正式 twin-proof 创建数 **0**。
+
+执行期间，首次重建命令因隔离目录风险被自动审批拒绝，未执行；核对实际 UUID 副本及报告路径后获准执行。一个本轮 pytest 失败副本触发 Gate 1 未登记载体拦截，已验证路径后移入工作区 `build/` 留存，最终回归与门禁通过，未放宽拦截规则。未运行会覆盖原应用资产的 Gate 4，也未进行 UART timing 或真机 HIL 验收。下一专项为 TWDT：先复现漏喂狗不报警，再确定虚拟时钟上的超时、重新喂狗与复位契约。
+
+#### Batch 3：TWDT 自动超时与恢复（2026-10-05 用户确认继续）
+
+本轮沿用已确认的公开 C/SDK API、生产 Wasm ABI、候选 CLI/报告边界。原厂 `system/task_watchdog/task_watchdog_example_main.c` 固定 SHA-256 `5855b893bf480e818fb8421b23bcbdd50480c9d21a013725de9df14e4e56dc96`，只在 UUID 副本中分别省略任务、func_a、func_b 喂狗；正常生命周期仍须完成，不能把编译失败或进程崩溃当作超时检出。
+
+依据本机锁定的 ESP-IDF v6.1 `components/esp_system/task_wdt/task_wdt.c`（公共 API 说明：[Espressif TWDT 文档](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/wdts.html)），采用共享计时周期：所有订阅者的 `has_reset` 就绪才刷新共同期限；超时报告本周期漏喂者。替换原计划的“逐任务 elapsed > timeout”模型。复用已有 FreeRTOS generation-tagged work item，在虚拟时间到达期限时自动检查；不增加每 tick 全池扫描或独立 watchdog fiber。
+
+先运行生产资产的正常控制与三个漏喂 RED，再补实现、重放 GREEN。新增隔离 SDK 测试适配器只调用公开 API，并通过公开 Wasm 时钟、ISR 用户钩子、诊断文本与复位 ABI 观察：共同期限、非 panic 继续喂狗、诊断查询无复位副作用、panic 原因、复位后旧 handle 拒绝及重新初始化。适配器的源码、构建输入与生产资产独立绑定，不能冒充原厂应用输出。
+
+范围限制：合作式 Wasm 调度能检查让出 CPU 后的任务/用户漏喂；空闲核监控、永久不让出 CPU 的忙循环抢占及真实硬件 ISR 时序本轮不作保证。`idle_core_mask` 未建模的部分必须告警并留在候选缺口中。结果只留存候选，正式 registry、历史资产/报告与 CHECKLIST 不写回。
+
+#### Batch 3 执行记录（2026-10-05～2026-10-06）
+
+自动超时 RED 留存于 `.governance/runs/20261005T151110Z-4dc929384c4443a79dd47586aefd91d3/red-review/`：完整 16 秒观察中，正常/还原控制通过，任务/func_a/func_b 三个漏喂版本只因缺失自动报警而失败，原厂生命周期与退订后静默均通过。首次 14 秒窗口不足的报告保留为诊断，不计入恢复验收。panic RED 为 `sdk-499f3300bd634bbfac6861051e5e2dd5`：自动 ISR 钩子与诊断 CPU 位图通过，唯独复位请求缺失。句柄 RED 为 `sdk-039f46b6681f432a9aef967f818cba3b`：删除并复用池槽后旧句柄错误地返回成功。
+
+修复发生在内仓 TWDT 门面与复位桥：现有定时器 work item 自动检测共同期限，非 panic 报警后继续执行；诊断查询无 panic 副作用，cpus_fail 为 CPU 位图；可覆盖 ISR 用户钩子带仿真 ISR 限制；panic 通过现有待复位 ABI 请求 WATCHDOG，完成复位后 SDK 原因保留 TASK_WDT。用户句柄使用不可解引用的校验 token，独立单调序列跨删除/复位保留，避免 ABA；deinit 有活跃订阅时拒绝，清理时取消旧 work token。厂商公共头、PAL 签名与原厂源码未修改。
+
+最终生产候选为 `.governance/runs/20261005T224907Z-9773718525a64441b177acfb13cc9b53/candidate_evidence.json`，`automatic_timeout_complete=true`。正常 CLI 基准/断言自检/恢复 3 份报告接受；三个漏喂与最终还原的原生生命周期报告均通过。5 份独立 ABI 超时/恢复报告全部接受：漏喂版在订阅后恰好 3000000 us 首次报警，随后在 6000000、9000000 us 报告同一漏喂者；退订后无残留报警。基准与还原的生产资产 composite SHA-256 同为 `922bc851d70b207eafe28e84efa351fea5b05b7caadaa2359b30e8d08f6b171e`，Wasm SHA-256 同为 `23504a2c73ac01078335e61850a74f4c6b86a16a3c860b46f63b08540afca401`；三个漏喂固件摘要分别不同。
+
+最终 SDK 补充候选为 `.governance/runs/sdk-bd5231dcf9fb421590e4d0fa5b27bb9b/evidence.json`。3 个独立实例共 62 项检查通过：panic 21 项、共同周期/非 panic 恢复 28 项、删除复用及外来句柄 13 项；相关运行时源码已冻结并核对构建前后未变。包括诊断查询不触发复位、主机 WATCHDOG=2、复位后 SDK TASK_WDT=6、旧期限清理、应用重启、复位/复用后旧句柄拒绝、重新喂狗后持续静默。SDK 适配器只验证公开 API，不冒充原厂应用故障场景。
+
+治理回归 **307 passed**（新增 TWDT 报告/CLI 22 项）。最终 Gate 1：12 executed / 0 skipped / 0 errors；Gate 2：1 executed / 2 skipped / 0 errors；Gate 3：1 executed / 0 errors。分层/API lint、许可门禁、Node 语法检查及 diff whitespace 通过。正式清单、CHECKLIST 与 35 份历史原生报告共 37 个文件与 Git 基线内容一致；原厂源哈希保持固定。校验记录在 `build/twdt-validation/`。
+
+执行中 Windows 长路径、场景必填字段及 SDK 100 Hz 下 1 ms 转零 tick 阻断过测试适配器；已修正并终止仅本轮停滞进程，相关失败不算业务 RED。自动审批一度因使用额度耗尽未能完成，越过恢复时间后通过审批继续；最终构建完成。样式修正引出的有符号索引编译错误已修复，未关闭 Werror。未进行会覆盖原目录资产的 Gate 4、Host 头兼容修复或真机 HIL；共享有限定时器池饱和、空闲核及忙循环抢占仍列为缺口。W-3 的任务/用户行为候选已闭合，不代表整个 W-3/W-5、正式双实证或本总计划完成。下一优先项为 W-4 CPU 运行微秒计费与时钟治理。
+
 ```
                               【高保真可靠性实证金字塔】
 
@@ -62,8 +213,8 @@ WinkMicroOS 当前已建立起一套基于 Wasm Headless 的 ESP-IDF 官方示�
   - 占空比严格执行 **ADR-0066** 定点基点规范（`pal_pwm_set_duty_bp` / `PERMILLE`）；
   - 异步分发完成中断，恢复 3000ms 渐变时序断言。
 * **W-3 (S-3: TWDT 离散事件超时判定)**：
-  - 挂接 FreeRTOS 虚拟 Tick Hook，逐 Tick 遍历订阅列表并比较 `current_tick - last_reset_tick > timeout_ticks`；
-  - 确立漏喂狗触发 Panic/报警的逆向判定。
+  - 对齐 ESP-IDF 的共同喂狗周期，全部订阅者喂狗后刷新共同期限，使用既有虚拟定时器 work item 自动检测；
+  - 确立任务/用户漏喂报警、非 panic 恢复和 panic 复位原因的逆向判定；空闲核及忙循环抢占单独验收。
 * **W-4 (S-4: FreeRTOS 真实微秒计费模型)**：
   - 废除 `vTaskDelay` 累加运行时间的倒错逻辑；
   - 接入 Fiber 上下文切换钩子（`traceTASK_SWITCHED_IN/OUT`），仅对任务在 CPU 上运行的微秒时间片积分。
@@ -198,7 +349,9 @@ WinkMicroOS 当前已建立起一套基于 Wasm Headless 的 ESP-IDF 官方示�
 
 ## 5. 详细任务分解与执行跟踪清单 (Task Breakdown & Execution Tracker)
 
-### 5.1 已归档基石与核心引擎 (Completed Baseline)
+### 5.1 历史实现资产与待复验基线 (Historical Implementation Baseline)
+
+以下提交编号用于追溯历史实现。2026-10-05 复核发现 TWDT 自动超时调度、CPU 微秒计费、精准击杀及双实证判定尚未满足本文验收标准；勾选仅保留历史落地记录，不能作为晋升依据。现有 Blink、UART、TWDT 的 `.fail` 文件分别覆盖正常时序、正常回显与生命周期，尚不能视为对应故障处理证明。
 - [x] **Core 1 (Pillar 3 探针架构)**: `esp_fault.h/c` 探针库，打通 I2C/SPI/NVS/WiFi/BLE，Wasm ABI 导出，复位清理链与单测 (`ee4f3f0a`)。
 - [x] **Core 2 (Pillar 4 变异矩阵)**: `mutator.py` 三维变异矩阵与 3 状态判据机加固（杜绝虚假崩溃判定，`f33159d3`）。
 - [x] **Core 3 (Pillar 5 门禁升级)**: `evidence_verifier.py` $O(N)$ 逐步校验；`generate_checklist_v1_1.py` 双实证标记 (`6eed120d`, `f33159d3`)。
@@ -206,7 +359,7 @@ WinkMicroOS 当前已建立起一套基于 Wasm Headless 的 ESP-IDF 官方示�
   - [x] W-1: `pal_dac.h` 纯增量 HAL 及 Wasm/Host/ESP32 驱动 (`6b913b1c`)；
   - [x] W-2: `esp_ledc.c` 离散时间轮与定点 bp 步进 (`b915db8f`)；
   - [x] W-3: `esp_task_wdt.c` Tick 钩子超时判定与漏喂狗报警 (`74b62b5d`)；
-  - [x] W-4: `freertos_task.c` 微秒级真实 CPU 运行计费 (`74b62b5d`)；
+  - [ ] W-4: `freertos_task.c` 微秒级真实 CPU 运行计费（历史提交 `74b62b5d` 仅完成延时伪计数止血，待按 [2026-10-06-w4-freertos-microsecond-runtime-stats-hardening-plan.md](2026-10-06-w4-freertos-microsecond-runtime-stats-hardening-plan.md) 彻底重构）；
   - [x] W-5: `esp_idf_bridge.c` 外设对象池完整复位销毁 (`74b62b5d`, `ee4f3f0a`)；
   - [x] W-6: GPTimer 硬件计数器 ABI 导出 (`b915db8f`)；
   - [x] W-7: MQTT 独立双 FIFO 环形缓冲解耦 (`b915db8f`)；
@@ -232,6 +385,7 @@ Batch 0: 治理防线加固与因果短路修复（pipeline.py 解耦 + ADC 因�
 ```
 
 #### Batch 0: 治理防线加固与因果短路修复
+- [ ] **Task 0.0 (B0-1/B0-2)**: 优先修复结构化指定断言击杀与同配置双实证判定，并复现拒绝 Runner timeout、步骤 passed 后无关退出、只有 fail 场景文件等反例。
 - [ ] **Task 0.1 (E-3 权力制衡)**: 改造 `wink-micro-app/vendor/esp_idfv61/.governance/tools/loop/pipeline.py`：
   - 废除硬编码 `"auditor": "loop_sop_daemon"`；
   - 流水线仅输出 `candidate_evidence` 候选凭证包，由独立审计裁判 Agent 进行离线核验；
@@ -283,11 +437,11 @@ Batch 0: 治理防线加固与因果短路修复（pipeline.py 解耦 + ADC 因�
   - [ ] **Task 3.6**: `#230 wifi/scan` ➔ `scan.fail.scenario.json`（注入 Wi-Fi 驱动未启动即发起扫描断言错误）
   - [ ] **Task 3.7**: `#384 bluetooth/bleprph` ➔ `bleprph.fail.scenario.json`（通过 `FAULT_BLE_ADV_REJECT` 注入广播参数被拒绝）
 
-#### Batch 4: SSOT 元数据补齐与 35/35 双实证全亮
+#### Batch 4: SSOT 元数据补齐与 35 个目标配置逐项结论
 - [ ] **Task 4.1**: 补齐全量 35 项的 `negative_cases` 元数据模型（`stimulus`, `expect_error`, `detects`）写入 `checklist.data.json`。
 - [ ] **Task 4.2**: 运行 `evidence_verifier.py --verify-all` 确保 35 个示例正向逐步强一致性断言 100% 通过。
 - [ ] **Task 4.3**: 运行 Gate 1~5 全部门禁通过无告警（0 warnings, 0 errors）。
-- [ ] **Task 4.4**: 运行 `generate_checklist_v1_1.py`，生成 35 项全量点亮 `🟢 [Green ✅ | Red 🛡️ (TWIN-PROOF)]` 徽章的 `CHECKLIST.md`。
+- [ ] **Task 4.4**: 运行 `generate_checklist_v1_1.py`，按有效证据生成 `CHECKLIST.md`；仅对同配置正常与故障处理证据完整的条目点亮 TWIN-PROOF，其余保留真实缺口，不以全亮作为验收要求。
 
 #### Batch 5: M4 阶段 ESP32 物理硬件实机交叉核验
 - [ ] **Task 5.1**: 硬件测试环境确认（ESP32-WROOM/S3 开发板连接、COM 口识别）。
