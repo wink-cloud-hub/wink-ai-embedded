@@ -54,6 +54,10 @@ def dummy_passing_report(tmp_path):
                     "failedSteps": 0,
                     "errorSteps": 0,
                 },
+                "stepResults": [
+                    {"stepIndex": i, "status": "passed"}
+                    for i in range(5)
+                ],
             }
         ],
     }
@@ -397,6 +401,87 @@ def test_resolve_report_no_loose_shared_fallback(tmp_path):
     # Asking for a non-existent app report must NOT fall back to shared_rep
     resolved = resolve_execution_report_path("unisim://reports/nonexistent_app/run-report.json", tmp_path)
     assert resolved is None
+
+
+def test_verify_execution_report_rejects_missing_step_results(tmp_path):
+    """E-1 hardening: Report without stepResults is rejected."""
+    rep = tmp_path / "missing-steps.json"
+    rep.write_text(json.dumps({
+        "results": [
+            {
+                "ok": True,
+                "status": "passed",
+                "summary": {"totalSteps": 3, "passedSteps": 3, "failedSteps": 0, "errorSteps": 0},
+            }
+        ]
+    }), encoding="utf-8")
+    ok, msg = verify_execution_report(rep)
+    assert ok is False
+    assert "missing non-empty 'stepResults'" in msg
+
+
+def test_verify_execution_report_rejects_step_results_count_mismatch(tmp_path):
+    """E-1 hardening: Report with stepResults count != passedSteps is rejected."""
+    rep = tmp_path / "mismatch-steps.json"
+    rep.write_text(json.dumps({
+        "results": [
+            {
+                "ok": True,
+                "status": "passed",
+                "summary": {"totalSteps": 3, "passedSteps": 3, "failedSteps": 0, "errorSteps": 0},
+                "stepResults": [{"stepIndex": 0, "status": "passed"}],
+            }
+        ]
+    }), encoding="utf-8")
+    ok, msg = verify_execution_report(rep)
+    assert ok is False
+    assert "stepResults count (1) != passedSteps (3)" in msg
+
+
+def test_verify_execution_report_rejects_failed_step_in_step_results(tmp_path):
+    """E-1 hardening: Report with a failed step in stepResults is rejected even if summary claims pass."""
+    rep = tmp_path / "failed-step.json"
+    rep.write_text(json.dumps({
+        "results": [
+            {
+                "ok": True,
+                "status": "passed",
+                "summary": {"totalSteps": 2, "passedSteps": 2, "failedSteps": 0, "errorSteps": 0},
+                "stepResults": [
+                    {"stepIndex": 0, "status": "passed"},
+                    {"stepIndex": 1, "status": "failed"},
+                ],
+            }
+        ]
+    }), encoding="utf-8")
+    ok, msg = verify_execution_report(rep)
+    assert ok is False
+    assert "status is 'failed', expected 'passed'" in msg
+
+
+def test_verify_execution_report_rejects_scenario_steps_mismatch(tmp_path):
+    """E-1 hardening: Report totalSteps must match scenario steps if scenario provided."""
+    scen = tmp_path / "app.scenario.json"
+    scen.write_text(json.dumps({"steps": [{"id": 1}, {"id": 2}, {"id": 3}]}), encoding="utf-8")
+
+    rep = tmp_path / "report.json"
+    rep.write_text(json.dumps({
+        "results": [
+            {
+                "ok": True,
+                "status": "passed",
+                "summary": {"totalSteps": 2, "passedSteps": 2, "failedSteps": 0, "errorSteps": 0},
+                "stepResults": [
+                    {"stepIndex": 0, "status": "passed"},
+                    {"stepIndex": 1, "status": "passed"},
+                ],
+            }
+        ]
+    }), encoding="utf-8")
+    ok, msg = verify_execution_report(rep, scenario_path=scen)
+    assert ok is False
+    assert "totalSteps (2) != scenario steps (3)" in msg
+
 
 
 

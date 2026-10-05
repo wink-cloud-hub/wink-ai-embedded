@@ -108,11 +108,17 @@ def resolve_execution_report_path(ref: str, ws_root: Path) -> Optional[Path]:
     return None
 
 
-def verify_execution_report(report_path: Path) -> Tuple[bool, str]:
+def verify_execution_report(
+    report_path: Path,
+    scenario_path: Optional[Path] = None,
+) -> Tuple[bool, str]:
     """
     Structured assertion of a headless JSON execution report.
     Validates report parse, status == 'passed', totalSteps == passedSteps > 0,
     failedSteps == 0, errorSteps == 0, skippedSteps == 0.
+    Enforces E-1 hardening: 'stepResults' must exist, have length equal to passedSteps,
+    and every single step must have status == 'passed'.
+    If scenario_path is provided, verifies totalSteps matches scenario steps count.
     """
     if not report_path.is_file():
         return False, f"Report file not found: {report_path}"
@@ -122,6 +128,17 @@ def verify_execution_report(report_path: Path) -> Tuple[bool, str]:
             report = json.load(f)
     except Exception as e:
         return False, f"Failed to parse report JSON: {e}"
+
+    expected_steps_count = None
+    if scenario_path and scenario_path.is_file():
+        try:
+            with open(scenario_path, "r", encoding="utf-8") as f:
+                scen_data = json.load(f)
+            steps = scen_data.get("steps")
+            if isinstance(steps, list):
+                expected_steps_count = len(steps)
+        except Exception:
+            pass
 
     # Check top-level results array
     if "results" in report:
@@ -157,6 +174,23 @@ def verify_execution_report(report_path: Path) -> Tuple[bool, str]:
                 return False, f"Execution result #{idx} has skippedSteps={skipped_steps}"
             if passed_steps != total_steps:
                 return False, f"Execution result #{idx} step count mismatch: passedSteps ({passed_steps}) != totalSteps ({total_steps})"
+
+            # E-1 hardening: Enforce deep stepResults validation
+            step_results = res.get("stepResults") or res.get("step_results")
+            if not isinstance(step_results, list) or len(step_results) == 0:
+                return False, f"Execution result #{idx} missing non-empty 'stepResults' array"
+            if len(step_results) != passed_steps:
+                return False, f"Execution result #{idx} stepResults count ({len(step_results)}) != passedSteps ({passed_steps})"
+            for s_idx, step in enumerate(step_results):
+                if not isinstance(step, dict):
+                    return False, f"Execution result #{idx} step #{s_idx} is not an object"
+                step_status = step.get("status")
+                if step_status != "passed":
+                    return False, f"Execution result #{idx} step #{s_idx} status is '{step_status}', expected 'passed'"
+
+            if expected_steps_count is not None and expected_steps_count != total_steps:
+                return False, f"Execution result #{idx} totalSteps ({total_steps}) != scenario steps ({expected_steps_count})"
+
         return True, "Execution report passed all step assertions"
 
     # Single-run or alternate format
@@ -185,6 +219,23 @@ def verify_execution_report(report_path: Path) -> Tuple[bool, str]:
             return False, f"Report summary indicates skipped steps ({skipped_steps})"
         if passed_steps != total_steps:
             return False, f"Report summary step count mismatch: passedSteps ({passed_steps}) != totalSteps ({total_steps})"
+
+        # E-1 hardening for single-run format
+        step_results = report.get("stepResults") or report.get("step_results")
+        if not isinstance(step_results, list) or len(step_results) == 0:
+            return False, "Report missing non-empty 'stepResults' array"
+        if len(step_results) != passed_steps:
+            return False, f"Report stepResults count ({len(step_results)}) != passedSteps ({passed_steps})"
+        for s_idx, step in enumerate(step_results):
+            if not isinstance(step, dict):
+                return False, f"Report step #{s_idx} is not an object"
+            step_status = step.get("status")
+            if step_status != "passed":
+                return False, f"Report step #{s_idx} status is '{step_status}', expected 'passed'"
+
+        if expected_steps_count is not None and expected_steps_count != total_steps:
+            return False, f"Report totalSteps ({total_steps}) != scenario steps ({expected_steps_count})"
+
         return True, "Execution report passed top-level assertion"
 
     return False, "Report JSON missing both 'results' array and 'status' field"
@@ -281,7 +332,8 @@ def verify_evidence(
                 if target_dir_rel:
                     errors.append(f"Execution report declared but not found on disk: '{rep_ref}'")
             else:
-                rep_ok, rep_msg = verify_execution_report(resolved_rep)
+                sc_cand_for_rep = sc_cand if (scenario_path_rel and 'sc_cand' in locals() and sc_cand.is_file()) else None
+                rep_ok, rep_msg = verify_execution_report(resolved_rep, sc_cand_for_rep)
                 if not rep_ok:
                     errors.append(f"Execution report check failed ({resolved_rep}): {rep_msg}")
 

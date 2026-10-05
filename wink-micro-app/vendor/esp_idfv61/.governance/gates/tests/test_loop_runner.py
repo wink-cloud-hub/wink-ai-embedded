@@ -87,6 +87,20 @@ def test_canary_mutator_confirms_kill():
     assert "successfully killed" in msg
 
 
+def test_canary_mutator_rejects_infra_crash():
+    mutator = CanaryMutator()
+    meta = {"step_index": 1, "target": "timer:0/counter", "mutation_desc": "shifted"}
+    # Build failure must be rejected, not counted as kill
+    killed, msg = mutator.verify_kill(2, "Failed to build wasm assets", meta)
+    assert not killed
+    assert "INFRA_CRASH" in msg
+
+    # Runtime load failure must also be rejected
+    killed, msg = mutator.verify_kill(2, "Failed to load runtime module", meta)
+    assert not killed
+    assert "INFRA_CRASH" in msg
+
+
 def test_runner_candidate_selection():
     ws_root = Path(__file__).resolve().parents[6]
     runner = LoopRunner(workspace_root=ws_root, dry_run=True)

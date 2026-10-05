@@ -150,19 +150,51 @@ class CanaryMutator:
                 f"The assertion for step #{step_idx} ({metadata.get('target')}) is NOT sensitive to defects."
             )
 
-        # 2. Check that the failure specifically mentions the step or matcher mismatch
-        # (rather than an unrelated syntax/infrastructure crash)
-        step_mention = f"Step #{step_idx + 1}" in runner_output or f"stepIndex\": {step_idx}" in runner_output
-        has_failure_reason = any(
-            hint in runner_output
-            for hint in ["FAILED", "Failed", "outside range", "Expected", "expected", "got"]
+        # 2. Infra Crash Check (E-2 fix): reject compiler, asset, loader, syntax failures
+        infra_crash_indicators = [
+            "failed to build wasm",
+            "failed to build",
+            "failed to load runtime",
+            "failed to load",
+            "compilation error",
+            "syntaxerror",
+            "syntax error",
+            "linker error",
+            "segmentation fault",
+            "sigsegv",
+            "out of memory",
+        ]
+        lower_out = runner_output.lower()
+        for crash_hint in infra_crash_indicators:
+            if crash_hint in lower_out:
+                return False, (
+                    f"INFRA_CRASH: Runner failed with infrastructure or build error ('{crash_hint}'), "
+                    f"not an assertion defect kill. Exit code {exit_code}: {runner_output[:200]}"
+                )
+
+        # 3. Check that the failure specifically mentions the step or matcher mismatch
+        step_mention = (
+            f"Step #{step_idx + 1}" in runner_output
+            or f"stepIndex\": {step_idx}" in runner_output
+            or f"step #{step_idx}" in lower_out
         )
+        assertion_fail_hints = [
+            "assert_point",
+            "assert_bus_payload",
+            "assert_waveform",
+            "assert_sequence",
+            "matcher mismatch",
+            "outside range",
+            "expected",
+            "got",
+            "assertion failed",
+            "step failed",
+            "failedsteps",
+            "failed_steps",
+        ]
+        has_assertion_fail = any(hint in lower_out for hint in assertion_fail_hints)
 
-        if has_failure_reason or step_mention:
+        if step_mention or has_assertion_fail:
             return True, f"Canary mutant successfully killed: step #{step_idx} failed as expected ({metadata.get('mutation_desc')})."
-
-        # Even if step index not explicitly in summary, non-zero exit code with assertion fail counts
-        if "FAIL" in runner_output:
-            return True, f"Canary mutant killed with non-zero exit code ({metadata.get('mutation_desc')})."
 
         return False, f"Runner failed with exit code {exit_code}, but failure could not be confirmed as assertion kill: {runner_output[:200]}"

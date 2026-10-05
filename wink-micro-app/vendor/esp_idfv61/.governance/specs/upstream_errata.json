@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "description": "Registry of known upstream ESP-IDF vendor defects governed under the Zero-Modification (KUBA) policy",
+  "errata": [
+    {
+      "id": "ERRATA-ESPIDF-001",
+      "component": "storage/nvs_nvs_rw_blob",
+      "upstream_file": "storage/nvs_nvs_rw_blob/nvs_blob_example_main.c",
+      "line_range": "153-155",
+      "classification": "CWE-125: Out-of-bounds Read",
+      "defect_type": "Upstream Logic Defect",
+      "description": "Structure test_data_t declares 'float values[2]', but logging statement prints values[0] through values[3], causing undefined behavior out-of-bounds stack reads.",
+      "upstream_ref": "ESP-IDF v6.1 vendor example mirror",
+      "governance_policy": "KUBA-Preserve-Source-Lock",
+      "mitigation": "Scenario assertions match verified initialized fields (values[0], values[1], flags, counts, active) without mutating vendor source. Undefined behavior tolerated under memory layout containment."
+    }
+  ]
+}

@@ -71,20 +71,21 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
                         ),
                     })
 
-            for pat in BANNED_MOCK_BRANCHES:
-                m = pat.search(line)
-                if m:
-                    findings.append({
-                        "rule_id": RULE_ID,
-                        "severity": "error",
-                        "entry_id": None,
-                        "display_id": None,
-                        "config_id": None,
-                        "file_path": str(c_file.relative_to(ws_root)),
-                        "message": (
-                            f"Line {line_no}: Inlined URL branch check detected: '{m.group(0)}'. "
-                            f"URL routing must be delegated to sim_net_responder_match()."
-                        ),
-                    })
+            if c_file.name != "sim_net_responder.c":
+                for pat in BANNED_MOCK_BRANCHES:
+                    m = pat.search(line)
+                    if m:
+                        findings.append({
+                            "rule_id": RULE_ID,
+                            "severity": "error",
+                            "entry_id": None,
+                            "display_id": None,
+                            "config_id": None,
+                            "file_path": str(c_file.relative_to(ws_root)),
+                            "message": (
+                                f"Line {line_no}: Inlined URL branch check detected: '{m.group(0)}'. "
+                                f"URL routing must be delegated to sim_net_responder_match()."
+                            ),
+                        })
 
     return findings

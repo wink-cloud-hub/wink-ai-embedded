@@ -9,6 +9,7 @@ capabilities:
     owned_paths:
     - wink-micro-os/targets/wasm/wasm_entry.c
     - wink-micro-os/frameworks/esp_idf/src/freertos/freertos_task.c
+    - wink-micro-os/frameworks/esp_idf/src/core/esp_task_wdt.c
     soc_support:
     - esp32
     - esp32s3
@@ -420,6 +421,7 @@ capabilities:
     description: 确定性离线静态路由匹配与 HTTP 事件流派发门面
     owned_paths:
     - wink-micro-os/frameworks/esp_idf/src/network/esp_http.c
+    - wink-micro-os/frameworks/esp_idf/src/network/sim_net_responder.c
     - wink-micro-os/frameworks/esp_idf/include/esp_http_client.h
     soc_support:
     - esp32
@@ -779,6 +781,7 @@ capabilities:
     owned_paths:
     - wink-micro-os/targets/wasm/pal_wasm_irq.c
     - wink-micro-os/pal/include/pal_irq.h
+    - wink-micro-os/frameworks/esp_idf/src/drivers/esp_gptimer.c
     soc_support:
     - esp32
     - esp32s3
