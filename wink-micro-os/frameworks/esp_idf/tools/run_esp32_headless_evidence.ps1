@@ -94,7 +94,8 @@ $allCarriers = @(
     @{ Name = 'scan'; Rel = 'vendor/esp_idfv61/wifi/scan'; Channel = 'Wi-Fi Active Scan & AP Discovery' },
     @{ Name = 'ble_get_started_nimble_NimBLE_Beacon'; Rel = 'vendor/esp_idfv61/bluetooth/ble_get_started_nimble_NimBLE_Beacon'; Channel = 'NimBLE Beacon Advertising & GAP Device Info' },
     @{ Name = 'esp_event_user_event_loops'; Rel = 'vendor/esp_idfv61/system/esp_event_user_event_loops'; Channel = 'Custom User Event Loops & Multi-Loop Dispatch' },
-    @{ Name = 'freertos_basic_freertos_smp_usage'; Rel = 'vendor/esp_idfv61/system/freertos_basic_freertos_smp_usage'; Channel = 'FreeRTOS SMP Multicore Task Scheduling & Console Synchronization' }
+    @{ Name = 'freertos_basic_freertos_smp_usage'; Rel = 'vendor/esp_idfv61/system/freertos_basic_freertos_smp_usage'; Channel = 'FreeRTOS SMP Multicore Task Scheduling & Console Synchronization' },
+    @{ Name = 'task_watchdog'; Rel = 'vendor/esp_idfv61/system/task_watchdog'; Channel = 'Task Watchdog Timer (TWDT) Subscription & Health Heartbeat' }
 )
 
 $carriers = @()

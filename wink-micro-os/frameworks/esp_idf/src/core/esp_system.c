@@ -117,36 +117,8 @@ esp_err_t esp_flash_get_size(esp_flash_t *chip, uint32_t *out_size) {
     return ESP_OK;
 }
 
-/* Task watchdog / interrupt allocator: NOT supported in M0 simulation
+/* Interrupt allocator: NOT supported in M0 simulation
  * (ADR-0012 降级条目 5). Fail-loud with ESP_ERR_NOT_SUPPORTED. */
-
-esp_err_t esp_task_wdt_init(const esp_task_wdt_config_t *config) {
-    (void)config;
-    ESP_LOGE("ESP_SYS", "esp_task_wdt_init: not supported in simulation (M0)");
-    return ESP_ERR_NOT_SUPPORTED;
-}
-
-esp_err_t esp_task_wdt_deinit(void) {
-    ESP_LOGE("ESP_SYS", "esp_task_wdt_deinit: not supported in simulation (M0)");
-    return ESP_ERR_NOT_SUPPORTED;
-}
-
-esp_err_t esp_task_wdt_add(TaskHandle_t handle) {
-    (void)handle;
-    ESP_LOGE("ESP_SYS", "esp_task_wdt_add: not supported in simulation (M0)");
-    return ESP_ERR_NOT_SUPPORTED;
-}
-
-esp_err_t esp_task_wdt_reset(void) {
-    ESP_LOGE("ESP_SYS", "esp_task_wdt_reset: not supported in simulation (M0)");
-    return ESP_ERR_NOT_SUPPORTED;
-}
-
-esp_err_t esp_task_wdt_delete(TaskHandle_t handle) {
-    (void)handle;
-    ESP_LOGE("ESP_SYS", "esp_task_wdt_delete: not supported in simulation (M0)");
-    return ESP_ERR_NOT_SUPPORTED;
-}
 
 esp_err_t esp_intr_alloc(int source, int flags, intr_handler_t handler, void *arg, intr_handle_t *ret_handle) {
     (void)source;
