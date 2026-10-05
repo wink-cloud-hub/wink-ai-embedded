@@ -101,6 +101,46 @@ def test_canary_mutator_rejects_infra_crash():
     assert "INFRA_CRASH" in msg
 
 
+def test_canary_mutator_3d_matrix(tmp_path):
+    mutator = CanaryMutator()
+    sc_data = {
+        "steps": [
+            {
+                "type": "INJECT_NET_FIXTURE",
+                "routes": [{"url_prefix": "http://example.com", "status_code": 200, "body": "ok"}],
+            },
+            {
+                "type": "ASSERT_POINT",
+                "target": "http:client:status_code",
+                "matcher": 200,
+            }
+        ]
+    }
+    sc_file = tmp_path / "test.scenario.json"
+    sc_file.write_text(json.dumps(sc_data), encoding="utf-8")
+
+    # 1. Dimension A: Assertion Mutant
+    path_a, meta_a = mutator.create_mutant_file(sc_file, dimension="assertion")
+    assert path_a.is_file()
+    assert meta_a["dimension"] == "assertion"
+    assert json.loads(path_a.read_text())["steps"][1]["matcher"] == 404
+
+    # 2. Dimension B: Stimulus Mutant
+    path_b, meta_b = mutator.create_mutant_file(sc_file, dimension="stimulus")
+    assert path_b.is_file()
+    assert meta_b["dimension"] == "stimulus"
+    assert json.loads(path_b.read_text())["steps"][0]["routes"][0]["status_code"] == 500
+
+    # 3. Dimension C: Platform Fault Mutant
+    path_c, meta_c = mutator.create_mutant_file(sc_file, dimension="platform_fault", fault_domain="i2c", fault_type="nack")
+    assert path_c.is_file()
+    assert meta_c["dimension"] == "platform_fault"
+    mut_c_data = json.loads(path_c.read_text())
+    assert mut_c_data["steps"][0]["type"] == "INJECT_PLATFORM_FAULT"
+    assert mut_c_data["steps"][0]["domain"] == "i2c"
+    assert mut_c_data["steps"][0]["fault"] == "nack"
+
+
 def test_runner_candidate_selection():
     ws_root = Path(__file__).resolve().parents[6]
     runner = LoopRunner(workspace_root=ws_root, dry_run=True)

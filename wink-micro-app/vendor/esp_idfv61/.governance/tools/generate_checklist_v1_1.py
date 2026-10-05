@@ -270,6 +270,12 @@ def render_row(entry: dict, quarantine: dict[str, dict]) -> tuple[str, str]:
         else:
             app_col = "待适配"
 
+        has_fail_sc = False
+        if target_dir:
+            sc_dir = OUTPUT_MD.parent / target_dir / "unisim-scenarios"
+            if sc_dir.is_dir() and any(sc_dir.glob("*.fail.scenario.json")):
+                has_fail_sc = True
+
         # 推导并发泳道与优先级
         lane_id, pri_tier, lane_tag = classify_example_lane_and_priority(
             upstream, inclusion, schedule, has_verified, valid_evidence
@@ -289,9 +295,13 @@ def render_row(entry: dict, quarantine: dict[str, dict]) -> tuple[str, str]:
             metric_tag = "out_of_scope"
         elif has_verified and valid_evidence:
             symbol = "[x]"
-            desc = f"{lane_tag} 已完成实证。"
+            if has_fail_sc:
+                desc = f"{lane_tag} 🟢 [Green ✅ | Red 🛡️] 已完成红绿双实证 (TWIN-PROOF)。"
+                metric_tag = "verified_twin"
+            else:
+                desc = f"{lane_tag} [Green ✅ | Red ⏳] 已完成实证。"
+                metric_tag = "verified"
             pri_hint = "P0"
-            metric_tag = "verified"
         elif has_regressed:
             symbol = "[!]"
             desc = f"{lane_tag} 实证凭据核验未通过，需重新回归。"
@@ -366,6 +376,7 @@ def render_checklist(manifest: dict, quarantine: dict[str, dict]) -> str:
     rendered_rows: list[tuple[str, str, int]] = []
     metric_counts = {
         "verified": 0,
+        "verified_twin": 0,
         "quarantined": 0,
         "planned": 0,
         "out_of_scope": 0,
@@ -378,6 +389,7 @@ def render_checklist(manifest: dict, quarantine: dict[str, dict]) -> str:
         rendered_rows.append((row, tag, e["display_id"]))
         metric_counts[tag] = metric_counts.get(tag, 0) + 1
 
+    total_verified = metric_counts["verified"] + metric_counts["verified_twin"]
     lines: list[str] = []
 
     # ── 文件头 ───────────────────────────────────────────────
@@ -398,7 +410,8 @@ def render_checklist(manifest: dict, quarantine: dict[str, dict]) -> str:
         "## 一、 总体适配进度统计",
         "",
         f"- **官方独立示例总数**：**{total} 个**",
-        f"  - `[x]` **已完成六要素实证 (Verified)**：**{metric_counts['verified']} 项**",
+        f"  - `[x]` **已完成六要素实证 (Verified)**：**{total_verified} 项**",
+        f"    - `🟢` **双实证闭环 (Twin-Proof: Green ✅ + Red 🛡️)**：**{metric_counts['verified_twin']} 项**",
         f"  - `[?]` **存量隔离待补凭证 (Quarantined Debt)**：**{metric_counts['quarantined']} 项**（14 天 TTL 过期硬阻断，至 `2026-10-13`）",
         f"  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**{metric_counts['planned']} 项**",
         f"  - `[-]` **明确产品排除 / 暂缓投入 (Out-of-Scope / Deferred)**：**{metric_counts['out_of_scope'] + metric_counts['deferred']} 项**（编译期 `WINK_SLA_ERROR` Fail-Loud 阻断）",
@@ -415,7 +428,7 @@ def render_checklist(manifest: dict, quarantine: dict[str, dict]) -> str:
     ]
     for idx, (lo, hi, anchor, title, _) in enumerate(CATEGORY_GROUPS, 1):
         group_rows = [r for r in rendered_rows if lo <= r[2] <= hi]
-        cnt_v = sum(1 for r in group_rows if r[1] == "verified")
+        cnt_v = sum(1 for r in group_rows if r[1] in ("verified", "verified_twin"))
         cnt_q = sum(1 for r in group_rows if r[1] == "quarantined")
         lines.append(f"| {idx:02d} | [{title}](#{anchor}) | {len(group_rows)} 项 | `#{lo:03d} ~ #{hi:03d}` | {cnt_v} 项 | {cnt_q} 项 |")
     lines += ["", "---", ""]
@@ -500,7 +513,7 @@ def render_checklist(manifest: dict, quarantine: dict[str, dict]) -> str:
 
     for lo, hi, anchor, title, _ in CATEGORY_GROUPS:
         group_rows = [r for r in rendered_rows if lo <= r[2] <= hi]
-        cnt_v = sum(1 for r in group_rows if r[1] == "verified")
+        cnt_v = sum(1 for r in group_rows if r[1] in ("verified", "verified_twin"))
         cnt_q = sum(1 for r in group_rows if r[1] == "quarantined")
         lines += [
             f'<a id="{anchor}"></a>',
