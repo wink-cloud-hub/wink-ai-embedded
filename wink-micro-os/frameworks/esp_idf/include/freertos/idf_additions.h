@@ -6,6 +6,11 @@
 extern "C" {
 #endif
 
+#include "freertos/task.h"
+#include "freertos/queue.h"
+#include "freertos/semphr.h"
+#include "esp_cpu.h"
+
 #ifdef __cplusplus
 }
 #endif

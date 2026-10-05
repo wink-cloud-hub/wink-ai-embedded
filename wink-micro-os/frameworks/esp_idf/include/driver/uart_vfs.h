@@ -11,6 +11,7 @@
 #include "wink_sla.h"
 
 #include "esp_err.h"
+#include "esp_vfs_common.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -87,7 +87,9 @@ FORCE_INLINE_ATTR intptr_t esp_cpu_get_call_addr(intptr_t return_address);
 #endif
 
 #if defined(__WINK_SIM__)
-FORCE_INLINE_ATTR int esp_cpu_get_core_id(void) WINK_SLA_ERROR("Wink SLA Violation: esp_cpu_get_core_id out of Core 8 scope.");
+FORCE_INLINE_ATTR int esp_cpu_get_core_id(void) {
+    return 0;
+}
 #else
 FORCE_INLINE_ATTR int esp_cpu_get_core_id(void);
 #endif
