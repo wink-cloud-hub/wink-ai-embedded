@@ -1,0 +1,69 @@
+{
+  "timestamp": "2026-10-05T03:52:47.073Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 uart_async_rxtxtasks headless deterministic proof",
+        "templateId": "esp_idfv61_peripherals_uart_async_rxtxtasks",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 106
+      },
+      "summary": {
+        "totalSteps": 4,
+        "passedSteps": 4,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "Hello world"
+            ]
+          },
+          "expected": "Hello world"
+        },
+        {
+          "stepIndex": 2,
+          "type": "INPUT_BUS",
+          "status": "passed",
+          "timeUs": "100000"
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (101) RX_TASK: Read 15 bytes: 'WINK_ASYNC_UART'\u001b[0m\n57 49 4e 4b 5f 41 53 59 4e 43 5f 55 41 52 54 \n",
+              "\u001b[0;32mI (2001) TX_TASK: Wrote 11 bytes\u001b[0m\n"
+            ]
+          },
+          "expected": "Read 15 bytes: 'WINK_ASYNC_UART'"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

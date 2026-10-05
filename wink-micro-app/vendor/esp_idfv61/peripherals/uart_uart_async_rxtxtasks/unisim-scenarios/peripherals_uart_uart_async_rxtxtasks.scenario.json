@@ -1,0 +1,52 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 uart_async_rxtxtasks headless deterministic proof",
+    "templateId": "esp_idfv61_peripherals_uart_async_rxtxtasks",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1500ms"],
+      "busType": "uart",
+      "busId": 1,
+      "direction": "tx",
+      "matcher": "Hello world",
+      "description": "断言 TX 任务向 UART1 发送 Hello world 数据包"
+    },
+    {
+      "type": "INPUT_BUS",
+      "timeUs": "100ms",
+      "mode": "stream",
+      "busType": "uart",
+      "busId": 1,
+      "payload": {
+        "encoding": "utf8",
+        "text": "WINK_ASYNC_UART"
+      },
+      "description": "向 UART1 RX 异步注入测试数据流"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["100ms", "2500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Read 15 bytes: 'WINK_ASYNC_UART'",
+      "description": "断言 RX 任务从 UART1 成功读取并向控制台打印接收到的数据"
+    }
+  ]
+}

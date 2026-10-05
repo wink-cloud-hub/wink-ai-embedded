@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 33,
-    "verified_configs": 34,
+    "audited": 34,
+    "verified_configs": 35,
     "verified": 25
   },
   "entries": [
@@ -5936,10 +5936,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-05T03:52:47Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -5971,18 +5973,54 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/peripherals_uart_uart_async_rxtxtasks.scenario.json",
+            "scenario_path": "peripherals/uart_uart_async_rxtxtasks/unisim-scenarios/peripherals_uart_uart_async_rxtxtasks.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
+            "positive_cases": [
+              {
+                "name": "供电轨稳态校验",
+                "matcher": {
+                  "op": "equals",
+                  "expected": 3.3
+                }
+              },
+              {
+                "name": "UART1 TX 发送 Hello world",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "Hello world"
+                }
+              },
+              {
+                "name": "UART1 RX 接收并控制台输出",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "Read 15 bytes: 'WINK_ASYNC_UART'"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "异步接收丢失或总线未挂载",
+                "expect_error": "ASSERTION_TIMEOUT",
+                "detects": "RX任务未读取到注入报文或控制台未吐出目标内容"
+              }
+            ],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261005-esp.peripherals.uart.uart_async_rxtxtasks-verified",
+            "assets_sha256": "e4686ef040675ea13862baa2277d0d07f623d430f303a5f749c2ccb0741efe09",
+            "scenario_sha256": "23b3e33df3254b5c05eaebd209a87e1f4c46180d73660a31a75a60206ed6baf8",
+            "execution_report_ref": ".governance/reports/peripherals/uart_uart_async_rxtxtasks/run-report.json",
+            "verified_commit": "e1c4ce2fb53449a262b04eaac62420b96d6717ba",
+            "verified_at": "2026-10-05T03:52:47Z"
+          }
         }
       ],
       "target_app_dir": "peripherals/uart_uart_async_rxtxtasks"
