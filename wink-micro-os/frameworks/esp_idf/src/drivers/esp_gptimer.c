@@ -6,6 +6,13 @@
 #include "esp_idf_wink.h"
 #include <string.h>
 
+#if defined(__EMSCRIPTEN__)
+#  include <emscripten.h>
+#  define WINK_SIM_EXPORT EMSCRIPTEN_KEEPALIVE
+#else
+#  define WINK_SIM_EXPORT
+#endif
+
 struct gptimer_t {
     bool in_use;
     bool enabled;
@@ -17,6 +24,8 @@ struct gptimer_t {
     void *user_data;
     uint64_t alarm_count;
     bool auto_reload;
+    uint64_t reload_count;
+    uint64_t stopped_count;
     uint64_t raw_count_offset;
     uint32_t token;
 };
@@ -53,6 +62,9 @@ static void on_hwtimer_isr(void *arg) {
             .alarm_value = t->alarm_count
         };
         (void)t->alarm_cb(timer_handle, &edata, t->user_data);
+        if (t->auto_reload) {
+            gptimer_set_raw_count(timer_handle, t->reload_count);
+        }
     }
 }
 
@@ -100,6 +112,10 @@ esp_err_t gptimer_get_raw_count(gptimer_handle_t timer, uint64_t *value) {
     if (!t || !value) {
         return ESP_ERR_INVALID_ARG;
     }
+    if (!t->running) {
+        *value = t->stopped_count;
+        return ESP_OK;
+    }
     uint64_t now_us = pal_os_get_us();
     if (t->resolution_hz == 1000000ULL) {
         *value = now_us + t->raw_count_offset;
@@ -127,6 +143,7 @@ esp_err_t gptimer_set_raw_count(gptimer_handle_t timer, uint64_t value) {
     if (!t) {
         return ESP_ERR_INVALID_ARG;
     }
+    t->stopped_count = value;
     uint64_t now_us = pal_os_get_us();
     uint64_t base_count = (t->resolution_hz == 1000000ULL)
         ? now_us
@@ -151,6 +168,7 @@ esp_err_t gptimer_set_alarm_action(gptimer_handle_t timer, const gptimer_alarm_c
 
     t->alarm_count = config->alarm_count;
     t->auto_reload = config->flags.auto_reload_on_alarm ? true : false;
+    t->reload_count = config->reload_count;
 
     uint64_t us = (config->alarm_count * 1000000ULL) / t->resolution_hz;
     if (us < 10000ULL) {
@@ -210,7 +228,14 @@ esp_err_t gptimer_start(gptimer_handle_t timer) {
     if (!t->enabled) {
         return ESP_ERR_INVALID_STATE;
     }
-    t->running = true;
+    if (!t->running) {
+        uint64_t now_us = pal_os_get_us();
+        uint64_t base_count = (t->resolution_hz == 1000000ULL)
+            ? now_us
+            : ((now_us * (uint64_t)t->resolution_hz) / 1000000ULL);
+        t->raw_count_offset = t->stopped_count - base_count;
+        t->running = true;
+    }
     if (t->alarm_configured) {
         wink_status_t st = pal_hwtimer_start(t->id);
         if (st != WINK_OK) {
@@ -229,13 +254,16 @@ esp_err_t gptimer_stop(gptimer_handle_t timer) {
     if (!t->enabled) {
         return ESP_ERR_INVALID_STATE;
     }
+    if (t->running) {
+        gptimer_get_raw_count(timer, &t->stopped_count);
+        t->running = false;
+    }
     if (t->alarm_configured) {
         wink_status_t st = pal_hwtimer_stop(t->id);
         if (st != WINK_OK) {
             return esp_err_from_wink(st);
         }
     }
-    t->running = false;
     return ESP_OK;
 }
 
@@ -269,3 +297,19 @@ void esp_gptimer_reset(void) {
     }
     memset(s_gptimers, 0, sizeof(s_gptimers));
 }
+
+WINK_SIM_EXPORT uint64_t sim_timer_get_counter(uint32_t timer_id) {
+    if (timer_id >= PAL_HWTIMERS_MAX) {
+        return pal_os_get_us();
+    }
+    struct gptimer_t *t = &s_gptimers[timer_id];
+    if (!t->in_use) {
+        return pal_os_get_us();
+    }
+    uint64_t val = 0;
+    if (gptimer_get_raw_count((gptimer_handle_t)t, &val) == ESP_OK) {
+        return val;
+    }
+    return pal_os_get_us();
+}
+

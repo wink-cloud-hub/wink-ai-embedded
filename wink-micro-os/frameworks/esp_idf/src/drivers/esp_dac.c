@@ -5,6 +5,7 @@
  */
 #include "driver/dac_oneshot.h"
 #include "driver/dac_cosine.h"
+#include "hal/pal_dac.h"
 #include "esp_log.h"
 #include "esp_err.h"
 #include "esp_sim_handle.h"
@@ -51,6 +52,16 @@ esp_err_t dac_oneshot_new_channel(const dac_oneshot_config_t *oneshot_cfg, dac_o
         return ESP_ERR_INVALID_ARG;
     }
 
+    pal_dac_config_t pcfg = {
+        .pin = (wink_pin_t)pin,
+        .full_scale_mv = 3300,
+        .resolution_bits = 8,
+    };
+    wink_status_t st = pal_dac_init((pal_dac_channel_t)slot, &pcfg);
+    if (st != WINK_OK && st != WINK_ERR_ALREADY_INITIALIZED) {
+        return ESP_FAIL;
+    }
+
     s_dac_channels[slot].in_use = true;
     s_dac_channels[slot].chan_id = oneshot_cfg->chan_id;
     s_dac_channels[slot].pin = pin;
@@ -73,6 +84,7 @@ esp_err_t dac_oneshot_del_channel(dac_oneshot_handle_t handle) {
         return ESP_ERR_INVALID_STATE;
     }
 
+    pal_dac_deinit((pal_dac_channel_t)slot);
     s_dac_channels[slot].in_use = false;
     s_dac_channels[slot].token = 0;
     ESP_LOGI(TAG, "DAC oneshot channel %d deleted", s_dac_channels[slot].chan_id);
@@ -89,6 +101,7 @@ esp_err_t dac_oneshot_output_voltage(dac_oneshot_handle_t handle, uint8_t digi_v
     }
 
     s_dac_channels[slot].last_value = digi_value;
+    (void)pal_dac_write_raw((pal_dac_channel_t)slot, (uint16_t)digi_value);
     ESP_LOGD(TAG, "DAC channel %d output voltage: %d", s_dac_channels[slot].chan_id, digi_value);
     return ESP_OK;
 }
@@ -129,6 +142,16 @@ esp_err_t dac_cosine_new_channel(const dac_cosine_config_t *cos_cfg, dac_cosine_
         return ESP_ERR_INVALID_ARG;
     }
 
+    pal_dac_config_t pcfg = {
+        .pin = (wink_pin_t)pin,
+        .full_scale_mv = 3300,
+        .resolution_bits = 8,
+    };
+    wink_status_t st = pal_dac_init((pal_dac_channel_t)slot, &pcfg);
+    if (st != WINK_OK && st != WINK_ERR_ALREADY_INITIALIZED) {
+        return ESP_FAIL;
+    }
+
     s_dac_cosine_channels[slot].in_use = true;
     s_dac_cosine_channels[slot].is_running = false;
     s_dac_cosine_channels[slot].chan_id = cos_cfg->chan_id;
@@ -156,6 +179,13 @@ esp_err_t dac_cosine_start(dac_cosine_handle_t handle) {
     }
 
     s_dac_cosine_channels[slot].is_running = true;
+    pal_dac_cw_config_t cw_cfg = {
+        .freq_hz = s_dac_cosine_channels[slot].freq_hz,
+        .atten = (uint8_t)s_dac_cosine_channels[slot].atten,
+        .offset = s_dac_cosine_channels[slot].offset,
+        .phase = (uint8_t)s_dac_cosine_channels[slot].phase,
+    };
+    (void)pal_dac_start_cw((pal_dac_channel_t)slot, &cw_cfg);
     ESP_LOGI(TAG, "DAC cosine channel %d started", s_dac_cosine_channels[slot].chan_id);
     return ESP_OK;
 }
@@ -170,6 +200,7 @@ esp_err_t dac_cosine_stop(dac_cosine_handle_t handle) {
     }
 
     s_dac_cosine_channels[slot].is_running = false;
+    (void)pal_dac_stop_cw((pal_dac_channel_t)slot);
     ESP_LOGI(TAG, "DAC cosine channel %d stopped", s_dac_cosine_channels[slot].chan_id);
     return ESP_OK;
 }
@@ -183,9 +214,20 @@ esp_err_t dac_cosine_del_channel(dac_cosine_handle_t handle) {
         return ESP_ERR_INVALID_STATE;
     }
 
+    (void)pal_dac_stop_cw((pal_dac_channel_t)slot);
+    pal_dac_deinit((pal_dac_channel_t)slot);
     s_dac_cosine_channels[slot].in_use = false;
     s_dac_cosine_channels[slot].is_running = false;
     s_dac_cosine_channels[slot].token = 0;
     ESP_LOGI(TAG, "DAC cosine channel %d deleted", s_dac_cosine_channels[slot].chan_id);
     return ESP_OK;
 }
+
+void esp_dac_reset(void) {
+    for (pal_dac_channel_t i = 0; i < MAX_DAC_CHANNELS; i++) {
+        pal_dac_deinit(i);
+    }
+    memset(s_dac_channels, 0, sizeof(s_dac_channels));
+    memset(s_dac_cosine_channels, 0, sizeof(s_dac_cosine_channels));
+}
+

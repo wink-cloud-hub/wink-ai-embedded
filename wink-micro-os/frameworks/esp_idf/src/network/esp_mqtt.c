@@ -54,9 +54,14 @@ struct esp_mqtt_client {
 static struct esp_mqtt_client s_clients[MAX_MQTT_CLIENTS];
 static mqtt_subscription_t s_subscriptions[MAX_SUBSCRIPTIONS];
 
-static char s_last_topic[MAX_TOPIC_LEN];
-static char s_last_data[MAX_DATA_LEN];
-static int s_last_data_len = 0;
+static char s_last_tx_topic[MAX_TOPIC_LEN];
+static char s_last_tx_data[MAX_DATA_LEN];
+static int s_last_tx_data_len = 0;
+
+static char s_last_rx_topic[MAX_TOPIC_LEN];
+static char s_last_rx_data[MAX_DATA_LEN];
+static int s_last_rx_data_len = 0;
+
 static int s_last_msg_id = 0;
 static int s_next_msg_id = 1;
 
@@ -517,17 +522,17 @@ int esp_mqtt_client_publish(esp_mqtt_client_handle_t client, const char *topic, 
         len = 0;
     }
 
-    /* 记录到 last_published 遥测探测缓冲 */
-    strncpy(s_last_topic, topic, sizeof(s_last_topic) - 1);
-    s_last_topic[sizeof(s_last_topic) - 1] = '\0';
+    /* 记录到 last_published 遥测探测缓冲 (仅 TX 发送队列) */
+    strncpy(s_last_tx_topic, topic, sizeof(s_last_tx_topic) - 1);
+    s_last_tx_topic[sizeof(s_last_tx_topic) - 1] = '\0';
     if (data && len > 0) {
-        size_t cplen = (size_t)len < sizeof(s_last_data) - 1 ? (size_t)len : sizeof(s_last_data) - 1;
-        memcpy(s_last_data, data, cplen);
-        s_last_data[cplen] = '\0';
-        s_last_data_len = (int)cplen;
+        size_t cplen = (size_t)len < sizeof(s_last_tx_data) - 1 ? (size_t)len : sizeof(s_last_tx_data) - 1;
+        memcpy(s_last_tx_data, data, cplen);
+        s_last_tx_data[cplen] = '\0';
+        s_last_tx_data_len = (int)cplen;
     } else {
-        s_last_data[0] = '\0';
-        s_last_data_len = 0;
+        s_last_tx_data[0] = '\0';
+        s_last_tx_data_len = 0;
     }
 
     int msg_id = s_next_msg_id++;
@@ -563,6 +568,19 @@ int esp_mqtt_client_publish(esp_mqtt_client_handle_t client, const char *topic, 
                     sub_client->rx_data[cplen] = '\0';
                 } else {
                     sub_client->rx_data[0] = '\0';
+                }
+
+                /* 记录到接收端全局遥测缓冲 (RX 队列) */
+                strncpy(s_last_rx_topic, topic, sizeof(s_last_rx_topic) - 1);
+                s_last_rx_topic[sizeof(s_last_rx_topic) - 1] = '\0';
+                if (data && len > 0) {
+                    size_t rxcp = (size_t)len < sizeof(s_last_rx_data) - 1 ? (size_t)len : sizeof(s_last_rx_data) - 1;
+                    memcpy(s_last_rx_data, data, rxcp);
+                    s_last_rx_data[rxcp] = '\0';
+                    s_last_rx_data_len = (int)rxcp;
+                } else {
+                    s_last_rx_data[0] = '\0';
+                    s_last_rx_data_len = 0;
                 }
 
                 esp_mqtt_event_t event;
@@ -697,9 +715,12 @@ void esp_mqtt_sim_reset(void) {
     s_next_msg_id = 1;
     s_mqtt_core_handler_registered = false;
     memset(s_subscriptions, 0, sizeof(s_subscriptions));
-    memset(s_last_topic, 0, sizeof(s_last_topic));
-    memset(s_last_data, 0, sizeof(s_last_data));
-    s_last_data_len = 0;
+    memset(s_last_tx_topic, 0, sizeof(s_last_tx_topic));
+    memset(s_last_tx_data, 0, sizeof(s_last_tx_data));
+    s_last_tx_data_len = 0;
+    memset(s_last_rx_topic, 0, sizeof(s_last_rx_topic));
+    memset(s_last_rx_data, 0, sizeof(s_last_rx_data));
+    s_last_rx_data_len = 0;
     s_last_msg_id = 0;
     memset(s_clients, 0, sizeof(s_clients));
 }
@@ -741,6 +762,19 @@ int esp_mqtt_sim_inject_message(const char *topic, const char *data, int data_le
                     sub_client->rx_data[0] = '\0';
                 }
 
+                /* 记录到接收端全局遥测缓冲 (RX 队列) */
+                strncpy(s_last_rx_topic, topic, sizeof(s_last_rx_topic) - 1);
+                s_last_rx_topic[sizeof(s_last_rx_topic) - 1] = '\0';
+                if (data && data_len > 0) {
+                    size_t rxcp = (size_t)data_len < sizeof(s_last_rx_data) - 1 ? (size_t)data_len : sizeof(s_last_rx_data) - 1;
+                    memcpy(s_last_rx_data, data, rxcp);
+                    s_last_rx_data[rxcp] = '\0';
+                    s_last_rx_data_len = (int)rxcp;
+                } else {
+                    s_last_rx_data[0] = '\0';
+                    s_last_rx_data_len = 0;
+                }
+
                 esp_mqtt_event_t event;
                 memset(&event, 0, sizeof(event));
                 event.event_id = MQTT_EVENT_DATA;
@@ -766,14 +800,14 @@ int esp_mqtt_sim_inject_message(const char *topic, const char *data, int data_le
 
 int esp_mqtt_sim_get_last_published(char *out_topic, size_t topic_max, char *out_data, size_t data_max) {
     if (out_topic && topic_max > 0) {
-        strncpy(out_topic, s_last_topic, topic_max - 1);
+        strncpy(out_topic, s_last_tx_topic, topic_max - 1);
         out_topic[topic_max - 1] = '\0';
     }
     if (out_data && data_max > 0) {
-        strncpy(out_data, s_last_data, data_max - 1);
+        strncpy(out_data, s_last_tx_data, data_max - 1);
         out_data[data_max - 1] = '\0';
     }
-    return s_last_data_len;
+    return s_last_tx_data_len;
 }
 
 int esp_mqtt_sim_get_last_msg_id(void) {
@@ -794,10 +828,22 @@ WINK_SIM_EXPORT int sim_mqtt_get_state(void) {
 }
 
 WINK_SIM_EXPORT const char* sim_mqtt_get_last_topic(void) {
-    return s_last_topic;
+    return s_last_tx_topic;
 }
 
 WINK_SIM_EXPORT const char* sim_mqtt_get_last_data(void) {
-    return s_last_data;
+    return s_last_rx_data;
+}
+
+WINK_SIM_EXPORT const char* sim_mqtt_get_last_tx_data(void) {
+    return s_last_tx_data;
+}
+
+WINK_SIM_EXPORT const char* sim_mqtt_get_last_rx_data(void) {
+    return s_last_rx_data;
+}
+
+WINK_SIM_EXPORT const char* sim_mqtt_get_last_rx_topic(void) {
+    return s_last_rx_topic;
 }
 

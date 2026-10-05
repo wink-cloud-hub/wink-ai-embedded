@@ -93,7 +93,7 @@ static bool url_prefix_matches(const char *url, const char *prefix) {
 
     /* 3. Handle http://host:80/path matching against http://host/path */
     const char *found_port = strstr(url, ":80");
-    if (found_port) {
+    if (found_port && (found_port[3] == '/' || found_port[3] == '\0')) {
         char stripped[SIM_HTTP_URL_MAX];
         size_t before_len = (size_t)(found_port - url);
         const char *after_port = found_port + 3;

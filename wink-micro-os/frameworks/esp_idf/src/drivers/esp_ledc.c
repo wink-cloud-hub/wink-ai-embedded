@@ -3,6 +3,7 @@
 #include "hal/pal_pwm.h"
 #include "esp_log.h"
 #include "esp_idf_wink.h"
+#include "osal/pal_osal.h"
 #include <string.h>
 
 static const char *TAG = "esp_ledc";
@@ -20,7 +21,11 @@ typedef struct {
     ledc_timer_t timer_sel;
     uint32_t pending_duty;
     uint32_t active_duty;
+    uint32_t start_fade_duty;
     uint32_t target_fade_duty;
+    uint64_t fade_start_us;
+    uint32_t fade_total_time_ms;
+    bool is_fading;
     ledc_cbs_t cbs;
     void *cb_user_arg;
 } esp_ledc_channel_state_t;
@@ -142,11 +147,11 @@ void ledc_fade_func_uninstall(void) {
 
 esp_err_t ledc_set_fade_with_time(ledc_mode_t speed_mode, ledc_channel_t channel, uint32_t target_duty, int max_fade_time_ms) {
     (void)speed_mode;
-    (void)max_fade_time_ms;
     if (channel >= SOC_LEDC_CHANNEL_NUM || !s_channels[channel].configured) {
         return ESP_ERR_INVALID_ARG;
     }
     s_channels[channel].target_fade_duty = target_duty;
+    s_channels[channel].fade_total_time_ms = (max_fade_time_ms > 0) ? (uint32_t)max_fade_time_ms : 0;
     return ESP_OK;
 }
 
@@ -169,8 +174,11 @@ esp_err_t ledc_fade_start(ledc_mode_t speed_mode, ledc_channel_t channel, ledc_f
     if (channel >= SOC_LEDC_CHANNEL_NUM || !s_channels[channel].configured) {
         return ESP_ERR_INVALID_ARG;
     }
-    // 仿真环境保真降级：瞬时更新到目标占空比并调用回调
     esp_ledc_channel_state_t *ch = &s_channels[channel];
+    ch->start_fade_duty = ch->active_duty;
+    ch->fade_start_us = pal_os_get_us();
+    ch->is_fading = true;
+
     ch->pending_duty = ch->target_fade_duty;
     esp_err_t ret = ledc_update_duty(speed_mode, channel);
     if (ch->cbs.fade_cb) {
@@ -182,6 +190,7 @@ esp_err_t ledc_fade_start(ledc_mode_t speed_mode, ledc_channel_t channel, ledc_f
         };
         ch->cbs.fade_cb(&param, ch->cb_user_arg);
     }
+    ch->is_fading = false;
     return ret;
 }
 
@@ -199,6 +208,18 @@ uint32_t ledc_get_duty(ledc_mode_t speed_mode, ledc_channel_t channel) {
     (void)speed_mode;
     if (channel >= SOC_LEDC_CHANNEL_NUM || !s_channels[channel].configured) {
         return 0;
+    }
+    esp_ledc_channel_state_t *ch = &s_channels[channel];
+    if (ch->is_fading && ch->fade_total_time_ms > 0) {
+        uint64_t now_us = pal_os_get_us();
+        if (now_us >= ch->fade_start_us) {
+            uint64_t elapsed_us = now_us - ch->fade_start_us;
+            uint64_t total_us = (uint64_t)ch->fade_total_time_ms * 1000ULL;
+            if (elapsed_us < total_us) {
+                int64_t diff = (int64_t)ch->target_fade_duty - (int64_t)ch->start_fade_duty;
+                return (uint32_t)((int64_t)ch->start_fade_duty + (diff * (int64_t)elapsed_us) / (int64_t)total_us);
+            }
+        }
     }
     return s_channels[channel].active_duty;
 }
