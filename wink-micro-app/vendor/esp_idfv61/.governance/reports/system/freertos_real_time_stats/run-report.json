@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-02T22:41:10.465Z",
+  "timestamp": "2026-10-05T23:14:32.604Z",
   "total": 1,
   "passed": 1,
   "failed": 0,
@@ -11,7 +11,7 @@
         "name": "ESP-IDF v6.1 freertos_real_time_stats headless deterministic proof",
         "templateId": "esp_idfv61_system_freertos_real_time_stats",
         "totalVirtualUs": "3000000",
-        "wallClockMs": 132
+        "wallClockMs": 136
       },
       "summary": {
         "totalSteps": 6,
@@ -50,7 +50,7 @@
           "actual": {
             "matchedCount": 1,
             "candidatePayloads": [
-              "| Task | Run Time | Percentage\n| app_main | 0 | 0%\n| spin0 | 1100 | 110%\n| spin1 | 1100 | 110%\n| spin2 | 1100 | 110%\n| spin3 | 1100 | 110%\n| spin4 | 1100 | 110%\n| spin5 | 1100 | 110%\n| stats | 1000 | 100%\nReal time stats obtained\n",
+              "| Task | Run Time | Percentage\n| app_main | 0 | 0%\n| spin0 | 3634 | 0%\n| spin1 | 2479 | 0%\n| spin2 | 2514 | 0%\n| spin3 | 2877 | 0%\n| spin4 | 2932 | 0%\n| spin5 | 2499 | 0%\n| stats | 843 | 0%\nReal time stats obtained\n",
               "\n\nGetting real time stats over 100 ticks\n"
             ]
           },
@@ -64,7 +64,7 @@
           "actual": {
             "matchedCount": 1,
             "candidatePayloads": [
-              "| Task | Run Time | Percentage\n| app_main | 0 | 0%\n| spin0 | 1100 | 110%\n| spin1 | 1100 | 110%\n| spin2 | 1100 | 110%\n| spin3 | 1100 | 110%\n| spin4 | 1100 | 110%\n| spin5 | 1100 | 110%\n| stats | 1000 | 100%\nReal time stats obtained\n",
+              "| Task | Run Time | Percentage\n| app_main | 0 | 0%\n| spin0 | 3634 | 0%\n| spin1 | 2479 | 0%\n| spin2 | 2514 | 0%\n| spin3 | 2877 | 0%\n| spin4 | 2932 | 0%\n| spin5 | 2499 | 0%\n| stats | 843 | 0%\nReal time stats obtained\n",
               "\n\nGetting real time stats over 100 ticks\n"
             ]
           },
@@ -78,7 +78,7 @@
           "actual": {
             "matchedCount": 2,
             "candidatePayloads": [
-              "| Task | Run Time | Percentage\n| app_main | 0 | 0%\n| spin0 | 1100 | 110%\n| spin1 | 1100 | 110%\n| spin2 | 1100 | 110%\n| spin3 | 1100 | 110%\n| spin4 | 1100 | 110%\n| spin5 | 1100 | 110%\n| stats | 1000 | 100%\nReal time stats obtained\n",
+              "| Task | Run Time | Percentage\n| app_main | 0 | 0%\n| spin0 | 3634 | 0%\n| spin1 | 2479 | 0%\n| spin2 | 2514 | 0%\n| spin3 | 2877 | 0%\n| spin4 | 2932 | 0%\n| spin5 | 2499 | 0%\n| stats | 843 | 0%\nReal time stats obtained\n",
               "\n\nGetting real time stats over 100 ticks\n"
             ]
           },
@@ -92,7 +92,7 @@
           "actual": {
             "matchedCount": 1,
             "candidatePayloads": [
-              "| Task | Run Time | Percentage\n| app_main | 0 | 0%\n| spin0 | 1100 | 110%\n| spin1 | 1100 | 110%\n| spin2 | 1100 | 110%\n| spin3 | 1100 | 110%\n| spin4 | 1100 | 110%\n| spin5 | 1100 | 110%\n| stats | 1000 | 100%\nReal time stats obtained\n",
+              "| Task | Run Time | Percentage\n| app_main | 0 | 0%\n| spin0 | 3634 | 0%\n| spin1 | 2479 | 0%\n| spin2 | 2514 | 0%\n| spin3 | 2877 | 0%\n| spin4 | 2932 | 0%\n| spin5 | 2499 | 0%\n| stats | 843 | 0%\nReal time stats obtained\n",
               "\n\nGetting real time stats over 100 ticks\n"
             ]
           },

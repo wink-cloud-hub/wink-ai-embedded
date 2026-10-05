@@ -8475,12 +8475,12 @@
           },
           "evidence": {
             "backend": "wasm_simulation",
-            "run_id": "run-20261002-esp.system.freertos.real_time_stats-verified",
-            "assets_sha256": "f98fcc26bfe65983b56cbeba9c2ea4bc106dfdb40c0b2337ba72070f3731e632",
+            "run_id": "run-20261005-esp.system.freertos.real_time_stats-verified",
+            "assets_sha256": "170848f1e20ed032a8a27642747275b079e43665a4e7e805772b4e8192e5631a",
             "scenario_sha256": "c495756852f85e557673026e8f1460b7babce15711926d633daf180a84a8cb69",
             "execution_report_ref": ".governance/reports/system/freertos_real_time_stats/run-report.json",
-            "verified_commit": "1ca38952a79c40b93c584181e908949c53f55df3",
-            "verified_at": "2026-10-02T22:41:10Z"
+            "verified_commit": "3e3293ae3b85e518da8cef175ff807800c9c342f",
+            "verified_at": "2026-10-05T23:14:32Z"
           }
         }
       ],
