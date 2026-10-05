@@ -1,0 +1,49 @@
+{
+  "timestamp": "2026-10-05T03:40:09.394Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 system_startup_time headless deterministic proof",
+        "templateId": "esp_idfv61_system_startup_time",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 94
+      },
+      "summary": {
+        "totalSteps": 2,
+        "passedSteps": 2,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) example: App started!\u001b[0m\n"
+            ]
+          },
+          "expected": "App started!"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "app_name": "esp_idfv61_system_startup_time",
+  "display_name": "Espressif ESP-IDF startup_time",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "mcu": "esp32",
+  "simulation_profile": "STANDARD",
+  "tick_ms": 1,
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/system/startup_time/main",
+    "files": {
+      "hello_world_main.c": "4754abb465c1cc9adbf910e970b347783ea4596b102e12365c9f4e8abd7789a6"
+    }
+  },
+  "devices": {}
+}

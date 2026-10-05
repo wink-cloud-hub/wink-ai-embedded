@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 32,
-    "verified_configs": 33,
+    "audited": 33,
+    "verified_configs": 34,
     "verified": 25
   },
   "entries": [
@@ -9579,10 +9579,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-05T03:40:09Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -9612,18 +9614,47 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/system_startup_time.scenario.json",
+            "scenario_path": "system/startup_time/unisim-scenarios/system_startup_time.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
+            "positive_cases": [
+              {
+                "name": "供电轨稳态校验",
+                "matcher": {
+                  "op": "equals",
+                  "expected": 3.3
+                }
+              },
+              {
+                "name": "冷启动恢复日志并宣告成功",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "App started!"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "静默启动或日志级别被静音",
+                "expect_error": "ASSERTION_TIMEOUT",
+                "detects": "启动失败或日志桥接未吐出App started!"
+              }
+            ],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261005-esp.system.startup_time-verified",
+            "assets_sha256": "1848b4c1d0758f2890c7a07d41fb5c4ac6a538f2f8fc40811024d461d622a292",
+            "scenario_sha256": "b050f733975b01110433552767509eaa10ea7c9a0e5ac223522a2a508511f95f",
+            "execution_report_ref": ".governance/reports/system/startup_time/run-report.json",
+            "verified_commit": "412fa0bd8b07b68aca74c030b9297ca233aa4e9f",
+            "verified_at": "2026-10-05T03:40:09Z"
+          }
         }
       ],
       "target_app_dir": "system/startup_time"
