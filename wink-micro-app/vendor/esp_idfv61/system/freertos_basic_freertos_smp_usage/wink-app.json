@@ -1,0 +1,24 @@
+{
+  "app_name": "esp_idfv61_system_freertos_basic_freertos_smp_usage",
+  "display_name": "Espressif ESP-IDF freertos_basic_freertos_smp_usage",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "mcu": "esp32",
+  "simulation_profile": "STANDARD",
+  "tick_ms": 1,
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/system/freertos/basic_freertos_smp_usage/main",
+    "files": {
+      "basic_freertos_smp_usage.c": "840337757e2f827cf1f4395402d5316d4569505410ea2a4c61a888c6dd78a451",
+      "basic_freertos_smp_usage.h": "b7469127cd3c48f6bd96cae33b930ede3656d756b5082a0a846ff6bd13040de9",
+      "batch_processing_example.c": "39099a4ead8deaefc734377cd57b113f89651c30ebf04fc800f026c7333033f2",
+      "create_task_example.c": "8f94d883f6b9f6ed2aa09e464b6bee682cd2b9bb2109e900837d2e3012712b61",
+      "lock_example.c": "62ed678f9a48d85b2b8786c8ae9e8a684ededb7b46754ed734e9a53b84752204",
+      "queue_example.c": "f30b4a95a71123701523513e88c703dfa7b9c5f5a1e1e52d331ab23a37fce5ff",
+      "task_notify_example.c": "89217861e8e6289a8b047b6ceb54dc27b12c85432760284671c7b0219079bccc"
+    }
+  },
+  "devices": {}
+}

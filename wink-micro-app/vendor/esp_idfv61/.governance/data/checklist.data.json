@@ -9,7 +9,7 @@
     "in_scope_active": 291,
     "in_scope_deferred": 21,
     "audited": 31,
-    "verified_configs": 31,
+    "verified_configs": 32,
     "verified": 25
   },
   "entries": [
@@ -8290,10 +8290,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-05T03:19:12Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -8324,18 +8326,54 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/system_freertos_basic_freertos_smp_usage.scenario.json",
-            "timeout_virtual_us": 3000000,
+            "scenario_path": "system/freertos_basic_freertos_smp_usage/unisim-scenarios/system_freertos_basic_freertos_smp_usage.scenario.json",
+            "timeout_virtual_us": 18000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
+            "positive_cases": [
+              {
+                "name": "多核任务创建调度与控制台交互",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "create task example: task#0 is running on core#0"
+                }
+              },
+              {
+                "name": "队列多任务解耦与数据收发",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "queue example: received data = 0"
+                }
+              },
+              {
+                "name": "任务通知事件同步唤醒",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "task notify example: rcv_task is processing this task notification"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "输入非法控制台命令",
+                "expect_error": "Command '.*' not found",
+                "detects": "控制台静默忽略错误输入导致指令执行失控"
+              }
+            ],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261005-esp.system.freertos.basic_freertos_smp_usage-verified",
+            "assets_sha256": "bbd466453fbdd2a2048d92b120ae55ef199f2df228836b15681bda0a5ebcb4d7",
+            "scenario_sha256": "a4456cf29960bf5b4e3c49282b4ae99e97c84740a0383d6db8059cfae1b6e2a5",
+            "execution_report_ref": ".governance/reports/system/freertos_basic_freertos_smp_usage/run-report.json",
+            "verified_commit": "945d190bec8632bf8053bd610d9ac00364da055b",
+            "verified_at": "2026-10-05T03:18:40Z"
+          }
         }
       ],
       "target_app_dir": "system/freertos_basic_freertos_smp_usage"

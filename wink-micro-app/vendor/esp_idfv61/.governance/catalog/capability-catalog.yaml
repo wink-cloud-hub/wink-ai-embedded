@@ -658,17 +658,18 @@ capabilities:
   cap.system.console_cmd:
     name: 虚拟控制台交互
     layer: facade
-    status: planned
+    status: verified
     description: esp_console / linenoise 命令行输入解析与命令分发
     owned_paths:
-    - wink-micro-os/frameworks/esp_idf/src/system/esp_console_sim.c
+    - wink-micro-os/frameworks/esp_idf/src/core/esp_console.c
+    - wink-micro-os/frameworks/esp_idf/include/esp_console.h
     soc_support:
     - esp32
     - esp32s3
     - esp32c3
     - esp32c6
     cross_mcu_evidence:
-    - wink-micro-os/targets/wasm/wink_sim_console.c
+    - wink-micro-os/targets/wasm/pal_wasm_ch2_uart.c
   cap.system.ota_update:
     name: OTA 固件升级与回滚校验
     layer: model

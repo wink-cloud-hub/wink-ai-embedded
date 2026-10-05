@@ -1,0 +1,198 @@
+{
+  "timestamp": "2026-10-05T03:18:40.392Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 system_freertos_basic_freertos_smp_usage headless deterministic proof",
+        "templateId": "esp_idfv61_system_freertos_basic_freertos_smp_usage",
+        "totalVirtualUs": "18000000",
+        "wallClockMs": 190
+      },
+      "summary": {
+        "totalSteps": 12,
+        "passedSteps": 12,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\nPlease type the component you would like to run.\nesp32>",
+              "\n\u001b[0;33mW (201) FREERTOS: Core ID 1 not supported; clamped to 0\u001b[0m\n\u001b[0;32mI (201) create task example: created task#1\u001b[0m\n\u001b[0;32mI (201) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (201) create task example: created task#2\u001b[0m\n\u001b[0;32mI (201) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (201) create task example: created task#3\u001b[0m\n\u001b[0;32mI (201) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (201) create task example: created task#0\u001b[0m\n\u001b[0;32mI (201) create task example: task#0 is running on core#0\u001b[0m\n",
+              "\u001b[0;32mI (351) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (351) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (351) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (351) create task example: task#0 is running on core#0\u001b[0m\n"
+            ]
+          },
+          "expected": "Please type the component you would like to run."
+        },
+        {
+          "stepIndex": 2,
+          "type": "INPUT_BUS",
+          "status": "passed",
+          "timeUs": "200000"
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\n\u001b[0;33mW (201) FREERTOS: Core ID 1 not supported; clamped to 0\u001b[0m\n\u001b[0;32mI (201) create task example: created task#1\u001b[0m\n\u001b[0;32mI (201) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (201) create task example: created task#2\u001b[0m\n\u001b[0;32mI (201) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (201) create task example: created task#3\u001b[0m\n\u001b[0;32mI (201) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (201) create task example: created task#0\u001b[0m\n\u001b[0;32mI (201) create task example: task#0 is running on core#0\u001b[0m\n",
+              "\u001b[0;32mI (351) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (351) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (351) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (351) create task example: task#0 is running on core#0\u001b[0m\n",
+              "\u001b[0;32mI (501) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (501) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (501) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (501) create task example: task#0 is running on core#0\u001b[0m\n",
+              "\u001b[0;32mI (651) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (651) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (651) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (651) create task example: task#0 is running on core#0\u001b[0m\n",
+              "\u001b[0;32mI (801) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (801) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (801) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (801) create task example: task#0 is running on core#0\u001b[0m\n",
+              "\u001b[0;32mI (951) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (951) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (951) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (951) create task example: task#0 is running on core#0\u001b[0m\n",
+              "\u001b[0;32mI (1101) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (1101) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (1101) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (1101) create task example: task#0 is running on core#0\u001b[0m\n",
+              "\u001b[0;32mI (1251) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (1251) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (1251) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (1251) create task example: task#0 is running on core#0\u001b[0m\n",
+              "\u001b[0;32mI (1401) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (1401) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (1401) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (1401) create task example: task#0 is running on core#0\u001b[0m\n"
+            ]
+          },
+          "expected": "create task example: created task#0"
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 9,
+            "candidatePayloads": [
+              "\n\u001b[0;33mW (201) FREERTOS: Core ID 1 not supported; clamped to 0\u001b[0m\n\u001b[0;32mI (201) create task example: created task#1\u001b[0m\n\u001b[0;32mI (201) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (201) create task example: created task#2\u001b[0m\n\u001b[0;32mI (201) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (201) create task example: created task#3\u001b[0m\n\u001b[0;32mI (201) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (201) create task example: created task#0\u001b[0m\n\u001b[0;32mI (201) create task example: task#0 is running on core#0\u001b[0m\n",
+              "\u001b[0;32mI (351) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (351) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (351) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (351) create task example: task#0 is running on core#0\u001b[0m\n",
+              "\u001b[0;32mI (501) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (501) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (501) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (501) create task example: task#0 is running on core#0\u001b[0m\n",
+              "\u001b[0;32mI (651) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (651) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (651) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (651) create task example: task#0 is running on core#0\u001b[0m\n",
+              "\u001b[0;32mI (801) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (801) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (801) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (801) create task example: task#0 is running on core#0\u001b[0m\n",
+              "\u001b[0;32mI (951) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (951) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (951) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (951) create task example: task#0 is running on core#0\u001b[0m\n",
+              "\u001b[0;32mI (1101) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (1101) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (1101) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (1101) create task example: task#0 is running on core#0\u001b[0m\n",
+              "\u001b[0;32mI (1251) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (1251) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (1251) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (1251) create task example: task#0 is running on core#0\u001b[0m\n",
+              "\u001b[0;32mI (1401) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (1401) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (1401) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (1401) create task example: task#0 is running on core#0\u001b[0m\n"
+            ]
+          },
+          "expected": "create task example: task#0 is running on core#0"
+        },
+        {
+          "stepIndex": 5,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 9,
+            "candidatePayloads": [
+              "\n\u001b[0;33mW (201) FREERTOS: Core ID 1 not supported; clamped to 0\u001b[0m\n\u001b[0;32mI (201) create task example: created task#1\u001b[0m\n\u001b[0;32mI (201) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (201) create task example: created task#2\u001b[0m\n\u001b[0;32mI (201) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (201) create task example: created task#3\u001b[0m\n\u001b[0;32mI (201) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (201) create task example: created task#0\u001b[0m\n\u001b[0;32mI (201) create task example: task#0 is running on core#0\u001b[0m\n",
+              "\u001b[0;32mI (351) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (351) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (351) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (351) create task example: task#0 is running on core#0\u001b[0m\n",
+              "\u001b[0;32mI (501) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (501) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (501) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (501) create task example: task#0 is running on core#0\u001b[0m\n",
+              "\u001b[0;32mI (651) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (651) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (651) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (651) create task example: task#0 is running on core#0\u001b[0m\n",
+              "\u001b[0;32mI (801) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (801) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (801) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (801) create task example: task#0 is running on core#0\u001b[0m\n",
+              "\u001b[0;32mI (951) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (951) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (951) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (951) create task example: task#0 is running on core#0\u001b[0m\n",
+              "\u001b[0;32mI (1101) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (1101) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (1101) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (1101) create task example: task#0 is running on core#0\u001b[0m\n",
+              "\u001b[0;32mI (1251) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (1251) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (1251) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (1251) create task example: task#0 is running on core#0\u001b[0m\n",
+              "\u001b[0;32mI (1401) create task example: task#1 is running on core#0\u001b[0m\n\u001b[0;32mI (1401) create task example: task#2 is running on core#0\u001b[0m\n\u001b[0;32mI (1401) create task example: task#3 is running on core#0\u001b[0m\n\u001b[0;32mI (1401) create task example: task#0 is running on core#0\u001b[0m\n"
+            ]
+          },
+          "expected": "create task example: task#1 is running on core#0"
+        },
+        {
+          "stepIndex": 6,
+          "type": "INPUT_BUS",
+          "status": "passed",
+          "timeUs": "5900000"
+        },
+        {
+          "stepIndex": 7,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "7500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\n\u001b[0;32mI (5901) queue example: sent data = 0\u001b[0m\n\u001b[0;32mI (5901) queue example: received data = 0\u001b[0m\n",
+              "\u001b[0;32mI (6151) queue example: sent data = 1\u001b[0m\n\u001b[0;32mI (6151) queue example: received data = 1\u001b[0m\n",
+              "\u001b[0;32mI (6401) queue example: sent data = 2\u001b[0m\n\u001b[0;32mI (6401) queue example: received data = 2\u001b[0m\n",
+              "\u001b[0;32mI (6651) queue example: sent data = 3\u001b[0m\n\u001b[0;32mI (6651) queue example: received data = 3\u001b[0m\n",
+              "\u001b[0;32mI (6901) queue example: sent data = 4\u001b[0m\n\u001b[0;32mI (6901) queue example: received data = 4\u001b[0m\n",
+              "\u001b[0;32mI (7151) queue example: sent data = 5\u001b[0m\n\u001b[0;32mI (7151) queue example: received data = 5\u001b[0m\n",
+              "\u001b[0;32mI (7401) queue example: sent data = 6\u001b[0m\n\u001b[0;32mI (7401) queue example: received data = 6\u001b[0m\n"
+            ]
+          },
+          "expected": "queue example: sent data = 0"
+        },
+        {
+          "stepIndex": 8,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "7500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\n\u001b[0;32mI (5901) queue example: sent data = 0\u001b[0m\n\u001b[0;32mI (5901) queue example: received data = 0\u001b[0m\n",
+              "\u001b[0;32mI (6151) queue example: sent data = 1\u001b[0m\n\u001b[0;32mI (6151) queue example: received data = 1\u001b[0m\n",
+              "\u001b[0;32mI (6401) queue example: sent data = 2\u001b[0m\n\u001b[0;32mI (6401) queue example: received data = 2\u001b[0m\n",
+              "\u001b[0;32mI (6651) queue example: sent data = 3\u001b[0m\n\u001b[0;32mI (6651) queue example: received data = 3\u001b[0m\n",
+              "\u001b[0;32mI (6901) queue example: sent data = 4\u001b[0m\n\u001b[0;32mI (6901) queue example: received data = 4\u001b[0m\n",
+              "\u001b[0;32mI (7151) queue example: sent data = 5\u001b[0m\n\u001b[0;32mI (7151) queue example: received data = 5\u001b[0m\n",
+              "\u001b[0;32mI (7401) queue example: sent data = 6\u001b[0m\n\u001b[0;32mI (7401) queue example: received data = 6\u001b[0m\n"
+            ]
+          },
+          "expected": "queue example: received data = 0"
+        },
+        {
+          "stepIndex": 9,
+          "type": "INPUT_BUS",
+          "status": "passed",
+          "timeUs": "11600000"
+        },
+        {
+          "stepIndex": 10,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "13500000",
+          "actual": {
+            "matchedCount": 2,
+            "candidatePayloads": [
+              "\n\u001b[0;32mI (11601) task notify example: send_task sends a notification\u001b[0m\n\u001b[0;32mI (11601) task notify example: 1 tasks pending\u001b[0m\n\u001b[0;32mI (11601) task notify example: rcv_task is processing this task notification\u001b[0m\n\u001b[0;32mI (11651) queue example: Did not received data in the past 1000 ms\u001b[0m\n",
+              "\u001b[0;32mI (12601) task notify example: send_task sends a notification\u001b[0m\n\u001b[0;32mI (12601) task notify example: 1 tasks pending\u001b[0m\n\u001b[0;32mI (12601) task notify example: rcv_task is processing this task notification\u001b[0m\n"
+            ]
+          },
+          "expected": "task notify example: send_task sends a notification"
+        },
+        {
+          "stepIndex": 11,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "13500000",
+          "actual": {
+            "matchedCount": 2,
+            "candidatePayloads": [
+              "\n\u001b[0;32mI (11601) task notify example: send_task sends a notification\u001b[0m\n\u001b[0;32mI (11601) task notify example: 1 tasks pending\u001b[0m\n\u001b[0;32mI (11601) task notify example: rcv_task is processing this task notification\u001b[0m\n\u001b[0;32mI (11651) queue example: Did not received data in the past 1000 ms\u001b[0m\n",
+              "\u001b[0;32mI (12601) task notify example: send_task sends a notification\u001b[0m\n\u001b[0;32mI (12601) task notify example: 1 tasks pending\u001b[0m\n\u001b[0;32mI (12601) task notify example: rcv_task is processing this task notification\u001b[0m\n"
+            ]
+          },
+          "expected": "task notify example: rcv_task is processing this task notification"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

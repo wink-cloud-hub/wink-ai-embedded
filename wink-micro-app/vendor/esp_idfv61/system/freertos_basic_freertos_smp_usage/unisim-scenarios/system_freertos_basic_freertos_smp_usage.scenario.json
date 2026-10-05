@@ -1,0 +1,130 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 system_freertos_basic_freertos_smp_usage headless deterministic proof",
+    "templateId": "esp_idfv61_system_freertos_basic_freertos_smp_usage",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "18000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Please type the component you would like to run.",
+      "description": "断言系统控制台初始化完成并打印组件就绪提示"
+    },
+    {
+      "type": "INPUT_BUS",
+      "timeUs": "200ms",
+      "mode": "stream",
+      "busType": "uart",
+      "busId": 0,
+      "payload": {
+        "encoding": "utf8",
+        "text": "create_task\n"
+      },
+      "description": "通过控制台输入 create_task 启动多核任务创建测试"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["200ms", "1500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "create task example: created task#0",
+      "description": "断言成功创建 Task#0"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["200ms", "1500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "create task example: task#0 is running on core#0",
+      "description": "断言 Task#0 在核心 0 调度运行"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["200ms", "1500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "create task example: task#1 is running on core#0",
+      "description": "断言 Task#1 在核心 0 调度运行"
+    },
+    {
+      "type": "INPUT_BUS",
+      "timeUs": "5900ms",
+      "mode": "stream",
+      "busType": "uart",
+      "busId": 0,
+      "payload": {
+        "encoding": "utf8",
+        "text": "queue\n"
+      },
+      "description": "在 create_task 结束后通过控制台输入 queue 启动队列同步通信测试"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["5900ms", "7500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "queue example: sent data = 0",
+      "description": "断言队列任务成功发送初始数据 0"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["5900ms", "7500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "queue example: received data = 0",
+      "description": "断言接收端任务成功从队列中出队数据 0"
+    },
+    {
+      "type": "INPUT_BUS",
+      "timeUs": "11600ms",
+      "mode": "stream",
+      "busType": "uart",
+      "busId": 0,
+      "payload": {
+        "encoding": "utf8",
+        "text": "task_notification\n"
+      },
+      "description": "在 queue 结束后通过控制台输入 task_notification 启动任务通知同步测试"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["11600ms", "13500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "task notify example: send_task sends a notification",
+      "description": "断言发送任务成功触发任务通知信号"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["11600ms", "13500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "task notify example: rcv_task is processing this task notification",
+      "description": "断言接收端任务被通知成功唤醒并处理业务"
+    }
+  ]
+}

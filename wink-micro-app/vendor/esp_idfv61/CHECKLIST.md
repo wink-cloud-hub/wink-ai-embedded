@@ -3,7 +3,7 @@
 # ESP-IDF v6.1 官方示例全量仿真适配核对清单 (Checklist)
 
 > **数据单一事实源（SSOT）**：[`checklist.data.json`](.governance/data/checklist.data.json)（Spec v2.0.0，多配置实例与五维正交模型）  
-> **生成时间**：2026-10-04  
+> **生成时间**：2026-10-05  
 > **分类规范**：[`CLASSIFICATION-SPEC.md`](.governance/specs/CLASSIFICATION-SPEC.md) (v2.0)  
 > **能力字典**：[`capability-catalog.yaml`](.governance/catalog/capability-catalog.yaml)  
 > **隔离区白名单**：[`gates/quarantine.yaml`](.governance/gates/quarantine.yaml)（10 项存量债务，14 天 TTL 生效中）  
@@ -14,9 +14,9 @@
 ## 一、 总体适配进度统计
 
 - **官方独立示例总数**：**478 个**
-  - `[x]` **已完成六要素实证 (Verified)**：**31 项**
+  - `[x]` **已完成六要素实证 (Verified)**：**32 项**
   - `[?]` **存量隔离待补凭证 (Quarantined Debt)**：**0 项**（14 天 TTL 过期硬阻断，至 `2026-10-13`）
-  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**260 项**
+  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**259 项**
   - `[-]` **明确产品排除 / 暂缓投入 (Out-of-Scope / Deferred)**：**187 项**（编译期 `WINK_SLA_ERROR` Fail-Loud 阻断）
   - `?` **待深度审定 (Pending Audit / Unknown Scope)**：**0 项**
 
@@ -26,7 +26,7 @@
 | :---: | :--- | :---: | :---: | :---: | :---: |
 | 01 | [基础快速起步 (Get-Started)](#get-started) | 2 项 | `#001 ~ #002` | 2 项 | 0 项 |
 | 02 | [片上与总线外设 (Peripherals)](#peripherals) | 114 项 | `#003 ~ #116` | 13 项 | 0 项 |
-| 03 | [操作系统与核心系统调用 (System & OS)](#system) | 68 项 | `#117 ~ #184` | 4 项 | 0 项 |
+| 03 | [操作系统与核心系统调用 (System & OS)](#system) | 68 项 | `#117 ~ #184` | 5 项 | 0 项 |
 | 04 | [网络与应用层通信协议 (Protocols)](#protocols) | 35 项 | `#185 ~ #219` | 2 项 | 0 项 |
 | 05 | [Wi-Fi 无线局域网 (Wi-Fi)](#wifi) | 24 项 | `#220 ~ #243` | 4 项 | 0 项 |
 | 06 | [蓝牙协议栈 (Bluetooth)](#bluetooth) | 147 项 | `#244 ~ #390` | 2 项 | 0 项 |
@@ -243,7 +243,7 @@
 ---
 
 <a id="system"></a>
-### 操作系统与核心系统调用 (System & OS)（共 68 项 | 编号 `#117 ~ #184` | 已实证: 4 项 | 隔离待补: 0 项）
+### 操作系统与核心系统调用 (System & OS)（共 68 项 | 编号 `#117 ~ #184` | 已实证: 5 项 | 隔离待补: 0 项）
 
 | 状态 | 编号 | 官方子示例相对路径 | 可观测等级 | 优先级 | 对应 wink-micro-app | 验收标准与架构说明 |
 | :---: | :---: | :--- | :---: | :---: | :--- | :--- |
@@ -261,7 +261,7 @@
 | [ ] | 128 | `system/esp_trace` | 📜 Level 2 | P2 | `system/esp_trace` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 129 | `system/eventfd` | 📜 Level 2 | P2 | `system/eventfd` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 130 | `system/flash_suspend` | 📜 Level 2 | P2 | `system/flash_suspend` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 131 | `system/freertos/basic_freertos_smp_usage` | 📜 Level 2 | P1 | `system/freertos_basic_freertos_smp_usage` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
+| [x] | 131 | `system/freertos/basic_freertos_smp_usage` | 📜 Level 2 | P0 | [`system/freertos_basic_freertos_smp_usage`](system/freertos_basic_freertos_smp_usage) | [Lane 1: 内核调度] 已完成实证。 |
 | [x] | 132 | `system/freertos/real_time_stats` | 📜 Level 2 | P0 | [`system/freertos_real_time_stats`](system/freertos_real_time_stats) | [Lane 1: 内核调度] 已完成实证。 |
 | [ ] | 133 | `system/gcov` | 📜 Level 2 | P2 | `system/gcov` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 134 | `system/gdbstub` | 📜 Level 2 | P2 | `system/gdbstub` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
