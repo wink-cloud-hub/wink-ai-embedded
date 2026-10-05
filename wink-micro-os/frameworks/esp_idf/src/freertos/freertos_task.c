@@ -236,7 +236,9 @@ void vTaskDelay(const TickType_t xTicksToDelay) {
     }
 
     if (self < FREERTOS_MAX_TASKS && s_tcb[self].used) {
-        s_tcb[self].runtime_counter += (uint32_t)xTicksToDelay * portTICK_PERIOD_MS;
+        /* S-4 fix: Never credit delay sleep duration to task runtime counter!
+         * Only account for active dispatch execution before entering blocked state. */
+        s_tcb[self].runtime_counter += 1;
     }
 
     /* Step 3.3: reset spin counter before timed block */

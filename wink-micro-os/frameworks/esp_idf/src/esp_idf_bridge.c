@@ -20,10 +20,14 @@
 extern void esp_wifi_sim_reset(void);
 extern void esp_mqtt_sim_reset(void);
 extern void esp_http_client_sim_reset(void);
+extern void sim_http_responder_reset(void);
 extern void esp_nimble_sim_reset(void);
 extern void esp_event_loop_sim_reset(void);
 extern void esp_timer_sim_reset(void);
 extern void sim_network_broker_reset(void);
+extern void esp_adc_reset(void);
+extern void esp_dac_reset(void);
+extern void esp_task_wdt_sim_reset(void);
 
 static bool s_esp_pending_reset = false;
 static int s_esp_reset_reason = 4; /* SOFTWARE */
@@ -46,6 +50,9 @@ void esp_peripherals_reset(void) {
     esp_uart_reset();
     esp_gptimer_reset();
     esp_spi_reset();
+    esp_adc_reset();
+    esp_dac_reset();
+    esp_task_wdt_sim_reset();
     nvs_flash_deinit();
 }
 
@@ -113,6 +120,7 @@ void pal_wasm_target_clear_pending_reset(void) {
 
     /* Stage 1: Disconnect upper application protocol clients */
     esp_http_client_sim_reset();
+    sim_http_responder_reset();
     esp_mqtt_sim_reset();
 
     /* Stage 2: Reset Wi-Fi subsystem */

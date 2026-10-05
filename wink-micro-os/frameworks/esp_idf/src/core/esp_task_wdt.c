@@ -215,10 +215,75 @@ void esp_task_wdt_isr_user_handler(void) {
 }
 
 esp_err_t esp_task_wdt_print_triggered_tasks(task_wdt_msg_handler msg_handler, void *opaque, int *cpus_fail) {
-    (void)msg_handler;
-    (void)opaque;
-    if (cpus_fail) {
-        *cpus_fail = 0;
+    if (!s_twdt_ctx.initialized) {
+        if (cpus_fail) *cpus_fail = 0;
+        return ESP_ERR_INVALID_STATE;
     }
+
+    TickType_t now = xTaskGetTickCount();
+    TickType_t timeout_ticks = pdMS_TO_TICKS(s_twdt_ctx.config.timeout_ms);
+    int fail_count = 0;
+
+    for (int i = 0; i < TWDT_MAX_TASKS; i++) {
+        if (s_twdt_ctx.tasks[i].in_use) {
+            TickType_t elapsed = now - s_twdt_ctx.tasks[i].last_reset_tick;
+            if (elapsed > timeout_ticks) {
+                fail_count++;
+                if (msg_handler) {
+                    char buf[128];
+                    snprintf(buf, sizeof(buf), "Task watchdog triggered for task %p (elapsed %u ms, timeout %u ms)",
+                             s_twdt_ctx.tasks[i].handle,
+                             (unsigned)(elapsed * portTICK_PERIOD_MS),
+                             (unsigned)s_twdt_ctx.config.timeout_ms);
+                    msg_handler(opaque, buf);
+                } else {
+                    ESP_LOGE(TAG, "Task watchdog triggered for task %p (elapsed %u ms, timeout %u ms)",
+                             s_twdt_ctx.tasks[i].handle,
+                             (unsigned)(elapsed * portTICK_PERIOD_MS),
+                             (unsigned)s_twdt_ctx.config.timeout_ms);
+                }
+            }
+        }
+    }
+
+    for (int i = 0; i < TWDT_MAX_USERS; i++) {
+        if (s_twdt_ctx.users[i].in_use) {
+            TickType_t elapsed = now - s_twdt_ctx.users[i].last_reset_tick;
+            if (elapsed > timeout_ticks) {
+                fail_count++;
+                if (msg_handler) {
+                    char buf[128];
+                    snprintf(buf, sizeof(buf), "Task watchdog triggered for user '%s' (elapsed %u ms, timeout %u ms)",
+                             s_twdt_ctx.users[i].name,
+                             (unsigned)(elapsed * portTICK_PERIOD_MS),
+                             (unsigned)s_twdt_ctx.config.timeout_ms);
+                    msg_handler(opaque, buf);
+                } else {
+                    ESP_LOGE(TAG, "Task watchdog triggered for user '%s' (elapsed %u ms, timeout %u ms)",
+                             s_twdt_ctx.users[i].name,
+                             (unsigned)(elapsed * portTICK_PERIOD_MS),
+                             (unsigned)s_twdt_ctx.config.timeout_ms);
+                }
+            }
+        }
+    }
+
+    if (cpus_fail) {
+        *cpus_fail = fail_count;
+    }
+
+    if (fail_count > 0) {
+        if (s_twdt_ctx.config.panic_on_trigger) {
+            ESP_LOGE(TAG, "TWDT panic on trigger (%d entities failed)", fail_count);
+            abort();
+        }
+        return ESP_ERR_TIMEOUT;
+    }
+
     return ESP_OK;
 }
+
+void esp_task_wdt_sim_reset(void) {
+    memset(&s_twdt_ctx, 0, sizeof(s_twdt_ctx));
+}
+
