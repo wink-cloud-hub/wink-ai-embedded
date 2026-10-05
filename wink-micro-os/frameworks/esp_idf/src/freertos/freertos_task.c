@@ -139,7 +139,7 @@ BaseType_t xTaskCreatePinnedToCore(TaskFunction_t pxTaskCode,
     s_tcb[slot].prio = (int32_t)prio;
     strncpy(s_tcb[slot].name, pcName ? pcName : "task", sizeof(s_tcb[slot].name) - 1);
     s_tcb[slot].name[sizeof(s_tcb[slot].name) - 1] = '\0';
-    s_tcb[slot].runtime_counter = 1;
+    s_tcb[slot].runtime_counter = 0;
 
     if (pxCreatedTask != NULL) {
         *pxCreatedTask = (TaskHandle_t)(uintptr_t)token;
@@ -221,9 +221,6 @@ void vTaskDelay(const TickType_t xTicksToDelay) {
 
     if (xTicksToDelay == 0) {
         uint32_t self0 = sim_scheduler_current_id();
-        if (self0 < FREERTOS_MAX_TASKS && s_tcb[self0].used) {
-            s_tcb[self0].runtime_counter += 1;
-        }
         /* Step 3.3: reset spin counter on any voluntary yield */
         esp_sim_spin_wait_reset(self0);
         sim_scheduler_yield_context();
@@ -233,12 +230,6 @@ void vTaskDelay(const TickType_t xTicksToDelay) {
     uint32_t self = sim_scheduler_current_id();
     if (self == SIM_SCHED_NO_READY) {
         return;
-    }
-
-    if (self < FREERTOS_MAX_TASKS && s_tcb[self].used) {
-        /* S-4 fix: Never credit delay sleep duration to task runtime counter!
-         * Only account for active dispatch execution before entering blocked state. */
-        s_tcb[self].runtime_counter += 1;
     }
 
     /* Step 3.3: reset spin counter before timed block */
@@ -385,13 +376,13 @@ UBaseType_t uxTaskGetSystemState(TaskStatus_t * const pxTaskStatusArray,
             s->eCurrentState = eTaskGetState(s->xHandle);
             s->uxCurrentPriority = (UBaseType_t)s_tcb[i].prio;
             s->uxBasePriority = s->uxCurrentPriority;
-            s->ulRunTimeCounter = s_tcb[i].runtime_counter;
+            s->ulRunTimeCounter = (uint32_t)sim_scheduler_get_runtime_us(s_tcb[i].sim_id);
             s->usStackHighWaterMark = 1024;
             count++;
         }
     }
     if (pulTotalRunTime != NULL) {
-        *pulTotalRunTime = (uint32_t)(pal_os_get_us() / 1000ULL);
+        *pulTotalRunTime = (uint32_t)pal_os_get_us();
         if (*pulTotalRunTime == 0) {
             *pulTotalRunTime = 1;
         }

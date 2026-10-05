@@ -83,6 +83,7 @@ typedef struct {
     int32_t  priority;
     int32_t  core_id;
     uint64_t wakeup_us;
+    uint64_t runtime_us;
     uint32_t blocked_on;
     bool     timeout_fired;
     uint8_t  last_wake_reason;  /**< wink_sim_wake_reason_t */
@@ -100,6 +101,10 @@ wink_status_t sim_scheduler_register(void (*func)(void*), void* arg,
                                      uint32_t* out_id);
 void          sim_scheduler_mark_zombie(uint32_t task_id);
 void          sim_scheduler_gc_zombies(void);
+
+void          sim_scheduler_accumulate_runtime(uint32_t task_id, uint64_t delta_us);
+uint64_t      sim_scheduler_get_runtime_us(uint32_t task_id);
+void          sim_scheduler_reset_runtime(void);
 
 struct wink_app_callbacks;
 wink_status_t pal_sim_scheduler_run(const struct wink_app_callbacks* callbacks,

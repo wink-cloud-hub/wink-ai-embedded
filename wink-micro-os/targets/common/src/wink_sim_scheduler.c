@@ -170,6 +170,7 @@ wink_status_t sim_scheduler_register(void (*func)(void*), void* arg,
     t->priority = priority;
     t->core_id = core_id;
     t->wakeup_us = 0;
+    t->runtime_us = 0;
     t->blocked_on = 0;
     t->timeout_fired = false;
     t->last_wake_reason = (uint8_t)WINK_SIM_WAKE_NONE;
@@ -372,5 +373,30 @@ void sim_scheduler_yield_context(void) {
     assert(cur != NULL && s_sim_main_ctx != NULL &&
            "sim_scheduler_yield_context called outside valid fiber context or main_ctx unset");
     sim_ctx_switch(cur, s_sim_main_ctx);
+}
+
+void sim_scheduler_accumulate_runtime(uint32_t task_id, uint64_t delta_us) {
+    if (task_id < WINK_SIM_MAX_TASKS) {
+        sim_task_t* t = &s_tasks[task_id];
+        if (t->state != SIM_TASK_STATE_INVALID && t->state != SIM_TASK_STATE_TERMINATED) {
+            t->runtime_us += delta_us;
+        }
+    }
+}
+
+uint64_t sim_scheduler_get_runtime_us(uint32_t task_id) {
+    if (task_id < WINK_SIM_MAX_TASKS) {
+        const sim_task_t* t = &s_tasks[task_id];
+        if (t->state != SIM_TASK_STATE_INVALID) {
+            return t->runtime_us;
+        }
+    }
+    return 0;
+}
+
+void sim_scheduler_reset_runtime(void) {
+    for (uint32_t i = 0; i < WINK_SIM_MAX_TASKS; ++i) {
+        s_tasks[i].runtime_us = 0;
+    }
 }
 

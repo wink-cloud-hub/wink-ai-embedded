@@ -252,6 +252,28 @@ void test_gc_zombies_releases_ctx(void) {
     TEST_ASSERT_EQUAL_UINT32(old_destroy + 1, s_mock_ctx_destroy_count);
 }
 
+void test_runtime_accounting_accumulation(void) {
+    sim_scheduler_reset(42);
+
+    uint32_t id1 = UINT32_MAX, id2 = UINT32_MAX;
+    sim_scheduler_register(dummy_task_func, NULL, "t1", 5, 0, 32 * 1024, &id1);
+    sim_scheduler_register(dummy_task_func, NULL, "t2", 5, 0, 32 * 1024, &id2);
+
+    TEST_ASSERT_EQUAL_UINT64(0, sim_scheduler_get_runtime_us(id1));
+    TEST_ASSERT_EQUAL_UINT64(0, sim_scheduler_get_runtime_us(id2));
+
+    sim_scheduler_accumulate_runtime(id1, 1500);
+    sim_scheduler_accumulate_runtime(id2, 300);
+    sim_scheduler_accumulate_runtime(id1, 500);
+
+    TEST_ASSERT_EQUAL_UINT64(2000, sim_scheduler_get_runtime_us(id1));
+    TEST_ASSERT_EQUAL_UINT64(300, sim_scheduler_get_runtime_us(id2));
+
+    sim_scheduler_reset_runtime();
+    TEST_ASSERT_EQUAL_UINT64(0, sim_scheduler_get_runtime_us(id1));
+    TEST_ASSERT_EQUAL_UINT64(0, sim_scheduler_get_runtime_us(id2));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_register_and_pick_round_robin);
@@ -265,5 +287,6 @@ int main(void) {
     RUN_TEST(test_block_with_timeout_wakes_by_time);
     RUN_TEST(test_block_infinite_only_resume);
     RUN_TEST(test_gc_zombies_releases_ctx);
+    RUN_TEST(test_runtime_accounting_accumulation);
     return UNITY_END();
 }

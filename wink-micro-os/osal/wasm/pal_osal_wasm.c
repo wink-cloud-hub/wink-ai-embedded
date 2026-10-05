@@ -595,6 +595,10 @@ wink_status_t pal_sim_scheduler_run(const struct wink_app_callbacks* callbacks,
         sim_ctx_switch(s_main_ctx, t->ctx);
         sim_scheduler_set_current(SIM_SCHED_NO_READY);
         uint64_t duration_us = wasm_wall_clock_us() - wall_start_us;
+        if (duration_us == 0) {
+            duration_us = 1;
+        }
+        sim_scheduler_accumulate_runtime(next, duration_us);
 
         if (!bypass_wcet && duration_us > wcet_threshold_us) {
             pal_wasm_invoke_fault(8002);
