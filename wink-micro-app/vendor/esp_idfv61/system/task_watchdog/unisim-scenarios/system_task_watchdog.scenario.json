@@ -1,0 +1,76 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 system_task_watchdog headless deterministic proof",
+    "templateId": "esp_idfv61_system_task_watchdog",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "15000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "TWDT initialized",
+      "description": "断言任务看门狗(TWDT)成功配置初始化"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "800ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Delay for 10 seconds",
+      "description": "断言主任务进入 10 秒定时监控等待窗口"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Subscribed to TWDT",
+      "description": "断言工作任务与自定义用户句柄均成功订阅至 TWDT"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["9000ms", "12000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Unsubscribed from TWDT",
+      "description": "断言监控周期结束后工作任务与用户句柄安全退订"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["9000ms", "13000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "TWDT deinitialized",
+      "description": "断言主任务成功析构清理 TWDT 资源"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["9000ms", "14000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Example complete",
+      "description": "断言任务看门狗全生命周期示例成功执行完毕"
+    }
+  ]
+}

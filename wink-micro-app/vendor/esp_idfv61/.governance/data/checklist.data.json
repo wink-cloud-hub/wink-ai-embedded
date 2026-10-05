@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 31,
-    "verified_configs": 32,
+    "audited": 32,
+    "verified_configs": 33,
     "verified": 25
   },
   "entries": [
@@ -9762,10 +9762,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-05T03:31:45Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -9795,18 +9797,61 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/system_task_watchdog.scenario.json",
-            "timeout_virtual_us": 3000000,
+            "scenario_path": "system/task_watchdog/unisim-scenarios/system_task_watchdog.scenario.json",
+            "timeout_virtual_us": 15000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
+            "positive_cases": [
+              {
+                "name": "TWDT 基础设施初始化与参数配置",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "TWDT initialized"
+                }
+              },
+              {
+                "name": "多重实体订阅与状态自检",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "Subscribed to TWDT"
+                }
+              },
+              {
+                "name": "安全退订与资源清理闭环",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "Unsubscribed from TWDT"
+                }
+              },
+              {
+                "name": "生命周期析构与退出通知",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "Example complete"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "未初始化直接调用喂狗重置",
+                "expect_error": "ESP_ERR_INVALID_STATE",
+                "detects": "看门狗未配置时静默放行导致死锁盲区"
+              }
+            ],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261005-esp.system.task_watchdog-verified",
+            "assets_sha256": "3580a92747e61a5894f1236981d5128321c980fff149315991c9b147083ed3d1",
+            "scenario_sha256": "2cfd3749ad08e212901176d8896a6d8f5719d67b5fb23bfc4fecfaadace4fee1",
+            "execution_report_ref": ".governance/reports/system/task_watchdog/run-report.json",
+            "verified_commit": "2731529d27fa18e38095cb17dd17019cca54c925",
+            "verified_at": "2026-10-05T03:31:39Z"
+          }
         }
       ],
       "target_app_dir": "system/task_watchdog"

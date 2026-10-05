@@ -1,0 +1,18 @@
+{
+  "app_name": "esp_idfv61_system_task_watchdog",
+  "display_name": "Espressif ESP-IDF task_watchdog",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "mcu": "esp32",
+  "simulation_profile": "STANDARD",
+  "tick_ms": 1,
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/system/task_watchdog/main",
+    "files": {
+      "task_watchdog_example_main.c": "5855b893bf480e818fb8421b23bcbdd50480c9d21a013725de9df14e4e56dc96"
+    }
+  },
+  "devices": {}
+}

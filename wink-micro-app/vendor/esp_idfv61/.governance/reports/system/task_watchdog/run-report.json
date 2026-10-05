@@ -1,0 +1,114 @@
+{
+  "timestamp": "2026-10-05T03:31:39.462Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 system_task_watchdog headless deterministic proof",
+        "templateId": "esp_idfv61_system_task_watchdog",
+        "totalVirtualUs": "15000000",
+        "wallClockMs": 150
+      },
+      "summary": {
+        "totalSteps": 7,
+        "passedSteps": 7,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "TWDT initialized\nDelay for 10 seconds\nSubscribed to TWDT\n"
+            ]
+          },
+          "expected": "TWDT initialized"
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "800000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "TWDT initialized\nDelay for 10 seconds\nSubscribed to TWDT\n"
+            ]
+          },
+          "expected": "Delay for 10 seconds"
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "TWDT initialized\nDelay for 10 seconds\nSubscribed to TWDT\n"
+            ]
+          },
+          "expected": "Subscribed to TWDT"
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "12000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "Unsubscribed from TWDT\nTWDT deinitialized\nExample complete\n"
+            ]
+          },
+          "expected": "Unsubscribed from TWDT"
+        },
+        {
+          "stepIndex": 5,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "13000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "Unsubscribed from TWDT\nTWDT deinitialized\nExample complete\n"
+            ]
+          },
+          "expected": "TWDT deinitialized"
+        },
+        {
+          "stepIndex": 6,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "14000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "Unsubscribed from TWDT\nTWDT deinitialized\nExample complete\n"
+            ]
+          },
+          "expected": "Example complete"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

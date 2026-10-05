@@ -14,9 +14,9 @@
 ## 一、 总体适配进度统计
 
 - **官方独立示例总数**：**478 个**
-  - `[x]` **已完成六要素实证 (Verified)**：**32 项**
+  - `[x]` **已完成六要素实证 (Verified)**：**33 项**
   - `[?]` **存量隔离待补凭证 (Quarantined Debt)**：**0 项**（14 天 TTL 过期硬阻断，至 `2026-10-13`）
-  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**259 项**
+  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**258 项**
   - `[-]` **明确产品排除 / 暂缓投入 (Out-of-Scope / Deferred)**：**187 项**（编译期 `WINK_SLA_ERROR` Fail-Loud 阻断）
   - `?` **待深度审定 (Pending Audit / Unknown Scope)**：**0 项**
 
@@ -26,7 +26,7 @@
 | :---: | :--- | :---: | :---: | :---: | :---: |
 | 01 | [基础快速起步 (Get-Started)](#get-started) | 2 项 | `#001 ~ #002` | 2 项 | 0 项 |
 | 02 | [片上与总线外设 (Peripherals)](#peripherals) | 114 项 | `#003 ~ #116` | 13 项 | 0 项 |
-| 03 | [操作系统与核心系统调用 (System & OS)](#system) | 68 项 | `#117 ~ #184` | 5 项 | 0 项 |
+| 03 | [操作系统与核心系统调用 (System & OS)](#system) | 68 项 | `#117 ~ #184` | 6 项 | 0 项 |
 | 04 | [网络与应用层通信协议 (Protocols)](#protocols) | 35 项 | `#185 ~ #219` | 2 项 | 0 项 |
 | 05 | [Wi-Fi 无线局域网 (Wi-Fi)](#wifi) | 24 项 | `#220 ~ #243` | 4 项 | 0 项 |
 | 06 | [蓝牙协议栈 (Bluetooth)](#bluetooth) | 147 项 | `#244 ~ #390` | 2 项 | 0 项 |
@@ -243,7 +243,7 @@
 ---
 
 <a id="system"></a>
-### 操作系统与核心系统调用 (System & OS)（共 68 项 | 编号 `#117 ~ #184` | 已实证: 5 项 | 隔离待补: 0 项）
+### 操作系统与核心系统调用 (System & OS)（共 68 项 | 编号 `#117 ~ #184` | 已实证: 6 项 | 隔离待补: 0 项）
 
 | 状态 | 编号 | 官方子示例相对路径 | 可观测等级 | 优先级 | 对应 wink-micro-app | 验收标准与架构说明 |
 | :---: | :---: | :--- | :---: | :---: | :--- | :--- |
@@ -284,7 +284,7 @@
 | [ ] | 151 | `system/startup_time` | 📜 Level 2 | P2 | `system/startup_time` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 152 | `system/sysview_tracing` | 📜 Level 2 | P2 | `system/sysview_tracing` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 153 | `system/sysview_tracing_heap_log` | 📜 Level 2 | P2 | `system/sysview_tracing_heap_log` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 154 | `system/task_watchdog` | 📜 Level 2 | P2 | `system/task_watchdog` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
+| [x] | 154 | `system/task_watchdog` | 📜 Level 2 | P0 | [`system/task_watchdog`](system/task_watchdog) | [Lane 1: 内核调度] 已完成实证。 |
 | [ ] | 155 | `system/ulp/lp_core/build_system` | 📜 Level 2 | P3 | `system/ulp_lp_core_build_system` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 156 | `system/ulp/lp_core/debugging` | 📜 Level 2 | P3 | `system/ulp_lp_core_debugging` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 157 | `system/ulp/lp_core/gpio` | 📜 Level 2 | P1 | `system/ulp_lp_core_gpio` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
