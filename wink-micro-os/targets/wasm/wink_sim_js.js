@@ -217,6 +217,13 @@ addToLibrary({
         return 0.0;
     },
 
+    /* ---- CH3: Analog DAC (normalised [0,1] write) ---- */
+    js_pal_dac_write_norm: function (pin, normVal) {
+        if (typeof Module !== 'undefined' && typeof Module['js_pal_dac_write_norm'] === 'function' && Module['js_pal_dac_write_norm'] !== _js_pal_dac_write_norm) {
+            Module['js_pal_dac_write_norm'](pin, normVal);
+        }
+    },
+
     /* ---- CH4: WS2812 framebuffer (zero-copy; JS must .slice() before return) ---- */
     js_pal_ws2812_write: function (pin, buf, len) {
         if (typeof Module !== 'undefined' && typeof Module['js_pal_ws2812_write'] === 'function' && Module['js_pal_ws2812_write'] !== _js_pal_ws2812_write) {

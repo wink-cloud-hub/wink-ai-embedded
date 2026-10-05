@@ -59,6 +59,7 @@ if(ESP_PLATFORM)
             pal_hal_i2c_esp32.c
             pal_hal_pwm_esp32.c
             pal_hal_adc_esp32.c
+            pal_hal_dac_esp32.c
             pal_hal_uart_esp32.c
             pal_hal_rmt_esp32.c
             pal_hal_spi_esp32.c

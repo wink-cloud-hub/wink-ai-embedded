@@ -12,6 +12,7 @@ add_library(pal_host OBJECT
     pal_hal_pwm_host.c
     pal_hal_i2c_host.c
     pal_hal_adc_host.c
+    pal_hal_dac_host.c
     pal_hal_spi_host.c
     pal_hal_rmt_host.c
     pal_hal_pcnt_host.c

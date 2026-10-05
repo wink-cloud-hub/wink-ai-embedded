@@ -289,6 +289,7 @@ extern bool    js_pal_rmt_tx(uint8_t channel, const struct pal_rmt_symbol_s *sym
  * inside pal_wasm_adc.c (ADR-0057). The JS side never handles full-scale mV.
  */
 extern float   js_pal_adc_read_norm(uint16_t pin);
+extern void    js_pal_dac_write_norm(uint16_t pin, float norm_val);
 
 /* -- Plugin channel read  (Axis A observation, C->JS import) ----------- */
 

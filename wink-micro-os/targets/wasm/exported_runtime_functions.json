@@ -38,13 +38,17 @@
     "_sim_mqtt_get_state",
     "_sim_mqtt_get_last_topic",
     "_sim_mqtt_get_last_data",
+    "_sim_mqtt_get_last_tx_data",
+    "_sim_mqtt_get_last_rx_data",
+    "_sim_mqtt_get_last_rx_topic",
     "_sim_ble_get_adv_state",
     "_sim_ble_get_device_name",
     "_sim_ble_get_num_services",
     "_sim_ble_get_num_characteristics",
     "_pal_wasm_push_uart_rx_byte",
     "_pal_wasm_push_uart_rx_error",
-    "_pal_wasm_get_uart_rx_available"
+    "_pal_wasm_get_uart_rx_available",
+    "_sim_timer_get_counter"
   ],
   "EXPORTED_RUNTIME_METHODS": ["ccall", "cwrap", "HEAPU8", "HEAPU32", "Asyncify", "callMain", "lengthBytesUTF8", "stringToUTF8", "UTF8ToString"],
   "ASYNCIFY_IMPORTS": ["js_pal_os_sleep_ms", "js_pal_os_busy_wait_us"],

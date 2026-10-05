@@ -16,18 +16,25 @@
     #define PAL_GPIO_PIN_MAX        SOC_GPIO_PIN_COUNT
     #define PAL_PWM_MAX_BITS        SOC_LEDC_TIMER_BIT_WIDTH
     #define PAL_ADC_CHANNEL_MAX     SOC_ADC_MAX_CHANNEL_NUM
+    #ifdef SOC_DAC_CHAN_NUM
+    #define PAL_DAC_CHANNEL_MAX     SOC_DAC_CHAN_NUM
+    #else
+    #define PAL_DAC_CHANNEL_MAX     2
+    #endif
 #elif defined(__wasm__)
     #define PAL_PWM_CHANNEL_MAX     8
     #define PAL_I2C_PORT_MAX        2
     #define PAL_GPIO_PIN_MAX        50
     #define PAL_PWM_MAX_BITS        16
     #define PAL_ADC_CHANNEL_MAX     16
+    #define PAL_DAC_CHANNEL_MAX     2
 #else /* host / simulation fallback */
     #define PAL_PWM_CHANNEL_MAX     8
     #define PAL_I2C_PORT_MAX        2
     #define PAL_GPIO_PIN_MAX        50
     #define PAL_PWM_MAX_BITS        16
     #define PAL_ADC_CHANNEL_MAX     16
+    #define PAL_DAC_CHANNEL_MAX     2
 #endif
 
 /* Backward compatibility aliases */
@@ -41,6 +48,10 @@
 
 #ifndef PAL_ADC_CHANNELS
 #define PAL_ADC_CHANNELS PAL_ADC_CHANNEL_MAX
+#endif
+
+#ifndef PAL_DAC_CHANNELS
+#define PAL_DAC_CHANNELS PAL_DAC_CHANNEL_MAX
 #endif
 
 #endif /* PAL_TARGET_CAPS_H */
