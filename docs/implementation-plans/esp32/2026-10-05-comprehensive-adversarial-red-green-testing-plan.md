@@ -193,3 +193,103 @@ WinkMicroOS 当前已建立起一套基于 Wasm Headless 的 ESP-IDF 官方示�
    故障注入探针必须在测试结束后提供干净的 `sim_esp_fault_clear()`，严禁在多用例批处理时残留故障状态导致后续用例假红。
 4. **二值化审计与非崩溃红线**：
    负向测试必须断言明确的错误码或预期的错误表现；严禁将任何未知的崩溃、堆栈溢出、死锁或段错误泛化视为“红测试通过”。
+
+---
+
+## 5. 详细任务分解与执行跟踪清单 (Task Breakdown & Execution Tracker)
+
+### 5.1 已归档基石与核心引擎 (Completed Baseline)
+- [x] **Core 1 (Pillar 3 探针架构)**: `esp_fault.h/c` 探针库，打通 I2C/SPI/NVS/WiFi/BLE，Wasm ABI 导出，复位清理链与单测 (`ee4f3f0a`)。
+- [x] **Core 2 (Pillar 4 变异矩阵)**: `mutator.py` 三维变异矩阵与 3 状态判据机加固（杜绝虚假崩溃判定，`f33159d3`）。
+- [x] **Core 3 (Pillar 5 门禁升级)**: `evidence_verifier.py` $O(N)$ 逐步校验；`generate_checklist_v1_1.py` 双实证标记 (`6eed120d`, `f33159d3`)。
+- [x] **Core 4 (Pillar 0 阻断修复)**:
+  - [x] W-1: `pal_dac.h` 纯增量 HAL 及 Wasm/Host/ESP32 驱动 (`6b913b1c`)；
+  - [x] W-2: `esp_ledc.c` 离散时间轮与定点 bp 步进 (`b915db8f`)；
+  - [x] W-3: `esp_task_wdt.c` Tick 钩子超时判定与漏喂狗报警 (`74b62b5d`)；
+  - [x] W-4: `freertos_task.c` 微秒级真实 CPU 运行计费 (`74b62b5d`)；
+  - [x] W-5: `esp_idf_bridge.c` 外设对象池完整复位销毁 (`74b62b5d`, `ee4f3f0a`)；
+  - [x] W-6: GPTimer 硬件计数器 ABI 导出 (`b915db8f`)；
+  - [x] W-7: MQTT 独立双 FIFO 环形缓冲解耦 (`b915db8f`)；
+  - [x] W-8: NVS 越界缺陷隔离登记至 `upstream_errata.json`。
+- [x] **Core 5 (Pillar 2 标杆打样)**: 交付首批 7 大领域成对红测试（Blink GPIO, UART Echo, LEDC Fade, TWDT, WiFi STA, HTTP Client, NimBLE Beacon，`46b899fe`）。
+
+---
+
+### 5.2 待执行分批推进图谱 (Remaining Execution Batches)
+
+```
+Batch 0: 治理防线加固与因果短路修复（pipeline.py 解耦 + ADC 因果重构）
+   │
+   ├──► Batch 1: Lane 1 & Lane 5 核心红测试成对化（内核调度 + NVS 存储，共 12 项）
+   │
+   ├──► Batch 2: Lane 2 & Lane 4 总线与模拟外设红测试（I2C/SPI/UART + ADC/DAC，共 9 项）
+   │
+   ├──► Batch 3: Lane 3 & Lane 6 定时电机与网络协议红测试（LEDC/Timer/WiFi/MQTT，共 7 项）
+   │
+   ├──► Batch 4: SSOT 元数据补齐与 35/35 双实证全亮（CHECKLIST.md 最终派生）
+   │
+   └──► Batch 5: M4 物理硬件实机比对（通过 wink.py esp32 / run_esp32_headless_evidence.ps1 硬件核验）
+```
+
+#### Batch 0: 治理防线加固与因果短路修复
+- [ ] **Task 0.1 (E-3 权力制衡)**: 改造 `wink-micro-app/vendor/esp_idfv61/.governance/tools/loop/pipeline.py`：
+  - 废除硬编码 `"auditor": "loop_sop_daemon"`；
+  - 流水线仅输出 `candidate_evidence` 候选凭证包，由独立审计裁判 Agent 进行离线核验；
+  - 封堵自测自签安全隐患。
+- [ ] **Task 0.2 (E-4 运行隔离沙箱)**: 在 `pipeline.py` 中引入 `.governance/runs/<timestamp>-<uuid>/` 隔离沙箱：
+  - 保证每次测试与变异在独立沙箱内运行；
+  - 门禁全部通过后原子性晋升正式目录，失败完整回滚。
+- [ ] **Task 0.3 (W-1 未尽细节: ADC 真实工程输出因果闭环)**:
+  - 改造 `peripherals/adc_continuous_read` 场景：废除断言模拟轨输入缓存 `target: "adc:34" == 0.484`，改为断言固件串口输出工程日志 `Voltage: 1500 mV` 与 `Unit: 1, _Channel: 6`；
+  - 改造 `peripherals/adc_oneshot_read` 场景：改为断言固件实际采样工程值。
+
+#### Batch 1: Lane 1 (内核调度) & Lane 5 (文件存储) 核心示例成对红测试 (12 项)
+- **Lane 1: 系统生命周期与内核调度 (8 项)**
+  - [ ] **Task 1.1**: `#002 get-started/hello_world` ➔ `hello_world.fail.scenario.json`（注入启动异常断言稳态防御）
+  - [ ] **Task 1.2**: `#020 peripherals/gpio_generic_gpio` ➔ `gpio_generic_gpio.fail.scenario.json`（注入非法输入与中断抖动断言）
+  - [ ] **Task 1.3**: `#125 system/esp_event_default_event_loop` ➔ `esp_event_default_event_loop.fail.scenario.json`（注入事件循环未启动/handler 异常）
+  - [ ] **Task 1.4**: `#126 system/esp_event_user_event_loops` ➔ `esp_event_user_event_loops.fail.scenario.json`（注入队列超限与循环强制终止）
+  - [ ] **Task 1.5**: `#127 system/esp_timer` ➔ `esp_timer.fail.scenario.json`（注入周期为 0 与非法参数拒绝）
+  - [ ] **Task 1.6**: `#131 system/freertos_basic_freertos_smp_usage` ➔ `basic_freertos_smp_usage.fail.scenario.json`（注入队列满阻塞与超时捕获）
+  - [ ] **Task 1.7**: `#132 system/freertos_real_time_stats` ➔ `freertos_real_time_stats.fail.scenario.json`（注入计数溢出与无有效时钟源防御）
+  - [ ] **Task 1.8**: `#151 system/startup_time` ➔ `startup_time.fail.scenario.json`（注入启动超时报警）
+- **Lane 5: 存储与文件系统 (4 项)**
+  - [ ] **Task 1.9**: `#401 storage/nvs_nvs_iteration` ➔ `nvs_nvs_iteration.fail.scenario.json`（注入未初始化的命名空间与空迭代器）
+  - [ ] **Task 1.10**: `#402 storage/nvs_nvs_rw_blob` ➔ `nvs_nvs_rw_blob.fail.scenario.json`（注入键不存在 `ESP_ERR_NVS_NOT_FOUND`，校验 `upstream_errata` 隔离）
+  - [ ] **Task 1.11**: `#403 storage/nvs_nvs_rw_value` ➔ `nvs_nvs_rw_value.fail.scenario.json`（注入 `FAULT_NVS_READ_CORRUPT` 断言错误码）
+  - [ ] **Task 1.12**: `#415 storage/spiffs` ➔ `spiffs.fail.scenario.json`（注入挂载损坏分区与读取不存在文件防御）
+
+#### Batch 2: Lane 2 (通信总线) & Lane 4 (模拟电学) 核心示例成对红测试 (9 项)
+- **Lane 2: 通信协议与串行总线 (5 项)**
+  - [ ] **Task 2.1**: `#023 peripherals/i2c_basic` ➔ `i2c_basic.fail.scenario.json`（通过 `FAULT_I2C_NACK` 注入从机无应答并断言返回 `ESP_ERR_TIMEOUT`）
+  - [ ] **Task 2.2**: `#024 peripherals/i2c_i2c_eeprom` ➔ `i2c_eeprom.fail.scenario.json`（注入写保护及响应超时）
+  - [ ] **Task 2.3**: `#073 peripherals/spi_master_hd_eeprom` ➔ `spi_master_hd_eeprom.fail.scenario.json`（通过 `FAULT_SPI_TRANSFER_FAIL` 注入总线阻断）
+  - [ ] **Task 2.4**: `#094 peripherals/uart_uart_async_rxtxtasks` ➔ `uart_async_rxtxtasks.fail.scenario.json`（注入异步 RX 环形缓冲区溢出）
+  - [ ] **Task 2.5**: `#098 peripherals/uart_uart_events` ➔ `uart_events.fail.scenario.json`（注入 UART 校验与 FIFO 溢出事件断言）
+- **Lane 4: 模拟电学与信号转换 (4 项)**
+  - [ ] **Task 2.6**: `#003 peripherals/adc_continuous_read` ➔ `adc_continuous_read.fail.scenario.json`（注入采样通道未使能与过采样超时断言）
+  - [ ] **Task 2.7**: `#004 peripherals/adc_oneshot_read` ➔ `adc_oneshot_read.fail.scenario.json`（注入非法通道号断言 `ESP_ERR_INVALID_ARG`）
+  - [ ] **Task 2.8**: `#013 peripherals/dac_dac_cosine_wave` ➔ `dac_cosine_wave.fail.scenario.json`（注入越界频率断言参数拒绝）
+  - [ ] **Task 2.9**: `#014 peripherals/dac_dac_oneshot` ➔ `dac_oneshot.fail.scenario.json`（注入向已禁用通道写入电压断言返回错误）
+
+#### Batch 3: Lane 3 (定时电机) & Lane 6 (网络与无线) 核心示例成对红测试 (7 项)
+- **Lane 3: 定时器、计数与电机控制 (2 项)**
+  - [ ] **Task 3.1**: `#047 peripherals/ledc_basic` ➔ `ledc_basic.fail.scenario.json`（注入非法占空比 `>10000bp` 断言参数拒绝）
+  - [ ] **Task 3.2**: `#083 peripherals/gptimer_alarm` ➔ `gptimer.fail.scenario.json`（注入 Alarm 计数值为 0 或未启动计数断言）
+- **Lane 6: 网络、协议与无线 (5 项)**
+  - [ ] **Task 3.3**: `#206 protocols/mqtt_tcp` ➔ `mqtt_tcp.fail.scenario.json`（注入 Broker 连接拒绝与断线重连防御）
+  - [ ] **Task 3.4**: `#221 wifi/fast_scan` ➔ `fast_scan.fail.scenario.json`（注入扫描超时与无匹配 SSID）
+  - [ ] **Task 3.5**: `#223 wifi/getting_started_softAP` ➔ `softap.fail.scenario.json`（注入不合规密码与启动参数校验失败）
+  - [ ] **Task 3.6**: `#230 wifi/scan` ➔ `scan.fail.scenario.json`（注入 Wi-Fi 驱动未启动即发起扫描断言错误）
+  - [ ] **Task 3.7**: `#384 bluetooth/bleprph` ➔ `bleprph.fail.scenario.json`（通过 `FAULT_BLE_ADV_REJECT` 注入广播参数被拒绝）
+
+#### Batch 4: SSOT 元数据补齐与 35/35 双实证全亮
+- [ ] **Task 4.1**: 补齐全量 35 项的 `negative_cases` 元数据模型（`stimulus`, `expect_error`, `detects`）写入 `checklist.data.json`。
+- [ ] **Task 4.2**: 运行 `evidence_verifier.py --verify-all` 确保 35 个示例正向逐步强一致性断言 100% 通过。
+- [ ] **Task 4.3**: 运行 Gate 1~5 全部门禁通过无告警（0 warnings, 0 errors）。
+- [ ] **Task 4.4**: 运行 `generate_checklist_v1_1.py`，生成 35 项全量点亮 `🟢 [Green ✅ | Red 🛡️ (TWIN-PROOF)]` 徽章的 `CHECKLIST.md`。
+
+#### Batch 5: M4 阶段 ESP32 物理硬件实机交叉核验
+- [ ] **Task 5.1**: 硬件测试环境确认（ESP32-WROOM/S3 开发板连接、COM 口识别）。
+- [ ] **Task 5.2**: 使用 `run_esp32_headless_evidence.ps1` 和 `wink.py esp32` 对 6 大黄金用例（`blink`, `ledc`, `gptimer`, `uart_echo`, `http_client`, `wifi_sta`）烧录物理硬件。
+- [ ] **Task 5.3**: 捕获芯片真实物理串口日志，提取时序哈希，与 Wasm 仿真 Trace 比对，输出《双 Target 物理实机交叉核验实证报告》。
