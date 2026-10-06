@@ -178,8 +178,7 @@ wink_status_t pal_dac_start_cw(pal_dac_channel_t ch, const pal_dac_cw_config_t *
     s_dac_channels[ch].cw_running = true;
     s_dac_channels[ch].cw_cfg = *cw_cfg;
     uint16_t mid_raw = (1U << (s_dac_channels[ch].resolution_bits - 1));
-    pal_dac_write_raw(ch, mid_raw);
-    return WINK_OK;
+    return pal_dac_write_raw(ch, mid_raw);
 }
 
 wink_status_t pal_dac_stop_cw(pal_dac_channel_t ch) {
@@ -187,8 +186,7 @@ wink_status_t pal_dac_stop_cw(pal_dac_channel_t ch) {
     if (!s_dac_channels[ch].is_initialized) return WINK_ERR_NOT_INITIALIZED;
 
     s_dac_channels[ch].cw_running = false;
-    pal_dac_write_raw(ch, 0);
-    return WINK_OK;
+    return pal_dac_write_raw(ch, 0);
 }
 
 #endif /* ESP_PLATFORM */
