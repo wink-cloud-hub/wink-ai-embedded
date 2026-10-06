@@ -30,6 +30,8 @@ cover.
 
 ## Inventory
 
+UART 聚焦入口：`powershell -NoProfile -ExecutionPolicy Bypass -File wink-micro-os/test/wasm/run_uart_rx_semantics_emcc.ps1`（从仓库根目录运行）。它用生产 UART 与真实 OSAL ring buffer，在 emcc/Node 下检查完整/部分 polling 读取、768 字节回调消费后无残留、回调关闭后 polling 读取、256 字节 polling 容量与满缓冲拒绝，以及独立/组合帧错误、校验错误、FIFO 溢出回调和无效输入忽略。仅 IRQ、JS TX 和健康/故障日志外部边界使用 link stubs；不作为 IRQ、错误日志、固件异常处理或 timing 的验收。尚未注册到 CTest；`-UartSource` 可指定隔离的旧源码副本复现 RED，`-OutDir` 可隔离产物。SDK 缓存锁必须可写。原厂 Events 的生产 Wasm 故障处理及同实例恢复另由治理 CLI `--proof-profile uart-events-fault` 验证，契约见 `docs/zh/tech-designs/esp32/esp-idf-batch0-evidence-contract.md` §6。
+
 | File | What it covers | Wasm-only because |
 |------|----------------|-------------------|
 | `test_virtual_clock.c` | ADR-0003 §3 / ADR-0009 §4.1 SSOT virtual clock: monotonic advance, `pal_os_sleep_ms` non-side-effect, 64-bit wrap semantics | Uses `pal_wasm_advance_virtual_clock` (only exists in `pal_osal_wasm.c`) |
@@ -69,6 +71,16 @@ and internal accessors are already in place, verified against
 `targets/wasm/pal_wasm_internal.h` (2026-07-04).
 
 ## Related plan items
+
+The ESP-IDF TWDT SDK adapter is in
+`frameworks/esp_idf/test/wasm/twdt_sdk_probe.c` with its Node harness. Run the
+isolated production timeout profile, then `run_twdt_sdk.py --candidate <path>
+--case all`; both entry points live under
+`wink-micro-app/vendor/esp_idfv61/.governance/tools/`. This builds the real
+production runtime and tests shared feeding, non-panic recovery, panic reset
+and stale handles through public SDK/PAL APIs and the public Wasm ABI. It is
+candidate evidence, separate from native CLI reports and formal audit. See
+`docs/zh/tech-designs/esp32/esp-idf-batch0-evidence-contract.md` section 7.
 
 - P1-T1 (this audit): keep-defer decision recorded here.
 - Wasm test-harness bring-up: no dedicated plan task yet. Suggest a P2 item

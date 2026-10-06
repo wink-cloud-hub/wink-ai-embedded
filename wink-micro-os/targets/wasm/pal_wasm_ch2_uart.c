@@ -56,18 +56,18 @@ bool pal_wasm_push_uart_rx_byte(uint8_t port, uint8_t byte)
         return false;
     }
 
-    wink_status_t st = pal_os_ringbuf_push(s_uart_rx_fifo[port], &byte, sizeof(byte));
-    if (st != WINK_OK) {
-        /* Overrun: drop newest byte and log fault (G6 overrun policy) */
-        pal_wasm_log_fault(FAULT_TYPE_UART_OVERRUN, port);
-        if (s_uart_event_cb[port] != NULL) {
-            s_uart_event_cb[port](port, PAL_UART_EVENT_BUFFER_FULL, NULL, 0, s_uart_event_arg[port]);
-        }
-        return false;
-    }
-
     if (s_uart_event_cb[port] != NULL) {
+        /* RX data delivered to the callback is consumed, as on ESP32. Keeping
+         * another copy here fills the polling FIFO even when the consumer has
+         * already read its own buffer, causing cumulative RX loss. */
         s_uart_event_cb[port](port, PAL_UART_EVENT_RX_DATA, &byte, 1, s_uart_event_arg[port]);
+    } else {
+        wink_status_t st = pal_os_ringbuf_push(s_uart_rx_fifo[port], &byte, sizeof(byte));
+        if (st != WINK_OK) {
+            /* Polling overrun: drop newest byte and log fault (G6 policy). */
+            pal_wasm_log_fault(FAULT_TYPE_UART_OVERRUN, port);
+            return false;
+        }
     }
 
     /* Raise the UART RX software IRQ; cooperative single-core, no race. */
@@ -86,7 +86,13 @@ void pal_wasm_push_uart_rx_error(uint8_t port, uint8_t error_flags)
     }
 
     /* flags: 1=FRAMING, 2=PARITY, 4=OVERRUN */
-    if (error_flags & 4) {
+    if ((error_flags & 1u) != 0u && s_uart_event_cb[port] != NULL) {
+        s_uart_event_cb[port](port, PAL_UART_EVENT_FRAME_ERR, NULL, 0, s_uart_event_arg[port]);
+    }
+    if ((error_flags & 2u) != 0u && s_uart_event_cb[port] != NULL) {
+        s_uart_event_cb[port](port, PAL_UART_EVENT_PARITY_ERR, NULL, 0, s_uart_event_arg[port]);
+    }
+    if ((error_flags & 4u) != 0u) {
         pal_wasm_log_fault(FAULT_TYPE_UART_OVERRUN, port);
         if (s_uart_event_cb[port] != NULL) {
             s_uart_event_cb[port](port, PAL_UART_EVENT_RX_FIFO_OVF, NULL, 0, s_uart_event_arg[port]);
