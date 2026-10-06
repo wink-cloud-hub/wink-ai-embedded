@@ -229,12 +229,12 @@
           },
           "evidence": {
             "backend": "wasm_simulation",
-            "run_id": "run-20261002-esp.peripherals.adc.continuous_read-verified",
-            "assets_sha256": "c246c6ddbf78334539236dca0f12c7a846acae0ad390b7d5fe2f427194268823",
-            "scenario_sha256": "70f4a247c11336f57e942296e4ebed3837570102baaddded9bb02736f0871247",
+            "run_id": "run-20261006-esp.peripherals.adc.continuous_read-verified",
+            "assets_sha256": "d6b1be52902ccc97038ad033bde853416762ec3675bbcd33564dc4c54d1bd2ea",
+            "scenario_sha256": "e90c12cbc9461bbea098b82d356e861b3c55f4935179cbc256e13ba39293213a",
             "execution_report_ref": ".governance/reports/peripherals/adc_continuous_read/run-report.json",
-            "verified_commit": "1fc7387ac11776e5ec44d8f394bb2d3a33b2971e",
-            "verified_at": "2026-10-02T12:32:24Z"
+            "verified_commit": "11fde1dc07b46bbf1cec63640dc5a33696538b39",
+            "verified_at": "2026-10-06T00:19:18Z"
           }
         }
       ],
@@ -300,12 +300,12 @@
           },
           "evidence": {
             "backend": "wasm_simulation",
-            "run_id": "run-20261002-esp.peripherals.adc.oneshot_read-verified",
-            "assets_sha256": "f9f1e120c89a79df0e361db16a3bfcce9c44dc8b367c455204b9404669c7fb84",
-            "scenario_sha256": "668309f58d7cac30bfa33313cdd925a4e844564e7b0e5779dea07728b49b7971",
+            "run_id": "run-20261006-esp.peripherals.adc.oneshot_read-verified",
+            "assets_sha256": "9594858d1983458e5cd9088ef143e54f9657133e1038aaebe4e72651f356de8c",
+            "scenario_sha256": "14d112affee56516fb4a6866ae5fb9c47238378f9bfaeef318903e28e52f7936",
             "execution_report_ref": ".governance/reports/peripherals/adc_oneshot_read/run-report.json",
-            "verified_commit": "69f9feec07c9192d54f49915af7f7ec3c82a5c52",
-            "verified_at": "2026-10-02T08:48:32Z"
+            "verified_commit": "11fde1dc07b46bbf1cec63640dc5a33696538b39",
+            "verified_at": "2026-10-06T00:19:29Z"
           }
         }
       ],
@@ -9686,12 +9686,12 @@
           },
           "evidence": {
             "backend": "wasm_simulation",
-            "run_id": "run-20261005-esp.system.startup_time-verified",
-            "assets_sha256": "1848b4c1d0758f2890c7a07d41fb5c4ac6a538f2f8fc40811024d461d622a292",
+            "run_id": "run-20261006-esp.system.startup_time-verified",
+            "assets_sha256": "0e8fa9ec8af7b4ddae0a9b33413030a73dc18e814cd487dabd07e0182e822f2d",
             "scenario_sha256": "b050f733975b01110433552767509eaa10ea7c9a0e5ac223522a2a508511f95f",
             "execution_report_ref": ".governance/reports/system/startup_time/run-report.json",
-            "verified_commit": "412fa0bd8b07b68aca74c030b9297ca233aa4e9f",
-            "verified_at": "2026-10-05T03:40:09Z"
+            "verified_commit": "11fde1dc07b46bbf1cec63640dc5a33696538b39",
+            "verified_at": "2026-10-06T00:20:02Z"
           }
         }
       ],
@@ -14818,12 +14818,12 @@
           },
           "evidence": {
             "backend": "wasm_simulation",
-            "run_id": "run-20261004-esp.wifi.scan-verified",
-            "assets_sha256": "418f018231bac7ff1ff9482e048072206bce73d198170b69ed9a756a70983f0d",
+            "run_id": "run-20261006-esp.wifi.scan-verified",
+            "assets_sha256": "f03326a460ed8538ffb5a793e4080a5480f4125025f8d79ef97d187a3960d988",
             "scenario_sha256": "2a58ccc299b93cf09f6d0d486ba27e78d0208dbe36d93a230127ef2172f84f88",
             "execution_report_ref": ".governance/reports/wifi/scan/run-report.json",
-            "verified_commit": "eee43262aeec65b6eef17b45b9d758996c678c59",
-            "verified_at": "2026-10-04T14:22:07Z"
+            "verified_commit": "11fde1dc07b46bbf1cec63640dc5a33696538b39",
+            "verified_at": "2026-10-06T00:20:12Z"
           }
         }
       ],

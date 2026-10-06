@@ -38,25 +38,31 @@
       "description": "断言系统核心供电轨稳定维持 3.3V"
     },
     {
-      "type": "ASSERT_POINT",
-      "timeUs": "500ms",
-      "target": "adc:32",
-      "matcher": { "$near": { "target": 0.75, "tolerance": 0.05 } },
-      "description": "断言 ADC1 Channel 4 (GPIO 32) 模拟采样轨维持 0.75"
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["800ms", "1500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "ADC1 Channel[5] Cali Voltage: 775 mV",
+      "description": "断言 ADC1 Channel 5 固件校准采样电压 775 mV (25% 满量程)"
     },
     {
-      "type": "ASSERT_POINT",
-      "timeUs": "1500ms",
-      "target": "adc:33",
-      "matcher": { "$near": { "target": 0.25, "tolerance": 0.05 } },
-      "description": "断言 ADC1 Channel 5 (GPIO 33) 模拟采样轨维持 0.25"
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["1800ms", "2500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "ADC2 Channel[0] Cali Voltage: 1550 mV",
+      "description": "断言 ADC2 Channel 0 固件校准采样电压 1550 mV (50% 满量程)"
     },
     {
-      "type": "ASSERT_POINT",
-      "timeUs": "2500ms",
-      "target": "adc:4",
-      "matcher": { "$near": { "target": 0.5, "tolerance": 0.05 } },
-      "description": "断言 ADC2 Channel 0 (GPIO 4) 模拟采样轨维持 0.5"
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["2800ms", "3500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "ADC1 Channel[4] Cali Voltage: 2325 mV",
+      "description": "断言 ADC1 Channel 4 固件校准采样电压 2325 mV (75% 满量程)"
     }
   ]
 }
