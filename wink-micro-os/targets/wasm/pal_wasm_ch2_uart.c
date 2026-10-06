@@ -15,17 +15,17 @@
 #include "pal_wasm_common.h"
 #include "wasm_bridge.h"
 
-#define WASM_UART_MAX_PORTS 2
+#define WASM_UART_MAX_PORTS 3
 #define WASM_UART_RX_FIFO_SIZE 256
 
 /* Software IRQ numbers raised when a byte is pushed into the RX FIFO. The
  * firmware/UART DAL registers a handler via pal_irq_enable() to receive it. */
 #define WASM_UART_RX_IRQ_BASE 20u
 
-static pal_os_ringbuf_handle_t s_uart_rx_fifo[WASM_UART_MAX_PORTS] = {NULL, NULL};
-static bool s_uart_inited[WASM_UART_MAX_PORTS] = {false, false};
-static pal_uart_event_callback_t s_uart_event_cb[WASM_UART_MAX_PORTS] = {NULL, NULL};
-static void *s_uart_event_arg[WASM_UART_MAX_PORTS] = {NULL, NULL};
+static pal_os_ringbuf_handle_t s_uart_rx_fifo[WASM_UART_MAX_PORTS] = {NULL, NULL, NULL};
+static bool s_uart_inited[WASM_UART_MAX_PORTS] = {false, false, false};
+static pal_uart_event_callback_t s_uart_event_cb[WASM_UART_MAX_PORTS] = {NULL, NULL, NULL};
+static void *s_uart_event_arg[WASM_UART_MAX_PORTS] = {NULL, NULL, NULL};
 
 static void ensure_port_fifo_created(uint8_t port)
 {

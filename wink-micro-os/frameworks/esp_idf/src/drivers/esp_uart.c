@@ -35,6 +35,12 @@ typedef struct {
     int pattern_tail;
     int pattern_count;
     int pattern_queue_max;
+
+    /* RS485 & Mode configuration */
+    uart_mode_t mode;
+    uint8_t rx_tout_thresh;
+    wink_pin_t rts_pin;
+    wink_pin_t cts_pin;
 } esp_uart_port_t;
 
 static esp_uart_port_t s_uarts[UART_NUM_MAX];
@@ -140,18 +146,29 @@ esp_err_t uart_param_config(uart_port_t uart_num, const uart_config_t *uart_conf
     return ESP_OK;
 }
 
-esp_err_t uart_set_pin(uart_port_t uart_num, int tx_io_num, int rx_io_num, int rts_io_num, int cts_io_num) {
-    (void)rts_io_num;
-    (void)cts_io_num;
-    if (uart_num >= UART_NUM_MAX) {
+static esp_err_t _uart_set_pin_internal(uart_port_t uart_num, int tx_io_num, int rx_io_num,
+                                        int rts_io_num, int cts_io_num, int dtr_io_num, int dsr_io_num) {
+    if (uart_num >= SOC_UART_HP_NUM || uart_num >= UART_NUM_MAX) {
         return ESP_ERR_INVALID_ARG;
     }
+    /* Fail-Loud on unsupported non-UART0 DTR/DSR pins if explicitly requested on ESP32 */
+    if ((dtr_io_num != UART_PIN_NO_CHANGE && dtr_io_num >= 0) ||
+        (dsr_io_num != UART_PIN_NO_CHANGE && dsr_io_num >= 0)) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+
     esp_uart_port_t *u = &s_uarts[uart_num];
     if (tx_io_num != UART_PIN_NO_CHANGE) {
         u->tx_pin = (wink_pin_t)tx_io_num;
     }
     if (rx_io_num != UART_PIN_NO_CHANGE) {
         u->rx_pin = (wink_pin_t)rx_io_num;
+    }
+    if (rts_io_num != UART_PIN_NO_CHANGE) {
+        u->rts_pin = (wink_pin_t)rts_io_num;
+    }
+    if (cts_io_num != UART_PIN_NO_CHANGE) {
+        u->cts_pin = (wink_pin_t)cts_io_num;
     }
     if (u->pal_initialized) {
         pal_uart_deinit((uint8_t)uart_num);
@@ -160,7 +177,72 @@ esp_err_t uart_set_pin(uart_port_t uart_num, int tx_io_num, int rx_io_num, int r
             u->pal_initialized = false;
             return esp_err_from_wink(st);
         }
+        if (u->installed) {
+            pal_uart_set_event_callback((uint8_t)uart_num, on_pal_uart_event, u);
+        }
     }
+    return ESP_OK;
+}
+
+esp_err_t _uart_set_pin4(uart_port_t uart_num, int tx_io_num, int rx_io_num, int rts_io_num, int cts_io_num) {
+    return _uart_set_pin_internal(uart_num, tx_io_num, rx_io_num, rts_io_num, cts_io_num, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+}
+
+esp_err_t _uart_set_pin6(uart_port_t uart_num, int tx_io_num, int rx_io_num, int rts_io_num, int cts_io_num, int dtr_io_num, int dsr_io_num) {
+    return _uart_set_pin_internal(uart_num, tx_io_num, rx_io_num, rts_io_num, cts_io_num, dtr_io_num, dsr_io_num);
+}
+
+esp_err_t __uart_set_pin_invalid_args__(int dummy, ...) {
+    (void)dummy;
+    return ESP_ERR_INVALID_ARG;
+}
+
+#undef uart_set_pin
+esp_err_t uart_set_pin(uart_port_t uart_num, int tx_io_num, int rx_io_num, int rts_io_num, int cts_io_num) {
+    return _uart_set_pin4(uart_num, tx_io_num, rx_io_num, rts_io_num, cts_io_num);
+}
+
+esp_err_t uart_set_mode(uart_port_t uart_num, uart_mode_t mode) {
+    if (uart_num >= SOC_UART_HP_NUM || uart_num >= UART_NUM_MAX) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    esp_uart_port_t *u = &s_uarts[uart_num];
+    if (!u->installed) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (mode != UART_MODE_UART && mode != UART_MODE_RS485_HALF_DUPLEX) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+    u->mode = mode;
+    return ESP_OK;
+}
+
+esp_err_t uart_set_rx_timeout(uart_port_t uart_num, const uint8_t tout_thresh) {
+    if (uart_num >= SOC_UART_HP_NUM || uart_num >= UART_NUM_MAX) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    esp_uart_port_t *u = &s_uarts[uart_num];
+    if (!u->installed) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    /* ESP-IDF v6.1 limit is 126 symbols */
+    if (tout_thresh > 126) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    u->rx_tout_thresh = tout_thresh;
+    return ESP_OK;
+}
+
+esp_err_t uart_wait_tx_done(uart_port_t uart_num, uint32_t ticks_to_wait) {
+    (void)ticks_to_wait;
+    if (uart_num >= SOC_UART_HP_NUM || uart_num >= UART_NUM_MAX) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    esp_uart_port_t *u = &s_uarts[uart_num];
+    if (!u->installed) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    /* In Wasm simulation, pal_uart_write completes synchronously to the bridge buffer */
     return ESP_OK;
 }
 
@@ -189,6 +271,8 @@ esp_err_t uart_driver_install(uart_port_t uart_num, int rx_buffer_size, int tx_b
 
     u->rx_head = u->rx_tail = u->rx_count = 0;
     u->waiting_task_id = -1;
+    u->mode = UART_MODE_UART;
+    u->rx_tout_thresh = 0;
     u->installed = true;
 
     if (queue_size > 0 && uart_queue != NULL) {
@@ -390,7 +474,11 @@ void esp_uart_reset(void) {
         memset(&s_uarts[i], 0, sizeof(esp_uart_port_t));
         s_uarts[i].tx_pin = WINK_PIN_NC;
         s_uarts[i].rx_pin = WINK_PIN_NC;
+        s_uarts[i].rts_pin = WINK_PIN_NC;
+        s_uarts[i].cts_pin = WINK_PIN_NC;
         s_uarts[i].baud_rate = 115200;
+        s_uarts[i].mode = UART_MODE_UART;
+        s_uarts[i].rx_tout_thresh = 0;
         s_uarts[i].waiting_task_id = -1;
     }
 }

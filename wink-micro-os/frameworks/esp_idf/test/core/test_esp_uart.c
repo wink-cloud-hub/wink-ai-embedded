@@ -101,11 +101,47 @@ void test_uart_edge_paths(void) {
     TEST_ASSERT_EQUAL_INT32(ESP_OK, uart_driver_delete(UART_NUM_0));
 }
 
+void test_uart_rs485_mode_and_advanced_pins(void) {
+    /* Test 7-arg pin API */
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, uart_set_pin(UART_NUM_0, 23, 22, 18, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    /* Fail-Loud on unsupported DTR/DSR pins */
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_SUPPORTED, uart_set_pin(UART_NUM_0, 23, 22, -1, -1, 5, -1));
+
+    /* Mode and timeout before install -> INVALID_STATE */
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_STATE, uart_set_mode(UART_NUM_0, UART_MODE_RS485_HALF_DUPLEX));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_STATE, uart_set_rx_timeout(UART_NUM_0, 3));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_STATE, uart_wait_tx_done(UART_NUM_0, 10));
+
+    /* Install driver */
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, uart_driver_install(UART_NUM_0, 256, 0, 0, NULL, 0));
+
+    /* Re-set pin after install (deinit + reinit with event callback restore) */
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, uart_set_pin(UART_NUM_0, 23, 22, 18, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+
+    /* Modes */
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, uart_set_mode(UART_NUM_0, UART_MODE_RS485_HALF_DUPLEX));
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, uart_set_mode(UART_NUM_0, UART_MODE_UART));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_SUPPORTED, uart_set_mode(UART_NUM_0, (uart_mode_t)99));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, uart_set_mode(UART_NUM_MAX, UART_MODE_UART));
+
+    /* Timeout */
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, uart_set_rx_timeout(UART_NUM_0, 3));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, uart_set_rx_timeout(UART_NUM_0, 127));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, uart_set_rx_timeout(UART_NUM_MAX, 3));
+
+    /* Wait TX done */
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, uart_wait_tx_done(UART_NUM_0, 10));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, uart_wait_tx_done(UART_NUM_MAX, 10));
+
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, uart_driver_delete(UART_NUM_0));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_uart_param_config_and_pins);
     RUN_TEST(test_uart_driver_install_and_lifecycle);
     RUN_TEST(test_uart_boundary_checks);
     RUN_TEST(test_uart_edge_paths);
+    RUN_TEST(test_uart_rs485_mode_and_advanced_pins);
     return UNITY_END();
 }
