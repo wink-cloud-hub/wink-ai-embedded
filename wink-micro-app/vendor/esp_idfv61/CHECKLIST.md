@@ -3,7 +3,7 @@
 # ESP-IDF v6.1 官方示例全量仿真适配核对清单 (Checklist)
 
 > **数据单一事实源（SSOT）**：[`checklist.data.json`](.governance/data/checklist.data.json)（Spec v2.0.0，多配置实例与五维正交模型）  
-> **生成时间**：2026-10-05  
+> **生成时间**：2026-10-06  
 > **分类规范**：[`CLASSIFICATION-SPEC.md`](.governance/specs/CLASSIFICATION-SPEC.md) (v2.0)  
 > **能力字典**：[`capability-catalog.yaml`](.governance/catalog/capability-catalog.yaml)  
 > **隔离区白名单**：[`gates/quarantine.yaml`](.governance/gates/quarantine.yaml)（10 项存量债务，14 天 TTL 生效中）  
@@ -15,7 +15,7 @@
 
 - **官方独立示例总数**：**478 个**
   - `[x]` **已完成六要素实证 (Verified)**：**35 项**
-    - `🟢` **双实证闭环 (Twin-Proof: Green ✅ + Red 🛡️)**：**7 项**
+    - `🟢` **双实证闭环 (Twin-Proof: Green ✅ + Red 🛡️)**：**0 项**
   - `[?]` **存量隔离待补凭证 (Quarantined Debt)**：**0 项**（14 天 TTL 过期硬阻断，至 `2026-10-13`）
   - `[ ]` **规划中正常排期 (In-Scope Planned)**：**256 项**
   - `[-]` **明确产品排除 / 暂缓投入 (Out-of-Scope / Deferred)**：**187 项**（编译期 `WINK_SLA_ERROR` Fail-Loud 阻断）
@@ -116,7 +116,7 @@
 
 | 状态 | 编号 | 官方子示例相对路径 | 可观测等级 | 优先级 | 对应 wink-micro-app | 验收标准与架构说明 |
 | :---: | :---: | :--- | :---: | :---: | :--- | :--- |
-| [x] | 001 | `get-started/blink` | 🎯 Level 1 | P0 | [`get-started/blink_gpio`](get-started/blink_gpio) | [Lane 1: 内核调度] 🟢 [Green ✅ | Red 🛡️] 已完成红绿双实证 (TWIN-PROOF)。 |
+| [x] | 001 | `get-started/blink` | 🎯 Level 1 | P0 | [`get-started/blink_gpio`](get-started/blink_gpio) | [Lane 1: 内核调度] [Green ✅ | Red ⏳] 已完成实证。 |
 | [x] | 002 | `get-started/hello_world` | 📜 Level 2 | P0 | [`get-started/hello_world`](get-started/hello_world) | [Lane 1: 内核调度] [Green ✅ | Red ⏳] 已完成实证。 |
 
 ---
@@ -172,7 +172,7 @@
 | [ ] | 046 | `peripherals/lcd/tjpgd` | 📜 Level 2 | P3 | `peripherals/lcd_tjpgd` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
 | [x] | 047 | `peripherals/ledc/ledc_basic` | 🎯 Level 1 | P0 | [`peripherals/ledc_basic`](peripherals/ledc_basic) | [Lane 3: 脉冲定时] [Green ✅ | Red ⏳] 已完成实证。 |
 | [ ] | 048 | `peripherals/ledc/ledc_dimmer` | 📜 Level 2 | P2 | `peripherals/ledc_ledc_dimmer` | [Lane 3: 脉冲定时] 待排期。依赖进一步框架门面扩展。 |
-| [x] | 049 | `peripherals/ledc/ledc_fade` | 📜 Level 2 | P0 | [`peripherals/ledc_ledc_fade`](peripherals/ledc_ledc_fade) | [Lane 3: 脉冲定时] 🟢 [Green ✅ | Red 🛡️] 已完成红绿双实证 (TWIN-PROOF)。 |
+| [x] | 049 | `peripherals/ledc/ledc_fade` | 📜 Level 2 | P0 | [`peripherals/ledc_ledc_fade`](peripherals/ledc_ledc_fade) | [Lane 3: 脉冲定时] [Green ✅ | Red ⏳] 已完成实证。 |
 | [ ] | 050 | `peripherals/ledc/ledc_gamma_curve_fade` | 📜 Level 2 | P2 | `peripherals/ledc_ledc_gamma_curve_fade` | [Lane 3: 脉冲定时] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 051 | `peripherals/mcpwm/mcpwm_bdc_speed_control` | 📜 Level 2 | P2 | `peripherals/mcpwm_mcpwm_bdc_speed_control` | [Lane 3: 脉冲定时] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 052 | `peripherals/mcpwm/mcpwm_bldc_hall_control` | 📜 Level 2 | P2 | `peripherals/mcpwm_mcpwm_bldc_hall_control` | [Lane 3: 脉冲定时] 待排期。依赖进一步框架门面扩展。 |
@@ -206,7 +206,7 @@
 | [ ] | 080 | `peripherals/spi_slave_hd/segment_mode/seg_slave` | 📜 Level 2 | P2 | `peripherals/spi_slave_hd_segment_mode_seg_slave` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 081 | `peripherals/temperature_sensor/temp_sensor` | 📜 Level 2 | P2 | `peripherals/temperature_sensor_temp_sensor` | [Lane 4: 模拟电学] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 082 | `peripherals/temperature_sensor/temp_sensor_monitor` | 📜 Level 2 | P2 | `peripherals/temperature_sensor_temp_sensor_monitor` | [Lane 4: 模拟电学] 待排期。依赖进一步框架门面扩展。 |
-| [x] | 083 | `peripherals/timer_group/gptimer` | ⚡ Level 3 | P0 | [`peripherals/gptimer_alarm`](peripherals/gptimer_alarm) | [Lane 3: 脉冲定时] 🟢 [Green ✅ | Red 🛡️] 已完成红绿双实证 (TWIN-PROOF)。 |
+| [x] | 083 | `peripherals/timer_group/gptimer` | ⚡ Level 3 | P0 | [`peripherals/gptimer_alarm`](peripherals/gptimer_alarm) | [Lane 3: 脉冲定时] [Green ✅ | Red ⏳] 已完成实证。 |
 | [ ] | 084 | `peripherals/timer_group/gptimer_capture_hc_sr04` | 📜 Level 2 | P2 | `peripherals/timer_group_gptimer_capture_hc_sr04` | [Lane 3: 脉冲定时] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 085 | `peripherals/timer_group/wiegand_interface` | 📜 Level 2 | P2 | `peripherals/timer_group_wiegand_interface` | [Lane 3: 脉冲定时] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 086 | `peripherals/touch_sensor/touch_sens_basic` | 📜 Level 2 | P1 | `peripherals/touch_sensor_touch_sens_basic` | [Lane 4: 模拟电学] 待排期。依赖进一步框架门面扩展。 |
@@ -219,7 +219,7 @@
 | [ ] | 093 | `peripherals/uart/nmea0183_parser` | 📜 Level 2 | P2 | `peripherals/uart_nmea0183_parser` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
 | [x] | 094 | `peripherals/uart/uart_async_rxtxtasks` | 📜 Level 2 | P0 | [`peripherals/uart_uart_async_rxtxtasks`](peripherals/uart_uart_async_rxtxtasks) | [Lane 2: 数字总线] [Green ✅ | Red ⏳] 已完成实证。 |
 | [ ] | 095 | `peripherals/uart/uart_dma_ota` | 📜 Level 2 | P2 | `peripherals/uart_uart_dma_ota` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
-| [x] | 096 | `peripherals/uart/uart_echo` | 📜 Level 2 | P0 | [`peripherals/uart_echo`](peripherals/uart_echo) | [Lane 2: 数字总线] 🟢 [Green ✅ | Red 🛡️] 已完成红绿双实证 (TWIN-PROOF)。 |
+| [x] | 096 | `peripherals/uart/uart_echo` | 📜 Level 2 | P0 | [`peripherals/uart_echo`](peripherals/uart_echo) | [Lane 2: 数字总线] [Green ✅ | Red ⏳] 已完成实证。 |
 | [ ] | 097 | `peripherals/uart/uart_echo_rs485` | 📜 Level 2 | P1 | `peripherals/uart_uart_echo_rs485` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
 | [x] | 098 | `peripherals/uart/uart_events` | 📜 Level 2 | P0 | [`peripherals/uart_uart_events`](peripherals/uart_uart_events) | [Lane 2: 数字总线] [Green ✅ | Red ⏳] 已完成实证。 |
 | [ ] | 099 | `peripherals/uart/uart_repl` | 📜 Level 2 | P2 | `peripherals/uart_uart_repl` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
@@ -285,7 +285,7 @@
 | [x] | 151 | `system/startup_time` | 📜 Level 2 | P0 | [`system/startup_time`](system/startup_time) | [Lane 1: 内核调度] [Green ✅ | Red ⏳] 已完成实证。 |
 | [ ] | 152 | `system/sysview_tracing` | 📜 Level 2 | P2 | `system/sysview_tracing` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 153 | `system/sysview_tracing_heap_log` | 📜 Level 2 | P2 | `system/sysview_tracing_heap_log` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
-| [x] | 154 | `system/task_watchdog` | 📜 Level 2 | P0 | [`system/task_watchdog`](system/task_watchdog) | [Lane 1: 内核调度] 🟢 [Green ✅ | Red 🛡️] 已完成红绿双实证 (TWIN-PROOF)。 |
+| [x] | 154 | `system/task_watchdog` | 📜 Level 2 | P0 | [`system/task_watchdog`](system/task_watchdog) | [Lane 1: 内核调度] [Green ✅ | Red ⏳] 已完成实证。 |
 | [ ] | 155 | `system/ulp/lp_core/build_system` | 📜 Level 2 | P3 | `system/ulp_lp_core_build_system` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 156 | `system/ulp/lp_core/debugging` | 📜 Level 2 | P3 | `system/ulp_lp_core_debugging` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 157 | `system/ulp/lp_core/gpio` | 📜 Level 2 | P1 | `system/ulp_lp_core_gpio` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
@@ -325,7 +325,7 @@
 | 状态 | 编号 | 官方子示例相对路径 | 可观测等级 | 优先级 | 对应 wink-micro-app | 验收标准与架构说明 |
 | :---: | :---: | :--- | :---: | :---: | :--- | :--- |
 | [ ] | 185 | `protocols/dns_over_https` | 📜 Level 2 | P2 | `protocols/dns_over_https` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
-| [x] | 186 | `protocols/esp_http_client` | 📜 Level 2 | P0 | [`protocols/http_client`](protocols/http_client) | [Lane 6: 无线网络] 🟢 [Green ✅ | Red 🛡️] 已完成红绿双实证 (TWIN-PROOF)。 |
+| [x] | 186 | `protocols/esp_http_client` | 📜 Level 2 | P0 | [`protocols/http_client`](protocols/http_client) | [Lane 6: 无线网络] [Green ✅ | Red ⏳] 已完成实证。 |
 | [ ] | 187 | `protocols/esp_http_client_mutual_auth` | 📜 Level 2 | P1 | `protocols/esp_http_client_mutual_auth` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 188 | `protocols/esp_local_ctrl` | 📜 Level 2 | P2 | `protocols/esp_local_ctrl` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 189 | `protocols/http_request` | 📜 Level 2 | P2 | `protocols/http_request` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
@@ -371,7 +371,7 @@
 | [x] | 221 | `wifi/fast_scan` | 📜 Level 2 | P0 | [`wifi/fast_scan`](wifi/fast_scan) | [Lane 6: 无线网络] [Green ✅ | Red ⏳] 已完成实证。 |
 | [ ] | 222 | `wifi/ftm` | 📜 Level 2 | P2 | `wifi/ftm` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
 | [x] | 223 | `wifi/getting_started/softAP` | 📜 Level 2 | P0 | [`wifi/getting_started_softAP`](wifi/getting_started_softAP) | [Lane 6: 无线网络] [Green ✅ | Red ⏳] 已完成实证。 |
-| [x] | 224 | `wifi/getting_started/station` | ⚡ Level 3 | P0 | [`wifi/wifi_sta`](wifi/wifi_sta) | [Lane 6: 无线网络] 🟢 [Green ✅ | Red 🛡️] 已完成红绿双实证 (TWIN-PROOF)。 |
+| [x] | 224 | `wifi/getting_started/station` | ⚡ Level 3 | P0 | [`wifi/wifi_sta`](wifi/wifi_sta) | [Lane 6: 无线网络] [Green ✅ | Red ⏳] 已完成实证。 |
 | [ ] | 225 | `wifi/iperf` | 📜 Level 2 | P2 | `wifi/iperf` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 226 | `wifi/itwt` | 📜 Level 2 | P2 | `wifi/itwt` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 227 | `wifi/power_save` | 📜 Level 2 | P2 | `wifi/power_save` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |

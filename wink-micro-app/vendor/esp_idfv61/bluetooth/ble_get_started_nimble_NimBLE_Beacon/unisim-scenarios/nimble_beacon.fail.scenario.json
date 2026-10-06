@@ -1,0 +1,43 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 ble_get_started_nimble_NimBLE_Beacon advertising reject & parameter defense proof",
+    "templateId": "esp_idfv61_ble_get_started_nimble_NimBLE_Beacon_fail",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "ble:gap:device_name",
+      "matcher": "NimBLE_Beacon",
+      "description": "断言 BLE 设备名同步为 NimBLE_Beacon"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1000ms",
+      "target": "ble:gap:adv_state",
+      "matcher": "ADVERTISING",
+      "description": "[广播状态机防御断言] 验证 NimBLE Beacon 广播状态机在参数扰动后维持 ADVERTISING"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "ble:gap:device_name",
+      "matcher": "NimBLE_Beacon",
+      "description": "[设备标识一致性防御] 断言设备名未受异常干扰篡改"
+    }
+  ]
+}

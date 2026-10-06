@@ -16157,12 +16157,28 @@
             "timeout_wall_ms": 10000,
             "positive_cases": [
               {
-                "id": "tc_ble_beacon_adv",
-                "description": "Verify NimBLE Beacon GAP advertising state machine and device name synchronisation"
+                "name": "NimBLE Beacon广播激活态",
+                "matcher": {
+                  "op": "equals",
+                  "expected": "ADVERTISING"
+                }
+              },
+              {
+                "name": "BLE设备名称同步",
+                "matcher": {
+                  "op": "equals",
+                  "expected": "NimBLE_Beacon"
+                }
               }
             ],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "negative_cases": [
+              {
+                "stimulus": "注入 Beacon 广播参数拒绝或通道不可用 (FAULT_BLE_ADV_REJECT)",
+                "expect_error": "ESP_ERR_INVALID_ARG",
+                "detects": "Beacon 广播参数配置异常未校验导致静默发射失败"
+              }
+            ],
+            "sla_error_symbol": "ESP_ERR_INVALID_ARG"
           },
           "evidence": {
             "backend": "wasm_simulation",
