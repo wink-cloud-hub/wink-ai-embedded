@@ -69,15 +69,19 @@ foreach(src ${WINK_APP_SOURCES})
     endif()
 endforeach()
 
-set(APP_REQUIRES driver esp32)
+set(APP_REQUIRES driver esp32 spi_flash nvs_flash esp_timer)
 if(IS_ARDUINO_APP)
     list(APPEND APP_REQUIRES arduino)
 endif()
 
+set(CARRIER_SRCS ${WINK_APP_SOURCES})
+if(NOT WINK_APP_PROVIDES_APP_MAIN)
+    list(APPEND CARRIER_SRCS "app_main.c")
+endif()
+
 idf_component_register(
     SRCS
-        "app_main.c"
-        ${WINK_APP_SOURCES}
+        ${CARRIER_SRCS}
     INCLUDE_DIRS
         "."
         ${WINK_APP_DIR}
