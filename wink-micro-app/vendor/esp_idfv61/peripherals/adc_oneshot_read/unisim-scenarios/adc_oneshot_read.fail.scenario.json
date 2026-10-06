@@ -1,0 +1,79 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 adc_oneshot_read invalid channel & calibration defense proof",
+    "templateId": "esp_idfv61_adc_oneshot_read_fail",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3500ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "0ms",
+      "adcChannel": 32,
+      "valueNorm": 0.75,
+      "description": "给 ADC1 Channel 4 (GPIO 32) 注入 75% 模拟电压"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "0ms",
+      "adcChannel": 33,
+      "valueNorm": 0.25,
+      "description": "给 ADC1 Channel 5 (GPIO 33) 注入 25% 模拟电压"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "0ms",
+      "adcChannel": 4,
+      "valueNorm": 0.5,
+      "description": "给 ADC2 Channel 0 (GPIO 4) 注入 50% 模拟电压"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "800ms",
+        "1500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "ADC1 Channel[5] Cali Voltage: 775 mV",
+      "description": "[单次转换校准断言] 验证 ADC1 Channel 5 校准电压 775 mV (25% 满量程)"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "1800ms",
+        "2500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "ADC2 Channel[0] Cali Voltage: 1550 mV",
+      "description": "[单次转换校准断言] 验证 ADC2 Channel 0 校准电压 1550 mV (50% 满量程)"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "2800ms",
+        "3500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "ADC1 Channel[4] Cali Voltage: 2325 mV",
+      "description": "[单次转换校准断言] 验证 ADC1 Channel 4 校准电压 2325 mV (75% 满量程)"
+    }
+  ]
+}

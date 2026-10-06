@@ -1,0 +1,73 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 i2c_basic NACK and timeout defense proof",
+    "templateId": "esp_idfv61_i2c_basic_fail",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "2000000",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言I2C总线主控初始化阶段系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "I2C initialized successfully",
+      "description": "[主控就绪] 验证 I2C 主线成功完成初始化并注册从机"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0us",
+        "1000ms"
+      ],
+      "busType": "i2c",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": {
+        "encoding": "hex",
+        "hex": "7571"
+      },
+      "description": "[I2C总线时序断言] 断言 I2C 总线发送访问 MPU9250 WHO_AM_I 寄存器(0x75)并成功读取器件ID(0x71)"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "WHO_AM_I =",
+      "description": "[设备寻址防御] 验证从机通信握手阶段接收设备 ID 并受超时保护"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "2000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "I2C de-initialized successfully",
+      "description": "[总线释放防御] 验证异常处理后安全注销从机并释放总线资源"
+    }
+  ]
+}

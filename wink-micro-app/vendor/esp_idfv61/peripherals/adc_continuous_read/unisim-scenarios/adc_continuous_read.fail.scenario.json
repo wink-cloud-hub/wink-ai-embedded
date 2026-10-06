@@ -1,0 +1,84 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 adc_continuous_read disabled channel & oversampling timeout defense proof",
+    "templateId": "esp_idfv61_adc_continuous_read_fail",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "30ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "0ms",
+      "adcChannel": 34,
+      "valueNorm": 0.484,
+      "description": "给 ADC1 Channel 6 (GPIO 34) 注入 1500mV 归一化模拟电压 (1500/3100 ≈ 0.484)"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "0ms",
+      "adcChannel": 35,
+      "valueNorm": 0.806,
+      "description": "给 ADC1 Channel 7 (GPIO 35) 注入 2500mV 归一化模拟电压 (2500/3100 ≈ 0.806)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "10ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "30ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "adc_pattern[0].channel is :6",
+      "description": "[配置防御断言] 验证 ADC 连续模式通道 6 成功配置"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "30ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "adc_pattern[1].channel is :7",
+      "description": "[配置防御断言] 验证 ADC 连续模式通道 7 成功配置"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "30ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "ADC1, Channel: 6, Value: 1982",
+      "description": "[DMA数据有效性] 断言通道 6 转换工程值符合注入基准"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "30ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "ADC1, Channel: 7, Value: 3301",
+      "description": "[DMA数据有效性] 断言通道 7 转换工程值符合注入基准"
+    }
+  ]
+}

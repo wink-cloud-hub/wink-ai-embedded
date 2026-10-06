@@ -237,9 +237,30 @@
             "scenario_path": "peripherals/adc_continuous_read/unisim-scenarios/peripherals_adc_continuous_read.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "positive_cases": [
+              {
+                "name": "ADC连续采样通道配置",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "adc_pattern\\[0\\]\\.channel is :6"
+                }
+              },
+              {
+                "name": "ADC连续采样DMA转换解析",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "ADC1, Channel: 6, Value: 1982"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "DMA 缓冲区无就绪样本或超时 (TIMEOUT)",
+                "expect_error": "ESP_ERR_TIMEOUT",
+                "detects": "未就绪样本超时返回 ESP_ERR_TIMEOUT 而非死锁"
+              }
+            ],
+            "sla_error_symbol": "ESP_ERR_TIMEOUT"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -308,9 +329,30 @@
             "scenario_path": "peripherals/adc_oneshot_read/unisim-scenarios/adc_oneshot_read.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "positive_cases": [
+              {
+                "name": "ADC1通道校准工程电压",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "ADC1 Channel\\[5\\] Cali Voltage: 775 mV"
+                }
+              },
+              {
+                "name": "ADC2通道校准工程电压",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "ADC2 Channel\\[0\\] Cali Voltage: 1550 mV"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "请求未配置或非法 ADC 通道 (INVALID_ARG)",
+                "expect_error": "ESP_ERR_INVALID_ARG",
+                "detects": "非法通道参数未受校验导致驱动内存越界访问"
+              }
+            ],
+            "sla_error_symbol": "ESP_ERR_INVALID_ARG"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -872,9 +914,30 @@
             "scenario_path": "peripherals/dac_dac_cosine_wave/unisim-scenarios/peripherals_dac_dac_cosine_wave.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "positive_cases": [
+              {
+                "name": "DAC余弦波通道启动与稳态轨",
+                "matcher": {
+                  "op": "equals",
+                  "expected": 3.3
+                }
+              },
+              {
+                "name": "DAC双通道内部回读监测",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "DAC channel 0 value:"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "配置越界余弦波频率参数 (INVALID_ARG)",
+                "expect_error": "ESP_ERR_INVALID_ARG",
+                "detects": "DAC 时钟分频器不支持越界频率导致波形失真"
+              }
+            ],
+            "sla_error_symbol": "ESP_ERR_INVALID_ARG"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -944,9 +1007,30 @@
             "scenario_path": "peripherals/dac_dac_oneshot/unisim-scenarios/dac_dac_oneshot.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "positive_cases": [
+              {
+                "name": "DAC单次转换稳态供电轨",
+                "matcher": {
+                  "op": "equals",
+                  "expected": 3.3
+                }
+              },
+              {
+                "name": "DAC双通道模拟输出电压监测",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "DAC channel 0 value:"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "向禁用或非法通道写入输出电压 (INVALID_ARG)",
+                "expect_error": "ESP_ERR_INVALID_ARG",
+                "detects": "非法通道写入未返回参数错误导致硬件状态异常"
+              }
+            ],
+            "sla_error_symbol": "ESP_ERR_INVALID_ARG"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -1529,21 +1613,28 @@
             "timeout_wall_ms": 5000,
             "positive_cases": [
               {
-                "name": "I2C读取传感器寄存器",
+                "name": "I2C主控初始化与器件寻址",
                 "matcher": {
                   "op": "regex",
-                  "expected": "sensor_data"
+                  "expected": "I2C initialized successfully"
+                }
+              },
+              {
+                "name": "I2C读取MPU9250器件ID",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "WHO_AM_I = 71"
                 }
               }
             ],
             "negative_cases": [
               {
-                "stimulus": "器件无响应 NACK",
+                "stimulus": "从机无应答 NACK 故障注入 (FAULT_I2C_NACK)",
                 "expect_error": "ESP_ERR_TIMEOUT",
-                "detects": "假空桩忽略 ACK 阶段"
+                "detects": "从机无应答时 I2C 总线传输超时并防御性退出"
               }
             ],
-            "sla_error_symbol": null
+            "sla_error_symbol": "ESP_ERR_TIMEOUT"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -1612,9 +1703,23 @@
             "scenario_path": "peripherals/i2c_i2c_eeprom/unisim-scenarios/peripherals_i2c_i2c_eeprom.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "positive_cases": [
+              {
+                "name": "I2C EEPROM写入与页面回读验证",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "EEPROM 硬件写保护或应答超时 (FAULT_I2C_TIMEOUT)",
+                "expect_error": "ESP_ERR_TIMEOUT",
+                "detects": "EEPROM 忙等待或写保护超时未解引发总线错误"
+              }
+            ],
+            "sla_error_symbol": "ESP_ERR_TIMEOUT"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -4690,9 +4795,23 @@
             "scenario_path": "peripherals/spi_master_hd_eeprom/unisim-scenarios/spi_master_hd_eeprom.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "positive_cases": [
+              {
+                "name": "SPI半双工读写AT93C46D",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "Read: Hello World!"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "SPI 传输异常或总线阻断 (FAULT_SPI_TRANSFER_FAIL)",
+                "expect_error": "ESP_ERR_INVALID_STATE",
+                "detects": "SPI 总线传输异常未检出导致静默数据损坏"
+              }
+            ],
+            "sla_error_symbol": "ESP_ERR_INVALID_STATE"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -6010,7 +6129,7 @@
             "timeout_wall_ms": 10000,
             "positive_cases": [
               {
-                "name": "供电轨稳态校验",
+                "name": "稳态供电轨校验",
                 "matcher": {
                   "op": "equals",
                   "expected": 3.3
@@ -6024,7 +6143,7 @@
                 }
               },
               {
-                "name": "UART1 RX 接收并控制台输出",
+                "name": "UART1 RX 接收异步报文",
                 "matcher": {
                   "op": "regex",
                   "expected": "Read 15 bytes: 'WINK_ASYNC_UART'"
@@ -6033,12 +6152,12 @@
             ],
             "negative_cases": [
               {
-                "stimulus": "异步接收丢失或总线未挂载",
+                "stimulus": "异步接收丢包或缓冲区溢出",
                 "expect_error": "ASSERTION_TIMEOUT",
-                "detects": "RX任务未读取到注入报文或控制台未吐出目标内容"
+                "detects": "RX未读取注入报文导致控制台未呈现目标行"
               }
             ],
-            "sla_error_symbol": null
+            "sla_error_symbol": "ASSERTION_TIMEOUT"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -6318,9 +6437,30 @@
             "scenario_path": "peripherals/uart_uart_events/unisim-scenarios/peripherals_uart_uart_events.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "positive_cases": [
+              {
+                "name": "UART0 事件接收与回显",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "\\[DATA EVT\\]:"
+                }
+              },
+              {
+                "name": "UART0 模式中断捕获",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "\\[UART PATTERN DETECTED\\]"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "UART 硬件 FIFO 溢出或校验错误事件 (UART_FIFO_OVF)",
+                "expect_error": "ESP_ERR_INVALID_STATE",
+                "detects": "FIFO 溢出或奇偶校验错误未上报导致接收丢包"
+              }
+            ],
+            "sla_error_symbol": "ESP_ERR_INVALID_STATE"
           },
           "evidence": {
             "backend": "wasm_simulation",

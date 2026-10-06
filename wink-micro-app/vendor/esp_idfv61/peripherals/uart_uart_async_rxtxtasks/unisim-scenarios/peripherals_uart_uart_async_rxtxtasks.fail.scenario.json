@@ -1,0 +1,57 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 uart_async_rxtxtasks buffer overflow & rx defense proof",
+    "templateId": "esp_idfv61_peripherals_uart_async_rxtxtasks_fail",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "2000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Hello world",
+      "description": "[异步TX任务] 验证 TX 任务成功向 UART1 发送周期性报文"
+    },
+    {
+      "type": "INPUT_BUS",
+      "timeUs": "200ms",
+      "busType": "uart",
+      "busId": 1,
+      "payload": {
+        "encoding": "utf8",
+        "text": "WINK_ASYNC_UART"
+      },
+      "description": "[异步RX注入] 向 UART1 注入异步数据流测试 RX 任务响应"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "200ms",
+        "2500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Read 15 bytes: 'WINK_ASYNC_UART'",
+      "description": "[异步RX接收断言] 验证 RX 任务从环形缓冲区正确读取并输出目标数据"
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 dac_cosine_wave out-of-range frequency defense proof",
+    "templateId": "esp_idfv61_dac_dac_cosine_wave_fail",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3500ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "0ms",
+      "adcChannel": 25,
+      "valueNorm": 0.5,
+      "description": "向 DAC/ADC Channel 0 (GPIO 25) 注入 50% 模拟电学基准"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "0ms",
+      "adcChannel": 26,
+      "valueNorm": 0.8,
+      "description": "向 DAC/ADC Channel 1 (GPIO 26) 注入 80% 模拟电学基准"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统核心供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "adc:25",
+      "matcher": {
+        "$near": {
+          "target": 0.5,
+          "tolerance": 0.05
+        }
+      },
+      "description": "[余弦波通道0断言] 验证 DAC Channel 0 (GPIO 25) 输出维持在 0.5 范围"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "adc:26",
+      "matcher": {
+        "$near": {
+          "target": 0.8,
+          "tolerance": 0.05
+        }
+      },
+      "description": "[余弦波通道1断言] 验证 DAC Channel 1 (GPIO 26) 输出维持在 0.8 范围"
+    },
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "2000ms",
+      "adcChannel": 25,
+      "valueNorm": 0.3,
+      "description": "向 DAC/ADC Channel 0 (GPIO 25) 动态调制至 30%"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2500ms",
+      "target": "adc:25",
+      "matcher": {
+        "$near": {
+          "target": 0.3,
+          "tolerance": 0.05
+        }
+      },
+      "description": "[动态扰动恢复断言] 验证 DAC Channel 0 调制后稳定追踪 0.3"
+    }
+  ]
+}

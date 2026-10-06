@@ -415,16 +415,16 @@ Batch 0: 治理防线加固与因果短路修复（pipeline.py 解耦 + ADC 因�
 
 #### Batch 2: Lane 2 (通信总线) & Lane 4 (模拟电学) 核心示例成对红测试 (9 项)
 - **Lane 2: 通信协议与串行总线 (5 项)**
-  - [ ] **Task 2.1**: `#023 peripherals/i2c_basic` ➔ `i2c_basic.fail.scenario.json`（通过 `FAULT_I2C_NACK` 注入从机无应答并断言返回 `ESP_ERR_TIMEOUT`）
-  - [ ] **Task 2.2**: `#024 peripherals/i2c_i2c_eeprom` ➔ `i2c_eeprom.fail.scenario.json`（注入写保护及响应超时）
-  - [ ] **Task 2.3**: `#073 peripherals/spi_master_hd_eeprom` ➔ `spi_master_hd_eeprom.fail.scenario.json`（通过 `FAULT_SPI_TRANSFER_FAIL` 注入总线阻断）
-  - [ ] **Task 2.4**: `#094 peripherals/uart_uart_async_rxtxtasks` ➔ `uart_async_rxtxtasks.fail.scenario.json`（注入异步 RX 环形缓冲区溢出）
-  - [ ] **Task 2.5**: `#098 peripherals/uart_uart_events` ➔ `uart_events.fail.scenario.json`（注入 UART 校验与 FIFO 溢出事件断言）
+  - [x] **Task 2.1**: `#023 peripherals/i2c_basic` ➔ `i2c_basic.fail.scenario.json`（通过 `FAULT_I2C_NACK` 注入从机无应答并断言返回 `ESP_ERR_TIMEOUT`）
+  - [x] **Task 2.2**: `#024 peripherals/i2c_i2c_eeprom` ➔ `peripherals_i2c_i2c_eeprom.fail.scenario.json`（注入写保护及响应超时）
+  - [x] **Task 2.3**: `#073 peripherals/spi_master_hd_eeprom` ➔ `spi_master_hd_eeprom.fail.scenario.json`（通过 `FAULT_SPI_TRANSFER_FAIL` 注入总线阻断）
+  - [x] **Task 2.4**: `#094 peripherals/uart_uart_async_rxtxtasks` ➔ `peripherals_uart_uart_async_rxtxtasks.fail.scenario.json`（注入异步 RX 环形缓冲区溢出）
+  - [x] **Task 2.5**: `#098 peripherals/uart_uart_events` ➔ `peripherals_uart_uart_events.fail.scenario.json`（注入 UART 校验与 FIFO 溢出事件断言）
 - **Lane 4: 模拟电学与信号转换 (4 项)**
-  - [ ] **Task 2.6**: `#003 peripherals/adc_continuous_read` ➔ `adc_continuous_read.fail.scenario.json`（注入采样通道未使能与过采样超时断言）
-  - [ ] **Task 2.7**: `#004 peripherals/adc_oneshot_read` ➔ `adc_oneshot_read.fail.scenario.json`（注入非法通道号断言 `ESP_ERR_INVALID_ARG`）
-  - [ ] **Task 2.8**: `#013 peripherals/dac_dac_cosine_wave` ➔ `dac_cosine_wave.fail.scenario.json`（注入越界频率断言参数拒绝）
-  - [ ] **Task 2.9**: `#014 peripherals/dac_dac_oneshot` ➔ `dac_oneshot.fail.scenario.json`（注入向已禁用通道写入电压断言返回错误）
+  - [x] **Task 2.6**: `#003 peripherals/adc_continuous_read` ➔ `peripherals_adc_continuous_read.fail.scenario.json`（注入采样通道未使能与过采样超时断言）
+  - [x] **Task 2.7**: `#004 peripherals/adc_oneshot_read` ➔ `adc_oneshot_read.fail.scenario.json`（注入非法通道号断言 `ESP_ERR_INVALID_ARG`）
+  - [x] **Task 2.8**: `#013 peripherals/dac_dac_cosine_wave` ➔ `peripherals_dac_dac_cosine_wave.fail.scenario.json`（注入越界频率断言参数拒绝）
+  - [x] **Task 2.9**: `#014 peripherals/dac_dac_oneshot` ➔ `dac_dac_oneshot.fail.scenario.json`（注入向已禁用通道写入电压断言返回错误）
 
 #### Batch 3: Lane 3 (定时电机) & Lane 6 (网络与无线) 核心示例成对红测试 (7 项)
 - **Lane 3: 定时器、计数与电机控制 (2 项)**
