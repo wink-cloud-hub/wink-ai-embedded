@@ -444,6 +444,9 @@ Batch 0: 治理防线加固与因果短路修复（pipeline.py 解耦 + ADC 因�
 - [x] **Task 4.4**: 运行 `generate_checklist_v1_1.py`，按有效证据生成 `CHECKLIST.md`；仅对同配置正常与故障处理证据完整的条目点亮 TWIN-PROOF，其余保留真实缺口，不以全亮作为验收要求。（已完成：CHECKLIST.md 单向派生并真实反映当前证据状态）
 
 #### Batch 5: M4 阶段 ESP32 物理硬件实机交叉核验
-- [ ] **Task 5.1**: 硬件测试环境确认（ESP32-WROOM/S3 开发板连接、COM 口识别）。
-- [ ] **Task 5.2**: 使用 `run_esp32_headless_evidence.ps1` 和 `wink.py esp32` 对 6 大黄金用例（`blink`, `ledc`, `gptimer`, `uart_echo`, `http_client`, `wifi_sta`）烧录物理硬件。
-- [ ] **Task 5.3**: 捕获芯片真实物理串口日志，提取时序哈希，与 Wasm 仿真 Trace 比对，输出《双 Target 物理实机交叉核验实证报告》。
+- [ ] **Task 5.1**: [BLOCKED: PENDING_HARDWARE] 硬件测试环境确认（ESP32-WROOM/S3 开发板连接、COM 口识别）。
+  - 凭据状态：底层系统探测完成，`[System.IO.Ports.SerialPort]::GetPortNames()` 检测到 0 个可用 COM 口（Windows 注册表 `SERIALCOMM` 为空）；经用户明确授权标记为 `[BLOCKED: PENDING_HARDWARE]`，保留现场挂起。
+- [ ] **Task 5.2**: [BLOCKED: PENDING_HARDWARE] 使用 `run_esp32_headless_evidence.ps1` 和 `wink.py esp32` 对 6 大黄金用例（`blink`, `ledc`, `gptimer`, `uart_echo`, `http_client`, `wifi_sta`）烧录物理硬件。
+  - 凭据状态：依赖 Task 5.1 物理硬件环境，硬件未连接，保持挂起。
+- [ ] **Task 5.3**: [BLOCKED: PENDING_HARDWARE] 捕获芯片真实物理串口日志，提取时序哈希，与 Wasm 仿真 Trace 比对，输出《双 Target 物理实机交叉核验实证报告》。
+  - 凭据状态：依赖 Task 5.1/5.2 物理硬件环境，保持挂起。
