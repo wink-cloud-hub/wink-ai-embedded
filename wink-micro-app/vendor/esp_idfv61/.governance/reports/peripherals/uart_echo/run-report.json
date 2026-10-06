@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-01T02:42:27.450Z",
+  "timestamp": "2026-10-06T11:03:56.495Z",
   "total": 1,
   "passed": 1,
   "failed": 0,
@@ -11,7 +11,7 @@
         "name": "ESP-IDF v6.1 uart_echo headless deterministic proof",
         "templateId": "esp_idfv61_uart_echo",
         "totalVirtualUs": "2000000",
-        "wallClockMs": 89
+        "wallClockMs": 97
       },
       "summary": {
         "totalSteps": 3,

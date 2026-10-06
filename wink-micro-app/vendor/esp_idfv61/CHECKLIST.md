@@ -14,10 +14,10 @@
 ## 一、 总体适配进度统计
 
 - **官方独立示例总数**：**478 个**
-  - `[x]` **已完成六要素实证 (Verified)**：**35 项**
+  - `[x]` **已完成六要素实证 (Verified)**：**36 项**
     - `🟢` **双实证闭环 (Twin-Proof: Green ✅ + Red 🛡️)**：**0 项**
   - `[?]` **存量隔离待补凭证 (Quarantined Debt)**：**0 项**（14 天 TTL 过期硬阻断，至 `2026-10-13`）
-  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**256 项**
+  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**255 项**
   - `[-]` **明确产品排除 / 暂缓投入 (Out-of-Scope / Deferred)**：**187 项**（编译期 `WINK_SLA_ERROR` Fail-Loud 阻断）
   - `?` **待深度审定 (Pending Audit / Unknown Scope)**：**0 项**
 
@@ -26,7 +26,7 @@
 | 序号 | 功能大类 | 包含示例数 | 编号跨度 | 已实证 | 隔离待补 |
 | :---: | :--- | :---: | :---: | :---: | :---: |
 | 01 | [基础快速起步 (Get-Started)](#get-started) | 2 项 | `#001 ~ #002` | 2 项 | 0 项 |
-| 02 | [片上与总线外设 (Peripherals)](#peripherals) | 114 项 | `#003 ~ #116` | 14 项 | 0 项 |
+| 02 | [片上与总线外设 (Peripherals)](#peripherals) | 114 项 | `#003 ~ #116` | 15 项 | 0 项 |
 | 03 | [操作系统与核心系统调用 (System & OS)](#system) | 68 项 | `#117 ~ #184` | 7 项 | 0 项 |
 | 04 | [网络与应用层通信协议 (Protocols)](#protocols) | 35 项 | `#185 ~ #219` | 2 项 | 0 项 |
 | 05 | [Wi-Fi 无线局域网 (Wi-Fi)](#wifi) | 24 项 | `#220 ~ #243` | 4 项 | 0 项 |
@@ -122,7 +122,7 @@
 ---
 
 <a id="peripherals"></a>
-### 片上与总线外设 (Peripherals)（共 114 项 | 编号 `#003 ~ #116` | 已实证: 14 项 | 隔离待补: 0 项）
+### 片上与总线外设 (Peripherals)（共 114 项 | 编号 `#003 ~ #116` | 已实证: 15 项 | 隔离待补: 0 项）
 
 | 状态 | 编号 | 官方子示例相对路径 | 可观测等级 | 优先级 | 对应 wink-micro-app | 验收标准与架构说明 |
 | :---: | :---: | :--- | :---: | :---: | :--- | :--- |
@@ -220,7 +220,7 @@
 | [x] | 094 | `peripherals/uart/uart_async_rxtxtasks` | 📜 Level 2 | P0 | [`peripherals/uart_uart_async_rxtxtasks`](peripherals/uart_uart_async_rxtxtasks) | [Lane 2: 数字总线] [Green ✅ | Red ⏳] 已完成实证。 |
 | [ ] | 095 | `peripherals/uart/uart_dma_ota` | 📜 Level 2 | P2 | `peripherals/uart_uart_dma_ota` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
 | [x] | 096 | `peripherals/uart/uart_echo` | 📜 Level 2 | P0 | [`peripherals/uart_echo`](peripherals/uart_echo) | [Lane 2: 数字总线] [Green ✅ | Red ⏳] 已完成实证。 |
-| [ ] | 097 | `peripherals/uart/uart_echo_rs485` | 📜 Level 2 | P1 | `peripherals/uart_uart_echo_rs485` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
+| [x] | 097 | `peripherals/uart/uart_echo_rs485` | 📜 Level 2 | P0 | [`peripherals/uart_uart_echo_rs485`](peripherals/uart_uart_echo_rs485) | [Lane 2: 数字总线] [Green ✅ | Red ⏳] 已完成实证。 |
 | [x] | 098 | `peripherals/uart/uart_events` | 📜 Level 2 | P0 | [`peripherals/uart_uart_events`](peripherals/uart_uart_events) | [Lane 2: 数字总线] [Green ✅ | Red ⏳] 已完成实证。 |
 | [ ] | 099 | `peripherals/uart/uart_repl` | 📜 Level 2 | P2 | `peripherals/uart_uart_repl` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 100 | `peripherals/uart/uart_select` | 📜 Level 2 | P2 | `peripherals/uart_uart_select` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |

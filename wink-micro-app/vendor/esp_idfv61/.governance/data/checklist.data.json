@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 35,
-    "verified_configs": 35,
+    "audited": 36,
+    "verified_configs": 36,
     "verified": 25
   },
   "entries": [
@@ -6317,12 +6317,12 @@
           },
           "evidence": {
             "backend": "wasm_simulation",
-            "run_id": "run-20261002-esp.peripherals.uart.uart_echo-verified",
-            "assets_sha256": "aeb4e007a8420886bf0171c98bdccf0c5c2c6d38b0a1d6d0f5c423ba2b15df6c",
+            "run_id": "run-20261006-esp.peripherals.uart.uart_echo-verified",
+            "assets_sha256": "1d8ced7067233e1064d07ef1dfdf3d3d421f240c784058277cae6631ab5d162b",
             "scenario_sha256": "bb3271c3531529ac41ee4a146e2097604cfd3d904f633e0ac3100dc1205c8f62",
             "execution_report_ref": ".governance/reports/peripherals/uart_echo/run-report.json",
-            "verified_commit": "b78917fe5a1049d5ce1a2556ead8a1a786e24741",
-            "verified_at": "2026-10-02T01:40:46Z"
+            "verified_commit": "aa5287c12ac2ad71f9516af20c611985cccba446",
+            "verified_at": "2026-10-06T11:03:56Z"
           }
         }
       ],
@@ -6339,10 +6339,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-06T12:00:00Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -6374,18 +6376,47 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/peripherals_uart_uart_echo_rs485.scenario.json",
+            "scenario_path": "peripherals/uart_uart_echo_rs485/unisim-scenarios/peripherals_uart_uart_echo_rs485.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "positive_cases": [
+              {
+                "name": "UART2 RS485 启动标语与半双工回显",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "RS485 Received: \\["
+                }
+              },
+              {
+                "name": "UART0 控制台接收计数日志",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "Received 10 bytes:"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "半双工总线静默或接收超时",
+                "expect_error": "ASSERTION_TIMEOUT",
+                "detects": "RS485 未回显导致断言窗口超时"
+              }
+            ],
+            "sla_error_symbol": "ASSERTION_TIMEOUT"
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261006-esp.peripherals.uart.uart_echo_rs485-verified",
+            "assets_sha256": "9d236c8d826c0efc64d484ac675ae2838abb3209fa16205a4de625a9a0c037a2",
+            "scenario_sha256": "5dd67502d20e606991c31fb73fa9b66cda7345e1b7e4e8312a384afcca789bab",
+            "execution_report_ref": ".governance/reports/peripherals/uart_uart_echo_rs485/run-report.json",
+            "verified_commit": "aa5287c12ac2ad71f9516af20c611985cccba446",
+            "verified_at": "2026-10-06T11:03:19Z"
+          }
         }
       ],
       "target_app_dir": "peripherals/uart_uart_echo_rs485"
