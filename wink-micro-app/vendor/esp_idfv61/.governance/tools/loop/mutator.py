@@ -7,15 +7,22 @@ Autonomously creates non-equivalent mutants of *.scenario.json across three dime
 - Dimension B (Stimulus Mutant): Corrupts external environment/input payloads.
 - Dimension C (Platform Fault Mutant): Injects underlying hardware/protocol faults via probes.
 
-Verifies that the simulation engine reliably kills them (Fail-Loud), proving non-tautology
-and absence of false greens.
+Assertion self-checks and environment sensitivity checks are separate evidence;
+neither substitutes for firmware-dependency or business-implementation mutations.
 """
 from __future__ import annotations
 
 import copy
 import json
+import sys
+import uuid
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
+
+GATES_DIR = Path(__file__).resolve().parents[2] / "gates"
+if str(GATES_DIR) not in sys.path:
+    sys.path.insert(0, str(GATES_DIR))
+from report_contract import file_sha256, is_business_assertion, validate_scenario_report
 
 DIM_ASSERTION = "assertion"          # 维度 A: 篡改预期值 (Matcher 活跃度)
 DIM_STIMULUS = "stimulus"            # 维度 B: 篡改外部环境与输入激励载荷
@@ -32,24 +39,12 @@ class CanaryMutator:
         Prefers the last domain-specific assertion (timer:, i2c:, uart:, http:, wifi:, gpio:).
         Ignores INJECT_* fixtures and non-assertion steps.
         """
-        candidate_indices = []
-        for i, step in enumerate(steps):
-            stype = step.get("type", "")
-            if not stype.startswith("ASSERT_"):
-                continue
-            target = step.get("target", "")
-            # Skip pure power assertions if other domain assertions exist
-            if not target.startswith("power:"):
-                candidate_indices.append(i)
+        candidate_indices = [i for i, step in enumerate(steps) if is_business_assertion(step)]
 
         if candidate_indices:
             # Pick the last domain assertion (representative of end-to-end outcome)
             return candidate_indices[-1]
 
-        # Fallback to any assertion step
-        for i, step in reversed(list(enumerate(steps))):
-            if step.get("type", "").startswith("ASSERT_"):
-                return i
         return None
 
     @staticmethod
@@ -57,7 +52,7 @@ class CanaryMutator:
         """Find the index of the external stimulus or fixture injection step to mutate."""
         for i, step in enumerate(steps):
             stype = step.get("type", "")
-            if stype.startswith("INJECT_") or "routes" in step or "busPayload" in step:
+            if isinstance(stype, str) and (stype.startswith(("INJECT_", "INPUT_")) or "routes" in step or "busPayload" in step):
                 return i
         return None
 
@@ -67,6 +62,8 @@ class CanaryMutator:
 
         Returns (mutated_matcher, human_readable_mutation_desc).
         """
+        if isinstance(matcher, bool):
+            return not matcher, "boolean inverted"
         if isinstance(matcher, (int, float)):
             # Scalar numeric (e.g., status_code=200, count=1000000, freq=1000000)
             if matcher == 200:
@@ -109,11 +106,7 @@ class CanaryMutator:
                 mutant_dict["$regex"] = "^__MUTANT_IMPOSSIBLE_UNMATCHED_PATTERN__$"
                 return mutant_dict, "$regex mutated to impossible pattern"
 
-            # Generic dict fallback: append bad key
-            mutant_dict["$ne_mutant"] = "__MUTANT__"
-            return mutant_dict, "dict matcher corrupted"
-
-        return "__UNEXPECTED_MUTANT__", "generic fallback mutant"
+        raise ValueError("No valid mutation operator for this matcher")
 
     @staticmethod
     def mutate_stimulus(step: dict[str, Any]) -> Tuple[dict[str, Any], str]:
@@ -134,8 +127,18 @@ class CanaryMutator:
             mutant_step["password"] = "__CORRUPTED_WRONG_PASSWORD__"
             return mutant_step, "Wi-Fi password corrupted"
 
-        mutant_step["corrupted_stimulus"] = True
-        return mutant_step, "general stimulus corrupted"
+        payload = mutant_step.get("payload")
+        if isinstance(payload, dict) and isinstance(payload.get("text"), str):
+            payload["text"] = "__CORRUPTED_INPUT__"
+            return mutant_step, "UART input payload changed"
+        if isinstance(payload, dict) and isinstance(payload.get("hex"), str):
+            payload["hex"] = "DEADBEEF"
+            return mutant_step, "Binary input payload changed"
+        access_points = mutant_step.get("accessPoints")
+        if isinstance(access_points, list) and access_points and "password" in access_points[0]:
+            access_points[0]["password"] = "__CORRUPTED_WRONG_PASSWORD__"
+            return mutant_step, "AP password changed"
+        raise ValueError("No valid mutation operator for this stimulus")
 
     def create_mutant_file(
         self,
@@ -144,6 +147,7 @@ class CanaryMutator:
         fault_domain: str = "i2c",
         fault_type: str = "nack",
         fault_param: int = 0,
+        output_dir: Optional[Path] = None,
     ) -> Tuple[Optional[Path], Dict[str, Any]]:
         """Parse scenario, generate 3D mutant, write temporary file.
 
@@ -157,22 +161,33 @@ class CanaryMutator:
         with open(scenario_path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
+        if not isinstance(data, dict) or not isinstance(data.get("steps"), list) or not all(isinstance(step, dict) for step in data["steps"]):
+            return None, {"error": "Scenario must be an object with a valid step array"}
+        if "header" in data and not isinstance(data["header"], dict):
+            return None, {"error": "Scenario header must be an object"}
         steps = data.get("steps", [])
         mutated_data = copy.deepcopy(data)
+        if dimension not in (DIM_ASSERTION, DIM_STIMULUS, DIM_PLATFORM_FAULT):
+            return None, {"error": f"Unknown mutation dimension: {dimension}"}
+        target_idx = self.identify_target_step(steps)
+        if target_idx is None:
+            return None, {"error": "No business assertion step found to mutate"}
+        mutation_idx = target_idx
 
         if dimension == DIM_STIMULUS:
             stim_idx = self.identify_stimulus_step(steps)
             if stim_idx is not None:
-                mut_step, mutation_desc = self.mutate_stimulus(steps[stim_idx])
+                try:
+                    mut_step, mutation_desc = self.mutate_stimulus(steps[stim_idx])
+                except ValueError as exc:
+                    return None, {"error": str(exc)}
                 mutated_data["steps"][stim_idx] = mut_step
                 mutated_data["steps"][stim_idx]["description"] = (
                     f"[CANARY STIMULUS MUTANT] {mutation_desc} | {steps[stim_idx].get('description', '')}"
                 )
-                target_idx = stim_idx
-                target_desc = steps[stim_idx].get("type", "stimulus")
+                mutation_idx = stim_idx
             else:
-                # Fallback to assertion mutation if no stimulus step found
-                dimension = DIM_ASSERTION
+                return None, {"error": "No supported stimulus step; no fallback to assertion self-check"}
 
         if dimension == DIM_PLATFORM_FAULT:
             fault_step = {
@@ -185,29 +200,31 @@ class CanaryMutator:
             }
             mutated_data["steps"].insert(0, fault_step)
             mutation_desc = f"injected platform fault probe {fault_domain}:{fault_type}"
-            target_idx = 0
-            target_desc = f"fault:{fault_domain}:{fault_type}"
+            target_idx += 1
+            mutation_idx = 0
 
         if dimension == DIM_ASSERTION:
-            target_idx = self.identify_target_step(steps)
-            if target_idx is None:
-                return None, {"error": "No assertion step found to mutate"}
-
             target_step = steps[target_idx]
             orig_matcher = target_step.get("matcher")
-            mutant_matcher, mutation_desc = self.mutate_matcher(orig_matcher)
+            try:
+                mutant_matcher, mutation_desc = self.mutate_matcher(orig_matcher)
+            except ValueError as exc:
+                return None, {"error": str(exc)}
 
             mutated_data["steps"][target_idx]["matcher"] = mutant_matcher
             mutated_data["steps"][target_idx]["description"] = (
                 f"[CANARY ASSERTION MUTANT] {mutation_desc} | {target_step.get('description', '')}"
             )
-            target_desc = target_step.get("target")
-
-        # Determine output mutant filename
-        if dimension == DIM_ASSERTION:
-            mutant_path = scenario_path.parent / f"{scenario_path.stem}.canary_mutant.json"
-        else:
-            mutant_path = scenario_path.parent / f"{scenario_path.stem}.canary_{dimension}_mutant.json"
+        target_step = mutated_data["steps"][target_idx]
+        target_desc = target_step.get("target") or target_step["type"]
+        token = uuid.uuid4().hex
+        header = mutated_data.setdefault("header", {})
+        header["name"] = f"{header.get('name', scenario_path.stem)} [canary {dimension} {token}]"
+        header["templateId"] = f"{header.get('templateId', scenario_path.stem)}_canary_{token}"
+        mutant_dir = output_dir or scenario_path.parent
+        mutant_dir.mkdir(parents=True, exist_ok=True)
+        # Keep Windows paths short; input identity/dimension live in the header.
+        mutant_path = mutant_dir / f"{token}.json"
 
         with open(mutant_path, "w", encoding="utf-8") as f:
             json.dump(mutated_data, f, indent=2, ensure_ascii=False)
@@ -215,14 +232,21 @@ class CanaryMutator:
         metadata = {
             "dimension": dimension,
             "step_index": target_idx,
+            "step_type": target_step["type"],
+            "mutation_step_index": mutation_idx,
             "target": target_desc,
             "mutation_desc": mutation_desc,
             "mutant_path": str(mutant_path),
+            "mutant_sha256": file_sha256(mutant_path),
+            "evidence_kind": "assertion_self_check" if dimension == DIM_ASSERTION else "environment_sensitivity",
         }
         return mutant_path, metadata
 
     @staticmethod
-    def verify_kill(exit_code: int, runner_output: str, metadata: Dict[str, Any]) -> Tuple[bool, str]:
+    def verify_kill(
+        exit_code: int, runner_output: str, metadata: Dict[str, Any],
+        report_path: Optional[Path] = None,
+    ) -> Tuple[bool, str]:
         """Verify whether the mutant run was successfully and appropriately killed.
 
         Enforces the 3-state decision machine (Pillar 4):
@@ -265,32 +289,30 @@ class CanaryMutator:
                     f"not an assertion defect kill. Exit code {exit_code}: {runner_output[:200]}"
                 )
 
-        # 3. Check that the failure specifically mentions the step, matcher mismatch, or expected fault
-        step_mention = (
-            f"Step #{step_idx + 1}" in runner_output
-            or f"stepIndex\": {step_idx}" in runner_output
-            or f"step #{step_idx}" in lower_out
-        )
-        assertion_fail_hints = [
-            "assert_point",
-            "assert_bus_payload",
-            "assert_waveform",
-            "assert_sequence",
-            "matcher mismatch",
-            "outside range",
-            "expected",
-            "got",
-            "assertion failed",
-            "step failed",
-            "failedsteps",
-            "failed_steps",
-            "disconnected",
-            "timeout",
-            "esp_err",
-        ]
-        has_assertion_fail = any(hint in lower_out for hint in assertion_fail_hints)
-
-        if step_mention or has_assertion_fail:
-            return True, f"[KILL-SUCCESS] Canary mutant successfully killed: step #{step_idx} failed as expected ({metadata.get('mutation_desc')})."
-
-        return False, f"[FAIL-UNCERTAIN] Runner failed with exit code {exit_code}, but failure could not be confirmed as assertion kill: {runner_output[:200]}"
+        if exit_code != 1:
+            return False, f"[INFRA_CRASH] Unexpected runner exit code {exit_code}"
+        bound_report = metadata.get("report_path")
+        mutant_file = metadata.get("mutant_path")
+        if not bound_report or not mutant_file or not metadata.get("report_sha256"):
+            return False, "[FAIL-UNCERTAIN] No run-bound structured report and mutant input"
+        selected_report = Path(report_path or bound_report)
+        scenario_path = Path(mutant_file)
+        try:
+            if selected_report.resolve() != Path(bound_report).resolve():
+                return False, "[FAIL-UNCERTAIN] Report path is not bound to this run"
+            if file_sha256(selected_report) != metadata["report_sha256"]:
+                return False, "[FAIL-UNCERTAIN] Report hash changed after collection"
+            if file_sha256(scenario_path) != metadata.get("mutant_sha256"):
+                return False, "[FAIL-UNCERTAIN] Mutant input hash changed after collection"
+            scenario = json.loads(scenario_path.read_text(encoding="utf-8"))
+            target_step = scenario["steps"][step_idx]
+            if not is_business_assertion(target_step) or target_step.get("type") != metadata.get("step_type"):
+                return False, "[FAIL-UNCERTAIN] Metadata does not identify the selected business assertion"
+            if (target_step.get("target") or target_step["type"]) != target:
+                return False, "[FAIL-UNCERTAIN] Metadata target differs from the selected input"
+        except (OSError, ValueError, KeyError, IndexError, TypeError) as exc:
+            return False, f"[FAIL-UNCERTAIN] Invalid bound input/report: {exc}"
+        ok, reason = validate_scenario_report(selected_report, scenario_path, failure_index=step_idx)
+        if not ok:
+            return False, f"[FAIL-UNCERTAIN] {reason}"
+        return True, f"[KILL-SUCCESS] Canary mutant successfully killed: evaluated step #{step_idx} failed as expected ({metadata.get('mutation_desc')}); evidence kind={metadata.get('evidence_kind')}"

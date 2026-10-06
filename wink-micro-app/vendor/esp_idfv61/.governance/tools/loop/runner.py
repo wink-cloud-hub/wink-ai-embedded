@@ -4,7 +4,7 @@ Loop Runner & Task Scheduler
 ============================
 Command-line driver for the autonomous ESP-IDF example governance loop.
 Iterates planned entries, applies filters (lane/priority/app), and drives
-the end-to-end pipeline with zero human intervention.
+candidate collection pipeline. Audit and formal delivery are separate operations.
 """
 from __future__ import annotations
 
@@ -30,12 +30,26 @@ class LoopRunner:
         qoder_model: str = "Qwen3.8-Flash",
         auto_heal: bool = False,
         max_heal_attempts: int = 2,
+        proof_profile: str = "assertion",
     ):
         self.ws_root = workspace_root
         self.dry_run = dry_run
         self.vendor_root = workspace_root / "wink-micro-app" / "vendor" / "esp_idfv61"
         self.manifest_path = self.vendor_root / ".governance" / "data" / "checklist.data.json"
-        self.pipeline = LoopPipeline(
+        self.proof_profile = proof_profile
+        pipeline_type = LoopPipeline
+        if proof_profile == "uart-causality":
+            from .uart_causality import UartCausalityPipeline
+            pipeline_type = UartCausalityPipeline
+        elif proof_profile == "uart-events-fault":
+            from .uart_events_fault import UartEventsFaultPipeline
+            pipeline_type = UartEventsFaultPipeline
+        elif proof_profile == "twdt-timeout":
+            from .twdt_timeout import TwdtTimeoutPipeline
+            pipeline_type = TwdtTimeoutPipeline
+        elif proof_profile != "assertion":
+            raise ValueError(f"Unknown proof profile: {proof_profile}")
+        self.pipeline = pipeline_type(
             workspace_root=workspace_root,
             custom_agent_cmd=custom_agent_cmd,
             custom_agent_a_cmd=custom_agent_a_cmd,
@@ -110,11 +124,12 @@ class LoopRunner:
         priority: Optional[str] = None,
         limit: Optional[int] = None,
         list_only: bool = False,
+        config_id: Optional[str] = None,
     ) -> int:
         """Run the autonomous loop over matched candidate entries."""
         print("=" * 76, flush=True)
         print("  WinkMicroOS Autonomous Governance Loop Runner (Option B Engine)", flush=True)
-        print("  - Zero human intervention | Automated Canary Kill | Machine Audit", flush=True)
+        print(f"  - Isolated candidates | Profile: {self.proof_profile} | Independent review required", flush=True)
         print("=" * 76, flush=True)
 
         candidates = self.select_candidates(
@@ -126,7 +141,7 @@ class LoopRunner:
 
         if not candidates:
             print("[info] No eligible planned applications matched your criteria.", flush=True)
-            return 0
+            return 1 if self.proof_profile != "assertion" else 0
 
         print(f"\n[loop] Found {len(candidates)} candidate application(s) to process.\n", flush=True)
 
@@ -141,7 +156,7 @@ class LoopRunner:
             target_dir = entry.get("target_app_dir")
             print(f"\n--- [{i}/{len(candidates)}] Processing: {app_id} ({target_dir}) ---", flush=True)
 
-            res = self.pipeline.execute_app(entry)
+            res = self.pipeline.execute_app(entry, config_id=config_id)
             results.append(res)
 
             status_tag = "PASS" if res.success else "FAIL"
@@ -174,8 +189,11 @@ def main():
     parser.add_argument("--priority", type=str, choices=["P0", "P1", "P2", "P3"], help="Filter by priority")
     parser.add_argument("--limit", type=int, help="Maximum number of applications to process in this run")
     parser.add_argument("--list", action="store_true", help="List matched candidates and exit without executing")
-    parser.add_argument("--dry-run", action="store_true", help="Simulate execution without git commits or checklist writes")
-    parser.add_argument("--auto-heal", action="store_true", help="Enable autonomous self-healing on baseline failure")
+    parser.add_argument("--dry-run", action="store_true", help="Describe candidate checks without authoring, simulation or writes")
+    parser.add_argument("--config-id", type=str, help="Exact registered Wasm configuration (required when ambiguous)")
+    parser.add_argument("--proof-profile", choices=["assertion", "uart-causality", "uart-events-fault", "twdt-timeout"], default="assertion",
+                        help="Candidate checks: assertion, UART causality/fault recovery, or TWDT automatic timeout")
+    parser.add_argument("--auto-heal", action="store_true", help="Reserved; rejected until runtime source isolation is implemented")
     parser.add_argument("--max-heal-attempts", type=int, default=2, help="Maximum self-healing attempts before escalation")
     parser.add_argument("--qoder-model", type=str, default="Qwen3.8-Flash", help="Default model for Qoder CLI (default: Qwen3.8-Flash)")
     parser.add_argument("--agent-cmd", type=str, help="Custom headless agent CLI command (e.g. 'claude -p')")
@@ -184,6 +202,12 @@ def main():
     parser.add_argument("--workspace-root", type=str, default=".", help="Workspace root directory")
 
     args = parser.parse_args()
+    if args.proof_profile == "uart-causality" and not args.app:
+        parser.error("uart-causality requires one explicit --app uart_echo")
+    if args.proof_profile == "uart-events-fault" and not args.app:
+        parser.error("uart-events-fault requires one explicit --app uart_uart_events")
+    if args.proof_profile == "twdt-timeout" and not args.app:
+        parser.error("twdt-timeout requires one explicit --app task_watchdog")
     ws_root = Path(args.workspace_root).resolve()
 
     runner = LoopRunner(
@@ -195,6 +219,7 @@ def main():
         qoder_model=args.qoder_model,
         auto_heal=args.auto_heal,
         max_heal_attempts=args.max_heal_attempts,
+        proof_profile=args.proof_profile,
     )
 
     exit_code = runner.run(
@@ -203,6 +228,7 @@ def main():
         priority=args.priority,
         limit=args.limit,
         list_only=args.list,
+        config_id=args.config_id,
     )
     sys.exit(exit_code)
 

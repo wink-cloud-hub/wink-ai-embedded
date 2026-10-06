@@ -79,12 +79,42 @@ def test_canary_mutator_detects_false_green():
     assert "FALSE GREEN DETECTED" in msg
 
 
-def test_canary_mutator_confirms_kill():
+def test_canary_mutator_confirms_kill(tmp_path, sample_scenario):
     mutator = CanaryMutator()
-    meta = {"step_index": 1, "target": "timer:0/counter", "mutation_desc": "shifted"}
-    killed, msg = mutator.verify_kill(1, "Step #2 FAILED: outside range", meta)
+    from report_contract import file_sha256
+    source = tmp_path / "source.scenario.json"
+    source.write_text(json.dumps(sample_scenario), encoding="utf-8")
+    mutant, meta = mutator.create_mutant_file(source)
+    scene = json.loads(mutant.read_text(encoding="utf-8"))
+    report = tmp_path / "run-report.json"
+    report.write_text(json.dumps({
+        "total": 1, "passed": 0, "failed": 1,
+        "results": [{
+            "ok": False, "status": "failed", "header": scene["header"],
+            "summary": {"totalSteps": 2, "passedSteps": 1, "failedSteps": 1, "errorSteps": 0, "skippedSteps": 0},
+            "stepResults": [
+                {"stepIndex": 0, "type": "ASSERT_POINT", "status": "passed", "expected": 3.3, "actual": 3.3},
+                {"stepIndex": 1, "type": "ASSERT_POINT", "status": "failed", "expected": scene["steps"][1]["matcher"], "actual": 500000},
+            ], "diagnostics": [],
+        }],
+    }), encoding="utf-8")
+    meta.update(report_path=str(report), report_sha256=file_sha256(report))
+    killed, msg = mutator.verify_kill(1, "Selected scenario failed", meta)
     assert killed
     assert "successfully killed" in msg
+
+
+@pytest.mark.parametrize("output", [
+    "Runner timeout while waiting for runtime",
+    "Step #3 passed; unrelated process exit",
+    "failedSteps: 0, expected runtime module was unavailable",
+    "Step #3 FAILED: outside range",
+])
+def test_canary_rejects_unbound_console_failures(output):
+    """Console text without this run's evaluated assertion report is not proof."""
+    meta = {"step_index": 2, "target": "gpio:2", "dimension": "platform_fault"}
+    killed, _ = CanaryMutator.verify_kill(1, output, meta)
+    assert not killed
 
 
 def test_canary_mutator_rejects_infra_crash():

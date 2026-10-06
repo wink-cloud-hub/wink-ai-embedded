@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 # -*- coding: utf-8 -*-
-import io, sys
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 """
 generate_checklist_v1_1.py
 ==========================
@@ -42,6 +39,11 @@ QUARANTINE_YAML = (
 )
 OUTPUT_MD    = GOV_DIR.parent / "CHECKLIST.md"
 WS_ROOT      = SCRIPT_DIR.parents[4]
+
+GATES_DIR = GOV_DIR / "gates"
+if str(GATES_DIR) not in sys.path:
+    sys.path.insert(0, str(GATES_DIR))
+from twin_evidence import verify_twin_evidence
 
 try:
     from evidence_verifier import verify_evidence
@@ -233,6 +235,7 @@ def render_row(entry: dict, quarantine: dict[str, dict]) -> tuple[str, str]:
         schedule   = scope_obj.get("schedule", "active")
         executions = entry.get("executions", [])
         has_verified = False
+        has_twin_evidence = False
         has_regressed = False
         valid_evidence = False
         pos_cases = []
@@ -251,6 +254,8 @@ def render_row(entry: dict, quarantine: dict[str, dict]) -> tuple[str, str]:
                 ok, _ = verify_evidence(entry, ex, WS_ROOT, strict_disk=True)
                 if ok:
                     valid_evidence = True
+                    twin_ok, _ = verify_twin_evidence(entry, ex, WS_ROOT)
+                    has_twin_evidence = has_twin_evidence or twin_ok
                 else:
                     has_regressed = True
 
@@ -269,12 +274,6 @@ def render_row(entry: dict, quarantine: dict[str, dict]) -> tuple[str, str]:
             app_col = f"`{target_dir}`"
         else:
             app_col = "待适配"
-
-        has_fail_sc = False
-        if target_dir:
-            sc_dir = OUTPUT_MD.parent / target_dir / "unisim-scenarios"
-            if sc_dir.is_dir() and any(sc_dir.glob("*.fail.scenario.json")):
-                has_fail_sc = True
 
         # 推导并发泳道与优先级
         lane_id, pri_tier, lane_tag = classify_example_lane_and_priority(
@@ -295,7 +294,7 @@ def render_row(entry: dict, quarantine: dict[str, dict]) -> tuple[str, str]:
             metric_tag = "out_of_scope"
         elif has_verified and valid_evidence:
             symbol = "[x]"
-            if has_fail_sc:
+            if has_twin_evidence:
                 desc = f"{lane_tag} 🟢 [Green ✅ | Red 🛡️] 已完成红绿双实证 (TWIN-PROOF)。"
                 metric_tag = "verified_twin"
             else:
@@ -582,4 +581,8 @@ def main():
 
 
 if __name__ == "__main__":
+    # Configure CLI encoding without replacing/closing a caller's streams.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     main()

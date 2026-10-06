@@ -23,6 +23,7 @@ Rules enforced:
 
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+from gate_context import is_candidate_artifact
 
 RULE_ID = "g1.carrier_landing_integrity"
 REQUIRED_ASSET_FILES = ["device-tree.json", "wink_simulator.js", "wink_simulator.wasm"]
@@ -42,10 +43,20 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
     for e in entries:
         t = e.get("target_app_dir")
         if t:
+            if (vendor_root / t).resolve().is_relative_to((vendor_root / ".governance" / "runs").resolve()):
+                findings.append({
+                    "rule_id": RULE_ID, "severity": "error",
+                    "entry_id": e.get("id"), "display_id": e.get("display_id"),
+                    "config_id": None, "file_path": str(vendor_root / t),
+                    "message": f"target_app_dir '{t}' uses the reserved candidate namespace; it cannot be a formal carrier.",
+                })
+                continue
             entries_by_target[t] = e
 
     # Discover all landed apps (directories containing wink-app.json)
     for manifest_file in sorted(vendor_root.rglob("wink-app.json")):
+        if is_candidate_artifact(manifest_file, vendor_root):
+            continue
         app_dir = manifest_file.parent
         target_app_dir = app_dir.relative_to(vendor_root).as_posix()
 

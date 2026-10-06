@@ -27,6 +27,7 @@ import json
 import re
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+from gate_context import is_candidate_artifact
 
 RULE_ID = "g1.scenario_semantic_integrity"
 
@@ -226,6 +227,8 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
 
     # Discover all landed apps
     for manifest_file in sorted(vendor_root.rglob("wink-app.json")):
+        if is_candidate_artifact(manifest_file, vendor_root):
+            continue
         app_dir = manifest_file.parent
         target_app_dir = app_dir.relative_to(vendor_root).as_posix().strip("/")
 

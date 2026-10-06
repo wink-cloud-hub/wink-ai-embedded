@@ -23,6 +23,11 @@ from datetime import datetime, timezone
 import yaml
 
 
+def is_candidate_artifact(path: Path, vendor_root: Path) -> bool:
+    """The reserved runs namespace contains snapshots, never landed carriers."""
+    return path.relative_to(vendor_root).parts[:2] == (".governance", "runs")
+
+
 class ManifestSchemaError(ValueError):
     """Raised when the checklist manifest is structurally unusable.
 

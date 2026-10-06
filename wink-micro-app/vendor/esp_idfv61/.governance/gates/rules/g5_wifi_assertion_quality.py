@@ -10,6 +10,7 @@ and that accompanying ASSERT_POINT steps verify semantic Wi-Fi state/IP signals
 
 import json
 from pathlib import Path
+from gate_context import is_candidate_artifact
 
 RULE_ID = "g5.wifi_assertion_quality"
 
@@ -27,6 +28,8 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
     scenario_files = list(vendor_root.glob("**/unisim-scenarios/*.scenario.json"))
 
     for sc_file in scenario_files:
+        if is_candidate_artifact(sc_file, vendor_root):
+            continue
         try:
             with open(sc_file, "r", encoding="utf-8") as f:
                 sc_data = json.load(f)

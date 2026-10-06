@@ -134,4 +134,8 @@ docs/.internals/
 **/esp_idfv61/.governance/local_config.json
 **/esp_idfv61/.governance/*.local.*
 
+# Isolated candidate evidence and local regression workspaces (never delivery).
+**/esp_idfv61/.governance/runs/
+.b0-tests-*/
+
 

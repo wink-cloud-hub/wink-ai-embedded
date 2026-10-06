@@ -2,8 +2,8 @@
 """
 Loop Pipeline Orchestrator & Objective Audit Engine
 ===================================================
-Drives the 8-step deterministic delivery workflow for an application:
-synthesis -> semantic gate -> positive baseline -> canary kill -> audit -> commit.
+Collects isolated candidate evidence: baseline -> assertion self-check -> recovery.
+Independent audit and formal delivery are separate operations.
 """
 from __future__ import annotations
 
@@ -12,20 +12,24 @@ import json
 import shutil
 import subprocess
 import sys
+import uuid
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 from .agent import AgentSynthesizer
 from .mutator import CanaryMutator
 from .remediator import Remediator
+from report_contract import file_sha256, is_business_assertion, validate_scenario_report
+from evidence_verifier import compute_assets_composite_sha256
 
 
 class PipelineResult:
-    def __init__(self, app_id: str, success: bool, message: str, stage: str):
+    def __init__(self, app_id: str, success: bool, message: str, stage: str, candidate_path: Optional[Path] = None):
         self.app_id = app_id
         self.success = success
         self.message = message
         self.stage = stage
+        self.candidate_path = candidate_path
 
     def __repr__(self) -> str:
         tag = "SUCCESS" if self.success else "FAILED"
@@ -33,7 +37,7 @@ class PipelineResult:
 
 
 class LoopPipeline:
-    """End-to-end autonomous runner for individual checklist items."""
+    """Candidate-only runner; never signs audits or writes formal delivery data."""
 
     def __init__(
         self,
@@ -109,14 +113,6 @@ class LoopPipeline:
             return res.returncode, res.stdout + "\n" + res.stderr
         except Exception as e:
             return 1, f"Python execution error: {e}"
-
-    def rollback_app(self, app_dir: Path):
-        """Restore workspace changes on failure to avoid contaminating repo."""
-        subprocess.run(
-            ["git", "checkout", "--", str(app_dir)],
-            cwd=str(self.ws_root),
-            capture_output=True,
-        )
 
     def compile_peripheral_plugin(self, peripheral_type: str) -> Tuple[bool, str]:
         """Compile a peripheral plugin into dist/manifest.json and dist/simulation.js.
@@ -203,164 +199,214 @@ class LoopPipeline:
         except Exception as e:
             return False, f"Failed updating wink-app.json: {e}"
 
-    def execute_app(self, app_entry: Dict[str, Any]) -> PipelineResult:
-        """Run the full autonomous SOP workflow on a single checklist entry."""
-        app_id = app_entry.get("id", "app")
-        target_dir = app_entry.get("target_app_dir", "")
-        if not target_dir:
-            return PipelineResult(app_id, False, "No target_app_dir defined", "INIT")
+    @staticmethod
+    def input_hash(app_dir: Path) -> str:
+        """Bind authored source/configuration/scenario inputs, excluding build outputs."""
+        import hashlib
+        parts = []
+        for path in sorted(app_dir.rglob("*")):
+            if not path.is_file() or any(part in ("unisim-assets", "__pycache__", "build") for part in path.relative_to(app_dir).parts):
+                continue
+            parts.append(f"{path.relative_to(app_dir).as_posix()}:{file_sha256(path)}")
+        return hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest()
 
-        app_dir = self.vendor_root / target_dir
-        if not app_dir.is_dir():
-            return PipelineResult(app_id, False, f"Directory not found on disk: {target_dir}", "INIT")
-
-        app_name = app_dir.name
-        scenario_dir = app_dir / "unisim-scenarios"
-        scenario_file = scenario_dir / f"{app_name}.scenario.json"
-
-        # --- Phase 1: Scenario Authoring (if missing or only power assertions) ---
-        needs_authoring = True
-        if scenario_file.is_file():
-            try:
-                scen_data = json.loads(scenario_file.read_text(encoding="utf-8"))
-                steps = scen_data.get("steps", [])
-                non_power_asserts = [
-                    s for s in steps
-                    if s.get("type", "").startswith("ASSERT_") and not s.get("target", "").startswith("power:")
-                ]
-                if len(non_power_asserts) >= 1:
-                    needs_authoring = False
-            except Exception:
-                needs_authoring = True
-
-        if needs_authoring:
-            ok, msg = self.agent.synthesize(app_entry, app_dir)
-            if not ok:
-                return PipelineResult(app_id, False, f"Agent authoring failed: {msg}", "AUTHORING")
-
-        # --- Phase 2: Gate 1 Semantic Integrity Pre-Check ---
-        gate_script = self.governance_dir / "gates" / "run_gates.py"
-        rc, out = self.run_python(gate_script, ["--gate", "1"])
-        # Check if our specific app has errors
-        app_errors = [
-            line for line in out.splitlines()
-            if "[ERROR]" in line and f"({app_id})" in line
+    @staticmethod
+    def select_execution(app_entry: Dict[str, Any], config_id: Optional[str]) -> Dict[str, Any]:
+        executions = app_entry.get("executions", [])
+        matches = [
+            ex for ex in executions
+            if isinstance(ex, dict)
+            and isinstance(ex.get("acceptance"), dict)
+            and ex["acceptance"].get("type") == "wasm_simulation"
+            and (config_id is None or ex.get("config_id") == config_id)
         ]
-        if app_errors:
-            self.rollback_app(app_dir)
-            err_summary = "\n".join(app_errors[:3])
-            return PipelineResult(app_id, False, f"Gate 1 semantic check failed:\n{err_summary}", "GATE_1_PRE")
+        if len(matches) != 1 or not matches[0].get("config_id"):
+            raise ValueError("Exactly one registered Wasm configuration is required; specify config_id when ambiguous")
+        execution = matches[0]
+        if execution.get("backend") not in ("wasm_browser", "wasm_node") or execution.get("profile") != "standard" or not execution.get("target_soc"):
+            raise ValueError("This collector supports only registered Wasm backends with the CLI standard profile and an explicit target_soc")
+        return execution
 
-        # --- Phase 3: Positive Baseline Execution ---
-        rc, out = self.run_powershell(["-File", str(self.runner_script), "-App", app_name, "-Reporter", "json"])
-        if rc != 0 and self.auto_heal:
-            print(f"[heal] Positive baseline failed (code {rc}) for {app_id}. Triggering autonomous self-healing loop...", flush=True)
-            heal_ok, heal_msg = self.remediator.remediate_app(app_entry, app_dir, out)
-            if heal_ok:
-                print(f"[heal] Self-healing succeeded: {heal_msg}. Re-executing baseline simulation...", flush=True)
-                rc, out = self.run_powershell(["-File", str(self.runner_script), "-App", app_name, "-Reporter", "json"])
-            else:
-                self.rollback_app(app_dir)
-                return PipelineResult(app_id, False, f"Autonomous self-healing failed:\n{heal_msg}", "BASELINE_HEAL_FAILED")
+    def execute_app(self, app_entry: Dict[str, Any], config_id: Optional[str] = None) -> PipelineResult:
+        """Collect a candidate in runs/ without modifying formal evidence or Git."""
+        app_id = app_entry.get("id", "app")
+        run_root = None
+        candidate_path = None
+        candidate: Dict[str, Any] = {}
 
-        if rc != 0:
-            self.rollback_app(app_dir)
-            return PipelineResult(app_id, False, f"Positive baseline simulation failed (code {rc}):\n{out[:300]}", "BASELINE")
+        def save_candidate():
+            if candidate_path is not None:
+                temporary = candidate_path.with_suffix(".json.tmp")
+                temporary.write_text(json.dumps(candidate, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+                temporary.replace(candidate_path)
 
-        # --- Phase 4: Anti-False-Green Canary Mutation & Kill Test ---
-        mutant_path, meta = self.mutator.create_mutant_file(scenario_file)
-        if not mutant_path:
-            self.rollback_app(app_dir)
-            return PipelineResult(app_id, False, f"Could not create canary mutant: {meta.get('error')}", "CANARY_CREATE")
+        def fail(stage: str, message: str) -> PipelineResult:
+            candidate.update(status="failed", stage=stage, message=message)
+            save_candidate()
+            return PipelineResult(app_id, False, message, stage, candidate_path)
 
         try:
-            rc_mutant, out_mutant = self.run_powershell(
-                ["-File", str(self.runner_script), "-App", app_name, "-Scenario", str(mutant_path), "-Reporter", "json"]
+            execution = self.select_execution(app_entry, config_id)
+            target_dir = app_entry.get("target_app_dir")
+            if not isinstance(target_dir, str) or not target_dir:
+                return fail("INIT", "No target_app_dir defined")
+            original_app = (self.vendor_root / target_dir).resolve()
+            if not original_app.is_relative_to(self.vendor_root.resolve()) or not original_app.is_dir():
+                return fail("INIT", "Application directory is outside the vendor root or missing")
+            declared_scenario = (execution.get("acceptance") or {}).get("scenario_path")
+            if not isinstance(declared_scenario, str) or not declared_scenario:
+                return fail("CONFIGURATION", "Configuration has no explicit acceptance scenario")
+            original_scenario = (self.vendor_root / declared_scenario).resolve()
+            if not original_scenario.is_relative_to(original_app / "unisim-scenarios"):
+                return fail("CONFIGURATION", "Acceptance scenario is outside the selected application")
+            if self.auto_heal:
+                return fail("CONFIGURATION", "Candidate collection cannot auto-heal shared runtime sources; an isolated runtime workspace is required")
+            if self.dry_run:
+                return PipelineResult(app_id, True, f"Candidate plan for {execution['config_id']}: baseline, assertion self-check, recovery", "PLANNED")
+
+            manifest = json.loads(self.manifest_path.read_text(encoding="utf-8"))
+            registered = [entry for entry in manifest.get("entries", []) if entry.get("id") == app_id]
+            if len(registered) != 1 or registered[0] != app_entry:
+                return fail("CONFIGURATION", "Checklist entry changed or is not uniquely registered")
+
+            run_id = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid.uuid4().hex
+            run_root = self.governance_dir / "runs" / run_id
+            run_root.mkdir(parents=True, exist_ok=False)
+            candidate_path = run_root / "candidate_evidence.json"
+            run_app = run_root / "app" / original_app.name
+            original_input_hash = self.input_hash(original_app)
+            shutil.copytree(
+                original_app, run_app,
+                ignore=shutil.ignore_patterns("unisim-assets", "build", "build-*", "__pycache__", ".git"),
             )
-            killed, kill_msg = self.mutator.verify_kill(rc_mutant, out_mutant, meta)
+            scenario_file = run_app / original_scenario.relative_to(original_app)
+            candidate = {
+                "format_version": 1, "kind": "candidate_evidence", "status": "collecting",
+                "run_id": run_id, "app_id": app_id, "target_app_dir": target_dir,
+                "config_id": execution["config_id"],
+                "execution": {key: execution.get(key) for key in ("backend", "target_soc", "profile")},
+                "runner_mode": "headless", "runner_sha256": file_sha256(self.runner_script),
+                "original_input_sha256": original_input_hash, "checks": [],
+                "limitations": [
+                    "Assertion self-check only; firmware dependency, business mutation and fault handling need separate evidence.",
+                    "Candidate only; independent audit and formal promotion have not been performed.",
+                    "Only application inputs are copied; runtime sources and toolchain build caches remain shared.",
+                ],
+            }
+            (run_root / "checklist-entry.json").write_text(json.dumps(app_entry, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            save_candidate()
+
+            needs_authoring = True
+            if scenario_file.is_file():
+                scene = json.loads(scenario_file.read_text(encoding="utf-8"))
+                if not isinstance(scene, dict) or not isinstance(scene.get("steps"), list):
+                    return fail("AUTHORING", "Acceptance scenario must be an object with a step array")
+                needs_authoring = not any(is_business_assertion(step) for step in scene.get("steps", []))
+            if needs_authoring:
+                ok, reason = self.agent.synthesize(app_entry, run_app)
+                if not ok or not scenario_file.is_file():
+                    return fail("AUTHORING", f"Isolated scenario authoring failed: {reason}")
+            scene = json.loads(scenario_file.read_text(encoding="utf-8"))
+            if not isinstance(scene, dict) or not isinstance(scene.get("steps"), list) or not all(isinstance(step, dict) for step in scene["steps"]):
+                return fail("AUTHORING", "Authored scenario must contain a valid step array")
+            if not any(is_business_assertion(step) for step in scene["steps"]):
+                return fail("AUTHORING", "Authored scenario has no business assertion")
+            input_hash = self.input_hash(run_app)
+            candidate["input_sha256"] = input_hash
+
+            gate_script = self.governance_dir / "gates" / "run_gates.py"
+            gate_rc, gate_output = self.run_python(gate_script, ["--gate", "1"])
+            (run_root / "gate1.log").write_text(gate_output, encoding="utf-8")
+            candidate["workspace_gate1_exit_code"] = gate_rc
+            if gate_rc != 0:
+                return fail("GATE_1_PRE", "Workspace Gate 1 failed; see isolated gate1.log")
+
+            # Use the copied app's normal output layout. The current CLI treats
+            # --out as the engine's app directory, which loses app identity.
+            assets_dir = run_app / "unisim-assets"
+            candidate["assets_path"] = str(assets_dir)
+
+            def collect_phase(kind: str, scenario: Path) -> Dict[str, Any]:
+                phase_dir = run_root / "reports" / kind
+                phase_dir.mkdir(parents=True, exist_ok=False)
+                report_path = phase_dir / "run-report.json"
+                args = [
+                    "-File", str(self.runner_script), "-App", str(run_app),
+                    "-Scenario", str(scenario), "-ArtifactsDir", str(phase_dir),
+                    "-Reporter", "json",
+                ]
+                rc, output = self.run_powershell(args)
+                (phase_dir / "runner.log").write_text(output, encoding="utf-8")
+                record = {
+                    "kind": kind, "run_id": f"{run_id}-{kind}",
+                    "config_id": execution["config_id"],
+                    **{key: execution[key] for key in ("backend", "target_soc", "profile")},
+                    "input_sha256": input_hash, "exit_code": rc, "command": args,
+                    "assets_path": str(assets_dir),
+                    "scenario_path": str(scenario), "scenario_sha256": file_sha256(scenario),
+                    "report_path": str(report_path),
+                    "report_sha256": file_sha256(report_path) if report_path.is_file() else None,
+                    "assets_sha256": None,
+                }
+                try:
+                    record["assets_sha256"] = compute_assets_composite_sha256(assets_dir)
+                except OSError as exc:
+                    record["asset_binding_error"] = str(exc)
+                candidate["checks"].append(record)
+                save_candidate()
+                return record
+
+            def positive_ok(record: Dict[str, Any]) -> Tuple[bool, str]:
+                if record["exit_code"] != 0 or not record["assets_sha256"]:
+                    return False, "Runner did not finish successfully with bound assets"
+                ok, reason = validate_scenario_report(Path(record["report_path"]), Path(record["scenario_path"]))
+                if not ok:
+                    return False, reason
+                tree = json.loads((assets_dir / "device-tree.json").read_text(encoding="utf-8"))
+                if tree.get("mcu") != execution["target_soc"]:
+                    return False, "Actual asset target_soc differs from the selected configuration"
+                return True, reason
+
+            baseline = collect_phase("baseline", scenario_file)
+            ok, reason = positive_ok(baseline)
+            baseline.update(accepted=ok, verdict=reason)
+            if not ok:
+                return fail("BASELINE", reason)
+            candidate["assets_sha256"] = baseline["assets_sha256"]
+
+            killed, kill_reason = False, "Canary was not executed"
+            recovery_ok, recovery_reason = False, "Recovery was not executed"
+            try:
+                mutant_path, meta = self.mutator.create_mutant_file(scenario_file, output_dir=run_root / "mutants")
+                if mutant_path is None:
+                    kill_reason = meta.get("error", "No valid assertion self-check")
+                else:
+                    mutant = collect_phase("assertion_self_check", mutant_path)
+                    meta.update(report_path=mutant["report_path"], report_sha256=mutant["report_sha256"])
+                    candidate["mutation"] = meta
+                    if mutant["assets_sha256"] != baseline["assets_sha256"]:
+                        kill_reason = "Canary asset hash differs from the positive baseline"
+                    else:
+                        log = Path(mutant["report_path"]).parent / "runner.log"
+                        killed, kill_reason = self.mutator.verify_kill(mutant["exit_code"], log.read_text(encoding="utf-8"), meta)
+                    mutant.update(accepted=killed, verdict=kill_reason)
+            finally:
+                recovery = collect_phase("recovery", scenario_file)
+                recovery_ok, recovery_reason = positive_ok(recovery)
+                if recovery_ok and recovery["assets_sha256"] != baseline["assets_sha256"]:
+                    recovery_ok, recovery_reason = False, "Recovery asset hash differs from the positive baseline"
+                recovery.update(accepted=recovery_ok, verdict=recovery_reason)
+                save_candidate()
+
             if not killed:
-                self.rollback_app(app_dir)
-                return PipelineResult(app_id, False, f"Anti-False-Green Check FAILED: {kill_msg}", "CANARY_KILL")
-        finally:
-            if mutant_path.is_file():
-                mutant_path.unlink()
+                return fail("CANARY_KILL", kill_reason)
+            if not recovery_ok:
+                return fail("RECOVERY", recovery_reason)
+            if self.input_hash(run_app) != input_hash or self.input_hash(original_app) != original_input_hash:
+                return fail("INPUT_INTEGRITY", "Source/configuration inputs changed during candidate collection")
 
-        # --- Phase 5: Evidence Recording & Objective Audit Signing ---
-        if not self.dry_run:
-            rc, out = self.run_powershell(
-                ["-File", str(self.runner_script), "-App", app_name, "-WriteEvidence", "-Reporter", "json"]
-            )
-            if rc != 0:
-                self.rollback_app(app_dir)
-                return PipelineResult(app_id, False, f"Evidence recording failed: {out[:300]}", "EVIDENCE_WRITE")
-
-            # Apply Objective Audit Sign-Off
-            now_iso = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-            with open(self.manifest_path, "r", encoding="utf-8") as f:
-                mdata = json.load(f)
-
-            for e in mdata.get("entries", []):
-                if e.get("id") == app_id:
-                    e["audit"] = {
-                        "verdict": "audited",
-                        "auditor": "loop_sop_daemon",
-                        "audited_at": now_iso,
-                        "audited_configs": ["wasm_sim_standard"],
-                        "dispute_ref": None,
-                        "ruling_path": None,
-                    }
-                    break
-
-            if "summary" in mdata:
-                mdata["summary"]["audited"] = sum(1 for e in mdata["entries"] if e.get("audit", {}).get("verdict") == "audited")
-                mdata["summary"]["verified_configs"] = sum(
-                    1 for e in mdata["entries"] for ex in e.get("executions", []) if ex.get("delivery_state") == "verified"
-                )
-
-            with open(self.manifest_path, "w", encoding="utf-8") as f:
-                json.dump(mdata, f, indent=2, ensure_ascii=False)
-                f.write("\n")
-
-        # --- Phase 6: Post-Audit Gate 1 Check ---
-        rc, out = self.run_python(gate_script, ["--gate", "1"])
-        post_app_errors = [
-            line for line in out.splitlines()
-            if "[ERROR]" in line and f"({app_id})" in line
-        ]
-        if rc != 0 and post_app_errors:
-            self.rollback_app(app_dir)
-            err_summary = "\n".join(post_app_errors[:3])
-            return PipelineResult(app_id, False, f"Post-audit Gate 1 failed:\n{err_summary}", "GATE_1_POST")
-
-        # --- Phase 7: Re-render Checklist & Git Commit ---
-        if not self.dry_run:
-            gen_script = self.governance_dir / "tools" / "generate_checklist_v1_1.py"
-            self.run_python(gen_script, [])
-
-            # Atomic Git Commit
-            commit_msg = (
-                f"feat(vendor/esp_idfv61): [loop] auto-verify {app_name} with Canary kill evidence\n\n"
-                f"- Autonomously authored domain assertions complying with governance-sop-esp\n"
-                f"- Successfully verified defect sensitivity via Canary mutant kill\n"
-                f"- Passed Gate 1 static semantics and evidence verifier\n"
-                f"- Machine audit sign-off by loop_sop_daemon for {app_id}"
-            )
-            subprocess.run(
-                ["git", "add", str(app_dir), str(self.manifest_path), str(self.vendor_root / "CHECKLIST.md")],
-                cwd=str(self.ws_root),
-                capture_output=True,
-            )
-            report_dir = self.governance_dir / "reports" / target_dir
-            if report_dir.is_dir():
-                subprocess.run(["git", "add", str(report_dir)], cwd=str(self.ws_root), capture_output=True)
-
-            c_res = subprocess.run(
-                ["git", "commit", "-m", commit_msg],
-                cwd=str(self.ws_root),
-                capture_output=True,
-                text=True,
-            )
-            if c_res.returncode != 0 and "nothing to commit" not in c_res.stdout:
-                return PipelineResult(app_id, False, f"Git commit failed: {c_res.stderr}", "GIT_COMMIT")
-
-        return PipelineResult(app_id, True, f"Successfully delivered and committed {app_name} with Canary proof!", "COMPLETE")
+            candidate.update(status="candidate_ready", stage="CANDIDATE", message="Baseline, assertion self-check and recovery accepted")
+            save_candidate()
+            return PipelineResult(app_id, True, f"Candidate evidence ready for independent review: {candidate_path}", "CANDIDATE", candidate_path)
+        except (OSError, ValueError, KeyError, TypeError, IndexError) as exc:
+            return fail("COLLECTION", f"Candidate collection failed: {exc}")

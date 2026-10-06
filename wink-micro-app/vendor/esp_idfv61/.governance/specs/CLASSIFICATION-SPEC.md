@@ -66,6 +66,7 @@
 - **严禁退化断言**：在通信、控制、网络协议等非电源管理类工程中，严禁仅断言静态电源轨电压（如 `power:VCC_3V3 == 3.3`）作为“通过凭据”；
 - **独立因果证据与门禁**：配置交付前分别核验断言器自检、固件依赖、指定业务变异、适用故障处理和恢复基准，绑定本轮输入与原始报告。改错预期仅证明断言器工作，环境扰动仅证明环境/故障敏感性；当前静态门禁与凭据核验器未自动覆盖全部要求，退出 0 不等于完整验收。现场流程见 [`governance-sop-esp`](../../../../../.agents/skills/governance-sop-esp/SKILL.md) 与 [实证工作流](../../../../../.agents/skills/governance-sop-esp/references/evidence-workflow.md)。
 - **能力阻塞保持正交**：`delivery_state` 继续使用既有五种合法值，能力缺口通过依赖闭包与诊断表达；禁止写入 `blocked_on_runtime` 等新交付状态，禁止把缺能力自动改为产品排除。Review/Reverify 保留登记状态，状态迁移和看板写入仅在对应授权的交付工作中进行。
+- **候选与正式证据分离（Batch 0）**：Loop 仅在 `.governance/runs/<UTC>-<UUID>/` 采集正常、自检、恢复的候选包；不自签、不自动写 verified 或正式看板。正式 `TWIN-PROOF` 须额外核验同一配置/产物下完整通过的正常与故障处理报告，绑定契约、场景、报告、run 身份，并已有独立审计覆盖；`.fail.scenario.json` 文件存在不能作为依据。候选状态不进入现有交付枚举，具体格式与限制见 [Batch 0 证据契约](../../../../../docs/zh/tech-designs/esp32/esp-idf-batch0-evidence-contract.md)。
 
 ---
 
