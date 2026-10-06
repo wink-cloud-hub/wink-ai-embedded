@@ -32,6 +32,8 @@ OOM、WDT、竞态、Trace
 5. **复位边界**：热 reset 与冷启动覆盖面不同；跳过物理复位的热复用路径不得宣称覆盖冷启动类场景。
 6. **交叉宣称**：按键去抖属 **A+B+F**；总线故障属 **A+D+F**。浮点/golden 容差策略见 [ADR-0055](../../../decisions/unisim/0055-sim-fp-determinism-and-golden-policy.md)。
 
+ESP-IDF TWDT 任务/用户监控现在复用虚拟定时器服务自动检查共同喂狗周期；全部订阅者喂狗才刷新期限。诊断查询不触发 panic，自动 panic 走待处理复位；主机 ABI 的 WATCHDOG 与 SDK 的 TASK_WDT 使用各自枚举。退订/复位取消旧 token，用户句柄拒绝删除及复位后的池槽复用。该实现仅覆盖合作式 CPU 0 的行为语义，空闲核监控、CPU 忙循环抢占、硬件 ISR 时序和资源饱和仍未验收，idle_core_mask 非零会告警。候选检查格式见 [Batch 3 TWDT 契约](../../../tech-designs/esp32/esp-idf-batch0-evidence-contract.md#7-batch-3-twdt-自动超时与-sdk-生命周期)，不可据此宣称 HIL 或正式审计完成。
+
 ## 5. 相关 C 场景
 
 场景契约 → [`../04-assurance/01-consistency-spec.md`](../04-assurance/01-consistency-spec.md)。可测状态只查 [`../04-assurance/02-consistency-checklist.md`](../04-assurance/02-consistency-checklist.md)。Accuracy / 观测细节见 [`../02-mechanisms/11-accuracy-observation-lifecycle.md`](../02-mechanisms/11-accuracy-observation-lifecycle.md)。

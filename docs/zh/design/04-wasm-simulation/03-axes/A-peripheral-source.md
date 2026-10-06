@@ -32,6 +32,8 @@
 5. **旁路纪律**：只替换物理量来源，禁止 DAL 业务捷径；超声波若仍走 `distanceCm`→μs 捷径，不得宣称通道 1 沿捕获已对齐。
 6. **交叉宣称**：ECHO 沿捕获属 **A+B**（+ `timing` Accuracy Mode）；舵机/PWM 输出属 **A+C**；I2C 丢包/从机故障属 **A+D+F**。交叉示例见 overview [`02-axes-af`](../01-overview/02-axes-af.md)。
 
+UART behavioral 接收的当前约束：`targets/wasm/pal_wasm_ch2_uart.c` 的 RX 数据交给回调后由消费方持有，不再重复缓存于 PAL polling FIFO；无回调时保留 FIFO、部分读取与满缓冲拒绝语义。ESP-IDF Echo 的连续接收、固件依赖及指定 TX 变异见 [Batch 1 候选契约](../../../tech-designs/esp32/esp-idf-batch0-evidence-contract.md#5-batch-1-uart-因果专项)。已有 Wasm RX 错误入口现在将帧错误、校验错误和 FIFO 溢出送入 PAL 回调，ESP-IDF 门面将相应事件映射至 SDK 事件队列。Events 原厂任务的错误日志、同实例后续回显和分支移除变异见 [Batch 2 候选契约](../../../tech-designs/esp32/esp-idf-batch0-evidence-contract.md#6-batch-2-uart-events-故障专项)。此验证仅覆盖注入事件的传播与处理；门面的可配置缓冲容量、软件缓冲/队列满压力、线路错误检测、字节时序及真机 HIL 仍待验证，仍受上述 UART timing 上限约束。
+
 ## 5. 相关 C 场景
 
 场景契约 → [`../04-assurance/01-consistency-spec.md`](../04-assurance/01-consistency-spec.md)。可测状态只查 [`../04-assurance/02-consistency-checklist.md`](../04-assurance/02-consistency-checklist.md)（本页不写状态符）。

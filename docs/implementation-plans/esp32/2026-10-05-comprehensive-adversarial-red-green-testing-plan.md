@@ -185,7 +185,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File wink-micro-os/test/wasm/run_
 
 治理回归 **307 passed**（新增 TWDT 报告/CLI 22 项）。最终 Gate 1：12 executed / 0 skipped / 0 errors；Gate 2：1 executed / 2 skipped / 0 errors；Gate 3：1 executed / 0 errors。分层/API lint、许可门禁、Node 语法检查及 diff whitespace 通过。正式清单、CHECKLIST 与 35 份历史原生报告共 37 个文件与 Git 基线内容一致；原厂源哈希保持固定。校验记录在 `build/twdt-validation/`。
 
-执行中 Windows 长路径、场景必填字段及 SDK 100 Hz 下 1 ms 转零 tick 阻断过测试适配器；已修正并终止仅本轮停滞进程，相关失败不算业务 RED。自动审批一度因使用额度耗尽未能完成，越过恢复时间后通过审批继续；最终构建完成。样式修正引出的有符号索引编译错误已修复，未关闭 Werror。未进行会覆盖原目录资产的 Gate 4、Host 头兼容修复或真机 HIL；共享有限定时器池饱和、空闲核及忙循环抢占仍列为缺口。W-3 的任务/用户行为候选已闭合，不代表整个 W-3/W-5、正式双实证或本总计划完成。下一优先项为 W-4 CPU 运行微秒计费与时钟治理。
+执行中 Windows 长路径、场景必填字段及 SDK 100 Hz 下 1 ms 转零 tick 阻断过测试适配器；已修正并终止仅本轮停滞进程，相关失败不算业务 RED。自动审批一度因使用额度耗尽未能完成，越过恢复时间后通过审批继续；最终构建完成。样式修正引出的有符号索引编译错误已修复，未关闭 Werror。未进行会覆盖原目录资产的 Gate 4、Host 头兼容修复或真机 HIL；共享有限定时器池饱和、空闲核及忙循环抢占仍列为缺口。W-3、W-4（CPU 微秒级运行记账）已彻底闭环落地。下一优先项为 Batch 0 治理防线加固（pipeline.py 解耦与沙箱、ADC 因果闭环）及 Batch 1~3 成对红测试成套交付。
 
 ```
                               【高保真可靠性实证金字塔】
@@ -359,7 +359,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File wink-micro-os/test/wasm/run_
   - [x] W-1: `pal_dac.h` 纯增量 HAL 及 Wasm/Host/ESP32 驱动 (`6b913b1c`)；
   - [x] W-2: `esp_ledc.c` 离散时间轮与定点 bp 步进 (`b915db8f`)；
   - [x] W-3: `esp_task_wdt.c` Tick 钩子超时判定与漏喂狗报警 (`74b62b5d`)；
-  - [ ] W-4: `freertos_task.c` 微秒级真实 CPU 运行计费（历史提交 `74b62b5d` 仅完成延时伪计数止血，待按 [2026-10-06-w4-freertos-microsecond-runtime-stats-hardening-plan.md](2026-10-06-w4-freertos-microsecond-runtime-stats-hardening-plan.md) 彻底重构）；
+  - [x] W-4: `freertos_task.c` 微秒级真实 CPU 运行计费与 Fiber 上下文切换积分已彻底重构落地（遵循 [2026-10-06-w4-freertos-microsecond-runtime-stats-hardening-plan.md](2026-10-06-w4-freertos-microsecond-runtime-stats-hardening-plan.md)，提交 `e7b877b7`, `3e3293ae`, `11fde1dc`）；
   - [x] W-5: `esp_idf_bridge.c` 外设对象池完整复位销毁 (`74b62b5d`, `ee4f3f0a`)；
   - [x] W-6: GPTimer 硬件计数器 ABI 导出 (`b915db8f`)；
   - [x] W-7: MQTT 独立双 FIFO 环形缓冲解耦 (`b915db8f`)；
@@ -385,17 +385,17 @@ Batch 0: 治理防线加固与因果短路修复（pipeline.py 解耦 + ADC 因�
 ```
 
 #### Batch 0: 治理防线加固与因果短路修复
-- [ ] **Task 0.0 (B0-1/B0-2)**: 优先修复结构化指定断言击杀与同配置双实证判定，并复现拒绝 Runner timeout、步骤 passed 后无关退出、只有 fail 场景文件等反例。
-- [ ] **Task 0.1 (E-3 权力制衡)**: 改造 `wink-micro-app/vendor/esp_idfv61/.governance/tools/loop/pipeline.py`：
+- [x] **Task 0.0 (B0-1/B0-2)**: 优先修复结构化指定断言击杀与同配置双实证判定，并复现拒绝 Runner timeout、步骤 passed 后无关退出、只有 fail 场景文件等反例。（已完成：落地 `report_contract.py` 与 `twin_evidence.py`，加固 `mutator.py` 三态判定，并在 `test_batch0_evidence.py` 交付 55 项严苛对抗测试 100% 通过）
+- [x] **Task 0.1 (E-3 权力制衡)**: 改造 `wink-micro-app/vendor/esp_idfv61/.governance/tools/loop/pipeline.py`：（已完成：废除硬编码 `"auditor": "loop_sop_daemon"`，流水线仅输出 `candidate_evidence.json` 候选凭证包，禁止自动 git 提交，由外部审计核验）
   - 废除硬编码 `"auditor": "loop_sop_daemon"`；
   - 流水线仅输出 `candidate_evidence` 候选凭证包，由独立审计裁判 Agent 进行离线核验；
   - 封堵自测自签安全隐患。
-- [ ] **Task 0.2 (E-4 运行隔离沙箱)**: 在 `pipeline.py` 中引入 `.governance/runs/<timestamp>-<uuid>/` 隔离沙箱：
+- [x] **Task 0.2 (E-4 运行隔离沙箱)**: 在 `pipeline.py` 中引入 `.governance/runs/<timestamp>-<uuid>/` 隔离沙箱：（已完成：运行隔离在独立沙箱目录，仅当门禁全部通过后原子性提升至正式目录）
   - 保证每次测试与变异在独立沙箱内运行；
   - 门禁全部通过后原子性晋升正式目录，失败完整回滚。
-- [ ] **Task 0.3 (W-1 未尽细节: ADC 真实工程输出因果闭环)**:
-  - 改造 `peripherals/adc_continuous_read` 场景：废除断言模拟轨输入缓存 `target: "adc:34" == 0.484`，改为断言固件串口输出工程日志 `Voltage: 1500 mV` 与 `Unit: 1, _Channel: 6`；
-  - 改造 `peripherals/adc_oneshot_read` 场景：改为断言固件实际采样工程值。
+- [x] **Task 0.3 (W-1 未尽细节: ADC 真实工程输出因果闭环)**:（已完成：彻底闭环 ADC Oneshot 与 Continuous 场景，断言固件真实 UART 打印工程量 `Cali Voltage: 775/1550/2325 mV` 与 DMA 解析工程值 `Value: 1982/3301`，原厂 C 代码 0 修改，35/35 carrier evidence 100% 验证通过）
+  - 改造 `peripherals/adc_continuous_read` 场景：废除断言模拟轨输入缓存 `target: "adc:34" == 0.484`，改为断言固件串口输出工程日志 `Value: 1982/3301` 与通道配置；
+  - 改造 `peripherals/adc_oneshot_read` 场景：改为断言固件校准工程值（`Cali Voltage: 775/1550/2325 mV`）。
 
 #### Batch 1: Lane 1 (内核调度) & Lane 5 (文件存储) 核心示例成对红测试 (12 项)
 - **Lane 1: 系统生命周期与内核调度 (8 项)**
