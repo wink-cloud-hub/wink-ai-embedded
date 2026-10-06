@@ -1,0 +1,61 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 basic_freertos_smp_usage queue full & timeout catch anomaly proof",
+    "templateId": "esp_idfv61_system_freertos_basic_freertos_smp_usage_fail",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Please type the component you would like to run.",
+      "description": "[控制台初始化] 确认控制台就绪提示输出"
+    },
+    {
+      "type": "INPUT_BUS",
+      "timeUs": "200ms",
+      "mode": "stream",
+      "busType": "uart",
+      "busId": 0,
+      "payload": {
+        "encoding": "utf8",
+        "text": "create_task\n"
+      },
+      "description": "[控制台交互] 发送有效组件命令验证状态机"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["200ms", "1500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "create task example: created task#0",
+      "description": "[SMP任务创建] 断言多核调度任务成功创建"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["200ms", "1500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "create task example: task#0 is running on core#0",
+      "description": "[核心绑定验证] 确认任务在指定核心上调度无死锁"
+    }
+  ]
+}

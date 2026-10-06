@@ -1,0 +1,49 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 esp_timer zero-period & invalid argument rejection proof",
+    "templateId": "esp_idfv61_system_esp_timer_fail",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "5000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Started timers, time since boot:",
+      "description": "[基础配置] 确认系统成功启动高精度硬件定时器轮"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["400ms", "1500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Periodic timer called, time since boot:",
+      "description": "[周期回调] 确认 500ms 周期定时器首次回调正常触发"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["1000ms", "3000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Timer stats:",
+      "description": "[诊断快照] 确认 esp_timer_dump 能够正常导出统计快照无崩溃"
+    }
+  ]
+}

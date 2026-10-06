@@ -1,0 +1,67 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 default_event_loop handler lifecycle & unregistration anomaly proof",
+    "templateId": "esp_idfv61_system_esp_event_default_event_loop_fail",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3500ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "setting up",
+      "description": "[循环启动] 断言默认事件循环基础设施正常初始化"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "starting event sources",
+      "description": "[事件源注册] 断言初始事件源挂载成功"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "TIMER_EVENTS:TIMER_EVENT_STARTED: timer_started_handler, instance 0",
+      "description": "[处理器派发] 断言分发首个定时器启动事件"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["500ms", "2500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "unregistering task_iteration_handler",
+      "description": "[动态注销] 断言处理器实例安全注销，验证后续无野指针回调"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["2000ms", "3500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "TIMER_EVENTS:TIMER_EVENT_STOPPED: deleted timer event source",
+      "description": "[资源回收] 断言定时器销毁并安全退出"
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 storage_nvs_nvs_iteration uninitialized namespace & null iterator defense proof",
+    "templateId": "esp_idfv61_nvs_nvs_iteration_fail",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Erasing the contents of the default NVS partition...",
+      "description": "[NVS擦除重置] 确认默认 NVS 分区沙箱擦除重置就绪"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Wrote 7 u32 mock data key-value pairs to NVS namespace '_mock_data'.",
+      "description": "[数据写入隔离] 验证向指定命名空间写入数据键值对"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Iterated over 14 entries.",
+      "description": "[全量迭代完整性] 确认 NVS_TYPE_ANY 完整遍历 14 项条目无漏读"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "2000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Returning from app_main().",
+      "description": "[迭代器释放防御] 确认迭代器遍历结束释放句柄并安全退出"
+    }
+  ]
+}

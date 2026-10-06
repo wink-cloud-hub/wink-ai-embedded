@@ -1,0 +1,66 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 generic_gpio timing jitter & edge anomaly proof",
+    "templateId": "esp_idfv61_gpio_generic_gpio_fail",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "gpio:18",
+      "matcher": 0,
+      "description": "[初始稳态] 确认 GPIO 18 上电低电平 0，杜绝浮空毛刺"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "gpio:18",
+      "matcher": 0,
+      "description": "[抖动过滤] 未到 1000ms 延时阈值保持 0，验证防误触发"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1050ms",
+      "target": "gpio:18",
+      "matcher": 1,
+      "description": "[周期翻转] 确认 1000ms 到期正常置高 1"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "gpio:18",
+      "matcher": 1,
+      "description": "[电平保持] 高电平区间稳定维持 1"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2050ms",
+      "target": "gpio:18",
+      "matcher": 0,
+      "description": "[复位翻转] 次周期到达后翻转恢复为 0"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "2500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "cnt: 0",
+      "description": "[控制台同步] 确认计数器基线打印无误"
+    }
+  ]
+}

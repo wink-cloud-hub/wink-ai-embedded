@@ -1,0 +1,67 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 user_event_loops dispatch block & lifecycle termination anomaly proof",
+    "templateId": "esp_idfv61_system_esp_event_user_event_loops_fail",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "7000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "setting up",
+      "description": "[系统初始化] 断言双用户事件循环配置启动"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "starting event source",
+      "description": "[事件源就绪] 验证事件生成源进入工作状态"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_without_task, iteration 1",
+      "description": "[无任务循环调度] 确认手动调度事件循环按序执行"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["500ms", "2000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "handling TASK_EVENTS:TASK_ITERATION_EVENT from loop_with_task, iteration 2",
+      "description": "[专属任务循环调度] 确认独立任务循环异步调度正常"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["4500ms", "7000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "deleting task event source",
+      "description": "[安全销毁防御] 验证迭代结束后任务事件源安全退出无悬挂"
+    }
+  ]
+}

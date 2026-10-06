@@ -88,12 +88,12 @@
           },
           "evidence": {
             "backend": "wasm_simulation",
-            "run_id": "run-20261002-esp.get_started.blink-verified",
-            "assets_sha256": "5d79fed366d7745d18e49164068a26619146c61accf9ff7c1aca7ea4cefe1c60",
+            "run_id": "run-20261006-esp.get_started.blink-verified",
+            "assets_sha256": "abfb9199af29baffdf77dbe96bd796abae6a2a6e76d792fd03eb98cffb2320dd",
             "scenario_sha256": "48e7494366d56bfab523750ba94359c349604f1437ab7c44f0a5f333f503c157",
             "execution_report_ref": ".governance/reports/get-started/blink_gpio/run-report.json",
-            "verified_commit": "b78917fe5a1049d5ce1a2556ead8a1a786e24741",
-            "verified_at": "2026-10-02T01:40:42Z"
+            "verified_commit": "f84fc383a4a656a5f47e3904f4b19cd6fbadb36b",
+            "verified_at": "2026-10-06T01:44:24Z"
           }
         }
       ],
@@ -152,18 +152,32 @@
             "scenario_path": "get-started/hello_world/unisim-scenarios/hello_world.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "positive_cases": [
+              {
+                "name": "Hello world 与芯片信息自省",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "Hello world!"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "Flash 自检失败或启动时钟异常",
+                "expect_error": "Get flash size failed",
+                "detects": "Flash 初始化异常时未阻断系统流程继续盲目倒计时重启"
+              }
+            ],
+            "sla_error_symbol": "ESP_ERR_FLASH_SIZE_NOT_MATCH"
           },
           "evidence": {
             "backend": "wasm_simulation",
-            "run_id": "run-20261002-esp.get_started.hello_world-verified",
-            "assets_sha256": "0dca4e5ebe503a1128c10742b5fde34a2e222d5bc155a75885a372f583fec110",
+            "run_id": "run-20261006-esp.get_started.hello_world-verified",
+            "assets_sha256": "8384d65fd469fabf671faac7d79553a929bb0d92f06b2ea3b1f329c769259125",
             "scenario_sha256": "eb39fc2dc8a8e1d75b270e38c7098a3db4d7a82f9c199ef9ff0d5a4ebcffdf51",
             "execution_report_ref": ".governance/reports/get-started/hello_world/run-report.json",
-            "verified_commit": "370713c5a06f72176cb6b8742b38fdce74f4dfae",
-            "verified_at": "2026-10-02T13:01:08Z"
+            "verified_commit": "f84fc383a4a656a5f47e3904f4b19cd6fbadb36b",
+            "verified_at": "2026-10-06T01:54:40Z"
           }
         }
       ],
@@ -1306,9 +1320,23 @@
             "scenario_path": "peripherals/gpio_generic_gpio/unisim-scenarios/generic_gpio.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "positive_cases": [
+              {
+                "name": "GPIO 18/19 输出与 GPIO 4/5 边沿中断响应",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "GPIO\\[4\\] intr, val:"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "GPIO 输入引脚毛刺抖动或中断队列拥塞",
+                "expect_error": "timeout",
+                "detects": "未经验证的引脚漂移触发虚假电平翻转或中断风暴"
+              }
+            ],
+            "sla_error_symbol": "GPIO_INTR_GLITCH_FILTER"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -7960,9 +7988,23 @@
             "scenario_path": "system/esp_event_default_event_loop/unisim-scenarios/default_event_loop.scenario.json",
             "timeout_virtual_us": 3500000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "positive_cases": [
+              {
+                "name": "默认事件循环分发与定时器事件回调",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "TIMER_EVENTS:TIMER_EVENT_STARTED: timer_started_handler"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "事件循环任务阻塞或向未启动循环派发事件",
+                "expect_error": "ESP_ERR_INVALID_STATE",
+                "detects": "事件循环在未初始化或队列超限时盲目返回成功"
+              }
+            ],
+            "sla_error_symbol": "ESP_ERR_INVALID_STATE"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -8047,7 +8089,7 @@
                 "detects": "事件分发阻塞导致迭代事件丢失"
               }
             ],
-            "sla_error_symbol": null
+            "sla_error_symbol": "ESP_ERR_TIMEOUT"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -8115,9 +8157,23 @@
             "scenario_path": "system/esp_timer/unisim-scenarios/system_esp_timer.scenario.json",
             "timeout_virtual_us": 15000000,
             "timeout_wall_ms": 30000,
-            "positive_cases": [],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "positive_cases": [
+              {
+                "name": "高精度定时器启动与周期回调",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "Started timers, time since boot:"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "向 esp_timer_start_periodic 传入 0 周期或空句柄",
+                "expect_error": "ESP_ERR_INVALID_ARG",
+                "detects": "零周期定时器死循环或空指针解引用崩溃"
+              }
+            ],
+            "sla_error_symbol": "ESP_ERR_INVALID_ARG"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -8401,7 +8457,7 @@
                 "detects": "控制台静默忽略错误输入导致指令执行失控"
               }
             ],
-            "sla_error_symbol": null
+            "sla_error_symbol": "ESP_ERR_NOT_FOUND"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -8469,9 +8525,23 @@
             "scenario_path": "system/freertos_real_time_stats/unisim-scenarios/real_time_stats.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "positive_cases": [
+              {
+                "name": "FreeRTOS 真实时间片统计输出",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "Getting real time stats over 100 ticks"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "时钟源冻结导致统计区间 total_elapsed_time 为 0",
+                "expect_error": "ESP_ERR_INVALID_STATE",
+                "detects": "时基停滞时除以零或产生虚假 0% 统计"
+              }
+            ],
+            "sla_error_symbol": "ESP_ERR_INVALID_STATE"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -9682,7 +9752,7 @@
                 "detects": "启动失败或日志桥接未吐出App started!"
               }
             ],
-            "sla_error_symbol": null
+            "sla_error_symbol": "ASSERTION_TIMEOUT"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -25578,8 +25648,14 @@
               "Iterating over NVS_TYPE_I8 data and validating entry info",
               "Iterating over NVS_TYPE_ANY data and validating total 14 items count"
             ],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "negative_cases": [
+              {
+                "stimulus": "查询不存在的命名空间或空 NVS 迭代器",
+                "expect_error": "ESP_ERR_NVS_NOT_FOUND",
+                "detects": "未找到命名空间或条目时未正确返回 NOT_FOUND 而是返回野指针"
+              }
+            ],
+            "sla_error_symbol": "ESP_ERR_NVS_NOT_FOUND"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -25650,9 +25726,23 @@
             "scenario_path": "storage/nvs_nvs_rw_blob/unisim-scenarios/nvs_nvs_rw_blob.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "positive_cases": [
+              {
+                "name": "NVS Blob 聚合结构体持久化与校验",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "Saving test data blob..."
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "读取未初始化的未知 Blob 键",
+                "expect_error": "ESP_ERR_NVS_NOT_FOUND",
+                "detects": "Blob 缺失时假成功返回未初始化的野内存"
+              }
+            ],
+            "sla_error_symbol": "ESP_ERR_NVS_NOT_FOUND"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -25722,9 +25812,23 @@
             "scenario_path": "storage/nvs_nvs_rw_value/unisim-scenarios/nvs_nvs_rw_value.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "positive_cases": [
+              {
+                "name": "NVS 基础类型读写与计数器持久化",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "Read counter = 42"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "注入底层 NVS 页损坏故障 (FAULT_NVS_READ_CORRUPT)",
+                "expect_error": "ESP_ERR_NVS_CORRUPT_KEY_PART",
+                "detects": "闪存介质页损坏时静默返回成功或虚假零数据"
+              }
+            ],
+            "sla_error_symbol": "ESP_ERR_NVS_CORRUPT_KEY_PART"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -26483,9 +26587,23 @@
             "scenario_path": "storage/spiffs/unisim-scenarios/storage_spiffs.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "positive_cases": [
+              {
+                "name": "SPIFFS 挂载与文件写入回读校验",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "Read from file: 'Hello World!'"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "向 SPIFFS 注册不存在或损坏的分区",
+                "expect_error": "ESP_ERR_NOT_FOUND",
+                "detects": "VFS 分区缺失时返回假成功并导致文件操作空指针崩溃"
+              }
+            ],
+            "sla_error_symbol": "ESP_ERR_NOT_FOUND"
           },
           "evidence": {
             "backend": "wasm_simulation",

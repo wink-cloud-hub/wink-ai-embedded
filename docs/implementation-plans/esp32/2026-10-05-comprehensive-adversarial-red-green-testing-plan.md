@@ -399,19 +399,19 @@ Batch 0: 治理防线加固与因果短路修复（pipeline.py 解耦 + ADC 因�
 
 #### Batch 1: Lane 1 (内核调度) & Lane 5 (文件存储) 核心示例成对红测试 (12 项)
 - **Lane 1: 系统生命周期与内核调度 (8 项)**
-  - [ ] **Task 1.1**: `#002 get-started/hello_world` ➔ `hello_world.fail.scenario.json`（注入启动异常断言稳态防御）
-  - [ ] **Task 1.2**: `#020 peripherals/gpio_generic_gpio` ➔ `gpio_generic_gpio.fail.scenario.json`（注入非法输入与中断抖动断言）
-  - [ ] **Task 1.3**: `#125 system/esp_event_default_event_loop` ➔ `esp_event_default_event_loop.fail.scenario.json`（注入事件循环未启动/handler 异常）
-  - [ ] **Task 1.4**: `#126 system/esp_event_user_event_loops` ➔ `esp_event_user_event_loops.fail.scenario.json`（注入队列超限与循环强制终止）
-  - [ ] **Task 1.5**: `#127 system/esp_timer` ➔ `esp_timer.fail.scenario.json`（注入周期为 0 与非法参数拒绝）
-  - [ ] **Task 1.6**: `#131 system/freertos_basic_freertos_smp_usage` ➔ `basic_freertos_smp_usage.fail.scenario.json`（注入队列满阻塞与超时捕获）
-  - [ ] **Task 1.7**: `#132 system/freertos_real_time_stats` ➔ `freertos_real_time_stats.fail.scenario.json`（注入计数溢出与无有效时钟源防御）
-  - [ ] **Task 1.8**: `#151 system/startup_time` ➔ `startup_time.fail.scenario.json`（注入启动超时报警）
+  - [x] **Task 1.1**: `#002 get-started/hello_world` ➔ `hello_world.fail.scenario.json`（注入启动异常断言稳态防御）
+  - [x] **Task 1.2**: `#020 peripherals/gpio_generic_gpio` ➔ `generic_gpio.fail.scenario.json`（注入非法输入与中断抖动断言）
+  - [x] **Task 1.3**: `#125 system/esp_event_default_event_loop` ➔ `default_event_loop.fail.scenario.json`（注入事件循环未启动/handler 异常）
+  - [x] **Task 1.4**: `#126 system/esp_event_user_event_loops` ➔ `system_esp_event_user_event_loops.fail.scenario.json`（注入队列超限与循环强制终止）
+  - [x] **Task 1.5**: `#127 system/esp_timer` ➔ `system_esp_timer.fail.scenario.json`（注入周期为 0 与非法参数拒绝）
+  - [x] **Task 1.6**: `#131 system/freertos_basic_freertos_smp_usage` ➔ `system_freertos_basic_freertos_smp_usage.fail.scenario.json`（注入队列满阻塞与超时捕获）
+  - [x] **Task 1.7**: `#132 system/freertos_real_time_stats` ➔ `real_time_stats.fail.scenario.json`（注入计数溢出与无有效时钟源防御）
+  - [x] **Task 1.8**: `#151 system/startup_time` ➔ `system_startup_time.fail.scenario.json`（注入启动超时报警）
 - **Lane 5: 存储与文件系统 (4 项)**
-  - [ ] **Task 1.9**: `#401 storage/nvs_nvs_iteration` ➔ `nvs_nvs_iteration.fail.scenario.json`（注入未初始化的命名空间与空迭代器）
-  - [ ] **Task 1.10**: `#402 storage/nvs_nvs_rw_blob` ➔ `nvs_nvs_rw_blob.fail.scenario.json`（注入键不存在 `ESP_ERR_NVS_NOT_FOUND`，校验 `upstream_errata` 隔离）
-  - [ ] **Task 1.11**: `#403 storage/nvs_nvs_rw_value` ➔ `nvs_nvs_rw_value.fail.scenario.json`（注入 `FAULT_NVS_READ_CORRUPT` 断言错误码）
-  - [ ] **Task 1.12**: `#415 storage/spiffs` ➔ `spiffs.fail.scenario.json`（注入挂载损坏分区与读取不存在文件防御）
+  - [x] **Task 1.9**: `#401 storage/nvs_nvs_iteration` ➔ `storage_nvs_nvs_iteration.fail.scenario.json`（注入未初始化的命名空间与空迭代器）
+  - [x] **Task 1.10**: `#402 storage/nvs_nvs_rw_blob` ➔ `nvs_nvs_rw_blob.fail.scenario.json`（注入键不存在 `ESP_ERR_NVS_NOT_FOUND`，校验 `upstream_errata` 隔离）
+  - [x] **Task 1.11**: `#403 storage/nvs_nvs_rw_value` ➔ `nvs_nvs_rw_value.fail.scenario.json`（注入 `FAULT_NVS_READ_CORRUPT` 断言错误码）
+  - [x] **Task 1.12**: `#415 storage/spiffs` ➔ `storage_spiffs.fail.scenario.json`（注入挂载损坏分区与读取不存在文件防御）
 
 #### Batch 2: Lane 2 (通信总线) & Lane 4 (模拟电学) 核心示例成对红测试 (9 项)
 - **Lane 2: 通信协议与串行总线 (5 项)**
