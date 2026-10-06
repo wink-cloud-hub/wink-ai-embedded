@@ -428,14 +428,14 @@ Batch 0: 治理防线加固与因果短路修复（pipeline.py 解耦 + ADC 因�
 
 #### Batch 3: Lane 3 (定时电机) & Lane 6 (网络与无线) 核心示例成对红测试 (7 项)
 - **Lane 3: 定时器、计数与电机控制 (2 项)**
-  - [ ] **Task 3.1**: `#047 peripherals/ledc_basic` ➔ `ledc_basic.fail.scenario.json`（注入非法占空比 `>10000bp` 断言参数拒绝）
-  - [ ] **Task 3.2**: `#083 peripherals/gptimer_alarm` ➔ `gptimer.fail.scenario.json`（注入 Alarm 计数值为 0 或未启动计数断言）
+  - [x] **Task 3.1**: `#047 peripherals/ledc_basic` ➔ `ledc_basic.fail.scenario.json`（注入非法占空比 `>10000bp` 断言参数拒绝）
+  - [x] **Task 3.2**: `#083 peripherals/gptimer_alarm` ➔ `gptimer_alarm.fail.scenario.json` / `gptimer.fail.scenario.json`（注入 Alarm 计数值为 0 或未启动计数断言）
 - **Lane 6: 网络、协议与无线 (5 项)**
-  - [ ] **Task 3.3**: `#206 protocols/mqtt_tcp` ➔ `mqtt_tcp.fail.scenario.json`（注入 Broker 连接拒绝与断线重连防御）
-  - [ ] **Task 3.4**: `#221 wifi/fast_scan` ➔ `fast_scan.fail.scenario.json`（注入扫描超时与无匹配 SSID）
-  - [ ] **Task 3.5**: `#223 wifi/getting_started_softAP` ➔ `softap.fail.scenario.json`（注入不合规密码与启动参数校验失败）
-  - [ ] **Task 3.6**: `#230 wifi/scan` ➔ `scan.fail.scenario.json`（注入 Wi-Fi 驱动未启动即发起扫描断言错误）
-  - [ ] **Task 3.7**: `#384 bluetooth/bleprph` ➔ `bleprph.fail.scenario.json`（通过 `FAULT_BLE_ADV_REJECT` 注入广播参数被拒绝）
+  - [x] **Task 3.3**: `#206 protocols/mqtt_tcp` ➔ `mqtt_tcp.fail.scenario.json`（注入 Broker 连接拒绝与断线重连防御）
+  - [x] **Task 3.4**: `#221 wifi/fast_scan` ➔ `wifi_fast_scan.fail.scenario.json` / `fast_scan.fail.scenario.json`（注入扫描超时与无匹配 SSID）
+  - [x] **Task 3.5**: `#223 wifi/getting_started_softAP` ➔ `wifi_getting_started_softAP.fail.scenario.json` / `softap.fail.scenario.json`（注入不合规密码与启动参数校验失败）
+  - [x] **Task 3.6**: `#230 wifi/scan` ➔ `wifi_scan.fail.scenario.json` / `scan.fail.scenario.json`（注入 Wi-Fi 驱动未启动即发起扫描断言错误）
+  - [x] **Task 3.7**: `#384 bluetooth/bleprph` ➔ `bleprph.fail.scenario.json`（通过 `FAULT_BLE_ADV_REJECT` 注入广播参数被拒绝）
 
 #### Batch 4: SSOT 元数据补齐与 35 个目标配置逐项结论
 - [ ] **Task 4.1**: 补齐全量 35 项的 `negative_cases` 元数据模型（`stimulus`, `expect_error`, `detects`）写入 `checklist.data.json`。

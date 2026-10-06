@@ -3147,21 +3147,21 @@
             "timeout_wall_ms": 8000,
             "positive_cases": [
               {
-                "name": "PWM占空比渐变",
+                "name": "PWM占空比稳定度",
                 "matcher": {
-                  "op": "regex",
-                  "expected": "duty.*\\d+"
+                  "op": "equals",
+                  "expected": 50
                 }
               }
             ],
             "negative_cases": [
               {
-                "stimulus": "设置占空比超出 10000bp",
+                "stimulus": "注入非法占空比超过上限 (>10000bp / 越界分辨率)",
                 "expect_error": "ESP_ERR_INVALID_ARG",
-                "detects": "裸浮点传入未校验"
+                "detects": "占空比参数越界未受校验导致定时器溢出波形异常"
               }
             ],
-            "sla_error_symbol": null
+            "sla_error_symbol": "ESP_ERR_INVALID_ARG"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -5431,18 +5431,25 @@
             "timeout_wall_ms": 8000,
             "positive_cases": [
               {
-                "name": "定时器 Alarm 回调触发",
+                "name": "硬件定时器基础时钟频率",
+                "matcher": {
+                  "op": "equals",
+                  "expected": 1000000
+                }
+              },
+              {
+                "name": "硬件定时器计数单调递增",
                 "matcher": {
                   "op": "regex",
-                  "expected": "alarm.*fired"
+                  "expected": "\\d+"
                 }
               }
             ],
             "negative_cases": [
               {
-                "stimulus": "定时器设置为0周期",
+                "stimulus": "设置计数值为0或未启动计数",
                 "expect_error": "ESP_ERR_INVALID_ARG",
-                "detects": "零周期死锁模拟"
+                "detects": "非法计数阈值未返回参数错误导致定时器空跑"
               }
             ],
             "sla_error_symbol": "ESP_ERR_INVALID_ARG"
@@ -13385,21 +13392,28 @@
             "timeout_wall_ms": 15000,
             "positive_cases": [
               {
-                "name": "MQTT Publish/Subscribe 闭环",
+                "name": "MQTT客户端会话建立",
                 "matcher": {
-                  "op": "regex",
-                  "expected": "SUBSCRIBE.*OK"
+                  "op": "equals",
+                  "expected": "CONNECTED"
+                }
+              },
+              {
+                "name": "MQTT主题订阅回环载荷",
+                "matcher": {
+                  "op": "equals",
+                  "expected": "data"
                 }
               }
             ],
             "negative_cases": [
               {
-                "stimulus": "Broker 断连",
+                "stimulus": "Broker 连接拒绝或意外中断 (MQTT_EVENT_DISCONNECTED)",
                 "expect_error": "MQTT_EVENT_DISCONNECTED",
-                "detects": "断连静默不触发重连事件"
+                "detects": "Broker 断线未触发重连调度导致协议栈死锁"
               }
             ],
-            "sla_error_symbol": null
+            "sla_error_symbol": "MQTT_EVENT_DISCONNECTED"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -14349,14 +14363,29 @@
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
             "positive_cases": [
-              "断言系统供电轨稳定维持 3.3V",
-              "断言 STA 接口通过快速扫描及 DHCP 协商成功取得 IP 192.168.1.100",
-              "断言 Wi-Fi 底座状态机推进至 GOT_IP 状态",
-              "断言 UART 控制台输出扫描连接后获取的 IP 日志",
-              "断言信标丢失故障注入后 Wi-Fi 状态准确流转至 DISCONNECTED"
+              {
+                "name": "Wi-Fi快速扫描成功获取IP",
+                "matcher": {
+                  "op": "equals",
+                  "expected": "192.168.1.100"
+                }
+              },
+              {
+                "name": "控制台打印获取IP日志",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "got ip:192\\.168\\.1\\.100"
+                }
+              }
             ],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "negative_cases": [
+              {
+                "stimulus": "快速扫描超时或无匹配目标 SSID (ESP_ERR_WIFI_NOT_FOUND)",
+                "expect_error": "ESP_ERR_WIFI_NOT_FOUND",
+                "detects": "无匹配AP时未抛出未找到错误导致死等"
+              }
+            ],
+            "sla_error_symbol": "ESP_ERR_WIFI_NOT_FOUND"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -14492,14 +14521,29 @@
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
             "positive_cases": [
-              "Power rail VCC_3V3 maintained at 3.3V",
-              "Wi-Fi subsystem state machine advanced to STARTED",
-              "Wi-Fi subsystem initialization and AP mode activation (ESP_WIFI_MODE_AP)",
-              "SoftAP network interface creation and beacon broadcast configuration",
-              "Hotspot operational with SSID 'myssid' on channel 1"
+              {
+                "name": "SoftAP启动进入激活态",
+                "matcher": {
+                  "op": "equals",
+                  "expected": "STARTED"
+                }
+              },
+              {
+                "name": "SoftAP模式就绪与参数广播",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "wifi_init_softap finished"
+                }
+              }
             ],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "negative_cases": [
+              {
+                "stimulus": "注入不合规 WPA2 密码长度 (<8字节) (ESP_ERR_INVALID_ARG)",
+                "expect_error": "ESP_ERR_INVALID_ARG",
+                "detects": "不合规密码未受校验导致安全策略降级"
+              }
+            ],
+            "sla_error_symbol": "ESP_ERR_INVALID_ARG"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -15010,21 +15054,29 @@
             "timeout_virtual_us": 5000000,
             "timeout_wall_ms": 15000,
             "positive_cases": [
-              "断言系统供电轨稳定维持 3.3V",
-              "断言 Wi-Fi 底座状态机推进至 STARTED 激活态",
-              "断言 UART 输出扫描发现的 AP 总数",
-              "断言 UART 打印高信号强度目标 AP myssid",
-              "断言 UART 打印测试热点 AP TestSSID",
-              "断言 UART 打印周边开放式 AP Nearby_AP"
+              {
+                "name": "Wi-Fi扫描底座就绪",
+                "matcher": {
+                  "op": "equals",
+                  "expected": "STARTED"
+                }
+              },
+              {
+                "name": "AP扫描列表统计输出",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "Total APs scanned = \\d+"
+                }
+              }
             ],
             "negative_cases": [
               {
-                "stimulus": "无 AP 环境",
-                "expect_error": "ESP_ERR_WIFI_NOT_FOUND",
-                "detects": "扫描结果为空时静默成功"
+                "stimulus": "Wi-Fi 驱动未启动即发起扫描或无可用AP (ESP_ERR_WIFI_NOT_INIT)",
+                "expect_error": "ESP_ERR_WIFI_NOT_INIT",
+                "detects": "未初始化状态下发起扫描导致非法状态空指针崩溃"
               }
             ],
-            "sla_error_symbol": null
+            "sla_error_symbol": "ESP_ERR_WIFI_NOT_INIT"
           },
           "evidence": {
             "backend": "wasm_simulation",
@@ -24698,9 +24750,30 @@
             "scenario_path": "bluetooth/bleprph/unisim-scenarios/bleprph.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "positive_cases": [
+              {
+                "name": "NimBLE GAP广播激活态",
+                "matcher": {
+                  "op": "equals",
+                  "expected": "ADVERTISING"
+                }
+              },
+              {
+                "name": "GATT服务挂载验证",
+                "matcher": {
+                  "op": "gte",
+                  "expected": 1
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "注入广播参数拒绝故障 (FAULT_BLE_ADV_REJECT)",
+                "expect_error": "ESP_ERR_INVALID_ARG",
+                "detects": "广播参数被拒绝时未正确抛出错误导致静默广播失败"
+              }
+            ],
+            "sla_error_symbol": "ESP_ERR_INVALID_ARG"
           },
           "evidence": {
             "backend": "wasm_simulation",

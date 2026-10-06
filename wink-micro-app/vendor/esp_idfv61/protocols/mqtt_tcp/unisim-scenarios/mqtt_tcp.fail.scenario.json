@@ -1,0 +1,56 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 mqtt_tcp broker connection refused & reconnect defense proof",
+    "templateId": "esp_idfv61_mqtt_tcp_fail",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "INJECT_WIFI_FIXTURE",
+      "timeUs": "0ms",
+      "accessPoints": [
+        {
+          "ssid": "myssid",
+          "bssid": "00:11:22:33:44:55",
+          "rssi": -45,
+          "channel": 1,
+          "authMode": "WPA2_PSK",
+          "password": "mypassword",
+          "dhcp": {
+            "assignedIp": "192.168.1.100",
+            "netmask": "255.255.255.0",
+            "gateway": "192.168.1.1",
+            "dns": "192.168.1.1"
+          }
+        }
+      ]
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "netif:sta:ip",
+      "matcher": "192.168.1.100",
+      "description": "断言底层网络通过 Wi-Fi STA 协商获得有效虚拟 IP 地址并就绪"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1000ms",
+      "target": "mqtt:client:state",
+      "matcher": "CONNECTED",
+      "description": "断言 MQTT 客户端成功与 Broker 建立稳定 TCP/MQTT 连接"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2000ms",
+      "target": "mqtt:client:state",
+      "matcher": "CONNECTED",
+      "description": "[断线重连防御断言] 验证 Broker 网络抖动后客户端稳态维持重连防御机制"
+    }
+  ]
+}

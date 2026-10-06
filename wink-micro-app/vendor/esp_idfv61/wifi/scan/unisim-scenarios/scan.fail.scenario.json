@@ -1,0 +1,53 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 Wi-Fi scan uninitialized driver & empty AP defense proof",
+    "templateId": "esp_idfv61_wifi_scan_fail",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1000ms",
+      "target": "wifi:sta:state",
+      "matcher": "STARTED",
+      "description": "断言 Wi-Fi 底座状态机推进至 STARTED 激活态"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Total APs scanned =",
+      "description": "[扫描结果防御] 验证扫描完成输出 AP 统计结果"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "2000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "SSID",
+      "description": "[AP列表解析] 验证 AP 表项格式解析与空指针防御"
+    }
+  ]
+}

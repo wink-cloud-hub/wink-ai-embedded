@@ -1,0 +1,43 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP32 ESP-IDF v6.1 ledc_basic out-of-range duty defense proof",
+    "templateId": "esp_idfv61_ledc_basic_fail",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "2000000",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "pwm:0",
+      "matcher": 50,
+      "description": "[PWM初态断言] LEDC Channel 0 初始占空比稳定在 50%"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "pwm:0",
+      "matcher": 50,
+      "description": "[PWM维持断言] LEDC Channel 0 维持 50% 占空比输出"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1000ms",
+      "target": "pwm:0",
+      "matcher": 50,
+      "description": "[越界占空比防御断言] 拒绝越界占空比设置并维持安全波形输出"
+    }
+  ]
+}

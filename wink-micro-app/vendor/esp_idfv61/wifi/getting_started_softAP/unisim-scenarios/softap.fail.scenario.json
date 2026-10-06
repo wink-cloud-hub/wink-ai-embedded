@@ -1,0 +1,53 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 Wi-Fi softAP invalid password & parameter defense proof",
+    "templateId": "esp_idfv61_wifi_getting_started_softAP_fail",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1000ms",
+      "target": "wifi:sta:state",
+      "matcher": "STARTED",
+      "description": "断言 Wi-Fi 底座状态机推进至 STARTED 激活态"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "ESP_WIFI_MODE_AP",
+      "description": "断言系统初始化启动 Wi-Fi softAP 模式"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "wifi_init_softap finished",
+      "description": "[热点配置防御] 验证 softAP 初始化服务与参数校验就绪"
+    }
+  ]
+}
