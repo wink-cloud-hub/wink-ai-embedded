@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-02T13:01:08.738Z",
+  "timestamp": "2026-10-06T01:54:40.186Z",
   "total": 1,
   "passed": 1,
   "failed": 0,
@@ -11,7 +11,7 @@
         "name": "ESP-IDF v6.1 hello_world headless deterministic proof",
         "templateId": "esp_idfv61_hello_world",
         "totalVirtualUs": "3000000",
-        "wallClockMs": 88
+        "wallClockMs": 100
       },
       "summary": {
         "totalSteps": 6,

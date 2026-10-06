@@ -19,6 +19,9 @@
 .PARAMETER Reporter
   Reporter passed through to the CLI (spec|json|junit). Default: spec.
 
+.PARAMETER ArtifactsDir
+  Isolated report output. Requires one explicit App and excludes WriteEvidence.
+
 .EXAMPLE
   # Run all ESP-IDF carrier apps
   powershell -File wink-micro-os/frameworks/esp_idf/tools/run_esp32_headless_evidence.ps1
@@ -32,12 +35,18 @@ param(
     [string]$App,
     [string]$ConfigId,
     [string]$Scenario,
+    [string]$ArtifactsDir,
     [ValidateSet('spec', 'json', 'junit')]
     [string]$Reporter = 'spec',
     [switch]$WriteEvidence
 )
 
 $ErrorActionPreference = 'Stop'
+
+if ($ArtifactsDir -and (-not $App -or $WriteEvidence)) {
+    throw 'Isolated outputs require one explicit App and cannot use WriteEvidence.'
+}
+if ($ArtifactsDir) { $ArtifactsDir = [System.IO.Path]::GetFullPath($ArtifactsDir) }
 
 # --- Locate repos -----------------------------------------------------------
 # This script lives in <embedded>/wink-micro-os/frameworks/esp_idf/tools/.
@@ -102,7 +111,11 @@ $allCarriers = @(
 
 $carriers = @()
 if ($App) {
-    $carriers = $allCarriers | Where-Object { $_.Name -eq $App -or $_.Rel -eq $App -or (Split-Path $_.Rel -Leaf) -eq $App }
+    if ([System.IO.Path]::IsPathRooted($App) -and (Test-Path -LiteralPath (Join-Path $App 'wink-app.json'))) {
+        $carriers = @(@{ Name = (Split-Path $App -Leaf); Rel = $App; Channel = 'Explicit isolated application' })
+    } else {
+        $carriers = $allCarriers | Where-Object { $_.Name -eq $App -or $_.Rel -eq $App -or (Split-Path $_.Rel -Leaf) -eq $App }
+    }
     if (-not $carriers) {
         # Custom app directory path
         $customRel = $App -replace '\\', '/'
@@ -129,6 +142,9 @@ if ($App) {
 }
 
 # --- Run each carrier -------------------------------------------------------
+if ($ArtifactsDir -and @($carriers).Count -ne 1) {
+    throw 'Isolated outputs require exactly one matched App.'
+}
 $env:WINK_DEV = '1'
 $results = @()
 
@@ -152,22 +168,28 @@ foreach ($c in $carriers) {
         elseif (Test-Path (Join-Path $scenDir $Scenario)) { Join-Path $scenDir $Scenario }
         else { $Scenario }
     } else {
-        $scenDir
+        if ($WriteEvidence) {
+            $posScen = Get-ChildItem -Path $scenDir -Filter "*.scenario.json" | Where-Object { $_.Name -notlike "*.fail.*" } | Select-Object -First 1
+            if ($posScen) { $posScen.FullName } else { $scenDir }
+        } else {
+            $scenDir
+        }
     }
 
-    $reportSrc = Join-Path $winkToolsDir 'artifacts\run-report.json'
+    $reportSrc = if ($ArtifactsDir) { Join-Path $ArtifactsDir 'run-report.json' } else { Join-Path $winkToolsDir 'artifacts\run-report.json' }
     # Anti-False-Green: Remove any stale report from previous runs to guarantee freshness
-    if (Test-Path $reportSrc) {
-        Remove-Item -Force $reportSrc -ErrorAction SilentlyContinue
+    if (Test-Path -LiteralPath $reportSrc) {
+        Remove-Item -LiteralPath $reportSrc -Force
     }
 
     Push-Location $winkToolsDir
     $prevEap = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     $actualReporter = if ($WriteEvidence -and $Reporter -eq 'spec') { 'json' } else { $Reporter }
+    $simArgs = @('wink.py', 'sim', 'run', '--app', $appDir, '--mode', 'headless', '--scenarios', $targetScen, '--reporter', $actualReporter)
+    if ($ArtifactsDir) { $simArgs += @('--artifacts', $ArtifactsDir) }
     try {
-        & python wink.py sim run --app "$appDir" --mode headless `
-            --scenarios "$targetScen" --reporter $actualReporter
+        & python @simArgs
         $ok = ($LASTEXITCODE -eq 0)
     }
     finally {
@@ -184,7 +206,8 @@ foreach ($c in $carriers) {
             Write-Host "Recording evidence for $($c.Name)..." -ForegroundColor Magenta
             $vArgs = @('--write-app', $c.Name, '--report-src', $reportSrc, '--workspace-root', $embeddedRoot)
             if ($ConfigId) { $vArgs += @('--config-id', $ConfigId) }
-            if ($Scenario) { $vArgs += @('--scenario', $targetScen) }
+            $effectiveScen = if ($Scenario) { $targetScen } elseif ($targetScen -and (Test-Path -PathType Leaf $targetScen)) { $targetScen } else { $null }
+            if ($effectiveScen) { $vArgs += @('--scenario', $effectiveScen) }
             & python "$verifierScript" @vArgs
             if ($LASTEXITCODE -ne 0) {
                 Write-Warning "Failed to record evidence for $($c.Name)"

@@ -446,11 +446,13 @@ def write_evidence_for_app(
     if scenario_path and Path(scenario_path).is_file():
         scenario_file = Path(scenario_path)
     else:
-        scen_files = sorted(list(scen_dir.glob("*.scenario.json")), key=lambda p: p.name)
+        scen_files = [p for p in scen_dir.glob("*.scenario.json") if ".fail." not in p.name]
+        if not scen_files:
+            scen_files = sorted(list(scen_dir.glob("*.scenario.json")), key=lambda p: p.name)
         if not scen_files:
             sys.stderr.write(f"Error: No *.scenario.json found in {scen_dir}\n")
             return False
-        scenario_file = scen_files[0]
+        scenario_file = sorted(scen_files, key=lambda p: p.name)[0]
     scenario_sha = compute_scenario_sha256(scenario_file)
 
     # Determine report destination

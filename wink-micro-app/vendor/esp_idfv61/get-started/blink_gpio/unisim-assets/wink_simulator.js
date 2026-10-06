@@ -1608,6 +1608,12 @@ async function createWasm() {
       return 0;
     };
 
+  function _js_pal_dac_write_norm(pin, normVal) {
+          if (typeof Module !== 'undefined' && typeof Module['js_pal_dac_write_norm'] === 'function' && Module['js_pal_dac_write_norm'] !== _js_pal_dac_write_norm) {
+              Module['js_pal_dac_write_norm'](pin, normVal);
+          }
+      }
+
   function _js_pal_gpio_drive_ideal(pin, level) {
           if (typeof Module !== 'undefined' && typeof Module['js_pal_gpio_drive_ideal'] === 'function' && Module['js_pal_gpio_drive_ideal'] !== _js_pal_gpio_drive_ideal) {
               return Module['js_pal_gpio_drive_ideal'](pin, level);
@@ -2396,12 +2402,18 @@ var _pal_wasm_is_clock_warning_fired = Module['_pal_wasm_is_clock_warning_fired'
 var _free = Module['_free'] = makeInvalidEarlyAccess('_free');
 var _malloc = Module['_malloc'] = makeInvalidEarlyAccess('_malloc');
 var _esp_http_client_sim_reset = Module['_esp_http_client_sim_reset'] = makeInvalidEarlyAccess('_esp_http_client_sim_reset');
+var _sim_http_responder_reset = Module['_sim_http_responder_reset'] = makeInvalidEarlyAccess('_sim_http_responder_reset');
 var _esp_mqtt_sim_reset = Module['_esp_mqtt_sim_reset'] = makeInvalidEarlyAccess('_esp_mqtt_sim_reset');
 var _esp_nimble_sim_reset = Module['_esp_nimble_sim_reset'] = makeInvalidEarlyAccess('_esp_nimble_sim_reset');
 var _esp_sim_handle_issue = Module['_esp_sim_handle_issue'] = makeInvalidEarlyAccess('_esp_sim_handle_issue');
 var _esp_sim_handle_decode = Module['_esp_sim_handle_decode'] = makeInvalidEarlyAccess('_esp_sim_handle_decode');
 var _esp_sim_handle_get_sequence = Module['_esp_sim_handle_get_sequence'] = makeInvalidEarlyAccess('_esp_sim_handle_get_sequence');
 var _esp_sim_handle_set_sequence_base = Module['_esp_sim_handle_set_sequence_base'] = makeInvalidEarlyAccess('_esp_sim_handle_set_sequence_base');
+var _sim_esp_fault_inject = Module['_sim_esp_fault_inject'] = makeInvalidEarlyAccess('_sim_esp_fault_inject');
+var _sim_esp_fault_clear = Module['_sim_esp_fault_clear'] = makeInvalidEarlyAccess('_sim_esp_fault_clear');
+var _sim_esp_fault_is_active = Module['_sim_esp_fault_is_active'] = makeInvalidEarlyAccess('_sim_esp_fault_is_active');
+var _sim_esp_fault_get_param = Module['_sim_esp_fault_get_param'] = makeInvalidEarlyAccess('_sim_esp_fault_get_param');
+var _sim_timer_get_counter = Module['_sim_timer_get_counter'] = makeInvalidEarlyAccess('_sim_timer_get_counter');
 var _fflush = makeInvalidEarlyAccess('_fflush');
 var _sim_wifi_env_reset = Module['_sim_wifi_env_reset'] = makeInvalidEarlyAccess('_sim_wifi_env_reset');
 var _sim_wifi_env_scan = Module['_sim_wifi_env_scan'] = makeInvalidEarlyAccess('_sim_wifi_env_scan');
@@ -2418,7 +2430,18 @@ var _esp_mqtt_sim_inject_message = Module['_esp_mqtt_sim_inject_message'] = make
 var _esp_mqtt_sim_get_last_published = Module['_esp_mqtt_sim_get_last_published'] = makeInvalidEarlyAccess('_esp_mqtt_sim_get_last_published');
 var _esp_mqtt_sim_get_last_msg_id = Module['_esp_mqtt_sim_get_last_msg_id'] = makeInvalidEarlyAccess('_esp_mqtt_sim_get_last_msg_id');
 var _esp_mqtt_sim_set_publish_hook = Module['_esp_mqtt_sim_set_publish_hook'] = makeInvalidEarlyAccess('_esp_mqtt_sim_set_publish_hook');
+var _sim_mqtt_get_state = Module['_sim_mqtt_get_state'] = makeInvalidEarlyAccess('_sim_mqtt_get_state');
+var _sim_mqtt_get_last_topic = Module['_sim_mqtt_get_last_topic'] = makeInvalidEarlyAccess('_sim_mqtt_get_last_topic');
+var _sim_mqtt_get_last_data = Module['_sim_mqtt_get_last_data'] = makeInvalidEarlyAccess('_sim_mqtt_get_last_data');
+var _sim_mqtt_get_last_tx_data = Module['_sim_mqtt_get_last_tx_data'] = makeInvalidEarlyAccess('_sim_mqtt_get_last_tx_data');
+var _sim_mqtt_get_last_rx_data = Module['_sim_mqtt_get_last_rx_data'] = makeInvalidEarlyAccess('_sim_mqtt_get_last_rx_data');
+var _sim_mqtt_get_last_rx_topic = Module['_sim_mqtt_get_last_rx_topic'] = makeInvalidEarlyAccess('_sim_mqtt_get_last_rx_topic');
 var _esp_http_client_sim_set_response = Module['_esp_http_client_sim_set_response'] = makeInvalidEarlyAccess('_esp_http_client_sim_set_response');
+var _sim_http_responder_register_route = Module['_sim_http_responder_register_route'] = makeInvalidEarlyAccess('_sim_http_responder_register_route');
+var _sim_http_get_last_status_code = Module['_sim_http_get_last_status_code'] = makeInvalidEarlyAccess('_sim_http_get_last_status_code');
+var _sim_http_get_total_rx_bytes = Module['_sim_http_get_total_rx_bytes'] = makeInvalidEarlyAccess('_sim_http_get_total_rx_bytes');
+var _sim_http_get_request_count = Module['_sim_http_get_request_count'] = makeInvalidEarlyAccess('_sim_http_get_request_count');
+var _sim_http_responder_inject_json = Module['_sim_http_responder_inject_json'] = makeInvalidEarlyAccess('_sim_http_responder_inject_json');
 var _esp_nimble_sim_disconnect = Module['_esp_nimble_sim_disconnect'] = makeInvalidEarlyAccess('_esp_nimble_sim_disconnect');
 var _esp_nimble_sim_get_service_count = Module['_esp_nimble_sim_get_service_count'] = makeInvalidEarlyAccess('_esp_nimble_sim_get_service_count');
 var _esp_nimble_sim_get_service_info = Module['_esp_nimble_sim_get_service_info'] = makeInvalidEarlyAccess('_esp_nimble_sim_get_service_info');
@@ -2430,6 +2453,10 @@ var _esp_nimble_sim_connect = Module['_esp_nimble_sim_connect'] = makeInvalidEar
 var _esp_nimble_sim_read_chr = Module['_esp_nimble_sim_read_chr'] = makeInvalidEarlyAccess('_esp_nimble_sim_read_chr');
 var _esp_nimble_sim_write_chr = Module['_esp_nimble_sim_write_chr'] = makeInvalidEarlyAccess('_esp_nimble_sim_write_chr');
 var _esp_nimble_sim_subscribe = Module['_esp_nimble_sim_subscribe'] = makeInvalidEarlyAccess('_esp_nimble_sim_subscribe');
+var _sim_ble_get_adv_state = Module['_sim_ble_get_adv_state'] = makeInvalidEarlyAccess('_sim_ble_get_adv_state');
+var _sim_ble_get_device_name = Module['_sim_ble_get_device_name'] = makeInvalidEarlyAccess('_sim_ble_get_device_name');
+var _sim_ble_get_num_services = Module['_sim_ble_get_num_services'] = makeInvalidEarlyAccess('_sim_ble_get_num_services');
+var _sim_ble_get_num_characteristics = Module['_sim_ble_get_num_characteristics'] = makeInvalidEarlyAccess('_sim_ble_get_num_characteristics');
 var _emscripten_stack_get_base = makeInvalidEarlyAccess('_emscripten_stack_get_base');
 var _emscripten_stack_get_end = makeInvalidEarlyAccess('_emscripten_stack_get_end');
 var _strerror = makeInvalidEarlyAccess('_strerror');
@@ -2523,12 +2550,18 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['free'] != 'undefined', 'missing Wasm export: free');
   assert(typeof wasmExports['malloc'] != 'undefined', 'missing Wasm export: malloc');
   assert(typeof wasmExports['esp_http_client_sim_reset'] != 'undefined', 'missing Wasm export: esp_http_client_sim_reset');
+  assert(typeof wasmExports['sim_http_responder_reset'] != 'undefined', 'missing Wasm export: sim_http_responder_reset');
   assert(typeof wasmExports['esp_mqtt_sim_reset'] != 'undefined', 'missing Wasm export: esp_mqtt_sim_reset');
   assert(typeof wasmExports['esp_nimble_sim_reset'] != 'undefined', 'missing Wasm export: esp_nimble_sim_reset');
   assert(typeof wasmExports['esp_sim_handle_issue'] != 'undefined', 'missing Wasm export: esp_sim_handle_issue');
   assert(typeof wasmExports['esp_sim_handle_decode'] != 'undefined', 'missing Wasm export: esp_sim_handle_decode');
   assert(typeof wasmExports['esp_sim_handle_get_sequence'] != 'undefined', 'missing Wasm export: esp_sim_handle_get_sequence');
   assert(typeof wasmExports['esp_sim_handle_set_sequence_base'] != 'undefined', 'missing Wasm export: esp_sim_handle_set_sequence_base');
+  assert(typeof wasmExports['sim_esp_fault_inject'] != 'undefined', 'missing Wasm export: sim_esp_fault_inject');
+  assert(typeof wasmExports['sim_esp_fault_clear'] != 'undefined', 'missing Wasm export: sim_esp_fault_clear');
+  assert(typeof wasmExports['sim_esp_fault_is_active'] != 'undefined', 'missing Wasm export: sim_esp_fault_is_active');
+  assert(typeof wasmExports['sim_esp_fault_get_param'] != 'undefined', 'missing Wasm export: sim_esp_fault_get_param');
+  assert(typeof wasmExports['sim_timer_get_counter'] != 'undefined', 'missing Wasm export: sim_timer_get_counter');
   assert(typeof wasmExports['fflush'] != 'undefined', 'missing Wasm export: fflush');
   assert(typeof wasmExports['sim_wifi_env_reset'] != 'undefined', 'missing Wasm export: sim_wifi_env_reset');
   assert(typeof wasmExports['sim_wifi_env_scan'] != 'undefined', 'missing Wasm export: sim_wifi_env_scan');
@@ -2545,7 +2578,18 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['esp_mqtt_sim_get_last_published'] != 'undefined', 'missing Wasm export: esp_mqtt_sim_get_last_published');
   assert(typeof wasmExports['esp_mqtt_sim_get_last_msg_id'] != 'undefined', 'missing Wasm export: esp_mqtt_sim_get_last_msg_id');
   assert(typeof wasmExports['esp_mqtt_sim_set_publish_hook'] != 'undefined', 'missing Wasm export: esp_mqtt_sim_set_publish_hook');
+  assert(typeof wasmExports['sim_mqtt_get_state'] != 'undefined', 'missing Wasm export: sim_mqtt_get_state');
+  assert(typeof wasmExports['sim_mqtt_get_last_topic'] != 'undefined', 'missing Wasm export: sim_mqtt_get_last_topic');
+  assert(typeof wasmExports['sim_mqtt_get_last_data'] != 'undefined', 'missing Wasm export: sim_mqtt_get_last_data');
+  assert(typeof wasmExports['sim_mqtt_get_last_tx_data'] != 'undefined', 'missing Wasm export: sim_mqtt_get_last_tx_data');
+  assert(typeof wasmExports['sim_mqtt_get_last_rx_data'] != 'undefined', 'missing Wasm export: sim_mqtt_get_last_rx_data');
+  assert(typeof wasmExports['sim_mqtt_get_last_rx_topic'] != 'undefined', 'missing Wasm export: sim_mqtt_get_last_rx_topic');
   assert(typeof wasmExports['esp_http_client_sim_set_response'] != 'undefined', 'missing Wasm export: esp_http_client_sim_set_response');
+  assert(typeof wasmExports['sim_http_responder_register_route'] != 'undefined', 'missing Wasm export: sim_http_responder_register_route');
+  assert(typeof wasmExports['sim_http_get_last_status_code'] != 'undefined', 'missing Wasm export: sim_http_get_last_status_code');
+  assert(typeof wasmExports['sim_http_get_total_rx_bytes'] != 'undefined', 'missing Wasm export: sim_http_get_total_rx_bytes');
+  assert(typeof wasmExports['sim_http_get_request_count'] != 'undefined', 'missing Wasm export: sim_http_get_request_count');
+  assert(typeof wasmExports['sim_http_responder_inject_json'] != 'undefined', 'missing Wasm export: sim_http_responder_inject_json');
   assert(typeof wasmExports['esp_nimble_sim_disconnect'] != 'undefined', 'missing Wasm export: esp_nimble_sim_disconnect');
   assert(typeof wasmExports['esp_nimble_sim_get_service_count'] != 'undefined', 'missing Wasm export: esp_nimble_sim_get_service_count');
   assert(typeof wasmExports['esp_nimble_sim_get_service_info'] != 'undefined', 'missing Wasm export: esp_nimble_sim_get_service_info');
@@ -2557,6 +2601,10 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['esp_nimble_sim_read_chr'] != 'undefined', 'missing Wasm export: esp_nimble_sim_read_chr');
   assert(typeof wasmExports['esp_nimble_sim_write_chr'] != 'undefined', 'missing Wasm export: esp_nimble_sim_write_chr');
   assert(typeof wasmExports['esp_nimble_sim_subscribe'] != 'undefined', 'missing Wasm export: esp_nimble_sim_subscribe');
+  assert(typeof wasmExports['sim_ble_get_adv_state'] != 'undefined', 'missing Wasm export: sim_ble_get_adv_state');
+  assert(typeof wasmExports['sim_ble_get_device_name'] != 'undefined', 'missing Wasm export: sim_ble_get_device_name');
+  assert(typeof wasmExports['sim_ble_get_num_services'] != 'undefined', 'missing Wasm export: sim_ble_get_num_services');
+  assert(typeof wasmExports['sim_ble_get_num_characteristics'] != 'undefined', 'missing Wasm export: sim_ble_get_num_characteristics');
   assert(typeof wasmExports['emscripten_stack_get_base'] != 'undefined', 'missing Wasm export: emscripten_stack_get_base');
   assert(typeof wasmExports['emscripten_stack_get_end'] != 'undefined', 'missing Wasm export: emscripten_stack_get_end');
   assert(typeof wasmExports['strerror'] != 'undefined', 'missing Wasm export: strerror');
@@ -2647,12 +2695,18 @@ function assignWasmExports(wasmExports) {
   _free = Module['_free'] = createExportWrapper('free', wasmExports['free'], 1);
   _malloc = Module['_malloc'] = createExportWrapper('malloc', wasmExports['malloc'], 1);
   _esp_http_client_sim_reset = Module['_esp_http_client_sim_reset'] = createExportWrapper('esp_http_client_sim_reset', wasmExports['esp_http_client_sim_reset'], 0);
+  _sim_http_responder_reset = Module['_sim_http_responder_reset'] = createExportWrapper('sim_http_responder_reset', wasmExports['sim_http_responder_reset'], 0);
   _esp_mqtt_sim_reset = Module['_esp_mqtt_sim_reset'] = createExportWrapper('esp_mqtt_sim_reset', wasmExports['esp_mqtt_sim_reset'], 0);
   _esp_nimble_sim_reset = Module['_esp_nimble_sim_reset'] = createExportWrapper('esp_nimble_sim_reset', wasmExports['esp_nimble_sim_reset'], 0);
   _esp_sim_handle_issue = Module['_esp_sim_handle_issue'] = createExportWrapper('esp_sim_handle_issue', wasmExports['esp_sim_handle_issue'], 2);
   _esp_sim_handle_decode = Module['_esp_sim_handle_decode'] = createExportWrapper('esp_sim_handle_decode', wasmExports['esp_sim_handle_decode'], 4);
   _esp_sim_handle_get_sequence = Module['_esp_sim_handle_get_sequence'] = createExportWrapper('esp_sim_handle_get_sequence', wasmExports['esp_sim_handle_get_sequence'], 0);
   _esp_sim_handle_set_sequence_base = Module['_esp_sim_handle_set_sequence_base'] = createExportWrapper('esp_sim_handle_set_sequence_base', wasmExports['esp_sim_handle_set_sequence_base'], 1);
+  _sim_esp_fault_inject = Module['_sim_esp_fault_inject'] = createExportWrapper('sim_esp_fault_inject', wasmExports['sim_esp_fault_inject'], 3);
+  _sim_esp_fault_clear = Module['_sim_esp_fault_clear'] = createExportWrapper('sim_esp_fault_clear', wasmExports['sim_esp_fault_clear'], 0);
+  _sim_esp_fault_is_active = Module['_sim_esp_fault_is_active'] = createExportWrapper('sim_esp_fault_is_active', wasmExports['sim_esp_fault_is_active'], 2);
+  _sim_esp_fault_get_param = Module['_sim_esp_fault_get_param'] = createExportWrapper('sim_esp_fault_get_param', wasmExports['sim_esp_fault_get_param'], 2);
+  _sim_timer_get_counter = Module['_sim_timer_get_counter'] = createExportWrapper('sim_timer_get_counter', wasmExports['sim_timer_get_counter'], 1);
   _fflush = createExportWrapper('fflush', wasmExports['fflush'], 1);
   _sim_wifi_env_reset = Module['_sim_wifi_env_reset'] = createExportWrapper('sim_wifi_env_reset', wasmExports['sim_wifi_env_reset'], 0);
   _sim_wifi_env_scan = Module['_sim_wifi_env_scan'] = createExportWrapper('sim_wifi_env_scan', wasmExports['sim_wifi_env_scan'], 1);
@@ -2669,7 +2723,18 @@ function assignWasmExports(wasmExports) {
   _esp_mqtt_sim_get_last_published = Module['_esp_mqtt_sim_get_last_published'] = createExportWrapper('esp_mqtt_sim_get_last_published', wasmExports['esp_mqtt_sim_get_last_published'], 4);
   _esp_mqtt_sim_get_last_msg_id = Module['_esp_mqtt_sim_get_last_msg_id'] = createExportWrapper('esp_mqtt_sim_get_last_msg_id', wasmExports['esp_mqtt_sim_get_last_msg_id'], 0);
   _esp_mqtt_sim_set_publish_hook = Module['_esp_mqtt_sim_set_publish_hook'] = createExportWrapper('esp_mqtt_sim_set_publish_hook', wasmExports['esp_mqtt_sim_set_publish_hook'], 1);
+  _sim_mqtt_get_state = Module['_sim_mqtt_get_state'] = createExportWrapper('sim_mqtt_get_state', wasmExports['sim_mqtt_get_state'], 0);
+  _sim_mqtt_get_last_topic = Module['_sim_mqtt_get_last_topic'] = createExportWrapper('sim_mqtt_get_last_topic', wasmExports['sim_mqtt_get_last_topic'], 0);
+  _sim_mqtt_get_last_data = Module['_sim_mqtt_get_last_data'] = createExportWrapper('sim_mqtt_get_last_data', wasmExports['sim_mqtt_get_last_data'], 0);
+  _sim_mqtt_get_last_tx_data = Module['_sim_mqtt_get_last_tx_data'] = createExportWrapper('sim_mqtt_get_last_tx_data', wasmExports['sim_mqtt_get_last_tx_data'], 0);
+  _sim_mqtt_get_last_rx_data = Module['_sim_mqtt_get_last_rx_data'] = createExportWrapper('sim_mqtt_get_last_rx_data', wasmExports['sim_mqtt_get_last_rx_data'], 0);
+  _sim_mqtt_get_last_rx_topic = Module['_sim_mqtt_get_last_rx_topic'] = createExportWrapper('sim_mqtt_get_last_rx_topic', wasmExports['sim_mqtt_get_last_rx_topic'], 0);
   _esp_http_client_sim_set_response = Module['_esp_http_client_sim_set_response'] = createExportWrapper('esp_http_client_sim_set_response', wasmExports['esp_http_client_sim_set_response'], 4);
+  _sim_http_responder_register_route = Module['_sim_http_responder_register_route'] = createExportWrapper('sim_http_responder_register_route', wasmExports['sim_http_responder_register_route'], 1);
+  _sim_http_get_last_status_code = Module['_sim_http_get_last_status_code'] = createExportWrapper('sim_http_get_last_status_code', wasmExports['sim_http_get_last_status_code'], 0);
+  _sim_http_get_total_rx_bytes = Module['_sim_http_get_total_rx_bytes'] = createExportWrapper('sim_http_get_total_rx_bytes', wasmExports['sim_http_get_total_rx_bytes'], 0);
+  _sim_http_get_request_count = Module['_sim_http_get_request_count'] = createExportWrapper('sim_http_get_request_count', wasmExports['sim_http_get_request_count'], 0);
+  _sim_http_responder_inject_json = Module['_sim_http_responder_inject_json'] = createExportWrapper('sim_http_responder_inject_json', wasmExports['sim_http_responder_inject_json'], 1);
   _esp_nimble_sim_disconnect = Module['_esp_nimble_sim_disconnect'] = createExportWrapper('esp_nimble_sim_disconnect', wasmExports['esp_nimble_sim_disconnect'], 0);
   _esp_nimble_sim_get_service_count = Module['_esp_nimble_sim_get_service_count'] = createExportWrapper('esp_nimble_sim_get_service_count', wasmExports['esp_nimble_sim_get_service_count'], 0);
   _esp_nimble_sim_get_service_info = Module['_esp_nimble_sim_get_service_info'] = createExportWrapper('esp_nimble_sim_get_service_info', wasmExports['esp_nimble_sim_get_service_info'], 2);
@@ -2681,6 +2746,10 @@ function assignWasmExports(wasmExports) {
   _esp_nimble_sim_read_chr = Module['_esp_nimble_sim_read_chr'] = createExportWrapper('esp_nimble_sim_read_chr', wasmExports['esp_nimble_sim_read_chr'], 5);
   _esp_nimble_sim_write_chr = Module['_esp_nimble_sim_write_chr'] = createExportWrapper('esp_nimble_sim_write_chr', wasmExports['esp_nimble_sim_write_chr'], 4);
   _esp_nimble_sim_subscribe = Module['_esp_nimble_sim_subscribe'] = createExportWrapper('esp_nimble_sim_subscribe', wasmExports['esp_nimble_sim_subscribe'], 4);
+  _sim_ble_get_adv_state = Module['_sim_ble_get_adv_state'] = createExportWrapper('sim_ble_get_adv_state', wasmExports['sim_ble_get_adv_state'], 0);
+  _sim_ble_get_device_name = Module['_sim_ble_get_device_name'] = createExportWrapper('sim_ble_get_device_name', wasmExports['sim_ble_get_device_name'], 0);
+  _sim_ble_get_num_services = Module['_sim_ble_get_num_services'] = createExportWrapper('sim_ble_get_num_services', wasmExports['sim_ble_get_num_services'], 0);
+  _sim_ble_get_num_characteristics = Module['_sim_ble_get_num_characteristics'] = createExportWrapper('sim_ble_get_num_characteristics', wasmExports['sim_ble_get_num_characteristics'], 0);
   _emscripten_stack_get_base = wasmExports['emscripten_stack_get_base'];
   _emscripten_stack_get_end = wasmExports['emscripten_stack_get_end'];
   _strerror = createExportWrapper('strerror', wasmExports['strerror'], 1);
@@ -2734,6 +2803,8 @@ var wasmImports = {
   fd_write: _fd_write,
   /** @export */
   js_get_initial_sequence_base,
+  /** @export */
+  js_pal_dac_write_norm: _js_pal_dac_write_norm,
   /** @export */
   js_pal_gpio_drive_ideal: _js_pal_gpio_drive_ideal,
   /** @export */
