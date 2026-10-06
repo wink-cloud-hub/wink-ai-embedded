@@ -10,7 +10,7 @@
 #include "services/gap/ble_svc_gap.h"
 #include "services/gatt/ble_svc_gatt.h"
 #include "os/os_mbuf.h"
-#include "esp_fault.h"
+#include "esp_sim_fault.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>

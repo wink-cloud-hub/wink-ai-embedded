@@ -2,7 +2,7 @@
 #include "nvs_flash.h"
 #include "esp_sim_handle.h"
 #include "nvs.h"
-#include "esp_fault.h"
+#include "esp_sim_fault.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

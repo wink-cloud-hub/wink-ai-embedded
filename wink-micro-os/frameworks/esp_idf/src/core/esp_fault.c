@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LGPL-3.0-only
-#include "esp_fault.h"
+#include "esp_sim_fault.h"
 #include <string.h>
 
 #define ESP_FAULT_MAX_ACTIVE 16

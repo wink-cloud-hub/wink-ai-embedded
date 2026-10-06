@@ -3,7 +3,7 @@
 #include "hal/pal_i2c.h"
 #include "esp_sim_handle.h"
 #include "esp_idf_wink.h"
-#include "esp_fault.h"
+#include "esp_sim_fault.h"
 #include <string.h>
 
 #define MAX_MASTER_BUSES SOC_HP_I2C_NUM

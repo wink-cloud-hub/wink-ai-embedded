@@ -4,7 +4,7 @@
 #include "esp_log.h"
 #include "esp_sim_handle.h"
 #include "esp_idf_wink.h"
-#include "esp_fault.h"
+#include "esp_sim_fault.h"
 #include <string.h>
 
 #define MAX_SPI_DEVS 8

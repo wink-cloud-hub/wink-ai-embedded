@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #include "unity.h"
-#include "esp_fault.h"
+#include "esp_sim_fault.h"
 #include "esp_err.h"
 #include "nvs_flash.h"
 #include "nvs.h"

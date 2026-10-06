@@ -644,9 +644,9 @@ esp_err_t adc_continuous_parse_data(adc_continuous_handle_t handle,
 }
 
 void esp_adc_reset(void) {
-    if (s_continuous_ctx.in_use && s_continuous_ctx.running) {
-        s_continuous_ctx.running = false;
-        pal_adc_continuous_stop(s_continuous_ctx.pal_handle);
+    if (s_continuous_ctx.in_use && s_continuous_ctx.started) {
+        s_continuous_ctx.started = false;
+        pal_adc_continuous_stop(0);
     }
     memset(s_adc_units, 0, sizeof(s_adc_units));
     memset(s_cali_schemes, 0, sizeof(s_cali_schemes));

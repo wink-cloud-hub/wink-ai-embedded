@@ -57,6 +57,7 @@ capabilities:
     - wink-micro-os/targets/wasm/wasm_bridge.c
     - wink-micro-os/frameworks/esp_idf/src/core/esp_fault.c
     - wink-micro-os/frameworks/esp_idf/src/core/esp_fault.h
+    - wink-micro-os/frameworks/esp_idf/src/core/esp_sim_fault.h
     soc_support:
     - esp32
     - esp32s3

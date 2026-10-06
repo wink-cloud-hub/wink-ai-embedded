@@ -31,7 +31,9 @@ extern void esp_task_wdt_sim_reset(void);
 extern void esp_fault_sim_reset(void);
 
 static bool s_esp_pending_reset = false;
-static int s_esp_reset_reason = 4; /* SOFTWARE */
+static int s_esp_reset_reason = PAL_OS_RESET_REASON_SOFTWARE;
+static esp_reset_reason_t s_requested_sdk_reset_reason = ESP_RST_SW;
+static esp_reset_reason_t s_last_sdk_reset_reason = ESP_RST_SW;
 
 void esp_freertos_pools_reset(void) {
     esp_freertos_timers_sim_reset();
@@ -58,20 +60,29 @@ void esp_peripherals_reset(void) {
     nvs_flash_deinit();
 }
 
-static void esp_sim_request_restart(void) {
+static void esp_sim_request_restart(pal_os_reset_reason_t reason,
+                                    esp_reset_reason_t sdk_reason) {
+    if (s_esp_pending_reset) return;
+    s_esp_reset_reason = reason;
+    s_requested_sdk_reset_reason = sdk_reason;
     s_esp_pending_reset = true;
+}
+
+/* Internal TWDT-to-reset bridge; the SDK and host use their own enum domains. */
+void esp_sim_request_task_wdt_reset(void) {
+    esp_sim_request_restart(PAL_OS_RESET_REASON_WATCHDOG, ESP_RST_TASK_WDT);
 }
 
 /* Test/host adapter for observing the reset request without violating the
  * noreturn contract of the public ESP-IDF esp_restart() API. */
 void pal_wasm_target_request_reset(void) {
     pal_log_w("ESP_SYS", "simulation reset requested");
-    esp_sim_request_restart();
+    esp_sim_request_restart(PAL_OS_RESET_REASON_SOFTWARE, ESP_RST_SW);
 }
 
 void esp_restart(void) {
     pal_log_w("ESP_SYS", "esp_restart requested -> pending reset flag set");
-    esp_sim_request_restart();
+    esp_sim_request_restart(PAL_OS_RESET_REASON_SOFTWARE, ESP_RST_SW);
     /* Simulate noreturn: yield CPU so main loop can process the pending reset.
      * Guard with scheduler check in case called before scheduler starts. */
     if (sim_scheduler_current_id() != SIM_SCHED_NO_READY) {
@@ -118,6 +129,7 @@ int pal_wasm_target_get_reset_reason(void) { return s_esp_reset_reason; }
 void pal_wasm_target_clear_pending_reset(void) {
     assert(sim_scheduler_current_id() == SIM_SCHED_NO_READY &&
            "ESP-IDF soft reset must be applied at a scheduler boundary");
+    if (s_esp_pending_reset) s_last_sdk_reset_reason = s_requested_sdk_reset_reason;
     s_esp_pending_reset = false;
 
     /* Stage 1: Disconnect upper application protocol clients */
@@ -155,7 +167,7 @@ void pal_wasm_target_clear_pending_reset(void) {
 }
 
 esp_reset_reason_t esp_reset_reason(void) {
-    return ESP_RST_SW;
+    return s_last_sdk_reset_reason;
 }
 
 const char *esp_get_idf_version(void) {

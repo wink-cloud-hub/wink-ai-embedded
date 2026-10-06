@@ -60,7 +60,6 @@ static int s_last_tx_data_len = 0;
 
 static char s_last_rx_topic[MAX_TOPIC_LEN];
 static char s_last_rx_data[MAX_DATA_LEN];
-static int s_last_rx_data_len = 0;
 
 static int s_last_msg_id = 0;
 static int s_next_msg_id = 1;
@@ -577,10 +576,8 @@ int esp_mqtt_client_publish(esp_mqtt_client_handle_t client, const char *topic, 
                     size_t rxcp = (size_t)len < sizeof(s_last_rx_data) - 1 ? (size_t)len : sizeof(s_last_rx_data) - 1;
                     memcpy(s_last_rx_data, data, rxcp);
                     s_last_rx_data[rxcp] = '\0';
-                    s_last_rx_data_len = (int)rxcp;
                 } else {
                     s_last_rx_data[0] = '\0';
-                    s_last_rx_data_len = 0;
                 }
 
                 esp_mqtt_event_t event;
@@ -720,7 +717,6 @@ void esp_mqtt_sim_reset(void) {
     s_last_tx_data_len = 0;
     memset(s_last_rx_topic, 0, sizeof(s_last_rx_topic));
     memset(s_last_rx_data, 0, sizeof(s_last_rx_data));
-    s_last_rx_data_len = 0;
     s_last_msg_id = 0;
     memset(s_clients, 0, sizeof(s_clients));
 }
@@ -769,10 +765,8 @@ int esp_mqtt_sim_inject_message(const char *topic, const char *data, int data_le
                     size_t rxcp = (size_t)data_len < sizeof(s_last_rx_data) - 1 ? (size_t)data_len : sizeof(s_last_rx_data) - 1;
                     memcpy(s_last_rx_data, data, rxcp);
                     s_last_rx_data[rxcp] = '\0';
-                    s_last_rx_data_len = (int)rxcp;
                 } else {
                     s_last_rx_data[0] = '\0';
-                    s_last_rx_data_len = 0;
                 }
 
                 esp_mqtt_event_t event;

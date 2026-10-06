@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: LGPL-3.0-only */
-#ifndef ESP_FAULT_H
-#define ESP_FAULT_H
+#ifndef ESP_SIM_FAULT_H
+#define ESP_SIM_FAULT_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -56,4 +56,4 @@ void esp_fault_sim_reset(void);
 }
 #endif
 
-#endif /* ESP_FAULT_H */
+#endif /* ESP_SIM_FAULT_H */

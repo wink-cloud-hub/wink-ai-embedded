@@ -9,7 +9,7 @@
 #include "sim_wifi_env.h"
 #include "sim_network_broker.h"
 #include "esp_netif.h"
-#include "esp_fault.h"
+#include "esp_sim_fault.h"
 #include <string.h>
 
 ESP_EVENT_DEFINE_BASE(WIFI_EVENT);

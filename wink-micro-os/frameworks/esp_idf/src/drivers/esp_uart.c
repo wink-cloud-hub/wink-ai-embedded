@@ -105,8 +105,28 @@ static void on_pal_uart_event(uint8_t port, pal_uart_event_t event, const uint8_
             sim_scheduler_resume((uint32_t)u->waiting_task_id);
             u->waiting_task_id = -1;
         }
-    } else if (event == PAL_UART_EVENT_BUFFER_FULL && u->event_queue) {
-        uart_event_t q_evt = { .type = UART_BUFFER_FULL, .size = 0, .timeout_flag = false };
+    } else if (u->event_queue) {
+        uart_event_type_t type;
+        switch (event) {
+            case PAL_UART_EVENT_RX_FIFO_OVF:
+                type = UART_FIFO_OVF;
+                break;
+            case PAL_UART_EVENT_BUFFER_FULL:
+                type = UART_BUFFER_FULL;
+                break;
+            case PAL_UART_EVENT_BREAK:
+                type = UART_BREAK;
+                break;
+            case PAL_UART_EVENT_PARITY_ERR:
+                type = UART_PARITY_ERR;
+                break;
+            case PAL_UART_EVENT_FRAME_ERR:
+                type = UART_FRAME_ERR;
+                break;
+            default:
+                return;
+        }
+        uart_event_t q_evt = { .type = type, .size = 0, .timeout_flag = false };
         BaseType_t woken = pdFALSE;
         xQueueSendFromISR(u->event_queue, &q_evt, &woken);
     }
