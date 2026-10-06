@@ -106,7 +106,8 @@ $allCarriers = @(
     @{ Name = 'freertos_basic_freertos_smp_usage'; Rel = 'vendor/esp_idfv61/system/freertos_basic_freertos_smp_usage'; Channel = 'FreeRTOS SMP Multicore Task Scheduling & Console Synchronization' },
     @{ Name = 'task_watchdog'; Rel = 'vendor/esp_idfv61/system/task_watchdog'; Channel = 'Task Watchdog Timer (TWDT) Subscription & Health Heartbeat' },
     @{ Name = 'startup_time'; Rel = 'vendor/esp_idfv61/system/startup_time'; Channel = 'System Cold Boot Startup Time & Log Visibility' },
-    @{ Name = 'uart_uart_async_rxtxtasks'; Rel = 'vendor/esp_idfv61/peripherals/uart_uart_async_rxtxtasks'; Channel = 'UART Asynchronous Dual Tasks (RX/TX)' }
+    @{ Name = 'uart_uart_async_rxtxtasks'; Rel = 'vendor/esp_idfv61/peripherals/uart_uart_async_rxtxtasks'; Channel = 'UART Asynchronous Dual Tasks (RX/TX)' },
+    @{ Name = 'uart_uart_echo_rs485'; Rel = 'vendor/esp_idfv61/peripherals/uart_uart_echo_rs485'; Channel = 'UART RS485 Half-Duplex Echo' }
 )
 
 $carriers = @()

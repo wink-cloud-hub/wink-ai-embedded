@@ -1,0 +1,61 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 uart_echo_rs485 headless deterministic proof",
+    "templateId": "esp_idfv61_peripherals_uart_uart_echo_rs485",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1500ms"],
+      "busType": "uart",
+      "busId": 2,
+      "direction": "tx",
+      "matcher": "Start RS485 UART test.",
+      "description": "断言 UART2 RS485 发送初始就绪欢迎标语"
+    },
+    {
+      "type": "INPUT_BUS",
+      "timeUs": "100ms",
+      "mode": "stream",
+      "busType": "uart",
+      "busId": 2,
+      "payload": {
+        "encoding": "utf8",
+        "text": "WINK_RS485"
+      },
+      "description": "向 UART2 RS485 半双工总线注入待回显报文"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["100ms", "2500ms"],
+      "busType": "uart",
+      "busId": 2,
+      "direction": "tx",
+      "matcher": "RS485 Received: [",
+      "description": "断言从 UART2 RS485 观察到半双工回显前缀与报文载荷"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["100ms", "2500ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Received 10 bytes:",
+      "description": "断言 UART0 控制台输出接收到 10 字节日志"
+    }
+  ]
+}

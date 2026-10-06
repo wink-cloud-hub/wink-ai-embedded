@@ -1,0 +1,52 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 uart_echo_rs485 headless framing fault rejection proof",
+    "templateId": "esp_idfv61_peripherals_uart_uart_echo_rs485_fail",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["0ms", "1500ms"],
+      "busType": "uart",
+      "busId": 2,
+      "direction": "tx",
+      "matcher": "Start RS485 UART test.",
+      "description": "断言 UART2 RS485 发送初始就绪标语"
+    },
+    {
+      "type": "INPUT_BUS",
+      "timeUs": "100ms",
+      "mode": "stream",
+      "busType": "uart",
+      "busId": 2,
+      "payload": {
+        "encoding": "utf8",
+        "text": "CORRUPTED_RS485_FAULT"
+      },
+      "description": "向 UART2 RS485 总线注入异常/边界数据流"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["100ms", "2500ms"],
+      "busType": "uart",
+      "busId": 2,
+      "direction": "tx",
+      "matcher": "RS485 Received: [",
+      "description": "断言半双工总线正确处理并回显异常报文数据"
+    }
+  ]
+}

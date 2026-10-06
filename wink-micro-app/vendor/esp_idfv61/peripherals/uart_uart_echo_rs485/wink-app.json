@@ -1,0 +1,15 @@
+{
+  "app_name": "esp_idfv61_uart_uart_echo_rs485",
+  "display_name": "Espressif ESP-IDF UART RS485 Echo",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/peripherals/uart/uart_echo_rs485/main",
+    "files": {
+      "rs485_example.c": "9b08c493a340bda140ab6eaea24c21bf0db033e672e93dca12f654811132320a"
+    }
+  },
+  "devices": {}
+}

@@ -1,0 +1,120 @@
+{
+  "timestamp": "2026-10-06T11:03:19.181Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 uart_echo_rs485 headless deterministic proof",
+        "templateId": "esp_idfv61_peripherals_uart_uart_echo_rs485",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 93
+      },
+      "summary": {
+        "totalSteps": 5,
+        "passedSteps": 5,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "Start RS485 UART test.\r\n",
+              "\r\nRS485 Received: [",
+              "WINK_RS485]\r\n",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              "."
+            ]
+          },
+          "expected": "Start RS485 UART test."
+        },
+        {
+          "stepIndex": 2,
+          "type": "INPUT_BUS",
+          "status": "passed",
+          "timeUs": "100000"
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\r\nRS485 Received: [",
+              "WINK_RS485]\r\n",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              ".",
+              "."
+            ]
+          },
+          "expected": "RS485 Received: ["
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (101) RS485_ECHO_APP: Received 10 bytes:\u001b[0m\n"
+            ]
+          },
+          "expected": "Received 10 bytes:"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}
