@@ -1,0 +1,15 @@
+{
+  "app_name": "esp_idfv61_peripherals_dedicated_gpio_soft_uart",
+  "display_name": "Espressif ESP-IDF Dedicated GPIO Soft UART",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/peripherals/dedicated_gpio/soft_uart/main",
+    "files": {
+      "soft_uart_main.c": "ab970da15d29eef8c7466e6338def6b4bce362286d6a846e18ec3cd18e5a7d1a"
+    }
+  },
+  "devices": {}
+}
