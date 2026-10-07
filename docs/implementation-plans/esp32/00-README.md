@@ -29,6 +29,7 @@
 | ESP-IDF 深度架构评估与官方示例迁移总纲 | M5~M8 | 📋 就绪 (战略路线已发布) | [2026-09-29-esp-idf-simulation-deep-architecture-analysis-and-migration-strategy.md](./2026-09-29-esp-idf-simulation-deep-architecture-analysis-and-migration-strategy.md) |
 | 自治自愈 Loop 底座主计划 | M9 | 📋 就绪 (v2.3 双 Agent 对抗自愈) | [2026-10-02-autonomous-self-healing-loop-plan.md](./2026-10-02-autonomous-self-healing-loop-plan.md) |
 | Loop 外置插件外设自主闭环与规范约束计划 | M10 | 📋 就绪 (v1.0 外设总纲融入与防腐) | [2026-10-02-loop-peripheral-plugin-governance-plan.md](./2026-10-02-loop-peripheral-plugin-governance-plan.md) |
+| **高 ROI 核心功能实施规划与执行路线图** | M11 | 📋 就绪 (四维 ROI 模型与三波执行梯队) | [2026-10-07-esp-idf-high-roi-checklist-execution-plan.md](./2026-10-07-esp-idf-high-roi-checklist-execution-plan.md) |
 
 ## 相关架构规范与决策
 

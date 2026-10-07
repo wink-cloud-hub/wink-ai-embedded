@@ -8,6 +8,7 @@
 >
 > 📖 **官方规范与进度总账**：
 > - 📋 **[CHECKLIST.md](CHECKLIST.md)**：ESP-IDF v6.1 478 个官方示例全量普查总账与核对大表
+> - 🎯 **[高 ROI 核心功能实施规划与执行路线图](../../../docs/implementation-plans/esp32/2026-10-07-esp-idf-high-roi-checklist-execution-plan.md)**：四维 ROI 模型、20 个核心标杆与三波推进梯队
 > - 🛠️ **[PLAYBOOK.md](.governance/specs/PLAYBOOK.md)**：官方示例端到端仿真适配与无头实证标准执行手册 (SOP)
 > - 📜 **[CLASSIFICATION-SPEC.md](.governance/specs/CLASSIFICATION-SPEC.md)**：分级分类管治法典与四道门禁规范
 > - 🏛️ **[架构治理资产库](.governance/)**：能力字典、数据 SSOT、门禁系统（Gate 1~4）与自动化脚本集
