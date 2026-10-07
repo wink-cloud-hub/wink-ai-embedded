@@ -17,8 +17,8 @@
 ## 1. 背景与问题陈述 (Problem Statement)
 
 截至 2026-10-07，ESP-IDF v6.1 官方示例全量仿真核对总账（478 个示例）的适配现状为：
-- `[x]` **已完成实证 (Verified)**：**37 项**（覆盖 Blink、GPIO、I2C/SPI EEPROM、UART RS485/Events、ADC/DAC、GPTimer、LEDC 调光、NVS、SPIFFS、WiFi STA/SoftAP、HTTP Client、MQTT TCP、NimBLE 广播/从机）。
-- `[ ]` **规划排期中 (In-Scope Planned)**：**254 项**。
+- `[x]` **已完成实证 (Verified)**：**39 项**（覆盖 Blink、GPIO、I2C/SPI EEPROM、UART RS485/Events、ADC/DAC、GPTimer、LEDC 调光、NVS、SPIFFS、WiFi STA/SoftAP、HTTP Client、MQTT TCP、NimBLE 广播/从机、HTTP Server Simple/RESTful）。
+- `[ ]` **规划排期中 (In-Scope Planned)**：**252 项**。
 - `[-]` **产品排除 / 暂缓投入 (Out-of-Scope / Deferred)**：**187 项**。
 
 ### 核心痛点与风险
@@ -272,7 +272,7 @@ graph LR
 | 波次 | 编号 | 官方示例 | 优先级 | 泳道 | 责任状态 | 关联 App 目录 |
 |:---:|:---:|:---|:---:|:---:|:---:|:---|
 | **Wave 1** | #196 | `protocols/http_server/simple` | P1 | Lane 6 | ✅ 已完成 (Verified) | `protocols/http_server_simple` |
-| **Wave 1** | #195 | `protocols/http_server/restful_server` | P1 | Lane 6 | 待认领 | `protocols/http_server_restful` |
+| **Wave 1** | #195 | `protocols/http_server/restful_server` | P1 | Lane 6 | ✅ 已完成 (Verified) | `protocols/http_server_restful_server` |
 | **Wave 1** | #197 | `protocols/http_server/ws_echo_server` | P1 | Lane 6 | 待认领 | `protocols/http_server_ws` |
 | **Wave 1** | #232 | `wifi/softap_sta` | P1 | Lane 6 | 待认领 | `wifi/wifi_softap_sta` |
 | **Wave 1** | #209 | `protocols/sntp` | P1 | Lane 6 | 待认领 | `protocols/sntp` |
