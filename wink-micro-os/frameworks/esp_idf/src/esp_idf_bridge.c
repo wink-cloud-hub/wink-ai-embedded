@@ -89,6 +89,8 @@ void esp_restart(void) {
     /* Simulate noreturn: yield CPU so main loop can process the pending reset.
      * Guard with scheduler check in case called before scheduler starts. */
     if (sim_scheduler_current_id() != SIM_SCHED_NO_READY) {
+        uint32_t cur = sim_scheduler_current_id();
+        sim_scheduler_block(cur, 0, pal_os_get_us(), 0);
         sim_scheduler_yield_context();
         for (;;) { sim_scheduler_yield_context(); } /* noreturn guard */
     }

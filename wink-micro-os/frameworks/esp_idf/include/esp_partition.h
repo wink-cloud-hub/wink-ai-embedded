@@ -144,11 +144,7 @@ esp_err_t esp_partition_get_blockdev(const esp_partition_type_t type, const esp_
 
 uint32_t esp_partition_get_main_flash_sector_size(void);
 
-#if defined(__WINK_SIM__)
-esp_err_t esp_partition_get_sha256(const esp_partition_t* partition, uint8_t* sha_256) WINK_SLA_ERROR("Wink SLA Violation: esp_partition_get_sha256 out of Core 8 scope.");
-#else
 esp_err_t esp_partition_get_sha256(const esp_partition_t* partition, uint8_t* sha_256);
-#endif
 
 void esp_partition_iterator_release(esp_partition_iterator_t iterator);
 

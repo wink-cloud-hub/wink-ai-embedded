@@ -114,7 +114,8 @@ $allCarriers = @(
     @{ Name = 'softap_sta'; Rel = 'vendor/esp_idfv61/wifi/softap_sta'; Channel = 'Wi-Fi SoftAP & Station Concurrent Dual Netif' },
     @{ Name = 'sntp'; Rel = 'vendor/esp_idfv61/protocols/sntp'; Channel = 'SNTP Network Time Protocol' },
     @{ Name = 'sockets_tcp_client'; Rel = 'vendor/esp_idfv61/protocols/sockets_tcp_client'; Channel = 'BSD Sockets TCP Client & Echo Stream' },
-    @{ Name = 'sockets_tcp_server'; Rel = 'vendor/esp_idfv61/protocols/sockets_tcp_server'; Channel = 'BSD Sockets TCP Server & Retransmit' }
+    @{ Name = 'sockets_tcp_server'; Rel = 'vendor/esp_idfv61/protocols/sockets_tcp_server'; Channel = 'BSD Sockets TCP Server & Retransmit' },
+    @{ Name = 'ota_simple_ota_example'; Rel = 'vendor/esp_idfv61/system/ota_simple_ota_example'; Channel = 'OTA Firmware Upgrade & HTTPS Client' }
 )
 
 $carriers = @()
