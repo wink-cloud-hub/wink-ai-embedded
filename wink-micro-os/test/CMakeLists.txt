@@ -1318,7 +1318,7 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     if(MSVC)
         set(ESP_IDF_TEST_COMPILE_OPTIONS /W4 /WX /wd4100 /wd4210 /wd4201 /we4311 /we4312)
     else()
-        set(ESP_IDF_TEST_COMPILE_OPTIONS -Wall -Wextra -Werror -Wno-unused-parameter -Wpointer-to-int-cast -Wint-to-pointer-cast)
+        set(ESP_IDF_TEST_COMPILE_OPTIONS -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-function -Wno-unused-result -Wpointer-to-int-cast -Wint-to-pointer-cast)
     endif()
 
     # Coverage instrumentation (T-011): framework library only; PUBLIC link options
@@ -1741,6 +1741,27 @@ if(ENABLE_ESP_IDF_FRAMEWORK AND TARGET wink_framework_esp_idf)
     wink_test_attach_manifest(test_esp_uart)
     add_test(NAME test_esp_uart COMMAND test_esp_uart)
     set_tests_properties(test_esp_uart PROPERTIES LABELS "esp_idf;core")
+
+    add_executable(test_esp_dedic_gpio
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_dedic_gpio.c
+        ${UNITY_DIR}/unity.c
+        ${HOST_PAL_OBJECT}
+    )
+    target_include_directories(test_esp_dedic_gpio PRIVATE
+        ${UNITY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/src/core
+        ${CMAKE_CURRENT_SOURCE_DIR}/../targets/common/include
+    )
+    target_link_libraries(test_esp_dedic_gpio PRIVATE wink_framework_esp_idf dal)
+    target_compile_options(test_esp_dedic_gpio PRIVATE ${ESP_IDF_TEST_COMPILE_OPTIONS})
+    if(TARGET generate_config)
+        add_dependencies(test_esp_dedic_gpio generate_config)
+    endif()
+    wink_test_attach_manifest(test_esp_dedic_gpio)
+    add_test(NAME test_esp_dedic_gpio COMMAND test_esp_dedic_gpio)
+    set_tests_properties(test_esp_dedic_gpio PROPERTIES LABELS "esp_idf;core")
 
     add_executable(test_esp_gptimer
         ${CMAKE_CURRENT_SOURCE_DIR}/../frameworks/esp_idf/test/core/test_esp_gptimer.c
