@@ -21,6 +21,7 @@ extern void esp_wifi_sim_reset(void);
 extern void esp_mqtt_sim_reset(void);
 extern void esp_http_client_sim_reset(void);
 extern void sim_http_responder_reset(void);
+extern void esp_http_server_sim_reset(void);
 extern void esp_nimble_sim_reset(void);
 extern void esp_event_loop_sim_reset(void);
 extern void esp_timer_sim_reset(void);
@@ -137,6 +138,7 @@ void pal_wasm_target_clear_pending_reset(void) {
     /* Stage 1: Disconnect upper application protocol clients */
     esp_http_client_sim_reset();
     sim_http_responder_reset();
+    esp_http_server_sim_reset();
     esp_mqtt_sim_reset();
 
     /* Stage 2: Reset Wi-Fi subsystem */

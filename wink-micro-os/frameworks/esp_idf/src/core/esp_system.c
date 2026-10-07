@@ -154,3 +154,15 @@ int usleep(useconds_t us) {
     return 0;
 }
 
+unsigned int sleep(unsigned int seconds) {
+    if (seconds == 0) {
+        return 0;
+    }
+    TickType_t ticks = (TickType_t)(seconds * configTICK_RATE_HZ);
+    if (ticks == 0) {
+        ticks = 1;
+    }
+    vTaskDelay(ticks);
+    return 0;
+}
+
