@@ -406,6 +406,18 @@ esp_err_t httpd_resp_send_custom_err(httpd_req_t *req, const char *status, const
     return httpd_resp_send(req, msg ? msg : status, HTTPD_RESP_USE_STRLEN);
 }
 
+bool httpd_uri_match_wildcard(const char *uri_template, const char *uri_to_match, size_t match_upto) {
+    if (!uri_template || !uri_to_match) return false;
+    const size_t tpl_len = strlen(uri_template);
+    if (tpl_len > 0 && uri_template[tpl_len - 1] == '*') {
+        size_t prefix_len = tpl_len - 1;
+        if (match_upto < prefix_len) return false;
+        return strncmp(uri_template, uri_to_match, prefix_len) == 0;
+    }
+    if (tpl_len != match_upto) return false;
+    return strncmp(uri_template, uri_to_match, match_upto) == 0;
+}
+
 /* Dispatch a simulated incoming request to the HTTP server */
 WINK_SIM_EXPORT int sim_http_server_dispatch_request(
     const char *method_str,
@@ -463,7 +475,16 @@ WINK_SIM_EXPORT int sim_http_server_dispatch_request(
     for (int i = 0; i < MAX_URI_HANDLERS; i++) {
         if (s_server.handlers[i].used) {
             httpd_uri_t *u = &s_server.handlers[i].uri_handler;
-            if (strcmp(u->uri, s_curr_req.uri) == 0) {
+            bool is_match = false;
+            if (s_server.config.uri_match_fn) {
+                typedef bool (*httpd_match_fn_t)(const char *, const char *, size_t);
+                is_match = ((httpd_match_fn_t)s_server.config.uri_match_fn)(
+                    u->uri, s_curr_req.uri, strlen(s_curr_req.uri)
+                );
+            } else {
+                is_match = (strcmp(u->uri, s_curr_req.uri) == 0);
+            }
+            if (is_match) {
                 if (u->method == HTTP_ANY || (int)u->method == s_curr_req.method) {
                     matched = &s_server.handlers[i];
                     break;

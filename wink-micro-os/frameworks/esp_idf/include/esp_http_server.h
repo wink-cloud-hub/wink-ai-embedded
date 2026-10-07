@@ -85,6 +85,9 @@ typedef enum {
 
 typedef void* httpd_handle_t;
 typedef void (*httpd_free_ctx_fn_t)(void *ctx);
+typedef bool (*httpd_uri_match_func_t)(const char *uri_template, const char *uri_to_match, size_t match_upto);
+
+bool httpd_uri_match_wildcard(const char *uri_template, const char *uri_to_match, size_t match_upto);
 
 typedef struct httpd_config {
     unsigned    task_priority;
