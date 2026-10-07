@@ -1,0 +1,106 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 SNTP Network Time Protocol Deterministic Proof",
+    "templateId": "esp_idfv61_protocols_sntp",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Initializing and starting SNTP",
+      "description": "断言系统初始化启动 SNTP 服务"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "server 0: pool.ntp.org",
+      "description": "断言配置的 NTP 服务器列表正确打印并包含 pool.ntp.org"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "2500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Notification of a time synchronization event",
+      "description": "断言收到 SNTP 授时同步回调通知"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "2500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "SNTP event: time synced (UTC): 2026-10-07 10:15:30.123456",
+      "description": "断言系统时间事件处理函数成功接收并对齐 2026-10-07 UTC 绝对时间戳"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "2500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "The current date/time in New York is:",
+      "description": "断言系统成功完成纽约时区 (EST5EDT) 本地时间转换与输出"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "2500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "The current date/time in Shanghai is:",
+      "description": "断言系统成功完成上海时区 (CST-8) 本地时间转换与输出"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "2500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Entering deep sleep for 10 seconds",
+      "description": "断言授时完成后系统进入深度休眠节电模式"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "app_name": "esp_idfv61_protocols_sntp",
+  "display_name": "Espressif ESP-IDF SNTP Network Time Protocol",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/protocols/sntp/main",
+    "files": {
+      "sntp_example_main.c": "189600773c4afa58eed0c36c5944ce2f23addd58897a7284df34635948e071ba"
+    }
+  },
+  "devices": {}
+}

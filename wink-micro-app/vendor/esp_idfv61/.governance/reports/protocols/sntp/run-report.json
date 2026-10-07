@@ -1,0 +1,134 @@
+{
+  "timestamp": "2026-10-07T10:29:52.927Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 SNTP Network Time Protocol Deterministic Proof",
+        "templateId": "esp_idfv61_protocols_sntp",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 110
+      },
+      "summary": {
+        "totalSteps": 8,
+        "passedSteps": 8,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) example: Boot count: 1\u001b[0m\n\u001b[0;32mI (0) example: Time is not set yet. Connecting to WiFi and getting time over NTP.\u001b[0m\n\u001b[0;32mI (0) example: Initializing and starting SNTP\u001b[0m\n\u001b[0;32mI (0) example: List of configured NTP servers:\u001b[0m\n\u001b[0;32mI (0) example: server 0: pool.ntp.org\u001b[0m\n\u001b[0;32mI (0) example: server 1: pool.ntp.org\u001b[0m\n\u001b[0;32mI (50) example: Notification of a time synchronization event\u001b[0m\n\u001b[0;32mI (50) example: SNTP event: time synced (UTC): 2026-10-07 10:15:30.123456\u001b[0m\n",
+              "\u001b[0;32mI (100) example: The current date/time in New York is: Wed Oct  7 18:15:30 2026\u001b[0m\n\u001b[0;32mI (100) example: The current date/time in Shanghai is: Wed Oct  7 18:15:30 2026\u001b[0m\n\u001b[0;32mI (100) example: Entering deep sleep for 10 seconds\u001b[0m\n"
+            ]
+          },
+          "expected": "Initializing and starting SNTP"
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) example: Boot count: 1\u001b[0m\n\u001b[0;32mI (0) example: Time is not set yet. Connecting to WiFi and getting time over NTP.\u001b[0m\n\u001b[0;32mI (0) example: Initializing and starting SNTP\u001b[0m\n\u001b[0;32mI (0) example: List of configured NTP servers:\u001b[0m\n\u001b[0;32mI (0) example: server 0: pool.ntp.org\u001b[0m\n\u001b[0;32mI (0) example: server 1: pool.ntp.org\u001b[0m\n\u001b[0;32mI (50) example: Notification of a time synchronization event\u001b[0m\n\u001b[0;32mI (50) example: SNTP event: time synced (UTC): 2026-10-07 10:15:30.123456\u001b[0m\n",
+              "\u001b[0;32mI (100) example: The current date/time in New York is: Wed Oct  7 18:15:30 2026\u001b[0m\n\u001b[0;32mI (100) example: The current date/time in Shanghai is: Wed Oct  7 18:15:30 2026\u001b[0m\n\u001b[0;32mI (100) example: Entering deep sleep for 10 seconds\u001b[0m\n"
+            ]
+          },
+          "expected": "server 0: pool.ntp.org"
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) example: Boot count: 1\u001b[0m\n\u001b[0;32mI (0) example: Time is not set yet. Connecting to WiFi and getting time over NTP.\u001b[0m\n\u001b[0;32mI (0) example: Initializing and starting SNTP\u001b[0m\n\u001b[0;32mI (0) example: List of configured NTP servers:\u001b[0m\n\u001b[0;32mI (0) example: server 0: pool.ntp.org\u001b[0m\n\u001b[0;32mI (0) example: server 1: pool.ntp.org\u001b[0m\n\u001b[0;32mI (50) example: Notification of a time synchronization event\u001b[0m\n\u001b[0;32mI (50) example: SNTP event: time synced (UTC): 2026-10-07 10:15:30.123456\u001b[0m\n",
+              "\u001b[0;32mI (100) example: The current date/time in New York is: Wed Oct  7 18:15:30 2026\u001b[0m\n\u001b[0;32mI (100) example: The current date/time in Shanghai is: Wed Oct  7 18:15:30 2026\u001b[0m\n\u001b[0;32mI (100) example: Entering deep sleep for 10 seconds\u001b[0m\n"
+            ]
+          },
+          "expected": "Notification of a time synchronization event"
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) example: Boot count: 1\u001b[0m\n\u001b[0;32mI (0) example: Time is not set yet. Connecting to WiFi and getting time over NTP.\u001b[0m\n\u001b[0;32mI (0) example: Initializing and starting SNTP\u001b[0m\n\u001b[0;32mI (0) example: List of configured NTP servers:\u001b[0m\n\u001b[0;32mI (0) example: server 0: pool.ntp.org\u001b[0m\n\u001b[0;32mI (0) example: server 1: pool.ntp.org\u001b[0m\n\u001b[0;32mI (50) example: Notification of a time synchronization event\u001b[0m\n\u001b[0;32mI (50) example: SNTP event: time synced (UTC): 2026-10-07 10:15:30.123456\u001b[0m\n",
+              "\u001b[0;32mI (100) example: The current date/time in New York is: Wed Oct  7 18:15:30 2026\u001b[0m\n\u001b[0;32mI (100) example: The current date/time in Shanghai is: Wed Oct  7 18:15:30 2026\u001b[0m\n\u001b[0;32mI (100) example: Entering deep sleep for 10 seconds\u001b[0m\n"
+            ]
+          },
+          "expected": "SNTP event: time synced (UTC): 2026-10-07 10:15:30.123456"
+        },
+        {
+          "stepIndex": 5,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) example: Boot count: 1\u001b[0m\n\u001b[0;32mI (0) example: Time is not set yet. Connecting to WiFi and getting time over NTP.\u001b[0m\n\u001b[0;32mI (0) example: Initializing and starting SNTP\u001b[0m\n\u001b[0;32mI (0) example: List of configured NTP servers:\u001b[0m\n\u001b[0;32mI (0) example: server 0: pool.ntp.org\u001b[0m\n\u001b[0;32mI (0) example: server 1: pool.ntp.org\u001b[0m\n\u001b[0;32mI (50) example: Notification of a time synchronization event\u001b[0m\n\u001b[0;32mI (50) example: SNTP event: time synced (UTC): 2026-10-07 10:15:30.123456\u001b[0m\n",
+              "\u001b[0;32mI (100) example: The current date/time in New York is: Wed Oct  7 18:15:30 2026\u001b[0m\n\u001b[0;32mI (100) example: The current date/time in Shanghai is: Wed Oct  7 18:15:30 2026\u001b[0m\n\u001b[0;32mI (100) example: Entering deep sleep for 10 seconds\u001b[0m\n"
+            ]
+          },
+          "expected": "The current date/time in New York is:"
+        },
+        {
+          "stepIndex": 6,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) example: Boot count: 1\u001b[0m\n\u001b[0;32mI (0) example: Time is not set yet. Connecting to WiFi and getting time over NTP.\u001b[0m\n\u001b[0;32mI (0) example: Initializing and starting SNTP\u001b[0m\n\u001b[0;32mI (0) example: List of configured NTP servers:\u001b[0m\n\u001b[0;32mI (0) example: server 0: pool.ntp.org\u001b[0m\n\u001b[0;32mI (0) example: server 1: pool.ntp.org\u001b[0m\n\u001b[0;32mI (50) example: Notification of a time synchronization event\u001b[0m\n\u001b[0;32mI (50) example: SNTP event: time synced (UTC): 2026-10-07 10:15:30.123456\u001b[0m\n",
+              "\u001b[0;32mI (100) example: The current date/time in New York is: Wed Oct  7 18:15:30 2026\u001b[0m\n\u001b[0;32mI (100) example: The current date/time in Shanghai is: Wed Oct  7 18:15:30 2026\u001b[0m\n\u001b[0;32mI (100) example: Entering deep sleep for 10 seconds\u001b[0m\n"
+            ]
+          },
+          "expected": "The current date/time in Shanghai is:"
+        },
+        {
+          "stepIndex": 7,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) example: Boot count: 1\u001b[0m\n\u001b[0;32mI (0) example: Time is not set yet. Connecting to WiFi and getting time over NTP.\u001b[0m\n\u001b[0;32mI (0) example: Initializing and starting SNTP\u001b[0m\n\u001b[0;32mI (0) example: List of configured NTP servers:\u001b[0m\n\u001b[0;32mI (0) example: server 0: pool.ntp.org\u001b[0m\n\u001b[0;32mI (0) example: server 1: pool.ntp.org\u001b[0m\n\u001b[0;32mI (50) example: Notification of a time synchronization event\u001b[0m\n\u001b[0;32mI (50) example: SNTP event: time synced (UTC): 2026-10-07 10:15:30.123456\u001b[0m\n",
+              "\u001b[0;32mI (100) example: The current date/time in New York is: Wed Oct  7 18:15:30 2026\u001b[0m\n\u001b[0;32mI (100) example: The current date/time in Shanghai is: Wed Oct  7 18:15:30 2026\u001b[0m\n\u001b[0;32mI (100) example: Entering deep sleep for 10 seconds\u001b[0m\n"
+            ]
+          },
+          "expected": "Entering deep sleep for 10 seconds"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}
