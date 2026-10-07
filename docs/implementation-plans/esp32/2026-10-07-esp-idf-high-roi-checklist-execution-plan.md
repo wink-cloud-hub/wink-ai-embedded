@@ -273,7 +273,7 @@ graph LR
 |:---:|:---:|:---|:---:|:---:|:---:|:---|
 | **Wave 1** | #196 | `protocols/http_server/simple` | P1 | Lane 6 | ✅ 已完成 (Verified) | `protocols/http_server_simple` |
 | **Wave 1** | #195 | `protocols/http_server/restful_server` | P1 | Lane 6 | ✅ 已完成 (Verified) | `protocols/http_server_restful_server` |
-| **Wave 1** | #197 | `protocols/http_server/ws_echo_server` | P1 | Lane 6 | 待认领 | `protocols/http_server_ws` |
+| **Wave 1** | #197 | `protocols/http_server/ws_echo_server` | P1 | Lane 6 | ✅ 已完成 (Verified) | `protocols/http_server_ws_echo_server` |
 | **Wave 1** | #232 | `wifi/softap_sta` | P1 | Lane 6 | 待认领 | `wifi/wifi_softap_sta` |
 | **Wave 1** | #209 | `protocols/sntp` | P1 | Lane 6 | 待认领 | `protocols/sntp` |
 | **Wave 1** | #212 | `protocols/sockets/tcp_client` | P1 | Lane 6 | 待认领 | `protocols/sockets_tcp_client` |

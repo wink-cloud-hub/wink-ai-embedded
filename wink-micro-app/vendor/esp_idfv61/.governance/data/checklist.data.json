@@ -8,9 +8,9 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 39,
-    "verified_configs": 39,
-    "verified": 28
+    "audited": 40,
+    "verified_configs": 40,
+    "verified": 29
   },
   "entries": [
     {
@@ -12882,10 +12882,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "arch_team",
+        "audited_at": "2026-10-07T05:49:12Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -12919,18 +12921,40 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/protocols_http_server_ws_echo_server.scenario.json",
+            "scenario_path": "protocols/http_server_ws_echo_server/unisim-scenarios/protocols_http_server_ws_echo_server.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "positive_cases": [
+              {
+                "name": "WebSocket 握手、数据回环与异步帧推送",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "200"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "注入非法 Token 握手请求 GET /auth?token=invalid_token",
+                "expect_error": "403",
+                "detects": "WebSocket pre_handshake_cb 非法 Token 鉴权拦截防御"
+              }
+            ],
+            "sla_error_symbol": "HTTPD_403_FORBIDDEN"
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261007-esp.protocols.http_server.ws_echo_server-verified",
+            "assets_sha256": "61fe79236591625f66d8ea1d03e04a0ba69a58a14739baa3f191424ed39073d0",
+            "scenario_sha256": "d9ce6c12cb4118e0e7b6301af820808e481c79b8a246f43cf4151ef0c214ddae",
+            "execution_report_ref": ".governance/reports/protocols/http_server_ws_echo_server/run-report.json",
+            "verified_commit": "979e6c93885e4b8afa0c65c4f5b34a176f6450eb",
+            "verified_at": "2026-10-07T05:53:29Z"
+          }
         }
       ],
       "target_app_dir": "protocols/http_server_ws_echo_server"
