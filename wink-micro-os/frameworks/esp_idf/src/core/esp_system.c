@@ -166,3 +166,16 @@ unsigned int sleep(unsigned int seconds) {
     return 0;
 }
 
+void esp_deep_sleep(uint64_t time_in_us) {
+    (void)time_in_us;
+    /* In simulation, sleep task permanently to emulate deep sleep */
+    for (;;) {
+        vTaskDelay(portMAX_DELAY);
+    }
+}
+
+void esp_deep_sleep_start(void) {
+    esp_deep_sleep(UINT64_MAX);
+}
+
+

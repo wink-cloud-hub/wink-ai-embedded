@@ -355,6 +355,9 @@ void esp_wake_deep_sleep(void) WINK_SLA_ERROR("Wink SLA Violation: esp_wake_deep
 void esp_wake_deep_sleep(void);
 #endif
 
+void esp_deep_sleep(uint64_t time_in_us);
+void esp_deep_sleep_start(void);
+
 #ifdef __cplusplus
 }
 #endif
