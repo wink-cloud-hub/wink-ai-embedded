@@ -1,0 +1,15 @@
+{
+  "app_name": "esp_idfv61_http_server_simple",
+  "display_name": "Espressif ESP-IDF Simple HTTP Server",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/protocols/http_server/simple/main",
+    "files": {
+      "main.c": "6691c523df4a2b2e688c2a7e1d581000026dac36ffbd93937ea9413442547f23"
+    }
+  },
+  "devices": {}
+}

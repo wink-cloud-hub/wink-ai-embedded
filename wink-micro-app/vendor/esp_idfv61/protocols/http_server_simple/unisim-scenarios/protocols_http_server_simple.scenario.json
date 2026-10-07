@@ -1,0 +1,73 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 http_server_simple headless deterministic proof",
+    "templateId": "esp_idfv61_http_server_simple",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "0ms",
+      "target": "http:server:state",
+      "matcher": "RUNNING",
+      "description": "断言嵌入式 HTTP 服务器成功启动并处于 RUNNING 状态"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "100ms",
+      "target": "http:server:port",
+      "matcher": 80,
+      "description": "断言 HTTP 服务器正确绑定并监听 80 端口"
+    },
+    {
+      "type": "INJECT_NET_FIXTURE",
+      "timeUs": "200ms",
+      "protocol": "http",
+      "description": "向 HTTP 服务器注入 GET /hello 与 POST /echo 请求",
+      "requests": [
+        {
+          "method": "GET",
+          "uri": "/hello?query1=myval1&query2=myval2",
+          "host": "localhost"
+        },
+        {
+          "method": "POST",
+          "uri": "/echo",
+          "body": "Hello HTTP Server from UniSim!"
+        }
+      ]
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "http:server:request_count",
+      "matcher": { "$gte": 2 },
+      "description": "断言 HTTP 服务器已成功处理至少 2 次业务请求"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "http:server:status_code",
+      "matcher": 200,
+      "description": "断言 POST /echo 请求返回 200 OK 状态码"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "http:server:last_uri",
+      "matcher": "/echo",
+      "description": "断言最近处理的请求路由为 /echo"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "http:server:last_resp",
+      "matcher": "Hello HTTP Server from UniSim!",
+      "description": "断言 POST /echo 请求回环响应载荷与发送内容完全一致"
+    }
+  ]
+}
