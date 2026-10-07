@@ -8,9 +8,9 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 38,
-    "verified_configs": 38,
-    "verified": 27
+    "audited": 39,
+    "verified_configs": 39,
+    "verified": 28
   },
   "entries": [
     {
@@ -89,7 +89,7 @@
           "evidence": {
             "backend": "wasm_simulation",
             "run_id": "run-20261006-esp.get_started.blink-verified",
-            "assets_sha256": "abfb9199af29baffdf77dbe96bd796abae6a2a6e76d792fd03eb98cffb2320dd",
+            "assets_sha256": "344c06497d36839185ae0378f2a84edb425cc543371234e0bd80ea41c7c363e4",
             "scenario_sha256": "48e7494366d56bfab523750ba94359c349604f1437ab7c44f0a5f333f503c157",
             "execution_report_ref": ".governance/reports/get-started/blink_gpio/run-report.json",
             "verified_commit": "f84fc383a4a656a5f47e3904f4b19cd6fbadb36b",
@@ -12706,10 +12706,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "arch_team",
+        "audited_at": "2026-10-07T04:33:23Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -12743,18 +12745,40 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/protocols_http_server_restful_server.scenario.json",
+            "scenario_path": "protocols/http_server_restful_server/unisim-scenarios/protocols_http_server_restful_server.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "positive_cases": [
+              {
+                "name": "RESTful 请求处理与 JSON 响应",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "200"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "未注册异常路由 GET /api/v1/unregistered_endpoint 请求注入",
+                "expect_error": "404",
+                "detects": "HTTP 服务器 404 Not Found 异常路由拦截防御"
+              }
+            ],
+            "sla_error_symbol": "HTTPD_404_NOT_FOUND"
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261007-esp.protocols.http_server.restful_server-verified",
+            "assets_sha256": "bcda45a3d0ac895c01ac9a70989903f330fe9af18202162366601e0435a8fc1c",
+            "scenario_sha256": "ffa781c256e66adf7ec25df77b404a2f99e558c159ec34c3b559f48d9671aa81",
+            "execution_report_ref": ".governance/reports/protocols/http_server_restful_server/run-report.json",
+            "verified_commit": "9137ebbb3852ae71d18cae6890d7be1be4ab3138",
+            "verified_at": "2026-10-07T04:33:23Z"
+          }
         }
       ],
       "target_app_dir": "protocols/http_server_restful_server"
@@ -12837,7 +12861,7 @@
           "evidence": {
             "backend": "wasm_simulation",
             "run_id": "20261007T025045Z-51a5440cb0eb46e59a2facd411a184dd",
-            "assets_sha256": "67fbd2fa2eff83ac30d82023f18f46b6620e1d5c2e2a061901eb6e28c1e542bb",
+            "assets_sha256": "2e97784da9b287538a722f1b4b783d403996e08e79b9c20c318770adfd615d1d",
             "scenario_sha256": "ac98689d3bc25a761916d348cfa153e2dc14b7419f67964886b98d5327825cb1",
             "execution_report_ref": ".governance/reports/protocols/http_server_simple/run-report.json",
             "verified_commit": "f891b40090edd6ec2f2243d2c366dc3fd079f6a3",

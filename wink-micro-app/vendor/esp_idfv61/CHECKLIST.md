@@ -14,10 +14,10 @@
 ## 一、 总体适配进度统计
 
 - **官方独立示例总数**：**478 个**
-  - `[x]` **已完成六要素实证 (Verified)**：**38 项**
+  - `[x]` **已完成六要素实证 (Verified)**：**39 项**
     - `🟢` **双实证闭环 (Twin-Proof: Green ✅ + Red 🛡️)**：**0 项**
   - `[?]` **存量隔离待补凭证 (Quarantined Debt)**：**0 项**（14 天 TTL 过期硬阻断，至 `2026-10-13`）
-  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**253 项**
+  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**252 项**
   - `[-]` **明确产品排除 / 暂缓投入 (Out-of-Scope / Deferred)**：**187 项**（编译期 `WINK_SLA_ERROR` Fail-Loud 阻断）
   - `?` **待深度审定 (Pending Audit / Unknown Scope)**：**0 项**
 
@@ -28,7 +28,7 @@
 | 01 | [基础快速起步 (Get-Started)](#get-started) | 2 项 | `#001 ~ #002` | 2 项 | 0 项 |
 | 02 | [片上与总线外设 (Peripherals)](#peripherals) | 114 项 | `#003 ~ #116` | 16 项 | 0 项 |
 | 03 | [操作系统与核心系统调用 (System & OS)](#system) | 68 项 | `#117 ~ #184` | 7 项 | 0 项 |
-| 04 | [网络与应用层通信协议 (Protocols)](#protocols) | 35 项 | `#185 ~ #219` | 3 项 | 0 项 |
+| 04 | [网络与应用层通信协议 (Protocols)](#protocols) | 35 项 | `#185 ~ #219` | 4 项 | 0 项 |
 | 05 | [Wi-Fi 无线局域网 (Wi-Fi)](#wifi) | 24 项 | `#220 ~ #243` | 4 项 | 0 项 |
 | 06 | [蓝牙协议栈 (Bluetooth)](#bluetooth) | 147 项 | `#244 ~ #390` | 2 项 | 0 项 |
 | 07 | [片上存储与文件系统 (Storage)](#storage) | 27 项 | `#391 ~ #417` | 4 项 | 0 项 |
@@ -320,7 +320,7 @@
 ---
 
 <a id="protocols"></a>
-### 网络与应用层通信协议 (Protocols)（共 35 项 | 编号 `#185 ~ #219` | 已实证: 3 项 | 隔离待补: 0 项）
+### 网络与应用层通信协议 (Protocols)（共 35 项 | 编号 `#185 ~ #219` | 已实证: 4 项 | 隔离待补: 0 项）
 
 | 状态 | 编号 | 官方子示例相对路径 | 可观测等级 | 优先级 | 对应 wink-micro-app | 验收标准与架构说明 |
 | :---: | :---: | :--- | :---: | :---: | :--- | :--- |
@@ -334,7 +334,7 @@
 | [ ] | 192 | `protocols/http_server/captive_portal` | 📜 Level 2 | P3 | `protocols/http_server_captive_portal` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 193 | `protocols/http_server/file_serving` | 📜 Level 2 | P3 | `protocols/http_server_file_serving` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 194 | `protocols/http_server/persistent_sockets` | 📜 Level 2 | P3 | `protocols/http_server_persistent_sockets` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 195 | `protocols/http_server/restful_server` | 📜 Level 2 | P3 | `protocols/http_server_restful_server` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
+| [x] | 195 | `protocols/http_server/restful_server` | 📜 Level 2 | P0 | [`protocols/http_server_restful_server`](protocols/http_server_restful_server) | [Lane 6: 无线网络] [Green ✅ | Red ⏳] 已完成实证。 |
 | [x] | 196 | `protocols/http_server/simple` | 📜 Level 2 | P0 | [`protocols/http_server_simple`](protocols/http_server_simple) | [Lane 6: 无线网络] [Green ✅ | Red ⏳] 已完成实证。 |
 | [ ] | 197 | `protocols/http_server/ws_echo_server` | 📜 Level 2 | P1 | `protocols/http_server_ws_echo_server` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 198 | `protocols/https_mbedtls` | 📜 Level 2 | P2 | `protocols/https_mbedtls` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
