@@ -1,0 +1,15 @@
+{
+  "app_name": "esp_idfv61_http_server_ws_echo_server",
+  "display_name": "Espressif ESP-IDF WebSocket Echo Server",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/protocols/http_server/ws_echo_server/main",
+    "files": {
+      "ws_echo_server.c": "903897b7eebd725d4b744c9d86bdbf974c4b15579b95ba534a8e8c759ca09d6f"
+    }
+  },
+  "devices": {}
+}

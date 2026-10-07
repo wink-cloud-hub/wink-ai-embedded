@@ -1,0 +1,53 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 http_server_ws_echo_server headless 403 handshake rejection proof",
+    "templateId": "esp_idfv61_http_server_ws_echo_server_fail",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "0ms",
+      "target": "http:server:state",
+      "matcher": "RUNNING",
+      "description": "断言 WebSocket 服务器成功启动并处于 RUNNING 状态"
+    },
+    {
+      "type": "INJECT_NET_FIXTURE",
+      "timeUs": "200ms",
+      "protocol": "http",
+      "description": "注入非法 Token 的 WebSocket 握手请求",
+      "routes": [
+        {
+          "url_prefix": "ws://localhost/auth",
+          "method": "GET"
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "uri": "/auth?token=invalid_token",
+          "body": "Unauthorized Handshake Attempt"
+        }
+      ]
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "http:server:status_code",
+      "matcher": 403,
+      "description": "断言携带非法 Token 的 WebSocket 握手请求被 pre_handshake_cb 准确拦截并返回 403 Forbidden"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "http:server:last_uri",
+      "matcher": "/auth",
+      "description": "断言拦截的握手请求路由为 /auth"
+    }
+  ]
+}

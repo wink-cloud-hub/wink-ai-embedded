@@ -1,0 +1,88 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 http_server_ws_echo_server headless deterministic proof",
+    "templateId": "esp_idfv61_http_server_ws_echo_server",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "0ms",
+      "target": "http:server:state",
+      "matcher": "RUNNING",
+      "description": "断言 WebSocket 服务器成功启动并处于 RUNNING 状态"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "100ms",
+      "target": "http:server:port",
+      "matcher": 80,
+      "description": "断言 WebSocket 服务器正确监听 80 端口"
+    },
+    {
+      "type": "INJECT_NET_FIXTURE",
+      "timeUs": "200ms",
+      "protocol": "http",
+      "description": "注入合法 Token 握手与 WebSocket 回环数据帧及异步发送触发",
+      "routes": [
+        {
+          "url_prefix": "ws://localhost/auth",
+          "method": "GET"
+        },
+        {
+          "url_prefix": "ws://localhost/ws",
+          "method": "GET"
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "uri": "/auth?token=valid",
+          "body": "Hello Auth WS!"
+        },
+        {
+          "method": "GET",
+          "uri": "/ws",
+          "body": "Hello WebSocket Echo!"
+        },
+        {
+          "method": "GET",
+          "uri": "/ws",
+          "body": "Trigger async"
+        }
+      ]
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "http:server:request_count",
+      "matcher": { "$gte": 3 },
+      "description": "断言 WebSocket 服务器已成功处理至少 3 次业务请求/帧"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "http:server:status_code",
+      "matcher": 200,
+      "description": "断言 WebSocket 请求与异步推送均返回 200 成功状态"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "http:server:last_uri",
+      "matcher": "/ws",
+      "description": "断言最近一次请求路由为 /ws"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "http:server:last_resp",
+      "matcher": "Async data",
+      "description": "断言 Trigger async 触发异步工作队列推送 Async data 载荷"
+    }
+  ]
+}
