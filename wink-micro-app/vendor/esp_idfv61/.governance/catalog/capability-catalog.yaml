@@ -451,7 +451,7 @@ capabilities:
   cap.net.http_server:
     name: HTTP Web 服务端与路由调度
     layer: model
-    status: planned
+    status: implemented
     description: 嵌入式 HTTP Server 请求监听、URI 路由与 Session 会话管理
     owned_paths:
     - wink-micro-os/frameworks/esp_idf/src/network/esp_http_server.c

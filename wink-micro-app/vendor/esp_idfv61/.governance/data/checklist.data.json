@@ -8,9 +8,9 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 37,
-    "verified_configs": 37,
-    "verified": 26
+    "audited": 38,
+    "verified_configs": 38,
+    "verified": 27
   },
   "entries": [
     {
@@ -12770,10 +12770,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "arch_team",
+        "audited_at": "2026-10-07T02:51:24Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -12807,18 +12809,40 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/protocols_http_server_simple.scenario.json",
+            "scenario_path": "protocols/http_server_simple/unisim-scenarios/protocols_http_server_simple.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "positive_cases": [
+              {
+                "name": "HTTP 请求处理与回环响应",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "200"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "未注册异常路由 GET /unknown_path 请求注入",
+                "expect_error": "404",
+                "detects": "HTTP 服务器 404 Not Found 异常路由拦截防御"
+              }
+            ],
+            "sla_error_symbol": "HTTPD_404_NOT_FOUND"
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "20261007T025045Z-51a5440cb0eb46e59a2facd411a184dd",
+            "assets_sha256": "67fbd2fa2eff83ac30d82023f18f46b6620e1d5c2e2a061901eb6e28c1e542bb",
+            "scenario_sha256": "ac98689d3bc25a761916d348cfa153e2dc14b7419f67964886b98d5327825cb1",
+            "execution_report_ref": ".governance/reports/protocols/http_server_simple/run-report.json",
+            "verified_commit": "f891b40090edd6ec2f2243d2c366dc3fd079f6a3",
+            "verified_at": "2026-10-07T02:51:24Z"
+          }
         }
       ],
       "target_app_dir": "protocols/http_server_simple"
