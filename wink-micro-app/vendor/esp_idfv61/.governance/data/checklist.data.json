@@ -9,7 +9,7 @@
     "in_scope_active": 250,
     "in_scope_deferred": 21,
     "audited": 41,
-    "verified_configs": 41,
+    "verified_configs": 42,
     "verified": 41
   },
   "entries": [
@@ -13692,10 +13692,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "arch_team",
+        "audited_at": "2026-10-07T10:29:53Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -13703,8 +13705,8 @@
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.net.event_pump",
-        "cap.pm.light_sleep",
-        "cap.vfs.nvs_partition"
+        "cap.vfs.nvs_partition",
+        "cap.wifi.station_mode"
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
@@ -13728,18 +13730,40 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/protocols_sntp.scenario.json",
+            "scenario_path": "protocols/sntp/unisim-scenarios/protocols_sntp.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "positive_cases": [
+              {
+                "name": "SNTP 网络时间同步、UTC 时间戳对齐与多时区转换输出",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "2026-10-07 10:15:30"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "注入未同步时间断言变异与金丝雀错误匹配",
+                "expect_error": "timeout",
+                "detects": "断言器防假绿与授时敏感性拦截"
+              }
+            ],
+            "sla_error_symbol": "SNTP_SYNC_TIMEOUT"
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261007-esp.protocols.sntp-verified",
+            "assets_sha256": "2c5253f9ea2540e613814f004376528a9ed6b5361c79cb5aeba2a1f9885575e0",
+            "scenario_sha256": "6527289f524bd575a318f68cfaf717cf643b06eee14171fa3d89caa11a230ca8",
+            "execution_report_ref": ".governance/reports/protocols/sntp/run-report.json",
+            "verified_commit": "82dde347a65450c3b6072857c0bd4890d1005f8c",
+            "verified_at": "2026-10-07T10:29:53Z"
+          }
         }
       ],
       "target_app_dir": "protocols/sntp"
