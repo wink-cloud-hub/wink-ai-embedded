@@ -112,7 +112,8 @@ $allCarriers = @(
     @{ Name = 'uart_uart_async_rxtxtasks'; Rel = 'vendor/esp_idfv61/peripherals/uart_uart_async_rxtxtasks'; Channel = 'UART Asynchronous Dual Tasks (RX/TX)' },
     @{ Name = 'uart_uart_echo_rs485'; Rel = 'vendor/esp_idfv61/peripherals/uart_uart_echo_rs485'; Channel = 'UART RS485 Half-Duplex Echo' },
     @{ Name = 'softap_sta'; Rel = 'vendor/esp_idfv61/wifi/softap_sta'; Channel = 'Wi-Fi SoftAP & Station Concurrent Dual Netif' },
-    @{ Name = 'sntp'; Rel = 'vendor/esp_idfv61/protocols/sntp'; Channel = 'SNTP Network Time Protocol' }
+    @{ Name = 'sntp'; Rel = 'vendor/esp_idfv61/protocols/sntp'; Channel = 'SNTP Network Time Protocol' },
+    @{ Name = 'sockets_tcp_client'; Rel = 'vendor/esp_idfv61/protocols/sockets_tcp_client'; Channel = 'BSD Sockets TCP Client & Echo Stream' }
 )
 
 $carriers = @()
