@@ -1,0 +1,15 @@
+{
+  "app_name": "esp_idfv61_system_ota_simple_ota_example",
+  "display_name": "Espressif ESP-IDF Simple OTA Example",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/system/ota/simple_ota_example/main",
+    "files": {
+      "simple_ota_example.c": "112ad551fac6a85856cc75d5bfd3dc7dc468b8d90367d48a783f0e8539d5e6ea"
+    }
+  },
+  "devices": {}
+}

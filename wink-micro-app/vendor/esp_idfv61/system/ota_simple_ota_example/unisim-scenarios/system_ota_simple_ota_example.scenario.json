@@ -1,0 +1,111 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 Simple OTA Deterministic Proof",
+    "templateId": "esp_idfv61_system_ota_simple_ota_example",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "INJECT_NET_FIXTURE",
+      "timeUs": "0ms",
+      "protocol": "http",
+      "description": "预注入 OTA 固件下载 HTTP 路由应答",
+      "routes": [
+        {
+          "method": "GET",
+          "url_prefix": "http://192.168.1.100:8070/firmware.bin",
+          "status_code": 200,
+          "headers": {
+            "Content-Type": "application/octet-stream"
+          },
+          "body": "ESP32_SIMULATED_FIRMWARE_BINARY_OTA_IMAGE_PAYLOAD_VALID_HEX_STREAM_OK"
+        }
+      ]
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "OTA example app_main start",
+      "description": "断言系统冷启动并执行 OTA 示例 app_main"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "SHA-256 for bootloader:",
+      "description": "断言成功校验并打印 Bootloader 分区 SHA-256 摘要"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "SHA-256 for current firmware:",
+      "description": "断言成功计算并打印当前固件运行分区 SHA-256 摘要"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Starting OTA example task",
+      "description": "断言 FreeRTOS 调度器成功启动 OTA 核心升级任务"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Attempting to download update from http://192.168.1.100:8070/firmware.bin",
+      "description": "断言发起 HTTP/HTTPS 固件空中升级下载请求"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "2500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "OTA Succeed, Rebooting...",
+      "description": "断言固件空中升级成功下载、烧写无误并触发系统复位重启"
+    }
+  ]
+}

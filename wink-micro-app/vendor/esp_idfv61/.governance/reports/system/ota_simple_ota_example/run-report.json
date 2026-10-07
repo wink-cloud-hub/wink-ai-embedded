@@ -1,0 +1,120 @@
+{
+  "timestamp": "2026-10-07T15:33:04.018Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 Simple OTA Deterministic Proof",
+        "templateId": "esp_idfv61_system_ota_simple_ota_example",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 107
+      },
+      "summary": {
+        "totalSteps": 8,
+        "passedSteps": 8,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "INJECT_NET_FIXTURE",
+          "status": "passed",
+          "timeUs": "0"
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) simple_ota_example: OTA example app_main start\u001b[0m\n\u001b[0;32mI (0) simple_ota_example: SHA-256 for bootloader:  57967b92b99dbaf826a37fd8945bf5583c7669fcbcb6e680381df529d627756c\u001b[0m\n\u001b[0;32mI (0) simple_ota_example: SHA-256 for current firmware:  b23a2886cd55d9b74450a36fa4328cb208418c7e2950e006321dbe7ba7b0632e\u001b[0m\n\u001b[0;32mI (1) simple_ota_example: Starting OTA example task\u001b[0m\n\u001b[0;32mI (1) simple_ota_example: Attempting to download update from http://192.168.1.100:8070/firmware.bin\u001b[0m\n\u001b[0;32mI (1) esp_ota: Commenced OTA update on ota_0 (size 69)\u001b[0m\n\u001b[0;32mI (1) esp_ota: OTA update complete, total written 69 bytes\u001b[0m\n\u001b[0;32mI (1) esp_ota: Next boot partition set to ota_0\u001b[0m\n\u001b[0;32mI (1) simple_ota_example: OTA Succeed, Rebooting...\u001b[0m\n"
+            ]
+          },
+          "expected": "OTA example app_main start"
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) simple_ota_example: OTA example app_main start\u001b[0m\n\u001b[0;32mI (0) simple_ota_example: SHA-256 for bootloader:  57967b92b99dbaf826a37fd8945bf5583c7669fcbcb6e680381df529d627756c\u001b[0m\n\u001b[0;32mI (0) simple_ota_example: SHA-256 for current firmware:  b23a2886cd55d9b74450a36fa4328cb208418c7e2950e006321dbe7ba7b0632e\u001b[0m\n\u001b[0;32mI (1) simple_ota_example: Starting OTA example task\u001b[0m\n\u001b[0;32mI (1) simple_ota_example: Attempting to download update from http://192.168.1.100:8070/firmware.bin\u001b[0m\n\u001b[0;32mI (1) esp_ota: Commenced OTA update on ota_0 (size 69)\u001b[0m\n\u001b[0;32mI (1) esp_ota: OTA update complete, total written 69 bytes\u001b[0m\n\u001b[0;32mI (1) esp_ota: Next boot partition set to ota_0\u001b[0m\n\u001b[0;32mI (1) simple_ota_example: OTA Succeed, Rebooting...\u001b[0m\n"
+            ]
+          },
+          "expected": "SHA-256 for bootloader:"
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) simple_ota_example: OTA example app_main start\u001b[0m\n\u001b[0;32mI (0) simple_ota_example: SHA-256 for bootloader:  57967b92b99dbaf826a37fd8945bf5583c7669fcbcb6e680381df529d627756c\u001b[0m\n\u001b[0;32mI (0) simple_ota_example: SHA-256 for current firmware:  b23a2886cd55d9b74450a36fa4328cb208418c7e2950e006321dbe7ba7b0632e\u001b[0m\n\u001b[0;32mI (1) simple_ota_example: Starting OTA example task\u001b[0m\n\u001b[0;32mI (1) simple_ota_example: Attempting to download update from http://192.168.1.100:8070/firmware.bin\u001b[0m\n\u001b[0;32mI (1) esp_ota: Commenced OTA update on ota_0 (size 69)\u001b[0m\n\u001b[0;32mI (1) esp_ota: OTA update complete, total written 69 bytes\u001b[0m\n\u001b[0;32mI (1) esp_ota: Next boot partition set to ota_0\u001b[0m\n\u001b[0;32mI (1) simple_ota_example: OTA Succeed, Rebooting...\u001b[0m\n"
+            ]
+          },
+          "expected": "SHA-256 for current firmware:"
+        },
+        {
+          "stepIndex": 5,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) simple_ota_example: OTA example app_main start\u001b[0m\n\u001b[0;32mI (0) simple_ota_example: SHA-256 for bootloader:  57967b92b99dbaf826a37fd8945bf5583c7669fcbcb6e680381df529d627756c\u001b[0m\n\u001b[0;32mI (0) simple_ota_example: SHA-256 for current firmware:  b23a2886cd55d9b74450a36fa4328cb208418c7e2950e006321dbe7ba7b0632e\u001b[0m\n\u001b[0;32mI (1) simple_ota_example: Starting OTA example task\u001b[0m\n\u001b[0;32mI (1) simple_ota_example: Attempting to download update from http://192.168.1.100:8070/firmware.bin\u001b[0m\n\u001b[0;32mI (1) esp_ota: Commenced OTA update on ota_0 (size 69)\u001b[0m\n\u001b[0;32mI (1) esp_ota: OTA update complete, total written 69 bytes\u001b[0m\n\u001b[0;32mI (1) esp_ota: Next boot partition set to ota_0\u001b[0m\n\u001b[0;32mI (1) simple_ota_example: OTA Succeed, Rebooting...\u001b[0m\n"
+            ]
+          },
+          "expected": "Starting OTA example task"
+        },
+        {
+          "stepIndex": 6,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) simple_ota_example: OTA example app_main start\u001b[0m\n\u001b[0;32mI (0) simple_ota_example: SHA-256 for bootloader:  57967b92b99dbaf826a37fd8945bf5583c7669fcbcb6e680381df529d627756c\u001b[0m\n\u001b[0;32mI (0) simple_ota_example: SHA-256 for current firmware:  b23a2886cd55d9b74450a36fa4328cb208418c7e2950e006321dbe7ba7b0632e\u001b[0m\n\u001b[0;32mI (1) simple_ota_example: Starting OTA example task\u001b[0m\n\u001b[0;32mI (1) simple_ota_example: Attempting to download update from http://192.168.1.100:8070/firmware.bin\u001b[0m\n\u001b[0;32mI (1) esp_ota: Commenced OTA update on ota_0 (size 69)\u001b[0m\n\u001b[0;32mI (1) esp_ota: OTA update complete, total written 69 bytes\u001b[0m\n\u001b[0;32mI (1) esp_ota: Next boot partition set to ota_0\u001b[0m\n\u001b[0;32mI (1) simple_ota_example: OTA Succeed, Rebooting...\u001b[0m\n"
+            ]
+          },
+          "expected": "Attempting to download update from http://192.168.1.100:8070/firmware.bin"
+        },
+        {
+          "stepIndex": 7,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) simple_ota_example: OTA example app_main start\u001b[0m\n\u001b[0;32mI (0) simple_ota_example: SHA-256 for bootloader:  57967b92b99dbaf826a37fd8945bf5583c7669fcbcb6e680381df529d627756c\u001b[0m\n\u001b[0;32mI (0) simple_ota_example: SHA-256 for current firmware:  b23a2886cd55d9b74450a36fa4328cb208418c7e2950e006321dbe7ba7b0632e\u001b[0m\n\u001b[0;32mI (1) simple_ota_example: Starting OTA example task\u001b[0m\n\u001b[0;32mI (1) simple_ota_example: Attempting to download update from http://192.168.1.100:8070/firmware.bin\u001b[0m\n\u001b[0;32mI (1) esp_ota: Commenced OTA update on ota_0 (size 69)\u001b[0m\n\u001b[0;32mI (1) esp_ota: OTA update complete, total written 69 bytes\u001b[0m\n\u001b[0;32mI (1) esp_ota: Next boot partition set to ota_0\u001b[0m\n\u001b[0;32mI (1) simple_ota_example: OTA Succeed, Rebooting...\u001b[0m\n"
+            ]
+          },
+          "expected": "OTA Succeed, Rebooting..."
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 Simple OTA defective assertion canary proof",
+    "templateId": "esp_idfv61_system_ota_simple_ota_example",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "OTA example app_main start",
+      "description": "断言系统冷启动并执行 OTA 示例 app_main"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "2000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "__CANARY_MUTANT_OTA_UPGRADE_CORRUPTED__",
+      "description": "注入错误的变异断言以验证断言器非假绿敏感性"
+    }
+  ]
+}
