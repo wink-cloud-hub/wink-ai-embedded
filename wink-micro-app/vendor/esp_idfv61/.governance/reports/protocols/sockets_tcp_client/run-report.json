@@ -1,0 +1,180 @@
+{
+  "timestamp": "2026-10-07T11:22:49.577Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 BSD Sockets TCP Client Deterministic Proof",
+        "templateId": "esp_idfv61_protocols_sockets_tcp_client",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 105
+      },
+      "summary": {
+        "totalSteps": 6,
+        "passedSteps": 6,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": {
+            "matchedCount": 6,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (10) example: Successfully connected\u001b[0m\n\u001b[0;32mI (50) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (50) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (90) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (90) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (130) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (130) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (170) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (170) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (170) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (180) example: Successfully connected\u001b[0m\n\u001b[0;32mI (220) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (220) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (260) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (260) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (300) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (300) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (340) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (340) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (340) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (350) example: Successfully connected\u001b[0m\n\u001b[0;32mI (390) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (390) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (430) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (430) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (470) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (470) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (510) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (510) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (510) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (520) example: Successfully connected\u001b[0m\n\u001b[0;32mI (560) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (560) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (600) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (600) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (640) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (640) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (680) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (680) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (680) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (690) example: Successfully connected\u001b[0m\n\u001b[0;32mI (730) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (730) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (770) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (770) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (810) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (810) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (850) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (850) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (850) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (860) example: Successfully connected\u001b[0m\n\u001b[0;32mI (900) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (900) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (940) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (940) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (980) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (980) example: Message from ESP32 \u001b[0m\n"
+            ]
+          },
+          "expected": "Socket created, connecting to 192.168.0.165:3333"
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": {
+            "matchedCount": 6,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (10) example: Successfully connected\u001b[0m\n\u001b[0;32mI (50) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (50) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (90) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (90) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (130) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (130) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (170) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (170) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (170) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (180) example: Successfully connected\u001b[0m\n\u001b[0;32mI (220) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (220) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (260) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (260) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (300) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (300) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (340) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (340) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (340) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (350) example: Successfully connected\u001b[0m\n\u001b[0;32mI (390) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (390) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (430) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (430) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (470) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (470) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (510) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (510) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (510) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (520) example: Successfully connected\u001b[0m\n\u001b[0;32mI (560) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (560) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (600) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (600) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (640) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (640) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (680) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (680) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (680) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (690) example: Successfully connected\u001b[0m\n\u001b[0;32mI (730) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (730) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (770) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (770) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (810) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (810) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (850) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (850) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (850) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (860) example: Successfully connected\u001b[0m\n\u001b[0;32mI (900) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (900) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (940) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (940) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (980) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (980) example: Message from ESP32 \u001b[0m\n"
+            ]
+          },
+          "expected": "Successfully connected"
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 18,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (10) example: Successfully connected\u001b[0m\n\u001b[0;32mI (50) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (50) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (90) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (90) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (130) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (130) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (170) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (170) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (170) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (180) example: Successfully connected\u001b[0m\n\u001b[0;32mI (220) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (220) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (260) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (260) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (300) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (300) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (340) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (340) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (340) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (350) example: Successfully connected\u001b[0m\n\u001b[0;32mI (390) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (390) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (430) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (430) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (470) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (470) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (510) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (510) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (510) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (520) example: Successfully connected\u001b[0m\n\u001b[0;32mI (560) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (560) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (600) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (600) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (640) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (640) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (680) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (680) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (680) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (690) example: Successfully connected\u001b[0m\n\u001b[0;32mI (730) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (730) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (770) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (770) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (810) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (810) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (850) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (850) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (850) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (860) example: Successfully connected\u001b[0m\n\u001b[0;32mI (900) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (900) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (940) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (940) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (980) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (980) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (1020) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (1020) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (1020) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (1030) example: Successfully connected\u001b[0m\n\u001b[0;32mI (1070) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1070) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (1110) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1110) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (1150) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1150) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (1190) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (1190) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (1190) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (1200) example: Successfully connected\u001b[0m\n\u001b[0;32mI (1240) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1240) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (1280) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1280) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (1320) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1320) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (1360) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (1360) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (1360) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (1370) example: Successfully connected\u001b[0m\n\u001b[0;32mI (1410) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1410) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (1450) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1450) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (1490) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1490) example: Message from ESP32 \u001b[0m\n"
+            ]
+          },
+          "expected": "Received 19 bytes from 192.168.0.165:"
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 18,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (10) example: Successfully connected\u001b[0m\n\u001b[0;32mI (50) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (50) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (90) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (90) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (130) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (130) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (170) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (170) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (170) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (180) example: Successfully connected\u001b[0m\n\u001b[0;32mI (220) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (220) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (260) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (260) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (300) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (300) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (340) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (340) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (340) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (350) example: Successfully connected\u001b[0m\n\u001b[0;32mI (390) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (390) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (430) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (430) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (470) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (470) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (510) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (510) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (510) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (520) example: Successfully connected\u001b[0m\n\u001b[0;32mI (560) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (560) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (600) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (600) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (640) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (640) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (680) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (680) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (680) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (690) example: Successfully connected\u001b[0m\n\u001b[0;32mI (730) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (730) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (770) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (770) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (810) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (810) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (850) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (850) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (850) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (860) example: Successfully connected\u001b[0m\n\u001b[0;32mI (900) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (900) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (940) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (940) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (980) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (980) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (1020) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (1020) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (1020) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (1030) example: Successfully connected\u001b[0m\n\u001b[0;32mI (1070) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1070) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (1110) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1110) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (1150) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1150) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (1190) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (1190) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (1190) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (1200) example: Successfully connected\u001b[0m\n\u001b[0;32mI (1240) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1240) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (1280) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1280) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (1320) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1320) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (1360) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (1360) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (1360) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (1370) example: Successfully connected\u001b[0m\n\u001b[0;32mI (1410) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1410) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (1450) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1450) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (1490) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1490) example: Message from ESP32 \u001b[0m\n"
+            ]
+          },
+          "expected": "Message from ESP32 "
+        },
+        {
+          "stepIndex": 5,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2000000",
+          "actual": {
+            "matchedCount": 11,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (10) example: Successfully connected\u001b[0m\n\u001b[0;32mI (50) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (50) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (90) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (90) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (130) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (130) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (170) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (170) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (170) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (180) example: Successfully connected\u001b[0m\n\u001b[0;32mI (220) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (220) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (260) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (260) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (300) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (300) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (340) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (340) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (340) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (350) example: Successfully connected\u001b[0m\n\u001b[0;32mI (390) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (390) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (430) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (430) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (470) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (470) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (510) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (510) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (510) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (520) example: Successfully connected\u001b[0m\n\u001b[0;32mI (560) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (560) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (600) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (600) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (640) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (640) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (680) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (680) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (680) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (690) example: Successfully connected\u001b[0m\n\u001b[0;32mI (730) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (730) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (770) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (770) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (810) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (810) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (850) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (850) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (850) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (860) example: Successfully connected\u001b[0m\n\u001b[0;32mI (900) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (900) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (940) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (940) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (980) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (980) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (1020) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (1020) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (1020) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (1030) example: Successfully connected\u001b[0m\n\u001b[0;32mI (1070) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1070) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (1110) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1110) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (1150) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1150) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (1190) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (1190) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (1190) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (1200) example: Successfully connected\u001b[0m\n\u001b[0;32mI (1240) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1240) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (1280) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1280) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (1320) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1320) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (1360) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (1360) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (1360) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (1370) example: Successfully connected\u001b[0m\n\u001b[0;32mI (1410) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1410) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (1450) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1450) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (1490) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1490) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (1530) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (1530) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (1530) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (1540) example: Successfully connected\u001b[0m\n\u001b[0;32mI (1580) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1580) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (1620) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1620) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (1660) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1660) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (1700) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (1700) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (1700) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (1710) example: Successfully connected\u001b[0m\n\u001b[0;32mI (1750) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1750) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (1790) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1790) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (1830) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1830) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;31mE (1870) example: recv failed: errno 15\u001b[0m\n\u001b[0;31mE (1870) example: Shutting down socket and restarting...\u001b[0m\n\u001b[0;32mI (1870) example: Socket created, connecting to 192.168.0.165:3333\u001b[0m\n\u001b[0;32mI (1880) example: Successfully connected\u001b[0m\n\u001b[0;32mI (1920) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1920) example: Message from ESP32 \u001b[0m\n",
+              "\u001b[0;32mI (1960) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (1960) example: Message from ESP32 \u001b[0m\n\u001b[0;32mI (2000) example: Received 19 bytes from 192.168.0.165:\u001b[0m\n\u001b[0;32mI (2000) example: Message from ESP32 \u001b[0m\n"
+            ]
+          },
+          "expected": "Shutting down socket and restarting..."
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

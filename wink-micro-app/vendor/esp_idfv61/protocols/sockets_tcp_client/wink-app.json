@@ -1,0 +1,16 @@
+{
+  "app_name": "esp_idfv61_protocols_sockets_tcp_client",
+  "display_name": "Espressif ESP-IDF BSD Sockets TCP Client",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/protocols/sockets/tcp_client/main",
+    "files": {
+      "tcp_client_main.c": "2046ccb852f86bcc0e18b1a6405b2374f36f6bd5d73c696aa6607f43e0f66fba",
+      "tcp_client_v4.c": "75a9909a4783ddb50b1f1a0962dd5d726e43379f9d8c44ea4bc6af3e797a9ee3"
+    }
+  },
+  "devices": {}
+}
