@@ -1,0 +1,17 @@
+{
+  "app_name": "esp_idfv61_wifi_softap_sta",
+  "display_name": "Espressif ESP-IDF Wi-Fi SoftAP and Station",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "mcu": "esp32",
+  "tick_ms": 1,
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/wifi/softap_sta/main",
+    "files": {
+      "softap_sta.c": "27c4ef6bc0bcf6a854e257522d0f0507643671054267a9d762bde9f731686fa8"
+    }
+  },
+  "devices": {}
+}

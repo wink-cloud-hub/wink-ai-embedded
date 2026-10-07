@@ -1,0 +1,154 @@
+{
+  "timestamp": "2026-10-07T09:49:39.469Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 Wi-Fi SoftAP and Station Dual Netif Deterministic Proof",
+        "templateId": "esp_idfv61_wifi_softap_sta",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 120
+      },
+      "summary": {
+        "totalSteps": 11,
+        "passedSteps": 11,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "INJECT_WIFI_FIXTURE",
+          "status": "passed",
+          "timeUs": "0"
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) WIFI_SIM: Wi-Fi initialized in simulation mode\u001b[0m\n\u001b[0;32mI (0) WiFi SoftAP: ESP_WIFI_MODE_AP\u001b[0m\n\u001b[0;32mI (0) WiFi SoftAP: wifi_init_softap finished. SSID:myapssid password:myappassword channel:1\u001b[0m\n\u001b[0;32mI (0) WiFi Sta: ESP_WIFI_MODE_STA\u001b[0m\n\u001b[0;32mI (0) WiFi Sta: wifi_init_sta finished.\u001b[0m\n\u001b[0;32mI (1) WiFi Sta: Station started\u001b[0m\n",
+              "\u001b[0;32mI (101) WiFi Sta: Got IP:192.168.1.100\u001b[0m\n\u001b[0;32mI (101) WiFi Sta: connected to ap SSID:myremotessid password:myremotepass\u001b[0m\n"
+            ]
+          },
+          "expected": "ESP_WIFI_MODE_AP"
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) WIFI_SIM: Wi-Fi initialized in simulation mode\u001b[0m\n\u001b[0;32mI (0) WiFi SoftAP: ESP_WIFI_MODE_AP\u001b[0m\n\u001b[0;32mI (0) WiFi SoftAP: wifi_init_softap finished. SSID:myapssid password:myappassword channel:1\u001b[0m\n\u001b[0;32mI (0) WiFi Sta: ESP_WIFI_MODE_STA\u001b[0m\n\u001b[0;32mI (0) WiFi Sta: wifi_init_sta finished.\u001b[0m\n\u001b[0;32mI (1) WiFi Sta: Station started\u001b[0m\n",
+              "\u001b[0;32mI (101) WiFi Sta: Got IP:192.168.1.100\u001b[0m\n\u001b[0;32mI (101) WiFi Sta: connected to ap SSID:myremotessid password:myremotepass\u001b[0m\n"
+            ]
+          },
+          "expected": "ESP_WIFI_MODE_STA"
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) WIFI_SIM: Wi-Fi initialized in simulation mode\u001b[0m\n\u001b[0;32mI (0) WiFi SoftAP: ESP_WIFI_MODE_AP\u001b[0m\n\u001b[0;32mI (0) WiFi SoftAP: wifi_init_softap finished. SSID:myapssid password:myappassword channel:1\u001b[0m\n\u001b[0;32mI (0) WiFi Sta: ESP_WIFI_MODE_STA\u001b[0m\n\u001b[0;32mI (0) WiFi Sta: wifi_init_sta finished.\u001b[0m\n\u001b[0;32mI (1) WiFi Sta: Station started\u001b[0m\n",
+              "\u001b[0;32mI (101) WiFi Sta: Got IP:192.168.1.100\u001b[0m\n\u001b[0;32mI (101) WiFi Sta: connected to ap SSID:myremotessid password:myremotepass\u001b[0m\n"
+            ]
+          },
+          "expected": "wifi_init_softap finished. SSID:myapssid password:myappassword channel:1"
+        },
+        {
+          "stepIndex": 5,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) WIFI_SIM: Wi-Fi initialized in simulation mode\u001b[0m\n\u001b[0;32mI (0) WiFi SoftAP: ESP_WIFI_MODE_AP\u001b[0m\n\u001b[0;32mI (0) WiFi SoftAP: wifi_init_softap finished. SSID:myapssid password:myappassword channel:1\u001b[0m\n\u001b[0;32mI (0) WiFi Sta: ESP_WIFI_MODE_STA\u001b[0m\n\u001b[0;32mI (0) WiFi Sta: wifi_init_sta finished.\u001b[0m\n\u001b[0;32mI (1) WiFi Sta: Station started\u001b[0m\n",
+              "\u001b[0;32mI (101) WiFi Sta: Got IP:192.168.1.100\u001b[0m\n\u001b[0;32mI (101) WiFi Sta: connected to ap SSID:myremotessid password:myremotepass\u001b[0m\n"
+            ]
+          },
+          "expected": "wifi_init_sta finished."
+        },
+        {
+          "stepIndex": 6,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) WIFI_SIM: Wi-Fi initialized in simulation mode\u001b[0m\n\u001b[0;32mI (0) WiFi SoftAP: ESP_WIFI_MODE_AP\u001b[0m\n\u001b[0;32mI (0) WiFi SoftAP: wifi_init_softap finished. SSID:myapssid password:myappassword channel:1\u001b[0m\n\u001b[0;32mI (0) WiFi Sta: ESP_WIFI_MODE_STA\u001b[0m\n\u001b[0;32mI (0) WiFi Sta: wifi_init_sta finished.\u001b[0m\n\u001b[0;32mI (1) WiFi Sta: Station started\u001b[0m\n",
+              "\u001b[0;32mI (101) WiFi Sta: Got IP:192.168.1.100\u001b[0m\n\u001b[0;32mI (101) WiFi Sta: connected to ap SSID:myremotessid password:myremotepass\u001b[0m\n"
+            ]
+          },
+          "expected": "Station started"
+        },
+        {
+          "stepIndex": 7,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (101) WiFi Sta: Got IP:192.168.1.100\u001b[0m\n\u001b[0;32mI (101) WiFi Sta: connected to ap SSID:myremotessid password:myremotepass\u001b[0m\n"
+            ]
+          },
+          "expected": "Got IP:192.168.1.100"
+        },
+        {
+          "stepIndex": 8,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (101) WiFi Sta: Got IP:192.168.1.100\u001b[0m\n\u001b[0;32mI (101) WiFi Sta: connected to ap SSID:myremotessid password:myremotepass\u001b[0m\n"
+            ]
+          },
+          "expected": "connected to ap SSID:myremotessid password:myremotepass"
+        },
+        {
+          "stepIndex": 9,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": "192.168.1.100",
+          "expected": "192.168.1.100"
+        },
+        {
+          "stepIndex": 10,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": "GOT_IP",
+          "expected": "GOT_IP"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

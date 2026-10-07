@@ -1,0 +1,75 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 Wi-Fi SoftAP and Station defective assertion canary proof",
+    "templateId": "esp_idfv61_wifi_softap_sta_fail",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "INJECT_WIFI_FIXTURE",
+      "timeUs": "0ms",
+      "accessPoints": [
+        {
+          "ssid": "myremotessid",
+          "bssid": "00:11:22:33:44:55",
+          "rssi": -45,
+          "channel": 1,
+          "authMode": "WPA2_PSK",
+          "password": "myremotepass",
+          "dhcp": {
+            "assignedIp": "192.168.1.100",
+            "netmask": "255.255.255.0",
+            "gateway": "192.168.1.1",
+            "dns": "192.168.1.1"
+          }
+        }
+      ]
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "ESP_WIFI_MODE_AP",
+      "description": "断言系统初始化启动 Wi-Fi softAP 模式"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "ESP_WIFI_MODE_STA",
+      "description": "断言系统初始化启动 Wi-Fi STA 模式"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "2500ms",
+      "target": "wifi:sta:state",
+      "condition": "equals",
+      "expected": "__CANARY_MUTANT_DISCONNECTED__",
+      "matcher": "__CANARY_MUTANT_DISCONNECTED__",
+      "description": "[金丝雀变异断言] 预期故意失败以验证 Wi-Fi 状态断言敏感性与防假绿能力"
+    }
+  ]
+}

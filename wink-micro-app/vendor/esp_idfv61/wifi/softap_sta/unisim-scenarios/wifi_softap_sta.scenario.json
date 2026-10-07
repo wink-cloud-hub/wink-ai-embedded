@@ -1,0 +1,144 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 Wi-Fi SoftAP and Station Dual Netif Deterministic Proof",
+    "templateId": "esp_idfv61_wifi_softap_sta",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "INJECT_WIFI_FIXTURE",
+      "timeUs": "0ms",
+      "accessPoints": [
+        {
+          "ssid": "myremotessid",
+          "bssid": "00:11:22:33:44:55",
+          "rssi": -45,
+          "channel": 1,
+          "authMode": "WPA2_PSK",
+          "password": "myremotepass",
+          "dhcp": {
+            "assignedIp": "192.168.1.100",
+            "netmask": "255.255.255.0",
+            "gateway": "192.168.1.1",
+            "dns": "192.168.1.1"
+          }
+        }
+      ]
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "ESP_WIFI_MODE_AP",
+      "description": "断言系统初始化启动 Wi-Fi softAP 模式"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "ESP_WIFI_MODE_STA",
+      "description": "断言系统初始化启动 Wi-Fi STA 模式"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "wifi_init_softap finished. SSID:myapssid password:myappassword channel:1",
+      "description": "断言 softAP 完成配置与热点服务就绪广播"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "wifi_init_sta finished.",
+      "description": "断言 STA 接口初始化完成"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Station started",
+      "description": "断言 STA 接口收到 STA_START 事件并触发连接"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "100ms",
+        "2500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Got IP:192.168.1.100",
+      "description": "断言 STA 接口通过虚拟 DHCP 成功获取 IP 192.168.1.100"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "100ms",
+        "2500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "connected to ap SSID:myremotessid password:myremotepass",
+      "description": "断言 STA 成功连入上级远端 AP 并完成 DNS 级联同步与 NAPT 启用"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "netif:sta:ip",
+      "condition": "equals",
+      "expected": "192.168.1.100",
+      "matcher": "192.168.1.100",
+      "description": "断言 STA 网卡接口 IP 正确对齐至 192.168.1.100"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "1500ms",
+      "target": "wifi:sta:state",
+      "condition": "equals",
+      "expected": "GOT_IP",
+      "matcher": "GOT_IP",
+      "description": "断言 Wi-Fi 状态机推进至 GOT_IP 联通态"
+    }
+  ]
+}
