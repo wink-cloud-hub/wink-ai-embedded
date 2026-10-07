@@ -602,10 +602,10 @@ capabilities:
   cap.pm.light_sleep:
     name: Light-sleep 轻度休眠
     layer: core_sim
-    status: planned
+    status: implemented
     description: CPU 纤程暂停调度、时钟门控与定时器微秒唤醒
     owned_paths:
-    - wink-micro-os/frameworks/esp_idf/src/pm/esp_pm_sleep.c
+    - wink-micro-os/frameworks/esp_idf/src/core/esp_sleep.c
     soc_support:
     - esp32
     - esp32s3
@@ -614,10 +614,11 @@ capabilities:
   cap.pm.deep_sleep:
     name: Deep-sleep 深度休眠
     layer: core_sim
-    status: planned
+    status: implemented
     description: 上下文断电、RTC 内存保留与 RTC GPIO/定时器唤醒重置
     owned_paths:
-    - wink-micro-os/frameworks/esp_idf/src/pm/esp_pm_deep_sleep.c
+    - wink-micro-os/frameworks/esp_idf/src/core/esp_sleep.c
+    - wink-micro-os/frameworks/esp_idf/src/drivers/esp_rtc_io.c
     soc_support:
     - esp32
     - esp32s3

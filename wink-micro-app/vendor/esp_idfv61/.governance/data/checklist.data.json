@@ -8,8 +8,8 @@
     "scope_unknown": 0,
     "in_scope_active": 250,
     "in_scope_deferred": 21,
-    "audited": 44,
-    "verified_configs": 45,
+    "audited": 45,
+    "verified_configs": 46,
     "verified": 44
   },
   "entries": [
@@ -7963,10 +7963,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "arch_team",
+        "audited_at": "2026-10-07T23:56:04Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -7999,18 +8001,40 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/system_deep_sleep.scenario.json",
+            "scenario_path": "system/deep_sleep/unisim-scenarios/system_deep_sleep.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
+            "positive_cases": [
+              {
+                "name": "配置 RTC 定时器/GPIO/EXT0 唤醒源并正式进入深度休眠",
+                "matcher": {
+                  "op": "contains",
+                  "expected": "Entering deep sleep"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "变异未知唤醒文本载荷",
+                "expect_error": "Matched 0 packets in",
+                "detects": "断言器假绿防退化敏感性检出"
+              }
+            ],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261007-esp.system.deep_sleep-verified",
+            "assets_sha256": "6624e8792ab40e9e7a8985047f2de46732c6590808218a4fe29038ef401311e4",
+            "scenario_sha256": "38d171125356a4a04377583c3e2b32c19d23800d6e12423903f7f4ea0ef520d4",
+            "execution_report_ref": ".governance/reports/system/deep_sleep/run-report.json",
+            "verified_commit": "6fdc5eb6fef8a3953338e77fa513f07bb6f0f04b",
+            "verified_at": "2026-10-07T23:56:04Z"
+          }
         }
       ],
       "target_app_dir": "system/deep_sleep"
@@ -10210,12 +10234,12 @@
           },
           "evidence": {
             "backend": "wasm_simulation",
-            "run_id": "run-20261005-esp.system.task_watchdog-verified",
-            "assets_sha256": "3580a92747e61a5894f1236981d5128321c980fff149315991c9b147083ed3d1",
+            "run_id": "run-20261007-esp.system.task_watchdog-verified",
+            "assets_sha256": "53df168278c360da27721f720f8c2ca69a2082177aeda0742ec728fcf9964e52",
             "scenario_sha256": "2cfd3749ad08e212901176d8896a6d8f5719d67b5fb23bfc4fecfaadace4fee1",
             "execution_report_ref": ".governance/reports/system/task_watchdog/run-report.json",
-            "verified_commit": "2731529d27fa18e38095cb17dd17019cca54c925",
-            "verified_at": "2026-10-05T03:31:39Z"
+            "verified_commit": "6fdc5eb6fef8a3953338e77fa513f07bb6f0f04b",
+            "verified_at": "2026-10-07T23:56:24Z"
           }
         }
       ],

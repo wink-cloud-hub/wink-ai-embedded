@@ -280,7 +280,7 @@ graph LR
 | **Wave 1** | #214 | `protocols/sockets/tcp_server` | P1 | Lane 6 | ✅ 已完成 (Verified) | `protocols/sockets_tcp_server` |
 | **Wave 2** | #146 | `system/ota/simple_ota_example` | P1 | Lane 1 | ✅ 已完成 (Verified) | `system/ota_simple_ota_example` |
 | **Wave 2** | #312 | `bluetooth/blufi` | P1 | Lane 6 | 待认领 | `bluetooth/blufi` |
-| **Wave 2** | #122 | `system/deep_sleep` | P1 | Lane 1 | 待认领 | `system/deep_sleep` |
+| **Wave 2** | #122 | `system/deep_sleep` | P1 | Lane 1 | ✅ 已完成 (Verified) | `system/deep_sleep` |
 | **Wave 2** | #140 | `system/light_sleep` | P1 | Lane 1 | 待认领 | `system/light_sleep` |
 | **Wave 2** | #064 | `peripherals/rmt/led_strip` | P1 | Lane 3 | 待认领 | `peripherals/rmt_led_strip` |
 | **Wave 2** | #121 | `system/console/basic` | P1 | Lane 1 | 待认领 | `system/console_basic` |
