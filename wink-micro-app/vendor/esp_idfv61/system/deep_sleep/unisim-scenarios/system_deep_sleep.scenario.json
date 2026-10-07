@@ -1,0 +1,82 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 Deep Sleep Power Management Deterministic Proof",
+    "templateId": "esp_idfv61_system_deep_sleep",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Enabling timer wakeup, 20s",
+      "description": "断言配置并使能 RTC 定时器唤醒源（20秒）"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Enabling GPIO wakeup on GPIO2, trigger=HIGH_LEVEL",
+      "description": "断言配置并使能 GPIO2 高电平休眠唤醒源"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Enabling EXT0 wakeup on pin GPIO25",
+      "description": "断言配置并使能 RTC EXT0 GPIO25 高电平唤醒源"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Not a deep sleep reset",
+      "description": "断言冷启动检查休眠复位原因为未定义（非休眠唤醒重启）"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "1000ms",
+        "2500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Entering deep sleep",
+      "description": "断言经历延迟后成功完成 RTC IO 隔离并正式进入深度休眠状态"
+    }
+  ]
+}

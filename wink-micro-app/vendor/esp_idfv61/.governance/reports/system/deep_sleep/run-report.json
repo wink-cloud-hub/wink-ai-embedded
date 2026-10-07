@@ -1,0 +1,101 @@
+{
+  "timestamp": "2026-10-07T23:56:04.625Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 Deep Sleep Power Management Deterministic Proof",
+        "templateId": "esp_idfv61_system_deep_sleep",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 93
+      },
+      "summary": {
+        "totalSteps": 6,
+        "passedSteps": 6,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "Enabling timer wakeup, 20s\nEnabling GPIO wakeup on GPIO2, trigger=HIGH_LEVEL\nEnabling EXT0 wakeup on pin GPIO25\nNot a deep sleep reset\n"
+            ]
+          },
+          "expected": "Enabling timer wakeup, 20s"
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "Enabling timer wakeup, 20s\nEnabling GPIO wakeup on GPIO2, trigger=HIGH_LEVEL\nEnabling EXT0 wakeup on pin GPIO25\nNot a deep sleep reset\n"
+            ]
+          },
+          "expected": "Enabling GPIO wakeup on GPIO2, trigger=HIGH_LEVEL"
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "Enabling timer wakeup, 20s\nEnabling GPIO wakeup on GPIO2, trigger=HIGH_LEVEL\nEnabling EXT0 wakeup on pin GPIO25\nNot a deep sleep reset\n"
+            ]
+          },
+          "expected": "Enabling EXT0 wakeup on pin GPIO25"
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "Enabling timer wakeup, 20s\nEnabling GPIO wakeup on GPIO2, trigger=HIGH_LEVEL\nEnabling EXT0 wakeup on pin GPIO25\nNot a deep sleep reset\n"
+            ]
+          },
+          "expected": "Not a deep sleep reset"
+        },
+        {
+          "stepIndex": 5,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "Entering deep sleep\n\u001b[0;32mI (1001) esp_sleep: Entering deep sleep (20000000 us)\u001b[0m\n"
+            ]
+          },
+          "expected": "Entering deep sleep"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

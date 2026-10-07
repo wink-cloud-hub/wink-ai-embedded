@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-05T03:31:39.462Z",
+  "timestamp": "2026-10-07T23:56:23.879Z",
   "total": 1,
   "passed": 1,
   "failed": 0,
@@ -11,7 +11,7 @@
         "name": "ESP-IDF v6.1 system_task_watchdog headless deterministic proof",
         "templateId": "esp_idfv61_system_task_watchdog",
         "totalVirtualUs": "15000000",
-        "wallClockMs": 150
+        "wallClockMs": 167
       },
       "summary": {
         "totalSteps": 7,
@@ -37,7 +37,7 @@
           "actual": {
             "matchedCount": 1,
             "candidatePayloads": [
-              "TWDT initialized\nDelay for 10 seconds\nSubscribed to TWDT\n"
+              "\u001b[0;33mW (0) esp_task_wdt: Idle-core TWDT monitoring is unavailable in cooperative simulation\u001b[0m\nTWDT initialized\nDelay for 10 seconds\nSubscribed to TWDT\n"
             ]
           },
           "expected": "TWDT initialized"
@@ -50,7 +50,7 @@
           "actual": {
             "matchedCount": 1,
             "candidatePayloads": [
-              "TWDT initialized\nDelay for 10 seconds\nSubscribed to TWDT\n"
+              "\u001b[0;33mW (0) esp_task_wdt: Idle-core TWDT monitoring is unavailable in cooperative simulation\u001b[0m\nTWDT initialized\nDelay for 10 seconds\nSubscribed to TWDT\n"
             ]
           },
           "expected": "Delay for 10 seconds"
@@ -63,7 +63,7 @@
           "actual": {
             "matchedCount": 1,
             "candidatePayloads": [
-              "TWDT initialized\nDelay for 10 seconds\nSubscribed to TWDT\n"
+              "\u001b[0;33mW (0) esp_task_wdt: Idle-core TWDT monitoring is unavailable in cooperative simulation\u001b[0m\nTWDT initialized\nDelay for 10 seconds\nSubscribed to TWDT\n"
             ]
           },
           "expected": "Subscribed to TWDT"

@@ -1620,11 +1620,29 @@ async function createWasm() {
           }
       }
 
+  function _js_pal_gpio_on_write(pin, level) {
+          if (typeof Module !== 'undefined' && typeof Module['js_pal_gpio_on_write'] === 'function' && Module['js_pal_gpio_on_write'] !== _js_pal_gpio_on_write) {
+              return Module['js_pal_gpio_on_write'](pin, level);
+          }
+      }
+
   function _js_pal_gpio_read_state(pin) {
           if (typeof Module !== 'undefined' && typeof Module['js_pal_gpio_read_state'] === 'function' && Module['js_pal_gpio_read_state'] !== _js_pal_gpio_read_state) {
               return Module['js_pal_gpio_read_state'](pin);
           }
           return 2; /* HiZ default */
+      }
+
+  function _js_pal_gpio_release_mcu(pin) {
+          if (typeof Module !== 'undefined' && typeof Module['js_pal_gpio_release_mcu'] === 'function' && Module['js_pal_gpio_release_mcu'] !== _js_pal_gpio_release_mcu) {
+              return Module['js_pal_gpio_release_mcu'](pin);
+          }
+      }
+
+  function _js_pal_gpio_write(pin, level, strength) {
+          if (typeof Module !== 'undefined' && typeof Module['js_pal_gpio_write'] === 'function' && Module['js_pal_gpio_write'] !== _js_pal_gpio_write) {
+              return Module['js_pal_gpio_write'](pin, level, strength);
+          }
       }
 
   function _js_pal_i2c_transfer(port, addr, wbuf, wlen, rbuf, rlen) {
@@ -1659,6 +1677,32 @@ async function createWasm() {
           if (typeof Module !== 'undefined' && typeof Module['js_pal_notify_pin_edge'] === 'function' && Module['js_pal_notify_pin_edge'] !== _js_pal_notify_pin_edge) {
               return Module['js_pal_notify_pin_edge'](pin, level, tUs);
           }
+      }
+
+  function _js_pal_os_busy_wait_us(us) {
+          if (typeof Module !== 'undefined' && typeof Module['js_pal_os_busy_wait_us'] === 'function' && Module['js_pal_os_busy_wait_us'] !== _js_pal_os_busy_wait_us) {
+              return Asyncify.handleSleep(function(wakeUp) {
+                  Promise.resolve(Module['js_pal_os_busy_wait_us'](us)).then(function() {
+                      wakeUp();
+                  });
+              });
+          }
+          // VirtualClock advances by the exact BigInt(us) value — determinism is preserved regardless
+          // of the wall-clock setTimeout delay. For sub-ms durations (us < 1000), use a 0ms timeout
+          // (next event-loop tick) rather than a forced 1ms wait. This prevents I²C/SPI bit-bang
+          // simulations from running 2-10x slower than the equivalent real MCU timing.
+          var advanceUs = BigInt(us);
+          var waitMs = us >= 1000 ? Math.floor(us / 1000) : 0;
+          return Asyncify.handleSleep(function(wakeUp) {
+              setTimeout(function() {
+                  try {
+                      _pal_wasm_advance_virtual_clock(advanceUs);
+                  } catch (_e1) {
+                      try { _pal_wasm_advance_virtual_clock(Number(advanceUs)); } catch (_e2) {}
+                  }
+                  wakeUp();
+              }, waitMs);
+          });
       }
 
   function _js_pal_os_sleep_ms(ms) {
@@ -2832,7 +2876,13 @@ var wasmImports = {
   /** @export */
   js_pal_gpio_drive_ideal: _js_pal_gpio_drive_ideal,
   /** @export */
+  js_pal_gpio_on_write: _js_pal_gpio_on_write,
+  /** @export */
   js_pal_gpio_read_state: _js_pal_gpio_read_state,
+  /** @export */
+  js_pal_gpio_release_mcu: _js_pal_gpio_release_mcu,
+  /** @export */
+  js_pal_gpio_write: _js_pal_gpio_write,
   /** @export */
   js_pal_i2c_transfer: _js_pal_i2c_transfer,
   /** @export */
@@ -2841,6 +2891,8 @@ var wasmImports = {
   js_pal_log: _js_pal_log,
   /** @export */
   js_pal_notify_pin_edge: _js_pal_notify_pin_edge,
+  /** @export */
+  js_pal_os_busy_wait_us: _js_pal_os_busy_wait_us,
   /** @export */
   js_pal_os_sleep_ms: _js_pal_os_sleep_ms,
   /** @export */

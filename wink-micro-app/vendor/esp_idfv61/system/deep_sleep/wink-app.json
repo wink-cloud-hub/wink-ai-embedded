@@ -1,0 +1,18 @@
+{
+  "app_name": "esp_idfv61_system_deep_sleep",
+  "display_name": "Espressif ESP-IDF Deep Sleep Example",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/system/deep_sleep/main",
+    "files": {
+      "deep_sleep_example_main.c": "096dc4ecef416e0206d731d027f58abe5046e17602705b0b6c72d8d4c91b4a09",
+      "deep_sleep_example.h": "f76e0d99e38cf93a946f81a659d8518d0eca94b269bae2b5bf17016e4c765f02",
+      "ext_wakeup.c": "39d9ef543e4bbde819c5dd4d9a8e6e10e59ba37cbd03f75a0881a5d1116f102a",
+      "gpio_wakeup.c": "064b546bee5690a20e86f4f59ce0989c20e776d4b39f019b2840395a3c9c4053"
+    }
+  },
+  "devices": {}
+}
