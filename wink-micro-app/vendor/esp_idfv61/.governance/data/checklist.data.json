@@ -8,9 +8,9 @@
     "scope_unknown": 0,
     "in_scope_active": 250,
     "in_scope_deferred": 21,
-    "audited": 41,
-    "verified_configs": 42,
-    "verified": 41
+    "audited": 43,
+    "verified_configs": 43,
+    "verified": 43
   },
   "entries": [
     {
@@ -13903,10 +13903,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "arch_team",
+        "audited_at": "2026-10-07T11:27:20Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -13938,18 +13940,40 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/protocols_sockets_tcp_client.scenario.json",
+            "scenario_path": "protocols/sockets_tcp_client/unisim-scenarios/protocols_sockets_tcp_client.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "positive_cases": [
+              {
+                "name": "BSD TCP Client 远端服务器连接、报文收发回显与自动重连",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "Received: Simulated TCP echo response from server"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "注入未达成的期望回复字符或端口不一致变异",
+                "expect_error": "timeout",
+                "detects": "断言器防假绿与通信报文敏感性拦截"
+              }
+            ],
+            "sla_error_symbol": "TCP_CLIENT_COMM_TIMEOUT"
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261007-esp.protocols.sockets.tcp_client-verified",
+            "assets_sha256": "5e7277fb42871b160463de8670c63cce577b9b2d8d73e03ba0aecbc5583ae65c",
+            "scenario_sha256": "7dd55c8a6647e194222964d70ecb776f5ffcb24eadbfd64c2a82be48be41e920",
+            "execution_report_ref": ".governance/reports/protocols/sockets_tcp_client/run-report.json",
+            "verified_commit": "68e674cd494eb5dfa144342416f4569566ba3a6a",
+            "verified_at": "2026-10-07T11:27:20Z"
+          }
         }
       ],
       "target_app_dir": "protocols/sockets_tcp_client"

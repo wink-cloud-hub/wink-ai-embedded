@@ -276,7 +276,7 @@ graph LR
 | **Wave 1** | #197 | `protocols/http_server/ws_echo_server` | P1 | Lane 6 | ✅ 已完成 (Verified) | `protocols/http_server_ws_echo_server` |
 | **Wave 1** | #232 | `wifi/softap_sta` | P1 | Lane 6 | ✅ 已完成 (Verified) | `wifi/softap_sta` |
 | **Wave 1** | #209 | `protocols/sntp` | P1 | Lane 6 | ✅ 已完成 (Verified) | `protocols/sntp` |
-| **Wave 1** | #212 | `protocols/sockets/tcp_client` | P1 | Lane 6 | 待认领 | `protocols/sockets_tcp_client` |
+| **Wave 1** | #212 | `protocols/sockets/tcp_client` | P1 | Lane 6 | ✅ 已完成 (Verified) | `protocols/sockets_tcp_client` |
 | **Wave 1** | #214 | `protocols/sockets/tcp_server` | P1 | Lane 6 | 待认领 | `protocols/sockets_tcp_server` |
 | **Wave 2** | #146 | `system/ota/simple_ota_example` | P1 | Lane 1 | 待认领 | `system/ota_simple` |
 | **Wave 2** | #312 | `bluetooth/blufi` | P1 | Lane 6 | 待认领 | `bluetooth/blufi` |
