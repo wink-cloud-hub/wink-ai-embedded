@@ -1,0 +1,187 @@
+{
+  "timestamp": "2026-10-07T12:36:26.862Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 BSD Sockets TCP Server Deterministic Proof",
+        "templateId": "esp_idfv61_protocols_sockets_tcp_server",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 118
+      },
+      "summary": {
+        "totalSteps": 7,
+        "passedSteps": 7,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (1) example: Socket created\u001b[0m\n\u001b[0;32mI (1) example: Socket bound, port 3333\u001b[0m\n\u001b[0;32mI (1) example: Socket listening\u001b[0m\n\u001b[0;32mI (51) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n",
+              "\u001b[0;32mI (71) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (111) example: Connection closed\u001b[0m\n\u001b[0;32mI (111) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (161) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (181) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (221) example: Connection closed\u001b[0m\n\u001b[0;32mI (221) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (271) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (291) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (331) example: Connection closed\u001b[0m\n\u001b[0;32mI (331) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (381) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (401) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (441) example: Connection closed\u001b[0m\n\u001b[0;32mI (441) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (491) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (511) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (551) example: Connection closed\u001b[0m\n\u001b[0;32mI (551) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (601) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (621) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (661) example: Connection closed\u001b[0m\n\u001b[0;32mI (661) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (711) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (731) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (771) example: Connection closed\u001b[0m\n\u001b[0;32mI (771) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (821) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (841) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (881) example: Connection closed\u001b[0m\n\u001b[0;32mI (881) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (931) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (951) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (991) example: Connection closed\u001b[0m\n\u001b[0;32mI (991) example: Socket listening\u001b[0m\n"
+            ]
+          },
+          "expected": "Socket created"
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (1) example: Socket created\u001b[0m\n\u001b[0;32mI (1) example: Socket bound, port 3333\u001b[0m\n\u001b[0;32mI (1) example: Socket listening\u001b[0m\n\u001b[0;32mI (51) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n",
+              "\u001b[0;32mI (71) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (111) example: Connection closed\u001b[0m\n\u001b[0;32mI (111) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (161) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (181) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (221) example: Connection closed\u001b[0m\n\u001b[0;32mI (221) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (271) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (291) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (331) example: Connection closed\u001b[0m\n\u001b[0;32mI (331) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (381) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (401) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (441) example: Connection closed\u001b[0m\n\u001b[0;32mI (441) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (491) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (511) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (551) example: Connection closed\u001b[0m\n\u001b[0;32mI (551) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (601) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (621) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (661) example: Connection closed\u001b[0m\n\u001b[0;32mI (661) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (711) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (731) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (771) example: Connection closed\u001b[0m\n\u001b[0;32mI (771) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (821) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (841) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (881) example: Connection closed\u001b[0m\n\u001b[0;32mI (881) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (931) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (951) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (991) example: Connection closed\u001b[0m\n\u001b[0;32mI (991) example: Socket listening\u001b[0m\n"
+            ]
+          },
+          "expected": "Socket bound, port 3333"
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": {
+            "matchedCount": 10,
+            "candidatePayloads": [
+              "\u001b[0;32mI (1) example: Socket created\u001b[0m\n\u001b[0;32mI (1) example: Socket bound, port 3333\u001b[0m\n\u001b[0;32mI (1) example: Socket listening\u001b[0m\n\u001b[0;32mI (51) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n",
+              "\u001b[0;32mI (71) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (111) example: Connection closed\u001b[0m\n\u001b[0;32mI (111) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (161) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (181) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (221) example: Connection closed\u001b[0m\n\u001b[0;32mI (221) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (271) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (291) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (331) example: Connection closed\u001b[0m\n\u001b[0;32mI (331) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (381) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (401) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (441) example: Connection closed\u001b[0m\n\u001b[0;32mI (441) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (491) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (511) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (551) example: Connection closed\u001b[0m\n\u001b[0;32mI (551) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (601) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (621) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (661) example: Connection closed\u001b[0m\n\u001b[0;32mI (661) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (711) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (731) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (771) example: Connection closed\u001b[0m\n\u001b[0;32mI (771) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (821) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (841) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (881) example: Connection closed\u001b[0m\n\u001b[0;32mI (881) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (931) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (951) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (991) example: Connection closed\u001b[0m\n\u001b[0;32mI (991) example: Socket listening\u001b[0m\n"
+            ]
+          },
+          "expected": "Socket listening"
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 14,
+            "candidatePayloads": [
+              "\u001b[0;32mI (1) example: Socket created\u001b[0m\n\u001b[0;32mI (1) example: Socket bound, port 3333\u001b[0m\n\u001b[0;32mI (1) example: Socket listening\u001b[0m\n\u001b[0;32mI (51) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n",
+              "\u001b[0;32mI (71) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (111) example: Connection closed\u001b[0m\n\u001b[0;32mI (111) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (161) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (181) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (221) example: Connection closed\u001b[0m\n\u001b[0;32mI (221) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (271) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (291) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (331) example: Connection closed\u001b[0m\n\u001b[0;32mI (331) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (381) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (401) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (441) example: Connection closed\u001b[0m\n\u001b[0;32mI (441) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (491) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (511) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (551) example: Connection closed\u001b[0m\n\u001b[0;32mI (551) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (601) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (621) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (661) example: Connection closed\u001b[0m\n\u001b[0;32mI (661) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (711) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (731) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (771) example: Connection closed\u001b[0m\n\u001b[0;32mI (771) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (821) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (841) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (881) example: Connection closed\u001b[0m\n\u001b[0;32mI (881) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (931) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (951) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (991) example: Connection closed\u001b[0m\n\u001b[0;32mI (991) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (1041) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (1061) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (1101) example: Connection closed\u001b[0m\n\u001b[0;32mI (1101) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (1151) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (1171) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (1211) example: Connection closed\u001b[0m\n\u001b[0;32mI (1211) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (1261) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (1281) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (1321) example: Connection closed\u001b[0m\n\u001b[0;32mI (1321) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (1371) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (1391) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (1431) example: Connection closed\u001b[0m\n\u001b[0;32mI (1431) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (1481) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n"
+            ]
+          },
+          "expected": "Socket accepted ip address: 127.0.0.1"
+        },
+        {
+          "stepIndex": 5,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 13,
+            "candidatePayloads": [
+              "\u001b[0;32mI (1) example: Socket created\u001b[0m\n\u001b[0;32mI (1) example: Socket bound, port 3333\u001b[0m\n\u001b[0;32mI (1) example: Socket listening\u001b[0m\n\u001b[0;32mI (51) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n",
+              "\u001b[0;32mI (71) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (111) example: Connection closed\u001b[0m\n\u001b[0;32mI (111) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (161) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (181) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (221) example: Connection closed\u001b[0m\n\u001b[0;32mI (221) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (271) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (291) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (331) example: Connection closed\u001b[0m\n\u001b[0;32mI (331) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (381) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (401) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (441) example: Connection closed\u001b[0m\n\u001b[0;32mI (441) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (491) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (511) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (551) example: Connection closed\u001b[0m\n\u001b[0;32mI (551) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (601) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (621) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (661) example: Connection closed\u001b[0m\n\u001b[0;32mI (661) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (711) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (731) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (771) example: Connection closed\u001b[0m\n\u001b[0;32mI (771) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (821) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (841) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (881) example: Connection closed\u001b[0m\n\u001b[0;32mI (881) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (931) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (951) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (991) example: Connection closed\u001b[0m\n\u001b[0;32mI (991) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (1041) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (1061) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (1101) example: Connection closed\u001b[0m\n\u001b[0;32mI (1101) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (1151) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (1171) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (1211) example: Connection closed\u001b[0m\n\u001b[0;32mI (1211) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (1261) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (1281) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (1321) example: Connection closed\u001b[0m\n\u001b[0;32mI (1321) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (1371) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (1391) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (1431) example: Connection closed\u001b[0m\n\u001b[0;32mI (1431) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (1481) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n"
+            ]
+          },
+          "expected": "Received 11 bytes: Data to ESP"
+        },
+        {
+          "stepIndex": 6,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2000000",
+          "actual": {
+            "matchedCount": 18,
+            "candidatePayloads": [
+              "\u001b[0;32mI (1) example: Socket created\u001b[0m\n\u001b[0;32mI (1) example: Socket bound, port 3333\u001b[0m\n\u001b[0;32mI (1) example: Socket listening\u001b[0m\n\u001b[0;32mI (51) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n",
+              "\u001b[0;32mI (71) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (111) example: Connection closed\u001b[0m\n\u001b[0;32mI (111) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (161) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (181) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (221) example: Connection closed\u001b[0m\n\u001b[0;32mI (221) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (271) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (291) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (331) example: Connection closed\u001b[0m\n\u001b[0;32mI (331) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (381) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (401) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (441) example: Connection closed\u001b[0m\n\u001b[0;32mI (441) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (491) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (511) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (551) example: Connection closed\u001b[0m\n\u001b[0;32mI (551) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (601) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (621) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (661) example: Connection closed\u001b[0m\n\u001b[0;32mI (661) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (711) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (731) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (771) example: Connection closed\u001b[0m\n\u001b[0;32mI (771) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (821) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (841) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (881) example: Connection closed\u001b[0m\n\u001b[0;32mI (881) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (931) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (951) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (991) example: Connection closed\u001b[0m\n\u001b[0;32mI (991) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (1041) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (1061) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (1101) example: Connection closed\u001b[0m\n\u001b[0;32mI (1101) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (1151) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (1171) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (1211) example: Connection closed\u001b[0m\n\u001b[0;32mI (1211) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (1261) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (1281) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (1321) example: Connection closed\u001b[0m\n\u001b[0;32mI (1321) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (1371) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (1391) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (1431) example: Connection closed\u001b[0m\n\u001b[0;32mI (1431) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (1481) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (1501) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (1541) example: Connection closed\u001b[0m\n\u001b[0;32mI (1541) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (1591) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (1611) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (1651) example: Connection closed\u001b[0m\n\u001b[0;32mI (1651) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (1701) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (1721) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (1761) example: Connection closed\u001b[0m\n\u001b[0;32mI (1761) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (1811) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (1831) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (1871) example: Connection closed\u001b[0m\n\u001b[0;32mI (1871) example: Socket listening\u001b[0m\n",
+              "\u001b[0;32mI (1921) example: Socket accepted ip address: 127.0.0.1\u001b[0m\n\u001b[0;32mI (1941) example: Received 11 bytes: Data to ESP\u001b[0m\n\u001b[0;33mW (1981) example: Connection closed\u001b[0m\n\u001b[0;32mI (1981) example: Socket listening\u001b[0m\n"
+            ]
+          },
+          "expected": "Connection closed"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

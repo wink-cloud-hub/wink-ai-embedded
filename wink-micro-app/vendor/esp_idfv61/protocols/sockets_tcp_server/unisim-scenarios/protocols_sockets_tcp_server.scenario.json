@@ -1,0 +1,94 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 BSD Sockets TCP Server Deterministic Proof",
+    "templateId": "esp_idfv61_protocols_sockets_tcp_server",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000ms",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "50ms",
+      "target": "power:VCC_3V3",
+      "matcher": 3.3,
+      "description": "断言系统供电轨稳定维持 3.3V"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Socket created",
+      "description": "断言创建 BSD Socket 成功"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Socket bound, port 3333",
+      "description": "断言 Socket 成功绑定至本地 IPv4 端口 3333"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Socket listening",
+      "description": "断言 Socket 成功进入监听状态开始接收连接"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Socket accepted ip address: 127.0.0.1",
+      "description": "断言服务端成功接受客户端 TCP 连接并解析对端 IP"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "1500ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Received 11 bytes: Data to ESP",
+      "description": "断言服务端成功接收来自客户端的数据载荷"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": [
+        "0ms",
+        "2000ms"
+      ],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Connection closed",
+      "description": "断言客户端关闭连接后服务端优雅检测到 EOF 并关闭客户端 Socket"
+    }
+  ]
+}
