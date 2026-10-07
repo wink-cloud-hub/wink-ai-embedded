@@ -6,11 +6,11 @@
     "scope_in": 312,
     "scope_out": 166,
     "scope_unknown": 0,
-    "in_scope_active": 291,
+    "in_scope_active": 250,
     "in_scope_deferred": 21,
-    "audited": 40,
-    "verified_configs": 40,
-    "verified": 29
+    "audited": 41,
+    "verified_configs": 41,
+    "verified": 41
   },
   "entries": [
     {
@@ -15292,10 +15292,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "arch_team",
+        "audited_at": "2026-10-07T09:49:39Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -15304,7 +15306,8 @@
         "cap.core.sync_tokens",
         "cap.net.event_pump",
         "cap.vfs.nvs_partition",
-        "cap.wifi.station_mode"
+        "cap.wifi.station_mode",
+        "cap.wifi.ap_mode"
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
@@ -15328,18 +15331,40 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/wifi_softap_sta.scenario.json",
+            "scenario_path": "wifi/softap_sta/unisim-scenarios/wifi_softap_sta.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
-            "sla_error_symbol": null
+            "positive_cases": [
+              {
+                "name": "Wi-Fi SoftAP 与 STA 双工共存、DHCP 客户端 IP 分配与 DNS/NAPT 启用",
+                "matcher": {
+                  "op": "regex",
+                  "expected": "192.168.1.100"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "注入畸形/非法密码与断言金丝雀变异",
+                "expect_error": "timeout",
+                "detects": "断言器防假绿与连接敏感性拦截"
+              }
+            ],
+            "sla_error_symbol": "WIFI_CONN_TIMEOUT"
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261007-esp.wifi.softap_sta-verified",
+            "assets_sha256": "7ca7c6315c6fddab0af2280cd2e237c679b4de916af3fce8cf92980dc8d673f8",
+            "scenario_sha256": "d2ce28c5e5e2694ae29f8e298fea77e9f316f433ea3a6d58c9ac6921df51d7de",
+            "execution_report_ref": ".governance/reports/wifi/softap_sta/run-report.json",
+            "verified_commit": "f9b196d6",
+            "verified_at": "2026-10-07T09:49:39Z"
+          }
         }
       ],
       "target_app_dir": "wifi/softap_sta"
