@@ -8,9 +8,9 @@
     "scope_unknown": 0,
     "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 36,
-    "verified_configs": 36,
-    "verified": 25
+    "audited": 37,
+    "verified_configs": 37,
+    "verified": 26
   },
   "entries": [
     {
@@ -1178,10 +1178,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "loop_sop_daemon",
+        "audited_at": "2026-10-07T08:10:00Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -1212,18 +1214,40 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/peripherals_dedicated_gpio_soft_uart.scenario.json",
+            "scenario_path": "peripherals/dedicated_gpio_soft_uart/unisim-scenarios/peripherals_dedicated_gpio_soft_uart.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
+            "positive_cases": [
+              {
+                "name": "软件模拟串口收发 16 字节十六进制打印验证",
+                "matcher": {
+                  "op": "contains",
+                  "expected": "0x48 0x65 0x6c 0x6c 0x6f"
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "注入 DEDIC_GPIO 分配失败故障探针 (ESP_FAULT_DOMAIN_DEDIC_GPIO / ESP_FAULT_DEDIC_GPIO_ALLOC_FAIL)",
+                "expect_error": "ESP_ERR_INVALID_STATE",
+                "detects": "底层 GPIO bundle 分配失败时优雅跳转至 error 标签并打印报错日志"
+              }
+            ],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261007-esp.peripherals.dedicated_gpio.soft_uart-verified",
+            "assets_sha256": "e5a1fe535351160369414fce4b611719cf344c63598d5fc4b1c40c0b50c99456",
+            "scenario_sha256": "8d5ed5a69e9e5f7862d2bf74dc8a85e930a3828b5058ae8e6dc6b18a7adaad41",
+            "execution_report_ref": ".governance/reports/peripherals/dedicated_gpio_soft_uart/run-report.json",
+            "verified_commit": "2f63b1c0",
+            "verified_at": "2026-10-07T08:10:00Z"
+          }
         }
       ],
       "target_app_dir": "peripherals/dedicated_gpio_soft_uart"

@@ -1,0 +1,62 @@
+{
+  "timestamp": "2026-10-07T00:09:43.913Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 dedicated_gpio_soft_uart headless deterministic proof",
+        "templateId": "esp_idfv61_peripherals_dedicated_gpio_soft_uart",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 102
+      },
+      "summary": {
+        "totalSteps": 3,
+        "passedSteps": 3,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "UART transfers succeeded, received bytes: { 0x48 0x65 0x6c 0x6c 0x6f 0x2c 0x20 0x77 0x6f 0x72 0x6c 0x64 0x21 0x20 0x54 0x68 }\n"
+            ]
+          },
+          "expected": "UART transfers succeeded, received bytes:"
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "UART transfers succeeded, received bytes: { 0x48 0x65 0x6c 0x6c 0x6f 0x2c 0x20 0x77 0x6f 0x72 0x6c 0x64 0x21 0x20 0x54 0x68 }\n"
+            ]
+          },
+          "expected": "0x48 0x65 0x6c 0x6c 0x6f"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}
