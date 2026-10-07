@@ -1,0 +1,78 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 http_server_restful_server headless deterministic proof",
+    "templateId": "esp_idfv61_http_server_restful_server",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "0ms",
+      "target": "http:server:state",
+      "matcher": "RUNNING",
+      "description": "断言嵌入式 RESTful HTTP 服务器成功启动并处于 RUNNING 状态"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "100ms",
+      "target": "http:server:port",
+      "matcher": 80,
+      "description": "断言 RESTful HTTP 服务器正确绑定并监听 80 端口"
+    },
+    {
+      "type": "INJECT_NET_FIXTURE",
+      "timeUs": "200ms",
+      "protocol": "http",
+      "description": "向 RESTful HTTP 服务器依次注入系统信息查询、模拟温度读取以及灯光亮度控制请求",
+      "requests": [
+        {
+          "method": "GET",
+          "uri": "/api/v1/system/info",
+          "host": "localhost"
+        },
+        {
+          "method": "GET",
+          "uri": "/api/v1/temp/raw",
+          "host": "localhost"
+        },
+        {
+          "method": "POST",
+          "uri": "/api/v1/light/brightness",
+          "body": "{\"red\":255,\"green\":128,\"blue\":64}"
+        }
+      ]
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "http:server:request_count",
+      "matcher": { "$gte": 3 },
+      "description": "断言 RESTful HTTP 服务器已成功处理至少 3 次业务请求"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "http:server:status_code",
+      "matcher": 200,
+      "description": "断言 POST /api/v1/light/brightness 控制请求返回 200 OK 状态码"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "http:server:last_uri",
+      "matcher": "/api/v1/light/brightness",
+      "description": "断言最近处理的 RESTful 路由为 /api/v1/light/brightness"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "http:server:last_resp",
+      "matcher": "Post control value successfully",
+      "description": "断言 POST /api/v1/light/brightness 业务处理响应载荷与原厂契约完全一致"
+    }
+  ]
+}

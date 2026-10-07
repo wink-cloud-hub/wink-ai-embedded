@@ -1,0 +1,16 @@
+{
+  "app_name": "esp_idfv61_http_server_restful_server",
+  "display_name": "Espressif ESP-IDF RESTful Server",
+  "board": "esp32_devkitc_v4",
+  "category": "vendor_example",
+  "upstream": {
+    "vendor": "Espressif",
+    "version": "v6.1",
+    "source_dir": "examples/protocols/http_server/restful_server/main",
+    "files": {
+      "esp_rest_main.c": "345b8a07dbb5401f7e18cd040cedb38b222dad31c3b14f49461de39f49625379",
+      "rest_server.c": "3e3fe8c0940be86552cdabfcd4003e7651cac3a60b7f8dfffa0354c325bd0b23"
+    }
+  },
+  "devices": {}
+}

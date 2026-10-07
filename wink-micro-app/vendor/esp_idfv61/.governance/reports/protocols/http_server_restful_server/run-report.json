@@ -1,0 +1,84 @@
+{
+  "timestamp": "2026-10-07T04:33:23.261Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 http_server_restful_server headless deterministic proof",
+        "templateId": "esp_idfv61_http_server_restful_server",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 97
+      },
+      "summary": {
+        "totalSteps": 7,
+        "passedSteps": 7,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "0",
+          "actual": "RUNNING",
+          "expected": "RUNNING"
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "100000",
+          "actual": 80,
+          "expected": 80
+        },
+        {
+          "stepIndex": 2,
+          "type": "INJECT_NET_FIXTURE",
+          "status": "passed",
+          "timeUs": "200000"
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "500000",
+          "actual": 3,
+          "expected": {
+            "$gte": 3
+          }
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "500000",
+          "actual": 200,
+          "expected": 200
+        },
+        {
+          "stepIndex": 5,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "500000",
+          "actual": "/api/v1/light/brightness",
+          "expected": "/api/v1/light/brightness"
+        },
+        {
+          "stepIndex": 6,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "500000",
+          "actual": "Post control value successfully",
+          "expected": "Post control value successfully"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

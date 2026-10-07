@@ -1,0 +1,47 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 http_server_restful_server headless 404 anomaly rejection proof",
+    "templateId": "esp_idfv61_http_server_restful_server_fail",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "0ms",
+      "target": "http:server:state",
+      "matcher": "RUNNING",
+      "description": "断言嵌入式 RESTful HTTP 服务器成功启动并处于 RUNNING 状态"
+    },
+    {
+      "type": "INJECT_NET_FIXTURE",
+      "timeUs": "200ms",
+      "protocol": "http",
+      "description": "向 RESTful HTTP 服务器注入未注册的异常路由 GET /api/v1/unregistered_endpoint",
+      "requests": [
+        {
+          "method": "GET",
+          "uri": "/api/v1/unregistered_endpoint",
+          "host": "localhost"
+        }
+      ]
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "http:server:status_code",
+      "matcher": 404,
+      "description": "断言未注册异常路由被 RESTful HTTP 服务器正确拦截并返回 404 Not Found"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "http:server:last_uri",
+      "matcher": "/api/v1/unregistered_endpoint",
+      "description": "断言拦截的异常请求路由为 /api/v1/unregistered_endpoint"
+    }
+  ]
+}
