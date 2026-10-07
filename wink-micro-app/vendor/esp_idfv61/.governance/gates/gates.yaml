@@ -183,7 +183,7 @@ rules:
     module: rules.g4_impact_regression
     description: "反向传递闭包遍历与现场 Headless 仿真回归调度"
     config:
-      max_inline_entries: 30
+      max_inline_entries: 50
 
   # Gate 5: 架构防腐与断言质量 (4条)
   - id: g5.no_inline_mock

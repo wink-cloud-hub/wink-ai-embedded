@@ -455,6 +455,7 @@ capabilities:
     description: 嵌入式 HTTP Server 请求监听、URI 路由与 Session 会话管理
     owned_paths:
     - wink-micro-os/frameworks/esp_idf/src/network/esp_http_server.c
+    - wink-micro-os/frameworks/esp_idf/include/esp_http_server.h
     soc_support:
     - esp32
     - esp32s3

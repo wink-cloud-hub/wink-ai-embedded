@@ -54,7 +54,8 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
         fixture_steps = [s for s in steps if s.get("type") == "INJECT_NET_FIXTURE"]
         for idx, fstep in enumerate(fixture_steps):
             routes = fstep.get("routes", [])
-            if not routes:
+            requests = fstep.get("requests", [])
+            if not routes and not requests:
                 findings.append({
                     "rule_id": RULE_ID,
                     "severity": "error",
@@ -62,7 +63,7 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
                     "display_id": None,
                     "config_id": None,
                     "file_path": str(sc_file.relative_to(ws_root)),
-                    "message": f"Step[{idx}] INJECT_NET_FIXTURE declares empty routes array",
+                    "message": f"Step[{idx}] INJECT_NET_FIXTURE declares neither routes nor requests",
                 })
             for r_idx, route in enumerate(routes):
                 if not route.get("url_prefix"):
@@ -74,6 +75,17 @@ def run(context: dict, config: dict | None = None) -> list[dict]:
                         "config_id": None,
                         "file_path": str(sc_file.relative_to(ws_root)),
                         "message": f"Route[{r_idx}] missing required 'url_prefix'",
+                    })
+            for req_idx, req in enumerate(requests):
+                if not req.get("uri") and not req.get("url"):
+                    findings.append({
+                        "rule_id": RULE_ID,
+                        "severity": "error",
+                        "entry_id": None,
+                        "display_id": None,
+                        "config_id": None,
+                        "file_path": str(sc_file.relative_to(ws_root)),
+                        "message": f"Request[{req_idx}] missing required 'uri' or 'url'",
                     })
 
         # 检查断言质量

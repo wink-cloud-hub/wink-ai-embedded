@@ -58,7 +58,7 @@ def compute_impact_closure(
     changed_files: list[str],
     catalog: dict,
     manifest: dict,
-    max_inline_entries: int = 30,
+    max_inline_entries: int = 50,
 ) -> dict:
     """
     Computes the reverse transitive dependency closure:
