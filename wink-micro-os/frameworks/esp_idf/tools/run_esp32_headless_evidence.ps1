@@ -86,6 +86,7 @@ $allCarriers = @(
     @{ Name = 'http_client';   Rel = 'vendor/esp_idfv61/protocols/http_client';   Channel = 'HTTP/REST Client & Events' },
     @{ Name = 'http_server_simple'; Rel = 'vendor/esp_idfv61/protocols/http_server_simple'; Channel = 'HTTP Server Simple URI Handlers' },
     @{ Name = 'http_server_restful_server'; Rel = 'vendor/esp_idfv61/protocols/http_server_restful_server'; Channel = 'HTTP RESTful Server & JSON API' },
+    @{ Name = 'http_server_ws_echo_server'; Rel = 'vendor/esp_idfv61/protocols/http_server_ws_echo_server'; Channel = 'WebSocket Echo Server & Async Work Queue' },
     @{ Name = 'mqtt_tcp';      Rel = 'vendor/esp_idfv61/protocols/mqtt_tcp';      Channel = 'MQTT Protocol & Event Loop' },
     @{ Name = 'nvs_nvs_rw_value'; Rel = 'vendor/esp_idfv61/storage/nvs_nvs_rw_value'; Channel = 'NVS Read/Write Value & Key Iteration' },
     @{ Name = 'nvs_nvs_rw_blob';  Rel = 'vendor/esp_idfv61/storage/nvs_nvs_rw_blob';  Channel = 'NVS Read/Write Struct & Array Blobs' },

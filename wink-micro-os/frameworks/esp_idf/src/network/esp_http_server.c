@@ -406,16 +406,102 @@ esp_err_t httpd_resp_send_custom_err(httpd_req_t *req, const char *status, const
     return httpd_resp_send(req, msg ? msg : status, HTTPD_RESP_USE_STRLEN);
 }
 
-bool httpd_uri_match_wildcard(const char *uri_template, const char *uri_to_match, size_t match_upto) {
-    if (!uri_template || !uri_to_match) return false;
-    const size_t tpl_len = strlen(uri_template);
-    if (tpl_len > 0 && uri_template[tpl_len - 1] == '*') {
-        size_t prefix_len = tpl_len - 1;
+bool httpd_uri_match_wildcard(const char *uri_pattern, const char *uri_to_match, size_t match_upto) {
+    if (!uri_pattern || !uri_to_match) return false;
+    const size_t pat_len = strlen(uri_pattern);
+    if (pat_len > 0 && uri_pattern[pat_len - 1] == '*') {
+        size_t prefix_len = pat_len - 1;
         if (match_upto < prefix_len) return false;
-        return strncmp(uri_template, uri_to_match, prefix_len) == 0;
+        return strncmp(uri_pattern, uri_to_match, prefix_len) == 0;
     }
-    if (tpl_len != match_upto) return false;
-    return strncmp(uri_template, uri_to_match, match_upto) == 0;
+    if (pat_len != match_upto) return false;
+    return strncmp(uri_pattern, uri_to_match, match_upto) == 0;
+}
+
+int httpd_req_to_sockfd(httpd_req_t *r) {
+    return r ? 1 : -1;
+}
+
+esp_err_t httpd_queue_work(httpd_handle_t handle, httpd_work_fn_t work, void *arg) {
+    if (!work) return ESP_ERR_INVALID_ARG;
+    (void)handle;
+    work(arg);
+    return ESP_OK;
+}
+
+esp_err_t httpd_ws_recv_frame(httpd_req_t *req, httpd_ws_frame_t *pkt, size_t max_len) {
+    if (!req || !pkt) return ESP_ERR_INVALID_ARG;
+    if (max_len == 0) {
+        pkt->len = s_curr_aux.body_len;
+        pkt->type = HTTPD_WS_TYPE_TEXT;
+        return ESP_OK;
+    }
+    size_t to_copy = s_curr_aux.body_len < max_len ? s_curr_aux.body_len : max_len;
+    if (pkt->payload && to_copy > 0) {
+        memcpy(pkt->payload, s_curr_aux.body_buf, to_copy);
+        pkt->payload[to_copy] = '\0';
+    }
+    pkt->len = to_copy;
+    pkt->type = HTTPD_WS_TYPE_TEXT;
+    return ESP_OK;
+}
+
+esp_err_t httpd_ws_recv_frame_part(httpd_req_t *req, httpd_ws_frame_t *pkt, size_t max_len) {
+    if (!req || !pkt) return ESP_ERR_INVALID_ARG;
+    if (max_len == 0) {
+        pkt->len = s_curr_aux.body_len;
+        pkt->left_len = s_curr_aux.body_len;
+        s_curr_aux.body_read_pos = 0;
+        pkt->type = HTTPD_WS_TYPE_TEXT;
+        return ESP_OK;
+    }
+    size_t remain = s_curr_aux.body_len > s_curr_aux.body_read_pos ? (s_curr_aux.body_len - s_curr_aux.body_read_pos) : 0;
+    size_t chunk_len = remain < max_len ? remain : max_len;
+    if (pkt->payload && chunk_len > 0) {
+        memcpy(pkt->payload, s_curr_aux.body_buf + s_curr_aux.body_read_pos, chunk_len);
+    }
+    s_curr_aux.body_read_pos += chunk_len;
+    pkt->left_len = remain - chunk_len;
+    return ESP_OK;
+}
+
+esp_err_t httpd_ws_send_frame(httpd_req_t *req, httpd_ws_frame_t *pkt) {
+    if (!req || !pkt) return ESP_ERR_INVALID_ARG;
+    if (pkt->payload && pkt->len > 0) {
+        if (pkt->fragmented) {
+            if (pkt->type != HTTPD_WS_TYPE_CONTINUE && s_curr_aux.resp_body_len == 0) {
+                s_server_last_resp[0] = '\0';
+            }
+            size_t curr_len = strlen(s_server_last_resp);
+            size_t avail = sizeof(s_server_last_resp) - 1 - curr_len;
+            size_t to_copy = pkt->len < avail ? pkt->len : avail;
+            memcpy(s_server_last_resp + curr_len, pkt->payload, to_copy);
+            s_server_last_resp[curr_len + to_copy] = '\0';
+            s_curr_aux.resp_body_len += to_copy;
+        } else {
+            size_t to_copy = pkt->len < sizeof(s_server_last_resp) - 1 ? pkt->len : sizeof(s_server_last_resp) - 1;
+            memcpy(s_server_last_resp, pkt->payload, to_copy);
+            s_server_last_resp[to_copy] = '\0';
+            s_curr_aux.resp_body_len = to_copy;
+        }
+        s_server_total_tx_bytes += pkt->len;
+    }
+    s_server_last_status = 200;
+    return ESP_OK;
+}
+
+esp_err_t httpd_ws_send_frame_async(httpd_handle_t hd, int fd, httpd_ws_frame_t *frame) {
+    if (!frame) return ESP_ERR_INVALID_ARG;
+    (void)hd;
+    (void)fd;
+    if (frame->payload && frame->len > 0) {
+        size_t to_copy = frame->len < sizeof(s_server_last_resp) - 1 ? frame->len : sizeof(s_server_last_resp) - 1;
+        memcpy(s_server_last_resp, frame->payload, to_copy);
+        s_server_last_resp[to_copy] = '\0';
+        s_server_total_tx_bytes += frame->len;
+    }
+    s_server_last_status = 200;
+    return ESP_OK;
 }
 
 /* Dispatch a simulated incoming request to the HTTP server */
@@ -436,16 +522,21 @@ WINK_SIM_EXPORT int sim_http_server_dispatch_request(
     memset(&s_curr_aux, 0, sizeof(s_curr_aux));
     memset(&s_curr_req, 0, sizeof(s_curr_req));
 
-    /* Parse URI path and query string */
+    /* Full URI preserved in s_curr_req.uri for query access */
+    strncpy(s_curr_req.uri, raw_uri, sizeof(s_curr_req.uri) - 1);
+    s_curr_req.uri[sizeof(s_curr_req.uri) - 1] = '\0';
+
+    char path_buf[CONFIG_HTTPD_MAX_URI_LEN + 1];
     const char *qmark = strchr(raw_uri, '?');
     if (qmark) {
         size_t path_len = (size_t)(qmark - raw_uri);
-        if (path_len >= sizeof(s_curr_req.uri)) path_len = sizeof(s_curr_req.uri) - 1;
-        memcpy(s_curr_req.uri, raw_uri, path_len);
-        s_curr_req.uri[path_len] = '\0';
+        if (path_len >= sizeof(path_buf)) path_len = sizeof(path_buf) - 1;
+        memcpy(path_buf, raw_uri, path_len);
+        path_buf[path_len] = '\0';
         strncpy(s_curr_aux.query_str, qmark + 1, sizeof(s_curr_aux.query_str) - 1);
     } else {
-        strncpy(s_curr_req.uri, raw_uri, sizeof(s_curr_req.uri) - 1);
+        strncpy(path_buf, raw_uri, sizeof(path_buf) - 1);
+        path_buf[sizeof(path_buf) - 1] = '\0';
         s_curr_aux.query_str[0] = '\0';
     }
 
@@ -468,7 +559,7 @@ WINK_SIM_EXPORT int sim_http_server_dispatch_request(
 
     s_curr_req.handle = &s_server;
     s_server_req_count++;
-    strncpy(s_server_last_uri, s_curr_req.uri, sizeof(s_server_last_uri) - 1);
+    strncpy(s_server_last_uri, path_buf, sizeof(s_server_last_uri) - 1);
 
     /* Match registered handler */
     server_uri_slot_t *matched = NULL;
@@ -479,10 +570,10 @@ WINK_SIM_EXPORT int sim_http_server_dispatch_request(
             if (s_server.config.uri_match_fn) {
                 typedef bool (*httpd_match_fn_t)(const char *, const char *, size_t);
                 is_match = ((httpd_match_fn_t)s_server.config.uri_match_fn)(
-                    u->uri, s_curr_req.uri, strlen(s_curr_req.uri)
+                    u->uri, path_buf, strlen(path_buf)
                 );
             } else {
-                is_match = (strcmp(u->uri, s_curr_req.uri) == 0);
+                is_match = (strcmp(u->uri, path_buf) == 0);
             }
             if (is_match) {
                 if (u->method == HTTP_ANY || (int)u->method == s_curr_req.method) {
@@ -495,6 +586,20 @@ WINK_SIM_EXPORT int sim_http_server_dispatch_request(
 
     if (matched) {
         s_curr_req.user_ctx = matched->uri_handler.user_ctx;
+        if (matched->uri_handler.is_websocket) {
+            if (matched->uri_handler.ws_pre_handshake_cb) {
+                esp_err_t cb_ret = matched->uri_handler.ws_pre_handshake_cb(&s_curr_req);
+                if (cb_ret != ESP_OK) {
+                    ESP_LOGW(TAG, "WebSocket pre-handshake callback rejected connection");
+                    s_server_last_status = 403;
+                    httpd_resp_send_custom_err(&s_curr_req, HTTPD_403, "Handshake rejected");
+                    return 403;
+                }
+            }
+            if (matched->uri_handler.ws_post_handshake_cb) {
+                matched->uri_handler.ws_post_handshake_cb(&s_curr_req);
+            }
+        }
         esp_err_t rc = matched->uri_handler.handler(&s_curr_req);
         if (rc != ESP_OK) {
             ESP_LOGW(TAG, "URI handler returned %d", rc);
