@@ -396,6 +396,7 @@ capabilities:
     owned_paths:
     - wink-micro-os/frameworks/esp_idf/src/core/esp_partition.c
     - wink-micro-os/frameworks/esp_idf/include/esp_partition_sim.h
+    - wink-micro-os/frameworks/esp_idf/include/esp_partition.h
     soc_support:
     - esp32
     - esp32s3
@@ -426,6 +427,7 @@ capabilities:
     - wink-micro-os/frameworks/esp_idf/src/network/esp_http.c
     - wink-micro-os/frameworks/esp_idf/src/network/sim_net_responder.c
     - wink-micro-os/frameworks/esp_idf/include/esp_http_client.h
+    - wink-micro-os/frameworks/esp_idf/include/esp_crt_bundle.h
     soc_support:
     - esp32
     - esp32s3
@@ -679,10 +681,16 @@ capabilities:
   cap.system.ota_update:
     name: OTA 固件升级与回滚校验
     layer: model
-    status: planned
+    status: implemented
     description: OTA 双应用分区镜像写入、启动标记切换与回滚
     owned_paths:
-    - wink-micro-os/frameworks/esp_idf/src/system/esp_ota_sim.c
+    - wink-micro-os/frameworks/esp_idf/src/core/esp_ota.c
+    - wink-micro-os/frameworks/esp_idf/include/esp_ota_ops.h
+    - wink-micro-os/frameworks/esp_idf/include/esp_https_ota.h
+    - wink-micro-os/frameworks/esp_idf/include/esp_app_desc.h
+    - wink-micro-os/frameworks/esp_idf/include/esp_app_format.h
+    - wink-micro-os/frameworks/esp_idf/include/esp_bootloader_desc.h
+    - wink-micro-os/frameworks/esp_idf/include/esp_flash_partitions.h
     soc_support:
     - esp32
     - esp32s3

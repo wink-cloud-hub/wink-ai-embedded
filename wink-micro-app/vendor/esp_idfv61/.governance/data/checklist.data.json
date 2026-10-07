@@ -9,7 +9,7 @@
     "in_scope_active": 250,
     "in_scope_deferred": 21,
     "audited": 44,
-    "verified_configs": 44,
+    "verified_configs": 45,
     "verified": 44
   },
   "entries": [
@@ -9581,10 +9581,12 @@
         "schedule": "active"
       },
       "audit": {
-        "verdict": "pending",
-        "auditor": null,
-        "audited_at": null,
-        "audited_configs": [],
+        "verdict": "audited",
+        "auditor": "arch_team",
+        "audited_at": "2026-10-07T15:33:04Z",
+        "audited_configs": [
+          "wasm_sim_standard"
+        ],
         "dispute_ref": null,
         "ruling_path": null
       },
@@ -9592,7 +9594,7 @@
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.net.event_pump",
-        "cap.net.host_socket",
+        "cap.net.http_client_mock",
         "cap.system.ota_update",
         "cap.vfs.nvs_partition",
         "cap.wifi.station_mode"
@@ -9619,18 +9621,40 @@
           "backend": "wasm_browser",
           "target_soc": "esp32",
           "profile": "standard",
-          "delivery_state": "planned",
+          "delivery_state": "verified",
           "acceptance": {
             "type": "wasm_simulation",
             "observability_level": "L2_log",
-            "scenario_path": "unisim-scenarios/system_ota_simple_ota_example.scenario.json",
+            "scenario_path": "system/ota_simple_ota_example/unisim-scenarios/system_ota_simple_ota_example.scenario.json",
             "timeout_virtual_us": 3000000,
             "timeout_wall_ms": 10000,
-            "positive_cases": [],
-            "negative_cases": [],
+            "positive_cases": [
+              {
+                "name": "OTA 固件升级成功并触发重启",
+                "matcher": {
+                  "op": "contains",
+                  "expected": "OTA Succeed, Rebooting..."
+                }
+              }
+            ],
+            "negative_cases": [
+              {
+                "stimulus": "固件下载服务未就绪导致升级失败",
+                "expect_error": "Firmware upgrade failed",
+                "detects": "OTA 升级失败未被正确捕获"
+              }
+            ],
             "sla_error_symbol": null
           },
-          "evidence": null
+          "evidence": {
+            "backend": "wasm_simulation",
+            "run_id": "run-20261007-esp.system.ota.simple_ota_example-verified",
+            "assets_sha256": "e80d271370594917c4c08b1857bb1fbda578dcbc1105c6c3f6fa167d5b825abf",
+            "scenario_sha256": "89c1d94fd9395952eeeaaa0b947c0a378a2919069b071607dccb516f7ade214b",
+            "execution_report_ref": ".governance/reports/system/ota_simple_ota_example/run-report.json",
+            "verified_commit": "3b57c2c4e4dfc0d70074f42b42c3d2fff60dd840",
+            "verified_at": "2026-10-07T15:33:04Z"
+          }
         }
       ],
       "target_app_dir": "system/ota_simple_ota_example"
