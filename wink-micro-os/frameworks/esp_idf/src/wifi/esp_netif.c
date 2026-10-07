@@ -9,7 +9,10 @@
 struct esp_netif_obj {
     bool valid;
     bool is_ap;
+    bool dhcps_running;
+    bool napt_enabled;
     esp_netif_ip_info_t ip_info;
+    esp_netif_dns_info_t dns[ESP_NETIF_DNS_MAX];
     uint8_t mac[6];
     char if_key[16];
 };
@@ -17,11 +20,13 @@ struct esp_netif_obj {
 static struct esp_netif_obj s_netifs[MAX_NETIF_INSTANCES];
 static struct esp_netif_obj *s_sta_handle = NULL;
 static struct esp_netif_obj *s_ap_handle = NULL;
+static struct esp_netif_obj *s_default_netif = NULL;
 
 esp_err_t esp_netif_init(void) {
     memset(s_netifs, 0, sizeof(s_netifs));
     s_sta_handle = NULL;
     s_ap_handle = NULL;
+    s_default_netif = NULL;
     return ESP_OK;
 }
 
@@ -29,6 +34,7 @@ esp_err_t esp_netif_deinit(void) {
     memset(s_netifs, 0, sizeof(s_netifs));
     s_sta_handle = NULL;
     s_ap_handle = NULL;
+    s_default_netif = NULL;
     return ESP_OK;
 }
 
@@ -46,6 +52,7 @@ esp_netif_t* esp_netif_create_default_wifi_sta(void) {
     o->ip_info.ip.addr = ESP_IP4TOADDR(192, 168, 4, 2);
     o->ip_info.netmask.addr = ESP_IP4TOADDR(255, 255, 255, 0);
     o->ip_info.gw.addr = ESP_IP4TOADDR(192, 168, 4, 1);
+    o->dns[ESP_NETIF_DNS_MAIN].ip.addr = ESP_IP4TOADDR(192, 168, 4, 1);
     s_sta_handle = o;
     return s_sta_handle;
 }
@@ -58,12 +65,14 @@ esp_netif_t* esp_netif_create_default_wifi_ap(void) {
     memset(o, 0, sizeof(*o));
     o->valid = true;
     o->is_ap = true;
+    o->dhcps_running = true;
     strncpy(o->if_key, "WIFI_AP_DEF", sizeof(o->if_key) - 1);
     o->mac[0] = 0xDE; o->mac[1] = 0xAD; o->mac[2] = 0xBE;
     o->mac[3] = 0xEF; o->mac[4] = 0x00; o->mac[5] = 0x02;
     o->ip_info.ip.addr = ESP_IP4TOADDR(192, 168, 4, 1);
     o->ip_info.netmask.addr = ESP_IP4TOADDR(255, 255, 255, 0);
     o->ip_info.gw.addr = ESP_IP4TOADDR(192, 168, 4, 1);
+    o->dns[ESP_NETIF_DNS_MAIN].ip.addr = ESP_IP4TOADDR(192, 168, 4, 1);
     s_ap_handle = o;
     return s_ap_handle;
 }
@@ -77,6 +86,9 @@ esp_err_t esp_netif_destroy_default_wifi(esp_netif_t *netif) {
         s_sta_handle = NULL;
     } else if (o == s_ap_handle) {
         s_ap_handle = NULL;
+    }
+    if (o == s_default_netif) {
+        s_default_netif = NULL;
     }
     memset(o, 0, sizeof(*o));
     return ESP_OK;
@@ -102,6 +114,103 @@ esp_err_t esp_netif_get_ip_info(esp_netif_t *netif, esp_netif_ip_info_t *ip_info
     return ESP_OK;
 }
 
+esp_err_t esp_netif_get_dns_info(esp_netif_t *netif, esp_netif_dns_type_t type, esp_netif_dns_info_t *dns) {
+    if (!netif || !dns || (int)type < 0 || type >= ESP_NETIF_DNS_MAX) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    struct esp_netif_obj *o = (struct esp_netif_obj*)netif;
+    if (!o->valid) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    *dns = o->dns[type];
+    return ESP_OK;
+}
+
+esp_err_t esp_netif_set_dns_info(esp_netif_t *netif, esp_netif_dns_type_t type, const esp_netif_dns_info_t *dns) {
+    if (!netif || !dns || (int)type < 0 || type >= ESP_NETIF_DNS_MAX) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    struct esp_netif_obj *o = (struct esp_netif_obj*)netif;
+    if (!o->valid) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    o->dns[type] = *dns;
+    return ESP_OK;
+}
+
+esp_err_t esp_netif_dhcps_stop(esp_netif_t *netif) {
+    if (!netif) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    struct esp_netif_obj *o = (struct esp_netif_obj*)netif;
+    if (!o->valid) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    o->dhcps_running = false;
+    return ESP_OK;
+}
+
+esp_err_t esp_netif_dhcps_start(esp_netif_t *netif) {
+    if (!netif) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    struct esp_netif_obj *o = (struct esp_netif_obj*)netif;
+    if (!o->valid) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    o->dhcps_running = true;
+    return ESP_OK;
+}
+
+esp_err_t esp_netif_dhcps_option(esp_netif_t *netif, esp_netif_dhcp_option_mode_t opt_op, esp_netif_dhcp_option_id_t opt_id, void *opt_val, uint32_t opt_len) {
+    if (!netif || !opt_val || opt_len == 0) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    struct esp_netif_obj *o = (struct esp_netif_obj*)netif;
+    if (!o->valid) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    (void)opt_op;
+    (void)opt_id;
+    return ESP_OK;
+}
+
+esp_err_t esp_netif_set_default_netif(esp_netif_t *netif) {
+    if (!netif) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    struct esp_netif_obj *o = (struct esp_netif_obj*)netif;
+    if (!o->valid) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    s_default_netif = o;
+    return ESP_OK;
+}
+
+esp_err_t esp_netif_napt_enable(esp_netif_t *netif) {
+    if (!netif) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    struct esp_netif_obj *o = (struct esp_netif_obj*)netif;
+    if (!o->valid) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    o->napt_enabled = true;
+    return ESP_OK;
+}
+
+esp_err_t esp_netif_napt_disable(esp_netif_t *netif) {
+    if (!netif) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    struct esp_netif_obj *o = (struct esp_netif_obj*)netif;
+    if (!o->valid) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    o->napt_enabled = false;
+    return ESP_OK;
+}
+
 /* 内部辅助函数 */
 esp_netif_t* esp_netif_get_handle_sta(void) {
     if (s_sta_handle && s_sta_handle->valid) {
@@ -113,5 +222,8 @@ esp_netif_t* esp_netif_get_handle_sta(void) {
 void esp_netif_set_sta_ip_info(const esp_netif_ip_info_t *info) {
     if (s_sta_handle && info) {
         s_sta_handle->ip_info = *info;
+        if (info->gw.addr != 0) {
+            s_sta_handle->dns[ESP_NETIF_DNS_MAIN].ip = info->gw;
+        }
     }
 }

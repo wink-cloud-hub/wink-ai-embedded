@@ -107,6 +107,7 @@ typedef struct {
     wifi_scan_threshold_t threshold;
     uint8_t               sae_pwe_h2e;
     uint8_t               sae_h2e_identifier[32];
+    uint8_t               failure_retry_cnt;
 } wifi_sta_config_t;
 
 typedef struct {
