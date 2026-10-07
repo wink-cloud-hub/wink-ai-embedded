@@ -31,6 +31,7 @@ extern void esp_dac_reset(void);
 extern void esp_task_wdt_sim_reset(void);
 extern void esp_fault_sim_reset(void);
 extern void esp_dedic_gpio_reset(void);
+extern void esp_sleep_sim_reset(void);
 
 static bool s_esp_pending_reset = false;
 static int s_esp_reset_reason = PAL_OS_RESET_REASON_SOFTWARE;
@@ -60,6 +61,7 @@ void esp_peripherals_reset(void) {
     esp_dedic_gpio_reset();
     esp_task_wdt_sim_reset();
     esp_fault_sim_reset();
+    esp_sleep_sim_reset();
     nvs_flash_deinit();
 }
 

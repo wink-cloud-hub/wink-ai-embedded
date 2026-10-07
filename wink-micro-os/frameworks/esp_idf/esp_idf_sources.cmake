@@ -21,9 +21,11 @@ set(ESP_IDF_FRAMEWORK_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/drivers/esp_adc.c
     ${CMAKE_CURRENT_LIST_DIR}/src/drivers/esp_dac.c
     ${CMAKE_CURRENT_LIST_DIR}/src/drivers/esp_dedic_gpio.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/drivers/esp_rtc_io.c
     ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_nvs.c
     ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_partition.c
     ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_ota.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_sleep.c
     ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_vfs_ram.c
     ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_spiffs.c
     ${CMAKE_CURRENT_LIST_DIR}/src/freertos/freertos_task.c

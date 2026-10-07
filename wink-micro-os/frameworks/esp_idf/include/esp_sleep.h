@@ -89,11 +89,7 @@ typedef void (*esp_deep_sleep_wake_stub_fn_t)(void);
 
 
 
-#if defined(__WINK_SIM__)
-void esp_deep_sleep(uint64_t time_in_us) WINK_SLA_ERROR("Wink SLA Violation: esp_deep_sleep out of Core 8 scope.");
-#else
 void esp_deep_sleep(uint64_t time_in_us);
-#endif
 
 #if defined(__WINK_SIM__)
 void esp_deep_sleep_deregister_hook(esp_deep_sleep_cb_t old_dslp_cb) WINK_SLA_ERROR("Wink SLA Violation: esp_deep_sleep_deregister_hook out of Core 8 scope.");
@@ -113,11 +109,7 @@ esp_err_t esp_deep_sleep_register_hook(esp_deep_sleep_cb_t new_dslp_cb) WINK_SLA
 esp_err_t esp_deep_sleep_register_hook(esp_deep_sleep_cb_t new_dslp_cb);
 #endif
 
-#if defined(__WINK_SIM__)
-void esp_deep_sleep_start(void) WINK_SLA_ERROR("Wink SLA Violation: esp_deep_sleep_start out of Core 8 scope.");
-#else
 void esp_deep_sleep_start(void);
-#endif
 
 #if defined(__WINK_SIM__)
 esp_err_t esp_deep_sleep_try(uint64_t time_in_us) WINK_SLA_ERROR("Wink SLA Violation: esp_deep_sleep_try out of Core 8 scope.");
@@ -143,11 +135,7 @@ esp_deep_sleep_wake_stub_fn_t esp_get_deep_sleep_wake_stub(void) WINK_SLA_ERROR(
 esp_deep_sleep_wake_stub_fn_t esp_get_deep_sleep_wake_stub(void);
 #endif
 
-#if defined(__WINK_SIM__)
-esp_err_t esp_light_sleep_start(void) WINK_SLA_ERROR("Wink SLA Violation: esp_light_sleep_start out of Core 8 scope.");
-#else
 esp_err_t esp_light_sleep_start(void);
-#endif
 
 #if defined(__WINK_SIM__)
 void esp_set_deep_sleep_wake_stub(esp_deep_sleep_wake_stub_fn_t new_stub) WINK_SLA_ERROR("Wink SLA Violation: esp_set_deep_sleep_wake_stub out of Core 8 scope.");
@@ -209,23 +197,11 @@ esp_err_t esp_sleep_enable_bt_wakeup(void) WINK_SLA_ERROR("Wink SLA Violation: e
 esp_err_t esp_sleep_enable_bt_wakeup(void);
 #endif
 
-#if defined(__WINK_SIM__)
-esp_err_t esp_sleep_enable_ext0_wakeup(gpio_num_t gpio_num, int level) WINK_SLA_ERROR("Wink SLA Violation: esp_sleep_enable_ext0_wakeup out of Core 8 scope.");
-#else
 esp_err_t esp_sleep_enable_ext0_wakeup(gpio_num_t gpio_num, int level);
-#endif
 
-#if defined(__WINK_SIM__)
-esp_err_t esp_sleep_enable_ext1_wakeup(uint64_t io_mask, esp_sleep_ext1_wakeup_mode_t level_mode) WINK_SLA_ERROR("Wink SLA Violation: esp_sleep_enable_ext1_wakeup out of Core 8 scope.");
-#else
 esp_err_t esp_sleep_enable_ext1_wakeup(uint64_t io_mask, esp_sleep_ext1_wakeup_mode_t level_mode);
-#endif
 
-#if defined(__WINK_SIM__)
-esp_err_t esp_sleep_enable_ext1_wakeup_io(uint64_t io_mask, esp_sleep_ext1_wakeup_mode_t level_mode) WINK_SLA_ERROR("Wink SLA Violation: esp_sleep_enable_ext1_wakeup_io out of Core 8 scope.");
-#else
 esp_err_t esp_sleep_enable_ext1_wakeup_io(uint64_t io_mask, esp_sleep_ext1_wakeup_mode_t level_mode);
-#endif
 
 #if defined(__WINK_SIM__)
 void esp_sleep_enable_gpio_switch(bool enable) WINK_SLA_ERROR("Wink SLA Violation: esp_sleep_enable_gpio_switch out of Core 8 scope.");
@@ -233,17 +209,9 @@ void esp_sleep_enable_gpio_switch(bool enable) WINK_SLA_ERROR("Wink SLA Violatio
 void esp_sleep_enable_gpio_switch(bool enable);
 #endif
 
-#if defined(__WINK_SIM__)
-esp_err_t esp_sleep_enable_gpio_wakeup(void) WINK_SLA_ERROR("Wink SLA Violation: esp_sleep_enable_gpio_wakeup out of Core 8 scope.");
-#else
 esp_err_t esp_sleep_enable_gpio_wakeup(void);
-#endif
 
-#if defined(__WINK_SIM__)
-esp_err_t esp_sleep_enable_gpio_wakeup_on_hp_periph_powerdown(uint64_t gpio_pin_mask, esp_sleep_gpio_wake_up_mode_t mode) WINK_SLA_ERROR("Wink SLA Violation: esp_sleep_enable_gpio_wakeup_on_hp_periph_powerdown out of Core 8 scope.");
-#else
 esp_err_t esp_sleep_enable_gpio_wakeup_on_hp_periph_powerdown(uint64_t gpio_pin_mask, esp_sleep_gpio_wake_up_mode_t mode);
-#endif
 
 #if defined(__WINK_SIM__)
 void esp_sleep_enable_lowpower_analog_mode(bool enable) WINK_SLA_ERROR("Wink SLA Violation: esp_sleep_enable_lowpower_analog_mode out of Core 8 scope.");
@@ -251,11 +219,7 @@ void esp_sleep_enable_lowpower_analog_mode(bool enable) WINK_SLA_ERROR("Wink SLA
 void esp_sleep_enable_lowpower_analog_mode(bool enable);
 #endif
 
-#if defined(__WINK_SIM__)
-esp_err_t esp_sleep_enable_timer_wakeup(uint64_t time_in_us) WINK_SLA_ERROR("Wink SLA Violation: esp_sleep_enable_timer_wakeup out of Core 8 scope.");
-#else
 esp_err_t esp_sleep_enable_timer_wakeup(uint64_t time_in_us);
-#endif
 
 #if defined(__WINK_SIM__)
 esp_err_t esp_sleep_enable_touchpad_wakeup(void) WINK_SLA_ERROR("Wink SLA Violation: esp_sleep_enable_touchpad_wakeup out of Core 8 scope.");
@@ -293,17 +257,9 @@ esp_err_t esp_sleep_enable_wifi_wakeup(void) WINK_SLA_ERROR("Wink SLA Violation:
 esp_err_t esp_sleep_enable_wifi_wakeup(void);
 #endif
 
-#if defined(__WINK_SIM__)
-uint64_t esp_sleep_get_ext1_wakeup_status(void) WINK_SLA_ERROR("Wink SLA Violation: esp_sleep_get_ext1_wakeup_status out of Core 8 scope.");
-#else
 uint64_t esp_sleep_get_ext1_wakeup_status(void);
-#endif
 
-#if defined(__WINK_SIM__)
-uint64_t esp_sleep_get_gpio_wakeup_status(void) WINK_SLA_ERROR("Wink SLA Violation: esp_sleep_get_gpio_wakeup_status out of Core 8 scope.");
-#else
 uint64_t esp_sleep_get_gpio_wakeup_status(void);
-#endif
 
 #if defined(__WINK_SIM__)
 int esp_sleep_get_touchpad_wakeup_status(void) WINK_SLA_ERROR("Wink SLA Violation: esp_sleep_get_touchpad_wakeup_status out of Core 8 scope.");
@@ -311,31 +267,14 @@ int esp_sleep_get_touchpad_wakeup_status(void) WINK_SLA_ERROR("Wink SLA Violatio
 int esp_sleep_get_touchpad_wakeup_status(void);
 #endif
 
-#if defined(__WINK_SIM__)
-esp_sleep_wakeup_cause_t esp_sleep_get_wakeup_cause(void) WINK_SLA_ERROR("Wink SLA Violation: esp_sleep_get_wakeup_cause out of Core 8 scope.");
-#else
 esp_sleep_wakeup_cause_t esp_sleep_get_wakeup_cause(void);
-#endif
 
-#if defined(__WINK_SIM__)
-uint32_t esp_sleep_get_wakeup_causes(void) WINK_SLA_ERROR("Wink SLA Violation: esp_sleep_get_wakeup_causes out of Core 8 scope.");
-#else
 uint32_t esp_sleep_get_wakeup_causes(void);
-#endif
 
-#if defined(__WINK_SIM__)
-bool esp_sleep_is_valid_wakeup_gpio(gpio_num_t gpio_num) WINK_SLA_ERROR("Wink SLA Violation: esp_sleep_is_valid_wakeup_gpio out of Core 8 scope.");
-#else
 bool esp_sleep_is_valid_wakeup_gpio(gpio_num_t gpio_num);
-#endif
 
-#if defined(__WINK_SIM__)
-esp_err_t esp_sleep_pd_config(esp_sleep_pd_domain_t domain,
-                              esp_sleep_pd_option_t option) WINK_SLA_ERROR("Wink SLA Violation: esp_sleep_pd_config out of Core 8 scope.");
-#else
 esp_err_t esp_sleep_pd_config(esp_sleep_pd_domain_t domain,
                               esp_sleep_pd_option_t option);
-#endif
 
 #if defined(__WINK_SIM__)
 esp_err_t esp_sleep_set_console_uart_handling_mode(esp_sleep_uart_handling_mode_t handling_mode) WINK_SLA_ERROR("Wink SLA Violation: esp_sleep_set_console_uart_handling_mode out of Core 8 scope.");
@@ -343,11 +282,7 @@ esp_err_t esp_sleep_set_console_uart_handling_mode(esp_sleep_uart_handling_mode_
 esp_err_t esp_sleep_set_console_uart_handling_mode(esp_sleep_uart_handling_mode_t handling_mode);
 #endif
 
-#if defined(__WINK_SIM__)
-gpio_num_t esp_sleep_wakeup_io_bit2num(uint32_t bit) WINK_SLA_ERROR("Wink SLA Violation: esp_sleep_wakeup_io_bit2num out of Core 8 scope.");
-#else
 gpio_num_t esp_sleep_wakeup_io_bit2num(uint32_t bit);
-#endif
 
 #if defined(__WINK_SIM__)
 void esp_wake_deep_sleep(void) WINK_SLA_ERROR("Wink SLA Violation: esp_wake_deep_sleep out of Core 8 scope.");

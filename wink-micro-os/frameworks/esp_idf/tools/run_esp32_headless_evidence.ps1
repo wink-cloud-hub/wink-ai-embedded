@@ -115,7 +115,8 @@ $allCarriers = @(
     @{ Name = 'sntp'; Rel = 'vendor/esp_idfv61/protocols/sntp'; Channel = 'SNTP Network Time Protocol' },
     @{ Name = 'sockets_tcp_client'; Rel = 'vendor/esp_idfv61/protocols/sockets_tcp_client'; Channel = 'BSD Sockets TCP Client & Echo Stream' },
     @{ Name = 'sockets_tcp_server'; Rel = 'vendor/esp_idfv61/protocols/sockets_tcp_server'; Channel = 'BSD Sockets TCP Server & Retransmit' },
-    @{ Name = 'ota_simple_ota_example'; Rel = 'vendor/esp_idfv61/system/ota_simple_ota_example'; Channel = 'OTA Firmware Upgrade & HTTPS Client' }
+    @{ Name = 'ota_simple_ota_example'; Rel = 'vendor/esp_idfv61/system/ota_simple_ota_example'; Channel = 'OTA Firmware Upgrade & HTTPS Client' },
+    @{ Name = 'deep_sleep'; Rel = 'vendor/esp_idfv61/system/deep_sleep'; Channel = 'Deep Sleep Power Management & Wakeup Source Recovery' }
 )
 
 $carriers = @()

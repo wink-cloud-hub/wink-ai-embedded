@@ -14,6 +14,7 @@
 
 #include "esp_err.h"
 #include "hal/gpio_types.h"
+#include "hal/rtc_io_types.h"
 #include "soc/soc_caps.h"
 
 #ifdef __cplusplus
