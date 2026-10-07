@@ -52,6 +52,7 @@ typedef struct {
     bool connected;
     bool bound;
     bool listening;
+    bool is_server_side;
     struct sockaddr_storage local_addr;
     struct sockaddr_storage remote_addr;
     uint8_t rx_buf[SIM_RX_BUF_SIZE];
@@ -169,13 +170,33 @@ int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen) {
         errno = EINVAL;
         return -1;
     }
-    vTaskDelay(pdMS_TO_TICKS(10));
+    if (s_sim_fault_mode == 1) {
+        errno = ECONNABORTED;
+        return -1;
+    }
+    vTaskDelay(pdMS_TO_TICKS(50));
     int client_fd = socket(s->domain, s->type, s->protocol);
     if (client_fd >= 0) {
         sim_socket_t *cs = get_sim_socket(client_fd);
         if (cs) {
             cs->connected = true;
+            cs->is_server_side = true;
+            /* In simulated server mode, client sends initial request payload */
+            const char *client_msg = "Data to ESP";
+            size_t msg_len = strlen(client_msg);
+            memcpy(cs->rx_buf, client_msg, msg_len);
+            cs->rx_len = msg_len;
+            cs->rx_read_pos = 0;
+            s_sim_connect_count++;
         }
+    }
+    if (addr && addrlen && *addrlen >= sizeof(struct sockaddr_in)) {
+        struct sockaddr_in *sin = (struct sockaddr_in *)addr;
+        memset(sin, 0, sizeof(struct sockaddr_in));
+        sin->sin_family = AF_INET;
+        sin->sin_port = htons(54321);
+        inet_pton(AF_INET, "127.0.0.1", &sin->sin_addr);
+        *addrlen = sizeof(struct sockaddr_in);
     }
     return client_fd;
 }
@@ -194,11 +215,13 @@ ssize_t send(int sockfd, const void *buf, size_t len, int flags) {
     vTaskDelay(pdMS_TO_TICKS(20));
     s_sim_total_tx_bytes += len;
 
-    /* Prepare simulated echo server response */
-    size_t copy_len = len < SIM_RX_BUF_SIZE ? len : SIM_RX_BUF_SIZE;
-    memcpy(s->rx_buf, buf, copy_len);
-    s->rx_len = copy_len;
-    s->rx_read_pos = 0;
+    if (!s->is_server_side) {
+        /* Prepare simulated echo server response for outbound client */
+        size_t copy_len = len < SIM_RX_BUF_SIZE ? len : SIM_RX_BUF_SIZE;
+        memcpy(s->rx_buf, buf, copy_len);
+        s->rx_len = copy_len;
+        s->rx_read_pos = 0;
+    }
     s->echo_count++;
 
     return (ssize_t)len;
@@ -217,16 +240,23 @@ ssize_t recv(int sockfd, void *buf, size_t len, int flags) {
     /* Yield to FreeRTOS scheduler to advance simulation time */
     vTaskDelay(pdMS_TO_TICKS(20));
 
-    /* After 3 echo packets, simulate remote server disconnect to exercise recovery */
-    if (s->echo_count > 3) {
-        s->connected = false;
-        errno = ECONNRESET;
-        return -1;
-    }
+    if (s->is_server_side) {
+        if (s->rx_read_pos >= s->rx_len) {
+            /* Client received echoed response and closed connection */
+            return 0;
+        }
+    } else {
+        /* Outbound client: After 3 echo packets, simulate remote server disconnect to exercise recovery */
+        if (s->echo_count > 3) {
+            s->connected = false;
+            errno = ECONNRESET;
+            return -1;
+        }
 
-    if (s->rx_read_pos >= s->rx_len) {
-        /* No data available, return 0 for EOF or delay */
-        return 0;
+        if (s->rx_read_pos >= s->rx_len) {
+            /* No data available, return 0 for EOF */
+            return 0;
+        }
     }
 
     size_t avail = s->rx_len - s->rx_read_pos;
@@ -236,6 +266,20 @@ ssize_t recv(int sockfd, void *buf, size_t len, int flags) {
     s_sim_total_rx_bytes += to_read;
 
     return (ssize_t)to_read;
+}
+
+char *inet_ntoa_r(const struct in_addr addr, char *buf, int buflen) {
+    if (!buf || buflen <= 0) {
+        return NULL;
+    }
+    return (char *)inet_ntop(AF_INET, &addr, buf, (socklen_t)buflen);
+}
+
+char *inet6_ntoa_r(const struct in6_addr addr, char *buf, int buflen) {
+    if (!buf || buflen <= 0) {
+        return NULL;
+    }
+    return (char *)inet_ntop(AF_INET6, &addr, buf, (socklen_t)buflen);
 }
 
 ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
