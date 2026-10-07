@@ -37,7 +37,7 @@ endif()
 if(MSVC)
     target_compile_options(wink_framework_esp_idf PRIVATE /W4 /WX /wd4100 /wd4210 /wd4201 /we4311 /we4312)
 else()
-    target_compile_options(wink_framework_esp_idf PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter -Wpointer-to-int-cast -Wint-to-pointer-cast)
+    target_compile_options(wink_framework_esp_idf PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-function -Wno-unused-result -Wpointer-to-int-cast -Wint-to-pointer-cast)
 endif()
 
 target_link_libraries(wink_framework_esp_idf PUBLIC

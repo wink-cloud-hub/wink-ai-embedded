@@ -18,7 +18,8 @@ static inline int esp_console_printf(const char *fmt, ...) {
     va_end(ap);
     if (n > 0) {
         fputs(buf, stdout);
-        (void)pal_uart_write(0, (const uint8_t *)buf, (uint32_t)n);
+        wink_status_t rc = pal_uart_write(0, (const uint8_t *)buf, (uint32_t)n);
+        (void)rc;
     }
     return n;
 }

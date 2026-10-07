@@ -84,7 +84,10 @@ esp_err_t gpio_config(const gpio_config_t *pGPIOConfig) {
             }
             if (is_output) {
                 s_is_output |= (1ULL << pin);
-                (void)pal_gpio_write((wink_pin_t)pin, false);
+                status = pal_gpio_write((wink_pin_t)pin, false);
+                if (status < 0) {
+                    return esp_err_from_wink(status);
+                }
             } else {
                 s_is_output &= ~(1ULL << pin);
                 s_output_levels &= ~(1ULL << pin);
@@ -222,44 +225,38 @@ esp_err_t gpio_reset_pin(gpio_num_t gpio_num) {
  * 降级条目 4). Fail-loud with ESP_ERR_NOT_SUPPORTED, never silent ESP_OK. */
 
 esp_err_t gpio_set_pull_mode(gpio_num_t gpio_num, gpio_pull_mode_t pull) {
-    (void)pull;
     if (!GPIO_IS_VALID_GPIO(gpio_num)) {
         return ESP_ERR_INVALID_ARG;
     }
-    ESP_LOGE("GPIO", "gpio_set_pull_mode: not supported in simulation (M0)");
-    return ESP_ERR_NOT_SUPPORTED;
+    pal_gpio_mode_t pal_mode = PAL_GPIO_INPUT;
+    if (pull == GPIO_PULLUP_ONLY) {
+        pal_mode = PAL_GPIO_INPUT_PULLUP;
+    } else if (pull == GPIO_PULLDOWN_ONLY) {
+        pal_mode = PAL_GPIO_INPUT_PULLDOWN;
+    } else if (pull == GPIO_PULLUP_PULLDOWN) {
+        pal_mode = PAL_GPIO_INPUT_PULLUP;
+    }
+    wink_status_t status = pal_gpio_init((wink_pin_t)gpio_num, pal_mode);
+    if (status < 0) {
+        return esp_err_from_wink(status);
+    }
+    return ESP_OK;
 }
 
 esp_err_t gpio_pullup_en(gpio_num_t gpio_num) {
-    if (!GPIO_IS_VALID_GPIO(gpio_num)) {
-        return ESP_ERR_INVALID_ARG;
-    }
-    ESP_LOGE("GPIO", "gpio_pullup_en: not supported in simulation (M0)");
-    return ESP_ERR_NOT_SUPPORTED;
+    return gpio_set_pull_mode(gpio_num, GPIO_PULLUP_ONLY);
 }
 
 esp_err_t gpio_pullup_dis(gpio_num_t gpio_num) {
-    if (!GPIO_IS_VALID_GPIO(gpio_num)) {
-        return ESP_ERR_INVALID_ARG;
-    }
-    ESP_LOGE("GPIO", "gpio_pullup_dis: not supported in simulation (M0)");
-    return ESP_ERR_NOT_SUPPORTED;
+    return gpio_set_pull_mode(gpio_num, GPIO_FLOATING);
 }
 
 esp_err_t gpio_pulldown_en(gpio_num_t gpio_num) {
-    if (!GPIO_IS_VALID_GPIO(gpio_num)) {
-        return ESP_ERR_INVALID_ARG;
-    }
-    ESP_LOGE("GPIO", "gpio_pulldown_en: not supported in simulation (M0)");
-    return ESP_ERR_NOT_SUPPORTED;
+    return gpio_set_pull_mode(gpio_num, GPIO_PULLDOWN_ONLY);
 }
 
 esp_err_t gpio_pulldown_dis(gpio_num_t gpio_num) {
-    if (!GPIO_IS_VALID_GPIO(gpio_num)) {
-        return ESP_ERR_INVALID_ARG;
-    }
-    ESP_LOGE("GPIO", "gpio_pulldown_dis: not supported in simulation (M0)");
-    return ESP_ERR_NOT_SUPPORTED;
+    return gpio_set_pull_mode(gpio_num, GPIO_FLOATING);
 }
 
 esp_err_t gpio_set_intr_type(gpio_num_t gpio_num, gpio_int_type_t intr_type) {

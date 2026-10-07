@@ -25,6 +25,7 @@ typedef enum {
     ESP_FAULT_DOMAIN_NETIF,
     ESP_FAULT_DOMAIN_NVS,
     ESP_FAULT_DOMAIN_BLE,
+    ESP_FAULT_DOMAIN_DEDIC_GPIO,
     ESP_FAULT_DOMAIN_MAX
 } esp_fault_domain_t;
 
@@ -40,6 +41,7 @@ typedef enum {
     ESP_FAULT_NVS_PARTITION_FULL,  /* return ESP_ERR_NVS_NOT_ENOUGH_SPACE */
     ESP_FAULT_NVS_READ_CORRUPT,    /* return ESP_ERR_NVS_CORRUPT_KEY_PART */
     ESP_FAULT_BLE_ADV_REJECT,      /* ble_gap_adv_start failure (return BLE_HS_EINVAL) */
+    ESP_FAULT_DEDIC_GPIO_ALLOC_FAIL, /* return ESP_ERR_INVALID_STATE */
     ESP_FAULT_TYPE_MAX
 } esp_fault_type_t;
 
