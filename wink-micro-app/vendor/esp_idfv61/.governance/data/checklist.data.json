@@ -6,11 +6,11 @@
     "scope_in": 312,
     "scope_out": 166,
     "scope_unknown": 0,
-    "in_scope_active": 250,
+    "in_scope_active": 291,
     "in_scope_deferred": 21,
-    "audited": 45,
+    "audited": 46,
     "verified_configs": 46,
-    "verified": 44
+    "verified": 46
   },
   "entries": [
     {
