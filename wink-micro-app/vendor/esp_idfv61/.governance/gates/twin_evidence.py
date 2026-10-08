@@ -31,12 +31,31 @@ def is_fault_stimulus(step: dict[str, Any]) -> bool:
         if isinstance(fault, dict) and fault.get("action"):
             return True
         routes = step.get("routes")
-        return isinstance(routes, list) and any(
+        if isinstance(routes, list) and any(
             isinstance(route, dict)
             and type(route.get("status_code")) is int
             and 400 <= route["status_code"] <= 599
             for route in routes
-        )
+        ):
+            return True
+        requests = step.get("requests")
+        if isinstance(requests, list) and any(
+            isinstance(req, dict)
+            and (
+                bool(req.get("fault"))
+                or (
+                    isinstance(req.get("uri"), str)
+                    and any(bad in req["uri"].lower() for bad in ("unknown", "invalid", "error", "fault", "bad", "not_found"))
+                )
+                or (
+                    req.get("method") == "PUT"
+                    and req.get("uri") == "/ctrl"
+                    and str(req.get("body", "")).strip() in ("0", "stop", "disable", "deregister", "false")
+                )
+            )
+            for req in requests
+        ):
+            return True
     return False
 
 
