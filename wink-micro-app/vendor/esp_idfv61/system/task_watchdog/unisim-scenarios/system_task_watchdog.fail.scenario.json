@@ -1,12 +1,14 @@
 {
   "header": {
     "version": "1.0.0",
-    "name": "ESP-IDF v6.1 system_task_watchdog lifecycle integrity proof",
-    "templateId": "esp_idfv61_system_task_watchdog_fail",
+    "name": "ESP-IDF v6.1 system_task_watchdog starvation failure & recovery deterministic proof",
+    "templateId": "esp_idfv61_system_task_watchdog",
     "accuracyMode": "behavioral",
     "timeoutUs": "15000ms",
     "failurePolicy": "fail-fast",
-    "determinism": { "prngSeed": 42 }
+    "determinism": {
+      "prngSeed": 42
+    }
   },
   "steps": [
     {
@@ -32,7 +34,63 @@
       "busId": 0,
       "direction": "tx",
       "matcher": "Subscribed to TWDT",
-      "description": "断言工作任务与用户句柄均成功订阅至 TWDT"
+      "description": "断言工作任务与自定义用户句柄均成功订阅至 TWDT"
+    },
+    {
+      "type": "INJECT_PLATFORM_FAULT",
+      "timeUs": "3000ms",
+      "domain": "task",
+      "fault": {
+        "action": "suspend",
+        "task": "task"
+      },
+      "description": "注入平台级任务暂停故障：外部挂起受监控任务导致看门狗饥饿超时"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["4500ms", "8000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Task watchdog got triggered",
+      "description": "断言受监控任务挂起后 FreeRTOS 定时器守护进程触发看门狗警报"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["4500ms", "8000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "did not reset: task 'task' (CPU 0)",
+      "description": "断言看门狗报警输出明确列出未及时重置的任务 task"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["4500ms", "8000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "did not reset: user 'func_a' (CPU 0)",
+      "description": "断言看门狗报警输出明确列出未及时重置的用户句柄 func_a"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["4500ms", "8000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "did not reset: user 'func_b' (CPU 0)",
+      "description": "断言看门狗报警输出明确列出未及时重置的用户句柄 func_b"
+    },
+    {
+      "type": "INJECT_PLATFORM_FAULT",
+      "timeUs": "7500ms",
+      "domain": "task",
+      "fault": {
+        "action": "resume",
+        "task": "task"
+      },
+      "description": "注入平台级任务恢复指令：恢复受监控任务运行并重新开始喂狗"
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
@@ -41,7 +99,16 @@
       "busId": 0,
       "direction": "tx",
       "matcher": "Unsubscribed from TWDT",
-      "description": "断言监控周期结束后工作任务与用户句柄安全退订"
+      "description": "断言任务恢复并完成主等待周期后安全退订 TWDT"
+    },
+    {
+      "type": "ASSERT_BUS_PAYLOAD",
+      "windowUs": ["9000ms", "14000ms"],
+      "busType": "uart",
+      "busId": 0,
+      "direction": "tx",
+      "matcher": "Example complete",
+      "description": "断言任务看门狗全生命周期示例成功执行完毕"
     }
   ]
 }
