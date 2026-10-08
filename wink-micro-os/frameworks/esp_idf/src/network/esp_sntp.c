@@ -160,9 +160,17 @@ const ip_addr_t* esp_sntp_getserver(uint8_t idx) {
     return NULL;
 }
 
+static int s_sim_sntp_fault = 0; /* 0: normal, 1: timeout/unreachable */
+
+void sim_sntp_set_fault(int fault) {
+    s_sim_sntp_fault = fault;
+}
+
 uint8_t esp_sntp_getreachability(uint8_t idx) {
-    (void)idx;
-    return 0xFF;
+    if (idx >= CONFIG_LWIP_SNTP_MAX_SERVERS) return 0;
+    if (s_sim_sntp_fault == 1) return 0;
+    if (!s_has_server_ip[idx] && s_server_names[idx][0] == '\0') return 0;
+    return s_has_synced ? 0xFF : 0x00;
 }
 
 esp_err_t esp_netif_sntp_reachability(unsigned int index, unsigned int *reachability) {
@@ -212,6 +220,22 @@ void esp_netif_sntp_deinit(void) {
     s_has_synced = false;
 }
 
+void esp_sntp_sim_reset(void) {
+    esp_netif_sntp_deinit();
+    s_sync_status = SNTP_SYNC_STATUS_RESET;
+    s_sync_mode = SNTP_SYNC_MODE_IMMED;
+    s_notification_cb = NULL;
+    s_opmode = ESP_SNTP_OPMODE_POLL;
+    s_sync_interval_ms = 15000;
+    memset(s_server_names, 0, sizeof(s_server_names));
+    memset(s_server_ips, 0, sizeof(s_server_ips));
+    memset(s_has_server_ip, 0, sizeof(s_has_server_ip));
+    s_virtual_time = (struct timeval){0, 0};
+    s_sync_timer_us = 0;
+    s_time_set = false;
+    s_sim_sntp_fault = 0;
+}
+
 /* POSIX adjtime support in simulation */
 int adjtime(const struct timeval *delta, struct timeval *olddelta) {
     if (olddelta) {
@@ -253,6 +277,13 @@ esp_err_t esp_netif_sntp_sync_wait(TickType_t tout) {
 
     if (s_has_synced) {
         return ESP_OK;
+    }
+
+    if (s_sim_sntp_fault == 1) {
+        if (tout > 0) {
+            vTaskDelay(tout);
+        }
+        return ESP_ERR_TIMEOUT;
     }
 
     /* Simulate network delay: yield context for 50ms or tout */

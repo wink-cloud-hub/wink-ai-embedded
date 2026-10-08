@@ -32,6 +32,8 @@ extern void esp_task_wdt_sim_reset(void);
 extern void esp_fault_sim_reset(void);
 extern void esp_dedic_gpio_reset(void);
 extern void esp_sleep_sim_reset(void);
+extern void esp_sntp_sim_reset(void);
+__attribute__((weak)) void sim_sockets_reset(void) {}
 
 static bool s_esp_pending_reset = false;
 static int s_esp_reset_reason = PAL_OS_RESET_REASON_SOFTWARE;
@@ -144,6 +146,8 @@ void pal_wasm_target_clear_pending_reset(void) {
     sim_http_responder_reset();
     esp_http_server_sim_reset();
     esp_mqtt_sim_reset();
+    esp_sntp_sim_reset();
+    sim_sockets_reset();
 
     /* Stage 2: Reset Wi-Fi subsystem */
     esp_wifi_sim_reset();
