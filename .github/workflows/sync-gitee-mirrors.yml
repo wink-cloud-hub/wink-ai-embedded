@@ -1,0 +1,57 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Sync to Gitee Mirrors
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  mirror-to-gitee:
+    name: Mirror GitHub to Gitee
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.GITEE_SSH_PRIVATE_KEY }}
+
+      - name: Configure Known Hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan gitee.com >> ~/.ssh/known_hosts
+
+      - name: Sync to NBopen/wink-ai-embedded
+        run: |
+          DEST_PREFIX="git@gitee.com"
+          TARGET="${DEST_PREFIX}:NBopen/wink-ai-embedded.git"
+          echo "Syncing branches to ${TARGET}..."
+          for ref in $(git for-each-ref --format="%(refname:strip=3)" refs/remotes/origin/); do
+            if [ "$ref" != "HEAD" ]; then
+              git push --force "$TARGET" "refs/remotes/origin/$ref:refs/heads/$ref"
+            fi
+          done
+          echo "Syncing tags to ${TARGET}..."
+          git push --force --tags "$TARGET"
+
+      - name: Sync to wink-cloud-hub/wink-ai-embedded
+        run: |
+          DEST_PREFIX="git@gitee.com"
+          TARGET="${DEST_PREFIX}:wink-cloud-hub/wink-ai-embedded.git"
+          echo "Syncing branches to ${TARGET}..."
+          for ref in $(git for-each-ref --format="%(refname:strip=3)" refs/remotes/origin/); do
+            if [ "$ref" != "HEAD" ]; then
+              git push --force "$TARGET" "refs/remotes/origin/$ref:refs/heads/$ref"
+            fi
+          done
+          echo "Syncing tags to ${TARGET}..."
+          git push --force --tags "$TARGET"
