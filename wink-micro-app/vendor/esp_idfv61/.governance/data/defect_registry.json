@@ -1,0 +1,96 @@
+{
+  "schema_version": "1.0",
+  "updated_at": "2026-10-08T13:32:46Z",
+  "defects": [
+    {
+      "defect_id": "S-01",
+      "category": "DRIVER_RUNTIME",
+      "title": "GPTimer sim_timer_get_counter clock fallback removal",
+      "affected_components": [
+        "wink-micro-os/frameworks/esp_idf/src/drivers/esp_gptimer.c"
+      ],
+      "regression_test_id": "AT-14",
+      "status": "REVERIFIED",
+      "resolution": "Counter returns exact running ticks; invalid handle returns 0."
+    },
+    {
+      "defect_id": "S-02",
+      "category": "DRIVER_RUNTIME",
+      "title": "HWTimer oneshot dispatch race and re-arm closing bug",
+      "affected_components": [
+        "wink-micro-os/targets/wasm/pal_wasm_hwtimer.c"
+      ],
+      "regression_test_id": "AT-07",
+      "status": "REVERIFIED",
+      "resolution": "Slot generation tracking and pre-dispatch oneshot state clearing."
+    },
+    {
+      "defect_id": "S-03",
+      "category": "DRIVER_RUNTIME",
+      "title": "ADC dummy formulaic sample removal and negative error code propagation",
+      "affected_components": [
+        "wink-micro-os/targets/wasm/pal_wasm_ch3_adc.c"
+      ],
+      "regression_test_id": "AT-04",
+      "status": "REVERIFIED",
+      "resolution": "Negative wink_status_t returned on invalid state; formula samples removed."
+    },
+    {
+      "defect_id": "S-04",
+      "category": "DRIVER_RUNTIME",
+      "title": "SPI bus static EEPROM memory cross-instance pollution",
+      "affected_components": [
+        "wink-micro-os/frameworks/esp_idf/src/drivers/esp_spi.c"
+      ],
+      "regression_test_id": "AT-07",
+      "status": "REVERIFIED",
+      "resolution": "Lowered EEPROM state into struct spi_device_t instance isolation."
+    },
+    {
+      "defect_id": "S-05",
+      "category": "DRIVER_STORAGE",
+      "title": "SPIFFS dual-backend discrepancy and RAM VFS inode tracking",
+      "affected_components": [
+        "wink-micro-os/frameworks/esp_idf/src/core/esp_vfs_ram.c",
+        "wink-micro-os/frameworks/esp_idf/src/core/esp_spiffs.c"
+      ],
+      "regression_test_id": "AT-11",
+      "status": "REVERIFIED",
+      "resolution": "esp_vfs_ram_get_used_bytes() returns real inode bytes to esp_spiffs_info()."
+    },
+    {
+      "defect_id": "Q-01",
+      "category": "SCENARIO_CAUSALITY",
+      "title": "DAC fixture loopback self-proof elimination",
+      "affected_components": [
+        "wink-micro-app/vendor/esp_idfv61/peripherals/dac_dac_cosine_wave"
+      ],
+      "regression_test_id": "AT-05",
+      "status": "REVERIFIED",
+      "resolution": "True DAC pin norm output assertion with verifiable negative kill."
+    },
+    {
+      "defect_id": "Q-06",
+      "category": "METADATA_INTEGRITY",
+      "title": "Upstream metadata SHA-256 and source path normalization",
+      "affected_components": [
+        "wink-micro-app/vendor/esp_idfv61/peripherals/dac_dac_cosine_wave/wink-app.json",
+        "wink-micro-app/vendor/esp_idfv61/storage/spiffs/wink-app.json"
+      ],
+      "regression_test_id": "AT-01",
+      "status": "REVERIFIED",
+      "resolution": "Completed 64-char upstream hash and mapped to existing main.c."
+    },
+    {
+      "defect_id": "DEF-TEST-01",
+      "category": "DRIVER_RUNTIME",
+      "title": "Test defect recording",
+      "affected_components": [
+        "wink-micro-os/test/test.c"
+      ],
+      "regression_test_id": "AT-99",
+      "status": "TRACKING",
+      "resolution": "Fix in progress"
+    }
+  ]
+}
