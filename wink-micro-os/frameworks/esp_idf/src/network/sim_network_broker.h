@@ -30,6 +30,12 @@ int  sim_network_broker_register_cb(sim_netif_event_cb_t cb, void *user_ctx);
 void sim_network_broker_unregister_cb(sim_netif_event_cb_t cb, void *user_ctx);
 void sim_network_broker_notify_netif(esp_netif_t *netif, sim_netif_event_t event);
 
+void   sim_network_broker_set_routing(bool enabled);
+bool   sim_network_broker_is_routing_enabled(void);
+int    sim_network_broker_route_packet(esp_netif_t *src, esp_netif_t *dst, const uint8_t *payload, size_t len);
+size_t sim_network_broker_get_routed_bytes(void);
+size_t sim_network_broker_get_routed_packets(void);
+
 #ifdef __cplusplus
 }
 #endif

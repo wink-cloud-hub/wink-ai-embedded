@@ -19,10 +19,16 @@ typedef struct {
 
 static sim_netif_state_t s_netifs[SIM_NETWORK_MAX_NETIFS];
 static sim_network_cb_slot_t s_slots[SIM_NETWORK_MAX_CBS];
+static bool s_routing_enabled = true;
+static size_t s_routed_bytes = 0;
+static size_t s_routed_packets = 0;
 
 void sim_network_broker_reset(void) {
     memset(s_netifs, 0, sizeof(s_netifs));
     memset(s_slots, 0, sizeof(s_slots));
+    s_routing_enabled = true;
+    s_routed_bytes = 0;
+    s_routed_packets = 0;
 }
 
 bool sim_network_broker_is_netif_ready(esp_netif_t *netif) {
@@ -119,4 +125,35 @@ void sim_network_broker_unregister_cb(sim_netif_event_cb_t cb, void *user_ctx) {
             s_slots[i].user_ctx = NULL;
         }
     }
+}
+
+void sim_network_broker_set_routing(bool enabled) {
+    s_routing_enabled = enabled;
+}
+
+bool sim_network_broker_is_routing_enabled(void) {
+    return s_routing_enabled;
+}
+
+int sim_network_broker_route_packet(esp_netif_t *src, esp_netif_t *dst, const uint8_t *payload, size_t len) {
+    if (!s_routing_enabled || !payload || len == 0) {
+        return -1;
+    }
+    if (src && !sim_network_broker_is_netif_ready(src)) {
+        return -1;
+    }
+    if (dst && !sim_network_broker_is_netif_ready(dst)) {
+        return -1;
+    }
+    s_routed_bytes += len;
+    s_routed_packets++;
+    return (int)len;
+}
+
+size_t sim_network_broker_get_routed_bytes(void) {
+    return s_routed_bytes;
+}
+
+size_t sim_network_broker_get_routed_packets(void) {
+    return s_routed_packets;
 }
