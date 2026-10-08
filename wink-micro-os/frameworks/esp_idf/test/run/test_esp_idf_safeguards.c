@@ -10,17 +10,29 @@
 #include "esp_partition_sim.h"
 #include "esp_vfs_ram.h"
 #include "esp_http_server.h"
+#include "esp_sntp.h"
+#include "esp_netif_sntp.h"
+#include "esp_netif.h"
+#include "sim_network_broker.h"
 
 int sim_http_server_dispatch_request(const char *method_str, const char *raw_uri, const char *body, size_t body_len);
 int sim_http_server_dispatch_request_with_host(const char *method_str, const char *raw_uri, const char *body, size_t body_len, const char *host_header);
 int sim_http_server_inject_json(const char *json_str);
+int sim_http_server_dispatch_ws_frame(httpd_ws_type_t type, const char *raw_uri, const uint8_t *payload, size_t len);
 void sim_http_server_reset(void);
+int sim_http_server_get_state(void);
+void esp_sntp_sim_reset(void);
+void sim_sntp_set_fault(int fault);
+void pal_wasm_target_clear_pending_reset(void);
 
 void setUp(void) {
     sim_responder_reset_all();
     esp_partition_sim_reset();
     esp_vfs_ram_reset();
     sim_http_server_reset();
+    esp_sntp_sim_reset();
+    sim_network_broker_reset();
+    esp_netif_init();
 }
 
 void tearDown(void) {
@@ -28,6 +40,9 @@ void tearDown(void) {
     esp_partition_sim_reset();
     esp_vfs_ram_reset();
     sim_http_server_reset();
+    esp_sntp_sim_reset();
+    sim_network_broker_reset();
+    esp_netif_deinit();
 }
 
 void test_sim_responder_at24c02_eeprom(void) {
@@ -700,6 +715,213 @@ void test_wave1_r1_http_server_lifecycle_and_contracts(void) {
     }
 }
 
+/* --------------------------------------------------------------------------
+ * Wave 1 R2: SNTP Lifecycle, Fault Injection, and Monotonic Sync
+ * -------------------------------------------------------------------------- */
+static int s_sntp_cb_called = 0;
+static void sntp_test_sync_cb(struct timeval *tv) {
+    (void)tv;
+    s_sntp_cb_called++;
+}
+
+void test_wave1_r2_sntp_lifecycle_fault_and_timezone(void) {
+    esp_sntp_sim_reset();
+    s_sntp_cb_called = 0;
+
+    esp_sntp_config_t cfg = ESP_NETIF_SNTP_DEFAULT_CONFIG("pool.ntp.org");
+    cfg.sync_cb = sntp_test_sync_cb;
+    cfg.start = true;
+
+    TEST_ASSERT_EQUAL(ESP_OK, esp_netif_sntp_init(&cfg));
+    TEST_ASSERT_TRUE(esp_sntp_enabled());
+
+    /* Successful sync wait */
+    TEST_ASSERT_EQUAL(ESP_OK, esp_netif_sntp_sync_wait(50));
+    TEST_ASSERT_EQUAL(1, s_sntp_cb_called);
+    TEST_ASSERT_EQUAL_HEX8(0xFF, esp_sntp_getreachability(0));
+    TEST_ASSERT_EQUAL(SNTP_SYNC_STATUS_COMPLETED, sntp_get_sync_status());
+
+    /* Fault injection: simulate network timeout */
+    esp_sntp_sim_reset();
+    s_sntp_cb_called = 0;
+    sim_sntp_set_fault(1);
+    TEST_ASSERT_EQUAL(ESP_OK, esp_netif_sntp_init(&cfg));
+    TEST_ASSERT_EQUAL(ESP_ERR_TIMEOUT, esp_netif_sntp_sync_wait(10));
+    TEST_ASSERT_EQUAL(0, s_sntp_cb_called);
+    TEST_ASSERT_EQUAL_HEX8(0x00, esp_sntp_getreachability(0));
+
+    /* Recovery: clear fault */
+    sim_sntp_set_fault(0);
+    esp_sntp_sim_reset();
+    TEST_ASSERT_EQUAL(ESP_OK, esp_netif_sntp_init(&cfg));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_netif_sntp_sync_wait(50));
+    TEST_ASSERT_EQUAL(1, s_sntp_cb_called);
+
+    esp_netif_sntp_deinit();
+}
+
+/* --------------------------------------------------------------------------
+ * Wave 1 R2: HTTP/WS Typed Control Frames and Async Work Queue
+ * -------------------------------------------------------------------------- */
+static int s_work_exec_count = 0;
+static void dummy_http_work(void *arg) {
+    int *c = (int *)arg;
+    if (c) (*c)++;
+}
+
+static httpd_ws_type_t s_last_ws_type = HTTPD_WS_TYPE_CONTINUE;
+static size_t s_last_ws_len = 0;
+static esp_err_t ws_echo_handler(httpd_req_t *req) {
+    httpd_ws_frame_t ws_pkt;
+    memset(&ws_pkt, 0, sizeof(ws_pkt));
+    uint8_t buf[128];
+    ws_pkt.payload = buf;
+    esp_err_t ret = httpd_ws_recv_frame(req, &ws_pkt, sizeof(buf));
+    if (ret == ESP_OK) {
+        s_last_ws_type = ws_pkt.type;
+        s_last_ws_len = ws_pkt.len;
+        if (ws_pkt.type == HTTPD_WS_TYPE_PING) {
+            httpd_ws_frame_t pong = {
+                .final = true,
+                .fragmented = false,
+                .type = HTTPD_WS_TYPE_PONG,
+                .payload = ws_pkt.payload,
+                .len = ws_pkt.len
+            };
+            return httpd_ws_send_frame(req, &pong);
+        } else {
+            return httpd_ws_send_frame(req, &ws_pkt);
+        }
+    }
+    return ret;
+}
+
+void test_wave1_r2_http_ws_frames_and_async_work_queue(void) {
+    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    httpd_handle_t hd = NULL;
+    TEST_ASSERT_EQUAL(ESP_OK, httpd_start(&hd, &config));
+
+    /* Work queue validation */
+    s_work_exec_count = 0;
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, httpd_queue_work(hd, NULL, NULL));
+    TEST_ASSERT_EQUAL(ESP_OK, httpd_queue_work(hd, dummy_http_work, &s_work_exec_count));
+    TEST_ASSERT_EQUAL(1, s_work_exec_count);
+
+    /* Register WebSocket echo handler */
+    httpd_uri_t ws_uri = {
+        .uri = "/ws",
+        .method = HTTP_GET,
+        .handler = ws_echo_handler,
+        .is_websocket = true
+    };
+    TEST_ASSERT_EQUAL(ESP_OK, httpd_register_uri_handler(hd, &ws_uri));
+
+    /* Dispatch Binary frame */
+    uint8_t bin_data[] = { 0x01, 0x02, 0x03, 0x04 };
+    s_last_ws_type = HTTPD_WS_TYPE_CONTINUE;
+    int st = sim_http_server_dispatch_ws_frame(HTTPD_WS_TYPE_BINARY, "/ws", bin_data, sizeof(bin_data));
+    TEST_ASSERT_EQUAL(200, st);
+    TEST_ASSERT_EQUAL(HTTPD_WS_TYPE_BINARY, s_last_ws_type);
+    TEST_ASSERT_EQUAL(sizeof(bin_data), s_last_ws_len);
+
+    /* Dispatch Ping frame */
+    uint8_t ping_data[] = "ping";
+    st = sim_http_server_dispatch_ws_frame(HTTPD_WS_TYPE_PING, "/ws", ping_data, 4);
+    TEST_ASSERT_EQUAL(200, st);
+    TEST_ASSERT_EQUAL(HTTPD_WS_TYPE_PING, s_last_ws_type);
+
+    /* Stop server */
+    TEST_ASSERT_EQUAL(ESP_OK, httpd_stop(hd));
+
+    /* Attempting work queue after stop must be rejected with ESP_ERR_INVALID_STATE */
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_STATE, httpd_queue_work(hd, dummy_http_work, &s_work_exec_count));
+}
+
+/* --------------------------------------------------------------------------
+ * Wave 1 R2: SoftAP+STA Routing and Netif Data Plane
+ * -------------------------------------------------------------------------- */
+void test_wave1_r2_network_broker_routing_and_netifs(void) {
+    sim_network_broker_reset();
+    TEST_ASSERT_FALSE(sim_network_broker_is_ready());
+
+    esp_netif_t *sta = esp_netif_create_default_wifi_sta();
+    esp_netif_t *ap  = esp_netif_create_default_wifi_ap();
+    TEST_ASSERT_NOT_NULL(sta);
+    TEST_ASSERT_NOT_NULL(ap);
+
+    sim_network_broker_set_netif_ready(sta, true);
+    sim_network_broker_set_netif_ready(ap, true);
+    TEST_ASSERT_TRUE(sim_network_broker_is_netif_ready(sta));
+    TEST_ASSERT_TRUE(sim_network_broker_is_netif_ready(ap));
+
+    /* Route simulated packet from SoftAP client across STA to upstream broker */
+    uint8_t frame[] = "SoftAP-to-STA-Forwarded-Packet";
+    int routed = sim_network_broker_route_packet(ap, sta, frame, sizeof(frame));
+    TEST_ASSERT_EQUAL((int)sizeof(frame), routed);
+    TEST_ASSERT_EQUAL(sizeof(frame), sim_network_broker_get_routed_bytes());
+    TEST_ASSERT_EQUAL(1, sim_network_broker_get_routed_packets());
+
+    /* Disable routing and observe intentional drop */
+    sim_network_broker_set_routing(false);
+    TEST_ASSERT_FALSE(sim_network_broker_is_routing_enabled());
+    routed = sim_network_broker_route_packet(ap, sta, frame, sizeof(frame));
+    TEST_ASSERT_EQUAL(-1, routed);
+
+    /* Re-enable and reset */
+    sim_network_broker_set_routing(true);
+    sim_network_broker_reset();
+    TEST_ASSERT_EQUAL(0, sim_network_broker_get_routed_bytes());
+}
+
+/* --------------------------------------------------------------------------
+ * Wave 1 R4: Composite Network Stack Application (SoftAP + STA + HTTP/WS + SNTP)
+ * -------------------------------------------------------------------------- */
+void test_wave1_r4_composite_mesh_application(void) {
+    /* 1. Initialize composite network stack: SoftAP + STA + HTTP Server + SNTP */
+    sim_network_broker_reset();
+    esp_sntp_sim_reset();
+    sim_http_server_reset();
+
+    esp_netif_t *sta = esp_netif_create_default_wifi_sta();
+    esp_netif_t *ap  = esp_netif_create_default_wifi_ap();
+    sim_network_broker_set_netif_ready(sta, true);
+    sim_network_broker_set_netif_ready(ap, true);
+
+    /* 2. Synchronize SNTP time while AP and STA are up */
+    esp_sntp_config_t sntp_cfg = ESP_NETIF_SNTP_DEFAULT_CONFIG("time.google.com");
+    sntp_cfg.start = true;
+    TEST_ASSERT_EQUAL(ESP_OK, esp_netif_sntp_init(&sntp_cfg));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_netif_sntp_sync_wait(50));
+    TEST_ASSERT_EQUAL(SNTP_SYNC_STATUS_COMPLETED, sntp_get_sync_status());
+
+    /* 3. Start HTTP/WS server and serve requests */
+    httpd_config_t http_cfg = HTTPD_DEFAULT_CONFIG();
+    httpd_handle_t hd = NULL;
+    TEST_ASSERT_EQUAL(ESP_OK, httpd_start(&hd, &http_cfg));
+
+    httpd_uri_t echo_uri = {
+        .uri = "/api/status",
+        .method = HTTP_GET,
+        .handler = ws_echo_handler
+    };
+    TEST_ASSERT_EQUAL(ESP_OK, httpd_register_uri_handler(hd, &echo_uri));
+
+    int st = sim_http_server_dispatch_request("GET", "/api/status", NULL, 0);
+    TEST_ASSERT_EQUAL(200, st);
+
+    /* 4. Forward packets through data plane */
+    uint8_t payload[] = "MESH-DATA-PACKET";
+    TEST_ASSERT_EQUAL((int)sizeof(payload), sim_network_broker_route_packet(ap, sta, payload, sizeof(payload)));
+
+    /* 5. Trigger Reset DAG: all subsystems must return to clean baseline */
+    TEST_ASSERT_EQUAL(ESP_OK, httpd_stop(hd));
+    pal_wasm_target_clear_pending_reset();
+
+    TEST_ASSERT_EQUAL(0, sim_http_server_get_state());
+    TEST_ASSERT_EQUAL(SNTP_SYNC_STATUS_RESET, sntp_get_sync_status());
+    TEST_ASSERT_EQUAL(0, sim_network_broker_get_routed_bytes());
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_sim_responder_at24c02_eeprom);
@@ -707,5 +929,9 @@ int main(void) {
     RUN_TEST(test_esp_vfs_ram_pure_memory_sandbox);
     RUN_TEST(test_wave1_r1_websocket_bounds_and_metadata);
     RUN_TEST(test_wave1_r1_http_server_lifecycle_and_contracts);
+    RUN_TEST(test_wave1_r2_sntp_lifecycle_fault_and_timezone);
+    RUN_TEST(test_wave1_r2_http_ws_frames_and_async_work_queue);
+    RUN_TEST(test_wave1_r2_network_broker_routing_and_netifs);
+    RUN_TEST(test_wave1_r4_composite_mesh_application);
     return UNITY_END();
 }
