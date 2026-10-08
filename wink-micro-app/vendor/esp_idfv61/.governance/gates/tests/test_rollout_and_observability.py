@@ -82,7 +82,7 @@ def test_rollout_manager_authorizes_expansion_on_all_passed(temp_dir):
 # =========================================================================
 
 def test_defect_feedback_registry_and_recording(temp_dir):
-    mgr = DefectFeedbackManager()
+    mgr = DefectFeedbackManager(vendor_root=temp_dir)
     defects = mgr.load_registry().get("defects", [])
     assert len(defects) >= 5
     assert any(d.get("defect_id") == "S-01" for d in defects)

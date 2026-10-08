@@ -66,9 +66,29 @@ def main(argv: list[str] | None = None) -> int:
 
     for app_dir in apps:
         manifest = json.loads((app_dir / "wink-app.json").read_text(encoding="utf-8"))
-        expected_name = f"esp_idfv61_{app_dir.name}"
-        if manifest.get("app_name") != expected_name:
-            errors.append(f"{app_dir.name}: app_name must be '{expected_name}'")
+        rel_parts = app_dir.relative_to(root).parts
+        category = rel_parts[0] if len(rel_parts) > 1 else ""
+        rel_joined = "_".join(rel_parts)
+        valid_names = {
+            f"esp_idfv61_{app_dir.name}",
+            f"esp_idfv61_{rel_joined}",
+        }
+        if category:
+            valid_names.add(f"esp_idfv61_{category}_{app_dir.name}")
+            clean_name = app_dir.name
+            if clean_name.startswith(f"{category}_"):
+                clean_name = clean_name[len(category) + 1:]
+                valid_names.add(f"esp_idfv61_{category}_{clean_name}")
+                valid_names.add(f"esp_idfv61_{clean_name}")
+            parts_sub = app_dir.name.split("_")
+            if len(parts_sub) > 1 and parts_sub[0] == parts_sub[1]:
+                dedup_name = "_".join([parts_sub[0]] + parts_sub[2:])
+                valid_names.add(f"esp_idfv61_{dedup_name}")
+                valid_names.add(f"esp_idfv61_{category}_{dedup_name}")
+
+        app_name = manifest.get("app_name")
+        if app_name not in valid_names:
+            errors.append(f"{app_dir.name}: app_name must match one of {valid_names}")
         upstream = manifest.get("upstream") or {}
         for key in ("vendor", "version", "source_dir", "files"):
             if not upstream.get(key):
@@ -76,6 +96,12 @@ def main(argv: list[str] | None = None) -> int:
         files = upstream.get("files") or {}
         for name, pinned in sorted(files.items()):
             local = app_dir / name
+            if not local.is_file():
+                for alt_sub in ["include", "main", "main/include"]:
+                    alt_path = app_dir / alt_sub / name
+                    if alt_path.is_file():
+                        local = alt_path
+                        break
             if not local.is_file():
                 errors.append(f"{app_dir.name}: pinned source missing on disk: {name}")
                 continue

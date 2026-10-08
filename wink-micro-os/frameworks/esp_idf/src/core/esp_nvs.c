@@ -536,10 +536,22 @@ esp_err_t nvs_commit(nvs_handle_t h) {
         return ESP_FAIL;
     }
 
-    /* Atomic overwrite on Windows requires removing destination before rename */
-    (void)nvs_unlink(final_path);
+    /* Two-phase atomic replacement with rollback protection to prevent data loss */
+    char bak_path[512];
+    snprintf(bak_path, sizeof(bak_path), "%s.bak", final_path);
+    (void)nvs_unlink(bak_path);
+    bool has_backup = (rename(final_path, bak_path) == 0);
+
     if (rename(tmp_path, final_path) != 0) {
+        if (has_backup) {
+            (void)rename(bak_path, final_path); /* Rollback to original on failure */
+        }
+        (void)nvs_unlink(tmp_path);
         return ESP_FAIL;
+    }
+
+    if (has_backup) {
+        (void)nvs_unlink(bak_path);
     }
 
     return ESP_OK;
