@@ -2,6 +2,7 @@
 #include "esp_err.h"
 #include "esp_idf_wink.h"
 #include "wink_status.h"
+#include "nvs.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -59,6 +60,34 @@ const char *esp_err_to_name(esp_err_t code) {
         case ESP_ERR_INVALID_VERSION:  return "ESP_ERR_INVALID_VERSION";
         case ESP_ERR_INVALID_MAC:      return "ESP_ERR_INVALID_MAC";
         case ESP_ERR_NOT_FINISHED:     return "ESP_ERR_NOT_FINISHED";
+
+        /* NVS error codes */
+        case ESP_ERR_NVS_NOT_INITIALIZED:   return "ESP_ERR_NVS_NOT_INITIALIZED";
+        case ESP_ERR_NVS_NOT_FOUND:         return "ESP_ERR_NVS_NOT_FOUND";
+        case ESP_ERR_NVS_TYPE_MISMATCH:     return "ESP_ERR_NVS_TYPE_MISMATCH";
+        case ESP_ERR_NVS_READ_ONLY:         return "ESP_ERR_NVS_READ_ONLY";
+        case ESP_ERR_NVS_NOT_ENOUGH_SPACE:  return "ESP_ERR_NVS_NOT_ENOUGH_SPACE";
+        case ESP_ERR_NVS_INVALID_NAME:      return "ESP_ERR_NVS_INVALID_NAME";
+        case ESP_ERR_NVS_INVALID_HANDLE:    return "ESP_ERR_NVS_INVALID_HANDLE";
+        case ESP_ERR_NVS_REMOVE_FAILED:     return "ESP_ERR_NVS_REMOVE_FAILED";
+        case ESP_ERR_NVS_KEY_TOO_LONG:      return "ESP_ERR_NVS_KEY_TOO_LONG";
+        case ESP_ERR_NVS_PAGE_FULL:         return "ESP_ERR_NVS_PAGE_FULL";
+        case ESP_ERR_NVS_INVALID_STATE:     return "ESP_ERR_NVS_INVALID_STATE";
+        case ESP_ERR_NVS_INVALID_LENGTH:    return "ESP_ERR_NVS_INVALID_LENGTH";
+        case ESP_ERR_NVS_NO_FREE_PAGES:     return "ESP_ERR_NVS_NO_FREE_PAGES";
+        case ESP_ERR_NVS_VALUE_TOO_LONG:    return "ESP_ERR_NVS_VALUE_TOO_LONG";
+        case ESP_ERR_NVS_PART_NOT_FOUND:    return "ESP_ERR_NVS_PART_NOT_FOUND";
+        case ESP_ERR_NVS_NEW_VERSION_FOUND: return "ESP_ERR_NVS_NEW_VERSION_FOUND";
+        case ESP_ERR_NVS_XTS_ENCR_FAILED:   return "ESP_ERR_NVS_XTS_ENCR_FAILED";
+        case ESP_ERR_NVS_XTS_DECR_FAILED:   return "ESP_ERR_NVS_XTS_DECR_FAILED";
+        case ESP_ERR_NVS_XTS_CFG_FAILED:    return "ESP_ERR_NVS_XTS_CFG_FAILED";
+        case ESP_ERR_NVS_XTS_CFG_NOT_FOUND: return "ESP_ERR_NVS_XTS_CFG_NOT_FOUND";
+        case ESP_ERR_NVS_ENCR_NOT_SUPPORTED:return "ESP_ERR_NVS_ENCR_NOT_SUPPORTED";
+        case ESP_ERR_NVS_KEYS_NOT_INITIALIZED: return "ESP_ERR_NVS_KEYS_NOT_INITIALIZED";
+        case ESP_ERR_NVS_CORRUPT_KEY_PART:  return "ESP_ERR_NVS_CORRUPT_KEY_PART";
+        case ESP_ERR_NVS_CONTENT_DIFFERS:   return "ESP_ERR_NVS_CONTENT_DIFFERS";
+        case ESP_ERR_NVS_WRONG_ENCRYPTION:  return "ESP_ERR_NVS_WRONG_ENCRYPTION";
+
         default:                       return "UNKNOWN ERROR";
     }
 }
