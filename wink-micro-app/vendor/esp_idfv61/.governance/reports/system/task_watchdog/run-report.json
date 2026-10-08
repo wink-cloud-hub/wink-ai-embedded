@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-07T23:56:23.879Z",
+  "timestamp": "2026-10-08T06:33:46.867Z",
   "total": 1,
   "passed": 1,
   "failed": 0,
@@ -11,7 +11,7 @@
         "name": "ESP-IDF v6.1 system_task_watchdog headless deterministic proof",
         "templateId": "esp_idfv61_system_task_watchdog",
         "totalVirtualUs": "15000000",
-        "wallClockMs": 167
+        "wallClockMs": 147
       },
       "summary": {
         "totalSteps": 7,

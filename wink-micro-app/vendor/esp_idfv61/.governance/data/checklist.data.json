@@ -10152,8 +10152,8 @@
       },
       "audit": {
         "verdict": "audited",
-        "auditor": "loop_sop_daemon",
-        "audited_at": "2026-10-05T03:31:45Z",
+        "auditor": "arch_team",
+        "audited_at": "2026-10-08T06:33:46Z",
         "audited_configs": [
           "wasm_sim_standard"
         ],
@@ -10225,21 +10225,21 @@
             ],
             "negative_cases": [
               {
-                "stimulus": "未初始化直接调用喂狗重置",
-                "expect_error": "ESP_ERR_INVALID_STATE",
-                "detects": "看门狗未配置时静默放行导致死锁盲区"
+                "stimulus": "外部挂起受监控任务导致看门狗饥饿超时",
+                "expect_error": "Task watchdog got triggered",
+                "detects": "受监控任务未及时喂狗时看门狗报警"
               }
             ],
-            "sla_error_symbol": "ESP_ERR_INVALID_STATE"
+            "sla_error_symbol": "Task watchdog got triggered"
           },
           "evidence": {
             "backend": "wasm_simulation",
-            "run_id": "run-20261007-esp.system.task_watchdog-verified",
-            "assets_sha256": "53df168278c360da27721f720f8c2ca69a2082177aeda0742ec728fcf9964e52",
+            "run_id": "run-20261008-esp.system.task_watchdog-verified",
+            "assets_sha256": "40d7fb60a22fbc4cdf9c8cca52be8c5a07623f3485b3d849e7891d9928b5a975",
             "scenario_sha256": "2cfd3749ad08e212901176d8896a6d8f5719d67b5fb23bfc4fecfaadace4fee1",
             "execution_report_ref": ".governance/reports/system/task_watchdog/run-report.json",
             "verified_commit": "6fdc5eb6fef8a3953338e77fa513f07bb6f0f04b",
-            "verified_at": "2026-10-07T23:56:24Z"
+            "verified_at": "2026-10-08T06:33:46Z"
           }
         }
       ],

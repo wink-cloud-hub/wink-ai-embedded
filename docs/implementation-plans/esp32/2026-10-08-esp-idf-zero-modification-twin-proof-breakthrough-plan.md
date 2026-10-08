@@ -342,6 +342,7 @@ flowchart TD
 - [x] 2026-10-08：完成 Phase 0 (M0) 能力预检与基线冻结，归档评审 [REV-20261008-ZERO-MOD-TWIN-PROOF-PHASE0-PRECHECK](../../reviews/esp32/2026-10-08-esp-idf-zero-modification-twin-proof-phase0-precheck-review.md)。
 - [x] M0：四项进入条件及承接缺口确认。
 - [x] M1：UART 首项正式交付与复验归档，归档评审 [REV-20261008-ZERO-MOD-TWIN-PROOF-UART-EVENTS](../../reviews/esp32/2026-10-08-esp-idf-zero-modification-twin-proof-uart-events-review.md)。
-- [ ] M2：HTTP (已完成 ✅)、NVS (已完成 ✅)、TWDT (待预研)。归档评审 [REV-20261008-ZERO-MOD-TWIN-PROOF-HTTP-SERVER](../../reviews/esp32/2026-10-08-esp-idf-zero-modification-twin-proof-http-server-review.md) 与 [REV-20261008-ZERO-MOD-TWIN-PROOF-NVS-RW-VALUE](../../reviews/esp32/2026-10-08-esp-idf-zero-modification-twin-proof-nvs-rw-value-review.md)。
+- [x] M2：HTTP (已完成 ✅)、NVS (已完成 ✅)、TWDT (已完成 ✅)。归档评审 [REV-20261008-ZERO-MOD-TWIN-PROOF-HTTP-SERVER](../../reviews/esp32/2026-10-08-esp-idf-zero-modification-twin-proof-http-server-review.md)、[REV-20261008-ZERO-MOD-TWIN-PROOF-NVS-RW-VALUE](../../reviews/esp32/2026-10-08-esp-idf-zero-modification-twin-proof-nvs-rw-value-review.md) 与 [REV-20261008-ZERO-MOD-TWIN-PROOF-TASK-WATCHDOG](../../reviews/esp32/2026-10-08-esp-idf-zero-modification-twin-proof-task-watchdog-review.md)。
 
-本次更新记录了 M1 (UART Events)、M2 首个试点 (HTTP Server Simple) 与 M2 第二个试点 (NVS Read/Write Value) 三项正式双实证达成（看板双实证数量提升至 3）；后续推进第四项试点 TWDT 条目。
+本次更新记录了全部首批 4 项关键业务标杆（UART Events、HTTP Server Simple、NVS Read/Write Value、Task Watchdog）100% 零修改原厂源码双实证闭环全部达成，看板双实证数量提升至 4/4 项（突破目标 100% 交付）。
+

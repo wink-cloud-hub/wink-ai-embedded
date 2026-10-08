@@ -1,0 +1,152 @@
+{
+  "timestamp": "2026-10-08T06:33:59.360Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 system_task_watchdog starvation failure & recovery deterministic proof",
+        "templateId": "esp_idfv61_system_task_watchdog",
+        "totalVirtualUs": "15000000",
+        "wallClockMs": 150
+      },
+      "summary": {
+        "totalSteps": 11,
+        "passedSteps": 11,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;33mW (0) esp_task_wdt: Idle-core TWDT monitoring is unavailable in cooperative simulation\u001b[0m\nTWDT initialized\nDelay for 10 seconds\nSubscribed to TWDT\n"
+            ]
+          },
+          "expected": "TWDT initialized"
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;33mW (0) esp_task_wdt: Idle-core TWDT monitoring is unavailable in cooperative simulation\u001b[0m\nTWDT initialized\nDelay for 10 seconds\nSubscribed to TWDT\n"
+            ]
+          },
+          "expected": "Subscribed to TWDT"
+        },
+        {
+          "stepIndex": 3,
+          "type": "INJECT_PLATFORM_FAULT",
+          "status": "passed",
+          "timeUs": "3000000"
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "8000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;31mE (5001) esp_task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:\u001b[0m\n\u001b[0;31mE (5001) esp_task_wdt: did not reset: task 'task' (CPU 0)\u001b[0m\n\u001b[0;31mE (5001) esp_task_wdt: did not reset: user 'func_a' (CPU 0)\u001b[0m\n\u001b[0;31mE (5001) esp_task_wdt: did not reset: user 'func_b' (CPU 0)\u001b[0m\n"
+            ]
+          },
+          "expected": "Task watchdog got triggered"
+        },
+        {
+          "stepIndex": 5,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "8000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;31mE (5001) esp_task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:\u001b[0m\n\u001b[0;31mE (5001) esp_task_wdt: did not reset: task 'task' (CPU 0)\u001b[0m\n\u001b[0;31mE (5001) esp_task_wdt: did not reset: user 'func_a' (CPU 0)\u001b[0m\n\u001b[0;31mE (5001) esp_task_wdt: did not reset: user 'func_b' (CPU 0)\u001b[0m\n"
+            ]
+          },
+          "expected": "did not reset: task 'task' (CPU 0)"
+        },
+        {
+          "stepIndex": 6,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "8000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;31mE (5001) esp_task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:\u001b[0m\n\u001b[0;31mE (5001) esp_task_wdt: did not reset: task 'task' (CPU 0)\u001b[0m\n\u001b[0;31mE (5001) esp_task_wdt: did not reset: user 'func_a' (CPU 0)\u001b[0m\n\u001b[0;31mE (5001) esp_task_wdt: did not reset: user 'func_b' (CPU 0)\u001b[0m\n"
+            ]
+          },
+          "expected": "did not reset: user 'func_a' (CPU 0)"
+        },
+        {
+          "stepIndex": 7,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "8000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;31mE (5001) esp_task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:\u001b[0m\n\u001b[0;31mE (5001) esp_task_wdt: did not reset: task 'task' (CPU 0)\u001b[0m\n\u001b[0;31mE (5001) esp_task_wdt: did not reset: user 'func_a' (CPU 0)\u001b[0m\n\u001b[0;31mE (5001) esp_task_wdt: did not reset: user 'func_b' (CPU 0)\u001b[0m\n"
+            ]
+          },
+          "expected": "did not reset: user 'func_b' (CPU 0)"
+        },
+        {
+          "stepIndex": 8,
+          "type": "INJECT_PLATFORM_FAULT",
+          "status": "passed",
+          "timeUs": "7500000"
+        },
+        {
+          "stepIndex": 9,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "12000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "Unsubscribed from TWDT\nTWDT deinitialized\nExample complete\n"
+            ]
+          },
+          "expected": "Unsubscribed from TWDT"
+        },
+        {
+          "stepIndex": 10,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "14000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "Unsubscribed from TWDT\nTWDT deinitialized\nExample complete\n"
+            ]
+          },
+          "expected": "Example complete"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

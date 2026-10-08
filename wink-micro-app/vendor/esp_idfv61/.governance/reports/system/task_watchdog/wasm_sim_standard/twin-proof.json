@@ -1,0 +1,41 @@
+{
+  "format_version": 1,
+  "kind": "twin_proof",
+  "app_id": "esp.system.task_watchdog",
+  "config_id": "wasm_sim_standard",
+  "backend": "wasm_browser",
+  "target_soc": "esp32",
+  "profile": "standard",
+  "baseline_run_id": "run-20261008-esp.system.task_watchdog-verified",
+  "assets_sha256": "40d7fb60a22fbc4cdf9c8cca52be8c5a07623f3485b3d849e7891d9928b5a975",
+  "positive": {
+    "config_id": "wasm_sim_standard",
+    "backend": "wasm_browser",
+    "target_soc": "esp32",
+    "profile": "standard",
+    "assets_sha256": "40d7fb60a22fbc4cdf9c8cca52be8c5a07623f3485b3d849e7891d9928b5a975",
+    "run_id": "run-20261008-esp.system.task_watchdog-verified",
+    "scenario_ref": "system/task_watchdog/unisim-scenarios/system_task_watchdog.scenario.json",
+    "scenario_sha256": "2cfd3749ad08e212901176d8896a6d8f5719d67b5fb23bfc4fecfaadace4fee1",
+    "report_ref": ".governance/reports/system/task_watchdog/run-report.json",
+    "report_sha256": "819442796bba7de654e12cc5c18c01768bf34108a9757ee3eedca31862e81769"
+  },
+  "negative": [
+    {
+      "case_index": 0,
+      "contract_sha256": "ef9dd532b714b5807324700e84e9e1d98539d93a2526ff1c0696fb9ed33bd4b8",
+      "config_id": "wasm_sim_standard",
+      "backend": "wasm_browser",
+      "target_soc": "esp32",
+      "profile": "standard",
+      "assets_sha256": "40d7fb60a22fbc4cdf9c8cca52be8c5a07623f3485b3d849e7891d9928b5a975",
+      "run_id": "run-20261008-esp.system.task_watchdog-fault-0",
+      "scenario_ref": "system/task_watchdog/unisim-scenarios/system_task_watchdog.fail.scenario.json",
+      "scenario_sha256": "34942aa2fad1e59d26e86c94323f2ab3057e9542d0dc2588bb1fca76fc79e096",
+      "report_ref": ".governance/reports/system/task_watchdog/wasm_sim_standard/negative_case_0.report.json",
+      "report_sha256": "b101ab71f8cd714c30de4ac21e48b84969132fc6e85c613f26169a1a587e644e",
+      "stimulus_step_index": 3,
+      "assertion_step_index": 4
+    }
+  ]
+}
