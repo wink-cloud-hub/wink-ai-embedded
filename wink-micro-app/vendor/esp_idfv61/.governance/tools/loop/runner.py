@@ -9,11 +9,13 @@ candidate collection pipeline. Audit and formal delivery are separate operations
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from .batch_observability import BatchObservabilityTracker
 from .pipeline import LoopPipeline, PipelineResult
 
 
@@ -70,11 +72,23 @@ class LoopRunner:
         lane: Optional[int] = None,
         priority: Optional[str] = None,
         limit: Optional[int] = None,
+        include_verified: bool = False,
     ) -> List[Dict[str, Any]]:
-        """Select eligible planned applications from checklist.data.json."""
+        """Select eligible planned applications from checklist.data.json per L3-T1."""
         data = self.load_manifest()
         entries = data.get("entries", [])
         candidates = []
+
+        # Load lane-map.json if available
+        lane_map_file = self.vendor_root / ".governance" / "runs" / "20261008T120248Z-planning-loop-hardening" / "planning" / "lane-map.json"
+        lane_assignments = {}
+        if lane_map_file.is_file():
+            try:
+                lmap_data = json.loads(lane_map_file.read_text(encoding="utf-8"))
+                for item in lmap_data.get("assignments", []):
+                    lane_assignments[item.get("app_id")] = item.get("assigned_lane")
+            except Exception:
+                pass
 
         for entry in entries:
             target_dir = entry.get("target_app_dir")
@@ -82,7 +96,6 @@ class LoopRunner:
                 continue
 
             app_dir = self.vendor_root / target_dir
-            # Only consider apps that are actually landed on disk
             if not app_dir.is_dir():
                 continue
 
@@ -91,25 +104,30 @@ class LoopRunner:
             if app_name and app_name != entry_app_name and app_name != entry.get("id"):
                 continue
 
-            # Check execution state: must be planned or building (or explicitly requested)
+            # Check execution state: planned/building unless include_verified or app_name
             execs = entry.get("executions", [])
             is_verified = any(ex.get("delivery_state") == "verified" for ex in execs)
-            if is_verified and not app_name:
+            if is_verified and not app_name and not include_verified:
                 continue
 
-            # Lane filtering (matches target_dir conventions)
+            # Lane filtering: versioned lane-map priority, fallback to keyword mapping
             if lane:
-                lane_mapping = {
-                    1: ["get-started", "system"],
-                    2: ["peripherals/uart", "peripherals/i2c", "peripherals/spi"],
-                    3: ["peripherals/timer", "peripherals/ledc", "peripherals/mcpwm", "peripherals/gptimer"],
-                    4: ["peripherals/adc", "peripherals/dac"],
-                    5: ["storage"],
-                    6: ["wifi", "protocols", "bluetooth"],
-                }
-                keywords = lane_mapping.get(lane, [])
-                if not any(kw in target_dir for kw in keywords):
-                    continue
+                assigned = lane_assignments.get(entry.get("id"))
+                if assigned is not None:
+                    if assigned != lane:
+                        continue
+                else:
+                    lane_mapping = {
+                        1: ["get-started", "system"],
+                        2: ["peripherals/uart", "peripherals/i2c", "peripherals/spi"],
+                        3: ["peripherals/timer", "peripherals/ledc", "peripherals/mcpwm", "peripherals/gptimer"],
+                        4: ["peripherals/adc", "peripherals/dac"],
+                        5: ["storage"],
+                        6: ["wifi", "protocols", "bluetooth"],
+                    }
+                    keywords = lane_mapping.get(lane, [])
+                    if not any(kw in target_dir for kw in keywords):
+                        continue
 
             candidates.append(entry)
             if limit and len(candidates) >= limit:
@@ -125,6 +143,7 @@ class LoopRunner:
         limit: Optional[int] = None,
         list_only: bool = False,
         config_id: Optional[str] = None,
+        include_verified: bool = False,
     ) -> int:
         """Run the autonomous loop over matched candidate entries."""
         print("=" * 76, flush=True)
@@ -137,6 +156,7 @@ class LoopRunner:
             lane=lane,
             priority=priority,
             limit=limit,
+            include_verified=include_verified,
         )
 
         if not candidates:
@@ -149,6 +169,10 @@ class LoopRunner:
             for i, c in enumerate(candidates, 1):
                 print(f"  {i}. {c.get('id'):<45} -> {c.get('target_app_dir')}", flush=True)
             return 0
+
+        batch_id = f"BATCH-{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
+        expected_apps = [c.get("id", "unknown") for c in candidates]
+        tracker = BatchObservabilityTracker(batch_id=batch_id, expected_apps=expected_apps)
 
         results: List[PipelineResult] = []
         for i, entry in enumerate(candidates, 1):
@@ -166,9 +190,16 @@ class LoopRunner:
                 res = PipelineResult(app_id or "unknown", False, f"Unexpected exception: {exc}", "CRASH")
 
             results.append(res)
+            tracker.record_app_result(app_id=app_id or "unknown", success=res.success, stage=res.stage, message=res.message)
 
             status_tag = "PASS" if res.success else "FAIL"
             print(f"[{status_tag}] {app_id} -> {res.message}", flush=True)
+
+            # Circuit breaker check (Stop-the-Line)
+            should_abort, abort_reason = tracker.should_abort_batch()
+            if should_abort:
+                print(f"\n[loop:circuit_breaker] {abort_reason}", flush=True)
+                break
 
         # Summary Table
         print("\n" + "=" * 76, flush=True)
@@ -178,16 +209,23 @@ class LoopRunner:
         failed_count = sum(1 for r in results if not r.success)
 
         for r in results:
-            tag = "[✓ PASS]" if r.success else "[✗ FAIL]"
-            print(f"  {tag} {r.app_id:<45} (Stage: {r.stage})", flush=True)
+            tag = "[PASS]" if r.success else "[FAIL]"
+            print(f"  {tag:<7} {r.app_id:<45} (Stage: {r.stage})", flush=True)
             if not r.success:
                 print(f"         Reason: {r.message[:80]}", flush=True)
 
         print("-" * 76, flush=True)
         print(f"  Total Processed: {len(results)} | Passed: {passed_count} | Failed/Blocked: {failed_count}", flush=True)
+        if tracker.circuit_breaker_tripped:
+            print(f"  [CIRCUIT BREAKER TRIGGERED] {tracker.trip_reason}", flush=True)
+
+        if not self.dry_run:
+            obs_dir = self.vendor_root / ".governance" / "runs" / batch_id
+            summary_path = tracker.finalize_summary(obs_dir)
+            print(f"  [observability] Sealed batch observability artifact: {summary_path}", flush=True)
         print("=" * 76 + "\n", flush=True)
 
-        return 0 if failed_count == 0 else 1
+        return 0 if failed_count == 0 and not tracker.circuit_breaker_tripped else 1
 
 
 def main():
@@ -199,6 +237,7 @@ def main():
     parser.add_argument("--list", action="store_true", help="List matched candidates and exit without executing")
     parser.add_argument("--dry-run", action="store_true", help="Describe candidate checks without authoring, simulation or writes")
     parser.add_argument("--config-id", type=str, help="Exact registered Wasm configuration (required when ambiguous)")
+    parser.add_argument("--include-verified", action="store_true", help="Include historical verified entries for reverification (L3-T1)")
     parser.add_argument("--proof-profile", choices=["assertion", "uart-causality", "uart-events-fault", "twdt-timeout"], default="assertion",
                         help="Candidate checks: assertion, UART causality/fault recovery, or TWDT automatic timeout")
     parser.add_argument("--auto-heal", action="store_true", help="Reserved; rejected until runtime source isolation is implemented")
@@ -237,6 +276,7 @@ def main():
         limit=args.limit,
         list_only=args.list,
         config_id=args.config_id,
+        include_verified=args.include_verified,
     )
     sys.exit(exit_code)
 

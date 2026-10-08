@@ -412,23 +412,16 @@ def write_evidence_for_app(
     with open(manifest_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    # Locate entry by app_name in target_app_dir or id
+    # Locate entry strictly by exact id or exact target_app_dir (L1-T1: No fuzzy matching)
     matched_entry = None
     for entry in data.get("entries", []):
         t_dir = (entry.get("target_app_dir") or "").replace("\\", "/")
-        if entry.get("id") == app_name or t_dir == app_name or t_dir.endswith("/" + app_name):
+        if entry.get("id") == app_name or t_dir == app_name:
             matched_entry = entry
             break
 
     if not matched_entry:
-        for entry in data.get("entries", []):
-            t_dir = (entry.get("target_app_dir") or "").replace("\\", "/")
-            if t_dir.endswith(app_name) or app_name in t_dir:
-                matched_entry = entry
-                break
-
-    if not matched_entry:
-        sys.stderr.write(f"Error: No checklist entry found matching app '{app_name}'\n")
+        sys.stderr.write(f"Error: No checklist entry found matching app '{app_name}' (fuzzy matching strictly prohibited)\n")
         return False
 
     target_dir_rel = matched_entry.get("target_app_dir")
@@ -442,17 +435,18 @@ def write_evidence_for_app(
 
     assets_sha = compute_assets_composite_sha256(assets_dir)
 
-    # Find scenario file
+    # Find scenario file strictly (L1-T1: No arbitrary fallback)
     if scenario_path and Path(scenario_path).is_file():
         scenario_file = Path(scenario_path)
     else:
         scen_files = [p for p in scen_dir.glob("*.scenario.json") if ".fail." not in p.name]
         if not scen_files:
-            scen_files = sorted(list(scen_dir.glob("*.scenario.json")), key=lambda p: p.name)
-        if not scen_files:
             sys.stderr.write(f"Error: No *.scenario.json found in {scen_dir}\n")
             return False
-        scenario_file = sorted(scen_files, key=lambda p: p.name)[0]
+        if len(scen_files) > 1:
+            sys.stderr.write(f"Error: Multiple scenarios found in {scen_dir}. Exact scenario_path must be specified (L1-T1 fallback blocked)\n")
+            return False
+        scenario_file = scen_files[0]
     scenario_sha = compute_scenario_sha256(scenario_file)
 
     # Determine report destination
@@ -486,22 +480,22 @@ def write_evidence_for_app(
     run_id = f"run-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{matched_entry.get('id', 'app')}-verified"
     rel_report_ref = f".governance/reports/{target_dir_rel}/run-report.json".replace("\\", "/")
 
-    # Locate target execution config by config_id or use default
+    # Locate target execution config strictly by config_id (L1-T1: No fallback)
     target_exec = None
+    executions = matched_entry.get("executions", [])
     if config_id:
-        for ex in matched_entry.get("executions", []):
+        for ex in executions:
             if ex.get("config_id") == config_id:
                 target_exec = ex
                 break
-    if not target_exec:
-        executions = matched_entry.get("executions", [])
-        wasm_execs = [ex for ex in executions if ex.get("config_id", "").startswith("wasm") or ex.get("acceptance", {}).get("backend") == "wasm_simulation"]
-        if wasm_execs:
-            target_exec = wasm_execs[0]
-        elif executions:
+        if not target_exec:
+            sys.stderr.write(f"Error: Explicit config_id '{config_id}' not found in entry '{matched_entry.get('id')}' (L1-T1 fallback blocked)\n")
+            return False
+    else:
+        if len(executions) == 1:
             target_exec = executions[0]
         else:
-            sys.stderr.write(f"Error: No executions defined in entry '{matched_entry.get('id')}'\n")
+            sys.stderr.write(f"Error: Multiple executions in entry '{matched_entry.get('id')}'. Explicit config_id required (L1-T1 fallback blocked)\n")
             return False
 
     # Note on Anti-Pattern P-8: Evidence recording does NOT automatically fabricate

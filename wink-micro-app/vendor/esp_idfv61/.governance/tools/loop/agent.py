@@ -236,13 +236,20 @@ class AgentSynthesizer:
             except Exception:
                 pass
 
-        target_scenario_rel = f"wink-micro-app/vendor/esp_idfv61/{target_dir}/unisim-scenarios/{app_name}.scenario.json"
+        # L1-T2: Target isolated candidate snapshot directory, never formal repo
+        try:
+            target_scenario_rel = (app_dir / "unisim-scenarios" / f"{app_name}.scenario.json").resolve().relative_to(self.ws_root.resolve()).as_posix()
+            candidate_app_rel = app_dir.resolve().relative_to(self.ws_root.resolve()).as_posix()
+        except Exception:
+            target_scenario_rel = str(app_dir / "unisim-scenarios" / f"{app_name}.scenario.json").replace("\\", "/")
+            candidate_app_rel = str(app_dir).replace("\\", "/")
 
         prompt = f"""
-[TASK] ESP-IDF 官方示例仿真治理流水线 - 场景断言自主编写
+[TASK] ESP-IDF 官方示例仿真治理流水线 - 场景断言自主编写 (L1 隔离快照模式)
 
 目标条目: {app_id}
-工程路径: wink-micro-app/vendor/esp_idfv61/{target_dir}
+隔离候选路径: {candidate_app_rel}
+【安全边界红线】: 严禁写入正式目录 wink-micro-app/vendor/esp_idfv61/{target_dir}，所有操作仅限在上述隔离快照内执行！
 {wink_app_summary}
 
 【C 源码参考】:
@@ -250,7 +257,7 @@ class AgentSynthesizer:
 
 【核心指令】:
 必须遵循项目技能: .agents/skills/governance-sop-esp/SKILL.md。
-基于上述 C 源码的业务逻辑（分析其初始化、时钟、读写、外设操作或网络状态），直接编写合法的 UniSim 仿真场景 JSON 文件，并使用 write_to_file 工具写入到:
+基于上述 C 源码的业务逻辑（分析其初始化、时钟、读写、外设操作或网络状态），直接编写合法的 UniSim 仿真场景 JSON 文件，并使用 write_to_file 工具写入到隔离路径:
 {target_scenario_rel}
 
 【场景 JSON 规范要求】:
