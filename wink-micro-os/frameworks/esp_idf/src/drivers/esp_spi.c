@@ -17,11 +17,11 @@ struct spi_device_t {
     uint32_t token;
     spi_device_interface_config_t cfg;
     uint8_t pal_bus;
+    uint8_t eeprom_mem[EEPROM_AT93C46D_SIZE];
+    bool eeprom_write_enabled;
 };
 
 static struct spi_device_t s_spis[MAX_SPI_DEVS];
-static uint8_t s_eeprom_mem[EEPROM_AT93C46D_SIZE];
-static bool s_eeprom_write_enabled = false;
 
 static struct spi_device_t *resolve_spi_device(spi_device_handle_t handle) {
     if (!handle) {
@@ -116,6 +116,8 @@ esp_err_t spi_bus_add_device(spi_host_device_t host_id, const spi_device_interfa
             s_spis[i].token = token;
             s_spis[i].cfg = *dev_config;
             s_spis[i].pal_bus = pal_bus;
+            s_spis[i].eeprom_write_enabled = false;
+            memset(s_spis[i].eeprom_mem, 0xFF, sizeof(s_spis[i].eeprom_mem));
             *handle = (spi_device_handle_t)(uintptr_t)token;
             return ESP_OK;
         }
@@ -151,7 +153,7 @@ esp_err_t spi_device_transmit(spi_device_handle_t handle, spi_transaction_t *tra
 
         if (op == 0x300) {
             /* CMD_READ (Opcode 10): Read byte from EEPROM */
-            uint8_t rval = (addr < EEPROM_AT93C46D_SIZE) ? s_eeprom_mem[addr] : 0xFF;
+            uint8_t rval = (addr < EEPROM_AT93C46D_SIZE) ? dev->eeprom_mem[addr] : 0xFF;
             if (trans_desc->flags & SPI_TRANS_USE_RXDATA) {
                 trans_desc->rx_data[0] = rval;
             } else if (trans_desc->rx_buffer) {
@@ -162,19 +164,19 @@ esp_err_t spi_device_transmit(spi_device_handle_t handle, spi_transaction_t *tra
             uint8_t wval = (trans_desc->flags & SPI_TRANS_USE_TXDATA)
                 ? trans_desc->tx_data[0]
                 : (trans_desc->tx_buffer ? ((const uint8_t *)trans_desc->tx_buffer)[0] : 0);
-            if (s_eeprom_write_enabled && addr < EEPROM_AT93C46D_SIZE) {
-                s_eeprom_mem[addr] = wval;
+            if (dev->eeprom_write_enabled && addr < EEPROM_AT93C46D_SIZE) {
+                dev->eeprom_mem[addr] = wval;
             }
         } else if (trans_desc->cmd == 0x260) {
             /* CMD_EWEN (Opcode 00, Addr 11xxxx): Erase/Write Enable */
-            s_eeprom_write_enabled = true;
+            dev->eeprom_write_enabled = true;
         } else if (trans_desc->cmd == 0x200) {
             /* CMD_EWDS (Opcode 00, Addr 00xxxx): Erase/Write Disable */
-            s_eeprom_write_enabled = false;
+            dev->eeprom_write_enabled = false;
         } else if (op == 0x380) {
             /* CMD_ERASE (Opcode 11): Erase byte */
-            if (s_eeprom_write_enabled && addr < EEPROM_AT93C46D_SIZE) {
-                s_eeprom_mem[addr] = 0xFF;
+            if (dev->eeprom_write_enabled && addr < EEPROM_AT93C46D_SIZE) {
+                dev->eeprom_mem[addr] = 0xFF;
             }
         }
     }

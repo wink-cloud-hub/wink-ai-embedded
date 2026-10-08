@@ -300,16 +300,20 @@ void esp_gptimer_reset(void) {
 
 WINK_SIM_EXPORT uint64_t sim_timer_get_counter(uint32_t timer_id) {
     if (timer_id >= PAL_HWTIMERS_MAX) {
-        return pal_os_get_us();
+        return 0;
     }
     struct gptimer_t *t = &s_gptimers[timer_id];
     if (!t->in_use) {
-        return pal_os_get_us();
+        return 0;
     }
-    uint64_t val = 0;
-    if (gptimer_get_raw_count((gptimer_handle_t)t, &val) == ESP_OK) {
-        return val;
+    if (!t->running) {
+        return t->stopped_count;
     }
-    return pal_os_get_us();
+    uint64_t now_us = pal_os_get_us();
+    if (t->resolution_hz == 1000000ULL) {
+        return now_us + t->raw_count_offset;
+    } else {
+        return ((now_us * (uint64_t)t->resolution_hz) / 1000000ULL) + t->raw_count_offset;
+    }
 }
 

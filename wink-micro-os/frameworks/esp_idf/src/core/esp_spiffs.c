@@ -88,7 +88,7 @@ esp_err_t esp_spiffs_info(const char *partition_label, size_t *total_bytes, size
         *total_bytes = 896321; /* Standard 1MB partition size with SPIFFS overhead */
     }
     if (used_bytes != NULL) {
-        *used_bytes = 0;
+        *used_bytes = esp_vfs_ram_get_used_bytes();
     }
     return ESP_OK;
 }

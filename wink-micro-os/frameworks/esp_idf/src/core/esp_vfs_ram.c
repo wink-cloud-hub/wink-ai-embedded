@@ -415,3 +415,14 @@ int esp_vfs_ram_stat(const char *path, struct stat *st)
     st->st_mode = s_inodes[target].is_dir ? S_IFDIR : S_IFREG;
     return 0;
 }
+
+size_t esp_vfs_ram_get_used_bytes(void)
+{
+    size_t total_used = 0;
+    for (size_t i = 0u; i < ESP_VFS_RAM_MAX_INODES; i++) {
+        if (s_inodes[i].in_use && !s_inodes[i].is_dir) {
+            total_used += s_inodes[i].size;
+        }
+    }
+    return total_used;
+}

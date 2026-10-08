@@ -22,6 +22,7 @@ typedef struct {
     pal_hwtimer_cfg_t cfg;
     uint32_t          pending_period_us;
     uint64_t          next_fire_us;
+    uint32_t          generation;
 } wasm_hwtimer_slot_t;
 
 static wasm_hwtimer_slot_t s_timers[PAL_HWTIMERS_MAX];
@@ -42,6 +43,7 @@ wink_status_t pal_hwtimer_init(const pal_hwtimer_cfg_t *cfg) {
     slot->cfg = *cfg;
     slot->pending_period_us = 0;
     slot->next_fire_us = pal_os_get_us() + (uint64_t)cfg->period_us;
+    slot->generation++;
 
     return WINK_OK;
 }
@@ -53,6 +55,7 @@ wink_status_t pal_hwtimer_start(uint8_t timer_id) {
 
     slot->is_running = true;
     slot->next_fire_us = pal_os_get_us() + (uint64_t)slot->cfg.period_us;
+    slot->generation++;
     return WINK_OK;
 }
 
@@ -62,6 +65,7 @@ wink_status_t pal_hwtimer_stop(uint8_t timer_id) {
     if (!slot->in_use) return WINK_ERR_INVALID_STATE;
 
     slot->is_running = false;
+    slot->generation++;
     return WINK_OK;
 }
 
@@ -80,6 +84,7 @@ void pal_hwtimer_deinit(uint8_t timer_id) {
     s_timers[timer_id].in_use = false;
     s_timers[timer_id].is_running = false;
     s_timers[timer_id].pending_period_us = 0;
+    s_timers[timer_id].generation++;
 }
 
 wink_status_t pal_hwtimer_fire_soft(uint8_t timer_id) {
@@ -87,10 +92,11 @@ wink_status_t pal_hwtimer_fire_soft(uint8_t timer_id) {
     wasm_hwtimer_slot_t *slot = &s_timers[timer_id];
     if (!slot->in_use || !slot->is_running) return WINK_ERR_INVALID_STATE;
 
-    if (slot->cfg.callback != NULL) {
-        slot->cfg.callback(slot->cfg.callback_arg);
-    }
-    if (slot->cfg.oneshot) {
+    bool is_oneshot = slot->cfg.oneshot;
+    pal_hwtimer_cb_t cb = slot->cfg.callback;
+    void *cb_arg = slot->cfg.callback_arg;
+
+    if (is_oneshot) {
         slot->is_running = false;
     } else {
         if (slot->pending_period_us > 0) {
@@ -98,6 +104,10 @@ wink_status_t pal_hwtimer_fire_soft(uint8_t timer_id) {
             slot->pending_period_us = 0;
         }
         slot->next_fire_us += (uint64_t)slot->cfg.period_us;
+    }
+
+    if (cb != NULL) {
+        cb(cb_arg);
     }
     return WINK_OK;
 }
@@ -125,19 +135,26 @@ void pal_wasm_hwtimer_drain(void) {
 #endif
             }
 
-            if (slot->cfg.callback != NULL) {
-                slot->cfg.callback(slot->cfg.callback_arg);
-            }
+            bool is_oneshot = slot->cfg.oneshot;
+            pal_hwtimer_cb_t cb = slot->cfg.callback;
+            void *cb_arg = slot->cfg.callback_arg;
 
-            if (slot->cfg.oneshot) {
+            if (is_oneshot) {
                 slot->is_running = false;
-                break;
             } else {
                 if (slot->pending_period_us > 0) {
                     slot->cfg.period_us = slot->pending_period_us;
                     slot->pending_period_us = 0;
                 }
                 slot->next_fire_us += (uint64_t)slot->cfg.period_us;
+            }
+
+            if (cb != NULL) {
+                cb(cb_arg);
+            }
+
+            if (is_oneshot) {
+                break;
             }
         }
     }

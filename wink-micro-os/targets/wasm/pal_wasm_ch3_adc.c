@@ -208,11 +208,11 @@ wink_status_t pal_wasm_adc_pump_continuous(uint8_t unit) {
             ch = cfg->channels[i % cfg->channel_count];
         }
         uint16_t sample = 0;
-        if (pal_adc_read_raw((pal_adc_channel_t)ch, &sample) == WINK_OK) {
-            cfg->dma_buf_a[i] = sample;
-        } else {
-            cfg->dma_buf_a[i] = (uint16_t)(1000 + (i * 10));
+        wink_status_t rst = pal_adc_read_raw((pal_adc_channel_t)ch, &sample);
+        if (rst != WINK_OK) {
+            return rst;
         }
+        cfg->dma_buf_a[i] = sample;
     }
 
     if (cfg->on_half_full != NULL) {

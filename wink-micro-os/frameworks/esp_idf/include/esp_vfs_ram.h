@@ -45,6 +45,7 @@ off_t   esp_vfs_ram_lseek(int fd, off_t offset, int whence);
 int     esp_vfs_ram_mkdir(const char *path, mode_t mode);
 int     esp_vfs_ram_unlink(const char *path);
 int     esp_vfs_ram_stat(const char *path, struct stat *st);
+size_t  esp_vfs_ram_get_used_bytes(void);
 
 #ifdef __cplusplus
 }
