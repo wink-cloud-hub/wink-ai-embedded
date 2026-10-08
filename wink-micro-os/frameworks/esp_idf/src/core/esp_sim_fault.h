@@ -26,6 +26,7 @@ typedef enum {
     ESP_FAULT_DOMAIN_NVS,
     ESP_FAULT_DOMAIN_BLE,
     ESP_FAULT_DOMAIN_DEDIC_GPIO,
+    ESP_FAULT_DOMAIN_TASK,
     ESP_FAULT_DOMAIN_MAX
 } esp_fault_domain_t;
 
@@ -42,6 +43,8 @@ typedef enum {
     ESP_FAULT_NVS_READ_CORRUPT,    /* return ESP_ERR_NVS_CORRUPT_KEY_PART */
     ESP_FAULT_BLE_ADV_REJECT,      /* ble_gap_adv_start failure (return BLE_HS_EINVAL) */
     ESP_FAULT_DEDIC_GPIO_ALLOC_FAIL, /* return ESP_ERR_INVALID_STATE */
+    ESP_FAULT_TASK_SUSPEND,        /* suspend task (param = slot or 0 for worker task) */
+    ESP_FAULT_TASK_RESUME,         /* resume task (param = slot or 0 for worker task) */
     ESP_FAULT_TYPE_MAX
 } esp_fault_type_t;
 
@@ -50,6 +53,8 @@ WINK_SIM_EXPORT int sim_esp_fault_inject(uint32_t domain, uint32_t fault_type, u
 WINK_SIM_EXPORT int sim_esp_fault_clear(void);
 WINK_SIM_EXPORT bool sim_esp_fault_is_active(uint32_t domain, uint32_t fault_type);
 WINK_SIM_EXPORT uint32_t sim_esp_fault_get_param(uint32_t domain, uint32_t fault_type);
+WINK_SIM_EXPORT int sim_esp_task_suspend(const char *task_name);
+WINK_SIM_EXPORT int sim_esp_task_resume(const char *task_name);
 
 /* 软复位销毁钩子：清空所有注入故障，防止跨测试用例污染 */
 void esp_fault_sim_reset(void);

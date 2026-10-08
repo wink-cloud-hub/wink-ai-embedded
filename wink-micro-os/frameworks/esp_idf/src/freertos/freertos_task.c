@@ -452,3 +452,26 @@ BaseType_t xTaskNotifyGive(TaskHandle_t xTaskToNotify) {
     return pdPASS;
 }
 
+int sim_esp_task_suspend(const char *task_name) {
+    const char *target = (task_name && strlen(task_name) > 0) ? task_name : "task";
+    for (uint32_t i = 0; i < FREERTOS_MAX_TASKS; ++i) {
+        if (s_tcb[i].used && strcmp(s_tcb[i].name, target) == 0) {
+            vTaskSuspend((TaskHandle_t)(uintptr_t)s_tcb[i].token);
+            return 0;
+        }
+    }
+    return -1;
+}
+
+int sim_esp_task_resume(const char *task_name) {
+    const char *target = (task_name && strlen(task_name) > 0) ? task_name : "task";
+    for (uint32_t i = 0; i < FREERTOS_MAX_TASKS; ++i) {
+        if (s_tcb[i].used && strcmp(s_tcb[i].name, target) == 0) {
+            vTaskResume((TaskHandle_t)(uintptr_t)s_tcb[i].token);
+            return 0;
+        }
+    }
+    return -1;
+}
+
+

@@ -61,7 +61,9 @@
     "_sim_esp_fault_inject",
     "_sim_esp_fault_clear",
     "_sim_esp_fault_is_active",
-    "_sim_esp_fault_get_param"
+    "_sim_esp_fault_get_param",
+    "_sim_esp_task_suspend",
+    "_sim_esp_task_resume"
   ],
   "EXPORTED_RUNTIME_METHODS": ["ccall", "cwrap", "HEAPU8", "HEAPU32", "Asyncify", "callMain", "lengthBytesUTF8", "stringToUTF8", "UTF8ToString"],
   "ASYNCIFY_IMPORTS": ["js_pal_os_sleep_ms", "js_pal_os_busy_wait_us"],
