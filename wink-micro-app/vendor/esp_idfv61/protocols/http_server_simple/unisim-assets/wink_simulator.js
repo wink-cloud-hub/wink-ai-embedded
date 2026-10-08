@@ -5439,7 +5439,10 @@ var _sim_http_server_get_last_uri = Module['_sim_http_server_get_last_uri'] = ma
 var _sim_http_server_get_last_resp = Module['_sim_http_server_get_last_resp'] = makeInvalidEarlyAccess('_sim_http_server_get_last_resp');
 var _sim_http_server_get_total_tx_bytes = Module['_sim_http_server_get_total_tx_bytes'] = makeInvalidEarlyAccess('_sim_http_server_get_total_tx_bytes');
 var _sim_http_server_dispatch_request = Module['_sim_http_server_dispatch_request'] = makeInvalidEarlyAccess('_sim_http_server_dispatch_request');
+var _sim_http_server_dispatch_request_with_host = Module['_sim_http_server_dispatch_request_with_host'] = makeInvalidEarlyAccess('_sim_http_server_dispatch_request_with_host');
+var _sim_http_server_dispatch_ws_frame = Module['_sim_http_server_dispatch_ws_frame'] = makeInvalidEarlyAccess('_sim_http_server_dispatch_ws_frame');
 var _sim_http_server_inject_json = Module['_sim_http_server_inject_json'] = makeInvalidEarlyAccess('_sim_http_server_inject_json');
+var _sim_http_server_inject_raw_request = Module['_sim_http_server_inject_raw_request'] = makeInvalidEarlyAccess('_sim_http_server_inject_raw_request');
 var _esp_nimble_sim_disconnect = Module['_esp_nimble_sim_disconnect'] = makeInvalidEarlyAccess('_esp_nimble_sim_disconnect');
 var _esp_nimble_sim_get_service_count = Module['_esp_nimble_sim_get_service_count'] = makeInvalidEarlyAccess('_esp_nimble_sim_get_service_count');
 var _esp_nimble_sim_get_service_info = Module['_esp_nimble_sim_get_service_info'] = makeInvalidEarlyAccess('_esp_nimble_sim_get_service_info');
@@ -5599,7 +5602,10 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['sim_http_server_get_last_resp'] != 'undefined', 'missing Wasm export: sim_http_server_get_last_resp');
   assert(typeof wasmExports['sim_http_server_get_total_tx_bytes'] != 'undefined', 'missing Wasm export: sim_http_server_get_total_tx_bytes');
   assert(typeof wasmExports['sim_http_server_dispatch_request'] != 'undefined', 'missing Wasm export: sim_http_server_dispatch_request');
+  assert(typeof wasmExports['sim_http_server_dispatch_request_with_host'] != 'undefined', 'missing Wasm export: sim_http_server_dispatch_request_with_host');
+  assert(typeof wasmExports['sim_http_server_dispatch_ws_frame'] != 'undefined', 'missing Wasm export: sim_http_server_dispatch_ws_frame');
   assert(typeof wasmExports['sim_http_server_inject_json'] != 'undefined', 'missing Wasm export: sim_http_server_inject_json');
+  assert(typeof wasmExports['sim_http_server_inject_raw_request'] != 'undefined', 'missing Wasm export: sim_http_server_inject_raw_request');
   assert(typeof wasmExports['esp_nimble_sim_disconnect'] != 'undefined', 'missing Wasm export: esp_nimble_sim_disconnect');
   assert(typeof wasmExports['esp_nimble_sim_get_service_count'] != 'undefined', 'missing Wasm export: esp_nimble_sim_get_service_count');
   assert(typeof wasmExports['esp_nimble_sim_get_service_info'] != 'undefined', 'missing Wasm export: esp_nimble_sim_get_service_info');
@@ -5756,7 +5762,10 @@ function assignWasmExports(wasmExports) {
   _sim_http_server_get_last_resp = Module['_sim_http_server_get_last_resp'] = createExportWrapper('sim_http_server_get_last_resp', wasmExports['sim_http_server_get_last_resp'], 0);
   _sim_http_server_get_total_tx_bytes = Module['_sim_http_server_get_total_tx_bytes'] = createExportWrapper('sim_http_server_get_total_tx_bytes', wasmExports['sim_http_server_get_total_tx_bytes'], 0);
   _sim_http_server_dispatch_request = Module['_sim_http_server_dispatch_request'] = createExportWrapper('sim_http_server_dispatch_request', wasmExports['sim_http_server_dispatch_request'], 4);
+  _sim_http_server_dispatch_request_with_host = Module['_sim_http_server_dispatch_request_with_host'] = createExportWrapper('sim_http_server_dispatch_request_with_host', wasmExports['sim_http_server_dispatch_request_with_host'], 5);
+  _sim_http_server_dispatch_ws_frame = Module['_sim_http_server_dispatch_ws_frame'] = createExportWrapper('sim_http_server_dispatch_ws_frame', wasmExports['sim_http_server_dispatch_ws_frame'], 4);
   _sim_http_server_inject_json = Module['_sim_http_server_inject_json'] = createExportWrapper('sim_http_server_inject_json', wasmExports['sim_http_server_inject_json'], 1);
+  _sim_http_server_inject_raw_request = Module['_sim_http_server_inject_raw_request'] = createExportWrapper('sim_http_server_inject_raw_request', wasmExports['sim_http_server_inject_raw_request'], 1);
   _esp_nimble_sim_disconnect = Module['_esp_nimble_sim_disconnect'] = createExportWrapper('esp_nimble_sim_disconnect', wasmExports['esp_nimble_sim_disconnect'], 0);
   _esp_nimble_sim_get_service_count = Module['_esp_nimble_sim_get_service_count'] = createExportWrapper('esp_nimble_sim_get_service_count', wasmExports['esp_nimble_sim_get_service_count'], 0);
   _esp_nimble_sim_get_service_info = Module['_esp_nimble_sim_get_service_info'] = createExportWrapper('esp_nimble_sim_get_service_info', wasmExports['esp_nimble_sim_get_service_info'], 2);

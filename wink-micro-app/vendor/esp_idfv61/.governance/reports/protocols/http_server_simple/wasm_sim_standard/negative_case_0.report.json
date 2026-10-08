@@ -1,0 +1,58 @@
+{
+  "timestamp": "2026-10-08T04:05:51.338Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 http_server_simple headless 404 anomaly rejection proof",
+        "templateId": "esp_idfv61_http_server_simple_fail",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 83
+      },
+      "summary": {
+        "totalSteps": 4,
+        "passedSteps": 4,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "0",
+          "actual": "RUNNING",
+          "expected": "RUNNING"
+        },
+        {
+          "stepIndex": 1,
+          "type": "INJECT_NET_FIXTURE",
+          "status": "passed",
+          "timeUs": "200000"
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "500000",
+          "actual": 404,
+          "expected": 404
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "500000",
+          "actual": "/unknown_path",
+          "expected": "/unknown_path"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

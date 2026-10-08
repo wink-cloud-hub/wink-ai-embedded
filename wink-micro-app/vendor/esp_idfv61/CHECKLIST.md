@@ -15,7 +15,7 @@
 
 - **官方独立示例总数**：**478 个**
   - `[x]` **已完成六要素实证 (Verified)**：**46 项**
-    - `🟢` **双实证闭环 (Twin-Proof: Green ✅ + Red 🛡️)**：**1 项**
+    - `🟢` **双实证闭环 (Twin-Proof: Green ✅ + Red 🛡️)**：**2 项**
   - `[?]` **存量隔离待补凭证 (Quarantined Debt)**：**0 项**（14 天 TTL 过期硬阻断，至 `2026-10-13`）
   - `[ ]` **规划中正常排期 (In-Scope Planned)**：**245 项**
   - `[-]` **明确产品排除 / 暂缓投入 (Out-of-Scope / Deferred)**：**187 项**（编译期 `WINK_SLA_ERROR` Fail-Loud 阻断）
@@ -335,7 +335,7 @@
 | [ ] | 193 | `protocols/http_server/file_serving` | 📜 Level 2 | P3 | `protocols/http_server_file_serving` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 194 | `protocols/http_server/persistent_sockets` | 📜 Level 2 | P3 | `protocols/http_server_persistent_sockets` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
 | [x] | 195 | `protocols/http_server/restful_server` | 📜 Level 2 | P0 | [`protocols/http_server_restful_server`](protocols/http_server_restful_server) | [Lane 6: 无线网络] [Green ✅ | Red ⏳] 已完成实证。 |
-| [x] | 196 | `protocols/http_server/simple` | 📜 Level 2 | P0 | [`protocols/http_server_simple`](protocols/http_server_simple) | [Lane 6: 无线网络] [Green ✅ | Red ⏳] 已完成实证。 |
+| [x] | 196 | `protocols/http_server/simple` | 📜 Level 2 | P0 | [`protocols/http_server_simple`](protocols/http_server_simple) | [Lane 6: 无线网络] 🟢 [Green ✅ | Red 🛡️] 已完成红绿双实证 (TWIN-PROOF)。 |
 | [x] | 197 | `protocols/http_server/ws_echo_server` | 📜 Level 2 | P0 | [`protocols/http_server_ws_echo_server`](protocols/http_server_ws_echo_server) | [Lane 6: 无线网络] [Green ✅ | Red ⏳] 已完成实证。 |
 | [ ] | 198 | `protocols/https_mbedtls` | 📜 Level 2 | P2 | `protocols/https_mbedtls` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 199 | `protocols/https_request` | 📜 Level 2 | P2 | `protocols/https_request` | [Lane 6: 无线网络] 待排期。依赖进一步框架门面扩展。 |

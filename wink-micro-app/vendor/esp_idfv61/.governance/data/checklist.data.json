@@ -12890,7 +12890,7 @@
             "timeout_wall_ms": 10000,
             "positive_cases": [
               {
-                "name": "HTTP 请求处理与回环响应",
+                "name": "HTTP 基础路由与回显响应",
                 "matcher": {
                   "op": "regex",
                   "expected": "200"
@@ -12902,18 +12902,23 @@
                 "stimulus": "未注册异常路由 GET /unknown_path 请求注入",
                 "expect_error": "404",
                 "detects": "HTTP 服务器 404 Not Found 异常路由拦截防御"
+              },
+              {
+                "stimulus": "应用动态注销与自定义 404 处理 (PUT /ctrl 0)",
+                "expect_error": "/hello URI is not available",
+                "detects": "应用自定义 404 错误处理器生效与 URI 动态注销"
               }
             ],
             "sla_error_symbol": "HTTPD_404_NOT_FOUND"
           },
           "evidence": {
             "backend": "wasm_simulation",
-            "run_id": "20261007T025045Z-51a5440cb0eb46e59a2facd411a184dd",
-            "assets_sha256": "2e97784da9b287538a722f1b4b783d403996e08e79b9c20c318770adfd615d1d",
+            "run_id": "run-20261008-esp.protocols.http_server.simple-verified",
+            "assets_sha256": "8e25e7427e5bb51256e939a38420276a7b89b25f892663827d8c77a34126abd9",
             "scenario_sha256": "ac98689d3bc25a761916d348cfa153e2dc14b7419f67964886b98d5327825cb1",
             "execution_report_ref": ".governance/reports/protocols/http_server_simple/run-report.json",
-            "verified_commit": "f891b40090edd6ec2f2243d2c366dc3fd079f6a3",
-            "verified_at": "2026-10-07T02:51:24Z"
+            "verified_commit": "0aa53ae4fd574862526380a40505eb94933f604c",
+            "verified_at": "2026-10-08T04:06:00Z"
           }
         }
       ],

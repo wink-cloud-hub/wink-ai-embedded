@@ -1,0 +1,114 @@
+{
+  "timestamp": "2026-10-08T04:06:03.981Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 http_server_simple custom 404 and recovery proof",
+        "templateId": "esp_idfv61_http_server_simple_ctrl_404_fail",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 97
+      },
+      "summary": {
+        "totalSteps": 12,
+        "passedSteps": 12,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "0",
+          "actual": "RUNNING",
+          "expected": "RUNNING"
+        },
+        {
+          "stepIndex": 1,
+          "type": "INJECT_NET_FIXTURE",
+          "status": "passed",
+          "timeUs": "100000"
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "200000",
+          "actual": 200,
+          "expected": 200
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "200000",
+          "actual": "Hello World!",
+          "expected": "Hello World!"
+        },
+        {
+          "stepIndex": 4,
+          "type": "INJECT_NET_FIXTURE",
+          "status": "passed",
+          "timeUs": "300000"
+        },
+        {
+          "stepIndex": 5,
+          "type": "INJECT_NET_FIXTURE",
+          "status": "passed",
+          "timeUs": "400000"
+        },
+        {
+          "stepIndex": 6,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "500000",
+          "actual": 404,
+          "expected": 404
+        },
+        {
+          "stepIndex": 7,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "500000",
+          "actual": "/hello URI is not available",
+          "expected": "/hello URI is not available"
+        },
+        {
+          "stepIndex": 8,
+          "type": "INJECT_NET_FIXTURE",
+          "status": "passed",
+          "timeUs": "600000"
+        },
+        {
+          "stepIndex": 9,
+          "type": "INJECT_NET_FIXTURE",
+          "status": "passed",
+          "timeUs": "700000"
+        },
+        {
+          "stepIndex": 10,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "800000",
+          "actual": 200,
+          "expected": 200
+        },
+        {
+          "stepIndex": 11,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "800000",
+          "actual": "Hello World!",
+          "expected": "Hello World!"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

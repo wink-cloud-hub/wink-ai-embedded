@@ -1,0 +1,131 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "ESP-IDF v6.1 http_server_simple custom 404 and recovery proof",
+    "templateId": "esp_idfv61_http_server_simple_ctrl_404_fail",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "3000000",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "0ms",
+      "target": "http:server:state",
+      "matcher": "RUNNING",
+      "description": "断言 HTTP 服务器处于 RUNNING 状态"
+    },
+    {
+      "type": "INJECT_NET_FIXTURE",
+      "timeUs": "100ms",
+      "protocol": "http",
+      "description": "发送前置正常请求 GET /hello",
+      "requests": [
+        {
+          "method": "GET",
+          "uri": "/hello",
+          "host": "localhost"
+        }
+      ]
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "200ms",
+      "target": "http:server:status_code",
+      "matcher": 200,
+      "description": "断言前置 GET /hello 返回 200"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "200ms",
+      "target": "http:server:last_resp",
+      "matcher": "Hello World!",
+      "description": "断言前置 GET /hello 返回 Hello World!"
+    },
+    {
+      "type": "INJECT_NET_FIXTURE",
+      "timeUs": "300ms",
+      "protocol": "http",
+      "description": "发送控制请求 PUT /ctrl 注销 /hello 并注册自定义 404 handler",
+      "requests": [
+        {
+          "method": "PUT",
+          "uri": "/ctrl",
+          "body": "0",
+          "host": "localhost"
+        }
+      ]
+    },
+    {
+      "type": "INJECT_NET_FIXTURE",
+      "timeUs": "400ms",
+      "protocol": "http",
+      "description": "发送被注销的 GET /hello 请求触发自定义 404",
+      "requests": [
+        {
+          "method": "GET",
+          "uri": "/hello",
+          "host": "localhost"
+        }
+      ]
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "http:server:status_code",
+      "matcher": 404,
+      "description": "断言返回 404 状态码"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "500ms",
+      "target": "http:server:last_resp",
+      "matcher": "/hello URI is not available",
+      "description": "断言返回应用自定义 404 响应体"
+    },
+    {
+      "type": "INJECT_NET_FIXTURE",
+      "timeUs": "600ms",
+      "protocol": "http",
+      "description": "发送恢复请求 PUT /ctrl 重新注册 /hello",
+      "requests": [
+        {
+          "method": "PUT",
+          "uri": "/ctrl",
+          "body": "1",
+          "host": "localhost"
+        }
+      ]
+    },
+    {
+      "type": "INJECT_NET_FIXTURE",
+      "timeUs": "700ms",
+      "protocol": "http",
+      "description": "发送恢复后 GET /hello 验证恢复正常",
+      "requests": [
+        {
+          "method": "GET",
+          "uri": "/hello",
+          "host": "localhost"
+        }
+      ]
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "800ms",
+      "target": "http:server:status_code",
+      "matcher": 200,
+      "description": "断言恢复后 GET /hello 返回 200"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "800ms",
+      "target": "http:server:last_resp",
+      "matcher": "Hello World!",
+      "description": "断言恢复后 GET /hello 返回 Hello World!"
+    }
+  ]
+}

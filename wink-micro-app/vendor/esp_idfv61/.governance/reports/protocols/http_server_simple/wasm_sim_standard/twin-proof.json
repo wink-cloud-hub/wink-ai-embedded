@@ -1,0 +1,57 @@
+{
+  "format_version": 1,
+  "kind": "twin_proof",
+  "app_id": "esp.protocols.http_server.simple",
+  "config_id": "wasm_sim_standard",
+  "backend": "wasm_browser",
+  "target_soc": "esp32",
+  "profile": "standard",
+  "baseline_run_id": "run-20261008-esp.protocols.http_server.simple-verified",
+  "assets_sha256": "8e25e7427e5bb51256e939a38420276a7b89b25f892663827d8c77a34126abd9",
+  "positive": {
+    "config_id": "wasm_sim_standard",
+    "backend": "wasm_browser",
+    "target_soc": "esp32",
+    "profile": "standard",
+    "assets_sha256": "8e25e7427e5bb51256e939a38420276a7b89b25f892663827d8c77a34126abd9",
+    "run_id": "run-20261008-esp.protocols.http_server.simple-verified",
+    "scenario_ref": "protocols/http_server_simple/unisim-scenarios/protocols_http_server_simple.scenario.json",
+    "scenario_sha256": "ac98689d3bc25a761916d348cfa153e2dc14b7419f67964886b98d5327825cb1",
+    "report_ref": ".governance/reports/protocols/http_server_simple/run-report.json",
+    "report_sha256": "9ec590399644d0bf3de69ea8cd41ed7aaf0ece96d9447bcd32b3beb880e8beec"
+  },
+  "negative": [
+    {
+      "case_index": 0,
+      "contract_sha256": "94d800c52322b72d4099bbc5cfb81755a52c9282f747e7373ba143fb1cd5891a",
+      "config_id": "wasm_sim_standard",
+      "backend": "wasm_browser",
+      "target_soc": "esp32",
+      "profile": "standard",
+      "assets_sha256": "8e25e7427e5bb51256e939a38420276a7b89b25f892663827d8c77a34126abd9",
+      "run_id": "run-20261008-esp.protocols.http_server.simple-fault-0",
+      "scenario_ref": "protocols/http_server_simple/unisim-scenarios/protocols_http_server_simple.fail.scenario.json",
+      "scenario_sha256": "ee8f9adad81ad77cc079666723e1c5dc5b929597a4c322d56e03d835ff0942da",
+      "report_ref": ".governance/reports/protocols/http_server_simple/wasm_sim_standard/negative_case_0.report.json",
+      "report_sha256": "f80917eb2aeff03eed36e31bc7292b949701bfe27ec2a43a111104eb00f5dbd9",
+      "stimulus_step_index": 1,
+      "assertion_step_index": 2
+    },
+    {
+      "case_index": 1,
+      "contract_sha256": "884a5986570f990c971066906b5524137a5d619541fa0fe3ca9c83db692f4527",
+      "config_id": "wasm_sim_standard",
+      "backend": "wasm_browser",
+      "target_soc": "esp32",
+      "profile": "standard",
+      "assets_sha256": "8e25e7427e5bb51256e939a38420276a7b89b25f892663827d8c77a34126abd9",
+      "run_id": "run-20261008-esp.protocols.http_server.simple-fault-1",
+      "scenario_ref": "protocols/http_server_simple/unisim-scenarios/protocols_http_server_simple.ctrl_404.fail.scenario.json",
+      "scenario_sha256": "81b4f0de7f52917967ac5ecb09dd8c20fa27f967ed57f1b8b6b4a4eec71eac8d",
+      "report_ref": ".governance/reports/protocols/http_server_simple/wasm_sim_standard/negative_case_1.report.json",
+      "report_sha256": "570428f41cc0b6077e82a9786b1ac8f8dabc115c60837d41630639601740a44e",
+      "stimulus_step_index": 4,
+      "assertion_step_index": 7
+    }
+  ]
+}
