@@ -468,15 +468,33 @@ capabilities:
   cap.net.bsd_socket:
     name: BSD 标准 Socket 协议栈适配
     layer: facade
-    status: planned
+    status: implemented
     description: POSIX / BSD Socket 标准 C-ABI 映射 (sys/socket.h, netdb.h)
     owned_paths:
-    - wink-micro-os/frameworks/esp_idf/src/network/esp_socket_shim.c
+    - wink-micro-os/frameworks/esp_idf/src/network/esp_sockets.c
     soc_support:
     - esp32
     - esp32s3
     - esp32c3
     - esp32c6
+    cross_mcu_evidence:
+    - wink-micro-os/targets/wasm/wink_sim_net.c
+  cap.net.sntp_client:
+    name: SNTP 网络时间同步客户端
+    layer: facade
+    status: implemented
+    description: SNTP 时间同步、服务器配置与时间通知回调 (esp_sntp.h, esp_netif_sntp.h)
+    owned_paths:
+    - wink-micro-os/frameworks/esp_idf/src/network/esp_sntp.c
+    - wink-micro-os/frameworks/esp_idf/include/esp_sntp.h
+    - wink-micro-os/frameworks/esp_idf/include/esp_netif_sntp.h
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32c3
+    - esp32c6
+    cross_mcu_evidence:
+    - wink-micro-os/osal/include/osal_time.h
   cap.net.host_socket:
     name: 宿主原生 Socket 隧道
     layer: facade

@@ -13753,6 +13753,7 @@
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.net.event_pump",
+        "cap.net.sntp_client",
         "cap.vfs.nvs_partition",
         "cap.wifi.station_mode"
       ],
@@ -13963,6 +13964,7 @@
       "required_capabilities": [
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
+        "cap.net.bsd_socket",
         "cap.net.event_pump",
         "cap.vfs.nvs_partition"
       ],
@@ -14111,6 +14113,7 @@
       "required_capabilities": [
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
+        "cap.net.bsd_socket",
         "cap.net.event_pump",
         "cap.vfs.nvs_partition",
         "cap.wifi.station_mode"
