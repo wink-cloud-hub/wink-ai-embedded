@@ -1,0 +1,68 @@
+{
+  "timestamp": "2026-10-08T04:27:43.069Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 nvs_rw_value flash corruption & read boundary proof",
+        "templateId": "esp_idfv61_nvs_nvs_rw_value_fail",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 122
+      },
+      "summary": {
+        "totalSteps": 4,
+        "passedSteps": 4,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "0",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "INJECT_PLATFORM_FAULT",
+          "status": "passed",
+          "timeUs": "0"
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1500000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) nvs_example: \nOpening Non-Volatile Storage (NVS) handle...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nWriting counter to NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nReading counter from NVS...\u001b[0m\n\u001b[0;31mE (0) nvs_example: Error (ESP_ERR_NVS_CORRUPT_KEY_PART) reading!\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nWriting string to NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nReading string from NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nFinding keys in NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: Key: 'counter', Type: i32\u001b[0m\n\u001b[0;32mI (0) nvs_example: Key: 'message', Type: str\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nDeleting key from NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nCommitting updates in NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: NVS handle closed.\u001b[0m\n\u001b[0;32mI (0) nvs_example: Returned to app_main\u001b[0m\n"
+            ]
+          },
+          "expected": "Error (ESP_ERR_NVS_CORRUPT_KEY_PART) reading!"
+        },
+        {
+          "stepIndex": 3,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2000000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (0) nvs_example: \nOpening Non-Volatile Storage (NVS) handle...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nWriting counter to NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nReading counter from NVS...\u001b[0m\n\u001b[0;31mE (0) nvs_example: Error (ESP_ERR_NVS_CORRUPT_KEY_PART) reading!\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nWriting string to NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nReading string from NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nFinding keys in NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: Key: 'counter', Type: i32\u001b[0m\n\u001b[0;32mI (0) nvs_example: Key: 'message', Type: str\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nDeleting key from NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: \nCommitting updates in NVS...\u001b[0m\n\u001b[0;32mI (0) nvs_example: NVS handle closed.\u001b[0m\n\u001b[0;32mI (0) nvs_example: Returned to app_main\u001b[0m\n"
+            ]
+          },
+          "expected": "Returned to app_main"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

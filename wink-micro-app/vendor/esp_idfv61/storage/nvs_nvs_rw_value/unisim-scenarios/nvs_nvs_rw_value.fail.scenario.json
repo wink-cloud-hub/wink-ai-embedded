@@ -1,7 +1,7 @@
 {
   "header": {
     "version": "1.0.0",
-    "name": "ESP-IDF v6.1 nvs_rw_value flash corruption & type mismatch boundary proof",
+    "name": "ESP-IDF v6.1 nvs_rw_value flash corruption & read boundary proof",
     "templateId": "esp_idfv61_nvs_nvs_rw_value_fail",
     "accuracyMode": "behavioral",
     "timeoutUs": "3000ms",
@@ -13,19 +13,20 @@
   "steps": [
     {
       "type": "ASSERT_POINT",
-      "timeUs": "50ms",
+      "timeUs": "0ms",
       "target": "power:VCC_3V3",
       "matcher": 3.3,
       "description": "断言系统供电轨稳定维持 3.3V"
     },
     {
-      "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["0ms", "1500ms"],
-      "busType": "uart",
-      "busId": 0,
-      "direction": "tx",
-      "matcher": "Opening Non-Volatile Storage (NVS) handle...",
-      "description": "[NVS句柄开启] 验证存储句柄初始化成功"
+      "type": "INJECT_PLATFORM_FAULT",
+      "timeUs": "0ms",
+      "domain": "nvs",
+      "fault": {
+        "action": "read_corrupt",
+        "param": 0
+      },
+      "description": "在启动阶段向 NVS 介质注入读取损坏故障 (ESP_FAULT_NVS_READ_CORRUPT)"
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
@@ -33,17 +34,17 @@
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
-      "matcher": "Read counter = 42",
-      "description": "[数值字段读取] 验证整型计数器读取正确"
+      "matcher": "Error (ESP_ERR_NVS_CORRUPT_KEY_PART) reading!",
+      "description": "断言原厂固件捕获 NVS 读损坏故障并向串口输出 ESP_ERR_NVS_CORRUPT_KEY_PART 错误"
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": ["0ms", "1500ms"],
+      "windowUs": ["0ms", "2000ms"],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
-      "matcher": "Read string: Hello from NVS!",
-      "description": "[字符串完整性] 验证字符串字段无截断或乱码"
+      "matcher": "Returned to app_main",
+      "description": "断言应用在异常处理后安全返回 app_main"
     }
   ]
 }

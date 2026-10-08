@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-02T18:42:11.333Z",
+  "timestamp": "2026-10-08T04:28:45.795Z",
   "total": 1,
   "passed": 1,
   "failed": 0,
@@ -11,7 +11,7 @@
         "name": "ESP-IDF v6.1 nvs_rw_value headless deterministic proof",
         "templateId": "esp_idfv61_nvs_nvs_rw_value",
         "totalVirtualUs": "3000000",
-        "wallClockMs": 95
+        "wallClockMs": 116
       },
       "summary": {
         "totalSteps": 7,

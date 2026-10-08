@@ -15,7 +15,7 @@
 
 - **官方独立示例总数**：**478 个**
   - `[x]` **已完成六要素实证 (Verified)**：**46 项**
-    - `🟢` **双实证闭环 (Twin-Proof: Green ✅ + Red 🛡️)**：**2 项**
+    - `🟢` **双实证闭环 (Twin-Proof: Green ✅ + Red 🛡️)**：**3 项**
   - `[?]` **存量隔离待补凭证 (Quarantined Debt)**：**0 项**（14 天 TTL 过期硬阻断，至 `2026-10-13`）
   - `[ ]` **规划中正常排期 (In-Scope Planned)**：**245 项**
   - `[-]` **明确产品排除 / 暂缓投入 (Out-of-Scope / Deferred)**：**187 项**（编译期 `WINK_SLA_ERROR` Fail-Loud 阻断）
@@ -566,7 +566,7 @@
 | [ ] | 400 | `storage/nvs/nvs_console` | ⚙️ Level 4 | P2 | `storage/nvs_nvs_console` | [Lane 5: 本地存储] 待排期。依赖进一步框架门面扩展。 |
 | [x] | 401 | `storage/nvs/nvs_iteration` | 📜 Level 2 | P0 | [`storage/nvs_nvs_iteration`](storage/nvs_nvs_iteration) | [Lane 5: 本地存储] [Green ✅ | Red ⏳] 已完成实证。 |
 | [x] | 402 | `storage/nvs/nvs_rw_blob` | ⚙️ Level 4 | P0 | [`storage/nvs_nvs_rw_blob`](storage/nvs_nvs_rw_blob) | [Lane 5: 本地存储] [Green ✅ | Red ⏳] 已完成实证。 |
-| [x] | 403 | `storage/nvs/nvs_rw_value` | ⚙️ Level 4 | P0 | [`storage/nvs_nvs_rw_value`](storage/nvs_nvs_rw_value) | [Lane 5: 本地存储] [Green ✅ | Red ⏳] 已完成实证。 |
+| [x] | 403 | `storage/nvs/nvs_rw_value` | ⚙️ Level 4 | P0 | [`storage/nvs_nvs_rw_value`](storage/nvs_nvs_rw_value) | [Lane 5: 本地存储] 🟢 [Green ✅ | Red 🛡️] 已完成红绿双实证 (TWIN-PROOF)。 |
 | [ ] | 404 | `storage/nvs/nvs_rw_value_cxx` | ⚙️ Level 4 | P1 | `storage/nvs_nvs_rw_value_cxx` | [Lane 5: 本地存储] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 405 | `storage/nvs/nvs_statistics` | ⚙️ Level 4 | P2 | `storage/nvs_nvs_statistics` | [Lane 5: 本地存储] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 406 | `storage/nvs/nvsgen` | ⚙️ Level 4 | P2 | `storage/nvs_nvsgen` | [Lane 5: 本地存储] 待排期。依赖进一步框架门面扩展。 |

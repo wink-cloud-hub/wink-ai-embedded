@@ -26278,8 +26278,8 @@
       },
       "audit": {
         "verdict": "audited",
-        "auditor": "loop_sop_daemon",
-        "audited_at": "2026-10-02T18:42:11Z",
+        "auditor": "arch_team",
+        "audited_at": "2026-10-08T04:30:00Z",
         "audited_configs": [
           "wasm_sim_standard"
         ],
@@ -26341,12 +26341,12 @@
           },
           "evidence": {
             "backend": "wasm_simulation",
-            "run_id": "run-20261002-esp.storage.nvs.nvs_rw_value-verified",
-            "assets_sha256": "47c266925baf7d9b1f78208b51816924b7057193c4a2f6510b48e20d4019ac7c",
+            "run_id": "run-20261008-esp.storage.nvs.nvs_rw_value-verified",
+            "assets_sha256": "87a25322192a5ee04331ca549f0be99a478e892d4758fcffd1380dba0e482b6e",
             "scenario_sha256": "be09ec0daf23db0803b4d8c0f55435d384c695dc19acf055fc0865202094f363",
             "execution_report_ref": ".governance/reports/storage/nvs_nvs_rw_value/run-report.json",
-            "verified_commit": "31b0e416796be82fbae352bd2d599fb40e658bac",
-            "verified_at": "2026-10-02T18:42:11Z"
+            "verified_commit": "c224186790b30d8c252acb4182f6315f61eed145",
+            "verified_at": "2026-10-08T04:30:00Z"
           }
         }
       ],

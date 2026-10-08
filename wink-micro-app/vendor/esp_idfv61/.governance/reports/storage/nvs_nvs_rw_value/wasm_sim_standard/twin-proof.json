@@ -1,0 +1,41 @@
+{
+  "format_version": 1,
+  "kind": "twin_proof",
+  "app_id": "esp.storage.nvs.nvs_rw_value",
+  "config_id": "wasm_sim_standard",
+  "backend": "wasm_browser",
+  "target_soc": "esp32",
+  "profile": "standard",
+  "baseline_run_id": "run-20261008-esp.storage.nvs.nvs_rw_value-verified",
+  "assets_sha256": "87a25322192a5ee04331ca549f0be99a478e892d4758fcffd1380dba0e482b6e",
+  "positive": {
+    "config_id": "wasm_sim_standard",
+    "backend": "wasm_browser",
+    "target_soc": "esp32",
+    "profile": "standard",
+    "assets_sha256": "87a25322192a5ee04331ca549f0be99a478e892d4758fcffd1380dba0e482b6e",
+    "run_id": "run-20261008-esp.storage.nvs.nvs_rw_value-verified",
+    "scenario_ref": "storage/nvs_nvs_rw_value/unisim-scenarios/nvs_nvs_rw_value.scenario.json",
+    "scenario_sha256": "be09ec0daf23db0803b4d8c0f55435d384c695dc19acf055fc0865202094f363",
+    "report_ref": ".governance/reports/storage/nvs_nvs_rw_value/run-report.json",
+    "report_sha256": "76505e186934b1f54f437d216f246a8df745da7fc7c6a50b3c0f29bde5605629"
+  },
+  "negative": [
+    {
+      "case_index": 0,
+      "contract_sha256": "4b50ba711e9a9866b65143bcebab4ab3273619d59ab2fe98a282187102a87cc5",
+      "config_id": "wasm_sim_standard",
+      "backend": "wasm_browser",
+      "target_soc": "esp32",
+      "profile": "standard",
+      "assets_sha256": "87a25322192a5ee04331ca549f0be99a478e892d4758fcffd1380dba0e482b6e",
+      "run_id": "run-20261008-esp.storage.nvs.nvs_rw_value-fault-0",
+      "scenario_ref": "storage/nvs_nvs_rw_value/unisim-scenarios/nvs_nvs_rw_value.fail.scenario.json",
+      "scenario_sha256": "9695ab81afdf74b095053f42be7cf8dd381074ad509692a96683810f951febb2",
+      "report_ref": ".governance/reports/storage/nvs_nvs_rw_value/wasm_sim_standard/negative_case_0.report.json",
+      "report_sha256": "0f48e549d3fe922dbe20e1507f449f2899aed4a1c8405f74a26320b0ae793739",
+      "stimulus_step_index": 1,
+      "assertion_step_index": 2
+    }
+  ]
+}

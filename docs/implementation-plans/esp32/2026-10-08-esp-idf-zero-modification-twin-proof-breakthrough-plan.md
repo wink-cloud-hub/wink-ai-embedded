@@ -85,7 +85,7 @@ Fixture 只能提供环境或对端输入，不能直接填入被断言的结果
 |---|---|---|
 | #098 `esp.peripherals.uart.uart_events` | `peripherals/uart_uart_events` | M1 优先样板；已完成首项正式双实证交付 ✅ |
 | #196 `esp.protocols.http_server.simple` | `protocols/http_server_simple` | M2 第二项；已完成原厂零修改双实证交付（未知路由+应用404闭环） ✅ |
-| #403 `esp.storage.nvs.nvs_rw_value` | `storage/nvs_nvs_rw_value` | 校准启动阶段故障时机后推进 |
+| #403 `esp.storage.nvs.nvs_rw_value` | `storage/nvs_nvs_rw_value` | M2 第三项；已完成原厂零修改双实证交付（冷启动介质损坏与标准错误名闭环） ✅ |
 | #154 `esp.system.task_watchdog` | `system/task_watchdog` | 外部漏喂通路预研通过后进入正式采集 |
 
 ### 3.1 UART Events：已有 ABI 与候选，补齐正式场景链路
@@ -342,6 +342,6 @@ flowchart TD
 - [x] 2026-10-08：完成 Phase 0 (M0) 能力预检与基线冻结，归档评审 [REV-20261008-ZERO-MOD-TWIN-PROOF-PHASE0-PRECHECK](../../reviews/esp32/2026-10-08-esp-idf-zero-modification-twin-proof-phase0-precheck-review.md)。
 - [x] M0：四项进入条件及承接缺口确认。
 - [x] M1：UART 首项正式交付与复验归档，归档评审 [REV-20261008-ZERO-MOD-TWIN-PROOF-UART-EVENTS](../../reviews/esp32/2026-10-08-esp-idf-zero-modification-twin-proof-uart-events-review.md)。
-- [ ] M2：HTTP (已完成 ✅)、NVS、TWDT 分别通过进入条件并完成正式交付。归档评审 [REV-20261008-ZERO-MOD-TWIN-PROOF-HTTP-SERVER](../../reviews/esp32/2026-10-08-esp-idf-zero-modification-twin-proof-http-server-review.md)。
+- [ ] M2：HTTP (已完成 ✅)、NVS (已完成 ✅)、TWDT (待预研)。归档评审 [REV-20261008-ZERO-MOD-TWIN-PROOF-HTTP-SERVER](../../reviews/esp32/2026-10-08-esp-idf-zero-modification-twin-proof-http-server-review.md) 与 [REV-20261008-ZERO-MOD-TWIN-PROOF-NVS-RW-VALUE](../../reviews/esp32/2026-10-08-esp-idf-zero-modification-twin-proof-nvs-rw-value-review.md)。
 
-本次更新记录了 M1 (UART Events) 与 M2 首个试点 (HTTP Server Simple) 两项正式双实证达成（看板双实证数量提升至 2）；后续推进 NVS 与 TWDT 试点条目。
+本次更新记录了 M1 (UART Events)、M2 首个试点 (HTTP Server Simple) 与 M2 第二个试点 (NVS Read/Write Value) 三项正式双实证达成（看板双实证数量提升至 3）；后续推进第四项试点 TWDT 条目。
