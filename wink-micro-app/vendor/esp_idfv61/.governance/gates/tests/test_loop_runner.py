@@ -211,3 +211,95 @@ def test_agent_synthesizer_qoder_model_configuration():
         assert "-m" in cmd
         assert "Qwen3.8-Flash" in cmd
 
+
+def test_agent_is_quota_exhausted():
+    # True cases
+    assert AgentSynthesizer.is_quota_exhausted("Error: HTTP 429 Too Many Requests")
+    assert AgentSynthesizer.is_quota_exhausted("Resource has been exhausted: quota limit reached")
+    assert AgentSynthesizer.is_quota_exhausted("API Error: insufficient_quota")
+    assert AgentSynthesizer.is_quota_exhausted("用户账户余额不足，请充值")
+    assert AgentSynthesizer.is_quota_exhausted("Token limit exceeded for this month")
+    assert AgentSynthesizer.is_quota_exhausted("调用频次超出配额限制")
+
+    # False cases
+    assert not AgentSynthesizer.is_quota_exhausted("")
+    assert not AgentSynthesizer.is_quota_exhausted("Syntax error at line 42")
+    assert not AgentSynthesizer.is_quota_exhausted("Assertion failed: matcher mismatch")
+    assert not AgentSynthesizer.is_quota_exhausted("Compilation successful")
+
+
+def test_agent_detect_all_candidate_executables():
+    ws_root = Path(__file__).resolve().parents[6]
+    # Custom commands override
+    agent_custom = AgentSynthesizer(workspace_root=ws_root, custom_agent_cmd="myagent --run")
+    candidates = agent_custom.detect_all_candidate_executables(role="A")
+    assert len(candidates) == 1
+    assert candidates[0][0] == "myagent"
+    assert candidates[0][1] == ["myagent", "--run"]
+
+
+def test_agent_invoke_failover(tmp_path, monkeypatch):
+    import subprocess
+    agent = AgentSynthesizer(workspace_root=tmp_path)
+
+    # Mock two candidates: first fails with quota, second succeeds
+    monkeypatch.setattr(
+        agent,
+        "detect_all_candidate_executables",
+        lambda role="A": [
+            ("qoderclicn", ["qoderclicn", "-p"]),
+            ("agy", ["agy", "-p"]),
+        ],
+    )
+
+    call_history = []
+
+    def mock_subprocess_run(cmd, **kwargs):
+        call_history.append(cmd[0])
+        if cmd[0] == "qoderclicn":
+            return subprocess.CompletedProcess(
+                args=cmd,
+                returncode=1,
+                stdout="429 Resource has been exhausted: quota exceeded",
+                stderr="",
+            )
+        else:
+            return subprocess.CompletedProcess(
+                args=cmd,
+                returncode=0,
+                stdout='{"steps": [{"type": "ASSERT_POINT"}]}',
+                stderr="",
+            )
+
+    monkeypatch.setattr(subprocess, "run", mock_subprocess_run)
+
+    rc, out = agent.invoke_agent("Generate scenario", role="A")
+    assert rc == 0
+    assert '{"steps":' in out
+    assert call_history == ["qoderclicn", "agy"]
+
+
+def test_loop_runner_batch_crash_isolation(tmp_path, monkeypatch):
+    from loop.pipeline import PipelineResult
+    ws_root = Path(__file__).resolve().parents[6]
+    runner = LoopRunner(workspace_root=ws_root, dry_run=False)
+
+    fake_candidates = [
+        {"id": "app1", "target_app_dir": "test/app1"},
+        {"id": "app2", "target_app_dir": "test/app2"},
+    ]
+    monkeypatch.setattr(runner, "select_candidates", lambda **kw: fake_candidates)
+
+    def mock_execute_app(entry, config_id=None):
+        if entry["id"] == "app1":
+            raise RuntimeError("Unexpected internal crash in pipeline")
+        return PipelineResult("app2", True, "Successfully verified", "CANDIDATE")
+
+    monkeypatch.setattr(runner.pipeline, "execute_app", mock_execute_app)
+
+    # Should not raise exception; app1 recorded as CRASH, app2 recorded as PASS
+    rc = runner.run()
+    # At least one failed (app1 crashed)
+    assert rc == 1
+
+

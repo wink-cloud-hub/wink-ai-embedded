@@ -20,6 +20,27 @@ from typing import Any, Dict, List, Optional, Tuple
 class AgentSynthesizer:
     """Dispatches one-shot authoring and dual-agent adversarial review tasks."""
 
+    QUOTA_EXHAUSTED_KEYWORDS: Tuple[str, ...] = (
+        "quota",
+        "exhausted",
+        "rate limit",
+        "429",
+        "too many requests",
+        "resource has been exhausted",
+        "insufficient_quota",
+        "insufficient balance",
+        "credit limit",
+        "credits",
+        "token limit",
+        "额度",
+        "欠费",
+        "余额不足",
+        "超出限制",
+        "超出配额",
+        "访问频次超限",
+        "并发超限",
+    )
+
     def __init__(
         self,
         workspace_root: Path,
@@ -34,18 +55,31 @@ class AgentSynthesizer:
         self.custom_agent_b_cmd = custom_agent_b_cmd or custom_agent_cmd
         self.qoder_model = qoder_model
 
-    def detect_agent_executable(self, role: str = "A") -> Optional[List[str]]:
-        """Find the best available Agent CLI executable for the given role.
+    @classmethod
+    def is_quota_exhausted(cls, output: str) -> bool:
+        """Check whether execution output indicates API quota or rate limit exhaustion."""
+        if not output:
+            return False
+        out_lower = output.lower()
+        return any(kw in out_lower for kw in cls.QUOTA_EXHAUSTED_KEYWORDS)
+
+    def detect_all_candidate_executables(self, role: str = "A") -> List[Tuple[str, List[str]]]:
+        """Find all available Agent CLI executables in role priority order.
 
         Role A: Primary proposal author (defaults to qoderclicn [-m Qwen3.8-Flash] -> agy -> claude).
         Role B: Adversarial red-team auditor (defaults to agy -> claude -> qoderclicn).
+
+        Returns list of (binary_name, command_arguments) tuples.
         """
         if role == "A" and self.custom_agent_a_cmd:
-            return self.custom_agent_a_cmd.split()
+            parts = self.custom_agent_a_cmd.split()
+            return [(parts[0], parts)]
         if role == "B" and self.custom_agent_b_cmd:
-            return self.custom_agent_b_cmd.split()
+            parts = self.custom_agent_b_cmd.split()
+            return [(parts[0], parts)]
         if self.custom_agent_cmd:
-            return self.custom_agent_cmd.split()
+            parts = self.custom_agent_cmd.split()
+            return [(parts[0], parts)]
 
         # Prioritization based on role
         if role == "A":
@@ -53,6 +87,7 @@ class AgentSynthesizer:
         else:
             candidate_binaries = ["agy", "claude", "qoderclicn", "opencode"]
 
+        available: List[Tuple[str, List[str]]] = []
         for binary in candidate_binaries:
             found = shutil.which(binary) or shutil.which(f"{binary}.cmd") or shutil.which(f"{binary}.exe")
             if not found and binary == "qoderclicn":
@@ -68,44 +103,106 @@ class AgentSynthesizer:
             if found:
                 if binary == "agy":
                     effort = "high" if role == "B" else "medium"
-                    return [found, "--dangerously-skip-permissions", "--effort", effort, "-p"]
-                if binary == "qoderclicn":
+                    cmd = [found, "--dangerously-skip-permissions", "--effort", effort, "-p"]
+                elif binary == "qoderclicn":
                     cmd = [found]
                     if self.qoder_model:
                         cmd.extend(["-m", self.qoder_model])
                     cmd.extend(["--dangerously-skip-permissions", "-p"])
-                    return cmd
-                if binary == "claude":
-                    return [found, "--dangerously-skip-permissions", "-p"]
-                if binary == "opencode":
-                    return [found, "run"]
-                return [found]
-        return None
+                elif binary == "claude":
+                    cmd = [found, "--dangerously-skip-permissions", "-p"]
+                elif binary == "opencode":
+                    cmd = [found, "run"]
+                else:
+                    cmd = [found]
+                available.append((binary, cmd))
 
-    def invoke_agent(self, prompt: str, role: str = "A", timeout_sec: int = 300) -> Tuple[int, str]:
-        """Invoke an isolated headless agent CLI subagent with clean context."""
-        agent_cmd = self.detect_agent_executable(role=role)
-        if not agent_cmd:
+        return available
+
+    def detect_agent_executable(self, role: str = "A") -> Optional[List[str]]:
+        """Find the best available Agent CLI executable for the given role (primary candidate)."""
+        candidates = self.detect_all_candidate_executables(role=role)
+        return candidates[0][1] if candidates else None
+
+    def invoke_agent(
+        self,
+        prompt: str,
+        role: str = "A",
+        timeout_sec: int = 300,
+        enable_failover: bool = True,
+    ) -> Tuple[int, str]:
+        """Invoke an isolated headless agent CLI subagent with clean context and failover support."""
+        candidate_cmds = self.detect_all_candidate_executables(role=role)
+        if not candidate_cmds:
             return 1, f"No agent CLI available on system for Role {role}. Please specify --agent-cmd or install agy/claude/qoderclicn."
 
-        full_cmd = agent_cmd + [prompt]
-        try:
-            res = subprocess.run(
-                full_cmd,
-                cwd=str(self.ws_root),
-                capture_output=True,
-                text=True,
-                timeout=timeout_sec,
-                encoding="utf-8",
-                errors="replace",
-                stdin=subprocess.DEVNULL,
-            )
-            output = res.stdout if res.stdout else res.stderr
-            return res.returncode, output
-        except subprocess.TimeoutExpired:
-            return 124, f"Agent Role {role} timed out after {timeout_sec}s."
-        except Exception as e:
-            return 1, f"Agent invocation failed: {e}"
+        if not enable_failover:
+            candidate_cmds = candidate_cmds[:1]
+
+        last_rc = 1
+        last_output = ""
+        diagnostic_chain: List[str] = []
+
+        for idx, (binary_name, agent_cmd) in enumerate(candidate_cmds):
+            full_cmd = agent_cmd + [prompt]
+            try:
+                res = subprocess.run(
+                    full_cmd,
+                    cwd=str(self.ws_root),
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout_sec,
+                    encoding="utf-8",
+                    errors="replace",
+                    stdin=subprocess.DEVNULL,
+                )
+                stdout = (res.stdout or "").strip()
+                stderr = (res.stderr or "").strip()
+                if stdout and stderr:
+                    output = f"{stdout}\n--- [stderr] ---\n{stderr}"
+                else:
+                    output = stdout or stderr
+
+                last_rc = res.returncode
+                last_output = output
+
+                if res.returncode == 0:
+                    if idx > 0:
+                        print(f"  [agent:failover] Fallback candidate '{binary_name}' succeeded for Role {role}.", flush=True)
+                    return 0, output
+
+                is_quota = self.is_quota_exhausted(output)
+                fail_tag = "QUOTA_EXHAUSTED" if is_quota else f"EXIT_{res.returncode}"
+                diagnostic_chain.append(f"Candidate '{binary_name}' [{fail_tag}]: {output[:150]}")
+
+                if is_quota:
+                    print(f"  [agent:alert] Role {role} Agent '{binary_name}' quota exhausted or rate-limited: {output[:120]}", flush=True)
+                else:
+                    print(f"  [agent:warn] Role {role} Agent '{binary_name}' exited with code {res.returncode}.", flush=True)
+
+            except subprocess.TimeoutExpired:
+                last_rc = 124
+                last_output = f"Agent Role {role} ({binary_name}) timed out after {timeout_sec}s."
+                diagnostic_chain.append(f"Candidate '{binary_name}' timed out after {timeout_sec}s")
+                print(f"  [agent:warn] Role {role} Agent '{binary_name}' timed out after {timeout_sec}s.", flush=True)
+            except Exception as e:
+                last_rc = 1
+                last_output = f"Agent invocation failed for {binary_name}: {e}"
+                diagnostic_chain.append(f"Candidate '{binary_name}' error: {e}")
+                print(f"  [agent:error] Failed invoking '{binary_name}': {e}", flush=True)
+
+            if idx + 1 < len(candidate_cmds):
+                next_binary = candidate_cmds[idx + 1][0]
+                print(f"  [agent:failover] Failing over from '{binary_name}' to next candidate '{next_binary}' for Role {role}...", flush=True)
+
+        # All available candidates failed
+        if self.is_quota_exhausted(last_output):
+            final_msg = f"[QUOTA_EXHAUSTED] All candidate agents failed. Last output: {last_output}"
+        else:
+            summary = " -> ".join(diagnostic_chain) if diagnostic_chain else last_output
+            final_msg = f"[AGENT_EXECUTION_FAILED] All candidate agents failed: {summary}"
+
+        return last_rc if last_rc != 0 else 1, final_msg
 
     # -------------------------------------------------------------------------
     # Prompt Construction
@@ -474,12 +571,16 @@ blocking_issues_count: 0
         prompt = self.build_prompt(app_entry, app_dir)
         rc, out = self.invoke_agent(prompt, role="A", timeout_sec=timeout_sec)
         if rc != 0:
-            return False, f"Agent CLI exited with code {rc}: {out[:300]}"
+            if self.is_quota_exhausted(out):
+                return False, f"[QUOTA_EXHAUSTED] Scenario authoring blocked by model quota: {out[:500]}"
+            return False, f"Agent CLI exited with code {rc}: {out[:500]}"
 
         app_name = Path(app_entry.get("target_app_dir", "")).name
         scen_file = app_dir / "unisim-scenarios" / f"{app_name}.scenario.json"
         if not scen_file.is_file():
-            return False, f"Agent completed successfully but target scenario file was not created: {scen_file}"
+            if self.is_quota_exhausted(out):
+                return False, f"[QUOTA_EXHAUSTED] Scenario file was not created due to model quota exhaustion: {out[:500]}"
+            return False, f"Agent completed with returncode 0 but target scenario file was not created: {scen_file} (Output: {out[:300]})"
 
         try:
             data = json.loads(scen_file.read_text(encoding="utf-8"))

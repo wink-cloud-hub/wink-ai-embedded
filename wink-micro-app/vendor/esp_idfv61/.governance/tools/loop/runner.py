@@ -156,7 +156,15 @@ class LoopRunner:
             target_dir = entry.get("target_app_dir")
             print(f"\n--- [{i}/{len(candidates)}] Processing: {app_id} ({target_dir}) ---", flush=True)
 
-            res = self.pipeline.execute_app(entry, config_id=config_id)
+            try:
+                res = self.pipeline.execute_app(entry, config_id=config_id)
+            except KeyboardInterrupt:
+                print(f"\n[loop:interrupt] Execution interrupted by user after processing {len(results)} application(s). Finalizing summary...", flush=True)
+                break
+            except Exception as exc:
+                print(f"[loop:crash] Unexpected crash while executing {app_id}: {exc}", flush=True)
+                res = PipelineResult(app_id or "unknown", False, f"Unexpected exception: {exc}", "CRASH")
+
             results.append(res)
 
             status_tag = "PASS" if res.success else "FAIL"

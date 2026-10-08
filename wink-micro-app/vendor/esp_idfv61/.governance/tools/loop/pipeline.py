@@ -91,7 +91,10 @@ class LoopPipeline:
                 encoding="utf-8",
                 errors="replace",
             )
-            return res.returncode, res.stdout + "\n" + res.stderr
+            stdout = (res.stdout or "").strip()
+            stderr = (res.stderr or "").strip()
+            output = f"{stdout}\n--- [stderr] ---\n{stderr}" if (stdout and stderr) else (stdout or stderr)
+            return res.returncode, output
         except subprocess.TimeoutExpired:
             return 124, f"Execution timed out after {timeout_sec}s"
         except Exception as e:
@@ -110,7 +113,10 @@ class LoopPipeline:
                 encoding="utf-8",
                 errors="replace",
             )
-            return res.returncode, res.stdout + "\n" + res.stderr
+            stdout = (res.stdout or "").strip()
+            stderr = (res.stderr or "").strip()
+            output = f"{stdout}\n--- [stderr] ---\n{stderr}" if (stdout and stderr) else (stdout or stderr)
+            return res.returncode, output
         except Exception as e:
             return 1, f"Python execution error: {e}"
 

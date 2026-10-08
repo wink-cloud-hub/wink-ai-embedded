@@ -443,6 +443,14 @@ class Remediator:
         rca_prompt = self.agent.build_root_cause_prompt(app_entry, app_dir, failure_log, ws.investigation_dir)
         rc_code, rc_out = self.agent.invoke_agent(rca_prompt, role="A")
 
+        if rc_code != 0:
+            if self.agent.is_quota_exhausted(rc_out):
+                ws.transition_to(RemediatorState.CIRCUIT_BREAKER_ESCALATED, reason=f"Model quota exhausted during RCA: {rc_out[:200]}")
+                return False, f"[QUOTA_EXHAUSTED] Self-healing aborted: Role A model quota exhausted: {rc_out[:300]}"
+            if not ws.rca_file.is_file():
+                ws.transition_to(RemediatorState.ROLLED_BACK, reason=f"Agent Role A failed: {rc_out[:200]}")
+                return False, f"Agent Role A failed with code {rc_code}: {rc_out[:300]}"
+
         if not ws.rca_file.is_file() or not ws.plan_file.is_file():
             # If agent printed content in output, write it to disk
             if "01-ROOT-CAUSE" in rc_out or "# Root Cause" in rc_out:
@@ -478,6 +486,14 @@ class Remediator:
             patch_diff=patch_text,
         )
         r_code, r_out = self.agent.invoke_agent(review_prompt, role="B")
+        if r_code != 0:
+            if self.agent.is_quota_exhausted(r_out):
+                ws.transition_to(RemediatorState.CIRCUIT_BREAKER_ESCALATED, reason=f"Model quota exhausted during review: {r_out[:200]}")
+                return False, f"[QUOTA_EXHAUSTED] Self-healing aborted: Role B model quota exhausted: {r_out[:300]}"
+            if not ws.review_file.is_file():
+                ws.transition_to(RemediatorState.ROLLED_BACK, reason=f"Agent Role B failed: {r_out[:200]}")
+                return False, f"Agent Role B failed with code {r_code}: {r_out[:300]}"
+
         if not ws.review_file.is_file():
             ws.review_file.write_text(r_out, encoding="utf-8")
 
@@ -501,6 +517,10 @@ class Remediator:
                 investigation_dir=ws.investigation_dir,
             )
             s_code, s_out = self.agent.invoke_agent(synth_prompt, role="A")
+            if s_code != 0:
+                if self.agent.is_quota_exhausted(s_out):
+                    ws.transition_to(RemediatorState.CIRCUIT_BREAKER_ESCALATED, reason=f"Model quota exhausted during synthesis: {s_out[:200]}")
+                    return False, f"[QUOTA_EXHAUSTED] Self-healing aborted: Role A model quota exhausted during synthesis: {s_out[:300]}"
 
             synthesized_plan = ws.plan_file.read_text(encoding="utf-8") if ws.plan_file.is_file() else ""
             valid_synth, synth_msg = ws.verify_synthesis_not_mere_append(orig_plan_content, synthesized_plan)
