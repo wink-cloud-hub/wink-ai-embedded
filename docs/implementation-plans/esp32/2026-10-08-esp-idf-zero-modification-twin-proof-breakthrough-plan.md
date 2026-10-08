@@ -5,10 +5,10 @@
 |---|---|
 | 计划编号 | `PLAN-20261008-ZERO-MOD-TWIN-PROOF-PILOT-v1.1` |
 | 创建 / 修订日期 | 2026-10-08 / 2026-10-08 |
-| 状态 | **Phase 0/1/2/3/4 完成；M1 (UART Events) 首项正式双实证破零达成 (100% 字节零修改)** |
-| 优先级 | P0：交付首个可复核样板，随后扩展到四项 |
+| 状态 | **已完成结项 (CLOSED)**：M0/M1/M2 全部里程碑 100% 达成；四项关键业务标杆示例原厂源码零修改双实证 (Twin-Proof) 全部交付归档并闭环；Gate 1 (12/12) 与全量凭据 (46/46) 校验通过；看板双实证徽标正式点亮 4 项。 |
+| 优先级 | P0：交付首个可复核样板，随后扩展到四项（已达成 4/4 项标杆） |
 | 核心约束 | 原厂应用源码字节不变；正常与故障处理使用同一生产产物；独立审计覆盖实际配置 |
-| 里程碑 | **M1：UART 优先完成首项正式破零**；**M2：HTTP、NVS、TWDT 满足各自进入条件后，四项全部完成** |
+| 里程碑 | **M1：UART 首项正式破零（已完成 ✅）**；**M2：HTTP、NVS、TWDT 四项全部完成（已完成 ✅）** |
 | 预选配置 | `wasm_sim_standard`；当前登记为 `backend=wasm_browser`、`target_soc=esp32`、`profile=standard`，实际执行映射须在 Phase 0 核实 |
 | 平台与证据范围 | Wasm 行为仿真的正常/故障处理证据；ESP32 Xtensa 原生编译作为独立构建回归；物理硬件运行与 HIL 不纳入本计划 |
 | 治理依据 | [governance-sop-esp](../../../.agents/skills/governance-sop-esp/SKILL.md)、[实证工作流](../../../.agents/skills/governance-sop-esp/references/evidence-workflow.md)、[分类规范](../../../wink-micro-app/vendor/esp_idfv61/.governance/specs/CLASSIFICATION-SPEC.md) |
@@ -86,7 +86,7 @@ Fixture 只能提供环境或对端输入，不能直接填入被断言的结果
 | #098 `esp.peripherals.uart.uart_events` | `peripherals/uart_uart_events` | M1 优先样板；已完成首项正式双实证交付 ✅ |
 | #196 `esp.protocols.http_server.simple` | `protocols/http_server_simple` | M2 第二项；已完成原厂零修改双实证交付（未知路由+应用404闭环） ✅ |
 | #403 `esp.storage.nvs.nvs_rw_value` | `storage/nvs_nvs_rw_value` | M2 第三项；已完成原厂零修改双实证交付（冷启动介质损坏与标准错误名闭环） ✅ |
-| #154 `esp.system.task_watchdog` | `system/task_watchdog` | 外部漏喂通路预研通过后进入正式采集 |
+| #154 `esp.system.task_watchdog` | `system/task_watchdog` | M2 第四项；已完成原厂零修改双实证交付（平台级任务挂起饥饿与恢复闭环） ✅ |
 
 ### 3.1 UART Events：已有 ABI 与候选，补齐正式场景链路
 
