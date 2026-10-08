@@ -118,9 +118,14 @@ WINK_SIM_EXPORT int sim_http_server_get_total_tx_bytes(void) {
     return (int)s_server_total_tx_bytes;
 }
 
+static bool s_server_stopping = false;
+
 esp_err_t httpd_start(httpd_handle_t *handle, const httpd_config_t *config) {
     if (!handle || !config) {
         return ESP_ERR_INVALID_ARG;
+    }
+    if (s_server.active || s_server_stopping) {
+        return ESP_ERR_HTTPD_ALLOC_MEM;
     }
     s_server.active = true;
     s_server.config = *config;
@@ -135,14 +140,55 @@ esp_err_t httpd_stop(httpd_handle_t handle) {
     if (!handle || handle != &s_server) {
         return ESP_ERR_INVALID_ARG;
     }
+    if (!s_server.active || s_server_stopping) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    s_server_stopping = true;
     s_server.active = false;
     s_server_state = 0;
+
+    for (int i = 0; i < MAX_URI_HANDLERS; i++) {
+        s_server.handlers[i].used = false;
+        memset(&s_server.handlers[i].uri_handler, 0, sizeof(httpd_uri_t));
+    }
+    for (int i = 0; i < HTTPD_ERR_CODE_MAX; i++) {
+        s_server.err_handlers[i] = NULL;
+    }
+
+    memset(&s_curr_aux, 0, sizeof(s_curr_aux));
+    memset(&s_curr_req, 0, sizeof(s_curr_req));
+
+    void *user_ctx = s_server.config.global_user_ctx;
+    httpd_free_ctx_fn_t user_free = s_server.config.global_user_ctx_free_fn;
+    s_server.config.global_user_ctx = NULL;
+    s_server.config.global_user_ctx_free_fn = NULL;
+    if (user_ctx) {
+        if (user_free) {
+            user_free(user_ctx);
+        } else {
+            free(user_ctx);
+        }
+    }
+
+    void *transport_ctx = s_server.config.global_transport_ctx;
+    httpd_free_ctx_fn_t transport_free = s_server.config.global_transport_ctx_free_fn;
+    s_server.config.global_transport_ctx = NULL;
+    s_server.config.global_transport_ctx_free_fn = NULL;
+    if (transport_ctx) {
+        if (transport_free) {
+            transport_free(transport_ctx);
+        } else {
+            free(transport_ctx);
+        }
+    }
+
+    s_server_stopping = false;
     ESP_LOGI(TAG, "HTTP Server stopped");
     return ESP_OK;
 }
 
 esp_err_t httpd_register_uri_handler(httpd_handle_t handle, const httpd_uri_t *uri_handler) {
-    if (!handle || !uri_handler || !uri_handler->uri || !uri_handler->handler) {
+    if (!handle || handle != &s_server || !s_server.active || !uri_handler || !uri_handler->uri || !uri_handler->handler) {
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -168,7 +214,7 @@ esp_err_t httpd_register_uri_handler(httpd_handle_t handle, const httpd_uri_t *u
 }
 
 esp_err_t httpd_unregister_uri_handler(httpd_handle_t handle, const char *uri, httpd_method_t method) {
-    if (!handle || !uri) {
+    if (!handle || handle != &s_server || !s_server.active || !uri) {
         return ESP_ERR_INVALID_ARG;
     }
     for (int i = 0; i < MAX_URI_HANDLERS; i++) {
@@ -183,7 +229,7 @@ esp_err_t httpd_unregister_uri_handler(httpd_handle_t handle, const char *uri, h
 }
 
 esp_err_t httpd_unregister_uri(httpd_handle_t handle, const char *uri) {
-    if (!handle || !uri) {
+    if (!handle || handle != &s_server || !s_server.active || !uri) {
         return ESP_ERR_INVALID_ARG;
     }
     bool found = false;
@@ -200,7 +246,7 @@ esp_err_t httpd_unregister_uri(httpd_handle_t handle, const char *uri) {
 esp_err_t httpd_register_err_handler(httpd_handle_t handle,
                                      httpd_err_code_t error,
                                      httpd_err_handler_func_t handler_fn) {
-    if (!handle || error >= HTTPD_ERR_CODE_MAX) {
+    if (!handle || handle != &s_server || !s_server.active || error >= HTTPD_ERR_CODE_MAX) {
         return ESP_ERR_INVALID_ARG;
     }
     s_server.err_handlers[error] = handler_fn;
@@ -429,39 +475,65 @@ esp_err_t httpd_queue_work(httpd_handle_t handle, httpd_work_fn_t work, void *ar
     return ESP_OK;
 }
 
+static void ws_set_frame_metadata(httpd_ws_frame_t *pkt, size_t total_len, size_t left_len) {
+    pkt->type = HTTPD_WS_TYPE_TEXT;
+    pkt->final = true;
+    pkt->fragmented = false;
+    pkt->len = total_len;
+    pkt->left_len = left_len;
+}
+
 esp_err_t httpd_ws_recv_frame(httpd_req_t *req, httpd_ws_frame_t *pkt, size_t max_len) {
-    if (!req || !pkt) return ESP_ERR_INVALID_ARG;
+    if (!req || !pkt) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    size_t total_len = s_curr_aux.body_len;
+    size_t pos = s_curr_aux.body_read_pos;
+    size_t rem = (total_len > pos) ? (total_len - pos) : 0;
+
+    ws_set_frame_metadata(pkt, total_len, rem);
+
     if (max_len == 0) {
-        pkt->len = s_curr_aux.body_len;
-        pkt->type = HTTPD_WS_TYPE_TEXT;
         return ESP_OK;
     }
-    size_t to_copy = s_curr_aux.body_len < max_len ? s_curr_aux.body_len : max_len;
-    if (pkt->payload && to_copy > 0) {
-        memcpy(pkt->payload, s_curr_aux.body_buf, to_copy);
-        pkt->payload[to_copy] = '\0';
+    if (max_len < total_len) {
+        return ESP_ERR_INVALID_SIZE;
     }
-    pkt->len = to_copy;
-    pkt->type = HTTPD_WS_TYPE_TEXT;
+    if (rem == 0) {
+        return ESP_OK;
+    }
+    if (!pkt->payload) {
+        return ESP_FAIL;
+    }
+    memcpy(pkt->payload, s_curr_aux.body_buf + pos, rem);
+    s_curr_aux.body_read_pos = pos + rem;
+    pkt->left_len = 0;
     return ESP_OK;
 }
 
 esp_err_t httpd_ws_recv_frame_part(httpd_req_t *req, httpd_ws_frame_t *pkt, size_t max_len) {
-    if (!req || !pkt) return ESP_ERR_INVALID_ARG;
+    if (!req || !pkt) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    size_t total_len = s_curr_aux.body_len;
+    size_t pos = s_curr_aux.body_read_pos;
+    size_t rem = (total_len > pos) ? (total_len - pos) : 0;
+
+    ws_set_frame_metadata(pkt, total_len, rem);
+
     if (max_len == 0) {
-        pkt->len = s_curr_aux.body_len;
-        pkt->left_len = s_curr_aux.body_len;
-        s_curr_aux.body_read_pos = 0;
-        pkt->type = HTTPD_WS_TYPE_TEXT;
         return ESP_OK;
     }
-    size_t remain = s_curr_aux.body_len > s_curr_aux.body_read_pos ? (s_curr_aux.body_len - s_curr_aux.body_read_pos) : 0;
-    size_t chunk_len = remain < max_len ? remain : max_len;
-    if (pkt->payload && chunk_len > 0) {
-        memcpy(pkt->payload, s_curr_aux.body_buf + s_curr_aux.body_read_pos, chunk_len);
+    if (rem == 0) {
+        return ESP_OK;
     }
-    s_curr_aux.body_read_pos += chunk_len;
-    pkt->left_len = remain - chunk_len;
+    if (!pkt->payload) {
+        return ESP_FAIL;
+    }
+    size_t to_copy = (rem < max_len) ? rem : max_len;
+    memcpy(pkt->payload, s_curr_aux.body_buf + pos, to_copy);
+    s_curr_aux.body_read_pos = pos + to_copy;
+    pkt->left_len = rem - to_copy;
     return ESP_OK;
 }
 
@@ -505,11 +577,12 @@ esp_err_t httpd_ws_send_frame_async(httpd_handle_t hd, int fd, httpd_ws_frame_t 
 }
 
 /* Dispatch a simulated incoming request to the HTTP server */
-WINK_SIM_EXPORT int sim_http_server_dispatch_request(
+static int dispatch_request_internal(
     const char *method_str,
     const char *raw_uri,
     const char *body,
-    size_t body_len
+    size_t body_len,
+    const char *host_header
 ) {
     if (!s_server.active) {
         ESP_LOGE(TAG, "Cannot dispatch request: server not running");
@@ -521,6 +594,7 @@ WINK_SIM_EXPORT int sim_http_server_dispatch_request(
 
     memset(&s_curr_aux, 0, sizeof(s_curr_aux));
     memset(&s_curr_req, 0, sizeof(s_curr_req));
+    s_curr_req.aux = &s_curr_aux;
 
     /* Full URI preserved in s_curr_req.uri for query access */
     strncpy(s_curr_req.uri, raw_uri, sizeof(s_curr_req.uri) - 1);
@@ -540,14 +614,33 @@ WINK_SIM_EXPORT int sim_http_server_dispatch_request(
         s_curr_aux.query_str[0] = '\0';
     }
 
-    /* Map method */
-    httpd_method_t method = HTTP_GET;
-    if (strcasecmp(method_str, "POST") == 0) method = HTTP_POST;
+    /* Populate Host header if provided */
+    if (host_header && host_header[0] != '\0') {
+        strncpy(s_curr_aux.headers[0].key, "Host", MAX_HEADER_LEN - 1);
+        strncpy(s_curr_aux.headers[0].val, host_header, MAX_HEADER_LEN - 1);
+        s_curr_aux.headers[0].used = true;
+        s_curr_aux.header_count = 1;
+    }
+
+    /* Map method: GET, POST, PUT, DELETE, PATCH, HEAD supported */
+    int method = -1;
+    if (strcasecmp(method_str, "GET") == 0) method = HTTP_GET;
+    else if (strcasecmp(method_str, "POST") == 0) method = HTTP_POST;
     else if (strcasecmp(method_str, "PUT") == 0) method = HTTP_PUT;
     else if (strcasecmp(method_str, "DELETE") == 0) method = HTTP_DELETE;
     else if (strcasecmp(method_str, "PATCH") == 0) method = HTTP_PATCH;
     else if (strcasecmp(method_str, "HEAD") == 0) method = HTTP_HEAD;
-    s_curr_req.method = (int)method;
+    else {
+        /* Unrecognized or unimplemented method -> 501 */
+        s_server_last_status = 501;
+        if (s_server.err_handlers[HTTPD_501_METHOD_NOT_IMPLEMENTED]) {
+            s_server.err_handlers[HTTPD_501_METHOD_NOT_IMPLEMENTED](&s_curr_req, HTTPD_501_METHOD_NOT_IMPLEMENTED);
+        } else {
+            httpd_resp_send_custom_err(&s_curr_req, HTTPD_501, "Not Implemented");
+        }
+        return 501;
+    }
+    s_curr_req.method = method;
 
     /* Body setup */
     if (body && body_len > 0) {
@@ -563,6 +656,7 @@ WINK_SIM_EXPORT int sim_http_server_dispatch_request(
 
     /* Match registered handler */
     server_uri_slot_t *matched = NULL;
+    bool uri_exists = false;
     for (int i = 0; i < MAX_URI_HANDLERS; i++) {
         if (s_server.handlers[i].used) {
             httpd_uri_t *u = &s_server.handlers[i].uri_handler;
@@ -576,6 +670,7 @@ WINK_SIM_EXPORT int sim_http_server_dispatch_request(
                 is_match = (strcmp(u->uri, path_buf) == 0);
             }
             if (is_match) {
+                uri_exists = true;
                 if (u->method == HTTP_ANY || (int)u->method == s_curr_req.method) {
                     matched = &s_server.handlers[i];
                     break;
@@ -604,7 +699,19 @@ WINK_SIM_EXPORT int sim_http_server_dispatch_request(
         if (rc != ESP_OK) {
             ESP_LOGW(TAG, "URI handler returned %d", rc);
         }
-        return rc == ESP_OK ? s_server_last_status : -1;
+        int status = s_server_last_status > 0 ? s_server_last_status : 200;
+        return rc == ESP_OK ? status : -1;
+    }
+
+    if (uri_exists) {
+        /* Method not allowed -> 405 */
+        s_server_last_status = 405;
+        if (s_server.err_handlers[HTTPD_405_METHOD_NOT_ALLOWED]) {
+            s_server.err_handlers[HTTPD_405_METHOD_NOT_ALLOWED](&s_curr_req, HTTPD_405_METHOD_NOT_ALLOWED);
+        } else {
+            httpd_resp_send_custom_err(&s_curr_req, HTTPD_405, "Method Not Allowed");
+        }
+        return 405;
     }
 
     /* No handler matched -> custom 404 handler or default 404 */
@@ -615,6 +722,25 @@ WINK_SIM_EXPORT int sim_http_server_dispatch_request(
         httpd_resp_send_404(&s_curr_req);
     }
     return 404;
+}
+
+WINK_SIM_EXPORT int sim_http_server_dispatch_request(
+    const char *method_str,
+    const char *raw_uri,
+    const char *body,
+    size_t body_len
+) {
+    return dispatch_request_internal(method_str, raw_uri, body, body_len, NULL);
+}
+
+WINK_SIM_EXPORT int sim_http_server_dispatch_request_with_host(
+    const char *method_str,
+    const char *raw_uri,
+    const char *body,
+    size_t body_len,
+    const char *host_header
+) {
+    return dispatch_request_internal(method_str, raw_uri, body, body_len, host_header);
 }
 
 static bool json_extract_str(const char *json, const char *key, char *out, size_t maxlen) {
@@ -645,7 +771,10 @@ static char s_inject_host[64];
 
 /* Parse JSON array of requests from INJECT_NET_FIXTURE and dispatch */
 WINK_SIM_EXPORT int sim_http_server_inject_json(const char *json_str) {
-    if (!json_str) return -1;
+    if (!json_str) return 400;
+    while (*json_str == ' ' || *json_str == '\t' || *json_str == '\r' || *json_str == '\n') json_str++;
+    if (*json_str != '{' && *json_str != '[') return 400;
+
     const char *req_start = strstr(json_str, "\"requests\"");
     if (!req_start) {
         req_start = strstr(json_str, "\"client_requests\"");
@@ -655,17 +784,19 @@ WINK_SIM_EXPORT int sim_http_server_inject_json(const char *json_str) {
         strncpy(s_inject_method, "GET", sizeof(s_inject_method));
         strncpy(s_inject_uri, "/", sizeof(s_inject_uri));
         s_inject_body[0] = '\0';
+        s_inject_host[0] = '\0';
         json_extract_str(json_str, "method", s_inject_method, sizeof(s_inject_method));
+        json_extract_str(json_str, "host", s_inject_host, sizeof(s_inject_host));
         if (json_extract_str(json_str, "uri", s_inject_uri, sizeof(s_inject_uri)) ||
             json_extract_str(json_str, "url", s_inject_uri, sizeof(s_inject_uri))) {
             json_extract_str(json_str, "body", s_inject_body, sizeof(s_inject_body));
-            return sim_http_server_dispatch_request(s_inject_method, s_inject_uri, s_inject_body, strlen(s_inject_body));
+            return dispatch_request_internal(s_inject_method, s_inject_uri, s_inject_body, strlen(s_inject_body), s_inject_host[0] ? s_inject_host : NULL);
         }
-        return -1;
+        return 400;
     }
 
     const char *p = strchr(req_start, '[');
-    if (!p) return -1;
+    if (!p) return 400;
     p++;
 
     int dispatched = 0;
@@ -689,21 +820,13 @@ WINK_SIM_EXPORT int sim_http_server_inject_json(const char *json_str) {
                 strncpy(s_inject_method, "GET", sizeof(s_inject_method));
                 strncpy(s_inject_uri, "/", sizeof(s_inject_uri));
                 s_inject_body[0] = '\0';
+                s_inject_host[0] = '\0';
                 json_extract_str(s_inject_buf, "method", s_inject_method, sizeof(s_inject_method));
+                json_extract_str(s_inject_buf, "host", s_inject_host, sizeof(s_inject_host));
                 if (json_extract_str(s_inject_buf, "uri", s_inject_uri, sizeof(s_inject_uri)) ||
                     json_extract_str(s_inject_buf, "url", s_inject_uri, sizeof(s_inject_uri))) {
                     json_extract_str(s_inject_buf, "body", s_inject_body, sizeof(s_inject_body));
-
-                    /* Add headers if host present */
-                    s_curr_aux.header_count = 0;
-                    strncpy(s_inject_host, "localhost", sizeof(s_inject_host));
-                    if (json_extract_str(s_inject_buf, "host", s_inject_host, sizeof(s_inject_host))) {
-                        strncpy(s_curr_aux.headers[s_curr_aux.header_count].key, "Host", MAX_HEADER_LEN - 1);
-                        strncpy(s_curr_aux.headers[s_curr_aux.header_count].val, s_inject_host, MAX_HEADER_LEN - 1);
-                        s_curr_aux.headers[s_curr_aux.header_count++].used = true;
-                    }
-
-                    sim_http_server_dispatch_request(s_inject_method, s_inject_uri, s_inject_body, strlen(s_inject_body));
+                    dispatch_request_internal(s_inject_method, s_inject_uri, s_inject_body, strlen(s_inject_body), s_inject_host[0] ? s_inject_host : NULL);
                     dispatched++;
                 }
             }
@@ -712,4 +835,8 @@ WINK_SIM_EXPORT int sim_http_server_inject_json(const char *json_str) {
         }
     }
     return dispatched;
+}
+
+WINK_SIM_EXPORT int sim_http_server_inject_raw_request(const char *json_str) {
+    return sim_http_server_inject_json(json_str);
 }

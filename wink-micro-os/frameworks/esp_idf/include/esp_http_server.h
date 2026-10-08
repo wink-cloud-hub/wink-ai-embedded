@@ -37,8 +37,10 @@ extern "C" {
 #define HTTPD_401      "401 UNAUTHORIZED"
 #define HTTPD_403      "403 Forbidden"
 #define HTTPD_404      "404 Not Found"
+#define HTTPD_405      "405 Method Not Allowed"
 #define HTTPD_408      "408 Request Timeout"
 #define HTTPD_500      "500 Internal Server Error"
+#define HTTPD_501      "501 Not Implemented"
 
 #define HTTPD_TYPE_JSON   "application/json"
 #define HTTPD_TYPE_TEXT   "text/html"

@@ -9,17 +9,25 @@
 #include "esp_partition.h"
 #include "esp_partition_sim.h"
 #include "esp_vfs_ram.h"
+#include "esp_http_server.h"
+
+int sim_http_server_dispatch_request(const char *method_str, const char *raw_uri, const char *body, size_t body_len);
+int sim_http_server_dispatch_request_with_host(const char *method_str, const char *raw_uri, const char *body, size_t body_len, const char *host_header);
+int sim_http_server_inject_json(const char *json_str);
+void sim_http_server_reset(void);
 
 void setUp(void) {
     sim_responder_reset_all();
     esp_partition_sim_reset();
     esp_vfs_ram_reset();
+    sim_http_server_reset();
 }
 
 void tearDown(void) {
     sim_responder_reset_all();
     esp_partition_sim_reset();
     esp_vfs_ram_reset();
+    sim_http_server_reset();
 }
 
 void test_sim_responder_at24c02_eeprom(void) {
@@ -32,7 +40,7 @@ void test_sim_responder_at24c02_eeprom(void) {
     TEST_ASSERT_EQUAL(WINK_OK, st);
 
     /* 2. Unregistered device probe returns NOT_FOUND */
-    st = sim_responder_dispatch(SIM_BUS_TYPE_I2C, 0u, 0x51u, NULL, 0u, NULL, 0u);
+    st = sim_responder_dispatch(SIM_BUS_TYPE_I2C, 0u, 0x42u, NULL, 0u, NULL, 0u);
     TEST_ASSERT_EQUAL(WINK_ERR_NOT_FOUND, st);
 
     /* 3. Write data to EEPROM at address 0x10 */
@@ -138,10 +146,566 @@ void test_esp_vfs_ram_pure_memory_sandbox(void) {
     TEST_ASSERT_EQUAL(-1, fd);
 }
 
+static httpd_req_t *s_test_ws_req = NULL;
+
+static esp_err_t test_ws_handler(httpd_req_t *req) {
+    s_test_ws_req = req;
+    return ESP_OK;
+}
+
+void test_wave1_r1_websocket_bounds_and_metadata(void) {
+    httpd_handle_t hd = NULL;
+    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    esp_err_t err = httpd_start(&hd, &config);
+    TEST_ASSERT_EQUAL(ESP_OK, err);
+    TEST_ASSERT_NOT_NULL(hd);
+
+    httpd_uri_t ws_uri = {
+        .uri = "/ws",
+        .method = HTTP_GET,
+        .handler = test_ws_handler,
+        .user_ctx = NULL,
+        .is_websocket = true
+    };
+    err = httpd_register_uri_handler(hd, &ws_uri);
+    TEST_ASSERT_EQUAL(ESP_OK, err);
+
+    /* --- W-01: Allocate 17 bytes, declare capacity 16, guard at [16]=0xAA --- */
+    {
+        const char *payload16 = "0123456789ABCDEF"; /* 16th char is 'F' != 0xAA */
+        s_test_ws_req = NULL;
+        int status = sim_http_server_dispatch_request("GET", "/ws", payload16, 16);
+        TEST_ASSERT_EQUAL(200, status);
+        TEST_ASSERT_NOT_NULL(s_test_ws_req);
+
+        uint8_t storage[17];
+        memset(storage, 0, sizeof(storage));
+        storage[16] = 0xAA;
+
+        httpd_ws_frame_t pkt;
+        memset(&pkt, 0, sizeof(pkt));
+        pkt.payload = storage;
+
+        err = httpd_ws_recv_frame(s_test_ws_req, &pkt, 16);
+        TEST_ASSERT_EQUAL(ESP_OK, err);
+        TEST_ASSERT_EQUAL_UINT32(16, pkt.len);
+        TEST_ASSERT_EQUAL_UINT32(0, pkt.left_len);
+        TEST_ASSERT_EQUAL_MEMORY(payload16, storage, 16);
+        TEST_ASSERT_EQUAL_HEX8(0xAA, storage[16]); /* Guard MUST NOT be overwritten with NUL */
+    }
+
+    /* --- W-02: 12-byte frame with 8-byte buffer -> ESP_ERR_INVALID_SIZE, no truncation --- */
+    {
+        const char *payload12 = "HELLO_WORLD!";
+        s_test_ws_req = NULL;
+        int status = sim_http_server_dispatch_request("GET", "/ws", payload12, 12);
+        TEST_ASSERT_EQUAL(200, status);
+        TEST_ASSERT_NOT_NULL(s_test_ws_req);
+
+        uint8_t buf8[8] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+        httpd_ws_frame_t pkt;
+        memset(&pkt, 0, sizeof(pkt));
+        pkt.payload = buf8;
+
+        err = httpd_ws_recv_frame(s_test_ws_req, &pkt, 8);
+        TEST_ASSERT_EQUAL(ESP_ERR_INVALID_SIZE, err);
+        TEST_ASSERT_EQUAL_UINT32(12, pkt.len); /* Total length remains 12 */
+        TEST_ASSERT_EQUAL_HEX8(0xFF, buf8[0]); /* Prefix was not copied */
+
+        /* Retry with sufficient capacity */
+        uint8_t buf16[16] = {0};
+        pkt.payload = buf16;
+        err = httpd_ws_recv_frame(s_test_ws_req, &pkt, 16);
+        TEST_ASSERT_EQUAL(ESP_OK, err);
+        TEST_ASSERT_EQUAL_UINT32(12, pkt.len);
+        TEST_ASSERT_EQUAL_UINT32(0, pkt.left_len);
+        TEST_ASSERT_EQUAL_MEMORY(payload12, buf16, 12);
+    }
+
+    /* --- W-03: max_len = 0 query metadata without consuming payload --- */
+    {
+        const char *payload10 = "0123456789";
+        s_test_ws_req = NULL;
+        int status = sim_http_server_dispatch_request("GET", "/ws", payload10, 10);
+        TEST_ASSERT_EQUAL(200, status);
+        TEST_ASSERT_NOT_NULL(s_test_ws_req);
+
+        httpd_ws_frame_t pkt;
+        memset(&pkt, 0, sizeof(pkt));
+        pkt.payload = NULL;
+
+        err = httpd_ws_recv_frame(s_test_ws_req, &pkt, 0);
+        TEST_ASSERT_EQUAL(ESP_OK, err);
+        TEST_ASSERT_EQUAL_UINT32(10, pkt.len);
+        TEST_ASSERT_EQUAL_UINT32(10, pkt.left_len);
+        TEST_ASSERT_EQUAL(HTTPD_WS_TYPE_TEXT, pkt.type);
+        TEST_ASSERT_TRUE(pkt.final);
+        TEST_ASSERT_FALSE(pkt.fragmented);
+
+        /* Consecutive query does not consume */
+        err = httpd_ws_recv_frame(s_test_ws_req, &pkt, 0);
+        TEST_ASSERT_EQUAL(ESP_OK, err);
+        TEST_ASSERT_EQUAL_UINT32(10, pkt.len);
+        TEST_ASSERT_EQUAL_UINT32(10, pkt.left_len);
+    }
+
+    /* --- W-04: 12 bytes read in 5/5/2 chunks with part API, midway query no rewind --- */
+    {
+        const char *payload12 = "ABCDEFGHIJKL";
+        s_test_ws_req = NULL;
+        int status = sim_http_server_dispatch_request("GET", "/ws", payload12, 12);
+        TEST_ASSERT_EQUAL(200, status);
+        TEST_ASSERT_NOT_NULL(s_test_ws_req);
+
+        uint8_t c1[5] = {0};
+        httpd_ws_frame_t pkt;
+        memset(&pkt, 0, sizeof(pkt));
+        pkt.payload = c1;
+
+        err = httpd_ws_recv_frame_part(s_test_ws_req, &pkt, 5);
+        TEST_ASSERT_EQUAL(ESP_OK, err);
+        TEST_ASSERT_EQUAL_UINT32(12, pkt.len);
+        TEST_ASSERT_EQUAL_UINT32(7, pkt.left_len);
+        TEST_ASSERT_EQUAL_MEMORY("ABCDE", c1, 5);
+
+        /* Midway query: max_len = 0 must NOT rewind body_read_pos */
+        err = httpd_ws_recv_frame_part(s_test_ws_req, &pkt, 0);
+        TEST_ASSERT_EQUAL(ESP_OK, err);
+        TEST_ASSERT_EQUAL_UINT32(12, pkt.len);
+        TEST_ASSERT_EQUAL_UINT32(7, pkt.left_len);
+
+        /* Second chunk: 5 bytes */
+        uint8_t c2[5] = {0};
+        pkt.payload = c2;
+        err = httpd_ws_recv_frame_part(s_test_ws_req, &pkt, 5);
+        TEST_ASSERT_EQUAL(ESP_OK, err);
+        TEST_ASSERT_EQUAL_UINT32(12, pkt.len);
+        TEST_ASSERT_EQUAL_UINT32(2, pkt.left_len);
+        TEST_ASSERT_EQUAL_MEMORY("FGHIJ", c2, 5);
+
+        /* Third chunk: remaining 2 bytes */
+        uint8_t c3[5] = {0};
+        pkt.payload = c3;
+        err = httpd_ws_recv_frame_part(s_test_ws_req, &pkt, 5);
+        TEST_ASSERT_EQUAL(ESP_OK, err);
+        TEST_ASSERT_EQUAL_UINT32(12, pkt.len);
+        TEST_ASSERT_EQUAL_UINT32(0, pkt.left_len);
+        TEST_ASSERT_EQUAL_MEMORY("KL", c3, 2);
+    }
+
+    /* --- W-05: Empty frame + NULL payload, non-empty frame + NULL payload, NULL req/pkt --- */
+    {
+        /* NULL req/pkt validation */
+        httpd_ws_frame_t pkt;
+        memset(&pkt, 0, sizeof(pkt));
+        TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, httpd_ws_recv_frame(NULL, &pkt, 10));
+        TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, httpd_ws_recv_frame_part(NULL, &pkt, 10));
+        TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, httpd_ws_recv_frame(s_test_ws_req, NULL, 10));
+        TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, httpd_ws_recv_frame_part(s_test_ws_req, NULL, 10));
+
+        /* Empty frame */
+        s_test_ws_req = NULL;
+        int status = sim_http_server_dispatch_request("GET", "/ws", "", 0);
+        TEST_ASSERT_EQUAL(200, status);
+        TEST_ASSERT_NOT_NULL(s_test_ws_req);
+
+        pkt.payload = NULL;
+        err = httpd_ws_recv_frame(s_test_ws_req, &pkt, 10);
+        TEST_ASSERT_EQUAL(ESP_OK, err);
+        TEST_ASSERT_EQUAL_UINT32(0, pkt.len);
+        TEST_ASSERT_EQUAL_UINT32(0, pkt.left_len);
+
+        /* Non-empty frame with NULL payload -> ESP_FAIL */
+        status = sim_http_server_dispatch_request("GET", "/ws", "TEST_DATA", 9);
+        TEST_ASSERT_EQUAL(200, status);
+        pkt.payload = NULL;
+        err = httpd_ws_recv_frame(s_test_ws_req, &pkt, 9);
+        TEST_ASSERT_EQUAL(ESP_FAIL, err);
+
+        err = httpd_ws_recv_frame_part(s_test_ws_req, &pkt, 5);
+        TEST_ASSERT_EQUAL(ESP_FAIL, err);
+    }
+
+    /* --- W-06: Embedded NUL bytes, exact capacity, consecutive requests --- */
+    {
+        const char raw_with_nul[5] = { 'A', '\0', 'B', '\0', 'C' };
+        s_test_ws_req = NULL;
+        int status = sim_http_server_dispatch_request("GET", "/ws", raw_with_nul, 5);
+        TEST_ASSERT_EQUAL(200, status);
+        TEST_ASSERT_NOT_NULL(s_test_ws_req);
+
+        uint8_t buf5[5] = {0};
+        httpd_ws_frame_t pkt;
+        memset(&pkt, 0, sizeof(pkt));
+        pkt.payload = buf5;
+
+        err = httpd_ws_recv_frame(s_test_ws_req, &pkt, 5);
+        TEST_ASSERT_EQUAL(ESP_OK, err);
+        TEST_ASSERT_EQUAL_UINT32(5, pkt.len);
+        TEST_ASSERT_EQUAL_UINT32(0, pkt.left_len);
+        TEST_ASSERT_EQUAL_MEMORY(raw_with_nul, buf5, 5);
+
+        /* Consecutive new request clears old offset */
+        status = sim_http_server_dispatch_request("GET", "/ws", "XYZ", 3);
+        TEST_ASSERT_EQUAL(200, status);
+        uint8_t buf3[3] = {0};
+        pkt.payload = buf3;
+        err = httpd_ws_recv_frame(s_test_ws_req, &pkt, 3);
+        TEST_ASSERT_EQUAL(ESP_OK, err);
+        TEST_ASSERT_EQUAL_UINT32(3, pkt.len);
+        TEST_ASSERT_EQUAL_UINT32(0, pkt.left_len);
+        TEST_ASSERT_EQUAL_MEMORY("XYZ", buf3, 3);
+    }
+
+    httpd_stop(hd);
+}
+
+/* --- H-01 ~ H-06 Test Helpers & Handlers --- */
+static int s_h1_handler1_calls = 0;
+static int s_h1_handler2_calls = 0;
+static void *s_h1_last_ctx = NULL;
+static int s_h1_err404_1_calls = 0;
+static int s_h1_err404_2_calls = 0;
+
+static esp_err_t h1_handler1(httpd_req_t *req) {
+    s_h1_handler1_calls++;
+    s_h1_last_ctx = req->user_ctx;
+    return httpd_resp_sendstr(req, "H1_OLD");
+}
+
+static esp_err_t h1_handler2(httpd_req_t *req) {
+    s_h1_handler2_calls++;
+    s_h1_last_ctx = req->user_ctx;
+    return httpd_resp_sendstr(req, "H1_NEW");
+}
+
+static esp_err_t h1_err404_1(httpd_req_t *req, httpd_err_code_t err) {
+    (void)err;
+    s_h1_err404_1_calls++;
+    return httpd_resp_send_custom_err(req, HTTPD_404, "ERR404_1");
+}
+
+static esp_err_t h1_err404_2(httpd_req_t *req, httpd_err_code_t err) {
+    (void)err;
+    s_h1_err404_2_calls++;
+    return httpd_resp_send_custom_err(req, HTTPD_404, "ERR404_2");
+}
+
+static int s_h3_user_free_count = 0;
+static int s_h3_trans_free_count = 0;
+static esp_err_t s_h3_reentrant_start_err = ESP_OK;
+static esp_err_t s_h3_reentrant_stop_err = ESP_OK;
+static httpd_handle_t s_h3_active_hd = NULL;
+
+static void h3_user_free_cb(void *ctx) {
+    s_h3_user_free_count++;
+    (void)ctx;
+    httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
+    httpd_handle_t dummy = NULL;
+    s_h3_reentrant_start_err = httpd_start(&dummy, &cfg);
+    s_h3_reentrant_stop_err = httpd_stop(s_h3_active_hd);
+}
+
+static void h3_trans_free_cb(void *ctx) {
+    s_h3_trans_free_count++;
+    (void)ctx;
+}
+
+static char s_h4_recorded_host[64];
+static esp_err_t h4_whoami_handler(httpd_req_t *req) {
+    memset(s_h4_recorded_host, 0, sizeof(s_h4_recorded_host));
+    esp_err_t ret = httpd_req_get_hdr_value_str(req, "Host", s_h4_recorded_host, sizeof(s_h4_recorded_host));
+    if (ret != ESP_OK) {
+        strcpy(s_h4_recorded_host, "NONE");
+    }
+    return httpd_resp_sendstr(req, s_h4_recorded_host);
+}
+
+static int s_h5_patch_calls = 0;
+static int s_h5_get_calls = 0;
+static int s_h5_err405_calls = 0;
+static esp_err_t h5_patch_handler(httpd_req_t *req) {
+    s_h5_patch_calls++;
+    return httpd_resp_sendstr(req, "PATCH_OK");
+}
+static esp_err_t h5_get_handler(httpd_req_t *req) {
+    s_h5_get_calls++;
+    return httpd_resp_sendstr(req, "GET_OK");
+}
+static esp_err_t h5_err405_handler(httpd_req_t *req, httpd_err_code_t err) {
+    (void)err;
+    s_h5_err405_calls++;
+    return httpd_resp_send_custom_err(req, HTTPD_405, "CUSTOM_405");
+}
+
+static size_t s_h6_recv_len = 0;
+static char s_h6_recv_buf[128];
+static esp_err_t h6_echo_handler(httpd_req_t *req) {
+    memset(s_h6_recv_buf, 0, sizeof(s_h6_recv_buf));
+    int r = httpd_req_recv(req, s_h6_recv_buf, sizeof(s_h6_recv_buf) - 1);
+    s_h6_recv_len = (r > 0) ? (size_t)r : 0;
+    return httpd_resp_send(req, s_h6_recv_buf, s_h6_recv_len);
+}
+
+void test_wave1_r1_http_server_lifecycle_and_contracts(void) {
+    /* --- H-01: Lifecycle restart & handler unregistration --- */
+    {
+        s_h1_handler1_calls = 0;
+        s_h1_handler2_calls = 0;
+        s_h1_last_ctx = NULL;
+        s_h1_err404_1_calls = 0;
+        s_h1_err404_2_calls = 0;
+
+        httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+        httpd_handle_t hd = NULL;
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_start(&hd, &config));
+
+        httpd_uri_t u1 = {
+            .uri = "/h1",
+            .method = HTTP_GET,
+            .handler = h1_handler1,
+            .user_ctx = (void *)0x1111
+        };
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_register_uri_handler(hd, &u1));
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_register_err_handler(hd, HTTPD_404_NOT_FOUND, h1_err404_1));
+
+        int st = sim_http_server_dispatch_request("GET", "/h1", NULL, 0);
+        TEST_ASSERT_EQUAL(200, st);
+        TEST_ASSERT_EQUAL(1, s_h1_handler1_calls);
+        TEST_ASSERT_EQUAL_PTR((void *)0x1111, s_h1_last_ctx);
+
+        st = sim_http_server_dispatch_request("GET", "/missing", NULL, 0);
+        TEST_ASSERT_EQUAL(404, st);
+        TEST_ASSERT_EQUAL(1, s_h1_err404_1_calls);
+
+        /* Stop server */
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_stop(hd));
+
+        /* Start server again */
+        hd = NULL;
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_start(&hd, &config));
+
+        /* Re-register /h1 with new handler and new ctx */
+        httpd_uri_t u2 = {
+            .uri = "/h1",
+            .method = HTTP_GET,
+            .handler = h1_handler2,
+            .user_ctx = (void *)0x2222
+        };
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_register_uri_handler(hd, &u2));
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_register_err_handler(hd, HTTPD_404_NOT_FOUND, h1_err404_2));
+
+        st = sim_http_server_dispatch_request("GET", "/h1", NULL, 0);
+        TEST_ASSERT_EQUAL(200, st);
+        TEST_ASSERT_EQUAL(1, s_h1_handler1_calls); /* Old handler NOT called again */
+        TEST_ASSERT_EQUAL(1, s_h1_handler2_calls); /* New handler called */
+        TEST_ASSERT_EQUAL_PTR((void *)0x2222, s_h1_last_ctx);
+
+        st = sim_http_server_dispatch_request("GET", "/missing", NULL, 0);
+        TEST_ASSERT_EQUAL(404, st);
+        TEST_ASSERT_EQUAL(1, s_h1_err404_1_calls); /* Old err handler NOT called again */
+        TEST_ASSERT_EQUAL(1, s_h1_err404_2_calls); /* New err handler called */
+
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_stop(hd));
+    }
+
+    /* --- H-02: Invalid start params, concurrent start, foreign/NULL handle, duplicate stop --- */
+    {
+        httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+        httpd_handle_t hd = NULL;
+        httpd_handle_t hd2 = NULL;
+
+        /* NULL handle or NULL config */
+        TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, httpd_start(NULL, &config));
+        TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, httpd_start(&hd, NULL));
+
+        /* Start valid instance */
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_start(&hd, &config));
+
+        /* Active server start attempt -> ESP_ERR_HTTPD_ALLOC_MEM */
+        TEST_ASSERT_EQUAL(ESP_ERR_HTTPD_ALLOC_MEM, httpd_start(&hd2, &config));
+
+        /* Invalid stop calls */
+        TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, httpd_stop(NULL));
+        TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, httpd_stop((httpd_handle_t)0xdeadbeef));
+
+        /* Verify active instance is not corrupted */
+        httpd_uri_t u = { .uri = "/ping", .method = HTTP_GET, .handler = h1_handler1 };
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_register_uri_handler(hd, &u));
+        int st = sim_http_server_dispatch_request("GET", "/ping", NULL, 0);
+        TEST_ASSERT_EQUAL(200, st);
+
+        /* Stop valid instance */
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_stop(hd));
+
+        /* Duplicate stop -> ESP_ERR_INVALID_STATE */
+        TEST_ASSERT_EQUAL(ESP_ERR_INVALID_STATE, httpd_stop(hd));
+    }
+
+    /* --- H-03: Context free callbacks and reentrancy guard --- */
+    {
+        s_h3_user_free_count = 0;
+        s_h3_trans_free_count = 0;
+        s_h3_reentrant_start_err = ESP_OK;
+        s_h3_reentrant_stop_err = ESP_OK;
+
+        httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+        config.global_user_ctx = (void *)0x8888;
+        config.global_user_ctx_free_fn = h3_user_free_cb;
+        config.global_transport_ctx = (void *)0x9999;
+        config.global_transport_ctx_free_fn = h3_trans_free_cb;
+
+        httpd_handle_t hd = NULL;
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_start(&hd, &config));
+        s_h3_active_hd = hd;
+
+        /* Register URI with borrowed context */
+        httpd_uri_t u = {
+            .uri = "/borrowed",
+            .method = HTTP_GET,
+            .handler = h1_handler1,
+            .user_ctx = (void *)0x5555
+        };
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_register_uri_handler(hd, &u));
+
+        /* Stop should trigger free callbacks exactly once */
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_stop(hd));
+        TEST_ASSERT_EQUAL(1, s_h3_user_free_count);
+        TEST_ASSERT_EQUAL(1, s_h3_trans_free_count);
+
+        /* Reentrancy attempts during callback should have been rejected */
+        TEST_ASSERT_NOT_EQUAL(ESP_OK, s_h3_reentrant_start_err);
+        TEST_ASSERT_NOT_EQUAL(ESP_OK, s_h3_reentrant_stop_err);
+    }
+
+    /* --- H-04: Host header isolation across requests and stop/start --- */
+    {
+        httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+        httpd_handle_t hd = NULL;
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_start(&hd, &config));
+
+        httpd_uri_t u = { .uri = "/whoami", .method = HTTP_GET, .handler = h4_whoami_handler };
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_register_uri_handler(hd, &u));
+
+        /* 1. Request with Host "api.local" */
+        int st = sim_http_server_dispatch_request_with_host("GET", "/whoami", NULL, 0, "api.local");
+        TEST_ASSERT_EQUAL(200, st);
+        TEST_ASSERT_EQUAL_STRING("api.local", s_h4_recorded_host);
+
+        /* 2. Request without Host -> MUST NOT inherit previous "api.local" */
+        st = sim_http_server_dispatch_request("GET", "/whoami", NULL, 0);
+        TEST_ASSERT_EQUAL(200, st);
+        TEST_ASSERT_EQUAL_STRING("NONE", s_h4_recorded_host);
+
+        /* 3. Request with Host "backup.local" */
+        st = sim_http_server_dispatch_request_with_host("GET", "/whoami", NULL, 0, "backup.local");
+        TEST_ASSERT_EQUAL(200, st);
+        TEST_ASSERT_EQUAL_STRING("backup.local", s_h4_recorded_host);
+
+        /* Stop and restart */
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_stop(hd));
+        hd = NULL;
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_start(&hd, &config));
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_register_uri_handler(hd, &u));
+
+        /* 4. Request without Host after restart */
+        st = sim_http_server_dispatch_request("GET", "/whoami", NULL, 0);
+        TEST_ASSERT_EQUAL(200, st);
+        TEST_ASSERT_EQUAL_STRING("NONE", s_h4_recorded_host);
+
+        /* 5. Request with Host "final.local" */
+        st = sim_http_server_dispatch_request_with_host("GET", "/whoami", NULL, 0, "final.local");
+        TEST_ASSERT_EQUAL(200, st);
+        TEST_ASSERT_EQUAL_STRING("final.local", s_h4_recorded_host);
+
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_stop(hd));
+    }
+
+    /* --- H-05: PATCH routing, method 405, missing 404, unknown verb 501, invalid json 400 --- */
+    {
+        s_h5_patch_calls = 0;
+        s_h5_get_calls = 0;
+        s_h5_err405_calls = 0;
+
+        httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+        httpd_handle_t hd = NULL;
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_start(&hd, &config));
+
+        httpd_uri_t u_patch = { .uri = "/api/res", .method = HTTP_PATCH, .handler = h5_patch_handler };
+        httpd_uri_t u_get = { .uri = "/api/res", .method = HTTP_GET, .handler = h5_get_handler };
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_register_uri_handler(hd, &u_patch));
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_register_uri_handler(hd, &u_get));
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_register_err_handler(hd, HTTPD_405_METHOD_NOT_ALLOWED, h5_err405_handler));
+
+        /* PATCH dispatch */
+        int st = sim_http_server_dispatch_request("PATCH", "/api/res", NULL, 0);
+        TEST_ASSERT_EQUAL(200, st);
+        TEST_ASSERT_EQUAL(1, s_h5_patch_calls);
+        TEST_ASSERT_EQUAL(0, s_h5_get_calls);
+
+        /* POST to /api/res -> method not registered for URI -> 405 */
+        st = sim_http_server_dispatch_request("POST", "/api/res", NULL, 0);
+        TEST_ASSERT_EQUAL(405, st);
+        TEST_ASSERT_EQUAL(1, s_h5_err405_calls);
+        TEST_ASSERT_EQUAL(0, s_h5_get_calls); /* MUST NOT call GET instead! */
+
+        /* Unknown method verb -> 501 */
+        st = sim_http_server_dispatch_request("BREW", "/api/res", NULL, 0);
+        TEST_ASSERT_EQUAL(501, st);
+        TEST_ASSERT_EQUAL(0, s_h5_get_calls);
+
+        /* Non-existent path -> 404 */
+        st = sim_http_server_dispatch_request("GET", "/nonexistent", NULL, 0);
+        TEST_ASSERT_EQUAL(404, st);
+
+        /* Invalid JSON syntax injection -> 400 */
+        st = sim_http_server_inject_json("not valid json");
+        TEST_ASSERT_EQUAL(400, st);
+
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_stop(hd));
+    }
+
+    /* --- H-06: Sequential requests & stop/start state isolation --- */
+    {
+        httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+        httpd_handle_t hd = NULL;
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_start(&hd, &config));
+
+        httpd_uri_t u = { .uri = "/echo", .method = HTTP_POST, .handler = h6_echo_handler };
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_register_uri_handler(hd, &u));
+
+        /* Request 1: 50 bytes payload */
+        char payload50[50];
+        memset(payload50, 'A', sizeof(payload50));
+        int st = sim_http_server_dispatch_request("POST", "/echo", payload50, sizeof(payload50));
+        TEST_ASSERT_EQUAL(200, st);
+        TEST_ASSERT_EQUAL_UINT32(50, s_h6_recv_len);
+        TEST_ASSERT_EQUAL_MEMORY(payload50, s_h6_recv_buf, 50);
+
+        /* Stop and restart */
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_stop(hd));
+        hd = NULL;
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_start(&hd, &config));
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_register_uri_handler(hd, &u));
+
+        /* Request 2: 10 bytes payload */
+        char payload10[10];
+        memset(payload10, 'Z', sizeof(payload10));
+        st = sim_http_server_dispatch_request("POST", "/echo", payload10, sizeof(payload10));
+        TEST_ASSERT_EQUAL(200, st);
+        TEST_ASSERT_EQUAL_UINT32(10, s_h6_recv_len);
+        TEST_ASSERT_EQUAL_MEMORY(payload10, s_h6_recv_buf, 10);
+
+        TEST_ASSERT_EQUAL(ESP_OK, httpd_stop(hd));
+    }
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_sim_responder_at24c02_eeprom);
     RUN_TEST(test_esp_partition_sim_in_memory_crud);
     RUN_TEST(test_esp_vfs_ram_pure_memory_sandbox);
+    RUN_TEST(test_wave1_r1_websocket_bounds_and_metadata);
+    RUN_TEST(test_wave1_r1_http_server_lifecycle_and_contracts);
     return UNITY_END();
 }
