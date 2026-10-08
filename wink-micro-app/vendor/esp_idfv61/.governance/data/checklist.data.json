@@ -6457,8 +6457,8 @@
       },
       "audit": {
         "verdict": "audited",
-        "auditor": "loop_sop_daemon",
-        "audited_at": "2026-10-03T12:29:45Z",
+        "auditor": "arch_team",
+        "audited_at": "2026-10-08T03:40:00Z",
         "audited_configs": [
           "wasm_sim_standard"
         ],
@@ -6517,21 +6517,21 @@
             ],
             "negative_cases": [
               {
-                "stimulus": "UART 硬件 FIFO 溢出或校验错误事件 (UART_FIFO_OVF)",
-                "expect_error": "ESP_ERR_INVALID_STATE",
-                "detects": "FIFO 溢出或奇偶校验错误未上报导致接收丢包"
+                "stimulus": "UART 硬件帧错误事件 (UART_FRAME_ERR)",
+                "expect_error": "uart frame error",
+                "detects": "硬件帧错误未向应用事件队列上报导致通信异常"
               }
             ],
-            "sla_error_symbol": "ESP_ERR_INVALID_STATE"
+            "sla_error_symbol": "uart frame error"
           },
           "evidence": {
             "backend": "wasm_simulation",
-            "run_id": "run-20261003-esp.peripherals.uart.uart_events-verified",
-            "assets_sha256": "37436b2da6c7a11a9e931a0de306e8c39109be73758d362c7680107b55806c51",
+            "run_id": "run-20261008-esp.peripherals.uart.uart_events-verified",
+            "assets_sha256": "46addf71b805c72a5e079715d2f363d9aac90d7342d169f1430b25d7779821f5",
             "scenario_sha256": "fbbeaf7233cb07e5b3b8eae2ed986f59ab45567abcd8b9e83ae66640c9f1c214",
             "execution_report_ref": ".governance/reports/peripherals/uart_uart_events/run-report.json",
-            "verified_commit": "37d9fa4aad4fdbadb9baaf9be7ece9c516eddee3",
-            "verified_at": "2026-10-03T12:29:33Z"
+            "verified_commit": "26d49ee73b154a46ed59af6ac1da114d45cba3db",
+            "verified_at": "2026-10-08T03:40:00Z"
           }
         }
       ],

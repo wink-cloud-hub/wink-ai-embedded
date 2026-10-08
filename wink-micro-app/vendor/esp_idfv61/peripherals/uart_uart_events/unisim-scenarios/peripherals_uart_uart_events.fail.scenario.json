@@ -1,7 +1,7 @@
 {
   "header": {
     "version": "1.0.0",
-    "name": "ESP-IDF v6.1 peripherals_uart_uart_events parity error & FIFO overflow defense proof",
+    "name": "ESP-IDF v6.1 peripherals_uart_uart_events framing error handling and recovery proof",
     "templateId": "esp_idfv61_uart_uart_events_fail",
     "accuracyMode": "behavioral",
     "timeoutUs": "3000ms",
@@ -26,33 +26,44 @@
       "busId": 0,
       "payload": {
         "encoding": "utf8",
-        "text": "HELLO_ESP32_WINK"
+        "text": "PRE_FRAME_WINK"
       },
-      "description": "[数据事件注入] 向 UART0 注入常规测试数据触发 UART_DATA 事件"
+      "description": "[前置正常序列] 注入前置正常通信载荷"
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
       "windowUs": [
         "100ms",
-        "1200ms"
+        "700ms"
       ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
       "matcher": "[DATA EVT]:",
-      "description": "[事件队列响应] 验证事件任务成功响应普通数据到达并触发回显"
+      "description": "[前置正常响应] 断言事件驱动任务正常处理前置载荷并回显"
+    },
+    {
+      "type": "INJECT_PLATFORM_FAULT",
+      "timeUs": "800ms",
+      "domain": "uart",
+      "fault": {
+        "action": "framing_error",
+        "flags": 1,
+        "port": 0
+      },
+      "description": "[故障注入] 注入硬件 UART 帧错误事件 (UART_FRAME_ERR)"
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
       "windowUs": [
-        "100ms",
-        "1200ms"
+        "800ms",
+        "1400ms"
       ],
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
-      "matcher": "[UART DATA]: 16",
-      "description": "[数据长度校验] 验证事件结构体中携带的接收数据长度准确"
+      "matcher": "uart frame error",
+      "description": "[故障处理观测] 断言原厂事件任务正确捕获帧错误并输出错误处理日志"
     },
     {
       "type": "INPUT_BUS",
@@ -62,9 +73,9 @@
       "busId": 0,
       "payload": {
         "encoding": "utf8",
-        "text": "+++"
+        "text": "POST_FRAME_WINK"
       },
-      "description": "[模式检测字符注入] 注入模式匹配字符 +++ 触发模式检测事件"
+      "description": "[同实例恢复] 故障后注入新业务载荷验证链路完全恢复"
     },
     {
       "type": "ASSERT_BUS_PAYLOAD",
@@ -75,20 +86,8 @@
       "busType": "uart",
       "busId": 0,
       "direction": "tx",
-      "matcher": "[UART PATTERN DETECTED] pos: 0",
-      "description": "[模式中断捕获] 断言驱动模式中断准确捕获偏移位置"
-    },
-    {
-      "type": "ASSERT_BUS_PAYLOAD",
-      "windowUs": [
-        "1500ms",
-        "2800ms"
-      ],
-      "busType": "uart",
-      "busId": 0,
-      "direction": "tx",
-      "matcher": "read pat : +++",
-      "description": "[模式数据弹出] 验证准确弹出匹配的模式字符 +++"
+      "matcher": "[DATA EVT]:",
+      "description": "[恢复断言] 验证同实例在异常处理后无需重启即可持续正常接收与回显"
     }
   ]
 }

@@ -1,0 +1,93 @@
+{
+  "timestamp": "2026-10-08T03:40:47.388Z",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "ok": true,
+      "status": "passed",
+      "header": {
+        "name": "ESP-IDF v6.1 peripherals_uart_uart_events framing error handling and recovery proof",
+        "templateId": "esp_idfv61_uart_uart_events_fail",
+        "totalVirtualUs": "3000000",
+        "wallClockMs": 89
+      },
+      "summary": {
+        "totalSteps": 7,
+        "passedSteps": 7,
+        "failedSteps": 0,
+        "skippedSteps": 0,
+        "errorSteps": 0
+      },
+      "stepResults": [
+        {
+          "stepIndex": 0,
+          "type": "ASSERT_POINT",
+          "status": "passed",
+          "timeUs": "50000",
+          "actual": 3.3,
+          "expected": 3.3
+        },
+        {
+          "stepIndex": 1,
+          "type": "INPUT_BUS",
+          "status": "passed",
+          "timeUs": "100000"
+        },
+        {
+          "stepIndex": 2,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "700000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (101) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (101) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (101) uart_events: [DATA EVT]:\u001b[0m\nP\u001b[0;32mI (101) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (101) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (101) uart_events: [DATA EVT]:\u001b[0m\nR\u001b[0;32mI (101) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (101) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (101) uart_events: [DATA EVT]:\u001b[0m\nE\u001b[0;32mI (101) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (101) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (101) uart_events: [DATA EVT]:\u001b[0m\n_\u001b[0;32mI (101) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (101) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (101) uart_events: [DATA EVT]:\u001b[0m\nF\u001b[0;32mI (101) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (101) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (101) uart_events: [DATA EVT]:\u001b[0m\nR\u001b[0;32mI (101) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (101) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (101) uart_events: [DATA EVT]:\u001b[0m\nA\u001b[0;32mI (101) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (101) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (101) uart_events: [DATA EVT]:\u001b[0m\nM\u001b[0;32mI (101) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (101) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (101) uart_events: [DATA EVT]:\u001b[0m\nE\u001b[0;32mI (101) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (101) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (101) uart_events: [DATA EVT]:\u001b[0m\n_\u001b[0;32mI (101) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (101) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (101) uart_events: [DATA EVT]:\u001b[0m\nW\u001b[0;32mI (101) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (101) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (101) uart_events: [DATA EVT]:\u001b[0m\nI\u001b[0;32mI (101) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (101) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (101) uart_events: [DATA EVT]:\u001b[0m\nN\u001b[0;32mI (101) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (101) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (101) uart_events: [DATA EVT]:\u001b[0m\nK"
+            ]
+          },
+          "expected": "[DATA EVT]:"
+        },
+        {
+          "stepIndex": 3,
+          "type": "INJECT_PLATFORM_FAULT",
+          "status": "passed",
+          "timeUs": "800000"
+        },
+        {
+          "stepIndex": 4,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "1400000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (801) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (801) uart_events: uart frame error\u001b[0m\n"
+            ]
+          },
+          "expected": "uart frame error"
+        },
+        {
+          "stepIndex": 5,
+          "type": "INPUT_BUS",
+          "status": "passed",
+          "timeUs": "1500000"
+        },
+        {
+          "stepIndex": 6,
+          "type": "ASSERT_BUS_PAYLOAD",
+          "status": "passed",
+          "timeUs": "2800000",
+          "actual": {
+            "matchedCount": 1,
+            "candidatePayloads": [
+              "\u001b[0;32mI (1501) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (1501) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (1501) uart_events: [DATA EVT]:\u001b[0m\nP\u001b[0;32mI (1501) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (1501) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (1501) uart_events: [DATA EVT]:\u001b[0m\nO\u001b[0;32mI (1501) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (1501) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (1501) uart_events: [DATA EVT]:\u001b[0m\nS\u001b[0;32mI (1501) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (1501) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (1501) uart_events: [DATA EVT]:\u001b[0m\nT\u001b[0;32mI (1501) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (1501) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (1501) uart_events: [DATA EVT]:\u001b[0m\n_\u001b[0;32mI (1501) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (1501) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (1501) uart_events: [DATA EVT]:\u001b[0m\nF\u001b[0;32mI (1501) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (1501) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (1501) uart_events: [DATA EVT]:\u001b[0m\nR\u001b[0;32mI (1501) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (1501) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (1501) uart_events: [DATA EVT]:\u001b[0m\nA\u001b[0;32mI (1501) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (1501) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (1501) uart_events: [DATA EVT]:\u001b[0m\nM\u001b[0;32mI (1501) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (1501) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (1501) uart_events: [DATA EVT]:\u001b[0m\nE\u001b[0;32mI (1501) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (1501) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (1501) uart_events: [DATA EVT]:\u001b[0m\n_\u001b[0;32mI (1501) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (1501) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (1501) uart_events: [DATA EVT]:\u001b[0m\nW\u001b[0;32mI (1501) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (1501) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (1501) uart_events: [DATA EVT]:\u001b[0m\nI\u001b[0;32mI (1501) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (1501) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (1501) uart_events: [DATA EVT]:\u001b[0m\nN\u001b[0;32mI (1501) uart_events: uart[0] event:\u001b[0m\n\u001b[0;32mI (1501) uart_events: [UART DATA]: 1\u001b[0m\n\u001b[0;32mI (1501) uart_events: [DATA EVT]:\u001b[0m\nK"
+            ]
+          },
+          "expected": "[DATA EVT]:"
+        }
+      ],
+      "diagnostics": []
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "format_version": 1,
+  "kind": "twin_proof",
+  "app_id": "esp.peripherals.uart.uart_events",
+  "config_id": "wasm_sim_standard",
+  "backend": "wasm_browser",
+  "target_soc": "esp32",
+  "profile": "standard",
+  "baseline_run_id": "run-20261008-esp.peripherals.uart.uart_events-verified",
+  "assets_sha256": "46addf71b805c72a5e079715d2f363d9aac90d7342d169f1430b25d7779821f5",
+  "positive": {
+    "config_id": "wasm_sim_standard",
+    "backend": "wasm_browser",
+    "target_soc": "esp32",
+    "profile": "standard",
+    "assets_sha256": "46addf71b805c72a5e079715d2f363d9aac90d7342d169f1430b25d7779821f5",
+    "run_id": "run-20261008-esp.peripherals.uart.uart_events-verified",
+    "scenario_ref": "peripherals/uart_uart_events/unisim-scenarios/peripherals_uart_uart_events.scenario.json",
+    "scenario_sha256": "fbbeaf7233cb07e5b3b8eae2ed986f59ab45567abcd8b9e83ae66640c9f1c214",
+    "report_ref": ".governance/reports/peripherals/uart_uart_events/run-report.json",
+    "report_sha256": "e3a1935bd4d93520b443f2bf6e5e3e6f2ddb5c4b5882c8da91b935ede155fb02"
+  },
+  "negative": [
+    {
+      "case_index": 0,
+      "contract_sha256": "942a128bbacb3c7d6d865c3d873208809e61634ddccfd8463d24f64553fc827c",
+      "config_id": "wasm_sim_standard",
+      "backend": "wasm_browser",
+      "target_soc": "esp32",
+      "profile": "standard",
+      "assets_sha256": "46addf71b805c72a5e079715d2f363d9aac90d7342d169f1430b25d7779821f5",
+      "run_id": "run-20261008-esp.peripherals.uart.uart_events-fault-0",
+      "scenario_ref": "peripherals/uart_uart_events/unisim-scenarios/peripherals_uart_uart_events.fail.scenario.json",
+      "scenario_sha256": "48144cc4afeeefdbe943694930b96733c3564a9ca2043aeaba4f470fcfc521d8",
+      "report_ref": ".governance/reports/peripherals/uart_uart_events/wasm_sim_standard/negative_case_0.report.json",
+      "report_sha256": "fec64cedcdc0a0f04f89afacf7defe334f024c8fd78f57fc7c1412fd0713e2f5",
+      "stimulus_step_index": 3,
+      "assertion_step_index": 4
+    }
+  ]
+}
