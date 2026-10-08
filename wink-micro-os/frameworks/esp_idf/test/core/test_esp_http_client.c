@@ -7,6 +7,7 @@
 #include "esp_err.h"
 #include "esp_http_client.h"
 #include "sim_net_responder.h"
+#include "sim_bounded_stream.h"
 
 static int s_event_connected_count = 0;
 static int s_event_header_sent_count = 0;
@@ -408,6 +409,253 @@ void test_http_fetch_headers_64bit_content_length(void) {
 }
 
 /* --------------------------------------------------------------------------
+ * R1-T4 Tests: B-01 ~ B-05 & HC-01 ~ HC-04
+ * -------------------------------------------------------------------------- */
+static uint8_t s_stream_pattern_buf[4097];
+static uint8_t s_stream_read_buf[4097];
+
+static void init_pattern_buf(void) {
+    for (size_t i = 0; i < sizeof(s_stream_pattern_buf); i++) {
+        s_stream_pattern_buf[i] = (uint8_t)(i & 0xFF);
+    }
+}
+
+static sim_bounded_stream_t s_stream;
+
+void test_wave1_r1_bounded_stream_atomic_writes(void) {
+    init_pattern_buf();
+
+    /* --- B-01: Empty stream writes 4096 ok, 4097 fails, 512 ok --- */
+    {
+        sim_bounded_stream_init(&s_stream);
+        TEST_ASSERT_EQUAL(ESP_OK, sim_bounded_stream_write(&s_stream, s_stream_pattern_buf, 4096));
+        TEST_ASSERT_EQUAL(4096, sim_bounded_stream_available(&s_stream));
+        int nread = sim_bounded_stream_read(&s_stream, s_stream_read_buf, 4096);
+        TEST_ASSERT_EQUAL(4096, nread);
+        TEST_ASSERT_EQUAL_MEMORY(s_stream_pattern_buf, s_stream_read_buf, 4096);
+        TEST_ASSERT_EQUAL(0, sim_bounded_stream_available(&s_stream));
+
+        sim_bounded_stream_reset(&s_stream);
+        TEST_ASSERT_EQUAL(ESP_ERR_NO_MEM, sim_bounded_stream_write(&s_stream, s_stream_pattern_buf, 4097));
+        TEST_ASSERT_EQUAL(0, sim_bounded_stream_available(&s_stream));
+        TEST_ASSERT_EQUAL(0, s_stream.current_allocated_blocks);
+        TEST_ASSERT_TRUE(sim_bounded_stream_is_backpressured(&s_stream));
+
+        /* Subsequent valid write succeeds */
+        TEST_ASSERT_EQUAL(ESP_OK, sim_bounded_stream_write(&s_stream, s_stream_pattern_buf, 512));
+        TEST_ASSERT_EQUAL(512, sim_bounded_stream_available(&s_stream));
+        nread = sim_bounded_stream_read(&s_stream, s_stream_read_buf, 512);
+        TEST_ASSERT_EQUAL(512, nread);
+        TEST_ASSERT_EQUAL_MEMORY(s_stream_pattern_buf, s_stream_read_buf, 512);
+    }
+
+    /* --- B-02: Non-empty stream overflow, zero commitment --- */
+    {
+        sim_bounded_stream_reset(&s_stream);
+        TEST_ASSERT_EQUAL(ESP_OK, sim_bounded_stream_write(&s_stream, s_stream_pattern_buf, 3000));
+        TEST_ASSERT_EQUAL(3000, sim_bounded_stream_available(&s_stream));
+        size_t orig_blocks = s_stream.current_allocated_blocks;
+
+        /* Write 2000 bytes (3000 + 2000 = 5000 > 4096) -> reject with zero bytes added */
+        TEST_ASSERT_EQUAL(ESP_ERR_NO_MEM, sim_bounded_stream_write(&s_stream, s_stream_pattern_buf, 2000));
+        TEST_ASSERT_EQUAL(3000, sim_bounded_stream_available(&s_stream));
+        TEST_ASSERT_EQUAL(orig_blocks, s_stream.current_allocated_blocks);
+        TEST_ASSERT_TRUE(sim_bounded_stream_is_backpressured(&s_stream));
+
+        /* Verify original content intact */
+        int nread = sim_bounded_stream_read(&s_stream, s_stream_read_buf, 3000);
+        TEST_ASSERT_EQUAL(3000, nread);
+        TEST_ASSERT_EQUAL_MEMORY(s_stream_pattern_buf, s_stream_read_buf, 3000);
+    }
+
+    /* --- B-03: Critical counter-example: write 4090 -> read 1 -> write 7 fails, write 6 succeeds --- */
+    {
+        sim_bounded_stream_reset(&s_stream);
+        TEST_ASSERT_EQUAL(ESP_OK, sim_bounded_stream_write(&s_stream, s_stream_pattern_buf, 4090));
+        TEST_ASSERT_EQUAL(4090, sim_bounded_stream_available(&s_stream));
+
+        uint8_t one_byte = 0;
+        int nread = sim_bounded_stream_read(&s_stream, &one_byte, 1);
+        TEST_ASSERT_EQUAL(1, nread);
+        TEST_ASSERT_EQUAL(4089, sim_bounded_stream_available(&s_stream));
+        /* Tail block has write_len = 1018, space = 6. All 4 blocks are used (block 0 not yet released). */
+        /* Writable capacity is exactly 6. Writing 7 must fail! */
+        uint8_t payload7[7] = {1, 2, 3, 4, 5, 6, 7};
+        TEST_ASSERT_EQUAL(ESP_ERR_NO_MEM, sim_bounded_stream_write(&s_stream, payload7, 7));
+        TEST_ASSERT_EQUAL(4089, sim_bounded_stream_available(&s_stream));
+
+        /* Writing 6 must succeed */
+        uint8_t payload6[6] = {1, 2, 3, 4, 5, 6};
+        TEST_ASSERT_EQUAL(ESP_OK, sim_bounded_stream_write(&s_stream, payload6, 6));
+        TEST_ASSERT_EQUAL(4095, sim_bounded_stream_available(&s_stream));
+    }
+
+    /* --- B-04: Completely read head block released and re-allocated --- */
+    {
+        sim_bounded_stream_reset(&s_stream);
+        TEST_ASSERT_EQUAL(ESP_OK, sim_bounded_stream_write(&s_stream, s_stream_pattern_buf, 4096));
+        TEST_ASSERT_EQUAL(4096, sim_bounded_stream_available(&s_stream));
+        TEST_ASSERT_EQUAL(4, s_stream.current_allocated_blocks);
+
+        /* Read exactly 1024 bytes (block 0 fully consumed and released) */
+        int nread = sim_bounded_stream_read(&s_stream, s_stream_read_buf, 1024);
+        TEST_ASSERT_EQUAL(1024, nread);
+        TEST_ASSERT_EQUAL(3072, sim_bounded_stream_available(&s_stream));
+        TEST_ASSERT_EQUAL(3, s_stream.current_allocated_blocks);
+
+        /* Now 1 block is free -> can write up to 1024 bytes */
+        TEST_ASSERT_EQUAL(ESP_OK, sim_bounded_stream_write(&s_stream, s_stream_pattern_buf, 512));
+        TEST_ASSERT_EQUAL(3584, sim_bounded_stream_available(&s_stream));
+        TEST_ASSERT_EQUAL(4, s_stream.current_allocated_blocks);
+
+        /* Read all 3584 bytes -> stream becomes completely empty */
+        nread = sim_bounded_stream_read(&s_stream, s_stream_read_buf, 3584);
+        TEST_ASSERT_EQUAL(3584, nread);
+        TEST_ASSERT_EQUAL(0, sim_bounded_stream_available(&s_stream));
+        TEST_ASSERT_EQUAL(0, s_stream.current_allocated_blocks);
+    }
+
+    /* --- B-05: Parameter boundary validations --- */
+    {
+        sim_bounded_stream_reset(&s_stream);
+        TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, sim_bounded_stream_write(NULL, s_stream_pattern_buf, 10));
+        TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, sim_bounded_stream_write(&s_stream, NULL, 10));
+        TEST_ASSERT_EQUAL(ESP_OK, sim_bounded_stream_write(&s_stream, NULL, 0));
+        TEST_ASSERT_EQUAL(ESP_OK, sim_bounded_stream_write(&s_stream, s_stream_pattern_buf, 0));
+        TEST_ASSERT_EQUAL(0, sim_bounded_stream_available(&s_stream));
+    }
+}
+
+void test_wave1_r1_http_client_rollback_and_safety(void) {
+    init_pattern_buf();
+
+    /* --- HC-01: Low-level open with 4097 response fails honestly --- */
+    {
+        static const sim_http_route_t route_huge = {
+            .url_prefix = "http://example.com/oversized4097",
+            .resp = {
+                .status_code = 200,
+                .body_data = s_stream_pattern_buf,
+                .body_len = 4097,
+            },
+        };
+        TEST_ASSERT_EQUAL(ESP_OK, sim_http_responder_register_route(&route_huge));
+
+        esp_http_client_config_t cfg = {
+            .url = "http://example.com/oversized4097",
+            .event_handler = http_test_event_handler,
+        };
+        esp_http_client_handle_t client = esp_http_client_init(&cfg);
+        TEST_ASSERT_NOT_NULL(client);
+
+        esp_err_t err = esp_http_client_open(client, 0);
+        TEST_ASSERT_EQUAL(ESP_ERR_NO_MEM, err);
+        TEST_ASSERT_EQUAL(0, s_event_connected_count); /* No false ON_CONNECTED */
+        TEST_ASSERT_EQUAL(1, s_event_error_count);     /* Error event dispatched */
+        TEST_ASSERT_FALSE(esp_http_client_is_complete_data_received(client));
+        TEST_ASSERT_EQUAL(0, esp_http_client_get_status_code(client));
+
+        char dummy[16];
+        int rlen = esp_http_client_read(client, dummy, sizeof(dummy));
+        TEST_ASSERT_EQUAL(0, rlen); /* No partial or truncated data readable */
+
+        /* --- HC-02: Safe close after failure and retry with 512 bytes --- */
+        TEST_ASSERT_EQUAL(ESP_OK, esp_http_client_close(client));
+
+        static const sim_http_route_t route_ok512 = {
+            .url_prefix = "http://example.com/normal512",
+            .resp = {
+                .status_code = 200,
+                .body_data = s_stream_pattern_buf,
+                .body_len = 512,
+            },
+        };
+        TEST_ASSERT_EQUAL(ESP_OK, sim_http_responder_register_route(&route_ok512));
+
+        TEST_ASSERT_EQUAL(ESP_OK, esp_http_client_set_url(client, "http://example.com/normal512"));
+        err = esp_http_client_open(client, 0);
+        TEST_ASSERT_EQUAL(ESP_OK, err);
+        TEST_ASSERT_EQUAL(1, s_event_connected_count);
+
+        rlen = esp_http_client_read(client, (char *)s_stream_read_buf, 512);
+        TEST_ASSERT_EQUAL(512, rlen);
+        TEST_ASSERT_EQUAL_MEMORY(s_stream_pattern_buf, s_stream_read_buf, 512);
+
+        TEST_ASSERT_EQUAL(ESP_OK, esp_http_client_close(client));
+        TEST_ASSERT_EQUAL(ESP_OK, esp_http_client_cleanup(client));
+    }
+
+    /* --- HC-03: perform event consumer still receives oversized response body --- */
+    {
+        setUp(); /* Reset event counts */
+        static const sim_http_route_t route_perform = {
+            .url_prefix = "http://example.com/perform_huge",
+            .resp = {
+                .status_code = 200,
+                .body_data = s_stream_pattern_buf,
+                .body_len = 4097,
+            },
+        };
+        TEST_ASSERT_EQUAL(ESP_OK, sim_http_responder_register_route(&route_perform));
+
+        esp_http_client_config_t cfg = {
+            .url = "http://example.com/perform_huge",
+            .event_handler = http_test_event_handler,
+        };
+        esp_http_client_handle_t client = esp_http_client_init(&cfg);
+        TEST_ASSERT_NOT_NULL(client);
+
+        esp_err_t err = esp_http_client_perform(client);
+        TEST_ASSERT_EQUAL(ESP_OK, err);
+        TEST_ASSERT_EQUAL(1, s_event_connected_count);
+        TEST_ASSERT_EQUAL(1, s_event_on_data_count);
+        TEST_ASSERT_EQUAL(1, s_event_on_finish_count);
+        TEST_ASSERT_EQUAL(1, s_event_disconnected_count);
+
+        TEST_ASSERT_EQUAL(ESP_OK, esp_http_client_cleanup(client));
+    }
+
+    /* --- HC-04: Small response cycle and request write overflow path --- */
+    {
+        setUp();
+        static const sim_http_route_t route_small = {
+            .url_prefix = "http://example.com/small64",
+            .resp = {
+                .status_code = 200,
+                .body_data = (const uint8_t *)"SMALL_PAYLOAD_1234567890",
+                .body_len = 24,
+            },
+        };
+        TEST_ASSERT_EQUAL(ESP_OK, sim_http_responder_register_route(&route_small));
+
+        esp_http_client_config_t cfg = {
+            .url = "http://example.com/small64",
+            .event_handler = http_test_event_handler,
+        };
+        esp_http_client_handle_t client = esp_http_client_init(&cfg);
+        TEST_ASSERT_NOT_NULL(client);
+
+        /* Write oversized request body -> rejected with -1 atomically */
+        int w = esp_http_client_write(client, (const char *)s_stream_pattern_buf, 4097);
+        TEST_ASSERT_EQUAL(-1, w);
+
+        /* Write normal small request body -> accepted */
+        w = esp_http_client_write(client, "valid", 5);
+        TEST_ASSERT_EQUAL(5, w);
+
+        /* Open small response */
+        TEST_ASSERT_EQUAL(ESP_OK, esp_http_client_open(client, 0));
+        char resp_buf[32] = {0};
+        int rlen = esp_http_client_read(client, resp_buf, sizeof(resp_buf));
+        TEST_ASSERT_EQUAL(24, rlen);
+        TEST_ASSERT_EQUAL_STRING("SMALL_PAYLOAD_1234567890", resp_buf);
+
+        TEST_ASSERT_EQUAL(ESP_OK, esp_http_client_close(client));
+        TEST_ASSERT_EQUAL(ESP_OK, esp_http_client_cleanup(client));
+    }
+}
+
+/* --------------------------------------------------------------------------
  * Unity Main Runner
  * -------------------------------------------------------------------------- */
 int main(void) {
@@ -426,6 +674,8 @@ int main(void) {
     RUN_TEST(test_http_chunked_response_query);
     RUN_TEST(test_http_unmapped_url_fails_loud);
     RUN_TEST(test_http_fetch_headers_64bit_content_length);
+    RUN_TEST(test_wave1_r1_bounded_stream_atomic_writes);
+    RUN_TEST(test_wave1_r1_http_client_rollback_and_safety);
 
     return UNITY_END();
 }

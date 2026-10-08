@@ -373,18 +373,31 @@ esp_err_t esp_http_client_open(esp_http_client_handle_t client, int write_len) {
         return resp->fault_inject_err;
     }
 
+    sim_bounded_stream_reset(&client->req_stream);
+    sim_bounded_stream_reset(&client->stream);
+
+    if (resp->body_len > 0 && resp->body_data) {
+        esp_err_t werr = sim_bounded_stream_write(&client->stream, resp->body_data, resp->body_len);
+        if (werr != ESP_OK) {
+            ESP_LOGE(TAG, "open: Failed to buffer response body into stream (%zu bytes): %d", resp->body_len, werr);
+            sim_bounded_stream_reset(&client->stream);
+            sim_bounded_stream_reset(&client->req_stream);
+            client->is_open = false;
+            client->is_complete = false;
+            client->matched_resp = NULL;
+            client->status_code = 0;
+            client->response_len = 0;
+            dispatch_http_event(client, HTTP_EVENT_ERROR, NULL, 0, NULL, NULL);
+            return werr;
+        }
+    }
+
     client->is_open = true;
     client->is_complete = false;
     client->matched_resp = resp;
     client->status_code = resp->status_code;
     client->response_len = (int64_t)resp->body_len;
     sim_http_record_request(resp->status_code, resp->body_len);
-
-    sim_bounded_stream_reset(&client->req_stream);
-    sim_bounded_stream_reset(&client->stream);
-    if (resp->body_len > 0 && resp->body_data) {
-        sim_bounded_stream_write(&client->stream, resp->body_data, resp->body_len);
-    }
 
     (void)write_len;
     dispatch_http_event(client, HTTP_EVENT_ON_CONNECTED, NULL, 0, NULL, NULL);
@@ -464,11 +477,17 @@ esp_err_t esp_http_client_close(esp_http_client_handle_t client) {
     if (!client) {
         return ESP_ERR_INVALID_ARG;
     }
+    bool was_open = client->is_open;
     client->is_open = false;
+    client->is_complete = false;
     client->matched_resp = NULL;
+    client->status_code = 0;
+    client->response_len = 0;
     sim_bounded_stream_reset(&client->stream);
     sim_bounded_stream_reset(&client->req_stream);
-    dispatch_http_event(client, HTTP_EVENT_DISCONNECTED, NULL, 0, NULL, NULL);
+    if (was_open) {
+        dispatch_http_event(client, HTTP_EVENT_DISCONNECTED, NULL, 0, NULL, NULL);
+    }
     return ESP_OK;
 }
 

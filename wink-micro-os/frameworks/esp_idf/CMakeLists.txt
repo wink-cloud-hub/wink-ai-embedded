@@ -5,6 +5,12 @@ endif()
 
 include(esp_idf_sources.cmake)
 
+if(WIN32 AND NOT EMSCRIPTEN)
+    list(REMOVE_ITEM ESP_IDF_FRAMEWORK_SOURCES
+        ${CMAKE_CURRENT_LIST_DIR}/src/network/esp_sockets.c
+    )
+endif()
+
 add_library(wink_framework_esp_idf STATIC EXCLUDE_FROM_ALL
     ${ESP_IDF_FRAMEWORK_SOURCES}
 )
@@ -25,6 +31,10 @@ target_compile_definitions(wink_framework_esp_idf PUBLIC
     SIMULATION=1
     WINK_SIM_TEST=1
 )
+
+if(WIN32 AND NOT MSVC)
+    target_compile_definitions(wink_framework_esp_idf PRIVATE suseconds_t=long)
+endif()
 
 if(TARGET pal_host)
     target_compile_definitions(pal_host PRIVATE WINK_SIM_MAX_TASKS=${WINK_SIM_MAX_TASKS})
