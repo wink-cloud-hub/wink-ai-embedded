@@ -21,23 +21,6 @@
 #define WINK_SIM_EXPORT
 #endif
 
-static int sim_uart_vprintf(const char *fmt, va_list ap) {
-    char buf[512];
-    va_list ap_copy;
-    va_copy(ap_copy, ap);
-    int n = vsnprintf(buf, sizeof(buf), fmt, ap_copy);
-    va_end(ap_copy);
-    if (n > 0) {
-        fputs(buf, stdout);
-        (void)pal_uart_write(0, (const uint8_t *)buf, (uint32_t)n);
-    }
-    return n;
-}
-
-__attribute__((constructor)) static void init_sockets_uart_bridge(void) {
-    esp_log_set_vprintf(sim_uart_vprintf);
-}
-
 #define TAG "esp_sockets"
 
 #define SIM_SOCK_BASE       100
@@ -53,6 +36,10 @@ typedef struct {
     bool bound;
     bool listening;
     bool is_server_side;
+    int reuseaddr;
+    int keepalive;
+    struct timeval rcvtimeo;
+    struct timeval sndtimeo;
     struct sockaddr_storage local_addr;
     struct sockaddr_storage remote_addr;
     uint8_t rx_buf[SIM_RX_BUF_SIZE];
@@ -304,21 +291,27 @@ int shutdown(int sockfd, int how) {
 
 int closesocket(int sockfd) {
     sim_socket_t *s = get_sim_socket(sockfd);
-    if (s) {
-        s->in_use = false;
-        s->connected = false;
-        return 0;
+    if (!s) {
+        errno = EBADF;
+        return -1;
     }
+    s->in_use = false;
+    s->connected = false;
+    s->bound = false;
+    s->listening = false;
     return 0;
 }
 
 int close(int fd) {
     sim_socket_t *s = get_sim_socket(fd);
-    if (s) {
-        s->in_use = false;
-        s->connected = false;
-        return 0;
+    if (!s) {
+        errno = EBADF;
+        return -1;
     }
+    s->in_use = false;
+    s->connected = false;
+    s->bound = false;
+    s->listening = false;
     return 0;
 }
 
@@ -328,6 +321,28 @@ int setsockopt(int sockfd, int level, int optname, const void *optval, socklen_t
         errno = EBADF;
         return -1;
     }
+    if (!optval) {
+        errno = EFAULT;
+        return -1;
+    }
+    if (level == SOL_SOCKET) {
+        if (optname == SO_REUSEADDR && optlen >= sizeof(int)) {
+            s->reuseaddr = *(const int *)optval;
+            return 0;
+        }
+        if (optname == SO_KEEPALIVE && optlen >= sizeof(int)) {
+            s->keepalive = *(const int *)optval;
+            return 0;
+        }
+        if (optname == SO_RCVTIMEO && optlen >= sizeof(struct timeval)) {
+            s->rcvtimeo = *(const struct timeval *)optval;
+            return 0;
+        }
+        if (optname == SO_SNDTIMEO && optlen >= sizeof(struct timeval)) {
+            s->sndtimeo = *(const struct timeval *)optval;
+            return 0;
+        }
+    }
     return 0;
 }
 
@@ -336,6 +351,32 @@ int getsockopt(int sockfd, int level, int optname, void *optval, socklen_t *optl
     if (!s) {
         errno = EBADF;
         return -1;
+    }
+    if (!optval || !optlen) {
+        errno = EFAULT;
+        return -1;
+    }
+    if (level == SOL_SOCKET) {
+        if (optname == SO_REUSEADDR && *optlen >= sizeof(int)) {
+            *(int *)optval = s->reuseaddr;
+            *optlen = sizeof(int);
+            return 0;
+        }
+        if (optname == SO_KEEPALIVE && *optlen >= sizeof(int)) {
+            *(int *)optval = s->keepalive;
+            *optlen = sizeof(int);
+            return 0;
+        }
+        if (optname == SO_RCVTIMEO && *optlen >= sizeof(struct timeval)) {
+            *(struct timeval *)optval = s->rcvtimeo;
+            *optlen = sizeof(struct timeval);
+            return 0;
+        }
+        if (optname == SO_SNDTIMEO && *optlen >= sizeof(struct timeval)) {
+            *(struct timeval *)optval = s->sndtimeo;
+            *optlen = sizeof(struct timeval);
+            return 0;
+        }
     }
     return 0;
 }
