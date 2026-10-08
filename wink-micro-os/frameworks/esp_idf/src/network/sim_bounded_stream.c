@@ -45,12 +45,35 @@ static void release_block(sim_bounded_stream_t *stream, sim_stream_block_t *blk)
     }
 }
 
+static size_t sim_stream_get_writable_capacity(const sim_bounded_stream_t *stream) {
+    size_t tail_space = 0;
+    if (stream->tail && stream->tail->write_len < SIM_STREAM_BLOCK_SIZE) {
+        tail_space = SIM_STREAM_BLOCK_SIZE - stream->tail->write_len;
+    }
+    size_t free_blocks = 0;
+    for (size_t i = 0; i < SIM_STREAM_MAX_BLOCKS; i++) {
+        if (!stream->used[i]) {
+            free_blocks++;
+        }
+    }
+    return tail_space + (free_blocks * SIM_STREAM_BLOCK_SIZE);
+}
+
 esp_err_t sim_bounded_stream_write(sim_bounded_stream_t *stream, const uint8_t *data, size_t len) {
     if (!stream) {
         return ESP_ERR_INVALID_ARG;
     }
-    if (!data || len == 0) {
+    if (len == 0) {
         return ESP_OK;
+    }
+    if (!data) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    size_t capacity = sim_stream_get_writable_capacity(stream);
+    if (len > capacity) {
+        stream->backpressure_triggered = true;
+        return ESP_ERR_NO_MEM;
     }
 
     size_t remaining = len;

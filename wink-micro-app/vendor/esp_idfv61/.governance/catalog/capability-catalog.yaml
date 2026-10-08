@@ -425,6 +425,8 @@ capabilities:
     description: 确定性离线静态路由匹配与 HTTP 事件流派发门面
     owned_paths:
     - wink-micro-os/frameworks/esp_idf/src/network/esp_http.c
+    - wink-micro-os/frameworks/esp_idf/src/network/sim_bounded_stream.c
+    - wink-micro-os/frameworks/esp_idf/src/network/sim_bounded_stream.h
     - wink-micro-os/frameworks/esp_idf/src/network/sim_net_responder.c
     - wink-micro-os/frameworks/esp_idf/include/esp_http_client.h
     - wink-micro-os/frameworks/esp_idf/include/esp_crt_bundle.h
