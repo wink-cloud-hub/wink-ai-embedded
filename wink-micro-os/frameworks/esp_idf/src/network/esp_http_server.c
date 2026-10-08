@@ -59,6 +59,7 @@ typedef struct {
     char resp_body[MAX_BODY_LEN];
     size_t resp_body_len;
     int resp_status_code;
+    httpd_ws_type_t ws_type;
 } req_aux_t;
 
 static req_aux_t s_curr_aux;
@@ -470,13 +471,15 @@ int httpd_req_to_sockfd(httpd_req_t *r) {
 
 esp_err_t httpd_queue_work(httpd_handle_t handle, httpd_work_fn_t work, void *arg) {
     if (!work) return ESP_ERR_INVALID_ARG;
-    (void)handle;
+    if (!handle || handle != &s_server || !s_server.active || s_server_stopping) {
+        return ESP_ERR_INVALID_STATE;
+    }
     work(arg);
     return ESP_OK;
 }
 
 static void ws_set_frame_metadata(httpd_ws_frame_t *pkt, size_t total_len, size_t left_len) {
-    pkt->type = HTTPD_WS_TYPE_TEXT;
+    pkt->type = (s_curr_aux.ws_type != 0) ? s_curr_aux.ws_type : HTTPD_WS_TYPE_TEXT;
     pkt->final = true;
     pkt->fragmented = false;
     pkt->len = total_len;
@@ -592,7 +595,9 @@ static int dispatch_request_internal(
         return -1;
     }
 
+    httpd_ws_type_t saved_ws = s_curr_aux.ws_type;
     memset(&s_curr_aux, 0, sizeof(s_curr_aux));
+    s_curr_aux.ws_type = saved_ws;
     memset(&s_curr_req, 0, sizeof(s_curr_req));
     s_curr_req.aux = &s_curr_aux;
 
@@ -741,6 +746,12 @@ WINK_SIM_EXPORT int sim_http_server_dispatch_request_with_host(
     const char *host_header
 ) {
     return dispatch_request_internal(method_str, raw_uri, body, body_len, host_header);
+}
+
+WINK_SIM_EXPORT int sim_http_server_dispatch_ws_frame(httpd_ws_type_t type, const char *raw_uri, const uint8_t *payload, size_t len) {
+    if (!s_server.active) return -1;
+    s_curr_aux.ws_type = type;
+    return sim_http_server_dispatch_request("GET", raw_uri ? raw_uri : "/ws", (const char *)payload, len);
 }
 
 static bool json_extract_str(const char *json, const char *key, char *out, size_t maxlen) {
