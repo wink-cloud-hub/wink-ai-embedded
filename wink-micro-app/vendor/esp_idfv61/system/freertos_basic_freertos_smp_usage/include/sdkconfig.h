@@ -38,7 +38,8 @@ static inline int esp_sim_console_vprintf(const char *fmt, va_list ap) {
     if (n > 0) {
         fputs(buf, stdout);
         /* Hardware-level console bridge: ESP32 defaults stdout & logging to UART0 */
-        (void)pal_uart_write(0, (const uint8_t *)buf, (uint32_t)n);
+        size_t write_len = ((size_t)n < sizeof(buf) - 1) ? (size_t)n : (sizeof(buf) - 1);
+        (void)pal_uart_write(0, (const uint8_t *)buf, (uint32_t)write_len);
     }
     return n;
 }
@@ -55,7 +56,8 @@ static inline int esp_sim_console_printf(const char *fmt, ...) {
     va_end(ap);
     if (n > 0) {
         fputs(buf, stdout);
-        (void)pal_uart_write(0, (const uint8_t *)buf, (uint32_t)n);
+        size_t write_len = ((size_t)n < sizeof(buf) - 1) ? (size_t)n : (sizeof(buf) - 1);
+        (void)pal_uart_write(0, (const uint8_t *)buf, (uint32_t)write_len);
     }
     return n;
 }

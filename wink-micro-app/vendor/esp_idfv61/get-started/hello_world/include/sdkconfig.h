@@ -23,7 +23,8 @@ static inline int esp_sim_console_printf(const char *fmt, ...) {
         /* Standard stdout */
         fputs(buf, stdout);
         /* Hardware-level console bridge: ESP32 defaults stdout/printf to UART0 */
-        (void)pal_uart_write(0, (const uint8_t *)buf, (uint32_t)n);
+        size_t write_len = ((size_t)n < sizeof(buf) - 1) ? (size_t)n : (sizeof(buf) - 1);
+        (void)pal_uart_write(0, (const uint8_t *)buf, (uint32_t)write_len);
     }
     return n;
 }
