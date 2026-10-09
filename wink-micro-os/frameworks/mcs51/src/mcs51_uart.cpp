@@ -301,14 +301,21 @@ bool rx_deliver_one(void) {
         (now - uart.rx_last_deliver_us) < RX_BYTE_SPACING_US) {
         return false;  // too early; remaining bytes land on later microsteps
     }
-    uint8_t b = uart.rx_fifo[uart.rx_tail % MCS51_UART_RX_FIFO_CAP];
-    uart.rx_tail++;
     if (scon & (1u << SCON_RI)) {
+        if (wink_mcs51_in_isr()) {
+            return false;  // Firmware ISR is in-service: defer delivery until ISR completes/clears RI
+        }
+        uint8_t b = uart.rx_fifo[uart.rx_tail % MCS51_UART_RX_FIFO_CAP];
+        (void)b;
+        uart.rx_tail++;
         if (uart.rx_dropped < 0xFFFFFFFFu) {
             ++uart.rx_dropped;
         }
+        uart.rx_last_deliver_us = now;
         return uart.rx_tail != uart.rx_head;
     }
+    uint8_t b = uart.rx_fifo[uart.rx_tail % MCS51_UART_RX_FIFO_CAP];
+    uart.rx_tail++;
     mcs51_get_context()->sfr_shadow[SFR_SBUF] = b;
     sfr_set_bit(SFR_SCON, SCON_RI);
     uart.rx_last_deliver_us = now;
