@@ -268,7 +268,7 @@
 - **问题归属**: `I-17`, `AFG-NEW-01`
 - **实现责任人**: 仿真与端到端集成工程师 (Integration & Pilot Engineer)
 - **独立复核人**: 架构复核者 (Architecture Reviewer)
-- **工程追踪状态**: `待执行`
+- **工程追踪状态**: `已完成 (Done ✅)`
 
 ### 2. 范围与依赖
 - **修改文件白名单**:
@@ -278,9 +278,18 @@
 - **关联技术契约**: [AFG-Engine 契约 5 节与 6 节](../../../zh/tech-designs/esp32/esp-idf-anti-false-green-verification-engine-contract.md)
 
 ### 3. 验收设计 (AC-1.9 落地核验)
-- [ ] **行为目标 1 (Pilot A / Pilot B 真实端到端闭环)**: hello_world 与 uart_echo 通过真实 headless 管道执行，涵盖 baseline、Canary 击杀与现场恢复；
-- [ ] **行为目标 2 (机器对账与全量检查集合校验)**: 7 类检查闭包、ProofPlan Claims 与执行身份机器对账无遗漏；
-- [ ] **行为目标 3 (防线反向自验与变红校验)**: 分别拔除目标核验防线（如注入恒真断言或注销变异算子），端到端流水线必须准确熔断变红拒绝。
+- [x] **行为目标 1 (Pilot A / Pilot B 真实端到端闭环)**: hello_world 与 uart_echo 通过真实 headless 管道执行，涵盖 baseline、Canary 击杀与现场恢复；
+- [x] **行为目标 2 (机器对账与全量检查集合校验)**: 7 类检查闭包、ProofPlan Claims 与执行身份机器对账无遗漏；
+- [x] **行为目标 3 (防线反向自验与变红校验)**: 分别拔除目标核验防线（如注入恒真断言或注销变异算子），端到端流水线必须准确熔断变红拒绝。
+
+### 4. 验证凭据与回执
+- **专用单测**: `pytest tests/unit/test_t1_8_pilot_e2e.py` 7/7 全部通过；
+- **全量单测**: `pytest tests/unit/` 86/86 全部通过；
+- **元公理回归**: `pytest tests/meta_invariants/` 31/31 全部通过；
+- **Batch 0 回归**: `pytest tests/gates/test_batch0_evidence.py` 55/55 全部通过；
+- **核验器单测**: `pytest tests/gates/test_evidence_verifier.py` 22/22 全部通过；
+- **对抗门禁回归**: `pytest tests/gates/test_adversarial_suite.py` 35/35 全部通过。
+
 
 
 

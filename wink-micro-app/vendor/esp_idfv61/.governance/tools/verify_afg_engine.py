@@ -21,28 +21,44 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 TOOLS_DIR = Path(__file__).resolve().parent
-LOOP_DIR = TOOLS_DIR / "loop"
-GATES_DIR = TOOLS_DIR.parent / "gates"
+GOV_DIR = TOOLS_DIR.parent
+GATES_DIR = GOV_DIR / "gates"
 
-if str(LOOP_DIR) not in sys.path:
-    sys.path.insert(0, str(LOOP_DIR))
+if str(GOV_DIR) not in sys.path:
+    sys.path.insert(0, str(GOV_DIR))
+if str(TOOLS_DIR) not in sys.path:
+    sys.path.insert(0, str(TOOLS_DIR))
 if str(GATES_DIR) not in sys.path:
     sys.path.insert(0, str(GATES_DIR))
 
-from afg_engine import AFGEngine, AFGReceipt, EXPECTED_PROBE_ABI_VERSION, EXPECTED_PROBE_SIZE_BYTES
-from archetype_resolver import ArchetypeResolver
-from promotion_service import PromotionService
+from loop.afg.engine import AFGEngine, AFGReceipt, EXPECTED_PROBE_ABI_VERSION, EXPECTED_PROBE_SIZE_BYTES
+from loop.afg.archetype_resolver import ArchetypeResolver
+from loop.services.promotion_service import PromotionService
 from report_contract import file_sha256, is_business_assertion, validate_scenario_report
 from evidence_verifier import compute_assets_composite_sha256
+
+
+
+def find_workspace_root(start_dir: Optional[Path] = None) -> Path:
+    """Find repo workspace root containing wink-micro-app and wink-micro-os."""
+    p = (start_dir or Path.cwd()).resolve()
+    for cur in [p] + list(p.parents):
+        if (cur / "wink-micro-app" / "vendor" / "esp_idfv61").is_dir() and (
+            (cur / "wink-micro-os").is_dir() or (cur / ".git").is_dir()
+        ):
+            return cur
+    return p
+
 
 
 class PilotVerifier:
     """Orchestrates Pilot scenarios and legacy items verification under AFG v1.1."""
 
     def __init__(self, workspace_root: Path):
-        self.ws_root = workspace_root.resolve()
+        self.ws_root = find_workspace_root(workspace_root)
         self.gov_dir = self.ws_root / "wink-micro-app" / "vendor" / "esp_idfv61" / ".governance"
         self.reports_dir = self.gov_dir / "reports"
+
         self.manifest_path = self.gov_dir / "data" / "checklist.data.json"
         self.engine = AFGEngine()
         self.resolver = ArchetypeResolver()
