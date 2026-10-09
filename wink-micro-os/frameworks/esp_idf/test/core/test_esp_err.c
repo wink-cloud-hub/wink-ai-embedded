@@ -40,6 +40,21 @@ void test_wink_status_from_esp(void) {
     TEST_ASSERT_EQUAL_INT(WINK_ERR_HARDWARE, wink_status_from_esp(ESP_FAIL));
 }
 
+void test_wink_status_to_esp_err_canonical(void) {
+    TEST_ASSERT_EQUAL_INT32(ESP_OK, wink_status_to_esp_err(WINK_OK));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_INVALID_ARG, wink_status_to_esp_err(WINK_ERR_INVALID_ARG));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_TIMEOUT, wink_status_to_esp_err(WINK_ERR_TIMEOUT));
+    TEST_ASSERT_EQUAL_INT32(ESP_ERR_NOT_SUPPORTED, wink_status_to_esp_err(WINK_ERR_UNSUPPORTED));
+    TEST_ASSERT_EQUAL_INT32(ESP_FAIL, wink_status_to_esp_err((wink_status_t)-999));
+}
+
+void test_esp_err_to_wink_status_canonical(void) {
+    TEST_ASSERT_EQUAL_INT(WINK_OK, esp_err_to_wink_status(ESP_OK));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_NO_MEM, esp_err_to_wink_status(ESP_ERR_NO_MEM));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_TIMEOUT, esp_err_to_wink_status(ESP_ERR_TIMEOUT));
+    TEST_ASSERT_EQUAL_INT(WINK_ERR_HARDWARE, esp_err_to_wink_status(ESP_FAIL));
+}
+
 void test_esp_err_to_name(void) {
     TEST_ASSERT_EQUAL_STRING("ESP_OK", esp_err_to_name(ESP_OK));
     TEST_ASSERT_EQUAL_STRING("ESP_ERR_INVALID_ARG", esp_err_to_name(ESP_ERR_INVALID_ARG));
@@ -73,6 +88,8 @@ int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_esp_err_from_wink);
     RUN_TEST(test_wink_status_from_esp);
+    RUN_TEST(test_wink_status_to_esp_err_canonical);
+    RUN_TEST(test_esp_err_to_wink_status_canonical);
     RUN_TEST(test_esp_err_to_name);
     RUN_TEST(test_esp_err_to_name_full_table);
     return UNITY_END();

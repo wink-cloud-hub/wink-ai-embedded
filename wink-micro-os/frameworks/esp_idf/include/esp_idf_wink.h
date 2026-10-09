@@ -19,6 +19,8 @@ extern "C" {
 #endif
 
 /* 错误码桥接（ADR-0001 负数错误码 <-> ESP 0x101+ 体系） */
+esp_err_t wink_status_to_esp_err(wink_status_t status);
+wink_status_t esp_err_to_wink_status(esp_err_t err);
 esp_err_t esp_err_from_wink(wink_status_t status);
 wink_status_t wink_status_from_esp(esp_err_t err);
 

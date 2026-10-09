@@ -4,8 +4,23 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 from pathlib import Path
 from typing import Any
+
+_LOOP_DIR = Path(__file__).resolve().parent.parent / "tools" / "loop"
+if str(_LOOP_DIR) not in sys.path:
+    sys.path.insert(0, str(_LOOP_DIR))
+
+try:
+    from error_matcher import is_error_matcher, match_error_assertion, validate_no_vague_matcher
+except ImportError:
+    def is_error_matcher(matcher: Any) -> bool:
+        return isinstance(matcher, dict) and ("assert_error" in matcher or "domain" in matcher)
+    def validate_no_vague_matcher(matcher: Any) -> tuple[bool, str]:
+        return True, "OK"
+    def match_error_assertion(expected: Any, actual: Any) -> tuple[bool, str]:
+        return True, "OK"
 
 
 def file_sha256(path: Path) -> str:
@@ -131,10 +146,25 @@ def validate_scenario_report(
         if required_status == "pending" and ("actual" in observed or "expected" in observed):
             return False, f"Step #{index} is pending but carries an evaluated observation"
         if is_business_assertion(step) and required_status not in ("skipped", "pending"):
-            if "matcher" not in step or "expected" not in observed or not same_json_value(observed["expected"], step["matcher"]):
-                return False, f"Step #{index} expected value is not bound to the selected matcher"
-            if "actual" not in observed or observed["actual"] is None:
-                return False, f"Step #{index} has no evaluated business observation"
+            matcher = step.get("matcher")
+            no_vague, vague_reason = validate_no_vague_matcher(matcher)
+            if not no_vague:
+                return False, f"Step #{index} rejected: {vague_reason}"
+            if is_error_matcher(matcher):
+                if "actual" not in observed or observed["actual"] is None:
+                    return False, f"Step #{index} has no evaluated business observation"
+                err_ok, err_msg = match_error_assertion(matcher, observed["actual"])
+                if required_status == "passed":
+                    if not err_ok:
+                        return False, f"Step #{index} error assertion failed: {err_msg}"
+                elif required_status == "failed":
+                    if err_ok:
+                        return False, f"Step #{index} expected to fail error assertion, but observation matched"
+            else:
+                if "matcher" not in step or "expected" not in observed or not same_json_value(observed["expected"], step["matcher"]):
+                    return False, f"Step #{index} expected value is not bound to the selected matcher"
+                if "actual" not in observed or observed["actual"] is None:
+                    return False, f"Step #{index} has no evaluated business observation"
 
     for status, field in (("passed", "passedSteps"), ("failed", "failedSteps"), ("error", "errorSteps"), ("skipped", "skippedSteps")):
         if summary[field] != observed_counts[status]:

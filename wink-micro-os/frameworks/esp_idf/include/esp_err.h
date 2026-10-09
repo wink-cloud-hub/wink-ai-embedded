@@ -98,6 +98,10 @@ typedef int esp_err_t;
 const char * esp_err_to_name(esp_err_t code);
 const char * esp_err_to_name_r(esp_err_t code, char *buf, size_t buflen);
 
+#include "wink_status.h"
+esp_err_t wink_status_to_esp_err(wink_status_t status);
+wink_status_t esp_err_to_wink_status(esp_err_t err);
+
 
 #if defined(__WINK_SIM__)
 void _esp_error_check_failed(esp_err_t rc, const char *file, int line, const char *function, const char *expression) WINK_SLA_ERROR("Wink SLA Violation: _esp_error_check_failed out of Core 8 scope.");

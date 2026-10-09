@@ -3,6 +3,7 @@ set(ESP_IDF_FRAMEWORK_SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/esp_idf_runtime.c
     ${CMAKE_CURRENT_LIST_DIR}/src/esp_idf_bridge.c
     ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_err.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_err_mapping.c
     ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_log.c
     ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_system.c
     ${CMAKE_CURRENT_LIST_DIR}/src/core/esp_timer.c
