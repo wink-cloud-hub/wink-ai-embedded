@@ -7,46 +7,48 @@
 | 日期 / 修订 | 2026-10-08，Asia/Shanghai；`v1.0` |
 | 状态 | **Active / Accepted**；L0 阶段冻结的技术契约基准 |
 | 关联合同与计划 | [ESP-IDF Loop 加固与已验证项整改实施计划](../../../implementation-plans/esp32/2026-10-08-esp-idf-verified-remediation-and-loop-hardening-plan.md) |
-| 现行技术依据 | [Batch 0 候选证据与双实证绑定](esp-idf-batch0-evidence-contract.md)、[分类规范](../../../../wink-micro-app/vendor/esp_idfv61/.governance/specs/CLASSIFICATION-SPEC.md)、[治理宪章 ADR-0092](../../../decisions/unisim/0092-esp-idf-simulation-governance-and-capability-charter.md) |
+| 补充整改计划 | [2026-10-09 Checklist 与 Loop 问题、解决方案及验收计划](../../../implementation-plans/esp32/2026-10-09-esp-idf-loop-issues-and-remediation-plan.md)（Draft / 待评审、待实施；未变更本契约的验收要求） |
+| 现行技术依据 | [Batch 0 候选证据与双实证绑定](esp-idf-batch0-evidence-contract.md)、[防假绿验证引擎契约](esp-idf-anti-false-green-verification-engine-contract.md)、[分类规范](../../../../wink-micro-app/vendor/esp_idfv61/.governance/specs/CLASSIFICATION-SPEC.md)、[治理宪章 ADR-0092](../../../decisions/unisim/0092-esp-idf-simulation-governance-and-capability-charter.md) |
 | 平台目标 | WebAssembly 仿真环境（Wasm-browser / Host）及 ESP-IDF v6.1 xtensa 物理硬件同源适配 |
+
 
 ---
 
 ## 1. 架构目标与工程防线体系
 
-本契约作为 WinkMicroOS 治理系统 **Option B 引擎** 的核心技术规范，旨在通过强隔离、确定性时钟、严格身份绑定与独立审计机制，根除虚假通过（False Green）、跨应用报告借用、进程泄漏与缓存污染。
+本契约作为 WinkMicroOS 治理系统 **Option B 管道工程基座契约 (Pipeline Harness Contract)**，旨在通过宿主强隔离、单 Gate 调度时钟、确定性构建、原子 CAS 发布与独立审计机制，为固件仿真治理建立坚不可摧的工程运行基座；并将具体的固件行为证伪、外设物理因果与变异算子库委托给内层 [防假绿机器验证引擎契约](esp-idf-anti-false-green-verification-engine-contract.md)（AFG-Engine）专职执行。
 
 ```mermaid
 flowchart TD
-    subgraph S1["1. 调度与隔离上下文"]
+    subgraph S1["1. 调度与隔离上下文 (Harness)"]
         RC["RunContext 冻结<br/>(只读源码快照 / 隔离写入空间 / 租约超时)"]
-        PS["Attempt 级进程约束<br/>(Job Object / 管道有界回收)"]
+        PS["Attempt 级进程约束<br/>(Win32 挂起注入 / Job Object / 管道回收)"]
     end
 
-    subgraph S2["2. 确定性构建与观察预检"]
+    subgraph S2["2. 确定性构建与调度基座 (Harness)"]
         BM["构建指纹 & 依赖失效闭包<br/>(Fast Relink 认证 / 必要完整构建回退)"]
         ST["单 Gate 确定性 Step-Tick<br/>(ADR-0042 / ADR-0053 唯一时钟推进)"]
     end
 
-    subgraph S3["3. 多 Claim 证据执行引擎"]
-        PP["ProofPlan 多业务声明矩阵"]
-        MC["领域变异算子库 Catalog<br/>(GPIO / Timer / UART / ADC / DAC)"]
-        CL["7 类必需检查闭包<br/>(基线 / 自检 / 固件依赖 / 变异 / 故障 / 恢复)"]
+    subgraph S3["3. 业务证据与防假绿验证内核 (AFG-Engine)"]
+        PP["ProofPlan 多业务声明矩阵<br/>(7 类必需检查闭包清单)"]
+        AFG["AFG-Engine 双极性证伪算法<br/>(20 大能力字典全量算子 / 物理时延因果)"]
+        REC["机器击杀回执<br/>(canary_mutation_kill_receipt.json)"]
     end
 
-    subgraph S4["4. 只读审查与事务发布"]
+    subgraph S4["4. 只读审查与事务发布 (Harness)"]
         INS["Inspector 只读呈现<br/>(文本 / JSON 原始证据回溯)"]
         AUD["独立审计显式裁定<br/>(Accept / Reject / Needs-Evidence)"]
-        CAS["不可变包 CAS 事务晋升<br/>(原子 Replace / 读回校验)"]
+        CAS["不可变包 CAS 事务晋升<br/>(Lock Lease / 原子 Replace / 读回校验)"]
     end
 
     RC --> BM
     PS --> ST
     BM --> PP
-    ST --> CL
-    PP --> MC
-    MC --> CL
-    CL --> INS
+    ST --> AFG
+    PP --> AFG
+    AFG --> REC
+    REC --> INS
     INS --> AUD
     AUD --> CAS
 ```
@@ -151,7 +153,8 @@ flowchart TD
 4. `proofplan.json`
 5. `patch.diff`（若有变异代码）
 6. `raw_report.json`
-7. `package_summary.json`（包含全文件 SHA-256 目录树哈希）
+7. `canary_mutation_kill_receipt.json`（由 AFG-Engine 签发并绑定的机器反向击杀与白盒探针回执）
+8. `package_summary.json`（包含全文件 SHA-256 目录树哈希与 payload 封印）
 
 ---
 
@@ -168,16 +171,18 @@ flowchart TD
 4. **AT-28 验收标准**：
    固定种子下，空闲宿主与高负载宿主（4 线程 CPU 压力）分别进行 20 次重放测试，语义轨迹与断言判定必须达到 100% 绝对一致，虚拟时间偏差严格为 0。
 
+> **边界说明**：本节专职约束**调度器时钟推进算法**。至于外设模型本身的微秒物理转换时延下限（$T_{conv} \ge 1/f_{sample}$）、LEDC 渐变插值斜率与自发生产事件总线规范，由内层 [防假绿机器验证引擎契约](esp-idf-anti-false-green-verification-engine-contract.md) 专职裁决与断言。
+
 ---
 
-## 4. 业务声明 ProofPlan 与领域变异算子库 (Catalog)
+## 4. 业务证据执行管道与防假绿验证内核集成接口
 
-### 4.1 ProofPlan 结构
+### 4.1 ProofPlan 结构与 7 类检查闭包调度契约
 
 每个待测应用在测试前必须冻结一份由领域专家或独立审计复核的 `ProofPlan`：
 - 每项核心功能分配稳定的 `claim_id`（如 `CLAIM-UART-LOOPBACK-01`）。
 - 映射源码依据、API 出口、时间窗口、观察能力与容差。
-- 绑定 7 类必需检查闭包：
+- 绑定 7 类必需检查闭包清单：
   1. `baseline`：正常基线通过；
   2. `matcher_self_check`：断言器预置失败验证；
   3. `env_sensitivity`：环境与输入激励敏感性；
@@ -186,22 +191,17 @@ flowchart TD
   6. `fault_handling`：声明故障注入后系统按预期降级/处理；
   7. `recovery`：扰动清除后冷启动与稳态复原。
 
----
+### 4.2 防假绿验证引擎 (AFG-Engine) 委托接口与单一事实源
 
-### 4.2 领域变异算子库 (Catalog) 规范
-
-| 领域 | 算子 ID | 变异动作 | 期望断言反应 |
-|---|---|---|---|
-| **GPIO** | `MUT-GPIO-INV` | 目标引脚写入电平取反 (`level = !level`) | 目标电平比对断言在窗口内明确失败 |
-| **GPIO** | `MUT-GPIO-PIN` | 业务引脚映射改错 (如 GPIO_4 改为 GPIO_5) | 目标引脚事件断言超时无反应 |
-| **Timer** | `MUT-TMR-PERIOD`| 计数周期变更 (如 1000us 改为 2000us) | 频率/周期时间断言容差超限失败 |
-| **Timer** | `MUT-TMR-RELOAD`| 破坏自动重装载标志 (`auto_reload = false`) | 第二次及后续告警断言超时失败 |
-| **UART** | `MUT-UART-PAYLOAD`| 破坏发送缓冲区首字节 (`data[0] ^= 0xFF`) | 数据回读内容匹配断言失败 |
-| **ADC** | `MUT-ADC-CHAN` | 读取通道改错 (如 ADC1_CH0 改为 CH1) | 电压读数偏离预期范围断言失败 |
-| **DAC** | `MUT-DAC-SCALE`| 输出比例因子截断 (`voltage /= 2`) | 模拟阶梯电压幅值断言失败 |
-
-- **未知与等价性语义**：
-  若变异发生后断言未能击杀，系统严格记录为 `MUTATION_SURVIVED`，禁止自动标记为“等价变异”。必须由独立审计者结合语义见证进行人工定性。
+本管道执行器不内嵌硬编码的变异算子表，将所有的业务证伪与防假绿判定完全委托给专职的 **AFG-Engine 验证内核**：
+1. **单一事实源 (SSOT)**：
+   全量 20 大能力字典（63 项全量能力）的 Canary 破坏算子库、L1/L2 统一编码 Taxonomy、外设物理因果律、白盒探针接口（`pal_sim_probe.h`）及等价变异人工裁定协议，**统一以 [防假绿机器验证引擎契约](esp-idf-anti-false-green-verification-engine-contract.md) 为唯一准绳**。
+2. **内核调用与双极性驱动契约**：
+   - 调度器（Runner）通过 RunContext 沙箱加载候选固件，向 AFG-Engine 提交待验 `proofplan.json`；
+   - AFG-Engine 驱动正向基线、Canary 击杀与现场恢复三阶段流水线，逐项收敛 7 类检查闭包，产出 `canary_mutation_kill_receipt.json`；
+   - 调度器直接消费该回执并封入候选包。
+3. **闭环熔断机制**：
+   若 AFG-Engine 报告 `MUTANT_SURVIVED`、存在自拉自唱歌回环或违反物理时延公理，管道立即抛出 `TautologicalTestException` 硬熔断，严禁进入候选包密封与正式晋升阶段。
 
 ---
 
