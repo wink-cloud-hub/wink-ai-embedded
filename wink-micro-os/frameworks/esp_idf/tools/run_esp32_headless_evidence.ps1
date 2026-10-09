@@ -175,7 +175,8 @@ foreach ($c in $carriers) {
 
     $targetScen = if ($Scenario) {
         if ([System.IO.Path]::IsPathRooted($Scenario)) { $Scenario }
-        elseif (Test-Path (Join-Path $scenDir $Scenario)) { Join-Path $scenDir $Scenario }
+        elseif (Test-Path (Join-Path $scenDir $Scenario)) { (Resolve-Path (Join-Path $scenDir $Scenario)).Path }
+        elseif (Test-Path (Join-Path $embeddedRoot $Scenario)) { (Resolve-Path (Join-Path $embeddedRoot $Scenario)).Path }
         else { $Scenario }
     } else {
         if ($WriteEvidence) {
@@ -213,12 +214,13 @@ foreach ($c in $carriers) {
             $ok = $false
         } else {
             $verifierScript = Join-Path $embeddedRoot 'wink-micro-app\vendor\esp_idfv61\.governance\gates\evidence_verifier.py'
-            Write-Host "Recording evidence for $($c.Name)..." -ForegroundColor Magenta
-            $vArgs = @('--write-app', $c.Name, '--report-src', $reportSrc, '--workspace-root', $embeddedRoot)
+            $targetAppRel = ($c.Rel -replace '^vendor/esp_idfv61/', '') -replace '\\', '/'
+            Write-Host "Recording evidence for $($c.Name) ($targetAppRel)..." -ForegroundColor Magenta
+            $vArgs = @($verifierScript, '--write-app', $targetAppRel, '--report-src', $reportSrc, '--workspace-root', $embeddedRoot)
             if ($ConfigId) { $vArgs += @('--config-id', $ConfigId) }
             $effectiveScen = if ($Scenario) { $targetScen } elseif ($targetScen -and (Test-Path -PathType Leaf $targetScen)) { $targetScen } else { $null }
             if ($effectiveScen) { $vArgs += @('--scenario', $effectiveScen) }
-            & python "$verifierScript" @vArgs
+            & python @vArgs
             if ($LASTEXITCODE -ne 0) {
                 Write-Warning "Failed to record evidence for $($c.Name)"
                 $ok = $false
