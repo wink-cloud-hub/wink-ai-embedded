@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.1",
+  "app_id": "get-started/hello_world",
+  "config_id": "default",
+  "overall_verdict": "ELIGIBLE",
+  "execution_identity": {
+    "app_id": "get-started/hello_world",
+    "config_id": "default",
+    "target_soc": "esp32",
+    "backend": "wasm_simulation",
+    "sdkconfig_digest": "sha256-sdkconfig-hello-world",
+    "toolchain_version": "emscripten-3.1.56",
+    "probe_abi_version": 257,
+    "probe_size_bytes": 64,
+    "simulated_soc_or_model": null,
+    "soc_support_verified_by_kconfig": false
+  },
+  "claims_evaluation": [
+    {
+      "claim_id": "claim.start.boot_banner",
+      "status": "PASSED",
+      "reasons": []
+    },
+    {
+      "claim_id": "claim.start.countdown_progress",
+      "status": "PASSED",
+      "reasons": []
+    },
+    {
+      "claim_id": "claim.start.restart_mutation_kill",
+      "status": "PASSED",
+      "reasons": []
+    },
+    {
+      "claim_id": "claim.start.clean_state_recovery",
+      "status": "PASSED",
+      "reasons": []
+    }
+  ],
+  "axioms_evaluation": {},
+  "rejection_reasons": [],
+  "timestamp_utc": "2026-10-09T04:05:20Z",
+  "receipt_digest": "69a73ac1ab6ab26049b37e8c1240f0c357e222380cc37ac87cb8348a09921a24"
+}

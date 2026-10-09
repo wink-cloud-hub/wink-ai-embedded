@@ -1,0 +1,49 @@
+{
+  "schema_version": "1.1",
+  "app_id": "peripherals/uart_echo",
+  "config_id": "default",
+  "overall_verdict": "ELIGIBLE",
+  "execution_identity": {
+    "app_id": "peripherals/uart_echo",
+    "config_id": "default",
+    "target_soc": "esp32",
+    "backend": "wasm_simulation",
+    "sdkconfig_digest": "sha256-sdkconfig-uart-echo",
+    "toolchain_version": "emscripten-3.1.56",
+    "probe_abi_version": 257,
+    "probe_size_bytes": 64,
+    "simulated_soc_or_model": null,
+    "soc_support_verified_by_kconfig": false
+  },
+  "claims_evaluation": [
+    {
+      "claim_id": "claim.uart.stream_tx_rx",
+      "status": "PASSED",
+      "reasons": []
+    },
+    {
+      "claim_id": "claim.uart.echo_causality_witness",
+      "status": "PASSED",
+      "reasons": []
+    },
+    {
+      "claim_id": "claim.uart.mutation_disable_rx_kill",
+      "status": "PASSED",
+      "reasons": []
+    },
+    {
+      "claim_id": "claim.uart.line_break_fault_handled",
+      "status": "PASSED",
+      "reasons": []
+    },
+    {
+      "claim_id": "claim.uart.flush_recovery",
+      "status": "PASSED",
+      "reasons": []
+    }
+  ],
+  "axioms_evaluation": {},
+  "rejection_reasons": [],
+  "timestamp_utc": "2026-10-09T04:05:20Z",
+  "receipt_digest": "ce08717449c2c2c3fb05827562466cdf9479f3095d4765d165d255686ed722fa"
+}

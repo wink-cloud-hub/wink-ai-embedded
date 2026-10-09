@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.1",
+  "app_id": "peripherals/adc_continuous_read",
+  "config_id": "default",
+  "overall_verdict": "REJECTED",
+  "execution_identity": {
+    "app_id": "peripherals/adc_continuous_read",
+    "config_id": "default",
+    "target_soc": "esp32",
+    "backend": "wasm_simulation",
+    "sdkconfig_digest": "sha256-sdkconfig-adc-continuous",
+    "toolchain_version": "emscripten-3.1.56",
+    "probe_abi_version": 257,
+    "probe_size_bytes": 64,
+    "simulated_soc_or_model": null,
+    "soc_support_verified_by_kconfig": false
+  },
+  "claims_evaluation": [
+    {
+      "claim_id": "claim.adc.continuous_conversion",
+      "status": "PASSED",
+      "reasons": []
+    },
+    {
+      "claim_id": "claim.adc.backpressure_overrun",
+      "status": "PASSED",
+      "reasons": []
+    },
+    {
+      "claim_id": "claim.adc.mutation_disable_convert_kill",
+      "status": "PASSED",
+      "reasons": []
+    },
+    {
+      "claim_id": "claim.adc.calibration_fault_handled",
+      "status": "PASSED",
+      "reasons": []
+    },
+    {
+      "claim_id": "claim.adc.buffer_reset_recovery",
+      "status": "PASSED",
+      "reasons": []
+    }
+  ],
+  "axioms_evaluation": {},
+  "rejection_reasons": [
+    "BACKPRESSURE_VIOLATION: Overrun or drop not observed under backpressure for 'claim.adc.backpressure_overrun' (META-18)"
+  ],
+  "timestamp_utc": "2026-10-09T04:05:20Z",
+  "receipt_digest": "4b235f3179db2db925aa97d5e96c715c4d7392b70fe221037b13b7e3f77dc451"
+}
