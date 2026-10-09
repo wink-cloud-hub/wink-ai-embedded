@@ -247,9 +247,9 @@ void esp_spi_reset(void) {
             s_spis[i].token = 0;
             memset(&s_spis[i].cfg, 0, sizeof(s_spis[i].cfg));
         }
+        memset(s_spis[i].eeprom_mem, 0xFF, sizeof(s_spis[i].eeprom_mem));
+        s_spis[i].eeprom_write_enabled = false;
     }
-    memset(s_eeprom_mem, 0xFF, sizeof(s_eeprom_mem));
-    s_eeprom_write_enabled = false;
     pal_spi_deinit_bus(0);
     pal_spi_deinit_bus(1);
 }

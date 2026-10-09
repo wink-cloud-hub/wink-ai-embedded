@@ -298,7 +298,7 @@ void esp_gptimer_reset(void) {
     memset(s_gptimers, 0, sizeof(s_gptimers));
 }
 
-WINK_SIM_EXPORT uint64_t sim_timer_get_counter(uint32_t timer_id) {
+WINK_SIM_EXPORT double sim_timer_get_counter(uint32_t timer_id) {
     if (timer_id >= PAL_HWTIMERS_MAX) {
         return 0;
     }
