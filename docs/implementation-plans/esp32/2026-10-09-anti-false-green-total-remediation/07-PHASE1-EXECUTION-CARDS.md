@@ -5,7 +5,7 @@
 |---|---|
 | 计划编号 | `PLAN-20261009-ESP-IDF-AFG-PHASE1-EXECUTION` |
 | 日期 / 时代戳 | 2026-10-09 (Asia/Shanghai) |
-| 状态 | **Active / Task T1.1 已完成，Task T1.2 启动** |
+| 状态 | **Active / Task T1.1 & T1.2 已完成，Task T1.3 启动** |
 | 关联主控计划 | [00-MASTER-OVERVIEW.md](00-MASTER-OVERVIEW.md) (v1.1 Active) |
 | 阶段实施计划 | [01-PHASE1-PIPELINE-AND-SANDBOX.md](01-PHASE1-PIPELINE-AND-SANDBOX.md) (v1.1 Active) |
 | 共同质量门禁 | [05-EXECUTION-QUALITY-GATES.md](05-EXECUTION-QUALITY-GATES.md) (v1.1 Active) |
@@ -16,8 +16,8 @@
 ## 任务卡索引
 
 - [T1.1 真实采集入口改造与 ProofPlan 预检](#t11-真实采集入口改造与-proofplan-预检) *(已完成 ✅)*
-- [T1.2 生效的 L1/L2 变异、归因与恢复](#t12-生效的-l1l2-变异归因与恢复) *(执行中 🚀)*
-- [T1.3 构建指纹、加载身份与写隔离](#t13-构建指纹加载身份与写隔离) *(待执行)*
+- [T1.2 生效的 L1/L2 变异、归因与恢复](#t12-生效的-l1l2-变异归因与恢复) *(已完成 ✅)*
+- [T1.3 构建指纹、加载身份与写隔离](#t13-构建指纹加载身份与写隔离) *(执行中 🚀)*
 - [T1.4 共用接受策略与旧写入口收敛](#t14-共用接受策略与旧写入口收敛) *(待执行)*
 - [T1.5 进程树 Win32 Job 隔离与有界回收](#t15-进程树-win32-job-隔离与有界回收) *(待执行)*
 - [T1.6 稳定密封与审计绑定](#t16-稳定密封与审计绑定) *(待执行)*
@@ -68,24 +68,54 @@
 - **问题归属**: `I-05`, `I-06`, `I-10`, `AFG-NEW-02`
 - **实现责任人**: 运行时工程师 (Runtime Engineer)
 - **独立复核人**: 测试与安全工程师 (Test & Security Engineer)
+- **工程追踪状态**: **已完成 (Done ✅)**
+
+### 2. 范围与依赖
+- **修改文件**:
+  - `wink-micro-app/vendor/esp_idfv61/.governance/loop/afg/mutation_runner.py` (新增真实变异与归因实现)
+  - `wink-micro-app/vendor/esp_idfv61/.governance/loop/mutator.py`
+  - `wink-micro-app/vendor/esp_idfv61/.governance/loop/mutation_catalog.py`
+  - `wink-micro-app/vendor/esp_idfv61/.governance/tests/unit/test_t1_2_mutation_runner.py` (新增专用单测)
+- **必需前置条件**: T1.1 (Done)
+- **关联技术契约**: [AFG-Engine 契约 2.1 节与 2.3 节](../../../zh/tech-designs/esp32/esp-idf-anti-false-green-verification-engine-contract.md)
+
+### 3. 验收设计 (AC-1.2 落地核验)
+- [x] **行为目标 1 (L1 真实算子注入)**: 协议/驱动层故障注入算子支持 `fault_handling_pass` 与 `mutant_kill_fail`，输出精确 `FAULT_HANDLED_PASS` / `FAULT_UNHANDLED_FAIL` / `MUTANT_KILLED`；
+- [x] **行为目标 2 (L2 源码真实变异与沙箱隔离)**: 源码级变异算子在独立沙箱中通过 AST/Catalog 算子执行真实 C 代码修改，原代码目录零污染；
+- [x] **行为目标 3 (击杀归因四态严格判定)**: 变异执行器输出精确状态：
+  - `MUTATION_NOT_ACTIVATED`: 变异点未触达或算子零匹配（拒绝伪造击杀）；
+  - `MUTANT_SURVIVED`: 变异体存活且业务断言全绿（假绿立证）；
+  - `MUTATION_BUILD_FAILED`: 变异导致编译语法错误（不计入击杀预算，META-23）；
+  - `MUTANT_KILLED`: 变异体被业务断言有效捕获失败；
+- [x] **行为目标 4 (完全原子恢复与脏状态清零)**: `run_recovery` 验证纯净基线复验与 `dirty_state_cleared=True`；
+- [x] **行为目标 5 (L2 变异预算守恒)**: 单一 Claim 严格限制最多 1 次 L2 变异（超额抛出 `MutationBudgetExceededError`）。
+
+### 4. 验证凭据与回执
+- **专用单测**: `pytest tests/unit/test_t1_2_mutation_runner.py` 7/7 全部通过；
+- **全量单测**: `pytest tests/unit/` 37/37 全部通过；
+- **元公理回归**: `pytest tests/meta_invariants/` 31/31 全部通过；
+- **Batch 0 回归**: `pytest tests/gates/test_batch0_evidence.py` 55/55 全部通过。
+
+---
+
+## T1.3 构建指纹、加载身份与写隔离
+
+### 1. 身份与责任
+- **Task ID**: `T1.3`
+- **问题归属**: `I-04`, `I-09`, `I-11`, `AFG-NEW-03`
+- **实现责任人**: 构建与工具工程师 (Build & Tooling Engineer)
+- **独立复核人**: 架构复核者 (Architecture Reviewer)
 - **工程追踪状态**: `执行中`
 
 ### 2. 范围与依赖
 - **修改文件白名单**:
-  - `wink-micro-app/vendor/esp_idfv61/.governance/loop/afg/mutation_runner.py` (新增)
-  - `wink-micro-app/vendor/esp_idfv61/.governance/loop/mutator.py`
-  - `wink-micro-app/vendor/esp_idfv61/.governance/loop/mutation_catalog.py`
-  - `wink-micro-app/vendor/esp_idfv61/.governance/tests/unit/test_t1_2_mutation_runner.py` (新增)
-- **必需前置条件**: T1.1 (Done)
-- **关联技术契约**: [AFG-Engine 契约 2.1 节与 2.3 节](../../../zh/tech-designs/esp32/esp-idf-anti-false-green-verification-engine-contract.md)
+  - `wink-micro-app/vendor/esp_idfv61/.governance/loop/afg/build_sandbox.py`
+  - `wink-micro-app/vendor/esp_idfv61/.governance/loop/pipeline/pipeline.py`
+  - `wink-micro-app/vendor/esp_idfv61/.governance/tests/unit/test_t1_3_build_fingerprint.py` (新增)
+- **必需前置条件**: T1.2 (Done)
+- **关联技术契约**: [AFG-Engine 契约 2.4 节](../../../zh/tech-designs/esp32/esp-idf-anti-false-green-verification-engine-contract.md)
 
-### 3. 验收设计 (AC-1.2)
-- **行为目标 1 (L1 真实算子注入)**: 协议/驱动层故障注入算子（如丢包、断线、时钟跳变）必须通过场景注入或仿真环境实际生效，禁止空跑；
-- **行为目标 2 (L2 源码真实变异与重编)**: 源码级变异算子必须真实修改 C 代码（破坏 app_main、注释重要逻辑、反转分支条件），触发 wasm 重新编译，严禁将原二进制冒充变异体；
-- **行为目标 3 (击杀归因四态严格判定)**: 变异执行器输出精确状态：
-  - `MUTATION_NOT_ACTIVATED`: 变异点未被执行流触达；
-  - `MUTANT_SURVIVED`: 变异体存活且原有业务断言依然全绿（假绿立证）；
-  - `MUTATION_BUILD_FAILED`: 变异导致编译语法错误（不计入击杀预算）；
-  - `MUTANT_KILLED`: 变异体编译成功、被正常执行、并被业务断言有效捕获失败；
-- **行为目标 4 (完全原子恢复与脏状态清零)**: 变异与测试后，受变异源码与资产必须 100% 回滚，重编译基线验证其干净恢复状态 (`dirty_state_cleared=True`)；
-- **行为目标 5 (L2 变异预算守恒)**: 单一 Claim 严格执行不超过 1 次有效 L2 变异（Axiom 7 / META-17）。
+### 3. 验收设计 (AC-1.3 / AC-1.4)
+- **行为目标 1 (全依赖闭包缓存指纹)**: 缓存指纹严格绑定源码摘要、头文件闭包摘要、sdkconfig 摘要、编译器/SDK 版本、门面 Git SHA、补丁摘要和配置 profile ID；
+- **行为目标 2 (缓存命中的双向自检)**: 缓存命中时必须核验产物文件哈希与元数据匹配，损坏或版本不一致时强制重建；
+- **行为目标 3 (工作区只读写隔离)**: 并发构建 attempt 严禁共享可写构建目录，上游原厂代码与正式证据目录受到只读隔离保护。
