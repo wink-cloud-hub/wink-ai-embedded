@@ -93,7 +93,7 @@ wink_status_t pal_hwtimer_fire_soft(uint8_t timer_id) {
     if (!slot->in_use || !slot->is_running) return WINK_ERR_INVALID_STATE;
 
     bool is_oneshot = slot->cfg.oneshot;
-    pal_hwtimer_cb_t cb = slot->cfg.callback;
+    pal_hwtimer_isr_t cb = slot->cfg.callback;
     void *cb_arg = slot->cfg.callback_arg;
 
     if (is_oneshot) {
@@ -136,7 +136,7 @@ void pal_wasm_hwtimer_drain(void) {
             }
 
             bool is_oneshot = slot->cfg.oneshot;
-            pal_hwtimer_cb_t cb = slot->cfg.callback;
+            pal_hwtimer_isr_t cb = slot->cfg.callback;
             void *cb_arg = slot->cfg.callback_arg;
 
             if (is_oneshot) {

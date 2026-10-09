@@ -386,6 +386,19 @@ if(TARGET_PLATFORM STREQUAL "wasm" AND EMSCRIPTEN)
     endif()
     include(${_WASM_EXPORT_CMAKE})
 
+    # ESP telemetry exports are strong symbols defined only by frameworks/esp_idf;
+    # emcc treats exporting an undefined symbol as a hard link error, so non-ESP
+    # apps must not advertise them (PLAN-20261009-CMS8S78XX-BUILD-BASELINE, S1).
+    if(WINK_APP_ESP_IDF)
+        file(READ "${_WASM_EXPORT_JSON}" _wink_export_json)
+        string(JSON _wink_esp_exp_len LENGTH "${_wink_export_json}" "ESP_IDF_EXPORTED_FUNCTIONS")
+        math(EXPR _wink_esp_exp_last "${_wink_esp_exp_len} - 1")
+        foreach(_wink_esp_i RANGE 0 ${_wink_esp_exp_last})
+            string(JSON _wink_esp_sym GET "${_wink_export_json}" "ESP_IDF_EXPORTED_FUNCTIONS" ${_wink_esp_i})
+            string(APPEND WASM_EXPORT_FUNCTIONS ",${_wink_esp_sym}")
+        endforeach()
+    endif()
+
     add_executable(wink_simulator
         ${PAL_WASM_SOURCES}
         ${WASM_ENTRY_SOURCE}
