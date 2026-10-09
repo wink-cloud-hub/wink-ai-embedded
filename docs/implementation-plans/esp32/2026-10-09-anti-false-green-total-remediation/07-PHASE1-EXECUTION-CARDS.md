@@ -200,19 +200,78 @@
 - **问题归属**: `I-08`, `I-09`, `AFG-NEW-02`
 - **实现责任人**: 凭据密封与发布维护者 (Packaging & Promotion Engineer)
 - **独立复核人**: 架构复核者 (Architecture Reviewer)
-- **工程追踪状态**: `待执行`
+- **工程追踪状态**: `已完成 (Done ✅)`
 
 ### 2. 范围与依赖
 - **修改文件白名单**:
-  - `wink-micro-app/vendor/esp_idfv61/.governance/tools/loop/pipeline.py` (or afg canonical packaging logic)
+  - `wink-micro-app/vendor/esp_idfv61/.governance/loop/afg/canonical_sealing.py` (新增规范化密封实现)
+  - `wink-micro-app/vendor/esp_idfv61/.governance/loop/afg/__init__.py`
+  - `wink-micro-app/vendor/esp_idfv61/.governance/loop/pipeline/pipeline.py`
   - `wink-micro-app/vendor/esp_idfv61/.governance/tools/inspect_candidate.py`
   - `wink-micro-app/vendor/esp_idfv61/.governance/tests/unit/test_t1_6_envelope_sealing.py` (新增)
 - **必需前置条件**: T1.5 (Done)
 - **关联技术契约**: [Loop 可靠性契约 2.4 节](../../../zh/tech-designs/esp32/esp-idf-loop-reliability-contract.md)
 
 ### 3. 验收设计 (AC-1.7 落地核验)
-- [ ] **行为目标 1 (Payload 与 Envelope 严格分离与无自引用)**: payload 清单完全冻结后计算 `payload_sha256`，外部 summary/audit 位于 envelope，严禁自引用与密封后修改 payload；
-- [ ] **行为目标 2 (跨平台规范化摘要与 JCS 序列化)**: 换行符统一归一化为 LF，JSON 清单严格遵守 RFC 8785 (JCS) 消除字段顺序与空白符差异；
-- [ ] **行为目标 3 (审计必须绑定独立主体与 AFG 回执)**: 拒绝无报告/无 ProofPlan/自签/借用审计凭据，正式接受入口强制重算实际文件摘要并校验有效性。
+- [x] **行为目标 1 (Payload 与 Envelope 严格分离与无自引用)**: payload 清单完全冻结后计算 `payload_sha256`，外部 summary/audit 位于 envelope，严禁自引用与密封后修改 payload；
+- [x] **行为目标 2 (跨平台规范化摘要与 JCS 序列化)**: 换行符统一归一化为 LF，JSON 清单严格遵守 RFC 8785 (JCS) 消除字段顺序与空白符差异；
+- [x] **行为目标 3 (审计必须绑定独立主体与 AFG 回执)**: 拒绝无报告/无 ProofPlan/自签/借用审计凭据，正式接受入口强制重算实际文件摘要并校验有效性。
+
+### 4. 验证凭据与回执
+- **专用单测**: `pytest tests/unit/test_t1_6_envelope_sealing.py` 10/10 全部通过；
+- **全量单测**: `pytest tests/unit/` 72/72 全部通过；
+- **元公理回归**: `pytest tests/meta_invariants/` 31/31 全部通过；
+- **Batch 0 回归**: `pytest tests/gates/test_batch0_evidence.py` 55/55 全部通过；
+- **核验器单测**: `pytest tests/gates/test_evidence_verifier.py` 22/22 全部通过；
+- **对抗门禁回归**: `pytest tests/gates/test_adversarial_suite.py` 35/35 全部通过。
+
+---
+
+## T1.7 持锁 CAS、幂等与崩溃恢复
+
+### 1. 身份与责任
+- **Task ID**: `T1.7`
+- **问题归属**: `I-10`, `G-02`
+- **实现责任人**: 事务与发布工程师 (Transaction & CAS Engineer)
+- **独立复核人**: 架构复核者 (Architecture Reviewer)
+- **工程追踪状态**: `待执行`
+
+### 2. 范围与依赖
+- **修改文件白名单**:
+  - `wink-micro-app/vendor/esp_idfv61/.governance/loop/services/promotion_service.py`
+  - `wink-micro-app/vendor/esp_idfv61/.governance/tools/promotion_service.py`
+  - `wink-micro-app/vendor/esp_idfv61/.governance/loop/harness/lock_lease.py`
+  - `wink-micro-app/vendor/esp_idfv61/.governance/tests/unit/test_t1_7_cas_promotion.py` (新增)
+- **必需前置条件**: T1.5, T1.6 (Done)
+- **关联技术契约**: [Loop 可靠性契约 2.7 节](../../../zh/tech-designs/esp32/esp-idf-loop-reliability-contract.md)
+
+### 3. 验收设计 (AC-1.8 落地核验)
+- [ ] **行为目标 1 (真磁盘并发与乐观 CAS 锁控制)**: 验证 manifest.lock 租约控制、并发 CAS 冲突检测与安全重试，禁止仅凭 TTL 粗暴驱逐活跃锁持有者；
+- [ ] **行为目标 2 (不可变发布与原子引用替换)**: 先在隔离 reports 目录写入不可变包归档，再在锁保护下原子更新清单引用，杜绝中间态可见；
+- [ ] **行为目标 3 (事务日志、崩溃恢复与幂等读回)**: 事务各边界遭遇进程终止、崩溃或句柄占用时支持 journal 读回与恢复，已晋升请求幂等返回成功且旧包不损坏。
+
+---
+
+## T1.8 两项 Pilot 与防线反向自验
+
+### 1. 身份与责任
+- **Task ID**: `T1.8`
+- **问题归属**: `I-17`, `AFG-NEW-01`
+- **实现责任人**: 仿真与端到端集成工程师 (Integration & Pilot Engineer)
+- **独立复核人**: 架构复核者 (Architecture Reviewer)
+- **工程追踪状态**: `待执行`
+
+### 2. 范围与依赖
+- **修改文件白名单**:
+  - `wink-micro-app/vendor/esp_idfv61/.governance/tools/verify_afg_engine.py`
+  - `wink-micro-app/vendor/esp_idfv61/.governance/tests/unit/test_t1_8_pilot_e2e.py` (新增)
+- **必需前置条件**: T1.1～T1.7 (Done)
+- **关联技术契约**: [AFG-Engine 契约 5 节与 6 节](../../../zh/tech-designs/esp32/esp-idf-anti-false-green-verification-engine-contract.md)
+
+### 3. 验收设计 (AC-1.9 落地核验)
+- [ ] **行为目标 1 (Pilot A / Pilot B 真实端到端闭环)**: hello_world 与 uart_echo 通过真实 headless 管道执行，涵盖 baseline、Canary 击杀与现场恢复；
+- [ ] **行为目标 2 (机器对账与全量检查集合校验)**: 7 类检查闭包、ProofPlan Claims 与执行身份机器对账无遗漏；
+- [ ] **行为目标 3 (防线反向自验与变红校验)**: 分别拔除目标核验防线（如注入恒真断言或注销变异算子），端到端流水线必须准确熔断变红拒绝。
+
 
 

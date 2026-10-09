@@ -38,6 +38,17 @@ from .mutation_runner import (
     MutationBudgetExceededError,
     EquivalentMutantNotSignedError,
 )
+from .canonical_sealing import (
+    canonical_json_dumps,
+    canonical_json_bytes,
+    compute_normalized_file_sha256,
+    is_envelope_file,
+    compute_payload_manifest,
+    seal_candidate_payload,
+    verify_payload_seal,
+    validate_candidate_for_audit,
+    ENVELOPE_FILENAMES,
+)
 
 __all__ = [
     "AFGEngine",
@@ -63,4 +74,14 @@ __all__ = [
     "MutationRunner",
     "MutationBudgetExceededError",
     "EquivalentMutantNotSignedError",
+    "canonical_json_dumps",
+    "canonical_json_bytes",
+    "compute_normalized_file_sha256",
+    "is_envelope_file",
+    "compute_payload_manifest",
+    "seal_candidate_payload",
+    "verify_payload_seal",
+    "validate_candidate_for_audit",
+    "ENVELOPE_FILENAMES",
 ]
+

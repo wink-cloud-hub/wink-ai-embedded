@@ -579,27 +579,26 @@ class LoopPipeline:
                 "run_manifest_ref": "run-manifest.json"
             }
 
-            # L5-T1: Compute immutable package summary
-            pkg_hasher = hashlib.sha256()
-            for p in sorted(run_root.rglob("*")):
-                if p.is_file() and not p.name.endswith(".tmp") and p.name != "package_summary.json":
-                    pkg_hasher.update(f"{p.relative_to(run_root).as_posix()}:{file_sha256(p)}\n".encode("utf-8"))
-            package_digest = pkg_hasher.hexdigest()
-
-            pkg_summary = {
-                "schema_version": "1.0",
-                "run_id": run_id,
-                "app_id": app_id,
-                "config_id": execution["config_id"],
-                "package_sha256": package_digest,
-                "status": "candidate_ready",
-                "sealed_at_utc": now_str
-            }
-            (run_root / "package_summary.json").write_text(json.dumps(pkg_summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-            candidate["package_sha256"] = package_digest
-
+            # Finalize and freeze candidate_evidence.json before sealing (eliminates self-reference / post-seal mutation)
             candidate.update(status="candidate_ready", stage="CANDIDATE", message="Baseline, assertion self-check and recovery accepted")
             save_candidate()
+
+            # L5-T1 / T1.6: Seal candidate payload into envelope package_summary.json
+            try:
+                from loop.afg.canonical_sealing import seal_candidate_payload
+            except ImportError:
+                from loop.canonical_sealing import seal_candidate_payload
+
+            summary_data = seal_candidate_payload(
+                candidate_dir=run_root,
+                run_id=run_id,
+                app_id=app_id,
+                config_id=execution["config_id"],
+                sealed_at_utc=now_str
+            )
+            candidate["package_sha256"] = summary_data["package_sha256"]
+            candidate["payload_sha256"] = summary_data["payload_sha256"]
+
 
             # Tiered retention policy garbage collection (GAP-03)
             try:
