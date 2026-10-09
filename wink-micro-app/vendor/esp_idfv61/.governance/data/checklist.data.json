@@ -200,12 +200,12 @@
           },
           "evidence": {
             "backend": "wasm_simulation",
-            "run_id": "run-20261006-esp.get_started.hello_world-verified",
-            "assets_sha256": "8384d65fd469fabf671faac7d79553a929bb0d92f06b2ea3b1f329c769259125",
+            "run_id": "run-20261009-esp.get_started.hello_world-verified",
+            "assets_sha256": "12860cb90d5c2f06b28ef2dd37a145e9e11a4c1a24561a9151a25dde70d83298",
             "scenario_sha256": "eb39fc2dc8a8e1d75b270e38c7098a3db4d7a82f9c199ef9ff0d5a4ebcffdf51",
             "execution_report_ref": ".governance/reports/get-started/hello_world/run-report.json",
-            "verified_commit": "f84fc383a4a656a5f47e3904f4b19cd6fbadb36b",
-            "verified_at": "2026-10-06T01:54:40Z"
+            "verified_commit": "7150722ce6e1c194efd0a378b14c92b086938529",
+            "verified_at": "2026-10-09T10:55:18Z"
           },
           "remediation_decision": {
             "verdict": "ELIGIBLE",

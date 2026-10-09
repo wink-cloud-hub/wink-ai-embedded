@@ -1,15 +1,15 @@
 {
   "schema_version": "1.1",
-  "app_id": "get-started/hello_world",
+  "app_id": "esp.get_started.hello_world",
   "config_id": "default",
-  "overall_verdict": "ELIGIBLE",
+  "overall_verdict": "INCOMPLETE",
   "execution_identity": {
-    "app_id": "get-started/hello_world",
+    "app_id": "esp.get_started.hello_world",
     "config_id": "default",
     "target_soc": "esp32",
     "backend": "wasm_simulation",
-    "sdkconfig_digest": "sha256-sdkconfig-hello-world",
-    "toolchain_version": "emscripten-3.1.56",
+    "sdkconfig_digest": "20b03b7c1cafd806383cbfab8fd4b2106d82eb180a156b0d6af3bcdd18b885f8",
+    "toolchain_version": "emscripten-6.0.9",
     "probe_abi_version": 257,
     "probe_size_bytes": 64,
     "simulated_soc_or_model": null,
@@ -28,8 +28,10 @@
     },
     {
       "claim_id": "claim.start.restart_mutation_kill",
-      "status": "PASSED",
-      "reasons": []
+      "status": "INCOMPLETE",
+      "reasons": [
+        "MISSING_EVIDENCE_RECORDS"
+      ]
     },
     {
       "claim_id": "claim.start.clean_state_recovery",
@@ -39,6 +41,6 @@
   ],
   "axioms_evaluation": {},
   "rejection_reasons": [],
-  "timestamp_utc": "2026-10-09T07:05:42Z",
-  "receipt_digest": "69a73ac1ab6ab26049b37e8c1240f0c357e222380cc37ac87cb8348a09921a24"
+  "timestamp_utc": "2026-10-09T11:45:59Z",
+  "receipt_digest": "cc117c4e17b329ce570352b70a43ce979aa6e9f79cecd58ca5b8283b0fea0fb3"
 }

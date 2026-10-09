@@ -1,14 +1,14 @@
 # ESP-IDF 存量 46 项已验证条目 AFG v1.1 凭据降级与重验裁决报告
 
-> 评估时间: 2026-10-09T04:06:42Z | 裁决标准: `AFG-Engine v1.1 四态决策树`
+> 评估时间: 2026-10-09T10:44:12Z | 裁决标准: `AFG-Engine v1.1 四态决策树`
 
 ## 1. 总体裁决汇总
 
 | 裁决状态 | 条目数量 | 处理措施与跟进路径 |
 |---|---|---|
-| **ELIGIBLE** (完全合规) | **6** | 直接签发 v1.1 凭据，维持验证有效状态 |
+| **ELIGIBLE** (完全合规) | **4** | 直接签发 v1.1 凭据，维持验证有效状态 |
 | **needs_driver_fix** (驱动缺陷阻断) | **1** | 归入 Loop 整改计划跟踪（S-03），等待底层驱动修复后重验 |
-| **needs_proofplan_update** (待补变异场景) | **39** | 待 Tier 2/3 Archetype 接入后补充负向变异见证，暂停晋升 |
+| **needs_proofplan_update** (待补变异场景) | **41** | 待 Tier 2/3 Archetype 接入后补充负向变异见证，暂停晋升 |
 | **deferred** (硬件独占) | **0** | 芯片独占外设诚实标注暂缓，严禁伪造通用通过 |
 | **合计** | **46** | 100% 显式裁决，零静默忽略项 |
 
@@ -17,7 +17,7 @@
 | # | 条目 ID | 上游路径 | 裁决状态 | 裁决原因 |
 |---|---|---|---|---|
 | 1 | `esp.get_started.blink` | `examples/get-started/blink` | 🟡 `needs_proofplan_update` | Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration |
-| 2 | `esp.get_started.hello_world` | `examples/get-started/hello_world` | 🟢 `ELIGIBLE` | Verified under AFG v1.1: baseline PASS + twin/canary mutation kill |
+| 2 | `esp.get_started.hello_world` | `examples/get-started/hello_world` | 🟡 `needs_proofplan_update` | Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration |
 | 3 | `esp.peripherals.adc.continuous_read` | `examples/peripherals/adc/continuous_read` | 🔴 `needs_driver_fix` | Driver defect S-03: ADC continuous read virtual clock backpressure / overrun not reported |
 | 4 | `esp.peripherals.adc.oneshot_read` | `examples/peripherals/adc/oneshot_read` | 🟡 `needs_proofplan_update` | Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration |
 | 5 | `esp.peripherals.dac.dac_cosine_wave` | `examples/peripherals/dac/dac_cosine_wave` | 🟡 `needs_proofplan_update` | Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration |
@@ -31,7 +31,7 @@
 | 13 | `esp.peripherals.spi_master.hd_eeprom` | `examples/peripherals/spi_master/hd_eeprom` | 🟡 `needs_proofplan_update` | Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration |
 | 14 | `esp.peripherals.timer_group.gptimer` | `examples/peripherals/timer_group/gptimer` | 🟡 `needs_proofplan_update` | Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration |
 | 15 | `esp.peripherals.uart.uart_async_rxtxtasks` | `examples/peripherals/uart/uart_async_rxtxtasks` | 🟡 `needs_proofplan_update` | Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration |
-| 16 | `esp.peripherals.uart.uart_echo` | `examples/peripherals/uart/uart_echo` | 🟢 `ELIGIBLE` | Verified under AFG v1.1: baseline PASS + twin/canary mutation kill |
+| 16 | `esp.peripherals.uart.uart_echo` | `examples/peripherals/uart/uart_echo` | 🟡 `needs_proofplan_update` | Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration |
 | 17 | `esp.peripherals.uart.uart_echo_rs485` | `examples/peripherals/uart/uart_echo_rs485` | 🟡 `needs_proofplan_update` | Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration |
 | 18 | `esp.peripherals.uart.uart_events` | `examples/peripherals/uart/uart_events` | 🟢 `ELIGIBLE` | Verified under AFG v1.1: baseline PASS + twin/canary mutation kill |
 | 19 | `esp.system.deep_sleep` | `examples/system/deep_sleep` | 🟡 `needs_proofplan_update` | Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration |

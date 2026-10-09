@@ -46,6 +46,6 @@
   "rejection_reasons": [
     "BACKPRESSURE_VIOLATION: Overrun or drop not observed under backpressure for 'claim.adc.backpressure_overrun' (META-18)"
   ],
-  "timestamp_utc": "2026-10-09T07:05:42Z",
+  "timestamp_utc": "2026-10-09T10:33:20Z",
   "receipt_digest": "4b235f3179db2db925aa97d5e96c715c4d7392b70fe221037b13b7e3f77dc451"
 }
