@@ -62,6 +62,9 @@ class LockLeaseError(Exception):
     pass
 
 
+import uuid
+
+
 class FileLockLease:
     """File lock with time-bounded lease and dead-process self-healing."""
 
@@ -75,6 +78,11 @@ class FileLockLease:
         self.lease_ttl_seconds = lease_ttl_seconds
         self.hostname = hostname or socket.gethostname()
         self._acquired = False
+        self._token: Optional[str] = None
+
+    @property
+    def token(self) -> Optional[str]:
+        return self._token
 
     def acquire(self, timeout_seconds: float = 10.0, poll_interval_ms: int = 100) -> None:
         """Acquire lock within timeout, healing stale or dead-process locks."""
@@ -87,7 +95,7 @@ class FileLockLease:
                 self._acquired = True
                 return
 
-            # Check if existing lock is stale or dead
+            # Check if existing lock is held by a dead process or expired cross-host lease
             if self._heal_stale_lock():
                 # Attempt immediate acquisition after healing
                 if self._try_acquire(pid):
@@ -104,8 +112,10 @@ class FileLockLease:
             time.sleep((poll_interval_ms / 1000.0) * jitter)
 
     def _try_acquire(self, pid: int) -> bool:
-        """Atomically create lock file via exclusive creation."""
+        """Atomically create lock file via exclusive creation with a unique fencing token."""
+        token = f"{pid}-{int(time.time() * 1000)}-{uuid.uuid4().hex[:8]}"
         lock_data = {
+            "token": token,
             "pid": pid,
             "hostname": self.hostname,
             "created_at": time.time(),
@@ -118,6 +128,7 @@ class FileLockLease:
             fd = os.open(str(self.lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
             with os.fdopen(fd, "w", encoding="utf-8") as f:
                 json.dump(lock_data, f, indent=2)
+            self._token = token
             return True
         except FileExistsError:
             return False
@@ -125,7 +136,10 @@ class FileLockLease:
             return False
 
     def _heal_stale_lock(self) -> bool:
-        """Check if lock is held by a dead process or expired lease; break if so."""
+        """
+        Check if lock is held by a dead process or expired cross-host lease.
+        Constraint 3.5: Forbids evicting active living processes merely due to TTL on same host.
+        """
         try:
             if not self.lock_path.is_file():
                 return False
@@ -139,37 +153,78 @@ class FileLockLease:
             now = time.time()
             is_expired = now > expires_at
 
-            # If same host, check if process is dead
-            is_dead = False
+            # If on the same host, check process liveness
             if holder_host == self.hostname and holder_pid > 0:
-                is_dead = not is_process_alive(holder_pid)
-
-            if is_expired or is_dead:
-                # Safe break: remove stale lock file
+                is_alive = is_process_alive(holder_pid)
+                if is_alive:
+                    # Active process is still running: never evict merely due to TTL
+                    return False
+                # Process is dead / crashed: safe to break
                 try:
                     self.lock_path.unlink(missing_ok=True)
                     return True
                 except OSError:
                     return False
+            else:
+                # Cross-host: cannot probe PID, rely on TTL expiration
+                if is_expired:
+                    try:
+                        self.lock_path.unlink(missing_ok=True)
+                        return True
+                    except OSError:
+                        return False
         except Exception:
             pass
         return False
 
+    def is_owner(self) -> bool:
+        """Check if this instance currently owns the lock on disk."""
+        if not self._acquired or not self._token:
+            return False
+        try:
+            if not self.lock_path.is_file():
+                return False
+            data = json.loads(self.lock_path.read_text(encoding="utf-8"))
+            return data.get("token") == self._token
+        except Exception:
+            return False
+
+    def renew(self, extension_seconds: Optional[float] = None) -> bool:
+        """Heartbeat renewal: extend lease expiration if we are the current owner."""
+        if not self.is_owner():
+            return False
+        ext = extension_seconds or self.lease_ttl_seconds
+        try:
+            raw = self.lock_path.read_text(encoding="utf-8")
+            data = json.loads(raw)
+            if data.get("token") != self._token:
+                return False
+            data["expires_at"] = time.time() + ext
+            data["renewed_at"] = time.time()
+            # Write via temporary file replacement for atomicity
+            tmp = self.lock_path.with_suffix(f".tmp.{os.getpid()}")
+            tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
+            os.replace(tmp, self.lock_path)
+            return True
+        except Exception:
+            return False
+
     def release(self) -> None:
-        """Release the lock if acquired by this instance."""
+        """Release the lock if acquired by this instance with matching token."""
         if not self._acquired:
             return
         try:
             if self.lock_path.is_file():
-                # Verify ownership before removing
+                # Verify token ownership before removing to prevent deleting new holder's lock
                 try:
                     data = json.loads(self.lock_path.read_text(encoding="utf-8"))
-                    if data.get("pid") == os.getpid():
+                    if data.get("token") == self._token:
                         self.lock_path.unlink(missing_ok=True)
                 except Exception:
-                    self.lock_path.unlink(missing_ok=True)
+                    pass
         finally:
             self._acquired = False
+            self._token = None
 
     def __enter__(self) -> FileLockLease:
         self.acquire()
@@ -177,3 +232,4 @@ class FileLockLease:
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self.release()
+

@@ -234,7 +234,7 @@
 - **问题归属**: `I-10`, `G-02`
 - **实现责任人**: 事务与发布工程师 (Transaction & CAS Engineer)
 - **独立复核人**: 架构复核者 (Architecture Reviewer)
-- **工程追踪状态**: `待执行`
+- **工程追踪状态**: `已完成 (Done ✅)`
 
 ### 2. 范围与依赖
 - **修改文件白名单**:
@@ -246,9 +246,18 @@
 - **关联技术契约**: [Loop 可靠性契约 2.7 节](../../../zh/tech-designs/esp32/esp-idf-loop-reliability-contract.md)
 
 ### 3. 验收设计 (AC-1.8 落地核验)
-- [ ] **行为目标 1 (真磁盘并发与乐观 CAS 锁控制)**: 验证 manifest.lock 租约控制、并发 CAS 冲突检测与安全重试，禁止仅凭 TTL 粗暴驱逐活跃锁持有者；
-- [ ] **行为目标 2 (不可变发布与原子引用替换)**: 先在隔离 reports 目录写入不可变包归档，再在锁保护下原子更新清单引用，杜绝中间态可见；
-- [ ] **行为目标 3 (事务日志、崩溃恢复与幂等读回)**: 事务各边界遭遇进程终止、崩溃或句柄占用时支持 journal 读回与恢复，已晋升请求幂等返回成功且旧包不损坏。
+- [x] **行为目标 1 (真磁盘并发与乐观 CAS 锁控制)**: 验证 manifest.lock 租约控制、并发 CAS 冲突检测与安全重试，禁止仅凭 TTL 粗暴驱逐活跃锁持有者；
+- [x] **行为目标 2 (不可变发布与原子引用替换)**: 先在隔离 reports 目录写入不可变包归档，再在锁保护下原子更新清单引用，杜绝中间态可见；
+- [x] **行为目标 3 (事务日志、崩溃恢复与幂等读回)**: 事务各边界遭遇进程终止、崩溃或句柄占用时支持 journal 读回与恢复，已晋升请求幂等返回成功且旧包不损坏。
+
+### 4. 验证凭据与回执
+- **专用单测**: `pytest tests/unit/test_t1_7_cas_promotion.py` 7/7 全部通过；
+- **全量单测**: `pytest tests/unit/` 79/79 全部通过；
+- **元公理回归**: `pytest tests/meta_invariants/` 31/31 全部通过；
+- **Batch 0 回归**: `pytest tests/gates/test_batch0_evidence.py` 55/55 全部通过；
+- **核验器单测**: `pytest tests/gates/test_evidence_verifier.py` 22/22 全部通过；
+- **对抗门禁回归**: `pytest tests/gates/test_adversarial_suite.py` 35/35 全部通过。
+
 
 ---
 
