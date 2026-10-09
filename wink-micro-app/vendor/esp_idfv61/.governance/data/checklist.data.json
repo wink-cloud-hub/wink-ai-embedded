@@ -6,8 +6,8 @@
     "scope_in": 312,
     "scope_out": 166,
     "scope_unknown": 0,
-    "in_scope_active": 291,
-    "in_scope_deferred": 21,
+    "in_scope_active": 267,
+    "in_scope_deferred": 45,
     "audited": 46,
     "verified_configs": 46,
     "verified": 46
@@ -41,8 +41,20 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
-        "sdkconfig_overrides": {}
+        "header_closure": [
+          "driver/gpio.h",
+          "esp_log.h",
+          "freertos/FreeRTOS.h",
+          "freertos/task.h",
+          "led_strip.h",
+          "sdkconfig.h",
+          "stdio.h"
+        ],
+        "sdkconfig_overrides": {
+          "CONFIG_BLINK_LED_GPIO": "y",
+          "CONFIG_BLINK_GPIO": "37",
+          "CONFIG_BLINK_LED_STRIP": "y"
+        }
       },
       "fidelity_contract": {
         "axes_declared": {
@@ -94,6 +106,13 @@
             "execution_report_ref": ".governance/reports/get-started/blink_gpio/run-report.json",
             "verified_commit": "f84fc383a4a656a5f47e3904f4b19cd6fbadb36b",
             "verified_at": "2026-10-06T01:44:24Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -125,7 +144,16 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "esp_chip_info.h",
+          "esp_flash.h",
+          "esp_system.h",
+          "freertos/FreeRTOS.h",
+          "freertos/task.h",
+          "inttypes.h",
+          "sdkconfig.h",
+          "stdio.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -178,6 +206,13 @@
             "execution_report_ref": ".governance/reports/get-started/hello_world/run-report.json",
             "verified_commit": "f84fc383a4a656a5f47e3904f4b19cd6fbadb36b",
             "verified_at": "2026-10-06T01:54:40Z"
+          },
+          "remediation_decision": {
+            "verdict": "ELIGIBLE",
+            "reason": "Verified under AFG v1.1: baseline PASS + twin/canary mutation kill",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -210,7 +245,17 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "esp_adc/adc_continuous.h",
+          "esp_log.h",
+          "freertos/FreeRTOS.h",
+          "freertos/semphr.h",
+          "freertos/task.h",
+          "sdkconfig.h",
+          "soc/soc_caps.h",
+          "stdio.h",
+          "string.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -270,6 +315,13 @@
             "execution_report_ref": ".governance/reports/peripherals/adc_continuous_read/run-report.json",
             "verified_commit": "11fde1dc07b46bbf1cec63640dc5a33696538b39",
             "verified_at": "2026-10-06T00:19:18Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_driver_fix",
+            "reason": "Driver defect S-03: ADC continuous read virtual clock backpressure / overrun not reported",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -302,7 +354,18 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "esp_adc/adc_cali.h",
+          "esp_adc/adc_cali_scheme.h",
+          "esp_adc/adc_oneshot.h",
+          "esp_log.h",
+          "freertos/FreeRTOS.h",
+          "freertos/task.h",
+          "soc/soc_caps.h",
+          "stdio.h",
+          "stdlib.h",
+          "string.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -362,6 +425,13 @@
             "execution_report_ref": ".governance/reports/peripherals/adc_oneshot_read/run-report.json",
             "verified_commit": "11fde1dc07b46bbf1cec63640dc5a33696538b39",
             "verified_at": "2026-10-06T00:19:29Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -887,8 +957,16 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
-        "sdkconfig_overrides": {}
+        "header_closure": [
+          "driver/dac_cosine.h",
+          "esp_adc/adc_oneshot.h",
+          "esp_check.h",
+          "freertos/FreeRTOS.h",
+          "freertos/task.h"
+        ],
+        "sdkconfig_overrides": {
+          "CONFIG_ADC_DISABLE_DAC_OUTPUT": "n"
+        }
       },
       "fidelity_contract": {
         "axes_declared": {
@@ -947,6 +1025,13 @@
             "execution_report_ref": ".governance/reports/peripherals/dac_dac_cosine_wave/run-report.json",
             "verified_commit": "4cd3544912df2f0238bc4b77f6077378d4587585",
             "verified_at": "2026-10-03T00:19:04Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -980,8 +1065,16 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
-        "sdkconfig_overrides": {}
+        "header_closure": [
+          "driver/dac_oneshot.h",
+          "esp_adc/adc_oneshot.h",
+          "esp_check.h",
+          "freertos/FreeRTOS.h",
+          "freertos/task.h"
+        ],
+        "sdkconfig_overrides": {
+          "CONFIG_ADC_DISABLE_DAC_OUTPUT": "n"
+        }
       },
       "fidelity_contract": {
         "axes_declared": {
@@ -1040,6 +1133,13 @@
             "execution_report_ref": ".governance/reports/peripherals/dac_dac_oneshot/run-report.json",
             "verified_commit": "a7d0b63831319d4956df03e2df0cbfe256b67c4a",
             "verified_at": "2026-10-02T09:07:01Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -1194,8 +1294,23 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
-        "sdkconfig_overrides": {}
+        "header_closure": [
+          "driver/dedic_gpio.h",
+          "driver/gpio.h",
+          "esp_check.h",
+          "esp_err.h",
+          "esp_log.h",
+          "freertos/FreeRTOS.h",
+          "freertos/task.h",
+          "sdkconfig.h",
+          "soft_uart.h",
+          "stdint.h",
+          "stdio.h"
+        ],
+        "sdkconfig_overrides": {
+          "CONFIG_ESP_INT_WDT": "n",
+          "CONFIG_ESP_TASK_WDT_EN": "n"
+        }
       },
       "fidelity_contract": {
         "axes_declared": {
@@ -1247,6 +1362,13 @@
             "execution_report_ref": ".governance/reports/peripherals/dedicated_gpio_soft_uart/run-report.json",
             "verified_commit": "2f63b1c0",
             "verified_at": "2026-10-07T08:10:00Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -1260,7 +1382,8 @@
       "scope": {
         "inclusion": "in_scope",
         "exclusion_reason": null,
-        "schedule": "active"
+        "schedule": "deferred",
+        "deferral_reason": "hardware_exclusive_peripheral_not_on_esp32"
       },
       "audit": {
         "verdict": "pending",
@@ -1311,7 +1434,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "peripherals/dma_async_color_convert"
+      "target_app_dir": "peripherals/dma_async_color_convert",
+      "remediation_decision": "hardware_exclusive_deferred"
     },
     {
       "id": "esp.peripherals.dma.async_crc",
@@ -1321,7 +1445,8 @@
       "scope": {
         "inclusion": "in_scope",
         "exclusion_reason": null,
-        "schedule": "active"
+        "schedule": "deferred",
+        "deferral_reason": "hardware_exclusive_peripheral_not_on_esp32"
       },
       "audit": {
         "verdict": "pending",
@@ -1372,7 +1497,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "peripherals/dma_async_crc"
+      "target_app_dir": "peripherals/dma_async_crc",
+      "remediation_decision": "hardware_exclusive_deferred"
     },
     {
       "id": "esp.peripherals.gpio.generic_gpio",
@@ -1401,7 +1527,16 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "driver/gpio.h",
+          "freertos/FreeRTOS.h",
+          "freertos/queue.h",
+          "freertos/task.h",
+          "inttypes.h",
+          "stdio.h",
+          "stdlib.h",
+          "string.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -1454,6 +1589,13 @@
             "execution_report_ref": ".governance/reports/peripherals/gpio_generic_gpio/run-report.json",
             "verified_commit": "fd7ac922e4ff651fa1d9686181768438782b6656",
             "verified_at": "2026-10-02T21:31:49Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -1608,7 +1750,14 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "driver/i2c_master.h",
+          "esp_log.h",
+          "freertos/FreeRTOS.h",
+          "freertos/task.h",
+          "sdkconfig.h",
+          "stdio.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -1668,6 +1817,13 @@
             "execution_report_ref": ".governance/reports/peripherals/i2c_basic/run-report.json",
             "verified_commit": "dcf19fb32e0854bb511d9e45bb227318bf9e806d",
             "verified_at": "2026-10-02T07:09:40Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -1700,7 +1856,21 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "driver/i2c_master.h",
+          "esp_check.h",
+          "esp_err.h",
+          "esp_log.h",
+          "esp_types.h",
+          "freertos/FreeRTOS.h",
+          "freertos/task.h",
+          "i2c_eeprom.h",
+          "sdkconfig.h",
+          "stdint.h",
+          "stdio.h",
+          "string.h",
+          "sys/param.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -1753,6 +1923,13 @@
             "execution_report_ref": ".governance/reports/peripherals/i2c_i2c_eeprom/run-report.json",
             "verified_commit": "e7a4ca63cf0a00f3236925e3aac4911e40afd88f",
             "verified_at": "2026-10-03T01:37:17Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -2388,7 +2565,8 @@
       "scope": {
         "inclusion": "in_scope",
         "exclusion_reason": null,
-        "schedule": "active"
+        "schedule": "deferred",
+        "deferral_reason": "hardware_exclusive_peripheral_not_on_esp32"
       },
       "audit": {
         "verdict": "pending",
@@ -2438,7 +2616,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "peripherals/i3c_i3c_i2c_basic"
+      "target_app_dir": "peripherals/i3c_i3c_i2c_basic",
+      "remediation_decision": "hardware_exclusive_deferred"
     },
     {
       "id": "esp.peripherals.i3c.i3c_lsm6dscx",
@@ -2448,7 +2627,8 @@
       "scope": {
         "inclusion": "in_scope",
         "exclusion_reason": null,
-        "schedule": "active"
+        "schedule": "deferred",
+        "deferral_reason": "hardware_exclusive_peripheral_not_on_esp32"
       },
       "audit": {
         "verdict": "pending",
@@ -2499,7 +2679,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "peripherals/i3c_i3c_lsm6dscx"
+      "target_app_dir": "peripherals/i3c_i3c_lsm6dscx",
+      "remediation_decision": "hardware_exclusive_deferred"
     },
     {
       "id": "esp.peripherals.isp.multi_pipelines",
@@ -2874,7 +3055,8 @@
       "scope": {
         "inclusion": "in_scope",
         "exclusion_reason": null,
-        "schedule": "active"
+        "schedule": "deferred",
+        "deferral_reason": "hardware_exclusive_peripheral_not_on_esp32"
       },
       "audit": {
         "verdict": "pending",
@@ -2925,7 +3107,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "peripherals/lcd_parlio_simulate"
+      "target_app_dir": "peripherals/lcd_parlio_simulate",
+      "remediation_decision": "hardware_exclusive_deferred"
     },
     {
       "id": "esp.peripherals.lcd.rgb_panel",
@@ -3142,7 +3325,13 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "driver/ledc.h",
+          "esp_err.h",
+          "esp_pm.h",
+          "sdkconfig.h",
+          "stdio.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -3195,6 +3384,13 @@
             "execution_report_ref": ".governance/reports/peripherals/ledc_basic/run-report.json",
             "verified_commit": "b78917fe5a1049d5ce1a2556ead8a1a786e24741",
             "verified_at": "2026-10-02T01:40:46Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -3289,7 +3485,14 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "driver/ledc.h",
+          "esp_err.h",
+          "freertos/FreeRTOS.h",
+          "freertos/semphr.h",
+          "freertos/task.h",
+          "stdio.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -3342,6 +3545,13 @@
             "execution_report_ref": ".governance/reports/peripherals/ledc_ledc_fade/run-report.json",
             "verified_commit": "1d805ab02bf145ec053bae08b6afcdf598c3f3a1",
             "verified_at": "2026-10-03T15:10:30Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -3785,7 +3995,8 @@
       "scope": {
         "inclusion": "in_scope",
         "exclusion_reason": null,
-        "schedule": "active"
+        "schedule": "deferred",
+        "deferral_reason": "hardware_exclusive_peripheral_not_on_esp32"
       },
       "audit": {
         "verdict": "pending",
@@ -3842,7 +4053,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "peripherals/parlio_parlio_rx_logic_analyzer"
+      "target_app_dir": "peripherals/parlio_parlio_rx_logic_analyzer",
+      "remediation_decision": "hardware_exclusive_deferred"
     },
     {
       "id": "esp.peripherals.parlio.parlio_tx.advanced_rgb_led_matrix",
@@ -3852,7 +4064,8 @@
       "scope": {
         "inclusion": "in_scope",
         "exclusion_reason": null,
-        "schedule": "active"
+        "schedule": "deferred",
+        "deferral_reason": "hardware_exclusive_peripheral_not_on_esp32"
       },
       "audit": {
         "verdict": "pending",
@@ -3903,7 +4116,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "peripherals/parlio_parlio_tx_advanced_rgb_led_matrix"
+      "target_app_dir": "peripherals/parlio_parlio_tx_advanced_rgb_led_matrix",
+      "remediation_decision": "hardware_exclusive_deferred"
     },
     {
       "id": "esp.peripherals.parlio.parlio_tx.simple_rgb_led_matrix",
@@ -3913,7 +4127,8 @@
       "scope": {
         "inclusion": "in_scope",
         "exclusion_reason": null,
-        "schedule": "active"
+        "schedule": "deferred",
+        "deferral_reason": "hardware_exclusive_peripheral_not_on_esp32"
       },
       "audit": {
         "verdict": "pending",
@@ -3965,7 +4180,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "peripherals/parlio_parlio_tx_simple_rgb_led_matrix"
+      "target_app_dir": "peripherals/parlio_parlio_tx_simple_rgb_led_matrix",
+      "remediation_decision": "hardware_exclusive_deferred"
     },
     {
       "id": "esp.peripherals.pcnt.rotary_encoder",
@@ -4792,7 +5008,21 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "driver/gpio.h",
+          "driver/spi_master.h",
+          "esp_log.h",
+          "freertos/FreeRTOS.h",
+          "freertos/semphr.h",
+          "freertos/task.h",
+          "sdkconfig.h",
+          "spi_eeprom.h",
+          "stdio.h",
+          "stdlib.h",
+          "string.h",
+          "sys/param.h",
+          "unistd.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -4845,6 +5075,13 @@
             "execution_report_ref": ".governance/reports/peripherals/spi_master_hd_eeprom/run-report.json",
             "verified_commit": "e2a9fe56ebda887a8c7ec3cd4e6ac69eabebd9b6",
             "verified_at": "2026-10-02T21:05:54Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -4949,7 +5186,8 @@
           "axis_e_concurrency": "cooperative_fiber",
           "axis_f_diagnostics": "structured_trace"
         },
-        "concurrency_model": "cooperative_fiber"
+        "concurrency_model": "cooperative_fiber",
+        "soc_support_verified_by_kconfig": true
       },
       "executions": [
         {
@@ -4971,7 +5209,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "peripherals/spi_slave_receiver"
+      "target_app_dir": "peripherals/spi_slave_receiver",
+      "remediation_decision": "soc_support_verified_by_kconfig"
     },
     {
       "id": "esp.peripherals.spi_slave.sender",
@@ -5011,7 +5250,8 @@
           "axis_e_concurrency": "cooperative_fiber",
           "axis_f_diagnostics": "structured_trace"
         },
-        "concurrency_model": "cooperative_fiber"
+        "concurrency_model": "cooperative_fiber",
+        "soc_support_verified_by_kconfig": true
       },
       "executions": [
         {
@@ -5033,7 +5273,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "peripherals/spi_slave_sender"
+      "target_app_dir": "peripherals/spi_slave_sender",
+      "remediation_decision": "soc_support_verified_by_kconfig"
     },
     {
       "id": "esp.peripherals.spi_slave_hd.append_mode.master",
@@ -5426,8 +5667,17 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
-        "sdkconfig_overrides": {}
+        "header_closure": [
+          "driver/gptimer.h",
+          "esp_log.h",
+          "freertos/FreeRTOS.h",
+          "freertos/queue.h",
+          "freertos/task.h",
+          "stdio.h"
+        ],
+        "sdkconfig_overrides": {
+          "CONFIG_LIBC_NEWLIB_NANO_FORMAT": "n"
+        }
       },
       "fidelity_contract": {
         "axes_declared": {
@@ -5486,6 +5736,13 @@
             "execution_report_ref": ".governance/reports/peripherals/gptimer_alarm/run-report.json",
             "verified_commit": "570f761dcb083b47f3c4c1bdad959b7c11807350",
             "verified_at": "2026-10-01T13:39:34Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -6131,7 +6388,15 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "driver/gpio.h",
+          "driver/uart.h",
+          "esp_log.h",
+          "esp_system.h",
+          "freertos/FreeRTOS.h",
+          "freertos/task.h",
+          "string.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -6198,6 +6463,13 @@
             "execution_report_ref": ".governance/reports/peripherals/uart_uart_async_rxtxtasks/run-report.json",
             "verified_commit": "e1c4ce2fb53449a262b04eaac62420b96d6717ba",
             "verified_at": "2026-10-05T03:52:47Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -6294,7 +6566,15 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "driver/gpio.h",
+          "driver/uart.h",
+          "esp_log.h",
+          "freertos/FreeRTOS.h",
+          "freertos/task.h",
+          "sdkconfig.h",
+          "stdio.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -6347,6 +6627,13 @@
             "execution_report_ref": ".governance/reports/peripherals/uart_echo/run-report.json",
             "verified_commit": "aa5287c12ac2ad71f9516af20c611985cccba446",
             "verified_at": "2026-10-06T11:03:56Z"
+          },
+          "remediation_decision": {
+            "verdict": "ELIGIBLE",
+            "reason": "Verified under AFG v1.1: baseline PASS + twin/canary mutation kill",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -6380,7 +6667,19 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "driver/uart.h",
+          "esp_log.h",
+          "esp_system.h",
+          "freertos/FreeRTOS.h",
+          "freertos/queue.h",
+          "freertos/task.h",
+          "nvs_flash.h",
+          "sdkconfig.h",
+          "stdio.h",
+          "stdlib.h",
+          "string.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -6440,6 +6739,13 @@
             "execution_report_ref": ".governance/reports/peripherals/uart_uart_echo_rs485/run-report.json",
             "verified_commit": "aa5287c12ac2ad71f9516af20c611985cccba446",
             "verified_at": "2026-10-06T11:03:19Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -6472,7 +6778,15 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "driver/uart.h",
+          "esp_log.h",
+          "freertos/FreeRTOS.h",
+          "freertos/queue.h",
+          "freertos/task.h",
+          "stdio.h",
+          "string.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -6532,6 +6846,13 @@
             "execution_report_ref": ".governance/reports/peripherals/uart_uart_events/run-report.json",
             "verified_commit": "26d49ee73b154a46ed59af6ac1da114d45cba3db",
             "verified_at": "2026-10-08T03:40:00Z"
+          },
+          "remediation_decision": {
+            "verdict": "ELIGIBLE",
+            "reason": "Verified under AFG v1.1: baseline PASS + twin/canary mutation kill",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -7976,13 +8297,34 @@
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.irq.edge_trigger",
-        "cap.pm.light_sleep",
+        "cap.pm.deep_sleep",
         "cap.vfs.nvs_partition"
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
-        "sdkconfig_overrides": {}
+        "header_closure": [
+          "deep_sleep_example.h",
+          "driver/gpio.h",
+          "driver/rtc_io.h",
+          "esp_log.h",
+          "esp_sleep.h",
+          "freertos/FreeRTOS.h",
+          "freertos/task.h",
+          "hal/gpio_types.h",
+          "nvs.h",
+          "nvs_flash.h",
+          "sdkconfig.h",
+          "soc/soc_caps.h",
+          "stdio.h",
+          "sys/time.h",
+          "time.h"
+        ],
+        "sdkconfig_overrides": {
+          "CONFIG_LIBC_TIME_SYSCALL_USE_RTC_HRT": "y",
+          "CONFIG_RTC_CLK_SRC_INT_RC": "y",
+          "CONFIG_BOOTLOADER_SKIP_VALIDATE_IN_DEEP_SLEEP": "y",
+          "CONFIG_PARTITION_TABLE_CUSTOM": "y"
+        }
       },
       "fidelity_contract": {
         "axes_declared": {
@@ -8034,6 +8376,13 @@
             "execution_report_ref": ".governance/reports/system/deep_sleep/run-report.json",
             "verified_commit": "6fdc5eb6fef8a3953338e77fa513f07bb6f0f04b",
             "verified_at": "2026-10-07T23:56:04Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -8187,7 +8536,14 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "esp_event.h",
+          "esp_log.h",
+          "esp_timer.h",
+          "event_source.h",
+          "freertos/FreeRTOS.h",
+          "freertos/task.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -8240,6 +8596,13 @@
             "execution_report_ref": ".governance/reports/system/esp_event_default_event_loop/run-report.json",
             "verified_commit": "e8a093466cd8a4fb87a7ae1537380c576df07a56",
             "verified_at": "2026-10-04T23:20:52Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -8272,7 +8635,15 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "esp_event.h",
+          "esp_event_base.h",
+          "esp_log.h",
+          "esp_timer.h",
+          "event_source.h",
+          "freertos/FreeRTOS.h",
+          "freertos/task.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -8325,6 +8696,13 @@
             "execution_report_ref": ".governance/reports/system/esp_event_user_event_loops/run-report.json",
             "verified_commit": "4f37efcc5d198e399677fd6c0ed3b9dd25b0fcef",
             "verified_at": "2026-10-04T23:20:36Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -8356,8 +8734,20 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
-        "sdkconfig_overrides": {}
+        "header_closure": [
+          "esp_log.h",
+          "esp_sleep.h",
+          "esp_timer.h",
+          "sdkconfig.h",
+          "stdio.h",
+          "string.h",
+          "unistd.h"
+        ],
+        "sdkconfig_overrides": {
+          "CONFIG_ESP_TIMER_PROFILING": "y",
+          "CONFIG_LIBC_NEWLIB_NANO_FORMAT": "n",
+          "CONFIG_PM_SLP_IRAM_OPT": "y"
+        }
       },
       "fidelity_contract": {
         "axes_declared": {
@@ -8409,6 +8799,13 @@
             "execution_report_ref": ".governance/reports/system/esp_timer/run-report.json",
             "verified_commit": "54c4f397c3fc7ce57b806d0b1e328f834f39dca1",
             "verified_at": "2026-10-02T23:49:50Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -8626,7 +9023,15 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "basic_freertos_smp_usage.h",
+          "esp_console.h",
+          "esp_log.h",
+          "esp_timer.h",
+          "freertos/FreeRTOS.h",
+          "sdkconfig.h",
+          "stdatomic.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -8693,6 +9098,13 @@
             "execution_report_ref": ".governance/reports/system/freertos_basic_freertos_smp_usage/run-report.json",
             "verified_commit": "945d190bec8632bf8053bd610d9ac00364da055b",
             "verified_at": "2026-10-05T03:18:40Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -8724,8 +9136,21 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
-        "sdkconfig_overrides": {}
+        "header_closure": [
+          "esp_err.h",
+          "freertos/FreeRTOS.h",
+          "freertos/semphr.h",
+          "freertos/task.h",
+          "inttypes.h",
+          "sdkconfig.h",
+          "stdio.h",
+          "stdlib.h"
+        ],
+        "sdkconfig_overrides": {
+          "CONFIG_FREERTOS_USE_TRACE_FACILITY": "y",
+          "CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS": "y",
+          "CONFIG_FREERTOS_RUN_TIME_COUNTER_TYPE_U64": "y"
+        }
       },
       "fidelity_contract": {
         "axes_declared": {
@@ -8777,6 +9202,13 @@
             "execution_report_ref": ".governance/reports/system/freertos_real_time_stats/run-report.json",
             "verified_commit": "3e3293ae3b85e518da8cef175ff807800c9c342f",
             "verified_at": "2026-10-05T23:14:32Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -9625,8 +10057,31 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
-        "sdkconfig_overrides": {}
+        "header_closure": [
+          "esp_crt_bundle.h",
+          "esp_event.h",
+          "esp_http_client.h",
+          "esp_https_ota.h",
+          "esp_log.h",
+          "esp_ota_ops.h",
+          "esp_system.h",
+          "esp_wifi.h",
+          "freertos/FreeRTOS.h",
+          "freertos/task.h",
+          "nvs.h",
+          "nvs_flash.h",
+          "protocol_examples_common.h",
+          "string.h",
+          "sys/socket.h"
+        ],
+        "sdkconfig_overrides": {
+          "CONFIG_ESPTOOLPY_FLASHSIZE_4MB": "y",
+          "CONFIG_PARTITION_TABLE_TWO_OTA_LARGE": "y",
+          "CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_CMN": "y",
+          "CONFIG_MBEDTLS_CUSTOM_CERTIFICATE_BUNDLE": "y",
+          "CONFIG_MBEDTLS_CUSTOM_CERTIFICATE_BUNDLE_PATH": "server_certs/ca_cert.pem",
+          "CONFIG_OPENTHREAD_ENABLED": "y"
+        }
       },
       "fidelity_contract": {
         "axes_declared": {
@@ -9678,6 +10133,13 @@
             "execution_report_ref": ".governance/reports/system/ota_simple_ota_example/run-report.json",
             "verified_commit": "3b57c2c4e4dfc0d70074f42b42c3d2fff60dd840",
             "verified_at": "2026-10-07T15:33:04Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -9952,8 +10414,18 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
-        "sdkconfig_overrides": {}
+        "header_closure": [
+          "esp_log.h",
+          "stdio.h"
+        ],
+        "sdkconfig_overrides": {
+          "CONFIG_ESPTOOLPY_FLASHMODE_QIO": "y",
+          "CONFIG_LOG_DEFAULT_LEVEL_WARN": "y",
+          "CONFIG_LOG_MAXIMUM_LEVEL_INFO": "y",
+          "CONFIG_BOOTLOADER_LOG_LEVEL_WARN": "y",
+          "CONFIG_BOOTLOADER_SKIP_VALIDATE_ON_POWER_ON": "y",
+          "CONFIG_RTC_CLK_CAL_CYCLES": "0"
+        }
       },
       "fidelity_contract": {
         "axes_declared": {
@@ -10012,6 +10484,13 @@
             "execution_report_ref": ".governance/reports/system/startup_time/run-report.json",
             "verified_commit": "11fde1dc07b46bbf1cec63640dc5a33696538b39",
             "verified_at": "2026-10-06T00:20:02Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -10166,7 +10645,15 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "esp_err.h",
+          "esp_task_wdt.h",
+          "freertos/FreeRTOS.h",
+          "freertos/task.h",
+          "sdkconfig.h",
+          "stdio.h",
+          "stdlib.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -10240,6 +10727,13 @@
             "execution_report_ref": ".governance/reports/system/task_watchdog/run-report.json",
             "verified_commit": "6fdc5eb6fef8a3953338e77fa513f07bb6f0f04b",
             "verified_at": "2026-10-08T06:33:46Z"
+          },
+          "remediation_decision": {
+            "verdict": "ELIGIBLE",
+            "reason": "Verified under AFG v1.1: baseline PASS + twin/canary mutation kill",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -10253,7 +10747,8 @@
       "scope": {
         "inclusion": "in_scope",
         "exclusion_reason": null,
-        "schedule": "active"
+        "schedule": "deferred",
+        "deferral_reason": "hardware_exclusive_peripheral_not_on_esp32"
       },
       "audit": {
         "verdict": "pending",
@@ -10264,6 +10759,7 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.lp_core",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.pm.light_sleep"
@@ -10304,7 +10800,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "system/ulp_lp_core_build_system"
+      "target_app_dir": "system/ulp_lp_core_build_system",
+      "remediation_decision": "hardware_exclusive_deferred"
     },
     {
       "id": "esp.system.ulp.lp_core.debugging",
@@ -10314,7 +10811,8 @@
       "scope": {
         "inclusion": "in_scope",
         "exclusion_reason": null,
-        "schedule": "active"
+        "schedule": "deferred",
+        "deferral_reason": "hardware_exclusive_peripheral_not_on_esp32"
       },
       "audit": {
         "verdict": "pending",
@@ -10325,6 +10823,7 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.lp_core",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.pm.light_sleep"
@@ -10365,7 +10864,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "system/ulp_lp_core_debugging"
+      "target_app_dir": "system/ulp_lp_core_debugging",
+      "remediation_decision": "hardware_exclusive_deferred"
     },
     {
       "id": "esp.system.ulp.lp_core.gpio",
@@ -10375,7 +10875,8 @@
       "scope": {
         "inclusion": "in_scope",
         "exclusion_reason": null,
-        "schedule": "active"
+        "schedule": "deferred",
+        "deferral_reason": "hardware_exclusive_peripheral_not_on_esp32"
       },
       "audit": {
         "verdict": "pending",
@@ -10386,6 +10887,7 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.lp_core",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.irq.edge_trigger",
@@ -10427,7 +10929,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "system/ulp_lp_core_gpio"
+      "target_app_dir": "system/ulp_lp_core_gpio",
+      "remediation_decision": "hardware_exclusive_deferred"
     },
     {
       "id": "esp.system.ulp.lp_core.gpio_intr_pulse_counter",
@@ -10437,7 +10940,8 @@
       "scope": {
         "inclusion": "in_scope",
         "exclusion_reason": null,
-        "schedule": "active"
+        "schedule": "deferred",
+        "deferral_reason": "hardware_exclusive_peripheral_not_on_esp32"
       },
       "audit": {
         "verdict": "pending",
@@ -10448,6 +10952,7 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.lp_core",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.irq.edge_trigger",
@@ -10489,7 +10994,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "system/ulp_lp_core_gpio_intr_pulse_counter"
+      "target_app_dir": "system/ulp_lp_core_gpio_intr_pulse_counter",
+      "remediation_decision": "hardware_exclusive_deferred"
     },
     {
       "id": "esp.system.ulp.lp_core.gpio_wakeup",
@@ -10499,7 +11005,8 @@
       "scope": {
         "inclusion": "in_scope",
         "exclusion_reason": null,
-        "schedule": "active"
+        "schedule": "deferred",
+        "deferral_reason": "hardware_exclusive_peripheral_not_on_esp32"
       },
       "audit": {
         "verdict": "pending",
@@ -10510,6 +11017,7 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.lp_core",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.pm.light_sleep"
@@ -10550,7 +11058,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "system/ulp_lp_core_gpio_wakeup"
+      "target_app_dir": "system/ulp_lp_core_gpio_wakeup",
+      "remediation_decision": "hardware_exclusive_deferred"
     },
     {
       "id": "esp.system.ulp.lp_core.inter_cpu_critical_section",
@@ -10560,7 +11069,8 @@
       "scope": {
         "inclusion": "in_scope",
         "exclusion_reason": null,
-        "schedule": "active"
+        "schedule": "deferred",
+        "deferral_reason": "hardware_exclusive_peripheral_not_on_esp32"
       },
       "audit": {
         "verdict": "pending",
@@ -10571,6 +11081,7 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.lp_core",
         "cap.core.fiber_task",
         "cap.core.sync_tokens"
       ],
@@ -10610,7 +11121,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "system/ulp_lp_core_inter_cpu_critical_section"
+      "target_app_dir": "system/ulp_lp_core_inter_cpu_critical_section",
+      "remediation_decision": "hardware_exclusive_deferred"
     },
     {
       "id": "esp.system.ulp.lp_core.interrupt",
@@ -10620,7 +11132,8 @@
       "scope": {
         "inclusion": "in_scope",
         "exclusion_reason": null,
-        "schedule": "active"
+        "schedule": "deferred",
+        "deferral_reason": "hardware_exclusive_peripheral_not_on_esp32"
       },
       "audit": {
         "verdict": "pending",
@@ -10631,6 +11144,7 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.lp_core",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.pm.light_sleep"
@@ -10671,7 +11185,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "system/ulp_lp_core_interrupt"
+      "target_app_dir": "system/ulp_lp_core_interrupt",
+      "remediation_decision": "hardware_exclusive_deferred"
     },
     {
       "id": "esp.system.ulp.lp_core.lp_adc",
@@ -10681,7 +11196,8 @@
       "scope": {
         "inclusion": "in_scope",
         "exclusion_reason": null,
-        "schedule": "active"
+        "schedule": "deferred",
+        "deferral_reason": "hardware_exclusive_peripheral_not_on_esp32"
       },
       "audit": {
         "verdict": "pending",
@@ -10692,6 +11208,7 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.lp_core",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.pm.light_sleep"
@@ -10732,7 +11249,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "system/ulp_lp_core_lp_adc"
+      "target_app_dir": "system/ulp_lp_core_lp_adc",
+      "remediation_decision": "hardware_exclusive_deferred"
     },
     {
       "id": "esp.system.ulp.lp_core.lp_i2c",
@@ -10742,7 +11260,8 @@
       "scope": {
         "inclusion": "in_scope",
         "exclusion_reason": null,
-        "schedule": "active"
+        "schedule": "deferred",
+        "deferral_reason": "hardware_exclusive_peripheral_not_on_esp32"
       },
       "audit": {
         "verdict": "pending",
@@ -10753,6 +11272,7 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.lp_core",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.pm.light_sleep"
@@ -10793,7 +11313,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "system/ulp_lp_core_lp_i2c"
+      "target_app_dir": "system/ulp_lp_core_lp_i2c",
+      "remediation_decision": "hardware_exclusive_deferred"
     },
     {
       "id": "esp.system.ulp.lp_core.lp_mailbox",
@@ -10803,7 +11324,8 @@
       "scope": {
         "inclusion": "in_scope",
         "exclusion_reason": null,
-        "schedule": "active"
+        "schedule": "deferred",
+        "deferral_reason": "hardware_exclusive_peripheral_not_on_esp32"
       },
       "audit": {
         "verdict": "pending",
@@ -10814,6 +11336,7 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.lp_core",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.pm.light_sleep"
@@ -10854,7 +11377,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "system/ulp_lp_core_lp_mailbox"
+      "target_app_dir": "system/ulp_lp_core_lp_mailbox",
+      "remediation_decision": "hardware_exclusive_deferred"
     },
     {
       "id": "esp.system.ulp.lp_core.lp_spi",
@@ -10864,7 +11388,8 @@
       "scope": {
         "inclusion": "in_scope",
         "exclusion_reason": null,
-        "schedule": "active"
+        "schedule": "deferred",
+        "deferral_reason": "hardware_exclusive_peripheral_not_on_esp32"
       },
       "audit": {
         "verdict": "pending",
@@ -10875,6 +11400,7 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.lp_core",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.pm.light_sleep"
@@ -10915,7 +11441,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "system/ulp_lp_core_lp_spi"
+      "target_app_dir": "system/ulp_lp_core_lp_spi",
+      "remediation_decision": "hardware_exclusive_deferred"
     },
     {
       "id": "esp.system.ulp.lp_core.lp_timer_interrupt",
@@ -10925,7 +11452,8 @@
       "scope": {
         "inclusion": "in_scope",
         "exclusion_reason": null,
-        "schedule": "active"
+        "schedule": "deferred",
+        "deferral_reason": "hardware_exclusive_peripheral_not_on_esp32"
       },
       "audit": {
         "verdict": "pending",
@@ -10936,6 +11464,7 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.lp_core",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.pm.light_sleep"
@@ -10976,7 +11505,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "system/ulp_lp_core_lp_timer_interrupt"
+      "target_app_dir": "system/ulp_lp_core_lp_timer_interrupt",
+      "remediation_decision": "hardware_exclusive_deferred"
     },
     {
       "id": "esp.system.ulp.lp_core.lp_touch",
@@ -10986,7 +11516,8 @@
       "scope": {
         "inclusion": "in_scope",
         "exclusion_reason": null,
-        "schedule": "active"
+        "schedule": "deferred",
+        "deferral_reason": "hardware_exclusive_peripheral_not_on_esp32"
       },
       "audit": {
         "verdict": "pending",
@@ -10997,6 +11528,7 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.lp_core",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.pm.light_sleep"
@@ -11037,7 +11569,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "system/ulp_lp_core_lp_touch"
+      "target_app_dir": "system/ulp_lp_core_lp_touch",
+      "remediation_decision": "hardware_exclusive_deferred"
     },
     {
       "id": "esp.system.ulp.lp_core.lp_uart.lp_uart_char_seq_wakeup",
@@ -11047,7 +11580,8 @@
       "scope": {
         "inclusion": "in_scope",
         "exclusion_reason": null,
-        "schedule": "active"
+        "schedule": "deferred",
+        "deferral_reason": "hardware_exclusive_peripheral_not_on_esp32"
       },
       "audit": {
         "verdict": "pending",
@@ -11058,6 +11592,7 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.lp_core",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.pm.light_sleep"
@@ -11098,7 +11633,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "system/ulp_lp_core_lp_uart_lp_uart_char_seq_wakeup"
+      "target_app_dir": "system/ulp_lp_core_lp_uart_lp_uart_char_seq_wakeup",
+      "remediation_decision": "hardware_exclusive_deferred"
     },
     {
       "id": "esp.system.ulp.lp_core.lp_uart.lp_uart_echo",
@@ -11108,7 +11644,8 @@
       "scope": {
         "inclusion": "in_scope",
         "exclusion_reason": null,
-        "schedule": "active"
+        "schedule": "deferred",
+        "deferral_reason": "hardware_exclusive_peripheral_not_on_esp32"
       },
       "audit": {
         "verdict": "pending",
@@ -11119,6 +11656,7 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.lp_core",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.pm.light_sleep"
@@ -11159,7 +11697,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "system/ulp_lp_core_lp_uart_lp_uart_echo"
+      "target_app_dir": "system/ulp_lp_core_lp_uart_lp_uart_echo",
+      "remediation_decision": "hardware_exclusive_deferred"
     },
     {
       "id": "esp.system.ulp.lp_core.lp_uart.lp_uart_print",
@@ -11169,7 +11708,8 @@
       "scope": {
         "inclusion": "in_scope",
         "exclusion_reason": null,
-        "schedule": "active"
+        "schedule": "deferred",
+        "deferral_reason": "hardware_exclusive_peripheral_not_on_esp32"
       },
       "audit": {
         "verdict": "pending",
@@ -11180,6 +11720,7 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.lp_core",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.pm.light_sleep"
@@ -11220,7 +11761,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "system/ulp_lp_core_lp_uart_lp_uart_print"
+      "target_app_dir": "system/ulp_lp_core_lp_uart_lp_uart_print",
+      "remediation_decision": "hardware_exclusive_deferred"
     },
     {
       "id": "esp.system.ulp.ulp_fsm.ulp_adc",
@@ -11242,6 +11784,7 @@
       },
       "required_capabilities": [
         "cap.analog.adc_oneshot",
+        "cap.coproc.ulp_fsm",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.irq.edge_trigger",
@@ -11304,6 +11847,8 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.ulp_fsm",
+        "cap.coproc.ulp_riscv",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.irq.edge_trigger",
@@ -11366,6 +11911,7 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.ulp_riscv",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.pm.light_sleep"
@@ -11427,6 +11973,7 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.ulp_riscv",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.irq.edge_trigger",
@@ -11489,6 +12036,7 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.ulp_riscv",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.irq.edge_trigger",
@@ -11551,6 +12099,7 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.ulp_riscv",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.irq.edge_trigger",
@@ -11613,6 +12162,7 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.ulp_riscv",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.irq.edge_trigger",
@@ -11675,6 +12225,7 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.ulp_riscv",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.pm.light_sleep"
@@ -11736,6 +12287,7 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.ulp_riscv",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.pm.light_sleep"
@@ -11797,6 +12349,7 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.ulp_riscv",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.pm.light_sleep"
@@ -11858,6 +12411,7 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.coproc.ulp_riscv",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.pm.light_sleep"
@@ -11996,7 +12550,8 @@
           "axis_e_concurrency": "cooperative_fiber",
           "axis_f_diagnostics": "structured_trace"
         },
-        "concurrency_model": "cooperative_fiber"
+        "concurrency_model": "cooperative_fiber",
+        "soc_support_verified_by_kconfig": true
       },
       "executions": [
         {
@@ -12018,7 +12573,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "system/unit_test_test"
+      "target_app_dir": "system/unit_test_test",
+      "remediation_decision": "soc_support_verified_by_kconfig"
     },
     {
       "id": "esp.system.xip_from_psram",
@@ -12173,8 +12729,28 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
-        "sdkconfig_overrides": {}
+        "header_closure": [
+          "ctype.h",
+          "esp_crt_bundle.h",
+          "esp_event.h",
+          "esp_http_client.h",
+          "esp_log.h",
+          "esp_netif.h",
+          "esp_system.h",
+          "esp_tls.h",
+          "freertos/FreeRTOS.h",
+          "freertos/task.h",
+          "nvs_flash.h",
+          "protocol_examples_common.h",
+          "protocol_examples_utils.h",
+          "stdlib.h",
+          "string.h",
+          "sys/param.h"
+        ],
+        "sdkconfig_overrides": {
+          "CONFIG_MBEDTLS_TLS_CLIENT_ONLY": "y",
+          "CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE": "y"
+        }
       },
       "fidelity_contract": {
         "axes_declared": {
@@ -12226,6 +12802,13 @@
             "execution_report_ref": ".governance/reports/protocols/http_client/run-report.json",
             "verified_commit": "2d0f913f83fd1791b74afb4a5ed1e7d64dbcbb98",
             "verified_at": "2026-10-01T13:12:58Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -12773,8 +13356,33 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
-        "sdkconfig_overrides": {}
+        "header_closure": [
+          "cJSON.h",
+          "esp_check.h",
+          "esp_chip_info.h",
+          "esp_event.h",
+          "esp_http_server.h",
+          "esp_littlefs.h",
+          "esp_log.h",
+          "esp_netif.h",
+          "esp_random.h",
+          "esp_vfs.h",
+          "fcntl.h",
+          "lwip/apps/netbiosns.h",
+          "mdns.h",
+          "nvs_flash.h",
+          "protocol_examples_common.h",
+          "sdkconfig.h",
+          "string.h"
+        ],
+        "sdkconfig_overrides": {
+          "CONFIG_ESPTOOLPY_FLASHSIZE_4MB": "y",
+          "CONFIG_PARTITION_TABLE_CUSTOM": "y",
+          "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME": "partitions_example.csv",
+          "CONFIG_PARTITION_TABLE_FILENAME": "partitions_example.csv",
+          "CONFIG_MDNS_PREDEF_NETIF_STA": "n",
+          "CONFIG_MDNS_PREDEF_NETIF_AP": "n"
+        }
       },
       "fidelity_contract": {
         "axes_declared": {
@@ -12826,6 +13434,13 @@
             "execution_report_ref": ".governance/reports/protocols/http_server_restful_server/run-report.json",
             "verified_commit": "9137ebbb3852ae71d18cae6890d7be1be4ab3138",
             "verified_at": "2026-10-07T04:33:23Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -12861,7 +13476,27 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "esp_check.h",
+          "esp_eth.h",
+          "esp_event.h",
+          "esp_http_server.h",
+          "esp_log.h",
+          "esp_netif.h",
+          "esp_system.h",
+          "esp_tls.h",
+          "esp_tls_crypto.h",
+          "esp_wifi.h",
+          "nvs_flash.h",
+          "protocol_examples_common.h",
+          "protocol_examples_utils.h",
+          "stdlib.h",
+          "string.h",
+          "sys/param.h",
+          "sys/time.h",
+          "time.h",
+          "unistd.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -12919,6 +13554,13 @@
             "execution_report_ref": ".governance/reports/protocols/http_server_simple/run-report.json",
             "verified_commit": "0aa53ae4fd574862526380a40505eb94933f604c",
             "verified_at": "2026-10-08T04:06:00Z"
+          },
+          "remediation_decision": {
+            "verdict": "ELIGIBLE",
+            "reason": "Verified under AFG v1.1: baseline PASS + twin/canary mutation kill",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -12954,8 +13596,21 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
-        "sdkconfig_overrides": {}
+        "header_closure": [
+          "esp_eth.h",
+          "esp_event.h",
+          "esp_http_server.h",
+          "esp_log.h",
+          "esp_netif.h",
+          "esp_system.h",
+          "esp_wifi.h",
+          "nvs_flash.h",
+          "protocol_examples_common.h",
+          "sys/param.h"
+        ],
+        "sdkconfig_overrides": {
+          "CONFIG_HTTPD_WS_SUPPORT": "y"
+        }
       },
       "fidelity_contract": {
         "axes_declared": {
@@ -13007,6 +13662,13 @@
             "execution_report_ref": ".governance/reports/protocols/http_server_ws_echo_server/run-report.json",
             "verified_commit": "979e6c93885e4b8afa0c65c4f5b34a176f6450eb",
             "verified_at": "2026-10-07T05:53:29Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -13543,8 +14205,26 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
-        "sdkconfig_overrides": {}
+        "header_closure": [
+          "esp_crt_bundle.h",
+          "esp_event.h",
+          "esp_log.h",
+          "esp_netif.h",
+          "esp_system.h",
+          "inttypes.h",
+          "mqtt_client.h",
+          "nvs_flash.h",
+          "protocol_examples_common.h",
+          "sdkconfig.h",
+          "stddef.h",
+          "stdint.h",
+          "stdio.h",
+          "string.h"
+        ],
+        "sdkconfig_overrides": {
+          "CONFIG_MBEDTLS_CERTIFICATE_BUNDLE": "y",
+          "CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL": "y"
+        }
       },
       "fidelity_contract": {
         "axes_declared": {
@@ -13603,6 +14283,13 @@
             "execution_report_ref": ".governance/reports/protocols/mqtt_tcp/run-report.json",
             "verified_commit": "099f3f4b13b89178c520480bc987c8803380db7a",
             "verified_at": "2026-10-02T08:08:22Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -13764,8 +14451,27 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
-        "sdkconfig_overrides": {}
+        "header_closure": [
+          "esp_attr.h",
+          "esp_event.h",
+          "esp_log.h",
+          "esp_netif_sntp.h",
+          "esp_sleep.h",
+          "esp_sntp.h",
+          "esp_system.h",
+          "lwip/ip_addr.h",
+          "nvs_flash.h",
+          "protocol_examples_common.h",
+          "string.h",
+          "sys/time.h",
+          "time.h"
+        ],
+        "sdkconfig_overrides": {
+          "CONFIG_IDF_TARGET": "esp32h2",
+          "CONFIG_MBEDTLS_CMAC_C": "y",
+          "CONFIG_OPENTHREAD_ENABLED": "y",
+          "CONFIG_OPENTHREAD_DNS64_CLIENT": "y"
+        }
       },
       "fidelity_contract": {
         "axes_declared": {
@@ -13817,6 +14523,13 @@
             "execution_report_ref": ".governance/reports/protocols/sntp/run-report.json",
             "verified_commit": "82dde347a65450c3b6072857c0bd4890d1005f8c",
             "verified_at": "2026-10-07T10:29:53Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -13975,7 +14688,21 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "addr_from_stdin.h",
+          "arpa/inet.h",
+          "errno.h",
+          "esp_event.h",
+          "esp_log.h",
+          "esp_netif.h",
+          "netdb.h",
+          "nvs_flash.h",
+          "protocol_examples_common.h",
+          "sdkconfig.h",
+          "string.h",
+          "sys/socket.h",
+          "unistd.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -14028,6 +14755,13 @@
             "execution_report_ref": ".governance/reports/protocols/sockets_tcp_client/run-report.json",
             "verified_commit": "c5b22f4737769281bd538099a95e094fd999fe41",
             "verified_at": "2026-10-07T12:37:41Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -14125,7 +14859,23 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "esp_event.h",
+          "esp_log.h",
+          "esp_netif.h",
+          "esp_system.h",
+          "esp_wifi.h",
+          "freertos/FreeRTOS.h",
+          "freertos/task.h",
+          "lwip/err.h",
+          "lwip/netdb.h",
+          "lwip/sockets.h",
+          "lwip/sys.h",
+          "nvs_flash.h",
+          "protocol_examples_common.h",
+          "string.h",
+          "sys/param.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -14178,6 +14928,13 @@
             "execution_report_ref": ".governance/reports/protocols/sockets_tcp_server/run-report.json",
             "verified_commit": "fd2946779adc0a9708dc4deb43c3e71158f65fd9",
             "verified_at": "2026-10-07T12:36:27Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -14590,7 +15347,14 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "esp_event.h",
+          "esp_log.h",
+          "esp_wifi.h",
+          "freertos/FreeRTOS.h",
+          "freertos/event_groups.h",
+          "nvs_flash.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -14650,6 +15414,13 @@
             "execution_report_ref": ".governance/reports/wifi/fast_scan/run-report.json",
             "verified_commit": "762f8c8601cfdf61b89c681f4ed41a262581be7d",
             "verified_at": "2026-10-04T14:00:26Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -14748,7 +15519,18 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "esp_event.h",
+          "esp_log.h",
+          "esp_mac.h",
+          "esp_wifi.h",
+          "freertos/FreeRTOS.h",
+          "freertos/task.h",
+          "lwip/err.h",
+          "lwip/sys.h",
+          "nvs_flash.h",
+          "string.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -14808,6 +15590,13 @@
             "execution_report_ref": ".governance/reports/wifi/getting_started_softAP/run-report.json",
             "verified_commit": "d71e0909b0561c33716da1bb5cac6451a29c42ad",
             "verified_at": "2026-10-04T13:42:42Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -14842,8 +15631,22 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
-        "sdkconfig_overrides": {}
+        "header_closure": [
+          "esp_event.h",
+          "esp_log.h",
+          "esp_system.h",
+          "esp_wifi.h",
+          "freertos/FreeRTOS.h",
+          "freertos/event_groups.h",
+          "freertos/task.h",
+          "lwip/err.h",
+          "lwip/sys.h",
+          "nvs_flash.h",
+          "string.h"
+        ],
+        "sdkconfig_overrides": {
+          "CONFIG_ESP_WIFI_SOFTAP_SUPPORT": "n"
+        }
       },
       "fidelity_contract": {
         "axes_declared": {
@@ -14895,6 +15698,13 @@
             "execution_report_ref": ".governance/reports/wifi/wifi_sta/run-report.json",
             "verified_commit": "762f8c8601cfdf61b89c681f4ed41a262581be7d",
             "verified_at": "2026-10-04T14:00:15Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         },
         {
@@ -15281,7 +16091,16 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "esp_event.h",
+          "esp_log.h",
+          "esp_wifi.h",
+          "freertos/FreeRTOS.h",
+          "freertos/event_groups.h",
+          "nvs_flash.h",
+          "regex.h",
+          "string.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -15341,6 +16160,13 @@
             "execution_report_ref": ".governance/reports/wifi/scan/run-report.json",
             "verified_commit": "11fde1dc07b46bbf1cec63640dc5a33696538b39",
             "verified_at": "2026-10-06T00:20:12Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -15439,8 +16265,29 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
-        "sdkconfig_overrides": {}
+        "header_closure": [
+          "esp_event.h",
+          "esp_log.h",
+          "esp_mac.h",
+          "esp_netif.h",
+          "esp_netif_net_stack.h",
+          "esp_wifi.h",
+          "freertos/FreeRTOS.h",
+          "freertos/event_groups.h",
+          "freertos/task.h",
+          "lwip/err.h",
+          "lwip/inet.h",
+          "lwip/lwip_napt.h",
+          "lwip/netdb.h",
+          "lwip/sockets.h",
+          "lwip/sys.h",
+          "nvs_flash.h",
+          "string.h"
+        ],
+        "sdkconfig_overrides": {
+          "CONFIG_LWIP_IP_FORWARD": "y",
+          "CONFIG_LWIP_IPV4_NAPT": "y"
+        }
       },
       "fidelity_contract": {
         "axes_declared": {
@@ -15492,6 +16339,13 @@
             "execution_report_ref": ".governance/reports/wifi/softap_sta/run-report.json",
             "verified_commit": "f9b196d6",
             "verified_at": "2026-10-07T09:49:39Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -16408,8 +17262,30 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
-        "sdkconfig_overrides": {}
+        "header_closure": [
+          "common.h",
+          "esp_log.h",
+          "freertos/FreeRTOS.h",
+          "freertos/task.h",
+          "gap.h",
+          "host/ble_hs.h",
+          "host/ble_uuid.h",
+          "host/util/util.h",
+          "nimble/ble.h",
+          "nimble/nimble_port.h",
+          "nimble/nimble_port_freertos.h",
+          "nvs_flash.h",
+          "sdkconfig.h",
+          "services/gap/ble_svc_gap.h",
+          "stdbool.h",
+          "stdio.h",
+          "string.h"
+        ],
+        "sdkconfig_overrides": {
+          "CONFIG_BT_ENABLED": "y",
+          "CONFIG_BT_NIMBLE_ENABLED": "y",
+          "CONFIG_BT_NIMBLE_50_FEATURE_SUPPORT": "n"
+        }
       },
       "fidelity_contract": {
         "axes_declared": {
@@ -16468,6 +17344,13 @@
             "execution_report_ref": ".governance/reports/bluetooth/ble_get_started_nimble_NimBLE_Beacon/run-report.json",
             "verified_commit": "af3bcb1b1d46a04c35f31870c57724cf22df2c56",
             "verified_at": "2026-10-04T15:11:14Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -16624,6 +17507,7 @@
       "required_capabilities": [
         "cap.ble.gap_adv",
         "cap.ble.gatt_server",
+        "cap.ble.smp_security",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.irq.edge_trigger",
@@ -24758,6 +25642,7 @@
       },
       "required_capabilities": [
         "cap.ble.gap_adv",
+        "cap.ble.gatt_client",
         "cap.ble.gatt_server",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
@@ -25019,8 +25904,108 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
-        "sdkconfig_overrides": {}
+        "header_closure": [
+          "assert.h",
+          "bleprph.h",
+          "console/console.h",
+          "esp_log.h",
+          "esp_peripheral.h",
+          "host/ble_hs.h",
+          "host/ble_uuid.h",
+          "host/util/util.h",
+          "modlog/modlog.h",
+          "nimble/ble.h",
+          "nimble/nimble_port.h",
+          "nimble/nimble_port_freertos.h",
+          "nvs_flash.h",
+          "services/ans/ble_svc_ans.h",
+          "services/gap/ble_svc_gap.h",
+          "services/gatt/ble_svc_gatt.h",
+          "stdbool.h",
+          "stdio.h",
+          "string.h"
+        ],
+        "sdkconfig_overrides": {
+          "CONFIG_BT_ENABLED": "y",
+          "CONFIG_BTDM_CTRL_MODE_BLE_ONLY": "y",
+          "CONFIG_BTDM_CTRL_MODE_BR_EDR_ONLY": "n",
+          "CONFIG_BTDM_CTRL_MODE_BTDM": "n",
+          "CONFIG_BT_BLUEDROID_ENABLED": "n",
+          "CONFIG_BT_NIMBLE_ENABLED": "y",
+          "CONFIG_BT_NIMBLE_SM_SC": "n",
+          "CONFIG_BT_NIMBLE_LL_CFG_FEAT_LE_ENCRYPTION": "n",
+          "CONFIG_BT_NIMBLE_GATT_MAX_PROCS": "2",
+          "CONFIG_BT_NIMBLE_MAX_CONNECTIONS": "1",
+          "CONFIG_BT_NIMBLE_MAX_BONDS": "1",
+          "CONFIG_BT_NIMBLE_MAX_CCCDS": "1",
+          "CONFIG_BT_NIMBLE_ENABLE_CONN_REATTEMPT": "n",
+          "CONFIG_BT_NIMBLE_TRANSPORT_EVT_COUNT": "15",
+          "CONFIG_SPI_FLASH_ROM_IMPL": "y",
+          "CONFIG_SPI_FLASH_SUPPORT_ISSI_CHIP": "n",
+          "CONFIG_SPI_FLASH_SUPPORT_MXIC_CHIP": "n",
+          "CONFIG_SPI_FLASH_SUPPORT_GD_CHIP": "n",
+          "CONFIG_SPI_FLASH_SUPPORT_WINBOND_CHIP": "n",
+          "CONFIG_SPI_FLASH_SUPPORT_BOYA_CHIP": "n",
+          "CONFIG_SPI_FLASH_SUPPORT_TH_CHIP": "n",
+          "CONFIG_SPI_FLASH_ENABLE_ENCRYPTED_READ_WRITE": "n",
+          "CONFIG_VFS_SUPPORT_TERMIOS": "n",
+          "CONFIG_VFS_SUPPORT_IO": "n",
+          "CONFIG_COMPILER_OPTIMIZATION_SIZE": "y",
+          "CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_DISABLE": "y",
+          "CONFIG_ESP_COEX_SW_COEXIST_ENABLE": "n",
+          "CONFIG_IDF_TARGET": "esp32c2",
+          "CONFIG_BT_NIMBLE_HCI_EVT_BUF_SIZE": "70",
+          "CONFIG_BT_NIMBLE_EXT_ADV": "y",
+          "CONFIG_BT_NIMBLE_ROLE_CENTRAL": "n",
+          "CONFIG_BT_NIMBLE_ROLE_OBSERVER": "n",
+          "CONFIG_BT_NIMBLE_50_FEATURE_SUPPORT": "n",
+          "CONFIG_BT_NIMBLE_MSYS_1_BLOCK_COUNT": "6",
+          "CONFIG_BT_NIMBLE_MSYS_2_BLOCK_COUNT": "12",
+          "CONFIG_BT_NIMBLE_TRANSPORT_ACL_FROM_LL_COUNT": "12",
+          "CONFIG_BT_NIMBLE_ATT_MAX_PREP_ENTRIES": "15",
+          "CONFIG_BT_NIMBLE_GATT_CLIENT": "n",
+          "CONFIG_BT_ALARM_MAX_NUM": "15",
+          "CONFIG_BT_NIMBLE_PRINT_ERR_NAME": "n",
+          "CONFIG_BT_NIMBLE_PROX_SERVICE": "n",
+          "CONFIG_BT_NIMBLE_CTS_SERVICE": "n",
+          "CONFIG_BT_NIMBLE_HTP_SERVICE": "n",
+          "CONFIG_BT_NIMBLE_IPSS_SERVICE": "n",
+          "CONFIG_BT_NIMBLE_TPS_SERVICE": "n",
+          "CONFIG_BT_NIMBLE_IAS_SERVICE": "n",
+          "CONFIG_BT_NIMBLE_LLS_SERVICE": "n",
+          "CONFIG_BT_NIMBLE_SPS_SERVICE": "n",
+          "CONFIG_BT_NIMBLE_HR_SERVICE": "n",
+          "CONFIG_BT_NIMBLE_DIS_SERVICE": "n",
+          "CONFIG_BT_NIMBLE_ATT_PREFERRED_MTU": "23",
+          "CONFIG_PM_ENABLE": "n",
+          "CONFIG_HEAP_POISONING_DISABLED": "y",
+          "CONFIG_BOOTLOADER_LOG_LEVEL_NONE": "y",
+          "CONFIG_BOOTLOADER_COMPILER_OPTIMIZATION_SIZE": "y",
+          "CONFIG_VFS_SUPPORT_DIR": "n",
+          "CONFIG_BT_NIMBLE_HOST_TASK_STACK_SIZE": "3152",
+          "CONFIG_FREERTOS_HZ": "100",
+          "CONFIG_FREERTOS_IDLE_TASK_STACKSIZE": "1024",
+          "CONFIG_FREERTOS_ISR_STACKSIZE": "1024",
+          "CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH": "2048",
+          "CONFIG_LIBC_NEWLIB_NANO_FORMAT": "y",
+          "CONFIG_LIBC_STDIN_LINE_ENDING_CRLF": "n",
+          "CONFIG_LIBC_STDOUT_LINE_ENDING_CRLF": "n",
+          "CONFIG_COMPILER_CXX_EXCEPTIONS": "n",
+          "CONFIG_HEAP_TRACING": "n",
+          "CONFIG_ESP_WIFI_ENABLED": "n",
+          "CONFIG_APP_COMPILE_TIME_DATE": "n",
+          "CONFIG_ESP_ERR_TO_NAME_LOOKUP": "n",
+          "CONFIG_SPI_MASTER_ISR_IN_IRAM": "n",
+          "CONFIG_SPI_SLAVE_ISR_IN_IRAM": "n",
+          "CONFIG_ESP_GDBSTUB_SUPPORT_TASKS": "n",
+          "CONFIG_ESP_NETIF_REPORT_DATA_TRAFFIC": "n",
+          "CONFIG_PM_POWER_DOWN_CPU_IN_LIGHT_SLEEP": "n",
+          "CONFIG_SPI_FLASH_YIELD_DURING_ERASE": "n",
+          "CONFIG_BT_CTRL_BLE_MAX_ACT": "2",
+          "CONFIG_BT_CTRL_ADV_DUP_FILT_MAX": "1",
+          "CONFIG_BT_CTRL_BLE_ADV_REPORT_FLOW_CTRL_SUPP": "n",
+          "CONFIG_BT_CTRL_BLE_SCAN_DUPL": "n"
+        }
       },
       "fidelity_contract": {
         "axes_declared": {
@@ -25079,6 +26064,13 @@
             "execution_report_ref": ".governance/reports/bluetooth/bleprph/run-report.json",
             "verified_commit": "dced52370776b2ceba87637df7e7bebe437a3f59",
             "verified_at": "2026-10-02T11:35:50Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -26122,7 +27114,17 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "esp_check.h",
+          "esp_log.h",
+          "esp_system.h",
+          "freertos/FreeRTOS.h",
+          "freertos/task.h",
+          "inttypes.h",
+          "nvs.h",
+          "nvs_flash.h",
+          "stdio.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -26174,6 +27176,13 @@
             "execution_report_ref": ".governance/reports/storage/nvs_nvs_iteration/run-report.json",
             "verified_commit": "63d2651f60ab40917542e871af4e19b34f1ccac3",
             "verified_at": "2026-10-04T12:36:53Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -26208,7 +27217,17 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "driver/gpio.h",
+          "esp_log.h",
+          "esp_system.h",
+          "freertos/FreeRTOS.h",
+          "freertos/task.h",
+          "inttypes.h",
+          "nvs.h",
+          "nvs_flash.h",
+          "stdio.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -26261,6 +27280,13 @@
             "execution_report_ref": ".governance/reports/storage/nvs_nvs_rw_blob/run-report.json",
             "verified_commit": "f8121fc13bf277fec481c443867f9d4b518c0008",
             "verified_at": "2026-10-02T19:31:29Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -26294,7 +27320,16 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
+        "header_closure": [
+          "esp_log.h",
+          "esp_system.h",
+          "freertos/FreeRTOS.h",
+          "freertos/task.h",
+          "inttypes.h",
+          "nvs.h",
+          "nvs_flash.h",
+          "stdio.h"
+        ],
         "sdkconfig_overrides": {}
       },
       "fidelity_contract": {
@@ -26347,6 +27382,13 @@
             "execution_report_ref": ".governance/reports/storage/nvs_nvs_rw_value/run-report.json",
             "verified_commit": "c224186790b30d8c252acb4182f6315f61eed145",
             "verified_at": "2026-10-08T04:30:00Z"
+          },
+          "remediation_decision": {
+            "verdict": "ELIGIBLE",
+            "reason": "Verified under AFG v1.1: baseline PASS + twin/canary mutation kill",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -27069,8 +28111,20 @@
       ],
       "compatibility": {
         "source_code_policy": "zero_modification_mirror",
-        "header_closure": [],
-        "sdkconfig_overrides": {}
+        "header_closure": [
+          "esp_err.h",
+          "esp_log.h",
+          "esp_spiffs.h",
+          "stdio.h",
+          "string.h",
+          "sys/stat.h",
+          "sys/unistd.h"
+        ],
+        "sdkconfig_overrides": {
+          "CONFIG_PARTITION_TABLE_CUSTOM": "y",
+          "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME": "partitions_example.csv",
+          "CONFIG_PARTITION_TABLE_FILENAME": "partitions_example.csv"
+        }
       },
       "fidelity_contract": {
         "axes_declared": {
@@ -27122,6 +28176,13 @@
             "execution_report_ref": ".governance/reports/storage/spiffs/run-report.json",
             "verified_commit": "37d9fa4aad4fdbadb9baaf9be7ece9c516eddee3",
             "verified_at": "2026-10-03T12:30:04Z"
+          },
+          "remediation_decision": {
+            "verdict": "needs_proofplan_update",
+            "reason": "Baseline PASS; pending Tier 2/3 archetype L1/L2 negative mutation scenario integration",
+            "evaluated_at": "2026-10-09T04:06:42Z",
+            "reviewer": "AFG-Inspector-v1.1",
+            "target_plan": "2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md"
           }
         }
       ],
@@ -27769,6 +28830,8 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.build.component_reg",
+        "cap.build.kconfig_parse",
         "cap.core.fiber_task",
         "cap.core.sync_tokens"
       ],
@@ -27829,6 +28892,8 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.build.component_reg",
+        "cap.build.kconfig_parse",
         "cap.core.fiber_task",
         "cap.core.sync_tokens"
       ],
@@ -27889,6 +28954,8 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.build.component_reg",
+        "cap.build.kconfig_parse",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.vfs.fatfs_vfs"
@@ -27950,6 +29017,8 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.build.component_reg",
+        "cap.build.kconfig_parse",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.storage.partition_api",
@@ -28012,6 +29081,8 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.build.component_reg",
+        "cap.build.kconfig_parse",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.storage.partition_api",
@@ -28031,7 +29102,8 @@
           "axis_e_concurrency": "cooperative_fiber",
           "axis_f_diagnostics": "structured_trace"
         },
-        "concurrency_model": "cooperative_fiber"
+        "concurrency_model": "cooperative_fiber",
+        "soc_support_verified_by_kconfig": true
       },
       "executions": [
         {
@@ -28053,7 +29125,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "build_system/cmake_import_prebuilt_prebuilt"
+      "target_app_dir": "build_system/cmake_import_prebuilt_prebuilt",
+      "remediation_decision": "soc_support_verified_by_kconfig"
     },
     {
       "id": "esp.build_system.cmake.multi_config",
@@ -28074,6 +29147,8 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.build.component_reg",
+        "cap.build.kconfig_parse",
         "cap.core.fiber_task",
         "cap.core.sync_tokens"
       ],
@@ -28134,6 +29209,8 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.build.component_reg",
+        "cap.build.kconfig_parse",
         "cap.core.fiber_task",
         "cap.core.sync_tokens"
       ],
@@ -28194,6 +29271,8 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.build.component_reg",
+        "cap.build.kconfig_parse",
         "cap.core.fiber_task",
         "cap.core.sync_tokens"
       ],
@@ -28254,6 +29333,8 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.build.component_reg",
+        "cap.build.kconfig_parse",
         "cap.core.fiber_task",
         "cap.core.sync_tokens"
       ],
@@ -28314,6 +29395,8 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.build.component_reg",
+        "cap.build.kconfig_parse",
         "cap.core.fiber_task",
         "cap.core.sync_tokens"
       ],
@@ -28374,6 +29457,8 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.build.component_reg",
+        "cap.build.kconfig_parse",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.vfs.fatfs_vfs"
@@ -28435,6 +29520,8 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.build.component_reg",
+        "cap.build.kconfig_parse",
         "cap.core.fiber_task",
         "cap.core.sync_tokens"
       ],
@@ -28495,6 +29582,8 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.build.component_reg",
+        "cap.build.kconfig_parse",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.storage.partition_api",
@@ -28557,6 +29646,8 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.build.component_reg",
+        "cap.build.kconfig_parse",
         "cap.core.fiber_task",
         "cap.core.sync_tokens",
         "cap.storage.partition_api",
@@ -28576,7 +29667,8 @@
           "axis_e_concurrency": "cooperative_fiber",
           "axis_f_diagnostics": "structured_trace"
         },
-        "concurrency_model": "cooperative_fiber"
+        "concurrency_model": "cooperative_fiber",
+        "soc_support_verified_by_kconfig": true
       },
       "executions": [
         {
@@ -28598,7 +29690,8 @@
           "evidence": null
         }
       ],
-      "target_app_dir": "build_system/cmakev2_features_import_prebuilt_prebuilt"
+      "target_app_dir": "build_system/cmakev2_features_import_prebuilt_prebuilt",
+      "remediation_decision": "soc_support_verified_by_kconfig"
     },
     {
       "id": "esp.build_system.cmakev2.features.multi_binary",
@@ -28619,6 +29712,8 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.build.component_reg",
+        "cap.build.kconfig_parse",
         "cap.core.fiber_task",
         "cap.core.sync_tokens"
       ],
@@ -28679,6 +29774,8 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.build.component_reg",
+        "cap.build.kconfig_parse",
         "cap.core.fiber_task",
         "cap.core.sync_tokens"
       ],
@@ -28739,6 +29836,8 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.build.component_reg",
+        "cap.build.kconfig_parse",
         "cap.core.fiber_task",
         "cap.core.sync_tokens"
       ],
@@ -28799,6 +29898,8 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.build.component_reg",
+        "cap.build.kconfig_parse",
         "cap.core.fiber_task",
         "cap.core.sync_tokens"
       ],
@@ -28859,6 +29960,8 @@
         "ruling_path": null
       },
       "required_capabilities": [
+        "cap.build.component_reg",
+        "cap.build.kconfig_parse",
         "cap.core.fiber_task",
         "cap.core.sync_tokens"
       ],

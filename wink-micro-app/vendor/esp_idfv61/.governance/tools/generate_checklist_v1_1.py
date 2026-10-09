@@ -57,11 +57,12 @@ except ImportError:
 # 状态符渲染映射
 # ─────────────────────────────────────────────────────────────
 DELIVERY_STATE_SYMBOL = {
-    "verified":  "[x]",
-    "building":  "[~]",
-    "regressed": "[!]",
-    "stale":     "[!]",
-    "planned":   "[ ]",
+    "verified":      "[x]",
+    "verified_v1_1": "[x]",
+    "building":      "[~]",
+    "regressed":     "[!]",
+    "stale":         "[!]",
+    "planned":       "[ ]",
 }
 
 SCOPE_STATUS_SYMBOL = {
@@ -249,7 +250,7 @@ def render_row(entry: dict, quarantine: dict[str, dict]) -> tuple[str, str]:
                 pos_cases = acceptance.get("positive_cases")
 
             d_state = ex.get("delivery_state", "planned")
-            if d_state == "verified":
+            if d_state in ("verified", "verified_v1_1"):
                 has_verified = True
                 ok, _ = verify_evidence(entry, ex, WS_ROOT, strict_disk=True)
                 if ok:

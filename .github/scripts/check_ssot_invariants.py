@@ -56,9 +56,9 @@ def verify_ssot_invariants(root: Path) -> list[str]:
     in_scope_deferred = sum(1 for e in entries if e.get("scope", {}).get("inclusion") == "in_scope" and e.get("scope", {}).get("schedule") == "deferred")
 
     audited = sum(1 for e in entries if e.get("audit", {}).get("verdict") == "audited")
-    verified_configs = sum(1 for e in entries for ex in e.get("executions", []) if ex.get("delivery_state") == "verified")
-    verified_entries = sum(1 for e in entries if any(ex.get("delivery_state") == "verified" for ex in e.get("executions", [])))
-    planned_entries = sum(1 for e in entries if e.get("scope", {}).get("inclusion") == "in_scope" and e.get("scope", {}).get("schedule") == "active" and not any(ex.get("delivery_state") == "verified" for ex in e.get("executions", [])))
+    verified_configs = sum(1 for e in entries for ex in e.get("executions", []) if ex.get("delivery_state") in ("verified", "verified_v1_1"))
+    verified_entries = sum(1 for e in entries if any(ex.get("delivery_state") in ("verified", "verified_v1_1") for ex in e.get("executions", [])))
+    planned_entries = sum(1 for e in entries if e.get("scope", {}).get("inclusion") == "in_scope" and e.get("scope", {}).get("schedule") == "active" and not any(ex.get("delivery_state") in ("verified", "verified_v1_1") for ex in e.get("executions", [])))
 
     # Invariant: Partitioning
     if scope_in + scope_out + scope_unknown != total_entries:

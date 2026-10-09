@@ -3,7 +3,7 @@
 # ESP-IDF v6.1 官方示例全量仿真适配核对清单 (Checklist)
 
 > **数据单一事实源（SSOT）**：[`checklist.data.json`](.governance/data/checklist.data.json)（Spec v2.0.0，多配置实例与五维正交模型）  
-> **生成时间**：2026-10-08  
+> **生成时间**：2026-10-09  
 > **分类规范**：[`CLASSIFICATION-SPEC.md`](.governance/specs/CLASSIFICATION-SPEC.md) (v2.0)  
 > **能力字典**：[`capability-catalog.yaml`](.governance/catalog/capability-catalog.yaml)  
 > **隔离区白名单**：[`gates/quarantine.yaml`](.governance/gates/quarantine.yaml)（10 项存量债务，14 天 TTL 生效中）  
@@ -17,8 +17,8 @@
   - `[x]` **已完成六要素实证 (Verified)**：**46 项**
     - `🟢` **双实证闭环 (Twin-Proof: Green ✅ + Red 🛡️)**：**4 项**
   - `[?]` **存量隔离待补凭证 (Quarantined Debt)**：**0 项**（14 天 TTL 过期硬阻断，至 `2026-10-13`）
-  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**245 项**
-  - `[-]` **明确产品排除 / 暂缓投入 (Out-of-Scope / Deferred)**：**187 项**（编译期 `WINK_SLA_ERROR` Fail-Loud 阻断）
+  - `[ ]` **规划中正常排期 (In-Scope Planned)**：**221 项**
+  - `[-]` **明确产品排除 / 暂缓投入 (Out-of-Scope / Deferred)**：**211 项**（编译期 `WINK_SLA_ERROR` Fail-Loud 阻断）
   - `?` **待深度审定 (Pending Audit / Unknown Scope)**：**0 项**
 
 ### 大类索引导航
@@ -141,8 +141,8 @@
 | [ ] | 015 | `peripherals/dedicated_gpio/soft_i2c` | 📜 Level 2 | P1 | `peripherals/dedicated_gpio_soft_i2c` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 016 | `peripherals/dedicated_gpio/soft_spi` | 📜 Level 2 | P1 | `peripherals/dedicated_gpio_soft_spi` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
 | [x] | 017 | `peripherals/dedicated_gpio/soft_uart` | 📜 Level 2 | P0 | [`peripherals/dedicated_gpio_soft_uart`](peripherals/dedicated_gpio_soft_uart) | [Lane 2: 数字总线] [Green ✅ | Red ⏳] 已完成实证。 |
-| [ ] | 018 | `peripherals/dma/async_color_convert` | 📜 Level 2 | P2 | `peripherals/dma_async_color_convert` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 019 | `peripherals/dma/async_crc` | 📜 Level 2 | P2 | `peripherals/dma_async_crc` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
+| [-] | 018 | `peripherals/dma/async_color_convert` | 📜 Level 2 | P3 | `peripherals/dma_async_color_convert` | 暂缓投入。依赖外部模型。 |
+| [-] | 019 | `peripherals/dma/async_crc` | 📜 Level 2 | P3 | `peripherals/dma_async_crc` | 暂缓投入。依赖外部模型。 |
 | [x] | 020 | `peripherals/gpio/generic_gpio` | 📜 Level 2 | P0 | [`peripherals/gpio_generic_gpio`](peripherals/gpio_generic_gpio) | [Lane 2: 数字总线] [Green ✅ | Red ⏳] 已完成实证。 |
 | [ ] | 021 | `peripherals/gpio/matrix_keyboard` | 📜 Level 2 | P1 | `peripherals/gpio_matrix_keyboard` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
 | [-] | 022 | `peripherals/h264` | 🎯 Level 1 | P4 | — | 声明 Out-of-Scope。硬件 H.264 编解码加速器。 |
@@ -158,15 +158,15 @@
 | [ ] | 032 | `peripherals/i2s/i2s_codec/i2s_es7210_tdm` | 📜 Level 2 | P2 | `peripherals/i2s_i2s_codec_i2s_es7210_tdm` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 033 | `peripherals/i2s/i2s_codec/i2s_es8311` | 📜 Level 2 | P2 | `peripherals/i2s_i2s_codec_i2s_es8311` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 034 | `peripherals/i2s/i2s_recorder` | 📜 Level 2 | P2 | `peripherals/i2s_i2s_recorder` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 035 | `peripherals/i3c/i3c_i2c_basic` | 📜 Level 2 | P1 | `peripherals/i3c_i3c_i2c_basic` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 036 | `peripherals/i3c/i3c_lsm6dscx` | 📜 Level 2 | P2 | `peripherals/i3c_i3c_lsm6dscx` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
+| [-] | 035 | `peripherals/i3c/i3c_i2c_basic` | 📜 Level 2 | P3 | `peripherals/i3c_i3c_i2c_basic` | 暂缓投入。依赖外部模型。 |
+| [-] | 036 | `peripherals/i3c/i3c_lsm6dscx` | 📜 Level 2 | P3 | `peripherals/i3c_i3c_lsm6dscx` | 暂缓投入。依赖外部模型。 |
 | [-] | 037 | `peripherals/isp/multi_pipelines` | 🎯 Level 1 | P4 | — | 声明 Out-of-Scope。图像信号处理器 (ISP) 硬件管线。 |
 | [-] | 038 | `peripherals/jpeg/jpeg_decode` | 🎯 Level 1 | P4 | — | 声明 Out-of-Scope。硬件 JPEG 编解码加速器。 |
 | [-] | 039 | `peripherals/jpeg/jpeg_encode` | 🎯 Level 1 | P4 | — | 声明 Out-of-Scope。硬件 JPEG 编解码加速器。 |
 | [ ] | 040 | `peripherals/lcd/i2c_oled` | 📜 Level 2 | P3 | `peripherals/lcd_i2c_oled` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 041 | `peripherals/lcd/i80_controller` | 📜 Level 2 | P3 | `peripherals/lcd_i80_controller` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
 | [-] | 042 | `peripherals/lcd/mipi_dsi` | 📜 Level 2 | P4 | — | 声明 Out-of-Scope。MIPI-DSI 高速差分显示物理接口。 |
-| [ ] | 043 | `peripherals/lcd/parlio_simulate` | 📜 Level 2 | P3 | `peripherals/lcd_parlio_simulate` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
+| [-] | 043 | `peripherals/lcd/parlio_simulate` | 📜 Level 2 | P3 | `peripherals/lcd_parlio_simulate` | 暂缓投入。依赖外部模型。 |
 | [ ] | 044 | `peripherals/lcd/rgb_panel` | 📜 Level 2 | P3 | `peripherals/lcd_rgb_panel` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 045 | `peripherals/lcd/spi_lcd_touch` | 📜 Level 2 | P3 | `peripherals/lcd_spi_lcd_touch` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 046 | `peripherals/lcd/tjpgd` | 📜 Level 2 | P3 | `peripherals/lcd_tjpgd` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
@@ -180,9 +180,9 @@
 | [ ] | 054 | `peripherals/mcpwm/mcpwm_foc_svpwm_open_loop` | 📜 Level 2 | P2 | `peripherals/mcpwm_mcpwm_foc_svpwm_open_loop` | [Lane 3: 脉冲定时] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 055 | `peripherals/mcpwm/mcpwm_servo_control` | 📜 Level 2 | P2 | `peripherals/mcpwm_mcpwm_servo_control` | [Lane 3: 脉冲定时] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 056 | `peripherals/mcpwm/mcpwm_sync` | 📜 Level 2 | P2 | `peripherals/mcpwm_mcpwm_sync` | [Lane 3: 脉冲定时] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 057 | `peripherals/parlio/parlio_rx/logic_analyzer` | 📜 Level 2 | P2 | `peripherals/parlio_parlio_rx_logic_analyzer` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 058 | `peripherals/parlio/parlio_tx/advanced_rgb_led_matrix` | 📜 Level 2 | P2 | `peripherals/parlio_parlio_tx_advanced_rgb_led_matrix` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 059 | `peripherals/parlio/parlio_tx/simple_rgb_led_matrix` | 📜 Level 2 | P2 | `peripherals/parlio_parlio_tx_simple_rgb_led_matrix` | [Lane 2: 数字总线] 待排期。依赖进一步框架门面扩展。 |
+| [-] | 057 | `peripherals/parlio/parlio_rx/logic_analyzer` | 📜 Level 2 | P3 | `peripherals/parlio_parlio_rx_logic_analyzer` | 暂缓投入。依赖外部模型。 |
+| [-] | 058 | `peripherals/parlio/parlio_tx/advanced_rgb_led_matrix` | 📜 Level 2 | P3 | `peripherals/parlio_parlio_tx_advanced_rgb_led_matrix` | 暂缓投入。依赖外部模型。 |
+| [-] | 059 | `peripherals/parlio/parlio_tx/simple_rgb_led_matrix` | 📜 Level 2 | P3 | `peripherals/parlio_parlio_tx_simple_rgb_led_matrix` | 暂缓投入。依赖外部模型。 |
 | [ ] | 060 | `peripherals/pcnt/rotary_encoder` | 📜 Level 2 | P2 | `peripherals/pcnt_rotary_encoder` | [Lane 3: 脉冲定时] 待排期。依赖进一步框架门面扩展。 |
 | [-] | 061 | `peripherals/ppa/ppa_rgb_lcd` | 🎯 Level 1 | P4 | — | 声明 Out-of-Scope。像素处理加速器 (PPA) 硬件管线。 |
 | [ ] | 062 | `peripherals/rmt/dshot_esc` | 🎯 Level 1 | P2 | `peripherals/rmt_dshot_esc` | [Lane 3: 脉冲定时] 待排期。依赖进一步框架门面扩展。 |
@@ -286,22 +286,22 @@
 | [ ] | 152 | `system/sysview_tracing` | 📜 Level 2 | P2 | `system/sysview_tracing` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 153 | `system/sysview_tracing_heap_log` | 📜 Level 2 | P2 | `system/sysview_tracing_heap_log` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
 | [x] | 154 | `system/task_watchdog` | 📜 Level 2 | P0 | [`system/task_watchdog`](system/task_watchdog) | [Lane 1: 内核调度] 🟢 [Green ✅ | Red 🛡️] 已完成红绿双实证 (TWIN-PROOF)。 |
-| [ ] | 155 | `system/ulp/lp_core/build_system` | 📜 Level 2 | P3 | `system/ulp_lp_core_build_system` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 156 | `system/ulp/lp_core/debugging` | 📜 Level 2 | P3 | `system/ulp_lp_core_debugging` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 157 | `system/ulp/lp_core/gpio` | 📜 Level 2 | P1 | `system/ulp_lp_core_gpio` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 158 | `system/ulp/lp_core/gpio_intr_pulse_counter` | 📜 Level 2 | P1 | `system/ulp_lp_core_gpio_intr_pulse_counter` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 159 | `system/ulp/lp_core/gpio_wakeup` | 📜 Level 2 | P1 | `system/ulp_lp_core_gpio_wakeup` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 160 | `system/ulp/lp_core/inter_cpu_critical_section` | 📜 Level 2 | P3 | `system/ulp_lp_core_inter_cpu_critical_section` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 161 | `system/ulp/lp_core/interrupt` | 📜 Level 2 | P3 | `system/ulp_lp_core_interrupt` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 162 | `system/ulp/lp_core/lp_adc` | 🎯 Level 1 | P3 | `system/ulp_lp_core_lp_adc` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 163 | `system/ulp/lp_core/lp_i2c` | 📜 Level 2 | P3 | `system/ulp_lp_core_lp_i2c` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 164 | `system/ulp/lp_core/lp_mailbox` | 📜 Level 2 | P3 | `system/ulp_lp_core_lp_mailbox` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 165 | `system/ulp/lp_core/lp_spi` | 📜 Level 2 | P3 | `system/ulp_lp_core_lp_spi` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 166 | `system/ulp/lp_core/lp_timer_interrupt` | 📜 Level 2 | P3 | `system/ulp_lp_core_lp_timer_interrupt` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 167 | `system/ulp/lp_core/lp_touch` | 📜 Level 2 | P3 | `system/ulp_lp_core_lp_touch` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 168 | `system/ulp/lp_core/lp_uart/lp_uart_char_seq_wakeup` | 📜 Level 2 | P3 | `system/ulp_lp_core_lp_uart_lp_uart_char_seq_wakeup` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 169 | `system/ulp/lp_core/lp_uart/lp_uart_echo` | 📜 Level 2 | P1 | `system/ulp_lp_core_lp_uart_lp_uart_echo` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
-| [ ] | 170 | `system/ulp/lp_core/lp_uart/lp_uart_print` | 📜 Level 2 | P3 | `system/ulp_lp_core_lp_uart_lp_uart_print` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
+| [-] | 155 | `system/ulp/lp_core/build_system` | 📜 Level 2 | P3 | `system/ulp_lp_core_build_system` | 暂缓投入。依赖外部模型。 |
+| [-] | 156 | `system/ulp/lp_core/debugging` | 📜 Level 2 | P3 | `system/ulp_lp_core_debugging` | 暂缓投入。依赖外部模型。 |
+| [-] | 157 | `system/ulp/lp_core/gpio` | 📜 Level 2 | P3 | `system/ulp_lp_core_gpio` | 暂缓投入。依赖外部模型。 |
+| [-] | 158 | `system/ulp/lp_core/gpio_intr_pulse_counter` | 📜 Level 2 | P3 | `system/ulp_lp_core_gpio_intr_pulse_counter` | 暂缓投入。依赖外部模型。 |
+| [-] | 159 | `system/ulp/lp_core/gpio_wakeup` | 📜 Level 2 | P3 | `system/ulp_lp_core_gpio_wakeup` | 暂缓投入。依赖外部模型。 |
+| [-] | 160 | `system/ulp/lp_core/inter_cpu_critical_section` | 📜 Level 2 | P3 | `system/ulp_lp_core_inter_cpu_critical_section` | 暂缓投入。依赖外部模型。 |
+| [-] | 161 | `system/ulp/lp_core/interrupt` | 📜 Level 2 | P3 | `system/ulp_lp_core_interrupt` | 暂缓投入。依赖外部模型。 |
+| [-] | 162 | `system/ulp/lp_core/lp_adc` | 🎯 Level 1 | P3 | `system/ulp_lp_core_lp_adc` | 暂缓投入。依赖外部模型。 |
+| [-] | 163 | `system/ulp/lp_core/lp_i2c` | 📜 Level 2 | P3 | `system/ulp_lp_core_lp_i2c` | 暂缓投入。依赖外部模型。 |
+| [-] | 164 | `system/ulp/lp_core/lp_mailbox` | 📜 Level 2 | P3 | `system/ulp_lp_core_lp_mailbox` | 暂缓投入。依赖外部模型。 |
+| [-] | 165 | `system/ulp/lp_core/lp_spi` | 📜 Level 2 | P3 | `system/ulp_lp_core_lp_spi` | 暂缓投入。依赖外部模型。 |
+| [-] | 166 | `system/ulp/lp_core/lp_timer_interrupt` | 📜 Level 2 | P3 | `system/ulp_lp_core_lp_timer_interrupt` | 暂缓投入。依赖外部模型。 |
+| [-] | 167 | `system/ulp/lp_core/lp_touch` | 📜 Level 2 | P3 | `system/ulp_lp_core_lp_touch` | 暂缓投入。依赖外部模型。 |
+| [-] | 168 | `system/ulp/lp_core/lp_uart/lp_uart_char_seq_wakeup` | 📜 Level 2 | P3 | `system/ulp_lp_core_lp_uart_lp_uart_char_seq_wakeup` | 暂缓投入。依赖外部模型。 |
+| [-] | 169 | `system/ulp/lp_core/lp_uart/lp_uart_echo` | 📜 Level 2 | P3 | `system/ulp_lp_core_lp_uart_lp_uart_echo` | 暂缓投入。依赖外部模型。 |
+| [-] | 170 | `system/ulp/lp_core/lp_uart/lp_uart_print` | 📜 Level 2 | P3 | `system/ulp_lp_core_lp_uart_lp_uart_print` | 暂缓投入。依赖外部模型。 |
 | [ ] | 171 | `system/ulp/ulp_fsm/ulp_adc` | 🎯 Level 1 | P3 | `system/ulp_ulp_fsm_ulp_adc` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 172 | `system/ulp/ulp_fsm_riscv_combined/counter` | 📜 Level 2 | P3 | `system/ulp_ulp_fsm_riscv_combined_counter` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |
 | [ ] | 173 | `system/ulp/ulp_riscv/adc` | 🎯 Level 1 | P3 | `system/ulp_ulp_riscv_adc` | [Lane 1: 内核调度] 待排期。依赖进一步框架门面扩展。 |

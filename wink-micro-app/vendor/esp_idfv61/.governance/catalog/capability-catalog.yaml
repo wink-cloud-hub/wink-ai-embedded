@@ -106,6 +106,17 @@ capabilities:
     - esp32s2
     cross_mcu_evidence:
     - wink-micro-os/targets/baremetal/stm32/pal_stm32_dac.c
+  cap.analog.comparator_etm:
+    name: 模拟比较器与事件任务矩阵
+    layer: pal
+    status: planned
+    description: 模拟比较器阈值触发与 ETM 硬件事件联动
+    owned_paths:
+    - wink-micro-os/frameworks/esp_idf/include/esp_etm.h
+    - wink-micro-os/pal/include/hal/pal_etm.h
+    soc_support:
+    - esp32c6
+    - esp32h2
   cap.pulse.tx_buffer:
     name: 微秒脉冲发送缓冲
     layer: pal
@@ -257,6 +268,16 @@ capabilities:
     soc_support:
     - esp32c6
     - esp32h2
+    - esp32p4
+  cap.bus.i3c_master:
+    name: I3C 总线主机协议
+    layer: dal
+    status: planned
+    description: I3C SDR/HDR 传输协议与动态地址分配
+    owned_paths:
+    - wink-micro-os/dal/include/dal_i3c.h
+    - wink-micro-os/frameworks/esp_idf/include/driver/i3c_master.h
+    soc_support:
     - esp32p4
   cap.proto.ws2812:
     name: WS2812 协议编码管道
@@ -523,6 +544,16 @@ capabilities:
     - esp32c6
     cross_mcu_evidence:
     - wink-micro-os/targets/wasm/wink_sim_net.c
+  cap.net.bridge_vlan:
+    name: 二层以太网桥接与 VLAN
+    layer: dal
+    status: planned
+    description: 二层网络桥接接口、虚拟 LAN 隔离与数据包转发
+    owned_paths:
+    - wink-micro-os/frameworks/esp_idf/include/esp_netif.h
+    soc_support:
+    - esp32
+    - esp32p4
   cap.wifi.station_mode:
     name: Wi-Fi Station 模式与事件循环
     layer: facade
@@ -770,6 +801,16 @@ capabilities:
     soc_support:
     - esp32s2
     - esp32s3
+  cap.coproc.lp_core:
+    name: LP-Core 低功耗协处理器
+    layer: pal
+    status: planned
+    description: LP-Core RISC-V 协处理器固件加载与共享内存通信
+    owned_paths:
+    - wink-micro-os/frameworks/esp_idf/include/ulp_lp_core.h
+    soc_support:
+    - esp32c6
+    - esp32p4
   cap.media.camera_dma:
     name: DVP/CSI 虚拟图像帧捕获
     layer: model
@@ -780,6 +821,18 @@ capabilities:
     soc_support:
     - esp32
     - esp32s3
+  cap.media.lcd_panel:
+    name: LCD 屏幕面板驱动
+    layer: dal
+    status: planned
+    description: LCD 屏幕驱动、色彩转换与帧刷屏
+    owned_paths:
+    - wink-micro-os/dal/include/dal_lcd.h
+    - wink-micro-os/frameworks/esp_idf/include/esp_lcd_panel_io.h
+    soc_support:
+    - esp32
+    - esp32s3
+    - esp32p4
   cap.dma.memcpy_sim:
     name: DMA 描述符与内存传输
     layer: core_sim
@@ -806,6 +859,25 @@ capabilities:
     - esp32s3
     - esp32c3
     - esp32c6
+  cap.dma.async_crc:
+    name: 硬件异步 CRC 计算
+    layer: pal
+    status: planned
+    description: 基于 2D-DMA / 专用硬件加速器的异步 CRC
+    owned_paths:
+    - wink-micro-os/pal/include/hal/pal_dma.h
+    soc_support:
+    - esp32p4
+  cap.dma.async_color_convert:
+    name: 硬件异步色彩空间转换
+    layer: pal
+    status: planned
+    description: 硬件 DMA 像素色彩空间格式转换加速
+    owned_paths:
+    - wink-micro-os/pal/include/hal/pal_dma.h
+    soc_support:
+    - esp32s3
+    - esp32p4
   cap.irq.isr_dispatch:
     name: ISR 上下文模拟
     layer: core_sim
