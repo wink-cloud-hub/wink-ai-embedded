@@ -4,12 +4,13 @@
 | 项 | 内容 |
 |---|---|
 | 计划编号 | `PLAN-20261009-ESP-IDF-AFG-TOTAL-REMEDIATION-MASTER` |
-| 日期 / 修订 | 2026-10-09，Asia/Shanghai；`v1.1` 执行质量修订草案 |
-| 状态 | **Draft / 修订待确认，实施未开始**；原 v1.0 记录的 Approved 不代表新增任务已经批准或通过验收 |
+| 日期 / 修订 | 2026-10-09，Asia/Shanghai；`v1.1` 执行质量修订版（已确认采纳） |
+| 状态 | **Active / 修订已确认采纳，Phase 0 实施中**；原 v1.0 记录的 Approved 不代表新增任务已经批准或通过验收 |
 | 修订核查基线 | `acb984fdccb795c5da3d20192a6435a2151e3ee3`；本次只读核查与计划编辑未执行构建、仿真、审计签署或正式晋升 |
 | 关联技术设计 | [AFG-Engine 契约](../../../zh/tech-designs/esp32/esp-idf-anti-false-green-verification-engine-contract.md)、[Loop 可靠性契约](../../../zh/tech-designs/esp32/esp-idf-loop-reliability-contract.md)、[Batch 0 证据契约](../../../zh/tech-designs/esp32/esp-idf-batch0-evidence-contract.md) |
 | 关联问题与历史评审 | [Loop I-01～I-19 问题账本](../2026-10-09-esp-idf-loop-issues-and-remediation-plan.md)、[存量历史裁决](../../../reviews/esp32/2026-10-09-esp-idf-legacy-46-triage-report.md)、[Checklist 深度评审](../../../reviews/esp32/2026-10-08-esp-idf-verified-checklist-deep-review.md) |
 | 共同执行规则 | [05-EXECUTION-QUALITY-GATES.md](05-EXECUTION-QUALITY-GATES.md)；全部阶段必须引用其任务完成、证据、检查集合和停止规则 |
+| QG-0 基线证据 | [06-QG0-PHASE0-BASELINE-EVIDENCE.md](06-QG0-PHASE0-BASELINE-EVIDENCE.md)（Phase 0 完成，门禁已通过，解除 Phase 1/Phase 2 实施阻塞） |
 | 活规范入口 | [UniSim 设计入口](../../../zh/design/04-wasm-simulation/00-README.md)、[分类与交付规范](../../../../wink-micro-app/vendor/esp_idfv61/.governance/specs/CLASSIFICATION-SPEC.md) |
 
 ## 1. 修订目标与事实边界

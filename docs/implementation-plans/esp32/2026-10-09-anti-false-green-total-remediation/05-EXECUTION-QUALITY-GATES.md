@@ -3,7 +3,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 版本 / 状态 | 2026-10-09，Asia/Shanghai；v1.1 Draft；规则待确认，验收设施待实施 |
+| 版本 / 状态 | 2026-10-09，Asia/Shanghai；`v1.1`（已确认采纳）；执行规则已生效，验收设施待实施 |
 | 主计划 | [00-MASTER-OVERVIEW.md](00-MASTER-OVERVIEW.md) |
 | 技术依据 | [Loop 可靠性契约](../../../zh/tech-designs/esp32/esp-idf-loop-reliability-contract.md)、[AFG 契约](../../../zh/tech-designs/esp32/esp-idf-anti-false-green-verification-engine-contract.md)、[Batch 0 证据契约](../../../zh/tech-designs/esp32/esp-idf-batch0-evidence-contract.md) |
 | 治理依据 | [分类规范](../../../../wink-micro-app/vendor/esp_idfv61/.governance/specs/CLASSIFICATION-SPEC.md)、[治理 SOP](../../../../.agents/skills/governance-sop-esp/SKILL.md)、[领域断言指南](../../../../.agents/skills/governance-sop-esp/references/domain-assertion-guide.md) |
