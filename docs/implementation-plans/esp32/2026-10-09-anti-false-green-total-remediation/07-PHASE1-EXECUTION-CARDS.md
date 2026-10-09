@@ -168,17 +168,51 @@
 - **问题归属**: `I-04`, `AFG-NEW-01`
 - **实现责任人**: 进程与宿主工程师 (Process & Supervisor Engineer)
 - **独立复核人**: 架构复核者 (Architecture Reviewer)
-- **工程追踪状态**: `待执行`
+- **工程追踪状态**: `已完成 (Done ✅)`
 
 ### 2. 范围与依赖
 - **修改文件白名单**:
+  - `wink-micro-app/vendor/esp_idfv61/.governance/loop/harness/process_supervisor.py`
   - `wink-micro-app/vendor/esp_idfv61/.governance/tools/loop/process_supervisor.py`
   - `wink-micro-app/vendor/esp_idfv61/.governance/tests/unit/test_t1_5_process_supervisor.py` (新增)
 - **必需前置条件**: T1.4 (Done)
 - **关联技术契约**: [Loop 可靠性契约 2.2 节](../../../zh/tech-designs/esp32/esp-idf-loop-reliability-contract.md)
 
 ### 3. 验收设计 (AC-1.6 落地核验)
-- [ ] **行为目标 1 (Win32 Job Object 强绑定)**: Windows 平台使用 `CREATE_SUSPENDED` 挂起创建进程、加入 Job Object、设置 `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` 并恢复执行，禁止允许后代逃逸的 breakaway 设置；
-- [ ] **行为目标 2 (多级后代进程树有界清理)**: 父进程先退、控制器崩溃或异常中断时，递归终止所有子孙进程，杜绝孤儿 node/python/wasm 进程泄漏；
-- [ ] **行为目标 3 (继承管道与文件句柄释放)**: 终止进程后显式关闭所有继承管道与日志重定向文件描述符，支持重试回收机制。
+- [x] **行为目标 1 (Win32 Job Object 强绑定)**: Windows 平台使用 `CREATE_SUSPENDED` 挂起创建进程、加入 Job Object、设置 `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` 并恢复执行，禁止允许后代逃逸的 breakaway 设置；
+- [x] **行为目标 2 (多级后代进程树有界清理)**: 父进程先退、控制器崩溃或异常中断时，递归终止所有子孙进程，杜绝孤儿 node/python/wasm 进程泄漏；
+- [x] **行为目标 3 (继承管道与文件句柄释放)**: 终止进程后显式关闭所有继承管道与日志重定向文件描述符，支持重试回收机制。
+
+### 4. 验证凭据与回执
+- **专用单测**: `pytest tests/unit/test_t1_5_process_supervisor.py` 8/8 全部通过；
+- **全量单测**: `pytest tests/unit/` 62/62 全部通过；
+- **元公理回归**: `pytest tests/meta_invariants/` 31/31 全部通过；
+- **Batch 0 回归**: `pytest tests/gates/test_batch0_evidence.py` 55/55 全部通过；
+- **核验器单测**: `pytest tests/gates/test_evidence_verifier.py` 22/22 全部通过；
+- **对抗门禁回归**: `pytest tests/gates/test_adversarial_suite.py` 35/35 全部通过。
+
+---
+
+## T1.6 稳定密封与审计绑定
+
+### 1. 身份与责任
+- **Task ID**: `T1.6`
+- **问题归属**: `I-08`, `I-09`, `AFG-NEW-02`
+- **实现责任人**: 凭据密封与发布维护者 (Packaging & Promotion Engineer)
+- **独立复核人**: 架构复核者 (Architecture Reviewer)
+- **工程追踪状态**: `待执行`
+
+### 2. 范围与依赖
+- **修改文件白名单**:
+  - `wink-micro-app/vendor/esp_idfv61/.governance/tools/loop/pipeline.py` (or afg canonical packaging logic)
+  - `wink-micro-app/vendor/esp_idfv61/.governance/tools/inspect_candidate.py`
+  - `wink-micro-app/vendor/esp_idfv61/.governance/tests/unit/test_t1_6_envelope_sealing.py` (新增)
+- **必需前置条件**: T1.5 (Done)
+- **关联技术契约**: [Loop 可靠性契约 2.4 节](../../../zh/tech-designs/esp32/esp-idf-loop-reliability-contract.md)
+
+### 3. 验收设计 (AC-1.7 落地核验)
+- [ ] **行为目标 1 (Payload 与 Envelope 严格分离与无自引用)**: payload 清单完全冻结后计算 `payload_sha256`，外部 summary/audit 位于 envelope，严禁自引用与密封后修改 payload；
+- [ ] **行为目标 2 (跨平台规范化摘要与 JCS 序列化)**: 换行符统一归一化为 LF，JSON 清单严格遵守 RFC 8785 (JCS) 消除字段顺序与空白符差异；
+- [ ] **行为目标 3 (审计必须绑定独立主体与 AFG 回执)**: 拒绝无报告/无 ProofPlan/自签/借用审计凭据，正式接受入口强制重算实际文件摘要并校验有效性。
+
 
