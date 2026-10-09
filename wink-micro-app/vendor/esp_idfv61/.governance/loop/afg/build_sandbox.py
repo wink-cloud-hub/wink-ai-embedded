@@ -29,9 +29,9 @@ def compute_build_cache_key(
     effective_sdkconfig_digest: str,
     toolchain_version: str,
     facade_git_sha: str,
-    facade_source_digest: str,
-    patch_content_digest: str,
-    config_profile_id: str,
+    facade_source_digest: str = "",
+    patch_content_digest: str = "",
+    config_profile_id: str = "default",
 ) -> str:
     """Computes full dependency closure cache key per AFG-R15."""
     raw = (

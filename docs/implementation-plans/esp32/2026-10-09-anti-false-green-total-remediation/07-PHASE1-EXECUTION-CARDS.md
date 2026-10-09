@@ -136,7 +136,7 @@
 - **问题归属**: `I-01`, `I-08`, `I-12`, `AFG-NEW-04`
 - **实现责任人**: 门禁与协议工程师 (Gate & Protocol Engineer)
 - **独立复核人**: 架构复核者 (Architecture Reviewer)
-- **工程追踪状态**: `执行中`
+- **工程追踪状态**: `已完成 (Done ✅)`
 
 ### 2. 范围与依赖
 - **修改文件白名单**:
@@ -146,7 +146,39 @@
 - **必需前置条件**: T1.3 (Done)
 - **关联技术契约**: [AFG-Engine 契约 2.2 节与 2.5 节](../../../zh/tech-designs/esp32/esp-idf-anti-false-green-verification-engine-contract.md)
 
-### 3. 验收设计 (AC-1.4 / AC-1.5)
-- **行为目标 1 (统一报告接受标准)**: `report_contract.py` 与 `evidence_verifier.py` 彻底收敛共用验证规则，借用应用报告、步骤数量不符、缺业务断言等恶意/损坏报告在所有入口 100% 拦截；
-- **行为目标 2 (旧写入器禁止提前覆盖)**: 禁止在未完成完整验证前预先覆盖历史报告或生成伪造凭据；
-- **行为目标 3 (错误码符号规约严格校验)**: 严格验证 POSIX (正数)、ESP-IDF (正数/零) 与 WinkMicroOS (负数错误码) 符号域隔离，模糊匹配器 (status!=0) 拒绝放行。
+### 3. 验收设计 (AC-1.4 / AC-1.5 落地核验)
+- [x] **行为目标 1 (统一报告接受标准)**: `report_contract.py` 与 `evidence_verifier.py` 彻底收敛共用验证规则，借用应用报告、步骤数量不符、缺业务断言等恶意/损坏报告在所有入口 100% 拦截；
+- [x] **行为目标 2 (旧写入器禁止提前覆盖)**: `write_evidence_for_app` 强制在预检通过后方可执行原子替换，禁止在未完成完整验证前预先覆盖历史报告或生成伪造凭据；
+- [x] **行为目标 3 (错误码符号规约严格校验)**: 严格验证 POSIX (正数)、ESP-IDF (正数/零) 与 WinkMicroOS (负数错误码) 符号域隔离，模糊匹配器 (status!=0) 拒绝放行。
+
+### 4. 验证凭据与回执
+- **专用单测**: `pytest tests/unit/test_t1_4_acceptance_policy.py` 13/13 全部通过；
+- **全量单测**: `pytest tests/unit/` 54/54 全部通过；
+- **元公理回归**: `pytest tests/meta_invariants/` 31/31 全部通过；
+- **Batch 0 回归**: `pytest tests/gates/test_batch0_evidence.py` 55/55 全部通过；
+- **核验器单测**: `pytest tests/gates/test_evidence_verifier.py` 22/22 全部通过；
+- **对抗门禁回归**: `pytest tests/gates/test_adversarial_suite.py` 35/35 全部通过。
+
+---
+
+## T1.5 进程树 Win32 Job 隔离与有界回收
+
+### 1. 身份与责任
+- **Task ID**: `T1.5`
+- **问题归属**: `I-04`, `AFG-NEW-01`
+- **实现责任人**: 进程与宿主工程师 (Process & Supervisor Engineer)
+- **独立复核人**: 架构复核者 (Architecture Reviewer)
+- **工程追踪状态**: `待执行`
+
+### 2. 范围与依赖
+- **修改文件白名单**:
+  - `wink-micro-app/vendor/esp_idfv61/.governance/tools/loop/process_supervisor.py`
+  - `wink-micro-app/vendor/esp_idfv61/.governance/tests/unit/test_t1_5_process_supervisor.py` (新增)
+- **必需前置条件**: T1.4 (Done)
+- **关联技术契约**: [Loop 可靠性契约 2.2 节](../../../zh/tech-designs/esp32/esp-idf-loop-reliability-contract.md)
+
+### 3. 验收设计 (AC-1.6 落地核验)
+- [ ] **行为目标 1 (Win32 Job Object 强绑定)**: Windows 平台使用 `CREATE_SUSPENDED` 挂起创建进程、加入 Job Object、设置 `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` 并恢复执行，禁止允许后代逃逸的 breakaway 设置；
+- [ ] **行为目标 2 (多级后代进程树有界清理)**: 父进程先退、控制器崩溃或异常中断时，递归终止所有子孙进程，杜绝孤儿 node/python/wasm 进程泄漏；
+- [ ] **行为目标 3 (继承管道与文件句柄释放)**: 终止进程后显式关闭所有继承管道与日志重定向文件描述符，支持重试回收机制。
+

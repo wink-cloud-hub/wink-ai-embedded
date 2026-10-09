@@ -1,3 +1,8 @@
-# SPDX-License-Identifier: Apache-2.0
-"""Shim re-exporting loop.afg.error_matcher"""
-from .afg.error_matcher import *
+try:
+    from loop.afg.error_matcher import *
+except ImportError:
+    try:
+        from .afg.error_matcher import *
+    except (ImportError, ValueError):
+        from afg.error_matcher import *
+

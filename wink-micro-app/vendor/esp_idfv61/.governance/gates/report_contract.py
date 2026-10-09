@@ -8,19 +8,38 @@ import sys
 from pathlib import Path
 from typing import Any
 
-_LOOP_DIR = Path(__file__).resolve().parent.parent / "tools" / "loop"
-if str(_LOOP_DIR) not in sys.path:
-    sys.path.insert(0, str(_LOOP_DIR))
+_CUR_DIR = Path(__file__).resolve().parent
+_GOV_DIR = _CUR_DIR.parent
+for p in [
+    str(_GOV_DIR / "loop" / "afg"),
+    str(_GOV_DIR / "tools" / "loop"),
+    str(_GOV_DIR / "loop"),
+]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
 
 try:
-    from error_matcher import is_error_matcher, match_error_assertion, validate_no_vague_matcher
+    from error_matcher import is_error_matcher, match_error_assertion, validate_no_vague_matcher, VALID_DOMAINS
 except ImportError:
-    def is_error_matcher(matcher: Any) -> bool:
-        return isinstance(matcher, dict) and ("assert_error" in matcher or "domain" in matcher)
-    def validate_no_vague_matcher(matcher: Any) -> tuple[bool, str]:
-        return True, "OK"
-    def match_error_assertion(expected: Any, actual: Any) -> tuple[bool, str]:
-        return True, "OK"
+    try:
+        from loop.afg.error_matcher import is_error_matcher, match_error_assertion, validate_no_vague_matcher, VALID_DOMAINS
+    except ImportError:
+        VALID_DOMAINS = {"esp_err", "wink_status", "posix_errno", "nimble_hs"}
+        def is_error_matcher(matcher: Any) -> bool:
+            return isinstance(matcher, dict) and ("assert_error" in matcher or "domain" in matcher)
+        def validate_no_vague_matcher(matcher: Any) -> tuple[bool, str]:
+            if isinstance(matcher, dict):
+                op = matcher.get("op") or matcher.get("operator")
+                if op in ("!=", "<", "<=", ">", ">="):
+                    val = matcher.get("value", matcher.get("expected"))
+                    if val == 0 and "domain" not in matcher:
+                        return False, f"[VAGUE_MATCHER_REJECTED] Vague comparison '{op} {val}' without explicit domain is forbidden"
+                if matcher.get("matcher_type") in ("not_zero", "is_error", "negative") and "domain" not in matcher:
+                    return False, f"[VAGUE_MATCHER_REJECTED] Untyped generic error check '{matcher.get('matcher_type')}' is forbidden"
+            return True, "OK"
+        def match_error_assertion(expected: Any, actual: Any) -> tuple[bool, str]:
+            return False, "[FATAL] error_matcher module required for evaluating error assertions"
+
 
 
 def file_sha256(path: Path) -> str:
@@ -145,11 +164,17 @@ def validate_scenario_report(
         observed_counts[required_status] += 1
         if required_status == "pending" and ("actual" in observed or "expected" in observed):
             return False, f"Step #{index} is pending but carries an evaluated observation"
-        if is_business_assertion(step) and required_status not in ("skipped", "pending"):
-            matcher = step.get("matcher")
+        matcher = step.get("matcher")
+        if matcher is not None:
             no_vague, vague_reason = validate_no_vague_matcher(matcher)
             if not no_vague:
                 return False, f"Step #{index} rejected: {vague_reason}"
+        if "expected" in observed and observed["expected"] is not None:
+            no_vague_exp, vague_exp_reason = validate_no_vague_matcher(observed["expected"])
+            if not no_vague_exp:
+                return False, f"Step #{index} observed expected rejected: {vague_exp_reason}"
+
+        if is_business_assertion(step) and required_status not in ("skipped", "pending"):
             if is_error_matcher(matcher):
                 if "actual" not in observed or observed["actual"] is None:
                     return False, f"Step #{index} has no evaluated business observation"
@@ -184,3 +209,156 @@ def validate_scenario_report(
         ):
             return False, f"Infrastructure diagnostic cannot prove a business outcome: {code}"
     return True, f"Selected scenario {expected_status} with matching evaluated steps"
+
+
+def validate_report_standalone(report_path: Path) -> tuple[bool, str]:
+    """Validate report structure and assertions when scenario definition is not provided.
+
+    Shared acceptance policy used by all ingestion points (CI, Gates, Inspectors, write helpers)
+    when evaluating an execution report without direct access to the scenario contract.
+    """
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return False, f"Cannot read report JSON: {exc}"
+    if not isinstance(report, dict):
+        return False, "Report must be a JSON object"
+
+    # Multi-format handling: either results array or top-level status
+    results = report.get("results")
+    if results is not None:
+        if not isinstance(results, list) or len(results) == 0:
+            return False, "Execution report 'results' array is empty or not a list"
+        for idx, res in enumerate(results):
+            if not isinstance(res, dict):
+                return False, f"Execution result #{idx} is not an object"
+            if not res.get("ok", False):
+                return False, f"Execution result #{idx} ok is False"
+            status = res.get("status")
+            if status != "passed":
+                return False, f"Execution result #{idx} status is '{status}', expected 'passed'"
+            summary = res.get("summary")
+            if not isinstance(summary, dict):
+                return False, f"Execution result #{idx} summary is missing or not an object"
+            total_steps = summary.get("totalSteps", summary.get("total_steps"))
+            passed_steps = summary.get("passedSteps", summary.get("passed_steps"))
+            failed_steps = summary.get("failedSteps", summary.get("failed_steps", 0))
+            error_steps = summary.get("errorSteps", summary.get("error_steps", 0))
+            skipped_steps = summary.get("skippedSteps", summary.get("skipped_steps", 0))
+
+            if total_steps is None or passed_steps is None:
+                return False, f"Execution result #{idx} summary missing step count fields"
+            if (
+                type(total_steps) is not int
+                or type(passed_steps) is not int
+                or type(failed_steps) is not int
+                or type(error_steps) is not int
+                or type(skipped_steps) is not int
+            ):
+                return False, f"Execution result #{idx} summary step counts must be integers"
+            if passed_steps <= 0 or total_steps <= 0:
+                return False, f"Execution result #{idx} has 0 passed steps (totalSteps={total_steps}, passedSteps={passed_steps})"
+            if failed_steps > 0:
+                return False, f"Execution result #{idx} has failedSteps={failed_steps}"
+            if error_steps > 0:
+                return False, f"Execution result #{idx} has errorSteps={error_steps}"
+            if skipped_steps > 0:
+                return False, f"Execution result #{idx} has skippedSteps={skipped_steps}"
+            if passed_steps != total_steps:
+                return False, f"Execution result #{idx} step count mismatch: passedSteps ({passed_steps}) != totalSteps ({total_steps})"
+
+            step_results = res.get("stepResults") or res.get("step_results")
+            if not isinstance(step_results, list) or len(step_results) == 0:
+                return False, f"Execution result #{idx} missing non-empty 'stepResults' array"
+            if len(step_results) != passed_steps:
+                return False, f"Execution result #{idx} stepResults count ({len(step_results)}) != passedSteps ({passed_steps})"
+            for s_idx, step in enumerate(step_results):
+                if not isinstance(step, dict):
+                    return False, f"Execution result #{idx} step #{s_idx} is not an object"
+                step_status = step.get("status")
+                if step_status != "passed":
+                    return False, f"Execution result #{idx} step #{s_idx} status is '{step_status}', expected 'passed'"
+                if "expected" in step and step["expected"] is not None:
+                    no_vague, vague_reason = validate_no_vague_matcher(step["expected"])
+                    if not no_vague:
+                        return False, f"Execution result #{idx} step #{s_idx} rejected: {vague_reason}"
+                    if is_error_matcher(step["expected"]):
+                        if "actual" not in step or step["actual"] is None:
+                            return False, f"Execution result #{idx} step #{s_idx} has no evaluated business observation"
+                        err_ok, err_msg = match_error_assertion(step["expected"], step["actual"])
+                        if not err_ok:
+                            return False, f"Execution result #{idx} step #{s_idx} error assertion failed: {err_msg}"
+                if "matcher" in step and step["matcher"] is not None:
+                    no_vague, vague_reason = validate_no_vague_matcher(step["matcher"])
+                    if not no_vague:
+                        return False, f"Execution result #{idx} step #{s_idx} rejected: {vague_reason}"
+
+            diagnostics = res.get("diagnostics")
+            if isinstance(diagnostics, list):
+                for diagnostic in diagnostics:
+                    if not isinstance(diagnostic, dict):
+                        continue
+                    code = str(diagnostic.get("code", diagnostic.get("source", ""))).upper()
+                    category = str(diagnostic.get("category", "")).lower()
+                    if diagnostic.get("level") == "error" or category in ("infrastructure", "schema", "loader", "runner") or any(
+                        marker in code for marker in ("UNKNOWN_", "UNSUPPORTED_", "LOAD_FAILED", "SCHEMA_", "RUNNER_", "RUNTIME_ERROR")
+                    ):
+                        return False, f"Execution result #{idx} infrastructure diagnostic cannot prove a business outcome: {code}"
+
+        return True, "Execution report passed all step assertions"
+
+    status = report.get("status")
+    if status is not None:
+        if status != "passed":
+            return False, f"Report status is '{status}', expected 'passed'"
+        summary = report.get("summary")
+        if not isinstance(summary, dict):
+            return False, "Report summary is missing or not an object"
+        total_steps = summary.get("totalSteps", summary.get("total_steps"))
+        passed_steps = summary.get("passedSteps", summary.get("passed_steps"))
+        failed_steps = summary.get("failedSteps", summary.get("failed_steps", 0))
+        error_steps = summary.get("errorSteps", summary.get("error_steps", 0))
+        skipped_steps = summary.get("skippedSteps", summary.get("skipped_steps", 0))
+
+        if total_steps is None or passed_steps is None:
+            return False, "Report summary missing step count fields"
+        if (
+            type(total_steps) is not int
+            or type(passed_steps) is not int
+            or type(failed_steps) is not int
+            or type(error_steps) is not int
+            or type(skipped_steps) is not int
+        ):
+            return False, "Report summary step counts must be integers"
+        if passed_steps <= 0 or total_steps <= 0:
+            return False, f"Report summary indicates 0 passed steps (totalSteps={total_steps}, passedSteps={passed_steps})"
+        if failed_steps > 0:
+            return False, f"Report summary indicates failed steps ({failed_steps})"
+        if error_steps > 0:
+            return False, f"Report summary indicates error steps ({error_steps})"
+        if skipped_steps > 0:
+            return False, f"Report summary indicates skipped steps ({skipped_steps})"
+        if passed_steps != total_steps:
+            return False, f"Report summary step count mismatch: passedSteps ({passed_steps}) != totalSteps ({total_steps})"
+
+        step_results = report.get("stepResults") or report.get("step_results")
+        if not isinstance(step_results, list) or len(step_results) == 0:
+            return False, "Report missing non-empty 'stepResults' array"
+        if len(step_results) != passed_steps:
+            return False, f"Report stepResults count ({len(step_results)}) != passedSteps ({passed_steps})"
+        for s_idx, step in enumerate(step_results):
+            if not isinstance(step, dict):
+                return False, f"Report step #{s_idx} is not an object"
+            step_status = step.get("status")
+            if step_status != "passed":
+                return False, f"Report step #{s_idx} status is '{step_status}', expected 'passed'"
+            if "expected" in step and step["expected"] is not None:
+                no_vague, vague_reason = validate_no_vague_matcher(step["expected"])
+                if not no_vague:
+                    return False, f"Report step #{s_idx} rejected: {vague_reason}"
+
+        return True, "Execution report passed top-level assertion"
+
+    return False, "Report JSON missing both 'results' array and 'status' field"
+
+

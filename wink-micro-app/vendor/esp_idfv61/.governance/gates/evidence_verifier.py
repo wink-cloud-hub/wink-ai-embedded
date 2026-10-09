@@ -114,131 +114,52 @@ def verify_execution_report(
 ) -> Tuple[bool, str]:
     """
     Structured assertion of a headless JSON execution report.
-    Validates report parse, status == 'passed', totalSteps == passedSteps > 0,
-    failedSteps == 0, errorSteps == 0, skippedSteps == 0.
-    Enforces E-1 hardening: 'stepResults' must exist, have length equal to passedSteps,
-    and every single step must have status == 'passed'.
-    If scenario_path is provided, verifies totalSteps matches scenario steps count.
+    Delegates to shared report_contract.py:
+    - If scenario_path is provided, strictly validates against scenario via validate_scenario_report.
+    - If scenario_path is None, strictly validates standalone structure via validate_report_standalone.
     """
     if not report_path.is_file():
         return False, f"Report file not found: {report_path}"
 
-    try:
-        with open(report_path, "r", encoding="utf-8") as f:
-            report = json.load(f)
-    except Exception as e:
-        return False, f"Failed to parse report JSON: {e}"
-
-    expected_steps_count = None
-    if scenario_path and scenario_path.is_file():
+    if scenario_path is not None:
+        if not scenario_path.is_file():
+            return False, f"Scenario file not found: {scenario_path}"
         try:
             with open(scenario_path, "r", encoding="utf-8") as f:
                 scen_data = json.load(f)
-            steps = scen_data.get("steps")
-            if isinstance(steps, list):
-                expected_steps_count = len(steps)
+            scen_steps = scen_data.get("steps")
+            if isinstance(scen_steps, list):
+                with open(report_path, "r", encoding="utf-8") as rf:
+                    rep_data = json.load(rf)
+                rep_results = rep_data.get("results")
+                total_steps = None
+                idx = None
+                if isinstance(rep_results, list) and len(rep_results) > 0 and isinstance(rep_results[0], dict):
+                    summary = rep_results[0].get("summary", {})
+                    total_steps = summary.get("totalSteps", summary.get("total_steps"))
+                    idx = 0
+                elif isinstance(rep_data.get("summary"), dict):
+                    summary = rep_data["summary"]
+                    total_steps = summary.get("totalSteps", summary.get("total_steps"))
+                if total_steps is not None and total_steps != len(scen_steps):
+                    prefix = f"Execution result #{idx} " if idx is not None else "Report "
+                    return False, f"{prefix}totalSteps ({total_steps}) != scenario steps ({len(scen_steps)})"
         except Exception:
             pass
 
-    # Check top-level results array
-    if "results" in report:
-        results = report.get("results")
-        if not isinstance(results, list) or len(results) == 0:
-            return False, "Execution report 'results' array is empty or not a list"
-        for idx, res in enumerate(results):
-            if not isinstance(res, dict):
-                return False, f"Execution result #{idx} is not an object"
-            if not res.get("ok", False):
-                return False, f"Execution result #{idx} ok is False"
-            status = res.get("status")
-            if status != "passed":
-                return False, f"Execution result #{idx} status is '{status}', expected 'passed'"
-            summary = res.get("summary")
-            if not isinstance(summary, dict):
-                return False, f"Execution result #{idx} summary is missing or not an object"
-            total_steps = summary.get("totalSteps", summary.get("total_steps"))
-            passed_steps = summary.get("passedSteps", summary.get("passed_steps"))
-            failed_steps = summary.get("failedSteps", summary.get("failed_steps", 0))
-            error_steps = summary.get("errorSteps", summary.get("error_steps", 0))
-            skipped_steps = summary.get("skippedSteps", summary.get("skipped_steps", 0))
+        try:
+            from report_contract import validate_scenario_report
+        except ImportError:
+            from gates.report_contract import validate_scenario_report
+        return validate_scenario_report(report_path, scenario_path)
 
-            if total_steps is None or passed_steps is None:
-                return False, f"Execution result #{idx} summary missing step count fields"
-            if passed_steps <= 0 or total_steps <= 0:
-                return False, f"Execution result #{idx} has 0 passed steps (totalSteps={total_steps}, passedSteps={passed_steps})"
-            if failed_steps > 0:
-                return False, f"Execution result #{idx} has failedSteps={failed_steps}"
-            if error_steps > 0:
-                return False, f"Execution result #{idx} has errorSteps={error_steps}"
-            if skipped_steps > 0:
-                return False, f"Execution result #{idx} has skippedSteps={skipped_steps}"
-            if passed_steps != total_steps:
-                return False, f"Execution result #{idx} step count mismatch: passedSteps ({passed_steps}) != totalSteps ({total_steps})"
 
-            # E-1 hardening: Enforce deep stepResults validation
-            step_results = res.get("stepResults") or res.get("step_results")
-            if not isinstance(step_results, list) or len(step_results) == 0:
-                return False, f"Execution result #{idx} missing non-empty 'stepResults' array"
-            if len(step_results) != passed_steps:
-                return False, f"Execution result #{idx} stepResults count ({len(step_results)}) != passedSteps ({passed_steps})"
-            for s_idx, step in enumerate(step_results):
-                if not isinstance(step, dict):
-                    return False, f"Execution result #{idx} step #{s_idx} is not an object"
-                step_status = step.get("status")
-                if step_status != "passed":
-                    return False, f"Execution result #{idx} step #{s_idx} status is '{step_status}', expected 'passed'"
+    try:
+        from report_contract import validate_report_standalone
+    except ImportError:
+        from gates.report_contract import validate_report_standalone
+    return validate_report_standalone(report_path)
 
-            if expected_steps_count is not None and expected_steps_count != total_steps:
-                return False, f"Execution result #{idx} totalSteps ({total_steps}) != scenario steps ({expected_steps_count})"
-
-        return True, "Execution report passed all step assertions"
-
-    # Single-run or alternate format
-    status = report.get("status")
-    if status:
-        if status != "passed":
-            return False, f"Report status is '{status}', expected 'passed'"
-        summary = report.get("summary")
-        if not isinstance(summary, dict):
-            return False, "Report summary is missing or not an object"
-        total_steps = summary.get("totalSteps", summary.get("total_steps"))
-        passed_steps = summary.get("passedSteps", summary.get("passed_steps"))
-        failed_steps = summary.get("failedSteps", summary.get("failed_steps", 0))
-        error_steps = summary.get("errorSteps", summary.get("error_steps", 0))
-        skipped_steps = summary.get("skippedSteps", summary.get("skipped_steps", 0))
-
-        if total_steps is None or passed_steps is None:
-            return False, "Report summary missing step count fields"
-        if passed_steps <= 0 or total_steps <= 0:
-            return False, f"Report summary indicates 0 passed steps (totalSteps={total_steps}, passedSteps={passed_steps})"
-        if failed_steps > 0:
-            return False, f"Report summary indicates failed steps ({failed_steps})"
-        if error_steps > 0:
-            return False, f"Report summary indicates error steps ({error_steps})"
-        if skipped_steps > 0:
-            return False, f"Report summary indicates skipped steps ({skipped_steps})"
-        if passed_steps != total_steps:
-            return False, f"Report summary step count mismatch: passedSteps ({passed_steps}) != totalSteps ({total_steps})"
-
-        # E-1 hardening for single-run format
-        step_results = report.get("stepResults") or report.get("step_results")
-        if not isinstance(step_results, list) or len(step_results) == 0:
-            return False, "Report missing non-empty 'stepResults' array"
-        if len(step_results) != passed_steps:
-            return False, f"Report stepResults count ({len(step_results)}) != passedSteps ({passed_steps})"
-        for s_idx, step in enumerate(step_results):
-            if not isinstance(step, dict):
-                return False, f"Report step #{s_idx} is not an object"
-            step_status = step.get("status")
-            if step_status != "passed":
-                return False, f"Report step #{s_idx} status is '{step_status}', expected 'passed'"
-
-        if expected_steps_count is not None and expected_steps_count != total_steps:
-            return False, f"Report totalSteps ({total_steps}) != scenario steps ({expected_steps_count})"
-
-        return True, "Execution report passed top-level assertion"
-
-    return False, "Report JSON missing both 'results' array and 'status' field"
 
 
 def verify_evidence(
@@ -451,20 +372,47 @@ def write_evidence_for_app(
 
     # Determine report destination
     reports_dir = vendor_root / ".governance" / "reports" / target_dir_rel
-    reports_dir.mkdir(parents=True, exist_ok=True)
     report_dst = reports_dir / "run-report.json"
 
-    if report_src and report_src.is_file():
-        report_dst.write_bytes(report_src.read_bytes())
-    elif not report_dst.is_file():
-        sys.stderr.write(f"Error: Report source not found: {report_src}\n")
+    report_to_verify = report_src if (report_src and report_src.is_file()) else report_dst
+    if not report_to_verify or not report_to_verify.is_file():
+        sys.stderr.write(f"Error: Report source not found: {report_src or report_dst}\n")
         return False
 
-    # Verify the report before committing evidence
-    rep_ok, rep_msg = verify_execution_report(report_dst)
+    # Check if scenario has real steps
+    has_scenario_steps = False
+    if scenario_file and scenario_file.is_file():
+        try:
+            sc_data = json.loads(scenario_file.read_text(encoding="utf-8"))
+            if isinstance(sc_data.get("steps"), list) and len(sc_data["steps"]) > 0:
+                has_scenario_steps = True
+        except Exception:
+            pass
+
+    # Strictly verify report BEFORE touching report_dst or committing evidence (Anti-Premature-Overwrite)
+    rep_ok, rep_msg = verify_execution_report(
+        report_to_verify,
+        scenario_path=scenario_file if has_scenario_steps else None
+    )
     if not rep_ok:
         sys.stderr.write(f"Error: Generated report verification failed: {rep_msg}\n")
         return False
+
+    # Verification passed! Now safely copy report_src to report_dst if needed
+    if report_src and report_src.is_file() and report_src != report_dst:
+        reports_dir.mkdir(parents=True, exist_ok=True)
+        tmp_dst = report_dst.with_suffix(f".tmp.{os.getpid()}")
+        try:
+            tmp_dst.write_bytes(report_src.read_bytes())
+            tmp_dst.replace(report_dst)
+        except Exception:
+            report_dst.write_bytes(report_src.read_bytes())
+            if tmp_dst.exists():
+                try:
+                    tmp_dst.unlink()
+                except OSError:
+                    pass
+
 
     # Get current git commit
     try:
@@ -542,10 +490,20 @@ def main():
     parser.add_argument("--config-id", type=str, help="Target execution config_id (e.g. wasm_sim_standard)")
     parser.add_argument("--scenario", type=str, help="Path to specific .scenario.json file")
     parser.add_argument("--report-src", type=str, help="Source path of run-report.json to copy")
-    parser.add_argument("--workspace-root", type=str, default=".", help="Workspace root directory")
+    parser.add_argument("--workspace-root", type=str, default=None, help="Workspace root directory")
     args = parser.parse_args()
 
-    ws_root = Path(args.workspace_root).resolve()
+    if args.workspace_root:
+        ws_root = Path(args.workspace_root).resolve()
+    else:
+        cwd = Path.cwd().resolve()
+        if (cwd / "wink-micro-app").is_dir():
+            ws_root = cwd
+        elif (cwd.parent.parent.parent / "wink-micro-app").is_dir():
+            ws_root = cwd.parent.parent.parent
+        else:
+            ws_root = Path(__file__).resolve().parent.parent.parent.parent.parent
+
 
     if args.write_app:
         report_src_p = Path(args.report_src).resolve() if args.report_src else None
