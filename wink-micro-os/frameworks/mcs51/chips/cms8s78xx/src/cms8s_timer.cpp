@@ -25,12 +25,9 @@
 #include "wink_mcs51_clock.h"
 #include "wink_mcs51_isr.h"
 #include "wink_mcs51_timer.h"
+#include "wink_mcs51_gpio.h"
 
 #include <stdint.h>
-
-extern "C" {
-uint8_t js_pal_gpio_read_state(uint16_t pin);
-}
 
 namespace {
 
@@ -396,6 +393,31 @@ void on_timer2_compare_match(Mcu51Context* ctx, uint8_t c) {
     tm.t2_next_cmp_us[c] = NO_OVERFLOW;
 
     flag_set(ctx, SFR_T2IF, c);
+
+    // Drive compare output pin if configured in Compare Mode (CCEN mode 2)
+    uint8_t ccen = rd(ctx, SFR_CCEN);
+    uint8_t mode = (ccen >> (c * 2)) & 0x03u;
+    if (mode == 2u) {
+        uint8_t t2con = rd(ctx, SFR_T2CON);
+        bool t2cm = (t2con & (1u << 2)) != 0;  // T2CM bit 2 of T2CON (0=Toggle, 1=Set/Clear)
+        if (!t2cm) {
+            // Mode 0: Toggle output on match
+            tm.t2_cmp_pin_level[c] ^= 1u;
+            uint16_t pin = 0xFFFFu;
+            if (c == 0 && ctx->xdata_shadow[0xF000] == 0x05) {
+                pin = 0u;   // P0.0 -> CC0
+            } else if (c == 1 && ctx->xdata_shadow[0xF001] == 0x05) {
+                pin = 1u;   // P0.1 -> CC1
+            } else if (c == 2 && ctx->xdata_shadow[0xF015] == 0x05) {
+                pin = 13u;  // P1.5 -> CC2
+            } else if (c == 3 && ctx->xdata_shadow[0xF014] == 0x05) {
+                pin = 12u;  // P1.4 -> CC3
+            }
+            if (pin != 0xFFFFu) {
+                js_pal_gpio_write(pin, tm.t2_cmp_pin_level[c] != 0, MCS51_DRIVE_SUPPLY);
+            }
+        }
+    }
 
     if ((rd(ctx, SFR_T2IE) & (1u << c)) != 0) {
         mcs51_raise_irq(IRQ_SOURCE_TIMER2);

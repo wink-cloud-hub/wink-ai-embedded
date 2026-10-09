@@ -1,0 +1,27 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "CMS8S78xx Temperature Sensor Mutation Negative Test (expect indicator not lit after calibration)",
+    "templateId": "vendor_cms8s78xx_temperture_sensor",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "200000",
+    "failurePolicy": "fail-fast",
+    "determinism": { "prngSeed": 42 }
+  },
+  "steps": [
+    {
+      "type": "INPUT_ANALOG",
+      "timeUs": "0us",
+      "adcChannel": 63,
+      "valueNorm": 0.333252,
+      "description": "[物理环境注入] 标称 25℃ 物理工作电压注入"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "100ms",
+      "target": "gpio:26",
+      "matcher": 1,
+      "description": "[变异防御验证] 预期微调完成后 P3.2 仍为高电平 1 (实际硬件已收敛置 0)，断言必须失败以证明具备红灯拦截力"
+    }
+  ]
+}

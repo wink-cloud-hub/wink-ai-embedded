@@ -103,6 +103,7 @@ typedef struct {
     uint8_t  t4_tr_prev;
     uint8_t  t2_cap_last_level[4];
     uint64_t t2_next_cmp_us[4];
+    uint8_t  t2_cmp_pin_level[4];
 } Cms8sTimerState;
 
 // Analog comparator state (owner: cms8s_acmp.cpp).

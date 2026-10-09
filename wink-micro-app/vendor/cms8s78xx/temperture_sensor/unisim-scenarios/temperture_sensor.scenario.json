@@ -10,6 +10,20 @@
   },
   "steps": [
     {
+      "type": "INPUT_ANALOG",
+      "timeUs": "0us",
+      "adcChannel": 63,
+      "valueNorm": 0.333252,
+      "description": "[物理环境注入] 驱动片内温度传感器通道 63 (AN63/TS) 标称 25℃ 物理工作电压 (1.00V / 3.0V = 0.333252 -> 1365 LSB)"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "10ms",
+      "target": "gpio:26",
+      "matcher": 1,
+      "description": "[校准中初始态] TS_Adjust() 正在进行 16 档微调扫描，P3.2 仍为初始高电平 1 (指示灯未亮)"
+    },
+    {
       "type": "ASSERT_POINT",
       "timeUs": "100ms",
       "target": "gpio:26",

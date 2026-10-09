@@ -1,0 +1,34 @@
+{
+  "header": {
+    "version": "1.0.0",
+    "name": "CMS8S78xx Timer2 CompareMode Mutation Negative Test (expect wrong frequency on CC0)",
+    "templateId": "vendor_cms8s78xx_timer2_compare_mode",
+    "accuracyMode": "behavioral",
+    "timeoutUs": "100000",
+    "failurePolicy": "fail-fast",
+    "determinism": {
+      "prngSeed": 42
+    }
+  },
+  "steps": [
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "60ms",
+      "windowUs": [
+        "10ms",
+        "60ms"
+      ],
+      "pin": 0,
+      "expected": {
+        "kind": "frequencyHz",
+        "value": {
+          "$near": {
+            "target": 2000,
+            "tolerance": 50
+          }
+        }
+      },
+      "description": "[变异防御验证] 预期 CC0 输出 2000Hz（实际硬件生成 500Hz），断言必须失败以证明具备红灯拦截力"
+    }
+  ]
+}

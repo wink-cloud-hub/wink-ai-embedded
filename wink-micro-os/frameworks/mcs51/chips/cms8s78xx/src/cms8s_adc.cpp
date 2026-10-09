@@ -263,9 +263,18 @@ void do_adc_conversion(Mcu51Context* ctx) {
             const uint8_t ts_reg = ctx->xdata_shadow[XSFR_TS_REG];
             if ((ts_reg & 0xC0u) == 0xC0u) {
                 const uint8_t trim = static_cast<uint8_t>(ts_reg & 0x0Fu);
-                // 25℃ 1.00V @ 3.0V VREF corresponds to 1365 LSB.
-                // Nominal trim code is 8 (Count0=8). Each step is ~7 LSB (~0.005V).
-                int32_t val = 1365 + (static_cast<int32_t>(trim) - 8) * 7;
+                int32_t base_lsb = 1365;
+                if (ctx->adc_inject_flag[63] != 0u) {
+                    base_lsb = static_cast<int32_t>(ctx->adc_injected[63]);
+                } else {
+                    const float norm = js_pal_adc_read_norm(63);
+                    if (norm > 0.0f) {
+                        base_lsb = static_cast<int32_t>(norm * 4096.0f + 0.5f);
+                    }
+                }
+                // 25℃ 1.00V @ 3.0V VREF corresponds to 1365 LSB nominal.
+                // Nominal trim code is 8 (Count0=8). Each step is ~7 LSB (~0.0051V).
+                int32_t val = base_lsb + (static_cast<int32_t>(trim) - 8) * 7;
                 if (val < 0) val = 0;
                 if (val > 4095) val = 4095;
                 raw = static_cast<uint16_t>(val);

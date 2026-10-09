@@ -1,7 +1,7 @@
 {
   "header": {
     "version": "1.0.0",
-    "name": "CMS8S78xx Timer2 CompareMode (1ms period, 500us compare match, 500Hz square wave on P3.2) headless proof",
+    "name": "CMS8S78xx Timer2 CompareMode (1ms period, 500us compare match, 500Hz hardware square wave on CC0/P0.0) headless proof",
     "templateId": "vendor_cms8s78xx_timer2_compare_mode",
     "accuracyMode": "behavioral",
     "timeoutUs": "100000",
@@ -28,7 +28,26 @@
           }
         }
       },
-      "description": "Timer2 1ms period overflow triggers Timer2_IRQHandler toggling P32 (pin 26) producing 500Hz square wave with CC0~CC3 compare matches handled"
+      "description": "Timer2 1ms period overflow triggers Timer2_IRQHandler toggling P32 (pin 26) producing 500Hz square wave"
+    },
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "60ms",
+      "windowUs": [
+        "10ms",
+        "60ms"
+      ],
+      "pin": 0,
+      "expected": {
+        "kind": "frequencyHz",
+        "value": {
+          "$near": {
+            "target": 500,
+            "tolerance": 20
+          }
+        }
+      },
+      "description": "[强因果断言] Timer2 Compare Match (CC0 / P0.0) 硬件比较输出 500Hz 方波：每 1ms 发生一次 500us 匹配并翻转 P0.0 引脚电平，产生 500Hz 真实硬件方波（解耦对 P32 溢出的寄生依赖）"
     }
   ]
 }
