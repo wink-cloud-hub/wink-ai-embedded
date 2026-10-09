@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: Apache-2.0
+archetype_id: archetype_ledc_pwm
+tier: 1
+category: peripherals_ledc
+description: LEDC PWM 定点占空比(BP)、稳态频率配置、平滑渐变与过载故障契约族原型（遵循 ADR-0066）
+applicable_capabilities:
+  - cap.analog.ledc_pwm
+
+standard_claims:
+  - id: claim.ledc.duty_bp_steady_state
+    description: 按照基点定点(0~10000 BP)设置占空比与定时器频率，输出波形占空比稳态匹配
+    evidence_class: baseline
+    required_polarity: PASS
+  - id: claim.ledc.fade_gradient_steps
+    description: 占空比渐变过程在离散时钟步进下按固定斜率平滑单调逼近目标值
+    evidence_class: baseline
+    required_polarity: PASS
+  - id: claim.ledc.mutation_tamper_duty_kill
+    description: 变异篡改占空比寄存器设置或更新标志后，PWM 测量断言必须捕获失配失败
+    evidence_class: implementation_mutation
+    required_polarity: FAIL
+  - id: claim.ledc.duty_overflow_fault_handled
+    description: 注入超过 10000 BP 或非法频率配置时，驱动返回 ESP_ERR_INVALID_ARG 并拒绝写入
+    evidence_class: fault_injection
+    required_polarity: PASS
+  - id: claim.ledc.stop_idle_recovery
+    description: 调用 ledc_stop 后输出电平保持在配置的空闲电平且占空比归零
+    evidence_class: recovery
+    required_polarity: PASS
+
+default_l1_injectors:
+  - id: L1-OP-LEDC-OVERFLOW-BP
+    description: 注入非法超范围占空比参数 (如 10001 BP)
+    operator: inject_ledc_duty_overflow
+    expected_behavior: fault_handling_pass
+  - id: L1-OP-LEDC-FREQ-OUT-OF-BOUNDS
+    description: 注入超出硬件分频能力的极端频率
+    operator: inject_ledc_invalid_freq
+    expected_behavior: fault_handling_pass
+
+default_l2_operators:
+  - id: L2-OP-LEDC-MUTATE-UPDATE-DUTY
+    target: ledc_update_duty
+    description: 破坏 ledc_update_duty 生效调用
+    mutation_type: statement_delete
+    budget: 1
+
+applicability_protocol:
+  allow_na_physical_fault: false

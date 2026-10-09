@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: Apache-2.0
+archetype_id: archetype_uart_stream
+tier: 1
+category: peripherals_uart
+description: UART 双向数据流、波特率匹配、回显因果图与总线故障恢复契约族原型
+applicable_capabilities:
+  - cap.bus.uart_basic
+
+standard_claims:
+  - id: claim.uart.stream_tx_rx
+    description: 串口在指定波特率与帧格式下完成双向数据流发送与接收
+    evidence_class: baseline
+    required_polarity: PASS
+  - id: claim.uart.echo_causality_witness
+    description: 回显数据必须经由固件驱动环形缓冲区调度，禁止 Fixture 内部短路绕过固件
+    evidence_class: causality_loop
+    required_polarity: PASS
+  - id: claim.uart.mutation_disable_rx_kill
+    description: 变异关闭 UART 接收中断或破坏回显转发逻辑后，回显匹配断言必须失败
+    evidence_class: implementation_mutation
+    required_polarity: FAIL
+  - id: claim.uart.line_break_fault_handled
+    description: 注入线路断开或帧错误时，驱动正确报告错误并执行丢弃/告警，业务不崩溃
+    evidence_class: fault_injection
+    required_polarity: PASS
+  - id: claim.uart.flush_recovery
+    description: 发生溢出或断线后执行 uart_flush_input，串口流能恢复正常双向通信
+    evidence_class: recovery
+    required_polarity: PASS
+
+default_l1_injectors:
+  - id: L1-OP-UART-LINE-BREAK
+    description: 模拟物理线路中断与丢包
+    operator: inject_uart_line_break
+    expected_behavior: fault_handling_pass
+  - id: L1-OP-UART-FRAME-ERROR
+    description: 模拟停止位缺失或波特率微偏移引起的帧错误
+    operator: inject_uart_frame_error
+    expected_behavior: fault_handling_pass
+  - id: L1-OP-UART-DISABLE-RX-INTR
+    description: 模拟禁用接收中断以证伪固件自证路径
+    operator: inject_uart_disable_rx_intr
+    expected_behavior: mutant_kill_fail
+
+default_l2_operators:
+  - id: L2-OP-UART-MUTATE-ECHO-DISPATCH
+    target: uart_write_bytes
+    description: 篡改或删除串口回显写回调用
+    mutation_type: statement_delete
+    budget: 1
+
+applicability_protocol:
+  allow_na_physical_fault: false

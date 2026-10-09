@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: Apache-2.0
+archetype_id: archetype_adc_sampling
+tier: 1
+category: peripherals_adc
+description: ADC 连续采样、离散时钟步进自发生产、背压缓冲溢出与校准故障恢复契约族原型
+applicable_capabilities:
+  - cap.analog.adc_oneshot
+  - cap.analog.adc_continuous
+
+standard_claims:
+  - id: claim.adc.continuous_conversion
+    description: 虚拟离散时钟自发推进下，ADC 持续产生有效转换序列并写入环形缓冲区
+    evidence_class: baseline
+    required_polarity: PASS
+  - id: claim.adc.backpressure_overrun
+    description: 挂起消费者 100ms 虚拟时间，缓冲满后必须产生 Overrun 事件或依据策略平滑丢弃，禁止静默偷推时钟
+    evidence_class: backpressure
+    required_polarity: PASS
+  - id: claim.adc.mutation_disable_convert_kill
+    description: 变异破坏 ADC 转换启动或数据就绪标志，采样断言必须捕获超时失败
+    evidence_class: implementation_mutation
+    required_polarity: FAIL
+  - id: claim.adc.calibration_fault_handled
+    description: 注入校准曲线丢失故障时，驱动返回合法错误码或降级为原始码值转换，不发生非受控崩溃
+    evidence_class: fault_injection
+    required_polarity: PASS
+  - id: claim.adc.buffer_reset_recovery
+    description: 溢出后调用复位/清空接口，ADC 连续采样管道恢复正常吞吐
+    evidence_class: recovery
+    required_polarity: PASS
+
+default_l1_injectors:
+  - id: L1-OP-ADC-PAUSE-CONSUMER-100MS
+    description: 挂起消费者驱动虚拟时间向前推进以触发背压与缓冲区溢出
+    operator: pause_consumer_virtual_time
+    duration_ms: 100
+    expected_behavior: trigger_buffer_overrun
+  - id: L1-OP-ADC-CLEAR-CALIBRATION
+    description: 清除硬件校准参数模拟未校准环境
+    operator: inject_adc_calibration_fault
+    expected_behavior: fault_handling_pass
+
+default_l2_operators:
+  - id: L2-OP-ADC-MUTATE-CONV-START
+    target: adc_continuous_start
+    description: 破坏 ADC 连续采样启动逻辑
+    mutation_type: statement_delete
+    budget: 1
+
+applicability_protocol:
+  allow_na_physical_fault: false

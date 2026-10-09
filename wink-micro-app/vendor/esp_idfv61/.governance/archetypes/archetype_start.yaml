@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: Apache-2.0
+archetype_id: archetype_start
+tier: 1
+category: system_start
+description: 系统启动、控制台输出、倒计时与热重启生命周期契约族原型
+applicable_capabilities:
+  - cap.core.fiber_task
+  - cap.core.sync_tokens
+  - cap.system.console_cmd
+
+standard_claims:
+  - id: claim.start.boot_banner
+    description: 固件上电初始化后向标准控制台打印启动横幅与芯片信息
+    evidence_class: baseline
+    required_polarity: PASS
+  - id: claim.start.countdown_progress
+    description: 倒计时序列按参数化保真时钟单调递减并逐步输出
+    evidence_class: baseline
+    required_polarity: PASS
+  - id: claim.start.restart_mutation_kill
+    description: Canary 变异禁用启动任务后原打印断言必须捕获失败
+    evidence_class: implementation_mutation
+    required_polarity: FAIL
+  - id: claim.start.clean_state_recovery
+    description: 热重启后 SRAM 临时状态完全清零并重新产生标准启动序列
+    evidence_class: recovery
+    required_polarity: PASS
+
+default_l1_injectors:
+  - id: L1-OP-START-CORRUPT-CHIP-REVISION
+    description: 模拟芯片版本读取异常
+    operator: inject_chip_info_fault
+    expected_behavior: fault_handling_pass
+
+default_l2_operators:
+  - id: L2-OP-START-DISABLE-APP-MAIN
+    target: app_main
+    description: 破坏 app_main 任务创建逻辑
+    mutation_type: statement_delete
+    budget: 1
+
+applicability_protocol:
+  allow_na_physical_fault: true
+  na_rule_id: na_pure_console_app

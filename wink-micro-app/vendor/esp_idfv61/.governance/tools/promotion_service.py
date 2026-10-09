@@ -44,7 +44,8 @@ class PromotionService:
     def promote_candidate(
         self,
         candidate_dir: Path,
-        expected_manifest_sha256: Optional[str] = None
+        expected_manifest_sha256: Optional[str] = None,
+        target_delivery_state: str = "verified_v1_1"
     ) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
         """Atomically promote verified candidate package to formal repository evidence."""
         if not candidate_dir.is_dir():
@@ -53,6 +54,7 @@ class PromotionService:
         cand_evidence_path = candidate_dir / "candidate_evidence.json"
         audit_decision_path = candidate_dir / "audit-decision.json"
         pkg_summary_path = candidate_dir / "package_summary.json"
+        afg_receipt_path = candidate_dir / "afg_evidence_receipt_v1_1.json"
 
         # 1. Verify candidate evidence exists and passed
         if not cand_evidence_path.is_file():
@@ -67,6 +69,12 @@ class PromotionService:
         audit_data = json.loads(audit_decision_path.read_text(encoding="utf-8"))
         if audit_data.get("verdict") != "ACCEPT":
             return False, f"[AUDIT_REJECTED] Audit verdict is '{audit_data.get('verdict')}'", None
+
+        # 2b. If AFG v1.1 receipt is present, ensure verdict is ELIGIBLE
+        if afg_receipt_path.is_file():
+            afg_data = json.loads(afg_receipt_path.read_text(encoding="utf-8"))
+            if afg_data.get("overall_verdict") != "ELIGIBLE":
+                return False, f"[AFG_NOT_ELIGIBLE] AFG receipt verdict is '{afg_data.get('overall_verdict')}', cannot promote", None
 
         # 3. Verify package hash binding
         if not pkg_summary_path.is_file():
@@ -109,7 +117,7 @@ class PromotionService:
             shutil.copytree(candidate_dir, archive_pkg_dir)
 
             # Update entry state
-            matched_exec["delivery_state"] = "verified"
+            matched_exec["delivery_state"] = target_delivery_state
             matched_exec.setdefault("evidence", {})
             matched_exec["evidence"].update({
                 "backend": matched_exec.get("backend", "wasm_simulation"),
@@ -119,10 +127,11 @@ class PromotionService:
                 "audit_ref": f".governance/reports/{target_app_dir}/package-{cand_data.get('run_id')}/audit-decision.json"
             })
 
-            # Atomic replace manifest
-            tmp_manifest = self.manifest_path.with_suffix(".json.tmp")
+            # Atomic replace manifest with PID temp file
+            import os
+            tmp_manifest = self.manifest_path.parent / f"checklist.data.json.tmp.{os.getpid()}"
             tmp_manifest.write_text(json.dumps(manifest_content, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-            tmp_manifest.replace(self.manifest_path)
+            os.replace(tmp_manifest, self.manifest_path)
 
         try:
             safe_file_retry(do_transaction, backoffs_ms=(100, 200, 400), op_name="promote candidate")
@@ -133,7 +142,7 @@ class PromotionService:
         verified_data = json.loads(self.manifest_path.read_text(encoding="utf-8"))
         chk_entry = next((e for e in verified_data.get("entries", []) if e.get("id") == app_id), None)
         chk_exec = next((ex for ex in chk_entry.get("executions", []) if ex.get("config_id") == config_id), None)
-        if not chk_exec or chk_exec.get("delivery_state") != "verified":
+        if not chk_exec or chk_exec.get("delivery_state") != target_delivery_state:
             return False, "[READBACK_FAILED] Committed delivery_state verification failed", None
 
         receipt = {

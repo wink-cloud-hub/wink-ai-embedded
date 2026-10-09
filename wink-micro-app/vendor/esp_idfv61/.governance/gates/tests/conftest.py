@@ -14,3 +14,6 @@ if str(GATES_DIR) not in sys.path:
     sys.path.insert(0, str(GATES_DIR))
 if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
+LOOP_DIR = TOOLS_DIR / "loop"
+if str(LOOP_DIR) not in sys.path:
+    sys.path.insert(0, str(LOOP_DIR))

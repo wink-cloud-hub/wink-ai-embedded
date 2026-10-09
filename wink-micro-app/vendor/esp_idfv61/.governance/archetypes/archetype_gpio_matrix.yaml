@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: Apache-2.0
+archetype_id: archetype_gpio_matrix
+tier: 1
+category: peripherals_gpio
+description: GPIO 引脚方向、电平读写脉冲、去抖滤波与浮空故障契约族原型
+applicable_capabilities:
+  - cap.gpio.matrix
+
+standard_claims:
+  - id: claim.gpio.level_rw_pulse
+    description: 配置引脚输入输出模式，电平写入与回读符合预期，脉冲宽度符合时钟推进
+    evidence_class: baseline
+    required_polarity: PASS
+  - id: claim.gpio.edge_interrupt_debounce
+    description: 边沿触发中断按去抖滤波窗口滤除高频毛刺并可靠触发 ISR
+    evidence_class: baseline
+    required_polarity: PASS
+  - id: claim.gpio.mutation_invert_level_kill
+    description: 变异反转引脚电平写入或禁用中断配置后，电平断言必须失败
+    evidence_class: implementation_mutation
+    required_polarity: FAIL
+  - id: claim.gpio.floating_pin_fault_handled
+    description: 注入高阻浮空故障时，开启内部上下拉后电平被拉至确定状态
+    evidence_class: fault_injection
+    required_polarity: PASS
+  - id: claim.gpio.reset_state_recovery
+    description: 调用 gpio_reset_pin 后，引脚恢复默认浮空输入态且中断解除
+    evidence_class: recovery
+    required_polarity: PASS
+
+default_l1_injectors:
+  - id: L1-OP-GPIO-GLITCH-PULSE
+    description: 注入小于去抖窗口的脉冲毛刺
+    operator: inject_gpio_noise_glitch
+    expected_behavior: fault_handling_pass
+  - id: L1-OP-GPIO-PIN-FLOAT
+    description: 模拟引脚外部悬空高阻态
+    operator: inject_gpio_floating
+    expected_behavior: fault_handling_pass
+
+default_l2_operators:
+  - id: L2-OP-GPIO-MUTATE-SET-LEVEL
+    target: gpio_set_level
+    description: 破坏 gpio_set_level 赋值逻辑
+    mutation_type: statement_delete
+    budget: 1
+
+applicability_protocol:
+  allow_na_physical_fault: false
