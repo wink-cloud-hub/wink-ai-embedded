@@ -5,7 +5,7 @@
 |---|---|
 | 计划编号 | `PLAN-20261009-ESP-IDF-AFG-PHASE1-EXECUTION` |
 | 日期 / 时代戳 | 2026-10-09 (Asia/Shanghai) |
-| 状态 | **Active / Task T1.1 & T1.2 已完成，Task T1.3 启动** |
+| 状态 | **Active / Task T1.1 ~ T1.3 已完成，Task T1.4 启动** |
 | 关联主控计划 | [00-MASTER-OVERVIEW.md](00-MASTER-OVERVIEW.md) (v1.1 Active) |
 | 阶段实施计划 | [01-PHASE1-PIPELINE-AND-SANDBOX.md](01-PHASE1-PIPELINE-AND-SANDBOX.md) (v1.1 Active) |
 | 共同质量门禁 | [05-EXECUTION-QUALITY-GATES.md](05-EXECUTION-QUALITY-GATES.md) (v1.1 Active) |
@@ -17,8 +17,8 @@
 
 - [T1.1 真实采集入口改造与 ProofPlan 预检](#t11-真实采集入口改造与-proofplan-预检) *(已完成 ✅)*
 - [T1.2 生效的 L1/L2 变异、归因与恢复](#t12-生效的-l1l2-变异归因与恢复) *(已完成 ✅)*
-- [T1.3 构建指纹、加载身份与写隔离](#t13-构建指纹加载身份与写隔离) *(执行中 🚀)*
-- [T1.4 共用接受策略与旧写入口收敛](#t14-共用接受策略与旧写入口收敛) *(待执行)*
+- [T1.3 构建指纹、加载身份与写隔离](#t13-构建指纹加载身份与写隔离) *(已完成 ✅)*
+- [T1.4 共用接受策略与旧写入口收敛](#t14-共用接受策略与旧写入口收敛) *(执行中 🚀)*
 - [T1.5 进程树 Win32 Job 隔离与有界回收](#t15-进程树-win32-job-隔离与有界回收) *(待执行)*
 - [T1.6 稳定密封与审计绑定](#t16-稳定密封与审计绑定) *(待执行)*
 - [T1.7 持锁 CAS、幂等与崩溃恢复](#t17-持锁-cas幂等与崩溃恢复) *(待执行)*
@@ -105,17 +105,48 @@
 - **问题归属**: `I-04`, `I-09`, `I-11`, `AFG-NEW-03`
 - **实现责任人**: 构建与工具工程师 (Build & Tooling Engineer)
 - **独立复核人**: 架构复核者 (Architecture Reviewer)
+- **工程追踪状态**: **已完成 (Done ✅)**
+
+### 2. 范围与依赖
+- **修改文件**:
+  - `wink-micro-app/vendor/esp_idfv61/.governance/loop/afg/build_sandbox.py` (全闭包依赖缓存与双重自检实现)
+  - `wink-micro-app/vendor/esp_idfv61/.governance/tests/unit/test_t1_3_build_fingerprint.py` (新增专用单测)
+- **必需前置条件**: T1.2 (Done)
+- **关联技术契约**: [AFG-Engine 契约 2.4 节](../../../zh/tech-designs/esp32/esp-idf-anti-false-green-verification-engine-contract.md)
+
+### 3. 验收设计 (AC-1.3 / AC-1.4 落地核验)
+- [x] **行为目标 1 (全依赖闭包缓存指纹)**: 缓存指纹严格绑定源码摘要、头文件闭包摘要、sdkconfig 摘要、编译器/SDK 版本、门面 Git SHA、门面源码摘要、补丁摘要和配置 profile ID；
+- [x] **行为目标 2 (未提交修改强制破缓存)**: 显式引入 `facade_source_digest`，门面工作树任何未提交源码变动立即导致指纹变化，杜绝过期产物假命中；
+- [x] **行为目标 3 (缓存命中的双向自检)**: `lookup_cache` 强制校验产物存在性、非空性与元数据记录的 `artifact_sha256` 精确一致性，损坏或被篡改产物自动判定 miss 并拒绝服务；
+- [x] **行为目标 4 (并发原子写入)**: `store_cache` 通过进程 PID 隔离的临时目录和原子目录替换，防止并发读取半写入产物；
+- [x] **行为目标 5 (工作区写隔离保护)**: `verify_write_isolation` 通过全目录哈希快照严格比对，确保构建/变异过程中上游原始目录零文件污染、零篡改。
+
+### 4. 验证凭据与回执
+- **专用单测**: `pytest tests/unit/test_t1_3_build_fingerprint.py` 4/4 全部通过；
+- **全量单测**: `pytest tests/unit/` 41/41 全部通过；
+- **元公理回归**: `pytest tests/meta_invariants/` 31/31 全部通过；
+- **Batch 0 回归**: `pytest tests/gates/test_batch0_evidence.py` 55/55 全部通过。
+
+---
+
+## T1.4 共用接受策略与旧写入口收敛
+
+### 1. 身份与责任
+- **Task ID**: `T1.4`
+- **问题归属**: `I-01`, `I-08`, `I-12`, `AFG-NEW-04`
+- **实现责任人**: 门禁与协议工程师 (Gate & Protocol Engineer)
+- **独立复核人**: 架构复核者 (Architecture Reviewer)
 - **工程追踪状态**: `执行中`
 
 ### 2. 范围与依赖
 - **修改文件白名单**:
-  - `wink-micro-app/vendor/esp_idfv61/.governance/loop/afg/build_sandbox.py`
-  - `wink-micro-app/vendor/esp_idfv61/.governance/loop/pipeline/pipeline.py`
-  - `wink-micro-app/vendor/esp_idfv61/.governance/tests/unit/test_t1_3_build_fingerprint.py` (新增)
-- **必需前置条件**: T1.2 (Done)
-- **关联技术契约**: [AFG-Engine 契约 2.4 节](../../../zh/tech-designs/esp32/esp-idf-anti-false-green-verification-engine-contract.md)
+  - `wink-micro-app/vendor/esp_idfv61/.governance/gates/report_contract.py`
+  - `wink-micro-app/vendor/esp_idfv61/.governance/gates/evidence_verifier.py`
+  - `wink-micro-app/vendor/esp_idfv61/.governance/tests/unit/test_t1_4_acceptance_policy.py` (新增)
+- **必需前置条件**: T1.3 (Done)
+- **关联技术契约**: [AFG-Engine 契约 2.2 节与 2.5 节](../../../zh/tech-designs/esp32/esp-idf-anti-false-green-verification-engine-contract.md)
 
-### 3. 验收设计 (AC-1.3 / AC-1.4)
-- **行为目标 1 (全依赖闭包缓存指纹)**: 缓存指纹严格绑定源码摘要、头文件闭包摘要、sdkconfig 摘要、编译器/SDK 版本、门面 Git SHA、补丁摘要和配置 profile ID；
-- **行为目标 2 (缓存命中的双向自检)**: 缓存命中时必须核验产物文件哈希与元数据匹配，损坏或版本不一致时强制重建；
-- **行为目标 3 (工作区只读写隔离)**: 并发构建 attempt 严禁共享可写构建目录，上游原厂代码与正式证据目录受到只读隔离保护。
+### 3. 验收设计 (AC-1.4 / AC-1.5)
+- **行为目标 1 (统一报告接受标准)**: `report_contract.py` 与 `evidence_verifier.py` 彻底收敛共用验证规则，借用应用报告、步骤数量不符、缺业务断言等恶意/损坏报告在所有入口 100% 拦截；
+- **行为目标 2 (旧写入器禁止提前覆盖)**: 禁止在未完成完整验证前预先覆盖历史报告或生成伪造凭据；
+- **行为目标 3 (错误码符号规约严格校验)**: 严格验证 POSIX (正数)、ESP-IDF (正数/零) 与 WinkMicroOS (负数错误码) 符号域隔离，模糊匹配器 (status!=0) 拒绝放行。
