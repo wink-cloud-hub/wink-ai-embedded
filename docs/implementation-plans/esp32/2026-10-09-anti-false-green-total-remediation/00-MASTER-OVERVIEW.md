@@ -5,7 +5,7 @@
 |---|---|
 | 计划编号 | `PLAN-20261009-ESP-IDF-AFG-TOTAL-REMEDIATION-MASTER` |
 | 日期 / 修订 | 2026-10-09，Asia/Shanghai；`v1.1` 执行质量修订版（已确认采纳） |
-| 状态 | **Active / 修订已确认采纳，Phase 0 实施中**；原 v1.0 记录的 Approved 不代表新增任务已经批准或通过验收 |
+| 状态 | **Active / 修订已采纳，Phase 0 完成 (QG-0 通过)，Phase 1 执行中**；原 v1.0 记录的 Approved 不代表新增任务已经批准或通过验收 |
 | 修订核查基线 | `acb984fdccb795c5da3d20192a6435a2151e3ee3`；本次只读核查与计划编辑未执行构建、仿真、审计签署或正式晋升 |
 | 关联技术设计 | [AFG-Engine 契约](../../../zh/tech-designs/esp32/esp-idf-anti-false-green-verification-engine-contract.md)、[Loop 可靠性契约](../../../zh/tech-designs/esp32/esp-idf-loop-reliability-contract.md)、[Batch 0 证据契约](../../../zh/tech-designs/esp32/esp-idf-batch0-evidence-contract.md) |
 | 关联问题与历史评审 | [Loop I-01～I-19 问题账本](../2026-10-09-esp-idf-loop-issues-and-remediation-plan.md)、[存量历史裁决](../../../reviews/esp32/2026-10-09-esp-idf-legacy-46-triage-report.md)、[Checklist 深度评审](../../../reviews/esp32/2026-10-08-esp-idf-verified-checklist-deep-review.md) |
@@ -69,7 +69,8 @@ flowchart TD
 | 阶段 | 责任角色 / 复核角色 | 进入条件 | 必需出口 |
 |---|---|---|---|
 | Phase 0 | 计划维护者 / 架构复核者 | 本修订获确认，执行范围明确 | QG-0：基线与配置集合、问题追踪、任务负责人、实际命令和设计冲突处理完成 |
-| [Phase 1](01-PHASE1-PIPELINE-AND-SANDBOX.md) | 工具与证据维护者 / 独立验证维护者 | QG-0 | QG-1：真实采集与 L2 链路、实际身份、共用拒绝/接受策略、隔离、密封与事务通过反例和正例 |
+| [Phase 1](01-PHASE1-PIPELINE-AND-SANDBOX.md) | 工具与证据维护者 / 独立验证维护者 | QG-0 | **QG-1 (已达成 ✅)**：真实采集与 L2 链路、实际身份、共用拒绝/接受策略、隔离、密封与事务通过反例和正例 (229/229 测试通过) |
+
 | [Phase 2](02-PHASE2-DRIVER-AND-SIM-HARDENING.md) | C 驱动维护者 / 领域复核者 | QG-0；真实端到端验收依赖 QG-1 | QG-2：S-01～S-05 与相关 Q/G 缺口逐项复验；每个能力有边界、错误与恢复证据 |
 | [Phase 3](03-PHASE3-ARCHETYPES-AND-LEGACY-TRIAGE.md) | 契约与场景维护者 / 需求审计及领域复核者 | QG-1；各配置依赖的 QG-2 出口成立 | QG-3：契约族注册集合及准入证据、46 历史配置完整裁决、新复验报告 |
 | [Phase 4](04-PHASE4-SCALE-OUT-312-ROLLOUT.md) | 调度与发布维护者 / 独立审计者 | QG-1；拟推广领域 QG-2/QG-3 出口成立 | QG-4：精确批次与续跑、领域冻结、证据失效、版本隔离、有效审计、晋升读回与看板对账 |
