@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: Apache-2.0
+spec_version: "2.0.0"
+description: "Test sample quarantine database"
+
+quarantined_entries:
+  - id: "esp.get_started.blink"
+    config_id: "wasm_sim_standard"
+    rule_exemptions:
+      - "gate1.evidence_hash_present"
+    reason: "Sample unexpired quarantine entry"
+    quarantined_at: "2026-09-29T14:00:00Z"
+    grace_period_expires: "2099-01-01T00:00:00Z"
+    owner: "sim_core_team"
+
+  - id: "esp.expired.sample"
+    config_id: "wasm_sim_standard"
+    rule_exemptions:
+      - "gate1.evidence_hash_present"
+    reason: "Sample expired quarantine entry"
+    quarantined_at: "2020-01-01T00:00:00Z"
+    grace_period_expires: "2020-01-15T00:00:00Z"
+    owner: "sim_core_team"

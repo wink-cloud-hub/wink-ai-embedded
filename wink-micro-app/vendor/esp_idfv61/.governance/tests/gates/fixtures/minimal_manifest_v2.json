@@ -1,0 +1,159 @@
+{
+  "spec_version": "2.0.0",
+  "generated_at": "2026-09-29T12:00:00Z",
+  "total_entries": 3,
+  "entries": [
+    {
+      "id": "esp.get_started.blink",
+      "display_id": 1,
+      "upstream_path": "examples/get-started/blink",
+      "written_at_spec_version": "2.0.0",
+      "scope": {
+        "inclusion": "in_scope",
+        "exclusion_reason": null,
+        "schedule": "active"
+      },
+      "audit": {
+        "verdict": "audited",
+        "auditor": "arch_team",
+        "audited_at": "2026-09-29T14:00:00Z",
+        "audited_configs": ["wasm_sim_standard"],
+        "dispute_ref": null,
+        "ruling_path": null
+      },
+      "required_capabilities": [
+        "cap.irq.edge_trigger",
+        "cap.core.fiber_task",
+        "cap.core.sync_tokens"
+      ],
+      "compatibility": {
+        "source_code_policy": "zero_modification_mirror",
+        "header_closure": [],
+        "sdkconfig_overrides": {}
+      },
+      "fidelity_contract": {
+        "axes_declared": {
+          "axis_a_channels": "full_buffer",
+          "axis_b_timebase": "deterministic_microsecond"
+        },
+        "concurrency_model": "cooperative_fiber"
+      },
+      "executions": [
+        {
+          "config_id": "wasm_sim_standard",
+          "backend": "wasm_browser",
+          "target_soc": "esp32",
+          "profile": "standard",
+          "delivery_state": "verified",
+          "acceptance": {
+            "type": "wasm_simulation",
+            "observability_level": "L1_ui",
+            "scenario_path": null,
+            "timeout_virtual_us": 3500000,
+            "timeout_wall_ms": 10000,
+            "positive_cases": [{"name": "blink_periodic"}],
+            "negative_cases": []
+          },
+          "evidence": {
+            "run_id": "run-20260929-blink",
+            "assets_sha256": "4b72cd7f72c7cffcba2b2ed504a87e92715b61dd9fdf36e5cef89476940ddf6c",
+            "scenario_sha256": "4b72cd7f72c7cffcba2b2ed504a87e92715b61dd9fdf36e5cef89476940ddf6c",
+            "execution_report_ref": "reports/esp32/blink_pass.json",
+            "verified_commit": "eb352cf518a228fa2d512a3928a6fcf7a342410a",
+            "verified_at": "2026-09-29T14:00:00Z"
+          }
+        }
+      ]
+    },
+    {
+      "id": "esp.peripherals.uart.uart_echo",
+      "display_id": 96,
+      "upstream_path": "examples/peripherals/uart/uart_echo",
+      "written_at_spec_version": "2.0.0",
+      "scope": {
+        "inclusion": "in_scope",
+        "exclusion_reason": null,
+        "schedule": "active"
+      },
+      "audit": {
+        "verdict": "audited",
+        "auditor": "arch_team",
+        "audited_at": "2026-09-29T14:00:00Z",
+        "audited_configs": ["wasm_sim_standard"],
+        "dispute_ref": null,
+        "ruling_path": null
+      },
+      "required_capabilities": [
+        "cap.core.fiber_task"
+      ],
+      "compatibility": {
+        "source_code_policy": "zero_modification_mirror",
+        "header_closure": [],
+        "sdkconfig_overrides": {}
+      },
+      "fidelity_contract": {
+        "axes_declared": {},
+        "concurrency_model": "cooperative_fiber"
+      },
+      "executions": [
+        {
+          "config_id": "wasm_sim_standard",
+          "backend": "wasm_browser",
+          "target_soc": "esp32",
+          "profile": "standard",
+          "delivery_state": "planned",
+          "acceptance": {
+            "type": "wasm_simulation",
+            "observability_level": "L1_ui",
+            "scenario_path": null
+          },
+          "evidence": null
+        }
+      ]
+    },
+    {
+      "id": "esp.phy.cert_test",
+      "display_id": 478,
+      "upstream_path": "examples/phy/cert_test",
+      "written_at_spec_version": "2.0.0",
+      "scope": {
+        "inclusion": "out_of_scope",
+        "exclusion_reason": "Physical RF hardware required",
+        "schedule": "deferred"
+      },
+      "audit": {
+        "verdict": "pending",
+        "auditor": null,
+        "audited_at": null,
+        "audited_configs": [],
+        "dispute_ref": null,
+        "ruling_path": null
+      },
+      "required_capabilities": [],
+      "compatibility": {
+        "source_code_policy": "zero_modification_mirror",
+        "header_closure": [],
+        "sdkconfig_overrides": {}
+      },
+      "fidelity_contract": {
+        "axes_declared": {},
+        "concurrency_model": "single_thread_polling"
+      },
+      "executions": [
+        {
+          "config_id": "wasm_sim_standard",
+          "backend": "wasm_browser",
+          "target_soc": "esp32",
+          "profile": "standard",
+          "delivery_state": "planned",
+          "acceptance": {
+            "type": "expected_rejection",
+            "observability_level": "LX_deadlock",
+            "sla_error_symbol": null
+          },
+          "evidence": null
+        }
+      ]
+    }
+  ]
+}

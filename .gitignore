@@ -106,6 +106,8 @@ Thumbs.db
 # ===== Python =====
 __pycache__/
 *.pyc
+*.egg-info/
+
 
 # ===== Wink toolchain local config =====
 .wink/

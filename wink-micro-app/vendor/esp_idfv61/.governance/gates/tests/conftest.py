@@ -9,7 +9,10 @@ import sys
 from pathlib import Path
 
 GATES_DIR = Path(__file__).resolve().parent.parent
-TOOLS_DIR = GATES_DIR.parent / "tools"
+GOV_DIR = GATES_DIR.parent
+TOOLS_DIR = GOV_DIR / "tools"
+if str(GOV_DIR) not in sys.path:
+    sys.path.insert(0, str(GOV_DIR))
 if str(GATES_DIR) not in sys.path:
     sys.path.insert(0, str(GATES_DIR))
 if str(TOOLS_DIR) not in sys.path:
@@ -17,3 +20,4 @@ if str(TOOLS_DIR) not in sys.path:
 LOOP_DIR = TOOLS_DIR / "loop"
 if str(LOOP_DIR) not in sys.path:
     sys.path.insert(0, str(LOOP_DIR))
+

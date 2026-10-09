@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+[build-system]
+requires = ["setuptools>=65"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wink-idf-governance"
+version = "2.0.0"
+description = "Anti-False-Green Verification and Governance Architecture for ESP-IDF Examples"
+readme = "specs/PLAYBOOK.md"
+requires-python = ">=3.9"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["loop*", "gates*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "gates/tests"]
+pythonpath = [".", "gates", "tools"]
+
