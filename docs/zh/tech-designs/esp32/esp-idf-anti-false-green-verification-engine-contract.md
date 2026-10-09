@@ -8,6 +8,7 @@
 | 状态 | **Active / Accepted Specification**；防假绿机器判定顶层技术契约基准 |
 | 关联技术设计 | [Loop 可靠性契约](esp-idf-loop-reliability-contract.md)、[Batch 0 证据契约](esp-idf-batch0-evidence-contract.md) |
 | 关联整改计划 | [AFG-Engine 整改实施计划](../../implementation-plans/esp32/2026-10-09-esp-idf-afg-engine-remediation-and-implementation-plan.md)、[Checklist 与 Loop 整改计划](../../implementation-plans/esp32/2026-10-09-esp-idf-loop-issues-and-remediation-plan.md) |
+| 本轮执行计划 | [防假绿全面整改与执行质量基线](../../../implementation-plans/esp32/2026-10-09-anti-false-green-total-remediation/00-MASTER-OVERVIEW.md)（v1.1 Draft；实施待确认，不改变本契约的已接受要求） |
 | 关联评审文档 | [AFG 契约完整性评审](../../reviews/esp32/2026-10-09-esp-idf-afg-engine-contract-completeness-review.md)、[Checklist 深度评审](../../reviews/esp32/2026-10-08-esp-idf-verified-checklist-deep-review.md) |
 | 治理依据 | [能力全景图谱字典](../../../../wink-micro-app/vendor/esp_idfv61/.governance/catalog/capability-catalog.yaml)、[分类规范](../../../../wink-micro-app/vendor/esp_idfv61/.governance/specs/CLASSIFICATION-SPEC.md)、[ADR-0001 错误码符号](../../../decisions/core/0001-error-code-sign-convention.md)、[ADR-0004 静态分发](../../../decisions/core/0004-static-dispatch-vs-runtime-ops.md)、[ADR-0012 契约诚实](../../../decisions/core/0012-contract-honesty-over-silent-degradation.md)、[ADR-0091 多配置正交](../../../decisions/unisim/0091-esp-idf-multi-config-orthogonal-schema.md)、[ADR-0092 治理宪章](../../../decisions/unisim/0092-esp-idf-simulation-governance-and-capability-charter.md) |
 | 平台目标 | WebAssembly 仿真环境（Wasm-browser / Host）及 ESP-IDF v6.1 xtensa 物理硬件同源行为闭环 |

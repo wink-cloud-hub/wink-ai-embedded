@@ -8,6 +8,7 @@
 | 状态 | **Active / Accepted**；L0 阶段冻结的技术契约基准 |
 | 关联合同与计划 | [ESP-IDF Loop 加固与已验证项整改实施计划](../../../implementation-plans/esp32/2026-10-08-esp-idf-verified-remediation-and-loop-hardening-plan.md) |
 | 补充整改计划 | [2026-10-09 Checklist 与 Loop 问题、解决方案及验收计划](../../../implementation-plans/esp32/2026-10-09-esp-idf-loop-issues-and-remediation-plan.md)（Draft / 待评审、待实施；未变更本契约的验收要求） |
+| 本轮执行计划 | [防假绿全面整改与执行质量基线](../../../implementation-plans/esp32/2026-10-09-anti-false-green-total-remediation/00-MASTER-OVERVIEW.md)（v1.1 Draft；实施待确认，不改变本契约的已接受要求） |
 | 现行技术依据 | [Batch 0 候选证据与双实证绑定](esp-idf-batch0-evidence-contract.md)、[防假绿验证引擎契约](esp-idf-anti-false-green-verification-engine-contract.md)、[分类规范](../../../../wink-micro-app/vendor/esp_idfv61/.governance/specs/CLASSIFICATION-SPEC.md)、[治理宪章 ADR-0092](../../../decisions/unisim/0092-esp-idf-simulation-governance-and-capability-charter.md) |
 | 平台目标 | WebAssembly 仿真环境（Wasm-browser / Host）及 ESP-IDF v6.1 xtensa 物理硬件同源适配 |
 

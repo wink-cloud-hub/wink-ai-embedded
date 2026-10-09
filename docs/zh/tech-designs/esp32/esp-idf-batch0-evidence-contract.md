@@ -6,6 +6,7 @@
 | 日期 | 2026-10-05 |
 | 范围 | 治理工具的证据判定与候选采集；不新增交付状态，不自动签发审计 |
 | 关联实施计划 | [全维度对抗测试计划：Batch 0](../../../implementation-plans/esp32/2026-10-05-comprehensive-adversarial-red-green-testing-plan.md) |
+| 本轮执行计划 | [防假绿全面整改与执行质量基线](../../../implementation-plans/esp32/2026-10-09-anti-false-green-total-remediation/00-MASTER-OVERVIEW.md)（v1.1 Draft；实施待确认，不改变本契约的已接受要求） |
 | 关联设计规范 | [虚实一致性规范 §12](../../design/07-platform-governance/04-simulation-consistency.md)、[ESP-IDF 分类规范](../../../../wink-micro-app/vendor/esp_idfv61/.governance/specs/CLASSIFICATION-SPEC.md) |
 | 依据 | ADR-0090 只读门禁、ADR-0091 配置正交与现行防假绿规范 |
 
