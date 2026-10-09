@@ -11,9 +11,9 @@ from typing import Any
 _CUR_DIR = Path(__file__).resolve().parent
 _GOV_DIR = _CUR_DIR.parent
 for p in [
+    str(_GOV_DIR),
     str(_GOV_DIR / "loop" / "afg"),
     str(_GOV_DIR / "tools" / "loop"),
-    str(_GOV_DIR / "loop"),
 ]:
     if p not in sys.path:
         sys.path.insert(0, p)

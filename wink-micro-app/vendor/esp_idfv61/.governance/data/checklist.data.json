@@ -101,7 +101,7 @@
           "evidence": {
             "backend": "wasm_simulation",
             "run_id": "run-20261006-esp.get_started.blink-verified",
-            "assets_sha256": "344c06497d36839185ae0378f2a84edb425cc543371234e0bd80ea41c7c363e4",
+            "assets_sha256": "434d0e32b21c885db6e2bf97808592c334706816fdf0e86616f0b693034a26cb",
             "scenario_sha256": "48e7494366d56bfab523750ba94359c349604f1437ab7c44f0a5f333f503c157",
             "execution_report_ref": ".governance/reports/get-started/blink_gpio/run-report.json",
             "verified_commit": "f84fc383a4a656a5f47e3904f4b19cd6fbadb36b",
@@ -310,7 +310,7 @@
           "evidence": {
             "backend": "wasm_simulation",
             "run_id": "run-20261006-esp.peripherals.adc.continuous_read-verified",
-            "assets_sha256": "d6b1be52902ccc97038ad033bde853416762ec3675bbcd33564dc4c54d1bd2ea",
+            "assets_sha256": "44fca86e276ed798fadba19e1c0c574aa40206d98c9e3ca598aaff9f65b91bac",
             "scenario_sha256": "e90c12cbc9461bbea098b82d356e861b3c55f4935179cbc256e13ba39293213a",
             "execution_report_ref": ".governance/reports/peripherals/adc_continuous_read/run-report.json",
             "verified_commit": "11fde1dc07b46bbf1cec63640dc5a33696538b39",
@@ -420,7 +420,7 @@
           "evidence": {
             "backend": "wasm_simulation",
             "run_id": "run-20261006-esp.peripherals.adc.oneshot_read-verified",
-            "assets_sha256": "9594858d1983458e5cd9088ef143e54f9657133e1038aaebe4e72651f356de8c",
+            "assets_sha256": "eda71e61deccfcbb91d6e932dc6ca279047a2f942f98444fe04407f8f31ad433",
             "scenario_sha256": "14d112affee56516fb4a6866ae5fb9c47238378f9bfaeef318903e28e52f7936",
             "execution_report_ref": ".governance/reports/peripherals/adc_oneshot_read/run-report.json",
             "verified_commit": "11fde1dc07b46bbf1cec63640dc5a33696538b39",
@@ -1812,7 +1812,7 @@
           "evidence": {
             "backend": "wasm_simulation",
             "run_id": "run-20261002-esp.peripherals.i2c.i2c_basic-verified",
-            "assets_sha256": "1c748eeaf6ab7c4fdf5a2eb6135b23ce7e887e1c9eccf60f6a5856114ed14ca0",
+            "assets_sha256": "5ba3e76e96e029bff43e4eca1f8ba0c45fe1dbeb18437fce7343647227f9f049",
             "scenario_sha256": "b758752fbfca569c82ba1a2575fb2dec28d8cd0f5d6fa538f5077cef6e812f30",
             "execution_report_ref": ".governance/reports/peripherals/i2c_basic/run-report.json",
             "verified_commit": "dcf19fb32e0854bb511d9e45bb227318bf9e806d",
@@ -3379,7 +3379,7 @@
           "evidence": {
             "backend": "wasm_simulation",
             "run_id": "run-20261002-esp.peripherals.ledc.ledc_basic-verified",
-            "assets_sha256": "02bd752437d75a92eb945ff3a889493880713cf50ff2d8eb3b1042d69909c3ca",
+            "assets_sha256": "8a23c920e558b97a12f44d0a269400cacf28b38b429d242b5ff48a046e0367fb",
             "scenario_sha256": "8148f232e7df1a76f096ccf3df430d98a2e2ce41497be77a9ba1ce1c369ae853",
             "execution_report_ref": ".governance/reports/peripherals/ledc_basic/run-report.json",
             "verified_commit": "b78917fe5a1049d5ce1a2556ead8a1a786e24741",
@@ -5731,7 +5731,7 @@
           "evidence": {
             "backend": "wasm_simulation",
             "run_id": "run-20261001-esp.peripherals.timer_group.gptimer-verified",
-            "assets_sha256": "21fa81f89e9ebe49d91c0df4736d35fad74bcd70282c5347b5e178da2b6775ad",
+            "assets_sha256": "8bd452ed5d40977d8c8758073c749d32f506b8326b5e777f818c7e8a300e6140",
             "scenario_sha256": "366e42a850ed09936e0fca9ed3096e823d29c7cfd8d0fce4f08fe448fb798e8c",
             "execution_report_ref": ".governance/reports/peripherals/gptimer_alarm/run-report.json",
             "verified_commit": "570f761dcb083b47f3c4c1bdad959b7c11807350",
@@ -6622,7 +6622,7 @@
           "evidence": {
             "backend": "wasm_simulation",
             "run_id": "run-20261006-esp.peripherals.uart.uart_echo-verified",
-            "assets_sha256": "1d8ced7067233e1064d07ef1dfdf3d3d421f240c784058277cae6631ab5d162b",
+            "assets_sha256": "8ddb28ce91368d6d3d73f9e3f7d6b434cfc65596b3d5df386e4bf445088550f4",
             "scenario_sha256": "bb3271c3531529ac41ee4a146e2097604cfd3d904f633e0ac3100dc1205c8f62",
             "execution_report_ref": ".governance/reports/peripherals/uart_echo/run-report.json",
             "verified_commit": "aa5287c12ac2ad71f9516af20c611985cccba446",
