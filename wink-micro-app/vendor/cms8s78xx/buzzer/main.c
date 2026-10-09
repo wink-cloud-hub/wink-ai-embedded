@@ -69,7 +69,7 @@
 int main(void)
 {	
 		
-	SYS_SET_SYSTEM_CLK(SYS_CLK_DIV_1);		//系统时钟1分频
+	SYS_SET_SYSTEM_CLK(SYS_CLK_DIV_1);		//绯荤粺鏃堕挓1鍒嗛
 		
 	BUZZER_Config();
 		

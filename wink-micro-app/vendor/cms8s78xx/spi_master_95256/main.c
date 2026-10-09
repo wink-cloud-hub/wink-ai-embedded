@@ -74,16 +74,16 @@ int main(void)
 	uint8_t i,j;							
 	uint8_t value;			
 	
-	SPI_Config();							/*ÉèÖÃSPIÖ÷¿ØÄ£Ê½*/		
+	SPI_Config();							/*è®¾ç½®SPIä¸»æ§æ¨¡å¼*/		
 
 	for(i=120;i>0;i--)
 		for(j=120;j>0;j--);
 
-	value = SPI_M95256_Read_SFR(M95256_RDSR);		/*¶ÁÈ¡SFR*/
-	SPI_M95256_Write(0x15, 0x08);					/*Ğ´Êı¾İ*/
+	value = SPI_M95256_Read_SFR(M95256_RDSR);		/*è¯»å–SFR*/
+	SPI_M95256_Write(0x15, 0x08);					/*å†™æ•°æ®*/
 	for(i=200;i>0;i--)
 		for(j=200;j>0;j--);
-	value = SPI_M95256_Read_Data(0x15);				/*¶ÁÈ¡Êı¾İ*/
+	value = SPI_M95256_Read_Data(0x15);				/*è¯»å–æ•°æ®*/
 	
 	while(1)
 	{	

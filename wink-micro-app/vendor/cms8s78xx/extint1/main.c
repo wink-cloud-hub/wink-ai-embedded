@@ -69,11 +69,11 @@
 int main(void)
 {	
 		
-	SYS_SET_SYSTEM_CLK(SYS_CLK_DIV_1);		//ÏµÍ³Ê±ÖÓ1·ÖÆµ
+	SYS_SET_SYSTEM_CLK(SYS_CLK_DIV_1);		//ç³»ç»Ÿæ—¶é’Ÿ1åˆ†é¢‘
 	
 	GPIO_SET_MUX_MODE(P32CFG, GPIO_MUX_GPIO);
 	P32 =0;
-	GPIO_ENABLE_OUTPUT(P3TRIS,GPIO_PIN_2);		//ÉèÖÃP32ÎªÊä³ö
+	GPIO_ENABLE_OUTPUT(P3TRIS,GPIO_PIN_2);		//è®¾ç½®P32ä¸ºè¾“å‡º
 	
 	EXTINT_Config();
 		

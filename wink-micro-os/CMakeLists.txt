@@ -239,6 +239,23 @@ elseif(MSVC)
     add_compile_options(/utf-8)
 endif()
 
+# Reproducible Wasm artifacts (PLAN-20261009-CMS8S78XX-BUILD-BASELINE S3). libc's
+# assert() text — kept live because WINK_ASSERT maps to assert() under WINK_PT_DEBUG —
+# embeds __FILE__, so the absolute build directory was baked into wink_simulator.wasm and
+# two from-scratch builds of identical inputs differed. Mapping the workspace root to a
+# fixed prefix removes the location dependency without touching assertions, budgets or
+# symbolization. Both separator forms are passed because the MinGW Makefiles generator
+# hands the compiler backslash paths while Ninja passes forward slashes.
+if(TARGET_PLATFORM STREQUAL "wasm"
+        AND (CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
+    get_filename_component(_WINK_WS_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
+    file(TO_NATIVE_PATH "${_WINK_WS_ROOT}" _WINK_WS_ROOT_NATIVE)
+    add_compile_options("-ffile-prefix-map=${_WINK_WS_ROOT}=/wink-baseline")
+    if(NOT _WINK_WS_ROOT_NATIVE STREQUAL _WINK_WS_ROOT)
+        add_compile_options("-ffile-prefix-map=${_WINK_WS_ROOT_NATIVE}=/wink-baseline")
+    endif()
+endif()
+
 # C++ Language Options (ADR-0036)
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
     add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>)

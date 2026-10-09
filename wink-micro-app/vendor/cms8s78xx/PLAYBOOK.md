@@ -18,8 +18,10 @@
    - `wink_simulator.wasm`（固件行为级仿真二进制）
 2. **确定性 Headless 自动化测试实证**：
    编写对应的场景脚本 `unisim-scenarios/<name>.scenario.json`，使用 `wink-ai/packages/unisim` 驱动 Headless 模式进行自动化测试，确保所有断言步骤（微秒级引脚电平、外设插件状态、时序）**100% 绿灯通过**。
-3. **原厂源码“一行不改”准则**：
-   从官方工程拷贝的 C 源码（`main.c`, `isr.c`, `demo_*.c`, `demo_*.h`）必须保持原汁原味。所有 Keil C51 特异性关键字（`sbit`, `sfr`, `interrupt`）、寄存器定义及外设行为，均由 WinkMicroOS 编译清洗工具（`mcs51_cleanup.py`）与框架底座拦截层（`REG_CMS8S78XX.H` / C++ 仿真引擎）静态解决。
+3. **原厂源码内容守恒准则**：
+   从官方工程拷贝的 C 源码（`main.c`, `isr.c`, `demo_*.c`, `demo_*.h`）以**业务内容逐字守恒**为准，而不是以字节完全一致为准。允许的规范化只有一种：编码/换行归一（严格解码 GB18030/UTF-8 → 无 BOM UTF-8 → LF），且必须通过令牌序列校验（`c-strip-comments-token-sequence-v1`：去注释后令牌逐个相同，0 令牌改动）。每一份镜像文件的原始/规范化哈希、漂移级别（`identical` / `comment_or_whitespace_only` / `content_adapted` / `upstream_missing`）与内容改写理由都登记在 `upstream-lock.json`，由 `wink-micro-os/frameworks/mcs51/tools/audit_vendor_mirror.py --verify` 只读复验（该工具永不自动更新锁文件）。
+   仅当原厂代码本身无法被工具链解析时，才以原厂内容为字节目标做恢复：`epwm_brake_*` 六个 `isr.c` 声明了锁定器件头文件未定义的 INT2/INT3/INT4/UART1/UART2/SPI_I2C 向量并丢弃了官方 ACMP 处理程序，SDCC 无法解析未定义向量宏，因此这六个文件的内容目标为 `upstream_normalized`。
+   所有 Keil C51 特异性关键字（`sbit`, `sfr`, `interrupt`）、寄存器定义及外设行为，均由 WinkMicroOS 编译清洗工具（`transpile_app_keil_c51.py`）与框架底座拦截层（`REG_CMS8S78XX.H` / C++ 仿真引擎）静态解决。
 
 ---
 
@@ -29,8 +31,8 @@
 ┌────────────────────────────────────────────────────────────────────────┐
 │ 阶段一：新建 App 与原厂代码镜像 (Setup & Mirror)                        │
 │   ├── 创建 wink-micro-app/vendor_cms8s78xx_<feature>/             │
-│   ├── 镜像官方源码（保持一行不改）                                      │
-│   ├── 配置 CMakeLists.txt (接入 mcs51_cleanup.py 清洗流程)             │
+│   ├── 镜像官方源码（内容逐字守恒）                                      │
+│   ├── 配置 CMakeLists.txt (接入 transpile_app_keil_c51.py 清洗流程)    │
 │   ├── 配置 wink-app.json (声明 board, mcu, devices 引脚映射)           │
 │   └── 编写 unisim-scenarios/<feature>.scenario.json 确定性场景测试脚本 │
 └──────────────────────────────────┬─────────────────────────────────────┘
@@ -82,10 +84,10 @@
 wink-micro-app/vendor_cms8s78xx_<feature>/
 ├── CMakeLists.txt              # 构建脚本（清洗规则配置）
 ├── wink-app.json               # 微应用元数据与引脚拓扑配置
-├── main.c                      # 官方原始 main.c（一行不改）
-├── isr.c                       # 官方原始 isr.c（一行不改，若有）
-├── demo_<feature>.c            # 官方功能源码（一行不改）
-├── demo_<feature>.h            # 官方头文件（一行不改）
+├── main.c                      # 官方原始 main.c（内容守恒）
+├── isr.c                       # 官方原始 isr.c（内容守恒，若有）
+├── demo_<feature>.c            # 官方功能源码（内容守恒）
+├── demo_<feature>.h            # 官方头文件（内容守恒）
 ├── unisim-assets/              # 仿真构建资产输出目录（由阶段二自动生成/输出）
 │   ├── device-tree.json
 │   ├── wink_simulator.js
@@ -95,43 +97,66 @@ wink-micro-app/vendor_cms8s78xx_<feature>/
 ```
 
 ### 2. `CMakeLists.txt` 模板
-所有 MCS-51 示例统一通过 `mcs51_cleanup.py` 驱动代码清洗：
+所有 MCS-51 示例统一通过 `wink-micro-os/frameworks/mcs51/tools/transpile_app_keil_c51.py` 驱动代码清洗（App 侧只声明源码清单，不自行编译 Wasm）：
 ```cmake
-cmake_minimum_required(VERSION 3.20)
-project(vendor_cms8s78xx_<feature> C ASM)
+# vendor_cms8s78xx_<feature> — production MCS-51 (CMS8S78xx) wasm-sim app
+# 镜像源码保持原厂内容，Keil C51 语法由 transpile_app_keil_c51.py 清洗。
 
-set(WINK_MCU "cms8s78xx")
-include(${CMAKE_CURRENT_LIST_DIR}/../sample_common.cmake)
+if(DEFINED wink-micro-os_SOURCE_DIR)
+    set(_MCS51_APP_OS_ROOT "${wink-micro-os_SOURCE_DIR}")
+elseif(DEFINED WINK_MICRO_OS_ROOT)
+    set(_MCS51_APP_OS_ROOT "${WINK_MICRO_OS_ROOT}")
+else()
+    get_filename_component(_MCS51_APP_OS_ROOT
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../../../wink-micro-os" ABSOLUTE)
+endif()
+set(_MCS51_TRANSPILE
+    "${_MCS51_APP_OS_ROOT}/frameworks/mcs51/tools/transpile_app_keil_c51.py")
 
-set(VENDOR_SRCS
-    ${CMAKE_CURRENT_SOURCE_DIR}/main.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/demo_<feature>.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/isr.c
-)
+set(GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
+file(MAKE_DIRECTORY "${GEN_DIR}")
 
-# 自动生成清洗后的源码目标
-set(CLEANED_SRCS "")
-foreach(SRC ${VENDOR_SRCS})
-    get_filename_component(SRC_NAME ${SRC} NAME)
-    set(OUT_SRC "${CMAKE_CURRENT_BINARY_DIR}/cleaned_${SRC_NAME}")
+set(_SRC_FILES main.c demo_<feature>.c isr.c)   # 按 App 实际镜像清单填写
+set(_GEN_CPPS "")
+
+foreach(_src IN LISTS _SRC_FILES)
+    get_filename_component(_name "${_src}" NAME_WE)
+    set(_cpp "${GEN_DIR}/${_name}.cpp")
+    set(_c "${CMAKE_CURRENT_SOURCE_DIR}/${_src}")
     add_custom_command(
-        OUTPUT ${OUT_SRC}
-        COMMAND ${Python3_EXECUTABLE}
-                ${WINK_CODEGEN_ROOT}/generators/mcs51_cleanup.py
-                ${SRC} ${OUT_SRC}
-        DEPENDS ${SRC} ${WINK_CODEGEN_ROOT}/generators/mcs51_cleanup.py
-        COMMENT "Cleaning MCS-51 Keil C51 syntax: ${SRC_NAME}"
+        OUTPUT ${_cpp}
+        COMMAND ${Python3_EXECUTABLE} ${_MCS51_TRANSPILE} ${_c} ${_cpp}
+        DEPENDS ${_c} ${_MCS51_TRANSPILE}
+        COMMENT "vendor_cms8s78xx_<feature> transpile: ${_src} -> ${_name}.cpp"
+        VERBATIM
     )
-    list(APPEND CLEANED_SRCS ${OUT_SRC})
+    set_source_files_properties(${_cpp} PROPERTIES COMPILE_OPTIONS "-std=c++17")
+    list(APPEND _GEN_CPPS ${_cpp})
+
+    if(EMSCRIPTEN)
+        execute_process(
+            COMMAND ${Python3_EXECUTABLE} ${_MCS51_TRANSPILE} ${_c} ${_cpp}
+            RESULT_VARIABLE _rc
+        )
+        if(NOT _rc EQUAL 0)
+            message(FATAL_ERROR "vendor_cms8s78xx_<feature> transpile failed for ${_src}")
+        endif()
+    endif()
 endforeach()
 
-add_executable(${PROJECT_NAME} ${CLEANED_SRCS})
-target_include_directories(${PROJECT_NAME} PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${WINK_FRAMEWORKS_DIR}/mcs51/include
-)
-target_link_libraries(${PROJECT_NAME} PRIVATE wink_framework_mcs51)
+if(EMSCRIPTEN)
+    set(WINK_APP_SOURCES      ${_GEN_CPPS}            PARENT_SCOPE)
+    set(WINK_APP_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR} ${GEN_DIR} PARENT_SCOPE)
+    set(WINK_APP_MCS51        TRUE                    PARENT_SCOPE)
+    return()
+endif()
+
+message(STATUS "vendor_cms8s78xx_<feature>: wasm-sim only — no host/esp32 target produced.")
+set(WINK_APP_SOURCES "" PARENT_SCOPE)
 ```
+
+> 复验镜像内容身份（不依赖构建）：
+> `python wink-micro-os/frameworks/mcs51/tools/audit_vendor_mirror.py --verify`
 
 ### 3. `wink-app.json` 配置规范
 配置中必须包含 upstream 溯源信息以及正确的开发板和外设引脚映射：

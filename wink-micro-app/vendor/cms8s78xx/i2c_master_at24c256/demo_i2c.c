@@ -37,19 +37,19 @@
 /****************************************************************************/
 /*	Local pre-processor symbols('#define')
 ****************************************************************************/
-/*----AT24C256µØÖ·+¶ÁĞ´-----------------------------------------------------*/
+/*----AT24C256åœ°å€+è¯»å†™-----------------------------------------------------*/
 #define  AT24C256_WRITE		0xA0				/*Write Cmd*/
 #define  AT24C256_READ      0xA1				/*Read  Cmd*/
 #define  AT24C256_MAX		0x7fff				/*address  max*/
 
-/*----I2CÖ÷¿ØÄ£Ê½ÃüÁî-------------------------------------------------------*/
-#define I2C_MASTER_START_SEND				(I2C_I2CMCR_START_Msk | I2C_I2CMCR_RUN_Msk)		/*ÆğÊ¼Î»+´Ó»úµØÖ·+Ğ´+1ByteÊı¾İ*/
-#define I2C_MASTER_SEND						(I2C_I2CMCR_RUN_Msk)							/*·¢ËÍ1ByteÊı¾İ*/
-#define I2C_MASTER_STOP						(I2C_I2CMCR_STOP_Msk)							/*·¢ËÍÍ£Ö¹Î»*/
-#define I2C_MASTER_START_RECEIVE_NACK		(I2C_I2CMCR_START_Msk | I2C_I2CMCR_RUN_Msk)		/*ÆğÊ¼Î»+´Ó»úµØÖ·+¶Á+1ByteÊ±ÖÓ+NACK*/
-#define I2C_MASTER_START_RECEIVE_ACK		(I2C_I2CMCR_START_Msk | I2C_I2CMCR_RUN_Msk | I2C_I2CMCR_ACK_Msk) /*ÆğÊ¼Î»+´Ó»úµØÖ·+¶Á+1ByteÊ±ÖÓ+ACK*/
-#define I2C_MASTER_RECEIVE_NACK				(I2C_I2CMCR_RUN_Msk)							/*·¢ËÍ¶Á1ByteÊ±ÖÓ+NACK*/
-#define I2C_MASTER_RECEIVE_ACK				(I2C_I2CMCR_RUN_Msk | I2C_I2CMCR_ACK_Msk)		/*·¢ËÍ¶Á1ByteÊ±ÖÓ+ACK*/
+/*----I2Cä¸»æ§æ¨¡å¼å‘½ä»¤-------------------------------------------------------*/
+#define I2C_MASTER_START_SEND				(I2C_I2CMCR_START_Msk | I2C_I2CMCR_RUN_Msk)		/*èµ·å§‹ä½+ä»æœºåœ°å€+å†™+1Byteæ•°æ®*/
+#define I2C_MASTER_SEND						(I2C_I2CMCR_RUN_Msk)							/*å‘é€1Byteæ•°æ®*/
+#define I2C_MASTER_STOP						(I2C_I2CMCR_STOP_Msk)							/*å‘é€åœæ­¢ä½*/
+#define I2C_MASTER_START_RECEIVE_NACK		(I2C_I2CMCR_START_Msk | I2C_I2CMCR_RUN_Msk)		/*èµ·å§‹ä½+ä»æœºåœ°å€+è¯»+1Byteæ—¶é’Ÿ+NACK*/
+#define I2C_MASTER_START_RECEIVE_ACK		(I2C_I2CMCR_START_Msk | I2C_I2CMCR_RUN_Msk | I2C_I2CMCR_ACK_Msk) /*èµ·å§‹ä½+ä»æœºåœ°å€+è¯»+1Byteæ—¶é’Ÿ+ACK*/
+#define I2C_MASTER_RECEIVE_NACK				(I2C_I2CMCR_RUN_Msk)							/*å‘é€è¯»1Byteæ—¶é’Ÿ+NACK*/
+#define I2C_MASTER_RECEIVE_ACK				(I2C_I2CMCR_RUN_Msk | I2C_I2CMCR_ACK_Msk)		/*å‘é€è¯»1Byteæ—¶é’Ÿ+ACK*/
 
 /****************************************************************************/
 /*	Global variable definitions(declared in header file with 'extern')
@@ -68,7 +68,7 @@
 ****************************************************************************/
 /*****************************************************************************
  ** \brief	I2C_SendMasterCmd
- **			·¢ËÍÖ÷¿ØÃüÁî
+ **			å‘é€ä¸»æ§å‘½ä»¤
  ** \param [in] none
  ** \return  none
  ** \note	 
@@ -79,10 +79,10 @@ void  I2C_SendMasterCmd(uint8_t Cmd)
 }
 /*****************************************************************************
  ** \brief	I2C_MasterWriteAddr
- **			Ö÷¿ØĞ´´Ó»úµØÖ·
- ** \param [in] SlaveAddr £º´Ó»úµØÖ·+¶ÁĞ´Î»R/W
+ **			ä¸»æ§å†™ä»æœºåœ°å€
+ ** \param [in] SlaveAddr ï¼šä»æœºåœ°å€+è¯»å†™ä½R/W
  ** \return  none
- ** \note	 ¶ÁĞ´Î»ÔÚ´Ó»úµØÖ·µÄµÚ0Î»£¬¼´7Î»µØÖ·+R/W  
+ ** \note	 è¯»å†™ä½åœ¨ä»æœºåœ°å€çš„ç¬¬0ä½ï¼Œå³7ä½åœ°å€+R/W  
 *****************************************************************************/
 void  I2C_MasterWriteAddr(uint8_t SlaveAddr)
 {
@@ -90,7 +90,7 @@ void  I2C_MasterWriteAddr(uint8_t SlaveAddr)
 }
 /*****************************************************************************
  ** \brief	I2C_MasterWriteBuffer
- **			Ö÷¿ØĞ´»º´æ
+ **			ä¸»æ§å†™ç¼“å­˜
  ** \param [in] data
  ** \return  none
  ** \note	 
@@ -101,7 +101,7 @@ void  I2C_MasterWriteBuffer(uint8_t Data)
 }
 /*****************************************************************************
  ** \brief	I2C_MasterReadBuffer
- **			Ö÷¿Ø¶Á»º´æ
+ **			ä¸»æ§è¯»ç¼“å­˜
  ** \param [in] none
  ** \return  data
  ** \note	 
@@ -113,11 +113,11 @@ uint8_t I2C_MasterReadBuffer(void)
 
 /*****************************************************************************
  ** \brief	 At24c256_write_byte
- **			 Ğ´Êı¾İµ½At24C256
- ** \param [in] addr £ºµØÖ·
-**				ch   : Êı¾İ
+ **			 å†™æ•°æ®åˆ°At24C256
+ ** \param [in] addr ï¼šåœ°å€
+**				ch   : æ•°æ®
  **            	
- ** \return  -1£º³¬³öµØÖ··¶Î§ 0£ºĞ´Íê³É
+ ** \return  -1ï¼šè¶…å‡ºåœ°å€èŒƒå›´ 0ï¼šå†™å®Œæˆ
  ** \note  
  *****************************************************************************/
 int16_t  At24c256_write_byte(uint16_t addr , uint8_t ch)
@@ -128,24 +128,24 @@ int16_t  At24c256_write_byte(uint16_t addr , uint8_t ch)
 	else
 	{			
 		
-		I2C_MasterWriteAddr(AT24C256_WRITE);			/*Ğ´´Ó»úµØÖ·+Ğ´*/
-		I2C_MasterWriteBuffer((addr>>8)& 0xff);			/*Ğ´Buffer(¸ßÎ»ROM µØÖ·)*/
+		I2C_MasterWriteAddr(AT24C256_WRITE);			/*å†™ä»æœºåœ°å€+å†™*/
+		I2C_MasterWriteBuffer((addr>>8)& 0xff);			/*å†™Buffer(é«˜ä½ROM åœ°å€)*/
 		I2C_SendMasterCmd(I2C_MASTER_START_SEND);
-		while(!(I2C_GetMasterIntFlag()));				/*µÈ´ı·¢ËÍ½áÊø*/
+		while(!(I2C_GetMasterIntFlag()));				/*ç­‰å¾…å‘é€ç»“æŸ*/
 		I2C_ClearMasterIntFlag();
 								
-		I2C_MasterWriteBuffer(addr & 0xff);				/*µÍÎ»ROM µØÖ·*/
-		I2C_SendMasterCmd(I2C_MASTER_SEND);				/*·¢ËÍBuffer*/
+		I2C_MasterWriteBuffer(addr & 0xff);				/*ä½ä½ROM åœ°å€*/
+		I2C_SendMasterCmd(I2C_MASTER_SEND);				/*å‘é€Buffer*/
 		while(!(I2C_GetMasterIntFlag()));
 		I2C_ClearMasterIntFlag();	
 		
-		I2C_MasterWriteBuffer(ch);							/*Ğ´Êı¾İ*/
+		I2C_MasterWriteBuffer(ch);							/*å†™æ•°æ®*/
 		I2C_SendMasterCmd(I2C_MASTER_SEND);
 		while(!(I2C_GetMasterIntFlag()));		
 		I2C_ClearMasterIntFlag();
 		
-		I2C_SendMasterCmd(I2C_MASTER_STOP);					/*·¢ËÍÍ£Ö¹Î»*/
-		for(i=2000;i>0;i--)								/*ÑÓÊ±È·±£AT24C256Ğ´Êı¾İÍê³É*/
+		I2C_SendMasterCmd(I2C_MASTER_STOP);					/*å‘é€åœæ­¢ä½*/
+		for(i=2000;i>0;i--)								/*å»¶æ—¶ç¡®ä¿AT24C256å†™æ•°æ®å®Œæˆ*/
 			for(j=200;j>0;j--);
 	}
 	return 0;
@@ -153,10 +153,10 @@ int16_t  At24c256_write_byte(uint16_t addr , uint8_t ch)
 
 /********************************************************************************
  ** \brief	 At24c256_read_byte
- **			 ´ÓAt24C256ÖĞ¶ÁÊı¾İ
- ** \param [in]  addr : µØÖ·
+ **			 ä»At24C256ä¸­è¯»æ•°æ®
+ ** \param [in]  addr : åœ°å€
  **            	
- ** \return  ·µ»Ø8Î»Êı¾İ
+ ** \return  è¿”å›8ä½æ•°æ®
  ** \note   
  ******************************************************************************/
 uint8_t  At24c256_read_byte(uint16_t addr)
@@ -165,36 +165,36 @@ uint8_t  At24c256_read_byte(uint16_t addr)
 	if(addr > AT24C256_MAX)
 		return -1;
 	
-	I2C_MasterWriteAddr(AT24C256_WRITE);			/*Ğ´´Ó»úµØÖ·+Ğ´*/
-	I2C_MasterWriteBuffer((addr>>8)& 0xff);			/*Ğ´Buffer(¸ßÎ»ROM µØÖ·)*/
+	I2C_MasterWriteAddr(AT24C256_WRITE);			/*å†™ä»æœºåœ°å€+å†™*/
+	I2C_MasterWriteBuffer((addr>>8)& 0xff);			/*å†™Buffer(é«˜ä½ROM åœ°å€)*/
 	I2C_SendMasterCmd(I2C_MASTER_START_SEND);
-	while(!(I2C_GetMasterIntFlag()));				/*µÈ´ı·¢ËÍ½áÊø*/
+	while(!(I2C_GetMasterIntFlag()));				/*ç­‰å¾…å‘é€ç»“æŸ*/
 	I2C_ClearMasterIntFlag();
 							
-	I2C_MasterWriteBuffer(addr & 0xff);				/*µÍÎ»ROM µØÖ·*/
-	I2C_SendMasterCmd(I2C_MASTER_SEND);				/*·¢ËÍBuffer*/
+	I2C_MasterWriteBuffer(addr & 0xff);				/*ä½ä½ROM åœ°å€*/
+	I2C_SendMasterCmd(I2C_MASTER_SEND);				/*å‘é€Buffer*/
 	while(!(I2C_GetMasterIntFlag()));
 	I2C_ClearMasterIntFlag();	
 	
-	I2C_MasterWriteAddr(AT24C256_READ);					/*Ğ´´Ó»úµØÖ·+¶Á*/	
+	I2C_MasterWriteAddr(AT24C256_READ);					/*å†™ä»æœºåœ°å€+è¯»*/	
 	I2C_SendMasterCmd(I2C_MASTER_START_RECEIVE_NACK);	
 		
-	while(!(I2C_GetMasterIntFlag()));					/*µÈ´ıÊı¾İ½ÓÊÕÍê³É*/
+	while(!(I2C_GetMasterIntFlag()));					/*ç­‰å¾…æ•°æ®æ¥æ”¶å®Œæˆ*/
 	I2C_ClearMasterIntFlag();							
-	buffer=I2C_MasterReadBuffer();						/*¶ÁÈ¡Êı¾İ*/
+	buffer=I2C_MasterReadBuffer();						/*è¯»å–æ•°æ®*/
 	
-	I2C_SendMasterCmd(I2C_MASTER_STOP);					/*·¢ËÍÍ£Ö¹Î»*/
+	I2C_SendMasterCmd(I2C_MASTER_STOP);					/*å‘é€åœæ­¢ä½*/
 	return buffer;
 }
 /********************************************************************************
  ** \brief	 At24c256_read_str
- **			 Á¬Ğø¶ÁÈ¡At24c256Êı¾İ
- ** \param [in] addr £ºÆğÊ¼µØÖ·
- **            	ch	 : Êı¾İ±£´æµÄÈİÆ÷(Êı×é)  
-**				sizevalue: ¶ÁÈ¡µÄÊı¾İµÄ¸öÊı
+ **			 è¿ç»­è¯»å–At24c256æ•°æ®
+ ** \param [in] addr ï¼šèµ·å§‹åœ°å€
+ **            	ch	 : æ•°æ®ä¿å­˜çš„å®¹å™¨(æ•°ç»„)  
+**				sizevalue: è¯»å–çš„æ•°æ®çš„ä¸ªæ•°
  ** \return  0/1
- ** \note  	 Àı£º  unsigned char  array[10];			//¶¨ÒåÒ»¸ö10×Ö½ÚµÄÈİÆ÷
- **	  At24c256_read_str(0x0010, Buffer, 5); //´ÓµØÖ·0x0010¿ªÊ¼¶ÁÈ¡5¸ö×Ö½ÚµÄÊı¾İ·Åµ½Êı×éarrayÖĞ
+ ** \note  	 ä¾‹ï¼š  unsigned char  array[10];			//å®šä¹‰ä¸€ä¸ª10å­—èŠ‚çš„å®¹å™¨
+ **	  At24c256_read_str(0x0010, Buffer, 5); //ä»åœ°å€0x0010å¼€å§‹è¯»å–5ä¸ªå­—èŠ‚çš„æ•°æ®æ”¾åˆ°æ•°ç»„arrayä¸­
  ******************************************************************************/
 uint16_t At24c256_read_str(uint16_t addr,  uint8_t *ch, uint16_t sizevalue)
 {
@@ -202,25 +202,25 @@ uint16_t At24c256_read_str(uint16_t addr,  uint8_t *ch, uint16_t sizevalue)
 	if(addr > AT24C256_MAX)
 		return 0;
 	
-	I2C_MasterWriteAddr(AT24C256_WRITE);			/*Ğ´´Ó»úµØÖ·+Ğ´*/
-	I2C_MasterWriteBuffer((addr>>8)& 0xff);			/*Ğ´Buffer(¸ßÎ»ROM µØÖ·)*/
+	I2C_MasterWriteAddr(AT24C256_WRITE);			/*å†™ä»æœºåœ°å€+å†™*/
+	I2C_MasterWriteBuffer((addr>>8)& 0xff);			/*å†™Buffer(é«˜ä½ROM åœ°å€)*/
 	I2C_SendMasterCmd(I2C_MASTER_START_SEND);
-	while(!(I2C_GetMasterIntFlag()));				/*µÈ´ı·¢ËÍ½áÊø*/
+	while(!(I2C_GetMasterIntFlag()));				/*ç­‰å¾…å‘é€ç»“æŸ*/
 	I2C_ClearMasterIntFlag();
 							
-	I2C_MasterWriteBuffer(addr & 0xff);				/*µÍÎ»ROM µØÖ·*/
-	I2C_SendMasterCmd(I2C_MASTER_SEND);				/*·¢ËÍBuffer*/
+	I2C_MasterWriteBuffer(addr & 0xff);				/*ä½ä½ROM åœ°å€*/
+	I2C_SendMasterCmd(I2C_MASTER_SEND);				/*å‘é€Buffer*/
 	while(!(I2C_GetMasterIntFlag()));
 	I2C_ClearMasterIntFlag();	
 	
-	I2C_MasterWriteAddr(AT24C256_READ);					/*Ğ´´Ó»úµØÖ·+¶Á*/	
+	I2C_MasterWriteAddr(AT24C256_READ);					/*å†™ä»æœºåœ°å€+è¯»*/	
 	I2C_SendMasterCmd(I2C_MASTER_START_RECEIVE_ACK);	
 
 	for(i=0;i<sizevalue-2;i++)
 	{		
-		while(!(I2C_GetMasterIntFlag()));				/*µÈ´ıÊı¾İ½ÓÊÕÍê³É*/
+		while(!(I2C_GetMasterIntFlag()));				/*ç­‰å¾…æ•°æ®æ¥æ”¶å®Œæˆ*/
 		I2C_ClearMasterIntFlag();						
-		*ch++ = I2C_MasterReadBuffer();					/*¶ÁÊı¾İ*/
+		*ch++ = I2C_MasterReadBuffer();					/*è¯»æ•°æ®*/
 		I2C_SendMasterCmd(I2C_MASTER_RECEIVE_ACK);
 	}
 	
@@ -228,12 +228,12 @@ uint16_t At24c256_read_str(uint16_t addr,  uint8_t *ch, uint16_t sizevalue)
 	I2C_ClearMasterIntFlag();							
 	*ch++ =I2C_MasterReadBuffer();							
 	
-	I2C_SendMasterCmd(I2C_MASTER_RECEIVE_NACK);			/*¶ÁÈ¡×îºóÒ»¸öÊı¾İ,²»·¢ËÍACK*/
+	I2C_SendMasterCmd(I2C_MASTER_RECEIVE_NACK);			/*è¯»å–æœ€åä¸€ä¸ªæ•°æ®,ä¸å‘é€ACK*/
 	while(!(I2C_GetMasterIntFlag()));
 	I2C_ClearMasterIntFlag();			
 	*ch =I2C_MasterReadBuffer();														
 														
-	I2C_SendMasterCmd(I2C_MASTER_STOP);					/*·¢ËÍÍ£Ö¹Î»*/
+	I2C_SendMasterCmd(I2C_MASTER_STOP);					/*å‘é€åœæ­¢ä½*/
 	return 1;
 }
 /****************************************************************************/
@@ -249,15 +249,15 @@ uint16_t At24c256_read_str(uint16_t addr,  uint8_t *ch, uint16_t sizevalue)
 void I2C_Config(void)
 {
 	/*
-	 (1)¿ªÆôI2CÖ÷¿ØÄ£Ê½
+	 (1)å¼€å¯I2Cä¸»æ§æ¨¡å¼
 	 */
 	 I2C_EnableMasterMode();
 	/*
-	 (2)ÉèÖÃI2CÍ¨Ñ¶Ê±ÖÓ
+	 (2)è®¾ç½®I2Cé€šè®¯æ—¶é’Ÿ
 	 */	 
-	I2C_ConfigCLK(2);							/*ÉèÖÃÊ±ÖÓ400K*/
+	I2C_ConfigCLK(2);							/*è®¾ç½®æ—¶é’Ÿ400K*/
 	/*
-	(3)ÉèÖÃIO¸´ÓÃ
+	(3)è®¾ç½®IOå¤ç”¨
 	*/
 	 GPIO_SET_MUX_MODE(P04CFG, GPIO_P04_MUX_SCL);			/*SCL*/
 	 GPIO_SET_MUX_MODE(P03CFG, GPIO_P03_MUX_SDA);	 		/*SDA*/	  	

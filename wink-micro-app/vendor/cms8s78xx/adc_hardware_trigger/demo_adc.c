@@ -66,30 +66,30 @@
  ******************************************************************************/
 void ADC_Config(void)
 {
-	//����ADC������ģʽ
-	ADC_ConfigRunMode(ADC_CLK_DIV_64, ADC_RESULT_LEFT);	//����ADCʱ��Ϊϵͳʱ�ӵ�64��Ƶ��ADC���Ϊ����룬���ж�ADCʱ���в�����ο�"��΢8051оƬADCģ��Ӧ�ñʼ�"
-	//����ADCת��ͨ��
+	//设置ADC的运行模式
+	ADC_ConfigRunMode(ADC_CLK_DIV_64, ADC_RESULT_LEFT);	//设置ADC时钟为系统时钟的64分频，ADC结果为左对齐，如有对ADC时钟有操作请参考"中微8051芯片ADC模块应用笔记"
+	//设置ADC转换通道
 	ADC_EnableChannel(ADC_CH_0);	
 	GPIO_SET_MUX_MODE(P00CFG, GPIO_P00_MUX_AN0);	
-	//����ADC LDO
+	//设置ADC LDO
 	ADC_EnableLDO();
 	ADC_ConfigADCVref(ADC_VREF_3V);		//ADC_VREF_1P2V, ADC_VREF_2V, ADC_VREF_2P4V, ADC_VREF_3V	
 
-	//����ADC ������ʽ
+	//设置ADC 触发方式
 	ADC_EnableHardwareTrig();
-	ADC_ConfigHardwareTrig(ADC_TG_ADET, ADC_TG_FALLING);	//ADET���½��ش���
+	ADC_ConfigHardwareTrig(ADC_TG_ADET, ADC_TG_FALLING);	//ADET的下降沿触发
 
 	GPIO_SET_MUX_MODE(P05CFG, GPIO_MUX_GPIO);
 	GPIO_ENABLE_INPUT(P0TRIS,GPIO_PIN_5);
-	GPIO_ENABLE_UP(P0UP,GPIO_PIN_5);						//����P05Ϊ����	
-	GPIO_SET_PS_MODE(PS_ADET, GPIO_P05_MUX_ADET);			//����P05ΪADET����
+	GPIO_ENABLE_UP(P0UP,GPIO_PIN_5);						//设置P05为上拉	
+	GPIO_SET_PS_MODE(PS_ADET, GPIO_P05_MUX_ADET);			//设置P05为ADET功能
 	
-	//����ADC�ж�
+	//设置ADC中断
 	ADC_EnableInt();
 	IRQ_SET_PRIORITY(IRQ_ADC,IRQ_PRIORITY_HIGH);	
 	IRQ_ALL_ENABLE();
 	
-	//����ADC
+	//开启ADC
 	ADC_Start();
 }
 

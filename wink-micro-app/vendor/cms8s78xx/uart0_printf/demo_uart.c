@@ -75,138 +75,138 @@ uint32_t Systemclock = 24000000;
 void UART_Config(void)
 {
 
-#if ( UART_BUAD_USE_BRT == UART_BUAD_USE_SEL)		//Ê¹ÓÃBRT×÷ÎªUARTÄ£¿éµÄ²¨ÌØÂÊÊ±ÖÓ·¢ÉúÆ÷
+#if ( UART_BUAD_USE_BRT == UART_BUAD_USE_SEL)		//ä½¿ç”¨BRTä½œä¸ºUARTæ¨¡å—çš„æ³¢ç‰¹ç‡æ—¶é’Ÿå‘ç”Ÿå™¨
 	 uint16_t  BRTValue = 0;
 	 uint32_t  BaudRateVlue = 9600;
 	 
 	 /*
-	 (1)ÉèÖÃUARTxµÄÔËĞĞÄ£Ê½
+	 (1)è®¾ç½®UARTxçš„è¿è¡Œæ¨¡å¼
 	 */
 	 UART_ConfigRunMode(UART_MOD_ASY_8BIT, UART_BAUD_BRT);
 	 UART_EnableReceive();
 	 /*
-	 (2)ÅäÖÃUARTxµÄ²¨ÌØÂÊ
+	 (2)é…ç½®UARTxçš„æ³¢ç‰¹ç‡
 	 */
 	 UART_ConfigBRTClk(BRT_CLK_DIV_1);	
 	
-	 UART_EnableDoubleFrequency(); 							/*²¨ÌØÂÊÊ¹ÄÜ±¶Æµ£ºSMOD =1*/
+	 UART_EnableDoubleFrequency(); 							/*æ³¢ç‰¹ç‡ä½¿èƒ½å€é¢‘ï¼šSMOD =1*/
 	
-  #ifdef USE_FORMULA			//Ê¹ÓÃ¹«Ê½¼ÆËã¶¨Ê±Æ÷µÄ¼ÓÔØÖµ(ĞèÒª¶ÔSystemclock¸³Öµ(main.c))£¬USE_FORMULA ÔÚ Ñ¡ÏîOption->C51->Preporcessor Symbols->DefineÖĞ¶¨Òå
+  #ifdef USE_FORMULA			//ä½¿ç”¨å…¬å¼è®¡ç®—å®šæ—¶å™¨çš„åŠ è½½å€¼(éœ€è¦å¯¹Systemclockèµ‹å€¼(main.c))ï¼ŒUSE_FORMULA åœ¨ é€‰é¡¹Option->C51->Preporcessor Symbols->Defineä¸­å®šä¹‰
 	 BRTValue = UART_ConfigBaudRate( BaudRateVlue) ;
   #else 
-	 BRTValue = 65380; 				//Ê¹ÓÃÊÖ²áÉÏÍÆ¼öµÄ¼ÓÔØÖµ(BRTÕÂ½Ú),¶ÔÓ¦µÄÏµÍ³Ê±ÖÓ£º24MHz
+	 BRTValue = 65380; 				//ä½¿ç”¨æ‰‹å†Œä¸Šæ¨èçš„åŠ è½½å€¼(BRTç« èŠ‚),å¯¹åº”çš„ç³»ç»Ÿæ—¶é’Ÿï¼š24MHz
   #endif
  
-	 UART_ConfigBRTPeriod(BRTValue);							/*ÅäÖÃÖØ×°Öµ*/
-	 UART_EnableBRT();											/*Ê¹ÄÜ¶¨Ê±Æ÷*/
+	 UART_ConfigBRTPeriod(BRTValue);							/*é…ç½®é‡è£…å€¼*/
+	 UART_EnableBRT();											/*ä½¿èƒ½å®šæ—¶å™¨*/
 	 /*
-	 (3)ÅäÖÃIO¿Ú
+	 (3)é…ç½®IOå£
 	 */ 
 	 GPIO_SET_MUX_MODE(P14CFG,GPIO_P14_MUX_TXD);			/*TXD*/
 	 GPIO_SET_MUX_MODE(P13CFG,GPIO_P13_MUX_RXD);	 		/*RXD*/
-	 GPIO_SET_PS_MODE(PS_RXD,GPIO_P13);						/*RXDÊäÈëÑ¡ÔñP13*/
+	 GPIO_SET_PS_MODE(PS_RXD,GPIO_P13);						/*RXDè¾“å…¥é€‰æ‹©P13*/
 
 
-#elif ( UART_BUAD_USE_TMR1 == UART_BUAD_USE_SEL)		 //Ê¹ÓÃTMR1×÷ÎªUARTÄ£¿éµÄ²¨ÌØÂÊÊ±ÖÓ·¢ÉúÆ÷
+#elif ( UART_BUAD_USE_TMR1 == UART_BUAD_USE_SEL)		 //ä½¿ç”¨TMR1ä½œä¸ºUARTæ¨¡å—çš„æ³¢ç‰¹ç‡æ—¶é’Ÿå‘ç”Ÿå™¨
 
 	 uint8_t  THxValue = 0;
 	 uint32_t  BaudRateVlue = 9600;	 
 	/*
-	 (1)ÉèÖÃUARTxµÄÔËĞĞÄ£Ê½
+	 (1)è®¾ç½®UARTxçš„è¿è¡Œæ¨¡å¼
 	 */
 	 UART_ConfigRunMode(UART_MOD_ASY_8BIT, UART_BAUD_TMR1);
 	 UART_EnableReceive();
 	/*
-	 (2)ÅäÖÃUARTxµÄ²¨ÌØÂÊ
+	 (2)é…ç½®UARTxçš„æ³¢ç‰¹ç‡
 	 */
 	 TMR_ConfigTimerClk(TMR1,TMR_CLK_DIV_4);							/*TM =1*/
-	 TMR_ConfigRunMode(TMR1, TMR_MODE_TIMING, TMR_TIM_AUTO_8BIT); 		/*ÉèÖÃÎª8Î»ÖØ×°Ä£Ê½*/
+	 TMR_ConfigRunMode(TMR1, TMR_MODE_TIMING, TMR_TIM_AUTO_8BIT); 		/*è®¾ç½®ä¸º8ä½é‡è£…æ¨¡å¼*/
 	
-	 UART_EnableDoubleFrequency(); 							/*²¨ÌØÂÊÊ¹ÄÜ±¶Æµ£ºSMOD =1*/
+	 UART_EnableDoubleFrequency(); 							/*æ³¢ç‰¹ç‡ä½¿èƒ½å€é¢‘ï¼šSMOD =1*/
 	
-  #ifdef USE_FORMULA			//Ê¹ÓÃ¹«Ê½¼ÆËã¶¨Ê±Æ÷µÄ¼ÓÔØÖµ(ĞèÒª¶ÔSystemclock¸³Öµ(main.c))£¬USE_FORMULA ÔÚ Ñ¡ÏîOption->C51->Preporcessor Symbols->DefineÖĞ¶¨Òå
+  #ifdef USE_FORMULA			//ä½¿ç”¨å…¬å¼è®¡ç®—å®šæ—¶å™¨çš„åŠ è½½å€¼(éœ€è¦å¯¹Systemclockèµ‹å€¼(main.c))ï¼ŒUSE_FORMULA åœ¨ é€‰é¡¹Option->C51->Preporcessor Symbols->Defineä¸­å®šä¹‰
 	 THxValue = UART_ConfigBaudRate( BaudRateVlue) ;
   #else 
-	 THxValue = 217; 				//Ê¹ÓÃÊÖ²áÉÏÍÆ¼öµÄ¼ÓÔØÖµ(UARTÕÂ½Ú),¶ÔÓ¦µÄÏµÍ³Ê±ÖÓ£º24MHz
+	 THxValue = 217; 				//ä½¿ç”¨æ‰‹å†Œä¸Šæ¨èçš„åŠ è½½å€¼(UARTç« èŠ‚),å¯¹åº”çš„ç³»ç»Ÿæ—¶é’Ÿï¼š24MHz
   #endif
   
-	 TMR_ConfigTimerPeriod(TMR1, THxValue, THxValue);			/*ÅäÖÃÖØ×°Öµ*/
-	 TMR_Start(TMR1);											/*Ê¹ÄÜ¶¨Ê±Æ÷*/
+	 TMR_ConfigTimerPeriod(TMR1, THxValue, THxValue);			/*é…ç½®é‡è£…å€¼*/
+	 TMR_Start(TMR1);											/*ä½¿èƒ½å®šæ—¶å™¨*/
 	
 	 /*
-	 (3)ÅäÖÃIO¿Ú
+	 (3)é…ç½®IOå£
 	 */
 	 GPIO_SET_MUX_MODE(P14CFG,GPIO_P14_MUX_TXD);			/*TXD*/
 	 GPIO_SET_MUX_MODE(P13CFG,GPIO_P13_MUX_RXD);	 		/*RXD*/
-	 GPIO_SET_PS_MODE(PS_RXD, GPIO_P13);					/*RXDÊäÈëÑ¡ÔñP13*/
+	 GPIO_SET_PS_MODE(PS_RXD, GPIO_P13);					/*RXDè¾“å…¥é€‰æ‹©P13*/
 
-#elif ( UART_BUAD_USE_TMR4 == UART_BUAD_USE_SEL)	//Ê¹ÓÃTMR4×÷ÎªUARTÄ£¿éµÄ²¨ÌØÂÊÊ±ÖÓ·¢ÉúÆ÷ 
+#elif ( UART_BUAD_USE_TMR4 == UART_BUAD_USE_SEL)	//ä½¿ç”¨TMR4ä½œä¸ºUARTæ¨¡å—çš„æ³¢ç‰¹ç‡æ—¶é’Ÿå‘ç”Ÿå™¨ 
 
 	 uint8_t  THxValue = 0;
 	 uint32_t  BaudRateVlue = 9600;	 
 	/*
-	 (1)ÉèÖÃUARTxµÄÔËĞĞÄ£Ê½
+	 (1)è®¾ç½®UARTxçš„è¿è¡Œæ¨¡å¼
 	 */
 	 UART_ConfigRunMode(UART_MOD_ASY_8BIT, UART_BAUD_TMR4);
 	 UART_EnableReceive();
 	/*
-	 (2)ÅäÖÃUARTxµÄ²¨ÌØÂÊ
+	 (2)é…ç½®UARTxçš„æ³¢ç‰¹ç‡
 	 */
 	 TMR_ConfigTimerClk(TMR4,TMR_CLK_DIV_4);							/*TM =1*/
-	 TMR_ConfigRunMode(TMR4, TMR_MODE_TIMING, TMR_TIM_AUTO_8BIT); 		/*ÉèÖÃÎª8Î»ÖØ×°Ä£Ê½*/
+	 TMR_ConfigRunMode(TMR4, TMR_MODE_TIMING, TMR_TIM_AUTO_8BIT); 		/*è®¾ç½®ä¸º8ä½é‡è£…æ¨¡å¼*/
 	
-	 UART_EnableDoubleFrequency(); 							/*²¨ÌØÂÊÊ¹ÄÜ±¶Æµ£ºSMOD =1*/
+	 UART_EnableDoubleFrequency(); 							/*æ³¢ç‰¹ç‡ä½¿èƒ½å€é¢‘ï¼šSMOD =1*/
 	
-  #ifdef USE_FORMULA			//Ê¹ÓÃ¹«Ê½¼ÆËã¶¨Ê±Æ÷µÄ¼ÓÔØÖµ(ĞèÒª¶ÔSystemclock¸³Öµ(main.c))£¬USE_FORMULA ÔÚ Ñ¡ÏîOption->C51->Preporcessor Symbols->DefineÖĞ¶¨Òå
+  #ifdef USE_FORMULA			//ä½¿ç”¨å…¬å¼è®¡ç®—å®šæ—¶å™¨çš„åŠ è½½å€¼(éœ€è¦å¯¹Systemclockèµ‹å€¼(main.c))ï¼ŒUSE_FORMULA åœ¨ é€‰é¡¹Option->C51->Preporcessor Symbols->Defineä¸­å®šä¹‰
 	 THxValue = UART_ConfigBaudRate(BaudRateVlue) ;
   #else 
-	 THxValue = 217; 				//Ê¹ÓÃÊÖ²áÉÏÍÆ¼öµÄ¼ÓÔØÖµ(UARTÕÂ½Ú),¶ÔÓ¦µÄÏµÍ³Ê±ÖÓ£º24MHz
+	 THxValue = 217; 				//ä½¿ç”¨æ‰‹å†Œä¸Šæ¨èçš„åŠ è½½å€¼(UARTç« èŠ‚),å¯¹åº”çš„ç³»ç»Ÿæ—¶é’Ÿï¼š24MHz
   #endif
   
-	 TMR_ConfigTimerPeriod(TMR4, THxValue, THxValue);			/*ÅäÖÃÖØ×°Öµ*/
-	 TMR_Start(TMR4);											/*Ê¹ÄÜ¶¨Ê±Æ÷*/
+	 TMR_ConfigTimerPeriod(TMR4, THxValue, THxValue);			/*é…ç½®é‡è£…å€¼*/
+	 TMR_Start(TMR4);											/*ä½¿èƒ½å®šæ—¶å™¨*/
 	
 	 /*
-	 (3)ÅäÖÃIO¿Ú
+	 (3)é…ç½®IOå£
 	 */
 	 GPIO_SET_MUX_MODE(P14CFG,GPIO_P14_MUX_TXD);			/*TXD*/
 	 GPIO_SET_MUX_MODE(P13CFG,GPIO_P13_MUX_RXD);	 		/*RXD*/
-	 GPIO_SET_PS_MODE(PS_RXD, GPIO_P13);					/*RXDÊäÈëÑ¡ÔñP13*/
+	 GPIO_SET_PS_MODE(PS_RXD, GPIO_P13);					/*RXDè¾“å…¥é€‰æ‹©P13*/
 
 
-#elif ( UART_BUAD_USE_TMR2 == UART_BUAD_USE_SEL)		//Ê¹ÓÃTMR2×÷ÎªUARTÄ£¿éµÄ²¨ÌØÂÊÊ±ÖÓ·¢ÉúÆ÷	 
+#elif ( UART_BUAD_USE_TMR2 == UART_BUAD_USE_SEL)		//ä½¿ç”¨TMR2ä½œä¸ºUARTæ¨¡å—çš„æ³¢ç‰¹ç‡æ—¶é’Ÿå‘ç”Ÿå™¨	 
 	 uint16_t  TMR2Value = 0;
 	 uint32_t  BaudRateVlue = 9600;	 
 	/*
-	 (1)ÉèÖÃUARTxµÄÔËĞĞÄ£Ê½
+	 (1)è®¾ç½®UARTxçš„è¿è¡Œæ¨¡å¼
 	 */
 	 UART_ConfigRunMode(UART_MOD_ASY_8BIT, UART_BAUD_TMR2);
 	 UART_EnableReceive();
 	/*
-	 (2)ÅäÖÃUARTxµÄ²¨ÌØÂÊ
+	 (2)é…ç½®UARTxçš„æ³¢ç‰¹ç‡
 	 */
 	 TMR2_ConfigTimerClk(TMR2_CLK_DIV_12);						/*T2PS =0*/
-	 TMR2_ConfigRunMode(TMR2_MODE_TIMING, TMR2_AUTO_LOAD); 		/*ÉèÖÃÎª8Î»ÖØ×°Ä£Ê½*/
+	 TMR2_ConfigRunMode(TMR2_MODE_TIMING, TMR2_AUTO_LOAD); 		/*è®¾ç½®ä¸º8ä½é‡è£…æ¨¡å¼*/
 	
-	 UART_EnableDoubleFrequency(); 							/*²¨ÌØÂÊÊ¹ÄÜ±¶Æµ£ºSMOD =1*/
+	 UART_EnableDoubleFrequency(); 							/*æ³¢ç‰¹ç‡ä½¿èƒ½å€é¢‘ï¼šSMOD =1*/
 	
-  #ifdef USE_FORMULA				//Ê¹ÓÃ¹«Ê½¼ÆËã¶¨Ê±Æ÷µÄ¼ÓÔØÖµ(ĞèÒª¶ÔSystemclock¸³Öµ(main.c))£¬USE_FORMULA ÔÚ Ñ¡ÏîOption->C51->Preporcessor Symbols->DefineÖĞ¶¨Òå
+  #ifdef USE_FORMULA				//ä½¿ç”¨å…¬å¼è®¡ç®—å®šæ—¶å™¨çš„åŠ è½½å€¼(éœ€è¦å¯¹Systemclockèµ‹å€¼(main.c))ï¼ŒUSE_FORMULA åœ¨ é€‰é¡¹Option->C51->Preporcessor Symbols->Defineä¸­å®šä¹‰
 	 TMR2Value = UART_ConfigBaudRate( BaudRateVlue) ;
-														//¸ù¾İĞèÒªµÄ²¨ÌØÂÊ¼ÆËã³öÏÂÔØÖµºó£¬ÇëÔÙ¸ù¾İ¼ÆËã³öµÄÏÂÔØÖµ·´ÍÆ³öÊµ¼ÊµÄ²¨ÌØÂÊ£¨¹«Ê½ÔÚ²Î¿¼ÊÖ²á"²¨ÌØÂÊ¼ÆËã"ÕÂ½Ú£©
-														//£¨Èç¹ûÆ«²î½Ï´ó»áÓ°ÏìÍ¨Ñ¶£¬Çë»»Ò»¸ö¾«¶È¸ßµÄ²¨ÌØÂÊ£©
+														//æ ¹æ®éœ€è¦çš„æ³¢ç‰¹ç‡è®¡ç®—å‡ºä¸‹è½½å€¼åï¼Œè¯·å†æ ¹æ®è®¡ç®—å‡ºçš„ä¸‹è½½å€¼åæ¨å‡ºå®é™…çš„æ³¢ç‰¹ç‡ï¼ˆå…¬å¼åœ¨å‚è€ƒæ‰‹å†Œ"æ³¢ç‰¹ç‡è®¡ç®—"ç« èŠ‚ï¼‰
+														//ï¼ˆå¦‚æœåå·®è¾ƒå¤§ä¼šå½±å“é€šè®¯ï¼Œè¯·æ¢ä¸€ä¸ªç²¾åº¦é«˜çš„æ³¢ç‰¹ç‡ï¼‰
   #else 
-	 TMR2Value = 65523; 		  //¸ù¾İ²Î¿¼ÊÖ²áµÄ¹«Ê½¼ÆËã³ö¡£¶ÔÓ¦µÄÏµÍ³Ê±ÖÓ£º24MHz			
+	 TMR2Value = 65523; 		  //æ ¹æ®å‚è€ƒæ‰‹å†Œçš„å…¬å¼è®¡ç®—å‡ºã€‚å¯¹åº”çš„ç³»ç»Ÿæ—¶é’Ÿï¼š24MHz			
   #endif
   
-	 TMR2_ConfigTimerPeriod(TMR2Value);						/*ÅäÖÃÖØ×°Öµ*/
-	 TMR2_Start();											/*Ê¹ÄÜ¶¨Ê±Æ÷*/
+	 TMR2_ConfigTimerPeriod(TMR2Value);						/*é…ç½®é‡è£…å€¼*/
+	 TMR2_Start();											/*ä½¿èƒ½å®šæ—¶å™¨*/
 	
 	 /*
-	 (3)ÅäÖÃIO¿Ú
+	 (3)é…ç½®IOå£
 	 */
 	 GPIO_SET_MUX_MODE(P14CFG,GPIO_P14_MUX_TXD);			/*TXD*/
 	 GPIO_SET_MUX_MODE(P13CFG,GPIO_P13_MUX_RXD);	 		/*RXD*/
-	 GPIO_SET_PS_MODE(PS_RXD, GPIO_P13);					/*RXDÊäÈëÑ¡ÔñP13*/
+	 GPIO_SET_PS_MODE(PS_RXD, GPIO_P13);					/*RXDè¾“å…¥é€‰æ‹©P13*/
 #endif
 
 }
@@ -218,7 +218,7 @@ void UART_Config(void)
  ** \param [in] data
  **            	
  ** \return  none
- ** \note   <stdio.h>ÖĞĞèÒªµÄº¯Êı
+ ** \note   <stdio.h>ä¸­éœ€è¦çš„å‡½æ•°
  ******************************************************************************/
 char putchar (char ch)
 {
@@ -233,7 +233,7 @@ char putchar (char ch)
  ** \param [in] none
  **            	
  ** \return  data
- ** \note   <stdio.h>ÖĞĞèÒªµÄº¯Êı
+ ** \note   <stdio.h>ä¸­éœ€è¦çš„å‡½æ•°
  ******************************************************************************/
 char getchar (void)
 {
@@ -246,7 +246,7 @@ char getchar (void)
  **
  ** \param [in]  bytes addr for sending
  **
- ** \return  <stdio.h>ÖĞĞèÒªµÄº¯Êı
+ ** \return  <stdio.h>ä¸­éœ€è¦çš„å‡½æ•°
  ******************************************************************************/
 int  puts( const char  * s)
 {

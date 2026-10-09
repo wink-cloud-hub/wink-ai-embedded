@@ -66,24 +66,24 @@
  ******************************************************************************/
 void ADC_Config(void)
 {
-	//����ADC������ģʽ
-	ADC_ConfigRunMode(ADC_CLK_DIV_256, ADC_RESULT_LEFT);	//����ADCʱ��Ϊϵͳʱ�ӵ�256��Ƶ��ADC���Ϊ����룬���ж�ADCʱ���в�����ο�"��΢8051оƬADCģ��Ӧ�ñʼ�"
+	//设置ADC的运行模式
+	ADC_ConfigRunMode(ADC_CLK_DIV_256, ADC_RESULT_LEFT);	//设置ADC时钟为系统时钟的256分频，ADC结果为左对齐，如有对ADC时钟有操作请参考"中微8051芯片ADC模块应用笔记"
 	
-	//����ADCת��ͨ��
+	//设置ADC转换通道
 	ADC_EnableChannel(ADC_CH_0);	
 	GPIO_SET_MUX_MODE(P00CFG, GPIO_P00_MUX_AN0);	
 	
-	//����ADC LDO
+	//设置ADC LDO
 	ADC_EnableLDO();
 	ADC_ConfigADCVref(ADC_VREF_3V);		//ADC_VREF_1P2V, ADC_VREF_2V, ADC_VREF_2P4V, ADC_VREF_3V	
-//	ADC_EnableLDOOutput();				//P16���LDO��ѹ
+//	ADC_EnableLDOOutput();				//P16输出LDO电压
 	
-	//����ADC�ж�
+	//设置ADC中断
 	ADC_EnableInt();
 	IRQ_SET_PRIORITY(IRQ_ADC,IRQ_PRIORITY_HIGH);	
 	IRQ_ALL_ENABLE();
 	
-	//����ADC
+	//开启ADC
 	ADC_Start();
 }
 

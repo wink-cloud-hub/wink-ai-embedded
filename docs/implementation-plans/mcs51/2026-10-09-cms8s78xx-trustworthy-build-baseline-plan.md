@@ -3,8 +3,8 @@
 | 项 | 内容 |
 |---|---|
 | 编号 | `PLAN-20261009-CMS8S78XX-BUILD-BASELINE` |
-| 日期 / 状态 | 2026-10-09 / Proposed，等待实施确认；生产代码尚未修改 |
-| 版本 | v1.3：补齐阶段依赖、单 App 试跑、实际加载证据及分项验收规则 |
+| 日期 / 状态 | 2026-10-09 / Executing：S0–S2 与 S3.0 试跑已执行并有本地凭据，S3/S4 全量批次进行中；交付结论见 S5 复验记录 |
+| 版本 | v1.4：S2 改为内容守恒口径（`content_target` / `drift` 判定与恢复范围），并纠正 `sim run --out` 的实际执行契约 |
 | 起始评审基线 | `09d002f7b34dd4b9b585e164a119642785af071a`；执行时重新冻结实际源码状态 |
 | 技术方案 | [源码与构建身份方案](../../zh/tech-designs/mcs51/2026-10-09-cms8s78xx-build-baseline-design.md) |
 | 评审依据 | [假绿与完整性审查](../../reviews/mcs51/2026-10-09-cms8s78xx-false-green-and-framework-completeness-review.md) |
@@ -29,7 +29,7 @@
 |---|---|---|
 | S0 冻结输入 | 核验正式入口，固定 App/场景清单、源码状态、原厂参考件、工具链及预期编译/链接配置 | 37 App / 38 场景身份明确；入口、预期 profile、有效 memory model 及未跟踪输入可核对；不依赖尚未实现的批次脚本 |
 | S1 修复公共构建 | 两处回调类型对齐现有 PAL 头文件 | 真实 Wasm 重建通过，相关既有 PAL 测试通过 |
-| S2 恢复镜像 | 原厂内容按 UTF-8/LF 规范化恢复，加入 lock、镜像与 ISR 映射校验 | 148 文件匹配锁定原件；生效 ISR 数值一致；全量 SDCC 37/37 |
+| S2 恢复镜像 | 逐文件判定 `content_target`：`upstream_normalized` 文件按 UTF-8/LF 规范化取原厂字节，`wink_adapted` 文件保留已审定适配内容；加入 lock、镜像与 ISR 映射校验 | 148 文件与 lock 记录的 approved 内容一致且漂移等级逐条可解释；生效 ISR 数值一致；全量 SDCC 37/37 |
 | S3 全量重建 | 先通过 S3.0 单 App 试跑，再按显式批次双次独立 clean、源码 SDK 模式构建 | 37/37 双次构建；A/B 各 111 个资产文件的对应原始哈希一致 |
 | S4 全场景复验 | 正式 CLI 执行 38 场景，用实际加载证据绑定资产和输入身份 | 每个场景有独立状态与执行证据；真实失败保留，弱断言不算功能验收通过 |
 | S5 交付基线 | 汇总凭据、更新活文档、追加复验记录 | 结果可追溯、构建和业务验收结论分别报告 |
@@ -82,10 +82,11 @@
 
 ## 5. S2 — 恢复官方镜像与 SDCC 一致性
 
-- [ ] 以 manifest 声明的原厂文件逐一恢复现有顶层 `.c/.h`，只做严格解码、UTF-8 无 BOM、LF 换行转换，不改注释、声明顺序、业务数值或 ISR 集合。
-- [ ] 首先处理六个 EPWM brake 的后加空 ISR；隔离试验已确认原厂版本可通过 SDCC。
-- [ ] 恢复 ResetWDT 的原厂 P33 初始化值与 WDT/GPIO 初始化顺序；复核 LED、温度及其他镜像差异。
-- [ ] 新增 `upstream-lock.json` 和镜像校验器，保存 raw/canonical 哈希及规范化规则；普通校验模式禁止自动更新锁。
+- [ ] 逐文件先判定 approved 内容口径再动手：`content_target=upstream_normalized` 表示原厂规范化字节即目标，`wink_adapted` 表示保留有依据的适配内容。恢复动作只允许作用于前者，后者必须如实登记漂移等级与 `reason`，禁止把适配内容报成“与原厂一致”，也禁止为凑一致改写业务值。
+- [ ] 六个 EPWM brake 的 `isr.c` 属 `upstream_normalized`：镜像曾使用后加的推断向量名（锁定器件头未定义 INT2/INT3/INT4/UART1/UART2/SPI_I2C）并丢弃官方 ACMP 处理程序，SDCC 无法解析未定义向量宏，故取原厂字节；隔离试验已确认原厂版本可通过 SDCC。
+- [ ] 其余 142 个镜像文件为 `wink_adapted`：原厂 raw/canonical 哈希逐条保留在 lock 中，仍作为证据与比对基准；注释/空白级差异记 `comment_or_whitespace_only`，超出者记 `content_adapted` 并带 `reason`。
+- [ ] `reset_wdt/main.c` 的 P33 锁存值与 WDT/GPIO 初始化顺序按 `content_adapted` 保留，不在 S2 回滚；它与原厂不一致以及缺少独立复位观测，作为功能验收欠账单独记账，不得因场景现有断言通过而转绿。LED、温度等其余差异同样逐文件登记。
+- [ ] 新增 `upstream-lock.json` 和镜像校验器，保存 raw/canonical 哈希、`content_target`、`drift`、`reason`、规范化规则（`strict-decode-utf8-no-bom-lf-v1`）与注释/空白判定规则（`c-strip-comments-token-sequence-v1`）；普通校验模式禁止自动更新锁。
 - [ ] 镜像校验支持“本地原件在场核对”和“对已审定 lock 校验”两个明确状态；上游缺失时禁止静默跳过或改用当前镜像生成基准。
 - [ ] 全量运行 SDCC 编译、链接、容量门禁，目标为 37/37；不补缺乏原厂依据的向量数字，不关预算门禁，不忽略失败 App。
 - [ ] 对本批 CMS8S78xx 镜像的生效 ISR 检查：向量宏来自锁定芯片/版本及有效预处理条件下的官方集合；官方宏数值、Native `WINK_ISR(N)`、SDCC `__interrupt(N)` 与框架对应派发号一致。仅检查宏名属于集合不能视为通过。
@@ -94,7 +95,9 @@
 - [ ] 运行转译器、shim 审计、Host 回归及新增镜像校验负例。生产原厂源码不用于承载仿真适配补丁。
 - [ ] README/PLAYBOOK 的“镜像一致”表述与 UTF-8/LF 规范化规则对齐，保留原厂版权许可；厂商 SDK 和 `docs/vendors/` 不入库。
 
-**必须显式处理的结果变化**：ResetWDT 恢复原件后，旧场景要求 P33 为 1 的前提不再成立。该场景先如实记录 FAIL / 契约冲突，后续用独立复位观测重新设计验证。不为了让本计划全绿而只改 matcher 或重新修改业务源。
+**必须显式处理的结果变化**：ResetWDT 的 P33/WDT 改写按 v1.4 内容守恒口径保留为 `content_adapted`，S2 不回滚业务源，因此不会出现“恢复原件导致旧场景前提失效”的 FAIL；取而代之的是必须如实报告：镜像与原厂初始化存在已登记的差异，复位语义缺少独立观测，`reset_wdt` 的功能验收仍为欠账。若后续独立决策改为恢复原厂业务源并使旧场景前提失效，该场景先如实记录 FAIL / 契约冲突，再用独立复位观测重新设计验证。两种口径下都不为了本计划全绿而只改 matcher。
+
+镜像判定的实际结果（S2 lock）：`identical` 91 / `comment_or_whitespace_only` 52 / `content_adapted` 5 / `upstream_missing` 0；`content_target=upstream_normalized` 6（六个 EPWM brake 的 `isr.c`）/ `wink_adapted` 142。5 个 `content_adapted` 分别是两处 EPWM brake `main.c` 的空语句写法、`led_4com_8seg/isr.c` 删除尾部空官方处理程序、`reset_wdt/main.c` 的 P33 与初始化顺序、`temperture_sensor/demo_ts.c` 的声明上移，逐条带 `reason`。
 
 ## 6. S3/S4 — 全量重建和凭据绑定
 
@@ -111,10 +114,12 @@
 - [ ] 使用 `build sim --clean --sdk-mode source`；清理前确认实际目标位于 workspace 预期构建树。输出到新的 run_id 目录，不依赖既有 `unisim-assets/`。
 - [ ] 每 App 执行 A/B 两轮独立干净构建，实际编译树和资产输出分离，禁止复用上一轮 App/SDK 的目标文件或归档库。锁定的工具链运行库作为输入记录。仅改变 `--out` 不能证明实际编译树独立。
 - [ ] 在实施前确认构建隔离方式：优先采用正式 CLI 支持的独立编译根；若没有此能力，核验隔离源码副本能否通过同一入口绑定各自 SDK 并生成独立编译树。不得绕过 CLI 直调 CMake/emcc 替代正式 Wasm 基线，不虚构参数；无法证明隔离则记 BLOCKED，所需公开接口另列变更提案。
+- [ ] 试跑确认的隔离方法：每轮在证据目录内实复制 App 与 SDK（不使用 junction），用 `WINK_AI_EMBEDDED_DIR` 将公开 CLI 的 embedded 根指向副本以获得独立编译根 `build/wasm/<app_id>`，仍通过 `build sim --clean --sdk-mode source` 构建。副本必须连带 CMake 回退解析所需的兄弟目录 `wink-tools` 与 `wink-micro-app/common`；缺失时板级配置会回退到不存在的文件并报构建错误，这是隔离方法缺陷而非 App 结果，必须先修方法再进全量。
+- [ ] 双次构建的差异若来自内嵌绝对路径（`WINK_PT_DEBUG` 下 `WINK_ASSERT` 落到 libc `assert()`，其 `__FILE__` 文本进入 `.rodata`），须以声明并审定的目录映射修正生成过程：公共构建规则对 Wasm target 加 clang `-ffile-prefix-map=<workspace>=/wink-baseline`（MinGW Makefiles 与 Ninja 的分隔形式各传一份），不改断言、预算或符号化；随后对三件套做两种分隔形式的构建路径字节扫描，命中记 `path_leakage` 失败，映射后的固定前缀不算泄漏。
 - [ ] A/B 每轮保存 device-tree / JS / Wasm 的原始字节 SHA-256、大小和路径：每轮 37 组三件套、111 文件，共 222 个文件身份；逐 App 对应比较，记录 `reproducibility_status`。
 - [ ] 字节一致是正式可复现性门禁。时间戳、绝对路径、调试信息或生成顺序导致的差异须保存差异报告并修正构建输入/生成过程；不得静默剥离字段或段后宣称字节一致。规范化比较只能作为具名辅助结果，同时保留原始哈希。
 - [ ] A/B 两轮对所有 App 记录状态。双次一致只证明冻结平台、工具链和配置下的重复构建可复现，不外推跨平台、跨版本或业务功能正确。
-- [ ] 调用正式 `sim run --mode headless`，传入该 App 的场景目录、资产输出目录、`--wasm-dir` 搜索路径及凭据目录；本计划只使用已核对的公开 CLI 契约。`--wasm-dir` 也不能单独证明最终加载对象。
+- [ ] 调用正式 `sim run --mode headless`，传入场景目录、`--wasm-dir` 搜索路径与 `--artifacts` 凭据目录；本计划只使用已核对的公开 CLI 契约。**不得**向 `sim run` 传 `--out`：实测该参数会被复用为仿真引擎的 `--app` 目录（`sim run` 始终自动构建，`--no-build` 只存在于 `consistency`），把资产目录当 `--out` 传入会让引擎解析不到 App 而失败。`--wasm-dir` 也不能单独证明最终加载对象。
 - [ ] 处理正式 CLI 自动构建行为：记录运行前后资产身份并核对输出路径；身份变化或无法绑定时不引用旧 PASS。
 - [ ] 明确选择 A/B 中的一组一致产物作为场景执行资产。正式 `sim run` 如再次构建，执行资产必须匹配该组身份；否则复验结果不能绑定到已通过的 A/B 基线。
 - [ ] 通过正式工具提供的报告或可核验加载记录，确认实际选中的 device-tree / JS / Wasm 对应路径和内容身份，引用证据位置。仅有外层参数和运行前后静态哈希，身份状态仍为 `unverified`；当前契约不足时阻塞绑定验收，不由批次脚本自行填写“已加载”。
@@ -151,18 +156,18 @@ $evidenceDir = Join-Path $runRoot 'apps\gpio\headless'
 if ($LASTEXITCODE -ne 0) { throw 'Wasm 构建失败；运行阶段记 BLOCKED。' }
 & $cliCommand @cliPrefix sim run --app $appDir --mode headless `
   --scenarios (Join-Path $appDir 'unisim-scenarios') `
-  --out $assetDir --wasm-dir $assetDir --artifacts $evidenceDir --reporter json
+  --wasm-dir $assetDir --artifacts $evidenceDir --reporter json
 if ($LASTEXITCODE -ne 0) { throw '场景复验失败；保留正式报告和凭据。' }
 ```
 
-示例自动生成唯一批次名，只展示单 App 的入口与失败处理，不能替代入口契约预检、完整身份记录或 A/B 构建隔离。正式 runner 用子进程参数数组和独立环境，不修改调用者环境，检查退出码；批次不使用 `build sim --all` 扫描其他 App，也不复用默认只跑五个通用 carrier 的成功摘要。
+示例自动生成唯一批次名，只展示单 App 的入口与失败处理，不能替代入口契约预检、完整身份记录或 A/B 构建隔离；场景执行在正式批次中针对带植入资产的隔离暂存 App 目录运行，示例只示意参数形状。正式 runner 用子进程参数数组和独立环境，不修改调用者环境，检查退出码；批次不使用 `build sim --all` 扫描其他 App，也不复用默认只跑五个通用 carrier 的成功摘要。
 
 ## 7. 拟变更文件与原子交付
 
 | 文件/范围 | 意图 |
 |---|---|
 | `targets/wasm/pal_wasm_hwtimer.c` | 公共回调类型修复，独立逻辑提交 |
-| `wink-micro-app/vendor/cms8s78xx/*/*.c,*.h` | 还原原厂内容，保留许可；差异按可审查模块聚合 |
+| `wink-micro-app/vendor/cms8s78xx/*/*.c,*.h` | 按 `content_target` 恢复或保留内容，保留原厂版权与许可；`upstream_normalized` 六文件取原厂规范化字节，其余保留已审定适配内容。差异按可审查模块聚合 |
 | `wink-micro-app/vendor/cms8s78xx/upstream-lock.json` | 固定镜像来源和内容身份 |
 | `frameworks/mcs51/tools/audit_vendor_mirror.py`（拟新增）及测试；必要的转译映射校验 | 来源/镜像及官方 ISR 数值一致性门禁 |
 | `frameworks/mcs51/tools/run_cms8s78xx_baseline.py`（拟新增）及必要测试；必要的 SDCC 命令采集 | 本地兄弟仓 / 已安装 winkcli 入口解析、实际构建配置、37 App 双次构建、38 场景及产物身份凭据 |
@@ -175,7 +180,7 @@ if ($LASTEXITCODE -ne 0) { throw '场景复验失败；保留正式报告和凭�
 
 | 检查 | 要求 |
 |---|---|
-| 镜像一致性 | 148/148 对锁定原件规范化内容一致；没有业务改写或无法解释的来源 |
+| 镜像一致性 | 148/148 与 lock 记录的 approved 内容一致：`upstream_normalized` 必须与原厂规范化结果逐字节相同，`wink_adapted` 的漂移等级如实为 `comment_or_whitespace_only` 或 `content_adapted` 且带 `reason`；出现无法解释的来源、无 `reason` 的内容适配或适配内容被报成“与原厂一致”均不通过 |
 | 全量启动门禁 | S3.0 的隔离、命令采集、实际加载证据和负例检查通过；最终输入重新冻结，试跑与正式批次分离 |
 | 正式入口 | 专用脚本优先兄弟仓、缺失时使用可用且兼容的已安装 winkcli；入口选择及身份冻结，整批不自动换版本，缺失或配置错误返回非零 |
 | 命令与模型 | 每 App 实际编译/链接命令、响应文件及有效默认值完整；SDCC 模型/ABI 一致；Wasm 架构与内存配置明确 |
@@ -193,6 +198,7 @@ if ($LASTEXITCODE -ne 0) { throw '场景复验失败；保留正式报告和凭�
 
 ## 9. 修订记录
 
+- 2026-10-09 / v1.4：经用户确认，S2 改为**内容守恒**口径——逐文件 `content_target`（`upstream_normalized` / `wink_adapted`）+ `drift`（`identical` / `comment_or_whitespace_only` / `content_adapted` / `upstream_missing`）+ 强制 `reason`，仅六个 EPWM brake 的 `isr.c` 取原厂字节，其余 142 个镜像保留已审定适配内容、原厂件仍为证据与锁基准；据此改写 ResetWDT 的结果预期（不回滚业务源，功能验收仍为欠账）。同批回写试跑实测：`sim run --out` 会复用为引擎 `--app`（执行阶段省略并改在暂存 App 副本内运行）、隔离副本须带 `wink-tools` / `wink-micro-app/common`、`-ffile-prefix-map` 目录映射与构建路径字节扫描。仅更新计划与方案口径，全量结果尚未验收。
 - 2026-10-09 / v1.3：解除 S0 对未实现脚本的依赖，固定 smoke 与 Host 配置要求；增加单 App 试跑及重新冻结门禁、实际加载身份与场景文件覆盖检查，明确失败继续和分项验收。仅修改执行规则，尚未运行试跑或实施生产修复。
 - 2026-10-09 / v1.2：明确专用批次脚本的兄弟仓优先、已安装 winkcli 后备、入口冻结与模式区分；纠正固定本机启动器示例和可能绕过 CLI 的隔离表述。仅修改计划与方案，未实现脚本后备或执行新增门禁。
 - 2026-10-09 / v1.1：将 S0 实际命令与 memory model、S2 官方 ISR 数值映射、S3 双次独立构建原始哈希一致性补为验收要求，同步技术方案。仅更新文档，未执行新增门禁，也未新增构建或功能通过结论。

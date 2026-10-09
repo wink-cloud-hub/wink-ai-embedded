@@ -71,28 +71,28 @@ int main(void)
 	
 	uint16_t i;
 
-	/*ϵͳʱ�Ӽܹ��ɲο��ֲ�4.1�½�"ϵͳʱ�ӽṹ"*/
-	/*(1)ͨ��ѡ��Options->Debug->Seting������ʱ��Foscʱ��
-	    Fosc ��ѡ��:
-		(1) HSI(48Mhz)(��ѡ��Ƶ��1��2��3��6)
-		(2) HSE(���پ���:8Mhz��16Mhz)
-		(3) LSE(���پ���:32.768Khz)	
+	/*系统时钟架构可参考手册4.1章节"系统时钟结构"*/
+	/*(1)通过选项Options->Debug->Seting中设置时钟Fosc时钟
+	    Fosc 可选择:
+		(1) HSI(48Mhz)(可选分频：1、2、3、6)
+		(2) HSE(高速晶振:8Mhz、16Mhz)
+		(3) LSE(低速晶振:32.768Khz)	
 		(4) LSI(125Khz)	
 	*/
 	// Fosc = HSI/2 = 24Mhz;
 	
-	/*(2)ͨ��ѡ��Options->Debug->Seting������ʱ��Fsys_preʱ��
-	   Fsys_pre = Fosc/SYS_PRESCALE(ϵͳʱ��Ԥ��Ƶ: 1��2��4��8)*/
+	/*(2)通过选项Options->Debug->Seting中设置时钟Fsys_pre时钟
+	   Fsys_pre = Fosc/SYS_PRESCALE(系统时钟预分频: 1、2、4、8)*/
 	
 	// Fsys_pre = Fosc/1 = 24Mhz;
 	
-	/*(3)ͨ���Ĵ���CLKDIV����Fsys(ϵͳʱ��): Fsys = Fsys_pre/��Ƶ*/
+	/*(3)通过寄存器CLKDIV配置Fsys(系统时钟): Fsys = Fsys_pre/分频*/
 		
 	SYS_SET_SYSTEM_CLK(SYS_CLK_DIV_1);
 	Systemclock = 24000000;	
 	
-	/*(4)����CLO��ϵͳʱ��64��Ƶ��������ϵͳʱ��*/
-	GPIO_SET_MUX_MODE(P13CFG, GPIO_P13_MUX_CLO);	//���ϵͳʱ�� 64��Ƶ
+	/*(4)配置CLO（系统时钟64分频输出）检测系统时钟*/
+	GPIO_SET_MUX_MODE(P13CFG, GPIO_P13_MUX_CLO);	//输出系统时钟 64分频
 	
 	
 	GPIO_SET_MUX_MODE(P32CFG, GPIO_MUX_GPIO);

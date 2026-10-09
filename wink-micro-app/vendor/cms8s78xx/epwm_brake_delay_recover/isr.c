@@ -78,7 +78,7 @@ void INT0_IRQHandler(void)  interrupt INT0_VECTOR
  ** \param [in]  none   
  **
  ** \return none
- ******************************************************************************/
+******************************************************************************/
 void Timer0_IRQHandler(void)  interrupt TMR0_VECTOR 
 {
 
@@ -100,18 +100,18 @@ void INT1_IRQHandler(void)  interrupt INT1_VECTOR
  ** \param [in]  none   
  **
  ** \return none
- ******************************************************************************/
+******************************************************************************/
 void Timer1_IRQHandler(void)  interrupt TMR1_VECTOR 
 {
 
 }
 /******************************************************************************
- ** \brief	 UART0 interrupt service function
+ ** \brief	 UART 0 interrupt service function
  **
  ** \param [in]  none   
  **
  ** \return none
- ******************************************************************************/
+******************************************************************************/
 void UART0_IRQHandler(void)  interrupt UART0_VECTOR 
 {
 
@@ -122,80 +122,15 @@ void UART0_IRQHandler(void)  interrupt UART0_VECTOR
  ** \param [in]  none   
  **
  ** \return none
- ******************************************************************************/
+******************************************************************************/
 void Timer2_IRQHandler(void)  interrupt TMR2_VECTOR 
 {
 
 }
-/******************************************************************************
- ** \brief	 INT2 interrupt service function
- **
- ** \param [in]  none   
- **
- ** \return none
- ******************************************************************************/
-void INT2_IRQHandler(void)  interrupt INT2_VECTOR 
-{
 
-}
 /******************************************************************************
- ** \brief	 INT3 interrupt service function
- **
- ** \param [in]  none   
- **
- ** \return none
- ******************************************************************************/
-void INT3_IRQHandler(void)  interrupt INT3_VECTOR 
-{
-
-}
-/******************************************************************************
- ** \brief	 INT4 interrupt service function
- **
- ** \param [in]  none   
- **
- ** \return none
- ******************************************************************************/
-void INT4_IRQHandler(void)  interrupt INT4_VECTOR 
-{
-
-}
-/******************************************************************************
- ** \brief	 UART1 interrupt service function
- **
- ** \param [in]  none   
- **
- ** \return none
- ******************************************************************************/
-void UART1_IRQHandler(void)  interrupt UART1_VECTOR 
-{
-
-}
-/******************************************************************************
- ** \brief	 UART2 interrupt service function
- **
- ** \param [in]  none   
- **
- ** \return none
- ******************************************************************************/
-void UART2_IRQHandler(void)  interrupt UART2_VECTOR 
-{
-
-}
-/******************************************************************************
- ** \brief	 SPI/I2C interrupt service function
- **
- ** \param [in]  none   
- **
- ** \return none
- ******************************************************************************/
-void SPI_I2C_IRQHandler(void)  interrupt SPI_I2C_VECTOR 
-{
-
-}
-/******************************************************************************
- ** \brief	 P0EI interrupt service function
- **
+ ** \brief	 GPIO 0 interrupt service function
+ **	
  ** \param [in]  none   
  **
  ** \return none
@@ -205,7 +140,7 @@ void P0EI_IRQHandler(void)  interrupt P0EI_VECTOR
 
 }
 /******************************************************************************
- ** \brief	 P1EI interrupt service function
+ ** \brief	 GPIO 1 interrupt service function
  **
  ** \param [in]  none   
  **
@@ -216,7 +151,7 @@ void P1EI_IRQHandler(void)  interrupt P1EI_VECTOR
 
 }
 /******************************************************************************
- ** \brief	 P2EI interrupt service function
+ ** \brief	 GPIO 2 interrupt service function
  **
  ** \param [in]  none   
  **
@@ -226,8 +161,9 @@ void P2EI_IRQHandler(void)  interrupt P2EI_VECTOR
 {
 
 }
+
 /******************************************************************************
- ** \brief	 P3EI interrupt service function
+ ** \brief	 GPIO 3 interrupt service function
  **
  ** \param [in]  none   
  **
@@ -237,13 +173,24 @@ void P3EI_IRQHandler(void)  interrupt P3EI_VECTOR
 {
 
 }
+/********************************************************************************
+ ** \brief	 ACMP interrupt service function
+ **			
+ ** \param [in]  none   
+ **
+ ** \return none
+ ******************************************************************************/
+void ACMP_IRQHandler(void)  interrupt ACMP_VECTOR 
+{
+
+}
 /******************************************************************************
  ** \brief	 Timer 3 interrupt service function
  **
  ** \param [in]  none   
  **
  ** \return none
- ******************************************************************************/
+******************************************************************************/
 void Timer3_IRQHandler(void)  interrupt TMR3_VECTOR 
 {
 
@@ -254,7 +201,7 @@ void Timer3_IRQHandler(void)  interrupt TMR3_VECTOR
  ** \param [in]  none   
  **
  ** \return none
- ******************************************************************************/
+******************************************************************************/
 void Timer4_IRQHandler(void)  interrupt TMR4_VECTOR 
 {
 
@@ -273,11 +220,12 @@ void EPWM_IRQHandler(void)  interrupt EPWM_VECTOR
 		P32 = ~P32;
 		EPWM_ClearZeroIntFlag(EPWM0);
 	}
+	
 	if(EPWM_GetFaultBrakeIntFlag())
 	{
-		P33 = ~P33;
+		P33 = ~P33;	
 		EPWM_ClearFaultBrakeIntFlag();
-	}
+	}	
 }
 /******************************************************************************
  ** \brief	 ADC interrupt service function
@@ -288,7 +236,7 @@ void EPWM_IRQHandler(void)  interrupt EPWM_VECTOR
  ******************************************************************************/
 void ADC_IRQHandler(void)  interrupt ADC_VECTOR 
 {
-	
+
 }
 /******************************************************************************
  ** \brief	 WDT interrupt service function
@@ -346,3 +294,13 @@ void LVD_IRQHandler(void)  interrupt LVD_VECTOR
 {
 
 }
+
+
+
+
+
+
+
+
+
+

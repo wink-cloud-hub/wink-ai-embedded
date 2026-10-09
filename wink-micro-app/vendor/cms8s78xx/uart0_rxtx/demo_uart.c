@@ -72,34 +72,34 @@ void UART_Config(void)
 	 uint32_t  BaudRateVlue = 9600;
 	 
 	 /*
-	 (1)ÉèÖÃUARTxµÄÔËĞĞÄ£Ê½
+	 (1)è®¾ç½®UARTxçš„è¿è¡Œæ¨¡å¼
 	 */
 	 UART_ConfigRunMode(UART_MOD_ASY_8BIT, UART_BAUD_BRT);
 	 UART_EnableReceive();
 	 /*
-	 (2)ÅäÖÃUARTxµÄ²¨ÌØÂÊ
+	 (2)é…ç½®UARTxçš„æ³¢ç‰¹ç‡
 	 */
 	 UART_ConfigBRTClk(BRT_CLK_DIV_1);	
 	
-	 UART_EnableDoubleFrequency(); 							/*²¨ÌØÂÊÊ¹ÄÜ±¶Æµ£ºSMOD =1*/
+	 UART_EnableDoubleFrequency(); 							/*æ³¢ç‰¹ç‡ä½¿èƒ½å€é¢‘ï¼šSMOD =1*/
 	
-  #ifdef USE_FORMULA			//Ê¹ÓÃ¹«Ê½¼ÆËã¶¨Ê±Æ÷µÄ¼ÓÔØÖµ(ĞèÒª¶ÔSystemclock¸³Öµ(main.c))£¬USE_FORMULA ÔÚ Ñ¡ÏîOption->C51->Preporcessor Symbols->DefineÖĞ¶¨Òå
+  #ifdef USE_FORMULA			//ä½¿ç”¨å…¬å¼è®¡ç®—å®šæ—¶å™¨çš„åŠ è½½å€¼(éœ€è¦å¯¹Systemclockèµ‹å€¼(main.c))ï¼ŒUSE_FORMULA åœ¨ é€‰é¡¹Option->C51->Preporcessor Symbols->Defineä¸­å®šä¹‰
 	 BRTValue = UART_ConfigBaudRate( BaudRateVlue) ;
   #else 
-	 BRTValue = 65380; 				//Ê¹ÓÃÊÖ²áÉÏÍÆ¼öµÄ¼ÓÔØÖµ(BRTÕÂ½Ú),¶ÔÓ¦µÄÏµÍ³Ê±ÖÓ£º24MHz
+	 BRTValue = 65380; 				//ä½¿ç”¨æ‰‹å†Œä¸Šæ¨èçš„åŠ è½½å€¼(BRTç« èŠ‚),å¯¹åº”çš„ç³»ç»Ÿæ—¶é’Ÿï¼š24MHz
   #endif
  
-	 UART_ConfigBRTPeriod(BRTValue);							/*ÅäÖÃÖØ×°Öµ*/
-	 UART_EnableBRT();											/*Ê¹ÄÜ¶¨Ê±Æ÷*/
+	 UART_ConfigBRTPeriod(BRTValue);							/*é…ç½®é‡è£…å€¼*/
+	 UART_EnableBRT();											/*ä½¿èƒ½å®šæ—¶å™¨*/
 	 /*
-	 (3)ÅäÖÃIO¿Ú
+	 (3)é…ç½®IOå£
 	 */ 
 	 GPIO_SET_MUX_MODE(P14CFG,GPIO_P14_MUX_TXD);			/*TXD*/
 	 GPIO_SET_MUX_MODE(P13CFG,GPIO_P13_MUX_RXD);	 		/*RXD*/
-	 GPIO_SET_PS_MODE(PS_RXD,GPIO_P13);						/*RXDÊäÈëÑ¡ÔñP13*/
+	 GPIO_SET_PS_MODE(PS_RXD,GPIO_P13);						/*RXDè¾“å…¥é€‰æ‹©P13*/
 	 
 	 /*
-	 (4)ÉèÖÃUARTÖĞ¶Ï
+	 (4)è®¾ç½®UARTä¸­æ–­
 	 */
 	 UART_EnableInt();
 	 IRQ_SET_PRIORITY(IRQ_UART0,IRQ_PRIORITY_LOW);	 
@@ -114,7 +114,7 @@ void UART_Config(void)
  ** \param [in] data
  **            	
  ** \return  none
- ** \note   <stdio.h>ÖĞĞèÒªµÄº¯Êı
+ ** \note   <stdio.h>ä¸­éœ€è¦çš„å‡½æ•°
  ******************************************************************************/
 char putchar (char ch)
 {
@@ -129,7 +129,7 @@ char putchar (char ch)
  ** \param [in] none
  **            	
  ** \return  data
- ** \note   <stdio.h>ÖĞĞèÒªµÄº¯Êı
+ ** \note   <stdio.h>ä¸­éœ€è¦çš„å‡½æ•°
  ******************************************************************************/
 char getchar (void)
 {
@@ -142,7 +142,7 @@ char getchar (void)
  **
  ** \param [in]  bytes addr for sending
  **
- ** \return  <stdio.h>ÖĞĞèÒªµÄº¯Êı
+ ** \return  <stdio.h>ä¸­éœ€è¦çš„å‡½æ•°
  ******************************************************************************/
 int  puts( const char  * s)
 {

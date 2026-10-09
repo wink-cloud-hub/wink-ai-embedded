@@ -72,24 +72,24 @@ volatile uint8_t  temp =0;
 int main(void)
 {		
 	
-	uint8_t array[10];							/*Êı¾İ»º´æÇø*/
+	uint8_t array[10];							/*æ•°æ®ç¼“å­˜åŒº*/
 	uint8_t value;								
 	uint8_t datasize;			
 	
 	SYS_SET_SYSTEM_CLK(SYS_CLK_DIV_1);
 		
-	I2C_Config();							/*ÉèÖÃI2CÖ÷¿ØÄ£Ê½*/		
+	I2C_Config();							/*è®¾ç½®I2Cä¸»æ§æ¨¡å¼*/		
 
-	/*¿ÉÔÚDebugÄ£Ê½ÖĞÊ¹ÓÃ£¬·¢Âë¸ñÊ½ÓëAT24C256µÄI2CĞ­ÒéÒ»ÖÂ£¬¾ßÌå¿É²Î¿¼AT24C256Êı¾İÊÖ²á*/	
-	At24c256_write_byte(0x10, 0x31);			/*Ğ´µ¥¸öÊı¾İ*/
-	value = At24c256_read_byte(0x10);			/*¶Áµ¥¸öÊı¾İ*/
+	/*å¯åœ¨Debugæ¨¡å¼ä¸­ä½¿ç”¨ï¼Œå‘ç æ ¼å¼ä¸AT24C256çš„I2Cåè®®ä¸€è‡´ï¼Œå…·ä½“å¯å‚è€ƒAT24C256æ•°æ®æ‰‹å†Œ*/	
+	At24c256_write_byte(0x10, 0x31);			/*å†™å•ä¸ªæ•°æ®*/
+	value = At24c256_read_byte(0x10);			/*è¯»å•ä¸ªæ•°æ®*/
 	
 	for(datasize =0; datasize<5; datasize++ )
 	{
 		At24c256_write_byte((0x11 + datasize), (0x32 + datasize));
 	}
 	datasize = 5;
-	At24c256_read_str(0x11, array, datasize);	/*Á¬Ğø¶ÁÊı¾İ*/
+	At24c256_read_str(0x11, array, datasize);	/*è¿ç»­è¯»æ•°æ®*/
 	
 	while(1)
 	{	

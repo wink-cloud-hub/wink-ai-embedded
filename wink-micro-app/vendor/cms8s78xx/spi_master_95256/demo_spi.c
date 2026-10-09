@@ -77,8 +77,8 @@ void SPI_M95256_Stop(void)
 /*****************************************************************************
  ** \brief	SPI_Transmit
  **			
-** \param [in] SendData: ���͵�ֵ
- ** \return  16bit ��ȡ��ֵ
+** \param [in] SendData: 发送的值
+ ** \return  16bit 获取的值
  ** \note	
 *****************************************************************************/
 uint8_t  SPI_Transmit(uint8_t  Data)
@@ -100,16 +100,16 @@ uint8_t  SPI_Transmit(uint8_t  Data)
 void SPI_Config(void)
 {
 	/*
-	(1)����SPIʱ��
+	(1)设置SPI时钟
 	*/
-	SPI_ConfigClk(SPI_CLK_DIV_8);									/*����ʱ��*/
+	SPI_ConfigClk(SPI_CLK_DIV_8);									/*设置时钟*/
 	/*
-	(2)����SPI����ģʽ
+	(2)设置SPI运行模式
 	*/
-	SPI_ConfigRunMode(SPI_CLK_CPOL_LOW, SPI_CLK_CPHA_0, SPI_NSS_SSCR_CONTROL);/*����SPI ����ʱʱ��Ϊ�͵�ƽ����λѡ��CPHA = 0 */
-																	/*����SPI NSSx�ź���SSCR�е����ݿ���*/																							
+	SPI_ConfigRunMode(SPI_CLK_CPOL_LOW, SPI_CLK_CPHA_0, SPI_NSS_SSCR_CONTROL);/*设置SPI 空闲时时钟为低电平、相位选择CPHA = 0 */
+																	/*设置SPI NSSx信号受SSCR中的内容控制*/																							
 	/*
-	(3)����IO�ڸ���
+	(3)设置IO口复用
 	*/
 	GPIO_SET_MUX_MODE(P11CFG,GPIO_P11_MUX_SCLK);		/*SCLK*/
 	GPIO_SET_MUX_MODE(P10CFG,GPIO_P10_MUX_MISO);		/*MISO*/
@@ -121,11 +121,11 @@ void SPI_Config(void)
 	GPIO_SET_PS_MODE(PS_NSS,GPIO_P12);
 	
 	/*
-	(4)����SPI
+	(4)开启SPI
 	*/
 	SPI_Start();
 	/*
-	(5)����SPI����or�ӻ�ģʽ
+	(5)开启SPI主控or从机模式
 	*/
 	SPI_EnableMasterMode();
 }

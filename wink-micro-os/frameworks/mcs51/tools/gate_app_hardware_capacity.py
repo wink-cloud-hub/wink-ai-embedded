@@ -57,8 +57,17 @@ EMBEDDED_ROOT = (str(_MICRO_OS_DIR.parent) if _MICRO_OS_DIR is not None
 # WCET proof — Keil overlay/IDATA packing (Tier-K) remains authoritative.
 STACK_MIN_FREE = 32
 
+# PLAN-20261009-CMS8S78XX-BUILD-BASELINE (S2/S3): the baseline has to record the
+# toolchain invocations that REALLY ran (executable, argv array, working
+# directory), not a paraphrase of the outer CLI command.
+COMMAND_LOG = []
 
-def run(cmd, **kw):
+
+def run(cmd, label="", **kw):
+    if label:
+        COMMAND_LOG.append({"label": label,
+                            "cwd": os.path.abspath(kw.get("cwd") or os.getcwd()),
+                            "argv": [str(x) for x in cmd]})
     return subprocess.run(cmd, capture_output=True, text=True, **kw)
 
 
@@ -80,7 +89,7 @@ def repo_path(rel_path):
 def transpile_devhdr(vendor_devhdr, out_path):
     r = run([sys.executable,
              os.path.join(HERE, "mcs51_sdcc_devhdr.py"),
-             vendor_devhdr, out_path])
+             vendor_devhdr, out_path], label="vendor_device_header_transpile")
     if r.returncode != 0:
         print(r.stdout, r.stderr)
         raise RuntimeError("device header transpile failed")
@@ -149,13 +158,13 @@ def gate_app(app_dir, sdcc, stack_min):
             cleaned = os.path.join(work, out_base)
             r = run([sys.executable,
                      os.path.join(HERE, "transpile_app_keil_c51.py"), "--target=sdcc",
-                     src_path, cleaned])
+                     src_path, cleaned], label="source_transpile")
             if r.returncode != 0:
                 return False, f"transpile failed for {src}: {r.stderr or r.stdout}"
             obj = out_base.replace(".c", ".rel")
             cmd = [sdcc, "-mmcs51"] + [f"-I{os.path.abspath(p)}" for p in includes] + \
                   ["-c", out_base, "-o", obj]
-            r = run(cmd, cwd=work)
+            r = run(cmd, cwd=work, label="sdcc_compile")
             if r.returncode != 0:
                 return False, f"compile error in {src}:\n" + \
                               (r.stderr or r.stdout)[-1500:]
@@ -167,7 +176,18 @@ def gate_app(app_dir, sdcc, stack_min):
         if budget["xdata_max"] is not None:
             link += [f"--xram-size", str(budget["xdata_max"])]
         link += rels + ["-o", os.path.join(work, "app.ihx")]
-        r = run(link, cwd=work)
+        COMMAND_LOG.append({
+            "label": "sdcc_build_config",
+            "cwd": work,
+            "compile_includes": [os.path.abspath(p) for p in includes],
+            "memory_model": next((arg for arg in link if arg.startswith("--model")),
+                                 "small (SDCC default; the gate passes no --model flag)"),
+            "stack_policy": (f"link-budget gate only: free IRAM must stay >= {stack_min}B "
+                             "(GAP-25 coarse floor, not a WCET proof)"),
+            "temp_dir_kind": "tempfile.mkdtemp under TMPDIR; deleted in the finally block",
+            "object_count": len(rels),
+        })
+        r = run(link, cwd=work, label="sdcc_link")
         if r.returncode != 0:
             return False, "link/budget error:\n" + (r.stderr or r.stdout)[-1500:]
 
@@ -190,23 +210,50 @@ def main(argv):
     ap.add_argument("--stack-min", type=int, default=STACK_MIN_FREE,
                     help="minimum free internal-RAM bytes for the stack "
                          f"(default {STACK_MIN_FREE}; GAP-25 coarse floor)")
+    ap.add_argument("--commands-out", metavar="PATH",
+                    help="write a JSON report of the exact transpile/compile/link "
+                         "invocations, per app (build-identity evidence)")
     args = ap.parse_args(argv[1:])
 
     failures = 0
+    per_app = []
     for app in args.apps:
+        # os.path.abspath strips a trailing separator, so the name stays correct
+        # whether callers pass "acmp0" or "acmp0/".
         app_abs = os.path.abspath(app)
+        name = os.path.basename(app_abs)
+        mark = len(COMMAND_LOG)
         try:
             mcu, _manifest = app_manifest(app_abs)
         except ManifestError as exc:
-            print(f"[FAIL] {os.path.basename(app)}: {exc}")
+            print(f"[FAIL] {name}: {exc}")
             failures += 1
             continue
         ok, detail = gate_app(app_abs, args.sdcc, args.stack_min)
         tag = "PASS" if ok else "FAIL"
-        print(f"[{tag}] {os.path.basename(app)} ({mcu}): {detail}")
+        print(f"[{tag}] {name} ({mcu}): {detail}")
         failures += 0 if ok else 1
+        per_app.append({"app": name, "app_dir": app_abs, "mcu": mcu,
+                        "status": tag, "detail": detail,
+                        "commands": COMMAND_LOG[mark:]})
     print(f"\n{len(args.apps) - failures}/{len(args.apps)} apps passed Tier-S SDCC gate")
+    if args.commands_out:
+        payload = {"sdcc_executable": args.sdcc,
+                   "sdcc_version": version_of(args.sdcc),
+                   "stack_min_free": args.stack_min,
+                   "tmpdir_env": os.environ.get("TMPDIR") or os.environ.get("TEMP"),
+                   "apps": per_app}
+        with open(args.commands_out, "w", encoding="utf-8", newline="\n") as handle:
+            json.dump(payload, handle, indent=2, ensure_ascii=False)
+            handle.write("\n")
     return 1 if failures else 0
+
+
+def version_of(sdcc):
+    r = subprocess.run([sdcc, "-v"], capture_output=True, text=True)
+    # SDCC prints the banner plus license boilerplate; only the first line
+    # identifies the toolchain build.
+    return (r.stderr or r.stdout).strip().splitlines()[0]
 
 
 if __name__ == "__main__":
