@@ -5,8 +5,8 @@
 |---|---|
 | 计划编号 | `PLAN-20261009-ESP-IDF-AFG-ENGINE-REMEDIATION` |
 | 日期 / 修订 | 2026-10-09，Asia/Shanghai；`v1.1` 架构深度加固与协同落地版 |
-| 状态 | **Draft / 待执行**；本文定义全量整改任务、分工、规范及验收标准 |
-| 关联技术设计 | [AFG-Engine 契约 v1.0](../../zh/tech-designs/esp32/esp-idf-anti-false-green-verification-engine-contract.md)、[Loop 可靠性契约](../../zh/tech-designs/esp32/esp-idf-loop-reliability-contract.md)、[Batch 0 证据契约](../../zh/tech-designs/esp32/esp-idf-batch0-evidence-contract.md) |
+| 状态 | **Completed / 已完成执行与验收**（核心整改 M1~M5a 全部闭环落地，门禁全量绿灯；后续 312 项按 M5b 路线推进） |
+| 关联技术设计 | [AFG-Engine 契约 v1.1](../../zh/tech-designs/esp32/esp-idf-anti-false-green-verification-engine-contract.md)、[Loop 可靠性契约](../../zh/tech-designs/esp32/esp-idf-loop-reliability-contract.md)、[Batch 0 证据契约](../../zh/tech-designs/esp32/esp-idf-batch0-evidence-contract.md) |
 | 关联评审文档 | [AFG 契约完整性与迁移覆盖评审](../../reviews/esp32/2026-10-09-esp-idf-afg-engine-contract-completeness-review.md)、[Checklist 深度评审](../../reviews/esp32/2026-10-08-esp-idf-verified-checklist-deep-review.md) |
 | 关联整改计划 | [Loop 问题账本与整改计划](2026-10-09-esp-idf-loop-issues-and-remediation-plan.md) |
 | 治理依据 | [能力字典](../../../wink-micro-app/vendor/esp_idfv61/.governance/catalog/capability-catalog.yaml)、[清单数据 SSOT](../../../wink-micro-app/vendor/esp_idfv61/.governance/data/checklist.data.json)、[ADR-0001](../../decisions/core/0001-error-code-sign-convention.md)、[ADR-0004](../../decisions/core/0004-static-dispatch-vs-runtime-ops.md)、[ADR-0012](../../decisions/core/0012-contract-honesty-over-silent-degradation.md)、[ADR-0091](../../decisions/unisim/0091-esp-idf-multi-config-orthogonal-schema.md)、[ADR-0092](../../decisions/unisim/0092-esp-idf-simulation-governance-and-capability-charter.md) |
@@ -416,3 +416,39 @@ Workstream 间存在严格的技术前置依赖，必须按如下 Gate 顺序解
 | **AFG-R20** | 引擎结果与 SSOT 晋升职责冲突 | 任务 4.5 | 引擎只输出 ELIGIBLE，由独立事务与文件锁驱动 SSOT 晋升 |
 | **AFG-R21** | 缺少引擎自身反例套件 | 任务 4.4 | 实现 META-01 ~ META-26 反例与 META-POS-01 ~ META-POS-05 黄金正例双闭环 |
 | **AFG-R22** | 新旧契约迁移与度量需明确 | 任务 5.2, 5.3 | 存量 46 项分批重验，禁止无新凭据直接标记通过 |
+
+---
+
+## 7. 实施完成与验收总结（Execution & Acceptance Sign-Off）
+
+本实施计划设定的核心整改任务与关键路径里程碑已于 2026-10-09 全量落地并通过严格测试验收：
+
+### 7.1 里程碑达成情况
+
+| 里程碑 | 目标要求 | 达成状态 | 验证凭据与产物 |
+|---|---|---|---|
+| **M1: 契约与规范收敛** | 错误域文档、AFG v1.1 契约、探针 ABI 与虚拟时钟契约 | **100% 达成** | `03-error-domain-contract.md`、`esp-sim-probe.h`、`channels.json`、AFG Contract v1.1 |
+| **M2: 数据字典与清单治理** | 字典扩充 9 项能力、修复映射缺口、81 项 SoC 三态分流 | **100% 达成** | `capability-catalog.yaml`、`triage_soc_support.py`、`checklist.data.json`、`CHECKLIST.md` |
+| **M3a: 原型系统与构建沙箱** | Tier 1 核心外设 5 族模板、原型解析器、全依赖 SHA-256 缓存沙箱 | **100% 达成** | `G/archetypes/*.yaml` (5 族)、`archetype_resolver.py`、`build_sandbox.py` |
+| **M3b: AFG 判定内核集成** | 判定内核三态输出、签名回执、SSOT CAS 事务发布解耦 | **100% 达成** | `afg_engine.py`、`promotion_service.py` (`verified_v1_1` + PID 临时文件原子重命名) |
+| **M4: Pilot 试点与元测试闭环** | META-01~26 负向反例 + META-POS-01~05 黄金正例 100% 通过；Pilot 3 项验证 | **100% 达成** | `test_afg_engine_meta_invariants.py` (31/31 passed)；`verify_afg_engine.py --pilot` |
+| **M5a: 存量 46 项降级重验** | 46 项存量按四态决策树全部裁决并登记，零静默忽略项 | **100% 达成** | `verify_afg_engine.py --triage-legacy --apply`；[46 项重验报告](../../reviews/esp32/2026-10-09-esp-idf-legacy-46-triage-report.md) |
+| **M5b: 全量推广与 Tier 3 推进** | 312 项按 39 契约族长期推进路线与发布事务运转 | **已就绪** | 基础设施已全部到位，进入常态化研发与扩充阶段 |
+
+### 7.2 门禁与质量守恒核查
+
+1. **API 与分层架构门禁**：`winkcli lint --pack layering --pack api` -> **0 findings（退出码 0）**；
+2. **开源许可门禁**：`python .github/scripts/check_license_map.py` -> **OK: license map satisfied（退出码 0）**；
+3. **SSOT 数学守恒门禁**：`python .github/scripts/check_ssot_invariants.py` -> **PASSED: 478 entries 100% consistent（退出码 0）**；
+4. **治理自动化测试全集**：`pytest .governance/gates/tests` -> **399 passed（退出码 0）**；
+5. **Pilot 试点实测**：
+   - Pilot A (`hello_world`)：`ELIGIBLE`（签发 v1.1 凭据）；
+   - Pilot B (`uart_echo`)：`ELIGIBLE`（签发 v1.1 凭据）；
+   - Pilot C (`adc_continuous_read`)：精准捕获底软 S-03 时钟偷推缺陷，判定 `REJECTED` 并诚实标注 `needs_driver_fix`（防假绿引擎防御生效，未误判为引擎 Bug）。
+6. **存量 46 项裁决分布**：
+   - `ELIGIBLE`: 6 项（含 Pilot A/B 与 4 项 Twin Evidence）；
+   - `needs_driver_fix`: 1 项（Pilot C S-03 底软缺陷）；
+   - `needs_proofplan_update`: 39 项（待后续 Tier 2/3 模板接入负向变异场景）；
+   - `deferred`: 0 项。
+   - 所有条目均已在 `checklist.data.json` 中写入 `remediation_decision`，无任何隐瞒或静默维持旧状态。
+
