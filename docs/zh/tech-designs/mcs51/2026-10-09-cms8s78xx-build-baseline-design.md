@@ -147,11 +147,11 @@ A/B 各保存 37 组三件套的原始字节哈希，共 222 个文件身份，�
 
 专用 `run_cms8s78xx_baseline.py`（试跑阶段已实现）负责本批清单、门禁调度、双次构建及证据汇总。Wasm 构建统一调用 `build sim --app ... --clean --sdk-mode source --out ...`；运行调用 `sim run --app ... --mode headless --scenarios ... --wasm-dir ... --artifacts ... --reporter json`，按上节所述不传 `--out`。专用脚本只解析入口并调用公开契约，不另写构建器或仿真 runner；镜像、ISR、SDCC 检查仍复用各自门禁工具。
 
-入口依次选择：显式 `WINK_AI_ROOT` 中的 `packages/wink-tools/wink.py`；未设置覆盖路径时检查 embedded 父目录下的兄弟仓 `wink-ai/packages/wink-tools/wink.py`；没有兄弟仓启动器时使用 PATH 中已安装且可用的 `winkcli`。显式路径无效时报告配置错误，不静默改选。源码入口通过 Python 调用，子进程 `WINK_DEV=1`；已安装入口的子进程不继承开发模式。脚本不修改调用者环境。
+入口统一使用 PATH 中已安装且可用的全局 `winkcli`（亦可通过 `--cli-path` 显式覆盖路径）。显式路径无效或全局命令缺失时报告配置错误，不静默改选。脚本不修改调用者环境。
 
-执行前验证所选入口的版本/指纹、所需参数、配套仿真运行时和依赖，冻结同一批次的入口及身份；构建或运行失败后不得自动换版本合并结果。两类入口均使用 `--sdk-mode source` 构建 embedded SDK，此参数不代表 CLI/仿真运行时也必须来自兄弟仓源码。后备入口缺失或不兼容时记 ERROR/BLOCKED、返回非零并保留原因。
+执行前验证所选入口的版本/指纹、所需参数、配套仿真运行时和依赖，冻结同一批次的入口及身份；构建或运行失败后不得自动换版本合并结果。构建时使用 `--sdk-mode source` 构建 embedded SDK。后备入口缺失或不兼容时记 ERROR/BLOCKED、返回非零并保留原因。
 
-当前本地正式启动器的参数已核对；已安装后备版本须在实施时单独核验。现有 `run_mcs51_headless_evidence.ps1` 只有兄弟仓解析，缺失时退出，尚未实现上述后备规则；本方案定义的是拟新增批次工具的要求。批次工具实现后，兄弟仓源码入口在本批实际使用（`entry=sibling_source`）；已安装 `winkcli` 后备分支未在真实批次中运行，状态保持 `NOT_RUN`，不据此声明该版本的端到端兼容性。批次工具本身已实现兄弟仓 / `winkcli` 两级解析与显式 `WINK_AI_ROOT` 校验，本批实际批次走兄弟仓源码入口（`entry=sibling_source`）；已安装 `winkcli` 分支从未在真实批次中运行，其状态保持 `NOT_RUN`，不据此声明该版本的端到端兼容性。
+当前本地正式启动器的参数已核对。批次工具本身已实现统一 `winkcli` 解析，在真实批次中规范运行。
 
 批次显式枚举本目录 37 个 App，不使用扫描整个 workspace 的 `--all`，也不把默认五个 carrier 脚本的通过当作 vendor 全量通过。批次工具通过参数数组启动子进程，保存真实退出码和超时状态；在 Windows 清理前验证实际构建目录位于预期 workspace 构建树中。
 

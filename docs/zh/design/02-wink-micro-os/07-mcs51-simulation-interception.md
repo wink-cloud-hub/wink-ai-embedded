@@ -127,7 +127,7 @@ M0–M6 在**受限 ctest harness**（host fallback + node 桩）内验证；ADR
             --scenarios "<abs app dir>/unisim-scenarios" --reporter spec
   ```
   mcs51 证据载体：`mcs51_button_led`（未修改 Keil 按键→LED，`sbit KEY=P3^2(线性26,active-low); sbit LED=P1^0(pin8)`）、`mcs51_button_led_int`、`mcs51_uart_hello`、`mcs51_uart_echo`、`mcs51_analog_threshold`，各带 `unisim-scenarios/`。
-  **一键聚合证据**：`wink-micro-os/frameworks/mcs51/tools/run_mcs51_headless_evidence.ps1`（自动定位 sister CLI、按通道顺序跑全部载体、聚合 PASS/FAIL 与退出码；`-App <name>` 单跑、`$env:WINK_AI_ROOT` 覆盖 sister 路径）。五载体（TX / RX-live / 模拟 / INT0 中断 / 轮询按键）**全 PASS**（数字输入回归经 sister `8d06a4e8` 修复，见看板 ② 注）。
+  **一键聚合证据**：`wink-micro-os/frameworks/mcs51/tools/run_mcs51_headless_evidence.ps1`（调用统一 `winkcli`、按通道顺序跑全部载体、聚合 PASS/FAIL 与退出码；`-App <name>` 单跑）。五载体（TX / RX-live / 模拟 / INT0 中断 / 轮询按键）**全 PASS**。
 - **资产入库约定**：`unisim-assets/device-tree.json` 与 `wink_simulator.js`（胶水+设备树，可评审）入库；`wink_simulator.wasm` 为构建产物，`.gitignore` 的 `*.wasm` 排除（同 avoidance_car/oled_dashboard）。
 
 > **延后（不在阶段 0）**：Stage 1 前端（Vue mcs51 画板、device-tree→manifest translator/resolver 去 esp32 硬编码、P1.0 等 pin 标签、DIP40 artwork、worker 装载 mcs51 wasm）；Stage 2 模拟（host 桥 `js_pal_adc_read_norm` 由 stub 0.0 接 `arbiter.readAnalog`、adc0832/`thermal_heater_plate` 插件闭环）。C 侧生产缝已就绪，Stage 1 不再改 C/链接。

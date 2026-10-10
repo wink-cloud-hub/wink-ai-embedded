@@ -63,14 +63,13 @@
 
 | 环境 | 入口解析与运行模式 |
 |---|---|
-| 显式设置 `WINK_AI_ROOT` | 校验该 checkout 的 `packages/wink-tools/wink.py`；有效时通过 Python 调用并设置子进程 `WINK_DEV=1`。显式路径无效时报告配置错误，不静默改选其他入口 |
-| 未设置覆盖路径，默认兄弟仓在场 | 从 embedded checkout 的父目录定位 `wink-ai/packages/wink-tools/wink.py`，通过 Python 调用，子进程 `WINK_DEV=1` |
-| 没有兄弟仓启动器 | 使用 PATH 中已安装、可执行且契约兼容的 `winkcli`；子进程不继承开发模式 `WINK_DEV`，核验实际 CLI 与配套仿真运行时身份 |
+| PATH 中的标准全局命令 | 使用 PATH 中已安装、可执行且契约兼容的 `winkcli`，统一调度构建与仿真 |
+| 显式覆盖环境变量（可选） | 设置 `$env:WINKCLI_PATH` 指定自定义 CLI 路径；显式路径无效时报错退出 |
 | 入口缺失、依赖不全或契约不兼容 | 批次记 ERROR/BLOCKED 并返回非零，保存原因；不得跳过 App 或使用旧资产凑成功摘要 |
 
-实施前核对所选入口的版本/指纹及 `build sim`、`sim run` 所需参数和模式；本批次只选定一个入口，构建失败后不得自动换成另一版本重跑并合并凭据。两类入口使用相同公开参数，均显式使用 `--sdk-mode source`；该参数指 embedded SDK 的源码构建，与 CLI/仿真运行时采用本地源码或已安装发行物是不同维度。
+实施前核对所选入口的版本/指纹及 `build sim`、`sim run` 所需参数和模式；本批次只选定一个入口，构建失败后不得自动换成另一版本重跑并合并凭据。参数显式使用 `--sdk-mode source`；该参数指 embedded SDK 的源码构建。
 
-现有 `run_mcs51_headless_evidence.ps1` 只解析兄弟仓，缺失时退出，尚无 `winkcli` 后备；默认清单也只有五个通用 carrier。它可作为正式调用的参考，不能视为上述入口选择或本批 37 App 治理已实现。
+批次工具统一通过全局 `winkcli` 解析并在真实环境中规范运行。
 
 ## 4. S1 — 最小修复 Wasm 公共编译错误
 
@@ -131,20 +130,10 @@
 
 ```powershell
 $embeddedRoot = 'D:\workspaces\ai-coding\wink-ai\wink-ai-embedded'
-$winkRoot = if ($env:WINK_AI_ROOT) { $env:WINK_AI_ROOT } else {
-  Join-Path (Split-Path $embeddedRoot -Parent) 'wink-ai'
-}
-$toolEntry = Join-Path $winkRoot 'packages\wink-tools\wink.py'
-if (Test-Path -LiteralPath $toolEntry -PathType Leaf) {
-  $cliCommand = (Get-Command python -ErrorAction Stop).Source
-  $cliPrefix = @($toolEntry)
-  $env:WINK_DEV = '1'
-} elseif ($env:WINK_AI_ROOT) {
-  throw '显式 WINK_AI_ROOT 中缺少 wink.py；检查配置。'
+$cliCommand = if ($env:WINKCLI_PATH) {
+  $env:WINKCLI_PATH
 } else {
-  $cliCommand = (Get-Command winkcli -ErrorAction Stop).Source
-  $cliPrefix = @()
-  Remove-Item -LiteralPath Env:WINK_DEV -ErrorAction SilentlyContinue
+  (Get-Command winkcli -ErrorAction Stop).Source
 }
 $appDir = Join-Path $embeddedRoot 'wink-micro-app\vendor\cms8s78xx\gpio'
 $runId = '{0}-{1}' -f (Get-Date -Format 'yyyyMMdd-HHmmss'), ([guid]::NewGuid().ToString('N').Substring(0,8))
