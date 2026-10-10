@@ -9,6 +9,8 @@
 #include "pal_osal.h"
 #include <string.h>
 
+extern void js_pal_dac_write_norm(uint16_t pin, float norm_val);
+
 typedef struct {
     bool                is_initialized;
     wink_pin_t          pin;
