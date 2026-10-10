@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "winkcli_version": "0.1.0",
-  "generated_at": "2026-10-10T05:38:08Z",
+  "winkcli_version": "0.1.1",
+  "generated_at": "2026-10-10T07:40:32Z",
   "global_flags": [
     {
       "flags": [

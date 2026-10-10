@@ -111,7 +111,7 @@ winkcli pack binary --target host --out dist/wink-sdk-host
 <!-- BEGIN AUTO-GENERATED: CLI-TREE -->
 ## Appendix A - Full Command Reference (auto-generated, do not edit)
 
-> winkcli `v0.1.0` · snapshot schema 1 · generated 2026-10-10T05:38:09Z
+> winkcli `v0.1.1` · snapshot schema 1 · generated 2026-10-10T07:40:32Z
 
 ### Global flags
 
