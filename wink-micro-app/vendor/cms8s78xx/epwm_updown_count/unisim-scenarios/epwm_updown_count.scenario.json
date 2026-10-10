@@ -13,13 +13,91 @@
       "type": "ASSERT_WAVEFORM",
       "timeUs": "60ms",
       "windowUs": ["10ms", "60ms"],
+      "pin": 16,
+      "expected": {
+        "kind": "frequencyHz",
+        "value": {
+          "$near": {
+            "target": 2500,
+            "tolerance": 5
+          }
+        }
+      },
+      "description": "CMS8S78xx EPWM UpDownCountMode PG0 (pin 16) carrier frequency is 2500 Hz"
+    },
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "60ms",
+      "windowUs": ["10ms", "60ms"],
+      "pin": 17,
+      "expected": {
+        "kind": "frequencyHz",
+        "value": {
+          "$near": {
+            "target": 2500,
+            "tolerance": 5
+          }
+        }
+      },
+      "description": "CMS8S78xx EPWM UpDownCountMode PG1 (pin 17) complementary carrier frequency is 2500 Hz"
+    },
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "60ms",
+      "windowUs": ["10ms", "60ms"],
+      "pin": 18,
+      "expected": {
+        "kind": "frequencyHz",
+        "value": {
+          "$near": {
+            "target": 2500,
+            "tolerance": 5
+          }
+        }
+      },
+      "description": "CMS8S78xx EPWM UpDownCountMode PG2 (pin 18) carrier frequency is 2500 Hz"
+    },
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "60ms",
+      "windowUs": ["10ms", "60ms"],
+      "pin": 19,
+      "expected": {
+        "kind": "frequencyHz",
+        "value": {
+          "$near": {
+            "target": 2500,
+            "tolerance": 5
+          }
+        }
+      },
+      "description": "CMS8S78xx EPWM UpDownCountMode PG3 (pin 19) complementary carrier frequency is 2500 Hz"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "60ms",
+      "target": "gpio:16",
+      "matcher": 1,
+      "description": "[中心对称关键点采样] t=60ms 时 PG0 处于高电平 1"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "60ms",
+      "target": "gpio:17",
+      "matcher": 0,
+      "description": "[中心对称关键点采样] t=60ms 时 PG1 必须互补为低电平 0（杜绝同相假绿）"
+    },
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "60ms",
+      "windowUs": ["10ms", "60ms"],
       "pin": 26,
       "expected": {
         "kind": "frequencyHz",
         "value": {
           "$near": {
             "target": 1250,
-            "tolerance": 100
+            "tolerance": 20
           }
         }
       },

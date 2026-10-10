@@ -395,6 +395,8 @@ def scenario_files(directory: Path) -> list[dict]:
     """Enumerate the scenario inputs with raw hashes (the credential's input side)."""
     records = []
     for path in sorted(directory.glob("*.scenario.json")):
+        if path.name.endswith(".fail.scenario.json"):
+            continue
         header = json.loads(path.read_text(encoding="utf-8")).get("header") or {}
         records.append({"file": path.name,
                         "path": str(path).replace("\\", "/"),
@@ -756,7 +758,8 @@ def assemble_scenarios_ledger(run_root: Path, all_apps: list[Path], entry: dict,
     built = [p for p in per_app if p["status"] != "NOT_RUN"]
     expected_files = sum(1 for app_dir in all_apps
                          for p in (EMBEDDED_ROOT / VENDOR_APPS_REL / app_dir.name
-                                   / "unisim-scenarios").glob("*.scenario.json"))
+                                   / "unisim-scenarios").glob("*.scenario.json")
+                         if not p.name.endswith(".fail.scenario.json"))
     failed_pairs = [p["app"] for p in built if p["status"] != "PASS"]
     status = ("PARTIAL" if len(built) != len(all_apps)
               else "FAIL" if failed_pairs or len(rows) != expected_files else "PASS")

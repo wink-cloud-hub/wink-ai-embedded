@@ -126,8 +126,10 @@ typedef struct {
 
 // Enhanced PWM state (owner: cms8s_epwm.cpp).
 typedef struct {
-    uint16_t counter[4];      // current counter per channel (0..3)
-    uint8_t  direction[4];    // 0: up, 1: down
+    uint16_t counter[4];           // current counter per channel (0..3)
+    uint8_t  direction[4];         // 0: up, 1: down
+    uint8_t  pg_pin_level[4];      // current output level for PG0..PG3 (0 or 1)
+    uint32_t tick_fraction_rem[4]; // fractional microsecond ticks remainder
     uint64_t last_poll_us;
     uint8_t  pwmoe_prev;
     uint8_t  pwmcnte_prev;

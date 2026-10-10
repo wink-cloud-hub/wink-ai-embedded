@@ -419,6 +419,18 @@ def cleanup(source: str, target: str = "native") -> tuple[str, dict[str, int]]:
                 continue
             regions.append((m.start(), m.end(), "while(1) { _nop_(); }", "loop"))
 
+        # 4b. Empty nested delay loops (e.g. `for(i=65530;i>0;i--) for(j=100;j>0;j--);`)
+        # In native simulation, spinning millions of iterations without SFR access freezes virtual time
+        # and starves peripherals while wasting seconds of host wall-clock time.
+        # Scale to calibrated virtual time delay (ADR-0070).
+        nested_delay_re = re.compile(
+            r"\bfor\s*\(\s*(\w+)\s*=\s*(\d+)\s*;\s*\1\s*>\s*0\s*;\s*\1--\s*\)\s*(?:\{\s*)?for\s*\(\s*(\w+)\s*=\s*(\d+)\s*;\s*\3\s*>\s*0\s*;\s*\3--\s*\)\s*;(?:\s*\})?"
+        )
+        for m in nested_delay_re.finditer(mask):
+            m_val = int(m.group(4))
+            delay_ms = max(2, min(50, m_val // 4))
+            regions.append((m.start(), m.end(), f"wink_mcs51_delay_ms({delay_ms});", "delay"))
+
         # 5. Local Definition Guard & Delay Call-Site Stubs (Task R4 & Task R5)
         local_delays = set()
         for m in LOCAL_DELAY_DEF_RE.finditer(mask):

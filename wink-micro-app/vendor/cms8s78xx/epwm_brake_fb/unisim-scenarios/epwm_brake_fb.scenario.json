@@ -6,24 +6,139 @@
     "accuracyMode": "behavioral",
     "timeoutUs": "100000",
     "failurePolicy": "fail-fast",
+    "initialConditions": {
+      "pins": {
+        "6": 0
+      }
+    },
     "determinism": { "prngSeed": 42 }
   },
   "steps": [
     {
+      "type": "INPUT_PIN",
+      "timeUs": "0ms",
+      "pin": 6,
+      "level": 0,
+      "description": "[初始工况] 外部拉低 P0.6 (FB0) 为正常非故障电平"
+    },
+    {
       "type": "ASSERT_WAVEFORM",
-      "timeUs": "60ms",
-      "windowUs": ["10ms", "60ms"],
-      "pin": 26,
+      "timeUs": "20ms",
+      "windowUs": ["10ms", "20ms"],
+      "pin": 16,
       "expected": {
         "kind": "frequencyHz",
         "value": {
           "$near": {
-            "target": 2500,
-            "tolerance": 500
+            "target": 5000,
+            "tolerance": 10
           }
         }
       },
-      "description": "EPWM zero-match IRQ toggles P3.2 (pin 26) — verifies EPWM zero-count interrupt loop is alive (FB brake mode)"
+      "description": "[阶段 1 正常运行] PG0 (pin 16) 正常输出 5000 Hz 载波"
+    },
+    {
+      "type": "INPUT_PIN",
+      "timeUs": "20ms",
+      "pin": 6,
+      "level": 1,
+      "description": "[阶段 2 故障注入] P0.6 (FB0 引脚) 注入高电平刹车故障信号"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "30ms",
+      "target": "gpio:16",
+      "matcher": 1,
+      "description": "[阶段 3 刹车电平断言] PG0 锁定为 1"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "30ms",
+      "target": "gpio:17",
+      "matcher": 1,
+      "description": "[阶段 3 刹车电平断言] PG1 锁定为 1（与 PG0 共同锁死为 1）"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "30ms",
+      "target": "gpio:18",
+      "matcher": 0,
+      "description": "[阶段 3 刹车电平断言] PG2 锁定为 0"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "30ms",
+      "target": "gpio:19",
+      "matcher": 0,
+      "description": "[阶段 3 刹车电平断言] PG3 锁定为 0"
+    },
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "40ms",
+      "windowUs": ["25ms", "40ms"],
+      "pin": 16,
+      "expected": {
+        "kind": "stableLevel",
+        "level": "HIGH",
+        "holdForUs": "15ms"
+      },
+      "description": "[阶段 3 长窗口稳态] PG0 (pin 16) 持续 15ms 冻结为高电平 HIGH（PWMFBKD 锁存，杜绝瞬态偶合假绿）"
+    },
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "40ms",
+      "windowUs": ["25ms", "40ms"],
+      "pin": 18,
+      "expected": {
+        "kind": "stableLevel",
+        "level": "LOW",
+        "holdForUs": "15ms"
+      },
+      "description": "[阶段 3 长窗口稳态] PG2 (pin 18) 持续 15ms 冻结为低电平 LOW（PWMFBKD 锁存）"
+    },
+    {
+      "type": "INPUT_PIN",
+      "timeUs": "40ms",
+      "pin": 6,
+      "level": 0,
+      "description": "[阶段 4 故障撤销] 撤销 P0.6 外部故障信号，等待下一 Reload 点自动恢复"
+    },
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "70ms",
+      "windowUs": ["50ms", "70ms"],
+      "pin": 16,
+      "expected": {
+        "kind": "frequencyHz",
+        "value": {
+          "$near": {
+            "target": 5000,
+            "tolerance": 10
+          }
+        }
+      },
+      "description": "[阶段 4 自动恢复] 故障撤销后 PG0 重新恢复 5000 Hz 载波振荡"
+    },
+    {
+      "type": "INPUT_PIN",
+      "timeUs": "80ms",
+      "pin": 6,
+      "level": 1,
+      "description": "[阶段 5 二次注入] 再次拉高 P0.6 验证可重复触发闭环"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "90ms",
+      "target": "gpio:16",
+      "matcher": 1,
+      "description": "[阶段 5 二次刹车锁存] PG0 再次立即冻结为 1"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "90ms",
+      "target": "gpio:17",
+      "matcher": 1,
+      "description": "[阶段 5 二次刹车锁存] PG1 再次立即冻结为 1"
     }
   ]
 }

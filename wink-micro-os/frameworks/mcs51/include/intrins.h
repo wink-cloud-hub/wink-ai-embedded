@@ -29,6 +29,8 @@ extern "C" {
 
 // One 8051 instruction-cycle interception point. Defined in mcs51_bridge.cpp.
 void wink_mcs51_microstep(void);
+void wink_delay_us(uint32_t total_us);
+void wink_mcs51_delay_ms(uint32_t ms);
 
 // Keil _testbit_ on a raw byte pointer: read bit 0 of *p and clear it (JBC
 // semantics), returning the old bit value.

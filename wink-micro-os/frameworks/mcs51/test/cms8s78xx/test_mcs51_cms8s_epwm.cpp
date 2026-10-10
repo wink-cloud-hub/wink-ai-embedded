@@ -16,6 +16,7 @@
 extern "C" void wink_mcs51_user_main(void) {}
 extern "C" void setUp(void) {}
 extern "C" void tearDown(void) {}
+extern "C" void wink_mcs51_host_set_ext_pin(uint16_t pin, uint8_t state);
 
 namespace {
 
@@ -80,7 +81,6 @@ int main(void) {
     EPWM_EnableZeroInt(EPWM_CH_0_MSK);
 
     EPWM_Start(EPWM_CH_0_MSK);
-    check((PWMCON & EPWM_PWMCON_PWMRUN_Msk) != 0, "PWMCON PWMRUN is set");
     check((PWMCNTE & EPWM_CH_0_MSK) != 0, "PWMCNTE CH0 is enabled");
 
     // Advance 100us: not reached 0 yet
@@ -105,7 +105,8 @@ int main(void) {
 
     // ── Test 2: Stop and Counter Hold ─────────────────────────────────────────
     printf("[mcs51_epwm] Test 2: Stop and counter freeze\n");
-    PWMCON &= ~EPWM_PWMCON_PWMRUN_Msk; // Stop EPWM
+    EPWM_Stop(EPWM_CH_0_MSK); // Stop EPWM via PWMCNTE
+    check((PWMCNTE & EPWM_CH_0_MSK) == 0, "PWMCNTE CH0 is cleared");
     wink_mcs51_test_advance_virtual_us(500u);
     cms8s_epwm_poll(ctx);
     mcs51_irq_scan_and_dispatch();
@@ -201,7 +202,7 @@ int main(void) {
     mcs51_irq_scan_and_dispatch();
     check(EPWM_GetBrakeOutputStatus() == 0, "BRKOSF cleared on reload in Recover mode");
 
-    // ── Test 6: Brake Suspend Mode (即时恢复) ──────────────────────────────────
+    // ── Test 6: Brake Suspend Mode ──────────────────────────────────
     printf("[mcs51_epwm] Test 6: Brake Suspend Mode\n");
     EPWM_ConfigBrakeMode(EPWM_BRK_SUSPEND, EPWM_BRK_LOAD_EPWM0);
     EPWM_TrigSoftwareBrake();
@@ -210,7 +211,12 @@ int main(void) {
 
     EPWM_DisableSoftwareBrake();
     cms8s_epwm_poll(ctx);
-    check(EPWM_GetBrakeOutputStatus() == 0, "Suspend mode: BRKOSF immediately 0 on release");
+    check(EPWM_GetBrakeActiveFlag() == 0, "Suspend mode: BRKAF=0 after release");
+    check(EPWM_GetBrakeOutputStatus() == 1, "Suspend mode: BRKOSF remains 1 until clear");
+
+    EPWM_ClearFaultBrake();
+    cms8s_epwm_poll(ctx);
+    check(EPWM_GetBrakeOutputStatus() == 0, "Suspend mode: BRKOSF cleared by EPWM_ClearFaultBrake()");
 
     // ── Test 7: Brake Stop Mode & Manual Clear ────────────────────────────────
     printf("[mcs51_epwm] Test 7: Brake Stop Mode & Manual Clear\n");
@@ -218,6 +224,7 @@ int main(void) {
     EPWM_TrigSoftwareBrake();
     cms8s_epwm_poll(ctx);
     check(EPWM_GetBrakeOutputStatus() == 1, "Stop mode: BRKOSF=1");
+    check((PWMCNTE & EPWM_CH_0_MSK) == 0, "Stop mode: PWMCNTE hardware cleared to 0");
 
     EPWM_DisableSoftwareBrake();
     cms8s_epwm_poll(ctx);
@@ -237,19 +244,21 @@ int main(void) {
     printf("[mcs51_epwm] Test 8: Hardware Pin Fault Brake (FB0 on P1.4)\n");
     EPWM_ConfigBrakeMode(EPWM_BRK_SUSPEND, EPWM_BRK_LOAD_EPWM0);
     EPWM_EnableFBBrake(EPWM_BRK_FB0, EPWM_BRK_FB_LOW);
-    ctx->sfr_shadow[0x90] |= (1u << 4); // P1.4 = 1 (normal)
+    wink_mcs51_host_set_ext_pin(12u, 1u); // P1.4 = 1 (normal)
     cms8s_epwm_poll(ctx);
     check(EPWM_GetBrakeActiveFlag() == 0, "FB0 pin high: not braking");
 
-    ctx->sfr_shadow[0x90] &= ~(1u << 4); // P1.4 = 0 (tripped!)
+    wink_mcs51_host_set_ext_pin(12u, 0u); // P1.4 = 0 (tripped!)
     cms8s_epwm_poll(ctx);
     check(EPWM_GetBrakeActiveFlag() == 1, "FB0 pin low: brake tripped!");
     check(EPWM_GetBrakeOutputStatus() == 1, "FB0 pin low: BRKOSF active");
 
-    ctx->sfr_shadow[0x90] |= (1u << 4); // P1.4 back high
+    wink_mcs51_host_set_ext_pin(12u, 1u); // P1.4 back high
     cms8s_epwm_poll(ctx);
     check(EPWM_GetBrakeActiveFlag() == 0, "FB0 pin high: brake released");
-    check(EPWM_GetBrakeOutputStatus() == 0, "Suspend mode: BRKOSF released");
+    EPWM_ClearFaultBrake();
+    cms8s_epwm_poll(ctx);
+    check(EPWM_GetBrakeOutputStatus() == 0, "Suspend mode: BRKOSF cleared");
     EPWM_DisableFBBrake(EPWM_BRK_FB0);
 
     // ── Test 9: ACMP Comparator Brake Linkage ─────────────────────────────────
@@ -269,7 +278,72 @@ int main(void) {
     priv->acmp.last_c0out = 0u;
     cms8s_epwm_poll(ctx);
     check(EPWM_GetBrakeActiveFlag() == 0, "ACMP0 back to 0: brake released");
+    EPWM_ClearFaultBrake();
+    cms8s_epwm_poll(ctx);
+    check(EPWM_GetBrakeOutputStatus() == 0, "BRKOSF cleared after ACMP brake release");
     EPWM_DisableACMPLEBrake(EPWM_BRK_ACMP0);
+
+    // ── Test 10: Complementary Mode Shoot-Through Prevention ──────────────────
+    printf("[mcs51_epwm] Test 10: Complementary mode PG0/PG1 shoot-through prevention\n");
+    mcs51_context_reset(ctx);
+    wink_mcs51_xdata_reset();
+    cms8s_epwm_init(ctx);
+    priv = cms8s_priv(ctx);
+
+    EPWM_ConfigRunMode(EPWM_WFG_COMPLEMENTARY | EPWM_OC_INDEPENDENT | EPWM_OCU_SYMMETRIC | EPWM_COUNT_DOWN);
+    EPWM_ConfigChannelClk(EPWM0, EPWM_CLK_DIV_1);
+    EPWM_ConfigChannelPeriod(EPWM0, 4800);
+    EPWM_ConfigChannelSymDuty(EPWM0, 2400); // 50% duty
+    EPWM_EnableOutput(EPWM_CH_0_MSK | EPWM_CH_1_MSK);
+    // Configure P2.0 and P2.1 for EPWM (P20CFG=0x04, P21CFG=0x04)
+    ctx->xdata_shadow[0xF020u] = 0x04u;
+    ctx->xdata_shadow[0xF021u] = 0x04u;
+
+    EPWM_Start(EPWM_CH_0_MSK);
+
+    bool shoot_through = false;
+    for (uint32_t step = 0; step < 20; ++step) {
+        wink_mcs51_test_advance_virtual_us(10u);
+        cms8s_epwm_poll(ctx);
+        uint8_t pg0 = priv->epwm.pg_pin_level[0];
+        uint8_t pg1 = priv->epwm.pg_pin_level[1];
+        if (pg0 == 1 && pg1 == 1) {
+            shoot_through = true;
+        }
+        check(pg0 != pg1, "PG0 and PG1 must be strictly complementary");
+    }
+    check(!shoot_through, "No shoot-through condition (PG0=1 && PG1=1) observed");
+
+    // ── Test 11: Up-Down Count Mode Non-50% Duty Center-Alignment ─────────────
+    printf("[mcs51_epwm] Test 11: Up-down count mode non-50%% duty center-alignment\n");
+    mcs51_context_reset(ctx);
+    wink_mcs51_xdata_reset();
+    cms8s_epwm_init(ctx);
+    priv = cms8s_priv(ctx);
+
+    EPWM_ConfigRunMode(EPWM_WFG_INDEPENDENT | EPWM_OC_INDEPENDENT | EPWM_OCU_SYMMETRIC | EPWM_COUNT_UP_DOWN);
+    EPWM_ConfigChannelClk(EPWM0, EPWM_CLK_DIV_1);
+    EPWM_ConfigChannelPeriod(EPWM0, 4800); // 200us up, 200us down, total 400us period
+    EPWM_ConfigChannelSymDuty(EPWM0, 3600); // Duty CMP=3600: High only when CNT > 3600 (top 50us of up, top 50us of down)
+    EPWM_EnableOutput(EPWM_CH_0_MSK);
+    ctx->xdata_shadow[0xF020u] = 0x04u;
+
+    EPWM_Start(EPWM_CH_0_MSK);
+
+    // At t=50us (T/8 = 50us, CNT ~ 1200 < 3600): should be LOW (0)
+    wink_mcs51_test_advance_virtual_us(50u);
+    cms8s_epwm_poll(ctx);
+    check(priv->epwm.pg_pin_level[0] == 0, "Up-down count at 50us (T/8) must be LOW");
+
+    // At t=200us (T/2 = 200us, CNT = 4800 >= 3600): should be HIGH (1)
+    wink_mcs51_test_advance_virtual_us(150u);
+    cms8s_epwm_poll(ctx);
+    check(priv->epwm.pg_pin_level[0] == 1, "Up-down count at 200us (center peak) must be HIGH");
+
+    // At t=350us (7T/8 = 350us, CNT ~ 1200 < 3600): should be LOW (0)
+    wink_mcs51_test_advance_virtual_us(150u);
+    cms8s_epwm_poll(ctx);
+    check(priv->epwm.pg_pin_level[0] == 0, "Up-down count at 350us (7T/8) must be LOW");
 
     if (g_fails == 0) {
         printf("[mcs51_epwm] PASS: all CMS8S78xx EPWM unit tests passed.\n");

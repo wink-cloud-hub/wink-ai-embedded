@@ -11,19 +11,126 @@
   "steps": [
     {
       "type": "ASSERT_WAVEFORM",
-      "timeUs": "60ms",
-      "windowUs": ["10ms", "60ms"],
+      "timeUs": "20ms",
+      "windowUs": ["10ms", "20ms"],
+      "pin": 16,
+      "expected": {
+        "kind": "frequencyHz",
+        "value": {
+          "$near": {
+            "target": 5000,
+            "tolerance": 10
+          }
+        }
+      },
+      "description": "[阶段 1 刹车前正常输出] PG0 (pin 16) 载波频率为 5000 Hz"
+    },
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "20ms",
+      "windowUs": ["10ms", "20ms"],
       "pin": 26,
       "expected": {
         "kind": "frequencyHz",
         "value": {
           "$near": {
             "target": 2500,
-            "tolerance": 500
+            "tolerance": 10
           }
         }
       },
-      "description": "EPWM zero-match IRQ toggles P3.2 (pin 26) — verifies EPWM zero-count interrupt loop is alive (brake stop mode)"
+      "description": "[阶段 1 刹车前正常输出] P3.2 (pin 26) 零点中断翻转频率为 2500 Hz"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "26ms",
+      "target": "gpio:27",
+      "matcher": 1,
+      "description": "[阶段 2 刹车触发中断] P3.3 (pin 27) 故障刹车中断触发翻转为 1"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "26ms",
+      "target": "gpio:16",
+      "matcher": 1,
+      "description": "[阶段 2 刹车电平锁定] PG0 锁定为高电平 1"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "26ms",
+      "target": "gpio:17",
+      "matcher": 1,
+      "description": "[阶段 2 刹车电平锁定] PG1 锁定为高电平 1"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "26ms",
+      "target": "gpio:18",
+      "matcher": 0,
+      "description": "[阶段 2 刹车电平锁定] PG2 锁定为低电平 0"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "26ms",
+      "target": "gpio:19",
+      "matcher": 0,
+      "description": "[阶段 2 刹车电平锁定] PG3 锁定为低电平 0"
+    },
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "50ms",
+      "windowUs": ["30ms", "50ms"],
+      "pin": 16,
+      "expected": {
+        "kind": "stableLevel",
+        "level": "HIGH",
+        "holdForUs": "20ms"
+      },
+      "description": "[阶段 3 Stop 模式锁存保护] 软件撤销故障后 PWMCNTE 维持清零，PG0 持续 20ms 冻结为 HIGH（杜绝自动误恢复假绿）"
+    },
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "50ms",
+      "windowUs": ["30ms", "50ms"],
+      "pin": 18,
+      "expected": {
+        "kind": "stableLevel",
+        "level": "LOW",
+        "holdForUs": "20ms"
+      },
+      "description": "[阶段 3 Stop 模式锁存保护] 软件撤销故障后 PG2 持续 20ms 冻结为 LOW"
+    },
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "50ms",
+      "windowUs": ["30ms", "50ms"],
+      "pin": 26,
+      "expected": {
+        "kind": "frequencyHz",
+        "value": {
+          "$near": {
+            "target": 0,
+            "tolerance": 0
+          }
+        }
+      },
+      "description": "[阶段 3 Stop 模式计数器停止] 硬件清零 PWMCNTE 导致过零中断彻底停止，P3.2 (pin 26) 翻转频率为 0 Hz（杜绝后台计数器偷跑假绿）"
+    },
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "72ms",
+      "windowUs": ["52ms", "72ms"],
+      "pin": 16,
+      "expected": {
+        "kind": "frequencyHz",
+        "value": {
+          "$near": {
+            "target": 5000,
+            "tolerance": 10
+          }
+        }
+      },
+      "description": "[阶段 4 手动清除重启] 固件执行 PWMBRKC[3]=1 并重新使能 PWMCNTE 后，PG0 恢复 5000 Hz 振荡"
     }
   ]
 }

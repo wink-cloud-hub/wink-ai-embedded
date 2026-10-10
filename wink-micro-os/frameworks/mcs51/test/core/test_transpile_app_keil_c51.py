@@ -187,5 +187,23 @@ void main(void) { HEATER = 0; }
             mcs51_manifest._CACHE = old_cache
 
 
+    def test_nested_delay_loop_rewrite(self):
+        source = """
+#include <reg52.h>
+void main(void) {
+    unsigned int i, j;
+    for(i=65530;i>0;i--)
+        for(j=100;j>0;j--);
+    for(i=65530;i>0;i--)
+        for(j=1;j>0;j--);
+}
+"""
+        cleaned, counts = transpile_app_keil_c51.cleanup(source, target="native")
+        self.assertIn("wink_mcs51_delay_ms(25);", cleaned)
+        self.assertIn("wink_mcs51_delay_ms(2);", cleaned)
+        self.assertNotIn("for(i=65530;i>0;i--)", cleaned)
+        self.assertEqual(counts["delay"], 2)
+
+
 if __name__ == "__main__":
     unittest.main()

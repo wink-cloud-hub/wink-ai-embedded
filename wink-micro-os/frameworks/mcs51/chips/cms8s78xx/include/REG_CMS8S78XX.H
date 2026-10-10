@@ -380,7 +380,7 @@ xsfr PWMDIF(0xF16F);     // PWM Down Match Interrupt Flag
 #define SYS_LVD_4_6V             (0x0F<<LVD_LVDCON_LVDSEL_Pos)
 
 // PWMCON
-#define EPWM_PWMCON_PWMRUN_Pos   (7)
+#define EPWM_PWMCON_PWMRUN_Pos   (6)
 #define EPWM_PWMCON_PWMRUN_Msk   (0x1 << EPWM_PWMCON_PWMRUN_Pos)
 
 // EIE2 / EIF2 (EPWM interrupt)
@@ -2361,10 +2361,10 @@ static inline void EPWM_ConfigRunMode(uint8_t mode) {
 }
 
 static inline void EPWM_ConfigChannelClk(uint8_t ch, uint8_t div) {
-    if (ch == EPWM0) PWM0DIV = div;
-    else if (ch == EPWM1) PWM1DIV = div;
-    else if (ch == EPWM2) PWM2DIV = div;
-    else if (ch == EPWM3) PWM3DIV = div;
+    if (ch == EPWM0) { PWM01PSC = 0x01; PWM0DIV = div; }
+    else if (ch == EPWM1) { PWM01PSC = 0x01; PWM1DIV = div; }
+    else if (ch == EPWM2) { PWM23PSC = 0x01; PWM2DIV = div; }
+    else if (ch == EPWM3) { PWM23PSC = 0x01; PWM3DIV = div; }
 }
 
 static inline void EPWM_ConfigChannelPeriod(uint8_t ch, uint16_t period) {
@@ -2408,7 +2408,10 @@ static inline void EPWM_AllIntEnable(void) {
 
 static inline void EPWM_Start(uint8_t mask) {
     PWMCNTE |= mask;
-    PWMCON |= EPWM_PWMCON_PWMRUN_Msk;
+}
+
+static inline void EPWM_Stop(uint8_t mask) {
+    PWMCNTE &= ~mask;
 }
 
 static inline uint8_t EPWM_GetZeroIntFlag(uint8_t ch) {

@@ -13,17 +13,95 @@
       "type": "ASSERT_WAVEFORM",
       "timeUs": "60ms",
       "windowUs": ["10ms", "60ms"],
+      "pin": 16,
+      "expected": {
+        "kind": "frequencyHz",
+        "value": {
+          "$near": {
+            "target": 4998.96,
+            "tolerance": 5
+          }
+        }
+      },
+      "description": "CMS8S78xx EPWM DownCountMode PG0 (pin 16) carrier frequency is 4998.96 Hz"
+    },
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "60ms",
+      "windowUs": ["10ms", "60ms"],
+      "pin": 17,
+      "expected": {
+        "kind": "frequencyHz",
+        "value": {
+          "$near": {
+            "target": 4998.96,
+            "tolerance": 5
+          }
+        }
+      },
+      "description": "CMS8S78xx EPWM DownCountMode PG1 (pin 17) complementary carrier frequency is 4998.96 Hz"
+    },
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "60ms",
+      "windowUs": ["10ms", "60ms"],
+      "pin": 18,
+      "expected": {
+        "kind": "frequencyHz",
+        "value": {
+          "$near": {
+            "target": 4998.96,
+            "tolerance": 5
+          }
+        }
+      },
+      "description": "CMS8S78xx EPWM DownCountMode PG2 (pin 18) carrier frequency is 4998.96 Hz"
+    },
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "60ms",
+      "windowUs": ["10ms", "60ms"],
+      "pin": 19,
+      "expected": {
+        "kind": "frequencyHz",
+        "value": {
+          "$near": {
+            "target": 4998.96,
+            "tolerance": 5
+          }
+        }
+      },
+      "description": "CMS8S78xx EPWM DownCountMode PG3 (pin 19) complementary carrier frequency is 4998.96 Hz"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "60000us",
+      "target": "gpio:16",
+      "matcher": 1,
+      "description": "[互补采样点] t=60000us 时 PG0 处于有效电平 1"
+    },
+    {
+      "type": "ASSERT_POINT",
+      "timeUs": "60000us",
+      "target": "gpio:17",
+      "matcher": 0,
+      "description": "[互补采样点] t=60000us 时 PG1 必须互补处于相反电平 0（杜绝同相直通假绿）"
+    },
+    {
+      "type": "ASSERT_WAVEFORM",
+      "timeUs": "60ms",
+      "windowUs": ["10ms", "60ms"],
       "pin": 26,
       "expected": {
         "kind": "frequencyHz",
         "value": {
           "$near": {
-            "target": 2500,
-            "tolerance": 100
+            "target": 2499.48,
+            "tolerance": 5
           }
         }
       },
-      "description": "CMS8S78xx EPWM DownCountMode zero-match IRQ toggles P3.2 (pin 26) producing 2500 Hz square wave"
+      "description": "CMS8S78xx EPWM DownCountMode zero-match IRQ toggles P3.2 (pin 26) producing 2499.48 Hz square wave"
     }
   ]
 }
