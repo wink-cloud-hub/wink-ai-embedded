@@ -99,50 +99,36 @@ def run_proc(argv, *, cwd=None, env=None, timeout=None, log_path=None, expect_st
     return record, stdout, stderr
 
 
-def resolve_entry(wink_ai_root: str | None = None) -> dict:
-    """Pick the CLI entry: explicit ``WINK_AI_ROOT`` > sibling repo > installed ``winkcli``.
-
-    An explicit override that lacks the launcher is a configuration error; it never
-    silently falls back to another version.
-    """
-    explicit = wink_ai_root if wink_ai_root is not None else os.environ.get("WINK_AI_ROOT", "").strip()
+def resolve_entry(launcher_override: str | None = None) -> dict:
+    """Pick the CLI entry: explicit launcher override or installed ``winkcli`` on PATH."""
+    explicit = launcher_override if launcher_override is not None else os.environ.get("WINKCLI_PATH", "").strip()
     if explicit:
-        launcher = Path(explicit) / "packages" / "wink-tools" / "wink.py"
+        launcher = Path(explicit)
         if not launcher.is_file():
-            raise SystemExit(f"entry_error: explicit WINK_AI_ROOT has no packages/wink-tools/wink.py: {launcher}")
-        return {"mode": "sibling_source", "launcher": str(launcher).replace("\\", "/"),
-                "command_prefix": [sys.executable, str(launcher)],
-                "env": {"WINK_DEV": "1"}, "wink_ai_root": str(Path(explicit).resolve()).replace("\\", "/"),
-                "reason": "explicit WINK_AI_ROOT override"}
-    sibling = EMBEDDED_ROOT.parent / "wink-ai" / "packages" / "wink-tools" / "wink.py"
-    if sibling.is_file():
-        return {"mode": "sibling_source", "launcher": str(sibling).replace("\\", "/"),
-                "command_prefix": [sys.executable, str(sibling)],
-                "env": {"WINK_DEV": "1"},
-                "wink_ai_root": str(sibling.parents[2]).replace("\\", "/"),
-                "reason": "sibling wink-ai repository of the embedded root"}
+            raise SystemExit(f"entry_error: explicit launcher does not exist: {launcher}")
+        return {"mode": "installed_cli", "launcher": str(launcher).replace("\\", "/"),
+                "command_prefix": [str(launcher)],
+                "env": {}, "cli_path": str(launcher).replace("\\", "/"),
+                "reason": "explicit launcher override"}
     installed = shutil.which("winkcli")
     if installed:
-        return {"mode": "installed_cli", "launcher": installed, "command_prefix": [installed],
-                "env": {}, "wink_ai_root": None,
-                "reason": "no sibling launcher; using installed winkcli from PATH (WINK_DEV not inherited)"}
-    raise SystemExit(f"entry_error: no launcher found (tried {sibling} and winkcli on PATH)")
+        return {"mode": "installed_cli", "launcher": installed.replace("\\", "/"),
+                "command_prefix": [installed],
+                "env": {}, "cli_path": installed.replace("\\", "/"),
+                "reason": "using installed winkcli from PATH"}
+    raise SystemExit("entry_error: no launcher found ('winkcli' not found on PATH; please install winkcli globally or specify via --cli-path)")
 
 
 def entry_fingerprint(entry: dict) -> dict:
-    """Version/fingerprint of the chosen entry; unexercised modes stay NOT_RUN."""
+    """Version/fingerprint of the chosen entry."""
     fingerprint = {"mode": entry["mode"], "launcher": entry["launcher"],
                    "launcher_sha256": sha256_file(Path(entry["launcher"]))
-                   if entry["mode"] == "sibling_source" else None,
+                   if entry.get("launcher") and Path(entry["launcher"]).is_file() else None,
                    "version": None, "version_probe": "NOT_RUN"}
-    if entry["mode"] == "installed_cli":
-        record, stdout, _ = run_proc([entry["launcher"], "--version"], timeout=120)
-        fingerprint["version_probe"] = record["status"]
-        fingerprint["version"] = (stdout or "").strip().splitlines()[:1]
-    else:
-        fingerprint["version"] = "source tree (no packaged version)"
-    fingerprint["alternate_modes"] = {"installed_cli": "NOT_RUN"
-                                      if entry["mode"] != "installed_cli" else "SELECTED"}
+    record, stdout, _ = run_proc([entry["launcher"], "--version"], timeout=120)
+    fingerprint["version_probe"] = record["status"]
+    fingerprint["version"] = (stdout or "").strip().splitlines()[:1]
+    fingerprint["alternate_modes"] = {"installed_cli": "SELECTED"}
     return fingerprint
 
 
@@ -685,7 +671,7 @@ def assemble_apps_ledger(run_root: Path, all_apps: list[Path], entry: dict, scop
 
 def phase_apps(args) -> int:
     run_root = run_root_of(args.run_root)
-    entry = resolve_entry(args.wink_ai_root)
+    entry = resolve_entry(args.cli_path)
     all_apps = enumerate_apps(EMBEDDED_ROOT / VENDOR_APPS_REL)
     selected, scope = select_apps(all_apps, args)
     iso_base = iso_base_of(run_root)
@@ -773,7 +759,7 @@ def assemble_scenarios_ledger(run_root: Path, all_apps: list[Path], entry: dict,
 
 def phase_scenarios(args) -> int:
     run_root = run_root_of(args.run_root)
-    entry = resolve_entry(args.wink_ai_root)
+    entry = resolve_entry(args.cli_path)
     all_apps = enumerate_apps(EMBEDDED_ROOT / VENDOR_APPS_REL)
     selected, scope = select_apps(all_apps, args)
     iso_base = iso_base_of(run_root)
@@ -836,7 +822,7 @@ def mirror_audit(flag: str, json_path: Path, run_root: Path) -> dict:
 
 def phase_summary(args) -> int:
     run_root = run_root_of(args.run_root)
-    entry = resolve_entry(args.wink_ai_root)
+    entry = resolve_entry(args.cli_path)
     preflight, preflight_input = read_ledger(run_root, "preflight.json")
     pilot, pilot_input = read_ledger(run_root, "pilot.json")
     apps, apps_input = read_ledger(run_root, "apps.json")
@@ -937,7 +923,7 @@ def write_summary_markdown(run_root: Path, payload: dict) -> None:
 
 def phase_preflight(args) -> int:
     run_root = run_root_of(args.run_root)
-    entry = resolve_entry(args.wink_ai_root)
+    entry = resolve_entry(args.cli_path)
     apps = enumerate_apps(EMBEDDED_ROOT / VENDOR_APPS_REL)
     iso_base = iso_base_of(run_root)
     worst = max(apps, key=lambda app: len(app.name))
@@ -966,7 +952,7 @@ def phase_preflight(args) -> int:
 
 def phase_pilot(args) -> int:
     run_root = run_root_of(args.run_root)
-    entry = resolve_entry(args.wink_ai_root)
+    entry = resolve_entry(args.cli_path)
     app_name = args.app
     app_dir = EMBEDDED_ROOT / VENDOR_APPS_REL / app_name
     if not app_dir.is_dir():
@@ -1124,7 +1110,7 @@ def run_negatives(run_root: Path, rounds: dict, scenario) -> list[dict]:
         resolve_entry(str(run_root / "no-such-wink-root"))
     except SystemExit as exc:
         explicit_missing = str(exc)
-    results.append({"case": "invalid_explicit_wink_ai_root_rejected",
+    results.append({"case": "invalid_explicit_launcher_rejected",
                     "status": "PASS" if explicit_missing and "entry_error" in explicit_missing else "FAIL",
                     "observed": explicit_missing})
 
@@ -1152,7 +1138,8 @@ def main(argv=None) -> int:
     parser.add_argument("--app", default="gpio")
     parser.add_argument("--only", default=None, help="comma-separated app names (rehearsal chunks)")
     parser.add_argument("--shard", default=None, help="k/N: process every Nth app, index k (1-based)")
-    parser.add_argument("--wink-ai-root", default=None)
+    parser.add_argument("--cli-path", "--launcher", dest="cli_path", default=None,
+                        help="explicit winkcli executable path")
     parser.add_argument("--build-timeout", type=int, default=1800)
     parser.add_argument("--run-timeout", type=int, default=1200)
     parser.add_argument("--sdcc-timeout", type=int, default=600)

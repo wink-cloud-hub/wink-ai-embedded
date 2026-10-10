@@ -157,28 +157,22 @@ MUTATIONS = [
 ]
 
 
-def resolve_wink_py() -> Path:
-    explicit = os.environ.get("WINK_AI_ROOT", "").strip()
-    if explicit:
-        p = Path(explicit) / "packages" / "wink-tools" / "wink.py"
-        if p.is_file():
-            return p
-    sibling = EMBEDDED_ROOT.parent / "wink-ai" / "packages" / "wink-tools" / "wink.py"
-    if sibling.is_file():
-        return sibling
-    raise RuntimeError(f"Unable to resolve wink.py launcher at {sibling}")
+def resolve_winkcli() -> str:
+    cli = shutil.which("winkcli")
+    if not cli:
+        raise RuntimeError("Unable to find 'winkcli' executable on PATH. Please install winkcli globally (e.g. 'pip install wink-tools') or ensure it is added to PATH.")
+    return cli
 
 
 def sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def run_scenario(wink_py: Path, app_rel: str, scenario_rel: str, timeout: int = 120) -> tuple[int, str, str]:
+def run_scenario(winkcli: str, app_rel: str, scenario_rel: str, timeout: int = 120) -> tuple[int, str, str]:
     app_path = EMBEDDED_ROOT / app_rel
     scenario_path = EMBEDDED_ROOT / scenario_rel
     cmd = [
-        sys.executable,
-        str(wink_py),
+        winkcli,
         "sim",
         "run",
         "--app",
@@ -187,7 +181,6 @@ def run_scenario(wink_py: Path, app_rel: str, scenario_rel: str, timeout: int = 
         str(scenario_path),
     ]
     env = dict(os.environ)
-    env["WINK_DEV"] = "1"
     env["PYTHONIOENCODING"] = "utf-8"
     env["PYTHONUTF8"] = "1"
 
@@ -210,7 +203,7 @@ def main() -> int:
     parser.add_argument("--skip-baseline", action="store_true", help="Skip the initial baseline sanity check")
     args = parser.parse_args()
 
-    wink_py = resolve_wink_py()
+    winkcli = resolve_winkcli()
     if not CMS8S_EPWM_CPP.is_file():
         print(f"[FATAL] Target source file not found: {CMS8S_EPWM_CPP}", file=sys.stderr)
         return 2
@@ -223,7 +216,7 @@ def main() -> int:
     print("================================================================================")
     print(f" Source Under Test : {CMS8S_EPWM_CPP.relative_to(EMBEDDED_ROOT)}")
     print(f" Source SHA256     : {original_sha}")
-    print(f" Launcher Path     : {wink_py}")
+    print(f" Launcher Path     : {winkcli}")
     print("================================================================================\n")
 
     # Step 0: Initial Baseline Sanity Check (must PASS 100%)
@@ -231,7 +224,7 @@ def main() -> int:
         print("[0/5] Running Baseline Sanity Check (unmutated epwm_down_count)...")
         t0 = time.time()
         ret, stdout, stderr = run_scenario(
-            wink_py,
+            winkcli,
             "wink-micro-app/vendor/cms8s78xx/epwm_down_count",
             "wink-micro-app/vendor/cms8s78xx/epwm_down_count/unisim-scenarios/epwm_down_count.scenario.json",
         )
@@ -274,7 +267,7 @@ def main() -> int:
 
             try:
                 t0 = time.time()
-                ret, stdout, stderr = run_scenario(wink_py, mut["app"], mut["scenario"])
+                ret, stdout, stderr = run_scenario(winkcli, mut["app"], mut["scenario"])
                 elapsed = time.time() - t0
             finally:
                 # Revert immediately to protect code integrity

@@ -119,58 +119,42 @@ class CleanTargetTests(TmpDirCase):
 
 
 class EntryResolutionTests(TmpDirCase):
-    def _launcher(self, root: Path) -> Path:
-        launcher = root / "packages" / "wink-tools" / "wink.py"
-        launcher.parent.mkdir(parents=True, exist_ok=True)
-        launcher.write_text("# fake\n", encoding="utf-8")
-        return launcher
+    def test_explicit_launcher_is_used(self):
+        fake = self.tmp / ("winkcli.exe" if os.name == "nt" else "winkcli")
+        fake.write_text("# fake\n", encoding="utf-8")
+        entry = rb.resolve_entry(str(fake))
+        self.assertEqual(entry["mode"], "installed_cli")
+        self.assertEqual(entry["reason"], "explicit launcher override")
 
-    def test_explicit_root_is_used_with_dev_mode(self):
-        root = self.tmp / "wink-ai"
-        self._launcher(root)
-        entry = rb.resolve_entry(str(root))
-        self.assertEqual(entry["mode"], "sibling_source")
-        self.assertEqual(entry["env"]["WINK_DEV"], "1")
-        self.assertEqual(entry["reason"], "explicit WINK_AI_ROOT override")
-
-    def test_invalid_explicit_root_never_falls_back_silently(self):
+    def test_invalid_explicit_launcher_never_falls_back_silently(self):
         with self.assertRaises(SystemExit) as ctx:
             rb.resolve_entry(str(self.tmp / "nope"))
         self.assertIn("entry_error", str(ctx.exception))
 
-    def test_installed_entry_drops_dev_mode(self):
+    def test_installed_entry_from_path(self):
         monkey_path = self.tmp / "bin"
         monkey_path.mkdir()
         fake = monkey_path / ("winkcli.exe" if os.name == "nt" else "winkcli")
         fake.write_text("# fake\n", encoding="utf-8")
         fake.chmod(0o755)
-        original_which, original_sibling = rb.shutil.which, rb.EMBEDDED_ROOT
+        original_which = rb.shutil.which
         rb.shutil.which = lambda name: str(fake) if name == "winkcli" else None
-        rb.EMBEDDED_ROOT = self.tmp / "embedded-missing"
         try:
-            entry = rb.resolve_entry("")
+            entry = rb.resolve_entry(None)
         finally:
-            rb.shutil.which, rb.EMBEDDED_ROOT = original_which, original_sibling
+            rb.shutil.which = original_which
         self.assertEqual(entry["mode"], "installed_cli")
         self.assertEqual(entry["env"], {})
 
     def test_no_entry_at_all_is_an_error(self):
-        original_which, original_sibling = rb.shutil.which, rb.EMBEDDED_ROOT
+        original_which = rb.shutil.which
         rb.shutil.which = lambda name: None
-        rb.EMBEDDED_ROOT = self.tmp / "embedded-missing"
         try:
             with self.assertRaises(SystemExit) as ctx:
-                rb.resolve_entry("")
+                rb.resolve_entry(None)
         finally:
-            rb.shutil.which, rb.EMBEDDED_ROOT = original_which, original_sibling
+            rb.shutil.which = original_which
         self.assertIn("entry_error", str(ctx.exception))
-
-    def test_unexercised_modes_are_marked_not_run(self):
-        root = self.tmp / "wink-ai"
-        self._launcher(root)
-        fingerprint = rb.entry_fingerprint(rb.resolve_entry(str(root)))
-        self.assertEqual(fingerprint["alternate_modes"]["installed_cli"], "NOT_RUN")
-        self.assertEqual(fingerprint["version_probe"], "NOT_RUN")
 
 
 class IsolationStageTests(TmpDirCase):
@@ -401,7 +385,7 @@ class EvidenceRootTests(TmpDirCase):
                           "executed_object_mismatch_rejected", "embedded_build_path_rejected",
                           "scenario_pairing_rejected", "clean_outside_expected_tree_rejected",
                           "iso_path_budget_rejected",
-                          "invalid_explicit_wink_ai_root_rejected", "missing_report_rejected"])
+                          "invalid_explicit_launcher_rejected", "missing_report_rejected"])
         self.assertTrue(all(r["status"] == "PASS" for r in results),
                         msg=json.dumps(results, indent=2, default=str))
         self.assertEqual(results[6]["observed"]["batch"]["status"], "PASS")

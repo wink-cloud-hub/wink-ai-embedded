@@ -3,19 +3,18 @@
   One-click MCS-51 headless evidence runner (Stage 0/2 live channels).
 
 .DESCRIPTION
-  Runs every mcs51 carrier app's headless scenario(s) through the CROSS-REPO
-  unisim CLI (sister repo wink-ai -> packages/wink-tools/wink.py), the single
-  sanctioned way to produce mcs51 headless evidence. Each app's scenarios live
-  in <app>/unisim-scenarios/*.scenario.json (the workspace convention the
-  embedded-frontend workspace-scanner discovers); the --scenarios argument is
-  that DIRECTORY, so all *.scenario.json in it run in one invocation.
+  Runs every mcs51 carrier app's headless scenario(s) through `winkcli` (the
+  unified build & simulation toolchain CLI), the single sanctioned way to
+  produce mcs51 headless evidence. Each app's scenarios live in
+  <app>/unisim-scenarios/*.scenario.json; the --scenarios argument is that
+  DIRECTORY, so all *.scenario.json in it run in one invocation.
 
   This standardizes two things that were previously ad-hoc:
     1. Scenario location  : <app>/unisim-scenarios/  (NOT the app root)
-    2. Invocation         : cross-repo `wink.py sim run --mode headless`,
-                            passing the scenarios directory.
+    2. Invocation         : `winkcli sim run --mode headless`, passing the
+                            scenarios directory.
 
-  The sister CLI auto-builds the production WASM, generates device-tree.json,
+  The CLI auto-builds the production WASM, generates device-tree.json,
   and extracts assets before running the real PinArbiter + real plugins.
 
 .PARAMETER App
@@ -26,11 +25,9 @@
   Reporter passed through to the CLI (spec|json|junit). Default: spec.
 
 .EXAMPLE
-  # from anywhere; auto-locates the sister repo as a sibling directory
   powershell -File wink-micro-os/frameworks/mcs51/tools/run_mcs51_headless_evidence.ps1
 
 .EXAMPLE
-  $env:WINK_AI_ROOT = "D:\path\to\wink-ai"   # override sister repo location
   .\run_mcs51_headless_evidence.ps1 -App mcs51_uart_echo
 #>
 [CmdletBinding()]
@@ -42,34 +39,20 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# --- Locate repos -----------------------------------------------------------
-# This script lives in <embedded>/wink-micro-os/frameworks/mcs51/tools/.
-$embeddedRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..')
-
-# Sister repo: $env:WINK_AI_ROOT wins; else assume a sibling directory named
-# "wink-ai" next to this "wink-ai-embedded" checkout.
-$winkToolsDir = $null
-if ($env:WINK_AI_ROOT) {
-    $cand = Join-Path $env:WINK_AI_ROOT 'packages\wink-tools'
-    if (Test-Path (Join-Path $cand 'wink.py')) { $winkToolsDir = $cand }
-}
-if (-not $winkToolsDir) {
-    $sibling = Join-Path (Split-Path $embeddedRoot -Parent) 'wink-ai\packages\wink-tools'
-    if (Test-Path (Join-Path $sibling 'wink.py')) { $winkToolsDir = $sibling }
-}
-if (-not $winkToolsDir) {
-    Write-Error "Could not locate sister repo wink-tools. `
-Set `$env:WINK_AI_ROOT to the wink-ai checkout root."
+# --- Verify prerequisites ---------------------------------------------------
+if (-not (Get-Command winkcli -ErrorAction SilentlyContinue)) {
+    Write-Error "'winkcli' command not found on PATH.`n`
+Please install winkcli globally (e.g. 'pip install wink-tools') or ensure winkcli is added to your system PATH."
     exit 2
 }
 
-$microAppDir = Join-Path $embeddedRoot 'wink-micro-app'
+# This script lives in <embedded>/wink-micro-os/frameworks/mcs51/tools/.
+$embeddedRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..')
+$microAppDir  = Join-Path $embeddedRoot 'wink-micro-app'
 
 # Carrier apps in channel-proof order. All five are expected to PASS. The two
 # digital-INPUT apps (button_led polled, button_led_int /INT0) exercise mcs51
-# digital pin INPUT; they were broken by the sister multi-arch headless engine
-# (behavioral-mode PluginContext.writePin gate) and are green again after the
-# sister fix 8d06a4e8 (arbiter driven unconditionally; only the timing waveform
+# digital pin INPUT (arbiter driven unconditionally; only the timing waveform
 # edge queue is gated to timing mode).
 $carriers = @(
     @{ Name = 'mcs51_uart_hello';       Rel = 'mcs51/uart_hello';       Channel = 'ch2 UART TX (T1)' },
@@ -99,7 +82,6 @@ if (-not $carriers) {
 }
 
 # --- Run each carrier -------------------------------------------------------
-$env:WINK_DEV = '1'   # make winkcli use the sister TS source directly (no build)
 $results = @()
 
 foreach ($c in $carriers) {
@@ -117,7 +99,6 @@ foreach ($c in $carriers) {
         continue
     }
 
-    Push-Location $winkToolsDir
     # Native stderr (cmake/build chatter) must NOT be redirected: in Windows
     # PowerShell 5.1 `2>&1` wraps each stderr line in an ErrorRecord and, with
     # $ErrorActionPreference='Stop', aborts the script. Let stdout/stderr flow
@@ -127,13 +108,12 @@ foreach ($c in $carriers) {
     try {
         # --scenarios is the DIRECTORY -> loadScenarioSpecs auto-runs every
         # *.scenario.json in it. CLI auto-builds WASM + device-tree first.
-        & python wink.py sim run --app "$appDir" --mode headless `
+        winkcli sim run --app "$appDir" --mode headless `
             --scenarios "$scenDir" --reporter $Reporter
         $ok = ($LASTEXITCODE -eq 0)
     }
     finally {
         $ErrorActionPreference = $prevEap
-        Pop-Location
     }
 
     $results += [pscustomobject]@{ App = $c.Name; Channel = $c.Channel; Ok = $ok; Note = '' }
@@ -151,7 +131,7 @@ foreach ($r in $results) {
 $failed = $results | Where-Object { -not $_.Ok }
 if ($failed) {
     Write-Host ""
-    Write-Warning "$($failed.Count) carrier(s) failed. Inspect the scenario step output above; all five carriers are expected to pass (digital-INPUT fixed in sister 8d06a4e8)."
+    Write-Warning "$($failed.Count) carrier(s) failed. Inspect the scenario step output above; all five carriers are expected to pass."
     exit 1
 }
 Write-Host ""

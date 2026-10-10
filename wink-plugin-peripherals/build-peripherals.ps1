@@ -27,12 +27,10 @@ function Ensure-PeripheralEnvironment {
     # calls into one command with an Object[] ChildPath argument, which failed
     # silently and left the probe (and all junction setup) disabled.
     $CandidateRoots = @(
-        (Join-Path $ScriptDir "..\..\wink-ai\packages")
-        (Join-Path $ScriptDir "..\wink-ai\packages")
         (Join-Path $ScriptDir "..\packages")
     )
-    if ($env:WINK_AI_ROOT) {
-        $CandidateRoots = @((Join-Path $env:WINK_AI_ROOT "packages")) + $CandidateRoots
+    if ($env:WINK_PACKAGES_DIR) {
+        $CandidateRoots = @($env:WINK_PACKAGES_DIR) + $CandidateRoots
     }
 
     foreach ($cand in $CandidateRoots) {

@@ -3,9 +3,9 @@
   One-click ESP-IDF v6.1 headless evidence runner for ESP32.
 
 .DESCRIPTION
-  Runs every ESP32 ESP-IDF vendor app's headless scenario(s) through the CROSS-REPO
-  unisim CLI (sister repo wink-ai -> packages/wink-tools/wink.py), the single
-  sanctioned way to produce ESP-IDF headless evidence. Each app's scenarios live
+  Runs every ESP32 ESP-IDF vendor app's headless scenario(s) through `winkcli` (the
+  unified build & simulation toolchain CLI), the single sanctioned way to
+  produce ESP-IDF headless evidence. Each app's scenarios live
   in <app>/unisim-scenarios/*.scenario.json; the --scenarios argument is that
   DIRECTORY or file path.
 
@@ -48,25 +48,15 @@ if ($ArtifactsDir -and (-not $App -or $WriteEvidence)) {
 }
 if ($ArtifactsDir) { $ArtifactsDir = [System.IO.Path]::GetFullPath($ArtifactsDir) }
 
-# --- Locate repos -----------------------------------------------------------
-# This script lives in <embedded>/wink-micro-os/frameworks/esp_idf/tools/.
-$embeddedRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..')
-
-# Sister repo: $env:WINK_AI_ROOT wins; else assume a sibling directory named
-# "wink-ai" next to this "wink-ai-embedded" checkout.
-$winkToolsDir = $null
-if ($env:WINK_AI_ROOT) {
-    $cand = Join-Path $env:WINK_AI_ROOT 'packages\wink-tools'
-    if (Test-Path (Join-Path $cand 'wink.py')) { $winkToolsDir = $cand }
-}
-if (-not $winkToolsDir) {
-    $sibling = Join-Path (Split-Path $embeddedRoot -Parent) 'wink-ai\packages\wink-tools'
-    if (Test-Path (Join-Path $sibling 'wink.py')) { $winkToolsDir = $sibling }
-}
-if (-not $winkToolsDir) {
-    Write-Error "Could not locate sister repo wink-tools. Set `$env:WINK_AI_ROOT to the wink-ai checkout root."
+# --- Verify prerequisites ---------------------------------------------------
+if (-not (Get-Command winkcli -ErrorAction SilentlyContinue)) {
+    Write-Error "'winkcli' command not found on PATH.`n`
+Please install winkcli globally (e.g. 'pip install wink-tools') or ensure winkcli is added to your system PATH."
     exit 2
 }
+
+# This script lives in <embedded>/wink-micro-os/frameworks/esp_idf/tools/.
+$embeddedRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..')
 
 $microAppDir = Join-Path $embeddedRoot 'wink-micro-app'
 $espIdfBaseDir = Join-Path $microAppDir 'vendor\esp_idfv61'
@@ -155,7 +145,6 @@ if ($App) {
 if ($ArtifactsDir -and @($carriers).Count -ne 1) {
     throw 'Isolated outputs require exactly one matched App.'
 }
-$env:WINK_DEV = '1'
 $results = @()
 
 foreach ($c in $carriers) {
@@ -187,25 +176,23 @@ foreach ($c in $carriers) {
         }
     }
 
-    $reportSrc = if ($ArtifactsDir) { Join-Path $ArtifactsDir 'run-report.json' } else { Join-Path $winkToolsDir 'artifacts\run-report.json' }
+    $targetArtifactsDir = if ($ArtifactsDir) { $ArtifactsDir } else { Join-Path $embeddedRoot 'artifacts' }
+    $reportSrc = Join-Path $targetArtifactsDir 'run-report.json'
     # Anti-False-Green: Remove any stale report from previous runs to guarantee freshness
     if (Test-Path -LiteralPath $reportSrc) {
         Remove-Item -LiteralPath $reportSrc -Force
     }
 
-    Push-Location $winkToolsDir
     $prevEap = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     $actualReporter = if ($WriteEvidence -and $Reporter -eq 'spec') { 'json' } else { $Reporter }
-    $simArgs = @('wink.py', 'sim', 'run', '--app', $appDir, '--mode', 'headless', '--scenarios', $targetScen, '--reporter', $actualReporter)
-    if ($ArtifactsDir) { $simArgs += @('--artifacts', $ArtifactsDir) }
+    $simArgs = @('sim', 'run', '--app', $appDir, '--mode', 'headless', '--scenarios', $targetScen, '--reporter', $actualReporter, '--artifacts', $targetArtifactsDir)
     try {
-        & python @simArgs
+        & winkcli @simArgs
         $ok = ($LASTEXITCODE -eq 0)
     }
     finally {
         $ErrorActionPreference = $prevEap
-        Pop-Location
     }
 
     if ($ok -and $WriteEvidence) {
