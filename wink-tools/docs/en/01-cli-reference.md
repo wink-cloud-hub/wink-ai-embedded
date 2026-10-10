@@ -116,11 +116,12 @@ See [05 · SDK Packaging Guide](./05-sdk-packaging.md).
 <!-- BEGIN AUTO-GENERATED: CLI-TREE -->
 ## Appendix A - Full Command Reference (auto-generated, do not edit)
 
-> winkcli `v0.1.0` · snapshot schema 1 · generated 2026-09-18T14:11:23Z
+> winkcli `v0.1.0` · snapshot schema 1 · generated 2026-10-10T05:38:09Z
 
 ### Global flags
 
 - `--skip-toolchain-check` · Bypass toolchain gating (emergency escape hatch; prints WARN).
+- `--skip-auth-check` · Bypass the cloud session gate for this run (audited emergency escape hatch).
 - `--json` · Output structured JSON telemetry envelope to stdout.
 
 ### `winkcli auth`
@@ -129,15 +130,20 @@ Inspect authentication status and account mode
 
 #### `winkcli auth login`
 
-Log in to Wink Cloud (reserved for cloud release)
+Log in to Wink Cloud (browser device code, or --token)
+
+- `--token` · Store a pre-issued API token instead of the device-code flow
+- `--no-browser` · Do not try to open the browser automatically
 
 #### `winkcli auth logout`
 
-Log out of Wink Cloud account
+Log out of Wink Cloud and clear local credentials
 
 #### `winkcli auth status`
 
 Show current authentication mode and entitlements
+
+- `--probe` · Force a live cloud session probe (bypasses the cache; exits 1 when blocked)
 
 ### `winkcli build`
 
@@ -186,6 +192,64 @@ Build WASM simulator binary for an app
 - `--app` · default: `oled_dashboard` · App name in samples/ or path to app directory
 - `--clean` · Clean the build directory before building
 - `--sdk-mode` · choices: `source`, `binary` · SDK mode: 'source' (build from source) or 'binary' (use precompiled .a).
+
+### `winkcli cache`
+
+Inspect and prune build cache directories
+
+- `--target` · choices: `host`, `wasm`, `esp32`, `all` · Filter or clean build leaves by target platform (host, wasm, esp32, all)
+- `--prune` · Prune stale build directories older than threshold (default: 7d)
+- `--older-than` · default: `7d` · Prune leaves older than this duration (e.g. 7d, 24h, 30m). Default: 7d
+- `--all` · Clean all build targets
+
+#### `winkcli cache clean`
+
+Clean build directories for target platform
+
+- `--target` · choices: `host`, `wasm`, `esp32`, `all` · default: `all` · Platform target to clean (default: all)
+
+#### `winkcli cache du`
+
+Alias for 'cache status'
+
+#### `winkcli cache prune`
+
+Prune build directories older than specified age
+
+- `--older-than` · default: `7d` · Prune leaves older than this duration (e.g. 7d, 24h, 30m). Default: 7d
+
+#### `winkcli cache status`
+
+Show disk usage breakdown of build/ directory
+
+### `winkcli clean`
+
+Clean build artifacts and prune cache directories
+
+- `--target` · choices: `host`, `wasm`, `esp32`, `all` · Filter or clean build leaves by target platform (host, wasm, esp32, all)
+- `--prune` · Prune stale build directories older than threshold (default: 7d)
+- `--older-than` · default: `7d` · Prune leaves older than this duration (e.g. 7d, 24h, 30m). Default: 7d
+- `--all` · Clean all build targets
+
+#### `winkcli clean clean`
+
+Clean build directories for target platform
+
+- `--target` · choices: `host`, `wasm`, `esp32`, `all` · default: `all` · Platform target to clean (default: all)
+
+#### `winkcli clean du`
+
+Alias for 'cache status'
+
+#### `winkcli clean prune`
+
+Prune build directories older than specified age
+
+- `--older-than` · default: `7d` · Prune leaves older than this duration (e.g. 7d, 24h, 30m). Default: 7d
+
+#### `winkcli clean status`
+
+Show disk usage breakdown of build/ directory
 
 ### `winkcli completion`
 
@@ -278,6 +342,42 @@ Scan C/C++/TS/YAML files for raw i18n strings
 - `--strict` · Fail with non-zero exit code if unextracted strings found
 - `--all` · Run all checks except logic invariant
 
+### `winkcli ide`
+
+Manage IDE language service compilation databases (ADR-0002 / PLAN-20260928)
+
+#### `winkcli ide select`
+
+Switch root build/compile_commands.json to target
+
+- `target` · choices: `host`, `esp32`, `wasm` · **required** · Target platform database to activate
+
+#### `winkcli ide status`
+
+Show active and available compile_commands.json databases
+
+### `winkcli internal`
+
+Internal proprietary verbs (harvest-sdk, …)
+
+#### `winkcli internal harvest-sdk`
+
+Harvest vendor SDK headers (ADR-0066/0067)
+
+- `--vendor` · default: `esp-idf`
+- `--version` · default: `v6.1`
+- `--target` · default: `esp32`
+- `--sdk-path`
+- `--out`
+- `--dry-run`
+- `--format` · choices: `text`, `json` · default: `text`
+- `--include-mode` · choices: `block`, `survey` · default: `block`
+- `--ast-filter` · default: `True`
+- `--no-ast-filter` · default: `True`
+- `--allow-unverified`
+- `--verify-abi` · 收割后执行 ABI/宏值等价校核（失败 exit 3）
+- `--base-artifact` · 上一版 artifact include 根（overlay 冲突归因）
+
 ### `winkcli lint`
 
 Run YAML layer/API/Arduino lints (ADR-0043)
@@ -315,6 +415,13 @@ Pack source SDK release tarball
 
 - `--out` · default: `build/dist` · Output directory for tarball
 
+### `winkcli path`
+
+Resolve and print the build directory path for an application
+
+- `app` · default: `devkitc_smoke` · Application name or relative path
+- `--target` · choices: `wasm`, `host`, `esp32` · default: `wasm` · Target platform (default: wasm)
+
 ### `winkcli schema`
 
 Manage and migrate driver YAML schemas
@@ -346,7 +453,7 @@ Manage, build, and run the Wink Unified Simulation Engine (winksim)
 
 Verify dual-run consistency across Headless Direct and Worker Twin engines
 
-- `--app` · Target application path or name (e.g. vendor_cms8s78xx_led_4com_8seg)
+- `--app` · Target application path or name (e.g. vendor/cms8s78xx/led_4com_8seg)
 - `--all` · Batch verify consistency across all micro-apps in workspace
 - `--filter` · Filter pattern for app names when running with --all (e.g. mcs51_*)
 - `--scenario` · Explicit path to a .scenario.json file

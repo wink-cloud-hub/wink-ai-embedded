@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "winkcli_version": "0.1.0",
-  "generated_at": "2026-09-18T14:10:39Z",
+  "generated_at": "2026-10-10T05:38:08Z",
   "global_flags": [
     {
       "flags": [
@@ -15,6 +15,19 @@
       "nargs": 0,
       "choices": null,
       "help": "Bypass toolchain gating (emergency escape hatch; prints WARN)."
+    },
+    {
+      "flags": [
+        "--skip-auth-check"
+      ],
+      "dest": "skip_auth_check",
+      "metavar": null,
+      "type": null,
+      "default": false,
+      "required": false,
+      "nargs": 0,
+      "choices": null,
+      "help": "Bypass the cloud session gate for this run (audited emergency escape hatch)."
     },
     {
       "flags": [
@@ -40,14 +53,41 @@
         {
           "name": "login",
           "aliases": [],
-          "help": "Log in to Wink Cloud (reserved for cloud release)",
-          "flags": [],
+          "help": "Log in to Wink Cloud (browser device code, or --token)",
+          "flags": [
+            {
+              "flags": [
+                "--token"
+              ],
+              "dest": "token",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Store a pre-issued API token instead of the device-code flow"
+            },
+            {
+              "flags": [
+                "--no-browser"
+              ],
+              "dest": "no_browser",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Do not try to open the browser automatically"
+            }
+          ],
           "subcommands": []
         },
         {
           "name": "logout",
           "aliases": [],
-          "help": "Log out of Wink Cloud account",
+          "help": "Log out of Wink Cloud and clear local credentials",
           "flags": [],
           "subcommands": []
         },
@@ -55,7 +95,21 @@
           "name": "status",
           "aliases": [],
           "help": "Show current authentication mode and entitlements",
-          "flags": [],
+          "flags": [
+            {
+              "flags": [
+                "--probe"
+              ],
+              "dest": "probe",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "Force a live cloud session probe (bypasses the cache; exits 1 when blocked)"
+            }
+          ],
           "subcommands": []
         }
       ]
@@ -366,6 +420,260 @@
               "help": "SDK mode: 'source' (build from source) or 'binary' (use precompiled .a)."
             }
           ],
+          "subcommands": []
+        }
+      ]
+    },
+    {
+      "name": "cache",
+      "aliases": [],
+      "help": "Inspect and prune build cache directories",
+      "flags": [
+        {
+          "flags": [
+            "--target"
+          ],
+          "dest": "target",
+          "metavar": null,
+          "type": null,
+          "default": null,
+          "required": false,
+          "nargs": null,
+          "choices": [
+            "host",
+            "wasm",
+            "esp32",
+            "all"
+          ],
+          "help": "Filter or clean build leaves by target platform (host, wasm, esp32, all)"
+        },
+        {
+          "flags": [
+            "--prune"
+          ],
+          "dest": "prune",
+          "metavar": null,
+          "type": null,
+          "default": false,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "help": "Prune stale build directories older than threshold (default: 7d)"
+        },
+        {
+          "flags": [
+            "--older-than"
+          ],
+          "dest": "older_than",
+          "metavar": null,
+          "type": null,
+          "default": "7d",
+          "required": false,
+          "nargs": null,
+          "choices": null,
+          "help": "Prune leaves older than this duration (e.g. 7d, 24h, 30m). Default: 7d"
+        },
+        {
+          "flags": [
+            "--all"
+          ],
+          "dest": "all",
+          "metavar": null,
+          "type": null,
+          "default": false,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "help": "Clean all build targets"
+        }
+      ],
+      "subcommands": [
+        {
+          "name": "clean",
+          "aliases": [],
+          "help": "Clean build directories for target platform",
+          "flags": [
+            {
+              "flags": [
+                "--target"
+              ],
+              "dest": "target",
+              "metavar": null,
+              "type": null,
+              "default": "all",
+              "required": false,
+              "nargs": null,
+              "choices": [
+                "host",
+                "wasm",
+                "esp32",
+                "all"
+              ],
+              "help": "Platform target to clean (default: all)"
+            }
+          ],
+          "subcommands": []
+        },
+        {
+          "name": "du",
+          "aliases": [],
+          "help": "Alias for 'cache status'",
+          "flags": [],
+          "subcommands": []
+        },
+        {
+          "name": "prune",
+          "aliases": [],
+          "help": "Prune build directories older than specified age",
+          "flags": [
+            {
+              "flags": [
+                "--older-than"
+              ],
+              "dest": "older_than",
+              "metavar": null,
+              "type": null,
+              "default": "7d",
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Prune leaves older than this duration (e.g. 7d, 24h, 30m). Default: 7d"
+            }
+          ],
+          "subcommands": []
+        },
+        {
+          "name": "status",
+          "aliases": [],
+          "help": "Show disk usage breakdown of build/ directory",
+          "flags": [],
+          "subcommands": []
+        }
+      ]
+    },
+    {
+      "name": "clean",
+      "aliases": [],
+      "help": "Clean build artifacts and prune cache directories",
+      "flags": [
+        {
+          "flags": [
+            "--target"
+          ],
+          "dest": "target",
+          "metavar": null,
+          "type": null,
+          "default": null,
+          "required": false,
+          "nargs": null,
+          "choices": [
+            "host",
+            "wasm",
+            "esp32",
+            "all"
+          ],
+          "help": "Filter or clean build leaves by target platform (host, wasm, esp32, all)"
+        },
+        {
+          "flags": [
+            "--prune"
+          ],
+          "dest": "prune",
+          "metavar": null,
+          "type": null,
+          "default": false,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "help": "Prune stale build directories older than threshold (default: 7d)"
+        },
+        {
+          "flags": [
+            "--older-than"
+          ],
+          "dest": "older_than",
+          "metavar": null,
+          "type": null,
+          "default": "7d",
+          "required": false,
+          "nargs": null,
+          "choices": null,
+          "help": "Prune leaves older than this duration (e.g. 7d, 24h, 30m). Default: 7d"
+        },
+        {
+          "flags": [
+            "--all"
+          ],
+          "dest": "all",
+          "metavar": null,
+          "type": null,
+          "default": false,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "help": "Clean all build targets"
+        }
+      ],
+      "subcommands": [
+        {
+          "name": "clean",
+          "aliases": [],
+          "help": "Clean build directories for target platform",
+          "flags": [
+            {
+              "flags": [
+                "--target"
+              ],
+              "dest": "target",
+              "metavar": null,
+              "type": null,
+              "default": "all",
+              "required": false,
+              "nargs": null,
+              "choices": [
+                "host",
+                "wasm",
+                "esp32",
+                "all"
+              ],
+              "help": "Platform target to clean (default: all)"
+            }
+          ],
+          "subcommands": []
+        },
+        {
+          "name": "du",
+          "aliases": [],
+          "help": "Alias for 'cache status'",
+          "flags": [],
+          "subcommands": []
+        },
+        {
+          "name": "prune",
+          "aliases": [],
+          "help": "Prune build directories older than specified age",
+          "flags": [
+            {
+              "flags": [
+                "--older-than"
+              ],
+              "dest": "older_than",
+              "metavar": null,
+              "type": null,
+              "default": "7d",
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "Prune leaves older than this duration (e.g. 7d, 24h, 30m). Default: 7d"
+            }
+          ],
+          "subcommands": []
+        },
+        {
+          "name": "status",
+          "aliases": [],
+          "help": "Show disk usage breakdown of build/ directory",
+          "flags": [],
           "subcommands": []
         }
       ]
@@ -815,6 +1123,235 @@
       ]
     },
     {
+      "name": "ide",
+      "aliases": [],
+      "help": "Manage IDE language service compilation databases (ADR-0002 / PLAN-20260928)",
+      "flags": [],
+      "subcommands": [
+        {
+          "name": "select",
+          "aliases": [],
+          "help": "Switch root build/compile_commands.json to target",
+          "flags": [
+            {
+              "flags": [],
+              "dest": "target",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": true,
+              "nargs": null,
+              "choices": [
+                "host",
+                "esp32",
+                "wasm"
+              ],
+              "help": "Target platform database to activate"
+            }
+          ],
+          "subcommands": []
+        },
+        {
+          "name": "status",
+          "aliases": [],
+          "help": "Show active and available compile_commands.json databases",
+          "flags": [],
+          "subcommands": []
+        }
+      ]
+    },
+    {
+      "name": "internal",
+      "aliases": [],
+      "help": "Internal proprietary verbs (harvest-sdk, …)",
+      "flags": [],
+      "subcommands": [
+        {
+          "name": "harvest-sdk",
+          "aliases": [],
+          "help": "Harvest vendor SDK headers (ADR-0066/0067)",
+          "flags": [
+            {
+              "flags": [
+                "--vendor"
+              ],
+              "dest": "vendor",
+              "metavar": null,
+              "type": null,
+              "default": "esp-idf",
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": null
+            },
+            {
+              "flags": [
+                "--version"
+              ],
+              "dest": "version",
+              "metavar": null,
+              "type": null,
+              "default": "v6.1",
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": null
+            },
+            {
+              "flags": [
+                "--target"
+              ],
+              "dest": "target",
+              "metavar": null,
+              "type": null,
+              "default": "esp32",
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": null
+            },
+            {
+              "flags": [
+                "--sdk-path"
+              ],
+              "dest": "sdk_path",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": null
+            },
+            {
+              "flags": [
+                "--out"
+              ],
+              "dest": "out",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": null
+            },
+            {
+              "flags": [
+                "--dry-run"
+              ],
+              "dest": "dry_run",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": null
+            },
+            {
+              "flags": [
+                "--format"
+              ],
+              "dest": "format",
+              "metavar": null,
+              "type": null,
+              "default": "text",
+              "required": false,
+              "nargs": null,
+              "choices": [
+                "text",
+                "json"
+              ],
+              "help": null
+            },
+            {
+              "flags": [
+                "--include-mode"
+              ],
+              "dest": "include_mode",
+              "metavar": null,
+              "type": null,
+              "default": "block",
+              "required": false,
+              "nargs": null,
+              "choices": [
+                "block",
+                "survey"
+              ],
+              "help": null
+            },
+            {
+              "flags": [
+                "--ast-filter"
+              ],
+              "dest": "ast_filter",
+              "metavar": null,
+              "type": null,
+              "default": true,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": null
+            },
+            {
+              "flags": [
+                "--no-ast-filter"
+              ],
+              "dest": "ast_filter",
+              "metavar": null,
+              "type": null,
+              "default": true,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": null
+            },
+            {
+              "flags": [
+                "--allow-unverified"
+              ],
+              "dest": "allow_unverified",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": null
+            },
+            {
+              "flags": [
+                "--verify-abi"
+              ],
+              "dest": "verify_abi",
+              "metavar": null,
+              "type": null,
+              "default": false,
+              "required": false,
+              "nargs": 0,
+              "choices": null,
+              "help": "收割后执行 ABI/宏值等价校核（失败 exit 3）"
+            },
+            {
+              "flags": [
+                "--base-artifact"
+              ],
+              "dest": "base_artifact",
+              "metavar": null,
+              "type": null,
+              "default": null,
+              "required": false,
+              "nargs": null,
+              "choices": null,
+              "help": "上一版 artifact include 根（overlay 冲突归因）"
+            }
+          ],
+          "subcommands": []
+        }
+      ]
+    },
+    {
       "name": "lint",
       "aliases": [],
       "help": "Run YAML layer/API/Arduino lints (ADR-0043)",
@@ -1090,6 +1627,42 @@
       ]
     },
     {
+      "name": "path",
+      "aliases": [],
+      "help": "Resolve and print the build directory path for an application",
+      "flags": [
+        {
+          "flags": [],
+          "dest": "app",
+          "metavar": null,
+          "type": null,
+          "default": "devkitc_smoke",
+          "required": false,
+          "nargs": "?",
+          "choices": null,
+          "help": "Application name or relative path"
+        },
+        {
+          "flags": [
+            "--target"
+          ],
+          "dest": "target",
+          "metavar": null,
+          "type": null,
+          "default": "wasm",
+          "required": false,
+          "nargs": null,
+          "choices": [
+            "wasm",
+            "host",
+            "esp32"
+          ],
+          "help": "Target platform (default: wasm)"
+        }
+      ],
+      "subcommands": []
+    },
+    {
       "name": "schema",
       "aliases": [],
       "help": "Manage and migrate driver YAML schemas",
@@ -1251,7 +1824,7 @@
               "required": false,
               "nargs": null,
               "choices": null,
-              "help": "Target application path or name (e.g. vendor_cms8s78xx_led_4com_8seg)"
+              "help": "Target application path or name (e.g. vendor/cms8s78xx/led_4com_8seg)"
             },
             {
               "flags": [
