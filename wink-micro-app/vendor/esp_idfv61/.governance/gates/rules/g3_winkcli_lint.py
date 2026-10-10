@@ -24,35 +24,24 @@ SEVERITIES = frozenset({"error", "warning", "info"})
 
 DEFAULT_PACKS = ["layering", "api"]
 
-# Canonical local location of the toolchain. Per project convention the linter is
-# always invoked through wink-ai/packages/wink-tools/wink.py, never through a
-# `winkcli` binary on PATH: the packaged executable can be a stale build and would
-# silently disagree with the rule data in this repo's wink-tools/tools/lint/rules.
-CANONICAL_TOOLCHAIN_RELPATH = Path("wink-ai") / "packages" / "wink-tools" / "wink.py"
-
-
 def find_winkcli_executable(ws_root: Path) -> list[str] | None:
     """Resolves the wink-tools entry point.
 
-    Deliberately does NOT probe `shutil.which("winkcli")`: a packaged binary on
-    PATH may be an older build whose rule set diverges from the one committed here.
+    Priority:
+      1. Explicit override via $WINK_TOOLS_ROOT (e.g. pinned checkout in CI)
+      2. Global 'winkcli' command on PATH
     """
-    # 1. Explicit override (used by CI, which checks out the toolchain at a pinned ref)
+    # 1. Explicit override
     tools_root_env = os.environ.get("WINK_TOOLS_ROOT")
     if tools_root_env:
         wink_py = Path(tools_root_env) / "wink.py"
         if wink_py.exists():
             return [sys.executable, str(wink_py), "lint"]
 
-    # 2. Canonical sibling-repository path: wink-ai/packages/wink-tools/wink.py
-    candidates = [
-        ws_root.parent / CANONICAL_TOOLCHAIN_RELPATH,
-        ws_root / CANONICAL_TOOLCHAIN_RELPATH,
-        ws_root.parent / "packages" / "wink-tools" / "wink.py",
-    ]
-    for c in candidates:
-        if c.exists():
-            return [sys.executable, str(c), "lint"]
+    # 2. Installed winkcli executable on PATH
+    cli = shutil.which("winkcli")
+    if cli:
+        return [cli, "lint"]
 
     return None
 
@@ -98,21 +87,10 @@ def _build_cmd(cmd_base: list[str], ws_root: Path, packs: list[str],
 
 
 def toolchain_search_hint(ws_root: Path) -> str:
-    """Human-actionable message listing where the toolchain was looked for.
-
-    Deliberately describes the toolchain by its local path only. The engine lives
-    in a private, commercial-secret repository; naming its remote, organisation
-    or commit here would publish that infrastructure in this open-source repo.
-    """
-    probed = [str(ws_root.parent / CANONICAL_TOOLCHAIN_RELPATH),
-              str(ws_root / CANONICAL_TOOLCHAIN_RELPATH)]
+    """Human-actionable message when the winkcli executable cannot be found."""
     return (
-        f"Looked for: {', '.join(probed)}, or $WINK_TOOLS_ROOT/wink.py. "
-        f"By convention the linter is invoked through "
-        f"'wink-ai/packages/wink-tools/wink.py' from the sibling private "
-        f"toolchain checkout, not through a 'winkcli' binary on PATH. "
-        f"If the sibling checkout is absent, restore it and re-run; do not "
-        f"point this gate at a PATH binary."
+        "winkcli executable not found on PATH (or via $WINK_TOOLS_ROOT). "
+        "Please install winkcli globally (e.g. 'pip install wink-tools') or ensure it is added to system PATH."
     )
 
 

@@ -389,13 +389,13 @@ def test_verify_execution_report_single_run_error_steps_rejected(tmp_path):
 
 
 def test_resolve_report_no_loose_shared_fallback(tmp_path):
-    """resolve_execution_report_path does NOT resolve to un-scoped sister artifacts/run-report.json."""
+    """resolve_execution_report_path does NOT resolve to un-scoped artifacts/run-report.json."""
     from gates.evidence_verifier import resolve_execution_report_path
 
-    # Create dummy sister repo artifacts/run-report.json
-    sister_artifacts = tmp_path.parent / "wink-ai" / "packages" / "wink-tools" / "artifacts"
-    sister_artifacts.mkdir(parents=True, exist_ok=True)
-    shared_rep = sister_artifacts / "run-report.json"
+    # Create dummy shared artifacts/run-report.json
+    shared_artifacts = tmp_path / "artifacts"
+    shared_artifacts.mkdir(parents=True, exist_ok=True)
+    shared_rep = shared_artifacts / "run-report.json"
     shared_rep.write_text("{}", encoding="utf-8")
 
     # Asking for a non-existent app report must NOT fall back to shared_rep

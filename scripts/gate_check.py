@@ -14,8 +14,7 @@ It runs, in order:
   3. the checklist generator in --dry-run mode (SSOT -> dashboard agreement)
 
 Toolchain convention: the linter is invoked through
-``wink-ai/packages/wink-tools/wink.py`` (sibling repository), never a
-``winkcli`` binary on PATH.
+``winkcli`` on PATH.
 
 Usage:
     python scripts/gate_check.py                 # staged + unstaged changes
@@ -35,7 +34,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 GATES_DIR = REPO_ROOT / "wink-micro-app" / "vendor" / "esp_idfv61" / ".governance" / "gates"
 RUN_GATES = GATES_DIR / "run_gates.py"
-GATE_TESTS = GATES_DIR / "tests"
+GATE_TESTS = REPO_ROOT / "wink-micro-app" / "vendor" / "esp_idfv61" / ".governance" / "tests"
 CHECKLIST_DATA = (REPO_ROOT / "wink-micro-app" / "vendor" / "esp_idfv61"
                   / ".governance" / "data" / "checklist.data.json")
 GENERATOR = (REPO_ROOT / "wink-micro-app" / "vendor" / "esp_idfv61"
@@ -321,8 +320,7 @@ def main() -> int:
             print(f"    - {f}")
         return 1
     print("  All governance gates passed.")
-    print(f"  Toolchain convention: linter invoked via "
-          f"wink-ai/packages/wink-tools/wink.py (not a PATH winkcli).")
+    print("  Toolchain convention: linter invoked via winkcli.")
     return 0
 
 

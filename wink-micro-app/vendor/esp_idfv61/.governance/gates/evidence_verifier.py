@@ -98,8 +98,7 @@ def resolve_execution_report_path(ref: str, ws_root: Path) -> Optional[Path]:
             ws_root / "reports" / rel_path,
             vendor_root / ".governance" / "gates" / "reports" / sub,
             ws_root / ".governance" / "gates" / "reports" / sub,
-            # Fallback to app-scoped artifacts subpath in sister repo
-            ws_root.parent / "wink-ai" / "packages" / "wink-tools" / "artifacts" / sub,
+            ws_root / "artifacts" / sub,
         ]
         for c in candidates:
             if c.is_file():

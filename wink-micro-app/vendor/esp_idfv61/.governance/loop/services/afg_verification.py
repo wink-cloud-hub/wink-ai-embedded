@@ -87,7 +87,7 @@ class PilotVerifier:
                 self.reports_dir / app_subpath / "run-report.json",
                 self.reports_dir / app_subpath / "default" / "run-report.json",
                 assets_dir / "run-report.json",
-                self.ws_root.parent / "wink-ai" / "packages" / "wink-tools" / "artifacts" / "run-report.json",
+                self.ws_root / "artifacts" / "run-report.json",
             ]
             for cand in candidates:
                 if cand.is_file():

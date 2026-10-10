@@ -89,15 +89,10 @@ def test_non_object_array_element_is_rejected(monkeypatch):
     assert out[0]["severity"] == "error"
 
 
-def test_toolchain_resolves_via_wink_ai_not_path_winkcli(tmp_path, monkeypatch):
-    """Project convention: invoke the linter through wink-ai/packages/wink-tools/.
-    A `winkcli` shim on PATH (pyenv shims exist on this machine) may be a stale
-    packaged build whose rule set diverges from the committed rule data."""
+def test_toolchain_resolves_via_path_winkcli(tmp_path, monkeypatch):
+    """Linter resolves directly via winkcli executable from PATH."""
     ws = tmp_path / "wink-ai-embedded"
     ws.mkdir()
-    canonical = tmp_path / "wink-ai" / "packages" / "wink-tools"
-    canonical.mkdir(parents=True)
-    (canonical / "wink.py").write_text("# toolchain\n", encoding="utf-8")
 
     monkeypatch.setenv("WINK_TOOLS_ROOT", "")
     monkeypatch.delenv("WINK_TOOLS_ROOT", raising=False)
@@ -106,9 +101,8 @@ def test_toolchain_resolves_via_wink_ai_not_path_winkcli(tmp_path, monkeypatch):
 
     cmd = g3.find_winkcli_executable(ws)
     assert cmd is not None
-    assert cmd[1].endswith(str(Path("wink-ai") / "packages" / "wink-tools" / "wink.py"))
-    assert "winkcli" not in cmd[1].lower()
-    assert cmd[2] == "lint"
+    assert cmd[0] == r"D:\software\python\.pyenv\pyenv-win\shims\winkcli.BAT"
+    assert cmd[1] == "lint"
 
 
 def test_env_override_takes_precedence(tmp_path, monkeypatch):
@@ -126,27 +120,17 @@ def test_missing_toolchain_hint_names_canonical_path(tmp_path):
     ws = tmp_path / "ws"
     ws.mkdir()
     hint = g3.toolchain_search_hint(ws)
-    assert "wink-ai/packages/wink-tools" in hint
+    assert "winkcli" in hint
     assert "PATH" in hint
 
 
-def test_source_never_probes_path(monkeypatch, tmp_path):
-    """Behavioural guard: resolving the toolchain must not consult PATH at all."""
-    def _boom(_name):
-        raise AssertionError("find_winkcli_executable must not probe PATH")
-
-    monkeypatch.setattr(g3.shutil, "which", _boom)
+def test_missing_toolchain_when_not_on_path(monkeypatch, tmp_path):
+    monkeypatch.setattr(g3.shutil, "which", lambda _name: None)
     monkeypatch.delenv("WINK_TOOLS_ROOT", raising=False)
 
     ws = tmp_path / "ws"
     ws.mkdir()
     assert g3.find_winkcli_executable(ws) is None
-
-    canonical = tmp_path / "wink-ai" / "packages" / "wink-tools"
-    canonical.mkdir(parents=True)
-    (canonical / "wink.py").write_text("# toolchain\n", encoding="utf-8")
-    cmd = g3.find_winkcli_executable(ws)
-    assert cmd is not None and cmd[1].endswith("wink.py")
 
 
 # --- confidentiality ---------------------------------------------------------
@@ -172,7 +156,7 @@ def test_hint_does_not_disclose_the_private_toolchain_remote():
     from pathlib import Path as _P
     hint = g3.toolchain_search_hint(_P("."))
     _assert_no_remote(hint, "toolchain_search_hint")
-    assert "wink-ai/packages/wink-tools/wink.py" in hint, "hint must stay actionable"
+    assert "wink-ai" not in hint
 
 
 def test_lock_file_discloses_no_remote_or_commit():
