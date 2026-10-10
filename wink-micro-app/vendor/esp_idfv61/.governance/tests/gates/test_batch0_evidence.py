@@ -11,15 +11,14 @@ from pathlib import Path
 import pytest
 
 TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
-if str(TOOLS_DIR) not in sys.path:
-    sys.path.insert(0, str(TOOLS_DIR))
+
 from loop.mutator import CanaryMutator
 from loop.pipeline import LoopPipeline
-from evidence_verifier import compute_assets_composite_sha256
-from report_contract import file_sha256, validate_scenario_report
-from twin_evidence import contract_sha256, verify_twin_evidence
-from rules import g1_carrier_landing_integrity, g1_scenario_semantic_integrity
-from rules import g5_network_assertion_quality, g5_wifi_assertion_quality
+from gates.evidence_verifier import compute_assets_composite_sha256
+from gates.report_contract import file_sha256, validate_scenario_report
+from gates.twin_evidence import contract_sha256, verify_twin_evidence
+from gates.rules import g1_carrier_landing_integrity, g1_scenario_semantic_integrity
+from gates.rules import g5_network_assertion_quality, g5_wifi_assertion_quality
 
 
 def write_json(path, value):

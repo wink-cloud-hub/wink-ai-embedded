@@ -4,8 +4,8 @@ Unit tests for g1_carrier_landing_integrity.py.
 """
 
 from pathlib import Path
-from gate_context import build_context
-from rules import g1_carrier_landing_integrity
+from gates.gate_context import build_context
+from gates.rules import g1_carrier_landing_integrity
 
 
 def test_carrier_landing_integrity_on_real_repo():

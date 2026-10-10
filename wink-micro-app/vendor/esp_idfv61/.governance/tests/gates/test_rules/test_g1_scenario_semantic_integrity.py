@@ -5,7 +5,7 @@ Unit and mutation tests for g1_scenario_semantic_integrity.py.
 
 import json
 from pathlib import Path
-from rules import g1_scenario_semantic_integrity
+from gates.rules import g1_scenario_semantic_integrity
 
 
 def _create_carrier_app(ws: Path, rel_path: str, wink_app_data: dict, scenario_data: dict) -> Path:

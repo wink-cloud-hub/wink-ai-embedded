@@ -20,6 +20,7 @@ try:
 except ImportError:
     from .batch_observability import BatchObservabilityTracker
 from .pipeline import LoopPipeline, PipelineResult
+from loop.harness.paths import resolve_workspace_root, validate_no_recursive_nesting
 
 
 
@@ -28,7 +29,7 @@ class LoopRunner:
 
     def __init__(
         self,
-        workspace_root: Path,
+        workspace_root: Optional[Path] = None,
         dry_run: bool = False,
         custom_agent_cmd: Optional[str] = None,
         custom_agent_a_cmd: Optional[str] = None,
@@ -38,10 +39,12 @@ class LoopRunner:
         max_heal_attempts: int = 2,
         proof_profile: str = "assertion",
     ):
-        self.ws_root = workspace_root
+        self.ws_root = resolve_workspace_root(workspace_root)
         self.dry_run = dry_run
-        self.vendor_root = workspace_root / "wink-micro-app" / "vendor" / "esp_idfv61"
+        self.vendor_root = self.ws_root / "wink-micro-app" / "vendor" / "esp_idfv61"
         self.manifest_path = self.vendor_root / ".governance" / "data" / "checklist.data.json"
+        validate_no_recursive_nesting(self.vendor_root, self.ws_root)
+        validate_no_recursive_nesting(self.manifest_path, self.ws_root)
         self.proof_profile = proof_profile
         pipeline_type = LoopPipeline
         if proof_profile == "uart-causality":
@@ -259,7 +262,7 @@ def main():
     parser.add_argument("--agent-cmd", type=str, help="Custom headless agent CLI command (e.g. 'claude -p')")
     parser.add_argument("--agent-a-cmd", type=str, help="Custom agent CLI command for Role A (Proposer)")
     parser.add_argument("--agent-b-cmd", type=str, help="Custom agent CLI command for Role B (Auditor)")
-    parser.add_argument("--workspace-root", type=str, default=".", help="Workspace root directory")
+    parser.add_argument("--workspace-root", type=str, default=None, help="Workspace root directory (defaults to auto-discovered workspace root)")
 
     args = parser.parse_args()
     if args.proof_profile == "uart-causality" and not args.app:
@@ -268,7 +271,7 @@ def main():
         parser.error("uart-events-fault requires one explicit --app uart_uart_events")
     if args.proof_profile == "twdt-timeout" and not args.app:
         parser.error("twdt-timeout requires one explicit --app task_watchdog")
-    ws_root = Path(args.workspace_root).resolve()
+    ws_root = resolve_workspace_root(args.workspace_root)
 
     runner = LoopRunner(
         workspace_root=ws_root,

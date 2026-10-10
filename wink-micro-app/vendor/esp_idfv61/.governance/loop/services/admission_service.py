@@ -19,14 +19,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-# Try importing local gate tools
-TOOLS_DIR = Path(__file__).resolve().parent
-VENDOR_ROOT = TOOLS_DIR.parent.parent
-GATES_DIR = VENDOR_ROOT / ".governance" / "gates"
-if str(GATES_DIR) not in sys.path:
-    sys.path.insert(0, str(GATES_DIR))
-if str(TOOLS_DIR) not in sys.path:
-    sys.path.insert(0, str(TOOLS_DIR))
+VENDOR_ROOT = Path(__file__).resolve().parents[3]
 
 try:
     from loop.mutation_catalog import CATALOG_OPERATORS

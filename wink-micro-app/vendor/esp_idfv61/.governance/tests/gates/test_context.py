@@ -8,7 +8,7 @@ import pytest
 from datetime import timezone
 from pathlib import Path
 
-from gate_context import (
+from gates.gate_context import (
     find_workspace_root,
     normalize_posix_path,
     load_changed_files,

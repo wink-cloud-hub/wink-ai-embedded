@@ -13,11 +13,9 @@ import pytest
 
 TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
 VENDOR_DIR = TOOLS_DIR.parent.parent
-if str(TOOLS_DIR) not in sys.path:
-    sys.path.insert(0, str(TOOLS_DIR))
 from loop.uart_events_fault import make_contract, validate_fault_report
 from loop.uart_events_fault import UartEventsFaultPipeline, UPSTREAM_SHA256
-from report_contract import file_sha256
+from gates.report_contract import file_sha256
 
 
 @pytest.fixture
@@ -104,6 +102,7 @@ def test_fault_mutation_requires_normal_and_recovery_alive(fault_report):
 
 
 def test_events_cli_dry_run_locks_scope_without_writing(tmp_path):
+    (tmp_path / "wink-micro-os").mkdir()
     vendor = tmp_path / "wink-micro-app/vendor/esp_idfv61"
     app = vendor / "peripherals/uart_uart_events"
     shutil.copytree(VENDOR_DIR / "peripherals/uart_uart_events", app,

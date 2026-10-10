@@ -3,7 +3,7 @@
 Unit tests for g1_sla_evidence.py.
 """
 
-from rules import g1_sla_evidence
+from gates.rules import g1_sla_evidence
 
 
 def test_sla_evidence_positive():

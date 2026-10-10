@@ -3,7 +3,7 @@
 Unit tests for g1_auditor_required.py.
 """
 
-from rules import g1_auditor_required
+from gates.rules import g1_auditor_required
 
 
 def test_auditor_required_positive():

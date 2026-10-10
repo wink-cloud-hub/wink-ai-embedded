@@ -12,7 +12,7 @@ import re
 import sys
 from pathlib import Path
 
-from rules import g3_winkcli_lint as g3
+from gates.rules import g3_winkcli_lint as g3
 
 
 class FakeProc:

@@ -8,7 +8,7 @@ import pytest
 import yaml
 from pathlib import Path
 
-import run_gates
+from gates import run_gates
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 

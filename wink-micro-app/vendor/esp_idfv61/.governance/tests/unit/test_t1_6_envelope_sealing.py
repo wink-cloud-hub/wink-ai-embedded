@@ -24,7 +24,7 @@ from loop.afg.canonical_sealing import (
     validate_candidate_for_audit,
     ENVELOPE_FILENAMES,
 )
-from inspect_candidate import inspect_candidate, sign_audit_decision, compute_dir_digest
+from tools.inspect_candidate import inspect_candidate, sign_audit_decision, compute_dir_digest
 
 
 def test_jcs_canonical_json_serialization():

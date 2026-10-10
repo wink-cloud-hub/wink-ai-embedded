@@ -12,8 +12,12 @@ import re
 from pathlib import Path
 from typing import Any
 
-from evidence_verifier import compute_assets_composite_sha256, resolve_execution_report_path
-from report_contract import file_sha256, is_business_assertion, validate_scenario_report
+try:
+    from gates.evidence_verifier import compute_assets_composite_sha256, resolve_execution_report_path
+    from gates.report_contract import file_sha256, is_business_assertion, validate_scenario_report
+except ImportError:
+    from evidence_verifier import compute_assets_composite_sha256, resolve_execution_report_path
+    from report_contract import file_sha256, is_business_assertion, validate_scenario_report
 
 
 def contract_sha256(contract: dict[str, Any]) -> str:

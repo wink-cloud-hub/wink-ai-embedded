@@ -27,18 +27,18 @@ from typing import Any, Dict
 
 import pytest
 
-from report_contract import (
+from gates.report_contract import (
     validate_scenario_report,
     validate_report_standalone,
     is_business_assertion,
     file_sha256,
 )
-from evidence_verifier import (
+from gates.evidence_verifier import (
     verify_execution_report,
     verify_evidence,
     write_evidence_for_app,
 )
-from error_matcher import (
+from loop.afg.error_matcher import (
     is_error_matcher,
     validate_no_vague_matcher,
     match_error_assertion,

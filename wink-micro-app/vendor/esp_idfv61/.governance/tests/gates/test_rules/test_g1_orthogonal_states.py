@@ -3,7 +3,7 @@
 Unit tests for g1_orthogonal_states.py.
 """
 
-from rules import g1_orthogonal_states
+from gates.rules import g1_orthogonal_states
 
 
 def test_orthogonal_states_positive():

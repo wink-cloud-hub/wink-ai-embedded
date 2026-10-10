@@ -4,7 +4,7 @@ Unit tests for g1_quarantine_ttl.py.
 """
 
 from datetime import datetime, timezone
-from rules import g1_quarantine_ttl
+from gates.rules import g1_quarantine_ttl
 
 
 def test_quarantine_ttl_within_grace_period():

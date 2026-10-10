@@ -217,7 +217,7 @@ jobs:
         shell: bash
         run: test -f "$WINK_TOOLS_ROOT/wink.py"
       - name: Test the gate engine itself
-        run: python -m pytest wink-micro-app/vendor/esp_idfv61/.governance/gates/tests -q
+        run: python -m pytest -c wink-micro-app/vendor/esp_idfv61/.governance/pyproject.toml wink-micro-app/vendor/esp_idfv61/.governance/tests -q
       - name: Run ESP-IDF Gate System (Nightly full mode)
         shell: bash
         # NOTE: Gate 2 and Gate 4 are git_diff-triggered, so on a scheduled run with

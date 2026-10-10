@@ -75,7 +75,7 @@ jobs:
       - name: Install Python lint dependencies
         run: python -m pip install pyyaml jinja2 rich pytest
       - name: Test the gate engine itself
-        run: python -m pytest wink-micro-app/vendor/esp_idfv61/.governance/gates/tests -q
+        run: python -m pytest -c wink-micro-app/vendor/esp_idfv61/.governance/pyproject.toml wink-micro-app/vendor/esp_idfv61/.governance/tests -q
       - name: Check License Map
         run: python .github/scripts/check_license_map.py
       - name: Check SSOT Invariants

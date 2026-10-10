@@ -3,7 +3,7 @@
 Unit tests for g1_path_unique.py.
 """
 
-from rules import g1_path_unique
+from gates.rules import g1_path_unique
 
 
 def test_path_unique_positive():

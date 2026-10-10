@@ -12,10 +12,8 @@ import pytest
 
 TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
 VENDOR_DIR = TOOLS_DIR.parent.parent
-if str(TOOLS_DIR) not in sys.path:
-    sys.path.insert(0, str(TOOLS_DIR))
 from loop.uart_causality import UartCausalityPipeline
-from report_contract import file_sha256
+from gates.report_contract import file_sha256
 
 
 @pytest.fixture

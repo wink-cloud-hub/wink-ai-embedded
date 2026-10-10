@@ -9,7 +9,7 @@ the real layer-inversion case from the codebase:
 wink-micro-os/targets/wasm/pal_wasm_ch4_buffer.c::pal_ws2812_write.
 """
 
-from rules import g2_pal_naming
+from gates.rules import g2_pal_naming
 
 
 def test_pal_naming_clean_file(tmp_path):

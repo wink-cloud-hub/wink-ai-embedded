@@ -9,7 +9,7 @@ Unit and mutation tests for Gate 5 Wi-Fi rules:
 
 import json
 from pathlib import Path
-from rules import g5_no_wifi_inline_mock, g5_wifi_assertion_quality
+from gates.rules import g5_no_wifi_inline_mock, g5_wifi_assertion_quality
 
 
 def test_g5_no_wifi_inline_mock_clean_codebase(tmp_path):

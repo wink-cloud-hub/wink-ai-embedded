@@ -3,7 +3,7 @@
 import json
 import pytest
 from pathlib import Path
-from error_matcher import (
+from loop.afg.error_matcher import (
     match_error_assertion,
     is_error_matcher,
     validate_no_vague_matcher,
@@ -12,7 +12,7 @@ from error_matcher import (
     POSIX_ERRNO_SYMBOLS,
     NIMBLE_HS_SYMBOLS,
 )
-from report_contract import validate_scenario_report
+from gates.report_contract import validate_scenario_report
 
 
 def test_esp_err_domain_positive():

@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from defect_feedback import DefectFeedbackManager
+from loop.services.defect_feedback import DefectFeedbackManager
 from loop.batch_observability import BatchObservabilityTracker
 from loop.batch_rollout import RolloutManager
 

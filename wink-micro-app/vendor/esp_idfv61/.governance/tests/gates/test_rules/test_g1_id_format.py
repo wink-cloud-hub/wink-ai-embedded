@@ -6,7 +6,7 @@ Restored alongside the gate engine: this rule was registered in gates.yaml and
 shipped in __pycache__ as a .pyc, but its test source was missing.
 """
 
-from rules import g1_id_format
+from gates.rules import g1_id_format
 
 
 def _ctx(*ids):

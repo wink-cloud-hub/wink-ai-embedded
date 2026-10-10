@@ -12,9 +12,9 @@ requires-python = ">=3.9"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["loop*", "gates*"]
+include = ["loop*", "gates*", "cli*", "tools", "tools.loop"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "gates/tests"]
-pythonpath = [".", "gates", "tools"]
+testpaths = ["tests"]
+pythonpath = ["."]
 

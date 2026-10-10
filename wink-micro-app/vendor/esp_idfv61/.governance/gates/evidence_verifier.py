@@ -148,16 +148,16 @@ def verify_execution_report(
             pass
 
         try:
-            from report_contract import validate_scenario_report
-        except ImportError:
             from gates.report_contract import validate_scenario_report
+        except ImportError:
+            from report_contract import validate_scenario_report
         return validate_scenario_report(report_path, scenario_path)
 
 
     try:
-        from report_contract import validate_report_standalone
-    except ImportError:
         from gates.report_contract import validate_report_standalone
+    except ImportError:
+        from report_contract import validate_report_standalone
     return validate_report_standalone(report_path)
 
 

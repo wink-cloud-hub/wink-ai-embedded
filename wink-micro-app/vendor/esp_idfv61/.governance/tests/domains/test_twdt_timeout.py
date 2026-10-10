@@ -8,10 +8,8 @@ from pathlib import Path
 import pytest
 
 TOOLS = Path(__file__).resolve().parents[2] / "tools"
-if str(TOOLS) not in sys.path:
-    sys.path.insert(0, str(TOOLS))
 from loop.twdt_timeout import make_contract, validate_timeout_report
-from report_contract import file_sha256
+from gates.report_contract import file_sha256
 
 
 @pytest.fixture

@@ -3,7 +3,7 @@
 Unit tests for g1_cap_id_exists.py.
 """
 
-from rules import g1_cap_id_exists
+from gates.rules import g1_cap_id_exists
 
 
 def test_cap_id_exists_positive():

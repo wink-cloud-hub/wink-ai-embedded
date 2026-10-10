@@ -4,7 +4,7 @@ Unit tests for g4_impact_regression.py.
 """
 
 from pathlib import Path
-from rules import g4_impact_regression
+from gates.rules import g4_impact_regression
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 

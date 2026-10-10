@@ -15,14 +15,10 @@ import sys
 from pathlib import Path
 import pytest
 
-LOOP_DIR = Path(__file__).resolve().parents[2] / "tools" / "loop"
-if str(LOOP_DIR) not in sys.path:
-    sys.path.insert(0, str(LOOP_DIR))
-
-from afg_engine import AFGEngine, AFGReceipt, ExecutionIdentity, EXPECTED_PROBE_ABI_VERSION, EXPECTED_PROBE_SIZE_BYTES
-from archetype_resolver import ArchetypeResolver, ArchetypeResolutionError
-from build_sandbox import BuildSandbox, compute_build_cache_key
-from mutation_runner import MutationRunner, MutationBudgetExceededError
+from loop.afg.engine import AFGEngine, AFGReceipt, ExecutionIdentity, EXPECTED_PROBE_ABI_VERSION, EXPECTED_PROBE_SIZE_BYTES
+from loop.afg.archetype_resolver import ArchetypeResolver, ArchetypeResolutionError
+from loop.afg.build_sandbox import BuildSandbox, compute_build_cache_key
+from loop.afg.mutation_runner import MutationRunner, MutationBudgetExceededError
 
 
 def _base_valid_identity():
@@ -486,7 +482,7 @@ def test_meta_pos_04_lifecycle_reset():
 
 def test_meta_pos_05_promotion_service_cas(tmp_path):
     """META-POS-05: Multi-config valid receipt -> PromotionService commits atomic CAS update to verified_v1_1."""
-    from promotion_service import PromotionService
+    from loop.services.promotion_service import PromotionService
 
     # Set up mock repo layout
     ws = tmp_path

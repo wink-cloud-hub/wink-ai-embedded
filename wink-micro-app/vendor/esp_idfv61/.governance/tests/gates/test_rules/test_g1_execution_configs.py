@@ -3,7 +3,7 @@
 Unit tests for g1_execution_configs.py.
 """
 
-from rules import g1_execution_configs
+from gates.rules import g1_execution_configs
 
 
 def test_execution_configs_positive():

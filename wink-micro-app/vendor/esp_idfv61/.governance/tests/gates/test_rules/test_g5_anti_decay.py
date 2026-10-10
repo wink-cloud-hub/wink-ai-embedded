@@ -9,9 +9,9 @@ Unit tests for Gate 5 anti-decay rules:
 """
 
 from pathlib import Path
-from rules import g5_no_app_specific_branch
-from rules import g5_no_raw_delay_tasks
-from rules import g5_reset_registration_verified
+from gates.rules import g5_no_app_specific_branch
+from gates.rules import g5_no_raw_delay_tasks
+from gates.rules import g5_reset_registration_verified
 
 
 def test_no_app_specific_branch_clean_passes(tmp_path):

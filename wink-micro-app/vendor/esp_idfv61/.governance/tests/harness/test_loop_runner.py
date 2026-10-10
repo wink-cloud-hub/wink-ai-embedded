@@ -7,10 +7,6 @@ import json
 from pathlib import Path
 import pytest
 
-import sys
-TOOLS_DIR = Path(__file__).resolve().parent.parent.parent / "tools"
-if str(TOOLS_DIR) not in sys.path:
-    sys.path.insert(0, str(TOOLS_DIR))
 
 from loop.mutator import CanaryMutator
 from loop.runner import LoopRunner
@@ -81,7 +77,7 @@ def test_canary_mutator_detects_false_green():
 
 def test_canary_mutator_confirms_kill(tmp_path, sample_scenario):
     mutator = CanaryMutator()
-    from report_contract import file_sha256
+    from gates.report_contract import file_sha256
     source = tmp_path / "source.scenario.json"
     source.write_text(json.dumps(sample_scenario), encoding="utf-8")
     mutant, meta = mutator.create_mutant_file(source)

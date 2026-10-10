@@ -3,7 +3,7 @@
 Unit tests for g2_cap_has_owned_paths.py and g2_cap_cross_mcu.py.
 """
 
-from rules import g2_cap_has_owned_paths, g2_cap_cross_mcu
+from gates.rules import g2_cap_has_owned_paths, g2_cap_cross_mcu
 
 
 def test_cap_has_owned_paths_positive():

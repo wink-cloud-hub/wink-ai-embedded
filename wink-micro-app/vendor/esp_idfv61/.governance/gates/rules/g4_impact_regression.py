@@ -17,12 +17,15 @@ from datetime import datetime, timezone
 from impact_scope import compute_impact_closure
 
 try:
-    from evidence_verifier import verify_evidence
+    from gates.evidence_verifier import verify_evidence
 except ImportError:
-    GATES_DIR = Path(__file__).resolve().parent.parent
-    if str(GATES_DIR) not in sys.path:
-        sys.path.insert(0, str(GATES_DIR))
-    from evidence_verifier import verify_evidence
+    try:
+        from evidence_verifier import verify_evidence
+    except ImportError:
+        GATES_DIR = Path(__file__).resolve().parent.parent
+        if str(GATES_DIR) not in sys.path:
+            sys.path.insert(0, str(GATES_DIR))
+        from evidence_verifier import verify_evidence
 
 RULE_ID = "g4.impact_regression"
 

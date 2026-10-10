@@ -10,19 +10,24 @@ from typing import Any
 
 _CUR_DIR = Path(__file__).resolve().parent
 _GOV_DIR = _CUR_DIR.parent
-for p in [
-    str(_GOV_DIR),
-    str(_GOV_DIR / "loop" / "afg"),
-    str(_GOV_DIR / "tools" / "loop"),
-]:
-    if p not in sys.path:
-        sys.path.insert(0, p)
+if str(_GOV_DIR) not in sys.path:
+    sys.path.insert(0, str(_GOV_DIR))
 
 try:
-    from error_matcher import is_error_matcher, match_error_assertion, validate_no_vague_matcher, VALID_DOMAINS
+    from loop.afg.error_matcher import (
+        VALID_DOMAINS,
+        is_error_matcher,
+        match_error_assertion,
+        validate_no_vague_matcher,
+    )
 except ImportError:
     try:
-        from loop.afg.error_matcher import is_error_matcher, match_error_assertion, validate_no_vague_matcher, VALID_DOMAINS
+        from error_matcher import (
+            VALID_DOMAINS,
+            is_error_matcher,
+            match_error_assertion,
+            validate_no_vague_matcher,
+        )
     except ImportError:
         VALID_DOMAINS = {"esp_err", "wink_status", "posix_errno", "nimble_hs"}
         def is_error_matcher(matcher: Any) -> bool:

@@ -4,7 +4,7 @@ Unit tests for g1_can_check_mark.py.
 """
 
 from datetime import datetime, timezone
-from rules import g1_can_check_mark
+from gates.rules import g1_can_check_mark
 
 VALID_HASH = "4b72cd7f72c7cffcba2b2ed504a87e92715b61dd9fdf36e5cef89476940ddf6c"
 

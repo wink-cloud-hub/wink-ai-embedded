@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from admission_service import AdmissionService, KNOWN_EXPORTED_ABIS
+from loop.services.admission_service import AdmissionService, KNOWN_EXPORTED_ABIS
 
 
 @pytest.fixture

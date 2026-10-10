@@ -6,7 +6,7 @@ Unit tests for impact_scope.py reverse transitive closure algorithm.
 import json
 import yaml
 from pathlib import Path
-from impact_scope import compute_impact_closure
+from gates.impact_scope import compute_impact_closure
 
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
 
@@ -95,7 +95,7 @@ def test_impact_fail_closed_unknown_path():
 
 
 def test_g4_unknown_path_blocks_pr():
-    from rules import g4_impact_regression
+    from gates.rules import g4_impact_regression
     manifest, catalog = load_fixture_data()
     context = {
         "manifest": manifest,

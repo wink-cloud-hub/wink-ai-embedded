@@ -6,7 +6,7 @@ Restored alongside the gate engine: this rule was registered in gates.yaml and
 shipped in __pycache__ as a .pyc, but its test source was missing.
 """
 
-from rules import g1_version_alignment as g
+from gates.rules import g1_version_alignment as g
 
 V = g.EXPECTED_SPEC_VERSION
 
@@ -47,6 +47,6 @@ def test_missing_root_version_is_reported():
 
 def test_spec_version_is_reported_from_manifest_not_hardcoded():
     """gate_context used to hardcode '2.0.0' in the context, hiding downgrades."""
-    import gate_context
+    from gates import gate_context
     assert gate_context.validate_manifest_schema(
         {"spec_version": "2.1.0", "entries": [{"id": "x"}]}, "t") == "2.1.0"

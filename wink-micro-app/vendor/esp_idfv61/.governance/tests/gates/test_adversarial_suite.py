@@ -22,35 +22,26 @@ from typing import Any, Dict
 
 import pytest
 
-# Ensure gates and tools are importable
-TESTS_DIR = Path(__file__).resolve().parent
-GATES_DIR = TESTS_DIR.parent
-GOV_DIR = GATES_DIR.parent
-TOOLS_DIR = GOV_DIR / "tools"
-LOOP_DIR = TOOLS_DIR / "loop"
+GOV_DIR = Path(__file__).resolve().parents[2]
 
-for p in [str(GATES_DIR), str(TOOLS_DIR), str(LOOP_DIR)]:
-    if p not in sys.path:
-        sys.path.insert(0, p)
-
-from evidence_verifier import (
+from gates.evidence_verifier import (
     verify_evidence,
     compute_file_sha256,
     compute_assets_composite_sha256,
 )
-from report_contract import (
+from gates.report_contract import (
     validate_scenario_report,
     is_business_assertion,
     file_sha256,
 )
-from process_supervisor import ProcessSupervisor, safe_file_retry
-from mutation_catalog import (
+from loop.harness.process_supervisor import ProcessSupervisor, safe_file_retry
+from loop.mutation_catalog import (
     CATALOG_OPERATORS,
     apply_catalog_mutation,
     classify_mutation_verdict,
 )
-from inspect_candidate import inspect_candidate, sign_audit_decision
-from promotion_service import PromotionService
+from tools.inspect_candidate import inspect_candidate, sign_audit_decision
+from loop.services.promotion_service import PromotionService
 
 
 def build_scenario_dict(name="uart_echo"):

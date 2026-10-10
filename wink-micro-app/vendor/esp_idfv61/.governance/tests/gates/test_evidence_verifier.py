@@ -10,7 +10,7 @@ import hashlib
 from pathlib import Path
 import pytest
 
-from evidence_verifier import (
+from gates.evidence_verifier import (
     compute_file_sha256,
     compute_assets_composite_sha256,
     compute_scenario_sha256,
@@ -273,7 +273,7 @@ def test_verify_execution_report_single_run_zero_steps_rejected(tmp_path):
 
 
 def test_write_evidence_targeting_config_id(tmp_path, dummy_assets_dir, dummy_passing_report):
-    from evidence_verifier import write_evidence_for_app
+    from gates.evidence_verifier import write_evidence_for_app
 
     # Create dummy app structure in tmp_path
     vendor_root = tmp_path / "wink-micro-app" / "vendor" / "esp_idfv61"
@@ -390,7 +390,7 @@ def test_verify_execution_report_single_run_error_steps_rejected(tmp_path):
 
 def test_resolve_report_no_loose_shared_fallback(tmp_path):
     """resolve_execution_report_path does NOT resolve to un-scoped sister artifacts/run-report.json."""
-    from evidence_verifier import resolve_execution_report_path
+    from gates.evidence_verifier import resolve_execution_report_path
 
     # Create dummy sister repo artifacts/run-report.json
     sister_artifacts = tmp_path.parent / "wink-ai" / "packages" / "wink-tools" / "artifacts"
